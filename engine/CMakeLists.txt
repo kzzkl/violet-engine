@@ -1,0 +1,5 @@
+add_subdirectory(common)
+add_subdirectory(core)
+add_subdirectory(ecs)
+#add_subdirectory(task)
+add_subdirectory(window)
