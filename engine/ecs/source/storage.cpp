@@ -50,7 +50,7 @@ storage::storage(std::size_t entity_per_chunk) : m_size(0), m_entity_per_chunk(e
 {
 }
 
-storage::handle storage::insert_end()
+storage::handle storage::push_back()
 {
     std::size_t index = get_entity_size();
     if (index >= get_capacity())
@@ -60,7 +60,7 @@ storage::handle storage::insert_end()
     return storage::handle(this, index);
 }
 
-void storage::erase_end()
+void storage::pop_back()
 {
     --m_size;
     if (m_size % m_entity_per_chunk == 0)

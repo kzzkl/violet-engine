@@ -110,40 +110,40 @@ void* window_impl_win32::get_handle()
 }
 
 LRESULT CALLBACK
-window_impl_win32::wnd_create_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+window_impl_win32::wnd_create_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
     if (message == WM_NCCREATE)
     {
-        CREATESTRUCT* createStruct = reinterpret_cast<CREATESTRUCT*>(lParam);
+        CREATESTRUCT* create_struct = reinterpret_cast<CREATESTRUCT*>(lparam);
         window_impl_win32* impl =
-            reinterpret_cast<window_impl_win32*>(createStruct->lpCreateParams);
-        SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(impl));
+            reinterpret_cast<window_impl_win32*>(create_struct->lpCreateParams);
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(impl));
         SetWindowLongPtr(
-            hWnd,
+            hwnd,
             GWLP_WNDPROC,
             reinterpret_cast<LONG_PTR>(&window_impl_win32::wnd_proc));
-        return impl->HandleMsg(hWnd, message, wParam, lParam);
+        return impl->handle_message(hwnd, message, wparam, lparam);
     }
     else
     {
-        return DefWindowProc(hWnd, message, wParam, lParam);
+        return DefWindowProc(hwnd, message, wparam, lparam);
     }
 }
 
-LRESULT CALLBACK window_impl_win32::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK window_impl_win32::wnd_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
     window_impl_win32* const impl =
-        reinterpret_cast<window_impl_win32*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
-    return impl->HandleMsg(hWnd, message, wParam, lParam);
+        reinterpret_cast<window_impl_win32*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    return impl->handle_message(hwnd, message, wparam, lparam);
 }
 
-LRESULT window_impl_win32::HandleMsg(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
     switch (message)
     {
     case WM_MOUSEMOVE: {
         if (m_mouse.get_mode() == mouse_mode::CURSOR_ABSOLUTE)
-            m_mouse.set_cursor(static_cast<int>(LOWORD(lParam)), static_cast<int>(HIWORD(lParam)));
+            m_mouse.set_cursor(static_cast<int>(LOWORD(lparam)), static_cast<int>(HIWORD(lparam)));
         break;
     }
     case WM_INPUT: {
@@ -152,7 +152,7 @@ LRESULT window_impl_win32::HandleMsg(HWND hWnd, UINT message, WPARAM wParam, LPA
             RAWINPUT raw;
             UINT rawSize = sizeof(raw);
             GetRawInputData(
-                reinterpret_cast<HRAWINPUT>(lParam),
+                reinterpret_cast<HRAWINPUT>(lparam),
                 RID_INPUT,
                 &raw,
                 &rawSize,
@@ -184,13 +184,13 @@ LRESULT window_impl_win32::HandleMsg(HWND hWnd, UINT message, WPARAM wParam, LPA
         m_mouse.key_up(mouse_key::MIDDLE_BUTTON);
         break;
     case WM_KEYDOWN:
-        m_keyboard.key_down(static_cast<keyboard_key>(wParam));
+        m_keyboard.key_down(static_cast<keyboard_key>(wparam));
         break;
     case WM_KEYUP:
-        m_keyboard.key_up(static_cast<keyboard_key>(wParam));
+        m_keyboard.key_up(static_cast<keyboard_key>(wparam));
         break;
     default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
+        return DefWindowProc(hwnd, message, wparam, lparam);
     }
     return 0;
 }

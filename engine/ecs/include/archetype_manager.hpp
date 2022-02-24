@@ -5,8 +5,8 @@
 
 namespace ash::ecs
 {
-template <typename... Commponents>
-using view = base_view<archetype, Commponents...>;
+template <typename... Components>
+using view = base_view<archetype, Components...>;
 
 class ECS_API archetype_manager
 {

@@ -243,9 +243,9 @@ void archetype_handle<Components...>::load()
 template <typename... Components>
 void archetype_handle<Components...>::step(std::size_t offset)
 {
-    std::size_t entityPerChunk = m_raw.owner->m_storage.get_entity_per_chunk();
+    std::size_t entity_per_chunk = m_raw.owner->m_storage.get_entity_per_chunk();
     std::size_t target = m_raw.index + offset;
-    if (m_raw.index / entityPerChunk == target / entityPerChunk)
+    if (m_raw.index / entity_per_chunk == target / entity_per_chunk)
         std::apply([offset](auto&... com) { ((com += offset), ...); }, m_components);
     else
         m_components = std::make_tuple(m_raw.owner->get_component<Components>(target)...);

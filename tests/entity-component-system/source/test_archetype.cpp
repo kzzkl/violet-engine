@@ -40,7 +40,7 @@ TEST_CASE("layout", "[archetype_layout]")
     }
 }
 
-TEST_CASE("redirector", "[Redirector]")
+TEST_CASE("redirector", "[redirector]")
 {
     redirector r;
 
@@ -71,7 +71,7 @@ TEST_CASE("redirector", "[Redirector]")
     CHECK(r.size() == 0);
 }
 
-TEST_CASE("Archetype Add", "[Archetype]")
+TEST_CASE("Archetype Add", "[archetype]")
 {
     archetype_layout layout(storage::CHUNK_SIZE);
     layout.insert<rotation, position, test_class>();
@@ -90,7 +90,7 @@ TEST_CASE("Archetype Add", "[Archetype]")
     CHECK(&iter.get_component<rotation>() == &aiter.get_component<rotation>());
 }
 
-TEST_CASE("Archetype Remove", "[Archetype]")
+TEST_CASE("Archetype Remove", "[archetype]")
 {
     archetype_layout layout(storage::CHUNK_SIZE);
     layout.insert<rotation, position, test_class>();
@@ -108,7 +108,7 @@ TEST_CASE("Archetype Remove", "[Archetype]")
     CHECK(a.has_entity(entity1) == false);
 }
 
-TEST_CASE("Archetype Iterator", "[Archetype]")
+TEST_CASE("Archetype Iterator", "[archetype]")
 {
     archetype_layout layout(storage::CHUNK_SIZE);
     layout.insert<rotation, position, test_class>();

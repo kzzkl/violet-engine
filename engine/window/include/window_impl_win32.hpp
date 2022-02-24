@@ -35,7 +35,7 @@ private:
 
     constexpr static const auto* m_class_name = L"ash-engine";
 
-    LRESULT HandleMsg(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
+    LRESULT handle_message(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
 
     HINSTANCE m_instance;
     HWND m_hwnd;

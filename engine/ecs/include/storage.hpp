@@ -52,8 +52,8 @@ public:
     storage(storage&&) = default;
     storage& operator=(storage&&) = default;
 
-    handle insert_end();
-    void erase_end();
+    handle push_back();
+    void pop_back();
 
     chunk* get_chunk(std::size_t index) { return m_chunks[index].get(); }
 

@@ -5,6 +5,7 @@
 #include "dictionary.hpp"
 #include "log.hpp"
 #include "submodule.hpp"
+#include "task_manager.hpp"
 #include <memory>
 #include <vector>
 
@@ -16,8 +17,8 @@ public:
     application(const ash::common::dictionary& config);
     application(const application&) = delete;
 
-    template <typename T, typename... Argv>
-    void install(Argv&&... argv)
+    template <derived_from_submodule T, typename... Args>
+    void install(Args&&... args)
     {
         submodule_index index = submodule_trait<T>::index();
         if (m_modules.size() < index + 1)
@@ -25,7 +26,7 @@ public:
 
         if (m_modules[index] == nullptr)
         {
-            auto m = std::make_unique<T>(std::forward<Argv>(argv)...);
+            auto m = std::make_unique<T>(std::forward<Args>(args)...);
             ash::common::log::info("Module installed successfully: {}", m->get_name());
             m_modules[index] = std::move(m);
         }
@@ -49,5 +50,7 @@ public:
 private:
     ash::common::dictionary m_config;
     std::vector<std::unique_ptr<submodule>> m_modules;
+
+    std::unique_ptr<ash::task::task_manager> m_task;
 };
 } // namespace ash::core

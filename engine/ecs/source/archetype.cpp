@@ -97,7 +97,7 @@ archetype::archetype(const archetype_layout& layout)
 
 archetype::raw_handle archetype::add(entity entity)
 {
-    storage::handle handle = m_storage.insert_end();
+    storage::handle handle = m_storage.push_back();
     construct(handle);
 
     std::size_t index = handle - m_storage.begin();
@@ -118,7 +118,7 @@ void archetype::remove(entity entity)
 
     destruct(back);
 
-    m_storage.erase_end();
+    m_storage.pop_back();
     m_redirector.unmap(entity);
 }
 
@@ -126,7 +126,7 @@ void archetype::move(entity entity, archetype& target)
 {
     component_mask mask = m_layout.get_mask() & target.m_layout.get_mask();
 
-    auto targethandle = target.m_storage.insert_end();
+    auto targethandle = target.m_storage.push_back();
     auto sourcehandle = m_storage.begin() + m_redirector.get_index(entity);
 
     target.m_redirector.map(entity, targethandle - target.m_storage.begin());

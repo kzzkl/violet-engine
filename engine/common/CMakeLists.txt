@@ -4,7 +4,6 @@ find_package(spdlog REQUIRED PATHS ${THIRD_PARTY_DIR}/spdlog)
 find_package(nlohmann_json REQUIRED PATHS ${THIRD_PARTY_DIR}/json)
 
 add_library(${PROJECT_NAME} SHARED
-    ./source/common.cpp
     ./source/log.cpp)
 add_library(ash::common ALIAS ${PROJECT_NAME})
 

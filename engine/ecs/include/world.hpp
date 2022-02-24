@@ -8,8 +8,8 @@
 
 namespace ash::ecs
 {
-template <typename... Commponents>
-using entity_handle = archetype::handle<Commponents...>;
+template <typename... Components>
+using entity_handle = archetype::handle<Components...>;
 
 class ECS_API world
 {

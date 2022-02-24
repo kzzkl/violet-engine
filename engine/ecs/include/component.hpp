@@ -27,30 +27,30 @@ struct component_trait
     }
 };
 
-template <typename... Types>
+template <typename... Components>
 class component_list
 {
 public:
     template <typename... AddTypes>
-    using add = component_list<Types..., AddTypes...>;
+    using add = component_list<Components..., AddTypes...>;
 
 public:
     template <typename Functor>
     static void each(Functor&& f)
     {
-        (f.template operator()<Types>(), ...);
+        (f.template operator()<Components>(), ...);
     }
 
-    template <typename Type>
+    template <typename Component>
     constexpr static bool has()
     {
-        return (std::is_same<Type, Types>::value || ...);
+        return (std::is_same<Component, Components>::value || ...);
     }
 
     static component_mask get_mask()
     {
         component_mask result;
-        (result.set(component_trait<Types>::index()), ...);
+        (result.set(component_trait<Components>::index()), ...);
         return result;
     }
 };
