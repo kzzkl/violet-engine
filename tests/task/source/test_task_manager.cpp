@@ -1,3 +1,4 @@
+#include "task_manager.hpp"
 #include "test_common.hpp"
 
 using namespace ash::task;
@@ -35,7 +36,7 @@ TEST_CASE("test_task_manager", "[test_task_manager]")
     {
         for (std::size_t j = 0; j < 10; ++j)
         {
-            REQUIRE(data[i * 10 + j] == i);
+            REQUIRE(data[i * 10 + j] == i + 1);
         }
     }
 }

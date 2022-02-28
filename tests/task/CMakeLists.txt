@@ -5,6 +5,7 @@ find_package(Catch2 REQUIRED PATHS ${THIRD_PARTY_DIR}/Catch2)
 add_executable(${PROJECT_NAME}
     ./source/test_lock_free_queue.cpp
     ./source/test_main.cpp
+    ./source/test_tagged_pointer.cpp
     ./source/test_task_manager.cpp)
 
 target_include_directories(${PROJECT_NAME}

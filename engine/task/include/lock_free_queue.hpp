@@ -1,7 +1,7 @@
 #pragma once
 
+#include "tagged_pointer.hpp"
 #include <atomic>
-#include <mutex>
 
 namespace ash::task
 {
@@ -15,34 +15,49 @@ namespace ash::task
  * @tparam T node_type
  */
 template <typename T>
-class lock_free_queue_pool
+class lock_free_node_pool
 {
 public:
-    using node_type = T;
+    using node_handle = tagged_pointer<T>;
+    using value_type = T;
+
+    struct node_type
+    {
+        node_type() : next(nullptr) {}
+        virtual ~node_type() = default;
+
+        tagged_pointer<node_type> next;
+    };
+
+private:
+    using node_pointer = tagged_pointer<node_type>;
 
 public:
-    lock_free_queue_pool() : m_free(nullptr) {}
-    ~lock_free_queue_pool() { clear(); }
+    lock_free_node_pool() : m_free(nullptr) {}
+    ~lock_free_node_pool() { clear(); }
 
     /**
      * @brief Take out the node from the pool. When there is no node in the pool, a new node will be
      * created through the new operator.
      *
-     * @return node_type
+     * @return handle
      */
-    node_type* allocate()
+    node_handle allocate()
     {
-        // TODO: There is a bug if there is no lock here, so the current version is not a lock-free
-        // queue
-        std::lock_guard<std::mutex> lg(m_lock);
+        node_pointer old_head = m_free.load(std::memory_order_consume);
+        while (true)
+        {
+            if (!old_head.get_pointer())
+                return new value_type();
 
-        node_type* old_head = m_free.load(std::memory_order_seq_cst);
+            node_type* new_head_ptr = old_head->next.get_pointer();
+            node_pointer new_head(new_head_ptr, old_head.get_next_tag());
 
-        while (old_head &&
-               !m_free.compare_exchange_weak(old_head, old_head->next, std::memory_order_seq_cst))
-            ;
-
-        return old_head ? old_head : new node_type{};
+            if (m_free.compare_exchange_weak(old_head, new_head))
+            {
+                return get_handle(old_head);
+            }
+        }
     }
 
     /**
@@ -50,34 +65,70 @@ public:
      *
      * @param node
      */
-    void free(node_type* node)
+    void deallocate(node_handle node)
     {
-        node->next = m_free.load(std::memory_order_seq_cst);
-        while (!m_free.compare_exchange_weak(node->next, node, std::memory_order_seq_cst))
-            ;
-    }
+        node_pointer old_head = m_free.load(std::memory_order_consume);
+        node_type* new_head_ptr = get_pointer(node).get_pointer();
 
-    /**
-     * @brief Clear all nodes cached in the pool
-     */
-    void clear()
-    {
         while (true)
         {
-            node_type* head = m_free.load();
-            while (head && !m_free.compare_exchange_weak(head, head->next))
-                ;
+            node_pointer new_head(new_head_ptr, old_head.get_tag());
+            new_head->next.set_pointer(old_head.get_pointer());
 
-            if (head)
-                delete head;
-            else
-                break;
+            if (m_free.compare_exchange_weak(old_head, new_head))
+                return;
         }
     }
 
+    /**
+     * @brief Clear the node in the cache and return the memory occupied by the node to the OS
+     */
+    void clear()
+    {
+        node_pointer head = m_free.load();
+        while (head.get_pointer())
+        {
+            node_pointer next = head->next;
+            delete head.get_pointer();
+            head = next;
+        }
+        m_free.store(node_pointer(nullptr));
+    }
+
+    /**
+     * @brief Returns the number of nodes in the pool.
+     *
+     * Since the size of the pool is generally not obtained, the size is not set as a member
+     * variable here, but the length is obtained by traversal, and the algorithm complexity is O
+     * (1).
+     *
+     * @return std::size_t the number of nodes
+     */
+    std::size_t size() const
+    {
+        std::size_t result = 0;
+        node_pointer head = m_free.load();
+        while (head.get_pointer())
+        {
+            ++result;
+            head = head->next;
+        }
+
+        return result;
+    }
+
 private:
-    std::mutex m_lock;
-    std::atomic<node_type*> m_free;
+    node_handle get_handle(node_pointer pointer) const
+    {
+        return tagged_pointer_cast<value_type>(pointer);
+    }
+
+    node_pointer get_pointer(node_handle handle) const
+    {
+        return tagged_pointer_cast<node_type>(handle);
+    }
+
+    std::atomic<node_pointer> m_free;
 };
 
 template <typename T>
@@ -86,49 +137,118 @@ class lock_free_queue
 public:
     using value_type = T;
 
+private:
+    struct node_type : public lock_free_node_pool<node_type>::node_type
+    {
+        node_type() : data{}, next(nullptr) {}
+
+        value_type data;
+        std::atomic<typename lock_free_node_pool<node_type>::node_handle> next;
+    };
+
+    using pool_type = lock_free_node_pool<node_type>;
+    using node_handle = pool_type::node_handle;
+
 public:
     lock_free_queue() { m_head = m_tail = m_pool.allocate(); }
 
-    bool pop(value_type& value)
-    {
-        node* old_head = m_head.load();
-
-        if (old_head == m_tail.load())
-            return false;
-
-        while (old_head && !m_head.compare_exchange_weak(old_head, old_head->next))
-            ;
-
-        value = std::move(old_head->data);
-        m_pool.free(old_head);
-
-        return true;
-    }
-
+    /**
+     * @brief Push the object into the queue.
+     *
+     * The push operation is thread-safe. Internally, it will try to connect the node to the end of
+     * the queue in a loop.
+     *
+     * @param data object
+     */
     void push(const value_type& data)
     {
-        node* new_tail = m_pool.allocate();
-        node* old_tail = m_tail.load();
+        node_handle new_node = m_pool.allocate();
+        new_node->data = data;
+        new_node->next = nullptr;
 
-        while (!m_tail.compare_exchange_weak(old_tail, new_tail))
-            ;
+        while (true)
+        {
+            node_handle old_tail = m_tail.load();
+            node_handle old_tail_next = old_tail->next.load();
 
-        old_tail->data = data;
-        old_tail->next = new_tail;
+            if (old_tail == m_tail.load())
+            {
+                if (old_tail_next == nullptr)
+                {
+                    node_handle new_tail_next(new_node.get_pointer(), old_tail_next.get_next_tag());
+                    if (old_tail->next.compare_exchange_weak(old_tail_next, new_tail_next))
+                    {
+                        node_handle new_tail(new_node.get_pointer(), old_tail.get_next_tag());
+                        m_tail.compare_exchange_strong(old_tail, new_tail);
+                        return;
+                    }
+                }
+                else
+                {
+                    node_handle new_tail(old_tail_next.get_pointer(), old_tail.get_next_tag());
+                    m_tail.compare_exchange_strong(old_tail, new_tail);
+                }
+            }
+        }
     }
 
-    bool empty() const { return m_head == m_tail; }
+    /**
+     * @brief Assigns the object at the head of the queue to the parameter and pops the head of the
+     * queue.
+     *
+     * @param value Parameter to store the head element.
+     * @return Returns false if the queue is empty, otherwise returns true.
+     */
+    bool pop(value_type& value)
+    {
+        while (true)
+        {
+            node_handle old_head = m_head.load();
+            node_handle old_head_next = old_head->next.load();
+            node_handle old_tail = m_tail.load();
+
+            if (old_head == m_head.load())
+            {
+                if (old_head.get_pointer() == old_tail.get_pointer())
+                {
+                    if (old_head_next.get_pointer() == nullptr)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        node_handle new_tail(old_head_next.get_pointer(), old_tail.get_next_tag());
+                        m_tail.compare_exchange_strong(old_tail, new_tail);
+                    }
+                }
+                else
+                {
+                    value = std::move(old_head_next->data);
+
+                    node_handle new_head(old_head_next.get_pointer(), old_head.get_next_tag());
+                    if (m_head.compare_exchange_weak(old_head, new_head))
+                    {
+                        m_pool.deallocate(old_head);
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * @brief Returns whether the queue is empty.
+     *
+     * This operation is only guaranteed to be correct if no other thread is performing push or pop.
+     *
+     * @return Is the queue empty
+     */
+    bool empty() const { return m_head.load() == m_tail.load(); }
 
 private:
-    struct node
-    {
-        value_type data;
-        node* next;
-    };
+    pool_type m_pool;
 
-    lock_free_queue_pool<node> m_pool;
-
-    std::atomic<node*> m_head;
-    std::atomic<node*> m_tail;
+    std::atomic<node_handle> m_head;
+    std::atomic<node_handle> m_tail;
 };
 } // namespace ash::task

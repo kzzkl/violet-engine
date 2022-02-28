@@ -23,9 +23,7 @@ application::application(const ash::common::dictionary& config) : m_config(confi
 void application::run()
 {
     for (auto& module : m_modules)
-    {
         module->initialize(m_config);
-    }
 
     for (auto& module : m_modules)
     {
@@ -33,8 +31,5 @@ void application::run()
     }
 
     m_task->run();
-
-    while (true)
-        std::this_thread::sleep_for(std::chrono::seconds(10));
 }
 } // namespace ash::core
