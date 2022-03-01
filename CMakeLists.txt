@@ -15,13 +15,15 @@ endif()
 
 set(THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/thirdparty/install)
 
+set(ASH_CORE_INTERFACE_DIR ${PROJECT_SOURCE_DIR}/engine/core/interface)
+
 option(ASH_BUILD_THIRDPARTY "Build thirdparty" OFF)
 
 option(ASH_BUILD_ENGINE "Build engine" ON)
-option(ASH_BUILD_TESTING "Build test project" OFF)
-option(ASH_BUILD_EXAMPLES "Build examples" ON)
+option(ASH_BUILD_TESTING "Build test project" ON)
+option(ASH_BUILD_EXAMPLES "Build examples" OFF)
 
-message("build start")
+message("Build start")
 
 if (ASH_BUILD_THIRDPARTY)
     add_subdirectory(thirdparty)

@@ -1,0 +1,2 @@
+add_subdirectory(hello_plugin)
+add_subdirectory(test_app)
