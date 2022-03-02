@@ -2,12 +2,13 @@
 
 #include "core_exports.hpp"
 #include "dictionary.hpp"
+#include "task_manager.hpp"
 #include <string_view>
 #include <type_traits>
 
 namespace ash::core
 {
-class application;
+class context;
 class CORE_API submodule
 {
 public:
@@ -15,12 +16,17 @@ public:
     virtual ~submodule() = default;
 
     virtual bool initialize(const ash::common::dictionary& config) = 0;
-    virtual void tick() = 0;
 
     std::string_view get_name() const { return m_name; }
 
+protected:
+    context& get_context();
+
 private:
+    friend class context;
+
     std::string m_name;
+    context* m_context;
 };
 
 using submodule_index = uint32_t;

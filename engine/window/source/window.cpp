@@ -1,4 +1,5 @@
 #include "window.hpp"
+#include "context.hpp"
 #include "window_impl_win32.hpp"
 
 using namespace ash::core;
@@ -29,11 +30,11 @@ bool window::initialize(const ash::common::dictionary& config)
             height = (*iter)["height"];
     }
 
-    return m_impl->initialize(width, height, title);
-}
+    if (!m_impl->initialize(width, height, title))
+        return false;
 
-void window::tick()
-{
-    m_impl->tick();
+    get_context().get_task().schedule_before("window tick", [this]() { m_impl->tick(); });
+
+    return true;
 }
 } // namespace ash::window

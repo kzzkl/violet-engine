@@ -2,6 +2,7 @@ project(ash-core)
 
 add_library(${PROJECT_NAME} SHARED
     ./source/application.cpp
+    ./source/context.cpp
     ./source/plugin.cpp
     ./source/submodule.cpp)
 add_library(ash::core ALIAS ${PROJECT_NAME})

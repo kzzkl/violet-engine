@@ -11,7 +11,6 @@ public:
     window();
 
     virtual bool initialize(const ash::common::dictionary& config) override;
-    virtual void tick() override;
 
     mouse& get_mouse() { return m_impl->get_mouse(); }
 

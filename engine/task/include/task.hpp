@@ -15,16 +15,25 @@ public:
 
     virtual void execute() = 0;
 
-    std::vector<task*> execute_and_get_next_tasks();
-    void add_dependency(task& dependency);
+    void execute_and_get_next_tasks(std::vector<task*>& next_tasks);
 
+    void add_dependency(task& dependency);
+    void remove_dependency(task& dependency);
+
+    std::size_t get_reachable_tasks_size();
     std::string_view get_name() const { return m_name; }
 
 private:
+    void add_next_task(task& task);
+    void remove_next_task(task& task);
+
+    void reset_counter();
+    void reset_counter_and_get_reachable_tasks(std::vector<task*>& next_tasks);
+
     std::vector<task*> m_next;
 
-    std::atomic<uint8_t> m_dependency_counter;
     uint8_t m_num_dependency;
+    std::atomic<uint8_t> m_num_uncompleted_dependency;
 
     std::string m_name;
 };

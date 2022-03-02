@@ -4,6 +4,7 @@
 #include "task.hpp"
 #include <condition_variable>
 #include <functional>
+#include <future>
 
 namespace ash::task
 {
@@ -20,10 +21,12 @@ public:
 
     /**
      * @brief Add the task to the end of the task queue.
-     * 
+     *
      * @param t task
      */
     void push(task* t);
+
+    std::future<void> push_root_task(task* t);
 
     /**
      * @brief Returns whether the task queue is empty.
@@ -40,6 +43,8 @@ public:
      */
     void notify();
 
+    void notify_task_completion(bool force = false);
+
     /**
      * @brief Block until a new task is added or an exit condition is met.
      *
@@ -52,5 +57,8 @@ private:
 
     std::condition_variable m_cv;
     std::mutex m_lock;
+
+    std::atomic<uint32_t> m_num_remaining_tasks;
+    std::promise<void> m_done;
 };
 } // namespace ash::task

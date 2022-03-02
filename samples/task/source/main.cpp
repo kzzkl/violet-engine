@@ -1,4 +1,5 @@
-#include "lock_free_queue.hpp"
+#include "log.hpp"
+#include "task_manager.hpp"
 #include <crtdbg.h>
 #include <functional>
 #include <iostream>
@@ -7,6 +8,7 @@
 #include <thread>
 
 using namespace ash::task;
+using namespace ash::common;
 
 struct test_class
 {
@@ -119,7 +121,7 @@ bool test_pool()
 
 using namespace ash::task;
 
-/*void test_task()
+void test_task()
 {
     task_manager manager(8);
 
@@ -158,31 +160,16 @@ using namespace ash::task;
         std::this_thread::sleep_for(std::chrono::seconds(10));
 
     manager.stop();
-}*/
+}
 
 int main()
 {
     // bool result = test_pool();
-    bool result = test_queue();
+    // bool result = test_queue();
 
-    std::cout << result << std::endl;
-    // test_queue();
-    // test_queue();
-    // test_pool_free();
+    // std::cout << result << std::endl;
 
-    /*int* p = new int();
+    test_task();
 
-    uint64_t address = reinterpret_cast<uint64_t>(p);
-
-    std::cout << std::hex << reinterpret_cast<uint64_t>(p) << " " << address << std::endl;
-
-    add_tag(p);
-    std::cout << std::hex << reinterpret_cast<uint64_t>(p) << std::endl;
-    add_tag(p);
-    std::cout << std::hex << reinterpret_cast<uint64_t>(p) << std::endl;
-
-    address |= (uint64_t(1) << 63);*/
-
-    // tagged_pointer<int> tp = new int();
     return 0;
 }

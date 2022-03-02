@@ -1,2 +1,2 @@
-# add_subdirectory(hello-world)
-add_subdirectory(task)
+add_subdirectory(hello-world)
+# add_subdirectory(task)

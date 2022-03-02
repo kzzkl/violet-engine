@@ -6,7 +6,8 @@ add_executable(${PROJECT_NAME}
     ./source/test_lock_free_queue.cpp
     ./source/test_main.cpp
     ./source/test_tagged_pointer.cpp
-    ./source/test_task_manager.cpp)
+    ./source/test_task_manager.cpp
+    ./source/test_task.cpp)
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE

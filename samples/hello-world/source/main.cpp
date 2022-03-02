@@ -17,11 +17,6 @@ public:
         return true;
     }
 
-    virtual void tick() override
-    {
-        // Log::Debug("test: title: {} data: {}", m_title, m_data);
-    }
-
 private:
     std::string m_title;
     int m_data;
@@ -55,7 +50,7 @@ int main()
     app.run();
 
     while (true)
-        std::this_thread::sleep_for(std::chrono::seconds(10));
+        std::this_thread::sleep_for(std::chrono::seconds(600));
 
     return 0;
 }

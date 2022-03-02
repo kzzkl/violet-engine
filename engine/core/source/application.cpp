@@ -1,35 +1,37 @@
 #include "application.hpp"
+#include "timer.hpp"
 
 using namespace ash::common;
 using namespace ash::task;
 
 namespace ash::core
 {
-application::application(const ash::common::dictionary& config) : m_config(config)
+application::application(const ash::common::dictionary& config) : context(config)
 {
-    std::size_t num_thread = std::thread::hardware_concurrency();
-
-    auto config_iter = m_config.find("core");
-    if (config_iter != m_config.end())
-    {
-        auto num_thread_iter = config_iter->find("number_of_threads");
-        if (num_thread_iter != config_iter->end())
-            num_thread = *num_thread_iter;
-    }
-
-    m_task = std::make_unique<task_manager>(num_thread);
 }
 
 void application::run()
 {
-    for (auto& module : m_modules)
-        module->initialize(m_config);
+    std::chrono::time_point<steady_clock> frame_start;
+    std::chrono::time_point<steady_clock> frame_end;
 
-    for (auto& module : m_modules)
-    {
-        auto handle = m_task->schedule(module->get_name(), [&module]() { module->tick(); });
-    }
+    std::size_t counter = 0;
 
-    m_task->run();
+    auto& task = get_task();
+
+    auto root_task = task.schedule("root", []() {});
+
+    task.schedule_before("begin", [&]() { frame_start = timer::now<steady_clock>(); });
+
+    initialize_submodule();
+
+    task.schedule_after("end", [&]() {
+        frame_end = timer::now<steady_clock>();
+
+        auto du = frame_end - frame_start;
+        ++counter;
+    });
+
+    task.run(root_task);
 }
 } // namespace ash::core

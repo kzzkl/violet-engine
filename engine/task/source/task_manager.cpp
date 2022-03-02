@@ -5,53 +5,46 @@ using namespace ash::common;
 
 namespace ash::task
 {
-class root_task : public task
-{
-public:
-    root_task();
-    virtual void execute() override;
-};
-
-root_task::root_task() : task("root")
+task_manager::task_manager(std::size_t num_thread) : m_thread_pool(num_thread), m_stop(true)
 {
 }
 
-void root_task::execute()
+void task_manager::run(handle root)
 {
-    log::debug("root");
-}
+    if (!m_stop)
+    {
+        log::warn("Task Manager is already running.");
+        return;
+    }
 
-task_handle::task_handle() : task_handle(nullptr, 0)
-{
-}
-
-task_handle::task_handle(task_manager* owner, std::size_t index) : m_owner(owner), m_index(index)
-{
-}
-
-task* task_handle::operator->()
-{
-    return m_owner->m_tasks[m_index].get();
-}
-
-task_manager::task_manager(std::size_t num_thread) : m_thread_pool(num_thread)
-{
-    m_root = schedule_task<root_task>();
-}
-
-void task_manager::run()
-{
+    m_stop = false;
     m_thread_pool.run(m_queue);
-    m_queue.push(&(*m_root));
+
+    while (!m_stop)
+    {
+        for (auto& t : m_before_tasks)
+            t->execute();
+
+        auto done = m_queue.push_root_task(&(*root));
+        done.get();
+
+        for (auto& t : m_after_tasks)
+            t->execute();
+    }
 }
 
 void task_manager::stop()
 {
+    m_stop = true;
     m_thread_pool.stop();
 }
 
-task_manager::handle task_manager::get_root()
+task_manager::handle task_manager::find(std::string_view name)
 {
-    return m_root;
+    auto iter = m_tasks.find(name.data());
+    if (iter == m_tasks.end())
+        return handle();
+    else
+        return handle(iter->second.get());
 }
 } // namespace ash::task

@@ -11,37 +11,17 @@ class task_manager;
 class TASK_API task_handle
 {
 public:
-    task_handle();
-    task_handle(task_manager* owner, std::size_t index);
+    task_handle() : task_handle(nullptr) {}
+    task_handle(task* t) : m_task(t) {}
 
-    std::size_t operator-(const task_handle& other) { return m_index - other.m_index; }
-
-    task_handle& operator++()
-    {
-        ++m_index;
-        return *this;
-    }
-
-    task_handle operator++(int)
-    {
-        task_handle result = *this;
-        ++m_index;
-        return result;
-    }
-
-    bool operator==(const task_handle& other) const
-    {
-        return m_owner == other.m_owner && m_index == other.m_index;
-    }
-
+    bool operator==(const task_handle& other) const { return m_task == other.m_task; }
     bool operator!=(const task_handle& other) const { return !operator==(other); }
 
     task& operator*() { return *operator->(); }
-    task* operator->();
+    task* operator->() { return m_task; }
 
 private:
-    task_manager* m_owner;
-    std::size_t m_index;
+    task* m_task;
 };
 
 template <typename T>
@@ -58,33 +38,50 @@ public:
     template <typename Callable>
     handle schedule(std::string_view name, Callable callable)
     {
-        return schedule_task<task_wrapper<Callable>>(name, callable);
+        return do_schedule<task_wrapper<Callable>>(name, callable);
     }
 
-    void run();
+    template <typename Callable>
+    void schedule_before(std::string_view name, Callable callable)
+    {
+        std::unique_ptr<task> task = std::make_unique<task_wrapper<Callable>>(name, callable);
+        m_before_tasks.push_back(std::move(task));
+    }
+
+    template <typename Callable>
+    void schedule_after(std::string_view name, Callable callable)
+    {
+        std::unique_ptr<task> task = std::make_unique<task_wrapper<Callable>>(name, callable);
+        m_after_tasks.push_back(std::move(task));
+    }
+
+    void run(handle root);
+
     void stop();
 
-    handle get_root();
+    handle find(std::string_view name);
 
 private:
     friend class handle;
 
     template <derived_from_task T, typename... Args>
-    handle schedule_task(Args&&... args)
+    handle do_schedule(Args&&... args)
     {
-        handle result(this, m_tasks.size());
-
         std::unique_ptr<task> task = std::make_unique<T>(std::forward<Args>(args)...);
-        m_tasks.push_back(std::move(task));
+        handle result(task.get());
+
+        m_tasks[task->get_name().data()] = std::move(task);
 
         return result;
     }
 
-    handle m_root;
+    std::vector<std::unique_ptr<task>> m_before_tasks;
+    std::vector<std::unique_ptr<task>> m_after_tasks;
+    std::unordered_map<std::string, std::unique_ptr<task>> m_tasks;
 
-    std::vector<std::unique_ptr<task>> m_tasks;
     task_queue m_queue;
-
     thread_pool m_thread_pool;
+
+    std::atomic<bool> m_stop;
 };
 } // namespace ash::task

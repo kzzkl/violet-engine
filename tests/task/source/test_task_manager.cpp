@@ -1,10 +1,11 @@
 #include "task_manager.hpp"
 #include "test_common.hpp"
+#include <iostream>
 
 using namespace ash::task;
 using namespace ash::test;
 
-TEST_CASE("test_task_manager", "[test_task_manager]")
+TEST_CASE("test_task_manager", "[task_manager]")
 {
     task_manager manager(1);
 
@@ -14,7 +15,6 @@ TEST_CASE("test_task_manager", "[test_task_manager]")
         for (std::size_t i = 0; i < 10; ++i)
             data[i] = 1;
     });
-    task1->add_dependency(*manager.get_root());
 
     auto task2 = manager.schedule("task 2", [&data]() {
         for (std::size_t i = 10; i < 20; ++i)
@@ -28,9 +28,13 @@ TEST_CASE("test_task_manager", "[test_task_manager]")
     });
     task3->add_dependency(*task1);
 
-    manager.run();
+    std::thread t([&manager]() {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        manager.stop();
+    });
+    manager.run(task1);
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    t.join();
 
     for (std::size_t i = 0; i < 3; ++i)
     {
