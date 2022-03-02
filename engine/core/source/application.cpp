@@ -12,15 +12,18 @@ application::application(const ash::common::dictionary& config) : context(config
 
 void application::run()
 {
-    std::chrono::time_point<steady_clock> frame_start;
-    std::chrono::time_point<steady_clock> frame_end;
+    using namespace std::chrono;
 
-    std::size_t counter = 0;
+    time_point<steady_clock> frame_start;
+    time_point<steady_clock> frame_end;
+    std::size_t frame_counter = 0;
+
+    nanoseconds s(0);
+    nanoseconds time_per_frame(1000000000 / 60);
 
     auto& task = get_task();
 
     auto root_task = task.schedule("root", []() {});
-
     task.schedule_before("begin", [&]() { frame_start = timer::now<steady_clock>(); });
 
     initialize_submodule();
@@ -28,8 +31,20 @@ void application::run()
     task.schedule_after("end", [&]() {
         frame_end = timer::now<steady_clock>();
 
-        auto du = frame_end - frame_start;
-        ++counter;
+        nanoseconds delta = frame_end - frame_start;
+
+        if (delta < time_per_frame)
+            timer::busy_sleep(time_per_frame - delta);
+
+        s += (timer::now<steady_clock>() - frame_start);
+
+        ++frame_counter;
+        if (s > seconds(1))
+        {
+            log::debug("FPS[{}] delta[{}]", frame_counter, delta.count());
+            s = s.zero();
+            frame_counter = 0;
+        }
     });
 
     task.run(root_task);
