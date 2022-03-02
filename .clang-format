@@ -1,0 +1,23 @@
+Language: Cpp
+BasedOnStyle: Microsoft
+AccessModifierOffset: -4
+Standard: Cpp11
+TabWidth: 4
+UseTab: Never
+
+AlignAfterOpenBracket: AlwaysBreak
+AlwaysBreakTemplateDeclarations: Yes
+PointerAlignment: Left
+AllowShortFunctionsOnASingleLine: InlineOnly
+IndentPPDirectives: AfterHash
+SpacesBeforeTrailingComments: 1
+AllowAllParametersOfDeclarationOnNextLine: true
+ColumnLimit: 100
+AlignTrailingComments: true
+MaxEmptyLinesToKeep: 1
+AllowAllArgumentsOnNextLine: false
+BinPackArguments: false
+BinPackParameters: false
+AllowAllParametersOfDeclarationOnNextLine: false
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+AllowAllConstructorInitializersOnNextLine: false

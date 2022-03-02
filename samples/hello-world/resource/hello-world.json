@@ -1,0 +1,13 @@
+{
+    "test": {
+        "title": "test app"
+    },
+    "window": {
+        "title": "你好",
+        "width": 400,
+        "height": 200
+    },
+    "core": {
+        "number_of_threads": 8
+    }
+}

@@ -1,0 +1,9 @@
+[submodule "thirdparty/Catch2"]
+	path = thirdparty/Catch2
+	url = git@github.com:catchorg/Catch2.git
+[submodule "thirdparty/spdlog"]
+	path = thirdparty/spdlog
+	url = git@github.com:gabime/spdlog.git
+[submodule "thirdparty/json"]
+	path = thirdparty/json
+	url = git@github.com:nlohmann/json.git
