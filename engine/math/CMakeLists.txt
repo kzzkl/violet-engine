@@ -1,11 +1,11 @@
-project(test-hello-plugin)
+project(ash-math)
 
-add_library(${PROJECT_NAME} SHARED
-    ./source/hello.cpp)
+add_library(${PROJECT_NAME} INTERFACE)
+add_library(ash::math ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
-    PRIVATE
-        ${ASH_CORE_INTERFACE_DIR})
+    INTERFACE
+        ./include)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

@@ -1,11 +1,14 @@
-project(test-hello-plugin)
+project(ash-graphics-d3d12)
 
 add_library(${PROJECT_NAME} SHARED
-    ./source/hello.cpp)
+    ./source/d3d12_plugin.cpp
+    ./source/d3d12_renderer.cpp)
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-        ${ASH_CORE_INTERFACE_DIR})
+        ./include
+        ${ASH_CORE_INTERFACE_DIR}
+        ${ASH_GRAPHICS_INTERFACE_DIR})
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

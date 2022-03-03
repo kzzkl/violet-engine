@@ -1,5 +1,9 @@
 add_subdirectory(common)
 add_subdirectory(core)
 add_subdirectory(ecs)
+add_subdirectory(graphics)
+add_subdirectory(math)
 add_subdirectory(task)
 add_subdirectory(window)
+
+add_subdirectory(plugin)
