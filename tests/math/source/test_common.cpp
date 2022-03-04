@@ -2,6 +2,8 @@
 
 #define VALUE_WITH_MARGIN(v) Approx(v).margin(0.00000005)
 
+using namespace ash::math;
+
 namespace ash::test
 {
 bool equal(float a, float b)
@@ -37,6 +39,15 @@ bool equal(const ash::math::float4& a, const ash::math::float4& b)
             return false;
     }
     return true;
+}
+
+bool equal(const ash::math::float4_simd& a, const ash::math::float4_simd& b)
+{
+    float4 va, vb;
+    simd::store(a, va);
+    simd::store(b, vb);
+
+    return equal(va, vb);
 }
 
 bool equal(const ash::math::float2x2& a, const ash::math::float2x2& b)
@@ -102,5 +113,14 @@ bool equal(const ash::math::float4x4& a, const ash::math::float4x4& b)
         }
     }
     return true;
+}
+
+bool equal(const ash::math::float4x4_simd& a, const ash::math::float4x4_simd& b)
+{
+    float4x4 ma, mb;
+    simd::store(a, ma);
+    simd::store(b, mb);
+
+    return equal(ma, mb);
 }
 } // namespace ash::test

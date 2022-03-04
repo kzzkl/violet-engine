@@ -1,12 +1,34 @@
+#include "d3d12_context.hpp"
+#include "d3d12_diagnotor.hpp"
 #include "d3d12_renderer.hpp"
 #include <cstring>
 
+using namespace ash::graphics::external;
+using namespace ash::graphics::d3d12;
+
 namespace ash::graphics::d3d12
 {
-class d3d12_graphics_factory : public ash::graphics::external::graphics_factory
+class d3d12_graphics_factory : public graphics_factory
 {
 public:
-    virtual ash::graphics::external::renderer* make_renderer() override { return nullptr; }
+    virtual renderer* make_renderer() override { return new d3d12_renderer(); }
+};
+
+class d3d12_context_wrapper : public graphics_context
+{
+public:
+    d3d12_context_wrapper() : m_factory(std::make_unique<d3d12_graphics_factory>()) {}
+
+    virtual bool initialize() override { return d3d12_context::instance().initialize(); }
+
+    virtual graphics_factory* get_factory() override { return m_factory.get(); }
+    virtual diagnotor* get_diagnotor() override
+    {
+        return d3d12_context::instance().get_diagnotor();
+    }
+
+private:
+    std::unique_ptr<d3d12_graphics_factory> m_factory;
 };
 } // namespace ash::graphics::d3d12
 
@@ -26,8 +48,5 @@ extern "C"
         return info;
     }
 
-    PLUGIN_API ash::graphics::external::graphics_factory* make_factory()
-    {
-        return new ash::graphics::d3d12::d3d12_graphics_factory();
-    }
+    PLUGIN_API d3d12_context_wrapper* make_context() { return new d3d12_context_wrapper(); }
 }

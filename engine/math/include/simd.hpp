@@ -14,25 +14,25 @@ struct alignas(16) float4x4_simd
 };
 
 template <>
-struct pack_trait<float4_simd>
+struct packed_trait<float4_simd>
 {
-    using value_type = float;
+    using value_type = float4_simd;
 
     static constexpr std::size_t row_size = 1;
     static constexpr std::size_t col_size = 4;
 };
 
 template <>
-struct pack_trait<float4x4_simd>
+struct packed_trait<float4x4_simd>
 {
-    using value_type = float;
+    using value_type = float4x4_simd;
 
     static constexpr std::size_t row_size = 4;
     static constexpr std::size_t col_size = 4;
 };
 
 template <>
-struct is_pack_1d<float4_simd> : std::bool_constant<true>
+struct is_packed_1d<float4_simd> : std::bool_constant<true>
 {
 };
 
@@ -44,20 +44,33 @@ struct is_square<float4x4_simd> : std::bool_constant<true>
 struct simd
 {
 public:
+    template <uint32_t I>
+    static inline float get(const float4_simd& v)
+    {
+        if constexpr (I == 0)
+        {
+            return _mm_cvtss_f32(v);
+        }
+        else
+        {
+            float4_simd temp = shuffle<I, I, I, I>(v);
+            return _mm_cvtss_f32(temp);
+        }
+    }
+
     static inline float4_simd set(float v) { return _mm_set_ps1(v); }
     static inline float4_simd set(float x, float y, float z, float w)
     {
         return _mm_setr_ps(x, y, z, w);
     }
-
     static inline float4_simd set(uint32_t x, uint32_t y, uint32_t z, uint32_t w)
     {
         union {
             __m128 v;
             __m128i i;
-        } temp;
-        temp.i = _mm_setr_epi32(x, y, z, w);
-        return temp.v;
+        };
+        i = _mm_setr_epi32(x, y, z, w);
+        return v;
     }
 
     static inline float4x4_simd set(
@@ -169,6 +182,31 @@ public:
         _mm_store_ps(&destination[1][0], source.row[1]);
         _mm_store_ps(&destination[2][0], source.row[2]);
         _mm_store_ps(&destination[3][0], source.row[3]);
+    }
+
+    template <uint32_t I>
+    static inline float4_simd get_identity_row()
+    {
+        if constexpr (I == 0)
+        {
+            static const float4_simd result = set(1.0f, 0.0f, 0.0f, 0.0f);
+            return result;
+        }
+        else if constexpr (I == 1)
+        {
+            static const float4_simd result = set(0.0f, 1.0f, 0.0f, 0.0f);
+            return result;
+        }
+        else if constexpr (I == 2)
+        {
+            static const float4_simd result = set(0.0f, 0.0f, 1.0f, 0.0f);
+            return result;
+        }
+        else if constexpr (I == 3)
+        {
+            static const float4_simd result = set(0.0f, 0.0f, 0.0f, 1.0f);
+            return result;
+        }
     }
 
 private:

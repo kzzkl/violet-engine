@@ -4,8 +4,8 @@
 namespace ash::task
 {
 task::task(std::string_view name)
-    : m_num_dependency(0),
-      m_num_uncompleted_dependency(0),
+    : m_dependency_count(0),
+      m_uncompleted_dependency_count(0),
       m_name(name)
 {
 }
@@ -24,7 +24,7 @@ void task::add_dependency(task& dependency)
 {
     dependency.add_next_task(*this);
 
-    ++m_num_dependency;
+    ++m_dependency_count;
     reset_counter();
 }
 
@@ -32,7 +32,7 @@ void task::remove_dependency(task& dependency)
 {
     dependency.remove_next_task(*this);
 
-    --m_num_dependency;
+    --m_dependency_count;
     reset_counter();
 }
 
@@ -80,7 +80,7 @@ std::size_t task::get_reachable_tasks_size()
 
 void task::reset_counter()
 {
-    m_num_uncompleted_dependency = m_num_dependency;
+    m_uncompleted_dependency_count = m_dependency_count;
 }
 
 void task::reset_counter_and_get_reachable_tasks(std::vector<task*>& next_tasks)
@@ -89,8 +89,8 @@ void task::reset_counter_and_get_reachable_tasks(std::vector<task*>& next_tasks)
 
     for (task* next : m_next)
     {
-        --next->m_num_uncompleted_dependency;
-        if (next->m_num_uncompleted_dependency == 0)
+        --next->m_uncompleted_dependency_count;
+        if (next->m_uncompleted_dependency_count == 0)
             next_tasks.push_back(next);
     }
 }

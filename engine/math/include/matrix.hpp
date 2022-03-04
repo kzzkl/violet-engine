@@ -11,14 +11,14 @@ public:
     template <typename M1, typename M2>
     struct mul_result
     {
-        using value_type = pack_trait<M1>::value_type;
-        using type = pack_2d<value_type, pack_trait<M1>::row_size, pack_trait<M2>::col_size>;
+        using value_type = packed_trait<M1>::value_type;
+        using type = packed_2d<value_type, packed_trait<M1>::row_size, packed_trait<M2>::col_size>;
     };
 
     template <>
     struct mul_result<float4x4_simd, float4x4_simd>
     {
-        using value_type = pack_trait<float4x4_simd>::value_type;
+        using value_type = packed_trait<float4x4_simd>::value_type;
         using type = float4x4_simd;
     };
 
@@ -30,11 +30,11 @@ public:
     {
         mul_result_t<M1, M2> result = {};
 
-        for (std::size_t i = 0; i < pack_trait<M1>::row_size; ++i)
+        for (std::size_t i = 0; i < packed_trait<M1>::row_size; ++i)
         {
-            for (std::size_t j = 0; j < pack_trait<M2>::col_size; ++j)
+            for (std::size_t j = 0; j < packed_trait<M2>::col_size; ++j)
             {
-                for (std::size_t k = 0; k < pack_trait<M1>::col_size; ++k)
+                for (std::size_t k = 0; k < packed_trait<M1>::col_size; ++k)
                     result[i][j] += m1[i][k] * m2[k][j];
             }
         }
@@ -79,9 +79,9 @@ public:
     inline static M scale(const M& m, S scale)
     {
         M result = {};
-        for (std::size_t i = 0; i < pack_trait<M>::row_size; ++i)
+        for (std::size_t i = 0; i < packed_trait<M>::row_size; ++i)
         {
-            for (std::size_t j = 0; j < pack_trait<M>::col_size; ++j)
+            for (std::size_t j = 0; j < packed_trait<M>::col_size; ++j)
                 result[i][j] = m[i][j] * scale;
         }
         return result;
@@ -104,14 +104,14 @@ public:
     template <typename M>
     struct transpose_result
     {
-        using value_type = pack_trait<M>::value_type;
-        using type = pack_2d<value_type, pack_trait<M>::col_size, pack_trait<M>::row_size>;
+        using value_type = packed_trait<M>::value_type;
+        using type = packed_2d<value_type, packed_trait<M>::col_size, packed_trait<M>::row_size>;
     };
 
     template <>
     struct transpose_result<float4x4_simd>
     {
-        using value_type = pack_trait<float4x4_simd>::value_type;
+        using value_type = packed_trait<float4x4_simd>::value_type;
         using type = float4x4_simd;
     };
 
@@ -123,9 +123,9 @@ public:
     {
         transpose_result_t<M> result = {};
 
-        for (std::size_t i = 0; i < pack_trait<M>::row_size; ++i)
+        for (std::size_t i = 0; i < packed_trait<M>::row_size; ++i)
         {
-            for (std::size_t j = 0; j < pack_trait<M>::col_size; ++j)
+            for (std::size_t j = 0; j < packed_trait<M>::col_size; ++j)
                 result[j][i] = m[i][j];
         }
 
@@ -150,37 +150,37 @@ public:
     }
 
     template <square_matrix M>
-    inline static pack_trait<M>::value_type determinant(const M& m)
+    inline static packed_trait<M>::value_type determinant(const M& m)
     {
-        if constexpr (pack_trait<M>::row_size == 2)
+        if constexpr (packed_trait<M>::row_size == 2)
         {
             return m[0][0] * m[1][1] - m[0][1] * m[1][0];
         }
-        else if constexpr (pack_trait<M>::row_size == 3)
+        else if constexpr (packed_trait<M>::row_size == 3)
         {
             return m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) +
                    m[0][1] * (m[1][2] * m[2][0] - m[1][0] * m[2][2]) +
                    m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
         }
-        else if constexpr (pack_trait<M>::row_size == 4)
+        else if constexpr (packed_trait<M>::row_size == 4)
         {
             // TODO: Calculate 4x4 matrix determinant.
         }
     }
 
     template <>
-    inline static float determinant(const float4x4_simd& m)
+    inline static float4x4_simd determinant(const float4x4_simd& m)
     {
         // TODO: Calculate simd version 4x4 matrix determinant.
-        return 0.0f;
+        return {};
     }
 
     template <square_matrix M>
     inline static M inverse(const M& m)
     {
-        if constexpr (pack_trait<M>::row_size == 4)
+        if constexpr (packed_trait<M>::row_size == 4)
         {
-            using value_type = pack_trait<M>::value_type;
+            using value_type = packed_trait<M>::value_type;
             M result = {};
 
             value_type det =
@@ -235,13 +235,22 @@ public:
         return result;
     }
 
+    template <>
+    inline static float4x4_simd identity()
+    {
+        return float4x4_simd{simd::get_identity_row<0>(),
+                             simd::get_identity_row<1>(),
+                             simd::get_identity_row<2>(),
+                             simd::get_identity_row<3>()};
+    }
+
 private:
     template <square_matrix M>
     inline static M make_identity()
     {
         M result = {};
-        for (size_t i = 0; i < pack_trait<M>::row_size; ++i)
-            result[i][i] = pack_trait<M>::value_type(1);
+        for (size_t i = 0; i < packed_trait<M>::row_size; ++i)
+            result[i][i] = packed_trait<M>::value_type(1);
         return result;
     }
 };

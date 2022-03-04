@@ -1,4 +1,5 @@
 #include "application.hpp"
+#include "graphics.hpp"
 #include "log.hpp"
 #include "window.hpp"
 #include <fstream>
@@ -46,6 +47,7 @@ int main()
     application app(config);
     app.install<test_module>(99);
     app.install<ash::window::window>();
+    app.install<ash::graphics::graphics>();
 
     app.run();
 

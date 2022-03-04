@@ -181,4 +181,51 @@ TEST_CASE("simd matrix transpose", "[matrix]")
                  12.0f,
                  16.0f}));
 }
+
+TEST_CASE("matrix identity", "[matrix]")
+{
+    float4x4 result = matrix::identity<float4x4>();
+    CHECK(equal(
+        result,
+        float4x4{1.0f,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 1.0f,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 1.0f,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 1.0f}));
+}
+
+TEST_CASE("simd matrix identity", "[matrix][simd]")
+{
+    float4x4_simd result = matrix::identity<float4x4_simd>();
+    CHECK(equal(
+        result,
+        simd::set(
+            1.0f,
+            0.0f,
+            0.0f,
+            0.0f,
+            0.0f,
+            1.0f,
+            0.0f,
+            0.0f,
+            0.0f,
+            0.0f,
+            1.0f,
+            0.0f,
+            0.0f,
+            0.0f,
+            0.0f,
+            1.0f)));
+}
 } // namespace ash::test

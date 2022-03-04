@@ -1,6 +1,7 @@
 project(ash-graphics)
 
 add_library(${PROJECT_NAME} SHARED
+    ./source/graphics_plugin.cpp
     ./source/graphics.cpp)
 add_library(ash::graphics ALIAS ${PROJECT_NAME})
 

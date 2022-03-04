@@ -21,7 +21,7 @@ std::future<void> task_queue::push_root_task(task* t)
 {
     m_done = std::promise<void>();
 
-    m_num_remaining_tasks.store(static_cast<uint32_t>(t->get_reachable_tasks_size()));
+    m_remaining_tasks_count.store(static_cast<uint32_t>(t->get_reachable_tasks_size()));
     push(t);
 
     return m_done.get_future();
@@ -41,12 +41,12 @@ void task_queue::notify_task_completion(bool force)
 {
     while (true)
     {
-        uint32_t old_value = m_num_remaining_tasks.load();
+        uint32_t old_value = m_remaining_tasks_count.load();
         uint32_t new_value = force ? 0 : old_value - 1;
 
-        if (old_value == m_num_remaining_tasks.load())
+        if (old_value == m_remaining_tasks_count.load())
         {
-            if (m_num_remaining_tasks.compare_exchange_weak(old_value, new_value))
+            if (m_remaining_tasks_count.compare_exchange_weak(old_value, new_value))
             {
                 if (old_value != 0 && new_value == 0)
                     m_done.set_value();

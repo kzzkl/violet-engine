@@ -11,7 +11,8 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         ash::ecs
         ash::core
-        ash::window)
+        ash::window
+        ash::graphics)
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource DESTINATION bin)
 

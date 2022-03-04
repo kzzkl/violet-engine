@@ -58,7 +58,7 @@ private:
     std::condition_variable m_cv;
     std::mutex m_lock;
 
-    std::atomic<uint32_t> m_num_remaining_tasks;
+    std::atomic<uint32_t> m_remaining_tasks_count;
     std::promise<void> m_done;
 };
 } // namespace ash::task

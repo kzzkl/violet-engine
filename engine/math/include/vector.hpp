@@ -11,7 +11,7 @@ struct vector
     inline static T1 add(const T1& a, const T2& b) requires col_size_equal<T1, T2>
     {
         T1 result = a;
-        for (std::size_t i = 0; i < pack_trait<T1>::col_size; ++i)
+        for (std::size_t i = 0; i < packed_trait<T1>::col_size; ++i)
             result[i] += b[i];
         return result;
     }
@@ -26,7 +26,7 @@ struct vector
     inline static T1 sub(const T1& a, const T2& b) requires col_size_equal<T1, T2>
     {
         T1 result = a;
-        for (std::size_t i = 0; i < pack_trait<T1>::col_size; ++i)
+        for (std::size_t i = 0; i < packed_trait<T1>::col_size; ++i)
             result[i] -= b[i];
         return result;
     }
@@ -38,24 +38,18 @@ struct vector
     }
 
     template <row_vector T1, row_vector T2>
-    inline static pack_trait<T1>::value_type dot(
+    inline static packed_trait<T1>::value_type dot(
         const T1& a,
         const T2& b) requires col_size_equal<T1, T2>
     {
-        typename pack_trait<T1>::value_type result = 0;
-        for (std::size_t i = 0; i < pack_trait<T1>::col_size; ++i)
+        typename packed_trait<T1>::value_type result = 0;
+        for (std::size_t i = 0; i < packed_trait<T1>::col_size; ++i)
             result += a[i] * b[i];
         return result;
     }
 
     template <>
-    inline static float dot(const float4_simd& a, const float4_simd& b)
-    {
-        __m128 t1 = dot_vector(a, b);
-        return _mm_cvtss_f32(t1);
-    }
-
-    inline static float4_simd dot_vector(const float4_simd& a, const float4_simd& b)
+    inline static float4_simd dot(const float4_simd& a, const float4_simd& b)
     {
         __m128 t1 = _mm_mul_ps(a, b);
         __m128 t2 = simd::shuffle<1, 0, 3, 2>(t1);
@@ -64,10 +58,8 @@ struct vector
         return _mm_add_ps(t1, t2);
     }
 
-    template <row_vector T1, row_vector T2>
-    inline static T1 cross(
-        const T1& a,
-        const T2& b) requires col_size_equal<T1, T2>&& greater_than_1x3<T1>
+    template <vector_1x3_1x4 T1, vector_1x3_1x4 T2>
+    inline static T1 cross(const T1& a, const T2& b) requires col_size_equal<T1, T2>
     {
         return {a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]};
     }
@@ -90,7 +82,7 @@ struct vector
     inline static T scale(const T& v, S scale)
     {
         T result = v;
-        for (std::size_t i = 0; i < pack_trait<T>::col_size; ++i)
+        for (std::size_t i = 0; i < packed_trait<T>::col_size; ++i)
             result[i] *= scale;
         return result;
     }
@@ -103,20 +95,15 @@ struct vector
     }
 
     template <row_vector T>
-    inline static float length(const T& v)
-    {
-        return sqrtf(static_cast<float>(dot(v, v)));
-    }
-
-    template <>
-    inline static float length(const float4_simd& v)
+    inline static packed_trait<T>::value_type length(const T& v)
     {
         return sqrtf(dot(v, v));
     }
 
-    inline static float4_simd length_vector(const float4_simd& v)
+    template <>
+    inline static float4_simd length(const float4_simd& v)
     {
-        __m128 t1 = dot_vector(v, v);
+        __m128 t1 = dot(v, v);
         return _mm_sqrt_ps(t1);
     }
 
