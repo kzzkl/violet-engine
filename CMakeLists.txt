@@ -16,6 +16,7 @@ endif()
 set(THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/thirdparty/install)
 
 set(ASH_CORE_INTERFACE_DIR ${PROJECT_SOURCE_DIR}/engine/core/interface)
+set(ASH_GRAPHICS_INTERFACE_DIR ${PROJECT_SOURCE_DIR}/engine/graphics/interface)
 
 option(ASH_BUILD_THIRDPARTY "Build thirdparty" OFF)
 

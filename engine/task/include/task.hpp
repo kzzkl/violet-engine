@@ -32,8 +32,8 @@ private:
 
     std::vector<task*> m_next;
 
-    uint8_t m_num_dependency;
-    std::atomic<uint8_t> m_num_uncompleted_dependency;
+    uint8_t m_dependency_count;
+    std::atomic<uint8_t> m_uncompleted_dependency_count;
 
     std::string m_name;
 };

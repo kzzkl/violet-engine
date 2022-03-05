@@ -1,4 +1,5 @@
 #include "application.hpp"
+#include "graphics.hpp"
 #include "log.hpp"
 #include "window.hpp"
 #include <fstream>
@@ -8,6 +9,9 @@ using namespace ash::common;
 
 class test_module : public submodule
 {
+public:
+    static constexpr uuid id = "bd58a298-9ea4-4f8d-a79c-e57ae694915d";
+
 public:
     test_module(int data) : submodule("test_module"), m_data(data) {}
 
@@ -46,6 +50,7 @@ int main()
     application app(config);
     app.install<test_module>(99);
     app.install<ash::window::window>();
+    app.install<ash::graphics::graphics>();
 
     app.run();
 

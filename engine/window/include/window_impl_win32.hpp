@@ -25,7 +25,9 @@ public:
     virtual bool initialize(uint32_t width, uint32_t height, std::string_view title) override;
     virtual void tick() override;
     virtual void show() override;
-    virtual void* get_handle() override;
+
+    virtual const void* get_handle() const override;
+    virtual window_rect get_rect() const override;
 
     virtual mouse& get_mouse() override { return m_mouse; };
 
