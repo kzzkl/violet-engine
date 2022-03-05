@@ -4,6 +4,12 @@
 
 namespace ash::graphics::external
 {
+class graphics_factory
+{
+public:
+    virtual ~graphics_factory() = default;
+};
+
 struct adapter_info
 {
     char description[128];
@@ -15,29 +21,24 @@ public:
     virtual int get_adapter_info(adapter_info* infos, int size) = 0;
 };
 
-using window_handle = void*;
-
 class renderer
 {
 public:
     virtual ~renderer() = default;
 
-    virtual bool initialize(window_handle handle) = 0;
-
     virtual void begin_frame() = 0;
     virtual void end_frame() = 0;
-
-private:
 };
 
-class graphics_factory
+using window_handle = const void*;
+struct graphics_context_config
 {
-public:
-    virtual ~graphics_factory() = default;
+    uint32_t width;
+    uint32_t height;
 
-    virtual renderer* make_renderer() = 0;
+    window_handle handle;
 
-private:
+    bool msaa_4x;
 };
 
 class graphics_context
@@ -45,10 +46,12 @@ class graphics_context
 public:
     virtual ~graphics_context() = default;
 
-    virtual bool initialize() = 0;
+    virtual bool initialize(const graphics_context_config& config) = 0;
 
     virtual graphics_factory* get_factory() = 0;
     virtual diagnotor* get_diagnotor() = 0;
+
+    virtual renderer* get_renderer() = 0;
 };
 
 using make_context = graphics_context* (*)();

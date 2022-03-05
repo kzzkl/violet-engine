@@ -22,12 +22,6 @@ bool graphics_plugin::do_load()
 
     m_context.reset(make());
 
-    if (!m_context->initialize())
-    {
-        log::error("Graphics context initialization failed.");
-        return false;
-    }
-
     return true;
 }
 

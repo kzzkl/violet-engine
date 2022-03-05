@@ -67,7 +67,6 @@ plugin::~plugin()
 
 bool plugin::load(std::string_view path)
 {
-
     if (!m_library->load(path))
     {
         log::error("Failed to load plugin: name[{}] path[{}]", m_name, path);

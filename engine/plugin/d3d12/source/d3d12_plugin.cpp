@@ -11,7 +11,6 @@ namespace ash::graphics::d3d12
 class d3d12_graphics_factory : public graphics_factory
 {
 public:
-    virtual renderer* make_renderer() override { return new d3d12_renderer(); }
 };
 
 class d3d12_context_wrapper : public graphics_context
@@ -19,13 +18,17 @@ class d3d12_context_wrapper : public graphics_context
 public:
     d3d12_context_wrapper() : m_factory(std::make_unique<d3d12_graphics_factory>()) {}
 
-    virtual bool initialize() override { return d3d12_context::instance().initialize(); }
+    virtual bool initialize(const graphics_context_config& config) override
+    {
+        return d3d12_context::instance().initialize(config);
+    }
 
     virtual graphics_factory* get_factory() override { return m_factory.get(); }
     virtual diagnotor* get_diagnotor() override
     {
         return d3d12_context::instance().get_diagnotor();
     }
+    virtual renderer* get_renderer() override { return d3d12_context::instance().get_renderer(); }
 
 private:
     std::unique_ptr<d3d12_graphics_factory> m_factory;

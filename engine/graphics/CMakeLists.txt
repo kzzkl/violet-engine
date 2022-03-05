@@ -12,7 +12,8 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        ash::core)
+        ash::core
+        ash::window)
 
 include(GenerateExportHeader)
 generate_export_header(${PROJECT_NAME}

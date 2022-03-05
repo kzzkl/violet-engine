@@ -6,12 +6,12 @@ using namespace ash::graphics::external;
 
 namespace ash::graphics::d3d12
 {
-void d3d12_diagnotor::initialize()
+void d3d12_diagnotor::initialize(const diagnotor_config& config)
 {
     auto factory = d3d12_context::instance().get_factory();
 
+    // Get adapter information.
     ComPtr<DXGIAdapter> adapter;
-
     for (UINT i = 0;; ++i)
     {
         if (factory->EnumAdapters1(i, adapter.GetAddressOf()) == DXGI_ERROR_NOT_FOUND)
@@ -36,6 +36,7 @@ void d3d12_diagnotor::initialize()
         info.description = description_buffer;
 
         m_adapter_info.push_back(info);
+        adapter.Reset();
     }
 }
 

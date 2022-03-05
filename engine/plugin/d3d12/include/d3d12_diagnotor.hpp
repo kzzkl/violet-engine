@@ -14,7 +14,10 @@ struct d3d12_adapter_info
 class d3d12_diagnotor : public ash::graphics::external::diagnotor
 {
 public:
-    void initialize();
+    using diagnotor_config = ash::graphics::external::graphics_context_config;
+
+public:
+    void initialize(const diagnotor_config& config);
 
     virtual int get_adapter_info(ash::graphics::external::adapter_info* infos, int size) override;
 

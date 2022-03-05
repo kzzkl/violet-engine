@@ -1,5 +1,6 @@
 #pragma once
 
+#include "d3dx12.h"
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <stdexcept>
@@ -10,7 +11,7 @@ namespace ash::graphics::d3d12
 {
 using DXGIAdapter = IDXGIAdapter1;
 using DXGIFactory = IDXGIFactory4;
-using DXGISwapChain = IDXGISwapChain3;
+using DXGISwapChain = IDXGISwapChain1;
 using D3D12Device = ID3D12Device;
 using D3D12CommandQueue = ID3D12CommandQueue;
 using D3D12CommandAllocator = ID3D12CommandAllocator;

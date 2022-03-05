@@ -14,7 +14,7 @@ d3d12_context& d3d12_context::instance()
     return instance;
 }
 
-bool d3d12_context::initialize()
+bool d3d12_context::initialize(const context_config& config)
 {
     UINT flag = 0;
 
@@ -52,7 +52,24 @@ bool d3d12_context::initialize()
     }
 
     m_diagnotor = std::make_unique<d3d12_diagnotor>();
-    m_diagnotor->initialize();
+    m_diagnotor->initialize(config);
+
+    m_command = std::make_unique<d3d12_command_manager>();
+    m_command->initialize();
+
+    m_resource = std::make_unique<d3d12_resource_manager>();
+    m_resource->initialize();
+
+    m_renderer = std::make_unique<d3d12_renderer>();
+
+    HWND hwnd = *static_cast<const HWND*>(config.handle);
+    m_renderer->initialize(hwnd, config.width, config.height);
+
+    m_command->get_command_list()->Close();
+
+    D3D12CommandList* lists[] = {m_command->get_command_list()};
+    m_command->get_command_queue()->ExecuteCommandLists(1, lists);
+    m_command->flush();
 
     return true;
 }

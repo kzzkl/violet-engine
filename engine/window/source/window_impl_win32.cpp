@@ -104,9 +104,23 @@ void window_impl_win32::show()
     UpdateWindow(m_hwnd);
 }
 
-void* window_impl_win32::get_handle()
+const void* window_impl_win32::get_handle() const
 {
     return &m_hwnd;
+}
+
+window_rect window_impl_win32::get_rect() const
+{
+    RECT rect = {};
+    GetClientRect(m_hwnd, &rect);
+
+    window_rect result = {};
+    result.x = rect.left;
+    result.y = rect.top;
+    result.width = rect.right - rect.left;
+    result.height = rect.bottom - rect.top;
+
+    return result;
 }
 
 LRESULT CALLBACK
@@ -143,7 +157,7 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
     {
     case WM_MOUSEMOVE: {
         if (m_mouse.get_mode() == mouse_mode::CURSOR_ABSOLUTE)
-            m_mouse.set_cursor(static_cast<int>(LOWORD(lparam)), static_cast<int>(HIWORD(lparam)));
+            m_mouse.set_cursor(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
         break;
     }
     case WM_INPUT: {

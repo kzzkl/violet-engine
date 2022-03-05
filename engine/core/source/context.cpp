@@ -19,7 +19,7 @@ context::context(const ash::common::dictionary& config) : m_config(config)
 
 void context::initialize_submodule()
 {
-    for (auto& module : m_modules)
+    for (auto& [key, module] : m_modules)
         module->initialize(m_config);
 }
 } // namespace ash::core
