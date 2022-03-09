@@ -223,7 +223,10 @@ public:
                 }
                 else
                 {
-                    value = std::move(old_head_next->data);
+                    if (old_head_next.get_pointer() == nullptr)
+                        continue;
+
+                    value = old_head_next->data;
 
                     node_handle new_head(old_head_next.get_pointer(), old_head.get_next_tag());
                     if (m_head.compare_exchange_weak(old_head, new_head))
