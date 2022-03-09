@@ -196,6 +196,8 @@ public:
      * @brief Assigns the object at the head of the queue to the parameter and pops the head of the
      * queue.
      *
+     * Note that the value of the parameter may also be changed when the pop fails.
+     *
      * @param value Parameter to store the head element.
      * @return Returns false if the queue is empty, otherwise returns true.
      */
