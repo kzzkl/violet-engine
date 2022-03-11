@@ -6,9 +6,10 @@ namespace ash::task
 task* task_queue::pop()
 {
     task* result = nullptr;
-    m_queue.pop(result);
-
-    return result;
+    if (m_queue.pop(result))
+        return result;
+    else
+        return nullptr;
 }
 
 void task_queue::push(task* t)

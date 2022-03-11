@@ -2,7 +2,6 @@
 
 #include "d3d12_command.hpp"
 #include "d3d12_common.hpp"
-#include "d3d12_diagnotor.hpp"
 #include "d3d12_renderer.hpp"
 #include "d3d12_resource.hpp"
 #include <memory>
@@ -12,28 +11,32 @@ namespace ash::graphics::d3d12
 class d3d12_context
 {
 public:
-    using context_config = ash::graphics::external::graphics_context_config;
+    static bool initialize(const context_config& config)
+    {
+        return instance().do_initialize(config);
+    }
 
-public:
-    static d3d12_context& instance();
+    static void begin_frame() { instance().do_begin_frame(); }
+    static void end_frame() { instance().do_end_frame(); }
 
-    bool initialize(const context_config& config);
+    static DXGIFactory* factory() { return instance().m_factory.Get(); }
+    static D3D12Device* device() { return instance().m_device.Get(); }
 
-    DXGIFactory* get_factory() { return m_factory.Get(); }
-    D3D12Device* get_device() { return m_device.Get(); }
-
-    d3d12_diagnotor* get_diagnotor() { return m_diagnotor.get(); }
-    d3d12_command_manager* get_command() { return m_command.get(); }
-    d3d12_renderer* get_renderer() { return m_renderer.get(); }
-    d3d12_resource_manager* get_resource() { return m_resource.get(); }
+    static d3d12_command_manager* command() { return instance().m_command.get(); }
+    static d3d12_renderer* renderer() { return instance().m_renderer.get(); }
+    static d3d12_resource_manager* resource() { return instance().m_resource.get(); }
 
 private:
     d3d12_context();
+    static d3d12_context& instance();
 
-    Microsoft::WRL::ComPtr<DXGIFactory> m_factory;
-    Microsoft::WRL::ComPtr<D3D12Device> m_device;
+    bool do_initialize(const context_config& config);
+    void do_begin_frame();
+    void do_end_frame();
 
-    std::unique_ptr<d3d12_diagnotor> m_diagnotor;
+    d3d12_ptr<DXGIFactory> m_factory;
+    d3d12_ptr<D3D12Device> m_device;
+
     std::unique_ptr<d3d12_command_manager> m_command;
     std::unique_ptr<d3d12_renderer> m_renderer;
     std::unique_ptr<d3d12_resource_manager> m_resource;

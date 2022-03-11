@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 
 namespace ash::task
 {
@@ -22,7 +23,11 @@ public:
         m_tag[TAG_INDEX] = tag;
     }
 
-    tag_type get_next_tag() const { return m_tag[TAG_INDEX] + 1; }
+    tag_type get_next_tag() const
+    {
+        tag_type next = (m_tag[TAG_INDEX] + 1) & std::numeric_limits<tag_type>::max();
+        return next;
+    }
     tag_type get_tag() const { return m_tag[TAG_INDEX]; }
 
     void set_pointer(value_type* p)
@@ -44,7 +49,7 @@ public:
     bool operator!=(const tagged_pointer_compression& p) const { return !operator==(p); }
 
 private:
-    static constexpr address_type ADDRESS_MASK = 0x0000FFFFFFFFFFFF;
+    static constexpr address_type ADDRESS_MASK = 0xFFFFFFFFFFFFUL;
     static constexpr int TAG_INDEX = 3;
 
     union {

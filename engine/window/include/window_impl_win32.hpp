@@ -31,6 +31,8 @@ public:
 
     virtual mouse& get_mouse() override { return m_mouse; };
 
+    virtual void set_title(std::string_view title) override;
+
 private:
     static LRESULT CALLBACK wnd_create_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
     static LRESULT CALLBACK wnd_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);

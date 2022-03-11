@@ -6,6 +6,36 @@ using namespace ash::common;
 
 namespace ash::window
 {
+std::wstring string_to_wstring(std::string_view str)
+{
+    wchar_t buffer[128] = {};
+    MultiByteToWideChar(
+        CP_UTF8,
+        0,
+        str.data(),
+        static_cast<int>(str.size()),
+        buffer,
+        static_cast<int>(sizeof(buffer)));
+
+    return buffer;
+}
+
+std::string wstring_to_string(std::wstring_view str)
+{
+    char buffer[128] = {};
+    WideCharToMultiByte(
+        CP_UTF8,
+        0,
+        str.data(),
+        static_cast<int>(wcslen(str.data())),
+        buffer,
+        static_cast<int>(sizeof(buffer)),
+        nullptr,
+        nullptr);
+
+    return buffer;
+}
+
 void mouse_win32::clip_cursor(bool clip)
 {
     if (clip)
@@ -52,13 +82,12 @@ bool window_impl_win32::initialize(uint32_t width, uint32_t height, std::string_
     SetProcessDPIAware();
 
     ASH_ASSERT(title.size() < 128, "The title is too long");
-    WCHAR wTitle[128] = {};
-    MultiByteToWideChar(CP_UTF8, 0, title.data(), static_cast<int>(title.size()), wTitle, 128);
+    std::wstring wtitle = string_to_wstring(title);
 
     m_hwnd = CreateWindowEx(
         WS_EX_APPWINDOW,
         wndClassEx.lpszClassName,
-        wTitle,
+        wtitle.c_str(),
         WS_OVERLAPPEDWINDOW,
         posX,
         posY,
@@ -121,6 +150,11 @@ window_rect window_impl_win32::get_rect() const
     result.height = rect.bottom - rect.top;
 
     return result;
+}
+
+void window_impl_win32::set_title(std::string_view title)
+{
+    SetWindowText(m_hwnd, string_to_wstring(title).c_str());
 }
 
 LRESULT CALLBACK

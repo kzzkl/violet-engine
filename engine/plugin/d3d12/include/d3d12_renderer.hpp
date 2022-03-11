@@ -1,37 +1,42 @@
 #pragma once
 
 #include "d3d12_common.hpp"
-#include "graphics_interface.hpp"
 #include "d3d12_resource.hpp"
 
 namespace ash::graphics::d3d12
 {
-class d3d12_renderer : public ash::graphics::external::renderer
+class d3d12_renderer : public renderer
 {
 public:
-    d3d12_renderer();
-
-    bool initialize(HWND handle, UINT width, UINT height);
+    d3d12_renderer(HWND handle, UINT width, UINT height, D3D12GraphicsCommandList* command_list);
 
     virtual void begin_frame() override;
     virtual void end_frame() override;
 
+    virtual render_command* allocate_command() override;
+    virtual void execute(render_command* command) override;
+
+    virtual resource* get_back_buffer() override;
+    virtual std::size_t get_adapter_info(adapter_info* infos, std::size_t size) const override;
+
+    void begin_frame(D3D12GraphicsCommandList* command_list);
+    void end_frame(D3D12GraphicsCommandList* command_list);
+
+    void present();
+
 private:
-    UINT64 get_index() const { return m_frame_counter % 2; }
+    UINT64 get_index() const;
 
-    static const DXGI_FORMAT m_format{DXGI_FORMAT_R8G8B8A8_UNORM};
+    static const DXGI_FORMAT m_format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
-    Microsoft::WRL::ComPtr<DXGISwapChain> m_swap_chain;
+    d3d12_ptr<DXGISwapChain> m_swap_chain;
 
-    std::vector<d3d12_resource> m_back_buffer;
-    d3d12_resource m_depth_stencil_buffer;
-
-    // D3D12_CPU_DESCRIPTOR_HANDLE m_depth_stencil_buffer_view;
-    // Microsoft::WRL::ComPtr<D3D12Resource> m_depth_stencil_buffer;
+    std::vector<std::unique_ptr<d3d12_back_buffer>> m_back_buffer;
+    std::unique_ptr<d3d12_depth_stencil_buffer> m_depth_stencil_buffer;
 
     D3D12_VIEWPORT m_viewport;
     D3D12_RECT m_scissor_rect;
 
-    UINT64 m_frame_counter;
+    std::vector<std::string> m_adapter_info;
 };
 } // namespace ash::graphics::d3d12

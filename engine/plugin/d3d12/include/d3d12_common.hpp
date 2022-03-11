@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3dx12.h"
+#include "graphics_interface.hpp"
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <stdexcept>
@@ -23,6 +24,9 @@ using D3D12Resource = ID3D12Resource;
 using D3D12DescriptorHeap = ID3D12DescriptorHeap;
 using D3DBlob = ID3DBlob;
 using D3D12PipelineState = ID3D12PipelineState;
+
+template <typename T>
+using d3d12_ptr = Microsoft::WRL::ComPtr<T>;
 
 class hr_exception : public std::runtime_error
 {

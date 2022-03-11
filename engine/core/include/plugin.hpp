@@ -21,7 +21,7 @@ public:
 class CORE_API plugin
 {
 public:
-    using version = ash::core::external::plugin_version;
+    using version = plugin_version;
 
 public:
     plugin();

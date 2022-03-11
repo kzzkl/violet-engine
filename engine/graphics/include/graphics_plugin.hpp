@@ -8,12 +8,12 @@ namespace ash::graphics
 class graphics_plugin : public ash::core::plugin
 {
 public:
-    using context = ash::graphics::external::graphics_context;
-
-public:
     graphics_plugin();
 
-    context* get_context() { return m_context.get(); }
+    bool initialize(const context_config& config);
+
+    renderer* get_renderer() { return m_context->get_renderer(); }
+    factory* get_factory() { return m_context->get_factory(); }
 
 protected:
     virtual bool do_load() override;

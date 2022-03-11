@@ -196,6 +196,8 @@ public:
      * @brief Assigns the object at the head of the queue to the parameter and pops the head of the
      * queue.
      *
+     * Note that the value of the parameter may also be changed when the pop fails.
+     *
      * @param value Parameter to store the head element.
      * @return Returns false if the queue is empty, otherwise returns true.
      */
@@ -223,7 +225,10 @@ public:
                 }
                 else
                 {
-                    value = std::move(old_head_next->data);
+                    if (old_head_next.get_pointer() == nullptr)
+                        continue;
+
+                    value = old_head_next->data;
 
                     node_handle new_head(old_head_next.get_pointer(), old_head.get_next_tag());
                     if (m_head.compare_exchange_weak(old_head, new_head))

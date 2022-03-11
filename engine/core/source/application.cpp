@@ -19,7 +19,7 @@ void application::run()
     std::size_t frame_counter = 0;
 
     nanoseconds s(0);
-    nanoseconds time_per_frame(1000000000 / 60);
+    nanoseconds time_per_frame(1000000000 / 2400);
 
     auto& task = get_task();
 
@@ -41,7 +41,7 @@ void application::run()
         ++frame_counter;
         if (s > seconds(1))
         {
-            // log::debug("FPS[{}] delta[{}]", frame_counter, delta.count());
+            log::debug("FPS[{}] delta[{}]", frame_counter, delta.count());
             s = s.zero();
             frame_counter = 0;
         }

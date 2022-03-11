@@ -3,10 +3,12 @@ project(ash-graphics-d3d12)
 add_library(${PROJECT_NAME} SHARED
     ./source/d3d12_command.cpp
     ./source/d3d12_context.cpp
-    ./source/d3d12_diagnotor.cpp
+    ./source/d3d12_frame_resource.cpp
+    ./source/d3d12_pipeline.cpp
     ./source/d3d12_plugin.cpp
     ./source/d3d12_renderer.cpp
-    ./source/d3d12_resource.cpp)
+    ./source/d3d12_resource.cpp
+    ./source/d3d12_utility.cpp)
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
