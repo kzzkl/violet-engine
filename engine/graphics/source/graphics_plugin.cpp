@@ -2,13 +2,17 @@
 #include "log.hpp"
 
 using namespace ash::core;
-using namespace ash::graphics::external;
 using namespace ash::common;
 
 namespace ash::graphics
 {
 graphics_plugin::graphics_plugin()
 {
+}
+
+bool graphics_plugin::initialize(const context_config& config)
+{
+    return m_context->initialize(config);
 }
 
 bool graphics_plugin::do_load()

@@ -20,6 +20,8 @@ public:
     const void* get_handle() const { return m_impl->get_handle(); }
     window_rect get_rect() const { return m_impl->get_rect(); }
 
+    void set_title(std::string_view title) { m_impl->set_title(title); }
+
 private:
     std::unique_ptr<window_impl> m_impl;
 };

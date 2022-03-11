@@ -1,13 +1,116 @@
 #pragma once
 
 #include "plugin_interface.hpp"
+#include <cstddef>
+#include <cstdint>
 
-namespace ash::graphics::external
+namespace ash::graphics
 {
-class graphics_factory
+template <typename T>
+struct list
+{
+    const T* data;
+    std::size_t size;
+};
+
+enum class primitive_topology_type : uint8_t
+{
+    TRIANGLE_LIST,
+    LINE_LIST
+};
+
+class resource
 {
 public:
-    virtual ~graphics_factory() = default;
+    virtual ~resource() = default;
+
+    virtual void upload(const void* data, std::size_t size) {}
+};
+
+enum class pipeline_parameter_type : uint8_t
+{
+    TEXTURE,
+    BUFFER
+};
+
+struct pipeline_parameter_part
+{
+    const char* name;
+    pipeline_parameter_type type;
+};
+
+using pipeline_parameter_desc = list<pipeline_parameter_part>;
+
+class pipeline_parameter
+{
+public:
+    virtual ~pipeline_parameter() = default;
+
+    virtual void bind(std::size_t index, resource* data) = 0;
+};
+
+using pipeline_parameter_layout_desc = list<pipeline_parameter_desc>;
+
+class pipeline_parameter_layout
+{
+public:
+    virtual ~pipeline_parameter_layout() = default;
+};
+
+enum class vertex_attribute_type : uint8_t
+{
+    NONE,
+    INT,
+    INT2,
+    INT3,
+    INT4,
+    UINT,
+    UINT2,
+    UINT3,
+    UINT4,
+    FLOAT,
+    FLOAT2,
+    FLOAT3,
+    FLOAT4
+};
+
+struct vertex_attribute_desc
+{
+    const char* name;
+    vertex_attribute_type type;
+    uint32_t index;
+};
+
+struct pipeline_desc
+{
+    const char* name;
+
+    list<vertex_attribute_desc> vertex_layout;
+    pipeline_parameter_layout* parameter_layout;
+
+    const char* vertex_shader;
+    const char* pixel_shader;
+};
+
+class pipeline
+{
+public:
+};
+
+class render_command
+{
+public:
+    virtual ~render_command() = default;
+
+    virtual void set_pipeline(pipeline* pipeline) = 0;
+    virtual void set_layout(pipeline_parameter_layout* layout) = 0;
+    virtual void set_parameter(std::size_t index, pipeline_parameter* parameter) = 0;
+
+    virtual void draw(
+        resource* vertex,
+        resource* index,
+        primitive_topology_type primitive_topology,
+        resource* target) = 0;
 };
 
 struct adapter_info
@@ -15,44 +118,72 @@ struct adapter_info
     char description[128];
 };
 
-class diagnotor
-{
-public:
-    virtual int get_adapter_info(adapter_info* infos, int size) = 0;
-};
-
 class renderer
 {
 public:
-    virtual ~renderer() = default;
-
     virtual void begin_frame() = 0;
     virtual void end_frame() = 0;
+
+    virtual render_command* allocate_command() = 0;
+    virtual void execute(render_command* command) = 0;
+
+    virtual resource* get_back_buffer() = 0;
+    virtual std::size_t get_adapter_info(adapter_info* infos, std::size_t size) const = 0;
+
+private:
 };
 
-using window_handle = const void*;
-struct graphics_context_config
+struct vertex_buffer_desc
+{
+    const void* vertices;
+    std::size_t vertex_size;
+    std::size_t vertex_count;
+};
+
+struct index_buffer_desc
+{
+    const void* indices;
+    std::size_t index_size;
+    std::size_t index_count;
+};
+
+class factory
+{
+public:
+    virtual pipeline_parameter* make_pipeline_parameter(const pipeline_parameter_desc& desc) = 0;
+    virtual pipeline_parameter_layout* make_pipeline_parameter_layout(
+        const pipeline_parameter_layout_desc& desc) = 0;
+    virtual pipeline* make_pipeline(const pipeline_desc& desc) = 0;
+
+    virtual resource* make_upload_buffer(std::size_t size) = 0;
+
+    virtual resource* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
+    virtual resource* make_index_buffer(const index_buffer_desc& desc) = 0;
+
+private:
+};
+
+struct context_config
 {
     uint32_t width;
     uint32_t height;
 
-    window_handle handle;
+    const void* window_handle;
 
     bool msaa_4x;
+    std::size_t render_concurrency;
 };
 
-class graphics_context
+class context
 {
 public:
-    virtual ~graphics_context() = default;
+    virtual ~context() = default;
 
-    virtual bool initialize(const graphics_context_config& config) = 0;
-
-    virtual graphics_factory* get_factory() = 0;
-    virtual diagnotor* get_diagnotor() = 0;
+    virtual bool initialize(const context_config& config) = 0;
 
     virtual renderer* get_renderer() = 0;
+    virtual factory* get_factory() = 0;
 };
 
-using make_context = graphics_context* (*)();
-} // namespace ash::graphics::external
+using make_context = context* (*)();
+} // namespace ash::graphics

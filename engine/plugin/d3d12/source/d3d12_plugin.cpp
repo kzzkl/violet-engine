@@ -1,46 +1,84 @@
 #include "d3d12_context.hpp"
-#include "d3d12_diagnotor.hpp"
-#include "d3d12_renderer.hpp"
+#include "d3d12_pipeline.hpp"
+#include "graphics_interface.hpp"
 #include <cstring>
 
-using namespace ash::graphics::external;
 using namespace ash::graphics::d3d12;
 
 namespace ash::graphics::d3d12
 {
-class d3d12_graphics_factory : public graphics_factory
+class d3d12_factory : public factory
 {
 public:
+    virtual pipeline_parameter* make_pipeline_parameter(
+        const pipeline_parameter_desc& desc) override
+    {
+        return new d3d12_pipeline_parameter(desc);
+    }
+
+    virtual pipeline_parameter_layout* make_pipeline_parameter_layout(
+        const pipeline_parameter_layout_desc& desc) override
+    {
+        return new d3d12_parameter_layout(desc);
+    }
+
+    virtual pipeline* make_pipeline(const pipeline_desc& desc) override
+    {
+        return new d3d12_pipeline(desc);
+    }
+
+    virtual resource* make_upload_buffer(std::size_t size) override
+    {
+        return new d3d12_upload_buffer(size);
+    }
+
+    virtual resource* make_vertex_buffer(const vertex_buffer_desc& desc) override
+    {
+        auto command_list = d3d12_context::command()->allocate_dynamic_command();
+        d3d12_vertex_buffer* result = new d3d12_vertex_buffer(
+            desc.vertices,
+            desc.vertex_size,
+            desc.vertex_count,
+            command_list.get());
+        d3d12_context::command()->execute_command(command_list);
+        return result;
+    }
+
+    virtual resource* make_index_buffer(const index_buffer_desc& desc) override
+    {
+        auto command_list = d3d12_context::command()->allocate_dynamic_command();
+        d3d12_index_buffer* result = new d3d12_index_buffer(
+            desc.indices,
+            desc.index_size,
+            desc.index_count,
+            command_list.get());
+        d3d12_context::command()->execute_command(command_list);
+        return result;
+    }
 };
 
-class d3d12_context_wrapper : public graphics_context
+class d3d12_context_wrapper : public context
 {
 public:
-    d3d12_context_wrapper() : m_factory(std::make_unique<d3d12_graphics_factory>()) {}
-
-    virtual bool initialize(const graphics_context_config& config) override
+    virtual bool initialize(const context_config& config) override
     {
-        return d3d12_context::instance().initialize(config);
+        m_factory = std::make_unique<d3d12_factory>();
+        return d3d12_context::initialize(config);
     }
 
-    virtual graphics_factory* get_factory() override { return m_factory.get(); }
-    virtual diagnotor* get_diagnotor() override
-    {
-        return d3d12_context::instance().get_diagnotor();
-    }
-    virtual renderer* get_renderer() override { return d3d12_context::instance().get_renderer(); }
+    virtual renderer* get_renderer() override { return d3d12_context::renderer(); }
+    virtual factory* get_factory() { return m_factory.get(); }
 
 private:
-    std::unique_ptr<d3d12_graphics_factory> m_factory;
+    std::unique_ptr<d3d12_factory> m_factory;
 };
 } // namespace ash::graphics::d3d12
 
 extern "C"
 {
-    PLUGIN_API ash::core::external::plugin_info get_plugin_info()
+    PLUGIN_API ash::core::plugin_info get_plugin_info()
     {
-        using namespace ash::core::external;
-        plugin_info info = {};
+        ash::core::plugin_info info = {};
 
         char name[] = "graphics-d3d12";
         memcpy(info.name, name, sizeof(name));
@@ -51,5 +89,5 @@ extern "C"
         return info;
     }
 
-    PLUGIN_API d3d12_context_wrapper* make_context() { return new d3d12_context_wrapper(); }
+    PLUGIN_API ash::graphics::context* make_context() { return new d3d12_context_wrapper(); }
 }

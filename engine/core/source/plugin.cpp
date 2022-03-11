@@ -3,7 +3,6 @@
 #include <Windows.h>
 
 using namespace ash::common;
-using namespace ash::core::external;
 
 namespace ash::core
 {
