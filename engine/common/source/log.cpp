@@ -3,7 +3,7 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
 
-namespace ash::common
+namespace ash
 {
 log::log()
 {
@@ -22,4 +22,4 @@ log& log::instance()
     static log instance;
     return instance;
 }
-} // namespace ash::common
+} // namespace ash

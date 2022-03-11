@@ -1,12 +1,11 @@
 #include "application.hpp"
 #include "timer.hpp"
 
-using namespace ash::common;
 using namespace ash::task;
 
 namespace ash::core
 {
-application::application(const ash::common::dictionary& config) : context(config)
+application::application(const dictionary& config) : context(config)
 {
 }
 

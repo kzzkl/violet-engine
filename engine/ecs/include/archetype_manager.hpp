@@ -11,7 +11,7 @@ using view = base_view<archetype, Components...>;
 class ECS_API archetype_manager
 {
 public:
-    archetype_manager() = default;
+    archetype_manager() noexcept = default;
     archetype_manager(const archetype_manager&) = delete;
     archetype_manager& operator=(const archetype_manager&) = delete;
 

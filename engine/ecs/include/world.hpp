@@ -14,7 +14,7 @@ using entity_handle = archetype::handle<Components...>;
 class ECS_API world
 {
 public:
-    world();
+    world() noexcept;
 
     template <typename... Components>
     entity_handle<Components...> create()

@@ -2,7 +2,7 @@
 
 namespace ash::core
 {
-submodule::submodule(std::string_view name) : m_name(name)
+submodule::submodule(std::string_view name) noexcept : m_name(name)
 {
 }
 

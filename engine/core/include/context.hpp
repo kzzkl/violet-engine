@@ -17,7 +17,7 @@ public:
     using module_list = std::unordered_map<uuid, std::unique_ptr<submodule>, uuid_hash>;
 
 public:
-    context(const ash::common::dictionary& config);
+    context(const dictionary& config);
 
     template <typename T>
     T& get_submodule()
@@ -36,19 +36,19 @@ protected:
         {
             auto m = std::make_unique<T>(std::forward<Args>(args)...);
             m->m_context = this;
-            ash::common::log::info("Module installed successfully: {}.", m->get_name());
+            log::info("Module installed successfully: {}.", m->get_name());
             m_modules[id] = std::move(m);
         }
         else
         {
-            ash::common::log::warn("The module is already installed.");
+            log::warn("The module is already installed.");
         }
     }
 
     void initialize_submodule();
 
 private:
-    ash::common::dictionary m_config;
+    dictionary m_config;
 
     module_list m_modules;
     std::unique_ptr<ash::task::task_manager> m_task;

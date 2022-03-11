@@ -11,7 +11,7 @@ window::window() : submodule("window")
     m_impl = std::make_unique<window_impl_win32>();
 }
 
-bool window::initialize(const ash::common::dictionary& config)
+bool window::initialize(const dictionary& config)
 {
     std::string title = "ash app";
     uint32_t width = 800;

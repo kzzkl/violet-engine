@@ -14,7 +14,7 @@ class alignas(64) chunk
 public:
     static constexpr std::size_t SIZE = 1024 * 16;
 
-    uint8_t* data() { return m_data.data(); }
+    inline uint8_t* data() noexcept { return m_data.data(); }
 
 private:
     std::array<uint8_t, SIZE> m_data;
@@ -24,16 +24,16 @@ class storage;
 class ECS_API storage_handle
 {
 public:
-    storage_handle();
-    storage_handle(storage* owner, std::size_t index);
+    storage_handle() noexcept;
+    storage_handle(storage* owner, std::size_t index) noexcept;
 
     void* get_component(std::size_t componentOffset, std::size_t componentSize);
 
-    storage_handle operator+(std::size_t offset);
-    storage_handle operator-(std::size_t offset);
-    std::size_t operator-(const storage_handle& other);
-    bool operator==(const storage_handle& other);
-    bool operator!=(const storage_handle& other);
+    storage_handle operator+(std::size_t offset) noexcept;
+    storage_handle operator-(std::size_t offset) noexcept;
+    std::size_t operator-(const storage_handle& other) noexcept;
+    bool operator==(const storage_handle& other) noexcept;
+    bool operator!=(const storage_handle& other) noexcept;
 
 private:
     storage* m_owner;
@@ -49,8 +49,8 @@ public:
 public:
     storage(std::size_t entity_per_chunk);
 
-    storage(storage&&) = default;
-    storage& operator=(storage&&) = default;
+    storage(storage&&) noexcept = default;
+    storage& operator=(storage&&) noexcept = default;
 
     handle push_back();
     void pop_back();
@@ -61,19 +61,22 @@ public:
     std::size_t get_chunk_size() const { return m_chunks.size(); }
     std::size_t get_entity_per_chunk() const { return m_entity_per_chunk; }
 
-    bool empty() const { return m_size != 0; }
+    inline bool empty() const noexcept { return m_size != 0; }
 
-    handle begin() { return handle(this, 0); }
-    handle end() { return handle(this, m_size); }
+    inline handle begin() noexcept { return handle(this, 0); }
+    inline handle end() noexcept { return handle(this, m_size); }
 
 private:
     storage(const storage&) = delete;
     storage& operator=(const storage&) = delete;
 
     chunk* push_chunk();
-    void pop_chunk();
+    void pop_chunk() noexcept;
 
-    std::size_t get_capacity() const { return m_entity_per_chunk * m_chunks.size(); }
+    inline std::size_t get_capacity() const noexcept
+    {
+        return m_entity_per_chunk * m_chunks.size();
+    }
 
     std::vector<std::unique_ptr<chunk>> m_chunks;
     std::size_t m_size;

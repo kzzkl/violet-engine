@@ -4,16 +4,15 @@
 #include "math.hpp"
 #include "window.hpp"
 
-using namespace ash::common;
 using namespace ash::math;
 
 namespace ash::graphics
 {
-graphics::graphics() : submodule("graphics")
+graphics::graphics() noexcept : submodule("graphics")
 {
 }
 
-bool graphics::initialize(const ash::common::dictionary& config)
+bool graphics::initialize(const dictionary& config)
 {
     if (!m_plugin.load("ash-graphics-d3d12.dll") || !m_plugin.initialize(get_config(config)))
         return false;
@@ -46,11 +45,12 @@ bool graphics::initialize(const ash::common::dictionary& config)
 void graphics::initialize_resource()
 {
     {
-        std::array<pipeline_parameter_part, 1> parameter_part = {
+        std::vector<pipeline_parameter_desc> layout(2);
+
+        std::vector<pipeline_parameter_part> parameter_part_object = {
             pipeline_parameter_part{"object", pipeline_parameter_type::BUFFER}};
-        pipeline_parameter_desc parameter_desc;
-        parameter_desc.data = parameter_part.data();
-        parameter_desc.size = parameter_part.size();
+        layout[0].data = parameter_part_object.data();
+        layout[0].size = parameter_part_object.size();
 
         float4x4 mvp = {-1.02709162,
                         0.00000000,
@@ -72,13 +72,32 @@ void graphics::initialize_resource()
         m_mvp = m_factory->make_upload_buffer(256);
         m_mvp->upload(&mvp, sizeof(mvp));
 
-        m_parameter = m_factory->make_pipeline_parameter(parameter_desc);
-        m_parameter->bind(0, m_mvp);
+        m_parameter_object = m_factory->make_pipeline_parameter(layout[0]);
+        m_parameter_object->bind(0, m_mvp);
+
+        std::vector<pipeline_parameter_part> parameter_part_material = {
+            pipeline_parameter_part{"material", pipeline_parameter_type::BUFFER}};
+        layout[1].data = parameter_part_material.data();
+        layout[1].size = parameter_part_material.size();
+
+        struct material
+        {
+            float4 color;
+            float4 color2;
+        };
+
+        material m = {{0.5f, 0.5f, 0.5f, 1.0f}, {0.5f, 0.0f, 0.5f, 1.0f}};
+
+        m_material = m_factory->make_upload_buffer(256);
+        m_material->upload(&m, sizeof(m));
+
+        m_parameter_material = m_factory->make_pipeline_parameter(layout[1]);
+        m_parameter_material->bind(0, m_material);
 
         pipeline_parameter_layout_desc parameter_layout_desc = {};
         // desc.parameter_layout.data = &package;
-        parameter_layout_desc.size = 1;
-        parameter_layout_desc.data = &parameter_desc;
+        parameter_layout_desc.size = layout.size();
+        parameter_layout_desc.data = layout.data();
         m_layout = m_factory->make_pipeline_parameter_layout(parameter_layout_desc);
     }
 
@@ -137,7 +156,8 @@ void graphics::render()
     auto command = m_renderer->allocate_command();
     command->set_pipeline(m_pipeline);
     command->set_layout(m_layout);
-    command->set_parameter(0, m_parameter);
+    command->set_parameter(0, m_parameter_object);
+    command->set_parameter(1, m_parameter_material);
     command->draw(
         m_vertices,
         m_indices,
@@ -146,7 +166,7 @@ void graphics::render()
     m_renderer->execute(command);
 }
 
-context_config graphics::get_config(const ash::common::dictionary& config)
+context_config graphics::get_config(const dictionary& config)
 {
     context_config result = {};
 

@@ -2,7 +2,7 @@
 
 namespace ash::ecs
 {
-world::world() : m_nextentity(0)
+world::world() noexcept : m_nextentity(0)
 {
 }
 

@@ -2,7 +2,7 @@
 
 #include <nlohmann/json.hpp>
 
-namespace ash::common
+namespace ash
 {
 using dictionary = nlohmann::json;
 }

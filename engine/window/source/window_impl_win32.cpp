@@ -2,8 +2,6 @@
 #include "assert.hpp"
 #include "log.hpp"
 
-using namespace ash::common;
-
 namespace ash::window
 {
 std::wstring string_to_wstring(std::string_view str)

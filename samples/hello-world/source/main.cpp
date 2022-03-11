@@ -5,17 +5,16 @@
 #include <fstream>
 
 using namespace ash::core;
-using namespace ash::common;
 
 class test_module : public submodule
 {
 public:
-    static constexpr uuid id = "bd58a298-9ea4-4f8d-a79c-e57ae694915d";
+    static constexpr ash::uuid id = "bd58a298-9ea4-4f8d-a79c-e57ae694915d";
 
 public:
     test_module(int data) : submodule("test_module"), m_data(data) {}
 
-    virtual bool initialize(const ash::common::dictionary& config) override
+    virtual bool initialize(const ash::dictionary& config) override
     {
         m_title = config["test"]["title"];
         return true;
@@ -29,12 +28,12 @@ private:
 int main()
 {
     int a = 10;
-    log::info("hello world");
+    ash::log::info("hello world");
 
     // Dictionary config = R"({"test": {"title":"test app"},"window":{"title":"你好", "width":400,
     // "height":200}})"_json;
 
-    dictionary config;
+    ash::dictionary config;
 
     std::fstream fin("resource/hello-world.json");
     if (fin.is_open())
@@ -43,7 +42,7 @@ int main()
     }
     else
     {
-        log::error("can not open config file");
+        ash::log::error("can not open config file");
         return -1;
     }
 

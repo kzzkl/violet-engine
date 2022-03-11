@@ -4,12 +4,12 @@ using namespace DirectX;
 
 namespace ash::graphics::d3d12
 {
-d3d12_context::d3d12_context()
+d3d12_context::d3d12_context() noexcept
 {
     d3d12_frame_counter::initialize(0, 3);
 }
 
-d3d12_context& d3d12_context::instance()
+d3d12_context& d3d12_context::instance() noexcept
 {
     static d3d12_context instance;
     return instance;

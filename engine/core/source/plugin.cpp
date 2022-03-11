@@ -2,8 +2,6 @@
 #include "log.hpp"
 #include <Windows.h>
 
-using namespace ash::common;
-
 namespace ash::core
 {
 class dynamic_library_win32 : public dynamic_library

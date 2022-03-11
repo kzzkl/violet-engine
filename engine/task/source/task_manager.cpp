@@ -1,8 +1,6 @@
 #include "task_manager.hpp"
 #include "log.hpp"
 
-using namespace ash::common;
-
 namespace ash::task
 {
 task_manager::task_manager(std::size_t num_thread) : m_thread_pool(num_thread), m_stop(true)

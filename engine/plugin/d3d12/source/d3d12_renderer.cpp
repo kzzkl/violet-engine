@@ -190,17 +190,7 @@ void d3d12_renderer::present()
     throw_if_failed(m_swap_chain->Present(0, 0));
 }
 
-/*void d3d12_renderer::bind(D3D12GraphicsCommandList* command_list)
-{
-    command_list->RSSetViewports(1, &m_viewport);
-    command_list->RSSetScissorRects(1, &m_scissor_rect);
-
-    auto back_buffer_handle = m_back_buffer[get_index()].get_cpu_handle();
-    auto depth_stencil_buffer_handle = m_depth_stencil_buffer.get_cpu_handle();
-    command_list->OMSetRenderTargets(1, &back_buffer_handle, true, &depth_stencil_buffer_handle);
-}*/
-
-UINT64 d3d12_renderer::get_index() const
+UINT64 d3d12_renderer::get_index() const noexcept
 {
     return d3d12_frame_counter::frame_counter() % 2;
 }

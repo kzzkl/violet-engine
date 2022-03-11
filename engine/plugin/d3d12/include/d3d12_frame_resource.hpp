@@ -41,12 +41,12 @@ public:
     using iterator = resource_list::iterator;
 
 public:
-    d3d12_frame_resource() : m_resources(d3d12_frame_counter::frame_resource_count()) {}
+    d3d12_frame_resource() noexcept : m_resources(d3d12_frame_counter::frame_resource_count()) {}
     d3d12_frame_resource(const T& value)
         : m_resources(d3d12_frame_counter::frame_resource_count(), value)
     {
     }
-    d3d12_frame_resource(resource_list&& list) : m_resources(std::move(list)) {}
+    d3d12_frame_resource(resource_list&& list) noexcept : m_resources(std::move(list)) {}
 
     resource_type& get()
     {
@@ -60,8 +60,6 @@ public:
     std::size_t size() const noexcept { return m_resources.size(); }
 
     resource_type& operator[](std::size_t index) { return m_resources[index]; }
-
-    operator resource_type() { return get(); }
 
 private:
     resource_list m_resources;

@@ -129,7 +129,7 @@ d3d12_parameter_layout::d3d12_parameter_layout(const pipeline_parameter_layout_d
     }
 
     CD3DX12_ROOT_SIGNATURE_DESC root_signature_desc(
-        1,
+        static_cast<UINT>(root_parameter.size()),
         root_parameter.data(),
         0,
         nullptr,

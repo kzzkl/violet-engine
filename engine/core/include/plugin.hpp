@@ -30,8 +30,8 @@ public:
     bool load(std::string_view path);
     void unload();
 
-    std::string_view get_name() const { return m_name; }
-    version get_version() const { return m_version; }
+    inline std::string_view get_name() const noexcept { return m_name; }
+    inline version get_version() const noexcept { return m_version; }
 
 protected:
     void* find_symbol(std::string_view name);

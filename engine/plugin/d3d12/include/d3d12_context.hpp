@@ -19,16 +19,19 @@ public:
     static void begin_frame() { instance().do_begin_frame(); }
     static void end_frame() { instance().do_end_frame(); }
 
-    static DXGIFactory* factory() { return instance().m_factory.Get(); }
-    static D3D12Device* device() { return instance().m_device.Get(); }
+    inline static DXGIFactory* factory() noexcept { return instance().m_factory.Get(); }
+    inline static D3D12Device* device() noexcept { return instance().m_device.Get(); }
 
-    static d3d12_command_manager* command() { return instance().m_command.get(); }
-    static d3d12_renderer* renderer() { return instance().m_renderer.get(); }
-    static d3d12_resource_manager* resource() { return instance().m_resource.get(); }
+    inline static d3d12_command_manager* command() noexcept { return instance().m_command.get(); }
+    inline static d3d12_renderer* renderer() noexcept { return instance().m_renderer.get(); }
+    inline static d3d12_resource_manager* resource() noexcept
+    {
+        return instance().m_resource.get();
+    }
 
 private:
-    d3d12_context();
-    static d3d12_context& instance();
+    d3d12_context() noexcept;
+    static d3d12_context& instance() noexcept;
 
     bool do_initialize(const context_config& config);
     void do_begin_frame();

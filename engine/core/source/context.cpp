@@ -2,7 +2,7 @@
 
 namespace ash::core
 {
-context::context(const ash::common::dictionary& config) : m_config(config)
+context::context(const dictionary& config) : m_config(config)
 {
     std::size_t num_thread = std::thread::hardware_concurrency();
 
