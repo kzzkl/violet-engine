@@ -1,7 +1,6 @@
 project(ash-ecs)
 
 add_library(${PROJECT_NAME} SHARED
-    ./source/archetype_manager.cpp
     ./source/archetype.cpp
     ./source/component.cpp
     ./source/storage.cpp

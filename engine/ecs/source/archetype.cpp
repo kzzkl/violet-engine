@@ -200,4 +200,9 @@ void* archetype::get_component(std::size_t index, component_index type)
     auto handle = m_storage.begin() + index;
     return handle.get_component(layout.offset, layout.size);
 }
+
+archetype* archetype_manager::create_archetype(const archetype_layout& layout)
+{
+    return (m_archetypes[layout.get_mask()] = std::make_unique<archetype>(layout)).get();
+}
 } // namespace ash::ecs

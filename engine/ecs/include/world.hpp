@@ -1,6 +1,6 @@
 #pragma once
 
-#include "archetype_manager.hpp"
+#include "archetype.hpp"
 #include "ecs_exports.hpp"
 #include "entity.hpp"
 #include "view.hpp"

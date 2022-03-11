@@ -17,7 +17,7 @@ public:
                  iter != archetype->end<Components...>();
                  ++iter)
             {
-                functor(iter.get_entity(), iter.get_component<Components>()...);
+                functor(iter.get_entity(), iter.template get_component<Components>()...);
             }
         }
     }

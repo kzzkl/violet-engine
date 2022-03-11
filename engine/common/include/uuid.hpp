@@ -42,13 +42,13 @@ public:
         }
     }
 
-    inline iterator begin() noexcept { return m_data; }
-    inline iterator end() noexcept { return m_data + size(); }
+    constexpr inline iterator begin() noexcept { return m_data; }
+    constexpr inline iterator end() noexcept { return m_data + size(); }
 
-    inline const_iterator cbegin() const noexcept { return m_data; }
-    inline const_iterator cend() const noexcept { return m_data + size(); }
+    constexpr inline const_iterator cbegin() const noexcept { return m_data; }
+    constexpr inline const_iterator cend() const noexcept { return m_data + size(); }
 
-    static constexpr std::size_t size() noexcept { return 16; }
+    constexpr static inline std::size_t size() noexcept { return 16; }
 
     constexpr bool operator==(const uuid& other) const noexcept
     {
@@ -66,7 +66,7 @@ private:
 
 struct uuid_hash
 {
-    std::size_t operator()(const uuid& key) const noexcept
+    constexpr std::size_t operator()(const uuid& key) const noexcept
     {
         std::size_t hash = 0;
         for (auto iter = key.cbegin(); iter != key.cend(); ++iter)

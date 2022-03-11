@@ -18,19 +18,19 @@ TEST_CASE("storage", "[Storage]")
 
     CHECK(storage.get_chunk_size() == 0);
 
-    storage.insert_end();
+    storage.push_back();
     CHECK(storage.get_entity_size() == 1);
     CHECK(storage.get_chunk_size() == 1);
 
-    storage.insert_end();
+    storage.push_back();
     CHECK(storage.get_entity_size() == 2);
     CHECK(storage.get_chunk_size() == 1);
 
-    storage.insert_end();
+    storage.push_back();
     CHECK(storage.get_entity_size() == 3);
     CHECK(storage.get_chunk_size() == 2);
 
-    storage.erase_end();
+    storage.pop_back();
     CHECK(storage.get_entity_size() == 2);
     CHECK(storage.get_chunk_size() == 1);
 }
