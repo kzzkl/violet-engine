@@ -26,7 +26,7 @@ bool graphics::initialize(const dictionary& config)
     desc.height = rect.height;
     desc.render_concurrency = m_config.get_render_concurrency();
 
-    if (!m_plugin.load("ash-graphics-d3d12.dll") || !m_plugin.initialize(desc))
+    if (!m_plugin.load(m_config.get_plugin()) || !m_plugin.initialize(desc))
         return false;
 
     m_renderer = m_plugin.get_renderer();

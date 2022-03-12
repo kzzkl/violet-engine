@@ -41,6 +41,7 @@ public:
     std::pair<bool, T> find_desc(std::string_view name);
 
     inline std::size_t get_render_concurrency() const noexcept { return m_render_concurrency; }
+    inline std::string_view get_plugin() const noexcept { return m_plugin; }
 
 private:
     void load_vertex_layout(const dictionary& doc);
@@ -48,9 +49,8 @@ private:
     void load_parameter_layout(const dictionary& doc);
     void load_pipeline(const dictionary& doc);
 
-    dictionary merge_config(const dictionary& config);
-
     std::size_t m_render_concurrency;
+    std::string m_plugin;
 
     std::map<std::string, vertex_layout> m_vertex_layout;
     std::map<std::string, parameter> m_parameter;

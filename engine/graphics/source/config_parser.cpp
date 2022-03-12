@@ -23,14 +23,13 @@ config_parser::config_parser()
 
 void config_parser::load(const dictionary& config)
 {
-    dictionary merge = merge_config(config);
+    load_vertex_layout(config);
+    load_parameter(config);
+    load_parameter_layout(config);
+    load_pipeline(config);
 
-    load_vertex_layout(merge);
-    load_parameter(merge);
-    load_parameter_layout(merge);
-    load_pipeline(merge);
-
-    m_render_concurrency = merge["render_concurrency"];
+    m_render_concurrency = config["render_concurrency"];
+    m_plugin = config["plugin"];
 }
 
 template <>
@@ -207,54 +206,5 @@ void config_parser::load_pipeline(const dictionary& doc)
         pipeline.vertex_shader = pipeline_config["vertex_shader"];
         pipeline.pixel_shader = pipeline_config["pixel_shader"];
     }
-}
-
-dictionary config_parser::merge_config(const dictionary& config)
-{
-    dictionary result = config[0];
-    for (std::size_t i = 1; i < config.size(); ++i)
-    {
-        auto vertex_layout = config[i].find("vertex_layout");
-        if (vertex_layout != config[i].end())
-            result["vertex_layout"].insert(
-                result["vertex_layout"].end(),
-                vertex_layout->begin(),
-                vertex_layout->end());
-
-        auto parameter = config[i].find("parameter");
-        if (parameter != config[i].end())
-            result["parameter"].insert(
-                result["parameter"].end(),
-                parameter->begin(),
-                parameter->end());
-
-        auto parameter_layout = config[i].find("parameter_layout");
-        if (parameter_layout != config[i].end())
-            result["parameter_layout"].insert(
-                result["parameter_layout"].end(),
-                parameter_layout->begin(),
-                parameter_layout->end());
-
-        auto pipeline = config[i].find("pipeline");
-        if (pipeline != config[i].end())
-            result["pipeline"].insert(result["pipeline"].end(), pipeline->begin(), pipeline->end());
-
-        auto technique = config[i].find("technique");
-        if (technique != config[i].end())
-            result["technique"].insert(
-                result["technique"].end(),
-                technique->begin(),
-                technique->end());
-
-        auto plugin = config[i].find("plugin");
-        if (plugin != config[i].end())
-            result["plugin"] = *plugin;
-
-        auto render_concurrency = config[i].find("render_concurrency");
-        if (render_concurrency != config[i].end())
-            result["render_concurrency"] = *render_concurrency;
-    }
-
-    return result;
 }
 } // namespace ash::graphics

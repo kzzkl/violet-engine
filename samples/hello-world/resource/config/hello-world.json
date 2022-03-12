@@ -6,8 +6,5 @@
         "title": "你好",
         "width": 1300,
         "height": 800
-    },
-    "core": {
-        "number_of_threads": 8
     }
 }

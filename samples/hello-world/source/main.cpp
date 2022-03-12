@@ -17,7 +17,7 @@ public:
 
     virtual bool initialize(const ash::dictionary& config) override
     {
-        m_title = config[0]["title"];
+        m_title = config["title"];
         return true;
     }
 
@@ -26,17 +26,22 @@ private:
     int m_data;
 };
 
+void test_json()
+{
+    ash::dictionary json1 = R"({"test": {"title":"test app","array":["1","2","3"],"array2":[{"name":"1"}]}})"_json;
+
+    ash::dictionary json2 = R"({"test": {"title":"test app2","array":["1","2","3","4"],"array2":[{"name":"2"}]}})"_json;
+
+    json1.update(json2, true);
+
+    ash::log::info("{}", json1);
+}
+
 int main()
 {
-    int a = 10;
+    // test_json();
+
     ash::log::info("hello world");
-
-    /*ash::dictionary json1 =
-        R"({"test": {"title":"test app"},"window":{"title":"你好", "width":400,
-    "height":200}})"_json; ash::dictionary json2 = R"({"test2": {"title":"test
-    app"},"window":{"title2":"你好", "width":400, "height":200}})"_json;
-
-    json1.insert(json2.begin(), json2.end());*/
 
     application app;
     app.install<test_module>(99);

@@ -10,10 +10,13 @@ submodule::submodule(std::string_view name) noexcept : m_name(name)
 
 context::context(std::string_view config_path)
 {
-    std::size_t num_thread = std::thread::hardware_concurrency();
-    m_task = std::make_unique<ash::task::task_manager>(num_thread);
-
     load_config(config_path);
+
+    std::size_t num_thread = m_config["core"]["threads"];
+    if (num_thread == 0)
+        num_thread = std::thread::hardware_concurrency();
+
+    m_task = std::make_unique<ash::task::task_manager>(num_thread);
 }
 
 void context::initialize_submodule()
@@ -39,7 +42,7 @@ void context::load_config(std::string_view config_path)
             fin >> config;
 
             for (auto iter = config.begin(); iter != config.end(); ++iter)
-                m_config[iter.key()].push_back(iter.value());
+                m_config[iter.key()].update(iter.value());
         }
     }
 
@@ -55,7 +58,7 @@ void context::load_config(std::string_view config_path)
             fin >> config;
 
             for (auto iter = config.begin(); iter != config.end(); ++iter)
-                m_config[iter.key()].push_back(iter.value());
+                m_config[iter.key()].update(iter.value());
         }
     }
 }

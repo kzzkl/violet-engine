@@ -13,11 +13,7 @@ window::window() : submodule("window")
 
 bool window::initialize(const dictionary& config)
 {
-    dictionary merge = dictionary::object();
-    for (auto& c : config)
-        merge.insert(c.cbegin(), c.cend());
-
-    if (!m_impl->initialize(merge["width"], merge["height"], merge["title"]))
+    if (!m_impl->initialize(config["width"], config["height"], config["title"]))
         return false;
 
     get_submodule<task::task_manager>().schedule_before("window tick", [this]() {

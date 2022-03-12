@@ -22,8 +22,6 @@ generate_export_header(${PROJECT_NAME}
     EXPORT_MACRO_NAME GRAPHICS_API
     EXPORT_FILE_NAME ${CMAKE_CURRENT_SOURCE_DIR}/include/graphics_exports.hpp)
 
-install(FILES ./etc/graphics.json DESTINATION bin/config/default)
-
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
