@@ -1,8 +1,9 @@
 #pragma once
 
+#include "config_parser.hpp"
+#include "context.hpp"
 #include "graphics_exports.hpp"
 #include "graphics_plugin.hpp"
-#include "submodule.hpp"
 
 namespace ash::graphics
 {
@@ -17,11 +18,8 @@ public:
     virtual bool initialize(const dictionary& config) override;
 
 private:
-    void initialize_resource();
-
+    bool initialize_resource();
     void render();
-
-    context_config get_config(const dictionary& config);
 
     graphics_plugin m_plugin;
     renderer* m_renderer;
@@ -36,5 +34,7 @@ private:
     pipeline_parameter* m_parameter_material;
     resource* m_mvp;
     resource* m_material;
+
+    config_parser m_config;
 };
 } // namespace ash::graphics

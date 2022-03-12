@@ -2,6 +2,7 @@
 #include "graphics.hpp"
 #include "log.hpp"
 #include "window.hpp"
+#include <filesystem>
 #include <fstream>
 
 using namespace ash::core;
@@ -16,7 +17,7 @@ public:
 
     virtual bool initialize(const ash::dictionary& config) override
     {
-        m_title = config["test"]["title"];
+        m_title = config[0]["title"];
         return true;
     }
 
@@ -30,23 +31,14 @@ int main()
     int a = 10;
     ash::log::info("hello world");
 
-    // Dictionary config = R"({"test": {"title":"test app"},"window":{"title":"你好", "width":400,
-    // "height":200}})"_json;
+    /*ash::dictionary json1 =
+        R"({"test": {"title":"test app"},"window":{"title":"你好", "width":400,
+    "height":200}})"_json; ash::dictionary json2 = R"({"test2": {"title":"test
+    app"},"window":{"title2":"你好", "width":400, "height":200}})"_json;
 
-    ash::dictionary config;
+    json1.insert(json2.begin(), json2.end());*/
 
-    std::fstream fin("resource/hello-world.json");
-    if (fin.is_open())
-    {
-        fin >> config;
-    }
-    else
-    {
-        ash::log::error("can not open config file");
-        return -1;
-    }
-
-    application app(config);
+    application app;
     app.install<test_module>(99);
     app.install<ash::window::window>();
     app.install<ash::graphics::graphics>();

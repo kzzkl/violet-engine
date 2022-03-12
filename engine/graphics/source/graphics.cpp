@@ -1,4 +1,5 @@
 #include "graphics.hpp"
+#include "config_parser.hpp"
 #include "context.hpp"
 #include "log.hpp"
 #include "math.hpp"
@@ -14,7 +15,18 @@ graphics::graphics() noexcept : submodule("graphics")
 
 bool graphics::initialize(const dictionary& config)
 {
-    if (!m_plugin.load("ash-graphics-d3d12.dll") || !m_plugin.initialize(get_config(config)))
+    m_config.load(config);
+
+    auto& window = get_submodule<ash::window::window>();
+
+    context_config desc = {};
+    desc.window_handle = window.get_handle();
+    window::window_rect rect = window.get_rect();
+    desc.width = rect.width;
+    desc.height = rect.height;
+    desc.render_concurrency = m_config.get_render_concurrency();
+
+    if (!m_plugin.load("ash-graphics-d3d12.dll") || !m_plugin.initialize(desc))
         return false;
 
     m_renderer = m_plugin.get_renderer();
@@ -27,7 +39,9 @@ bool graphics::initialize(const dictionary& config)
         log::debug("graphics adapter: {}", info[i].description);
     }
 
-    auto& task = get_context().get_task();
+    initialize_resource();
+
+    auto& task = get_submodule<task::task_manager>();
 
     auto root_task = task.find("root");
     auto render_task = task.schedule("render", [this]() {
@@ -37,21 +51,12 @@ bool graphics::initialize(const dictionary& config)
     });
     render_task->add_dependency(*root_task);
 
-    initialize_resource();
-
     return true;
 }
 
-void graphics::initialize_resource()
+bool graphics::initialize_resource()
 {
     {
-        std::vector<pipeline_parameter_desc> layout(2);
-
-        std::vector<pipeline_parameter_part> parameter_part_object = {
-            pipeline_parameter_part{"object", pipeline_parameter_type::BUFFER}};
-        layout[0].data = parameter_part_object.data();
-        layout[0].size = parameter_part_object.size();
-
         float4x4 mvp = {-1.02709162,
                         0.00000000,
                         2.05418324,
@@ -68,50 +73,39 @@ void graphics::initialize_resource()
                         -0.666666687,
                         -0.333333343,
                         15.0000010};
-
         m_mvp = m_factory->make_upload_buffer(256);
         m_mvp->upload(&mvp, sizeof(mvp));
 
-        m_parameter_object = m_factory->make_pipeline_parameter(layout[0]);
-        m_parameter_object->bind(0, m_mvp);
-
-        std::vector<pipeline_parameter_part> parameter_part_material = {
-            pipeline_parameter_part{"material", pipeline_parameter_type::BUFFER}};
-        layout[1].data = parameter_part_material.data();
-        layout[1].size = parameter_part_material.size();
+        {
+            auto [found, desc] = m_config.find_desc<pipeline_parameter_desc>("object");
+            m_parameter_object = m_factory->make_pipeline_parameter(desc);
+            m_parameter_object->bind(0, m_mvp);
+        }
 
         struct material
         {
             float4 color;
             float4 color2;
         };
-
         material m = {{0.5f, 0.5f, 0.5f, 1.0f}, {0.5f, 0.0f, 0.5f, 1.0f}};
-
         m_material = m_factory->make_upload_buffer(256);
         m_material->upload(&m, sizeof(m));
 
-        m_parameter_material = m_factory->make_pipeline_parameter(layout[1]);
-        m_parameter_material->bind(0, m_material);
+        {
+            auto [found, desc] = m_config.find_desc<pipeline_parameter_desc>("material");
+            m_parameter_material = m_factory->make_pipeline_parameter(desc);
+            m_parameter_material->bind(0, m_material);
+        }
 
-        pipeline_parameter_layout_desc parameter_layout_desc = {};
-        // desc.parameter_layout.data = &package;
-        parameter_layout_desc.size = layout.size();
-        parameter_layout_desc.data = layout.data();
-        m_layout = m_factory->make_pipeline_parameter_layout(parameter_layout_desc);
+        {
+            auto [found, desc] = m_config.find_desc<pipeline_parameter_layout_desc>("base layout");
+            m_layout = m_factory->make_pipeline_parameter_layout(desc);
+        }
     }
 
     {
-        pipeline_desc desc = {};
-        desc.name = "test";
-        std::array<vertex_attribute_desc, 2> attribute = {
-            vertex_attribute_desc{"POSITION", vertex_attribute_type::FLOAT3, 0},
-            vertex_attribute_desc{"COLOR", vertex_attribute_type::FLOAT4, 0}};
-        desc.vertex_layout.data = attribute.data();
-        desc.vertex_layout.size = attribute.size();
+        auto [found, desc] = m_config.find_desc<pipeline_desc>("pass 1");
         desc.parameter_layout = m_layout;
-        desc.vertex_shader = "resource/shader/base.hlsl";
-        desc.pixel_shader = "resource/shader/base.hlsl";
         m_pipeline = m_factory->make_pipeline(desc);
     }
 
@@ -149,6 +143,8 @@ void graphics::initialize_resource()
         m_vertices = m_factory->make_vertex_buffer(vertex_desc);
         m_indices = m_factory->make_index_buffer(index_desc);
     }
+
+    return true;
 }
 
 void graphics::render()
@@ -164,22 +160,5 @@ void graphics::render()
         primitive_topology_type::TRIANGLE_LIST,
         m_renderer->get_back_buffer());
     m_renderer->execute(command);
-}
-
-context_config graphics::get_config(const dictionary& config)
-{
-    context_config result = {};
-
-    auto& window = get_context().get_submodule<ash::window::window>();
-
-    result.window_handle = window.get_handle();
-
-    window::window_rect rect = window.get_rect();
-    result.width = rect.width;
-    result.height = rect.height;
-
-    result.render_concurrency = 4;
-
-    return result;
 }
 } // namespace ash::graphics

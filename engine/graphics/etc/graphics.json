@@ -1,0 +1,11 @@
+{
+    "graphics": {
+        "vertex_layout": [],
+        "parameter": [],
+        "parameter_layout": [],
+        "pipeline": [],
+        "technique": [],
+        "plugin": "",
+        "render_concurrency": 4
+    }
+}

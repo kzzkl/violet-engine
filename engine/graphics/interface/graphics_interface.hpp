@@ -6,10 +6,10 @@
 
 namespace ash::graphics
 {
-template <typename T>
+template <typename T, std::size_t Size>
 struct list
 {
-    const T* data;
+    T data[Size];
     std::size_t size;
 };
 
@@ -35,11 +35,11 @@ enum class pipeline_parameter_type : uint8_t
 
 struct pipeline_parameter_part
 {
-    const char* name;
+    char name[32];
     pipeline_parameter_type type;
 };
 
-using pipeline_parameter_desc = list<pipeline_parameter_part>;
+using pipeline_parameter_desc = list<pipeline_parameter_part, 16>;
 
 class pipeline_parameter
 {
@@ -49,7 +49,7 @@ public:
     virtual void bind(std::size_t index, resource* data) = 0;
 };
 
-using pipeline_parameter_layout_desc = list<pipeline_parameter_desc>;
+using pipeline_parameter_layout_desc = list<pipeline_parameter_desc, 16>;
 
 class pipeline_parameter_layout
 {
@@ -59,7 +59,6 @@ public:
 
 enum class vertex_attribute_type : uint8_t
 {
-    NONE,
     INT,
     INT2,
     INT3,
@@ -76,20 +75,20 @@ enum class vertex_attribute_type : uint8_t
 
 struct vertex_attribute_desc
 {
-    const char* name;
+    char name[32];
     vertex_attribute_type type;
     uint32_t index;
 };
 
 struct pipeline_desc
 {
-    const char* name;
+    char name[32];
 
-    list<vertex_attribute_desc> vertex_layout;
+    list<vertex_attribute_desc, 16> vertex_layout;
     pipeline_parameter_layout* parameter_layout;
 
-    const char* vertex_shader;
-    const char* pixel_shader;
+    char vertex_shader[128];
+    char pixel_shader[128];
 };
 
 class pipeline

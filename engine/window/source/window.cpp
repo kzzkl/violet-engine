@@ -13,27 +13,16 @@ window::window() : submodule("window")
 
 bool window::initialize(const dictionary& config)
 {
-    std::string title = "ash app";
-    uint32_t width = 800;
-    uint32_t height = 600;
+    dictionary merge = dictionary::object();
+    for (auto& c : config)
+        merge.insert(c.cbegin(), c.cend());
 
-    auto iter = config.find("window");
-    if (iter != config.cend())
-    {
-        if (iter->find("title") != iter->cend())
-            title = (*iter)["title"];
-
-        if (iter->find("width") != iter->cend())
-            width = (*iter)["width"];
-
-        if (iter->find("height") != iter->cend())
-            height = (*iter)["height"];
-    }
-
-    if (!m_impl->initialize(width, height, title))
+    if (!m_impl->initialize(merge["width"], merge["height"], merge["title"]))
         return false;
 
-    get_context().get_task().schedule_before("window tick", [this]() { m_impl->tick(); });
+    get_submodule<task::task_manager>().schedule_before("window tick", [this]() {
+        m_impl->tick();
+    });
 
     return true;
 }

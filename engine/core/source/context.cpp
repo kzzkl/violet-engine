@@ -1,25 +1,62 @@
 #include "context.hpp"
+#include <filesystem>
+#include <fstream>
 
 namespace ash::core
 {
-context::context(const dictionary& config) : m_config(config)
+submodule::submodule(std::string_view name) noexcept : m_name(name)
+{
+}
+
+context::context(std::string_view config_path)
 {
     std::size_t num_thread = std::thread::hardware_concurrency();
-
-    auto config_iter = m_config.find("core");
-    if (config_iter != m_config.end())
-    {
-        auto num_thread_iter = config_iter->find("number_of_threads");
-        if (num_thread_iter != config_iter->end())
-            num_thread = *num_thread_iter;
-    }
-
     m_task = std::make_unique<ash::task::task_manager>(num_thread);
+
+    load_config(config_path);
 }
 
 void context::initialize_submodule()
 {
     for (auto& [key, module] : m_modules)
-        module->initialize(m_config);
+        module->initialize(m_config[module->get_name().data()]);
+}
+
+void context::load_config(std::string_view config_path)
+{
+    std::filesystem::path path = config_path;
+    std::filesystem::path default_path = path / "default";
+
+    for (auto iter : std::filesystem::directory_iterator(default_path))
+    {
+        if (iter.is_regular_file() && iter.path().extension() == ".json")
+        {
+            std::ifstream fin(iter.path());
+            if (!fin.is_open())
+                continue;
+
+            dictionary config;
+            fin >> config;
+
+            for (auto iter = config.begin(); iter != config.end(); ++iter)
+                m_config[iter.key()].push_back(iter.value());
+        }
+    }
+
+    for (auto iter : std::filesystem::directory_iterator(path))
+    {
+        if (iter.is_regular_file() && iter.path().extension() == ".json")
+        {
+            std::ifstream fin(iter.path());
+            if (!fin.is_open())
+                continue;
+
+            dictionary config;
+            fin >> config;
+
+            for (auto iter = config.begin(); iter != config.end(); ++iter)
+                m_config[iter.key()].push_back(iter.value());
+        }
+    }
 }
 } // namespace ash::core

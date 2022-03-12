@@ -5,7 +5,7 @@ using namespace ash::task;
 
 namespace ash::core
 {
-application::application(const dictionary& config) : context(config)
+application::application(std::string_view config_path) : context(config_path)
 {
 }
 
@@ -20,7 +20,7 @@ void application::run()
     nanoseconds s(0);
     nanoseconds time_per_frame(1000000000 / 2400);
 
-    auto& task = get_task();
+    auto& task = get_submodule<task::task_manager>();
 
     auto root_task = task.schedule("root", []() {});
     task.schedule_before("begin", [&]() { frame_start = timer::now<steady_clock>(); });
