@@ -1,9 +1,7 @@
 #pragma once
 
 #include "ecs_exports.hpp"
-#include "entity.hpp"
 #include "storage.hpp"
-#include "view.hpp"
 #include <functional>
 #include <tuple>
 #include <unordered_map>
@@ -34,7 +32,7 @@ public:
     using info_list = std::vector<std::pair<component_index, component_info>>;
 
 public:
-    archetype_layout(std::size_t capacity);
+    archetype_layout(std::size_t capacity = storage::CHUNK_SIZE);
 
     template <typename... Components>
     void insert()
@@ -100,23 +98,6 @@ private:
     std::unordered_map<component_index, component_info> m_layout;
 };
 
-class ECS_API redirector
-{
-public:
-    void map(entity entity, std::size_t index);
-    void unmap(entity entity);
-
-    entity get_enitiy(std::size_t index) const;
-    std::size_t get_index(entity entity) const;
-
-    bool has_entity(entity entity) const;
-    std::size_t size() const;
-
-private:
-    std::unordered_map<entity, std::size_t> m_redirector;
-    std::vector<entity> m_entities;
-};
-
 class archetype;
 struct ECS_API archetype_raw_handle
 {
@@ -140,8 +121,6 @@ public:
     {
         return *std::get<Component*>(m_components);
     }
-
-    entity get_entity() const;
 
     self_type operator+(std::size_t offset) const
     {
@@ -187,13 +166,11 @@ public:
 public:
     archetype(const archetype_layout& layout);
 
-    raw_handle add(entity entity);
-    void remove(entity entity);
-    void move(entity entity, archetype& target);
+    std::size_t add();
+    void remove(std::size_t index);
+    void move(std::size_t index, archetype& target);
 
-    bool has_entity(entity entity) const { return m_redirector.has_entity(entity); }
-    entity get_entity(std::size_t index) const { return m_redirector.get_enitiy(index); }
-    std::size_t size() const { return m_redirector.size(); }
+    inline std::size_t size() const noexcept { return m_storage.size(); }
     const archetype_layout& get_layout() const { return m_layout; }
 
     template <typename... Components>
@@ -207,8 +184,6 @@ public:
     {
         return handle<Components...>(this, size());
     }
-
-    raw_handle find(entity entity) { return raw_handle{this, m_redirector.get_index(entity)}; }
 
 private:
     void construct(storage::handle where);
@@ -224,16 +199,9 @@ private:
         return static_cast<Component*>(get_component(index, component_trait<Component>::index()));
     }
 
-    redirector m_redirector;
     archetype_layout m_layout;
     storage m_storage;
 };
-
-template <typename... Components>
-entity archetype_handle<Components...>::get_entity() const
-{
-    return m_raw.owner->get_entity(m_raw.index);
-}
 
 template <typename... Components>
 void archetype_handle<Components...>::load()
@@ -253,118 +221,4 @@ void archetype_handle<Components...>::step(std::size_t offset)
 
     m_raw.index = target;
 }
-
-template <typename... Components>
-using view = base_view<archetype, Components...>;
-
-class ECS_API archetype_manager
-{
-public:
-    archetype_manager() noexcept = default;
-    archetype_manager(const archetype_manager&) = delete;
-    archetype_manager& operator=(const archetype_manager&) = delete;
-
-    template <typename... Components>
-    archetype::handle<Components...> insert_entity(entity entity)
-    {
-        m_archetype_map.resize(entity + 1);
-
-        auto iter = m_archetypes.find(component_list<Components...>::get_mask());
-        if (iter == m_archetypes.cend())
-        {
-            archetype* archetype = create_archetype<Components...>();
-            m_archetype_map[entity] = archetype;
-            return archetype->add(entity);
-        }
-        else
-        {
-            m_archetype_map[entity] = iter->second.get();
-            return iter->second->add(entity);
-        }
-    }
-
-    template <typename... Components>
-    void insert_component(entity entity)
-    {
-        archetype* source = m_archetype_map[entity];
-
-        component_mask mask =
-            source->get_layout().get_mask() | component_list<Components...>::get_mask();
-
-        auto iter = m_archetypes.find(mask);
-        if (iter == m_archetypes.cend())
-        {
-            archetype_layout layout = source->get_layout();
-            layout.insert<Components...>();
-
-            archetype* target = create_archetype(layout);
-            m_archetype_map[entity] = target;
-            source->move(entity, *target);
-        }
-        else
-        {
-            m_archetype_map[entity] = iter->second.get();
-            source->move(entity, *iter->second);
-        }
-    }
-
-    template <typename... Components>
-    void erase_component(entity entity)
-    {
-        archetype* source = m_archetype_map[entity];
-
-        component_mask mask =
-            source->get_layout().get_mask() ^ component_list<Components...>::get_mask();
-        auto iter = m_archetypes.find(mask);
-        if (iter == m_archetypes.cend())
-        {
-            archetype_layout layout = source->get_layout();
-            layout.erase<Components...>();
-
-            archetype* target = create_archetype(layout);
-            m_archetype_map[entity] = target;
-            source->move(entity, *target);
-        }
-        else
-        {
-            m_archetype_map[entity] = iter->second.get();
-            source->move(entity, *iter->second);
-        }
-    }
-
-    template <typename... Components>
-    archetype::handle<Components...> get_component(entity entity)
-    {
-        return m_archetype_map[entity]->find(entity);
-    }
-
-    template <typename... Components>
-    view<Components...> get_view()
-    {
-        view<Components...> result;
-        component_mask viewMask = component_list<Components...>::get_mask();
-
-        for (auto& [mask, archetype] : m_archetypes)
-        {
-            if ((viewMask & mask) == viewMask)
-                result.insert(archetype.get());
-        }
-
-        return result;
-    }
-
-private:
-    template <typename... Components>
-    archetype* create_archetype()
-    {
-        archetype_layout layout(storage::CHUNK_SIZE);
-        layout.insert<Components...>();
-        return create_archetype(layout);
-    }
-
-    archetype* create_archetype(const archetype_layout& layout);
-
-    std::vector<archetype*> m_archetype_map;
-    std::unordered_map<component_mask, std::unique_ptr<archetype>> m_archetypes;
-};
 } // namespace ash::ecs

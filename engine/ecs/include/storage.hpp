@@ -66,6 +66,8 @@ public:
     inline handle begin() noexcept { return handle(this, 0); }
     inline handle end() noexcept { return handle(this, m_size); }
 
+    inline std::size_t size() const noexcept { return m_size; }
+
 private:
     storage(const storage&) = delete;
     storage& operator=(const storage&) = delete;

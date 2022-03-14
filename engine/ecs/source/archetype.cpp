@@ -10,6 +10,14 @@ archetype_layout::archetype_layout(std::size_t capacity) : m_capacity(capacity)
 
 void archetype_layout::rebuild(info_list& list)
 {
+    if (list.empty())
+    {
+        m_mask.reset();
+        m_entity_per_chunk = 0;
+        m_layout.clear();
+        return;
+    }
+
     std::sort(list.begin(), list.end(), [](const auto& a, const auto& b) {
         return a.second.layout.align == b.second.layout.align
                    ? a.first < b.first
@@ -48,68 +56,22 @@ archetype_layout::info_list archetype_layout::get_info_list() const
     return result;
 }
 
-void redirector::map(entity entity, std::size_t index)
-{
-    ASH_ASSERT(has_entity(entity) == false);
-
-    if (index >= m_entities.size())
-        m_entities.resize(index + 1, INVALID_ENTITY);
-
-    m_redirector[entity] = index;
-    m_entities[index] = entity;
-}
-
-void redirector::unmap(entity entity)
-{
-    ASH_ASSERT(has_entity(entity) == true);
-
-    auto iter = m_redirector.find(entity);
-    m_entities[iter->second] = INVALID_ENTITY;
-    m_redirector.erase(iter);
-}
-
-entity redirector::get_enitiy(std::size_t index) const
-{
-    return m_entities[index];
-}
-
-std::size_t redirector::get_index(entity entity) const
-{
-    ASH_ASSERT(has_entity(entity));
-    return m_redirector.find(entity)->second;
-}
-
-bool redirector::has_entity(entity entity) const
-{
-    return m_redirector.find(entity) != m_redirector.cend();
-}
-
-std::size_t redirector::size() const
-{
-    return m_redirector.size();
-}
-
 archetype::archetype(const archetype_layout& layout)
     : m_layout(layout),
       m_storage(layout.get_entity_per_chunk())
 {
 }
 
-archetype::raw_handle archetype::add(entity entity)
+std::size_t archetype::add()
 {
     storage::handle handle = m_storage.push_back();
     construct(handle);
 
-    std::size_t index = handle - m_storage.begin();
-    m_redirector.map(entity, index);
-
-    return raw_handle{this, index};
+    return handle - m_storage.begin();
 }
 
-void archetype::remove(entity entity)
+void archetype::remove(std::size_t index)
 {
-    std::size_t index = m_redirector.get_index(entity);
-
     auto handle = m_storage.begin() + index;
     auto back = m_storage.end() - 1;
 
@@ -119,30 +81,27 @@ void archetype::remove(entity entity)
     destruct(back);
 
     m_storage.pop_back();
-    m_redirector.unmap(entity);
 }
 
-void archetype::move(entity entity, archetype& target)
+void archetype::move(std::size_t index, archetype& target)
 {
     component_mask mask = m_layout.get_mask() & target.m_layout.get_mask();
 
-    auto targethandle = target.m_storage.push_back();
-    auto sourcehandle = m_storage.begin() + m_redirector.get_index(entity);
-
-    target.m_redirector.map(entity, targethandle - target.m_storage.begin());
+    auto target_handle = target.m_storage.push_back();
+    auto source_handle = m_storage.begin() + index;
 
     for (auto& [type, component] : m_layout)
     {
         if (mask.test(type))
         {
             component.functor.moveConstruct(
-                sourcehandle.get_component(component.layout.offset, component.layout.size),
-                targethandle.get_component(component.layout.offset, component.layout.size));
+                source_handle.get_component(component.layout.offset, component.layout.size),
+                target_handle.get_component(component.layout.offset, component.layout.size));
         }
         else
         {
             component.functor.destruct(
-                sourcehandle.get_component(component.layout.offset, component.layout.size));
+                source_handle.get_component(component.layout.offset, component.layout.size));
         }
     }
 
@@ -151,7 +110,7 @@ void archetype::move(entity entity, archetype& target)
         if (!mask.test(type))
         {
             component.functor.construct(
-                targethandle.get_component(component.layout.offset, component.layout.size));
+                target_handle.get_component(component.layout.offset, component.layout.size));
         }
     }
 }
@@ -199,10 +158,5 @@ void* archetype::get_component(std::size_t index, component_index type)
     auto& layout = m_layout[type].layout;
     auto handle = m_storage.begin() + index;
     return handle.get_component(layout.offset, layout.size);
-}
-
-archetype* archetype_manager::create_archetype(const archetype_layout& layout)
-{
-    return (m_archetypes[layout.get_mask()] = std::make_unique<archetype>(layout)).get();
 }
 } // namespace ash::ecs

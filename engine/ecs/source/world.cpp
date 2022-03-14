@@ -2,22 +2,12 @@
 
 namespace ash::ecs
 {
-world::world() noexcept : m_nextentity(0)
+world::world() noexcept
 {
 }
 
-entity world::allocate_entity()
+archetype* world::create_archetype(const archetype_layout& layout)
 {
-    entity result;
-    if (m_free_entity.empty())
-    {
-        result = m_nextentity++;
-    }
-    else
-    {
-        result = m_free_entity.front();
-        m_free_entity.pop();
-    }
-    return result;
+    return (m_archetypes[layout.get_mask()] = std::make_unique<archetype>(layout)).get();
 }
 } // namespace ash::ecs
