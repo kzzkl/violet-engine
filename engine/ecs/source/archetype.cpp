@@ -8,52 +8,37 @@ archetype_layout::archetype_layout(std::size_t capacity) : m_capacity(capacity)
 {
 }
 
-void archetype_layout::rebuild(info_list& list)
+void archetype_layout::rebuild()
 {
+    m_entity_per_chunk = 0;
+
+    info_list list;
+    for (auto& [type, info] : m_layout)
+        list.push_back(std::make_pair(type, info));
+
     if (list.empty())
-    {
-        m_mask.reset();
-        m_entity_per_chunk = 0;
-        m_layout.clear();
         return;
-    }
 
     std::sort(list.begin(), list.end(), [](const auto& a, const auto& b) {
-        return a.second.layout.align == b.second.layout.align
+        return a.second.data->align == b.second.data->align
                    ? a.first < b.first
-                   : a.second.layout.align > b.second.layout.align;
+                   : a.second.data->align > b.second.data->align;
     });
-
-    auto duplicate =
-        std::unique(list.begin(), list.end(), [](const auto& a, const auto& b) -> bool {
-            return a.first == b.first;
-        });
-    list.erase(duplicate, list.end());
 
     std::size_t entitySize = 0;
     for (const auto& [type, info] : list)
-        entitySize += info.layout.size;
+        entitySize += info.data->size;
 
     m_entity_per_chunk = m_capacity / entitySize;
-    m_layout.clear();
 
     std::size_t offset = 0;
     for (auto& [type, info] : list)
     {
-        info.layout.offset = offset;
+        info.offset = offset;
         m_layout[type] = info;
 
-        offset += info.layout.size * m_entity_per_chunk;
+        offset += info.data->size * m_entity_per_chunk;
     }
-}
-
-archetype_layout::info_list archetype_layout::get_info_list() const
-{
-    info_list result;
-    for (auto& [type, info] : m_layout)
-        result.emplace_back(std::make_pair(type, info));
-
-    return result;
 }
 
 archetype::archetype(const archetype_layout& layout)
@@ -62,12 +47,10 @@ archetype::archetype(const archetype_layout& layout)
 {
 }
 
-std::size_t archetype::add()
+void archetype::add()
 {
     storage::handle handle = m_storage.push_back();
     construct(handle);
-
-    return handle - m_storage.begin();
 }
 
 void archetype::remove(std::size_t index)
@@ -85,42 +68,39 @@ void archetype::remove(std::size_t index)
 
 void archetype::move(std::size_t index, archetype& target)
 {
-    component_mask mask = m_layout.get_mask() & target.m_layout.get_mask();
-
     auto target_handle = target.m_storage.push_back();
     auto source_handle = m_storage.begin() + index;
 
-    for (auto& [type, component] : m_layout)
+    auto& target_layout = target.m_layout;
+    auto& source_layout = m_layout;
+
+    for (auto& [type, component] : source_layout)
     {
-        if (mask.test(type))
+        if (target_layout.find(type) != target_layout.end())
         {
-            component.functor.moveConstruct(
-                source_handle.get_component(component.layout.offset, component.layout.size),
-                target_handle.get_component(component.layout.offset, component.layout.size));
-        }
-        else
-        {
-            component.functor.destruct(
-                source_handle.get_component(component.layout.offset, component.layout.size));
+            component.data->move_construct(
+                source_handle.get_component(component.offset, component.data->size),
+                target_handle.get_component(component.offset, component.data->size));
         }
     }
 
-    for (auto& [type, component] : target.m_layout)
+    for (auto [type, component] : target_layout)
     {
-        if (!mask.test(type))
+        if (source_layout.find(type) == source_layout.end())
         {
-            component.functor.construct(
-                target_handle.get_component(component.layout.offset, component.layout.size));
+            component.data->construct(
+                target_handle.get_component(component.offset, component.data->size));
         }
     }
+
+    remove(index);
 }
 
 void archetype::construct(storage::handle where)
 {
     for (auto& [type, component] : m_layout)
     {
-        component.functor.construct(
-            where.get_component(component.layout.offset, component.layout.size));
+        component.data->construct(where.get_component(component.offset, component.data->size));
     }
 }
 
@@ -128,9 +108,9 @@ void archetype::move_construct(storage::handle source, storage::handle target)
 {
     for (auto& [type, component] : m_layout)
     {
-        component.functor.moveConstruct(
-            source.get_component(component.layout.offset, component.layout.size),
-            target.get_component(component.layout.offset, component.layout.size));
+        component.data->move_construct(
+            source.get_component(component.offset, component.data->size),
+            target.get_component(component.offset, component.data->size));
     }
 }
 
@@ -138,8 +118,7 @@ void archetype::destruct(storage::handle where)
 {
     for (auto& [type, component] : m_layout)
     {
-        component.functor.destruct(
-            where.get_component(component.layout.offset, component.layout.size));
+        component.data->destruct(where.get_component(component.offset, component.data->size));
     }
 }
 
@@ -147,16 +126,16 @@ void archetype::swap(storage::handle a, storage::handle b)
 {
     for (auto& [type, component] : m_layout)
     {
-        component.functor.swap(
-            a.get_component(component.layout.offset, component.layout.size),
-            b.get_component(component.layout.offset, component.layout.size));
+        component.data->swap(
+            a.get_component(component.offset, component.data->size),
+            b.get_component(component.offset, component.data->size));
     }
 }
 
-void* archetype::get_component(std::size_t index, component_index type)
+void* archetype::get_component(std::size_t index, component_id type)
 {
-    auto& layout = m_layout[type].layout;
+    auto& layout = m_layout[type];
     auto handle = m_storage.begin() + index;
-    return handle.get_component(layout.offset, layout.size);
+    return handle.get_component(layout.offset, layout.data->size);
 }
 } // namespace ash::ecs

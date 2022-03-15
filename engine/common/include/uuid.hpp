@@ -42,6 +42,15 @@ public:
         }
     }
 
+    constexpr inline std::size_t hash() const noexcept
+    {
+        std::size_t hash = 0;
+        for (auto iter = cbegin(); iter != cend(); ++iter)
+            hash ^= static_cast<std::size_t>(*iter) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+
+        return hash;
+    }
+
     constexpr inline iterator begin() noexcept { return m_data; }
     constexpr inline iterator end() noexcept { return m_data + size(); }
 
@@ -66,13 +75,6 @@ private:
 
 struct uuid_hash
 {
-    constexpr std::size_t operator()(const uuid& key) const noexcept
-    {
-        std::size_t hash = 0;
-        for (auto iter = key.cbegin(); iter != key.cend(); ++iter)
-            hash ^= static_cast<std::size_t>(*iter) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
-
-        return hash;
-    }
+    constexpr std::size_t operator()(const uuid& key) const noexcept { return key.hash(); }
 };
 } // namespace ash
