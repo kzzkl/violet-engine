@@ -28,11 +28,24 @@ TEST_CASE("new", "[new]")
     int& i = w.get_component<int>(e);
     i = 99;
 
+    auto& h = w.get_component<hierarchies>(e);
+    h.children.push_back(1);
+    h.children.push_back(2);
+    h.children.push_back(3);
+
+    void* hp = &h;
+
     w.add<char>(e);
     w.get_component<char>(e) = 9;
+
+    auto& h2 = w.get_component<hierarchies>(e);
+    void* h2p = &h2;
 
     char c = w.get_component<char>(e);
     int ii = w.get_component<int>(e);
 
     w.remove<int, char>(e);
+
+    auto& h3 = w.get_component<hierarchies>(e);
+    void* h3p = &h3;
 }

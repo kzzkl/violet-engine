@@ -2,6 +2,7 @@
 
 #include "archetype.hpp"
 #include "entity.hpp"
+#include "hierarchies.hpp"
 #include "view.hpp"
 #include <atomic>
 #include <queue>
@@ -90,7 +91,7 @@ private:
     };
 
 public:
-    world() noexcept {}
+    world() { register_component<hierarchies>(); }
 
     template <typename Component>
     void register_component()
@@ -130,7 +131,7 @@ public:
         auto& record = m_entity_record[entity];
         if (record.archetype == nullptr)
         {
-            mask_archetype* archetype = get_or_create_archetype<Components...>();
+            mask_archetype* archetype = get_or_create_archetype<hierarchies, Components...>();
             archetype->add(&record);
         }
         else
