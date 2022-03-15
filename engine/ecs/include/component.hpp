@@ -1,6 +1,5 @@
 #pragma once
 
-#include "ecs_exports.hpp"
 #include "uuid.hpp"
 #include <bitset>
 #include <cstdint>

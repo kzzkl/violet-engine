@@ -1,7 +1,6 @@
 #pragma once
 
 #include "archetype.hpp"
-#include "ecs_exports.hpp"
 #include "entity.hpp"
 #include "view.hpp"
 #include <atomic>
@@ -21,16 +20,50 @@ struct entity_record
     std::size_t index;
 };
 
-class ECS_API mask_archetype : public archetype
+class mask_archetype : public archetype
 {
 public:
     mask_archetype(
         const archetype_layout& layout,
-        const std::unordered_map<component_id, component_index>& index_map);
+        const std::unordered_map<component_id, component_index>& index_map)
+        : archetype(layout)
+    {
+        for (const auto& [id, info] : layout)
+            m_mask.set(index_map.at(id), true);
+    }
 
-    void add(entity_record* record);
-    void remove(std::size_t index);
-    void move(std::size_t index, mask_archetype& target);
+    void add(entity_record* record)
+    {
+        archetype::add();
+
+        record->archetype = this;
+        record->index = m_record.size();
+
+        m_record.push_back(record);
+    }
+
+    void remove(std::size_t index)
+    {
+        archetype::remove(index);
+
+        std::swap(m_record[index], m_record.back());
+        m_record[index]->index = index;
+        m_record.pop_back();
+    }
+
+    void move(std::size_t index, mask_archetype& target)
+    {
+        archetype::move(index, target);
+
+        entity_record* target_record = m_record[index];
+        target_record->archetype = &target;
+        target_record->index = target.m_record.size();
+        target.m_record.push_back(target_record);
+
+        std::swap(m_record[index], m_record.back());
+        m_record[index]->index = index;
+        m_record.pop_back();
+    }
 
     const component_mask& get_mask() const noexcept { return m_mask; }
 
@@ -39,7 +72,7 @@ private:
     std::vector<entity_record*> m_record;
 };
 
-class ECS_API world
+class world
 {
 private:
     template <typename T>
@@ -57,7 +90,7 @@ private:
     };
 
 public:
-    world() noexcept;
+    world() noexcept {}
 
     template <typename Component>
     void register_component()
@@ -189,7 +222,11 @@ private:
         return create_archetype(layout);
     }
 
-    mask_archetype* create_archetype(const archetype_layout& layout);
+    mask_archetype* create_archetype(const archetype_layout& layout)
+    {
+        auto result = std::make_unique<mask_archetype>(layout, m_component_index);
+        return (m_archetypes[result->get_mask()] = std::move(result)).get();
+    }
 
     std::unordered_map<entity, entity_record> m_entity_record;
     std::unordered_map<component_mask, std::unique_ptr<mask_archetype>> m_archetypes;
