@@ -6,6 +6,7 @@
 #include "log.hpp"
 #include "task_manager.hpp"
 #include "uuid.hpp"
+#include "world.hpp"
 #include <memory>
 #include <string_view>
 #include <type_traits>
@@ -64,6 +65,12 @@ public:
         return *m_task;
     }
 
+    template <>
+    ash::ecs::ecs& get_submodule<ash::ecs::ecs>()
+    {
+        return *m_world;
+    }
+
 protected:
     template <derived_from_submodule T, typename... Args>
     void install_submodule(Args&&... args)
@@ -91,6 +98,7 @@ private:
 
     module_list m_modules;
     std::unique_ptr<ash::task::task_manager> m_task;
+    std::unique_ptr<ash::ecs::ecs> m_world;
 };
 
 template <typename T>

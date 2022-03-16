@@ -88,30 +88,32 @@ private:
 public:
     world() { register_component<hierarchy>(); }
 
-    template <typename Component>
+    template <typename... Components>
     void register_component()
     {
-        auto iter = m_component_index.find(component_id_v<Component>);
-        if (iter != m_component_index.end())
-            return;
+        component_list<Components...>::each([this]<typename T>() {
+            auto iter = m_component_index.find(component_id_v<T>);
+            if (iter != m_component_index.end())
+                return;
 
-        component_index index = m_component_index_generator.new_index();
-        m_component_index[component_id_v<Component>] = index;
+            component_index index = m_component_index_generator.new_index();
+            m_component_index[component_id_v<T>] = index;
 
-        auto info = std::make_unique<component_info>();
-        info->size = sizeof(Component);
-        info->align = alignof(Component);
-        info->construct = [](void* target) { new (target) Component(); };
-        info->move_construct = [](void* source, void* target) {
-            new (target) Component(std::move(*static_cast<Component*>(source)));
-        };
-        info->destruct = [](void* target) { static_cast<Component*>(target)->~Component(); };
-        info->swap = [](void* a, void* b) {
-            std::swap(*static_cast<Component*>(a), *static_cast<Component*>(b));
-        };
-        if (m_component_info.size() <= index)
-            m_component_info.resize(index + 1);
-        m_component_info[index] = std::move(info);
+            auto info = std::make_unique<component_info>();
+            info->size = sizeof(T);
+            info->align = alignof(T);
+            info->construct = [](void* target) { new (target) T(); };
+            info->move_construct = [](void* source, void* target) {
+                new (target) T(std::move(*static_cast<T*>(source)));
+            };
+            info->destruct = [](void* target) { static_cast<T*>(target)->~T(); };
+            info->swap = [](void* a, void* b) {
+                std::swap(*static_cast<T*>(a), *static_cast<T*>(b));
+            };
+            if (m_component_info.size() <= index)
+                m_component_info.resize(index + 1);
+            m_component_info[index] = std::move(info);
+        });
     }
 
     entity_id create() { return m_entity_index_generator.new_index(); }

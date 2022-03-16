@@ -42,16 +42,47 @@ bool graphics::initialize(const dictionary& config)
     initialize_resource();
 
     auto& task = get_submodule<task::task_manager>();
-
     auto root_task = task.find("root");
     auto render_task = task.schedule("render", [this]() {
+        m_view->each([](visual& visual, mesh& mesh, material& material) {
+            if (visual.group != nullptr)
+                visual.group->add(&mesh);
+        });
+
         m_renderer->begin_frame();
         render();
         m_renderer->end_frame();
+
+        for (auto& [name, group] : m_render_group)
+            group->clear();
     });
     render_task->add_dependency(*root_task);
 
+    auto& world = get_submodule<ecs::ecs>();
+    world.register_component<visual, mesh, material>();
+    m_view = world.create_view<visual, mesh, material>();
+
     return true;
+}
+
+render_group* graphics::get_group(std::string_view name)
+{
+    auto iter = m_render_group.find(name.data());
+    if (iter == m_render_group.end())
+    {
+        auto [found, desc] = m_config.find_desc<pipeline_desc>(name);
+        if (!found)
+            return nullptr;
+        desc.parameter_layout = m_layout;
+
+        m_render_group[name.data()] =
+            std::make_unique<render_group>(nullptr, m_factory->make_pipeline(desc));
+        return m_render_group[name.data()].get();
+    }
+    else
+    {
+        return iter->second.get();
+    }
 }
 
 bool graphics::initialize_resource()
@@ -103,13 +134,7 @@ bool graphics::initialize_resource()
         }
     }
 
-    {
-        auto [found, desc] = m_config.find_desc<pipeline_desc>("pass 1");
-        desc.parameter_layout = m_layout;
-        m_pipeline = m_factory->make_pipeline(desc);
-    }
-
-    {
+    /*{
         struct vertex
         {
             float3 position;
@@ -142,7 +167,7 @@ bool graphics::initialize_resource()
 
         m_vertices = m_factory->make_vertex_buffer(vertex_desc);
         m_indices = m_factory->make_index_buffer(index_desc);
-    }
+    }*/
 
     return true;
 }
@@ -150,7 +175,22 @@ bool graphics::initialize_resource()
 void graphics::render()
 {
     auto command = m_renderer->allocate_command();
-    command->set_pipeline(m_pipeline);
+    for (auto& [name, group] : m_render_group)
+    {
+        command->set_pipeline(group->get_pipeline());
+        command->set_layout(m_layout);
+        command->set_parameter(0, m_parameter_object);
+
+        for (mesh* m : *group)
+        {
+            command->draw(
+                m->vertex_buffer.get(),
+                m->index_buffer.get(),
+                primitive_topology_type::TRIANGLE_LIST,
+                m_renderer->get_back_buffer());
+        }
+    }
+    /*command->set_pipeline(m_pipeline);
     command->set_layout(m_layout);
     command->set_parameter(0, m_parameter_object);
     command->set_parameter(1, m_parameter_material);
@@ -158,7 +198,7 @@ void graphics::render()
         m_vertices,
         m_indices,
         primitive_topology_type::TRIANGLE_LIST,
-        m_renderer->get_back_buffer());
+        m_renderer->get_back_buffer());*/
     m_renderer->execute(command);
 }
 } // namespace ash::graphics

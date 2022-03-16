@@ -1,0 +1,89 @@
+{
+    "graphics": {
+        "vertex_layout": [
+            {
+                "name": "pmx",
+                "attribute": [
+                    {
+                        "name": "POSITION",
+                        "type": "float3",
+                        "index": 0
+                    },
+                    {
+                        "name": "NORMAL",
+                        "type": "float3",
+                        "index": 0
+                    },
+                    {
+                        "name": "UV",
+                        "type": "float2",
+                        "index": 0
+                    },
+                    {
+                        "name": "BONE",
+                        "type": "UINT4"
+                    },
+                    {
+                        "name": "WEIGHT",
+                        "type": "float3"
+                    }
+                ]
+            }
+        ],
+        "parameter": [
+            {
+                "name": "object",
+                "type": "buffer"
+            },
+            {
+                "name": "material",
+                "type": {
+                    "material_property": "buffer"
+                }
+            }
+        ],
+        "parameter_layout": [
+            {
+                "name": "base layout",
+                "parameter": [
+                    "object",
+                    "material"
+                ]
+            }
+        ],
+        "pipeline": [
+            {
+                "name": "mmd",
+                "vertex_layout": "pmx",
+                "parameter_layout": "base layout",
+                "vertex_shader": "resource/shader/base.hlsl",
+                "pixel_shader": "resource/shader/base.hlsl"
+            }
+        ],
+        "technique": [
+            {
+                "name": "",
+                "render_target": {
+                    "shadow_mapping": "texture",
+                    "render_target": "texture"
+                },
+                "pass": [
+                    {
+                        "name": "pass 1",
+                        "in": {
+                            "object": ""
+                        },
+                        "out": "shadow_mapping"
+                    },
+                    {
+                        "name": "pass 2",
+                        "in": [
+                            "object"
+                        ],
+                        "out": "render_target"
+                    }
+                ]
+            }
+        ]
+    }
+}

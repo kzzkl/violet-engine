@@ -25,7 +25,7 @@ void application::run()
     auto root_task = task.schedule("root", []() {});
     task.schedule_before("begin", [&]() { frame_start = timer::now<steady_clock>(); });
 
-    initialize_submodule();
+    // initialize_submodule();
 
     task.schedule_after("end", [&]() {
         frame_end = timer::now<steady_clock>();

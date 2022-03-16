@@ -202,7 +202,7 @@ void config_parser::load_pipeline(const dictionary& doc)
     {
         pipeline& pipeline = m_pipeline[pipeline_config["name"]];
         pipeline.vertex_layout = pipeline_config["vertex_layout"];
-        pipeline.parameter_layout = pipeline_config["vertex_layout"];
+        pipeline.parameter_layout = pipeline_config["parameter_layout"];
         pipeline.vertex_shader = pipeline_config["vertex_shader"];
         pipeline.pixel_shader = pipeline_config["pixel_shader"];
     }
