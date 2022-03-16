@@ -17,13 +17,9 @@ context::context(std::string_view config_path)
         num_thread = std::thread::hardware_concurrency();
 
     m_task = std::make_unique<ash::task::task_manager>(num_thread);
-    m_world = std::make_unique<ash::ecs::world>();
-}
+    m_task->schedule("root", []() {});
 
-void context::initialize_submodule()
-{
-    // for (auto& [key, module] : m_modules)
-    //     module->initialize(m_config[module->get_name().data()]);
+    m_world = std::make_unique<ash::ecs::world>();
 }
 
 void context::load_config(std::string_view config_path)

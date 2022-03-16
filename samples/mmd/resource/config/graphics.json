@@ -21,11 +21,13 @@
                     },
                     {
                         "name": "BONE",
-                        "type": "UINT4"
+                        "type": "UINT4",
+                        "index": 0
                     },
                     {
                         "name": "WEIGHT",
-                        "type": "float3"
+                        "type": "float3",
+                        "index": 0
                     }
                 ]
             }

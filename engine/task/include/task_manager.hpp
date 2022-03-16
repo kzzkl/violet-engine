@@ -36,27 +36,14 @@ public:
     task_manager(std::size_t num_thread);
 
     template <typename Callable>
-    handle schedule(std::string_view name, Callable callable)
+    handle schedule(std::string_view name, Callable callable, task_type type = task_type::NONE)
     {
-        return do_schedule<task_wrapper<Callable>>(name, callable);
+        return do_schedule<task_wrapper<Callable>>(name, type, callable);
     }
 
-    template <typename Callable>
-    void schedule_before(std::string_view name, Callable callable)
-    {
-        std::unique_ptr<task> task = std::make_unique<task_wrapper<Callable>>(name, callable);
-        m_before_tasks.push_back(std::move(task));
-    }
+    void execute(handle task);
 
-    template <typename Callable>
-    void schedule_after(std::string_view name, Callable callable)
-    {
-        std::unique_ptr<task> task = std::make_unique<task_wrapper<Callable>>(name, callable);
-        m_after_tasks.push_back(std::move(task));
-    }
-
-    void run(handle root);
-
+    void run();
     void stop();
 
     handle find(std::string_view name);
@@ -75,13 +62,9 @@ private:
         return result;
     }
 
-    std::vector<std::unique_ptr<task>> m_before_tasks;
-    std::vector<std::unique_ptr<task>> m_after_tasks;
     std::unordered_map<std::string, std::unique_ptr<task>> m_tasks;
 
-    task_queue m_queue;
+    task_queue_group m_queues;
     thread_pool m_thread_pool;
-
-    std::atomic<bool> m_stop;
 };
 } // namespace ash::task

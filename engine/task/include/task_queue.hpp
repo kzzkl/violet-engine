@@ -2,6 +2,7 @@
 
 #include "lock_free_queue.hpp"
 #include "task.hpp"
+#include <array>
 #include <condition_variable>
 #include <functional>
 #include <future>
@@ -11,6 +12,8 @@ namespace ash::task
 class task_queue
 {
 public:
+    task_queue();
+
     /**
      * @brief Remove the task from the task queue. Returns the task at the head of the queue when
      * there are tasks in the queue, otherwise returns nullptr.
@@ -26,15 +29,6 @@ public:
      */
     void push(task* t);
 
-    std::future<void> push_root_task(task* t);
-
-    /**
-     * @brief Returns whether the task queue is empty.
-     *
-     * @return Queue is empty
-     */
-    bool empty() const;
-
     /**
      * @brief Wake up the internal condition variable.
      *
@@ -43,7 +37,7 @@ public:
      */
     void notify();
 
-    void notify_task_completion(bool force = false);
+    void wait_task();
 
     /**
      * @brief Block until a new task is added or an exit condition is met.
@@ -58,7 +52,25 @@ private:
     std::condition_variable m_cv;
     std::mutex m_lock;
 
-    std::atomic<uint32_t> m_remaining_tasks_count;
+    std::atomic<std::size_t> m_size;
+};
+
+class task_queue_group
+{
+public:
+    auto begin() noexcept { return m_queues.begin(); }
+    auto end() noexcept { return m_queues.end(); }
+
+    std::future<void> execute(task* t, std::size_t task_count);
+    void notify_task_completion(bool force = false);
+
+    task_queue& get_queue(task_type type) { return m_queues[static_cast<std::size_t>(type)]; }
+    task_queue& operator[](task_type type) { return get_queue(type); }
+
+private:
+    std::array<task_queue, TASK_TYPE_COUNT> m_queues;
+
     std::promise<void> m_done;
+    std::atomic<uint32_t> m_remaining_tasks_count;
 };
 } // namespace ash::task

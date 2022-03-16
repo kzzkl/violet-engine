@@ -31,7 +31,7 @@ public:
         if (!loader.load("resource/White.pmx"))
         {
             ash::log::error("Load pmx failed");
-            return -1;
+            return false;
         }
 
         std::vector<vertex> vertices;

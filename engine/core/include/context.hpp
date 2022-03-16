@@ -80,6 +80,7 @@ protected:
         {
             auto m = std::make_unique<T>(std::forward<Args>(args)...);
             m->m_context = this;
+            m->initialize(m_config[m->get_name().data()]);
             log::info("Module installed successfully: {}.", m->get_name());
             m_modules[id] = std::move(m);
         }
@@ -88,8 +89,6 @@ protected:
             log::warn("The module is already installed.");
         }
     }
-
-    void initialize_submodule();
 
 private:
     void load_config(std::string_view config_path);

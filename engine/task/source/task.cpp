@@ -3,10 +3,11 @@
 
 namespace ash::task
 {
-task::task(std::string_view name)
+task::task(std::string_view name, task_type type)
     : m_dependency_count(0),
       m_uncompleted_dependency_count(0),
-      m_name(name)
+      m_name(name),
+      m_type(type)
 {
 }
 
@@ -54,9 +55,9 @@ void task::remove_next_task(task& task)
     }
 }
 
-std::size_t task::get_reachable_tasks_size()
+std::array<std::size_t, TASK_TYPE_COUNT> task::get_reachable_tasks_count()
 {
-    std::size_t counter = 0;
+    std::array<std::size_t, TASK_TYPE_COUNT> result = {};
 
     std::queue<task*> q;
     q.push(this);
@@ -72,10 +73,10 @@ std::size_t task::get_reachable_tasks_size()
             q.push(next_task);
 
         next_tasks.clear();
-        ++counter;
+        ++result[static_cast<std::size_t>(t->get_type())];
     }
 
-    return counter;
+    return result;
 }
 
 void task::reset_counter()
