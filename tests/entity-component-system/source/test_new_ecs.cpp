@@ -1,5 +1,6 @@
 #include "test_common.hpp"
 #include "world.hpp"
+#include <iostream>
 
 using namespace ash::ecs;
 
@@ -21,14 +22,18 @@ TEST_CASE("new", "[new]")
     w.register_component<int>();
     w.register_component<char>();
 
-    entity e = w.create();
+    auto v = w.create_view<hierarchy, int>();
+
+    entity_id e = w.create();
 
     w.add<int>(e);
+
+    v->each([](hierarchy& h, int& i) { std::cout << i << std::endl; });
 
     int& i = w.get_component<int>(e);
     i = 99;
 
-    auto& h = w.get_component<hierarchies>(e);
+    auto& h = w.get_component<hierarchy>(e);
     h.children.push_back(1);
     h.children.push_back(2);
     h.children.push_back(3);
@@ -38,7 +43,9 @@ TEST_CASE("new", "[new]")
     w.add<char>(e);
     w.get_component<char>(e) = 9;
 
-    auto& h2 = w.get_component<hierarchies>(e);
+    v->each([](hierarchy& h, int& i) { std::cout << i << std::endl; });
+
+    auto& h2 = w.get_component<hierarchy>(e);
     void* h2p = &h2;
 
     char c = w.get_component<char>(e);
@@ -46,6 +53,8 @@ TEST_CASE("new", "[new]")
 
     w.remove<int, char>(e);
 
-    auto& h3 = w.get_component<hierarchies>(e);
+    auto& h3 = w.get_component<hierarchy>(e);
     void* h3p = &h3;
+
+    v->each([](hierarchy& h, int& i) { std::cout << i << std::endl; });
 }

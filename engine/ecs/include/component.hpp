@@ -13,6 +13,9 @@ using component_id = std::size_t;
 template <typename T>
 struct component_trait;
 
+template <typename T>
+static constexpr component_id component_id_v = component_trait<T>::id;
+
 template <typename... Components>
 class component_list
 {
@@ -37,6 +40,9 @@ private:
         static constexpr std::size_t value = 1 + template_index<T, Types...>::value;
     };
 
+    template <typename T, typename... Types>
+    static constexpr std::size_t template_index_v = template_index<T, Types...>::value;
+
 public:
     template <typename Functor>
     static void each(Functor&& f)
@@ -47,7 +53,7 @@ public:
     template <typename Component>
     static constexpr std::size_t index()
     {
-        return template_index<Component, Components...>::value;
+        return template_index_v<Component, Components...>;
     }
 
     template <typename Component>
@@ -70,4 +76,8 @@ struct component_info
 
 using component_set = std::vector<std::pair<component_id, component_info*>>;
 
+using component_index = std::size_t;
+
+static constexpr std::size_t MAX_COMPONENT = 512;
+using component_mask = std::bitset<MAX_COMPONENT>;
 } // namespace ash::ecs

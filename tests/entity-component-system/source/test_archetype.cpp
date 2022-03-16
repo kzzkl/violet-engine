@@ -38,8 +38,8 @@ using namespace test;
         CHECK(layout[type].layout.offset == offset);
         offset += layout[type].layout.size * layout.get_entity_per_chunk();
     }
-}
-
+}*/
+/*
 TEST_CASE("redirector", "[redirector]")
 {
     redirector r;

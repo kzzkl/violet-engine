@@ -1,30 +1,54 @@
 #pragma once
 
-#include <forward_list>
+#include "archetype.hpp"
+#include "component.hpp"
+#include <vector>
 
 namespace ash::ecs
 {
-template <typename Archetype, typename... Components>
-class base_view
+class view_base
 {
 public:
+    view_base(const component_mask& mask) noexcept : m_mask(mask) {}
+    virtual ~view_base() = default;
+
+    const component_mask& get_mask() const noexcept { return m_mask; }
+
+    virtual void add_archetype(archetype* archetype) = 0;
+
+private:
+    component_mask m_mask;
+};
+
+template <typename... Components>
+class view : public view_base
+{
+public:
+    using handle = archetype::handle<Components...>;
+
+public:
+    view(const component_mask& mask) noexcept : view_base(mask) {}
+
     template <typename Functor>
     void each(Functor&& functor)
     {
-        for (auto archetype : m_list)
+        for (auto& [iter, archetype] : m_list)
         {
-            for (auto iter = archetype->begin<Components...>();
-                 iter != archetype->end<Components...>();
-                 ++iter)
+            for (std::size_t i = 0; i < archetype->size(); ++i)
             {
-                functor(iter.get_entity(), iter.template get_component<Components>()...);
+                iter.set_index(i);
+                functor(iter.template get_component<Components>()...);
             }
+            iter.set_index(0);
         }
     }
 
-    void insert(Archetype* archetype) { m_list.push_front(archetype); }
+    virtual void add_archetype(archetype* archetype) override
+    {
+        m_list.push_back(std::make_pair(archetype->begin<Components...>(), archetype));
+    }
 
 private:
-    std::forward_list<Archetype*> m_list;
+    std::vector<std::pair<handle, archetype*>> m_list;
 };
 } // namespace ash::ecs

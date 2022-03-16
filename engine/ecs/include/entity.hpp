@@ -4,7 +4,5 @@
 
 namespace ash::ecs
 {
-using entity = uint32_t;
-
-static constexpr entity INVALID_ENTITY = -1;
-}
+using entity_id = uint32_t;
+} // namespace ash::ecs
