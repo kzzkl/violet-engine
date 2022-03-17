@@ -13,7 +13,7 @@ struct list
     std::size_t size;
 };
 
-enum class primitive_topology_type : uint8_t
+enum class primitive_topology_type : std::uint8_t
 {
     TRIANGLE_LIST,
     LINE_LIST
@@ -27,7 +27,7 @@ public:
     virtual void upload(const void* data, std::size_t size) {}
 };
 
-enum class pipeline_parameter_type : uint8_t
+enum class pipeline_parameter_type : std::uint8_t
 {
     TEXTURE,
     BUFFER
@@ -57,7 +57,7 @@ public:
     virtual ~pipeline_layout() = default;
 };
 
-enum class vertex_attribute_type : uint8_t
+enum class vertex_attribute_type : std::uint8_t
 {
     INT,
     INT2,
@@ -77,7 +77,7 @@ struct vertex_attribute_desc
 {
     char name[32];
     vertex_attribute_type type;
-    uint32_t index;
+    std::uint32_t index;
 };
 
 struct pipeline_desc
@@ -163,8 +163,8 @@ private:
 
 struct context_config
 {
-    uint32_t width;
-    uint32_t height;
+    std::uint32_t width;
+    std::uint32_t height;
 
     const void* window_handle;
 

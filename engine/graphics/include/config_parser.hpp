@@ -15,7 +15,7 @@ public:
     {
         std::string name;
         vertex_attribute_type type;
-        uint32_t index;
+        std::uint32_t index;
     };
     using vertex_layout_config = std::vector<vertex_attribute_config>;
 

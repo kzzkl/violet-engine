@@ -12,10 +12,10 @@ static constexpr std::size_t CHUNK_SIZE = 1024 * 16;
 class alignas(64) chunk
 {
 public:
-    inline uint8_t* data() noexcept { return m_data.data(); }
+    inline std::uint8_t* data() noexcept { return m_data.data(); }
 
 private:
-    std::array<uint8_t, CHUNK_SIZE> m_data;
+    std::array<std::uint8_t, CHUNK_SIZE> m_data;
 };
 
 class storage

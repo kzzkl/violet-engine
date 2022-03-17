@@ -7,14 +7,14 @@ using namespace test;
 /*TEST_CASE("layout", "[archetype_layout]")
 {
     archetype_layout layout(2048);
-    layout.insert<uint8_t, uint32_t, uint16_t, uint64_t, std::string>();
+    layout.insert<std::uint8_t, std::uint32_t, std::uint16_t, uint64_t, std::string>();
 
     CHECK(layout.get_entity_per_chunk() == 37);
 
     CHECK(layout[component_trait<uint64_t>::index()].layout.size == sizeof(uint64_t));
-    CHECK(layout[component_trait<uint32_t>::index()].layout.size == sizeof(uint32_t));
-    CHECK(layout[component_trait<uint16_t>::index()].layout.size == sizeof(uint16_t));
-    CHECK(layout[component_trait<uint8_t>::index()].layout.size == sizeof(uint8_t));
+    CHECK(layout[component_trait<std::uint32_t>::index()].layout.size == sizeof(std::uint32_t));
+    CHECK(layout[component_trait<std::uint16_t>::index()].layout.size == sizeof(std::uint16_t));
+    CHECK(layout[component_trait<std::uint8_t>::index()].layout.size == sizeof(std::uint8_t));
     CHECK(layout[component_trait<std::string>::index()].layout.size == sizeof(std::string));
 
     std::vector<std::pair<component_index, archetype_layout::component_info>> info;

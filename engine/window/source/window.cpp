@@ -17,7 +17,7 @@ bool window::initialize(const dictionary& config)
         return false;
 
     auto task_handle = get_submodule<task::task_manager>().schedule(
-        "window tick",
+        "window",
         [this]() { m_impl->tick(); },
         task::task_type::MAIN_THREAD);
 

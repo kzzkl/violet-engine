@@ -23,18 +23,18 @@ private:
 template <typename KeyType>
 class key_device
 {
-    static const uint32_t NUM_KEY = static_cast<uint32_t>(KeyType::NUM_TYPE);
+    static const std::uint32_t NUM_KEY = static_cast<std::uint32_t>(KeyType::NUM_TYPE);
 
 public:
     key_device() { memset(m_key_state, 0, sizeof(m_key_state)); }
     virtual ~key_device() {}
 
-    inline key_state key(KeyType key) { return key_state(m_key_state[static_cast<uint32_t>(key)]); }
+    inline key_state key(KeyType key) { return key_state(m_key_state[static_cast<std::uint32_t>(key)]); }
 
     void key_down(KeyType key)
     {
-        uint32_t k = static_cast<uint32_t>(key);
-        if (static_cast<uint32_t>(k) < NUM_KEY)
+        std::uint32_t k = static_cast<std::uint32_t>(key);
+        if (static_cast<std::uint32_t>(k) < NUM_KEY)
         {
             auto oldState = m_key_state[k];
             m_key_state[k] = ((m_key_state[k] << 1) & 0x2) | 0x1;
@@ -43,7 +43,7 @@ public:
 
     void key_up(KeyType key)
     {
-        uint32_t k = static_cast<uint32_t>(key);
+        std::uint32_t k = static_cast<std::uint32_t>(key);
         if (k < NUM_KEY)
         {
             auto oldState = m_key_state[k];
@@ -55,13 +55,13 @@ private:
     unsigned char m_key_state[NUM_KEY];
 };
 
-enum class mouse_mode : uint8_t
+enum class mouse_mode : std::uint8_t
 {
     CURSOR_ABSOLUTE = 0,
     CURSOR_RELATIVE
 };
 
-enum class mouse_key : uint32_t
+enum class mouse_key : std::uint32_t
 {
     LEFT_BUTTON,
     RIGHT_BUTTON,
@@ -101,7 +101,7 @@ private:
     mouse_mode m_mode;
 };
 
-enum class keyboard_key : uint32_t
+enum class keyboard_key : std::uint32_t
 {
     KEY_0 = 48,
     KEY_1,

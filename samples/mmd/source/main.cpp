@@ -41,9 +41,9 @@ public:
             vertices.push_back(vertex{v.position});
         }
 
-        std::vector<uint32_t> indices;
+        std::vector<std::int32_t> indices;
         indices.reserve(loader.get_indices().size());
-        for (uint32_t i : loader.get_indices())
+        for (std::int32_t i : loader.get_indices())
         {
             indices.push_back(i);
         }
@@ -60,7 +60,7 @@ public:
         m.vertex_buffer = get_submodule<ash::graphics::graphics>().make_vertex_buffer<vertex>(
             vertices.data(),
             vertices.size());
-        m.index_buffer = get_submodule<ash::graphics::graphics>().make_index_buffer<uint32_t>(
+        m.index_buffer = get_submodule<ash::graphics::graphics>().make_index_buffer<std::int32_t>(
             indices.data(),
             indices.size());
 

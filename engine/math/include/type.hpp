@@ -36,9 +36,9 @@ using int2 = packed_1d<int32_t, 2>;
 using int3 = packed_1d<int32_t, 3>;
 using int4 = packed_1d<int32_t, 4>;
 
-using uint2 = packed_1d<uint32_t, 2>;
-using uint3 = packed_1d<uint32_t, 3>;
-using uint4 = packed_1d<uint32_t, 4>;
+using uint2 = packed_1d<std::uint32_t, 2>;
+using uint3 = packed_1d<std::uint32_t, 3>;
+using uint4 = packed_1d<std::uint32_t, 4>;
 
 using float2 = packed_1d<float, 2>;
 using float3 = packed_1d<float, 3>;
@@ -83,11 +83,11 @@ using int3x2 = packed_2d<int32_t, 3, 2>;
 using int3x3 = packed_2d<int32_t, 3, 3>;
 using int4x4 = packed_2d<int32_t, 4, 4>;
 
-using uint2x2 = packed_2d<uint32_t, 2, 2>;
-using uint2x3 = packed_2d<uint32_t, 2, 3>;
-using uint3x2 = packed_2d<uint32_t, 3, 2>;
-using uint3x3 = packed_2d<uint32_t, 3, 3>;
-using uint4x4 = packed_2d<uint32_t, 4, 4>;
+using uint2x2 = packed_2d<std::uint32_t, 2, 2>;
+using uint2x3 = packed_2d<std::uint32_t, 2, 3>;
+using uint3x2 = packed_2d<std::uint32_t, 3, 2>;
+using uint3x3 = packed_2d<std::uint32_t, 3, 3>;
+using uint4x4 = packed_2d<std::uint32_t, 4, 4>;
 
 using float2x2 = packed_2d<float, 2, 2>;
 using float2x3 = packed_2d<float, 2, 3>;

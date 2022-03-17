@@ -71,6 +71,6 @@ private:
     std::array<task_queue, TASK_TYPE_COUNT> m_queues;
 
     std::promise<void> m_done;
-    std::atomic<uint32_t> m_remaining_tasks_count;
+    std::atomic<std::uint32_t> m_remaining_tasks_count;
 };
 } // namespace ash::task

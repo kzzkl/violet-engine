@@ -11,8 +11,8 @@ class tagged_pointer_compression
 public:
     using value_type = T;
 
-    using tag_type = uint16_t;
-    using address_type = uint64_t;
+    using tag_type = std::uint16_t;
+    using address_type = std::uint64_t;
 
 public:
     tagged_pointer_compression() : m_address(0) {}

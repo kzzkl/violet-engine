@@ -76,7 +76,7 @@ struct component_info
 
 using component_set = std::vector<std::pair<component_id, component_info*>>;
 
-using component_index = std::size_t;
+using component_index = std::uint16_t;
 
 static constexpr std::size_t MAX_COMPONENT = 512;
 using component_mask = std::bitset<MAX_COMPONENT>;

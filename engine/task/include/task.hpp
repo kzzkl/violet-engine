@@ -8,7 +8,7 @@
 
 namespace ash::task
 {
-enum class task_type : uint8_t
+enum class task_type : std::uint8_t
 {
     NONE,
     MAIN_THREAD
@@ -52,8 +52,8 @@ private:
 
     std::vector<task*> m_next;
 
-    uint8_t m_dependency_count;
-    std::atomic<uint8_t> m_uncompleted_dependency_count;
+    std::uint8_t m_dependency_count;
+    std::atomic<std::uint8_t> m_uncompleted_dependency_count;
 
     std::string m_name;
     task_type m_type;

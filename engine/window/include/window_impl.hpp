@@ -7,10 +7,10 @@ namespace ash::window
 {
 struct window_rect
 {
-    uint32_t x;
-    uint32_t y;
-    uint32_t width;
-    uint32_t height;
+    std::uint32_t x;
+    std::uint32_t y;
+    std::uint32_t width;
+    std::uint32_t height;
 };
 
 class window_impl
@@ -18,7 +18,7 @@ class window_impl
 public:
     virtual ~window_impl() = default;
 
-    virtual bool initialize(uint32_t width, uint32_t height, std::string_view title) = 0;
+    virtual bool initialize(std::uint32_t width, std::uint32_t height, std::string_view title) = 0;
     virtual void tick() = 0;
     virtual void show() = 0;
 

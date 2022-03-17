@@ -44,7 +44,7 @@ struct is_square<float4x4_simd> : std::bool_constant<true>
 struct simd
 {
 public:
-    template <uint32_t I>
+    template <std::uint32_t I>
     static inline float get(const float4_simd& v)
     {
         if constexpr (I == 0)
@@ -63,7 +63,7 @@ public:
     {
         return _mm_setr_ps(x, y, z, w);
     }
-    static inline float4_simd set(uint32_t x, uint32_t y, uint32_t z, uint32_t w)
+    static inline float4_simd set(std::uint32_t x, std::uint32_t y, std::uint32_t z, std::uint32_t w)
     {
         union {
             __m128 v;
@@ -97,26 +97,26 @@ public:
                              set(m41, m42, m43, m44)};
     }
 
-    template <uint32_t Mask>
+    template <std::uint32_t Mask>
     static inline float4_simd get_mask()
     {
         static const float4_simd value = make_mask(Mask);
         return value;
     }
 
-    template <uint32_t C1, uint32_t C2, uint32_t C3, uint32_t C4>
+    template <std::uint32_t C1, std::uint32_t C2, std::uint32_t C3, std::uint32_t C4>
     static inline float4_simd shuffle(const float4_simd& a, const float4_simd& b)
     {
         return _mm_shuffle_ps(a, b, shuffle_control<C1, C2, C3, C4>::value);
     }
 
-    template <uint32_t C1, uint32_t C2, uint32_t C3, uint32_t C4>
+    template <std::uint32_t C1, std::uint32_t C2, std::uint32_t C3, std::uint32_t C4>
     static inline float4_simd shuffle(const float4_simd& v)
     {
         return shuffle<C1, C2, C3, C4>(v, v);
     }
 
-    template <uint32_t C>
+    template <std::uint32_t C>
     static inline float4_simd replicate(const float4_simd& v)
     {
         return shuffle<C, C, C, C>(v);
@@ -184,7 +184,7 @@ public:
         _mm_store_ps(&destination[3][0], source.row[3]);
     }
 
-    template <uint32_t I>
+    template <std::uint32_t I>
     static inline float4_simd get_identity_row()
     {
         if constexpr (I == 0)
@@ -210,18 +210,18 @@ public:
     }
 
 private:
-    template <uint32_t C1, uint32_t C2, uint32_t C3, uint32_t C4>
+    template <std::uint32_t C1, std::uint32_t C2, std::uint32_t C3, std::uint32_t C4>
     struct shuffle_control
     {
-        static constexpr uint32_t value = (C4 << 6) | (C3 << 4) | (C2 << 2) | C1;
+        static constexpr std::uint32_t value = (C4 << 6) | (C3 << 4) | (C2 << 2) | C1;
     };
 
-    static inline float4_simd make_mask(uint32_t mask)
+    static inline float4_simd make_mask(std::uint32_t mask)
     {
-        uint32_t x = (mask & 0x1000) == 0x1000 ? 0xFFFFFFFF : 0x00000000;
-        uint32_t y = (mask & 0x0100) == 0x0100 ? 0xFFFFFFFF : 0x00000000;
-        uint32_t z = (mask & 0x0010) == 0x0010 ? 0xFFFFFFFF : 0x00000000;
-        uint32_t w = (mask & 0x0001) == 0x0001 ? 0xFFFFFFFF : 0x00000000;
+        std::uint32_t x = (mask & 0x1000) == 0x1000 ? 0xFFFFFFFF : 0x00000000;
+        std::uint32_t y = (mask & 0x0100) == 0x0100 ? 0xFFFFFFFF : 0x00000000;
+        std::uint32_t z = (mask & 0x0010) == 0x0010 ? 0xFFFFFFFF : 0x00000000;
+        std::uint32_t w = (mask & 0x0001) == 0x0001 ? 0xFFFFFFFF : 0x00000000;
         return set(x, y, z, w);
     }
 };

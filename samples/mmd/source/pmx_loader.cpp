@@ -62,16 +62,16 @@ bool pmx_loader::load_header(std::ifstream& fin)
 
     read<float>(fin, m_header.version);
 
-    uint8_t ignore;
-    read<uint8_t>(fin, ignore); // ignore global size
-    read<uint8_t>(fin, m_header.text_encoding);
-    read<uint8_t>(fin, m_header.num_add_vec4);
-    read<uint8_t>(fin, m_header.vertex_index_size);
-    read<uint8_t>(fin, m_header.texture_index_size);
-    read<uint8_t>(fin, m_header.material_index_size);
-    read<uint8_t>(fin, m_header.bone_index_size);
-    read<uint8_t>(fin, m_header.morph_index_size);
-    read<uint8_t>(fin, m_header.rigidbody_index_size);
+    std::uint8_t ignore;
+    read<std::uint8_t>(fin, ignore); // ignore global size
+    read<std::uint8_t>(fin, m_header.text_encoding);
+    read<std::uint8_t>(fin, m_header.num_add_vec4);
+    read<std::uint8_t>(fin, m_header.vertex_index_size);
+    read<std::uint8_t>(fin, m_header.texture_index_size);
+    read<std::uint8_t>(fin, m_header.material_index_size);
+    read<std::uint8_t>(fin, m_header.bone_index_size);
+    read<std::uint8_t>(fin, m_header.morph_index_size);
+    read<std::uint8_t>(fin, m_header.rigidbody_index_size);
 
     m_header.name_jp = read_text(fin);
     m_header.name_en = read_text(fin);
@@ -83,8 +83,8 @@ bool pmx_loader::load_header(std::ifstream& fin)
 
 bool pmx_loader::load_vertex(std::ifstream& fin)
 {
-    int32_t vertex_count;
-    read<int32_t>(fin, vertex_count);
+    std::int32_t vertex_count;
+    read<std::int32_t>(fin, vertex_count);
 
     m_vertices.resize(vertex_count);
 
@@ -97,7 +97,7 @@ bool pmx_loader::load_vertex(std::ifstream& fin)
         read<math::float3>(fin, vertex.normal);
         read<math::float2>(fin, vertex.uv);
 
-        for (uint8_t i = 0; i < m_header.num_add_vec4; ++i)
+        for (std::uint8_t i = 0; i < m_header.num_add_vec4; ++i)
         {
             read<math::float4>(fin, vertex.add_uv[i]);
         }
@@ -166,11 +166,11 @@ bool pmx_loader::load_vertex(std::ifstream& fin)
 
 bool pmx_loader::load_index(std::ifstream& fin)
 {
-    int32_t num_index;
-    read<int32_t>(fin, num_index);
+    std::int32_t num_index;
+    read<std::int32_t>(fin, num_index);
     m_indices.reserve(num_index);
 
-    for (int32_t i = 0; i < num_index; ++i)
+    for (std::int32_t i = 0; i < num_index; ++i)
         m_indices.push_back(read_index(fin, m_header.vertex_index_size));
 
     return true;
@@ -178,11 +178,11 @@ bool pmx_loader::load_index(std::ifstream& fin)
 
 bool pmx_loader::load_texture(std::ifstream& fin)
 {
-    int32_t numTexture;
-    read<int32_t>(fin, numTexture);
+    std::int32_t numTexture;
+    read<std::int32_t>(fin, numTexture);
     m_textures.reserve(numTexture);
 
-    for (int32_t i = 0; i < numTexture; ++i)
+    for (std::int32_t i = 0; i < numTexture; ++i)
     {
         m_textures.push_back(read_text(fin));
     }
@@ -192,8 +192,8 @@ bool pmx_loader::load_texture(std::ifstream& fin)
 
 bool pmx_loader::load_material(std::ifstream& fin)
 {
-    int32_t numMaterial;
-    read<int32_t>(fin, numMaterial);
+    std::int32_t numMaterial;
+    read<std::int32_t>(fin, numMaterial);
 
     m_materials.resize(numMaterial);
 
@@ -221,8 +221,8 @@ bool pmx_loader::load_material(std::ifstream& fin)
         }
         else if (mat.toon_mode == toon_mode::INTERNAL)
         {
-            uint8_t toon_index;
-            read<uint8_t>(fin, toon_index);
+            std::uint8_t toon_index;
+            read<std::uint8_t>(fin, toon_index);
             mat.toon_index = toon_index;
         }
         else
@@ -231,15 +231,15 @@ bool pmx_loader::load_material(std::ifstream& fin)
         }
 
         mat.meta_data = read_text(fin);
-        read<int32_t>(fin, mat.num_indices);
+        read<std::int32_t>(fin, mat.num_indices);
     }
     return true;
 }
 
 bool pmx_loader::load_bone(std::ifstream& fin)
 {
-    int32_t numBone;
-    read<int32_t>(fin, numBone);
+    std::int32_t numBone;
+    read<std::int32_t>(fin, numBone);
 
     m_bones.resize(numBone);
     for (pmx_bone& bone : m_bones)
@@ -249,7 +249,7 @@ bool pmx_loader::load_bone(std::ifstream& fin)
 
         read<math::float3>(fin, bone.position);
         bone.parent_index = read_index(fin, m_header.bone_index_size);
-        read<int32_t>(fin, bone.layer);
+        read<std::int32_t>(fin, bone.layer);
 
         read<pmx_bone_flag>(fin, bone.flags);
 
@@ -280,11 +280,11 @@ bool pmx_loader::load_bone(std::ifstream& fin)
         if (bone.flags & pmx_bone_flag::IK)
         {
             bone.ik_target_index = read_index(fin, m_header.bone_index_size);
-            read<int32_t>(fin, bone.ik_iteration_count);
+            read<std::int32_t>(fin, bone.ik_iteration_count);
             read<float>(fin, bone.ik_limit);
 
-            int32_t count;
-            read<int32_t>(fin, count);
+            std::int32_t count;
+            read<std::int32_t>(fin, count);
             bone.ik_links.resize(count);
 
             for (pmx_ik_link& link : bone.ik_links)
@@ -309,8 +309,8 @@ bool pmx_loader::load_bone(std::ifstream& fin)
 
 bool pmx_loader::load_morph(std::ifstream& fin)
 {
-    int32_t num_morph;
-    read<int32_t>(fin, num_morph);
+    std::int32_t num_morph;
+    read<std::int32_t>(fin, num_morph);
 
     m_morphs.resize(num_morph);
 
@@ -319,11 +319,11 @@ bool pmx_loader::load_morph(std::ifstream& fin)
         morph.name_jp = read_text(fin);
         morph.name_en = read_text(fin);
 
-        read<uint8_t>(fin, morph.control_panel);
+        read<std::uint8_t>(fin, morph.control_panel);
         read<pmx_morph_type>(fin, morph.type);
 
-        int32_t count;
-        read<int32_t>(fin, count);
+        std::int32_t count;
+        read<std::int32_t>(fin, count);
 
         switch (morph.type)
         {
@@ -371,7 +371,7 @@ bool pmx_loader::load_morph(std::ifstream& fin)
             for (auto& material : morph.material_morph)
             {
                 material.index = read_index(fin, m_header.material_index_size);
-                read<uint8_t>(fin, material.operate);
+                read<std::uint8_t>(fin, material.operate);
                 read<math::float4>(fin, material.diffuse);
                 read<math::float3>(fin, material.specular);
                 read<float>(fin, material.specular_strength);
@@ -398,7 +398,7 @@ bool pmx_loader::load_morph(std::ifstream& fin)
             for (auto& impulse : morph.impulse_morph)
             {
                 impulse.index = read_index(fin, m_header.rigidbody_index_size);
-                read<uint8_t>(fin, impulse.local_flag);
+                read<std::uint8_t>(fin, impulse.local_flag);
                 read<math::float3>(fin, impulse.translate_velocity);
                 read<math::float3>(fin, impulse.rotate_torque);
             }
@@ -413,8 +413,8 @@ bool pmx_loader::load_morph(std::ifstream& fin)
 
 bool pmx_loader::load_display_frame(std::ifstream& fin)
 {
-    int32_t numDisplayFrame;
-    read<int32_t>(fin, numDisplayFrame);
+    std::int32_t numDisplayFrame;
+    read<std::int32_t>(fin, numDisplayFrame);
     m_display_frames.resize(numDisplayFrame);
 
     for (pmx_display_data& display_frame : m_display_frames)
@@ -422,10 +422,10 @@ bool pmx_loader::load_display_frame(std::ifstream& fin)
         display_frame.name_jp = read_text(fin);
         display_frame.name_en = read_text(fin);
 
-        read<uint8_t>(fin, display_frame.flag);
+        read<std::uint8_t>(fin, display_frame.flag);
 
-        int32_t numFrames;
-        read<int32_t>(fin, numFrames);
+        std::int32_t numFrames;
+        read<std::int32_t>(fin, numFrames);
         display_frame.frames.resize(numFrames);
 
         for (pmx_display_frame& frame : display_frame.frames)
@@ -450,8 +450,8 @@ bool pmx_loader::load_display_frame(std::ifstream& fin)
 
 bool pmx_loader::load_rigidbody(std::ifstream& fin)
 {
-    int32_t numRigidBody;
-    read<int32_t>(fin, numRigidBody);
+    std::int32_t numRigidBody;
+    read<std::int32_t>(fin, numRigidBody);
     m_rigidbodys.resize(numRigidBody);
 
     for (pmx_rigidbody& rigidbody : m_rigidbodys)
@@ -460,8 +460,8 @@ bool pmx_loader::load_rigidbody(std::ifstream& fin)
         rigidbody.name_en = read_text(fin);
 
         rigidbody.bone_index = read_index(fin, m_header.bone_index_size);
-        read<uint8_t>(fin, rigidbody.group);
-        read<uint16_t>(fin, rigidbody.collision_group);
+        read<std::uint8_t>(fin, rigidbody.group);
+        read<std::uint16_t>(fin, rigidbody.collision_group);
 
         read<pmx_rigidbody_shape_type>(fin, rigidbody.shape);
         read<math::float3>(fin, rigidbody.size);
@@ -482,8 +482,8 @@ bool pmx_loader::load_rigidbody(std::ifstream& fin)
 
 bool pmx_loader::load_joint(std::ifstream& fin)
 {
-    int32_t numJoint;
-    read<int32_t>(fin, numJoint);
+    std::int32_t numJoint;
+    read<std::int32_t>(fin, numJoint);
     m_joints.resize(numJoint);
 
     for (pmx_joint& joint : m_joints)
@@ -510,31 +510,31 @@ bool pmx_loader::load_joint(std::ifstream& fin)
     return true;
 }
 
-int32_t pmx_loader::read_index(std::ifstream& fin, uint8_t size)
+std::int32_t pmx_loader::read_index(std::ifstream& fin, std::uint8_t size)
 {
     switch (size)
     {
     case 1: {
-        uint8_t res;
-        read<uint8_t>(fin, res);
+        std::uint8_t res;
+        read<std::uint8_t>(fin, res);
         if (res != 0xFF)
-            return static_cast<int32_t>(res);
+            return static_cast<std::int32_t>(res);
         else
             return -1;
     }
     case 2: {
-        uint16_t res;
-        read<uint16_t>(fin, res);
+        std::uint16_t res;
+        read<std::uint16_t>(fin, res);
         if (res != 0xFFFF)
-            return static_cast<int32_t>(res);
+            return static_cast<std::int32_t>(res);
         else
             return -1;
     }
     case 4: {
-        uint32_t res;
-        read<uint32_t>(fin, res);
+        std::int32_t res;
+        read<std::int32_t>(fin, res);
         if (res != 0xFFFFFFFF)
-            return static_cast<int32_t>(res);
+            return static_cast<std::int32_t>(res);
         else
             return -1;
     }
@@ -545,8 +545,8 @@ int32_t pmx_loader::read_index(std::ifstream& fin, uint8_t size)
 
 std::string pmx_loader::read_text(std::ifstream& fin)
 {
-    uint32_t len;
-    read<uint32_t>(fin, len);
+    std::int32_t len;
+    read<std::int32_t>(fin, len);
     if (len > 0)
     {
         std::string result;

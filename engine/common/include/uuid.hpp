@@ -8,8 +8,8 @@ namespace ash
 class uuid
 {
 public:
-    using iterator = uint8_t*;
-    using const_iterator = const uint8_t*;
+    using iterator = std::uint8_t*;
+    using const_iterator = const std::uint8_t*;
 
 public:
     constexpr uuid(const char* str)
@@ -70,7 +70,7 @@ public:
     }
 
 private:
-    uint8_t m_data[16];
+    std::uint8_t m_data[16];
 };
 
 struct uuid_hash

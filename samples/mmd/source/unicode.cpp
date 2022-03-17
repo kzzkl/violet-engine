@@ -7,7 +7,7 @@ namespace ash::sample::mmd
 {
 bool is_u8_later_byte(char ch)
 {
-    return 0x80 <= uint8_t(ch) && uint8_t(ch) < 0xC0;
+    return 0x80 <= std::uint8_t(ch) && std::uint8_t(ch) < 0xC0;
 }
 
 bool is_u16_high_surrogate(char16_t ch)
@@ -22,19 +22,19 @@ bool is_u16_low_surrogate(char16_t ch)
 
 int get_u8_byte_count(char ch)
 {
-    if (0 <= uint8_t(ch) && uint8_t(ch) < 0x80)
+    if (0 <= std::uint8_t(ch) && std::uint8_t(ch) < 0x80)
     {
         return 1;
     }
-    if (0xC2 <= uint8_t(ch) && uint8_t(ch) < 0xE0)
+    if (0xC2 <= std::uint8_t(ch) && std::uint8_t(ch) < 0xE0)
     {
         return 2;
     }
-    if (0xE0 <= uint8_t(ch) && uint8_t(ch) < 0xF0)
+    if (0xE0 <= std::uint8_t(ch) && std::uint8_t(ch) < 0xF0)
     {
         return 3;
     }
-    if (0xF0 <= uint8_t(ch) && uint8_t(ch) < 0xF8)
+    if (0xF0 <= std::uint8_t(ch) && std::uint8_t(ch) < 0xF8)
     {
         return 4;
     }
@@ -51,14 +51,14 @@ bool ConvChU8ToU32(const std::array<char, 4>& u8Ch, char32_t& u32Ch)
     switch (numBytes)
     {
     case 1:
-        u32Ch = char32_t(uint8_t(u8Ch[0]));
+        u32Ch = char32_t(std::uint8_t(u8Ch[0]));
         break;
     case 2:
         if (!is_u8_later_byte(u8Ch[1]))
         {
             return false;
         }
-        if ((uint8_t(u8Ch[0]) & 0x1E) == 0)
+        if ((std::uint8_t(u8Ch[0]) & 0x1E) == 0)
         {
             return false;
         }
@@ -71,7 +71,7 @@ bool ConvChU8ToU32(const std::array<char, 4>& u8Ch, char32_t& u32Ch)
         {
             return false;
         }
-        if ((uint8_t(u8Ch[0]) & 0x0F) == 0 && (uint8_t(u8Ch[1]) & 0x20) == 0)
+        if ((std::uint8_t(u8Ch[0]) & 0x0F) == 0 && (std::uint8_t(u8Ch[1]) & 0x20) == 0)
         {
             return false;
         }
@@ -85,7 +85,7 @@ bool ConvChU8ToU32(const std::array<char, 4>& u8Ch, char32_t& u32Ch)
         {
             return false;
         }
-        if ((uint8_t(u8Ch[0]) & 0x07) == 0 && (uint8_t(u8Ch[1]) & 0x30) == 0)
+        if ((std::uint8_t(u8Ch[0]) & 0x07) == 0 && (std::uint8_t(u8Ch[1]) & 0x30) == 0)
         {
             return false;
         }

@@ -54,7 +54,7 @@ void mouse_win32::show_cursor(bool show)
     ShowCursor(show);
 }
 
-bool window_impl_win32::initialize(uint32_t width, uint32_t height, std::string_view title)
+bool window_impl_win32::initialize(std::uint32_t width, std::uint32_t height, std::string_view title)
 {
     m_instance = GetModuleHandle(0);
 

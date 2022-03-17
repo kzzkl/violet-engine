@@ -22,7 +22,7 @@ private:
 class window_impl_win32 : public window_impl
 {
 public:
-    virtual bool initialize(uint32_t width, uint32_t height, std::string_view title) override;
+    virtual bool initialize(std::uint32_t width, std::uint32_t height, std::string_view title) override;
     virtual void tick() override;
     virtual void show() override;
 

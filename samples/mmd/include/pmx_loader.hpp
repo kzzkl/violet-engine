@@ -7,7 +7,7 @@
 
 namespace ash::sample::mmd
 {
-enum class pmx_vertex_weight : uint8_t
+enum class pmx_vertex_weight : std::uint8_t
 {
     BDEF1,
     BDEF2,
@@ -20,14 +20,14 @@ struct pmx_header
 {
     float version;
 
-    uint8_t text_encoding; // 1: UTF8, 0: UTF16
-    uint8_t num_add_vec4;
-    uint8_t vertex_index_size;
-    uint8_t texture_index_size;
-    uint8_t material_index_size;
-    uint8_t bone_index_size;
-    uint8_t morph_index_size;
-    uint8_t rigidbody_index_size;
+    std::uint8_t text_encoding; // 1: UTF8, 0: UTF16
+    std::uint8_t num_add_vec4;
+    std::uint8_t vertex_index_size;
+    std::uint8_t texture_index_size;
+    std::uint8_t material_index_size;
+    std::uint8_t bone_index_size;
+    std::uint8_t morph_index_size;
+    std::uint8_t rigidbody_index_size;
 
     std::string name_jp;
     std::string name_en;
@@ -48,7 +48,7 @@ struct pmx_vertex
     std::vector<math::float4> add_uv;
 };
 
-enum class draw_flag : uint8_t
+enum class draw_flag : std::uint8_t
 {
     NO_CULL = 0x01,
     GROUND_SHADOW = 0x02,
@@ -60,7 +60,7 @@ enum class draw_flag : uint8_t
     LINE_DRAWING = 0x80,
 };
 
-enum class sphere_mode : uint8_t
+enum class sphere_mode : std::uint8_t
 {
     DISABLED = 0,
     MULTIPLY = 1,
@@ -68,7 +68,7 @@ enum class sphere_mode : uint8_t
     ADDITIONAL_VEC4 = 3
 };
 
-enum class toon_mode : uint8_t
+enum class toon_mode : std::uint8_t
 {
     TEXTURE,
     INTERNAL
@@ -87,17 +87,17 @@ struct pmx_material
     math::float4 edge;
     float edge_scale;
 
-    int32_t texture_index;
+    std::int32_t texture_index;
     sphere_mode sphere_mode;
-    int32_t sphere_index;
+    std::int32_t sphere_index;
     toon_mode toon_mode;
-    int32_t toon_index;
+    std::int32_t toon_index;
 
     std::string meta_data;
-    int32_t num_indices;
+    std::int32_t num_indices;
 };
 
-enum pmx_bone_flag : uint16_t
+enum pmx_bone_flag : std::uint16_t
 {
     INDEXED_TAIL_POSITION = 0x0001,
     ROTATABLE = 0x0002,
@@ -116,7 +116,7 @@ enum pmx_bone_flag : uint16_t
 
 struct pmx_ik_link
 {
-    int32_t bone_index;
+    std::int32_t bone_index;
     bool enable_limit;
     math::float3 limit_min;
     math::float3 limit_max;
@@ -128,25 +128,25 @@ struct pmx_bone
     std::string name_en;
 
     math::float3 position;
-    int32_t parent_index;
-    int32_t layer;
+    std::int32_t parent_index;
+    std::int32_t layer;
     pmx_bone_flag flags;
     math::float3 tail_position;
-    int32_t tail_index;
-    int32_t inherit_index;
+    std::int32_t tail_index;
+    std::int32_t inherit_index;
     float inherit_weight;
     math::float3 fixed_axis;
     math::float3 local_x_axis;
     math::float3 local_z_axis;
-    int32_t external_parent_index;
+    std::int32_t external_parent_index;
 
-    int32_t ik_target_index;
-    int32_t ik_iteration_count;
+    std::int32_t ik_target_index;
+    std::int32_t ik_iteration_count;
     float ik_limit;
     std::vector<pmx_ik_link> ik_links;
 };
 
-enum class pmx_morph_type : uint8_t
+enum class pmx_morph_type : std::uint8_t
 {
     GROUP,
     VERTEX,
@@ -163,33 +163,33 @@ enum class pmx_morph_type : uint8_t
 
 struct pmx_group_morph
 {
-    int32_t index;
+    std::int32_t index;
     float weight;
 };
 
 struct pmx_vertex_morph
 {
-    int32_t index;
+    std::int32_t index;
     math::float3 translation;
 };
 
 struct pmx_bone_morph
 {
-    int32_t index;
+    std::int32_t index;
     math::float3 translation;
     math::float4 rotation;
 };
 
 struct pmx_uv_morph
 {
-    int32_t index;
+    std::int32_t index;
     math::float4 value;
 };
 
 struct pmx_material_morph
 {
-    int32_t index;
-    uint8_t operate; // 0: mul, 1: add
+    std::int32_t index;
+    std::uint8_t operate; // 0: mul, 1: add
     math::float4 diffuse;
     math::float3 specular;
     float specular_strength;
@@ -204,14 +204,14 @@ struct pmx_material_morph
 
 struct pmx_flip_morph
 {
-    int32_t index;
+    std::int32_t index;
     float weight;
 };
 
 struct pmx_impulse_morph
 {
-    int32_t index;
-    uint8_t local_flag; // 0: OFF, 1: ON
+    std::int32_t index;
+    std::uint8_t local_flag; // 0: OFF, 1: ON
     math::float3 translate_velocity;
     math::float3 rotate_torque;
 };
@@ -221,7 +221,7 @@ struct pmx_morph
     std::string name_jp;
     std::string name_en;
 
-    uint8_t control_panel;
+    std::uint8_t control_panel;
     pmx_morph_type type;
 
     std::vector<pmx_group_morph> group_morph;
@@ -233,7 +233,7 @@ struct pmx_morph
     std::vector<pmx_impulse_morph> impulse_morph;
 };
 
-enum class pmx_frame_type : uint8_t
+enum class pmx_frame_type : std::uint8_t
 {
     BONE,
     MORPH
@@ -242,7 +242,7 @@ enum class pmx_frame_type : uint8_t
 struct pmx_display_frame
 {
     pmx_frame_type type;
-    int32_t index;
+    std::int32_t index;
 };
 
 struct pmx_display_data
@@ -250,19 +250,19 @@ struct pmx_display_data
     std::string name_jp;
     std::string name_en;
 
-    uint8_t flag; // 0: normal frame, 1: special frame
+    std::uint8_t flag; // 0: normal frame, 1: special frame
 
     std::vector<pmx_display_frame> frames;
 };
 
-enum class pmx_rigidbody_shape_type : uint8_t
+enum class pmx_rigidbody_shape_type : std::uint8_t
 {
     SPHERE,
     BOX,
     CAPSULE
 };
 
-enum class pmx_rigidbody_mode : uint8_t
+enum class pmx_rigidbody_mode : std::uint8_t
 {
     STATIC,
     DYNAMIC,
@@ -274,9 +274,9 @@ struct pmx_rigidbody
     std::string name_jp;
     std::string name_en;
 
-    int32_t bone_index;
-    uint8_t group;
-    uint16_t collision_group;
+    std::int32_t bone_index;
+    std::uint8_t group;
+    std::uint16_t collision_group;
 
     pmx_rigidbody_shape_type shape;
     math::float3 size;
@@ -291,7 +291,7 @@ struct pmx_rigidbody
     pmx_rigidbody_mode mode;
 };
 
-enum class pmx_joint_type : uint8_t
+enum class pmx_joint_type : std::uint8_t
 {
     SPRING_DOF6,
     DOF6,
@@ -307,8 +307,8 @@ struct pmx_joint
     std::string name_en;
 
     pmx_joint_type type;
-    int32_t rigidbody_a_index;
-    int32_t rigidbody_b_index;
+    std::int32_t rigidbody_a_index;
+    std::int32_t rigidbody_b_index;
 
     math::float3 translate;
     math::float3 rotate;
@@ -329,7 +329,7 @@ public:
     bool load(std::string_view path);
 
     const std::vector<pmx_vertex>& get_vertices() const noexcept { return m_vertices; }
-    const std::vector<uint32_t>& get_indices() const noexcept { return m_indices; }
+    const std::vector<std::int32_t>& get_indices() const noexcept { return m_indices; }
 
 private:
     bool load_header(std::ifstream& fin);
@@ -343,13 +343,13 @@ private:
     bool load_rigidbody(std::ifstream& fin);
     bool load_joint(std::ifstream& fin);
 
-    int32_t read_index(std::ifstream& fin, uint8_t size);
+    std::int32_t read_index(std::ifstream& fin, std::uint8_t size);
     std::string read_text(std::ifstream& fin);
 
     pmx_header m_header;
 
     std::vector<pmx_vertex> m_vertices;
-    std::vector<uint32_t> m_indices;
+    std::vector<std::int32_t> m_indices;
     std::vector<std::string> m_textures;
 
     std::vector<pmx_material> m_materials;
