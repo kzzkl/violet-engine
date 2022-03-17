@@ -3,13 +3,13 @@
 
 namespace ash::graphics::d3d12
 {
-d3d12_resource::d3d12_resource() : d3d12_resource(nullptr, D3D12_RESOURCE_STATE_COMMON)
+d3d12_resource::d3d12_resource() noexcept : d3d12_resource(nullptr, D3D12_RESOURCE_STATE_COMMON)
 {
 }
 
 d3d12_resource::d3d12_resource(
     d3d12_ptr<D3D12Resource> resource,
-    D3D12_RESOURCE_STATES state)
+    D3D12_RESOURCE_STATES state) noexcept
     : m_resource(resource),
       m_state(state)
 {
@@ -30,13 +30,13 @@ std::size_t d3d12_resource::get_size() const
     return static_cast<std::size_t>(desc.Height * desc.Width);
 }
 
-d3d12_back_buffer::d3d12_back_buffer() : m_descriptor_offset(INVALID_DESCRIPTOR_INDEX)
+d3d12_back_buffer::d3d12_back_buffer() noexcept : m_descriptor_offset(INVALID_DESCRIPTOR_INDEX)
 {
 }
 
 d3d12_back_buffer::d3d12_back_buffer(
     d3d12_ptr<D3D12Resource> resource,
-    D3D12_RESOURCE_STATES state)
+    D3D12_RESOURCE_STATES state) noexcept
     : d3d12_resource(resource, state)
 {
     auto heap = d3d12_context::resource()->get_heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -48,7 +48,7 @@ d3d12_back_buffer::d3d12_back_buffer(
         heap->get_cpu_handle(m_descriptor_offset));
 }
 
-d3d12_back_buffer::d3d12_back_buffer(d3d12_back_buffer&& other)
+d3d12_back_buffer::d3d12_back_buffer(d3d12_back_buffer&& other) noexcept
     : d3d12_resource(std::move(other)),
       m_descriptor_offset(other.m_descriptor_offset)
 {
@@ -70,7 +70,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE d3d12_back_buffer::get_cpu_handle() const
     return heap->get_cpu_handle(m_descriptor_offset);
 }
 
-d3d12_back_buffer& d3d12_back_buffer::operator=(d3d12_back_buffer&& other)
+d3d12_back_buffer& d3d12_back_buffer::operator=(d3d12_back_buffer&& other) noexcept
 {
     if (this != &other)
     {
@@ -82,7 +82,7 @@ d3d12_back_buffer& d3d12_back_buffer::operator=(d3d12_back_buffer&& other)
     return *this;
 }
 
-d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer()
+d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer() noexcept
     : m_descriptor_offset(INVALID_DESCRIPTOR_INDEX)
 {
 }
@@ -111,7 +111,7 @@ d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(
         heap->get_cpu_handle(m_descriptor_offset));
 }
 
-d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(d3d12_depth_stencil_buffer&& other)
+d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(d3d12_depth_stencil_buffer&& other) noexcept
     : d3d12_resource(std::move(other)),
       m_descriptor_offset(other.m_descriptor_offset)
 {
@@ -134,7 +134,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE d3d12_depth_stencil_buffer::get_cpu_handle() const
 }
 
 d3d12_depth_stencil_buffer& d3d12_depth_stencil_buffer::operator=(
-    d3d12_depth_stencil_buffer&& other)
+    d3d12_depth_stencil_buffer&& other) noexcept
 {
     if (this != &other)
     {
@@ -198,7 +198,7 @@ d3d12_default_buffer::d3d12_default_buffer(
     d3d12_context::resource()->push_temporary_resource(upload_resource);
 }
 
-d3d12_upload_buffer::d3d12_upload_buffer() : m_mapped(nullptr)
+d3d12_upload_buffer::d3d12_upload_buffer() noexcept : m_mapped(nullptr)
 {
 }
 
@@ -219,7 +219,7 @@ d3d12_upload_buffer::d3d12_upload_buffer(std::size_t size)
     throw_if_failed(m_resource->Map(0, nullptr, &m_mapped));
 }
 
-d3d12_upload_buffer::d3d12_upload_buffer(d3d12_upload_buffer&& other)
+d3d12_upload_buffer::d3d12_upload_buffer(d3d12_upload_buffer&& other) noexcept
     : d3d12_resource(std::move(other)),
       m_mapped(other.m_mapped)
 {
@@ -240,7 +240,7 @@ void d3d12_upload_buffer::upload(const void* data, std::size_t size)
     memcpy(m_mapped, data, size);
 }
 
-d3d12_upload_buffer& d3d12_upload_buffer::operator=(d3d12_upload_buffer&& other)
+d3d12_upload_buffer& d3d12_upload_buffer::operator=(d3d12_upload_buffer&& other) noexcept
 {
     if (this != &other)
     {

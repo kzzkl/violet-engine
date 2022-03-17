@@ -2,10 +2,9 @@
 
 namespace ash::task
 {
-thread_pool::thread_pool(std::size_t num_thread) : m_queue(nullptr)
+thread_pool::thread_pool(std::size_t num_thread) : m_queues(nullptr)
 {
-    for (std::size_t i = 0; i < num_thread; ++i)
-        m_threads.emplace_back();
+    m_threads.resize(num_thread);
 }
 
 thread_pool::~thread_pool()
@@ -13,12 +12,12 @@ thread_pool::~thread_pool()
     stop();
 }
 
-void thread_pool::run(task_queue& queue)
+void thread_pool::run(task_queue_group& queues)
 {
-    m_queue = &queue;
+    m_queues = &queues;
 
     for (work_thread& thread : m_threads)
-        thread.run(queue);
+        thread.run(queues);
 }
 
 void thread_pool::stop()
@@ -26,11 +25,12 @@ void thread_pool::stop()
     for (work_thread& thread : m_threads)
         thread.stop();
 
-    m_queue->notify();
+    for (auto& queue : *m_queues)
+        queue.notify();
 
     for (work_thread& thread : m_threads)
         thread.join();
 
-    m_queue->notify_task_completion(true);
+    m_queues->notify_task_completion(true);
 }
 } // namespace ash::task

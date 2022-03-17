@@ -1,41 +1,31 @@
 #include "task_manager.hpp"
 #include "log.hpp"
-
-using namespace ash::common;
+#include <future>
 
 namespace ash::task
 {
-task_manager::task_manager(std::size_t num_thread) : m_thread_pool(num_thread), m_stop(true)
+task_manager::task_manager(std::size_t num_thread) : m_thread_pool(num_thread)
 {
 }
 
-void task_manager::run(handle root)
+void task_manager::execute(handle root)
 {
-    if (!m_stop)
-    {
-        log::warn("Task Manager is already running.");
-        return;
-    }
+    auto count = root->get_reachable_tasks_count();
+    auto done = m_queues.execute(
+        &(*root),
+        count[to_integer_v<task_type::NONE>] + count[to_integer_v<task_type::MAIN_THREAD>]);
 
-    m_stop = false;
-    m_thread_pool.run(m_queue);
+    work_thread_main::run(m_queues, count[to_integer_v<task_type::MAIN_THREAD>]);
+    done.get();
+}
 
-    while (!m_stop)
-    {
-        for (auto& t : m_before_tasks)
-            t->execute();
-
-        auto done = m_queue.push_root_task(&(*root));
-        done.get();
-
-        for (auto& t : m_after_tasks)
-            t->execute();
-    }
+void task_manager::run()
+{
+    m_thread_pool.run(m_queues);
 }
 
 void task_manager::stop()
 {
-    m_stop = true;
     m_thread_pool.stop();
 }
 

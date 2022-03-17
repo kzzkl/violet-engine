@@ -2,22 +2,22 @@
 #include "graphics.hpp"
 #include "log.hpp"
 #include "window.hpp"
+#include <filesystem>
 #include <fstream>
 
 using namespace ash::core;
-using namespace ash::common;
 
 class test_module : public submodule
 {
 public:
-    static constexpr uuid id = "bd58a298-9ea4-4f8d-a79c-e57ae694915d";
+    static constexpr ash::uuid id = "bd58a298-9ea4-4f8d-a79c-e57ae694915d";
 
 public:
     test_module(int data) : submodule("test_module"), m_data(data) {}
 
-    virtual bool initialize(const ash::common::dictionary& config) override
+    virtual bool initialize(const ash::dictionary& config) override
     {
-        m_title = config["test"]["title"];
+        m_title = config["title"];
         return true;
     }
 
@@ -26,36 +26,31 @@ private:
     int m_data;
 };
 
+void test_json()
+{
+    ash::dictionary json1 =
+        R"({"test": {"title":"test app","array":["1","2","3"],"array2":[{"name":"1"}]}})"_json;
+
+    ash::dictionary json2 =
+        R"({"test": {"title":"test app2","array":["1","2","3","4"],"array2":[{"name":"2"}]}})"_json;
+
+    json1.update(json2, true);
+
+    ash::log::info("{}", json1);
+}
+
 int main()
 {
-    int a = 10;
-    log::info("hello world");
+    // test_json();
 
-    // Dictionary config = R"({"test": {"title":"test app"},"window":{"title":"你好", "width":400,
-    // "height":200}})"_json;
+    ash::log::info("hello world");
 
-    dictionary config;
-
-    std::fstream fin("resource/hello-world.json");
-    if (fin.is_open())
-    {
-        fin >> config;
-    }
-    else
-    {
-        log::error("can not open config file");
-        return -1;
-    }
-
-    application app(config);
+    application app;
     app.install<test_module>(99);
     app.install<ash::window::window>();
     app.install<ash::graphics::graphics>();
 
     app.run();
-
-    while (true)
-        std::this_thread::sleep_for(std::chrono::seconds(600));
 
     return 0;
 }

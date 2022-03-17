@@ -3,7 +3,7 @@
 
 using namespace test;
 using namespace ash::ecs;
-
+/*
 TEST_CASE("get type id", "[component_index]")
 {
     component_index type0 = component_trait<char>::index();
@@ -67,4 +67,4 @@ TEST_CASE("mask", "[component_list]")
     component_mask mask3 = mask1 & mask2;
 
     bool none = mask3.any();
-}
+}*/

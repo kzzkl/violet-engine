@@ -14,7 +14,8 @@ target_link_libraries(${PROJECT_NAME}
         ash::window
         ash::graphics)
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource DESTINATION bin)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/shader DESTINATION bin/resource)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/config DESTINATION bin)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

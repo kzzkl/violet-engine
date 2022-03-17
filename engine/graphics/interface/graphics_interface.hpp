@@ -6,10 +6,10 @@
 
 namespace ash::graphics
 {
-template <typename T>
+template <typename T, std::size_t Size>
 struct list
 {
-    const T* data;
+    T data[Size];
     std::size_t size;
 };
 
@@ -35,11 +35,11 @@ enum class pipeline_parameter_type : uint8_t
 
 struct pipeline_parameter_part
 {
-    const char* name;
+    char name[32];
     pipeline_parameter_type type;
 };
 
-using pipeline_parameter_desc = list<pipeline_parameter_part>;
+using pipeline_parameter_desc = list<pipeline_parameter_part, 16>;
 
 class pipeline_parameter
 {
@@ -49,17 +49,16 @@ public:
     virtual void bind(std::size_t index, resource* data) = 0;
 };
 
-using pipeline_parameter_layout_desc = list<pipeline_parameter_desc>;
+using pipeline_layout_desc = list<pipeline_parameter_desc, 16>;
 
-class pipeline_parameter_layout
+class pipeline_layout
 {
 public:
-    virtual ~pipeline_parameter_layout() = default;
+    virtual ~pipeline_layout() = default;
 };
 
 enum class vertex_attribute_type : uint8_t
 {
-    NONE,
     INT,
     INT2,
     INT3,
@@ -76,20 +75,20 @@ enum class vertex_attribute_type : uint8_t
 
 struct vertex_attribute_desc
 {
-    const char* name;
+    char name[32];
     vertex_attribute_type type;
     uint32_t index;
 };
 
 struct pipeline_desc
 {
-    const char* name;
+    char name[32];
 
-    list<vertex_attribute_desc> vertex_layout;
-    pipeline_parameter_layout* parameter_layout;
+    list<vertex_attribute_desc, 16> vertex_layout;
+    pipeline_layout* layout;
 
-    const char* vertex_shader;
-    const char* pixel_shader;
+    char vertex_shader[128];
+    char pixel_shader[128];
 };
 
 class pipeline
@@ -103,7 +102,7 @@ public:
     virtual ~render_command() = default;
 
     virtual void set_pipeline(pipeline* pipeline) = 0;
-    virtual void set_layout(pipeline_parameter_layout* layout) = 0;
+    virtual void set_layout(pipeline_layout* layout) = 0;
     virtual void set_parameter(std::size_t index, pipeline_parameter* parameter) = 0;
 
     virtual void draw(
@@ -151,8 +150,7 @@ class factory
 {
 public:
     virtual pipeline_parameter* make_pipeline_parameter(const pipeline_parameter_desc& desc) = 0;
-    virtual pipeline_parameter_layout* make_pipeline_parameter_layout(
-        const pipeline_parameter_layout_desc& desc) = 0;
+    virtual pipeline_layout* make_pipeline_layout(const pipeline_layout_desc& desc) = 0;
     virtual pipeline* make_pipeline(const pipeline_desc& desc) = 0;
 
     virtual resource* make_upload_buffer(std::size_t size) = 0;

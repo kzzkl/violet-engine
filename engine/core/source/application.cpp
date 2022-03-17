@@ -1,12 +1,11 @@
 #include "application.hpp"
 #include "timer.hpp"
 
-using namespace ash::common;
 using namespace ash::task;
 
 namespace ash::core
 {
-application::application(const ash::common::dictionary& config) : context(config)
+application::application(std::string_view config_path) : context(config_path)
 {
 }
 
@@ -21,18 +20,19 @@ void application::run()
     nanoseconds s(0);
     nanoseconds time_per_frame(1000000000 / 2400);
 
-    auto& task = get_task();
+    auto& task = get_submodule<task::task_manager>();
+    task.run();
 
-    auto root_task = task.schedule("root", []() {});
-    task.schedule_before("begin", [&]() { frame_start = timer::now<steady_clock>(); });
+    auto root_task = task.find("root");
 
-    initialize_submodule();
+    while (true)
+    {
+        frame_start = timer::now<steady_clock>();
 
-    task.schedule_after("end", [&]() {
+        task.execute(root_task);
+
         frame_end = timer::now<steady_clock>();
-
         nanoseconds delta = frame_end - frame_start;
-
         if (delta < time_per_frame)
             timer::busy_sleep(time_per_frame - delta);
 
@@ -45,8 +45,6 @@ void application::run()
             s = s.zero();
             frame_counter = 0;
         }
-    });
-
-    task.run(root_task);
+    }
 }
 } // namespace ash::core

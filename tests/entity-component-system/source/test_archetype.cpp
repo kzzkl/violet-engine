@@ -4,7 +4,7 @@
 using namespace ash::ecs;
 using namespace test;
 
-TEST_CASE("layout", "[archetype_layout]")
+/*TEST_CASE("layout", "[archetype_layout]")
 {
     archetype_layout layout(2048);
     layout.insert<uint8_t, uint32_t, uint16_t, uint64_t, std::string>();
@@ -38,8 +38,8 @@ TEST_CASE("layout", "[archetype_layout]")
         CHECK(layout[type].layout.offset == offset);
         offset += layout[type].layout.size * layout.get_entity_per_chunk();
     }
-}
-
+}*/
+/*
 TEST_CASE("redirector", "[redirector]")
 {
     redirector r;
@@ -125,4 +125,4 @@ TEST_CASE("Archetype Iterator", "[archetype]")
     {
         iter.get_component<rotation>().angle = iter.get_entity();
     }
-}
+}*/

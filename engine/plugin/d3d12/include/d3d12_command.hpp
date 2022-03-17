@@ -20,7 +20,7 @@ public:
     d3d12_render_command(D3D12CommandAllocator* allocator, std::wstring_view name = L"");
 
     virtual void set_pipeline(pipeline* pipeline) override;
-    virtual void set_layout(pipeline_parameter_layout* layout) override;
+    virtual void set_layout(pipeline_layout* layout) override;
     virtual void set_parameter(std::size_t index, pipeline_parameter* parameter) override;
     virtual void draw(
         resource* vertex,
@@ -44,7 +44,7 @@ class d3d12_dynamic_command
 public:
     d3d12_dynamic_command(
         d3d12_ptr<D3D12GraphicsCommandList> command_list,
-        d3d12_ptr<D3D12CommandAllocator> allocator);
+        d3d12_ptr<D3D12CommandAllocator> allocator) noexcept;
 
     void close();
 
@@ -75,9 +75,7 @@ public:
     D3D12CommandQueue* get_command_queue() const { return m_queue.Get(); }
 
 private:
-    void execute_command(D3D12GraphicsCommandList* command_list);
     void wait_completed(UINT64 fence);
-    void flush();
 
     struct frame_resource
     {
@@ -101,6 +99,7 @@ private:
 
     dynamic_allocator_pool m_dynamic_allocator_pool;
     dynamic_command_pool m_dynamic_command_pool;
+    std::vector<d3d12_ptr<D3D12GraphicsCommandList>> m_dynamic_command_batch;
     std::mutex m_dynamic_lock;
 
     // queue

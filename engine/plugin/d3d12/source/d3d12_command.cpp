@@ -26,7 +26,7 @@ void d3d12_render_command::set_pipeline(pipeline* pipeline)
     m_command_list->SetPipelineState(pso);
 }
 
-void d3d12_render_command::set_layout(pipeline_parameter_layout* layout)
+void d3d12_render_command::set_layout(pipeline_layout* layout)
 {
     d3d12_parameter_layout* l = static_cast<d3d12_parameter_layout*>(layout);
     m_command_list->SetGraphicsRootSignature(l->get_root_signature());
@@ -93,7 +93,7 @@ void d3d12_render_command::close()
 
 d3d12_dynamic_command::d3d12_dynamic_command(
     d3d12_ptr<D3D12GraphicsCommandList> command_list,
-    d3d12_ptr<D3D12CommandAllocator> allocator)
+    d3d12_ptr<D3D12CommandAllocator> allocator) noexcept
     : m_command_list(command_list),
       m_allocator(allocator)
 {
@@ -190,7 +190,7 @@ d3d12_dynamic_command d3d12_command_manager::allocate_dynamic_command()
 
     d3d12_ptr<D3D12CommandAllocator> allocator;
     if (!m_dynamic_allocator_pool.empty() &&
-        m_dynamic_allocator_pool.front().first < m_fence_counter)
+        m_dynamic_allocator_pool.front().first < m_fence->GetCompletedValue())
     {
         allocator = m_dynamic_allocator_pool.front().second;
         m_dynamic_allocator_pool.pop();
@@ -237,15 +237,27 @@ void d3d12_command_manager::execute_command(d3d12_dynamic_command command)
     std::lock_guard<std::mutex> lg(m_dynamic_lock);
 
     command.close();
-    execute_command(command.get());
-    // m_batch.push_back(command.get());
-
+    m_dynamic_command_batch.push_back(command.m_command_list);
     m_dynamic_allocator_pool.push(std::make_pair(m_fence_counter, command.m_allocator));
-    m_dynamic_command_pool.push(command.m_command_list);
 }
 
 void d3d12_command_manager::execute_batch()
 {
+    // execute dynamic command
+    if (!m_dynamic_command_batch.empty())
+    {
+        for (auto& command : m_dynamic_command_batch)
+        {
+            m_batch.push_back(command.Get());
+            m_dynamic_command_pool.push(command);
+        }
+        m_dynamic_command_batch.clear();
+
+        m_queue->ExecuteCommandLists(static_cast<UINT>(m_batch.size()), m_batch.data());
+        m_batch.clear();
+    }
+
+    // execute render command
     m_batch.push_back(m_pre_command->get());
     for (std::size_t i = 0; i < m_render_command_counter; ++i)
     {
@@ -282,13 +294,6 @@ void d3d12_command_manager::switch_frame_resources()
     m_render_command_counter = 0;
 }
 
-void d3d12_command_manager::execute_command(D3D12GraphicsCommandList* command_list)
-{
-    D3D12CommandList* list[] = {command_list};
-    m_queue->ExecuteCommandLists(1, list);
-    flush();
-}
-
 void d3d12_command_manager::wait_completed(UINT64 fence)
 {
     if (m_fence->GetCompletedValue() < fence)
@@ -299,12 +304,5 @@ void d3d12_command_manager::wait_completed(UINT64 fence)
         WaitForSingleObject(event, INFINITE);
         CloseHandle(event);
     }
-}
-
-void d3d12_command_manager::flush()
-{
-    ++m_fence_counter;
-    throw_if_failed(m_queue->Signal(m_fence.Get(), m_fence_counter));
-    wait_completed(m_fence_counter);
 }
 } // namespace ash::graphics::d3d12

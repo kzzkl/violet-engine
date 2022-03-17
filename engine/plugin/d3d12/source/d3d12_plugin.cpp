@@ -16,8 +16,7 @@ public:
         return new d3d12_pipeline_parameter(desc);
     }
 
-    virtual pipeline_parameter_layout* make_pipeline_parameter_layout(
-        const pipeline_parameter_layout_desc& desc) override
+    virtual pipeline_layout* make_pipeline_layout(const pipeline_layout_desc& desc) override
     {
         return new d3d12_parameter_layout(desc);
     }

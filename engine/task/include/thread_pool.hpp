@@ -12,13 +12,13 @@ public:
     thread_pool(thread_pool&&) = default;
     ~thread_pool();
 
-    void run(task_queue& queue);
+    void run(task_queue_group& queues);
     void stop();
 
     thread_pool& operator=(const thread_pool&) = delete;
 
 private:
     std::vector<work_thread> m_threads;
-    task_queue* m_queue;
+    task_queue_group* m_queues;
 };
 } // namespace ash::task

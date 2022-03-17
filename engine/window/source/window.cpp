@@ -11,29 +11,17 @@ window::window() : submodule("window")
     m_impl = std::make_unique<window_impl_win32>();
 }
 
-bool window::initialize(const ash::common::dictionary& config)
+bool window::initialize(const dictionary& config)
 {
-    std::string title = "ash app";
-    uint32_t width = 800;
-    uint32_t height = 600;
-
-    auto iter = config.find("window");
-    if (iter != config.cend())
-    {
-        if (iter->find("title") != iter->cend())
-            title = (*iter)["title"];
-
-        if (iter->find("width") != iter->cend())
-            width = (*iter)["width"];
-
-        if (iter->find("height") != iter->cend())
-            height = (*iter)["height"];
-    }
-
-    if (!m_impl->initialize(width, height, title))
+    if (!m_impl->initialize(config["width"], config["height"], config["title"]))
         return false;
 
-    get_context().get_task().schedule_before("window tick", [this]() { m_impl->tick(); });
+    auto task_handle = get_submodule<task::task_manager>().schedule(
+        "window tick",
+        [this]() { m_impl->tick(); },
+        task::task_type::MAIN_THREAD);
+
+    task_handle->add_dependency(*get_submodule<task::task_manager>().find("root"));
 
     return true;
 }

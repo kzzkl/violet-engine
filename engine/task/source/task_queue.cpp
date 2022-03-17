@@ -3,34 +3,31 @@
 
 namespace ash::task
 {
+task_queue::task_queue() : m_size(0)
+{
+}
+
 task* task_queue::pop()
 {
     task* result = nullptr;
     if (m_queue.pop(result))
+    {
+        m_size.fetch_sub(1);
         return result;
+    }
     else
+    {
         return nullptr;
+    }
 }
 
 void task_queue::push(task* t)
 {
     m_queue.push(t);
+
+    std::lock_guard<std::mutex> lg(m_lock);
+    m_size.fetch_add(1);
     m_cv.notify_one();
-}
-
-std::future<void> task_queue::push_root_task(task* t)
-{
-    m_done = std::promise<void>();
-
-    m_remaining_tasks_count.store(static_cast<uint32_t>(t->get_reachable_tasks_size()));
-    push(t);
-
-    return m_done.get_future();
-}
-
-bool task_queue::empty() const
-{
-    return m_queue.empty();
 }
 
 void task_queue::notify()
@@ -38,7 +35,39 @@ void task_queue::notify()
     m_cv.notify_all();
 }
 
-void task_queue::notify_task_completion(bool force)
+void task_queue::wait_task()
+{
+    std::unique_lock<std::mutex> ul(m_lock);
+    m_cv.wait(ul, [this]() { return m_size.load() > 0; });
+}
+
+void task_queue::wait_task(std::function<bool()> exit)
+{
+    std::unique_lock<std::mutex> ul(m_lock);
+    m_cv.wait(ul, [this, &exit]() { return m_size.load() > 0 || exit(); });
+}
+
+std::future<void> task_queue_group::execute(task* t, std::size_t task_count)
+{
+    m_remaining_tasks_count = static_cast<uint32_t>(task_count);
+    m_done = std::promise<void>();
+
+    switch (t->get_type())
+    {
+    case task_type::NONE:
+        get_queue(task_type::NONE).push(t);
+        break;
+    case task_type::MAIN_THREAD:
+        get_queue(task_type::MAIN_THREAD).push(t);
+        break;
+    default:
+        break;
+    }
+
+    return m_done.get_future();
+}
+
+void task_queue_group::notify_task_completion(bool force)
 {
     while (true)
     {
@@ -55,11 +84,5 @@ void task_queue::notify_task_completion(bool force)
             }
         }
     }
-}
-
-void task_queue::wait_task(std::function<bool()> exit)
-{
-    std::unique_lock<std::mutex> ul(m_lock);
-    m_cv.wait(ul, [this, &exit]() { return !empty() || exit(); });
 }
 } // namespace ash::task

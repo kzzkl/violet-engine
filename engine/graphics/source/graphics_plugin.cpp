@@ -2,7 +2,6 @@
 #include "log.hpp"
 
 using namespace ash::core;
-using namespace ash::common;
 
 namespace ash::graphics
 {
