@@ -12,7 +12,6 @@ cbuffer material : register(b1)
 struct vs_in
 {
     float3 position : POSITION;
-    float4 color : COLOR;
 };
 
 struct vs_out
@@ -26,7 +25,7 @@ vs_out vs_main(vs_in vin)
     vs_out result;
 
     result.position = mul(float4(vin.position, 1.0f), model_view_proj);
-    result.color = color;
+    result.color = float4(0.5f, 0.5f, 0.5f, 1.0f);
 
     return result;
 }

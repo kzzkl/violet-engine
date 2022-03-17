@@ -33,98 +33,109 @@ void config_parser::load(const dictionary& config)
 }
 
 template <>
-std::pair<bool, pipeline_parameter_desc> config_parser::find_desc(std::string_view name)
+config_parser::find_result<pipeline_parameter_desc> config_parser::find_desc(std::string_view name)
 {
-    std::pair<bool, pipeline_parameter_desc> result = {};
+    find_result<pipeline_parameter_desc> result = {};
 
     auto iter = m_parameter.find(name.data());
     if (iter == m_parameter.end())
     {
-        result.first = false;
-        return result;
+        std::get<0>(result) = false;
     }
     else
     {
-        result.first = true;
-    }
+        std::get<0>(result) = true;
+        std::get<2>(result) = &iter->second;
 
-    auto& desc = result.second;
-    for (std::size_t i = 0; i < iter->second.size(); ++i)
-    {
-        std::memcpy(desc.data[i].name, iter->second[i].first.c_str(), iter->second[i].first.size());
-        desc.data[i].type = iter->second[i].second;
+        auto& desc = std::get<1>(result);
+        for (std::size_t i = 0; i < iter->second.size(); ++i)
+        {
+            std::memcpy(
+                desc.data[i].name,
+                iter->second[i].first.c_str(),
+                iter->second[i].first.size());
+            desc.data[i].type = iter->second[i].second;
+        }
+        desc.size = iter->second.size();
     }
-    desc.size = iter->second.size();
 
     return result;
 }
 
 template <>
-std::pair<bool, pipeline_parameter_layout_desc> config_parser::find_desc(std::string_view name)
+config_parser::find_result<pipeline_layout_desc> config_parser::find_desc(std::string_view name)
 {
-    std::pair<bool, pipeline_parameter_layout_desc> result = {};
+    find_result<pipeline_layout_desc> result = {};
 
     auto iter = m_parameter_layout.find(name.data());
     if (iter == m_parameter_layout.end())
     {
-        result.first = false;
-        return result;
+        std::get<0>(result) = false;
     }
     else
     {
-        result.first = true;
-    }
+        std::get<0>(result) = true;
+        std::get<2>(result) = &iter->second;
 
-    auto& desc = result.second;
-    for (std::size_t i = 0; i < iter->second.size(); ++i)
-    {
-        auto [found, parameter_desc] = find_desc<pipeline_parameter_desc>(iter->second[i]);
-        std::memcpy(&desc.data[i], &parameter_desc, sizeof(pipeline_parameter_desc));
+        auto& desc = std::get<1>(result);
+        for (std::size_t i = 0; i < iter->second.size(); ++i)
+        {
+            auto [found, parameter_desc, _] = find_desc<pipeline_parameter_desc>(iter->second[i]);
+            if (found)
+            {
+                std::memcpy(&desc.data[i], &parameter_desc, sizeof(pipeline_parameter_desc));
+            }
+            else
+            {
+                std::get<0>(result) = false;
+                return result;
+            }
+        }
+        desc.size = iter->second.size();
     }
-    desc.size = iter->second.size();
 
     return result;
 }
 
 template <>
-std::pair<bool, pipeline_desc> config_parser::find_desc(std::string_view name)
+config_parser::find_result<pipeline_desc> config_parser::find_desc(std::string_view name)
 {
-    std::pair<bool, pipeline_desc> result = {};
+    find_result<pipeline_desc> result = {};
 
     auto iter = m_pipeline.find(name.data());
     if (iter == m_pipeline.end())
     {
-        result.first = false;
-        return result;
+        std::get<0>(result) = false;
     }
     else
     {
-        result.first = true;
-    }
+        std::get<0>(result) = true;
+        std::get<2>(result) = &iter->second;
 
-    auto& desc = result.second;
-    std::memcpy(desc.name, name.data(), name.size());
+        auto& desc = std::get<1>(result);
+        std::memcpy(desc.name, name.data(), name.size());
 
-    auto& vertex_layout = m_vertex_layout[iter->second.vertex_layout];
-    for (std::size_t i = 0; i < vertex_layout.size(); ++i)
-    {
+        auto& vertex_layout = m_vertex_layout[iter->second.vertex_layout];
+        for (std::size_t i = 0; i < vertex_layout.size(); ++i)
+        {
+            std::memcpy(
+                &desc.vertex_layout.data[i].name,
+                vertex_layout[i].name.c_str(),
+                vertex_layout[i].name.size());
+            desc.vertex_layout.data[i].type = vertex_layout[i].type;
+            desc.vertex_layout.data[i].index = vertex_layout[i].index;
+        }
+        desc.vertex_layout.size = vertex_layout.size();
+
         std::memcpy(
-            &desc.vertex_layout.data[i].name,
-            vertex_layout[i].name.c_str(),
-            vertex_layout[i].name.size());
-        desc.vertex_layout.data[i].type = vertex_layout[i].type;
-        desc.vertex_layout.data[i].index = vertex_layout[i].index;
+            desc.vertex_shader,
+            iter->second.vertex_shader.c_str(),
+            iter->second.vertex_shader.size());
+        std::memcpy(
+            desc.pixel_shader,
+            iter->second.pixel_shader.c_str(),
+            iter->second.pixel_shader.size());
     }
-    desc.vertex_layout.size = vertex_layout.size();
-
-    std::memcpy(
-        desc.vertex_shader,
-        iter->second.vertex_shader.c_str(),
-        iter->second.vertex_shader.size());
-    std::memcpy(
-        desc.pixel_shader,
-        iter->second.pixel_shader.c_str(),
-        iter->second.pixel_shader.size());
 
     return result;
 }
@@ -137,12 +148,13 @@ void config_parser::load_vertex_layout(const dictionary& doc)
 
     for (auto& layout_config : *iter)
     {
-        vertex_layout& layout = m_vertex_layout[layout_config["name"]];
+        vertex_layout_config& layout = m_vertex_layout[layout_config["name"]];
         for (auto& attribute_config : layout_config["attribute"])
         {
-            layout.push_back(vertex_attribute{attribute_config["name"],
-                                              m_vertex_attribute_map[attribute_config["type"]],
-                                              attribute_config["index"]});
+            layout.push_back(
+                vertex_attribute_config{attribute_config["name"],
+                                        m_vertex_attribute_map[attribute_config["type"]],
+                                        attribute_config["index"]});
         }
     }
 }
@@ -155,7 +167,7 @@ void config_parser::load_parameter(const dictionary& doc)
 
     for (auto& parameter_config : *iter)
     {
-        parameter& param = m_parameter[parameter_config["name"]];
+        pipeline_parameter_config& param = m_parameter[parameter_config["name"]];
         if (parameter_config["type"].is_object())
         {
             for (auto iter = parameter_config["type"].begin(), end = parameter_config["type"].end();
@@ -184,7 +196,7 @@ void config_parser::load_parameter_layout(const dictionary& doc)
 
     for (auto& layout_config : *iter)
     {
-        parameter_layout& layout = m_parameter_layout[layout_config["name"]];
+        pipeline_layout_config& layout = m_parameter_layout[layout_config["name"]];
         for (auto& parameter_config : layout_config["parameter"])
         {
             layout.push_back(parameter_config);
@@ -198,13 +210,13 @@ void config_parser::load_pipeline(const dictionary& doc)
     if (iter == doc.end())
         return;
 
-    for (auto& pipeline_config : *iter)
+    for (auto& config : *iter)
     {
-        pipeline& pipeline = m_pipeline[pipeline_config["name"]];
-        pipeline.vertex_layout = pipeline_config["vertex_layout"];
-        pipeline.parameter_layout = pipeline_config["parameter_layout"];
-        pipeline.vertex_shader = pipeline_config["vertex_shader"];
-        pipeline.pixel_shader = pipeline_config["pixel_shader"];
+        pipeline_config& p = m_pipeline[config["name"]];
+        p.vertex_layout = config["vertex_layout"];
+        p.parameter_layout = config["parameter_layout"];
+        p.vertex_shader = config["vertex_shader"];
+        p.pixel_shader = config["pixel_shader"];
     }
 }
 } // namespace ash::graphics

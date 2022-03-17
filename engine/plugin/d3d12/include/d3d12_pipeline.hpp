@@ -49,10 +49,10 @@ private:
     };
 };
 
-class d3d12_parameter_layout : public pipeline_parameter_layout
+class d3d12_parameter_layout : public pipeline_layout
 {
 public:
-    d3d12_parameter_layout(const pipeline_parameter_layout_desc& desc);
+    d3d12_parameter_layout(const pipeline_layout_desc& desc);
     inline D3D12RootSignature* get_root_signature() const noexcept
     {
         return m_root_signature.Get();

@@ -54,7 +54,7 @@ public:
         world.add<visual, mesh, material>(entity);
 
         visual& v = world.get_component<visual>(entity);
-        v.group = get_submodule<ash::graphics::graphics>().get_group("");
+        v.group = get_submodule<ash::graphics::graphics>().get_group("mmd");
 
         mesh& m = world.get_component<mesh>(entity);
         m.vertex_buffer = get_submodule<ash::graphics::graphics>().make_vertex_buffer<vertex>(
@@ -80,9 +80,6 @@ int main()
     app.install<ash::sample::mmd::test_module>();
 
     app.run();
-
-    while (true)
-        std::this_thread::sleep_for(std::chrono::seconds(600));
 
     return 0;
 }

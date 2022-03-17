@@ -26,7 +26,7 @@ void d3d12_render_command::set_pipeline(pipeline* pipeline)
     m_command_list->SetPipelineState(pso);
 }
 
-void d3d12_render_command::set_layout(pipeline_parameter_layout* layout)
+void d3d12_render_command::set_layout(pipeline_layout* layout)
 {
     d3d12_parameter_layout* l = static_cast<d3d12_parameter_layout*>(layout);
     m_command_list->SetGraphicsRootSignature(l->get_root_signature());

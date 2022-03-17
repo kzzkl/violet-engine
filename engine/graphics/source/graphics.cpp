@@ -69,20 +69,9 @@ render_group* graphics::get_group(std::string_view name)
 {
     auto iter = m_render_group.find(name.data());
     if (iter == m_render_group.end())
-    {
-        auto [found, desc] = m_config.find_desc<pipeline_desc>(name);
-        if (!found)
-            return nullptr;
-        desc.parameter_layout = m_layout;
-
-        m_render_group[name.data()] =
-            std::make_unique<render_group>(nullptr, m_factory->make_pipeline(desc));
-        return m_render_group[name.data()].get();
-    }
+        return make_render_group(name);
     else
-    {
         return iter->second.get();
-    }
 }
 
 bool graphics::initialize_resource()
@@ -108,7 +97,7 @@ bool graphics::initialize_resource()
         m_mvp->upload(&mvp, sizeof(mvp));
 
         {
-            auto [found, desc] = m_config.find_desc<pipeline_parameter_desc>("object");
+            auto [found, desc, _] = m_config.find_desc<pipeline_parameter_desc>("object");
             m_parameter_object = m_factory->make_pipeline_parameter(desc);
             m_parameter_object->bind(0, m_mvp);
         }
@@ -123,51 +112,11 @@ bool graphics::initialize_resource()
         m_material->upload(&m, sizeof(m));
 
         {
-            auto [found, desc] = m_config.find_desc<pipeline_parameter_desc>("material");
+            auto [found, desc, _] = m_config.find_desc<pipeline_parameter_desc>("material");
             m_parameter_material = m_factory->make_pipeline_parameter(desc);
             m_parameter_material->bind(0, m_material);
         }
-
-        {
-            auto [found, desc] = m_config.find_desc<pipeline_parameter_layout_desc>("base layout");
-            m_layout = m_factory->make_pipeline_parameter_layout(desc);
-        }
     }
-
-    /*{
-        struct vertex
-        {
-            float3 position;
-            float4 color;
-        };
-
-        std::vector<vertex> vertices = {
-            vertex({float3{-1.0f, -1.0f, -1.0f},
-                    float4{1.000000000f, 1.000000000f, 1.000000000f, 1.000000000f}}),
-            vertex({float3{-1.0f, +1.0f, -1.0f},
-                    float4{1.000000000f, 0.980392218f, 0.980392218f, 1.000000000f}}),
-            vertex({float3{+1.0f, +1.0f, -1.0f},
-                    float4{0.854902029f, 0.439215720f, 0.839215755f, 1.000000000f}}),
-            vertex({float3{+1.0f, -1.0f, -1.0f},
-                    float4{0.196078449f, 0.803921640f, 0.196078449f, 1.000000000f}}),
-            vertex({float3{-1.0f, -1.0f, +1.0f},
-                    float4{0.941176534f, 1.000000000f, 0.941176534f, 1.000000000f}}),
-            vertex({float3{-1.0f, +1.0f, +1.0f},
-                    float4{0.545098066f, 0.000000000f, 0.000000000f, 1.000000000f}}),
-            vertex({float3{+1.0f, +1.0f, +1.0f},
-                    float4{1.000000000f, 0.921568692f, 0.803921640f, 1.000000000f}}),
-            vertex({float3{+1.0f, -1.0f, +1.0f},
-                    float4{0.980392218f, 0.921568692f, 0.843137324f, 1.000000000f}})};
-
-        std::vector<uint16_t> indices = {0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6, 4, 5, 1, 4, 1, 0,
-                                         3, 2, 6, 3, 6, 7, 1, 5, 6, 1, 6, 2, 4, 0, 3, 4, 3, 7};
-
-        vertex_buffer_desc vertex_desc = {vertices.data(), sizeof(vertex), vertices.size()};
-        index_buffer_desc index_desc = {indices.data(), sizeof(uint16_t), indices.size()};
-
-        m_vertices = m_factory->make_vertex_buffer(vertex_desc);
-        m_indices = m_factory->make_index_buffer(index_desc);
-    }*/
 
     return true;
 }
@@ -178,7 +127,7 @@ void graphics::render()
     for (auto& [name, group] : m_render_group)
     {
         command->set_pipeline(group->get_pipeline());
-        command->set_layout(m_layout);
+        command->set_layout(group->get_layout());
         command->set_parameter(0, m_parameter_object);
 
         for (mesh* m : *group)
@@ -190,15 +139,26 @@ void graphics::render()
                 m_renderer->get_back_buffer());
         }
     }
-    /*command->set_pipeline(m_pipeline);
-    command->set_layout(m_layout);
-    command->set_parameter(0, m_parameter_object);
-    command->set_parameter(1, m_parameter_material);
-    command->draw(
-        m_vertices,
-        m_indices,
-        primitive_topology_type::TRIANGLE_LIST,
-        m_renderer->get_back_buffer());*/
     m_renderer->execute(command);
+}
+
+render_group* graphics::make_render_group(std::string_view name)
+{
+    auto [found, desc, config] = m_config.find_desc<pipeline_desc>(name);
+    if (!found)
+        return nullptr;
+
+    // make layout
+    auto [layout_found, layout_desc, _] =
+        m_config.find_desc<pipeline_layout_desc>(config->parameter_layout);
+    if (!layout_found)
+        return nullptr;
+
+    pipeline_layout* layout = m_factory->make_pipeline_layout(layout_desc);
+    desc.layout = layout;
+
+    m_render_group[name.data()] =
+        std::make_unique<render_group>(layout, m_factory->make_pipeline(desc));
+    return m_render_group[name.data()].get();
 }
 } // namespace ash::graphics

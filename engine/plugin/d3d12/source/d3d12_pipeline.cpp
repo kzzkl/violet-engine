@@ -66,7 +66,7 @@ void d3d12_pipeline_parameter::bind(std::size_t index, resource* data)
     }
 }
 
-d3d12_parameter_layout::d3d12_parameter_layout(const pipeline_parameter_layout_desc& desc)
+d3d12_parameter_layout::d3d12_parameter_layout(const pipeline_layout_desc& desc)
 {
     std::vector<CD3DX12_ROOT_PARAMETER> root_parameter;
     root_parameter.resize(desc.size);
@@ -159,44 +159,11 @@ d3d12_parameter_layout::d3d12_parameter_layout(const pipeline_parameter_layout_d
 
 d3d12_pipeline::d3d12_pipeline(const pipeline_desc& desc)
 {
-    m_parameter_layout = static_cast<d3d12_parameter_layout*>(desc.parameter_layout);
+    m_parameter_layout = static_cast<d3d12_parameter_layout*>(desc.layout);
 
     initialize_vertex_layout(desc);
     initialize_pipeline_state(desc);
 }
-
-/*void d3d12_pipeline::set_parameter(std::size_t index, pass_parameter_interface* parameter)
-{
-    d3d12_pipeline_parameter* d3d12_parameter = static_cast<d3d12_pipeline_parameter*>(parameter);
-
-    if (d3d12_parameter->get_type() == D3D12_ROOT_PARAMETER_TYPE_CBV)
-        m_command_list->SetGraphicsRootConstantBufferView(
-            static_cast<UINT>(index),
-            d3d12_parameter->get_address());
-    else
-        m_command_list->SetGraphicsRootDescriptorTable(
-            static_cast<UINT>(index),
-            d3d12_parameter->get_descriptor_handle());
-}*/
-
-/*void d3d12_pipeline::render(const d3d12_mesh& mesh, D3D12GraphicsCommandList* command_list)
-{
-    D3D12DescriptorHeap* heaps[] = {m_cbv.get_heap()};
-    command_list->SetDescriptorHeaps(1, heaps);
-    command_list->SetGraphicsRootSignature(m_parameter_layout->get_root_signature());
-    command_list->SetPipelineState(m_pipeline_state.Get());
-    command_list->SetGraphicsRootConstantBufferView(
-        0,
-        m_cbuffer.get().get_resource()->GetGPUVirtualAddress());
-
-    auto vertex_view = mesh.get_vertex_view();
-    command_list->IASetVertexBuffers(0, 1, &vertex_view);
-    auto index_view = mesh.get_index_view();
-    command_list->IASetIndexBuffer(&index_view);
-    command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    command_list->DrawIndexedInstanced(mesh.get_index_size(), 1, 0, 0, 0);
-}*/
 
 void d3d12_pipeline::initialize_vertex_layout(const pipeline_desc& desc)
 {

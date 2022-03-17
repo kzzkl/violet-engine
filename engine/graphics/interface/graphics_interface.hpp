@@ -49,12 +49,12 @@ public:
     virtual void bind(std::size_t index, resource* data) = 0;
 };
 
-using pipeline_parameter_layout_desc = list<pipeline_parameter_desc, 16>;
+using pipeline_layout_desc = list<pipeline_parameter_desc, 16>;
 
-class pipeline_parameter_layout
+class pipeline_layout
 {
 public:
-    virtual ~pipeline_parameter_layout() = default;
+    virtual ~pipeline_layout() = default;
 };
 
 enum class vertex_attribute_type : uint8_t
@@ -85,7 +85,7 @@ struct pipeline_desc
     char name[32];
 
     list<vertex_attribute_desc, 16> vertex_layout;
-    pipeline_parameter_layout* parameter_layout;
+    pipeline_layout* layout;
 
     char vertex_shader[128];
     char pixel_shader[128];
@@ -102,7 +102,7 @@ public:
     virtual ~render_command() = default;
 
     virtual void set_pipeline(pipeline* pipeline) = 0;
-    virtual void set_layout(pipeline_parameter_layout* layout) = 0;
+    virtual void set_layout(pipeline_layout* layout) = 0;
     virtual void set_parameter(std::size_t index, pipeline_parameter* parameter) = 0;
 
     virtual void draw(
@@ -150,8 +150,7 @@ class factory
 {
 public:
     virtual pipeline_parameter* make_pipeline_parameter(const pipeline_parameter_desc& desc) = 0;
-    virtual pipeline_parameter_layout* make_pipeline_parameter_layout(
-        const pipeline_parameter_layout_desc& desc) = 0;
+    virtual pipeline_layout* make_pipeline_layout(const pipeline_layout_desc& desc) = 0;
     virtual pipeline* make_pipeline(const pipeline_desc& desc) = 0;
 
     virtual resource* make_upload_buffer(std::size_t size) = 0;

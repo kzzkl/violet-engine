@@ -16,6 +16,9 @@ class GRAPHICS_API graphics : public ash::core::submodule
 public:
     static constexpr uuid id = "cb3c4adc-4849-4871-8857-9ee68a9049e2";
 
+    template <typename T>
+    using interface_map = std::unordered_map<std::string, std::unique_ptr<T>>;
+
 public:
     graphics() noexcept;
 
@@ -41,14 +44,15 @@ private:
     bool initialize_resource();
     void render();
 
+    render_group* make_render_group(std::string_view name);
+
     graphics_plugin m_plugin;
     renderer* m_renderer;
     factory* m_factory;
 
     ash::ecs::view<visual, mesh, material>* m_view;
-    std::unordered_map<std::string, std::unique_ptr<render_group>> m_render_group;
 
-    pipeline_parameter_layout* m_layout;
+    interface_map<render_group> m_render_group;
 
     pipeline_parameter* m_parameter_object;
     pipeline_parameter* m_parameter_material;

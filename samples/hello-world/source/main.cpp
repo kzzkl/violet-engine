@@ -28,9 +28,11 @@ private:
 
 void test_json()
 {
-    ash::dictionary json1 = R"({"test": {"title":"test app","array":["1","2","3"],"array2":[{"name":"1"}]}})"_json;
+    ash::dictionary json1 =
+        R"({"test": {"title":"test app","array":["1","2","3"],"array2":[{"name":"1"}]}})"_json;
 
-    ash::dictionary json2 = R"({"test": {"title":"test app2","array":["1","2","3","4"],"array2":[{"name":"2"}]}})"_json;
+    ash::dictionary json2 =
+        R"({"test": {"title":"test app2","array":["1","2","3","4"],"array2":[{"name":"2"}]}})"_json;
 
     json1.update(json2, true);
 
@@ -49,9 +51,6 @@ int main()
     app.install<ash::graphics::graphics>();
 
     app.run();
-
-    while (true)
-        std::this_thread::sleep_for(std::chrono::seconds(600));
 
     return 0;
 }

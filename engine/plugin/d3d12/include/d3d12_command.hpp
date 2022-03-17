@@ -20,7 +20,7 @@ public:
     d3d12_render_command(D3D12CommandAllocator* allocator, std::wstring_view name = L"");
 
     virtual void set_pipeline(pipeline* pipeline) override;
-    virtual void set_layout(pipeline_parameter_layout* layout) override;
+    virtual void set_layout(pipeline_layout* layout) override;
     virtual void set_parameter(std::size_t index, pipeline_parameter* parameter) override;
     virtual void draw(
         resource* vertex,
