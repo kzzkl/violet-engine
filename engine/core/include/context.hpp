@@ -22,6 +22,7 @@ public:
     virtual ~submodule() = default;
 
     virtual bool initialize(const dictionary& config) = 0;
+    virtual void shutdown(){};
 
     inline std::string_view get_name() const noexcept { return m_name; }
 
@@ -89,6 +90,8 @@ protected:
             log::warn("The module is already installed.");
         }
     }
+
+    void shutdown_submodule();
 
 private:
     void load_config(std::string_view config_path);

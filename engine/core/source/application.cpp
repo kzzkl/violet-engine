@@ -25,7 +25,7 @@ void application::run()
 
     auto root_task = task.find("root");
 
-    while (true)
+    while (!m_exit)
     {
         frame_start = timer::now<steady_clock>();
 
@@ -46,5 +46,12 @@ void application::run()
             frame_counter = 0;
         }
     }
+
+    shutdown_submodule();
+}
+
+void application::exit()
+{
+    m_exit = true;
 }
 } // namespace ash::core

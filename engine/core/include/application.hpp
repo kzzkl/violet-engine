@@ -17,7 +17,11 @@ public:
     }
 
     void run();
+    void exit();
 
     application& operator=(const application&) = delete;
+
+private:
+    std::atomic<bool> m_exit;
 };
 } // namespace ash::core

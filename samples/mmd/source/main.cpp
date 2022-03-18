@@ -25,7 +25,7 @@ public:
     static constexpr ash::uuid id = "bd58a298-9ea4-4f8d-a79c-e57ae694915a";
 
 public:
-    test_module() : submodule("test_module") {}
+    test_module(application* app) : submodule("test_module"), m_app(app) {}
 
     virtual bool initialize(const ash::dictionary& config) override
     {
@@ -103,6 +103,9 @@ public:
             t.position[1] += 0.1f;
             t.node->dirty = true;
         }
+
+        if (m_keyboard->key(keyboard_key::KEY_Q).down())
+            m_app->exit();
     }
 
 private:
@@ -112,6 +115,8 @@ private:
     mouse* m_mouse;
 
     entity_id m_camera;
+
+    application* m_app;
 };
 } // namespace ash::sample::mmd
 
@@ -127,7 +132,7 @@ int main()
     app.install<window>();
     app.install<scene>();
     app.install<graphics>();
-    app.install<ash::sample::mmd::test_module>();
+    app.install<ash::sample::mmd::test_module>(&app);
 
     app.run();
 

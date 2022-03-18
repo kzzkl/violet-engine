@@ -22,6 +22,15 @@ context::context(std::string_view config_path)
     m_world = std::make_unique<ash::ecs::world>();
 }
 
+void context::shutdown_submodule()
+{
+    m_task->stop();
+    for (auto& [id, submodule] : m_modules)
+    {
+        submodule->shutdown();
+    }
+}
+
 void context::load_config(std::string_view config_path)
 {
     std::filesystem::path path = config_path;
