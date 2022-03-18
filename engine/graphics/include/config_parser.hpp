@@ -67,6 +67,8 @@ public:
     find_result<T> find_desc(std::string_view name);
 
     inline std::size_t get_render_concurrency() const noexcept { return m_render_concurrency; }
+    inline std::size_t get_frame_resource() const noexcept { return m_frame_resource; }
+
     inline std::string_view get_plugin() const noexcept { return m_plugin; }
 
 private:
@@ -76,6 +78,7 @@ private:
     void load_pipeline(const dictionary& doc);
 
     std::size_t m_render_concurrency;
+    std::size_t m_frame_resource;
     std::string m_plugin;
 
     std::map<std::string, vertex_layout_config> m_vertex_layout;

@@ -16,6 +16,7 @@ public:
     virtual bool initialize(const dictionary& config) override;
 
     mouse& get_mouse() { return m_impl->get_mouse(); }
+    keyboard& get_keyboard() { return m_impl->get_keyboard(); }
 
     const void* get_handle() const { return m_impl->get_handle(); }
     window_rect get_rect() const { return m_impl->get_rect(); }

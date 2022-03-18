@@ -66,7 +66,7 @@ public:
     }
 
     template <>
-    ash::ecs::ecs& get_submodule<ash::ecs::ecs>()
+    ash::ecs::world& get_submodule<ash::ecs::world>()
     {
         return *m_world;
     }
@@ -97,7 +97,7 @@ private:
 
     module_list m_modules;
     std::unique_ptr<ash::task::task_manager> m_task;
-    std::unique_ptr<ash::ecs::ecs> m_world;
+    std::unique_ptr<ash::ecs::world> m_world;
 };
 
 template <typename T>

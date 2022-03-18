@@ -29,6 +29,8 @@ void config_parser::load(const dictionary& config)
     load_pipeline(config);
 
     m_render_concurrency = config["render_concurrency"];
+    m_frame_resource = config["frame_resource"];
+
     m_plugin = config["plugin"];
 }
 
@@ -165,24 +167,24 @@ void config_parser::load_parameter(const dictionary& doc)
     if (iter == doc.end())
         return;
 
-    for (auto& parameter_config : *iter)
+    for (auto parameter_iter = iter->begin(); parameter_iter != iter->end(); ++parameter_iter)
     {
-        pipeline_parameter_config& param = m_parameter[parameter_config["name"]];
-        if (parameter_config["type"].is_object())
+        pipeline_parameter_config& param = m_parameter[parameter_iter.key()];
+
+        auto& type = (*parameter_iter)["type"];
+        if (type.is_object())
         {
-            for (auto iter = parameter_config["type"].begin(), end = parameter_config["type"].end();
-                 iter != end;
-                 ++iter)
+            for (auto field_iter = type.begin(); field_iter != type.end(); ++field_iter)
             {
-                std::string n = iter.key();
-                pipeline_parameter_type t = m_parameter_layout_map[iter.value()];
+                std::string n = field_iter.key();
+                pipeline_parameter_type t = m_parameter_layout_map[field_iter.value()];
                 param.push_back(std::make_pair(n, t));
             }
         }
         else
         {
-            std::string n = parameter_config["name"];
-            pipeline_parameter_type t = m_parameter_layout_map[parameter_config["type"]];
+            std::string n = parameter_iter.key();
+            pipeline_parameter_type t = m_parameter_layout_map[type];
             param.push_back(std::make_pair(n, t));
         }
     }

@@ -1,12 +1,20 @@
 {
     "graphics": {
         "vertex_layout": [],
-        "parameter": [],
+        "parameter": {
+            "ash_object": {
+                "type": "buffer"
+            },
+            "ash_pass": {
+                "type": "buffer"
+            }
+        },
         "parameter_layout": [],
         "pipeline": [],
         "technique": [],
         "plugin": "ash-graphics-d3d12.dll",
-        "render_concurrency": 4
+        "render_concurrency": 4,
+        "frame_resource": 3
     },
     "window": {
         "title": "ash app",

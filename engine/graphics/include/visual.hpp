@@ -7,6 +7,7 @@ namespace ash::graphics
 struct visual
 {
     render_group* group;
+    std::unique_ptr<render_parameter_object> parameter;
 };
 } // namespace ash::graphics
 

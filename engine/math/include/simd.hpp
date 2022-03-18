@@ -10,6 +10,9 @@ using float4_simd = __m128;
 
 struct alignas(16) float4x4_simd
 {
+    inline float4_simd& operator[](std::size_t index) { return row[index]; }
+    inline const float4_simd& operator[](std::size_t index) const { return row[index]; }
+
     float4_simd row[4];
 };
 
@@ -63,7 +66,11 @@ public:
     {
         return _mm_setr_ps(x, y, z, w);
     }
-    static inline float4_simd set(std::uint32_t x, std::uint32_t y, std::uint32_t z, std::uint32_t w)
+    static inline float4_simd set(
+        std::uint32_t x,
+        std::uint32_t y,
+        std::uint32_t z,
+        std::uint32_t w)
     {
         union {
             __m128 v;

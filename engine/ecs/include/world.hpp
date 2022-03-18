@@ -2,7 +2,6 @@
 
 #include "archetype.hpp"
 #include "entity.hpp"
-#include "hierarchy.hpp"
 #include "view.hpp"
 #include <atomic>
 #include <queue>
@@ -86,7 +85,7 @@ private:
     };
 
 public:
-    world() { register_component<hierarchy>(); }
+    world() { register_component<entity>(); }
 
     template <typename... Components>
     void register_component()
@@ -118,15 +117,15 @@ public:
 
     entity_id create() { return m_entity_index_generator.new_index(); }
 
-    void release(entity_id entity) {}
+    void release(entity_id id) {}
 
     template <typename... Components>
-    void add(entity_id entity)
+    void add(entity_id id)
     {
-        auto& record = m_entity_record[entity];
+        auto& record = m_entity_record[id];
         if (record.archetype == nullptr)
         {
-            mask_archetype* archetype = get_or_create_archetype<hierarchy, Components...>();
+            mask_archetype* archetype = get_or_create_archetype<entity, Components...>();
             archetype->add(&record);
         }
         else
@@ -148,9 +147,9 @@ public:
     }
 
     template <typename... Components>
-    void remove(entity_id entity)
+    void remove(entity_id id)
     {
-        auto& record = m_entity_record[entity];
+        auto& record = m_entity_record[id];
         mask_archetype* source = record.archetype;
 
         component_mask mask = source->get_mask() ^ get_mask<Components...>();
@@ -170,16 +169,16 @@ public:
     }
 
     template <typename T>
-    T& get_component(entity_id entity)
+    T& get_component(entity_id id)
     {
-        auto& record = m_entity_record[entity];
+        auto& record = m_entity_record[id];
         auto handle = record.archetype->begin<T>() + record.index;
 
         return handle.get_component<T>();
     }
 
     template <typename... Components>
-    view<Components...>* create_view()
+    view<Components...>* make_view()
     {
         component_mask m = get_mask<Components...>();
         auto v = std::make_unique<view<Components...>>(m);
@@ -259,6 +258,4 @@ private:
     index_generator<entity_id> m_entity_index_generator;
     index_generator<component_index> m_component_index_generator;
 };
-
-using ecs = world;
 } // namespace ash::ecs

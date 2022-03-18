@@ -22,7 +22,8 @@ private:
 class window_impl_win32 : public window_impl
 {
 public:
-    virtual bool initialize(std::uint32_t width, std::uint32_t height, std::string_view title) override;
+    virtual bool initialize(std::uint32_t width, std::uint32_t height, std::string_view title)
+        override;
     virtual void tick() override;
     virtual void show() override;
 
@@ -30,6 +31,7 @@ public:
     virtual window_rect get_rect() const override;
 
     virtual mouse& get_mouse() override { return m_mouse; };
+    virtual keyboard& get_keyboard() override { return m_keyboard; };
 
     virtual void set_title(std::string_view title) override;
 
@@ -37,7 +39,7 @@ private:
     static LRESULT CALLBACK wnd_create_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
     static LRESULT CALLBACK wnd_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
 
-    constexpr static const auto* m_class_name = L"ash-engine";
+    static constexpr auto* m_class_name = L"ash-engine";
 
     LRESULT handle_message(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
 

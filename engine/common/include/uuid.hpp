@@ -42,7 +42,7 @@ public:
         }
     }
 
-    constexpr inline std::size_t hash() const noexcept
+    inline constexpr std::size_t hash() const noexcept
     {
         std::size_t hash = 0;
         for (auto iter = cbegin(); iter != cend(); ++iter)
@@ -51,13 +51,13 @@ public:
         return hash;
     }
 
-    constexpr inline iterator begin() noexcept { return m_data; }
-    constexpr inline iterator end() noexcept { return m_data + size(); }
+    inline constexpr iterator begin() noexcept { return m_data; }
+    inline constexpr iterator end() noexcept { return m_data + size(); }
 
-    constexpr inline const_iterator cbegin() const noexcept { return m_data; }
-    constexpr inline const_iterator cend() const noexcept { return m_data + size(); }
+    inline constexpr const_iterator cbegin() const noexcept { return m_data; }
+    inline constexpr const_iterator cend() const noexcept { return m_data + size(); }
 
-    constexpr static inline std::size_t size() noexcept { return 16; }
+    static inline constexpr std::size_t size() noexcept { return 16; }
 
     constexpr bool operator==(const uuid& other) const noexcept
     {

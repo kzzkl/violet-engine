@@ -32,23 +32,21 @@
                 ]
             }
         ],
-        "parameter": [
-            {
-                "name": "object",
+        "parameter": {
+            "object": {
                 "type": "buffer"
             },
-            {
-                "name": "material",
+            "material": {
                 "type": {
                     "material_property": "buffer"
                 }
             }
-        ],
+        },
         "parameter_layout": [
             {
                 "name": "base layout",
                 "parameter": [
-                    "object",
+                    "ash_pass",
                     "material"
                 ]
             }

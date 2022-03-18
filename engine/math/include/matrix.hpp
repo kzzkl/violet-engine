@@ -254,4 +254,171 @@ private:
         return result;
     }
 };
+
+struct perspective_matrix : matrix
+{
+    template <matrix_4x4 M>
+    inline static M make(float fov, float aspect, float zn, float zf)
+    {
+        float h = 1.0f / tanf(fov * 0.5f); // view space height
+        float w = h / aspect;              // view space width
+        return {w, 0, 0, 0, 0, h, 0, 0, 0, 0, zf / (zf - zn), 1, 0, 0, zn * zf / (zn - zf), 0};
+    }
+};
+
+struct scaling_matrix : matrix
+{
+    template <matrix_4x4 M>
+    inline static M make(float x, float y, float z)
+    {
+        return M{x,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 y,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 z,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 1.0f};
+    }
+
+    template <>
+    inline static float4x4_simd make(float x, float y, float z)
+    {
+        return float4x4_simd{_mm_setr_ps(x, 0.0f, 0.0f, 0.0f),
+                             _mm_setr_ps(0.0f, y, 0.0f, 0.0f),
+                             _mm_setr_ps(0.0f, 0.0f, z, 0.0f),
+                             simd::get_identity_row<3>()};
+    }
+
+    inline static float4x4_simd make(const float4_simd& v)
+    {
+        return float4x4_simd{_mm_and_ps(v, simd::get_mask<0x1000>()),
+                             _mm_and_ps(v, simd::get_mask<0x0100>()),
+                             _mm_and_ps(v, simd::get_mask<0x0010>()),
+                             simd::get_identity_row<3>()};
+    }
+};
+
+struct rotation_matrix : matrix
+{
+    template <matrix_4x4 M, vector_1x3_1x4 V>
+    inline static M make_form_axis(const V& axis, float angle)
+    {
+    }
+
+    inline static float4x4_simd make(const float4_simd& quaternion) noexcept
+    {
+        static const __m128 c = simd::set(1.0f, 1.0f, 1.0f, 0.0f);
+
+        __m128 q0 = _mm_add_ps(quaternion, quaternion);
+        __m128 q1 = _mm_mul_ps(quaternion, q0);
+
+        __m128 v0 = simd::shuffle<1, 0, 0, 3>(q1);
+        v0 = _mm_and_ps(v0, simd::get_mask<0x1110>());
+        __m128 v1 = simd::shuffle<2, 2, 1, 3>(q1);
+        v1 = _mm_and_ps(v1, simd::get_mask<0x1110>());
+        __m128 r0 = _mm_sub_ps(c, v0);
+        r0 = _mm_sub_ps(r0, v1);
+
+        v0 = simd::shuffle<0, 0, 1, 3>(quaternion);
+        v1 = simd::shuffle<2, 1, 2, 3>(q0);
+        v0 = _mm_mul_ps(v0, v1);
+
+        v1 = simd::replicate<3>(quaternion);
+        __m128 v2 = simd::shuffle<1, 2, 0, 3>(q0);
+        v1 = _mm_mul_ps(v1, v2);
+
+        __m128 r1 = _mm_add_ps(v0, v1);
+        __m128 r2 = _mm_sub_ps(v0, v1);
+
+        v0 = simd::shuffle<1, 2, 0, 1>(r1, r2);
+        v0 = simd::shuffle<0, 2, 3, 1>(v0);
+        v1 = simd::shuffle<0, 0, 2, 2>(r1, r2);
+        v1 = simd::shuffle<0, 2, 0, 2>(v1);
+
+        q1 = simd::shuffle<0, 3, 0, 1>(r0, v0);
+        q1 = simd::shuffle<0, 2, 3, 1>(q1);
+
+        float4x4_simd result = {q1,
+                                simd::get_identity_row<1>(),
+                                simd::get_identity_row<2>(),
+                                simd::get_identity_row<3>()};
+
+        q1 = simd::shuffle<1, 3, 2, 3>(r0, v0);
+        q1 = simd::shuffle<2, 0, 3, 1>(q1);
+        result.row[1] = q1;
+
+        q1 = simd::shuffle<0, 1, 2, 3>(v1, r0);
+        result.row[2] = q1;
+
+        return result;
+    }
+};
+
+struct affine_transform_matrix : matrix
+{
+    static inline float4x4_simd make(
+        const float4_simd& translation,
+        const float4_simd& rotation) noexcept
+    {
+        float4x4_simd result = rotation_matrix::make(rotation);
+        result[3] = _mm_or_ps(result[3], translation);
+        return result;
+    }
+
+    static inline float4x4_simd make(
+        const float4_simd& translation,
+        const float4_simd& rotation,
+        const float4_simd& scaling) noexcept
+    {
+        float4x4_simd s = scaling_matrix::make(scaling);
+        float4x4_simd rt = make(translation, rotation);
+        return mul(s, rt);
+    }
+
+    static inline float4x4_simd inverse(const float4x4_simd& m)
+    {
+        float4x4_simd result = m;
+        __m128 trans = _mm_set_ps1(-1.0f);
+        trans = _mm_mul_ps(trans, result[3]);
+
+        __m128 t1, t2;
+
+        t1 = _mm_mul_ps(trans, result[0]);
+        t2 = simd::shuffle<1, 0, 3, 2>(t1);
+        t1 = _mm_add_ps(t1, t2);
+        t2 = simd::shuffle<2, 3, 0, 1>(t1);
+        t1 = _mm_add_ps(t1, t2);
+        t1 = _mm_and_ps(t1, simd::get_mask<0x0001>());
+        result[0] = _mm_or_ps(result[0], t1);
+
+        t1 = _mm_mul_ps(trans, result[1]);
+        t2 = simd::shuffle<1, 0, 3, 2>(t1);
+        t1 = _mm_add_ps(t1, t2);
+        t2 = simd::shuffle<2, 3, 0, 1>(t1);
+        t1 = _mm_add_ps(t1, t2);
+        t1 = _mm_and_ps(t1, simd::get_mask<0x0001>());
+        result[1] = _mm_or_ps(result[1], t1);
+
+        t1 = _mm_mul_ps(trans, result[2]);
+        t2 = simd::shuffle<1, 0, 3, 2>(t1);
+        t1 = _mm_add_ps(t1, t2);
+        t2 = simd::shuffle<2, 3, 0, 1>(t1);
+        t1 = _mm_add_ps(t1, t2);
+        t1 = _mm_and_ps(t1, simd::get_mask<0x0001>());
+        result[2] = _mm_or_ps(result[2], t1);
+
+        result[3] = simd::get_identity_row<3>();
+
+        return transpose(result);
+    }
+};
 } // namespace ash::math

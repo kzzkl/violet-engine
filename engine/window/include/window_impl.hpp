@@ -26,6 +26,7 @@ public:
     virtual window_rect get_rect() const = 0;
 
     virtual mouse& get_mouse() = 0;
+    virtual keyboard& get_keyboard() = 0;
 
     virtual void set_title(std::string_view title) = 0;
 };

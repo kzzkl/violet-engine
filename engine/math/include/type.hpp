@@ -61,7 +61,8 @@ struct packed_2d
     inline row_type& operator[](std::size_t index) { return data[index]; }
     inline const row_type& operator[](std::size_t index) const { return data[index]; }
 
-    inline bool operator==(const self_type& other) const requires std::is_integral_v<value_type>
+    inline constexpr bool operator==(const self_type& other) const
+        noexcept requires std::is_integral_v<value_type>
     {
         for (std::size_t i = 0; i < row_size; ++i)
         {

@@ -17,7 +17,8 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         ash::core
         ash::window
-        ash::math)
+        ash::math
+        ash::scene)
 
 include(GenerateExportHeader)
 generate_export_header(${PROJECT_NAME}
