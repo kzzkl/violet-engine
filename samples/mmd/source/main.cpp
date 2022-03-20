@@ -126,7 +126,7 @@ int main()
     ash::math::float4_simd r = ash::math::simd::set(2.0, 2.0f, 3.0f, 3.0f);
     ash::math::float4_simd s = ash::math::simd::set(1.0, 2.0f, 3.0f, 0.0f);
 
-    ash::math::float4x4_simd result = ash::math::affine_transform_matrix::make(t, r, s);
+    ash::math::float4x4_simd result = ash::math::matrix_simd::affine_transform(t, r, s);
 
     application app;
     app.install<window>();

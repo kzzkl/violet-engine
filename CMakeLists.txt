@@ -21,7 +21,7 @@ set(ASH_GRAPHICS_INTERFACE_DIR ${PROJECT_SOURCE_DIR}/engine/graphics/interface)
 option(ASH_BUILD_THIRDPARTY "Build thirdparty" OFF)
 
 option(ASH_BUILD_ENGINE "Build engine" ON)
-option(ASH_BUILD_TESTING "Build test project" OFF)
+option(ASH_BUILD_TESTING "Build test project" ON)
 option(ASH_BUILD_EXAMPLES "Build examples" ON)
 
 message("Build start")

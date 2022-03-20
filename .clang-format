@@ -21,3 +21,4 @@ BinPackParameters: false
 AllowAllParametersOfDeclarationOnNextLine: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 AllowAllConstructorInitializersOnNextLine: false
+AlignArrayOfStructures: Left 

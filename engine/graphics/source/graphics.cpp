@@ -149,9 +149,9 @@ void graphics::update_pass_data()
         if (transform.node->updated)
         {
             math::float4x4_simd to_world = math::simd::load(transform.node->to_world);
-            math::float4x4_simd view = math::affine_transform_matrix::inverse(to_world);
+            math::float4x4_simd view = math::matrix_simd::inverse(to_world);
 
-            math::float4x4_simd proj = math::perspective_matrix::make<float4x4_simd>(
+            math::float4x4_simd proj = math::matrix_simd::perspective(
                 camera.fov,
                 camera.aspect,
                 camera.near_z,
@@ -160,7 +160,7 @@ void graphics::update_pass_data()
             render_pass_data data = {};
             math::simd::store(view, data.camera_view);
             math::simd::store(proj, data.camera_projection);
-            math::simd::store(math::matrix::mul(view, proj), data.camera_view_projection);
+            math::simd::store(math::matrix_simd::mul(view, proj), data.camera_view_projection);
 
             m_parameter_pass->set_data<0>(data);
         }

@@ -10,38 +10,12 @@ using float4_simd = __m128;
 
 struct alignas(16) float4x4_simd
 {
-    inline float4_simd& operator[](std::size_t index) { return row[index]; }
-    inline const float4_simd& operator[](std::size_t index) const { return row[index]; }
+    using row_type = float4_simd;
 
-    float4_simd row[4];
-};
+    inline row_type& operator[](std::size_t index) { return row[index]; }
+    inline const row_type& operator[](std::size_t index) const { return row[index]; }
 
-template <>
-struct packed_trait<float4_simd>
-{
-    using value_type = float4_simd;
-
-    static constexpr std::size_t row_size = 1;
-    static constexpr std::size_t col_size = 4;
-};
-
-template <>
-struct packed_trait<float4x4_simd>
-{
-    using value_type = float4x4_simd;
-
-    static constexpr std::size_t row_size = 4;
-    static constexpr std::size_t col_size = 4;
-};
-
-template <>
-struct is_packed_1d<float4_simd> : std::bool_constant<true>
-{
-};
-
-template <>
-struct is_square<float4x4_simd> : std::bool_constant<true>
-{
+    row_type row[4];
 };
 
 struct simd
@@ -98,10 +72,11 @@ public:
         float m43,
         float m44)
     {
-        return float4x4_simd{set(m11, m12, m13, m14),
-                             set(m21, m22, m23, m24),
-                             set(m31, m32, m33, m34),
-                             set(m41, m42, m43, m44)};
+        return float4x4_simd{
+            set(m11, m12, m13, m14),
+            set(m21, m22, m23, m24),
+            set(m31, m32, m33, m34),
+            set(m41, m42, m43, m44)};
     }
 
     template <std::uint32_t Mask>
@@ -144,25 +119,20 @@ public:
 
     static inline float4x4_simd load(const float4x4& m)
     {
-        return {_mm_loadu_ps(&m[0][0]),
-                _mm_loadu_ps(&m[1][0]),
-                _mm_loadu_ps(&m[2][0]),
-                _mm_loadu_ps(&m[3][0])};
+        return {
+            _mm_loadu_ps(&m[0][0]),
+            _mm_loadu_ps(&m[1][0]),
+            _mm_loadu_ps(&m[2][0]),
+            _mm_loadu_ps(&m[3][0])};
     }
 
     static inline float4x4_simd load(const float4x4_align& m)
     {
-        return {_mm_load_ps(&m[0][0]),
-                _mm_load_ps(&m[1][0]),
-                _mm_load_ps(&m[2][0]),
-                _mm_load_ps(&m[3][0])};
-    }
-
-    static inline void store(const float4_simd& source, float3& destination)
-    {
-        _mm_store_ss(&destination[0], source);
-        _mm_store_ss(&destination[1], shuffle<1, 1, 1, 1>(source));
-        _mm_store_ss(&destination[2], shuffle<2, 2, 2, 2>(source));
+        return {
+            _mm_load_ps(&m[0][0]),
+            _mm_load_ps(&m[1][0]),
+            _mm_load_ps(&m[2][0]),
+            _mm_load_ps(&m[3][0])};
     }
 
     static inline void store(const float4_simd& source, float4& destination)
@@ -177,18 +147,18 @@ public:
 
     static inline void store(const float4x4_simd& source, float4x4& destination)
     {
-        _mm_storeu_ps(&destination[0][0], source.row[0]);
-        _mm_storeu_ps(&destination[1][0], source.row[1]);
-        _mm_storeu_ps(&destination[2][0], source.row[2]);
-        _mm_storeu_ps(&destination[3][0], source.row[3]);
+        _mm_storeu_ps(&destination[0][0], source[0]);
+        _mm_storeu_ps(&destination[1][0], source[1]);
+        _mm_storeu_ps(&destination[2][0], source[2]);
+        _mm_storeu_ps(&destination[3][0], source[3]);
     }
 
     static inline void store(const float4x4_simd& source, float4x4_align& destination)
     {
-        _mm_store_ps(&destination[0][0], source.row[0]);
-        _mm_store_ps(&destination[1][0], source.row[1]);
-        _mm_store_ps(&destination[2][0], source.row[2]);
-        _mm_store_ps(&destination[3][0], source.row[3]);
+        _mm_store_ps(&destination[0][0], source[0]);
+        _mm_store_ps(&destination[1][0], source[1]);
+        _mm_store_ps(&destination[2][0], source[2]);
+        _mm_store_ps(&destination[3][0], source[3]);
     }
 
     template <std::uint32_t I>

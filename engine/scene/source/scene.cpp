@@ -37,7 +37,7 @@ void scene::update_hierarchy()
         math::float4_simd scaling = math::simd::load(t.scaling);
 
         math::simd::store(
-            math::affine_transform_matrix::make(translation, rotation, scaling),
+            math::matrix_simd::affine_transform(translation, rotation, scaling),
             t.node->to_parent);
     });
 }
@@ -59,7 +59,7 @@ void scene::update_to_world()
             math::float4x4_simd to_parent = math::simd::load(node->to_parent);
             math::float4x4_simd parent_to_world = math::simd::load(node->get_parent()->to_world);
 
-            math::float4x4_simd to_world = math::matrix::mul(to_parent, parent_to_world);
+            math::float4x4_simd to_world = math::matrix_simd::mul(to_parent, parent_to_world);
             math::simd::store(to_world, node->to_world);
 
             node->dirty = false;

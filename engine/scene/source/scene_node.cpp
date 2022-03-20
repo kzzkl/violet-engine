@@ -3,8 +3,8 @@
 namespace ash::scene
 {
 scene_node::scene_node()
-    : to_world(math::matrix::identity<math::float4x4>()),
-      to_parent(math::matrix::identity<math::float4x4>()),
+    : to_world(math::matrix_plain::identity()),
+      to_parent(math::matrix_plain::identity()),
       dirty(true),
       updated(false),
       in_scene(false),

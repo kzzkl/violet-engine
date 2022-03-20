@@ -5,51 +5,130 @@
 
 namespace ash::math
 {
-struct vector
+class vector_plain
 {
-    template <row_vector T1, row_vector T2>
-    inline static T1 add(const T1& a, const T2& b) requires col_size_equal<T1, T2>
+public:
+    using vector2 = float2;
+    using vector3 = float3;
+    using vector4 = float4;
+    using vector_type = float4;
+
+public:
+    inline static vector_type add(const vector2& a, const vector2& b)
     {
-        T1 result = a;
-        for (std::size_t i = 0; i < packed_trait<T1>::col_size; ++i)
-            result[i] += b[i];
-        return result;
+        return {a[0] + b[0], a[1] + b[1]};
     }
 
-    template <>
-    inline static float4_simd add(const float4_simd& a, const float4_simd& b)
+    inline static vector_type add(const vector3& a, const vector3& b)
+    {
+        return {a[0] + b[0], a[1] + b[1], a[2] + b[2]};
+    }
+
+    inline static vector_type add(const vector_type& a, const vector_type& b)
+    {
+        return {a[0] + b[0], a[1] + b[1], a[2] + b[2], a[3] + b[3]};
+    }
+
+    inline static vector_type sub(const vector2& a, const vector2& b)
+    {
+        return {a[0] - b[0], a[1] - b[1]};
+    }
+
+    inline static vector_type sub(const vector3& a, const vector3& b)
+    {
+        return {a[0] - b[0], a[1] - b[1], a[2] - b[2]};
+    }
+
+    inline static vector_type sub(const vector_type& a, const vector_type& b)
+    {
+        return {a[0] - b[0], a[1] - b[1], a[2] - b[2], a[3] - b[3]};
+    }
+
+    inline static float dot(const vector2& a, const vector2& b) { return a[0] * b[0] + a[1] * b[1]; }
+
+    inline static float dot(const vector3& a, const vector3& b)
+    {
+        return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    }
+
+    inline static float dot(const vector_type& a, const vector_type& b)
+    {
+        return a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+    }
+
+    inline static vector3 cross(const vector3& a, const vector3& b)
+    {
+        return {a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]};
+    }
+
+    inline static vector_type cross(const vector_type& a, const vector_type& b)
+    {
+        return {a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]};
+    }
+
+    inline static vector2 scale(const vector2& v, float scale)
+    {
+        return {v[0] * scale, v[1] * scale};
+    }
+
+    inline static vector3 scale(const vector3& v, float scale)
+    {
+        return {v[0] * scale, v[1] * scale, v[2] * scale};
+    }
+
+    inline static vector_type scale(const vector_type& v, float scale)
+    {
+        return {v[0] * scale, v[1] * scale, v[2] * scale, v[3] * scale};
+    }
+
+    inline static float length(const vector2& v) { return sqrtf(dot(v, v)); }
+
+    inline static float length(const vector3& v) { return sqrtf(dot(v, v)); }
+
+    inline static float length(const vector_type& v) { return sqrtf(dot(v, v)); }
+
+    inline static vector2 normalize(const vector2& v)
+    {
+        float s = 1.0f / length(v);
+        return scale(v, s);
+    }
+
+    inline static vector3 normalize(const vector3& v)
+    {
+        float s = 1.0f / length(v);
+        return scale(v, s);
+    }
+
+    inline static vector_type normalize(const vector_type& v)
+    {
+        float s = 1.0f / length(v);
+        return scale(v, s);
+    }
+};
+
+class vector_simd
+{
+public:
+    using vector_type = float4_simd;
+
+public:
+    inline static vector_type add(const vector_type& a, const vector_type& b)
     {
         return _mm_add_ps(a, b);
     }
 
-    template <row_vector T1, row_vector T2>
-    inline static T1 sub(const T1& a, const T2& b) requires col_size_equal<T1, T2>
-    {
-        T1 result = a;
-        for (std::size_t i = 0; i < packed_trait<T1>::col_size; ++i)
-            result[i] -= b[i];
-        return result;
-    }
-
-    template <>
-    inline static float4_simd sub(const float4_simd& a, const float4_simd& b)
+    inline static vector_type sub(const vector_type& a, const vector_type& b)
     {
         return _mm_sub_ps(a, b);
     }
 
-    template <row_vector T1, row_vector T2>
-    inline static packed_trait<T1>::value_type dot(
-        const T1& a,
-        const T2& b) requires col_size_equal<T1, T2>
+    inline static float dot(const vector_type& a, const vector_type& b)
     {
-        typename packed_trait<T1>::value_type result = 0;
-        for (std::size_t i = 0; i < packed_trait<T1>::col_size; ++i)
-            result += a[i] * b[i];
-        return result;
+        __m128 t1 = dot_v(a, b);
+        return _mm_cvtss_f32(t1);
     }
 
-    template <>
-    inline static float4_simd dot(const float4_simd& a, const float4_simd& b)
+    inline static vector_type dot_v(const vector_type& a, const vector_type& b)
     {
         __m128 t1 = _mm_mul_ps(a, b);
         __m128 t2 = simd::shuffle<1, 0, 3, 2>(t1);
@@ -58,14 +137,7 @@ struct vector
         return _mm_add_ps(t1, t2);
     }
 
-    template <vector_1x3_1x4 T1, vector_1x3_1x4 T2>
-    inline static T1 cross(const T1& a, const T2& b) requires col_size_equal<T1, T2>
-    {
-        return {a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]};
-    }
-
-    template <>
-    inline static float4_simd cross(const float4_simd& a, const float4_simd& b)
+    inline static vector_type cross(const vector_type& a, const vector_type& b)
     {
         __m128 t1 = simd::shuffle<1, 2, 0, 0>(a);
         __m128 t2 = simd::shuffle<2, 0, 1, 0>(b);
@@ -74,48 +146,30 @@ struct vector
         t1 = simd::shuffle<2, 0, 1, 0>(a);
         t2 = simd::shuffle<1, 2, 0, 0>(b);
         t1 = _mm_mul_ps(t1, t2);
+        t2 = _mm_sub_ps(t3, t1);
 
-        return _mm_and_ps(_mm_sub_ps(t3, t1), simd::get_mask<0x1110>());
+        return _mm_and_ps(t2, simd::get_mask<0x1110>());
     }
 
-    template <row_vector T, typename S>
-    inline static T scale(const T& v, S scale)
-    {
-        T result = v;
-        for (std::size_t i = 0; i < packed_trait<T>::col_size; ++i)
-            result[i] *= scale;
-        return result;
-    }
-
-    template <>
-    inline static float4_simd scale(const float4_simd& v, float scale)
+    inline static vector_type scale(const vector_type& v, float scale)
     {
         __m128 s = _mm_set_ps1(scale);
         return _mm_mul_ps(v, s);
     }
 
-    template <row_vector T>
-    inline static packed_trait<T>::value_type length(const T& v)
+    inline static float length(const vector_type& v)
     {
-        return sqrtf(dot(v, v));
+        __m128 t1 = length_v(v);
+        return _mm_cvtss_f32(t1);
     }
 
-    template <>
-    inline static float4_simd length(const float4_simd& v)
+    inline static vector_type length_v(const vector_type& v)
     {
-        __m128 t1 = dot(v, v);
+        __m128 t1 = dot_v(v, v);
         return _mm_sqrt_ps(t1);
     }
 
-    template <row_vector T>
-    inline static T normalize(const T& v)
-    {
-        float s = 1.0f / length(v);
-        return scale(v, s);
-    }
-
-    template <>
-    inline static float4_simd normalize(const float4_simd& v)
+    inline static vector_type normalize(const vector_type& v)
     {
         __m128 t1 = _mm_mul_ps(v, v);
         __m128 t2 = simd::shuffle<1, 0, 3, 2>(t1);
