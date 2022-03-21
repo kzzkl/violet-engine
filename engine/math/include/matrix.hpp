@@ -28,6 +28,15 @@ public:
         return result;
     }
 
+    static inline vector_type mul(const vector_type& v, const matrix_type& m)
+    {
+        return {
+            m[0][0] * v[0] + m[1][0] * v[1] + m[2][0] * v[2] + m[3][0] * v[3],
+            m[0][1] * v[0] + m[1][1] * v[1] + m[2][1] * v[2] + m[3][1] * v[3],
+            m[0][2] * v[0] + m[1][2] * v[1] + m[2][2] * v[2] + m[3][2] * v[3],
+            m[0][3] * v[0] + m[1][3] * v[1] + m[2][3] * v[2] + m[3][3] * v[3]};
+    }
+
     static inline matrix_type scale(const matrix_type& m, float scale)
     {
         matrix_type result = {};
@@ -299,6 +308,27 @@ public:
         temp = _mm_add_ps(_mm_mul_ps(simd::replicate<1>(m1[3]), m2[1]), temp);
         temp = _mm_add_ps(_mm_mul_ps(simd::replicate<2>(m1[3]), m2[2]), temp);
         result[3] = _mm_add_ps(_mm_mul_ps(simd::replicate<3>(m1[3]), m2[3]), temp);
+
+        return result;
+    }
+
+    static inline vector_type mul(const vector_type& v, const matrix_type& m)
+    {
+        __m128 t = simd::replicate<0>(v);
+        t = _mm_mul_ps(t, m[0]);
+        __m128 result = t;
+
+        t = simd::replicate<1>(v);
+        t = _mm_mul_ps(t, m[1]);
+        result = _mm_add_ps(result, t);
+
+        t = simd::replicate<2>(v);
+        t = _mm_mul_ps(t, m[2]);
+        result = _mm_add_ps(result, t);
+
+        t = simd::replicate<3>(v);
+        t = _mm_mul_ps(t, m[3]);
+        result = _mm_add_ps(result, t);
 
         return result;
     }

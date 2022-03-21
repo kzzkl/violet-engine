@@ -30,6 +30,9 @@ TEST_CASE("Matrix mul", "[matrix]")
             float4{31.4f, 35.6f, 39.8f, 44.0f},
             float4{42.6f, 48.4f, 54.2f, 60.0f}
     }));
+
+    float4 v = {1.0f, 2.0f, 3.0f, 0.0f};
+    CHECK(equal(matrix::mul(v, a), float4{38.0f, 44.0f, 50.0f, 56.0f}));
 }
 
 TEST_CASE("Matrix scale", "[matrix]")
@@ -238,6 +241,12 @@ TEST_CASE("Matrix mul, SIMD", "[matrix][simd]")
             float4{207.100006f, 142.400009f, 188.600006f, 224.899994f},
             float4{283.900024f, 196.399994f, 260.200012f, 310.500000f}
     }));
+
+    float4_simd v = math::simd::set(1.0f, 2.0f, 3.0f, 0.0f);
+    float4 result_v;
+    simd::store(matrix::mul(v, a), result_v);
+
+    CHECK(equal(result_v, float4{38.0f, 44.0f, 50.0f, 56.0f}));
 }
 
 TEST_CASE("Matrix scale, SIMD", "[matrix][simd]")

@@ -199,17 +199,21 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
         if (m_mouse.mode() == mouse_mode::CURSOR_RELATIVE)
         {
             RAWINPUT raw;
-            UINT rawSize = sizeof(raw);
+            UINT raw_size = sizeof(raw);
             GetRawInputData(
                 reinterpret_cast<HRAWINPUT>(lparam),
                 RID_INPUT,
                 &raw,
-                &rawSize,
+                &raw_size,
                 sizeof(RAWINPUTHEADER));
             if (raw.header.dwType == RIM_TYPEMOUSE &&
                 !(raw.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE))
             {
-                m_mouse.cursor(raw.data.mouse.lLastX, raw.data.mouse.lLastY);
+                // Because handle_message may be called multiple times in a frame, it is necessary
+                // to accumulate mouse coordinates.
+                m_mouse.cursor(
+                    m_mouse.x() + raw.data.mouse.lLastX,
+                    m_mouse.y() + raw.data.mouse.lLastY);
             }
         }
         break;

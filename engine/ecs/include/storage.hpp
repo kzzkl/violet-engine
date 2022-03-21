@@ -29,6 +29,8 @@ public:
         return m_chunks[chunk_index]->data() + offset;
     }
 
+    void clear() noexcept { m_chunks.clear(); }
+
     std::size_t size() const noexcept { return m_chunks.size(); }
 
 private:

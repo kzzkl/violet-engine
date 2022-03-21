@@ -5,6 +5,7 @@
 #include "dictionary.hpp"
 #include "log.hpp"
 #include "task_manager.hpp"
+#include "timer.hpp"
 #include "uuid.hpp"
 #include "world.hpp"
 #include <memory>
@@ -72,6 +73,12 @@ public:
         return *m_world;
     }
 
+    template <>
+    ash::core::timer& module<ash::core::timer>()
+    {
+        return *m_timer;
+    }
+
 protected:
     template <derived_from_submodule T, typename... Args>
     void install_submodule(Args&&... args)
@@ -101,6 +108,8 @@ private:
     module_list m_modules;
     std::unique_ptr<ash::task::task_manager> m_task;
     std::unique_ptr<ash::ecs::world> m_world;
+
+    std::unique_ptr<timer> m_timer;
 };
 
 template <typename T>

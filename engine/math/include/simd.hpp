@@ -135,6 +135,16 @@ public:
             _mm_load_ps(&m[3][0])};
     }
 
+    static inline void store(const float4_simd& source, float3& destination)
+    {
+        __m128 y = replicate<1>(source);
+        __m128 z = replicate<2>(source);
+
+        _mm_store_ss(&destination[0], source);
+        _mm_store_ss(&destination[1], y);
+        _mm_store_ss(&destination[2], z);
+    }
+
     static inline void store(const float4_simd& source, float4& destination)
     {
         _mm_storeu_ps(&destination[0], source);

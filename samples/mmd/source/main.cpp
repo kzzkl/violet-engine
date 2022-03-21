@@ -29,26 +29,32 @@ public:
 
     virtual bool initialize(const ash::dictionary& config) override
     {
+        initialize_resource();
+        initialize_camera();
+        initialize_task();
+
+        return true;
+    }
+
+private:
+    void initialize_resource()
+    {
         pmx_loader loader;
         if (!loader.load("resource/White.pmx"))
         {
             ash::log::error("Load pmx failed");
-            return false;
+            return;
         }
 
         std::vector<vertex> vertices;
         vertices.reserve(loader.get_vertices().size());
         for (const pmx_vertex& v : loader.get_vertices())
-        {
             vertices.push_back(vertex{v.position});
-        }
 
         std::vector<std::int32_t> indices;
         indices.reserve(loader.get_indices().size());
         for (std::int32_t i : loader.get_indices())
-        {
             indices.push_back(i);
-        }
 
         ash::ecs::world& world = module<ash::ecs::world>();
         entity_id entity = world.create();
@@ -65,6 +71,11 @@ public:
         m.index_buffer = module<ash::graphics::graphics>().make_index_buffer<std::int32_t>(
             indices.data(),
             indices.size());
+    }
+
+    void initialize_camera()
+    {
+        ash::ecs::world& world = module<ash::ecs::world>();
 
         m_camera = world.create();
         world.add<main_camera, camera, transform>(m_camera);
@@ -77,43 +88,80 @@ public:
         c_transform.scaling = {1.0f, 1.0f, 1.0f};
         c_transform.node = std::make_unique<scene_node>();
         c_transform.parent = module<ash::scene::scene>().root_node();
+    }
 
+    void initialize_task()
+    {
         auto& task = module<task::task_manager>();
-        auto root_handle = task.find("root");
+
         auto update_task = task.schedule("test update", [this]() { update(); });
-        update_task->add_dependency(*root_handle);
+        update_task->add_dependency(*task.find("window"));
 
-        m_mouse = &module<ash::window::window>().mouse();
-        m_keyboard = &module<ash::window::window>().keyboard();
+        task.find("scene")->add_dependency(*update_task);
+    }
 
-        return true;
+    void update_camera()
+    {
+        auto& world = module<ash::ecs::world>();
+        auto& keyboard = module<ash::window::window>().keyboard();
+        auto& mouse = module<ash::window::window>().mouse();
+        float delta = module<ash::core::timer>().frame_delta();
+
+        if (keyboard.key(keyboard_key::KEY_1).down())
+            mouse.mode(mouse_mode::CURSOR_RELATIVE);
+        if (keyboard.key(keyboard_key::KEY_2).down())
+            mouse.mode(mouse_mode::CURSOR_ABSOLUTE);
+
+        transform& camera_transform = world.component<transform>(m_camera);
+        if (mouse.mode() == mouse_mode::CURSOR_RELATIVE)
+        {
+            m_heading += mouse.x() * m_rotate_speed * delta;
+            m_pitch += mouse.y() * m_rotate_speed * delta;
+            m_pitch = std::clamp(m_pitch, -math::PI_PIDIV2, math::PI_PIDIV2);
+            camera_transform.rotation =
+                math::quaternion_plain::rotation_euler(m_heading, m_pitch, 0.0f);
+        }
+
+        float x = 0, z = 0;
+        if (keyboard.key(keyboard_key::KEY_W).down())
+            z += 1.0f;
+        if (keyboard.key(keyboard_key::KEY_S).down())
+            z -= 1.0f;
+        if (keyboard.key(keyboard_key::KEY_D).down())
+            x += 1.0f;
+        if (keyboard.key(keyboard_key::KEY_A).down())
+            x -= 1.0f;
+
+        math::float4_simd s = math::simd::load(camera_transform.scaling);
+        math::float4_simd r = math::simd::load(camera_transform.rotation);
+        math::float4_simd t = math::simd::load(camera_transform.position);
+
+        math::float4x4_simd affine = math::matrix_simd::affine_transform(s, r, t);
+        math::float4_simd forward =
+            math::simd::set(x * m_move_speed * delta, 0.0f, z * m_move_speed * delta, 0.0f);
+        forward = math::matrix_simd::mul(forward, affine);
+        math::simd::store(math::vector_simd::add(forward, t), camera_transform.position);
+
+        camera_transform.node->dirty = true;
     }
 
     void update()
     {
-        auto& world = module<ash::ecs::world>();
-
-        transform& t = world.component<transform>(m_camera);
-
-        if (m_keyboard->key(keyboard_key::KEY_W).down())
-        {
-            t.position[1] += 0.1f;
-            t.node->dirty = true;
-        }
-
-        if (m_keyboard->key(keyboard_key::KEY_ESC).down())
+        if (module<ash::window::window>().keyboard().key(keyboard_key::KEY_ESC).down())
             m_app->exit();
+
+        update_camera();
     }
 
-private:
     std::string m_title;
-
-    keyboard* m_keyboard;
-    mouse* m_mouse;
+    application* m_app;
 
     entity_id m_camera;
 
-    application* m_app;
+    float m_heading = 0.0f, m_pitch = 0.0f;
+
+    float m_rotate_speed = 0.2f;
+    float m_move_speed = 5.0f;
 };
 } // namespace ash::sample::mmd
 

@@ -96,9 +96,6 @@ protected:
     virtual void clip_cursor(bool clip) = 0;
     virtual void show_cursor(bool show) = 0;
 
-private:
-    void cursor_clip(bool clip);
-
     int m_x;
     int m_y;
     mouse_mode m_mode;

@@ -178,6 +178,7 @@ public:
 
 public:
     archetype(const layout_type& layout) noexcept : m_layout(layout), m_size(0) {}
+    virtual ~archetype() { clear(); }
 
     void add() { construct(allocate()); }
 
@@ -232,6 +233,15 @@ public:
         }
 
         remove(index);
+    }
+
+    void clear() noexcept
+    {
+        for (std::size_t i = 0; i < m_size; ++i)
+            destruct(i);
+
+        m_storage.clear();
+        m_size = 0;
     }
 
     template <typename... Components>

@@ -6,7 +6,7 @@ namespace ash::test
 {
 TEST_CASE("get mask", "[simd]")
 {
-    auto v1 = simd::get_mask<0x1101>();
+    auto v1 = simd::mask<0x1101>();
     auto v2 = simd::set(0xFFFFFFFF, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF);
 
     float4 f1;
@@ -25,5 +25,18 @@ TEST_CASE("shuffle", "[simd]")
     simd::store(v2, result);
 
     CHECK(equal(result, float4{2.0f, 2.0f, 3.0f, 3.0f}));
+}
+
+TEST_CASE("store", "[simd]")
+{
+    float4_simd v = simd::set(1.0f, 2.0f, 3.0f, 4.0f);
+    float4 r4;
+    simd::store(v, r4);
+
+    CHECK(equal(r4, float4{1.0f, 2.0f, 3.0f, 4.0f}));
+
+    float3 r3;
+    simd::store(v, r3);
+    CHECK(equal(r3, float3{1.0f, 2.0f, 3.0f}));
 }
 } // namespace ash::test

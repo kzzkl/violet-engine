@@ -18,17 +18,13 @@ void mouse::mode(mouse_mode mode)
     if (m_mode != mode)
     {
         if (mode == mouse_mode::CURSOR_ABSOLUTE)
-            cursor_clip(false);
+            clip_cursor(false);
         else if (mode == mouse_mode::CURSOR_RELATIVE)
-            cursor_clip(true);
+            clip_cursor(true);
         show_cursor(mode == mouse_mode::CURSOR_ABSOLUTE);
         m_mode = mode;
         m_x = m_y = 0;
     }
-}
-
-void mouse::cursor_clip(bool clip)
-{
 }
 
 keyboard::keyboard()

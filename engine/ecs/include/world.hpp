@@ -86,6 +86,13 @@ private:
 
 public:
     world() { register_component<entity>(); }
+    ~world()
+    {
+        for (auto& [_, archetype] : m_archetypes)
+        {
+            archetype->clear();
+        }
+    }
 
     template <typename... Components>
     void register_component()
