@@ -20,7 +20,7 @@ void application::run()
     nanoseconds s(0);
     nanoseconds time_per_frame(1000000000 / 2400);
 
-    auto& task = get_submodule<task::task_manager>();
+    auto& task = module<task::task_manager>();
     task.run();
 
     auto root_task = task.find("root");

@@ -20,12 +20,12 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(const pipeline_parameter_desc
     else
     {
         auto heap =
-            d3d12_context::resource()->get_visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+            d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
         m_tier = d3d12_parameter_tier_type::TIER2;
         std::size_t offset = heap->allocate(desc.size);
-        m_tier2.base_cpu_handle = heap->get_cpu_handle(offset);
-        m_tier2.base_gpu_handle = heap->get_gpu_handle(offset);
+        m_tier2.base_cpu_handle = heap->cpu_handle(offset);
+        m_tier2.base_gpu_handle = heap->gpu_handle(offset);
         m_tier2.size = desc.size;
 
         for (std::size_t i = 0; i < desc.size; ++i)
@@ -37,7 +37,7 @@ void d3d12_pipeline_parameter::bind(std::size_t index, resource* data)
 {
     d3d12_resource* d = static_cast<d3d12_resource*>(data);
 
-    D3D12_GPU_VIRTUAL_ADDRESS address = d->get_resource()->GetGPUVirtualAddress();
+    D3D12_GPU_VIRTUAL_ADDRESS address = d->resource()->GetGPUVirtualAddress();
 
     if (m_tier == d3d12_parameter_tier_type::TIER1)
     {
@@ -47,16 +47,16 @@ void d3d12_pipeline_parameter::bind(std::size_t index, resource* data)
     {
         auto device = d3d12_context::device();
         auto heap =
-            d3d12_context::resource()->get_visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+            d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-        CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_tier2.base_cpu_handle, heap->get_increment_size());
+        CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_tier2.base_cpu_handle, heap->increment_size());
         handle.Offset(static_cast<INT>(index));
 
         if (m_type[index] == pipeline_parameter_type::BUFFER)
         {
             D3D12_CONSTANT_BUFFER_VIEW_DESC desc = {};
             desc.BufferLocation = address;
-            desc.SizeInBytes = static_cast<UINT>(d->get_size());
+            desc.SizeInBytes = static_cast<UINT>(d->size());
             device->CreateConstantBufferView(&desc, handle);
         }
         else if (m_type[index] == pipeline_parameter_type::TEXTURE)
@@ -220,7 +220,7 @@ void d3d12_pipeline::initialize_pipeline_state(const pipeline_desc& desc)
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc = {};
     pso_desc.InputLayout = {m_vertex_layout.data(), static_cast<UINT>(m_vertex_layout.size())};
-    pso_desc.pRootSignature = m_parameter_layout->get_root_signature();
+    pso_desc.pRootSignature = m_parameter_layout->root_signature();
     pso_desc.VS = CD3DX12_SHADER_BYTECODE(vs_blob.Get());
     pso_desc.PS = CD3DX12_SHADER_BYTECODE(ps_blob.Get());
     pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);

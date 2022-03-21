@@ -20,7 +20,7 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
 
-    inline scene_node* get_root_node() const noexcept { return m_root_node.get(); }
+    inline scene_node* root_node() const noexcept { return m_root_node.get(); }
 
     scene& operator=(const scene&) = delete;
 

@@ -19,16 +19,16 @@ class d3d12_render_command : public render_command
 public:
     d3d12_render_command(D3D12CommandAllocator* allocator, std::wstring_view name = L"");
 
-    virtual void set_pipeline(pipeline* pipeline) override;
-    virtual void set_layout(pipeline_layout* layout) override;
-    virtual void set_parameter(std::size_t index, pipeline_parameter* parameter) override;
+    virtual void pipeline(pipeline_type* pipeline) override;
+    virtual void layout(layout_type* layout) override;
+    virtual void parameter(std::size_t index, pipeline_parameter* parameter) override;
     virtual void draw(
         resource* vertex,
         resource* index,
         primitive_topology_type primitive_topology,
         resource* target) override;
 
-    void set_allocator(D3D12CommandAllocator* allocator) noexcept;
+    void allocator(D3D12CommandAllocator* allocator) noexcept;
     void reset();
     void close();
 
@@ -72,7 +72,7 @@ public:
 
     void switch_frame_resources();
 
-    D3D12CommandQueue* get_command_queue() const { return m_queue.Get(); }
+    D3D12CommandQueue* command_queue() const { return m_queue.Get(); }
 
 private:
     void wait_completed(UINT64 fence);

@@ -80,7 +80,7 @@ public:
     }
 
     template <std::uint32_t Mask>
-    static inline float4_simd get_mask()
+    static inline float4_simd mask()
     {
         static const float4_simd value = make_mask(Mask);
         return value;
@@ -162,7 +162,7 @@ public:
     }
 
     template <std::uint32_t I>
-    static inline float4_simd get_identity_row()
+    static inline float4_simd identity_row()
     {
         if constexpr (I == 0)
         {

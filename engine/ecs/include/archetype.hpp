@@ -39,7 +39,7 @@ public:
         rebuild();
     }
 
-    std::size_t get_entity_per_chunk() const noexcept { return m_entity_per_chunk; }
+    std::size_t entity_per_chunk() const noexcept { return m_entity_per_chunk; }
 
     auto begin() { return m_layout.begin(); }
     auto end() { return m_layout.end(); }
@@ -115,11 +115,11 @@ public:
     }
 
     template <typename Component>
-    Component& get_component()
+    Component& component()
     {
         auto [chunk_index, entity_index] = std::div(
             static_cast<const long>(m_index),
-            static_cast<const long>(m_layout->get_entity_per_chunk()));
+            static_cast<const long>(m_layout->entity_per_chunk()));
 
         std::size_t offset = m_offset[component_list<Components...>::template index<Component>()] +
                              sizeof(Component) * entity_index;
@@ -153,7 +153,7 @@ public:
         return *this;
     }
 
-    reference set_index(std::size_t index) noexcept
+    reference index(std::size_t index) noexcept
     {
         m_index = index;
         return *this;
@@ -191,7 +191,7 @@ public:
         destruct(back_index);
 
         --m_size;
-        if (m_size % m_layout.get_entity_per_chunk() == 0)
+        if (m_size % m_layout.entity_per_chunk() == 0)
             m_storage.pop_chunk();
     }
 
@@ -199,13 +199,13 @@ public:
     {
         auto [source_chunk_index, source_entity_index] = std::div(
             static_cast<const long>(index),
-            static_cast<const long>(m_layout.get_entity_per_chunk()));
+            static_cast<const long>(m_layout.entity_per_chunk()));
 
         auto& target_layout = target.m_layout;
         std::size_t target_index = target.allocate();
         auto [target_chunk_index, target_entity_index] = std::div(
             static_cast<const long>(target_index),
-            static_cast<const long>(target_layout.get_entity_per_chunk()));
+            static_cast<const long>(target_layout.entity_per_chunk()));
 
         for (auto& [type, info] : m_layout)
         {
@@ -246,7 +246,7 @@ public:
         return handle<Components...>(size(), &m_storage, &m_layout);
     }
 
-    const layout_type& get_layout() const noexcept { return m_layout; }
+    const layout_type& layout() const noexcept { return m_layout; }
 
     inline std::size_t size() const noexcept { return m_size; }
 
@@ -254,7 +254,7 @@ private:
     std::size_t allocate()
     {
         std::size_t index = m_size++;
-        if (index >= get_capacity())
+        if (index >= capacity())
             m_storage.push_chunk();
         return index;
     }
@@ -263,7 +263,7 @@ private:
     {
         auto [chunk_index, entity_index] = std::div(
             static_cast<const long>(index),
-            static_cast<const long>(m_layout.get_entity_per_chunk()));
+            static_cast<const long>(m_layout.entity_per_chunk()));
 
         for (auto& [type, info] : m_layout)
         {
@@ -276,7 +276,7 @@ private:
     {
         auto [chunk_index, entity_index] = std::div(
             static_cast<const long>(index),
-            static_cast<const long>(m_layout.get_entity_per_chunk()));
+            static_cast<const long>(m_layout.entity_per_chunk()));
 
         for (auto& [type, info] : m_layout)
         {
@@ -289,11 +289,11 @@ private:
     {
         auto [a_chunk_index, a_entity_index] = std::div(
             static_cast<const long>(a),
-            static_cast<const long>(m_layout.get_entity_per_chunk()));
+            static_cast<const long>(m_layout.entity_per_chunk()));
 
         auto [b_chunk_index, b_entity_index] = std::div(
             static_cast<const long>(b),
-            static_cast<const long>(m_layout.get_entity_per_chunk()));
+            static_cast<const long>(m_layout.entity_per_chunk()));
 
         for (auto& [type, info] : m_layout)
         {
@@ -305,10 +305,7 @@ private:
         }
     }
 
-    std::size_t get_capacity() const noexcept
-    {
-        return m_layout.get_entity_per_chunk() * m_storage.size();
-    }
+    std::size_t capacity() const noexcept { return m_layout.entity_per_chunk() * m_storage.size(); }
 
     layout_type m_layout;
     storage_type m_storage;

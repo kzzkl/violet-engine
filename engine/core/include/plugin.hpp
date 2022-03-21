@@ -21,17 +21,14 @@ public:
 class CORE_API plugin
 {
 public:
-    using version = plugin_version;
-
-public:
     plugin();
     virtual ~plugin();
 
     bool load(std::string_view path);
     void unload();
 
-    inline std::string_view get_name() const noexcept { return m_name; }
-    inline version get_version() const noexcept { return m_version; }
+    inline std::string_view name() const noexcept { return m_name; }
+    inline plugin_version version() const noexcept { return m_version; }
 
 protected:
     void* find_symbol(std::string_view name);
@@ -41,7 +38,7 @@ protected:
 
 private:
     std::string m_name;
-    version m_version;
+    plugin_version m_version;
 
     std::unique_ptr<dynamic_library> m_library;
 };

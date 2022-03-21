@@ -16,8 +16,8 @@ public:
     virtual render_command* allocate_command() override;
     virtual void execute(render_command* command) override;
 
-    virtual resource* get_back_buffer() override;
-    virtual std::size_t get_adapter_info(adapter_info* infos, std::size_t size) const override;
+    virtual resource* back_buffer() override;
+    virtual std::size_t adapter(adapter_info* infos, std::size_t size) const override;
 
     void begin_frame(D3D12GraphicsCommandList* command_list);
     void end_frame(D3D12GraphicsCommandList* command_list);
@@ -25,7 +25,7 @@ public:
     void present();
 
 private:
-    UINT64 get_index() const noexcept;
+    UINT64 back_buffer_index() const noexcept;
 
     static const DXGI_FORMAT m_format = DXGI_FORMAT_R8G8B8A8_UNORM;
 

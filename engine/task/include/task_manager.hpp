@@ -57,7 +57,7 @@ private:
         std::unique_ptr<task> task = std::make_unique<T>(std::forward<Args>(args)...);
         handle result(task.get());
 
-        m_tasks[task->get_name().data()] = std::move(task);
+        m_tasks[task->name().data()] = std::move(task);
 
         return result;
     }

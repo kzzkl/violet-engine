@@ -17,20 +17,24 @@ struct render_unit
 class render_group
 {
 public:
-    render_group(pipeline_layout* layout, pipeline* pipeline);
+    using layout_type = pipeline_layout;
+    using pipeline_type = pipeline;
+
+public:
+    render_group(layout_type* layout, pipeline_type* pipeline);
 
     void add(const render_unit& unit) { m_units.push_back(unit); }
     void clear() { m_units.clear(); }
 
-    pipeline* get_pipeline() const noexcept { return m_pipeline.get(); }
-    pipeline_layout* get_layout() const noexcept { return m_layout.get(); }
+    pipeline_type* pipeline() const noexcept { return m_pipeline.get(); }
+    layout_type* layout() const noexcept { return m_layout.get(); }
 
     auto begin() noexcept { return m_units.begin(); }
     auto end() noexcept { return m_units.end(); }
 
 private:
-    std::unique_ptr<pipeline_layout> m_layout;
-    std::unique_ptr<pipeline> m_pipeline;
+    std::unique_ptr<layout_type> m_layout;
+    std::unique_ptr<pipeline_type> m_pipeline;
 
     std::vector<render_unit> m_units;
 };

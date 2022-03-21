@@ -23,27 +23,27 @@ public:
         m_tag[TAG_INDEX] = tag;
     }
 
-    tag_type get_next_tag() const
+    tag_type next_tag() const
     {
         tag_type next = (m_tag[TAG_INDEX] + 1) & std::numeric_limits<tag_type>::max();
         return next;
     }
-    tag_type get_tag() const { return m_tag[TAG_INDEX]; }
+    tag_type tag() const { return m_tag[TAG_INDEX]; }
 
-    void set_pointer(value_type* p)
+    void pointer(value_type* p)
     {
         tag_type tag = m_tag[TAG_INDEX];
         m_address = reinterpret_cast<address_type>(p);
         m_tag[TAG_INDEX] = tag;
     }
 
-    value_type* get_pointer() const
+    value_type* pointer() const
     {
         address_type address = m_address & ADDRESS_MASK;
         return reinterpret_cast<value_type*>(address);
     }
 
-    value_type* operator->() { return get_pointer(); }
+    value_type* operator->() { return pointer(); }
 
     bool operator==(const tagged_pointer_compression& p) const { return m_address == p.m_address; }
     bool operator!=(const tagged_pointer_compression& p) const { return !operator==(p); }
@@ -64,7 +64,7 @@ using tagged_pointer = tagged_pointer_compression<T>;
 template <typename T1, typename T2>
 tagged_pointer<T1> tagged_pointer_cast(tagged_pointer<T2> p)
 {
-    tagged_pointer<T1> result(static_cast<T1*>(p.get_pointer()), p.get_tag());
+    tagged_pointer<T1> result(static_cast<T1*>(p.pointer()), p.tag());
     return result;
 }
 } // namespace ash::task

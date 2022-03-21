@@ -12,8 +12,8 @@ public:
 
     bool initialize(const context_config& config);
 
-    renderer* get_renderer() { return m_context->get_renderer(); }
-    factory* get_factory() { return m_context->get_factory(); }
+    renderer* renderer() { return m_context->renderer(); }
+    factory* factory() { return m_context->factory(); }
 
 protected:
     virtual bool do_load() override;

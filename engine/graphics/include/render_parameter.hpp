@@ -41,7 +41,7 @@ public:
     }
 
     template <std::size_t index, typename T>
-    void set_data(const T& data) noexcept
+    void set(const T& data) noexcept
     {
         std::get<index>(m_data) = data;
         m_dirty[index] = m_resources.size();
@@ -63,7 +63,7 @@ public:
         });
     }
 
-    pipeline_parameter* get_parameter() { return m_resources[m_index].parameter.get(); }
+    pipeline_parameter* parameter() { return m_resources[m_index].parameter.get(); }
 
 private:
     struct frame_resource

@@ -18,7 +18,7 @@ public:
         math::simd::store(proj, m_perspective);
     }
 
-    inline const math::float4x4 get_perspective() const noexcept { return m_perspective; }
+    inline const math::float4x4 perspective() const noexcept { return m_perspective; }
 
 private:
     math::float4x4 m_perspective;

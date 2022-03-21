@@ -24,7 +24,7 @@ void d3d12_resource::transition_state(
     m_state = state;
 }
 
-std::size_t d3d12_resource::get_size() const
+std::size_t d3d12_resource::size() const
 {
     auto desc = m_resource->GetDesc();
     return static_cast<std::size_t>(desc.Height * desc.Width);
@@ -39,13 +39,13 @@ d3d12_back_buffer::d3d12_back_buffer(
     D3D12_RESOURCE_STATES state) noexcept
     : d3d12_resource(resource, state)
 {
-    auto heap = d3d12_context::resource()->get_heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
     m_descriptor_offset = heap->allocate(1);
 
     d3d12_context::device()->CreateRenderTargetView(
         m_resource.Get(),
         nullptr,
-        heap->get_cpu_handle(m_descriptor_offset));
+        heap->cpu_handle(m_descriptor_offset));
 }
 
 d3d12_back_buffer::d3d12_back_buffer(d3d12_back_buffer&& other) noexcept
@@ -59,15 +59,15 @@ d3d12_back_buffer::~d3d12_back_buffer()
 {
     if (m_descriptor_offset != INVALID_DESCRIPTOR_INDEX)
     {
-        auto heap = d3d12_context::resource()->get_heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
         heap->deallocate(m_descriptor_offset);
     }
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_back_buffer::get_cpu_handle() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_back_buffer::cpu_handle() const
 {
-    auto heap = d3d12_context::resource()->get_heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-    return heap->get_cpu_handle(m_descriptor_offset);
+    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    return heap->cpu_handle(m_descriptor_offset);
 }
 
 d3d12_back_buffer& d3d12_back_buffer::operator=(d3d12_back_buffer&& other) noexcept
@@ -102,13 +102,13 @@ d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(
         &clear,
         IID_PPV_ARGS(&m_resource)));
 
-    auto heap = d3d12_context::resource()->get_heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
     m_descriptor_offset = heap->allocate(1);
     device->CreateDepthStencilView(
         m_resource.Get(),
         nullptr,
-        heap->get_cpu_handle(m_descriptor_offset));
+        heap->cpu_handle(m_descriptor_offset));
 }
 
 d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(d3d12_depth_stencil_buffer&& other) noexcept
@@ -122,15 +122,15 @@ d3d12_depth_stencil_buffer::~d3d12_depth_stencil_buffer()
 {
     if (m_descriptor_offset != INVALID_DESCRIPTOR_INDEX)
     {
-        auto heap = d3d12_context::resource()->get_heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+        auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
         heap->deallocate(m_descriptor_offset);
     }
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_depth_stencil_buffer::get_cpu_handle() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_depth_stencil_buffer::cpu_handle() const
 {
-    auto heap = d3d12_context::resource()->get_heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-    return heap->get_cpu_handle(m_descriptor_offset);
+    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+    return heap->cpu_handle(m_descriptor_offset);
 }
 
 d3d12_depth_stencil_buffer& d3d12_depth_stencil_buffer::operator=(
@@ -308,7 +308,7 @@ void d3d12_descriptor_heap::deallocate(std::size_t begin, std::size_t size)
     m_index_allocator.deallocate(begin, size);
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_descriptor_heap::get_cpu_handle(std::size_t index)
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_descriptor_heap::cpu_handle(std::size_t index)
 {
     return CD3DX12_CPU_DESCRIPTOR_HANDLE(
         m_heap->GetCPUDescriptorHandleForHeapStart(),
@@ -316,7 +316,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE d3d12_descriptor_heap::get_cpu_handle(std::size_t in
         m_increment_size);
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE d3d12_descriptor_heap::get_gpu_handle(std::size_t index)
+D3D12_GPU_DESCRIPTOR_HANDLE d3d12_descriptor_heap::gpu_handle(std::size_t index)
 {
     return CD3DX12_GPU_DESCRIPTOR_HANDLE(
         m_heap->GetGPUDescriptorHandleForHeapStart(),

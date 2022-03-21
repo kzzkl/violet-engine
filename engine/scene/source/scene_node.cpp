@@ -12,7 +12,7 @@ scene_node::scene_node()
 {
 }
 
-void scene_node::set_parent(scene_node* parent)
+void scene_node::parent(scene_node* parent)
 {
     if (m_parent == parent)
         return;

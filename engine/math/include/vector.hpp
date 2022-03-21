@@ -148,7 +148,7 @@ public:
         t1 = _mm_mul_ps(t1, t2);
         t2 = _mm_sub_ps(t3, t1);
 
-        return _mm_and_ps(t2, simd::get_mask<0x1110>());
+        return _mm_and_ps(t2, simd::mask<0x1110>());
     }
 
     inline static vector_type scale(const vector_type& v, float scale)

@@ -52,13 +52,13 @@ std::future<void> task_queue_group::execute(task* t, std::size_t task_count)
     m_remaining_tasks_count = static_cast<std::uint32_t>(task_count);
     m_done = std::promise<void>();
 
-    switch (t->get_type())
+    switch (t->type())
     {
     case task_type::NONE:
-        get_queue(task_type::NONE).push(t);
+        queue(task_type::NONE).push(t);
         break;
     case task_type::MAIN_THREAD:
-        get_queue(task_type::MAIN_THREAD).push(t);
+        queue(task_type::MAIN_THREAD).push(t);
         break;
     default:
         break;

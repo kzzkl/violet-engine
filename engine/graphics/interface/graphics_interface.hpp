@@ -99,11 +99,15 @@ public:
 class render_command
 {
 public:
+    using pipeline_type = pipeline;
+    using layout_type = pipeline_layout;
+
+public:
     virtual ~render_command() = default;
 
-    virtual void set_pipeline(pipeline* pipeline) = 0;
-    virtual void set_layout(pipeline_layout* layout) = 0;
-    virtual void set_parameter(std::size_t index, pipeline_parameter* parameter) = 0;
+    virtual void pipeline(pipeline_type* pipeline) = 0;
+    virtual void layout(layout_type* layout) = 0;
+    virtual void parameter(std::size_t index, pipeline_parameter* parameter) = 0;
 
     virtual void draw(
         resource* vertex,
@@ -126,8 +130,8 @@ public:
     virtual render_command* allocate_command() = 0;
     virtual void execute(render_command* command) = 0;
 
-    virtual resource* get_back_buffer() = 0;
-    virtual std::size_t get_adapter_info(adapter_info* infos, std::size_t size) const = 0;
+    virtual resource* back_buffer() = 0;
+    virtual std::size_t adapter(adapter_info* infos, std::size_t size) const = 0;
 
 private:
 };
@@ -175,12 +179,16 @@ struct context_config
 class context
 {
 public:
+    using renderer_type = renderer;
+    using factory_type = factory;
+
+public:
     virtual ~context() = default;
 
     virtual bool initialize(const context_config& config) = 0;
 
-    virtual renderer* get_renderer() = 0;
-    virtual factory* get_factory() = 0;
+    virtual renderer_type* renderer() = 0;
+    virtual factory_type* factory() = 0;
 };
 
 using make_context = context* (*)();

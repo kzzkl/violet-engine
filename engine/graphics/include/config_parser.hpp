@@ -66,10 +66,10 @@ public:
     template <typename T>
     find_result<T> find_desc(std::string_view name);
 
-    inline std::size_t get_render_concurrency() const noexcept { return m_render_concurrency; }
-    inline std::size_t get_frame_resource() const noexcept { return m_frame_resource; }
+    inline std::size_t render_concurrency() const noexcept { return m_render_concurrency; }
+    inline std::size_t frame_resource() const noexcept { return m_frame_resource; }
 
-    inline std::string_view get_plugin() const noexcept { return m_plugin; }
+    inline std::string_view plugin() const noexcept { return m_plugin; }
 
 private:
     void load_vertex_layout(const dictionary& doc);

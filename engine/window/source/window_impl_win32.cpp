@@ -54,7 +54,10 @@ void mouse_win32::show_cursor(bool show)
     ShowCursor(show);
 }
 
-bool window_impl_win32::initialize(std::uint32_t width, std::uint32_t height, std::string_view title)
+bool window_impl_win32::initialize(
+    std::uint32_t width,
+    std::uint32_t height,
+    std::string_view title)
 {
     m_instance = GetModuleHandle(0);
 
@@ -106,7 +109,7 @@ bool window_impl_win32::initialize(std::uint32_t width, std::uint32_t height, st
         log::error("RegisterRawInputDevices failed");
     }
 
-    m_mouse.set_window_handle(m_hwnd);
+    m_mouse.window_handle(m_hwnd);
 
     show();
 
@@ -131,12 +134,12 @@ void window_impl_win32::show()
     UpdateWindow(m_hwnd);
 }
 
-const void* window_impl_win32::get_handle() const
+const void* window_impl_win32::handle() const
 {
     return &m_hwnd;
 }
 
-window_rect window_impl_win32::get_rect() const
+window_rect window_impl_win32::rect() const
 {
     RECT rect = {};
     GetClientRect(m_hwnd, &rect);
@@ -150,7 +153,7 @@ window_rect window_impl_win32::get_rect() const
     return result;
 }
 
-void window_impl_win32::set_title(std::string_view title)
+void window_impl_win32::title(std::string_view title)
 {
     SetWindowText(m_hwnd, string_to_wstring(title).c_str());
 }
@@ -188,12 +191,12 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
     switch (message)
     {
     case WM_MOUSEMOVE: {
-        if (m_mouse.get_mode() == mouse_mode::CURSOR_ABSOLUTE)
-            m_mouse.set_cursor(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
+        if (m_mouse.mode() == mouse_mode::CURSOR_ABSOLUTE)
+            m_mouse.cursor(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
         break;
     }
     case WM_INPUT: {
-        if (m_mouse.get_mode() == mouse_mode::CURSOR_RELATIVE)
+        if (m_mouse.mode() == mouse_mode::CURSOR_RELATIVE)
         {
             RAWINPUT raw;
             UINT rawSize = sizeof(raw);
@@ -206,7 +209,7 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
             if (raw.header.dwType == RIM_TYPEMOUSE &&
                 !(raw.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE))
             {
-                m_mouse.set_cursor(raw.data.mouse.lLastX, raw.data.mouse.lLastY);
+                m_mouse.cursor(raw.data.mouse.lLastX, raw.data.mouse.lLastY);
             }
         }
         break;

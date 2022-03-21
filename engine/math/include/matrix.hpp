@@ -349,10 +349,10 @@ public:
     static inline matrix_type identity()
     {
         return matrix_type{
-            simd::get_identity_row<0>(),
-            simd::get_identity_row<1>(),
-            simd::get_identity_row<2>(),
-            simd::get_identity_row<3>()};
+            simd::identity_row<0>(),
+            simd::identity_row<1>(),
+            simd::identity_row<2>(),
+            simd::identity_row<3>()};
     }
 
     static inline matrix_type perspective(float fov, float aspect, float zn, float zf)
@@ -368,16 +368,16 @@ public:
             _mm_setr_ps(x, 0.0f, 0.0f, 0.0f),
             _mm_setr_ps(0.0f, y, 0.0f, 0.0f),
             _mm_setr_ps(0.0f, 0.0f, z, 0.0f),
-            simd::get_identity_row<3>()};
+            simd::identity_row<3>()};
     }
 
     static inline matrix_type scaling(const vector_type& v)
     {
         return matrix_type{
-            _mm_and_ps(v, simd::get_mask<0x1000>()),
-            _mm_and_ps(v, simd::get_mask<0x0100>()),
-            _mm_and_ps(v, simd::get_mask<0x0010>()),
-            simd::get_identity_row<3>()};
+            _mm_and_ps(v, simd::mask<0x1000>()),
+            _mm_and_ps(v, simd::mask<0x0100>()),
+            _mm_and_ps(v, simd::mask<0x0010>()),
+            simd::identity_row<3>()};
     }
 
     static inline matrix_type scaling_axis(const vector_type& axis, float scale)
@@ -413,9 +413,9 @@ public:
         __m128 q1 = _mm_mul_ps(quaternion, q0);
 
         __m128 v0 = simd::shuffle<1, 0, 0, 3>(q1);
-        v0 = _mm_and_ps(v0, simd::get_mask<0x1110>());
+        v0 = _mm_and_ps(v0, simd::mask<0x1110>());
         __m128 v1 = simd::shuffle<2, 2, 1, 3>(q1);
-        v1 = _mm_and_ps(v1, simd::get_mask<0x1110>());
+        v1 = _mm_and_ps(v1, simd::mask<0x1110>());
         __m128 r0 = _mm_sub_ps(c, v0);
         r0 = _mm_sub_ps(r0, v1);
 
@@ -438,11 +438,8 @@ public:
         q1 = simd::shuffle<0, 3, 0, 1>(r0, v0);
         q1 = simd::shuffle<0, 2, 3, 1>(q1);
 
-        matrix_type result = {
-            q1,
-            simd::get_identity_row<1>(),
-            simd::get_identity_row<2>(),
-            simd::get_identity_row<3>()};
+        matrix_type result =
+            {q1, simd::identity_row<1>(), simd::identity_row<2>(), simd::identity_row<3>()};
 
         q1 = simd::shuffle<1, 3, 2, 3>(r0, v0);
         q1 = simd::shuffle<2, 0, 3, 1>(q1);
@@ -460,7 +457,7 @@ public:
         const vector_type& translation)
     {
         matrix_type r = rotation_quaternion(rotation);
-        __m128 t = _mm_and_ps(translation, simd::get_mask<0x1110>());
+        __m128 t = _mm_and_ps(translation, simd::mask<0x1110>());
 
         __m128 s1 = simd::replicate<0>(scale);
         __m128 s2 = simd::replicate<1>(scale);
@@ -470,7 +467,7 @@ public:
         result[0] = _mm_mul_ps(s1, r[0]);
         result[1] = _mm_mul_ps(s2, r[1]);
         result[2] = _mm_mul_ps(s3, r[2]);
-        result[3] = _mm_add_ps(simd::get_identity_row<3>(), t);
+        result[3] = _mm_add_ps(simd::identity_row<3>(), t);
 
         return result;
     }

@@ -55,7 +55,7 @@ void task::remove_next_task(task& task)
     }
 }
 
-std::array<std::size_t, TASK_TYPE_COUNT> task::get_reachable_tasks_count()
+std::array<std::size_t, TASK_TYPE_COUNT> task::reachable_tasks_count()
 {
     std::array<std::size_t, TASK_TYPE_COUNT> result = {};
 
@@ -73,7 +73,7 @@ std::array<std::size_t, TASK_TYPE_COUNT> task::get_reachable_tasks_count()
             q.push(next_task);
 
         next_tasks.clear();
-        ++result[static_cast<std::size_t>(t->get_type())];
+        ++result[static_cast<std::size_t>(t->type())];
     }
 
     return result;

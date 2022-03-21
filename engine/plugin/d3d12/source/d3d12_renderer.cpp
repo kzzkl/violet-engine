@@ -53,7 +53,7 @@ d3d12_renderer::d3d12_renderer(
     swap_chain_desc.SampleDesc.Quality = 0;
 
     throw_if_failed(d3d12_context::factory()->CreateSwapChainForHwnd(
-        d3d12_context::command()->get_command_queue(),
+        d3d12_context::command()->command_queue(),
         handle,
         &swap_chain_desc,
         nullptr,
@@ -125,8 +125,8 @@ render_command* d3d12_renderer::allocate_command()
     command_list->RSSetViewports(1, &m_viewport);
     command_list->RSSetScissorRects(1, &m_scissor_rect);
 
-    auto back_buffer_handle = m_back_buffer[get_index()]->get_cpu_handle();
-    auto depth_stencil_buffer_handle = m_depth_stencil_buffer->get_cpu_handle();
+    auto back_buffer_handle = m_back_buffer[back_buffer_index()]->cpu_handle();
+    auto depth_stencil_buffer_handle = m_depth_stencil_buffer->cpu_handle();
     command_list->OMSetRenderTargets(1, &back_buffer_handle, true, &depth_stencil_buffer_handle);
 
     return command;
@@ -138,12 +138,12 @@ void d3d12_renderer::execute(render_command* command)
     d3d12_context::command()->execute_command(c);
 }
 
-resource* d3d12_renderer::get_back_buffer()
+resource* d3d12_renderer::back_buffer()
 {
-    return m_back_buffer[get_index()].get();
+    return m_back_buffer[back_buffer_index()].get();
 }
 
-std::size_t d3d12_renderer::get_adapter_info(adapter_info* infos, std::size_t size) const
+std::size_t d3d12_renderer::adapter(adapter_info* infos, std::size_t size) const
 {
     std::size_t i = 0;
     for (; i < size && i < m_adapter_info.size(); ++i)
@@ -156,23 +156,20 @@ std::size_t d3d12_renderer::get_adapter_info(adapter_info* infos, std::size_t si
 
 void d3d12_renderer::begin_frame(D3D12GraphicsCommandList* command_list)
 {
-    /*auto descriptor = d3d12_context::instance().get_descriptor();
-    D3D12DescriptorHeap* heaps[] = {descriptor->get_cbv_heap()->get_heap(),
-                                    descriptor->get_cbv_visible_heap()->get_heap()};*/
-
-    m_back_buffer[get_index()]->transition_state(D3D12_RESOURCE_STATE_RENDER_TARGET, command_list);
-    // command_list->SetDescriptorHeaps(1, heaps);
+    m_back_buffer[back_buffer_index()]->transition_state(
+        D3D12_RESOURCE_STATE_RENDER_TARGET,
+        command_list);
     command_list->RSSetViewports(1, &m_viewport);
     command_list->RSSetScissorRects(1, &m_scissor_rect);
 
     static const float clear_color[] = {0.0f, 0.0f, 0.5f, 1.0f};
     command_list->ClearRenderTargetView(
-        m_back_buffer[get_index()]->get_cpu_handle(),
+        m_back_buffer[back_buffer_index()]->cpu_handle(),
         clear_color,
         1,
         &m_scissor_rect);
     command_list->ClearDepthStencilView(
-        m_depth_stencil_buffer->get_cpu_handle(),
+        m_depth_stencil_buffer->cpu_handle(),
         D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
         1.0f,
         0,
@@ -182,7 +179,9 @@ void d3d12_renderer::begin_frame(D3D12GraphicsCommandList* command_list)
 
 void d3d12_renderer::end_frame(D3D12GraphicsCommandList* command_list)
 {
-    m_back_buffer[get_index()]->transition_state(D3D12_RESOURCE_STATE_PRESENT, command_list);
+    m_back_buffer[back_buffer_index()]->transition_state(
+        D3D12_RESOURCE_STATE_PRESENT,
+        command_list);
 }
 
 void d3d12_renderer::present()
@@ -190,7 +189,7 @@ void d3d12_renderer::present()
     throw_if_failed(m_swap_chain->Present(0, 0));
 }
 
-UINT64 d3d12_renderer::get_index() const noexcept
+UINT64 d3d12_renderer::back_buffer_index() const noexcept
 {
     return d3d12_frame_counter::frame_counter() % 2;
 }

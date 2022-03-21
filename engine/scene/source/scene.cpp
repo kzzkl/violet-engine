@@ -10,11 +10,11 @@ scene::scene() : submodule("scene"), m_root_node(std::make_unique<scene_node>())
 
 bool scene::initialize(const dictionary& config)
 {
-    auto& world = get_submodule<ecs::world>();
+    auto& world = module<ecs::world>();
     world.register_component<transform>();
     m_view = world.make_view<transform>();
 
-    auto& task = get_submodule<task::task_manager>();
+    auto& task = module<task::task_manager>();
     auto root_task = task.find("root");
     auto scene_task = task.schedule("scene", [this]() {
         update_hierarchy();
@@ -29,7 +29,7 @@ void scene::update_hierarchy()
 {
     // Update hierarchy and to parent matrix.
     m_view->each([](transform& t) {
-        t.node->set_parent(t.parent);
+        t.node->parent(t.parent);
         t.node->in_scene = false;
 
         math::float4_simd translation = math::simd::load(t.position);
@@ -57,7 +57,7 @@ void scene::update_to_world()
         if (node->dirty)
         {
             math::float4x4_simd to_parent = math::simd::load(node->to_parent);
-            math::float4x4_simd parent_to_world = math::simd::load(node->get_parent()->to_world);
+            math::float4x4_simd parent_to_world = math::simd::load(node->parent()->to_world);
 
             math::float4x4_simd to_world = math::matrix_simd::mul(to_parent, parent_to_world);
             math::simd::store(to_world, node->to_world);
@@ -70,7 +70,7 @@ void scene::update_to_world()
             node->updated = false;
         }
 
-        for (scene_node* child : node->get_children())
+        for (scene_node* child : node->children())
         {
             // When the parent node is updated, the child node also needs to be updated.
             if (node->dirty && !child->dirty)

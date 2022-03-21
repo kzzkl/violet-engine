@@ -50,50 +50,50 @@ public:
             indices.push_back(i);
         }
 
-        ash::ecs::world& world = get_submodule<ash::ecs::world>();
+        ash::ecs::world& world = module<ash::ecs::world>();
         entity_id entity = world.create();
 
         world.add<visual, mesh, material>(entity);
 
-        visual& v = world.get_component<visual>(entity);
-        v.group = get_submodule<ash::graphics::graphics>().get_group("mmd");
+        visual& v = world.component<visual>(entity);
+        v.group = module<ash::graphics::graphics>().group("mmd");
 
-        mesh& m = world.get_component<mesh>(entity);
-        m.vertex_buffer = get_submodule<ash::graphics::graphics>().make_vertex_buffer<vertex>(
+        mesh& m = world.component<mesh>(entity);
+        m.vertex_buffer = module<ash::graphics::graphics>().make_vertex_buffer<vertex>(
             vertices.data(),
             vertices.size());
-        m.index_buffer = get_submodule<ash::graphics::graphics>().make_index_buffer<std::int32_t>(
+        m.index_buffer = module<ash::graphics::graphics>().make_index_buffer<std::int32_t>(
             indices.data(),
             indices.size());
 
         m_camera = world.create();
         world.add<main_camera, camera, transform>(m_camera);
-        camera& c_camera = world.get_component<camera>(m_camera);
+        camera& c_camera = world.component<camera>(m_camera);
         c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
 
-        transform& c_transform = world.get_component<transform>(m_camera);
+        transform& c_transform = world.component<transform>(m_camera);
         c_transform.position = {0.0f, 16.0f, -38.0f};
         c_transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
         c_transform.scaling = {1.0f, 1.0f, 1.0f};
         c_transform.node = std::make_unique<scene_node>();
-        c_transform.parent = get_submodule<ash::scene::scene>().get_root_node();
+        c_transform.parent = module<ash::scene::scene>().root_node();
 
-        auto& task = get_submodule<task::task_manager>();
+        auto& task = module<task::task_manager>();
         auto root_handle = task.find("root");
         auto update_task = task.schedule("test update", [this]() { update(); });
         update_task->add_dependency(*root_handle);
 
-        m_mouse = &get_submodule<ash::window::window>().get_mouse();
-        m_keyboard = &get_submodule<ash::window::window>().get_keyboard();
+        m_mouse = &module<ash::window::window>().mouse();
+        m_keyboard = &module<ash::window::window>().keyboard();
 
         return true;
     }
 
     void update()
     {
-        auto& world = get_submodule<ash::ecs::world>();
+        auto& world = module<ash::ecs::world>();
 
-        transform& t = world.get_component<transform>(m_camera);
+        transform& t = world.component<transform>(m_camera);
 
         if (m_keyboard->key(keyboard_key::KEY_W).down())
         {

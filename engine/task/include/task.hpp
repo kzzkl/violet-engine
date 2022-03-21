@@ -38,10 +38,10 @@ public:
     void add_dependency(task& dependency);
     void remove_dependency(task& dependency);
 
-    std::array<std::size_t, TASK_TYPE_COUNT> get_reachable_tasks_count();
+    std::array<std::size_t, TASK_TYPE_COUNT> reachable_tasks_count();
 
-    std::string_view get_name() const noexcept { return m_name; }
-    task_type get_type() const noexcept { return m_type; }
+    std::string_view name() const noexcept { return m_name; }
+    task_type type() const noexcept { return m_type; }
 
 private:
     void add_next_task(task& task);

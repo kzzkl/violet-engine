@@ -12,7 +12,7 @@ public:
     view_base(const component_mask& mask) noexcept : m_mask(mask) {}
     virtual ~view_base() = default;
 
-    const component_mask& get_mask() const noexcept { return m_mask; }
+    const component_mask& mask() const noexcept { return m_mask; }
 
     virtual void add_archetype(archetype* archetype) = 0;
 
@@ -36,10 +36,10 @@ public:
         {
             for (std::size_t i = 0; i < archetype->size(); ++i)
             {
-                iter.set_index(i);
-                functor(iter.template get_component<Components>()...);
+                iter.index(i);
+                functor(iter.template component<Components>()...);
             }
-            iter.set_index(0);
+            iter.index(0);
         }
     }
 

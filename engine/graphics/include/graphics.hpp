@@ -28,7 +28,7 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
 
-    render_group* get_group(std::string_view name);
+    render_group* group(std::string_view name);
 
     template <typename... Types>
     std::unique_ptr<render_parameter<Types...>> make_render_parameter(std::string_view name)
@@ -38,7 +38,7 @@ public:
             return nullptr;
 
         std::vector<render_parameter_resource> resources;
-        for (std::size_t i = 0; i < m_config.get_frame_resource(); ++i)
+        for (std::size_t i = 0; i < m_config.frame_resource(); ++i)
         {
             render_parameter_resource resource;
             resource.parameter = m_factory->make_pipeline_parameter(desc);

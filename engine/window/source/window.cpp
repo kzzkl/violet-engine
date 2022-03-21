@@ -16,12 +16,12 @@ bool window::initialize(const dictionary& config)
     if (!m_impl->initialize(config["width"], config["height"], config["title"]))
         return false;
 
-    auto task_handle = get_submodule<task::task_manager>().schedule(
+    auto task_handle = module<task::task_manager>().schedule(
         "window",
         [this]() { m_impl->tick(); },
         task::task_type::MAIN_THREAD);
 
-    task_handle->add_dependency(*get_submodule<task::task_manager>().find("root"));
+    task_handle->add_dependency(*module<task::task_manager>().find("root"));
 
     return true;
 }

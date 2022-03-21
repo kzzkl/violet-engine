@@ -80,24 +80,24 @@ public:
 
     void reset_relative_cursor();
 
-    void set_cursor(int x, int y)
+    void cursor(int x, int y)
     {
         m_x = x;
         m_y = y;
     }
 
-    void set_mode(mouse_mode mode);
-    inline mouse_mode get_mode() const { return m_mode; }
+    void mode(mouse_mode mode);
+    inline mouse_mode mode() const noexcept { return m_mode; }
 
-    inline int get_x() const { return m_x; }
-    inline int get_y() const { return m_y; }
+    inline int x() const noexcept { return m_x; }
+    inline int y() const noexcept { return m_y; }
 
 protected:
     virtual void clip_cursor(bool clip) = 0;
     virtual void show_cursor(bool show) = 0;
 
 private:
-    void set_cursor_clip(bool clip);
+    void cursor_clip(bool clip);
 
     int m_x;
     int m_y;

@@ -11,10 +11,10 @@ class SCENE_API scene_node
 public:
     scene_node();
 
-    void set_parent(scene_node* parent);
-    scene_node* get_parent() const noexcept { return m_parent; }
+    void parent(scene_node* parent);
+    scene_node* parent() const noexcept { return m_parent; }
 
-    const std::vector<scene_node*>& get_children() const noexcept { return m_children; }
+    const std::vector<scene_node*>& children() const noexcept { return m_children; }
 
     math::float4x4 to_world;
     math::float4x4 to_parent;

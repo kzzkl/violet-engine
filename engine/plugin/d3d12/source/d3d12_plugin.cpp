@@ -65,8 +65,8 @@ public:
         return d3d12_context::initialize(config);
     }
 
-    virtual renderer* get_renderer() override { return d3d12_context::renderer(); }
-    virtual factory* get_factory() { return m_factory.get(); }
+    virtual renderer_type* renderer() override { return d3d12_context::renderer(); }
+    virtual factory_type* factory() { return m_factory.get(); }
 
 private:
     std::unique_ptr<d3d12_factory> m_factory;

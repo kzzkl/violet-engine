@@ -70,7 +70,7 @@ void work_thread::loop(task_queue_group& queues)
         {
             current_task->execute_and_get_next_tasks(next_tasks);
             for (task* next_task : next_tasks)
-                queues[next_task->get_type()].push(next_task);
+                queues[next_task->type()].push(next_task);
             next_tasks.clear();
 
             queues.notify_task_completion();
@@ -93,7 +93,7 @@ void work_thread_main::run(task_queue_group& queues, std::size_t task_count)
         {
             current_task->execute_and_get_next_tasks(next_tasks);
             for (task* next_task : next_tasks)
-                queues[next_task->get_type()].push(next_task);
+                queues[next_task->type()].push(next_task);
             next_tasks.clear();
 
             queues.notify_task_completion();

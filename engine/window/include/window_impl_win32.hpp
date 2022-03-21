@@ -9,7 +9,7 @@ namespace ash::window
 class mouse_win32 : public mouse
 {
 public:
-    void set_window_handle(HWND hwnd) { m_hwnd = hwnd; }
+    void window_handle(HWND hwnd) { m_hwnd = hwnd; }
 
 protected:
     virtual void clip_cursor(bool clip) override;
@@ -27,13 +27,13 @@ public:
     virtual void tick() override;
     virtual void show() override;
 
-    virtual const void* get_handle() const override;
-    virtual window_rect get_rect() const override;
+    virtual const void* handle() const override;
+    virtual window_rect rect() const override;
 
-    virtual mouse& get_mouse() override { return m_mouse; };
-    virtual keyboard& get_keyboard() override { return m_keyboard; };
+    virtual mouse_type& mouse() override { return m_mouse; };
+    virtual keyboard_type& keyboard() override { return m_keyboard; };
 
-    virtual void set_title(std::string_view title) override;
+    virtual void title(std::string_view title) override;
 
 private:
     static LRESULT CALLBACK wnd_create_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
@@ -47,6 +47,6 @@ private:
     HWND m_hwnd;
 
     mouse_win32 m_mouse;
-    keyboard m_keyboard;
+    keyboard_type m_keyboard;
 };
 } // namespace ash::window

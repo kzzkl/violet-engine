@@ -24,11 +24,11 @@ public:
     virtual bool initialize(const dictionary& config) = 0;
     virtual void shutdown(){};
 
-    inline std::string_view get_name() const noexcept { return m_name; }
+    inline std::string_view name() const noexcept { return m_name; }
 
 protected:
     template <typename T>
-    T& get_submodule();
+    T& module();
 
 private:
     friend class context;
@@ -55,19 +55,19 @@ public:
     context(std::string_view config_path);
 
     template <typename T>
-    T& get_submodule()
+    T& module()
     {
         return *static_cast<T*>(m_modules[submodule_trait<T>::id].get());
     }
 
     template <>
-    ash::task::task_manager& get_submodule<ash::task::task_manager>()
+    ash::task::task_manager& module<ash::task::task_manager>()
     {
         return *m_task;
     }
 
     template <>
-    ash::ecs::world& get_submodule<ash::ecs::world>()
+    ash::ecs::world& module<ash::ecs::world>()
     {
         return *m_world;
     }
@@ -81,8 +81,8 @@ protected:
         {
             auto m = std::make_unique<T>(std::forward<Args>(args)...);
             m->m_context = this;
-            m->initialize(m_config[m->get_name().data()]);
-            log::info("Module installed successfully: {}.", m->get_name());
+            m->initialize(m_config[m->name().data()]);
+            log::info("Module installed successfully: {}.", m->name());
             m_modules[id] = std::move(m);
         }
         else
@@ -104,8 +104,8 @@ private:
 };
 
 template <typename T>
-T& submodule::get_submodule()
+T& submodule::module()
 {
-    return m_context->get_submodule<T>();
+    return m_context->module<T>();
 }
 } // namespace ash::core
