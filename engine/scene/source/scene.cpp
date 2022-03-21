@@ -37,7 +37,7 @@ void scene::update_hierarchy()
         math::float4_simd scaling = math::simd::load(t.scaling);
 
         math::simd::store(
-            math::matrix_simd::affine_transform(translation, rotation, scaling),
+            math::matrix_simd::affine_transform(scaling, rotation, translation),
             t.node->to_parent);
     });
 }

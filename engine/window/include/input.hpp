@@ -29,7 +29,10 @@ public:
     key_device() { memset(m_key_state, 0, sizeof(m_key_state)); }
     virtual ~key_device() {}
 
-    inline key_state key(KeyType key) { return key_state(m_key_state[static_cast<std::uint32_t>(key)]); }
+    inline key_state key(KeyType key)
+    {
+        return key_state(m_key_state[static_cast<std::uint32_t>(key)]);
+    }
 
     void key_down(KeyType key)
     {
@@ -103,7 +106,8 @@ private:
 
 enum class keyboard_key : std::uint32_t
 {
-    KEY_0 = 48,
+    KEY_ESC = 0x1B,
+    KEY_0 = 0x30,
     KEY_1,
     KEY_2,
     KEY_3,
@@ -113,7 +117,7 @@ enum class keyboard_key : std::uint32_t
     KEY_7,
     KEY_8,
     KEY_9,
-    KEY_A = 65,
+    KEY_A = 0x41,
     KEY_B,
     KEY_C,
     KEY_D,

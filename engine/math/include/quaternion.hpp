@@ -12,30 +12,28 @@ public:
     using vector_type = float4;
 
 public:
-    static inline quaternion_type make_from_axis_angle(const vector_type& axis, float radians)
+    static inline quaternion_type rotation_axis(const vector_type& axis, float radians)
     {
-        auto [sin, cos] = sin_cos(radians / 2.0f);
+        auto [sin, cos] = sin_cos(radians * 0.5f);
         return {axis[0] * sin, axis[1] * sin, axis[2] * sin, cos};
     }
 
-    static inline quaternion_type make_from_euler(float heading, float pitch, float bank)
+    static inline quaternion_type rotation_euler(float heading, float pitch, float bank)
     {
-        /*auto [roll_sin, roll_cos] = sin_cos(roll * T(0.5));
-        auto [pitch_sin, pitch_cos] = sin_cos(pitch * T(0.5));
-        auto [yaw_sin, yaw_cos] = sin_cos(yaw * T(0.5));
+        auto [h_sin, h_cos] = sin_cos(heading * 0.5f);
+        auto [p_sin, p_cos] = sin_cos(pitch * 0.5f);
+        auto [b_sin, b_cos] = sin_cos(bank * 0.5f);
 
-        return {yaw_cos * pitch_cos * roll_sin - yaw_sin * pitch_sin * roll_cos,
-                yaw_sin * pitch_cos * roll_sin + yaw_cos * pitch_sin * roll_cos,
-                yaw_sin * pitch_cos * roll_sin - yaw_cos * pitch_sin * roll_cos,
-                yaw_cos * pitch_cos * roll_cos + yaw_sin * pitch_sin * roll_sin};*/
-
-        // TODO
-        return {};
+        return {
+            h_cos * p_sin * b_cos + h_sin * p_cos * b_sin,
+            h_sin * p_cos * b_cos - h_cos * p_sin * b_sin,
+            h_cos * p_cos * b_sin - h_sin * p_sin * b_cos,
+            h_cos * p_cos * b_cos + h_sin * p_sin * b_sin};
     }
 
-    static inline quaternion_type make_from_euler(const vector_type& euler)
+    static inline quaternion_type rotation_euler(const vector_type& euler)
     {
-        return make_from_euler(euler[0], euler[1], euler[2]);
+        return rotation_euler(euler[0], euler[1], euler[2]);
     }
 
     static inline quaternion_type mul(const quaternion_type& a, const quaternion_type& b)
@@ -64,14 +62,18 @@ public:
     using vector_type = float4_simd;
 
 public:
-    static inline quaternion_type make_from_axis_angle(const vector_type& axis, float radians)
+    static inline quaternion_type rotation_axis(const vector_type& axis, float radians)
     {
         // TODO
     }
 
-    static inline quaternion_type make_from_euler(const vector_type& euler)
+    static inline quaternion_type rotation_euler(const vector_type& euler)
     {
         // TODO
+        float4 e;
+        simd::store(euler, e);
+        float4 result = quaternion_plain::rotation_euler(e);
+        return simd::load(result);
     }
 
     static inline quaternion_type mul(const quaternion_type& a, const quaternion_type& b)

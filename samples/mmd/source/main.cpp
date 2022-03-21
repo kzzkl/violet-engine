@@ -69,13 +69,10 @@ public:
         m_camera = world.create();
         world.add<main_camera, camera, transform>(m_camera);
         camera& c_camera = world.get_component<camera>(m_camera);
-        c_camera.fov = math::to_radians(30.0f);
-        c_camera.aspect = 1300.0f / 800.0f;
-        c_camera.near_z = 0.01f;
-        c_camera.far_z = 1000.0f;
+        c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
 
         transform& c_transform = world.get_component<transform>(m_camera);
-        c_transform.position = {10.0f, 10.0f, 10.0f};
+        c_transform.position = {0.0f, 16.0f, -38.0f};
         c_transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
         c_transform.scaling = {1.0f, 1.0f, 1.0f};
         c_transform.node = std::make_unique<scene_node>();
@@ -104,7 +101,7 @@ public:
             t.node->dirty = true;
         }
 
-        if (m_keyboard->key(keyboard_key::KEY_Q).down())
+        if (m_keyboard->key(keyboard_key::KEY_ESC).down())
             m_app->exit();
     }
 

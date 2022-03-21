@@ -3,6 +3,7 @@
 #include "misc.hpp"
 #include "simd.hpp"
 #include "type.hpp"
+#include "vector.hpp"
 
 namespace ash::math
 {
@@ -116,10 +117,10 @@ public:
         float h = 1.0f / tanf(fov * 0.5f); // view space height
         float w = h / aspect;              // view space width
         return matrix_type{
-            vector_type{w, 0, 0,                   0},
-            vector_type{0, h, 0,                   0},
-            vector_type{0, 0, zf / (zf - zn),      1},
-            vector_type{0, 0, zn * zf / (zn - zf), 0}
+            vector_type{w,    0.0f, 0.0f,                0.0f},
+            vector_type{0.0f, h,    0.0f,                0.0f},
+            vector_type{0.0f, 0.0f, zf / (zf - zn),      1.0f},
+            vector_type{0.0f, 0.0f, zn * zf / (zn - zf), 0.0f}
         };
     }
 
@@ -228,22 +229,38 @@ public:
 
     static inline matrix_type rotation_quaternion(const vector_type& quaternion)
     {
-        // TODO
+        float xxd = 2.0f * quaternion[0] * quaternion[0];
+        float xyd = 2.0f * quaternion[0] * quaternion[1];
+        float xzd = 2.0f * quaternion[0] * quaternion[2];
+        float xwd = 2.0f * quaternion[0] * quaternion[3];
+        float yyd = 2.0f * quaternion[1] * quaternion[1];
+        float yzd = 2.0f * quaternion[1] * quaternion[2];
+        float ywd = 2.0f * quaternion[1] * quaternion[3];
+        float zzd = 2.0f * quaternion[2] * quaternion[2];
+        float zwd = 2.0f * quaternion[2] * quaternion[3];
+        float wwd = 2.0f * quaternion[3] * quaternion[3];
+
+        return matrix_type{
+            vector_type{1.0f - yyd - zzd, xyd + zwd,        xzd - ywd,        0.0f},
+            vector_type{xyd - zwd,        1.0f - xxd - zzd, yzd + xwd,        0.0f},
+            vector_type{xzd + ywd,        yzd - xwd,        1.0f - xxd - yyd, 0.0f},
+            vector_type{0.0f,             0.0f,             0.0f,             1.0f}
+        };
     }
 
     static inline matrix_type affine_transform(
-        const vector_type& translation,
-        const vector_type& rotation)
-    {
-        // TODO
-    }
-
-    static inline matrix_type affine_transform(
-        const vector_type& translation,
+        const vector_type& scale,
         const vector_type& rotation,
-        const vector_type& scale)
+        const vector_type& translation)
     {
-        // TODO
+        matrix_type r = rotation_quaternion(rotation);
+
+        return matrix_type{
+            vector_type{scale[0] * r[0][0], scale[0] * r[0][1], scale[0] * r[0][2], 0.0f},
+            vector_type{scale[1] * r[1][0], scale[1] * r[1][1], scale[1] * r[1][2], 0.0f},
+            vector_type{scale[2] * r[2][0], scale[2] * r[2][1], scale[2] * r[2][2], 0.0f},
+            vector_type{translation[0],     translation[1],     translation[2],     1.0f}
+        };
     }
 };
 
@@ -323,7 +340,10 @@ public:
     static inline matrix_type inverse(const matrix_type& m)
     {
         // TODO
-        return identity();
+        float4x4 result;
+        simd::store(m, result);
+        result = matrix_plain::inverse(result);
+        return simd::load(result);
     }
 
     static inline matrix_type identity()
@@ -337,7 +357,9 @@ public:
 
     static inline matrix_type perspective(float fov, float aspect, float zn, float zf)
     {
-        return identity();
+        // TODO
+        float4x4 result = matrix_plain::perspective(fov, aspect, zn, zf);
+        return simd::load(result);
     }
 
     static inline matrix_type scaling(float x, float y, float z)
@@ -383,7 +405,7 @@ public:
         // TODO
     }
 
-    static inline matrix_type rotation_quaternion(const vector_type& quaternion) noexcept
+    static inline matrix_type rotation_quaternion(const vector_type& quaternion)
     {
         const __m128 c = simd::set(1.0f, 1.0f, 1.0f, 0.0f);
 
@@ -433,22 +455,24 @@ public:
     }
 
     static inline matrix_type affine_transform(
-        const vector_type& translation,
-        const vector_type& rotation) noexcept
-    {
-        matrix_type result = rotation_quaternion(rotation);
-        result[3] = _mm_or_ps(result[3], translation);
-        return result;
-    }
-
-    static inline matrix_type affine_transform(
-        const vector_type& translation,
+        const vector_type& scale,
         const vector_type& rotation,
-        const vector_type& scale) noexcept
+        const vector_type& translation)
     {
-        matrix_type s = scaling(scale);
-        matrix_type rt = affine_transform(translation, rotation);
-        return mul(s, rt);
+        matrix_type r = rotation_quaternion(rotation);
+        __m128 t = _mm_and_ps(translation, simd::get_mask<0x1110>());
+
+        __m128 s1 = simd::replicate<0>(scale);
+        __m128 s2 = simd::replicate<1>(scale);
+        __m128 s3 = simd::replicate<2>(scale);
+
+        matrix_type result;
+        result[0] = _mm_mul_ps(s1, r[0]);
+        result[1] = _mm_mul_ps(s2, r[1]);
+        result[2] = _mm_mul_ps(s3, r[2]);
+        result[3] = _mm_add_ps(simd::get_identity_row<3>(), t);
+
+        return result;
     }
 };
 } // namespace ash::math

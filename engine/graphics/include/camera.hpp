@@ -1,6 +1,7 @@
 #pragma once
 
 #include "component.hpp"
+#include "math.hpp"
 
 namespace ash::graphics
 {
@@ -10,10 +11,17 @@ struct main_camera
 
 struct camera
 {
-    float fov;
-    float aspect;
-    float near_z;
-    float far_z;
+public:
+    void set(float fov, float aspect, float near_z, float far_z)
+    {
+        math::float4x4_simd proj = math::matrix_simd::perspective(fov, aspect, near_z, far_z);
+        math::simd::store(proj, m_perspective);
+    }
+
+    inline const math::float4x4 get_perspective() const noexcept { return m_perspective; }
+
+private:
+    math::float4x4 m_perspective;
 };
 } // namespace ash::graphics
 
