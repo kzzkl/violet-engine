@@ -96,7 +96,7 @@ public:
 
     virtual ~d3d12_upload_buffer();
 
-    void upload(const void* data, std::size_t size);
+    virtual void upload(const void* data, std::size_t size, std::size_t offset) override;
 
     d3d12_upload_buffer& operator=(const d3d12_upload_buffer&) = delete;
     d3d12_upload_buffer& operator=(d3d12_upload_buffer&& other) noexcept;

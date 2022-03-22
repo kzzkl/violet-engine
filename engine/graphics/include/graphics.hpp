@@ -5,7 +5,6 @@
 #include "context.hpp"
 #include "graphics_exports.hpp"
 #include "graphics_plugin.hpp"
-#include "material.hpp"
 #include "render_group.hpp"
 #include "render_parameter.hpp"
 #include "transform.hpp"
@@ -37,20 +36,29 @@ public:
         if (!found)
             return nullptr;
 
-        std::vector<render_parameter_resource> resources;
+        std::vector<pipeline_parameter*> parameter;
         for (std::size_t i = 0; i < m_config.frame_resource(); ++i)
-        {
-            render_parameter_resource resource;
-            resource.parameter = m_factory->make_pipeline_parameter(desc);
+            parameter.push_back(m_factory->make_pipeline_parameter(desc));
 
-            type_list<Types...>::each([&resource, this ]<typename T>() {
-                resource.data.push_back(m_factory->make_upload_buffer(sizeof(T)));
-            });
+        std::vector<resource*> part;
+        type_list<Types...>::each([&part, this]<typename T>() {
+            using resource_type = T::value_type;
 
-            resources.push_back(resource);
-        }
+            if constexpr (std::is_same_v<resource_type, texture>)
+            {
+                // TODO: make texture
+            }
+            else
+            {
+                std::size_t buffer_size = sizeof(resource_type);
+                if constexpr (T::frame_resource)
+                    buffer_size *= m_config.frame_resource();
 
-        return std::make_unique<render_parameter<Types...>>(resources);
+                part.push_back(m_factory->make_upload_buffer(buffer_size));
+            }
+        });
+
+        return std::make_unique<render_parameter<Types...>>(parameter, part);
     }
 
     template <typename Vertex>
@@ -79,7 +87,7 @@ private:
     renderer* m_renderer;
     factory* m_factory;
 
-    ash::ecs::view<visual, mesh, material>* m_view;
+    ash::ecs::view<visual, mesh>* m_view;
     ash::ecs::view<main_camera, camera, scene::transform>* m_camera_view;
 
     std::unique_ptr<render_parameter_pass> m_parameter_pass;

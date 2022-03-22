@@ -2,81 +2,117 @@
 
 #include "graphics_interface.hpp"
 #include "math.hpp"
+#include "texture.hpp"
 #include "type_trait.hpp"
 #include <memory>
 #include <vector>
 
 namespace ash::graphics
 {
-struct render_parameter_resource
+template <typename T>
+struct single
 {
-    pipeline_parameter* parameter;
-    std::vector<resource*> data;
+    using value_type = T;
+    static constexpr bool frame_resource = true;
+
+    value_type value;
+};
+
+template <typename T>
+struct multiple
+{
+    using value_type = T;
+    static constexpr bool frame_resource = false;
+
+    value_type value;
+};
+
+class render_parameter_base
+{
+public:
+    render_parameter_base() = default;
+    render_parameter_base(const render_parameter_base&) = default;
+    virtual ~render_parameter_base() = default;
+
+    virtual pipeline_parameter* parameter() const = 0;
+    virtual void sync_resource() = 0;
+
+    render_parameter_base& operator=(const render_parameter_base&) = default;
 };
 
 template <typename... Types>
-class render_parameter
+class render_parameter : public render_parameter_base
 {
 public:
     using data_type = std::tuple<Types...>;
-    static constexpr std::size_t data_part_count = sizeof...(Types);
 
 public:
-    render_parameter(const std::vector<render_parameter_resource>& resources)
+    render_parameter(
+        const std::vector<pipeline_parameter*>& parameters,
+        const std::vector<resource*>& parts)
         : m_index(0),
-          m_dirty(resources.size()),
-          m_resources(resources.size())
+          m_dirty(parameters.size())
     {
-        for (std::size_t i = 0; i < resources.size(); ++i)
-        {
-            m_resources[i].parameter.reset(resources[i].parameter);
-            m_resources[i].data.resize(resources[i].data.size());
+        for (auto parameter : parameters)
+            m_parameters.emplace_back(parameter);
 
-            for (std::size_t j = 0; j < resources[i].data.size(); ++j)
-            {
-                m_resources[i].data[j].reset(resources[i].data[j]);
-                m_resources[i].parameter->bind(j, m_resources[i].data[j].get());
-            }
+        for (auto part : parts)
+            m_parts.emplace_back(part);
+
+        for (std::size_t i = 0; i < m_parameters.size(); ++i)
+        {
+            type_list<Types...>::each([this, i]<typename T>() {
+                using resource_type = T::value_type;
+                constexpr std::size_t part_index = type_list<Types...>::template index<T>();
+
+                if constexpr (std::is_same_v<resource_type, texture>)
+                {
+                    m_parameters[i]->bind(part_index, m_parts[part_index].get());
+                }
+                else
+                {
+                    std::size_t offset = 0;
+                    if constexpr (T::frame_resource)
+                        offset = i * sizeof(resource_type);
+
+                    m_parameters[i]->bind(part_index, m_parts[part_index].get(), offset);
+                }
+            });
         }
     }
 
     template <std::size_t index, typename T>
     void set(const T& data) noexcept
     {
-        std::get<index>(m_data) = data;
-        m_dirty[index] = m_resources.size();
+        std::get<index>(m_data).value = data;
+        m_dirty[index] = m_parameters.size();
     }
 
-    void sync_resource()
+    virtual void sync_resource() override
     {
-        m_index = (m_index + 1) % m_resources.size();
+        m_index = (m_index + 1) % m_parameters.size();
 
         type_list<Types...>::each([this]<typename T>() {
             static constexpr std::size_t index = type_list<Types...>::template index<T>();
             if (m_dirty[index] > 0)
             {
-                m_resources[m_index].data[index]->upload(
-                    &std::get<index>(m_data),
-                    sizeof(std::get<index>(m_data)));
+                std::size_t size = sizeof(std::get<index>(m_data));
+                m_parts[index]->upload(&std::get<index>(m_data), size, size * index);
                 --m_dirty[index];
             }
         });
     }
 
-    pipeline_parameter* parameter() { return m_resources[m_index].parameter.get(); }
+    virtual pipeline_parameter* parameter() const override { return m_parameters[m_index].get(); }
 
 private:
-    struct frame_resource
-    {
-        std::unique_ptr<pipeline_parameter> parameter;
-        std::vector<std::unique_ptr<resource>> data;
-    };
-
     std::size_t m_index;
 
     data_type m_data;
     std::vector<std::size_t> m_dirty;
-    std::vector<frame_resource> m_resources;
+
+    std::vector<std::unique_ptr<pipeline_parameter>> m_parameters;
+    std::vector<std::unique_ptr<resource>> m_parts;
 };
 
 struct render_pass_data
@@ -88,12 +124,12 @@ struct render_pass_data
     math::float4x4 camera_projection;
     math::float4x4 camera_view_projection;
 };
-using render_parameter_pass = render_parameter<render_pass_data>;
+using render_parameter_pass = render_parameter<multiple<render_pass_data>>;
 
 struct render_object_data
 {
     math::float4x4 to_world;
 };
 
-using render_parameter_object = render_parameter<render_object_data>;
+using render_parameter_object = render_parameter<multiple<render_object_data>>;
 } // namespace ash::graphics

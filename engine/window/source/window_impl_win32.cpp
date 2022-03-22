@@ -34,24 +34,36 @@ std::string wstring_to_string(std::wstring_view str)
     return buffer;
 }
 
-void mouse_win32::clip_cursor(bool clip)
+void mouse_win32::reset()
 {
-    if (clip)
+    if (m_mode == mouse_mode::CURSOR_RELATIVE)
+        m_x = m_y = 0;
+
+    if (m_mode_change)
     {
-        RECT rect;
-        GetClientRect(m_hwnd, &rect);
-        MapWindowRect(m_hwnd, nullptr, &rect);
-        ClipCursor(&rect);
-    }
-    else
-    {
-        ClipCursor(nullptr);
+        if (m_mode == mouse_mode::CURSOR_ABSOLUTE)
+        {
+            ShowCursor(true);
+            ClipCursor(nullptr);
+        }
+        else
+        {
+            ShowCursor(false);
+            RECT rect;
+            GetClientRect(m_hwnd, &rect);
+            MapWindowRect(m_hwnd, nullptr, &rect);
+            ClipCursor(&rect);
+        }
+
+        m_mode_change = false;
     }
 }
 
-void mouse_win32::show_cursor(bool show)
+void mouse_win32::change_mode(mouse_mode mode)
 {
-    ShowCursor(show);
+    m_mode_change = true;
+    m_mode = mode;
+    m_x = m_y = 0;
 }
 
 bool window_impl_win32::initialize(
@@ -118,7 +130,9 @@ bool window_impl_win32::initialize(
 
 void window_impl_win32::tick()
 {
-    m_mouse.reset_relative_cursor();
+    m_mouse.reset();
+    m_mouse.tick();
+    m_keyboard.tick();
 
     MSG msg;
     while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
@@ -206,8 +220,7 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
                 &raw,
                 &raw_size,
                 sizeof(RAWINPUTHEADER));
-            if (raw.header.dwType == RIM_TYPEMOUSE &&
-                !(raw.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE))
+            if (raw.header.dwType == RIM_TYPEMOUSE)
             {
                 // Because handle_message may be called multiple times in a frame, it is necessary
                 // to accumulate mouse coordinates.

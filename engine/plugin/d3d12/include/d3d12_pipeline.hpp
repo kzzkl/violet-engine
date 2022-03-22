@@ -31,7 +31,7 @@ public:
 public:
     d3d12_pipeline_parameter(const pipeline_parameter_desc& desc);
 
-    virtual void bind(std::size_t index, resource* data) override;
+    virtual void bind(std::size_t index, resource* data, std::size_t offset) override;
 
     inline d3d12_parameter_tier_type tier() const noexcept { return m_tier; }
     inline tier1_info tier1() const noexcept { return m_tier1; }
@@ -53,10 +53,7 @@ class d3d12_parameter_layout : public pipeline_layout
 {
 public:
     d3d12_parameter_layout(const pipeline_layout_desc& desc);
-    inline D3D12RootSignature* root_signature() const noexcept
-    {
-        return m_root_signature.Get();
-    }
+    inline D3D12RootSignature* root_signature() const noexcept { return m_root_signature.Get(); }
 
 private:
     d3d12_ptr<D3D12RootSignature> m_root_signature;
@@ -67,10 +64,7 @@ class d3d12_pipeline : public pipeline
 public:
     d3d12_pipeline(const pipeline_desc& desc);
 
-    inline D3D12PipelineState* pipeline_state() const noexcept
-    {
-        return m_pipeline_state.Get();
-    }
+    inline D3D12PipelineState* pipeline_state() const noexcept { return m_pipeline_state.Get(); }
 
 private:
     void initialize_vertex_layout(const pipeline_desc& desc);

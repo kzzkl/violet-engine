@@ -44,9 +44,14 @@ bool graphics::initialize(const dictionary& config)
     auto& task = module<task::task_manager>();
     auto scene_task = task.find("scene");
     auto render_task = task.schedule("render", [this]() {
-        m_view->each([](visual& visual, mesh& mesh, material& material) {
+        m_view->each([](visual& visual, mesh& mesh) {
             if (visual.group != nullptr)
-                visual.group->add(render_unit{&mesh, visual.parameter.get()});
+            {
+                visual.object->sync_resource();
+                visual.material->sync_resource();
+                visual.group->add(
+                    render_unit{&mesh, visual.object->parameter(), visual.material->parameter()});
+            }
         });
 
         update_pass_data();
@@ -61,8 +66,8 @@ bool graphics::initialize(const dictionary& config)
     render_task->add_dependency(*scene_task);
 
     auto& world = module<ecs::world>();
-    world.register_component<visual, mesh, material, main_camera, camera>();
-    m_view = world.make_view<visual, mesh, material>();
+    world.register_component<visual, mesh, main_camera, camera>();
+    m_view = world.make_view<visual, mesh>();
     m_camera_view = world.make_view<main_camera, camera, scene::transform>();
 
     return true;
@@ -79,7 +84,7 @@ render_group* graphics::group(std::string_view name)
 
 bool graphics::initialize_resource()
 {
-    m_parameter_pass = make_render_parameter<render_pass_data>("ash_pass");
+    m_parameter_pass = make_render_parameter<multiple<render_pass_data>>("ash_pass");
 
     return true;
 }
@@ -91,10 +96,13 @@ void graphics::render()
     {
         command->pipeline(group->pipeline());
         command->layout(group->layout());
-        command->parameter(0, m_parameter_pass->parameter());
+        command->parameter(2, m_parameter_pass->parameter());
 
-        for (auto [mesh, parameter] : *group)
+        for (auto [mesh, object, material] : *group)
         {
+            command->parameter(0, object);
+            command->parameter(1, material);
+
             command->draw(
                 mesh->vertex_buffer.get(),
                 mesh->index_buffer.get(),

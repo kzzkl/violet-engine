@@ -9,14 +9,20 @@ namespace ash::window
 class mouse_win32 : public mouse
 {
 public:
+    void reset();
+    void cursor(int x, int y)
+    {
+        m_x = x;
+        m_y = y;
+    }
+
     void window_handle(HWND hwnd) { m_hwnd = hwnd; }
 
-protected:
-    virtual void clip_cursor(bool clip) override;
-    virtual void show_cursor(bool show) override;
-
 private:
+    virtual void change_mode(mouse_mode mode) override;
+
     HWND m_hwnd;
+    bool m_mode_change;
 };
 
 class window_impl_win32 : public window_impl

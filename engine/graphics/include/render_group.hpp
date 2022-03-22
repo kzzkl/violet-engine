@@ -1,7 +1,6 @@
 #pragma once
 
 #include "graphics_interface.hpp"
-#include "material.hpp"
 #include "mesh.hpp"
 #include "render_parameter.hpp"
 #include <vector>
@@ -11,7 +10,8 @@ namespace ash::graphics
 struct render_unit
 {
     mesh* mesh;
-    render_parameter_object* parameter;
+    pipeline_parameter* object;
+    pipeline_parameter* material;
 };
 
 class render_group

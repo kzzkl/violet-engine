@@ -19,8 +19,7 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(const pipeline_parameter_desc
     }
     else
     {
-        auto heap =
-            d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        auto heap = d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
         m_tier = d3d12_parameter_tier_type::TIER2;
         std::size_t offset = heap->allocate(desc.size);
@@ -33,11 +32,11 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(const pipeline_parameter_desc
     }
 }
 
-void d3d12_pipeline_parameter::bind(std::size_t index, resource* data)
+void d3d12_pipeline_parameter::bind(std::size_t index, resource* data, std::size_t offset)
 {
     d3d12_resource* d = static_cast<d3d12_resource*>(data);
 
-    D3D12_GPU_VIRTUAL_ADDRESS address = d->resource()->GetGPUVirtualAddress();
+    D3D12_GPU_VIRTUAL_ADDRESS address = d->resource()->GetGPUVirtualAddress() + offset;
 
     if (m_tier == d3d12_parameter_tier_type::TIER1)
     {
@@ -46,8 +45,7 @@ void d3d12_pipeline_parameter::bind(std::size_t index, resource* data)
     else
     {
         auto device = d3d12_context::device();
-        auto heap =
-            d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        auto heap = d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
         CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_tier2.base_cpu_handle, heap->increment_size());
         handle.Offset(static_cast<INT>(index));
@@ -202,13 +200,14 @@ void d3d12_pipeline::initialize_vertex_layout(const pipeline_desc& desc)
     for (std::size_t i = 0; i < desc.vertex_layout.size; ++i)
     {
         auto& attribute = desc.vertex_layout.data[i];
-        D3D12_INPUT_ELEMENT_DESC desc = {attribute.name,
-                                         attribute.index,
-                                         get_format(attribute.type),
-                                         0,
-                                         D3D12_APPEND_ALIGNED_ELEMENT,
-                                         D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-                                         0};
+        D3D12_INPUT_ELEMENT_DESC desc = {
+            attribute.name,
+            attribute.index,
+            get_format(attribute.type),
+            0,
+            D3D12_APPEND_ALIGNED_ELEMENT,
+            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            0};
         m_vertex_layout.push_back(desc);
     }
 }

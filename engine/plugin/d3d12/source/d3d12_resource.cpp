@@ -235,9 +235,10 @@ d3d12_upload_buffer::~d3d12_upload_buffer()
     }
 }
 
-void d3d12_upload_buffer::upload(const void* data, std::size_t size)
+void d3d12_upload_buffer::upload(const void* data, std::size_t size, std::size_t offset)
 {
-    memcpy(m_mapped, data, size);
+    void* target = static_cast<std::uint8_t*>(m_mapped) + offset;
+    memcpy(target, data, size);
 }
 
 d3d12_upload_buffer& d3d12_upload_buffer::operator=(d3d12_upload_buffer&& other) noexcept

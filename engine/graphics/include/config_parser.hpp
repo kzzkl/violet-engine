@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dictionary.hpp"
+#include "graphics_exports.hpp"
 #include "graphics_interface.hpp"
 #include <map>
 #include <string_view>
@@ -8,7 +9,7 @@
 
 namespace ash::graphics
 {
-class config_parser
+class GRAPHICS_API config_parser
 {
 public:
     struct vertex_attribute_config
@@ -66,6 +67,15 @@ public:
     template <typename T>
     find_result<T> find_desc(std::string_view name);
 
+    template <>
+    find_result<pipeline_parameter_desc> find_desc(std::string_view name);
+
+    template <>
+    find_result<pipeline_layout_desc> find_desc(std::string_view name);
+
+    template <>
+    find_result<pipeline_desc> find_desc(std::string_view name);
+
     inline std::size_t render_concurrency() const noexcept { return m_render_concurrency; }
     inline std::size_t frame_resource() const noexcept { return m_frame_resource; }
 
@@ -89,13 +99,4 @@ private:
     std::map<std::string, vertex_attribute_type> m_vertex_attribute_map;
     std::map<std::string, pipeline_parameter_type> m_parameter_layout_map;
 };
-
-template <>
-config_parser::find_result<pipeline_parameter_desc> config_parser::find_desc(std::string_view name);
-
-template <>
-config_parser::find_result<pipeline_layout_desc> config_parser::find_desc(std::string_view name);
-
-template <>
-config_parser::find_result<pipeline_desc> config_parser::find_desc(std::string_view name);
 } // namespace ash::graphics

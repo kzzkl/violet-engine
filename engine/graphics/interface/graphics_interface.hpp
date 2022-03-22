@@ -24,7 +24,7 @@ class resource
 public:
     virtual ~resource() = default;
 
-    virtual void upload(const void* data, std::size_t size) {}
+    virtual void upload(const void* data, std::size_t size, std::size_t offset = 0) {}
 };
 
 enum class pipeline_parameter_type : std::uint8_t
@@ -46,7 +46,7 @@ class pipeline_parameter
 public:
     virtual ~pipeline_parameter() = default;
 
-    virtual void bind(std::size_t index, resource* data) = 0;
+    virtual void bind(std::size_t index, resource* data, std::size_t offset = 0) = 0;
 };
 
 using pipeline_layout_desc = list<pipeline_parameter_desc, 16>;

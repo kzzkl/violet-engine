@@ -6,8 +6,20 @@ namespace ash::graphics
 {
 struct visual
 {
+    template <typename T, std::size_t I, typename D>
+    void set(const D& data)
+    {
+        T* p = dynamic_cast<T*>(material.get());
+        if (p)
+            p->set<I>(data);
+        else
+            ASH_ASSERT(false);
+    }
+
     render_group* group;
-    std::unique_ptr<render_parameter_object> parameter;
+
+    std::unique_ptr<render_parameter_object> object;
+    std::unique_ptr<render_parameter_base> material;
 };
 } // namespace ash::graphics
 

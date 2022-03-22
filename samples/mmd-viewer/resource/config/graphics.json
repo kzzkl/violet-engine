@@ -36,7 +36,7 @@
             "object": {
                 "type": "buffer"
             },
-            "material": {
+            "mmd_material": {
                 "type": {
                     "material_property": "buffer"
                 }
@@ -46,8 +46,9 @@
             {
                 "name": "base layout",
                 "parameter": [
-                    "ash_pass",
-                    "material"
+                    "ash_object",
+                    "mmd_material",
+                    "ash_pass"
                 ]
             }
         ],

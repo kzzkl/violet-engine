@@ -19,6 +19,12 @@ struct vertex
     math::float3 position;
 };
 
+struct mmd_material
+{
+    math::float4 color;
+    math::float4 color2;
+};
+
 class test_module : public submodule
 {
 public:
@@ -47,24 +53,32 @@ private:
         }
 
         std::vector<vertex> vertices;
-        vertices.reserve(loader.get_vertices().size());
-        for (const pmx_vertex& v : loader.get_vertices())
+        vertices.reserve(loader.vertices().size());
+        for (const pmx_vertex& v : loader.vertices())
             vertices.push_back(vertex{v.position});
 
         std::vector<std::int32_t> indices;
-        indices.reserve(loader.get_indices().size());
-        for (std::int32_t i : loader.get_indices())
+        indices.reserve(loader.indices().size());
+        for (std::int32_t i : loader.indices())
             indices.push_back(i);
 
         ash::ecs::world& world = module<ash::ecs::world>();
-        entity_id entity = world.create();
+        m_luka = world.create();
 
-        world.add<visual, mesh, material>(entity);
+        world.add<visual, mesh>(m_luka);
 
-        visual& v = world.component<visual>(entity);
-        v.group = module<ash::graphics::graphics>().group("mmd");
+        auto& graphics = module<ash::graphics::graphics>();
 
-        mesh& m = world.component<mesh>(entity);
+        visual& v = world.component<visual>(m_luka);
+        v.group = graphics.group("mmd");
+        v.object = graphics.make_render_parameter<multiple<render_object_data>>("ash_object");
+        v.material = graphics.make_render_parameter<multiple<mmd_material>>("mmd_material");
+
+        mmd_material material = {};
+        material.color = {1.0f, 0.0f, 0.0f, 1.0f};
+        v.set<render_parameter<multiple<mmd_material>>, 0>(material);
+
+        mesh& m = world.component<mesh>(m_luka);
         m.vertex_buffer = module<ash::graphics::graphics>().make_vertex_buffer<vertex>(
             vertices.data(),
             vertices.size());
@@ -112,6 +126,23 @@ private:
         if (keyboard.key(keyboard_key::KEY_2).down())
             mouse.mode(mouse_mode::CURSOR_ABSOLUTE);
 
+        if (keyboard.key(keyboard_key::KEY_3).release())
+        {
+            static std::size_t index = 0;
+            std::vector<math::float4> colors = {
+                math::float4{1.0f, 0.0f, 0.0f, 1.0f},
+                math::float4{0.0f, 1.0f, 0.0f, 1.0f},
+                math::float4{0.0f, 0.0f, 0.5f, 1.0f}
+            };
+
+            visual& v = world.component<visual>(m_luka);
+            mmd_material material = {};
+            material.color = colors[index];
+            v.set<render_parameter<multiple<mmd_material>>, 0>(material);
+
+            index = (index + 1) % colors.size();
+        }
+
         transform& camera_transform = world.component<transform>(m_camera);
         if (mouse.mode() == mouse_mode::CURSOR_RELATIVE)
         {
@@ -157,11 +188,12 @@ private:
     application* m_app;
 
     entity_id m_camera;
+    entity_id m_luka;
 
     float m_heading = 0.0f, m_pitch = 0.0f;
 
     float m_rotate_speed = 0.2f;
-    float m_move_speed = 5.0f;
+    float m_move_speed = 7.0f;
 };
 } // namespace ash::sample::mmd
 

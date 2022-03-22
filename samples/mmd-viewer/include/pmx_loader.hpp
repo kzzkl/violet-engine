@@ -328,8 +328,8 @@ public:
     pmx_loader();
     bool load(std::string_view path);
 
-    const std::vector<pmx_vertex>& get_vertices() const noexcept { return m_vertices; }
-    const std::vector<std::int32_t>& get_indices() const noexcept { return m_indices; }
+    const std::vector<pmx_vertex>& vertices() const noexcept { return m_vertices; }
+    const std::vector<std::int32_t>& indices() const noexcept { return m_indices; }
 
 private:
     bool load_header(std::ifstream& fin);
