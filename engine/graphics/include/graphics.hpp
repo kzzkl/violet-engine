@@ -30,23 +30,28 @@ public:
     render_group* group(std::string_view name);
 
     template <typename... Types>
+    render_parameter<Types...>* find_render_parameter(std::string_view name)
+    {
+        auto iter = m_parameters.find(name);
+        if (iter != m_parameters.end())
+            return dynamic_cast<render_parameter<Types...>*>(iter.second->get());
+        else
+            return nullptr;
+    }
+
+    template <typename... Types>
     std::unique_ptr<render_parameter<Types...>> make_render_parameter(std::string_view name)
     {
-        auto [found, desc, _] = m_config.find_desc<pipeline_parameter_desc>(name);
-        if (!found)
-            return nullptr;
-
-        std::vector<pipeline_parameter*> parameter;
-        for (std::size_t i = 0; i < m_config.frame_resource(); ++i)
-            parameter.push_back(m_factory->make_pipeline_parameter(desc));
+        pipeline_parameter_desc desc = {};
 
         std::vector<resource*> part;
-        type_list<Types...>::each([&part, this]<typename T>() {
+        type_list<Types...>::each([&desc, &part, this]<typename T>() {
             using resource_type = T::value_type;
 
             if constexpr (std::is_same_v<resource_type, texture>)
             {
                 // TODO: make texture
+                desc.data[desc.size] = pipeline_parameter_type::TEXTURE;
             }
             else
             {
@@ -55,8 +60,16 @@ public:
                     buffer_size *= m_config.frame_resource();
 
                 part.push_back(m_factory->make_upload_buffer(buffer_size));
+
+                desc.data[desc.size] = pipeline_parameter_type::BUFFER;
             }
+
+            ++desc.size;
         });
+
+        std::vector<pipeline_parameter*> parameter;
+        for (std::size_t i = 0; i < m_config.frame_resource(); ++i)
+            parameter.push_back(m_factory->make_pipeline_parameter(desc));
 
         return std::make_unique<render_parameter<Types...>>(parameter, part);
     }
@@ -93,6 +106,8 @@ private:
     std::unique_ptr<render_parameter_pass> m_parameter_pass;
 
     interface_map<render_group> m_render_group;
+
+    std::map<std::string, std::unique_ptr<render_parameter_base>> m_parameters;
 
     config_parser m_config;
 };

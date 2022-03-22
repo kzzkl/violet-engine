@@ -83,8 +83,8 @@ public:
 
 private:
     void load_vertex_layout(const dictionary& doc);
-    void load_parameter(const dictionary& doc);
-    void load_parameter_layout(const dictionary& doc);
+    void load_pipeline_parameter(const dictionary& doc);
+    void load_pipeline_layout(const dictionary& doc);
     void load_pipeline(const dictionary& doc);
 
     std::size_t m_render_concurrency;
@@ -92,8 +92,8 @@ private:
     std::string m_plugin;
 
     std::map<std::string, vertex_layout_config> m_vertex_layout;
-    std::map<std::string, pipeline_parameter_config> m_parameter;
-    std::map<std::string, pipeline_layout_config> m_parameter_layout;
+    std::map<std::string, pipeline_parameter_config> m_pipeline_parameter;
+    std::map<std::string, pipeline_layout_config> m_pipeline_layout;
     std::map<std::string, pipeline_config> m_pipeline;
 
     std::map<std::string, vertex_attribute_type> m_vertex_attribute_map;

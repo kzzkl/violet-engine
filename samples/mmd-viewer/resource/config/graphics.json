@@ -32,35 +32,25 @@
                 ]
             }
         ],
-        "parameter": {
-            "object": {
-                "type": "buffer"
-            },
-            "mmd_material": {
-                "type": {
-                    "material_property": "buffer"
-                }
-            }
+        "pipeline_parameter": {
+            "object": "buffer",
+            "mmd_material": "buffer"
         },
-        "parameter_layout": [
-            {
-                "name": "base layout",
-                "parameter": [
-                    "ash_object",
-                    "mmd_material",
-                    "ash_pass"
-                ]
-            }
-        ],
-        "pipeline": [
-            {
-                "name": "mmd",
+        "pipeline_layout": {
+            "mmd_layout": [
+                "ash_object",
+                "mmd_material",
+                "ash_pass"
+            ]
+        },
+        "pipeline": {
+            "mmd": {
                 "vertex_layout": "pmx",
-                "parameter_layout": "base layout",
+                "parameter_layout": "mmd_layout",
                 "vertex_shader": "resource/shader/base.hlsl",
                 "pixel_shader": "resource/shader/base.hlsl"
             }
-        ],
+        },
         "technique": [
             {
                 "name": "",

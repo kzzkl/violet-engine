@@ -1,16 +1,12 @@
 {
     "graphics": {
         "vertex_layout": [],
-        "parameter": {
-            "ash_object": {
-                "type": "buffer"
-            },
-            "ash_pass": {
-                "type": "buffer"
-            }
+        "pipeline_parameter": {
+            "ash_object": "buffer",
+            "ash_pass": "buffer"
         },
-        "parameter_layout": [],
-        "pipeline": [],
+        "pipeline_layout": {},
+        "pipeline": {},
         "technique": [],
         "plugin": "ash-graphics-d3d12.dll",
         "render_concurrency": 4,

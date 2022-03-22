@@ -33,13 +33,7 @@ enum class pipeline_parameter_type : std::uint8_t
     BUFFER
 };
 
-struct pipeline_parameter_part
-{
-    char name[32];
-    pipeline_parameter_type type;
-};
-
-using pipeline_parameter_desc = list<pipeline_parameter_part, 16>;
+using pipeline_parameter_desc = list<pipeline_parameter_type, 16>;
 
 class pipeline_parameter
 {

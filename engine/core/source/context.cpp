@@ -48,8 +48,8 @@ void context::load_config(std::string_view config_path)
             dictionary config;
             fin >> config;
 
-            for (auto iter = config.begin(); iter != config.end(); ++iter)
-                m_config[iter.key()].update(iter.value(), true);
+            for (auto& [key, value] : config.items())
+                m_config[key].update(value, true);
         }
     }
 
@@ -64,8 +64,8 @@ void context::load_config(std::string_view config_path)
             dictionary config;
             fin >> config;
 
-            for (auto iter = config.begin(); iter != config.end(); ++iter)
-                m_config[iter.key()].update(iter.value(), true);
+            for (auto& [key, value] : config.items())
+                m_config[key].update(value, true);
         }
     }
 }

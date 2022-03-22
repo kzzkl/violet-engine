@@ -12,9 +12,9 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(const pipeline_parameter_desc
     {
         m_tier = d3d12_parameter_tier_type::TIER1;
 
-        if (desc.data[0].type == pipeline_parameter_type::BUFFER)
+        if (desc.data[0] == pipeline_parameter_type::BUFFER)
             m_tier1.type = D3D12_ROOT_PARAMETER_TYPE_CBV;
-        else if (desc.data[0].type == pipeline_parameter_type::TEXTURE)
+        else if (desc.data[0] == pipeline_parameter_type::TEXTURE)
             m_tier1.type = D3D12_ROOT_PARAMETER_TYPE_SRV;
     }
     else
@@ -28,7 +28,7 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(const pipeline_parameter_desc
         m_tier2.size = desc.size;
 
         for (std::size_t i = 0; i < desc.size; ++i)
-            m_type.push_back(desc.data[i].type);
+            m_type.push_back(desc.data[i]);
     }
 }
 
@@ -77,12 +77,12 @@ d3d12_parameter_layout::d3d12_parameter_layout(const pipeline_layout_desc& desc)
         auto& parameter = desc.data[i];
         if (parameter.size == 1)
         {
-            if (parameter.data[0].type == pipeline_parameter_type::BUFFER)
+            if (parameter.data[0] == pipeline_parameter_type::BUFFER)
             {
                 root_parameter[i].InitAsConstantBufferView(cbv_register_counter);
                 ++cbv_register_counter;
             }
-            else if (parameter.data[0].type == pipeline_parameter_type::TEXTURE)
+            else if (parameter.data[0] == pipeline_parameter_type::TEXTURE)
             {
                 root_parameter[i].InitAsShaderResourceView(srv_register_counter);
                 ++srv_register_counter;
@@ -95,9 +95,9 @@ d3d12_parameter_layout::d3d12_parameter_layout(const pipeline_layout_desc& desc)
             for (std::size_t j = 0; j < parameter.size; ++j)
             {
                 auto& table = parameter.data[j];
-                if (table.type == pipeline_parameter_type::BUFFER)
+                if (table == pipeline_parameter_type::BUFFER)
                     ++cbv_counter;
-                else if (table.type == pipeline_parameter_type::TEXTURE)
+                else if (table == pipeline_parameter_type::TEXTURE)
                     ++srv_counter;
             }
 
@@ -232,7 +232,7 @@ void d3d12_pipeline::initialize_pipeline_state(const pipeline_desc& desc)
     pso_desc.SampleDesc.Count = 1;
     pso_desc.SampleDesc.Quality = 0;
     pso_desc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    pso_desc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+    pso_desc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
 
     throw_if_failed(d3d12_context::device()->CreateGraphicsPipelineState(
         &pso_desc,

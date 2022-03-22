@@ -22,6 +22,7 @@ cbuffer ash_pass : register(b2)
 struct vs_in
 {
     float3 position : POSITION;
+    float3 normal : NORMAL;
 };
 
 struct vs_out
@@ -35,7 +36,7 @@ vs_out vs_main(vs_in vin)
     vs_out result;
 
     result.position = mul(float4(vin.position, 1.0f), camera_view_projection);
-    result.color = color;
+    result.color = float4(vin.normal, 1.0f);
 
     return result;
 }

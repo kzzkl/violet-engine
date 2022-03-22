@@ -20,6 +20,8 @@ struct visual
 
     std::unique_ptr<render_parameter_object> object;
     std::unique_ptr<render_parameter_base> material;
+
+    std::vector<render_parameter_base*> parameter;
 };
 } // namespace ash::graphics
 

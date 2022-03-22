@@ -17,6 +17,7 @@ namespace ash::sample::mmd
 struct vertex
 {
     math::float3 position;
+    math::float3 normal;
 };
 
 struct mmd_material
@@ -46,7 +47,7 @@ private:
     void initialize_resource()
     {
         pmx_loader loader;
-        if (!loader.load("resource/White.pmx"))
+        if (!loader.load("resource/ying.pmx"))
         {
             ash::log::error("Load pmx failed");
             return;
@@ -55,7 +56,7 @@ private:
         std::vector<vertex> vertices;
         vertices.reserve(loader.vertices().size());
         for (const pmx_vertex& v : loader.vertices())
-            vertices.push_back(vertex{v.position});
+            vertices.push_back(vertex{v.position, v.normal});
 
         std::vector<std::int32_t> indices;
         indices.reserve(loader.indices().size());
@@ -63,13 +64,13 @@ private:
             indices.push_back(i);
 
         ash::ecs::world& world = module<ash::ecs::world>();
-        m_luka = world.create();
+        m_actor = world.create();
 
-        world.add<visual, mesh>(m_luka);
+        world.add<visual, mesh>(m_actor);
 
         auto& graphics = module<ash::graphics::graphics>();
 
-        visual& v = world.component<visual>(m_luka);
+        visual& v = world.component<visual>(m_actor);
         v.group = graphics.group("mmd");
         v.object = graphics.make_render_parameter<multiple<render_object_data>>("ash_object");
         v.material = graphics.make_render_parameter<multiple<mmd_material>>("mmd_material");
@@ -78,7 +79,7 @@ private:
         material.color = {1.0f, 0.0f, 0.0f, 1.0f};
         v.set<render_parameter<multiple<mmd_material>>, 0>(material);
 
-        mesh& m = world.component<mesh>(m_luka);
+        mesh& m = world.component<mesh>(m_actor);
         m.vertex_buffer = module<ash::graphics::graphics>().make_vertex_buffer<vertex>(
             vertices.data(),
             vertices.size());
@@ -135,7 +136,7 @@ private:
                 math::float4{0.0f, 0.0f, 0.5f, 1.0f}
             };
 
-            visual& v = world.component<visual>(m_luka);
+            visual& v = world.component<visual>(m_actor);
             mmd_material material = {};
             material.color = colors[index];
             v.set<render_parameter<multiple<mmd_material>>, 0>(material);
@@ -188,7 +189,7 @@ private:
     application* m_app;
 
     entity_id m_camera;
-    entity_id m_luka;
+    entity_id m_actor;
 
     float m_heading = 0.0f, m_pitch = 0.0f;
 
