@@ -21,7 +21,11 @@ public:
     using vertex_layout_config = std::vector<vertex_attribute_config>;
 
     using pipeline_parameter_config = std::vector<std::pair<std::string, pipeline_parameter_type>>;
-    using pipeline_layout_config = std::vector<std::string>;
+    struct pipeline_layout_config
+    {
+        std::vector<std::string> unit;
+        std::vector<std::string> group;
+    };
 
     struct pipeline_config
     {

@@ -27,23 +27,25 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
 
-    render_group* group(std::string_view name);
+    render_group* make_render_group(std::string_view name);
 
-    template <typename... Types>
-    render_parameter<Types...>* find_render_parameter(std::string_view name)
+    render_parameter_base* make_render_parameter(std::string_view name)
     {
-        auto iter = m_parameters.find(name);
+        auto iter = m_parameters.find(name.data());
         if (iter != m_parameters.end())
-            return dynamic_cast<render_parameter<Types...>*>(iter.second->get());
+            return iter->second.get();
         else
             return nullptr;
     }
 
     template <typename... Types>
-    std::unique_ptr<render_parameter<Types...>> make_render_parameter(std::string_view name)
+    render_parameter<Types...>* make_render_parameter(std::string_view name)
     {
-        pipeline_parameter_desc desc = {};
+        render_parameter_base* f = make_render_parameter(name);
+        if (f != nullptr)
+            return dynamic_cast<render_parameter<Types...>*>(f);
 
+        pipeline_parameter_desc desc = {};
         std::vector<resource*> part;
         type_list<Types...>::each([&desc, &part, this]<typename T>() {
             using resource_type = T::value_type;
@@ -71,7 +73,10 @@ public:
         for (std::size_t i = 0; i < m_config.frame_resource(); ++i)
             parameter.push_back(m_factory->make_pipeline_parameter(desc));
 
-        return std::make_unique<render_parameter<Types...>>(parameter, part);
+        auto temp = std::make_unique<render_parameter<Types...>>(parameter, part);
+        auto result = temp.get();
+        m_parameters[name.data()] = std::move(temp);
+        return result;
     }
 
     template <typename Vertex>
@@ -94,20 +99,17 @@ private:
 
     void update_pass_data();
 
-    render_group* make_render_group(std::string_view name);
-
     graphics_plugin m_plugin;
     renderer* m_renderer;
     factory* m_factory;
 
-    ash::ecs::view<visual, mesh>* m_view;
+    ash::ecs::view<visual, mesh, scene::transform>* m_view;
     ash::ecs::view<main_camera, camera, scene::transform>* m_camera_view;
 
-    std::unique_ptr<render_parameter_pass> m_parameter_pass;
+    render_parameter_pass* m_parameter_pass;
 
     interface_map<render_group> m_render_group;
-
-    std::map<std::string, std::unique_ptr<render_parameter_base>> m_parameters;
+    interface_map<render_parameter_base> m_parameters;
 
     config_parser m_config;
 };

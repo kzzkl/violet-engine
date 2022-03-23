@@ -162,7 +162,7 @@ void d3d12_renderer::begin_frame(D3D12GraphicsCommandList* command_list)
     command_list->RSSetViewports(1, &m_viewport);
     command_list->RSSetScissorRects(1, &m_scissor_rect);
 
-    static const float clear_color[] = {0.0f, 0.0f, 0.5f, 1.0f};
+    static const float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
     command_list->ClearRenderTargetView(
         m_back_buffer[back_buffer_index()]->cpu_handle(),
         clear_color,

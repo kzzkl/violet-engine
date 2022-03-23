@@ -1,15 +1,17 @@
 #pragma once
 
-#include "render_group.hpp"
+#include "assert.hpp"
+#include "component.hpp"
 
 namespace ash::graphics
 {
+class render_group;
 struct visual
 {
     template <typename T, std::size_t I, typename D>
-    void set(const D& data)
+    void set(std::size_t index, const D& data)
     {
-        T* p = dynamic_cast<T*>(material.get());
+        T* p = dynamic_cast<T*>(parameters[index]);
         if (p)
             p->set<I>(data);
         else
@@ -18,10 +20,8 @@ struct visual
 
     render_group* group;
 
-    std::unique_ptr<render_parameter_object> object;
-    std::unique_ptr<render_parameter_base> material;
-
-    std::vector<render_parameter_base*> parameter;
+    render_parameter_object* object;
+    std::vector<render_parameter_base*> parameters;
 };
 } // namespace ash::graphics
 

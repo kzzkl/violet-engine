@@ -78,21 +78,34 @@ config_parser::find_result<pipeline_layout_desc> config_parser::find_desc(std::s
         std::get<2>(result) = &iter->second;
 
         auto& desc = std::get<1>(result);
-        for (std::size_t i = 0; i < iter->second.size(); ++i)
+
+        // Copy unit parameter.
+        for (auto& parameter_name : iter->second.unit)
         {
-            auto [found, parameter_desc, _] = find_desc<pipeline_parameter_desc>(iter->second[i]);
-            if (found)
+            auto [found, parameter_desc, _] = find_desc<pipeline_parameter_desc>(parameter_name);
+            if (!found)
             {
-                std::memcpy(&desc.data[i], &parameter_desc, sizeof(pipeline_parameter_desc));
-            }
-            else
-            {
-                log::warn("pipeline parameter no found: {}", iter->second[i]);
+                log::warn("pipeline parameter no found: {}", parameter_name);
                 std::get<0>(result) = false;
                 return result;
             }
+            std::memcpy(&desc.data[desc.size], &parameter_desc, sizeof(pipeline_parameter_desc));
+            ++desc.size;
         }
-        desc.size = iter->second.size();
+
+        // Copy group parameter.
+        for (auto& parameter_name : iter->second.group)
+        {
+            auto [found, parameter_desc, _] = find_desc<pipeline_parameter_desc>(parameter_name);
+            if (!found)
+            {
+                log::warn("pipeline parameter no found: {}", parameter_name);
+                std::get<0>(result) = false;
+                return result;
+            }
+            std::memcpy(&desc.data[desc.size], &parameter_desc, sizeof(pipeline_parameter_desc));
+            ++desc.size;
+        }
     }
 
     return result;
@@ -147,10 +160,10 @@ void config_parser::load_vertex_layout(const dictionary& doc)
     if (iter == doc.end())
         return;
 
-    for (auto& layout_config : *iter)
+    for (auto& [key, value] : iter->items())
     {
-        vertex_layout_config& layout = m_vertex_layout[layout_config["name"]];
-        for (auto& attribute_config : layout_config["attribute"])
+        vertex_layout_config& layout = m_vertex_layout[key];
+        for (auto& attribute_config : value["attribute"])
         {
             layout.push_back(vertex_attribute_config{
                 attribute_config["name"],
@@ -194,8 +207,10 @@ void config_parser::load_pipeline_layout(const dictionary& doc)
     for (auto& [key, value] : iter->items())
     {
         pipeline_layout_config& layout = m_pipeline_layout[key];
-        for (auto& parameter_config : value)
-            layout.push_back(parameter_config);
+        for (auto& parameter_name : value["unit"])
+            layout.unit.push_back(parameter_name);
+        for (auto& parameter_name : value["group"])
+            layout.group.push_back(parameter_name);
     }
 }
 

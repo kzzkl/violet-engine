@@ -65,19 +65,20 @@ private:
 
         ash::ecs::world& world = module<ash::ecs::world>();
         m_actor = world.create();
-
-        world.add<visual, mesh>(m_actor);
+        world.add<visual, mesh, transform>(m_actor);
 
         auto& graphics = module<ash::graphics::graphics>();
 
         visual& v = world.component<visual>(m_actor);
-        v.group = graphics.group("mmd");
+        v.group = graphics.make_render_group("mmd");
         v.object = graphics.make_render_parameter<multiple<render_object_data>>("ash_object");
-        v.material = graphics.make_render_parameter<multiple<mmd_material>>("mmd_material");
+        v.parameters.push_back(v.object);
+        v.parameters.push_back(
+            graphics.make_render_parameter<multiple<mmd_material>>("mmd_material"));
 
         mmd_material material = {};
         material.color = {1.0f, 0.0f, 0.0f, 1.0f};
-        v.set<render_parameter<multiple<mmd_material>>, 0>(material);
+        v.set<render_parameter<multiple<mmd_material>>, 0>(1, material);
 
         mesh& m = world.component<mesh>(m_actor);
         m.vertex_buffer = module<ash::graphics::graphics>().make_vertex_buffer<vertex>(
@@ -86,6 +87,13 @@ private:
         m.index_buffer = module<ash::graphics::graphics>().make_index_buffer<std::int32_t>(
             indices.data(),
             indices.size());
+
+        transform& actor_transform = world.component<transform>(m_actor);
+        actor_transform.position = {0.0f, 0.0f, 0.0f};
+        actor_transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+        actor_transform.scaling = {1.0f, 1.0f, 1.0f};
+        actor_transform.node = std::make_unique<scene_node>();
+        actor_transform.parent = module<ash::scene::scene>().root_node();
     }
 
     void initialize_camera()
@@ -115,12 +123,11 @@ private:
         task.find("scene")->add_dependency(*update_task);
     }
 
-    void update_camera()
+    void update_camera(float delta)
     {
         auto& world = module<ash::ecs::world>();
         auto& keyboard = module<ash::window::window>().keyboard();
         auto& mouse = module<ash::window::window>().mouse();
-        float delta = module<ash::core::timer>().frame_delta();
 
         if (keyboard.key(keyboard_key::KEY_1).down())
             mouse.mode(mouse_mode::CURSOR_RELATIVE);
@@ -130,7 +137,7 @@ private:
         if (keyboard.key(keyboard_key::KEY_3).release())
         {
             static std::size_t index = 0;
-            std::vector<math::float4> colors = {
+            static std::vector<math::float4> colors = {
                 math::float4{1.0f, 0.0f, 0.0f, 1.0f},
                 math::float4{0.0f, 1.0f, 0.0f, 1.0f},
                 math::float4{0.0f, 0.0f, 0.5f, 1.0f}
@@ -139,7 +146,7 @@ private:
             visual& v = world.component<visual>(m_actor);
             mmd_material material = {};
             material.color = colors[index];
-            v.set<render_parameter<multiple<mmd_material>>, 0>(material);
+            v.set<render_parameter<multiple<mmd_material>>, 0>(1, material);
 
             index = (index + 1) % colors.size();
         }
@@ -177,12 +184,30 @@ private:
         camera_transform.node->dirty = true;
     }
 
+    void update_actor(float delta)
+    {
+        auto& world = module<ash::ecs::world>();
+        auto& keyboard = module<ash::window::window>().keyboard();
+
+        float move = 0.0f;
+        if (keyboard.key(keyboard_key::KEY_E).down())
+            move += 1.0f;
+        if (keyboard.key(keyboard_key::KEY_Q).down())
+            move -= 1.0f;
+
+        transform& actor_transform = world.component<transform>(m_actor);
+        actor_transform.position[0] += move * m_move_speed * delta;
+        actor_transform.node->dirty = true;
+    }
+
     void update()
     {
         if (module<ash::window::window>().keyboard().key(keyboard_key::KEY_ESC).down())
             m_app->exit();
 
-        update_camera();
+        float delta = module<ash::core::timer>().frame_delta();
+        update_camera(delta);
+        update_actor(delta);
     }
 
     std::string m_title;

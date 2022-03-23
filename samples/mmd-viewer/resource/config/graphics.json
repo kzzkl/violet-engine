@@ -1,8 +1,7 @@
 {
     "graphics": {
-        "vertex_layout": [
-            {
-                "name": "pmx",
+        "vertex_layout": {
+            "pmx": {
                 "attribute": [
                     {
                         "name": "POSITION",
@@ -31,17 +30,21 @@
                     }
                 ]
             }
-        ],
+        },
         "pipeline_parameter": {
             "object": "buffer",
             "mmd_material": "buffer"
         },
         "pipeline_layout": {
-            "mmd_layout": [
-                "ash_object",
-                "mmd_material",
-                "ash_pass"
-            ]
+            "mmd_layout": {
+                "unit": [
+                    "ash_object",
+                    "mmd_material"
+                ],
+                "group": [
+                    "ash_pass"
+                ]
+            }
         },
         "pipeline": {
             "mmd": {

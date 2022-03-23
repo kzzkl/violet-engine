@@ -1,6 +1,6 @@
 {
     "graphics": {
-        "vertex_layout": [],
+        "vertex_layout": {},
         "pipeline_parameter": {
             "ash_object": "buffer",
             "ash_pass": "buffer"

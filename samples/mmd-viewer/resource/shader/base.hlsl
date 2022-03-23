@@ -35,7 +35,8 @@ vs_out vs_main(vs_in vin)
 {
     vs_out result;
 
-    result.position = mul(float4(vin.position, 1.0f), camera_view_projection);
+    float4x4 mvp = mul(to_world, camera_view_projection);
+    result.position = mul(float4(vin.position, 1.0f), mvp);
     result.color = float4(vin.normal, 1.0f);
 
     return result;

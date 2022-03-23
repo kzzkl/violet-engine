@@ -130,6 +130,5 @@ struct render_object_data
 {
     math::float4x4 to_world;
 };
-
 using render_parameter_object = render_parameter<multiple<render_object_data>>;
 } // namespace ash::graphics
