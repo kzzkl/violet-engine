@@ -132,6 +132,8 @@ public:
     virtual void draw(
         resource* vertex,
         resource* index,
+        std::size_t index_start,
+        std::size_t index_end,
         primitive_topology_type primitive_topology,
         resource* target) = 0;
 };
@@ -182,7 +184,7 @@ public:
     virtual resource* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
     virtual resource* make_index_buffer(const index_buffer_desc& desc) = 0;
 
-    virtual resource* make_texture(const char* file) = 0;
+    virtual resource* make_texture(const std::uint8_t* data, std::size_t size) = 0;
 
 private:
 };

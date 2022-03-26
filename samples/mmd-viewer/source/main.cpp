@@ -41,8 +41,10 @@ public:
 private:
     void initialize_resource()
     {
+        std::string model_path = "resource/ying/";
+
         pmx_loader loader;
-        if (!loader.load("resource/ying.pmx"))
+        if (!loader.load(model_path + "ying.pmx"))
         {
             ash::log::error("Load pmx failed");
             return;
@@ -60,25 +62,38 @@ private:
 
         ash::ecs::world& world = module<ash::ecs::world>();
         m_actor = world.create();
-        world.add<visual, mesh, transform>(m_actor);
+        world.add<visual, transform>(m_actor);
 
         auto& graphics = module<ash::graphics::graphics>();
 
-        visual& v = world.component<visual>(m_actor);
-        v.group = graphics.make_render_pipeline("mmd");
-        v.object = graphics.make_render_parameter("ash_object");
-        v.material = graphics.make_render_parameter("mmd_material");
-        v.material->set(0, math::float4{1.0f, 0.0f, 0.0f, 1.0f});
-        m_texture = graphics.make_texture("resource/tex.dds");
-        v.material->set(3, m_texture.get());
+        m_textures.push_back(graphics.make_texture(model_path + "Texture/hair.dds"));
+        m_textures.push_back(graphics.make_texture(model_path + "Texture/face.dds"));
+        m_textures.push_back(graphics.make_texture(model_path + "Texture/mc3.dds"));
+        m_textures.push_back(graphics.make_texture(model_path + "Texture/toon.dds"));
+        m_textures.push_back(graphics.make_texture(model_path + "Texture/expression.dds"));
+        m_textures.push_back(graphics.make_texture(model_path + "Texture/clothes.dds"));
 
-        mesh& m = world.component<mesh>(m_actor);
-        m.vertex_buffer = module<ash::graphics::graphics>().make_vertex_buffer<vertex>(
+        visual& v = world.component<visual>(m_actor);
+        v.vertex_buffer = module<ash::graphics::graphics>().make_vertex_buffer<vertex>(
             vertices.data(),
             vertices.size());
-        m.index_buffer = module<ash::graphics::graphics>().make_index_buffer<std::int32_t>(
+        v.index_buffer = module<ash::graphics::graphics>().make_index_buffer<std::int32_t>(
             indices.data(),
             indices.size());
+        for (auto [index_start, index_end] : loader.submesh())
+            v.submesh.push_back({index_start, index_end});
+
+        v.material.resize(loader.materials().size());
+        auto mmd_pipeline = graphics.make_render_pipeline("mmd");
+        for (std::size_t i = 0; i < v.material.size(); ++i)
+        {
+            v.material[i].pipeline = mmd_pipeline;
+            v.material[i].property = graphics.make_render_parameter("mmd_material");
+            v.material[i].property->set(0, math::float4{1.0f, 0.0f, 0.0f, 1.0f});
+            v.material[i].property->set(3, m_textures[loader.materials()[i].texture_index].get());
+        }
+
+        v.object = graphics.make_render_parameter("ash_object");
 
         transform& actor_transform = world.component<transform>(m_actor);
         actor_transform.position = {0.0f, 0.0f, 0.0f};
@@ -136,7 +151,7 @@ private:
             };
 
             visual& v = world.component<visual>(m_actor);
-            v.material->set(0, colors[index]);
+            v.material[0].property->set(0, colors[index]);
 
             index = (index + 1) % colors.size();
         }
@@ -206,7 +221,7 @@ private:
     entity_id m_camera;
     entity_id m_actor;
 
-    std::unique_ptr<resource> m_texture;
+    std::vector<std::unique_ptr<resource>> m_textures;
 
     float m_heading = 0.0f, m_pitch = 0.0f;
 

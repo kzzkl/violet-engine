@@ -331,6 +331,11 @@ public:
     const std::vector<pmx_vertex>& vertices() const noexcept { return m_vertices; }
     const std::vector<std::int32_t>& indices() const noexcept { return m_indices; }
 
+    std::vector<std::pair<std::size_t, std::size_t>> submesh() const noexcept;
+
+    const std::vector<pmx_material>& materials() const { return m_materials; }
+    const std::vector<std::string>& textures() const { return m_textures; }
+
 private:
     bool load_header(std::ifstream& fin);
     bool load_vertex(std::ifstream& fin);

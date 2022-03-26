@@ -140,7 +140,10 @@ private:
 class d3d12_texture : public d3d12_resource
 {
 public:
-    d3d12_texture(const char* file, D3D12GraphicsCommandList* command_list);
+    d3d12_texture(
+        const std::uint8_t* data,
+        std::size_t size,
+        D3D12GraphicsCommandList* command_list);
 };
 
 template <typename T>

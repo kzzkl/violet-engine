@@ -5,23 +5,28 @@
 
 namespace ash::graphics
 {
+struct submesh
+{
+    std::size_t index_start;
+    std::size_t index_end;
+};
+
 class render_pipeline;
+struct submesh_material
+{
+    render_pipeline* pipeline;
+    std::unique_ptr<render_parameter> property;
+};
+
 struct visual
 {
-    template <typename T, std::size_t I, typename D>
-    void set(const D& data)
-    {
-        T* p = dynamic_cast<T*>(material);
-        if (p)
-            p->set<I>(data);
-        else
-            ASH_ASSERT(false);
-    }
+    std::unique_ptr<resource> vertex_buffer;
+    std::unique_ptr<resource> index_buffer;
 
-    render_pipeline* group;
+    std::vector<submesh> submesh;
+    std::vector<submesh_material> material;
 
     std::unique_ptr<render_parameter> object;
-    std::unique_ptr<render_parameter> material;
 };
 } // namespace ash::graphics
 

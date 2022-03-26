@@ -1,7 +1,6 @@
 #pragma once
 
 #include "graphics_interface.hpp"
-#include "mesh.hpp"
 #include "render_parameter.hpp"
 #include "visual.hpp"
 #include <vector>
@@ -10,8 +9,14 @@ namespace ash::graphics
 {
 struct render_unit
 {
-    mesh* mesh;
-    visual* visual;
+    resource* vertex_buffer;
+    resource* index_buffer;
+
+    std::size_t index_start;
+    std::size_t index_end;
+
+    pipeline_parameter* object;
+    pipeline_parameter* material;
 };
 
 class render_pipeline
@@ -29,7 +34,7 @@ public:
     pipeline_type* pipeline() const noexcept { return m_pipeline.get(); }
     layout_type* layout() const noexcept { return m_layout.get(); }
 
-    const std::vector<render_unit> units() const { return m_units; }
+    const std::vector<render_unit>& units() const { return m_units; }
 
 private:
     std::unique_ptr<layout_type> m_layout;

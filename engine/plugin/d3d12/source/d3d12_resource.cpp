@@ -1,7 +1,6 @@
 #include "d3d12_resource.hpp"
 #include "DDSTextureLoader12.h"
 #include "d3d12_context.hpp"
-#include <fstream>
 
 namespace ash::graphics::d3d12
 {
@@ -287,22 +286,17 @@ d3d12_index_buffer::d3d12_index_buffer(
         throw std::out_of_range("Invalid index size.");
 }
 
-d3d12_texture::d3d12_texture(const char* file, D3D12GraphicsCommandList* command_list)
+d3d12_texture::d3d12_texture(
+    const std::uint8_t* data,
+    std::size_t size,
+    D3D12GraphicsCommandList* command_list)
     : d3d12_resource(nullptr, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
 {
-    std::ifstream fin(file, std::ios::in | std::ios::binary);
-    if (!fin)
-        return;
-
-    std::vector<uint8_t> dds_data(fin.seekg(0, std::ios::end).tellg());
-    fin.seekg(0, std::ios::beg).read((char*)dds_data.data(), dds_data.size());
-    fin.close();
-
     std::vector<D3D12_SUBRESOURCE_DATA> subresources;
     throw_if_failed(DirectX::LoadDDSTextureFromMemory(
         d3d12_context::device(),
-        dds_data.data(),
-        dds_data.size(),
+        data,
+        size,
         m_resource.GetAddressOf(),
         subresources));
 

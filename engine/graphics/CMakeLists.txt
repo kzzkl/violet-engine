@@ -4,7 +4,6 @@ add_library(${PROJECT_NAME} SHARED
     ./source/config_parser.cpp
     ./source/graphics_plugin.cpp
     ./source/graphics.cpp
-    ./source/mesh.cpp
     ./source/render_pipeline.cpp)
 add_library(ash::graphics ALIAS ${PROJECT_NAME})
 

@@ -60,6 +60,8 @@ void d3d12_render_command::parameter(std::size_t index, pipeline_parameter* para
 void d3d12_render_command::draw(
     resource* vertex,
     resource* index,
+    std::size_t index_start,
+    std::size_t index_end,
     primitive_topology_type primitive_topology,
     resource* target)
 {
@@ -74,7 +76,12 @@ void d3d12_render_command::draw(
     else if (primitive_topology == primitive_topology_type::LINE_LIST)
         m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 
-    m_command_list->DrawIndexedInstanced(static_cast<UINT>(i->index_count()), 1, 0, 0, 0);
+    m_command_list->DrawIndexedInstanced(
+        static_cast<UINT>(index_end - index_start),
+        1,
+        static_cast<UINT>(index_start),
+        0,
+        0);
 }
 
 void d3d12_render_command::allocator(D3D12CommandAllocator* allocator) noexcept

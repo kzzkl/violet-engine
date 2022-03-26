@@ -4,6 +4,7 @@
 #include "log.hpp"
 #include "math.hpp"
 #include "window.hpp"
+#include <fstream>
 
 using namespace ash::math;
 
@@ -44,11 +45,19 @@ bool graphics::initialize(const dictionary& config)
     auto& task = module<task::task_manager>();
     auto scene_task = task.find("scene");
     auto render_task = task.schedule("render", [this]() {
-        m_view->each([](visual& visual, mesh& mesh, scene::transform& transform) {
-            if (visual.group != nullptr)
+        m_view->each([](visual& visual, scene::transform& transform) {
+            visual.object->set(0, transform.node->to_parent);
+            for (std::size_t i = 0; i < visual.submesh.size(); ++i)
             {
-                visual.object->set(0, transform.node->to_parent);
-                visual.group->add(render_unit{&mesh, &visual});
+                if (visual.material[i].pipeline == nullptr)
+                    continue;
+                visual.material[i].pipeline->add(render_unit{
+                    visual.vertex_buffer.get(),
+                    visual.index_buffer.get(),
+                    visual.submesh[i].index_start,
+                    visual.submesh[i].index_end,
+                    visual.object->parameter(),
+                    visual.material[i].property->parameter()});
             }
         });
 
@@ -64,8 +73,8 @@ bool graphics::initialize(const dictionary& config)
     render_task->add_dependency(*scene_task);
 
     auto& world = module<ecs::world>();
-    world.register_component<visual, mesh, main_camera, camera>();
-    m_view = world.make_view<visual, mesh, scene::transform>();
+    world.register_component<visual, main_camera, camera>();
+    m_view = world.make_view<visual, scene::transform>();
     m_camera_view = world.make_view<main_camera, camera, scene::transform>();
 
     return true;
@@ -128,7 +137,18 @@ render_pipeline* graphics::make_render_pipeline(std::string_view name)
 
 std::unique_ptr<resource> graphics::make_texture(std::string_view file)
 {
-    return std::unique_ptr<resource>(m_factory->make_texture(file.data()));
+    std::ifstream fin(file.data(), std::ios::in | std::ios::binary);
+    if (!fin)
+    {
+        log::error("Can not open texture: {}.", file);
+        nullptr;
+    }
+
+    std::vector<uint8_t> dds_data(fin.seekg(0, std::ios::end).tellg());
+    fin.seekg(0, std::ios::beg).read((char*)dds_data.data(), dds_data.size());
+    fin.close();
+
+    return std::unique_ptr<resource>(m_factory->make_texture(dds_data.data(), dds_data.size()));
 }
 
 bool graphics::initialize_resource()
@@ -147,14 +167,16 @@ void graphics::render()
 
         command->parameter(2, m_parameter_pass->parameter());
 
-        for (auto [mesh, visual] : pipeline->units())
+        for (auto& unit : pipeline->units())
         {
-            command->parameter(0, visual->object->parameter());
-            command->parameter(1, visual->material->parameter());
+            command->parameter(0, unit.object);
+            command->parameter(1, unit.material);
 
             command->draw(
-                mesh->vertex_buffer.get(),
-                mesh->index_buffer.get(),
+                unit.vertex_buffer,
+                unit.index_buffer,
+                unit.index_start,
+                unit.index_end,
                 primitive_topology_type::TRIANGLE_LIST,
                 m_renderer->back_buffer());
         }

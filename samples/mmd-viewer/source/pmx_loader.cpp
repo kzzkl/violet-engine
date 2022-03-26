@@ -55,6 +55,21 @@ bool pmx_loader::load(std::string_view path)
     return true;
 }
 
+std::vector<std::pair<std::size_t, std::size_t>> pmx_loader::submesh() const noexcept
+{
+    std::vector<std::pair<std::size_t, std::size_t>> result;
+    result.reserve(m_materials.size());
+
+    std::size_t offset = 0;
+    for (auto& material : m_materials)
+    {
+        result.push_back(std::make_pair(offset, offset + material.num_indices));
+        offset += material.num_indices;
+    }
+
+    return result;
+}
+
 bool pmx_loader::load_header(std::ifstream& fin)
 {
     char magic[4];

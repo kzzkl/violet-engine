@@ -55,10 +55,10 @@ public:
         return result;
     }
 
-    virtual resource* make_texture(const char* file) override
+    virtual resource* make_texture(const std::uint8_t* data, std::size_t size) override
     {
         auto command_list = d3d12_context::command()->allocate_dynamic_command();
-        d3d12_texture* result = new d3d12_texture(file, command_list.get());
+        d3d12_texture* result = new d3d12_texture(data, size, command_list.get());
         d3d12_context::command()->execute_command(command_list);
         return result;
     }
