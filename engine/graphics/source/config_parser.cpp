@@ -18,15 +18,20 @@ config_parser::config_parser()
     m_vertex_attribute_map["float3"] = vertex_attribute_type::FLOAT3;
     m_vertex_attribute_map["float4"] = vertex_attribute_type::FLOAT4;
 
-    m_parameter_layout_map["buffer"] = pipeline_parameter_type::BUFFER;
-    m_parameter_layout_map["texture"] = pipeline_parameter_type::TEXTURE;
+    m_parameter_type_map["uint"] = pipeline_parameter_type::UINT;
+    m_parameter_type_map["float"] = pipeline_parameter_type::FLOAT;
+    m_parameter_type_map["float2"] = pipeline_parameter_type::FLOAT2;
+    m_parameter_type_map["float3"] = pipeline_parameter_type::FLOAT3;
+    m_parameter_type_map["float4"] = pipeline_parameter_type::FLOAT4;
+    m_parameter_type_map["float4x4"] = pipeline_parameter_type::FLOAT4x4;
+    m_parameter_type_map["float4x4 array"] = pipeline_parameter_type::FLOAT4x4_ARRAY;
+    m_parameter_type_map["texture"] = pipeline_parameter_type::TEXTURE;
 }
 
 void config_parser::load(const dictionary& config)
 {
     load_vertex_layout(config);
-    load_pipeline_parameter(config);
-    load_pipeline_layout(config);
+    load_material_layout(config);
     load_pipeline(config);
 
     m_render_concurrency = config["render_concurrency"];
@@ -40,8 +45,8 @@ config_parser::find_result<pipeline_parameter_desc> config_parser::find_desc(std
 {
     find_result<pipeline_parameter_desc> result = {};
 
-    auto iter = m_pipeline_parameter.find(name.data());
-    if (iter == m_pipeline_parameter.end())
+    auto iter = m_material_layout.find(name.data());
+    if (iter == m_material_layout.end())
     {
         std::get<0>(result) = false;
     }
@@ -53,59 +58,10 @@ config_parser::find_result<pipeline_parameter_desc> config_parser::find_desc(std
         auto& desc = std::get<1>(result);
         for (std::size_t i = 0; i < iter->second.size(); ++i)
         {
-            desc.data[i] = iter->second[i].second;
+            desc.data[i].type = iter->second[i].type;
+            desc.data[i].size = iter->second[i].size;
         }
         desc.size = iter->second.size();
-    }
-
-    return result;
-}
-
-template <>
-config_parser::find_result<pipeline_layout_desc> config_parser::find_desc(std::string_view name)
-{
-    find_result<pipeline_layout_desc> result = {};
-
-    auto iter = m_pipeline_layout.find(name.data());
-    if (iter == m_pipeline_layout.end())
-    {
-        log::warn("pipeline layout no found: {}", name);
-        std::get<0>(result) = false;
-    }
-    else
-    {
-        std::get<0>(result) = true;
-        std::get<2>(result) = &iter->second;
-
-        auto& desc = std::get<1>(result);
-
-        // Copy unit parameter.
-        for (auto& parameter_name : iter->second.unit)
-        {
-            auto [found, parameter_desc, _] = find_desc<pipeline_parameter_desc>(parameter_name);
-            if (!found)
-            {
-                log::warn("pipeline parameter no found: {}", parameter_name);
-                std::get<0>(result) = false;
-                return result;
-            }
-            std::memcpy(&desc.data[desc.size], &parameter_desc, sizeof(pipeline_parameter_desc));
-            ++desc.size;
-        }
-
-        // Copy group parameter.
-        for (auto& parameter_name : iter->second.group)
-        {
-            auto [found, parameter_desc, _] = find_desc<pipeline_parameter_desc>(parameter_name);
-            if (!found)
-            {
-                log::warn("pipeline parameter no found: {}", parameter_name);
-                std::get<0>(result) = false;
-                return result;
-            }
-            std::memcpy(&desc.data[desc.size], &parameter_desc, sizeof(pipeline_parameter_desc));
-            ++desc.size;
-        }
     }
 
     return result;
@@ -173,44 +129,26 @@ void config_parser::load_vertex_layout(const dictionary& doc)
     }
 }
 
-void config_parser::load_pipeline_parameter(const dictionary& doc)
+void config_parser::load_material_layout(const dictionary& doc)
 {
-    auto iter = doc.find("pipeline_parameter");
+    auto iter = doc.find("pipeline_parameter_layout");
     if (iter == doc.end())
         return;
 
-    for (auto& [parameter_key, parameter] : iter->items())
+    for (auto& [name, material] : iter->items())
     {
-        pipeline_parameter_config& param = m_pipeline_parameter[parameter_key];
-        if (parameter.is_array())
+        material_layout_config& param = m_material_layout[name];
+        for (auto& attribute : material)
         {
-            for (auto& [field_key, field] : parameter.items())
-            {
-                pipeline_parameter_type t = m_parameter_layout_map[field];
-                param.push_back(std::make_pair(std::string(field_key), t));
-            }
-        }
-        else
-        {
-            pipeline_parameter_type t = m_parameter_layout_map[parameter];
-            param.push_back(std::make_pair(std::string(parameter_key), t));
-        }
-    }
-}
+            std::size_t size = 1;
+            if (attribute.find("size") != attribute.end())
+                size = attribute["size"];
 
-void config_parser::load_pipeline_layout(const dictionary& doc)
-{
-    auto iter = doc.find("pipeline_layout");
-    if (iter == doc.end())
-        return;
-
-    for (auto& [key, value] : iter->items())
-    {
-        pipeline_layout_config& layout = m_pipeline_layout[key];
-        for (auto& parameter_name : value["unit"])
-            layout.unit.push_back(parameter_name);
-        for (auto& parameter_name : value["group"])
-            layout.group.push_back(parameter_name);
+            param.push_back(material_attribute_config{
+                attribute["name"],
+                m_parameter_type_map[attribute["type"]],
+                size});
+        }
     }
 }
 
@@ -224,7 +162,7 @@ void config_parser::load_pipeline(const dictionary& doc)
     {
         pipeline_config& p = m_pipeline[key];
         p.vertex_layout = value["vertex_layout"];
-        p.parameter_layout = value["parameter_layout"];
+        p.material_layout = value["material_layout"];
         p.vertex_shader = value["vertex_shader"];
         p.pixel_shader = value["pixel_shader"];
     }

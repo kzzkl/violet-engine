@@ -122,6 +122,10 @@ render_command* d3d12_renderer::allocate_command()
 
     D3D12GraphicsCommandList* command_list = command->get();
 
+    D3D12DescriptorHeap* heaps[] = {
+        d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->heap()};
+    command_list->SetDescriptorHeaps(1, heaps);
+
     command_list->RSSetViewports(1, &m_viewport);
     command_list->RSSetScissorRects(1, &m_scissor_rect);
 

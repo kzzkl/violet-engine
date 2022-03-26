@@ -54,6 +54,14 @@ public:
         d3d12_context::command()->execute_command(command_list);
         return result;
     }
+
+    virtual resource* make_texture(const char* file) override
+    {
+        auto command_list = d3d12_context::command()->allocate_dynamic_command();
+        d3d12_texture* result = new d3d12_texture(file, command_list.get());
+        d3d12_context::command()->execute_command(command_list);
+        return result;
+    }
 };
 
 class d3d12_context_wrapper : public context

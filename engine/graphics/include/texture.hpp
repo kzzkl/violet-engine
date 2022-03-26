@@ -1,8 +1,11 @@
 #pragma once
 
+#include "graphics_interface.hpp"
+
 namespace ash::graphics
 {
-class texture
+struct texture
 {
+    resource* resource;
 };
 } // namespace ash::graphics

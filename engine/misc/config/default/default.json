@@ -5,7 +5,36 @@
             "ash_object": "buffer",
             "ash_pass": "buffer"
         },
-        "pipeline_layout": {},
+        "pipeline_parameter_layout": {
+            "ash_object": [
+                {
+                    "name": "to_world",
+                    "type": "float4x4"
+                }
+            ],
+            "ash_pass": [
+                {
+                    "name": "camera_position",
+                    "type": "float4"
+                },
+                {
+                    "name": "camera_direction",
+                    "type": "float4"
+                },
+                {
+                    "name": "camera_view",
+                    "type": "float4x4"
+                },
+                {
+                    "name": "camera_projection",
+                    "type": "float4x4"
+                },
+                {
+                    "name": "camera_view_projection",
+                    "type": "float4x4"
+                }
+            ]
+        },
         "pipeline": {},
         "technique": [],
         "plugin": "ash-graphics-d3d12.dll",

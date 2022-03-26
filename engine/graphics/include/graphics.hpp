@@ -5,8 +5,8 @@
 #include "context.hpp"
 #include "graphics_exports.hpp"
 #include "graphics_plugin.hpp"
-#include "render_group.hpp"
 #include "render_parameter.hpp"
+#include "render_pipeline.hpp"
 #include "transform.hpp"
 #include "type_trait.hpp"
 #include "view.hpp"
@@ -27,56 +27,18 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
 
-    render_group* make_render_group(std::string_view name);
+    render_pipeline* make_render_pipeline(std::string_view name);
 
-    render_parameter_base* make_render_parameter(std::string_view name)
+    std::unique_ptr<render_parameter> make_render_parameter(std::string_view name)
     {
-        auto iter = m_parameters.find(name.data());
-        if (iter != m_parameters.end())
-            return iter->second.get();
-        else
+        auto [fount, desc, _] = m_config.find_desc<pipeline_parameter_desc>(name);
+        if (!fount)
+        {
+            log::error("render parameter no found: {}", name);
             return nullptr;
-    }
+        }
 
-    template <typename... Types>
-    render_parameter<Types...>* make_render_parameter(std::string_view name)
-    {
-        render_parameter_base* f = make_render_parameter(name);
-        if (f != nullptr)
-            return dynamic_cast<render_parameter<Types...>*>(f);
-
-        pipeline_parameter_desc desc = {};
-        std::vector<resource*> part;
-        type_list<Types...>::each([&desc, &part, this]<typename T>() {
-            using resource_type = T::value_type;
-
-            if constexpr (std::is_same_v<resource_type, texture>)
-            {
-                // TODO: make texture
-                desc.data[desc.size] = pipeline_parameter_type::TEXTURE;
-            }
-            else
-            {
-                std::size_t buffer_size = sizeof(resource_type);
-                if constexpr (T::frame_resource)
-                    buffer_size *= m_config.frame_resource();
-
-                part.push_back(m_factory->make_upload_buffer(buffer_size));
-
-                desc.data[desc.size] = pipeline_parameter_type::BUFFER;
-            }
-
-            ++desc.size;
-        });
-
-        std::vector<pipeline_parameter*> parameter;
-        for (std::size_t i = 0; i < m_config.frame_resource(); ++i)
-            parameter.push_back(m_factory->make_pipeline_parameter(desc));
-
-        auto temp = std::make_unique<render_parameter<Types...>>(parameter, part);
-        auto result = temp.get();
-        m_parameters[name.data()] = std::move(temp);
-        return result;
+        return std::make_unique<render_parameter>(m_factory->make_pipeline_parameter(desc));
     }
 
     template <typename Vertex>
@@ -93,6 +55,8 @@ public:
         return std::unique_ptr<resource>(m_factory->make_index_buffer(desc));
     }
 
+    std::unique_ptr<resource> make_texture(std::string_view file);
+
 private:
     bool initialize_resource();
     void render();
@@ -106,10 +70,10 @@ private:
     ash::ecs::view<visual, mesh, scene::transform>* m_view;
     ash::ecs::view<main_camera, camera, scene::transform>* m_camera_view;
 
-    render_parameter_pass* m_parameter_pass;
+    std::unique_ptr<render_parameter> m_parameter_pass;
 
-    interface_map<render_group> m_render_group;
-    interface_map<render_parameter_base> m_parameters;
+    interface_map<render_pipeline> m_render_pipeline;
+    interface_map<render_parameter> m_parameters;
 
     config_parser m_config;
 };

@@ -35,6 +35,7 @@ void d3d12_render_command::layout(layout_type* layout)
 void d3d12_render_command::parameter(std::size_t index, pipeline_parameter* parameter)
 {
     d3d12_pipeline_parameter* p = static_cast<d3d12_pipeline_parameter*>(parameter);
+    p->sync();
     if (p->tier() == d3d12_parameter_tier_type::TIER1)
     {
         auto tier1 = p->tier1();

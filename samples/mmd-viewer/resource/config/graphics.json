@@ -31,25 +31,30 @@
                 ]
             }
         },
-        "pipeline_parameter": {
-            "object": "buffer",
-            "mmd_material": "buffer"
-        },
-        "pipeline_layout": {
-            "mmd_layout": {
-                "unit": [
-                    "ash_object",
-                    "mmd_material"
-                ],
-                "group": [
-                    "ash_pass"
-                ]
-            }
+        "pipeline_parameter_layout": {
+            "mmd_material": [
+                {
+                    "name": "color",
+                    "type": "float4"
+                },
+                {
+                    "name": "color2",
+                    "type": "float4"
+                },
+                {
+                    "name": "color3",
+                    "type": "float4"
+                },
+                {
+                    "name": "tex",
+                    "type": "texture"
+                }
+            ]
         },
         "pipeline": {
             "mmd": {
                 "vertex_layout": "pmx",
-                "parameter_layout": "mmd_layout",
+                "material_layout": "mmd_material",
                 "vertex_shader": "resource/shader/base.hlsl",
                 "pixel_shader": "resource/shader/base.hlsl"
             }

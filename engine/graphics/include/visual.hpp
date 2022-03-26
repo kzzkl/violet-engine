@@ -5,23 +5,23 @@
 
 namespace ash::graphics
 {
-class render_group;
+class render_pipeline;
 struct visual
 {
     template <typename T, std::size_t I, typename D>
-    void set(std::size_t index, const D& data)
+    void set(const D& data)
     {
-        T* p = dynamic_cast<T*>(parameters[index]);
+        T* p = dynamic_cast<T*>(material);
         if (p)
             p->set<I>(data);
         else
             ASH_ASSERT(false);
     }
 
-    render_group* group;
+    render_pipeline* group;
 
-    render_parameter_object* object;
-    std::vector<render_parameter_base*> parameters;
+    std::unique_ptr<render_parameter> object;
+    std::unique_ptr<render_parameter> material;
 };
 } // namespace ash::graphics
 

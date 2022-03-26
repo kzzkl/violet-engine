@@ -137,6 +137,12 @@ private:
     std::size_t m_index_count;
 };
 
+class d3d12_texture : public d3d12_resource
+{
+public:
+    d3d12_texture(const char* file, D3D12GraphicsCommandList* command_list);
+};
+
 template <typename T>
 class index_allocator
 {

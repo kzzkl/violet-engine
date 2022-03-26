@@ -20,18 +20,19 @@ public:
     };
     using vertex_layout_config = std::vector<vertex_attribute_config>;
 
-    using pipeline_parameter_config = std::vector<std::pair<std::string, pipeline_parameter_type>>;
-    struct pipeline_layout_config
+    struct material_attribute_config
     {
-        std::vector<std::string> unit;
-        std::vector<std::string> group;
+        std::string name;
+        pipeline_parameter_type type;
+        std::size_t size;
     };
+    using material_layout_config = std::vector<material_attribute_config>;
 
     struct pipeline_config
     {
         std::string name;
         std::string vertex_layout;
-        std::string parameter_layout;
+        std::string material_layout;
 
         std::string vertex_shader;
         std::string pixel_shader;
@@ -45,13 +46,7 @@ public:
     template <>
     struct config_type<pipeline_parameter_desc>
     {
-        using type = pipeline_parameter_config;
-    };
-
-    template <>
-    struct config_type<pipeline_layout_desc>
-    {
-        using type = pipeline_layout_config;
+        using type = material_layout_config;
     };
 
     template <>
@@ -75,9 +70,6 @@ public:
     find_result<pipeline_parameter_desc> find_desc(std::string_view name);
 
     template <>
-    find_result<pipeline_layout_desc> find_desc(std::string_view name);
-
-    template <>
     find_result<pipeline_desc> find_desc(std::string_view name);
 
     inline std::size_t render_concurrency() const noexcept { return m_render_concurrency; }
@@ -87,8 +79,7 @@ public:
 
 private:
     void load_vertex_layout(const dictionary& doc);
-    void load_pipeline_parameter(const dictionary& doc);
-    void load_pipeline_layout(const dictionary& doc);
+    void load_material_layout(const dictionary& doc);
     void load_pipeline(const dictionary& doc);
 
     std::size_t m_render_concurrency;
@@ -96,11 +87,10 @@ private:
     std::string m_plugin;
 
     std::map<std::string, vertex_layout_config> m_vertex_layout;
-    std::map<std::string, pipeline_parameter_config> m_pipeline_parameter;
-    std::map<std::string, pipeline_layout_config> m_pipeline_layout;
+    std::map<std::string, material_layout_config> m_material_layout;
     std::map<std::string, pipeline_config> m_pipeline;
 
     std::map<std::string, vertex_attribute_type> m_vertex_attribute_map;
-    std::map<std::string, pipeline_parameter_type> m_parameter_layout_map;
+    std::map<std::string, pipeline_parameter_type> m_parameter_type_map;
 };
 } // namespace ash::graphics

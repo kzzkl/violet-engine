@@ -1,5 +1,7 @@
 #include "d3d12_resource.hpp"
+#include "DDSTextureLoader12.h"
 #include "d3d12_context.hpp"
+#include <fstream>
 
 namespace ash::graphics::d3d12
 {
@@ -19,7 +21,8 @@ void d3d12_resource::transition_state(
     D3D12_RESOURCE_STATES state,
     D3D12GraphicsCommandList* command_list)
 {
-    auto transition = CD3DX12_RESOURCE_BARRIER::Transition(m_resource.Get(), m_state, state);
+    CD3DX12_RESOURCE_BARRIER transition =
+        CD3DX12_RESOURCE_BARRIER::Transition(m_resource.Get(), m_state, state);
     command_list->ResourceBarrier(1, &transition);
     m_state = state;
 }
@@ -282,6 +285,57 @@ d3d12_index_buffer::d3d12_index_buffer(
         m_view.Format = DXGI_FORMAT_R32_UINT;
     else
         throw std::out_of_range("Invalid index size.");
+}
+
+d3d12_texture::d3d12_texture(const char* file, D3D12GraphicsCommandList* command_list)
+    : d3d12_resource(nullptr, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
+{
+    std::ifstream fin(file, std::ios::in | std::ios::binary);
+    if (!fin)
+        return;
+
+    std::vector<uint8_t> dds_data(fin.seekg(0, std::ios::end).tellg());
+    fin.seekg(0, std::ios::beg).read((char*)dds_data.data(), dds_data.size());
+    fin.close();
+
+    std::vector<D3D12_SUBRESOURCE_DATA> subresources;
+    throw_if_failed(DirectX::LoadDDSTextureFromMemory(
+        d3d12_context::device(),
+        dds_data.data(),
+        dds_data.size(),
+        m_resource.GetAddressOf(),
+        subresources));
+
+    const UINT64 upload_resource_size =
+        GetRequiredIntermediateSize(m_resource.Get(), 0, static_cast<UINT>(subresources.size()));
+
+    d3d12_ptr<ID3D12Resource> upload_resource;
+    CD3DX12_HEAP_PROPERTIES heap_properties(D3D12_HEAP_TYPE_UPLOAD);
+    CD3DX12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(upload_resource_size);
+    throw_if_failed(d3d12_context::device()->CreateCommittedResource(
+        &heap_properties,
+        D3D12_HEAP_FLAG_NONE,
+        &desc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(upload_resource.GetAddressOf())));
+
+    UpdateSubresources(
+        command_list,
+        m_resource.Get(),
+        upload_resource.Get(),
+        0,
+        0,
+        static_cast<UINT>(subresources.size()),
+        subresources.data());
+
+    CD3DX12_RESOURCE_BARRIER transition = CD3DX12_RESOURCE_BARRIER::Transition(
+        m_resource.Get(),
+        D3D12_RESOURCE_STATE_COPY_DEST,
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    command_list->ResourceBarrier(1, &transition);
+
+    d3d12_context::resource()->push_temporary_resource(upload_resource);
 }
 
 d3d12_descriptor_heap::d3d12_descriptor_heap(

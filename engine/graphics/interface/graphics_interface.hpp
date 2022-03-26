@@ -1,5 +1,6 @@
 #pragma once
 
+#include "math.hpp"
 #include "plugin_interface.hpp"
 #include <cstddef>
 #include <cstdint>
@@ -29,18 +30,43 @@ public:
 
 enum class pipeline_parameter_type : std::uint8_t
 {
-    TEXTURE,
-    BUFFER
+    BOOL,
+    UINT,
+    FLOAT,
+    FLOAT2,
+    FLOAT3,
+    FLOAT4,
+    FLOAT4x4,
+    FLOAT4x4_ARRAY,
+    TEXTURE
 };
 
-using pipeline_parameter_desc = list<pipeline_parameter_type, 16>;
+struct pipeline_parameter_pair
+{
+    pipeline_parameter_type type;
+    std::size_t size; // for array
+};
+
+using pipeline_parameter_desc = list<pipeline_parameter_pair, 16>;
 
 class pipeline_parameter
 {
 public:
     virtual ~pipeline_parameter() = default;
 
-    virtual void bind(std::size_t index, resource* data, std::size_t offset = 0) = 0;
+    virtual void set(std::size_t index, bool value) = 0;
+    virtual void set(std::size_t index, std::uint32_t value) = 0;
+    virtual void set(std::size_t index, float value) = 0;
+    virtual void set(std::size_t index, const math::float2& value) = 0;
+    virtual void set(std::size_t index, const math::float3& value) = 0;
+    virtual void set(std::size_t index, const math::float4& value) = 0;
+    virtual void set(std::size_t index, const math::float4x4& value, bool row_matrix = true) = 0;
+    virtual void set(
+        std::size_t index,
+        const math::float4x4* data,
+        size_t size,
+        bool row_matrix = true) = 0;
+    virtual void set(std::size_t index, const resource* texture) = 0;
 };
 
 using pipeline_layout_desc = list<pipeline_parameter_desc, 16>;
@@ -155,6 +181,8 @@ public:
 
     virtual resource* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
     virtual resource* make_index_buffer(const index_buffer_desc& desc) = 0;
+
+    virtual resource* make_texture(const char* file) = 0;
 
 private:
 };

@@ -5,7 +5,7 @@ add_library(${PROJECT_NAME} SHARED
     ./source/graphics_plugin.cpp
     ./source/graphics.cpp
     ./source/mesh.cpp
-    ./source/render_group.cpp)
+    ./source/render_pipeline.cpp)
 add_library(ash::graphics ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}

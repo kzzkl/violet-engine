@@ -18,12 +18,7 @@ struct vertex
 {
     math::float3 position;
     math::float3 normal;
-};
-
-struct mmd_material
-{
-    math::float4 color;
-    math::float4 color2;
+    math::float2 uv;
 };
 
 class test_module : public submodule
@@ -56,7 +51,7 @@ private:
         std::vector<vertex> vertices;
         vertices.reserve(loader.vertices().size());
         for (const pmx_vertex& v : loader.vertices())
-            vertices.push_back(vertex{v.position, v.normal});
+            vertices.push_back(vertex{v.position, v.normal, v.uv});
 
         std::vector<std::int32_t> indices;
         indices.reserve(loader.indices().size());
@@ -70,15 +65,12 @@ private:
         auto& graphics = module<ash::graphics::graphics>();
 
         visual& v = world.component<visual>(m_actor);
-        v.group = graphics.make_render_group("mmd");
-        v.object = graphics.make_render_parameter<multiple<render_object_data>>("ash_object");
-        v.parameters.push_back(v.object);
-        v.parameters.push_back(
-            graphics.make_render_parameter<multiple<mmd_material>>("mmd_material"));
-
-        mmd_material material = {};
-        material.color = {1.0f, 0.0f, 0.0f, 1.0f};
-        v.set<render_parameter<multiple<mmd_material>>, 0>(1, material);
+        v.group = graphics.make_render_pipeline("mmd");
+        v.object = graphics.make_render_parameter("ash_object");
+        v.material = graphics.make_render_parameter("mmd_material");
+        v.material->set(0, math::float4{1.0f, 0.0f, 0.0f, 1.0f});
+        m_texture = graphics.make_texture("resource/tex.dds");
+        v.material->set(3, m_texture.get());
 
         mesh& m = world.component<mesh>(m_actor);
         m.vertex_buffer = module<ash::graphics::graphics>().make_vertex_buffer<vertex>(
@@ -140,13 +132,11 @@ private:
             static std::vector<math::float4> colors = {
                 math::float4{1.0f, 0.0f, 0.0f, 1.0f},
                 math::float4{0.0f, 1.0f, 0.0f, 1.0f},
-                math::float4{0.0f, 0.0f, 0.5f, 1.0f}
+                math::float4{0.0f, 0.0f, 1.0f, 1.0f}
             };
 
             visual& v = world.component<visual>(m_actor);
-            mmd_material material = {};
-            material.color = colors[index];
-            v.set<render_parameter<multiple<mmd_material>>, 0>(1, material);
+            v.material->set(0, colors[index]);
 
             index = (index + 1) % colors.size();
         }
@@ -215,6 +205,8 @@ private:
 
     entity_id m_camera;
     entity_id m_actor;
+
+    std::unique_ptr<resource> m_texture;
 
     float m_heading = 0.0f, m_pitch = 0.0f;
 
