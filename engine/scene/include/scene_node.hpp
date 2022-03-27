@@ -22,6 +22,7 @@ public:
     bool dirty;
     bool updated;
     bool in_scene;
+    bool in_view;
 
 private:
     void add_child(scene_node* child);

@@ -59,15 +59,15 @@ public:
 
 private:
     bool initialize_resource();
-    void render();
 
-    void update_pass_data();
+    void update();
+    void render();
 
     graphics_plugin m_plugin;
     renderer* m_renderer;
     factory* m_factory;
 
-    ash::ecs::view<visual, scene::transform>* m_view;
+    ash::ecs::view<visual, scene::transform>* m_object_view;
     ash::ecs::view<main_camera, camera, scene::transform>* m_camera_view;
 
     std::unique_ptr<render_parameter> m_parameter_pass;

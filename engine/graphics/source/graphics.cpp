@@ -45,23 +45,7 @@ bool graphics::initialize(const dictionary& config)
     auto& task = module<task::task_manager>();
     auto scene_task = task.find("scene");
     auto render_task = task.schedule("render", [this]() {
-        m_view->each([](visual& visual, scene::transform& transform) {
-            visual.object->set(0, transform.node->to_parent);
-            for (std::size_t i = 0; i < visual.submesh.size(); ++i)
-            {
-                if (visual.material[i].pipeline == nullptr)
-                    continue;
-                visual.material[i].pipeline->add(render_unit{
-                    visual.vertex_buffer.get(),
-                    visual.index_buffer.get(),
-                    visual.submesh[i].index_start,
-                    visual.submesh[i].index_end,
-                    visual.object->parameter(),
-                    visual.material[i].property->parameter()});
-            }
-        });
-
-        update_pass_data();
+        update();
 
         m_renderer->begin_frame();
         render();
@@ -74,7 +58,7 @@ bool graphics::initialize(const dictionary& config)
 
     auto& world = module<ecs::world>();
     world.register_component<visual, main_camera, camera>();
-    m_view = world.make_view<visual, scene::transform>();
+    m_object_view = world.make_view<visual, scene::transform>();
     m_camera_view = world.make_view<main_camera, camera, scene::transform>();
 
     return true;
@@ -157,6 +141,74 @@ bool graphics::initialize_resource()
     return true;
 }
 
+void graphics::update()
+{
+    math::float4x4_simd transform_v;
+    math::float4x4_simd transform_p;
+    math::float4x4_simd transform_vp;
+
+    m_camera_view->each([&, this](main_camera&, camera& camera, scene::transform& transform) {
+        if (transform.node->updated)
+        {
+            math::float4x4_simd world_simd = math::simd::load(transform.node->to_world);
+            transform_v = math::matrix_simd::inverse(world_simd);
+            math::simd::store(transform_v, camera.view);
+        }
+        else
+        {
+            transform_v = math::simd::load(camera.view);
+        }
+
+        transform_p = math::simd::load(camera.projection);
+        transform_vp = math::matrix_simd::mul(transform_v, transform_p);
+
+        if (transform.node->updated)
+        {
+            math::float4x4 view, projection, view_projection;
+            math::simd::store(math::matrix_simd::transpose(transform_v), view);
+            math::simd::store(math::matrix_simd::transpose(transform_p), projection);
+            math::simd::store(math::matrix_simd::transpose(transform_vp), view_projection);
+
+            m_parameter_pass->set(0, float4{1.0f, 2.0f, 3.0f, 4.0f});
+            m_parameter_pass->set(1, float4{5.0f, 6.0f, 7.0f, 8.0f});
+            m_parameter_pass->set(2, view, false);
+            m_parameter_pass->set(3, projection, false);
+            m_parameter_pass->set(4, view_projection, false);
+        }
+    });
+
+    m_object_view->each([&, this](visual& visual, scene::transform& transform) {
+        if (!transform.node->in_view)
+            return;
+
+        math::float4x4_simd transform_m = math::simd::load(transform.node->to_world);
+        math::float4x4_simd transform_mv = math::matrix_simd::mul(transform_m, transform_v);
+        math::float4x4_simd transform_mvp = math::matrix_simd::mul(transform_mv, transform_p);
+
+        math::float4x4 model, model_view, model_view_projection;
+        math::simd::store(math::matrix_simd::transpose(transform_m), model);
+        math::simd::store(math::matrix_simd::transpose(transform_mv), model_view);
+        math::simd::store(math::matrix_simd::transpose(transform_mvp), model_view_projection);
+
+        visual.object->set(0, model, false);
+        visual.object->set(1, model_view, false);
+        visual.object->set(2, model_view_projection, false);
+
+        for (std::size_t i = 0; i < visual.submesh.size(); ++i)
+        {
+            if (visual.material[i].pipeline == nullptr)
+                continue;
+            visual.material[i].pipeline->add(render_unit{
+                visual.vertex_buffer.get(),
+                visual.index_buffer.get(),
+                visual.submesh[i].index_start,
+                visual.submesh[i].index_end,
+                visual.object->parameter(),
+                visual.material[i].property->parameter()});
+        }
+    });
+}
+
 void graphics::render()
 {
     auto command = m_renderer->allocate_command();
@@ -183,30 +235,5 @@ void graphics::render()
     }
 
     m_renderer->execute(command);
-}
-
-void graphics::update_pass_data()
-{
-    m_camera_view->each([this](main_camera&, camera& camera, scene::transform& transform) {
-        if (transform.node->updated)
-        {
-            math::float4x4_simd world_simd = math::simd::load(transform.node->to_world);
-            math::float4x4_simd view_simd = math::matrix_simd::inverse(world_simd);
-            math::float4x4_simd projection_simd = math::simd::load(camera.perspective());
-
-            math::float4x4 view, projection, view_projection;
-            math::simd::store(math::matrix_simd::transpose(view_simd), view);
-            math::simd::store(math::matrix_simd::transpose(projection_simd), projection);
-            math::simd::store(
-                math::matrix_simd::transpose(math::matrix_simd::mul(view_simd, projection_simd)),
-                view_projection);
-
-            m_parameter_pass->set(0, float4{1.0f, 2.0f, 3.0f, 4.0f});
-            m_parameter_pass->set(1, float4{5.0f, 6.0f, 7.0f, 8.0f});
-            m_parameter_pass->set(2, view, false);
-            m_parameter_pass->set(3, projection, false);
-            m_parameter_pass->set(4, view_projection, false);
-        }
-    });
 }
 } // namespace ash::graphics

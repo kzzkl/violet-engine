@@ -1,6 +1,8 @@
 cbuffer ash_object : register(b0)
 {
-    float4x4 to_world;
+    float4x4 transform_m;
+    float4x4 transform_mv;
+    float4x4 transform_mvp;
 };
 
 cbuffer mmd_material : register(b1)
@@ -15,9 +17,9 @@ cbuffer ash_pass : register(b2)
     float4 camera_position;
     float4 camera_direction;
 
-    float4x4 camera_view;
-    float4x4 camera_projection;
-    float4x4 camera_view_projection;
+    float4x4 transform_v;
+    float4x4 transform_p;
+    float4x4 transform_vp;
 };
 
 Texture2D tex : register(t0);
@@ -42,8 +44,7 @@ vs_out vs_main(vs_in vin)
 {
     vs_out result;
 
-    float4x4 mvp = mul(to_world, camera_view_projection);
-    result.position = mul(float4(vin.position, 1.0f), mvp);
+    result.position = mul(float4(vin.position, 1.0f), transform_mvp);
     result.color = float4(vin.normal, 1.0f) * color;
     result.uv = vin.uv;
 

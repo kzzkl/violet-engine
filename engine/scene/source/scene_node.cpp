@@ -8,6 +8,7 @@ scene_node::scene_node()
       dirty(true),
       updated(false),
       in_scene(false),
+      in_view(true),
       m_parent(nullptr)
 {
 }

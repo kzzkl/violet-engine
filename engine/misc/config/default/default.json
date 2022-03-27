@@ -8,7 +8,15 @@
         "pipeline_parameter_layout": {
             "ash_object": [
                 {
-                    "name": "to_world",
+                    "name": "transform_m",
+                    "type": "float4x4"
+                },
+                {
+                    "name": "transform_mv",
+                    "type": "float4x4"
+                },
+                {
+                    "name": "transform_mvp",
                     "type": "float4x4"
                 }
             ],
@@ -22,15 +30,15 @@
                     "type": "float4"
                 },
                 {
-                    "name": "camera_view",
+                    "name": "transform_v",
                     "type": "float4x4"
                 },
                 {
-                    "name": "camera_projection",
+                    "name": "transform_p",
                     "type": "float4x4"
                 },
                 {
-                    "name": "camera_view_projection",
+                    "name": "transform_vp",
                     "type": "float4x4"
                 }
             ]
