@@ -509,9 +509,8 @@ void d3d12_pipeline::initialize_pipeline_state(const pipeline_desc& desc)
     pso_desc.SampleMask = UINT_MAX;
     pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     pso_desc.NumRenderTargets = 1;
-    pso_desc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-    pso_desc.SampleDesc.Count = 1;
-    pso_desc.SampleDesc.Quality = 0;
+    pso_desc.RTVFormats[0] = d3d12_context::renderer()->render_target_format();
+    pso_desc.SampleDesc = d3d12_context::renderer()->render_target_sample_desc();
     pso_desc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     pso_desc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
 

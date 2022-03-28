@@ -26,6 +26,22 @@ void d3d12_resource::transition_state(
     m_state = state;
 }
 
+void d3d12_resource::transition_state(
+    const transition_list& transition,
+    D3D12GraphicsCommandList* command_list)
+{
+    std::vector<CD3DX12_RESOURCE_BARRIER> barrier;
+    barrier.reserve(transition.size());
+
+    for (auto [resource, state] : transition)
+    {
+        barrier.push_back(
+            CD3DX12_RESOURCE_BARRIER::Transition(resource->resource(), resource->m_state, state));
+        resource->m_state = state;
+    }
+    command_list->ResourceBarrier(static_cast<UINT>(barrier.size()), barrier.data());
+}
+
 std::size_t d3d12_resource::size() const
 {
     auto desc = m_resource->GetDesc();
@@ -36,9 +52,7 @@ d3d12_back_buffer::d3d12_back_buffer() noexcept : m_descriptor_offset(INVALID_DE
 {
 }
 
-d3d12_back_buffer::d3d12_back_buffer(
-    d3d12_ptr<D3D12Resource> resource,
-    D3D12_RESOURCE_STATES state) noexcept
+d3d12_back_buffer::d3d12_back_buffer(d3d12_ptr<D3D12Resource> resource, D3D12_RESOURCE_STATES state)
     : d3d12_resource(resource, state)
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -84,23 +98,150 @@ d3d12_back_buffer& d3d12_back_buffer::operator=(d3d12_back_buffer&& other) noexc
     return *this;
 }
 
+d3d12_render_target::d3d12_render_target() noexcept : m_descriptor_offset(INVALID_DESCRIPTOR_INDEX)
+{
+}
+
+d3d12_render_target::d3d12_render_target(
+    std::size_t width,
+    std::size_t height,
+    DXGI_FORMAT format,
+    std::size_t multiple_sampling)
+{
+    auto device = d3d12_context::device();
+
+    CD3DX12_HEAP_PROPERTIES heap_properties(D3D12_HEAP_TYPE_DEFAULT);
+
+    // Query sample level.
+    D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS sample_level = {};
+    sample_level.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+    sample_level.Format = format;
+    sample_level.NumQualityLevels = 0;
+    sample_level.SampleCount = static_cast<UINT>(multiple_sampling);
+    throw_if_failed(device->CheckFeatureSupport(
+        D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
+        &sample_level,
+        sizeof(sample_level)));
+
+    D3D12_RESOURCE_DESC desc = {};
+    desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    desc.Alignment = 0;
+    desc.Width = static_cast<UINT>(width);
+    desc.Height = static_cast<UINT>(height);
+    desc.DepthOrArraySize = 1;
+    desc.MipLevels = 1;
+    desc.Format = format;
+    desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+    desc.SampleDesc.Count = sample_level.SampleCount;
+    desc.SampleDesc.Quality = sample_level.NumQualityLevels - 1;
+
+    D3D12_CLEAR_VALUE clear = {};
+    clear.Format = format;
+    clear.Color[0] = clear.Color[1] = clear.Color[2] = 0.0f;
+    clear.Color[3] = 1.0f;
+
+    device->CreateCommittedResource(
+        &heap_properties,
+        D3D12_HEAP_FLAG_NONE,
+        &desc,
+        D3D12_RESOURCE_STATE_COMMON,
+        &clear,
+        IID_PPV_ARGS(&m_resource));
+
+    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    m_descriptor_offset = heap->allocate(1);
+    device->CreateRenderTargetView(
+        m_resource.Get(),
+        nullptr,
+        heap->cpu_handle(m_descriptor_offset));
+
+    m_state = D3D12_RESOURCE_STATE_COMMON;
+}
+
+d3d12_render_target::d3d12_render_target(d3d12_render_target&& other) noexcept
+    : d3d12_resource(std::move(other)),
+      m_descriptor_offset(other.m_descriptor_offset)
+{
+    other.m_descriptor_offset = INVALID_DESCRIPTOR_INDEX;
+}
+
+d3d12_render_target::~d3d12_render_target()
+{
+    if (m_descriptor_offset != INVALID_DESCRIPTOR_INDEX)
+    {
+        auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        heap->deallocate(m_descriptor_offset);
+    }
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_render_target::cpu_handle() const
+{
+    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    return heap->cpu_handle(m_descriptor_offset);
+}
+
+d3d12_render_target& d3d12_render_target::operator=(d3d12_render_target&& other) noexcept
+{
+    if (this != &other)
+    {
+        d3d12_resource::operator=(std::move(other));
+        m_descriptor_offset = other.m_descriptor_offset;
+        other.m_descriptor_offset = INVALID_DESCRIPTOR_INDEX;
+    }
+
+    return *this;
+}
+
 d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer() noexcept
     : m_descriptor_offset(INVALID_DESCRIPTOR_INDEX)
 {
 }
 
 d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(
-    const D3D12_RESOURCE_DESC& desc,
-    const D3D12_HEAP_PROPERTIES& heap_properties,
-    const D3D12_CLEAR_VALUE& clear)
+    std::size_t width,
+    std::size_t height,
+    DXGI_FORMAT format,
+    std::size_t multiple_sampling)
 {
     auto device = d3d12_context::device();
+
+    CD3DX12_HEAP_PROPERTIES heap_properties(D3D12_HEAP_TYPE_DEFAULT);
+
+    // Query sample level.
+    D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS sample_level = {};
+    sample_level.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+    sample_level.Format = format;
+    sample_level.NumQualityLevels = 0;
+    sample_level.SampleCount = static_cast<UINT>(multiple_sampling);
+    throw_if_failed(device->CheckFeatureSupport(
+        D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
+        &sample_level,
+        sizeof(sample_level)));
+
+    D3D12_RESOURCE_DESC desc = {};
+    desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    desc.Alignment = 0;
+    desc.Width = static_cast<UINT>(width);
+    desc.Height = static_cast<UINT>(height);
+    desc.DepthOrArraySize = 1;
+    desc.MipLevels = 1;
+    desc.Format = format;
+    desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+    desc.SampleDesc.Count = sample_level.SampleCount;
+    desc.SampleDesc.Quality = sample_level.NumQualityLevels - 1;
+
+    D3D12_CLEAR_VALUE clear = {};
+    clear.Format = format;
+    clear.DepthStencil.Depth = 1.0f;
+    clear.DepthStencil.Stencil = 0;
 
     throw_if_failed(device->CreateCommittedResource(
         &heap_properties,
         D3D12_HEAP_FLAG_NONE,
         &desc,
-        D3D12_RESOURCE_STATE_COMMON,
+        D3D12_RESOURCE_STATE_DEPTH_WRITE,
         &clear,
         IID_PPV_ARGS(&m_resource)));
 

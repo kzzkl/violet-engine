@@ -26,6 +26,8 @@ bool graphics::initialize(const dictionary& config)
     desc.width = rect.width;
     desc.height = rect.height;
     desc.render_concurrency = m_config.render_concurrency();
+    desc.multiple_sampling = m_config.multiple_sampling();
+    desc.frame_resource = m_config.frame_resource();
 
     if (!m_plugin.load(m_config.plugin()) || !m_plugin.initialize(desc))
         return false;

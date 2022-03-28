@@ -36,6 +36,7 @@ void config_parser::load(const dictionary& config)
 
     m_render_concurrency = config["render_concurrency"];
     m_frame_resource = config["frame_resource"];
+    m_multiple_sampling = config["multiple_sampling"];
 
     m_plugin = config["plugin"];
 }

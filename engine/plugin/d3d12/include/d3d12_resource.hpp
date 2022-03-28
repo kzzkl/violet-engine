@@ -10,6 +10,9 @@ namespace ash::graphics::d3d12
 class d3d12_resource : public resource
 {
 public:
+    using transition_list = std::vector<std::pair<d3d12_resource*, D3D12_RESOURCE_STATES>>;
+
+public:
     d3d12_resource() noexcept;
     d3d12_resource(
         d3d12_ptr<D3D12Resource> resource,
@@ -22,6 +25,9 @@ public:
     inline D3D12Resource* resource() const noexcept { return m_resource.Get(); }
 
     void transition_state(D3D12_RESOURCE_STATES state, D3D12GraphicsCommandList* command_list);
+    static void transition_state(
+        const transition_list& transition,
+        D3D12GraphicsCommandList* command_list);
 
     std::size_t size() const;
 
@@ -39,7 +45,7 @@ public:
     d3d12_back_buffer() noexcept;
     d3d12_back_buffer(
         d3d12_ptr<D3D12Resource> resource,
-        D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON) noexcept;
+        D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON);
     d3d12_back_buffer(const d3d12_back_buffer&) = delete;
     d3d12_back_buffer(d3d12_back_buffer&& other) noexcept;
 
@@ -54,14 +60,38 @@ private:
     std::size_t m_descriptor_offset;
 };
 
+class d3d12_render_target : public d3d12_resource
+{
+public:
+    d3d12_render_target() noexcept;
+    d3d12_render_target(
+        std::size_t width,
+        std::size_t height,
+        DXGI_FORMAT format,
+        std::size_t multiple_sampling = 1);
+    d3d12_render_target(const d3d12_render_target&) = delete;
+    d3d12_render_target(d3d12_render_target&& other) noexcept;
+
+    virtual ~d3d12_render_target();
+
+    D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle() const;
+
+    d3d12_render_target& operator=(const d3d12_render_target&) = delete;
+    d3d12_render_target& operator=(d3d12_render_target&& other) noexcept;
+
+private:
+    std::size_t m_descriptor_offset;
+};
+
 class d3d12_depth_stencil_buffer : public d3d12_resource
 {
 public:
     d3d12_depth_stencil_buffer() noexcept;
     d3d12_depth_stencil_buffer(
-        const D3D12_RESOURCE_DESC& desc,
-        const D3D12_HEAP_PROPERTIES& heap_properties,
-        const D3D12_CLEAR_VALUE& clear);
+        std::size_t width,
+        std::size_t height,
+        DXGI_FORMAT format,
+        std::size_t multiple_sampling = 1);
     d3d12_depth_stencil_buffer(const d3d12_depth_stencil_buffer&) = delete;
     d3d12_depth_stencil_buffer(d3d12_depth_stencil_buffer&& other) noexcept;
 

@@ -196,7 +196,8 @@ struct context_config
 
     const void* window_handle;
 
-    bool msaa_4x;
+    std::size_t multiple_sampling;
+    std::size_t frame_resource;
     std::size_t render_concurrency;
 };
 
