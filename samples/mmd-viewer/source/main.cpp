@@ -98,7 +98,9 @@ private:
             v.material[i].property->set(0, material.diffuse);
             v.material[i].property->set(1, material.specular);
             v.material[i].property->set(2, material.specular_strength);
-            v.material[i].property->set(3, static_cast<std::uint32_t>(material.toon_mode));
+            v.material[i].property->set(
+                3,
+                material.toon_index == -1 ? std::uint32_t(0) : std::uint32_t(1));
             v.material[i].property->set(4, static_cast<std::uint32_t>(material.sphere_mode));
 
             v.material[i].property->set(5, m_textures[material.texture_index].get());

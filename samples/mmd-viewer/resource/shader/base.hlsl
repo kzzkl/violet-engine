@@ -82,7 +82,7 @@ float4 ps_main(vs_out pin) : SV_TARGET
         float c = dot(pin.normal, light_dir);
         c = clamp(c + 0.5f, 0.0f, 1.0f);
         
-        color *= spa.Sample(sampler_wrap, float2(0.0f, c));
+        color *= toon.Sample(sampler_wrap, float2(0.0f, c));
     }
 
     return color;
