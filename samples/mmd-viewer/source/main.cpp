@@ -41,10 +41,10 @@ public:
 private:
     void initialize_resource()
     {
-        std::string model_path = "resource/ying/";
+        std::string model_path = "resource/model/sora/";
 
         pmx_loader loader;
-        if (!loader.load(model_path + "ying.pmx"))
+        if (!loader.load(model_path + "Sora.pmx"))
         {
             ash::log::error("Load pmx failed");
             return;
@@ -66,12 +66,16 @@ private:
 
         auto& graphics = module<ash::graphics::graphics>();
 
-        m_textures.push_back(graphics.make_texture(model_path + "Texture/hair.dds"));
-        m_textures.push_back(graphics.make_texture(model_path + "Texture/face.dds"));
-        m_textures.push_back(graphics.make_texture(model_path + "Texture/mc3.dds"));
-        m_textures.push_back(graphics.make_texture(model_path + "Texture/toon.dds"));
-        m_textures.push_back(graphics.make_texture(model_path + "Texture/expression.dds"));
-        m_textures.push_back(graphics.make_texture(model_path + "Texture/clothes.dds"));
+        for (auto& png_path : loader.textures())
+        {
+            std::string dds_path = png_path.substr(0, png_path.find_last_of('.')) + ".dds";
+            m_textures.push_back(graphics.make_texture(model_path + dds_path));
+        }
+
+        for (auto& internal_toon_path : loader.internal_toon())
+        {
+            m_internal_toon.push_back(graphics.make_texture("resource/mmd/" + internal_toon_path));
+        }
 
         visual& v = world.component<visual>(m_actor);
         v.vertex_buffer = module<ash::graphics::graphics>().make_vertex_buffer<vertex>(
@@ -87,10 +91,27 @@ private:
         auto mmd_pipeline = graphics.make_render_pipeline("mmd");
         for (std::size_t i = 0; i < v.material.size(); ++i)
         {
+            auto& material = loader.materials()[i];
+
             v.material[i].pipeline = mmd_pipeline;
             v.material[i].property = graphics.make_render_parameter("mmd_material");
-            v.material[i].property->set(0, math::float4{1.0f, 0.0f, 0.0f, 1.0f});
-            v.material[i].property->set(3, m_textures[loader.materials()[i].texture_index].get());
+            v.material[i].property->set(0, material.diffuse);
+            v.material[i].property->set(1, material.specular);
+            v.material[i].property->set(2, material.specular_strength);
+            v.material[i].property->set(3, static_cast<std::uint32_t>(material.toon_mode));
+            v.material[i].property->set(4, static_cast<std::uint32_t>(material.sphere_mode));
+
+            v.material[i].property->set(5, m_textures[material.texture_index].get());
+
+            if (material.toon_index != -1)
+            {
+                if (material.toon_mode == toon_mode::TEXTURE)
+                    v.material[i].property->set(6, m_textures[material.toon_index].get());
+                else if (material.toon_mode == toon_mode::INTERNAL)
+                    v.material[i].property->set(6, m_internal_toon[material.toon_index].get());
+            }
+            if (material.sphere_mode != sphere_mode::DISABLED)
+                v.material[i].property->set(7, m_textures[material.sphere_index].get());
         }
 
         v.object = graphics.make_render_parameter("ash_object");
@@ -222,6 +243,7 @@ private:
     entity_id m_actor;
 
     std::vector<std::unique_ptr<resource>> m_textures;
+    std::vector<std::unique_ptr<resource>> m_internal_toon;
 
     float m_heading = 0.0f, m_pitch = 0.0f;
 

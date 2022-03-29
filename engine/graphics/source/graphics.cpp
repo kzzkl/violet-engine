@@ -127,7 +127,7 @@ std::unique_ptr<resource> graphics::make_texture(std::string_view file)
     if (!fin)
     {
         log::error("Can not open texture: {}.", file);
-        nullptr;
+        return nullptr;
     }
 
     std::vector<uint8_t> dds_data(fin.seekg(0, std::ios::end).tellg());

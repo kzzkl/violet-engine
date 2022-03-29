@@ -8,8 +8,8 @@ namespace ash::graphics::d3d12
 {
 enum class d3d12_parameter_tier_type
 {
-    TIER1,
-    TIER2
+    TIER1, // Constant Buffer View
+    TIER2  // Descriptor Table
 };
 
 class d3d12_pipeline_parameter : public pipeline_parameter

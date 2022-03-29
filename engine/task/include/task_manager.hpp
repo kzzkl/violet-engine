@@ -49,8 +49,6 @@ public:
     handle find(std::string_view name);
 
 private:
-    friend class handle;
-
     template <derived_from_task T, typename... Args>
     handle do_schedule(Args&&... args)
     {

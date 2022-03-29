@@ -73,8 +73,6 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(const pipeline_parameter_desc
         return (begin + align - 1) & ~(align - 1);
     };
 
-    bool is_tier1 = true;
-
     std::size_t cbv_count = 0;
     std::size_t srv_count = 0;
 
@@ -125,7 +123,6 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(const pipeline_parameter_desc
 
         if (desc.data[i].type == pipeline_parameter_type::TEXTURE)
         {
-            is_tier1 = false;
             ++srv_count;
             align_address = texture_offset;
             ++texture_offset;
@@ -139,31 +136,22 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(const pipeline_parameter_desc
         m_parameter_info.push_back(parameter_info{align_address, size, desc.data[i].type, 0});
     }
 
-    std::size_t buffer_size = (constant_offset + 255) & (~255);
-    m_cpu_buffer.resize(buffer_size);
-    m_gpu_buffer = std::make_unique<d3d12_upload_buffer>(
-        buffer_size * d3d12_frame_counter::frame_resource_count());
+    std::size_t buffer_size = cal_align(constant_offset, 256);
+    if (cbv_count != 0)
+    {
+        m_cpu_buffer.resize(buffer_size);
+        m_gpu_buffer = std::make_unique<d3d12_upload_buffer>(
+            buffer_size * d3d12_frame_counter::frame_resource_count());
+    }
 
     m_textures.resize(srv_count);
 
-    if (is_tier1)
+    if (srv_count != 0)
     {
-        m_tier = d3d12_parameter_tier_type::TIER1;
-        std::size_t gpu_buffer_offset = 0;
-        for (auto& iter_info : m_tier_info)
-        {
-            iter_info.tier1.type = D3D12_ROOT_PARAMETER_TYPE_CBV;
-            iter_info.tier1.address =
-                m_gpu_buffer->resource()->GetGPUVirtualAddress() + gpu_buffer_offset;
-            gpu_buffer_offset += buffer_size;
-        }
-    }
-    else
-    {
-        auto heap = d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         m_tier = d3d12_parameter_tier_type::TIER2;
 
         std::size_t view_count = cbv_count + srv_count;
+        auto heap = d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         std::size_t handle_offset =
             heap->allocate(view_count * d3d12_frame_counter::frame_resource_count());
         std::size_t gpu_buffer_offset = 0;
@@ -173,15 +161,31 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(const pipeline_parameter_desc
             iter_info.tier2.base_gpu_handle = heap->gpu_handle(handle_offset);
             iter_info.tier2.size = view_count;
 
-            D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_desc = {};
-            cbv_desc.BufferLocation =
-                m_gpu_buffer->resource()->GetGPUVirtualAddress() + gpu_buffer_offset;
-            cbv_desc.SizeInBytes = static_cast<UINT>(buffer_size);
-            d3d12_context::device()->CreateConstantBufferView(
-                &cbv_desc,
-                iter_info.tier2.base_cpu_handle);
+            if (cbv_count != 0)
+            {
+                D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_desc = {};
+                cbv_desc.BufferLocation =
+                    m_gpu_buffer->resource()->GetGPUVirtualAddress() + gpu_buffer_offset;
+                cbv_desc.SizeInBytes = static_cast<UINT>(buffer_size);
+                d3d12_context::device()->CreateConstantBufferView(
+                    &cbv_desc,
+                    heap->cpu_handle(handle_offset + srv_count));
+                gpu_buffer_offset += buffer_size;
+            }
 
             handle_offset += view_count;
+        }
+    }
+    else if (cbv_count != 0)
+    {
+        m_tier = d3d12_parameter_tier_type::TIER1;
+
+        std::size_t gpu_buffer_offset = 0;
+        for (auto& iter_info : m_tier_info)
+        {
+            iter_info.tier1.type = D3D12_ROOT_PARAMETER_TYPE_CBV;
+            iter_info.tier1.address =
+                m_gpu_buffer->resource()->GetGPUVirtualAddress() + gpu_buffer_offset;
             gpu_buffer_offset += buffer_size;
         }
     }
@@ -322,8 +326,8 @@ void d3d12_pipeline_parameter::sync()
                 d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
             CD3DX12_CPU_DESCRIPTOR_HANDLE handle(
                 m_tier_info[resource_index].tier2.base_cpu_handle,
+                static_cast<INT>(info.offset),
                 heap->increment_size());
-            handle.Offset(static_cast<INT>(info.offset));
             device->CreateShaderResourceView(texture->resource(), &desc, handle);
         }
         else
@@ -380,25 +384,20 @@ d3d12_parameter_layout::d3d12_parameter_layout(const pipeline_layout_desc& desc)
         }
         else
         {
+            if (srv_counter != 0)
+            {
+                CD3DX12_DESCRIPTOR_RANGE srv_range;
+                srv_range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, srv_counter, srv_register_counter);
+                range[i].push_back(srv_range);
+                srv_register_counter += srv_counter;
+            }
+
             if (cbv_counter != 0)
             {
                 CD3DX12_DESCRIPTOR_RANGE cbv_range;
                 cbv_range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, cbv_counter, cbv_register_counter);
                 range[i].push_back(cbv_range);
                 cbv_register_counter += cbv_counter;
-            }
-
-            if (srv_counter != 0)
-            {
-                CD3DX12_DESCRIPTOR_RANGE srv_range;
-                srv_range.Init(
-                    D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-                    srv_counter,
-                    srv_register_counter,
-                    0,
-                    cbv_counter);
-                range[i].push_back(srv_range);
-                srv_register_counter += srv_counter;
             }
 
             root_parameter[i].InitAsDescriptorTable(

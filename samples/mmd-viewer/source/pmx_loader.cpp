@@ -14,6 +14,18 @@ bool read(std::istream& fin, T& dest)
 
 pmx_loader::pmx_loader()
 {
+    m_internal_toon = {
+        "toon01.dds",
+        "toon02.dds",
+        "toon03.dds",
+        "toon04.dds",
+        "toon05.dds",
+        "toon06.dds",
+        "toon07.dds",
+        "toon08.dds",
+        "toon09.dds",
+        "toon10.dds",
+    };
 }
 
 bool pmx_loader::load(std::string_view path)

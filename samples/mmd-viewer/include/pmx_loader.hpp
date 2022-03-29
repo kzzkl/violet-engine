@@ -336,6 +336,8 @@ public:
     const std::vector<pmx_material>& materials() const { return m_materials; }
     const std::vector<std::string>& textures() const { return m_textures; }
 
+    const std::vector<std::string>& internal_toon() const { return m_internal_toon; }
+
 private:
     bool load_header(std::ifstream& fin);
     bool load_vertex(std::ifstream& fin);
@@ -363,5 +365,7 @@ private:
     std::vector<pmx_display_data> m_display_frames;
     std::vector<pmx_rigidbody> m_rigidbodys;
     std::vector<pmx_joint> m_joints;
+
+    std::vector<std::string> m_internal_toon;
 };
 } // namespace ash::sample::mmd
