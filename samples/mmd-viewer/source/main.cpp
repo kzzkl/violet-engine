@@ -88,12 +88,12 @@ private:
             v.submesh.push_back({index_start, index_end});
 
         v.material.resize(loader.materials().size());
-        auto mmd_pipeline = graphics.make_render_pipeline("mmd");
+        m_mmd_pipeline = graphics.make_render_pipeline("mmd");
         for (std::size_t i = 0; i < v.material.size(); ++i)
         {
             auto& material = loader.materials()[i];
 
-            v.material[i].pipeline = mmd_pipeline;
+            v.material[i].pipeline = m_mmd_pipeline.get();
             v.material[i].property = graphics.make_render_parameter("mmd_material");
             v.material[i].property->set(0, material.diffuse);
             v.material[i].property->set(1, material.specular);
@@ -236,6 +236,11 @@ private:
         float delta = module<ash::core::timer>().frame_delta();
         update_camera(delta);
         update_actor(delta);
+
+        module<ash::graphics::graphics>().debug().draw_line(
+            {100.0f, 0.0f, 0.0f},
+            {-100.0f, 0.0f, 0.0f},
+            {1.0f, 0.0f, 0.0f});
     }
 
     std::string m_title;
@@ -246,6 +251,8 @@ private:
 
     std::vector<std::unique_ptr<resource>> m_textures;
     std::vector<std::unique_ptr<resource>> m_internal_toon;
+
+    std::unique_ptr<render_pipeline> m_mmd_pipeline;
 
     float m_heading = 0.0f, m_pitch = 0.0f;
 

@@ -135,18 +135,20 @@ private:
     void* m_mapped;
 };
 
-class d3d12_vertex_buffer : public d3d12_default_buffer
+class d3d12_vertex_buffer : public resource
 {
 public:
-    d3d12_vertex_buffer(
-        const void* data,
-        std::size_t vertex_size,
-        std::size_t vertex_count,
-        D3D12GraphicsCommandList* command_list);
+    d3d12_vertex_buffer(const vertex_buffer_desc& desc, D3D12GraphicsCommandList* command_list);
 
     inline const D3D12_VERTEX_BUFFER_VIEW& view() const noexcept { return m_view; }
 
+    virtual void upload(const void* data, std::size_t size, std::size_t offset)
+    {
+        m_resource->upload(data, size, offset);
+    }
+
 private:
+    std::unique_ptr<d3d12_resource> m_resource;
     D3D12_VERTEX_BUFFER_VIEW m_view;
 };
 

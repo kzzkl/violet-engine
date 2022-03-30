@@ -34,10 +34,7 @@ void context::shutdown_submodule()
 
 void context::load_config(std::string_view config_path)
 {
-    std::filesystem::path path = config_path;
-    std::filesystem::path default_path = path / "default";
-
-    for (auto iter : std::filesystem::directory_iterator(default_path))
+    for (auto iter : std::filesystem::directory_iterator("engine/config"))
     {
         if (iter.is_regular_file() && iter.path().extension() == ".json")
         {
@@ -53,7 +50,7 @@ void context::load_config(std::string_view config_path)
         }
     }
 
-    for (auto iter : std::filesystem::directory_iterator(path))
+    for (auto iter : std::filesystem::directory_iterator(config_path))
     {
         if (iter.is_regular_file() && iter.path().extension() == ".json")
         {

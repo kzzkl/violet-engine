@@ -397,15 +397,24 @@ d3d12_upload_buffer& d3d12_upload_buffer::operator=(d3d12_upload_buffer&& other)
 }
 
 d3d12_vertex_buffer::d3d12_vertex_buffer(
-    const void* data,
-    std::size_t vertex_size,
-    std::size_t vertex_count,
+    const vertex_buffer_desc& desc,
     D3D12GraphicsCommandList* command_list)
-    : d3d12_default_buffer(data, vertex_size * vertex_count, command_list)
 {
-    m_view.BufferLocation = m_resource->GetGPUVirtualAddress();
-    m_view.SizeInBytes = static_cast<UINT>(vertex_size * vertex_count);
-    m_view.StrideInBytes = static_cast<UINT>(vertex_size);
+    if (desc.dynamic)
+    {
+        m_resource = std::make_unique<d3d12_upload_buffer>(desc.vertex_size * desc.vertex_count);
+    }
+    else
+    {
+        m_resource = std::make_unique<d3d12_default_buffer>(
+            desc.vertices,
+            desc.vertex_size * desc.vertex_count,
+            command_list);
+    }
+
+    m_view.BufferLocation = m_resource->resource()->GetGPUVirtualAddress();
+    m_view.SizeInBytes = static_cast<UINT>(desc.vertex_size * desc.vertex_count);
+    m_view.StrideInBytes = static_cast<UINT>(desc.vertex_size);
 }
 
 d3d12_index_buffer::d3d12_index_buffer(
@@ -419,7 +428,9 @@ d3d12_index_buffer::d3d12_index_buffer(
     m_view.BufferLocation = m_resource->GetGPUVirtualAddress();
     m_view.SizeInBytes = static_cast<UINT>(index_size * index_count);
 
-    if (index_size == 2)
+    if (index_size == 1)
+        m_view.Format = DXGI_FORMAT_R8_UINT;
+    else if (index_size == 2)
         m_view.Format = DXGI_FORMAT_R16_UINT;
     else if (index_size == 4)
         m_view.Format = DXGI_FORMAT_R32_UINT;

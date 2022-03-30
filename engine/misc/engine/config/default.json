@@ -1,6 +1,21 @@
 {
     "graphics": {
-        "vertex_layout": {},
+        "vertex_layout": {
+            "debug": {
+                "attribute": [
+                    {
+                        "name": "POSITION",
+                        "type": "float3",
+                        "index": 0
+                    },
+                    {
+                        "name": "COLOR",
+                        "type": "float3",
+                        "index": 0
+                    }
+                ]
+            }
+        },
         "pipeline_parameter": {
             "ash_object": "buffer",
             "ash_pass": "buffer"
@@ -43,7 +58,17 @@
                 }
             ]
         },
-        "pipeline": {},
+        "pipeline": {
+            "debug": {
+                "vertex_layout": "debug",
+                "object_parameter": "ash_object",
+                "pass_parameter": "none",
+                "material_parameter": "none",
+                "vertex_shader": "engine/shader/debug.hlsl",
+                "pixel_shader": "engine/shader/debug.hlsl",
+                "primitive_topology": "line_list"
+            }
+        },
         "technique": [],
         "plugin": "ash-graphics-d3d12.dll",
         "render_concurrency": 4,

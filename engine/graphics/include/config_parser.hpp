@@ -32,10 +32,15 @@ public:
     {
         std::string name;
         std::string vertex_layout;
-        std::string material_layout;
+
+        std::string object_parameter;
+        std::string pass_parameter;
+        std::string material_parameter;
 
         std::string vertex_shader;
         std::string pixel_shader;
+
+        primitive_topology_type primitive_topology;
     };
     template <typename T>
     struct config_type;

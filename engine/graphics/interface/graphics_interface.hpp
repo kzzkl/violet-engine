@@ -109,6 +109,8 @@ struct pipeline_desc
 
     char vertex_shader[128];
     char pixel_shader[128];
+
+    primitive_topology_type primitive_topology;
 };
 
 class pipeline
@@ -163,6 +165,8 @@ struct vertex_buffer_desc
     const void* vertices;
     std::size_t vertex_size;
     std::size_t vertex_count;
+
+    bool dynamic;
 };
 
 struct index_buffer_desc

@@ -33,14 +33,17 @@ public:
 
     virtual resource* make_vertex_buffer(const vertex_buffer_desc& desc) override
     {
-        auto command_list = d3d12_context::command()->allocate_dynamic_command();
-        d3d12_vertex_buffer* result = new d3d12_vertex_buffer(
-            desc.vertices,
-            desc.vertex_size,
-            desc.vertex_count,
-            command_list.get());
-        d3d12_context::command()->execute_command(command_list);
-        return result;
+        if (desc.dynamic)
+        {
+            return new d3d12_vertex_buffer(desc, nullptr);
+        }
+        else
+        {
+            auto command_list = d3d12_context::command()->allocate_dynamic_command();
+            d3d12_vertex_buffer* result = new d3d12_vertex_buffer(desc, command_list.get());
+            d3d12_context::command()->execute_command(command_list);
+            return result;
+        }
     }
 
     virtual resource* make_index_buffer(const index_buffer_desc& desc) override

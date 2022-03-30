@@ -106,6 +106,8 @@ config_parser::find_result<pipeline_desc> config_parser::find_desc(std::string_v
             desc.pixel_shader,
             iter->second.pixel_shader.c_str(),
             iter->second.pixel_shader.size());
+
+        desc.primitive_topology = iter->second.primitive_topology;
     }
 
     return result;
@@ -163,9 +165,19 @@ void config_parser::load_pipeline(const dictionary& doc)
     {
         pipeline_config& p = m_pipeline[key];
         p.vertex_layout = value["vertex_layout"];
-        p.material_layout = value["material_layout"];
+
+        p.object_parameter = value["object_parameter"];
+        p.pass_parameter = value["pass_parameter"];
+        p.material_parameter = value["material_parameter"];
+
         p.vertex_shader = value["vertex_shader"];
         p.pixel_shader = value["pixel_shader"];
+
+        std::string primitive_topology = value["primitive_topology"];
+        if (primitive_topology == "line_list")
+            p.primitive_topology = primitive_topology_type::LINE_LIST;
+        else if (primitive_topology == "triangle_list")
+            p.primitive_topology = primitive_topology_type::TRIANGLE_LIST;
     }
 }
 } // namespace ash::graphics

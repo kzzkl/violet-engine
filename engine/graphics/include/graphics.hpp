@@ -3,6 +3,7 @@
 #include "camera.hpp"
 #include "config_parser.hpp"
 #include "context.hpp"
+#include "graphics_debug.hpp"
 #include "graphics_exports.hpp"
 #include "graphics_plugin.hpp"
 #include "render_parameter.hpp"
@@ -11,6 +12,7 @@
 #include "type_trait.hpp"
 #include "view.hpp"
 #include "visual.hpp"
+#include <set>
 
 namespace ash::graphics
 {
@@ -27,7 +29,7 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
 
-    render_pipeline* make_render_pipeline(std::string_view name);
+    std::unique_ptr<render_pipeline> make_render_pipeline(std::string_view name);
 
     std::unique_ptr<render_parameter> make_render_parameter(std::string_view name)
     {
@@ -42,9 +44,16 @@ public:
     }
 
     template <typename Vertex>
-    std::unique_ptr<resource> make_vertex_buffer(const Vertex* data, std::size_t size)
+    std::unique_ptr<resource> make_vertex_buffer(
+        const Vertex* data,
+        std::size_t size,
+        bool dynamic = false)
     {
-        vertex_buffer_desc desc = {data, sizeof(Vertex), size};
+        vertex_buffer_desc desc;
+        if (dynamic)
+            desc = {nullptr, sizeof(Vertex), size, dynamic};
+        else
+            desc = {data, sizeof(Vertex), size, dynamic};
         return std::unique_ptr<resource>(m_factory->make_vertex_buffer(desc));
     }
 
@@ -57,11 +66,17 @@ public:
 
     std::unique_ptr<resource> make_texture(std::string_view file);
 
+    graphics_debug& debug() { return *m_debug; }
+
 private:
     bool initialize_resource();
+    void initialize_debug();
 
     void update();
     void render();
+
+    void update_debug();
+    void render_debug();
 
     graphics_plugin m_plugin;
     renderer* m_renderer;
@@ -72,9 +87,11 @@ private:
 
     std::unique_ptr<render_parameter> m_parameter_pass;
 
-    interface_map<render_pipeline> m_render_pipeline;
-    interface_map<render_parameter> m_parameters;
+    std::set<render_pipeline*> m_render_pipelines;
 
     config_parser m_config;
+
+    std::unique_ptr<graphics_debug> m_debug;
+    std::unique_ptr<render_pipeline> m_debug_pipeline;
 };
 } // namespace ash::graphics

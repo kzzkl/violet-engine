@@ -43,18 +43,27 @@ bool graphics::initialize(const dictionary& config)
     }
 
     initialize_resource();
+    initialize_debug();
 
     auto& task = module<task::task_manager>();
     auto scene_task = task.find("scene");
     auto render_task = task.schedule("render", [this]() {
         update();
 
+        if (!m_debug->empty())
+            update_debug();
+
         m_renderer->begin_frame();
         render();
+
+        if (!m_debug->empty())
+            render_debug();
+
         m_renderer->end_frame();
 
-        for (auto& [name, group] : m_render_pipeline)
-            group->clear();
+        for (auto pipeline : m_render_pipelines)
+            pipeline->clear();
+        m_render_pipelines.clear();
     });
     render_task->add_dependency(*scene_task);
 
@@ -66,59 +75,63 @@ bool graphics::initialize(const dictionary& config)
     return true;
 }
 
-render_pipeline* graphics::make_render_pipeline(std::string_view name)
+std::unique_ptr<render_pipeline> graphics::make_render_pipeline(std::string_view name)
 {
-    auto iter = m_render_pipeline.find(name.data());
-    if (iter != m_render_pipeline.end())
-        return iter->second.get();
-
     auto [found, desc, config] = m_config.find_desc<pipeline_desc>(name);
     if (!found)
         return nullptr;
 
     // make layout
     pipeline_layout_desc layout_desc = {};
-    layout_desc.size = 3;
+    layout_desc.size = 0;
 
+    if (config->object_parameter != "none")
     {
+        ASH_ASSERT(config->object_parameter == "ash_object");
+
         auto [object_fount, object_desc, _] =
-            m_config.find_desc<pipeline_parameter_desc>("ash_object");
+            m_config.find_desc<pipeline_parameter_desc>(config->object_parameter);
         if (!object_fount)
         {
-            log::error("object layout no found: ash_object");
+            log::error("object layout no found: {}", config->object_parameter);
             return nullptr;
         }
-        layout_desc.data[0] = object_desc;
+        layout_desc.data[layout_desc.size] = object_desc;
+        ++layout_desc.size;
     }
 
+    if (config->material_parameter != "none")
     {
         auto [material_found, material_desc, _] =
-            m_config.find_desc<pipeline_parameter_desc>(config->material_layout);
+            m_config.find_desc<pipeline_parameter_desc>(config->material_parameter);
         if (!material_found)
         {
-            log::error("material no found: {}", config->material_layout);
+            log::error("material no found: {}", config->material_parameter);
             return nullptr;
         }
-        layout_desc.data[1] = material_desc;
+        layout_desc.data[layout_desc.size] = material_desc;
+        ++layout_desc.size;
     }
 
+    if (config->pass_parameter != "none")
     {
-        auto [pass_found, pass_desc, _] = m_config.find_desc<pipeline_parameter_desc>("ash_pass");
+        ASH_ASSERT(config->pass_parameter == "ash_pass");
+
+        auto [pass_found, pass_desc, _] =
+            m_config.find_desc<pipeline_parameter_desc>(config->pass_parameter);
         if (!pass_found)
         {
-            log::error("pass layout no found: ash_pass");
+            log::error("pass layout no found: {}", config->pass_parameter);
             return nullptr;
         }
-        layout_desc.data[2] = pass_desc;
+        layout_desc.data[layout_desc.size] = pass_desc;
+        ++layout_desc.size;
     }
 
     pipeline_layout* layout = m_factory->make_pipeline_layout(layout_desc);
     desc.layout = layout;
 
-    auto pipeline = std::make_unique<render_pipeline>(layout, m_factory->make_pipeline(desc));
-
-    m_render_pipeline[name.data()] = std::move(pipeline);
-    return m_render_pipeline[name.data()].get();
+    return std::make_unique<render_pipeline>(layout, m_factory->make_pipeline(desc));
 }
 
 std::unique_ptr<resource> graphics::make_texture(std::string_view file)
@@ -141,6 +154,29 @@ bool graphics::initialize_resource()
 {
     m_parameter_pass = make_render_parameter("ash_pass");
     return true;
+}
+
+void graphics::initialize_debug()
+{
+    vertex_buffer_desc vertex_desc = {};
+    vertex_desc.dynamic = true;
+    vertex_desc.vertex_size = sizeof(graphics_debug::vertex);
+    vertex_desc.vertex_count = 2048;
+    vertex_desc.vertices = nullptr;
+
+    std::vector<resource*> vertex_buffer(m_config.frame_resource());
+
+    for (auto& buffer : vertex_buffer)
+        buffer = make_vertex_buffer<graphics_debug::vertex>(nullptr, 2048, true).release();
+
+    std::vector<std::uint16_t> index_data(4096);
+    for (std::uint16_t i = 0; i < 4096; ++i)
+        index_data[i] = i;
+
+    resource* index_buffer = make_index_buffer(index_data.data(), index_data.size()).release();
+
+    m_debug = std::make_unique<graphics_debug>(vertex_buffer, index_buffer);
+    m_debug_pipeline = make_render_pipeline("debug");
 }
 
 void graphics::update()
@@ -200,6 +236,7 @@ void graphics::update()
         {
             if (visual.material[i].pipeline == nullptr)
                 continue;
+            m_render_pipelines.insert(visual.material[i].pipeline);
             visual.material[i].pipeline->add(render_unit{
                 visual.vertex_buffer.get(),
                 visual.index_buffer.get(),
@@ -214,7 +251,7 @@ void graphics::update()
 void graphics::render()
 {
     auto command = m_renderer->allocate_command();
-    for (auto& [name, pipeline] : m_render_pipeline)
+    for (auto pipeline : m_render_pipelines)
     {
         command->pipeline(pipeline->pipeline());
         command->layout(pipeline->layout());
@@ -237,5 +274,30 @@ void graphics::render()
     }
 
     m_renderer->execute(command);
+}
+
+void graphics::update_debug()
+{
+    m_debug->sync();
+}
+
+void graphics::render_debug()
+{
+    auto command = m_renderer->allocate_command();
+
+    command->pipeline(m_debug_pipeline->pipeline());
+    command->layout(m_debug_pipeline->layout());
+    command->parameter(0, m_parameter_pass->parameter());
+    command->draw(
+        m_debug->vertex_buffer(),
+        m_debug->index_buffer(),
+        0,
+        m_debug->vertex_count() * 2,
+        primitive_topology_type::LINE_LIST,
+        m_renderer->back_buffer());
+
+    m_renderer->execute(command);
+
+    m_debug->clear();
 }
 } // namespace ash::graphics
