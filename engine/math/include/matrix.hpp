@@ -1,6 +1,7 @@
 #pragma once
 
 #include "misc.hpp"
+#include "quaternion.hpp"
 #include "simd.hpp"
 #include "type.hpp"
 #include "vector.hpp"
@@ -271,6 +272,27 @@ public:
             vector_type{translation[0],     translation[1],     translation[2],     1.0f}
         };
     }
+
+    static inline void decompose(
+        const matrix_type& m,
+        vector_type& scale,
+        vector_type& rotation,
+        vector_type& translation)
+    {
+        scale[0] = vector_plain::length(m[0]);
+        scale[1] = vector_plain::length(m[1]);
+        scale[2] = vector_plain::length(m[2]);
+
+        matrix_type r = {
+            vector_plain::scale(m[0], 1.0f / scale[0]),
+            vector_plain::scale(m[1], 1.0f / scale[1]),
+            vector_plain::scale(m[2], 1.0f / scale[2]),
+            {0.0f, 0.0f, 0.0f, 1.0f}
+        };
+        rotation = quaternion_plain::rotation_matrix(r);
+
+        translation = m[3];
+    }
 };
 
 class matrix_simd
@@ -500,6 +522,30 @@ public:
         result[3] = _mm_add_ps(simd::identity_row<3>(), t);
 
         return result;
+    }
+
+    static inline void decompose(
+        const matrix_type& m,
+        vector_type& scale,
+        vector_type& rotation,
+        vector_type& translation)
+    {
+        __m128 s0 = vector_simd::length_v(m[0]);
+        __m128 s1 = vector_simd::length_v(m[0]);
+        __m128 s2 = vector_simd::length_v(m[0]);
+
+        scale = _mm_and_ps(simd::mask<0x1000>(), s0);
+        scale = _mm_add_ps(scale, _mm_and_ps(simd::mask<0x0100>(), s1));
+        scale = _mm_add_ps(scale, _mm_and_ps(simd::mask<0x0100>(), s2));
+
+        matrix_type r = {
+            _mm_div_ps(m[0], s0),
+            _mm_div_ps(m[1], s1),
+            _mm_div_ps(m[2], s2),
+            simd::identity_row<3>()};
+        rotation = quaternion_simd::rotation_matrix(r);
+
+        translation = m[3];
     }
 };
 } // namespace ash::math

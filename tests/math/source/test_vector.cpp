@@ -54,6 +54,18 @@ TEST_CASE("vector normalize", "[vector]")
     float4 a = {1.0f, 2.0f, 3.0f, 0.0f};
     CHECK(equal(vector::normalize(a), float4{0.267261237f, 0.534522474f, 0.801783681f, 0.0f}));
 }
+
+TEST_CASE("vector sqrt", "[vector]")
+{
+    float4 a = {1.0f, 2.0f, 3.0f, 0.0f};
+    CHECK(equal(vector::sqrt(a), float4{1.0f, 1.414213562f, 1.732050807f, 0.0f}));
+}
+
+TEST_CASE("vector reciprocal sqrt", "[vector]")
+{
+    float4 a = {1.0f, 2.0f, 3.0f, 4.0f};
+    CHECK(equal(vector::reciprocal_sqrt(a), float4{1.0f, 0.707106781f, 0.577350269f, 0.5f}));
+}
 } // namespace math_plain
 
 namespace math_simd
@@ -117,6 +129,18 @@ TEST_CASE("simd vector normalize", "[vector][simd]")
 {
     float4_simd a = simd::set(1.0f, 2.0f, 3.0f, 0.0f);
     CHECK(equal(vector::normalize(a), simd::set(0.267261237f, 0.534522474f, 0.801783681f, 0.0f)));
+}
+
+TEST_CASE("simd vector sqrt", "[vector][simd]")
+{
+    float4_simd a = simd::set(1.0f, 2.0f, 3.0f, 0.0f);
+    CHECK(equal(vector::sqrt(a), simd::set(1.0f, 1.414213562f, 1.732050807f, 0.0f)));
+}
+
+TEST_CASE("simd vector reciprocal sqrt", "[vector][simd]")
+{
+    float4_simd a = simd::set(1.0f, 2.0f, 3.0f, 4.0f);
+    CHECK(equal(vector::reciprocal_sqrt(a), simd::set(1.0f, 0.707106781f, 0.577350269f, 0.5f)));
 }
 } // namespace math_simd
 } // namespace ash::test

@@ -44,7 +44,10 @@ public:
         return {a[0] - b[0], a[1] - b[1], a[2] - b[2], a[3] - b[3]};
     }
 
-    inline static float dot(const vector2& a, const vector2& b) { return a[0] * b[0] + a[1] * b[1]; }
+    inline static float dot(const vector2& a, const vector2& b)
+    {
+        return a[0] * b[0] + a[1] * b[1];
+    }
 
     inline static float dot(const vector3& a, const vector3& b)
     {
@@ -103,6 +106,16 @@ public:
     {
         float s = 1.0f / length(v);
         return scale(v, s);
+    }
+
+    inline static vector_type sqrt(const vector_type& v)
+    {
+        return {sqrtf(v[0]), sqrtf(v[1]), sqrtf(v[2]), sqrtf(v[3])};
+    }
+
+    inline static vector_type reciprocal_sqrt(const vector_type& v)
+    {
+        return {1.0f / sqrtf(v[0]), 1.0f / sqrtf(v[1]), 1.0f / sqrtf(v[2]), 1.0f / sqrtf(v[3])};
     }
 };
 
@@ -180,5 +193,17 @@ public:
         t1 = _mm_sqrt_ps(t1);
         return _mm_div_ps(v, t1);
     }
+
+    inline static vector_type sqrt(const vector_type& v) { return _mm_sqrt_ps(v); }
+
+    inline static vector_type reciprocal_sqrt(const vector_type& v)
+    {
+        __m128 sqrt = _mm_sqrt_ps(v);
+        __m128 one = simd::set(1.0f);
+
+        return _mm_div_ps(one, sqrt);
+    }
+
+    inline static vector_type reciprocal_sqrt_fast(const vector_type& v) { return _mm_rsqrt_ps(v); }
 };
 } // namespace ash::math
