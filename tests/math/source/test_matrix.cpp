@@ -6,7 +6,7 @@ namespace ash::test
 {
 namespace math_plain
 {
-TEST_CASE("Matrix mul", "[matrix]")
+TEST_CASE("matrix_plain::mul", "[matrix]")
 {
     float4x4 a = {
         float4{1.0f,  2.0f,  3.0f,  4.0f },
@@ -35,7 +35,7 @@ TEST_CASE("Matrix mul", "[matrix]")
     CHECK(equal(matrix::mul(v, a), float4{38.0f, 44.0f, 50.0f, 56.0f}));
 }
 
-TEST_CASE("Matrix scale", "[matrix]")
+TEST_CASE("matrix_plain::scale", "[matrix]")
 {
     float4x4 a = {
         float4{1.0f,  2.0f,  3.0f,  4.0f },
@@ -54,7 +54,7 @@ TEST_CASE("Matrix scale", "[matrix]")
     }));
 }
 
-TEST_CASE("Matrix transpose", "[matrix]")
+TEST_CASE("matrix_plain::transpose", "[matrix]")
 {
     float4x4 a = {
         float4{1.0f,  2.0f,  3.0f,  4.0f },
@@ -74,7 +74,7 @@ TEST_CASE("Matrix transpose", "[matrix]")
     }));
 }
 
-TEST_CASE("Determinant of matrix", "[matrix]")
+TEST_CASE("matrix_plain::determinant", "[matrix]")
 {
     float4x4 m4x4 = {
         float4{1.0f, 7.0f, 8.0f, 5.0f},
@@ -85,7 +85,26 @@ TEST_CASE("Determinant of matrix", "[matrix]")
     CHECK(equal(matrix::determinant(m4x4), -300.0f));
 }
 
-TEST_CASE("Identity matrix", "[matrix]")
+TEST_CASE("matrix_plain::inverse", "[matrix]")
+{
+    float4x4 m = {
+        float4{0.886326671f,  0.401883811f,   -0.230031431f, 0.0f},
+        float4{-0.366907388f, 0.912558973f,   0.180596486f,  0.0f},
+        float4{0.282496035f,  -0.0756672472f, 0.956279457f,  0.0f},
+        float4{0.0f,          0.0f,           0.0f,          1.0f}
+    };
+
+    CHECK(equal(
+        matrix::inverse(m),
+        float4x4{
+            float4{0.886326671f,  -0.366907388f, 0.282496035f,   0.0f},
+            float4{0.401883781f,  0.912558913f,  -0.0756672546f, 0.0f},
+            float4{-0.230031416f, 0.180596486f,  0.956279516f,   0.0f},
+            float4{0.0f,          0.0f,          0.0f,           1.0f}
+    }));
+}
+
+TEST_CASE("matrix_plain::identity", "[matrix]")
 {
     float4x4 result = matrix::identity();
     CHECK(equal(
@@ -98,7 +117,7 @@ TEST_CASE("Identity matrix", "[matrix]")
     }));
 }
 
-TEST_CASE("Scaling matrix", "[matrix]")
+TEST_CASE("matrix_plain::scaling", "[matrix]")
 {
     float4x4 result = matrix::scaling(float4{0.5f, 1.0f, 2.0f, 0.0f});
     CHECK(equal(
@@ -111,7 +130,7 @@ TEST_CASE("Scaling matrix", "[matrix]")
     }));
 }
 
-TEST_CASE("Rotation matrix around axis", "[matrix]")
+TEST_CASE("matrix_plain::rotation_axis", "[matrix]")
 {
     float4 axis = vector::normalize(float4{1.0f, 2.0f, 3.0f, 0.0f});
     float4x4 result = matrix::rotation_axis(axis, 0.5f);
@@ -156,7 +175,7 @@ TEST_CASE("Rotation matrix around axis", "[matrix]")
     }));
 }
 
-TEST_CASE("Quaternion to matrix", "[matrix]")
+TEST_CASE("matrix_plain::rotation_quaternion", "[matrix]")
 {
     float4 quat = {0.0661214888f, 0.132242978f, 0.198364466f, 0.968912423f};
     float4x4 result = matrix::rotation_quaternion(quat);
@@ -171,7 +190,7 @@ TEST_CASE("Quaternion to matrix", "[matrix]")
     }));
 }
 
-TEST_CASE("Affine Transformation Matrix", "[matrix]")
+TEST_CASE("matrix_plain::affine_transform", "[matrix]")
 {
     float4 scale = {0.5f, 0.2f, 0.3f, 0.0f};
     float4 rotation = {0.0661214888f, 0.132242978f, 0.198364466f, 0.968912423f};
@@ -188,11 +207,27 @@ TEST_CASE("Affine Transformation Matrix", "[matrix]")
             float4{6.0f,           5.0f,           4.5f,          1.0f}
     }));
 }
+
+TEST_CASE("matrix_plain::decompose", "[matrix]")
+{
+    float4x4 m = {
+        float4{0.443163335f,   0.200941905f,   -0.115015715f, 0.0f},
+        float4{-0.0733814761f, 0.182511792f,   0.0361192971f, 0.0f},
+        float4{0.0847488120f,  -0.0227001756f, 0.286883861f,  0.0f},
+        float4{6.0f,           5.0f,           4.5f,          1.0f}
+    };
+
+    float4 scale = {}, rotation = {}, translation = {};
+    matrix::decompose(m, scale, rotation, translation);
+    CHECK(equal(scale, float4{0.5f, 0.2f, 0.3f, 0.0f}));
+    CHECK(equal(rotation, float4{0.0661214888f, 0.132242978f, 0.198364466f, 0.968912423f}));
+    CHECK(equal(translation, float4{6.0f, 5.0f, 4.5f, 1.0f}));
+}
 } // namespace math_plain
 
 namespace math_simd
 {
-TEST_CASE("Matrix mul, SIMD", "[matrix][simd]")
+TEST_CASE("matrix_simd::mul", "[matrix][simd]")
 {
     float4x4_simd a = simd::set(
         1.0f,
@@ -249,7 +284,7 @@ TEST_CASE("Matrix mul, SIMD", "[matrix][simd]")
     CHECK(equal(result_v, float4{38.0f, 44.0f, 50.0f, 56.0f}));
 }
 
-TEST_CASE("Matrix scale, SIMD", "[matrix][simd]")
+TEST_CASE("matrix_simd::scale", "[matrix][simd]")
 {
     float4x4_simd a = simd::set(
         1.0f,
@@ -282,7 +317,7 @@ TEST_CASE("Matrix scale, SIMD", "[matrix][simd]")
     }));
 }
 
-TEST_CASE("Matrix transpose, SIMD", "[matrix][simd]")
+TEST_CASE("matrix_simd::transpose", "[matrix][simd]")
 {
     float4x4_simd a = simd::set(
         1.0f,
@@ -315,7 +350,7 @@ TEST_CASE("Matrix transpose, SIMD", "[matrix][simd]")
     }));
 }
 
-TEST_CASE("Identity matrix, SIMD", "[matrix][simd]")
+TEST_CASE("matrix_simd::identity", "[matrix][simd]")
 {
     float4x4_simd a = matrix::identity();
 
@@ -332,7 +367,7 @@ TEST_CASE("Identity matrix, SIMD", "[matrix][simd]")
     }));
 }
 
-TEST_CASE("Quaternion to matrix, SIMD", "[matrix][simd]")
+TEST_CASE("matrix_simd::rotation_quaternion", "[matrix][simd]")
 {
     float4_simd quat = simd::set(0.0661214888f, 0.132242978f, 0.198364466f, 0.968912423f);
     float4x4_simd m = matrix::rotation_quaternion(quat);
@@ -350,7 +385,7 @@ TEST_CASE("Quaternion to matrix, SIMD", "[matrix][simd]")
     }));
 }
 
-TEST_CASE("Affine Transformation Matrix, SIMD", "[matrix]")
+TEST_CASE("matrix_simd::affine_transform", "[matrix][simd]")
 {
     float4_simd scale = simd::set(0.5f, 0.2f, 0.3f, 0.0f);
     float4_simd rotation = simd::set(0.0661214888f, 0.132242978f, 0.198364466f, 0.968912423f);
@@ -367,6 +402,33 @@ TEST_CASE("Affine Transformation Matrix, SIMD", "[matrix]")
             float4{0.0847488120f,  -0.0227001756f, 0.286883861f,  0.0f},
             float4{6.0f,           5.0f,           4.5f,          1.0f}
     }));
+}
+
+TEST_CASE("matrix_simd::decompose", "[matrix][simd]")
+{
+    float4x4_simd m = simd::set(
+        0.443163335f,
+        0.200941905f,
+        -0.115015715f,
+        0.0f,
+        -0.0733814761f,
+        0.182511792f,
+        0.0361192971f,
+        0.0f,
+        0.0847488120f,
+        -0.0227001756f,
+        0.286883861f,
+        0.0f,
+        6.0f,
+        5.0f,
+        4.5f,
+        1.0f);
+
+    float4_simd scale, rotation, translation;
+    matrix::decompose(m, scale, rotation, translation);
+    CHECK(equal(scale, simd::set(0.5f, 0.2f, 0.3f, 0.0f)));
+    CHECK(equal(rotation, simd::set(0.0661214888f, 0.132242978f, 0.198364466f, 0.968912423f)));
+    CHECK(equal(translation, simd::set(6.0f, 5.0f, 4.5f, 1.0f)));
 }
 } // namespace math_simd
 } // namespace ash::test

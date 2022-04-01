@@ -4,7 +4,7 @@ using namespace ash::math;
 
 namespace ash::test
 {
-TEST_CASE("get mask", "[simd]")
+TEST_CASE("simd::mask", "[simd]")
 {
     auto v1 = simd::mask<0x1101>();
     auto v2 = simd::set(0xFFFFFFFF, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF);
@@ -16,7 +16,7 @@ TEST_CASE("get mask", "[simd]")
     simd::store(v2, f2);
 }
 
-TEST_CASE("shuffle", "[simd]")
+TEST_CASE("simd::shuffle", "[simd]")
 {
     auto v = simd::set(1.0f, 2.0f, 3.0f, 4.0f);
     auto v2 = simd::shuffle<1, 1, 2, 2>(v);
@@ -27,7 +27,7 @@ TEST_CASE("shuffle", "[simd]")
     CHECK(equal(result, float4{2.0f, 2.0f, 3.0f, 3.0f}));
 }
 
-TEST_CASE("store", "[simd]")
+TEST_CASE("simd::store", "[simd]")
 {
     float4_simd v = simd::set(1.0f, 2.0f, 3.0f, 4.0f);
     float4 r4;

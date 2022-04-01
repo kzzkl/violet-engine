@@ -5,7 +5,7 @@ using namespace ash::math;
 
 namespace ash::test
 {
-TEST_CASE("sin cos", "[misc]")
+TEST_CASE("sin_cos", "[misc]")
 {
     auto [s, c] = sin_cos(0.358f);
     CHECK(equal(s, sin(0.358f)));

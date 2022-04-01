@@ -531,12 +531,12 @@ public:
         vector_type& translation)
     {
         __m128 s0 = vector_simd::length_v(m[0]);
-        __m128 s1 = vector_simd::length_v(m[0]);
-        __m128 s2 = vector_simd::length_v(m[0]);
+        __m128 s1 = vector_simd::length_v(m[1]);
+        __m128 s2 = vector_simd::length_v(m[2]);
 
         scale = _mm_and_ps(simd::mask<0x1000>(), s0);
         scale = _mm_add_ps(scale, _mm_and_ps(simd::mask<0x0100>(), s1));
-        scale = _mm_add_ps(scale, _mm_and_ps(simd::mask<0x0100>(), s2));
+        scale = _mm_add_ps(scale, _mm_and_ps(simd::mask<0x0010>(), s2));
 
         matrix_type r = {
             _mm_div_ps(m[0], s0),

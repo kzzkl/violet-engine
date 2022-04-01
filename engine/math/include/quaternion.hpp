@@ -25,7 +25,7 @@ public:
         auto [p_sin, p_cos] = sin_cos(pitch * 0.5f);
         auto [b_sin, b_cos] = sin_cos(bank * 0.5f);
 
-        return {
+        return quaternion_type{
             h_cos * p_sin * b_cos + h_sin * p_cos * b_sin,
             h_sin * p_cos * b_cos - h_cos * p_sin * b_sin,
             h_cos * p_cos * b_sin - h_sin * p_sin * b_cos,
@@ -82,11 +82,6 @@ public:
             a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]};
     }
 
-    static inline float dot(const quaternion_type& a, const quaternion_type& b)
-    {
-        return vector_plain::dot(a, b);
-    }
-
     static inline quaternion_type slerp(const quaternion_type& a, const quaternion_type& b, float t)
     {
         // TODO
@@ -115,10 +110,13 @@ public:
         return simd::load(result);
     }
 
-    static inline quaternion_type rotation_matrix(const matrix_type& matrix)
+    static inline quaternion_type rotation_matrix(const matrix_type& m)
     {
         // TODO
-        return {};
+        float4x4 temp;
+        simd::store(m, temp);
+        float4 q = quaternion_plain::rotation_matrix(temp);
+        return simd::load(q);
     }
 
     static inline quaternion_type mul(const quaternion_type& a, const quaternion_type& b)
