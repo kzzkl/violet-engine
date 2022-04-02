@@ -119,11 +119,10 @@ private:
         v.object = graphics.make_render_parameter("ash_object");
 
         transform& actor_transform = world.component<transform>(m_actor);
-        actor_transform.position = {0.0f, 0.0f, 0.0f};
-        actor_transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
-        actor_transform.scaling = {1.0f, 1.0f, 1.0f};
-        actor_transform.node = std::make_unique<scene_node>();
-        actor_transform.node->parent(module<ash::scene::scene>().root_node());
+        actor_transform.position(0.0f, 0.0f, 0.0f);
+        actor_transform.rotation(0.0f, 0.0f, 0.0f, 1.0f);
+        actor_transform.scaling(1.0f, 1.0f, 1.0f);
+        actor_transform.node()->parent(module<ash::scene::scene>().root_node());
     }
 
     void initialize_camera()
@@ -136,21 +135,27 @@ private:
         c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
 
         transform& c_transform = world.component<transform>(m_camera);
-        c_transform.position = {0.0f, 16.0f, -38.0f};
-        c_transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
-        c_transform.scaling = {1.0f, 1.0f, 1.0f};
-        c_transform.node = std::make_unique<scene_node>();
-        c_transform.node->parent(module<ash::scene::scene>().root_node());
+        c_transform.position(0.0f, 16.0f, -38.0f);
+        c_transform.rotation(0.0f, 0.0f, 0.0f, 1.0f);
+        c_transform.scaling(1.0f, 1.0f, 1.0f);
+        c_transform.node()->parent(module<ash::scene::scene>().root_node());
     }
 
     void initialize_task()
     {
         auto& task = module<task::task_manager>();
 
-        auto update_task = task.schedule("test update", [this]() { update(); });
-        update_task->add_dependency(*task.find("window"));
+        auto update_task = task.schedule("test update", [this]() {
+            module<ash::scene::scene>().sync_local();
+            update();
+        });
 
-        task.find("scene")->add_dependency(*update_task);
+        auto window_task = task.find(ash::window::window::TASK_WINDOW_TICK);
+        auto render_task = task.find(ash::graphics::graphics::TASK_RENDER);
+
+        window_task->add_dependency(*task.find("root"));
+        update_task->add_dependency(*window_task);
+        render_task->add_dependency(*update_task);
     }
 
     void update_camera(float delta)
@@ -185,8 +190,8 @@ private:
             m_heading += mouse.x() * m_rotate_speed * delta;
             m_pitch += mouse.y() * m_rotate_speed * delta;
             m_pitch = std::clamp(m_pitch, -math::PI_PIDIV2, math::PI_PIDIV2);
-            camera_transform.rotation =
-                math::quaternion_plain::rotation_euler(m_heading, m_pitch, 0.0f);
+            camera_transform.rotation(
+                math::quaternion_plain::rotation_euler(m_heading, m_pitch, 0.0f));
         }
 
         float x = 0, z = 0;
@@ -199,17 +204,15 @@ private:
         if (keyboard.key(keyboard_key::KEY_A).down())
             x -= 1.0f;
 
-        math::float4_simd s = math::simd::load(camera_transform.scaling);
-        math::float4_simd r = math::simd::load(camera_transform.rotation);
-        math::float4_simd t = math::simd::load(camera_transform.position);
+        math::float4_simd s = math::simd::load(camera_transform.scaling());
+        math::float4_simd r = math::simd::load(camera_transform.rotation());
+        math::float4_simd t = math::simd::load(camera_transform.position());
 
         math::float4x4_simd affine = math::matrix_simd::affine_transform(s, r, t);
         math::float4_simd forward =
             math::simd::set(x * m_move_speed * delta, 0.0f, z * m_move_speed * delta, 0.0f);
         forward = math::matrix_simd::mul(forward, affine);
-        math::simd::store(math::vector_simd::add(forward, t), camera_transform.position);
-
-        camera_transform.node->dirty = true;
+        camera_transform.position(math::vector_simd::add(forward, t));
     }
 
     void update_actor(float delta)
@@ -224,8 +227,9 @@ private:
             move -= 1.0f;
 
         transform& actor_transform = world.component<transform>(m_actor);
-        actor_transform.position[0] += move * m_move_speed * delta;
-        actor_transform.node->dirty = true;
+        math::float3 new_position = actor_transform.position();
+        new_position[0] += move * m_move_speed * delta;
+        actor_transform.position(new_position);
     }
 
     void update()

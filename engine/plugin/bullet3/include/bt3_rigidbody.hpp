@@ -30,6 +30,8 @@ class bt3_rigidbody : public rigidbody_interface
 public:
     bt3_rigidbody(const rigidbody_desc& desc);
 
+    virtual void mass(float mass) override;
+
     virtual void transform(const math::float4x4& world_matrix) override;
     virtual const math::float4x4& transform() const noexcept override;
 

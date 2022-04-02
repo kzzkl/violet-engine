@@ -27,17 +27,32 @@ public:
     {
         ash::ecs::world& world = module<ash::ecs::world>();
 
+        // Create rigidbody shape.
+        collision_shape_desc desc;
+        desc.type = collision_shape_type::BOX;
+        desc.box.length = 1.0f;
+        desc.box.height = 1.0f;
+        desc.box.width = 1.0f;
+        m_cube_shape = module<ash::physics::physics>().make_shape(desc);
+
+        desc.type = collision_shape_type::BOX;
+        desc.box.length = 10.0f;
+        desc.box.height = 0.05f;
+        desc.box.width = 10.0f;
+        m_plane_shape = module<ash::physics::physics>().make_shape(desc);
+
         // Create cube.
         m_cube = world.create();
         world.add<rigidbody, transform, visual>(m_cube);
 
         transform& t = world.component<transform>(m_cube);
         t.position(1.0f, 0.0f, 0.0f);
+        t.rotation(math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f));
         t.node()->parent(module<ash::scene::scene>().root_node());
 
         rigidbody& r = world.component<rigidbody>(m_cube);
-        m_shape = module<ash::physics::physics>().make_shape();
-        r.shape = m_shape.get();
+        r.shape(m_cube_shape.get());
+        r.mass(1.0f);
 
         geometry_data cube_data = geometry::box(1.0f, 1.0f, 1.0f);
         m_pipeline = module<ash::graphics::graphics>().make_render_pipeline("geometry");
@@ -61,10 +76,12 @@ public:
         world.add<rigidbody, transform>(m_plane);
 
         transform& pt = world.component<transform>(m_plane);
+        pt.position(0.0f, -3.0f, 0.0f);
         pt.node()->parent(module<ash::scene::scene>().root_node());
 
         rigidbody& pr = world.component<rigidbody>(m_plane);
-        pr.shape = m_shape.get();
+        pr.shape(m_plane_shape.get());
+        pr.mass(0.0f);
 
         initialize_task();
         initialize_camera();
@@ -179,7 +196,8 @@ private:
         camera_transform.position(math::vector_simd::add(forward, t));
     }
 
-    std::unique_ptr<collision_shape_interface> m_shape;
+    std::unique_ptr<collision_shape_interface> m_cube_shape;
+    std::unique_ptr<collision_shape_interface> m_plane_shape;
 
     std::unique_ptr<render_pipeline> m_pipeline;
 

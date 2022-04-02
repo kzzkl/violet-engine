@@ -15,7 +15,6 @@ public:
 
     transform& operator=(transform&& other) noexcept;
 
-    const math::float3& position() const noexcept { return m_position; }
     void position(float x, float y, float z) noexcept
     {
         m_position = {x, y, z};
@@ -31,8 +30,8 @@ public:
         math::simd::store(p, m_position);
         m_node->mark_dirty();
     }
+    const math::float3& position() const noexcept { return m_position; }
 
-    const math::float4& rotation() const noexcept { return m_rotation; }
     void rotation(float x, float y, float z, float w) noexcept
     {
         m_rotation = {x, y, z, w};
@@ -48,8 +47,8 @@ public:
         math::simd::store(r, m_rotation);
         m_node->mark_dirty();
     }
+    const math::float4& rotation() const noexcept { return m_rotation; }
 
-    const math::float3& scaling() const noexcept { return m_scaling; }
     void scaling(float x, float y, float z) noexcept
     {
         m_scaling = {x, y, z};
@@ -65,6 +64,7 @@ public:
         math::simd::store(s, m_scaling);
         m_node->mark_dirty();
     }
+    const math::float3& scaling() const noexcept { return m_scaling; }
 
     scene_node* node() const noexcept { return m_node.get(); }
 

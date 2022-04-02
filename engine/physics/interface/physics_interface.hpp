@@ -19,8 +19,8 @@ struct collision_shape_desc
         struct
         {
             float length;
-            float width;
             float height;
+            float width;
         } box;
 
         struct
@@ -60,6 +60,8 @@ class rigidbody_interface
 {
 public:
     virtual ~rigidbody_interface() = default;
+
+    virtual void mass(float mass) = 0;
 
     virtual void transform(const math::float4x4& world_matrix) = 0;
     virtual const math::float4x4& transform() const noexcept = 0;

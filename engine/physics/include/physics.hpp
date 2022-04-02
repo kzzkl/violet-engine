@@ -22,25 +22,9 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
 
-    std::unique_ptr<collision_shape_interface> make_shape()
+    std::unique_ptr<collision_shape_interface> make_shape(const collision_shape_desc& desc)
     {
-        collision_shape_desc desc;
-        desc.type = collision_shape_type::BOX;
-        desc.box.length = 1.0f;
-        desc.box.width = 1.0f;
-        desc.box.height = 1.0f;
         return std::unique_ptr<collision_shape_interface>(m_factory->make_collision_shape(desc));
-    }
-
-    std::unique_ptr<rigidbody_interface> make_rigidbody(
-        collision_shape_interface* shape,
-        const math::float4x4& world_matrix)
-    {
-        rigidbody_desc desc;
-        desc.mass = 1.0f;
-        desc.shape = shape;
-        desc.world_matrix = world_matrix;
-        return std::unique_ptr<rigidbody_interface>(m_factory->make_rigidbody(desc));
     }
 
 private:

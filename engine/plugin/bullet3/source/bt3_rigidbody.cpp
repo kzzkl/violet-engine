@@ -37,6 +37,13 @@ bt3_rigidbody::bt3_rigidbody(const rigidbody_desc& desc)
     m_rigidbody = std::make_unique<btRigidBody>(info);
 }
 
+void bt3_rigidbody::mass(float mass)
+{
+    btVector3 inertia;
+    m_rigidbody->getCollisionShape()->calculateLocalInertia(mass, inertia);
+    m_rigidbody->setMassProps(mass, inertia);
+}
+
 void bt3_rigidbody::transform(const math::float4x4& world_matrix)
 {
     btTransform transform;

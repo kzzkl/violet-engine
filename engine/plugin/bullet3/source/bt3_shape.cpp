@@ -8,7 +8,7 @@ bt3_shape::bt3_shape(const collision_shape_desc& desc)
     {
     case collision_shape_type::BOX:
         m_shape = std::make_unique<btBoxShape>(
-            btVector3(desc.box.length * 0.5f, desc.box.width * 0.5f, desc.box.height * 0.5f));
+            btVector3(desc.box.length * 0.5f, desc.box.height * 0.5f, desc.box.width * 0.5f));
         break;
     case collision_shape_type::SPHERE:
         m_shape = std::make_unique<btSphereShape>(desc.sphere.radius);

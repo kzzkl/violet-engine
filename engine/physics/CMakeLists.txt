@@ -2,7 +2,8 @@ project(ash-physics)
 
 add_library(${PROJECT_NAME} SHARED
     ./source/physics_plugin.cpp
-    ./source/physics.cpp)
+    ./source/physics.cpp
+    ./source/rigidbody.cpp)
 add_library(ash::physics ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}

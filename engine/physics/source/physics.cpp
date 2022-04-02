@@ -39,7 +39,7 @@ bool physics::initialize(const dictionary& config)
     m_factory = m_plugin.factory();
 
     world_desc desc;
-    desc.gravity = {0.0f, -1.0f, 0.0f};
+    desc.gravity = {0.0f, -10.0f, 0.0f};
     m_world.reset(m_factory->make_world(desc));
 
     auto& task = module<ash::task::task_manager>();
@@ -57,13 +57,19 @@ void physics::simulation()
     module<ash::scene::scene>().sync_local();
 
     m_view->each([this](rigidbody& rigidbody, ash::scene::transform& transform) {
-        if (rigidbody.in_world == transform.node()->in_scene())
+        if (rigidbody.in_world() == transform.node()->in_scene())
             return;
 
         if (transform.node()->in_scene())
         {
             if (rigidbody.interface == nullptr)
-                rigidbody.interface = make_rigidbody(rigidbody.shape, transform.node()->to_world);
+            {
+                rigidbody_desc desc = {};
+                desc.mass = rigidbody.mass();
+                desc.shape = rigidbody.shape();
+                desc.world_matrix = transform.node()->to_world;
+                rigidbody.interface.reset(m_factory->make_rigidbody(desc));
+            }
 
             m_world->add(rigidbody.interface.get());
         }
@@ -72,13 +78,13 @@ void physics::simulation()
             m_world->remove(rigidbody.interface.get());
         }
 
-        rigidbody.in_world = transform.node()->in_scene();
+        rigidbody.in_world(transform.node()->in_scene());
     });
 
     m_world->simulation(module<ash::core::timer>().frame_delta());
 
     m_view->each([this](rigidbody& rigidbody, ash::scene::transform& transform) {
-        if (!rigidbody.in_world)
+        if (!rigidbody.in_world())
             return;
 
         if (rigidbody.interface->updated())
