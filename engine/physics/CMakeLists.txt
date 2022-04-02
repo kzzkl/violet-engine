@@ -1,6 +1,7 @@
 project(ash-physics)
 
 add_library(${PROJECT_NAME} SHARED
+    ./source/physics_plugin.cpp
     ./source/physics.cpp)
 add_library(ash::physics ALIAS ${PROJECT_NAME})
 
@@ -13,7 +14,8 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         ash::core
         ash::math
-        ash::scene)
+        ash::scene
+        debug ash::graphics)
 
 include(GenerateExportHeader)
 generate_export_header(${PROJECT_NAME}

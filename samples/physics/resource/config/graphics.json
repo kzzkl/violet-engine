@@ -1,0 +1,107 @@
+{
+    "graphics": {
+        "vertex_layout": {
+            "pmx": {
+                "attribute": [
+                    {
+                        "name": "POSITION",
+                        "type": "float3",
+                        "index": 0
+                    },
+                    {
+                        "name": "NORMAL",
+                        "type": "float3",
+                        "index": 0
+                    },
+                    {
+                        "name": "UV",
+                        "type": "float2",
+                        "index": 0
+                    },
+                    {
+                        "name": "BONE",
+                        "type": "UINT4",
+                        "index": 0
+                    },
+                    {
+                        "name": "WEIGHT",
+                        "type": "float3",
+                        "index": 0
+                    }
+                ]
+            }
+        },
+        "pipeline_parameter_layout": {
+            "mmd_material": [
+                {
+                    "name": "diffuse",
+                    "type": "float4"
+                },
+                {
+                    "name": "specular",
+                    "type": "float3"
+                },
+                {
+                    "name": "specular_strength",
+                    "type": "float"
+                },
+                {
+                    "name": "toon_mode",
+                    "type": "uint"
+                },
+                {
+                    "name": "spa_mode",
+                    "type": "uint"
+                },
+                {
+                    "name": "tex",
+                    "type": "texture"
+                },
+                {
+                    "name": "toon",
+                    "type": "texture"
+                },
+                {
+                    "name": "spa",
+                    "type": "texture"
+                }
+            ]
+        },
+        "pipeline": {
+            "mmd": {
+                "vertex_layout": "pmx",
+                "object_parameter": "ash_object",
+                "pass_parameter": "ash_pass",
+                "material_parameter": "mmd_material",
+                "vertex_shader": "resource/shader/base.hlsl",
+                "pixel_shader": "resource/shader/base.hlsl",
+                "primitive_topology": "triangle_list"
+            }
+        },
+        "technique": [
+            {
+                "name": "",
+                "render_target": {
+                    "shadow_mapping": "texture",
+                    "render_target": "texture"
+                },
+                "pass": [
+                    {
+                        "name": "pass 1",
+                        "in": {
+                            "object": ""
+                        },
+                        "out": "shadow_mapping"
+                    },
+                    {
+                        "name": "pass 2",
+                        "in": [
+                            "object"
+                        ],
+                        "out": "render_target"
+                    }
+                ]
+            }
+        ]
+    }
+}

@@ -41,6 +41,8 @@ public:
         return do_schedule<task_wrapper<Callable>>(name, type, callable);
     }
 
+    handle schedule_group(std::string_view name, task_type type = task_type::NONE);
+
     void execute(handle task);
 
     void run();

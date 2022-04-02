@@ -74,4 +74,18 @@ public:
 private:
     Callable m_callable;
 };
+
+class task_group : public task
+{
+public:
+    task_group(std::string_view name, task_type type);
+
+    virtual void execute() override;
+
+    void add(task* task);
+    void remove(task* task);
+
+private:
+    std::vector<task*> m_tasks;
+};
 } // namespace ash::task

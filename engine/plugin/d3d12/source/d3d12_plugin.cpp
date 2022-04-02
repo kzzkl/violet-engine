@@ -72,15 +72,14 @@ class d3d12_context_wrapper : public context
 public:
     virtual bool initialize(const context_config& config) override
     {
-        m_factory = std::make_unique<d3d12_factory>();
         return d3d12_context::initialize(config);
     }
 
     virtual renderer_type* renderer() override { return d3d12_context::renderer(); }
-    virtual factory_type* factory() { return m_factory.get(); }
+    virtual factory_type* factory() { return &m_factory; }
 
 private:
-    std::unique_ptr<d3d12_factory> m_factory;
+    d3d12_factory m_factory;
 };
 } // namespace ash::graphics::d3d12
 

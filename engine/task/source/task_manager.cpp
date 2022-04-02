@@ -8,6 +8,11 @@ task_manager::task_manager(std::size_t num_thread) : m_thread_pool(num_thread)
 {
 }
 
+task_manager::handle task_manager::schedule_group(std::string_view name, task_type type)
+{
+    return do_schedule<task_group>(name, type);
+}
+
 void task_manager::execute(handle root)
 {
     auto count = root->reachable_tasks_count();

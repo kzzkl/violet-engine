@@ -22,14 +22,17 @@ public:
 
     inline scene_node* root_node() const noexcept { return m_root_node.get(); }
 
+    void sync_local();
+    void sync_world();
+
     scene& operator=(const scene&) = delete;
 
+    void reset_sync_counter();
 private:
-    void update_hierarchy();
-    void update_to_world();
+
+    std::queue<scene_node*> find_dirty_node() const;
 
     std::unique_ptr<scene_node> m_root_node;
-
     ash::ecs::view<transform>* m_view;
 };
 } // namespace ash::scene

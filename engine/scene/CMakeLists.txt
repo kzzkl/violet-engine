@@ -2,7 +2,8 @@ project(ash-scene)
 
 add_library(${PROJECT_NAME} SHARED
     ./source/scene_node.cpp
-    ./source/scene.cpp)
+    ./source/scene.cpp
+    ./source/transform.cpp)
 add_library(ash::scene ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}

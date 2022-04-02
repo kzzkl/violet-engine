@@ -123,7 +123,7 @@ private:
         actor_transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
         actor_transform.scaling = {1.0f, 1.0f, 1.0f};
         actor_transform.node = std::make_unique<scene_node>();
-        actor_transform.parent = module<ash::scene::scene>().root_node();
+        actor_transform.node->parent(module<ash::scene::scene>().root_node());
     }
 
     void initialize_camera()
@@ -140,7 +140,7 @@ private:
         c_transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
         c_transform.scaling = {1.0f, 1.0f, 1.0f};
         c_transform.node = std::make_unique<scene_node>();
-        c_transform.parent = module<ash::scene::scene>().root_node();
+        c_transform.node->parent(module<ash::scene::scene>().root_node());
     }
 
     void initialize_task()
@@ -263,12 +263,6 @@ private:
 
 int main()
 {
-    ash::math::float4_simd t = ash::math::simd::set(1.0, 2.0f, 3.0f, 0.0f);
-    ash::math::float4_simd r = ash::math::simd::set(2.0, 2.0f, 3.0f, 3.0f);
-    ash::math::float4_simd s = ash::math::simd::set(1.0, 2.0f, 3.0f, 0.0f);
-
-    ash::math::float4x4_simd result = ash::math::matrix_simd::affine_transform(t, r, s);
-
     application app;
     app.install<window>();
     app.install<scene>();

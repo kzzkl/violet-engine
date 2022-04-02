@@ -259,6 +259,21 @@ public:
     }
 
     static inline matrix_type affine_transform(
+        const float3& scale,
+        const vector_type& rotation,
+        const float3& translation)
+    {
+        matrix_type r = rotation_quaternion(rotation);
+
+        return matrix_type{
+            vector_type{scale[0] * r[0][0], scale[0] * r[0][1], scale[0] * r[0][2], 0.0f},
+            vector_type{scale[1] * r[1][0], scale[1] * r[1][1], scale[1] * r[1][2], 0.0f},
+            vector_type{scale[2] * r[2][0], scale[2] * r[2][1], scale[2] * r[2][2], 0.0f},
+            vector_type{translation[0],     translation[1],     translation[2],     1.0f}
+        };
+    }
+
+    static inline matrix_type affine_transform(
         const vector_type& scale,
         const vector_type& rotation,
         const vector_type& translation)

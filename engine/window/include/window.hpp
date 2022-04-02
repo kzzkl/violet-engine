@@ -9,6 +9,7 @@ class WINDOW_API window : public ash::core::submodule
 {
 public:
     static constexpr uuid id = "cc5fc9c8-cecb-4a46-bc4c-9bc094fdb463";
+    static constexpr const char* TASK_WINDOW_TICK = "window tick";
 
 public:
     window();

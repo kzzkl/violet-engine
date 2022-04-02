@@ -2,10 +2,12 @@
 
 namespace ash::scene
 {
-scene::scene() : submodule("scene"), m_root_node(std::make_unique<scene_node>()), m_view(nullptr)
+scene::scene()
+    : submodule("scene"),
+      m_root_node(std::make_unique<scene_node>(nullptr)),
+      m_view(nullptr)
 {
-    m_root_node->dirty = false;
-    m_root_node->in_scene = true;
+    m_root_node->in_scene(true);
 }
 
 bool scene::initialize(const dictionary& config)
@@ -14,71 +16,101 @@ bool scene::initialize(const dictionary& config)
     world.register_component<transform>();
     m_view = world.make_view<transform>();
 
-    auto& task = module<task::task_manager>();
-    auto root_task = task.find("root");
-    auto scene_task = task.schedule("scene", [this]() {
-        update_hierarchy();
-        update_to_world();
-    });
-    scene_task->add_dependency(*root_task);
-
     return true;
 }
 
-void scene::update_hierarchy()
+void scene::sync_local()
 {
-    // Update hierarchy and to parent matrix.
+    // Update to parent matrix.
     m_view->each([](transform& t) {
-        t.node->parent(t.parent);
-        t.node->in_scene = false;
+        if (t.node()->in_scene() && t.node()->dirty())
+        {
+            math::float4_simd scale = math::simd::load(t.scaling());
+            math::float4_simd rotation = math::simd::load(t.rotation());
+            math::float4_simd translation = math::simd::load(t.position());
 
-        math::float4_simd translation = math::simd::load(t.position);
-        math::float4_simd rotation = math::simd::load(t.rotation);
-        math::float4_simd scaling = math::simd::load(t.scaling);
-
-        math::simd::store(
-            math::matrix_simd::affine_transform(scaling, rotation, translation),
-            t.node->to_parent);
+            math::float4x4_simd to_parent =
+                math::matrix_simd::affine_transform(scale, rotation, translation);
+            math::simd::store(to_parent, t.node()->to_parent);
+        }
     });
+
+    // Update dirty node.
+    std::queue<scene_node*> dirty_bfs = find_dirty_node();
+    while (!dirty_bfs.empty())
+    {
+        scene_node* node = dirty_bfs.front();
+        dirty_bfs.pop();
+
+        math::float4x4_simd to_parent = math::simd::load(node->to_parent);
+        math::float4x4_simd parent_to_world = math::simd::load(node->parent()->to_world);
+        math::float4x4_simd to_world = math::matrix_simd::mul(to_parent, parent_to_world);
+        math::simd::store(to_world, node->to_world);
+
+        node->mark_sync();
+
+        for (scene_node* child : node->children())
+            dirty_bfs.push(child);
+    }
 }
 
-void scene::update_to_world()
+void scene::sync_world()
 {
-    // Update to world matrix.
-    std::queue<scene_node*> bfs;
-    bfs.push(m_root_node.get());
-
-    while (!bfs.empty())
+    // Update to parent matrix.
+    std::queue<scene_node*> dirty_bfs = find_dirty_node();
+    while (!dirty_bfs.empty())
     {
-        scene_node* node = bfs.front();
-        bfs.pop();
+        scene_node* node = dirty_bfs.front();
+        dirty_bfs.pop();
 
-        // Update only when there is dirty data
-        if (node->dirty)
+        math::float4x4_simd parent_to_world = math::simd::load(node->parent()->to_world);
+        math::float4x4_simd to_world = math::simd::load(node->to_world);
+        math::float4x4_simd to_parent =
+            math::matrix_simd::mul(to_world, math::matrix_simd::inverse(parent_to_world));
+
+        // Update transform data.
+        math::float4_simd scaling, rotation, position;
+        math::matrix_simd::decompose(to_parent, scaling, rotation, position);
+
+        math::simd::store(to_parent, node->to_parent);
+        node->transform()->scaling(scaling);
+        node->transform()->rotation(rotation);
+        node->transform()->position(position);
+
+        node->mark_sync();
+
+        for (scene_node* child : node->children())
+            dirty_bfs.push(child);
+    }
+}
+
+void scene::reset_sync_counter()
+{
+    m_view->each([](transform& t) { t.node()->reset_sync_count(); });
+}
+
+std::queue<scene_node*> scene::find_dirty_node() const
+{
+    std::queue<scene_node*> check_bfs;
+    std::queue<scene_node*> dirty_bfs;
+
+    check_bfs.push(m_root_node.get());
+    while (!check_bfs.empty())
+    {
+        scene_node* node = check_bfs.front();
+        check_bfs.pop();
+
+        if (node->dirty())
         {
-            math::float4x4_simd to_parent = math::simd::load(node->to_parent);
-            math::float4x4_simd parent_to_world = math::simd::load(node->parent()->to_world);
-
-            math::float4x4_simd to_world = math::matrix_simd::mul(to_parent, parent_to_world);
-            math::simd::store(to_world, node->to_world);
-
-            node->dirty = false;
-            node->updated = true;
+            dirty_bfs.push(node);
         }
         else
         {
-            node->updated = false;
-        }
-
-        for (scene_node* child : node->children())
-        {
-            // When the parent node is updated, the child node also needs to be updated.
-            if (node->dirty && !child->dirty)
-                child->dirty = true;
-
-            child->in_scene = true;
-            bfs.push(child);
+            for (scene_node* child : node->children())
+                check_bfs.push(child);
         }
     }
+
+    return dirty_bfs;
 }
 } // namespace ash::scene

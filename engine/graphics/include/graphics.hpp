@@ -20,6 +20,7 @@ class GRAPHICS_API graphics : public ash::core::submodule
 {
 public:
     static constexpr uuid id = "cb3c4adc-4849-4871-8857-9ee68a9049e2";
+    static constexpr const char* TASK_RENDER = "graphics render";
 
     template <typename T>
     using interface_map = std::unordered_map<std::string, std::unique_ptr<T>>;

@@ -46,8 +46,7 @@ bool graphics::initialize(const dictionary& config)
     initialize_debug();
 
     auto& task = module<task::task_manager>();
-    auto scene_task = task.find("scene");
-    auto render_task = task.schedule("render", [this]() {
+    task.schedule(TASK_RENDER, [this]() {
         update();
 
         if (!m_debug->empty())
@@ -65,7 +64,6 @@ bool graphics::initialize(const dictionary& config)
             pipeline->clear();
         m_render_pipelines.clear();
     });
-    render_task->add_dependency(*scene_task);
 
     auto& world = module<ecs::world>();
     world.register_component<visual, main_camera, camera>();
@@ -186,9 +184,9 @@ void graphics::update()
     math::float4x4_simd transform_vp;
 
     m_camera_view->each([&, this](main_camera&, camera& camera, scene::transform& transform) {
-        if (transform.node->updated)
+        if (transform.node()->sync_count() != 0)
         {
-            math::float4x4_simd world_simd = math::simd::load(transform.node->to_world);
+            math::float4x4_simd world_simd = math::simd::load(transform.node()->to_world);
             transform_v = math::matrix_simd::inverse(world_simd);
             math::simd::store(transform_v, camera.view);
         }
@@ -200,7 +198,7 @@ void graphics::update()
         transform_p = math::simd::load(camera.projection);
         transform_vp = math::matrix_simd::mul(transform_v, transform_p);
 
-        if (transform.node->updated)
+        if (transform.node()->sync_count() != 0)
         {
             math::float4x4 view, projection, view_projection;
             math::simd::store(math::matrix_simd::transpose(transform_v), view);
@@ -216,10 +214,10 @@ void graphics::update()
     });
 
     m_object_view->each([&, this](visual& visual, scene::transform& transform) {
-        if (!transform.node->in_view)
+        if (!transform.node()->in_view)
             return;
 
-        math::float4x4_simd transform_m = math::simd::load(transform.node->to_world);
+        math::float4x4_simd transform_m = math::simd::load(transform.node()->to_world);
         math::float4x4_simd transform_mv = math::matrix_simd::mul(transform_m, transform_v);
         math::float4x4_simd transform_mvp = math::matrix_simd::mul(transform_mv, transform_p);
 

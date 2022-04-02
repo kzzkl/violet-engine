@@ -2,6 +2,7 @@ project(ash-graphics)
 
 add_library(${PROJECT_NAME} SHARED
     ./source/config_parser.cpp
+    ./source/geometry.cpp
     ./source/graphics_debug.cpp
     ./source/graphics_plugin.cpp
     ./source/graphics.cpp
