@@ -41,8 +41,11 @@ public:
     {
         archetype::remove(index);
 
-        std::swap(m_record[index], m_record.back());
-        m_record[index]->index = index;
+        if (m_record[index] != m_record.back())
+        {
+            m_record[index] = m_record.back();
+            m_record[index]->index = index;
+        }
         m_record.pop_back();
     }
 
@@ -55,8 +58,11 @@ public:
         target_record->index = target.m_record.size();
         target.m_record.push_back(target_record);
 
-        std::swap(m_record[index], m_record.back());
-        m_record[index]->index = index;
+        if (target_record != m_record.back())
+        {
+            m_record[index] = m_record.back();
+            m_record[index]->index = index;
+        }
         m_record.pop_back();
     }
 
