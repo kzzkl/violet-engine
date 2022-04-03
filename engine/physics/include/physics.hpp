@@ -27,6 +27,15 @@ public:
         return std::unique_ptr<collision_shape_interface>(m_factory->make_collision_shape(desc));
     }
 
+    std::unique_ptr<collision_shape_interface> make_shape(
+        const collision_shape_interface* const* child,
+        const math::float4x4* offset,
+        std::size_t size)
+    {
+        return std::unique_ptr<collision_shape_interface>(
+            m_factory->make_collision_shape(child, offset, size));
+    }
+
 private:
     void simulation();
 

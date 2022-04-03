@@ -14,12 +14,12 @@ public:
     using vector_type = float4;
 
 public:
-    inline static vector_type add(const vector2& a, const vector2& b)
+    inline static float2 add(const vector2& a, const vector2& b)
     {
         return {a[0] + b[0], a[1] + b[1]};
     }
 
-    inline static vector_type add(const vector3& a, const vector3& b)
+    inline static float3 add(const vector3& a, const vector3& b)
     {
         return {a[0] + b[0], a[1] + b[1], a[2] + b[2]};
     }
@@ -29,12 +29,12 @@ public:
         return {a[0] + b[0], a[1] + b[1], a[2] + b[2], a[3] + b[3]};
     }
 
-    inline static vector_type sub(const vector2& a, const vector2& b)
+    inline static float2 sub(const vector2& a, const vector2& b)
     {
         return {a[0] - b[0], a[1] - b[1]};
     }
 
-    inline static vector_type sub(const vector3& a, const vector3& b)
+    inline static float3 sub(const vector3& a, const vector3& b)
     {
         return {a[0] - b[0], a[1] - b[1], a[2] - b[2]};
     }

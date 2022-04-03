@@ -67,7 +67,11 @@ void physics::simulation()
                 rigidbody_desc desc = {};
                 desc.mass = rigidbody.mass();
                 desc.shape = rigidbody.shape();
-                desc.world_matrix = transform.node()->to_world;
+
+                math::float4x4_simd to_world = math::simd::load(transform.node()->to_world);
+                math::float4x4_simd to_node = math::simd::load(rigidbody.offset());
+                math::simd::store(to_node, desc.world_matrix);
+
                 rigidbody.interface.reset(m_factory->make_rigidbody(desc));
             }
 
@@ -88,7 +92,13 @@ void physics::simulation()
             return;
 
         if (rigidbody.interface->updated())
-            transform.node()->to_world = rigidbody.interface->transform();
+        {
+            math::float4x4_simd to_world = math::simd::load(rigidbody.interface->transform());
+            math::float4x4_simd to_node_inv = math::simd::load(rigidbody.offset_inverse());
+            math::simd::store(
+                math::matrix_simd::mul(to_node_inv, to_world),
+                transform.node()->to_world);
+        }
     });
 
     module<ash::scene::scene>().sync_world();

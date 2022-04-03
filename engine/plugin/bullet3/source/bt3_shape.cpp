@@ -23,4 +23,21 @@ bt3_shape::bt3_shape(const collision_shape_desc& desc)
         break;
     }
 }
+
+bt3_shape::bt3_shape(
+    const collision_shape_interface* const* child,
+    const math::float4x4* offset,
+    std::size_t size)
+{
+    auto shape = std::make_unique<btCompoundShape>();
+
+    btTransform local;
+    for (std::size_t i = 0; i < size; ++i)
+    {
+        local.setFromOpenGLMatrix(&offset[i][0][0]);
+        shape->addChildShape(local, static_cast<const bt3_shape*>(child[i])->shape());
+    }
+
+    m_shape = std::move(shape);
+}
 } // namespace ash::physics::bullet3

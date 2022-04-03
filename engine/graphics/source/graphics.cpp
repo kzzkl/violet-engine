@@ -156,19 +156,22 @@ bool graphics::initialize_resource()
 
 void graphics::initialize_debug()
 {
+    static constexpr std::size_t MAX_VERTEX_COUNT = 4096 * 16;
+
     vertex_buffer_desc vertex_desc = {};
     vertex_desc.dynamic = true;
     vertex_desc.vertex_size = sizeof(graphics_debug::vertex);
-    vertex_desc.vertex_count = 2048;
+    vertex_desc.vertex_count = MAX_VERTEX_COUNT;
     vertex_desc.vertices = nullptr;
 
     std::vector<resource*> vertex_buffer(m_config.frame_resource());
 
     for (auto& buffer : vertex_buffer)
-        buffer = make_vertex_buffer<graphics_debug::vertex>(nullptr, 2048, true).release();
+        buffer =
+            make_vertex_buffer<graphics_debug::vertex>(nullptr, MAX_VERTEX_COUNT, true).release();
 
-    std::vector<std::uint16_t> index_data(4096);
-    for (std::uint16_t i = 0; i < 4096; ++i)
+    std::vector<std::uint32_t> index_data(MAX_VERTEX_COUNT * 2);
+    for (std::uint32_t i = 0; i < MAX_VERTEX_COUNT * 2; ++i)
         index_data[i] = i;
 
     resource* index_buffer = make_index_buffer(index_data.data(), index_data.size()).release();

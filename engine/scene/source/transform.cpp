@@ -11,13 +11,15 @@ transform::transform()
 }
 
 transform::transform(transform&& other) noexcept
+    : m_position(other.m_position),
+      m_rotation(other.m_rotation),
+      m_scaling(other.m_scaling)
 {
-    m_position = other.m_position;
-    m_rotation = other.m_rotation;
-    m_scaling = other.m_scaling;
-
-    m_node = std::move(other.m_node);
-    m_node->transform(this);
+    if (other.m_node)
+    {
+        m_node = std::move(other.m_node);
+        m_node->transform(this);
+    }
 }
 
 transform& transform::operator=(transform&& other) noexcept
@@ -26,8 +28,11 @@ transform& transform::operator=(transform&& other) noexcept
     m_rotation = other.m_rotation;
     m_scaling = other.m_scaling;
 
-    m_node = std::move(other.m_node);
-    m_node->transform(this);
+    if (other.m_node)
+    {
+        m_node = std::move(other.m_node);
+        m_node->transform(this);
+    }
 
     return *this;
 }

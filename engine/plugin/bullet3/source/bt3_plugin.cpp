@@ -1,6 +1,6 @@
+#include "bt3_rigidbody.hpp"
 #include "bt3_shape.hpp"
 #include "bt3_world.hpp"
-#include "bt3_rigidbody.hpp"
 
 namespace ash::physics::bullet3
 {
@@ -53,6 +53,14 @@ public:
         const collision_shape_desc& desc) override
     {
         return new bt3_shape(desc);
+    }
+
+    virtual collision_shape_interface* make_collision_shape(
+        const collision_shape_interface* const* child,
+        const math::float4x4* offset,
+        std::size_t size) override
+    {
+        return new bt3_shape(child, offset, size);
     }
 
     virtual rigidbody_interface* make_rigidbody(const rigidbody_desc& desc) override

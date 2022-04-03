@@ -16,7 +16,8 @@ target_link_libraries(${PROJECT_NAME}
         ash::window
         ash::graphics
         ash::math
-        ash::scene)
+        ash::scene
+        ash::physics)
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource DESTINATION bin)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/config DESTINATION bin)

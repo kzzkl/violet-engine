@@ -1,6 +1,7 @@
 #include "application.hpp"
 #include "graphics.hpp"
 #include "log.hpp"
+#include "physics.hpp"
 #include "pmx_loader.hpp"
 #include "scene.hpp"
 #include "window.hpp"
@@ -10,6 +11,7 @@ using namespace ash::graphics;
 using namespace ash::window;
 using namespace ash::ecs;
 using namespace ash::scene;
+using namespace ash::physics;
 using namespace ash::sample::mmd;
 
 namespace ash::sample::mmd
@@ -19,6 +21,9 @@ struct vertex
     math::float3 position;
     math::float3 normal;
     math::float2 uv;
+
+    math::uint4 bone;
+    math::float3 bone_weight;
 };
 
 class test_module : public submodule
@@ -53,7 +58,7 @@ private:
         std::vector<vertex> vertices;
         vertices.reserve(loader.vertices().size());
         for (const pmx_vertex& v : loader.vertices())
-            vertices.push_back(vertex{v.position, v.normal, v.uv});
+            vertices.push_back(vertex{v.position, v.normal, v.uv, v.bone, v.weight});
 
         std::vector<std::int32_t> indices;
         indices.reserve(loader.indices().size());
@@ -115,14 +120,110 @@ private:
             if (material.sphere_mode != sphere_mode::DISABLED)
                 v.material[i].property->set(7, m_textures[material.sphere_index].get());
         }
-
         v.object = graphics.make_render_parameter("ash_object");
 
         transform& actor_transform = world.component<transform>(m_actor);
-        actor_transform.position(0.0f, 0.0f, 0.0f);
-        actor_transform.rotation(0.0f, 0.0f, 0.0f, 1.0f);
-        actor_transform.scaling(1.0f, 1.0f, 1.0f);
         actor_transform.node()->parent(module<ash::scene::scene>().root_node());
+
+        auto& bones = loader.bones();
+        std::vector<scene_node*> bone_nodes(bones.size());
+        for (std::size_t i = 0; i < bones.size(); ++i)
+        {
+            entity_id e = world.create();
+            m_skeleton.push_back(e);
+
+            world.add<transform>(e);
+            transform& t = world.component<transform>(e);
+
+            bone_nodes[i] = t.node();
+
+            if (bones[i].parent_index != -1)
+            {
+                math::float3 local_position = math::vector_plain::sub(
+                    bones[i].position,
+                    bones[bones[i].parent_index].position);
+                t.position(local_position);
+                t.node()->parent(bone_nodes[bones[i].parent_index]);
+            }
+            else
+            {
+                t.position(bones[i].position);
+                t.node()->parent(actor_transform.node());
+            }
+        }
+
+        std::vector<std::vector<const pmx_rigidbody*>> bone_rigidbody(bones.size());
+        for (auto& rigidbody : loader.rigidbodys())
+            bone_rigidbody[rigidbody.bone_index].push_back(&rigidbody);
+
+        for (std::size_t i = 0; i < bone_rigidbody.size(); ++i)
+        {
+            if (bone_rigidbody[i].empty())
+                continue;
+
+            std::vector<collision_shape_interface*> shapes;
+            std::vector<math::float4x4> offset(bone_rigidbody[i].size());
+            for (std::size_t j = 0; j < bone_rigidbody[i].size(); ++j)
+            {
+                auto pmx_r = bone_rigidbody[i][j];
+
+                collision_shape_desc desc = {};
+                switch (pmx_r->shape)
+                {
+                case pmx_rigidbody_shape_type::SPHERE:
+                    desc.type = collision_shape_type::SPHERE;
+                    desc.sphere.radius = pmx_r->size[0];
+                    break;
+                case pmx_rigidbody_shape_type::BOX:
+                    desc.type = collision_shape_type::BOX;
+                    desc.box.length = pmx_r->size[0];
+                    desc.box.height = pmx_r->size[1];
+                    desc.box.width = pmx_r->size[2];
+                    break;
+                case pmx_rigidbody_shape_type::CAPSULE:
+                    desc.type = collision_shape_type::CAPSULE;
+                    desc.capsule.radius = pmx_r->size[0];
+                    desc.capsule.height = pmx_r->size[1];
+                    break;
+                default:
+                    break;
+                }
+
+                auto shape = module<ash::physics::physics>().make_shape(desc);
+                shapes.push_back(shape.get());
+                m_shapes.push_back(std::move(shape));
+
+                math::float4_simd position_offset = math::simd::load(pmx_r->translate);
+                math::float4_simd rotation_offset =
+                    math::simd::load(math::quaternion_plain::rotation_euler(
+                        pmx_r->rotate[1],
+                        pmx_r->rotate[0],
+                        pmx_r->rotate[2]));
+                math::simd::store(
+                    math::matrix_simd::affine_transform(
+                        math::simd::set(1.0f, 1.0f, 1.0f, 0.0f),
+                        rotation_offset,
+                        position_offset),
+                    offset[j]);
+            }
+
+            world.add<rigidbody>(m_skeleton[i]);
+            rigidbody& r = world.component<rigidbody>(m_skeleton[i]);
+            if (shapes.size() == 1)
+            {
+                r.shape(shapes[0]);
+                r.offset(offset[0]);
+            }
+            else
+            {
+                auto shape = module<ash::physics::physics>().make_shape(
+                    shapes.data(),
+                    offset.data(),
+                    shapes.size());
+                r.shape(shape.get());
+                m_shapes.push_back(std::move(shape));
+            }
+        }
     }
 
     void initialize_camera()
@@ -145,16 +246,15 @@ private:
     {
         auto& task = module<task::task_manager>();
 
-        auto update_task = task.schedule("test update", [this]() {
-            module<ash::scene::scene>().sync_local();
-            update();
-        });
+        auto update_task = task.schedule("test update", [this]() { update(); });
 
         auto window_task = task.find(ash::window::window::TASK_WINDOW_TICK);
         auto render_task = task.find(ash::graphics::graphics::TASK_RENDER);
+        auto physics_task = task.find(ash::physics::physics::TASK_SIMULATION);
 
         window_task->add_dependency(*task.find("root"));
-        update_task->add_dependency(*window_task);
+        physics_task->add_dependency(*window_task);
+        update_task->add_dependency(*physics_task);
         render_task->add_dependency(*update_task);
     }
 
@@ -164,10 +264,13 @@ private:
         auto& keyboard = module<ash::window::window>().keyboard();
         auto& mouse = module<ash::window::window>().mouse();
 
-        if (keyboard.key(keyboard_key::KEY_1).down())
-            mouse.mode(mouse_mode::CURSOR_RELATIVE);
-        if (keyboard.key(keyboard_key::KEY_2).down())
-            mouse.mode(mouse_mode::CURSOR_ABSOLUTE);
+        if (keyboard.key(keyboard_key::KEY_1).release())
+        {
+            if (mouse.mode() == mouse_mode::CURSOR_RELATIVE)
+                mouse.mode(mouse_mode::CURSOR_ABSOLUTE);
+            else
+                mouse.mode(mouse_mode::CURSOR_RELATIVE);
+        }
 
         if (keyboard.key(keyboard_key::KEY_3).release())
         {
@@ -240,11 +343,6 @@ private:
         float delta = module<ash::core::timer>().frame_delta();
         update_camera(delta);
         update_actor(delta);
-
-        module<ash::graphics::graphics>().debug().draw_line(
-            {100.0f, 0.0f, 0.0f},
-            {-100.0f, 0.0f, 0.0f},
-            {1.0f, 0.0f, 0.0f});
     }
 
     std::string m_title;
@@ -253,10 +351,14 @@ private:
     entity_id m_camera;
     entity_id m_actor;
 
+    std::vector<entity_id> m_skeleton;
+
     std::vector<std::unique_ptr<resource>> m_textures;
     std::vector<std::unique_ptr<resource>> m_internal_toon;
 
     std::unique_ptr<render_pipeline> m_mmd_pipeline;
+
+    std::vector<std::unique_ptr<collision_shape_interface>> m_shapes;
 
     float m_heading = 0.0f, m_pitch = 0.0f;
 
@@ -271,6 +373,7 @@ int main()
     app.install<window>();
     app.install<scene>();
     app.install<graphics>();
+    app.install<physics>();
     app.install<ash::sample::mmd::test_module>(&app);
 
     app.run();

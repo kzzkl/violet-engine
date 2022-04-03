@@ -17,6 +17,11 @@ public:
     void shape(collision_shape_interface* shape) noexcept { m_shape = shape; }
     collision_shape_interface* shape() const noexcept { return m_shape; }
 
+    void offset(const math::float4x4& offset) noexcept;
+    void offset(const math::float4x4_simd& offset) noexcept;
+    const math::float4x4& offset() const noexcept { return m_offset; }
+    const math::float4x4& offset_inverse() const noexcept { return m_offset; }
+
     void in_world(bool in_world) noexcept { m_in_world = in_world; }
     bool in_world() const noexcept { return m_in_world; }
 
@@ -25,6 +30,9 @@ public:
 private:
     float m_mass;
     collision_shape_interface* m_shape;
+
+    math::float4x4 m_offset;
+    math::float4x4 m_offset_inverse;
 
     bool m_in_world;
 };

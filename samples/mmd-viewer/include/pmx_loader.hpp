@@ -333,10 +333,13 @@ public:
 
     std::vector<std::pair<std::size_t, std::size_t>> submesh() const noexcept;
 
-    const std::vector<pmx_material>& materials() const { return m_materials; }
-    const std::vector<std::string>& textures() const { return m_textures; }
+    const std::vector<pmx_material>& materials() const noexcept { return m_materials; }
+    const std::vector<std::string>& textures() const noexcept { return m_textures; }
 
-    const std::vector<std::string>& internal_toon() const { return m_internal_toon; }
+    const std::vector<pmx_bone>& bones() const noexcept { return m_bones; }
+    const std::vector<pmx_rigidbody>& rigidbodys() const noexcept { return m_rigidbodys; }
+
+    const std::vector<std::string>& internal_toon() const noexcept { return m_internal_toon; }
 
 private:
     bool load_header(std::ifstream& fin);

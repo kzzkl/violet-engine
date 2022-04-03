@@ -65,6 +65,13 @@
                     "name": "spa",
                     "type": "texture"
                 }
+            ],
+            "mmd_skeleton": [
+                {
+                    "name": "offset",
+                    "type": "float4x4 array",
+                    "size": 512
+                }
             ]
         },
         "pipeline": {

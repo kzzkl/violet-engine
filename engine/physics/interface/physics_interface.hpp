@@ -91,6 +91,10 @@ public:
 
     virtual world_interface* make_world(const world_desc& desc) = 0;
     virtual collision_shape_interface* make_collision_shape(const collision_shape_desc& desc) = 0;
+    virtual collision_shape_interface* make_collision_shape(
+        const collision_shape_interface* const* child,
+        const math::float4x4* offset,
+        std::size_t size) = 0;
     virtual rigidbody_interface* make_rigidbody(const rigidbody_desc& desc) = 0;
 };
 using factory = factory_interface;
