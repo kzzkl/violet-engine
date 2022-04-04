@@ -77,12 +77,18 @@
         "pipeline": {
             "mmd": {
                 "vertex_layout": "pmx",
-                "object_parameter": "ash_object",
-                "pass_parameter": "ash_pass",
-                "material_parameter": "mmd_material",
                 "vertex_shader": "resource/shader/base.hlsl",
                 "pixel_shader": "resource/shader/base.hlsl",
-                "primitive_topology": "triangle_list"
+                "primitive_topology": "triangle_list",
+                "parameter": {
+                    "pass": [
+                        "ash_pass"
+                    ],
+                    "unit": [
+                        "ash_object",
+                        "mmd_material"
+                    ]
+                }
             }
         },
         "technique": [

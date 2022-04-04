@@ -39,21 +39,4 @@ public:
 private:
     std::unique_ptr<pipeline_parameter> m_parameter;
 };
-
-/*struct render_pass_data
-{
-    math::float4 camera_position;
-    math::float4 camera_direction;
-
-    math::float4x4 camera_view;
-    math::float4x4 camera_projection;
-    math::float4x4 camera_view_projection;
-};
-using render_parameter_pass = render_parameter<multiple<render_pass_data>>;
-
-struct render_object_data
-{
-    math::float4x4 to_world;
-};
-using render_parameter_object = render_parameter<multiple<render_object_data>>;*/
 } // namespace ash::graphics

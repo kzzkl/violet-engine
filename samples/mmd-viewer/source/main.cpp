@@ -1,4 +1,5 @@
 #include "application.hpp"
+#include "geometry.hpp"
 #include "graphics.hpp"
 #include "log.hpp"
 #include "physics.hpp"
@@ -37,6 +38,7 @@ public:
     virtual bool initialize(const ash::dictionary& config) override
     {
         initialize_resource();
+        initialize_plane();
         initialize_camera();
         initialize_task();
 
@@ -82,48 +84,69 @@ private:
             m_internal_toon.push_back(graphics.make_texture("resource/mmd/" + internal_toon_path));
         }
 
-        visual& v = world.component<visual>(m_actor);
-        v.vertex_buffer = module<ash::graphics::graphics>().make_vertex_buffer<vertex>(
-            vertices.data(),
-            vertices.size());
-        v.index_buffer = module<ash::graphics::graphics>().make_index_buffer<std::int32_t>(
-            indices.data(),
-            indices.size());
-        for (auto [index_start, index_end] : loader.submesh())
-            v.submesh.push_back({index_start, index_end});
+        m_actor_vertex =
+            module<ash::graphics::graphics>().make_vertex_buffer(vertices.data(), vertices.size());
+        m_actor_index =
+            module<ash::graphics::graphics>().make_index_buffer(indices.data(), indices.size());
 
-        v.material.resize(loader.materials().size());
-        m_mmd_pipeline = graphics.make_render_pipeline("mmd");
-        for (std::size_t i = 0; i < v.material.size(); ++i)
+        geometry_data cube = geometry::box(0.1f, 3.0f, 0.1f);
+        m_cube_vertex = module<ash::graphics::graphics>().make_vertex_buffer(
+            cube.vertices.data(),
+            cube.vertices.size());
+        m_cube_index = module<ash::graphics::graphics>().make_index_buffer(
+            cube.indices.data(),
+            cube.indices.size());
+
+        visual& v = world.component<visual>(m_actor);
+        for (auto [index_start, index_end] : loader.submesh())
+        {
+            submesh s = {};
+            s.unit.index_start = index_start;
+            s.unit.index_end = index_end;
+            s.unit.vertex_buffer = m_actor_vertex.get();
+            s.unit.index_buffer = m_actor_index.get();
+            v.submesh.push_back(s);
+        }
+
+        auto object = graphics.make_render_parameter("ash_object");
+        v.object = object.get();
+        m_mmd_pipeline = graphics.make_render_pipeline<render_pipeline>("mmd");
+        for (std::size_t i = 0; i < v.submesh.size(); ++i)
         {
             auto& material = loader.materials()[i];
 
-            v.material[i].pipeline = m_mmd_pipeline.get();
-            v.material[i].property = graphics.make_render_parameter("mmd_material");
-            v.material[i].property->set(0, material.diffuse);
-            v.material[i].property->set(1, material.specular);
-            v.material[i].property->set(2, material.specular_strength);
-            v.material[i].property->set(
-                3,
-                material.toon_index == -1 ? std::uint32_t(0) : std::uint32_t(1));
-            v.material[i].property->set(4, static_cast<std::uint32_t>(material.sphere_mode));
-
-            v.material[i].property->set(5, m_textures[material.texture_index].get());
+            auto mmd_material = graphics.make_render_parameter("mmd_material");
+            mmd_material->set(0, material.diffuse);
+            mmd_material->set(1, material.specular);
+            mmd_material->set(2, material.specular_strength);
+            mmd_material->set(3, material.toon_index == -1 ? std::uint32_t(0) : std::uint32_t(1));
+            mmd_material->set(4, static_cast<std::uint32_t>(material.sphere_mode));
+            mmd_material->set(5, m_textures[material.texture_index].get());
 
             if (material.toon_index != -1)
             {
                 if (material.toon_mode == toon_mode::TEXTURE)
-                    v.material[i].property->set(6, m_textures[material.toon_index].get());
+                    mmd_material->set(6, m_textures[material.toon_index].get());
                 else if (material.toon_mode == toon_mode::INTERNAL)
-                    v.material[i].property->set(6, m_internal_toon[material.toon_index].get());
+                    mmd_material->set(6, m_internal_toon[material.toon_index].get());
             }
             if (material.sphere_mode != sphere_mode::DISABLED)
-                v.material[i].property->set(7, m_textures[material.sphere_index].get());
+                mmd_material->set(7, m_textures[material.sphere_index].get());
+
+            v.submesh[i].pipeline = m_mmd_pipeline.get();
+            v.submesh[i].unit.parameters = {v.object, mmd_material.get()};
+            m_mmd_material.push_back(std::move(mmd_material));
         }
-        v.object = graphics.make_render_parameter("ash_object");
+        m_mmd_object.push_back(std::move(object));
 
         transform& actor_transform = world.component<transform>(m_actor);
         actor_transform.node()->parent(module<ash::scene::scene>().root_node());
+
+        m_cube_pipeline = graphics.make_render_pipeline<render_pipeline>("geometry");
+
+        m_geometry_material =
+            module<ash::graphics::graphics>().make_render_parameter("geometry_material");
+        m_geometry_material->set(0, math::float4{1.0f, 1.0f, 1.0f, 1.0f});
 
         auto& bones = loader.bones();
         std::vector<scene_node*> bone_nodes(bones.size());
@@ -132,11 +155,10 @@ private:
             entity_id e = world.create();
             m_skeleton.push_back(e);
 
-            world.add<transform>(e);
+            world.add<transform, visual>(e);
             transform& t = world.component<transform>(e);
 
             bone_nodes[i] = t.node();
-
             if (bones[i].parent_index != -1)
             {
                 math::float3 local_position = math::vector_plain::sub(
@@ -150,6 +172,21 @@ private:
                 t.position(bones[i].position);
                 t.node()->parent(actor_transform.node());
             }
+
+            visual& v = world.component<visual>(e);
+            auto object = graphics.make_render_parameter("ash_object");
+
+            submesh s = {};
+            s.pipeline = m_cube_pipeline.get();
+            s.unit.index_start = 0;
+            s.unit.index_end = cube.indices.size();
+            s.unit.parameters = {object.get(), m_geometry_material.get()};
+            s.unit.vertex_buffer = m_cube_vertex.get();
+            s.unit.index_buffer = m_cube_index.get();
+            v.submesh.push_back(s);
+
+            v.object = object.get();
+            m_mmd_object.push_back(std::move(object));
         }
 
         std::vector<std::vector<const pmx_rigidbody*>> bone_rigidbody(bones.size());
@@ -209,6 +246,7 @@ private:
 
             world.add<rigidbody>(m_skeleton[i]);
             rigidbody& r = world.component<rigidbody>(m_skeleton[i]);
+            // r.mass(1.0f);
             if (shapes.size() == 1)
             {
                 r.shape(shapes[0]);
@@ -224,6 +262,29 @@ private:
                 m_shapes.push_back(std::move(shape));
             }
         }
+    }
+
+    void initialize_plane()
+    {
+        collision_shape_desc desc;
+        desc.type = collision_shape_type::BOX;
+        desc.box.length = 1000.0f;
+        desc.box.height = 0.5f;
+        desc.box.width = 1000.0f;
+        m_plane_shape = module<ash::physics::physics>().make_shape(desc);
+
+        ash::ecs::world& world = module<ash::ecs::world>();
+        m_plane = world.create();
+
+        world.add<rigidbody, transform>(m_plane);
+
+        transform& t = world.component<transform>(m_plane);
+        t.position(0.0f, -3.0f, 0.0f);
+        t.node()->parent(module<ash::scene::scene>().root_node());
+
+        rigidbody& r = world.component<rigidbody>(m_plane);
+        r.shape(m_plane_shape.get());
+        r.mass(0.0f);
     }
 
     void initialize_camera()
@@ -282,7 +343,7 @@ private:
             };
 
             visual& v = world.component<visual>(m_actor);
-            v.material[0].property->set(0, colors[index]);
+            v.submesh[0].unit.parameters[1]->set(0, colors[index]);
 
             index = (index + 1) % colors.size();
         }
@@ -350,20 +411,33 @@ private:
 
     entity_id m_camera;
     entity_id m_actor;
+    entity_id m_plane;
 
     std::vector<entity_id> m_skeleton;
 
     std::vector<std::unique_ptr<resource>> m_textures;
     std::vector<std::unique_ptr<resource>> m_internal_toon;
 
+    std::unique_ptr<render_parameter> m_geometry_material;
+    std::vector<std::unique_ptr<render_parameter>> m_mmd_material;
+    std::vector<std::unique_ptr<render_parameter>> m_mmd_object;
+
     std::unique_ptr<render_pipeline> m_mmd_pipeline;
+    std::unique_ptr<render_pipeline> m_cube_pipeline;
 
     std::vector<std::unique_ptr<collision_shape_interface>> m_shapes;
+    std::unique_ptr<collision_shape_interface> m_plane_shape;
 
     float m_heading = 0.0f, m_pitch = 0.0f;
 
     float m_rotate_speed = 0.2f;
     float m_move_speed = 7.0f;
+
+    std::unique_ptr<resource> m_actor_vertex;
+    std::unique_ptr<resource> m_actor_index;
+
+    std::unique_ptr<resource> m_cube_vertex;
+    std::unique_ptr<resource> m_cube_index;
 };
 } // namespace ash::sample::mmd
 

@@ -1,6 +1,7 @@
 project(mmd-viewer)
 
 add_executable(${PROJECT_NAME}
+    ./source/animation.cpp
     ./source/main.cpp
     ./source/pmx_loader.cpp
     ./source/unicode.cpp)

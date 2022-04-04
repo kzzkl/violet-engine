@@ -7,7 +7,7 @@ namespace ash::physics
 class physics_debug : public debug_draw_interface
 {
 public:
-    physics_debug(ash::graphics::graphics_debug* drawer) : m_drawer(drawer) {}
+    physics_debug(ash::graphics::debug_pipeline* drawer) : m_drawer(drawer) {}
 
     virtual void draw_line(
         const math::float3& start,
@@ -18,7 +18,7 @@ public:
     }
 
 private:
-    ash::graphics::graphics_debug* m_drawer;
+    ash::graphics::debug_pipeline* m_drawer;
 };
 
 physics::physics() noexcept : submodule("physics")
@@ -70,7 +70,13 @@ void physics::simulation()
 
                 math::float4x4_simd to_world = math::simd::load(transform.node()->to_world);
                 math::float4x4_simd to_node = math::simd::load(rigidbody.offset());
+
+                math::float4x4_simd offset =
+                    math::matrix_simd::mul(to_node, math::matrix_simd::inverse(to_world));
+                rigidbody.offset(offset);
+
                 math::simd::store(to_node, desc.world_matrix);
+                // math::simd::store(math::matrix_simd::mul(to_node, to_world), desc.world_matrix);
 
                 rigidbody.interface.reset(m_factory->make_rigidbody(desc));
             }
@@ -91,13 +97,15 @@ void physics::simulation()
         if (!rigidbody.in_world())
             return;
 
-        if (rigidbody.interface->updated())
+        // if (rigidbody.interface->updated())
         {
             math::float4x4_simd to_world = math::simd::load(rigidbody.interface->transform());
             math::float4x4_simd to_node_inv = math::simd::load(rigidbody.offset_inverse());
-            math::simd::store(
+            math::simd::store(to_world, transform.node()->to_world);
+
+            /*math::simd::store(
                 math::matrix_simd::mul(to_node_inv, to_world),
-                transform.node()->to_world);
+                transform.node()->to_world);*/
         }
     });
 

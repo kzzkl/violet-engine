@@ -9,7 +9,7 @@
 
 namespace ash::graphics
 {
-class GRAPHICS_API config_parser
+class GRAPHICS_API graphics_config
 {
 public:
     struct vertex_attribute_config
@@ -33,9 +33,8 @@ public:
         std::string name;
         std::string vertex_layout;
 
-        std::string object_parameter;
-        std::string pass_parameter;
-        std::string material_parameter;
+        std::vector<std::string> pass_parameters;
+        std::vector<std::string> unit_parameters;
 
         std::string vertex_shader;
         std::string pixel_shader;
@@ -64,7 +63,7 @@ public:
     using find_result = std::tuple<bool, T, const config_type_t<T>*>;
 
 public:
-    config_parser();
+    graphics_config();
 
     void load(const dictionary& config);
 

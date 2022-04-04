@@ -1,9 +1,9 @@
-#include "config_parser.hpp"
+#include "graphics_config.hpp"
 #include "log.hpp"
 
 namespace ash::graphics
 {
-config_parser::config_parser()
+graphics_config::graphics_config()
 {
     m_vertex_attribute_map["int"] = vertex_attribute_type::INT;
     m_vertex_attribute_map["int2"] = vertex_attribute_type::INT2;
@@ -28,7 +28,7 @@ config_parser::config_parser()
     m_parameter_type_map["texture"] = pipeline_parameter_type::TEXTURE;
 }
 
-void config_parser::load(const dictionary& config)
+void graphics_config::load(const dictionary& config)
 {
     load_vertex_layout(config);
     load_material_layout(config);
@@ -42,7 +42,8 @@ void config_parser::load(const dictionary& config)
 }
 
 template <>
-config_parser::find_result<pipeline_parameter_desc> config_parser::find_desc(std::string_view name)
+graphics_config::find_result<pipeline_parameter_desc> graphics_config::find_desc(
+    std::string_view name)
 {
     find_result<pipeline_parameter_desc> result = {};
 
@@ -69,7 +70,7 @@ config_parser::find_result<pipeline_parameter_desc> config_parser::find_desc(std
 }
 
 template <>
-config_parser::find_result<pipeline_desc> config_parser::find_desc(std::string_view name)
+graphics_config::find_result<pipeline_desc> graphics_config::find_desc(std::string_view name)
 {
     find_result<pipeline_desc> result = {};
 
@@ -113,7 +114,7 @@ config_parser::find_result<pipeline_desc> config_parser::find_desc(std::string_v
     return result;
 }
 
-void config_parser::load_vertex_layout(const dictionary& doc)
+void graphics_config::load_vertex_layout(const dictionary& doc)
 {
     auto iter = doc.find("vertex_layout");
     if (iter == doc.end())
@@ -132,7 +133,7 @@ void config_parser::load_vertex_layout(const dictionary& doc)
     }
 }
 
-void config_parser::load_material_layout(const dictionary& doc)
+void graphics_config::load_material_layout(const dictionary& doc)
 {
     auto iter = doc.find("pipeline_parameter_layout");
     if (iter == doc.end())
@@ -155,7 +156,7 @@ void config_parser::load_material_layout(const dictionary& doc)
     }
 }
 
-void config_parser::load_pipeline(const dictionary& doc)
+void graphics_config::load_pipeline(const dictionary& doc)
 {
     auto iter = doc.find("pipeline");
     if (iter == doc.end())
@@ -166,9 +167,10 @@ void config_parser::load_pipeline(const dictionary& doc)
         pipeline_config& p = m_pipeline[key];
         p.vertex_layout = value["vertex_layout"];
 
-        p.object_parameter = value["object_parameter"];
-        p.pass_parameter = value["pass_parameter"];
-        p.material_parameter = value["material_parameter"];
+        for (auto& pass_parameter : value["parameter"]["pass"])
+            p.pass_parameters.push_back(pass_parameter);
+        for (auto& unit_parameter : value["parameter"]["unit"])
+            p.unit_parameters.push_back(unit_parameter);
 
         p.vertex_shader = value["vertex_shader"];
         p.pixel_shader = value["pixel_shader"];

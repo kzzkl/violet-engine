@@ -81,21 +81,30 @@
         "pipeline": {
             "debug": {
                 "vertex_layout": "debug",
-                "object_parameter": "ash_object",
-                "pass_parameter": "none",
-                "material_parameter": "none",
                 "vertex_shader": "engine/shader/debug.hlsl",
                 "pixel_shader": "engine/shader/debug.hlsl",
-                "primitive_topology": "line_list"
+                "primitive_topology": "line_list",
+                "parameter": {
+                    "pass": [],
+                    "unit": [
+                        "ash_object"
+                    ]
+                }
             },
             "geometry": {
                 "vertex_layout": "geometry",
-                "object_parameter": "ash_object",
-                "pass_parameter": "ash_pass",
-                "material_parameter": "geometry_material",
                 "vertex_shader": "engine/shader/geometry.hlsl",
                 "pixel_shader": "engine/shader/geometry.hlsl",
-                "primitive_topology": "triangle_list"
+                "primitive_topology": "triangle_list",
+                "parameter": {
+                    "pass": [
+                        "ash_pass"
+                    ],
+                    "unit": [
+                        "ash_object",
+                        "geometry_material"
+                    ]
+                }
             }
         },
         "technique": [],

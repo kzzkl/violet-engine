@@ -1,9 +1,9 @@
 #pragma once
 
 #include "camera.hpp"
-#include "config_parser.hpp"
+#include "graphics_config.hpp"
 #include "context.hpp"
-#include "graphics_debug.hpp"
+#include "debug_pipeline.hpp"
 #include "graphics_exports.hpp"
 #include "graphics_plugin.hpp"
 #include "render_parameter.hpp"
@@ -30,7 +30,21 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
 
-    std::unique_ptr<render_pipeline> make_render_pipeline(std::string_view name);
+    template <typename T, typename... Args>
+    std::unique_ptr<T> make_render_pipeline(std::string_view name, Args&&... args)
+    {
+        pipeline_layout* layout;
+        pipeline* pipeline;
+
+        auto [make_result, unit_conut, pass_count] = make_pipeline(name, layout, pipeline);
+
+        if (!make_result)
+            return false;
+
+        auto result = std::make_unique<T>(layout, pipeline, std::forward<Args>(args)...);
+        result->parameter_count(unit_conut, pass_count);
+        return result;
+    }
 
     std::unique_ptr<render_parameter> make_render_parameter(std::string_view name)
     {
@@ -67,9 +81,14 @@ public:
 
     std::unique_ptr<resource> make_texture(std::string_view file);
 
-    graphics_debug& debug() { return *m_debug; }
+    debug_pipeline& debug() { return *m_debug; }
 
 private:
+    std::tuple<bool, std::size_t, std::size_t> make_pipeline(
+        std::string_view name,
+        pipeline_layout*& layout,
+        pipeline*& pipeline);
+
     bool initialize_resource();
     void initialize_debug();
 
@@ -90,9 +109,8 @@ private:
 
     std::set<render_pipeline*> m_render_pipelines;
 
-    config_parser m_config;
+    graphics_config m_config;
 
-    std::unique_ptr<graphics_debug> m_debug;
-    std::unique_ptr<render_pipeline> m_debug_pipeline;
+    std::unique_ptr<debug_pipeline> m_debug;
 };
 } // namespace ash::graphics

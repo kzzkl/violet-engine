@@ -2,12 +2,13 @@
 
 #include "graphics_exports.hpp"
 #include "graphics_interface.hpp"
+#include "render_pipeline.hpp"
 #include <memory>
 #include <vector>
 
 namespace ash::graphics
 {
-class GRAPHICS_API graphics_debug
+class GRAPHICS_API debug_pipeline : public render_pipeline
 {
 public:
     struct vertex
@@ -17,10 +18,14 @@ public:
     };
 
 public:
-    graphics_debug(const std::vector<resource*>& vertex_buffer, resource* index_buffer);
+    debug_pipeline(
+        layout_type* layout,
+        pipeline_type* pipeline,
+        const std::vector<resource*>& vertex_buffer,
+        resource* index_buffer);
+    virtual ~debug_pipeline() = default;
 
     void draw_line(const math::float3& start, const math::float3& end, const math::float3& color);
-
     void sync();
 
     resource* vertex_buffer() const noexcept { return m_vertex_buffer[m_index].get(); }
@@ -28,8 +33,10 @@ public:
 
     std::size_t vertex_count() const noexcept { return m_vertics.size(); }
 
-    void clear() noexcept { m_vertics.clear(); }
+    void reset() noexcept { m_vertics.clear(); }
     bool empty() const noexcept { return m_vertics.empty(); }
+
+    virtual void render(resource* target, render_command* command, render_parameter* pass) override;
 
 private:
     std::vector<vertex> m_vertics;

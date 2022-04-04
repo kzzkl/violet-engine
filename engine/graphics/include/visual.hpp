@@ -5,28 +5,19 @@
 
 namespace ash::graphics
 {
+class render_pipeline;
 struct submesh
 {
-    std::size_t index_start;
-    std::size_t index_end;
-};
-
-class render_pipeline;
-struct submesh_material
-{
     render_pipeline* pipeline;
-    std::unique_ptr<render_parameter> property;
+    render_unit unit;
 };
 
 struct visual
 {
-    std::unique_ptr<resource> vertex_buffer;
-    std::unique_ptr<resource> index_buffer;
-
     std::vector<submesh> submesh;
-    std::vector<submesh_material> material;
 
-    std::unique_ptr<render_parameter> object;
+    render_parameter* object;
+    render_parameter* skeleton;
 };
 } // namespace ash::graphics
 
