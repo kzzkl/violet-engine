@@ -7,6 +7,7 @@
 
 namespace ash::graphics
 {
+class render_pipeline;
 struct render_unit
 {
     resource* vertex_buffer;
@@ -15,6 +16,7 @@ struct render_unit
     std::size_t index_start;
     std::size_t index_end;
 
+    render_pipeline* pipeline;
     std::vector<render_parameter*> parameters;
 };
 

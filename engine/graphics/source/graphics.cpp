@@ -1,6 +1,6 @@
 #include "graphics.hpp"
-#include "graphics_config.hpp"
 #include "context.hpp"
+#include "graphics_config.hpp"
 #include "log.hpp"
 #include "math.hpp"
 #include "window.hpp"
@@ -224,7 +224,7 @@ void graphics::update()
             if (visual.submesh[i].pipeline == nullptr)
                 continue;
             m_render_pipelines.insert(visual.submesh[i].pipeline);
-            visual.submesh[i].pipeline->add(&visual.submesh[i].unit);
+            visual.submesh[i].pipeline->add(&visual.submesh[i]);
         }
     });
 }

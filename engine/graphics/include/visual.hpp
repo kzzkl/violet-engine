@@ -2,19 +2,13 @@
 
 #include "assert.hpp"
 #include "component.hpp"
+#include "render_pipeline.hpp"
 
 namespace ash::graphics
 {
-class render_pipeline;
-struct submesh
-{
-    render_pipeline* pipeline;
-    render_unit unit;
-};
-
 struct visual
 {
-    std::vector<submesh> submesh;
+    std::vector<render_unit> submesh;
 
     render_parameter* object;
     render_parameter* skeleton;
