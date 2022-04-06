@@ -112,6 +112,7 @@ public:
     virtual void remove(rigidbody_interface* rigidbody) = 0;
 
     virtual void simulation(float time_step) = 0;
+    virtual void debug() {}
 };
 
 class factory_interface

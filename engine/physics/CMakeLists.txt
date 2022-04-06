@@ -1,5 +1,7 @@
 project(ash-physics)
 
+option(ASH_PHYSICS_DEBUG_DRAW "Whether to show rigid body wireframe" off)
+
 add_library(${PROJECT_NAME} SHARED
     ./source/joint.cpp
     ./source/physics_plugin.cpp
@@ -16,8 +18,12 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         ash::core
         ash::math
-        ash::scene
-        debug ash::graphics)
+        ash::scene)
+
+if (${ASH_PHYSICS_DEBUG_DRAW})
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ASH_PHYSICS_DEBUG_DRAW)
+    target_link_libraries(${PROJECT_NAME} PUBLIC ash::graphics)
+endif()
 
 include(GenerateExportHeader)
 generate_export_header(${PROJECT_NAME}

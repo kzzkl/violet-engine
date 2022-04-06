@@ -44,7 +44,10 @@ void bt3_world::simulation(float time_step)
 {
     m_world->stepSimulation(time_step);
     // m_world->stepSimulation(time_step, 10);
+}
 
+void bt3_world::debug()
+{
     if (m_world->getDebugDrawer())
         m_world->debugDrawWorld();
 }

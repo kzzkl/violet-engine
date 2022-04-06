@@ -1,10 +1,14 @@
 #include "physics.hpp"
-#include "graphics.hpp"
 #include "scene.hpp"
+
+#if defined(ASH_PHYSICS_DEBUG_DRAW)
+#    include "graphics.hpp"
+#endif
 
 namespace ash::physics
 {
-class physics_debug : public debug_draw_interface
+#if defined(ASH_PHYSICS_DEBUG_DRAW)
+class physics::physics_debug : public debug_draw_interface
 {
 public:
     physics_debug(ash::graphics::debug_pipeline* drawer) : m_drawer(drawer) {}
@@ -20,6 +24,7 @@ public:
 private:
     ash::graphics::debug_pipeline* m_drawer;
 };
+#endif
 
 physics::physics() noexcept : submodule("physics")
 {
@@ -33,8 +38,10 @@ bool physics::initialize(const dictionary& config)
 {
     m_plugin.load("ash-physics-bullet3.dll");
 
-    m_debug = std::make_unique<physics_debug>(&module<ash::graphics::graphics>().debug());
+#if defined(ASH_PHYSICS_DEBUG_DRAW)
+    m_debug = std::make_unique<physics::physics_debug>(&module<ash::graphics::graphics>().debug());
     m_plugin.debug(m_debug.get());
+#endif
 
     m_factory = m_plugin.factory();
 
@@ -122,30 +129,6 @@ void physics::simulation()
 
             m_world->add(unit.interface.get());
         }
-
-        /*if (!group.in_world)
-        {
-            for (auto& joint : group.joints)
-            {
-                joint_desc desc = {};
-                desc.location = joint.location;
-                desc.rotation = joint.rotation;
-                desc.min_linear = joint.min_linear;
-                desc.max_linear = joint.max_linear;
-                desc.min_angular = joint.min_angular;
-                desc.max_angular = joint.max_angular;
-                desc.spring_translate_factor = joint.spring_translate_factor;
-                desc.spring_rotate_factor = joint.spring_rotate_factor;
-                desc.rigidbody_a = joint.rigidbody_a->interface.get();
-                desc.rigidbody_b = joint.rigidbody_b->interface.get();
-
-                joint.interface.reset(m_factory->make_joint(desc));
-
-                m_world->add(joint.interface.get());
-            }
-
-            group.in_world = true;
-        }*/
     });
 
     m_world->simulation(module<ash::core::timer>().frame_delta());
@@ -165,6 +148,10 @@ void physics::simulation()
                 transform.node()->to_world);
         }
     });
+
+#if defined(ASH_PHYSICS_DEBUG_DRAW)
+    m_world->debug();
+#endif
 
     module<ash::scene::scene>().sync_world();
 }

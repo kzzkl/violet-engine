@@ -18,6 +18,7 @@ public:
     virtual void remove(rigidbody_interface* rigidbody) override;
 
     virtual void simulation(float time_step) override;
+    virtual void debug() override;
 
     btDiscreteDynamicsWorld* world() const noexcept { return m_world.get(); }
 

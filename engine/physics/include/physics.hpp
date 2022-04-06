@@ -10,7 +10,6 @@
 
 namespace ash::physics
 {
-class physics_debug;
 class PHYSICS_API physics : public ash::core::submodule
 {
 public:
@@ -44,9 +43,13 @@ private:
     ash::ecs::view<rigidbody, joint>* m_joint_view;
 
     std::unique_ptr<world_interface> m_world;
-    std::unique_ptr<physics_debug> m_debug;
 
     physics_plugin m_plugin;
     factory* m_factory;
+
+#if defined(ASH_PHYSICS_DEBUG_DRAW)
+    class physics_debug;
+    std::unique_ptr<physics_debug> m_debug;
+#endif
 };
 } // namespace ash::physics
