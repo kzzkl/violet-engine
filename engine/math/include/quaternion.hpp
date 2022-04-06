@@ -32,6 +32,11 @@ public:
             h_cos * p_cos * b_cos + h_sin * p_sin * b_sin};
     }
 
+    static inline quaternion_type rotation_euler(const float3& euler)
+    {
+        return rotation_euler(euler[0], euler[1], euler[2]);
+    }
+
     static inline quaternion_type rotation_euler(const vector_type& euler)
     {
         return rotation_euler(euler[0], euler[1], euler[2]);

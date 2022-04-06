@@ -45,8 +45,9 @@ bool physics::initialize(const dictionary& config)
     auto& task = module<ash::task::task_manager>();
     task.schedule(TASK_SIMULATION, [this]() { simulation(); });
 
-    module<ash::ecs::world>().register_component<rigidbody>();
-    m_view = module<ash::ecs::world>().make_view<rigidbody, ash::scene::transform>();
+    module<ash::ecs::world>().register_component<rigidbody, joint>();
+    m_rigidbody_view = module<ash::ecs::world>().make_view<rigidbody, ash::scene::transform>();
+    m_joint_view = module<ash::ecs::world>().make_view<rigidbody, joint>();
 
     return true;
 }
@@ -56,7 +57,7 @@ void physics::simulation()
     module<ash::scene::scene>().reset_sync_counter();
     module<ash::scene::scene>().sync_local();
 
-    m_view->each([this](rigidbody& rigidbody, ash::scene::transform& transform) {
+    m_rigidbody_view->each([this](rigidbody& rigidbody, ash::scene::transform& transform) {
         if (rigidbody.in_world() == transform.node()->in_scene())
             return;
 
@@ -66,22 +67,30 @@ void physics::simulation()
             {
                 rigidbody_desc desc = {};
                 desc.mass = rigidbody.mass();
+                desc.linear_dimmer = rigidbody.linear_dimmer();
+                desc.angular_dimmer = rigidbody.angular_dimmer();
+                desc.restitution = rigidbody.restitution();
+                desc.friction = rigidbody.friction();
                 desc.shape = rigidbody.shape();
 
-                math::float4x4_simd to_world = math::simd::load(transform.node()->to_world);
+                /*math::float4x4_simd to_world = math::simd::load(transform.node()->to_world);
                 math::float4x4_simd to_node = math::simd::load(rigidbody.offset());
 
                 math::float4x4_simd offset =
                     math::matrix_simd::mul(to_node, math::matrix_simd::inverse(to_world));
-                rigidbody.offset(offset);
+                rigidbody.offset(offset);*/
+                desc.world_matrix = rigidbody.offset();
 
-                math::simd::store(to_node, desc.world_matrix);
+                // math::simd::store(to_node, desc.world_matrix);
                 // math::simd::store(math::matrix_simd::mul(to_node, to_world), desc.world_matrix);
 
                 rigidbody.interface.reset(m_factory->make_rigidbody(desc));
             }
 
-            m_world->add(rigidbody.interface.get());
+            m_world->add(
+                rigidbody.interface.get(),
+                rigidbody.collision_group(),
+                rigidbody.collision_mask());
         }
         else
         {
@@ -91,9 +100,57 @@ void physics::simulation()
         rigidbody.in_world(transform.node()->in_scene());
     });
 
+    m_joint_view->each([this](rigidbody& rigidbody, joint& joint) {
+        for (auto& unit : joint)
+        {
+            if (unit.interface != nullptr)
+                continue;
+
+            joint_desc desc = {};
+            desc.location = unit.location;
+            desc.rotation = unit.rotation;
+            desc.min_linear = unit.min_linear;
+            desc.max_linear = unit.max_linear;
+            desc.min_angular = unit.min_angular;
+            desc.max_angular = unit.max_angular;
+            desc.spring_translate_factor = unit.spring_translate_factor;
+            desc.spring_rotate_factor = unit.spring_rotate_factor;
+            desc.rigidbody_a = rigidbody.interface.get();
+            desc.rigidbody_b = unit.rigidbody->interface.get();
+
+            unit.interface.reset(m_factory->make_joint(desc));
+
+            m_world->add(unit.interface.get());
+        }
+
+        /*if (!group.in_world)
+        {
+            for (auto& joint : group.joints)
+            {
+                joint_desc desc = {};
+                desc.location = joint.location;
+                desc.rotation = joint.rotation;
+                desc.min_linear = joint.min_linear;
+                desc.max_linear = joint.max_linear;
+                desc.min_angular = joint.min_angular;
+                desc.max_angular = joint.max_angular;
+                desc.spring_translate_factor = joint.spring_translate_factor;
+                desc.spring_rotate_factor = joint.spring_rotate_factor;
+                desc.rigidbody_a = joint.rigidbody_a->interface.get();
+                desc.rigidbody_b = joint.rigidbody_b->interface.get();
+
+                joint.interface.reset(m_factory->make_joint(desc));
+
+                m_world->add(joint.interface.get());
+            }
+
+            group.in_world = true;
+        }*/
+    });
+
     m_world->simulation(module<ash::core::timer>().frame_delta());
 
-    m_view->each([this](rigidbody& rigidbody, ash::scene::transform& transform) {
+    m_rigidbody_view->each([this](rigidbody& rigidbody, ash::scene::transform& transform) {
         if (!rigidbody.in_world())
             return;
 
@@ -101,11 +158,11 @@ void physics::simulation()
         {
             math::float4x4_simd to_world = math::simd::load(rigidbody.interface->transform());
             math::float4x4_simd to_node_inv = math::simd::load(rigidbody.offset_inverse());
-            math::simd::store(to_world, transform.node()->to_world);
+            // math::simd::store(to_world, transform.node()->to_world);
 
-            /*math::simd::store(
+            math::simd::store(
                 math::matrix_simd::mul(to_node_inv, to_world),
-                transform.node()->to_world);*/
+                transform.node()->to_world);
         }
     });
 

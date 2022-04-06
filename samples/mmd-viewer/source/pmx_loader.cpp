@@ -34,6 +34,9 @@ bool pmx_loader::load(std::string_view path)
     if (!fin.is_open())
         return false;
 
+    m_root_path = path;
+    m_root_path = m_root_path.substr(0, m_root_path.find_last_of('/'));
+
     if (!load_header(fin))
         return false;
 
@@ -205,24 +208,22 @@ bool pmx_loader::load_index(std::ifstream& fin)
 
 bool pmx_loader::load_texture(std::ifstream& fin)
 {
-    std::int32_t numTexture;
-    read<std::int32_t>(fin, numTexture);
-    m_textures.reserve(numTexture);
+    std::int32_t num_texture;
+    read<std::int32_t>(fin, num_texture);
 
-    for (std::int32_t i = 0; i < numTexture; ++i)
-    {
-        m_textures.push_back(read_text(fin));
-    }
+    m_textures.reserve(num_texture);
+    for (std::int32_t i = 0; i < num_texture; ++i)
+        m_textures.push_back(m_root_path + "/" + read_text(fin));
 
     return true;
 }
 
 bool pmx_loader::load_material(std::ifstream& fin)
 {
-    std::int32_t numMaterial;
-    read<std::int32_t>(fin, numMaterial);
+    std::int32_t num_material;
+    read<std::int32_t>(fin, num_material);
 
-    m_materials.resize(numMaterial);
+    m_materials.resize(num_material);
 
     for (auto& mat : m_materials)
     {
@@ -265,10 +266,10 @@ bool pmx_loader::load_material(std::ifstream& fin)
 
 bool pmx_loader::load_bone(std::ifstream& fin)
 {
-    std::int32_t numBone;
-    read<std::int32_t>(fin, numBone);
+    std::int32_t num_bone;
+    read<std::int32_t>(fin, num_bone);
 
-    m_bones.resize(numBone);
+    m_bones.resize(num_bone);
     for (pmx_bone& bone : m_bones)
     {
         bone.name_jp = read_text(fin);
@@ -479,9 +480,9 @@ bool pmx_loader::load_rigidbody(std::ifstream& fin)
 {
     std::int32_t numRigidBody;
     read<std::int32_t>(fin, numRigidBody);
-    m_rigidbodys.resize(numRigidBody);
+    m_rigidbodies.resize(numRigidBody);
 
-    for (pmx_rigidbody& rigidbody : m_rigidbodys)
+    for (pmx_rigidbody& rigidbody : m_rigidbodies)
     {
         rigidbody.name_jp = read_text(fin);
         rigidbody.name_en = read_text(fin);
@@ -494,11 +495,14 @@ bool pmx_loader::load_rigidbody(std::ifstream& fin)
         read<math::float3>(fin, rigidbody.size);
 
         read<math::float3>(fin, rigidbody.translate);
-        read<math::float3>(fin, rigidbody.rotate);
+
+        math::float3 rotate;
+        read<math::float3>(fin, rotate);
+        rigidbody.rotate = math::quaternion_plain::rotation_euler(rotate[1], rotate[0], rotate[2]);
 
         read<float>(fin, rigidbody.mass);
-        read<float>(fin, rigidbody.translateDimmer);
-        read<float>(fin, rigidbody.rotateDimmer);
+        read<float>(fin, rigidbody.translate_dimmer);
+        read<float>(fin, rigidbody.rotate_dimmer);
         read<float>(fin, rigidbody.repulsion);
         read<float>(fin, rigidbody.friction);
         read<pmx_rigidbody_mode>(fin, rigidbody.mode);

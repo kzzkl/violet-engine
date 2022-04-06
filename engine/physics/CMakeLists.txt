@@ -1,6 +1,7 @@
 project(ash-physics)
 
 add_library(${PROJECT_NAME} SHARED
+    ./source/joint.cpp
     ./source/physics_plugin.cpp
     ./source/physics.cpp
     ./source/rigidbody.cpp)

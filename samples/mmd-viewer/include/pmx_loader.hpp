@@ -281,10 +281,10 @@ struct pmx_rigidbody
     pmx_rigidbody_shape_type shape;
     math::float3 size;
     math::float3 translate;
-    math::float3 rotate;
+    math::float4 rotate;
     float mass;
-    float translateDimmer;
-    float rotateDimmer;
+    float translate_dimmer;
+    float rotate_dimmer;
     float repulsion;
     float friction;
 
@@ -337,7 +337,9 @@ public:
     const std::vector<std::string>& textures() const noexcept { return m_textures; }
 
     const std::vector<pmx_bone>& bones() const noexcept { return m_bones; }
-    const std::vector<pmx_rigidbody>& rigidbodys() const noexcept { return m_rigidbodys; }
+
+    const std::vector<pmx_rigidbody>& rigidbodies() const noexcept { return m_rigidbodies; }
+    const std::vector<pmx_joint>& joints() const noexcept { return m_joints; }
 
     const std::vector<std::string>& internal_toon() const noexcept { return m_internal_toon; }
 
@@ -366,9 +368,11 @@ private:
     std::vector<pmx_bone> m_bones;
     std::vector<pmx_morph> m_morphs;
     std::vector<pmx_display_data> m_display_frames;
-    std::vector<pmx_rigidbody> m_rigidbodys;
+    std::vector<pmx_rigidbody> m_rigidbodies;
     std::vector<pmx_joint> m_joints;
 
     std::vector<std::string> m_internal_toon;
+
+    std::string m_root_path;
 };
 } // namespace ash::sample::mmd

@@ -9,8 +9,14 @@ class bt3_world : public world_interface
 public:
     bt3_world(const world_desc& desc);
 
-    virtual void add(rigidbody_interface* rigidbody) override;
+    virtual void add(
+        rigidbody_interface* rigidbody,
+        std::uint32_t collision_group,
+        std::uint32_t collision_mask) override;
+    virtual void add(joint_interface* joint) override;
+
     virtual void remove(rigidbody_interface* rigidbody) override;
+
     virtual void simulation(float time_step) override;
 
     btDiscreteDynamicsWorld* world() const noexcept { return m_world.get(); }

@@ -42,16 +42,15 @@ public:
     virtual ~collision_shape_interface() = default;
 };
 
-enum class rigidbody_type
-{
-};
-
 struct rigidbody_desc
 {
-    rigidbody_type type;
-
     collision_shape_interface* shape;
     float mass;
+
+    float linear_dimmer;
+    float angular_dimmer;
+    float restitution;
+    float friction;
 
     math::float4x4 world_matrix;
 };
@@ -62,11 +61,36 @@ public:
     virtual ~rigidbody_interface() = default;
 
     virtual void mass(float mass) = 0;
+    virtual void shape(collision_shape_interface* shape) = 0;
 
     virtual void transform(const math::float4x4& world_matrix) = 0;
     virtual const math::float4x4& transform() const noexcept = 0;
 
     virtual bool updated() const noexcept = 0;
+};
+
+struct joint_desc
+{
+    rigidbody_interface* rigidbody_a;
+    rigidbody_interface* rigidbody_b;
+
+    math::float3 location;
+    math::float4 rotation;
+
+    math::float3 min_linear;
+    math::float3 max_linear;
+
+    math::float3 min_angular;
+    math::float3 max_angular;
+
+    math::float3 spring_translate_factor;
+    math::float3 spring_rotate_factor;
+};
+
+class joint_interface
+{
+public:
+    virtual ~joint_interface() = default;
 };
 
 struct world_desc
@@ -79,8 +103,14 @@ class world_interface
 public:
     virtual ~world_interface() = default;
 
-    virtual void add(rigidbody_interface* rigidbody) = 0;
+    virtual void add(
+        rigidbody_interface* rigidbody,
+        std::uint32_t collision_group,
+        std::uint32_t collision_mask) = 0;
+    virtual void add(joint_interface* joint) = 0;
+
     virtual void remove(rigidbody_interface* rigidbody) = 0;
+
     virtual void simulation(float time_step) = 0;
 };
 
@@ -96,6 +126,7 @@ public:
         const math::float4x4* offset,
         std::size_t size) = 0;
     virtual rigidbody_interface* make_rigidbody(const rigidbody_desc& desc) = 0;
+    virtual joint_interface* make_joint(const joint_desc& desc) = 0;
 };
 using factory = factory_interface;
 

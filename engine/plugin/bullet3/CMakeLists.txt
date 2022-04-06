@@ -3,6 +3,7 @@ project(ash-physics-bullet3)
 find_package(Bullet REQUIRED PATHS ${THIRD_PARTY_DIR}/bullet3)
 
 add_library(${PROJECT_NAME} SHARED
+    ./source/bt3_joint.cpp
     ./source/bt3_plugin.cpp
     ./source/bt3_rigidbody.cpp
     ./source/bt3_shape.cpp

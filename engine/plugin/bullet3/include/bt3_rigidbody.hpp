@@ -31,6 +31,7 @@ public:
     bt3_rigidbody(const rigidbody_desc& desc);
 
     virtual void mass(float mass) override;
+    virtual void shape(collision_shape_interface* shape) override;
 
     virtual void transform(const math::float4x4& world_matrix) override;
     virtual const math::float4x4& transform() const noexcept override;

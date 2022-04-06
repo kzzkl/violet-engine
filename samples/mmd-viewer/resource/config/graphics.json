@@ -20,11 +20,11 @@
                     },
                     {
                         "name": "BONE",
-                        "type": "UINT4",
+                        "type": "uint4",
                         "index": 0
                     },
                     {
-                        "name": "WEIGHT",
+                        "name": "BONE_WEIGHT",
                         "type": "float3",
                         "index": 0
                     }
@@ -86,7 +86,8 @@
                     ],
                     "unit": [
                         "ash_object",
-                        "mmd_material"
+                        "mmd_material",
+                        "mmd_skeleton"
                     ]
                 }
             }

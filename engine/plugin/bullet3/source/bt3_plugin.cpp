@@ -1,3 +1,4 @@
+#include "bt3_joint.hpp"
 #include "bt3_rigidbody.hpp"
 #include "bt3_shape.hpp"
 #include "bt3_world.hpp"
@@ -66,6 +67,11 @@ public:
     virtual rigidbody_interface* make_rigidbody(const rigidbody_desc& desc) override
     {
         return new bt3_rigidbody(desc);
+    }
+
+    virtual joint_interface* make_joint(const joint_desc& desc) override
+    {
+        return new bt3_joint(desc);
     }
 
     void debug(debug_draw_interface* debug)

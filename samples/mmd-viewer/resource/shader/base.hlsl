@@ -14,7 +14,12 @@ cbuffer mmd_material : register(b1)
     uint spa_mode;
 };
 
-cbuffer ash_pass : register(b2)
+cbuffer mmd_skeleton : register(b2)
+{
+    float4x4 offset[512];
+};
+
+cbuffer ash_pass : register(b3)
 {
     float4 camera_position;
     float4 camera_direction;
@@ -35,6 +40,8 @@ struct vs_in
     float3 position : POSITION;
     float3 normal : NORMAL;
     float2 uv : UV;
+    uint4 bone : BONE;
+    float3 weight : BONE_WEIGHT;
 };
 
 struct vs_out
@@ -48,9 +55,29 @@ vs_out vs_main(vs_in vin)
 {
     vs_out result;
 
-    result.position = mul(float4(vin.position, 1.0f), transform_mvp);
+    float weights[4] = { 0.0, 0.0, 0.0, 0.0 };
+    weights[0] = vin.weight.x;
+    weights[1] = vin.weight.y;
+    weights[2] = vin.weight.z;
+    weights[3] = 1.0f - weights[0] - weights[1] - weights[2];
+
+    result.position = float4(0.0, 0.0, 0.0, 1.0);
+    result.normal = float3(0.0, 0.0, 0.0);
+
+    float4 position = {0.0, 0.0, 0.0, 0.0};
+    float4 normal = {0.0, 0.0, 0.0, 0.0};
+
+    for (int i = 0; i < 4; ++i)
+    {
+        position += weights[i] * mul(float4(vin.position, 1.0f), offset[vin.bone[i]]);
+        normal += weights[i] * mul(float4(vin.normal, 1.0f), offset[vin.bone[i]]);
+    }
+    position.w = 1.0f;
+    normal.w = 0.0f;
+
+    result.position = mul(position, transform_mvp);
     result.uv = vin.uv;
-    result.normal = mul(float4(vin.normal, 0.0f), transform_mv).xyz;
+    result.normal = mul(normal, transform_mv).xyz;
 
     return result;
 }

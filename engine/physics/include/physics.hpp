@@ -1,6 +1,7 @@
 #pragma once
 
 #include "context.hpp"
+#include "joint.hpp"
 #include "physics_exports.hpp"
 #include "physics_plugin.hpp"
 #include "rigidbody.hpp"
@@ -39,7 +40,8 @@ public:
 private:
     void simulation();
 
-    ash::ecs::view<rigidbody, ash::scene::transform>* m_view;
+    ash::ecs::view<rigidbody, ash::scene::transform>* m_rigidbody_view;
+    ash::ecs::view<rigidbody, joint>* m_joint_view;
 
     std::unique_ptr<world_interface> m_world;
     std::unique_ptr<physics_debug> m_debug;
