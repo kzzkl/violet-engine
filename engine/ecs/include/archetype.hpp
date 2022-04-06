@@ -12,7 +12,7 @@ class archetype_layout
 public:
     struct layout_info
     {
-        const component_info* component;
+        component_info* component;
         std::size_t offset;
     };
 
@@ -69,14 +69,14 @@ private:
             list.push_back(std::make_pair(type, info));
 
         std::sort(list.begin(), list.end(), [](const auto& a, const auto& b) {
-            return a.second.component->align == b.second.component->align
+            return a.second.component->align() == b.second.component->align()
                        ? a.first < b.first
-                       : a.second.component->align > b.second.component->align;
+                       : a.second.component->align() > b.second.component->align();
         });
 
         std::size_t entity_size = 0;
         for (const auto& [type, info] : list)
-            entity_size += info.component->size;
+            entity_size += info.component->size();
 
         m_entity_per_chunk = m_capacity / entity_size;
 
@@ -86,7 +86,7 @@ private:
             info.offset = offset;
             m_layout[type] = info;
 
-            offset += info.component->size * m_entity_per_chunk;
+            offset += info.component->size() * m_entity_per_chunk;
         }
     }
 
@@ -214,9 +214,9 @@ public:
             if (iter != target_layout.end())
             {
                 std::size_t source_offset =
-                    info.offset + source_entity_index * info.component->size;
+                    info.offset + source_entity_index * info.component->size();
                 std::size_t target_offset =
-                    iter->second.offset + target_entity_index * iter->second.component->size;
+                    iter->second.offset + target_entity_index * iter->second.component->size();
                 info.component->move_construct(
                     m_storage.get(source_chunk_index, source_offset),
                     target.m_storage.get(target_chunk_index, target_offset));
@@ -227,7 +227,7 @@ public:
         {
             if (m_layout.find(type) == m_layout.end())
             {
-                std::size_t offset = info.offset + target_entity_index * info.component->size;
+                std::size_t offset = info.offset + target_entity_index * info.component->size();
                 info.component->construct(target.m_storage.get(target_chunk_index, offset));
             }
         }
@@ -277,7 +277,7 @@ private:
 
         for (auto& [type, info] : m_layout)
         {
-            std::size_t offset = info.offset + entity_index * info.component->size;
+            std::size_t offset = info.offset + entity_index * info.component->size();
             info.component->construct(m_storage.get(chunk_index, offset));
         }
     }
@@ -290,7 +290,7 @@ private:
 
         for (auto& [type, info] : m_layout)
         {
-            std::size_t offset = info.offset + entity_index * info.component->size;
+            std::size_t offset = info.offset + entity_index * info.component->size();
             info.component->destruct(m_storage.get(chunk_index, offset));
         }
     }
@@ -307,8 +307,8 @@ private:
 
         for (auto& [type, info] : m_layout)
         {
-            std::size_t a_offset = info.offset + a_entity_index * info.component->size;
-            std::size_t b_offset = info.offset + b_entity_index * info.component->size;
+            std::size_t a_offset = info.offset + a_entity_index * info.component->size();
+            std::size_t b_offset = info.offset + b_entity_index * info.component->size();
             info.component->swap(
                 m_storage.get(a_chunk_index, a_offset),
                 m_storage.get(b_chunk_index, b_offset));
