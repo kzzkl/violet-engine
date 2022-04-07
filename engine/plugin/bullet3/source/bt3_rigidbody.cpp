@@ -1,27 +1,28 @@
 #include "bt3_rigidbody.hpp"
 #include "bt3_shape.hpp"
+#include <iostream>
 
 namespace ash::physics::bullet3
 {
-bt3_motion_state::bt3_motion_state(const math::float4x4& world_matrix)
-    : m_world_matrix(world_matrix)
+bt3_motion_state::bt3_motion_state(transform_reflect_interface* reflect) : m_reflect(reflect)
 {
 }
 
 void bt3_motion_state::getWorldTransform(btTransform& centerOfMassWorldTrans) const
 {
-    centerOfMassWorldTrans.setFromOpenGLMatrix(&m_world_matrix[0][0]);
+    centerOfMassWorldTrans.setFromOpenGLMatrix(&m_reflect->transform()[0][0]);
 }
 
 void bt3_motion_state::setWorldTransform(const btTransform& centerOfMassWorldTrans)
 {
-    m_updated = true;
-    centerOfMassWorldTrans.getOpenGLMatrix(&m_world_matrix[0][0]);
+    math::float4x4 world_matrix;
+    centerOfMassWorldTrans.getOpenGLMatrix(&world_matrix[0][0]);
+    m_reflect->transform(world_matrix);
 }
 
 bt3_rigidbody::bt3_rigidbody(const rigidbody_desc& desc)
 {
-    m_motion_state = std::make_unique<bt3_motion_state>(desc.world_matrix);
+    m_motion_state = std::make_unique<bt3_motion_state>(desc.reflect);
 
     btCollisionShape* shape = static_cast<bt3_shape*>(desc.shape)->shape();
 
@@ -54,17 +55,5 @@ void bt3_rigidbody::mass(float mass)
 void bt3_rigidbody::shape(collision_shape_interface* shape)
 {
     m_rigidbody->setCollisionShape(static_cast<bt3_shape*>(shape)->shape());
-}
-
-void bt3_rigidbody::transform(const math::float4x4& world_matrix)
-{
-    btTransform transform;
-    transform.setFromOpenGLMatrix(&world_matrix[0][0]);
-    m_rigidbody->getMotionState()->setWorldTransform(transform);
-}
-
-const math::float4x4& bt3_rigidbody::transform() const noexcept
-{
-    return m_motion_state->transform();
 }
 } // namespace ash::physics::bullet3

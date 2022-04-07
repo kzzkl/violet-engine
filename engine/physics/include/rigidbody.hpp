@@ -3,14 +3,42 @@
 #include "ecs.hpp"
 #include "physics_exports.hpp"
 #include "physics_interface.hpp"
-#include "transform.hpp"
+#include "scene_node.hpp"
 
 namespace ash::physics
 {
+class transform_reflect : public transform_reflect_interface
+{
+public:
+    transform_reflect() noexcept;
+    virtual ~transform_reflect() = default;
+
+    virtual const math::float4x4& transform() const override;
+    virtual void transform(const math::float4x4& world) override;
+
+    void offset(const math::float4x4& offset) noexcept;
+    void offset(const math::float4x4_simd& offset) noexcept;
+
+    void node(ash::scene::scene_node* node) noexcept { m_node = node; }
+
+private:
+    ash::scene::scene_node* m_node;
+    math::float4x4 m_offset;
+    math::float4x4 m_offset_inverse;
+
+    mutable math::float4x4 m_transform;
+};
+
 class PHYSICS_API rigidbody
 {
 public:
+    using transform_handle = ash::ecs::component_handle<ash::scene::transform>;
+
+public:
     rigidbody();
+
+    void type(rigidbody_type type) noexcept { m_type = type; }
+    rigidbody_type type() const noexcept { return m_type; }
 
     void mass(float mass) noexcept;
     float mass() const noexcept { return m_mass; }
@@ -32,8 +60,6 @@ public:
 
     void offset(const math::float4x4& offset) noexcept;
     void offset(const math::float4x4_simd& offset) noexcept;
-    const math::float4x4& offset() const noexcept { return m_offset; }
-    const math::float4x4& offset_inverse() const noexcept { return m_offset_inverse; }
 
     void in_world(bool in_world) noexcept { m_in_world = in_world; }
     bool in_world() const noexcept { return m_in_world; }
@@ -51,9 +77,14 @@ public:
     std::uint32_t collision_mask() const noexcept { return m_collision_mask; }
 
     std::unique_ptr<rigidbody_interface> interface;
-    ash::ecs::component_handle<ash::scene::transform> node;
+    // ash::ecs::component_handle<ash::scene::transform> node;
+
+    void node(ash::scene::scene_node* node);
+
+    transform_reflect_interface* reflect() const noexcept { return m_reflect.get(); }
 
 private:
+    rigidbody_type m_type;
     float m_mass;
     float m_linear_dimmer;
     float m_angular_dimmer;
@@ -65,10 +96,9 @@ private:
     std::uint32_t m_collision_group;
     std::uint32_t m_collision_mask;
 
-    math::float4x4 m_offset;
-    math::float4x4 m_offset_inverse;
-
     bool m_in_world;
+
+    std::unique_ptr<transform_reflect> m_reflect;
 };
 } // namespace ash::physics
 

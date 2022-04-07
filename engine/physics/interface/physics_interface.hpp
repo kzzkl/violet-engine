@@ -42,8 +42,26 @@ public:
     virtual ~collision_shape_interface() = default;
 };
 
+enum class rigidbody_type
+{
+    STATIC,
+    DYNAMIC,
+    KINEMATIC
+};
+
+class transform_reflect_interface
+{
+public:
+    virtual ~transform_reflect_interface() = default;
+
+    virtual const math::float4x4& transform() const = 0;
+    virtual void transform(const math::float4x4& world) = 0;
+};
+
 struct rigidbody_desc
 {
+    rigidbody_type type;
+
     collision_shape_interface* shape;
     float mass;
 
@@ -52,7 +70,7 @@ struct rigidbody_desc
     float restitution;
     float friction;
 
-    math::float4x4 world_matrix;
+    transform_reflect_interface* reflect;
 };
 
 class rigidbody_interface
@@ -62,11 +80,6 @@ public:
 
     virtual void mass(float mass) = 0;
     virtual void shape(collision_shape_interface* shape) = 0;
-
-    virtual void transform(const math::float4x4& world_matrix) = 0;
-    virtual const math::float4x4& transform() const noexcept = 0;
-
-    virtual bool updated() const noexcept = 0;
 };
 
 struct joint_desc

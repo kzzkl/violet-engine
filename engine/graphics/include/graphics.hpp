@@ -104,6 +104,7 @@ private:
 
     ash::ecs::view<visual, scene::transform>* m_object_view;
     ash::ecs::view<main_camera, camera, scene::transform>* m_camera_view;
+    ash::ecs::view<scene::transform>* m_t_view;
 
     std::unique_ptr<render_parameter> m_parameter_pass;
 

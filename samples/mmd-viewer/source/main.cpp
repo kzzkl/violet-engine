@@ -188,10 +188,13 @@ private:
         if (keyboard.key(keyboard_key::KEY_Q).down())
             move -= 1.0f;
 
-        auto actor_transform = world.component<transform>(m_actor);
-        math::float3 new_position = actor_transform->position();
-        new_position[0] += move * m_move_speed * delta;
-        actor_transform->position(new_position);
+        if (move != 0.0f)
+        {
+            auto actor_transform = world.component<transform>(m_actor);
+            math::float3 new_position = actor_transform->position();
+            new_position[0] += move * m_move_speed * delta;
+            actor_transform->position(new_position);
+        }
     }
 
     void update()

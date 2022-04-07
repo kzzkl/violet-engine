@@ -70,15 +70,18 @@ void physics::simulation()
 
         if (transform.node()->in_scene())
         {
+            rigidbody.node(transform.node());
             if (rigidbody.interface == nullptr)
             {
                 rigidbody_desc desc = {};
+                desc.type = rigidbody.type();
                 desc.mass = rigidbody.mass();
                 desc.linear_dimmer = rigidbody.linear_dimmer();
                 desc.angular_dimmer = rigidbody.angular_dimmer();
                 desc.restitution = rigidbody.restitution();
                 desc.friction = rigidbody.friction();
                 desc.shape = rigidbody.shape();
+                desc.reflect = rigidbody.reflect();
 
                 /*math::float4x4_simd to_world = math::simd::load(transform.node()->to_world);
                 math::float4x4_simd to_node = math::simd::load(rigidbody.offset());
@@ -86,7 +89,7 @@ void physics::simulation()
                 math::float4x4_simd offset =
                     math::matrix_simd::mul(to_node, math::matrix_simd::inverse(to_world));
                 rigidbody.offset(offset);*/
-                desc.world_matrix = rigidbody.offset();
+                // desc.world_matrix = rigidbody.offset();
 
                 // math::simd::store(to_node, desc.world_matrix);
                 // math::simd::store(math::matrix_simd::mul(to_node, to_world), desc.world_matrix);
@@ -138,7 +141,7 @@ void physics::simulation()
             return;
 
         // if (rigidbody.interface->updated())
-        {
+        /*{
             math::float4x4_simd to_world = math::simd::load(rigidbody.interface->transform());
             math::float4x4_simd to_node_inv = math::simd::load(rigidbody.offset_inverse());
             // math::simd::store(to_world, transform.node()->to_world);
@@ -146,13 +149,12 @@ void physics::simulation()
             math::simd::store(
                 math::matrix_simd::mul(to_node_inv, to_world),
                 transform.node()->to_world);
-        }
+        }*/
     });
+    module<ash::scene::scene>().sync_world();
 
 #if defined(ASH_PHYSICS_DEBUG_DRAW)
     m_world->debug();
 #endif
-
-    module<ash::scene::scene>().sync_world();
 }
 } // namespace ash::physics

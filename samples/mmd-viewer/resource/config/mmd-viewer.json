@@ -1,4 +1,12 @@
 {
+    "test_module": {
+        "title": "test app"
+    },
+    "window": {
+        "title": "你好",
+        "width": 1300,
+        "height": 800
+    },
     "graphics": {
         "vertex_layout": {
             "pmx": {

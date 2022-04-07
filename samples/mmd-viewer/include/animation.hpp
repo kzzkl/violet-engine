@@ -3,7 +3,6 @@
 #include "context.hpp"
 #include "skeleton.hpp"
 #include "view.hpp"
-#include "visual.hpp"
 
 namespace ash::sample::mmd
 {
@@ -20,6 +19,6 @@ public:
     void update();
 
 private:
-    ash::ecs::view<skeleton, ash::graphics::visual>* m_view;
+    ash::ecs::view<skeleton>* m_view;
 };
 } // namespace ash::sample::mmd

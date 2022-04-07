@@ -21,20 +21,6 @@ bool scene::initialize(const dictionary& config)
 
 void scene::sync_local()
 {
-    // Update to parent matrix.
-    m_view->each([](transform& t) {
-        if (t.node()->in_scene() && t.node()->dirty())
-        {
-            math::float4_simd scale = math::simd::load(t.scaling());
-            math::float4_simd rotation = math::simd::load(t.rotation());
-            math::float4_simd translation = math::simd::load(t.position());
-
-            math::float4x4_simd to_parent =
-                math::matrix_simd::affine_transform(scale, rotation, translation);
-            math::simd::store(to_parent, t.node()->to_parent);
-        }
-    });
-
     // Update dirty node.
     std::queue<scene_node*> dirty_bfs = find_dirty_node();
     while (!dirty_bfs.empty())
@@ -42,7 +28,15 @@ void scene::sync_local()
         scene_node* node = dirty_bfs.front();
         dirty_bfs.pop();
 
-        math::float4x4_simd to_parent = math::simd::load(node->to_parent);
+        // Update to parent matrix.
+        math::float4_simd scale = math::simd::load(node->transform()->scaling());
+        math::float4_simd rotation = math::simd::load(node->transform()->rotation());
+        math::float4_simd translation = math::simd::load(node->transform()->position());
+
+        math::float4x4_simd to_parent =
+            math::matrix_simd::affine_transform(scale, rotation, translation);
+        math::simd::store(to_parent, node->to_parent);
+
         math::float4x4_simd parent_to_world = math::simd::load(node->parent()->to_world);
         math::float4x4_simd to_world = math::matrix_simd::mul(to_parent, parent_to_world);
         math::simd::store(to_world, node->to_world);

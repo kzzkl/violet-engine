@@ -1,5 +1,6 @@
 #include "mmd_viewer.hpp"
 #include "animation.hpp"
+#include "scene.hpp"
 #include "transform.hpp"
 
 namespace ash::sample::mmd
@@ -173,13 +174,14 @@ void mmd_viewer::load_hierarchy(mmd_resource& resource, const pmx_loader& loader
                 world.component<scene::transform>(resource.hierarchy[mmd_bone.parent_index]);
             node->node()->parent(parent_node->node());
 
-            math::float3 local_position =
-                math::vector_plain::sub(parent_node->position(), mmd_bone.position);
-            // node->position(local_position);
+            math::float3 local_position = math::vector_plain::sub(
+                mmd_bone.position,
+                loader.bones()[mmd_bone.parent_index].position);
+            //node->position(local_position);
         }
         else
         {
-            // node->position(mmd_bone.position);
+            //node->position(mmd_bone.position);
             node->node()->parent(world.component<scene::transform>(resource.root)->node());
         }
 
@@ -208,9 +210,9 @@ void mmd_viewer::load_physics(mmd_resource& resource, const pmx_loader& loader)
             break;
         case pmx_rigidbody_shape_type::BOX:
             desc.type = physics::collision_shape_type::BOX;
-            desc.box.length = mmd_rigidbody.size[0];
-            desc.box.height = mmd_rigidbody.size[1];
-            desc.box.width = mmd_rigidbody.size[2];
+            desc.box.length = mmd_rigidbody.size[0] * 2.0f;
+            desc.box.height = mmd_rigidbody.size[1] * 2.0f;
+            desc.box.width = mmd_rigidbody.size[2] * 2.0f;
             break;
         case pmx_rigidbody_shape_type::CAPSULE:
             desc.type = physics::collision_shape_type::CAPSULE;
@@ -240,6 +242,21 @@ void mmd_viewer::load_physics(mmd_resource& resource, const pmx_loader& loader)
         rigidbody->angular_dimmer(mmd_rigidbody.rotate_dimmer);
         rigidbody->restitution(mmd_rigidbody.repulsion);
         rigidbody->friction(mmd_rigidbody.friction);
+
+        switch (mmd_rigidbody.mode)
+        {
+        case pmx_rigidbody_mode::STATIC:
+            rigidbody->type(physics::rigidbody_type::KINEMATIC);
+            break;
+        case pmx_rigidbody_mode::DYNAMIC:
+            rigidbody->type(physics::rigidbody_type::DYNAMIC);
+            break;
+        case pmx_rigidbody_mode::MERGE:
+            rigidbody->type(physics::rigidbody_type::KINEMATIC);
+            break;
+        default:
+            break;
+        }
 
         math::float4_simd position_offset = math::simd::load(mmd_rigidbody.translate);
         math::float4_simd rotation_offset = math::simd::load(mmd_rigidbody.rotate);

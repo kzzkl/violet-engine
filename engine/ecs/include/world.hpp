@@ -1,6 +1,7 @@
 #pragma once
 
 #include "archetype.hpp"
+#include "assert.hpp"
 #include "entity.hpp"
 #include "view.hpp"
 #include <atomic>
@@ -86,7 +87,7 @@ public:
             update();
         }
 
-        component_type* pointer() noexcept
+        component_type* pointer() const
         {
             if (!m_world->vaild(m_entity))
                 update();
@@ -95,11 +96,11 @@ public:
 
         entity_type entity() const noexcept { return m_entity; }
 
-        component_type& operator*() { return *operator->(); }
-        component_type* operator->() { return pointer(); }
+        component_type& operator*() const { return *pointer(); }
+        component_type* operator->() const { return pointer(); }
 
     private:
-        void update()
+        void update() const
         {
             auto& record = m_world->m_entity_record[m_entity.id];
             m_entity.version = record.version;
@@ -108,9 +109,9 @@ public:
             m_pointer = &handle.component<component_type>();
         }
 
-        component_type* m_pointer;
+        mutable component_type* m_pointer;
 
-        entity_type m_entity;
+        mutable entity_type m_entity;
         world* m_world;
     };
 
@@ -223,6 +224,7 @@ public:
     template <typename Component>
     component_handle<Component> component(entity e)
     {
+        ASH_ASSERT(has_component<Component>(e));
         return component_handle<Component>(e, this);
     }
 

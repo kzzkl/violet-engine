@@ -25,7 +25,8 @@ public:
 
     virtual bool initialize(const ash::dictionary& config) override
     {
-        ash::ecs::world& world = module<ash::ecs::world>();
+        auto& world = module<ash::ecs::world>();
+        auto& graphics = module<ash::graphics::graphics>();
 
         // Create rigidbody shape.
         collision_shape_desc desc;
@@ -41,47 +42,82 @@ public:
         desc.box.width = 10.0f;
         m_plane_shape = module<ash::physics::physics>().make_shape(desc);
 
-        // Create cube.
-        m_cube = world.create();
-        world.add<rigidbody, transform, visual>(m_cube);
-
-        transform& t = world.component<transform>(m_cube);
-        t.position(1.0f, 0.0f, 0.0f);
-        t.rotation(math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f));
-        t.node()->parent(module<ash::scene::scene>().root_node());
-
-        rigidbody& r = world.component<rigidbody>(m_cube);
-        r.shape(m_cube_shape.get());
-        r.mass(1.0f);
-
         geometry_data cube_data = geometry::box(1.0f, 1.0f, 1.0f);
-        m_pipeline = module<ash::graphics::graphics>().make_render_pipeline("geometry");
-        visual& v = world.component<visual>(m_cube);
-        v.vertex_buffer = module<ash::graphics::graphics>().make_vertex_buffer(
-            cube_data.vertices.data(),
-            cube_data.vertices.size());
-        v.index_buffer = module<ash::graphics::graphics>().make_index_buffer(
-            cube_data.indices.data(),
-            cube_data.indices.size());
-        v.submesh.push_back({0, cube_data.indices.size()});
-        v.material.resize(1);
-        v.material[0].pipeline = m_pipeline.get();
-        v.material[0].property =
-            module<ash::graphics::graphics>().make_render_parameter("geometry_material");
-        v.material[0].property->set(0, math::float4{1.0f, 1.0f, 1.0f, 1.0f});
-        v.object = module<ash::graphics::graphics>().make_render_parameter("ash_object");
+        m_cube_vertex_buffer =
+            graphics.make_vertex_buffer(cube_data.vertices.data(), cube_data.vertices.size());
+        m_cube_index_buffer =
+            graphics.make_index_buffer(cube_data.indices.data(), cube_data.indices.size());
+        m_cube_material = graphics.make_render_parameter("geometry_material");
+        m_cube_material->set(0, math::float4{1.0f, 1.0f, 1.0f, 1.0f});
+        m_pipeline = graphics.make_render_pipeline<render_pipeline>("geometry");
+
+        // Create cube.
+        {
+            m_cube_1 = world.create();
+            world.add<rigidbody, transform, visual>(m_cube_1);
+
+            auto t = world.component<transform>(m_cube_1);
+            t->position(1.0f, 0.0f, 0.0f);
+            t->rotation(math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f));
+            t->node()->parent(module<ash::scene::scene>().root_node());
+
+            auto r = world.component<rigidbody>(m_cube_1);
+            r->shape(m_cube_shape.get());
+            r->mass(1.0f);
+
+            auto v = world.component<visual>(m_cube_1);
+            m_cube_object.emplace_back(graphics.make_render_parameter("ash_object"));
+            v->object = m_cube_object.back().get();
+
+            render_unit submesh;
+            submesh.vertex_buffer = m_cube_vertex_buffer.get();
+            submesh.index_buffer = m_cube_index_buffer.get();
+            submesh.index_start = 0;
+            submesh.index_end = cube_data.indices.size();
+            submesh.pipeline = m_pipeline.get();
+            submesh.parameters = {v->object, m_cube_material.get()};
+            v->submesh.push_back(submesh);
+        }
+
+        // Cube 2.
+        {
+            m_cube_2 = world.create();
+            world.add<rigidbody, transform, visual>(m_cube_2);
+
+            auto t = world.component<transform>(m_cube_2);
+            t->position(-1.0f, 0.0f, 0.0f);
+            t->rotation(math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f));
+            t->node()->parent(world.component<scene::transform>(m_cube_1)->node());
+
+            auto r = world.component<rigidbody>(m_cube_2);
+            r->shape(m_cube_shape.get());
+            r->mass(1.0f);
+
+            auto v = world.component<visual>(m_cube_2);
+            m_cube_object.emplace_back(graphics.make_render_parameter("ash_object"));
+            v->object = m_cube_object.back().get();
+
+            render_unit submesh;
+            submesh.vertex_buffer = m_cube_vertex_buffer.get();
+            submesh.index_buffer = m_cube_index_buffer.get();
+            submesh.index_start = 0;
+            submesh.index_end = cube_data.indices.size();
+            submesh.pipeline = m_pipeline.get();
+            submesh.parameters = {v->object, m_cube_material.get()};
+            v->submesh.push_back(submesh);
+        }
 
         // Create plane.
         m_plane = world.create();
         world.add<rigidbody, transform>(m_plane);
 
-        transform& pt = world.component<transform>(m_plane);
-        pt.position(0.0f, -3.0f, 0.0f);
-        pt.node()->parent(module<ash::scene::scene>().root_node());
+        auto pt = world.component<transform>(m_plane);
+        pt->position(0.0f, -3.0f, 0.0f);
+        pt->node()->parent(module<ash::scene::scene>().root_node());
 
-        rigidbody& pr = world.component<rigidbody>(m_plane);
-        pr.shape(m_plane_shape.get());
-        pr.mass(0.0f);
+        auto pr = world.component<rigidbody>(m_plane);
+        pr->shape(m_plane_shape.get());
+        pr->mass(0.0f);
 
         initialize_task();
         initialize_camera();
@@ -112,16 +148,16 @@ private:
 
         m_camera = world.create();
         world.add<main_camera, camera, transform>(m_camera);
-        camera& c_camera = world.component<camera>(m_camera);
-        c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
+        auto c_camera = world.component<camera>(m_camera);
+        c_camera->set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
 
-        transform& c_transform = world.component<transform>(m_camera);
-        c_transform.position(0.0f, 0.0f, -38.0f);
-        c_transform.node()->parent(module<ash::scene::scene>().root_node());
-        c_transform.node()->to_world = math::matrix_plain::affine_transform(
-            c_transform.scaling(),
-            c_transform.rotation(),
-            c_transform.position());
+        auto c_transform = world.component<transform>(m_camera);
+        c_transform->position(0.0f, 0.0f, -38.0f);
+        c_transform->node()->parent(module<ash::scene::scene>().root_node());
+        c_transform->node()->to_world = math::matrix_plain::affine_transform(
+            c_transform->scaling(),
+            c_transform->rotation(),
+            c_transform->position());
     }
 
     void update()
@@ -158,19 +194,17 @@ private:
                 math::float4{0.0f, 0.0f, 1.0f, 1.0f}
             };
 
-            visual& v = world.component<visual>(m_cube);
-            v.material[0].property->set(0, colors[index]);
-
+            m_cube_material->set(0, colors[index]);
             index = (index + 1) % colors.size();
         }
 
-        transform& camera_transform = world.component<transform>(m_camera);
+        auto camera_transform = world.component<transform>(m_camera);
         if (mouse.mode() == mouse_mode::CURSOR_RELATIVE)
         {
             m_heading += mouse.x() * m_rotate_speed * delta;
             m_pitch += mouse.y() * m_rotate_speed * delta;
             m_pitch = std::clamp(m_pitch, -math::PI_PIDIV2, math::PI_PIDIV2);
-            camera_transform.rotation(
+            camera_transform->rotation(
                 math::quaternion_plain::rotation_euler(m_heading, m_pitch, 0.0f));
         }
 
@@ -184,16 +218,16 @@ private:
         if (keyboard.key(keyboard_key::KEY_A).down())
             x -= 1.0f;
 
-        math::float4_simd s = math::simd::load(camera_transform.scaling());
-        math::float4_simd r = math::simd::load(camera_transform.rotation());
-        math::float4_simd t = math::simd::load(camera_transform.position());
+        math::float4_simd s = math::simd::load(camera_transform->scaling());
+        math::float4_simd r = math::simd::load(camera_transform->rotation());
+        math::float4_simd t = math::simd::load(camera_transform->position());
 
         math::float4x4_simd affine = math::matrix_simd::affine_transform(s, r, t);
         math::float4_simd forward =
             math::simd::set(x * m_move_speed * delta, 0.0f, z * m_move_speed * delta, 0.0f);
         forward = math::matrix_simd::mul(forward, affine);
 
-        camera_transform.position(math::vector_simd::add(forward, t));
+        camera_transform->position(math::vector_simd::add(forward, t));
     }
 
     std::unique_ptr<collision_shape_interface> m_cube_shape;
@@ -201,9 +235,14 @@ private:
 
     std::unique_ptr<render_pipeline> m_pipeline;
 
-    entity_id m_cube;
-    entity_id m_plane;
-    entity_id m_camera;
+    std::unique_ptr<graphics::resource> m_cube_vertex_buffer;
+    std::unique_ptr<graphics::resource> m_cube_index_buffer;
+    std::unique_ptr<graphics::render_parameter> m_cube_material;
+    std::vector<std::unique_ptr<graphics::render_parameter>> m_cube_object;
+
+    entity m_cube_1, m_cube_2;
+    entity m_plane;
+    entity m_camera;
 
     float m_heading = 0.0f, m_pitch = 0.0f;
 
