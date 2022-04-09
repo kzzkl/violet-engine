@@ -121,7 +121,7 @@ public:
             static_cast<const long>(m_index),
             static_cast<const long>(m_layout->entity_per_chunk()));
 
-        std::size_t offset = m_offset[component_list<Components...>::template index<Component>()] +
+        std::size_t offset = m_offset[type_list<Components...>::template index<Component>()] +
                              sizeof(Component) * entity_index;
 
         return *reinterpret_cast<Component*>(m_storage->get(chunk_index, offset));
@@ -159,6 +159,8 @@ public:
         return *this;
     }
 
+    std::size_t index() const noexcept { return m_index; }
+
 private:
     std::size_t m_index;
     storage_type* m_storage;
@@ -180,7 +182,11 @@ public:
     archetype(const layout_type& layout) noexcept : m_layout(layout), m_size(0) {}
     virtual ~archetype() { clear(); }
 
-    void add() { construct(allocate()); }
+    void add()
+    {
+        std::size_t index = allocate();
+        construct(index);
+    }
 
     void remove(std::size_t index)
     {
@@ -256,8 +262,7 @@ public:
         return handle<Components...>(size(), &m_storage, &m_layout);
     }
 
-    const layout_type& layout() const noexcept { return m_layout; }
-
+    inline const layout_type& layout() const noexcept { return m_layout; }
     inline std::size_t size() const noexcept { return m_size; }
 
 private:

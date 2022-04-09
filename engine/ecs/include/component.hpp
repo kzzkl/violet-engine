@@ -18,9 +18,6 @@ struct component_trait;
 template <typename T>
 static constexpr component_id component_id_v = component_trait<T>::id;
 
-template <typename... Components>
-using component_list = type_list<Components...>;
-
 class component_constructer
 {
 public:
