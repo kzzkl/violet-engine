@@ -3,7 +3,7 @@
 #include "ecs.hpp"
 #include "physics_exports.hpp"
 #include "physics_interface.hpp"
-#include "scene_node.hpp"
+#include "transform.hpp"
 
 namespace ash::physics
 {
@@ -19,10 +19,10 @@ public:
     void offset(const math::float4x4& offset) noexcept;
     void offset(const math::float4x4_simd& offset) noexcept;
 
-    void node(ash::scene::scene_node* node) noexcept { m_node = node; }
+    void node(ash::scene::transform_node* node) noexcept { m_node = node; }
 
 private:
-    ash::scene::scene_node* m_node;
+    ash::scene::transform_node* m_node;
     math::float4x4 m_offset;
     math::float4x4 m_offset_inverse;
 
@@ -31,9 +31,6 @@ private:
 
 class PHYSICS_API rigidbody
 {
-public:
-    using transform_handle = ash::ecs::component_handle<ash::scene::transform>;
-
 public:
     rigidbody();
 
@@ -79,7 +76,7 @@ public:
     std::unique_ptr<rigidbody_interface> interface;
     // ash::ecs::component_handle<ash::scene::transform> node;
 
-    void node(ash::scene::scene_node* node);
+    void node(ash::scene::transform_node* node);
 
     transform_reflect_interface* reflect() const noexcept { return m_reflect.get(); }
 

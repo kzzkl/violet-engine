@@ -150,6 +150,7 @@ void mmd_viewer::load_hierarchy(mmd_resource& resource, const pmx_loader& loader
 {
     auto& graphics = module<ash::graphics::graphics>();
     auto& world = module<ash::ecs::world>();
+    auto& scene = module<ash::scene::scene>();
 
     auto actor_skeleton = world.component<skeleton>(resource.root);
     actor_skeleton->offset.resize(loader.bones().size());
@@ -172,20 +173,20 @@ void mmd_viewer::load_hierarchy(mmd_resource& resource, const pmx_loader& loader
         {
             auto parent_node =
                 world.component<scene::transform>(resource.hierarchy[mmd_bone.parent_index]);
-            node->node()->parent(parent_node->node());
+            scene.link(*node, *parent_node);
 
             math::float3 local_position = math::vector_plain::sub(
                 mmd_bone.position,
                 loader.bones()[mmd_bone.parent_index].position);
-            //node->position(local_position);
+            // node->position(local_position);
         }
         else
         {
-            //node->position(mmd_bone.position);
-            node->node()->parent(world.component<scene::transform>(resource.root)->node());
+            // node->position(mmd_bone.position);
+            scene.link(*node, *world.component<scene::transform>(resource.root));
         }
 
-        actor_skeleton->nodes.push_back(node->node());
+        actor_skeleton->nodes.push_back(node->node.get());
 
         // TODO
     }
@@ -195,7 +196,7 @@ void mmd_viewer::load_physics(mmd_resource& resource, const pmx_loader& loader)
 {
     auto& world = module<ecs::world>();
 
-    std::vector<ecs::component_handle<physics::rigidbody>> rigidbodies;
+    std::vector<ecs::write<physics::rigidbody>> rigidbodies;
 
     resource.collision_shapes.reserve(loader.rigidbodies().size());
     for (auto& mmd_rigidbody : loader.rigidbodies())

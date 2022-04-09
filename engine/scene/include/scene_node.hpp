@@ -6,6 +6,18 @@
 
 namespace ash::scene
 {
+/*class transform;
+struct transform_node
+{
+    math::float4x4 parent_matrix;
+    math::float4x4 world_matrix;
+
+    transform* transform;
+
+    std::size_t parent;
+    std::vector<std::size_t> children;
+};
+
 class transform;
 class SCENE_API scene_node
 {
@@ -54,5 +66,5 @@ private:
     std::size_t m_sync_count;
 
     transform_type* m_transform;
-};
+};*/
 } // namespace ash::scene

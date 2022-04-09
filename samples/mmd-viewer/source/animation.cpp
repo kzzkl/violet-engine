@@ -14,14 +14,12 @@ void animation::update()
 {
     m_view->each([](skeleton& s) {
         for (std::size_t i = 0; i < s.nodes.size(); ++i)
-            s.offset[i] = s.nodes[i]->to_world;
+            s.offset[i] = s.nodes[i]->transform->world_matrix;
 
         s.parameter->set(0, s.offset.data(), s.offset.size());
 
-    
-
         /*for (auto& submesh : v.submesh)
-            submesh.parameters[2] = s.parameter.get();*/
+        submesh.parameters[2] = s.parameter.get();*/
     });
 }
 } // namespace ash::sample::mmd

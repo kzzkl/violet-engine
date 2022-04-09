@@ -13,7 +13,7 @@ transform_reflect::transform_reflect() noexcept
 
 const math::float4x4& transform_reflect::transform() const
 {
-    math::float4x4_simd to_world = math::simd::load(m_node->to_world);
+    math::float4x4_simd to_world = math::simd::load(m_node->transform->world_matrix);
     math::float4x4_simd offset = math::simd::load(m_offset);
 
     math::simd::store(math::matrix_simd::mul(offset, to_world), m_transform);
@@ -28,8 +28,10 @@ void transform_reflect::transform(const math::float4x4& world)
     math::float4x4_simd to_world = math::simd::load(world);
     math::float4x4_simd offset_inverse = math::simd::load(m_offset_inverse);
 
-    math::simd::store(math::matrix_simd::mul(offset_inverse, to_world), m_node->to_world);
-    m_node->mark_dirty();
+    math::simd::store(
+        math::matrix_simd::mul(offset_inverse, to_world),
+        m_node->transform->world_matrix);
+    m_node->dirty = true;
 }
 
 void transform_reflect::offset(const math::float4x4& offset) noexcept
@@ -76,7 +78,7 @@ void rigidbody::offset(const math::float4x4_simd& offset) noexcept
     m_reflect->offset(offset);
 }
 
-void rigidbody::node(ash::scene::scene_node* node)
+void rigidbody::node(ash::scene::transform_node* node)
 {
     m_reflect->node(node);
 }

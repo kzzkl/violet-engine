@@ -52,7 +52,8 @@ bool physics::initialize(const dictionary& config)
     auto& task = module<ash::task::task_manager>();
     task.schedule(TASK_SIMULATION, [this]() { simulation(); });
 
-    module<ash::ecs::world>().register_component<rigidbody, joint>();
+    module<ash::ecs::world>().register_component<rigidbody>();
+    module<ash::ecs::world>().register_component<joint>();
     m_rigidbody_view = module<ash::ecs::world>().make_view<rigidbody, ash::scene::transform>();
     m_joint_view = module<ash::ecs::world>().make_view<rigidbody, joint>();
 
@@ -65,49 +66,26 @@ void physics::simulation()
     module<ash::scene::scene>().sync_local();
 
     m_rigidbody_view->each([this](rigidbody& rigidbody, ash::scene::transform& transform) {
-        if (rigidbody.in_world() == transform.node()->in_scene())
-            return;
-
-        if (transform.node()->in_scene())
+        rigidbody.node(transform.node.get());
+        if (rigidbody.interface == nullptr)
         {
-            rigidbody.node(transform.node());
-            if (rigidbody.interface == nullptr)
-            {
-                rigidbody_desc desc = {};
-                desc.type = rigidbody.type();
-                desc.mass = rigidbody.mass();
-                desc.linear_dimmer = rigidbody.linear_dimmer();
-                desc.angular_dimmer = rigidbody.angular_dimmer();
-                desc.restitution = rigidbody.restitution();
-                desc.friction = rigidbody.friction();
-                desc.shape = rigidbody.shape();
-                desc.reflect = rigidbody.reflect();
+            rigidbody_desc desc = {};
+            desc.type = rigidbody.type();
+            desc.mass = rigidbody.mass();
+            desc.linear_dimmer = rigidbody.linear_dimmer();
+            desc.angular_dimmer = rigidbody.angular_dimmer();
+            desc.restitution = rigidbody.restitution();
+            desc.friction = rigidbody.friction();
+            desc.shape = rigidbody.shape();
+            desc.reflect = rigidbody.reflect();
 
-                /*math::float4x4_simd to_world = math::simd::load(transform.node()->to_world);
-                math::float4x4_simd to_node = math::simd::load(rigidbody.offset());
-
-                math::float4x4_simd offset =
-                    math::matrix_simd::mul(to_node, math::matrix_simd::inverse(to_world));
-                rigidbody.offset(offset);*/
-                // desc.world_matrix = rigidbody.offset();
-
-                // math::simd::store(to_node, desc.world_matrix);
-                // math::simd::store(math::matrix_simd::mul(to_node, to_world), desc.world_matrix);
-
-                rigidbody.interface.reset(m_factory->make_rigidbody(desc));
-            }
+            rigidbody.interface.reset(m_factory->make_rigidbody(desc));
 
             m_world->add(
                 rigidbody.interface.get(),
                 rigidbody.collision_group(),
                 rigidbody.collision_mask());
         }
-        else
-        {
-            m_world->remove(rigidbody.interface.get());
-        }
-
-        rigidbody.in_world(transform.node()->in_scene());
     });
 
     m_joint_view->each([this](rigidbody& rigidbody, joint& joint) {
@@ -136,21 +114,6 @@ void physics::simulation()
 
     m_world->simulation(module<ash::core::timer>().frame_delta());
 
-    m_rigidbody_view->each([this](rigidbody& rigidbody, ash::scene::transform& transform) {
-        if (!rigidbody.in_world())
-            return;
-
-        // if (rigidbody.interface->updated())
-        /*{
-            math::float4x4_simd to_world = math::simd::load(rigidbody.interface->transform());
-            math::float4x4_simd to_node_inv = math::simd::load(rigidbody.offset_inverse());
-            // math::simd::store(to_world, transform.node()->to_world);
-
-            math::simd::store(
-                math::matrix_simd::mul(to_node_inv, to_world),
-                transform.node()->to_world);
-        }*/
-    });
     module<ash::scene::scene>().sync_world();
 
 #if defined(ASH_PHYSICS_DEBUG_DRAW)

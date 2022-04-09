@@ -84,5 +84,4 @@ using component_index = std::uint16_t;
 
 static constexpr std::size_t MAX_COMPONENT = 512;
 using component_mask = std::bitset<MAX_COMPONENT>;
-
 } // namespace ash::ecs

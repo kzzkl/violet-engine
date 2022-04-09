@@ -1,9 +1,9 @@
 #pragma once
 
 #include "camera.hpp"
-#include "graphics_config.hpp"
 #include "context.hpp"
 #include "debug_pipeline.hpp"
+#include "graphics_config.hpp"
 #include "graphics_exports.hpp"
 #include "graphics_plugin.hpp"
 #include "render_parameter.hpp"
@@ -104,14 +104,11 @@ private:
 
     ash::ecs::view<visual, scene::transform>* m_object_view;
     ash::ecs::view<main_camera, camera, scene::transform>* m_camera_view;
-    ash::ecs::view<scene::transform>* m_t_view;
 
     std::unique_ptr<render_parameter> m_parameter_pass;
-
     std::set<render_pipeline*> m_render_pipelines;
 
     graphics_config m_config;
-
     std::unique_ptr<debug_pipeline> m_debug;
 };
 } // namespace ash::graphics

@@ -7,7 +7,7 @@ namespace ash::physics
 class PHYSICS_API joint
 {
 public:
-    using rigidbody_handle = ash::ecs::component_handle<rigidbody>;
+    using rigidbody_handle = ash::ecs::read<rigidbody>;
 
 public:
     joint() = default;

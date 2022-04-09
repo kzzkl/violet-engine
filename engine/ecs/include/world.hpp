@@ -18,6 +18,8 @@ struct entity_record
     std::uint32_t version;
 };
 
+using entity_record_map = std::deque<entity_record>;
+
 class mask_archetype : public archetype
 {
 public:
@@ -67,54 +69,110 @@ private:
     std::vector<entity_record*> m_record;
 };
 
+template <typename Component>
+class component_handle
+{
+public:
+    using component_type = Component;
+    using entity_type = entity;
+
+public:
+    component_handle() : m_pointer(nullptr), m_entity{INVALID_ENTITY_ID, 0}, m_record(nullptr) {}
+    component_handle(entity entity, entity_record_map* record)
+        : m_pointer(nullptr),
+          m_entity(entity),
+          m_record(record)
+    {
+        update();
+    }
+
+    component_type* get() const
+    {
+        if (m_record->at(m_entity.id).version != m_entity.version)
+            update();
+        return m_pointer;
+    }
+
+    entity_type entity() const noexcept { return m_entity; }
+
+    component_type& operator*() const { return *get(); }
+    component_type* operator->() const { return get(); }
+
+private:
+    void update() const
+    {
+        auto& record = m_record->at(m_entity.id);
+        m_entity.version = record.version;
+
+        auto handle = record.archetype->begin<component_type>() + record.index;
+        m_pointer = &handle.component<component_type>();
+    }
+
+    mutable component_type* m_pointer;
+
+    mutable entity_type m_entity;
+    entity_record_map* m_record;
+};
+
+template <typename Component>
+class read_handle : public component_handle<Component>
+{
+public:
+    using component_type = Component;
+    using entity_type = entity;
+    using base_type = component_handle<Component>;
+
+public:
+    read_handle() : base_type() {}
+    read_handle(entity entity, entity_record_map* record) : base_type(entity, record) {}
+
+    const component_type* get() const
+    {
+        component_type* result = base_type::get();
+
+        static constexpr bool has_mark = requires(Component t) { t.mark_read(); };
+        if constexpr (has_mark) result->mark_read();
+
+        return result;
+    }
+
+    const component_type& operator*() const { return *get(); }
+    const component_type* operator->() const { return get(); }
+};
+template <typename Component>
+using read = read_handle<Component>;
+
+template <typename Component>
+class write_handle : public read_handle<Component>
+{
+public:
+    using component_type = Component;
+    using entity_type = entity;
+    using base_type = read_handle<Component>;
+
+public:
+    write_handle() : base_type() {}
+    write_handle(entity entity, entity_record_map* record) : base_type(entity, record) {}
+
+    component_type* get() const
+    {
+        component_type* result = const_cast<component_type*>(base_type::get());
+
+        static constexpr bool has_mark = requires(Component t) { t.mark_write(); };
+        if constexpr (has_mark) result->mark_write();
+
+        return result;
+    }
+
+    component_type& operator*() const { return *get(); }
+    component_type* operator->() const { return get(); }
+};
+template <typename Component>
+using write = write_handle<Component>;
+
 class world
 {
 public:
-    template <typename Component>
-    class component_handle
-    {
-    public:
-        using component_type = Component;
-        using entity_type = entity;
-
-    public:
-        component_handle() : m_pointer(nullptr), m_entity{INVALID_ENTITY_ID, 0}, m_world(nullptr) {}
-        component_handle(entity entity, world* world)
-            : m_pointer(nullptr),
-              m_entity(entity),
-              m_world(world)
-        {
-            update();
-        }
-
-        component_type* pointer() const
-        {
-            if (!m_world->vaild(m_entity))
-                update();
-            return m_pointer;
-        }
-
-        entity_type entity() const noexcept { return m_entity; }
-
-        component_type& operator*() const { return *pointer(); }
-        component_type* operator->() const { return pointer(); }
-
-    private:
-        void update() const
-        {
-            auto& record = m_world->m_entity_record[m_entity.id];
-            m_entity.version = record.version;
-
-            auto handle = record.archetype->begin<component_type>() + record.index;
-            m_pointer = &handle.component<component_type>();
-        }
-
-        mutable component_type* m_pointer;
-
-        mutable entity_type m_entity;
-        world* m_world;
-    };
-
 public:
     world() { register_component<all_entity>(); }
     ~world()
@@ -131,12 +189,10 @@ public:
         register_component<Component>(new Constructer(std::forward<Args>(args)...));
     }
 
-    template <typename... Components>
+    template <typename Component>
     void register_component()
     {
-        component_list<Components...>::each([this]<typename T>() {
-            register_component<T>(new default_component_constructer<T>());
-        });
+        register_component<Component>(new default_component_constructer<Component>());
     }
 
     entity create()
@@ -221,11 +277,11 @@ public:
         }
     }
 
-    template <typename Component>
-    component_handle<Component> component(entity e)
+    template <typename Component, template <typename T> class Handle = write>
+    Handle<Component> component(entity e)
     {
         ASH_ASSERT(has_component<Component>(e));
-        return component_handle<Component>(e, this);
+        return Handle<Component>(e, &m_entity_record);
     }
 
     template <typename Component>
@@ -340,7 +396,7 @@ private:
         return (m_archetypes[result->mask()] = std::move(result)).get();
     }
 
-    std::deque<entity_record> m_entity_record;
+    entity_record_map m_entity_record;
     std::queue<entity> m_free_entity;
 
     std::unordered_map<component_mask, std::unique_ptr<mask_archetype>> m_archetypes;
@@ -352,7 +408,4 @@ private:
 
     index_generator<component_index> m_component_index_generator;
 };
-
-template <typename T>
-using component_handle = world::component_handle<T>;
 } // namespace ash::ecs

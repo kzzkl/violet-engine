@@ -27,6 +27,7 @@ public:
     {
         auto& world = module<ash::ecs::world>();
         auto& graphics = module<ash::graphics::graphics>();
+        auto& scene = module<ash::scene::scene>();
 
         // Create rigidbody shape.
         collision_shape_desc desc;
@@ -57,9 +58,9 @@ public:
             world.add<rigidbody, transform, visual>(m_cube_1);
 
             auto t = world.component<transform>(m_cube_1);
-            t->position(1.0f, 0.0f, 0.0f);
-            t->rotation(math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f));
-            t->node()->parent(module<ash::scene::scene>().root_node());
+            t->position = {1.0f, 0.0f, 0.0f};
+            t->rotation = math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f);
+            scene.link(*t);
 
             auto r = world.component<rigidbody>(m_cube_1);
             r->shape(m_cube_shape.get());
@@ -85,9 +86,9 @@ public:
             world.add<rigidbody, transform, visual>(m_cube_2);
 
             auto t = world.component<transform>(m_cube_2);
-            t->position(-1.0f, 0.0f, 0.0f);
-            t->rotation(math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f));
-            t->node()->parent(world.component<scene::transform>(m_cube_1)->node());
+            t->position = {-1.0f, 0.0f, 0.0f};
+            t->rotation = math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f);
+            scene.link(*t, *world.component<scene::transform>(m_cube_1));
 
             auto r = world.component<rigidbody>(m_cube_2);
             r->shape(m_cube_shape.get());
@@ -112,8 +113,8 @@ public:
         world.add<rigidbody, transform>(m_plane);
 
         auto pt = world.component<transform>(m_plane);
-        pt->position(0.0f, -3.0f, 0.0f);
-        pt->node()->parent(module<ash::scene::scene>().root_node());
+        pt->position = {0.0f, -3.0f, 0.0f};
+        scene.link(*pt);
 
         auto pr = world.component<rigidbody>(m_plane);
         pr->shape(m_plane_shape.get());
@@ -144,7 +145,8 @@ private:
 
     void initialize_camera()
     {
-        ash::ecs::world& world = module<ash::ecs::world>();
+        auto& world = module<ash::ecs::world>();
+        auto& scene = module<ash::scene::scene>();
 
         m_camera = world.create();
         world.add<main_camera, camera, transform>(m_camera);
@@ -152,12 +154,12 @@ private:
         c_camera->set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
 
         auto c_transform = world.component<transform>(m_camera);
-        c_transform->position(0.0f, 0.0f, -38.0f);
-        c_transform->node()->parent(module<ash::scene::scene>().root_node());
-        c_transform->node()->to_world = math::matrix_plain::affine_transform(
-            c_transform->scaling(),
-            c_transform->rotation(),
-            c_transform->position());
+        c_transform->position = {0.0f, 0.0f, -38.0f};
+        scene.link(*c_transform);
+        c_transform->world_matrix = math::matrix_plain::affine_transform(
+            c_transform->scaling,
+            c_transform->rotation,
+            c_transform->position);
     }
 
     void update()
@@ -204,8 +206,8 @@ private:
             m_heading += mouse.x() * m_rotate_speed * delta;
             m_pitch += mouse.y() * m_rotate_speed * delta;
             m_pitch = std::clamp(m_pitch, -math::PI_PIDIV2, math::PI_PIDIV2);
-            camera_transform->rotation(
-                math::quaternion_plain::rotation_euler(m_heading, m_pitch, 0.0f));
+            camera_transform->rotation =
+                math::quaternion_plain::rotation_euler(m_heading, m_pitch, 0.0f);
         }
 
         float x = 0, z = 0;
@@ -218,16 +220,16 @@ private:
         if (keyboard.key(keyboard_key::KEY_A).down())
             x -= 1.0f;
 
-        math::float4_simd s = math::simd::load(camera_transform->scaling());
-        math::float4_simd r = math::simd::load(camera_transform->rotation());
-        math::float4_simd t = math::simd::load(camera_transform->position());
+        math::float4_simd s = math::simd::load(camera_transform->scaling);
+        math::float4_simd r = math::simd::load(camera_transform->rotation);
+        math::float4_simd t = math::simd::load(camera_transform->position);
 
         math::float4x4_simd affine = math::matrix_simd::affine_transform(s, r, t);
         math::float4_simd forward =
             math::simd::set(x * m_move_speed * delta, 0.0f, z * m_move_speed * delta, 0.0f);
         forward = math::matrix_simd::mul(forward, affine);
 
-        camera_transform->position(math::vector_simd::add(forward, t));
+        math::simd::store(math::vector_simd::add(forward, t), camera_transform->position);
     }
 
     std::unique_ptr<collision_shape_interface> m_cube_shape;

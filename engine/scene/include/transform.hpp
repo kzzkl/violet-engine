@@ -3,77 +3,39 @@
 #include "component.hpp"
 #include "math.hpp"
 #include "scene_exports.hpp"
-#include "scene_node.hpp"
 
 namespace ash::scene
 {
-class SCENE_API transform
+struct transform;
+struct transform_node
 {
-public:
+    transform* transform;
+    bool dirty;
+    std::size_t sync_count;
+
+    transform_node* parent;
+    std::vector<transform_node*> children;
+};
+
+struct SCENE_API transform
+{
     transform();
+    transform(const transform&) = delete;
     transform(transform&& other) noexcept;
 
+    void mark_write();
+
+    transform& operator=(const transform&) = delete;
     transform& operator=(transform&& other) noexcept;
 
-    void position(float x, float y, float z) noexcept
-    {
-        m_position = {x, y, z};
-        m_node->mark_dirty();
-    }
-    void position(const math::float3& p) noexcept
-    {
-        m_position = p;
-        m_node->mark_dirty();
-    }
-    void position(const math::float4_simd& p) noexcept
-    {
-        math::simd::store(p, m_position);
-        m_node->mark_dirty();
-    }
-    const math::float3& position() const noexcept { return m_position; }
+    math::float3 position;
+    math::float4 rotation;
+    math::float3 scaling;
 
-    void rotation(float x, float y, float z, float w) noexcept
-    {
-        m_rotation = {x, y, z, w};
-        m_node->mark_dirty();
-    }
-    void rotation(const math::float4& r) noexcept
-    {
-        m_rotation = r;
-        m_node->mark_dirty();
-    }
-    void rotation(const math::float4_simd& r) noexcept
-    {
-        math::simd::store(r, m_rotation);
-        m_node->mark_dirty();
-    }
-    const math::float4& rotation() const noexcept { return m_rotation; }
+    math::float4x4 parent_matrix;
+    math::float4x4 world_matrix;
 
-    void scaling(float x, float y, float z) noexcept
-    {
-        m_scaling = {x, y, z};
-        m_node->mark_dirty();
-    }
-    void scaling(const math::float3& s) noexcept
-    {
-        m_scaling = s;
-        m_node->mark_dirty();
-    }
-    void scaling(const math::float4_simd& s) noexcept
-    {
-        math::simd::store(s, m_scaling);
-        m_node->mark_dirty();
-    }
-    const math::float3& scaling() const noexcept { return m_scaling; }
-
-    scene_node* node() const noexcept { return m_node.get(); }
-
-private:
-    math::float3 m_position;
-    math::float4 m_rotation;
-    math::float3 m_scaling;
-
-    std::unique_ptr<scene_node> m_node;
+    std::unique_ptr<transform_node> node;
 };
 } // namespace ash::scene
 

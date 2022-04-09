@@ -3,35 +3,45 @@
 namespace ash::scene
 {
 transform::transform()
-    : m_position{0.0f, 0.0f, 0.0f},
-      m_rotation{0.0f, 0.0f, 0.0f, 1.0f},
-      m_scaling{1.0f, 1.0f, 1.0f},
-      m_node(std::make_unique<scene_node>(this))
+    : position{0.0f, 0.0f, 0.0f},
+      rotation{0.0f, 0.0f, 0.0f, 1.0f},
+      scaling{1.0f, 1.0f, 1.0f},
+      parent_matrix(math::matrix_plain::identity()),
+      world_matrix(math::matrix_plain::identity()),
+      node(std::make_unique<transform_node>())
 {
+    node->transform = this;
+    node->dirty = true;
+    node->parent = nullptr;
 }
 
 transform::transform(transform&& other) noexcept
-    : m_position(other.m_position),
-      m_rotation(other.m_rotation),
-      m_scaling(other.m_scaling)
+    : position(other.position),
+      rotation(other.rotation),
+      scaling(other.scaling)
 {
-    if (other.m_node)
+    if (other.node)
     {
-        m_node = std::move(other.m_node);
-        m_node->transform(this);
+        node = std::move(other.node);
+        node->transform = this;
     }
+}
+
+void transform::mark_write()
+{
+    node->dirty = true;
 }
 
 transform& transform::operator=(transform&& other) noexcept
 {
-    m_position = other.m_position;
-    m_rotation = other.m_rotation;
-    m_scaling = other.m_scaling;
+    position = other.position;
+    rotation = other.rotation;
+    scaling = other.scaling;
 
-    if (other.m_node)
+    if (other.node)
     {
-        m_node = std::move(other.m_node);
-        m_node->transform(this);
+        node = std::move(other.node);
+        node->transform = this;
     }
 
     return *this;

@@ -2,14 +2,14 @@
 
 #include "component.hpp"
 #include "render_parameter.hpp"
-#include "scene_node.hpp"
+#include "transform.hpp"
 #include <vector>
 
 namespace ash::sample::mmd
 {
 struct skeleton
 {
-    std::vector<ash::scene::scene_node*> nodes;
+    std::vector<ash::scene::transform_node*> nodes;
     std::unique_ptr<ash::graphics::render_parameter> parameter;
 
     std::vector<math::float4x4> offset;

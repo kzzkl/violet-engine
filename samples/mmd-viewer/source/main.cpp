@@ -51,11 +51,12 @@ private:
     void initialize_resource()
     {
         auto& world = module<ash::ecs::world>();
+        auto& scene = module<ash::scene::scene>();
 
         m_actor = module<mmd_viewer>().load_mmd("sora", "resource/model/sora/Sora.pmx");
 
         auto actor_transform = world.component<transform>(m_actor);
-        actor_transform->node()->parent(module<ash::scene::scene>().root_node());
+        scene.link(*actor_transform);
     }
 
     void initialize_plane()
@@ -73,8 +74,8 @@ private:
         world.add<rigidbody, transform>(m_plane);
 
         auto t = world.component<transform>(m_plane);
-        t->position(0.0f, -3.0f, 0.0f);
-        t->node()->parent(module<ash::scene::scene>().root_node());
+        t->position = {0.0f, -3.0f, 0.0f};
+        module<ash::scene::scene>().link(*t);
 
         auto r = world.component<rigidbody>(m_plane);
         r->shape(m_plane_shape.get());
@@ -83,7 +84,8 @@ private:
 
     void initialize_camera()
     {
-        ash::ecs::world& world = module<ash::ecs::world>();
+        auto& world = module<ash::ecs::world>();
+        auto& scene = module<ash::scene::scene>();
 
         m_camera = world.create();
         world.add<main_camera, camera, transform>(m_camera);
@@ -91,10 +93,10 @@ private:
         c_camera->set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
 
         auto c_transform = world.component<transform>(m_camera);
-        c_transform->position(0.0f, 16.0f, -38.0f);
-        c_transform->rotation(0.0f, 0.0f, 0.0f, 1.0f);
-        c_transform->scaling(1.0f, 1.0f, 1.0f);
-        c_transform->node()->parent(module<ash::scene::scene>().root_node());
+        c_transform->position = {0.0f, 16.0f, -38.0f};
+        c_transform->rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+        c_transform->scaling = {1.0f, 1.0f, 1.0f};
+        scene.link(*c_transform);
     }
 
     void initialize_task()
@@ -148,8 +150,8 @@ private:
             m_heading += mouse.x() * m_rotate_speed * delta;
             m_pitch += mouse.y() * m_rotate_speed * delta;
             m_pitch = std::clamp(m_pitch, -math::PI_PIDIV2, math::PI_PIDIV2);
-            camera_transform->rotation(
-                math::quaternion_plain::rotation_euler(m_heading, m_pitch, 0.0f));
+            camera_transform->rotation =
+                math::quaternion_plain::rotation_euler(m_heading, m_pitch, 0.0f);
         }
 
         float x = 0, z = 0;
@@ -162,15 +164,15 @@ private:
         if (keyboard.key(keyboard_key::KEY_A).down())
             x -= 1.0f;
 
-        math::float4_simd s = math::simd::load(camera_transform->scaling());
-        math::float4_simd r = math::simd::load(camera_transform->rotation());
-        math::float4_simd t = math::simd::load(camera_transform->position());
+        math::float4_simd s = math::simd::load(camera_transform->scaling);
+        math::float4_simd r = math::simd::load(camera_transform->rotation);
+        math::float4_simd t = math::simd::load(camera_transform->position);
 
         math::float4x4_simd affine = math::matrix_simd::affine_transform(s, r, t);
         math::float4_simd forward =
             math::simd::set(x * m_move_speed * delta, 0.0f, z * m_move_speed * delta, 0.0f);
         forward = math::matrix_simd::mul(forward, affine);
-        camera_transform->position(math::vector_simd::add(forward, t));
+        math::simd::store(math::vector_simd::add(forward, t), camera_transform->position);
 
         if (keyboard.key(keyboard_key::KEY_T).down())
         {
@@ -191,9 +193,7 @@ private:
         if (move != 0.0f)
         {
             auto actor_transform = world.component<transform>(m_actor);
-            math::float3 new_position = actor_transform->position();
-            new_position[0] += move * m_move_speed * delta;
-            actor_transform->position(new_position);
+            actor_transform->position[0] += move * m_move_speed * delta;
         }
     }
 

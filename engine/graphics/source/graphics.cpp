@@ -66,10 +66,11 @@ bool graphics::initialize(const dictionary& config)
     });
 
     auto& world = module<ecs::world>();
-    world.register_component<visual, main_camera, camera>();
+    world.register_component<visual>();
+    world.register_component<main_camera>();
+    world.register_component<camera>();
     m_object_view = world.make_view<visual, scene::transform>();
     m_camera_view = world.make_view<main_camera, camera, scene::transform>();
-    m_t_view = world.make_view<scene::transform>();
 
     return true;
 }
@@ -174,9 +175,9 @@ void graphics::update()
     math::float4x4_simd transform_vp;
 
     m_camera_view->each([&, this](main_camera&, camera& camera, scene::transform& transform) {
-        if (transform.node()->sync_count() != 0)
+        if (transform.node->sync_count != 0)
         {
-            math::float4x4_simd world_simd = math::simd::load(transform.node()->to_world);
+            math::float4x4_simd world_simd = math::simd::load(transform.world_matrix);
             transform_v = math::matrix_simd::inverse(world_simd);
             math::simd::store(transform_v, camera.view);
         }
@@ -188,7 +189,7 @@ void graphics::update()
         transform_p = math::simd::load(camera.projection);
         transform_vp = math::matrix_simd::mul(transform_v, transform_p);
 
-        if (transform.node()->sync_count() != 0)
+        if (transform.node->sync_count != 0)
         {
             math::float4x4 view, projection, view_projection;
             math::simd::store(math::matrix_simd::transpose(transform_v), view);
@@ -204,10 +205,7 @@ void graphics::update()
     });
 
     m_object_view->each([&, this](visual& visual, scene::transform& transform) {
-        if (!transform.node()->in_view)
-            return;
-
-        math::float4x4_simd transform_m = math::simd::load(transform.node()->to_world);
+        math::float4x4_simd transform_m = math::simd::load(transform.world_matrix);
         math::float4x4_simd transform_mv = math::matrix_simd::mul(transform_m, transform_v);
         math::float4x4_simd transform_mvp = math::matrix_simd::mul(transform_mv, transform_p);
 
@@ -227,20 +225,6 @@ void graphics::update()
             m_render_pipelines.insert(visual.submesh[i].pipeline);
             visual.submesh[i].pipeline->add(&visual.submesh[i]);
         }
-    });
-
-    m_t_view->each([this](scene::transform& transform) {
-        float4_simd a = math::simd::set(0.0f, 0.0f, 0.0f, 1.0f);
-        float4_simd b = math::simd::set(0.0f, 1.0f, 0.0f, 1.0f);
-
-        float4x4_simd to_world = math::simd::load(transform.node()->to_world);
-        a = math::matrix_simd::mul(a, to_world);
-        b = math::matrix_simd::mul(b, to_world);
-
-        float3 ap, bp;
-        math::simd::store(a, ap);
-        math::simd::store(b, bp);
-        m_debug->draw_line(ap, bp, float3{1.0f, 1.0f, 0.0f});
     });
 }
 

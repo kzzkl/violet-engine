@@ -2,7 +2,7 @@
 
 namespace ash::scene
 {
-scene_node::scene_node(transform_type* transform)
+/*scene_node::scene_node(transform_type* transform)
     : to_world(math::matrix_plain::identity()),
       to_parent(math::matrix_plain::identity()),
       in_view(true),
@@ -73,5 +73,5 @@ void scene_node::update_in_scene(bool in_scene)
 
     for (auto child : m_children)
         child->update_in_scene(in_scene);
-}
+}*/
 } // namespace ash::scene
