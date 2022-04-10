@@ -44,6 +44,8 @@ public:
         initialize_camera();
         initialize_task();
 
+        module<ash::scene::scene>().sync_local();
+
         return true;
     }
 

@@ -1,4 +1,5 @@
 #include "transform.hpp"
+#include "log.hpp"
 
 namespace ash::scene
 {

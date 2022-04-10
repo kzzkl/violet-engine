@@ -31,7 +31,7 @@ void transform_reflect::transform(const math::float4x4& world)
     math::simd::store(
         math::matrix_simd::mul(offset_inverse, to_world),
         m_node->transform->world_matrix);
-    m_node->dirty = true;
+    //m_node->dirty = true;
 }
 
 void transform_reflect::offset(const math::float4x4& offset) noexcept

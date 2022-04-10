@@ -233,7 +233,7 @@ void mmd_viewer::load_physics(mmd_resource& resource, const pmx_loader& loader)
             node = resource.root;
 
         world.add<physics::rigidbody>(node);
-        auto rigidbody = world.component<physics::rigidbody>(node);
+        auto rigidbody = world.component<physics::rigidbody, ecs::write>(node);
         rigidbodies.push_back(rigidbody);
 
         rigidbody->shape(resource.collision_shapes.back().get());

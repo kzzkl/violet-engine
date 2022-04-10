@@ -22,6 +22,18 @@ private:
     component_mask m_mask;
 };
 
+template <typename Functor, typename... Args>
+concept view_functor = requires(Functor&& f, Args&... args)
+{
+    f(args...);
+};
+
+template <typename Functor, typename... Args>
+concept view_functor_ex = requires(Functor&& f, entity e, Args&... args)
+{
+    f(e, args...);
+};
+
 template <typename... Components>
 class view : public view_base
 {
@@ -32,29 +44,19 @@ public:
 public:
     view(const component_mask& mask) noexcept : view_base(mask) {}
 
-    void each(std::function<void(Components&...)>&& functor)
+    template <typename Functor>
+    void each(Functor&& functor) requires view_functor<Functor, Components...>
     {
         for (auto& [iter, archetype] : m_list)
         {
             for (std::size_t i = 0; i < archetype->size(); ++i)
             {
                 iter.index(i);
-                functor(iter.template component<Components>()...);
-            }
 
-            // Because the handle is to be reused, reset it to the beginning.
-            iter.index(0);
-        }
-    }
-
-    void each(std::function<void(entity, Components&...)>&& functor)
-    {
-        for (auto& [iter, archetype] : m_list)
-        {
-            for (std::size_t i = 0; i < archetype->size(); ++i)
-            {
-                iter.index(i);
-                functor(iter.entity(), iter.template component<Components>()...);
+                if constexpr (view_functor<Functor, Components...>)
+                    functor(iter.template component<Components>()...);
+                else
+                    functor(iter.entity(), iter.template component<Components>()...);
             }
 
             // Because the handle is to be reused, reset it to the beginning.

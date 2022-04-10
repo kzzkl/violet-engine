@@ -114,11 +114,22 @@ public:
         }
     }
 
-    template <typename Component, template <typename T> class Handle = write>
+    template <typename Component, template <typename T> class Handle = write_weak>
     Handle<Component> component(entity e)
     {
         ASH_ASSERT(has_component<Component>(e));
-        return Handle<Component>(e, &m_record);
+
+        if constexpr (std::is_base_of_v<component_handle_strong<Component>, Handle<Component>>)
+        {
+            return Handle<Component>(e, &m_record);
+        }
+        else
+        {
+            auto& record = m_record[e];
+            auto handle = record.archetype->begin<Component>() + record.index;
+            e.version = record.version;
+            return Handle<Component>(e, &handle.component<Component>());
+        }
     }
 
     template <typename Component>
