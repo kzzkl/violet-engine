@@ -4,7 +4,7 @@
 
 namespace ash::core
 {
-class CORE_API application : public context
+class application : public context
 {
 public:
     application(std::string_view config_path = "config");

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "task_exports.hpp"
 #include <array>
 #include <atomic>
 #include <string_view>
@@ -25,7 +24,7 @@ static constexpr std::size_t to_integer_v = to_integer<type>::value;
 
 static constexpr std::size_t TASK_TYPE_COUNT = 2;
 
-class TASK_API task
+class task
 {
 public:
     task(std::string_view name, task_type type);

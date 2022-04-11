@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core_exports.hpp"
 #include "plugin_interface.hpp"
 #include <memory>
 #include <string_view>
@@ -18,7 +17,7 @@ public:
     virtual void* find_symbol(std::string_view name) = 0;
 };
 
-class CORE_API plugin
+class plugin
 {
 public:
     plugin();

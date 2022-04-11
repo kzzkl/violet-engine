@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ecs.hpp"
-#include "physics_exports.hpp"
 #include "physics_interface.hpp"
 #include "transform.hpp"
 
@@ -29,7 +28,7 @@ private:
     mutable math::float4x4 m_transform;
 };
 
-class PHYSICS_API rigidbody
+class rigidbody
 {
 public:
     rigidbody();

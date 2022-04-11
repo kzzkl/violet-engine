@@ -1,6 +1,6 @@
 project(ash-scene)
 
-add_library(${PROJECT_NAME} SHARED
+add_library(${PROJECT_NAME} STATIC
     ./source/scene_node.cpp
     ./source/scene.cpp
     ./source/transform.cpp)
@@ -14,11 +14,6 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         ash::core
         ash::math)
-
-include(GenerateExportHeader)
-generate_export_header(${PROJECT_NAME}
-    EXPORT_MACRO_NAME SCENE_API
-    EXPORT_FILE_NAME ${CMAKE_CURRENT_SOURCE_DIR}/include/scene_exports.hpp)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

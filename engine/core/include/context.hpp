@@ -1,7 +1,6 @@
 #pragma once
 
 #include "assert.hpp"
-#include "core_exports.hpp"
 #include "dictionary.hpp"
 #include "log.hpp"
 #include "task_manager.hpp"
@@ -16,7 +15,7 @@
 namespace ash::core
 {
 class context;
-class CORE_API submodule
+class submodule
 {
 public:
     submodule(std::string_view name) noexcept;
@@ -47,7 +46,7 @@ struct submodule_trait
     static constexpr uuid id = T::id;
 };
 
-class CORE_API context
+class context
 {
 public:
     using module_list = std::unordered_map<uuid, std::unique_ptr<submodule>, uuid_hash>;

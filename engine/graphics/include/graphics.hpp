@@ -4,7 +4,6 @@
 #include "context.hpp"
 #include "debug_pipeline.hpp"
 #include "graphics_config.hpp"
-#include "graphics_exports.hpp"
 #include "graphics_plugin.hpp"
 #include "render_parameter.hpp"
 #include "render_pipeline.hpp"
@@ -16,7 +15,7 @@
 
 namespace ash::graphics
 {
-class GRAPHICS_API graphics : public ash::core::submodule
+class graphics : public ash::core::submodule
 {
 public:
     static constexpr uuid id = "cb3c4adc-4849-4871-8857-9ee68a9049e2";

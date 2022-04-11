@@ -8,7 +8,7 @@
 namespace ash::task
 {
 class task_manager;
-class TASK_API task_handle
+class task_handle
 {
 public:
     task_handle() : task_handle(nullptr) {}
@@ -27,7 +27,7 @@ private:
 template <typename T>
 concept derived_from_task = std::is_base_of<task, T>::value;
 
-class TASK_API task_manager
+class task_manager
 {
 public:
     using handle = task_handle;

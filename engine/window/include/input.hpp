@@ -1,14 +1,13 @@
 #pragma once
 
 #include "assert.hpp"
-#include "window_exports.hpp"
 #include <array>
 #include <memory>
 #include <vector>
 
 namespace ash::window
 {
-class WINDOW_API key_state
+class key_state
 {
 public:
     explicit key_state(unsigned char state) noexcept : m_state(state) {}
@@ -91,7 +90,7 @@ enum class mouse_key : std::uint32_t
     NUM_TYPE
 };
 
-class WINDOW_API mouse : public key_device<mouse_key>
+class mouse : public key_device<mouse_key>
 {
 public:
     mouse() noexcept;
@@ -154,7 +153,7 @@ enum class keyboard_key : std::uint32_t
     NUM_TYPE
 };
 
-class WINDOW_API keyboard : public key_device<keyboard_key>
+class keyboard : public key_device<keyboard_key>
 {
 public:
     keyboard() noexcept;

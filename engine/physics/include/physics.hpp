@@ -2,7 +2,6 @@
 
 #include "context.hpp"
 #include "joint.hpp"
-#include "physics_exports.hpp"
 #include "physics_plugin.hpp"
 #include "rigidbody.hpp"
 #include "transform.hpp"
@@ -10,7 +9,7 @@
 
 namespace ash::physics
 {
-class PHYSICS_API physics : public ash::core::submodule
+class physics : public ash::core::submodule
 {
 public:
     static constexpr uuid id = "d409fbd0-a274-44c9-b760-a2476794d383";

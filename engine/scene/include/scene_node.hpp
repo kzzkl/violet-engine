@@ -1,7 +1,6 @@
 #pragma once
 
 #include "math.hpp"
-#include "scene_exports.hpp"
 #include <vector>
 
 namespace ash::scene
@@ -19,7 +18,7 @@ struct transform_node
 };
 
 class transform;
-class SCENE_API scene_node
+class scene_node
 {
 public:
     using transform_type = transform;

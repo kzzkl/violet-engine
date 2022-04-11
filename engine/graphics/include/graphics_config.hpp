@@ -1,7 +1,6 @@
 #pragma once
 
 #include "dictionary.hpp"
-#include "graphics_exports.hpp"
 #include "graphics_interface.hpp"
 #include <map>
 #include <string_view>
@@ -9,7 +8,7 @@
 
 namespace ash::graphics
 {
-class GRAPHICS_API graphics_config
+class graphics_config
 {
 public:
     struct vertex_attribute_config

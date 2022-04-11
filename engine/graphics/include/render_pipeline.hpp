@@ -1,6 +1,5 @@
 #pragma once
 
-#include "graphics_exports.hpp"
 #include "graphics_interface.hpp"
 #include "render_parameter.hpp"
 #include <vector>
@@ -20,7 +19,7 @@ struct render_unit
     std::vector<render_parameter*> parameters;
 };
 
-class GRAPHICS_API render_pipeline
+class render_pipeline
 {
 public:
     using layout_type = pipeline_layout;

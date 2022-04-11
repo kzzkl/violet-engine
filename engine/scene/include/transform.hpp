@@ -2,7 +2,6 @@
 
 #include "component.hpp"
 #include "math.hpp"
-#include "scene_exports.hpp"
 
 namespace ash::scene
 {
@@ -17,7 +16,7 @@ struct transform_node
     std::vector<transform_node*> children;
 };
 
-struct SCENE_API transform
+struct transform
 {
     transform();
     transform(const transform&) = delete;

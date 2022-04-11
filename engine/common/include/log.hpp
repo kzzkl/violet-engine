@@ -1,6 +1,5 @@
 #pragma once
 
-#include "common_exports.hpp"
 #include "spdlog/fmt/ostr.h"
 #include "spdlog/logger.h"
 #include <memory>
@@ -8,7 +7,7 @@
 
 namespace ash
 {
-class COMMON_API log
+class log
 {
 public:
     template <typename... Args>

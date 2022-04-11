@@ -1,6 +1,5 @@
 #pragma once
 
-#include "graphics_exports.hpp"
 #include "graphics_interface.hpp"
 #include "render_pipeline.hpp"
 #include <memory>
@@ -8,7 +7,7 @@
 
 namespace ash::graphics
 {
-class GRAPHICS_API debug_pipeline : public render_pipeline
+class debug_pipeline : public render_pipeline
 {
 public:
     struct vertex

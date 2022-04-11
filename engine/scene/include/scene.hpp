@@ -1,14 +1,13 @@
 #pragma once
 
 #include "context.hpp"
-#include "scene_exports.hpp"
 #include "transform.hpp"
 #include "view.hpp"
 #include <memory>
 
 namespace ash::scene
 {
-class SCENE_API scene : public ash::core::submodule
+class scene : public ash::core::submodule
 {
 public:
     static constexpr uuid id = "88be6763-ea80-417d-acf9-17eaab46a4ea";

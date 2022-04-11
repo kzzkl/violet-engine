@@ -3,7 +3,7 @@ project(ash-common)
 find_package(spdlog REQUIRED PATHS ${THIRD_PARTY_DIR}/spdlog)
 find_package(nlohmann_json REQUIRED PATHS ${THIRD_PARTY_DIR}/json)
 
-add_library(${PROJECT_NAME} SHARED
+add_library(${PROJECT_NAME} STATIC
     ./source/log.cpp)
 add_library(ash::common ALIAS ${PROJECT_NAME})
 
@@ -15,11 +15,6 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         spdlog::spdlog
         nlohmann_json::nlohmann_json)
-
-include(GenerateExportHeader)
-generate_export_header(${PROJECT_NAME}
-    EXPORT_MACRO_NAME COMMON_API
-    EXPORT_FILE_NAME ${CMAKE_CURRENT_SOURCE_DIR}/include/common_exports.hpp)
 
 install(DIRECTORY ./include/ DESTINATION include/ash)
 # install(FILES ${THIRD_PARTY_DIR}/spdlog/bin/spdlog.dll DESTINATION bin)

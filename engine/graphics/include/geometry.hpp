@@ -1,6 +1,5 @@
 #pragma once
 
-#include "graphics_exports.hpp"
 #include "math.hpp"
 #include <vector>
 
@@ -20,7 +19,7 @@ struct geometry_data
     std::vector<geometry_index> indices;
 };
 
-class GRAPHICS_API geometry
+class geometry
 {
 public:
     static geometry_data box(float x, float y, float z);

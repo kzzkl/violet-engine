@@ -5,7 +5,7 @@
 
 namespace ash::window
 {
-class WINDOW_API window : public ash::core::submodule
+class window : public ash::core::submodule
 {
 public:
     static constexpr uuid id = "cc5fc9c8-cecb-4a46-bc4c-9bc094fdb463";
