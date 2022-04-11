@@ -15,10 +15,9 @@
 
 namespace ash::graphics
 {
-class graphics : public ash::core::submodule
+class graphics : public ash::core::system_base
 {
 public:
-    static constexpr uuid id = "cb3c4adc-4849-4871-8857-9ee68a9049e2";
     static constexpr const char* TASK_RENDER = "graphics render";
 
     template <typename T>

@@ -2,13 +2,13 @@
 
 namespace ash::scene
 {
-scene::scene() : submodule("scene"), m_view(nullptr)
+scene::scene() : system_base("scene"), m_view(nullptr)
 {
 }
 
 bool scene::initialize(const dictionary& config)
 {
-    auto& world = module<ecs::world>();
+    auto& world = system<ecs::world>();
     world.register_component<transform>();
     m_view = world.make_view<transform>();
 

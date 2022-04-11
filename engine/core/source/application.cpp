@@ -17,12 +17,12 @@ void application::run()
     nanoseconds s(0);
     nanoseconds time_per_frame(1000000000 / 240);
 
-    auto& task = module<task::task_manager>();
+    auto& task = system<task::task_manager>();
     task.run();
 
     auto root_task = task.find("root");
 
-    timer& time = module<timer>();
+    timer& time = system<timer>();
     while (!m_exit)
     {
         time.tick<timer::point::FRAME_START>();
@@ -44,7 +44,7 @@ void application::run()
         }
     }
 
-    shutdown_submodule();
+    shutdown_system();
 }
 
 void application::exit()

@@ -9,10 +9,9 @@
 
 namespace ash::physics
 {
-class physics : public ash::core::submodule
+class physics : public ash::core::system_base
 {
 public:
-    static constexpr uuid id = "d409fbd0-a274-44c9-b760-a2476794d383";
     static constexpr const char* TASK_SIMULATION = "physics simulation";
 
 public:

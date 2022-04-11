@@ -4,8 +4,8 @@ namespace ash::sample::mmd
 {
 bool animation::initialize(const ash::dictionary& config)
 {
-    module<ash::ecs::world>().register_component<skeleton>();
-    m_view = module<ash::ecs::world>().make_view<skeleton>();
+    system<ash::ecs::world>().register_component<skeleton>();
+    m_view = system<ash::ecs::world>().make_view<skeleton>();
 
     return true;
 }

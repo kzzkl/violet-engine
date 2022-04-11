@@ -5,7 +5,6 @@
 #include "log.hpp"
 #include "task_manager.hpp"
 #include "timer.hpp"
-#include "uuid.hpp"
 #include "world.hpp"
 #include <memory>
 #include <string_view>
@@ -14,12 +13,34 @@
 
 namespace ash::core
 {
+namespace internal
+{
+struct system_id_generator
+{
+    static std::size_t next() noexcept
+    {
+        static std::size_t id = 0;
+        return id++;
+    }
+};
+} // namespace internal
+
+template <typename T>
+struct system_id
+{
+    static const std::size_t value() noexcept
+    {
+        static const std::size_t id = internal::system_id_generator::next();
+        return id;
+    }
+};
+
 class context;
-class submodule
+class system_base
 {
 public:
-    submodule(std::string_view name) noexcept;
-    virtual ~submodule() = default;
+    system_base(std::string_view name) noexcept;
+    virtual ~system_base() = default;
 
     virtual bool initialize(const dictionary& config) = 0;
     virtual void shutdown(){};
@@ -28,7 +49,7 @@ public:
 
 protected:
     template <typename T>
-    T& module();
+    T& system();
 
 private:
     friend class context;
@@ -38,73 +59,71 @@ private:
 };
 
 template <typename T>
-concept derived_from_submodule = std::is_base_of<submodule, T>::value;
+concept internal_system = std::is_same_v<T, ash::task::task_manager> ||
+    std::is_same_v<T, ash::ecs::world> || std::is_same_v<T, ash::core::timer>;
 
-template <derived_from_submodule T>
-struct submodule_trait
-{
-    static constexpr uuid id = T::id;
-};
+template <typename T>
+concept derived_from_system = std::is_base_of<system_base, T>::value;
 
 class context
 {
 public:
-    using module_list = std::unordered_map<uuid, std::unique_ptr<submodule>, uuid_hash>;
-
-public:
     context(std::string_view config_path);
 
     template <typename T>
-    T& module()
+    T& system() requires derived_from_system<T> || internal_system<T>
     {
-        return *static_cast<T*>(m_modules[submodule_trait<T>::id].get());
+        return *static_cast<T*>(m_systems[system_id<T>::value()].get());
     }
 
     template <>
-    ash::task::task_manager& module<ash::task::task_manager>()
+    ash::task::task_manager& system<ash::task::task_manager>()
     {
         return *m_task;
     }
 
     template <>
-    ash::ecs::world& module<ash::ecs::world>()
+    ash::ecs::world& system<ash::ecs::world>()
     {
         return *m_world;
     }
 
     template <>
-    ash::core::timer& module<ash::core::timer>()
+    ash::core::timer& system<ash::core::timer>()
     {
         return *m_timer;
     }
 
 protected:
-    template <derived_from_submodule T, typename... Args>
-    void install_submodule(Args&&... args)
+    template <derived_from_system T, typename... Args>
+    void install_system(Args&&... args)
     {
-        uuid id = submodule_trait<T>::id;
-        if (m_modules[id] == nullptr)
+        std::size_t id = system_id<T>::value();
+        if (m_systems.size() <= id)
+            m_systems.resize(id + 1);
+
+        if (m_systems[id] == nullptr)
         {
             auto m = std::make_unique<T>(std::forward<Args>(args)...);
             m->m_context = this;
             m->initialize(m_config[m->name().data()]);
             log::info("Module installed successfully: {}.", m->name());
-            m_modules[id] = std::move(m);
+            m_systems[id] = std::move(m);
         }
         else
         {
-            log::warn("The module is already installed.");
+            log::warn("The system is already installed.");
         }
     }
 
-    void shutdown_submodule();
+    void shutdown_system();
 
 private:
     void load_config(std::string_view config_path);
 
     std::map<std::string, dictionary> m_config;
 
-    module_list m_modules;
+    std::vector<std::unique_ptr<system_base>> m_systems;
     std::unique_ptr<ash::task::task_manager> m_task;
     std::unique_ptr<ash::ecs::world> m_world;
 
@@ -112,8 +131,8 @@ private:
 };
 
 template <typename T>
-T& submodule::module()
+T& system_base::system()
 {
-    return m_context->module<T>();
+    return m_context->system<T>();
 }
 } // namespace ash::core

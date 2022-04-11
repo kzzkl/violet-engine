@@ -4,7 +4,7 @@
 
 namespace ash::core
 {
-submodule::submodule(std::string_view name) noexcept : m_name(name)
+system_base::system_base(std::string_view name) noexcept : m_name(name)
 {
 }
 
@@ -23,12 +23,12 @@ context::context(std::string_view config_path)
     m_timer = std::make_unique<timer>();
 }
 
-void context::shutdown_submodule()
+void context::shutdown_system()
 {
     m_task->stop();
-    for (auto& [id, submodule] : m_modules)
+    for (auto& system : m_systems)
     {
-        submodule->shutdown();
+        system->shutdown();
     }
 }
 

@@ -26,7 +26,7 @@ private:
 };
 #endif
 
-physics::physics() noexcept : submodule("physics")
+physics::physics() noexcept : system_base("physics")
 {
 }
 
@@ -39,7 +39,7 @@ bool physics::initialize(const dictionary& config)
     m_plugin.load("ash-physics-bullet3.dll");
 
 #if defined(ASH_PHYSICS_DEBUG_DRAW)
-    m_debug = std::make_unique<physics::physics_debug>(&module<ash::graphics::graphics>().debug());
+    m_debug = std::make_unique<physics::physics_debug>(&system<ash::graphics::graphics>().debug());
     m_plugin.debug(m_debug.get());
 #endif
 
@@ -49,21 +49,21 @@ bool physics::initialize(const dictionary& config)
     desc.gravity = {0.0f, -10.0f, 0.0f};
     m_world.reset(m_factory->make_world(desc));
 
-    auto& task = module<ash::task::task_manager>();
+    auto& task = system<ash::task::task_manager>();
     task.schedule(TASK_SIMULATION, [this]() { simulation(); });
 
-    module<ash::ecs::world>().register_component<rigidbody>();
-    module<ash::ecs::world>().register_component<joint>();
-    m_rigidbody_view = module<ash::ecs::world>().make_view<rigidbody, ash::scene::transform>();
-    m_joint_view = module<ash::ecs::world>().make_view<rigidbody, joint>();
+    system<ash::ecs::world>().register_component<rigidbody>();
+    system<ash::ecs::world>().register_component<joint>();
+    m_rigidbody_view = system<ash::ecs::world>().make_view<rigidbody, ash::scene::transform>();
+    m_joint_view = system<ash::ecs::world>().make_view<rigidbody, joint>();
 
     return true;
 }
 
 void physics::simulation()
 {
-    module<ash::scene::scene>().reset_sync_counter();
-    module<ash::scene::scene>().sync_local();
+    system<ash::scene::scene>().reset_sync_counter();
+    system<ash::scene::scene>().sync_local();
 
     m_rigidbody_view->each([this](rigidbody& rigidbody, ash::scene::transform& transform) {
         rigidbody.node(transform.node.get());
@@ -112,9 +112,9 @@ void physics::simulation()
         }
     });
 
-    m_world->simulation(module<ash::core::timer>().frame_delta());
+    m_world->simulation(system<ash::core::timer>().frame_delta());
 
-    module<ash::scene::scene>().sync_world();
+    system<ash::scene::scene>().sync_world();
 
 #if defined(ASH_PHYSICS_DEBUG_DRAW)
     m_world->debug();

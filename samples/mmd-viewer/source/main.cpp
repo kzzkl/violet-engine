@@ -29,13 +29,13 @@ struct vertex
     math::float3 bone_weight;
 };
 
-class test_module : public submodule
+class test_module : public system_base
 {
 public:
     static constexpr ash::uuid id = "bd58a298-9ea4-4f8d-a79c-e57ae694915a";
 
 public:
-    test_module(application* app) : submodule("test_module"), m_app(app) {}
+    test_module(application* app) : system_base("test_module"), m_app(app) {}
 
     virtual bool initialize(const ash::dictionary& config) override
     {
@@ -44,7 +44,7 @@ public:
         initialize_camera();
         initialize_task();
 
-        module<ash::scene::scene>().sync_local();
+        system<ash::scene::scene>().sync_local();
 
         return true;
     }
@@ -52,10 +52,10 @@ public:
 private:
     void initialize_resource()
     {
-        auto& world = module<ash::ecs::world>();
-        auto& scene = module<ash::scene::scene>();
+        auto& world = system<ash::ecs::world>();
+        auto& scene = system<ash::scene::scene>();
 
-        m_actor = module<mmd_viewer>().load_mmd("sora", "resource/model/sora/Sora.pmx");
+        m_actor = system<mmd_viewer>().load_mmd("sora", "resource/model/sora/Sora.pmx");
 
         auto actor_transform = world.component<transform>(m_actor);
         scene.link(*actor_transform);
@@ -68,16 +68,16 @@ private:
         desc.box.length = 1000.0f;
         desc.box.height = 0.5f;
         desc.box.width = 1000.0f;
-        m_plane_shape = module<ash::physics::physics>().make_shape(desc);
+        m_plane_shape = system<ash::physics::physics>().make_shape(desc);
 
-        ash::ecs::world& world = module<ash::ecs::world>();
+        ash::ecs::world& world = system<ash::ecs::world>();
         m_plane = world.create();
 
         world.add<rigidbody, transform>(m_plane);
 
         auto t = world.component<transform>(m_plane);
         t->position = {0.0f, -3.0f, 0.0f};
-        module<ash::scene::scene>().link(*t);
+        system<ash::scene::scene>().link(*t);
 
         auto r = world.component<rigidbody>(m_plane);
         r->shape(m_plane_shape.get());
@@ -86,8 +86,8 @@ private:
 
     void initialize_camera()
     {
-        auto& world = module<ash::ecs::world>();
-        auto& scene = module<ash::scene::scene>();
+        auto& world = system<ash::ecs::world>();
+        auto& scene = system<ash::scene::scene>();
 
         m_camera = world.create();
         world.add<main_camera, camera, transform>(m_camera);
@@ -103,7 +103,7 @@ private:
 
     void initialize_task()
     {
-        auto& task = module<task::task_manager>();
+        auto& task = system<task::task_manager>();
 
         auto update_task = task.schedule("test update", [this]() { update(); });
 
@@ -119,9 +119,9 @@ private:
 
     void update_camera(float delta)
     {
-        auto& world = module<ash::ecs::world>();
-        auto& keyboard = module<ash::window::window>().keyboard();
-        auto& mouse = module<ash::window::window>().mouse();
+        auto& world = system<ash::ecs::world>();
+        auto& keyboard = system<ash::window::window>().keyboard();
+        auto& mouse = system<ash::window::window>().mouse();
 
         if (keyboard.key(keyboard_key::KEY_1).release())
         {
@@ -183,8 +183,8 @@ private:
 
     void update_actor(float delta)
     {
-        auto& world = module<ash::ecs::world>();
-        auto& keyboard = module<ash::window::window>().keyboard();
+        auto& world = system<ash::ecs::world>();
+        auto& keyboard = system<ash::window::window>().keyboard();
 
         float move = 0.0f;
         if (keyboard.key(keyboard_key::KEY_E).down())
@@ -201,14 +201,14 @@ private:
 
     void update()
     {
-        if (module<ash::window::window>().keyboard().key(keyboard_key::KEY_ESC).down())
+        if (system<ash::window::window>().keyboard().key(keyboard_key::KEY_ESC).down())
             m_app->exit();
 
-        float delta = module<ash::core::timer>().frame_delta();
+        float delta = system<ash::core::timer>().frame_delta();
         update_camera(delta);
         update_actor(delta);
 
-        module<animation>().update();
+        system<animation>().update();
     }
 
     std::string m_title;

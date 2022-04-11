@@ -7,11 +7,8 @@
 
 namespace ash::scene
 {
-class scene : public ash::core::submodule
+class scene : public ash::core::system_base
 {
-public:
-    static constexpr uuid id = "88be6763-ea80-417d-acf9-17eaab46a4ea";
-
 public:
     scene();
     scene(const scene&) = delete;

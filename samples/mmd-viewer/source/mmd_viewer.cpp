@@ -20,7 +20,7 @@ bool mmd_viewer::initialize(const dictionary& config)
         "toon10.dds",
     };
 
-    auto& graphics = module<graphics::graphics>();
+    auto& graphics = system<graphics::graphics>();
 
     for (auto& path : internal_toon_path)
         m_internal_toon.push_back(graphics.make_texture("resource/mmd/" + path));
@@ -36,8 +36,8 @@ ash::ecs::entity mmd_viewer::load_mmd(std::string_view name, std::string_view pa
     if (!loader.load(path))
         return ecs::INVALID_ENTITY;
 
-    auto& world = module<ash::ecs::world>();
-    auto& graphics = module<ash::graphics::graphics>();
+    auto& world = system<ash::ecs::world>();
+    auto& graphics = system<ash::graphics::graphics>();
 
     auto& resource = m_resources[name.data()];
     resource.root = world.create();
@@ -68,7 +68,7 @@ void mmd_viewer::load_mesh(mmd_resource& resource, const pmx_loader& loader)
         math::float3 bone_weight;
     };
 
-    auto& graphics = module<ash::graphics::graphics>();
+    auto& graphics = system<ash::graphics::graphics>();
 
     // Make vertex buffer.
     std::vector<vertex> vertices;
@@ -89,7 +89,7 @@ void mmd_viewer::load_mesh(mmd_resource& resource, const pmx_loader& loader)
 
 void mmd_viewer::load_texture(mmd_resource& resource, const pmx_loader& loader)
 {
-    auto& graphics = module<ash::graphics::graphics>();
+    auto& graphics = system<ash::graphics::graphics>();
 
     for (auto& texture_path : loader.textures())
     {
@@ -100,8 +100,8 @@ void mmd_viewer::load_texture(mmd_resource& resource, const pmx_loader& loader)
 
 void mmd_viewer::load_material(mmd_resource& resource, const pmx_loader& loader)
 {
-    auto& graphics = module<ash::graphics::graphics>();
-    auto& world = module<ash::ecs::world>();
+    auto& graphics = system<ash::graphics::graphics>();
+    auto& world = system<ash::ecs::world>();
 
     for (auto& mmd_material : loader.materials())
     {
@@ -148,9 +148,9 @@ void mmd_viewer::load_material(mmd_resource& resource, const pmx_loader& loader)
 
 void mmd_viewer::load_hierarchy(mmd_resource& resource, const pmx_loader& loader)
 {
-    auto& graphics = module<ash::graphics::graphics>();
-    auto& world = module<ash::ecs::world>();
-    auto& scene = module<ash::scene::scene>();
+    auto& graphics = system<ash::graphics::graphics>();
+    auto& world = system<ash::ecs::world>();
+    auto& scene = system<ash::scene::scene>();
 
     auto actor_skeleton = world.component<skeleton>(resource.root);
     actor_skeleton->offset.resize(loader.bones().size());
@@ -194,7 +194,7 @@ void mmd_viewer::load_hierarchy(mmd_resource& resource, const pmx_loader& loader
 
 void mmd_viewer::load_physics(mmd_resource& resource, const pmx_loader& loader)
 {
-    auto& world = module<ecs::world>();
+    auto& world = system<ecs::world>();
 
     std::vector<ecs::write<physics::rigidbody>> rigidbodies;
 
@@ -223,7 +223,7 @@ void mmd_viewer::load_physics(mmd_resource& resource, const pmx_loader& loader)
         default:
             break;
         }
-        resource.collision_shapes.push_back(module<ash::physics::physics>().make_shape(desc));
+        resource.collision_shapes.push_back(system<ash::physics::physics>().make_shape(desc));
 
         // Make rigidbody.
         ecs::entity node;

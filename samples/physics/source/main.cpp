@@ -15,19 +15,19 @@ using namespace ash::physics;
 
 namespace ash::sample::physics
 {
-class test_module : public submodule
+class test_module : public system_base
 {
 public:
     static constexpr ash::uuid id = "bd58a298-9ea4-4f8d-a79c-e57ae694915a";
 
 public:
-    test_module(application* app) : submodule("test_module") {}
+    test_module(application* app) : system_base("test_module") {}
 
     virtual bool initialize(const ash::dictionary& config) override
     {
-        auto& world = module<ash::ecs::world>();
-        auto& graphics = module<ash::graphics::graphics>();
-        auto& scene = module<ash::scene::scene>();
+        auto& world = system<ash::ecs::world>();
+        auto& graphics = system<ash::graphics::graphics>();
+        auto& scene = system<ash::scene::scene>();
 
         // Create rigidbody shape.
         collision_shape_desc desc;
@@ -35,13 +35,13 @@ public:
         desc.box.length = 1.0f;
         desc.box.height = 1.0f;
         desc.box.width = 1.0f;
-        m_cube_shape = module<ash::physics::physics>().make_shape(desc);
+        m_cube_shape = system<ash::physics::physics>().make_shape(desc);
 
         desc.type = collision_shape_type::BOX;
         desc.box.length = 10.0f;
         desc.box.height = 0.05f;
         desc.box.width = 10.0f;
-        m_plane_shape = module<ash::physics::physics>().make_shape(desc);
+        m_plane_shape = system<ash::physics::physics>().make_shape(desc);
 
         geometry_data cube_data = geometry::box(1.0f, 1.0f, 1.0f);
         m_cube_vertex_buffer =
@@ -129,7 +129,7 @@ public:
 private:
     void initialize_task()
     {
-        auto& task = module<ash::task::task_manager>();
+        auto& task = system<ash::task::task_manager>();
 
         auto update_task = task.schedule("test update", [this]() { update(); });
 
@@ -145,8 +145,8 @@ private:
 
     void initialize_camera()
     {
-        auto& world = module<ash::ecs::world>();
-        auto& scene = module<ash::scene::scene>();
+        auto& world = system<ash::ecs::world>();
+        auto& scene = system<ash::scene::scene>();
 
         m_camera = world.create();
         world.add<main_camera, camera, transform>(m_camera);
@@ -164,10 +164,10 @@ private:
 
     void update()
     {
-        float delta = module<ash::core::timer>().frame_delta();
+        float delta = system<ash::core::timer>().frame_delta();
         update_camera(delta);
 
-        module<ash::graphics::graphics>().debug().draw_line(
+        system<ash::graphics::graphics>().debug().draw_line(
             {100.0f, 0.0f, 0.0f},
             {-100.0f, 0.0f, 0.0f},
             {1.0f, 0.0f, 0.0f});
@@ -175,9 +175,9 @@ private:
 
     void update_camera(float delta)
     {
-        auto& world = module<ash::ecs::world>();
-        auto& keyboard = module<ash::window::window>().keyboard();
-        auto& mouse = module<ash::window::window>().mouse();
+        auto& world = system<ash::ecs::world>();
+        auto& keyboard = system<ash::window::window>().keyboard();
+        auto& mouse = system<ash::window::window>().mouse();
 
         if (keyboard.key(keyboard_key::KEY_1).release())
         {

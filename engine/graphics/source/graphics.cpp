@@ -10,7 +10,7 @@ using namespace ash::math;
 
 namespace ash::graphics
 {
-graphics::graphics() noexcept : submodule("graphics")
+graphics::graphics() noexcept : system_base("graphics")
 {
 }
 
@@ -18,7 +18,7 @@ bool graphics::initialize(const dictionary& config)
 {
     m_config.load(config);
 
-    auto& window = module<ash::window::window>();
+    auto& window = system<ash::window::window>();
 
     context_config desc = {};
     desc.window_handle = window.handle();
@@ -45,7 +45,7 @@ bool graphics::initialize(const dictionary& config)
     initialize_resource();
     initialize_debug();
 
-    auto& task = module<task::task_manager>();
+    auto& task = system<task::task_manager>();
     task.schedule(TASK_RENDER, [this]() {
         update();
 
@@ -65,7 +65,7 @@ bool graphics::initialize(const dictionary& config)
         m_render_pipelines.clear();
     });
 
-    auto& world = module<ecs::world>();
+    auto& world = system<ecs::world>();
     world.register_component<visual>();
     world.register_component<main_camera>();
     world.register_component<camera>();
