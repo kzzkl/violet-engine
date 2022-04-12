@@ -111,6 +111,8 @@ public:
 
     void move(entity entity, archetype& target)
     {
+        ASH_ASSERT(this != &target);
+
         auto& entity_info = m_entity_registry->at(entity);
         ASH_ASSERT(entity_info.archetype == this);
 
@@ -225,6 +227,7 @@ private:
         if (index != back_index)
         {
             swap(index, back_index);
+            m_entity_registry->at(m_entities[back_index]).index = index;
             std::swap(m_entities[index], m_entities[back_index]);
         }
 

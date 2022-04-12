@@ -49,6 +49,28 @@ TEST_CASE("world::add & world::remove", "[world]")
     CHECK(life_counter<1>::check(1, 0, 0, 0, 0, 1));
 }
 
+TEST_CASE("world::add & world::remove 2", "[world]")
+{
+    world world;
+    world.register_component<position>();
+    world.register_component<rotation>();
+
+    std::vector<entity> entities;
+
+    for (std::size_t i = 0; i < 3; ++i)
+    {
+        entity e = world.create();
+        world.add<position>(e);
+        entities.push_back(e);
+    }
+
+    for (std::size_t i = 0; i < 3; ++i)
+    {
+        if (i % 2 == 0)
+            world.add<rotation>(entities[i]);
+    }
+}
+
 TEST_CASE("world::component", "[world]")
 {
     world world;
