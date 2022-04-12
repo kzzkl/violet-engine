@@ -229,7 +229,8 @@ void mmd_viewer::load_physics(mmd_resource& resource, const pmx_loader& loader)
         else
             node = resource.root;
 
-        world.add<physics::rigidbody>(node);
+        if (!world.has_component<physics::rigidbody>(node))
+            world.add<physics::rigidbody>(node);
         rigidbodies.push_back(node);
         auto& rigidbody = world.component<physics::rigidbody>(node);
 

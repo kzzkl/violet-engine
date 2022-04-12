@@ -24,10 +24,13 @@ void bt3_world::add(
     std::uint32_t collision_group,
     std::uint32_t collision_mask)
 {
+    auto r = static_cast<bt3_rigidbody*>(rigidbody);
     m_world->addRigidBody(
-        static_cast<bt3_rigidbody*>(rigidbody)->rigidbody(),
+        r->rigidbody(),
         static_cast<int>(collision_group),
         static_cast<int>(collision_mask));
+
+    r->world(this);
 }
 
 void bt3_world::add(joint_interface* joint)
@@ -42,6 +45,7 @@ void bt3_world::remove(rigidbody_interface* rigidbody)
 
 void bt3_world::simulation(float time_step)
 {
+    m_updated_rigidbodies.clear();
     m_world->stepSimulation(time_step);
     // m_world->stepSimulation(time_step, 10);
 }

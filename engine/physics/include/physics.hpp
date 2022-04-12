@@ -9,6 +9,11 @@
 
 namespace ash::physics
 {
+struct rigidbody_user_data
+{
+    ecs::entity entity;
+};
+
 class physics : public ash::core::system_base
 {
 public:
@@ -44,6 +49,8 @@ private:
 
     physics_plugin m_plugin;
     factory* m_factory;
+
+    std::vector<rigidbody_user_data> m_user_data;
 
 #if defined(ASH_PHYSICS_DEBUG_DRAW)
     class physics_debug;

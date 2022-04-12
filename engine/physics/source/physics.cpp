@@ -78,9 +78,13 @@ void physics::simulation()
                 desc.restitution = rigidbody.restitution();
                 desc.friction = rigidbody.friction();
                 desc.shape = rigidbody.shape();
-                desc.reflect = rigidbody.reflect();
+                math::float4x4_simd to_world = math::simd::load(transform.world_matrix);
+                math::float4x4_simd offset = math::simd::load(rigidbody.offset());
+                math::simd::store(math::matrix_simd::mul(offset, to_world), desc.initial_transform);
 
                 rigidbody.interface.reset(m_factory->make_rigidbody(desc));
+                rigidbody.interface->user_data_index = m_user_data.size();
+                m_user_data.push_back({entity});
 
                 m_world->add(
                     rigidbody.interface.get(),
@@ -116,6 +120,23 @@ void physics::simulation()
     });
 
     m_world->simulation(system<ash::core::timer>().frame_delta());
+
+    auto& world = system<ecs::world>();
+    while (true)
+    {
+        rigidbody_interface* updated = m_world->updated_rigidbody();
+        if (updated == nullptr)
+            break;
+
+        ecs::entity entity = m_user_data[updated->user_data_index].entity;
+        auto& r = world.component<rigidbody>(entity);
+        auto& t = world.component<scene::transform>(entity);
+
+        math::float4x4_simd to_world = math::simd::load(updated->transform());
+        math::float4x4_simd offset_inverse = math::simd::load(r.offset_inverse());
+        math::simd::store(math::matrix_simd::mul(offset_inverse, to_world), t.world_matrix);
+        t.dirty = true;
+    }
 
     system<ash::scene::scene>().sync_world();
 

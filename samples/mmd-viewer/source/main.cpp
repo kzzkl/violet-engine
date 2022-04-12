@@ -108,8 +108,8 @@ private:
         auto physics_task = task.find(ash::physics::physics::TASK_SIMULATION);
 
         window_task->add_dependency(*task.find("root"));
-        //physics_task->add_dependency(*window_task);
-        update_task->add_dependency(*window_task);
+        physics_task->add_dependency(*window_task);
+        update_task->add_dependency(*physics_task);
         render_task->add_dependency(*update_task);
     }
 

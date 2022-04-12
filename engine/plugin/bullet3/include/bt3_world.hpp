@@ -1,6 +1,8 @@
 #pragma once
 
 #include "bt3_common.hpp"
+#include "bt3_rigidbody.hpp"
+#include <vector>
 
 namespace ash::physics::bullet3
 {
@@ -20,6 +22,22 @@ public:
     virtual void simulation(float time_step) override;
     virtual void debug() override;
 
+    virtual rigidbody_interface* updated_rigidbody() override
+    {
+        rigidbody_interface* result = nullptr;
+        if (!m_updated_rigidbodies.empty())
+        {
+            result = m_updated_rigidbodies.back();
+            m_updated_rigidbodies.pop_back();
+        }
+        return result;
+    }
+
+    void add_updated_rigidbody(bt3_rigidbody* rigidbody)
+    {
+        m_updated_rigidbodies.push_back(rigidbody);
+    }
+
     btDiscreteDynamicsWorld* world() const noexcept { return m_world.get(); }
 
 private:
@@ -29,5 +47,7 @@ private:
     std::unique_ptr<btSequentialImpulseConstraintSolver> m_solver;
 
     std::unique_ptr<btDiscreteDynamicsWorld> m_world;
+
+    std::vector<bt3_rigidbody*> m_updated_rigidbodies;
 };
 } // namespace ash::physics::bullet3

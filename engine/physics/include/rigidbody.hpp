@@ -6,7 +6,7 @@
 
 namespace ash::physics
 {
-class transform_reflect : public transform_reflect_interface
+/*class transform_reflect : public transform_reflect_interface
 {
 public:
     transform_reflect(ecs::world* world) noexcept;
@@ -28,7 +28,7 @@ private:
     math::float4x4 m_offset_inverse;
 
     mutable math::float4x4 m_transform;
-};
+};*/
 
 class rigidbody
 {
@@ -59,6 +59,9 @@ public:
     void offset(const math::float4x4& offset) noexcept;
     void offset(const math::float4x4_simd& offset) noexcept;
 
+    const math::float4x4& offset() const noexcept { return m_offset; }
+    const math::float4x4& offset_inverse() const noexcept { return m_offset_inverse; }
+
     void in_world(bool in_world) noexcept { m_in_world = in_world; }
     bool in_world() const noexcept { return m_in_world; }
 
@@ -79,8 +82,6 @@ public:
 
     void node(ecs::entity entity);
 
-    transform_reflect_interface* reflect() const noexcept { return m_reflect.get(); }
-
 private:
     rigidbody_type m_type;
     float m_mass;
@@ -94,8 +95,10 @@ private:
     std::uint32_t m_collision_group;
     std::uint32_t m_collision_mask;
 
-    bool m_in_world;
+    ecs::entity m_entity;
+    math::float4x4 m_offset;
+    math::float4x4 m_offset_inverse;
 
-    std::unique_ptr<transform_reflect> m_reflect;
+    bool m_in_world;
 };
 } // namespace ash::physics

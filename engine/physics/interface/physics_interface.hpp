@@ -49,15 +49,6 @@ enum class rigidbody_type
     KINEMATIC
 };
 
-class transform_reflect_interface
-{
-public:
-    virtual ~transform_reflect_interface() = default;
-
-    virtual const math::float4x4& transform() const = 0;
-    virtual void transform(const math::float4x4& world) = 0;
-};
-
 struct rigidbody_desc
 {
     rigidbody_type type;
@@ -70,7 +61,7 @@ struct rigidbody_desc
     float restitution;
     float friction;
 
-    transform_reflect_interface* reflect;
+    math::float4x4 initial_transform;
 };
 
 class rigidbody_interface
@@ -80,6 +71,11 @@ public:
 
     virtual void mass(float mass) = 0;
     virtual void shape(collision_shape_interface* shape) = 0;
+
+    virtual const math::float4x4& transform() const = 0;
+    virtual void transform(const math::float4x4& world) = 0;
+
+    std::size_t user_data_index;
 };
 
 struct joint_desc
@@ -126,6 +122,8 @@ public:
 
     virtual void simulation(float time_step) = 0;
     virtual void debug() {}
+
+    virtual rigidbody_interface* updated_rigidbody() = 0;
 };
 
 class factory_interface
