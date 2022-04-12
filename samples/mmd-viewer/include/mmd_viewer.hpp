@@ -27,9 +27,6 @@ struct mmd_resource
 class mmd_viewer : public ash::core::system_base
 {
 public:
-    static constexpr ash::uuid id = "851e8502-97d6-e3de-2d6f-51075a46deb4";
-
-public:
     mmd_viewer() : system_base("mmd_viewer") {}
 
     virtual bool initialize(const dictionary& config) override;

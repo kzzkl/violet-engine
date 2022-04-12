@@ -1,27 +1,85 @@
 #pragma once
 
-#include "component.hpp"
+#include "assert.hpp"
 #include <cstdint>
+#include <vector>
 
 namespace ash::ecs
 {
-static constexpr std::uint32_t INVALID_ENTITY_ID = -1;
-
 struct entity
 {
-    std::uint32_t id;
+    std::uint32_t index;
     std::uint32_t version;
+
+    [[nodiscard]] bool operator==(const entity& other) const noexcept
+    {
+        return index == other.index && version == other.version;
+    }
+
+    [[nodiscard]] bool operator!=(const entity& other) const noexcept { return !operator==(other); }
 };
 
-static constexpr entity INVALID_ENTITY = {INVALID_ENTITY_ID, 0};
+static constexpr entity INVALID_ENTITY = {-1, 0};
 
 struct all_entity
 {
 };
 
-template <>
-struct component_trait<all_entity>
+class archetype;
+struct entity_info
 {
-    static constexpr std::size_t id = uuid("42ec283a-6341-4ae8-8e5e-261c87cc6ef1").hash();
+    std::uint32_t version;
+
+    archetype* archetype;
+    std::size_t index;
+};
+
+class entity_registry
+{
+public:
+    entity add()
+    {
+        entity result = {static_cast<std::uint32_t>(m_registry.size()), 0};
+        m_registry.emplace_back();
+        return result;
+    }
+
+    [[nodiscard]] entity update(entity entity) const noexcept
+    {
+        return {entity.index, m_registry[entity.index].version};
+    }
+
+    [[nodiscard]] bool vaild(entity entity) const noexcept
+    {
+        return entity.index < m_registry.size() &&
+               m_registry[entity.index].version == entity.version;
+    }
+
+    [[nodiscard]] entity_info& at(entity entity) noexcept
+    {
+        ASH_ASSERT(vaild(entity));
+        return m_registry.at(entity.index);
+    }
+
+    [[nodiscard]] const entity_info& at(entity entity) const noexcept
+    {
+        ASH_ASSERT(vaild(entity));
+        return m_registry.at(entity.index);
+    }
+
+    [[nodiscard]] entity_info& operator[](entity entity) noexcept
+    {
+        ASH_ASSERT(vaild(entity));
+        return m_registry[entity.index];
+    }
+
+    [[nodiscard]] const entity_info& operator[](entity entity) const noexcept
+    {
+        ASH_ASSERT(vaild(entity));
+        return m_registry[entity.index];
+    }
+
+private:
+    std::vector<entity_info> m_registry;
 };
 } // namespace ash::ecs

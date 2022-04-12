@@ -9,9 +9,6 @@ namespace ash::sample::mmd
 class animation : public ash::core::system_base
 {
 public:
-    static constexpr uuid id = "cb3c4adc-4849-4871-8857-9ee68a9999e2";
-
-public:
     animation() : system_base("animation") {}
 
     virtual bool initialize(const ash::dictionary& config) override;

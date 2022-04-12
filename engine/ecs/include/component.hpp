@@ -1,7 +1,5 @@
 #pragma once
 
-#include "type_trait.hpp"
-#include "uuid.hpp"
 #include <bitset>
 #include <cstdint>
 #include <functional>
@@ -10,13 +8,29 @@
 
 namespace ash::ecs
 {
-using component_id = std::size_t;
+using component_id = std::uint16_t;
+
+namespace internal
+{
+struct component_index_generator
+{
+    static component_id next() noexcept
+    {
+        static component_id index = 0;
+        return index++;
+    }
+};
+} // namespace internal
 
 template <typename T>
-struct component_trait;
-
-template <typename T>
-static constexpr component_id component_id_v = component_trait<T>::id;
+struct component_index
+{
+    static const component_id value() noexcept
+    {
+        static const component_id index = internal::component_index_generator::next();
+        return index;
+    }
+};
 
 class component_constructer
 {
@@ -50,6 +64,7 @@ public:
 class component_info
 {
 public:
+    component_info() noexcept : m_size(0), m_align(0), m_constructer(nullptr) {}
     component_info(std::size_t size, std::size_t align, component_constructer* constructer) noexcept
         : m_size(size),
           m_align(align),
@@ -57,13 +72,13 @@ public:
     {
     }
 
-    void construct(void* target) { m_constructer->construct(target); }
-    void move_construct(void* source, void* target)
+    void construct(void* target) const { m_constructer->construct(target); }
+    void move_construct(void* source, void* target) const
     {
         m_constructer->move_construct(source, target);
     }
-    void destruct(void* target) { m_constructer->destruct(target); }
-    void swap(void* a, void* b) { m_constructer->swap(a, b); }
+    void destruct(void* target) const { m_constructer->destruct(target); }
+    void swap(void* a, void* b) const { m_constructer->swap(a, b); }
 
     std::size_t size() const noexcept { return m_size; }
     std::size_t align() const noexcept { return m_align; }
@@ -75,10 +90,8 @@ private:
     std::unique_ptr<component_constructer> m_constructer;
 };
 
-using component_set = std::vector<std::pair<component_id, component_info*>>;
-
-using component_index = std::uint16_t;
-
 static constexpr std::size_t MAX_COMPONENT = 512;
 using component_mask = std::bitset<MAX_COMPONENT>;
+
+using component_registry = std::array<component_info, MAX_COMPONENT>;
 } // namespace ash::ecs

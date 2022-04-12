@@ -10,9 +10,6 @@ using namespace ash::core;
 class test_module : public ash::core::system_base
 {
 public:
-    static constexpr ash::uuid id = "bd58a298-9ea4-4f8d-a79c-e57ae694915d";
-
-public:
     test_module(int data) : system_base("test_module"), m_data(data) {}
 
     virtual bool initialize(const ash::dictionary& config) override

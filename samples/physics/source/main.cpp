@@ -18,9 +18,6 @@ namespace ash::sample::physics
 class test_module : public system_base
 {
 public:
-    static constexpr ash::uuid id = "bd58a298-9ea4-4f8d-a79c-e57ae694915a";
-
-public:
     test_module(application* app) : system_base("test_module") {}
 
     virtual bool initialize(const ash::dictionary& config) override

@@ -12,57 +12,64 @@ bool scene::initialize(const dictionary& config)
     world.register_component<transform>();
     m_view = world.make_view<transform>();
 
-    ecs::entity root = world.create();
-    world.add<transform>(root);
-    m_root = world.component<transform, ecs::read>(root);
-    m_root->node->dirty = false;
+    m_root = world.create();
+    world.add<transform>(m_root);
+    world.component<transform>(m_root).dirty = false;
 
     return true;
 }
 
 void scene::sync_local()
 {
+    auto& world = system<ecs::world>();
+
     // Update dirty node.
-    std::queue<transform_node*> dirty_bfs = find_dirty_node();
+    std::queue<ecs::entity> dirty_bfs = find_dirty_node();
     while (!dirty_bfs.empty())
     {
-        transform_node* node = dirty_bfs.front();
+        ecs::entity entity = dirty_bfs.front();
         dirty_bfs.pop();
 
+        auto& node = world.component<transform>(entity);
+        auto& parent = world.component<transform>(node.parent);
+
         // Update to parent matrix.
-        math::float4_simd scale = math::simd::load(node->transform->scaling);
-        math::float4_simd rotation = math::simd::load(node->transform->rotation);
-        math::float4_simd translation = math::simd::load(node->transform->position);
+        math::float4_simd scale = math::simd::load(node.scaling);
+        math::float4_simd rotation = math::simd::load(node.rotation);
+        math::float4_simd translation = math::simd::load(node.position);
 
         math::float4x4_simd to_parent =
             math::matrix_simd::affine_transform(scale, rotation, translation);
-        math::simd::store(to_parent, node->transform->parent_matrix);
+        math::simd::store(to_parent, node.parent_matrix);
 
-        math::float4x4_simd parent_to_world =
-            math::simd::load(node->parent->transform->world_matrix);
+        math::float4x4_simd parent_to_world = math::simd::load(parent.world_matrix);
         math::float4x4_simd to_world = math::matrix_simd::mul(to_parent, parent_to_world);
-        math::simd::store(to_world, node->transform->world_matrix);
+        math::simd::store(to_world, node.world_matrix);
 
-        ++node->sync_count;
-        node->dirty = false;
+        ++node.sync_count;
+        node.dirty = false;
 
-        for (transform_node* child : node->children)
+        for (ecs::entity child : node.children)
             dirty_bfs.push(child);
     }
 }
 
 void scene::sync_world()
 {
+    auto& world = system<ecs::world>();
+
     // Update to parent matrix.
-    std::queue<transform_node*> dirty_bfs = find_dirty_node();
+    std::queue<ecs::entity> dirty_bfs = find_dirty_node();
     while (!dirty_bfs.empty())
     {
-        transform_node* node = dirty_bfs.front();
+        ecs::entity entity = dirty_bfs.front();
         dirty_bfs.pop();
 
-        math::float4x4_simd parent_to_world =
-            math::simd::load(node->parent->transform->world_matrix);
-        math::float4x4_simd to_world = math::simd::load(node->transform->world_matrix);
+        auto& node = world.component<transform>(entity);
+        auto& parent = world.component<transform>(node.parent);
+
+        math::float4x4_simd parent_to_world = math::simd::load(parent.world_matrix);
+        math::float4x4_simd to_world = math::simd::load(node.world_matrix);
         math::float4x4_simd to_parent =
             math::matrix_simd::mul(to_world, math::matrix_simd::inverse(parent_to_world));
 
@@ -70,42 +77,45 @@ void scene::sync_world()
         math::float4_simd scaling, rotation, position;
         math::matrix_simd::decompose(to_parent, scaling, rotation, position);
 
-        math::simd::store(to_parent, node->transform->parent_matrix);
-        math::simd::store(scaling, node->transform->scaling);
-        math::simd::store(rotation, node->transform->rotation);
-        math::simd::store(position, node->transform->position);
+        math::simd::store(to_parent, node.parent_matrix);
+        math::simd::store(scaling, node.scaling);
+        math::simd::store(rotation, node.rotation);
+        math::simd::store(position, node.position);
 
-        ++node->sync_count;
-        node->dirty = false;
+        ++node.sync_count;
+        node.dirty = false;
 
-        for (transform_node* child : node->children)
+        for (ecs::entity child : node.children)
             dirty_bfs.push(child);
     }
 }
 
 void scene::reset_sync_counter()
 {
-    m_view->each([](transform& t) { t.node->sync_count = 0; });
+    m_view->each([](transform& transform) { transform.sync_count = 0; });
 }
 
-std::queue<transform_node*> scene::find_dirty_node() const
+std::queue<ecs::entity> scene::find_dirty_node() const
 {
-    std::queue<transform_node*> check_bfs;
-    std::queue<transform_node*> dirty_bfs;
+    auto& world = system<ecs::world>();
 
-    check_bfs.push(m_root->node.get());
+    std::queue<ecs::entity> check_bfs;
+    std::queue<ecs::entity> dirty_bfs;
+
+    check_bfs.push(m_root);
     while (!check_bfs.empty())
     {
-        transform_node* node = check_bfs.front();
+        ecs::entity entity = check_bfs.front();
         check_bfs.pop();
 
-        if (node->dirty)
+        auto& node = world.component<transform>(entity);
+        if (node.dirty)
         {
-            dirty_bfs.push(node);
+            dirty_bfs.push(entity);
         }
         else
         {
-            for (transform_node* child : node->children)
+            for (ecs::entity child : node.children)
                 check_bfs.push(child);
         }
     }
@@ -113,45 +123,43 @@ std::queue<transform_node*> scene::find_dirty_node() const
     return dirty_bfs;
 }
 
-void scene::link(transform& node)
+void scene::link(ecs::entity entity)
 {
-    transform_node& target_node = *node.node;
-
-    // If there is already a parent node, remove from the parent node.
-    if (target_node.parent != nullptr)
-        unlink(node);
-
-    m_root->node->children.push_back(node.node.get());
-    target_node.parent = m_root->node.get();
+    link(entity, m_root);
 }
 
-void scene::link(transform& child, transform& parent)
+void scene::link(ecs::entity child_entity, ecs::entity parent_entity)
 {
-    transform_node& parent_node = *parent.node;
-    transform_node& child_node = *child.node;
+    auto& world = system<ecs::world>();
+
+    auto& child = world.component<transform>(child_entity);
+    auto& parent = world.component<transform>(parent_entity);
 
     // If there is already a parent node, remove from the parent node.
-    if (child_node.parent != nullptr)
-        unlink(child);
+    if (child.parent != ecs::INVALID_ENTITY)
+        unlink(child_entity);
 
-    parent_node.children.push_back(child.node.get());
-    child_node.parent = parent.node.get();
+    parent.children.push_back(child_entity);
+    child.parent = parent_entity;
 }
 
-void scene::unlink(transform& node)
+void scene::unlink(ecs::entity entity)
 {
-    transform_node& target_node = *node.node;
-    transform_node& parent_node = *target_node.parent;
-    for (auto iter = parent_node.children.begin(); iter != parent_node.children.end(); ++iter)
+    auto& world = system<ecs::world>();
+
+    auto& child = world.component<transform>(entity);
+    auto& parent = world.component<transform>(child.parent);
+
+    for (auto iter = parent.children.begin(); iter != parent.children.end(); ++iter)
     {
-        if (*iter == node.node.get())
+        if (*iter == entity)
         {
-            std::swap(*iter, parent_node.children.back());
-            parent_node.children.pop_back();
+            std::swap(*iter, parent.children.back());
+            parent.children.pop_back();
             break;
         }
     }
 
-    target_node.parent = nullptr;
+    child.parent = ecs::INVALID_ENTITY;
 }
 } // namespace ash::scene

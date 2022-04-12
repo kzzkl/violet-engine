@@ -43,9 +43,9 @@ ash::ecs::entity mmd_viewer::load_mmd(std::string_view name, std::string_view pa
     resource.root = world.create();
     world.add<scene::transform, graphics::visual, skeleton>(resource.root);
 
-    auto visual = world.component<graphics::visual>(resource.root);
+    auto& visual = world.component<graphics::visual>(resource.root);
     resource.object_parameter = graphics.make_render_parameter("ash_object");
-    visual->object = resource.object_parameter.get();
+    visual.object = resource.object_parameter.get();
 
     load_hierarchy(resource, loader);
     load_mesh(resource, loader);
@@ -128,7 +128,7 @@ void mmd_viewer::load_material(mmd_resource& resource, const pmx_loader& loader)
 
     resource.submesh = loader.submesh();
 
-    auto visual = world.component<graphics::visual>(resource.root);
+    auto& visual = world.component<graphics::visual>(resource.root);
     for (std::size_t i = 0; i < resource.submesh.size(); ++i)
     {
         graphics::render_unit s = {};
@@ -138,11 +138,11 @@ void mmd_viewer::load_material(mmd_resource& resource, const pmx_loader& loader)
         s.index_buffer = resource.index_buffer.get();
         s.pipeline = m_pipeline.get();
         s.parameters = {
-            visual->object,
+            visual.object,
             resource.materials[i].get(),
-            world.component<skeleton>(resource.root)->parameter.get()};
+            world.component<skeleton>(resource.root).parameter.get()};
 
-        visual->submesh.push_back(s);
+        visual.submesh.push_back(s);
     }
 }
 
@@ -152,9 +152,9 @@ void mmd_viewer::load_hierarchy(mmd_resource& resource, const pmx_loader& loader
     auto& world = system<ash::ecs::world>();
     auto& scene = system<ash::scene::scene>();
 
-    auto actor_skeleton = world.component<skeleton>(resource.root);
-    actor_skeleton->offset.resize(loader.bones().size());
-    actor_skeleton->parameter = graphics.make_render_parameter("mmd_skeleton");
+    auto& actor_skeleton = world.component<skeleton>(resource.root);
+    actor_skeleton.offset.resize(loader.bones().size());
+    actor_skeleton.parameter = graphics.make_render_parameter("mmd_skeleton");
 
     resource.hierarchy.reserve(loader.bones().size());
     for (std::size_t i = 0; i < loader.bones().size(); ++i)
@@ -168,12 +168,9 @@ void mmd_viewer::load_hierarchy(mmd_resource& resource, const pmx_loader& loader
     {
         const auto& mmd_bone = loader.bones()[i];
 
-        auto node = world.component<scene::transform>(resource.hierarchy[i]);
         if (mmd_bone.parent_index != -1)
         {
-            auto parent_node =
-                world.component<scene::transform>(resource.hierarchy[mmd_bone.parent_index]);
-            scene.link(*node, *parent_node);
+            scene.link(resource.hierarchy[i], resource.hierarchy[mmd_bone.parent_index]);
 
             math::float3 local_position = math::vector_plain::sub(
                 mmd_bone.position,
@@ -183,10 +180,10 @@ void mmd_viewer::load_hierarchy(mmd_resource& resource, const pmx_loader& loader
         else
         {
             // node->position(mmd_bone.position);
-            scene.link(*node, *world.component<scene::transform>(resource.root));
+            scene.link(resource.hierarchy[i], resource.root);
         }
 
-        actor_skeleton->nodes.push_back(node->node.get());
+        actor_skeleton.nodes.push_back(resource.hierarchy[i]);
 
         // TODO
     }
@@ -196,7 +193,7 @@ void mmd_viewer::load_physics(mmd_resource& resource, const pmx_loader& loader)
 {
     auto& world = system<ecs::world>();
 
-    std::vector<ecs::write<physics::rigidbody>> rigidbodies;
+    std::vector<ecs::entity> rigidbodies;
 
     resource.collision_shapes.reserve(loader.rigidbodies().size());
     for (auto& mmd_rigidbody : loader.rigidbodies())
@@ -233,27 +230,27 @@ void mmd_viewer::load_physics(mmd_resource& resource, const pmx_loader& loader)
             node = resource.root;
 
         world.add<physics::rigidbody>(node);
-        auto rigidbody = world.component<physics::rigidbody, ecs::write>(node);
-        rigidbodies.push_back(rigidbody);
+        rigidbodies.push_back(node);
+        auto& rigidbody = world.component<physics::rigidbody>(node);
 
-        rigidbody->shape(resource.collision_shapes.back().get());
-        rigidbody->mass(
+        rigidbody.shape(resource.collision_shapes.back().get());
+        rigidbody.mass(
             mmd_rigidbody.mode == pmx_rigidbody_mode::STATIC ? 0.0f : mmd_rigidbody.mass);
-        rigidbody->linear_dimmer(mmd_rigidbody.translate_dimmer);
-        rigidbody->angular_dimmer(mmd_rigidbody.rotate_dimmer);
-        rigidbody->restitution(mmd_rigidbody.repulsion);
-        rigidbody->friction(mmd_rigidbody.friction);
+        rigidbody.linear_dimmer(mmd_rigidbody.translate_dimmer);
+        rigidbody.angular_dimmer(mmd_rigidbody.rotate_dimmer);
+        rigidbody.restitution(mmd_rigidbody.repulsion);
+        rigidbody.friction(mmd_rigidbody.friction);
 
         switch (mmd_rigidbody.mode)
         {
         case pmx_rigidbody_mode::STATIC:
-            rigidbody->type(physics::rigidbody_type::KINEMATIC);
+            rigidbody.type(physics::rigidbody_type::KINEMATIC);
             break;
         case pmx_rigidbody_mode::DYNAMIC:
-            rigidbody->type(physics::rigidbody_type::DYNAMIC);
+            rigidbody.type(physics::rigidbody_type::DYNAMIC);
             break;
         case pmx_rigidbody_mode::MERGE:
-            rigidbody->type(physics::rigidbody_type::KINEMATIC);
+            rigidbody.type(physics::rigidbody_type::KINEMATIC);
             break;
         default:
             break;
@@ -268,9 +265,9 @@ void mmd_viewer::load_physics(mmd_resource& resource, const pmx_loader& loader)
                 rotation_offset,
                 position_offset),
             offset);
-        rigidbody->offset(offset);
-        rigidbody->collision_group(1 << mmd_rigidbody.group);
-        rigidbody->collision_mask(mmd_rigidbody.collision_group);
+        rigidbody.offset(offset);
+        rigidbody.collision_group(1 << mmd_rigidbody.group);
+        rigidbody.collision_mask(mmd_rigidbody.collision_group);
     }
 
     for (auto& mmd_joint : loader.joints())
@@ -278,26 +275,26 @@ void mmd_viewer::load_physics(mmd_resource& resource, const pmx_loader& loader)
         auto rigidbody_a = rigidbodies[mmd_joint.rigidbody_a_index];
         auto rigidbody_b = rigidbodies[mmd_joint.rigidbody_b_index];
 
-        if (!world.has_component<physics::joint>(rigidbody_a.entity()))
-            world.add<physics::joint>(rigidbody_a.entity());
+        if (!world.has_component<physics::joint>(rigidbody_a))
+            world.add<physics::joint>(rigidbody_a);
 
-        auto joint = world.component<physics::joint>(rigidbody_a.entity());
+        auto& joint = world.component<physics::joint>(rigidbody_a);
 
-        std::size_t index = joint->add_unit();
-        joint->rigidbody(index, rigidbody_b);
-        joint->location(index, mmd_joint.translate);
-        joint->rotation(
+        std::size_t index = joint.add_unit();
+        joint.rigidbody(index, rigidbody_b);
+        joint.location(index, mmd_joint.translate);
+        joint.rotation(
             index,
             math::quaternion_plain::rotation_euler(
                 mmd_joint.rotate[1],
                 mmd_joint.rotate[0],
                 mmd_joint.rotate[2]));
-        joint->min_linear(index, mmd_joint.translate_min);
-        joint->max_linear(index, mmd_joint.translate_max);
-        joint->min_angular(index, mmd_joint.rotate_min);
-        joint->max_angular(index, mmd_joint.rotate_max);
-        joint->spring_translate_factor(index, mmd_joint.spring_translate_factor);
-        joint->spring_rotate_factor(index, mmd_joint.spring_rotate_factor);
+        joint.min_linear(index, mmd_joint.translate_min);
+        joint.max_linear(index, mmd_joint.translate_max);
+        joint.min_angular(index, mmd_joint.rotate_min);
+        joint.max_angular(index, mmd_joint.rotate_max);
+        joint.spring_translate_factor(index, mmd_joint.spring_translate_factor);
+        joint.spring_rotate_factor(index, mmd_joint.spring_rotate_factor);
     }
 }
 } // namespace ash::sample::mmd

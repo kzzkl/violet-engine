@@ -65,30 +65,32 @@ void physics::simulation()
     system<ash::scene::scene>().reset_sync_counter();
     system<ash::scene::scene>().sync_local();
 
-    m_rigidbody_view->each([this](rigidbody& rigidbody, ash::scene::transform& transform) {
-        rigidbody.node(transform.node.get());
-        if (rigidbody.interface == nullptr)
-        {
-            rigidbody_desc desc = {};
-            desc.type = rigidbody.type();
-            desc.mass = rigidbody.mass();
-            desc.linear_dimmer = rigidbody.linear_dimmer();
-            desc.angular_dimmer = rigidbody.angular_dimmer();
-            desc.restitution = rigidbody.restitution();
-            desc.friction = rigidbody.friction();
-            desc.shape = rigidbody.shape();
-            desc.reflect = rigidbody.reflect();
+    m_rigidbody_view->each(
+        [this](ecs::entity entity, rigidbody& rigidbody, ash::scene::transform& transform) {
+            rigidbody.node(entity);
+            if (rigidbody.interface == nullptr)
+            {
+                rigidbody_desc desc = {};
+                desc.type = rigidbody.type();
+                desc.mass = rigidbody.mass();
+                desc.linear_dimmer = rigidbody.linear_dimmer();
+                desc.angular_dimmer = rigidbody.angular_dimmer();
+                desc.restitution = rigidbody.restitution();
+                desc.friction = rigidbody.friction();
+                desc.shape = rigidbody.shape();
+                desc.reflect = rigidbody.reflect();
 
-            rigidbody.interface.reset(m_factory->make_rigidbody(desc));
+                rigidbody.interface.reset(m_factory->make_rigidbody(desc));
 
-            m_world->add(
-                rigidbody.interface.get(),
-                rigidbody.collision_group(),
-                rigidbody.collision_mask());
-        }
-    });
+                m_world->add(
+                    rigidbody.interface.get(),
+                    rigidbody.collision_group(),
+                    rigidbody.collision_mask());
+            }
+        });
 
-    m_joint_view->each([this](rigidbody& rigidbody, joint& joint) {
+    m_joint_view->each([this](rigidbody& r, joint& joint) {
+        auto& world = system<ecs::world>();
         for (auto& unit : joint)
         {
             if (unit.interface != nullptr)
@@ -103,8 +105,9 @@ void physics::simulation()
             desc.max_angular = unit.max_angular;
             desc.spring_translate_factor = unit.spring_translate_factor;
             desc.spring_rotate_factor = unit.spring_rotate_factor;
-            desc.rigidbody_a = rigidbody.interface.get();
-            desc.rigidbody_b = unit.rigidbody->interface.get();
+
+            desc.rigidbody_a = r.interface.get();
+            desc.rigidbody_b = world.component<rigidbody>(unit.entity).interface.get();
 
             unit.interface.reset(m_factory->make_joint(desc));
 

@@ -12,9 +12,10 @@ bool animation::initialize(const ash::dictionary& config)
 
 void animation::update()
 {
-    m_view->each([](skeleton& s) {
+    auto& world = system<ecs::world>();
+    m_view->each([&](skeleton& s) {
         for (std::size_t i = 0; i < s.nodes.size(); ++i)
-            s.offset[i] = s.nodes[i]->transform->world_matrix;
+            s.offset[i] = world.component<scene::transform>(s.nodes[i]).world_matrix;
 
         s.parameter->set(0, s.offset.data(), s.offset.size());
 

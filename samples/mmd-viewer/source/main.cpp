@@ -32,9 +32,6 @@ struct vertex
 class test_module : public system_base
 {
 public:
-    static constexpr ash::uuid id = "bd58a298-9ea4-4f8d-a79c-e57ae694915a";
-
-public:
     test_module(application* app) : system_base("test_module"), m_app(app) {}
 
     virtual bool initialize(const ash::dictionary& config) override
@@ -57,8 +54,7 @@ private:
 
         m_actor = system<mmd_viewer>().load_mmd("sora", "resource/model/sora/Sora.pmx");
 
-        auto actor_transform = world.component<transform>(m_actor);
-        scene.link(*actor_transform);
+        scene.link(m_actor);
     }
 
     void initialize_plane()
@@ -75,13 +71,13 @@ private:
 
         world.add<rigidbody, transform>(m_plane);
 
-        auto t = world.component<transform>(m_plane);
-        t->position = {0.0f, -3.0f, 0.0f};
-        system<ash::scene::scene>().link(*t);
+        auto& t = world.component<transform>(m_plane);
+        t.position = {0.0f, -3.0f, 0.0f};
+        system<ash::scene::scene>().link(m_plane);
 
-        auto r = world.component<rigidbody>(m_plane);
-        r->shape(m_plane_shape.get());
-        r->mass(0.0f);
+        auto& r = world.component<rigidbody>(m_plane);
+        r.shape(m_plane_shape.get());
+        r.mass(0.0f);
     }
 
     void initialize_camera()
@@ -91,14 +87,14 @@ private:
 
         m_camera = world.create();
         world.add<main_camera, camera, transform>(m_camera);
-        auto c_camera = world.component<camera>(m_camera);
-        c_camera->set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
+        auto& c_camera = world.component<camera>(m_camera);
+        c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
 
-        auto c_transform = world.component<transform>(m_camera);
-        c_transform->position = {0.0f, 16.0f, -38.0f};
-        c_transform->rotation = {0.0f, 0.0f, 0.0f, 1.0f};
-        c_transform->scaling = {1.0f, 1.0f, 1.0f};
-        scene.link(*c_transform);
+        auto& c_transform = world.component<transform>(m_camera);
+        c_transform.position = {0.0f, 16.0f, -38.0f};
+        c_transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+        c_transform.scaling = {1.0f, 1.0f, 1.0f};
+        scene.link(m_camera);
     }
 
     void initialize_task()
@@ -112,8 +108,8 @@ private:
         auto physics_task = task.find(ash::physics::physics::TASK_SIMULATION);
 
         window_task->add_dependency(*task.find("root"));
-        physics_task->add_dependency(*window_task);
-        update_task->add_dependency(*physics_task);
+        //physics_task->add_dependency(*window_task);
+        update_task->add_dependency(*window_task);
         render_task->add_dependency(*update_task);
     }
 
@@ -140,19 +136,20 @@ private:
                 math::float4{0.0f, 0.0f, 1.0f, 1.0f}
             };
 
-            auto v = world.component<visual>(m_actor);
-            v->submesh[0].parameters[1]->set(0, colors[index]);
+            auto& v = world.component<visual>(m_actor);
+            v.submesh[0].parameters[1]->set(0, colors[index]);
 
             index = (index + 1) % colors.size();
         }
 
-        auto camera_transform = world.component<transform>(m_camera);
+        auto& camera_transform = world.component<transform>(m_camera);
+        camera_transform.dirty = true;
         if (mouse.mode() == mouse_mode::CURSOR_RELATIVE)
         {
             m_heading += mouse.x() * m_rotate_speed * delta;
             m_pitch += mouse.y() * m_rotate_speed * delta;
             m_pitch = std::clamp(m_pitch, -math::PI_PIDIV2, math::PI_PIDIV2);
-            camera_transform->rotation =
+            camera_transform.rotation =
                 math::quaternion_plain::rotation_euler(m_heading, m_pitch, 0.0f);
         }
 
@@ -166,15 +163,15 @@ private:
         if (keyboard.key(keyboard_key::KEY_A).down())
             x -= 1.0f;
 
-        math::float4_simd s = math::simd::load(camera_transform->scaling);
-        math::float4_simd r = math::simd::load(camera_transform->rotation);
-        math::float4_simd t = math::simd::load(camera_transform->position);
+        math::float4_simd s = math::simd::load(camera_transform.scaling);
+        math::float4_simd r = math::simd::load(camera_transform.rotation);
+        math::float4_simd t = math::simd::load(camera_transform.position);
 
         math::float4x4_simd affine = math::matrix_simd::affine_transform(s, r, t);
         math::float4_simd forward =
             math::simd::set(x * m_move_speed * delta, 0.0f, z * m_move_speed * delta, 0.0f);
         forward = math::matrix_simd::mul(forward, affine);
-        math::simd::store(math::vector_simd::add(forward, t), camera_transform->position);
+        math::simd::store(math::vector_simd::add(forward, t), camera_transform.position);
 
         if (keyboard.key(keyboard_key::KEY_T).down())
         {
@@ -194,13 +191,14 @@ private:
 
         if (move != 0.0f)
         {
-            auto actor_transform = world.component<transform>(m_actor);
-            actor_transform->position[0] += move * m_move_speed * delta;
+            auto& actor_transform = world.component<transform>(m_actor);
+            actor_transform.position[0] += move * m_move_speed * delta;
         }
     }
 
     void update()
     {
+        system<ash::scene::scene>().sync_local();
         if (system<ash::window::window>().keyboard().key(keyboard_key::KEY_ESC).down())
             m_app->exit();
 

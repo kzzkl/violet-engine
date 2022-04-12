@@ -8,9 +8,9 @@ std::size_t joint::add_unit()
     return m_units.size() - 1;
 }
 
-void joint::rigidbody(std::size_t index, rigidbody_handle rigidbody)
+void joint::rigidbody(std::size_t index, ecs::entity entity)
 {
-    m_units[index].rigidbody = rigidbody;
+    m_units[index].entity = entity;
 }
 
 void joint::location(std::size_t index, const math::float3& location)

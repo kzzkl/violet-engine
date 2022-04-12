@@ -9,7 +9,7 @@ namespace ash::physics
 class transform_reflect : public transform_reflect_interface
 {
 public:
-    transform_reflect() noexcept;
+    transform_reflect(ecs::world* world) noexcept;
     virtual ~transform_reflect() = default;
 
     virtual const math::float4x4& transform() const override;
@@ -18,10 +18,12 @@ public:
     void offset(const math::float4x4& offset) noexcept;
     void offset(const math::float4x4_simd& offset) noexcept;
 
-    void node(ash::scene::transform_node* node) noexcept { m_node = node; }
+    void node(ecs::entity entity) noexcept { m_entity = entity; }
 
 private:
-    ash::scene::transform_node* m_node;
+    ecs::world* m_world;
+
+    ecs::entity m_entity;
     math::float4x4 m_offset;
     math::float4x4 m_offset_inverse;
 
@@ -75,7 +77,7 @@ public:
     std::unique_ptr<rigidbody_interface> interface;
     // ash::ecs::component_handle<ash::scene::transform> node;
 
-    void node(ash::scene::transform_node* node);
+    void node(ecs::entity entity);
 
     transform_reflect_interface* reflect() const noexcept { return m_reflect.get(); }
 
@@ -97,12 +99,3 @@ private:
     std::unique_ptr<transform_reflect> m_reflect;
 };
 } // namespace ash::physics
-
-namespace ash::ecs
-{
-template <>
-struct component_trait<ash::physics::rigidbody>
-{
-    static constexpr std::size_t id = ash::uuid("308b46bf-898e-40fe-bd67-1d0d8e5a1aa3").hash();
-};
-} // namespace ash::ecs

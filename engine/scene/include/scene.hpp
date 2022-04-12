@@ -22,14 +22,14 @@ public:
 
     void reset_sync_counter();
 
-    void link(transform& node);
-    void link(transform& child, transform& parent);
-    void unlink(transform& node);
+    void link(ecs::entity entity);
+    void link(ecs::entity child_entity, ecs::entity parent_entity);
+    void unlink(ecs::entity entity);
 
 private:
-    std::queue<transform_node*> find_dirty_node() const;
+    std::queue<ecs::entity> find_dirty_node() const;
 
     ash::ecs::view<transform>* m_view;
-    ash::ecs::read<transform> m_root;
+    ash::ecs::entity m_root;
 };
 } // namespace ash::scene

@@ -22,7 +22,7 @@ set(ASH_PHYSICS_INTERFACE_DIR ${PROJECT_SOURCE_DIR}/engine/physics/interface)
 option(ASH_BUILD_THIRDPARTY "Build thirdparty" OFF)
 
 option(ASH_BUILD_ENGINE "Build engine" ON)
-option(ASH_BUILD_TESTING "Build test project" OFF)
+option(ASH_BUILD_TESTING "Build test project" ON)
 option(ASH_BUILD_EXAMPLES "Build examples" ON)
 
 message("Build start")

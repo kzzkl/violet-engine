@@ -3,9 +3,9 @@
 
 namespace ash::physics
 {
-
-transform_reflect::transform_reflect() noexcept
-    : m_node(nullptr),
+transform_reflect::transform_reflect(ecs::world* world) noexcept
+    : m_world(world),
+      m_entity(ecs::INVALID_ENTITY),
       m_offset(math::matrix_plain::identity()),
       m_offset_inverse(math::matrix_plain::identity())
 {
@@ -13,7 +13,9 @@ transform_reflect::transform_reflect() noexcept
 
 const math::float4x4& transform_reflect::transform() const
 {
-    math::float4x4_simd to_world = math::simd::load(m_node->transform->world_matrix);
+    auto& node = m_world->component<scene::transform>(m_entity);
+
+    math::float4x4_simd to_world = math::simd::load(node.world_matrix);
     math::float4x4_simd offset = math::simd::load(m_offset);
 
     math::simd::store(math::matrix_simd::mul(offset, to_world), m_transform);
@@ -28,10 +30,9 @@ void transform_reflect::transform(const math::float4x4& world)
     math::float4x4_simd to_world = math::simd::load(world);
     math::float4x4_simd offset_inverse = math::simd::load(m_offset_inverse);
 
-    math::simd::store(
-        math::matrix_simd::mul(offset_inverse, to_world),
-        m_node->transform->world_matrix);
-    //m_node->dirty = true;
+    auto& node = m_world->component<scene::transform>(m_entity);
+    math::simd::store(math::matrix_simd::mul(offset_inverse, to_world), node.world_matrix);
+    // m_node->dirty = true;
 }
 
 void transform_reflect::offset(const math::float4x4& offset) noexcept
@@ -54,7 +55,6 @@ rigidbody::rigidbody()
     : m_mass(0.0f),
       m_shape(nullptr),
       m_in_world(false),
-      m_reflect(std::make_unique<transform_reflect>()),
       m_collision_group(-1),
       m_collision_mask(-1)
 {
@@ -78,8 +78,8 @@ void rigidbody::offset(const math::float4x4_simd& offset) noexcept
     m_reflect->offset(offset);
 }
 
-void rigidbody::node(ash::scene::transform_node* node)
+void rigidbody::node(ecs::entity entity)
 {
-    m_reflect->node(node);
+    m_reflect->node(entity);
 }
 } // namespace ash::physics

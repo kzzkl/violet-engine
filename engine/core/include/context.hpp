@@ -15,23 +15,23 @@ namespace ash::core
 {
 namespace internal
 {
-struct system_id_generator
+struct system_index_generator
 {
     static std::size_t next() noexcept
     {
-        static std::size_t id = 0;
-        return id++;
+        static std::size_t index = 0;
+        return index++;
     }
 };
 } // namespace internal
 
 template <typename T>
-struct system_id
+struct system_index
 {
     static const std::size_t value() noexcept
     {
-        static const std::size_t id = internal::system_id_generator::next();
-        return id;
+        static const std::size_t index = internal::system_index_generator::next();
+        return index;
     }
 };
 
@@ -49,7 +49,7 @@ public:
 
 protected:
     template <typename T>
-    T& system();
+    T& system() const;
 
 private:
     friend class context;
@@ -71,25 +71,25 @@ public:
     context(std::string_view config_path);
 
     template <typename T>
-    T& system() requires derived_from_system<T> || internal_system<T>
+    T& system() const requires derived_from_system<T> || internal_system<T>
     {
-        return *static_cast<T*>(m_systems[system_id<T>::value()].get());
+        return *static_cast<T*>(m_systems[system_index<T>::value()].get());
     }
 
     template <>
-    ash::task::task_manager& system<ash::task::task_manager>()
+    ash::task::task_manager& system<ash::task::task_manager>() const
     {
         return *m_task;
     }
 
     template <>
-    ash::ecs::world& system<ash::ecs::world>()
+    ash::ecs::world& system<ash::ecs::world>() const
     {
         return *m_world;
     }
 
     template <>
-    ash::core::timer& system<ash::core::timer>()
+    ash::core::timer& system<ash::core::timer>() const
     {
         return *m_timer;
     }
@@ -98,17 +98,17 @@ protected:
     template <derived_from_system T, typename... Args>
     void install_system(Args&&... args)
     {
-        std::size_t id = system_id<T>::value();
-        if (m_systems.size() <= id)
-            m_systems.resize(id + 1);
+        std::size_t index = system_index<T>::value();
+        if (m_systems.size() <= index)
+            m_systems.resize(index + 1);
 
-        if (m_systems[id] == nullptr)
+        if (m_systems[index] == nullptr)
         {
             auto m = std::make_unique<T>(std::forward<Args>(args)...);
             m->m_context = this;
             m->initialize(m_config[m->name().data()]);
             log::info("Module installed successfully: {}.", m->name());
-            m_systems[id] = std::move(m);
+            m_systems[index] = std::move(m);
         }
         else
         {
@@ -131,7 +131,7 @@ private:
 };
 
 template <typename T>
-T& system_base::system()
+T& system_base::system() const
 {
     return m_context->system<T>();
 }

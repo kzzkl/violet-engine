@@ -16,13 +16,13 @@ struct packed
     value_type data[S];
 };
 
-using int2 = packed<int32_t, 2>;
-using int3 = packed<int32_t, 3>;
-using int4 = packed<int32_t, 4>;
+using int2 = packed<std::int32_t, 2>;
+using int3 = packed<std::int32_t, 3>;
+using int4 = packed<std::int32_t, 4>;
 
-using uint2 = packed<uint32_t, 2>;
-using uint3 = packed<uint32_t, 3>;
-using uint4 = packed<uint32_t, 4>;
+using uint2 = packed<std::uint32_t, 2>;
+using uint3 = packed<std::uint32_t, 3>;
+using uint4 = packed<std::uint32_t, 4>;
 
 using float2 = packed<float, 2>;
 using float3 = packed<float, 3>;
