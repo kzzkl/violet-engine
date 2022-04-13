@@ -72,7 +72,7 @@ public:
             if (iter == m_archetypes.cend())
             {
                 auto components = archetype->components();
-                (components.push_back(component_index<Components>::value()), ...);
+                (components.push_back(component_index::value<Components>()), ...);
 
                 auto target = make_archetype(components);
                 archetype->move(entity, *target);
@@ -96,7 +96,7 @@ public:
         if (iter == m_archetypes.cend())
         {
             auto components = archetype->components();
-            (components.push_back(component_index<Components>::value()), ...);
+            (components.push_back(component_index::value<Components>()), ...);
 
             auto target = make_archetype(components);
             archetype->move(entity, *target);
@@ -119,7 +119,7 @@ public:
     template <typename Component>
     [[nodiscard]] bool has_component(entity e)
     {
-        auto id = component_index<Component>::value();
+        auto id = component_index::value<Component>();
         return m_entity_registry[e].archetype->mask().test(id);
     }
 
@@ -144,7 +144,7 @@ private:
     template <typename Component>
     void register_component(component_constructer* constructer)
     {
-        m_component_registry[component_index<Component>::value()] =
+        m_component_registry[component_index::value<Component>()] =
             component_info(sizeof(Component), alignof(Component), constructer);
     }
 
@@ -152,7 +152,7 @@ private:
     component_mask make_mask()
     {
         component_mask result;
-        (result.set(component_index<Components>::value()), ...);
+        (result.set(component_index::value<Components>()), ...);
         return result;
     }
 
@@ -172,7 +172,7 @@ private:
     archetype* make_archetype()
     {
         std::vector<component_id> components;
-        (components.push_back(component_index<Components>::value()), ...);
+        (components.push_back(component_index::value<Components>()), ...);
         return make_archetype(components);
     }
 

@@ -1,4 +1,5 @@
 #include "scene.hpp"
+#include "scene_event.hpp"
 
 namespace ash::scene
 {
@@ -14,7 +15,14 @@ bool scene::initialize(const dictionary& config)
 
     m_root = world.create();
     world.add<transform>(m_root);
-    world.component<transform>(m_root).dirty = false;
+
+    auto& root_transform = world.component<transform>(m_root);
+    root_transform.dirty = false;
+    root_transform.in_scene = true;
+
+    auto& event = system<core::event>();
+    event.register_event<event_enter_scene>();
+    event.register_event<event_exit_scene>();
 
     return true;
 }
@@ -137,13 +145,24 @@ void scene::link(ecs::entity child_entity, ecs::entity parent_entity)
 
     // If there is already a parent node, remove from the parent node.
     if (child.parent != ecs::INVALID_ENTITY)
-        unlink(child_entity);
+        unlink(child_entity, false);
 
     parent.children.push_back(child_entity);
     child.parent = parent_entity;
+
+    if (child.in_scene && !parent.in_scene)
+    {
+        // Exit scene.
+        system<core::event>().publish<event_exit_scene>(child_entity);
+    }
+    else if (!child.in_scene && parent.in_scene)
+    {
+        // Enter scene.
+        system<core::event>().publish<event_enter_scene>(child_entity);
+    }
 }
 
-void scene::unlink(ecs::entity entity)
+void scene::unlink(ecs::entity entity, bool send_event)
 {
     auto& world = system<ecs::world>();
 
@@ -161,5 +180,8 @@ void scene::unlink(ecs::entity entity)
     }
 
     child.parent = ecs::INVALID_ENTITY;
+
+    if (parent.in_scene && send_event)
+        system<core::event>().publish<event_exit_scene>(entity);
 }
 } // namespace ash::scene

@@ -20,6 +20,7 @@ context::context(std::string_view config_path)
     m_task->schedule("root", []() {});
 
     m_world = std::make_unique<ash::ecs::world>();
+    m_event = std::make_unique<event>();
     m_timer = std::make_unique<timer>();
 }
 

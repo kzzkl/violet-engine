@@ -73,11 +73,12 @@ private:
 
         auto& t = world.component<transform>(m_plane);
         t.position = {0.0f, -3.0f, 0.0f};
-        system<ash::scene::scene>().link(m_plane);
 
         auto& r = world.component<rigidbody>(m_plane);
         r.shape(m_plane_shape.get());
         r.mass(0.0f);
+
+        system<ash::scene::scene>().link(m_plane);
     }
 
     void initialize_camera()

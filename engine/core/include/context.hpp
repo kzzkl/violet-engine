@@ -2,6 +2,8 @@
 
 #include "assert.hpp"
 #include "dictionary.hpp"
+#include "event.hpp"
+#include "index_generator.hpp"
 #include "log.hpp"
 #include "task_manager.hpp"
 #include "timer.hpp"
@@ -13,26 +15,8 @@
 
 namespace ash::core
 {
-namespace internal
+struct system_index : public index_generator<system_index, std::size_t>
 {
-struct system_index_generator
-{
-    static std::size_t next() noexcept
-    {
-        static std::size_t index = 0;
-        return index++;
-    }
-};
-} // namespace internal
-
-template <typename T>
-struct system_index
-{
-    static const std::size_t value() noexcept
-    {
-        static const std::size_t index = internal::system_index_generator::next();
-        return index;
-    }
 };
 
 class context;
@@ -59,8 +43,9 @@ private:
 };
 
 template <typename T>
-concept internal_system = std::is_same_v<T, ash::task::task_manager> ||
-    std::is_same_v<T, ash::ecs::world> || std::is_same_v<T, ash::core::timer>;
+concept internal_system =
+    std::is_same_v<T, ash::task::task_manager> || std::is_same_v<T, ash::ecs::world> ||
+    std::is_same_v<T, ash::core::timer> || std::is_same_v<T, event>;
 
 template <typename T>
 concept derived_from_system = std::is_base_of<system_base, T>::value;
@@ -73,7 +58,7 @@ public:
     template <typename T>
     T& system() const requires derived_from_system<T> || internal_system<T>
     {
-        return *static_cast<T*>(m_systems[system_index<T>::value()].get());
+        return *static_cast<T*>(m_systems[system_index::value<T>()].get());
     }
 
     template <>
@@ -89,6 +74,12 @@ public:
     }
 
     template <>
+    ash::core::event& system<ash::core::event>() const
+    {
+        return *m_event;
+    }
+
+    template <>
     ash::core::timer& system<ash::core::timer>() const
     {
         return *m_timer;
@@ -98,7 +89,7 @@ protected:
     template <derived_from_system T, typename... Args>
     void install_system(Args&&... args)
     {
-        std::size_t index = system_index<T>::value();
+        std::size_t index = system_index::value<T>();
         if (m_systems.size() <= index)
             m_systems.resize(index + 1);
 
@@ -126,7 +117,7 @@ private:
     std::vector<std::unique_ptr<system_base>> m_systems;
     std::unique_ptr<ash::task::task_manager> m_task;
     std::unique_ptr<ash::ecs::world> m_world;
-
+    std::unique_ptr<event> m_event;
     std::unique_ptr<timer> m_timer;
 };
 

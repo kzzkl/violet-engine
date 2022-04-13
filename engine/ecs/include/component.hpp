@@ -1,5 +1,6 @@
 #pragma once
 
+#include "index_generator.hpp"
 #include <bitset>
 #include <cstdint>
 #include <functional>
@@ -10,26 +11,8 @@ namespace ash::ecs
 {
 using component_id = std::uint16_t;
 
-namespace internal
+struct component_index : public index_generator<component_index, component_id>
 {
-struct component_index_generator
-{
-    static component_id next() noexcept
-    {
-        static component_id index = 0;
-        return index++;
-    }
-};
-} // namespace internal
-
-template <typename T>
-struct component_index
-{
-    static const component_id value() noexcept
-    {
-        static const component_id index = internal::component_index_generator::next();
-        return index;
-    }
 };
 
 class component_constructer

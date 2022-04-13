@@ -42,8 +42,7 @@ public:
 private:
     void simulation();
 
-    ash::ecs::view<rigidbody, ash::scene::transform>* m_rigidbody_view;
-    ash::ecs::view<rigidbody, joint>* m_joint_view;
+    void on_enter_scene(ecs::entity entity);
 
     std::unique_ptr<world_interface> m_world;
 

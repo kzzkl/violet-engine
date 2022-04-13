@@ -35,7 +35,7 @@ public:
             static_cast<const long>(m_offset),
             static_cast<const long>(m_archetype->m_entity_per_chunk));
 
-        std::size_t id = component_index<Component>::value();
+        std::size_t id = component_index::value<Component>();
         std::size_t address = m_archetype->m_offset[id] +
                               entity_index * m_archetype->m_component_registry->at(id).size();
 

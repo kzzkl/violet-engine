@@ -19,6 +19,8 @@ struct transform
     bool dirty;
     std::size_t sync_count;
 
+    bool in_scene;
+
     ash::ecs::entity parent;
     std::vector<ash::ecs::entity> children;
 };

@@ -24,7 +24,31 @@ public:
 
     void link(ecs::entity entity);
     void link(ecs::entity child_entity, ecs::entity parent_entity);
-    void unlink(ecs::entity entity);
+    void unlink(ecs::entity entity, bool send_event = true);
+
+    template <typename Functor>
+    void each_children(ecs::entity entity, Functor&& functor)
+    {
+        auto& world = system<ecs::world>();
+
+        std::queue<ecs::entity> bfs;
+        bfs.push(entity);
+
+        while (!bfs.empty())
+        {
+            ecs::entity node = bfs.front();
+            bfs.pop();
+
+            if (!world.has_component<transform>(node))
+                continue;
+
+            functor(node);
+
+            auto& t = world.component<transform>(node);
+            for (auto child : t.children)
+                bfs.push(child);
+        }
+    }
 
 private:
     std::queue<ecs::entity> find_dirty_node() const;
