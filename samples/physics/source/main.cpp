@@ -57,11 +57,11 @@ public:
             auto& t = world.component<transform>(m_cube_1);
             t.position = {1.0f, 0.0f, 0.0f};
             t.rotation = math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f);
-            scene.link(m_cube_1);
 
             auto& r = world.component<rigidbody>(m_cube_1);
             r.shape(m_cube_shape.get());
             r.mass(1.0f);
+            r.type(rigidbody_type::KINEMATIC);
 
             auto& v = world.component<visual>(m_cube_1);
             m_cube_object.emplace_back(graphics.make_render_parameter("ash_object"));
@@ -75,6 +75,8 @@ public:
             submesh.pipeline = m_pipeline.get();
             submesh.parameters = {v.object, m_cube_material.get()};
             v.submesh.push_back(submesh);
+
+            scene.link(m_cube_1);
         }
 
         // Cube 2.
@@ -85,7 +87,6 @@ public:
             auto& t = world.component<transform>(m_cube_2);
             t.position = {-1.0f, 0.0f, 0.0f};
             t.rotation = math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f);
-            scene.link(m_cube_2, m_cube_1);
 
             auto& r = world.component<rigidbody>(m_cube_2);
             r.shape(m_cube_shape.get());
@@ -103,6 +104,8 @@ public:
             submesh.pipeline = m_pipeline.get();
             submesh.parameters = {v.object, m_cube_material.get()};
             v.submesh.push_back(submesh);
+
+            scene.link(m_cube_2, m_cube_1);
         }
 
         // Create plane.
@@ -111,11 +114,12 @@ public:
 
         auto& pt = world.component<transform>(m_plane);
         pt.position = {0.0f, -3.0f, 0.0f};
-        scene.link(m_plane);
 
         auto& pr = world.component<rigidbody>(m_plane);
         pr.shape(m_plane_shape.get());
         pr.mass(0.0f);
+
+        scene.link(m_plane);
 
         initialize_task();
         initialize_camera();
@@ -132,11 +136,9 @@ private:
 
         auto window_task = task.find(ash::window::window::TASK_WINDOW_TICK);
         auto render_task = task.find(ash::graphics::graphics::TASK_RENDER);
-        auto physics_task = task.find(ash::physics::physics::TASK_SIMULATION);
 
         window_task->add_dependency(*task.find("root"));
-        physics_task->add_dependency(*window_task);
-        update_task->add_dependency(*physics_task);
+        update_task->add_dependency(*window_task);
         render_task->add_dependency(*update_task);
     }
 
@@ -152,22 +154,43 @@ private:
 
         auto& c_transform = world.component<transform>(m_camera);
         c_transform.position = {0.0f, 0.0f, -38.0f};
-        scene.link(m_camera);
         c_transform.world_matrix = math::matrix_plain::affine_transform(
             c_transform.scaling,
             c_transform.rotation,
             c_transform.position);
+
+        scene.link(m_camera);
     }
 
     void update()
     {
+        auto& scene = system<scene::scene>();
+        scene.reset_sync_counter();
+
         float delta = system<ash::core::timer>().frame_delta();
         update_camera(delta);
+        update_actor(delta);
 
-        system<ash::graphics::graphics>().debug().draw_line(
-            {100.0f, 0.0f, 0.0f},
-            {-100.0f, 0.0f, 0.0f},
-            {1.0f, 0.0f, 0.0f});
+        system<ash::physics::physics>().simulation();
+    }
+
+    void update_actor(float delta)
+    {
+        auto& world = system<ash::ecs::world>();
+        auto& keyboard = system<ash::window::window>().keyboard();
+
+        float move = 0.0f;
+        if (keyboard.key(keyboard_key::KEY_E).down())
+            move += 1.0f;
+        if (keyboard.key(keyboard_key::KEY_Q).down())
+            move -= 1.0f;
+
+        if (move != 0.0f)
+        {
+            auto& actor_transform = world.component<transform>(m_cube_1);
+            actor_transform.position[0] += move * m_move_speed * delta;
+            actor_transform.dirty = true;
+        }
     }
 
     void update_camera(float delta)

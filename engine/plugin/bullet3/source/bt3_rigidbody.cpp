@@ -1,12 +1,15 @@
 #include "bt3_rigidbody.hpp"
 #include "bt3_shape.hpp"
 #include "bt3_world.hpp"
+#include <iostream>
 
 namespace ash::physics::bullet3
 {
 void bt3_motion_state::getWorldTransform(btTransform& centerOfMassWorldTrans) const
 {
     centerOfMassWorldTrans.setFromOpenGLMatrix(&rigidbody->transform()[0][0]);
+
+    // std::cout << "get" << std::endl;
 }
 
 void bt3_motion_state::setWorldTransform(const btTransform& centerOfMassWorldTrans)
@@ -43,6 +46,13 @@ bt3_rigidbody::bt3_rigidbody(const rigidbody_desc& desc) : m_transform(desc.init
     info.m_additionalDamping = true;
 
     m_rigidbody = std::make_unique<btRigidBody>(info);
+
+    if (desc.type == rigidbody_type::KINEMATIC)
+    {
+        m_rigidbody->setCollisionFlags(
+            m_rigidbody->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
+        m_rigidbody->setActivationState(DISABLE_DEACTIVATION);
+    }
 }
 
 void bt3_rigidbody::mass(float mass)

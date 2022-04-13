@@ -106,11 +106,9 @@ private:
 
         auto window_task = task.find(ash::window::window::TASK_WINDOW_TICK);
         auto render_task = task.find(ash::graphics::graphics::TASK_RENDER);
-        auto physics_task = task.find(ash::physics::physics::TASK_SIMULATION);
 
         window_task->add_dependency(*task.find("root"));
-        physics_task->add_dependency(*window_task);
-        update_task->add_dependency(*physics_task);
+        update_task->add_dependency(*window_task);
         render_task->add_dependency(*update_task);
     }
 
@@ -194,19 +192,23 @@ private:
         {
             auto& actor_transform = world.component<transform>(m_actor);
             actor_transform.position[0] += move * m_move_speed * delta;
+            actor_transform.dirty = true;
         }
     }
 
     void update()
     {
-        system<ash::scene::scene>().sync_local();
         if (system<ash::window::window>().keyboard().key(keyboard_key::KEY_ESC).down())
             m_app->exit();
+
+        auto& scene = system<scene::scene>();
+        scene.reset_sync_counter();
 
         float delta = system<ash::core::timer>().frame_delta();
         update_camera(delta);
         update_actor(delta);
 
+        system<ash::physics::physics>().simulation();
         system<animation>().update();
     }
 

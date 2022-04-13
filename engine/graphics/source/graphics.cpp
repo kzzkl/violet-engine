@@ -71,6 +71,7 @@ bool graphics::initialize(const dictionary& config)
     world.register_component<camera>();
     m_object_view = world.make_view<visual, scene::transform>();
     m_camera_view = world.make_view<main_camera, camera, scene::transform>();
+    m_tv = world.make_view<scene::transform>();
 
     return true;
 }
@@ -220,11 +221,23 @@ void graphics::update()
 
         for (std::size_t i = 0; i < visual.submesh.size(); ++i)
         {
-            if (visual.submesh[i].pipeline == nullptr)
-                continue;
             m_render_pipelines.insert(visual.submesh[i].pipeline);
             visual.submesh[i].pipeline->add(&visual.submesh[i]);
         }
+    });
+
+    m_tv->each([this](scene::transform& transform) {
+        float4_simd a = math::simd::set(0.0f, 0.0f, 0.0f, 1.0f);
+        float4_simd b = math::simd::set(0.0f, 1.0f, 0.0f, 1.0f);
+
+        float4x4_simd to_world = math::simd::load(transform.world_matrix);
+        a = math::matrix_simd::mul(a, to_world);
+        b = math::matrix_simd::mul(b, to_world);
+
+        float3 ap, bp;
+        math::simd::store(a, ap);
+        math::simd::store(b, bp);
+        m_debug->draw_line(ap, bp, float3{1.0f, 1.0f, 0.0f});
     });
 }
 

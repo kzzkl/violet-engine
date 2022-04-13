@@ -153,11 +153,17 @@ void scene::link(ecs::entity child_entity, ecs::entity parent_entity)
     if (child.in_scene && !parent.in_scene)
     {
         // Exit scene.
+        each_children(child_entity, [&, this](ecs::entity node) {
+            world.component<transform>(node).in_scene = false;
+        });
         system<core::event>().publish<event_exit_scene>(child_entity);
     }
     else if (!child.in_scene && parent.in_scene)
     {
         // Enter scene.
+        each_children(child_entity, [&, this](ecs::entity node) {
+            world.component<transform>(node).in_scene = true;
+        });
         system<core::event>().publish<event_enter_scene>(child_entity);
     }
 }

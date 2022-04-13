@@ -75,7 +75,7 @@ vs_out vs_main(vs_in vin)
     position.w = 1.0f;
     normal.w = 0.0f;
 
-    result.position = mul(position, transform_mvp);
+    result.position = mul(position, transform_vp);
     result.uv = vin.uv;
     result.normal = mul(normal, transform_mv).xyz;
 

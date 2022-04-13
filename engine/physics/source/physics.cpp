@@ -50,11 +50,10 @@ bool physics::initialize(const dictionary& config)
     desc.gravity = {0.0f, -10.0f, 0.0f};
     m_world.reset(m_factory->make_world(desc));
 
-    auto& task = system<ash::task::task_manager>();
-    task.schedule(TASK_SIMULATION, [this]() { simulation(); });
-
-    system<ash::ecs::world>().register_component<rigidbody>();
-    system<ash::ecs::world>().register_component<joint>();
+    auto& world = system<ash::ecs::world>();
+    world.register_component<rigidbody>();
+    world.register_component<joint>();
+    m_view = world.make_view<rigidbody, scene::transform>();
 
     auto& event = system<core::event>();
     event.subscribe<scene::event_enter_scene>(
@@ -65,8 +64,19 @@ bool physics::initialize(const dictionary& config)
 
 void physics::simulation()
 {
-    system<ash::scene::scene>().reset_sync_counter();
     system<ash::scene::scene>().sync_local();
+
+    m_view->each([](rigidbody& rigidbody, scene::transform& transform) {
+        if (transform.sync_count != 0 && rigidbody.type() == rigidbody_type::KINEMATIC)
+        {
+            math::float4x4_simd to_world = math::simd::load(transform.world_matrix);
+            math::float4x4_simd offset = math::simd::load(rigidbody.offset());
+
+            math::float4x4 rigidbody_to_world;
+            math::simd::store(math::matrix_simd::mul(offset, to_world), rigidbody_to_world);
+            rigidbody.interface->transform(rigidbody_to_world);
+        }
+    });
 
     m_world->simulation(system<ash::core::timer>().frame_delta());
 

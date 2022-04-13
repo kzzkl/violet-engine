@@ -103,6 +103,8 @@ private:
     ash::ecs::view<visual, scene::transform>* m_object_view;
     ash::ecs::view<main_camera, camera, scene::transform>* m_camera_view;
 
+    ash::ecs::view<scene::transform>* m_tv;
+
     std::unique_ptr<render_parameter> m_parameter_pass;
     std::set<render_pipeline*> m_render_pipelines;
 

@@ -52,7 +52,8 @@ void transform_reflect::offset(const math::float4x4_simd& offset) noexcept
 }*/
 
 rigidbody::rigidbody()
-    : m_mass(0.0f),
+    : m_type(rigidbody_type::DYNAMIC),
+      m_mass(0.0f),
       m_shape(nullptr),
       m_in_world(false),
       m_collision_group(-1),

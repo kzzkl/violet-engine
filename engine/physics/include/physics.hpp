@@ -17,9 +17,6 @@ struct rigidbody_user_data
 class physics : public ash::core::system_base
 {
 public:
-    static constexpr const char* TASK_SIMULATION = "physics simulation";
-
-public:
     physics() noexcept;
     virtual ~physics();
 
@@ -39,12 +36,14 @@ public:
             m_factory->make_collision_shape(child, offset, size));
     }
 
-private:
     void simulation();
 
+private:
     void on_enter_scene(ecs::entity entity);
 
     std::unique_ptr<world_interface> m_world;
+
+    ecs::view<rigidbody, scene::transform>* m_view;
 
     physics_plugin m_plugin;
     factory* m_factory;
