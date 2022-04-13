@@ -29,10 +29,18 @@ bool scene::initialize(const dictionary& config)
 
 void scene::sync_local()
 {
+    sync_local(m_root);
+}
+
+void scene::sync_local(ecs::entity root)
+{
     auto& world = system<ecs::world>();
 
+    auto& root_transform = world.component<transform>(root);
+    root_transform.dirty = false;
+
     // Update dirty node.
-    std::queue<ecs::entity> dirty_bfs = find_dirty_node();
+    std::queue<ecs::entity> dirty_bfs = find_dirty_node(root);
     while (!dirty_bfs.empty())
     {
         ecs::entity entity = dirty_bfs.front();
@@ -64,10 +72,15 @@ void scene::sync_local()
 
 void scene::sync_world()
 {
+    sync_world(m_root);
+}
+
+void scene::sync_world(ecs::entity root)
+{
     auto& world = system<ecs::world>();
 
     // Update to parent matrix.
-    std::queue<ecs::entity> dirty_bfs = find_dirty_node();
+    std::queue<ecs::entity> dirty_bfs = find_dirty_node(root);
     while (!dirty_bfs.empty())
     {
         ecs::entity entity = dirty_bfs.front();
@@ -103,14 +116,14 @@ void scene::reset_sync_counter()
     m_view->each([](transform& transform) { transform.sync_count = 0; });
 }
 
-std::queue<ecs::entity> scene::find_dirty_node() const
+std::queue<ecs::entity> scene::find_dirty_node(ecs::entity root) const
 {
     auto& world = system<ecs::world>();
 
     std::queue<ecs::entity> check_bfs;
     std::queue<ecs::entity> dirty_bfs;
 
-    check_bfs.push(m_root);
+    check_bfs.push(root);
     while (!check_bfs.empty())
     {
         ecs::entity entity = check_bfs.front();

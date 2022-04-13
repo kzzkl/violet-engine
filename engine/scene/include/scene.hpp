@@ -16,7 +16,9 @@ public:
     virtual bool initialize(const dictionary& config) override;
 
     void sync_local();
+    void sync_local(ecs::entity root);
     void sync_world();
+    void sync_world(ecs::entity root);
 
     scene& operator=(const scene&) = delete;
 
@@ -51,7 +53,7 @@ public:
     }
 
 private:
-    std::queue<ecs::entity> find_dirty_node() const;
+    std::queue<ecs::entity> find_dirty_node(ecs::entity root) const;
 
     ash::ecs::view<transform>* m_view;
     ash::ecs::entity m_root;

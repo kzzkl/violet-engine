@@ -4,8 +4,12 @@ namespace ash::sample::mmd
 {
 bool animation::initialize(const ash::dictionary& config)
 {
-    system<ash::ecs::world>().register_component<skeleton>();
-    m_view = system<ash::ecs::world>().make_view<skeleton>();
+    auto& world = system<ash::ecs::world>();
+    world.register_component<skeleton>();
+    world.register_component<bone>();
+
+    m_view = world.make_view<skeleton>();
+    m_bone_view = world.make_view<bone, scene::transform>();
 
     return true;
 }
@@ -13,14 +17,18 @@ bool animation::initialize(const ash::dictionary& config)
 void animation::update()
 {
     auto& world = system<ecs::world>();
-    m_view->each([&](skeleton& s) {
-        for (std::size_t i = 0; i < s.nodes.size(); ++i)
-            s.offset[i] = world.component<scene::transform>(s.nodes[i]).world_matrix;
 
-        s.parameter->set(0, s.offset.data(), s.offset.size());
+    m_bone_view->each([](bone& bone, scene::transform& transform) {
+        math::float4x4_simd to_world = math::simd::load(transform.world_matrix);
+        math::float4x4_simd offset = math::simd::load(bone.offset);
+        math::simd::store(math::matrix_simd::mul(offset, to_world), bone.transform);
+    });
 
-        /*for (auto& submesh : v.submesh)
-        submesh.parameters[2] = s.parameter.get();*/
+    m_view->each([&](skeleton& skeleton) {
+        for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
+            skeleton.transform[i] = world.component<bone>(skeleton.nodes[i]).transform;
+
+        skeleton.parameter->set(0, skeleton.transform.data(), skeleton.transform.size());
     });
 }
 } // namespace ash::sample::mmd

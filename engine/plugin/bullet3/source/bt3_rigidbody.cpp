@@ -1,15 +1,12 @@
 #include "bt3_rigidbody.hpp"
 #include "bt3_shape.hpp"
 #include "bt3_world.hpp"
-#include <iostream>
 
 namespace ash::physics::bullet3
 {
 void bt3_motion_state::getWorldTransform(btTransform& centerOfMassWorldTrans) const
 {
     centerOfMassWorldTrans.setFromOpenGLMatrix(&rigidbody->transform()[0][0]);
-
-    // std::cout << "get" << std::endl;
 }
 
 void bt3_motion_state::setWorldTransform(const btTransform& centerOfMassWorldTrans)

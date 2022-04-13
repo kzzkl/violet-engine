@@ -153,7 +153,7 @@ void mmd_viewer::load_hierarchy(mmd_resource& resource, const pmx_loader& loader
     auto& scene = system<ash::scene::scene>();
 
     auto& actor_skeleton = world.component<skeleton>(resource.root);
-    actor_skeleton.offset.resize(loader.bones().size());
+    actor_skeleton.transform.resize(loader.bones().size());
     actor_skeleton.parameter = graphics.make_render_parameter("mmd_skeleton");
 
     resource.hierarchy.reserve(loader.bones().size());
@@ -168,24 +168,38 @@ void mmd_viewer::load_hierarchy(mmd_resource& resource, const pmx_loader& loader
     {
         const auto& mmd_bone = loader.bones()[i];
 
+        auto& t = world.component<scene::transform>(resource.hierarchy[i]);
+        t.dirty = true;
         if (mmd_bone.parent_index != -1)
         {
-            scene.link(resource.hierarchy[i], resource.hierarchy[mmd_bone.parent_index]);
-
             math::float3 local_position = math::vector_plain::sub(
                 mmd_bone.position,
                 loader.bones()[mmd_bone.parent_index].position);
-            // node->position(local_position);
+
+            t.position = local_position;
+            scene.link(resource.hierarchy[i], resource.hierarchy[mmd_bone.parent_index]);
         }
         else
         {
-            // node->position(mmd_bone.position);
+            t.position = mmd_bone.position;
             scene.link(resource.hierarchy[i], resource.root);
         }
 
         actor_skeleton.nodes.push_back(resource.hierarchy[i]);
 
         // TODO
+    }
+
+    system<scene::scene>().sync_local(resource.root);
+
+    for (ecs::entity node : actor_skeleton.nodes)
+    {
+        world.add<bone>(node);
+        auto& b = world.component<bone>(node);
+        auto& t = world.component<scene::transform>(node);
+
+        math::float4x4_simd initial = math::simd::load(t.world_matrix);
+        math::simd::store(math::matrix_simd::inverse(initial), b.offset);
     }
 }
 
@@ -259,13 +273,17 @@ void mmd_viewer::load_physics(mmd_resource& resource, const pmx_loader& loader)
 
         math::float4_simd position_offset = math::simd::load(mmd_rigidbody.translate);
         math::float4_simd rotation_offset = math::simd::load(mmd_rigidbody.rotate);
+        math::float4x4_simd rigidbody_world = math::matrix_simd::affine_transform(
+            math::simd::set(1.0f, 1.0f, 1.0f, 0.0f),
+            rotation_offset,
+            position_offset);
+        math::float4x4_simd node_offset =
+            math::simd::load(world.component<scene::transform>(node).world_matrix);
+        node_offset = math::matrix_simd::inverse(node_offset);
+
         math::float4x4 offset;
-        math::simd::store(
-            math::matrix_simd::affine_transform(
-                math::simd::set(1.0f, 1.0f, 1.0f, 0.0f),
-                rotation_offset,
-                position_offset),
-            offset);
+        math::simd::store(math::matrix_simd::mul(rigidbody_world, node_offset), offset);
+
         rigidbody.offset(offset);
         rigidbody.collision_group(1 << mmd_rigidbody.group);
         rigidbody.collision_mask(mmd_rigidbody.collision_group);
