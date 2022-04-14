@@ -2,6 +2,7 @@
 
 #include "context.hpp"
 #include "graphics.hpp"
+#include "mmd.hpp"
 #include "physics.hpp"
 #include "pmx_loader.hpp"
 #include "vmd_loader.hpp"
@@ -32,13 +33,17 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
 
+    void update();
+    void update_animation(ecs::entity entity, bool after_physics);
+
     ash::ecs::entity load_mmd(std::string_view name, std::string_view pmx, std::string_view vmd);
 
 private:
+    void load_hierarchy(mmd_resource& resource, const pmx_loader& loader);
     void load_mesh(mmd_resource& resource, const pmx_loader& loader);
     void load_texture(mmd_resource& resource, const pmx_loader& loader);
     void load_material(mmd_resource& resource, const pmx_loader& loader);
-    void load_hierarchy(mmd_resource& resource, const pmx_loader& loader);
+    void load_ik(mmd_resource& resource, const pmx_loader& loader);
     void load_physics(mmd_resource& resource, const pmx_loader& loader);
 
     void load_animation(
@@ -48,8 +53,10 @@ private:
 
     std::map<std::string, mmd_resource> m_resources;
 
-    std::vector<std::unique_ptr<ash::graphics::resource>> m_internal_toon;
+    ash::ecs::view<mmd_skeleton>* m_skeleton_view;
+    ash::ecs::view<mmd_bone, scene::transform>* m_bone_view;
 
+    std::vector<std::unique_ptr<ash::graphics::resource>> m_internal_toon;
     std::unique_ptr<ash::graphics::render_pipeline> m_pipeline;
 };
 } // namespace ash::sample::mmd

@@ -1,8 +1,6 @@
 #pragma once
 
-#include "bone.hpp"
 #include "context.hpp"
-#include "skeleton.hpp"
 #include "transform.hpp"
 #include "view.hpp"
 
@@ -18,7 +16,5 @@ public:
     void update();
 
 private:
-    ash::ecs::view<skeleton>* m_view;
-    ash::ecs::view<bone, scene::transform>* m_bone_view;
 };
 } // namespace ash::sample::mmd

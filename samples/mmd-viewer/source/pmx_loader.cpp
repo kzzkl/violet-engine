@@ -2,6 +2,7 @@
 #include "encode.hpp"
 #include <fstream>
 #include <map>
+#include "log.hpp"
 
 namespace ash::sample::mmd
 {

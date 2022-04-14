@@ -18,8 +18,8 @@ struct vmd_motion
 {
     std::string bone_name;
     std::uint32_t frame_index;
-    math::float3 position;
-    math::float4 rotation;
+    math::float3 translate;
+    math::float4 rotate;
     std::uint8_t interpolation[64];
 };
 

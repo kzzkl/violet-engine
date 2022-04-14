@@ -51,8 +51,8 @@ bool vmd_loader::load_motion(std::ifstream& fin)
         convert<encode_type::SHIFT_JIS, encode_type::UTF8>(bone_name, motion.bone_name);
 
         read(fin, motion.frame_index);
-        read(fin, motion.position);
-        read(fin, motion.rotation);
+        read(fin, motion.translate);
+        read(fin, motion.rotate);
         read(fin, motion.interpolation);
 
         m_motions.push_back(motion);

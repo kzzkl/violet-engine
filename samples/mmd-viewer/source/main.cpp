@@ -211,8 +211,9 @@ private:
         update_camera(delta);
         update_actor(delta);
 
+        system<ash::scene::scene>().sync_local();
         system<ash::physics::physics>().simulation();
-        system<animation>().update();
+        system<mmd_viewer>().update();
     }
 
     std::string m_title;
