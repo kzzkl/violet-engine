@@ -30,10 +30,17 @@ bool mmd_viewer::initialize(const dictionary& config)
     return true;
 }
 
-ash::ecs::entity mmd_viewer::load_mmd(std::string_view name, std::string_view path)
+ash::ecs::entity mmd_viewer::load_mmd(
+    std::string_view name,
+    std::string_view pmx,
+    std::string_view vmd)
 {
-    pmx_loader loader;
-    if (!loader.load(path))
+    pmx_loader pmx_loader;
+    if (!pmx_loader.load(pmx))
+        return ecs::INVALID_ENTITY;
+
+    vmd_loader vmd_loader;
+    if (!vmd_loader.load(vmd))
         return ecs::INVALID_ENTITY;
 
     auto& world = system<ash::ecs::world>();
@@ -47,11 +54,13 @@ ash::ecs::entity mmd_viewer::load_mmd(std::string_view name, std::string_view pa
     resource.object_parameter = graphics.make_render_parameter("ash_object");
     visual.object = resource.object_parameter.get();
 
-    load_hierarchy(resource, loader);
-    load_mesh(resource, loader);
-    load_texture(resource, loader);
-    load_material(resource, loader);
-    load_physics(resource, loader);
+    load_hierarchy(resource, pmx_loader);
+    load_mesh(resource, pmx_loader);
+    load_texture(resource, pmx_loader);
+    load_material(resource, pmx_loader);
+    load_physics(resource, pmx_loader);
+
+    load_animation(resource, pmx_loader, vmd_loader);
 
     return resource.root;
 }
@@ -315,5 +324,47 @@ void mmd_viewer::load_physics(mmd_resource& resource, const pmx_loader& loader)
         joint.spring_translate_factor(index, mmd_joint.spring_translate_factor);
         joint.spring_rotate_factor(index, mmd_joint.spring_rotate_factor);
     }
+}
+
+void mmd_viewer::load_animation(
+    mmd_resource& resource,
+    const pmx_loader& pmx_loader,
+    const vmd_loader& vmd_loader)
+{
+    auto& world = system<ecs::world>();
+
+    auto& s = world.component<skeleton>(resource.root);
+    for (auto& motion : vmd_loader.motions())
+    {
+        std::size_t bone_index = 0;
+        for (auto& bone : pmx_loader.bones())
+        {
+            if (motion.bone_name == bone.name_jp)
+            {
+                if (world.has_component<physics::rigidbody>(s.nodes[bone_index]))
+                {
+                    if (world.component<physics::rigidbody>(s.nodes[bone_index]).type() !=
+                        physics::rigidbody_type::KINEMATIC)
+                        break;
+                }
+                auto& t = world.component<scene::transform>(s.nodes[bone_index]);
+
+                math::float4_simd position = math::simd::load(motion.position);
+                math::float4_simd rotation = math::simd::load(motion.rotation);
+                math::float4x4_simd world_matrix = math::matrix_simd::affine_transform(
+                    math::simd::set(1.0f, 1.0f, 1.0f, 0.0f),
+                    rotation,
+                    position);
+                // math::simd::store(world_matrix, t.world_matrix);
+                t.position = math::vector_plain::sub(t.position, motion.position);
+                t.rotation = motion.rotation;
+                t.dirty = true;
+                break;
+            }
+            ++bone_index;
+        }
+    }
+
+    system<scene::scene>().sync_local(resource.root);
 }
 } // namespace ash::sample::mmd

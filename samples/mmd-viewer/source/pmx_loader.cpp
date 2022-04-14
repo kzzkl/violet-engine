@@ -1,15 +1,14 @@
 #include "pmx_loader.hpp"
-#include "unicode.hpp"
+#include "encode.hpp"
 #include <fstream>
 #include <map>
 
 namespace ash::sample::mmd
 {
 template <typename T>
-bool read(std::istream& fin, T& dest)
+static void read(std::istream& fin, T& dest)
 {
     fin.read(reinterpret_cast<char*>(&dest), sizeof(T));
-    return true;
 }
 
 pmx_loader::pmx_loader()
@@ -591,7 +590,7 @@ std::string pmx_loader::read_text(std::ifstream& fin)
             std::u16string str;
             str.resize(len);
             fin.read(reinterpret_cast<char*>(str.data()), len);
-            convert<encode_type::ENCODE_UTF16, encode_type::ENCODE_UTF8>(str, result);
+            convert<encode_type::UTF16, encode_type::UTF8>(str, result);
         }
         return result;
     }

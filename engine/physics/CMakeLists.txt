@@ -1,6 +1,6 @@
 project(ash-physics)
 
-option(ASH_PHYSICS_DEBUG_DRAW "Whether to show rigid body wireframe" off)
+option(ASH_PHYSICS_DEBUG_DRAW "Whether to show rigid body wireframe" ON)
 
 add_library(${PROJECT_NAME} STATIC
     ./source/joint.cpp

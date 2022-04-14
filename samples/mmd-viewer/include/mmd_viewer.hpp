@@ -4,6 +4,7 @@
 #include "graphics.hpp"
 #include "physics.hpp"
 #include "pmx_loader.hpp"
+#include "vmd_loader.hpp"
 
 namespace ash::sample::mmd
 {
@@ -31,7 +32,7 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
 
-    ash::ecs::entity load_mmd(std::string_view name, std::string_view path);
+    ash::ecs::entity load_mmd(std::string_view name, std::string_view pmx, std::string_view vmd);
 
 private:
     void load_mesh(mmd_resource& resource, const pmx_loader& loader);
@@ -39,6 +40,11 @@ private:
     void load_material(mmd_resource& resource, const pmx_loader& loader);
     void load_hierarchy(mmd_resource& resource, const pmx_loader& loader);
     void load_physics(mmd_resource& resource, const pmx_loader& loader);
+
+    void load_animation(
+        mmd_resource& resource,
+        const pmx_loader& pmx_loader,
+        const vmd_loader& vmd_loader);
 
     std::map<std::string, mmd_resource> m_resources;
 

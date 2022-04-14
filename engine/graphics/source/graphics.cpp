@@ -226,7 +226,7 @@ void graphics::update()
         }
     });
 
-    /*m_tv->each([this](scene::transform& transform) {
+    m_tv->each([this](scene::transform& transform) {
         float4_simd a = math::simd::set(0.0f, 0.0f, 0.0f, 1.0f);
         float4_simd b = math::simd::set(0.0f, 1.0f, 0.0f, 1.0f);
 
@@ -238,7 +238,7 @@ void graphics::update()
         math::simd::store(a, ap);
         math::simd::store(b, bp);
         m_debug->draw_line(ap, bp, float3{1.0f, 1.0f, 0.0f});
-    });*/
+    });
 }
 
 void graphics::render()

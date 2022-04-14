@@ -52,7 +52,10 @@ private:
         auto& world = system<ash::ecs::world>();
         auto& scene = system<ash::scene::scene>();
 
-        m_actor = system<mmd_viewer>().load_mmd("sora", "resource/model/sora/Sora.pmx");
+        m_actor = system<mmd_viewer>().load_mmd(
+            "sora",
+            "resource/model/sora/Sora.pmx",
+            "resource/model/sora/Sora.vmd");
 
         scene.link(m_actor);
     }
@@ -92,7 +95,7 @@ private:
         c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
 
         auto& c_transform = world.component<transform>(m_camera);
-        c_transform.position = {0.0f, 16.0f, -38.0f};
+        c_transform.position = {0.0f, 11.0f, -40.0f};
         c_transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
         c_transform.scaling = {1.0f, 1.0f, 1.0f};
         scene.link(m_camera);

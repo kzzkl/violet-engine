@@ -61,23 +61,16 @@ vs_out vs_main(vs_in vin)
     weights[2] = vin.weight.z;
     weights[3] = 1.0f - weights[0] - weights[1] - weights[2];
 
-    result.position = float4(0.0, 0.0, 0.0, 1.0);
-    result.normal = float3(0.0, 0.0, 0.0);
-
-    float4 position = {0.0, 0.0, 0.0, 0.0};
-    float4 normal = {0.0, 0.0, 0.0, 0.0};
-
+    float4x4 m;
     for (int i = 0; i < 4; ++i)
-    {
-        position += weights[i] * mul(float4(vin.position, 1.0f), offset[vin.bone[i]]);
-        normal += weights[i] * mul(float4(vin.normal, 1.0f), offset[vin.bone[i]]);
-    }
-    position.w = 1.0f;
-    normal.w = 0.0f;
+        m += weights[i] * offset[vin.bone[i]];
 
-    result.position = mul(position, transform_vp);
+    float4x4 mvp = mul(m, transform_vp);
+    float4x4 mv = mul(m, transform_v);
+
+    result.position = mul(float4(vin.position, 1.0f), mvp);
+    result.normal = mul(float4(vin.normal, 0.0f), mv).xyz;
     result.uv = vin.uv;
-    result.normal = mul(normal, transform_mv).xyz;
 
     return result;
 }
