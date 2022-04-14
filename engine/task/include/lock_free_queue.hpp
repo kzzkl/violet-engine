@@ -95,28 +95,6 @@ public:
         m_free.store(node_pointer(nullptr));
     }
 
-    /**
-     * @brief Returns the number of nodes in the pool.
-     *
-     * Since the size of the pool is generally not obtained, the size is not set as a member
-     * variable here, but the length is obtained by traversal, and the algorithm complexity is O
-     * (1).
-     *
-     * @return std::size_t the number of nodes
-     */
-    std::size_t size() const
-    {
-        std::size_t result = 0;
-        node_pointer head = m_free.load();
-        while (head.pointer())
-        {
-            ++result;
-            head = head->next;
-        }
-
-        return result;
-    }
-
 private:
     node_handle handle(node_pointer pointer) const
     {
