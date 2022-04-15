@@ -1,9 +1,10 @@
 project(mmd-viewer)
 
 add_executable(${PROJECT_NAME}
-    ./source/animation.cpp
     ./source/encode.cpp
     ./source/main.cpp
+    ./source/mmd_ik.cpp
+    ./source/mmd_loader.cpp
     ./source/mmd_viewer.cpp
     ./source/pmx_loader.cpp
     ./source/vmd_loader.cpp)

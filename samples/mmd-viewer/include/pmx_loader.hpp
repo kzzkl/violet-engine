@@ -141,7 +141,7 @@ struct pmx_bone
     std::int32_t external_parent_index;
 
     std::int32_t ik_target_index;
-    std::int32_t ik_iteration_count;
+    std::int32_t ik_loop_count;
     float ik_limit;
     std::vector<pmx_ik_link> ik_links;
 };

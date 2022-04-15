@@ -8,6 +8,17 @@
 
 namespace ash::sample::mmd
 {
+struct mmd_ik_link
+{
+    ecs::entity node;
+    bool enable_limit;
+    math::float3 limit_max;
+    math::float3 limit_min;
+    math::float3 prev_angle;
+    math::float4 save_ik_rotate;
+    float plane_mode_angle;
+};
+
 struct mmd_bone
 {
     std::string name;
@@ -20,11 +31,19 @@ struct mmd_bone
     bool inherit_rotation_flag;
     bool inherit_translation_flag;
 
-    ecs::entity inherit_node;
+    ecs::entity inherit_node{ecs::INVALID_ENTITY};
     float inherit_weight;
-
     math::float3 inherit_translate;
     math::float4 inherit_rotate;
+
+    bool enable_ik;
+    bool enable_ik_solver{true};
+    ecs::entity ik_target;
+    std::uint32_t loop_count;
+    float limit_angle;
+    bool base_animation;
+    math::float4 ik_rotate;
+    std::vector<mmd_ik_link> links;
 
     math::float3 initial_position;
     math::float4 initial_rotation;
@@ -35,13 +54,6 @@ struct mmd_bone
     math::float4 animation_rotate;
     math::float3 base_animation_translate;
     math::float4 base_animation_rotate;
-
-    /*math::float3 translate;
-    math::float4 rotate;
-    math::float3 scale;
-
-    math::float4x4 parent_matrix;
-    math::float4x4 world_matrix;*/
 };
 
 struct mmd_skeleton

@@ -308,7 +308,7 @@ bool pmx_loader::load_bone(std::ifstream& fin)
         if (bone.flags & pmx_bone_flag::IK)
         {
             bone.ik_target_index = read_index(fin, m_header.bone_index_size);
-            read<std::int32_t>(fin, bone.ik_iteration_count);
+            read<std::int32_t>(fin, bone.ik_loop_count);
             read<float>(fin, bone.ik_limit);
 
             std::int32_t count;

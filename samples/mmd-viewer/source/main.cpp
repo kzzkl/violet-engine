@@ -1,4 +1,3 @@
-#include "animation.hpp"
 #include "application.hpp"
 #include "geometry.hpp"
 #include "graphics.hpp"
@@ -212,7 +211,7 @@ private:
         update_actor(delta);
 
         system<ash::scene::scene>().sync_local();
-        system<ash::physics::physics>().simulation();
+        //system<ash::physics::physics>().simulation();
         system<mmd_viewer>().update();
     }
 
@@ -239,7 +238,6 @@ int main()
     app.install<scene>();
     app.install<graphics>();
     app.install<physics>();
-    app.install<animation>();
     app.install<mmd_viewer>();
     app.install<test_module>(&app);
 
