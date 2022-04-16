@@ -87,9 +87,47 @@ public:
             a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]};
     }
 
+    static inline quaternion_type conjugate(const quaternion_type& q)
+    {
+        return quaternion_type{-q[0], -q[1], -q[2], q[3]};
+    }
+
+    static inline quaternion_type inverse(const quaternion_type& q)
+    {
+        return vector_plain::scale(conjugate(q), 1.0f / vector_plain::dot(q, q));
+    }
+
     static inline quaternion_type slerp(const quaternion_type& a, const quaternion_type& b, float t)
     {
-        // TODO
+        float cos_omega = vector_plain::dot(a, b);
+
+        quaternion_type c = b;
+        if (cos_omega < 0.0f)
+        {
+            c = vector_plain::scale(b, -1.0f);
+            cos_omega = -cos_omega;
+        }
+
+        float k0, k1;
+        if (cos_omega > 0.9999f)
+        {
+            k0 = 1.0f - t;
+            k1 = t;
+        }
+        else
+        {
+            float sin_omega = sqrtf(1.0f - cos_omega * cos_omega);
+            float omega = atan2f(sin_omega, cos_omega);
+            float div = 1.0f / sin_omega;
+            k0 = sinf((1.0f - t) * omega) * div;
+            k1 = sinf(t * omega) * div;
+        }
+
+        return {
+            a[0] * k0 + b[0] * k1,
+            a[1] * k0 + b[1] * k1,
+            a[2] * k0 + b[2] * k1,
+            a[3] * k0 + b[3] * k1};
     }
 };
 
@@ -104,6 +142,10 @@ public:
     static inline quaternion_type rotation_axis(const vector_type& axis, float radians)
     {
         // TODO
+        float4 a;
+        simd::store(axis, a);
+        float4 result = quaternion_plain::rotation_axis(a, radians);
+        return simd::load(result);
     }
 
     static inline quaternion_type rotation_euler(const vector_type& euler)

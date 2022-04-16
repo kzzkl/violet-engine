@@ -1,4 +1,5 @@
 #include "mmd_loader.hpp"
+#include <iostream>
 
 namespace ash::sample::mmd
 {
@@ -33,13 +34,13 @@ void mmd_loader::initialize()
         m_internal_toon.push_back(m_graphics.make_texture("resource/mmd/" + path));
 
     m_pipeline = m_graphics.make_render_pipeline<graphics::render_pipeline>("mmd");
-
-    m_world.register_component<mmd_bone>();
-    m_world.register_component<mmd_skeleton>();
-    m_world.register_component<mmd_animation>();
 }
 
-bool mmd_loader::load(mmd_resource& resource, std::string_view pmx, std::string_view vmd)
+bool mmd_loader::load(
+    ecs::entity entity,
+    mmd_resource& resource,
+    std::string_view pmx,
+    std::string_view vmd)
 {
     pmx_loader pmx_loader;
     if (!pmx_loader.load(pmx))
@@ -49,37 +50,39 @@ bool mmd_loader::load(mmd_resource& resource, std::string_view pmx, std::string_
     if (!vmd_loader.load(vmd))
         return false;
 
-    resource.root = m_world.create();
-    m_world.add<scene::transform, graphics::visual, mmd_skeleton>(resource.root);
+    m_world.add<scene::transform, graphics::visual, mmd_skeleton>(entity);
 
-    auto& visual = m_world.component<graphics::visual>(resource.root);
+    auto& visual = m_world.component<graphics::visual>(entity);
     resource.object_parameter = m_graphics.make_render_parameter("ash_object");
     visual.object = resource.object_parameter.get();
 
-    load_hierarchy(resource, pmx_loader);
-    load_mesh(resource, pmx_loader);
-    load_texture(resource, pmx_loader);
-    load_material(resource, pmx_loader);
-    load_physics(resource, pmx_loader);
-    load_ik(resource, pmx_loader);
+    load_hierarchy(entity, resource, pmx_loader);
+    load_mesh(entity, resource, pmx_loader);
+    load_texture(entity, resource, pmx_loader);
+    load_material(entity, resource, pmx_loader);
+    load_physics(entity, resource, pmx_loader);
+    load_ik(entity, resource, pmx_loader);
 
-    load_animation(resource, pmx_loader, vmd_loader);
+    load_animation(entity, resource, pmx_loader, vmd_loader);
 
     return true;
 }
 
-void mmd_loader::load_hierarchy(mmd_resource& resource, const pmx_loader& loader)
+void mmd_loader::load_hierarchy(
+    ecs::entity entity,
+    mmd_resource& resource,
+    const pmx_loader& loader)
 {
-    auto& skeleton = m_world.component<mmd_skeleton>(resource.root);
+    auto& skeleton = m_world.component<mmd_skeleton>(entity);
     skeleton.parameter = m_graphics.make_render_parameter("mmd_skeleton");
 
     skeleton.nodes.reserve(loader.bones().size());
     for (auto& pmx_bone : loader.bones())
     {
         ecs::entity node_entity = m_world.create();
-        m_world.add<scene::transform, mmd_bone>(node_entity);
+        m_world.add<scene::transform, mmd_node>(node_entity);
 
-        auto& bone = m_world.component<mmd_bone>(node_entity);
+        auto& bone = m_world.component<mmd_node>(node_entity);
         bone.name = pmx_bone.name_jp;
         bone.index = static_cast<std::uint32_t>(skeleton.nodes.size());
 
@@ -107,15 +110,15 @@ void mmd_loader::load_hierarchy(mmd_resource& resource, const pmx_loader& loader
         else
         {
             node_transform.position = pmx_bone.position;
-            m_scene.link(node_entity, resource.root);
+            m_scene.link(node_entity, entity);
         }
     }
 
-    m_scene.sync_local(resource.root);
+    m_scene.sync_local(entity);
     for (std::size_t i = 0; i < loader.bones().size(); ++i)
     {
         auto& pmx_bone = loader.bones()[i];
-        auto& bone = m_world.component<mmd_bone>(skeleton.nodes[i]);
+        auto& bone = m_world.component<mmd_node>(skeleton.nodes[i]);
         auto& node_transform = m_world.component<scene::transform>(skeleton.nodes[i]);
 
         math::float4x4_simd initial = math::simd::load(node_transform.world_matrix);
@@ -124,10 +127,10 @@ void mmd_loader::load_hierarchy(mmd_resource& resource, const pmx_loader& loader
 
         bone.layer = pmx_bone.layer;
         bone.deform_after_physics = pmx_bone.flags & pmx_bone_flag::PHYSICS_AFTER_DEFORM;
-        bone.inherit_rotation_flag = pmx_bone.flags & pmx_bone_flag::INHERIT_ROTATION;
-        bone.inherit_translation_flag = pmx_bone.flags & pmx_bone_flag::INHERIT_TRANSLATION;
+        bone.is_inherit_rotation = pmx_bone.flags & pmx_bone_flag::INHERIT_ROTATION;
+        bone.is_inherit_translation = pmx_bone.flags & pmx_bone_flag::INHERIT_TRANSLATION;
 
-        if ((bone.inherit_rotation_flag || bone.inherit_translation_flag) &&
+        if ((bone.is_inherit_rotation || bone.is_inherit_translation) &&
             pmx_bone.inherit_index != -1)
         {
             bone.inherit_local_flag = pmx_bone.flags & pmx_bone_flag::INHERIT_LOCAL;
@@ -143,15 +146,15 @@ void mmd_loader::load_hierarchy(mmd_resource& resource, const pmx_loader& loader
     skeleton.transform.resize(skeleton.nodes.size());
 
     skeleton.sorted_nodes = skeleton.nodes;
-    std::sort(
+    std::stable_sort(
         skeleton.sorted_nodes.begin(),
         skeleton.sorted_nodes.end(),
         [&](ecs::entity a, ecs::entity b) -> bool {
-            return m_world.component<mmd_bone>(a).layer < m_world.component<mmd_bone>(b).layer;
+            return m_world.component<mmd_node>(a).layer < m_world.component<mmd_node>(b).layer;
         });
 }
 
-void mmd_loader::load_mesh(mmd_resource& resource, const pmx_loader& loader)
+void mmd_loader::load_mesh(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader)
 {
     struct vertex
     {
@@ -180,7 +183,7 @@ void mmd_loader::load_mesh(mmd_resource& resource, const pmx_loader& loader)
     resource.index_buffer = m_graphics.make_index_buffer(indices.data(), indices.size());
 }
 
-void mmd_loader::load_texture(mmd_resource& resource, const pmx_loader& loader)
+void mmd_loader::load_texture(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader)
 {
     for (auto& texture_path : loader.textures())
     {
@@ -189,7 +192,7 @@ void mmd_loader::load_texture(mmd_resource& resource, const pmx_loader& loader)
     }
 }
 
-void mmd_loader::load_material(mmd_resource& resource, const pmx_loader& loader)
+void mmd_loader::load_material(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader)
 {
     for (auto& mmd_material : loader.materials())
     {
@@ -216,7 +219,7 @@ void mmd_loader::load_material(mmd_resource& resource, const pmx_loader& loader)
 
     resource.submesh = loader.submesh();
 
-    auto& visual = m_world.component<graphics::visual>(resource.root);
+    auto& visual = m_world.component<graphics::visual>(entity);
     for (std::size_t i = 0; i < resource.submesh.size(); ++i)
     {
         graphics::render_unit s = {};
@@ -228,15 +231,15 @@ void mmd_loader::load_material(mmd_resource& resource, const pmx_loader& loader)
         s.parameters = {
             visual.object,
             resource.materials[i].get(),
-            m_world.component<mmd_skeleton>(resource.root).parameter.get()};
+            m_world.component<mmd_skeleton>(entity).parameter.get()};
 
         visual.submesh.push_back(s);
     }
 }
 
-void mmd_loader::load_ik(mmd_resource& resource, const pmx_loader& loader)
+void mmd_loader::load_ik(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader)
 {
-    auto& skeleton = m_world.component<mmd_skeleton>(resource.root);
+    auto& skeleton = m_world.component<mmd_skeleton>(entity);
 
     for (std::size_t i = 0; i < loader.bones().size(); ++i)
     {
@@ -246,9 +249,10 @@ void mmd_loader::load_ik(mmd_resource& resource, const pmx_loader& loader)
             auto& ik_entity = skeleton.nodes[i];
             auto& target_entity = skeleton.nodes[pmx_bone.ik_target_index];
 
-            auto& ik_node = m_world.component<mmd_bone>(skeleton.nodes[i]);
+            auto& ik_node = m_world.component<mmd_node>(skeleton.nodes[i]);
             ik_node.loop_count = pmx_bone.ik_loop_count;
             ik_node.limit_angle = pmx_bone.ik_limit;
+            ik_node.enable_ik = true;
 
             for (auto& pmx_ik_link : pmx_bone.ik_links)
             {
@@ -269,16 +273,16 @@ void mmd_loader::load_ik(mmd_resource& resource, const pmx_loader& loader)
                     ik_link.save_ik_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
                 }
 
-                m_world.component<mmd_bone>(link_entity).enable_ik = true;
+                m_world.component<mmd_node>(link_entity).enable_ik = true;
                 ik_node.links.push_back(ik_link);
             }
         }
     }
 }
 
-void mmd_loader::load_physics(mmd_resource& resource, const pmx_loader& loader)
+void mmd_loader::load_physics(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader)
 {
-    auto& skeleton = m_world.component<mmd_skeleton>(resource.root);
+    auto& skeleton = m_world.component<mmd_skeleton>(entity);
 
     std::vector<ecs::entity> physics_nodes;
     for (auto& pmx_rigidbody : loader.rigidbodies())
@@ -310,7 +314,7 @@ void mmd_loader::load_physics(mmd_resource& resource, const pmx_loader& loader)
         if (pmx_rigidbody.bone_index != -1)
             node_entity = skeleton.nodes[pmx_rigidbody.bone_index];
         else
-            node_entity = resource.root;
+            node_entity = entity;
 
         if (!m_world.has_component<physics::rigidbody>(node_entity))
             m_world.add<physics::rigidbody>(node_entity);
@@ -387,20 +391,22 @@ void mmd_loader::load_physics(mmd_resource& resource, const pmx_loader& loader)
 }
 
 void mmd_loader::load_animation(
+    ecs::entity entity,
     mmd_resource& resource,
     const pmx_loader& pmx_loader,
     const vmd_loader& vmd_loader)
 {
-    auto& skeletion = m_world.component<mmd_skeleton>(resource.root);
+    auto& skeletion = m_world.component<mmd_skeleton>(entity);
 
-    std::map<std::string, mmd_animation*> animation_map;
+    // Node.
+    std::map<std::string, mmd_node_animation*> node_map;
     for (auto& node_entity : skeletion.nodes)
     {
-        m_world.add<mmd_animation>(node_entity);
-        auto& animation = m_world.component<mmd_animation>(node_entity);
+        m_world.add<mmd_node_animation>(node_entity);
+        auto& animation = m_world.component<mmd_node_animation>(node_entity);
 
-        auto& bone = m_world.component<mmd_bone>(node_entity);
-        animation_map[bone.name] = &animation;
+        auto& bone = m_world.component<mmd_node>(node_entity);
+        node_map[bone.name] = &animation;
     }
 
     auto set_bezier = [](math::float4& bezier, const unsigned char* cp) {
@@ -414,10 +420,10 @@ void mmd_loader::load_animation(
 
     for (auto& pmx_motion : vmd_loader.motions())
     {
-        auto iter = animation_map.find(pmx_motion.bone_name);
-        if (iter != animation_map.end())
+        auto iter = node_map.find(pmx_motion.bone_name);
+        if (iter != node_map.end())
         {
-            mmd_animation_key key;
+            mmd_node_key key;
             key.frame = pmx_motion.frame_index;
             key.translate = pmx_motion.translate;
             key.rotate = pmx_motion.rotate;
@@ -431,14 +437,25 @@ void mmd_loader::load_animation(
         }
     }
 
-    for (auto [key, value] : animation_map)
+    for (auto [key, value] : node_map)
     {
         std::sort(
             value->keys.begin(),
             value->keys.end(),
-            [](const mmd_animation_key& a, const mmd_animation_key& b) {
-                return a.frame < b.frame;
-            });
+            [](const mmd_node_key& a, const mmd_node_key& b) { return a.frame < b.frame; });
+    }
+
+    // IK.
+    std::map<std::string, mmd_ik_animation*> ik_map;
+    for (auto& ik : vmd_loader.iks())
+    {
+        for (auto& info : ik.infos)
+        {
+            auto iter = ik_map.find(info.name);
+            if (iter != ik_map.end())
+            {
+            }
+        }
     }
 }
 } // namespace ash::sample::mmd

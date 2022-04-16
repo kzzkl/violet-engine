@@ -2,6 +2,7 @@
 #include "geometry.hpp"
 #include "graphics.hpp"
 #include "log.hpp"
+#include "mmd_animation.hpp"
 #include "mmd_viewer.hpp"
 #include "physics.hpp"
 #include "pmx_loader.hpp"
@@ -211,7 +212,7 @@ private:
         update_actor(delta);
 
         system<ash::scene::scene>().sync_local();
-        //system<ash::physics::physics>().simulation();
+        // system<ash::physics::physics>().simulation();
         system<mmd_viewer>().update();
     }
 
@@ -238,6 +239,7 @@ int main()
     app.install<scene>();
     app.install<graphics>();
     app.install<physics>();
+    app.install<mmd_animation>();
     app.install<mmd_viewer>();
     app.install<test_module>(&app);
 

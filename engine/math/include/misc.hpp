@@ -5,16 +5,22 @@
 namespace ash::math
 {
 static constexpr float PI = 3.141592654f;
-static constexpr float PI_1DIVPI = 0.318309886f;
-static constexpr float PI_1DIV2PI = 0.159154943f;
-static constexpr float PI_2PI = 6.283185307f;
-static constexpr float PI_PIDIV2 = 1.570796327f;
-static constexpr float PI_PIDIV4 = 0.785398163f;
-static constexpr float DIV180 = 0.017453292522f;
+static constexpr float PI_2PI = 2.0f * PI;
+static constexpr float PI_1DIVPI = 1.0f / PI;
+static constexpr float PI_1DIV2PI = 1.0f / PI_2PI;
+static constexpr float PI_PIDIV2 = PI / 2.0f;
+static constexpr float PI_PIDIV4 = PI / 4.0f;
+static constexpr float PI_PIDIV180 = PI / 180.0f;
+static constexpr float PI_180DIVPI = 180.0f / PI;
 
 inline float to_radians(float degrees)
 {
-    return degrees * DIV180;
+    return degrees * PI_PIDIV180;
+}
+
+inline float to_degrees(float radians)
+{
+    return radians * PI_180DIVPI;
 }
 
 inline std::pair<float, float> sin_cos(float radians)
@@ -56,5 +62,15 @@ inline std::pair<float, float> sin_cos(float radians)
         1.0f;
 
     return {sin, cos * sign};
+}
+
+inline float clamp(float value, float min, float max)
+{
+    if (value < min)
+        return min;
+    else if (value > max)
+        return max;
+    else
+        return value;
 }
 } // namespace ash::math

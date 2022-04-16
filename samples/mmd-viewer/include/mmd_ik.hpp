@@ -1,6 +1,6 @@
 #pragma once
 
-#include "mmd.hpp"
+#include "mmd_component.hpp"
 #include "world.hpp"
 
 namespace ash::sample::mmd

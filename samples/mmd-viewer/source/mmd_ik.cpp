@@ -1,5 +1,6 @@
 #include "mmd_ik.hpp"
 #include "transform.hpp"
+#include "log.hpp"
 
 namespace ash::sample::mmd
 {
@@ -9,16 +10,18 @@ mmd_ik_solver::mmd_ik_solver(ecs::world& world) : m_world(world)
 
 void mmd_ik_solver::solve(ecs::entity entity)
 {
-    auto& ik_node = m_world.component<mmd_bone>(entity);
+    auto& ik_node = m_world.component<mmd_node>(entity);
     if (!ik_node.enable_ik_solver)
         return;
+
+    log::debug("solver: {}", ik_node.name);
 
     for (auto& ik_link : ik_node.links)
     {
         ik_link.prev_angle = {0.0f, 0.0f, 0.0f};
         ik_link.plane_mode_angle = 0.0f;
 
-        auto& node = m_world.component<mmd_bone>(ik_link.node);
+        auto& node = m_world.component<mmd_node>(ik_link.node);
         node.ik_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
     }
 
@@ -36,13 +39,13 @@ void mmd_ik_solver::solve(ecs::entity entity)
         {
             max_dist = dist;
             for (auto& ik_link : ik_node.links)
-                ik_link.save_ik_rotate = m_world.component<mmd_bone>(ik_link.node).ik_rotate;
+                ik_link.save_ik_rotate = m_world.component<mmd_node>(ik_link.node).ik_rotate;
         }
         else
         {
             for (auto& ik_link : ik_node.links)
             {
-                auto& link_node = m_world.component<mmd_bone>(ik_link.node);
+                auto& link_node = m_world.component<mmd_node>(ik_link.node);
                 link_node.ik_rotate = ik_link.save_ik_rotate;
                 // update local
             }
@@ -52,7 +55,7 @@ void mmd_ik_solver::solve(ecs::entity entity)
 
 void mmd_ik_solver::solve_core(ecs::entity entity, std::uint32_t index)
 {
-    auto& ik_node = m_world.component<mmd_bone>(entity);
+    auto& ik_node = m_world.component<mmd_node>(entity);
     auto ik_position = math::simd::load(m_world.component<scene::transform>(entity).position);
 
     for (std::size_t i = 0; i < ik_node.links.size(); ++i)
@@ -90,7 +93,7 @@ void mmd_ik_solver::solve_core(ecs::entity entity, std::uint32_t index)
         math::float4 rotate;
         math::simd::store(math::quaternion_simd::rotation_axis(cross, angle), rotate);
 
-        auto& link_node = m_world.component<mmd_bone>(link.node);
+        auto& link_node = m_world.component<mmd_node>(link.node);
         auto link_rotate =
             math::quaternion_plain::mul(link_node.ik_rotate, link_node.animation_rotate);
         link_rotate = math::quaternion_plain::mul(link_rotate, rotate);
