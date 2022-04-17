@@ -25,9 +25,17 @@ private:
 
     void update_local(mmd_skeleton& skeleton, bool after_physics);
     void update_world(mmd_skeleton& skeleton, bool after_physics);
+    void update_transform(mmd_skeleton& skeleton, std::size_t index);
 
     void update_inherit(mmd_node& node, mmd_node_animation& animation, scene::transform& transform);
-    void update_ik(mmd_node& node, mmd_ik_solver& ik);
+    void update_ik(mmd_skeleton& skeleton, mmd_node& node, mmd_ik_solver& ik);
+
+    void ik_solve_core(
+        mmd_skeleton& skeleton,
+        mmd_node& node,
+        mmd_ik_solver& ik,
+        std::size_t iteration);
+    void ik_solve_plane();
 
     template <typename Key>
     auto bound_key(const std::vector<Key>& keys, std::int32_t t, std::size_t start)

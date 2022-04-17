@@ -201,6 +201,11 @@ public:
         return _mm_sqrt_ps(t1);
     }
 
+    inline static vector_type normalize_vec3(const vector_type& v)
+    {
+        return normalize(_mm_and_ps(v, simd::mask<0x1110>()));
+    }
+
     inline static vector_type normalize(const vector_type& v)
     {
         __m128 t1 = _mm_mul_ps(v, v);

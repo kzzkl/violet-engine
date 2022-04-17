@@ -248,12 +248,12 @@ void mmd_loader::load_ik(ecs::entity entity, mmd_resource& resource, const pmx_l
         if (pmx_bone.flags & pmx_bone_flag::IK)
         {
             auto& ik_entity = skeleton.nodes[i];
-            auto& target_entity = skeleton.nodes[pmx_bone.ik_target_index];
 
             m_world.add<mmd_ik_solver>(ik_entity);
             auto& solver = m_world.component<mmd_ik_solver>(ik_entity);
             solver.loop_count = pmx_bone.ik_loop_count;
             solver.limit_angle = pmx_bone.ik_limit;
+            solver.ik_target = skeleton.nodes[pmx_bone.ik_target_index];
 
             for (auto& pmx_ik_link : pmx_bone.ik_links)
             {
