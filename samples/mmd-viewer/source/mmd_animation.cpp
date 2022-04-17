@@ -463,8 +463,9 @@ void mmd_animation::ik_solve_core(
     auto& world = system<ecs::world>();
 
     math::float4_simd ik_position = math::simd::load(skeleton.world[node.index].row[3]);
-    for (auto& link_entity : ik.links)
+    for (std::size_t i = 0; i < ik.links.size(); ++i)
     {
+        auto& link_entity = ik.links[i];
         if (link_entity == ik.ik_target)
             continue;
 
@@ -472,6 +473,29 @@ void mmd_animation::ik_solve_core(
         auto& link = world.component<mmd_ik_link>(link_entity);
         if (link.enable_limit)
         {
+            if ((link.limit_min[0] != 0.0f || link.limit_max[0] != 0) &&
+                (link.limit_min[1] == 0.0f || link.limit_max[1] == 0) &&
+                (link.limit_min[2] == 0.0f || link.limit_max[2] == 0))
+            {
+                ik_solve_plane(skeleton, node, ik, iteration, i, 0);
+                continue;
+            }
+            else if (
+                (link.limit_min[0] == 0.0f || link.limit_max[0] == 0) &&
+                (link.limit_min[1] != 0.0f || link.limit_max[1] != 0) &&
+                (link.limit_min[2] == 0.0f || link.limit_max[2] == 0))
+            {
+                ik_solve_plane(skeleton, node, ik, iteration, i, 1);
+                continue;
+            }
+            else if (
+                (link.limit_min[0] == 0.0f || link.limit_max[0] == 0) &&
+                (link.limit_min[1] == 0.0f || link.limit_max[1] == 0) &&
+                (link.limit_min[2] != 0.0f || link.limit_max[2] != 0))
+            {
+                ik_solve_plane(skeleton, node, ik, iteration, i, 2);
+                continue;
+            }
         }
 
         auto target_node = world.component<mmd_node>(ik.ik_target);
@@ -523,5 +547,110 @@ void mmd_animation::ik_solve_core(
 
         update_transform(skeleton, link_node.index);
     }
+}
+
+void mmd_animation::ik_solve_plane(
+    mmd_skeleton& skeleton,
+    mmd_node& node,
+    mmd_ik_solver& ik,
+    std::size_t iteration,
+    std::size_t link_index,
+    uint8_t axis)
+{
+    auto& world = system<ecs::world>();
+
+    math::float3 rotate_axis;
+    math::float3 plane;
+
+    switch (axis)
+    {
+    case 0: // x axis
+        rotate_axis = {1.0f, 0.0f, 0.0f};
+        plane = {0.0f, 1.0f, 1.0f};
+        break;
+    case 1: // y axis
+        rotate_axis = {0.0f, 1.0f, 0.0f};
+        plane = {1.0f, 0.0f, 1.0f};
+        break;
+    case 2: // z axis
+        rotate_axis = {0.0f, 0.0f, 1.0f};
+        plane = {1.0f, 1.0f, 0.0f};
+        break;
+    default:
+        return;
+    }
+
+    auto& link_entity = ik.links[link_index];
+    auto& link_node = world.component<mmd_node>(link_entity);
+
+    math::float4_simd ik_position = math::simd::load(skeleton.world[node.index].row[3]);
+
+    auto target_node = world.component<mmd_node>(ik.ik_target);
+    math::float4_simd target_position = math::simd::load(skeleton.world[target_node.index].row[3]);
+    math::float4x4_simd link_inverse =
+        math::matrix_simd::inverse(math::simd::load(skeleton.world[link_node.index]));
+
+    auto link_ik_position = math::matrix_simd::mul(ik_position, link_inverse);
+    auto link_target_position = math::matrix_simd::mul(target_position, link_inverse);
+
+    math::float4 link_ik_vec;
+    math::simd::store(math::vector_simd::normalize_vec3(link_ik_position), link_ik_vec);
+    math::float4 link_target_vec;
+    math::simd::store(math::vector_simd::normalize_vec3(link_target_position), link_target_vec);
+
+    auto dot = math::vector_plain::dot(link_ik_vec, link_target_vec);
+    dot = math::clamp(dot, -1.0f, 1.0f);
+
+    float angle = std::acos(dot);
+    angle = math::clamp(angle, -ik.limit_angle, ik.limit_angle);
+
+    auto rotate1 = math::quaternion_plain::rotation_axis(rotate_axis, angle);
+    auto target_vec1 = math::quaternion_plain::mul_vec(rotate1, link_target_vec);
+    auto dot1 = math::vector_plain::dot(target_vec1, link_ik_vec);
+
+    auto rotate2 = math::quaternion_plain::rotation_axis(rotate_axis, -angle);
+    auto target_vec2 = math::quaternion_plain::mul_vec(rotate2, link_target_vec);
+    auto dot2 = math::vector_plain::dot(target_vec2, link_ik_vec);
+
+    auto& link = world.component<mmd_ik_link>(link_entity);
+    auto new_angle = link.plane_mode_angle;
+    if (dot1 > dot2)
+        new_angle += angle;
+    else
+        new_angle -= angle;
+
+    if (iteration == 0)
+    {
+        if (new_angle < link.limit_min[axis] || new_angle > link.limit_max[axis])
+        {
+            if (-new_angle > link.limit_min[axis] && -new_angle < link.limit_max[axis])
+            {
+                new_angle *= -1.0f;
+            }
+            else
+            {
+                auto halfRad = (link.limit_min[axis] + link.limit_max[axis]) * 0.5f;
+                if (std::abs(halfRad - new_angle) > std::abs(halfRad + new_angle))
+                {
+                    new_angle *= -1.0f;
+                }
+            }
+        }
+    }
+
+    new_angle = math::clamp(new_angle, link.limit_min[axis], link.limit_max[axis]);
+    link.plane_mode_angle = new_angle;
+
+    auto& animation = world.component<mmd_node_animation>(link_entity);
+    auto& transform = world.component<scene::transform>(link_entity);
+    auto animation_rotate =
+        math::quaternion_plain::mul(animation.animation_rotate, transform.rotation);
+
+    link.ik_rotate = math::quaternion_plain::rotation_axis(rotate_axis, new_angle);
+    link.ik_rotate = math::quaternion_plain::mul(
+        link.ik_rotate,
+        math::quaternion_plain::inverse(animation_rotate));
+
+    update_transform(skeleton, link_node.index);
 }
 } // namespace ash::sample::mmd

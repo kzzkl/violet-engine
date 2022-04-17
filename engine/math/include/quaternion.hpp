@@ -13,6 +13,12 @@ public:
     using matrix_type = float4x4;
 
 public:
+    static inline quaternion_type rotation_axis(const float3& axis, float radians)
+    {
+        auto [sin, cos] = sin_cos(radians * 0.5f);
+        return {axis[0] * sin, axis[1] * sin, axis[2] * sin, cos};
+    }
+
     static inline quaternion_type rotation_axis(const vector_type& axis, float radians)
     {
         auto [sin, cos] = sin_cos(radians * 0.5f);
@@ -85,6 +91,26 @@ public:
             a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
             a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
             a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]};
+    }
+
+    static inline vector_type mul_vec(const quaternion_type& q, const vector_type& v)
+    {
+        float xxd = 2.0f * q[0] * q[0];
+        float xyd = 2.0f * q[0] * q[1];
+        float xzd = 2.0f * q[0] * q[2];
+        float xwd = 2.0f * q[0] * q[3];
+        float yyd = 2.0f * q[1] * q[1];
+        float yzd = 2.0f * q[1] * q[2];
+        float ywd = 2.0f * q[1] * q[3];
+        float zzd = 2.0f * q[2] * q[2];
+        float zwd = 2.0f * q[2] * q[3];
+        float wwd = 2.0f * q[3] * q[3];
+
+        return vector_type{
+            v[0] * (xxd + wwd - 1.0f) + v[1] * (xyd - zwd) + v[2] * (xzd + ywd),
+            v[0] * (xyd + zwd) + v[1] * (yyd + wwd - 1.0f) + v[2] * (yzd - xwd),
+            v[0] * (xzd - ywd) + v[1] * (yzd + xwd) + v[2] * (zzd + wwd - 1.0f),
+            0.0f};
     }
 
     static inline quaternion_type conjugate(const quaternion_type& q)

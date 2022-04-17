@@ -35,7 +35,14 @@ private:
         mmd_node& node,
         mmd_ik_solver& ik,
         std::size_t iteration);
-    void ik_solve_plane();
+    // axis: 0: x, 1: y, 2: z
+    void ik_solve_plane(
+        mmd_skeleton& skeleton,
+        mmd_node& node,
+        mmd_ik_solver& ik,
+        std::size_t iteration,
+        std::size_t link_index,
+        uint8_t axis);
 
     template <typename Key>
     auto bound_key(const std::vector<Key>& keys, std::int32_t t, std::size_t start)
