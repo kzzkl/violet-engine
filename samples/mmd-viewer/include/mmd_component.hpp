@@ -8,27 +8,11 @@
 
 namespace ash::sample::mmd
 {
-struct mmd_ik_link
-{
-    ecs::entity node;
-    bool enable_limit;
-    math::float3 limit_max;
-    math::float3 limit_min;
-    math::float3 prev_angle;
-    math::float4 save_ik_rotate;
-    float plane_mode_angle;
-};
-
 struct mmd_node
 {
     std::string name;
     std::uint32_t index;
     std::int32_t layer;
-
-    math::float3 translate;
-    math::float4 rotate;
-    math::float4x4 local;
-    math::float4x4 world;
 
     bool deform_after_physics;
 
@@ -45,57 +29,72 @@ struct mmd_node
     math::float4 initial_rotation{0.0f, 0.0f, 0.0f, 1.0f};
     math::float3 initial_scale{1.0f, 1.0f, 1.0f};
     math::float4x4 initial_inverse;
+};
+
+struct mmd_node_animation
+{
+    struct key
+    {
+        std::int32_t frame;
+        math::float3 translate;
+        math::float4 rotate;
+
+        math::float4 tx_bezier;
+        math::float4 ty_bezier;
+        math::float4 tz_bezier;
+        math::float4 r_bezier;
+    };
+
+    std::size_t offset;
+    std::vector<key> keys;
 
     math::float3 animation_translate{0.0f, 0.0f, 0.0f};
     math::float4 animation_rotate{0.0f, 0.0f, 0.0f, 1.0f};
     math::float3 base_animation_translate{0.0f, 0.0f, 0.0f};
     math::float4 base_animation_rotate{0.0f, 0.0f, 0.0f, 1.0f};
-
-    bool enable_ik;
-    bool enable_ik_solver{true};
-    ecs::entity ik_target;
-    std::uint32_t loop_count;
-    float limit_angle;
-    bool base_animation;
-    math::float4 ik_rotate{0.0f, 0.0f, 0.0f, 1.0f};
-    std::vector<mmd_ik_link> links;
 };
 
-struct mmd_node_key
+struct mmd_ik_solver
 {
-    std::int32_t frame;
-    math::float3 translate;
-    math::float4 rotate;
+    struct key
+    {
+        std::int32_t frame;
+        bool enable;
+    };
 
-    math::float4 tx_bezier;
-    math::float4 ty_bezier;
-    math::float4 tz_bezier;
-    math::float4 r_bezier;
-};
-
-struct mmd_node_animation
-{
-    std::size_t offset;
-    std::vector<mmd_node_key> keys;
-};
-
-struct mmd_ik_key
-{
-    std::int32_t frame;
     bool enable;
+    float limit_angle;
+
+    std::size_t offset;
+    std::vector<key> keys;
+    bool base_animation;
+
+    ecs::entity ik_target;
+    std::vector<ecs::entity> links;
+
+    std::uint32_t loop_count;
 };
 
-struct mmd_ik_animation
+struct mmd_ik_link
 {
-    std::size_t offset;
-    std::vector<mmd_ik_key> keys;
+    math::float4 ik_rotate{0.0f, 0.0f, 0.0f, 1.0f};
+
+    bool enable_limit;
+    math::float3 limit_max;
+    math::float3 limit_min;
+    math::float3 prev_angle;
+    math::float4 save_ik_rotate;
+    float plane_mode_angle;
 };
 
 struct mmd_skeleton
 {
     std::vector<ecs::entity> nodes;
     std::vector<ecs::entity> sorted_nodes;
-    std::vector<math::float4x4> transform;
+
+    std::vector<math::float4x4> local;
+    std::vector<math::float4x4> world;
+    // std::vector<math::float4x4> transform;
 
     std::unique_ptr<graphics::render_parameter> parameter;
 };

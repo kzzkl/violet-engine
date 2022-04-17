@@ -20,14 +20,14 @@ public:
     void update(bool after_physics);
 
 private:
-    void evaluate_node(mmd_node& node, mmd_node_animation& node_animation, float t, float weight);
-    void evaluate_ik(mmd_node& node, mmd_ik_animation& ik_animation, float t, float weight);
+    void evaluate_node(mmd_node& node, mmd_node_animation& animation, float t, float weight);
+    void evaluate_ik(mmd_node& node, mmd_ik_solver& ik, float t, float weight);
 
-    void update_local(mmd_node& node, scene::transform& transform);
-    void update_world(mmd_node& node, scene::transform& transform);
+    void update_local(mmd_skeleton& skeleton, bool after_physics);
+    void update_world(mmd_skeleton& skeleton, bool after_physics);
 
-    void update_inherit(mmd_node& node, scene::transform& transform);
-    void update_ik(mmd_node& node, scene::transform& transform);
+    void update_inherit(mmd_node& node, mmd_node_animation& animation, scene::transform& transform);
+    void update_ik(mmd_node& node, mmd_ik_solver& ik);
 
     template <typename Key>
     auto bound_key(const std::vector<Key>& keys, std::int32_t t, std::size_t start)
@@ -77,7 +77,7 @@ private:
     ecs::view<mmd_skeleton>* m_view;
 
     ecs::view<mmd_node, mmd_node_animation>* m_node_view;
-    ecs::view<mmd_node, mmd_ik_animation>* m_ik_view;
+    ecs::view<mmd_node, mmd_ik_solver>* m_ik_view;
 
     ecs::view<mmd_node, scene::transform>* m_transform_view;
 };

@@ -7,11 +7,12 @@ bool mmd_animation::initialize(const dictionary& config)
 {
     auto& world = system<ash::ecs::world>();
     world.register_component<mmd_node_animation>();
-    world.register_component<mmd_ik_animation>();
+    world.register_component<mmd_ik_solver>();
+    world.register_component<mmd_ik_link>();
 
     m_view = world.make_view<mmd_skeleton>();
     m_node_view = world.make_view<mmd_node, mmd_node_animation>();
-    m_ik_view = world.make_view<mmd_node, mmd_ik_animation>();
+    m_ik_view = world.make_view<mmd_node, mmd_ik_solver>();
     m_transform_view = world.make_view<mmd_node, scene::transform>();
 
     return true;
@@ -21,19 +22,17 @@ void mmd_animation::evaluate(float t, float weight)
 {
     std::map<std::string, std::pair<mmd_node*, mmd_node_animation*>> m;
     m_node_view->each([=, &m](mmd_node& node, mmd_node_animation& node_animation) {
-        //evaluate_node(node, node_animation, t, weight);
-        m[node.name] = { &node, &node_animation };
+        // evaluate_node(node, node_animation, t, weight);
+        m[node.name] = {&node, &node_animation};
     });
 
     for (auto [key, value] : m)
     {
         evaluate_node(*value.first, *value.second, t, weight);
-        //log::debug("{} {},{},{},{}", key, value[0], value[1], value[2], value[3]);
+        // log::debug("{} {},{},{},{}", key, value[0], value[1], value[2], value[3]);
     }
 
-    //m_ik_view->each([=](mmd_node& node, mmd_ik_animation& ik_animation) {
-    //    evaluate_ik(node, ik_animation, t, weight);
-    //});
+    m_ik_view->each([=](mmd_node& node, mmd_ik_solver& ik) { evaluate_ik(node, ik, t, weight); });
 }
 
 void mmd_animation::evaluate_node(
@@ -44,8 +43,8 @@ void mmd_animation::evaluate_node(
 {
     if (node_animation.keys.empty())
     {
-        node.animation_translate = {0.0f, 0.0f, 0.0f};
-        node.animation_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
+        node_animation.animation_translate = {0.0f, 0.0f, 0.0f};
+        node_animation.animation_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
         return;
     }
 
@@ -89,114 +88,98 @@ void mmd_animation::evaluate_node(
 
     if (weight == 1.0f)
     {
-        node.animation_translate = translate;
-        node.animation_rotate = rotate;
+        node_animation.animation_translate = translate;
+        node_animation.animation_rotate = rotate;
     }
     else
     {
-        node.animation_rotate =
-            math::quaternion_plain::slerp(node.base_animation_rotate, rotate, weight);
-        node.animation_translate =
-            math::vector_plain::mix(node.base_animation_translate, translate, weight);
+        node_animation.animation_rotate =
+            math::quaternion_plain::slerp(node_animation.base_animation_rotate, rotate, weight);
+        node_animation.animation_translate =
+            math::vector_plain::mix(node_animation.base_animation_translate, translate, weight);
     }
 
-    //log::debug("{} {},{},{},{}", node.name, node.animation_rotate[0], node.animation_rotate[1], node.animation_rotate[2], node.animation_rotate[3]);
+    // log::debug("{} {},{},{},{}", node.name, node.animation_rotate[0], node.animation_rotate[1],
+    // node.animation_rotate[2], node.animation_rotate[3]);
 }
 
 void mmd_animation::update(bool after_physics)
 {
     auto& world = system<ecs::world>();
     m_view->each([&](ecs::entity entity, mmd_skeleton& skeleton) {
-        for (auto& node_entity : skeleton.sorted_nodes)
-        {
-            auto& node = world.component<mmd_node>(node_entity);
-            auto& transform = world.component<scene::transform>(node_entity);
-            if (after_physics == node.deform_after_physics)
-            {
-                update_local(node, transform);
-                update_world(node, transform);
-            }
-        }
+        update_local(skeleton, after_physics);
+        update_world(skeleton, after_physics);
     });
-    //system<scene::scene>().sync_local();
 
     m_view->each([&](ecs::entity entity, mmd_skeleton& skeleton) {
         for (auto& node_entity : skeleton.sorted_nodes)
         {
             auto& node = world.component<mmd_node>(node_entity);
-            auto& transform = world.component<scene::transform>(node_entity);
             if (after_physics == node.deform_after_physics &&
                 node.inherit_node != ecs::INVALID_ENTITY)
             {
-                update_inherit(node, transform);
-                // log::debug("{} {},{},{},{}", node.name,
-                // node.inherit_rotate[0],node.inherit_rotate[1],node.inherit_rotate[2],node.inherit_rotate[3]);
+                auto& transform = world.component<scene::transform>(node_entity);
+                auto& animation = world.component<mmd_node_animation>(node_entity);
+
+                update_inherit(node, animation, transform);
             }
         }
     });
     m_view->each([&](ecs::entity entity, mmd_skeleton& skeleton) {
-        for (auto& node_entity : skeleton.sorted_nodes)
-        {
-            auto& node = world.component<mmd_node>(node_entity);
-            auto& transform = world.component<scene::transform>(node_entity);
-            if (after_physics == node.deform_after_physics)
-                update_local(node, transform);
-        }
+        update_local(skeleton, after_physics);
+        update_world(skeleton, after_physics);
     });
-    system<scene::scene>().sync_local();
 
     m_view->each([&](ecs::entity entity, mmd_skeleton& skeleton) {
         for (auto& node_entity : skeleton.sorted_nodes)
         {
             auto& node = world.component<mmd_node>(node_entity);
             auto& transform = world.component<scene::transform>(node_entity);
-            // if (after_physics == node.deform_after_physics && node.enable_ik)
-            //     update_ik(node, transform);
+
+            bool a = world.has_component<mmd_ik_link>(node_entity);
+            bool b = world.has_component<mmd_ik_solver>(node_entity)
+                         ? world.component<mmd_ik_solver>(node_entity).enable
+                         : false;
+
+            if (a || b)
+            {
+                log::debug("ik: {} {} {}", node.name, a, b);
+            }
+            if (world.has_component<mmd_ik_solver>(node_entity))
+            {
+                auto& solver = world.component<mmd_ik_solver>(node_entity);
+                if (solver.enable)
+                    update_ik(node, solver);
+            }
+
+            /*auto& ik = world.component<mmd_ik_animation>(node_entity);
+            if (ik.enable_ik)
+                if (after_physics == node.deform_after_physics && ik.enable_ik &&
+                    ik.enable_ik_solver)
+                    update_ik(node, ik, transform);*/
         }
     });
-    system<scene::scene>().sync_local();
+    m_view->each([&](ecs::entity entity, mmd_skeleton& skeleton) {
+        update_local(skeleton, after_physics);
+        update_world(skeleton, after_physics);
+    });
 
-    // sorted order
-    /*m_transform_view->each([after_physics, this](mmd_node& node, scene::transform& transform) {
-        if (after_physics == node.deform_after_physics)
-            update_local(node, transform);
-    });
-    system<scene::scene>().sync_local();
-
-    m_transform_view->each([after_physics, this](mmd_node& node, scene::transform& transform) {
-        if (after_physics == node.deform_after_physics && node.inherit_node != ecs::INVALID_ENTITY)
-            update_inherit(node, transform);
-    });
-    m_transform_view->each([after_physics, this](mmd_node& node, scene::transform& transform) {
-        if (after_physics == node.deform_after_physics)
-            update_local(node, transform);
-    });
-    system<scene::scene>().sync_local();
-
-    m_transform_view->each([after_physics, this](mmd_node& node, scene::transform& transform) {
-        if (after_physics == node.deform_after_physics && node.enable_ik)
-            update_ik(node, transform);
-    });
-    system<scene::scene>().sync_local();*/
+    // system<scene::scene>().sync_local();
 }
 
-void mmd_animation::evaluate_ik(
-    mmd_node& node,
-    mmd_ik_animation& ik_animation,
-    float t,
-    float weight)
+void mmd_animation::evaluate_ik(mmd_node& node, mmd_ik_solver& ik, float t, float weight)
 {
-    if (ik_animation.keys.empty())
+    if (ik.keys.empty())
     {
-        node.enable_ik_solver = true;
+        ik.enable = true;
         return;
     }
 
-    auto bound = bound_key(ik_animation.keys, static_cast<std::int32_t>(t), ik_animation.offset);
+    auto bound = bound_key(ik.keys, static_cast<std::int32_t>(t), ik.offset);
     bool enable = true;
-    if (bound == ik_animation.keys.end())
+    if (bound == ik.keys.end())
     {
-        enable = ik_animation.keys.back().enable;
+        enable = ik.keys.back().enable;
     }
     else
     {
@@ -213,64 +196,94 @@ void mmd_animation::evaluate_ik(
 
     if (weight == 1.0f)
     {
-        node.enable_ik_solver = enable;
+        ik.enable = enable;
     }
     else
     {
         if (weight < 1.0f)
-            node.enable_ik_solver = true;
+            ik.enable = true;
         else
-            node.enable_ik_solver = enable;
+            ik.enable = enable;
     }
 }
 
-void mmd_animation::update_local(mmd_node& node, scene::transform& transform)
-{
-    math::float3 translate = math::vector_plain::add(node.animation_translate, transform.position);
-    if (node.is_inherit_translation)
-        translate = math::vector_plain::add(translate, node.inherit_translate);
-
-    math::float4 rotate = math::quaternion_plain::mul(node.animation_rotate, transform.rotation);
-    if (node.enable_ik)
-        rotate = math::quaternion_plain::mul(node.ik_rotate, rotate);
-    if (node.is_inherit_rotation)
-        rotate = math::quaternion_plain::mul(rotate, node.inherit_rotate);
-
-    node.local = math::matrix_plain::affine_transform(transform.scaling, rotate, translate);
-
-    transform.position = translate;
-    transform.rotation = rotate;
-    transform.dirty = true;
-}
-
-void mmd_animation::update_world(mmd_node& node, scene::transform& transform)
+void mmd_animation::update_local(mmd_skeleton& skeleton, bool after_physics)
 {
     auto& world = system<ecs::world>();
-    if (world.has_component<mmd_node>(transform.parent))
+
+    for (auto& node_entity : skeleton.sorted_nodes)
     {
-        auto& parent = world.component<mmd_node>(transform.parent);
-        node.world = math::matrix_plain::mul(node.local, parent.world);
-    }
-    else
-    {
-        auto& parent = world.component<scene::transform>(transform.parent);
-        node.world = math::matrix_plain::mul(node.local, parent.world_matrix);
+        auto& node = world.component<mmd_node>(node_entity);
+        if (after_physics != node.deform_after_physics)
+            continue;
+
+        auto& transform = world.component<scene::transform>(node_entity);
+        auto& animation = world.component<mmd_node_animation>(node_entity);
+
+        math::float3 translate =
+            math::vector_plain::add(animation.animation_translate, transform.position);
+        if (node.is_inherit_translation)
+            translate = math::vector_plain::add(translate, node.inherit_translate);
+
+        math::float4 rotate =
+            math::quaternion_plain::mul(animation.animation_rotate, transform.rotation);
+        if (world.has_component<mmd_ik_link>(node_entity))
+            rotate = math::quaternion_plain::mul(
+                world.component<mmd_ik_link>(node_entity).ik_rotate,
+                rotate);
+        if (node.is_inherit_rotation)
+            rotate = math::quaternion_plain::mul(rotate, node.inherit_rotate);
+
+        skeleton.local[node.index] =
+            math::matrix_plain::affine_transform(transform.scaling, rotate, translate);
     }
 }
 
-void mmd_animation::update_inherit(mmd_node& node, scene::transform& transform)
+void mmd_animation::update_world(mmd_skeleton& skeleton, bool after_physics)
+{
+    auto& world = system<ecs::world>();
+
+    for (auto& node_entity : skeleton.sorted_nodes)
+    {
+        auto& node = world.component<mmd_node>(node_entity);
+        if (after_physics != node.deform_after_physics)
+            continue;
+
+        auto& transform = world.component<scene::transform>(node_entity);
+
+        if (world.has_component<mmd_node>(transform.parent))
+        {
+            auto& parent = world.component<mmd_node>(transform.parent);
+            skeleton.world[node.index] =
+                math::matrix_plain::mul(skeleton.local[node.index], skeleton.world[parent.index]);
+        }
+        else
+        {
+            auto& parent = world.component<scene::transform>(transform.parent);
+            skeleton.world[node.index] =
+                math::matrix_plain::mul(skeleton.local[node.index], parent.world_matrix);
+        }
+    }
+}
+
+void mmd_animation::update_inherit(
+    mmd_node& node,
+    mmd_node_animation& animation,
+    scene::transform& transform)
 {
     auto& world = system<ecs::world>();
 
     auto& inherit = world.component<mmd_node>(node.inherit_node);
+    auto& inherit_animation = world.component<mmd_node_animation>(node.inherit_node);
     auto& inherit_transform = world.component<scene::transform>(node.inherit_node);
     if (node.is_inherit_rotation)
     {
         math::float4 rotate;
         if (node.inherit_local_flag)
         {
-            rotate =
-                math::quaternion_plain::mul(inherit.animation_rotate, inherit_transform.rotation);
+            rotate = math::quaternion_plain::mul(
+                inherit_animation.animation_rotate,
+                inherit_transform.rotation);
         }
         else
         {
@@ -281,7 +294,7 @@ void mmd_animation::update_inherit(mmd_node& node, scene::transform& transform)
             else
             {
                 rotate = math::quaternion_plain::mul(
-                    inherit.animation_rotate,
+                    inherit_animation.animation_rotate,
                     inherit_transform.rotation);
             }
         }
@@ -315,10 +328,19 @@ void mmd_animation::update_inherit(mmd_node& node, scene::transform& transform)
         node.inherit_translate = math::vector_plain::scale(translate, node.inherit_weight);
     }
 
-    //update_local(node, transform);
+    // update_local(node, transform);
 }
 
-void mmd_animation::update_ik(mmd_node& node, scene::transform& transform)
+void mmd_animation::update_ik(mmd_node& node, mmd_ik_solver& ik)
 {
+    auto& world = system<ecs::world>();
+
+    for (auto& link_entity : ik.links)
+    {
+        auto& link = world.component<mmd_ik_link>(link_entity);
+        link.prev_angle = {0.0f, 0.0f, 0.0f};
+        link.ik_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
+        link.plane_mode_angle = 0.0f;
+    }
 }
 } // namespace ash::sample::mmd

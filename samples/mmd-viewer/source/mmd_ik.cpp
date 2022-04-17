@@ -4,11 +4,11 @@
 
 namespace ash::sample::mmd
 {
-mmd_ik_solver::mmd_ik_solver(ecs::world& world) : m_world(world)
+/*mmd_ik_solver::mmd_ik_solver(ecs::world& world) : m_world(world)
 {
-}
+}*/
 
-void mmd_ik_solver::solve(ecs::entity entity)
+/*void mmd_ik_solver::solve(ecs::entity entity)
 {
     auto& ik_node = m_world.component<mmd_node>(entity);
     if (!ik_node.enable_ik_solver)
@@ -51,9 +51,9 @@ void mmd_ik_solver::solve(ecs::entity entity)
             }
         }
     }
-}
+}*/
 
-void mmd_ik_solver::solve_core(ecs::entity entity, std::uint32_t index)
+/*void mmd_ik_solver::solve_core(ecs::entity entity, std::uint32_t index)
 {
     auto& ik_node = m_world.component<mmd_node>(entity);
     auto ik_position = math::simd::load(m_world.component<scene::transform>(entity).position);
@@ -105,5 +105,5 @@ void mmd_ik_solver::solve_core(ecs::entity entity, std::uint32_t index)
             link_rotate,
             math::quaternion_plain::inverse(link_node_animation_rotate));
     }
-}
+}*/
 } // namespace ash::sample::mmd

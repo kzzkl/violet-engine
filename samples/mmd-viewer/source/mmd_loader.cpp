@@ -143,7 +143,8 @@ void mmd_loader::load_hierarchy(
         bone.initial_scale = {1.0f, 1.0f, 1.0f};
     }
 
-    skeleton.transform.resize(skeleton.nodes.size());
+    skeleton.local.resize(skeleton.nodes.size());
+    skeleton.world.resize(skeleton.nodes.size());
 
     skeleton.sorted_nodes = skeleton.nodes;
     std::stable_sort(
@@ -249,32 +250,32 @@ void mmd_loader::load_ik(ecs::entity entity, mmd_resource& resource, const pmx_l
             auto& ik_entity = skeleton.nodes[i];
             auto& target_entity = skeleton.nodes[pmx_bone.ik_target_index];
 
-            auto& ik_node = m_world.component<mmd_node>(skeleton.nodes[i]);
-            ik_node.loop_count = pmx_bone.ik_loop_count;
-            ik_node.limit_angle = pmx_bone.ik_limit;
-            ik_node.enable_ik = true;
+            m_world.add<mmd_ik_solver>(ik_entity);
+            auto& solver = m_world.component<mmd_ik_solver>(ik_entity);
+            solver.loop_count = pmx_bone.ik_loop_count;
+            solver.limit_angle = pmx_bone.ik_limit;
 
             for (auto& pmx_ik_link : pmx_bone.ik_links)
             {
                 auto& link_entity = skeleton.nodes[pmx_ik_link.bone_index];
 
-                mmd_ik_link ik_link;
-                ik_link.node = link_entity;
+                m_world.add<mmd_ik_link>(link_entity);
+                auto& link = m_world.component<mmd_ik_link>(link_entity);
+
                 if (pmx_ik_link.enable_limit)
                 {
-                    ik_link.enable_limit = true;
-                    ik_link.limit_min = pmx_ik_link.limit_min;
-                    ik_link.limit_max = pmx_ik_link.limit_max;
-                    ik_link.save_ik_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
+                    link.enable_limit = true;
+                    link.limit_min = pmx_ik_link.limit_min;
+                    link.limit_max = pmx_ik_link.limit_max;
+                    link.save_ik_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
                 }
                 else
                 {
-                    ik_link.enable_limit = false;
-                    ik_link.save_ik_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
+                    link.enable_limit = false;
+                    link.save_ik_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
                 }
 
-                m_world.component<mmd_node>(link_entity).enable_ik = true;
-                ik_node.links.push_back(ik_link);
+                solver.links.push_back(link_entity);
             }
         }
     }
@@ -423,7 +424,7 @@ void mmd_loader::load_animation(
         auto iter = node_map.find(pmx_motion.bone_name);
         if (iter != node_map.end())
         {
-            mmd_node_key key;
+            mmd_node_animation::key key;
             key.frame = pmx_motion.frame_index;
             key.translate = pmx_motion.translate;
             key.rotate = pmx_motion.rotate;
@@ -439,14 +440,13 @@ void mmd_loader::load_animation(
 
     for (auto [key, value] : node_map)
     {
-        std::sort(
-            value->keys.begin(),
-            value->keys.end(),
-            [](const mmd_node_key& a, const mmd_node_key& b) { return a.frame < b.frame; });
+        std::sort(value->keys.begin(), value->keys.end(), [](const auto& a, const auto& b) {
+            return a.frame < b.frame;
+        });
     }
 
     // IK.
-    std::map<std::string, mmd_ik_animation*> ik_map;
+    /*std::map<std::string, mmd_ik_animation*> ik_map;
     for (auto& ik : vmd_loader.iks())
     {
         for (auto& info : ik.infos)
@@ -456,6 +456,6 @@ void mmd_loader::load_animation(
             {
             }
         }
-    }
+    }*/
 }
 } // namespace ash::sample::mmd

@@ -20,7 +20,7 @@ bool mmd_viewer::initialize(const dictionary& config)
         system<physics::physics>());
     m_loader->initialize();
 
-    m_ik_solver = std::make_unique<mmd_ik_solver>(world);
+    //m_ik_solver = std::make_unique<mmd_ik_solver>(world);
 
     return true;
 }
@@ -59,16 +59,15 @@ void mmd_viewer::update()
     m_skeleton_view->each([&](mmd_skeleton& skeleton) {
         for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
         {
-            math::float4x4_simd to_world =
-                math::simd::load(world.component<scene::transform>(skeleton.nodes[i]).world_matrix);
+            math::float4x4_simd to_world = math::simd::load(skeleton.world[i]);
             math::float4x4_simd initial =
                 math::simd::load(world.component<mmd_node>(skeleton.nodes[i]).initial_inverse);
 
             math::float4x4_simd final_transform = math::matrix_simd::mul(initial, to_world);
-            math::simd::store(final_transform, skeleton.transform[i]);
+            math::simd::store(final_transform, skeleton.world[i]);
         }
 
-        skeleton.parameter->set(0, skeleton.transform.data(), skeleton.transform.size());
+        skeleton.parameter->set(0, skeleton.world.data(), skeleton.world.size());
     });
 }
 
@@ -90,7 +89,7 @@ void mmd_viewer::reset(ecs::entity entity)
         node.inherit_translate = {0.0f, 0.0f, 0.0f};
         node.inherit_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
 
-        node.ik_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
+        // node.ik_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
     }
 }
 } // namespace ash::sample::mmd

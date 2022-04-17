@@ -5,7 +5,7 @@
 
 namespace ash::sample::mmd
 {
-class mmd_ik_solver
+/*class mmd_ik_solver
 {
 public:
     mmd_ik_solver(ecs::world& world);
@@ -16,5 +16,5 @@ private:
     void solve_core(ecs::entity entity, std::uint32_t index);
 
     ecs::world& m_world;
-};
+};*/
 } // namespace ash::sample::mmd

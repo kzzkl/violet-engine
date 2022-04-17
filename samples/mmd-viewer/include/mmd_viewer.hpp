@@ -26,6 +26,6 @@ private:
     ash::ecs::view<mmd_skeleton>* m_skeleton_view;
 
     std::unique_ptr<mmd_loader> m_loader;
-    std::unique_ptr<mmd_ik_solver> m_ik_solver;
+    //std::unique_ptr<mmd_ik_solver> m_ik_solver;
 };
 } // namespace ash::sample::mmd
