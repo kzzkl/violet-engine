@@ -84,17 +84,17 @@ public:
         return {v[0] * scale, v[1] * scale, v[2] * scale, v[3] * scale};
     }
 
-    inline static vector2 mix(const vector2& a, const vector2& b, float m)
+    inline static vector2 lerp(const vector2& a, const vector2& b, float m)
     {
         return {a[0] + m * (b[0] - a[0]), a[1] + m * (b[1] - a[1])};
     }
 
-    inline static vector3 mix(const vector3& a, const vector3& b, float m)
+    inline static vector3 lerp(const vector3& a, const vector3& b, float m)
     {
         return {a[0] + m * (b[0] - a[0]), a[1] + m * (b[1] - a[1]), a[2] + m * (b[2] - a[2])};
     }
 
-    inline static vector3 mix(const vector3& a, const vector3& b, const vector3& m)
+    inline static vector3 lerp(const vector3& a, const vector3& b, const vector3& m)
     {
         return {
             a[0] + m[0] * (b[0] - a[0]),
@@ -102,7 +102,7 @@ public:
             a[2] + m[2] * (b[2] - a[2])};
     }
 
-    inline static vector_type mix(const vector_type& a, const vector_type& b, float m)
+    inline static vector_type lerp(const vector_type& a, const vector_type& b, float m)
     {
         return {
             a[0] + m * (b[0] - a[0]),
