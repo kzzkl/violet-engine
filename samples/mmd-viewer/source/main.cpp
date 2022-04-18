@@ -55,7 +55,7 @@ private:
         m_actor = system<mmd_viewer>().load_mmd(
             "sora",
             "resource/model/sora/Sora.pmx",
-            "resource/model/sora/Sora.vmd");
+            "resource/model/sora/test.vmd");
 
         scene.link(m_actor);
     }

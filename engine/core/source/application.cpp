@@ -23,6 +23,9 @@ void application::run()
     auto root_task = task.find("root");
 
     timer& time = system<timer>();
+
+    time.tick<timer::point::FRAME_START>();
+    time.tick<timer::point::FRAME_END>();
     while (!m_exit)
     {
         time.tick<timer::point::FRAME_START>();

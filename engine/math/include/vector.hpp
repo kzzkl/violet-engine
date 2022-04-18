@@ -94,6 +94,14 @@ public:
         return {a[0] + m * (b[0] - a[0]), a[1] + m * (b[1] - a[1]), a[2] + m * (b[2] - a[2])};
     }
 
+    inline static vector3 mix(const vector3& a, const vector3& b, const vector3& m)
+    {
+        return {
+            a[0] + m[0] * (b[0] - a[0]),
+            a[1] + m[1] * (b[1] - a[1]),
+            a[2] + m[2] * (b[2] - a[2])};
+    }
+
     inline static vector_type mix(const vector_type& a, const vector_type& b, float m)
     {
         return {

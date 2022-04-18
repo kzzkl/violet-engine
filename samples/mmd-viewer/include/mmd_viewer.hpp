@@ -2,7 +2,6 @@
 
 #include "context.hpp"
 #include "graphics.hpp"
-#include "mmd_ik.hpp"
 #include "mmd_loader.hpp"
 #include "physics.hpp"
 

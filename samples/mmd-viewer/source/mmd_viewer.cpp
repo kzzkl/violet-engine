@@ -20,8 +20,6 @@ bool mmd_viewer::initialize(const dictionary& config)
         system<physics::physics>());
     m_loader->initialize();
 
-    //m_ik_solver = std::make_unique<mmd_ik_solver>(world);
-
     return true;
 }
 
@@ -52,7 +50,11 @@ void mmd_viewer::update()
 
     m_skeleton_view->each([&](ecs::entity entity, mmd_skeleton& skeleton) { reset(entity); });
 
-    animation.evaluate(0.0f);
+    static float delta = 0.0f;
+    delta += system<core::timer>().frame_delta();
+    // log::debug("{}", delta);
+    // animation.evaluate(1035);
+    animation.evaluate(delta * 30.0f);
     animation.update(false);
     animation.update(true);
 
@@ -69,6 +71,20 @@ void mmd_viewer::update()
 
         skeleton.parameter->set(0, skeleton.world.data(), skeleton.world.size());
     });
+
+    m_skeleton_view->each([&](mmd_skeleton& skeleton) {
+        for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
+        {
+            auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
+            math::matrix_plain::decompose(
+                skeleton.local[i],
+                transform.scaling,
+                transform.rotation,
+                transform.position);
+            transform.dirty = true;
+        }
+    });
+    scene.sync_local();
 }
 
 void mmd_viewer::reset(ecs::entity entity)
@@ -85,6 +101,7 @@ void mmd_viewer::reset(ecs::entity entity)
 
         node_transform.position = node.initial_position;
         node_transform.rotation = node.initial_rotation;
+        node_transform.scaling = node.initial_scale;
 
         node.inherit_translate = {0.0f, 0.0f, 0.0f};
         node.inherit_rotate = {0.0f, 0.0f, 0.0f, 1.0f};

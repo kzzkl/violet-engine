@@ -3,6 +3,57 @@
 
 namespace ash::sample::mmd
 {
+namespace
+{
+float EvalX(const math::float4& cp, float t)
+{
+    const float t2 = t * t;
+    const float t3 = t2 * t;
+    const float it = 1.0f - t;
+    const float it2 = it * it;
+    const float it3 = it2 * it;
+    const float x[4] = {0, cp[0], cp[2], 1};
+
+    return t3 * x[3] + 3 * t2 * it * x[2] + 3 * t * it2 * x[1] + it3 * x[0];
+}
+
+float EvalY(const math::float4& cp, float t)
+{
+    const float t2 = t * t;
+    const float t3 = t2 * t;
+    const float it = 1.0f - t;
+    const float it2 = it * it;
+    const float it3 = it2 * it;
+    const float y[4] = {0, cp[1], cp[3], 1};
+
+    return t3 * y[3] + 3 * t2 * it * y[2] + 3 * t * it2 * y[1] + it3 * y[0];
+}
+
+float FindBezierX(const math::float4& cp, float time)
+{
+    const float e = 0.00001f;
+    float start = 0.0f;
+    float stop = 1.0f;
+    float t = 0.5f;
+    float x = EvalX(cp, t);
+    while (std::abs(time - x) > e)
+    {
+        if (time < x)
+        {
+            stop = t;
+        }
+        else
+        {
+            start = t;
+        }
+        t = (stop + start) * 0.5f;
+        x = EvalX(cp, t);
+    }
+
+    return t;
+}
+} // namespace
+
 bool mmd_animation::initialize(const dictionary& config)
 {
     auto& world = system<ash::ecs::world>();
@@ -22,15 +73,8 @@ void mmd_animation::evaluate(float t, float weight)
 {
     std::map<std::string, std::pair<mmd_node*, mmd_node_animation*>> m;
     m_node_view->each([=, &m](mmd_node& node, mmd_node_animation& node_animation) {
-        // evaluate_node(node, node_animation, t, weight);
-        m[node.name] = {&node, &node_animation};
+        evaluate_node(node, node_animation, t, weight);
     });
-
-    for (auto [key, value] : m)
-    {
-        evaluate_node(*value.first, *value.second, t, weight);
-        // log::debug("{} {},{},{},{}", key, value[0], value[1], value[2], value[3]);
-    }
 
     m_ik_view->each([=](mmd_node& node, mmd_ik_solver& ik) { evaluate_ik(node, ik, t, weight); });
 }
@@ -64,25 +108,28 @@ void mmd_animation::evaluate_node(
         rotate = bound->rotate;
         if (bound != node_animation.keys.begin())
         {
-            // TODO
-            /*const auto& key0 = *(boundIt - 1);
-            const auto& key1 = *boundIt;
+            const auto& key0 = *(bound - 1);
+            const auto& key1 = *bound;
 
-            float timeRange = float(key1.m_time - key0.m_time);
-            float time = (t - float(key0.m_time)) / timeRange;
-            float tx_x = key0.m_txBezier.FindBezierX(time);
-            float ty_x = key0.m_tyBezier.FindBezierX(time);
-            float tz_x = key0.m_tzBezier.FindBezierX(time);
-            float rot_x = key0.m_rotBezier.FindBezierX(time);
-            float tx_y = key0.m_txBezier.EvalY(tx_x);
-            float ty_y = key0.m_tyBezier.EvalY(ty_x);
-            float tz_y = key0.m_tzBezier.EvalY(tz_x);
-            float rot_y = key0.m_rotBezier.EvalY(rot_x);
+            float timeRange = float(key1.frame - key0.frame);
+            float time = (t - float(key0.frame)) / timeRange;
+            float tx_x = FindBezierX(key0.tx_bezier, time);
+            float ty_x = FindBezierX(key0.ty_bezier, time);
+            float tz_x = FindBezierX(key0.tz_bezier, time);
+            float rot_x = FindBezierX(key0.r_bezier, time);
+            float tx_y = EvalY(key0.tx_bezier, tx_x);
+            float ty_y = EvalY(key0.ty_bezier, ty_x);
+            float tz_y = EvalY(key0.tz_bezier, tz_x);
+            float rot_y = EvalY(key0.r_bezier, rot_x);
 
-            vt = glm::mix(key0.m_translate, key1.m_translate, glm::vec3(tx_y, ty_y, tz_y));
-            q = glm::slerp(key0.m_rotate, key1.m_rotate, rot_y);
+            translate = math::vector_plain::mix(
+                key0.translate,
+                key1.translate,
+                math::float3{tx_y, ty_y, tz_y});
+            rotate = math::quaternion_plain::slerp(key0.rotate, key1.rotate, rot_y);
 
-            m_startKeyIndex = std::distance(m_keys.cbegin(), boundIt);*/
+            node_animation.offset = std::distance(node_animation.keys.cbegin(), bound);
+            //log::debug("{} {} {}", node.name, node_animation.offset, node_animation.keys.size());
         }
     }
 
@@ -98,9 +145,6 @@ void mmd_animation::evaluate_node(
         node_animation.animation_translate =
             math::vector_plain::mix(node_animation.base_animation_translate, translate, weight);
     }
-
-    // log::debug("{} {},{},{},{}", node.name, node.animation_rotate[0], node.animation_rotate[1],
-    // node.animation_rotate[2], node.animation_rotate[3]);
 }
 
 void mmd_animation::update(bool after_physics)
@@ -138,37 +182,6 @@ void mmd_animation::update(bool after_physics)
         update_local(skeleton, after_physics);
         update_world(skeleton, after_physics);
     });
-
-    /*m_view->each([&](ecs::entity entity, mmd_skeleton& skeleton) {
-        for (auto& node_entity : skeleton.sorted_nodes)
-        {
-            auto& node = world.component<mmd_node>(node_entity);
-            auto& transform = world.component<scene::transform>(node_entity);
-
-            bool a = world.has_component<mmd_ik_link>(node_entity);
-            bool b = world.has_component<mmd_ik_solver>(node_entity)
-                         ? world.component<mmd_ik_solver>(node_entity).enable
-                         : false;
-
-            if (a || b)
-            {
-                // log::debug("ik: {} {} {}", node.name, a, b);
-            }
-            if (after_physics == node.deform_after_physics &&
-                world.has_component<mmd_ik_solver>(node_entity))
-            {
-                auto& solver = world.component<mmd_ik_solver>(node_entity);
-                if (solver.enable)
-                    update_ik(skeleton, node, solver);
-            }
-        }
-    });
-    m_view->each([&](ecs::entity entity, mmd_skeleton& skeleton) {
-        // update_local(skeleton, after_physics);
-        update_world(skeleton, after_physics);
-    });*/
-
-    // system<scene::scene>().sync_local();
 }
 
 void mmd_animation::evaluate_ik(mmd_node& node, mmd_ik_solver& ik, float t, float weight)
@@ -188,14 +201,14 @@ void mmd_animation::evaluate_ik(mmd_node& node, mmd_ik_solver& ik, float t, floa
     else
     {
         // TODO
-        /*enable = ik_animation.keys.front().enable;
-        if (bound != ik_animation.keys.begin())
+        enable = ik.keys.front().enable;
+        if (bound != ik.keys.begin())
         {
-            const auto& key = *(boundIt - 1);
-            enable = key.m_enable;
+            const auto& key = *(bound - 1);
+            enable = key.enable;
 
-            m_startKeyIndex = std::distance(m_keys.cbegin(), boundIt);
-        }*/
+            ik.offset = std::distance(ik.keys.cbegin(), bound);
+        }
     }
 
     if (weight == 1.0f)

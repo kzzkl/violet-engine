@@ -4,7 +4,6 @@ add_executable(${PROJECT_NAME}
     ./source/encode.cpp
     ./source/main.cpp
     ./source/mmd_animation.cpp
-    ./source/mmd_ik.cpp
     ./source/mmd_loader.cpp
     ./source/mmd_viewer.cpp
     ./source/pmx_loader.cpp
