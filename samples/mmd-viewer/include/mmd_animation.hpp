@@ -50,43 +50,9 @@ private:
         if (keys.empty() || keys.size() < start)
             return keys.end();
 
-        const auto& key0 = keys[start];
-        if (key0.frame <= t)
-        {
-            if (start + 1 < keys.size())
-            {
-                const auto& key1 = keys[start + 1];
-                if (key1.frame > t)
-                {
-                    return keys.begin() + start + 1;
-                }
-            }
-            else
-            {
-                return keys.end();
-            }
-        }
-        else
-        {
-            if (start != 0)
-            {
-                const auto& key1 = keys[start - 1];
-                if (key1.frame <= t)
-                {
-                    return keys.begin() + start;
-                }
-            }
-            else
-            {
-                return keys.begin();
-            }
-        }
-
-        auto bundIt =
-            std::upper_bound(keys.begin(), keys.end(), t, [](int32_t lhs, const Key& rhs) {
-                return lhs < rhs.frame;
-            });
-        return bundIt;
+        return std::upper_bound(keys.begin(), keys.end(), t, [](int32_t lhs, const Key& rhs) {
+            return lhs < rhs.frame;
+        });
     }
 
     ecs::view<mmd_skeleton>* m_view;

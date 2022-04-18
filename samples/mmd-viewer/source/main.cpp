@@ -95,7 +95,7 @@ private:
         c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
 
         auto& c_transform = world.component<transform>(m_camera);
-        c_transform.position = {0.0f, 11.0f, -40.0f};
+        c_transform.position = {0.0f, 11.0f, -60.0f};
         c_transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
         c_transform.scaling = {1.0f, 1.0f, 1.0f};
         scene.link(m_camera);

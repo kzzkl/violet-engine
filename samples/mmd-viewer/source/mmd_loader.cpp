@@ -410,13 +410,15 @@ void mmd_loader::load_animation(
         node_map[bone.name] = &animation;
     }
 
-    auto set_bezier = [](math::float4& bezier, const unsigned char* cp) {
+    auto set_bezier = [](mmd_bezier& bezier, const unsigned char* cp) {
         int x0 = cp[0];
         int y0 = cp[4];
         int x1 = cp[8];
         int y1 = cp[12];
 
-        bezier = {(float)x0 / 127.0f, (float)y0 / 127.0f, (float)x1 / 127.0f, (float)y1 / 127.0f};
+        bezier.set(
+            {(float)x0 / 127.0f, (float)y0 / 127.0f},
+            {(float)x1 / 127.0f, (float)y1 / 127.0f});
     };
 
     for (auto& pmx_motion : vmd_loader.motions())
@@ -446,6 +448,7 @@ void mmd_loader::load_animation(
     }
 
     // IK.
+    // TODO
     /*std::map<std::string, mmd_ik_animation*> ik_map;
     for (auto& ik : vmd_loader.iks())
     {

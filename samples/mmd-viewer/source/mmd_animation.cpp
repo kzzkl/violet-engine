@@ -3,57 +3,6 @@
 
 namespace ash::sample::mmd
 {
-namespace
-{
-float EvalX(const math::float4& cp, float t)
-{
-    const float t2 = t * t;
-    const float t3 = t2 * t;
-    const float it = 1.0f - t;
-    const float it2 = it * it;
-    const float it3 = it2 * it;
-    const float x[4] = {0, cp[0], cp[2], 1};
-
-    return t3 * x[3] + 3 * t2 * it * x[2] + 3 * t * it2 * x[1] + it3 * x[0];
-}
-
-float EvalY(const math::float4& cp, float t)
-{
-    const float t2 = t * t;
-    const float t3 = t2 * t;
-    const float it = 1.0f - t;
-    const float it2 = it * it;
-    const float it3 = it2 * it;
-    const float y[4] = {0, cp[1], cp[3], 1};
-
-    return t3 * y[3] + 3 * t2 * it * y[2] + 3 * t * it2 * y[1] + it3 * y[0];
-}
-
-float FindBezierX(const math::float4& cp, float time)
-{
-    const float e = 0.00001f;
-    float start = 0.0f;
-    float stop = 1.0f;
-    float t = 0.5f;
-    float x = EvalX(cp, t);
-    while (std::abs(time - x) > e)
-    {
-        if (time < x)
-        {
-            stop = t;
-        }
-        else
-        {
-            start = t;
-        }
-        t = (stop + start) * 0.5f;
-        x = EvalX(cp, t);
-    }
-
-    return t;
-}
-} // namespace
-
 bool mmd_animation::initialize(const dictionary& config)
 {
     auto& world = system<ash::ecs::world>();
@@ -97,6 +46,7 @@ void mmd_animation::evaluate_node(
 
     math::float3 translate;
     math::float4 rotate;
+
     if (bound == node_animation.keys.end())
     {
         translate = node_animation.keys.back().translate;
@@ -111,25 +61,21 @@ void mmd_animation::evaluate_node(
             const auto& key0 = *(bound - 1);
             const auto& key1 = *bound;
 
-            float timeRange = float(key1.frame - key0.frame);
-            float time = (t - float(key0.frame)) / timeRange;
-            float tx_x = FindBezierX(key0.tx_bezier, time);
-            float ty_x = FindBezierX(key0.ty_bezier, time);
-            float tz_x = FindBezierX(key0.tz_bezier, time);
-            float rot_x = FindBezierX(key0.r_bezier, time);
-            float tx_y = EvalY(key0.tx_bezier, tx_x);
-            float ty_y = EvalY(key0.ty_bezier, ty_x);
-            float tz_y = EvalY(key0.tz_bezier, tz_x);
-            float rot_y = EvalY(key0.r_bezier, rot_x);
+            float time = (t - key0.frame) / static_cast<float>(key1.frame - key0.frame);
 
-            translate = math::vector_plain::mix(
+            translate = math::vector_plain::lerp(
                 key0.translate,
                 key1.translate,
-                math::float3{tx_y, ty_y, tz_y});
-            rotate = math::quaternion_plain::slerp(key0.rotate, key1.rotate, rot_y);
+                math::float3{
+                    key1.tx_bezier.evaluate(time),
+                    key1.ty_bezier.evaluate(time),
+                    key1.tz_bezier.evaluate(time)});
+            rotate = math::quaternion_plain::slerp(
+                key0.rotate,
+                key1.rotate,
+                key1.r_bezier.evaluate(time));
 
             node_animation.offset = std::distance(node_animation.keys.cbegin(), bound);
-            //log::debug("{} {} {}", node.name, node_animation.offset, node_animation.keys.size());
         }
     }
 
@@ -143,7 +89,7 @@ void mmd_animation::evaluate_node(
         node_animation.animation_rotate =
             math::quaternion_plain::slerp(node_animation.base_animation_rotate, rotate, weight);
         node_animation.animation_translate =
-            math::vector_plain::mix(node_animation.base_animation_translate, translate, weight);
+            math::vector_plain::lerp(node_animation.base_animation_translate, translate, weight);
     }
 }
 
@@ -200,7 +146,6 @@ void mmd_animation::evaluate_ik(mmd_node& node, mmd_ik_solver& ik, float t, floa
     }
     else
     {
-        // TODO
         enable = ik.keys.front().enable;
         if (bound != ik.keys.begin())
         {
@@ -549,14 +494,6 @@ void mmd_animation::ik_solve_core(
             link_rotate,
             math::quaternion_plain::inverse(animation_rotate));
         static std::size_t counter = 0;
-        /*log::debug(
-            "ik rotate: {} {} {},{},{},{}",
-            counter++,
-            link_node.name,
-            link.ik_rotate[0],
-            link.ik_rotate[1],
-            link.ik_rotate[2],
-            link.ik_rotate[3]);*/
 
         update_transform(skeleton, link_node.index);
     }
@@ -644,9 +581,7 @@ void mmd_animation::ik_solve_plane(
             {
                 auto halfRad = (link.limit_min[axis] + link.limit_max[axis]) * 0.5f;
                 if (std::abs(halfRad - new_angle) > std::abs(halfRad + new_angle))
-                {
                     new_angle *= -1.0f;
-                }
             }
         }
     }

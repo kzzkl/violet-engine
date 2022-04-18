@@ -52,8 +52,6 @@ void mmd_viewer::update()
 
     static float delta = 0.0f;
     delta += system<core::timer>().frame_delta();
-    // log::debug("{}", delta);
-    // animation.evaluate(1035);
     animation.evaluate(delta * 30.0f);
     animation.update(false);
     animation.update(true);

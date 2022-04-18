@@ -2,6 +2,7 @@
 
 #include "entity.hpp"
 #include "math.hpp"
+#include "mmd_bezier.hpp"
 #include "render_parameter.hpp"
 #include <string>
 #include <vector>
@@ -39,10 +40,10 @@ struct mmd_node_animation
         math::float3 translate;
         math::float4 rotate;
 
-        math::float4 tx_bezier;
-        math::float4 ty_bezier;
-        math::float4 tz_bezier;
-        math::float4 r_bezier;
+        mmd_bezier tx_bezier;
+        mmd_bezier ty_bezier;
+        mmd_bezier tz_bezier;
+        mmd_bezier r_bezier;
     };
 
     std::size_t offset;
