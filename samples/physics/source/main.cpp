@@ -61,9 +61,9 @@ public:
             t.rotation = math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f);
 
             auto& r = world.component<rigidbody>(m_cube_1);
-            r.shape(m_cube_shape.get());
-            r.mass(1.0f);
-            r.type(rigidbody_type::KINEMATIC);
+            r.shape = m_cube_shape.get();
+            r.mass = 1.0f;
+            r.type = rigidbody_type::KINEMATIC;
 
             auto& v = world.component<visual>(m_cube_1);
             m_cube_object.emplace_back(graphics.make_render_parameter("ash_object"));
@@ -91,8 +91,8 @@ public:
             t.rotation = math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f);
 
             auto& r = world.component<rigidbody>(m_cube_2);
-            r.shape(m_cube_shape.get());
-            r.mass(1.0f);
+            r.shape = m_cube_shape.get();
+            r.mass = 1.0f;
 
             auto& v = world.component<visual>(m_cube_2);
             m_cube_object.emplace_back(graphics.make_render_parameter("ash_object"));
@@ -118,8 +118,8 @@ public:
         pt.position = {0.0f, -3.0f, 0.0f};
 
         auto& pr = world.component<rigidbody>(m_plane);
-        pr.shape(m_plane_shape.get());
-        pr.mass(0.0f);
+        pr.shape = m_plane_shape.get();
+        pr.mass = 0.0f;
 
         relation.link(m_plane, scene.root());
 

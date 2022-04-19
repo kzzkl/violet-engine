@@ -287,7 +287,89 @@ void mmd_loader::load_physics(ecs::entity entity, mmd_resource& resource, const 
 {
     auto& skeleton = m_world.component<mmd_skeleton>(entity);
 
+    ecs::entity rigidbody_group = m_world.create();
+    m_world.add<core::link>(rigidbody_group);
+
     std::vector<ecs::entity> physics_nodes;
+    for (auto& pmx_rigidbody : loader.rigidbodies())
+    {
+        physics::collision_shape_desc desc = {};
+        switch (pmx_rigidbody.shape)
+        {
+        case pmx_rigidbody_shape_type::SPHERE:
+            desc.type = physics::collision_shape_type::SPHERE;
+            desc.sphere.radius = pmx_rigidbody.size[0];
+            break;
+        case pmx_rigidbody_shape_type::BOX:
+            desc.type = physics::collision_shape_type::BOX;
+            desc.box.length = pmx_rigidbody.size[0] * 2.0f;
+            desc.box.height = pmx_rigidbody.size[1] * 2.0f;
+            desc.box.width = pmx_rigidbody.size[2] * 2.0f;
+            break;
+        case pmx_rigidbody_shape_type::CAPSULE:
+            desc.type = physics::collision_shape_type::CAPSULE;
+            desc.capsule.radius = pmx_rigidbody.size[0];
+            desc.capsule.height = pmx_rigidbody.size[1];
+            break;
+        default:
+            break;
+        }
+        resource.collision_shapes.push_back(m_physics.make_shape(desc));
+
+        ecs::entity rigidbody_entity = m_world.create();
+        physics_nodes.push_back(rigidbody_entity);
+
+        m_world.add<core::link, physics::rigidbody>(rigidbody_entity);
+
+        auto& rigidbody = m_world.component<physics::rigidbody>(rigidbody_entity);
+        rigidbody.relation =
+            pmx_rigidbody.bone_index != -1 ? skeleton.nodes[pmx_rigidbody.bone_index] : entity;
+
+        rigidbody.shape = resource.collision_shapes.back().get();
+        rigidbody.mass =
+            pmx_rigidbody.mode == pmx_rigidbody_mode::STATIC ? 0.0f : pmx_rigidbody.mass;
+        rigidbody.linear_dimmer = pmx_rigidbody.translate_dimmer;
+        rigidbody.angular_dimmer = pmx_rigidbody.rotate_dimmer;
+        rigidbody.restitution = pmx_rigidbody.repulsion;
+        rigidbody.friction = pmx_rigidbody.friction;
+
+        switch (pmx_rigidbody.mode)
+        {
+        case pmx_rigidbody_mode::STATIC:
+            rigidbody.type = physics::rigidbody_type::KINEMATIC;
+            break;
+        case pmx_rigidbody_mode::DYNAMIC:
+            rigidbody.type = physics::rigidbody_type::DYNAMIC;
+            break;
+        case pmx_rigidbody_mode::MERGE:
+            rigidbody.type = physics::rigidbody_type::KINEMATIC;
+            break;
+        default:
+            break;
+        }
+
+        math::float4_simd position_offset = math::simd::load(pmx_rigidbody.translate);
+        math::float4_simd rotation_offset = math::simd::load(pmx_rigidbody.rotate);
+        math::float4x4_simd rigidbody_world = math::matrix_simd::affine_transform(
+            math::simd::set(1.0f, 1.0f, 1.0f, 0.0f),
+            rotation_offset,
+            position_offset);
+        math::float4x4_simd node_offset =
+            math::simd::load(m_world.component<scene::transform>(rigidbody.relation).world_matrix);
+        node_offset = math::matrix_simd::inverse(node_offset);
+
+        math::float4x4 offset;
+        math::simd::store(math::matrix_simd::mul(rigidbody_world, node_offset), offset);
+
+        rigidbody.offset = offset;
+        rigidbody.collision_group = 1 << pmx_rigidbody.group;
+        rigidbody.collision_mask = pmx_rigidbody.collision_group;
+
+        m_relation.link(rigidbody_entity, rigidbody_group);
+    }
+    m_relation.link(rigidbody_group, entity);
+
+    /*std::vector<ecs::entity> physics_nodes;
     for (auto& pmx_rigidbody : loader.rigidbodies())
     {
         physics::collision_shape_desc desc = {};
@@ -324,25 +406,26 @@ void mmd_loader::load_physics(ecs::entity entity, mmd_resource& resource, const 
 
         physics_nodes.push_back(node_entity);
         auto& rigidbody = m_world.component<physics::rigidbody>(node_entity);
+        rigidbody.relation = node_entity;
 
-        rigidbody.shape(resource.collision_shapes.back().get());
-        rigidbody.mass(
-            pmx_rigidbody.mode == pmx_rigidbody_mode::STATIC ? 0.0f : pmx_rigidbody.mass);
-        rigidbody.linear_dimmer(pmx_rigidbody.translate_dimmer);
-        rigidbody.angular_dimmer(pmx_rigidbody.rotate_dimmer);
-        rigidbody.restitution(pmx_rigidbody.repulsion);
-        rigidbody.friction(pmx_rigidbody.friction);
+        rigidbody.shape = resource.collision_shapes.back().get();
+        rigidbody.mass =
+            pmx_rigidbody.mode == pmx_rigidbody_mode::STATIC ? 0.0f : pmx_rigidbody.mass;
+        rigidbody.linear_dimmer = pmx_rigidbody.translate_dimmer;
+        rigidbody.angular_dimmer = pmx_rigidbody.rotate_dimmer;
+        rigidbody.restitution = pmx_rigidbody.repulsion;
+        rigidbody.friction = pmx_rigidbody.friction;
 
         switch (pmx_rigidbody.mode)
         {
         case pmx_rigidbody_mode::STATIC:
-            rigidbody.type(physics::rigidbody_type::KINEMATIC);
+            rigidbody.type = physics::rigidbody_type::KINEMATIC;
             break;
         case pmx_rigidbody_mode::DYNAMIC:
-            rigidbody.type(physics::rigidbody_type::DYNAMIC);
+            rigidbody.type = physics::rigidbody_type::DYNAMIC;
             break;
         case pmx_rigidbody_mode::MERGE:
-            rigidbody.type(physics::rigidbody_type::KINEMATIC);
+            rigidbody.type = physics::rigidbody_type::KINEMATIC;
             break;
         default:
             break;
@@ -361,10 +444,10 @@ void mmd_loader::load_physics(ecs::entity entity, mmd_resource& resource, const 
         math::float4x4 offset;
         math::simd::store(math::matrix_simd::mul(rigidbody_world, node_offset), offset);
 
-        rigidbody.offset(offset);
-        rigidbody.collision_group(1 << pmx_rigidbody.group);
-        rigidbody.collision_mask(pmx_rigidbody.collision_group);
-    }
+        rigidbody.offset = offset;
+        rigidbody.collision_group = 1 << pmx_rigidbody.group;
+        rigidbody.collision_mask = pmx_rigidbody.collision_group;
+    }*/
 
     for (auto& pmx_joint : loader.joints())
     {

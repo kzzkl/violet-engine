@@ -48,6 +48,9 @@ void scene::sync_local(ecs::entity root)
 
     std::queue<ecs::entity> dirty_entities;
     auto find_dirty = [&](ecs::entity entity) {
+        if (!world.has_component<transform>(entity))
+            return false;
+
         auto& node_transform = world.component<transform>(entity);
         if (node_transform.dirty)
         {
@@ -109,6 +112,9 @@ void scene::sync_world(ecs::entity root)
 
     std::queue<ecs::entity> dirty_entities;
     auto find_dirty = [&](ecs::entity entity) {
+        if (!world.has_component<transform>(entity))
+            return false;
+
         auto& node_transform = world.component<transform>(entity);
         if (node_transform.dirty)
         {

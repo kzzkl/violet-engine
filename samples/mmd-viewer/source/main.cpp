@@ -80,8 +80,9 @@ private:
         t.position = {0.0f, -3.0f, 0.0f};
 
         auto& r = world.component<rigidbody>(m_plane);
-        r.shape(m_plane_shape.get());
-        r.mass(0.0f);
+        r.shape = m_plane_shape.get();
+        r.mass = 0.0f;
+        r.relation = m_plane;
 
         system<ash::core::relation>().link(m_plane, system<ash::scene::scene>().root());
     }

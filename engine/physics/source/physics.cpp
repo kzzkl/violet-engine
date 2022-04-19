@@ -54,7 +54,7 @@ bool physics::initialize(const dictionary& config)
     auto& world = system<ash::ecs::world>();
     world.register_component<rigidbody>();
     world.register_component<joint>();
-    m_view = world.make_view<rigidbody, scene::transform>();
+    m_view = world.make_view<rigidbody>();
 
     auto& event = system<core::event>();
     event.subscribe<scene::event_enter_scene>(
@@ -65,13 +65,16 @@ bool physics::initialize(const dictionary& config)
 
 void physics::simulation()
 {
+    auto& world = system<ecs::world>();
+
     system<ash::scene::scene>().sync_local();
 
-    m_view->each([](rigidbody& rigidbody, scene::transform& transform) {
-        if (transform.sync_count != 0 && rigidbody.type() == rigidbody_type::KINEMATIC)
+    m_view->each([&](rigidbody& rigidbody) {
+        auto& transform = world.component<scene::transform>(rigidbody.relation);
+        if (transform.sync_count != 0 && rigidbody.type == rigidbody_type::KINEMATIC)
         {
             math::float4x4_simd to_world = math::simd::load(transform.world_matrix);
-            math::float4x4_simd offset = math::simd::load(rigidbody.offset());
+            math::float4x4_simd offset = math::simd::load(rigidbody.offset);
 
             math::float4x4 rigidbody_to_world;
             math::simd::store(math::matrix_simd::mul(offset, to_world), rigidbody_to_world);
@@ -81,7 +84,6 @@ void physics::simulation()
 
     m_world->simulation(system<ash::core::timer>().frame_delta());
 
-    auto& world = system<ecs::world>();
     while (true)
     {
         rigidbody_interface* updated = m_world->updated_rigidbody();
@@ -90,10 +92,10 @@ void physics::simulation()
 
         ecs::entity entity = m_user_data[updated->user_data_index].entity;
         auto& r = world.component<rigidbody>(entity);
-        auto& t = world.component<scene::transform>(entity);
+        auto& t = world.component<scene::transform>(r.relation);
 
         math::float4x4_simd to_world = math::simd::load(updated->transform());
-        math::float4x4_simd offset_inverse = math::simd::load(r.offset_inverse());
+        math::float4x4_simd offset_inverse = math::simd::load(r.offset_inverse);
         math::simd::store(math::matrix_simd::mul(offset_inverse, to_world), t.world_matrix);
         t.dirty = true;
     }
@@ -116,28 +118,28 @@ void physics::on_enter_scene(ecs::entity entity)
             return;
 
         auto& r = world.component<rigidbody>(node);
-        auto& t = world.component<scene::transform>(node);
+        auto& transform = world.component<scene::transform>(r.relation);
 
-        r.node(node);
         if (r.interface == nullptr)
         {
             rigidbody_desc desc = {};
-            desc.type = r.type();
-            desc.mass = r.mass();
-            desc.linear_dimmer = r.linear_dimmer();
-            desc.angular_dimmer = r.angular_dimmer();
-            desc.restitution = r.restitution();
-            desc.friction = r.friction();
-            desc.shape = r.shape();
-            math::float4x4_simd to_world = math::simd::load(t.world_matrix);
-            math::float4x4_simd offset = math::simd::load(r.offset());
+            desc.type = r.type;
+            desc.mass = r.mass;
+            desc.linear_dimmer = r.linear_dimmer;
+            desc.angular_dimmer = r.angular_dimmer;
+            desc.restitution = r.restitution;
+            desc.friction = r.friction;
+            desc.shape = r.shape;
+            math::float4x4_simd to_world = math::simd::load(transform.world_matrix);
+            math::float4x4_simd offset = math::simd::load(r.offset);
             math::simd::store(math::matrix_simd::mul(offset, to_world), desc.initial_transform);
+            math::simd::store(math::matrix_simd::inverse(offset), r.offset_inverse);
 
             r.interface.reset(m_factory->make_rigidbody(desc));
             r.interface->user_data_index = m_user_data.size();
             m_user_data.push_back({node});
 
-            m_world->add(r.interface.get(), r.collision_group(), r.collision_mask());
+            m_world->add(r.interface.get(), r.collision_group, r.collision_mask);
         }
     };
 

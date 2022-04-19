@@ -69,7 +69,7 @@ void mmd_viewer::update()
     });
     scene.sync_local();
 
-    system<physics::physics>().simulation();
+    //system<physics::physics>().simulation();
 
     animation.update(true);
 
