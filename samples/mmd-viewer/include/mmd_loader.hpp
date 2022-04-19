@@ -7,6 +7,7 @@
 #include "pmx_loader.hpp"
 #include "scene.hpp"
 #include "vmd_loader.hpp"
+#include "relation.hpp"
 
 namespace ash::sample::mmd
 {
@@ -28,6 +29,7 @@ class mmd_loader
 public:
     mmd_loader(
         ecs::world& world,
+        core::relation& relation,
         graphics::graphics& graphics,
         scene::scene& scene,
         physics::physics& physics);
@@ -57,6 +59,7 @@ private:
     std::unique_ptr<ash::graphics::render_pipeline> m_pipeline;
 
     ecs::world& m_world;
+    core::relation& m_relation;
     graphics::graphics& m_graphics;
     scene::scene& m_scene;
     physics::physics& m_physics;

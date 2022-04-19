@@ -1,4 +1,5 @@
 #include "physics.hpp"
+#include "relation.hpp"
 #include "scene.hpp"
 #include "scene_event.hpp"
 
@@ -108,6 +109,7 @@ void physics::on_enter_scene(ecs::entity entity)
 {
     auto& world = system<ecs::world>();
     auto& scene = system<scene::scene>();
+    auto& relation = system<core::relation>();
 
     auto init_rigidbody = [&, this](ecs::entity node) {
         if (!world.has_component<rigidbody>(node))
@@ -167,7 +169,7 @@ void physics::on_enter_scene(ecs::entity entity)
         }
     };
 
-    scene.each_children(entity, init_rigidbody);
-    scene.each_children(entity, init_joint);
+    relation.each_bfs(entity, init_rigidbody);
+    relation.each_bfs(entity, init_joint);
 }
 } // namespace ash::physics

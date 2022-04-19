@@ -3,6 +3,7 @@
 #include "graphics.hpp"
 #include "log.hpp"
 #include "physics.hpp"
+#include "relation.hpp"
 #include "scene.hpp"
 #include "window.hpp"
 
@@ -25,6 +26,7 @@ public:
         auto& world = system<ash::ecs::world>();
         auto& graphics = system<ash::graphics::graphics>();
         auto& scene = system<ash::scene::scene>();
+        auto& relation = system<ash::core::relation>();
 
         // Create rigidbody shape.
         collision_shape_desc desc;
@@ -52,7 +54,7 @@ public:
         // Create cube.
         {
             m_cube_1 = world.create();
-            world.add<rigidbody, transform, visual>(m_cube_1);
+            world.add<link, rigidbody, transform, visual>(m_cube_1);
 
             auto& t = world.component<transform>(m_cube_1);
             t.position = {1.0f, 0.0f, 0.0f};
@@ -76,13 +78,13 @@ public:
             submesh.parameters = {v.object, m_cube_material.get()};
             v.submesh.push_back(submesh);
 
-            scene.link(m_cube_1);
+            relation.link(m_cube_1, scene.root());
         }
 
         // Cube 2.
         {
             m_cube_2 = world.create();
-            world.add<rigidbody, transform, visual>(m_cube_2);
+            world.add<link, rigidbody, transform, visual>(m_cube_2);
 
             auto& t = world.component<transform>(m_cube_2);
             t.position = {-1.0f, 0.0f, 0.0f};
@@ -105,12 +107,12 @@ public:
             submesh.parameters = {v.object, m_cube_material.get()};
             v.submesh.push_back(submesh);
 
-            scene.link(m_cube_2, m_cube_1);
+            relation.link(m_cube_2, m_cube_1);
         }
 
         // Create plane.
         m_plane = world.create();
-        world.add<rigidbody, transform>(m_plane);
+        world.add<link, rigidbody, transform>(m_plane);
 
         auto& pt = world.component<transform>(m_plane);
         pt.position = {0.0f, -3.0f, 0.0f};
@@ -119,7 +121,7 @@ public:
         pr.shape(m_plane_shape.get());
         pr.mass(0.0f);
 
-        scene.link(m_plane);
+        relation.link(m_plane, scene.root());
 
         initialize_task();
         initialize_camera();
@@ -146,9 +148,10 @@ private:
     {
         auto& world = system<ash::ecs::world>();
         auto& scene = system<ash::scene::scene>();
+        auto& relation = system<ash::core::relation>();
 
         m_camera = world.create();
-        world.add<main_camera, camera, transform>(m_camera);
+        world.add<link, main_camera, camera, transform>(m_camera);
         auto& c_camera = world.component<camera>(m_camera);
         c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
 
@@ -159,7 +162,7 @@ private:
             c_transform.rotation,
             c_transform.position);
 
-        scene.link(m_camera);
+        relation.link(m_camera, scene.root());
     }
 
     void update()
@@ -278,6 +281,7 @@ int main()
 {
     application app;
     app.install<window>();
+    app.install<ash::core::relation>();
     app.install<scene>();
     app.install<graphics>();
     app.install<physics>();

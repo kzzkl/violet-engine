@@ -5,10 +5,12 @@ namespace ash::sample::mmd
 {
 mmd_loader::mmd_loader(
     ecs::world& world,
+    core::relation& relation,
     graphics::graphics& graphics,
     scene::scene& scene,
     physics::physics& physics)
     : m_world(world),
+      m_relation(relation),
       m_graphics(graphics),
       m_scene(scene),
       m_physics(physics)
@@ -50,7 +52,7 @@ bool mmd_loader::load(
     if (!vmd_loader.load(vmd))
         return false;
 
-    m_world.add<scene::transform, graphics::visual, mmd_skeleton>(entity);
+    m_world.add<core::link, scene::transform, graphics::visual, mmd_skeleton>(entity);
 
     auto& visual = m_world.component<graphics::visual>(entity);
     resource.object_parameter = m_graphics.make_render_parameter("ash_object");
@@ -80,7 +82,7 @@ void mmd_loader::load_hierarchy(
     for (auto& pmx_bone : loader.bones())
     {
         ecs::entity node_entity = m_world.create();
-        m_world.add<scene::transform, mmd_node>(node_entity);
+        m_world.add<core::link, scene::transform, mmd_node>(node_entity);
 
         auto& bone = m_world.component<mmd_node>(node_entity);
         bone.name = pmx_bone.name_jp;
@@ -105,12 +107,12 @@ void mmd_loader::load_hierarchy(
             node_transform.position =
                 math::vector_plain::sub(pmx_bone.position, pmx_parent_bone.position);
 
-            m_scene.link(node_entity, parent_node);
+            m_relation.link(node_entity, parent_node);
         }
         else
         {
             node_transform.position = pmx_bone.position;
-            m_scene.link(node_entity, entity);
+            m_relation.link(node_entity, entity);
         }
     }
 
