@@ -147,28 +147,26 @@ void physics::on_enter_scene(ecs::entity entity)
         if (!world.has_component<joint>(node))
             return;
 
-        for (auto& unit : world.component<joint>(node))
-        {
-            if (unit.interface != nullptr)
-                continue;
+        auto& j = world.component<joint>(node);
+        if (j.interface != nullptr)
+            return;
 
-            joint_desc desc = {};
-            desc.location = unit.location;
-            desc.rotation = unit.rotation;
-            desc.min_linear = unit.min_linear;
-            desc.max_linear = unit.max_linear;
-            desc.min_angular = unit.min_angular;
-            desc.max_angular = unit.max_angular;
-            desc.spring_translate_factor = unit.spring_translate_factor;
-            desc.spring_rotate_factor = unit.spring_rotate_factor;
+        joint_desc desc = {};
+        desc.location = j.location;
+        desc.rotation = j.rotation;
+        desc.min_linear = j.min_linear;
+        desc.max_linear = j.max_linear;
+        desc.min_angular = j.min_angular;
+        desc.max_angular = j.max_angular;
+        desc.spring_translate_factor = j.spring_translate_factor;
+        desc.spring_rotate_factor = j.spring_rotate_factor;
 
-            desc.rigidbody_a = world.component<rigidbody>(node).interface.get();
-            desc.rigidbody_b = world.component<rigidbody>(unit.entity).interface.get();
+        desc.rigidbody_a = world.component<rigidbody>(j.relation_a).interface.get();
+        desc.rigidbody_b = world.component<rigidbody>(j.relation_b).interface.get();
 
-            unit.interface.reset(m_factory->make_joint(desc));
+        j.interface.reset(m_factory->make_joint(desc));
 
-            m_world->add(unit.interface.get());
-        }
+        m_world->add(j.interface.get());
     };
 
     relation.each_bfs(entity, init_rigidbody);

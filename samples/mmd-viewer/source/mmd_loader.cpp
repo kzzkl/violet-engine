@@ -369,112 +369,32 @@ void mmd_loader::load_physics(ecs::entity entity, mmd_resource& resource, const 
     }
     m_relation.link(rigidbody_group, entity);
 
-    /*std::vector<ecs::entity> physics_nodes;
-    for (auto& pmx_rigidbody : loader.rigidbodies())
-    {
-        physics::collision_shape_desc desc = {};
-        switch (pmx_rigidbody.shape)
-        {
-        case pmx_rigidbody_shape_type::SPHERE:
-            desc.type = physics::collision_shape_type::SPHERE;
-            desc.sphere.radius = pmx_rigidbody.size[0];
-            break;
-        case pmx_rigidbody_shape_type::BOX:
-            desc.type = physics::collision_shape_type::BOX;
-            desc.box.length = pmx_rigidbody.size[0] * 2.0f;
-            desc.box.height = pmx_rigidbody.size[1] * 2.0f;
-            desc.box.width = pmx_rigidbody.size[2] * 2.0f;
-            break;
-        case pmx_rigidbody_shape_type::CAPSULE:
-            desc.type = physics::collision_shape_type::CAPSULE;
-            desc.capsule.radius = pmx_rigidbody.size[0];
-            desc.capsule.height = pmx_rigidbody.size[1];
-            break;
-        default:
-            break;
-        }
-        resource.collision_shapes.push_back(m_physics.make_shape(desc));
-
-        ecs::entity node_entity;
-        if (pmx_rigidbody.bone_index != -1)
-            node_entity = skeleton.nodes[pmx_rigidbody.bone_index];
-        else
-            node_entity = entity;
-
-        if (!m_world.has_component<physics::rigidbody>(node_entity))
-            m_world.add<physics::rigidbody>(node_entity);
-
-        physics_nodes.push_back(node_entity);
-        auto& rigidbody = m_world.component<physics::rigidbody>(node_entity);
-        rigidbody.relation = node_entity;
-
-        rigidbody.shape = resource.collision_shapes.back().get();
-        rigidbody.mass =
-            pmx_rigidbody.mode == pmx_rigidbody_mode::STATIC ? 0.0f : pmx_rigidbody.mass;
-        rigidbody.linear_dimmer = pmx_rigidbody.translate_dimmer;
-        rigidbody.angular_dimmer = pmx_rigidbody.rotate_dimmer;
-        rigidbody.restitution = pmx_rigidbody.repulsion;
-        rigidbody.friction = pmx_rigidbody.friction;
-
-        switch (pmx_rigidbody.mode)
-        {
-        case pmx_rigidbody_mode::STATIC:
-            rigidbody.type = physics::rigidbody_type::KINEMATIC;
-            break;
-        case pmx_rigidbody_mode::DYNAMIC:
-            rigidbody.type = physics::rigidbody_type::DYNAMIC;
-            break;
-        case pmx_rigidbody_mode::MERGE:
-            rigidbody.type = physics::rigidbody_type::KINEMATIC;
-            break;
-        default:
-            break;
-        }
-
-        math::float4_simd position_offset = math::simd::load(pmx_rigidbody.translate);
-        math::float4_simd rotation_offset = math::simd::load(pmx_rigidbody.rotate);
-        math::float4x4_simd rigidbody_world = math::matrix_simd::affine_transform(
-            math::simd::set(1.0f, 1.0f, 1.0f, 0.0f),
-            rotation_offset,
-            position_offset);
-        math::float4x4_simd node_offset =
-            math::simd::load(m_world.component<scene::transform>(node_entity).world_matrix);
-        node_offset = math::matrix_simd::inverse(node_offset);
-
-        math::float4x4 offset;
-        math::simd::store(math::matrix_simd::mul(rigidbody_world, node_offset), offset);
-
-        rigidbody.offset = offset;
-        rigidbody.collision_group = 1 << pmx_rigidbody.group;
-        rigidbody.collision_mask = pmx_rigidbody.collision_group;
-    }*/
-
+    ecs::entity joint_group = m_world.create();
+    m_world.add<core::link>(joint_group);
     for (auto& pmx_joint : loader.joints())
     {
-        auto rigidbody_a = physics_nodes[pmx_joint.rigidbody_a_index];
-        auto rigidbody_b = physics_nodes[pmx_joint.rigidbody_b_index];
+        ecs::entity joint_entity = m_world.create();
+        m_world.add<core::link, physics::joint>(joint_entity);
+        auto& joint = m_world.component<physics::joint>(joint_entity);
 
-        if (!m_world.has_component<physics::joint>(rigidbody_a))
-            m_world.add<physics::joint>(rigidbody_a);
+        joint.relation_a = physics_nodes[pmx_joint.rigidbody_a_index];
+        joint.relation_b = physics_nodes[pmx_joint.rigidbody_b_index];
 
-        auto& joint = m_world.component<physics::joint>(rigidbody_a);
+        joint.location = pmx_joint.translate;
+        joint.rotation = math::quaternion_plain::rotation_euler(
+            pmx_joint.rotate[1],
+            pmx_joint.rotate[0],
+            pmx_joint.rotate[2]);
+        joint.min_linear = pmx_joint.translate_min;
+        joint.max_linear = pmx_joint.translate_max;
+        joint.min_angular = pmx_joint.rotate_min;
+        joint.max_angular = pmx_joint.rotate_max;
+        joint.spring_translate_factor = pmx_joint.spring_translate_factor;
+        joint.spring_rotate_factor = pmx_joint.spring_rotate_factor;
 
-        std::size_t index = joint.add_unit();
-        joint.rigidbody(index, rigidbody_b);
-        joint.location(index, pmx_joint.translate);
-        joint.rotation(
-            index,
-            math::quaternion_plain::rotation_euler(
-                pmx_joint.rotate[1],
-                pmx_joint.rotate[0],
-                pmx_joint.rotate[2]));
-        joint.min_linear(index, pmx_joint.translate_min);
-        joint.max_linear(index, pmx_joint.translate_max);
-        joint.min_angular(index, pmx_joint.rotate_min);
-        joint.max_angular(index, pmx_joint.rotate_max);
-        joint.spring_translate_factor(index, pmx_joint.spring_translate_factor);
-        joint.spring_rotate_factor(index, pmx_joint.spring_rotate_factor);
+        m_relation.link(joint_entity, joint_group);
     }
+    m_relation.link(joint_group, entity);
 }
 
 void mmd_loader::load_animation(
