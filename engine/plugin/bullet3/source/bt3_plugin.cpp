@@ -10,8 +10,7 @@ class bt3_debug_draw : public btIDebugDraw
 public:
     bt3_debug_draw(debug_draw_interface* debug = nullptr) : m_debug(debug)
     {
-        m_mode |= DebugDrawModes::DBG_DrawConstraints;
-        m_mode |= DebugDrawModes::DBG_DrawConstraintLimits;
+        m_mode |= DebugDrawModes::DBG_DrawWireframe;
     }
 
     void debug(debug_draw_interface* debug) { m_debug = debug; }

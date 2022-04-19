@@ -56,6 +56,8 @@ private:
             "sora",
             "resource/model/sora/Sora.pmx",
             "resource/model/sora/test.vmd");
+
+        scene.link(m_actor);
     }
 
     void initialize_plane()
@@ -204,13 +206,6 @@ private:
         float delta = system<ash::core::timer>().frame_delta();
         update_camera(delta);
         update_actor(delta);
-
-        auto& keyboard = system<ash::window::window>().keyboard();
-        if (keyboard.key(keyboard_key::KEY_T).down())
-        {
-            scene.link(m_actor);
-            system<mmd_viewer>().initialize_pose(m_actor);
-        }
 
         system<ash::scene::scene>().sync_local();
         // system<ash::physics::physics>().simulation();
