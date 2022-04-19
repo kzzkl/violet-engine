@@ -1,0 +1,131 @@
+{
+    "graphics": {
+        "vertex_layout": {
+            "debug": {
+                "attribute": [
+                    {
+                        "name": "POSITION",
+                        "type": "float3",
+                        "index": 0
+                    },
+                    {
+                        "name": "COLOR",
+                        "type": "float3",
+                        "index": 0
+                    }
+                ]
+            },
+            "geometry": {
+                "attribute": [
+                    {
+                        "name": "POSITION",
+                        "type": "float3",
+                        "index": 0
+                    },
+                    {
+                        "name": "NORMAL",
+                        "type": "float3",
+                        "index": 0
+                    }
+                ]
+            }
+        },
+        "pipeline_parameter": {
+            "ash_object": "buffer",
+            "ash_pass": "buffer"
+        },
+        "pipeline_parameter_layout": {
+            "ash_object": [
+                {
+                    "name": "transform_m",
+                    "type": "float4x4"
+                },
+                {
+                    "name": "transform_mv",
+                    "type": "float4x4"
+                },
+                {
+                    "name": "transform_mvp",
+                    "type": "float4x4"
+                }
+            ],
+            "ash_pass": [
+                {
+                    "name": "camera_position",
+                    "type": "float4"
+                },
+                {
+                    "name": "camera_direction",
+                    "type": "float4"
+                },
+                {
+                    "name": "transform_v",
+                    "type": "float4x4"
+                },
+                {
+                    "name": "transform_p",
+                    "type": "float4x4"
+                },
+                {
+                    "name": "transform_vp",
+                    "type": "float4x4"
+                }
+            ],
+            "geometry_material": [
+                {
+                    "name": "color",
+                    "type": "float4"
+                }
+            ]
+        },
+        "pipeline": {
+            "debug": {
+                "vertex_layout": "debug",
+                "vertex_shader": "engine/shader/debug.hlsl",
+                "pixel_shader": "engine/shader/debug.hlsl",
+                "primitive_topology": "line_list",
+                "parameter": {
+                    "pass": [],
+                    "unit": [
+                        "ash_object"
+                    ]
+                }
+            },
+            "geometry": {
+                "vertex_layout": "geometry",
+                "vertex_shader": "engine/shader/geometry.hlsl",
+                "pixel_shader": "engine/shader/geometry.hlsl",
+                "primitive_topology": "triangle_list",
+                "parameter": {
+                    "pass": [
+                        "ash_pass"
+                    ],
+                    "unit": [
+                        "ash_object",
+                        "geometry_material"
+                    ]
+                }
+            }
+        },
+        "technique": [],
+        "plugin": "ash-graphics-d3d12.dll",
+        "render_concurrency": 4,
+        "frame_resource": 3,
+        "multiple_sampling": 4
+    },
+    "window": {
+        "title": "ash app",
+        "width": 700,
+        "height": 400
+    },
+    "core": {
+        "threads": 0
+    },
+    "physics": {
+        "gravity": [
+            0.0,
+            -9.8,
+            0.0
+        ]
+    }
+}

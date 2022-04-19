@@ -7,3 +7,6 @@
 [submodule "thirdparty/json"]
 	path = thirdparty/json
 	url = git@github.com:nlohmann/json.git
+[submodule "thirdparty/bullet3"]
+	path = thirdparty/bullet3
+	url = git@github.com:bulletphysics/bullet3.git

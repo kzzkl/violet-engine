@@ -3,9 +3,9 @@ add_subdirectory(core)
 add_subdirectory(ecs)
 add_subdirectory(graphics)
 add_subdirectory(math)
+add_subdirectory(physics)
+add_subdirectory(scene)
 add_subdirectory(task)
 add_subdirectory(window)
-
 add_subdirectory(plugin)
-
 add_subdirectory(misc)

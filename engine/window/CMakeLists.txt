@@ -1,6 +1,6 @@
 project(ash-window)
 
-add_library(${PROJECT_NAME} SHARED
+add_library(${PROJECT_NAME} STATIC
     ./source/input.cpp
     ./source/window_impl_win32.cpp
     ./source/window.cpp)
@@ -13,11 +13,6 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
         ash::core)
-
-include(GenerateExportHeader)
-generate_export_header(${PROJECT_NAME}
-    EXPORT_MACRO_NAME WINDOW_API
-    EXPORT_FILE_NAME ${CMAKE_CURRENT_SOURCE_DIR}/include/window_exports.hpp)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

@@ -8,8 +8,8 @@ namespace ash::graphics::d3d12
 {
 enum class d3d12_parameter_tier_type
 {
-    TIER1,
-    TIER2
+    TIER1, // Constant Buffer View
+    TIER2  // Descriptor Table
 };
 
 class d3d12_pipeline_parameter : public pipeline_parameter
@@ -31,32 +31,63 @@ public:
 public:
     d3d12_pipeline_parameter(const pipeline_parameter_desc& desc);
 
-    virtual void bind(std::size_t index, resource* data) override;
+    virtual void set(std::size_t index, bool value) override;
+    virtual void set(std::size_t index, std::uint32_t value) override;
+    virtual void set(std::size_t index, float value) override;
+    virtual void set(std::size_t index, const math::float2& value) override;
+    virtual void set(std::size_t index, const math::float3& value) override;
+    virtual void set(std::size_t index, const math::float4& value) override;
+    virtual void set(std::size_t index, const math::float4x4& value, bool row_matrix) override;
+    virtual void set(std::size_t index, const math::float4x4* data, size_t size, bool row_matrix)
+        override;
+    virtual void set(std::size_t index, const resource* texture) override;
 
-    inline d3d12_parameter_tier_type get_tier() const noexcept { return m_tier; }
-    inline tier1_info get_tier1_info() const noexcept { return m_tier1; }
-    inline tier2_info get_tier2_info() const noexcept { return m_tier2; }
+    void sync();
+
+    inline d3d12_parameter_tier_type tier() const noexcept { return m_tier; }
+    inline tier1_info tier1() const noexcept
+    {
+        return m_tier_info[d3d12_frame_counter::frame_resource_index()].tier1;
+    }
+    inline tier2_info tier2() const noexcept
+    {
+        return m_tier_info[d3d12_frame_counter::frame_resource_index()].tier2;
+    }
 
 private:
-    std::size_t m_descriptor_offset;
+    struct parameter_info
+    {
+        std::size_t offset;
+        std::size_t size;
+        pipeline_parameter_type type;
+        std::size_t dirty;
+    };
+
+    union tier_info {
+        tier1_info tier1;
+        tier2_info tier2;
+    };
+
+    void mark_dirty(std::size_t index);
 
     d3d12_parameter_tier_type m_tier;
-    std::vector<pipeline_parameter_type> m_type;
+    std::vector<tier_info> m_tier_info;
 
-    union {
-        tier1_info m_tier1;
-        tier2_info m_tier2;
-    };
+    std::size_t m_dirty;
+    std::size_t m_last_sync_frame;
+
+    std::vector<parameter_info> m_parameter_info;
+
+    std::vector<std::uint8_t> m_cpu_buffer;
+    std::vector<const d3d12_resource*> m_textures;
+    std::unique_ptr<d3d12_upload_buffer> m_gpu_buffer;
 };
 
 class d3d12_parameter_layout : public pipeline_layout
 {
 public:
     d3d12_parameter_layout(const pipeline_layout_desc& desc);
-    inline D3D12RootSignature* get_root_signature() const noexcept
-    {
-        return m_root_signature.Get();
-    }
+    inline D3D12RootSignature* root_signature() const noexcept { return m_root_signature.Get(); }
 
 private:
     d3d12_ptr<D3D12RootSignature> m_root_signature;
@@ -67,10 +98,7 @@ class d3d12_pipeline : public pipeline
 public:
     d3d12_pipeline(const pipeline_desc& desc);
 
-    inline D3D12PipelineState* get_pipeline_state() const noexcept
-    {
-        return m_pipeline_state.Get();
-    }
+    inline D3D12PipelineState* pipeline_state() const noexcept { return m_pipeline_state.Get(); }
 
 private:
     void initialize_vertex_layout(const pipeline_desc& desc);

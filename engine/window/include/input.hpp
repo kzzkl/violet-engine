@@ -1,20 +1,21 @@
 #pragma once
 
-#include "window_exports.hpp"
+#include "assert.hpp"
 #include <array>
 #include <memory>
+#include <vector>
 
 namespace ash::window
 {
-class WINDOW_API key_state
+class key_state
 {
 public:
-    explicit key_state(unsigned char state) : m_state(state) {}
+    explicit key_state(unsigned char state) noexcept : m_state(state) {}
 
-    inline bool down() const { return m_state & 0x1; }
-    inline bool up() const { return !down(); }
-    inline bool release() const { return m_state == 0x2; }
-    inline bool hold() const { return m_state == 0x3; }
+    inline bool down() const noexcept { return m_state & 0x1; }
+    inline bool up() const noexcept { return !down(); }
+    inline bool release() const noexcept { return m_state == 0x2; }
+    inline bool hold() const noexcept { return m_state == 0x3; }
 
 private:
     unsigned char m_state;
@@ -23,45 +24,65 @@ private:
 template <typename KeyType>
 class key_device
 {
-    static const uint32_t NUM_KEY = static_cast<uint32_t>(KeyType::NUM_TYPE);
+    static const std::uint32_t NUM_KEY = static_cast<std::uint32_t>(KeyType::NUM_TYPE);
 
 public:
-    key_device() { memset(m_key_state, 0, sizeof(m_key_state)); }
+    key_device() noexcept { memset(m_key_state, 0, sizeof(m_key_state)); }
     virtual ~key_device() {}
 
-    inline key_state key(KeyType key) { return key_state(m_key_state[static_cast<uint32_t>(key)]); }
-
-    void key_down(KeyType key)
+    inline key_state key(KeyType key) const noexcept
     {
-        uint32_t k = static_cast<uint32_t>(key);
-        if (static_cast<uint32_t>(k) < NUM_KEY)
-        {
-            auto oldState = m_key_state[k];
-            m_key_state[k] = ((m_key_state[k] << 1) & 0x2) | 0x1;
-        }
+        std::size_t index = static_cast<std::uint32_t>(key);
+        ASH_ASSERT(index < NUM_KEY);
+
+        return key_state(m_key_state[index]);
     }
 
-    void key_up(KeyType key)
+    void key_down(KeyType key) noexcept
     {
-        uint32_t k = static_cast<uint32_t>(key);
-        if (k < NUM_KEY)
+        std::size_t index = static_cast<std::uint32_t>(key);
+        ASH_ASSERT(index < NUM_KEY);
+
+        m_key_state[index] = ((m_key_state[index] << 1) & 0x2) | 0x1;
+        m_update_key.push_back(key);
+    }
+
+    void key_up(KeyType key) noexcept
+    {
+        std::size_t index = static_cast<std::uint32_t>(key);
+        ASH_ASSERT(index < NUM_KEY);
+
+        m_key_state[index] = (m_key_state[index] << 1) & 0x2;
+        m_update_key.push_back(key);
+    }
+
+    void tick()
+    {
+        if (!m_update_key.empty())
         {
-            auto oldState = m_key_state[k];
-            m_key_state[k] = (m_key_state[k] << 1) & 0x2;
+            for (KeyType key : m_update_key)
+            {
+                std::size_t index = static_cast<std::uint32_t>(key);
+
+                std::uint8_t old = m_key_state[index] & 0x1;
+                m_key_state[index] = (m_key_state[index] << 1) | old;
+            }
+            m_update_key.clear();
         }
     }
 
 private:
-    unsigned char m_key_state[NUM_KEY];
+    std::vector<KeyType> m_update_key;
+    std::uint8_t m_key_state[NUM_KEY];
 };
 
-enum class mouse_mode : uint8_t
+enum class mouse_mode : std::uint8_t
 {
     CURSOR_ABSOLUTE = 0,
     CURSOR_RELATIVE
 };
 
-enum class mouse_key : uint32_t
+enum class mouse_key : std::uint32_t
 {
     LEFT_BUTTON,
     RIGHT_BUTTON,
@@ -69,41 +90,31 @@ enum class mouse_key : uint32_t
     NUM_TYPE
 };
 
-class WINDOW_API mouse : public key_device<mouse_key>
+class mouse : public key_device<mouse_key>
 {
 public:
-    mouse();
+    mouse() noexcept;
     virtual ~mouse() = default;
 
-    void reset_relative_cursor();
+    void mode(mouse_mode mode);
+    inline mouse_mode mode() const noexcept { return m_mode; }
 
-    void set_cursor(int x, int y)
-    {
-        m_x = x;
-        m_y = y;
-    }
-
-    void set_mode(mouse_mode mode);
-    inline mouse_mode get_mode() const { return m_mode; }
-
-    inline int get_x() const { return m_x; }
-    inline int get_y() const { return m_y; }
+    inline int x() const noexcept { return m_x; }
+    inline int y() const noexcept { return m_y; }
 
 protected:
-    virtual void clip_cursor(bool clip) = 0;
-    virtual void show_cursor(bool show) = 0;
-
-private:
-    void set_cursor_clip(bool clip);
+    virtual void change_mode(mouse_mode mode) = 0;
 
     int m_x;
     int m_y;
+
     mouse_mode m_mode;
 };
 
-enum class keyboard_key : uint32_t
+enum class keyboard_key : std::uint32_t
 {
-    KEY_0 = 48,
+    KEY_ESC = 0x1B,
+    KEY_0 = 0x30,
     KEY_1,
     KEY_2,
     KEY_3,
@@ -113,7 +124,7 @@ enum class keyboard_key : uint32_t
     KEY_7,
     KEY_8,
     KEY_9,
-    KEY_A = 65,
+    KEY_A = 0x41,
     KEY_B,
     KEY_C,
     KEY_D,
@@ -142,9 +153,9 @@ enum class keyboard_key : uint32_t
     NUM_TYPE
 };
 
-class WINDOW_API keyboard : public key_device<keyboard_key>
+class keyboard : public key_device<keyboard_key>
 {
 public:
-    keyboard();
+    keyboard() noexcept;
 };
 } // namespace ash::window

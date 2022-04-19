@@ -8,7 +8,7 @@
 namespace ash::task
 {
 class task_manager;
-class TASK_API task_handle
+class task_handle
 {
 public:
     task_handle() : task_handle(nullptr) {}
@@ -27,7 +27,7 @@ private:
 template <typename T>
 concept derived_from_task = std::is_base_of<task, T>::value;
 
-class TASK_API task_manager
+class task_manager
 {
 public:
     using handle = task_handle;
@@ -41,6 +41,8 @@ public:
         return do_schedule<task_wrapper<Callable>>(name, type, callable);
     }
 
+    handle schedule_group(std::string_view name, task_type type = task_type::NONE);
+
     void execute(handle task);
 
     void run();
@@ -49,15 +51,13 @@ public:
     handle find(std::string_view name);
 
 private:
-    friend class handle;
-
     template <derived_from_task T, typename... Args>
     handle do_schedule(Args&&... args)
     {
         std::unique_ptr<task> task = std::make_unique<T>(std::forward<Args>(args)...);
         handle result(task.get());
 
-        m_tasks[task->get_name().data()] = std::move(task);
+        m_tasks[task->name().data()] = std::move(task);
 
         return result;
     }

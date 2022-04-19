@@ -1,5 +1,4 @@
 #include "application.hpp"
-#include "timer.hpp"
 
 using namespace ash::task;
 
@@ -13,30 +12,31 @@ void application::run()
 {
     using namespace std::chrono;
 
-    time_point<steady_clock> frame_start;
-    time_point<steady_clock> frame_end;
     std::size_t frame_counter = 0;
 
     nanoseconds s(0);
-    nanoseconds time_per_frame(1000000000 / 2400);
+    nanoseconds time_per_frame(1000000000 / 240);
 
-    auto& task = get_submodule<task::task_manager>();
+    auto& task = system<task::task_manager>();
     task.run();
 
     auto root_task = task.find("root");
 
-    while (true)
+    timer& time = system<timer>();
+
+    time.tick<timer::point::FRAME_START>();
+    time.tick<timer::point::FRAME_END>();
+    while (!m_exit)
     {
-        frame_start = timer::now<steady_clock>();
-
+        time.tick<timer::point::FRAME_START>();
         task.execute(root_task);
+        time.tick<timer::point::FRAME_END>();
 
-        frame_end = timer::now<steady_clock>();
-        nanoseconds delta = frame_end - frame_start;
+        nanoseconds delta = time.delta<timer::point::FRAME_START, timer::point::FRAME_END>();
         if (delta < time_per_frame)
             timer::busy_sleep(time_per_frame - delta);
 
-        s += (timer::now<steady_clock>() - frame_start);
+        s += (timer::now<steady_clock>() - time.time_point<timer::point::FRAME_START>());
 
         ++frame_counter;
         if (s > seconds(1))
@@ -46,5 +46,12 @@ void application::run()
             frame_counter = 0;
         }
     }
+
+    shutdown_system();
+}
+
+void application::exit()
+{
+    m_exit = true;
 }
 } // namespace ash::core

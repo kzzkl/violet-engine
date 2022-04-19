@@ -1,77 +1,144 @@
 #include "test_common.hpp"
 #include "world.hpp"
 
-using namespace test;
 using namespace ash::ecs;
-/*
-TEST_CASE("create entity", "[world]")
-{
-    world w;
-    auto entity1 = w.create<int, char, std::string>();
-    entity1.get_component<int>() = 99;
 
-    auto handle = w.get_component<int>(entity1.get_entity());
-    CHECK(handle.get_component<int>() == 99);
+namespace ash::test
+{
+TEST_CASE("world::create", "[world]")
+{
+    world world;
+    entity e1 = world.create();
+    CHECK(e1.index == 0);
+    CHECK(e1.version == 0);
+
+    entity e2 = world.create();
+    CHECK(e2.index == 1);
+    CHECK(e2.version == 0);
+
+    world.release(e2);
+
+    entity e3 = world.create();
+    CHECK(e3.index == 1);
+    CHECK(e3.version == 1);
 }
 
-TEST_CASE("insert component", "[world]")
+TEST_CASE("world::add & world::remove", "[world]")
 {
-    world w;
-    auto entity = w.create<int, char, std::string>();
+    life_counter<0>::reset();
 
-    w.insert<test_class>(entity.get_entity());
+    world world;
+    world.register_component<life_counter<0>>();
+    world.register_component<life_counter<1>>();
+
+    entity e1 = world.create();
+    entity e2 = world.create();
+
+    world.add<life_counter<0>>(e1);
+    CHECK(life_counter<0>::check(1, 0, 0, 0, 0, 0));
+
+    world.add<life_counter<1>>(e1);
+    CHECK(life_counter<0>::check(1, 0, 1, 0, 0, 1));
+    CHECK(life_counter<1>::check(1, 0, 0, 0, 0, 0));
+
+    world.add<life_counter<0>>(e2);
+    CHECK(life_counter<0>::check(2, 0, 1, 0, 0, 1));
+
+    world.remove<life_counter<1>>(e1);
+    CHECK(life_counter<0>::check(2, 0, 2, 0, 0, 2));
+    CHECK(life_counter<1>::check(1, 0, 0, 0, 0, 1));
 }
 
-TEST_CASE("erase component", "[world]")
+TEST_CASE("world::add & world::remove 2", "[world]")
 {
-    world w;
-    auto entity = w.create<int, char, std::string>();
+    world world;
+    world.register_component<position>();
+    world.register_component<rotation>();
 
-    w.erase<int>(entity.get_entity());
+    std::vector<entity> entities;
+
+    for (std::size_t i = 0; i < 3; ++i)
+    {
+        entity e = world.create();
+        world.add<position>(e);
+        entities.push_back(e);
+    }
+
+    for (std::size_t i = 0; i < 3; ++i)
+    {
+        if (i % 2 == 0)
+            world.add<rotation>(entities[i]);
+    }
+}
+
+TEST_CASE("world::component", "[world]")
+{
+    world world;
+    world.register_component<position>();
+    world.register_component<int>();
+
+    entity e1 = world.create();
+    world.add<position>(e1);
+
+    position& p1 = world.component<position>(e1);
+    position* ptr1 = &p1;
+    p1 = {1, 2, 3};
+
+    world.add<int>(e1);
+    position& p2 = world.component<position>(e1);
+    position* ptr2 = &p2;
+
+    CHECK(ptr1 != ptr2);
+    CHECK(p2.x == 1);
+    CHECK(p2.y == 2);
+    CHECK(p2.z == 3);
 }
 
 TEST_CASE("view", "[world]")
 {
     world world;
+    world.register_component<int>();
 
-    auto entity1 = world.create<int, char, test_class>();
-    auto entity2 = world.create<int>();
+    auto view1 = world.make_view<int>();
 
-    auto view1 = world.get_view<int>();
-    view1.each([](entity e, int value) { INFO("view1: " << e << " " << value); });
+    auto e1 = world.create();
+    auto e2 = world.create();
 
-    auto view2 = world.get_view<int, test_class>();
-    view2.each([](entity e, int value, test_class& test) { INFO("view2: " << e << " " << value); });
+    world.add<int>(e1);
+    world.add<int>(e2);
+
+    world.component<int>(e1) = 1;
+    world.component<int>(e2) = 2;
+
+    view1->each([](int& value) { value += 10; });
+
+    CHECK(world.component<int>(e1) == 11);
+    CHECK(world.component<int>(e2) == 12);
 }
 
-TEST_CASE("view each", "[world]")
+/*TEST_CASE("view a", "[world]")
 {
-    world w;
+    world world;
+    world.register_component<position>();
 
-    auto entity1 = w.create<position, velocity>();
-    position& p1 = entity1.get_component<position>();
-    velocity& v1 = entity1.get_component<velocity>();
-    p1 = {1, 2, 3};
-    v1 = {2, 2, 2};
+    std::vector<entity> entities;
+    entities.reserve(1000000);
 
-    auto entity2 = w.create<position, velocity>();
-    position& p2 = entity2.get_component<position>();
-    velocity& v2 = entity2.get_component<velocity>();
-    p2 = {4, 5, 6};
-    v2 = {3, 3, 3};
+    for (std::size_t i = 0; i < 1000000; ++i)
+    {
+        const auto entity = world.create();
+        world.add<position>(entity);
+        entities.push_back(entity);
+    }
 
-    auto view = w.get_view<velocity, position>();
-    view.each([](entity e, velocity& v, position& p) {
-        p.x += v.x;
-        p.y += v.y;
-        p.z += v.z;
+    int counter = 0;
+    auto view = world.make_view<position>();
+    view->each([&counter](position& position) {
+        position.x = counter;
+        ++counter;
     });
 
-    CHECK(p1.x == 3);
-    CHECK(p1.y == 4);
-    CHECK(p1.z == 5);
-
-    CHECK(p2.x == 7);
-    CHECK(p2.y == 8);
-    CHECK(p2.z == 9);
+    for (int i = 0; i < 1000000; ++i)
+        CHECK(world.component<position>(entities[i]).x == i);
 }*/
+} // namespace ash::test

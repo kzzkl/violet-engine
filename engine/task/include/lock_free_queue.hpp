@@ -47,15 +47,15 @@ public:
         node_pointer old_head = m_free.load(std::memory_order_consume);
         while (true)
         {
-            if (!old_head.get_pointer())
+            if (!old_head.pointer())
                 return new value_type();
 
-            node_type* new_head_ptr = old_head->next.get_pointer();
-            node_pointer new_head(new_head_ptr, old_head.get_next_tag());
+            node_type* new_head_ptr = old_head->next.pointer();
+            node_pointer new_head(new_head_ptr, old_head.next_tag());
 
             if (m_free.compare_exchange_weak(old_head, new_head))
             {
-                return get_handle(old_head);
+                return handle(old_head);
             }
         }
     }
@@ -68,12 +68,12 @@ public:
     void deallocate(node_handle node)
     {
         node_pointer old_head = m_free.load(std::memory_order_consume);
-        node_type* new_head_ptr = get_pointer(node).get_pointer();
+        node_type* new_head_ptr = pointer(node).pointer();
 
         while (true)
         {
-            node_pointer new_head(new_head_ptr, old_head.get_tag());
-            new_head->next.set_pointer(old_head.get_pointer());
+            node_pointer new_head(new_head_ptr, old_head.tag());
+            new_head->next.pointer(old_head.pointer());
 
             if (m_free.compare_exchange_weak(old_head, new_head))
                 return;
@@ -86,44 +86,22 @@ public:
     void clear()
     {
         node_pointer head = m_free.load();
-        while (head.get_pointer())
+        while (head.pointer())
         {
             node_pointer next = head->next;
-            delete head.get_pointer();
+            delete head.pointer();
             head = next;
         }
         m_free.store(node_pointer(nullptr));
     }
 
-    /**
-     * @brief Returns the number of nodes in the pool.
-     *
-     * Since the size of the pool is generally not obtained, the size is not set as a member
-     * variable here, but the length is obtained by traversal, and the algorithm complexity is O
-     * (1).
-     *
-     * @return std::size_t the number of nodes
-     */
-    std::size_t size() const
-    {
-        std::size_t result = 0;
-        node_pointer head = m_free.load();
-        while (head.get_pointer())
-        {
-            ++result;
-            head = head->next;
-        }
-
-        return result;
-    }
-
 private:
-    node_handle get_handle(node_pointer pointer) const
+    node_handle handle(node_pointer pointer) const
     {
         return tagged_pointer_cast<value_type>(pointer);
     }
 
-    node_pointer get_pointer(node_handle handle) const
+    node_pointer pointer(node_handle handle) const
     {
         return tagged_pointer_cast<node_type>(handle);
     }
@@ -175,17 +153,17 @@ public:
             {
                 if (old_tail_next == nullptr)
                 {
-                    node_handle new_tail_next(new_node.get_pointer(), old_tail_next.get_next_tag());
+                    node_handle new_tail_next(new_node.pointer(), old_tail_next.next_tag());
                     if (old_tail->next.compare_exchange_weak(old_tail_next, new_tail_next))
                     {
-                        node_handle new_tail(new_node.get_pointer(), old_tail.get_next_tag());
+                        node_handle new_tail(new_node.pointer(), old_tail.next_tag());
                         m_tail.compare_exchange_strong(old_tail, new_tail);
                         return;
                     }
                 }
                 else
                 {
-                    node_handle new_tail(old_tail_next.get_pointer(), old_tail.get_next_tag());
+                    node_handle new_tail(old_tail_next.pointer(), old_tail.next_tag());
                     m_tail.compare_exchange_strong(old_tail, new_tail);
                 }
             }
@@ -211,26 +189,26 @@ public:
 
             if (old_head == m_head.load())
             {
-                if (old_head.get_pointer() == old_tail.get_pointer())
+                if (old_head.pointer() == old_tail.pointer())
                 {
-                    if (old_head_next.get_pointer() == nullptr)
+                    if (old_head_next.pointer() == nullptr)
                     {
                         return false;
                     }
                     else
                     {
-                        node_handle new_tail(old_head_next.get_pointer(), old_tail.get_next_tag());
+                        node_handle new_tail(old_head_next.pointer(), old_tail.next_tag());
                         m_tail.compare_exchange_strong(old_tail, new_tail);
                     }
                 }
                 else
                 {
-                    if (old_head_next.get_pointer() == nullptr)
+                    if (old_head_next.pointer() == nullptr)
                         continue;
 
                     value = old_head_next->data;
 
-                    node_handle new_head(old_head_next.get_pointer(), old_head.get_next_tag());
+                    node_handle new_head(old_head_next.pointer(), old_head.next_tag());
                     if (m_head.compare_exchange_weak(old_head, new_head))
                     {
                         m_pool.deallocate(old_head);

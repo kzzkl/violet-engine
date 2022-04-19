@@ -64,13 +64,13 @@ public:
     std::future<void> execute(task* t, std::size_t task_count);
     void notify_task_completion(bool force = false);
 
-    task_queue& get_queue(task_type type) { return m_queues[static_cast<std::size_t>(type)]; }
-    task_queue& operator[](task_type type) { return get_queue(type); }
+    task_queue& queue(task_type type) { return m_queues[static_cast<std::size_t>(type)]; }
+    task_queue& operator[](task_type type) { return queue(type); }
 
 private:
     std::array<task_queue, TASK_TYPE_COUNT> m_queues;
 
     std::promise<void> m_done;
-    std::atomic<uint32_t> m_remaining_tasks_count;
+    std::atomic<std::uint32_t> m_remaining_tasks_count;
 };
 } // namespace ash::task

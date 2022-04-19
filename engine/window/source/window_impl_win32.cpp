@@ -34,27 +34,42 @@ std::string wstring_to_string(std::wstring_view str)
     return buffer;
 }
 
-void mouse_win32::clip_cursor(bool clip)
+void mouse_win32::reset()
 {
-    if (clip)
+    if (m_mode == mouse_mode::CURSOR_RELATIVE)
+        m_x = m_y = 0;
+
+    if (m_mode_change)
     {
-        RECT rect;
-        GetClientRect(m_hwnd, &rect);
-        MapWindowRect(m_hwnd, nullptr, &rect);
-        ClipCursor(&rect);
-    }
-    else
-    {
-        ClipCursor(nullptr);
+        if (m_mode == mouse_mode::CURSOR_ABSOLUTE)
+        {
+            ShowCursor(true);
+            ClipCursor(nullptr);
+        }
+        else
+        {
+            ShowCursor(false);
+            RECT rect;
+            GetClientRect(m_hwnd, &rect);
+            MapWindowRect(m_hwnd, nullptr, &rect);
+            ClipCursor(&rect);
+        }
+
+        m_mode_change = false;
     }
 }
 
-void mouse_win32::show_cursor(bool show)
+void mouse_win32::change_mode(mouse_mode mode)
 {
-    ShowCursor(show);
+    m_mode_change = true;
+    m_mode = mode;
+    m_x = m_y = 0;
 }
 
-bool window_impl_win32::initialize(uint32_t width, uint32_t height, std::string_view title)
+bool window_impl_win32::initialize(
+    std::uint32_t width,
+    std::uint32_t height,
+    std::string_view title)
 {
     m_instance = GetModuleHandle(0);
 
@@ -106,7 +121,7 @@ bool window_impl_win32::initialize(uint32_t width, uint32_t height, std::string_
         log::error("RegisterRawInputDevices failed");
     }
 
-    m_mouse.set_window_handle(m_hwnd);
+    m_mouse.window_handle(m_hwnd);
 
     show();
 
@@ -115,7 +130,9 @@ bool window_impl_win32::initialize(uint32_t width, uint32_t height, std::string_
 
 void window_impl_win32::tick()
 {
-    m_mouse.reset_relative_cursor();
+    m_mouse.reset();
+    m_mouse.tick();
+    m_keyboard.tick();
 
     MSG msg;
     while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
@@ -131,12 +148,12 @@ void window_impl_win32::show()
     UpdateWindow(m_hwnd);
 }
 
-const void* window_impl_win32::get_handle() const
+const void* window_impl_win32::handle() const
 {
     return &m_hwnd;
 }
 
-window_rect window_impl_win32::get_rect() const
+window_rect window_impl_win32::rect() const
 {
     RECT rect = {};
     GetClientRect(m_hwnd, &rect);
@@ -150,7 +167,7 @@ window_rect window_impl_win32::get_rect() const
     return result;
 }
 
-void window_impl_win32::set_title(std::string_view title)
+void window_impl_win32::title(std::string_view title)
 {
     SetWindowText(m_hwnd, string_to_wstring(title).c_str());
 }
@@ -188,25 +205,28 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
     switch (message)
     {
     case WM_MOUSEMOVE: {
-        if (m_mouse.get_mode() == mouse_mode::CURSOR_ABSOLUTE)
-            m_mouse.set_cursor(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
+        if (m_mouse.mode() == mouse_mode::CURSOR_ABSOLUTE)
+            m_mouse.cursor(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
         break;
     }
     case WM_INPUT: {
-        if (m_mouse.get_mode() == mouse_mode::CURSOR_RELATIVE)
+        if (m_mouse.mode() == mouse_mode::CURSOR_RELATIVE)
         {
             RAWINPUT raw;
-            UINT rawSize = sizeof(raw);
+            UINT raw_size = sizeof(raw);
             GetRawInputData(
                 reinterpret_cast<HRAWINPUT>(lparam),
                 RID_INPUT,
                 &raw,
-                &rawSize,
+                &raw_size,
                 sizeof(RAWINPUTHEADER));
-            if (raw.header.dwType == RIM_TYPEMOUSE &&
-                !(raw.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE))
+            if (raw.header.dwType == RIM_TYPEMOUSE)
             {
-                m_mouse.set_cursor(raw.data.mouse.lLastX, raw.data.mouse.lLastY);
+                // Because handle_message may be called multiple times in a frame, it is necessary
+                // to accumulate mouse coordinates.
+                m_mouse.cursor(
+                    m_mouse.x() + raw.data.mouse.lLastX,
+                    m_mouse.y() + raw.data.mouse.lLastY);
             }
         }
         break;

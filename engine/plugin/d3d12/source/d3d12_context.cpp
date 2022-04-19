@@ -6,7 +6,6 @@ namespace ash::graphics::d3d12
 {
 d3d12_context::d3d12_context() noexcept
 {
-    d3d12_frame_counter::initialize(0, 3);
 }
 
 d3d12_context& d3d12_context::instance() noexcept
@@ -17,6 +16,8 @@ d3d12_context& d3d12_context::instance() noexcept
 
 bool d3d12_context::do_initialize(const context_config& config)
 {
+    d3d12_frame_counter::initialize(0, config.frame_resource);
+
     UINT flag = 0;
 
 #ifndef NDEBUG
@@ -60,6 +61,7 @@ bool d3d12_context::do_initialize(const context_config& config)
         *static_cast<const HWND*>(config.window_handle),
         config.width,
         config.height,
+        config.multiple_sampling,
         command_list.get());
 
     m_command->execute_command(command_list);

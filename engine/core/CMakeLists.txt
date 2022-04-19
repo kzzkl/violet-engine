@@ -1,6 +1,6 @@
 project(ash-core)
 
-add_library(${PROJECT_NAME} SHARED
+add_library(${PROJECT_NAME} STATIC
     ./source/application.cpp
     ./source/context.cpp
     ./source/plugin.cpp)
@@ -16,11 +16,6 @@ target_link_libraries(${PROJECT_NAME}
         ash::common
         ash::ecs
         ash::task)
-
-include(GenerateExportHeader)
-generate_export_header(${PROJECT_NAME}
-    EXPORT_MACRO_NAME CORE_API
-    EXPORT_FILE_NAME ${CMAKE_CURRENT_SOURCE_DIR}/include/core_exports.hpp)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

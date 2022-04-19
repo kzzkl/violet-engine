@@ -1,6 +1,6 @@
 project(ash-task)
 
-add_library(${PROJECT_NAME} SHARED
+add_library(${PROJECT_NAME} STATIC
     ./source/task_manager.cpp
     ./source/task_queue.cpp
     ./source/task.cpp
@@ -15,11 +15,6 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
         ash::common)
-
-include(GenerateExportHeader)
-generate_export_header(${PROJECT_NAME}
-    EXPORT_MACRO_NAME TASK_API
-    EXPORT_FILE_NAME ${CMAKE_CURRENT_SOURCE_DIR}/include/task_exports.hpp)
 
 install(DIRECTORY ./include/ DESTINATION include/ash/task)
 

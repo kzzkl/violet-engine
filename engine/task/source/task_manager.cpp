@@ -8,9 +8,14 @@ task_manager::task_manager(std::size_t num_thread) : m_thread_pool(num_thread)
 {
 }
 
+task_manager::handle task_manager::schedule_group(std::string_view name, task_type type)
+{
+    return do_schedule<task_group>(name, type);
+}
+
 void task_manager::execute(handle root)
 {
-    auto count = root->get_reachable_tasks_count();
+    auto count = root->reachable_tasks_count();
     auto done = m_queues.execute(
         &(*root),
         count[to_integer_v<task_type::NONE>] + count[to_integer_v<task_type::MAIN_THREAD>]);

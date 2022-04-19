@@ -8,8 +8,8 @@ namespace ash::core
 {
 struct plugin_version
 {
-    uint32_t major;
-    uint32_t minor;
+    std::uint32_t major;
+    std::uint32_t minor;
 };
 
 struct plugin_info

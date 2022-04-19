@@ -4,20 +4,24 @@
 
 namespace ash::core
 {
-class CORE_API application : public context
+class application : public context
 {
 public:
     application(std::string_view config_path = "config");
     application(const application&) = delete;
 
-    template <derived_from_submodule T, typename... Args>
+    template <derived_from_system T, typename... Args>
     void install(Args&&... args)
     {
-        install_submodule<T>(std::forward<Args>(args)...);
+        install_system<T>(std::forward<Args>(args)...);
     }
 
     void run();
+    void exit();
 
     application& operator=(const application&) = delete;
+
+private:
+    std::atomic<bool> m_exit;
 };
 } // namespace ash::core

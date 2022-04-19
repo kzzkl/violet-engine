@@ -55,7 +55,7 @@ void task::remove_next_task(task& task)
     }
 }
 
-std::array<std::size_t, TASK_TYPE_COUNT> task::get_reachable_tasks_count()
+std::array<std::size_t, TASK_TYPE_COUNT> task::reachable_tasks_count()
 {
     std::array<std::size_t, TASK_TYPE_COUNT> result = {};
 
@@ -73,7 +73,7 @@ std::array<std::size_t, TASK_TYPE_COUNT> task::get_reachable_tasks_count()
             q.push(next_task);
 
         next_tasks.clear();
-        ++result[static_cast<std::size_t>(t->get_type())];
+        ++result[static_cast<std::size_t>(t->type())];
     }
 
     return result;
@@ -93,6 +93,34 @@ void task::reset_counter_and_get_reachable_tasks(std::vector<task*>& next_tasks)
         --next->m_uncompleted_dependency_count;
         if (next->m_uncompleted_dependency_count == 0)
             next_tasks.push_back(next);
+    }
+}
+
+task_group::task_group(std::string_view name, task_type type) : task(name, type)
+{
+}
+
+void task_group::execute()
+{
+    for (auto t : m_tasks)
+        t->execute();
+}
+
+void task_group::add(task* task)
+{
+    m_tasks.push_back(task);
+}
+
+void task_group::remove(task* task)
+{
+    for (auto& t : m_tasks)
+    {
+        if (t == task)
+        {
+            t = m_tasks.back();
+            m_tasks.pop_back();
+            return;
+        }
     }
 }
 } // namespace ash::task

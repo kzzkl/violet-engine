@@ -8,7 +8,8 @@ add_library(${PROJECT_NAME} SHARED
     ./source/d3d12_plugin.cpp
     ./source/d3d12_renderer.cpp
     ./source/d3d12_resource.cpp
-    ./source/d3d12_utility.cpp)
+    ./source/d3d12_utility.cpp
+    ./source/DDSTextureLoader12.cpp)
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
@@ -21,7 +22,8 @@ target_link_libraries(${PROJECT_NAME}
         d3d12
         dxgi
         dxguid
-        d3dcompiler)
+        d3dcompiler
+        ash::math)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

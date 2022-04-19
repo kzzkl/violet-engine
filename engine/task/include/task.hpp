@@ -1,6 +1,5 @@
 #pragma once
 
-#include "task_exports.hpp"
 #include <array>
 #include <atomic>
 #include <string_view>
@@ -8,7 +7,7 @@
 
 namespace ash::task
 {
-enum class task_type : uint8_t
+enum class task_type : std::uint8_t
 {
     NONE,
     MAIN_THREAD
@@ -25,7 +24,7 @@ static constexpr std::size_t to_integer_v = to_integer<type>::value;
 
 static constexpr std::size_t TASK_TYPE_COUNT = 2;
 
-class TASK_API task
+class task
 {
 public:
     task(std::string_view name, task_type type);
@@ -38,10 +37,10 @@ public:
     void add_dependency(task& dependency);
     void remove_dependency(task& dependency);
 
-    std::array<std::size_t, TASK_TYPE_COUNT> get_reachable_tasks_count();
+    std::array<std::size_t, TASK_TYPE_COUNT> reachable_tasks_count();
 
-    std::string_view get_name() const noexcept { return m_name; }
-    task_type get_type() const noexcept { return m_type; }
+    std::string_view name() const noexcept { return m_name; }
+    task_type type() const noexcept { return m_type; }
 
 private:
     void add_next_task(task& task);
@@ -52,8 +51,8 @@ private:
 
     std::vector<task*> m_next;
 
-    uint8_t m_dependency_count;
-    std::atomic<uint8_t> m_uncompleted_dependency_count;
+    std::uint8_t m_dependency_count;
+    std::atomic<std::uint8_t> m_uncompleted_dependency_count;
 
     std::string m_name;
     task_type m_type;
@@ -73,5 +72,19 @@ public:
 
 private:
     Callable m_callable;
+};
+
+class task_group : public task
+{
+public:
+    task_group(std::string_view name, task_type type);
+
+    virtual void execute() override;
+
+    void add(task* task);
+    void remove(task* task);
+
+private:
+    std::vector<task*> m_tasks;
 };
 } // namespace ash::task

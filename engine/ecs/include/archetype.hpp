@@ -1,318 +1,315 @@
 #pragma once
 
+#include "assert.hpp"
 #include "component.hpp"
+#include "entity.hpp"
 #include "storage.hpp"
 #include <algorithm>
-#include <unordered_map>
 
 namespace ash::ecs
 {
-class archetype_layout
+template <typename Archetype>
+class archetype_iterator
 {
 public:
-    struct layout_info
-    {
-        const component_info* component;
-        std::size_t offset;
-    };
+    using archetype_type = Archetype;
+    using self_type = archetype_iterator<Archetype>;
 
 public:
-    archetype_layout(std::size_t capacity = CHUNK_SIZE) noexcept : m_capacity(capacity) {}
-
-    void insert(const component_set& components)
+    archetype_iterator(archetype_type* archetype) : archetype_iterator(archetype, 0) {}
+    archetype_iterator(archetype_type* archetype, std::size_t offset)
+        : m_archetype(archetype),
+          m_offset(offset)
     {
-        for (auto [id, info] : components)
-            m_layout[id] = {info, 0};
-
-        rebuild();
     }
 
-    void erase(const component_set& components)
+    entity entity()
     {
-        for (auto [id, info] : components)
-        {
-            auto iter = m_layout.find(id);
-            if (iter != m_layout.end())
-                m_layout.erase(iter);
-        }
-
-        rebuild();
-    }
-
-    std::size_t get_entity_per_chunk() const noexcept { return m_entity_per_chunk; }
-
-    auto begin() { return m_layout.begin(); }
-    auto end() { return m_layout.end(); }
-    auto begin() const { return m_layout.begin(); }
-    auto end() const { return m_layout.end(); }
-
-    auto cbegin() const { return m_layout.cbegin(); }
-    auto cend() const { return m_layout.cend(); }
-
-    auto find(component_id type) { return m_layout.find(type); }
-
-    bool empty() const noexcept { return m_layout.empty(); }
-
-    layout_info& at(component_id type) { return m_layout.at(type); }
-    layout_info& operator[](component_id type) { return at(type); }
-
-private:
-    void rebuild()
-    {
-        m_entity_per_chunk = 0;
-
-        if (m_layout.empty())
-            return;
-
-        std::vector<std::pair<component_id, layout_info>> list;
-        for (auto& [type, info] : m_layout)
-            list.push_back(std::make_pair(type, info));
-
-        std::sort(list.begin(), list.end(), [](const auto& a, const auto& b) {
-            return a.second.component->align == b.second.component->align
-                       ? a.first < b.first
-                       : a.second.component->align > b.second.component->align;
-        });
-
-        std::size_t entity_size = 0;
-        for (const auto& [type, info] : list)
-            entity_size += info.component->size;
-
-        m_entity_per_chunk = m_capacity / entity_size;
-
-        std::size_t offset = 0;
-        for (auto& [type, info] : list)
-        {
-            info.offset = offset;
-            m_layout[type] = info;
-
-            offset += info.component->size * m_entity_per_chunk;
-        }
-    }
-
-    std::size_t m_capacity;
-    std::size_t m_entity_per_chunk;
-    std::unordered_map<component_id, layout_info> m_layout;
-};
-
-template <typename... Components>
-class archetype_handle
-{
-public:
-    using self_type = archetype_handle<Components...>;
-    using reference = self_type&;
-
-    using storage_type = storage;
-    using layout_type = archetype_layout;
-
-public:
-    archetype_handle(std::size_t index, storage_type* storage, layout_type* layout)
-        : m_index(index),
-          m_storage(storage),
-          m_layout(layout)
-    {
-        m_offset = {m_layout->at(component_id_v<Components>).offset...};
+        return m_archetype->m_entity_registry->update(m_archetype->m_entities[m_offset]);
     }
 
     template <typename Component>
-    Component& get_component()
+    Component& component()
     {
         auto [chunk_index, entity_index] = std::div(
-            static_cast<const long>(m_index),
-            static_cast<const long>(m_layout->get_entity_per_chunk()));
+            static_cast<const long>(m_offset),
+            static_cast<const long>(m_archetype->m_entity_per_chunk));
 
-        std::size_t offset = m_offset[component_list<Components...>::template index<Component>()] +
-                             sizeof(Component) * entity_index;
+        std::size_t id = component_index::value<Component>();
+        std::size_t address = m_archetype->m_offset[id] +
+                              entity_index * m_archetype->m_component_registry->at(id).size();
 
-        return *reinterpret_cast<Component*>(m_storage->get(chunk_index, offset));
+        return *static_cast<Component*>(m_archetype->m_storage.get(chunk_index, address));
     }
 
-    self_type operator+(std::size_t offset)
+    self_type operator+(std::size_t offset) const noexcept
     {
-        self_type result = *this;
-        result += offset;
+        return self_type(m_archetype, m_offset + offset);
+    }
+
+    self_type& operator++() noexcept
+    {
+        ++m_offset;
+        return *this;
+    }
+
+    self_type operator++(int) noexcept
+    {
+        self_type result(m_archetype, m_offset);
+        ++m_offset;
         return result;
     }
 
-    self_type operator-(std::size_t offset)
+    self_type& operator+=(std::size_t offset) noexcept
     {
-        self_type result = *this;
-        result -= offset;
-        return result;
-    }
-
-    reference operator+=(std::size_t offset)
-    {
-        m_index += offset;
+        m_offset += offset;
         return *this;
     }
 
-    reference operator-=(std::size_t offset)
+    bool operator==(const self_type& other) const noexcept
     {
-        m_index -= offset;
-        return *this;
+        return m_archetype == other.m_archetype && m_offset == other.m_offset;
     }
 
-    reference set_index(std::size_t index) noexcept
-    {
-        m_index = index;
-        return *this;
-    }
+    bool operator!=(const self_type& other) const noexcept { return !operator==(other); }
 
 private:
-    std::size_t m_index;
-    storage_type* m_storage;
-    layout_type* m_layout;
-
-    std::array<std::size_t, sizeof...(Components)> m_offset;
+    archetype_type* m_archetype;
+    std::size_t m_offset;
 };
 
 class archetype
 {
 public:
-    template <typename... Components>
-    using handle = archetype_handle<Components...>;
-
-    using storage_type = storage;
-    using layout_type = archetype_layout;
+    using iterator = archetype_iterator<archetype>;
 
 public:
-    archetype(const layout_type& layout) noexcept : m_layout(layout), m_size(0) {}
-
-    void add() { construct(allocate()); }
-
-    void remove(std::size_t index)
+    archetype(
+        const std::vector<component_id>& components,
+        const component_registry& component_registry,
+        entity_registry& entity_registry) noexcept
+        : m_component_registry(&component_registry),
+          m_entity_registry(&entity_registry),
+          m_components(components)
     {
-        std::size_t back_index = m_size - 1;
-
-        if (index != back_index)
-            swap(index, back_index);
-
-        destruct(back_index);
-
-        --m_size;
-        if (m_size % m_layout.get_entity_per_chunk() == 0)
-            m_storage.pop_chunk();
+        for (component_id id : components)
+            m_mask.set(id);
+        initialize_layout(components);
     }
 
-    void move(std::size_t index, archetype& target)
-    {
-        auto [source_chunk_index, source_entity_index] = std::div(
-            static_cast<const long>(index),
-            static_cast<const long>(m_layout.get_entity_per_chunk()));
+    virtual ~archetype() { clear(); }
 
-        auto& target_layout = target.m_layout;
-        std::size_t target_index = target.allocate();
+    void add(entity entity)
+    {
+        std::size_t index = allocate(entity);
+        construct(index);
+
+        auto& info = m_entity_registry->at(entity);
+        info.archetype = this;
+        info.index = index;
+    }
+
+    void move(entity entity, archetype& target)
+    {
+        ASH_ASSERT(this != &target);
+
+        auto& entity_info = m_entity_registry->at(entity);
+        ASH_ASSERT(entity_info.archetype == this);
+
+        auto [source_chunk_index, source_entity_index] = std::div(
+            static_cast<const long>(entity_info.index),
+            static_cast<const long>(m_entity_per_chunk));
+
+        std::size_t target_index = target.allocate(entity);
         auto [target_chunk_index, target_entity_index] = std::div(
             static_cast<const long>(target_index),
-            static_cast<const long>(target_layout.get_entity_per_chunk()));
+            static_cast<const long>(target.m_entity_per_chunk));
 
-        for (auto& [type, info] : m_layout)
+        for (component_id id : m_components)
         {
-            auto iter = target_layout.find(type);
-            if (iter != target_layout.end())
+            if (target.m_mask.test(id))
             {
-                std::size_t source_offset =
-                    info.offset + source_entity_index * info.component->size;
-                std::size_t target_offset =
-                    iter->second.offset + target_entity_index * iter->second.component->size;
-                info.component->move_construct(
+                auto& info = m_component_registry->at(id);
+
+                std::size_t source_offset = m_offset[id] + source_entity_index * info.size();
+                std::size_t target_offset = target.m_offset[id] + target_entity_index * info.size();
+                info.move_construct(
                     m_storage.get(source_chunk_index, source_offset),
                     target.m_storage.get(target_chunk_index, target_offset));
             }
         }
 
-        for (auto [type, info] : target_layout)
+        for (component_id id : target.m_components)
         {
-            if (m_layout.find(type) == m_layout.end())
+            if (!m_mask.test(id))
             {
-                std::size_t offset = info.offset + target_entity_index * info.component->size;
-                info.component->construct(target.m_storage.get(target_chunk_index, offset));
+                auto& info = m_component_registry->at(id);
+
+                std::size_t offset = target.m_offset[id] + target_entity_index * info.size();
+                info.construct(target.m_storage.get(target_chunk_index, offset));
             }
         }
 
-        remove(index);
+        remove(entity_info.index);
+
+        entity_info.archetype = &target;
+        entity_info.index = target_index;
     }
 
-    template <typename... Components>
-    handle<Components...> begin()
+    void clear() noexcept
     {
-        return handle<Components...>(0, &m_storage, &m_layout);
+        for (std::size_t i = 0; i < m_entities.size(); ++i)
+            destruct(i);
+
+        m_storage.clear();
+        m_entities.clear();
     }
 
-    template <typename... Components>
-    handle<Components...> end()
+    [[nodiscard]] iterator begin() { return iterator(this, 0); }
+    [[nodiscard]] iterator end() { return iterator(this, size()); }
+
+    [[nodiscard]] inline std::size_t size() const noexcept { return m_entities.size(); }
+    [[nodiscard]] inline std::size_t entity_per_chunk() const noexcept
     {
-        return handle<Components...>(size(), &m_storage, &m_layout);
+        return m_entity_per_chunk;
     }
 
-    const layout_type& get_layout() const noexcept { return m_layout; }
-
-    inline std::size_t size() const noexcept { return m_size; }
+    [[nodiscard]] inline const std::vector<component_id>& components() const noexcept
+    {
+        return m_components;
+    }
+    [[nodiscard]] inline const component_mask& mask() const noexcept { return m_mask; }
 
 private:
-    std::size_t allocate()
+    friend class iterator;
+
+    void initialize_layout(const std::vector<component_id>& components)
     {
-        std::size_t index = m_size++;
-        if (index >= get_capacity())
+        m_entity_per_chunk = 0;
+
+        struct layout_info
+        {
+            component_id id;
+            std::size_t size;
+            std::size_t align;
+        };
+
+        std::vector<layout_info> list(components.size());
+        std::transform(components.begin(), components.end(), list.begin(), [this](component_id id) {
+            return layout_info{
+                id,
+                m_component_registry->at(id).size(),
+                m_component_registry->at(id).align()};
+        });
+
+        std::sort(list.begin(), list.end(), [](const auto& a, const auto& b) {
+            return a.align == b.align ? a.id < b.id : a.align > b.align;
+        });
+
+        std::size_t entity_size = 0;
+        for (const auto& info : list)
+            entity_size += info.size;
+
+        m_entity_per_chunk = CHUNK_SIZE / entity_size;
+
+        std::size_t offset = 0;
+        for (const auto& info : list)
+        {
+            m_offset[info.id] = static_cast<std::uint16_t>(offset);
+            offset += info.size * m_entity_per_chunk;
+        }
+    }
+
+    void remove(std::size_t index)
+    {
+        std::size_t back_index = m_entities.size() - 1;
+
+        if (index != back_index)
+        {
+            swap(index, back_index);
+            m_entity_registry->at(m_entities[back_index]).index = index;
+            std::swap(m_entities[index], m_entities[back_index]);
+        }
+
+        destruct(back_index);
+        m_entities.pop_back();
+
+        if (m_entities.size() % m_entity_per_chunk == 0)
+            m_storage.pop_chunk();
+    }
+
+    std::size_t allocate(entity entity)
+    {
+        std::size_t index = m_entities.size();
+        m_entities.push_back(entity);
+        if (index >= capacity())
             m_storage.push_chunk();
         return index;
     }
 
     void construct(std::size_t index)
     {
-        auto [chunk_index, entity_index] = std::div(
-            static_cast<const long>(index),
-            static_cast<const long>(m_layout.get_entity_per_chunk()));
+        auto [chunk_index, entity_index] =
+            std::div(static_cast<const long>(index), static_cast<const long>(m_entity_per_chunk));
 
-        for (auto& [type, info] : m_layout)
+        for (component_id id : m_components)
         {
-            std::size_t offset = info.offset + entity_index * info.component->size;
-            info.component->construct(m_storage.get(chunk_index, offset));
+            auto& info = m_component_registry->at(id);
+
+            std::size_t offset = m_offset[id] + entity_index * info.size();
+            info.construct(m_storage.get(chunk_index, offset));
         }
     }
 
     void destruct(std::size_t index)
     {
-        auto [chunk_index, entity_index] = std::div(
-            static_cast<const long>(index),
-            static_cast<const long>(m_layout.get_entity_per_chunk()));
+        auto [chunk_index, entity_index] =
+            std::div(static_cast<const long>(index), static_cast<const long>(m_entity_per_chunk));
 
-        for (auto& [type, info] : m_layout)
+        for (component_id id : m_components)
         {
-            std::size_t offset = info.offset + entity_index * info.component->size;
-            info.component->destruct(m_storage.get(chunk_index, offset));
+            auto& info = m_component_registry->at(id);
+
+            std::size_t offset = m_offset[id] + entity_index * info.size();
+            info.destruct(m_storage.get(chunk_index, offset));
         }
     }
 
     void swap(std::size_t a, std::size_t b)
     {
-        auto [a_chunk_index, a_entity_index] = std::div(
-            static_cast<const long>(a),
-            static_cast<const long>(m_layout.get_entity_per_chunk()));
+        auto [a_chunk_index, a_entity_index] =
+            std::div(static_cast<const long>(a), static_cast<const long>(m_entity_per_chunk));
 
-        auto [b_chunk_index, b_entity_index] = std::div(
-            static_cast<const long>(b),
-            static_cast<const long>(m_layout.get_entity_per_chunk()));
+        auto [b_chunk_index, b_entity_index] =
+            std::div(static_cast<const long>(b), static_cast<const long>(m_entity_per_chunk));
 
-        for (auto& [type, info] : m_layout)
+        for (component_id id : m_components)
         {
-            std::size_t a_offset = info.offset + a_entity_index * info.component->size;
-            std::size_t b_offset = info.offset + b_entity_index * info.component->size;
-            info.component->swap(
+            auto& info = m_component_registry->at(id);
+
+            std::size_t a_offset = m_offset[id] + a_entity_index * info.size();
+            std::size_t b_offset = m_offset[id] + b_entity_index * info.size();
+            info.swap(
                 m_storage.get(a_chunk_index, a_offset),
                 m_storage.get(b_chunk_index, b_offset));
         }
     }
 
-    std::size_t get_capacity() const noexcept
+    [[nodiscard]] std::size_t capacity() const noexcept
     {
-        return m_layout.get_entity_per_chunk() * m_storage.size();
+        return m_entity_per_chunk * m_storage.size();
     }
 
-    layout_type m_layout;
-    storage_type m_storage;
+    storage m_storage;
 
-    std::size_t m_size;
+    entity_registry* m_entity_registry;
+    const component_registry* m_component_registry;
+
+    std::vector<entity> m_entities;
+    std::vector<component_id> m_components;
+    component_mask m_mask;
+
+    std::size_t m_entity_per_chunk;
+    std::array<std::uint16_t, MAX_COMPONENT> m_offset;
 };
 } // namespace ash::ecs

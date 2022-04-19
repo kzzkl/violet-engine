@@ -10,6 +10,9 @@ namespace ash::graphics::d3d12
 class d3d12_resource : public resource
 {
 public:
+    using transition_list = std::vector<std::pair<d3d12_resource*, D3D12_RESOURCE_STATES>>;
+
+public:
     d3d12_resource() noexcept;
     d3d12_resource(
         d3d12_ptr<D3D12Resource> resource,
@@ -19,11 +22,14 @@ public:
 
     virtual ~d3d12_resource() = default;
 
-    inline D3D12Resource* get_resource() const noexcept { return m_resource.Get(); }
+    inline D3D12Resource* resource() const noexcept { return m_resource.Get(); }
 
     void transition_state(D3D12_RESOURCE_STATES state, D3D12GraphicsCommandList* command_list);
+    static void transition_state(
+        const transition_list& transition,
+        D3D12GraphicsCommandList* command_list);
 
-    std::size_t get_size() const;
+    std::size_t size() const;
 
     d3d12_resource& operator=(const d3d12_resource&) = delete;
     d3d12_resource& operator=(d3d12_resource&&) noexcept = default;
@@ -39,16 +45,39 @@ public:
     d3d12_back_buffer() noexcept;
     d3d12_back_buffer(
         d3d12_ptr<D3D12Resource> resource,
-        D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON) noexcept;
+        D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON);
     d3d12_back_buffer(const d3d12_back_buffer&) = delete;
     d3d12_back_buffer(d3d12_back_buffer&& other) noexcept;
 
     virtual ~d3d12_back_buffer();
 
-    D3D12_CPU_DESCRIPTOR_HANDLE get_cpu_handle() const;
+    D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle() const;
 
     d3d12_back_buffer& operator=(const d3d12_back_buffer&) = delete;
     d3d12_back_buffer& operator=(d3d12_back_buffer&& other) noexcept;
+
+private:
+    std::size_t m_descriptor_offset;
+};
+
+class d3d12_render_target : public d3d12_resource
+{
+public:
+    d3d12_render_target() noexcept;
+    d3d12_render_target(
+        std::size_t width,
+        std::size_t height,
+        DXGI_FORMAT format,
+        std::size_t multiple_sampling = 1);
+    d3d12_render_target(const d3d12_render_target&) = delete;
+    d3d12_render_target(d3d12_render_target&& other) noexcept;
+
+    virtual ~d3d12_render_target();
+
+    D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle() const;
+
+    d3d12_render_target& operator=(const d3d12_render_target&) = delete;
+    d3d12_render_target& operator=(d3d12_render_target&& other) noexcept;
 
 private:
     std::size_t m_descriptor_offset;
@@ -59,15 +88,16 @@ class d3d12_depth_stencil_buffer : public d3d12_resource
 public:
     d3d12_depth_stencil_buffer() noexcept;
     d3d12_depth_stencil_buffer(
-        const D3D12_RESOURCE_DESC& desc,
-        const D3D12_HEAP_PROPERTIES& heap_properties,
-        const D3D12_CLEAR_VALUE& clear);
+        std::size_t width,
+        std::size_t height,
+        DXGI_FORMAT format,
+        std::size_t multiple_sampling = 1);
     d3d12_depth_stencil_buffer(const d3d12_depth_stencil_buffer&) = delete;
     d3d12_depth_stencil_buffer(d3d12_depth_stencil_buffer&& other) noexcept;
 
     virtual ~d3d12_depth_stencil_buffer();
 
-    D3D12_CPU_DESCRIPTOR_HANDLE get_cpu_handle() const;
+    D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle() const;
 
     d3d12_depth_stencil_buffer& operator=(const d3d12_depth_stencil_buffer&) = delete;
     d3d12_depth_stencil_buffer& operator=(d3d12_depth_stencil_buffer&& other) noexcept;
@@ -96,7 +126,7 @@ public:
 
     virtual ~d3d12_upload_buffer();
 
-    void upload(const void* data, std::size_t size);
+    virtual void upload(const void* data, std::size_t size, std::size_t offset) override;
 
     d3d12_upload_buffer& operator=(const d3d12_upload_buffer&) = delete;
     d3d12_upload_buffer& operator=(d3d12_upload_buffer&& other) noexcept;
@@ -105,18 +135,20 @@ private:
     void* m_mapped;
 };
 
-class d3d12_vertex_buffer : public d3d12_default_buffer
+class d3d12_vertex_buffer : public resource
 {
 public:
-    d3d12_vertex_buffer(
-        const void* data,
-        std::size_t vertex_size,
-        std::size_t vertex_count,
-        D3D12GraphicsCommandList* command_list);
+    d3d12_vertex_buffer(const vertex_buffer_desc& desc, D3D12GraphicsCommandList* command_list);
 
-    inline const D3D12_VERTEX_BUFFER_VIEW& get_view() const noexcept { return m_view; }
+    inline const D3D12_VERTEX_BUFFER_VIEW& view() const noexcept { return m_view; }
+
+    virtual void upload(const void* data, std::size_t size, std::size_t offset)
+    {
+        m_resource->upload(data, size, offset);
+    }
 
 private:
+    std::unique_ptr<d3d12_resource> m_resource;
     D3D12_VERTEX_BUFFER_VIEW m_view;
 };
 
@@ -129,12 +161,21 @@ public:
         std::size_t index_count,
         D3D12GraphicsCommandList* command_list);
 
-    inline const D3D12_INDEX_BUFFER_VIEW& get_view() const noexcept { return m_view; }
-    inline std::size_t get_index_count() const noexcept { return m_index_count; }
+    inline const D3D12_INDEX_BUFFER_VIEW& view() const noexcept { return m_view; }
+    inline std::size_t index_count() const noexcept { return m_index_count; }
 
 private:
     D3D12_INDEX_BUFFER_VIEW m_view;
     std::size_t m_index_count;
+};
+
+class d3d12_texture : public d3d12_resource
+{
+public:
+    d3d12_texture(
+        const std::uint8_t* data,
+        std::size_t size,
+        D3D12GraphicsCommandList* command_list);
 };
 
 template <typename T>
@@ -213,12 +254,12 @@ public:
     std::size_t allocate(std::size_t size = 1);
     void deallocate(std::size_t begin, std::size_t size = 1);
 
-    inline D3D12DescriptorHeap* get_heap() const noexcept { return m_heap.Get(); }
+    inline D3D12DescriptorHeap* heap() const noexcept { return m_heap.Get(); }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE get_cpu_handle(std::size_t index);
-    D3D12_GPU_DESCRIPTOR_HANDLE get_gpu_handle(std::size_t index);
+    D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle(std::size_t index);
+    D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle(std::size_t index);
 
-    inline UINT get_increment_size() const noexcept { return m_increment_size; }
+    inline UINT increment_size() const noexcept { return m_increment_size; }
 
 private:
     index_allocator<std::size_t> m_index_allocator;
@@ -237,12 +278,12 @@ public:
 public:
     d3d12_resource_manager();
 
-    d3d12_descriptor_heap* get_heap(D3D12_DESCRIPTOR_HEAP_TYPE type) const
+    d3d12_descriptor_heap* heap(D3D12_DESCRIPTOR_HEAP_TYPE type) const
     {
         return m_heaps[type].get();
     }
 
-    d3d12_descriptor_heap* get_visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE type) const
+    d3d12_descriptor_heap* visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE type) const
     {
         return m_visible_heaps[type].get();
     }

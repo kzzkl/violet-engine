@@ -50,58 +50,6 @@ bool equal(const ash::math::float4_simd& a, const ash::math::float4_simd& b)
     return equal(va, vb);
 }
 
-bool equal(const ash::math::float2x2& a, const ash::math::float2x2& b)
-{
-    for (std::size_t i = 0; i < 2; ++i)
-    {
-        for (std::size_t j = 0; j < 2; ++j)
-        {
-            if (VALUE_WITH_MARGIN(a[i][j]) != b[i][j])
-                return false;
-        }
-    }
-    return true;
-}
-
-bool equal(const ash::math::float2x3& a, const ash::math::float2x3& b)
-{
-    for (std::size_t i = 0; i < 2; ++i)
-    {
-        for (std::size_t j = 0; j < 3; ++j)
-        {
-            if (VALUE_WITH_MARGIN(a[i][j]) != b[i][j])
-                return false;
-        }
-    }
-    return true;
-}
-
-bool equal(const ash::math::float3x2& a, const ash::math::float3x2& b)
-{
-    for (std::size_t i = 0; i < 3; ++i)
-    {
-        for (std::size_t j = 0; j < 2; ++j)
-        {
-            if (VALUE_WITH_MARGIN(a[i][j]) != b[i][j])
-                return false;
-        }
-    }
-    return true;
-}
-
-bool equal(const ash::math::float3x3& a, const ash::math::float3x3& b)
-{
-    for (std::size_t i = 0; i < 3; ++i)
-    {
-        for (std::size_t j = 0; j < 3; ++j)
-        {
-            if (VALUE_WITH_MARGIN(a[i][j]) != b[i][j])
-                return false;
-        }
-    }
-    return true;
-}
-
 bool equal(const ash::math::float4x4& a, const ash::math::float4x4& b)
 {
     for (std::size_t i = 0; i < 4; ++i)

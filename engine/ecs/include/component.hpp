@@ -1,83 +1,80 @@
 #pragma once
 
-#include "uuid.hpp"
+#include "index_generator.hpp"
 #include <bitset>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <vector>
 
 namespace ash::ecs
 {
-using component_id = std::size_t;
+using component_id = std::uint16_t;
 
-template <typename T>
-struct component_trait;
+struct component_index : public index_generator<component_index, component_id>
+{
+};
 
-template <typename T>
-static constexpr component_id component_id_v = component_trait<T>::id;
-
-template <typename... Components>
-class component_list
+class component_constructer
 {
 public:
-    template <typename... AddTypes>
-    using add = component_list<Components..., AddTypes...>;
+    virtual ~component_constructer() = default;
+
+    virtual void construct(void* target) {}
+    virtual void move_construct(void* source, void* target) {}
+    virtual void destruct(void* target) {}
+    virtual void swap(void* a, void* b) {}
+};
+
+template <typename Component>
+class default_component_constructer : public component_constructer
+{
+public:
+    virtual ~default_component_constructer() = default;
+
+    virtual void construct(void* target) override { new (target) Component(); }
+    virtual void move_construct(void* source, void* target) override
+    {
+        new (target) Component(std::move(*static_cast<Component*>(source)));
+    }
+    virtual void destruct(void* target) override { static_cast<Component*>(target)->~Component(); }
+    virtual void swap(void* a, void* b) override
+    {
+        std::swap(*static_cast<Component*>(a), *static_cast<Component*>(b));
+    }
+};
+
+class component_info
+{
+public:
+    component_info() noexcept : m_size(0), m_align(0), m_constructer(nullptr) {}
+    component_info(std::size_t size, std::size_t align, component_constructer* constructer) noexcept
+        : m_size(size),
+          m_align(align),
+          m_constructer(constructer)
+    {
+    }
+
+    void construct(void* target) const { m_constructer->construct(target); }
+    void move_construct(void* source, void* target) const
+    {
+        m_constructer->move_construct(source, target);
+    }
+    void destruct(void* target) const { m_constructer->destruct(target); }
+    void swap(void* a, void* b) const { m_constructer->swap(a, b); }
+
+    std::size_t size() const noexcept { return m_size; }
+    std::size_t align() const noexcept { return m_align; }
 
 private:
-    template <typename... Types>
-    struct template_index;
+    std::size_t m_size;
+    std::size_t m_align;
 
-    template <typename T, typename... Types>
-    struct template_index<T, T, Types...>
-    {
-        static constexpr std::size_t value = 0;
-    };
-
-    template <typename T, typename U, typename... Types>
-    struct template_index<T, U, Types...>
-    {
-        static_assert(sizeof...(Types) != 0);
-        static constexpr std::size_t value = 1 + template_index<T, Types...>::value;
-    };
-
-    template <typename T, typename... Types>
-    static constexpr std::size_t template_index_v = template_index<T, Types...>::value;
-
-public:
-    template <typename Functor>
-    static void each(Functor&& f)
-    {
-        (f.template operator()<Components>(), ...);
-    }
-
-    template <typename Component>
-    static constexpr std::size_t index()
-    {
-        return template_index_v<Component, Components...>;
-    }
-
-    template <typename Component>
-    constexpr static bool has()
-    {
-        return (std::is_same<Component, Components>::value || ...);
-    }
+    std::unique_ptr<component_constructer> m_constructer;
 };
-
-struct component_info
-{
-    std::size_t size;
-    std::size_t align;
-
-    std::function<void(void*)> construct;
-    std::function<void(void*, void*)> move_construct;
-    std::function<void(void*)> destruct;
-    std::function<void(void*, void*)> swap;
-};
-
-using component_set = std::vector<std::pair<component_id, component_info*>>;
-
-using component_index = std::size_t;
 
 static constexpr std::size_t MAX_COMPONENT = 512;
 using component_mask = std::bitset<MAX_COMPONENT>;
+
+using component_registry = std::array<component_info, MAX_COMPONENT>;
 } // namespace ash::ecs

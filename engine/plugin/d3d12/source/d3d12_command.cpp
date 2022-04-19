@@ -20,24 +20,25 @@ d3d12_render_command::d3d12_render_command(D3D12CommandAllocator* allocator, std
     m_command_list->Close();
 }
 
-void d3d12_render_command::set_pipeline(pipeline* pipeline)
+void d3d12_render_command::pipeline(pipeline_type* pipeline)
 {
-    D3D12PipelineState* pso = static_cast<d3d12_pipeline*>(pipeline)->get_pipeline_state();
+    D3D12PipelineState* pso = static_cast<d3d12_pipeline*>(pipeline)->pipeline_state();
     m_command_list->SetPipelineState(pso);
 }
 
-void d3d12_render_command::set_layout(pipeline_layout* layout)
+void d3d12_render_command::layout(layout_type* layout)
 {
     d3d12_parameter_layout* l = static_cast<d3d12_parameter_layout*>(layout);
-    m_command_list->SetGraphicsRootSignature(l->get_root_signature());
+    m_command_list->SetGraphicsRootSignature(l->root_signature());
 }
 
-void d3d12_render_command::set_parameter(std::size_t index, pipeline_parameter* parameter)
+void d3d12_render_command::parameter(std::size_t index, pipeline_parameter* parameter)
 {
     d3d12_pipeline_parameter* p = static_cast<d3d12_pipeline_parameter*>(parameter);
-    if (p->get_tier() == d3d12_parameter_tier_type::TIER1)
+    p->sync();
+    if (p->tier() == d3d12_parameter_tier_type::TIER1)
     {
-        auto tier1 = p->get_tier1_info();
+        auto tier1 = p->tier1();
         if (tier1.type == D3D12_ROOT_PARAMETER_TYPE_CBV)
             m_command_list->SetGraphicsRootConstantBufferView(
                 static_cast<UINT>(index),
@@ -49,7 +50,7 @@ void d3d12_render_command::set_parameter(std::size_t index, pipeline_parameter* 
     }
     else
     {
-        auto tier2 = p->get_tier2_info();
+        auto tier2 = p->tier2();
         m_command_list->SetGraphicsRootDescriptorTable(
             static_cast<UINT>(index),
             tier2.base_gpu_handle);
@@ -59,24 +60,31 @@ void d3d12_render_command::set_parameter(std::size_t index, pipeline_parameter* 
 void d3d12_render_command::draw(
     resource* vertex,
     resource* index,
+    std::size_t index_start,
+    std::size_t index_end,
     primitive_topology_type primitive_topology,
     resource* target)
 {
     d3d12_vertex_buffer* v = static_cast<d3d12_vertex_buffer*>(vertex);
     d3d12_index_buffer* i = static_cast<d3d12_index_buffer*>(index);
 
-    m_command_list->IASetVertexBuffers(0, 1, &v->get_view());
-    m_command_list->IASetIndexBuffer(&i->get_view());
+    m_command_list->IASetVertexBuffers(0, 1, &v->view());
+    m_command_list->IASetIndexBuffer(&i->view());
 
     if (primitive_topology == primitive_topology_type::TRIANGLE_LIST)
         m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     else if (primitive_topology == primitive_topology_type::LINE_LIST)
         m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 
-    m_command_list->DrawIndexedInstanced(static_cast<UINT>(i->get_index_count()), 1, 0, 0, 0);
+    m_command_list->DrawIndexedInstanced(
+        static_cast<UINT>(index_end - index_start),
+        1,
+        static_cast<UINT>(index_start),
+        0,
+        0);
 }
 
-void d3d12_render_command::set_allocator(D3D12CommandAllocator* allocator) noexcept
+void d3d12_render_command::allocator(D3D12CommandAllocator* allocator) noexcept
 {
     m_allocator = allocator;
 }
@@ -286,10 +294,10 @@ void d3d12_command_manager::switch_frame_resources()
     for (std::size_t i = 0; i < resource.concurrency; ++i)
         throw_if_failed(allocators[i]->Reset());
 
-    m_pre_command->set_allocator(allocators[0].Get());
-    m_post_command->set_allocator(allocators[0].Get());
+    m_pre_command->allocator(allocators[0].Get());
+    m_post_command->allocator(allocators[0].Get());
     for (std::size_t i = 0; i < m_render_command.size(); ++i)
-        m_render_command[i]->set_allocator(allocators[i].Get());
+        m_render_command[i]->allocator(allocators[i].Get());
 
     m_render_command_counter = 0;
 }

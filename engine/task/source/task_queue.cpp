@@ -49,16 +49,16 @@ void task_queue::wait_task(std::function<bool()> exit)
 
 std::future<void> task_queue_group::execute(task* t, std::size_t task_count)
 {
-    m_remaining_tasks_count = static_cast<uint32_t>(task_count);
+    m_remaining_tasks_count = static_cast<std::uint32_t>(task_count);
     m_done = std::promise<void>();
 
-    switch (t->get_type())
+    switch (t->type())
     {
     case task_type::NONE:
-        get_queue(task_type::NONE).push(t);
+        queue(task_type::NONE).push(t);
         break;
     case task_type::MAIN_THREAD:
-        get_queue(task_type::MAIN_THREAD).push(t);
+        queue(task_type::MAIN_THREAD).push(t);
         break;
     default:
         break;
@@ -71,8 +71,8 @@ void task_queue_group::notify_task_completion(bool force)
 {
     while (true)
     {
-        uint32_t old_value = m_remaining_tasks_count.load();
-        uint32_t new_value = force ? 0 : old_value - 1;
+        std::uint32_t old_value = m_remaining_tasks_count.load();
+        std::uint32_t new_value = force ? 0 : old_value - 1;
 
         if (old_value == m_remaining_tasks_count.load())
         {

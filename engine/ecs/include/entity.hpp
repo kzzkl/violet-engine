@@ -1,8 +1,85 @@
 #pragma once
 
+#include "assert.hpp"
 #include <cstdint>
+#include <vector>
 
 namespace ash::ecs
 {
-using entity_id = uint32_t;
+struct entity
+{
+    std::uint32_t index;
+    std::uint32_t version;
+
+    [[nodiscard]] bool operator==(const entity& other) const noexcept
+    {
+        return index == other.index && version == other.version;
+    }
+
+    [[nodiscard]] bool operator!=(const entity& other) const noexcept { return !operator==(other); }
+};
+
+static constexpr entity INVALID_ENTITY = {-1, 0};
+
+struct all_entity
+{
+};
+
+class archetype;
+struct entity_info
+{
+    std::uint32_t version;
+
+    archetype* archetype;
+    std::size_t index;
+};
+
+class entity_registry
+{
+public:
+    entity add()
+    {
+        entity result = {static_cast<std::uint32_t>(m_registry.size()), 0};
+        m_registry.emplace_back();
+        return result;
+    }
+
+    [[nodiscard]] entity update(entity entity) const noexcept
+    {
+        return {entity.index, m_registry[entity.index].version};
+    }
+
+    [[nodiscard]] bool vaild(entity entity) const noexcept
+    {
+        return entity.index < m_registry.size() &&
+               m_registry[entity.index].version == entity.version;
+    }
+
+    [[nodiscard]] entity_info& at(entity entity) noexcept
+    {
+        ASH_ASSERT(vaild(entity));
+        return m_registry.at(entity.index);
+    }
+
+    [[nodiscard]] const entity_info& at(entity entity) const noexcept
+    {
+        ASH_ASSERT(vaild(entity));
+        return m_registry.at(entity.index);
+    }
+
+    [[nodiscard]] entity_info& operator[](entity entity) noexcept
+    {
+        ASH_ASSERT(vaild(entity));
+        return m_registry[entity.index];
+    }
+
+    [[nodiscard]] const entity_info& operator[](entity entity) const noexcept
+    {
+        ASH_ASSERT(vaild(entity));
+        return m_registry[entity.index];
+    }
+
+private:
+    std::vector<entity_info> m_registry;
+};
 } // namespace ash::ecs

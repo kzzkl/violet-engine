@@ -3,10 +3,9 @@ project(test-ecs)
 find_package(Catch2 REQUIRED PATHS ${THIRD_PARTY_DIR}/Catch2)
 
 add_executable(${PROJECT_NAME}
-    ./source/test_archetype.cpp
+    ./source/test_benchmark.cpp
     ./source/test_component.cpp
     ./source/test_main.cpp
-    ./source/test_new_ecs.cpp
     ./source/test_storage.cpp
     ./source/test_world.cpp)
 
