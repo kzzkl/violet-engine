@@ -47,7 +47,6 @@ void bt3_world::simulation(float time_step)
 {
     m_updated_rigidbodies.clear();
     m_world->stepSimulation(time_step);
-    // m_world->stepSimulation(time_step, 10);
 }
 
 void bt3_world::debug()

@@ -319,6 +319,7 @@ void mmd_loader::load_physics(ecs::entity entity, mmd_resource& resource, const 
 
         if (!m_world.has_component<physics::rigidbody>(node_entity))
             m_world.add<physics::rigidbody>(node_entity);
+
         physics_nodes.push_back(node_entity);
         auto& rigidbody = m_world.component<physics::rigidbody>(node_entity);
 

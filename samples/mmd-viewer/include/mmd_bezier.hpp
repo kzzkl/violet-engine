@@ -11,7 +11,11 @@ public:
     mmd_bezier(const math::float2& p1, const math::float2& p2) noexcept;
 
     float evaluate(float x, float precision = 0.00001f) const noexcept;
+
     math::float2 sample(float t) const noexcept;
+    float sample_x(float t) const noexcept;
+    float sample_y(float t) const noexcept;
+
     void set(const math::float2& p1, const math::float2& p2) noexcept;
 
 private:

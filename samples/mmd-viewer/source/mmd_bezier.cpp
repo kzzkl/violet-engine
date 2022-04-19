@@ -12,20 +12,20 @@ float mmd_bezier::evaluate(float x, float precision) const noexcept
     float end = 1.0f;
     float temp = (begin + end) * 0.5f;
 
-    math::float2 p = sample(temp);
+    float p = sample_x(temp);
 
-    while (std::abs(p[0] - x) > precision)
+    while (std::abs(p - x) > precision)
     {
-        if (p[0] > x)
+        if (p > x)
             end = temp;
         else
             begin = temp;
 
         temp = (begin + end) * 0.5f;
-        p = sample(temp);
+        p = sample_x(temp);
     }
 
-    return p[1];
+    return sample_y(temp);
 }
 
 math::float2 mmd_bezier::sample(float t) const noexcept
@@ -41,6 +41,26 @@ math::float2 mmd_bezier::sample(float t) const noexcept
     math::float2 p123 = math::vector_plain::lerp(p12, p23, t);
 
     return math::vector_plain::lerp(p012, p123, t);
+}
+
+float mmd_bezier::sample_x(float t) const noexcept
+{
+    const float t2 = t * t;
+    const float t3 = t2 * t;
+    const float it = 1.0f - t;
+    const float it2 = it * it;
+
+    return t3 + 3 * t2 * it * m_p2[0] + 3 * t * it2 * m_p1[0];
+}
+
+float mmd_bezier::sample_y(float t) const noexcept
+{
+    const float t2 = t * t;
+    const float t3 = t2 * t;
+    const float it = 1.0f - t;
+    const float it2 = it * it;
+
+    return t3 + 3 * t2 * it * m_p2[1] + 3 * t * it2 * m_p1[1];
 }
 
 void mmd_bezier::set(const math::float2& p1, const math::float2& p2) noexcept

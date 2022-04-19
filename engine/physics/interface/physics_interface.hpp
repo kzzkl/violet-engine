@@ -75,6 +75,11 @@ public:
     virtual const math::float4x4& transform() const = 0;
     virtual void transform(const math::float4x4& world) = 0;
 
+    virtual void angular_velocity(const math::float3& velocity) = 0;
+    virtual void linear_velocity(const math::float3& velocity) = 0;
+
+    virtual void clear_forces() = 0;
+
     std::size_t user_data_index;
 };
 

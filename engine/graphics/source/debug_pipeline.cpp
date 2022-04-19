@@ -26,14 +26,10 @@ void debug_pipeline::draw_line(
     m_vertics.push_back(vertex{end, color});
 }
 
-void debug_pipeline::sync()
-{
-    m_vertex_buffer[m_index]->upload(m_vertics.data(), sizeof(vertex) * m_vertics.size(), 0);
-    m_index = (m_index + 1) % m_vertex_buffer.size();
-}
-
 void debug_pipeline::render(resource* target, render_command* command, render_parameter* pass)
 {
+    m_vertex_buffer[m_index]->upload(m_vertics.data(), sizeof(vertex) * m_vertics.size(), 0);
+
     command->pipeline(pipeline());
     command->layout(layout());
     command->parameter(0, pass->parameter());
@@ -44,5 +40,7 @@ void debug_pipeline::render(resource* target, render_command* command, render_pa
         m_vertics.size() * 2,
         primitive_topology_type::LINE_LIST,
         target);
+
+    m_index = (m_index + 1) % m_vertex_buffer.size();
 }
 } // namespace ash::graphics

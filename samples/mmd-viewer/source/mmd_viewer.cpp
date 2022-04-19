@@ -54,22 +54,6 @@ void mmd_viewer::update()
     delta += system<core::timer>().frame_delta();
     animation.evaluate(delta * 30.0f);
     animation.update(false);
-    animation.update(true);
-
-    m_skeleton_view->each([&](mmd_skeleton& skeleton) {
-        for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
-        {
-            math::float4x4_simd to_world = math::simd::load(skeleton.world[i]);
-            math::float4x4_simd initial =
-                math::simd::load(world.component<mmd_node>(skeleton.nodes[i]).initial_inverse);
-
-            math::float4x4_simd final_transform = math::matrix_simd::mul(initial, to_world);
-            math::simd::store(final_transform, skeleton.world[i]);
-        }
-
-        skeleton.parameter->set(0, skeleton.world.data(), skeleton.world.size());
-    });
-
     m_skeleton_view->each([&](mmd_skeleton& skeleton) {
         for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
         {
@@ -83,6 +67,26 @@ void mmd_viewer::update()
         }
     });
     scene.sync_local();
+
+    system<physics::physics>().simulation();
+
+    animation.update(true);
+
+    m_skeleton_view->each([&](mmd_skeleton& skeleton) {
+        for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
+        {
+            auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
+
+            math::float4x4_simd to_world = math::simd::load(transform.world_matrix);
+            math::float4x4_simd initial =
+                math::simd::load(world.component<mmd_node>(skeleton.nodes[i]).initial_inverse);
+
+            math::float4x4_simd final_transform = math::matrix_simd::mul(initial, to_world);
+            math::simd::store(final_transform, skeleton.world[i]);
+        }
+
+        skeleton.parameter->set(0, skeleton.world.data(), skeleton.world.size());
+    });
 }
 
 void mmd_viewer::reset(ecs::entity entity)
@@ -103,8 +107,54 @@ void mmd_viewer::reset(ecs::entity entity)
 
         node.inherit_translate = {0.0f, 0.0f, 0.0f};
         node.inherit_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
-
-        // node.ik_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
     }
+}
+
+void mmd_viewer::initialize_pose(ecs::entity entity)
+{
+    auto& world = system<ecs::world>();
+    auto& scene = system<scene::scene>();
+    auto& animation = system<mmd_animation>();
+
+    reset(entity);
+
+    animation.evaluate(0.0f);
+    animation.update(false);
+    system<physics::physics>().simulation();
+    animation.update(true);
+
+    auto& skeleton = world.component<mmd_skeleton>(entity);
+    for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
+    {
+        auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
+        math::matrix_plain::decompose(
+            skeleton.local[i],
+            transform.scaling,
+            transform.rotation,
+            transform.position);
+        transform.dirty = true;
+
+        if (world.has_component<physics::rigidbody>(skeleton.nodes[i]))
+        {
+            auto& rigidbody = world.component<physics::rigidbody>(skeleton.nodes[i]);
+            rigidbody.interface->angular_velocity(math::float3{0.0f, 0.0f, 0.0f});
+            rigidbody.interface->linear_velocity(math::float3{0.0f, 0.0f, 0.0f});
+            rigidbody.interface->clear_forces();
+        }
+    }
+    scene.sync_local(entity);
+
+    for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
+    {
+        auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
+
+        math::float4x4_simd to_world = math::simd::load(transform.world_matrix);
+        math::float4x4_simd initial =
+            math::simd::load(world.component<mmd_node>(skeleton.nodes[i]).initial_inverse);
+
+        math::float4x4_simd final_transform = math::matrix_simd::mul(initial, to_world);
+        math::simd::store(final_transform, skeleton.world[i]);
+    }
+    skeleton.parameter->set(0, skeleton.world.data(), skeleton.world.size());
 }
 } // namespace ash::sample::mmd

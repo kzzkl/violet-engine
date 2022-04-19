@@ -36,9 +36,6 @@ void scene::sync_local(ecs::entity root)
 {
     auto& world = system<ecs::world>();
 
-    auto& root_transform = world.component<transform>(root);
-    root_transform.dirty = false;
-
     // Update dirty node.
     std::queue<ecs::entity> dirty_bfs = find_dirty_node(root);
     while (!dirty_bfs.empty())
@@ -47,7 +44,6 @@ void scene::sync_local(ecs::entity root)
         dirty_bfs.pop();
 
         auto& node = world.component<transform>(entity);
-        auto& parent = world.component<transform>(node.parent);
 
         // Update to parent matrix.
         math::float4_simd scale = math::simd::load(node.scaling);
@@ -58,9 +54,18 @@ void scene::sync_local(ecs::entity root)
             math::matrix_simd::affine_transform(scale, rotation, translation);
         math::simd::store(to_parent, node.parent_matrix);
 
-        math::float4x4_simd parent_to_world = math::simd::load(parent.world_matrix);
-        math::float4x4_simd to_world = math::matrix_simd::mul(to_parent, parent_to_world);
-        math::simd::store(to_world, node.world_matrix);
+        // Update to world matrix.
+        if (node.parent != ecs::INVALID_ENTITY)
+        {
+            auto& parent = world.component<transform>(node.parent);
+            math::float4x4_simd parent_to_world = math::simd::load(parent.world_matrix);
+            math::float4x4_simd to_world = math::matrix_simd::mul(to_parent, parent_to_world);
+            math::simd::store(to_world, node.world_matrix);
+        }
+        else
+        {
+            node.world_matrix = node.parent_matrix;
+        }
 
         ++node.sync_count;
         node.dirty = false;

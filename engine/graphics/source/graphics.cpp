@@ -49,9 +49,6 @@ bool graphics::initialize(const dictionary& config)
     task.schedule(TASK_RENDER, [this]() {
         update();
 
-        if (!m_debug->empty())
-            update_debug();
-
         m_renderer->begin_frame();
         render();
 
@@ -71,7 +68,7 @@ bool graphics::initialize(const dictionary& config)
     world.register_component<camera>();
     m_object_view = world.make_view<visual, scene::transform>();
     m_camera_view = world.make_view<main_camera, camera, scene::transform>();
-    m_tv = world.make_view<scene::transform>();
+    // m_tv = world.make_view<scene::transform>();
 
     return true;
 }
@@ -226,7 +223,7 @@ void graphics::update()
         }
     });
 
-    m_tv->each([this](scene::transform& transform) {
+    /*m_tv->each([this](scene::transform& transform) {
         float4_simd a = math::simd::set(0.0f, 0.0f, 0.0f, 1.0f);
         float4_simd b = math::simd::set(0.0f, 1.0f, 0.0f, 1.0f);
 
@@ -238,7 +235,7 @@ void graphics::update()
         math::simd::store(a, ap);
         math::simd::store(b, bp);
         m_debug->draw_line(ap, bp, float3{1.0f, 1.0f, 0.0f});
-    });
+    });*/
 }
 
 void graphics::render()
@@ -250,11 +247,6 @@ void graphics::render()
     }
 
     m_renderer->execute(command);
-}
-
-void graphics::update_debug()
-{
-    m_debug->sync();
 }
 
 void graphics::render_debug()

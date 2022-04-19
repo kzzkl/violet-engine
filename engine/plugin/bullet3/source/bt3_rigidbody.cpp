@@ -73,4 +73,19 @@ void bt3_rigidbody::transform(const math::float4x4& world)
 {
     m_transform = world;
 }
+
+void bt3_rigidbody::angular_velocity(const math::float3& velocity)
+{
+    m_rigidbody->setAngularVelocity(convert_vector(velocity));
+}
+
+void bt3_rigidbody::linear_velocity(const math::float3& velocity)
+{
+    m_rigidbody->setLinearVelocity(convert_vector(velocity));
+}
+
+void bt3_rigidbody::clear_forces()
+{
+    m_rigidbody->clearForces();
+}
 } // namespace ash::physics::bullet3

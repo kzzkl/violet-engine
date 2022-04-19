@@ -25,7 +25,6 @@ public:
     virtual ~debug_pipeline() = default;
 
     void draw_line(const math::float3& start, const math::float3& end, const math::float3& color);
-    void sync();
 
     resource* vertex_buffer() const noexcept { return m_vertex_buffer[m_index].get(); }
     resource* index_buffer() const noexcept { return m_index_buffer.get(); }

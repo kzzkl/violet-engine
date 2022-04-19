@@ -46,8 +46,8 @@ bool physics::initialize(const dictionary& config)
 
     m_factory = m_plugin.factory();
 
-    world_desc desc;
-    desc.gravity = {0.0f, -10.0f, 0.0f};
+    world_desc desc = {};
+    desc.gravity = {config["gravity"][0], config["gravity"][1], config["gravity"][2]};
     m_world.reset(m_factory->make_world(desc));
 
     auto& world = system<ash::ecs::world>();

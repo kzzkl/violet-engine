@@ -27,8 +27,12 @@ public:
     virtual const math::float4x4& transform() const override;
     virtual void transform(const math::float4x4& world) override;
 
-    btRigidBody* rigidbody() const noexcept { return m_rigidbody.get(); }
+    virtual void angular_velocity(const math::float3& velocity) override;
+    virtual void linear_velocity(const math::float3& velocity) override;
 
+    virtual void clear_forces() override;
+
+    btRigidBody* rigidbody() const noexcept { return m_rigidbody.get(); }
     void world(bt3_world* world) { m_motion_state->world = world; }
 
 private:

@@ -8,7 +8,11 @@ namespace ash::physics::bullet3
 class bt3_debug_draw : public btIDebugDraw
 {
 public:
-    bt3_debug_draw(debug_draw_interface* debug = nullptr) : m_debug(debug) {}
+    bt3_debug_draw(debug_draw_interface* debug = nullptr) : m_debug(debug)
+    {
+        m_mode |= DebugDrawModes::DBG_DrawConstraints;
+        m_mode |= DebugDrawModes::DBG_DrawConstraintLimits;
+    }
 
     void debug(debug_draw_interface* debug) { m_debug = debug; }
 
@@ -28,14 +32,11 @@ public:
     }
     virtual void reportErrorWarning(const char* warningString) override {}
     virtual void draw3dText(const btVector3& location, const char* textString) override {}
-    virtual void setDebugMode(int debugMode) override
-    {
-        m_mode = static_cast<DebugDrawModes>(debugMode);
-    }
+    virtual void setDebugMode(int debugMode) override { m_mode = debugMode; }
     virtual int getDebugMode() const override { return m_mode; }
 
 private:
-    DebugDrawModes m_mode;
+    int m_mode;
     debug_draw_interface* m_debug;
 };
 
