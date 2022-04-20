@@ -148,9 +148,9 @@ void window_impl_win32::show()
     UpdateWindow(m_hwnd);
 }
 
-const void* window_impl_win32::handle() const
+void* window_impl_win32::handle() const
 {
-    return &m_hwnd;
+    return m_hwnd;
 }
 
 window_rect window_impl_win32::rect() const

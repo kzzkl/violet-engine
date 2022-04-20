@@ -71,10 +71,21 @@ public:
     }
 
     template <typename Index>
-    std::unique_ptr<resource> make_index_buffer(const Index* data, std::size_t size)
+    std::unique_ptr<resource> make_index_buffer(
+        const Index* data,
+        std::size_t size,
+        bool dynamic = false)
     {
-        index_buffer_desc desc = {data, sizeof(Index), size};
+        index_buffer_desc desc = {data, sizeof(Index), size, dynamic};
         return std::unique_ptr<resource>(m_factory->make_index_buffer(desc));
+    }
+
+    std::unique_ptr<resource> make_texture(
+        const std::uint8_t* data,
+        std::size_t width,
+        std::size_t height)
+    {
+        return std::unique_ptr<resource>(m_factory->make_texture(data, width, height));
     }
 
     std::unique_ptr<resource> make_texture(std::string_view file);
@@ -99,10 +110,11 @@ private:
     renderer* m_renderer;
     factory* m_factory;
 
+    ash::ecs::view<visual>* m_visual_view;
     ash::ecs::view<visual, scene::transform>* m_object_view;
     ash::ecs::view<main_camera, camera, scene::transform>* m_camera_view;
 
-    //ash::ecs::view<scene::transform>* m_tv;
+    // ash::ecs::view<scene::transform>* m_tv;
 
     std::unique_ptr<render_parameter> m_parameter_pass;
     std::set<render_pipeline*> m_render_pipelines;

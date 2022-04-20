@@ -90,7 +90,8 @@ enum class vertex_attribute_type : std::uint8_t
     FLOAT,
     FLOAT2,
     FLOAT3,
-    FLOAT4
+    FLOAT4,
+    COLOR
 };
 
 struct vertex_attribute_desc
@@ -98,6 +99,50 @@ struct vertex_attribute_desc
     char name[32];
     vertex_attribute_type type;
     std::uint32_t index;
+};
+
+struct pipeline_blend_desc
+{
+    enum class factor_type
+    {
+        ZERO,
+        ONE,
+        SOURCE_COLOR,
+        SOURCE_ALPHA,
+        SOURCE_INV_ALPHA,
+        TARGET_COLOR,
+        TARGET_ALPHA,
+        TARGET_INV_ALPHA
+    };
+
+    enum class op_type
+    {
+        ADD,
+        SUBTRACT,
+        MIN,
+        MAX
+    };
+
+    bool enable;
+
+    factor_type source_factor;
+    factor_type target_factor;
+    op_type op;
+
+    factor_type source_alpha_factor;
+    factor_type target_alpha_factor;
+    op_type alpha_op;
+};
+
+struct pipeline_depth_stencil_desc
+{
+    enum class depth_functor_type
+    {
+        LESS,
+        ALWAYS
+    };
+
+    depth_functor_type depth_functor;
 };
 
 struct pipeline_desc
@@ -111,6 +156,9 @@ struct pipeline_desc
     char pixel_shader[128];
 
     primitive_topology_type primitive_topology;
+
+    pipeline_blend_desc blend;
+    pipeline_depth_stencil_desc depth_stencil;
 };
 
 class pipeline
@@ -136,6 +184,7 @@ public:
         resource* index,
         std::size_t index_start,
         std::size_t index_end,
+        std::size_t vertex_base,
         primitive_topology_type primitive_topology,
         resource* target) = 0;
 };
@@ -165,7 +214,6 @@ struct vertex_buffer_desc
     const void* vertices;
     std::size_t vertex_size;
     std::size_t vertex_count;
-
     bool dynamic;
 };
 
@@ -174,6 +222,7 @@ struct index_buffer_desc
     const void* indices;
     std::size_t index_size;
     std::size_t index_count;
+    bool dynamic;
 };
 
 class factory
@@ -191,6 +240,10 @@ public:
     virtual resource* make_index_buffer(const index_buffer_desc& desc) = 0;
 
     virtual resource* make_texture(const std::uint8_t* data, std::size_t size) = 0;
+    virtual resource* make_texture(
+        const std::uint8_t* data,
+        std::size_t width,
+        std::size_t height) = 0;
 };
 
 struct context_config
@@ -198,7 +251,7 @@ struct context_config
     std::uint32_t width;
     std::uint32_t height;
 
-    const void* window_handle;
+    void* window_handle;
 
     std::size_t multiple_sampling;
     std::size_t frame_resource;

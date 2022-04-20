@@ -39,6 +39,9 @@ public:
         std::string pixel_shader;
 
         primitive_topology_type primitive_topology;
+
+        pipeline_blend_desc blend;
+        pipeline_depth_stencil_desc depth_stencil;
     };
     template <typename T>
     struct config_type;
@@ -95,8 +98,5 @@ private:
     std::map<std::string, vertex_layout_config> m_vertex_layout;
     std::map<std::string, material_layout_config> m_material_layout;
     std::map<std::string, pipeline_config> m_pipeline;
-
-    std::map<std::string, vertex_attribute_type> m_vertex_attribute_map;
-    std::map<std::string, pipeline_parameter_type> m_parameter_type_map;
 };
 } // namespace ash::graphics

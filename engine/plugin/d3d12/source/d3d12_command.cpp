@@ -62,6 +62,7 @@ void d3d12_render_command::draw(
     resource* index,
     std::size_t index_start,
     std::size_t index_end,
+    std::size_t vertex_base,
     primitive_topology_type primitive_topology,
     resource* target)
 {
@@ -80,7 +81,7 @@ void d3d12_render_command::draw(
         static_cast<UINT>(index_end - index_start),
         1,
         static_cast<UINT>(index_start),
-        0,
+        static_cast<UINT>(vertex_base),
         0);
 }
 

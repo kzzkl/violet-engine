@@ -6,6 +6,97 @@
 
 namespace ash::graphics::d3d12
 {
+namespace
+{
+D3D12_BLEND_DESC to_d3d12(const pipeline_blend_desc& desc)
+{
+    auto convert_factor = [](pipeline_blend_desc::factor_type factor) {
+        switch (factor)
+        {
+        case pipeline_blend_desc::factor_type::ZERO:
+            return D3D12_BLEND_ZERO;
+        case pipeline_blend_desc::factor_type::ONE:
+            return D3D12_BLEND_ONE;
+        case pipeline_blend_desc::factor_type::SOURCE_COLOR:
+            return D3D12_BLEND_SRC_COLOR;
+        case pipeline_blend_desc::factor_type::SOURCE_ALPHA:
+            return D3D12_BLEND_SRC_ALPHA;
+        case pipeline_blend_desc::factor_type::SOURCE_INV_ALPHA:
+            return D3D12_BLEND_INV_SRC_ALPHA;
+        case pipeline_blend_desc::factor_type::TARGET_COLOR:
+            return D3D12_BLEND_DEST_COLOR;
+        case pipeline_blend_desc::factor_type::TARGET_ALPHA:
+            return D3D12_BLEND_DEST_ALPHA;
+        case pipeline_blend_desc::factor_type::TARGET_INV_ALPHA:
+            return D3D12_BLEND_INV_DEST_ALPHA;
+        default:
+            return D3D12_BLEND_ZERO;
+        };
+    };
+
+    auto convert_op = [](pipeline_blend_desc::op_type op) {
+        switch (op)
+        {
+        case pipeline_blend_desc::op_type::ADD:
+            return D3D12_BLEND_OP_ADD;
+        case pipeline_blend_desc::op_type::SUBTRACT:
+            return D3D12_BLEND_OP_SUBTRACT;
+        case pipeline_blend_desc::op_type::MIN:
+            return D3D12_BLEND_OP_MIN;
+        case pipeline_blend_desc::op_type::MAX:
+            return D3D12_BLEND_OP_MAX;
+        default:
+            return D3D12_BLEND_OP_ADD;
+        }
+    };
+
+    D3D12_BLEND_DESC result = {};
+    if (desc.enable)
+    {
+        result.AlphaToCoverageEnable = true;
+
+        D3D12_RENDER_TARGET_BLEND_DESC render_target_blend = {};
+        render_target_blend.BlendEnable = true;
+        render_target_blend.SrcBlend = convert_factor(desc.source_factor);
+        render_target_blend.DestBlend = convert_factor(desc.target_factor);
+        render_target_blend.BlendOp = convert_op(desc.op);
+        render_target_blend.SrcBlendAlpha = convert_factor(desc.source_alpha_factor);
+        render_target_blend.DestBlendAlpha = convert_factor(desc.target_alpha_factor);
+        render_target_blend.BlendOpAlpha = convert_op(desc.alpha_op);
+        render_target_blend.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+        for (UINT i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
+            result.RenderTarget[i] = render_target_blend;
+    }
+    else
+    {
+        result = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    }
+
+    return result;
+}
+
+D3D12_DEPTH_STENCIL_DESC to_d3d12(const pipeline_depth_stencil_desc& desc)
+{
+    auto convert_factor = [](pipeline_depth_stencil_desc::depth_functor_type factor) {
+        switch (factor)
+        {
+        case pipeline_depth_stencil_desc::depth_functor_type::LESS:
+            return D3D12_COMPARISON_FUNC_LESS;
+        case pipeline_depth_stencil_desc::depth_functor_type::ALWAYS:
+            return D3D12_COMPARISON_FUNC_ALWAYS;
+        default:
+            return D3D12_COMPARISON_FUNC_LESS;
+        };
+    };
+
+    D3D12_DEPTH_STENCIL_DESC result = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+    result.DepthFunc = convert_factor(desc.depth_functor);
+
+    return result;
+}
+} // namespace
+
 static const std::vector<CD3DX12_STATIC_SAMPLER_DESC> static_samplers = {
     CD3DX12_STATIC_SAMPLER_DESC(
         0,                                // shaderRegister
@@ -472,6 +563,8 @@ void d3d12_pipeline::initialize_vertex_layout(const pipeline_desc& desc)
             return DXGI_FORMAT_R32G32B32_FLOAT;
         case vertex_attribute_type::FLOAT4:
             return DXGI_FORMAT_R32G32B32A32_FLOAT;
+        case vertex_attribute_type::COLOR:
+            return DXGI_FORMAT_R8G8B8A8_UNORM;
         default:
             return DXGI_FORMAT_UNKNOWN;
         };
@@ -502,15 +595,15 @@ void d3d12_pipeline::initialize_pipeline_state(const pipeline_desc& desc)
     pso_desc.pRootSignature = m_parameter_layout->root_signature();
     pso_desc.VS = CD3DX12_SHADER_BYTECODE(vs_blob.Get());
     pso_desc.PS = CD3DX12_SHADER_BYTECODE(ps_blob.Get());
-    pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-    pso_desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-    pso_desc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+    pso_desc.DepthStencilState = to_d3d12(desc.depth_stencil);
+    pso_desc.BlendState = to_d3d12(desc.blend);
     pso_desc.SampleMask = UINT_MAX;
     pso_desc.NumRenderTargets = 1;
     pso_desc.RTVFormats[0] = d3d12_context::renderer()->render_target_format();
     pso_desc.SampleDesc = d3d12_context::renderer()->render_target_sample_desc();
     pso_desc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    pso_desc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+    pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    pso_desc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
     if (desc.primitive_topology == primitive_topology_type::TRIANGLE_LIST)
         pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     else if (desc.primitive_topology == primitive_topology_type::LINE_LIST)

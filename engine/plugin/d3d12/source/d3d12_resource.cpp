@@ -403,6 +403,8 @@ d3d12_vertex_buffer::d3d12_vertex_buffer(
     if (desc.dynamic)
     {
         m_resource = std::make_unique<d3d12_upload_buffer>(desc.vertex_size * desc.vertex_count);
+        if (desc.vertices != nullptr)
+            m_resource->upload(desc.vertices, desc.vertex_size * desc.vertex_count, 0);
     }
     else
     {
@@ -418,21 +420,32 @@ d3d12_vertex_buffer::d3d12_vertex_buffer(
 }
 
 d3d12_index_buffer::d3d12_index_buffer(
-    const void* data,
-    std::size_t index_size,
-    std::size_t index_count,
+    const index_buffer_desc& desc,
     D3D12GraphicsCommandList* command_list)
-    : d3d12_default_buffer(data, index_size * index_count, command_list),
-      m_index_count(index_count)
+    : m_index_count(desc.index_count)
 {
-    m_view.BufferLocation = m_resource->GetGPUVirtualAddress();
-    m_view.SizeInBytes = static_cast<UINT>(index_size * index_count);
+    if (desc.dynamic)
+    {
+        m_resource = std::make_unique<d3d12_upload_buffer>(desc.index_size * desc.index_count);
+        if (desc.indices != nullptr)
+            m_resource->upload(desc.indices, desc.index_size * desc.index_count, 0);
+    }
+    else
+    {
+        m_resource = std::make_unique<d3d12_default_buffer>(
+            desc.indices,
+            desc.index_size * desc.index_count,
+            command_list);
+    }
 
-    if (index_size == 1)
+    m_view.BufferLocation = m_resource->resource()->GetGPUVirtualAddress();
+    m_view.SizeInBytes = static_cast<UINT>(desc.index_size * desc.index_count);
+
+    if (desc.index_size == 1)
         m_view.Format = DXGI_FORMAT_R8_UINT;
-    else if (index_size == 2)
+    else if (desc.index_size == 2)
         m_view.Format = DXGI_FORMAT_R16_UINT;
-    else if (index_size == 4)
+    else if (desc.index_size == 4)
         m_view.Format = DXGI_FORMAT_R32_UINT;
     else
         throw std::out_of_range("Invalid index size.");
@@ -449,7 +462,7 @@ d3d12_texture::d3d12_texture(
         d3d12_context::device(),
         data,
         size,
-        m_resource.GetAddressOf(),
+        &m_resource,
         subresources));
 
     const UINT64 upload_resource_size =
@@ -464,7 +477,7 @@ d3d12_texture::d3d12_texture(
         &desc,
         D3D12_RESOURCE_STATE_GENERIC_READ,
         nullptr,
-        IID_PPV_ARGS(upload_resource.GetAddressOf())));
+        IID_PPV_ARGS(&upload_resource)));
 
     UpdateSubresources(
         command_list,
@@ -480,6 +493,75 @@ d3d12_texture::d3d12_texture(
         D3D12_RESOURCE_STATE_COPY_DEST,
         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     command_list->ResourceBarrier(1, &transition);
+
+    d3d12_context::resource()->push_temporary_resource(upload_resource);
+}
+
+d3d12_texture::d3d12_texture(
+    const std::uint8_t* data,
+    std::size_t width,
+    std::size_t height,
+    D3D12GraphicsCommandList* command_list)
+    : d3d12_resource(nullptr, D3D12_RESOURCE_STATE_COPY_DEST)
+{
+    // Create default buffer.
+    CD3DX12_HEAP_PROPERTIES default_heap_properties(D3D12_HEAP_TYPE_DEFAULT);
+    CD3DX12_RESOURCE_DESC default_desc = CD3DX12_RESOURCE_DESC::Tex2D(
+        DXGI_FORMAT_R8G8B8A8_UNORM,
+        static_cast<UINT>(width),
+        static_cast<UINT>(height));
+    throw_if_failed(d3d12_context::device()->CreateCommittedResource(
+        &default_heap_properties,
+        D3D12_HEAP_FLAG_NONE,
+        &default_desc,
+        D3D12_RESOURCE_STATE_COPY_DEST,
+        nullptr,
+        IID_PPV_ARGS(&m_resource)));
+
+    // Create upload buffer.
+    UINT width_pitch = (width * 4 + D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u) &
+                       ~(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u);
+
+    d3d12_ptr<ID3D12Resource> upload_resource;
+    CD3DX12_HEAP_PROPERTIES upload_heap_properties(D3D12_HEAP_TYPE_UPLOAD);
+    CD3DX12_RESOURCE_DESC upload_desc = CD3DX12_RESOURCE_DESC::Buffer(height * width_pitch);
+    throw_if_failed(d3d12_context::device()->CreateCommittedResource(
+        &upload_heap_properties,
+        D3D12_HEAP_FLAG_NONE,
+        &upload_desc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&upload_resource)));
+
+    void* mapped = NULL;
+    D3D12_RANGE range = {0, height * width_pitch};
+    upload_resource->Map(0, &range, &mapped);
+    for (std::size_t i = 0; i < height; ++i)
+    {
+        memcpy(
+            static_cast<std::uint8_t*>(mapped) + i * width_pitch,
+            data + i * width * 4,
+            width * 4);
+    }
+    upload_resource->Unmap(0, &range);
+
+    // Copy data to default buffer.
+    D3D12_TEXTURE_COPY_LOCATION source_location = {};
+    source_location.pResource = upload_resource.Get();
+    source_location.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+    source_location.PlacedFootprint.Footprint.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    source_location.PlacedFootprint.Footprint.Width = static_cast<UINT>(width);
+    source_location.PlacedFootprint.Footprint.Height = static_cast<UINT>(height);
+    source_location.PlacedFootprint.Footprint.Depth = 1;
+    source_location.PlacedFootprint.Footprint.RowPitch = width_pitch;
+
+    D3D12_TEXTURE_COPY_LOCATION target_location = {};
+    target_location.pResource = m_resource.Get();
+    target_location.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+    target_location.SubresourceIndex = 0;
+
+    command_list->CopyTextureRegion(&target_location, 0, 0, 0, &source_location, NULL);
+    transition_state(D3D12_RESOURCE_STATE_GENERIC_READ, command_list);
 
     d3d12_context::resource()->push_temporary_resource(upload_resource);
 }

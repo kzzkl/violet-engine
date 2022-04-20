@@ -11,6 +11,5 @@ struct visual
     std::vector<render_unit> submesh;
 
     render_parameter* object;
-    render_parameter* skeleton;
 };
 } // namespace ash::graphics

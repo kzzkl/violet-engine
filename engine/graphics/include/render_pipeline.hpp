@@ -14,6 +14,7 @@ struct render_unit
 
     std::size_t index_start;
     std::size_t index_end;
+    std::size_t vertex_base;
 
     render_pipeline* pipeline;
     std::vector<render_parameter*> parameters;

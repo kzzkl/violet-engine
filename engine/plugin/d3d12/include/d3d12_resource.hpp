@@ -140,31 +140,33 @@ class d3d12_vertex_buffer : public resource
 public:
     d3d12_vertex_buffer(const vertex_buffer_desc& desc, D3D12GraphicsCommandList* command_list);
 
-    inline const D3D12_VERTEX_BUFFER_VIEW& view() const noexcept { return m_view; }
-
     virtual void upload(const void* data, std::size_t size, std::size_t offset)
     {
         m_resource->upload(data, size, offset);
     }
+
+    inline const D3D12_VERTEX_BUFFER_VIEW& view() const noexcept { return m_view; }
 
 private:
     std::unique_ptr<d3d12_resource> m_resource;
     D3D12_VERTEX_BUFFER_VIEW m_view;
 };
 
-class d3d12_index_buffer : public d3d12_default_buffer
+class d3d12_index_buffer : public resource
 {
 public:
-    d3d12_index_buffer(
-        const void* data,
-        std::size_t index_size,
-        std::size_t index_count,
-        D3D12GraphicsCommandList* command_list);
+    d3d12_index_buffer(const index_buffer_desc& desc, D3D12GraphicsCommandList* command_list);
+
+    virtual void upload(const void* data, std::size_t size, std::size_t offset)
+    {
+        m_resource->upload(data, size, offset);
+    }
 
     inline const D3D12_INDEX_BUFFER_VIEW& view() const noexcept { return m_view; }
     inline std::size_t index_count() const noexcept { return m_index_count; }
 
 private:
+    std::unique_ptr<d3d12_resource> m_resource;
     D3D12_INDEX_BUFFER_VIEW m_view;
     std::size_t m_index_count;
 };
@@ -175,6 +177,11 @@ public:
     d3d12_texture(
         const std::uint8_t* data,
         std::size_t size,
+        D3D12GraphicsCommandList* command_list);
+    d3d12_texture(
+        const std::uint8_t* data,
+        std::size_t width,
+        std::size_t height,
         D3D12GraphicsCommandList* command_list);
 };
 

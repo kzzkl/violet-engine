@@ -33,7 +33,7 @@ public:
     virtual void tick() override;
     virtual void show() override;
 
-    virtual const void* handle() const override;
+    virtual void* handle() const override;
     virtual window_rect rect() const override;
 
     virtual mouse_type& mouse() override { return m_mouse; };

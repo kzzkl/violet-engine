@@ -10,3 +10,6 @@
 [submodule "thirdparty/bullet3"]
 	path = thirdparty/bullet3
 	url = git@github.com:bulletphysics/bullet3.git
+[submodule "thirdparty/imgui"]
+	path = thirdparty/imgui
+	url = git@github.com:ocornut/imgui.git

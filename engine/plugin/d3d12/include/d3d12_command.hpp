@@ -27,6 +27,7 @@ public:
         resource* index,
         std::size_t index_start,
         std::size_t index_end,
+        std::size_t vertex_base,
         primitive_topology_type primitive_topology,
         resource* target) override;
 

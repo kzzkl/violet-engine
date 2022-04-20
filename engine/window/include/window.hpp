@@ -18,7 +18,7 @@ public:
     mouse& mouse() { return m_impl->mouse(); }
     keyboard& keyboard() { return m_impl->keyboard(); }
 
-    const void* handle() const { return m_impl->handle(); }
+    void* handle() const { return m_impl->handle(); }
     window_rect rect() const { return m_impl->rect(); }
 
     void title(std::string_view title) { m_impl->title(title); }

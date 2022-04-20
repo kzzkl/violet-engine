@@ -26,7 +26,7 @@ public:
     virtual void tick() = 0;
     virtual void show() = 0;
 
-    virtual const void* handle() const = 0;
+    virtual void* handle() const = 0;
     virtual window_rect rect() const = 0;
 
     virtual mouse_type& mouse() = 0;

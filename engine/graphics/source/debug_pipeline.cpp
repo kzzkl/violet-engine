@@ -38,6 +38,7 @@ void debug_pipeline::render(resource* target, render_command* command, render_pa
         m_index_buffer.get(),
         0,
         m_vertics.size() * 2,
+        0,
         primitive_topology_type::LINE_LIST,
         target);
 

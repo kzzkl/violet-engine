@@ -66,6 +66,7 @@ bool graphics::initialize(const dictionary& config)
     world.register_component<visual>();
     world.register_component<main_camera>();
     world.register_component<camera>();
+    m_visual_view = world.make_view<visual>();
     m_object_view = world.make_view<visual, scene::transform>();
     m_camera_view = world.make_view<main_camera, camera, scene::transform>();
     // m_tv = world.make_view<scene::transform>();
@@ -145,14 +146,7 @@ void graphics::initialize_debug()
 {
     static constexpr std::size_t MAX_VERTEX_COUNT = 4096 * 16;
 
-    vertex_buffer_desc vertex_desc = {};
-    vertex_desc.dynamic = true;
-    vertex_desc.vertex_size = sizeof(debug_pipeline::vertex);
-    vertex_desc.vertex_count = MAX_VERTEX_COUNT;
-    vertex_desc.vertices = nullptr;
-
     std::vector<resource*> vertex_buffer(m_config.frame_resource());
-
     for (auto& buffer : vertex_buffer)
         buffer =
             make_vertex_buffer<debug_pipeline::vertex>(nullptr, MAX_VERTEX_COUNT, true).release();
@@ -215,7 +209,9 @@ void graphics::update()
         visual.object->set(0, model, false);
         visual.object->set(1, model_view, false);
         visual.object->set(2, model_view_projection, false);
+    });
 
+    m_visual_view->each([this](visual& visual) {
         for (std::size_t i = 0; i < visual.submesh.size(); ++i)
         {
             m_render_pipelines.insert(visual.submesh[i].pipeline);

@@ -15,7 +15,8 @@ void render_pipeline::render(resource* target, render_command* command, render_p
     command->pipeline(m_pipeline.get());
     command->layout(m_layout.get());
 
-    command->parameter(m_unit_parameter_count, pass->parameter());
+    if (m_pass_parameter_count != 0)
+        command->parameter(m_unit_parameter_count, pass->parameter());
 
     for (auto& unit : m_units)
     {
@@ -27,6 +28,7 @@ void render_pipeline::render(resource* target, render_command* command, render_p
             unit->index_buffer,
             unit->index_start,
             unit->index_end,
+            unit->vertex_base,
             primitive_topology_type::TRIANGLE_LIST,
             target);
     }
