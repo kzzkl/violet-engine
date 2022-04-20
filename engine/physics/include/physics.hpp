@@ -43,7 +43,7 @@ private:
 
     std::unique_ptr<world_interface> m_world;
 
-    ecs::view<rigidbody, scene::transform>* m_view;
+    ecs::view<rigidbody>* m_view;
 
     physics_plugin m_plugin;
     factory* m_factory;

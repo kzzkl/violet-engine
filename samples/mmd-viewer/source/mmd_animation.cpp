@@ -211,17 +211,18 @@ void mmd_animation::update_world(mmd_skeleton& skeleton, bool after_physics)
         if (after_physics != node.deform_after_physics)
             continue;
 
+        auto& link = world.component<core::link>(node_entity);
         auto& transform = world.component<scene::transform>(node_entity);
 
-        if (world.has_component<mmd_node>(transform.parent))
+        if (world.has_component<mmd_node>(link.parent))
         {
-            auto& parent = world.component<mmd_node>(transform.parent);
+            auto& parent = world.component<mmd_node>(link.parent);
             skeleton.world[node.index] =
                 math::matrix_plain::mul(skeleton.local[node.index], skeleton.world[parent.index]);
         }
         else
         {
-            auto& parent = world.component<scene::transform>(transform.parent);
+            auto& parent = world.component<scene::transform>(link.parent);
             skeleton.world[node.index] =
                 math::matrix_plain::mul(skeleton.local[node.index], parent.world_matrix);
         }
@@ -267,23 +268,24 @@ void mmd_animation::update_transform(mmd_skeleton& skeleton, std::size_t index)
             bfs.pop();
 
             auto& node = world.component<mmd_node>(node_entity);
+            auto& link = world.component<core::link>(node_entity);
             auto& transform = world.component<scene::transform>(node_entity);
 
-            if (world.has_component<mmd_node>(transform.parent))
+            if (world.has_component<mmd_node>(link.parent))
             {
-                auto& parent = world.component<mmd_node>(transform.parent);
+                auto& parent = world.component<mmd_node>(link.parent);
                 skeleton.world[node.index] = math::matrix_plain::mul(
                     skeleton.local[node.index],
                     skeleton.world[parent.index]);
             }
             else
             {
-                auto& parent = world.component<scene::transform>(transform.parent);
+                auto& parent = world.component<scene::transform>(link.parent);
                 skeleton.world[node.index] =
                     math::matrix_plain::mul(skeleton.local[node.index], parent.world_matrix);
             }
 
-            for (auto& c : transform.children)
+            for (auto& c : link.children)
             {
                 if (world.has_component<mmd_node>(c))
                     bfs.push(c);

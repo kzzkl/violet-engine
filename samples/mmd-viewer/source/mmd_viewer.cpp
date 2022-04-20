@@ -15,6 +15,7 @@ bool mmd_viewer::initialize(const dictionary& config)
 
     m_loader = std::make_unique<mmd_loader>(
         world,
+        system<core::relation>(),
         system<graphics::graphics>(),
         system<scene::scene>(),
         system<physics::physics>());

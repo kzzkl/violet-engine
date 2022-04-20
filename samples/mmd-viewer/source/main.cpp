@@ -6,6 +6,7 @@
 #include "mmd_viewer.hpp"
 #include "physics.hpp"
 #include "pmx_loader.hpp"
+#include "relation.hpp"
 #include "scene.hpp"
 #include "window.hpp"
 
@@ -51,13 +52,14 @@ private:
     {
         auto& world = system<ash::ecs::world>();
         auto& scene = system<ash::scene::scene>();
+        auto& relation = system<ash::core::relation>();
 
         m_actor = system<mmd_viewer>().load_mmd(
             "sora",
             "resource/model/sora/Sora.pmx",
             "resource/model/sora/test.vmd");
 
-        scene.link(m_actor);
+        relation.link(m_actor, scene.root());
     }
 
     void initialize_plane()
@@ -72,16 +74,17 @@ private:
         ash::ecs::world& world = system<ash::ecs::world>();
         m_plane = world.create();
 
-        world.add<rigidbody, transform>(m_plane);
+        world.add<core::link, rigidbody, transform>(m_plane);
 
         auto& t = world.component<transform>(m_plane);
         t.position = {0.0f, -3.0f, 0.0f};
 
         auto& r = world.component<rigidbody>(m_plane);
-        r.shape(m_plane_shape.get());
-        r.mass(0.0f);
+        r.shape = m_plane_shape.get();
+        r.mass = 0.0f;
+        r.relation = m_plane;
 
-        system<ash::scene::scene>().link(m_plane);
+        system<ash::core::relation>().link(m_plane, system<ash::scene::scene>().root());
     }
 
     void initialize_camera()
@@ -90,7 +93,7 @@ private:
         auto& scene = system<ash::scene::scene>();
 
         m_camera = world.create();
-        world.add<main_camera, camera, transform>(m_camera);
+        world.add<core::link, main_camera, camera, transform>(m_camera);
         auto& c_camera = world.component<camera>(m_camera);
         c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
 
@@ -98,7 +101,7 @@ private:
         c_transform.position = {0.0f, 11.0f, -60.0f};
         c_transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
         c_transform.scaling = {1.0f, 1.0f, 1.0f};
-        scene.link(m_camera);
+        system<ash::core::relation>().link(m_camera, scene.root());
     }
 
     void initialize_task()
@@ -232,6 +235,7 @@ int main()
 {
     application app;
     app.install<window>();
+    app.install<ash::core::relation>();
     app.install<scene>();
     app.install<graphics>();
     app.install<physics>();

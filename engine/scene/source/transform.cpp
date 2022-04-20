@@ -11,8 +11,7 @@ transform::transform()
       world_matrix(math::matrix_plain::identity()),
       dirty(true),
       sync_count(0),
-      in_scene(false),
-      parent(ecs::INVALID_ENTITY)
+      in_scene(false)
 {
 }
 } // namespace ash::scene

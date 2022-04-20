@@ -3,7 +3,8 @@ project(ash-core)
 add_library(${PROJECT_NAME} STATIC
     ./source/application.cpp
     ./source/context.cpp
-    ./source/plugin.cpp)
+    ./source/plugin.cpp
+    ./source/relation.cpp)
 add_library(ash::core ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
