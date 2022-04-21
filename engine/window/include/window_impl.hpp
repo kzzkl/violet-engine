@@ -13,6 +13,50 @@ struct window_rect
     std::uint32_t height;
 };
 
+struct window_message
+{
+    enum class message_type
+    {
+        MOUSE_MOVE,
+        MOUSE_KEY,
+        KEYBOARD_KEY,
+        WINDOW_MOVE,
+        WINDOW_RESIZE
+    } type;
+
+    union {
+        struct
+        {
+            int x;
+            int y;
+        } mouse_move;
+
+        struct
+        {
+            mouse_key key;
+            bool down;
+        } mouse_key;
+
+        struct
+        {
+            keyboard_key key;
+            bool down;
+        } keyboard_key;
+
+        struct
+        {
+            int x;
+            int y;
+        } window_move;
+
+        struct
+        {
+            int width;
+            int height;
+        } window_resize;
+    };
+};
+
 class window_impl
 {
 public:
@@ -29,9 +73,13 @@ public:
     virtual void* handle() const = 0;
     virtual window_rect rect() const = 0;
 
-    virtual mouse_type& mouse() = 0;
-    virtual keyboard_type& keyboard() = 0;
-
     virtual void title(std::string_view title) = 0;
+    virtual void change_mouse_mode(mouse_mode mode) = 0;
+
+    void reset() noexcept { m_messages.clear(); }
+    const std::vector<window_message>& messages() const noexcept { return m_messages; }
+
+protected:
+    std::vector<window_message> m_messages;
 };
 } // namespace ash::window

@@ -90,10 +90,11 @@ enum class mouse_key : std::uint32_t
     NUM_TYPE
 };
 
+class window_impl;
 class mouse : public key_device<mouse_key>
 {
 public:
-    mouse() noexcept;
+    mouse(window_impl* impl) noexcept;
     virtual ~mouse() = default;
 
     void mode(mouse_mode mode);
@@ -102,13 +103,18 @@ public:
     inline int x() const noexcept { return m_x; }
     inline int y() const noexcept { return m_y; }
 
-protected:
-    virtual void change_mode(mouse_mode mode) = 0;
+    inline void move(int x, int y) noexcept
+    {
+        m_x = x;
+        m_y = y;
+    }
 
+protected:
     int m_x;
     int m_y;
 
     mouse_mode m_mode;
+    window_impl* m_impl;
 };
 
 enum class keyboard_key : std::uint32_t

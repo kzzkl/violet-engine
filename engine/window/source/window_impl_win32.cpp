@@ -34,36 +34,8 @@ std::string wstring_to_string(std::wstring_view str)
     return buffer;
 }
 
-void mouse_win32::reset()
+window_impl_win32::window_impl_win32() noexcept : m_mouse_mode(mouse_mode::CURSOR_ABSOLUTE)
 {
-    if (m_mode == mouse_mode::CURSOR_RELATIVE)
-        m_x = m_y = 0;
-
-    if (m_mode_change)
-    {
-        if (m_mode == mouse_mode::CURSOR_ABSOLUTE)
-        {
-            ShowCursor(true);
-            ClipCursor(nullptr);
-        }
-        else
-        {
-            ShowCursor(false);
-            RECT rect;
-            GetClientRect(m_hwnd, &rect);
-            MapWindowRect(m_hwnd, nullptr, &rect);
-            ClipCursor(&rect);
-        }
-
-        m_mode_change = false;
-    }
-}
-
-void mouse_win32::change_mode(mouse_mode mode)
-{
-    m_mode_change = true;
-    m_mode = mode;
-    m_x = m_y = 0;
 }
 
 bool window_impl_win32::initialize(
@@ -121,8 +93,6 @@ bool window_impl_win32::initialize(
         log::error("RegisterRawInputDevices failed");
     }
 
-    m_mouse.window_handle(m_hwnd);
-
     show();
 
     return true;
@@ -130,15 +100,23 @@ bool window_impl_win32::initialize(
 
 void window_impl_win32::tick()
 {
-    m_mouse.reset();
-    m_mouse.tick();
-    m_keyboard.tick();
+    m_mouse_x = m_mouse_y = 0;
+    m_mouse_move = false;
 
     MSG msg;
     while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
     {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
+    }
+
+    if (m_mouse_move)
+    {
+        window_message message;
+        message.type = window_message::message_type::MOUSE_MOVE;
+        message.mouse_move.x = m_mouse_x;
+        message.mouse_move.y = m_mouse_y;
+        m_messages.push_back(message);
     }
 }
 
@@ -170,6 +148,25 @@ window_rect window_impl_win32::rect() const
 void window_impl_win32::title(std::string_view title)
 {
     SetWindowText(m_hwnd, string_to_wstring(title).c_str());
+}
+
+void window_impl_win32::change_mouse_mode(mouse_mode mode)
+{
+    if (mode == mouse_mode::CURSOR_ABSOLUTE)
+    {
+        ShowCursor(true);
+        ClipCursor(nullptr);
+    }
+    else
+    {
+        ShowCursor(false);
+        RECT rect;
+        GetClientRect(m_hwnd, &rect);
+        MapWindowRect(m_hwnd, nullptr, &rect);
+        ClipCursor(&rect);
+    }
+
+    m_mouse_mode = mode;
 }
 
 LRESULT CALLBACK
@@ -205,12 +202,11 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
     switch (message)
     {
     case WM_MOUSEMOVE: {
-        if (m_mouse.mode() == mouse_mode::CURSOR_ABSOLUTE)
-            m_mouse.cursor(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
+        on_mouse_move(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
         break;
     }
     case WM_INPUT: {
-        if (m_mouse.mode() == mouse_mode::CURSOR_RELATIVE)
+        if (m_mouse_mode == mouse_mode::CURSOR_RELATIVE)
         {
             RAWINPUT raw;
             UINT raw_size = sizeof(raw);
@@ -221,43 +217,96 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
                 &raw_size,
                 sizeof(RAWINPUTHEADER));
             if (raw.header.dwType == RIM_TYPEMOUSE)
-            {
-                // Because handle_message may be called multiple times in a frame, it is necessary
-                // to accumulate mouse coordinates.
-                m_mouse.cursor(
-                    m_mouse.x() + raw.data.mouse.lLastX,
-                    m_mouse.y() + raw.data.mouse.lLastY);
-            }
+                on_mouse_move(raw.data.mouse.lLastX, raw.data.mouse.lLastY);
         }
         break;
     }
-    case WM_LBUTTONDOWN:
-        m_mouse.key_down(mouse_key::LEFT_BUTTON);
+    case WM_LBUTTONDOWN: {
+        on_mouse_key(mouse_key::LEFT_BUTTON, true);
         break;
-    case WM_LBUTTONUP:
-        m_mouse.key_up(mouse_key::LEFT_BUTTON);
+    }
+    case WM_LBUTTONUP: {
+        on_mouse_key(mouse_key::LEFT_BUTTON, false);
         break;
-    case WM_RBUTTONDOWN:
-        m_mouse.key_down(mouse_key::RIGHT_BUTTON);
+    }
+    case WM_RBUTTONDOWN: {
+        on_mouse_key(mouse_key::RIGHT_BUTTON, true);
         break;
-    case WM_RBUTTONUP:
-        m_mouse.key_up(mouse_key::RIGHT_BUTTON);
+    }
+    case WM_RBUTTONUP: {
+        on_mouse_key(mouse_key::RIGHT_BUTTON, false);
         break;
-    case WM_MBUTTONDOWN:
-        m_mouse.key_down(mouse_key::MIDDLE_BUTTON);
+    }
+    case WM_MBUTTONDOWN: {
+        on_mouse_key(mouse_key::MIDDLE_BUTTON, true);
         break;
-    case WM_MBUTTONUP:
-        m_mouse.key_up(mouse_key::MIDDLE_BUTTON);
+    }
+    case WM_MBUTTONUP: {
+        on_mouse_key(mouse_key::MIDDLE_BUTTON, false);
         break;
-    case WM_KEYDOWN:
-        m_keyboard.key_down(static_cast<keyboard_key>(wparam));
+    }
+    case WM_KEYDOWN: {
+        on_keyboard_key(static_cast<keyboard_key>(wparam), true);
         break;
-    case WM_KEYUP:
-        m_keyboard.key_up(static_cast<keyboard_key>(wparam));
+    }
+    case WM_KEYUP: {
+        on_keyboard_key(static_cast<keyboard_key>(wparam), false);
         break;
+    }
     default:
         return DefWindowProc(hwnd, message, wparam, lparam);
     }
     return 0;
+}
+
+void window_impl_win32::on_mouse_move(int x, int y)
+{
+    if (m_mouse_mode == mouse_mode::CURSOR_ABSOLUTE)
+    {
+        m_mouse_x = x;
+        m_mouse_y = y;
+    }
+    else
+    {
+        m_mouse_x += x;
+        m_mouse_y += y;
+    }
+    m_mouse_move = true;
+}
+
+void window_impl_win32::on_mouse_key(mouse_key key, bool down)
+{
+    window_message message;
+    message.type = window_message::message_type::MOUSE_KEY;
+    message.mouse_key.key = key;
+    message.mouse_key.down = down;
+    m_messages.push_back(message);
+}
+
+void window_impl_win32::on_keyboard_key(keyboard_key key, bool down)
+{
+    window_message message;
+    message.type = window_message::message_type::KEYBOARD_KEY;
+    message.keyboard_key.key = key;
+    message.keyboard_key.down = down;
+    m_messages.push_back(message);
+}
+
+void window_impl_win32::on_window_move(int x, int y)
+{
+    window_message message;
+    message.type = window_message::message_type::WINDOW_MOVE;
+    message.window_move.x = x;
+    message.window_move.y = y;
+    m_messages.push_back(message);
+}
+
+void window_impl_win32::on_window_resize(int width, int height)
+{
+    window_message message;
+    message.type = window_message::message_type::WINDOW_RESIZE;
+    message.window_resize.width = width;
+    message.window_resize.height = height;
+    m_messages.push_back(message);
 }
 } // namespace ash::window
