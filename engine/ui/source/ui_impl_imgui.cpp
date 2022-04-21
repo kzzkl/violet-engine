@@ -6,6 +6,8 @@ namespace ash::ui
 ui_impl_imgui::ui_impl_imgui(const ui_impl_desc& desc) : m_index(0)
 {
     ImGui::CreateContext();
+    initialize_theme();
+    initialize_font_texture(desc);
     // ImGui::GetMainViewport()->PlatformHandleRaw = desc.window_handle;
 
     for (std::size_t i = 0; i < 3; ++i)
@@ -17,12 +19,6 @@ ui_impl_imgui::ui_impl_imgui(const ui_impl_desc& desc) : m_index(0)
     }
 
     m_parameter = desc.graphics->make_render_parameter("ui");
-
-    unsigned char* pixels;
-    int font_width, font_height;
-    ImGui::GetIO().Fonts->GetTexDataAsRGBA32(&pixels, &font_width, &font_height);
-
-    m_font = desc.graphics->make_texture(pixels, font_width, font_height);
 
     desc.event->subscribe<window::event_mouse_key>(
         [this](window::mouse_key key, window::key_state state) {
@@ -102,7 +98,6 @@ void ui_impl_imgui::end_frame()
             submesh.index_start = command.IdxOffset + index_counter;
             submesh.index_end = command.IdxOffset + command.ElemCount + index_counter;
             submesh.vertex_base = command.VtxOffset + vertex_counter;
-
             m_data.push_back(submesh);
         }
 
@@ -134,5 +129,20 @@ void ui_impl_imgui::test()
     ImGui::Button("Button");
 
     ImGui::End();
+}
+
+void ui_impl_imgui::initialize_theme()
+{
+    auto& io = ImGui::GetIO();
+    io.Fonts->AddFontFromFileTTF("engine/font/Ruda-Bold.ttf", 12 * 1.5);
+}
+
+void ui_impl_imgui::initialize_font_texture(const ui_impl_desc& desc)
+{
+    unsigned char* pixels;
+    int font_width, font_height;
+    ImGui::GetIO().Fonts->GetTexDataAsRGBA32(&pixels, &font_width, &font_height);
+    m_font = desc.graphics->make_texture(pixels, font_width, font_height);
+    ImGui::GetIO().Fonts->SetTexID(m_font.get());
 }
 } // namespace ash::ui

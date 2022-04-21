@@ -3,7 +3,7 @@ cbuffer ui : register(b0)
     float4x4 ui_mvp;
 };
 
-SamplerState sampler_wrap : register(s0);
+SamplerState sampler_ui : register(s7);
 Texture2D ui_texture : register(t0);
 
 struct vs_in
@@ -32,5 +32,5 @@ vs_out vs_main(vs_in vin)
 
 float4 ps_main(vs_out pin) : SV_TARGET
 {
-    return pin.color * ui_texture.Sample(sampler_wrap, pin.uv);
+    return pin.color * ui_texture.Sample(sampler_ui, pin.uv);
 }

@@ -16,10 +16,14 @@ public:
     virtual void test();
 
 private:
+    void initialize_theme();
+    void initialize_font_texture(const ui_impl_desc& desc);
+
     std::vector<std::unique_ptr<graphics::resource>> m_vertex_buffer;
     std::vector<std::unique_ptr<graphics::resource>> m_index_buffer;
 
     std::unique_ptr<graphics::render_parameter> m_parameter;
+    std::unique_ptr<graphics::render_parameter> m_font_parameter;
 
     std::unique_ptr<graphics::resource> m_font;
 
