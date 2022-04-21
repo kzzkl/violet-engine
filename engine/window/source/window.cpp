@@ -19,11 +19,6 @@ bool window::initialize(const dictionary& config)
     if (!m_impl->initialize(config["width"], config["height"], config["title"]))
         return false;
 
-    system<task::task_manager>().schedule(
-        TASK_WINDOW_TICK,
-        [this]() { process_message(); },
-        task::task_type::MAIN_THREAD);
-
     auto& event = system<core::event>();
     event.register_event<event_mouse_move>();
     event.register_event<event_mouse_key>();
@@ -32,7 +27,7 @@ bool window::initialize(const dictionary& config)
     return true;
 }
 
-void window::process_message()
+void window::tick()
 {
     auto& event = system<core::event>();
 

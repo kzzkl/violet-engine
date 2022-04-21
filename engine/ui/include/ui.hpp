@@ -2,7 +2,7 @@
 
 #include "context.hpp"
 #include "graphics.hpp"
-#include "ui_impl.hpp"
+#include "ui_pipeline.hpp"
 
 namespace ash::ui
 {
@@ -16,14 +16,25 @@ public:
     void begin_frame();
     void end_frame();
 
-    void test() { m_impl->test(); }
+    void window();
 
 private:
-    void render();
+    void initialize_theme();
+    void initialize_font_texture();
 
     ecs::entity m_ui_entity;
 
-    std::unique_ptr<ui_impl> m_impl;
-    std::unique_ptr<graphics::render_pipeline> m_pipeline;
+    std::vector<std::unique_ptr<graphics::resource>> m_vertex_buffer;
+    std::vector<std::unique_ptr<graphics::resource>> m_index_buffer;
+
+    std::unique_ptr<graphics::render_parameter> m_parameter;
+    std::unique_ptr<graphics::resource> m_font;
+
+    std::deque<graphics::scissor_rect> m_scissor_rects;
+
+    std::unique_ptr<ui_pipeline> m_pipeline;
+    std::size_t m_frame_index;
+
+    bool m_enable_mouse;
 };
 }; // namespace ash::ui

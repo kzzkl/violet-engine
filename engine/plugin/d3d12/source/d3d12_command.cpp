@@ -57,6 +57,16 @@ void d3d12_render_command::parameter(std::size_t index, pipeline_parameter* para
     }
 }
 
+void d3d12_render_command::scissor(const scissor_rect& rect)
+{
+    D3D12_RECT r = {
+        static_cast<LONG>(rect.min_x),
+        static_cast<LONG>(rect.min_y),
+        static_cast<LONG>(rect.max_x),
+        static_cast<LONG>(rect.max_y)};
+    m_command_list->RSSetScissorRects(1, &r);
+}
+
 void d3d12_render_command::draw(
     resource* vertex,
     resource* index,

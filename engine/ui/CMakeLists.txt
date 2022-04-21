@@ -9,7 +9,7 @@ set(IMGUI_SOURCE
     ${THIRD_PARTY_DIR}/../imgui/imgui_widgets.cpp)
 
 add_library(${PROJECT_NAME} STATIC
-    ./source/ui_impl_imgui.cpp
+    ./source/ui_pipeline.cpp
     ./source/ui.cpp
     ${IMGUI_SOURCE})
 add_library(ash::ui ALIAS ${PROJECT_NAME})
@@ -17,6 +17,7 @@ add_library(ash::ui ALIAS ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME}
     PUBLIC
         ./include
+    PRIVATE
         ${IMGUI_INCLUDE})
 
 target_link_libraries(${PROJECT_NAME}

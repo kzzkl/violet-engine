@@ -22,6 +22,7 @@ public:
     virtual void pipeline(pipeline_type* pipeline) override;
     virtual void layout(layout_type* layout) override;
     virtual void parameter(std::size_t index, pipeline_parameter* parameter) override;
+    virtual void scissor(const scissor_rect& rect) override;
     virtual void draw(
         resource* vertex,
         resource* index,

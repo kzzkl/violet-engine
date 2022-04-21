@@ -18,8 +18,6 @@ namespace ash::graphics
 class graphics : public ash::core::system_base
 {
 public:
-    static constexpr const char* TASK_RENDER = "graphics render";
-
     template <typename T>
     using interface_map = std::unordered_map<std::string, std::unique_ptr<T>>;
 
@@ -27,6 +25,8 @@ public:
     graphics() noexcept;
 
     virtual bool initialize(const dictionary& config) override;
+
+    void render();
 
     template <typename T, typename... Args>
     std::unique_ptr<T> make_render_pipeline(std::string_view name, Args&&... args)
@@ -102,7 +102,7 @@ private:
     void initialize_debug();
 
     void update();
-    void render();
+    void render_scene();
 
     void render_debug();
 

@@ -26,9 +26,12 @@ private:
         auto& task = system<task::task_manager>();
 
         auto update_task = task.schedule("test update", [this]() { update(); });
-
-        auto window_task = task.find(ash::window::window::TASK_WINDOW_TICK);
-        auto render_task = task.find(ash::graphics::graphics::TASK_RENDER);
+        auto window_task = task.schedule(
+            "window tick",
+            [this]() { system<window::window>().tick(); },
+            task::task_type::MAIN_THREAD);
+        auto render_task =
+            task.schedule("render", [this]() { system<graphics::graphics>().render(); });
 
         window_task->add_dependency(*task.find("root"));
         update_task->add_dependency(*window_task);
@@ -114,9 +117,6 @@ private:
         bool show = true;
         auto& ui = system<ash::ui::ui>();
         ui.begin_frame();
-
-        ui.test();
-
         ui.end_frame();
 
         update_camera(system<ash::core::timer>().frame_delta());

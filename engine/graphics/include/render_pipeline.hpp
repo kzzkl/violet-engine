@@ -18,6 +18,8 @@ struct render_unit
 
     render_pipeline* pipeline;
     std::vector<render_parameter*> parameters;
+
+    void* external;
 };
 
 class render_pipeline

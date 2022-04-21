@@ -164,6 +164,15 @@ struct pipeline_desc
 class pipeline
 {
 public:
+    virtual ~pipeline() = default;
+};
+
+struct scissor_rect
+{
+    std::uint32_t min_x;
+    std::uint32_t min_y;
+    std::uint32_t max_x;
+    std::uint32_t max_y;
 };
 
 class render_command
@@ -178,6 +187,8 @@ public:
     virtual void pipeline(pipeline_type* pipeline) = 0;
     virtual void layout(layout_type* layout) = 0;
     virtual void parameter(std::size_t index, pipeline_parameter* parameter) = 0;
+
+    virtual void scissor(const scissor_rect& rect) = 0;
 
     virtual void draw(
         resource* vertex,

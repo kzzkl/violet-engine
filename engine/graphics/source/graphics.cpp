@@ -45,23 +45,6 @@ bool graphics::initialize(const dictionary& config)
     initialize_resource();
     initialize_debug();
 
-    auto& task = system<task::task_manager>();
-    task.schedule(TASK_RENDER, [this]() {
-        update();
-
-        m_renderer->begin_frame();
-        render();
-
-        if (!m_debug->empty())
-            render_debug();
-
-        m_renderer->end_frame();
-
-        for (auto pipeline : m_render_pipelines)
-            pipeline->clear();
-        m_render_pipelines.clear();
-    });
-
     auto& world = system<ecs::world>();
     world.register_component<visual>();
     world.register_component<main_camera>();
@@ -72,6 +55,23 @@ bool graphics::initialize(const dictionary& config)
     // m_tv = world.make_view<scene::transform>();
 
     return true;
+}
+
+void graphics::render()
+{
+    update();
+
+    m_renderer->begin_frame();
+    render_scene();
+
+    if (!m_debug->empty())
+        render_debug();
+
+    m_renderer->end_frame();
+
+    for (auto pipeline : m_render_pipelines)
+        pipeline->clear();
+    m_render_pipelines.clear();
 }
 
 std::unique_ptr<resource> graphics::make_texture(std::string_view file)
@@ -234,7 +234,7 @@ void graphics::update()
     });*/
 }
 
-void graphics::render()
+void graphics::render_scene()
 {
     auto command = m_renderer->allocate_command();
     for (auto pipeline : m_render_pipelines)

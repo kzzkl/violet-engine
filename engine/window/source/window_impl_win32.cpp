@@ -66,9 +66,6 @@ bool window_impl_win32::initialize(
     RECT windowRect = {0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
     AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, false);
 
-    int posX = (GetSystemMetrics(SM_CXSCREEN) - (windowRect.right - windowRect.left)) / 2;
-    int posY = (GetSystemMetrics(SM_CYSCREEN) - (windowRect.bottom - windowRect.top)) / 2;
-
     SetProcessDPIAware();
 
     ASH_ASSERT(title.size() < 128, "The title is too long");
@@ -79,14 +76,25 @@ bool window_impl_win32::initialize(
         wndClassEx.lpszClassName,
         wtitle.c_str(),
         WS_OVERLAPPEDWINDOW,
-        posX,
-        posY,
+        0,
+        0,
         windowRect.right - windowRect.left,
         windowRect.bottom - windowRect.top,
         nullptr,
         nullptr,
         m_instance,
         this);
+
+    // Center window.
+    int system_dpi = GetDpiForSystem();
+    int window_dpi = GetDpiForWindow(m_hwnd);
+    int pos_x = (GetSystemMetrics(SM_CXSCREEN) -
+                 (windowRect.right - windowRect.left) * window_dpi / system_dpi) /
+                2;
+    int pos_y = (GetSystemMetrics(SM_CYSCREEN) -
+                 (windowRect.bottom - windowRect.top) * window_dpi / system_dpi) /
+                2;
+    SetWindowPos(m_hwnd, 0, pos_x, pos_y, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
 
     RAWINPUTDEVICE rid;
     rid.usUsagePage = 0x1;
