@@ -56,7 +56,7 @@ public:
         m_update_key.push_back(key);
     }
 
-    void tick()
+    virtual void tick()
     {
         if (!m_update_key.empty())
         {
@@ -108,6 +108,8 @@ public:
         m_x = x;
         m_y = y;
     }
+
+    virtual void tick() override;
 
 protected:
     int m_x;

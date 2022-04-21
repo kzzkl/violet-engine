@@ -18,6 +18,7 @@ bool ui::initialize(const dictionary& config)
     ui_impl_desc desc = {};
     desc.window_handle = system<window::window>().handle();
     desc.graphics = &graphics;
+    desc.event = &system<core::event>();
     m_impl = std::make_unique<ui_impl_imgui>(desc);
 
     m_pipeline = graphics.make_render_pipeline<graphics::render_pipeline>("ui");

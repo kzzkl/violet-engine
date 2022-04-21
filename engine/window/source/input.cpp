@@ -16,9 +16,16 @@ void mouse::mode(mouse_mode mode)
 {
     if (m_mode != mode)
     {
+        m_x = m_y = 0;
         m_mode = mode;
         m_impl->change_mouse_mode(mode);
     }
+}
+
+void mouse::tick()
+{
+    key_device<mouse_key>::tick();
+    m_x = m_y = 0;
 }
 
 keyboard::keyboard() noexcept

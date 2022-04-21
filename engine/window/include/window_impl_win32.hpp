@@ -35,6 +35,7 @@ private:
 
     static constexpr auto* m_class_name = L"ash-engine";
 
+    bool m_mouse_mode_change;
     mouse_mode m_mouse_mode;
     int m_mouse_x;
     int m_mouse_y;

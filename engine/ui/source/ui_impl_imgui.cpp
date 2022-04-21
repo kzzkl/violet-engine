@@ -1,11 +1,12 @@
 #include "ui_impl_imgui.hpp"
+#include "window_event.hpp"
 
 namespace ash::ui
 {
 ui_impl_imgui::ui_impl_imgui(const ui_impl_desc& desc) : m_index(0)
 {
     ImGui::CreateContext();
-    ImGui::GetMainViewport()->PlatformHandleRaw = desc.window_handle;
+    // ImGui::GetMainViewport()->PlatformHandleRaw = desc.window_handle;
 
     for (std::size_t i = 0; i < 3; ++i)
     {
@@ -22,6 +23,35 @@ ui_impl_imgui::ui_impl_imgui(const ui_impl_desc& desc) : m_index(0)
     ImGui::GetIO().Fonts->GetTexDataAsRGBA32(&pixels, &font_width, &font_height);
 
     m_font = desc.graphics->make_texture(pixels, font_width, font_height);
+
+    desc.event->subscribe<window::event_mouse_key>(
+        [this](window::mouse_key key, window::key_state state) {
+            if (m_enable_mouse)
+            {
+                int button = 0;
+                if (key == window::mouse_key::LEFT_BUTTON)
+                    button = 0;
+                else if (key == window::mouse_key::RIGHT_BUTTON)
+                    button = 0;
+                else if (key == window::mouse_key::MIDDLE_BUTTON)
+                    button = 0;
+
+                ImGui::GetIO().AddMouseButtonEvent(button, state.down());
+            }
+        });
+
+    desc.event->subscribe<window::event_mouse_move>([this](window::mouse_mode mode, int x, int y) {
+        if (mode == window::mouse_mode::CURSOR_ABSOLUTE)
+        {
+            m_enable_mouse = true;
+            ImGui::GetIO().AddMousePosEvent(static_cast<float>(x), static_cast<float>(y));
+        }
+        else if (m_enable_mouse)
+        {
+            m_enable_mouse = false;
+            ImGui::GetIO().AddMousePosEvent(0.0f, 0.0f);
+        }
+    });
 }
 
 void ui_impl_imgui::begin_frame(std::uint32_t width, std::uint32_t height, float delta)

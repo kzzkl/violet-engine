@@ -69,6 +69,7 @@ private:
                 mouse.mode(window::mouse_mode::CURSOR_ABSOLUTE);
             else
                 mouse.mode(window::mouse_mode::CURSOR_RELATIVE);
+            log::debug("{}", mouse.mode());
         }
 
         auto& camera_transform = world.component<scene::transform>(m_camera);
@@ -151,15 +152,6 @@ private:
 
 int main()
 {
-    /*ImGui::CreateContext();
-    while (true)
-    {
-        ImGui::NewFrame();
-        ImGui::Begin("test");
-        ImGui::End();
-        ImGui::EndFrame();
-    }*/
-
     ash::sample ::ui::ui_app app;
     app.initialize();
     app.run();

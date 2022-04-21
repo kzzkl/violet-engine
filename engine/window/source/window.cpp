@@ -26,6 +26,7 @@ bool window::initialize(const dictionary& config)
 
     auto& event = system<core::event>();
     event.register_event<event_mouse_move>();
+    event.register_event<event_mouse_key>();
     event.register_event<event_keyboard_key>();
 
     return true;
@@ -34,6 +35,9 @@ bool window::initialize(const dictionary& config)
 void window::process_message()
 {
     auto& event = system<core::event>();
+
+    m_mouse.tick();
+    m_keyboard.tick();
 
     m_impl->reset();
     m_impl->tick();
@@ -44,13 +48,19 @@ void window::process_message()
         {
         case window_message::message_type::MOUSE_MOVE:
             m_mouse.move(message.mouse_move.x, message.mouse_move.y);
-            event.publish<event_mouse_move>(message.mouse_move.x, message.mouse_move.y);
+            event.publish<event_mouse_move>(
+                m_mouse.mode(),
+                message.mouse_move.x,
+                message.mouse_move.y);
             break;
         case window_message::message_type::MOUSE_KEY:
             if (message.mouse_key.down)
                 m_mouse.key_down(message.mouse_key.key);
             else
                 m_mouse.key_up(message.mouse_key.key);
+            event.publish<event_mouse_key>(
+                message.mouse_key.key,
+                m_mouse.key(message.mouse_key.key));
             break;
         case window_message::message_type::KEYBOARD_KEY:
             if (message.keyboard_key.down)

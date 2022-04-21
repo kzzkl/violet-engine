@@ -24,5 +24,7 @@ private:
     std::unique_ptr<graphics::resource> m_font;
 
     std::size_t m_index;
+
+    bool m_enable_mouse;
 };
 } // namespace ash::ui

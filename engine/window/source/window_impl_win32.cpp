@@ -34,7 +34,12 @@ std::string wstring_to_string(std::wstring_view str)
     return buffer;
 }
 
-window_impl_win32::window_impl_win32() noexcept : m_mouse_mode(mouse_mode::CURSOR_ABSOLUTE)
+window_impl_win32::window_impl_win32() noexcept
+    : m_mouse_mode_change(false),
+      m_mouse_mode(mouse_mode::CURSOR_ABSOLUTE),
+      m_mouse_x(0),
+      m_mouse_y(0),
+      m_mouse_move(false)
 {
 }
 
@@ -100,6 +105,24 @@ bool window_impl_win32::initialize(
 
 void window_impl_win32::tick()
 {
+    if (m_mouse_mode_change)
+    {
+        if (m_mouse_mode == mouse_mode::CURSOR_ABSOLUTE)
+        {
+            ShowCursor(true);
+            ClipCursor(nullptr);
+        }
+        else
+        {
+            ShowCursor(false);
+            RECT rect;
+            GetClientRect(m_hwnd, &rect);
+            MapWindowRect(m_hwnd, nullptr, &rect);
+            ClipCursor(&rect);
+        }
+        m_mouse_mode_change = false;
+    }
+
     m_mouse_x = m_mouse_y = 0;
     m_mouse_move = false;
 
@@ -152,21 +175,8 @@ void window_impl_win32::title(std::string_view title)
 
 void window_impl_win32::change_mouse_mode(mouse_mode mode)
 {
-    if (mode == mouse_mode::CURSOR_ABSOLUTE)
-    {
-        ShowCursor(true);
-        ClipCursor(nullptr);
-    }
-    else
-    {
-        ShowCursor(false);
-        RECT rect;
-        GetClientRect(m_hwnd, &rect);
-        MapWindowRect(m_hwnd, nullptr, &rect);
-        ClipCursor(&rect);
-    }
-
     m_mouse_mode = mode;
+    m_mouse_mode_change = true;
 }
 
 LRESULT CALLBACK
@@ -202,7 +212,8 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
     switch (message)
     {
     case WM_MOUSEMOVE: {
-        on_mouse_move(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
+        if (m_mouse_mode == mouse_mode::CURSOR_ABSOLUTE)
+            on_mouse_move(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
         break;
     }
     case WM_INPUT: {

@@ -9,6 +9,7 @@ struct ui_impl_desc
 {
     void* window_handle;
     graphics::graphics* graphics;
+    core::event* event;
 };
 
 using ui_render_data = std::vector<graphics::render_unit>;
