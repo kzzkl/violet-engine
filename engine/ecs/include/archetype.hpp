@@ -156,6 +156,14 @@ public:
         entity_info.index = target_index;
     }
 
+    void remove(entity entity)
+    {
+        auto& entity_info = m_entity_registry->at(entity);
+        ASH_ASSERT(entity_info.archetype == this);
+
+        remove(entity_info.index);
+    }
+
     void clear() noexcept
     {
         for (std::size_t i = 0; i < m_entities.size(); ++i)

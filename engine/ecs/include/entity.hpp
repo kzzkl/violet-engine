@@ -2,6 +2,7 @@
 
 #include "assert.hpp"
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace ash::ecs
@@ -21,8 +22,9 @@ struct entity
 
 static constexpr entity INVALID_ENTITY = {-1, 0};
 
-struct all_entity
+struct information
 {
+    std::string name;
 };
 
 class archetype;
