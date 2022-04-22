@@ -13,10 +13,26 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
 
+    void window(std::string_view label);
+    void window_root(std::string_view label);
+    void window_pop();
+
+    void text(std::string_view text);
+
+    bool tree(std::string_view label, bool leaf = false);
+    std::tuple<bool, bool> tree_ex(std::string_view label, bool leaf = false);
+    void tree_pop();
+
+    bool collapsing(std::string_view label);
+
+    void texture(graphics::resource* texture);
+
+    std::pair<std::uint32_t, std::uint32_t> window_size();
+
+    bool any_item_active() const;
+
     void begin_frame();
     void end_frame();
-
-    void window();
 
 private:
     void initialize_theme();

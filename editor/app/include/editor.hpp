@@ -14,6 +14,8 @@ public:
 private:
     void initialize_task();
     void draw();
+
+    void test_update();
 };
 
 class editor_app

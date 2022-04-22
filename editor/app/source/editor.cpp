@@ -1,4 +1,5 @@
 #include "editor.hpp"
+#include "editor_layout.hpp"
 #include "graphics.hpp"
 #include "relation.hpp"
 #include "scene.hpp"
@@ -27,13 +28,40 @@ void editor::initialize_task()
         task::task_type::MAIN_THREAD);
     auto render_task = task.schedule("render", [this]() { system<graphics::graphics>().render(); });
 
+    auto draw_ui_task = task.schedule("draw ui", [this]() {
+        test_update();
+        draw();
+    });
+
     window_task->add_dependency(*task.find("root"));
-    render_task->add_dependency(*window_task);
+    draw_ui_task->add_dependency(*window_task);
+    render_task->add_dependency(*draw_ui_task);
 }
 
 void editor::draw()
 {
-    
+    auto& ui = system<ui::ui>();
+
+    ui.begin_frame();
+    system<editor_layout>().draw();
+    ui.end_frame();
+}
+
+void editor::test_update()
+{
+    auto& window = system<window::window>();
+    auto& world = system<ecs::world>();
+    auto& relation = system<core::relation>();
+    auto& scene = system<scene::scene>();
+
+    static int index = 0;
+
+    if (window.keyboard().key(window::keyboard_key::KEY_1).release())
+    {
+        ecs::entity cube = world.create("cube" + std::to_string(index++));
+        world.add<core::link>(cube);
+        relation.link(cube, scene.root());
+    }
 }
 
 editor_app::editor_app() : m_app("editor/config")
@@ -47,6 +75,7 @@ void editor_app::initialize()
     m_app.install<scene::scene>();
     m_app.install<graphics::graphics>();
     m_app.install<ui::ui>();
+    m_app.install<editor_layout>();
     m_app.install<editor>();
 }
 

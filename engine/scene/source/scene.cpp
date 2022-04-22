@@ -14,7 +14,7 @@ bool scene::initialize(const dictionary& config)
     world.register_component<transform>();
     m_view = world.make_view<transform>();
 
-    m_root = world.create();
+    m_root = world.create("scene");
     world.add<core::link, transform>(m_root);
 
     auto& root_transform = world.component<transform>(m_root);
