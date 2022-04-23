@@ -13,9 +13,12 @@ public:
 
 private:
     void initialize_task();
+    void initialize_camera();
     void draw();
 
     void test_update();
+
+    ecs::entity m_editor_camera;
 };
 
 class editor_app

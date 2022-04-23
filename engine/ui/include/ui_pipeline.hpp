@@ -19,6 +19,7 @@ public:
 
     virtual void render(
         graphics::resource* target,
+        graphics::resource* depth_stencil,
         graphics::render_command* command,
         graphics::render_parameter* pass) override;
 

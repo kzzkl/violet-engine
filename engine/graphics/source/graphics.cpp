@@ -59,10 +59,10 @@ bool graphics::initialize(const dictionary& config)
 
 void graphics::render()
 {
-    update();
+    /*update();
 
     m_renderer->begin_frame();
-    render_scene();
+    render_scene(m_renderer->back_buffer());
 
     if (!m_debug->empty())
         render_debug();
@@ -71,7 +71,116 @@ void graphics::render()
 
     for (auto pipeline : m_render_pipelines)
         pipeline->clear();
+    m_render_pipelines.clear();*/
+}
+
+void graphics::render(ecs::entity camera_entity)
+{
+    auto& world = system<ecs::world>();
+
+    auto& c = world.component<camera>(camera_entity);
+    auto& t = world.component<scene::transform>(camera_entity);
+
+    // Update camera data.
+    math::float4x4_simd transform_v;
+    math::float4x4_simd transform_p;
+    math::float4x4_simd transform_vp;
+
+    if (t.sync_count != 0)
+    {
+        math::float4x4_simd world_simd = math::simd::load(t.world_matrix);
+        transform_v = math::matrix_simd::inverse(world_simd);
+        math::simd::store(transform_v, c.view);
+    }
+    else
+    {
+        transform_v = math::simd::load(c.view);
+    }
+
+    transform_p = math::simd::load(c.projection);
+    transform_vp = math::matrix_simd::mul(transform_v, transform_p);
+
+    if (t.sync_count != 0)
+    {
+        math::float4x4 view, projection, view_projection;
+        math::simd::store(math::matrix_simd::transpose(transform_v), view);
+        math::simd::store(math::matrix_simd::transpose(transform_p), projection);
+        math::simd::store(math::matrix_simd::transpose(transform_vp), view_projection);
+
+        c.parameter->set(0, float4{1.0f, 2.0f, 3.0f, 4.0f});
+        c.parameter->set(1, float4{5.0f, 6.0f, 7.0f, 8.0f});
+        c.parameter->set(2, view, false);
+        c.parameter->set(3, projection, false);
+        c.parameter->set(4, view_projection, false);
+    }
+
+    // Update object data.
+    m_object_view->each([&, this](visual& visual, scene::transform& transform) {
+        if ((visual.mask & c.mask) == 0)
+            return;
+
+        math::float4x4_simd transform_m = math::simd::load(transform.world_matrix);
+        math::float4x4_simd transform_mv = math::matrix_simd::mul(transform_m, transform_v);
+        math::float4x4_simd transform_mvp = math::matrix_simd::mul(transform_mv, transform_p);
+
+        math::float4x4 model, model_view, model_view_projection;
+        math::simd::store(math::matrix_simd::transpose(transform_m), model);
+        math::simd::store(math::matrix_simd::transpose(transform_mv), model_view);
+        math::simd::store(math::matrix_simd::transpose(transform_mvp), model_view_projection);
+
+        visual.object->set(0, model, false);
+        visual.object->set(1, model_view, false);
+        visual.object->set(2, model_view_projection, false);
+    });
+
+    m_visual_view->each([&, this](visual& visual) {
+        if ((visual.mask & c.mask) == 0)
+            return;
+
+        for (std::size_t i = 0; i < visual.submesh.size(); ++i)
+        {
+            m_render_pipelines.insert(visual.submesh[i].pipeline);
+            visual.submesh[i].pipeline->add(&visual.submesh[i]);
+        }
+    });
+
+    // Render.
+    auto command = m_renderer->allocate_command();
+
+    if (c.render_target == nullptr)
+    {
+        for (auto pipeline : m_render_pipelines)
+            pipeline->render(
+                m_renderer->back_buffer(),
+                m_renderer->depth_stencil(),
+                command,
+                c.parameter.get());
+    }
+    else
+    {
+        command->begin_render(c.render_target);
+        command->clear_render_target(c.render_target);
+        command->clear_depth_stencil(c.depth_stencil);
+        for (auto pipeline : m_render_pipelines)
+            pipeline->render(c.render_target, c.depth_stencil, command, c.parameter.get());
+        command->end_render(c.render_target);
+    }
+
+    for (auto pipeline : m_render_pipelines)
+        pipeline->clear();
     m_render_pipelines.clear();
+
+    m_renderer->execute(command);
+}
+
+void graphics::begin_frame()
+{
+    m_renderer->begin_frame();
+}
+
+void graphics::end_frame()
+{
+    m_renderer->end_frame();
 }
 
 std::unique_ptr<resource> graphics::make_texture(std::string_view file)
@@ -234,21 +343,14 @@ void graphics::update()
     });*/
 }
 
-void graphics::render_scene()
-{
-    auto command = m_renderer->allocate_command();
-    for (auto pipeline : m_render_pipelines)
-    {
-        pipeline->render(m_renderer->back_buffer(), command, m_parameter_pass.get());
-    }
-
-    m_renderer->execute(command);
-}
-
 void graphics::render_debug()
 {
     auto command = m_renderer->allocate_command();
-    m_debug->render(m_renderer->back_buffer(), command, m_parameter_pass.get());
+    m_debug->render(
+        m_renderer->back_buffer(),
+        m_renderer->depth_stencil(),
+        command,
+        m_parameter_pass.get());
     m_renderer->execute(command);
     m_debug->reset();
 }

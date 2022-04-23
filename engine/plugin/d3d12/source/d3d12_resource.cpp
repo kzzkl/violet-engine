@@ -107,6 +107,7 @@ d3d12_render_target::d3d12_render_target(
     std::size_t height,
     DXGI_FORMAT format,
     std::size_t multiple_sampling)
+    : d3d12_resource(nullptr, D3D12_RESOURCE_STATE_COMMON)
 {
     auto device = d3d12_context::device();
 
@@ -155,8 +156,6 @@ d3d12_render_target::d3d12_render_target(
         m_resource.Get(),
         nullptr,
         heap->cpu_handle(m_descriptor_offset));
-
-    m_state = D3D12_RESOURCE_STATE_COMMON;
 }
 
 d3d12_render_target::d3d12_render_target(d3d12_render_target&& other) noexcept

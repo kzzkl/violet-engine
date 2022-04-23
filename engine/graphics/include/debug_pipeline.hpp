@@ -34,7 +34,11 @@ public:
     void reset() noexcept { m_vertics.clear(); }
     bool empty() const noexcept { return m_vertics.empty(); }
 
-    virtual void render(resource* target, render_command* command, render_parameter* pass) override;
+    virtual void render(
+        resource* target,
+        resource* depth_stencil,
+        render_command* command,
+        render_parameter* pass) override;
 
 private:
     std::vector<vertex> m_vertics;

@@ -187,7 +187,7 @@ public:
     virtual void pipeline(pipeline_type* pipeline) = 0;
     virtual void layout(layout_type* layout) = 0;
     virtual void parameter(std::size_t index, pipeline_parameter* parameter) = 0;
-
+    virtual void render_target(resource* target, resource* depth_stencil) = 0;
     virtual void scissor(const scissor_rect& rect) = 0;
 
     virtual void draw(
@@ -198,6 +198,12 @@ public:
         std::size_t vertex_base,
         primitive_topology_type primitive_topology,
         resource* target) = 0;
+
+    virtual void begin_render(resource* target) = 0;
+    virtual void end_render(resource* target) = 0;
+
+    virtual void clear_render_target(resource* target) = 0;
+    virtual void clear_depth_stencil(resource* depth_stencil) = 0;
 };
 
 struct adapter_info
@@ -215,6 +221,7 @@ public:
     virtual void execute(render_command* command) = 0;
 
     virtual resource* back_buffer() = 0;
+    virtual resource* depth_stencil() = 0;
     virtual std::size_t adapter(adapter_info* infos, std::size_t size) const = 0;
 
 private:
@@ -255,6 +262,15 @@ public:
         const std::uint8_t* data,
         std::size_t width,
         std::size_t height) = 0;
+
+    virtual resource* make_render_target(
+        std::size_t width,
+        std::size_t height,
+        std::size_t multiple_sampling = 1) = 0;
+    virtual resource* make_depth_stencil(
+        std::size_t width,
+        std::size_t height,
+        std::size_t multiple_sampling = 1) = 0;
 };
 
 struct context_config

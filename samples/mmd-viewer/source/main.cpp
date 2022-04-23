@@ -91,11 +91,14 @@ private:
     {
         auto& world = system<ash::ecs::world>();
         auto& scene = system<ash::scene::scene>();
+        auto& graphics = system<graphics::graphics>();
 
         m_camera = world.create();
         world.add<core::link, main_camera, camera, transform>(m_camera);
         auto& c_camera = world.component<camera>(m_camera);
         c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
+
+        c_camera.parameter = graphics.make_render_parameter("ash_pass");
 
         auto& c_transform = world.component<transform>(m_camera);
         c_transform.position = {0.0f, 11.0f, -60.0f};
@@ -114,7 +117,7 @@ private:
             [this]() { system<window::window>().tick(); },
             task::task_type::MAIN_THREAD);
         auto render_task =
-            task.schedule("render", [this]() { system<graphics::graphics>().render(); });
+            task.schedule("render", [this]() { system<graphics::graphics>().render(m_camera); });
 
         window_task->add_dependency(*task.find("root"));
         update_task->add_dependency(*window_task);

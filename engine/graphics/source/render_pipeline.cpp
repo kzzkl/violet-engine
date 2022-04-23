@@ -10,10 +10,15 @@ render_pipeline::render_pipeline(layout_type* layout, pipeline_type* pipeline)
 {
 }
 
-void render_pipeline::render(resource* target, render_command* command, render_parameter* pass)
+void render_pipeline::render(
+    resource* target,
+    resource* depth_stencil,
+    render_command* command,
+    render_parameter* pass)
 {
     command->pipeline(m_pipeline.get());
     command->layout(m_layout.get());
+    command->render_target(target, depth_stencil);
 
     if (m_pass_parameter_count != 0)
         command->parameter(m_unit_parameter_count, pass->parameter());

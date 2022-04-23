@@ -77,6 +77,30 @@ public:
         d3d12_context::command()->execute_command(command_list);
         return result;
     }
+
+    virtual resource* make_render_target(
+        std::size_t width,
+        std::size_t height,
+        std::size_t multiple_sampling) override
+    {
+        return new d3d12_render_target(
+            width,
+            height,
+            d3d12_swap_chain::RENDER_TARGET_FORMAT,
+            multiple_sampling);
+    }
+
+    virtual resource* make_depth_stencil(
+        std::size_t width,
+        std::size_t height,
+        std::size_t multiple_sampling) override
+    {
+        return new d3d12_depth_stencil_buffer(
+            width,
+            height,
+            d3d12_swap_chain::DEPTH_STENCIL_FORMAT,
+            multiple_sampling);
+    }
 };
 
 class d3d12_context_wrapper : public context

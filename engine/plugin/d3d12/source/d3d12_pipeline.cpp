@@ -419,12 +419,16 @@ void d3d12_pipeline_parameter::sync()
             auto device = d3d12_context::device();
             const d3d12_resource* texture = m_textures[info.offset];
 
+            auto resource_desc = texture->resource()->GetDesc();
+
             D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
-            desc.Format = texture->resource()->GetDesc().Format;
-            desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+            desc.Format = resource_desc.Format;
+            desc.ViewDimension = resource_desc.SampleDesc.Count == 1
+                                     ? D3D12_SRV_DIMENSION_TEXTURE2D
+                                     : D3D12_SRV_DIMENSION_TEXTURE2DMS;
             desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             desc.Texture2D.MostDetailedMip = 0;
-            desc.Texture2D.MipLevels = texture->resource()->GetDesc().MipLevels;
+            desc.Texture2D.MipLevels = resource_desc.MipLevels;
             desc.Texture2D.ResourceMinLODClamp = 0.0f;
 
             auto heap =

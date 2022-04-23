@@ -21,6 +21,7 @@ public:
     void present();
 
     virtual d3d12_resource* back_buffer();
+    virtual d3d12_resource* depth_stencil();
 
     virtual D3D12_CPU_DESCRIPTOR_HANDLE render_target_handle();
     D3D12_CPU_DESCRIPTOR_HANDLE depth_stencil_handle();
@@ -81,6 +82,7 @@ public:
     virtual void execute(render_command* command) override;
 
     virtual resource* back_buffer() override;
+    virtual resource* depth_stencil() override;
     virtual std::size_t adapter(adapter_info* infos, std::size_t size) const override;
 
     void begin_frame(D3D12GraphicsCommandList* command_list);

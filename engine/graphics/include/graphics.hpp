@@ -27,6 +27,10 @@ public:
     virtual bool initialize(const dictionary& config) override;
 
     void render();
+    void render(ecs::entity camera_entity);
+
+    void begin_frame();
+    void end_frame();
 
     template <typename T, typename... Args>
     std::unique_ptr<T> make_render_pipeline(std::string_view name, Args&&... args)
@@ -88,6 +92,24 @@ public:
         return std::unique_ptr<resource>(m_factory->make_texture(data, width, height));
     }
 
+    std::unique_ptr<resource> make_render_target(
+        std::size_t width,
+        std::size_t height,
+        std::size_t multiple_sampling = 1)
+    {
+        return std::unique_ptr<resource>(
+            m_factory->make_render_target(width, height, multiple_sampling));
+    }
+
+    std::unique_ptr<resource> make_depth_stencil(
+        std::size_t width,
+        std::size_t height,
+        std::size_t multiple_sampling = 1)
+    {
+        return std::unique_ptr<resource>(
+            m_factory->make_depth_stencil(width, height, multiple_sampling));
+    }
+
     std::unique_ptr<resource> make_texture(std::string_view file);
 
     debug_pipeline& debug() { return *m_debug; }
@@ -102,7 +124,6 @@ private:
     void initialize_debug();
 
     void update();
-    void render_scene();
 
     void render_debug();
 

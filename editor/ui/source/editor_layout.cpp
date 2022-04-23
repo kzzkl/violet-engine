@@ -60,14 +60,17 @@ void editor_layout::draw()
 void editor_layout::initialize_layout()
 {
     auto& world = system<ecs::world>();
+    auto& graphics = system<graphics::graphics>();
+    auto& scene = system<scene::scene>();
+    auto& relation = system<core::relation>();
 
     // Hierarchy view.
-    create_view<hierarchy_view>("hierarchy", m_ui_root, system<scene::scene>().root(), world);
+    create_view<hierarchy_view>("hierarchy", m_ui_root, scene.root(), world);
 
     // Component view.
     create_view<component_view>("component", m_ui_root, world);
 
     // Render view.
-    create_view<render_view>("render", m_ui_root);
+    create_view<render_view>("render", m_ui_root, graphics, world, relation, scene);
 }
 } // namespace ash::editor

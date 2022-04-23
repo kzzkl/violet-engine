@@ -9,17 +9,17 @@ namespace ash::graphics
 class render_pipeline;
 struct render_unit
 {
-    resource* vertex_buffer;
-    resource* index_buffer;
+    resource* vertex_buffer{nullptr};
+    resource* index_buffer{nullptr};
 
-    std::size_t index_start;
-    std::size_t index_end;
-    std::size_t vertex_base;
+    std::size_t index_start{0};
+    std::size_t index_end{0};
+    std::size_t vertex_base{0};
 
-    render_pipeline* pipeline;
+    render_pipeline* pipeline{nullptr};
     std::vector<render_parameter*> parameters;
 
-    void* external;
+    void* external{nullptr};
 };
 
 class render_pipeline
@@ -35,7 +35,11 @@ public:
     void add(const render_unit* unit) { m_units.push_back(unit); }
     void clear() { m_units.clear(); }
 
-    virtual void render(resource* target, render_command* command, render_parameter* pass);
+    virtual void render(
+        resource* target,
+        resource* depth_stencil,
+        render_command* command,
+        render_parameter* pass);
 
     void parameter_count(std::size_t unit, std::size_t pass) noexcept
     {

@@ -26,13 +26,18 @@ void debug_pipeline::draw_line(
     m_vertics.push_back(vertex{end, color});
 }
 
-void debug_pipeline::render(resource* target, render_command* command, render_parameter* pass)
+void debug_pipeline::render(
+    resource* target,
+    resource* depth_stencil,
+    render_command* command,
+    render_parameter* pass)
 {
     m_vertex_buffer[m_index]->upload(m_vertics.data(), sizeof(vertex) * m_vertics.size(), 0);
 
     command->pipeline(pipeline());
     command->layout(layout());
     command->parameter(0, pass->parameter());
+    command->render_target(target, depth_stencil);
     command->draw(
         m_vertex_buffer[m_index].get(),
         m_index_buffer.get(),

@@ -21,6 +21,7 @@ bool ui::initialize(const dictionary& config)
 
     m_ui_entity = world.create();
     world.add<graphics::visual>(m_ui_entity);
+    world.component<graphics::visual>(m_ui_entity).mask = (1 << 1);
 
     ImGui::CreateContext();
     initialize_theme();
@@ -32,8 +33,6 @@ bool ui::initialize(const dictionary& config)
             graphics.make_vertex_buffer<ImDrawVert>(nullptr, 1024 * 16, true));
         m_index_buffer.push_back(graphics.make_index_buffer<ImDrawIdx>(nullptr, 1024 * 32, true));
     }
-
-    m_parameter = graphics.make_render_parameter("ui");
 
     event.subscribe<window::event_mouse_key>(
         [this](window::mouse_key key, window::key_state state) {
@@ -118,13 +117,23 @@ bool ui::collapsing(std::string_view label)
     return ImGui::CollapsingHeader(label.data());
 }
 
-void ui::texture(graphics::resource* texture)
+void ui::texture(graphics::resource* texture, float width, float height)
 {
     ImVec2 pos_min = ImGui::GetCursorScreenPos();
-    ImVec2 pos_max = ImVec2(pos_min.x + 512, pos_min.y + 512);
+    ImVec2 pos_max = ImVec2(pos_min.x + width, pos_min.y + height);
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     draw_list->AddImage(texture, pos_min, pos_max);
+}
+
+void ui::style(ui_style style, float x, float y)
+{
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(x, y));
+}
+
+void ui::style_pop()
+{
+    ImGui::PopStyleVar();
 }
 
 std::pair<std::uint32_t, std::uint32_t> ui::window_size()
@@ -174,6 +183,20 @@ void ui::end_frame()
     std::size_t vertex_buffer_offset = 0;
     std::size_t index_buffer_offset = 0;
 
+    float L = data->DisplayPos.x;
+    float R = data->DisplayPos.x + data->DisplaySize.x;
+    float T = data->DisplayPos.y;
+    float B = data->DisplayPos.y + data->DisplaySize.y;
+
+    math::float4x4 mvp = {
+        math::float4{2.0f / (R - L),    0.0f,              0.0f, 0.0f},
+        math::float4{0.0f,              2.0f / (T - B),    0.0f, 0.0f},
+        math::float4{0.0f,              0.0f,              0.5f, 0.0f},
+        math::float4{(R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f}
+    };
+
+    m_parameter_counter = 0;
+
     ImVec2 clip_off = data->DisplayPos;
     for (int i = 0; i < data->CmdListsCount; ++i)
     {
@@ -197,11 +220,16 @@ void ui::end_frame()
             graphics::render_unit submesh = {};
             submesh.vertex_buffer = m_vertex_buffer[m_frame_index].get();
             submesh.index_buffer = m_index_buffer[m_frame_index].get();
-            submesh.parameters.push_back(m_parameter.get());
             submesh.index_start = command.IdxOffset + index_counter;
             submesh.index_end = command.IdxOffset + command.ElemCount + index_counter;
             submesh.vertex_base = command.VtxOffset + vertex_counter;
             submesh.pipeline = m_pipeline.get();
+
+            auto parameter = allocate_parameter();
+            parameter->set(0, mvp, false);
+            parameter->set(1, static_cast<graphics::resource*>(command.GetTexID()));
+            // parameter->set(1, m_font.get());
+            submesh.parameters.push_back(parameter);
 
             ImVec2 clip_min(command.ClipRect.x - clip_off.x, command.ClipRect.y - clip_off.y);
             ImVec2 clip_max(command.ClipRect.z - clip_off.x, command.ClipRect.w - clip_off.y);
@@ -223,20 +251,6 @@ void ui::end_frame()
         vertex_counter += list->VtxBuffer.Size;
         index_counter += list->IdxBuffer.Size;
     }
-
-    float L = data->DisplayPos.x;
-    float R = data->DisplayPos.x + data->DisplaySize.x;
-    float T = data->DisplayPos.y;
-    float B = data->DisplayPos.y + data->DisplaySize.y;
-
-    math::float4x4 mvp = {
-        math::float4{2.0f / (R - L),    0.0f,              0.0f, 0.0f},
-        math::float4{0.0f,              2.0f / (T - B),    0.0f, 0.0f},
-        math::float4{0.0f,              0.0f,              0.5f, 0.0f},
-        math::float4{(R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f}
-    };
-    m_parameter->set(0, mvp, false);
-    m_parameter->set(1, m_font.get());
 }
 
 void ui::initialize_theme()
@@ -311,5 +325,14 @@ void ui::initialize_font_texture()
     m_font = graphics.make_texture(pixels, font_width, font_height);
 
     io.Fonts->SetTexID(m_font.get());
+}
+
+graphics::render_parameter* ui::allocate_parameter()
+{
+    if (m_parameter_counter >= m_parameter_pool.size())
+        m_parameter_pool.push_back(system<graphics::graphics>().make_render_parameter("ui"));
+
+    ++m_parameter_counter;
+    return m_parameter_pool[m_parameter_counter - 1].get();
 }
 } // namespace ash::ui

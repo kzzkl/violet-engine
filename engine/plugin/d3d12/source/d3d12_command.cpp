@@ -57,6 +57,22 @@ void d3d12_render_command::parameter(std::size_t index, pipeline_parameter* para
     }
 }
 
+void d3d12_render_command::render_target(resource* target, resource* depth_stencil)
+{
+    auto rt_handle = static_cast<d3d12_render_target*>(target)->cpu_handle();
+    auto ds_handle = static_cast<d3d12_depth_stencil_buffer*>(depth_stencil)->cpu_handle();
+
+    D3D12_VIEWPORT viewport = {};
+    viewport.Width = static_cast<float>(static_cast<d3d12_render_target*>(target)->resource()->GetDesc().Width);
+    viewport.Height = static_cast<float>(static_cast<d3d12_render_target*>(target)->resource()->GetDesc().Height);
+    viewport.MinDepth = 0.0f;
+    viewport.MaxDepth = 1.0f;
+    viewport.TopLeftX = 0.0f;
+    viewport.TopLeftY = 0.0f;
+    m_command_list->RSSetViewports(1, &viewport);
+    m_command_list->OMSetRenderTargets(1, &rt_handle, true, &ds_handle);
+}
+
 void d3d12_render_command::scissor(const scissor_rect& rect)
 {
     D3D12_RECT r = {
@@ -93,6 +109,41 @@ void d3d12_render_command::draw(
         static_cast<UINT>(index_start),
         static_cast<UINT>(vertex_base),
         0);
+}
+
+void d3d12_render_command::begin_render(resource* target)
+{
+    auto rt = static_cast<d3d12_render_target*>(target);
+    rt->transition_state(D3D12_RESOURCE_STATE_RENDER_TARGET, m_command_list.Get());
+}
+
+void d3d12_render_command::end_render(resource* target)
+{
+    auto rt = static_cast<d3d12_render_target*>(target);
+    rt->transition_state(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, m_command_list.Get());
+}
+
+void d3d12_render_command::clear_render_target(resource* target)
+{
+    static const float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
+
+    auto rt = static_cast<d3d12_render_target*>(target);
+    auto desc = rt->resource()->GetDesc();
+    D3D12_RECT rect = {0, 0, static_cast<LONG>(desc.Width), static_cast<LONG>(desc.Height)};
+
+    m_command_list->ClearRenderTargetView(rt->cpu_handle(), clear_color, 1, &rect);
+}
+
+void d3d12_render_command::clear_depth_stencil(resource* depth_stencil)
+{
+    auto ds = static_cast<d3d12_depth_stencil_buffer*>(depth_stencil);
+    m_command_list->ClearDepthStencilView(
+        ds->cpu_handle(),
+        D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
+        1.0f,
+        0,
+        0,
+        nullptr);
 }
 
 void d3d12_render_command::allocator(D3D12CommandAllocator* allocator) noexcept

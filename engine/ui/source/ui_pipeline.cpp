@@ -9,11 +9,13 @@ ui_pipeline::ui_pipeline(graphics::pipeline_layout* layout, graphics::pipeline* 
 
 void ui_pipeline::render(
     graphics::resource* target,
+    graphics::resource* depth_stencil,
     graphics::render_command* command,
     graphics::render_parameter* pass)
 {
     command->pipeline(pipeline());
     command->layout(layout());
+    command->render_target(target, depth_stencil);
 
     for (auto& unit : units())
     {

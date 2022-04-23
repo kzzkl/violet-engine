@@ -6,6 +6,11 @@
 
 namespace ash::ui
 {
+enum class ui_style
+{
+    WINDOW_PADDING
+};
+
 class ui : public core::system_base
 {
 public:
@@ -25,10 +30,12 @@ public:
 
     bool collapsing(std::string_view label);
 
-    void texture(graphics::resource* texture);
+    void texture(graphics::resource* texture, float width, float height);
+
+    void style(ui_style style, float x = 0.0f, float y = 0.0f);
+    void style_pop();
 
     std::pair<std::uint32_t, std::uint32_t> window_size();
-
     bool any_item_active() const;
 
     void begin_frame();
@@ -38,13 +45,17 @@ private:
     void initialize_theme();
     void initialize_font_texture();
 
+    graphics::render_parameter* allocate_parameter();
+
     ecs::entity m_ui_entity;
 
     std::vector<std::unique_ptr<graphics::resource>> m_vertex_buffer;
     std::vector<std::unique_ptr<graphics::resource>> m_index_buffer;
 
-    std::unique_ptr<graphics::render_parameter> m_parameter;
     std::unique_ptr<graphics::resource> m_font;
+
+    std::size_t m_parameter_counter;
+    std::vector<std::unique_ptr<graphics::render_parameter>> m_parameter_pool;
 
     std::deque<graphics::scissor_rect> m_scissor_rects;
 

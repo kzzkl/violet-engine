@@ -89,6 +89,11 @@ d3d12_resource* d3d12_swap_chain::back_buffer()
     return m_back_buffer[back_buffer_index()].get();
 }
 
+d3d12_resource* d3d12_swap_chain::depth_stencil()
+{
+    return m_depth_stencil_buffer.get();
+}
+
 D3D12_CPU_DESCRIPTOR_HANDLE d3d12_swap_chain::render_target_handle()
 {
     return m_back_buffer[back_buffer_index()]->cpu_handle();
@@ -244,6 +249,11 @@ void d3d12_renderer::execute(render_command* command)
 resource* d3d12_renderer::back_buffer()
 {
     return m_swap_chain->back_buffer();
+}
+
+resource* d3d12_renderer::depth_stencil()
+{
+    return m_swap_chain->depth_stencil();
 }
 
 std::size_t d3d12_renderer::adapter(adapter_info* infos, std::size_t size) const
