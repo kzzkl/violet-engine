@@ -1,7 +1,7 @@
 #pragma once
 
-#include "simd.hpp"
 #include <cstddef>
+#include <cstdint>
 
 namespace ash::math
 {

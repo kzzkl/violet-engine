@@ -132,6 +132,16 @@ void ui::texture(graphics::resource* texture, float width, float height)
     draw_list->AddImage(texture, pos_min, pos_max);
 }
 
+bool ui::drag(std::string_view label, float& value, float speed)
+{
+    return ImGui::DragFloat(label.data(), &value, speed);
+}
+
+bool ui::drag(std::string_view label, math::float3& value, float speed)
+{
+    return ImGui::DragFloat3(label.data(), &value[0], speed);
+}
+
 void ui::style(ui_style style, float x, float y)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(x, y));

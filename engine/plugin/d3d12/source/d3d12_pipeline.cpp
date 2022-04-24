@@ -614,7 +614,7 @@ void d3d12_pipeline::initialize_pipeline_state(const pipeline_desc& desc)
     pso_desc.SampleDesc = d3d12_context::renderer()->render_target_sample_desc();
     pso_desc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-    pso_desc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+    pso_desc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
     if (desc.primitive_topology == primitive_topology_type::TRIANGLE_LIST)
         pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     else if (desc.primitive_topology == primitive_topology_type::LINE_LIST)

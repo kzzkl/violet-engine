@@ -13,9 +13,12 @@ void hierarchy_view::draw(editor_data& data)
 {
     auto& ui = system<ui::ui>();
     auto& scene = system<scene::scene>();
+    auto& world = system<ecs::world>();
 
-    ui.window("hierarchy");
-    draw_node(scene.root(), data);
+    ui.window("Hierarchy");
+    auto& link = world.component<core::link>(scene.root());
+    for (ecs::entity child : link.children)
+        draw_node(child, data);
     ui.window_pop();
 }
 

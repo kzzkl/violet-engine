@@ -9,7 +9,7 @@ class information_plane : public component_plane
 {
 public:
     information_plane(core::context* context)
-        : component_plane("information", ecs::component_index::value<ecs::information>(), context)
+        : component_plane("Information", ecs::component_index::value<ecs::information>(), context)
     {
     }
 
@@ -27,23 +27,27 @@ class transform_plane : public component_plane
 {
 public:
     transform_plane(core::context* context)
-        : component_plane("transform", ecs::component_index::value<scene::transform>(), context)
+        : component_plane("Transform", ecs::component_index::value<scene::transform>(), context)
     {
     }
 
     virtual void draw(ecs::entity entity) override
     {
         auto& ui = system<ui::ui>();
-        auto& world = system<ecs::world>();
-        auto& transform = world.component<scene::transform>(entity);
+        auto& transform = system<ecs::world>().component<scene::transform>(entity);
 
-        ui.text(std::to_string(transform.position[0]));
-        ui.text(std::to_string(transform.position[1]));
-        ui.text(std::to_string(transform.position[2]));
-        ui.text(std::to_string(transform.rotation[0]));
-        ui.text(std::to_string(transform.rotation[1]));
-        ui.text(std::to_string(transform.rotation[2]));
-        ui.text(std::to_string(transform.rotation[3]));
+        if (ui.drag("  Position", transform.position))
+            transform.dirty = true;
+
+        math::float3 euler = math::euler_plain::rotation_quaternion(transform.rotation);
+        if (ui.drag("  Rotation", euler))
+        {
+            transform.rotation = math::quaternion_plain::rotation_euler(euler);
+            transform.dirty = true;
+        }
+
+        if (ui.drag("  Scale", transform.scaling))
+            transform.dirty = true;
     }
 };
 
@@ -60,7 +64,7 @@ void component_view::draw(editor_data& data)
     auto& ui = system<ui::ui>();
     auto& world = system<ecs::world>();
 
-    ui.window("component");
+    ui.window("Component");
     if (data.active_entity != ecs::INVALID_ENTITY)
     {
         for (auto component : world.owned_component(data.active_entity))

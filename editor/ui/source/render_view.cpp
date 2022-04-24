@@ -35,7 +35,7 @@ void render_view::draw(editor_data& data)
     auto& scene = system<scene::scene>();
 
     ui.style(ui::ui_style::WINDOW_PADDING, 0.0f, 0.0f);
-    if (ui.window_ex("render"))
+    if (ui.window_ex("Render"))
         update_camera();
 
     auto active = ui.any_item_active();

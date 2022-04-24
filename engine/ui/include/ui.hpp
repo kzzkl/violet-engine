@@ -30,8 +30,10 @@ public:
     void tree_pop();
 
     bool collapsing(std::string_view label);
-
     void texture(graphics::resource* texture, float width, float height);
+
+    bool drag(std::string_view label, float& value, float speed = 0.1f);
+    bool drag(std::string_view label, math::float3& value, float speed = 0.1f);
 
     void style(ui_style style, float x = 0.0f, float y = 0.0f);
     void style_pop();
