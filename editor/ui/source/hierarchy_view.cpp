@@ -1,25 +1,31 @@
 #include "hierarchy_view.hpp"
 #include "link.hpp"
+#include "scene.hpp"
+#include "ui.hpp"
 
 namespace ash::editor
 {
-hierarchy_view::hierarchy_view(ecs::entity scene_root, ecs::world& world)
-    : m_scene_root(scene_root),
-      m_world(world)
+hierarchy_view::hierarchy_view(core::context* context) : editor_view(context)
 {
 }
 
-void hierarchy_view::draw(ui::ui& ui, editor_data& data)
+void hierarchy_view::draw(editor_data& data)
 {
+    auto& ui = system<ui::ui>();
+    auto& scene = system<scene::scene>();
+
     ui.window("hierarchy");
-    draw_node(ui, m_scene_root, data);
+    draw_node(scene.root(), data);
     ui.window_pop();
 }
 
-void hierarchy_view::draw_node(ui::ui& ui, ecs::entity entity, editor_data& data)
+void hierarchy_view::draw_node(ecs::entity entity, editor_data& data)
 {
-    auto& info = m_world.component<ecs::information>(entity);
-    auto& link = m_world.component<core::link>(entity);
+    auto& ui = system<ui::ui>();
+    auto& world = system<ecs::world>();
+
+    auto& info = world.component<ecs::information>(entity);
+    auto& link = world.component<core::link>(entity);
 
     auto [open, clicked] = ui.tree_ex(info.name, link.children.empty());
     if (clicked)
@@ -28,7 +34,7 @@ void hierarchy_view::draw_node(ui::ui& ui, ecs::entity entity, editor_data& data
     if (open)
     {
         for (ecs::entity child : link.children)
-            draw_node(ui, child, data);
+            draw_node(child, data);
 
         ui.tree_pop();
     }

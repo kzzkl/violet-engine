@@ -3,13 +3,15 @@
 #include "hierarchy_view.hpp"
 #include "render_view.hpp"
 #include "scene.hpp"
+#include "ui.hpp"
 
 namespace ash::editor
 {
 class root_view : public editor_view
 {
 public:
-    virtual void draw(ui::ui& ui, editor_data& data) override {}
+    root_view() : editor_view(nullptr) {}
+    virtual void draw(editor_data& data) override {}
 };
 
 editor_layout::editor_layout() : core::system_base("editor_layout")
@@ -46,7 +48,7 @@ void editor_layout::draw()
         auto& view = world.component<editor_ui>(entity);
         if (view.show)
         {
-            view.interface->draw(ui, m_data);
+            view.interface->draw(m_data);
             return true;
         }
         else
@@ -65,12 +67,12 @@ void editor_layout::initialize_layout()
     auto& relation = system<core::relation>();
 
     // Hierarchy view.
-    create_view<hierarchy_view>("hierarchy", m_ui_root, scene.root(), world);
+    create_view<hierarchy_view>("hierarchy", m_ui_root);
 
     // Component view.
-    create_view<component_view>("component", m_ui_root, world);
+    create_view<component_view>("component", m_ui_root);
 
     // Render view.
-    create_view<render_view>("render", m_ui_root, graphics, world, relation, scene);
+    create_view<render_view>("render", m_ui_root);
 }
 } // namespace ash::editor

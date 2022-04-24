@@ -7,15 +7,12 @@ namespace ash::editor
 class hierarchy_view : public editor_view
 {
 public:
-    hierarchy_view(ecs::entity scene_root, ecs::world& world);
+    hierarchy_view(core::context* context);
     virtual ~hierarchy_view() = default;
 
-    virtual void draw(ui::ui& ui, editor_data& data) override;
+    virtual void draw(editor_data& data) override;
 
 private:
-    void draw_node(ui::ui& ui, ecs::entity entity, editor_data& data);
-
-    ecs::world& m_world;
-    ecs::entity m_scene_root;
+    void draw_node(ecs::entity entity, editor_data& data);
 };
 } // namespace ash::editor

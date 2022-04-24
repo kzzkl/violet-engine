@@ -14,6 +14,8 @@ public:
 
     inline bool down() const noexcept { return m_state & 0x1; }
     inline bool up() const noexcept { return !down(); }
+
+    inline bool press() const noexcept { return m_state == 0x1; }
     inline bool release() const noexcept { return m_state == 0x2; }
     inline bool hold() const noexcept { return m_state == 0x3; }
 
@@ -102,18 +104,15 @@ public:
 
     inline int x() const noexcept { return m_x; }
     inline int y() const noexcept { return m_y; }
-
-    inline void move(int x, int y) noexcept
-    {
-        m_x = x;
-        m_y = y;
-    }
+    inline int whell() const noexcept { return m_whell; }
 
     virtual void tick() override;
 
 protected:
+    friend class window;
     int m_x;
     int m_y;
+    int m_whell;
 
     mouse_mode m_mode;
     window_impl* m_impl;

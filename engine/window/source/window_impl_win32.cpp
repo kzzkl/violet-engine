@@ -133,6 +133,8 @@ void window_impl_win32::tick()
 
     m_mouse_x = m_mouse_y = 0;
     m_mouse_move = false;
+    m_mouse_whell = 0;
+    m_mouse_whell_move = false;
 
     MSG msg;
     while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
@@ -147,6 +149,14 @@ void window_impl_win32::tick()
         message.type = window_message::message_type::MOUSE_MOVE;
         message.mouse_move.x = m_mouse_x;
         message.mouse_move.y = m_mouse_y;
+        m_messages.push_back(message);
+    }
+
+    if (m_mouse_whell_move)
+    {
+        window_message message;
+        message.type = window_message::message_type::MOUSE_WHELL;
+        message.mouse_whell.value = m_mouse_whell;
         m_messages.push_back(message);
     }
 }
@@ -264,6 +274,10 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
         on_mouse_key(mouse_key::MIDDLE_BUTTON, false);
         break;
     }
+    case WM_MOUSEWHEEL: {
+        on_mouse_whell(static_cast<short>(HIWORD(wparam)) / 120);
+        break;
+    }
     case WM_KEYDOWN: {
         on_keyboard_key(static_cast<keyboard_key>(wparam), true);
         break;
@@ -300,6 +314,12 @@ void window_impl_win32::on_mouse_key(mouse_key key, bool down)
     message.mouse_key.key = key;
     message.mouse_key.down = down;
     m_messages.push_back(message);
+}
+
+void window_impl_win32::on_mouse_whell(int value)
+{
+    m_mouse_whell += value;
+    m_mouse_whell_move = true;
 }
 
 void window_impl_win32::on_keyboard_key(keyboard_key key, bool down)

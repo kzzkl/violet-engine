@@ -71,6 +71,12 @@ void ui::window(std::string_view label)
     ImGui::Begin(label.data());
 }
 
+bool ui::window_ex(std::string_view label)
+{
+    window(label);
+    return ImGui::IsWindowFocused();
+}
+
 void ui::window_root(std::string_view label)
 {
     ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));

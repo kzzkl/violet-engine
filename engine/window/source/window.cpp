@@ -42,7 +42,8 @@ void window::tick()
         switch (message.type)
         {
         case window_message::message_type::MOUSE_MOVE:
-            m_mouse.move(message.mouse_move.x, message.mouse_move.y);
+            m_mouse.m_x = message.mouse_move.x;
+            m_mouse.m_y = message.mouse_move.y;
             event.publish<event_mouse_move>(
                 m_mouse.mode(),
                 message.mouse_move.x,
@@ -56,6 +57,9 @@ void window::tick()
             event.publish<event_mouse_key>(
                 message.mouse_key.key,
                 m_mouse.key(message.mouse_key.key));
+            break;
+        case window_message::message_type::MOUSE_WHELL:
+            m_mouse.m_whell = message.mouse_whell.value;
             break;
         case window_message::message_type::KEYBOARD_KEY:
             if (message.keyboard_key.down)

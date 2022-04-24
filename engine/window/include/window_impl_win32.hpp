@@ -29,6 +29,7 @@ private:
 
     void on_mouse_move(int x, int y);
     void on_mouse_key(mouse_key key, bool down);
+    void on_mouse_whell(int value);
     void on_keyboard_key(keyboard_key key, bool down);
     void on_window_move(int x, int y);
     void on_window_resize(int width, int height);
@@ -40,6 +41,9 @@ private:
     int m_mouse_x;
     int m_mouse_y;
     bool m_mouse_move;
+
+    int m_mouse_whell;
+    bool m_mouse_whell_move;
 
     HINSTANCE m_instance;
     HWND m_hwnd;

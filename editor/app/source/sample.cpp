@@ -41,8 +41,8 @@ bool test_module::initialize(const dictionary& config)
         world.add<core::link, physics::rigidbody, scene::transform, graphics::visual>(m_cube_1);
 
         auto& t = world.component<scene::transform>(m_cube_1);
-        t.position = {1.0f, 0.0f, 0.0f};
-        t.rotation = math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f);
+        t.position = {0.0f, 0.0f, 0.0f};
+        //t.rotation = math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f);
 
         auto& r = world.component<physics::rigidbody>(m_cube_1);
         r.shape = m_cube_shape.get();

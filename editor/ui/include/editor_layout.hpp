@@ -27,7 +27,7 @@ private:
         auto& ui = world.component<editor_ui>(view);
         ui.show = true;
 
-        auto interface = std::make_unique<T>(std::forward<Args>(args)...);
+        auto interface = std::make_unique<T>(context(), std::forward<Args>(args)...);
         auto result = interface.get();
         ui.interface = std::move(interface);
 

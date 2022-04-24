@@ -19,6 +19,7 @@ struct window_message
     {
         MOUSE_MOVE,
         MOUSE_KEY,
+        MOUSE_WHELL,
         KEYBOARD_KEY,
         WINDOW_MOVE,
         WINDOW_RESIZE
@@ -36,6 +37,11 @@ struct window_message
             mouse_key key;
             bool down;
         } mouse_key;
+
+        struct
+        {
+            int value;
+        } mouse_whell;
 
         struct
         {

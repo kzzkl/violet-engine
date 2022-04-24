@@ -19,6 +19,7 @@ public:
     virtual bool initialize(const dictionary& config) override;
 
     void window(std::string_view label);
+    bool window_ex(std::string_view label);
     void window_root(std::string_view label);
     void window_pop();
 
