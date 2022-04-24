@@ -6,13 +6,7 @@
 
 namespace ash::graphics::d3d12
 {
-
-d3d12_swap_chain::d3d12_swap_chain(HWND handle, std::uint32_t width, std::uint32_t height)
-    : d3d12_swap_chain(handle, width, height, 1)
-{
-}
-
-d3d12_swap_chain::d3d12_swap_chain(
+d3d12_swap_chain_base::d3d12_swap_chain_base(
     HWND handle,
     std::uint32_t width,
     std::uint32_t height,
@@ -37,20 +31,6 @@ d3d12_swap_chain::d3d12_swap_chain(
         nullptr,
         &m_swap_chain));
 
-    for (UINT i = 0; i < 2; ++i)
-    {
-        d3d12_ptr<D3D12Resource> buffer;
-        m_swap_chain->GetBuffer(i, IID_PPV_ARGS(&buffer));
-        m_back_buffer.push_back(std::make_unique<d3d12_back_buffer>(buffer));
-    }
-
-    // Create a depth stencil buffer and view.
-    m_depth_stencil_buffer = std::make_unique<d3d12_depth_stencil_buffer>(
-        width,
-        height,
-        DEPTH_STENCIL_FORMAT,
-        multiple_sampling);
-
     // Query render target sample level.
     D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS sample_level = {};
     sample_level.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
@@ -65,98 +45,81 @@ d3d12_swap_chain::d3d12_swap_chain(
     m_sample_desc.Quality = sample_level.NumQualityLevels - 1;
 }
 
-void d3d12_swap_chain::begin_frame(D3D12GraphicsCommandList* command_list)
-{
-    m_back_buffer[back_buffer_index()]->transition_state(
-        D3D12_RESOURCE_STATE_RENDER_TARGET,
-        command_list);
-}
-
-void d3d12_swap_chain::end_frame(D3D12GraphicsCommandList* command_list)
-{
-    m_back_buffer[back_buffer_index()]->transition_state(
-        D3D12_RESOURCE_STATE_PRESENT,
-        command_list);
-}
-
-void d3d12_swap_chain::present()
+void d3d12_swap_chain_base::present()
 {
     throw_if_failed(m_swap_chain->Present(0, 0));
 }
 
-d3d12_resource* d3d12_swap_chain::back_buffer()
-{
-    return m_back_buffer[back_buffer_index()].get();
-}
-
-d3d12_resource* d3d12_swap_chain::depth_stencil()
-{
-    return m_depth_stencil_buffer.get();
-}
-
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_swap_chain::render_target_handle()
-{
-    return m_back_buffer[back_buffer_index()]->cpu_handle();
-}
-
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_swap_chain::depth_stencil_handle()
-{
-    return m_depth_stencil_buffer->cpu_handle();
-}
-
-UINT64 d3d12_swap_chain::back_buffer_index() const noexcept
+UINT64 d3d12_swap_chain_base::back_buffer_index() const noexcept
 {
     return d3d12_frame_counter::frame_counter() % 2;
 }
 
-d3d12_multisampling_swap_chain::d3d12_multisampling_swap_chain(
+d3d12_swap_chain::d3d12_swap_chain(HWND handle, std::uint32_t width, std::uint32_t height)
+    : d3d12_swap_chain_base(handle, width, height)
+{
+    for (UINT i = 0; i < 2; ++i)
+    {
+        d3d12_ptr<D3D12Resource> buffer;
+        m_swap_chain->GetBuffer(i, IID_PPV_ARGS(&buffer));
+        m_back_buffer.push_back(std::make_unique<d3d12_render_target>(buffer));
+    }
+
+    // Create a depth stencil buffer and view.
+    m_depth_stencil_buffer =
+        std::make_unique<d3d12_depth_stencil_buffer>(width, height, DEPTH_STENCIL_FORMAT);
+}
+
+void d3d12_swap_chain::begin_frame(D3D12GraphicsCommandList* command_list)
+{
+    m_back_buffer[back_buffer_index()]->begin_render(command_list);
+}
+
+void d3d12_swap_chain::end_frame(D3D12GraphicsCommandList* command_list)
+{
+    m_back_buffer[back_buffer_index()]->end_render(command_list);
+}
+
+d3d12_swap_chain_multisample::d3d12_swap_chain_multisample(
     HWND handle,
     std::uint32_t width,
     std::uint32_t height,
     std::size_t multiple_sampling)
-    : d3d12_swap_chain(handle, width, height, multiple_sampling)
+    : d3d12_swap_chain_base(handle, width, height, multiple_sampling)
 {
+    for (UINT i = 0; i < 2; ++i)
+    {
+        d3d12_ptr<D3D12Resource> buffer;
+        m_swap_chain->GetBuffer(i, IID_PPV_ARGS(&buffer));
+        m_back_buffer.push_back(buffer);
+    }
+
+    // Create a depth stencil buffer and view.
+    m_depth_stencil_buffer = std::make_unique<d3d12_depth_stencil_buffer>(
+        width,
+        height,
+        DEPTH_STENCIL_FORMAT,
+        multiple_sampling);
+
     // Create a multisampled render target.
-    m_render_target = std::make_unique<d3d12_render_target>(
+    m_render_target = std::make_unique<d3d12_render_target_mutlisample>(
         width,
         height,
         RENDER_TARGET_FORMAT,
-        multiple_sampling);
-}
-
-void d3d12_multisampling_swap_chain::begin_frame(D3D12GraphicsCommandList* command_list)
-{
-    m_render_target->transition_state(D3D12_RESOURCE_STATE_RENDER_TARGET, command_list);
-}
-
-void d3d12_multisampling_swap_chain::end_frame(D3D12GraphicsCommandList* command_list)
-{
-    d3d12_resource::transition_list list = {
-        {m_render_target.get(),                    D3D12_RESOURCE_STATE_RESOLVE_SOURCE},
-        {m_back_buffer[back_buffer_index()].get(), D3D12_RESOURCE_STATE_RESOLVE_DEST  }
-    };
-    d3d12_resource::transition_state(list, command_list);
-
-    command_list->ResolveSubresource(
-        m_back_buffer[back_buffer_index()]->resource(),
-        0,
-        m_render_target->resource(),
-        0,
-        RENDER_TARGET_FORMAT);
-
-    m_back_buffer[back_buffer_index()]->transition_state(
         D3D12_RESOURCE_STATE_PRESENT,
-        command_list);
+        multiple_sampling,
+        false);
 }
 
-d3d12_resource* d3d12_multisampling_swap_chain::back_buffer()
+void d3d12_swap_chain_multisample::begin_frame(D3D12GraphicsCommandList* command_list)
 {
-    return m_render_target.get();
+    m_render_target->bind_resolve(m_back_buffer[back_buffer_index()]);
+    m_render_target->begin_render(command_list);
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_multisampling_swap_chain::render_target_handle()
+void d3d12_swap_chain_multisample::end_frame(D3D12GraphicsCommandList* command_list)
 {
-    return m_render_target->cpu_handle();
+    m_render_target->end_render(command_list);
 }
 
 d3d12_renderer::d3d12_renderer(
@@ -189,7 +152,7 @@ d3d12_renderer::d3d12_renderer(
     }
     else
     {
-        m_swap_chain = std::make_unique<d3d12_multisampling_swap_chain>(
+        m_swap_chain = std::make_unique<d3d12_swap_chain_multisample>(
             handle,
             width,
             height,
@@ -233,8 +196,8 @@ render_command* d3d12_renderer::allocate_command()
     command_list->RSSetViewports(1, &m_viewport);
     command_list->RSSetScissorRects(1, &m_scissor_rect);
 
-    auto render_target_handle = m_swap_chain->render_target_handle();
-    auto depth_stencil_buffer_handle = m_swap_chain->depth_stencil_handle();
+    auto render_target_handle = m_swap_chain->render_target_proxy().cpu_handle();
+    auto depth_stencil_buffer_handle = m_swap_chain->depth_stencil_proxy().cpu_handle();
     command_list->OMSetRenderTargets(1, &render_target_handle, true, &depth_stencil_buffer_handle);
 
     return command;
@@ -248,7 +211,7 @@ void d3d12_renderer::execute(render_command* command)
 
 resource* d3d12_renderer::back_buffer()
 {
-    return m_swap_chain->back_buffer();
+    return m_swap_chain->render_target();
 }
 
 resource* d3d12_renderer::depth_stencil()
@@ -273,12 +236,12 @@ void d3d12_renderer::begin_frame(D3D12GraphicsCommandList* command_list)
 
     static const float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
     command_list->ClearRenderTargetView(
-        m_swap_chain->render_target_handle(),
+        m_swap_chain->render_target_proxy().cpu_handle(),
         clear_color,
         1,
         &m_scissor_rect);
     command_list->ClearDepthStencilView(
-        m_swap_chain->depth_stencil_handle(),
+        m_swap_chain->depth_stencil_proxy().cpu_handle(),
         D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
         1.0f,
         0,

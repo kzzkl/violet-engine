@@ -40,7 +40,7 @@ public:
     virtual void set(std::size_t index, const math::float4x4& value, bool row_matrix) override;
     virtual void set(std::size_t index, const math::float4x4* data, size_t size, bool row_matrix)
         override;
-    virtual void set(std::size_t index, const resource* texture) override;
+    virtual void set(std::size_t index, resource* texture) override;
 
     void sync();
 
@@ -79,7 +79,7 @@ private:
     std::vector<parameter_info> m_parameter_info;
 
     std::vector<std::uint8_t> m_cpu_buffer;
-    std::vector<const d3d12_resource*> m_textures;
+    std::vector<d3d12_resource*> m_textures;
     std::unique_ptr<d3d12_upload_buffer> m_gpu_buffer;
 };
 

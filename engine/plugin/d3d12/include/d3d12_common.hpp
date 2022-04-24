@@ -51,4 +51,14 @@ inline void throw_if_failed(HRESULT hr)
     if (FAILED(hr))
         throw hr_exception(hr);
 }
+
+#ifdef _DEBUG
+#    include <cassert>
+#    define ASH_D3D12_ASSERT(condition, ...) assert(condition)
+#else
+#    define ASH_D3D12_ASSERT(condition, ...)
+#endif
+
+static constexpr DXGI_FORMAT RENDER_TARGET_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM;
+static constexpr DXGI_FORMAT DEPTH_STENCIL_FORMAT = DXGI_FORMAT_D24_UNORM_S8_UINT;
 } // namespace ash::graphics::d3d12

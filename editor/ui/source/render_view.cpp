@@ -21,7 +21,6 @@ render_view::render_view(
     transform.scaling = {1.0f, 1.0f, 1.0f};
 
     auto& camera = world.component<graphics::camera>(m_scene_camera);
-    camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
     camera.parameter = graphics.make_render_parameter("ash_pass");
 
     relation.link(m_scene_camera, scene.root());
@@ -64,14 +63,20 @@ void render_view::resize_target()
     if (m_target_width == 0 || m_target_height == 0)
         return;
 
-    // m_render_target = m_graphics.make_render_target(m_target_width, m_target_height, 4);
-    // m_depth_stencil = m_graphics.make_depth_stencil(m_target_width, m_target_height, 4);
-    m_render_target = m_graphics.make_render_target(512, 512, 4);
-    m_depth_stencil = m_graphics.make_depth_stencil(512, 512, 4);
+    m_render_target = m_graphics.make_render_target(m_target_width, m_target_height, 4);
+    m_depth_stencil = m_graphics.make_depth_stencil(m_target_width, m_target_height, 4);
+    // m_render_target = m_graphics.make_render_target(512, 512, 4);
+    // m_depth_stencil = m_graphics.make_depth_stencil(512, 512, 4);
 
     auto& camera = m_world.component<graphics::camera>(m_scene_camera);
     camera.render_target = m_render_target.get();
     camera.depth_stencil = m_depth_stencil.get();
     camera.mask = 1;
+
+    camera.set(
+        math::to_radians(30.0f),
+        static_cast<float>(m_target_width) / static_cast<float>(m_target_height),
+        0.01f,
+        1000.0f);
 }
 } // namespace ash::editor

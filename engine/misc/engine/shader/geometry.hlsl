@@ -45,11 +45,7 @@ vs_out vs_main(vs_in vin)
 float4 ps_main(vs_out pin) : SV_TARGET
 {
     float3 light_dir = normalize(float3(-1.0f, 0.8f, -0.6f));
-    float3 nor = normalize(pin.normal);
-    float c = dot(nor, light_dir);
+    float c = dot(pin.normal, light_dir);
 
-    float4 result = color * c;
-    result.w = 1.0f;
-    return float4(nor.x, nor.y, nor.z, 1.0f);
-    //return result;
+    return color * 0.5 + color * c * 0.5;
 }

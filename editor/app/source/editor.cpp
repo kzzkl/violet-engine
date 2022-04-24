@@ -54,20 +54,18 @@ void editor::initialize_camera()
     auto& graphics = system<graphics::graphics>();
     auto& scene = system<scene::scene>();
 
-    {
-        m_editor_camera = world.create("editor_camera");
-        world.add<graphics::camera, scene::transform>(m_editor_camera);
+    m_editor_camera = world.create("editor_camera");
+    world.add<graphics::camera, scene::transform>(m_editor_camera);
 
-        auto& transform = world.component<scene::transform>(m_editor_camera);
-        transform.position = {0.0f, 11.0f, -60.0f};
-        transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
-        transform.scaling = {1.0f, 1.0f, 1.0f};
+    auto& transform = world.component<scene::transform>(m_editor_camera);
+    transform.position = {0.0f, 11.0f, -60.0f};
+    transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+    transform.scaling = {1.0f, 1.0f, 1.0f};
 
-        auto& camera = world.component<graphics::camera>(m_editor_camera);
-        camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
-        camera.parameter = graphics.make_render_parameter("ash_pass");
-        camera.mask = (1 << 1);
-    }
+    auto& camera = world.component<graphics::camera>(m_editor_camera);
+    camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
+    camera.parameter = graphics.make_render_parameter("ash_pass");
+    camera.mask = (1 << 1);
 }
 
 void editor::draw()

@@ -66,7 +66,7 @@ public:
         const math::float4x4* data,
         size_t size,
         bool row_matrix = true) = 0;
-    virtual void set(std::size_t index, const resource* texture) = 0;
+    virtual void set(std::size_t index, resource* texture) = 0;
 };
 
 using pipeline_layout_desc = list<pipeline_parameter_desc, 16>;

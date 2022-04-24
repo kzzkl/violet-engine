@@ -59,12 +59,14 @@ void d3d12_render_command::parameter(std::size_t index, pipeline_parameter* para
 
 void d3d12_render_command::render_target(resource* target, resource* depth_stencil)
 {
-    auto rt_handle = static_cast<d3d12_render_target*>(target)->cpu_handle();
-    auto ds_handle = static_cast<d3d12_depth_stencil_buffer*>(depth_stencil)->cpu_handle();
+    auto rt = static_cast<d3d12_resource*>(target)->render_target();
+    auto rt_handle = rt.cpu_handle();
+    auto ds_handle = static_cast<d3d12_resource*>(depth_stencil)->depth_stencil().cpu_handle();
 
+    auto [width, height] = rt.size();
     D3D12_VIEWPORT viewport = {};
-    viewport.Width = static_cast<float>(static_cast<d3d12_render_target*>(target)->resource()->GetDesc().Width);
-    viewport.Height = static_cast<float>(static_cast<d3d12_render_target*>(target)->resource()->GetDesc().Height);
+    viewport.Width = static_cast<float>(width);
+    viewport.Height = static_cast<float>(height);
     viewport.MinDepth = 0.0f;
     viewport.MaxDepth = 1.0f;
     viewport.TopLeftX = 0.0f;
@@ -92,11 +94,11 @@ void d3d12_render_command::draw(
     primitive_topology_type primitive_topology,
     resource* target)
 {
-    d3d12_vertex_buffer* v = static_cast<d3d12_vertex_buffer*>(vertex);
-    d3d12_index_buffer* i = static_cast<d3d12_index_buffer*>(index);
+    auto vb = static_cast<d3d12_resource*>(vertex)->vertex_buffer();
+    auto ib = static_cast<d3d12_resource*>(index)->index_buffer();
 
-    m_command_list->IASetVertexBuffers(0, 1, &v->view());
-    m_command_list->IASetIndexBuffer(&i->view());
+    m_command_list->IASetVertexBuffers(0, 1, &vb.view());
+    m_command_list->IASetIndexBuffer(&ib.view());
 
     if (primitive_topology == primitive_topology_type::TRIANGLE_LIST)
         m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -114,31 +116,31 @@ void d3d12_render_command::draw(
 void d3d12_render_command::begin_render(resource* target)
 {
     auto rt = static_cast<d3d12_render_target*>(target);
-    rt->transition_state(D3D12_RESOURCE_STATE_RENDER_TARGET, m_command_list.Get());
+    rt->begin_render(m_command_list.Get());
 }
 
 void d3d12_render_command::end_render(resource* target)
 {
     auto rt = static_cast<d3d12_render_target*>(target);
-    rt->transition_state(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, m_command_list.Get());
+    rt->end_render(m_command_list.Get());
 }
 
 void d3d12_render_command::clear_render_target(resource* target)
 {
     static const float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
-    auto rt = static_cast<d3d12_render_target*>(target);
-    auto desc = rt->resource()->GetDesc();
-    D3D12_RECT rect = {0, 0, static_cast<LONG>(desc.Width), static_cast<LONG>(desc.Height)};
+    auto rt = static_cast<d3d12_resource*>(target)->render_target();
+    auto [width, height] = rt.size();
+    D3D12_RECT rect = {0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
 
-    m_command_list->ClearRenderTargetView(rt->cpu_handle(), clear_color, 1, &rect);
+    m_command_list->ClearRenderTargetView(rt.cpu_handle(), clear_color, 1, &rect);
 }
 
 void d3d12_render_command::clear_depth_stencil(resource* depth_stencil)
 {
-    auto ds = static_cast<d3d12_depth_stencil_buffer*>(depth_stencil);
+    auto ds = static_cast<d3d12_resource*>(depth_stencil);
     m_command_list->ClearDepthStencilView(
-        ds->cpu_handle(),
+        ds->depth_stencil().cpu_handle(),
         D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
         1.0f,
         0,

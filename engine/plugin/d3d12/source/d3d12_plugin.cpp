@@ -28,19 +28,19 @@ public:
 
     virtual resource* make_upload_buffer(std::size_t size) override
     {
-        return new d3d12_upload_buffer(size);
+        return new d3d12_upload_buffer(nullptr, size);
     }
 
     virtual resource* make_vertex_buffer(const vertex_buffer_desc& desc) override
     {
         if (desc.dynamic)
         {
-            return new d3d12_vertex_buffer(desc, nullptr);
+            return new d3d12_vertex_buffer<d3d12_upload_buffer>(desc, nullptr);
         }
         else
         {
             auto command_list = d3d12_context::command()->allocate_dynamic_command();
-            d3d12_vertex_buffer* result = new d3d12_vertex_buffer(desc, command_list.get());
+            auto result = new d3d12_vertex_buffer<d3d12_default_buffer>(desc, command_list.get());
             d3d12_context::command()->execute_command(command_list);
             return result;
         }
@@ -50,12 +50,12 @@ public:
     {
         if (desc.dynamic)
         {
-            return new d3d12_index_buffer(desc, nullptr);
+            return new d3d12_index_buffer<d3d12_upload_buffer>(desc, nullptr);
         }
         else
         {
             auto command_list = d3d12_context::command()->allocate_dynamic_command();
-            d3d12_index_buffer* result = new d3d12_index_buffer(desc, command_list.get());
+            auto result = new d3d12_index_buffer<d3d12_default_buffer>(desc, command_list.get());
             d3d12_context::command()->execute_command(command_list);
             return result;
         }
@@ -83,11 +83,20 @@ public:
         std::size_t height,
         std::size_t multiple_sampling) override
     {
-        return new d3d12_render_target(
-            width,
-            height,
-            d3d12_swap_chain::RENDER_TARGET_FORMAT,
-            multiple_sampling);
+        if (multiple_sampling == 1)
+            return new d3d12_render_target(
+                width,
+                height,
+                RENDER_TARGET_FORMAT,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        else
+            return new d3d12_render_target_mutlisample(
+                width,
+                height,
+                RENDER_TARGET_FORMAT,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                multiple_sampling,
+                true);
     }
 
     virtual resource* make_depth_stencil(
@@ -98,7 +107,7 @@ public:
         return new d3d12_depth_stencil_buffer(
             width,
             height,
-            d3d12_swap_chain::DEPTH_STENCIL_FORMAT,
+            DEPTH_STENCIL_FORMAT,
             multiple_sampling);
     }
 };
@@ -134,5 +143,8 @@ extern "C"
         return info;
     }
 
-    PLUGIN_API ash::graphics::context* make_context() { return new d3d12_context_wrapper(); }
+    PLUGIN_API ash::graphics::context* make_context()
+    {
+        return new d3d12_context_wrapper();
+    }
 }

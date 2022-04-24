@@ -246,6 +246,7 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(const pipeline_parameter_desc
     {
         m_cpu_buffer.resize(buffer_size);
         m_gpu_buffer = std::make_unique<d3d12_upload_buffer>(
+            nullptr,
             buffer_size * d3d12_frame_counter::frame_resource_count());
     }
 
@@ -392,9 +393,9 @@ void d3d12_pipeline_parameter::set(
     mark_dirty(index);
 }
 
-void d3d12_pipeline_parameter::set(std::size_t index, const resource* texture)
+void d3d12_pipeline_parameter::set(std::size_t index, resource* texture)
 {
-    m_textures[m_parameter_info[index].offset] = static_cast<const d3d12_resource*>(texture);
+    m_textures[m_parameter_info[index].offset] = static_cast<d3d12_resource*>(texture);
     mark_dirty(index);
 }
 
@@ -416,28 +417,20 @@ void d3d12_pipeline_parameter::sync()
 
         if (info.type == pipeline_parameter_type::TEXTURE)
         {
-            auto device = d3d12_context::device();
-            const d3d12_resource* texture = m_textures[info.offset];
-
-            auto resource_desc = texture->resource()->GetDesc();
-
-            D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
-            desc.Format = resource_desc.Format;
-            desc.ViewDimension = resource_desc.SampleDesc.Count == 1
-                                     ? D3D12_SRV_DIMENSION_TEXTURE2D
-                                     : D3D12_SRV_DIMENSION_TEXTURE2DMS;
-            desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            desc.Texture2D.MostDetailedMip = 0;
-            desc.Texture2D.MipLevels = resource_desc.MipLevels;
-            desc.Texture2D.ResourceMinLODClamp = 0.0f;
+            d3d12_shader_resource_proxy texture = m_textures[info.offset]->shader_resource();
 
             auto heap =
                 d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-            CD3DX12_CPU_DESCRIPTOR_HANDLE handle(
+
+            CD3DX12_CPU_DESCRIPTOR_HANDLE target_handle(
                 m_tier_info[resource_index].tier2.base_cpu_handle,
                 static_cast<INT>(info.offset),
                 heap->increment_size());
-            device->CreateShaderResourceView(texture->resource(), &desc, handle);
+            d3d12_context::device()->CopyDescriptorsSimple(
+                1,
+                target_handle,
+                texture.cpu_handle(),
+                D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         }
         else
         {
@@ -617,7 +610,7 @@ void d3d12_pipeline::initialize_pipeline_state(const pipeline_desc& desc)
     pso_desc.BlendState = to_d3d12(desc.blend);
     pso_desc.SampleMask = UINT_MAX;
     pso_desc.NumRenderTargets = 1;
-    pso_desc.RTVFormats[0] = d3d12_context::renderer()->render_target_format();
+    pso_desc.RTVFormats[0] = RENDER_TARGET_FORMAT;
     pso_desc.SampleDesc = d3d12_context::renderer()->render_target_sample_desc();
     pso_desc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
