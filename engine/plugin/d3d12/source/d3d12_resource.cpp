@@ -77,18 +77,15 @@ d3d12_render_target::d3d12_render_target(
 {
     auto device = d3d12_context::device();
 
-    D3D12_RESOURCE_DESC desc = {};
-    desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-    desc.Alignment = 0;
-    desc.Width = static_cast<UINT>(width);
-    desc.Height = static_cast<UINT>(height);
-    desc.DepthOrArraySize = 1;
-    desc.MipLevels = 1;
-    desc.Format = format;
-    desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-    desc.SampleDesc.Count = 1;
-    desc.SampleDesc.Quality = 0;
+    CD3DX12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(
+        format,
+        static_cast<UINT>(width),
+        static_cast<UINT>(height),
+        1,
+        1,
+        1,
+        0,
+        D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 
     D3D12_CLEAR_VALUE clear = {};
     clear.Format = format;
@@ -216,20 +213,17 @@ d3d12_render_target_mutlisample::d3d12_render_target_mutlisample(
         &sample_level,
         sizeof(sample_level)));
 
-    D3D12_RESOURCE_DESC desc = {};
-    desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-    desc.Alignment = 0;
-    desc.Width = static_cast<UINT>(width);
-    desc.Height = static_cast<UINT>(height);
-    desc.DepthOrArraySize = 1;
-    desc.MipLevels = 1;
-    desc.Format = format;
-    desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-    desc.SampleDesc.Count = sample_level.SampleCount;
-    desc.SampleDesc.Quality = sample_level.NumQualityLevels - 1;
+    CD3DX12_RESOURCE_DESC target_desc = CD3DX12_RESOURCE_DESC::Tex2D(
+        format,
+        static_cast<UINT>(width),
+        static_cast<UINT>(height),
+        1,
+        1,
+        sample_level.SampleCount,
+        sample_level.NumQualityLevels - 1,
+        D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 
-    D3D12_CLEAR_VALUE clear = {};
+    D3D12_CLEAR_VALUE clear;
     clear.Format = format;
     clear.Color[0] = clear.Color[1] = clear.Color[2] = 0.0f;
     clear.Color[3] = 1.0f;
@@ -238,7 +232,7 @@ d3d12_render_target_mutlisample::d3d12_render_target_mutlisample(
     device->CreateCommittedResource(
         &heap_properties,
         D3D12_HEAP_FLAG_NONE,
-        &desc,
+        &target_desc,
         D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
         &clear,
         IID_PPV_ARGS(&m_render_target));
@@ -251,52 +245,25 @@ d3d12_render_target_mutlisample::d3d12_render_target_mutlisample(
         nullptr,
         rtv_heap->cpu_handle(m_rtv_offset));
 
-    // The shader resource for multisampled textures is not m_render_target, so multisampling does
-    // not create SRVs here.
-    if (multiple_sampling == 1)
-    {
-        // Create SRV.
-        auto srv_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        m_srv_offset = srv_heap->allocate(1);
-        device->CreateShaderResourceView(
-            m_render_target.Get(),
-            nullptr,
-            srv_heap->cpu_handle(m_srv_offset));
-    }
-    else
-    {
-        m_srv_offset = INVALID_DESCRIPTOR_INDEX;
-    }
-
     if (create_resolve_target)
     {
-        auto device = d3d12_context::device();
-
-        D3D12_RESOURCE_DESC desc = {};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        desc.Alignment = 0;
-        desc.Width = static_cast<UINT>(width);
-        desc.Height = static_cast<UINT>(height);
-        desc.DepthOrArraySize = 1;
-        desc.MipLevels = 1;
-        desc.Format = format;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-        desc.SampleDesc.Count = 1;
-        desc.SampleDesc.Quality = 0;
-
-        D3D12_CLEAR_VALUE clear = {};
-        clear.Format = format;
-        clear.Color[0] = clear.Color[1] = clear.Color[2] = 0.0f;
-        clear.Color[3] = 1.0f;
+        CD3DX12_RESOURCE_DESC resolve_desc = CD3DX12_RESOURCE_DESC::Tex2D(
+            format,
+            static_cast<UINT>(width),
+            static_cast<UINT>(height),
+            1,
+            1,
+            1,
+            0,
+            D3D12_RESOURCE_FLAG_NONE);
 
         CD3DX12_HEAP_PROPERTIES heap_properties(D3D12_HEAP_TYPE_DEFAULT);
         device->CreateCommittedResource(
             &heap_properties,
             D3D12_HEAP_FLAG_NONE,
-            &desc,
+            &resolve_desc,
             m_end_state,
-            &clear,
+            nullptr,
             IID_PPV_ARGS(&m_resolve_target));
 
         // Create SRV.
@@ -389,18 +356,15 @@ d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(
         &sample_level,
         sizeof(sample_level)));
 
-    D3D12_RESOURCE_DESC desc = {};
-    desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-    desc.Alignment = 0;
-    desc.Width = static_cast<UINT>(width);
-    desc.Height = static_cast<UINT>(height);
-    desc.DepthOrArraySize = 1;
-    desc.MipLevels = 1;
-    desc.Format = format;
-    desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-    desc.SampleDesc.Count = sample_level.SampleCount;
-    desc.SampleDesc.Quality = sample_level.NumQualityLevels - 1;
+    CD3DX12_RESOURCE_DESC depth_stencil_desc = CD3DX12_RESOURCE_DESC::Tex2D(
+        format,
+        static_cast<UINT>(width),
+        static_cast<UINT>(height),
+        1,
+        1,
+        sample_level.SampleCount,
+        sample_level.NumQualityLevels - 1,
+        D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL | D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE);
 
     D3D12_CLEAR_VALUE clear = {};
     clear.Format = format;
@@ -410,7 +374,7 @@ d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(
     throw_if_failed(device->CreateCommittedResource(
         &heap_properties,
         D3D12_HEAP_FLAG_NONE,
-        &desc,
+        &depth_stencil_desc,
         D3D12_RESOURCE_STATE_DEPTH_WRITE,
         &clear,
         IID_PPV_ARGS(&m_resource)));
