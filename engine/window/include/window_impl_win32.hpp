@@ -31,6 +31,7 @@ private:
     void on_mouse_key(mouse_key key, bool down);
     void on_mouse_whell(int value);
     void on_keyboard_key(keyboard_key key, bool down);
+    void on_keyboard_char(char c);
     void on_window_move(int x, int y);
     void on_window_resize(int width, int height);
 

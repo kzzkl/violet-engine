@@ -90,7 +90,7 @@ void editor::test_update()
     if (window.keyboard().key(window::keyboard_key::KEY_1).release())
     {
         ecs::entity cube = world.create("cube" + std::to_string(index++));
-        world.add<core::link, scene::transform, graphics::visual>(cube);
+        world.add<core::link, scene::transform>(cube);
         relation.link(cube, scene.root());
     }
 }

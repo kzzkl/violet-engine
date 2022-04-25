@@ -21,6 +21,7 @@ struct window_message
         MOUSE_KEY,
         MOUSE_WHELL,
         KEYBOARD_KEY,
+        KEYBOARD_CHAR,
         WINDOW_MOVE,
         WINDOW_RESIZE
     } type;
@@ -38,16 +39,15 @@ struct window_message
             bool down;
         } mouse_key;
 
-        struct
-        {
-            int value;
-        } mouse_whell;
+        int mouse_whell;
 
         struct
         {
             keyboard_key key;
             bool down;
         } keyboard_key;
+
+        char keyboard_char;
 
         struct
         {

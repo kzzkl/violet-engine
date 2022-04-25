@@ -206,7 +206,7 @@ private:
 
     void update()
     {
-        if (system<ash::window::window>().keyboard().key(keyboard_key::KEY_ESC).down())
+        if (system<ash::window::window>().keyboard().key(keyboard_key::KEY_ESCAPE).down())
             m_app->exit();
 
         auto& scene = system<scene::scene>();

@@ -23,6 +23,7 @@ bool window::initialize(const dictionary& config)
     event.register_event<event_mouse_move>();
     event.register_event<event_mouse_key>();
     event.register_event<event_keyboard_key>();
+    event.register_event<event_keyboard_char>();
 
     return true;
 }
@@ -59,7 +60,7 @@ void window::tick()
                 m_mouse.key(message.mouse_key.key));
             break;
         case window_message::message_type::MOUSE_WHELL:
-            m_mouse.m_whell = message.mouse_whell.value;
+            m_mouse.m_whell = message.mouse_whell;
             break;
         case window_message::message_type::KEYBOARD_KEY:
             if (message.keyboard_key.down)
@@ -69,6 +70,9 @@ void window::tick()
             event.publish<event_keyboard_key>(
                 message.keyboard_key.key,
                 m_keyboard.key(message.keyboard_key.key));
+            break;
+        case window_message::message_type::KEYBOARD_CHAR:
+            event.publish<event_keyboard_char>(message.keyboard_char);
             break;
         case window_message::message_type::WINDOW_MOVE:
             break;

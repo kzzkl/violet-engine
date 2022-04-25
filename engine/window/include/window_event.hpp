@@ -19,4 +19,9 @@ struct event_keyboard_key
 {
     using dispatcher = core::sequence_dispatcher<std::function<void(keyboard_key, key_state)>>;
 };
+
+struct event_keyboard_char
+{
+    using dispatcher = core::sequence_dispatcher<std::function<void(char)>>;
+};
 } // namespace ash::window

@@ -7,6 +7,224 @@
 
 namespace ash::ui
 {
+namespace
+{
+int convert_key(window::keyboard_key key)
+{
+    switch (key)
+    {
+    case window::keyboard_key::KEY_TAB:
+        return ImGuiKey_Tab;
+    case window::keyboard_key::KEY_LEFT:
+        return ImGuiKey_LeftArrow;
+    case window::keyboard_key::KEY_RIGHT:
+        return ImGuiKey_RightArrow;
+    case window::keyboard_key::KEY_UP:
+        return ImGuiKey_UpArrow;
+    case window::keyboard_key::KEY_DOWN:
+        return ImGuiKey_DownArrow;
+    case window::keyboard_key::KEY_PRIOR:
+        return ImGuiKey_PageUp;
+    case window::keyboard_key::KEY_NEXT:
+        return ImGuiKey_PageDown;
+    case window::keyboard_key::KEY_HOME:
+        return ImGuiKey_Home;
+    case window::keyboard_key::KEY_END:
+        return ImGuiKey_End;
+    case window::keyboard_key::KEY_INSERT:
+        return ImGuiKey_Insert;
+    case window::keyboard_key::KEY_DELETE:
+        return ImGuiKey_Delete;
+    case window::keyboard_key::KEY_BACK:
+        return ImGuiKey_Backspace;
+    case window::keyboard_key::KEY_SPACE:
+        return ImGuiKey_Space;
+    case window::keyboard_key::KEY_RETURN:
+        return ImGuiKey_Enter;
+    case window::keyboard_key::KEY_ESCAPE:
+        return ImGuiKey_Escape;
+    case window::keyboard_key::KEY_OEM_7:
+        return ImGuiKey_Apostrophe;
+    case window::keyboard_key::KEY_OEM_COMMA:
+        return ImGuiKey_Comma;
+    case window::keyboard_key::KEY_OEM_MINUS:
+        return ImGuiKey_Minus;
+    case window::keyboard_key::KEY_OEM_PERIOD:
+        return ImGuiKey_Period;
+    case window::keyboard_key::KEY_OEM_2:
+        return ImGuiKey_Slash;
+    case window::keyboard_key::KEY_OEM_1:
+        return ImGuiKey_Semicolon;
+    case window::keyboard_key::KEY_OEM_PLUS:
+        return ImGuiKey_Equal;
+    case window::keyboard_key::KEY_OEM_4:
+        return ImGuiKey_LeftBracket;
+    case window::keyboard_key::KEY_OEM_5:
+        return ImGuiKey_Backslash;
+    case window::keyboard_key::KEY_OEM_6:
+        return ImGuiKey_RightBracket;
+    case window::keyboard_key::KEY_OEM_3:
+        return ImGuiKey_GraveAccent;
+    case window::keyboard_key::KEY_CAPITAL:
+        return ImGuiKey_CapsLock;
+    case window::keyboard_key::KEY_SCROLL:
+        return ImGuiKey_ScrollLock;
+    case window::keyboard_key::KEY_NUMLOCK:
+        return ImGuiKey_NumLock;
+    case window::keyboard_key::KEY_SNAPSHOT:
+        return ImGuiKey_PrintScreen;
+    case window::keyboard_key::KEY_PAUSE:
+        return ImGuiKey_Pause;
+    case window::keyboard_key::KEY_NUMPAD0:
+        return ImGuiKey_Keypad0;
+    case window::keyboard_key::KEY_NUMPAD1:
+        return ImGuiKey_Keypad1;
+    case window::keyboard_key::KEY_NUMPAD2:
+        return ImGuiKey_Keypad2;
+    case window::keyboard_key::KEY_NUMPAD3:
+        return ImGuiKey_Keypad3;
+    case window::keyboard_key::KEY_NUMPAD4:
+        return ImGuiKey_Keypad4;
+    case window::keyboard_key::KEY_NUMPAD5:
+        return ImGuiKey_Keypad5;
+    case window::keyboard_key::KEY_NUMPAD6:
+        return ImGuiKey_Keypad6;
+    case window::keyboard_key::KEY_NUMPAD7:
+        return ImGuiKey_Keypad7;
+    case window::keyboard_key::KEY_NUMPAD8:
+        return ImGuiKey_Keypad8;
+    case window::keyboard_key::KEY_NUMPAD9:
+        return ImGuiKey_Keypad9;
+    case window::keyboard_key::KEY_DECIMAL:
+        return ImGuiKey_KeypadDecimal;
+    case window::keyboard_key::KEY_DIVIDE:
+        return ImGuiKey_KeypadDivide;
+    case window::keyboard_key::KEY_MULTIPLY:
+        return ImGuiKey_KeypadMultiply;
+    case window::keyboard_key::KEY_SUBTRACT:
+        return ImGuiKey_KeypadSubtract;
+    case window::keyboard_key::KEY_ADD:
+        return ImGuiKey_KeypadAdd;
+    case window::keyboard_key::KEY_LSHIFT:
+        return ImGuiKey_LeftShift;
+    case window::keyboard_key::KEY_LCONTROL:
+        return ImGuiKey_LeftCtrl;
+    case window::keyboard_key::KEY_LMENU:
+        return ImGuiKey_LeftAlt;
+    case window::keyboard_key::KEY_LWIN:
+        return ImGuiKey_LeftSuper;
+    case window::keyboard_key::KEY_RSHIFT:
+        return ImGuiKey_RightShift;
+    case window::keyboard_key::KEY_RCONTROL:
+        return ImGuiKey_RightCtrl;
+    case window::keyboard_key::KEY_RMENU:
+        return ImGuiKey_RightAlt;
+    case window::keyboard_key::KEY_RWIN:
+        return ImGuiKey_RightSuper;
+    case window::keyboard_key::KEY_APPS:
+        return ImGuiKey_Menu;
+    case window::keyboard_key::KEY_0:
+        return ImGuiKey_0;
+    case window::keyboard_key::KEY_1:
+        return ImGuiKey_1;
+    case window::keyboard_key::KEY_2:
+        return ImGuiKey_2;
+    case window::keyboard_key::KEY_3:
+        return ImGuiKey_3;
+    case window::keyboard_key::KEY_4:
+        return ImGuiKey_4;
+    case window::keyboard_key::KEY_5:
+        return ImGuiKey_5;
+    case window::keyboard_key::KEY_6:
+        return ImGuiKey_6;
+    case window::keyboard_key::KEY_7:
+        return ImGuiKey_7;
+    case window::keyboard_key::KEY_8:
+        return ImGuiKey_8;
+    case window::keyboard_key::KEY_9:
+        return ImGuiKey_9;
+    case window::keyboard_key::KEY_A:
+        return ImGuiKey_A;
+    case window::keyboard_key::KEY_B:
+        return ImGuiKey_B;
+    case window::keyboard_key::KEY_C:
+        return ImGuiKey_C;
+    case window::keyboard_key::KEY_D:
+        return ImGuiKey_D;
+    case window::keyboard_key::KEY_E:
+        return ImGuiKey_E;
+    case window::keyboard_key::KEY_F:
+        return ImGuiKey_F;
+    case window::keyboard_key::KEY_G:
+        return ImGuiKey_G;
+    case window::keyboard_key::KEY_H:
+        return ImGuiKey_H;
+    case window::keyboard_key::KEY_I:
+        return ImGuiKey_I;
+    case window::keyboard_key::KEY_J:
+        return ImGuiKey_J;
+    case window::keyboard_key::KEY_K:
+        return ImGuiKey_K;
+    case window::keyboard_key::KEY_L:
+        return ImGuiKey_L;
+    case window::keyboard_key::KEY_M:
+        return ImGuiKey_M;
+    case window::keyboard_key::KEY_N:
+        return ImGuiKey_N;
+    case window::keyboard_key::KEY_O:
+        return ImGuiKey_O;
+    case window::keyboard_key::KEY_P:
+        return ImGuiKey_P;
+    case window::keyboard_key::KEY_Q:
+        return ImGuiKey_Q;
+    case window::keyboard_key::KEY_R:
+        return ImGuiKey_R;
+    case window::keyboard_key::KEY_S:
+        return ImGuiKey_S;
+    case window::keyboard_key::KEY_T:
+        return ImGuiKey_T;
+    case window::keyboard_key::KEY_U:
+        return ImGuiKey_U;
+    case window::keyboard_key::KEY_V:
+        return ImGuiKey_V;
+    case window::keyboard_key::KEY_W:
+        return ImGuiKey_W;
+    case window::keyboard_key::KEY_X:
+        return ImGuiKey_X;
+    case window::keyboard_key::KEY_Y:
+        return ImGuiKey_Y;
+    case window::keyboard_key::KEY_Z:
+        return ImGuiKey_Z;
+    case window::keyboard_key::KEY_F1:
+        return ImGuiKey_F1;
+    case window::keyboard_key::KEY_F2:
+        return ImGuiKey_F2;
+    case window::keyboard_key::KEY_F3:
+        return ImGuiKey_F3;
+    case window::keyboard_key::KEY_F4:
+        return ImGuiKey_F4;
+    case window::keyboard_key::KEY_F5:
+        return ImGuiKey_F5;
+    case window::keyboard_key::KEY_F6:
+        return ImGuiKey_F6;
+    case window::keyboard_key::KEY_F7:
+        return ImGuiKey_F7;
+    case window::keyboard_key::KEY_F8:
+        return ImGuiKey_F8;
+    case window::keyboard_key::KEY_F9:
+        return ImGuiKey_F9;
+    case window::keyboard_key::KEY_F10:
+        return ImGuiKey_F10;
+    case window::keyboard_key::KEY_F11:
+        return ImGuiKey_F11;
+    case window::keyboard_key::KEY_F12:
+        return ImGuiKey_F12;
+    default:
+        return ImGuiKey_None;
+    }
+};
+} // namespace
+
 ui::ui() : core::system_base("ui")
 {
 }
@@ -62,6 +280,13 @@ bool ui::initialize(const dictionary& config)
             ImGui::GetIO().AddMousePosEvent(0.0f, 0.0f);
         }
     });
+
+    event.subscribe<window::event_keyboard_key>(
+        [](window::keyboard_key key, window::key_state state) {
+            ImGui::GetIO().AddKeyEvent(convert_key(key), state.down());
+        });
+    event.subscribe<window::event_keyboard_char>(
+        [](char c) { ImGui::GetIO().AddInputCharacter(c); });
 
     return true;
 }

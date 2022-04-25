@@ -4,6 +4,8 @@
 
 namespace ash::window
 {
+namespace
+{
 std::wstring string_to_wstring(std::string_view str)
 {
     wchar_t buffer[128] = {};
@@ -33,6 +35,223 @@ std::string wstring_to_string(std::wstring_view str)
 
     return buffer;
 }
+
+keyboard_key convert_key(WPARAM wparam)
+{
+    switch (wparam)
+    {
+    case VK_BACK:
+        return keyboard_key::KEY_BACK;
+    case VK_TAB:
+        return keyboard_key::KEY_TAB;
+    case VK_RETURN:
+        return keyboard_key::KEY_RETURN;
+    case VK_PAUSE:
+        return keyboard_key::KEY_PAUSE;
+    case VK_CAPITAL:
+        return keyboard_key::KEY_CAPITAL;
+    case VK_ESCAPE:
+        return keyboard_key::KEY_ESCAPE;
+    case VK_SPACE:
+        return keyboard_key::KEY_SPACE;
+    case VK_PRIOR:
+        return keyboard_key::KEY_PRIOR;
+    case VK_NEXT:
+        return keyboard_key::KEY_NEXT;
+    case VK_END:
+        return keyboard_key::KEY_END;
+    case VK_HOME:
+        return keyboard_key::KEY_HOME;
+    case VK_LEFT:
+        return keyboard_key::KEY_LEFT;
+    case VK_UP:
+        return keyboard_key::KEY_UP;
+    case VK_RIGHT:
+        return keyboard_key::KEY_RIGHT;
+    case VK_DOWN:
+        return keyboard_key::KEY_DOWN;
+    case VK_SNAPSHOT:
+        return keyboard_key::KEY_SNAPSHOT;
+    case VK_INSERT:
+        return keyboard_key::KEY_INSERT;
+    case VK_DELETE:
+        return keyboard_key::KEY_DELETE;
+    case '0':
+        return keyboard_key::KEY_0;
+    case '1':
+        return keyboard_key::KEY_1;
+    case '2':
+        return keyboard_key::KEY_2;
+    case '3':
+        return keyboard_key::KEY_3;
+    case '4':
+        return keyboard_key::KEY_4;
+    case '5':
+        return keyboard_key::KEY_5;
+    case '6':
+        return keyboard_key::KEY_6;
+    case '7':
+        return keyboard_key::KEY_7;
+    case '8':
+        return keyboard_key::KEY_8;
+    case '9':
+        return keyboard_key::KEY_9;
+    case 'A':
+        return keyboard_key::KEY_A;
+    case 'B':
+        return keyboard_key::KEY_B;
+    case 'C':
+        return keyboard_key::KEY_C;
+    case 'D':
+        return keyboard_key::KEY_D;
+    case 'E':
+        return keyboard_key::KEY_E;
+    case 'F':
+        return keyboard_key::KEY_F;
+    case 'G':
+        return keyboard_key::KEY_G;
+    case 'H':
+        return keyboard_key::KEY_H;
+    case 'I':
+        return keyboard_key::KEY_I;
+    case 'J':
+        return keyboard_key::KEY_J;
+    case 'K':
+        return keyboard_key::KEY_K;
+    case 'L':
+        return keyboard_key::KEY_L;
+    case 'M':
+        return keyboard_key::KEY_M;
+    case 'N':
+        return keyboard_key::KEY_N;
+    case 'O':
+        return keyboard_key::KEY_O;
+    case 'P':
+        return keyboard_key::KEY_P;
+    case 'Q':
+        return keyboard_key::KEY_Q;
+    case 'R':
+        return keyboard_key::KEY_R;
+    case 'S':
+        return keyboard_key::KEY_S;
+    case 'T':
+        return keyboard_key::KEY_T;
+    case 'U':
+        return keyboard_key::KEY_U;
+    case 'V':
+        return keyboard_key::KEY_V;
+    case 'W':
+        return keyboard_key::KEY_W;
+    case 'X':
+        return keyboard_key::KEY_X;
+    case 'Y':
+        return keyboard_key::KEY_Y;
+    case 'Z':
+        return keyboard_key::KEY_Z;
+    case VK_LWIN:
+        return keyboard_key::KEY_LWIN;
+    case VK_RWIN:
+        return keyboard_key::KEY_RWIN;
+    case VK_APPS:
+        return keyboard_key::KEY_APPS;
+    case VK_NUMPAD0:
+        return keyboard_key::KEY_NUMPAD0;
+    case VK_NUMPAD1:
+        return keyboard_key::KEY_NUMPAD1;
+    case VK_NUMPAD2:
+        return keyboard_key::KEY_NUMPAD2;
+    case VK_NUMPAD3:
+        return keyboard_key::KEY_NUMPAD3;
+    case VK_NUMPAD4:
+        return keyboard_key::KEY_NUMPAD4;
+    case VK_NUMPAD5:
+        return keyboard_key::KEY_NUMPAD5;
+    case VK_NUMPAD6:
+        return keyboard_key::KEY_NUMPAD6;
+    case VK_NUMPAD7:
+        return keyboard_key::KEY_NUMPAD7;
+    case VK_NUMPAD8:
+        return keyboard_key::KEY_NUMPAD8;
+    case VK_NUMPAD9:
+        return keyboard_key::KEY_NUMPAD9;
+    case VK_MULTIPLY:
+        return keyboard_key::KEY_MULTIPLY;
+    case VK_ADD:
+        return keyboard_key::KEY_ADD;
+    case VK_SUBTRACT:
+        return keyboard_key::KEY_SUBTRACT;
+    case VK_DECIMAL:
+        return keyboard_key::KEY_DECIMAL;
+    case VK_DIVIDE:
+        return keyboard_key::KEY_DIVIDE;
+    case VK_F1:
+        return keyboard_key::KEY_F1;
+    case VK_F2:
+        return keyboard_key::KEY_F2;
+    case VK_F3:
+        return keyboard_key::KEY_F3;
+    case VK_F4:
+        return keyboard_key::KEY_F4;
+    case VK_F5:
+        return keyboard_key::KEY_F5;
+    case VK_F6:
+        return keyboard_key::KEY_F6;
+    case VK_F7:
+        return keyboard_key::KEY_F7;
+    case VK_F8:
+        return keyboard_key::KEY_F8;
+    case VK_F9:
+        return keyboard_key::KEY_F9;
+    case VK_F10:
+        return keyboard_key::KEY_F10;
+    case VK_F11:
+        return keyboard_key::KEY_F11;
+    case VK_F12:
+        return keyboard_key::KEY_F12;
+    case VK_NUMLOCK:
+        return keyboard_key::KEY_NUMLOCK;
+    case VK_SCROLL:
+        return keyboard_key::KEY_SCROLL;
+    case VK_LSHIFT:
+        return keyboard_key::KEY_LSHIFT;
+    case VK_RSHIFT:
+        return keyboard_key::KEY_RSHIFT;
+    case VK_LCONTROL:
+        return keyboard_key::KEY_LCONTROL;
+    case VK_RCONTROL:
+        return keyboard_key::KEY_RCONTROL;
+    case VK_LMENU:
+        return keyboard_key::KEY_LMENU;
+    case VK_RMENU:
+        return keyboard_key::KEY_RMENU;
+    case VK_OEM_1:
+        return keyboard_key::KEY_OEM_1;
+    case VK_OEM_PLUS:
+        return keyboard_key::KEY_OEM_PLUS;
+    case VK_OEM_COMMA:
+        return keyboard_key::KEY_OEM_COMMA;
+    case VK_OEM_MINUS:
+        return keyboard_key::KEY_OEM_MINUS;
+    case VK_OEM_PERIOD:
+        return keyboard_key::KEY_OEM_PERIOD;
+    case VK_OEM_2:
+        return keyboard_key::KEY_OEM_2;
+    case VK_OEM_3:
+        return keyboard_key::KEY_OEM_3;
+    case VK_OEM_4:
+        return keyboard_key::KEY_OEM_4;
+    case VK_OEM_5:
+        return keyboard_key::KEY_OEM_5;
+    case VK_OEM_6:
+        return keyboard_key::KEY_OEM_6;
+    case VK_OEM_7:
+        return keyboard_key::KEY_OEM_7;
+    default:
+        return keyboard_key::NUM_TYPE;
+    }
+};
+
+} // namespace
 
 window_impl_win32::window_impl_win32() noexcept
     : m_mouse_mode_change(false),
@@ -156,7 +375,7 @@ void window_impl_win32::tick()
     {
         window_message message;
         message.type = window_message::message_type::MOUSE_WHELL;
-        message.mouse_whell.value = m_mouse_whell;
+        message.mouse_whell = m_mouse_whell;
         m_messages.push_back(message);
     }
 }
@@ -279,11 +498,19 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
         break;
     }
     case WM_KEYDOWN: {
-        on_keyboard_key(static_cast<keyboard_key>(wparam), true);
+        keyboard_key key = convert_key(wparam);
+        if (key != keyboard_key::NUM_TYPE)
+            on_keyboard_key(key, true);
         break;
     }
     case WM_KEYUP: {
-        on_keyboard_key(static_cast<keyboard_key>(wparam), false);
+        keyboard_key key = convert_key(wparam);
+        if (key != keyboard_key::NUM_TYPE)
+            on_keyboard_key(key, false);
+        break;
+    }
+    case WM_CHAR: {
+        on_keyboard_char(static_cast<char>(wparam));
         break;
     }
     default:
@@ -328,6 +555,14 @@ void window_impl_win32::on_keyboard_key(keyboard_key key, bool down)
     message.type = window_message::message_type::KEYBOARD_KEY;
     message.keyboard_key.key = key;
     message.keyboard_key.down = down;
+    m_messages.push_back(message);
+}
+
+void window_impl_win32::on_keyboard_char(char c)
+{
+    window_message message;
+    message.type = window_message::message_type::KEYBOARD_CHAR;
+    message.keyboard_char = c;
     m_messages.push_back(message);
 }
 
