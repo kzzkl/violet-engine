@@ -86,15 +86,15 @@ public:
 
     std::unique_ptr<resource> make_texture(
         const std::uint8_t* data,
-        std::size_t width,
-        std::size_t height)
+        std::uint32_t width,
+        std::uint32_t height)
     {
         return std::unique_ptr<resource>(m_factory->make_texture(data, width, height));
     }
 
     std::unique_ptr<resource> make_render_target(
-        std::size_t width,
-        std::size_t height,
+        std::uint32_t width,
+        std::uint32_t height,
         std::size_t multiple_sampling = 1)
     {
         return std::unique_ptr<resource>(
@@ -102,8 +102,8 @@ public:
     }
 
     std::unique_ptr<resource> make_depth_stencil(
-        std::size_t width,
-        std::size_t height,
+        std::uint32_t width,
+        std::uint32_t height,
         std::size_t multiple_sampling = 1)
     {
         return std::unique_ptr<resource>(

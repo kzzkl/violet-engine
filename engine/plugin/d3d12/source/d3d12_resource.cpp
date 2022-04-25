@@ -70,8 +70,8 @@ d3d12_shader_resource_proxy d3d12_resource::shader_resource()
 }
 
 d3d12_render_target::d3d12_render_target(
-    std::size_t width,
-    std::size_t height,
+    std::uint32_t width,
+    std::uint32_t height,
     DXGI_FORMAT format,
     D3D12_RESOURCE_STATES end_state)
 {
@@ -195,8 +195,8 @@ d3d12_render_target& d3d12_render_target::operator=(d3d12_render_target&& other)
 }
 
 d3d12_render_target_mutlisample::d3d12_render_target_mutlisample(
-    std::size_t width,
-    std::size_t height,
+    std::uint32_t width,
+    std::uint32_t height,
     DXGI_FORMAT format,
     D3D12_RESOURCE_STATES end_state,
     std::size_t multiple_sampling,
@@ -369,8 +369,8 @@ d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer() noexcept
 }
 
 d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(
-    std::size_t width,
-    std::size_t height,
+    std::uint32_t width,
+    std::uint32_t height,
     DXGI_FORMAT format,
     std::size_t multiple_sampling)
 {
@@ -623,8 +623,8 @@ d3d12_texture::d3d12_texture(
 
 d3d12_texture::d3d12_texture(
     const std::uint8_t* data,
-    std::size_t width,
-    std::size_t height,
+    std::uint32_t width,
+    std::uint32_t height,
     D3D12GraphicsCommandList* command_list)
 {
     auto device = d3d12_context::device();

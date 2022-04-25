@@ -57,8 +57,8 @@ struct window_message
 
         struct
         {
-            int width;
-            int height;
+            std::uint32_t width;
+            std::uint32_t height;
         } window_resize;
     };
 };

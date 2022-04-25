@@ -214,6 +214,8 @@ struct adapter_info
 class renderer
 {
 public:
+    virtual ~renderer() = default;
+
     virtual void begin_frame() = 0;
     virtual void end_frame() = 0;
 
@@ -223,6 +225,8 @@ public:
     virtual resource* back_buffer() = 0;
     virtual resource* depth_stencil() = 0;
     virtual std::size_t adapter(adapter_info* infos, std::size_t size) const = 0;
+
+    virtual void resize(std::uint32_t width, std::uint32_t height) = 0;
 
 private:
 };
@@ -260,16 +264,16 @@ public:
     virtual resource* make_texture(const std::uint8_t* data, std::size_t size) = 0;
     virtual resource* make_texture(
         const std::uint8_t* data,
-        std::size_t width,
-        std::size_t height) = 0;
+        std::uint32_t width,
+        std::uint32_t height) = 0;
 
     virtual resource* make_render_target(
-        std::size_t width,
-        std::size_t height,
+        std::uint32_t width,
+        std::uint32_t height,
         std::size_t multiple_sampling = 1) = 0;
     virtual resource* make_depth_stencil(
-        std::size_t width,
-        std::size_t height,
+        std::uint32_t width,
+        std::uint32_t height,
         std::size_t multiple_sampling = 1) = 0;
 };
 

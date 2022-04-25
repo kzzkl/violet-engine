@@ -150,7 +150,6 @@ void render_view::update_camera()
 
 void render_view::resize_target()
 {
-    log::debug("resize: {} {}", m_target_width, m_target_height);
     if (m_target_width == 0 || m_target_height == 0)
         return;
 

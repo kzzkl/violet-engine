@@ -69,8 +69,10 @@ public:
         return result;
     }
 
-    virtual resource* make_texture(const std::uint8_t* data, std::size_t width, std::size_t height)
-        override
+    virtual resource* make_texture(
+        const std::uint8_t* data,
+        std::uint32_t width,
+        std::uint32_t height) override
     {
         auto command_list = d3d12_context::command()->allocate_dynamic_command();
         d3d12_texture* result = new d3d12_texture(data, width, height, command_list.get());
@@ -79,8 +81,8 @@ public:
     }
 
     virtual resource* make_render_target(
-        std::size_t width,
-        std::size_t height,
+        std::uint32_t width,
+        std::uint32_t height,
         std::size_t multiple_sampling) override
     {
         if (multiple_sampling == 1)
@@ -100,8 +102,8 @@ public:
     }
 
     virtual resource* make_depth_stencil(
-        std::size_t width,
-        std::size_t height,
+        std::uint32_t width,
+        std::uint32_t height,
         std::size_t multiple_sampling) override
     {
         return new d3d12_depth_stencil_buffer(

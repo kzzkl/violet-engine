@@ -24,6 +24,7 @@ bool window::initialize(const dictionary& config)
     event.register_event<event_mouse_key>();
     event.register_event<event_keyboard_key>();
     event.register_event<event_keyboard_char>();
+    event.register_event<event_window_resize>();
 
     return true;
 }
@@ -77,6 +78,9 @@ void window::tick()
         case window_message::message_type::WINDOW_MOVE:
             break;
         case window_message::message_type::WINDOW_RESIZE:
+            event.publish<event_window_resize>(
+                message.window_resize.width,
+                message.window_resize.height);
             break;
         default:
             break;

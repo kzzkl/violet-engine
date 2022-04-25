@@ -1,8 +1,6 @@
 #include "d3d12_renderer.hpp"
 #include "d3d12_context.hpp"
-#include "d3d12_frame_resource.hpp"
 #include "d3d12_utility.hpp"
-#include <iostream>
 
 namespace ash::graphics::d3d12
 {
@@ -11,6 +9,7 @@ d3d12_swap_chain_base::d3d12_swap_chain_base(
     std::uint32_t width,
     std::uint32_t height,
     std::size_t multiple_sampling)
+    : m_back_buffer_counter(0)
 {
     DXGI_SWAP_CHAIN_DESC1 swap_chain_desc = {};
     swap_chain_desc.Width = width;
@@ -19,6 +18,7 @@ d3d12_swap_chain_base::d3d12_swap_chain_base(
     swap_chain_desc.Format = RENDER_TARGET_FORMAT;
     swap_chain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     swap_chain_desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+
     // Multisampling a back buffer is not supported in D3D12.
     swap_chain_desc.SampleDesc.Count = 1;
     swap_chain_desc.SampleDesc.Quality = 0;
@@ -45,18 +45,53 @@ d3d12_swap_chain_base::d3d12_swap_chain_base(
     m_sample_desc.Quality = sample_level.NumQualityLevels - 1;
 }
 
+void d3d12_swap_chain_base::resize(std::uint32_t width, std::uint32_t height)
+{
+    throw_if_failed(m_swap_chain->ResizeBuffers(
+        2,
+        static_cast<UINT>(width),
+        static_cast<UINT>(height),
+        RENDER_TARGET_FORMAT,
+        0));
+    m_back_buffer_counter = 0;
+}
+
 void d3d12_swap_chain_base::present()
 {
     throw_if_failed(m_swap_chain->Present(0, 0));
+    ++m_back_buffer_counter;
 }
 
-UINT64 d3d12_swap_chain_base::back_buffer_index() const noexcept
+std::size_t d3d12_swap_chain_base::back_buffer_index() const noexcept
 {
-    return d3d12_frame_counter::frame_counter() % 2;
+    // m_back_buffer_counter % 2
+    return m_back_buffer_counter & 1;
 }
 
 d3d12_swap_chain::d3d12_swap_chain(HWND handle, std::uint32_t width, std::uint32_t height)
     : d3d12_swap_chain_base(handle, width, height)
+{
+    resize_buffer(height, width);
+}
+
+void d3d12_swap_chain::begin_frame(D3D12GraphicsCommandList* command_list)
+{
+    m_back_buffer[back_buffer_index()]->begin_render(command_list);
+}
+
+void d3d12_swap_chain::end_frame(D3D12GraphicsCommandList* command_list)
+{
+    m_back_buffer[back_buffer_index()]->end_render(command_list);
+}
+
+void d3d12_swap_chain::resize(std::uint32_t width, std::uint32_t height)
+{
+    m_back_buffer.clear();
+    d3d12_swap_chain_base::resize(width, height);
+    resize_buffer(width, height);
+}
+
+void d3d12_swap_chain::resize_buffer(std::uint32_t width, std::uint32_t height)
 {
     for (UINT i = 0; i < 2; ++i)
     {
@@ -70,22 +105,38 @@ d3d12_swap_chain::d3d12_swap_chain(HWND handle, std::uint32_t width, std::uint32
         std::make_unique<d3d12_depth_stencil_buffer>(width, height, DEPTH_STENCIL_FORMAT);
 }
 
-void d3d12_swap_chain::begin_frame(D3D12GraphicsCommandList* command_list)
-{
-    m_back_buffer[back_buffer_index()]->begin_render(command_list);
-}
-
-void d3d12_swap_chain::end_frame(D3D12GraphicsCommandList* command_list)
-{
-    m_back_buffer[back_buffer_index()]->end_render(command_list);
-}
-
 d3d12_swap_chain_multisample::d3d12_swap_chain_multisample(
     HWND handle,
     std::uint32_t width,
     std::uint32_t height,
     std::size_t multiple_sampling)
-    : d3d12_swap_chain_base(handle, width, height, multiple_sampling)
+    : d3d12_swap_chain_base(handle, width, height, multiple_sampling),
+      m_multiple_sampling(multiple_sampling)
+{
+    resize_buffer(width, height);
+}
+
+void d3d12_swap_chain_multisample::begin_frame(D3D12GraphicsCommandList* command_list)
+{
+    m_render_target->bind_resolve(m_back_buffer[back_buffer_index()]);
+    m_render_target->begin_render(command_list);
+}
+
+void d3d12_swap_chain_multisample::end_frame(D3D12GraphicsCommandList* command_list)
+{
+    m_render_target->end_render(command_list);
+}
+
+void d3d12_swap_chain_multisample::resize(std::uint32_t width, std::uint32_t height)
+{
+    m_back_buffer.clear();
+    m_render_target = nullptr;
+    m_depth_stencil_buffer = nullptr;
+    d3d12_swap_chain_base::resize(width, height);
+    resize_buffer(width, height);
+}
+
+void d3d12_swap_chain_multisample::resize_buffer(std::uint32_t width, std::uint32_t height)
 {
     for (UINT i = 0; i < 2; ++i)
     {
@@ -99,7 +150,7 @@ d3d12_swap_chain_multisample::d3d12_swap_chain_multisample(
         width,
         height,
         DEPTH_STENCIL_FORMAT,
-        multiple_sampling);
+        m_multiple_sampling);
 
     // Create a multisampled render target.
     m_render_target = std::make_unique<d3d12_render_target_mutlisample>(
@@ -107,19 +158,8 @@ d3d12_swap_chain_multisample::d3d12_swap_chain_multisample(
         height,
         RENDER_TARGET_FORMAT,
         D3D12_RESOURCE_STATE_PRESENT,
-        multiple_sampling,
+        m_multiple_sampling,
         false);
-}
-
-void d3d12_swap_chain_multisample::begin_frame(D3D12GraphicsCommandList* command_list)
-{
-    m_render_target->bind_resolve(m_back_buffer[back_buffer_index()]);
-    m_render_target->begin_render(command_list);
-}
-
-void d3d12_swap_chain_multisample::end_frame(D3D12GraphicsCommandList* command_list)
-{
-    m_render_target->end_render(command_list);
 }
 
 d3d12_renderer::d3d12_renderer(
@@ -228,6 +268,12 @@ std::size_t d3d12_renderer::adapter(adapter_info* infos, std::size_t size) const
     }
 
     return i;
+}
+
+void d3d12_renderer::resize(std::uint32_t width, std::uint32_t height)
+{
+    d3d12_context::command()->flush();
+    m_swap_chain->resize(width, height);
 }
 
 void d3d12_renderer::begin_frame(D3D12GraphicsCommandList* command_list)

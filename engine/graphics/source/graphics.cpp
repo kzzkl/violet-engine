@@ -4,6 +4,7 @@
 #include "log.hpp"
 #include "math.hpp"
 #include "window.hpp"
+#include "window_event.hpp"
 #include <fstream>
 
 using namespace ash::math;
@@ -53,6 +54,10 @@ bool graphics::initialize(const dictionary& config)
     m_object_view = world.make_view<visual, scene::transform>();
     m_camera_view = world.make_view<main_camera, camera, scene::transform>();
     // m_tv = world.make_view<scene::transform>();
+
+    auto& event = system<core::event>();
+    event.subscribe<window::event_window_resize>(
+        [this](std::uint32_t width, std::uint32_t height) { m_renderer->resize(width, height); });
 
     return true;
 }

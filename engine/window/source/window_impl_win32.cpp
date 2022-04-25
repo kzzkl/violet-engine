@@ -282,16 +282,15 @@ bool window_impl_win32::initialize(
     wndClassEx.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
     RegisterClassEx(&wndClassEx);
 
+    SetProcessDPIAware();
+
     RECT windowRect = {0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
     AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, false);
-
-    SetProcessDPIAware();
 
     ASH_ASSERT(title.size() < 128, "The title is too long");
     std::wstring wtitle = string_to_wstring(title);
 
-    m_hwnd = CreateWindowEx(
-        WS_EX_APPWINDOW,
+    m_hwnd = CreateWindow(
         wndClassEx.lpszClassName,
         wtitle.c_str(),
         WS_OVERLAPPEDWINDOW,
@@ -324,6 +323,9 @@ bool window_impl_win32::initialize(
     {
         log::error("RegisterRawInputDevices failed");
     }
+
+    m_window_width = width;
+    m_window_height = height;
 
     show();
 
@@ -446,11 +448,36 @@ LRESULT CALLBACK window_impl_win32::wnd_proc(HWND hwnd, UINT message, WPARAM wpa
 
 LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
+    static bool resize_flag = false;
+
     switch (message)
     {
     case WM_MOUSEMOVE: {
         if (m_mouse_mode == mouse_mode::CURSOR_ABSOLUTE)
             on_mouse_move(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
+        break;
+    }
+    case WM_ENTERSIZEMOVE: {
+        break;
+    }
+    case WM_EXITSIZEMOVE: {
+        if (resize_flag)
+        {
+            on_window_resize(m_window_width, m_window_height);
+            resize_flag = false;
+        }
+        break;
+    }
+    case WM_SIZE: {
+        resize_flag = true;
+        m_window_width = LOWORD(lparam);
+        m_window_height = HIWORD(lparam);
+
+        if (wparam == SIZE_MAXIMIZED)
+        {
+            on_window_resize(m_window_width, m_window_height);
+            resize_flag = false;
+        }
         break;
     }
     case WM_INPUT: {
@@ -575,7 +602,7 @@ void window_impl_win32::on_window_move(int x, int y)
     m_messages.push_back(message);
 }
 
-void window_impl_win32::on_window_resize(int width, int height)
+void window_impl_win32::on_window_resize(std::uint32_t width, std::uint32_t height)
 {
     window_message message;
     message.type = window_message::message_type::WINDOW_RESIZE;

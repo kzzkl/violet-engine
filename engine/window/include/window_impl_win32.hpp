@@ -33,7 +33,7 @@ private:
     void on_keyboard_key(keyboard_key key, bool down);
     void on_keyboard_char(char c);
     void on_window_move(int x, int y);
-    void on_window_resize(int width, int height);
+    void on_window_resize(std::uint32_t width, std::uint32_t height);
 
     static constexpr auto* m_class_name = L"ash-engine";
 
@@ -45,6 +45,9 @@ private:
 
     int m_mouse_whell;
     bool m_mouse_whell_move;
+
+    std::uint32_t m_window_width;
+    std::uint32_t m_window_height;
 
     HINSTANCE m_instance;
     HWND m_hwnd;

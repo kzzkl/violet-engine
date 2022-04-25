@@ -24,4 +24,9 @@ struct event_keyboard_char
 {
     using dispatcher = core::sequence_dispatcher<std::function<void(char)>>;
 };
+
+struct event_window_resize
+{
+    using dispatcher = core::sequence_dispatcher<std::function<void(std::uint32_t, std::uint32_t)>>;
+};
 } // namespace ash::window

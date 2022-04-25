@@ -80,6 +80,7 @@ public:
     void execute_command(d3d12_dynamic_command command);
 
     void execute_batch();
+    void flush();
 
     void switch_frame_resources();
 

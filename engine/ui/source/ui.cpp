@@ -287,6 +287,7 @@ bool ui::initialize(const dictionary& config)
         });
     event.subscribe<window::event_keyboard_char>(
         [](char c) { ImGui::GetIO().AddInputCharacter(c); });
+    event.subscribe<window::event_window_resize>([](std::uint32_t width, std::uint32_t height) {});
 
     return true;
 }
@@ -307,7 +308,11 @@ void ui::window_root(std::string_view label)
     ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
 
-    ImGui::Begin(label.data(), nullptr, ImGuiWindowFlags_NoBringToFrontOnFocus);
+    ImGui::Begin(
+        label.data(),
+        nullptr,
+        ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoMove);
 }
 
 void ui::window_pop()
@@ -500,6 +505,7 @@ void ui::initialize_theme()
     io.Fonts->AddFontFromFileTTF("engine/font/Ruda-Bold.ttf", 12 * 1.5);
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.ConfigWindowsMoveFromTitleBarOnly = true;
+    io.ConfigDockingAlwaysTabBar = true;
 
     auto& style = ImGui::GetStyle();
     style.Colors[ImGuiCol_Text] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);

@@ -72,6 +72,10 @@ void d3d12_render_command::render_target(resource* target, resource* depth_stenc
     viewport.TopLeftX = 0.0f;
     viewport.TopLeftY = 0.0f;
     m_command_list->RSSetViewports(1, &viewport);
+
+    D3D12_RECT r = {0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
+    m_command_list->RSSetScissorRects(1, &r);
+
     m_command_list->OMSetRenderTargets(1, &rt_handle, true, &ds_handle);
 }
 
@@ -127,13 +131,9 @@ void d3d12_render_command::end_render(resource* target)
 
 void d3d12_render_command::clear_render_target(resource* target)
 {
-    static const float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
-
     auto rt = static_cast<d3d12_resource*>(target)->render_target();
-    auto [width, height] = rt.size();
-    D3D12_RECT rect = {0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
-
-    m_command_list->ClearRenderTargetView(rt.cpu_handle(), clear_color, 1, &rect);
+    static const float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
+    m_command_list->ClearRenderTargetView(rt.cpu_handle(), clear_color, 0, nullptr);
 }
 
 void d3d12_render_command::clear_depth_stencil(resource* depth_stencil)
@@ -346,6 +346,13 @@ void d3d12_command_manager::execute_batch()
     auto& resource = m_frame_resource.get();
     resource.fence = m_fence_counter;
     resource.concurrency = m_render_command_counter;
+}
+
+void d3d12_command_manager::flush()
+{
+    ++m_fence_counter;
+    throw_if_failed(m_queue->Signal(m_fence.Get(), m_fence_counter));
+    wait_completed(m_fence_counter);
 }
 
 void d3d12_command_manager::switch_frame_resources()

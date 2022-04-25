@@ -114,8 +114,8 @@ class d3d12_render_target : public d3d12_render_target_base
 {
 public:
     d3d12_render_target(
-        std::size_t width,
-        std::size_t height,
+        std::uint32_t width,
+        std::uint32_t height,
         DXGI_FORMAT format,
         D3D12_RESOURCE_STATES end_state);
     d3d12_render_target(d3d12_ptr<D3D12Resource> resource);
@@ -144,8 +144,8 @@ class d3d12_render_target_mutlisample : public d3d12_render_target_base
 {
 public:
     d3d12_render_target_mutlisample(
-        std::size_t width,
-        std::size_t height,
+        std::uint32_t width,
+        std::uint32_t height,
         DXGI_FORMAT format,
         D3D12_RESOURCE_STATES end_state,
         std::size_t multiple_sampling,
@@ -177,8 +177,8 @@ class d3d12_depth_stencil_buffer : public d3d12_resource
 public:
     d3d12_depth_stencil_buffer() noexcept;
     d3d12_depth_stencil_buffer(
-        std::size_t width,
-        std::size_t height,
+        std::uint32_t width,
+        std::uint32_t height,
         DXGI_FORMAT format,
         std::size_t multiple_sampling = 1);
     d3d12_depth_stencil_buffer(const d3d12_depth_stencil_buffer&) = delete;
@@ -306,8 +306,8 @@ public:
         D3D12GraphicsCommandList* command_list);
     d3d12_texture(
         const std::uint8_t* data,
-        std::size_t width,
-        std::size_t height,
+        std::uint32_t width,
+        std::uint32_t height,
         D3D12GraphicsCommandList* command_list);
     virtual ~d3d12_texture();
 
