@@ -9,7 +9,15 @@
 - cmake version 3.21.2
 - DirectX 12
 
-## 编译
+## 使用方法
+
+### 克隆
+
+```bash
+git clone --recurse-submodules git@github.com:kzzkl/ash-engine.git
+```
+
+### 编译
 
 ```bash
 mkdir build
