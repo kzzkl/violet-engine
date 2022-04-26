@@ -91,11 +91,14 @@ private:
     {
         auto& world = system<ash::ecs::world>();
         auto& scene = system<ash::scene::scene>();
+        auto& graphics = system<graphics::graphics>();
 
         m_camera = world.create();
         world.add<core::link, main_camera, camera, transform>(m_camera);
         auto& c_camera = world.component<camera>(m_camera);
         c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
+
+        c_camera.parameter = graphics.make_render_parameter("ash_pass");
 
         auto& c_transform = world.component<transform>(m_camera);
         c_transform.position = {0.0f, 11.0f, -60.0f};
@@ -109,9 +112,16 @@ private:
         auto& task = system<task::task_manager>();
 
         auto update_task = task.schedule("test update", [this]() { update(); });
-
-        auto window_task = task.find(ash::window::window::TASK_WINDOW_TICK);
-        auto render_task = task.find(ash::graphics::graphics::TASK_RENDER);
+        auto window_task = task.schedule(
+            "window tick",
+            [this]() { system<window::window>().tick(); },
+            task::task_type::MAIN_THREAD);
+        auto render_task = task.schedule("render", [this]() {
+            auto& graphics = system<graphics::graphics>();
+            graphics.begin_frame();
+            graphics.render(m_camera);
+            graphics.end_frame();
+        });
 
         window_task->add_dependency(*task.find("root"));
         update_task->add_dependency(*window_task);
@@ -200,7 +210,7 @@ private:
 
     void update()
     {
-        if (system<ash::window::window>().keyboard().key(keyboard_key::KEY_ESC).down())
+        if (system<ash::window::window>().keyboard().key(keyboard_key::KEY_ESCAPE).down())
             m_app->exit();
 
         auto& scene = system<scene::scene>();

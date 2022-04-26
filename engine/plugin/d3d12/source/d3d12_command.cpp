@@ -57,19 +57,52 @@ void d3d12_render_command::parameter(std::size_t index, pipeline_parameter* para
     }
 }
 
+void d3d12_render_command::render_target(resource* target, resource* depth_stencil)
+{
+    auto rt = static_cast<d3d12_resource*>(target)->render_target();
+    auto rt_handle = rt.cpu_handle();
+    auto ds_handle = static_cast<d3d12_resource*>(depth_stencil)->depth_stencil().cpu_handle();
+
+    auto [width, height] = rt.size();
+    D3D12_VIEWPORT viewport = {};
+    viewport.Width = static_cast<float>(width);
+    viewport.Height = static_cast<float>(height);
+    viewport.MinDepth = 0.0f;
+    viewport.MaxDepth = 1.0f;
+    viewport.TopLeftX = 0.0f;
+    viewport.TopLeftY = 0.0f;
+    m_command_list->RSSetViewports(1, &viewport);
+
+    D3D12_RECT r = {0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
+    m_command_list->RSSetScissorRects(1, &r);
+
+    m_command_list->OMSetRenderTargets(1, &rt_handle, true, &ds_handle);
+}
+
+void d3d12_render_command::scissor(const scissor_rect& rect)
+{
+    D3D12_RECT r = {
+        static_cast<LONG>(rect.min_x),
+        static_cast<LONG>(rect.min_y),
+        static_cast<LONG>(rect.max_x),
+        static_cast<LONG>(rect.max_y)};
+    m_command_list->RSSetScissorRects(1, &r);
+}
+
 void d3d12_render_command::draw(
     resource* vertex,
     resource* index,
     std::size_t index_start,
     std::size_t index_end,
+    std::size_t vertex_base,
     primitive_topology_type primitive_topology,
     resource* target)
 {
-    d3d12_vertex_buffer* v = static_cast<d3d12_vertex_buffer*>(vertex);
-    d3d12_index_buffer* i = static_cast<d3d12_index_buffer*>(index);
+    auto vb = static_cast<d3d12_resource*>(vertex)->vertex_buffer();
+    auto ib = static_cast<d3d12_resource*>(index)->index_buffer();
 
-    m_command_list->IASetVertexBuffers(0, 1, &v->view());
-    m_command_list->IASetIndexBuffer(&i->view());
+    m_command_list->IASetVertexBuffers(0, 1, &vb.view());
+    m_command_list->IASetIndexBuffer(&ib.view());
 
     if (primitive_topology == primitive_topology_type::TRIANGLE_LIST)
         m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -80,8 +113,39 @@ void d3d12_render_command::draw(
         static_cast<UINT>(index_end - index_start),
         1,
         static_cast<UINT>(index_start),
-        0,
+        static_cast<UINT>(vertex_base),
         0);
+}
+
+void d3d12_render_command::begin_render(resource* target)
+{
+    auto rt = static_cast<d3d12_render_target*>(target);
+    rt->begin_render(m_command_list.Get());
+}
+
+void d3d12_render_command::end_render(resource* target)
+{
+    auto rt = static_cast<d3d12_render_target*>(target);
+    rt->end_render(m_command_list.Get());
+}
+
+void d3d12_render_command::clear_render_target(resource* target)
+{
+    auto rt = static_cast<d3d12_resource*>(target)->render_target();
+    static const float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
+    m_command_list->ClearRenderTargetView(rt.cpu_handle(), clear_color, 0, nullptr);
+}
+
+void d3d12_render_command::clear_depth_stencil(resource* depth_stencil)
+{
+    auto ds = static_cast<d3d12_resource*>(depth_stencil);
+    m_command_list->ClearDepthStencilView(
+        ds->depth_stencil().cpu_handle(),
+        D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
+        1.0f,
+        0,
+        0,
+        nullptr);
 }
 
 void d3d12_render_command::allocator(D3D12CommandAllocator* allocator) noexcept
@@ -282,6 +346,13 @@ void d3d12_command_manager::execute_batch()
     auto& resource = m_frame_resource.get();
     resource.fence = m_fence_counter;
     resource.concurrency = m_render_command_counter;
+}
+
+void d3d12_command_manager::flush()
+{
+    ++m_fence_counter;
+    throw_if_failed(m_queue->Signal(m_fence.Get(), m_fence_counter));
+    wait_completed(m_fence_counter);
 }
 
 void d3d12_command_manager::switch_frame_resources()

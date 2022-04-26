@@ -4,113 +4,203 @@
 
 namespace ash::graphics::d3d12
 {
-d3d12_resource::d3d12_resource() noexcept : d3d12_resource(nullptr, D3D12_RESOURCE_STATE_COMMON)
-{
-}
-
-d3d12_resource::d3d12_resource(
-    d3d12_ptr<D3D12Resource> resource,
-    D3D12_RESOURCE_STATES state) noexcept
+d3d12_render_target_proxy::d3d12_render_target_proxy(
+    d3d12_render_target_base* resource,
+    D3D12Resource* render_target,
+    D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle)
     : m_resource(resource),
-      m_state(state)
+      m_render_target(render_target),
+      m_rtv_handle(rtv_handle)
 {
 }
 
-void d3d12_resource::transition_state(
-    D3D12_RESOURCE_STATES state,
-    D3D12GraphicsCommandList* command_list)
+void d3d12_render_target_proxy::begin_render(D3D12GraphicsCommandList* command_list)
 {
-    CD3DX12_RESOURCE_BARRIER transition =
-        CD3DX12_RESOURCE_BARRIER::Transition(m_resource.Get(), m_state, state);
-    command_list->ResourceBarrier(1, &transition);
-    m_state = state;
+    m_resource->begin_render(command_list);
 }
 
-void d3d12_resource::transition_state(
-    const transition_list& transition,
-    D3D12GraphicsCommandList* command_list)
+void d3d12_render_target_proxy::end_render(D3D12GraphicsCommandList* command_list)
 {
-    std::vector<CD3DX12_RESOURCE_BARRIER> barrier;
-    barrier.reserve(transition.size());
-
-    for (auto [resource, state] : transition)
-    {
-        barrier.push_back(
-            CD3DX12_RESOURCE_BARRIER::Transition(resource->resource(), resource->m_state, state));
-        resource->m_state = state;
-    }
-    command_list->ResourceBarrier(static_cast<UINT>(barrier.size()), barrier.data());
+    m_resource->end_render(command_list);
 }
 
-std::size_t d3d12_resource::size() const
+d3d12_render_target_proxy d3d12_resource::render_target()
 {
-    auto desc = m_resource->GetDesc();
-    return static_cast<std::size_t>(desc.Height * desc.Width);
+    ASH_D3D12_ASSERT(
+        false,
+        "Conversion to render target is not supported for the current resource.");
+    static const D3D12_CPU_DESCRIPTOR_HANDLE invalid;
+    return d3d12_render_target_proxy(nullptr, nullptr, invalid);
 }
 
-d3d12_back_buffer::d3d12_back_buffer() noexcept : m_descriptor_offset(INVALID_DESCRIPTOR_INDEX)
+d3d12_depth_stencil_proxy d3d12_resource::depth_stencil()
 {
+    ASH_D3D12_ASSERT(
+        false,
+        "Conversion to depth stencil is not supported for the current resource.");
+    static const D3D12_CPU_DESCRIPTOR_HANDLE invalid;
+    return d3d12_depth_stencil_proxy(invalid);
 }
 
-d3d12_back_buffer::d3d12_back_buffer(d3d12_ptr<D3D12Resource> resource, D3D12_RESOURCE_STATES state)
-    : d3d12_resource(resource, state)
+d3d12_vertex_buffer_proxy d3d12_resource::vertex_buffer()
 {
-    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-    m_descriptor_offset = heap->allocate(1);
+    ASH_D3D12_ASSERT(
+        false,
+        "Conversion to vertex buffer is not supported for the current resource.");
+    static const D3D12_VERTEX_BUFFER_VIEW invalid = {};
+    return d3d12_vertex_buffer_proxy(invalid);
+}
 
-    d3d12_context::device()->CreateRenderTargetView(
-        m_resource.Get(),
+d3d12_index_buffer_proxy d3d12_resource::index_buffer()
+{
+    ASH_D3D12_ASSERT(
+        false,
+        "Conversion to index buffer is not supported for the current resource.");
+    static const D3D12_INDEX_BUFFER_VIEW invalid = {};
+    return d3d12_index_buffer_proxy(invalid, 0);
+}
+
+d3d12_shader_resource_proxy d3d12_resource::shader_resource()
+{
+    ASH_D3D12_ASSERT(
+        false,
+        "Conversion to shader resource is not supported for the current resource.");
+    static const D3D12_CPU_DESCRIPTOR_HANDLE invalid = {};
+    return d3d12_shader_resource_proxy(invalid);
+}
+
+d3d12_render_target::d3d12_render_target(
+    std::uint32_t width,
+    std::uint32_t height,
+    DXGI_FORMAT format,
+    D3D12_RESOURCE_STATES end_state)
+{
+    auto device = d3d12_context::device();
+
+    CD3DX12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(
+        format,
+        static_cast<UINT>(width),
+        static_cast<UINT>(height),
+        1,
+        1,
+        1,
+        0,
+        D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
+
+    D3D12_CLEAR_VALUE clear = {};
+    clear.Format = format;
+    clear.Color[0] = clear.Color[1] = clear.Color[2] = 0.0f;
+    clear.Color[3] = 1.0f;
+
+    CD3DX12_HEAP_PROPERTIES heap_properties(D3D12_HEAP_TYPE_DEFAULT);
+    device->CreateCommittedResource(
+        &heap_properties,
+        D3D12_HEAP_FLAG_NONE,
+        &desc,
+        m_end_state,
+        &clear,
+        IID_PPV_ARGS(&m_render_target));
+
+    // Create RTV.
+    auto rtv_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    m_rtv_offset = rtv_heap->allocate(1);
+    device->CreateRenderTargetView(
+        m_render_target.Get(),
         nullptr,
-        heap->cpu_handle(m_descriptor_offset));
+        rtv_heap->cpu_handle(m_rtv_offset));
+
+    // Create SRV.
+    auto srv_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    m_srv_offset = srv_heap->allocate(1);
+    device->CreateShaderResourceView(
+        m_render_target.Get(),
+        nullptr,
+        srv_heap->cpu_handle(m_srv_offset));
 }
 
-d3d12_back_buffer::d3d12_back_buffer(d3d12_back_buffer&& other) noexcept
-    : d3d12_resource(std::move(other)),
-      m_descriptor_offset(other.m_descriptor_offset)
+d3d12_render_target::d3d12_render_target(d3d12_ptr<D3D12Resource> resource)
+    : m_render_target(resource),
+      m_rtv_offset(INVALID_DESCRIPTOR_INDEX),
+      m_srv_offset(INVALID_DESCRIPTOR_INDEX)
 {
-    other.m_descriptor_offset = INVALID_DESCRIPTOR_INDEX;
 }
 
-d3d12_back_buffer::~d3d12_back_buffer()
+d3d12_render_target::d3d12_render_target(d3d12_render_target&& other) noexcept
+    : m_render_target(std::move(other.m_render_target)),
+      m_rtv_offset(other.m_rtv_offset),
+      m_srv_offset(other.m_srv_offset)
 {
-    if (m_descriptor_offset != INVALID_DESCRIPTOR_INDEX)
+    other.m_rtv_offset = INVALID_DESCRIPTOR_INDEX;
+    other.m_srv_offset = INVALID_DESCRIPTOR_INDEX;
+}
+
+d3d12_render_target::~d3d12_render_target()
+{
+    if (m_rtv_offset != INVALID_DESCRIPTOR_INDEX)
     {
         auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        heap->deallocate(m_descriptor_offset);
+        heap->deallocate(m_rtv_offset);
+    }
+
+    if (m_srv_offset != INVALID_DESCRIPTOR_INDEX)
+    {
+        auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        heap->deallocate(m_srv_offset);
     }
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_back_buffer::cpu_handle() const
+void d3d12_render_target::begin_render(D3D12GraphicsCommandList* command_list)
 {
-    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-    return heap->cpu_handle(m_descriptor_offset);
+    CD3DX12_RESOURCE_BARRIER transition = CD3DX12_RESOURCE_BARRIER::Transition(
+        m_render_target.Get(),
+        m_end_state,
+        D3D12_RESOURCE_STATE_RENDER_TARGET);
+    command_list->ResourceBarrier(1, &transition);
 }
 
-d3d12_back_buffer& d3d12_back_buffer::operator=(d3d12_back_buffer&& other) noexcept
+void d3d12_render_target::end_render(D3D12GraphicsCommandList* command_list)
+{
+    CD3DX12_RESOURCE_BARRIER transition = CD3DX12_RESOURCE_BARRIER::Transition(
+        m_render_target.Get(),
+        D3D12_RESOURCE_STATE_RENDER_TARGET,
+        m_end_state);
+    command_list->ResourceBarrier(1, &transition);
+}
+
+d3d12_render_target_proxy d3d12_render_target::render_target()
+{
+    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    return d3d12_render_target_proxy(this, m_render_target.Get(), heap->cpu_handle(m_rtv_offset));
+}
+
+d3d12_shader_resource_proxy d3d12_render_target::shader_resource()
+{
+    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    return d3d12_shader_resource_proxy(heap->cpu_handle(m_srv_offset));
+}
+
+d3d12_render_target& d3d12_render_target::operator=(d3d12_render_target&& other) noexcept
 {
     if (this != &other)
     {
         d3d12_resource::operator=(std::move(other));
-        m_descriptor_offset = other.m_descriptor_offset;
-        other.m_descriptor_offset = INVALID_DESCRIPTOR_INDEX;
+        m_rtv_offset = other.m_rtv_offset;
+        other.m_rtv_offset = INVALID_DESCRIPTOR_INDEX;
     }
 
     return *this;
 }
 
-d3d12_render_target::d3d12_render_target() noexcept : m_descriptor_offset(INVALID_DESCRIPTOR_INDEX)
-{
-}
-
-d3d12_render_target::d3d12_render_target(
-    std::size_t width,
-    std::size_t height,
+d3d12_render_target_mutlisample::d3d12_render_target_mutlisample(
+    std::uint32_t width,
+    std::uint32_t height,
     DXGI_FORMAT format,
-    std::size_t multiple_sampling)
+    D3D12_RESOURCE_STATES end_state,
+    std::size_t multiple_sampling,
+    bool create_resolve_target)
+    : m_end_state(end_state)
 {
     auto device = d3d12_context::device();
-
-    CD3DX12_HEAP_PROPERTIES heap_properties(D3D12_HEAP_TYPE_DEFAULT);
 
     // Query sample level.
     D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS sample_level = {};
@@ -123,74 +213,121 @@ d3d12_render_target::d3d12_render_target(
         &sample_level,
         sizeof(sample_level)));
 
-    D3D12_RESOURCE_DESC desc = {};
-    desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-    desc.Alignment = 0;
-    desc.Width = static_cast<UINT>(width);
-    desc.Height = static_cast<UINT>(height);
-    desc.DepthOrArraySize = 1;
-    desc.MipLevels = 1;
-    desc.Format = format;
-    desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-    desc.SampleDesc.Count = sample_level.SampleCount;
-    desc.SampleDesc.Quality = sample_level.NumQualityLevels - 1;
+    CD3DX12_RESOURCE_DESC target_desc = CD3DX12_RESOURCE_DESC::Tex2D(
+        format,
+        static_cast<UINT>(width),
+        static_cast<UINT>(height),
+        1,
+        1,
+        sample_level.SampleCount,
+        sample_level.NumQualityLevels - 1,
+        D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 
-    D3D12_CLEAR_VALUE clear = {};
+    D3D12_CLEAR_VALUE clear;
     clear.Format = format;
     clear.Color[0] = clear.Color[1] = clear.Color[2] = 0.0f;
     clear.Color[3] = 1.0f;
 
+    CD3DX12_HEAP_PROPERTIES heap_properties(D3D12_HEAP_TYPE_DEFAULT);
     device->CreateCommittedResource(
         &heap_properties,
         D3D12_HEAP_FLAG_NONE,
-        &desc,
-        D3D12_RESOURCE_STATE_COMMON,
+        &target_desc,
+        D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
         &clear,
-        IID_PPV_ARGS(&m_resource));
+        IID_PPV_ARGS(&m_render_target));
 
-    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-    m_descriptor_offset = heap->allocate(1);
+    // Create RTV.
+    auto rtv_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    m_rtv_offset = rtv_heap->allocate(1);
     device->CreateRenderTargetView(
-        m_resource.Get(),
+        m_render_target.Get(),
         nullptr,
-        heap->cpu_handle(m_descriptor_offset));
+        rtv_heap->cpu_handle(m_rtv_offset));
 
-    m_state = D3D12_RESOURCE_STATE_COMMON;
-}
-
-d3d12_render_target::d3d12_render_target(d3d12_render_target&& other) noexcept
-    : d3d12_resource(std::move(other)),
-      m_descriptor_offset(other.m_descriptor_offset)
-{
-    other.m_descriptor_offset = INVALID_DESCRIPTOR_INDEX;
-}
-
-d3d12_render_target::~d3d12_render_target()
-{
-    if (m_descriptor_offset != INVALID_DESCRIPTOR_INDEX)
+    if (create_resolve_target)
     {
-        auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        heap->deallocate(m_descriptor_offset);
+        CD3DX12_RESOURCE_DESC resolve_desc = CD3DX12_RESOURCE_DESC::Tex2D(
+            format,
+            static_cast<UINT>(width),
+            static_cast<UINT>(height),
+            1,
+            1,
+            1,
+            0,
+            D3D12_RESOURCE_FLAG_NONE);
+
+        CD3DX12_HEAP_PROPERTIES heap_properties(D3D12_HEAP_TYPE_DEFAULT);
+        device->CreateCommittedResource(
+            &heap_properties,
+            D3D12_HEAP_FLAG_NONE,
+            &resolve_desc,
+            m_end_state,
+            nullptr,
+            IID_PPV_ARGS(&m_resolve_target));
+
+        // Create SRV.
+        auto srv_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        m_srv_offset = srv_heap->allocate(1);
+        device->CreateShaderResourceView(
+            m_resolve_target.Get(),
+            nullptr,
+            srv_heap->cpu_handle(m_srv_offset));
     }
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_render_target::cpu_handle() const
+d3d12_render_target_proxy d3d12_render_target_mutlisample::render_target()
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-    return heap->cpu_handle(m_descriptor_offset);
+    return d3d12_render_target_proxy(this, m_render_target.Get(), heap->cpu_handle(m_rtv_offset));
 }
 
-d3d12_render_target& d3d12_render_target::operator=(d3d12_render_target&& other) noexcept
+d3d12_shader_resource_proxy d3d12_render_target_mutlisample::shader_resource()
 {
-    if (this != &other)
-    {
-        d3d12_resource::operator=(std::move(other));
-        m_descriptor_offset = other.m_descriptor_offset;
-        other.m_descriptor_offset = INVALID_DESCRIPTOR_INDEX;
-    }
+    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    return d3d12_shader_resource_proxy(heap->cpu_handle(m_srv_offset));
+}
 
-    return *this;
+void d3d12_render_target_mutlisample::begin_render(D3D12GraphicsCommandList* command_list)
+{
+    D3D12_RESOURCE_BARRIER transition = CD3DX12_RESOURCE_BARRIER::Transition(
+        m_render_target.Get(),
+        D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
+        D3D12_RESOURCE_STATE_RENDER_TARGET);
+    command_list->ResourceBarrier(1, &transition);
+}
+
+void d3d12_render_target_mutlisample::end_render(D3D12GraphicsCommandList* command_list)
+{
+    D3D12_RESOURCE_BARRIER copy_transition[] = {
+        CD3DX12_RESOURCE_BARRIER::Transition(
+            m_render_target.Get(),
+            D3D12_RESOURCE_STATE_RENDER_TARGET,
+            D3D12_RESOURCE_STATE_RESOLVE_SOURCE),
+        CD3DX12_RESOURCE_BARRIER::Transition(
+            m_resolve_target.Get(),
+            m_end_state,
+            D3D12_RESOURCE_STATE_RESOLVE_DEST)};
+
+    command_list->ResourceBarrier(2, copy_transition);
+
+    command_list->ResolveSubresource(
+        m_resolve_target.Get(),
+        0,
+        m_render_target.Get(),
+        0,
+        m_render_target->GetDesc().Format);
+
+    D3D12_RESOURCE_BARRIER resolve_transition = CD3DX12_RESOURCE_BARRIER::Transition(
+        m_resolve_target.Get(),
+        D3D12_RESOURCE_STATE_RESOLVE_DEST,
+        m_end_state);
+    command_list->ResourceBarrier(1, &resolve_transition);
+}
+
+void d3d12_render_target_mutlisample::bind_resolve(d3d12_ptr<D3D12Resource> resolve_target)
+{
+    m_resolve_target = resolve_target;
 }
 
 d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer() noexcept
@@ -199,8 +336,8 @@ d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer() noexcept
 }
 
 d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(
-    std::size_t width,
-    std::size_t height,
+    std::uint32_t width,
+    std::uint32_t height,
     DXGI_FORMAT format,
     std::size_t multiple_sampling)
 {
@@ -219,18 +356,15 @@ d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(
         &sample_level,
         sizeof(sample_level)));
 
-    D3D12_RESOURCE_DESC desc = {};
-    desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-    desc.Alignment = 0;
-    desc.Width = static_cast<UINT>(width);
-    desc.Height = static_cast<UINT>(height);
-    desc.DepthOrArraySize = 1;
-    desc.MipLevels = 1;
-    desc.Format = format;
-    desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-    desc.SampleDesc.Count = sample_level.SampleCount;
-    desc.SampleDesc.Quality = sample_level.NumQualityLevels - 1;
+    CD3DX12_RESOURCE_DESC depth_stencil_desc = CD3DX12_RESOURCE_DESC::Tex2D(
+        format,
+        static_cast<UINT>(width),
+        static_cast<UINT>(height),
+        1,
+        1,
+        sample_level.SampleCount,
+        sample_level.NumQualityLevels - 1,
+        D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL | D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE);
 
     D3D12_CLEAR_VALUE clear = {};
     clear.Format = format;
@@ -240,10 +374,11 @@ d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(
     throw_if_failed(device->CreateCommittedResource(
         &heap_properties,
         D3D12_HEAP_FLAG_NONE,
-        &desc,
+        &depth_stencil_desc,
         D3D12_RESOURCE_STATE_DEPTH_WRITE,
         &clear,
         IID_PPV_ARGS(&m_resource)));
+    m_state = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
@@ -255,7 +390,8 @@ d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(
 }
 
 d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(d3d12_depth_stencil_buffer&& other) noexcept
-    : d3d12_resource(std::move(other)),
+    : m_resource(std::move(other.m_resource)),
+      m_state(other.m_state),
       m_descriptor_offset(other.m_descriptor_offset)
 {
     other.m_descriptor_offset = INVALID_DESCRIPTOR_INDEX;
@@ -270,10 +406,10 @@ d3d12_depth_stencil_buffer::~d3d12_depth_stencil_buffer()
     }
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_depth_stencil_buffer::cpu_handle() const
+d3d12_depth_stencil_proxy d3d12_depth_stencil_buffer::depth_stencil()
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-    return heap->cpu_handle(m_descriptor_offset);
+    return d3d12_depth_stencil_proxy(heap->cpu_handle(m_descriptor_offset));
 }
 
 d3d12_depth_stencil_buffer& d3d12_depth_stencil_buffer::operator=(
@@ -293,7 +429,6 @@ d3d12_default_buffer::d3d12_default_buffer(
     const void* data,
     std::size_t size,
     D3D12GraphicsCommandList* command_list)
-    : d3d12_resource(nullptr, D3D12_RESOURCE_STATE_COPY_DEST)
 {
     auto device = d3d12_context::device();
 
@@ -336,17 +471,20 @@ d3d12_default_buffer::d3d12_default_buffer(
         1,
         &subresource);
 
-    transition_state(D3D12_RESOURCE_STATE_GENERIC_READ, command_list);
+    CD3DX12_RESOURCE_BARRIER transition = CD3DX12_RESOURCE_BARRIER::Transition(
+        m_resource.Get(),
+        D3D12_RESOURCE_STATE_COPY_DEST,
+        D3D12_RESOURCE_STATE_GENERIC_READ);
+    command_list->ResourceBarrier(1, &transition);
+    m_state = D3D12_RESOURCE_STATE_GENERIC_READ;
 
     d3d12_context::resource()->push_temporary_resource(upload_resource);
 }
 
-d3d12_upload_buffer::d3d12_upload_buffer() noexcept : m_mapped(nullptr)
-{
-}
-
-d3d12_upload_buffer::d3d12_upload_buffer(std::size_t size)
-    : d3d12_resource(nullptr, D3D12_RESOURCE_STATE_GENERIC_READ)
+d3d12_upload_buffer::d3d12_upload_buffer(
+    const void* data,
+    std::size_t size,
+    D3D12GraphicsCommandList*)
 {
     CD3DX12_HEAP_PROPERTIES heap_properties(D3D12_HEAP_TYPE_UPLOAD);
     CD3DX12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(size);
@@ -358,12 +496,17 @@ d3d12_upload_buffer::d3d12_upload_buffer(std::size_t size)
         D3D12_RESOURCE_STATE_GENERIC_READ,
         nullptr,
         IID_PPV_ARGS(&m_resource)));
+    m_state = D3D12_RESOURCE_STATE_GENERIC_READ;
 
     throw_if_failed(m_resource->Map(0, nullptr, &m_mapped));
+
+    if (data != nullptr)
+        upload(data, size, 0);
 }
 
 d3d12_upload_buffer::d3d12_upload_buffer(d3d12_upload_buffer&& other) noexcept
-    : d3d12_resource(std::move(other)),
+    : m_resource(std::move(other.m_resource)),
+      m_state(other.m_state),
       m_mapped(other.m_mapped)
 {
     other.m_mapped = nullptr;
@@ -396,60 +539,17 @@ d3d12_upload_buffer& d3d12_upload_buffer::operator=(d3d12_upload_buffer&& other)
     return *this;
 }
 
-d3d12_vertex_buffer::d3d12_vertex_buffer(
-    const vertex_buffer_desc& desc,
-    D3D12GraphicsCommandList* command_list)
-{
-    if (desc.dynamic)
-    {
-        m_resource = std::make_unique<d3d12_upload_buffer>(desc.vertex_size * desc.vertex_count);
-    }
-    else
-    {
-        m_resource = std::make_unique<d3d12_default_buffer>(
-            desc.vertices,
-            desc.vertex_size * desc.vertex_count,
-            command_list);
-    }
-
-    m_view.BufferLocation = m_resource->resource()->GetGPUVirtualAddress();
-    m_view.SizeInBytes = static_cast<UINT>(desc.vertex_size * desc.vertex_count);
-    m_view.StrideInBytes = static_cast<UINT>(desc.vertex_size);
-}
-
-d3d12_index_buffer::d3d12_index_buffer(
-    const void* data,
-    std::size_t index_size,
-    std::size_t index_count,
-    D3D12GraphicsCommandList* command_list)
-    : d3d12_default_buffer(data, index_size * index_count, command_list),
-      m_index_count(index_count)
-{
-    m_view.BufferLocation = m_resource->GetGPUVirtualAddress();
-    m_view.SizeInBytes = static_cast<UINT>(index_size * index_count);
-
-    if (index_size == 1)
-        m_view.Format = DXGI_FORMAT_R8_UINT;
-    else if (index_size == 2)
-        m_view.Format = DXGI_FORMAT_R16_UINT;
-    else if (index_size == 4)
-        m_view.Format = DXGI_FORMAT_R32_UINT;
-    else
-        throw std::out_of_range("Invalid index size.");
-}
-
 d3d12_texture::d3d12_texture(
     const std::uint8_t* data,
     std::size_t size,
     D3D12GraphicsCommandList* command_list)
-    : d3d12_resource(nullptr, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
 {
     std::vector<D3D12_SUBRESOURCE_DATA> subresources;
     throw_if_failed(DirectX::LoadDDSTextureFromMemory(
         d3d12_context::device(),
         data,
         size,
-        m_resource.GetAddressOf(),
+        &m_resource,
         subresources));
 
     const UINT64 upload_resource_size =
@@ -464,7 +564,7 @@ d3d12_texture::d3d12_texture(
         &desc,
         D3D12_RESOURCE_STATE_GENERIC_READ,
         nullptr,
-        IID_PPV_ARGS(upload_resource.GetAddressOf())));
+        IID_PPV_ARGS(&upload_resource)));
 
     UpdateSubresources(
         command_list,
@@ -480,8 +580,113 @@ d3d12_texture::d3d12_texture(
         D3D12_RESOURCE_STATE_COPY_DEST,
         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     command_list->ResourceBarrier(1, &transition);
+    m_state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
     d3d12_context::resource()->push_temporary_resource(upload_resource);
+
+    // Create SRV.
+    auto srv_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    m_srv_offset = srv_heap->allocate(1);
+
+    d3d12_context::device()->CreateShaderResourceView(
+        m_resource.Get(),
+        nullptr,
+        srv_heap->cpu_handle(m_srv_offset));
+}
+
+d3d12_texture::d3d12_texture(
+    const std::uint8_t* data,
+    std::uint32_t width,
+    std::uint32_t height,
+    D3D12GraphicsCommandList* command_list)
+{
+    auto device = d3d12_context::device();
+
+    // Create default buffer.
+    CD3DX12_HEAP_PROPERTIES default_heap_properties(D3D12_HEAP_TYPE_DEFAULT);
+    CD3DX12_RESOURCE_DESC default_desc = CD3DX12_RESOURCE_DESC::Tex2D(
+        DXGI_FORMAT_R8G8B8A8_UNORM,
+        static_cast<UINT>(width),
+        static_cast<UINT>(height));
+    throw_if_failed(device->CreateCommittedResource(
+        &default_heap_properties,
+        D3D12_HEAP_FLAG_NONE,
+        &default_desc,
+        D3D12_RESOURCE_STATE_COPY_DEST,
+        nullptr,
+        IID_PPV_ARGS(&m_resource)));
+
+    // Create upload buffer.
+    UINT width_pitch = (width * 4 + D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u) &
+                       ~(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u);
+
+    d3d12_ptr<ID3D12Resource> upload_resource;
+    CD3DX12_HEAP_PROPERTIES upload_heap_properties(D3D12_HEAP_TYPE_UPLOAD);
+    CD3DX12_RESOURCE_DESC upload_desc = CD3DX12_RESOURCE_DESC::Buffer(height * width_pitch);
+    throw_if_failed(device->CreateCommittedResource(
+        &upload_heap_properties,
+        D3D12_HEAP_FLAG_NONE,
+        &upload_desc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&upload_resource)));
+
+    void* mapped = NULL;
+    D3D12_RANGE range = {0, height * width_pitch};
+    upload_resource->Map(0, &range, &mapped);
+    for (std::size_t i = 0; i < height; ++i)
+    {
+        memcpy(
+            static_cast<std::uint8_t*>(mapped) + i * width_pitch,
+            data + i * width * 4,
+            width * 4);
+    }
+    upload_resource->Unmap(0, &range);
+
+    // Copy data to default buffer.
+    D3D12_TEXTURE_COPY_LOCATION source_location = {};
+    source_location.pResource = upload_resource.Get();
+    source_location.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+    source_location.PlacedFootprint.Footprint.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    source_location.PlacedFootprint.Footprint.Width = static_cast<UINT>(width);
+    source_location.PlacedFootprint.Footprint.Height = static_cast<UINT>(height);
+    source_location.PlacedFootprint.Footprint.Depth = 1;
+    source_location.PlacedFootprint.Footprint.RowPitch = width_pitch;
+
+    D3D12_TEXTURE_COPY_LOCATION target_location = {};
+    target_location.pResource = m_resource.Get();
+    target_location.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+    target_location.SubresourceIndex = 0;
+
+    command_list->CopyTextureRegion(&target_location, 0, 0, 0, &source_location, NULL);
+
+    CD3DX12_RESOURCE_BARRIER transition = CD3DX12_RESOURCE_BARRIER::Transition(
+        m_resource.Get(),
+        D3D12_RESOURCE_STATE_COPY_DEST,
+        D3D12_RESOURCE_STATE_GENERIC_READ);
+    command_list->ResourceBarrier(1, &transition);
+
+    d3d12_context::resource()->push_temporary_resource(upload_resource);
+
+    // Create SRV.
+    auto srv_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    m_srv_offset = srv_heap->allocate(1);
+    device->CreateShaderResourceView(m_resource.Get(), nullptr, srv_heap->cpu_handle(m_srv_offset));
+}
+
+d3d12_texture::~d3d12_texture()
+{
+    if (m_srv_offset != INVALID_DESCRIPTOR_INDEX)
+    {
+        auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        heap->deallocate(m_srv_offset);
+    }
+}
+
+d3d12_shader_resource_proxy d3d12_texture::shader_resource()
+{
+    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    return d3d12_shader_resource_proxy(heap->cpu_handle(m_srv_offset));
 }
 
 d3d12_descriptor_heap::d3d12_descriptor_heap(

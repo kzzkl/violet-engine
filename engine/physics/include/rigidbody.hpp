@@ -8,6 +8,8 @@ namespace ash::physics
 {
 struct rigidbody
 {
+    static constexpr std::uint32_t COLLISION_MASK_ALL = -1;
+
     ecs::entity relation{ecs::INVALID_ENTITY};
 
     rigidbody_type type{rigidbody_type::DYNAMIC};
@@ -19,11 +21,11 @@ struct rigidbody
 
     collision_shape_interface* shape;
 
-    std::uint32_t collision_group;
-    std::uint32_t collision_mask;
+    std::uint32_t collision_group{1};
+    std::uint32_t collision_mask{COLLISION_MASK_ALL};
 
-    math::float4x4 offset;
-    math::float4x4 offset_inverse;
+    math::float4x4 offset{math::matrix_plain::identity()};
+    math::float4x4 offset_inverse{math::matrix_plain::identity()};
 
     bool in_world{false};
 

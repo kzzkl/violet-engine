@@ -10,7 +10,7 @@ namespace ash::ecs
 class world
 {
 public:
-    world() { register_component<all_entity>(); }
+    world() { register_component<information>(); }
     ~world()
     {
         for (auto& [_, archetype] : m_archetypes)
@@ -29,66 +29,34 @@ public:
         register_component<Component>(new default_component_constructer<Component>());
     }
 
-    [[nodiscard]] entity create()
+    [[nodiscard]] entity create(std::string_view name = "unnamed")
     {
+        entity result = INVALID_ENTITY;
         if (m_free_entity.empty())
         {
-            return m_entity_registry.add();
+            result = m_entity_registry.add();
         }
         else
         {
             entity result = m_free_entity.front();
             m_free_entity.pop();
-            return m_entity_registry.update(result);
+            result = m_entity_registry.update(result);
         }
-    }
 
-    void release(entity entity)
-    {
-        auto& info = m_entity_registry[entity];
-        info.archetype = nullptr;
-        info.index = 0;
-        ++info.version;
+        archetype* archetype = get_or_create_archetype<information>();
+        archetype->add(result);
+        component<information>(result).name = name;
 
-        m_free_entity.push(entity);
+        return result;
     }
 
     template <typename... Components>
     void add(entity entity)
     {
-        if (m_entity_registry[entity].archetype == nullptr)
-        {
-            archetype* archetype = get_or_create_archetype<all_entity, Components...>();
-            archetype->add(entity);
-        }
-        else
-        {
-            auto archetype = m_entity_registry[entity].archetype;
-            component_mask new_mask = archetype->mask() | make_mask<Components...>();
+        ASH_ASSERT(m_entity_registry[entity].archetype != nullptr);
 
-            ASH_ASSERT(new_mask != archetype->mask());
-
-            auto iter = m_archetypes.find(new_mask);
-            if (iter == m_archetypes.cend())
-            {
-                auto components = archetype->components();
-                (components.push_back(component_index::value<Components>()), ...);
-
-                auto target = make_archetype(components);
-                archetype->move(entity, *target);
-            }
-            else
-            {
-                archetype->move(entity, *iter->second);
-            }
-        }
-    }
-
-    template <typename... Components>
-    void remove(entity entity)
-    {
         auto archetype = m_entity_registry[entity].archetype;
-        component_mask new_mask = archetype->mask() ^ make_mask<Components...>();
+        component_mask new_mask = archetype->mask() | make_mask<Components...>();
 
         ASH_ASSERT(new_mask != archetype->mask());
 
@@ -107,6 +75,44 @@ public:
         }
     }
 
+    template <typename... Components>
+    void remove(entity entity)
+    {
+        auto archetype = m_entity_registry[entity].archetype;
+        component_mask new_mask = archetype->mask() ^ make_mask<Components...>();
+
+        ASH_ASSERT(new_mask != archetype->mask());
+
+        if (!new_mask.none())
+        {
+            auto iter = m_archetypes.find(new_mask);
+            if (iter == m_archetypes.cend())
+            {
+                auto components = archetype->components();
+                (components.push_back(component_index::value<Components>()), ...);
+
+                auto target = make_archetype(components);
+                archetype->move(entity, *target);
+            }
+            else
+            {
+                archetype->move(entity, *iter->second);
+            }
+        }
+        else
+        {
+            archetype->remove(entity);
+            release_entity(entity);
+        }
+    }
+
+    void release(entity entity)
+    {
+        auto archetype = m_entity_registry[entity].archetype;
+        archetype->remove(entity);
+        release_entity(entity);
+    }
+
     template <typename Component>
     [[nodiscard]] Component& component(entity entity)
     {
@@ -117,10 +123,23 @@ public:
     }
 
     template <typename Component>
-    [[nodiscard]] bool has_component(entity e)
+    [[nodiscard]] bool has_component(entity entity)
     {
         auto id = component_index::value<Component>();
-        return m_entity_registry[e].archetype->mask().test(id);
+        return m_entity_registry[entity].archetype->mask().test(id);
+    }
+
+    [[nodiscard]] bool has_component(entity entity, component_id component)
+    {
+        return m_entity_registry[entity].archetype->mask().test(component);
+    }
+
+    [[nodiscard]] const std::vector<component_id>& owned_component(entity entity)
+    {
+        ASH_ASSERT(m_entity_registry[entity].archetype != nullptr);
+
+        auto archetype = m_entity_registry[entity].archetype;
+        return archetype->components();
     }
 
     template <typename... Components>
@@ -188,6 +207,16 @@ private:
         }
 
         return (m_archetypes[result->mask()] = std::move(result)).get();
+    }
+
+    void release_entity(entity entity)
+    {
+        auto& info = m_entity_registry[entity];
+        info.archetype = nullptr;
+        info.index = 0;
+        ++info.version;
+
+        m_free_entity.push(entity);
     }
 
     std::vector<std::unique_ptr<view_base>> m_views;

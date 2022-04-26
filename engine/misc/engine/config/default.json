@@ -28,6 +28,25 @@
                         "index": 0
                     }
                 ]
+            },
+            "ui": {
+                "attribute": [
+                    {
+                        "name": "POSITION",
+                        "type": "float2",
+                        "index": 0
+                    },
+                    {
+                        "name": "UV",
+                        "type": "float2",
+                        "index": 0
+                    },
+                    {
+                        "name": "COL",
+                        "type": "color",
+                        "index": 0
+                    }
+                ]
             }
         },
         "pipeline_parameter": {
@@ -76,6 +95,16 @@
                     "name": "color",
                     "type": "float4"
                 }
+            ],
+            "ui": [
+                {
+                    "name": "ui_mvp",
+                    "type": "float4x4"
+                },
+                {
+                    "name": "ui_texture",
+                    "type": "texture"
+                }
             ]
         },
         "pipeline": {
@@ -104,6 +133,30 @@
                         "ash_object",
                         "geometry_material"
                     ]
+                }
+            },
+            "ui": {
+                "vertex_layout": "ui",
+                "vertex_shader": "engine/shader/ui.hlsl",
+                "pixel_shader": "engine/shader/ui.hlsl",
+                "primitive_topology": "triangle_list",
+                "parameter": {
+                    "pass": [],
+                    "unit": [
+                        "ui"
+                    ]
+                },
+                "blend": {
+                    "enable": true,
+                    "source_factor": "source_alpha",
+                    "target_factor": "source_inv_alpha",
+                    "op": "add",
+                    "source_alpha_factor": "one",
+                    "target_alpha_factor": "source_inv_alpha",
+                    "alpha_op": "add"
+                },
+                "depth_stencil": {
+                    "depth_functor": "always"
                 }
             }
         },

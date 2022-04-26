@@ -23,6 +23,9 @@ class context;
 class system_base
 {
 public:
+    using context_type = context;
+
+public:
     system_base(std::string_view name) noexcept;
     virtual ~system_base() = default;
 
@@ -35,11 +38,13 @@ protected:
     template <typename T>
     T& system() const;
 
+    context_type* context() const noexcept { return m_context; }
+
 private:
-    friend class context;
+    friend class context_type;
 
     std::string m_name;
-    context* m_context;
+    context_type* m_context;
 };
 
 template <typename T>

@@ -58,7 +58,7 @@ bool d3d12_context::do_initialize(const context_config& config)
 
     auto command_list = m_command->allocate_dynamic_command();
     m_renderer = std::make_unique<d3d12_renderer>(
-        *static_cast<const HWND*>(config.window_handle),
+        static_cast<HWND>(config.window_handle),
         config.width,
         config.height,
         config.multiple_sampling,

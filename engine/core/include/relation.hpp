@@ -3,7 +3,7 @@
 #include "context.hpp"
 #include "link.hpp"
 #include <queue>
-#include <type_traits>
+#include <stack>
 
 namespace ash::core
 {
@@ -67,6 +67,38 @@ public:
             auto& node_link = world.component<link_type>(node);
             for (auto child : node_link.children)
                 bfs.push(child);
+        }
+    }
+
+    template <typename Functor>
+    void each_dfs(ecs::entity entity, Functor&& functor)
+    {
+        auto& world = system<ecs::world>();
+
+        std::stack<ecs::entity> dfs;
+        dfs.push(entity);
+
+        while (!dfs.empty())
+        {
+            ecs::entity node = dfs.top();
+            dfs.pop();
+
+            if (!world.has_component<link_type>(node))
+                continue;
+
+            if constexpr (std::is_same_v<std::invoke_result_t<Functor, ecs::entity>, bool>)
+            {
+                if (!functor(node))
+                    continue;
+            }
+            else
+            {
+                functor(node);
+            }
+
+            auto& node_link = world.component<link_type>(node);
+            for (auto child : node_link.children)
+                dfs.push(child);
         }
     }
 

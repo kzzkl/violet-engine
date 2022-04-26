@@ -66,7 +66,7 @@ public:
         const math::float4x4* data,
         size_t size,
         bool row_matrix = true) = 0;
-    virtual void set(std::size_t index, const resource* texture) = 0;
+    virtual void set(std::size_t index, resource* texture) = 0;
 };
 
 using pipeline_layout_desc = list<pipeline_parameter_desc, 16>;
@@ -90,7 +90,8 @@ enum class vertex_attribute_type : std::uint8_t
     FLOAT,
     FLOAT2,
     FLOAT3,
-    FLOAT4
+    FLOAT4,
+    COLOR
 };
 
 struct vertex_attribute_desc
@@ -98,6 +99,50 @@ struct vertex_attribute_desc
     char name[32];
     vertex_attribute_type type;
     std::uint32_t index;
+};
+
+struct pipeline_blend_desc
+{
+    enum class factor_type
+    {
+        ZERO,
+        ONE,
+        SOURCE_COLOR,
+        SOURCE_ALPHA,
+        SOURCE_INV_ALPHA,
+        TARGET_COLOR,
+        TARGET_ALPHA,
+        TARGET_INV_ALPHA
+    };
+
+    enum class op_type
+    {
+        ADD,
+        SUBTRACT,
+        MIN,
+        MAX
+    };
+
+    bool enable;
+
+    factor_type source_factor;
+    factor_type target_factor;
+    op_type op;
+
+    factor_type source_alpha_factor;
+    factor_type target_alpha_factor;
+    op_type alpha_op;
+};
+
+struct pipeline_depth_stencil_desc
+{
+    enum class depth_functor_type
+    {
+        LESS,
+        ALWAYS
+    };
+
+    depth_functor_type depth_functor;
 };
 
 struct pipeline_desc
@@ -111,11 +156,23 @@ struct pipeline_desc
     char pixel_shader[128];
 
     primitive_topology_type primitive_topology;
+
+    pipeline_blend_desc blend;
+    pipeline_depth_stencil_desc depth_stencil;
 };
 
 class pipeline
 {
 public:
+    virtual ~pipeline() = default;
+};
+
+struct scissor_rect
+{
+    std::uint32_t min_x;
+    std::uint32_t min_y;
+    std::uint32_t max_x;
+    std::uint32_t max_y;
 };
 
 class render_command
@@ -130,14 +187,23 @@ public:
     virtual void pipeline(pipeline_type* pipeline) = 0;
     virtual void layout(layout_type* layout) = 0;
     virtual void parameter(std::size_t index, pipeline_parameter* parameter) = 0;
+    virtual void render_target(resource* target, resource* depth_stencil) = 0;
+    virtual void scissor(const scissor_rect& rect) = 0;
 
     virtual void draw(
         resource* vertex,
         resource* index,
         std::size_t index_start,
         std::size_t index_end,
+        std::size_t vertex_base,
         primitive_topology_type primitive_topology,
         resource* target) = 0;
+
+    virtual void begin_render(resource* target) = 0;
+    virtual void end_render(resource* target) = 0;
+
+    virtual void clear_render_target(resource* target) = 0;
+    virtual void clear_depth_stencil(resource* depth_stencil) = 0;
 };
 
 struct adapter_info
@@ -148,6 +214,8 @@ struct adapter_info
 class renderer
 {
 public:
+    virtual ~renderer() = default;
+
     virtual void begin_frame() = 0;
     virtual void end_frame() = 0;
 
@@ -155,7 +223,10 @@ public:
     virtual void execute(render_command* command) = 0;
 
     virtual resource* back_buffer() = 0;
+    virtual resource* depth_stencil() = 0;
     virtual std::size_t adapter(adapter_info* infos, std::size_t size) const = 0;
+
+    virtual void resize(std::uint32_t width, std::uint32_t height) = 0;
 
 private:
 };
@@ -165,7 +236,6 @@ struct vertex_buffer_desc
     const void* vertices;
     std::size_t vertex_size;
     std::size_t vertex_count;
-
     bool dynamic;
 };
 
@@ -174,6 +244,7 @@ struct index_buffer_desc
     const void* indices;
     std::size_t index_size;
     std::size_t index_count;
+    bool dynamic;
 };
 
 class factory
@@ -191,6 +262,19 @@ public:
     virtual resource* make_index_buffer(const index_buffer_desc& desc) = 0;
 
     virtual resource* make_texture(const std::uint8_t* data, std::size_t size) = 0;
+    virtual resource* make_texture(
+        const std::uint8_t* data,
+        std::uint32_t width,
+        std::uint32_t height) = 0;
+
+    virtual resource* make_render_target(
+        std::uint32_t width,
+        std::uint32_t height,
+        std::size_t multiple_sampling = 1) = 0;
+    virtual resource* make_depth_stencil(
+        std::uint32_t width,
+        std::uint32_t height,
+        std::size_t multiple_sampling = 1) = 0;
 };
 
 struct context_config
@@ -198,7 +282,7 @@ struct context_config
     std::uint32_t width;
     std::uint32_t height;
 
-    const void* window_handle;
+    void* window_handle;
 
     std::size_t multiple_sampling;
     std::size_t frame_resource;

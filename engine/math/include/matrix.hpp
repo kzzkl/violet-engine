@@ -112,7 +112,7 @@ public:
         return result;
     }
 
-    static inline matrix_type identity()
+    static constexpr inline matrix_type identity()
     {
         return matrix_type{
             vector_type{1.0f, 0.0f, 0.0f, 0.0f},

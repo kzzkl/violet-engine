@@ -22,13 +22,22 @@ public:
     virtual void pipeline(pipeline_type* pipeline) override;
     virtual void layout(layout_type* layout) override;
     virtual void parameter(std::size_t index, pipeline_parameter* parameter) override;
+    virtual void render_target(resource* target, resource* depth_stencil) override;
+    virtual void scissor(const scissor_rect& rect) override;
     virtual void draw(
         resource* vertex,
         resource* index,
         std::size_t index_start,
         std::size_t index_end,
+        std::size_t vertex_base,
         primitive_topology_type primitive_topology,
         resource* target) override;
+
+    virtual void begin_render(resource* target) override;
+    virtual void end_render(resource* target) override;
+
+    virtual void clear_render_target(resource* target) override;
+    virtual void clear_depth_stencil(resource* depth_stencil) override;
 
     void allocator(D3D12CommandAllocator* allocator) noexcept;
     void reset();
@@ -71,6 +80,7 @@ public:
     void execute_command(d3d12_dynamic_command command);
 
     void execute_batch();
+    void flush();
 
     void switch_frame_resources();
 

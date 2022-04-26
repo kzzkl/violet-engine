@@ -19,7 +19,7 @@ public:
     using steady_time_point = std::chrono::time_point<std::chrono::steady_clock>;
 
 public:
-    template <typename Clock>
+    template <typename Clock = std::chrono::steady_clock>
     static std::chrono::time_point<Clock> now()
     {
         return Clock::now();

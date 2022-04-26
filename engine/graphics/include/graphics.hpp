@@ -2,8 +2,8 @@
 
 #include "camera.hpp"
 #include "context.hpp"
-#include "debug_pipeline.hpp"
 #include "graphics_config.hpp"
+#include "graphics_debug.hpp"
 #include "graphics_plugin.hpp"
 #include "render_parameter.hpp"
 #include "render_pipeline.hpp"
@@ -18,8 +18,6 @@ namespace ash::graphics
 class graphics : public ash::core::system_base
 {
 public:
-    static constexpr const char* TASK_RENDER = "graphics render";
-
     template <typename T>
     using interface_map = std::unordered_map<std::string, std::unique_ptr<T>>;
 
@@ -27,6 +25,11 @@ public:
     graphics() noexcept;
 
     virtual bool initialize(const dictionary& config) override;
+
+    void render(ecs::entity camera_entity);
+
+    void begin_frame();
+    void end_frame();
 
     template <typename T, typename... Args>
     std::unique_ptr<T> make_render_pipeline(std::string_view name, Args&&... args)
@@ -71,15 +74,44 @@ public:
     }
 
     template <typename Index>
-    std::unique_ptr<resource> make_index_buffer(const Index* data, std::size_t size)
+    std::unique_ptr<resource> make_index_buffer(
+        const Index* data,
+        std::size_t size,
+        bool dynamic = false)
     {
-        index_buffer_desc desc = {data, sizeof(Index), size};
+        index_buffer_desc desc = {data, sizeof(Index), size, dynamic};
         return std::unique_ptr<resource>(m_factory->make_index_buffer(desc));
+    }
+
+    std::unique_ptr<resource> make_texture(
+        const std::uint8_t* data,
+        std::uint32_t width,
+        std::uint32_t height)
+    {
+        return std::unique_ptr<resource>(m_factory->make_texture(data, width, height));
+    }
+
+    std::unique_ptr<resource> make_render_target(
+        std::uint32_t width,
+        std::uint32_t height,
+        std::size_t multiple_sampling = 1)
+    {
+        return std::unique_ptr<resource>(
+            m_factory->make_render_target(width, height, multiple_sampling));
+    }
+
+    std::unique_ptr<resource> make_depth_stencil(
+        std::uint32_t width,
+        std::uint32_t height,
+        std::size_t multiple_sampling = 1)
+    {
+        return std::unique_ptr<resource>(
+            m_factory->make_depth_stencil(width, height, multiple_sampling));
     }
 
     std::unique_ptr<resource> make_texture(std::string_view file);
 
-    debug_pipeline& debug() { return *m_debug; }
+    graphics_debug& debug() { return *m_debug; }
 
 private:
     std::tuple<bool, std::size_t, std::size_t> make_pipeline(
@@ -87,27 +119,19 @@ private:
         pipeline_layout*& layout,
         pipeline*& pipeline);
 
-    bool initialize_resource();
-    void initialize_debug();
-
-    void update();
-    void render();
-
-    void render_debug();
-
     graphics_plugin m_plugin;
     renderer* m_renderer;
     factory* m_factory;
 
+    ash::ecs::view<visual>* m_visual_view;
     ash::ecs::view<visual, scene::transform>* m_object_view;
     ash::ecs::view<main_camera, camera, scene::transform>* m_camera_view;
 
-    //ash::ecs::view<scene::transform>* m_tv;
+    // ash::ecs::view<scene::transform>* m_tv;
 
-    std::unique_ptr<render_parameter> m_parameter_pass;
     std::set<render_pipeline*> m_render_pipelines;
 
     graphics_config m_config;
-    std::unique_ptr<debug_pipeline> m_debug;
+    std::unique_ptr<graphics_debug> m_debug;
 };
 } // namespace ash::graphics

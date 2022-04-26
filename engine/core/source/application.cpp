@@ -15,7 +15,7 @@ void application::run()
     std::size_t frame_counter = 0;
 
     nanoseconds s(0);
-    nanoseconds time_per_frame(1000000000 / 240);
+    nanoseconds time_per_frame(1000000000 / 120);
 
     auto& task = system<task::task_manager>();
     task.run();

@@ -13,7 +13,7 @@ namespace ash::physics
 class physics::physics_debug : public debug_draw_interface
 {
 public:
-    physics_debug(ash::graphics::debug_pipeline* drawer) : m_drawer(drawer) {}
+    physics_debug(ash::graphics::graphics_debug* drawer) : m_drawer(drawer) {}
 
     virtual void draw_line(
         const math::float3& start,
@@ -24,7 +24,7 @@ public:
     }
 
 private:
-    ash::graphics::debug_pipeline* m_drawer;
+    ash::graphics::graphics_debug* m_drawer;
 };
 #endif
 
@@ -58,7 +58,7 @@ bool physics::initialize(const dictionary& config)
 
     auto& event = system<core::event>();
     event.subscribe<scene::event_enter_scene>(
-        [this](ecs::entity entity) { on_enter_scene(entity); });
+        [this](ecs::entity entity) { m_initialize_list.push_back(entity); });
 
     return true;
 }
@@ -68,6 +68,13 @@ void physics::simulation()
     auto& world = system<ecs::world>();
 
     system<ash::scene::scene>().sync_local();
+
+    if (!m_initialize_list.empty())
+    {
+        for (auto& entity : m_initialize_list)
+            initialize_entity(entity);
+        m_initialize_list.clear();
+    }
 
     m_view->each([&](rigidbody& rigidbody) {
         auto& transform = world.component<scene::transform>(rigidbody.relation);
@@ -107,7 +114,7 @@ void physics::simulation()
 #endif
 }
 
-void physics::on_enter_scene(ecs::entity entity)
+void physics::initialize_entity(ecs::entity entity)
 {
     auto& world = system<ecs::world>();
     auto& scene = system<scene::scene>();

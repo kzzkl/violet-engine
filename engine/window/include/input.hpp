@@ -14,6 +14,8 @@ public:
 
     inline bool down() const noexcept { return m_state & 0x1; }
     inline bool up() const noexcept { return !down(); }
+
+    inline bool press() const noexcept { return m_state == 0x1; }
     inline bool release() const noexcept { return m_state == 0x2; }
     inline bool hold() const noexcept { return m_state == 0x3; }
 
@@ -56,7 +58,7 @@ public:
         m_update_key.push_back(key);
     }
 
-    void tick()
+    virtual void tick()
     {
         if (!m_update_key.empty())
         {
@@ -90,10 +92,11 @@ enum class mouse_key : std::uint32_t
     NUM_TYPE
 };
 
+class window_impl;
 class mouse : public key_device<mouse_key>
 {
 public:
-    mouse() noexcept;
+    mouse(window_impl* impl) noexcept;
     virtual ~mouse() = default;
 
     void mode(mouse_mode mode);
@@ -101,20 +104,41 @@ public:
 
     inline int x() const noexcept { return m_x; }
     inline int y() const noexcept { return m_y; }
+    inline int whell() const noexcept { return m_whell; }
+
+    virtual void tick() override;
 
 protected:
-    virtual void change_mode(mouse_mode mode) = 0;
-
+    friend class window;
     int m_x;
     int m_y;
+    int m_whell;
 
     mouse_mode m_mode;
+    window_impl* m_impl;
 };
 
 enum class keyboard_key : std::uint32_t
 {
-    KEY_ESC = 0x1B,
-    KEY_0 = 0x30,
+    KEY_BACK,
+    KEY_TAB,
+    KEY_RETURN,
+    KEY_PAUSE,
+    KEY_CAPITAL,
+    KEY_ESCAPE,
+    KEY_SPACE,
+    KEY_PRIOR,
+    KEY_NEXT,
+    KEY_END,
+    KEY_HOME,
+    KEY_LEFT,
+    KEY_UP,
+    KEY_RIGHT,
+    KEY_DOWN,
+    KEY_SNAPSHOT,
+    KEY_INSERT,
+    KEY_DELETE,
+    KEY_0,
     KEY_1,
     KEY_2,
     KEY_3,
@@ -124,7 +148,7 @@ enum class keyboard_key : std::uint32_t
     KEY_7,
     KEY_8,
     KEY_9,
-    KEY_A = 0x41,
+    KEY_A,
     KEY_B,
     KEY_C,
     KEY_D,
@@ -150,6 +174,55 @@ enum class keyboard_key : std::uint32_t
     KEY_X,
     KEY_Y,
     KEY_Z,
+    KEY_LWIN,
+    KEY_RWIN,
+    KEY_APPS,
+    KEY_NUMPAD0,
+    KEY_NUMPAD1,
+    KEY_NUMPAD2,
+    KEY_NUMPAD3,
+    KEY_NUMPAD4,
+    KEY_NUMPAD5,
+    KEY_NUMPAD6,
+    KEY_NUMPAD7,
+    KEY_NUMPAD8,
+    KEY_NUMPAD9,
+    KEY_MULTIPLY,
+    KEY_ADD,
+    KEY_SUBTRACT,
+    KEY_DECIMAL,
+    KEY_DIVIDE,
+    KEY_F1,
+    KEY_F2,
+    KEY_F3,
+    KEY_F4,
+    KEY_F5,
+    KEY_F6,
+    KEY_F7,
+    KEY_F8,
+    KEY_F9,
+    KEY_F10,
+    KEY_F11,
+    KEY_F12,
+    KEY_NUMLOCK,
+    KEY_SCROLL,
+    KEY_LSHIFT,
+    KEY_RSHIFT,
+    KEY_LCONTROL,
+    KEY_RCONTROL,
+    KEY_LMENU,
+    KEY_RMENU,
+    KEY_OEM_1,
+    KEY_OEM_PLUS,
+    KEY_OEM_COMMA,
+    KEY_OEM_MINUS,
+    KEY_OEM_PERIOD,
+    KEY_OEM_2,
+    KEY_OEM_3,
+    KEY_OEM_4,
+    KEY_OEM_5,
+    KEY_OEM_6,
+    KEY_OEM_7,
     NUM_TYPE
 };
 
