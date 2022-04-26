@@ -311,7 +311,7 @@ struct pmx_joint
     std::int32_t rigidbody_b_index;
 
     math::float3 translate;
-    math::float3 rotate;
+    math::float4 rotate;
 
     math::float3 translate_min;
     math::float3 translate_max;

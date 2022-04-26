@@ -290,6 +290,9 @@ void mmd_loader::load_physics(ecs::entity entity, mmd_resource& resource, const 
     ecs::entity rigidbody_group = m_world.create();
     m_world.add<core::link>(rigidbody_group);
 
+    std::vector<math::float4x4> rigidbody_transform;
+    rigidbody_transform.reserve(loader.rigidbodies().size());
+
     std::vector<ecs::entity> physics_nodes;
     for (auto& pmx_rigidbody : loader.rigidbodies())
     {
@@ -348,12 +351,17 @@ void mmd_loader::load_physics(ecs::entity entity, mmd_resource& resource, const 
             break;
         }
 
-        math::float4_simd position_offset = math::simd::load(pmx_rigidbody.translate);
-        math::float4_simd rotation_offset = math::simd::load(pmx_rigidbody.rotate);
+        math::float4_simd position = math::simd::load(pmx_rigidbody.translate);
+        math::float4_simd rotation = math::simd::load(pmx_rigidbody.rotate);
         math::float4x4_simd rigidbody_world = math::matrix_simd::affine_transform(
             math::simd::set(1.0f, 1.0f, 1.0f, 0.0f),
-            rotation_offset,
-            position_offset);
+            rotation,
+            position);
+
+        math::float4x4 world;
+        math::simd::store(rigidbody_world, world);
+        rigidbody_transform.push_back(world);
+
         math::float4x4_simd node_offset =
             math::simd::load(m_world.component<scene::transform>(rigidbody.relation).world_matrix);
         node_offset = math::matrix_simd::inverse(node_offset);
@@ -379,18 +387,36 @@ void mmd_loader::load_physics(ecs::entity entity, mmd_resource& resource, const 
 
         joint.relation_a = physics_nodes[pmx_joint.rigidbody_a_index];
         joint.relation_b = physics_nodes[pmx_joint.rigidbody_b_index];
-
-        joint.location = pmx_joint.translate;
-        joint.rotation = math::quaternion_plain::rotation_euler(
-            pmx_joint.rotate[1],
-            pmx_joint.rotate[0],
-            pmx_joint.rotate[2]);
         joint.min_linear = pmx_joint.translate_min;
         joint.max_linear = pmx_joint.translate_max;
         joint.min_angular = pmx_joint.rotate_min;
         joint.max_angular = pmx_joint.rotate_max;
         joint.spring_translate_factor = pmx_joint.spring_translate_factor;
         joint.spring_rotate_factor = pmx_joint.spring_rotate_factor;
+
+        math::float4_simd position = math::simd::load(pmx_joint.translate);
+        math::float4_simd rotation = math::simd::load(pmx_joint.rotate);
+        math::float4x4_simd joint_world = math::matrix_simd::affine_transform(
+            math::simd::set(1.0f, 1.0f, 1.0f, 0.0f),
+            rotation,
+            position);
+
+        math::float4x4_simd inverse_a = math::matrix_simd::inverse(
+            math::simd::load(rigidbody_transform[pmx_joint.rigidbody_a_index]));
+        math::float4x4_simd offset_a = math::matrix_simd::mul(joint_world, inverse_a);
+
+        math::float4x4_simd inverse_b = math::matrix_simd::inverse(
+            math::simd::load(rigidbody_transform[pmx_joint.rigidbody_b_index]));
+        math::float4x4_simd offset_b = math::matrix_simd::mul(joint_world, inverse_b);
+
+        math::float4_simd scale;
+        math::matrix_simd::decompose(offset_a, scale, rotation, position);
+        math::simd::store(position, joint.relative_position_a);
+        math::simd::store(rotation, joint.relative_rotation_a);
+
+        math::matrix_simd::decompose(offset_b, scale, rotation, position);
+        math::simd::store(position, joint.relative_position_b);
+        math::simd::store(rotation, joint.relative_rotation_b);
 
         m_relation.link(joint_entity, joint_group);
     }

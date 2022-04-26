@@ -5,25 +5,30 @@ namespace ash::physics::bullet3
 {
 bt3_joint::bt3_joint(const joint_desc& desc)
 {
-    btMatrix3x3 rotate;
-    rotate.setRotation(convert_quaternion(desc.rotation));
+    btMatrix3x3 rotate_a;
+    rotate_a.setRotation(convert_quaternion(desc.relative_rotation_a));
 
-    btTransform transform;
-    transform.setIdentity();
-    transform.setOrigin(convert_vector(desc.location));
-    transform.setBasis(rotate);
+    btTransform frame_a;
+    frame_a.setIdentity();
+    frame_a.setOrigin(convert_vector(desc.relative_position_a));
+    frame_a.setBasis(rotate_a);
+
+    btMatrix3x3 rotate_b;
+    rotate_b.setRotation(convert_quaternion(desc.relative_rotation_b));
+
+    btTransform frame_b;
+    frame_b.setIdentity();
+    frame_b.setOrigin(convert_vector(desc.relative_position_b));
+    frame_b.setBasis(rotate_b);
 
     btRigidBody* rigidbody_a = static_cast<bt3_rigidbody*>(desc.rigidbody_a)->rigidbody();
     btRigidBody* rigidbody_b = static_cast<bt3_rigidbody*>(desc.rigidbody_b)->rigidbody();
 
-    btTransform inverse_a = rigidbody_a->getWorldTransform().inverse() * transform;
-    btTransform inverse_b = rigidbody_b->getWorldTransform().inverse() * transform;
-
     m_constraint = std::make_unique<btGeneric6DofSpringConstraint>(
         *rigidbody_a,
         *rigidbody_b,
-        inverse_a,
-        inverse_b,
+        frame_a,
+        frame_b,
         true);
     m_constraint->setLinearLowerLimit(convert_vector(desc.min_linear));
     m_constraint->setLinearUpperLimit(convert_vector(desc.max_linear));

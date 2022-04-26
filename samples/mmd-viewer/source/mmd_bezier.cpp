@@ -30,8 +30,8 @@ float mmd_bezier::evaluate(float x, float precision) const noexcept
 
 math::float2 mmd_bezier::sample(float t) const noexcept
 {
-    static const math::float2 p0 = {0.0f, 0.0f};
-    static const math::float2 p3 = {1.0f, 1.0f};
+    static constexpr math::float2 p0 = {0.0f, 0.0f};
+    static constexpr math::float2 p3 = {1.0f, 1.0f};
 
     math::float2 p01 = math::vector_plain::lerp(p0, m_p1, t);
     math::float2 p12 = math::vector_plain::lerp(m_p1, m_p2, t);

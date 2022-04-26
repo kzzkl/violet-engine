@@ -88,8 +88,10 @@ struct joint_desc
     rigidbody_interface* rigidbody_a;
     rigidbody_interface* rigidbody_b;
 
-    math::float3 location;
-    math::float4 rotation;
+    math::float3 relative_position_a;
+    math::float4 relative_rotation_a;
+    math::float3 relative_position_b;
+    math::float4 relative_rotation_b;
 
     math::float3 min_linear;
     math::float3 max_linear;
