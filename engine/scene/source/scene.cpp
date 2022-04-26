@@ -65,6 +65,9 @@ void scene::sync_local(ecs::entity root)
     system<core::relation>().each_bfs(root, find_dirty);
 
     auto update_local = [&](ecs::entity entity) {
+        if (!world.has_component<transform>(entity))
+            return false;
+
         auto& node_transform = world.component<transform>(entity);
         auto& node_link = world.component<core::link>(entity);
 
@@ -92,6 +95,8 @@ void scene::sync_local(ecs::entity root)
 
         ++node_transform.sync_count;
         node_transform.dirty = false;
+
+        return true;
     };
 
     while (!dirty_entities.empty())
@@ -129,6 +134,9 @@ void scene::sync_world(ecs::entity root)
     system<core::relation>().each_bfs(root, find_dirty);
 
     auto update_world = [&](ecs::entity entity) {
+        if (!world.has_component<transform>(entity))
+            return false;
+
         auto& node_transform = world.component<transform>(entity);
         auto& node_link = world.component<core::link>(entity);
         auto& parent = world.component<transform>(node_link.parent);
@@ -149,6 +157,8 @@ void scene::sync_world(ecs::entity root)
 
         ++node_transform.sync_count;
         node_transform.dirty = false;
+
+        return true;
     };
 
     while (!dirty_entities.empty())

@@ -159,8 +159,10 @@ void physics::initialize_entity(ecs::entity entity)
             return;
 
         joint_desc desc = {};
-        desc.location = j.location;
-        desc.rotation = j.rotation;
+        desc.relative_position_a = j.relative_position_a;
+        desc.relative_rotation_a = j.relative_rotation_a;
+        desc.relative_position_b = j.relative_position_b;
+        desc.relative_rotation_b = j.relative_rotation_b;
         desc.min_linear = j.min_linear;
         desc.max_linear = j.max_linear;
         desc.min_angular = j.min_angular;

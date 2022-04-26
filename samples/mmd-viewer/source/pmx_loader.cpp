@@ -1,8 +1,8 @@
 #include "pmx_loader.hpp"
 #include "encode.hpp"
+#include "log.hpp"
 #include <fstream>
 #include <map>
-#include "log.hpp"
 
 namespace ash::sample::mmd
 {
@@ -527,7 +527,9 @@ bool pmx_loader::load_joint(std::ifstream& fin)
         joint.rigidbody_b_index = read_index(fin, m_header.rigidbody_index_size);
 
         read<math::float3>(fin, joint.translate);
-        read<math::float3>(fin, joint.rotate);
+        math::float3 rotate;
+        read<math::float3>(fin, rotate);
+        joint.rotate = math::quaternion_plain::rotation_euler(rotate[1], rotate[0], rotate[2]);
 
         read<math::float3>(fin, joint.translate_min);
         read<math::float3>(fin, joint.translate_max);
