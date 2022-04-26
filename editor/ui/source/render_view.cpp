@@ -18,7 +18,7 @@ render_view::render_view(core::context* context) : editor_view(context)
     world.add<core::link, graphics::camera, scene::transform>(m_scene_camera);
 
     auto& transform = world.component<scene::transform>(m_scene_camera);
-    transform.position = {0.0f, 0.0f, 0.0f};
+    transform.position = {0.0f, 0.0f, -50.0f};
     transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
     transform.scaling = {1.0f, 1.0f, 1.0f};
 
@@ -162,7 +162,7 @@ void render_view::resize_target()
     auto& camera = world.component<graphics::camera>(m_scene_camera);
     camera.render_target = m_render_target.get();
     camera.depth_stencil = m_depth_stencil.get();
-    camera.mask = 1;
+    camera.mask = graphics::visual::mask_type::DEBUG | graphics::visual::mask_type::GROUP_1;
 
     camera.set(
         math::to_radians(30.0f),

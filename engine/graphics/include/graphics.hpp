@@ -2,8 +2,8 @@
 
 #include "camera.hpp"
 #include "context.hpp"
-#include "debug_pipeline.hpp"
 #include "graphics_config.hpp"
+#include "graphics_debug.hpp"
 #include "graphics_plugin.hpp"
 #include "render_parameter.hpp"
 #include "render_pipeline.hpp"
@@ -26,7 +26,6 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
 
-    void render();
     void render(ecs::entity camera_entity);
 
     void begin_frame();
@@ -112,20 +111,13 @@ public:
 
     std::unique_ptr<resource> make_texture(std::string_view file);
 
-    debug_pipeline& debug() { return *m_debug; }
+    graphics_debug& debug() { return *m_debug; }
 
 private:
     std::tuple<bool, std::size_t, std::size_t> make_pipeline(
         std::string_view name,
         pipeline_layout*& layout,
         pipeline*& pipeline);
-
-    bool initialize_resource();
-    void initialize_debug();
-
-    void update();
-
-    void render_debug();
 
     graphics_plugin m_plugin;
     renderer* m_renderer;
@@ -137,10 +129,9 @@ private:
 
     // ash::ecs::view<scene::transform>* m_tv;
 
-    std::unique_ptr<render_parameter> m_parameter_pass;
     std::set<render_pipeline*> m_render_pipelines;
 
     graphics_config m_config;
-    std::unique_ptr<debug_pipeline> m_debug;
+    std::unique_ptr<graphics_debug> m_debug;
 };
 } // namespace ash::graphics

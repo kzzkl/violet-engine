@@ -1,9 +1,9 @@
 project(ash-graphics)
 
 add_library(${PROJECT_NAME} STATIC
-    ./source/debug_pipeline.cpp
     ./source/geometry.cpp
     ./source/graphics_config.cpp
+    ./source/graphics_debug.cpp
     ./source/graphics_plugin.cpp
     ./source/graphics.cpp
     ./source/render_pipeline.cpp)

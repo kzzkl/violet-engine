@@ -39,7 +39,7 @@ public:
     void simulation();
 
 private:
-    void on_enter_scene(ecs::entity entity);
+    void initialize_entity(ecs::entity entity);
 
     std::unique_ptr<world_interface> m_world;
 
@@ -49,6 +49,7 @@ private:
     factory* m_factory;
 
     std::vector<rigidbody_user_data> m_user_data;
+    std::vector<ecs::entity> m_initialize_list;
 
 #if defined(ASH_PHYSICS_DEBUG_DRAW)
     class physics_debug;

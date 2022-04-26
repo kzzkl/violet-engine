@@ -239,7 +239,7 @@ bool ui::initialize(const dictionary& config)
 
     m_ui_entity = world.create();
     world.add<graphics::visual>(m_ui_entity);
-    world.component<graphics::visual>(m_ui_entity).mask = (1 << 1);
+    world.component<graphics::visual>(m_ui_entity).mask = graphics::visual::mask_type::UI;
 
     ImGui::CreateContext();
     initialize_theme();

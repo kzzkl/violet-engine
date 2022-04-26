@@ -31,7 +31,7 @@ private:
             [this]() { system<window::window>().tick(); },
             task::task_type::MAIN_THREAD);
         auto render_task =
-            task.schedule("render", [this]() { system<graphics::graphics>().render(); });
+            task.schedule("render", [this]() { system<graphics::graphics>().render(m_camera); });
 
         window_task->add_dependency(*task.find("root"));
         update_task->add_dependency(*window_task);

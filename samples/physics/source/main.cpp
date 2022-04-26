@@ -64,6 +64,7 @@ public:
             r.shape = m_cube_shape.get();
             r.mass = 1.0f;
             r.type = rigidbody_type::KINEMATIC;
+            r.relation = m_cube_1;
 
             auto& v = world.component<visual>(m_cube_1);
             m_cube_object.emplace_back(graphics.make_render_parameter("ash_object"));
@@ -93,6 +94,7 @@ public:
             auto& r = world.component<rigidbody>(m_cube_2);
             r.shape = m_cube_shape.get();
             r.mass = 1.0f;
+            r.relation = m_cube_2;
 
             auto& v = world.component<visual>(m_cube_2);
             m_cube_object.emplace_back(graphics.make_render_parameter("ash_object"));
@@ -111,17 +113,20 @@ public:
         }
 
         // Create plane.
-        m_plane = world.create();
-        world.add<link, rigidbody, transform>(m_plane);
+        {
+            m_plane = world.create();
+            world.add<link, rigidbody, transform>(m_plane);
 
-        auto& pt = world.component<transform>(m_plane);
-        pt.position = {0.0f, -3.0f, 0.0f};
+            auto& pt = world.component<transform>(m_plane);
+            pt.position = {0.0f, -3.0f, 0.0f};
 
-        auto& pr = world.component<rigidbody>(m_plane);
-        pr.shape = m_plane_shape.get();
-        pr.mass = 0.0f;
+            auto& pr = world.component<rigidbody>(m_plane);
+            pr.shape = m_plane_shape.get();
+            pr.mass = 0.0f;
+            pr.relation = m_plane;
 
-        relation.link(m_plane, scene.root());
+            relation.link(m_plane, scene.root());
+        }
 
         initialize_task();
         initialize_camera();
@@ -134,14 +139,19 @@ private:
     {
         auto& task = system<ash::task::task_manager>();
 
-        auto update_task = task.schedule("test update", [this]() { update(); });
+        auto window_task = task.schedule(
+            "window tick",
+            [this]() { system<window::window>().tick(); },
+            task::task_type::MAIN_THREAD);
 
-        auto window_task = task.find(ash::window::window::TASK_WINDOW_TICK);
-        auto render_task = task.find(ash::graphics::graphics::TASK_RENDER);
-
+        auto update_task = task.schedule("test update", [this]() {
+            update();
+            system<graphics::graphics>().begin_frame();
+            system<graphics::graphics>().render(m_camera);
+            system<graphics::graphics>().end_frame();
+        });
         window_task->add_dependency(*task.find("root"));
         update_task->add_dependency(*window_task);
-        render_task->add_dependency(*update_task);
     }
 
     void initialize_camera()
@@ -149,11 +159,13 @@ private:
         auto& world = system<ash::ecs::world>();
         auto& scene = system<ash::scene::scene>();
         auto& relation = system<ash::core::relation>();
+        auto& graphics = system<ash::graphics::graphics>();
 
         m_camera = world.create();
         world.add<link, main_camera, camera, transform>(m_camera);
         auto& c_camera = world.component<camera>(m_camera);
         c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
+        c_camera.parameter = graphics.make_render_parameter("ash_pass");
 
         auto& c_transform = world.component<transform>(m_camera);
         c_transform.position = {0.0f, 0.0f, -38.0f};

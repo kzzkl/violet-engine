@@ -36,6 +36,8 @@ void editor::initialize_task()
         test_update();
         scene.sync_local();
 
+        system<physics::physics>().simulation();
+
         graphics.begin_frame();
         draw();
         graphics.render(m_editor_camera);
@@ -65,7 +67,7 @@ void editor::initialize_camera()
     auto& camera = world.component<graphics::camera>(m_editor_camera);
     camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
     camera.parameter = graphics.make_render_parameter("ash_pass");
-    camera.mask = (1 << 1);
+    camera.mask = graphics::visual::mask_type::EDITOR | graphics::visual::mask_type::UI;
 }
 
 void editor::draw()

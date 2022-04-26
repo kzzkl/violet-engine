@@ -51,12 +51,28 @@ public:
     }
 };
 
+class visual_plane : public component_plane
+{
+public:
+    visual_plane(core::context* context)
+        : component_plane("Visual", ecs::component_index::value<graphics::visual>(), context)
+    {
+    }
+
+    virtual void draw(ecs::entity entity) override
+    {
+        auto& ui = system<ui::ui>();
+        auto& visual = system<ecs::world>().component<graphics::visual>(entity);
+    }
+};
+
 component_view::component_view(core::context* context)
     : editor_view(context),
       m_planes(ecs::MAX_COMPONENT)
 {
     register_plane<ecs::information, information_plane>();
     register_plane<scene::transform, transform_plane>();
+    register_plane<graphics::visual, visual_plane>();
 }
 
 void component_view::draw(editor_data& data)

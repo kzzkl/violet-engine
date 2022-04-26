@@ -583,6 +583,15 @@ d3d12_texture::d3d12_texture(
     m_state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
     d3d12_context::resource()->push_temporary_resource(upload_resource);
+
+    // Create SRV.
+    auto srv_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    m_srv_offset = srv_heap->allocate(1);
+
+    d3d12_context::device()->CreateShaderResourceView(
+        m_resource.Get(),
+        nullptr,
+        srv_heap->cpu_handle(m_srv_offset));
 }
 
 d3d12_texture::d3d12_texture(
