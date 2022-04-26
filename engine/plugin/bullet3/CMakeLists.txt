@@ -1,6 +1,6 @@
 project(ash-physics-bullet3)
 
-find_package(Bullet REQUIRED PATHS ${THIRD_PARTY_DIR}/bullet3)
+find_package(Bullet REQUIRED PATHS ${THIRD_PARTY_INSTALL_DIR}/bullet3)
 
 add_library(${PROJECT_NAME} SHARED
     ./source/bt3_joint.cpp

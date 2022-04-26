@@ -1,12 +1,12 @@
 project(ash-ui)
 
-set(IMGUI_INCLUDE ${THIRD_PARTY_DIR}/../imgui)
+set(IMGUI_INCLUDE ${THIRD_PARTY_DIR}/imgui)
 set(IMGUI_SOURCE
-    ${THIRD_PARTY_DIR}/../imgui/imgui.cpp
-    ${THIRD_PARTY_DIR}/../imgui/imgui_demo.cpp
-    ${THIRD_PARTY_DIR}/../imgui/imgui_draw.cpp
-    ${THIRD_PARTY_DIR}/../imgui/imgui_tables.cpp
-    ${THIRD_PARTY_DIR}/../imgui/imgui_widgets.cpp)
+    ${THIRD_PARTY_DIR}/imgui/imgui.cpp
+    ${THIRD_PARTY_DIR}/imgui/imgui_demo.cpp
+    ${THIRD_PARTY_DIR}/imgui/imgui_draw.cpp
+    ${THIRD_PARTY_DIR}/imgui/imgui_tables.cpp
+    ${THIRD_PARTY_DIR}/imgui/imgui_widgets.cpp)
 
 add_library(${PROJECT_NAME} STATIC
     ./source/ui_pipeline.cpp

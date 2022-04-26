@@ -1,6 +1,6 @@
 project(test-math)
 
-find_package(Catch2 REQUIRED PATHS ${THIRD_PARTY_DIR}/Catch2)
+find_package(Catch2 REQUIRED PATHS ${THIRD_PARTY_INSTALL_DIR}/Catch2)
 
 add_executable(${PROJECT_NAME}
     ./source/test_common.cpp
