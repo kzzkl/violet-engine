@@ -1,6 +1,6 @@
 project(test-ecs)
 
-find_package(Catch2 REQUIRED PATHS ${THIRD_PARTY_DIR}/Catch2)
+find_package(Catch2 REQUIRED PATHS ${THIRD_PARTY_INSTALL_DIR}/Catch2)
 
 add_executable(${PROJECT_NAME}
     ./source/test_benchmark.cpp

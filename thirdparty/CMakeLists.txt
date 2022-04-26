@@ -2,7 +2,7 @@
 make_directory(${CMAKE_CURRENT_SOURCE_DIR}/build/Catch2)
 execute_process(
     COMMAND ${CMAKE_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/Catch2
-    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_SOURCE_DIR}/install/Catch2
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_SOURCE_DIR}/build/install/Catch2
     -DCATCH_BUILD_TESTING=OFF
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build/Catch2)
 execute_process(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_SOURCE_DIR}/build/Catch2 --config Debug --target install)
@@ -12,7 +12,7 @@ execute_process(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_SOURCE_DIR}/bui
 make_directory(${CMAKE_CURRENT_SOURCE_DIR}/build/spdlog)
 execute_process(
     COMMAND ${CMAKE_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/spdlog
-    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_SOURCE_DIR}/install/spdlog
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_SOURCE_DIR}/build/install/spdlog
     #-DSPDLOG_BUILD_SHARED=ON
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build/spdlog)
 execute_process(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_SOURCE_DIR}/build/spdlog --config Debug --target install)
@@ -22,7 +22,7 @@ execute_process(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_SOURCE_DIR}/bui
 make_directory(${CMAKE_CURRENT_SOURCE_DIR}/build/json)
 execute_process(
     COMMAND ${CMAKE_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/json
-    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_SOURCE_DIR}/install/json
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_SOURCE_DIR}/build/install/json
     -DJSON_BuildTests=OFF
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build/json)
 execute_process(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_SOURCE_DIR}/build/json --config Debug --target install)
@@ -32,7 +32,7 @@ execute_process(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_SOURCE_DIR}/bui
 make_directory(${CMAKE_CURRENT_SOURCE_DIR}/build/bullet3)
 execute_process(
     COMMAND ${CMAKE_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/bullet3
-    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_SOURCE_DIR}/install/bullet3
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_SOURCE_DIR}/build/install/bullet3
     -DINSTALL_LIBS=ON
     -DUSE_MSVC_RUNTIME_LIBRARY_DLL=ON
     -DBUILD_UNIT_TESTS=OFF

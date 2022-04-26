@@ -1,7 +1,7 @@
 project(ash-common)
 
-find_package(spdlog REQUIRED PATHS ${THIRD_PARTY_DIR}/spdlog)
-find_package(nlohmann_json REQUIRED PATHS ${THIRD_PARTY_DIR}/json)
+find_package(spdlog REQUIRED PATHS ${THIRD_PARTY_INSTALL_DIR}/spdlog)
+find_package(nlohmann_json REQUIRED PATHS ${THIRD_PARTY_INSTALL_DIR}/json)
 
 add_library(${PROJECT_NAME} STATIC
     ./source/log.cpp)
