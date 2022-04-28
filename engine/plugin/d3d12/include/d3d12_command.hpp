@@ -62,16 +62,16 @@ public:
     D3D12GraphicsCommandList* get() noexcept { return m_command_list.Get(); }
 
 private:
-    friend class d3d12_command_manager;
+    friend class d3d12_command_queue;
 
     d3d12_ptr<D3D12GraphicsCommandList> m_command_list;
     d3d12_ptr<D3D12CommandAllocator> m_allocator;
 };
 
-class d3d12_command_manager
+class d3d12_command_queue
 {
 public:
-    d3d12_command_manager(std::size_t render_concurrency);
+    d3d12_command_queue(std::size_t render_concurrency);
 
     d3d12_render_command* allocate_render_command(d3d12_render_command_type type);
     void execute_command(d3d12_render_command* command);

@@ -3,8 +3,6 @@
 #include "graphics_interface.hpp"
 #include <cstring>
 
-using namespace ash::graphics::d3d12;
-
 namespace ash::graphics::d3d12
 {
 class d3d12_factory : public factory
@@ -147,6 +145,6 @@ extern "C"
 
     PLUGIN_API ash::graphics::context* make_context()
     {
-        return new d3d12_context_wrapper();
+        return new ash::graphics::d3d12::d3d12_context_wrapper();
     }
 }

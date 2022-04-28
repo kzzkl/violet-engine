@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 #    include <cassert>
 #    define ASH_ASSERT(condition, ...) assert(condition)
 #else

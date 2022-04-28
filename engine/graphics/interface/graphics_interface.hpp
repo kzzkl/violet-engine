@@ -284,9 +284,9 @@ struct context_config
 
     void* window_handle;
 
-    std::size_t multiple_sampling;
-    std::size_t frame_resource;
-    std::size_t render_concurrency;
+    std::size_t multiple_sampling{1};
+    std::size_t frame_resource{3};
+    std::size_t render_concurrency{4};
 };
 
 class context
@@ -299,6 +299,7 @@ public:
     virtual ~context() = default;
 
     virtual bool initialize(const context_config& config) = 0;
+    virtual void deinitialize() {}
 
     virtual renderer_type* renderer() = 0;
     virtual factory_type* factory() = 0;

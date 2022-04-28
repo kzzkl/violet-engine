@@ -53,7 +53,7 @@ bool d3d12_context::do_initialize(const context_config& config)
             IID_PPV_ARGS(&m_device)));
     }
 
-    m_command = std::make_unique<d3d12_command_manager>(config.render_concurrency);
+    m_command = std::make_unique<d3d12_command_queue>(config.render_concurrency);
     m_resource = std::make_unique<d3d12_resource_manager>();
 
     auto command_list = m_command->allocate_dynamic_command();
