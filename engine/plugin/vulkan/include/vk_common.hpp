@@ -1,6 +1,7 @@
 #pragma once
 
-#include "graphics_interface.hpp"
+#include "new_graphics_interface.hpp"
+#include <optional>
 
 #ifdef WIN32
 #    include <Windows.h>

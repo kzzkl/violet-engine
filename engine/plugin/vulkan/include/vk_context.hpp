@@ -5,9 +5,34 @@
 namespace ash::graphics::vk
 {
 class vk_swap_chain;
-class vk_pipeline;
+class vk_render_pass;
 class vk_command_queue;
-class vk_renderer;
+
+class vk_frame_counter
+{
+public:
+    static void initialize(std::size_t frame_counter, std::size_t frame_resousrce_count) noexcept;
+
+    static void tick() noexcept;
+
+    inline static std::size_t frame_counter() noexcept { return instance().m_frame_counter; }
+    inline static std::size_t frame_resource_count() noexcept
+    {
+        return instance().m_frame_resousrce_count;
+    }
+    inline static std::size_t frame_resource_index() noexcept
+    {
+        auto& context = instance();
+        return context.m_frame_counter % context.m_frame_resousrce_count;
+    }
+
+private:
+    vk_frame_counter() noexcept;
+    static vk_frame_counter& instance() noexcept;
+
+    std::size_t m_frame_counter;
+    std::size_t m_frame_resousrce_count;
+};
 
 class vk_context
 {
@@ -19,12 +44,9 @@ public:
     };
 
 public:
-    static bool initialize(const context_config& config)
-    {
-        return instance().do_initialize(config);
-    }
+    static bool initialize(const renderer_desc& desc) { return instance().on_initialize(desc); }
 
-    static void deinitialize() { instance().do_deinitialize(); }
+    static void deinitialize() { instance().on_deinitialize(); }
 
     static VkInstance vk_instance() noexcept { return instance().m_instance; }
     static VkPhysicalDevice physical_device() noexcept { return instance().m_physical_device; }
@@ -33,7 +55,6 @@ public:
     static const command_queue_index& queue_index() noexcept { return instance().m_queue_index; }
 
     static vk_swap_chain& swap_chain() { return *instance().m_swap_chain; }
-    static vk_renderer& renderer() { return *instance().m_renderer; }
 
     static vk_command_queue& graphics_queue() { return *instance().m_graphics_queue; }
     static vk_command_queue& present_queue() { return *instance().m_present_queue; }
@@ -43,19 +64,17 @@ public:
 
     static VkFence fence() noexcept { return instance().m_fence; }
 
-    static void begin_frame() { instance().do_begin_frame(); }
-    static void end_frame() { instance().do_end_frame(); }
-
-    static std::uint32_t image_index() noexcept { return instance().m_image_index; }
+    static std::size_t begin_frame() { return instance().on_begin_frame(); }
+    static void end_frame() { instance().on_end_frame(); }
 
 private:
     vk_context();
     static vk_context& instance();
 
-    bool do_initialize(const context_config& config);
-    void do_deinitialize();
-    void do_begin_frame();
-    void do_end_frame();
+    bool on_initialize(const renderer_desc& desc);
+    void on_deinitialize();
+    std::size_t on_begin_frame();
+    void on_end_frame();
 
     void create_instance();
     void create_surface(void* window_handle);
@@ -81,9 +100,6 @@ private:
 
     VkSurfaceKHR m_surface;
     std::unique_ptr<vk_swap_chain> m_swap_chain;
-
-    std::unique_ptr<vk_renderer> m_renderer;
-    std::unique_ptr<vk_pipeline> m_pipeline;
 
     VkSemaphore m_image_available;
     VkSemaphore m_render_finished;

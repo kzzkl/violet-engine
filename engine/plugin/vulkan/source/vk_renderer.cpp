@@ -85,8 +85,8 @@ vk_swap_chain::vk_swap_chain(VkSurfaceKHR surface, std::uint32_t width, std::uin
 
     // Get swap chain image.
     vkGetSwapchainImagesKHR(device, m_swap_chain, &image_count, nullptr);
-    m_images.resize(image_count);
-    vkGetSwapchainImagesKHR(device, m_swap_chain, &image_count, m_images.data());
+    std::vector<VkImage> images(image_count);
+    vkGetSwapchainImagesKHR(device, m_swap_chain, &image_count, images.data());
 
     // Create image view.
     VkImageViewCreateInfo view_info = {};
@@ -102,13 +102,13 @@ vk_swap_chain::vk_swap_chain(VkSurfaceKHR surface, std::uint32_t width, std::uin
     view_info.subresourceRange.levelCount = 1;
     view_info.subresourceRange.baseArrayLayer = 0;
     view_info.subresourceRange.layerCount = 1;
-    for (VkImage image : m_images)
+    for (VkImage image : images)
     {
         view_info.image = image;
 
         VkImageView view;
         vkCreateImageView(device, &view_info, nullptr, &view);
-        m_image_views.push_back(view);
+        m_images.emplace_back(image, view);
     }
 }
 
@@ -116,8 +116,8 @@ vk_swap_chain::~vk_swap_chain()
 {
     auto device = vk_context::device();
 
-    for (auto view : m_image_views)
-        vkDestroyImageView(device, view, nullptr);
+    for (auto image : m_images)
+        vkDestroyImageView(device, image.view(), nullptr);
 
     vkDestroySwapchainKHR(device, m_swap_chain, nullptr);
 }
@@ -195,17 +195,38 @@ VkExtent2D vk_swap_chain::choose_swap_extent(
     return result;
 }
 
-vk_renderer::vk_renderer()
+vk_renderer::vk_renderer(const renderer_desc& desc)
 {
+    vk_context::initialize(desc);
 }
 
-void vk_renderer::begin_frame()
+std::size_t vk_renderer::begin_frame()
 {
-    vk_context::begin_frame();
+    return vk_context::begin_frame();
 }
 
 void vk_renderer::end_frame()
 {
     vk_context::end_frame();
+}
+
+render_command* vk_renderer::allocate_command()
+{
+    return vk_context::graphics_queue().allocate_command();
+}
+
+void vk_renderer::execute(render_command* command)
+{
+    vk_context::graphics_queue().execute(static_cast<vk_command*>(command));
+}
+
+resource* vk_renderer::back_buffer(std::size_t index)
+{
+    return &vk_context::swap_chain().images()[index];
+}
+
+std::size_t vk_renderer::back_buffer_count()
+{
+    return vk_context::swap_chain().images().size();
 }
 } // namespace ash::graphics::vk

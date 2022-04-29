@@ -1,23 +1,28 @@
-#include "graphics_interface.hpp"
+#include "vk_common.hpp"
 #include "vk_context.hpp"
+#include "vk_frame_buffer.hpp"
 #include "vk_renderer.hpp"
+#include "vk_resource.hpp"
 
 namespace ash::graphics::vk
 {
-class vk_context_wrapper : public context
+class vk_factory : public factory
 {
 public:
-    virtual bool initialize(const context_config& config) override
+    virtual frame_buffer* make_frame_buffer(const frame_buffer_desc& desc) override
     {
-        return vk_context::initialize(config);
+        return new vk_frame_buffer(desc);
     }
 
-    virtual void deinitialize() override { return vk_context::deinitialize(); }
+    virtual render_pass* make_render_pass(const render_pass_desc& desc) override
+    {
+        return new vk_render_pass(desc);
+    }
 
-    virtual renderer_type* renderer() override { return &vk_context::renderer(); }
-    virtual factory_type* factory() { return nullptr; }
-
-private:
+    virtual renderer* make_renderer(const renderer_desc& desc) override
+    {
+        return new vk_renderer(desc);
+    }
 };
 } // namespace ash::graphics::vk
 
@@ -36,8 +41,8 @@ extern "C"
         return info;
     }
 
-    PLUGIN_API ash::graphics::context* make_context()
+    PLUGIN_API ash::graphics::vk::factory* make_factory()
     {
-        return new ash::graphics::vk::vk_context_wrapper();
+        return new ash::graphics::vk::vk_factory();
     }
 }

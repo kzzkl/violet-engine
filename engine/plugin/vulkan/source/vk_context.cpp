@@ -1,12 +1,35 @@
 #include "vk_context.hpp"
 #include "vk_command.hpp"
-#include "vk_pipeline.hpp"
+#include "vk_render_pass.hpp"
 #include "vk_renderer.hpp"
 #include <iostream>
 #include <vector>
 
 namespace ash::graphics::vk
 {
+vk_frame_counter::vk_frame_counter() noexcept : m_frame_counter(0), m_frame_resousrce_count(0)
+{
+}
+
+vk_frame_counter& vk_frame_counter::instance() noexcept
+{
+    static vk_frame_counter instance;
+    return instance;
+}
+
+void vk_frame_counter::initialize(
+    std::size_t frame_counter,
+    std::size_t frame_resousrce_count) noexcept
+{
+    instance().m_frame_counter = frame_counter;
+    instance().m_frame_resousrce_count = frame_resousrce_count;
+}
+
+void vk_frame_counter::tick() noexcept
+{
+    ++instance().m_frame_counter;
+}
+
 static const std::vector<const char*> validation_layers = {"VK_LAYER_KHRONOS_validation"};
 
 #ifndef NODEBUG
@@ -31,7 +54,7 @@ vk_context& vk_context::instance()
     return instance;
 }
 
-bool vk_context::do_initialize(const context_config& config)
+bool vk_context::on_initialize(const renderer_desc& config)
 {
     create_instance();
     create_surface(config.window_handle);
@@ -40,18 +63,13 @@ bool vk_context::do_initialize(const context_config& config)
     create_command_queue();
     create_semaphore();
 
-    pipeline_desc desc;
-    std::strcpy(desc.vertex_shader, "./vert.spv");
-    std::strcpy(desc.pixel_shader, "./frag.spv");
-    m_pipeline = std::make_unique<vk_pipeline>(desc);
-    m_renderer = std::make_unique<vk_renderer>();
+    vk_frame_counter::initialize(0, 3);
 
     return true;
 }
 
-void vk_context::do_deinitialize()
+void vk_context::on_deinitialize()
 {
-    m_pipeline = nullptr;
     m_swap_chain = nullptr;
 
 #ifndef NODEBUG
@@ -65,7 +83,7 @@ void vk_context::do_deinitialize()
     vkDestroyInstance(m_instance, nullptr);
 }
 
-void vk_context::do_begin_frame()
+std::size_t vk_context::on_begin_frame()
 {
     vkWaitForFences(m_device, 1, &m_fence, VK_TRUE, UINT64_MAX);
     vkResetFences(m_device, 1, &m_fence);
@@ -78,11 +96,13 @@ void vk_context::do_begin_frame()
         VK_NULL_HANDLE,
         &m_image_index);
 
-    vk_context::graphics_queue().record(*m_pipeline, vk_context::image_index());
+    return m_image_index;
 }
 
-void vk_context::do_end_frame()
+void vk_context::on_end_frame()
 {
+    m_graphics_queue->execute_batch();
+
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     presentInfo.waitSemaphoreCount = 1;
@@ -94,6 +114,9 @@ void vk_context::do_end_frame()
     presentInfo.pImageIndices = &m_image_index;
 
     vkQueuePresentKHR(m_present_queue->queue(), &presentInfo);
+
+    vk_frame_counter::tick();
+    m_graphics_queue->switch_frame_resources();
 }
 
 void vk_context::create_instance()
@@ -249,11 +272,11 @@ void vk_context::create_command_queue()
 {
     VkQueue graphics_queue;
     vkGetDeviceQueue(m_device, m_queue_index.graphics, 0, &graphics_queue);
-    m_graphics_queue = std::make_unique<vk_command_queue>(graphics_queue);
+    m_graphics_queue = std::make_unique<vk_command_queue>(graphics_queue, 3);
 
     VkQueue present_queue;
     vkGetDeviceQueue(m_device, m_queue_index.present, 0, &present_queue);
-    m_present_queue = std::make_unique<vk_command_queue>(present_queue);
+    m_present_queue = std::make_unique<vk_command_queue>(present_queue, 3);
 }
 
 void vk_context::create_semaphore()

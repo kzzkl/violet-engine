@@ -1,7 +1,8 @@
 #pragma once
 
 #include "vk_common.hpp"
-#include "vk_pipeline.hpp"
+#include "vk_render_pass.hpp"
+#include "vk_resource.hpp"
 
 namespace ash::graphics::vk
 {
@@ -14,7 +15,7 @@ public:
     VkExtent2D extent() const noexcept { return m_extent; }
 
     VkFormat format() const noexcept { return m_surface_format.format; }
-    const std::vector<VkImageView>& image_views() { return m_image_views; }
+    std::vector<vk_resource>& images() { return m_images; }
 
     VkSwapchainKHR swap_chain() const noexcept { return m_swap_chain; }
 
@@ -32,25 +33,23 @@ private:
 
     VkSwapchainKHR m_swap_chain;
 
-    std::vector<VkImage> m_images;
-    std::vector<VkImageView> m_image_views;
+    std::vector<vk_resource> m_images;
 };
 
 class vk_renderer : public renderer
 {
 public:
-    vk_renderer();
+    vk_renderer(const renderer_desc& desc);
 
-    virtual void begin_frame() override;
+    virtual std::size_t begin_frame() override;
     virtual void end_frame() override;
 
-    virtual render_command* allocate_command() override { return nullptr; }
-    virtual void execute(render_command* command) override {}
+    virtual render_command* allocate_command() override;
+    virtual void execute(render_command* command) override;
 
-    virtual resource* back_buffer() override { return nullptr; }
+    virtual resource* back_buffer(std::size_t index) override;
+    virtual std::size_t back_buffer_count() override;
+
     virtual resource* depth_stencil() override { return nullptr; }
-    virtual std::size_t adapter(adapter_info* infos, std::size_t size) const override { return 0; }
-
-    virtual void resize(std::uint32_t width, std::uint32_t height) override {}
 };
 } // namespace ash::graphics::vk

@@ -1,10 +1,51 @@
 #include "vk_command.hpp"
 #include "vk_context.hpp"
-#include "vk_renderer.hpp"
+#include "vk_frame_buffer.hpp"
+#include "vk_render_pass.hpp"
 
 namespace ash::graphics::vk
 {
-vk_command_queue::vk_command_queue(const VkQueue& queue) : m_queue(queue)
+vk_command::vk_command(VkCommandBuffer command_buffer) : m_command_buffer(command_buffer)
+{
+}
+
+void vk_command::begin(render_pass* pass, frame_buffer* frame_buffer)
+{
+    auto fb = static_cast<vk_frame_buffer*>(frame_buffer);
+    auto rp = static_cast<vk_render_pass*>(pass);
+    rp->begin(m_command_buffer, fb->frame_buffer());
+}
+
+void vk_command::end(render_pass* pass)
+{
+    auto rp = static_cast<vk_render_pass*>(pass);
+    rp->end(m_command_buffer);
+}
+
+void vk_command::begin(render_pipeline* subpass)
+{
+    auto sp = static_cast<vk_render_pipeline*>(subpass);
+    sp->begin(m_command_buffer);
+}
+
+void vk_command::end(render_pipeline* subpass)
+{
+    auto sp = static_cast<vk_render_pipeline*>(subpass);
+    sp->end(m_command_buffer);
+}
+
+void vk_command::reset()
+{
+    throw_if_failed(vkResetCommandBuffer(m_command_buffer, 0));
+
+    VkCommandBufferBeginInfo begin_info = {};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    throw_if_failed(vkBeginCommandBuffer(m_command_buffer, &begin_info));
+}
+
+vk_command_queue::vk_command_queue(const VkQueue& queue, std::size_t frame_resource_count)
+    : m_queue(queue),
+      m_command_counter(0)
 {
     auto device = vk_context::device();
 
@@ -15,51 +56,42 @@ vk_command_queue::vk_command_queue(const VkQueue& queue) : m_queue(queue)
 
     throw_if_failed(vkCreateCommandPool(device, &pool_info, nullptr, &m_command_pool));
 
-    std::uint32_t image_count =
-        static_cast<std::uint32_t>(vk_context::swap_chain().image_views().size());
-    m_command_buffers.resize(image_count);
+    for (std::size_t i = 0; i < frame_resource_count; ++i)
+    {
+        std::vector<VkCommandBuffer> command_buffers(4);
+        VkCommandBufferAllocateInfo allocate_info = {};
+        allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocate_info.commandPool = m_command_pool;
+        allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocate_info.commandBufferCount = static_cast<std::uint32_t>(command_buffers.size());
+        throw_if_failed(vkAllocateCommandBuffers(device, &allocate_info, command_buffers.data()));
 
-    VkCommandBufferAllocateInfo allocate_info = {};
-    allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocate_info.commandPool = m_command_pool;
-    allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocate_info.commandBufferCount = image_count;
+        std::vector<vk_command> commands;
+        for (auto command_buffer : command_buffers)
+            commands.emplace_back(command_buffer);
 
-    throw_if_failed(vkAllocateCommandBuffers(device, &allocate_info, m_command_buffers.data()));
+        m_commands.push_back(commands);
+    }
 }
 
 vk_command_queue::~vk_command_queue()
 {
     auto device = vk_context::device();
-
     vkDestroyCommandPool(device, m_command_pool, nullptr);
 }
 
-void vk_command_queue::record(vk_pipeline& pipeline, std::uint32_t image_index)
+vk_command* vk_command_queue::allocate_command()
 {
-    auto& command_buffer = m_command_buffers[image_index];
-    throw_if_failed(vkResetCommandBuffer(command_buffer, /*VkCommandBufferResetFlagBits*/ 0));
+    auto& command = m_commands[vk_frame_counter::frame_resource_index()][m_command_counter];
+    ++m_command_counter;
+    command.reset();
 
-    VkCommandBufferBeginInfo begin_info = {};
-    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    throw_if_failed(vkBeginCommandBuffer(command_buffer, &begin_info));
+    return &command;
+}
 
-    VkRenderPassBeginInfo pass_info{};
-    pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    pass_info.renderPass = pipeline.pass();
-    pass_info.framebuffer = pipeline.frame_buffer(image_index);
-    pass_info.renderArea.offset = {0, 0};
-    pass_info.renderArea.extent = vk_context::swap_chain().extent();
-
-    VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-    pass_info.clearValueCount = 1;
-    pass_info.pClearValues = &clear_color;
-
-    vkCmdBeginRenderPass(command_buffer, &pass_info, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline());
-    vkCmdDraw(command_buffer, 3, 1, 0, 0);
-    vkCmdEndRenderPass(command_buffer);
-
+void vk_command_queue::execute(vk_command* command)
+{
+    auto command_buffer = command->command_buffer();
     throw_if_failed(vkEndCommandBuffer(command_buffer));
 
     VkSubmitInfo submitInfo{};
@@ -81,5 +113,10 @@ void vk_command_queue::record(vk_pipeline& pipeline, std::uint32_t image_index)
     {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
+}
+
+void vk_command_queue::switch_frame_resources()
+{
+    m_command_counter = 0;
 }
 } // namespace ash::graphics::vk
