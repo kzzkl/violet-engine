@@ -23,6 +23,16 @@ public:
     {
         return new vk_renderer(desc);
     }
+
+    virtual resource* make_vertex_buffer(const vertex_buffer_desc& desc) override
+    {
+        return new vk_vertex_buffer(desc);
+    }
+
+    virtual resource* make_index_buffer(const index_buffer_desc& desc) override
+    {
+        return new vk_index_buffer(desc);
+    }
 };
 } // namespace ash::graphics::vk
 

@@ -12,8 +12,8 @@ vk_frame_buffer::vk_frame_buffer(const frame_buffer_desc& desc)
     std::vector<VkImageView> views = {};
     for (std::size_t i = 0; i < desc.resource_count; ++i)
     {
-        vk_resource* resource = static_cast<vk_resource*>(desc.resources[i]);
-        views.push_back(resource->view());
+        vk_image* image = static_cast<vk_image*>(desc.resources[i]);
+        views.push_back(image->view());
     }
 
     VkFramebufferCreateInfo frame_buffer_info = {};

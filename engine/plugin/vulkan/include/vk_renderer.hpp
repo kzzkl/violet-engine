@@ -15,7 +15,7 @@ public:
     VkExtent2D extent() const noexcept { return m_extent; }
 
     VkFormat format() const noexcept { return m_surface_format.format; }
-    std::vector<vk_resource>& images() { return m_images; }
+    std::vector<vk_image>& images() { return m_images; }
 
     VkSwapchainKHR swap_chain() const noexcept { return m_swap_chain; }
 
@@ -33,7 +33,7 @@ private:
 
     VkSwapchainKHR m_swap_chain;
 
-    std::vector<vk_resource> m_images;
+    std::vector<vk_image> m_images;
 };
 
 class vk_renderer : public renderer

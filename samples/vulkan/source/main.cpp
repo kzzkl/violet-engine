@@ -33,6 +33,13 @@ private:
 class test_system : public core::system_base
 {
 public:
+    struct vertex
+    {
+        math::float2 position;
+        math::float3 color;
+    };
+
+public:
     test_system() : core::system_base("test") {}
 
     virtual bool initialize(const dictionary& config) override
@@ -52,6 +59,13 @@ private:
         std::size_t o = 0;
         subpass_desc.output = &o;
         subpass_desc.output_count = 1;
+
+        graphics::vk::vertex_attribute_desc vertex_attributes[] = {
+            {graphics::vk::vertex_attribute_type::FLOAT2, 0},
+            {graphics::vk::vertex_attribute_type::FLOAT3, 8}
+        };
+        subpass_desc.vertex_layout.attributes = vertex_attributes;
+        subpass_desc.vertex_layout.attribute_count = 2;
 
         std::vector<graphics::vk::render_pipeline_desc> subpasses;
         subpasses.push_back(subpass_desc);
@@ -76,6 +90,27 @@ private:
             m_frame_buffers.emplace_back(
                 m_vulkan_plugin.factory().make_frame_buffer(frame_buffer_desc));
         }
+
+        std::vector<vertex> vertices = {
+            {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+            {{0.5f, -0.5f},  {0.0f, 1.0f, 0.0f}},
+            {{0.5f, 0.5f},   {0.0f, 0.0f, 1.0f}},
+            {{-0.5f, 0.5f},  {1.0f, 1.0f, 1.0f}}
+        };
+
+        std::vector<std::uint32_t> indices = {0, 1, 2, 2, 3, 0};
+
+        graphics::vk::vertex_buffer_desc vertex_buffer_desc = {};
+        vertex_buffer_desc.vertex_size = sizeof(vertex);
+        vertex_buffer_desc.vertex_count = vertices.size();
+        vertex_buffer_desc.vertices = vertices.data();
+        m_vertex_buffer.reset(m_vulkan_plugin.factory().make_vertex_buffer(vertex_buffer_desc));
+
+        graphics::vk::index_buffer_desc index_buffer_desc = {};
+        index_buffer_desc.index_size = sizeof(std::uint32_t);
+        index_buffer_desc.index_count = indices.size();
+        index_buffer_desc.indices = indices.data();
+        m_index_buffer.reset(m_vulkan_plugin.factory().make_index_buffer(index_buffer_desc));
     }
 
     void initialize_task()
@@ -96,8 +131,8 @@ private:
             command->begin(m_pass.get(), m_frame_buffers[index].get());
 
             command->begin(m_pass->subpass(0));
+            command->draw(m_vertex_buffer.get(), m_index_buffer.get(), 0, 6, 0);
             command->end(m_pass->subpass(0));
-            // command->begin(m_pass->subpass(1));
 
             command->end(m_pass.get());
             m_renderer->execute(command);
@@ -125,6 +160,9 @@ private:
 
     std::unique_ptr<graphics::vk::renderer> m_renderer;
     std::unique_ptr<graphics::vk::render_pass> m_pass;
+
+    std::unique_ptr<graphics::vk::resource> m_vertex_buffer;
+    std::unique_ptr<graphics::vk::resource> m_index_buffer;
 
     std::vector<std::unique_ptr<graphics::vk::frame_buffer>> m_frame_buffers;
 };

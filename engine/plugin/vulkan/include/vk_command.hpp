@@ -23,9 +23,7 @@ public:
         resource* index,
         std::size_t index_start,
         std::size_t index_end,
-        std::size_t vertex_base) override
-    {
-    }
+        std::size_t vertex_base) override;
 
     void reset();
     VkCommandBuffer command_buffer() const noexcept { return m_command_buffer; }
@@ -41,8 +39,12 @@ public:
     ~vk_command_queue();
 
     vk_command* allocate_command();
+
     void execute(vk_command* command);
     void execute_batch() {}
+
+    VkCommandBuffer begin_dynamic_command();
+    void end_dynamic_command(VkCommandBuffer command_buffer);
 
     VkQueue queue() const noexcept { return m_queue; }
 

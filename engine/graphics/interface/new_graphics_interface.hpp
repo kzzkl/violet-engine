@@ -1,5 +1,6 @@
 #pragma once
 
+#include "math.hpp"
 #include "plugin_interface.hpp"
 #include <cstddef>
 #include <cstdint>
@@ -18,8 +19,33 @@ public:
 private:
 };
 
-struct vertex_layout
+enum class vertex_attribute_type : std::uint8_t
 {
+    INT,
+    INT2,
+    INT3,
+    INT4,
+    UINT,
+    UINT2,
+    UINT3,
+    UINT4,
+    FLOAT,
+    FLOAT2,
+    FLOAT3,
+    FLOAT4,
+    COLOR // R8G8B8A8
+};
+
+struct vertex_attribute_desc
+{
+    vertex_attribute_type type;
+    std::size_t offset;
+};
+
+struct vertex_layout_desc
+{
+    vertex_attribute_desc* attributes;
+    std::size_t attribute_count;
 };
 
 struct parameter_layout
@@ -81,7 +107,7 @@ struct render_pipeline_desc
     const char* vertex_shader;
     const char* pixel_shader;
 
-    vertex_layout* vertex_layout;
+    vertex_layout_desc vertex_layout;
     parameter_layout* parameter_layout;
 
     render_pipeline_blend_desc blend;
@@ -176,12 +202,31 @@ public:
     virtual resource* depth_stencil() = 0;
 };
 
+struct vertex_buffer_desc
+{
+    const void* vertices;
+    std::size_t vertex_size;
+    std::size_t vertex_count;
+    bool dynamic;
+};
+
+struct index_buffer_desc
+{
+    const void* indices;
+    std::size_t index_size;
+    std::size_t index_count;
+    bool dynamic;
+};
+
 class factory
 {
 public:
     virtual frame_buffer* make_frame_buffer(const frame_buffer_desc& desc) = 0;
     virtual render_pass* make_render_pass(const render_pass_desc& desc) = 0;
     virtual renderer* make_renderer(const renderer_desc& desc) = 0;
+
+    virtual resource* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
+    virtual resource* make_index_buffer(const index_buffer_desc& desc) = 0;
 };
 
 using make_factory = factory* (*)();

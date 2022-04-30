@@ -30,10 +30,48 @@ vk_render_pipeline::vk_render_pipeline(
     // Vertex input.
     VkPipelineVertexInputStateCreateInfo vertex_input_info = {};
     vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertex_input_info.vertexBindingDescriptionCount = 0;
-    vertex_input_info.pVertexBindingDescriptions = nullptr;
-    vertex_input_info.vertexAttributeDescriptionCount = 0;
-    vertex_input_info.pVertexAttributeDescriptions = nullptr;
+
+    VkVertexInputBindingDescription vertex_binding = {};
+    vertex_binding.binding = 0;
+    vertex_binding.stride = 0;
+    vertex_binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    std::vector<VkVertexInputAttributeDescription> vertex_attributes;
+    std::uint32_t location = 0;
+    std::uint32_t offset = 0;
+    for (std::size_t i = 0; i < desc.vertex_layout.attribute_count; ++i)
+    {
+        VkVertexInputAttributeDescription attribute;
+        attribute.binding = 0;
+        attribute.location = location;
+        attribute.offset = static_cast<std::uint32_t>(desc.vertex_layout.attributes[i].offset);
+
+        ++location;
+        switch (desc.vertex_layout.attributes[i].type)
+        {
+        case vertex_attribute_type::FLOAT2:
+            attribute.format = VK_FORMAT_R32G32_SFLOAT;
+            vertex_binding.stride += sizeof(math::float2);
+            break;
+        case vertex_attribute_type::FLOAT3:
+            attribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+            vertex_binding.stride += sizeof(math::float3);
+            break;
+        case vertex_attribute_type::FLOAT4:
+            attribute.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+            vertex_binding.stride += sizeof(math::float4);
+            break;
+        default:
+            continue;
+        }
+
+        vertex_attributes.push_back(attribute);
+    }
+
+    vertex_input_info.vertexBindingDescriptionCount = 1;
+    vertex_input_info.pVertexBindingDescriptions = &vertex_binding;
+    vertex_input_info.vertexAttributeDescriptionCount =
+        static_cast<std::uint32_t>(vertex_attributes.size());
+    vertex_input_info.pVertexAttributeDescriptions = vertex_attributes.data();
 
     // Input assembly.
     VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {};
@@ -138,7 +176,6 @@ vk_render_pipeline::vk_render_pipeline(
 void vk_render_pipeline::begin(VkCommandBuffer command_buffer)
 {
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
-    vkCmdDraw(command_buffer, 3, 1, 0, 0);
 }
 
 void vk_render_pipeline::end(VkCommandBuffer command_buffer)

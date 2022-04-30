@@ -2,6 +2,7 @@
 #include "vk_context.hpp"
 #include "vk_frame_buffer.hpp"
 #include "vk_render_pass.hpp"
+#include "vk_resource.hpp"
 
 namespace ash::graphics::vk
 {
@@ -32,6 +33,30 @@ void vk_command::end(render_pipeline* subpass)
 {
     auto sp = static_cast<vk_render_pipeline*>(subpass);
     sp->end(m_command_buffer);
+}
+
+void vk_command::draw(
+    resource* vertex,
+    resource* index,
+    std::size_t index_start,
+    std::size_t index_end,
+    std::size_t vertex_base)
+{
+    auto vb = static_cast<vk_vertex_buffer*>(vertex);
+    auto ib = static_cast<vk_index_buffer*>(index);
+
+    VkBuffer vertex_buffers[] = {vb->buffer()};
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(m_command_buffer, 0, 1, vertex_buffers, offsets);
+    vkCmdBindIndexBuffer(m_command_buffer, ib->buffer(), 0, ib->index_type());
+
+    vkCmdDrawIndexed(
+        m_command_buffer,
+        static_cast<std::uint32_t>(index_end - index_start),
+        1,
+        static_cast<std::uint32_t>(index_start),
+        static_cast<std::uint32_t>(vertex_base),
+        0);
 }
 
 void vk_command::reset()
@@ -113,6 +138,41 @@ void vk_command_queue::execute(vk_command* command)
     {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
+}
+
+VkCommandBuffer vk_command_queue::begin_dynamic_command()
+{
+    VkCommandBufferAllocateInfo allocate_info = {};
+    allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocate_info.commandPool = m_command_pool;
+    allocate_info.commandBufferCount = 1;
+
+    VkCommandBuffer command_buffer;
+    vkAllocateCommandBuffers(vk_context::device(), &allocate_info, &command_buffer);
+
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(command_buffer, &beginInfo);
+
+    return command_buffer;
+}
+
+void vk_command_queue::end_dynamic_command(VkCommandBuffer command_buffer)
+{
+    vkEndCommandBuffer(command_buffer);
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &command_buffer;
+
+    vkQueueSubmit(m_queue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(m_queue);
+
+    vkFreeCommandBuffers(vk_context::device(), m_command_pool, 1, &command_buffer);
 }
 
 void vk_command_queue::switch_frame_resources()

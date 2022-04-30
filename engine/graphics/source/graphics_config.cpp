@@ -109,8 +109,7 @@ void graphics_config::load_vertex_layout(const dictionary& doc)
         {"float",  vertex_attribute_type::FLOAT },
         {"float2", vertex_attribute_type::FLOAT2},
         {"float3", vertex_attribute_type::FLOAT3},
-        {"float4", vertex_attribute_type::FLOAT4},
-        {"color",  vertex_attribute_type::COLOR }
+        {"float4", vertex_attribute_type::FLOAT4}
     };
 
     auto iter = doc.find("vertex_layout");
