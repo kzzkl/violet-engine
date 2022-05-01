@@ -79,12 +79,6 @@ class pipeline_layout
 {
 };
 
-enum pipeline_parameter_matrix_flag
-{
-    COLUMN_MAJOR_ORDER,
-    PROJECTION_MATRIX
-};
-
 class pipeline_parameter
 {
 public:
@@ -96,12 +90,8 @@ public:
     virtual void set(std::size_t index, const math::float2& value) = 0;
     virtual void set(std::size_t index, const math::float3& value) = 0;
     virtual void set(std::size_t index, const math::float4& value) = 0;
-    virtual void set(std::size_t index, const math::float4x4& value, bool row_matrix = true) = 0;
-    virtual void set(
-        std::size_t index,
-        const math::float4x4* data,
-        size_t size,
-        bool row_matrix = true) = 0;
+    virtual void set(std::size_t index, const math::float4x4& value) = 0;
+    virtual void set(std::size_t index, const math::float4x4* data, size_t size) = 0;
     virtual void set(std::size_t index, resource* texture) = 0;
 };
 

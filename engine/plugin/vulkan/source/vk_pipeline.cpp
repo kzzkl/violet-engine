@@ -194,27 +194,12 @@ void vk_pipeline_parameter::set(std::size_t index, const math::float3& value)
     mark_dirty(index);
 }
 
-void vk_pipeline_parameter::set(std::size_t index, const math::float4x4& value, bool row_matrix)
+void vk_pipeline_parameter::set(std::size_t index, const math::float4x4& value)
 {
-    if (row_matrix)
-    {
-        math::float4x4 t;
-        math::float4x4_simd m = math::simd::load(value);
-        m = math::matrix_simd::transpose(m);
-        math::simd::store(m, t);
+    math::float4x4 m;
+    math::simd::store(math::matrix_simd::transpose(math::simd::load(value)), m);
 
-        std::memcpy(
-            m_cpu_buffer.data() + m_parameter_info[index].offset,
-            &t,
-            sizeof(math::float4x4));
-    }
-    else
-    {
-        std::memcpy(
-            m_cpu_buffer.data() + m_parameter_info[index].offset,
-            &value,
-            sizeof(math::float4x4));
-    }
+    std::memcpy(m_cpu_buffer.data() + m_parameter_info[index].offset, &m, sizeof(math::float4x4));
     mark_dirty(index);
 }
 
@@ -410,8 +395,8 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
     rasterization_info.rasterizerDiscardEnable = VK_FALSE;
     rasterization_info.polygonMode = VK_POLYGON_MODE_FILL;
     rasterization_info.lineWidth = 1.0f;
-    rasterization_info.cullMode = VK_CULL_MODE_NONE;
-    rasterization_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterization_info.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterization_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
     rasterization_info.depthBiasEnable = VK_FALSE;
     rasterization_info.depthBiasConstantFactor = 0.0f;
     rasterization_info.depthBiasClamp = 0.0f;

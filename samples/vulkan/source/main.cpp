@@ -1,4 +1,5 @@
 #include "application.hpp"
+#include "camera.hpp"
 #include "context.hpp"
 #include "new_graphics_interface.hpp"
 #include "plugin.hpp"
@@ -137,14 +138,9 @@ private:
 
         m_texture.reset(m_vulkan_plugin.factory().make_texture("test_image.jpg"));
 
-        math::float4x4 proj = math::matrix_plain::perspective(
-            math::to_radians(30.0f),
-            1300.0f / 800.0f,
-            0.01f,
-            1000.0f);
-        m_parameter->set(
-            1,
-            proj);
+        graphics::camera camera;
+        camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f, true);
+        m_parameter->set(1, camera.projection);
         m_parameter->set(2, m_texture.get());
     }
 
@@ -160,7 +156,9 @@ private:
         window_task->add_dependency(*task.find("root"));
 
         auto render_task = task.schedule("render", [&, this]() {
+            m_color[0] += 0.0005f;
             m_color[1] += 0.0005f;
+            m_color[2] += 0.0005f;
 
             std::size_t index = m_renderer->begin_frame();
 
