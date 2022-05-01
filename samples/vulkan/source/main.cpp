@@ -35,8 +35,9 @@ class test_system : public core::system_base
 public:
     struct vertex
     {
-        math::float2 position;
+        math::float3 position;
         math::float3 color;
+        math::float2 uv;
     };
 
 public:
@@ -60,16 +61,19 @@ private:
         subpass_desc.output = &o;
         subpass_desc.output_count = 1;
 
-        graphics::vk::vertex_attribute_desc vertex_attributes[] = {
-            {graphics::vk::vertex_attribute_type::FLOAT2, 0},
-            {graphics::vk::vertex_attribute_type::FLOAT3, 8}
+        std::vector<graphics::vk::vertex_attribute_desc> vertex_attributes = {
+            {graphics::vk::vertex_attribute_type::FLOAT3, 0 },
+            {graphics::vk::vertex_attribute_type::FLOAT3, 12},
+            {graphics::vk::vertex_attribute_type::FLOAT2, 24}
         };
-        subpass_desc.vertex_layout.attributes = vertex_attributes;
-        subpass_desc.vertex_layout.attribute_count = 2;
+        subpass_desc.vertex_layout.attributes = vertex_attributes.data();
+        subpass_desc.vertex_layout.attribute_count = vertex_attributes.size();
 
         // Layout.
         std::vector<graphics::vk::pipeline_parameter_pair> parameter_pairs = {
-            {graphics::vk::pipeline_parameter_type::FLOAT3, 1}
+            {graphics::vk::pipeline_parameter_type::FLOAT3,   1},
+            {graphics::vk::pipeline_parameter_type::FLOAT4x4, 1},
+            {graphics::vk::pipeline_parameter_type::TEXTURE,  1}
         };
         graphics::vk::pipeline_parameter_layout_desc parameter_layout_desc = {};
         parameter_layout_desc.parameter = parameter_pairs.data();
@@ -111,10 +115,10 @@ private:
         }
 
         std::vector<vertex> vertices = {
-            {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-            {{0.5f, -0.5f},  {0.0f, 1.0f, 0.0f}},
-            {{0.5f, 0.5f},   {0.0f, 0.0f, 1.0f}},
-            {{-0.5f, 0.5f},  {1.0f, 1.0f, 1.0f}}
+            {{-0.5f, 0.5f, 10.0f},  {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+            {{0.5f, 0.5f, 10.0f},   {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+            {{0.5f, -0.5f, 10.0f},  {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+            {{-0.5f, -0.5f, 10.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
         };
 
         std::vector<std::uint32_t> indices = {0, 1, 2, 2, 3, 0};
@@ -130,6 +134,18 @@ private:
         index_buffer_desc.index_count = indices.size();
         index_buffer_desc.indices = indices.data();
         m_index_buffer.reset(m_vulkan_plugin.factory().make_index_buffer(index_buffer_desc));
+
+        m_texture.reset(m_vulkan_plugin.factory().make_texture("test_image.jpg"));
+
+        math::float4x4 proj = math::matrix_plain::perspective(
+            math::to_radians(30.0f),
+            1300.0f / 800.0f,
+            0.01f,
+            1000.0f);
+        m_parameter->set(
+            1,
+            proj);
+        m_parameter->set(2, m_texture.get());
     }
 
     void initialize_task()
@@ -192,6 +208,8 @@ private:
 
     math::float3 m_color{};
     std::unique_ptr<graphics::vk::pipeline_parameter> m_parameter;
+
+    std::unique_ptr<graphics::vk::resource> m_texture;
 };
 
 class vulkan_app

@@ -4,19 +4,7 @@
 
 namespace ash::graphics::vk
 {
-class vk_image : public resource
-{
-public:
-    vk_image(VkImage image, VkImageView view) : m_image(image), m_view(view) {}
-
-    VkImageView view() const noexcept { return m_view; }
-
-private:
-    VkImage m_image;
-    VkImageView m_view;
-};
-
-class vk_buffer : public resource
+class vk_resource : public resource
 {
 public:
 protected:
@@ -25,12 +13,55 @@ protected:
         VkBufferUsageFlags usage,
         VkMemoryPropertyFlags properties);
 
+    std::pair<VkImage, VkDeviceMemory> create_image(
+        std::uint32_t width,
+        std::uint32_t height,
+        VkFormat format,
+        VkImageTiling tiling,
+        VkImageUsageFlags usage,
+        VkMemoryPropertyFlags properties);
+
+    VkImageView create_image_view(VkImage image, VkFormat format);
+
     void copy_buffer(VkBuffer source, VkBuffer target, VkDeviceSize size);
+    void copy_buffer_to_image(
+        VkBuffer buffer,
+        VkImage image,
+        std::uint32_t width,
+        std::uint32_t height);
+
+    void transition_image_layout(
+        VkImage image,
+        VkFormat format,
+        VkImageLayout old_layout,
+        VkImageLayout new_layout);
 
     std::uint32_t find_memory_type(std::uint32_t type_filter, VkMemoryPropertyFlags properties);
 };
 
-class vk_vertex_buffer : public vk_buffer
+class vk_image : public vk_resource
+{
+public:
+    virtual VkImageView view() const noexcept = 0;
+};
+
+class vk_back_buffer : public vk_image
+{
+public:
+    vk_back_buffer(VkImage image, VkFormat format);
+    vk_back_buffer(vk_back_buffer&& other);
+    virtual ~vk_back_buffer();
+
+    virtual VkImageView view() const noexcept override { return m_view; }
+
+    vk_back_buffer& operator=(vk_back_buffer&& other);
+
+private:
+    VkImage m_image;
+    VkImageView m_view;
+};
+
+class vk_vertex_buffer : public vk_resource
 {
 public:
     vk_vertex_buffer(const vertex_buffer_desc& desc);
@@ -43,7 +74,7 @@ private:
     VkDeviceMemory m_buffer_memory;
 };
 
-class vk_index_buffer : public vk_buffer
+class vk_index_buffer : public vk_resource
 {
 public:
     vk_index_buffer(const index_buffer_desc& desc);
@@ -59,17 +90,32 @@ private:
     VkIndexType m_index_type;
 };
 
-class vk_uniform_buffer : public vk_buffer
+class vk_uniform_buffer : public vk_resource
 {
 public:
     vk_uniform_buffer(std::size_t size);
     virtual ~vk_uniform_buffer();
 
-    void update(const void* data, std::size_t size, std::size_t offset);
+    void upload(const void* data, std::size_t size, std::size_t offset);
     VkBuffer buffer() const noexcept { return m_buffer; }
 
 private:
     VkBuffer m_buffer;
     VkDeviceMemory m_buffer_memory;
+};
+
+class vk_texture : public vk_image
+{
+public:
+    vk_texture(std::string_view file);
+    virtual ~vk_texture();
+
+    virtual VkImageView view() const noexcept override { return m_image_view; }
+
+public:
+    VkImageView m_image_view;
+
+    VkImage m_image;
+    VkDeviceMemory m_image_memory;
 };
 } // namespace ash::graphics::vk

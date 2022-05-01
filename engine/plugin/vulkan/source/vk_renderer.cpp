@@ -89,36 +89,15 @@ vk_swap_chain::vk_swap_chain(VkSurfaceKHR surface, std::uint32_t width, std::uin
     vkGetSwapchainImagesKHR(device, m_swap_chain, &image_count, images.data());
 
     // Create image view.
-    VkImageViewCreateInfo view_info = {};
-    view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    view_info.format = m_surface_format.format;
-    view_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    view_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    view_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    view_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-    view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    view_info.subresourceRange.baseMipLevel = 0;
-    view_info.subresourceRange.levelCount = 1;
-    view_info.subresourceRange.baseArrayLayer = 0;
-    view_info.subresourceRange.layerCount = 1;
     for (VkImage image : images)
-    {
-        view_info.image = image;
-
-        VkImageView view;
-        vkCreateImageView(device, &view_info, nullptr, &view);
-        m_images.emplace_back(image, view);
-    }
+        m_back_buffers.emplace_back(image, m_surface_format.format);
 }
 
 vk_swap_chain::~vk_swap_chain()
 {
     auto device = vk_context::device();
 
-    for (auto image : m_images)
-        vkDestroyImageView(device, image.view(), nullptr);
-
+    m_back_buffers.clear();
     vkDestroySwapchainKHR(device, m_swap_chain, nullptr);
 }
 
@@ -222,11 +201,11 @@ void vk_renderer::execute(render_command* command)
 
 resource* vk_renderer::back_buffer(std::size_t index)
 {
-    return &vk_context::swap_chain().images()[index];
+    return &vk_context::swap_chain().back_buffers()[index];
 }
 
 std::size_t vk_renderer::back_buffer_count()
 {
-    return vk_context::swap_chain().images().size();
+    return vk_context::swap_chain().back_buffers().size();
 }
 } // namespace ash::graphics::vk

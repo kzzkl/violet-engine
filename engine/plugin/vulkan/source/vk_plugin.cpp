@@ -49,6 +49,8 @@ public:
     {
         return new vk_index_buffer(desc);
     }
+
+    virtual resource* make_texture(const char* file) override { return new vk_texture(file); }
 };
 } // namespace ash::graphics::vk
 

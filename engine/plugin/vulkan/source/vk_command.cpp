@@ -36,6 +36,8 @@ void vk_command::next(render_pass* pass)
 void vk_command::parameter(std::size_t i, pipeline_parameter* parameter)
 {
     auto pp = static_cast<vk_pipeline_parameter*>(parameter);
+    pp->sync();
+
     VkDescriptorSet descriptor_set[] = {pp->descriptor_set()};
     vkCmdBindDescriptorSets(
         m_command_buffer,

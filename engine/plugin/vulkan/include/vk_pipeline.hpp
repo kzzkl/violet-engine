@@ -13,9 +13,17 @@ public:
     VkDescriptorSetLayout layout() const noexcept { return m_descriptor_set_layout; }
     const std::vector<pipeline_parameter_pair>& parameters() const noexcept { return m_parameters; }
 
+    std::pair<std::size_t, std::size_t> descriptor_count() const noexcept
+    {
+        return {m_ubo_count, m_cis_count};
+    }
+
 private:
     VkDescriptorSetLayout m_descriptor_set_layout;
     std::vector<pipeline_parameter_pair> m_parameters;
+
+    std::size_t m_ubo_count;
+    std::size_t m_cis_count;
 };
 
 class vk_pipeline_parameter : public pipeline_parameter
@@ -29,10 +37,8 @@ public:
     virtual void set(std::size_t index, const math::float2& value) override {}
     virtual void set(std::size_t index, const math::float3& value) override;
     virtual void set(std::size_t index, const math::float4& value) override {}
-    virtual void set(std::size_t index, const math::float4x4& value, bool row_matrix = true)
-        override
-    {
-    }
+    virtual void set(std::size_t index, const math::float4x4& value, bool row_matrix)
+        override;
     virtual void set(
         std::size_t index,
         const math::float4x4* data,
@@ -40,14 +46,34 @@ public:
         bool row_matrix = true) override
     {
     }
-    virtual void set(std::size_t index, resource* texture) override {}
+    virtual void set(std::size_t index, resource* texture) override;
 
-    VkDescriptorSet descriptor_set() const noexcept { return m_descriptor_set; }
+    void sync();
+
+    VkDescriptorSet descriptor_set() const;
 
 private:
-    VkDescriptorSet m_descriptor_set;
+    struct parameter_info
+    {
+        std::size_t offset;
+        std::size_t size;
+        pipeline_parameter_type type;
+        std::size_t dirty;
+        std::uint32_t binding;
+    };
 
-    std::unique_ptr<vk_uniform_buffer> m_buffer;
+    void mark_dirty(std::size_t index);
+
+    std::vector<VkDescriptorSet> m_descriptor_set;
+
+    std::size_t m_dirty;
+    std::size_t m_last_sync_frame;
+
+    std::vector<parameter_info> m_parameter_info;
+
+    std::vector<std::uint8_t> m_cpu_buffer;
+    std::unique_ptr<vk_uniform_buffer> m_gpu_buffer;
+    std::vector<vk_texture*> m_textures;
 };
 
 class vk_pipeline_layout : public pipeline_layout

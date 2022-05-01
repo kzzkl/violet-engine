@@ -3,6 +3,7 @@
 #include "vk_descriptor_pool.hpp"
 #include "vk_pipeline.hpp"
 #include "vk_renderer.hpp"
+#include "vk_sampler.hpp"
 #include <iostream>
 #include <vector>
 
@@ -64,6 +65,7 @@ bool vk_context::on_initialize(const renderer_desc& config)
     create_command_queue();
     create_semaphore();
     create_descriptor_pool();
+    create_sampler();
 
     vk_frame_counter::initialize(0, 3);
 
@@ -209,9 +211,15 @@ void vk_context::create_device()
 
     for (auto device : devices)
     {
-        if (check_device_extension_support(device, extensions) &&
+        VkPhysicalDeviceFeatures supported_features;
+        vkGetPhysicalDeviceFeatures(device, &supported_features);
+
+        if (supported_features.samplerAnisotropy &&
+            check_device_extension_support(device, extensions) &&
             check_device_swap_chain_support(device))
+        {
             m_physical_device = device;
+        }
     }
 
     if (m_physical_device == VK_NULL_HANDLE)
@@ -252,6 +260,7 @@ void vk_context::create_device()
 
     // Device feature.
     VkPhysicalDeviceFeatures device_features = {};
+    device_features.samplerAnisotropy = VK_TRUE;
 
     // Create logic device.
     VkDeviceCreateInfo device_info = {};
@@ -297,6 +306,11 @@ void vk_context::create_semaphore()
 void vk_context::create_descriptor_pool()
 {
     m_descriptor_pool = std::make_unique<vk_descriptor_pool>();
+}
+
+void vk_context::create_sampler()
+{
+    m_sampler = std::make_unique<vk_sampler>();
 }
 
 bool vk_context::check_validation_layer()

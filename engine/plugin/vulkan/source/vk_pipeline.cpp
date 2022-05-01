@@ -2,29 +2,70 @@
 #include "vk_context.hpp"
 #include "vk_descriptor_pool.hpp"
 #include "vk_renderer.hpp"
+#include "vk_sampler.hpp"
 #include <fstream>
 
 namespace ash::graphics::vk
 {
 vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
     const pipeline_parameter_layout_desc& desc)
+    : m_ubo_count(0),
+      m_cis_count(0)
 {
     for (std::size_t i = 0; i < desc.size; ++i)
         m_parameters.push_back(desc.parameter[i]);
 
     auto device = vk_context::device();
 
-    VkDescriptorSetLayoutBinding ubo_binding = {};
-    ubo_binding.binding = 0;
-    ubo_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    ubo_binding.descriptorCount = 1;
-    ubo_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    ubo_binding.pImmutableSamplers = nullptr;
+    for (std::size_t i = 0; i < desc.size; ++i)
+    {
+        switch (desc.parameter[i].type)
+        {
+        case pipeline_parameter_type::BOOL:
+        case pipeline_parameter_type::UINT:
+        case pipeline_parameter_type::FLOAT:
+        case pipeline_parameter_type::FLOAT2:
+        case pipeline_parameter_type::FLOAT3:
+        case pipeline_parameter_type::FLOAT4:
+        case pipeline_parameter_type::FLOAT4x4:
+        case pipeline_parameter_type::FLOAT4x4_ARRAY:
+            m_ubo_count = 1;
+            break;
+        case pipeline_parameter_type::TEXTURE:
+            ++m_cis_count;
+            break;
+        default:
+            break;
+        }
+    }
+
+    std::vector<VkDescriptorSetLayoutBinding> bindings;
+    if (m_ubo_count != 0)
+    {
+        VkDescriptorSetLayoutBinding ubo_binding = {};
+        ubo_binding.binding = 0;
+        ubo_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        ubo_binding.descriptorCount = 1;
+        ubo_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        ubo_binding.pImmutableSamplers = nullptr;
+        bindings.push_back(ubo_binding);
+    }
+
+    for (std::size_t i = 0; i < m_cis_count; ++i)
+    {
+        VkDescriptorSetLayoutBinding cis_binding = {};
+        cis_binding.binding = static_cast<std::uint32_t>(m_ubo_count + i);
+        cis_binding.descriptorCount = 1;
+        cis_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        cis_binding.pImmutableSamplers = nullptr;
+        cis_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        bindings.push_back(cis_binding);
+    }
 
     VkDescriptorSetLayoutCreateInfo descriptor_set_layout_info = {};
     descriptor_set_layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    descriptor_set_layout_info.bindingCount = 1;
-    descriptor_set_layout_info.pBindings = &ubo_binding;
+    descriptor_set_layout_info.bindingCount = static_cast<std::uint32_t>(bindings.size());
+    descriptor_set_layout_info.pBindings = bindings.data();
 
     throw_if_failed(vkCreateDescriptorSetLayout(
         device,
@@ -36,12 +77,15 @@ vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
 vk_pipeline_parameter::vk_pipeline_parameter(pipeline_parameter_layout* layout)
 {
     auto vk_layout = static_cast<vk_pipeline_parameter_layout*>(layout);
+    auto [ubo_count, cis_count] = vk_layout->descriptor_count();
+    m_textures.resize(cis_count);
 
     auto cal_align = [](std::size_t begin, std::size_t align) {
         return (begin + align - 1) & ~(align - 1);
     };
 
     std::size_t ubo_offset = 0;
+    std::size_t texture_offset = 0;
     for (auto& parameter : vk_layout->parameters())
     {
         std::size_t align_address = 0;
@@ -80,41 +124,166 @@ vk_pipeline_parameter::vk_pipeline_parameter(pipeline_parameter_layout* layout)
             align_address = cal_align(ubo_offset, 16);
             size = sizeof(math::float4x4) * parameter.size;
             break;
+        case pipeline_parameter_type::TEXTURE:
+            break;
         default:
             throw vk_exception("Invalid pipeline parameter type.");
         }
 
-        ubo_offset = align_address + size;
+        if (parameter.type == pipeline_parameter_type::TEXTURE)
+        {
+            align_address = texture_offset;
+            ++texture_offset;
+            m_parameter_info.push_back(parameter_info{
+                align_address,
+                size,
+                parameter.type,
+                0,
+                static_cast<std::uint32_t>(align_address + ubo_count)});
+        }
+        else
+        {
+            ubo_offset = align_address + size;
+            m_parameter_info.push_back(parameter_info{align_address, size, parameter.type, 0, 0});
+        }
     }
 
-    std::size_t buffer_size = cal_align(ubo_offset, 256);
-    m_buffer = std::make_unique<vk_uniform_buffer>(buffer_size);
+    std::size_t frame_resource_count = vk_frame_counter::frame_resource_count();
 
-    m_descriptor_set = vk_context::descriptor_pool().allocate_descriptor_set(vk_layout->layout());
+    std::size_t buffer_size =
+        cal_align(ubo_offset, 0x40); // Device limit minUniformBufferOffsetAlignment 0x40
+    m_cpu_buffer.resize(buffer_size);
+    m_gpu_buffer = std::make_unique<vk_uniform_buffer>(buffer_size * frame_resource_count);
 
-    VkDescriptorBufferInfo buffer_info = {};
-    buffer_info.buffer = m_buffer->buffer();
-    buffer_info.offset = 0;
-    buffer_info.range = buffer_size;
+    for (std::size_t i = 0; i < frame_resource_count; ++i)
+    {
+        auto& descriptor_pool = vk_context::descriptor_pool();
+        m_descriptor_set.push_back(descriptor_pool.allocate_descriptor_set(vk_layout->layout()));
+    }
 
-    VkWriteDescriptorSet descriptor_write = {};
-    descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptor_write.dstSet = m_descriptor_set;
-    descriptor_write.dstBinding = 0;
-    descriptor_write.dstArrayElement = 0;
-    descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    descriptor_write.descriptorCount = 1;
-    descriptor_write.pBufferInfo = &buffer_info;
-    descriptor_write.pImageInfo = nullptr;       // Optional
-    descriptor_write.pTexelBufferView = nullptr; // Optional
+    if (ubo_count != 0)
+    {
+        auto device = vk_context::device();
 
-    auto device = vk_context::device();
-    vkUpdateDescriptorSets(device, 1, &descriptor_write, 0, nullptr);
+        VkDescriptorBufferInfo buffer_info = {};
+        buffer_info.buffer = m_gpu_buffer->buffer();
+        buffer_info.range = buffer_size;
+
+        VkWriteDescriptorSet descriptor_write = {};
+        descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptor_write.dstBinding = 0;
+        descriptor_write.dstArrayElement = 0;
+        descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptor_write.descriptorCount = 1;
+        descriptor_write.pBufferInfo = &buffer_info;
+        descriptor_write.pImageInfo = nullptr;
+        descriptor_write.pTexelBufferView = nullptr;
+
+        for (std::size_t i = 0; i < frame_resource_count; ++i)
+        {
+            descriptor_write.dstSet = m_descriptor_set[i];
+            buffer_info.offset = i * buffer_size;
+            vkUpdateDescriptorSets(device, 1, &descriptor_write, 0, nullptr);
+        }
+    }
 }
 
 void vk_pipeline_parameter::set(std::size_t index, const math::float3& value)
 {
-    m_buffer->update(&value, sizeof(math::float3), 0);
+    std::memcpy(m_cpu_buffer.data() + m_parameter_info[index].offset, &value, sizeof(math::float3));
+    mark_dirty(index);
+}
+
+void vk_pipeline_parameter::set(std::size_t index, const math::float4x4& value, bool row_matrix)
+{
+    if (row_matrix)
+    {
+        math::float4x4 t;
+        math::float4x4_simd m = math::simd::load(value);
+        m = math::matrix_simd::transpose(m);
+        math::simd::store(m, t);
+
+        std::memcpy(
+            m_cpu_buffer.data() + m_parameter_info[index].offset,
+            &t,
+            sizeof(math::float4x4));
+    }
+    else
+    {
+        std::memcpy(
+            m_cpu_buffer.data() + m_parameter_info[index].offset,
+            &value,
+            sizeof(math::float4x4));
+    }
+    mark_dirty(index);
+}
+
+void vk_pipeline_parameter::set(std::size_t index, resource* texture)
+{
+    m_textures[m_parameter_info[index].offset] = static_cast<vk_texture*>(texture);
+    mark_dirty(index);
+}
+
+void vk_pipeline_parameter::sync()
+{
+    if (m_last_sync_frame == vk_frame_counter::frame_counter())
+        return;
+
+    m_last_sync_frame = vk_frame_counter::frame_counter();
+
+    if (m_dirty == 0)
+        return;
+
+    std::size_t resource_index = vk_frame_counter::frame_resource_index();
+    for (parameter_info& info : m_parameter_info)
+    {
+        if (info.dirty == 0)
+            continue;
+
+        if (info.type == pipeline_parameter_type::TEXTURE)
+        {
+            auto texture = m_textures[info.offset];
+
+            VkDescriptorImageInfo image_info = {};
+            image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            image_info.imageView = texture->view();
+            image_info.sampler = vk_context::sampler().sampler();
+
+            VkWriteDescriptorSet descriptor_write = {};
+            descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptor_write.dstSet = m_descriptor_set[resource_index];
+            descriptor_write.dstBinding = info.binding;
+            descriptor_write.dstArrayElement = 0;
+            descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            descriptor_write.descriptorCount = 1;
+            descriptor_write.pImageInfo = &image_info;
+            vkUpdateDescriptorSets(vk_context::device(), 1, &descriptor_write, 0, nullptr);
+        }
+        else
+        {
+            m_gpu_buffer->upload(
+                m_cpu_buffer.data() + info.offset,
+                info.size,
+                m_cpu_buffer.size() * resource_index + info.offset);
+        }
+
+        --info.dirty;
+        if (info.dirty == 0)
+            --m_dirty;
+    }
+}
+
+VkDescriptorSet vk_pipeline_parameter::descriptor_set() const
+{
+    return m_descriptor_set[vk_frame_counter::frame_resource_index()];
+}
+
+void vk_pipeline_parameter::mark_dirty(std::size_t index)
+{
+    if (m_parameter_info[index].dirty == 0)
+        ++m_dirty;
+
+    m_parameter_info[index].dirty = vk_frame_counter::frame_resource_count();
 }
 
 vk_pipeline_layout::vk_pipeline_layout(const pipeline_layout_desc& desc)
@@ -241,8 +410,8 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
     rasterization_info.rasterizerDiscardEnable = VK_FALSE;
     rasterization_info.polygonMode = VK_POLYGON_MODE_FILL;
     rasterization_info.lineWidth = 1.0f;
-    rasterization_info.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterization_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterization_info.cullMode = VK_CULL_MODE_NONE;
+    rasterization_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterization_info.depthBiasEnable = VK_FALSE;
     rasterization_info.depthBiasConstantFactor = 0.0f;
     rasterization_info.depthBiasClamp = 0.0f;

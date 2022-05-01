@@ -5,14 +5,15 @@ namespace ash::graphics::vk
 {
 vk_descriptor_pool::vk_descriptor_pool()
 {
-    VkDescriptorPoolSize uniform_buffer_size = {};
-    uniform_buffer_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    uniform_buffer_size.descriptorCount = 1024;
+    std::vector<VkDescriptorPoolSize> pool_size = {
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1024},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1024}
+    };
 
     VkDescriptorPoolCreateInfo pool_info = {};
     pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    pool_info.poolSizeCount = 1;
-    pool_info.pPoolSizes = &uniform_buffer_size;
+    pool_info.poolSizeCount = static_cast<std::uint32_t>(pool_size.size());
+    pool_info.pPoolSizes = pool_size.data();
     pool_info.maxSets = 512;
 
     auto device = vk_context::device();

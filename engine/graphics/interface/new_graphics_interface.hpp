@@ -13,19 +13,19 @@ class resource
 
 enum class vertex_attribute_type : std::uint8_t
 {
-    INT,
-    INT2,
-    INT3,
-    INT4,
-    UINT,
-    UINT2,
-    UINT3,
-    UINT4,
-    FLOAT,
-    FLOAT2,
-    FLOAT3,
-    FLOAT4,
-    COLOR // R8G8B8A8
+    INT,    // R32 SINT
+    INT2,   // R32G32 SINT
+    INT3,   // R32G32B32 SINT
+    INT4,   // R32G32B32A32 SINT
+    UINT,   // R32 UINT
+    UINT2,  // R32G32 UINT
+    UINT3,  // R32G32B32 UINT
+    UINT4,  // R32G32B32A32 UINT
+    FLOAT,  // R32 FLOAT
+    FLOAT2, // R32G32 FLOAT
+    FLOAT3, // R32G32B32 FLOAT
+    FLOAT4, // R32G32B32A32 FLOAT
+    COLOR   // R8G8B8A8
 };
 
 struct vertex_attribute_desc
@@ -77,6 +77,12 @@ struct pipeline_layout_desc
 
 class pipeline_layout
 {
+};
+
+enum pipeline_parameter_matrix_flag
+{
+    COLUMN_MAJOR_ORDER,
+    PROJECTION_MATRIX
 };
 
 class pipeline_parameter
@@ -273,6 +279,8 @@ public:
 
     virtual resource* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
     virtual resource* make_index_buffer(const index_buffer_desc& desc) = 0;
+
+    virtual resource* make_texture(const char* file) = 0;
 };
 
 using make_factory = factory* (*)();

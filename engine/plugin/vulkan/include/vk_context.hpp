@@ -8,6 +8,7 @@ class vk_swap_chain;
 class vk_render_pass;
 class vk_command_queue;
 class vk_descriptor_pool;
+class vk_sampler;
 
 class vk_frame_counter
 {
@@ -67,6 +68,8 @@ public:
 
     static VkFence fence() noexcept { return instance().m_fence; }
 
+    static vk_sampler& sampler() { return *instance().m_sampler; }
+
     static std::size_t begin_frame() { return instance().on_begin_frame(); }
     static void end_frame() { instance().on_end_frame(); }
 
@@ -86,6 +89,7 @@ private:
     void create_command_queue();
     void create_semaphore();
     void create_descriptor_pool();
+    void create_sampler();
 
     bool check_validation_layer();
     bool check_device_extension_support(
@@ -110,6 +114,8 @@ private:
     VkSemaphore m_image_available;
     VkSemaphore m_render_finished;
     VkFence m_fence;
+
+    std::unique_ptr<vk_sampler> m_sampler;
 
     std::uint32_t m_image_index;
 
