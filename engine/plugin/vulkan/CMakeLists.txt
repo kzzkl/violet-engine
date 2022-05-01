@@ -9,6 +9,7 @@ add_library(${PROJECT_NAME} SHARED
     ./source/vk_context.cpp
     ./source/vk_descriptor_pool.cpp
     ./source/vk_frame_buffer.cpp
+    ./source/vk_image_loader.cpp
     ./source/vk_pipeline.cpp
     ./source/vk_plugin.cpp
     ./source/vk_renderer.cpp

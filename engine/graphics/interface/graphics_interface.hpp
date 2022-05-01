@@ -256,8 +256,6 @@ public:
     virtual pipeline_layout* make_pipeline_layout(const pipeline_layout_desc& desc) = 0;
     virtual pipeline* make_pipeline(const pipeline_desc& desc) = 0;
 
-    virtual resource* make_upload_buffer(std::size_t size) = 0;
-
     virtual resource* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
     virtual resource* make_index_buffer(const index_buffer_desc& desc) = 0;
 

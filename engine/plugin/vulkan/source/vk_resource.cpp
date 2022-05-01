@@ -1,9 +1,7 @@
 #include "vk_resource.hpp"
 #include "vk_command.hpp"
 #include "vk_context.hpp"
-
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "vk_image_loader.hpp"
 
 namespace ash::graphics::vk
 {
@@ -374,45 +372,41 @@ vk_uniform_buffer::~vk_uniform_buffer()
 
 vk_texture::vk_texture(std::string_view file)
 {
-    int width, height, channels;
-    stbi_uc* pixels = stbi_load(file.data(), &width, &height, &channels, STBI_rgb_alpha);
-    std::size_t image_size = width * height * 4;
+    vk_image_loader loader;
+    if (!loader.load(file))
+        throw vk_exception("Load texture failed.");
+
+    auto& data = loader.mipmap(0);
 
     auto [staging_buffer, staging_buffer_memory] = create_buffer(
-        static_cast<VkDeviceSize>(image_size),
+        static_cast<VkDeviceSize>(data.pixels.size()),
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     auto device = vk_context::device();
 
     void* mapping;
-    vkMapMemory(device, staging_buffer_memory, 0, image_size, 0, &mapping);
-    std::memcpy(mapping, pixels, image_size);
+    vkMapMemory(device, staging_buffer_memory, 0, data.pixels.size(), 0, &mapping);
+    std::memcpy(mapping, data.pixels.data(), data.pixels.size());
     vkUnmapMemory(device, staging_buffer_memory);
 
-    stbi_image_free(pixels);
-
     auto [image, image_memory] = create_image(
-        static_cast<std::uint32_t>(width),
-        static_cast<std::uint32_t>(height),
-        VK_FORMAT_R8G8B8A8_SRGB,
+        data.width,
+        data.height,
+        data.format,
         VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     transition_image_layout(
         image,
-        VK_FORMAT_R8G8B8A8_SRGB,
+        data.format,
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    copy_buffer_to_image(
-        staging_buffer,
-        image,
-        static_cast<std::uint32_t>(width),
-        static_cast<std::uint32_t>(height));
+    copy_buffer_to_image(staging_buffer, image, data.width, data.height);
     transition_image_layout(
         image,
-        VK_FORMAT_R8G8B8A8_SRGB,
+        data.format,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
@@ -420,7 +414,7 @@ vk_texture::vk_texture(std::string_view file)
     vkFreeMemory(device, staging_buffer_memory, nullptr);
 
     // Create view.
-    m_image_view = create_image_view(image, VK_FORMAT_R8G8B8A8_SRGB);
+    m_image_view = create_image_view(image, data.format);
 
     m_image = image;
     m_image_memory = image_memory;

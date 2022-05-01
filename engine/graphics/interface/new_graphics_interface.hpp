@@ -256,21 +256,29 @@ struct index_buffer_desc
 class factory
 {
 public:
+    virtual renderer* make_renderer(const renderer_desc& desc) = 0;
+
     virtual frame_buffer* make_frame_buffer(const frame_buffer_desc& desc) = 0;
     virtual render_pass* make_render_pass(const render_pass_desc& desc) = 0;
 
     virtual pipeline_parameter_layout* make_pipeline_parameter_layout(
         const pipeline_parameter_layout_desc& desc) = 0;
     virtual pipeline_layout* make_pipeline_layout(const pipeline_layout_desc& desc) = 0;
-
     virtual pipeline_parameter* make_pipeline_parameter(pipeline_parameter_layout* layout) = 0;
-
-    virtual renderer* make_renderer(const renderer_desc& desc) = 0;
 
     virtual resource* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
     virtual resource* make_index_buffer(const index_buffer_desc& desc) = 0;
 
     virtual resource* make_texture(const char* file) = 0;
+
+    virtual resource* make_render_target(
+        std::uint32_t width,
+        std::uint32_t height,
+        std::size_t multiple_sampling = 1) = 0;
+    virtual resource* make_depth_stencil(
+        std::uint32_t width,
+        std::uint32_t height,
+        std::size_t multiple_sampling = 1) = 0;
 };
 
 using make_factory = factory* (*)();

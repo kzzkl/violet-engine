@@ -9,6 +9,11 @@ namespace ash::graphics::vk
 class vk_factory : public factory
 {
 public:
+    virtual renderer* make_renderer(const renderer_desc& desc) override
+    {
+        return new vk_renderer(desc);
+    }
+
     virtual frame_buffer* make_frame_buffer(const frame_buffer_desc& desc) override
     {
         return new vk_frame_buffer(desc);
@@ -35,11 +40,6 @@ public:
         return new vk_pipeline_parameter(layout);
     }
 
-    virtual renderer* make_renderer(const renderer_desc& desc) override
-    {
-        return new vk_renderer(desc);
-    }
-
     virtual resource* make_vertex_buffer(const vertex_buffer_desc& desc) override
     {
         return new vk_vertex_buffer(desc);
@@ -51,6 +51,22 @@ public:
     }
 
     virtual resource* make_texture(const char* file) override { return new vk_texture(file); }
+
+    virtual resource* make_render_target(
+        std::uint32_t width,
+        std::uint32_t height,
+        std::size_t multiple_sampling) override
+    {
+        return nullptr;
+    }
+
+    virtual resource* make_depth_stencil(
+        std::uint32_t width,
+        std::uint32_t height,
+        std::size_t multiple_sampling) override
+    {
+        return nullptr;
+    }
 };
 } // namespace ash::graphics::vk
 

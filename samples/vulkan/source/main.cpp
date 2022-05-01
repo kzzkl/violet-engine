@@ -136,7 +136,8 @@ private:
         index_buffer_desc.indices = indices.data();
         m_index_buffer.reset(m_vulkan_plugin.factory().make_index_buffer(index_buffer_desc));
 
-        m_texture.reset(m_vulkan_plugin.factory().make_texture("test_image.jpg"));
+        //m_texture.reset(m_vulkan_plugin.factory().make_texture("test_image.jpg"));
+        m_texture.reset(m_vulkan_plugin.factory().make_texture("test_image.dds"));
 
         graphics::camera camera;
         camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f, true);
