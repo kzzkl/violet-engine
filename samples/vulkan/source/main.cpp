@@ -10,7 +10,7 @@ namespace ash::sample
 class vulkan_plugin : public core::plugin
 {
 public:
-    graphics::vk::factory& factory() { return *m_factory; }
+    graphics::vk::factory_interface& factory() { return *m_factory; }
 
 protected:
     virtual bool do_load() override
@@ -28,7 +28,7 @@ protected:
     }
 
 private:
-    std::unique_ptr<graphics::vk::factory> m_factory;
+    std::unique_ptr<graphics::vk::factory_interface> m_factory;
 };
 
 class test_system : public core::system_base
@@ -103,7 +103,7 @@ private:
         auto rect = system<window::window>().rect();
         for (std::size_t i = 0; i < m_renderer->back_buffer_count(); ++i)
         {
-            std::array<graphics::vk::resource*, 1> frame_buffer_resources = {
+            std::array<graphics::vk::resource_interface*, 1> frame_buffer_resources = {
                 m_renderer->back_buffer(i)};
             graphics::vk::frame_buffer_desc frame_buffer_desc = {};
             frame_buffer_desc.render_pass = m_pass.get();
@@ -136,7 +136,7 @@ private:
         index_buffer_desc.indices = indices.data();
         m_index_buffer.reset(m_vulkan_plugin.factory().make_index_buffer(index_buffer_desc));
 
-        //m_texture.reset(m_vulkan_plugin.factory().make_texture("test_image.jpg"));
+        // m_texture.reset(m_vulkan_plugin.factory().make_texture("test_image.jpg"));
         m_texture.reset(m_vulkan_plugin.factory().make_texture("test_image.dds"));
 
         graphics::camera camera;
@@ -194,21 +194,21 @@ private:
 
     vulkan_plugin m_vulkan_plugin;
 
-    std::unique_ptr<graphics::vk::renderer> m_renderer;
-    std::unique_ptr<graphics::vk::render_pass> m_pass;
+    std::unique_ptr<graphics::vk::renderer_interface> m_renderer;
+    std::unique_ptr<graphics::vk::render_pass_interface> m_pass;
 
-    std::unique_ptr<graphics::vk::pipeline_parameter_layout> m_pipeline_parameter_layout;
-    std::unique_ptr<graphics::vk::pipeline_layout> m_pipeline_layout;
+    std::unique_ptr<graphics::vk::pipeline_parameter_layout_interface> m_pipeline_parameter_layout;
+    std::unique_ptr<graphics::vk::pipeline_layout_interface> m_pipeline_layout;
 
-    std::unique_ptr<graphics::vk::resource> m_vertex_buffer;
-    std::unique_ptr<graphics::vk::resource> m_index_buffer;
+    std::unique_ptr<graphics::vk::resource_interface> m_vertex_buffer;
+    std::unique_ptr<graphics::vk::resource_interface> m_index_buffer;
 
-    std::vector<std::unique_ptr<graphics::vk::frame_buffer>> m_frame_buffers;
+    std::vector<std::unique_ptr<graphics::vk::frame_buffer_interface>> m_frame_buffers;
 
     math::float3 m_color{};
-    std::unique_ptr<graphics::vk::pipeline_parameter> m_parameter;
+    std::unique_ptr<graphics::vk::pipeline_parameter_interface> m_parameter;
 
-    std::unique_ptr<graphics::vk::resource> m_texture;
+    std::unique_ptr<graphics::vk::resource_interface> m_texture;
 };
 
 class vulkan_app

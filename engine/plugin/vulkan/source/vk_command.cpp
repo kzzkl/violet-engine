@@ -10,7 +10,7 @@ vk_command::vk_command(VkCommandBuffer command_buffer) : m_command_buffer(comman
 {
 }
 
-void vk_command::begin(render_pass* pass, frame_buffer* frame_buffer)
+void vk_command::begin(render_pass_interface* pass, frame_buffer_interface* frame_buffer)
 {
     auto fb = static_cast<vk_frame_buffer*>(frame_buffer);
     auto rp = static_cast<vk_render_pass*>(pass);
@@ -19,13 +19,13 @@ void vk_command::begin(render_pass* pass, frame_buffer* frame_buffer)
     m_pipeline_layout = rp->current_subpass().layout();
 }
 
-void vk_command::end(render_pass* pass)
+void vk_command::end(render_pass_interface* pass)
 {
     auto rp = static_cast<vk_render_pass*>(pass);
     rp->end(m_command_buffer);
 }
 
-void vk_command::next(render_pass* pass)
+void vk_command::next(render_pass_interface* pass)
 {
     auto rp = static_cast<vk_render_pass*>(pass);
 
@@ -33,7 +33,7 @@ void vk_command::next(render_pass* pass)
     m_pipeline_layout = rp->current_subpass().layout();
 }
 
-void vk_command::parameter(std::size_t i, pipeline_parameter* parameter)
+void vk_command::parameter(std::size_t i, pipeline_parameter_interface* parameter)
 {
     auto pp = static_cast<vk_pipeline_parameter*>(parameter);
     pp->sync();
@@ -51,8 +51,8 @@ void vk_command::parameter(std::size_t i, pipeline_parameter* parameter)
 }
 
 void vk_command::draw(
-    resource* vertex,
-    resource* index,
+    resource_interface* vertex,
+    resource_interface* index,
     std::size_t index_start,
     std::size_t index_end,
     std::size_t vertex_base)

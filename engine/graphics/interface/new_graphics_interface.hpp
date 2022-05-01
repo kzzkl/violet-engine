@@ -7,7 +7,7 @@
 
 namespace ash::graphics::vk
 {
-class resource
+class resource_interface
 {
 };
 
@@ -65,24 +65,24 @@ struct pipeline_parameter_layout_desc
     std::size_t size;
 };
 
-class pipeline_parameter_layout
+class pipeline_parameter_layout_interface
 {
 };
 
 struct pipeline_layout_desc
 {
-    pipeline_parameter_layout* parameter;
+    pipeline_parameter_layout_interface* parameter;
     std::size_t size;
 };
 
-class pipeline_layout
+class pipeline_layout_interface
 {
 };
 
-class pipeline_parameter
+class pipeline_parameter_interface
 {
 public:
-    virtual ~pipeline_parameter() = default;
+    virtual ~pipeline_parameter_interface() = default;
 
     virtual void set(std::size_t index, bool value) = 0;
     virtual void set(std::size_t index, std::uint32_t value) = 0;
@@ -92,7 +92,7 @@ public:
     virtual void set(std::size_t index, const math::float4& value) = 0;
     virtual void set(std::size_t index, const math::float4x4& value) = 0;
     virtual void set(std::size_t index, const math::float4x4* data, size_t size) = 0;
-    virtual void set(std::size_t index, resource* texture) = 0;
+    virtual void set(std::size_t index, resource_interface* texture) = 0;
 };
 
 struct pipeline_blend_desc
@@ -151,7 +151,7 @@ struct pipeline_desc
     const char* pixel_shader;
 
     vertex_layout_desc vertex_layout;
-    pipeline_layout* pipeline_layout;
+    pipeline_layout_interface* pipeline_layout;
 
     pipeline_blend_desc blend;
     pipeline_depth_stencil_desc depth_stencil;
@@ -174,37 +174,37 @@ struct render_pass_desc
     std::size_t subpass_count;
 };
 
-class render_pass
+class render_pass_interface
 {
 };
 
 struct frame_buffer_desc
 {
-    resource** resources;
+    resource_interface** resources;
     std::size_t resource_count;
 
     std::uint32_t width;
     std::uint32_t height;
 
-    render_pass* render_pass;
+    render_pass_interface* render_pass;
 };
 
-class frame_buffer
+class frame_buffer_interface
 {
 };
 
-class render_command
+class render_command_interface
 {
 public:
-    virtual void begin(render_pass* pass, frame_buffer* frame_buffer) = 0;
-    virtual void end(render_pass* pass) = 0;
-    virtual void next(render_pass* pass) = 0;
+    virtual void begin(render_pass_interface* pass, frame_buffer_interface* frame_buffer) = 0;
+    virtual void end(render_pass_interface* pass) = 0;
+    virtual void next(render_pass_interface* pass) = 0;
 
-    virtual void parameter(std::size_t i, pipeline_parameter*) = 0;
+    virtual void parameter(std::size_t i, pipeline_parameter_interface*) = 0;
 
     virtual void draw(
-        resource* vertex,
-        resource* index,
+        resource_interface* vertex,
+        resource_interface* index,
         std::size_t index_start,
         std::size_t index_end,
         std::size_t vertex_base) = 0;
@@ -222,19 +222,19 @@ struct renderer_desc
     std::size_t render_concurrency{4};
 };
 
-class renderer
+class renderer_interface
 {
 public:
     virtual std::size_t begin_frame() = 0;
     virtual void end_frame() = 0;
 
-    virtual render_command* allocate_command() = 0;
-    virtual void execute(render_command*) = 0;
+    virtual render_command_interface* allocate_command() = 0;
+    virtual void execute(render_command_interface*) = 0;
 
-    virtual resource* back_buffer(std::size_t index) = 0;
+    virtual resource_interface* back_buffer(std::size_t index) = 0;
     virtual std::size_t back_buffer_count() = 0;
 
-    virtual resource* depth_stencil() = 0;
+    virtual resource_interface* depth_stencil() = 0;
 };
 
 struct vertex_buffer_desc
@@ -253,33 +253,34 @@ struct index_buffer_desc
     bool dynamic;
 };
 
-class factory
+class factory_interface
 {
 public:
-    virtual renderer* make_renderer(const renderer_desc& desc) = 0;
+    virtual renderer_interface* make_renderer(const renderer_desc& desc) = 0;
 
-    virtual frame_buffer* make_frame_buffer(const frame_buffer_desc& desc) = 0;
-    virtual render_pass* make_render_pass(const render_pass_desc& desc) = 0;
+    virtual frame_buffer_interface* make_frame_buffer(const frame_buffer_desc& desc) = 0;
+    virtual render_pass_interface* make_render_pass(const render_pass_desc& desc) = 0;
 
-    virtual pipeline_parameter_layout* make_pipeline_parameter_layout(
+    virtual pipeline_parameter_layout_interface* make_pipeline_parameter_layout(
         const pipeline_parameter_layout_desc& desc) = 0;
-    virtual pipeline_layout* make_pipeline_layout(const pipeline_layout_desc& desc) = 0;
-    virtual pipeline_parameter* make_pipeline_parameter(pipeline_parameter_layout* layout) = 0;
+    virtual pipeline_layout_interface* make_pipeline_layout(const pipeline_layout_desc& desc) = 0;
+    virtual pipeline_parameter_interface* make_pipeline_parameter(
+        pipeline_parameter_layout_interface* layout) = 0;
 
-    virtual resource* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
-    virtual resource* make_index_buffer(const index_buffer_desc& desc) = 0;
+    virtual resource_interface* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
+    virtual resource_interface* make_index_buffer(const index_buffer_desc& desc) = 0;
 
-    virtual resource* make_texture(const char* file) = 0;
+    virtual resource_interface* make_texture(const char* file) = 0;
 
-    virtual resource* make_render_target(
+    virtual resource_interface* make_render_target(
         std::uint32_t width,
         std::uint32_t height,
         std::size_t multiple_sampling = 1) = 0;
-    virtual resource* make_depth_stencil(
+    virtual resource_interface* make_depth_stencil(
         std::uint32_t width,
         std::uint32_t height,
         std::size_t multiple_sampling = 1) = 0;
 };
 
-using make_factory = factory* (*)();
+using make_factory = factory_interface* (*)();
 } // namespace ash::graphics::vk

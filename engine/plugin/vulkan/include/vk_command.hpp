@@ -5,20 +5,20 @@
 
 namespace ash::graphics::vk
 {
-class vk_command : public render_command
+class vk_command : public render_command_interface
 {
 public:
     vk_command(VkCommandBuffer command_buffer);
 
-    virtual void begin(render_pass* pass, frame_buffer* frame_buffer) override;
-    virtual void end(render_pass* pass) override;
-    virtual void next(render_pass* pass) override;
+    virtual void begin(render_pass_interface* pass, frame_buffer_interface* frame_buffer) override;
+    virtual void end(render_pass_interface* pass) override;
+    virtual void next(render_pass_interface* pass) override;
 
-    virtual void parameter(std::size_t i, pipeline_parameter* parameter) override;
+    virtual void parameter(std::size_t i, pipeline_parameter_interface* parameter) override;
 
     virtual void draw(
-        resource* vertex,
-        resource* index,
+        resource_interface* vertex,
+        resource_interface* index,
         std::size_t index_start,
         std::size_t index_end,
         std::size_t vertex_base) override;

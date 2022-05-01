@@ -36,7 +36,7 @@ private:
     std::vector<vk_back_buffer> m_back_buffers;
 };
 
-class vk_renderer : public renderer
+class vk_renderer : public renderer_interface
 {
 public:
     vk_renderer(const renderer_desc& desc);
@@ -44,12 +44,12 @@ public:
     virtual std::size_t begin_frame() override;
     virtual void end_frame() override;
 
-    virtual render_command* allocate_command() override;
-    virtual void execute(render_command* command) override;
+    virtual render_command_interface* allocate_command() override;
+    virtual void execute(render_command_interface* command) override;
 
-    virtual resource* back_buffer(std::size_t index) override;
+    virtual resource_interface* back_buffer(std::size_t index) override;
     virtual std::size_t back_buffer_count() override;
 
-    virtual resource* depth_stencil() override { return nullptr; }
+    virtual resource_interface* depth_stencil() override { return nullptr; }
 };
 } // namespace ash::graphics::vk

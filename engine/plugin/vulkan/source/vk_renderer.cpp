@@ -189,17 +189,17 @@ void vk_renderer::end_frame()
     vk_context::end_frame();
 }
 
-render_command* vk_renderer::allocate_command()
+render_command_interface* vk_renderer::allocate_command()
 {
     return vk_context::graphics_queue().allocate_command();
 }
 
-void vk_renderer::execute(render_command* command)
+void vk_renderer::execute(render_command_interface* command)
 {
     vk_context::graphics_queue().execute(static_cast<vk_command*>(command));
 }
 
-resource* vk_renderer::back_buffer(std::size_t index)
+resource_interface* vk_renderer::back_buffer(std::size_t index)
 {
     return &vk_context::swap_chain().back_buffers()[index];
 }

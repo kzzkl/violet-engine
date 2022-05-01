@@ -5,7 +5,7 @@
 
 namespace ash::graphics::vk
 {
-class vk_pipeline_parameter_layout : public pipeline_parameter_layout
+class vk_pipeline_parameter_layout : public pipeline_parameter_layout_interface
 {
 public:
     vk_pipeline_parameter_layout(const pipeline_parameter_layout_desc& desc);
@@ -26,10 +26,10 @@ private:
     std::size_t m_cis_count;
 };
 
-class vk_pipeline_parameter : public pipeline_parameter
+class vk_pipeline_parameter : public pipeline_parameter_interface
 {
 public:
-    vk_pipeline_parameter(pipeline_parameter_layout* layout);
+    vk_pipeline_parameter(pipeline_parameter_layout_interface* layout);
 
     virtual void set(std::size_t index, bool value) override {}
     virtual void set(std::size_t index, std::uint32_t value) override {}
@@ -39,7 +39,7 @@ public:
     virtual void set(std::size_t index, const math::float4& value) override {}
     virtual void set(std::size_t index, const math::float4x4& value) override;
     virtual void set(std::size_t index, const math::float4x4* data, size_t size) override {}
-    virtual void set(std::size_t index, resource* texture) override;
+    virtual void set(std::size_t index, resource_interface* texture) override;
 
     void sync();
 
@@ -69,7 +69,7 @@ private:
     std::vector<vk_texture*> m_textures;
 };
 
-class vk_pipeline_layout : public pipeline_layout
+class vk_pipeline_layout : public pipeline_layout_interface
 {
 public:
     vk_pipeline_layout(const pipeline_layout_desc& desc);
@@ -99,7 +99,7 @@ private:
     VkPipeline m_pipeline;
 };
 
-class vk_render_pass : public render_pass
+class vk_render_pass : public render_pass_interface
 {
 public:
     vk_render_pass(const render_pass_desc& desc);

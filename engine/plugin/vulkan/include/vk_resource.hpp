@@ -4,7 +4,7 @@
 
 namespace ash::graphics::vk
 {
-class vk_resource : public resource
+class vk_resource : public resource_interface
 {
 public:
 protected:

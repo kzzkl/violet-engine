@@ -4,7 +4,7 @@
 
 namespace ash::graphics::vk
 {
-class vk_frame_buffer : public frame_buffer
+class vk_frame_buffer : public frame_buffer_interface
 {
 public:
     vk_frame_buffer(const frame_buffer_desc& desc);

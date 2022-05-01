@@ -74,7 +74,7 @@ vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
         &m_descriptor_set_layout));
 }
 
-vk_pipeline_parameter::vk_pipeline_parameter(pipeline_parameter_layout* layout)
+vk_pipeline_parameter::vk_pipeline_parameter(pipeline_parameter_layout_interface* layout)
 {
     auto vk_layout = static_cast<vk_pipeline_parameter_layout*>(layout);
     auto [ubo_count, cis_count] = vk_layout->descriptor_count();
@@ -203,7 +203,7 @@ void vk_pipeline_parameter::set(std::size_t index, const math::float4x4& value)
     mark_dirty(index);
 }
 
-void vk_pipeline_parameter::set(std::size_t index, resource* texture)
+void vk_pipeline_parameter::set(std::size_t index, resource_interface* texture)
 {
     m_textures[m_parameter_info[index].offset] = static_cast<vk_texture*>(texture);
     mark_dirty(index);
