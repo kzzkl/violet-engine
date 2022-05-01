@@ -1,14 +1,147 @@
-#include "vk_render_pass.hpp"
+#include "vk_pipeline.hpp"
 #include "vk_context.hpp"
+#include "vk_descriptor_pool.hpp"
 #include "vk_renderer.hpp"
 #include <fstream>
 
 namespace ash::graphics::vk
 {
-vk_render_pipeline::vk_render_pipeline(
-    const render_pipeline_desc& desc,
-    VkRenderPass render_pass,
-    std::size_t index)
+vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
+    const pipeline_parameter_layout_desc& desc)
+{
+    for (std::size_t i = 0; i < desc.size; ++i)
+        m_parameters.push_back(desc.parameter[i]);
+
+    auto device = vk_context::device();
+
+    VkDescriptorSetLayoutBinding ubo_binding = {};
+    ubo_binding.binding = 0;
+    ubo_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    ubo_binding.descriptorCount = 1;
+    ubo_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    ubo_binding.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutCreateInfo descriptor_set_layout_info = {};
+    descriptor_set_layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    descriptor_set_layout_info.bindingCount = 1;
+    descriptor_set_layout_info.pBindings = &ubo_binding;
+
+    throw_if_failed(vkCreateDescriptorSetLayout(
+        device,
+        &descriptor_set_layout_info,
+        nullptr,
+        &m_descriptor_set_layout));
+}
+
+vk_pipeline_parameter::vk_pipeline_parameter(pipeline_parameter_layout* layout)
+{
+    auto vk_layout = static_cast<vk_pipeline_parameter_layout*>(layout);
+
+    auto cal_align = [](std::size_t begin, std::size_t align) {
+        return (begin + align - 1) & ~(align - 1);
+    };
+
+    std::size_t ubo_offset = 0;
+    for (auto& parameter : vk_layout->parameters())
+    {
+        std::size_t align_address = 0;
+        std::size_t size = 0;
+        switch (parameter.type)
+        {
+        case pipeline_parameter_type::BOOL:
+            align_address = cal_align(ubo_offset, 4);
+            size = sizeof(bool);
+            break;
+        case pipeline_parameter_type::UINT:
+            align_address = cal_align(ubo_offset, 4);
+            size = sizeof(std::uint32_t);
+            break;
+        case pipeline_parameter_type::FLOAT:
+            align_address = cal_align(ubo_offset, 4);
+            size = sizeof(float);
+            break;
+        case pipeline_parameter_type::FLOAT2:
+            align_address = cal_align(ubo_offset, 8);
+            size = sizeof(math::float2);
+            break;
+        case pipeline_parameter_type::FLOAT3:
+            align_address = cal_align(ubo_offset, 16);
+            size = sizeof(math::float3);
+            break;
+        case pipeline_parameter_type::FLOAT4:
+            align_address = cal_align(ubo_offset, 16);
+            size = sizeof(math::float4);
+            break;
+        case pipeline_parameter_type::FLOAT4x4:
+            align_address = cal_align(ubo_offset, 16);
+            size = sizeof(math::float4x4);
+            break;
+        case pipeline_parameter_type::FLOAT4x4_ARRAY:
+            align_address = cal_align(ubo_offset, 16);
+            size = sizeof(math::float4x4) * parameter.size;
+            break;
+        default:
+            throw vk_exception("Invalid pipeline parameter type.");
+        }
+
+        ubo_offset = align_address + size;
+    }
+
+    std::size_t buffer_size = cal_align(ubo_offset, 256);
+    m_buffer = std::make_unique<vk_uniform_buffer>(buffer_size);
+
+    m_descriptor_set = vk_context::descriptor_pool().allocate_descriptor_set(vk_layout->layout());
+
+    VkDescriptorBufferInfo buffer_info = {};
+    buffer_info.buffer = m_buffer->buffer();
+    buffer_info.offset = 0;
+    buffer_info.range = buffer_size;
+
+    VkWriteDescriptorSet descriptor_write = {};
+    descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptor_write.dstSet = m_descriptor_set;
+    descriptor_write.dstBinding = 0;
+    descriptor_write.dstArrayElement = 0;
+    descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptor_write.descriptorCount = 1;
+    descriptor_write.pBufferInfo = &buffer_info;
+    descriptor_write.pImageInfo = nullptr;       // Optional
+    descriptor_write.pTexelBufferView = nullptr; // Optional
+
+    auto device = vk_context::device();
+    vkUpdateDescriptorSets(device, 1, &descriptor_write, 0, nullptr);
+}
+
+void vk_pipeline_parameter::set(std::size_t index, const math::float3& value)
+{
+    m_buffer->update(&value, sizeof(math::float3), 0);
+}
+
+vk_pipeline_layout::vk_pipeline_layout(const pipeline_layout_desc& desc)
+{
+    auto device = vk_context::device();
+
+    std::vector<VkDescriptorSetLayout> layouts;
+    for (std::size_t i = 0; i < desc.size; ++i)
+        layouts.push_back(static_cast<vk_pipeline_parameter_layout*>(desc.parameter)->layout());
+
+    VkPipelineLayoutCreateInfo pipeline_layout_info = {};
+    pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipeline_layout_info.setLayoutCount = static_cast<std::uint32_t>(layouts.size());
+    pipeline_layout_info.pSetLayouts = layouts.data();
+
+    throw_if_failed(
+        vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr, &m_pipeline_layout));
+}
+
+vk_pipeline_layout::~vk_pipeline_layout()
+{
+    auto device = vk_context::device();
+    vkDestroyPipelineLayout(device, m_pipeline_layout, nullptr);
+}
+
+vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, std::size_t index)
+    : m_pipeline_layout(static_cast<vk_pipeline_layout*>(desc.pipeline_layout))
 {
     auto device = vk_context::device();
 
@@ -142,13 +275,6 @@ vk_render_pipeline::vk_render_pipeline(
     color_blend_info.blendConstants[2] = 0.0f;
     color_blend_info.blendConstants[3] = 0.0f;
 
-    // Layout.
-    VkPipelineLayoutCreateInfo layout_info = {};
-    layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layout_info.setLayoutCount = 0;
-    layout_info.pushConstantRangeCount = 0;
-    vkCreatePipelineLayout(device, &layout_info, nullptr, &m_layout);
-
     // Create pipeline.
     VkGraphicsPipelineCreateInfo pipeline_info = {};
     pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -161,7 +287,8 @@ vk_render_pipeline::vk_render_pipeline(
     pipeline_info.pMultisampleState = &multisample_info;
     pipeline_info.pColorBlendState = &color_blend_info;
     pipeline_info.pDynamicState = nullptr;
-    pipeline_info.layout = m_layout;
+    pipeline_info.layout =
+        static_cast<vk_pipeline_layout*>(desc.pipeline_layout)->pipeline_layout();
     pipeline_info.renderPass = render_pass;
     pipeline_info.subpass = static_cast<std::uint32_t>(index);
     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
@@ -173,16 +300,7 @@ vk_render_pipeline::vk_render_pipeline(
     vkDestroyShaderModule(device, frag_stage_info.module, nullptr);
 }
 
-void vk_render_pipeline::begin(VkCommandBuffer command_buffer)
-{
-    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
-}
-
-void vk_render_pipeline::end(VkCommandBuffer command_buffer)
-{
-}
-
-VkShaderModule vk_render_pipeline::load_shader(std::string_view file)
+VkShaderModule vk_pipeline::load_shader(std::string_view file)
 {
     std::ifstream fin(file.data(), std::ios::binary);
     ASH_VK_ASSERT(fin.is_open());
@@ -223,11 +341,6 @@ vk_render_pass::~vk_render_pass()
     vkDestroyRenderPass(device, m_render_pass, nullptr);
 }
 
-render_pipeline* vk_render_pass::subpass(std::size_t index)
-{
-    return &m_pipelines[index];
-}
-
 void vk_render_pass::begin(VkCommandBuffer command_buffer, VkFramebuffer frame_buffer)
 {
     VkRenderPassBeginInfo pass_info{};
@@ -242,11 +355,24 @@ void vk_render_pass::begin(VkCommandBuffer command_buffer, VkFramebuffer frame_b
     pass_info.pClearValues = &clear_color;
 
     vkCmdBeginRenderPass(command_buffer, &pass_info, VK_SUBPASS_CONTENTS_INLINE);
+
+    m_subpass_index = 0;
+    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelines[0].pipeline());
 }
 
 void vk_render_pass::end(VkCommandBuffer command_buffer)
 {
     vkCmdEndRenderPass(command_buffer);
+}
+
+void vk_render_pass::next(VkCommandBuffer command_buffer)
+{
+    ++m_subpass_index;
+    vkCmdNextSubpass(command_buffer, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(
+        command_buffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        m_pipelines[m_subpass_index].pipeline());
 }
 
 void vk_render_pass::create_pass(const render_pass_desc& desc)

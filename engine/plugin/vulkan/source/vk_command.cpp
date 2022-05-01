@@ -1,7 +1,7 @@
 #include "vk_command.hpp"
 #include "vk_context.hpp"
 #include "vk_frame_buffer.hpp"
-#include "vk_render_pass.hpp"
+#include "vk_pipeline.hpp"
 #include "vk_resource.hpp"
 
 namespace ash::graphics::vk
@@ -15,6 +15,8 @@ void vk_command::begin(render_pass* pass, frame_buffer* frame_buffer)
     auto fb = static_cast<vk_frame_buffer*>(frame_buffer);
     auto rp = static_cast<vk_render_pass*>(pass);
     rp->begin(m_command_buffer, fb->frame_buffer());
+
+    m_pipeline_layout = rp->current_subpass().layout();
 }
 
 void vk_command::end(render_pass* pass)
@@ -23,16 +25,27 @@ void vk_command::end(render_pass* pass)
     rp->end(m_command_buffer);
 }
 
-void vk_command::begin(render_pipeline* subpass)
+void vk_command::next(render_pass* pass)
 {
-    auto sp = static_cast<vk_render_pipeline*>(subpass);
-    sp->begin(m_command_buffer);
+    auto rp = static_cast<vk_render_pass*>(pass);
+
+    rp->next(m_command_buffer);
+    m_pipeline_layout = rp->current_subpass().layout();
 }
 
-void vk_command::end(render_pipeline* subpass)
+void vk_command::parameter(std::size_t i, pipeline_parameter* parameter)
 {
-    auto sp = static_cast<vk_render_pipeline*>(subpass);
-    sp->end(m_command_buffer);
+    auto pp = static_cast<vk_pipeline_parameter*>(parameter);
+    VkDescriptorSet descriptor_set[] = {pp->descriptor_set()};
+    vkCmdBindDescriptorSets(
+        m_command_buffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        m_pipeline_layout,
+        static_cast<std::uint32_t>(i),
+        1,
+        descriptor_set,
+        0,
+        nullptr);
 }
 
 void vk_command::draw(

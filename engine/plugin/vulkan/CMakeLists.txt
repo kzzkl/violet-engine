@@ -5,9 +5,10 @@ find_package(Vulkan REQUIRED)
 add_library(${PROJECT_NAME} SHARED
     ./source/vk_command.cpp
     ./source/vk_context.cpp
+    ./source/vk_descriptor_pool.cpp
     ./source/vk_frame_buffer.cpp
+    ./source/vk_pipeline.cpp
     ./source/vk_plugin.cpp
-    ./source/vk_render_pass.cpp
     ./source/vk_renderer.cpp
     ./source/vk_resource.cpp)
 add_library(ash::plugin::vulkan ALIAS ${PROJECT_NAME})

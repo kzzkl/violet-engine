@@ -100,6 +100,7 @@ vk_vertex_buffer::~vk_vertex_buffer()
 {
     auto device = vk_context::device();
     vkDestroyBuffer(device, m_buffer, nullptr);
+    vkFreeMemory(device, m_buffer_memory, nullptr);
 }
 
 vk_index_buffer::vk_index_buffer(const index_buffer_desc& desc)
@@ -148,5 +149,40 @@ vk_index_buffer::~vk_index_buffer()
 {
     auto device = vk_context::device();
     vkDestroyBuffer(device, m_buffer, nullptr);
+    vkFreeMemory(device, m_buffer_memory, nullptr);
+}
+
+vk_uniform_buffer::vk_uniform_buffer(std::size_t size)
+{
+    auto [buffer, buffer_memory] = create_buffer(
+        static_cast<std::uint32_t>(size),
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    m_buffer = buffer;
+    m_buffer_memory = buffer_memory;
+}
+
+void vk_uniform_buffer::update(const void* data, std::size_t size, std::size_t offset)
+{
+    auto device = vk_context::device();
+
+    void* mapping;
+    vkMapMemory(
+        device,
+        m_buffer_memory,
+        static_cast<std::uint32_t>(offset),
+        static_cast<std::uint32_t>(size),
+        0,
+        &mapping);
+    std::memcpy(mapping, data, size);
+    vkUnmapMemory(device, m_buffer_memory);
+}
+
+vk_uniform_buffer::~vk_uniform_buffer()
+{
+    auto device = vk_context::device();
+    vkDestroyBuffer(device, m_buffer, nullptr);
+    vkFreeMemory(device, m_buffer_memory, nullptr);
 }
 } // namespace ash::graphics::vk

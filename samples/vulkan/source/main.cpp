@@ -53,7 +53,7 @@ public:
 private:
     void initialize_pass()
     {
-        graphics::vk::render_pipeline_desc subpass_desc = {};
+        graphics::vk::pipeline_desc subpass_desc = {};
         subpass_desc.vertex_shader = "vert.spv";
         subpass_desc.pixel_shader = "frag.spv";
         std::size_t o = 0;
@@ -67,7 +67,26 @@ private:
         subpass_desc.vertex_layout.attributes = vertex_attributes;
         subpass_desc.vertex_layout.attribute_count = 2;
 
-        std::vector<graphics::vk::render_pipeline_desc> subpasses;
+        // Layout.
+        std::vector<graphics::vk::pipeline_parameter_pair> parameter_pairs = {
+            {graphics::vk::pipeline_parameter_type::FLOAT3, 1}
+        };
+        graphics::vk::pipeline_parameter_layout_desc parameter_layout_desc = {};
+        parameter_layout_desc.parameter = parameter_pairs.data();
+        parameter_layout_desc.size = parameter_pairs.size();
+        m_pipeline_parameter_layout.reset(
+            m_vulkan_plugin.factory().make_pipeline_parameter_layout(parameter_layout_desc));
+
+        m_parameter.reset(
+            m_vulkan_plugin.factory().make_pipeline_parameter(m_pipeline_parameter_layout.get()));
+
+        graphics::vk::pipeline_layout_desc layout_desc;
+        layout_desc.parameter = m_pipeline_parameter_layout.get();
+        layout_desc.size = 1;
+        m_pipeline_layout.reset(m_vulkan_plugin.factory().make_pipeline_layout(layout_desc));
+        subpass_desc.pipeline_layout = m_pipeline_layout.get();
+
+        std::vector<graphics::vk::pipeline_desc> subpasses;
         subpasses.push_back(subpass_desc);
 
         graphics::vk::render_pass_desc desc = {};
@@ -125,14 +144,16 @@ private:
         window_task->add_dependency(*task.find("root"));
 
         auto render_task = task.schedule("render", [&, this]() {
+            m_color[1] += 0.0005f;
+
             std::size_t index = m_renderer->begin_frame();
 
             auto command = m_renderer->allocate_command();
             command->begin(m_pass.get(), m_frame_buffers[index].get());
 
-            command->begin(m_pass->subpass(0));
+            m_parameter->set(0, m_color);
+            command->parameter(0, m_parameter.get());
             command->draw(m_vertex_buffer.get(), m_index_buffer.get(), 0, 6, 0);
-            command->end(m_pass->subpass(0));
 
             command->end(m_pass.get());
             m_renderer->execute(command);
@@ -161,10 +182,16 @@ private:
     std::unique_ptr<graphics::vk::renderer> m_renderer;
     std::unique_ptr<graphics::vk::render_pass> m_pass;
 
+    std::unique_ptr<graphics::vk::pipeline_parameter_layout> m_pipeline_parameter_layout;
+    std::unique_ptr<graphics::vk::pipeline_layout> m_pipeline_layout;
+
     std::unique_ptr<graphics::vk::resource> m_vertex_buffer;
     std::unique_ptr<graphics::vk::resource> m_index_buffer;
 
     std::vector<std::unique_ptr<graphics::vk::frame_buffer>> m_frame_buffers;
+
+    math::float3 m_color{};
+    std::unique_ptr<graphics::vk::pipeline_parameter> m_parameter;
 };
 
 class vulkan_app

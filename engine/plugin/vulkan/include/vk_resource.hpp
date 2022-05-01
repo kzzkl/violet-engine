@@ -58,4 +58,18 @@ private:
 
     VkIndexType m_index_type;
 };
+
+class vk_uniform_buffer : public vk_buffer
+{
+public:
+    vk_uniform_buffer(std::size_t size);
+    virtual ~vk_uniform_buffer();
+
+    void update(const void* data, std::size_t size, std::size_t offset);
+    VkBuffer buffer() const noexcept { return m_buffer; }
+
+private:
+    VkBuffer m_buffer;
+    VkDeviceMemory m_buffer_memory;
+};
 } // namespace ash::graphics::vk

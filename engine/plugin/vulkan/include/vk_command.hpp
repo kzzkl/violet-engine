@@ -12,11 +12,9 @@ public:
 
     virtual void begin(render_pass* pass, frame_buffer* frame_buffer) override;
     virtual void end(render_pass* pass) override;
+    virtual void next(render_pass* pass) override;
 
-    virtual void begin(render_pipeline* subpass) override;
-    virtual void end(render_pipeline* subpass) override;
-
-    virtual void parameter(std::size_t i, render_parameter*) override {}
+    virtual void parameter(std::size_t i, pipeline_parameter* parameter) override;
 
     virtual void draw(
         resource* vertex,
@@ -30,6 +28,8 @@ public:
 
 private:
     VkCommandBuffer m_command_buffer;
+
+    VkPipelineLayout m_pipeline_layout;
 };
 
 class vk_command_queue

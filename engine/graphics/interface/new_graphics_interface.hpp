@@ -11,14 +11,6 @@ class resource
 {
 };
 
-class render_parameter
-{
-public:
-    void set(std::size_t i) {}
-
-private:
-};
-
 enum class vertex_attribute_type : std::uint8_t
 {
     INT,
@@ -48,11 +40,66 @@ struct vertex_layout_desc
     std::size_t attribute_count;
 };
 
-struct parameter_layout
+enum class pipeline_parameter_type : std::uint8_t
+{
+    BOOL,
+    UINT,
+    FLOAT,
+    FLOAT2,
+    FLOAT3,
+    FLOAT4,
+    FLOAT4x4,
+    FLOAT4x4_ARRAY,
+    TEXTURE
+};
+
+struct pipeline_parameter_pair
+{
+    pipeline_parameter_type type;
+    std::size_t size; // Only for array.
+};
+
+struct pipeline_parameter_layout_desc
+{
+    pipeline_parameter_pair* parameter;
+    std::size_t size;
+};
+
+class pipeline_parameter_layout
 {
 };
 
-struct render_pipeline_blend_desc
+struct pipeline_layout_desc
+{
+    pipeline_parameter_layout* parameter;
+    std::size_t size;
+};
+
+class pipeline_layout
+{
+};
+
+class pipeline_parameter
+{
+public:
+    virtual ~pipeline_parameter() = default;
+
+    virtual void set(std::size_t index, bool value) = 0;
+    virtual void set(std::size_t index, std::uint32_t value) = 0;
+    virtual void set(std::size_t index, float value) = 0;
+    virtual void set(std::size_t index, const math::float2& value) = 0;
+    virtual void set(std::size_t index, const math::float3& value) = 0;
+    virtual void set(std::size_t index, const math::float4& value) = 0;
+    virtual void set(std::size_t index, const math::float4x4& value, bool row_matrix = true) = 0;
+    virtual void set(
+        std::size_t index,
+        const math::float4x4* data,
+        size_t size,
+        bool row_matrix = true) = 0;
+    virtual void set(std::size_t index, resource* texture) = 0;
+};
+
+struct pipeline_blend_desc
 {
     enum class factor_type
     {
@@ -85,7 +132,7 @@ struct render_pipeline_blend_desc
     op_type alpha_op;
 };
 
-struct render_pipeline_depth_stencil_desc
+struct pipeline_depth_stencil_desc
 {
     enum class depth_functor_type
     {
@@ -102,16 +149,16 @@ enum class primitive_topology_type : std::uint8_t
     LINE_LIST
 };
 
-struct render_pipeline_desc
+struct pipeline_desc
 {
     const char* vertex_shader;
     const char* pixel_shader;
 
     vertex_layout_desc vertex_layout;
-    parameter_layout* parameter_layout;
+    pipeline_layout* pipeline_layout;
 
-    render_pipeline_blend_desc blend;
-    render_pipeline_depth_stencil_desc depth_stencil;
+    pipeline_blend_desc blend;
+    pipeline_depth_stencil_desc depth_stencil;
 
     std::size_t* input;
     std::size_t input_count;
@@ -127,18 +174,12 @@ struct render_pipeline_desc
 
 struct render_pass_desc
 {
-    render_pipeline_desc* subpasses;
+    pipeline_desc* subpasses;
     std::size_t subpass_count;
-};
-
-class render_pipeline
-{
 };
 
 class render_pass
 {
-public:
-    virtual render_pipeline* subpass(std::size_t index) = 0;
 };
 
 struct frame_buffer_desc
@@ -161,11 +202,9 @@ class render_command
 public:
     virtual void begin(render_pass* pass, frame_buffer* frame_buffer) = 0;
     virtual void end(render_pass* pass) = 0;
+    virtual void next(render_pass* pass) = 0;
 
-    virtual void begin(render_pipeline* pass) = 0;
-    virtual void end(render_pipeline* pass) = 0;
-
-    virtual void parameter(std::size_t i, render_parameter*) = 0;
+    virtual void parameter(std::size_t i, pipeline_parameter*) = 0;
 
     virtual void draw(
         resource* vertex,
@@ -223,6 +262,13 @@ class factory
 public:
     virtual frame_buffer* make_frame_buffer(const frame_buffer_desc& desc) = 0;
     virtual render_pass* make_render_pass(const render_pass_desc& desc) = 0;
+
+    virtual pipeline_parameter_layout* make_pipeline_parameter_layout(
+        const pipeline_parameter_layout_desc& desc) = 0;
+    virtual pipeline_layout* make_pipeline_layout(const pipeline_layout_desc& desc) = 0;
+
+    virtual pipeline_parameter* make_pipeline_parameter(pipeline_parameter_layout* layout) = 0;
+
     virtual renderer* make_renderer(const renderer_desc& desc) = 0;
 
     virtual resource* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;

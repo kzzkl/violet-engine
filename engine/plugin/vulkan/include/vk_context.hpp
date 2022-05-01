@@ -7,6 +7,7 @@ namespace ash::graphics::vk
 class vk_swap_chain;
 class vk_render_pass;
 class vk_command_queue;
+class vk_descriptor_pool;
 
 class vk_frame_counter
 {
@@ -56,6 +57,8 @@ public:
 
     static vk_swap_chain& swap_chain() { return *instance().m_swap_chain; }
 
+    static vk_descriptor_pool& descriptor_pool() { return *instance().m_descriptor_pool; }
+
     static vk_command_queue& graphics_queue() { return *instance().m_graphics_queue; }
     static vk_command_queue& present_queue() { return *instance().m_present_queue; }
 
@@ -82,6 +85,7 @@ private:
     void create_swap_chain(std::uint32_t width, std::uint32_t height);
     void create_command_queue();
     void create_semaphore();
+    void create_descriptor_pool();
 
     bool check_validation_layer();
     bool check_device_extension_support(
@@ -100,6 +104,8 @@ private:
 
     VkSurfaceKHR m_surface;
     std::unique_ptr<vk_swap_chain> m_swap_chain;
+
+    std::unique_ptr<vk_descriptor_pool> m_descriptor_pool;
 
     VkSemaphore m_image_available;
     VkSemaphore m_render_finished;

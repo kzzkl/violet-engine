@@ -1,7 +1,7 @@
 #pragma once
 
 #include "vk_common.hpp"
-#include "vk_render_pass.hpp"
+#include "vk_pipeline.hpp"
 #include "vk_resource.hpp"
 
 namespace ash::graphics::vk

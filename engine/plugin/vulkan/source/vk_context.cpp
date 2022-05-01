@@ -1,6 +1,7 @@
 #include "vk_context.hpp"
 #include "vk_command.hpp"
-#include "vk_render_pass.hpp"
+#include "vk_descriptor_pool.hpp"
+#include "vk_pipeline.hpp"
 #include "vk_renderer.hpp"
 #include <iostream>
 #include <vector>
@@ -62,6 +63,7 @@ bool vk_context::on_initialize(const renderer_desc& config)
     create_swap_chain(config.width, config.height);
     create_command_queue();
     create_semaphore();
+    create_descriptor_pool();
 
     vk_frame_counter::initialize(0, 3);
 
@@ -290,6 +292,11 @@ void vk_context::create_semaphore()
     fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     throw_if_failed(vkCreateFence(m_device, &fence_info, nullptr, &m_fence));
+}
+
+void vk_context::create_descriptor_pool()
+{
+    m_descriptor_pool = std::make_unique<vk_descriptor_pool>();
 }
 
 bool vk_context::check_validation_layer()

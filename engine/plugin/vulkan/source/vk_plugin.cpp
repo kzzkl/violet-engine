@@ -19,6 +19,22 @@ public:
         return new vk_render_pass(desc);
     }
 
+    virtual pipeline_parameter_layout* make_pipeline_parameter_layout(
+        const pipeline_parameter_layout_desc& desc) override
+    {
+        return new vk_pipeline_parameter_layout(desc);
+    }
+
+    virtual pipeline_layout* make_pipeline_layout(const pipeline_layout_desc& desc) override
+    {
+        return new vk_pipeline_layout(desc);
+    }
+
+    virtual pipeline_parameter* make_pipeline_parameter(pipeline_parameter_layout* layout) override
+    {
+        return new vk_pipeline_parameter(layout);
+    }
+
     virtual renderer* make_renderer(const renderer_desc& desc) override
     {
         return new vk_renderer(desc);
