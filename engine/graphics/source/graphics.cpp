@@ -37,21 +37,21 @@ bool graphics::initialize(const dictionary& config)
 
     m_renderer.reset(m_plugin.factory().make_renderer(desc));
 
-    pipeline_parameter_layout_info ash_object;
+    pass_parameter_layout_info ash_object;
     ash_object.parameters = {
-        {pipeline_parameter_type::FLOAT4x4, 1}, // transform_m
-        {pipeline_parameter_type::FLOAT4x4, 1}, // transform_mv
-        {pipeline_parameter_type::FLOAT4x4, 1}  // transform_mvp
+        {pass_parameter_type::FLOAT4x4, 1}, // transform_m
+        {pass_parameter_type::FLOAT4x4, 1}, // transform_mv
+        {pass_parameter_type::FLOAT4x4, 1}  // transform_mvp
     };
     make_render_parameter_layout("ash_object", ash_object);
 
-    pipeline_parameter_layout_info ash_pass;
+    pass_parameter_layout_info ash_pass;
     ash_pass.parameters = {
-        {pipeline_parameter_type::FLOAT4,   1}, // camera_position
-        {pipeline_parameter_type::FLOAT4,   1}, // camera_direction
-        {pipeline_parameter_type::FLOAT4x4, 1}, // transform_v
-        {pipeline_parameter_type::FLOAT4x4, 1}, // transform_p
-        {pipeline_parameter_type::FLOAT4x4, 1}  // transform_vp
+        {pass_parameter_type::FLOAT4,   1}, // camera_position
+        {pass_parameter_type::FLOAT4,   1}, // camera_direction
+        {pass_parameter_type::FLOAT4x4, 1}, // transform_v
+        {pass_parameter_type::FLOAT4x4, 1}, // transform_p
+        {pass_parameter_type::FLOAT4x4, 1}  // transform_vp
     };
     make_render_parameter_layout("ash_pass", ash_pass);
 
@@ -153,8 +153,8 @@ void graphics::render(ecs::entity camera_entity)
 
         for (std::size_t i = 0; i < visual.submesh.size(); ++i)
         {
-            m_render_passes.insert(visual.submesh[i].render_pass);
-            visual.submesh[i].render_pass->add(&visual.submesh[i]);
+            m_techniques.insert(visual.submesh[i].technique);
+            visual.submesh[i].technique->add(&visual.submesh[i]);
         }
     });
 
@@ -163,8 +163,8 @@ void graphics::render(ecs::entity camera_entity)
 
     if (c.render_target == nullptr)
     {
-        for (auto render_pass : m_render_passes)
-            render_pass->render(c, command);
+        for (auto technique : m_techniques)
+            technique->render(c, command);
     }
     else
     {
@@ -176,9 +176,9 @@ void graphics::render(ecs::entity camera_entity)
         command->end_render(c.render_target);*/
     }
 
-    for (auto render_pass : m_render_passes)
-        render_pass->clear();
-    m_render_passes.clear();
+    for (auto technique : m_techniques)
+        technique->clear();
+    m_techniques.clear();
 
     m_renderer->execute(command);
 }
@@ -197,10 +197,10 @@ void graphics::end_frame()
 
 void graphics::make_render_parameter_layout(
     std::string_view name,
-    pipeline_parameter_layout_info& info)
+    pass_parameter_layout_info& info)
 {
     auto& factory = m_plugin.factory();
-    m_parameter_layouts[name.data()].reset(factory.make_pipeline_parameter_layout(info.convert()));
+    m_parameter_layouts[name.data()].reset(factory.make_pass_parameter_layout(info.convert()));
 }
 
 std::unique_ptr<render_parameter> graphics::make_render_parameter(std::string_view name)
@@ -208,7 +208,7 @@ std::unique_ptr<render_parameter> graphics::make_render_parameter(std::string_vi
     auto layout = m_parameter_layouts[name.data()].get();
     ASH_ASSERT(layout);
     auto& factory = m_plugin.factory();
-    return std::make_unique<render_parameter>(factory.make_pipeline_parameter(layout));
+    return std::make_unique<render_parameter>(factory.make_pass_parameter(layout));
 }
 
 std::unique_ptr<render_target_set_interface> graphics::make_render_target_set(
@@ -244,23 +244,23 @@ std::vector<resource*> graphics::back_buffers() const
     return result;
 }
 
-render_pass_interface* graphics::make_render_pass_interface(render_pass_info& info)
+technique_interface* graphics::make_technique_interface(technique_info& info)
 {
     auto& factory = m_plugin.factory();
 
     // make layout
     for (auto& subpass : info.subpasses)
     {
-        auto pipeline_layout_desc = subpass.pipeline_layout_info.convert();
+        auto pass_layout_desc = subpass.pass_layout_info.convert();
 
-        std::vector<pipeline_parameter_layout_interface*> parameter_layouts;
-        for (auto& parameter_layout : subpass.pipeline_layout_info.parameters)
+        std::vector<pass_parameter_layout_interface*> parameter_layouts;
+        for (auto& parameter_layout : subpass.pass_layout_info.parameters)
             parameter_layouts.push_back(m_parameter_layouts[parameter_layout].get());
-        pipeline_layout_desc.parameters = parameter_layouts.data();
+        pass_layout_desc.parameters = parameter_layouts.data();
 
-        subpass.pipeline_layout = factory.make_pipeline_layout(pipeline_layout_desc);
+        subpass.pass_layout = factory.make_pass_layout(pass_layout_desc);
     }
 
-    return factory.make_render_pass(info.convert());
+    return factory.make_technique(info.convert());
 }
 } // namespace ash::graphics

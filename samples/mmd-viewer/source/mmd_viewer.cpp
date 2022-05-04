@@ -165,27 +165,27 @@ void mmd_viewer::initialize_pass()
 {
     auto& graphics = system<graphics::graphics>();
 
-    graphics::pipeline_parameter_layout_info mmd_material;
+    graphics::pass_parameter_layout_info mmd_material;
     mmd_material.parameters = {
-        {graphics::pipeline_parameter_type::FLOAT4,  1}, // diffuse
-        {graphics::pipeline_parameter_type::FLOAT3,  1}, // specular
-        {graphics::pipeline_parameter_type::FLOAT,   1}, // specular_strength
-        {graphics::pipeline_parameter_type::UINT,    1}, // toon_mode
-        {graphics::pipeline_parameter_type::UINT,    1}, // spa_mode
-        {graphics::pipeline_parameter_type::TEXTURE, 1}, // tex
-        {graphics::pipeline_parameter_type::TEXTURE, 1}, // toon
-        {graphics::pipeline_parameter_type::TEXTURE, 1}  // spa
+        {graphics::pass_parameter_type::FLOAT4,  1}, // diffuse
+        {graphics::pass_parameter_type::FLOAT3,  1}, // specular
+        {graphics::pass_parameter_type::FLOAT,   1}, // specular_strength
+        {graphics::pass_parameter_type::UINT,    1}, // toon_mode
+        {graphics::pass_parameter_type::UINT,    1}, // spa_mode
+        {graphics::pass_parameter_type::TEXTURE, 1}, // tex
+        {graphics::pass_parameter_type::TEXTURE, 1}, // toon
+        {graphics::pass_parameter_type::TEXTURE, 1}  // spa
     };
     graphics.make_render_parameter_layout("mmd_material", mmd_material);
 
-    graphics::pipeline_parameter_layout_info mmd_skeleton;
+    graphics::pass_parameter_layout_info mmd_skeleton;
     mmd_skeleton.parameters = {
-        {graphics::pipeline_parameter_type::FLOAT4x4_ARRAY, 512}, // offset
+        {graphics::pass_parameter_type::FLOAT4x4_ARRAY, 512}, // offset
     };
     graphics.make_render_parameter_layout("mmd_skeleton", mmd_skeleton);
 
     // Pass.
-    graphics::pipeline_info color_pass_info = {};
+    graphics::pass_info color_pass_info = {};
     color_pass_info.vertex_shader = "resource/shader/glsl/vert.spv";
     color_pass_info.pixel_shader = "resource/shader/glsl/frag.spv";
     color_pass_info.vertex_layout.attributes = {
@@ -200,7 +200,7 @@ void mmd_viewer::initialize_pass()
     color_pass_info.depth = 1;
     color_pass_info.output_depth = true;
     color_pass_info.primitive_topology = graphics::primitive_topology_type::TRIANGLE_LIST;
-    color_pass_info.pipeline_layout_info
+    color_pass_info.pass_layout_info
         .parameters = {"ash_object", "mmd_material", "mmd_skeleton", "ash_pass"};
 
     // Render target.
@@ -224,12 +224,12 @@ void mmd_viewer::initialize_pass()
     depth_stencil.initial_state = graphics::resource_state::UNDEFINED;
     depth_stencil.final_state = graphics::resource_state::DEPTH_STENCIL;
 
-    graphics::render_pass_info mmd_pass_info;
-    mmd_pass_info.render_targets.push_back(render_target);
-    mmd_pass_info.render_targets.push_back(depth_stencil);
-    mmd_pass_info.subpasses.push_back(color_pass_info);
+    graphics::technique_info mmd_technique_info;
+    mmd_technique_info.render_targets.push_back(render_target);
+    mmd_technique_info.render_targets.push_back(depth_stencil);
+    mmd_technique_info.subpasses.push_back(color_pass_info);
 
-    m_render_pass = graphics.make_render_pass<mmd_pass>(mmd_pass_info);
+    m_render_pass = graphics.make_render_pass<mmd_pass>(mmd_technique_info);
     m_render_pass->initialize_render_target_set(graphics);
 }
 } // namespace ash::sample::mmd

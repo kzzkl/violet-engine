@@ -50,7 +50,7 @@ struct vertex_layout_desc
     std::size_t attribute_count;
 };
 
-enum class pipeline_parameter_type : std::uint8_t
+enum class pass_parameter_type : std::uint8_t
 {
     BOOL,
     UINT,
@@ -63,36 +63,36 @@ enum class pipeline_parameter_type : std::uint8_t
     TEXTURE
 };
 
-struct pipeline_parameter_pair
+struct pass_parameter_pair
 {
-    pipeline_parameter_type type;
+    pass_parameter_type type;
     std::size_t size; // Only for array.
 };
 
-struct pipeline_parameter_layout_desc
+struct pass_parameter_layout_desc
 {
-    pipeline_parameter_pair* parameters;
+    pass_parameter_pair* parameters;
     std::size_t size;
 };
 
-class pipeline_parameter_layout_interface
+class pass_parameter_layout_interface
 {
 };
 
-struct pipeline_layout_desc
+struct pass_layout_desc
 {
-    pipeline_parameter_layout_interface** parameters;
+    pass_parameter_layout_interface** parameters;
     std::size_t size;
 };
 
-class pipeline_layout_interface
+class pass_layout_interface
 {
 };
 
-class pipeline_parameter_interface
+class pass_parameter_interface
 {
 public:
-    virtual ~pipeline_parameter_interface() = default;
+    virtual ~pass_parameter_interface() = default;
 
     virtual void set(std::size_t index, bool value) = 0;
     virtual void set(std::size_t index, std::uint32_t value) = 0;
@@ -105,7 +105,7 @@ public:
     virtual void set(std::size_t index, resource_interface* texture) = 0;
 };
 
-struct pipeline_blend_desc
+struct pass_blend_desc
 {
     enum class factor_type
     {
@@ -138,7 +138,7 @@ struct pipeline_blend_desc
     op_type alpha_op;
 };
 
-struct pipeline_depth_stencil_desc
+struct pass_depth_stencil_desc
 {
     enum class depth_functor_type
     {
@@ -155,16 +155,16 @@ enum class primitive_topology_type : std::uint8_t
     LINE_LIST
 };
 
-struct pipeline_desc
+struct pass_desc
 {
     const char* vertex_shader;
     const char* pixel_shader;
 
     vertex_layout_desc vertex_layout;
-    pipeline_layout_interface* pipeline_layout;
+    pass_layout_interface* pass_layout;
 
-    pipeline_blend_desc blend;
-    pipeline_depth_stencil_desc depth_stencil;
+    pass_blend_desc blend;
+    pass_depth_stencil_desc depth_stencil;
 
     std::size_t* input;
     std::size_t input_count;
@@ -206,16 +206,16 @@ struct render_target_desc
     std::size_t samples;
 };
 
-struct render_pass_desc
+struct technique_desc
 {
     render_target_desc* render_targets;
     std::size_t render_target_count;
 
-    pipeline_desc* subpasses;
+    pass_desc* subpasses;
     std::size_t subpass_count;
 };
 
-class render_pass_interface
+class technique_interface
 {
 };
 
@@ -227,7 +227,7 @@ struct render_target_set_desc
     std::uint32_t width;
     std::uint32_t height;
 
-    render_pass_interface* render_pass;
+    technique_interface* technique;
 };
 
 class render_target_set_interface
@@ -246,12 +246,12 @@ class render_command_interface
 {
 public:
     virtual void begin(
-        render_pass_interface* pass,
+        technique_interface* pass,
         render_target_set_interface* render_target_set) = 0;
-    virtual void end(render_pass_interface* pass) = 0;
-    virtual void next(render_pass_interface* pass) = 0;
+    virtual void end(technique_interface* pass) = 0;
+    virtual void next(technique_interface* pass) = 0;
 
-    virtual void parameter(std::size_t i, pipeline_parameter_interface*) = 0;
+    virtual void parameter(std::size_t i, pass_parameter_interface*) = 0;
 
     virtual void draw(
         resource_interface* vertex,
@@ -314,13 +314,13 @@ public:
 
     virtual render_target_set_interface* make_render_target_set(
         const render_target_set_desc& desc) = 0;
-    virtual render_pass_interface* make_render_pass(const render_pass_desc& desc) = 0;
+    virtual technique_interface* make_technique(const technique_desc& desc) = 0;
 
-    virtual pipeline_parameter_layout_interface* make_pipeline_parameter_layout(
-        const pipeline_parameter_layout_desc& desc) = 0;
-    virtual pipeline_parameter_interface* make_pipeline_parameter(
-        pipeline_parameter_layout_interface* layout) = 0;
-    virtual pipeline_layout_interface* make_pipeline_layout(const pipeline_layout_desc& desc) = 0;
+    virtual pass_parameter_layout_interface* make_pass_parameter_layout(
+        const pass_parameter_layout_desc& desc) = 0;
+    virtual pass_parameter_interface* make_pass_parameter(
+        pass_parameter_layout_interface* layout) = 0;
+    virtual pass_layout_interface* make_pass_layout(const pass_layout_desc& desc) = 0;
 
     virtual resource_interface* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
     virtual resource_interface* make_index_buffer(const index_buffer_desc& desc) = 0;

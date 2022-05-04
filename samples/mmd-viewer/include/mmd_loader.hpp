@@ -40,7 +40,7 @@ public:
         mmd_resource& resource,
         std::string_view pmx,
         std::string_view vmd,
-        graphics::render_pass* render_pass);
+        graphics::technique* technique);
 
 private:
     void load_hierarchy(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader);
@@ -50,7 +50,7 @@ private:
         ecs::entity entity,
         mmd_resource& resource,
         const pmx_loader& loader,
-        graphics::render_pass* render_pass);
+        graphics::technique* technique);
     void load_ik(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader);
     void load_physics(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader);
 

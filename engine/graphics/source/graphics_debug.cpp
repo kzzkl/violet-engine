@@ -8,7 +8,7 @@
 
 namespace ash::graphics
 {
-debug_pass::debug_pass(render_pass_interface* interface) : render_pass(interface)
+debug_pass::debug_pass(technique_interface* interface) : technique(interface)
 {
 }
 

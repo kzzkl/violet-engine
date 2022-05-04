@@ -49,11 +49,11 @@
                 ]
             }
         },
-        "pipeline_parameter": {
+        "pass_parameter": {
             "ash_object": "buffer",
             "ash_pass": "buffer"
         },
-        "pipeline_parameter_layout": {
+        "pass_parameter_layout": {
             "ash_object": [
                 {
                     "name": "transform_m",

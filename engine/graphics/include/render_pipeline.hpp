@@ -7,7 +7,7 @@
 
 namespace ash::graphics
 {
-class render_pass;
+class technique;
 struct render_unit
 {
     resource_interface* vertex_buffer{nullptr};
@@ -17,17 +17,17 @@ struct render_unit
     std::size_t index_end{0};
     std::size_t vertex_base{0};
 
-    render_pass* render_pass{nullptr};
+    technique* technique{nullptr};
     std::vector<render_parameter*> parameters;
 
     void* external{nullptr};
 };
 
-class render_pass
+class technique
 {
 public:
-    render_pass(render_pass_interface* interface);
-    virtual ~render_pass() = default;
+    technique(technique_interface* interface);
+    virtual ~technique() = default;
 
     void add(const render_unit* unit) { m_units.push_back(unit); }
     void clear() { m_units.clear(); }
@@ -35,11 +35,11 @@ public:
     virtual void render(const camera& camera, render_command_interface* command) = 0;
 
 protected:
-    render_pass_interface* interface() const noexcept { return m_interface.get(); }
+    technique_interface* interface() const noexcept { return m_interface.get(); }
     const std::vector<const render_unit*>& units() const { return m_units; }
 
 private:
-    std::unique_ptr<render_pass_interface> m_interface;
+    std::unique_ptr<technique_interface> m_interface;
     std::vector<const render_unit*> m_units;
 };
 } // namespace ash::graphics

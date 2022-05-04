@@ -5,10 +5,10 @@
 
 namespace ash::sample::mmd
 {
-class mmd_pass : public graphics::render_pass
+class mmd_pass : public graphics::technique
 {
 public:
-    mmd_pass(graphics::render_pass_interface* interface);
+    mmd_pass(graphics::technique_interface* interface);
     virtual void render(const graphics::camera& camera, graphics::render_command_interface* command)
         override;
 

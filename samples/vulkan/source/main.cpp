@@ -55,7 +55,7 @@ public:
 private:
     void initialize_pass()
     {
-        graphics::pipeline_desc subpass_desc = {};
+        graphics::pass_desc subpass_desc = {};
         subpass_desc.vertex_shader = "vert.spv";
         subpass_desc.pixel_shader = "frag.spv";
         std::size_t o = 0;
@@ -70,50 +70,50 @@ private:
         subpass_desc.vertex_layout.attribute_count = vertex_attributes.size();
 
         // Layout.
-        std::vector<graphics::pipeline_parameter_pair> parameter_pairs_1 = {
-            {graphics::pipeline_parameter_type::FLOAT3,   1},
-            {graphics::pipeline_parameter_type::FLOAT4x4, 1},
-            {graphics::pipeline_parameter_type::TEXTURE,  1}
+        std::vector<graphics::pass_parameter_pair> parameter_pairs_1 = {
+            {graphics::pass_parameter_type::FLOAT3,   1},
+            {graphics::pass_parameter_type::FLOAT4x4, 1},
+            {graphics::pass_parameter_type::TEXTURE,  1}
         };
-        graphics::pipeline_parameter_layout_desc parameter_layout_desc_1 = {};
+        graphics::pass_parameter_layout_desc parameter_layout_desc_1 = {};
         parameter_layout_desc_1.parameters = parameter_pairs_1.data();
         parameter_layout_desc_1.size = parameter_pairs_1.size();
-        m_pipeline_parameter_layout_1.reset(
-            m_vulkan_plugin.factory().make_pipeline_parameter_layout(parameter_layout_desc_1));
+        m_pass_parameter_layout_1.reset(
+            m_vulkan_plugin.factory().make_pass_parameter_layout(parameter_layout_desc_1));
 
         m_parameter_1.reset(
-            m_vulkan_plugin.factory().make_pipeline_parameter(m_pipeline_parameter_layout_1.get()));
+            m_vulkan_plugin.factory().make_pass_parameter(m_pass_parameter_layout_1.get()));
 
-        std::vector<graphics::pipeline_parameter_pair> parameter_pairs_2 = {
-            {graphics::pipeline_parameter_type::FLOAT3, 1}
+        std::vector<graphics::pass_parameter_pair> parameter_pairs_2 = {
+            {graphics::pass_parameter_type::FLOAT3, 1}
         };
-        graphics::pipeline_parameter_layout_desc parameter_layout_desc_2 = {};
+        graphics::pass_parameter_layout_desc parameter_layout_desc_2 = {};
         parameter_layout_desc_2.parameters = parameter_pairs_2.data();
         parameter_layout_desc_2.size = parameter_pairs_2.size();
-        m_pipeline_parameter_layout_2.reset(
-            m_vulkan_plugin.factory().make_pipeline_parameter_layout(parameter_layout_desc_2));
+        m_pass_parameter_layout_2.reset(
+            m_vulkan_plugin.factory().make_pass_parameter_layout(parameter_layout_desc_2));
 
         m_parameter_2.reset(
-            m_vulkan_plugin.factory().make_pipeline_parameter(m_pipeline_parameter_layout_2.get()));
+            m_vulkan_plugin.factory().make_pass_parameter(m_pass_parameter_layout_2.get()));
 
-        std::vector<graphics::pipeline_parameter_layout_interface*> pl = {
-            m_pipeline_parameter_layout_1.get(),
-            m_pipeline_parameter_layout_2.get()};
+        std::vector<graphics::pass_parameter_layout_interface*> pl = {
+            m_pass_parameter_layout_1.get(),
+            m_pass_parameter_layout_2.get()};
 
-        graphics::pipeline_layout_desc layout_desc;
+        graphics::pass_layout_desc layout_desc;
         layout_desc.parameters = pl.data();
         layout_desc.size = pl.size();
-        m_pipeline_layout.reset(m_vulkan_plugin.factory().make_pipeline_layout(layout_desc));
-        subpass_desc.pipeline_layout = m_pipeline_layout.get();
+        m_pass_layout.reset(m_vulkan_plugin.factory().make_pass_layout(layout_desc));
+        subpass_desc.pass_layout = m_pass_layout.get();
 
-        std::vector<graphics::pipeline_desc> subpasses;
+        std::vector<graphics::pass_desc> subpasses;
         subpasses.push_back(subpass_desc);
 
-        graphics::render_pass_desc desc = {};
+        graphics::technique_desc desc = {};
         desc.subpasses = subpasses.data();
         desc.subpass_count = subpasses.size();
 
-        m_pass.reset(m_vulkan_plugin.factory().make_render_pass(desc));
+        m_pass.reset(m_vulkan_plugin.factory().make_technique(desc));
 
         auto rect = system<window::window>().rect();
         for (std::size_t i = 0; i < m_renderer->back_buffer_count(); ++i)
@@ -121,7 +121,7 @@ private:
             std::array<graphics::resource_interface*, 1> render_targets = {
                 m_renderer->back_buffer(i)};
             graphics::render_target_set_desc render_target_set_desc = {};
-            render_target_set_desc.render_pass = m_pass.get();
+            render_target_set_desc.technique = m_pass.get();
             render_target_set_desc.render_targets = render_targets.data();
             render_target_set_desc.render_target_count = render_targets.size();
             render_target_set_desc.width = rect.width;
@@ -213,11 +213,11 @@ private:
     vulkan_plugin m_vulkan_plugin;
 
     std::unique_ptr<graphics::renderer_interface> m_renderer;
-    std::unique_ptr<graphics::render_pass_interface> m_pass;
+    std::unique_ptr<graphics::technique_interface> m_pass;
 
-    std::unique_ptr<graphics::pipeline_parameter_layout_interface> m_pipeline_parameter_layout_1;
-    std::unique_ptr<graphics::pipeline_parameter_layout_interface> m_pipeline_parameter_layout_2;
-    std::unique_ptr<graphics::pipeline_layout_interface> m_pipeline_layout;
+    std::unique_ptr<graphics::pass_parameter_layout_interface> m_pass_parameter_layout_1;
+    std::unique_ptr<graphics::pass_parameter_layout_interface> m_pass_parameter_layout_2;
+    std::unique_ptr<graphics::pass_layout_interface> m_pass_layout;
 
     std::unique_ptr<graphics::resource_interface> m_vertex_buffer;
     std::unique_ptr<graphics::resource_interface> m_index_buffer;
@@ -225,8 +225,8 @@ private:
     std::vector<std::unique_ptr<graphics::render_target_set_interface>> m_render_target_sets;
 
     math::float3 m_color{};
-    std::unique_ptr<graphics::pipeline_parameter_interface> m_parameter_1;
-    std::unique_ptr<graphics::pipeline_parameter_interface> m_parameter_2;
+    std::unique_ptr<graphics::pass_parameter_interface> m_parameter_1;
+    std::unique_ptr<graphics::pass_parameter_interface> m_parameter_2;
 
     std::unique_ptr<graphics::resource_interface> m_texture;
 };

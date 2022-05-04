@@ -7,8 +7,8 @@
 
 namespace ash::graphics::vk
 {
-vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
-    const pipeline_parameter_layout_desc& desc)
+vk_pass_parameter_layout::vk_pass_parameter_layout(
+    const pass_parameter_layout_desc& desc)
     : m_ubo_count(0),
       m_cis_count(0)
 {
@@ -21,17 +21,17 @@ vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
     {
         switch (desc.parameters[i].type)
         {
-        case pipeline_parameter_type::BOOL:
-        case pipeline_parameter_type::UINT:
-        case pipeline_parameter_type::FLOAT:
-        case pipeline_parameter_type::FLOAT2:
-        case pipeline_parameter_type::FLOAT3:
-        case pipeline_parameter_type::FLOAT4:
-        case pipeline_parameter_type::FLOAT4x4:
-        case pipeline_parameter_type::FLOAT4x4_ARRAY:
+        case pass_parameter_type::BOOL:
+        case pass_parameter_type::UINT:
+        case pass_parameter_type::FLOAT:
+        case pass_parameter_type::FLOAT2:
+        case pass_parameter_type::FLOAT3:
+        case pass_parameter_type::FLOAT4:
+        case pass_parameter_type::FLOAT4x4:
+        case pass_parameter_type::FLOAT4x4_ARRAY:
             m_ubo_count = 1;
             break;
-        case pipeline_parameter_type::TEXTURE:
+        case pass_parameter_type::TEXTURE:
             ++m_cis_count;
             break;
         default:
@@ -83,11 +83,11 @@ vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
         &m_descriptor_set_layout));
 }
 
-vk_pipeline_parameter::vk_pipeline_parameter(pipeline_parameter_layout_interface* layout)
+vk_pass_parameter::vk_pass_parameter(pass_parameter_layout_interface* layout)
     : m_dirty(0),
       m_last_sync_frame(-1)
 {
-    auto vk_layout = static_cast<vk_pipeline_parameter_layout*>(layout);
+    auto vk_layout = static_cast<vk_pass_parameter_layout*>(layout);
     auto [ubo_count, cis_count] = vk_layout->descriptor_count();
     m_textures.resize(cis_count);
 
@@ -103,45 +103,45 @@ vk_pipeline_parameter::vk_pipeline_parameter(pipeline_parameter_layout_interface
         std::size_t size = 0;
         switch (parameter.type)
         {
-        case pipeline_parameter_type::BOOL:
+        case pass_parameter_type::BOOL:
             align_address = cal_align(ubo_offset, 4);
             size = sizeof(bool);
             break;
-        case pipeline_parameter_type::UINT:
+        case pass_parameter_type::UINT:
             align_address = cal_align(ubo_offset, 4);
             size = sizeof(std::uint32_t);
             break;
-        case pipeline_parameter_type::FLOAT:
+        case pass_parameter_type::FLOAT:
             align_address = cal_align(ubo_offset, 4);
             size = sizeof(float);
             break;
-        case pipeline_parameter_type::FLOAT2:
+        case pass_parameter_type::FLOAT2:
             align_address = cal_align(ubo_offset, 8);
             size = sizeof(math::float2);
             break;
-        case pipeline_parameter_type::FLOAT3:
+        case pass_parameter_type::FLOAT3:
             align_address = cal_align(ubo_offset, 16);
             size = sizeof(math::float3);
             break;
-        case pipeline_parameter_type::FLOAT4:
+        case pass_parameter_type::FLOAT4:
             align_address = cal_align(ubo_offset, 16);
             size = sizeof(math::float4);
             break;
-        case pipeline_parameter_type::FLOAT4x4:
+        case pass_parameter_type::FLOAT4x4:
             align_address = cal_align(ubo_offset, 16);
             size = sizeof(math::float4x4);
             break;
-        case pipeline_parameter_type::FLOAT4x4_ARRAY:
+        case pass_parameter_type::FLOAT4x4_ARRAY:
             align_address = cal_align(ubo_offset, 16);
             size = sizeof(math::float4x4) * parameter.size;
             break;
-        case pipeline_parameter_type::TEXTURE:
+        case pass_parameter_type::TEXTURE:
             break;
         default:
             throw vk_exception("Invalid pipeline parameter type.");
         }
 
-        if (parameter.type == pipeline_parameter_type::TEXTURE)
+        if (parameter.type == pass_parameter_type::TEXTURE)
         {
             align_address = texture_offset;
             ++texture_offset;
@@ -199,7 +199,7 @@ vk_pipeline_parameter::vk_pipeline_parameter(pipeline_parameter_layout_interface
     }
 }
 
-void vk_pipeline_parameter::set(std::size_t index, const math::float4x4& value)
+void vk_pass_parameter::set(std::size_t index, const math::float4x4& value)
 {
     math::float4x4 m;
     math::simd::store(math::matrix_simd::transpose(math::simd::load(value)), m);
@@ -208,7 +208,7 @@ void vk_pipeline_parameter::set(std::size_t index, const math::float4x4& value)
     mark_dirty(index);
 }
 
-void vk_pipeline_parameter::set(std::size_t index, const math::float4x4* data, std::size_t size)
+void vk_pass_parameter::set(std::size_t index, const math::float4x4* data, std::size_t size)
 {
     math::float4x4 m;
     math::float4x4_simd t;
@@ -225,13 +225,13 @@ void vk_pipeline_parameter::set(std::size_t index, const math::float4x4* data, s
     mark_dirty(index);
 }
 
-void vk_pipeline_parameter::set(std::size_t index, resource_interface* texture)
+void vk_pass_parameter::set(std::size_t index, resource_interface* texture)
 {
     m_textures[m_parameter_info[index].offset] = static_cast<vk_texture*>(texture);
     mark_dirty(index);
 }
 
-void vk_pipeline_parameter::sync()
+void vk_pass_parameter::sync()
 {
     if (m_last_sync_frame == vk_frame_counter::frame_counter())
         return;
@@ -247,7 +247,7 @@ void vk_pipeline_parameter::sync()
         if (info.dirty == 0)
             continue;
 
-        if (info.type == pipeline_parameter_type::TEXTURE)
+        if (info.type == pass_parameter_type::TEXTURE)
         {
             auto texture = m_textures[info.offset];
 
@@ -280,12 +280,12 @@ void vk_pipeline_parameter::sync()
     }
 }
 
-VkDescriptorSet vk_pipeline_parameter::descriptor_set() const
+VkDescriptorSet vk_pass_parameter::descriptor_set() const
 {
     return m_descriptor_set[vk_frame_counter::frame_resource_index()];
 }
 
-void vk_pipeline_parameter::mark_dirty(std::size_t index)
+void vk_pass_parameter::mark_dirty(std::size_t index)
 {
     if (m_parameter_info[index].dirty == 0)
         ++m_dirty;
@@ -293,31 +293,31 @@ void vk_pipeline_parameter::mark_dirty(std::size_t index)
     m_parameter_info[index].dirty = vk_frame_counter::frame_resource_count();
 }
 
-vk_pipeline_layout::vk_pipeline_layout(const pipeline_layout_desc& desc)
+vk_pass_layout::vk_pass_layout(const pass_layout_desc& desc)
 {
     auto device = vk_context::device();
 
     std::vector<VkDescriptorSetLayout> layouts;
     for (std::size_t i = 0; i < desc.size; ++i)
-        layouts.push_back(static_cast<vk_pipeline_parameter_layout*>(desc.parameters[i])->layout());
+        layouts.push_back(static_cast<vk_pass_parameter_layout*>(desc.parameters[i])->layout());
 
-    VkPipelineLayoutCreateInfo pipeline_layout_info = {};
-    pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipeline_layout_info.setLayoutCount = static_cast<std::uint32_t>(layouts.size());
-    pipeline_layout_info.pSetLayouts = layouts.data();
+    VkPipelineLayoutCreateInfo pass_layout_info = {};
+    pass_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pass_layout_info.setLayoutCount = static_cast<std::uint32_t>(layouts.size());
+    pass_layout_info.pSetLayouts = layouts.data();
 
     throw_if_failed(
-        vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr, &m_pipeline_layout));
+        vkCreatePipelineLayout(device, &pass_layout_info, nullptr, &m_pass_layout));
 }
 
-vk_pipeline_layout::~vk_pipeline_layout()
+vk_pass_layout::~vk_pass_layout()
 {
     auto device = vk_context::device();
-    vkDestroyPipelineLayout(device, m_pipeline_layout, nullptr);
+    vkDestroyPipelineLayout(device, m_pass_layout, nullptr);
 }
 
-vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, std::size_t index)
-    : m_pipeline_layout(static_cast<vk_pipeline_layout*>(desc.pipeline_layout))
+vk_pipeline::vk_pipeline(const pass_desc& desc, VkRenderPass render_pass, std::size_t index)
+    : m_pass_layout(static_cast<vk_pass_layout*>(desc.pass_layout))
 {
     auto device = vk_context::device();
 
@@ -502,26 +502,26 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
     color_blend_info.blendConstants[3] = 0.0f;
 
     // Create pipeline.
-    VkGraphicsPipelineCreateInfo pipeline_info = {};
-    pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipeline_info.stageCount = 2;
-    pipeline_info.pStages = shader_stage_info;
-    pipeline_info.pVertexInputState = &vertex_input_info;
-    pipeline_info.pInputAssemblyState = &input_assembly_info;
-    pipeline_info.pViewportState = &viewport_info;
-    pipeline_info.pRasterizationState = &rasterization_info;
-    pipeline_info.pMultisampleState = &multisample_info;
-    pipeline_info.pColorBlendState = &color_blend_info;
-    pipeline_info.pDynamicState = nullptr;
-    pipeline_info.layout =
-        static_cast<vk_pipeline_layout*>(desc.pipeline_layout)->pipeline_layout();
-    pipeline_info.renderPass = render_pass;
-    pipeline_info.subpass = static_cast<std::uint32_t>(index);
-    pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
-    pipeline_info.pDepthStencilState = &depth_stencil;
+    VkGraphicsPipelineCreateInfo pass_info = {};
+    pass_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pass_info.stageCount = 2;
+    pass_info.pStages = shader_stage_info;
+    pass_info.pVertexInputState = &vertex_input_info;
+    pass_info.pInputAssemblyState = &input_assembly_info;
+    pass_info.pViewportState = &viewport_info;
+    pass_info.pRasterizationState = &rasterization_info;
+    pass_info.pMultisampleState = &multisample_info;
+    pass_info.pColorBlendState = &color_blend_info;
+    pass_info.pDynamicState = nullptr;
+    pass_info.layout =
+        static_cast<vk_pass_layout*>(desc.pass_layout)->pass_layout();
+    pass_info.renderPass = render_pass;
+    pass_info.subpass = static_cast<std::uint32_t>(index);
+    pass_info.basePipelineHandle = VK_NULL_HANDLE;
+    pass_info.pDepthStencilState = &depth_stencil;
 
     throw_if_failed(
-        vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &m_pipeline));
+        vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pass_info, nullptr, &m_pipeline));
 
     vkDestroyShaderModule(device, vert_stage_info.module, nullptr);
     vkDestroyShaderModule(device, frag_stage_info.module, nullptr);
@@ -547,7 +547,7 @@ VkShaderModule vk_pipeline::load_shader(std::string_view file)
     return result;
 }
 
-vk_render_pass::vk_render_pass(const render_pass_desc& desc)
+vk_render_pass::vk_render_pass(const technique_desc& desc)
 {
     create_pass(desc);
 
@@ -605,7 +605,7 @@ void vk_render_pass::next(VkCommandBuffer command_buffer)
         m_pipelines[m_subpass_index].pipeline());
 }
 
-void vk_render_pass::create_pass(const render_pass_desc& desc)
+void vk_render_pass::create_pass(const technique_desc& desc)
 {
     struct subpass_reference
     {

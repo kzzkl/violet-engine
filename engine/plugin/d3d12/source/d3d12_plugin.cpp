@@ -8,18 +8,18 @@ namespace ash::graphics::d3d12
 class d3d12_factory : public factory
 {
 public:
-    virtual pipeline_parameter* make_pipeline_parameter(
-        const pipeline_parameter_desc& desc) override
+    virtual pass_parameter* make_pass_parameter(
+        const pass_parameter_desc& desc) override
     {
-        return new d3d12_pipeline_parameter(desc);
+        return new d3d12_pass_parameter(desc);
     }
 
-    virtual pipeline_layout* make_pipeline_layout(const pipeline_layout_desc& desc) override
+    virtual pass_layout* make_pass_layout(const pass_layout_desc& desc) override
     {
         return new d3d12_parameter_layout(desc);
     }
 
-    virtual pipeline* make_pipeline(const pipeline_desc& desc) override
+    virtual pipeline* make_pipeline(const pass_desc& desc) override
     {
         return new d3d12_pipeline(desc);
     }

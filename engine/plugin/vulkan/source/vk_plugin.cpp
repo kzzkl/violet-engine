@@ -20,27 +20,27 @@ public:
         return new vk_frame_buffer(desc);
     }
 
-    virtual render_pass_interface* make_render_pass(const render_pass_desc& desc) override
+    virtual technique_interface* make_technique(const technique_desc& desc) override
     {
         return new vk_render_pass(desc);
     }
 
-    virtual pipeline_parameter_layout_interface* make_pipeline_parameter_layout(
-        const pipeline_parameter_layout_desc& desc) override
+    virtual pass_parameter_layout_interface* make_pass_parameter_layout(
+        const pass_parameter_layout_desc& desc) override
     {
-        return new vk_pipeline_parameter_layout(desc);
+        return new vk_pass_parameter_layout(desc);
     }
 
-    virtual pipeline_layout_interface* make_pipeline_layout(
-        const pipeline_layout_desc& desc) override
+    virtual pass_layout_interface* make_pass_layout(
+        const pass_layout_desc& desc) override
     {
-        return new vk_pipeline_layout(desc);
+        return new vk_pass_layout(desc);
     }
 
-    virtual pipeline_parameter_interface* make_pipeline_parameter(
-        pipeline_parameter_layout_interface* layout) override
+    virtual pass_parameter_interface* make_pass_parameter(
+        pass_parameter_layout_interface* layout) override
     {
-        return new vk_pipeline_parameter(layout);
+        return new vk_pass_parameter(layout);
     }
 
     virtual resource_interface* make_vertex_buffer(const vertex_buffer_desc& desc) override

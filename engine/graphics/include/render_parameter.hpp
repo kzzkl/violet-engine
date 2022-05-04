@@ -12,7 +12,7 @@ namespace ash::graphics
 class render_parameter
 {
 public:
-    render_parameter(pipeline_parameter_interface* parameter) : m_parameter(parameter) {}
+    render_parameter(pass_parameter_interface* parameter) : m_parameter(parameter) {}
 
     template <typename T>
     void set(std::size_t index, const T& value) noexcept
@@ -27,9 +27,9 @@ public:
         m_parameter->set(index, value, size);
     }
 
-    pipeline_parameter_interface* parameter() const { return m_parameter.get(); }
+    pass_parameter_interface* parameter() const { return m_parameter.get(); }
 
 private:
-    std::unique_ptr<pipeline_parameter_interface> m_parameter;
+    std::unique_ptr<pass_parameter_interface> m_parameter;
 };
 } // namespace ash::graphics

@@ -10,12 +10,12 @@ class vk_command : public render_command_interface
 public:
     vk_command(VkCommandBuffer command_buffer);
 
-    virtual void begin(render_pass_interface* pass, render_target_set_interface* render_target_set)
+    virtual void begin(technique_interface* pass, render_target_set_interface* render_target_set)
         override;
-    virtual void end(render_pass_interface* pass) override;
-    virtual void next(render_pass_interface* pass) override;
+    virtual void end(technique_interface* pass) override;
+    virtual void next(technique_interface* pass) override;
 
-    virtual void parameter(std::size_t i, pipeline_parameter_interface* parameter) override;
+    virtual void parameter(std::size_t i, pass_parameter_interface* parameter) override;
 
     virtual void draw(
         resource_interface* vertex,
@@ -30,7 +30,7 @@ public:
 private:
     VkCommandBuffer m_command_buffer;
 
-    VkPipelineLayout m_pipeline_layout;
+    VkPipelineLayout m_pass_layout;
 };
 
 class vk_command_queue

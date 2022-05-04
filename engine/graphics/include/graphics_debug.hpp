@@ -8,10 +8,10 @@
 
 namespace ash::graphics
 {
-class debug_pass : public render_pass
+class debug_pass : public technique
 {
 public:
-    debug_pass(render_pass_interface* interface);
+    debug_pass(technique_interface* interface);
     virtual void render(const camera& camera, render_command_interface* command) override;
 };
 

@@ -19,9 +19,9 @@ class d3d12_render_command : public render_command
 public:
     d3d12_render_command(D3D12CommandAllocator* allocator, std::wstring_view name = L"");
 
-    virtual void pipeline(pipeline_type* pipeline) override;
+    virtual void pipeline(pass_type* pipeline) override;
     virtual void layout(layout_type* layout) override;
-    virtual void parameter(std::size_t index, pipeline_parameter* parameter) override;
+    virtual void parameter(std::size_t index, pass_parameter* parameter) override;
     virtual void render_target(resource* target, resource* depth_stencil) override;
     virtual void scissor(const scissor_rect& rect) override;
     virtual void draw(

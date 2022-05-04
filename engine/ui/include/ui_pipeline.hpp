@@ -15,7 +15,7 @@ struct ui_render_data
 class ui_pass : public graphics::render_pass
 {
 public:
-    ui_pass(graphics::render_pass_interface* interface);
+    ui_pass(graphics::technique_interface* interface);
 
     virtual void render(const graphics::camera& camera, graphics::render_command_interface* command)
         override;

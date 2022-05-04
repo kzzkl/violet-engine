@@ -20,9 +20,9 @@ d3d12_render_command::d3d12_render_command(D3D12CommandAllocator* allocator, std
     m_command_list->Close();
 }
 
-void d3d12_render_command::pipeline(pipeline_type* pipeline)
+void d3d12_render_command::pipeline(pass_type* pipeline)
 {
-    D3D12PipelineState* pso = static_cast<d3d12_pipeline*>(pipeline)->pipeline_state();
+    D3D12PipelineState* pso = static_cast<d3d12_pipeline*>(pipeline)->pass_state();
     m_command_list->SetPipelineState(pso);
 }
 
@@ -32,9 +32,9 @@ void d3d12_render_command::layout(layout_type* layout)
     m_command_list->SetGraphicsRootSignature(l->root_signature());
 }
 
-void d3d12_render_command::parameter(std::size_t index, pipeline_parameter* parameter)
+void d3d12_render_command::parameter(std::size_t index, pass_parameter* parameter)
 {
-    d3d12_pipeline_parameter* p = static_cast<d3d12_pipeline_parameter*>(parameter);
+    d3d12_pass_parameter* p = static_cast<d3d12_pass_parameter*>(parameter);
     p->sync();
     if (p->tier() == d3d12_parameter_tier_type::TIER1)
     {

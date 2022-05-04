@@ -33,15 +33,15 @@ public:
     void end_frame();
 
     template <typename T, typename... Args>
-    std::unique_ptr<T> make_render_pass(render_pass_info& info, Args&&... args)
+    std::unique_ptr<T> make_render_pass(technique_info& info, Args&&... args)
     {
-        auto interface = make_render_pass_interface(info);
+        auto interface = make_technique_interface(info);
         ASH_ASSERT(interface);
 
         return std::make_unique<T>(interface, std::forward<Args>(args)...);
     }
 
-    void make_render_parameter_layout(std::string_view name, pipeline_parameter_layout_info& info);
+    void make_render_parameter_layout(std::string_view name, pass_parameter_layout_info& info);
     std::unique_ptr<render_parameter> make_render_parameter(std::string_view name);
 
     std::unique_ptr<render_target_set_interface> make_render_target_set(
@@ -110,7 +110,7 @@ public:
     graphics_debug& debug() { return *m_debug; }
 
 private:
-    render_pass_interface* make_render_pass_interface(render_pass_info& info);
+    technique_interface* make_technique_interface(technique_info& info);
 
     graphics_plugin m_plugin;
     std::unique_ptr<renderer> m_renderer;
@@ -121,9 +121,9 @@ private:
 
     // ash::ecs::view<scene::transform>* m_tv;
 
-    std::set<render_pass*> m_render_passes;
+    std::set<technique*> m_techniques;
 
-    interface_map<pipeline_parameter_layout_interface> m_parameter_layouts;
+    interface_map<pass_parameter_layout_interface> m_parameter_layouts;
 
     graphics_config m_config;
     std::unique_ptr<graphics_debug> m_debug;

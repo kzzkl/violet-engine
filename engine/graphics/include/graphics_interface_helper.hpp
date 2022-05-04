@@ -13,50 +13,50 @@ public:
     std::vector<vertex_attribute_type> attributes;
 };
 
-class pipeline_parameter_layout_info
+class pass_parameter_layout_info
 {
 public:
-    pipeline_parameter_layout_desc convert() noexcept;
-    std::vector<pipeline_parameter_pair> parameters;
+    pass_parameter_layout_desc convert() noexcept;
+    std::vector<pass_parameter_pair> parameters;
 };
 
-class pipeline_layout_info
+class pass_layout_info
 {
 public:
-    pipeline_layout_desc convert() noexcept;
+    pass_layout_desc convert() noexcept;
     std::vector<std::string> parameters;
 };
 
-class pipeline_blend_info : public pipeline_blend_desc
+class pass_blend_info : public pass_blend_desc
 {
 public:
-    pipeline_blend_info();
+    pass_blend_info();
 
-    pipeline_blend_desc convert() noexcept { return *this; }
+    pass_blend_desc convert() noexcept { return *this; }
 };
 
-class pipeline_depth_stencil_info : public pipeline_depth_stencil_desc
+class pass_depth_stencil_info : public pass_depth_stencil_desc
 {
 public:
-    pipeline_depth_stencil_desc convert() noexcept { return *this; }
+    pass_depth_stencil_desc convert() noexcept { return *this; }
 };
 
-class pipeline_info
+class pass_info
 {
 public:
-    pipeline_info();
+    pass_info();
 
-    pipeline_desc convert() noexcept;
+    pass_desc convert() noexcept;
 
     std::string vertex_shader;
     std::string pixel_shader;
 
     vertex_layout_info vertex_layout;
-    pipeline_layout_interface* pipeline_layout;
-    pipeline_layout_info pipeline_layout_info;
+    pass_layout_interface* pass_layout;
+    pass_layout_info pass_layout_info;
 
-    pipeline_blend_info blend;
-    pipeline_depth_stencil_info depth_stencil;
+    pass_blend_info blend;
+    pass_depth_stencil_info depth_stencil;
 
     std::vector<std::size_t> input;
     std::vector<std::size_t> output;
@@ -73,17 +73,17 @@ public:
     render_target_desc convert() noexcept { return *this; }
 };
 
-class render_pass_info
+class technique_info
 {
 public:
-    render_pass_desc convert() noexcept;
+    technique_desc convert() noexcept;
 
     std::vector<render_target_info> render_targets;
-    std::vector<pipeline_info> subpasses;
+    std::vector<pass_info> subpasses;
 
 private:
     std::vector<render_target_desc> m_render_target_desc;
-    std::vector<pipeline_desc> m_pass_desc;
+    std::vector<pass_desc> m_pass_desc;
 };
 
 class render_target_set_info
@@ -94,7 +94,7 @@ public:
     std::vector<resource_interface*> render_targets;
     std::uint32_t width;
     std::uint32_t height;
-    render_pass_interface* render_pass;
+    technique_interface* technique;
 };
 
 class renderer_info : public renderer_desc

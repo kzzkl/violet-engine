@@ -2,7 +2,7 @@
 
 namespace ash::sample::mmd
 {
-mmd_pass::mmd_pass(graphics::render_pass_interface* interface) : graphics::render_pass(interface)
+mmd_pass::mmd_pass(graphics::technique_interface* interface) : graphics::technique(interface)
 {
 }
 
@@ -41,7 +41,7 @@ void mmd_pass::initialize_render_target_set(graphics::graphics& graphics)
         graphics::render_target_set_info render_target_set_info;
         render_target_set_info.render_targets.push_back(back_buffers[i]);
         render_target_set_info.render_targets.push_back(m_depth_stencil.get());
-        render_target_set_info.render_pass = interface();
+        render_target_set_info.technique = interface();
         render_target_set_info.width = 1300;
         render_target_set_info.height = 800;
         m_render_target_sets.emplace_back(graphics.make_render_target_set(render_target_set_info));
