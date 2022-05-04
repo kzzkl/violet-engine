@@ -128,11 +128,11 @@ void vk_context::create_instance()
     // Create vulkan instance.
     VkApplicationInfo app_info = {};
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    app_info.pApplicationName = "ASH_APPLICATION";
+    app_info.pApplicationName = "Ash Engine Application";
     app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    app_info.pEngineName = "AshEngine";
+    app_info.pEngineName = "Ash Engine";
     app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    app_info.apiVersion = VK_API_VERSION_1_0;
+    app_info.apiVersion = VK_API_VERSION_1_2;
 
     VkInstanceCreateInfo instance_info = {};
     instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -165,11 +165,9 @@ void vk_context::create_instance()
     // Enable validation layer.
     VkDebugUtilsMessengerCreateInfoEXT debug_info = {};
     debug_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    debug_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
-                                 VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+    debug_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    debug_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                             VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+    debug_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                              VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
     debug_info.pfnUserCallback = debug_callback;
     debug_info.pUserData = nullptr;
@@ -208,13 +206,15 @@ void vk_context::create_device()
     // Device extensions.
     std::vector<const char*> extensions;
     extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    // extensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
 
     for (auto device : devices)
     {
-        VkPhysicalDeviceFeatures supported_features;
-        vkGetPhysicalDeviceFeatures(device, &supported_features);
+        VkPhysicalDeviceFeatures2 supported_features = {};
+        supported_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        vkGetPhysicalDeviceFeatures2(device, &supported_features);
 
-        if (supported_features.samplerAnisotropy &&
+        if (supported_features.features.samplerAnisotropy &&
             check_device_extension_support(device, extensions) &&
             check_device_swap_chain_support(device))
         {
@@ -262,6 +262,11 @@ void vk_context::create_device()
     VkPhysicalDeviceFeatures device_features = {};
     device_features.samplerAnisotropy = VK_TRUE;
 
+    VkPhysicalDeviceDescriptorIndexingFeatures indexing_features = {};
+    indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+    indexing_features.descriptorBindingPartiallyBound = VK_TRUE;
+    indexing_features.runtimeDescriptorArray = VK_TRUE;
+
     // Create logic device.
     VkDeviceCreateInfo device_info = {};
     device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -270,6 +275,7 @@ void vk_context::create_device()
     device_info.pEnabledFeatures = &device_features;
     device_info.ppEnabledExtensionNames = extensions.data();
     device_info.enabledExtensionCount = static_cast<std::uint32_t>(extensions.size());
+    device_info.pNext = &indexing_features;
 
     throw_if_failed(vkCreateDevice(m_physical_device, &device_info, nullptr, &m_device));
 }

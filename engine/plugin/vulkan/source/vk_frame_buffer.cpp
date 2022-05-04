@@ -5,14 +5,14 @@
 
 namespace ash::graphics::vk
 {
-vk_frame_buffer::vk_frame_buffer(const frame_buffer_desc& desc)
+vk_frame_buffer::vk_frame_buffer(const render_target_set_desc& desc)
 {
     auto device = vk_context::device();
 
     std::vector<VkImageView> views = {};
-    for (std::size_t i = 0; i < desc.resource_count; ++i)
+    for (std::size_t i = 0; i < desc.render_target_count; ++i)
     {
-        vk_image* image = static_cast<vk_image*>(desc.resources[i]);
+        vk_image* image = static_cast<vk_image*>(desc.render_targets[i]);
         views.push_back(image->view());
     }
 

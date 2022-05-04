@@ -7,7 +7,7 @@ add_subdirectory(physics)
 add_subdirectory(resource)
 add_subdirectory(scene)
 add_subdirectory(task)
-add_subdirectory(ui)
+# add_subdirectory(ui)
 add_subdirectory(window)
 
 add_subdirectory(plugin)

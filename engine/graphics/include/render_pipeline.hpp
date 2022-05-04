@@ -1,68 +1,45 @@
 #pragma once
 
+#include "camera.hpp"
 #include "graphics_interface.hpp"
 #include "render_parameter.hpp"
 #include <vector>
 
 namespace ash::graphics
 {
-class render_pipeline;
+class render_pass;
 struct render_unit
 {
-    resource* vertex_buffer{nullptr};
-    resource* index_buffer{nullptr};
+    resource_interface* vertex_buffer{nullptr};
+    resource_interface* index_buffer{nullptr};
 
     std::size_t index_start{0};
     std::size_t index_end{0};
     std::size_t vertex_base{0};
 
-    render_pipeline* pipeline{nullptr};
+    render_pass* render_pass{nullptr};
     std::vector<render_parameter*> parameters;
 
     void* external{nullptr};
 };
 
-class render_pipeline
+class render_pass
 {
 public:
-    using layout_type = pipeline_layout;
-    using pipeline_type = pipeline;
-
-public:
-    render_pipeline(layout_type* layout, pipeline_type* pipeline);
-    virtual ~render_pipeline() = default;
+    render_pass(render_pass_interface* interface);
+    virtual ~render_pass() = default;
 
     void add(const render_unit* unit) { m_units.push_back(unit); }
     void clear() { m_units.clear(); }
 
-    virtual void render(
-        resource* target,
-        resource* depth_stencil,
-        render_command* command,
-        render_parameter* pass);
-
-    void parameter_count(std::size_t unit, std::size_t pass) noexcept
-    {
-        m_unit_parameter_count = unit;
-        m_pass_parameter_count = pass;
-    }
-
-    std::size_t unit_parameter_count() const { return m_unit_parameter_count; }
-    std::size_t pass_parameter_count() const { return m_pass_parameter_count; }
+    virtual void render(const camera& camera, render_command_interface* command) = 0;
 
 protected:
-    pipeline_type* pipeline() const noexcept { return m_pipeline.get(); }
-    layout_type* layout() const noexcept { return m_layout.get(); }
-
+    render_pass_interface* interface() const noexcept { return m_interface.get(); }
     const std::vector<const render_unit*>& units() const { return m_units; }
 
 private:
-    std::unique_ptr<layout_type> m_layout;
-    std::unique_ptr<pipeline_type> m_pipeline;
-
-    std::size_t m_unit_parameter_count;
-    std::size_t m_pass_parameter_count;
-
+    std::unique_ptr<render_pass_interface> m_interface;
     std::vector<const render_unit*> m_units;
 };
 } // namespace ash::graphics

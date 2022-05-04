@@ -62,7 +62,7 @@ private:
 
     std::deque<graphics::scissor_rect> m_scissor_rects;
 
-    std::unique_ptr<ui_pipeline> m_pipeline;
+    std::unique_ptr<ui_pass> m_pass;
     std::size_t m_frame_index;
 
     bool m_enable_mouse;

@@ -1,7 +1,7 @@
 #include "application.hpp"
 #include "camera.hpp"
 #include "context.hpp"
-#include "new_graphics_interface.hpp"
+#include "graphics_interface.hpp"
 #include "plugin.hpp"
 #include "window.hpp"
 
@@ -10,13 +10,13 @@ namespace ash::sample
 class vulkan_plugin : public core::plugin
 {
 public:
-    graphics::vk::factory_interface& factory() { return *m_factory; }
+    graphics::factory_interface& factory() { return *m_factory; }
 
 protected:
     virtual bool do_load() override
     {
-        graphics::vk::make_factory make =
-            static_cast<graphics::vk::make_factory>(find_symbol("make_factory"));
+        graphics::make_factory make =
+            static_cast<graphics::make_factory>(find_symbol("make_factory"));
         if (make == nullptr)
         {
             log::error("Symbol not found in plugin: make_context.");
@@ -28,7 +28,7 @@ protected:
     }
 
 private:
-    std::unique_ptr<graphics::vk::factory_interface> m_factory;
+    std::unique_ptr<graphics::factory_interface> m_factory;
 };
 
 class test_system : public core::system_base
@@ -55,46 +55,61 @@ public:
 private:
     void initialize_pass()
     {
-        graphics::vk::pipeline_desc subpass_desc = {};
+        graphics::pipeline_desc subpass_desc = {};
         subpass_desc.vertex_shader = "vert.spv";
         subpass_desc.pixel_shader = "frag.spv";
         std::size_t o = 0;
         subpass_desc.output = &o;
         subpass_desc.output_count = 1;
 
-        std::vector<graphics::vk::vertex_attribute_desc> vertex_attributes = {
-            {graphics::vk::vertex_attribute_type::FLOAT3, 0 },
-            {graphics::vk::vertex_attribute_type::FLOAT3, 12},
-            {graphics::vk::vertex_attribute_type::FLOAT2, 24}
-        };
+        std::vector<graphics::vertex_attribute_type> vertex_attributes = {
+            graphics::vertex_attribute_type::FLOAT3,
+            graphics::vertex_attribute_type::FLOAT3,
+            graphics::vertex_attribute_type::FLOAT2};
         subpass_desc.vertex_layout.attributes = vertex_attributes.data();
         subpass_desc.vertex_layout.attribute_count = vertex_attributes.size();
 
         // Layout.
-        std::vector<graphics::vk::pipeline_parameter_pair> parameter_pairs = {
-            {graphics::vk::pipeline_parameter_type::FLOAT3,   1},
-            {graphics::vk::pipeline_parameter_type::FLOAT4x4, 1},
-            {graphics::vk::pipeline_parameter_type::TEXTURE,  1}
+        std::vector<graphics::pipeline_parameter_pair> parameter_pairs_1 = {
+            {graphics::pipeline_parameter_type::FLOAT3,   1},
+            {graphics::pipeline_parameter_type::FLOAT4x4, 1},
+            {graphics::pipeline_parameter_type::TEXTURE,  1}
         };
-        graphics::vk::pipeline_parameter_layout_desc parameter_layout_desc = {};
-        parameter_layout_desc.parameter = parameter_pairs.data();
-        parameter_layout_desc.size = parameter_pairs.size();
-        m_pipeline_parameter_layout.reset(
-            m_vulkan_plugin.factory().make_pipeline_parameter_layout(parameter_layout_desc));
+        graphics::pipeline_parameter_layout_desc parameter_layout_desc_1 = {};
+        parameter_layout_desc_1.parameters = parameter_pairs_1.data();
+        parameter_layout_desc_1.size = parameter_pairs_1.size();
+        m_pipeline_parameter_layout_1.reset(
+            m_vulkan_plugin.factory().make_pipeline_parameter_layout(parameter_layout_desc_1));
 
-        m_parameter.reset(
-            m_vulkan_plugin.factory().make_pipeline_parameter(m_pipeline_parameter_layout.get()));
+        m_parameter_1.reset(
+            m_vulkan_plugin.factory().make_pipeline_parameter(m_pipeline_parameter_layout_1.get()));
 
-        graphics::vk::pipeline_layout_desc layout_desc;
-        layout_desc.parameter = m_pipeline_parameter_layout.get();
-        layout_desc.size = 1;
+        std::vector<graphics::pipeline_parameter_pair> parameter_pairs_2 = {
+            {graphics::pipeline_parameter_type::FLOAT3, 1}
+        };
+        graphics::pipeline_parameter_layout_desc parameter_layout_desc_2 = {};
+        parameter_layout_desc_2.parameters = parameter_pairs_2.data();
+        parameter_layout_desc_2.size = parameter_pairs_2.size();
+        m_pipeline_parameter_layout_2.reset(
+            m_vulkan_plugin.factory().make_pipeline_parameter_layout(parameter_layout_desc_2));
+
+        m_parameter_2.reset(
+            m_vulkan_plugin.factory().make_pipeline_parameter(m_pipeline_parameter_layout_2.get()));
+
+        std::vector<graphics::pipeline_parameter_layout_interface*> pl = {
+            m_pipeline_parameter_layout_1.get(),
+            m_pipeline_parameter_layout_2.get()};
+
+        graphics::pipeline_layout_desc layout_desc;
+        layout_desc.parameters = pl.data();
+        layout_desc.size = pl.size();
         m_pipeline_layout.reset(m_vulkan_plugin.factory().make_pipeline_layout(layout_desc));
         subpass_desc.pipeline_layout = m_pipeline_layout.get();
 
-        std::vector<graphics::vk::pipeline_desc> subpasses;
+        std::vector<graphics::pipeline_desc> subpasses;
         subpasses.push_back(subpass_desc);
 
-        graphics::vk::render_pass_desc desc = {};
+        graphics::render_pass_desc desc = {};
         desc.subpasses = subpasses.data();
         desc.subpass_count = subpasses.size();
 
@@ -103,16 +118,16 @@ private:
         auto rect = system<window::window>().rect();
         for (std::size_t i = 0; i < m_renderer->back_buffer_count(); ++i)
         {
-            std::array<graphics::vk::resource_interface*, 1> frame_buffer_resources = {
+            std::array<graphics::resource_interface*, 1> render_targets = {
                 m_renderer->back_buffer(i)};
-            graphics::vk::frame_buffer_desc frame_buffer_desc = {};
-            frame_buffer_desc.render_pass = m_pass.get();
-            frame_buffer_desc.resources = frame_buffer_resources.data();
-            frame_buffer_desc.resource_count = frame_buffer_resources.size();
-            frame_buffer_desc.width = rect.width;
-            frame_buffer_desc.height = rect.height;
-            m_frame_buffers.emplace_back(
-                m_vulkan_plugin.factory().make_frame_buffer(frame_buffer_desc));
+            graphics::render_target_set_desc render_target_set_desc = {};
+            render_target_set_desc.render_pass = m_pass.get();
+            render_target_set_desc.render_targets = render_targets.data();
+            render_target_set_desc.render_target_count = render_targets.size();
+            render_target_set_desc.width = rect.width;
+            render_target_set_desc.height = rect.height;
+            m_render_target_sets.emplace_back(
+                m_vulkan_plugin.factory().make_render_target_set(render_target_set_desc));
         }
 
         std::vector<vertex> vertices = {
@@ -124,13 +139,13 @@ private:
 
         std::vector<std::uint32_t> indices = {0, 1, 2, 2, 3, 0};
 
-        graphics::vk::vertex_buffer_desc vertex_buffer_desc = {};
+        graphics::vertex_buffer_desc vertex_buffer_desc = {};
         vertex_buffer_desc.vertex_size = sizeof(vertex);
         vertex_buffer_desc.vertex_count = vertices.size();
         vertex_buffer_desc.vertices = vertices.data();
         m_vertex_buffer.reset(m_vulkan_plugin.factory().make_vertex_buffer(vertex_buffer_desc));
 
-        graphics::vk::index_buffer_desc index_buffer_desc = {};
+        graphics::index_buffer_desc index_buffer_desc = {};
         index_buffer_desc.index_size = sizeof(std::uint32_t);
         index_buffer_desc.index_count = indices.size();
         index_buffer_desc.indices = indices.data();
@@ -141,8 +156,10 @@ private:
 
         graphics::camera camera;
         camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f, true);
-        m_parameter->set(1, camera.projection);
-        m_parameter->set(2, m_texture.get());
+        m_parameter_1->set(1, camera.projection);
+        m_parameter_1->set(2, m_texture.get());
+
+        m_parameter_2->set(0, math::float3{1.0f, 0.5f, 0.5f});
     }
 
     void initialize_task()
@@ -164,10 +181,11 @@ private:
             std::size_t index = m_renderer->begin_frame();
 
             auto command = m_renderer->allocate_command();
-            command->begin(m_pass.get(), m_frame_buffers[index].get());
+            command->begin(m_pass.get(), m_render_target_sets[index].get());
 
-            m_parameter->set(0, m_color);
-            command->parameter(0, m_parameter.get());
+            m_parameter_1->set(0, m_color);
+            command->parameter(0, m_parameter_1.get());
+            command->parameter(1, m_parameter_2.get());
             command->draw(m_vertex_buffer.get(), m_index_buffer.get(), 0, 6, 0);
 
             command->end(m_pass.get());
@@ -184,7 +202,7 @@ private:
 
         auto rect = system<window::window>().rect();
 
-        graphics::vk::renderer_desc desc;
+        graphics::renderer_desc desc;
         desc.width = rect.width;
         desc.height = rect.height;
         desc.window_handle = system<window::window>().handle();
@@ -194,21 +212,23 @@ private:
 
     vulkan_plugin m_vulkan_plugin;
 
-    std::unique_ptr<graphics::vk::renderer_interface> m_renderer;
-    std::unique_ptr<graphics::vk::render_pass_interface> m_pass;
+    std::unique_ptr<graphics::renderer_interface> m_renderer;
+    std::unique_ptr<graphics::render_pass_interface> m_pass;
 
-    std::unique_ptr<graphics::vk::pipeline_parameter_layout_interface> m_pipeline_parameter_layout;
-    std::unique_ptr<graphics::vk::pipeline_layout_interface> m_pipeline_layout;
+    std::unique_ptr<graphics::pipeline_parameter_layout_interface> m_pipeline_parameter_layout_1;
+    std::unique_ptr<graphics::pipeline_parameter_layout_interface> m_pipeline_parameter_layout_2;
+    std::unique_ptr<graphics::pipeline_layout_interface> m_pipeline_layout;
 
-    std::unique_ptr<graphics::vk::resource_interface> m_vertex_buffer;
-    std::unique_ptr<graphics::vk::resource_interface> m_index_buffer;
+    std::unique_ptr<graphics::resource_interface> m_vertex_buffer;
+    std::unique_ptr<graphics::resource_interface> m_index_buffer;
 
-    std::vector<std::unique_ptr<graphics::vk::frame_buffer_interface>> m_frame_buffers;
+    std::vector<std::unique_ptr<graphics::render_target_set_interface>> m_render_target_sets;
 
     math::float3 m_color{};
-    std::unique_ptr<graphics::vk::pipeline_parameter_interface> m_parameter;
+    std::unique_ptr<graphics::pipeline_parameter_interface> m_parameter_1;
+    std::unique_ptr<graphics::pipeline_parameter_interface> m_parameter_2;
 
-    std::unique_ptr<graphics::vk::resource_interface> m_texture;
+    std::unique_ptr<graphics::resource_interface> m_texture;
 };
 
 class vulkan_app

@@ -2,6 +2,7 @@
 #include "vk_command.hpp"
 #include "vk_context.hpp"
 #include "vk_image_loader.hpp"
+#include "vk_renderer.hpp"
 
 namespace ash::graphics::vk
 {
@@ -80,14 +81,17 @@ std::pair<VkImage, VkDeviceMemory> vk_resource::create_image(
     return result;
 }
 
-VkImageView vk_resource::create_image_view(VkImage image, VkFormat format)
+VkImageView vk_resource::create_image_view(
+    VkImage image,
+    VkFormat format,
+    VkImageAspectFlags aspect_mask)
 {
     VkImageViewCreateInfo view_info = {};
     view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
     view_info.image = image;
     view_info.format = format;
-    view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    view_info.subresourceRange.aspectMask = aspect_mask;
     view_info.subresourceRange.baseMipLevel = 0;
     view_info.subresourceRange.levelCount = 1;
     view_info.subresourceRange.baseArrayLayer = 0;
@@ -156,11 +160,16 @@ void vk_resource::transition_image_layout(
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.image = image;
-    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     barrier.subresourceRange.baseMipLevel = 0;
     barrier.subresourceRange.levelCount = 1;
     barrier.subresourceRange.baseArrayLayer = 0;
     barrier.subresourceRange.layerCount = 1;
+
+    if (new_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+        barrier.subresourceRange.aspectMask =
+            VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+    else
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
     VkPipelineStageFlags source_stage;
     VkPipelineStageFlags destination_stage;
@@ -183,6 +192,17 @@ void vk_resource::transition_image_layout(
 
         source_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
         destination_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    }
+    else if (
+        old_layout == VK_IMAGE_LAYOUT_UNDEFINED &&
+        new_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+    {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+        source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destination_stage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     }
     else
     {
@@ -225,29 +245,55 @@ std::uint32_t vk_resource::find_memory_type(
 
 vk_back_buffer::vk_back_buffer(VkImage image, VkFormat format) : m_image(image)
 {
-    m_view = create_image_view(image, format);
+    m_image_view = create_image_view(image, format, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
-vk_back_buffer::vk_back_buffer(vk_back_buffer&& other) : m_view(other.m_view)
+vk_back_buffer::vk_back_buffer(vk_back_buffer&& other) : m_image_view(other.m_image_view)
 {
-    other.m_view = VK_NULL_HANDLE;
+    other.m_image_view = VK_NULL_HANDLE;
 }
 
 vk_back_buffer::~vk_back_buffer()
 {
-    if (m_view != VK_NULL_HANDLE)
+    if (m_image_view != VK_NULL_HANDLE)
     {
         auto device = vk_context::device();
-        vkDestroyImageView(device, m_view, nullptr);
+        vkDestroyImageView(device, m_image_view, nullptr);
     }
 }
 
 vk_back_buffer& vk_back_buffer::operator=(vk_back_buffer&& other)
 {
-    m_view = other.m_view;
-    other.m_view = VK_NULL_HANDLE;
+    m_image_view = other.m_image_view;
+    other.m_image_view = VK_NULL_HANDLE;
 
     return *this;
+}
+
+vk_depth_stencil_buffer::vk_depth_stencil_buffer(
+    std::uint32_t width,
+    std::uint32_t height,
+    std::size_t multiple_sampling)
+{
+    VkFormat format = vk_context::swap_chain().depth_stencil_format();
+
+    auto [image, image_memory] = create_image(
+        width,
+        height,
+        format,
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    m_image = image;
+    m_image_memory = image_memory;
+
+    m_image_view = create_image_view(m_image, format, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+    transition_image_layout(
+        m_image,
+        format,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 }
 
 vk_vertex_buffer::vk_vertex_buffer(const vertex_buffer_desc& desc)
@@ -414,7 +460,7 @@ vk_texture::vk_texture(std::string_view file)
     vkFreeMemory(device, staging_buffer_memory, nullptr);
 
     // Create view.
-    m_image_view = create_image_view(image, data.format);
+    m_image_view = create_image_view(image, data.format, VK_IMAGE_ASPECT_COLOR_BIT);
 
     m_image = image;
     m_image_memory = image_memory;

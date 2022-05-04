@@ -12,16 +12,13 @@ struct ui_render_data
     std::size_t clip_max_y;
 };
 
-class ui_pipeline : public graphics::render_pipeline
+class ui_pass : public graphics::render_pass
 {
 public:
-    ui_pipeline(graphics::pipeline_layout* layout, graphics::pipeline* pipeline);
+    ui_pass(graphics::render_pass_interface* interface);
 
-    virtual void render(
-        graphics::resource* target,
-        graphics::resource* depth_stencil,
-        graphics::render_command* command,
-        graphics::render_parameter* pass) override;
+    virtual void render(const graphics::camera& camera, graphics::render_command_interface* command)
+        override;
 
 private:
 };

@@ -21,7 +21,7 @@ protected:
         VkImageUsageFlags usage,
         VkMemoryPropertyFlags properties);
 
-    VkImageView create_image_view(VkImage image, VkFormat format);
+    VkImageView create_image_view(VkImage image, VkFormat format, VkImageAspectFlags aspect_mask);
 
     void copy_buffer(VkBuffer source, VkBuffer target, VkDeviceSize size);
     void copy_buffer_to_image(
@@ -52,13 +52,30 @@ public:
     vk_back_buffer(vk_back_buffer&& other);
     virtual ~vk_back_buffer();
 
-    virtual VkImageView view() const noexcept override { return m_view; }
+    virtual VkImageView view() const noexcept override { return m_image_view; }
 
     vk_back_buffer& operator=(vk_back_buffer&& other);
 
 private:
+    VkImageView m_image_view;
     VkImage m_image;
-    VkImageView m_view;
+};
+
+class vk_depth_stencil_buffer : public vk_image
+{
+public:
+    vk_depth_stencil_buffer(
+        std::uint32_t width,
+        std::uint32_t height,
+        std::size_t multiple_sampling);
+
+    virtual VkImageView view() const noexcept override { return m_image_view; }
+
+private:
+    VkImageView m_image_view;
+
+    VkImage m_image;
+    VkDeviceMemory m_image_memory;
 };
 
 class vk_vertex_buffer : public vk_resource

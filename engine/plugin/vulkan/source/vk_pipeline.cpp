@@ -13,13 +13,13 @@ vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
       m_cis_count(0)
 {
     for (std::size_t i = 0; i < desc.size; ++i)
-        m_parameters.push_back(desc.parameter[i]);
+        m_parameters.push_back(desc.parameters[i]);
 
     auto device = vk_context::device();
 
     for (std::size_t i = 0; i < desc.size; ++i)
     {
-        switch (desc.parameter[i].type)
+        switch (desc.parameters[i].type)
         {
         case pipeline_parameter_type::BOOL:
         case pipeline_parameter_type::UINT:
@@ -35,7 +35,7 @@ vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
             ++m_cis_count;
             break;
         default:
-            break;
+            throw vk_exception("Invalid pipeline parameter type.");
         }
     }
 
@@ -46,7 +46,7 @@ vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
         ubo_binding.binding = 0;
         ubo_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         ubo_binding.descriptorCount = 1;
-        ubo_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        ubo_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         ubo_binding.pImmutableSamplers = nullptr;
         bindings.push_back(ubo_binding);
     }
@@ -62,10 +62,19 @@ vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
         bindings.push_back(cis_binding);
     }
 
+    std::vector<VkDescriptorBindingFlags> binding_flags(
+        bindings.size(),
+        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
+    VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flags_info = {};
+    binding_flags_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+    binding_flags_info.pBindingFlags = binding_flags.data();
+    binding_flags_info.bindingCount = static_cast<std::uint32_t>(binding_flags.size());
+
     VkDescriptorSetLayoutCreateInfo descriptor_set_layout_info = {};
     descriptor_set_layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     descriptor_set_layout_info.bindingCount = static_cast<std::uint32_t>(bindings.size());
     descriptor_set_layout_info.pBindings = bindings.data();
+    descriptor_set_layout_info.pNext = &binding_flags_info;
 
     throw_if_failed(vkCreateDescriptorSetLayout(
         device,
@@ -75,6 +84,8 @@ vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
 }
 
 vk_pipeline_parameter::vk_pipeline_parameter(pipeline_parameter_layout_interface* layout)
+    : m_dirty(0),
+      m_last_sync_frame(-1)
 {
     auto vk_layout = static_cast<vk_pipeline_parameter_layout*>(layout);
     auto [ubo_count, cis_count] = vk_layout->descriptor_count();
@@ -188,18 +199,29 @@ vk_pipeline_parameter::vk_pipeline_parameter(pipeline_parameter_layout_interface
     }
 }
 
-void vk_pipeline_parameter::set(std::size_t index, const math::float3& value)
-{
-    std::memcpy(m_cpu_buffer.data() + m_parameter_info[index].offset, &value, sizeof(math::float3));
-    mark_dirty(index);
-}
-
 void vk_pipeline_parameter::set(std::size_t index, const math::float4x4& value)
 {
     math::float4x4 m;
     math::simd::store(math::matrix_simd::transpose(math::simd::load(value)), m);
 
     std::memcpy(m_cpu_buffer.data() + m_parameter_info[index].offset, &m, sizeof(math::float4x4));
+    mark_dirty(index);
+}
+
+void vk_pipeline_parameter::set(std::size_t index, const math::float4x4* data, std::size_t size)
+{
+    math::float4x4 m;
+    math::float4x4_simd t;
+    for (std::size_t i = 0; i < size; ++i)
+    {
+        t = math::matrix_simd::transpose(math::simd::load(data[i]));
+        math::simd::store(t, m);
+        std::memcpy(
+            m_cpu_buffer.data() + m_parameter_info[index].offset + sizeof(math::float4x4) * i,
+            &m,
+            sizeof(math::float4x4));
+    }
+
     mark_dirty(index);
 }
 
@@ -277,7 +299,7 @@ vk_pipeline_layout::vk_pipeline_layout(const pipeline_layout_desc& desc)
 
     std::vector<VkDescriptorSetLayout> layouts;
     for (std::size_t i = 0; i < desc.size; ++i)
-        layouts.push_back(static_cast<vk_pipeline_parameter_layout*>(desc.parameter)->layout());
+        layouts.push_back(static_cast<vk_pipeline_parameter_layout*>(desc.parameters[i])->layout());
 
     VkPipelineLayoutCreateInfo pipeline_layout_info = {};
     pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -330,29 +352,69 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
         VkVertexInputAttributeDescription attribute;
         attribute.binding = 0;
         attribute.location = location;
-        attribute.offset = static_cast<std::uint32_t>(desc.vertex_layout.attributes[i].offset);
+        attribute.offset = offset;
 
         ++location;
-        switch (desc.vertex_layout.attributes[i].type)
+        switch (desc.vertex_layout.attributes[i])
         {
+        case vertex_attribute_type::INT:
+            attribute.format = VK_FORMAT_R32_SINT;
+            offset += sizeof(std::int32_t);
+            break;
+        case vertex_attribute_type::INT2:
+            attribute.format = VK_FORMAT_R32G32_SINT;
+            offset += sizeof(std::int32_t) * 2;
+            break;
+        case vertex_attribute_type::INT3:
+            attribute.format = VK_FORMAT_R32G32B32_SINT;
+            offset += sizeof(std::int32_t) * 3;
+            break;
+        case vertex_attribute_type::INT4:
+            attribute.format = VK_FORMAT_R32G32B32A32_SINT;
+            offset += sizeof(std::int32_t) * 4;
+            break;
+        case vertex_attribute_type::UINT:
+            attribute.format = VK_FORMAT_R32_UINT;
+            offset += sizeof(std::uint32_t);
+            break;
+        case vertex_attribute_type::UINT2:
+            attribute.format = VK_FORMAT_R32G32_UINT;
+            offset += sizeof(std::uint32_t) * 2;
+            break;
+        case vertex_attribute_type::UINT3:
+            attribute.format = VK_FORMAT_R32G32B32_UINT;
+            offset += sizeof(std::uint32_t) * 3;
+            break;
+        case vertex_attribute_type::UINT4:
+            attribute.format = VK_FORMAT_R32G32B32A32_UINT;
+            offset += sizeof(std::uint32_t) * 4;
+            break;
+        case vertex_attribute_type::FLOAT:
+            attribute.format = VK_FORMAT_R32_SFLOAT;
+            offset += sizeof(float);
+            break;
         case vertex_attribute_type::FLOAT2:
             attribute.format = VK_FORMAT_R32G32_SFLOAT;
-            vertex_binding.stride += sizeof(math::float2);
+            offset += sizeof(math::float2);
             break;
         case vertex_attribute_type::FLOAT3:
             attribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-            vertex_binding.stride += sizeof(math::float3);
+            offset += sizeof(math::float3);
             break;
         case vertex_attribute_type::FLOAT4:
             attribute.format = VK_FORMAT_R32G32B32A32_SFLOAT;
-            vertex_binding.stride += sizeof(math::float4);
+            offset += sizeof(math::float4);
+            break;
+        case vertex_attribute_type::COLOR:
+            attribute.format = VK_FORMAT_R8G8B8A8_UINT;
+            offset += sizeof(std::uint8_t) * 4;
             break;
         default:
-            continue;
+            throw vk_exception("Invalid vertex attribute type.");
         }
-
         vertex_attributes.push_back(attribute);
     }
+    vertex_binding.stride = offset;
 
     vertex_input_info.vertexBindingDescriptionCount = 1;
     vertex_input_info.pVertexBindingDescriptions = &vertex_binding;
@@ -412,6 +474,16 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
     multisample_info.alphaToCoverageEnable = VK_FALSE;
     multisample_info.alphaToOneEnable = VK_FALSE;
 
+    // Depth stencil.
+    VkPipelineDepthStencilStateCreateInfo depth_stencil = {};
+    depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depth_stencil.depthTestEnable = VK_TRUE;
+    depth_stencil.depthWriteEnable = VK_TRUE;
+    depth_stencil.depthCompareOp = VK_COMPARE_OP_LESS;
+    depth_stencil.stencilTestEnable = VK_FALSE;
+    depth_stencil.front = {}; // Optional
+    depth_stencil.back = {};  // Optional
+
     // Blend.
     VkPipelineColorBlendAttachmentState color_blend_attachment = {};
     color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
@@ -446,6 +518,7 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
     pipeline_info.renderPass = render_pass;
     pipeline_info.subpass = static_cast<std::uint32_t>(index);
     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
+    pipeline_info.pDepthStencilState = &depth_stencil;
 
     throw_if_failed(
         vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &m_pipeline));
@@ -504,9 +577,12 @@ void vk_render_pass::begin(VkCommandBuffer command_buffer, VkFramebuffer frame_b
     pass_info.renderArea.offset = {0, 0};
     pass_info.renderArea.extent = vk_context::swap_chain().extent();
 
-    VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-    pass_info.clearValueCount = 1;
-    pass_info.pClearValues = &clear_color;
+    std::array<VkClearValue, 2> clear_color;
+    clear_color[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
+    clear_color[1].depthStencil = {1.0f, 0};
+
+    pass_info.clearValueCount = static_cast<std::uint32_t>(clear_color.size());
+    pass_info.pClearValues = clear_color.data();
 
     vkCmdBeginRenderPass(command_buffer, &pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -575,20 +651,27 @@ void vk_render_pass::create_pass(const render_pass_desc& desc)
         subpasses[i].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     }
 
-    VkAttachmentDescription color_attachment = {};
-    color_attachment.format = vk_context::swap_chain().format();
-    color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    std::vector<VkAttachmentDescription> attachments;
+    for (std::size_t i = 0; i < desc.render_target_count; ++i)
+    {
+        auto& render_target = desc.render_targets[i];
+
+        VkAttachmentDescription attachment = {};
+        attachment.format = to_vk_format(render_target.format);
+        attachment.samples = to_vk_samples(render_target.samples);
+        attachment.loadOp = to_vk_attachment_load_op(render_target.load_op);
+        attachment.storeOp = to_vk_attachment_store_op(render_target.store_op);
+        attachment.stencilLoadOp = to_vk_attachment_load_op(render_target.stencil_load_op);
+        attachment.stencilStoreOp = to_vk_attachment_store_op(render_target.stencil_store_op);
+        attachment.initialLayout = to_vk_image_layout(render_target.initial_state);
+        attachment.finalLayout = to_vk_image_layout(render_target.final_state);
+        attachments.push_back(attachment);
+    }
 
     VkRenderPassCreateInfo pass_info = {};
     pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    pass_info.attachmentCount = 1;
-    pass_info.pAttachments = &color_attachment;
+    pass_info.attachmentCount = static_cast<std::uint32_t>(attachments.size());
+    pass_info.pAttachments = attachments.data();
     pass_info.subpassCount = static_cast<std::uint32_t>(subpasses.size());
     pass_info.pSubpasses = subpasses.data();
 

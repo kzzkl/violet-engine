@@ -6,6 +6,7 @@ set(STB_IMAGE_INCLUDE ${THIRD_PARTY_DIR}/stb)
 
 add_library(${PROJECT_NAME} SHARED
     ./source/vk_command.cpp
+    ./source/vk_common.cpp
     ./source/vk_context.cpp
     ./source/vk_descriptor_pool.cpp
     ./source/vk_frame_buffer.cpp

@@ -8,37 +8,9 @@ vk_swap_chain::vk_swap_chain(VkSurfaceKHR surface, std::uint32_t width, std::uin
 {
     auto physical_device = vk_context::physical_device();
 
-    std::uint32_t format_count;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, nullptr);
-    std::vector<VkSurfaceFormatKHR> formats(format_count);
-    if (!formats.empty())
-        vkGetPhysicalDeviceSurfaceFormatsKHR(
-            physical_device,
-            surface,
-            &format_count,
-            formats.data());
-
-    std::uint32_t present_mode_count;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(
-        physical_device,
-        surface,
-        &present_mode_count,
-        nullptr);
-    std::vector<VkPresentModeKHR> present_modes(present_mode_count);
-    if (!present_modes.empty())
-        vkGetPhysicalDeviceSurfacePresentModesKHR(
-            physical_device,
-            surface,
-            &present_mode_count,
-            present_modes.data());
-
-    ASH_VK_ASSERT(format_count != 0 && present_mode_count != 0);
-
-    // Choose swap surface format.
-    m_surface_format = choose_surface_format(formats);
-
-    // Choose present mode.
-    m_present_mode = choose_present_mode(present_modes);
+    m_surface_format = choose_surface_format(surface);
+    m_depth_stencil_format = choose_depth_stencil_format();
+    m_present_mode = choose_present_mode(surface);
 
     // Choose swap extent.
     VkSurfaceCapabilitiesKHR capabilities;
@@ -101,11 +73,23 @@ vk_swap_chain::~vk_swap_chain()
     vkDestroySwapchainKHR(device, m_swap_chain, nullptr);
 }
 
-VkSurfaceFormatKHR vk_swap_chain::choose_surface_format(
-    const std::vector<VkSurfaceFormatKHR>& formats)
+VkSurfaceFormatKHR vk_swap_chain::choose_surface_format(VkSurfaceKHR surface)
 {
-    VkSurfaceFormatKHR result;
+    auto physical_device = vk_context::physical_device();
 
+    std::uint32_t format_count;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, nullptr);
+    ASH_VK_ASSERT(format_count != 0);
+
+    std::vector<VkSurfaceFormatKHR> formats(format_count);
+    if (!formats.empty())
+        vkGetPhysicalDeviceSurfaceFormatsKHR(
+            physical_device,
+            surface,
+            &format_count,
+            formats.data());
+
+    VkSurfaceFormatKHR result;
     if (formats.size() == 1 && formats[0].format == VK_FORMAT_UNDEFINED)
     {
         result.format = VK_FORMAT_R8G8B8A8_UNORM;
@@ -129,11 +113,49 @@ VkSurfaceFormatKHR vk_swap_chain::choose_surface_format(
     return result;
 }
 
-VkPresentModeKHR vk_swap_chain::choose_present_mode(const std::vector<VkPresentModeKHR>& modes)
+VkFormat vk_swap_chain::choose_depth_stencil_format()
 {
-    VkPresentModeKHR result = VK_PRESENT_MODE_FIFO_KHR;
+    auto physical_device = vk_context::physical_device();
 
-    for (VkPresentModeKHR mode : modes)
+    std::vector<VkFormat> candidates = {VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
+
+    VkFormatFeatureFlags features = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    for (VkFormat format : candidates)
+    {
+        VkFormatProperties properties;
+        vkGetPhysicalDeviceFormatProperties(physical_device, format, &properties);
+
+        if ((properties.linearTilingFeatures & features) == features)
+            return format;
+        else if ((properties.optimalTilingFeatures & features) == features)
+            return format;
+    }
+
+    throw vk_exception("Failed to find supported format.");
+}
+
+VkPresentModeKHR vk_swap_chain::choose_present_mode(VkSurfaceKHR surface)
+{
+    auto physical_device = vk_context::physical_device();
+
+    std::uint32_t present_mode_count;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(
+        physical_device,
+        surface,
+        &present_mode_count,
+        nullptr);
+    ASH_VK_ASSERT(present_mode_count != 0);
+
+    std::vector<VkPresentModeKHR> present_modes(present_mode_count);
+    if (!present_modes.empty())
+        vkGetPhysicalDeviceSurfacePresentModesKHR(
+            physical_device,
+            surface,
+            &present_mode_count,
+            present_modes.data());
+
+    VkPresentModeKHR result = VK_PRESENT_MODE_FIFO_KHR;
+    for (VkPresentModeKHR mode : present_modes)
     {
         if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
             result = VK_PRESENT_MODE_MAILBOX_KHR;

@@ -7,25 +7,47 @@
 
 namespace ash::graphics
 {
-template <typename T, std::size_t Size>
-struct list
+enum class resource_format
 {
-    T data[Size];
-    std::size_t size;
+    UNDEFINED,
+    R8G8B8A8_UNORM,
+    R32G32B32A32_FLOAT,
+    D32_FLOAT_S8_UINT
 };
 
-enum class primitive_topology_type : std::uint8_t
+enum class resource_state
 {
-    TRIANGLE_LIST,
-    LINE_LIST
+    UNDEFINED,
+    PRESENT,
+    DEPTH_STENCIL
 };
 
-class resource
+class resource_interface
 {
-public:
-    virtual ~resource() = default;
+};
+using resource = resource_interface;
 
-    virtual void upload(const void* data, std::size_t size, std::size_t offset = 0) {}
+enum class vertex_attribute_type : std::uint8_t
+{
+    INT,    // R32 SINT
+    INT2,   // R32G32 SINT
+    INT3,   // R32G32B32 SINT
+    INT4,   // R32G32B32A32 SINT
+    UINT,   // R32 UINT
+    UINT2,  // R32G32 UINT
+    UINT3,  // R32G32B32 UINT
+    UINT4,  // R32G32B32A32 UINT
+    FLOAT,  // R32 FLOAT
+    FLOAT2, // R32G32 FLOAT
+    FLOAT3, // R32G32B32 FLOAT
+    FLOAT4, // R32G32B32A32 FLOAT
+    COLOR   // R8G8B8A8
+};
+
+struct vertex_layout_desc
+{
+    vertex_attribute_type* attributes;
+    std::size_t attribute_count;
 };
 
 enum class pipeline_parameter_type : std::uint8_t
@@ -44,15 +66,33 @@ enum class pipeline_parameter_type : std::uint8_t
 struct pipeline_parameter_pair
 {
     pipeline_parameter_type type;
-    std::size_t size; // for array
+    std::size_t size; // Only for array.
 };
 
-using pipeline_parameter_desc = list<pipeline_parameter_pair, 16>;
+struct pipeline_parameter_layout_desc
+{
+    pipeline_parameter_pair* parameters;
+    std::size_t size;
+};
 
-class pipeline_parameter
+class pipeline_parameter_layout_interface
+{
+};
+
+struct pipeline_layout_desc
+{
+    pipeline_parameter_layout_interface** parameters;
+    std::size_t size;
+};
+
+class pipeline_layout_interface
+{
+};
+
+class pipeline_parameter_interface
 {
 public:
-    virtual ~pipeline_parameter() = default;
+    virtual ~pipeline_parameter_interface() = default;
 
     virtual void set(std::size_t index, bool value) = 0;
     virtual void set(std::size_t index, std::uint32_t value) = 0;
@@ -60,45 +100,9 @@ public:
     virtual void set(std::size_t index, const math::float2& value) = 0;
     virtual void set(std::size_t index, const math::float3& value) = 0;
     virtual void set(std::size_t index, const math::float4& value) = 0;
-    virtual void set(std::size_t index, const math::float4x4& value, bool row_matrix = true) = 0;
-    virtual void set(
-        std::size_t index,
-        const math::float4x4* data,
-        size_t size,
-        bool row_matrix = true) = 0;
-    virtual void set(std::size_t index, resource* texture) = 0;
-};
-
-using pipeline_layout_desc = list<pipeline_parameter_desc, 16>;
-
-class pipeline_layout
-{
-public:
-    virtual ~pipeline_layout() = default;
-};
-
-enum class vertex_attribute_type : std::uint8_t
-{
-    INT,
-    INT2,
-    INT3,
-    INT4,
-    UINT,
-    UINT2,
-    UINT3,
-    UINT4,
-    FLOAT,
-    FLOAT2,
-    FLOAT3,
-    FLOAT4,
-    COLOR
-};
-
-struct vertex_attribute_desc
-{
-    char name[32];
-    vertex_attribute_type type;
-    std::uint32_t index;
+    virtual void set(std::size_t index, const math::float4x4& value) = 0;
+    virtual void set(std::size_t index, const math::float4x4* data, size_t size) = 0;
+    virtual void set(std::size_t index, resource_interface* texture) = 0;
 };
 
 struct pipeline_blend_desc
@@ -145,26 +149,89 @@ struct pipeline_depth_stencil_desc
     depth_functor_type depth_functor;
 };
 
+enum class primitive_topology_type : std::uint8_t
+{
+    TRIANGLE_LIST,
+    LINE_LIST
+};
+
 struct pipeline_desc
 {
-    char name[32];
+    const char* vertex_shader;
+    const char* pixel_shader;
 
-    list<vertex_attribute_desc, 16> vertex_layout;
-    pipeline_layout* layout;
-
-    char vertex_shader[128];
-    char pixel_shader[128];
-
-    primitive_topology_type primitive_topology;
+    vertex_layout_desc vertex_layout;
+    pipeline_layout_interface* pipeline_layout;
 
     pipeline_blend_desc blend;
     pipeline_depth_stencil_desc depth_stencil;
+
+    std::size_t* input;
+    std::size_t input_count;
+
+    std::size_t* output;
+    std::size_t output_count;
+
+    std::size_t depth;
+    bool output_depth;
+
+    primitive_topology_type primitive_topology;
 };
 
-class pipeline
+struct render_target_desc
 {
-public:
-    virtual ~pipeline() = default;
+    enum class load_op_type
+    {
+        LOAD,
+        CLEAR,
+        DONT_CARE
+    };
+
+    enum class store_op_type
+    {
+        STORE,
+        DONT_CARE
+    };
+
+    resource_format format;
+
+    load_op_type load_op;
+    store_op_type store_op;
+    load_op_type stencil_load_op;
+    store_op_type stencil_store_op;
+
+    resource_state initial_state;
+    resource_state final_state;
+
+    std::size_t samples;
+};
+
+struct render_pass_desc
+{
+    render_target_desc* render_targets;
+    std::size_t render_target_count;
+
+    pipeline_desc* subpasses;
+    std::size_t subpass_count;
+};
+
+class render_pass_interface
+{
+};
+
+struct render_target_set_desc
+{
+    resource_interface** render_targets;
+    std::size_t render_target_count;
+
+    std::uint32_t width;
+    std::uint32_t height;
+
+    render_pass_interface* render_pass;
+};
+
+class render_target_set_interface
+{
 };
 
 struct scissor_rect
@@ -175,61 +242,54 @@ struct scissor_rect
     std::uint32_t max_y;
 };
 
-class render_command
+class render_command_interface
 {
 public:
-    using pipeline_type = pipeline;
-    using layout_type = pipeline_layout;
+    virtual void begin(
+        render_pass_interface* pass,
+        render_target_set_interface* render_target_set) = 0;
+    virtual void end(render_pass_interface* pass) = 0;
+    virtual void next(render_pass_interface* pass) = 0;
 
-public:
-    virtual ~render_command() = default;
-
-    virtual void pipeline(pipeline_type* pipeline) = 0;
-    virtual void layout(layout_type* layout) = 0;
-    virtual void parameter(std::size_t index, pipeline_parameter* parameter) = 0;
-    virtual void render_target(resource* target, resource* depth_stencil) = 0;
-    virtual void scissor(const scissor_rect& rect) = 0;
+    virtual void parameter(std::size_t i, pipeline_parameter_interface*) = 0;
 
     virtual void draw(
-        resource* vertex,
-        resource* index,
+        resource_interface* vertex,
+        resource_interface* index,
         std::size_t index_start,
         std::size_t index_end,
-        std::size_t vertex_base,
-        primitive_topology_type primitive_topology,
-        resource* target) = 0;
-
-    virtual void begin_render(resource* target) = 0;
-    virtual void end_render(resource* target) = 0;
-
-    virtual void clear_render_target(resource* target) = 0;
-    virtual void clear_depth_stencil(resource* depth_stencil) = 0;
+        std::size_t vertex_base) = 0;
 };
 
-struct adapter_info
+struct renderer_desc
 {
-    char description[128];
+    std::uint32_t width;
+    std::uint32_t height;
+
+    void* window_handle;
+
+    std::size_t multiple_sampling;
+    std::size_t frame_resource;
+    std::size_t render_concurrency;
 };
 
-class renderer
+class renderer_interface
 {
 public:
-    virtual ~renderer() = default;
-
-    virtual void begin_frame() = 0;
+    virtual std::size_t begin_frame() = 0;
     virtual void end_frame() = 0;
 
-    virtual render_command* allocate_command() = 0;
-    virtual void execute(render_command* command) = 0;
+    virtual render_command_interface* allocate_command() = 0;
+    virtual void execute(render_command_interface*) = 0;
 
-    virtual resource* back_buffer() = 0;
-    virtual resource* depth_stencil() = 0;
-    virtual std::size_t adapter(adapter_info* infos, std::size_t size) const = 0;
+    virtual resource_interface* back_buffer(std::size_t index) = 0;
+    virtual std::size_t back_buffer_count() = 0;
 
-    virtual void resize(std::uint32_t width, std::uint32_t height) = 0;
+    virtual resource_interface* depth_stencil() = 0;
 
-private:
+    virtual void resize(std::uint32_t width, std::uint32_t height) {}
 };
+using renderer = renderer_interface;
 
 struct vertex_buffer_desc
 {
@@ -247,61 +307,40 @@ struct index_buffer_desc
     bool dynamic;
 };
 
-class factory
+class factory_interface
 {
 public:
-    virtual ~factory() = default;
+    virtual renderer_interface* make_renderer(const renderer_desc& desc) = 0;
 
-    virtual pipeline_parameter* make_pipeline_parameter(const pipeline_parameter_desc& desc) = 0;
-    virtual pipeline_layout* make_pipeline_layout(const pipeline_layout_desc& desc) = 0;
-    virtual pipeline* make_pipeline(const pipeline_desc& desc) = 0;
+    virtual render_target_set_interface* make_render_target_set(
+        const render_target_set_desc& desc) = 0;
+    virtual render_pass_interface* make_render_pass(const render_pass_desc& desc) = 0;
 
-    virtual resource* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
-    virtual resource* make_index_buffer(const index_buffer_desc& desc) = 0;
+    virtual pipeline_parameter_layout_interface* make_pipeline_parameter_layout(
+        const pipeline_parameter_layout_desc& desc) = 0;
+    virtual pipeline_parameter_interface* make_pipeline_parameter(
+        pipeline_parameter_layout_interface* layout) = 0;
+    virtual pipeline_layout_interface* make_pipeline_layout(const pipeline_layout_desc& desc) = 0;
 
-    virtual resource* make_texture(const std::uint8_t* data, std::size_t size) = 0;
-    virtual resource* make_texture(
+    virtual resource_interface* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
+    virtual resource_interface* make_index_buffer(const index_buffer_desc& desc) = 0;
+
+    virtual resource_interface* make_texture(
         const std::uint8_t* data,
         std::uint32_t width,
         std::uint32_t height) = 0;
+    virtual resource_interface* make_texture(const char* file) = 0;
 
-    virtual resource* make_render_target(
+    virtual resource_interface* make_render_target(
         std::uint32_t width,
         std::uint32_t height,
         std::size_t multiple_sampling = 1) = 0;
-    virtual resource* make_depth_stencil(
+    virtual resource_interface* make_depth_stencil(
         std::uint32_t width,
         std::uint32_t height,
         std::size_t multiple_sampling = 1) = 0;
 };
+using factory = factory_interface;
 
-struct context_config
-{
-    std::uint32_t width;
-    std::uint32_t height;
-
-    void* window_handle;
-
-    std::size_t multiple_sampling{1};
-    std::size_t frame_resource{3};
-    std::size_t render_concurrency{4};
-};
-
-class context
-{
-public:
-    using renderer_type = renderer;
-    using factory_type = factory;
-
-public:
-    virtual ~context() = default;
-
-    virtual bool initialize(const context_config& config) = 0;
-    virtual void deinitialize() {}
-
-    virtual renderer_type* renderer() = 0;
-    virtual factory_type* factory() = 0;
-};
-
-using make_context = context* (*)();
+using make_factory = factory_interface* (*)();
 } // namespace ash::graphics

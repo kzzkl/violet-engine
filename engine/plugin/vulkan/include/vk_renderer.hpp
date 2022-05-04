@@ -14,20 +14,24 @@ public:
 
     VkExtent2D extent() const noexcept { return m_extent; }
 
-    VkFormat format() const noexcept { return m_surface_format.format; }
+    VkFormat surface_format() const noexcept { return m_surface_format.format; }
+    VkFormat depth_stencil_format() const noexcept { return m_depth_stencil_format; }
+
     std::vector<vk_back_buffer>& back_buffers() { return m_back_buffers; }
 
     VkSwapchainKHR swap_chain() const noexcept { return m_swap_chain; }
 
 private:
-    VkSurfaceFormatKHR choose_surface_format(const std::vector<VkSurfaceFormatKHR>& formats);
-    VkPresentModeKHR choose_present_mode(const std::vector<VkPresentModeKHR>& modes);
+    VkSurfaceFormatKHR choose_surface_format(VkSurfaceKHR surface);
+    VkFormat choose_depth_stencil_format();
+    VkPresentModeKHR choose_present_mode(VkSurfaceKHR surface);
     VkExtent2D choose_swap_extent(
         const VkSurfaceCapabilitiesKHR& capabilities,
         std::uint32_t width,
         std::uint32_t height);
 
     VkSurfaceFormatKHR m_surface_format;
+    VkFormat m_depth_stencil_format;
     VkPresentModeKHR m_present_mode;
     VkExtent2D m_extent;
 

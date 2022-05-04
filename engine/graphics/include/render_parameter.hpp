@@ -12,7 +12,7 @@ namespace ash::graphics
 class render_parameter
 {
 public:
-    render_parameter(pipeline_parameter* parameter) : m_parameter(parameter) {}
+    render_parameter(pipeline_parameter_interface* parameter) : m_parameter(parameter) {}
 
     template <typename T>
     void set(std::size_t index, const T& value) noexcept
@@ -20,23 +20,16 @@ public:
         m_parameter->set(index, value);
     }
 
-    void set(std::size_t index, const math::float4x4& value, bool row_matrix = true)
+    void set(std::size_t index, const math::float4x4& value) { m_parameter->set(index, value); }
+
+    void set(std::size_t index, const math::float4x4* value, std::size_t size)
     {
-        m_parameter->set(index, value, row_matrix);
+        m_parameter->set(index, value, size);
     }
 
-    void set(
-        std::size_t index,
-        const math::float4x4* value,
-        std::size_t size,
-        bool row_matrix = true)
-    {
-        m_parameter->set(index, value, size, row_matrix);
-    }
-
-    pipeline_parameter* parameter() const { return m_parameter.get(); }
+    pipeline_parameter_interface* parameter() const { return m_parameter.get(); }
 
 private:
-    std::unique_ptr<pipeline_parameter> m_parameter;
+    std::unique_ptr<pipeline_parameter_interface> m_parameter;
 };
 } // namespace ash::graphics

@@ -14,7 +14,8 @@ public:
         return new vk_renderer(desc);
     }
 
-    virtual frame_buffer_interface* make_frame_buffer(const frame_buffer_desc& desc) override
+    virtual render_target_set_interface* make_render_target_set(
+        const render_target_set_desc& desc) override
     {
         return new vk_frame_buffer(desc);
     }
@@ -52,6 +53,14 @@ public:
         return new vk_index_buffer(desc);
     }
 
+    resource_interface* make_texture(
+        const std::uint8_t* data,
+        std::uint32_t width,
+        std::uint32_t height) override
+    {
+        return nullptr;
+    }
+
     virtual resource_interface* make_texture(const char* file) override
     {
         return new vk_texture(file);
@@ -70,7 +79,7 @@ public:
         std::uint32_t height,
         std::size_t multiple_sampling) override
     {
-        return nullptr;
+        return new vk_depth_stencil_buffer(width, height, multiple_sampling);
     }
 };
 } // namespace ash::graphics::vk
@@ -90,7 +99,7 @@ extern "C"
         return info;
     }
 
-    PLUGIN_API ash::graphics::vk::factory_interface* make_factory()
+    PLUGIN_API ash::graphics::factory_interface* make_factory()
     {
         return new ash::graphics::vk::vk_factory();
     }

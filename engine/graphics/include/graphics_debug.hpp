@@ -8,17 +8,11 @@
 
 namespace ash::graphics
 {
-class debug_pipeline : public render_pipeline
+class debug_pass : public render_pass
 {
 public:
-    debug_pipeline(layout_type* layout, pipeline_type* pipeline);
-    virtual void render(
-        resource* target,
-        resource* depth_stencil,
-        render_command* command,
-        render_parameter* pass) override;
-
-private:
+    debug_pass(render_pass_interface* interface);
+    virtual void render(const camera& camera, render_command_interface* command) override;
 };
 
 class graphics;
@@ -36,7 +30,7 @@ public:
 
     void initialize();
     void sync();
-    
+
     void begin_frame();
     void end_frame();
 
@@ -51,9 +45,9 @@ private:
     std::vector<vertex> m_vertics;
 
     std::size_t m_index;
-    std::vector<std::unique_ptr<resource>> m_vertex_buffer;
-    std::unique_ptr<resource> m_index_buffer;
+    std::vector<std::unique_ptr<resource_interface>> m_vertex_buffer;
+    std::unique_ptr<resource_interface> m_index_buffer;
 
-    std::unique_ptr<debug_pipeline> m_pipeline;
+    std::unique_ptr<debug_pass> m_pipeline;
 };
 } // namespace ash::graphics

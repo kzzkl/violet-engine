@@ -6,6 +6,7 @@ add_executable(${PROJECT_NAME}
     ./source/mmd_animation.cpp
     ./source/mmd_bezier.cpp
     ./source/mmd_loader.cpp
+    ./source/mmd_pipeline.cpp
     ./source/mmd_viewer.cpp
     ./source/pmx_loader.cpp
     ./source/vmd_loader.cpp)

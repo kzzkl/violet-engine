@@ -8,6 +8,7 @@
         "height": 800
     },
     "graphics": {
+        "plugin": "ash-graphics-vulkan.dll",
         "vertex_layout": {
             "pmx": {
                 "attribute": [

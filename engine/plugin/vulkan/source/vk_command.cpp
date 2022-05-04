@@ -10,9 +10,9 @@ vk_command::vk_command(VkCommandBuffer command_buffer) : m_command_buffer(comman
 {
 }
 
-void vk_command::begin(render_pass_interface* pass, frame_buffer_interface* frame_buffer)
+void vk_command::begin(render_pass_interface* pass, render_target_set_interface* render_target_set)
 {
-    auto fb = static_cast<vk_frame_buffer*>(frame_buffer);
+    auto fb = static_cast<vk_frame_buffer*>(render_target_set);
     auto rp = static_cast<vk_render_pass*>(pass);
     rp->begin(m_command_buffer, fb->frame_buffer());
 

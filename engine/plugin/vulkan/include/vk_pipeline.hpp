@@ -31,14 +31,26 @@ class vk_pipeline_parameter : public pipeline_parameter_interface
 public:
     vk_pipeline_parameter(pipeline_parameter_layout_interface* layout);
 
-    virtual void set(std::size_t index, bool value) override {}
-    virtual void set(std::size_t index, std::uint32_t value) override {}
-    virtual void set(std::size_t index, float value) override {}
-    virtual void set(std::size_t index, const math::float2& value) override {}
-    virtual void set(std::size_t index, const math::float3& value) override;
-    virtual void set(std::size_t index, const math::float4& value) override {}
+    virtual void set(std::size_t index, bool value) override { upload_value(index, value); }
+    virtual void set(std::size_t index, std::uint32_t value) override
+    {
+        upload_value(index, value);
+    }
+    virtual void set(std::size_t index, float value) override { upload_value(index, value); }
+    virtual void set(std::size_t index, const math::float2& value) override
+    {
+        upload_value(index, value);
+    }
+    virtual void set(std::size_t index, const math::float3& value) override
+    {
+        upload_value(index, value);
+    }
+    virtual void set(std::size_t index, const math::float4& value) override
+    {
+        upload_value(index, value);
+    }
     virtual void set(std::size_t index, const math::float4x4& value) override;
-    virtual void set(std::size_t index, const math::float4x4* data, size_t size) override {}
+    virtual void set(std::size_t index, const math::float4x4* data, std::size_t size) override;
     virtual void set(std::size_t index, resource_interface* texture) override;
 
     void sync();
@@ -54,6 +66,13 @@ private:
         std::size_t dirty;
         std::uint32_t binding;
     };
+
+    template <typename T>
+    void upload_value(std::size_t index, const T& value)
+    {
+        std::memcpy(m_cpu_buffer.data() + m_parameter_info[index].offset, &value, sizeof(T));
+        mark_dirty(index);
+    }
 
     void mark_dirty(std::size_t index);
 
