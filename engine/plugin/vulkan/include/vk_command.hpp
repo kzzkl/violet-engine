@@ -10,7 +10,7 @@ class vk_command : public render_command_interface
 public:
     vk_command(VkCommandBuffer command_buffer);
 
-    virtual void begin(technique_interface* pass, render_target_set_interface* render_target_set)
+    virtual void begin(technique_interface* pass, attachment_set_interface* attachment_set)
         override;
     virtual void end(technique_interface* pass) override;
     virtual void next(technique_interface* pass) override;

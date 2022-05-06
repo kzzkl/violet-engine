@@ -17,14 +17,14 @@ public:
 
     inline std::size_t render_concurrency() const noexcept { return m_render_concurrency; }
     inline std::size_t frame_resource() const noexcept { return m_frame_resource; }
-    inline std::size_t multiple_sampling() const noexcept { return m_multiple_sampling; }
+    inline std::size_t samples() const noexcept { return m_samples; }
 
     inline std::string_view plugin() const noexcept { return m_plugin; }
 
 private:
     std::size_t m_render_concurrency;
     std::size_t m_frame_resource;
-    std::size_t m_multiple_sampling;
+    std::size_t m_samples;
 
     std::string m_plugin;
 };

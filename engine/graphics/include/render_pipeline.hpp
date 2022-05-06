@@ -26,7 +26,7 @@ struct render_unit
 class technique
 {
 public:
-    technique(technique_interface* interface);
+    technique();
     virtual ~technique() = default;
 
     void add(const render_unit* unit) { m_units.push_back(unit); }
@@ -35,11 +35,9 @@ public:
     virtual void render(const camera& camera, render_command_interface* command) = 0;
 
 protected:
-    technique_interface* interface() const noexcept { return m_interface.get(); }
     const std::vector<const render_unit*>& units() const { return m_units; }
 
 private:
-    std::unique_ptr<technique_interface> m_interface;
     std::vector<const render_unit*> m_units;
 };
 } // namespace ash::graphics

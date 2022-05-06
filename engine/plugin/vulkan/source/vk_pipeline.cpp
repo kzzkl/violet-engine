@@ -7,8 +7,7 @@
 
 namespace ash::graphics::vk
 {
-vk_pass_parameter_layout::vk_pass_parameter_layout(
-    const pass_parameter_layout_desc& desc)
+vk_pass_parameter_layout::vk_pass_parameter_layout(const pass_parameter_layout_desc& desc)
     : m_ubo_count(0),
       m_cis_count(0)
 {
@@ -306,8 +305,7 @@ vk_pass_layout::vk_pass_layout(const pass_layout_desc& desc)
     pass_layout_info.setLayoutCount = static_cast<std::uint32_t>(layouts.size());
     pass_layout_info.pSetLayouts = layouts.data();
 
-    throw_if_failed(
-        vkCreatePipelineLayout(device, &pass_layout_info, nullptr, &m_pass_layout));
+    throw_if_failed(vkCreatePipelineLayout(device, &pass_layout_info, nullptr, &m_pass_layout));
 }
 
 vk_pass_layout::~vk_pass_layout()
@@ -468,7 +466,7 @@ vk_pipeline::vk_pipeline(const pass_desc& desc, VkRenderPass render_pass, std::s
     VkPipelineMultisampleStateCreateInfo multisample_info = {};
     multisample_info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisample_info.sampleShadingEnable = VK_FALSE;
-    multisample_info.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisample_info.rasterizationSamples = to_vk_samples(desc.samples);
     multisample_info.minSampleShading = 1.0f;
     multisample_info.pSampleMask = nullptr;
     multisample_info.alphaToCoverageEnable = VK_FALSE;
@@ -513,8 +511,7 @@ vk_pipeline::vk_pipeline(const pass_desc& desc, VkRenderPass render_pass, std::s
     pass_info.pMultisampleState = &multisample_info;
     pass_info.pColorBlendState = &color_blend_info;
     pass_info.pDynamicState = nullptr;
-    pass_info.layout =
-        static_cast<vk_pass_layout*>(desc.pass_layout)->pass_layout();
+    pass_info.layout = static_cast<vk_pass_layout*>(desc.pass_layout)->pass_layout();
     pass_info.renderPass = render_pass;
     pass_info.subpass = static_cast<std::uint32_t>(index);
     pass_info.basePipelineHandle = VK_NULL_HANDLE;
@@ -570,16 +567,17 @@ vk_render_pass::~vk_render_pass()
 
 void vk_render_pass::begin(VkCommandBuffer command_buffer, VkFramebuffer frame_buffer)
 {
-    VkRenderPassBeginInfo pass_info{};
+    VkRenderPassBeginInfo pass_info = {};
     pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     pass_info.renderPass = m_render_pass;
     pass_info.framebuffer = frame_buffer;
     pass_info.renderArea.offset = {0, 0};
     pass_info.renderArea.extent = vk_context::swap_chain().extent();
 
-    std::array<VkClearValue, 2> clear_color;
+    std::array<VkClearValue, 3> clear_color;
     clear_color[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
     clear_color[1].depthStencil = {1.0f, 0};
+    clear_color[2].color = {0.0f, 0.0f, 0.0f, 1.0f};
 
     pass_info.clearValueCount = static_cast<std::uint32_t>(clear_color.size());
     pass_info.pClearValues = clear_color.data();
@@ -610,7 +608,8 @@ void vk_render_pass::create_pass(const technique_desc& desc)
     struct subpass_reference
     {
         std::vector<VkAttachmentReference> input;
-        std::vector<VkAttachmentReference> output;
+        std::vector<VkAttachmentReference> color;
+        std::vector<VkAttachmentReference> resolve;
         VkAttachmentReference depth;
     };
 
@@ -618,53 +617,82 @@ void vk_render_pass::create_pass(const technique_desc& desc)
     std::vector<subpass_reference> reference(desc.subpass_count);
     for (std::size_t i = 0; i < desc.subpass_count; ++i)
     {
-        // Input attachments.
-        for (std::size_t j = 0; j < desc.subpasses[i].input_count; ++j)
+        bool has_resolve_attachment = false;
+        for (std::size_t j = 0; j < desc.subpasses[i].reference_count; ++j)
+        {
+            switch (desc.subpasses[i].references[j].type)
+            {
+            case attachment_reference_type::UNUSE:
+                break;
+            case attachment_reference_type::INPUT: {
+                VkAttachmentReference attachment_ref = {};
+                attachment_ref.attachment = static_cast<std::uint32_t>(j);
+                attachment_ref.layout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                reference[i].input.push_back(attachment_ref);
+                break;
+            }
+            case attachment_reference_type::COLOR: {
+                VkAttachmentReference attachment_ref = {};
+                attachment_ref.attachment = static_cast<std::uint32_t>(j);
+                attachment_ref.layout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                reference[i].color.push_back(attachment_ref);
+                break;
+            }
+            case attachment_reference_type::DEPTH: {
+                reference[i].depth.attachment = static_cast<std::uint32_t>(j);
+                reference[i].depth.layout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                subpasses[i].pDepthStencilAttachment = &reference[i].depth;
+                break;
+            }
+            case attachment_reference_type::RESOLVE: {
+                has_resolve_attachment = true;
+                break;
+            }
+            default:
+                throw vk_exception("Invalid attachment reference.");
+            }
+        }
+
+        if (has_resolve_attachment)
         {
             VkAttachmentReference attachment_ref = {};
-            attachment_ref.attachment = static_cast<std::uint32_t>(desc.subpasses[i].input[j]);
+            attachment_ref.attachment = VK_ATTACHMENT_UNUSED;
             attachment_ref.layout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-            reference[i].input.push_back(attachment_ref);
+            reference[i].resolve.resize(reference[i].color.size(), attachment_ref);
+            for (std::size_t j = 0; j < desc.subpasses[i].reference_count; ++j)
+            {
+                if (desc.subpasses[i].references[j].type == attachment_reference_type::RESOLVE)
+                {
+                    std::size_t resolve_relation = desc.subpasses[i].references[j].resolve_relation;
+                    reference[i].resolve[resolve_relation].attachment =
+                        static_cast<std::uint32_t>(j);
+                }
+            }
         }
+
         subpasses[i].inputAttachmentCount = static_cast<std::uint32_t>(reference[i].input.size());
         subpasses[i].pInputAttachments = reference[i].input.data();
-
-        // Output attachments.
-        for (std::size_t j = 0; j < desc.subpasses[i].output_count; ++j)
-        {
-            VkAttachmentReference attachment_ref = {};
-            attachment_ref.attachment = static_cast<std::uint32_t>(desc.subpasses[i].output[j]);
-            attachment_ref.layout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-            reference[i].output.push_back(attachment_ref);
-        }
-        subpasses[i].colorAttachmentCount = static_cast<std::uint32_t>(reference[i].output.size());
-        subpasses[i].pColorAttachments = reference[i].output.data();
-
-        // Depth attachment.
-        if (desc.subpasses[i].output_depth)
-        {
-            reference[i].depth.attachment = static_cast<std::uint32_t>(desc.subpasses[i].depth);
-            reference[i].depth.layout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-            subpasses[i].pDepthStencilAttachment = &reference[i].depth;
-        }
-
+        subpasses[i].colorAttachmentCount = static_cast<std::uint32_t>(reference[i].color.size());
+        subpasses[i].pColorAttachments = reference[i].color.data();
+        subpasses[i].pResolveAttachments =
+            has_resolve_attachment ? reference[i].resolve.data() : nullptr;
         subpasses[i].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     }
 
     std::vector<VkAttachmentDescription> attachments;
-    for (std::size_t i = 0; i < desc.render_target_count; ++i)
+    for (std::size_t i = 0; i < desc.attachment_count; ++i)
     {
-        auto& render_target = desc.render_targets[i];
+        auto& attachment_desc = desc.attachments[i];
 
         VkAttachmentDescription attachment = {};
-        attachment.format = to_vk_format(render_target.format);
-        attachment.samples = to_vk_samples(render_target.samples);
-        attachment.loadOp = to_vk_attachment_load_op(render_target.load_op);
-        attachment.storeOp = to_vk_attachment_store_op(render_target.store_op);
-        attachment.stencilLoadOp = to_vk_attachment_load_op(render_target.stencil_load_op);
-        attachment.stencilStoreOp = to_vk_attachment_store_op(render_target.stencil_store_op);
-        attachment.initialLayout = to_vk_image_layout(render_target.initial_state);
-        attachment.finalLayout = to_vk_image_layout(render_target.final_state);
+        attachment.format = to_vk_format(attachment_desc.format);
+        attachment.samples = to_vk_samples(attachment_desc.samples);
+        attachment.loadOp = to_vk_attachment_load_op(attachment_desc.load_op);
+        attachment.storeOp = to_vk_attachment_store_op(attachment_desc.store_op);
+        attachment.stencilLoadOp = to_vk_attachment_load_op(attachment_desc.stencil_load_op);
+        attachment.stencilStoreOp = to_vk_attachment_store_op(attachment_desc.stencil_store_op);
+        attachment.initialLayout = to_vk_image_layout(attachment_desc.initial_state);
+        attachment.finalLayout = to_vk_image_layout(attachment_desc.final_state);
         attachments.push_back(attachment);
     }
 

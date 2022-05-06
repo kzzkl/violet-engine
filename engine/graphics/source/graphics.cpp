@@ -29,7 +29,6 @@ bool graphics::initialize(const dictionary& config)
     desc.width = rect.width;
     desc.height = rect.height;
     desc.render_concurrency = m_config.render_concurrency();
-    desc.multiple_sampling = m_config.multiple_sampling();
     desc.frame_resource = m_config.frame_resource();
 
     if (!m_plugin.load(m_config.plugin()))
@@ -195,9 +194,7 @@ void graphics::end_frame()
     m_renderer->end_frame();
 }
 
-void graphics::make_render_parameter_layout(
-    std::string_view name,
-    pass_parameter_layout_info& info)
+void graphics::make_render_parameter_layout(std::string_view name, pass_parameter_layout_info& info)
 {
     auto& factory = m_plugin.factory();
     m_parameter_layouts[name.data()].reset(factory.make_pass_parameter_layout(info.convert()));
@@ -211,12 +208,10 @@ std::unique_ptr<render_parameter> graphics::make_render_parameter(std::string_vi
     return std::make_unique<render_parameter>(factory.make_pass_parameter(layout));
 }
 
-std::unique_ptr<render_target_set_interface> graphics::make_render_target_set(
-    render_target_set_info& info)
+std::unique_ptr<attachment_set_interface> graphics::make_attachment_set(attachment_set_info& info)
 {
     auto& factory = m_plugin.factory();
-    return std::unique_ptr<render_target_set_interface>(
-        factory.make_render_target_set(info.convert()));
+    return std::unique_ptr<attachment_set_interface>(factory.make_attachment_set(info.convert()));
 }
 
 std::unique_ptr<resource> graphics::make_texture(std::string_view file)
@@ -242,25 +237,5 @@ std::vector<resource*> graphics::back_buffers() const
     for (std::size_t i = 0; i < m_renderer->back_buffer_count(); ++i)
         result.push_back(m_renderer->back_buffer(i));
     return result;
-}
-
-technique_interface* graphics::make_technique_interface(technique_info& info)
-{
-    auto& factory = m_plugin.factory();
-
-    // make layout
-    for (auto& subpass : info.subpasses)
-    {
-        auto pass_layout_desc = subpass.pass_layout_info.convert();
-
-        std::vector<pass_parameter_layout_interface*> parameter_layouts;
-        for (auto& parameter_layout : subpass.pass_layout_info.parameters)
-            parameter_layouts.push_back(m_parameter_layouts[parameter_layout].get());
-        pass_layout_desc.parameters = parameter_layouts.data();
-
-        subpass.pass_layout = factory.make_pass_layout(pass_layout_desc);
-    }
-
-    return factory.make_technique(info.convert());
 }
 } // namespace ash::graphics

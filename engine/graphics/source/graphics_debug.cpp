@@ -8,17 +8,17 @@
 
 namespace ash::graphics
 {
-debug_pass::debug_pass(technique_interface* interface) : technique(interface)
+debug_pass::debug_pass(technique_interface* interface)
 {
 }
 
 void debug_pass::render(const camera& camera, render_command_interface* command)
 {
-    command->begin(interface(), nullptr);
+    /*command->begin(interface(), nullptr);
     command->parameter(0, nullptr);
 
     for (auto& unit : units())
-        command->draw(unit->vertex_buffer, unit->index_buffer, 0, unit->index_end, 0);
+        command->draw(unit->vertex_buffer, unit->index_buffer, 0, unit->index_end, 0);*/
 }
 
 graphics_debug::graphics_debug(std::size_t frame_resource, graphics& graphics, ecs::world& world)

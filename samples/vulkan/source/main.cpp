@@ -118,16 +118,15 @@ private:
         auto rect = system<window::window>().rect();
         for (std::size_t i = 0; i < m_renderer->back_buffer_count(); ++i)
         {
-            std::array<graphics::resource_interface*, 1> render_targets = {
-                m_renderer->back_buffer(i)};
-            graphics::render_target_set_desc render_target_set_desc = {};
-            render_target_set_desc.technique = m_pass.get();
-            render_target_set_desc.render_targets = render_targets.data();
-            render_target_set_desc.render_target_count = render_targets.size();
-            render_target_set_desc.width = rect.width;
-            render_target_set_desc.height = rect.height;
-            m_render_target_sets.emplace_back(
-                m_vulkan_plugin.factory().make_render_target_set(render_target_set_desc));
+            std::array<graphics::resource_interface*, 1> attachments = {m_renderer->back_buffer(i)};
+            graphics::attachment_set_desc attachment_set_desc = {};
+            attachment_set_desc.technique = m_pass.get();
+            attachment_set_desc.attachments = attachments.data();
+            attachment_set_desc.attachment_count = attachments.size();
+            attachment_set_desc.width = rect.width;
+            attachment_set_desc.height = rect.height;
+            m_attachment_sets.emplace_back(
+                m_vulkan_plugin.factory().make_attachment_set(attachment_set_desc));
         }
 
         std::vector<vertex> vertices = {
@@ -181,7 +180,7 @@ private:
             std::size_t index = m_renderer->begin_frame();
 
             auto command = m_renderer->allocate_command();
-            command->begin(m_pass.get(), m_render_target_sets[index].get());
+            command->begin(m_pass.get(), m_attachment_sets[index].get());
 
             m_parameter_1->set(0, m_color);
             command->parameter(0, m_parameter_1.get());
@@ -222,7 +221,7 @@ private:
     std::unique_ptr<graphics::resource_interface> m_vertex_buffer;
     std::unique_ptr<graphics::resource_interface> m_index_buffer;
 
-    std::vector<std::unique_ptr<graphics::render_target_set_interface>> m_render_target_sets;
+    std::vector<std::unique_ptr<graphics::attachment_set_interface>> m_attachment_sets;
 
     math::float3 m_color{};
     std::unique_ptr<graphics::pass_parameter_interface> m_parameter_1;

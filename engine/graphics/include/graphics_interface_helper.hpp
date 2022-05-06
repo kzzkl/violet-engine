@@ -58,19 +58,16 @@ public:
     pass_blend_info blend;
     pass_depth_stencil_info depth_stencil;
 
-    std::vector<std::size_t> input;
-    std::vector<std::size_t> output;
+    std::vector<attachment_reference> references;
 
-    std::size_t depth;
-    bool output_depth;
-
-    primitive_topology_type primitive_topology;
+    primitive_topology primitive_topology;
+    std::size_t samples;
 };
 
-class render_target_info : public render_target_desc
+class attachment_info : public attachment_desc
 {
 public:
-    render_target_desc convert() noexcept { return *this; }
+    attachment_desc convert() noexcept { return *this; }
 };
 
 class technique_info
@@ -78,20 +75,20 @@ class technique_info
 public:
     technique_desc convert() noexcept;
 
-    std::vector<render_target_info> render_targets;
+    std::vector<attachment_info> attachments;
     std::vector<pass_info> subpasses;
 
 private:
-    std::vector<render_target_desc> m_render_target_desc;
+    std::vector<attachment_desc> m_attachment_desc;
     std::vector<pass_desc> m_pass_desc;
 };
 
-class render_target_set_info
+class attachment_set_info
 {
 public:
-    render_target_set_desc convert() noexcept;
+    attachment_set_desc convert() noexcept;
 
-    std::vector<resource_interface*> render_targets;
+    std::vector<resource_interface*> attachments;
     std::uint32_t width;
     std::uint32_t height;
     technique_interface* technique;

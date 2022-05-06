@@ -14,8 +14,7 @@ public:
         return new vk_renderer(desc);
     }
 
-    virtual render_target_set_interface* make_render_target_set(
-        const render_target_set_desc& desc) override
+    virtual attachment_set_interface* make_attachment_set(const attachment_set_desc& desc) override
     {
         return new vk_frame_buffer(desc);
     }
@@ -31,8 +30,7 @@ public:
         return new vk_pass_parameter_layout(desc);
     }
 
-    virtual pass_layout_interface* make_pass_layout(
-        const pass_layout_desc& desc) override
+    virtual pass_layout_interface* make_pass_layout(const pass_layout_desc& desc) override
     {
         return new vk_pass_layout(desc);
     }
@@ -66,20 +64,14 @@ public:
         return new vk_texture(file);
     }
 
-    virtual resource_interface* make_render_target(
-        std::uint32_t width,
-        std::uint32_t height,
-        std::size_t multiple_sampling) override
+    virtual resource_interface* make_render_target(const render_target_desc& desc) override
     {
-        return nullptr;
+        return new vk_render_target(desc);
     }
 
-    virtual resource_interface* make_depth_stencil(
-        std::uint32_t width,
-        std::uint32_t height,
-        std::size_t multiple_sampling) override
+    virtual resource_interface* make_depth_stencil(const depth_stencil_desc& desc) override
     {
-        return new vk_depth_stencil_buffer(width, height, multiple_sampling);
+        return new vk_depth_stencil_buffer(desc);
     }
 };
 } // namespace ash::graphics::vk

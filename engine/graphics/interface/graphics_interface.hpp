@@ -12,7 +12,9 @@ enum class resource_format
     UNDEFINED,
     R8G8B8A8_UNORM,
     R32G32B32A32_FLOAT,
-    D32_FLOAT_S8_UINT
+    R32G32B32A32_INT,
+    R32G32B32A32_UINT,
+    D24_UNORM_S8_UINT
 };
 
 enum class resource_state
@@ -24,15 +26,19 @@ enum class resource_state
 
 class resource_interface
 {
+public:
+    virtual ~resource_interface() = default;
+
+    virtual resource_format format() const noexcept = 0;
 };
 using resource = resource_interface;
 
 enum class vertex_attribute_type : std::uint8_t
 {
-    INT,    // R32 SINT
-    INT2,   // R32G32 SINT
-    INT3,   // R32G32B32 SINT
-    INT4,   // R32G32B32A32 SINT
+    INT,    // R32 INT
+    INT2,   // R32G32 INT
+    INT3,   // R32G32B32 INT
+    INT4,   // R32G32B32A32 INT
     UINT,   // R32 UINT
     UINT2,  // R32G32 UINT
     UINT3,  // R32G32B32 UINT
@@ -50,7 +56,7 @@ struct vertex_layout_desc
     std::size_t attribute_count;
 };
 
-enum class pass_parameter_type : std::uint8_t
+enum class pass_parameter_type
 {
     BOOL,
     UINT,
@@ -105,54 +111,69 @@ public:
     virtual void set(std::size_t index, resource_interface* texture) = 0;
 };
 
+enum class blend_factor
+{
+    ZERO,
+    ONE,
+    SOURCE_COLOR,
+    SOURCE_ALPHA,
+    SOURCE_INV_ALPHA,
+    TARGET_COLOR,
+    TARGET_ALPHA,
+    TARGET_INV_ALPHA
+};
+
+enum class blend_op
+{
+    ADD,
+    SUBTRACT,
+    MIN,
+    MAX
+};
+
 struct pass_blend_desc
 {
-    enum class factor_type
-    {
-        ZERO,
-        ONE,
-        SOURCE_COLOR,
-        SOURCE_ALPHA,
-        SOURCE_INV_ALPHA,
-        TARGET_COLOR,
-        TARGET_ALPHA,
-        TARGET_INV_ALPHA
-    };
-
-    enum class op_type
-    {
-        ADD,
-        SUBTRACT,
-        MIN,
-        MAX
-    };
-
     bool enable;
 
-    factor_type source_factor;
-    factor_type target_factor;
-    op_type op;
+    blend_factor source_factor;
+    blend_factor target_factor;
+    blend_op op;
 
-    factor_type source_alpha_factor;
-    factor_type target_alpha_factor;
-    op_type alpha_op;
+    blend_factor source_alpha_factor;
+    blend_factor target_alpha_factor;
+    blend_op alpha_op;
+};
+
+enum class depth_functor
+{
+    LESS,
+    ALWAYS
 };
 
 struct pass_depth_stencil_desc
 {
-    enum class depth_functor_type
-    {
-        LESS,
-        ALWAYS
-    };
-
-    depth_functor_type depth_functor;
+    depth_functor depth_functor;
 };
 
-enum class primitive_topology_type : std::uint8_t
+enum class primitive_topology
 {
     TRIANGLE_LIST,
     LINE_LIST
+};
+
+enum class attachment_reference_type
+{
+    UNUSE,
+    INPUT,
+    COLOR,
+    DEPTH,
+    RESOLVE
+};
+
+struct attachment_reference
+{
+    attachment_reference_type type;
+    std::size_t resolve_relation;
 };
 
 struct pass_desc
@@ -166,39 +187,35 @@ struct pass_desc
     pass_blend_desc blend;
     pass_depth_stencil_desc depth_stencil;
 
-    std::size_t* input;
-    std::size_t input_count;
+    std::size_t samples;
 
-    std::size_t* output;
-    std::size_t output_count;
+    attachment_reference* references;
+    std::size_t reference_count;
 
-    std::size_t depth;
-    bool output_depth;
-
-    primitive_topology_type primitive_topology;
+    primitive_topology primitive_topology;
 };
 
-struct render_target_desc
+enum class attachment_load_op
 {
-    enum class load_op_type
-    {
-        LOAD,
-        CLEAR,
-        DONT_CARE
-    };
+    LOAD,
+    CLEAR,
+    DONT_CARE
+};
 
-    enum class store_op_type
-    {
-        STORE,
-        DONT_CARE
-    };
+enum class attachment_store_op
+{
+    STORE,
+    DONT_CARE
+};
 
+struct attachment_desc
+{
     resource_format format;
 
-    load_op_type load_op;
-    store_op_type store_op;
-    load_op_type stencil_load_op;
-    store_op_type stencil_store_op;
+    attachment_load_op load_op;
+    attachment_store_op store_op;
+    attachment_load_op stencil_load_op;
+    attachment_store_op stencil_store_op;
 
     resource_state initial_state;
     resource_state final_state;
@@ -208,8 +225,8 @@ struct render_target_desc
 
 struct technique_desc
 {
-    render_target_desc* render_targets;
-    std::size_t render_target_count;
+    attachment_desc* attachments;
+    std::size_t attachment_count;
 
     pass_desc* subpasses;
     std::size_t subpass_count;
@@ -219,10 +236,10 @@ class technique_interface
 {
 };
 
-struct render_target_set_desc
+struct attachment_set_desc
 {
-    resource_interface** render_targets;
-    std::size_t render_target_count;
+    resource_interface** attachments;
+    std::size_t attachment_count;
 
     std::uint32_t width;
     std::uint32_t height;
@@ -230,7 +247,7 @@ struct render_target_set_desc
     technique_interface* technique;
 };
 
-class render_target_set_interface
+class attachment_set_interface
 {
 };
 
@@ -245,9 +262,7 @@ struct scissor_rect
 class render_command_interface
 {
 public:
-    virtual void begin(
-        technique_interface* pass,
-        render_target_set_interface* render_target_set) = 0;
+    virtual void begin(technique_interface* pass, attachment_set_interface* attachment_set) = 0;
     virtual void end(technique_interface* pass) = 0;
     virtual void next(technique_interface* pass) = 0;
 
@@ -268,7 +283,6 @@ struct renderer_desc
 
     void* window_handle;
 
-    std::size_t multiple_sampling;
     std::size_t frame_resource;
     std::size_t render_concurrency;
 };
@@ -280,7 +294,7 @@ public:
     virtual void end_frame() = 0;
 
     virtual render_command_interface* allocate_command() = 0;
-    virtual void execute(render_command_interface*) = 0;
+    virtual void execute(render_command_interface* command) = 0;
 
     virtual resource_interface* back_buffer(std::size_t index) = 0;
     virtual std::size_t back_buffer_count() = 0;
@@ -307,13 +321,28 @@ struct index_buffer_desc
     bool dynamic;
 };
 
+struct render_target_desc
+{
+    std::uint32_t width;
+    std::uint32_t height;
+    std::size_t samples;
+    resource_format format;
+};
+
+struct depth_stencil_desc
+{
+    std::uint32_t width;
+    std::uint32_t height;
+    std::size_t samples;
+    resource_format format;
+};
+
 class factory_interface
 {
 public:
     virtual renderer_interface* make_renderer(const renderer_desc& desc) = 0;
 
-    virtual render_target_set_interface* make_render_target_set(
-        const render_target_set_desc& desc) = 0;
+    virtual attachment_set_interface* make_attachment_set(const attachment_set_desc& desc) = 0;
     virtual technique_interface* make_technique(const technique_desc& desc) = 0;
 
     virtual pass_parameter_layout_interface* make_pass_parameter_layout(
@@ -331,14 +360,8 @@ public:
         std::uint32_t height) = 0;
     virtual resource_interface* make_texture(const char* file) = 0;
 
-    virtual resource_interface* make_render_target(
-        std::uint32_t width,
-        std::uint32_t height,
-        std::size_t multiple_sampling = 1) = 0;
-    virtual resource_interface* make_depth_stencil(
-        std::uint32_t width,
-        std::uint32_t height,
-        std::size_t multiple_sampling = 1) = 0;
+    virtual resource_interface* make_render_target(const render_target_desc& desc) = 0;
+    virtual resource_interface* make_depth_stencil(const depth_stencil_desc& desc) = 0;
 };
 using factory = factory_interface;
 

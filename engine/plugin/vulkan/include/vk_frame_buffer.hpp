@@ -4,10 +4,10 @@
 
 namespace ash::graphics::vk
 {
-class vk_frame_buffer : public render_target_set_interface
+class vk_frame_buffer : public attachment_set_interface
 {
 public:
-    vk_frame_buffer(const render_target_set_desc& desc);
+    vk_frame_buffer(const attachment_set_desc& desc);
 
     VkFramebuffer frame_buffer() const noexcept { return m_frame_buffer; }
 

@@ -47,11 +47,13 @@ inline void throw_if_failed(VkResult result)
         throw vk_exception(result);
 }
 
-VkFormat to_vk_format(resource_format format);
 VkSampleCountFlagBits to_vk_samples(std::size_t samples);
 
-VkAttachmentLoadOp to_vk_attachment_load_op(render_target_desc::load_op_type op);
-VkAttachmentStoreOp to_vk_attachment_store_op(render_target_desc::store_op_type op);
+VkAttachmentLoadOp to_vk_attachment_load_op(attachment_load_op op);
+VkAttachmentStoreOp to_vk_attachment_store_op(attachment_store_op op);
+
+VkFormat to_vk_format(resource_format format);
+resource_format to_ash_format(VkFormat format);
 
 VkImageLayout to_vk_image_layout(resource_state state);
 } // namespace ash::graphics::vk

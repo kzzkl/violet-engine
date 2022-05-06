@@ -32,20 +32,28 @@ public:
     void begin_frame();
     void end_frame();
 
-    template <typename T, typename... Args>
-    std::unique_ptr<T> make_render_pass(technique_info& info, Args&&... args)
+    std::unique_ptr<technique_interface> make_technique(technique_info& info)
     {
-        auto interface = make_technique_interface(info);
-        ASH_ASSERT(interface);
+        auto& factory = m_plugin.factory();
+        // make layout
+        for (auto& subpass : info.subpasses)
+        {
+            auto pass_layout_desc = subpass.pass_layout_info.convert();
 
-        return std::make_unique<T>(interface, std::forward<Args>(args)...);
+            std::vector<pass_parameter_layout_interface*> parameter_layouts;
+            for (auto& parameter_layout : subpass.pass_layout_info.parameters)
+                parameter_layouts.push_back(m_parameter_layouts[parameter_layout].get());
+            pass_layout_desc.parameters = parameter_layouts.data();
+
+            subpass.pass_layout = factory.make_pass_layout(pass_layout_desc);
+        }
+        return std::unique_ptr<technique_interface>(factory.make_technique(info.convert()));
     }
 
     void make_render_parameter_layout(std::string_view name, pass_parameter_layout_info& info);
     std::unique_ptr<render_parameter> make_render_parameter(std::string_view name);
 
-    std::unique_ptr<render_target_set_interface> make_render_target_set(
-        render_target_set_info& info);
+    std::unique_ptr<attachment_set_interface> make_attachment_set(attachment_set_info& info);
 
     template <typename Vertex>
     std::unique_ptr<resource> make_vertex_buffer(
@@ -83,24 +91,16 @@ public:
         return std::unique_ptr<resource>(factory.make_texture(data, width, height));
     }
 
-    std::unique_ptr<resource> make_render_target(
-        std::uint32_t width,
-        std::uint32_t height,
-        std::size_t multiple_sampling = 1)
+    std::unique_ptr<resource> make_render_target(const render_target_desc& desc)
     {
         auto& factory = m_plugin.factory();
-        return std::unique_ptr<resource>(
-            factory.make_render_target(width, height, multiple_sampling));
+        return std::unique_ptr<resource>(factory.make_render_target(desc));
     }
 
-    std::unique_ptr<resource> make_depth_stencil(
-        std::uint32_t width,
-        std::uint32_t height,
-        std::size_t multiple_sampling = 1)
+    std::unique_ptr<resource> make_depth_stencil(const depth_stencil_desc& desc)
     {
         auto& factory = m_plugin.factory();
-        return std::unique_ptr<resource>(
-            factory.make_depth_stencil(width, height, multiple_sampling));
+        return std::unique_ptr<resource>(factory.make_depth_stencil(desc));
     }
 
     std::unique_ptr<resource> make_texture(std::string_view file);
@@ -110,8 +110,6 @@ public:
     graphics_debug& debug() { return *m_debug; }
 
 private:
-    technique_interface* make_technique_interface(technique_info& info);
-
     graphics_plugin m_plugin;
     std::unique_ptr<renderer> m_renderer;
 

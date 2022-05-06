@@ -7,6 +7,8 @@ namespace ash::graphics::vk
 class vk_resource : public resource_interface
 {
 public:
+    virtual resource_format format() const noexcept override { return resource_format::UNDEFINED; }
+
 protected:
     std::pair<VkBuffer, VkDeviceMemory> create_buffer(
         VkDeviceSize size,
@@ -17,6 +19,7 @@ protected:
         std::uint32_t width,
         std::uint32_t height,
         VkFormat format,
+        std::size_t samples,
         VkImageTiling tiling,
         VkImageUsageFlags usage,
         VkMemoryPropertyFlags properties);
@@ -52,6 +55,7 @@ public:
     vk_back_buffer(vk_back_buffer&& other);
     virtual ~vk_back_buffer();
 
+    virtual resource_format format() const noexcept override { return m_format; }
     virtual VkImageView view() const noexcept override { return m_image_view; }
 
     vk_back_buffer& operator=(vk_back_buffer&& other);
@@ -59,23 +63,63 @@ public:
 private:
     VkImageView m_image_view;
     VkImage m_image;
+
+    resource_format m_format;
+};
+
+class vk_render_target : public vk_image
+{
+public:
+    vk_render_target(const render_target_desc& desc);
+    vk_render_target(vk_render_target&& other);
+
+    virtual ~vk_render_target();
+
+    virtual resource_format format() const noexcept override { return m_format; }
+    virtual VkImageView view() const noexcept override { return m_image_view; }
+
+    vk_render_target& operator=(vk_render_target&& other);
+
+private:
+    VkImageView m_image_view;
+    VkImage m_image;
+    VkDeviceMemory m_image_memory;
+
+    resource_format m_format;
 };
 
 class vk_depth_stencil_buffer : public vk_image
 {
 public:
-    vk_depth_stencil_buffer(
-        std::uint32_t width,
-        std::uint32_t height,
-        std::size_t multiple_sampling);
+    vk_depth_stencil_buffer(const depth_stencil_desc& desc);
 
+    virtual resource_format format() const noexcept override { return m_format; }
     virtual VkImageView view() const noexcept override { return m_image_view; }
 
 private:
     VkImageView m_image_view;
+    VkImage m_image;
+    VkDeviceMemory m_image_memory;
+
+    resource_format m_format;
+};
+
+class vk_texture : public vk_image
+{
+public:
+    vk_texture(std::string_view file);
+    virtual ~vk_texture();
+
+    virtual resource_format format() const noexcept override { return m_format; }
+    virtual VkImageView view() const noexcept override { return m_image_view; }
+
+public:
+    VkImageView m_image_view;
 
     VkImage m_image;
     VkDeviceMemory m_image_memory;
+
+    resource_format m_format;
 };
 
 class vk_vertex_buffer : public vk_resource
@@ -119,20 +163,5 @@ public:
 private:
     VkBuffer m_buffer;
     VkDeviceMemory m_buffer_memory;
-};
-
-class vk_texture : public vk_image
-{
-public:
-    vk_texture(std::string_view file);
-    virtual ~vk_texture();
-
-    virtual VkImageView view() const noexcept override { return m_image_view; }
-
-public:
-    VkImageView m_image_view;
-
-    VkImage m_image;
-    VkDeviceMemory m_image_memory;
 };
 } // namespace ash::graphics::vk

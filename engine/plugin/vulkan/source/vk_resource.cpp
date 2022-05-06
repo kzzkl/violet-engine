@@ -41,6 +41,7 @@ std::pair<VkImage, VkDeviceMemory> vk_resource::create_image(
     std::uint32_t width,
     std::uint32_t height,
     VkFormat format,
+    std::size_t samples,
     VkImageTiling tiling,
     VkImageUsageFlags usage,
     VkMemoryPropertyFlags properties)
@@ -62,7 +63,7 @@ std::pair<VkImage, VkDeviceMemory> vk_resource::create_image(
     image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     image_info.usage = usage;
     image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+    image_info.samples = to_vk_samples(samples);
     image_info.flags = 0; // Optional
 
     throw_if_failed(vkCreateImage(device, &image_info, nullptr, &result.first));
@@ -204,6 +205,16 @@ void vk_resource::transition_image_layout(
         source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
         destination_stage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     }
+    else if (
+        old_layout == VK_IMAGE_LAYOUT_UNDEFINED &&
+        new_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+    {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask =
+            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destination_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    }
     else
     {
         throw vk_exception("Unsupported layout transition!");
@@ -246,9 +257,13 @@ std::uint32_t vk_resource::find_memory_type(
 vk_back_buffer::vk_back_buffer(VkImage image, VkFormat format) : m_image(image)
 {
     m_image_view = create_image_view(image, format, VK_IMAGE_ASPECT_COLOR_BIT);
+    m_format = to_ash_format(format);
 }
 
-vk_back_buffer::vk_back_buffer(vk_back_buffer&& other) : m_image_view(other.m_image_view)
+vk_back_buffer::vk_back_buffer(vk_back_buffer&& other)
+    : m_image_view(other.m_image_view),
+      m_image(other.m_image),
+      m_format(other.m_format)
 {
     other.m_image_view = VK_NULL_HANDLE;
 }
@@ -265,22 +280,51 @@ vk_back_buffer::~vk_back_buffer()
 vk_back_buffer& vk_back_buffer::operator=(vk_back_buffer&& other)
 {
     m_image_view = other.m_image_view;
+    m_image = other.m_image;
+    m_format = other.m_format;
+
     other.m_image_view = VK_NULL_HANDLE;
 
     return *this;
 }
 
-vk_depth_stencil_buffer::vk_depth_stencil_buffer(
-    std::uint32_t width,
-    std::uint32_t height,
-    std::size_t multiple_sampling)
+vk_render_target::vk_render_target(const render_target_desc& desc)
 {
-    VkFormat format = vk_context::swap_chain().depth_stencil_format();
+    VkFormat format = to_vk_format(desc.format);
 
     auto [image, image_memory] = create_image(
-        width,
-        height,
+        desc.width,
+        desc.height,
         format,
+        desc.samples,
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    m_image = image;
+    m_image_memory = image_memory;
+
+    m_image_view = create_image_view(m_image, format, VK_IMAGE_ASPECT_COLOR_BIT);
+
+    transition_image_layout(
+        m_image,
+        format,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+}
+
+vk_render_target::~vk_render_target()
+{
+}
+
+vk_depth_stencil_buffer::vk_depth_stencil_buffer(const depth_stencil_desc& desc)
+{
+    VkFormat format = to_vk_format(desc.format);
+
+    auto [image, image_memory] = create_image(
+        desc.width,
+        desc.height,
+        format,
+        desc.samples,
         VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -294,6 +338,66 @@ vk_depth_stencil_buffer::vk_depth_stencil_buffer(
         format,
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+    m_format = desc.format;
+}
+
+vk_texture::vk_texture(std::string_view file)
+{
+    vk_image_loader loader;
+    if (!loader.load(file))
+        throw vk_exception("Load texture failed.");
+
+    auto& data = loader.mipmap(0);
+
+    auto [staging_buffer, staging_buffer_memory] = create_buffer(
+        static_cast<VkDeviceSize>(data.pixels.size()),
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    auto device = vk_context::device();
+
+    void* mapping;
+    vkMapMemory(device, staging_buffer_memory, 0, data.pixels.size(), 0, &mapping);
+    std::memcpy(mapping, data.pixels.data(), data.pixels.size());
+    vkUnmapMemory(device, staging_buffer_memory);
+
+    auto [image, image_memory] = create_image(
+        data.width,
+        data.height,
+        data.format,
+        1,
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    transition_image_layout(
+        image,
+        data.format,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    copy_buffer_to_image(staging_buffer, image, data.width, data.height);
+    transition_image_layout(
+        image,
+        data.format,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    vkDestroyBuffer(device, staging_buffer, nullptr);
+    vkFreeMemory(device, staging_buffer_memory, nullptr);
+
+    // Create view.
+    m_image_view = create_image_view(image, data.format, VK_IMAGE_ASPECT_COLOR_BIT);
+
+    m_image = image;
+    m_image_memory = image_memory;
+}
+
+vk_texture::~vk_texture()
+{
+    auto device = vk_context::device();
+    vkDestroyImage(device, m_image, nullptr);
+    vkFreeMemory(device, m_image_memory, nullptr);
 }
 
 vk_vertex_buffer::vk_vertex_buffer(const vertex_buffer_desc& desc)
@@ -414,62 +518,5 @@ vk_uniform_buffer::~vk_uniform_buffer()
     auto device = vk_context::device();
     vkDestroyBuffer(device, m_buffer, nullptr);
     vkFreeMemory(device, m_buffer_memory, nullptr);
-}
-
-vk_texture::vk_texture(std::string_view file)
-{
-    vk_image_loader loader;
-    if (!loader.load(file))
-        throw vk_exception("Load texture failed.");
-
-    auto& data = loader.mipmap(0);
-
-    auto [staging_buffer, staging_buffer_memory] = create_buffer(
-        static_cast<VkDeviceSize>(data.pixels.size()),
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-    auto device = vk_context::device();
-
-    void* mapping;
-    vkMapMemory(device, staging_buffer_memory, 0, data.pixels.size(), 0, &mapping);
-    std::memcpy(mapping, data.pixels.data(), data.pixels.size());
-    vkUnmapMemory(device, staging_buffer_memory);
-
-    auto [image, image_memory] = create_image(
-        data.width,
-        data.height,
-        data.format,
-        VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-    transition_image_layout(
-        image,
-        data.format,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    copy_buffer_to_image(staging_buffer, image, data.width, data.height);
-    transition_image_layout(
-        image,
-        data.format,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    vkDestroyBuffer(device, staging_buffer, nullptr);
-    vkFreeMemory(device, staging_buffer_memory, nullptr);
-
-    // Create view.
-    m_image_view = create_image_view(image, data.format, VK_IMAGE_ASPECT_COLOR_BIT);
-
-    m_image = image;
-    m_image_memory = image_memory;
-}
-
-vk_texture::~vk_texture()
-{
-    auto device = vk_context::device();
-    vkDestroyImage(device, m_image, nullptr);
-    vkFreeMemory(device, m_image_memory, nullptr);
 }
 } // namespace ash::graphics::vk

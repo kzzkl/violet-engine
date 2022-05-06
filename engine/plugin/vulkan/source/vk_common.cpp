@@ -2,27 +2,11 @@
 
 namespace ash::graphics::vk
 {
-VkFormat to_vk_format(resource_format format)
-{
-    switch (format)
-    {
-    case resource_format::UNDEFINED:
-        return VK_FORMAT_UNDEFINED;
-    case resource_format::R8G8B8A8_UNORM:
-        return VK_FORMAT_R8G8B8A8_UNORM;
-    case resource_format::R32G32B32A32_FLOAT:
-        return VK_FORMAT_R32G32B32A32_SFLOAT;
-    case resource_format::D32_FLOAT_S8_UINT:
-        return VK_FORMAT_D32_SFLOAT_S8_UINT;
-    default:
-        throw vk_exception("Invalid resource format.");
-    }
-}
-
 VkSampleCountFlagBits to_vk_samples(std::size_t samples)
 {
     switch (samples)
     {
+    case 0:
     case 1:
         return VK_SAMPLE_COUNT_1_BIT;
     case 2:
@@ -36,31 +20,73 @@ VkSampleCountFlagBits to_vk_samples(std::size_t samples)
     }
 }
 
-VkAttachmentLoadOp to_vk_attachment_load_op(render_target_desc::load_op_type op)
+VkAttachmentLoadOp to_vk_attachment_load_op(attachment_load_op op)
 {
     switch (op)
     {
-    case render_target_desc::load_op_type::LOAD:
+    case attachment_load_op::LOAD:
         return VK_ATTACHMENT_LOAD_OP_LOAD;
-    case render_target_desc::load_op_type::CLEAR:
+    case attachment_load_op::CLEAR:
         return VK_ATTACHMENT_LOAD_OP_CLEAR;
-    case render_target_desc::load_op_type::DONT_CARE:
+    case attachment_load_op::DONT_CARE:
         return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     default:
         throw vk_exception("Invalid load op.");
     }
 }
 
-VkAttachmentStoreOp to_vk_attachment_store_op(render_target_desc::store_op_type op)
+VkAttachmentStoreOp to_vk_attachment_store_op(attachment_store_op op)
 {
     switch (op)
     {
-    case render_target_desc::store_op_type::STORE:
+    case attachment_store_op::STORE:
         return VK_ATTACHMENT_STORE_OP_STORE;
-    case render_target_desc::store_op_type::DONT_CARE:
+    case attachment_store_op::DONT_CARE:
         return VK_ATTACHMENT_STORE_OP_DONT_CARE;
     default:
         throw vk_exception("Invalid store op.");
+    }
+}
+
+VkFormat to_vk_format(resource_format format)
+{
+    switch (format)
+    {
+    case resource_format::UNDEFINED:
+        return VK_FORMAT_UNDEFINED;
+    case resource_format::R8G8B8A8_UNORM:
+        return VK_FORMAT_R8G8B8A8_UNORM;
+    case resource_format::R32G32B32A32_FLOAT:
+        return VK_FORMAT_R32G32B32A32_SFLOAT;
+    case resource_format::R32G32B32A32_INT:
+        return VK_FORMAT_R32G32B32A32_SINT;
+    case resource_format::R32G32B32A32_UINT:
+        return VK_FORMAT_R32G32B32A32_UINT;
+    case resource_format::D24_UNORM_S8_UINT:
+        return VK_FORMAT_D24_UNORM_S8_UINT;
+    default:
+        throw vk_exception("Invalid resource format.");
+    }
+}
+
+resource_format to_ash_format(VkFormat format)
+{
+    switch (format)
+    {
+    case VK_FORMAT_UNDEFINED:
+        return resource_format::UNDEFINED;
+    case VK_FORMAT_R8G8B8A8_UNORM:
+        return resource_format::R8G8B8A8_UNORM;
+    case VK_FORMAT_R32G32B32A32_SFLOAT:
+        return resource_format::R32G32B32A32_FLOAT;
+    case VK_FORMAT_R32G32B32A32_SINT:
+        return resource_format::R32G32B32A32_INT;
+    case VK_FORMAT_R32G32B32A32_UINT:
+        return resource_format::R32G32B32A32_UINT;
+    case VK_FORMAT_D24_UNORM_S8_UINT:
+        return resource_format::D24_UNORM_S8_UINT;
+    default:
+        throw vk_exception("Invalid resource format.");
     }
 }
 

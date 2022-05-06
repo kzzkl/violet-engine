@@ -8,14 +8,20 @@ namespace ash::sample::mmd
 class mmd_pass : public graphics::technique
 {
 public:
-    mmd_pass(graphics::technique_interface* interface);
+    mmd_pass(graphics::graphics& graphics);
     virtual void render(const graphics::camera& camera, graphics::render_command_interface* command)
         override;
 
-    void initialize_render_target_set(graphics::graphics& graphics);
 
 private:
-    std::vector<std::unique_ptr<graphics::render_target_set_interface>> m_render_target_sets;
+    void initialize_interface(graphics::graphics& graphics);
+    void initialize_attachment_set(graphics::graphics& graphics);
+
+    std::vector<std::unique_ptr<graphics::attachment_set_interface>> m_attachment_sets;
+    
+    std::unique_ptr<graphics::resource> m_render_target;
     std::unique_ptr<graphics::resource> m_depth_stencil;
+
+    std::unique_ptr<graphics::technique_interface> m_interface;
 };
 } // namespace ash::sample::mmd

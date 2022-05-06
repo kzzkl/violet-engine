@@ -31,10 +31,7 @@ pass_blend_info::pass_blend_info()
     enable = false;
 }
 
-pass_info::pass_info()
-    : depth(0),
-      output_depth(false),
-      primitive_topology(primitive_topology_type::TRIANGLE_LIST)
+pass_info::pass_info() : primitive_topology(primitive_topology::TRIANGLE_LIST)
 {
 }
 
@@ -52,41 +49,36 @@ pass_desc pass_info::convert() noexcept
     result.blend = blend.convert();
     result.depth_stencil = depth_stencil.convert();
 
-    result.input = input.data();
-    result.input_count = input.size();
-
-    result.output = output.data();
-    result.output_count = output.size();
-
-    result.depth = depth;
-    result.output_depth = output_depth;
+    result.references = references.data();
+    result.reference_count = references.size();
 
     result.primitive_topology = primitive_topology;
+    result.samples = samples;
 
     return result;
 }
 
 technique_desc technique_info::convert() noexcept
 {
-    for (auto& render_target : render_targets)
-        m_render_target_desc.push_back(render_target.convert());
+    for (auto& attachment : attachments)
+        m_attachment_desc.push_back(attachment.convert());
 
     for (auto& pass_info : subpasses)
         m_pass_desc.push_back(pass_info.convert());
 
     technique_desc result;
-    result.render_targets = m_render_target_desc.data();
-    result.render_target_count = m_render_target_desc.size();
+    result.attachments = m_attachment_desc.data();
+    result.attachment_count = m_attachment_desc.size();
     result.subpasses = m_pass_desc.data();
     result.subpass_count = m_pass_desc.size();
     return result;
 }
 
-render_target_set_desc render_target_set_info::convert() noexcept
+attachment_set_desc attachment_set_info::convert() noexcept
 {
-    render_target_set_desc result;
-    result.render_targets = render_targets.data();
-    result.render_target_count = render_targets.size();
+    attachment_set_desc result;
+    result.attachments = attachments.data();
+    result.attachment_count = attachments.size();
     result.width = width;
     result.height = height;
     result.technique = technique;
