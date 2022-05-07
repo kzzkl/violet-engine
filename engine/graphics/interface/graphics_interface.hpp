@@ -10,7 +10,10 @@ namespace ash::graphics
 enum class resource_format
 {
     UNDEFINED,
+
     R8G8B8A8_UNORM,
+    B8G8R8A8_UNORM,
+
     R32G32B32A32_FLOAT,
     R32G32B32A32_INT,
     R32G32B32A32_UINT,
@@ -50,13 +53,7 @@ enum class vertex_attribute_type : std::uint8_t
     COLOR   // R8G8B8A8
 };
 
-struct vertex_layout_desc
-{
-    vertex_attribute_type* attributes;
-    std::size_t attribute_count;
-};
-
-enum class pass_parameter_type
+enum class pipeline_parameter_type
 {
     BOOL,
     UINT,
@@ -69,36 +66,26 @@ enum class pass_parameter_type
     TEXTURE
 };
 
-struct pass_parameter_pair
+struct pipeline_parameter_pair
 {
-    pass_parameter_type type;
+    pipeline_parameter_type type;
     std::size_t size; // Only for array.
 };
 
-struct pass_parameter_layout_desc
+struct pipeline_layout_desc
 {
-    pass_parameter_pair* parameters;
+    pipeline_parameter_pair* parameters;
     std::size_t size;
 };
 
-class pass_parameter_layout_interface
+class pipeline_layout_interface
 {
 };
 
-struct pass_layout_desc
-{
-    pass_parameter_layout_interface** parameters;
-    std::size_t size;
-};
-
-class pass_layout_interface
-{
-};
-
-class pass_parameter_interface
+class pipeline_parameter_interface
 {
 public:
-    virtual ~pass_parameter_interface() = default;
+    virtual ~pipeline_parameter_interface() = default;
 
     virtual void set(std::size_t index, bool value) = 0;
     virtual void set(std::size_t index, std::uint32_t value) = 0;
@@ -131,7 +118,7 @@ enum class blend_op
     MAX
 };
 
-struct pass_blend_desc
+struct blend_desc
 {
     bool enable;
 
@@ -150,7 +137,7 @@ enum class depth_functor
     ALWAYS
 };
 
-struct pass_depth_stencil_desc
+struct depth_stencil_desc
 {
     depth_functor depth_functor;
 };
@@ -176,23 +163,26 @@ struct attachment_reference
     std::size_t resolve_relation;
 };
 
-struct pass_desc
+struct pipeline_desc
 {
     const char* vertex_shader;
     const char* pixel_shader;
 
-    vertex_layout_desc vertex_layout;
-    pass_layout_interface* pass_layout;
+    vertex_attribute_type* vertex_attributes;
+    std::size_t vertex_attribute_count;
 
-    pass_blend_desc blend;
-    pass_depth_stencil_desc depth_stencil;
+    pipeline_layout_interface** parameters;
+    std::size_t parameter_count;
+
+    blend_desc blend;
+    depth_stencil_desc depth_stencil;
 
     std::size_t samples;
 
+    primitive_topology primitive_topology;
+
     attachment_reference* references;
     std::size_t reference_count;
-
-    primitive_topology primitive_topology;
 };
 
 enum class attachment_load_op
@@ -223,16 +213,16 @@ struct attachment_desc
     std::size_t samples;
 };
 
-struct technique_desc
+struct render_pass_desc
 {
     attachment_desc* attachments;
     std::size_t attachment_count;
 
-    pass_desc* subpasses;
+    pipeline_desc* subpasses;
     std::size_t subpass_count;
 };
 
-class technique_interface
+class render_pass_interface
 {
 };
 
@@ -244,7 +234,7 @@ struct attachment_set_desc
     std::uint32_t width;
     std::uint32_t height;
 
-    technique_interface* technique;
+    render_pass_interface* render_pass;
 };
 
 class attachment_set_interface
@@ -262,12 +252,13 @@ struct scissor_rect
 class render_command_interface
 {
 public:
-    virtual void begin(technique_interface* pass, attachment_set_interface* attachment_set) = 0;
-    virtual void end(technique_interface* pass) = 0;
-    virtual void next(technique_interface* pass) = 0;
+    virtual void begin(
+        render_pass_interface* render_pass,
+        attachment_set_interface* attachment_set) = 0;
+    virtual void end(render_pass_interface* render_pass) = 0;
+    virtual void next(render_pass_interface* render_pass) = 0;
 
-    virtual void parameter(std::size_t i, pass_parameter_interface*) = 0;
-
+    virtual void parameter(std::size_t i, pipeline_parameter_interface*) = 0;
     virtual void draw(
         resource_interface* vertex,
         resource_interface* index,
@@ -299,8 +290,6 @@ public:
     virtual resource_interface* back_buffer(std::size_t index) = 0;
     virtual std::size_t back_buffer_count() = 0;
 
-    virtual resource_interface* depth_stencil() = 0;
-
     virtual void resize(std::uint32_t width, std::uint32_t height) {}
 };
 using renderer = renderer_interface;
@@ -329,7 +318,7 @@ struct render_target_desc
     resource_format format;
 };
 
-struct depth_stencil_desc
+struct depth_stencil_buffer_desc
 {
     std::uint32_t width;
     std::uint32_t height;
@@ -343,25 +332,22 @@ public:
     virtual renderer_interface* make_renderer(const renderer_desc& desc) = 0;
 
     virtual attachment_set_interface* make_attachment_set(const attachment_set_desc& desc) = 0;
-    virtual technique_interface* make_technique(const technique_desc& desc) = 0;
+    virtual render_pass_interface* make_render_pass(const render_pass_desc& desc) = 0;
 
-    virtual pass_parameter_layout_interface* make_pass_parameter_layout(
-        const pass_parameter_layout_desc& desc) = 0;
-    virtual pass_parameter_interface* make_pass_parameter(
-        pass_parameter_layout_interface* layout) = 0;
-    virtual pass_layout_interface* make_pass_layout(const pass_layout_desc& desc) = 0;
+    virtual pipeline_layout_interface* make_pipeline_layout(const pipeline_layout_desc& desc) = 0;
+    virtual pipeline_parameter_interface* make_pipeline_parameter(
+        pipeline_layout_interface* layout) = 0;
 
     virtual resource_interface* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
     virtual resource_interface* make_index_buffer(const index_buffer_desc& desc) = 0;
-
     virtual resource_interface* make_texture(
         const std::uint8_t* data,
         std::uint32_t width,
         std::uint32_t height) = 0;
     virtual resource_interface* make_texture(const char* file) = 0;
-
     virtual resource_interface* make_render_target(const render_target_desc& desc) = 0;
-    virtual resource_interface* make_depth_stencil(const depth_stencil_desc& desc) = 0;
+    virtual resource_interface* make_depth_stencil_buffer(
+        const depth_stencil_buffer_desc& desc) = 0;
 };
 using factory = factory_interface;
 

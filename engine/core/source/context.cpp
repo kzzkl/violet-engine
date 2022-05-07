@@ -8,33 +8,20 @@ system_base::system_base(std::string_view name) noexcept : m_name(name)
 {
 }
 
-context::context(std::string_view config_path)
+context::context()
 {
-    load_config(config_path);
-
-    std::size_t num_thread = m_config["core"]["threads"];
-    if (num_thread == 0)
-        num_thread = std::thread::hardware_concurrency();
-
-    m_task = std::make_unique<ash::task::task_manager>(num_thread);
-    m_task->schedule("root", []() {});
-
-    m_world = std::make_unique<ash::ecs::world>();
-    m_event = std::make_unique<event>();
-    m_timer = std::make_unique<timer>();
 }
 
-void context::shutdown_system()
+context& context::instance()
 {
-    m_task->stop();
-    for (auto& system : m_systems)
-    {
-        system->shutdown();
-    }
+    static context instance;
+    return instance;
 }
 
-void context::load_config(std::string_view config_path)
+void context::initialize(std::string_view config_path)
 {
+    auto& singleton = instance();
+
     for (auto iter : std::filesystem::directory_iterator("engine/config"))
     {
         if (iter.is_regular_file() && iter.path().extension() == ".json")
@@ -47,7 +34,7 @@ void context::load_config(std::string_view config_path)
             fin >> config;
 
             for (auto& [key, value] : config.items())
-                m_config[key].update(value, true);
+                singleton.m_config[key].update(value, true);
         }
     }
 
@@ -63,8 +50,30 @@ void context::load_config(std::string_view config_path)
             fin >> config;
 
             for (auto& [key, value] : config.items())
-                m_config[key].update(value, true);
+                singleton.m_config[key].update(value, true);
         }
     }
+
+    std::size_t num_thread = singleton.m_config["core"]["threads"];
+    if (num_thread == 0)
+        num_thread = std::thread::hardware_concurrency();
+
+    singleton.m_task = std::make_unique<ash::task::task_manager>(num_thread);
+    singleton.m_task->schedule("root", []() {});
+
+    singleton.m_world = std::make_unique<ash::ecs::world>();
+    singleton.m_event = std::make_unique<event>();
+    singleton.m_timer = std::make_unique<timer>();
 }
-} // namespace ash::core
+
+void context::shutdown()
+{
+    auto& singleton = instance();
+
+    singleton.m_task->stop();
+    for (auto& system : singleton.m_systems)
+    {
+        system->shutdown();
+    }
+}
+} // namespace ash

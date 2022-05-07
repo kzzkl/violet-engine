@@ -41,4 +41,4 @@ private:
 
     std::unique_ptr<dynamic_library> m_library;
 };
-} // namespace ash::core
+} // namespace ash

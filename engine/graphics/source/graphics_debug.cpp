@@ -8,7 +8,7 @@
 
 namespace ash::graphics
 {
-debug_pass::debug_pass(technique_interface* interface)
+debug_pass::debug_pass(render_pass_interface* interface)
 {
 }
 
@@ -41,7 +41,7 @@ graphics_debug::graphics_debug(std::size_t frame_resource, graphics& graphics, e
 void graphics_debug::initialize()
 {
     /*m_entity = m_world.create("graphics debug");
-    m_world.add<visual, core::link>(m_entity);
+    m_world.add<visual, link>(m_entity);
 
     auto& v = m_world.component<visual>(m_entity);
     v.mask = visual::mask_type::DEBUG;

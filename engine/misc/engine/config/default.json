@@ -49,11 +49,11 @@
                 ]
             }
         },
-        "pass_parameter": {
+        "pipeline_parameter": {
             "ash_object": "buffer",
             "ash_pass": "buffer"
         },
-        "pass_parameter_layout": {
+        "pipeline_layout": {
             "ash_object": [
                 {
                     "name": "transform_m",
@@ -160,7 +160,7 @@
                 }
             }
         },
-        "technique": [],
+        "render_pass": [],
         "plugin": "ash-graphics-d3d12.dll",
         "render_concurrency": 4,
         "frame_resource": 3,

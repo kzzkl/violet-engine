@@ -96,4 +96,4 @@ private:
 
     std::vector<std::unique_ptr<dispatcher>> m_dispatchers;
 };
-} // namespace ash::core
+} // namespace ash

@@ -130,9 +130,9 @@ private:
 
 extern "C"
 {
-    PLUGIN_API ash::core::plugin_info get_plugin_info()
+    PLUGIN_API ash::plugin_info get_plugin_info()
     {
-        ash::core::plugin_info info = {};
+        ash::plugin_info info = {};
 
         char name[] = "graphics-d3d12";
         memcpy(info.name, name, sizeof(name));

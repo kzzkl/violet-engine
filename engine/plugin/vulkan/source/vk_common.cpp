@@ -56,6 +56,8 @@ VkFormat to_vk_format(resource_format format)
         return VK_FORMAT_UNDEFINED;
     case resource_format::R8G8B8A8_UNORM:
         return VK_FORMAT_R8G8B8A8_UNORM;
+    case resource_format::B8G8R8A8_UNORM:
+        return VK_FORMAT_B8G8R8A8_UNORM;
     case resource_format::R32G32B32A32_FLOAT:
         return VK_FORMAT_R32G32B32A32_SFLOAT;
     case resource_format::R32G32B32A32_INT:
@@ -77,6 +79,8 @@ resource_format to_ash_format(VkFormat format)
         return resource_format::UNDEFINED;
     case VK_FORMAT_R8G8B8A8_UNORM:
         return resource_format::R8G8B8A8_UNORM;
+    case VK_FORMAT_B8G8R8A8_UNORM:
+        return resource_format::B8G8R8A8_UNORM;
     case VK_FORMAT_R32G32B32A32_SFLOAT:
         return resource_format::R32G32B32A32_FLOAT;
     case VK_FORMAT_R32G32B32A32_SINT:

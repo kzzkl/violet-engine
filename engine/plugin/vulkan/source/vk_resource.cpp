@@ -316,7 +316,7 @@ vk_render_target::~vk_render_target()
 {
 }
 
-vk_depth_stencil_buffer::vk_depth_stencil_buffer(const depth_stencil_desc& desc)
+vk_depth_stencil_buffer::vk_depth_stencil_buffer(const depth_stencil_buffer_desc& desc)
 {
     VkFormat format = to_vk_format(desc.format);
 

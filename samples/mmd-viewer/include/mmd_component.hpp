@@ -97,6 +97,6 @@ struct mmd_skeleton
     std::vector<math::float4x4> world;
     // std::vector<math::float4x4> transform;
 
-    std::unique_ptr<graphics::render_parameter> parameter;
+    std::unique_ptr<graphics::pipeline_parameter> parameter;
 };
 } // namespace ash::sample::mmd

@@ -4,8 +4,9 @@ using namespace ash::task;
 
 namespace ash::core
 {
-application::application(std::string_view config_path) : context(config_path)
+application::application(std::string_view config_path)
 {
+    context::initialize(config_path);
 }
 
 void application::run()
@@ -47,11 +48,11 @@ void application::run()
         }
     }
 
-    shutdown_system();
+    context::shutdown();
 }
 
 void application::exit()
 {
     m_exit = true;
 }
-} // namespace ash::core
+} // namespace ash

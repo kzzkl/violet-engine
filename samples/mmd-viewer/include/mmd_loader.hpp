@@ -18,8 +18,8 @@ struct mmd_resource
     std::vector<std::pair<std::size_t, std::size_t>> submesh;
 
     std::vector<std::unique_ptr<ash::graphics::resource>> textures;
-    std::vector<std::unique_ptr<ash::graphics::render_parameter>> materials;
-    std::unique_ptr<ash::graphics::render_parameter> object_parameter;
+    std::vector<std::unique_ptr<ash::graphics::pipeline_parameter>> materials;
+    std::unique_ptr<ash::graphics::pipeline_parameter> object_parameter;
 
     std::vector<std::unique_ptr<ash::physics::collision_shape_interface>> collision_shapes;
 };
@@ -40,7 +40,7 @@ public:
         mmd_resource& resource,
         std::string_view pmx,
         std::string_view vmd,
-        graphics::technique* technique);
+        graphics::render_pass* render_pass);
 
 private:
     void load_hierarchy(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader);
@@ -50,7 +50,7 @@ private:
         ecs::entity entity,
         mmd_resource& resource,
         const pmx_loader& loader,
-        graphics::technique* technique);
+        graphics::render_pass* render_pass);
     void load_ik(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader);
     void load_physics(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader);
 

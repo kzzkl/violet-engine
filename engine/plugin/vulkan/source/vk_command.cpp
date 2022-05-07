@@ -10,32 +10,32 @@ vk_command::vk_command(VkCommandBuffer command_buffer) : m_command_buffer(comman
 {
 }
 
-void vk_command::begin(technique_interface* pass, attachment_set_interface* attachment_set)
+void vk_command::begin(render_pass_interface* render_pass, attachment_set_interface* attachment_set)
 {
     auto fb = static_cast<vk_frame_buffer*>(attachment_set);
-    auto rp = static_cast<vk_render_pass*>(pass);
+    auto rp = static_cast<vk_render_pass*>(render_pass);
     rp->begin(m_command_buffer, fb->frame_buffer());
 
     m_pass_layout = rp->current_subpass().layout();
 }
 
-void vk_command::end(technique_interface* pass)
+void vk_command::end(render_pass_interface* render_pass)
 {
-    auto rp = static_cast<vk_render_pass*>(pass);
+    auto rp = static_cast<vk_render_pass*>(render_pass);
     rp->end(m_command_buffer);
 }
 
-void vk_command::next(technique_interface* pass)
+void vk_command::next(render_pass_interface* render_pass)
 {
-    auto rp = static_cast<vk_render_pass*>(pass);
+    auto rp = static_cast<vk_render_pass*>(render_pass);
 
     rp->next(m_command_buffer);
     m_pass_layout = rp->current_subpass().layout();
 }
 
-void vk_command::parameter(std::size_t i, pass_parameter_interface* parameter)
+void vk_command::parameter(std::size_t i, pipeline_parameter_interface* parameter)
 {
-    auto pp = static_cast<vk_pass_parameter*>(parameter);
+    auto pp = static_cast<vk_pipeline_parameter*>(parameter);
     pp->sync();
 
     VkDescriptorSet descriptor_set[] = {pp->descriptor_set()};

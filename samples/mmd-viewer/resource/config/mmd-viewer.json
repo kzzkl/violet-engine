@@ -101,7 +101,7 @@
                 }
             }
         },
-        "technique": [
+        "render_pass": [
             {
                 "name": "",
                 "render_target": {

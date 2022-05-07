@@ -11,7 +11,7 @@ enum class ui_style
     WINDOW_PADDING
 };
 
-class ui : public core::system_base
+class ui : public system_base
 {
 public:
     ui();

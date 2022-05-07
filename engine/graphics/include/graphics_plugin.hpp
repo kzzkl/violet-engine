@@ -5,7 +5,7 @@
 
 namespace ash::graphics
 {
-class graphics_plugin : public ash::core::plugin
+class graphics_plugin : public core::plugin
 {
 public:
     graphics_plugin();

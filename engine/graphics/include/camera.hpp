@@ -26,7 +26,7 @@ struct camera
 
     resource_interface* render_target{nullptr};
     resource_interface* depth_stencil{nullptr};
-    std::unique_ptr<render_parameter> parameter;
+    std::unique_ptr<pipeline_parameter> parameter;
 
     std::uint32_t mask{std::numeric_limits<std::uint32_t>::max()};
 };

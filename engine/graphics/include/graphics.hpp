@@ -16,7 +16,7 @@
 
 namespace ash::graphics
 {
-class graphics : public ash::core::system_base
+class graphics : public core::system_base
 {
 public:
     template <typename T>
@@ -32,26 +32,23 @@ public:
     void begin_frame();
     void end_frame();
 
-    std::unique_ptr<technique_interface> make_technique(technique_info& info)
+    std::unique_ptr<render_pass_interface> make_render_pass(render_pass_info& info)
     {
         auto& factory = m_plugin.factory();
         // make layout
         for (auto& subpass : info.subpasses)
         {
-            auto pass_layout_desc = subpass.pass_layout_info.convert();
-
-            std::vector<pass_parameter_layout_interface*> parameter_layouts;
-            for (auto& parameter_layout : subpass.pass_layout_info.parameters)
-                parameter_layouts.push_back(m_parameter_layouts[parameter_layout].get());
-            pass_layout_desc.parameters = parameter_layouts.data();
-
-            subpass.pass_layout = factory.make_pass_layout(pass_layout_desc);
+            for (std::size_t i = 0; i < subpass.parameters.size(); ++i)
+            {
+                subpass.parameter_interfaces.push_back(
+                    m_parameter_layouts[subpass.parameters[i]].get());
+            }
         }
-        return std::unique_ptr<technique_interface>(factory.make_technique(info.convert()));
+        return std::unique_ptr<render_pass_interface>(factory.make_render_pass(info.convert()));
     }
 
-    void make_render_parameter_layout(std::string_view name, pass_parameter_layout_info& info);
-    std::unique_ptr<render_parameter> make_render_parameter(std::string_view name);
+    void make_pipeline_layout(std::string_view name, pipeline_layout_info& info);
+    std::unique_ptr<pipeline_parameter> make_pipeline_parameter(std::string_view name);
 
     std::unique_ptr<attachment_set_interface> make_attachment_set(attachment_set_info& info);
 
@@ -97,10 +94,10 @@ public:
         return std::unique_ptr<resource>(factory.make_render_target(desc));
     }
 
-    std::unique_ptr<resource> make_depth_stencil(const depth_stencil_desc& desc)
+    std::unique_ptr<resource> make_depth_stencil_buffer(const depth_stencil_buffer_desc& desc)
     {
         auto& factory = m_plugin.factory();
-        return std::unique_ptr<resource>(factory.make_depth_stencil(desc));
+        return std::unique_ptr<resource>(factory.make_depth_stencil_buffer(desc));
     }
 
     std::unique_ptr<resource> make_texture(std::string_view file);
@@ -119,9 +116,9 @@ private:
 
     // ash::ecs::view<scene::transform>* m_tv;
 
-    std::set<technique*> m_techniques;
+    std::set<render_pass*> m_render_passes;
 
-    interface_map<pass_parameter_layout_interface> m_parameter_layouts;
+    interface_map<pipeline_layout_interface> m_parameter_layouts;
 
     graphics_config m_config;
     std::unique_ptr<graphics_debug> m_debug;

@@ -34,17 +34,8 @@ public:
 
     inline std::string_view name() const noexcept { return m_name; }
 
-protected:
-    template <typename T>
-    T& system() const;
-
-    context_type* context() const noexcept { return m_context; }
-
 private:
-    friend class context_type;
-
     std::string m_name;
-    context_type* m_context;
 };
 
 template <typename T>
@@ -58,53 +49,23 @@ concept derived_from_system = std::is_base_of<system_base, T>::value;
 class context
 {
 public:
-    context(std::string_view config_path);
+    static void initialize(std::string_view config_path);
 
-    template <typename T>
-    T& system() const requires derived_from_system<T> || internal_system<T>
-    {
-        return *static_cast<T*>(m_systems[system_index::value<T>()].get());
-    }
-
-    template <>
-    ash::task::task_manager& system<ash::task::task_manager>() const
-    {
-        return *m_task;
-    }
-
-    template <>
-    ash::ecs::world& system<ash::ecs::world>() const
-    {
-        return *m_world;
-    }
-
-    template <>
-    ash::core::event& system<ash::core::event>() const
-    {
-        return *m_event;
-    }
-
-    template <>
-    ash::core::timer& system<ash::core::timer>() const
-    {
-        return *m_timer;
-    }
-
-protected:
     template <derived_from_system T, typename... Args>
-    void install_system(Args&&... args)
+    static void install(Args&&... args)
     {
-        std::size_t index = system_index::value<T>();
-        if (m_systems.size() <= index)
-            m_systems.resize(index + 1);
+        auto& singleton = instance();
 
-        if (m_systems[index] == nullptr)
+        std::size_t index = system_index::value<T>();
+        if (singleton.m_systems.size() <= index)
+            singleton.m_systems.resize(index + 1);
+
+        if (singleton.m_systems[index] == nullptr)
         {
             auto m = std::make_unique<T>(std::forward<Args>(args)...);
-            m->m_context = this;
-            m->initialize(m_config[m->name().data()]);
+            m->initialize(singleton.m_config[m->name().data()]);
             log::info("Module installed successfully: {}.", m->name());
-            m_systems[index] = std::move(m);
+            singleton.m_systems[index] = std::move(m);
         }
         else
         {
@@ -112,10 +73,41 @@ protected:
         }
     }
 
-    void shutdown_system();
+    static void shutdown();
+
+    template <typename T>
+    static T& system() requires derived_from_system<T> || internal_system<T>
+    {
+        return *static_cast<T*>(instance().m_systems[system_index::value<T>()].get());
+    }
+
+    template <>
+    static ash::task::task_manager& system<ash::task::task_manager>()
+    {
+        return *instance().m_task;
+    }
+
+    template <>
+    static ash::ecs::world& system<ash::ecs::world>()
+    {
+        return *instance().m_world;
+    }
+
+    template <>
+    static ash::core::event& system<ash::core::event>()
+    {
+        return *instance().m_event;
+    }
+
+    template <>
+    static ash::core::timer& system<ash::core::timer>()
+    {
+        return *instance().m_timer;
+    }
 
 private:
-    void load_config(std::string_view config_path);
+    context();
+    static context& instance();
 
     std::map<std::string, dictionary> m_config;
 
@@ -125,10 +117,13 @@ private:
     std::unique_ptr<event> m_event;
     std::unique_ptr<timer> m_timer;
 };
-
-template <typename T>
-T& system_base::system() const
-{
-    return m_context->system<T>();
-}
 } // namespace ash::core
+
+namespace ash
+{
+template <typename T>
+T& system()
+{
+    return core::context::system<T>();
+}
+} // namespace ash

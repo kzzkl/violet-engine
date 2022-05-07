@@ -6,57 +6,43 @@
 
 namespace ash::graphics
 {
-class vertex_layout_info
+class pipeline_layout_info
 {
 public:
-    vertex_layout_desc convert() noexcept;
-    std::vector<vertex_attribute_type> attributes;
+    pipeline_layout_desc convert() noexcept;
+    std::vector<pipeline_parameter_pair> parameters;
 };
 
-class pass_parameter_layout_info
+class blend_info : public blend_desc
 {
 public:
-    pass_parameter_layout_desc convert() noexcept;
-    std::vector<pass_parameter_pair> parameters;
+    blend_info();
+
+    blend_desc convert() noexcept { return *this; }
 };
 
-class pass_layout_info
+class depth_stencil_info : public depth_stencil_desc
 {
 public:
-    pass_layout_desc convert() noexcept;
-    std::vector<std::string> parameters;
+    depth_stencil_desc convert() noexcept { return *this; }
 };
 
-class pass_blend_info : public pass_blend_desc
+class pipeline_info
 {
 public:
-    pass_blend_info();
+    pipeline_info();
 
-    pass_blend_desc convert() noexcept { return *this; }
-};
-
-class pass_depth_stencil_info : public pass_depth_stencil_desc
-{
-public:
-    pass_depth_stencil_desc convert() noexcept { return *this; }
-};
-
-class pass_info
-{
-public:
-    pass_info();
-
-    pass_desc convert() noexcept;
+    pipeline_desc convert() noexcept;
 
     std::string vertex_shader;
     std::string pixel_shader;
 
-    vertex_layout_info vertex_layout;
-    pass_layout_interface* pass_layout;
-    pass_layout_info pass_layout_info;
+    std::vector<vertex_attribute_type> vertex_attributes;
+    std::vector<std::string> parameters;
+    std::vector<pipeline_layout_interface*> parameter_interfaces;
 
-    pass_blend_info blend;
-    pass_depth_stencil_info depth_stencil;
+    blend_info blend;
+    depth_stencil_info depth_stencil;
 
     std::vector<attachment_reference> references;
 
@@ -70,17 +56,17 @@ public:
     attachment_desc convert() noexcept { return *this; }
 };
 
-class technique_info
+class render_pass_info
 {
 public:
-    technique_desc convert() noexcept;
+    render_pass_desc convert() noexcept;
 
     std::vector<attachment_info> attachments;
-    std::vector<pass_info> subpasses;
+    std::vector<pipeline_info> subpasses;
 
 private:
     std::vector<attachment_desc> m_attachment_desc;
-    std::vector<pass_desc> m_pass_desc;
+    std::vector<pipeline_desc> m_pass_desc;
 };
 
 class attachment_set_info
@@ -91,7 +77,7 @@ public:
     std::vector<resource_interface*> attachments;
     std::uint32_t width;
     std::uint32_t height;
-    technique_interface* technique;
+    render_pass_interface* render_pass;
 };
 
 class renderer_info : public renderer_desc

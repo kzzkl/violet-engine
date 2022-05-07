@@ -91,7 +91,7 @@ private:
 class vk_depth_stencil_buffer : public vk_image
 {
 public:
-    vk_depth_stencil_buffer(const depth_stencil_desc& desc);
+    vk_depth_stencil_buffer(const depth_stencil_buffer_desc& desc);
 
     virtual resource_format format() const noexcept override { return m_format; }
     virtual VkImageView view() const noexcept override { return m_image_view; }

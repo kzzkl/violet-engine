@@ -206,7 +206,8 @@ void vk_context::create_device()
     // Device extensions.
     std::vector<const char*> extensions;
     extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-    // extensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+    extensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+    // extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
 
     for (auto device : devices)
     {
@@ -266,6 +267,11 @@ void vk_context::create_device()
     indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
     indexing_features.descriptorBindingPartiallyBound = VK_TRUE;
     indexing_features.runtimeDescriptorArray = VK_TRUE;
+
+    /*VkPhysicalDeviceDynamicRenderingFeatures dynamic_rendering_features = {};
+    dynamic_rendering_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+    dynamic_rendering_features.dynamicRendering = VK_TRUE;
+    dynamic_rendering_features.pNext = &indexing_features;*/
 
     // Create logic device.
     VkDeviceCreateInfo device_info = {};

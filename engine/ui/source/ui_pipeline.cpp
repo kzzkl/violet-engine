@@ -2,7 +2,7 @@
 
 namespace ash::ui
 {
-ui_pass::ui_pass(graphics::technique_interface* interface) : render_pass(interface)
+ui_pass::ui_pass(graphics::render_pass_interface* interface) : render_pass(interface)
 {
 }
 

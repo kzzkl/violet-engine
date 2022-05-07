@@ -103,4 +103,4 @@ void* plugin::find_symbol(std::string_view name)
 {
     return m_library->find_symbol(name);
 }
-} // namespace ash::core
+} // namespace ash

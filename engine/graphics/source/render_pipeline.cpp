@@ -2,7 +2,7 @@
 
 namespace ash::graphics
 {
-technique::technique()
+render_pass::render_pass()
 {
 }
 } // namespace ash::graphics

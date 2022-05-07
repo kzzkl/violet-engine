@@ -53,7 +53,5 @@ public:
 
     virtual resource_interface* back_buffer(std::size_t index) override;
     virtual std::size_t back_buffer_count() override;
-
-    virtual resource_interface* depth_stencil() override { return nullptr; }
 };
 } // namespace ash::graphics::vk

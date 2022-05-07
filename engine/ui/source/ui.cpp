@@ -225,7 +225,7 @@ int convert_key(window::keyboard_key key)
 };
 } // namespace
 
-ui::ui() : core::system_base("ui")
+ui::ui() : system_base("ui")
 {
 }
 
@@ -233,7 +233,7 @@ bool ui::initialize(const dictionary& config)
 {
     /*auto& graphics = system<graphics::graphics>();
     auto& world = system<ecs::world>();
-    auto& event = system<core::event>();
+    auto& event = system<event>();
 
     m_pass = graphics.make_render_pass<ui_pass>("ui");
 
@@ -399,8 +399,8 @@ void ui::begin_frame()
 
     window::window_rect rect = window.rect();
 
-    static auto old_time = system<core::timer>().now();
-    auto new_time = system<core::timer>().now();
+    static auto old_time = system<timer>().now();
+    auto new_time = system<timer>().now();
     float delta = (new_time - old_time).count() * 0.000000001f;
     old_time = new_time;
 

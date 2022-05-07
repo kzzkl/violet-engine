@@ -7,7 +7,7 @@
 
 namespace ash::graphics
 {
-class technique;
+class render_pass;
 struct render_unit
 {
     resource_interface* vertex_buffer{nullptr};
@@ -17,17 +17,17 @@ struct render_unit
     std::size_t index_end{0};
     std::size_t vertex_base{0};
 
-    technique* technique{nullptr};
-    std::vector<render_parameter*> parameters;
+    render_pass* render_pass{nullptr};
+    std::vector<pipeline_parameter*> parameters;
 
     void* external{nullptr};
 };
 
-class technique
+class render_pass
 {
 public:
-    technique();
-    virtual ~technique() = default;
+    render_pass();
+    virtual ~render_pass() = default;
 
     void add(const render_unit* unit) { m_units.push_back(unit); }
     void clear() { m_units.clear(); }

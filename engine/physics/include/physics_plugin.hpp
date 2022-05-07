@@ -5,7 +5,7 @@
 
 namespace ash::physics
 {
-class physics_plugin : public ash::core::plugin
+class physics_plugin : public core::plugin
 {
 public:
     factory* factory() { return m_context->factory(); }
