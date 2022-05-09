@@ -160,20 +160,13 @@ void graphics::render(ecs::entity camera_entity)
     // Render.
     auto command = m_renderer->allocate_command();
 
-    if (c.render_target == nullptr)
+    //if (c.render_target == nullptr)
     {
-        for (auto render_pass : m_render_passes)
-            render_pass->render(c, command);
+        c.render_target = m_renderer->back_buffer(m_back_buffer_index);
     }
-    else
-    {
-        /*command->begin_render(c.render_target);
-        command->clear_render_target(c.render_target);
-        command->clear_depth_stencil(c.depth_stencil);
-        for (auto pipeline : m_render_pipelines)
-            pipeline->render(c.render_target, c.depth_stencil, command, c.parameter.get());
-        command->end_render(c.render_target);*/
-    }
+
+    for (auto render_pass : m_render_passes)
+        render_pass->render(c, command);
 
     for (auto render_pass : m_render_passes)
         render_pass->clear();
@@ -184,7 +177,7 @@ void graphics::render(ecs::entity camera_entity)
 
 void graphics::begin_frame()
 {
-    m_renderer->begin_frame();
+    m_back_buffer_index = m_renderer->begin_frame();
     m_debug->begin_frame();
 }
 
@@ -192,6 +185,20 @@ void graphics::end_frame()
 {
     m_debug->end_frame();
     m_renderer->end_frame();
+}
+
+std::unique_ptr<render_pass_interface> graphics::make_render_pass(render_pass_info& info)
+{
+    auto& factory = m_plugin.factory();
+    for (auto& subpass : info.subpasses)
+    {
+        for (std::size_t i = 0; i < subpass.parameters.size(); ++i)
+        {
+            subpass.parameter_interfaces.push_back(
+                m_parameter_layouts[subpass.parameters[i]].get());
+        }
+    }
+    return std::unique_ptr<render_pass_interface>(factory.make_render_pass(info.convert()));
 }
 
 void graphics::make_pipeline_layout(std::string_view name, pipeline_layout_info& info)
@@ -208,11 +215,11 @@ std::unique_ptr<pipeline_parameter> graphics::make_pipeline_parameter(std::strin
     return std::make_unique<pipeline_parameter>(factory.make_pipeline_parameter(layout));
 }
 
-std::unique_ptr<attachment_set_interface> graphics::make_attachment_set(attachment_set_info& info)
+/*std::unique_ptr<attachment_set_interface> graphics::make_attachment_set(attachment_set_info& info)
 {
     auto& factory = m_plugin.factory();
     return std::unique_ptr<attachment_set_interface>(factory.make_attachment_set(info.convert()));
-}
+}*/
 
 std::unique_ptr<resource> graphics::make_texture(std::string_view file)
 {

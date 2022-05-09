@@ -5,16 +5,32 @@
 namespace ash::graphics::vk
 {
 vk_swap_chain::vk_swap_chain(VkSurfaceKHR surface, std::uint32_t width, std::uint32_t height)
+    : m_swap_chain(VK_NULL_HANDLE)
 {
-    auto physical_device = vk_context::physical_device();
-
     m_surface_format = choose_surface_format(surface);
     m_depth_stencil_format = choose_depth_stencil_format();
     m_present_mode = choose_present_mode(surface);
 
+    resize(width, height);
+}
+
+vk_swap_chain::~vk_swap_chain()
+{
+    destroy();
+}
+
+void vk_swap_chain::resize(std::uint32_t width, std::uint32_t height)
+{
+    destroy();
+
+    auto physical_device = vk_context::physical_device();
+
     // Choose swap extent.
     VkSurfaceCapabilitiesKHR capabilities;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &capabilities);
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+        physical_device,
+        vk_context::surface(),
+        &capabilities);
     m_extent = choose_swap_extent(capabilities, width, height);
 
     // Image count.
@@ -25,7 +41,7 @@ vk_swap_chain::vk_swap_chain(VkSurfaceKHR surface, std::uint32_t width, std::uin
     // Create swap chain.
     VkSwapchainCreateInfoKHR swap_cahin_info = {};
     swap_cahin_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    swap_cahin_info.surface = surface;
+    swap_cahin_info.surface = vk_context::surface();
     swap_cahin_info.minImageCount = image_count;
     swap_cahin_info.imageFormat = m_surface_format.format;
     swap_cahin_info.imageColorSpace = m_surface_format.colorSpace;
@@ -62,15 +78,17 @@ vk_swap_chain::vk_swap_chain(VkSurfaceKHR surface, std::uint32_t width, std::uin
 
     // Create image view.
     for (VkImage image : images)
-        m_back_buffers.emplace_back(image, m_surface_format.format);
+        m_back_buffers.emplace_back(image, m_surface_format.format, m_extent);
 }
 
-vk_swap_chain::~vk_swap_chain()
+void vk_swap_chain::destroy()
 {
     auto device = vk_context::device();
-
+    vkDeviceWaitIdle(device);
     m_back_buffers.clear();
-    vkDestroySwapchainKHR(device, m_swap_chain, nullptr);
+
+    if (m_swap_chain != VK_NULL_HANDLE)
+        vkDestroySwapchainKHR(device, m_swap_chain, nullptr);
 }
 
 VkSurfaceFormatKHR vk_swap_chain::choose_surface_format(VkSurfaceKHR surface)
@@ -229,5 +247,10 @@ resource_interface* vk_renderer::back_buffer(std::size_t index)
 std::size_t vk_renderer::back_buffer_count()
 {
     return vk_context::swap_chain().back_buffers().size();
+}
+
+void vk_renderer::resize(std::uint32_t width, std::uint32_t height)
+{
+    vk_context::swap_chain().resize(width, height);
 }
 } // namespace ash::graphics::vk

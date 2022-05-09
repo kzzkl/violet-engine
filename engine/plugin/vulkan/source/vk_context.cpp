@@ -67,6 +67,8 @@ bool vk_context::on_initialize(const renderer_desc& config)
     create_descriptor_pool();
     create_sampler();
 
+    m_frame_buffer_manager = std::make_unique<vk_frame_buffer_manager>();
+
     vk_frame_counter::initialize(0, 3);
 
     return true;

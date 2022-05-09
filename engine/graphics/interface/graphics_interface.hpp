@@ -23,8 +23,9 @@ enum class resource_format
 enum class resource_state
 {
     UNDEFINED,
-    PRESENT,
-    DEPTH_STENCIL
+    COLOR,
+    DEPTH_STENCIL,
+    PRESENT
 };
 
 class resource_interface
@@ -33,6 +34,10 @@ public:
     virtual ~resource_interface() = default;
 
     virtual resource_format format() const noexcept = 0;
+
+    virtual std::uint32_t width() const noexcept = 0;
+    virtual std::uint32_t height() const noexcept = 0;
+    virtual std::size_t size() const noexcept = 0;
 };
 using resource = resource_interface;
 
@@ -198,8 +203,16 @@ enum class attachment_store_op
     DONT_CARE
 };
 
+enum class attachment_type
+{
+    COLOR,
+    DEPTH,
+    RENDER_TARGET
+};
+
 struct attachment_desc
 {
+    attachment_type type;
     resource_format format;
 
     attachment_load_op load_op;
@@ -237,10 +250,6 @@ struct attachment_set_desc
     render_pass_interface* render_pass;
 };
 
-class attachment_set_interface
-{
-};
-
 struct scissor_rect
 {
     std::uint32_t min_x;
@@ -252,11 +261,11 @@ struct scissor_rect
 class render_command_interface
 {
 public:
-    virtual void begin(
-        render_pass_interface* render_pass,
-        attachment_set_interface* attachment_set) = 0;
+    virtual void begin(render_pass_interface* render_pass, resource_interface* render_target) = 0;
     virtual void end(render_pass_interface* render_pass) = 0;
     virtual void next(render_pass_interface* render_pass) = 0;
+
+    virtual void scissor(const scissor_rect& rect) = 0;
 
     virtual void parameter(std::size_t i, pipeline_parameter_interface*) = 0;
     virtual void draw(
@@ -290,7 +299,7 @@ public:
     virtual resource_interface* back_buffer(std::size_t index) = 0;
     virtual std::size_t back_buffer_count() = 0;
 
-    virtual void resize(std::uint32_t width, std::uint32_t height) {}
+    virtual void resize(std::uint32_t width, std::uint32_t height) = 0;
 };
 using renderer = renderer_interface;
 
@@ -331,7 +340,6 @@ class factory_interface
 public:
     virtual renderer_interface* make_renderer(const renderer_desc& desc) = 0;
 
-    virtual attachment_set_interface* make_attachment_set(const attachment_set_desc& desc) = 0;
     virtual render_pass_interface* make_render_pass(const render_pass_desc& desc) = 0;
 
     virtual pipeline_layout_interface* make_pipeline_layout(const pipeline_layout_desc& desc) = 0;

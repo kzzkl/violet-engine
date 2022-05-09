@@ -10,13 +10,14 @@ class vk_command : public render_command_interface
 public:
     vk_command(VkCommandBuffer command_buffer);
 
-    virtual void begin(render_pass_interface* render_pass, attachment_set_interface* attachment_set)
+    virtual void begin(render_pass_interface* render_pass, resource_interface* render_target)
         override;
     virtual void end(render_pass_interface* render_pass) override;
     virtual void next(render_pass_interface* render_pass) override;
 
-    virtual void parameter(std::size_t i, pipeline_parameter_interface* parameter) override;
+    virtual void scissor(const scissor_rect& rect) override;
 
+    virtual void parameter(std::size_t i, pipeline_parameter_interface* parameter) override;
     virtual void draw(
         resource_interface* vertex,
         resource_interface* index,

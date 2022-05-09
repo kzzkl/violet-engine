@@ -9,6 +9,7 @@
 #include "relation.hpp"
 #include "scene.hpp"
 #include "window.hpp"
+#include "window_event.hpp"
 
 using namespace ash::core;
 using namespace ash::graphics;
@@ -43,6 +44,18 @@ public:
         initialize_task();
 
         system<ash::scene::scene>().sync_local();
+
+        system<core::event>().subscribe<window::event_window_resize>(
+            [this](std::uint32_t width, std::uint32_t height) {
+                auto& world = system<ash::ecs::world>();
+                auto& c_camera = world.component<camera>(m_camera);
+                c_camera.set(
+                    math::to_radians(30.0f),
+                    static_cast<float>(width) / static_cast<float>(height),
+                    0.01f,
+                    1000.0f,
+                    true);
+            });
 
         return true;
     }

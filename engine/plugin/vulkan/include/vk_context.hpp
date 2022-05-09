@@ -9,6 +9,7 @@ class vk_render_pass;
 class vk_command_queue;
 class vk_descriptor_pool;
 class vk_sampler;
+class vk_frame_buffer_manager;
 
 class vk_frame_counter
 {
@@ -56,6 +57,7 @@ public:
 
     static const command_queue_index& queue_index() noexcept { return instance().m_queue_index; }
 
+    static VkSurfaceKHR surface() noexcept { return instance().m_surface; }
     static vk_swap_chain& swap_chain() { return *instance().m_swap_chain; }
 
     static vk_descriptor_pool& descriptor_pool() { return *instance().m_descriptor_pool; }
@@ -69,6 +71,8 @@ public:
     static VkFence fence() noexcept { return instance().m_fence; }
 
     static vk_sampler& sampler() { return *instance().m_sampler; }
+
+    static vk_frame_buffer_manager& frame_buffer() { return *instance().m_frame_buffer_manager; }
 
     static std::size_t begin_frame() { return instance().on_begin_frame(); }
     static void end_frame() { instance().on_end_frame(); }
@@ -116,6 +120,8 @@ private:
     VkFence m_fence;
 
     std::unique_ptr<vk_sampler> m_sampler;
+
+    std::unique_ptr<vk_frame_buffer_manager> m_frame_buffer_manager;
 
     std::uint32_t m_image_index;
 

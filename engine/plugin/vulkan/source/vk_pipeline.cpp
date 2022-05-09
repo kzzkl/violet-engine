@@ -1,14 +1,14 @@
 #include "vk_pipeline.hpp"
 #include "vk_context.hpp"
 #include "vk_descriptor_pool.hpp"
+#include "vk_frame_buffer.hpp"
 #include "vk_renderer.hpp"
 #include "vk_sampler.hpp"
 #include <fstream>
 
 namespace ash::graphics::vk
 {
-vk_pipeline_layout::vk_pipeline_layout(
-    const pipeline_layout_desc& desc)
+vk_pipeline_layout::vk_pipeline_layout(const pipeline_layout_desc& desc)
     : m_ubo_count(0),
       m_cis_count(0)
 {
@@ -488,6 +488,18 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
     pass_layout_info.pSetLayouts = layouts.data();
     throw_if_failed(vkCreatePipelineLayout(device, &pass_layout_info, nullptr, &m_pass_layout));
 
+    // Dynamic state.
+    std::vector<VkDynamicState> dynamic_state = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR,
+        VK_DYNAMIC_STATE_STENCIL_REFERENCE,
+        VK_DYNAMIC_STATE_DEPTH_BOUNDS};
+
+    VkPipelineDynamicStateCreateInfo dynamic_state_info = {};
+    dynamic_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamic_state_info.pDynamicStates = dynamic_state.data();
+    dynamic_state_info.dynamicStateCount = static_cast<std::uint32_t>(dynamic_state.size());
+
     // Create pipeline.
     VkGraphicsPipelineCreateInfo pass_info = {};
     pass_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -499,7 +511,7 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
     pass_info.pRasterizationState = &rasterization_info;
     pass_info.pMultisampleState = &multisample_info;
     pass_info.pColorBlendState = &color_blend_info;
-    pass_info.pDynamicState = nullptr;
+    pass_info.pDynamicState = &dynamic_state_info;
     pass_info.layout = m_pass_layout;
     pass_info.renderPass = render_pass;
     pass_info.subpass = static_cast<std::uint32_t>(index);
@@ -554,22 +566,19 @@ vk_render_pass::~vk_render_pass()
     vkDestroyRenderPass(device, m_render_pass, nullptr);
 }
 
-void vk_render_pass::begin(VkCommandBuffer command_buffer, VkFramebuffer frame_buffer)
+void vk_render_pass::begin(VkCommandBuffer command_buffer, vk_image* render_target)
 {
+    auto frame_buffer = vk_context::frame_buffer().get_or_create_frame_buffer(this, render_target);
+
     VkRenderPassBeginInfo pass_info = {};
     pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     pass_info.renderPass = m_render_pass;
-    pass_info.framebuffer = frame_buffer;
+    pass_info.framebuffer = frame_buffer->frame_buffer();
     pass_info.renderArea.offset = {0, 0};
+    // TODO
     pass_info.renderArea.extent = vk_context::swap_chain().extent();
-
-    std::array<VkClearValue, 3> clear_color;
-    clear_color[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
-    clear_color[1].depthStencil = {1.0f, 0};
-    clear_color[2].color = {0.0f, 0.0f, 0.0f, 1.0f};
-
-    pass_info.clearValueCount = static_cast<std::uint32_t>(clear_color.size());
-    pass_info.pClearValues = clear_color.data();
+    pass_info.clearValueCount = static_cast<std::uint32_t>(frame_buffer->clear_values().size());
+    pass_info.pClearValues = frame_buffer->clear_values().data();
 
     vkCmdBeginRenderPass(command_buffer, &pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -629,7 +638,7 @@ void vk_render_pass::create_pass(const render_pass_desc& desc)
             }
             case attachment_reference_type::DEPTH: {
                 reference[i].depth.attachment = static_cast<std::uint32_t>(j);
-                reference[i].depth.layout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                reference[i].depth.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
                 subpasses[i].pDepthStencilAttachment = &reference[i].depth;
                 break;
             }
@@ -668,22 +677,12 @@ void vk_render_pass::create_pass(const render_pass_desc& desc)
         subpasses[i].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     }
 
-    std::vector<VkAttachmentDescription> attachments;
-    for (std::size_t i = 0; i < desc.attachment_count; ++i)
-    {
-        auto& attachment_desc = desc.attachments[i];
+    m_frame_buffer_layout =
+        std::make_unique<vk_frame_buffer_layout>(desc.attachments, desc.attachment_count);
 
-        VkAttachmentDescription attachment = {};
-        attachment.format = to_vk_format(attachment_desc.format);
-        attachment.samples = to_vk_samples(attachment_desc.samples);
-        attachment.loadOp = to_vk_attachment_load_op(attachment_desc.load_op);
-        attachment.storeOp = to_vk_attachment_store_op(attachment_desc.store_op);
-        attachment.stencilLoadOp = to_vk_attachment_load_op(attachment_desc.stencil_load_op);
-        attachment.stencilStoreOp = to_vk_attachment_store_op(attachment_desc.stencil_store_op);
-        attachment.initialLayout = to_vk_image_layout(attachment_desc.initial_state);
-        attachment.finalLayout = to_vk_image_layout(attachment_desc.final_state);
-        attachments.push_back(attachment);
-    }
+    std::vector<VkAttachmentDescription> attachments;
+    for (auto& attachment : *m_frame_buffer_layout)
+        attachments.push_back(attachment.description);
 
     VkRenderPassCreateInfo pass_info = {};
     pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;

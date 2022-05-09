@@ -14,11 +14,6 @@ public:
         return new vk_renderer(desc);
     }
 
-    virtual attachment_set_interface* make_attachment_set(const attachment_set_desc& desc) override
-    {
-        return new vk_frame_buffer(desc);
-    }
-
     virtual render_pass_interface* make_render_pass(const render_pass_desc& desc) override
     {
         return new vk_render_pass(desc);

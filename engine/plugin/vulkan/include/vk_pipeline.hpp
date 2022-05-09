@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vk_common.hpp"
+#include "vk_frame_buffer.hpp"
 #include "vk_resource.hpp"
 
 namespace ash::graphics::vk
@@ -112,12 +113,14 @@ public:
     vk_render_pass(const render_pass_desc& desc);
     ~vk_render_pass();
 
-    void begin(VkCommandBuffer command_buffer, VkFramebuffer frame_buffer);
+    void begin(VkCommandBuffer command_buffer, vk_image* render_target);
     void end(VkCommandBuffer command_buffer);
     void next(VkCommandBuffer command_buffer);
 
     VkRenderPass render_pass() const noexcept { return m_render_pass; }
     vk_pipeline& current_subpass() { return m_pipelines[m_subpass_index]; }
+
+    vk_frame_buffer_layout& frame_buffer_layout() const { return *m_frame_buffer_layout; }
 
 private:
     void create_pass(const render_pass_desc& desc);
@@ -126,5 +129,7 @@ private:
     std::vector<vk_pipeline> m_pipelines;
 
     std::size_t m_subpass_index;
+
+    std::unique_ptr<vk_frame_buffer_layout> m_frame_buffer_layout;
 };
 } // namespace ash::graphics::vk

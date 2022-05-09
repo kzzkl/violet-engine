@@ -37,7 +37,37 @@ std::pair<VkBuffer, VkDeviceMemory> vk_resource::create_buffer(
     return result;
 }
 
-std::pair<VkImage, VkDeviceMemory> vk_resource::create_image(
+void vk_resource::copy_buffer(VkBuffer source, VkBuffer target, VkDeviceSize size)
+{
+    auto& queue = vk_context::graphics_queue();
+
+    VkCommandBuffer command_buffer = queue.begin_dynamic_command();
+
+    VkBufferCopy copy_region = {0, 0, size};
+    vkCmdCopyBuffer(command_buffer, source, target, 1, &copy_region);
+    queue.end_dynamic_command(command_buffer);
+}
+
+std::uint32_t vk_resource::find_memory_type(
+    std::uint32_t type_filter,
+    VkMemoryPropertyFlags properties)
+{
+    VkPhysicalDeviceMemoryProperties memory_properties;
+    vkGetPhysicalDeviceMemoryProperties(vk_context::physical_device(), &memory_properties);
+
+    for (std::uint32_t i = 0; i < memory_properties.memoryTypeCount; ++i)
+    {
+        if ((type_filter & (1 << i)) &&
+            (memory_properties.memoryTypes[i].propertyFlags & properties) == properties)
+        {
+            return i;
+        }
+    }
+
+    throw vk_exception("failed to find suitable memory type!");
+}
+
+std::pair<VkImage, VkDeviceMemory> vk_image::create_image(
     std::uint32_t width,
     std::uint32_t height,
     VkFormat format,
@@ -82,7 +112,7 @@ std::pair<VkImage, VkDeviceMemory> vk_resource::create_image(
     return result;
 }
 
-VkImageView vk_resource::create_image_view(
+VkImageView vk_image::create_image_view(
     VkImage image,
     VkFormat format,
     VkImageAspectFlags aspect_mask)
@@ -103,18 +133,7 @@ VkImageView vk_resource::create_image_view(
     return result;
 }
 
-void vk_resource::copy_buffer(VkBuffer source, VkBuffer target, VkDeviceSize size)
-{
-    auto& queue = vk_context::graphics_queue();
-
-    VkCommandBuffer command_buffer = queue.begin_dynamic_command();
-
-    VkBufferCopy copy_region = {0, 0, size};
-    vkCmdCopyBuffer(command_buffer, source, target, 1, &copy_region);
-    queue.end_dynamic_command(command_buffer);
-}
-
-void vk_resource::copy_buffer_to_image(
+void vk_image::copy_buffer_to_image(
     VkBuffer buffer,
     VkImage image,
     std::uint32_t width,
@@ -145,7 +164,7 @@ void vk_resource::copy_buffer_to_image(
     queue.end_dynamic_command(command_buffer);
 }
 
-void vk_resource::transition_image_layout(
+void vk_image::transition_image_layout(
     VkImage image,
     VkFormat format,
     VkImageLayout old_layout,
@@ -235,68 +254,77 @@ void vk_resource::transition_image_layout(
     queue.end_dynamic_command(command_buffer);
 }
 
-std::uint32_t vk_resource::find_memory_type(
-    std::uint32_t type_filter,
-    VkMemoryPropertyFlags properties)
-{
-    VkPhysicalDeviceMemoryProperties memory_properties;
-    vkGetPhysicalDeviceMemoryProperties(vk_context::physical_device(), &memory_properties);
-
-    for (std::uint32_t i = 0; i < memory_properties.memoryTypeCount; ++i)
-    {
-        if ((type_filter & (1 << i)) &&
-            (memory_properties.memoryTypes[i].propertyFlags & properties) == properties)
-        {
-            return i;
-        }
-    }
-
-    throw vk_exception("failed to find suitable memory type!");
-}
-
-vk_back_buffer::vk_back_buffer(VkImage image, VkFormat format) : m_image(image)
+vk_back_buffer::vk_back_buffer(VkImage image, VkFormat format, const VkExtent2D& extent)
+    : m_image(image)
 {
     m_image_view = create_image_view(image, format, VK_IMAGE_ASPECT_COLOR_BIT);
     m_format = to_ash_format(format);
+    m_extent = extent;
 }
 
 vk_back_buffer::vk_back_buffer(vk_back_buffer&& other)
     : m_image_view(other.m_image_view),
       m_image(other.m_image),
-      m_format(other.m_format)
+      m_format(other.m_format),
+      m_extent(other.m_extent)
 {
     other.m_image_view = VK_NULL_HANDLE;
+    other.m_image = VK_NULL_HANDLE;
+    other.m_format = resource_format::UNDEFINED;
+    other.m_extent = {};
 }
 
 vk_back_buffer::~vk_back_buffer()
 {
-    if (m_image_view != VK_NULL_HANDLE)
-    {
-        auto device = vk_context::device();
-        vkDestroyImageView(device, m_image_view, nullptr);
-    }
+    destroy();
 }
 
 vk_back_buffer& vk_back_buffer::operator=(vk_back_buffer&& other)
 {
-    m_image_view = other.m_image_view;
-    m_image = other.m_image;
-    m_format = other.m_format;
+    if (this != &other)
+    {
+        destroy();
 
-    other.m_image_view = VK_NULL_HANDLE;
+        m_image_view = other.m_image_view;
+        m_image = other.m_image;
+        m_format = other.m_format;
+        m_extent = other.m_extent;
+
+        other.m_image_view = VK_NULL_HANDLE;
+        other.m_image = VK_NULL_HANDLE;
+        other.m_format = resource_format::UNDEFINED;
+        other.m_extent = {};
+    }
 
     return *this;
 }
 
-vk_render_target::vk_render_target(const render_target_desc& desc)
+void vk_back_buffer::destroy()
 {
-    VkFormat format = to_vk_format(desc.format);
+    if (m_image_view != VK_NULL_HANDLE)
+    {
+        vk_context::frame_buffer().notify_destroy(this);
+        auto device = vk_context::device();
+        vkDestroyImageView(device, m_image_view, nullptr);
+    }
 
+    m_image_view = VK_NULL_HANDLE;
+    m_image = VK_NULL_HANDLE;
+    m_format = resource_format::UNDEFINED;
+    m_extent = {};
+}
+
+vk_render_target::vk_render_target(
+    std::uint32_t width,
+    std::uint32_t height,
+    VkFormat format,
+    std::size_t samples)
+{
     auto [image, image_memory] = create_image(
-        desc.width,
-        desc.height,
+        width,
+        height,
         format,
-        desc.samples,
+        samples,
         VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -310,21 +338,88 @@ vk_render_target::vk_render_target(const render_target_desc& desc)
         format,
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    m_extent.width = width;
+    m_extent.height = height;
+    m_format = to_ash_format(format);
+}
+
+vk_render_target::vk_render_target(const render_target_desc& desc)
+    : vk_render_target(desc.width, desc.height, to_vk_format(desc.format), desc.samples)
+{
+}
+
+vk_render_target::vk_render_target(vk_render_target&& other)
+    : m_image_view(other.m_image_view),
+      m_image(other.m_image),
+      m_image_memory(other.m_image_memory),
+      m_format(other.m_format),
+      m_extent(other.m_extent)
+{
+    other.m_image_view = VK_NULL_HANDLE;
+    other.m_image = VK_NULL_HANDLE;
+    other.m_image_memory = VK_NULL_HANDLE;
+    other.m_format = resource_format::UNDEFINED;
+    other.m_extent = {};
 }
 
 vk_render_target::~vk_render_target()
 {
+    destroy();
 }
 
-vk_depth_stencil_buffer::vk_depth_stencil_buffer(const depth_stencil_buffer_desc& desc)
+vk_render_target& vk_render_target::operator=(vk_render_target&& other)
 {
-    VkFormat format = to_vk_format(desc.format);
+    if (this != &other)
+    {
+        destroy();
 
+        m_image_view = other.m_image_view;
+        m_image = other.m_image;
+        m_image_memory = other.m_image_memory;
+        m_format = other.m_format;
+        m_extent = other.m_extent;
+
+        other.m_image_view = VK_NULL_HANDLE;
+        other.m_image = VK_NULL_HANDLE;
+        other.m_image_memory = VK_NULL_HANDLE;
+        other.m_format = resource_format::UNDEFINED;
+        other.m_extent = {};
+    }
+
+    return *this;
+}
+
+void vk_render_target::destroy()
+{
+    if (m_image_view != VK_NULL_HANDLE)
+    {
+        vk_context::frame_buffer().notify_destroy(this);
+
+        auto device = vk_context::device();
+        vkDestroyImageView(device, m_image_view, nullptr);
+        vkDestroyImage(device, m_image, nullptr);
+        vkFreeMemory(device, m_image_memory, nullptr);
+    }
+
+    m_image_view = VK_NULL_HANDLE;
+    m_image = VK_NULL_HANDLE;
+    m_image_memory = VK_NULL_HANDLE;
+    m_format = resource_format::UNDEFINED;
+    m_extent = {};
+}
+
+vk_depth_stencil_buffer::vk_depth_stencil_buffer(
+    std::uint32_t width,
+    std::uint32_t height,
+    VkFormat format,
+    std::size_t samples)
+{
     auto [image, image_memory] = create_image(
-        desc.width,
-        desc.height,
+        width,
+        height,
         format,
-        desc.samples,
+        samples,
         VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -339,7 +434,72 @@ vk_depth_stencil_buffer::vk_depth_stencil_buffer(const depth_stencil_buffer_desc
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    m_format = desc.format;
+    m_extent.width = width;
+    m_extent.height = height;
+    m_format = to_ash_format(format);
+}
+
+vk_depth_stencil_buffer::vk_depth_stencil_buffer(const depth_stencil_buffer_desc& desc)
+    : vk_depth_stencil_buffer(desc.width, desc.height, to_vk_format(desc.format), desc.samples)
+{
+}
+
+vk_depth_stencil_buffer::vk_depth_stencil_buffer(vk_depth_stencil_buffer&& other)
+    : m_image_view(other.m_image_view),
+      m_image(other.m_image),
+      m_image_memory(other.m_image_memory),
+      m_format(other.m_format),
+      m_extent(other.m_extent)
+{
+    other.m_image_view = VK_NULL_HANDLE;
+    other.m_image = VK_NULL_HANDLE;
+    other.m_image_memory = VK_NULL_HANDLE;
+    other.m_format = resource_format::UNDEFINED;
+    other.m_extent = {};
+}
+
+vk_depth_stencil_buffer::~vk_depth_stencil_buffer()
+{
+    destroy();
+}
+
+vk_depth_stencil_buffer& vk_depth_stencil_buffer::operator=(vk_depth_stencil_buffer&& other)
+{
+    if (this != &other)
+    {
+        destroy();
+
+        m_image_view = other.m_image_view;
+        m_image = other.m_image;
+        m_image_memory = other.m_image_memory;
+        m_format = other.m_format;
+        m_extent = other.m_extent;
+
+        other.m_image_view = VK_NULL_HANDLE;
+        other.m_image = VK_NULL_HANDLE;
+        other.m_image_memory = VK_NULL_HANDLE;
+        other.m_format = resource_format::UNDEFINED;
+        other.m_extent = {};
+    }
+
+    return *this;
+}
+
+void vk_depth_stencil_buffer::destroy()
+{
+    if (m_image_view != VK_NULL_HANDLE)
+    {
+        auto device = vk_context::device();
+        vkDestroyImageView(device, m_image_view, nullptr);
+        vkDestroyImage(device, m_image, nullptr);
+        vkFreeMemory(device, m_image_memory, nullptr);
+    }
+
+    m_image_view = VK_NULL_HANDLE;
+    m_image = VK_NULL_HANDLE;
+    m_image_memory = VK_NULL_HANDLE;
+    m_format = resource_format::UNDEFINED;
+    m_extent = {};
 }
 
 vk_texture::vk_texture(std::string_view file)
@@ -391,13 +551,67 @@ vk_texture::vk_texture(std::string_view file)
 
     m_image = image;
     m_image_memory = image_memory;
+
+    m_extent.width = data.width;
+    m_extent.height = data.height;
+}
+
+vk_texture::vk_texture(vk_texture&& other)
+    : m_image_view(other.m_image_view),
+      m_image(other.m_image),
+      m_image_memory(other.m_image_memory),
+      m_format(other.m_format),
+      m_extent(other.m_extent)
+{
+    other.m_image_view = VK_NULL_HANDLE;
+    other.m_image = VK_NULL_HANDLE;
+    other.m_image_memory = VK_NULL_HANDLE;
+    other.m_format = resource_format::UNDEFINED;
+    other.m_extent = {};
 }
 
 vk_texture::~vk_texture()
 {
-    auto device = vk_context::device();
-    vkDestroyImage(device, m_image, nullptr);
-    vkFreeMemory(device, m_image_memory, nullptr);
+    destroy();
+}
+
+vk_texture& vk_texture::operator=(vk_texture&& other)
+{
+    if (this != &other)
+    {
+        destroy();
+
+        m_image_view = other.m_image_view;
+        m_image = other.m_image;
+        m_image_memory = other.m_image_memory;
+        m_format = other.m_format;
+        m_extent = other.m_extent;
+
+        other.m_image_view = VK_NULL_HANDLE;
+        other.m_image = VK_NULL_HANDLE;
+        other.m_image_memory = VK_NULL_HANDLE;
+        other.m_format = resource_format::UNDEFINED;
+        other.m_extent = {};
+    }
+
+    return *this;
+}
+
+void vk_texture::destroy()
+{
+    if (m_image_view != VK_NULL_HANDLE)
+    {
+        auto device = vk_context::device();
+        vkDestroyImageView(device, m_image_view, nullptr);
+        vkDestroyImage(device, m_image, nullptr);
+        vkFreeMemory(device, m_image_memory, nullptr);
+    }
+
+    m_image_view = VK_NULL_HANDLE;
+    m_image = VK_NULL_HANDLE;
+    m_image_memory = VK_NULL_HANDLE;
+    m_format = resource_format::UNDEFINED;
+    m_extent = {};
 }
 
 vk_vertex_buffer::vk_vertex_buffer(const vertex_buffer_desc& desc)
@@ -428,13 +642,54 @@ vk_vertex_buffer::vk_vertex_buffer(const vertex_buffer_desc& desc)
 
     m_buffer = vertex_buffer;
     m_buffer_memory = vertex_buffer_memory;
+    m_buffer_size = buffer_size;
+}
+
+vk_vertex_buffer::vk_vertex_buffer(vk_vertex_buffer&& other)
+    : m_buffer(other.m_buffer),
+      m_buffer_memory(other.m_buffer_memory),
+      m_buffer_size(other.m_buffer_size)
+{
+    other.m_buffer = VK_NULL_HANDLE;
+    other.m_buffer_memory = VK_NULL_HANDLE;
+    other.m_buffer_size = 0;
 }
 
 vk_vertex_buffer::~vk_vertex_buffer()
 {
-    auto device = vk_context::device();
-    vkDestroyBuffer(device, m_buffer, nullptr);
-    vkFreeMemory(device, m_buffer_memory, nullptr);
+    destroy();
+}
+
+vk_vertex_buffer& vk_vertex_buffer::operator=(vk_vertex_buffer&& other)
+{
+    if (this != &other)
+    {
+        destroy();
+
+        m_buffer = other.m_buffer;
+        m_buffer_memory = other.m_buffer_memory;
+        m_buffer_size = other.m_buffer_size;
+
+        other.m_buffer = VK_NULL_HANDLE;
+        other.m_buffer_memory = VK_NULL_HANDLE;
+        other.m_buffer_size = 0;
+    }
+
+    return *this;
+}
+
+void vk_vertex_buffer::destroy()
+{
+    if (m_buffer != VK_NULL_HANDLE)
+    {
+        auto device = vk_context::device();
+        vkDestroyBuffer(device, m_buffer, nullptr);
+        vkFreeMemory(device, m_buffer_memory, nullptr);
+    }
+
+    m_buffer = VK_NULL_HANDLE;
+    m_buffer_memory = VK_NULL_HANDLE;
+    m_buffer_size = 0;
 }
 
 vk_index_buffer::vk_index_buffer(const index_buffer_desc& desc)
@@ -477,16 +732,63 @@ vk_index_buffer::vk_index_buffer(const index_buffer_desc& desc)
     default:
         throw vk_exception("Invalid index size.");
     }
+
+    m_buffer_size = buffer_size;
+}
+
+vk_index_buffer::vk_index_buffer(vk_index_buffer&& other)
+    : m_index_type(other.m_index_type),
+      m_buffer(other.m_buffer),
+      m_buffer_memory(other.m_buffer_memory),
+      m_buffer_size(other.m_buffer_size)
+{
+    other.m_index_type = VK_INDEX_TYPE_MAX_ENUM;
+    other.m_buffer = VK_NULL_HANDLE;
+    other.m_buffer_memory = VK_NULL_HANDLE;
+    other.m_buffer_size = 0;
 }
 
 vk_index_buffer::~vk_index_buffer()
 {
-    auto device = vk_context::device();
-    vkDestroyBuffer(device, m_buffer, nullptr);
-    vkFreeMemory(device, m_buffer_memory, nullptr);
+    destroy();
 }
 
-vk_uniform_buffer::vk_uniform_buffer(std::size_t size)
+vk_index_buffer& vk_index_buffer::operator=(vk_index_buffer&& other)
+{
+    if (this != &other)
+    {
+        destroy();
+
+        m_index_type = other.m_index_type;
+        m_buffer = other.m_buffer;
+        m_buffer_memory = other.m_buffer_memory;
+        m_buffer_size = other.m_buffer_size;
+
+        other.m_index_type = VK_INDEX_TYPE_MAX_ENUM;
+        other.m_buffer = VK_NULL_HANDLE;
+        other.m_buffer_memory = VK_NULL_HANDLE;
+        other.m_buffer_size = 0;
+    }
+
+    return *this;
+}
+
+void vk_index_buffer::destroy()
+{
+    if (m_buffer != VK_NULL_HANDLE)
+    {
+        auto device = vk_context::device();
+        vkDestroyBuffer(device, m_buffer, nullptr);
+        vkFreeMemory(device, m_buffer_memory, nullptr);
+    }
+
+    m_index_type = VK_INDEX_TYPE_MAX_ENUM;
+    m_buffer = VK_NULL_HANDLE;
+    m_buffer_memory = VK_NULL_HANDLE;
+    m_buffer_size = 0;
+}
+
+vk_uniform_buffer::vk_uniform_buffer(std::size_t size) : m_buffer_size(size)
 {
     auto [buffer, buffer_memory] = create_buffer(
         static_cast<std::uint32_t>(size),
@@ -495,6 +797,21 @@ vk_uniform_buffer::vk_uniform_buffer(std::size_t size)
 
     m_buffer = buffer;
     m_buffer_memory = buffer_memory;
+}
+
+vk_uniform_buffer::vk_uniform_buffer(vk_uniform_buffer&& other)
+    : m_buffer(other.m_buffer),
+      m_buffer_memory(other.m_buffer_memory),
+      m_buffer_size(other.m_buffer_size)
+{
+    other.m_buffer = VK_NULL_HANDLE;
+    other.m_buffer_memory = VK_NULL_HANDLE;
+    other.m_buffer_size = 0;
+}
+
+vk_uniform_buffer::~vk_uniform_buffer()
+{
+    destroy();
 }
 
 void vk_uniform_buffer::upload(const void* data, std::size_t size, std::size_t offset)
@@ -513,7 +830,25 @@ void vk_uniform_buffer::upload(const void* data, std::size_t size, std::size_t o
     vkUnmapMemory(device, m_buffer_memory);
 }
 
-vk_uniform_buffer::~vk_uniform_buffer()
+vk_uniform_buffer& vk_uniform_buffer::operator=(vk_uniform_buffer&& other)
+{
+    if (this != &other)
+    {
+        destroy();
+
+        m_buffer = other.m_buffer;
+        m_buffer_memory = other.m_buffer_memory;
+        m_buffer_size = other.m_buffer_size;
+
+        other.m_buffer = VK_NULL_HANDLE;
+        other.m_buffer_memory = VK_NULL_HANDLE;
+        other.m_buffer_size = 0;
+    }
+
+    return *this;
+}
+
+void vk_uniform_buffer::destroy()
 {
     auto device = vk_context::device();
     vkDestroyBuffer(device, m_buffer, nullptr);

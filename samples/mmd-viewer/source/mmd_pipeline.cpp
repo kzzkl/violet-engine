@@ -2,16 +2,20 @@
 
 namespace ash::sample::mmd
 {
-mmd_pass::mmd_pass(graphics::graphics& graphics)
+mmd_pass::mmd_pass()
 {
-    initialize_interface(graphics);
-    initialize_attachment_set(graphics);
+    initialize_interface();
+    resize(1300, 800);
 }
 
 void mmd_pass::render(const graphics::camera& camera, graphics::render_command_interface* command)
 {
-    static std::size_t counter = 0;
-    command->begin(m_interface.get(), m_attachment_sets[counter].get());
+    command->begin(m_interface.get(), camera.render_target);
+
+    graphics::scissor_rect rect = {};
+    rect.max_x = camera.render_target->width();
+    rect.max_y = camera.render_target->height();
+    command->scissor(rect);
 
     command->parameter(3, camera.parameter->parameter());
     for (auto& unit : units())
@@ -29,12 +33,18 @@ void mmd_pass::render(const graphics::camera& camera, graphics::render_command_i
     }
 
     command->end(m_interface.get());
-
-    counter = (counter + 1) % m_attachment_sets.size();
 }
 
-void mmd_pass::initialize_interface(graphics::graphics& graphics)
+void mmd_pass::resize(std::uint32_t width, std::uint32_t height)
 {
+    m_width = width;
+    m_height = height;
+}
+
+void mmd_pass::initialize_interface()
+{
+    auto& graphics = system<graphics::graphics>();
+
     graphics::pipeline_layout_info mmd_material;
     mmd_material.parameters = {
         {graphics::pipeline_parameter_type::FLOAT4,  1}, // diffuse
@@ -76,6 +86,7 @@ void mmd_pass::initialize_interface(graphics::graphics& graphics)
 
     // Attachment.
     graphics::attachment_info render_target = {};
+    render_target.type = graphics::attachment_type::COLOR;
     render_target.format = graphics.back_buffers()[0]->format();
     render_target.load_op = graphics::attachment_load_op::CLEAR;
     render_target.store_op = graphics::attachment_store_op::STORE;
@@ -83,9 +94,10 @@ void mmd_pass::initialize_interface(graphics::graphics& graphics)
     render_target.stencil_store_op = graphics::attachment_store_op::DONT_CARE;
     render_target.samples = 4;
     render_target.initial_state = graphics::resource_state::UNDEFINED;
-    render_target.final_state = graphics::resource_state::PRESENT;
+    render_target.final_state = graphics::resource_state::COLOR;
 
     graphics::attachment_info depth_stencil = {};
+    depth_stencil.type = graphics::attachment_type::DEPTH;
     depth_stencil.format = graphics::resource_format::D24_UNORM_S8_UINT;
     depth_stencil.load_op = graphics::attachment_load_op::CLEAR;
     depth_stencil.store_op = graphics::attachment_store_op::DONT_CARE;
@@ -96,6 +108,7 @@ void mmd_pass::initialize_interface(graphics::graphics& graphics)
     depth_stencil.final_state = graphics::resource_state::DEPTH_STENCIL;
 
     graphics::attachment_info back_buffer = {};
+    back_buffer.type = graphics::attachment_type::RENDER_TARGET;
     back_buffer.format = graphics.back_buffers()[0]->format();
     back_buffer.load_op = graphics::attachment_load_op::CLEAR;
     back_buffer.store_op = graphics::attachment_store_op::DONT_CARE;
@@ -112,36 +125,5 @@ void mmd_pass::initialize_interface(graphics::graphics& graphics)
     mmd_render_pass_info.subpasses.push_back(color_pass_info);
 
     m_interface = graphics.make_render_pass(mmd_render_pass_info);
-}
-
-void mmd_pass::initialize_attachment_set(graphics::graphics& graphics)
-{
-    auto back_buffers = graphics.back_buffers();
-
-    graphics::render_target_desc render_target_desc = {};
-    render_target_desc.width = 1300;
-    render_target_desc.height = 800;
-    render_target_desc.format = graphics.back_buffers()[0]->format();
-    render_target_desc.samples = 4;
-    m_render_target = graphics.make_render_target(render_target_desc);
-
-    graphics::depth_stencil_buffer_desc depth_stencil_buffer_desc = {};
-    depth_stencil_buffer_desc.width = 1300;
-    depth_stencil_buffer_desc.height = 800;
-    depth_stencil_buffer_desc.format = graphics::resource_format::D24_UNORM_S8_UINT;
-    depth_stencil_buffer_desc.samples = 4;
-    m_depth_stencil = graphics.make_depth_stencil_buffer(depth_stencil_buffer_desc);
-
-    for (std::size_t i = 0; i < back_buffers.size(); ++i)
-    {
-        graphics::attachment_set_info attachment_set_info;
-        attachment_set_info.attachments.push_back(m_render_target.get());
-        attachment_set_info.attachments.push_back(m_depth_stencil.get());
-        attachment_set_info.attachments.push_back(back_buffers[i]);
-        attachment_set_info.render_pass = m_interface.get();
-        attachment_set_info.width = 1300;
-        attachment_set_info.height = 800;
-        m_attachment_sets.emplace_back(graphics.make_attachment_set(attachment_set_info));
-    }
 }
 } // namespace ash::sample::mmd

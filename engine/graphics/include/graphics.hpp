@@ -32,25 +32,12 @@ public:
     void begin_frame();
     void end_frame();
 
-    std::unique_ptr<render_pass_interface> make_render_pass(render_pass_info& info)
-    {
-        auto& factory = m_plugin.factory();
-        // make layout
-        for (auto& subpass : info.subpasses)
-        {
-            for (std::size_t i = 0; i < subpass.parameters.size(); ++i)
-            {
-                subpass.parameter_interfaces.push_back(
-                    m_parameter_layouts[subpass.parameters[i]].get());
-            }
-        }
-        return std::unique_ptr<render_pass_interface>(factory.make_render_pass(info.convert()));
-    }
+    std::unique_ptr<render_pass_interface> make_render_pass(render_pass_info& info);
 
     void make_pipeline_layout(std::string_view name, pipeline_layout_info& info);
     std::unique_ptr<pipeline_parameter> make_pipeline_parameter(std::string_view name);
 
-    std::unique_ptr<attachment_set_interface> make_attachment_set(attachment_set_info& info);
+    // std::unique_ptr<attachment_set_interface> make_attachment_set(attachment_set_info& info);
 
     template <typename Vertex>
     std::unique_ptr<resource> make_vertex_buffer(
@@ -59,12 +46,7 @@ public:
         bool dynamic = false)
     {
         auto& factory = m_plugin.factory();
-
-        vertex_buffer_desc desc;
-        if (dynamic)
-            desc = {nullptr, sizeof(Vertex), size, dynamic};
-        else
-            desc = {data, sizeof(Vertex), size, dynamic};
+        vertex_buffer_desc desc = {data, sizeof(Vertex), size, dynamic};
         return std::unique_ptr<resource>(factory.make_vertex_buffer(desc));
     }
 
@@ -109,6 +91,7 @@ public:
 private:
     graphics_plugin m_plugin;
     std::unique_ptr<renderer> m_renderer;
+    std::size_t m_back_buffer_index;
 
     ash::ecs::view<visual>* m_visual_view;
     ash::ecs::view<visual, scene::transform>* m_object_view;

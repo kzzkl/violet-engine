@@ -10,11 +10,20 @@ vk_command::vk_command(VkCommandBuffer command_buffer) : m_command_buffer(comman
 {
 }
 
-void vk_command::begin(render_pass_interface* render_pass, attachment_set_interface* attachment_set)
+void vk_command::begin(render_pass_interface* render_pass, resource_interface* render_target)
 {
-    auto fb = static_cast<vk_frame_buffer*>(attachment_set);
+    auto rt = static_cast<vk_image*>(render_target);
+    VkViewport viewport = {};
+    viewport.width = static_cast<float>(rt->extent().width);
+    viewport.height = static_cast<float>(rt->extent().height);
+    viewport.x = 0;
+    viewport.y = 0;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(m_command_buffer, 0, 1, &viewport);
+
     auto rp = static_cast<vk_render_pass*>(render_pass);
-    rp->begin(m_command_buffer, fb->frame_buffer());
+    rp->begin(m_command_buffer, rt);
 
     m_pass_layout = rp->current_subpass().layout();
 }
@@ -31,6 +40,16 @@ void vk_command::next(render_pass_interface* render_pass)
 
     rp->next(m_command_buffer);
     m_pass_layout = rp->current_subpass().layout();
+}
+
+void vk_command::scissor(const scissor_rect& rect)
+{
+    VkRect2D r = {};
+    r.extent.width = rect.max_x - rect.min_x;
+    r.extent.height = rect.max_y - rect.min_y;
+    r.offset.x = rect.min_x;
+    r.offset.y = rect.min_y;
+    vkCmdSetScissor(m_command_buffer, 0, 1, &r);
 }
 
 void vk_command::parameter(std::size_t i, pipeline_parameter_interface* parameter)

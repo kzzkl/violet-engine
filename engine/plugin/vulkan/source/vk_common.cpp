@@ -100,10 +100,12 @@ VkImageLayout to_vk_image_layout(resource_state state)
     {
     case resource_state::UNDEFINED:
         return VK_IMAGE_LAYOUT_UNDEFINED;
-    case resource_state::PRESENT:
-        return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    case resource_state::COLOR:
+        return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     case resource_state::DEPTH_STENCIL:
         return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    case resource_state::PRESENT:
+        return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     default:
         throw vk_exception("Invalid resource state.");
     }

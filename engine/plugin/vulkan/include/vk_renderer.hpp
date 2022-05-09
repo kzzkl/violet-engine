@@ -12,16 +12,19 @@ public:
     vk_swap_chain(VkSurfaceKHR surface, std::uint32_t width, std::uint32_t height);
     ~vk_swap_chain();
 
+    void resize(std::uint32_t width, std::uint32_t height);
+
     VkExtent2D extent() const noexcept { return m_extent; }
 
     VkFormat surface_format() const noexcept { return m_surface_format.format; }
     VkFormat depth_stencil_format() const noexcept { return m_depth_stencil_format; }
 
     std::vector<vk_back_buffer>& back_buffers() { return m_back_buffers; }
-
     VkSwapchainKHR swap_chain() const noexcept { return m_swap_chain; }
 
 private:
+    void destroy();
+
     VkSurfaceFormatKHR choose_surface_format(VkSurfaceKHR surface);
     VkFormat choose_depth_stencil_format();
     VkPresentModeKHR choose_present_mode(VkSurfaceKHR surface);
@@ -53,5 +56,7 @@ public:
 
     virtual resource_interface* back_buffer(std::size_t index) override;
     virtual std::size_t back_buffer_count() override;
+
+    virtual void resize(std::uint32_t width, std::uint32_t height) override;
 };
 } // namespace ash::graphics::vk

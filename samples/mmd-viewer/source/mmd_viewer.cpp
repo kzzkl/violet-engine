@@ -2,6 +2,7 @@
 #include "mmd_animation.hpp"
 #include "scene.hpp"
 #include "transform.hpp"
+#include "window_event.hpp"
 
 namespace ash::sample::mmd
 {
@@ -22,6 +23,11 @@ bool mmd_viewer::initialize(const dictionary& config)
     m_loader->initialize();
 
     initialize_pass();
+
+    system<core::event>().subscribe<window::event_window_resize>(
+        [this](std::uint32_t width, std::uint32_t height) {
+            m_render_pass->resize(width, height);
+        });
 
     return true;
 }
@@ -163,7 +169,6 @@ void mmd_viewer::initialize_pose(ecs::entity entity)
 
 void mmd_viewer::initialize_pass()
 {
-    auto& graphics = system<graphics::graphics>();
-    m_render_pass = std::make_unique<mmd_pass>(graphics);
+    m_render_pass = std::make_unique<mmd_pass>();
 }
 } // namespace ash::sample::mmd
