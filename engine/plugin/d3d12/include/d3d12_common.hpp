@@ -28,10 +28,10 @@ using D3D12PipelineState = ID3D12PipelineState;
 template <typename T>
 using d3d12_ptr = Microsoft::WRL::ComPtr<T>;
 
-class hr_exception : public std::runtime_error
+class d3d12_exception : public std::runtime_error
 {
 public:
-    hr_exception(HRESULT hr) : std::runtime_error(hr_to_string(hr)), m_hr(hr) {}
+    d3d12_exception(HRESULT hr) : std::runtime_error(hr_to_string(hr)), m_hr(hr) {}
 
     HRESULT error() const { return m_hr; }
 
@@ -49,10 +49,10 @@ private:
 inline void throw_if_failed(HRESULT hr)
 {
     if (FAILED(hr))
-        throw hr_exception(hr);
+        throw d3d12_exception(hr);
 }
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 #    include <cassert>
 #    define ASH_D3D12_ASSERT(condition, ...) assert(condition)
 #else

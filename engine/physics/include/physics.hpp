@@ -14,7 +14,7 @@ struct rigidbody_user_data
     ecs::entity entity;
 };
 
-class physics : public ash::core::system_base
+class physics : public core::system_base
 {
 public:
     physics() noexcept;

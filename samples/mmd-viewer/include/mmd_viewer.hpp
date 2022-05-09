@@ -3,6 +3,7 @@
 #include "context.hpp"
 #include "graphics.hpp"
 #include "mmd_loader.hpp"
+#include "mmd_pipeline.hpp"
 #include "physics.hpp"
 
 namespace ash::sample::mmd
@@ -24,5 +25,7 @@ private:
     std::map<std::string, mmd_resource> m_resources;
     ash::ecs::view<mmd_skeleton>* m_skeleton_view;
     std::unique_ptr<mmd_loader> m_loader;
+
+    std::unique_ptr<mmd_pass> m_render_pass;
 };
 } // namespace ash::sample::mmd

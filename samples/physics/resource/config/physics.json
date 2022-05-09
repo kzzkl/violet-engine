@@ -9,7 +9,7 @@
     },
     "graphics": {
         "vertex_layout": {},
-        "pipeline_parameter_layout": {},
+        "pass_parameter_layout": {},
         "pipeline": {},
         "technique": [
             {

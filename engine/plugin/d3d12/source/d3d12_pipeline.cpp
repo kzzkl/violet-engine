@@ -8,42 +8,42 @@ namespace ash::graphics::d3d12
 {
 namespace
 {
-D3D12_BLEND_DESC to_d3d12(const pipeline_blend_desc& desc)
+D3D12_BLEND_DESC to_d3d12(const pass_blend_desc& desc)
 {
-    auto convert_factor = [](pipeline_blend_desc::factor_type factor) {
+    auto convert_factor = [](pass_blend_desc::factor_type factor) {
         switch (factor)
         {
-        case pipeline_blend_desc::factor_type::ZERO:
+        case pass_blend_desc::factor_type::ZERO:
             return D3D12_BLEND_ZERO;
-        case pipeline_blend_desc::factor_type::ONE:
+        case pass_blend_desc::factor_type::ONE:
             return D3D12_BLEND_ONE;
-        case pipeline_blend_desc::factor_type::SOURCE_COLOR:
+        case pass_blend_desc::factor_type::SOURCE_COLOR:
             return D3D12_BLEND_SRC_COLOR;
-        case pipeline_blend_desc::factor_type::SOURCE_ALPHA:
+        case pass_blend_desc::factor_type::SOURCE_ALPHA:
             return D3D12_BLEND_SRC_ALPHA;
-        case pipeline_blend_desc::factor_type::SOURCE_INV_ALPHA:
+        case pass_blend_desc::factor_type::SOURCE_INV_ALPHA:
             return D3D12_BLEND_INV_SRC_ALPHA;
-        case pipeline_blend_desc::factor_type::TARGET_COLOR:
+        case pass_blend_desc::factor_type::TARGET_COLOR:
             return D3D12_BLEND_DEST_COLOR;
-        case pipeline_blend_desc::factor_type::TARGET_ALPHA:
+        case pass_blend_desc::factor_type::TARGET_ALPHA:
             return D3D12_BLEND_DEST_ALPHA;
-        case pipeline_blend_desc::factor_type::TARGET_INV_ALPHA:
+        case pass_blend_desc::factor_type::TARGET_INV_ALPHA:
             return D3D12_BLEND_INV_DEST_ALPHA;
         default:
             return D3D12_BLEND_ZERO;
         };
     };
 
-    auto convert_op = [](pipeline_blend_desc::op_type op) {
+    auto convert_op = [](pass_blend_desc::op_type op) {
         switch (op)
         {
-        case pipeline_blend_desc::op_type::ADD:
+        case pass_blend_desc::op_type::ADD:
             return D3D12_BLEND_OP_ADD;
-        case pipeline_blend_desc::op_type::SUBTRACT:
+        case pass_blend_desc::op_type::SUBTRACT:
             return D3D12_BLEND_OP_SUBTRACT;
-        case pipeline_blend_desc::op_type::MIN:
+        case pass_blend_desc::op_type::MIN:
             return D3D12_BLEND_OP_MIN;
-        case pipeline_blend_desc::op_type::MAX:
+        case pass_blend_desc::op_type::MAX:
             return D3D12_BLEND_OP_MAX;
         default:
             return D3D12_BLEND_OP_ADD;
@@ -76,14 +76,14 @@ D3D12_BLEND_DESC to_d3d12(const pipeline_blend_desc& desc)
     return result;
 }
 
-D3D12_DEPTH_STENCIL_DESC to_d3d12(const pipeline_depth_stencil_desc& desc)
+D3D12_DEPTH_STENCIL_DESC to_d3d12(const pass_depth_stencil_desc& desc)
 {
-    auto convert_factor = [](pipeline_depth_stencil_desc::depth_functor_type factor) {
+    auto convert_factor = [](pass_depth_stencil_desc::depth_functor_type factor) {
         switch (factor)
         {
-        case pipeline_depth_stencil_desc::depth_functor_type::LESS:
+        case pass_depth_stencil_desc::depth_functor_type::LESS:
             return D3D12_COMPARISON_FUNC_LESS;
-        case pipeline_depth_stencil_desc::depth_functor_type::ALWAYS:
+        case pass_depth_stencil_desc::depth_functor_type::ALWAYS:
             return D3D12_COMPARISON_FUNC_ALWAYS;
         default:
             return D3D12_COMPARISON_FUNC_LESS;
@@ -169,7 +169,7 @@ static const std::vector<CD3DX12_STATIC_SAMPLER_DESC> static_samplers = {
         0.0f,
         D3D12_SHADER_VISIBILITY_PIXEL)};
 
-d3d12_pipeline_parameter::d3d12_pipeline_parameter(const pipeline_parameter_desc& desc)
+d3d12_pass_parameter::d3d12_pass_parameter(const pass_parameter_desc& desc)
     : m_dirty(0),
       m_last_sync_frame(-1),
       m_tier_info(d3d12_frame_counter::frame_resource_count())
@@ -190,35 +190,35 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(const pipeline_parameter_desc
         std::size_t size = 0;
         switch (desc.data[i].type)
         {
-        case pipeline_parameter_type::BOOL:
+        case pass_parameter_type::BOOL:
             align_address = cal_align(constant_offset, 4);
             size = sizeof(bool);
             break;
-        case pipeline_parameter_type::UINT:
+        case pass_parameter_type::UINT:
             align_address = cal_align(constant_offset, 4);
             size = sizeof(std::uint32_t);
             break;
-        case pipeline_parameter_type::FLOAT:
+        case pass_parameter_type::FLOAT:
             align_address = cal_align(constant_offset, 4);
             size = sizeof(float);
             break;
-        case pipeline_parameter_type::FLOAT2:
+        case pass_parameter_type::FLOAT2:
             align_address = cal_align(constant_offset, 16);
             size = sizeof(math::float2);
             break;
-        case pipeline_parameter_type::FLOAT3:
+        case pass_parameter_type::FLOAT3:
             align_address = cal_align(constant_offset, 16);
             size = sizeof(math::float3);
             break;
-        case pipeline_parameter_type::FLOAT4:
+        case pass_parameter_type::FLOAT4:
             align_address = cal_align(constant_offset, 16);
             size = sizeof(math::float4);
             break;
-        case pipeline_parameter_type::FLOAT4x4:
+        case pass_parameter_type::FLOAT4x4:
             align_address = cal_align(constant_offset, 16);
             size = sizeof(math::float4x4);
             break;
-        case pipeline_parameter_type::FLOAT4x4_ARRAY:
+        case pass_parameter_type::FLOAT4x4_ARRAY:
             align_address = cal_align(constant_offset, 16);
             size = sizeof(math::float4x4) * desc.data[i].size;
             break;
@@ -226,7 +226,7 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(const pipeline_parameter_desc
             break;
         }
 
-        if (desc.data[i].type == pipeline_parameter_type::TEXTURE)
+        if (desc.data[i].type == pass_parameter_type::TEXTURE)
         {
             ++srv_count;
             align_address = texture_offset;
@@ -297,13 +297,13 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(const pipeline_parameter_desc
     }
 }
 
-void d3d12_pipeline_parameter::set(std::size_t index, bool value)
+void d3d12_pass_parameter::set(std::size_t index, bool value)
 {
     std::memcpy(m_cpu_buffer.data() + m_parameter_info[index].offset, &value, sizeof(bool));
     mark_dirty(index);
 }
 
-void d3d12_pipeline_parameter::set(std::size_t index, std::uint32_t value)
+void d3d12_pass_parameter::set(std::size_t index, std::uint32_t value)
 {
     std::memcpy(
         m_cpu_buffer.data() + m_parameter_info[index].offset,
@@ -312,31 +312,31 @@ void d3d12_pipeline_parameter::set(std::size_t index, std::uint32_t value)
     mark_dirty(index);
 }
 
-void d3d12_pipeline_parameter::set(std::size_t index, float value)
+void d3d12_pass_parameter::set(std::size_t index, float value)
 {
     std::memcpy(m_cpu_buffer.data() + m_parameter_info[index].offset, &value, sizeof(float));
     mark_dirty(index);
 }
 
-void d3d12_pipeline_parameter::set(std::size_t index, const math::float2& value)
+void d3d12_pass_parameter::set(std::size_t index, const math::float2& value)
 {
     std::memcpy(m_cpu_buffer.data() + m_parameter_info[index].offset, &value, sizeof(math::float2));
     mark_dirty(index);
 }
 
-void d3d12_pipeline_parameter::set(std::size_t index, const math::float3& value)
+void d3d12_pass_parameter::set(std::size_t index, const math::float3& value)
 {
     std::memcpy(m_cpu_buffer.data() + m_parameter_info[index].offset, &value, sizeof(math::float3));
     mark_dirty(index);
 }
 
-void d3d12_pipeline_parameter::set(std::size_t index, const math::float4& value)
+void d3d12_pass_parameter::set(std::size_t index, const math::float4& value)
 {
     std::memcpy(m_cpu_buffer.data() + m_parameter_info[index].offset, &value, sizeof(math::float4));
     mark_dirty(index);
 }
 
-void d3d12_pipeline_parameter::set(std::size_t index, const math::float4x4& value, bool row_matrix)
+void d3d12_pass_parameter::set(std::size_t index, const math::float4x4& value, bool row_matrix)
 {
     if (row_matrix)
     {
@@ -361,7 +361,7 @@ void d3d12_pipeline_parameter::set(std::size_t index, const math::float4x4& valu
     mark_dirty(index);
 }
 
-void d3d12_pipeline_parameter::set(
+void d3d12_pass_parameter::set(
     std::size_t index,
     const math::float4x4* data,
     size_t size,
@@ -393,13 +393,13 @@ void d3d12_pipeline_parameter::set(
     mark_dirty(index);
 }
 
-void d3d12_pipeline_parameter::set(std::size_t index, resource* texture)
+void d3d12_pass_parameter::set(std::size_t index, resource* texture)
 {
     m_textures[m_parameter_info[index].offset] = static_cast<d3d12_resource*>(texture);
     mark_dirty(index);
 }
 
-void d3d12_pipeline_parameter::sync()
+void d3d12_pass_parameter::sync()
 {
     if (m_last_sync_frame == d3d12_frame_counter::frame_counter())
         return;
@@ -415,7 +415,7 @@ void d3d12_pipeline_parameter::sync()
         if (info.dirty == 0)
             continue;
 
-        if (info.type == pipeline_parameter_type::TEXTURE)
+        if (info.type == pass_parameter_type::TEXTURE)
         {
             d3d12_shader_resource_proxy texture = m_textures[info.offset]->shader_resource();
 
@@ -446,7 +446,7 @@ void d3d12_pipeline_parameter::sync()
     }
 }
 
-void d3d12_pipeline_parameter::mark_dirty(std::size_t index)
+void d3d12_pass_parameter::mark_dirty(std::size_t index)
 {
     if (m_parameter_info[index].dirty == 0)
         ++m_dirty;
@@ -454,7 +454,7 @@ void d3d12_pipeline_parameter::mark_dirty(std::size_t index)
     m_parameter_info[index].dirty = d3d12_frame_counter::frame_resource_count();
 }
 
-d3d12_parameter_layout::d3d12_parameter_layout(const pipeline_layout_desc& desc)
+d3d12_parameter_layout::d3d12_parameter_layout(const pass_layout_desc& desc)
 {
     std::vector<CD3DX12_ROOT_PARAMETER> root_parameter;
     root_parameter.resize(desc.size);
@@ -473,7 +473,7 @@ d3d12_parameter_layout::d3d12_parameter_layout(const pipeline_layout_desc& desc)
 
         for (std::size_t j = 0; j < parameter.size; ++j)
         {
-            if (parameter.data[j].type == pipeline_parameter_type::TEXTURE)
+            if (parameter.data[j].type == pass_parameter_type::TEXTURE)
                 ++srv_counter;
             else
                 cbv_counter = 1;
@@ -537,15 +537,15 @@ d3d12_parameter_layout::d3d12_parameter_layout(const pipeline_layout_desc& desc)
     }
 }
 
-d3d12_pipeline::d3d12_pipeline(const pipeline_desc& desc)
+d3d12_pipeline::d3d12_pipeline(const pass_desc& desc)
 {
     m_parameter_layout = static_cast<d3d12_parameter_layout*>(desc.layout);
 
     initialize_vertex_layout(desc);
-    initialize_pipeline_state(desc);
+    initialize_pass_state(desc);
 }
 
-void d3d12_pipeline::initialize_vertex_layout(const pipeline_desc& desc)
+void d3d12_pipeline::initialize_vertex_layout(const pass_desc& desc)
 {
     auto get_format = [](vertex_attribute_type type) -> DXGI_FORMAT {
         switch (type)
@@ -596,7 +596,7 @@ void d3d12_pipeline::initialize_vertex_layout(const pipeline_desc& desc)
     }
 }
 
-void d3d12_pipeline::initialize_pipeline_state(const pipeline_desc& desc)
+void d3d12_pipeline::initialize_pass_state(const pass_desc& desc)
 {
     d3d12_ptr<D3DBlob> vs_blob = load_shader("vs_main", "vs_5_0", desc.vertex_shader);
     d3d12_ptr<D3DBlob> ps_blob = load_shader("ps_main", "ps_5_0", desc.pixel_shader);
@@ -622,7 +622,7 @@ void d3d12_pipeline::initialize_pipeline_state(const pipeline_desc& desc)
 
     throw_if_failed(d3d12_context::device()->CreateGraphicsPipelineState(
         &pso_desc,
-        IID_PPV_ARGS(&m_pipeline_state)));
+        IID_PPV_ARGS(&m_pass_state)));
 }
 
 d3d12_ptr<D3DBlob> d3d12_pipeline::load_shader(

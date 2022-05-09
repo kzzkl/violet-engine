@@ -22,7 +22,7 @@ public:
     inline static DXGIFactory* factory() noexcept { return instance().m_factory.Get(); }
     inline static D3D12Device* device() noexcept { return instance().m_device.Get(); }
 
-    inline static d3d12_command_manager* command() noexcept { return instance().m_command.get(); }
+    inline static d3d12_command_queue* command() noexcept { return instance().m_command.get(); }
     inline static d3d12_renderer* renderer() noexcept { return instance().m_renderer.get(); }
     inline static d3d12_resource_manager* resource() noexcept
     {
@@ -40,7 +40,7 @@ private:
     d3d12_ptr<DXGIFactory> m_factory;
     d3d12_ptr<D3D12Device> m_device;
 
-    std::unique_ptr<d3d12_command_manager> m_command;
+    std::unique_ptr<d3d12_command_queue> m_command;
     std::unique_ptr<d3d12_renderer> m_renderer;
     std::unique_ptr<d3d12_resource_manager> m_resource;
 };

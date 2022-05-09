@@ -34,15 +34,14 @@ void mmd_loader::initialize()
 
     for (auto& path : internal_toon_path)
         m_internal_toon.push_back(m_graphics.make_texture("resource/mmd/" + path));
-
-    m_pipeline = m_graphics.make_render_pipeline<graphics::render_pipeline>("mmd");
 }
 
 bool mmd_loader::load(
     ecs::entity entity,
     mmd_resource& resource,
     std::string_view pmx,
-    std::string_view vmd)
+    std::string_view vmd,
+    graphics::render_pass* render_pass)
 {
     pmx_loader pmx_loader;
     if (!pmx_loader.load(pmx))
@@ -55,13 +54,13 @@ bool mmd_loader::load(
     m_world.add<core::link, scene::transform, graphics::visual, mmd_skeleton>(entity);
 
     auto& visual = m_world.component<graphics::visual>(entity);
-    resource.object_parameter = m_graphics.make_render_parameter("ash_object");
+    resource.object_parameter = m_graphics.make_pipeline_parameter("ash_object");
     visual.object = resource.object_parameter.get();
 
     load_hierarchy(entity, resource, pmx_loader);
     load_mesh(entity, resource, pmx_loader);
     load_texture(entity, resource, pmx_loader);
-    load_material(entity, resource, pmx_loader);
+    load_material(entity, resource, pmx_loader, render_pass);
     load_physics(entity, resource, pmx_loader);
     load_ik(entity, resource, pmx_loader);
 
@@ -76,7 +75,7 @@ void mmd_loader::load_hierarchy(
     const pmx_loader& loader)
 {
     auto& skeleton = m_world.component<mmd_skeleton>(entity);
-    skeleton.parameter = m_graphics.make_render_parameter("mmd_skeleton");
+    skeleton.parameter = m_graphics.make_pipeline_parameter("mmd_skeleton");
 
     skeleton.nodes.reserve(loader.bones().size());
     for (auto& pmx_bone : loader.bones())
@@ -195,11 +194,15 @@ void mmd_loader::load_texture(ecs::entity entity, mmd_resource& resource, const 
     }
 }
 
-void mmd_loader::load_material(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader)
+void mmd_loader::load_material(
+    ecs::entity entity,
+    mmd_resource& resource,
+    const pmx_loader& loader,
+    graphics::render_pass* render_pass)
 {
     for (auto& mmd_material : loader.materials())
     {
-        auto parameter = m_graphics.make_render_parameter("mmd_material");
+        auto parameter = m_graphics.make_pipeline_parameter("mmd_material");
         parameter->set(0, mmd_material.diffuse);
         parameter->set(1, mmd_material.specular);
         parameter->set(2, mmd_material.specular_strength);
@@ -213,6 +216,8 @@ void mmd_loader::load_material(ecs::entity entity, mmd_resource& resource, const
                 parameter->set(6, resource.textures[mmd_material.toon_index].get());
             else if (mmd_material.toon_mode == toon_mode::INTERNAL)
                 parameter->set(6, m_internal_toon[mmd_material.toon_index].get());
+            else
+                throw std::runtime_error("Invalid toon mode");
         }
         if (mmd_material.sphere_mode != sphere_mode::DISABLED)
             parameter->set(7, resource.textures[mmd_material.sphere_index].get());
@@ -230,7 +235,7 @@ void mmd_loader::load_material(ecs::entity entity, mmd_resource& resource, const
         s.index_end = resource.submesh[i].second;
         s.vertex_buffer = resource.vertex_buffer.get();
         s.index_buffer = resource.index_buffer.get();
-        s.pipeline = m_pipeline.get();
+        s.render_pass = render_pass;
         s.parameters = {
             visual.object,
             resource.materials[i].get(),

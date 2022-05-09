@@ -4,6 +4,7 @@
 #include "context.hpp"
 #include "graphics_config.hpp"
 #include "graphics_debug.hpp"
+#include "graphics_interface_helper.hpp"
 #include "graphics_plugin.hpp"
 #include "render_parameter.hpp"
 #include "render_pipeline.hpp"
@@ -15,7 +16,7 @@
 
 namespace ash::graphics
 {
-class graphics : public ash::core::system_base
+class graphics : public core::system_base
 {
 public:
     template <typename T>
@@ -31,33 +32,12 @@ public:
     void begin_frame();
     void end_frame();
 
-    template <typename T, typename... Args>
-    std::unique_ptr<T> make_render_pipeline(std::string_view name, Args&&... args)
-    {
-        pipeline_layout* layout;
-        pipeline* pipeline;
+    std::unique_ptr<render_pass_interface> make_render_pass(render_pass_info& info);
 
-        auto [make_result, unit_conut, pass_count] = make_pipeline(name, layout, pipeline);
+    void make_pipeline_layout(std::string_view name, pipeline_layout_info& info);
+    std::unique_ptr<pipeline_parameter> make_pipeline_parameter(std::string_view name);
 
-        if (!make_result)
-            return false;
-
-        auto result = std::make_unique<T>(layout, pipeline, std::forward<Args>(args)...);
-        result->parameter_count(unit_conut, pass_count);
-        return result;
-    }
-
-    std::unique_ptr<render_parameter> make_render_parameter(std::string_view name)
-    {
-        auto [fount, desc, _] = m_config.find_desc<pipeline_parameter_desc>(name);
-        if (!fount)
-        {
-            log::error("render parameter no found: {}", name);
-            return nullptr;
-        }
-
-        return std::make_unique<render_parameter>(m_factory->make_pipeline_parameter(desc));
-    }
+    // std::unique_ptr<attachment_set_interface> make_attachment_set(attachment_set_info& info);
 
     template <typename Vertex>
     std::unique_ptr<resource> make_vertex_buffer(
@@ -65,12 +45,9 @@ public:
         std::size_t size,
         bool dynamic = false)
     {
-        vertex_buffer_desc desc;
-        if (dynamic)
-            desc = {nullptr, sizeof(Vertex), size, dynamic};
-        else
-            desc = {data, sizeof(Vertex), size, dynamic};
-        return std::unique_ptr<resource>(m_factory->make_vertex_buffer(desc));
+        auto& factory = m_plugin.factory();
+        vertex_buffer_desc desc = {data, sizeof(Vertex), size, dynamic};
+        return std::unique_ptr<resource>(factory.make_vertex_buffer(desc));
     }
 
     template <typename Index>
@@ -79,8 +56,9 @@ public:
         std::size_t size,
         bool dynamic = false)
     {
+        auto& factory = m_plugin.factory();
         index_buffer_desc desc = {data, sizeof(Index), size, dynamic};
-        return std::unique_ptr<resource>(m_factory->make_index_buffer(desc));
+        return std::unique_ptr<resource>(factory.make_index_buffer(desc));
     }
 
     std::unique_ptr<resource> make_texture(
@@ -88,40 +66,32 @@ public:
         std::uint32_t width,
         std::uint32_t height)
     {
-        return std::unique_ptr<resource>(m_factory->make_texture(data, width, height));
+        auto& factory = m_plugin.factory();
+        return std::unique_ptr<resource>(factory.make_texture(data, width, height));
     }
 
-    std::unique_ptr<resource> make_render_target(
-        std::uint32_t width,
-        std::uint32_t height,
-        std::size_t multiple_sampling = 1)
+    std::unique_ptr<resource> make_render_target(const render_target_desc& desc)
     {
-        return std::unique_ptr<resource>(
-            m_factory->make_render_target(width, height, multiple_sampling));
+        auto& factory = m_plugin.factory();
+        return std::unique_ptr<resource>(factory.make_render_target(desc));
     }
 
-    std::unique_ptr<resource> make_depth_stencil(
-        std::uint32_t width,
-        std::uint32_t height,
-        std::size_t multiple_sampling = 1)
+    std::unique_ptr<resource> make_depth_stencil_buffer(const depth_stencil_buffer_desc& desc)
     {
-        return std::unique_ptr<resource>(
-            m_factory->make_depth_stencil(width, height, multiple_sampling));
+        auto& factory = m_plugin.factory();
+        return std::unique_ptr<resource>(factory.make_depth_stencil_buffer(desc));
     }
 
     std::unique_ptr<resource> make_texture(std::string_view file);
 
+    std::vector<resource*> back_buffers() const;
+
     graphics_debug& debug() { return *m_debug; }
 
 private:
-    std::tuple<bool, std::size_t, std::size_t> make_pipeline(
-        std::string_view name,
-        pipeline_layout*& layout,
-        pipeline*& pipeline);
-
     graphics_plugin m_plugin;
-    renderer* m_renderer;
-    factory* m_factory;
+    std::unique_ptr<renderer> m_renderer;
+    std::size_t m_back_buffer_index;
 
     ash::ecs::view<visual>* m_visual_view;
     ash::ecs::view<visual, scene::transform>* m_object_view;
@@ -129,7 +99,9 @@ private:
 
     // ash::ecs::view<scene::transform>* m_tv;
 
-    std::set<render_pipeline*> m_render_pipelines;
+    std::set<render_pass*> m_render_passes;
+
+    interface_map<pipeline_layout_interface> m_parameter_layouts;
 
     graphics_config m_config;
     std::unique_ptr<graphics_debug> m_debug;

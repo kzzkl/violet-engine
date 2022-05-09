@@ -67,7 +67,7 @@ void physics::simulation()
 {
     auto& world = system<ecs::world>();
 
-    system<ash::scene::scene>().sync_local();
+    system<scene::scene>().sync_local();
 
     if (!m_initialize_list.empty())
     {
@@ -89,7 +89,7 @@ void physics::simulation()
         }
     });
 
-    m_world->simulation(system<ash::core::timer>().frame_delta());
+    m_world->simulation(system<core::timer>().frame_delta());
 
     while (true)
     {
@@ -107,7 +107,7 @@ void physics::simulation()
         t.dirty = true;
     }
 
-    system<ash::scene::scene>().sync_world();
+    system<scene::scene>().sync_world();
 
 #if defined(ASH_PHYSICS_DEBUG_DRAW)
     m_world->debug();

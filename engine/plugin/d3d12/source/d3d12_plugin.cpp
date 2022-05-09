@@ -3,25 +3,23 @@
 #include "graphics_interface.hpp"
 #include <cstring>
 
-using namespace ash::graphics::d3d12;
-
 namespace ash::graphics::d3d12
 {
 class d3d12_factory : public factory
 {
 public:
-    virtual pipeline_parameter* make_pipeline_parameter(
-        const pipeline_parameter_desc& desc) override
+    virtual pass_parameter* make_pass_parameter(
+        const pass_parameter_desc& desc) override
     {
-        return new d3d12_pipeline_parameter(desc);
+        return new d3d12_pass_parameter(desc);
     }
 
-    virtual pipeline_layout* make_pipeline_layout(const pipeline_layout_desc& desc) override
+    virtual pass_layout* make_pass_layout(const pass_layout_desc& desc) override
     {
         return new d3d12_parameter_layout(desc);
     }
 
-    virtual pipeline* make_pipeline(const pipeline_desc& desc) override
+    virtual pipeline* make_pipeline(const pass_desc& desc) override
     {
         return new d3d12_pipeline(desc);
     }
@@ -132,9 +130,9 @@ private:
 
 extern "C"
 {
-    PLUGIN_API ash::core::plugin_info get_plugin_info()
+    PLUGIN_API ash::plugin_info get_plugin_info()
     {
-        ash::core::plugin_info info = {};
+        ash::plugin_info info = {};
 
         char name[] = "graphics-d3d12";
         memcpy(info.name, name, sizeof(name));
@@ -147,6 +145,6 @@ extern "C"
 
     PLUGIN_API ash::graphics::context* make_context()
     {
-        return new d3d12_context_wrapper();
+        return new ash::graphics::d3d12::d3d12_context_wrapper();
     }
 }

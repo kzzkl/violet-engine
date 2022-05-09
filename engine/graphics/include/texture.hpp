@@ -6,6 +6,6 @@ namespace ash::graphics
 {
 struct texture
 {
-    resource* resource;
+    resource_interface* resource;
 };
 } // namespace ash::graphics

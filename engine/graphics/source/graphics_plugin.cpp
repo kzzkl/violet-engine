@@ -9,21 +9,16 @@ graphics_plugin::graphics_plugin()
 {
 }
 
-bool graphics_plugin::initialize(const context_config& config)
-{
-    return m_context->initialize(config);
-}
-
 bool graphics_plugin::do_load()
 {
-    make_context make = static_cast<make_context>(find_symbol("make_context"));
+    make_factory make = static_cast<make_factory>(find_symbol("make_factory"));
     if (make == nullptr)
     {
-        log::error("Symbol not found in plugin: make_context.");
+        log::error("Symbol not found in plugin: make_factory.");
         return false;
     }
 
-    m_context.reset(make());
+    m_factory.reset(make());
 
     return true;
 }

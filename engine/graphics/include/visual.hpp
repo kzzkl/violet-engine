@@ -23,7 +23,7 @@ struct visual
     };
 
     std::vector<render_unit> submesh;
-    render_parameter* object;
+    pipeline_parameter* object;
     std::uint32_t mask{GROUP_1};
 };
 } // namespace ash::graphics

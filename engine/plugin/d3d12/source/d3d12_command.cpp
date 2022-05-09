@@ -20,9 +20,9 @@ d3d12_render_command::d3d12_render_command(D3D12CommandAllocator* allocator, std
     m_command_list->Close();
 }
 
-void d3d12_render_command::pipeline(pipeline_type* pipeline)
+void d3d12_render_command::pipeline(pass_type* pipeline)
 {
-    D3D12PipelineState* pso = static_cast<d3d12_pipeline*>(pipeline)->pipeline_state();
+    D3D12PipelineState* pso = static_cast<d3d12_pipeline*>(pipeline)->pass_state();
     m_command_list->SetPipelineState(pso);
 }
 
@@ -32,9 +32,9 @@ void d3d12_render_command::layout(layout_type* layout)
     m_command_list->SetGraphicsRootSignature(l->root_signature());
 }
 
-void d3d12_render_command::parameter(std::size_t index, pipeline_parameter* parameter)
+void d3d12_render_command::parameter(std::size_t index, pass_parameter* parameter)
 {
-    d3d12_pipeline_parameter* p = static_cast<d3d12_pipeline_parameter*>(parameter);
+    d3d12_pass_parameter* p = static_cast<d3d12_pass_parameter*>(parameter);
     p->sync();
     if (p->tier() == d3d12_parameter_tier_type::TIER1)
     {
@@ -176,7 +176,7 @@ void d3d12_dynamic_command::close()
     throw_if_failed(m_command_list->Close());
 }
 
-d3d12_command_manager::d3d12_command_manager(std::size_t render_concurrency) : m_fence_counter(0)
+d3d12_command_queue::d3d12_command_queue(std::size_t render_concurrency) : m_fence_counter(0)
 {
     auto device = d3d12_context::device();
 
@@ -218,7 +218,7 @@ d3d12_command_manager::d3d12_command_manager(std::size_t render_concurrency) : m
         device->CreateFence(m_fence_counter, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
 }
 
-d3d12_render_command* d3d12_command_manager::allocate_render_command(d3d12_render_command_type type)
+d3d12_render_command* d3d12_command_queue::allocate_render_command(d3d12_render_command_type type)
 {
     switch (type)
     {
@@ -247,12 +247,12 @@ d3d12_render_command* d3d12_command_manager::allocate_render_command(d3d12_rende
     };
 }
 
-void d3d12_command_manager::execute_command(d3d12_render_command* command)
+void d3d12_command_queue::execute_command(d3d12_render_command* command)
 {
     command->close();
 }
 
-d3d12_dynamic_command d3d12_command_manager::allocate_dynamic_command()
+d3d12_dynamic_command d3d12_command_queue::allocate_dynamic_command()
 {
     static int allocator_counter = 0;
     static int command_counter = 0;
@@ -304,7 +304,7 @@ d3d12_dynamic_command d3d12_command_manager::allocate_dynamic_command()
     return d3d12_dynamic_command(command_list, allocator);
 }
 
-void d3d12_command_manager::execute_command(d3d12_dynamic_command command)
+void d3d12_command_queue::execute_command(d3d12_dynamic_command command)
 {
     std::lock_guard<std::mutex> lg(m_dynamic_lock);
 
@@ -313,7 +313,7 @@ void d3d12_command_manager::execute_command(d3d12_dynamic_command command)
     m_dynamic_allocator_pool.push(std::make_pair(m_fence_counter, command.m_allocator));
 }
 
-void d3d12_command_manager::execute_batch()
+void d3d12_command_queue::execute_batch()
 {
     // execute dynamic command
     if (!m_dynamic_command_batch.empty())
@@ -348,14 +348,14 @@ void d3d12_command_manager::execute_batch()
     resource.concurrency = m_render_command_counter;
 }
 
-void d3d12_command_manager::flush()
+void d3d12_command_queue::flush()
 {
     ++m_fence_counter;
     throw_if_failed(m_queue->Signal(m_fence.Get(), m_fence_counter));
     wait_completed(m_fence_counter);
 }
 
-void d3d12_command_manager::switch_frame_resources()
+void d3d12_command_queue::switch_frame_resources()
 {
     auto& resource = m_frame_resource.get();
 
@@ -373,7 +373,7 @@ void d3d12_command_manager::switch_frame_resources()
     m_render_command_counter = 0;
 }
 
-void d3d12_command_manager::wait_completed(UINT64 fence)
+void d3d12_command_queue::wait_completed(UINT64 fence)
 {
     if (m_fence->GetCompletedValue() < fence)
     {

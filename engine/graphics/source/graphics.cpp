@@ -23,27 +23,43 @@ bool graphics::initialize(const dictionary& config)
 
     auto& window = system<ash::window::window>();
 
-    context_config desc = {};
+    renderer_desc desc = {};
     desc.window_handle = window.handle();
     window::window_rect rect = window.rect();
     desc.width = rect.width;
     desc.height = rect.height;
     desc.render_concurrency = m_config.render_concurrency();
-    desc.multiple_sampling = m_config.multiple_sampling();
     desc.frame_resource = m_config.frame_resource();
 
-    if (!m_plugin.load(m_config.plugin()) || !m_plugin.initialize(desc))
+    if (!m_plugin.load(m_config.plugin()))
         return false;
 
-    m_renderer = m_plugin.renderer();
-    m_factory = m_plugin.factory();
+    m_renderer.reset(m_plugin.factory().make_renderer(desc));
 
-    adapter_info info[4] = {};
-    std::size_t num_adapter = m_renderer->adapter(info, 4);
-    for (std::size_t i = 0; i < num_adapter; ++i)
-    {
-        log::debug("graphics adapter: {}", info[i].description);
-    }
+    pipeline_layout_info ash_object;
+    ash_object.parameters = {
+        {pipeline_parameter_type::FLOAT4x4, 1}, // transform_m
+        {pipeline_parameter_type::FLOAT4x4, 1}, // transform_mv
+        {pipeline_parameter_type::FLOAT4x4, 1}  // transform_mvp
+    };
+    make_pipeline_layout("ash_object", ash_object);
+
+    pipeline_layout_info ash_pass;
+    ash_pass.parameters = {
+        {pipeline_parameter_type::FLOAT4,   1}, // camera_position
+        {pipeline_parameter_type::FLOAT4,   1}, // camera_direction
+        {pipeline_parameter_type::FLOAT4x4, 1}, // transform_v
+        {pipeline_parameter_type::FLOAT4x4, 1}, // transform_p
+        {pipeline_parameter_type::FLOAT4x4, 1}  // transform_vp
+    };
+    make_pipeline_layout("ash_pass", ash_pass);
+
+    /* adapter_info info[4] = {};
+     std::size_t num_adapter = m_renderer->adapter(info, 4);
+     for (std::size_t i = 0; i < num_adapter; ++i)
+     {
+         log::debug("graphics adapter: {}", info[i].description);
+     }*/
 
     auto& world = system<ecs::world>();
     auto& event = system<core::event>();
@@ -63,7 +79,7 @@ bool graphics::initialize(const dictionary& config)
 
     m_debug = std::make_unique<graphics_debug>(m_config.frame_resource(), *this, world);
     m_debug->initialize();
-    relation.link(m_debug->entity(), scene.root());
+    // relation.link(m_debug->entity(), scene.root());
 
     return true;
 }
@@ -100,15 +116,15 @@ void graphics::render(ecs::entity camera_entity)
     if (t.sync_count != 0)
     {
         math::float4x4 view, projection, view_projection;
-        math::simd::store(math::matrix_simd::transpose(transform_v), view);
-        math::simd::store(math::matrix_simd::transpose(transform_p), projection);
-        math::simd::store(math::matrix_simd::transpose(transform_vp), view_projection);
+        math::simd::store(transform_v, view);
+        math::simd::store(transform_p, projection);
+        math::simd::store(transform_vp, view_projection);
 
         c.parameter->set(0, float4{1.0f, 2.0f, 3.0f, 4.0f});
         c.parameter->set(1, float4{5.0f, 6.0f, 7.0f, 8.0f});
-        c.parameter->set(2, view, false);
-        c.parameter->set(3, projection, false);
-        c.parameter->set(4, view_projection, false);
+        c.parameter->set(2, view);
+        c.parameter->set(3, projection);
+        c.parameter->set(4, view_projection);
     }
 
     // Update object data.
@@ -121,13 +137,13 @@ void graphics::render(ecs::entity camera_entity)
         math::float4x4_simd transform_mvp = math::matrix_simd::mul(transform_mv, transform_p);
 
         math::float4x4 model, model_view, model_view_projection;
-        math::simd::store(math::matrix_simd::transpose(transform_m), model);
-        math::simd::store(math::matrix_simd::transpose(transform_mv), model_view);
-        math::simd::store(math::matrix_simd::transpose(transform_mvp), model_view_projection);
+        math::simd::store(transform_m, model);
+        math::simd::store(transform_mv, model_view);
+        math::simd::store(transform_mvp, model_view_projection);
 
-        visual.object->set(0, model, false);
-        visual.object->set(1, model_view, false);
-        visual.object->set(2, model_view_projection, false);
+        visual.object->set(0, model);
+        visual.object->set(1, model_view);
+        visual.object->set(2, model_view_projection);
     });
 
     m_visual_view->each([&, this](visual& visual) {
@@ -136,43 +152,32 @@ void graphics::render(ecs::entity camera_entity)
 
         for (std::size_t i = 0; i < visual.submesh.size(); ++i)
         {
-            m_render_pipelines.insert(visual.submesh[i].pipeline);
-            visual.submesh[i].pipeline->add(&visual.submesh[i]);
+            m_render_passes.insert(visual.submesh[i].render_pass);
+            visual.submesh[i].render_pass->add(&visual.submesh[i]);
         }
     });
 
     // Render.
     auto command = m_renderer->allocate_command();
 
-    if (c.render_target == nullptr)
+    //if (c.render_target == nullptr)
     {
-        for (auto pipeline : m_render_pipelines)
-            pipeline->render(
-                m_renderer->back_buffer(),
-                m_renderer->depth_stencil(),
-                command,
-                c.parameter.get());
-    }
-    else
-    {
-        command->begin_render(c.render_target);
-        command->clear_render_target(c.render_target);
-        command->clear_depth_stencil(c.depth_stencil);
-        for (auto pipeline : m_render_pipelines)
-            pipeline->render(c.render_target, c.depth_stencil, command, c.parameter.get());
-        command->end_render(c.render_target);
+        c.render_target = m_renderer->back_buffer(m_back_buffer_index);
     }
 
-    for (auto pipeline : m_render_pipelines)
-        pipeline->clear();
-    m_render_pipelines.clear();
+    for (auto render_pass : m_render_passes)
+        render_pass->render(c, command);
+
+    for (auto render_pass : m_render_passes)
+        render_pass->clear();
+    m_render_passes.clear();
 
     m_renderer->execute(command);
 }
 
 void graphics::begin_frame()
 {
-    m_renderer->begin_frame();
+    m_back_buffer_index = m_renderer->begin_frame();
     m_debug->begin_frame();
 }
 
@@ -182,9 +187,43 @@ void graphics::end_frame()
     m_renderer->end_frame();
 }
 
+std::unique_ptr<render_pass_interface> graphics::make_render_pass(render_pass_info& info)
+{
+    auto& factory = m_plugin.factory();
+    for (auto& subpass : info.subpasses)
+    {
+        for (std::size_t i = 0; i < subpass.parameters.size(); ++i)
+        {
+            subpass.parameter_interfaces.push_back(
+                m_parameter_layouts[subpass.parameters[i]].get());
+        }
+    }
+    return std::unique_ptr<render_pass_interface>(factory.make_render_pass(info.convert()));
+}
+
+void graphics::make_pipeline_layout(std::string_view name, pipeline_layout_info& info)
+{
+    auto& factory = m_plugin.factory();
+    m_parameter_layouts[name.data()].reset(factory.make_pipeline_layout(info.convert()));
+}
+
+std::unique_ptr<pipeline_parameter> graphics::make_pipeline_parameter(std::string_view name)
+{
+    auto layout = m_parameter_layouts[name.data()].get();
+    ASH_ASSERT(layout);
+    auto& factory = m_plugin.factory();
+    return std::make_unique<pipeline_parameter>(factory.make_pipeline_parameter(layout));
+}
+
+/*std::unique_ptr<attachment_set_interface> graphics::make_attachment_set(attachment_set_info& info)
+{
+    auto& factory = m_plugin.factory();
+    return std::unique_ptr<attachment_set_interface>(factory.make_attachment_set(info.convert()));
+}*/
+
 std::unique_ptr<resource> graphics::make_texture(std::string_view file)
 {
-    std::ifstream fin(file.data(), std::ios::in | std::ios::binary);
+    /*std::ifstream fin(file.data(), std::ios::in | std::ios::binary);
     if (!fin)
     {
         log::error("Can not open texture: {}.", file);
@@ -193,54 +232,17 @@ std::unique_ptr<resource> graphics::make_texture(std::string_view file)
 
     std::vector<uint8_t> dds_data(fin.seekg(0, std::ios::end).tellg());
     fin.seekg(0, std::ios::beg).read((char*)dds_data.data(), dds_data.size());
-    fin.close();
+    fin.close();*/
 
-    return std::unique_ptr<resource>(m_factory->make_texture(dds_data.data(), dds_data.size()));
+    auto& factory = m_plugin.factory();
+    return std::unique_ptr<resource>(factory.make_texture(file.data()));
 }
 
-std::tuple<bool, std::size_t, std::size_t> graphics::make_pipeline(
-    std::string_view name,
-    pipeline_layout*& layout,
-    pipeline*& pipeline)
+std::vector<resource*> graphics::back_buffers() const
 {
-    auto [found, desc, config] = m_config.find_desc<pipeline_desc>(name);
-    if (!found)
-        return {false, 0, 0};
-
-    // make layout
-    pipeline_layout_desc layout_desc = {};
-    layout_desc.size = 0;
-
-    for (auto& parameter : config->unit_parameters)
-    {
-        auto [parameter_found, parameter_desc, _] =
-            m_config.find_desc<pipeline_parameter_desc>(parameter);
-        if (!parameter_found)
-        {
-            log::error("unit parameter no found: {}", parameter);
-            return {false, 0, 0};
-        }
-        layout_desc.data[layout_desc.size] = parameter_desc;
-        ++layout_desc.size;
-    }
-
-    for (auto& parameter : config->pass_parameters)
-    {
-        auto [parameter_found, parameter_desc, _] =
-            m_config.find_desc<pipeline_parameter_desc>(parameter);
-        if (!parameter_found)
-        {
-            log::error("pass parameter no found: {}", parameter);
-            return {false, 0, 0};
-        }
-        layout_desc.data[layout_desc.size] = parameter_desc;
-        ++layout_desc.size;
-    }
-
-    layout = m_factory->make_pipeline_layout(layout_desc);
-    desc.layout = layout;
-    pipeline = m_factory->make_pipeline(desc);
-
-    return {true, config->unit_parameters.size(), config->pass_parameters.size()};
+    std::vector<resource*> result;
+    for (std::size_t i = 0; i < m_renderer->back_buffer_count(); ++i)
+        result.push_back(m_renderer->back_buffer(i));
+    return result;
 }
 } // namespace ash::graphics

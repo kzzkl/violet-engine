@@ -1,0 +1,36 @@
+project(ash-graphics-vulkan)
+
+find_package(Vulkan REQUIRED)
+
+set(STB_IMAGE_INCLUDE ${THIRD_PARTY_DIR}/stb)
+
+add_library(${PROJECT_NAME} SHARED
+    ./source/vk_command.cpp
+    ./source/vk_common.cpp
+    ./source/vk_context.cpp
+    ./source/vk_descriptor_pool.cpp
+    ./source/vk_frame_buffer.cpp
+    ./source/vk_image_loader.cpp
+    ./source/vk_pipeline.cpp
+    ./source/vk_plugin.cpp
+    ./source/vk_renderer.cpp
+    ./source/vk_resource.cpp
+    ./source/vk_sampler.cpp)
+add_library(ash::plugin::vulkan ALIAS ${PROJECT_NAME})
+
+target_include_directories(${PROJECT_NAME}
+    PRIVATE
+        ./include
+        ${ASH_CORE_INTERFACE_DIR}
+        ${ASH_GRAPHICS_INTERFACE_DIR}
+        ${STB_IMAGE_INCLUDE})
+
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        ash::math
+        Vulkan::Vulkan)
+
+install(TARGETS ${PROJECT_NAME}
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib)

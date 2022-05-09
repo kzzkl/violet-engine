@@ -8,6 +8,7 @@
         "height": 800
     },
     "graphics": {
+        "plugin": "ash-graphics-vulkan.dll",
         "vertex_layout": {
             "pmx": {
                 "attribute": [
@@ -39,7 +40,7 @@
                 ]
             }
         },
-        "pipeline_parameter_layout": {
+        "pass_parameter_layout": {
             "mmd_material": [
                 {
                     "name": "diffuse",
@@ -100,7 +101,7 @@
                 }
             }
         },
-        "technique": [
+        "render_pass": [
             {
                 "name": "",
                 "render_target": {

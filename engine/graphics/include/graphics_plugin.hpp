@@ -5,21 +5,18 @@
 
 namespace ash::graphics
 {
-class graphics_plugin : public ash::core::plugin
+class graphics_plugin : public core::plugin
 {
 public:
     graphics_plugin();
 
-    bool initialize(const context_config& config);
-
-    renderer* renderer() { return m_context->renderer(); }
-    factory* factory() { return m_context->factory(); }
+    factory_interface& factory() { return *m_factory; }
 
 protected:
     virtual bool do_load() override;
     virtual void do_unload() override;
 
 private:
-    std::unique_ptr<context> m_context;
+    std::unique_ptr<factory_interface> m_factory;
 };
 } // namespace ash::graphics

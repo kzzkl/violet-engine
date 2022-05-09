@@ -104,4 +104,4 @@ public:
 
 private:
 };
-} // namespace ash::core
+} // namespace ash

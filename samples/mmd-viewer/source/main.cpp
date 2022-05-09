@@ -9,6 +9,7 @@
 #include "relation.hpp"
 #include "scene.hpp"
 #include "window.hpp"
+#include "window_event.hpp"
 
 using namespace ash::core;
 using namespace ash::graphics;
@@ -43,6 +44,18 @@ public:
         initialize_task();
 
         system<ash::scene::scene>().sync_local();
+
+        system<core::event>().subscribe<window::event_window_resize>(
+            [this](std::uint32_t width, std::uint32_t height) {
+                auto& world = system<ash::ecs::world>();
+                auto& c_camera = world.component<camera>(m_camera);
+                c_camera.set(
+                    math::to_radians(30.0f),
+                    static_cast<float>(width) / static_cast<float>(height),
+                    0.01f,
+                    1000.0f,
+                    true);
+            });
 
         return true;
     }
@@ -96,9 +109,9 @@ private:
         m_camera = world.create();
         world.add<core::link, main_camera, camera, transform>(m_camera);
         auto& c_camera = world.component<camera>(m_camera);
-        c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
+        c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f, true);
 
-        c_camera.parameter = graphics.make_render_parameter("ash_pass");
+        c_camera.parameter = graphics.make_pipeline_parameter("ash_pass");
 
         auto& c_transform = world.component<transform>(m_camera);
         c_transform.position = {0.0f, 11.0f, -60.0f};

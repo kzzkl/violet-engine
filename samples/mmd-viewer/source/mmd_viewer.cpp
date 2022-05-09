@@ -2,6 +2,7 @@
 #include "mmd_animation.hpp"
 #include "scene.hpp"
 #include "transform.hpp"
+#include "window_event.hpp"
 
 namespace ash::sample::mmd
 {
@@ -21,6 +22,8 @@ bool mmd_viewer::initialize(const dictionary& config)
         system<physics::physics>());
     m_loader->initialize();
 
+    m_render_pass = std::make_unique<mmd_pass>();
+
     return true;
 }
 
@@ -31,7 +34,7 @@ ash::ecs::entity mmd_viewer::load_mmd(
 {
     ecs::entity entity = system<ecs::world>().create();
     mmd_resource resource;
-    if (m_loader->load(entity, resource, pmx, vmd))
+    if (m_loader->load(entity, resource, pmx, vmd, m_render_pass.get()))
     {
         m_resources[name.data()] = std::move(resource);
         return entity;

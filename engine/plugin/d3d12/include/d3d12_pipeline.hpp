@@ -12,7 +12,7 @@ enum class d3d12_parameter_tier_type
     TIER2  // Descriptor Table
 };
 
-class d3d12_pipeline_parameter : public pipeline_parameter
+class d3d12_pass_parameter : public pass_parameter
 {
 public:
     struct tier1_info
@@ -29,7 +29,7 @@ public:
     };
 
 public:
-    d3d12_pipeline_parameter(const pipeline_parameter_desc& desc);
+    d3d12_pass_parameter(const pass_parameter_desc& desc);
 
     virtual void set(std::size_t index, bool value) override;
     virtual void set(std::size_t index, std::uint32_t value) override;
@@ -59,7 +59,7 @@ private:
     {
         std::size_t offset;
         std::size_t size;
-        pipeline_parameter_type type;
+        pass_parameter_type type;
         std::size_t dirty;
     };
 
@@ -83,10 +83,10 @@ private:
     std::unique_ptr<d3d12_upload_buffer> m_gpu_buffer;
 };
 
-class d3d12_parameter_layout : public pipeline_layout
+class d3d12_parameter_layout : public pass_layout
 {
 public:
-    d3d12_parameter_layout(const pipeline_layout_desc& desc);
+    d3d12_parameter_layout(const pass_layout_desc& desc);
     inline D3D12RootSignature* root_signature() const noexcept { return m_root_signature.Get(); }
 
 private:
@@ -96,13 +96,13 @@ private:
 class d3d12_pipeline : public pipeline
 {
 public:
-    d3d12_pipeline(const pipeline_desc& desc);
+    d3d12_pipeline(const pass_desc& desc);
 
-    inline D3D12PipelineState* pipeline_state() const noexcept { return m_pipeline_state.Get(); }
+    inline D3D12PipelineState* pass_state() const noexcept { return m_pass_state.Get(); }
 
 private:
-    void initialize_vertex_layout(const pipeline_desc& desc);
-    void initialize_pipeline_state(const pipeline_desc& desc);
+    void initialize_vertex_layout(const pass_desc& desc);
+    void initialize_pass_state(const pass_desc& desc);
 
     d3d12_ptr<D3DBlob> load_shader(
         std::string_view entry,
@@ -114,7 +114,7 @@ private:
     std::vector<D3D12_INPUT_ELEMENT_DESC> m_vertex_layout;
     D3D12_PRIMITIVE_TOPOLOGY_TYPE m_primitive_topology;
 
-    d3d12_ptr<D3D12PipelineState> m_pipeline_state;
+    d3d12_ptr<D3D12PipelineState> m_pass_state;
 
     d3d12_parameter_layout* m_parameter_layout;
 };

@@ -19,4 +19,4 @@ struct plugin_info
 };
 
 using get_plugin_info = plugin_info (*)();
-} // namespace ash::core
+} // namespace ash

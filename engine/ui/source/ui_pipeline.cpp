@@ -2,18 +2,13 @@
 
 namespace ash::ui
 {
-ui_pipeline::ui_pipeline(graphics::pipeline_layout* layout, graphics::pipeline* pipeline)
-    : render_pipeline(layout, pipeline)
+ui_pass::ui_pass(graphics::render_pass_interface* interface) : render_pass(interface)
 {
 }
 
-void ui_pipeline::render(
-    graphics::resource* target,
-    graphics::resource* depth_stencil,
-    graphics::render_command* command,
-    graphics::render_parameter* pass)
+void ui_pass::render(const graphics::camera& camera, graphics::render_command_interface* command)
 {
-    command->pipeline(pipeline());
+    /*command->pipeline(pipeline());
     command->layout(layout());
     command->render_target(target, depth_stencil);
 
@@ -32,6 +27,6 @@ void ui_pipeline::render(
             unit->vertex_base,
             graphics::primitive_topology_type::TRIANGLE_LIST,
             target);
-    }
+    }*/
 }
 } // namespace ash::ui

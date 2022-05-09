@@ -225,17 +225,17 @@ int convert_key(window::keyboard_key key)
 };
 } // namespace
 
-ui::ui() : core::system_base("ui")
+ui::ui() : system_base("ui")
 {
 }
 
 bool ui::initialize(const dictionary& config)
 {
-    auto& graphics = system<graphics::graphics>();
+    /*auto& graphics = system<graphics::graphics>();
     auto& world = system<ecs::world>();
-    auto& event = system<core::event>();
+    auto& event = system<event>();
 
-    m_pipeline = graphics.make_render_pipeline<ui_pipeline>("ui");
+    m_pass = graphics.make_render_pass<ui_pass>("ui");
 
     m_ui_entity = world.create();
     world.add<graphics::visual>(m_ui_entity);
@@ -287,7 +287,7 @@ bool ui::initialize(const dictionary& config)
         });
     event.subscribe<window::event_keyboard_char>(
         [](char c) { ImGui::GetIO().AddInputCharacter(c); });
-    event.subscribe<window::event_window_resize>([](std::uint32_t width, std::uint32_t height) {});
+    event.subscribe<window::event_window_resize>([](std::uint32_t width, std::uint32_t height) {});*/
 
     return true;
 }
@@ -399,8 +399,8 @@ void ui::begin_frame()
 
     window::window_rect rect = window.rect();
 
-    static auto old_time = system<core::timer>().now();
-    auto new_time = system<core::timer>().now();
+    static auto old_time = system<timer>().now();
+    auto new_time = system<timer>().now();
     float delta = (new_time - old_time).count() * 0.000000001f;
     old_time = new_time;
 
@@ -414,7 +414,7 @@ void ui::begin_frame()
 }
 
 void ui::end_frame()
-{
+{/*
     auto& world = system<ecs::world>();
     auto& visual = world.component<graphics::visual>(m_ui_entity);
     visual.submesh.clear();
@@ -496,7 +496,7 @@ void ui::end_frame()
 
         vertex_counter += list->VtxBuffer.Size;
         index_counter += list->IdxBuffer.Size;
-    }
+    }*/
 }
 
 void ui::initialize_theme()

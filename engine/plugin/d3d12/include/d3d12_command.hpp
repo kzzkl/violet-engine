@@ -19,9 +19,9 @@ class d3d12_render_command : public render_command
 public:
     d3d12_render_command(D3D12CommandAllocator* allocator, std::wstring_view name = L"");
 
-    virtual void pipeline(pipeline_type* pipeline) override;
+    virtual void pipeline(pass_type* pipeline) override;
     virtual void layout(layout_type* layout) override;
-    virtual void parameter(std::size_t index, pipeline_parameter* parameter) override;
+    virtual void parameter(std::size_t index, pass_parameter* parameter) override;
     virtual void render_target(resource* target, resource* depth_stencil) override;
     virtual void scissor(const scissor_rect& rect) override;
     virtual void draw(
@@ -62,16 +62,16 @@ public:
     D3D12GraphicsCommandList* get() noexcept { return m_command_list.Get(); }
 
 private:
-    friend class d3d12_command_manager;
+    friend class d3d12_command_queue;
 
     d3d12_ptr<D3D12GraphicsCommandList> m_command_list;
     d3d12_ptr<D3D12CommandAllocator> m_allocator;
 };
 
-class d3d12_command_manager
+class d3d12_command_queue
 {
 public:
-    d3d12_command_manager(std::size_t render_concurrency);
+    d3d12_command_queue(std::size_t render_concurrency);
 
     d3d12_render_command* allocate_render_command(d3d12_render_command_type type);
     void execute_command(d3d12_render_command* command);
