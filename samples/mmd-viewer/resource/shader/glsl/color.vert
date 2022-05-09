@@ -44,9 +44,9 @@ void main()
     mat4 mvp = m * ash_pass.transform_vp;
     mat4 mv = m * ash_pass.transform_v;
 
-    vs_out_position = vec4(vs_in_position, 1.0f) * mvp;
-    vs_out_normal = (vec4(vs_in_normal, 0.0f) * mv).xyz;
+    vs_out_position = vec4(vs_in_position, 1.0f) * mv;
+    vs_out_normal = vs_in_normal * mat3(mv);
     vs_out_uv = vs_in_uv;
 
-    gl_Position = vs_out_position;
+    gl_Position = vec4(vs_in_position, 1.0f) * mvp;
 }

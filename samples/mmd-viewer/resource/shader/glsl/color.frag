@@ -20,12 +20,10 @@ layout(location = 0) out vec4 ps_out_color;
 
 void main()
 {
-    vec4 color = texture(tex_sampler, ps_in_uv);
-    //clip(color.w < 0.1f ? -1 : 1);
+    vec4 color = mmd_material.diffuse;
+    color = color * texture(tex_sampler, ps_in_uv);
 
     vec3 normal = normalize(ps_in_normal);
-    color = color * mmd_material.diffuse;
-
     if (mmd_material.spa_mode != 0)
     {
         vec2 spa_uv = {normal.x * 0.5f + 0.5f, 1.0f - (normal.y * 0.5f + 0.5f)};

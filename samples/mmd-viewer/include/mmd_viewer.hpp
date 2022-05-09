@@ -22,8 +22,6 @@ public:
     void initialize_pose(ecs::entity entity);
 
 private:
-    void initialize_pass();
-
     std::map<std::string, mmd_resource> m_resources;
     ash::ecs::view<mmd_skeleton>* m_skeleton_view;
     std::unique_ptr<mmd_loader> m_loader;

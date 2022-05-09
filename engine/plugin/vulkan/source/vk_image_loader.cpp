@@ -111,17 +111,17 @@ bool vk_image_loader::load_dds(std::string_view file)
         switch (header.ddspf.dwFourCC)
         {
         case FOURCC_DXT1:
-            vk_format = VK_FORMAT_R8G8B8A8_SRGB;
+            vk_format = VK_FORMAT_R8G8B8A8_UNORM;
             dds_format = vk_dds_format::RGBA_EXT1;
             channels = 3;
             break;
         case FOURCC_DXT3:
-            vk_format = VK_FORMAT_R8G8B8A8_SRGB;
+            vk_format = VK_FORMAT_R8G8B8A8_UNORM;
             dds_format = vk_dds_format::RGBA_EXT3;
             channels = 4;
             break;
         case FOURCC_DXT5:
-            vk_format = VK_FORMAT_R8G8B8A8_SRGB;
+            vk_format = VK_FORMAT_R8G8B8A8_UNORM;
             dds_format = vk_dds_format::RGBA_EXT5;
             channels = 4;
             break;
@@ -134,7 +134,7 @@ bool vk_image_loader::load_dds(std::string_view file)
         header.ddspf.dwGBitMask == 0x0000FF00 && header.ddspf.dwBBitMask == 0x000000FF &&
         header.ddspf.dwABitMask == 0xFF000000)
     {
-        vk_format = VK_FORMAT_B8G8R8A8_SRGB;
+        vk_format = VK_FORMAT_B8G8R8A8_UNORM;
         dds_format = vk_dds_format::BGRA;
         channels = 4;
     }
@@ -143,7 +143,7 @@ bool vk_image_loader::load_dds(std::string_view file)
         header.ddspf.dwGBitMask == 0x0000FF00 && header.ddspf.dwBBitMask == 0x00FF0000 &&
         header.ddspf.dwABitMask == 0xFF000000)
     {
-        vk_format = VK_FORMAT_R8G8B8A8_SRGB;
+        vk_format = VK_FORMAT_R8G8B8A8_UNORM;
         dds_format = vk_dds_format::RGBA;
         channels = 4;
     }
@@ -151,7 +151,7 @@ bool vk_image_loader::load_dds(std::string_view file)
         header.ddspf.dwRGBBitCount == 24 && header.ddspf.dwRBitMask == 0x000000FF &&
         header.ddspf.dwGBitMask == 0x0000FF00 && header.ddspf.dwBBitMask == 0x00FF0000)
     {
-        vk_format = VK_FORMAT_R8G8B8_SRGB;
+        vk_format = VK_FORMAT_R8G8B8_UNORM;
         dds_format = vk_dds_format::RGB;
         channels = 3;
     }
@@ -159,7 +159,7 @@ bool vk_image_loader::load_dds(std::string_view file)
         header.ddspf.dwRGBBitCount == 24 && header.ddspf.dwRBitMask == 0x00FF0000 &&
         header.ddspf.dwGBitMask == 0x0000FF00 && header.ddspf.dwBBitMask == 0x000000FF)
     {
-        vk_format = VK_FORMAT_B8G8R8_SRGB;
+        vk_format = VK_FORMAT_B8G8R8_UNORM;
         dds_format = vk_dds_format::BGR;
         channels = 3;
     }

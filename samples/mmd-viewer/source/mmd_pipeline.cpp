@@ -4,45 +4,6 @@ namespace ash::sample::mmd
 {
 mmd_pass::mmd_pass()
 {
-    initialize_interface();
-    resize(1300, 800);
-}
-
-void mmd_pass::render(const graphics::camera& camera, graphics::render_command_interface* command)
-{
-    command->begin(m_interface.get(), camera.render_target);
-
-    graphics::scissor_rect rect = {};
-    rect.max_x = camera.render_target->width();
-    rect.max_y = camera.render_target->height();
-    command->scissor(rect);
-
-    command->parameter(3, camera.parameter->parameter());
-    for (auto& unit : units())
-    {
-        command->parameter(0, unit->parameters[0]->parameter());
-        command->parameter(1, unit->parameters[1]->parameter());
-        command->parameter(2, unit->parameters[2]->parameter());
-
-        command->draw(
-            unit->vertex_buffer,
-            unit->index_buffer,
-            unit->index_start,
-            unit->index_end,
-            unit->vertex_base);
-    }
-
-    command->end(m_interface.get());
-}
-
-void mmd_pass::resize(std::uint32_t width, std::uint32_t height)
-{
-    m_width = width;
-    m_height = height;
-}
-
-void mmd_pass::initialize_interface()
-{
     auto& graphics = system<graphics::graphics>();
 
     graphics::pipeline_layout_info mmd_material;
@@ -125,5 +86,32 @@ void mmd_pass::initialize_interface()
     mmd_render_pass_info.subpasses.push_back(color_pass_info);
 
     m_interface = graphics.make_render_pass(mmd_render_pass_info);
+}
+
+void mmd_pass::render(const graphics::camera& camera, graphics::render_command_interface* command)
+{
+    command->begin(m_interface.get(), camera.render_target);
+
+    graphics::scissor_rect rect = {};
+    rect.max_x = camera.render_target->width();
+    rect.max_y = camera.render_target->height();
+    command->scissor(rect);
+
+    command->parameter(3, camera.parameter->parameter());
+    for (auto& unit : units())
+    {
+        command->parameter(0, unit->parameters[0]->parameter());
+        command->parameter(1, unit->parameters[1]->parameter());
+        command->parameter(2, unit->parameters[2]->parameter());
+
+        command->draw(
+            unit->vertex_buffer,
+            unit->index_buffer,
+            unit->index_start,
+            unit->index_end,
+            unit->vertex_base);
+    }
+
+    command->end(m_interface.get());
 }
 } // namespace ash::sample::mmd

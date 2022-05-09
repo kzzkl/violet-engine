@@ -22,12 +22,7 @@ bool mmd_viewer::initialize(const dictionary& config)
         system<physics::physics>());
     m_loader->initialize();
 
-    initialize_pass();
-
-    system<core::event>().subscribe<window::event_window_resize>(
-        [this](std::uint32_t width, std::uint32_t height) {
-            m_render_pass->resize(width, height);
-        });
+    m_render_pass = std::make_unique<mmd_pass>();
 
     return true;
 }
@@ -165,10 +160,5 @@ void mmd_viewer::initialize_pose(ecs::entity entity)
         math::simd::store(final_transform, skeleton.world[i]);
     }
     skeleton.parameter->set(0, skeleton.world.data(), skeleton.world.size());
-}
-
-void mmd_viewer::initialize_pass()
-{
-    m_render_pass = std::make_unique<mmd_pass>();
 }
 } // namespace ash::sample::mmd
