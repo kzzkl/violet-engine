@@ -8,42 +8,42 @@ namespace ash::graphics::d3d12
 {
 namespace
 {
-D3D12_BLEND_DESC to_d3d12(const pass_blend_desc& desc)
+D3D12_BLEND_DESC to_d3d12(const blend_desc& desc)
 {
-    auto convert_factor = [](pass_blend_desc::factor_type factor) {
+    auto convert_factor = [](blend_factor factor) {
         switch (factor)
         {
-        case pass_blend_desc::factor_type::ZERO:
+        case blend_factor::ZERO:
             return D3D12_BLEND_ZERO;
-        case pass_blend_desc::factor_type::ONE:
+        case blend_factor::ONE:
             return D3D12_BLEND_ONE;
-        case pass_blend_desc::factor_type::SOURCE_COLOR:
+        case blend_factor::SOURCE_COLOR:
             return D3D12_BLEND_SRC_COLOR;
-        case pass_blend_desc::factor_type::SOURCE_ALPHA:
+        case blend_factor::SOURCE_ALPHA:
             return D3D12_BLEND_SRC_ALPHA;
-        case pass_blend_desc::factor_type::SOURCE_INV_ALPHA:
+        case blend_factor::SOURCE_INV_ALPHA:
             return D3D12_BLEND_INV_SRC_ALPHA;
-        case pass_blend_desc::factor_type::TARGET_COLOR:
+        case blend_factor::TARGET_COLOR:
             return D3D12_BLEND_DEST_COLOR;
-        case pass_blend_desc::factor_type::TARGET_ALPHA:
+        case blend_factor::TARGET_ALPHA:
             return D3D12_BLEND_DEST_ALPHA;
-        case pass_blend_desc::factor_type::TARGET_INV_ALPHA:
+        case blend_factor::TARGET_INV_ALPHA:
             return D3D12_BLEND_INV_DEST_ALPHA;
         default:
             return D3D12_BLEND_ZERO;
         };
     };
 
-    auto convert_op = [](pass_blend_desc::op_type op) {
+    auto convert_op = [](blend_op op) {
         switch (op)
         {
-        case pass_blend_desc::op_type::ADD:
+        case blend_op::ADD:
             return D3D12_BLEND_OP_ADD;
-        case pass_blend_desc::op_type::SUBTRACT:
+        case blend_op::SUBTRACT:
             return D3D12_BLEND_OP_SUBTRACT;
-        case pass_blend_desc::op_type::MIN:
+        case blend_op::MIN:
             return D3D12_BLEND_OP_MIN;
-        case pass_blend_desc::op_type::MAX:
+        case blend_op::MAX:
             return D3D12_BLEND_OP_MAX;
         default:
             return D3D12_BLEND_OP_ADD;
@@ -76,14 +76,14 @@ D3D12_BLEND_DESC to_d3d12(const pass_blend_desc& desc)
     return result;
 }
 
-D3D12_DEPTH_STENCIL_DESC to_d3d12(const pass_depth_stencil_desc& desc)
+D3D12_DEPTH_STENCIL_DESC to_d3d12(const depth_stencil_desc& desc)
 {
-    auto convert_factor = [](pass_depth_stencil_desc::depth_functor_type factor) {
+    auto convert_factor = [](depth_functor factor) {
         switch (factor)
         {
-        case pass_depth_stencil_desc::depth_functor_type::LESS:
+        case depth_functor::LESS:
             return D3D12_COMPARISON_FUNC_LESS;
-        case pass_depth_stencil_desc::depth_functor_type::ALWAYS:
+        case depth_functor::ALWAYS:
             return D3D12_COMPARISON_FUNC_ALWAYS;
         default:
             return D3D12_COMPARISON_FUNC_LESS;
@@ -169,79 +169,91 @@ static const std::vector<CD3DX12_STATIC_SAMPLER_DESC> static_samplers = {
         0.0f,
         D3D12_SHADER_VISIBILITY_PIXEL)};
 
-d3d12_pass_parameter::d3d12_pass_parameter(const pass_parameter_desc& desc)
-    : m_dirty(0),
-      m_last_sync_frame(-1),
-      m_tier_info(d3d12_frame_counter::frame_resource_count())
+d3d12_pipeline_parameter_layout::d3d12_pipeline_parameter_layout(
+    const pipeline_parameter_layout_desc& desc)
+    : m_cbv_count(0),
+      m_srv_count(0)
 {
     auto cal_align = [](std::size_t begin, std::size_t align) {
         return (begin + align - 1) & ~(align - 1);
     };
 
-    std::size_t cbv_count = 0;
-    std::size_t srv_count = 0;
-
     std::size_t constant_offset = 0;
     std::size_t texture_offset = 0;
-    m_parameter_info.reserve(desc.size);
+    m_parameters.reserve(desc.size);
     for (std::size_t i = 0; i < desc.size; ++i)
     {
         std::size_t align_address = 0;
         std::size_t size = 0;
-        switch (desc.data[i].type)
+        switch (desc.parameters[i].type)
         {
-        case pass_parameter_type::BOOL:
+        case pipeline_parameter_type::BOOL:
             align_address = cal_align(constant_offset, 4);
             size = sizeof(bool);
             break;
-        case pass_parameter_type::UINT:
+        case pipeline_parameter_type::UINT:
             align_address = cal_align(constant_offset, 4);
             size = sizeof(std::uint32_t);
             break;
-        case pass_parameter_type::FLOAT:
+        case pipeline_parameter_type::FLOAT:
             align_address = cal_align(constant_offset, 4);
             size = sizeof(float);
             break;
-        case pass_parameter_type::FLOAT2:
+        case pipeline_parameter_type::FLOAT2:
             align_address = cal_align(constant_offset, 16);
             size = sizeof(math::float2);
             break;
-        case pass_parameter_type::FLOAT3:
+        case pipeline_parameter_type::FLOAT3:
             align_address = cal_align(constant_offset, 16);
             size = sizeof(math::float3);
             break;
-        case pass_parameter_type::FLOAT4:
+        case pipeline_parameter_type::FLOAT4:
             align_address = cal_align(constant_offset, 16);
             size = sizeof(math::float4);
             break;
-        case pass_parameter_type::FLOAT4x4:
+        case pipeline_parameter_type::FLOAT4x4:
             align_address = cal_align(constant_offset, 16);
             size = sizeof(math::float4x4);
             break;
-        case pass_parameter_type::FLOAT4x4_ARRAY:
+        case pipeline_parameter_type::FLOAT4x4_ARRAY:
             align_address = cal_align(constant_offset, 16);
-            size = sizeof(math::float4x4) * desc.data[i].size;
+            size = sizeof(math::float4x4) * desc.parameters[i].size;
             break;
         default:
             break;
         }
 
-        if (desc.data[i].type == pass_parameter_type::TEXTURE)
+        if (desc.parameters[i].type == pipeline_parameter_type::TEXTURE)
         {
-            ++srv_count;
+            ++m_srv_count;
             align_address = texture_offset;
             ++texture_offset;
         }
         else
         {
-            cbv_count = 1;
+            m_cbv_count = 1;
             constant_offset = align_address + size;
         }
 
-        m_parameter_info.push_back(parameter_info{align_address, size, desc.data[i].type, 0});
+        m_parameters.push_back(parameter_info{align_address, size, desc.parameters[i].type});
     }
 
-    std::size_t buffer_size = cal_align(constant_offset, 256);
+    m_constant_buffer_size = cal_align(constant_offset, 256);
+}
+
+d3d12_pipeline_parameter::d3d12_pipeline_parameter(pipeline_parameter_layout_interface* layout)
+    : m_dirty(0),
+      m_last_sync_frame(-1),
+      m_tier_info(d3d12_frame_counter::frame_resource_count()),
+      m_layout(static_cast<d3d12_pipeline_parameter_layout*>(layout))
+{
+    m_dirty_counter.resize(m_layout->parameter_count(), 0);
+
+    std::size_t cbv_count = m_layout->cbv_count();
+    std::size_t srv_count = m_layout->srv_count();
+
+    std::size_t buffer_size = m_layout->constant_buffer_size();
+
     if (cbv_count != 0)
     {
         m_cpu_buffer.resize(buffer_size);
@@ -250,10 +262,10 @@ d3d12_pass_parameter::d3d12_pass_parameter(const pass_parameter_desc& desc)
             buffer_size * d3d12_frame_counter::frame_resource_count());
     }
 
-    m_textures.resize(srv_count);
-
     if (srv_count != 0)
     {
+        m_textures.resize(srv_count);
+
         m_tier = d3d12_parameter_tier_type::TIER2;
 
         std::size_t view_count = cbv_count + srv_count;
@@ -297,109 +309,93 @@ d3d12_pass_parameter::d3d12_pass_parameter(const pass_parameter_desc& desc)
     }
 }
 
-void d3d12_pass_parameter::set(std::size_t index, bool value)
+void d3d12_pipeline_parameter::set(std::size_t index, bool value)
 {
-    std::memcpy(m_cpu_buffer.data() + m_parameter_info[index].offset, &value, sizeof(bool));
+    std::memcpy(m_cpu_buffer.data() + m_layout->parameter_offset(index), &value, sizeof(bool));
     mark_dirty(index);
 }
 
-void d3d12_pass_parameter::set(std::size_t index, std::uint32_t value)
+void d3d12_pipeline_parameter::set(std::size_t index, std::uint32_t value)
 {
     std::memcpy(
-        m_cpu_buffer.data() + m_parameter_info[index].offset,
+        m_cpu_buffer.data() + m_layout->parameter_offset(index),
         &value,
         sizeof(std::uint32_t));
     mark_dirty(index);
 }
 
-void d3d12_pass_parameter::set(std::size_t index, float value)
+void d3d12_pipeline_parameter::set(std::size_t index, float value)
 {
-    std::memcpy(m_cpu_buffer.data() + m_parameter_info[index].offset, &value, sizeof(float));
+    std::memcpy(m_cpu_buffer.data() + m_layout->parameter_offset(index), &value, sizeof(float));
     mark_dirty(index);
 }
 
-void d3d12_pass_parameter::set(std::size_t index, const math::float2& value)
+void d3d12_pipeline_parameter::set(std::size_t index, const math::float2& value)
 {
-    std::memcpy(m_cpu_buffer.data() + m_parameter_info[index].offset, &value, sizeof(math::float2));
+    std::memcpy(
+        m_cpu_buffer.data() + m_layout->parameter_offset(index),
+        &value,
+        sizeof(math::float2));
     mark_dirty(index);
 }
 
-void d3d12_pass_parameter::set(std::size_t index, const math::float3& value)
+void d3d12_pipeline_parameter::set(std::size_t index, const math::float3& value)
 {
-    std::memcpy(m_cpu_buffer.data() + m_parameter_info[index].offset, &value, sizeof(math::float3));
+    std::memcpy(
+        m_cpu_buffer.data() + m_layout->parameter_offset(index),
+        &value,
+        sizeof(math::float3));
     mark_dirty(index);
 }
 
-void d3d12_pass_parameter::set(std::size_t index, const math::float4& value)
+void d3d12_pipeline_parameter::set(std::size_t index, const math::float4& value)
 {
-    std::memcpy(m_cpu_buffer.data() + m_parameter_info[index].offset, &value, sizeof(math::float4));
+    std::memcpy(
+        m_cpu_buffer.data() + m_layout->parameter_offset(index),
+        &value,
+        sizeof(math::float4));
     mark_dirty(index);
 }
 
-void d3d12_pass_parameter::set(std::size_t index, const math::float4x4& value, bool row_matrix)
+void d3d12_pipeline_parameter::set(std::size_t index, const math::float4x4& value)
 {
-    if (row_matrix)
+    math::float4x4 t;
+    math::float4x4_simd m = math::simd::load(value);
+    m = math::matrix_simd::transpose(m);
+    math::simd::store(m, t);
+
+    std::memcpy(
+        m_cpu_buffer.data() + m_layout->parameter_offset(index),
+        &t,
+        sizeof(math::float4x4));
+    mark_dirty(index);
+}
+
+void d3d12_pipeline_parameter::set(std::size_t index, const math::float4x4* data, size_t size)
+{
+    math::float4x4 t;
+    for (std::size_t i = 0; i < size; ++i)
     {
-        math::float4x4 t;
-        math::float4x4_simd m = math::simd::load(value);
+        math::float4x4_simd m = math::simd::load(data[i]);
         m = math::matrix_simd::transpose(m);
         math::simd::store(m, t);
 
         std::memcpy(
-            m_cpu_buffer.data() + m_parameter_info[index].offset,
+            m_cpu_buffer.data() + m_layout->parameter_offset(index) + sizeof(math::float4x4) * i,
             &t,
             sizeof(math::float4x4));
     }
-    else
-    {
-        std::memcpy(
-            m_cpu_buffer.data() + m_parameter_info[index].offset,
-            &value,
-            sizeof(math::float4x4));
-    }
 
     mark_dirty(index);
 }
 
-void d3d12_pass_parameter::set(
-    std::size_t index,
-    const math::float4x4* data,
-    size_t size,
-    bool row_matrix)
+void d3d12_pipeline_parameter::set(std::size_t index, resource* texture)
 {
-    if (row_matrix)
-    {
-        math::float4x4 t;
-        for (std::size_t i = 0; i < size; ++i)
-        {
-            math::float4x4_simd m = math::simd::load(data[i]);
-            m = math::matrix_simd::transpose(m);
-            math::simd::store(m, t);
-
-            std::memcpy(
-                m_cpu_buffer.data() + m_parameter_info[index].offset + sizeof(math::float4x4) * i,
-                &t,
-                sizeof(math::float4x4));
-        }
-    }
-    else
-    {
-        std::memcpy(
-            m_cpu_buffer.data() + m_parameter_info[index].offset,
-            &data,
-            size * sizeof(math::float4x4));
-    }
-
+    m_textures[m_layout->parameter_offset(index)] = static_cast<d3d12_resource*>(texture);
     mark_dirty(index);
 }
 
-void d3d12_pass_parameter::set(std::size_t index, resource* texture)
-{
-    m_textures[m_parameter_info[index].offset] = static_cast<d3d12_resource*>(texture);
-    mark_dirty(index);
-}
-
-void d3d12_pass_parameter::sync()
+void d3d12_pipeline_parameter::sync()
 {
     if (m_last_sync_frame == d3d12_frame_counter::frame_counter())
         return;
@@ -410,21 +406,22 @@ void d3d12_pass_parameter::sync()
         return;
 
     std::size_t resource_index = d3d12_frame_counter::frame_resource_index();
-    for (parameter_info& info : m_parameter_info)
+    for (std::size_t i = 0; i < m_dirty_counter.size(); ++i)
     {
-        if (info.dirty == 0)
+        if (m_dirty_counter[i] == 0)
             continue;
 
-        if (info.type == pass_parameter_type::TEXTURE)
+        std::size_t offset = m_layout->parameter_offset(i);
+        if (m_layout->parameter_type(i) == pipeline_parameter_type::TEXTURE)
         {
-            d3d12_shader_resource_proxy texture = m_textures[info.offset]->shader_resource();
+            d3d12_shader_resource_proxy texture = m_textures[offset]->shader_resource();
 
             auto heap =
                 d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
             CD3DX12_CPU_DESCRIPTOR_HANDLE target_handle(
                 m_tier_info[resource_index].tier2.base_cpu_handle,
-                static_cast<INT>(info.offset),
+                static_cast<INT>(offset),
                 heap->increment_size());
             d3d12_context::device()->CopyDescriptorsSimple(
                 1,
@@ -435,49 +432,322 @@ void d3d12_pass_parameter::sync()
         else
         {
             m_gpu_buffer->upload(
-                m_cpu_buffer.data() + info.offset,
-                info.size,
-                m_cpu_buffer.size() * resource_index + info.offset);
+                m_cpu_buffer.data() + offset,
+                m_layout->parameter_size(i),
+                m_cpu_buffer.size() * resource_index + offset);
         }
 
-        --info.dirty;
-        if (info.dirty == 0)
+        --m_dirty_counter[i];
+        if (m_dirty_counter[i] == 0)
             --m_dirty;
     }
 }
 
-void d3d12_pass_parameter::mark_dirty(std::size_t index)
+void d3d12_pipeline_parameter::mark_dirty(std::size_t index)
 {
-    if (m_parameter_info[index].dirty == 0)
+    if (m_dirty_counter[index] == 0)
         ++m_dirty;
 
-    m_parameter_info[index].dirty = d3d12_frame_counter::frame_resource_count();
+    m_dirty_counter[index] = d3d12_frame_counter::frame_resource_count();
 }
 
-d3d12_parameter_layout::d3d12_parameter_layout(const pass_layout_desc& desc)
+d3d12_frame_buffer_layout::d3d12_frame_buffer_layout(
+    attachment_desc* attachments,
+    std::size_t count)
+{
+    for (std::size_t i = 0; i < count; ++i)
+        m_attachments.push_back(attachments[i]);
+}
+
+d3d12_frame_buffer::d3d12_frame_buffer(
+    d3d12_render_pass* render_pass,
+    d3d12_resource* render_target)
+{
+    static const D3D12_RESOURCE_STATES resource_state_map[] = {
+        D3D12_RESOURCE_STATE_COMMON,
+        D3D12_RESOURCE_STATE_RENDER_TARGET,
+        D3D12_RESOURCE_STATE_DEPTH_WRITE,
+        D3D12_RESOURCE_STATE_PRESENT};
+
+    auto [width, hegith] = render_target->extent();
+    for (auto& attachment : render_pass->frame_buffer_layout())
+    {
+        switch (attachment.type)
+        {
+        case attachment_type::COLOR: {
+            auto color = std::make_unique<d3d12_render_target>(
+                width,
+                hegith,
+                attachment.samples,
+                attachment.format);
+            m_render_targets.push_back(color->render_target().cpu_handle());
+            m_attachments.push_back(attachment_info{
+                color.get(),
+                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
+                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
+            m_attachment_container.push_back(std::move(color));
+            break;
+        }
+        case attachment_type::DEPTH: {
+            auto depth = std::make_unique<d3d12_depth_stencil_buffer>(
+                width,
+                hegith,
+                attachment.samples,
+                attachment.format);
+            m_depth_stencil = depth->depth_stencil_buffer().cpu_handle();
+            m_attachments.push_back(attachment_info{
+                depth.get(),
+                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
+                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
+            m_attachment_container.push_back(std::move(depth));
+            break;
+        }
+        case attachment_type::RENDER_TARGET: {
+            m_render_targets.push_back(render_target->render_target().cpu_handle());
+            m_attachments.push_back(attachment_info{
+                render_target,
+                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
+                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
+            break;
+        }
+        default:
+            throw d3d12_exception("Invalid attachment type.");
+        }
+    }
+}
+
+void d3d12_frame_buffer::begin_render(D3D12GraphicsCommandList* command_list)
+{
+    std::vector<D3D12_RESOURCE_BARRIER> barriers;
+    barriers.reserve(m_attachments.size());
+    for (auto& attachment : m_attachments)
+    {
+        if (attachment.resource->resource_state() != attachment.initial_state)
+        {
+            barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+                attachment.resource->resource(),
+                attachment.resource->resource_state(),
+                attachment.initial_state));
+            attachment.resource->resource_state(attachment.initial_state);
+        }
+    }
+    command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
+
+    static const float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
+    for (auto handle : m_render_targets)
+    {
+        command_list->ClearRenderTargetView(handle, clear_color, 0, nullptr);
+    }
+
+    command_list->ClearDepthStencilView(
+        m_depth_stencil,
+        D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
+        1.0f,
+        0,
+        0,
+        nullptr);
+}
+
+void d3d12_frame_buffer::end_render(D3D12GraphicsCommandList* command_list)
+{
+    std::vector<D3D12_RESOURCE_BARRIER> barriers;
+    barriers.reserve(m_attachments.size());
+    for (auto& attachment : m_attachments)
+    {
+        if (attachment.resource->resource_state() != attachment.final_state)
+        {
+            barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+                attachment.resource->resource(),
+                attachment.resource->resource_state(),
+                attachment.final_state));
+            attachment.resource->resource_state(attachment.final_state);
+        }
+    }
+    command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
+}
+
+d3d12_pipeline::d3d12_pipeline(const pipeline_desc& desc)
+    : m_current_frame_buffer(nullptr),
+      m_depth_index(-1)
+{
+    initialize_vertex_layout(desc);
+    initialize_pipeline_layout(desc);
+    initialize_pipeline_state(desc);
+
+    for (std::size_t i = 0; i < desc.reference_count; ++i)
+    {
+        switch (desc.references[i].type)
+        {
+        case attachment_reference_type::INPUT:
+        case attachment_reference_type::COLOR:
+            m_color_indices.push_back(i);
+            break;
+        case attachment_reference_type::DEPTH:
+            m_depth_index = i;
+            break;
+        case attachment_reference_type::RESOLVE:
+            m_resolve_indices.push_back({i, desc.references[i].resolve_relation});
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+void d3d12_pipeline::begin(D3D12GraphicsCommandList* command_list, d3d12_frame_buffer* frame_buffer)
+{
+    command_list->SetPipelineState(m_pipeline_state.Get());
+    command_list->SetGraphicsRootSignature(m_root_signature.Get());
+
+    auto& attachments = frame_buffer->attachments();
+
+    std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> render_targets;
+    for (std::size_t i : m_color_indices)
+        render_targets.push_back(attachments[i].resource->render_target().cpu_handle());
+
+    D3D12_CPU_DESCRIPTOR_HANDLE depth_stencil =
+        attachments[m_depth_index].resource->depth_stencil_buffer().cpu_handle();
+
+    command_list->OMSetRenderTargets(
+        static_cast<UINT>(render_targets.size()),
+        render_targets.data(),
+        false,
+        &depth_stencil);
+
+    m_current_frame_buffer = frame_buffer;
+}
+
+void d3d12_pipeline::end(D3D12GraphicsCommandList* command_list, bool final)
+{
+    if (m_resolve_indices.empty())
+        return;
+
+    auto& attachments = m_current_frame_buffer->attachments();
+
+    std::vector<D3D12_RESOURCE_BARRIER> barriers;
+    for (auto [target_index, source_index] : m_resolve_indices)
+    {
+        auto target = attachments[target_index].resource;
+        barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+            target->resource(),
+            target->resource_state(),
+            D3D12_RESOURCE_STATE_RESOLVE_DEST));
+        target->resource_state(D3D12_RESOURCE_STATE_RESOLVE_DEST);
+
+        auto source = attachments[source_index].resource;
+        barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+            source->resource(),
+            source->resource_state(),
+            D3D12_RESOURCE_STATE_RESOLVE_SOURCE));
+        source->resource_state(D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+    }
+
+    command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
+
+    for (auto [target_index, source_index] : m_resolve_indices)
+    {
+        auto target = attachments[target_index].resource;
+        auto source = attachments[source_index].resource;
+        command_list->ResolveSubresource(
+            target->resource(),
+            0,
+            source->resource(),
+            0,
+            source->resource()->GetDesc().Format);
+    }
+
+    if (!final)
+    {
+        barriers.clear();
+
+        for (auto [target_index, source_index] : m_resolve_indices)
+        {
+            auto target = attachments[target_index].resource;
+            barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+                target->resource(),
+                target->resource_state(),
+                attachments[target_index].initial_state));
+            target->resource_state(attachments[target_index].initial_state);
+
+            auto source = attachments[source_index].resource;
+            barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+                source->resource(),
+                source->resource_state(),
+                attachments[source_index].initial_state));
+            source->resource_state(attachments[source_index].initial_state);
+        }
+
+        command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
+    }
+}
+
+void d3d12_pipeline::initialize_vertex_layout(const pipeline_desc& desc)
+{
+    auto get_type = [](vertex_attribute_type type) -> DXGI_FORMAT {
+        switch (type)
+        {
+        case vertex_attribute_type::INT:
+            return DXGI_FORMAT_R32_SINT;
+        case vertex_attribute_type::INT2:
+            return DXGI_FORMAT_R32G32_SINT;
+        case vertex_attribute_type::INT3:
+            return DXGI_FORMAT_R32G32B32_SINT;
+        case vertex_attribute_type::INT4:
+            return DXGI_FORMAT_R32G32B32A32_SINT;
+        case vertex_attribute_type::UINT:
+            return DXGI_FORMAT_R32_UINT;
+        case vertex_attribute_type::UINT2:
+            return DXGI_FORMAT_R32G32_UINT;
+        case vertex_attribute_type::UINT3:
+            return DXGI_FORMAT_R32G32B32_UINT;
+        case vertex_attribute_type::UINT4:
+            return DXGI_FORMAT_R32G32B32A32_UINT;
+        case vertex_attribute_type::FLOAT:
+            return DXGI_FORMAT_R32_FLOAT;
+        case vertex_attribute_type::FLOAT2:
+            return DXGI_FORMAT_R32G32_FLOAT;
+        case vertex_attribute_type::FLOAT3:
+            return DXGI_FORMAT_R32G32B32_FLOAT;
+        case vertex_attribute_type::FLOAT4:
+            return DXGI_FORMAT_R32G32B32A32_FLOAT;
+        case vertex_attribute_type::COLOR:
+            return DXGI_FORMAT_R8G8B8A8_UNORM;
+        default:
+            return DXGI_FORMAT_UNKNOWN;
+        };
+    };
+
+    for (std::size_t i = 0; i < desc.vertex_attribute_count; ++i)
+    {
+        auto& attribute = desc.vertex_attributes[i];
+        D3D12_INPUT_ELEMENT_DESC desc = {
+            attribute.name,
+            0,
+            get_type(attribute.type),
+            0,
+            D3D12_APPEND_ALIGNED_ELEMENT,
+            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            0};
+        m_vertex_layout.push_back(desc);
+    }
+}
+
+void d3d12_pipeline::initialize_pipeline_layout(const pipeline_desc& desc)
 {
     std::vector<CD3DX12_ROOT_PARAMETER> root_parameter;
-    root_parameter.resize(desc.size);
+    root_parameter.resize(desc.parameter_count);
 
     std::vector<std::vector<CD3DX12_DESCRIPTOR_RANGE>> range;
-    range.resize(desc.size);
+    range.resize(desc.parameter_count);
 
     UINT cbv_register_counter = 0;
     UINT srv_register_counter = 0;
-    for (std::size_t i = 0; i < desc.size; ++i)
+    for (std::size_t i = 0; i < desc.parameter_count; ++i)
     {
-        auto& parameter = desc.data[i];
+        auto layout = static_cast<const d3d12_pipeline_parameter_layout*>(desc.parameters[i]);
 
-        UINT cbv_counter = 0;
-        UINT srv_counter = 0;
-
-        for (std::size_t j = 0; j < parameter.size; ++j)
-        {
-            if (parameter.data[j].type == pass_parameter_type::TEXTURE)
-                ++srv_counter;
-            else
-                cbv_counter = 1;
-        }
+        UINT cbv_counter = static_cast<UINT>(layout->cbv_count());
+        UINT srv_counter = static_cast<UINT>(layout->srv_count());
 
         if (cbv_counter == 1 && srv_counter == 0)
         {
@@ -537,73 +807,25 @@ d3d12_parameter_layout::d3d12_parameter_layout(const pass_layout_desc& desc)
     }
 }
 
-d3d12_pipeline::d3d12_pipeline(const pass_desc& desc)
-{
-    m_parameter_layout = static_cast<d3d12_parameter_layout*>(desc.layout);
-
-    initialize_vertex_layout(desc);
-    initialize_pass_state(desc);
-}
-
-void d3d12_pipeline::initialize_vertex_layout(const pass_desc& desc)
-{
-    auto get_format = [](vertex_attribute_type type) -> DXGI_FORMAT {
-        switch (type)
-        {
-        case vertex_attribute_type::INT:
-            return DXGI_FORMAT_R32_SINT;
-        case vertex_attribute_type::INT2:
-            return DXGI_FORMAT_R32G32_SINT;
-        case vertex_attribute_type::INT3:
-            return DXGI_FORMAT_R32G32B32_SINT;
-        case vertex_attribute_type::INT4:
-            return DXGI_FORMAT_R32G32B32A32_SINT;
-        case vertex_attribute_type::UINT:
-            return DXGI_FORMAT_R32_UINT;
-        case vertex_attribute_type::UINT2:
-            return DXGI_FORMAT_R32G32_UINT;
-        case vertex_attribute_type::UINT3:
-            return DXGI_FORMAT_R32G32B32_UINT;
-        case vertex_attribute_type::UINT4:
-            return DXGI_FORMAT_R32G32B32A32_UINT;
-        case vertex_attribute_type::FLOAT:
-            return DXGI_FORMAT_R32_FLOAT;
-        case vertex_attribute_type::FLOAT2:
-            return DXGI_FORMAT_R32G32_FLOAT;
-        case vertex_attribute_type::FLOAT3:
-            return DXGI_FORMAT_R32G32B32_FLOAT;
-        case vertex_attribute_type::FLOAT4:
-            return DXGI_FORMAT_R32G32B32A32_FLOAT;
-        case vertex_attribute_type::COLOR:
-            return DXGI_FORMAT_R8G8B8A8_UNORM;
-        default:
-            return DXGI_FORMAT_UNKNOWN;
-        };
-    };
-
-    for (std::size_t i = 0; i < desc.vertex_layout.size; ++i)
-    {
-        auto& attribute = desc.vertex_layout.data[i];
-        D3D12_INPUT_ELEMENT_DESC desc = {
-            attribute.name,
-            attribute.index,
-            get_format(attribute.type),
-            0,
-            D3D12_APPEND_ALIGNED_ELEMENT,
-            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-            0};
-        m_vertex_layout.push_back(desc);
-    }
-}
-
-void d3d12_pipeline::initialize_pass_state(const pass_desc& desc)
+void d3d12_pipeline::initialize_pipeline_state(const pipeline_desc& desc)
 {
     d3d12_ptr<D3DBlob> vs_blob = load_shader("vs_main", "vs_5_0", desc.vertex_shader);
     d3d12_ptr<D3DBlob> ps_blob = load_shader("ps_main", "ps_5_0", desc.pixel_shader);
 
+    // Query render target sample level.
+    D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS sample_level = {};
+    sample_level.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+    sample_level.Format = RENDER_TARGET_FORMAT;
+    sample_level.NumQualityLevels = 0;
+    sample_level.SampleCount = static_cast<UINT>(desc.samples);
+    throw_if_failed(d3d12_context::device()->CheckFeatureSupport(
+        D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
+        &sample_level,
+        sizeof(sample_level)));
+
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc = {};
     pso_desc.InputLayout = {m_vertex_layout.data(), static_cast<UINT>(m_vertex_layout.size())};
-    pso_desc.pRootSignature = m_parameter_layout->root_signature();
+    pso_desc.pRootSignature = m_root_signature.Get();
     pso_desc.VS = CD3DX12_SHADER_BYTECODE(vs_blob.Get());
     pso_desc.PS = CD3DX12_SHADER_BYTECODE(ps_blob.Get());
     pso_desc.DepthStencilState = to_d3d12(desc.depth_stencil);
@@ -611,18 +833,19 @@ void d3d12_pipeline::initialize_pass_state(const pass_desc& desc)
     pso_desc.SampleMask = UINT_MAX;
     pso_desc.NumRenderTargets = 1;
     pso_desc.RTVFormats[0] = RENDER_TARGET_FORMAT;
-    pso_desc.SampleDesc = d3d12_context::renderer()->render_target_sample_desc();
+    pso_desc.SampleDesc.Count = sample_level.SampleCount;
+    pso_desc.SampleDesc.Quality = sample_level.NumQualityLevels - 1;
     pso_desc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     pso_desc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
-    if (desc.primitive_topology == primitive_topology_type::TRIANGLE_LIST)
+    if (desc.primitive_topology == primitive_topology::TRIANGLE_LIST)
         pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    else if (desc.primitive_topology == primitive_topology_type::LINE_LIST)
+    else if (desc.primitive_topology == primitive_topology::LINE_LIST)
         pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
 
     throw_if_failed(d3d12_context::device()->CreateGraphicsPipelineState(
         &pso_desc,
-        IID_PPV_ARGS(&m_pass_state)));
+        IID_PPV_ARGS(&m_pipeline_state)));
 }
 
 d3d12_ptr<D3DBlob> d3d12_pipeline::load_shader(
@@ -659,5 +882,47 @@ d3d12_ptr<D3DBlob> d3d12_pipeline::load_shader(
     {
         return result;
     }
+}
+
+d3d12_render_pass::d3d12_render_pass(const render_pass_desc& desc)
+    : m_frame_buffer_layout(desc.attachments, desc.attachment_count)
+{
+    for (std::size_t i = 0; i < desc.subpass_count; ++i)
+        m_pipelines.push_back(std::make_unique<d3d12_pipeline>(desc.subpasses[i]));
+}
+
+void d3d12_render_pass::begin(D3D12GraphicsCommandList* command_list, d3d12_resource* render_target)
+{
+    m_current_index = 0;
+    m_current_frame_buffer =
+        d3d12_context::frame_buffer().get_or_create_frame_buffer(this, render_target);
+
+    m_current_frame_buffer->begin_render(command_list);
+
+    m_pipelines[m_current_index]->begin(command_list, m_current_frame_buffer);
+}
+
+void d3d12_render_pass::end(D3D12GraphicsCommandList* command_list)
+{
+    m_pipelines[m_current_index]->end(command_list, true);
+    m_current_frame_buffer->end_render(command_list);
+}
+
+void d3d12_render_pass::next(D3D12GraphicsCommandList* command_list)
+{
+    m_pipelines[m_current_index]->end(command_list);
+    ++m_current_index;
+    m_pipelines[m_current_index]->begin(command_list, m_current_frame_buffer);
+}
+
+d3d12_frame_buffer* d3d12_frame_buffer_manager::get_or_create_frame_buffer(
+    d3d12_render_pass* render_pass,
+    d3d12_resource* render_target)
+{
+    auto& result = m_frame_buffers[std::make_pair(render_pass, render_target)];
+    if (result == nullptr)
+        result = std::make_unique<d3d12_frame_buffer>(render_pass, render_target);
+
+    return result.get();
 }
 } // namespace ash::graphics::d3d12

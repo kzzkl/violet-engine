@@ -29,7 +29,7 @@ vk_frame_buffer::vk_frame_buffer(vk_render_pass* render_pass, vk_image* render_t
 {
     auto device = vk_context::device();
 
-    VkExtent2D extent = render_target->extent();
+    resource_extent extent = render_target->extent();
     std::vector<VkImageView> views;
 
     for (auto& attachment : render_pass->frame_buffer_layout())

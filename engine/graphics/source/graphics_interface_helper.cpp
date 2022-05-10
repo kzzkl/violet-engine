@@ -2,9 +2,9 @@
 
 namespace ash::graphics
 {
-pipeline_layout_desc pipeline_layout_info::convert() noexcept
+pipeline_parameter_layout_desc pipeline_parameter_layout_info::convert() noexcept
 {
-    pipeline_layout_desc result;
+    pipeline_parameter_layout_desc result;
     result.parameters = parameters.data();
     result.size = parameters.size();
     return result;
@@ -56,17 +56,6 @@ render_pass_desc render_pass_info::convert() noexcept
     result.attachment_count = m_attachment_desc.size();
     result.subpasses = m_pass_desc.data();
     result.subpass_count = m_pass_desc.size();
-    return result;
-}
-
-attachment_set_desc attachment_set_info::convert() noexcept
-{
-    attachment_set_desc result;
-    result.attachments = attachments.data();
-    result.attachment_count = attachments.size();
-    result.width = width;
-    result.height = height;
-    result.render_pass = render_pass;
     return result;
 }
 } // namespace ash::graphics

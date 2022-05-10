@@ -34,10 +34,10 @@ public:
 
     std::unique_ptr<render_pass_interface> make_render_pass(render_pass_info& info);
 
-    void make_pipeline_layout(std::string_view name, pipeline_layout_info& info);
+    void make_pipeline_parameter_layout(
+        std::string_view name,
+        pipeline_parameter_layout_info& info);
     std::unique_ptr<pipeline_parameter> make_pipeline_parameter(std::string_view name);
-
-    // std::unique_ptr<attachment_set_interface> make_attachment_set(attachment_set_info& info);
 
     template <typename Vertex>
     std::unique_ptr<resource> make_vertex_buffer(
@@ -84,9 +84,9 @@ public:
 
     std::unique_ptr<resource> make_texture(std::string_view file);
 
-    std::vector<resource*> back_buffers() const;
-
     graphics_debug& debug() { return *m_debug; }
+
+    resource_format back_buffer_format() const { return m_renderer->back_buffer()->format(); }
 
 private:
     graphics_plugin m_plugin;
@@ -101,7 +101,7 @@ private:
 
     std::set<render_pass*> m_render_passes;
 
-    interface_map<pipeline_layout_interface> m_parameter_layouts;
+    interface_map<pipeline_parameter_layout_interface> m_parameter_layouts;
 
     graphics_config m_config;
     std::unique_ptr<graphics_debug> m_debug;

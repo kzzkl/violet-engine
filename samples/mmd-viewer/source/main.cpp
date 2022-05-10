@@ -109,7 +109,7 @@ private:
         m_camera = world.create();
         world.add<core::link, main_camera, camera, transform>(m_camera);
         auto& c_camera = world.component<camera>(m_camera);
-        c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f, true);
+        c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f, false);
 
         c_camera.parameter = graphics.make_pipeline_parameter("ash_pass");
 

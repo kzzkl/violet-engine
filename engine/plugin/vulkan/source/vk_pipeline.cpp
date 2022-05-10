@@ -8,7 +8,8 @@
 
 namespace ash::graphics::vk
 {
-vk_pipeline_layout::vk_pipeline_layout(const pipeline_layout_desc& desc)
+vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
+    const pipeline_parameter_layout_desc& desc)
     : m_ubo_count(0),
       m_cis_count(0)
 {
@@ -83,11 +84,11 @@ vk_pipeline_layout::vk_pipeline_layout(const pipeline_layout_desc& desc)
         &m_descriptor_set_layout));
 }
 
-vk_pipeline_parameter::vk_pipeline_parameter(pipeline_layout_interface* layout)
+vk_pipeline_parameter::vk_pipeline_parameter(pipeline_parameter_layout_interface* layout)
     : m_dirty(0),
       m_last_sync_frame(-1)
 {
-    auto vk_layout = static_cast<vk_pipeline_layout*>(layout);
+    auto vk_layout = static_cast<vk_pipeline_parameter_layout*>(layout);
     auto [ubo_count, cis_count] = vk_layout->descriptor_count();
     m_textures.resize(cis_count);
 
@@ -331,7 +332,7 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
         attribute.offset = offset;
 
         ++location;
-        switch (desc.vertex_attributes[i])
+        switch (desc.vertex_attributes[i].type)
         {
         case vertex_attribute_type::INT:
             attribute.format = VK_FORMAT_R32_SINT;
@@ -480,7 +481,7 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
     // Pipeline layout
     std::vector<VkDescriptorSetLayout> layouts;
     for (std::size_t i = 0; i < desc.parameter_count; ++i)
-        layouts.push_back(static_cast<vk_pipeline_layout*>(desc.parameters[i])->layout());
+        layouts.push_back(static_cast<vk_pipeline_parameter_layout*>(desc.parameters[i])->layout());
 
     VkPipelineLayoutCreateInfo pass_layout_info = {};
     pass_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

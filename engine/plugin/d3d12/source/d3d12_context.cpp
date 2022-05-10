@@ -1,5 +1,8 @@
 #include "d3d12_context.hpp"
+#include "d3d12_pipeline.hpp"
+#include "d3d12_renderer.hpp"
 #include <DirectXColors.h>
+
 using namespace DirectX;
 
 namespace ash::graphics::d3d12
@@ -14,9 +17,9 @@ d3d12_context& d3d12_context::instance() noexcept
     return instance;
 }
 
-bool d3d12_context::do_initialize(const context_config& config)
+bool d3d12_context::on_initialize(const renderer_desc& desc)
 {
-    d3d12_frame_counter::initialize(0, config.frame_resource);
+    d3d12_frame_counter::initialize(0, desc.frame_resource);
 
     UINT flag = 0;
 
@@ -53,39 +56,34 @@ bool d3d12_context::do_initialize(const context_config& config)
             IID_PPV_ARGS(&m_device)));
     }
 
-    m_command = std::make_unique<d3d12_command_queue>(config.render_concurrency);
+    m_command = std::make_unique<d3d12_command_queue>(desc.render_concurrency);
     m_resource = std::make_unique<d3d12_resource_manager>();
-
-    auto command_list = m_command->allocate_dynamic_command();
-    m_renderer = std::make_unique<d3d12_renderer>(
-        static_cast<HWND>(config.window_handle),
-        config.width,
-        config.height,
-        config.multiple_sampling,
-        command_list.get());
-
-    m_command->execute_command(command_list);
+    m_frame_buffer_manager = std::make_unique<d3d12_frame_buffer_manager>();
+    m_swap_chain = std::make_unique<d3d12_swap_chain>(
+        static_cast<HWND>(desc.window_handle),
+        desc.width,
+        desc.height);
 
     return true;
 }
 
-void d3d12_context::do_begin_frame()
+void d3d12_context::on_begin_frame()
 {
     d3d12_render_command* pre_command =
         m_command->allocate_render_command(d3d12_render_command_type::PRE_RENDER);
-    m_renderer->begin_frame(pre_command->get());
+    m_swap_chain->begin_frame(pre_command->get());
     m_command->execute_command(pre_command);
 }
 
-void d3d12_context::do_end_frame()
+void d3d12_context::on_end_frame()
 {
     d3d12_render_command* post_command =
         m_command->allocate_render_command(d3d12_render_command_type::POST_RENDER);
-    m_renderer->end_frame(post_command->get());
+    m_swap_chain->end_frame(post_command->get());
     m_command->execute_command(post_command);
 
     m_command->execute_batch();
-    m_renderer->present();
+    m_swap_chain->present();
 
     d3d12_frame_counter::tick();
 

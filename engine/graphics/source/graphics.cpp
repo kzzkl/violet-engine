@@ -36,15 +36,15 @@ bool graphics::initialize(const dictionary& config)
 
     m_renderer.reset(m_plugin.factory().make_renderer(desc));
 
-    pipeline_layout_info ash_object;
+    pipeline_parameter_layout_info ash_object;
     ash_object.parameters = {
         {pipeline_parameter_type::FLOAT4x4, 1}, // transform_m
         {pipeline_parameter_type::FLOAT4x4, 1}, // transform_mv
         {pipeline_parameter_type::FLOAT4x4, 1}  // transform_mvp
     };
-    make_pipeline_layout("ash_object", ash_object);
+    make_pipeline_parameter_layout("ash_object", ash_object);
 
-    pipeline_layout_info ash_pass;
+    pipeline_parameter_layout_info ash_pass;
     ash_pass.parameters = {
         {pipeline_parameter_type::FLOAT4,   1}, // camera_position
         {pipeline_parameter_type::FLOAT4,   1}, // camera_direction
@@ -52,7 +52,7 @@ bool graphics::initialize(const dictionary& config)
         {pipeline_parameter_type::FLOAT4x4, 1}, // transform_p
         {pipeline_parameter_type::FLOAT4x4, 1}  // transform_vp
     };
-    make_pipeline_layout("ash_pass", ash_pass);
+    make_pipeline_parameter_layout("ash_pass", ash_pass);
 
     /* adapter_info info[4] = {};
      std::size_t num_adapter = m_renderer->adapter(info, 4);
@@ -160,9 +160,9 @@ void graphics::render(ecs::entity camera_entity)
     // Render.
     auto command = m_renderer->allocate_command();
 
-    //if (c.render_target == nullptr)
+    // if (c.render_target == nullptr)
     {
-        c.render_target = m_renderer->back_buffer(m_back_buffer_index);
+        c.render_target = m_renderer->back_buffer();
     }
 
     for (auto render_pass : m_render_passes)
@@ -177,7 +177,7 @@ void graphics::render(ecs::entity camera_entity)
 
 void graphics::begin_frame()
 {
-    m_back_buffer_index = m_renderer->begin_frame();
+    m_renderer->begin_frame();
     m_debug->begin_frame();
 }
 
@@ -201,10 +201,12 @@ std::unique_ptr<render_pass_interface> graphics::make_render_pass(render_pass_in
     return std::unique_ptr<render_pass_interface>(factory.make_render_pass(info.convert()));
 }
 
-void graphics::make_pipeline_layout(std::string_view name, pipeline_layout_info& info)
+void graphics::make_pipeline_parameter_layout(
+    std::string_view name,
+    pipeline_parameter_layout_info& info)
 {
     auto& factory = m_plugin.factory();
-    m_parameter_layouts[name.data()].reset(factory.make_pipeline_layout(info.convert()));
+    m_parameter_layouts[name.data()].reset(factory.make_pipeline_parameter_layout(info.convert()));
 }
 
 std::unique_ptr<pipeline_parameter> graphics::make_pipeline_parameter(std::string_view name)
@@ -236,13 +238,5 @@ std::unique_ptr<resource> graphics::make_texture(std::string_view file)
 
     auto& factory = m_plugin.factory();
     return std::unique_ptr<resource>(factory.make_texture(file.data()));
-}
-
-std::vector<resource*> graphics::back_buffers() const
-{
-    std::vector<resource*> result;
-    for (std::size_t i = 0; i < m_renderer->back_buffer_count(); ++i)
-        result.push_back(m_renderer->back_buffer(i));
-    return result;
 }
 } // namespace ash::graphics

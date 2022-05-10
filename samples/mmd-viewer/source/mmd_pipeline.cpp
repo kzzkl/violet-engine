@@ -6,7 +6,7 @@ mmd_pass::mmd_pass()
 {
     auto& graphics = system<graphics::graphics>();
 
-    graphics::pipeline_layout_info mmd_material;
+    graphics::pipeline_parameter_layout_info mmd_material;
     mmd_material.parameters = {
         {graphics::pipeline_parameter_type::FLOAT4,  1}, // diffuse
         {graphics::pipeline_parameter_type::FLOAT3,  1}, // specular
@@ -17,24 +17,26 @@ mmd_pass::mmd_pass()
         {graphics::pipeline_parameter_type::TEXTURE, 1}, // toon
         {graphics::pipeline_parameter_type::TEXTURE, 1}  // spa
     };
-    graphics.make_pipeline_layout("mmd_material", mmd_material);
+    graphics.make_pipeline_parameter_layout("mmd_material", mmd_material);
 
-    graphics::pipeline_layout_info mmd_skeleton;
+    graphics::pipeline_parameter_layout_info mmd_skeleton;
     mmd_skeleton.parameters = {
         {graphics::pipeline_parameter_type::FLOAT4x4_ARRAY, 512}, // offset
     };
-    graphics.make_pipeline_layout("mmd_skeleton", mmd_skeleton);
+    graphics.make_pipeline_parameter_layout("mmd_skeleton", mmd_skeleton);
 
     // Pass.
     graphics::pipeline_info color_pass_info = {};
-    color_pass_info.vertex_shader = "resource/shader/glsl/vert.spv";
-    color_pass_info.pixel_shader = "resource/shader/glsl/frag.spv";
+    // color_pass_info.vertex_shader = "resource/shader/glsl/vert.spv";
+    // color_pass_info.pixel_shader = "resource/shader/glsl/frag.spv";
+    color_pass_info.vertex_shader = "resource/shader/hlsl/base.hlsl";
+    color_pass_info.pixel_shader = "resource/shader/hlsl/base.hlsl";
     color_pass_info.vertex_attributes = {
-        graphics::vertex_attribute_type::FLOAT3, // position
-        graphics::vertex_attribute_type::FLOAT3, // normal
-        graphics::vertex_attribute_type::FLOAT2, // uv
-        graphics::vertex_attribute_type::UINT4,  // bone
-        graphics::vertex_attribute_type::FLOAT3, // bone weight
+        {"POSITION",    graphics::vertex_attribute_type::FLOAT3}, // position
+        {"NORMAL",      graphics::vertex_attribute_type::FLOAT3}, // normal
+        {"UV",          graphics::vertex_attribute_type::FLOAT2}, // uv
+        {"bone",        graphics::vertex_attribute_type::UINT4 }, // bone
+        {"BONE_WEIGHT", graphics::vertex_attribute_type::FLOAT3}, // bone weight
     };
     color_pass_info.references = {
         {graphics::attachment_reference_type::COLOR,   0},
@@ -48,14 +50,14 @@ mmd_pass::mmd_pass()
     // Attachment.
     graphics::attachment_info render_target = {};
     render_target.type = graphics::attachment_type::COLOR;
-    render_target.format = graphics.back_buffers()[0]->format();
+    render_target.format = graphics.back_buffer_format();
     render_target.load_op = graphics::attachment_load_op::CLEAR;
     render_target.store_op = graphics::attachment_store_op::STORE;
     render_target.stencil_load_op = graphics::attachment_load_op::DONT_CARE;
     render_target.stencil_store_op = graphics::attachment_store_op::DONT_CARE;
     render_target.samples = 4;
-    render_target.initial_state = graphics::resource_state::UNDEFINED;
-    render_target.final_state = graphics::resource_state::COLOR;
+    render_target.initial_state = graphics::resource_state::RENDER_TARGET;
+    render_target.final_state = graphics::resource_state::RENDER_TARGET;
 
     graphics::attachment_info depth_stencil = {};
     depth_stencil.type = graphics::attachment_type::DEPTH;
@@ -65,18 +67,18 @@ mmd_pass::mmd_pass()
     depth_stencil.stencil_load_op = graphics::attachment_load_op::DONT_CARE;
     depth_stencil.stencil_store_op = graphics::attachment_store_op::DONT_CARE;
     depth_stencil.samples = 4;
-    depth_stencil.initial_state = graphics::resource_state::UNDEFINED;
+    depth_stencil.initial_state = graphics::resource_state::DEPTH_STENCIL;
     depth_stencil.final_state = graphics::resource_state::DEPTH_STENCIL;
 
     graphics::attachment_info back_buffer = {};
     back_buffer.type = graphics::attachment_type::RENDER_TARGET;
-    back_buffer.format = graphics.back_buffers()[0]->format();
+    back_buffer.format = graphics.back_buffer_format();
     back_buffer.load_op = graphics::attachment_load_op::CLEAR;
     back_buffer.store_op = graphics::attachment_store_op::DONT_CARE;
     back_buffer.stencil_load_op = graphics::attachment_load_op::DONT_CARE;
     back_buffer.stencil_store_op = graphics::attachment_store_op::DONT_CARE;
     back_buffer.samples = 1;
-    back_buffer.initial_state = graphics::resource_state::UNDEFINED;
+    back_buffer.initial_state = graphics::resource_state::RENDER_TARGET;
     back_buffer.final_state = graphics::resource_state::PRESENT;
 
     graphics::render_pass_info mmd_render_pass_info;
@@ -93,8 +95,9 @@ void mmd_pass::render(const graphics::camera& camera, graphics::render_command_i
     command->begin(m_interface.get(), camera.render_target);
 
     graphics::scissor_rect rect = {};
-    rect.max_x = camera.render_target->width();
-    rect.max_y = camera.render_target->height();
+    auto [width, height] = camera.render_target->extent();
+    rect.max_x = width;
+    rect.max_y = height;
     command->scissor(rect);
 
     command->parameter(3, camera.parameter->parameter());

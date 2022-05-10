@@ -17,15 +17,22 @@ enum class resource_format
     R32G32B32A32_FLOAT,
     R32G32B32A32_INT,
     R32G32B32A32_UINT,
+
     D24_UNORM_S8_UINT
 };
 
 enum class resource_state
 {
     UNDEFINED,
-    COLOR,
+    RENDER_TARGET,
     DEPTH_STENCIL,
     PRESENT
+};
+
+struct resource_extent
+{
+    std::uint32_t width;
+    std::uint32_t height;
 };
 
 class resource_interface
@@ -35,8 +42,7 @@ public:
 
     virtual resource_format format() const noexcept = 0;
 
-    virtual std::uint32_t width() const noexcept = 0;
-    virtual std::uint32_t height() const noexcept = 0;
+    virtual resource_extent extent() const noexcept = 0;
     virtual std::size_t size() const noexcept = 0;
 };
 using resource = resource_interface;
@@ -58,6 +64,12 @@ enum class vertex_attribute_type : std::uint8_t
     COLOR   // R8G8B8A8
 };
 
+struct vertex_attribute
+{
+    const char* name;
+    vertex_attribute_type type;
+};
+
 enum class pipeline_parameter_type
 {
     BOOL,
@@ -77,13 +89,13 @@ struct pipeline_parameter_pair
     std::size_t size; // Only for array.
 };
 
-struct pipeline_layout_desc
+struct pipeline_parameter_layout_desc
 {
     pipeline_parameter_pair* parameters;
     std::size_t size;
 };
 
-class pipeline_layout_interface
+class pipeline_parameter_layout_interface
 {
 };
 
@@ -173,10 +185,10 @@ struct pipeline_desc
     const char* vertex_shader;
     const char* pixel_shader;
 
-    vertex_attribute_type* vertex_attributes;
+    vertex_attribute* vertex_attributes;
     std::size_t vertex_attribute_count;
 
-    pipeline_layout_interface** parameters;
+    pipeline_parameter_layout_interface** parameters;
     std::size_t parameter_count;
 
     blend_desc blend;
@@ -239,17 +251,6 @@ class render_pass_interface
 {
 };
 
-struct attachment_set_desc
-{
-    resource_interface** attachments;
-    std::size_t attachment_count;
-
-    std::uint32_t width;
-    std::uint32_t height;
-
-    render_pass_interface* render_pass;
-};
-
 struct scissor_rect
 {
     std::uint32_t min_x;
@@ -290,14 +291,13 @@ struct renderer_desc
 class renderer_interface
 {
 public:
-    virtual std::size_t begin_frame() = 0;
+    virtual void begin_frame() = 0;
     virtual void end_frame() = 0;
 
     virtual render_command_interface* allocate_command() = 0;
     virtual void execute(render_command_interface* command) = 0;
 
-    virtual resource_interface* back_buffer(std::size_t index) = 0;
-    virtual std::size_t back_buffer_count() = 0;
+    virtual resource_interface* back_buffer() = 0;
 
     virtual void resize(std::uint32_t width, std::uint32_t height) = 0;
 };
@@ -342,9 +342,10 @@ public:
 
     virtual render_pass_interface* make_render_pass(const render_pass_desc& desc) = 0;
 
-    virtual pipeline_layout_interface* make_pipeline_layout(const pipeline_layout_desc& desc) = 0;
+    virtual pipeline_parameter_layout_interface* make_pipeline_parameter_layout(
+        const pipeline_parameter_layout_desc& desc) = 0;
     virtual pipeline_parameter_interface* make_pipeline_parameter(
-        pipeline_layout_interface* layout) = 0;
+        pipeline_parameter_layout_interface* layout) = 0;
 
     virtual resource_interface* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
     virtual resource_interface* make_index_buffer(const index_buffer_desc& desc) = 0;

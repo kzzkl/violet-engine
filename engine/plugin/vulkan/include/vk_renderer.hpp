@@ -19,7 +19,7 @@ public:
     VkFormat surface_format() const noexcept { return m_surface_format.format; }
     VkFormat depth_stencil_format() const noexcept { return m_depth_stencil_format; }
 
-    std::vector<vk_back_buffer>& back_buffers() { return m_back_buffers; }
+    vk_back_buffer* back_buffer();
     VkSwapchainKHR swap_chain() const noexcept { return m_swap_chain; }
 
 private:
@@ -48,14 +48,13 @@ class vk_renderer : public renderer_interface
 public:
     vk_renderer(const renderer_desc& desc);
 
-    virtual std::size_t begin_frame() override;
+    virtual void begin_frame() override;
     virtual void end_frame() override;
 
     virtual render_command_interface* allocate_command() override;
     virtual void execute(render_command_interface* command) override;
 
-    virtual resource_interface* back_buffer(std::size_t index) override;
-    virtual std::size_t back_buffer_count() override;
+    virtual resource_interface* back_buffer() override;
 
     virtual void resize(std::uint32_t width, std::uint32_t height) override;
 };

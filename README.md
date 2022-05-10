@@ -42,7 +42,8 @@ ash-engine
 │   ├───physics         物理系统
 │   ├───plugin          插件目录，一些特性会用插件的方式实现
 │   │   ├───bullet3     Bullet3 物理引擎
-│   │   └───d3d12       DirectX 12 渲染实现
+│   │   ├───d3d12       DirectX 12 RHI
+│   │   └───vulkan      Vulkan RHI
 │   ├───resource        资源系统，目前没有实现
 │   ├───scene           场景系统，管理、更新场景中节点的坐标信息
 │   ├───task            任务系统，引擎的多线程支持在这里实现

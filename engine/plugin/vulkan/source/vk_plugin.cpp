@@ -19,14 +19,14 @@ public:
         return new vk_render_pass(desc);
     }
 
-    virtual pipeline_layout_interface* make_pipeline_layout(
-        const pipeline_layout_desc& desc) override
+    virtual pipeline_parameter_layout_interface* make_pipeline_parameter_layout(
+        const pipeline_parameter_layout_desc& desc) override
     {
-        return new vk_pipeline_layout(desc);
+        return new vk_pipeline_parameter_layout(desc);
     }
 
     virtual pipeline_parameter_interface* make_pipeline_parameter(
-        pipeline_layout_interface* layout) override
+        pipeline_parameter_layout_interface* layout) override
     {
         return new vk_pipeline_parameter(layout);
     }

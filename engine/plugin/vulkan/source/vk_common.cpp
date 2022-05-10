@@ -100,7 +100,7 @@ VkImageLayout to_vk_image_layout(resource_state state)
     {
     case resource_state::UNDEFINED:
         return VK_IMAGE_LAYOUT_UNDEFINED;
-    case resource_state::COLOR:
+    case resource_state::RENDER_TARGET:
         return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     case resource_state::DEPTH_STENCIL:
         return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
