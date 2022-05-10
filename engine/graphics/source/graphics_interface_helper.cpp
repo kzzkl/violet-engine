@@ -10,13 +10,14 @@ pipeline_parameter_layout_desc pipeline_parameter_layout_info::convert() noexcep
     return result;
 }
 
-blend_info::blend_info()
-{
-    enable = false;
-}
-
 pipeline_info::pipeline_info() : primitive_topology(primitive_topology::TRIANGLE_LIST)
 {
+    blend = {};
+    blend.enable = false;
+
+    depth_stencil.depth_functor = depth_functor::LESS;
+
+    rasterizer.cull_mode = cull_mode::BACK;
 }
 
 pipeline_desc pipeline_info::convert() noexcept
@@ -31,8 +32,9 @@ pipeline_desc pipeline_info::convert() noexcept
     result.parameters = parameter_interfaces.data();
     result.parameter_count = parameter_interfaces.size();
 
-    result.blend = blend.convert();
-    result.depth_stencil = depth_stencil.convert();
+    result.blend = blend;
+    result.depth_stencil = depth_stencil;
+    result.rasterizer = rasterizer;
 
     result.references = references.data();
     result.reference_count = references.size();

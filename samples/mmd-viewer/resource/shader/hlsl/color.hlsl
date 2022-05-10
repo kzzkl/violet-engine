@@ -105,5 +105,6 @@ float4 ps_main(vs_out pin) : SV_TARGET
         color *= toon.Sample(sampler_wrap, float2(0.0f, c));
     }
 
+    // return float4(1.0f, 1.0f, 1.0f, 1.0f);
     return color;
 }

@@ -159,6 +159,18 @@ struct depth_stencil_desc
     depth_functor depth_functor;
 };
 
+enum class cull_mode
+{
+    NONE,
+    FRONT,
+    BACK
+};
+
+struct rasterizer_desc
+{
+    cull_mode cull_mode;
+};
+
 enum class primitive_topology
 {
     TRIANGLE_LIST,
@@ -193,6 +205,7 @@ struct pipeline_desc
 
     blend_desc blend;
     depth_stencil_desc depth_stencil;
+    rasterizer_desc rasterizer;
 
     std::size_t samples;
 

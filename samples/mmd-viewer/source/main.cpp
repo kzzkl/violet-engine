@@ -50,9 +50,9 @@ public:
                 auto& world = system<ash::ecs::world>();
                 auto& c_camera = world.component<camera>(m_camera);
                 c_camera.set(
-                    math::to_radians(30.0f),
+                    math::to_radians(45.0f),
                     static_cast<float>(width) / static_cast<float>(height),
-                    0.01f,
+                    0.3f,
                     1000.0f,
                     true);
             });
@@ -109,12 +109,12 @@ private:
         m_camera = world.create();
         world.add<core::link, main_camera, camera, transform>(m_camera);
         auto& c_camera = world.component<camera>(m_camera);
-        c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f, false);
+        c_camera.set(math::to_radians(45.0f), 1300.0f / 800.0f, 0.3f, 1000.0f, false);
 
         c_camera.parameter = graphics.make_pipeline_parameter("ash_pass");
 
         auto& c_transform = world.component<transform>(m_camera);
-        c_transform.position = {0.0f, 11.0f, -60.0f};
+        c_transform.position = {0.0f, 11.0f, -30.0f};
         c_transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
         c_transform.scaling = {1.0f, 1.0f, 1.0f};
         system<ash::core::relation>().link(m_camera, scene.root());

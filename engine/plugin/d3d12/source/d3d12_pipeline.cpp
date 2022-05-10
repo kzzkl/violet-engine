@@ -8,7 +8,7 @@ namespace ash::graphics::d3d12
 {
 namespace
 {
-D3D12_BLEND_DESC to_d3d12(const blend_desc& desc)
+D3D12_BLEND_DESC to_d3d12_blend_desc(const blend_desc& desc)
 {
     auto convert_factor = [](blend_factor factor) {
         switch (factor)
@@ -30,7 +30,7 @@ D3D12_BLEND_DESC to_d3d12(const blend_desc& desc)
         case blend_factor::TARGET_INV_ALPHA:
             return D3D12_BLEND_INV_DEST_ALPHA;
         default:
-            return D3D12_BLEND_ZERO;
+            throw d3d12_exception("Invalid blend factor.");
         };
     };
 
@@ -46,7 +46,7 @@ D3D12_BLEND_DESC to_d3d12(const blend_desc& desc)
         case blend_op::MAX:
             return D3D12_BLEND_OP_MAX;
         default:
-            return D3D12_BLEND_OP_ADD;
+            throw d3d12_exception("Invalid blend op.");
         }
     };
 
@@ -76,22 +76,43 @@ D3D12_BLEND_DESC to_d3d12(const blend_desc& desc)
     return result;
 }
 
-D3D12_DEPTH_STENCIL_DESC to_d3d12(const depth_stencil_desc& desc)
+D3D12_DEPTH_STENCIL_DESC to_d3d12_depth_stencil_desc(const depth_stencil_desc& desc)
 {
-    auto convert_factor = [](depth_functor factor) {
-        switch (factor)
-        {
-        case depth_functor::LESS:
-            return D3D12_COMPARISON_FUNC_LESS;
-        case depth_functor::ALWAYS:
-            return D3D12_COMPARISON_FUNC_ALWAYS;
-        default:
-            return D3D12_COMPARISON_FUNC_LESS;
-        };
+    D3D12_DEPTH_STENCIL_DESC result = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+
+    switch (desc.depth_functor)
+    {
+    case depth_functor::LESS:
+        result.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+        break;
+    case depth_functor::ALWAYS:
+        result.DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+        break;
+    default:
+        throw d3d12_exception("Invalid depth functor.");
     };
 
-    D3D12_DEPTH_STENCIL_DESC result = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-    result.DepthFunc = convert_factor(desc.depth_functor);
+    return result;
+}
+
+D3D12_RASTERIZER_DESC to_d3d12_rasterizer_desc(const rasterizer_desc& desc)
+{
+    D3D12_RASTERIZER_DESC result = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+
+    switch (desc.cull_mode)
+    {
+    case cull_mode::NONE:
+        result.CullMode = D3D12_CULL_MODE_NONE;
+        break;
+    case cull_mode::FRONT:
+        result.CullMode = D3D12_CULL_MODE_FRONT;
+        break;
+    case cull_mode::BACK:
+        result.CullMode = D3D12_CULL_MODE_BACK;
+        break;
+    default:
+        throw d3d12_exception("Invalid depth functor.");
+    };
 
     return result;
 }
@@ -828,16 +849,15 @@ void d3d12_pipeline::initialize_pipeline_state(const pipeline_desc& desc)
     pso_desc.pRootSignature = m_root_signature.Get();
     pso_desc.VS = CD3DX12_SHADER_BYTECODE(vs_blob.Get());
     pso_desc.PS = CD3DX12_SHADER_BYTECODE(ps_blob.Get());
-    pso_desc.DepthStencilState = to_d3d12(desc.depth_stencil);
-    pso_desc.BlendState = to_d3d12(desc.blend);
+    pso_desc.DepthStencilState = to_d3d12_depth_stencil_desc(desc.depth_stencil);
+    pso_desc.BlendState = to_d3d12_blend_desc(desc.blend);
+    pso_desc.RasterizerState = to_d3d12_rasterizer_desc(desc.rasterizer);
     pso_desc.SampleMask = UINT_MAX;
     pso_desc.NumRenderTargets = 1;
     pso_desc.RTVFormats[0] = RENDER_TARGET_FORMAT;
     pso_desc.SampleDesc.Count = sample_level.SampleCount;
     pso_desc.SampleDesc.Quality = sample_level.NumQualityLevels - 1;
     pso_desc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-    pso_desc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
     if (desc.primitive_topology == primitive_topology::TRIANGLE_LIST)
         pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     else if (desc.primitive_topology == primitive_topology::LINE_LIST)

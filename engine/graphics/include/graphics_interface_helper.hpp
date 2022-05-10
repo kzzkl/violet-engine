@@ -13,20 +13,6 @@ public:
     std::vector<pipeline_parameter_pair> parameters;
 };
 
-class blend_info : public blend_desc
-{
-public:
-    blend_info();
-
-    blend_desc convert() noexcept { return *this; }
-};
-
-class depth_stencil_info : public depth_stencil_desc
-{
-public:
-    depth_stencil_desc convert() noexcept { return *this; }
-};
-
 class pipeline_info
 {
 public:
@@ -41,8 +27,9 @@ public:
     std::vector<std::string> parameters;
     std::vector<pipeline_parameter_layout_interface*> parameter_interfaces;
 
-    blend_info blend;
-    depth_stencil_info depth_stencil;
+    blend_desc blend;
+    depth_stencil_desc depth_stencil;
+    rasterizer_desc rasterizer;
 
     std::vector<attachment_reference> references;
 
