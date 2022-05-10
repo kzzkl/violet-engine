@@ -407,7 +407,6 @@ void d3d12_upload_buffer::upload(const void* data, std::size_t size, std::size_t
     m_resource->Unmap(0, nullptr);
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////
 d3d12_descriptor_heap::d3d12_descriptor_heap(
     D3D12_DESCRIPTOR_HEAP_TYPE type,
     std::size_t size,

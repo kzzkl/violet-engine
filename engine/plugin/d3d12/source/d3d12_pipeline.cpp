@@ -451,17 +451,234 @@ void d3d12_pipeline_parameter::mark_dirty(std::size_t index)
     m_dirty_counter[index] = d3d12_frame_counter::frame_resource_count();
 }
 
+d3d12_frame_buffer_layout::d3d12_frame_buffer_layout(
+    attachment_desc* attachments,
+    std::size_t count)
+{
+    for (std::size_t i = 0; i < count; ++i)
+        m_attachments.push_back(attachments[i]);
+}
+
+d3d12_frame_buffer::d3d12_frame_buffer(
+    d3d12_render_pass* render_pass,
+    d3d12_resource* render_target)
+{
+    static const D3D12_RESOURCE_STATES resource_state_map[] = {
+        D3D12_RESOURCE_STATE_COMMON,
+        D3D12_RESOURCE_STATE_RENDER_TARGET,
+        D3D12_RESOURCE_STATE_DEPTH_WRITE,
+        D3D12_RESOURCE_STATE_PRESENT};
+
+    auto [width, hegith] = render_target->extent();
+    for (auto& attachment : render_pass->frame_buffer_layout())
+    {
+        switch (attachment.type)
+        {
+        case attachment_type::COLOR: {
+            auto color = std::make_unique<d3d12_render_target>(
+                width,
+                hegith,
+                attachment.samples,
+                attachment.format);
+            m_render_targets.push_back(color->render_target().cpu_handle());
+            m_attachments.push_back(attachment_info{
+                color.get(),
+                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
+                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
+            m_attachment_container.push_back(std::move(color));
+            break;
+        }
+        case attachment_type::DEPTH: {
+            auto depth = std::make_unique<d3d12_depth_stencil_buffer>(
+                width,
+                hegith,
+                attachment.samples,
+                attachment.format);
+            m_depth_stencil = depth->depth_stencil_buffer().cpu_handle();
+            m_attachments.push_back(attachment_info{
+                depth.get(),
+                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
+                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
+            m_attachment_container.push_back(std::move(depth));
+            break;
+        }
+        case attachment_type::RENDER_TARGET: {
+            m_render_targets.push_back(render_target->render_target().cpu_handle());
+            m_attachments.push_back(attachment_info{
+                render_target,
+                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
+                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
+            break;
+        }
+        default:
+            throw d3d12_exception("Invalid attachment type.");
+        }
+    }
+}
+
+void d3d12_frame_buffer::begin_render(D3D12GraphicsCommandList* command_list)
+{
+    std::vector<D3D12_RESOURCE_BARRIER> barriers;
+    barriers.reserve(m_attachments.size());
+    for (auto& attachment : m_attachments)
+    {
+        if (attachment.resource->resource_state() != attachment.initial_state)
+        {
+            barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+                attachment.resource->resource(),
+                attachment.resource->resource_state(),
+                attachment.initial_state));
+            attachment.resource->resource_state(attachment.initial_state);
+        }
+    }
+    command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
+
+    static const float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
+    for (auto handle : m_render_targets)
+    {
+        command_list->ClearRenderTargetView(handle, clear_color, 0, nullptr);
+    }
+
+    command_list->ClearDepthStencilView(
+        m_depth_stencil,
+        D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
+        1.0f,
+        0,
+        0,
+        nullptr);
+}
+
+void d3d12_frame_buffer::end_render(D3D12GraphicsCommandList* command_list)
+{
+    std::vector<D3D12_RESOURCE_BARRIER> barriers;
+    barriers.reserve(m_attachments.size());
+    for (auto& attachment : m_attachments)
+    {
+        if (attachment.resource->resource_state() != attachment.final_state)
+        {
+            barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+                attachment.resource->resource(),
+                attachment.resource->resource_state(),
+                attachment.final_state));
+            attachment.resource->resource_state(attachment.final_state);
+        }
+    }
+    command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
+}
+
 d3d12_pipeline::d3d12_pipeline(const pipeline_desc& desc)
+    : m_current_frame_buffer(nullptr),
+      m_depth_index(-1)
 {
     initialize_vertex_layout(desc);
     initialize_pipeline_layout(desc);
     initialize_pipeline_state(desc);
+
+    for (std::size_t i = 0; i < desc.reference_count; ++i)
+    {
+        switch (desc.references[i].type)
+        {
+        case attachment_reference_type::INPUT:
+        case attachment_reference_type::COLOR:
+            m_color_indices.push_back(i);
+            break;
+        case attachment_reference_type::DEPTH:
+            m_depth_index = i;
+            break;
+        case attachment_reference_type::RESOLVE:
+            m_resolve_indices.push_back({i, desc.references[i].resolve_relation});
+            break;
+        default:
+            break;
+        }
+    }
 }
 
-void d3d12_pipeline::begin(D3D12GraphicsCommandList* command_list)
+void d3d12_pipeline::begin(D3D12GraphicsCommandList* command_list, d3d12_frame_buffer* frame_buffer)
 {
     command_list->SetPipelineState(m_pipeline_state.Get());
     command_list->SetGraphicsRootSignature(m_root_signature.Get());
+
+    auto& attachments = frame_buffer->attachments();
+
+    std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> render_targets;
+    for (std::size_t i : m_color_indices)
+        render_targets.push_back(attachments[i].resource->render_target().cpu_handle());
+
+    D3D12_CPU_DESCRIPTOR_HANDLE depth_stencil =
+        attachments[m_depth_index].resource->depth_stencil_buffer().cpu_handle();
+
+    command_list->OMSetRenderTargets(
+        static_cast<UINT>(render_targets.size()),
+        render_targets.data(),
+        false,
+        &depth_stencil);
+
+    m_current_frame_buffer = frame_buffer;
+}
+
+void d3d12_pipeline::end(D3D12GraphicsCommandList* command_list, bool final)
+{
+    if (m_resolve_indices.empty())
+        return;
+
+    auto& attachments = m_current_frame_buffer->attachments();
+
+    std::vector<D3D12_RESOURCE_BARRIER> barriers;
+    for (auto [target_index, source_index] : m_resolve_indices)
+    {
+        auto target = attachments[target_index].resource;
+        barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+            target->resource(),
+            target->resource_state(),
+            D3D12_RESOURCE_STATE_RESOLVE_DEST));
+        target->resource_state(D3D12_RESOURCE_STATE_RESOLVE_DEST);
+
+        auto source = attachments[source_index].resource;
+        barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+            source->resource(),
+            source->resource_state(),
+            D3D12_RESOURCE_STATE_RESOLVE_SOURCE));
+        source->resource_state(D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+    }
+
+    command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
+
+    for (auto [target_index, source_index] : m_resolve_indices)
+    {
+        auto target = attachments[target_index].resource;
+        auto source = attachments[source_index].resource;
+        command_list->ResolveSubresource(
+            target->resource(),
+            0,
+            source->resource(),
+            0,
+            source->resource()->GetDesc().Format);
+    }
+
+    if (!final)
+    {
+        barriers.clear();
+
+        for (auto [target_index, source_index] : m_resolve_indices)
+        {
+            auto target = attachments[target_index].resource;
+            barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+                target->resource(),
+                target->resource_state(),
+                attachments[target_index].initial_state));
+            target->resource_state(attachments[target_index].initial_state);
+
+            auto source = attachments[source_index].resource;
+            barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+                source->resource(),
+                source->resource_state(),
+                attachments[source_index].initial_state));
+            source->resource_state(attachments[source_index].initial_state);
+        }
+
+        command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
+    }
 }
 
 void d3d12_pipeline::initialize_vertex_layout(const pipeline_desc& desc)
@@ -667,107 +884,6 @@ d3d12_ptr<D3DBlob> d3d12_pipeline::load_shader(
     }
 }
 
-d3d12_frame_buffer_layout::d3d12_frame_buffer_layout(
-    attachment_desc* attachments,
-    std::size_t count)
-{
-    for (std::size_t i = 0; i < count; ++i)
-        m_attachments.push_back(attachments[i]);
-}
-
-d3d12_frame_buffer::d3d12_frame_buffer(
-    d3d12_render_pass* render_pass,
-    d3d12_resource* render_target)
-{
-    static const D3D12_RESOURCE_STATES resource_state_map[] = {
-        D3D12_RESOURCE_STATE_COMMON,
-        D3D12_RESOURCE_STATE_RENDER_TARGET,
-        D3D12_RESOURCE_STATE_DEPTH_WRITE,
-        D3D12_RESOURCE_STATE_PRESENT};
-
-    auto [width, hegith] = render_target->extent();
-    for (auto& attachment : render_pass->frame_buffer_layout())
-    {
-        switch (attachment.type)
-        {
-        case attachment_type::COLOR: {
-            auto color = std::make_unique<d3d12_render_target>(
-                width,
-                hegith,
-                attachment.samples,
-                attachment.format);
-            m_render_targets.push_back(color->render_target().cpu_handle());
-            m_attachments.push_back(attachment_info{
-                color.get(),
-                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
-                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
-            m_attachment_container.push_back(std::move(color));
-            break;
-        }
-        case attachment_type::DEPTH: {
-            auto depth = std::make_unique<d3d12_depth_stencil_buffer>(
-                width,
-                hegith,
-                attachment.samples,
-                attachment.format);
-            m_depth_stencil = depth->depth_stencil_buffer().cpu_handle();
-            m_attachments.push_back(attachment_info{
-                depth.get(),
-                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
-                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
-            m_attachment_container.push_back(std::move(depth));
-            break;
-        }
-        case attachment_type::RENDER_TARGET: {
-            m_render_targets.push_back(render_target->render_target().cpu_handle());
-            m_attachments.push_back(attachment_info{
-                render_target,
-                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
-                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
-            break;
-        }
-        default:
-            throw d3d12_exception("Invalid attachment type.");
-        }
-    }
-}
-
-void d3d12_frame_buffer::begin_render(D3D12GraphicsCommandList* command_list)
-{
-    std::vector<D3D12_RESOURCE_BARRIER> barriers;
-    barriers.reserve(m_attachments.size());
-    for (auto& attachment : m_attachments)
-    {
-        if (attachment.resource->resource_state() != attachment.initial_state)
-        {
-            barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-                attachment.resource->resource(),
-                attachment.resource->resource_state(),
-                attachment.initial_state));
-            attachment.resource->resource_state(attachment.initial_state);
-        }
-    }
-    command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
-}
-
-void d3d12_frame_buffer::end_render(D3D12GraphicsCommandList* command_list)
-{
-    std::vector<D3D12_RESOURCE_BARRIER> barriers;
-    barriers.reserve(m_attachments.size());
-    for (auto& attachment : m_attachments)
-    {
-        if (attachment.resource->resource_state() != attachment.final_state)
-        {
-            barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-                attachment.resource->resource(),
-                attachment.resource->resource_state(),
-                attachment.final_state));
-            attachment.resource->resource_state(attachment.final_state);
-        }
-    }
-    command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
-}
-
 d3d12_render_pass::d3d12_render_pass(const render_pass_desc& desc)
     : m_frame_buffer_layout(desc.attachments, desc.attachment_count)
 {
@@ -778,44 +894,25 @@ d3d12_render_pass::d3d12_render_pass(const render_pass_desc& desc)
 void d3d12_render_pass::begin(D3D12GraphicsCommandList* command_list, d3d12_resource* render_target)
 {
     m_current_index = 0;
-    m_pipelines[m_current_index]->begin(command_list);
-
     m_current_frame_buffer =
         d3d12_context::frame_buffer().get_or_create_frame_buffer(this, render_target);
 
     m_current_frame_buffer->begin_render(command_list);
 
-    auto& render_targets = m_current_frame_buffer->render_targets();
-    static const float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
-    for (auto handle : render_targets)
-    {
-        command_list->ClearRenderTargetView(handle, clear_color, 0, nullptr);
-    }
-
-    command_list->ClearDepthStencilView(
-        m_current_frame_buffer->depth_stencil(),
-        D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
-        1.0f,
-        0,
-        0,
-        nullptr);
-
-    command_list->OMSetRenderTargets(
-        static_cast<UINT>(render_targets.size()),
-        render_targets.data(),
-        false,
-        &m_current_frame_buffer->depth_stencil());
+    m_pipelines[m_current_index]->begin(command_list, m_current_frame_buffer);
 }
 
 void d3d12_render_pass::end(D3D12GraphicsCommandList* command_list)
 {
+    m_pipelines[m_current_index]->end(command_list, true);
     m_current_frame_buffer->end_render(command_list);
 }
 
 void d3d12_render_pass::next(D3D12GraphicsCommandList* command_list)
 {
+    m_pipelines[m_current_index]->end(command_list);
     ++m_current_index;
-    m_pipelines[m_current_index]->begin(command_list);
+    m_pipelines[m_current_index]->begin(command_list, m_current_frame_buffer);
 }
 
 d3d12_frame_buffer* d3d12_frame_buffer_manager::get_or_create_frame_buffer(

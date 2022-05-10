@@ -45,7 +45,7 @@ mmd_pass::mmd_pass()
     };
     color_pass_info.primitive_topology = graphics::primitive_topology::TRIANGLE_LIST;
     color_pass_info.parameters = {"ash_object", "mmd_material", "mmd_skeleton", "ash_pass"};
-    color_pass_info.samples = 1;
+    color_pass_info.samples = 4;
 
     // Attachment.
     graphics::attachment_info render_target = {};
@@ -66,7 +66,7 @@ mmd_pass::mmd_pass()
     depth_stencil.store_op = graphics::attachment_store_op::DONT_CARE;
     depth_stencil.stencil_load_op = graphics::attachment_load_op::DONT_CARE;
     depth_stencil.stencil_store_op = graphics::attachment_store_op::DONT_CARE;
-    depth_stencil.samples = 1;
+    depth_stencil.samples = 4;
     depth_stencil.initial_state = graphics::resource_state::DEPTH_STENCIL;
     depth_stencil.final_state = graphics::resource_state::DEPTH_STENCIL;
 
@@ -82,7 +82,7 @@ mmd_pass::mmd_pass()
     back_buffer.final_state = graphics::resource_state::PRESENT;
 
     graphics::render_pass_info mmd_render_pass_info;
-    //mmd_render_pass_info.attachments.push_back(render_target);
+    mmd_render_pass_info.attachments.push_back(render_target);
     mmd_render_pass_info.attachments.push_back(depth_stencil);
     mmd_render_pass_info.attachments.push_back(back_buffer);
     mmd_render_pass_info.subpasses.push_back(color_pass_info);

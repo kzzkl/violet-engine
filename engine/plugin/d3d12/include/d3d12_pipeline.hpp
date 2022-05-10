@@ -114,31 +114,6 @@ private:
     std::unique_ptr<d3d12_upload_buffer> m_gpu_buffer;
 };
 
-class d3d12_pipeline
-{
-public:
-    d3d12_pipeline(const pipeline_desc& desc);
-
-    void begin(D3D12GraphicsCommandList* command_list);
-    inline D3D12PipelineState* pipeline_state() const noexcept { return m_pipeline_state.Get(); }
-
-private:
-    void initialize_vertex_layout(const pipeline_desc& desc);
-    void initialize_pipeline_layout(const pipeline_desc& desc);
-    void initialize_pipeline_state(const pipeline_desc& desc);
-
-    d3d12_ptr<D3DBlob> load_shader(
-        std::string_view entry,
-        std::string_view target,
-        std::string_view file);
-
-    std::vector<D3D12_INPUT_ELEMENT_DESC> m_vertex_layout;
-    D3D12_PRIMITIVE_TOPOLOGY_TYPE m_primitive_topology;
-
-    d3d12_ptr<D3D12RootSignature> m_root_signature;
-    d3d12_ptr<D3D12PipelineState> m_pipeline_state;
-};
-
 class d3d12_frame_buffer_layout
 {
 public:
@@ -155,18 +130,6 @@ class d3d12_render_pass;
 class d3d12_frame_buffer
 {
 public:
-    d3d12_frame_buffer(d3d12_render_pass* render_pass, d3d12_resource* render_target);
-
-    void begin_render(D3D12GraphicsCommandList* command_list);
-    void end_render(D3D12GraphicsCommandList* command_list);
-
-    const std::vector<D3D12_CPU_DESCRIPTOR_HANDLE>& render_targets() const noexcept
-    {
-        return m_render_targets;
-    }
-    const D3D12_CPU_DESCRIPTOR_HANDLE& depth_stencil() const noexcept { return m_depth_stencil; }
-
-private:
     struct attachment_info
     {
         d3d12_resource* resource;
@@ -174,11 +137,52 @@ private:
         D3D12_RESOURCE_STATES final_state;
     };
 
+public:
+    d3d12_frame_buffer(d3d12_render_pass* render_pass, d3d12_resource* render_target);
+
+    void begin_render(D3D12GraphicsCommandList* command_list);
+    void end_render(D3D12GraphicsCommandList* command_list);
+
+    const std::vector<attachment_info>& attachments() const noexcept { return m_attachments; }
+
+private:
     std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_render_targets;
     D3D12_CPU_DESCRIPTOR_HANDLE m_depth_stencil;
 
     std::vector<attachment_info> m_attachments;
     std::vector<std::unique_ptr<d3d12_resource>> m_attachment_container;
+};
+
+class d3d12_pipeline
+{
+public:
+    d3d12_pipeline(const pipeline_desc& desc);
+
+    void begin(D3D12GraphicsCommandList* command_list, d3d12_frame_buffer* frame_buffer);
+    void end(D3D12GraphicsCommandList* command_list, bool final = false);
+    inline D3D12PipelineState* pipeline_state() const noexcept { return m_pipeline_state.Get(); }
+
+private:
+    void initialize_vertex_layout(const pipeline_desc& desc);
+    void initialize_pipeline_layout(const pipeline_desc& desc);
+    void initialize_pipeline_state(const pipeline_desc& desc);
+
+    d3d12_ptr<D3DBlob> load_shader(
+        std::string_view entry,
+        std::string_view target,
+        std::string_view file);
+
+    std::vector<D3D12_INPUT_ELEMENT_DESC> m_vertex_layout;
+
+    d3d12_ptr<D3D12RootSignature> m_root_signature;
+    d3d12_ptr<D3D12PipelineState> m_pipeline_state;
+
+    d3d12_frame_buffer* m_current_frame_buffer;
+
+    std::vector<std::size_t> m_color_indices;
+    std::size_t m_depth_index;
+    // first: resolve target, second: resolve source
+    std::vector<std::pair<std::size_t, std::size_t>> m_resolve_indices;
 };
 
 class d3d12_render_pass : public render_pass_interface
