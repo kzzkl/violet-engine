@@ -31,6 +31,7 @@ using d3d12_ptr = Microsoft::WRL::ComPtr<T>;
 class d3d12_exception : public std::runtime_error
 {
 public:
+    d3d12_exception(std::string_view name) : std::runtime_error(name.data()) {}
     d3d12_exception(HRESULT hr) : std::runtime_error(hr_to_string(hr)), m_hr(hr) {}
 
     HRESULT error() const { return m_hr; }
@@ -43,7 +44,7 @@ private:
         return std::string(s_str);
     }
 
-    const HRESULT m_hr;
+    HRESULT m_hr;
 };
 
 inline void throw_if_failed(HRESULT hr)
@@ -58,6 +59,9 @@ inline void throw_if_failed(HRESULT hr)
 #else
 #    define ASH_D3D12_ASSERT(condition, ...)
 #endif
+
+DXGI_FORMAT to_d3d12_format(resource_format format);
+resource_format to_ash_format(DXGI_FORMAT format);
 
 static constexpr DXGI_FORMAT RENDER_TARGET_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM;
 static constexpr DXGI_FORMAT DEPTH_STENCIL_FORMAT = DXGI_FORMAT_D24_UNORM_S8_UINT;

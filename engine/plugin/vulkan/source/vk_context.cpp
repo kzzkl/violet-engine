@@ -89,7 +89,7 @@ void vk_context::on_deinitialize()
     vkDestroyInstance(m_instance, nullptr);
 }
 
-std::size_t vk_context::on_begin_frame()
+void vk_context::on_begin_frame()
 {
     vkWaitForFences(m_device, 1, &m_fence, VK_TRUE, UINT64_MAX);
     vkResetFences(m_device, 1, &m_fence);
@@ -101,8 +101,6 @@ std::size_t vk_context::on_begin_frame()
         m_image_available,
         VK_NULL_HANDLE,
         &m_image_index);
-
-    return m_image_index;
 }
 
 void vk_context::on_end_frame()

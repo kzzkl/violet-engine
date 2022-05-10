@@ -6,10 +6,10 @@
 
 namespace ash::graphics
 {
-class pipeline_layout_info
+class pipeline_parameter_layout_info
 {
 public:
-    pipeline_layout_desc convert() noexcept;
+    pipeline_parameter_layout_desc convert() noexcept;
     std::vector<pipeline_parameter_pair> parameters;
 };
 
@@ -37,9 +37,9 @@ public:
     std::string vertex_shader;
     std::string pixel_shader;
 
-    std::vector<vertex_attribute_type> vertex_attributes;
+    std::vector<vertex_attribute> vertex_attributes;
     std::vector<std::string> parameters;
-    std::vector<pipeline_layout_interface*> parameter_interfaces;
+    std::vector<pipeline_parameter_layout_interface*> parameter_interfaces;
 
     blend_info blend;
     depth_stencil_info depth_stencil;
@@ -67,17 +67,6 @@ public:
 private:
     std::vector<attachment_desc> m_attachment_desc;
     std::vector<pipeline_desc> m_pass_desc;
-};
-
-class attachment_set_info
-{
-public:
-    attachment_set_desc convert() noexcept;
-
-    std::vector<resource_interface*> attachments;
-    std::uint32_t width;
-    std::uint32_t height;
-    render_pass_interface* render_pass;
 };
 
 class renderer_info : public renderer_desc

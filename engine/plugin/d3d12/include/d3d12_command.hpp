@@ -14,30 +14,25 @@ enum class d3d12_render_command_type
     POST_RENDER
 };
 
-class d3d12_render_command : public render_command
+class d3d12_render_command : public render_command_interface
 {
 public:
     d3d12_render_command(D3D12CommandAllocator* allocator, std::wstring_view name = L"");
 
-    virtual void pipeline(pass_type* pipeline) override;
-    virtual void layout(layout_type* layout) override;
-    virtual void parameter(std::size_t index, pass_parameter* parameter) override;
-    virtual void render_target(resource* target, resource* depth_stencil) override;
+    virtual void begin(render_pass_interface* render_pass, resource_interface* render_target)
+        override;
+    virtual void end(render_pass_interface* render_pass) override;
+    virtual void next(render_pass_interface* render_pass) override;
+
     virtual void scissor(const scissor_rect& rect) override;
+
+    virtual void parameter(std::size_t index, pipeline_parameter_interface* parameter) override;
     virtual void draw(
-        resource* vertex,
-        resource* index,
+        resource_interface* vertex,
+        resource_interface* index,
         std::size_t index_start,
         std::size_t index_end,
-        std::size_t vertex_base,
-        primitive_topology_type primitive_topology,
-        resource* target) override;
-
-    virtual void begin_render(resource* target) override;
-    virtual void end_render(resource* target) override;
-
-    virtual void clear_render_target(resource* target) override;
-    virtual void clear_depth_stencil(resource* depth_stencil) override;
+        std::size_t vertex_base) override;
 
     void allocator(D3D12CommandAllocator* allocator) noexcept;
     void reset();

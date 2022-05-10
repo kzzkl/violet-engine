@@ -2,6 +2,7 @@ project(ash-graphics-d3d12)
 
 add_library(${PROJECT_NAME} SHARED
     ./source/d3d12_command.cpp
+    ./source/d3d12_common.cpp
     ./source/d3d12_context.cpp
     ./source/d3d12_frame_resource.cpp
     ./source/d3d12_pipeline.cpp

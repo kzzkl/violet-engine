@@ -6,10 +6,10 @@
 
 namespace ash::graphics::vk
 {
-class vk_pipeline_layout : public pipeline_layout_interface
+class vk_pipeline_parameter_layout : public pipeline_parameter_layout_interface
 {
 public:
-    vk_pipeline_layout(const pipeline_layout_desc& desc);
+    vk_pipeline_parameter_layout(const pipeline_parameter_layout_desc& desc);
 
     VkDescriptorSetLayout layout() const noexcept { return m_descriptor_set_layout; }
     const std::vector<pipeline_parameter_pair>& parameters() const noexcept { return m_parameters; }
@@ -30,7 +30,7 @@ private:
 class vk_pipeline_parameter : public pipeline_parameter_interface
 {
 public:
-    vk_pipeline_parameter(pipeline_layout_interface* layout);
+    vk_pipeline_parameter(pipeline_parameter_layout_interface* layout);
 
     virtual void set(std::size_t index, bool value) override { upload_value(index, value); }
     virtual void set(std::size_t index, std::uint32_t value) override

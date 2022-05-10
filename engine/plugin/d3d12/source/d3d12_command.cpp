@@ -20,21 +20,30 @@ d3d12_render_command::d3d12_render_command(D3D12CommandAllocator* allocator, std
     m_command_list->Close();
 }
 
-void d3d12_render_command::pipeline(pass_type* pipeline)
+void d3d12_render_command::begin(
+    render_pass_interface* render_pass,
+    resource_interface* render_target)
 {
-    D3D12PipelineState* pso = static_cast<d3d12_pipeline*>(pipeline)->pass_state();
-    m_command_list->SetPipelineState(pso);
+    auto rp = static_cast<d3d12_render_pass*>(render_pass);
+    auto rt = static_cast<d3d12_resource*>(render_target);
+    rp->begin(m_command_list.Get(), rt);
 }
 
-void d3d12_render_command::layout(layout_type* layout)
+void d3d12_render_command::end(render_pass_interface* render_pass)
 {
-    d3d12_parameter_layout* l = static_cast<d3d12_parameter_layout*>(layout);
-    m_command_list->SetGraphicsRootSignature(l->root_signature());
+    auto rp = static_cast<d3d12_render_pass*>(render_pass);
+    rp->end(m_command_list.Get());
 }
 
-void d3d12_render_command::parameter(std::size_t index, pass_parameter* parameter)
+void d3d12_render_command::next(render_pass_interface* render_pass)
 {
-    d3d12_pass_parameter* p = static_cast<d3d12_pass_parameter*>(parameter);
+    auto rp = static_cast<d3d12_render_pass*>(render_pass);
+    rp->next(m_command_list.Get());
+}
+
+void d3d12_render_command::parameter(std::size_t index, pipeline_parameter_interface* parameter)
+{
+    d3d12_pipeline_parameter* p = static_cast<d3d12_pipeline_parameter*>(parameter);
     p->sync();
     if (p->tier() == d3d12_parameter_tier_type::TIER1)
     {
@@ -57,28 +66,6 @@ void d3d12_render_command::parameter(std::size_t index, pass_parameter* paramete
     }
 }
 
-void d3d12_render_command::render_target(resource* target, resource* depth_stencil)
-{
-    auto rt = static_cast<d3d12_resource*>(target)->render_target();
-    auto rt_handle = rt.cpu_handle();
-    auto ds_handle = static_cast<d3d12_resource*>(depth_stencil)->depth_stencil().cpu_handle();
-
-    auto [width, height] = rt.size();
-    D3D12_VIEWPORT viewport = {};
-    viewport.Width = static_cast<float>(width);
-    viewport.Height = static_cast<float>(height);
-    viewport.MinDepth = 0.0f;
-    viewport.MaxDepth = 1.0f;
-    viewport.TopLeftX = 0.0f;
-    viewport.TopLeftY = 0.0f;
-    m_command_list->RSSetViewports(1, &viewport);
-
-    D3D12_RECT r = {0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
-    m_command_list->RSSetScissorRects(1, &r);
-
-    m_command_list->OMSetRenderTargets(1, &rt_handle, true, &ds_handle);
-}
-
 void d3d12_render_command::scissor(const scissor_rect& rect)
 {
     D3D12_RECT r = {
@@ -94,9 +81,7 @@ void d3d12_render_command::draw(
     resource* index,
     std::size_t index_start,
     std::size_t index_end,
-    std::size_t vertex_base,
-    primitive_topology_type primitive_topology,
-    resource* target)
+    std::size_t vertex_base)
 {
     auto vb = static_cast<d3d12_resource*>(vertex)->vertex_buffer();
     auto ib = static_cast<d3d12_resource*>(index)->index_buffer();
@@ -104,10 +89,7 @@ void d3d12_render_command::draw(
     m_command_list->IASetVertexBuffers(0, 1, &vb.view());
     m_command_list->IASetIndexBuffer(&ib.view());
 
-    if (primitive_topology == primitive_topology_type::TRIANGLE_LIST)
-        m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    else if (primitive_topology == primitive_topology_type::LINE_LIST)
-        m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+    m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     m_command_list->DrawIndexedInstanced(
         static_cast<UINT>(index_end - index_start),
@@ -115,37 +97,6 @@ void d3d12_render_command::draw(
         static_cast<UINT>(index_start),
         static_cast<UINT>(vertex_base),
         0);
-}
-
-void d3d12_render_command::begin_render(resource* target)
-{
-    auto rt = static_cast<d3d12_render_target*>(target);
-    rt->begin_render(m_command_list.Get());
-}
-
-void d3d12_render_command::end_render(resource* target)
-{
-    auto rt = static_cast<d3d12_render_target*>(target);
-    rt->end_render(m_command_list.Get());
-}
-
-void d3d12_render_command::clear_render_target(resource* target)
-{
-    auto rt = static_cast<d3d12_resource*>(target)->render_target();
-    static const float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
-    m_command_list->ClearRenderTargetView(rt.cpu_handle(), clear_color, 0, nullptr);
-}
-
-void d3d12_render_command::clear_depth_stencil(resource* depth_stencil)
-{
-    auto ds = static_cast<d3d12_resource*>(depth_stencil);
-    m_command_list->ClearDepthStencilView(
-        ds->depth_stencil().cpu_handle(),
-        D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
-        1.0f,
-        0,
-        0,
-        nullptr);
 }
 
 void d3d12_render_command::allocator(D3D12CommandAllocator* allocator) noexcept

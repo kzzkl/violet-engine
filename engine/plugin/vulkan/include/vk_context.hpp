@@ -59,6 +59,7 @@ public:
 
     static VkSurfaceKHR surface() noexcept { return instance().m_surface; }
     static vk_swap_chain& swap_chain() { return *instance().m_swap_chain; }
+    static std::size_t image_index() noexcept { return instance().m_image_index; }
 
     static vk_descriptor_pool& descriptor_pool() { return *instance().m_descriptor_pool; }
 
@@ -74,7 +75,7 @@ public:
 
     static vk_frame_buffer_manager& frame_buffer() { return *instance().m_frame_buffer_manager; }
 
-    static std::size_t begin_frame() { return instance().on_begin_frame(); }
+    static void begin_frame() { instance().on_begin_frame(); }
     static void end_frame() { instance().on_end_frame(); }
 
 private:
@@ -83,7 +84,7 @@ private:
 
     bool on_initialize(const renderer_desc& desc);
     void on_deinitialize();
-    std::size_t on_begin_frame();
+    void on_begin_frame();
     void on_end_frame();
 
     void create_instance();

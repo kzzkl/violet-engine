@@ -81,6 +81,11 @@ void vk_swap_chain::resize(std::uint32_t width, std::uint32_t height)
         m_back_buffers.emplace_back(image, m_surface_format.format, m_extent);
 }
 
+vk_back_buffer* vk_swap_chain::back_buffer()
+{
+    return &m_back_buffers[vk_context::image_index()];
+}
+
 void vk_swap_chain::destroy()
 {
     auto device = vk_context::device();
@@ -219,9 +224,9 @@ vk_renderer::vk_renderer(const renderer_desc& desc)
     vk_context::initialize(desc);
 }
 
-std::size_t vk_renderer::begin_frame()
+void vk_renderer::begin_frame()
 {
-    return vk_context::begin_frame();
+    vk_context::begin_frame();
 }
 
 void vk_renderer::end_frame()
@@ -239,14 +244,9 @@ void vk_renderer::execute(render_command_interface* command)
     vk_context::graphics_queue().execute(static_cast<vk_command*>(command));
 }
 
-resource_interface* vk_renderer::back_buffer(std::size_t index)
+resource_interface* vk_renderer::back_buffer()
 {
-    return &vk_context::swap_chain().back_buffers()[index];
-}
-
-std::size_t vk_renderer::back_buffer_count()
-{
-    return vk_context::swap_chain().back_buffers().size();
+    return vk_context::swap_chain().back_buffer();
 }
 
 void vk_renderer::resize(std::uint32_t width, std::uint32_t height)

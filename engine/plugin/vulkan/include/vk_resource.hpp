@@ -8,8 +8,7 @@ class vk_resource : public resource_interface
 {
 public:
     virtual resource_format format() const noexcept override { return resource_format::UNDEFINED; }
-    virtual std::uint32_t width() const noexcept override { return 0; }
-    virtual std::uint32_t height() const noexcept override { return 0; }
+    virtual resource_extent extent() const noexcept override { return {0, 0}; }
     virtual std::size_t size() const noexcept override { return 0; }
 
 protected:
@@ -35,11 +34,6 @@ public:
         value.color = {0.0f, 0.0f, 0.0f, 1.0f};
         return value;
     }
-
-    virtual const VkExtent2D& extent() const noexcept = 0;
-
-    virtual std::uint32_t width() const noexcept override { return extent().width; }
-    virtual std::uint32_t height() const noexcept override { return extent().height; }
 
 protected:
     static std::pair<VkImage, VkDeviceMemory> create_image(
@@ -84,9 +78,13 @@ public:
     vk_back_buffer(vk_back_buffer&& other);
     virtual ~vk_back_buffer();
 
-    virtual resource_format format() const noexcept override { return m_format; }
     virtual VkImageView view() const noexcept override { return m_image_view; }
-    virtual const VkExtent2D& extent() const noexcept override { return m_extent; }
+
+    virtual resource_format format() const noexcept override { return m_format; }
+    virtual resource_extent extent() const noexcept override
+    {
+        return resource_extent{m_extent.width, m_extent.height};
+    }
 
     vk_back_buffer& operator=(vk_back_buffer&& other);
 
@@ -113,9 +111,13 @@ public:
 
     virtual ~vk_render_target();
 
-    virtual resource_format format() const noexcept override { return m_format; }
     virtual VkImageView view() const noexcept override { return m_image_view; }
-    virtual const VkExtent2D& extent() const noexcept override { return m_extent; }
+
+    virtual resource_format format() const noexcept override { return m_format; }
+    virtual resource_extent extent() const noexcept override
+    {
+        return resource_extent{m_extent.width, m_extent.height};
+    }
 
     vk_render_target& operator=(vk_render_target&& other);
 
@@ -142,9 +144,13 @@ public:
     vk_depth_stencil_buffer(vk_depth_stencil_buffer&& other);
     virtual ~vk_depth_stencil_buffer();
 
-    virtual resource_format format() const noexcept override { return m_format; }
     virtual VkImageView view() const noexcept override { return m_image_view; }
-    virtual const VkExtent2D& extent() const noexcept override { return m_extent; }
+
+    virtual resource_format format() const noexcept override { return m_format; }
+    virtual resource_extent extent() const noexcept override
+    {
+        return resource_extent{m_extent.width, m_extent.height};
+    }
 
     virtual VkClearValue clear_value() const noexcept
     {
@@ -173,9 +179,13 @@ public:
     vk_texture(vk_texture&& other);
     virtual ~vk_texture();
 
-    virtual resource_format format() const noexcept override { return m_format; }
     virtual VkImageView view() const noexcept override { return m_image_view; }
-    virtual const VkExtent2D& extent() const noexcept override { return m_extent; }
+
+    virtual resource_format format() const noexcept override { return m_format; }
+    virtual resource_extent extent() const noexcept override
+    {
+        return resource_extent{m_extent.width, m_extent.height};
+    }
 
     vk_texture& operator=(vk_texture&& other);
 
