@@ -490,7 +490,7 @@ d3d12_frame_buffer::d3d12_frame_buffer(
         D3D12_RESOURCE_STATE_DEPTH_WRITE,
         D3D12_RESOURCE_STATE_PRESENT};
 
-    auto [width, hegith] = render_target->extent();
+    auto [width, heigth] = render_target->extent();
     for (auto& attachment : render_pass->frame_buffer_layout())
     {
         switch (attachment.type)
@@ -498,7 +498,7 @@ d3d12_frame_buffer::d3d12_frame_buffer(
         case attachment_type::COLOR: {
             auto color = std::make_unique<d3d12_render_target>(
                 width,
-                hegith,
+                heigth,
                 attachment.samples,
                 attachment.format);
             m_render_targets.push_back(color->render_target().cpu_handle());
@@ -512,7 +512,7 @@ d3d12_frame_buffer::d3d12_frame_buffer(
         case attachment_type::DEPTH: {
             auto depth = std::make_unique<d3d12_depth_stencil_buffer>(
                 width,
-                hegith,
+                heigth,
                 attachment.samples,
                 attachment.format);
             m_depth_stencil = depth->depth_stencil_buffer().cpu_handle();
@@ -916,8 +916,18 @@ void d3d12_render_pass::begin(D3D12GraphicsCommandList* command_list, d3d12_reso
     m_current_index = 0;
     m_current_frame_buffer =
         d3d12_context::frame_buffer().get_or_create_frame_buffer(this, render_target);
-
     m_current_frame_buffer->begin_render(command_list);
+
+    auto [width, height] = render_target->extent();
+
+    D3D12_VIEWPORT viewport = {};
+    viewport.Width = static_cast<float>(width);
+    viewport.Height = static_cast<float>(height);
+    viewport.MinDepth = 0.0f;
+    viewport.MaxDepth = 1.0f;
+    viewport.TopLeftX = 0.0f;
+    viewport.TopLeftY = 0.0f;
+    command_list->RSSetViewports(1, &viewport);
 
     m_pipelines[m_current_index]->begin(command_list, m_current_frame_buffer);
 }
@@ -944,5 +954,16 @@ d3d12_frame_buffer* d3d12_frame_buffer_manager::get_or_create_frame_buffer(
         result = std::make_unique<d3d12_frame_buffer>(render_pass, render_target);
 
     return result.get();
+}
+
+void d3d12_frame_buffer_manager::notify_destroy(d3d12_resource* render_target)
+{
+    for (auto iter = m_frame_buffers.begin(); iter != m_frame_buffers.end();)
+    {
+        if (iter->first.second == render_target)
+            iter = m_frame_buffers.erase(iter);
+        else
+            ++iter;
+    }
 }
 } // namespace ash::graphics::d3d12

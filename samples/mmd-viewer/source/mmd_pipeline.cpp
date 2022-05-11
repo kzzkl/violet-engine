@@ -27,10 +27,10 @@ mmd_pass::mmd_pass()
 
     // Color pass.
     graphics::pipeline_info color_pass_info = {};
-    // color_pass_info.vertex_shader = "resource/shader/glsl/vert.spv";
-    // color_pass_info.pixel_shader = "resource/shader/glsl/frag.spv";
-    color_pass_info.vertex_shader = "resource/shader/hlsl/color.hlsl";
-    color_pass_info.pixel_shader = "resource/shader/hlsl/color.hlsl";
+    // color_pass_info.vertex_shader = "resource/shader/color.vert.spv";
+    // color_pass_info.pixel_shader = "resource/shader/color.frag.spv";
+    color_pass_info.vertex_shader = "resource/shader/color.hlsl";
+    color_pass_info.pixel_shader = "resource/shader/color.hlsl";
     color_pass_info.vertex_attributes = {
         {"POSITION",    graphics::vertex_attribute_type::FLOAT3}, // position
         {"NORMAL",      graphics::vertex_attribute_type::FLOAT3}, // normal
@@ -39,9 +39,9 @@ mmd_pass::mmd_pass()
         {"BONE_WEIGHT", graphics::vertex_attribute_type::FLOAT3}, // bone weight
     };
     color_pass_info.references = {
-        {graphics::attachment_reference_type::COLOR,   0},
-        {graphics::attachment_reference_type::DEPTH,   0},
-        {graphics::attachment_reference_type::RESOLVE, 0}
+        {graphics::attachment_reference_type::COLOR, 0},
+        {graphics::attachment_reference_type::DEPTH, 0},
+        {graphics::attachment_reference_type::UNUSE, 0}
     };
     color_pass_info.primitive_topology = graphics::primitive_topology::TRIANGLE_LIST;
     color_pass_info.parameters = {"ash_object", "mmd_material", "mmd_skeleton", "ash_pass"};
@@ -49,8 +49,10 @@ mmd_pass::mmd_pass()
 
     // Edge pass.
     graphics::pipeline_info edge_pass_info = {};
-    edge_pass_info.vertex_shader = "resource/shader/hlsl/edge.hlsl";
-    edge_pass_info.pixel_shader = "resource/shader/hlsl/edge.hlsl";
+    // edge_pass_info.vertex_shader = "resource/shader/edge.vert.spv";
+    // edge_pass_info.pixel_shader = "resource/shader/edge.frag.spv";
+    edge_pass_info.vertex_shader = "resource/shader/edge.hlsl";
+    edge_pass_info.pixel_shader = "resource/shader/edge.hlsl";
     edge_pass_info.vertex_attributes = {
         {"POSITION",    graphics::vertex_attribute_type::FLOAT3}, // position
         {"NORMAL",      graphics::vertex_attribute_type::FLOAT3}, // normal

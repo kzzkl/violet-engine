@@ -11,50 +11,32 @@
 #include "window.hpp"
 #include "window_event.hpp"
 
-using namespace ash::core;
-using namespace ash::graphics;
-using namespace ash::window;
-using namespace ash::ecs;
-using namespace ash::scene;
-using namespace ash::physics;
-using namespace ash::sample::mmd;
-
 namespace ash::sample::mmd
 {
-struct vertex
-{
-    math::float3 position;
-    math::float3 normal;
-    math::float2 uv;
-
-    math::uint4 bone;
-    math::float3 bone_weight;
-};
-
-class test_module : public system_base
+class sample_module : public core::system_base
 {
 public:
-    test_module(application* app) : system_base("test_module"), m_app(app) {}
+    sample_module(core::application* app) : core::system_base("sample_module"), m_app(app) {}
 
-    virtual bool initialize(const ash::dictionary& config) override
+    virtual bool initialize(const dictionary& config) override
     {
         initialize_resource();
         initialize_plane();
         initialize_camera();
         initialize_task();
 
-        system<ash::scene::scene>().sync_local();
+        system<scene::scene>().sync_local();
 
         system<core::event>().subscribe<window::event_window_resize>(
             [this](std::uint32_t width, std::uint32_t height) {
-                auto& world = system<ash::ecs::world>();
-                auto& c_camera = world.component<camera>(m_camera);
+                auto& world = system<ecs::world>();
+                auto& c_camera = world.component<graphics::camera>(m_camera);
                 c_camera.set(
                     math::to_radians(45.0f),
                     static_cast<float>(width) / static_cast<float>(height),
                     0.3f,
                     1000.0f,
-                    true);
+                    false);
             });
 
         return true;
@@ -63,9 +45,9 @@ public:
 private:
     void initialize_resource()
     {
-        auto& world = system<ash::ecs::world>();
-        auto& scene = system<ash::scene::scene>();
-        auto& relation = system<ash::core::relation>();
+        auto& world = system<ecs::world>();
+        auto& scene = system<scene::scene>();
+        auto& relation = system<core::relation>();
 
         m_actor = system<mmd_viewer>().load_mmd(
             "sora",
@@ -77,47 +59,47 @@ private:
 
     void initialize_plane()
     {
-        collision_shape_desc desc;
-        desc.type = collision_shape_type::BOX;
+        physics::collision_shape_desc desc;
+        desc.type = physics::collision_shape_type::BOX;
         desc.box.length = 1000.0f;
         desc.box.height = 0.5f;
         desc.box.width = 1000.0f;
-        m_plane_shape = system<ash::physics::physics>().make_shape(desc);
+        m_plane_shape = system<physics::physics>().make_shape(desc);
 
-        ash::ecs::world& world = system<ash::ecs::world>();
+        ecs::world& world = system<ecs::world>();
         m_plane = world.create();
 
-        world.add<core::link, rigidbody, transform>(m_plane);
+        world.add<core::link, physics::rigidbody, scene::transform>(m_plane);
 
-        auto& t = world.component<transform>(m_plane);
+        auto& t = world.component<scene::transform>(m_plane);
         t.position = {0.0f, -3.0f, 0.0f};
 
-        auto& r = world.component<rigidbody>(m_plane);
+        auto& r = world.component<physics::rigidbody>(m_plane);
         r.shape = m_plane_shape.get();
         r.mass = 0.0f;
         r.relation = m_plane;
 
-        system<ash::core::relation>().link(m_plane, system<ash::scene::scene>().root());
+        system<core::relation>().link(m_plane, system<scene::scene>().root());
     }
 
     void initialize_camera()
     {
-        auto& world = system<ash::ecs::world>();
-        auto& scene = system<ash::scene::scene>();
+        auto& world = system<ecs::world>();
+        auto& scene = system<scene::scene>();
         auto& graphics = system<graphics::graphics>();
 
         m_camera = world.create();
-        world.add<core::link, main_camera, camera, transform>(m_camera);
-        auto& c_camera = world.component<camera>(m_camera);
+        world.add<core::link, graphics::camera, scene::transform>(m_camera);
+        auto& c_camera = world.component<graphics::camera>(m_camera);
         c_camera.set(math::to_radians(45.0f), 1300.0f / 800.0f, 0.3f, 1000.0f, false);
 
         c_camera.parameter = graphics.make_pipeline_parameter("ash_pass");
 
-        auto& c_transform = world.component<transform>(m_camera);
+        auto& c_transform = world.component<scene::transform>(m_camera);
         c_transform.position = {0.0f, 11.0f, -30.0f};
         c_transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
         c_transform.scaling = {1.0f, 1.0f, 1.0f};
-        system<ash::core::relation>().link(m_camera, scene.root());
+        system<core::relation>().link(m_camera, scene.root());
     }
 
     void initialize_task()
@@ -143,19 +125,19 @@ private:
 
     void update_camera(float delta)
     {
-        auto& world = system<ash::ecs::world>();
-        auto& keyboard = system<ash::window::window>().keyboard();
-        auto& mouse = system<ash::window::window>().mouse();
+        auto& world = system<ecs::world>();
+        auto& keyboard = system<window::window>().keyboard();
+        auto& mouse = system<window::window>().mouse();
 
-        if (keyboard.key(keyboard_key::KEY_1).release())
+        if (keyboard.key(window::keyboard_key::KEY_1).release())
         {
-            if (mouse.mode() == mouse_mode::CURSOR_RELATIVE)
-                mouse.mode(mouse_mode::CURSOR_ABSOLUTE);
+            if (mouse.mode() == window::mouse_mode::CURSOR_RELATIVE)
+                mouse.mode(window::mouse_mode::CURSOR_ABSOLUTE);
             else
-                mouse.mode(mouse_mode::CURSOR_RELATIVE);
+                mouse.mode(window::mouse_mode::CURSOR_RELATIVE);
         }
 
-        if (keyboard.key(keyboard_key::KEY_3).release())
+        if (keyboard.key(window::keyboard_key::KEY_3).release())
         {
             static std::size_t index = 0;
             static std::vector<math::float4> colors = {
@@ -164,15 +146,15 @@ private:
                 math::float4{0.0f, 0.0f, 1.0f, 1.0f}
             };
 
-            auto& v = world.component<visual>(m_actor);
+            auto& v = world.component<graphics::visual>(m_actor);
             v.submesh[0].parameters[1]->set(0, colors[index]);
 
             index = (index + 1) % colors.size();
         }
 
-        auto& camera_transform = world.component<transform>(m_camera);
+        auto& camera_transform = world.component<scene::transform>(m_camera);
         camera_transform.dirty = true;
-        if (mouse.mode() == mouse_mode::CURSOR_RELATIVE)
+        if (mouse.mode() == window::mouse_mode::CURSOR_RELATIVE)
         {
             m_heading += mouse.x() * m_rotate_speed * delta;
             m_pitch += mouse.y() * m_rotate_speed * delta;
@@ -182,13 +164,13 @@ private:
         }
 
         float x = 0, z = 0;
-        if (keyboard.key(keyboard_key::KEY_W).down())
+        if (keyboard.key(window::keyboard_key::KEY_W).down())
             z += 1.0f;
-        if (keyboard.key(keyboard_key::KEY_S).down())
+        if (keyboard.key(window::keyboard_key::KEY_S).down())
             z -= 1.0f;
-        if (keyboard.key(keyboard_key::KEY_D).down())
+        if (keyboard.key(window::keyboard_key::KEY_D).down())
             x += 1.0f;
-        if (keyboard.key(keyboard_key::KEY_A).down())
+        if (keyboard.key(window::keyboard_key::KEY_A).down())
             x -= 1.0f;
 
         math::float4_simd s = math::simd::load(camera_transform.scaling);
@@ -204,18 +186,18 @@ private:
 
     void update_actor(float delta)
     {
-        auto& world = system<ash::ecs::world>();
-        auto& keyboard = system<ash::window::window>().keyboard();
+        auto& world = system<ecs::world>();
+        auto& keyboard = system<window::window>().keyboard();
 
         float move = 0.0f;
-        if (keyboard.key(keyboard_key::KEY_E).down())
+        if (keyboard.key(window::keyboard_key::KEY_E).down())
             move += 1.0f;
-        if (keyboard.key(keyboard_key::KEY_Q).down())
+        if (keyboard.key(window::keyboard_key::KEY_Q).down())
             move -= 1.0f;
 
         if (move != 0.0f)
         {
-            auto& actor_transform = world.component<transform>(m_actor);
+            auto& actor_transform = world.component<scene::transform>(m_actor);
             actor_transform.position[0] += move * m_move_speed * delta;
             actor_transform.dirty = true;
         }
@@ -223,49 +205,60 @@ private:
 
     void update()
     {
-        if (system<ash::window::window>().keyboard().key(keyboard_key::KEY_ESCAPE).down())
+        if (system<window::window>().keyboard().key(window::keyboard_key::KEY_ESCAPE).down())
             m_app->exit();
 
         auto& scene = system<scene::scene>();
         scene.reset_sync_counter();
 
-        float delta = system<ash::core::timer>().frame_delta();
+        float delta = system<core::timer>().frame_delta();
         update_camera(delta);
         update_actor(delta);
 
-        system<ash::scene::scene>().sync_local();
-        // system<ash::physics::physics>().simulation();
+        system<scene::scene>().sync_local();
         system<mmd_viewer>().update();
     }
 
     std::string m_title;
-    application* m_app;
+    core::application* m_app;
 
-    entity m_camera;
-    entity m_actor;
-    entity m_plane;
+    ecs::entity m_camera;
+    ecs::entity m_actor;
+    ecs::entity m_plane;
 
-    std::unique_ptr<collision_shape_interface> m_plane_shape;
+    std::unique_ptr<physics::collision_shape_interface> m_plane_shape;
 
     float m_heading = 0.0f, m_pitch = 0.0f;
 
     float m_rotate_speed = 0.2f;
     float m_move_speed = 7.0f;
 };
+
+class mmd_viewer_app
+{
+public:
+    mmd_viewer_app() : m_app("resource/config")
+    {
+        m_app.install<window::window>();
+        m_app.install<core::relation>();
+        m_app.install<scene::scene>();
+        m_app.install<graphics::graphics>();
+        m_app.install<physics::physics>();
+        m_app.install<mmd_animation>();
+        m_app.install<mmd_viewer>();
+        m_app.install<sample_module>(&m_app);
+    }
+
+    void run() { m_app.run(); }
+
+private:
+    core::application m_app;
+};
 } // namespace ash::sample::mmd
 
 int main()
 {
-    application app;
-    app.install<window>();
-    app.install<ash::core::relation>();
-    app.install<scene>();
-    app.install<graphics>();
-    app.install<physics>();
-    app.install<mmd_animation>();
-    app.install<mmd_viewer>();
-    app.install<test_module>(&app);
-
+    ash::sample::mmd::mmd_viewer_app app;
     app.run();
 
     return 0;

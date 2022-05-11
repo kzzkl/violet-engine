@@ -61,8 +61,8 @@ bool vk_context::on_initialize(const renderer_desc& config)
     create_instance();
     create_surface(config.window_handle);
     create_device();
-    create_swap_chain(config.width, config.height);
     create_command_queue();
+    create_swap_chain(config.width, config.height);
     create_semaphore();
     create_descriptor_pool();
     create_sampler();

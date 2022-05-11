@@ -6,10 +6,6 @@
 
 namespace ash::graphics
 {
-struct main_camera
-{
-};
-
 struct camera
 {
     void set(float fov, float aspect, float near_z, float far_z, bool flip_y = false)

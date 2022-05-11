@@ -11,28 +11,30 @@ class d3d12_render_target;
 class d3d12_render_target_proxy
 {
 public:
-    explicit d3d12_render_target_proxy(d3d12_render_target* resource);
+    explicit d3d12_render_target_proxy(D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle)
+        : m_rtv_handle(rtv_handle)
+    {
+    }
 
-    void begin_render(D3D12GraphicsCommandList* command_list);
-    void end_render(D3D12GraphicsCommandList* command_list);
-    void resolve(D3D12Resource* target);
-
-    D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle() const noexcept;
+    inline D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle() const noexcept { return m_rtv_handle; }
 
 private:
-    d3d12_render_target* m_resource;
+    D3D12_CPU_DESCRIPTOR_HANDLE m_rtv_handle;
 };
 
 class d3d12_depth_stencil_buffer;
 class d3d12_depth_stencil_buffer_proxy
 {
 public:
-    explicit d3d12_depth_stencil_buffer_proxy(d3d12_depth_stencil_buffer* resource);
+    explicit d3d12_depth_stencil_buffer_proxy(D3D12_CPU_DESCRIPTOR_HANDLE dsv_handle)
+        : m_dsv_handle(dsv_handle)
+    {
+    }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle() const noexcept;
+    inline D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle() const noexcept { return m_dsv_handle; }
 
 private:
-    d3d12_depth_stencil_buffer* m_resource;
+    D3D12_CPU_DESCRIPTOR_HANDLE m_dsv_handle;
 };
 
 class d3d12_shader_resource_proxy
@@ -111,6 +113,8 @@ public:
         resource_format format);
     d3d12_render_target(const render_target_desc& desc);
     d3d12_render_target(d3d12_ptr<D3D12Resource> resource);
+    d3d12_render_target(d3d12_render_target&& other);
+    virtual ~d3d12_render_target();
 
     virtual d3d12_render_target_proxy render_target() override;
     virtual d3d12_shader_resource_proxy shader_resource() override;
@@ -120,13 +124,9 @@ public:
     virtual resource_format format() const noexcept override;
     virtual resource_extent extent() const noexcept override;
 
+    d3d12_render_target& operator=(d3d12_render_target&& other);
+
 private:
-    friend class d3d12_render_target_proxy;
-
-    void begin_render(D3D12GraphicsCommandList* command_list);
-    void end_render(D3D12GraphicsCommandList* command_list);
-    void resolve(D3D12Resource* target);
-
     d3d12_ptr<D3D12Resource> m_resource;
     std::size_t m_rtv_offset;
     std::size_t m_srv_offset;
@@ -141,6 +141,9 @@ public:
         std::size_t samples,
         resource_format format);
     d3d12_depth_stencil_buffer(const depth_stencil_buffer_desc& desc);
+    d3d12_depth_stencil_buffer(d3d12_depth_stencil_buffer&& other);
+    virtual ~d3d12_depth_stencil_buffer();
+
 
     virtual d3d12_depth_stencil_buffer_proxy depth_stencil_buffer();
 
@@ -149,9 +152,9 @@ public:
     virtual resource_format format() const noexcept override;
     virtual resource_extent extent() const noexcept override;
 
-private:
-    friend class d3d12_depth_stencil_buffer_proxy;
+    d3d12_depth_stencil_buffer& operator=(d3d12_depth_stencil_buffer&& other);
 
+private:
     d3d12_ptr<D3D12Resource> m_resource;
     std::size_t m_dsv_offset;
 };

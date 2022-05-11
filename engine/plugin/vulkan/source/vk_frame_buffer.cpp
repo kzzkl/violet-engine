@@ -18,7 +18,7 @@ vk_frame_buffer_layout::vk_frame_buffer_layout(attachment_desc* attachment, std:
         info.description.storeOp = to_vk_attachment_store_op(attachment[i].store_op);
         info.description.stencilLoadOp = to_vk_attachment_load_op(attachment[i].stencil_load_op);
         info.description.stencilStoreOp = to_vk_attachment_store_op(attachment[i].stencil_store_op);
-        info.description.initialLayout = to_vk_image_layout(attachment[i].initial_state);
+        info.description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         info.description.finalLayout = to_vk_image_layout(attachment[i].final_state);
 
         m_attachments.push_back(info);

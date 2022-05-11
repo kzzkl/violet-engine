@@ -146,10 +146,6 @@ d3d12_command_queue::d3d12_command_queue(std::size_t render_concurrency) : m_fen
 
     // Initialize rendering commands.
     auto render_allocators = m_frame_resource.get().render_allocators;
-    m_pre_command =
-        std::make_unique<d3d12_render_command>(render_allocators[0].Get(), L"pre render command");
-    m_post_command =
-        std::make_unique<d3d12_render_command>(render_allocators[0].Get(), L"post render command");
     for (std::size_t i = 0; i < render_concurrency; ++i)
     {
         auto render_command =
@@ -169,33 +165,18 @@ d3d12_command_queue::d3d12_command_queue(std::size_t render_concurrency) : m_fen
         device->CreateFence(m_fence_counter, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
 }
 
-d3d12_render_command* d3d12_command_queue::allocate_render_command(d3d12_render_command_type type)
+d3d12_render_command* d3d12_command_queue::allocate_render_command()
 {
-    switch (type)
+    std::size_t index = m_render_command_counter.fetch_add(1);
+    if (index < m_render_command.size())
     {
-    case d3d12_render_command_type::PRE_RENDER: {
-        m_pre_command->reset();
-        return m_pre_command.get();
+        m_render_command[index]->reset();
+        return m_render_command[index].get();
     }
-    case d3d12_render_command_type::RENDER: {
-        std::size_t index = m_render_command_counter.fetch_add(1);
-        if (index < m_render_command.size())
-        {
-            m_render_command[index]->reset();
-            return m_render_command[index].get();
-        }
-        else
-        {
-            return nullptr;
-        }
-    }
-    case d3d12_render_command_type::POST_RENDER: {
-        m_post_command->reset();
-        return m_post_command.get();
-    }
-    default:
+    else
+    {
         return nullptr;
-    };
+    }
 }
 
 void d3d12_command_queue::execute_command(d3d12_render_command* command)
@@ -281,12 +262,8 @@ void d3d12_command_queue::execute_batch()
     }
 
     // execute render command
-    m_batch.push_back(m_pre_command->get());
     for (std::size_t i = 0; i < m_render_command_counter; ++i)
-    {
         m_batch.push_back(m_render_command[i]->get());
-    }
-    m_batch.push_back(m_post_command->get());
 
     m_queue->ExecuteCommandLists(static_cast<UINT>(m_batch.size()), m_batch.data());
     m_batch.clear();
@@ -316,8 +293,6 @@ void d3d12_command_queue::switch_frame_resources()
     for (std::size_t i = 0; i < resource.concurrency; ++i)
         throw_if_failed(allocators[i]->Reset());
 
-    m_pre_command->allocator(allocators[0].Get());
-    m_post_command->allocator(allocators[0].Get());
     for (std::size_t i = 0; i < m_render_command.size(); ++i)
         m_render_command[i]->allocator(allocators[i].Get());
 

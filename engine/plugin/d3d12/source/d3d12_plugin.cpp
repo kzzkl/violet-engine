@@ -37,18 +37,6 @@ public:
         auto result = new d3d12_vertex_buffer<d3d12_default_buffer>(desc, command_list.get());
         d3d12_context::command()->execute_command(command_list);
         return result;
-        /*if (desc.dynamic)
-        {
-            return new d3d12_vertex_buffer<d3d12_upload_buffer>(desc, nullptr);
-        }
-        else
-        {
-            auto command_list = d3d12_context::command()->allocate_dynamic_command();
-            auto result = new d3d12_vertex_buffer<d3d12_default_buffer>(desc, command_list.get());
-            d3d12_context::command()->execute_command(command_list);
-            return result;
-        }*/
-        return nullptr;
     }
 
     virtual resource_interface* make_index_buffer(const index_buffer_desc& desc) override
@@ -57,18 +45,6 @@ public:
         auto result = new d3d12_index_buffer<d3d12_default_buffer>(desc, command_list.get());
         d3d12_context::command()->execute_command(command_list);
         return result;
-        /*if (desc.dynamic)
-        {
-            return new d3d12_index_buffer<d3d12_upload_buffer>(desc, nullptr);
-        }
-        else
-        {
-            auto command_list = d3d12_context::command()->allocate_dynamic_command();
-            auto result = new d3d12_index_buffer<d3d12_default_buffer>(desc, command_list.get());
-            d3d12_context::command()->execute_command(command_list);
-            return result;
-        }*/
-        return nullptr;
     }
 
     virtual resource_interface* make_texture(
@@ -90,20 +66,6 @@ public:
     virtual resource_interface* make_render_target(const render_target_desc& desc) override
     {
         return new d3d12_render_target(desc);
-        /*if (multiple_sampling == 1)
-            return new d3d12_render_target(
-                width,
-                height,
-                RENDER_TARGET_FORMAT,
-                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        else
-            return new d3d12_render_target_mutlisample(
-                width,
-                height,
-                RENDER_TARGET_FORMAT,
-                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-                multiple_sampling,
-                true);*/
     }
 
     virtual resource_interface* make_depth_stencil_buffer(
