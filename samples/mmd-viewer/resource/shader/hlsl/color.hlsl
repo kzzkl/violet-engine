@@ -61,7 +61,11 @@ vs_out vs_main(vs_in vin)
     weights[2] = vin.weight.z;
     weights[3] = 1.0f - weights[0] - weights[1] - weights[2];
 
-    float4x4 m;
+    float4x4 m = float4x4(
+        0.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 0.0f);
     for (int i = 0; i < 4; ++i)
         m += weights[i] * offset[vin.bone[i]];
 
@@ -105,5 +109,6 @@ float4 ps_main(vs_out pin) : SV_TARGET
         color *= toon.Sample(sampler_wrap, float2(0.0f, c));
     }
 
+    // return float4(1.0f, 1.0f, 1.0f, 1.0f);
     return color;
 }

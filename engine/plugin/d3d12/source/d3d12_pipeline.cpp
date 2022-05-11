@@ -8,7 +8,7 @@ namespace ash::graphics::d3d12
 {
 namespace
 {
-D3D12_BLEND_DESC to_d3d12(const blend_desc& desc)
+D3D12_BLEND_DESC to_d3d12_blend_desc(const blend_desc& desc)
 {
     auto convert_factor = [](blend_factor factor) {
         switch (factor)
@@ -30,7 +30,7 @@ D3D12_BLEND_DESC to_d3d12(const blend_desc& desc)
         case blend_factor::TARGET_INV_ALPHA:
             return D3D12_BLEND_INV_DEST_ALPHA;
         default:
-            return D3D12_BLEND_ZERO;
+            throw d3d12_exception("Invalid blend factor.");
         };
     };
 
@@ -46,7 +46,7 @@ D3D12_BLEND_DESC to_d3d12(const blend_desc& desc)
         case blend_op::MAX:
             return D3D12_BLEND_OP_MAX;
         default:
-            return D3D12_BLEND_OP_ADD;
+            throw d3d12_exception("Invalid blend op.");
         }
     };
 
@@ -76,22 +76,43 @@ D3D12_BLEND_DESC to_d3d12(const blend_desc& desc)
     return result;
 }
 
-D3D12_DEPTH_STENCIL_DESC to_d3d12(const depth_stencil_desc& desc)
+D3D12_DEPTH_STENCIL_DESC to_d3d12_depth_stencil_desc(const depth_stencil_desc& desc)
 {
-    auto convert_factor = [](depth_functor factor) {
-        switch (factor)
-        {
-        case depth_functor::LESS:
-            return D3D12_COMPARISON_FUNC_LESS;
-        case depth_functor::ALWAYS:
-            return D3D12_COMPARISON_FUNC_ALWAYS;
-        default:
-            return D3D12_COMPARISON_FUNC_LESS;
-        };
+    D3D12_DEPTH_STENCIL_DESC result = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+
+    switch (desc.depth_functor)
+    {
+    case depth_functor::LESS:
+        result.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+        break;
+    case depth_functor::ALWAYS:
+        result.DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+        break;
+    default:
+        throw d3d12_exception("Invalid depth functor.");
     };
 
-    D3D12_DEPTH_STENCIL_DESC result = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-    result.DepthFunc = convert_factor(desc.depth_functor);
+    return result;
+}
+
+D3D12_RASTERIZER_DESC to_d3d12_rasterizer_desc(const rasterizer_desc& desc)
+{
+    D3D12_RASTERIZER_DESC result = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+
+    switch (desc.cull_mode)
+    {
+    case cull_mode::NONE:
+        result.CullMode = D3D12_CULL_MODE_NONE;
+        break;
+    case cull_mode::FRONT:
+        result.CullMode = D3D12_CULL_MODE_FRONT;
+        break;
+    case cull_mode::BACK:
+        result.CullMode = D3D12_CULL_MODE_BACK;
+        break;
+    default:
+        throw d3d12_exception("Invalid depth functor.");
+    };
 
     return result;
 }
@@ -469,7 +490,7 @@ d3d12_frame_buffer::d3d12_frame_buffer(
         D3D12_RESOURCE_STATE_DEPTH_WRITE,
         D3D12_RESOURCE_STATE_PRESENT};
 
-    auto [width, hegith] = render_target->extent();
+    auto [width, heigth] = render_target->extent();
     for (auto& attachment : render_pass->frame_buffer_layout())
     {
         switch (attachment.type)
@@ -477,7 +498,7 @@ d3d12_frame_buffer::d3d12_frame_buffer(
         case attachment_type::COLOR: {
             auto color = std::make_unique<d3d12_render_target>(
                 width,
-                hegith,
+                heigth,
                 attachment.samples,
                 attachment.format);
             m_render_targets.push_back(color->render_target().cpu_handle());
@@ -491,7 +512,7 @@ d3d12_frame_buffer::d3d12_frame_buffer(
         case attachment_type::DEPTH: {
             auto depth = std::make_unique<d3d12_depth_stencil_buffer>(
                 width,
-                hegith,
+                heigth,
                 attachment.samples,
                 attachment.format);
             m_depth_stencil = depth->depth_stencil_buffer().cpu_handle();
@@ -828,16 +849,15 @@ void d3d12_pipeline::initialize_pipeline_state(const pipeline_desc& desc)
     pso_desc.pRootSignature = m_root_signature.Get();
     pso_desc.VS = CD3DX12_SHADER_BYTECODE(vs_blob.Get());
     pso_desc.PS = CD3DX12_SHADER_BYTECODE(ps_blob.Get());
-    pso_desc.DepthStencilState = to_d3d12(desc.depth_stencil);
-    pso_desc.BlendState = to_d3d12(desc.blend);
+    pso_desc.DepthStencilState = to_d3d12_depth_stencil_desc(desc.depth_stencil);
+    pso_desc.BlendState = to_d3d12_blend_desc(desc.blend);
+    pso_desc.RasterizerState = to_d3d12_rasterizer_desc(desc.rasterizer);
     pso_desc.SampleMask = UINT_MAX;
     pso_desc.NumRenderTargets = 1;
     pso_desc.RTVFormats[0] = RENDER_TARGET_FORMAT;
     pso_desc.SampleDesc.Count = sample_level.SampleCount;
     pso_desc.SampleDesc.Quality = sample_level.NumQualityLevels - 1;
     pso_desc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-    pso_desc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
     if (desc.primitive_topology == primitive_topology::TRIANGLE_LIST)
         pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     else if (desc.primitive_topology == primitive_topology::LINE_LIST)
@@ -896,8 +916,18 @@ void d3d12_render_pass::begin(D3D12GraphicsCommandList* command_list, d3d12_reso
     m_current_index = 0;
     m_current_frame_buffer =
         d3d12_context::frame_buffer().get_or_create_frame_buffer(this, render_target);
-
     m_current_frame_buffer->begin_render(command_list);
+
+    auto [width, height] = render_target->extent();
+
+    D3D12_VIEWPORT viewport = {};
+    viewport.Width = static_cast<float>(width);
+    viewport.Height = static_cast<float>(height);
+    viewport.MinDepth = 0.0f;
+    viewport.MaxDepth = 1.0f;
+    viewport.TopLeftX = 0.0f;
+    viewport.TopLeftY = 0.0f;
+    command_list->RSSetViewports(1, &viewport);
 
     m_pipelines[m_current_index]->begin(command_list, m_current_frame_buffer);
 }
@@ -924,5 +954,16 @@ d3d12_frame_buffer* d3d12_frame_buffer_manager::get_or_create_frame_buffer(
         result = std::make_unique<d3d12_frame_buffer>(render_pass, render_target);
 
     return result.get();
+}
+
+void d3d12_frame_buffer_manager::notify_destroy(d3d12_resource* render_target)
+{
+    for (auto iter = m_frame_buffers.begin(); iter != m_frame_buffers.end();)
+    {
+        if (iter->first.second == render_target)
+            iter = m_frame_buffers.erase(iter);
+        else
+            ++iter;
+    }
 }
 } // namespace ash::graphics::d3d12

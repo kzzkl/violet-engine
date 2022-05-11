@@ -1,48 +1,11 @@
 #include "d3d12_resource.hpp"
 #include "DDSTextureLoader12.h"
 #include "d3d12_context.hpp"
+#include "d3d12_pipeline.hpp"
 #include <fstream>
 
 namespace ash::graphics::d3d12
 {
-d3d12_render_target_proxy::d3d12_render_target_proxy(d3d12_render_target* resource)
-    : m_resource(resource)
-{
-}
-
-void d3d12_render_target_proxy::begin_render(D3D12GraphicsCommandList* command_list)
-{
-    m_resource->begin_render(command_list);
-}
-
-void d3d12_render_target_proxy::end_render(D3D12GraphicsCommandList* command_list)
-{
-    m_resource->end_render(command_list);
-}
-
-void d3d12_render_target_proxy::resolve(D3D12Resource* target)
-{
-    m_resource->resolve(target);
-}
-
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_render_target_proxy::cpu_handle() const noexcept
-{
-    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-    return heap->cpu_handle(m_resource->m_rtv_offset);
-}
-
-d3d12_depth_stencil_buffer_proxy::d3d12_depth_stencil_buffer_proxy(
-    d3d12_depth_stencil_buffer* resource)
-    : m_resource(resource)
-{
-}
-
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_depth_stencil_buffer_proxy::cpu_handle() const noexcept
-{
-    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-    return heap->cpu_handle(m_resource->m_dsv_offset);
-}
-
 d3d12_render_target_proxy d3d12_resource::render_target()
 {
     throw d3d12_exception("The resource is not a render target");
@@ -144,9 +107,38 @@ d3d12_render_target::d3d12_render_target(d3d12_ptr<D3D12Resource> resource) : m_
     device->CreateShaderResourceView(m_resource.Get(), nullptr, srv_heap->cpu_handle(m_srv_offset));
 }
 
+d3d12_render_target::d3d12_render_target(d3d12_render_target&& other)
+    : d3d12_resource(std::move(other)),
+      m_rtv_offset(other.m_rtv_offset),
+      m_srv_offset(other.m_srv_offset),
+      m_resource(other.m_resource)
+{
+    other.m_resource = nullptr;
+    other.m_rtv_offset = INVALID_DESCRIPTOR_INDEX;
+    other.m_srv_offset = INVALID_DESCRIPTOR_INDEX;
+}
+
+d3d12_render_target::~d3d12_render_target()
+{
+    if (m_rtv_offset != INVALID_DESCRIPTOR_INDEX)
+    {
+        d3d12_context::frame_buffer().notify_destroy(this);
+
+        auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        heap->deallocate(m_rtv_offset);
+    }
+
+    if (m_srv_offset != INVALID_DESCRIPTOR_INDEX)
+    {
+        auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        heap->deallocate(m_srv_offset);
+    }
+}
+
 d3d12_render_target_proxy d3d12_render_target::render_target()
 {
-    return d3d12_render_target_proxy(this);
+    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    return d3d12_render_target_proxy(heap->cpu_handle(m_rtv_offset));
 }
 
 d3d12_shader_resource_proxy d3d12_render_target::shader_resource()
@@ -168,16 +160,19 @@ resource_extent d3d12_render_target::extent() const noexcept
         static_cast<std::uint32_t>(desc.Height)};
 }
 
-void d3d12_render_target::begin_render(D3D12GraphicsCommandList* command_list)
+d3d12_render_target& d3d12_render_target::operator=(d3d12_render_target&& other)
 {
-}
+    d3d12_resource::operator=(std::move(other));
 
-void d3d12_render_target::end_render(D3D12GraphicsCommandList* command_list)
-{
-}
+    m_resource = other.m_resource;
+    m_rtv_offset = other.m_rtv_offset;
+    m_srv_offset = other.m_srv_offset;
 
-void d3d12_render_target::resolve(D3D12Resource* target)
-{
+    other.m_resource = nullptr;
+    other.m_rtv_offset = INVALID_DESCRIPTOR_INDEX;
+    other.m_srv_offset = INVALID_DESCRIPTOR_INDEX;
+
+    return *this;
 }
 
 d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(
@@ -235,9 +230,28 @@ d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(const depth_stencil_buffe
 {
 }
 
+d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(d3d12_depth_stencil_buffer&& other)
+    : d3d12_resource(std::move(other)),
+      m_dsv_offset(other.m_dsv_offset),
+      m_resource(other.m_resource)
+{
+    other.m_resource = nullptr;
+    other.m_dsv_offset = INVALID_DESCRIPTOR_INDEX;
+}
+
+d3d12_depth_stencil_buffer::~d3d12_depth_stencil_buffer()
+{
+    if (m_dsv_offset != INVALID_DESCRIPTOR_INDEX)
+    {
+        auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+        heap->deallocate(m_dsv_offset);
+    }
+}
+
 d3d12_depth_stencil_buffer_proxy d3d12_depth_stencil_buffer::depth_stencil_buffer()
 {
-    return d3d12_depth_stencil_buffer_proxy(this);
+    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+    return d3d12_depth_stencil_buffer_proxy(heap->cpu_handle(m_dsv_offset));
 }
 
 resource_format d3d12_depth_stencil_buffer::format() const noexcept
@@ -251,6 +265,20 @@ resource_extent d3d12_depth_stencil_buffer::extent() const noexcept
     return resource_extent{
         static_cast<std::uint32_t>(desc.Width),
         static_cast<std::uint32_t>(desc.Height)};
+}
+
+d3d12_depth_stencil_buffer& d3d12_depth_stencil_buffer::operator=(
+    d3d12_depth_stencil_buffer&& other)
+{
+    d3d12_resource::operator=(std::move(other));
+
+    m_resource = other.m_resource;
+    m_dsv_offset = other.m_dsv_offset;
+
+    other.m_resource = nullptr;
+    other.m_dsv_offset = INVALID_DESCRIPTOR_INDEX;
+
+    return *this;
 }
 
 d3d12_texture::d3d12_texture(const char* file, D3D12GraphicsCommandList* command_list)

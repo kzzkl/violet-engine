@@ -54,24 +54,15 @@ bool graphics::initialize(const dictionary& config)
     };
     make_pipeline_parameter_layout("ash_pass", ash_pass);
 
-    /* adapter_info info[4] = {};
-     std::size_t num_adapter = m_renderer->adapter(info, 4);
-     for (std::size_t i = 0; i < num_adapter; ++i)
-     {
-         log::debug("graphics adapter: {}", info[i].description);
-     }*/
-
     auto& world = system<ecs::world>();
     auto& event = system<core::event>();
     auto& scene = system<scene::scene>();
     auto& relation = system<core::relation>();
 
     world.register_component<visual>();
-    world.register_component<main_camera>();
     world.register_component<camera>();
     m_visual_view = world.make_view<visual>();
     m_object_view = world.make_view<visual, scene::transform>();
-    m_camera_view = world.make_view<main_camera, camera, scene::transform>();
     // m_tv = world.make_view<scene::transform>();
 
     event.subscribe<window::event_window_resize>(

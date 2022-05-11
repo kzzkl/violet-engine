@@ -223,6 +223,8 @@ public:
         d3d12_render_pass* render_pass,
         d3d12_resource* render_target);
 
+    void notify_destroy(d3d12_resource* render_target);
+
 private:
     using key_type = std::pair<d3d12_render_pass*, d3d12_resource*>;
     struct key_hash

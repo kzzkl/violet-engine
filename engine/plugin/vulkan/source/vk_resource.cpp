@@ -260,6 +260,12 @@ vk_back_buffer::vk_back_buffer(VkImage image, VkFormat format, const VkExtent2D&
     m_image_view = create_image_view(image, format, VK_IMAGE_ASPECT_COLOR_BIT);
     m_format = to_ash_format(format);
     m_extent = extent;
+
+    transition_image_layout(
+        m_image,
+        format,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 }
 
 vk_back_buffer::vk_back_buffer(vk_back_buffer&& other)

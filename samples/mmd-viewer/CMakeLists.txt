@@ -25,8 +25,10 @@ target_link_libraries(${PROJECT_NAME}
         ash::scene
         ash::physics)
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource DESTINATION bin)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/config DESTINATION bin)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/config DESTINATION bin/resource)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/mmd DESTINATION bin/resource)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/model DESTINATION bin/resource)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/out/ DESTINATION bin/resource/shader)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

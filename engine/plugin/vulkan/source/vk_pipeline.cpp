@@ -303,13 +303,13 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
     vert_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vert_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
     vert_stage_info.module = load_shader(desc.vertex_shader);
-    vert_stage_info.pName = "main";
+    vert_stage_info.pName = "vs_main";
 
     VkPipelineShaderStageCreateInfo frag_stage_info = {};
     frag_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     frag_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     frag_stage_info.module = load_shader(desc.pixel_shader);
-    frag_stage_info.pName = "main";
+    frag_stage_info.pName = "ps_main";
 
     VkPipelineShaderStageCreateInfo shader_stage_info[] = {vert_stage_info, frag_stage_info};
 
@@ -434,12 +434,25 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
     rasterization_info.rasterizerDiscardEnable = VK_FALSE;
     rasterization_info.polygonMode = VK_POLYGON_MODE_FILL;
     rasterization_info.lineWidth = 1.0f;
-    rasterization_info.cullMode = VK_CULL_MODE_BACK_BIT;
     rasterization_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
     rasterization_info.depthBiasEnable = VK_FALSE;
     rasterization_info.depthBiasConstantFactor = 0.0f;
     rasterization_info.depthBiasClamp = 0.0f;
     rasterization_info.depthBiasSlopeFactor = 0.0f;
+    switch (desc.rasterizer.cull_mode)
+    {
+    case cull_mode::NONE:
+        rasterization_info.cullMode = VK_CULL_MODE_NONE;
+        break;
+    case cull_mode::FRONT:
+        rasterization_info.cullMode = VK_CULL_MODE_FRONT_BIT;
+        break;
+    case cull_mode::BACK:
+        rasterization_info.cullMode = VK_CULL_MODE_BACK_BIT;
+        break;
+    default:
+        throw vk_exception("Invalid cull mode.");
+    }
 
     // Multisample.
     VkPipelineMultisampleStateCreateInfo multisample_info = {};
@@ -571,13 +584,15 @@ void vk_render_pass::begin(VkCommandBuffer command_buffer, vk_image* render_targ
 {
     auto frame_buffer = vk_context::frame_buffer().get_or_create_frame_buffer(this, render_target);
 
+    auto [width, height] = render_target->extent();
+
     VkRenderPassBeginInfo pass_info = {};
     pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     pass_info.renderPass = m_render_pass;
     pass_info.framebuffer = frame_buffer->frame_buffer();
     pass_info.renderArea.offset = {0, 0};
-    // TODO
-    pass_info.renderArea.extent = vk_context::swap_chain().extent();
+    pass_info.renderArea.extent.width = width;
+    pass_info.renderArea.extent.height = height;
     pass_info.clearValueCount = static_cast<std::uint32_t>(frame_buffer->clear_values().size());
     pass_info.pClearValues = frame_buffer->clear_values().data();
 
@@ -678,6 +693,39 @@ void vk_render_pass::create_pass(const render_pass_desc& desc)
         subpasses[i].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     }
 
+    // TODO:
+    std::vector<VkSubpassDependency> dependencies;
+    dependencies.reserve(desc.subpass_count);
+    for (std::size_t i = 0; i < desc.subpass_count; ++i)
+    {
+        VkSubpassDependency dependency = {};
+        if (i == 0)
+        {
+            dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+            dependency.dstSubpass = static_cast<std::uint32_t>(i);
+            dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            dependency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            dependency.dependencyFlags = 0; // NOT BY REGION
+        }
+        else
+        {
+            dependency.srcSubpass = static_cast<std::uint32_t>(i - 1);
+            dependency.dstSubpass = static_cast<std::uint32_t>(i);
+            dependency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+                                      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+                                      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dependency.srcAccessMask =
+                VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            dependency.dstAccessMask =
+                VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+            dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+        }
+        dependencies.push_back(dependency);
+    }
+
     m_frame_buffer_layout =
         std::make_unique<vk_frame_buffer_layout>(desc.attachments, desc.attachment_count);
 
@@ -687,10 +735,12 @@ void vk_render_pass::create_pass(const render_pass_desc& desc)
 
     VkRenderPassCreateInfo pass_info = {};
     pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    pass_info.attachmentCount = static_cast<std::uint32_t>(attachments.size());
     pass_info.pAttachments = attachments.data();
-    pass_info.subpassCount = static_cast<std::uint32_t>(subpasses.size());
+    pass_info.attachmentCount = static_cast<std::uint32_t>(attachments.size());
     pass_info.pSubpasses = subpasses.data();
+    pass_info.subpassCount = static_cast<std::uint32_t>(subpasses.size());
+    pass_info.pDependencies = dependencies.data();
+    pass_info.dependencyCount = static_cast<std::uint32_t>(dependencies.size());
 
     throw_if_failed(vkCreateRenderPass(vk_context::device(), &pass_info, nullptr, &m_render_pass));
 }

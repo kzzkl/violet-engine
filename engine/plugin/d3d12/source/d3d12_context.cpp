@@ -69,19 +69,10 @@ bool d3d12_context::on_initialize(const renderer_desc& desc)
 
 void d3d12_context::on_begin_frame()
 {
-    d3d12_render_command* pre_command =
-        m_command->allocate_render_command(d3d12_render_command_type::PRE_RENDER);
-    m_swap_chain->begin_frame(pre_command->get());
-    m_command->execute_command(pre_command);
 }
 
 void d3d12_context::on_end_frame()
 {
-    d3d12_render_command* post_command =
-        m_command->allocate_render_command(d3d12_render_command_type::POST_RENDER);
-    m_swap_chain->end_frame(post_command->get());
-    m_command->execute_command(post_command);
-
     m_command->execute_batch();
     m_swap_chain->present();
 

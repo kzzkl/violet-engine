@@ -7,13 +7,6 @@
 
 namespace ash::graphics::d3d12
 {
-enum class d3d12_render_command_type
-{
-    PRE_RENDER,
-    RENDER,
-    POST_RENDER
-};
-
 class d3d12_render_command : public render_command_interface
 {
 public:
@@ -68,7 +61,7 @@ class d3d12_command_queue
 public:
     d3d12_command_queue(std::size_t render_concurrency);
 
-    d3d12_render_command* allocate_render_command(d3d12_render_command_type type);
+    d3d12_render_command* allocate_render_command();
     void execute_command(d3d12_render_command* command);
 
     d3d12_dynamic_command allocate_dynamic_command();
@@ -94,10 +87,7 @@ private:
     d3d12_frame_resource<frame_resource> m_frame_resource;
 
     // render command
-    std::unique_ptr<d3d12_render_command> m_pre_command;
-    std::unique_ptr<d3d12_render_command> m_post_command;
     std::vector<std::unique_ptr<d3d12_render_command>> m_render_command;
-
     std::atomic<std::size_t> m_render_command_counter;
 
     // dynamic command

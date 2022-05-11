@@ -25,12 +25,12 @@ mmd_pass::mmd_pass()
     };
     graphics.make_pipeline_parameter_layout("mmd_skeleton", mmd_skeleton);
 
-    // Pass.
+    // Color pass.
     graphics::pipeline_info color_pass_info = {};
-    // color_pass_info.vertex_shader = "resource/shader/glsl/vert.spv";
-    // color_pass_info.pixel_shader = "resource/shader/glsl/frag.spv";
-    color_pass_info.vertex_shader = "resource/shader/hlsl/base.hlsl";
-    color_pass_info.pixel_shader = "resource/shader/hlsl/base.hlsl";
+    // color_pass_info.vertex_shader = "resource/shader/color.vert.spv";
+    // color_pass_info.pixel_shader = "resource/shader/color.frag.spv";
+    color_pass_info.vertex_shader = "resource/shader/color.hlsl";
+    color_pass_info.pixel_shader = "resource/shader/color.hlsl";
     color_pass_info.vertex_attributes = {
         {"POSITION",    graphics::vertex_attribute_type::FLOAT3}, // position
         {"NORMAL",      graphics::vertex_attribute_type::FLOAT3}, // normal
@@ -39,13 +39,36 @@ mmd_pass::mmd_pass()
         {"BONE_WEIGHT", graphics::vertex_attribute_type::FLOAT3}, // bone weight
     };
     color_pass_info.references = {
-        {graphics::attachment_reference_type::COLOR,   0},
-        {graphics::attachment_reference_type::DEPTH,   0},
-        {graphics::attachment_reference_type::RESOLVE, 0}
+        {graphics::attachment_reference_type::COLOR, 0},
+        {graphics::attachment_reference_type::DEPTH, 0},
+        {graphics::attachment_reference_type::UNUSE, 0}
     };
     color_pass_info.primitive_topology = graphics::primitive_topology::TRIANGLE_LIST;
     color_pass_info.parameters = {"ash_object", "mmd_material", "mmd_skeleton", "ash_pass"};
     color_pass_info.samples = 4;
+
+    // Edge pass.
+    graphics::pipeline_info edge_pass_info = {};
+    // edge_pass_info.vertex_shader = "resource/shader/edge.vert.spv";
+    // edge_pass_info.pixel_shader = "resource/shader/edge.frag.spv";
+    edge_pass_info.vertex_shader = "resource/shader/edge.hlsl";
+    edge_pass_info.pixel_shader = "resource/shader/edge.hlsl";
+    edge_pass_info.vertex_attributes = {
+        {"POSITION",    graphics::vertex_attribute_type::FLOAT3}, // position
+        {"NORMAL",      graphics::vertex_attribute_type::FLOAT3}, // normal
+        {"UV",          graphics::vertex_attribute_type::FLOAT2}, // uv
+        {"bone",        graphics::vertex_attribute_type::UINT4 }, // bone
+        {"BONE_WEIGHT", graphics::vertex_attribute_type::FLOAT3}, // bone weight
+    };
+    edge_pass_info.references = {
+        {graphics::attachment_reference_type::COLOR,   0},
+        {graphics::attachment_reference_type::DEPTH,   0},
+        {graphics::attachment_reference_type::RESOLVE, 0}
+    };
+    edge_pass_info.primitive_topology = graphics::primitive_topology::TRIANGLE_LIST;
+    edge_pass_info.parameters = {"mmd_skeleton", "ash_pass"};
+    edge_pass_info.samples = 4;
+    edge_pass_info.rasterizer.cull_mode = graphics::cull_mode::FRONT;
 
     // Attachment.
     graphics::attachment_info render_target = {};
@@ -86,6 +109,7 @@ mmd_pass::mmd_pass()
     mmd_render_pass_info.attachments.push_back(depth_stencil);
     mmd_render_pass_info.attachments.push_back(back_buffer);
     mmd_render_pass_info.subpasses.push_back(color_pass_info);
+    mmd_render_pass_info.subpasses.push_back(edge_pass_info);
 
     m_interface = graphics.make_render_pass(mmd_render_pass_info);
 }
@@ -107,6 +131,20 @@ void mmd_pass::render(const graphics::camera& camera, graphics::render_command_i
         command->parameter(1, unit->parameters[1]->parameter());
         command->parameter(2, unit->parameters[2]->parameter());
 
+        command->draw(
+            unit->vertex_buffer,
+            unit->index_buffer,
+            unit->index_start,
+            unit->index_end,
+            unit->vertex_base);
+    }
+
+    command->next(m_interface.get());
+
+    command->parameter(1, camera.parameter->parameter());
+    for (auto& unit : units())
+    {
+        command->parameter(0, unit->parameters[2]->parameter());
         command->draw(
             unit->vertex_buffer,
             unit->index_buffer,

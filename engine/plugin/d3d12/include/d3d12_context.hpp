@@ -7,7 +7,7 @@
 
 namespace ash::graphics::d3d12
 {
-class d3d12_swap_chain_base;
+class d3d12_swap_chain;
 class d3d12_frame_buffer_manager;
 
 class d3d12_context
@@ -25,7 +25,7 @@ public:
     inline static D3D12Device* device() noexcept { return instance().m_device.Get(); }
 
     inline static d3d12_command_queue* command() noexcept { return instance().m_command.get(); }
-    inline static d3d12_swap_chain_base& swap_chain() noexcept { return *instance().m_swap_chain; }
+    inline static d3d12_swap_chain& swap_chain() noexcept { return *instance().m_swap_chain; }
     inline static d3d12_resource_manager* resource() noexcept
     {
         return instance().m_resource.get();
@@ -47,7 +47,7 @@ private:
     d3d12_ptr<D3D12Device> m_device;
 
     std::unique_ptr<d3d12_command_queue> m_command;
-    std::unique_ptr<d3d12_swap_chain_base> m_swap_chain;
+    std::unique_ptr<d3d12_swap_chain> m_swap_chain;
     std::unique_ptr<d3d12_resource_manager> m_resource;
     std::unique_ptr<d3d12_frame_buffer_manager> m_frame_buffer_manager;
 };
