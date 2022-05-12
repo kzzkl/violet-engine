@@ -25,10 +25,25 @@ target_link_libraries(${PROJECT_NAME}
         ash::scene
         ash::physics)
 
+include(${ASH_ROOT_DIR}/cmake/shader_compile.cmake)
+set(SHADERS "")
+list(APPEND SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/color.hlsl;vert;frag")
+list(APPEND SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/edge.hlsl;vert;frag")
+target_shader_compile(
+    "${PROJECT_NAME}"
+    "${SHADERS}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated"
+    "${ASH_THIRD_PARTY_DIR}/Vulkan/glslangValidator.exe")
+target_shader_compile(
+    "${PROJECT_NAME}"
+    "${SHADERS}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated"
+    "${ASH_THIRD_PARTY_DIR}/DirectX/dxc/dxc.exe")
+
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/config DESTINATION bin/resource)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/mmd DESTINATION bin/resource)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/model DESTINATION bin/resource)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/out/ DESTINATION bin/resource/shader)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated/ DESTINATION bin/resource/shader)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

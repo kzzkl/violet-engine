@@ -167,10 +167,7 @@ private:
     void initialize_pipeline_layout(const pipeline_desc& desc);
     void initialize_pipeline_state(const pipeline_desc& desc);
 
-    d3d12_ptr<D3DBlob> load_shader(
-        std::string_view entry,
-        std::string_view target,
-        std::string_view file);
+    d3d12_ptr<D3DBlob> load_shader(std::string_view file);
 
     std::vector<D3D12_INPUT_ELEMENT_DESC> m_vertex_layout;
 

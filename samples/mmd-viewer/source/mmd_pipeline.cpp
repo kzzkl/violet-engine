@@ -29,8 +29,8 @@ mmd_pass::mmd_pass()
     graphics::pipeline_info color_pass_info = {};
     // color_pass_info.vertex_shader = "resource/shader/color.vert.spv";
     // color_pass_info.pixel_shader = "resource/shader/color.frag.spv";
-    color_pass_info.vertex_shader = "resource/shader/color.hlsl";
-    color_pass_info.pixel_shader = "resource/shader/color.hlsl";
+    color_pass_info.vertex_shader = "resource/shader/color.vert.cso";
+    color_pass_info.pixel_shader = "resource/shader/color.frag.cso";
     color_pass_info.vertex_attributes = {
         {"POSITION",    graphics::vertex_attribute_type::FLOAT3}, // position
         {"NORMAL",      graphics::vertex_attribute_type::FLOAT3}, // normal
@@ -51,8 +51,8 @@ mmd_pass::mmd_pass()
     graphics::pipeline_info edge_pass_info = {};
     // edge_pass_info.vertex_shader = "resource/shader/edge.vert.spv";
     // edge_pass_info.pixel_shader = "resource/shader/edge.frag.spv";
-    edge_pass_info.vertex_shader = "resource/shader/edge.hlsl";
-    edge_pass_info.pixel_shader = "resource/shader/edge.hlsl";
+    edge_pass_info.vertex_shader = "resource/shader/edge.vert.cso";
+    edge_pass_info.pixel_shader = "resource/shader/edge.frag.cso";
     edge_pass_info.vertex_attributes = {
         {"POSITION",    graphics::vertex_attribute_type::FLOAT3}, // position
         {"NORMAL",      graphics::vertex_attribute_type::FLOAT3}, // normal
