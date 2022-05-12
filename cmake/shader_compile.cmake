@@ -21,7 +21,7 @@ function(target_shader_compile TARGET_NAME PARAMETERS OUTPUT_DIR COMPILER_EXECUT
                 add_custom_command(
                     TARGET ${TARGET_NAME}
                     POST_BUILD
-                    COMMAND ${COMPILER_EXECUTABLE} ${SHADER_PATH} -T ${PROFILE} -E ${ENTRY_POINT} -Fo ${OUTPUT_NAME}
+                    COMMAND ${COMPILER_EXECUTABLE} ${SHADER_PATH} -T ${PROFILE} -E ${ENTRY_POINT} -Fo ${OUTPUT_NAME} -Wno-ignored-attributes
                     DEPENDS ${SHADER_PATH})
             elseif(COMPILER_NAME STREQUAL "glslangValidator")
                 if(PARAMETER STREQUAL "vert")
