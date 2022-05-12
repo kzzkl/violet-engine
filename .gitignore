@@ -39,4 +39,4 @@ build
 install
 
 # generate
-*Exports.h
+generated

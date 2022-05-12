@@ -1,11 +1,13 @@
-cbuffer ash_object : register(b0)
+[[vk::binding(0, 0)]]
+cbuffer ash_object : register(b0, space0)
 {
     float4x4 transform_m;
     float4x4 transform_mv;
     float4x4 transform_mvp;
 };
 
-cbuffer mmd_material : register(b1)
+[[vk::binding(0, 1)]]
+cbuffer mmd_material : register(b0, space1)
 {
     float4 diffuse;
     float3 specular;
@@ -14,12 +16,14 @@ cbuffer mmd_material : register(b1)
     uint spa_mode;
 };
 
-cbuffer mmd_skeleton : register(b2)
+[[vk::binding(0, 2)]]
+cbuffer mmd_skeleton : register(b0, space2)
 {
     float4x4 offset[512];
 };
 
-cbuffer ash_pass : register(b3)
+[[vk::binding(0, 3)]]
+cbuffer ash_pass : register(b0, space3)
 {
     float4 camera_position;
     float4 camera_direction;
@@ -29,9 +33,14 @@ cbuffer ash_pass : register(b3)
     float4x4 transform_vp;
 };
 
-Texture2D tex : register(t0);
-Texture2D toon : register(t1);
-Texture2D spa : register(t2);
+[[vk::binding(0, 1)]]
+Texture2D tex : register(t0, space1);
+
+[[vk::binding(1, 1)]]
+Texture2D toon : register(t1, space1);
+
+[[vk::binding(2, 1)]]
+Texture2D spa : register(t2, space1);
 
 SamplerState sampler_wrap : register(s0);
 

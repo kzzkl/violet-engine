@@ -1,9 +1,11 @@
-cbuffer mmd_skeleton : register(b0)
+[[vk::binding(0, 0)]]
+cbuffer mmd_skeleton : register(b0, space0)
 {
     float4x4 offset[512];
 };
 
-cbuffer ash_pass : register(b1)
+[[vk::binding(0, 1)]]
+cbuffer ash_pass : register(b0, space1)
 {
     float4 camera_position;
     float4 camera_direction;

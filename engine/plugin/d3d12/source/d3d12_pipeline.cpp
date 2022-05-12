@@ -2,6 +2,7 @@
 #include "d3d12_context.hpp"
 #include "d3d12_utility.hpp"
 #include <d3dcompiler.h>
+#include <fstream>
 #include <string>
 
 namespace ash::graphics::d3d12
@@ -761,36 +762,32 @@ void d3d12_pipeline::initialize_pipeline_layout(const pipeline_desc& desc)
     std::vector<std::vector<CD3DX12_DESCRIPTOR_RANGE>> range;
     range.resize(desc.parameter_count);
 
-    UINT cbv_register_counter = 0;
-    UINT srv_register_counter = 0;
     for (std::size_t i = 0; i < desc.parameter_count; ++i)
     {
         auto layout = static_cast<const d3d12_pipeline_parameter_layout*>(desc.parameters[i]);
 
-        UINT cbv_counter = static_cast<UINT>(layout->cbv_count());
-        UINT srv_counter = static_cast<UINT>(layout->srv_count());
+        UINT cbv_count = static_cast<UINT>(layout->cbv_count());
+        UINT srv_count = static_cast<UINT>(layout->srv_count());
 
-        if (cbv_counter == 1 && srv_counter == 0)
+        UINT register_space = static_cast<UINT>(i);
+        if (cbv_count == 1 && srv_count == 0)
         {
-            root_parameter[i].InitAsConstantBufferView(cbv_register_counter);
-            ++cbv_register_counter;
+            root_parameter[i].InitAsConstantBufferView(0, register_space);
         }
         else
         {
-            if (srv_counter != 0)
+            if (srv_count != 0)
             {
                 CD3DX12_DESCRIPTOR_RANGE srv_range;
-                srv_range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, srv_counter, srv_register_counter);
+                srv_range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, srv_count, 0, register_space);
                 range[i].push_back(srv_range);
-                srv_register_counter += srv_counter;
             }
 
-            if (cbv_counter != 0)
+            if (cbv_count != 0)
             {
                 CD3DX12_DESCRIPTOR_RANGE cbv_range;
-                cbv_range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, cbv_counter, cbv_register_counter);
+                cbv_range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, cbv_count, 0, register_space);
                 range[i].push_back(cbv_range);
-                cbv_register_counter += cbv_counter;
             }
 
             root_parameter[i].InitAsDescriptorTable(
@@ -830,8 +827,8 @@ void d3d12_pipeline::initialize_pipeline_layout(const pipeline_desc& desc)
 
 void d3d12_pipeline::initialize_pipeline_state(const pipeline_desc& desc)
 {
-    d3d12_ptr<D3DBlob> vs_blob = load_shader("vs_main", "vs_5_0", desc.vertex_shader);
-    d3d12_ptr<D3DBlob> ps_blob = load_shader("ps_main", "ps_5_0", desc.pixel_shader);
+    d3d12_ptr<D3DBlob> vs_blob = load_shader(desc.vertex_shader);
+    d3d12_ptr<D3DBlob> ps_blob = load_shader(desc.pixel_shader);
 
     // Query render target sample level.
     D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS sample_level = {};
@@ -868,40 +865,22 @@ void d3d12_pipeline::initialize_pipeline_state(const pipeline_desc& desc)
         IID_PPV_ARGS(&m_pipeline_state)));
 }
 
-d3d12_ptr<D3DBlob> d3d12_pipeline::load_shader(
-    std::string_view entry,
-    std::string_view target,
-    std::string_view file)
+d3d12_ptr<D3DBlob> d3d12_pipeline::load_shader(std::string_view file)
 {
-#ifndef NDEBUG
-    // Enable better shader debugging with the graphics debugging tools.
-    UINT compile_flags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-    UINT compile_flags = D3DCOMPILE_OPTIMIZATION_LEVEL3;
-#endif
-
     d3d12_ptr<D3DBlob> result;
     d3d12_ptr<D3DBlob> error;
-    D3DCompileFromFile(
-        string_to_wstring(file).c_str(),
-        nullptr,
-        nullptr,
-        entry.data(),
-        target.data(),
-        compile_flags,
-        0,
-        &result,
-        &error);
 
-    if (error != nullptr)
-    {
-        OutputDebugStringA(static_cast<char*>(error->GetBufferPointer()));
-        return nullptr;
-    }
-    else
-    {
-        return result;
-    }
+    std::ifstream fin(file.data(), std::ios::in | std::ios::binary);
+    if (!fin)
+        throw d3d12_exception("Unable to open shader file.");
+
+    fin.seekg(0, std::ios::end);
+    throw_if_failed(D3DCreateBlob(fin.tellg(), &result));
+    fin.seekg(0, std::ios::beg);
+    fin.read(static_cast<char*>(result->GetBufferPointer()), result->GetBufferSize());
+    fin.close();
+
+    return result;
 }
 
 d3d12_render_pass::d3d12_render_pass(const render_pass_desc& desc)

@@ -1,7 +1,7 @@
 project(ash-common)
 
-find_package(spdlog REQUIRED PATHS ${THIRD_PARTY_INSTALL_DIR}/spdlog)
-find_package(nlohmann_json REQUIRED PATHS ${THIRD_PARTY_INSTALL_DIR}/json)
+find_package(spdlog REQUIRED PATHS ${ASH_THIRD_PARTY_INSTALL_DIR}/spdlog)
+find_package(nlohmann_json REQUIRED PATHS ${ASH_THIRD_PARTY_INSTALL_DIR}/json)
 
 add_library(${PROJECT_NAME} STATIC
     ./source/log.cpp)
@@ -17,7 +17,6 @@ target_link_libraries(${PROJECT_NAME}
         nlohmann_json::nlohmann_json)
 
 install(DIRECTORY ./include/ DESTINATION include/ash)
-# install(FILES ${THIRD_PARTY_DIR}/spdlog/bin/spdlog.dll DESTINATION bin)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

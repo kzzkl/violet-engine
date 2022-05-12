@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.19 FATAL_ERROR)
 
 project(ash-engine)
 
@@ -16,8 +16,10 @@ if (WIN32)
     add_definitions(-D_UNICODE)
 endif()
 
-set(THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/thirdparty)
-set(THIRD_PARTY_INSTALL_DIR ${PROJECT_SOURCE_DIR}/thirdparty/build/install)
+set(ASH_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
+set(ASH_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/thirdparty)
+set(ASH_THIRD_PARTY_INSTALL_DIR ${PROJECT_SOURCE_DIR}/thirdparty/build/install)
 
 set(ASH_CORE_INTERFACE_DIR ${PROJECT_SOURCE_DIR}/engine/core/interface)
 set(ASH_GRAPHICS_INTERFACE_DIR ${PROJECT_SOURCE_DIR}/engine/graphics/interface)

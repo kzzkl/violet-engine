@@ -2,7 +2,7 @@ project(ash-graphics-vulkan)
 
 find_package(Vulkan REQUIRED)
 
-set(STB_IMAGE_INCLUDE ${THIRD_PARTY_DIR}/stb)
+set(STB_IMAGE_INCLUDE ${ASH_THIRD_PARTY_DIR}/stb)
 
 add_library(${PROJECT_NAME} SHARED
     ./source/vk_command.cpp
