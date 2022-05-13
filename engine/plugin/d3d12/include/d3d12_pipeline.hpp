@@ -126,6 +126,20 @@ private:
     std::vector<attachment_desc> m_attachments;
 };
 
+struct d3d12_camera_info
+{
+    d3d12_resource* render_target;
+    d3d12_resource* depth_stencil_buffer;
+    d3d12_resource* back_buffer;
+
+    inline bool operator==(const d3d12_camera_info& other) const noexcept
+    {
+        return render_target == other.render_target &&
+               depth_stencil_buffer == other.depth_stencil_buffer &&
+               back_buffer == other.back_buffer;
+    }
+};
+
 class d3d12_render_pass;
 class d3d12_frame_buffer
 {
@@ -138,7 +152,7 @@ public:
     };
 
 public:
-    d3d12_frame_buffer(d3d12_render_pass* render_pass, d3d12_resource* render_target);
+    d3d12_frame_buffer(d3d12_render_pass* render_pass, const d3d12_camera_info& camera_info);
 
     void begin_render(D3D12GraphicsCommandList* command_list);
     void end_render(D3D12GraphicsCommandList* command_list);
@@ -187,7 +201,7 @@ class d3d12_render_pass : public render_pass_interface
 public:
     d3d12_render_pass(const render_pass_desc& desc);
 
-    void begin(D3D12GraphicsCommandList* command_list, d3d12_resource* render_target);
+    void begin(D3D12GraphicsCommandList* command_list, const d3d12_camera_info& camera_info);
     void end(D3D12GraphicsCommandList* command_list);
     void next(D3D12GraphicsCommandList* command_list);
 
@@ -218,21 +232,35 @@ class d3d12_frame_buffer_manager
 public:
     d3d12_frame_buffer* get_or_create_frame_buffer(
         d3d12_render_pass* render_pass,
-        d3d12_resource* render_target);
+        const d3d12_camera_info& camera_info);
 
-    void notify_destroy(d3d12_resource* render_target);
+    void notify_destroy(d3d12_resource* resource);
 
 private:
-    using key_type = std::pair<d3d12_render_pass*, d3d12_resource*>;
-    struct key_hash
+    struct d3d12_camera_info_hash
     {
-        template <class T1, class T2>
-        std::size_t operator()(const std::pair<T1, T2>& pair) const
+        std::size_t operator()(const d3d12_camera_info& key) const
         {
-            return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
+            std::size_t result = 0;
+            hash_combine(result, key.render_target);
+            hash_combine(result, key.depth_stencil_buffer);
+            hash_combine(result, key.back_buffer);
+
+            return result;
+        }
+
+        template <class T>
+        void hash_combine(std::size_t& s, const T& v) const
+        {
+            std::hash<T> h;
+            s ^= h(v) + 0x9e3779b9 + (s << 6) + (s >> 2);
         }
     };
 
-    std::unordered_map<key_type, std::unique_ptr<d3d12_frame_buffer>, key_hash> m_frame_buffers;
+    std::unordered_map<
+        d3d12_camera_info,
+        std::unique_ptr<d3d12_frame_buffer>,
+        d3d12_camera_info_hash>
+        m_frame_buffers;
 };
 } // namespace ash::graphics::d3d12

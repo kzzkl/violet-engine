@@ -1,22 +1,19 @@
 #pragma once
 
-#include "d3d12_command.hpp"
 #include "d3d12_common.hpp"
-#include "d3d12_resource.hpp"
 #include <memory>
 
 namespace ash::graphics::d3d12
 {
+class d3d12_command_queue;
 class d3d12_swap_chain;
+class d3d12_resource_manager;
 class d3d12_frame_buffer_manager;
 
 class d3d12_context
 {
 public:
-    static bool initialize(const renderer_desc& desc)
-    {
-        return instance().on_initialize(desc);
-    }
+    static bool initialize(const renderer_desc& desc) { return instance().on_initialize(desc); }
 
     static void begin_frame() { instance().on_begin_frame(); }
     static void end_frame() { instance().on_end_frame(); }

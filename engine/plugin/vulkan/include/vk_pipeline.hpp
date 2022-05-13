@@ -1,7 +1,6 @@
 #pragma once
 
 #include "vk_common.hpp"
-#include "vk_frame_buffer.hpp"
 #include "vk_resource.hpp"
 
 namespace ash::graphics::vk
@@ -107,13 +106,121 @@ private:
     VkPipeline m_pipeline;
 };
 
+struct vk_camera_info
+{
+    vk_image* render_target;
+    vk_image* depth_stencil_buffer;
+    vk_image* back_buffer;
+
+    resource_extent extent() const
+    {
+        ASH_VK_ASSERT(
+            render_target != nullptr || depth_stencil_buffer != nullptr || back_buffer != nullptr);
+
+        if (render_target != nullptr)
+            return render_target->extent();
+        else if (depth_stencil_buffer != nullptr)
+            return depth_stencil_buffer->extent();
+        else
+            return back_buffer->extent();
+    }
+
+    inline bool operator==(const vk_camera_info& other) const noexcept
+    {
+        return render_target == other.render_target &&
+               depth_stencil_buffer == other.depth_stencil_buffer &&
+               back_buffer == other.back_buffer;
+    }
+};
+
+class vk_frame_buffer_layout
+{
+public:
+    struct attachment_info
+    {
+        attachment_type type;
+        VkAttachmentDescription description;
+    };
+
+public:
+    vk_frame_buffer_layout(attachment_desc* attachment, std::size_t count);
+
+    auto begin() noexcept { return m_attachments.begin(); }
+    auto end() noexcept { return m_attachments.end(); }
+
+    auto begin() const noexcept { return m_attachments.begin(); }
+    auto end() const noexcept { return m_attachments.end(); }
+
+    auto cbegin() const noexcept { return m_attachments.cbegin(); }
+    auto cend() const noexcept { return m_attachments.cend(); }
+
+private:
+    std::vector<attachment_info> m_attachments;
+};
+
+class vk_render_pass;
+class vk_frame_buffer
+{
+public:
+    vk_frame_buffer(vk_render_pass* render_pass, const vk_camera_info& camera_info);
+    vk_frame_buffer(vk_frame_buffer&& other);
+    ~vk_frame_buffer();
+
+    VkFramebuffer frame_buffer() const noexcept { return m_frame_buffer; }
+    const std::vector<VkClearValue>& clear_values() const noexcept { return m_clear_values; }
+
+    vk_frame_buffer& operator=(vk_frame_buffer&& other);
+
+private:
+    VkFramebuffer m_frame_buffer;
+
+    std::vector<std::unique_ptr<vk_image>> m_attachments;
+    std::vector<VkClearValue> m_clear_values;
+};
+
+class vk_frame_buffer_manager
+{
+public:
+    vk_frame_buffer* get_or_create_frame_buffer(
+        vk_render_pass* render_pass,
+        const vk_camera_info& camera_info);
+
+    void notify_destroy(vk_image* image);
+
+private:
+    struct vk_camera_info_hash
+    {
+        std::size_t operator()(const vk_camera_info& key) const
+        {
+            std::size_t result = 0;
+            hash_combine(result, key.render_target->view());
+            hash_combine(result, key.depth_stencil_buffer->view());
+            hash_combine(
+                result,
+                key.back_buffer == nullptr ? VK_NULL_HANDLE : key.back_buffer->view());
+
+            return result;
+        }
+
+        template <class T>
+        void hash_combine(std::size_t& s, const T& v) const
+        {
+            std::hash<T> h;
+            s ^= h(v) + 0x9e3779b9 + (s << 6) + (s >> 2);
+        }
+    };
+
+    std::unordered_map<vk_camera_info, std::unique_ptr<vk_frame_buffer>, vk_camera_info_hash>
+        m_frame_buffers;
+};
+
 class vk_render_pass : public render_pass_interface
 {
 public:
     vk_render_pass(const render_pass_desc& desc);
     ~vk_render_pass();
 
-    void begin(VkCommandBuffer command_buffer, vk_image* render_target);
+    void begin(VkCommandBuffer command_buffer, const vk_camera_info& camera_info);
     void end(VkCommandBuffer command_buffer);
     void next(VkCommandBuffer command_buffer);
 

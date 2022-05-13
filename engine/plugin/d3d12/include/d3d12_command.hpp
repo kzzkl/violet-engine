@@ -12,8 +12,11 @@ class d3d12_render_command : public render_command_interface
 public:
     d3d12_render_command(D3D12CommandAllocator* allocator, std::wstring_view name = L"");
 
-    virtual void begin(render_pass_interface* render_pass, resource_interface* render_target)
-        override;
+    virtual void begin(
+        render_pass_interface* render_pass,
+        resource_interface* camera_render_target,
+        resource_interface* camera_depth_stencil_buffer,
+        resource_interface* back_buffer) override;
     virtual void end(render_pass_interface* render_pass) override;
     virtual void next(render_pass_interface* render_pass) override;
 

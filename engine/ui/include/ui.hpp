@@ -11,7 +11,7 @@ enum class ui_style
     WINDOW_PADDING
 };
 
-class ui : public system_base
+class ui : public core::system_base
 {
 public:
     ui();
@@ -48,7 +48,7 @@ private:
     void initialize_theme();
     void initialize_font_texture();
 
-    graphics::render_parameter* allocate_parameter();
+    graphics::pipeline_parameter* allocate_parameter();
 
     ecs::entity m_ui_entity;
 
@@ -58,7 +58,7 @@ private:
     std::unique_ptr<graphics::resource> m_font;
 
     std::size_t m_parameter_counter;
-    std::vector<std::unique_ptr<graphics::render_parameter>> m_parameter_pool;
+    std::vector<std::unique_ptr<graphics::pipeline_parameter>> m_parameter_pool;
 
     std::deque<graphics::scissor_rect> m_scissor_rects;
 

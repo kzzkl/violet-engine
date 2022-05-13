@@ -1,6 +1,5 @@
 #include "vk_command.hpp"
 #include "vk_context.hpp"
-#include "vk_frame_buffer.hpp"
 #include "vk_pipeline.hpp"
 #include "vk_resource.hpp"
 
@@ -10,20 +9,19 @@ vk_command::vk_command(VkCommandBuffer command_buffer) : m_command_buffer(comman
 {
 }
 
-void vk_command::begin(render_pass_interface* render_pass, resource_interface* render_target)
+void vk_command::begin(
+    render_pass_interface* render_pass,
+    resource_interface* camera_render_target,
+    resource_interface* camera_depth_stencil_buffer,
+    resource_interface* back_buffer)
 {
-    auto rt = static_cast<vk_image*>(render_target);
-    VkViewport viewport = {};
-    viewport.width = static_cast<float>(rt->extent().width);
-    viewport.height = static_cast<float>(rt->extent().height);
-    viewport.x = 0;
-    viewport.y = 0;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(m_command_buffer, 0, 1, &viewport);
+    vk_camera_info camera_info = {};
+    camera_info.render_target = static_cast<vk_image*>(camera_render_target);
+    camera_info.depth_stencil_buffer = static_cast<vk_image*>(camera_depth_stencil_buffer);
+    camera_info.back_buffer = static_cast<vk_image*>(back_buffer);
 
     auto rp = static_cast<vk_render_pass*>(render_pass);
-    rp->begin(m_command_buffer, rt);
+    rp->begin(m_command_buffer, camera_info);
 
     m_pass_layout = rp->current_subpass().layout();
 }
@@ -168,10 +166,7 @@ void vk_command_queue::execute(vk_command* command)
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    if (vkQueueSubmit(m_queue, 1, &submitInfo, vk_context::fence()) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to submit draw command buffer!");
-    }
+    throw_if_failed(vkQueueSubmit(m_queue, 1, &submitInfo, vk_context::fence()));
 }
 
 VkCommandBuffer vk_command_queue::begin_dynamic_command()

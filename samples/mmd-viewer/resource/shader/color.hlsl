@@ -16,6 +16,16 @@ cbuffer mmd_material : register(b0, space1)
     uint spa_mode;
 };
 
+[[vk::binding(1, 1)]]
+Texture2D tex : register(t0, space1);
+
+[[vk::binding(2, 1)]]
+Texture2D toon : register(t1, space1);
+
+[[vk::binding(3, 1)]]
+Texture2D spa : register(t2, space1);
+SamplerState sampler_wrap : register(s0);
+
 [[vk::binding(0, 2)]]
 cbuffer mmd_skeleton : register(b0, space2)
 {
@@ -33,16 +43,6 @@ cbuffer ash_pass : register(b0, space3)
     float4x4 transform_vp;
 };
 
-[[vk::binding(0, 1)]]
-Texture2D tex : register(t0, space1);
-
-[[vk::binding(1, 1)]]
-Texture2D toon : register(t1, space1);
-
-[[vk::binding(2, 1)]]
-Texture2D spa : register(t2, space1);
-
-SamplerState sampler_wrap : register(s0);
 
 struct vs_in
 {

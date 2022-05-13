@@ -287,7 +287,8 @@ bool ui::initialize(const dictionary& config)
         });
     event.subscribe<window::event_keyboard_char>(
         [](char c) { ImGui::GetIO().AddInputCharacter(c); });
-    event.subscribe<window::event_window_resize>([](std::uint32_t width, std::uint32_t height) {});*/
+    event.subscribe<window::event_window_resize>([](std::uint32_t width, std::uint32_t height)
+    {});*/
 
     return true;
 }
@@ -399,8 +400,8 @@ void ui::begin_frame()
 
     window::window_rect rect = window.rect();
 
-    static auto old_time = system<timer>().now();
-    auto new_time = system<timer>().now();
+    static auto old_time = system<core::timer>().now();
+    auto new_time = system<core::timer>().now();
     float delta = (new_time - old_time).count() * 0.000000001f;
     old_time = new_time;
 
@@ -414,89 +415,89 @@ void ui::begin_frame()
 }
 
 void ui::end_frame()
-{/*
-    auto& world = system<ecs::world>();
-    auto& visual = world.component<graphics::visual>(m_ui_entity);
-    visual.submesh.clear();
-    m_scissor_rects.clear();
+{ /*
+     auto& world = system<ecs::world>();
+     auto& visual = world.component<graphics::visual>(m_ui_entity);
+     visual.submesh.clear();
+     m_scissor_rects.clear();
 
-    ImGui::Render();
+     ImGui::Render();
 
-    auto data = ImGui::GetDrawData();
+     auto data = ImGui::GetDrawData();
 
-    std::size_t vertex_counter = 0;
-    std::size_t index_counter = 0;
-    std::size_t vertex_buffer_offset = 0;
-    std::size_t index_buffer_offset = 0;
+     std::size_t vertex_counter = 0;
+     std::size_t index_counter = 0;
+     std::size_t vertex_buffer_offset = 0;
+     std::size_t index_buffer_offset = 0;
 
-    float L = data->DisplayPos.x;
-    float R = data->DisplayPos.x + data->DisplaySize.x;
-    float T = data->DisplayPos.y;
-    float B = data->DisplayPos.y + data->DisplaySize.y;
+     float L = data->DisplayPos.x;
+     float R = data->DisplayPos.x + data->DisplaySize.x;
+     float T = data->DisplayPos.y;
+     float B = data->DisplayPos.y + data->DisplaySize.y;
 
-    math::float4x4 mvp = {
-        math::float4{2.0f / (R - L),    0.0f,              0.0f, 0.0f},
-        math::float4{0.0f,              2.0f / (T - B),    0.0f, 0.0f},
-        math::float4{0.0f,              0.0f,              0.5f, 0.0f},
-        math::float4{(R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f}
-    };
+     math::float4x4 mvp = {
+         math::float4{2.0f / (R - L),    0.0f,              0.0f, 0.0f},
+         math::float4{0.0f,              2.0f / (T - B),    0.0f, 0.0f},
+         math::float4{0.0f,              0.0f,              0.5f, 0.0f},
+         math::float4{(R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f}
+     };
 
-    m_parameter_counter = 0;
+     m_parameter_counter = 0;
 
-    ImVec2 clip_off = data->DisplayPos;
-    for (int i = 0; i < data->CmdListsCount; ++i)
-    {
-        auto list = data->CmdLists[i];
-        m_vertex_buffer[m_frame_index]->upload(
-            list->VtxBuffer.Data,
-            list->VtxBuffer.Size * sizeof(ImDrawVert),
-            vertex_buffer_offset);
-        vertex_buffer_offset += list->VtxBuffer.Size * sizeof(ImDrawVert);
+     ImVec2 clip_off = data->DisplayPos;
+     for (int i = 0; i < data->CmdListsCount; ++i)
+     {
+         auto list = data->CmdLists[i];
+         m_vertex_buffer[m_frame_index]->upload(
+             list->VtxBuffer.Data,
+             list->VtxBuffer.Size * sizeof(ImDrawVert),
+             vertex_buffer_offset);
+         vertex_buffer_offset += list->VtxBuffer.Size * sizeof(ImDrawVert);
 
-        m_index_buffer[m_frame_index]->upload(
-            list->IdxBuffer.Data,
-            list->IdxBuffer.Size * sizeof(ImDrawIdx),
-            index_buffer_offset);
-        index_buffer_offset += list->IdxBuffer.Size * sizeof(ImDrawIdx);
+         m_index_buffer[m_frame_index]->upload(
+             list->IdxBuffer.Data,
+             list->IdxBuffer.Size * sizeof(ImDrawIdx),
+             index_buffer_offset);
+         index_buffer_offset += list->IdxBuffer.Size * sizeof(ImDrawIdx);
 
-        for (int j = 0; j < list->CmdBuffer.Size; ++j)
-        {
-            auto& command = list->CmdBuffer[j];
+         for (int j = 0; j < list->CmdBuffer.Size; ++j)
+         {
+             auto& command = list->CmdBuffer[j];
 
-            graphics::render_unit submesh = {};
-            submesh.vertex_buffer = m_vertex_buffer[m_frame_index].get();
-            submesh.index_buffer = m_index_buffer[m_frame_index].get();
-            submesh.index_start = command.IdxOffset + index_counter;
-            submesh.index_end = command.IdxOffset + command.ElemCount + index_counter;
-            submesh.vertex_base = command.VtxOffset + vertex_counter;
-            submesh.pipeline = m_pipeline.get();
+             graphics::render_unit submesh = {};
+             submesh.vertex_buffer = m_vertex_buffer[m_frame_index].get();
+             submesh.index_buffer = m_index_buffer[m_frame_index].get();
+             submesh.index_start = command.IdxOffset + index_counter;
+             submesh.index_end = command.IdxOffset + command.ElemCount + index_counter;
+             submesh.vertex_base = command.VtxOffset + vertex_counter;
+             submesh.pipeline = m_pipeline.get();
 
-            auto parameter = allocate_parameter();
-            parameter->set(0, mvp, false);
-            parameter->set(1, static_cast<graphics::resource*>(command.GetTexID()));
-            // parameter->set(1, m_font.get());
-            submesh.parameters.push_back(parameter);
+             auto parameter = allocate_parameter();
+             parameter->set(0, mvp, false);
+             parameter->set(1, static_cast<graphics::resource*>(command.GetTexID()));
+             // parameter->set(1, m_font.get());
+             submesh.parameters.push_back(parameter);
 
-            ImVec2 clip_min(command.ClipRect.x - clip_off.x, command.ClipRect.y - clip_off.y);
-            ImVec2 clip_max(command.ClipRect.z - clip_off.x, command.ClipRect.w - clip_off.y);
-            if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
-                continue;
+             ImVec2 clip_min(command.ClipRect.x - clip_off.x, command.ClipRect.y - clip_off.y);
+             ImVec2 clip_max(command.ClipRect.z - clip_off.x, command.ClipRect.w - clip_off.y);
+             if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
+                 continue;
 
-            // Apply Scissor/clipping rectangle
-            graphics::scissor_rect rect = {
-                static_cast<std::uint32_t>(clip_min.x),
-                static_cast<std::uint32_t>(clip_min.y),
-                static_cast<std::uint32_t>(clip_max.x),
-                static_cast<std::uint32_t>(clip_max.y)};
-            m_scissor_rects.push_back(rect);
-            submesh.external = &m_scissor_rects.back();
+             // Apply Scissor/clipping rectangle
+             graphics::scissor_rect rect = {
+                 static_cast<std::uint32_t>(clip_min.x),
+                 static_cast<std::uint32_t>(clip_min.y),
+                 static_cast<std::uint32_t>(clip_max.x),
+                 static_cast<std::uint32_t>(clip_max.y)};
+             m_scissor_rects.push_back(rect);
+             submesh.external = &m_scissor_rects.back();
 
-            visual.submesh.push_back(submesh);
-        }
+             visual.submesh.push_back(submesh);
+         }
 
-        vertex_counter += list->VtxBuffer.Size;
-        index_counter += list->IdxBuffer.Size;
-    }*/
+         vertex_counter += list->VtxBuffer.Size;
+         index_counter += list->IdxBuffer.Size;
+     }*/
 }
 
 void ui::initialize_theme()
@@ -574,10 +575,10 @@ void ui::initialize_font_texture()
     io.Fonts->SetTexID(m_font.get());
 }
 
-graphics::render_parameter* ui::allocate_parameter()
+graphics::pipeline_parameter* ui::allocate_parameter()
 {
     if (m_parameter_counter >= m_parameter_pool.size())
-        m_parameter_pool.push_back(system<graphics::graphics>().make_render_parameter("ui"));
+        m_parameter_pool.push_back(system<graphics::graphics>().make_pipeline_parameter("ui"));
 
     ++m_parameter_counter;
     return m_parameter_pool[m_parameter_counter - 1].get();

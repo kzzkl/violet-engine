@@ -27,15 +27,13 @@ mmd_pass::mmd_pass()
 
     // Color pass.
     graphics::pipeline_info color_pass_info = {};
-    // color_pass_info.vertex_shader = "resource/shader/color.vert.spv";
-    // color_pass_info.pixel_shader = "resource/shader/color.frag.spv";
-    color_pass_info.vertex_shader = "resource/shader/color.vert.cso";
-    color_pass_info.pixel_shader = "resource/shader/color.frag.cso";
+    color_pass_info.vertex_shader = "resource/shader/color.vert";
+    color_pass_info.pixel_shader = "resource/shader/color.frag";
     color_pass_info.vertex_attributes = {
         {"POSITION",    graphics::vertex_attribute_type::FLOAT3}, // position
         {"NORMAL",      graphics::vertex_attribute_type::FLOAT3}, // normal
         {"UV",          graphics::vertex_attribute_type::FLOAT2}, // uv
-        {"bone",        graphics::vertex_attribute_type::UINT4 }, // bone
+        {"BONE",        graphics::vertex_attribute_type::UINT4 }, // bone
         {"BONE_WEIGHT", graphics::vertex_attribute_type::FLOAT3}, // bone weight
     };
     color_pass_info.references = {
@@ -49,10 +47,8 @@ mmd_pass::mmd_pass()
 
     // Edge pass.
     graphics::pipeline_info edge_pass_info = {};
-    // edge_pass_info.vertex_shader = "resource/shader/edge.vert.spv";
-    // edge_pass_info.pixel_shader = "resource/shader/edge.frag.spv";
-    edge_pass_info.vertex_shader = "resource/shader/edge.vert.cso";
-    edge_pass_info.pixel_shader = "resource/shader/edge.frag.cso";
+    edge_pass_info.vertex_shader = "resource/shader/edge.vert";
+    edge_pass_info.pixel_shader = "resource/shader/edge.frag";
     edge_pass_info.vertex_attributes = {
         {"POSITION",    graphics::vertex_attribute_type::FLOAT3}, // position
         {"NORMAL",      graphics::vertex_attribute_type::FLOAT3}, // normal
@@ -72,7 +68,7 @@ mmd_pass::mmd_pass()
 
     // Attachment.
     graphics::attachment_info render_target = {};
-    render_target.type = graphics::attachment_type::COLOR;
+    render_target.type = graphics::attachment_type::RENDER_TARGET;
     render_target.format = graphics.back_buffer_format();
     render_target.load_op = graphics::attachment_load_op::CLEAR;
     render_target.store_op = graphics::attachment_store_op::STORE;
@@ -83,7 +79,7 @@ mmd_pass::mmd_pass()
     render_target.final_state = graphics::resource_state::RENDER_TARGET;
 
     graphics::attachment_info depth_stencil = {};
-    depth_stencil.type = graphics::attachment_type::DEPTH;
+    depth_stencil.type = graphics::attachment_type::CAMERA_DEPTH_STENCIL;
     depth_stencil.format = graphics::resource_format::D24_UNORM_S8_UINT;
     depth_stencil.load_op = graphics::attachment_load_op::CLEAR;
     depth_stencil.store_op = graphics::attachment_store_op::DONT_CARE;
@@ -94,7 +90,7 @@ mmd_pass::mmd_pass()
     depth_stencil.final_state = graphics::resource_state::DEPTH_STENCIL;
 
     graphics::attachment_info back_buffer = {};
-    back_buffer.type = graphics::attachment_type::RENDER_TARGET;
+    back_buffer.type = graphics::attachment_type::BACK_BUFFER;
     back_buffer.format = graphics.back_buffer_format();
     back_buffer.load_op = graphics::attachment_load_op::CLEAR;
     back_buffer.store_op = graphics::attachment_store_op::DONT_CARE;
@@ -116,7 +112,11 @@ mmd_pass::mmd_pass()
 
 void mmd_pass::render(const graphics::camera& camera, graphics::render_command_interface* command)
 {
-    command->begin(m_interface.get(), camera.render_target);
+    command->begin(
+        m_interface.get(),
+        camera.render_target.get(),
+        camera.depth_stencil_buffer.get(),
+        camera.back_buffer);
 
     graphics::scissor_rect rect = {};
     auto [width, height] = camera.render_target->extent();

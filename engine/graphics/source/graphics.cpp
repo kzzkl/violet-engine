@@ -151,10 +151,7 @@ void graphics::render(ecs::entity camera_entity)
     // Render.
     auto command = m_renderer->allocate_command();
 
-    // if (c.render_target == nullptr)
-    {
-        c.render_target = m_renderer->back_buffer();
-    }
+    c.back_buffer = m_renderer->back_buffer();
 
     for (auto render_pass : m_render_passes)
         render_pass->render(c, command);

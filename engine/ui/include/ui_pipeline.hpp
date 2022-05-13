@@ -15,11 +15,12 @@ struct ui_render_data
 class ui_pass : public graphics::render_pass
 {
 public:
-    ui_pass(graphics::render_pass_interface* interface);
+    ui_pass();
 
     virtual void render(const graphics::camera& camera, graphics::render_command_interface* command)
         override;
 
 private:
+    std::unique_ptr<graphics::render_pass_interface> m_interface;
 };
 } // namespace ash::ui

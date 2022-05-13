@@ -20,8 +20,10 @@ struct camera
     math::float4x4 view;
     math::float4x4 projection;
 
-    resource_interface* render_target{nullptr};
-    resource_interface* depth_stencil{nullptr};
+    std::unique_ptr<resource> render_target;
+    std::unique_ptr<resource> depth_stencil_buffer;
+    resource* back_buffer;
+
     std::unique_ptr<pipeline_parameter> parameter;
 
     std::uint32_t mask{std::numeric_limits<std::uint32_t>::max()};

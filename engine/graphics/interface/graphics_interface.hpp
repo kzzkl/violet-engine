@@ -230,9 +230,11 @@ enum class attachment_store_op
 
 enum class attachment_type
 {
-    COLOR,
-    DEPTH,
-    RENDER_TARGET
+    RENDER_TARGET,
+    DEPTH_STENCIL,
+    CAMERA_RENDER_TARGET,
+    CAMERA_DEPTH_STENCIL,
+    BACK_BUFFER
 };
 
 struct attachment_desc
@@ -275,7 +277,11 @@ struct scissor_rect
 class render_command_interface
 {
 public:
-    virtual void begin(render_pass_interface* render_pass, resource_interface* render_target) = 0;
+    virtual void begin(
+        render_pass_interface* render_pass,
+        resource_interface* camera_render_target,
+        resource_interface* camera_depth_stencil_buffer,
+        resource_interface* back_buffer) = 0;
     virtual void end(render_pass_interface* render_pass) = 0;
     virtual void next(render_pass_interface* render_pass) = 0;
 

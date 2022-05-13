@@ -28,16 +28,7 @@ public:
         system<scene::scene>().sync_local();
 
         system<core::event>().subscribe<window::event_window_resize>(
-            [this](std::uint32_t width, std::uint32_t height) {
-                auto& world = system<ecs::world>();
-                auto& c_camera = world.component<graphics::camera>(m_camera);
-                c_camera.set(
-                    math::to_radians(45.0f),
-                    static_cast<float>(width) / static_cast<float>(height),
-                    0.3f,
-                    1000.0f,
-                    false);
-            });
+            [this](std::uint32_t width, std::uint32_t height) { resize_camera(width, height); });
 
         return true;
     }
@@ -90,16 +81,17 @@ private:
 
         m_camera = world.create();
         world.add<core::link, graphics::camera, scene::transform>(m_camera);
-        auto& c_camera = world.component<graphics::camera>(m_camera);
-        c_camera.set(math::to_radians(45.0f), 1300.0f / 800.0f, 0.3f, 1000.0f, false);
+        auto& camera = world.component<graphics::camera>(m_camera);
+        camera.parameter = graphics.make_pipeline_parameter("ash_pass");
 
-        c_camera.parameter = graphics.make_pipeline_parameter("ash_pass");
-
-        auto& c_transform = world.component<scene::transform>(m_camera);
-        c_transform.position = {0.0f, 11.0f, -30.0f};
-        c_transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
-        c_transform.scaling = {1.0f, 1.0f, 1.0f};
+        auto& transform = world.component<scene::transform>(m_camera);
+        transform.position = {0.0f, 11.0f, -30.0f};
+        transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+        transform.scaling = {1.0f, 1.0f, 1.0f};
         system<core::relation>().link(m_camera, scene.root());
+
+        auto window_rect = system<window::window>().rect();
+        resize_camera(window_rect.width, window_rect.height);
     }
 
     void initialize_task()
@@ -121,6 +113,34 @@ private:
         window_task->add_dependency(*task.find("root"));
         update_task->add_dependency(*window_task);
         render_task->add_dependency(*update_task);
+    }
+
+    void resize_camera(std::uint32_t width, std::uint32_t height)
+    {
+        auto& world = system<ecs::world>();
+        auto& graphics = system<graphics::graphics>();
+
+        auto& camera = world.component<graphics::camera>(m_camera);
+        camera.set(
+            math::to_radians(45.0f),
+            static_cast<float>(width) / static_cast<float>(height),
+            0.3f,
+            1000.0f,
+            false);
+
+        graphics::render_target_info render_target_info = {};
+        render_target_info.width = width;
+        render_target_info.height = height;
+        render_target_info.format = graphics.back_buffer_format();
+        render_target_info.samples = 4;
+        camera.render_target = graphics.make_render_target(render_target_info);
+
+        graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
+        depth_stencil_buffer_info.width = width;
+        depth_stencil_buffer_info.height = height;
+        depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
+        depth_stencil_buffer_info.samples = 4;
+        camera.depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
     }
 
     void update_camera(float delta)

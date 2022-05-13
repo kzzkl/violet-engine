@@ -483,7 +483,7 @@ d3d12_frame_buffer_layout::d3d12_frame_buffer_layout(
 
 d3d12_frame_buffer::d3d12_frame_buffer(
     d3d12_render_pass* render_pass,
-    d3d12_resource* render_target)
+    const d3d12_camera_info& camera_info)
 {
     static const D3D12_RESOURCE_STATES resource_state_map[] = {
         D3D12_RESOURCE_STATE_COMMON,
@@ -491,43 +491,59 @@ d3d12_frame_buffer::d3d12_frame_buffer(
         D3D12_RESOURCE_STATE_DEPTH_WRITE,
         D3D12_RESOURCE_STATE_PRESENT};
 
-    auto [width, heigth] = render_target->extent();
+    auto [width, heigth] = camera_info.render_target->extent();
     for (auto& attachment : render_pass->frame_buffer_layout())
     {
         switch (attachment.type)
         {
-        case attachment_type::COLOR: {
-            auto color = std::make_unique<d3d12_render_target>(
-                width,
-                heigth,
-                attachment.samples,
-                attachment.format);
-            m_render_targets.push_back(color->render_target().cpu_handle());
-            m_attachments.push_back(attachment_info{
-                color.get(),
-                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
-                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
-            m_attachment_container.push_back(std::move(color));
-            break;
-        }
-        case attachment_type::DEPTH: {
-            auto depth = std::make_unique<d3d12_depth_stencil_buffer>(
-                width,
-                heigth,
-                attachment.samples,
-                attachment.format);
-            m_depth_stencil = depth->depth_stencil_buffer().cpu_handle();
-            m_attachments.push_back(attachment_info{
-                depth.get(),
-                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
-                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
-            m_attachment_container.push_back(std::move(depth));
-            break;
-        }
         case attachment_type::RENDER_TARGET: {
+            auto render_target = std::make_unique<d3d12_render_target>(
+                width,
+                heigth,
+                attachment.samples,
+                attachment.format);
             m_render_targets.push_back(render_target->render_target().cpu_handle());
             m_attachments.push_back(attachment_info{
-                render_target,
+                render_target.get(),
+                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
+                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
+            m_attachment_container.push_back(std::move(render_target));
+            break;
+        }
+        case attachment_type::DEPTH_STENCIL: {
+            auto depth_stencil_buffer = std::make_unique<d3d12_depth_stencil_buffer>(
+                width,
+                heigth,
+                attachment.samples,
+                attachment.format);
+            m_depth_stencil = depth_stencil_buffer->depth_stencil_buffer().cpu_handle();
+            m_attachments.push_back(attachment_info{
+                depth_stencil_buffer.get(),
+                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
+                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
+            m_attachment_container.push_back(std::move(depth_stencil_buffer));
+            break;
+        }
+        case attachment_type::CAMERA_RENDER_TARGET: {
+            m_render_targets.push_back(camera_info.render_target->render_target().cpu_handle());
+            m_attachments.push_back(attachment_info{
+                camera_info.render_target,
+                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
+                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
+            break;
+        }
+        case attachment_type::CAMERA_DEPTH_STENCIL: {
+            m_depth_stencil = camera_info.depth_stencil_buffer->depth_stencil_buffer().cpu_handle();
+            m_attachments.push_back(attachment_info{
+                camera_info.depth_stencil_buffer,
+                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
+                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
+            break;
+        }
+        case attachment_type::BACK_BUFFER: {
+            m_render_targets.push_back(camera_info.back_buffer->render_target().cpu_handle());
+            m_attachments.push_back(attachment_info{
+                camera_info.back_buffer,
                 resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
                 resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
             break;
@@ -870,7 +886,7 @@ d3d12_ptr<D3DBlob> d3d12_pipeline::load_shader(std::string_view file)
     d3d12_ptr<D3DBlob> result;
     d3d12_ptr<D3DBlob> error;
 
-    std::ifstream fin(file.data(), std::ios::in | std::ios::binary);
+    std::ifstream fin(std::string(file) + ".cso", std::ios::in | std::ios::binary);
     if (!fin)
         throw d3d12_exception("Unable to open shader file.");
 
@@ -884,20 +900,24 @@ d3d12_ptr<D3DBlob> d3d12_pipeline::load_shader(std::string_view file)
 }
 
 d3d12_render_pass::d3d12_render_pass(const render_pass_desc& desc)
-    : m_frame_buffer_layout(desc.attachments, desc.attachment_count)
+    : m_current_index(0),
+      m_current_frame_buffer(0),
+      m_frame_buffer_layout(desc.attachments, desc.attachment_count)
 {
     for (std::size_t i = 0; i < desc.subpass_count; ++i)
         m_pipelines.push_back(std::make_unique<d3d12_pipeline>(desc.subpasses[i]));
 }
 
-void d3d12_render_pass::begin(D3D12GraphicsCommandList* command_list, d3d12_resource* render_target)
+void d3d12_render_pass::begin(
+    D3D12GraphicsCommandList* command_list,
+    const d3d12_camera_info& camera_info)
 {
     m_current_index = 0;
     m_current_frame_buffer =
-        d3d12_context::frame_buffer().get_or_create_frame_buffer(this, render_target);
+        d3d12_context::frame_buffer().get_or_create_frame_buffer(this, camera_info);
     m_current_frame_buffer->begin_render(command_list);
 
-    auto [width, height] = render_target->extent();
+    auto [width, height] = camera_info.render_target->extent();
 
     D3D12_VIEWPORT viewport = {};
     viewport.Width = static_cast<float>(width);
@@ -926,20 +946,21 @@ void d3d12_render_pass::next(D3D12GraphicsCommandList* command_list)
 
 d3d12_frame_buffer* d3d12_frame_buffer_manager::get_or_create_frame_buffer(
     d3d12_render_pass* render_pass,
-    d3d12_resource* render_target)
+    const d3d12_camera_info& camera_info)
 {
-    auto& result = m_frame_buffers[std::make_pair(render_pass, render_target)];
+    auto& result = m_frame_buffers[camera_info];
     if (result == nullptr)
-        result = std::make_unique<d3d12_frame_buffer>(render_pass, render_target);
+        result = std::make_unique<d3d12_frame_buffer>(render_pass, camera_info);
 
     return result.get();
 }
 
-void d3d12_frame_buffer_manager::notify_destroy(d3d12_resource* render_target)
+void d3d12_frame_buffer_manager::notify_destroy(d3d12_resource* resource)
 {
     for (auto iter = m_frame_buffers.begin(); iter != m_frame_buffers.end();)
     {
-        if (iter->first.second == render_target)
+        if (iter->first.back_buffer == resource || iter->first.render_target == resource ||
+            iter->first.depth_stencil_buffer == resource)
             iter = m_frame_buffers.erase(iter);
         else
             ++iter;
