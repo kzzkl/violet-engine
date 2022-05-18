@@ -61,14 +61,6 @@ protected:
         VkFormat format,
         VkImageLayout old_layout,
         VkImageLayout new_layout);
-
-private:
-    VkImageView m_image_view;
-    VkImage m_image;
-    VkDeviceMemory m_image_memory;
-
-    resource_format m_format;
-    VkExtent2D m_extent;
 };
 
 class vk_back_buffer : public vk_image
@@ -175,6 +167,7 @@ private:
 class vk_texture : public vk_image
 {
 public:
+    vk_texture(const std::uint8_t* data, std::uint32_t width, std::uint32_t height);
     vk_texture(std::string_view file);
     vk_texture(vk_texture&& other);
     virtual ~vk_texture();
@@ -201,17 +194,28 @@ public:
     VkExtent2D m_extent;
 };
 
-class vk_vertex_buffer : public vk_resource
+class vk_buffer : public vk_resource
 {
 public:
-    vk_vertex_buffer(const vertex_buffer_desc& desc);
-    vk_vertex_buffer(vk_vertex_buffer&& other);
-    virtual ~vk_vertex_buffer();
+    virtual VkBuffer buffer() const noexcept = 0;
 
-    VkBuffer buffer() const noexcept { return m_buffer; }
+    virtual VkIndexType index_type() const
+    {
+        throw vk_exception("The resource is not a index buffer");
+    }
+};
+
+class vk_device_local_buffer : public vk_buffer
+{
+public:
+    vk_device_local_buffer(const void* data, std::size_t size, VkBufferUsageFlags flags);
+    vk_device_local_buffer(vk_device_local_buffer&& other);
+    virtual ~vk_device_local_buffer();
+
+    virtual VkBuffer buffer() const noexcept override { return m_buffer; }
     virtual std::size_t size() const noexcept override { return m_buffer_size; }
 
-    vk_vertex_buffer& operator=(vk_vertex_buffer&& other);
+    vk_device_local_buffer& operator=(vk_device_local_buffer&& other);
 
 private:
     void destroy();
@@ -221,26 +225,69 @@ private:
     std::size_t m_buffer_size;
 };
 
-class vk_index_buffer : public vk_resource
+class vk_host_visible_buffer : public vk_buffer
 {
 public:
-    vk_index_buffer(const index_buffer_desc& desc);
-    vk_index_buffer(vk_index_buffer&& other);
-    virtual ~vk_index_buffer();
+    vk_host_visible_buffer(const void* data, std::size_t size, VkBufferUsageFlags flags);
+    vk_host_visible_buffer(vk_host_visible_buffer&& other);
+    virtual ~vk_host_visible_buffer();
 
-    VkBuffer buffer() const noexcept { return m_buffer; }
-    VkIndexType index_type() const noexcept { return m_index_type; }
+    virtual VkBuffer buffer() const noexcept override { return m_buffer; }
+    virtual std::size_t size() const noexcept override { return m_buffer_size; }
 
-    vk_index_buffer& operator=(vk_index_buffer&& other);
+    virtual void upload(const void* data, std::size_t size, std::size_t offset) override;
+
+    vk_host_visible_buffer& operator=(vk_host_visible_buffer&& other);
 
 private:
     void destroy();
 
-    VkIndexType m_index_type;
-
     VkBuffer m_buffer;
     VkDeviceMemory m_buffer_memory;
     std::size_t m_buffer_size;
+};
+
+template <typename Impl>
+class vk_vertex_buffer : public Impl
+{
+public:
+    vk_vertex_buffer(const vertex_buffer_desc& desc)
+        : Impl(
+              desc.vertices,
+              desc.vertex_size * desc.vertex_count,
+              VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
+    {
+    }
+
+    virtual ~vk_vertex_buffer() = default;
+};
+
+template <typename Impl>
+class vk_index_buffer : public Impl
+{
+public:
+    vk_index_buffer(const index_buffer_desc& desc)
+        : Impl(desc.indices, desc.index_size * desc.index_count, VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+    {
+        switch (desc.index_size)
+        {
+        case 2:
+            m_index_type = VK_INDEX_TYPE_UINT16;
+            break;
+        case 4:
+            m_index_type = VK_INDEX_TYPE_UINT32;
+            break;
+        default:
+            throw vk_exception("Invalid index size.");
+        }
+    }
+
+    virtual ~vk_index_buffer() = default;
+
+    virtual VkIndexType index_type() const override { return m_index_type; }
+
+private:
+    VkIndexType m_index_type;
 };
 
 class vk_uniform_buffer : public vk_resource

@@ -74,8 +74,8 @@ void vk_command::draw(
     std::size_t index_end,
     std::size_t vertex_base)
 {
-    auto vb = static_cast<vk_vertex_buffer*>(vertex);
-    auto ib = static_cast<vk_index_buffer*>(index);
+    auto vb = static_cast<vk_buffer*>(vertex);
+    auto ib = static_cast<vk_buffer*>(index);
 
     VkBuffer vertex_buffers[] = {vb->buffer()};
     VkDeviceSize offsets[] = {0};

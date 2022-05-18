@@ -32,12 +32,18 @@ public:
 
     virtual resource_interface* make_vertex_buffer(const vertex_buffer_desc& desc) override
     {
-        return new vk_vertex_buffer(desc);
+        if (desc.dynamic)
+            return new vk_vertex_buffer<vk_host_visible_buffer>(desc);
+        else
+            return new vk_vertex_buffer<vk_device_local_buffer>(desc);
     }
 
     virtual resource_interface* make_index_buffer(const index_buffer_desc& desc) override
     {
-        return new vk_index_buffer(desc);
+        if (desc.dynamic)
+            return new vk_index_buffer<vk_host_visible_buffer>(desc);
+        else
+            return new vk_index_buffer<vk_device_local_buffer>(desc);
     }
 
     resource_interface* make_texture(
