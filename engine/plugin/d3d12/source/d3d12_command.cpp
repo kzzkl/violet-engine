@@ -22,15 +22,15 @@ d3d12_render_command::d3d12_render_command(D3D12CommandAllocator* allocator, std
 
 void d3d12_render_command::begin(
     render_pass_interface* render_pass,
-    resource_interface* camera_render_target,
-    resource_interface* camera_depth_stencil_buffer,
-    resource_interface* back_buffer)
+    resource_interface* render_target,
+    resource_interface* render_target_resolve,
+    resource_interface* depth_stencil_buffer)
 {
     auto rp = static_cast<d3d12_render_pass*>(render_pass);
-    d3d12_camera_info info = {};
-    info.render_target = static_cast<d3d12_resource*>(camera_render_target);
-    info.depth_stencil_buffer = static_cast<d3d12_resource*>(camera_depth_stencil_buffer);
-    info.back_buffer = static_cast<d3d12_resource*>(back_buffer);
+    d3d12_camera_info info = {
+        .render_target = static_cast<d3d12_resource*>(render_target),
+        .render_target_resolve = static_cast<d3d12_resource*>(render_target_resolve),
+        .depth_stencil_buffer = static_cast<d3d12_resource*>(depth_stencil_buffer)};
     rp->begin(m_command_list.Get(), info);
 }
 

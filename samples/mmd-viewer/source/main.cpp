@@ -80,7 +80,7 @@ private:
         auto& graphics = system<graphics::graphics>();
 
         m_camera = world.create();
-        world.add<core::link, graphics::camera, scene::transform>(m_camera);
+        world.add<core::link, graphics::camera, graphics::main_camera, scene::transform>(m_camera);
         auto& camera = world.component<graphics::camera>(m_camera);
         camera.parameter = graphics.make_pipeline_parameter("ash_pass");
 
@@ -133,14 +133,16 @@ private:
         render_target_info.height = height;
         render_target_info.format = graphics.back_buffer_format();
         render_target_info.samples = 4;
-        camera.render_target = graphics.make_render_target(render_target_info);
+        m_render_target = graphics.make_render_target(render_target_info);
+        camera.render_target = m_render_target.get();
 
         graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
         depth_stencil_buffer_info.width = width;
         depth_stencil_buffer_info.height = height;
         depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
         depth_stencil_buffer_info.samples = 4;
-        camera.depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
+        m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
+        camera.depth_stencil_buffer = m_depth_stencil_buffer.get();
     }
 
     void update_camera(float delta)
@@ -242,9 +244,12 @@ private:
     std::string m_title;
     core::application* m_app;
 
-    ecs::entity m_camera;
     ecs::entity m_actor;
     ecs::entity m_plane;
+
+    ecs::entity m_camera;
+    std::unique_ptr<graphics::resource> m_render_target;
+    std::unique_ptr<graphics::resource> m_depth_stencil_buffer;
 
     std::unique_ptr<physics::collision_shape_interface> m_plane_shape;
 

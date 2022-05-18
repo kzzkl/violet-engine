@@ -61,6 +61,7 @@ bool graphics::initialize(const dictionary& config)
 
     world.register_component<visual>();
     world.register_component<camera>();
+    world.register_component<main_camera>();
     m_visual_view = world.make_view<visual>();
     m_object_view = world.make_view<visual, scene::transform>();
     // m_tv = world.make_view<scene::transform>();
@@ -151,7 +152,8 @@ void graphics::render(ecs::entity camera_entity)
     // Render.
     auto command = m_renderer->allocate_command();
 
-    c.back_buffer = m_renderer->back_buffer();
+    if (world.has_component<main_camera>(camera_entity))
+        c.render_target_resolve = m_renderer->back_buffer();
 
     for (auto render_pass : m_render_passes)
         render_pass->render(c, command);
@@ -205,25 +207,8 @@ std::unique_ptr<pipeline_parameter> graphics::make_pipeline_parameter(std::strin
     return std::make_unique<pipeline_parameter>(factory.make_pipeline_parameter(layout));
 }
 
-/*std::unique_ptr<attachment_set_interface> graphics::make_attachment_set(attachment_set_info& info)
-{
-    auto& factory = m_plugin.factory();
-    return std::unique_ptr<attachment_set_interface>(factory.make_attachment_set(info.convert()));
-}*/
-
 std::unique_ptr<resource> graphics::make_texture(std::string_view file)
 {
-    /*std::ifstream fin(file.data(), std::ios::in | std::ios::binary);
-    if (!fin)
-    {
-        log::error("Can not open texture: {}.", file);
-        return nullptr;
-    }
-
-    std::vector<uint8_t> dds_data(fin.seekg(0, std::ios::end).tellg());
-    fin.seekg(0, std::ios::beg).read((char*)dds_data.data(), dds_data.size());
-    fin.close();*/
-
     auto& factory = m_plugin.factory();
     return std::unique_ptr<resource>(factory.make_texture(file.data()));
 }

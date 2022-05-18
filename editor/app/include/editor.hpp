@@ -1,6 +1,7 @@
 #pragma once
 
 #include "application.hpp"
+#include "graphics_interface.hpp"
 
 namespace ash::editor
 {
@@ -16,9 +17,13 @@ private:
     void initialize_camera();
     void draw();
 
+    void resize(std::uint32_t width, std::uint32_t height);
+
     void test_update();
 
     ecs::entity m_editor_camera;
+    std::unique_ptr<graphics::resource> m_render_target;
+    std::unique_ptr<graphics::resource> m_depth_stencil_buffer;
 };
 
 class editor_app

@@ -144,7 +144,6 @@ public:
     d3d12_depth_stencil_buffer(d3d12_depth_stencil_buffer&& other);
     virtual ~d3d12_depth_stencil_buffer();
 
-
     virtual d3d12_depth_stencil_buffer_proxy depth_stencil_buffer();
 
     virtual D3D12Resource* resource() const noexcept override { return m_resource.Get(); }
@@ -162,6 +161,11 @@ private:
 class d3d12_texture : public d3d12_resource
 {
 public:
+    d3d12_texture(
+        const std::uint8_t* data,
+        std::uint32_t width,
+        std::uint32_t height,
+        D3D12GraphicsCommandList* command_list);
     d3d12_texture(const char* file, D3D12GraphicsCommandList* command_list);
 
     virtual d3d12_shader_resource_proxy shader_resource() override;
@@ -195,7 +199,7 @@ public:
         std::size_t size,
         D3D12GraphicsCommandList* command_list = nullptr);
 
-    void upload(const void* data, std::size_t size, std::size_t offset = 0);
+    virtual void upload(const void* data, std::size_t size, std::size_t offset) override;
 
     virtual D3D12Resource* resource() const noexcept override { return m_resource.Get(); }
 

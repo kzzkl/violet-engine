@@ -11,14 +11,14 @@ vk_command::vk_command(VkCommandBuffer command_buffer) : m_command_buffer(comman
 
 void vk_command::begin(
     render_pass_interface* render_pass,
-    resource_interface* camera_render_target,
-    resource_interface* camera_depth_stencil_buffer,
-    resource_interface* back_buffer)
+    resource_interface* render_target,
+    resource_interface* render_target_resolve,
+    resource_interface* depth_stencil_buffer)
 {
-    vk_camera_info camera_info = {};
-    camera_info.render_target = static_cast<vk_image*>(camera_render_target);
-    camera_info.depth_stencil_buffer = static_cast<vk_image*>(camera_depth_stencil_buffer);
-    camera_info.back_buffer = static_cast<vk_image*>(back_buffer);
+    vk_camera_info camera_info = {
+        .render_target = static_cast<vk_image*>(render_target),
+        .render_target_resolve = static_cast<vk_image*>(render_target_resolve),
+        .depth_stencil_buffer = static_cast<vk_image*>(depth_stencil_buffer)};
 
     auto rp = static_cast<vk_render_pass*>(render_pass);
     rp->begin(m_command_buffer, camera_info);

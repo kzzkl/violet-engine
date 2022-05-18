@@ -382,7 +382,7 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
             offset += sizeof(math::float4);
             break;
         case vertex_attribute_type::COLOR:
-            attribute.format = VK_FORMAT_R8G8B8A8_UINT;
+            attribute.format = VK_FORMAT_R8G8B8A8_UNORM;
             offset += sizeof(std::uint8_t) * 4;
             break;
         default:
@@ -600,30 +600,19 @@ vk_frame_buffer::vk_frame_buffer(vk_render_pass* render_pass, const vk_camera_in
             clear_value.color = {0.0f, 0.0f, 0.0f, 1.0f};
             break;
         }
-        case attachment_type::DEPTH_STENCIL: {
-            auto depth = std::make_unique<vk_depth_stencil_buffer>(
-                extent.width,
-                extent.height,
-                attachment.description.format,
-                attachment.description.samples);
-            views.push_back(depth->view());
-            m_attachments.push_back(std::move(depth));
-            clear_value.depthStencil = {1.0f, 0};
-            break;
-        }
         case attachment_type::CAMERA_RENDER_TARGET: {
             views.push_back(camera_info.render_target->view());
+            clear_value.color = {0.0f, 0.0f, 0.0f, 1.0f};
+            break;
+        }
+        case attachment_type::CAMERA_RENDER_TARGET_RESOLVE: {
+            views.push_back(camera_info.render_target_resolve->view());
             clear_value.color = {0.0f, 0.0f, 0.0f, 1.0f};
             break;
         }
         case attachment_type::CAMERA_DEPTH_STENCIL: {
             views.push_back(camera_info.depth_stencil_buffer->view());
             clear_value.depthStencil = {1.0f, 0};
-            break;
-        }
-        case attachment_type::BACK_BUFFER: {
-            views.push_back(camera_info.back_buffer->view());
-            clear_value.color = {0.0f, 0.0f, 0.0f, 1.0f};
             break;
         }
         default:
@@ -687,8 +676,8 @@ void vk_frame_buffer_manager::notify_destroy(vk_image* image)
 {
     for (auto iter = m_frame_buffers.begin(); iter != m_frame_buffers.end();)
     {
-        if (iter->first.render_target == image || iter->first.depth_stencil_buffer == image ||
-            iter->first.back_buffer == image)
+        if (iter->first.render_target == image || iter->first.render_target_resolve == image ||
+            iter->first.depth_stencil_buffer == image)
             iter = m_frame_buffers.erase(iter);
         else
             ++iter;

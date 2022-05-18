@@ -15,25 +15,34 @@ ui_pass::ui_pass()
     graphics.make_pipeline_parameter_layout("ui_material", ui_material);
 
     // UI pass.
-    graphics::pipeline_info ui_pass_info = {};
-    ui_pass_info.vertex_shader = "engine/shader/ui.vert";
-    ui_pass_info.pixel_shader = "engine/shader/ui.frag";
-    ui_pass_info.vertex_attributes = {
+    graphics::pipeline_info ui_pipeline_info = {};
+    ui_pipeline_info.vertex_shader = "engine/shader/ui.vert";
+    ui_pipeline_info.pixel_shader = "engine/shader/ui.frag";
+    ui_pipeline_info.vertex_attributes = {
         {"POSITION", graphics::vertex_attribute_type::FLOAT2}, // position
         {"UV",       graphics::vertex_attribute_type::FLOAT2}, // uv
         {"COLOR",    graphics::vertex_attribute_type::COLOR }  // normal
     };
-    ui_pass_info.references = {
-        {graphics::attachment_reference_type::COLOR, 0},
-        {graphics::attachment_reference_type::DEPTH, 0}
+    ui_pipeline_info.references = {
+        {graphics::attachment_reference_type::COLOR,   0},
+        {graphics::attachment_reference_type::DEPTH,   0},
+        {graphics::attachment_reference_type::RESOLVE, 0}
     };
-    ui_pass_info.primitive_topology = graphics::primitive_topology::TRIANGLE_LIST;
-    ui_pass_info.parameters = {"ui_material"};
-    ui_pass_info.samples = 4;
+    ui_pipeline_info.primitive_topology = graphics::primitive_topology::TRIANGLE_LIST;
+    ui_pipeline_info.parameters = {"ui_material"};
+    ui_pipeline_info.samples = 4;
+    ui_pipeline_info.depth_stencil.depth_functor = graphics::depth_functor::ALWAYS;
+    ui_pipeline_info.blend.enable = true;
+    ui_pipeline_info.blend.source_factor = graphics::blend_factor::SOURCE_ALPHA;
+    ui_pipeline_info.blend.target_factor = graphics::blend_factor::SOURCE_INV_ALPHA;
+    ui_pipeline_info.blend.op = graphics::blend_op::ADD;
+    ui_pipeline_info.blend.source_alpha_factor = graphics::blend_factor::ONE;
+    ui_pipeline_info.blend.target_alpha_factor = graphics::blend_factor::SOURCE_INV_ALPHA;
+    ui_pipeline_info.blend.alpha_op = graphics::blend_op::ADD;
 
     // Attachment.
     graphics::attachment_info render_target = {};
-    render_target.type = graphics::attachment_type::RENDER_TARGET;
+    render_target.type = graphics::attachment_type::CAMERA_RENDER_TARGET;
     render_target.format = graphics.back_buffer_format();
     render_target.load_op = graphics::attachment_load_op::CLEAR;
     render_target.store_op = graphics::attachment_store_op::STORE;
@@ -53,18 +62,38 @@ ui_pass::ui_pass()
     depth_stencil.samples = 4;
     depth_stencil.initial_state = graphics::resource_state::DEPTH_STENCIL;
     depth_stencil.final_state = graphics::resource_state::DEPTH_STENCIL;
+
+    graphics::attachment_info back_buffer = {};
+    back_buffer.type = graphics::attachment_type::CAMERA_RENDER_TARGET_RESOLVE;
+    back_buffer.format = graphics.back_buffer_format();
+    back_buffer.load_op = graphics::attachment_load_op::CLEAR;
+    back_buffer.store_op = graphics::attachment_store_op::DONT_CARE;
+    back_buffer.stencil_load_op = graphics::attachment_load_op::DONT_CARE;
+    back_buffer.stencil_store_op = graphics::attachment_store_op::DONT_CARE;
+    back_buffer.samples = 1;
+    back_buffer.initial_state = graphics::resource_state::RENDER_TARGET;
+    back_buffer.final_state = graphics::resource_state::PRESENT;
+
+    graphics::render_pass_info ui_pass_info;
+    ui_pass_info.attachments.push_back(render_target);
+    ui_pass_info.attachments.push_back(depth_stencil);
+    ui_pass_info.attachments.push_back(back_buffer);
+    ui_pass_info.subpasses.push_back(ui_pipeline_info);
+
+    m_interface = graphics.make_render_pass(ui_pass_info);
 }
 
 void ui_pass::render(const graphics::camera& camera, graphics::render_command_interface* command)
 {
-    /*command->pipeline(pipeline());
-    command->layout(layout());
-    command->render_target(target, depth_stencil);
+    command->begin(
+        m_interface.get(),
+        camera.render_target,
+        camera.render_target_resolve,
+        camera.depth_stencil_buffer);
 
     for (auto& unit : units())
     {
-        for (std::size_t i = 0; i < unit_parameter_count(); ++i)
-            command->parameter(i, unit->parameters[i]->parameter());
+        command->parameter(0, unit->parameters[0]->parameter());
 
         auto rect = static_cast<graphics::scissor_rect*>(unit->external);
         command->scissor(*rect);
@@ -73,9 +102,9 @@ void ui_pass::render(const graphics::camera& camera, graphics::render_command_in
             unit->index_buffer,
             unit->index_start,
             unit->index_end,
-            unit->vertex_base,
-            graphics::primitive_topology_type::TRIANGLE_LIST,
-            target);
-    }*/
+            unit->vertex_base);
+    }
+
+    command->end(m_interface.get());
 }
 } // namespace ash::ui

@@ -44,6 +44,8 @@ public:
 
     virtual resource_extent extent() const noexcept = 0;
     virtual std::size_t size() const noexcept = 0;
+
+    virtual void upload(const void* data, std::size_t size, std::size_t offset = 0) {}
 };
 using resource = resource_interface;
 
@@ -150,7 +152,13 @@ struct blend_desc
 
 enum class depth_functor
 {
+    NEVER,
     LESS,
+    EQUAL,
+    LESS_EQUAL,
+    GREATER,
+    NOT_EQUAL,
+    GREATER_EQUAL,
     ALWAYS
 };
 
@@ -231,10 +239,9 @@ enum class attachment_store_op
 enum class attachment_type
 {
     RENDER_TARGET,
-    DEPTH_STENCIL,
     CAMERA_RENDER_TARGET,
-    CAMERA_DEPTH_STENCIL,
-    BACK_BUFFER
+    CAMERA_RENDER_TARGET_RESOLVE,
+    CAMERA_DEPTH_STENCIL
 };
 
 struct attachment_desc
@@ -279,9 +286,9 @@ class render_command_interface
 public:
     virtual void begin(
         render_pass_interface* render_pass,
-        resource_interface* camera_render_target,
-        resource_interface* camera_depth_stencil_buffer,
-        resource_interface* back_buffer) = 0;
+        resource_interface* render_target,
+        resource_interface* render_target_resolve,
+        resource_interface* depth_stencil_buffer) = 0;
     virtual void end(render_pass_interface* render_pass) = 0;
     virtual void next(render_pass_interface* render_pass) = 0;
 

@@ -8,7 +8,7 @@ namespace ash::editor
 class render_view : public editor_view
 {
 public:
-    render_view(core::context* context);
+    render_view();
     virtual ~render_view() = default;
 
     virtual void draw(editor_data& data) override;
@@ -25,10 +25,11 @@ private:
     bool m_resize_flag;
 
     ecs::entity m_scene_camera;
+    std::unique_ptr<graphics::resource> m_render_target;
+    std::unique_ptr<graphics::resource> m_render_target_resolve;
+    std::unique_ptr<graphics::resource> m_depth_stencil_buffer;
+
     float m_camera_move_speed{1.0f};
     float m_camera_rotate_speed{0.1f};
-
-    std::unique_ptr<graphics::resource> m_render_target;
-    std::unique_ptr<graphics::resource> m_depth_stencil;
 };
 } // namespace ash::editor

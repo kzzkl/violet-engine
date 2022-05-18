@@ -281,6 +281,87 @@ d3d12_depth_stencil_buffer& d3d12_depth_stencil_buffer::operator=(
     return *this;
 }
 
+d3d12_texture::d3d12_texture(
+    const std::uint8_t* data,
+    std::uint32_t width,
+    std::uint32_t height,
+    D3D12GraphicsCommandList* command_list)
+{
+    auto device = d3d12_context::device();
+
+    // Create default buffer.
+    CD3DX12_HEAP_PROPERTIES default_heap_properties(D3D12_HEAP_TYPE_DEFAULT);
+    CD3DX12_RESOURCE_DESC default_desc = CD3DX12_RESOURCE_DESC::Tex2D(
+        DXGI_FORMAT_R8G8B8A8_UNORM,
+        static_cast<UINT>(width),
+        static_cast<UINT>(height));
+    throw_if_failed(device->CreateCommittedResource(
+        &default_heap_properties,
+        D3D12_HEAP_FLAG_NONE,
+        &default_desc,
+        D3D12_RESOURCE_STATE_COPY_DEST,
+        nullptr,
+        IID_PPV_ARGS(&m_resource)));
+
+    // Create upload buffer.
+    UINT width_pitch = (width * 4 + D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u) &
+                       ~(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u);
+
+    d3d12_ptr<ID3D12Resource> upload_resource;
+    CD3DX12_HEAP_PROPERTIES upload_heap_properties(D3D12_HEAP_TYPE_UPLOAD);
+    CD3DX12_RESOURCE_DESC upload_desc = CD3DX12_RESOURCE_DESC::Buffer(height * width_pitch);
+    throw_if_failed(device->CreateCommittedResource(
+        &upload_heap_properties,
+        D3D12_HEAP_FLAG_NONE,
+        &upload_desc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&upload_resource)));
+
+    void* mapped = NULL;
+    D3D12_RANGE range = {0, height * width_pitch};
+    upload_resource->Map(0, &range, &mapped);
+    for (std::size_t i = 0; i < height; ++i)
+    {
+        memcpy(
+            static_cast<std::uint8_t*>(mapped) + i * width_pitch,
+            data + i * width * 4,
+            width * 4);
+    }
+    upload_resource->Unmap(0, &range);
+
+    // Copy data to default buffer.
+    D3D12_TEXTURE_COPY_LOCATION source_location = {};
+    source_location.pResource = upload_resource.Get();
+    source_location.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+    source_location.PlacedFootprint.Footprint.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    source_location.PlacedFootprint.Footprint.Width = static_cast<UINT>(width);
+    source_location.PlacedFootprint.Footprint.Height = static_cast<UINT>(height);
+    source_location.PlacedFootprint.Footprint.Depth = 1;
+    source_location.PlacedFootprint.Footprint.RowPitch = width_pitch;
+
+    D3D12_TEXTURE_COPY_LOCATION target_location = {};
+    target_location.pResource = m_resource.Get();
+    target_location.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+    target_location.SubresourceIndex = 0;
+
+    command_list->CopyTextureRegion(&target_location, 0, 0, 0, &source_location, NULL);
+
+    CD3DX12_RESOURCE_BARRIER transition = CD3DX12_RESOURCE_BARRIER::Transition(
+        m_resource.Get(),
+        D3D12_RESOURCE_STATE_COPY_DEST,
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    command_list->ResourceBarrier(1, &transition);
+    resource_state(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+    d3d12_context::resource()->push_temporary_resource(upload_resource);
+
+    // Create SRV.
+    auto srv_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    m_srv_offset = srv_heap->allocate(1);
+    device->CreateShaderResourceView(m_resource.Get(), nullptr, srv_heap->cpu_handle(m_srv_offset));
+}
+
 d3d12_texture::d3d12_texture(const char* file, D3D12GraphicsCommandList* command_list)
 {
     std::ifstream fin(file, std::ios::in | std::ios::binary);
@@ -421,7 +502,7 @@ d3d12_upload_buffer::d3d12_upload_buffer(
     resource_state(D3D12_RESOURCE_STATE_GENERIC_READ);
 
     if (data != nullptr && size != 0)
-        upload(data, size);
+        upload(data, size, 0);
 }
 
 void d3d12_upload_buffer::upload(const void* data, std::size_t size, std::size_t offset)

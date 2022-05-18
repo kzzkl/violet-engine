@@ -129,14 +129,14 @@ private:
 struct d3d12_camera_info
 {
     d3d12_resource* render_target;
+    d3d12_resource* render_target_resolve;
     d3d12_resource* depth_stencil_buffer;
-    d3d12_resource* back_buffer;
 
     inline bool operator==(const d3d12_camera_info& other) const noexcept
     {
         return render_target == other.render_target &&
-               depth_stencil_buffer == other.depth_stencil_buffer &&
-               back_buffer == other.back_buffer;
+               render_target_resolve == other.render_target_resolve &&
+               depth_stencil_buffer == other.depth_stencil_buffer;
     }
 };
 
@@ -243,8 +243,8 @@ private:
         {
             std::size_t result = 0;
             hash_combine(result, key.render_target);
+            hash_combine(result, key.render_target_resolve);
             hash_combine(result, key.depth_stencil_buffer);
-            hash_combine(result, key.back_buffer);
 
             return result;
         }

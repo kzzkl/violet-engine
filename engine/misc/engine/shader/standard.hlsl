@@ -1,16 +1,19 @@
-cbuffer ash_object : register(b0)
+[[vk::binding(0, 0)]]
+cbuffer ash_object : register(b0, space0)
 {
     float4x4 transform_m;
     float4x4 transform_mv;
     float4x4 transform_mvp;
 };
 
-cbuffer mmd_material : register(b1)
+[[vk::binding(0, 1)]]
+cbuffer mmd_material : register(b0, space1)
 {
     float4 color;
 };
 
-cbuffer ash_pass : register(b2)
+[[vk::binding(0, 2)]]
+cbuffer ash_pass : register(b0, space2)
 {
     float4 camera_position;
     float4 camera_direction;

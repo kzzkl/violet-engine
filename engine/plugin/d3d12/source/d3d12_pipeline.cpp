@@ -83,8 +83,26 @@ D3D12_DEPTH_STENCIL_DESC to_d3d12_depth_stencil_desc(const depth_stencil_desc& d
 
     switch (desc.depth_functor)
     {
+    case depth_functor::NEVER:
+        result.DepthFunc = D3D12_COMPARISON_FUNC_NEVER;
+        break;
     case depth_functor::LESS:
         result.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+        break;
+    case depth_functor::EQUAL:
+        result.DepthFunc = D3D12_COMPARISON_FUNC_EQUAL;
+        break;
+    case depth_functor::LESS_EQUAL:
+        result.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+        break;
+    case depth_functor::GREATER:
+        result.DepthFunc = D3D12_COMPARISON_FUNC_GREATER;
+        break;
+    case depth_functor::NOT_EQUAL:
+        result.DepthFunc = D3D12_COMPARISON_FUNC_NOT_EQUAL;
+        break;
+    case depth_functor::GREATER_EQUAL:
+        result.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
         break;
     case depth_functor::ALWAYS:
         result.DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS;
@@ -510,18 +528,13 @@ d3d12_frame_buffer::d3d12_frame_buffer(
             m_attachment_container.push_back(std::move(render_target));
             break;
         }
-        case attachment_type::DEPTH_STENCIL: {
-            auto depth_stencil_buffer = std::make_unique<d3d12_depth_stencil_buffer>(
-                width,
-                heigth,
-                attachment.samples,
-                attachment.format);
-            m_depth_stencil = depth_stencil_buffer->depth_stencil_buffer().cpu_handle();
+        case attachment_type::CAMERA_RENDER_TARGET_RESOLVE: {
+            /*m_render_targets.push_back(
+                camera_info.render_target_resolve->render_target().cpu_handle());*/
             m_attachments.push_back(attachment_info{
-                depth_stencil_buffer.get(),
+                camera_info.render_target_resolve,
                 resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
                 resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
-            m_attachment_container.push_back(std::move(depth_stencil_buffer));
             break;
         }
         case attachment_type::CAMERA_RENDER_TARGET: {
@@ -536,14 +549,6 @@ d3d12_frame_buffer::d3d12_frame_buffer(
             m_depth_stencil = camera_info.depth_stencil_buffer->depth_stencil_buffer().cpu_handle();
             m_attachments.push_back(attachment_info{
                 camera_info.depth_stencil_buffer,
-                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
-                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
-            break;
-        }
-        case attachment_type::BACK_BUFFER: {
-            m_render_targets.push_back(camera_info.back_buffer->render_target().cpu_handle());
-            m_attachments.push_back(attachment_info{
-                camera_info.back_buffer,
                 resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
                 resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
             break;
@@ -569,7 +574,9 @@ void d3d12_frame_buffer::begin_render(D3D12GraphicsCommandList* command_list)
             attachment.resource->resource_state(attachment.initial_state);
         }
     }
-    command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
+
+    if (!barriers.empty())
+        command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
 
     static const float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
     for (auto handle : m_render_targets)
@@ -601,7 +608,9 @@ void d3d12_frame_buffer::end_render(D3D12GraphicsCommandList* command_list)
             attachment.resource->resource_state(attachment.final_state);
         }
     }
-    command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
+
+    if (!barriers.empty())
+        command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
 }
 
 d3d12_pipeline::d3d12_pipeline(const pipeline_desc& desc)
@@ -680,7 +689,8 @@ void d3d12_pipeline::end(D3D12GraphicsCommandList* command_list, bool final)
         source->resource_state(D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
     }
 
-    command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
+    if (!barriers.empty())
+        command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
 
     for (auto [target_index, source_index] : m_resolve_indices)
     {
@@ -715,7 +725,8 @@ void d3d12_pipeline::end(D3D12GraphicsCommandList* command_list, bool final)
             source->resource_state(attachments[source_index].initial_state);
         }
 
-        command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
+        if (!barriers.empty())
+            command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
     }
 }
 
@@ -959,7 +970,8 @@ void d3d12_frame_buffer_manager::notify_destroy(d3d12_resource* resource)
 {
     for (auto iter = m_frame_buffers.begin(); iter != m_frame_buffers.end();)
     {
-        if (iter->first.back_buffer == resource || iter->first.render_target == resource ||
+        if (iter->first.render_target == resource ||
+            iter->first.render_target_resolve == resource ||
             iter->first.depth_stencil_buffer == resource)
             iter = m_frame_buffers.erase(iter);
         else

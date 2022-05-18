@@ -65,10 +65,11 @@ mmd_pass::mmd_pass()
     edge_pass_info.parameters = {"mmd_skeleton", "ash_pass"};
     edge_pass_info.samples = 4;
     edge_pass_info.rasterizer.cull_mode = graphics::cull_mode::FRONT;
+    edge_pass_info.depth_stencil.depth_functor = graphics::depth_functor::LESS;
 
     // Attachment.
     graphics::attachment_info render_target = {};
-    render_target.type = graphics::attachment_type::RENDER_TARGET;
+    render_target.type = graphics::attachment_type::CAMERA_RENDER_TARGET;
     render_target.format = graphics.back_buffer_format();
     render_target.load_op = graphics::attachment_load_op::CLEAR;
     render_target.store_op = graphics::attachment_store_op::STORE;
@@ -90,7 +91,7 @@ mmd_pass::mmd_pass()
     depth_stencil.final_state = graphics::resource_state::DEPTH_STENCIL;
 
     graphics::attachment_info back_buffer = {};
-    back_buffer.type = graphics::attachment_type::BACK_BUFFER;
+    back_buffer.type = graphics::attachment_type::CAMERA_RENDER_TARGET_RESOLVE;
     back_buffer.format = graphics.back_buffer_format();
     back_buffer.load_op = graphics::attachment_load_op::CLEAR;
     back_buffer.store_op = graphics::attachment_store_op::DONT_CARE;
@@ -100,23 +101,23 @@ mmd_pass::mmd_pass()
     back_buffer.initial_state = graphics::resource_state::RENDER_TARGET;
     back_buffer.final_state = graphics::resource_state::PRESENT;
 
-    graphics::render_pass_info mmd_render_pass_info;
-    mmd_render_pass_info.attachments.push_back(render_target);
-    mmd_render_pass_info.attachments.push_back(depth_stencil);
-    mmd_render_pass_info.attachments.push_back(back_buffer);
-    mmd_render_pass_info.subpasses.push_back(color_pass_info);
-    mmd_render_pass_info.subpasses.push_back(edge_pass_info);
+    graphics::render_pass_info mmd_pass_info;
+    mmd_pass_info.attachments.push_back(render_target);
+    mmd_pass_info.attachments.push_back(depth_stencil);
+    mmd_pass_info.attachments.push_back(back_buffer);
+    mmd_pass_info.subpasses.push_back(color_pass_info);
+    mmd_pass_info.subpasses.push_back(edge_pass_info);
 
-    m_interface = graphics.make_render_pass(mmd_render_pass_info);
+    m_interface = graphics.make_render_pass(mmd_pass_info);
 }
 
 void mmd_pass::render(const graphics::camera& camera, graphics::render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
-        camera.render_target.get(),
-        camera.depth_stencil_buffer.get(),
-        camera.back_buffer);
+        camera.render_target,
+        camera.render_target_resolve,
+        camera.depth_stencil_buffer);
 
     graphics::scissor_rect rect = {};
     auto [width, height] = camera.render_target->extent();

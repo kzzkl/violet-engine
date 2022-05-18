@@ -6,6 +6,7 @@
 #include "scene.hpp"
 #include "ui.hpp"
 #include "window.hpp"
+#include "window_event.hpp"
 
 namespace ash::editor
 {
@@ -17,6 +18,10 @@ bool editor::initialize(const dictionary& config)
 {
     initialize_task();
     initialize_camera();
+
+    system<core::event>().subscribe<window::event_window_resize>(
+        [this](std::uint32_t width, std::uint32_t height) { resize(width, height); });
+
     return true;
 }
 
@@ -29,7 +34,6 @@ void editor::initialize_task()
         "window tick",
         [this]() { system<window::window>().tick(); },
         task::task_type::MAIN_THREAD);
-    // auto render_task = task.schedule("render", [this]() {});
 
     auto draw_ui_task = task.schedule("draw ui", [&, this]() {
         auto& graphics = system<graphics::graphics>();
@@ -46,7 +50,6 @@ void editor::initialize_task()
 
     window_task->add_dependency(*task.find("root"));
     draw_ui_task->add_dependency(*window_task);
-    // render_task->add_dependency(*draw_ui_task);
 }
 
 void editor::initialize_camera()
@@ -57,7 +60,7 @@ void editor::initialize_camera()
     auto& scene = system<scene::scene>();
 
     m_editor_camera = world.create("editor_camera");
-    world.add<graphics::camera, scene::transform>(m_editor_camera);
+    world.add<graphics::camera, graphics::main_camera, scene::transform>(m_editor_camera);
 
     auto& transform = world.component<scene::transform>(m_editor_camera);
     transform.position = {0.0f, 11.0f, -60.0f};
@@ -65,9 +68,9 @@ void editor::initialize_camera()
     transform.scaling = {1.0f, 1.0f, 1.0f};
 
     auto& camera = world.component<graphics::camera>(m_editor_camera);
-    camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
-    camera.parameter = graphics.make_render_parameter("ash_pass");
+    camera.parameter = graphics.make_pipeline_parameter("ash_pass");
     camera.mask = graphics::visual::mask_type::EDITOR | graphics::visual::mask_type::UI;
+    resize(2000, 1200);
 }
 
 void editor::draw()
@@ -77,6 +80,35 @@ void editor::draw()
     ui.begin_frame();
     system<editor_layout>().draw();
     ui.end_frame();
+}
+
+void editor::resize(std::uint32_t width, std::uint32_t height)
+{
+    auto& world = system<ecs::world>();
+    auto& graphics = system<graphics::graphics>();
+
+    auto& camera = world.component<graphics::camera>(m_editor_camera);
+    camera.set(
+        math::to_radians(45.0f),
+        static_cast<float>(width) / static_cast<float>(height),
+        0.3f,
+        1000.0f);
+
+    graphics::render_target_info render_target_info = {};
+    render_target_info.format = graphics.back_buffer_format();
+    render_target_info.width = width;
+    render_target_info.height = height;
+    render_target_info.samples = 4;
+    m_render_target = graphics.make_render_target(render_target_info);
+    camera.render_target = m_render_target.get();
+
+    graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
+    depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
+    depth_stencil_buffer_info.width = width;
+    depth_stencil_buffer_info.height = height;
+    depth_stencil_buffer_info.samples = 4;
+    m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
+    camera.depth_stencil_buffer = m_depth_stencil_buffer.get();
 }
 
 void editor::test_update()

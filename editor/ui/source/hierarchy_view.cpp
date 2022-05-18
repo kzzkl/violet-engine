@@ -5,7 +5,7 @@
 
 namespace ash::editor
 {
-hierarchy_view::hierarchy_view(core::context* context) : editor_view(context)
+hierarchy_view::hierarchy_view()
 {
 }
 

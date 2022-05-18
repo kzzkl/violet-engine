@@ -14,9 +14,9 @@ public:
 
     virtual void begin(
         render_pass_interface* render_pass,
-        resource_interface* camera_render_target,
-        resource_interface* camera_depth_stencil_buffer,
-        resource_interface* back_buffer) override;
+        resource_interface* render_target,
+        resource_interface* render_target_resolve,
+        resource_interface* depth_stencil_buffer) override;
     virtual void end(render_pass_interface* render_pass) override;
     virtual void next(render_pass_interface* render_pass) override;
 

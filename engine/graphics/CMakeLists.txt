@@ -7,7 +7,8 @@ add_library(${PROJECT_NAME} STATIC
     ./source/graphics_interface_helper.cpp
     ./source/graphics_plugin.cpp
     ./source/graphics.cpp
-    ./source/render_pipeline.cpp)
+    ./source/render_pipeline.cpp
+    ./source/standard_pipeline.cpp)
 add_library(ash::graphics ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}

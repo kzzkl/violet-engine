@@ -109,27 +109,28 @@ private:
 struct vk_camera_info
 {
     vk_image* render_target;
+    vk_image* render_target_resolve;
     vk_image* depth_stencil_buffer;
-    vk_image* back_buffer;
 
     resource_extent extent() const
     {
         ASH_VK_ASSERT(
-            render_target != nullptr || depth_stencil_buffer != nullptr || back_buffer != nullptr);
+            render_target != nullptr || render_target_resolve != nullptr ||
+            depth_stencil_buffer != nullptr);
 
         if (render_target != nullptr)
             return render_target->extent();
-        else if (depth_stencil_buffer != nullptr)
-            return depth_stencil_buffer->extent();
+        else if (render_target_resolve != nullptr)
+            return render_target_resolve->extent();
         else
-            return back_buffer->extent();
+            return depth_stencil_buffer->extent();
     }
 
     inline bool operator==(const vk_camera_info& other) const noexcept
     {
         return render_target == other.render_target &&
-               depth_stencil_buffer == other.depth_stencil_buffer &&
-               back_buffer == other.back_buffer;
+               render_target_resolve == other.render_target_resolve &&
+               depth_stencil_buffer == other.depth_stencil_buffer;
     }
 };
 
@@ -197,7 +198,8 @@ private:
             hash_combine(result, key.depth_stencil_buffer->view());
             hash_combine(
                 result,
-                key.back_buffer == nullptr ? VK_NULL_HANDLE : key.back_buffer->view());
+                key.render_target_resolve == nullptr ? VK_NULL_HANDLE
+                                                     : key.render_target_resolve->view());
 
             return result;
         }
