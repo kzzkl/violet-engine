@@ -8,11 +8,11 @@
 
 namespace ash::graphics
 {
-debug_pass::debug_pass(render_pass_interface* interface)
+debug_render_pipeline::debug_render_pipeline(render_pass_interface* interface)
 {
 }
 
-void debug_pass::render(const camera& camera, render_command_interface* command)
+void debug_render_pipeline::render(const camera& camera, render_command_interface* command)
 {
     /*command->begin(interface(), nullptr);
     command->parameter(0, nullptr);

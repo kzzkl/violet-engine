@@ -12,17 +12,13 @@ bool mmd_viewer::initialize(const dictionary& config)
     world.register_component<mmd_node>();
     world.register_component<mmd_skeleton>();
 
-    m_skeleton_view = world.make_view<mmd_skeleton>();
+    m_skeleton_view = world.make_view<mmd_skeleton, graphics::skinned_mesh>();
 
-    m_loader = std::make_unique<mmd_loader>(
-        world,
-        system<core::relation>(),
-        system<graphics::graphics>(),
-        system<scene::scene>(),
-        system<physics::physics>());
+    m_loader = std::make_unique<mmd_loader>();
     m_loader->initialize();
 
-    m_render_pass = std::make_unique<mmd_pass>();
+    m_render_pipeline = std::make_unique<mmd_render_pipeline>();
+    m_skin_pipeline = std::make_unique<mmd_skin_pipeline>();
 
     return true;
 }
@@ -34,7 +30,7 @@ ash::ecs::entity mmd_viewer::load_mmd(
 {
     ecs::entity entity = system<ecs::world>().create();
     mmd_resource resource;
-    if (m_loader->load(entity, resource, pmx, vmd, m_render_pass.get()))
+    if (m_loader->load(entity, resource, pmx, vmd, m_render_pipeline.get(), m_skin_pipeline.get()))
     {
         m_resources[name.data()] = std::move(resource);
         return entity;
@@ -52,13 +48,15 @@ void mmd_viewer::update()
     auto& scene = system<scene::scene>();
     auto& animation = system<mmd_animation>();
 
-    m_skeleton_view->each([&](ecs::entity entity, mmd_skeleton& skeleton) { reset(entity); });
+    m_skeleton_view->each([&](ecs::entity entity, mmd_skeleton& skeleton, graphics::skinned_mesh&) {
+        reset(entity);
+    });
 
     static float delta = 0.0f;
     delta += system<core::timer>().frame_delta();
     animation.evaluate(delta * 30.0f);
     animation.update(false);
-    m_skeleton_view->each([&](mmd_skeleton& skeleton) {
+    m_skeleton_view->each([&](mmd_skeleton& skeleton, graphics::skinned_mesh&) {
         for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
         {
             auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
@@ -76,7 +74,7 @@ void mmd_viewer::update()
 
     animation.update(true);
 
-    m_skeleton_view->each([&](mmd_skeleton& skeleton) {
+    m_skeleton_view->each([&](mmd_skeleton& skeleton, graphics::skinned_mesh& skinned_mesh) {
         for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
         {
             auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
@@ -89,7 +87,7 @@ void mmd_viewer::update()
             math::simd::store(final_transform, skeleton.world[i]);
         }
 
-        skeleton.parameter->set(0, skeleton.world.data(), skeleton.world.size());
+        skinned_mesh.parameter->set(0, skeleton.world.data(), skeleton.world.size());
     });
 }
 
@@ -112,53 +110,5 @@ void mmd_viewer::reset(ecs::entity entity)
         node.inherit_translate = {0.0f, 0.0f, 0.0f};
         node.inherit_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
     }
-}
-
-void mmd_viewer::initialize_pose(ecs::entity entity)
-{
-    auto& world = system<ecs::world>();
-    auto& scene = system<scene::scene>();
-    auto& animation = system<mmd_animation>();
-
-    reset(entity);
-
-    animation.evaluate(0.0f);
-    animation.update(false);
-    system<physics::physics>().simulation();
-    animation.update(true);
-
-    auto& skeleton = world.component<mmd_skeleton>(entity);
-    for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
-    {
-        auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
-        math::matrix_plain::decompose(
-            skeleton.local[i],
-            transform.scaling,
-            transform.rotation,
-            transform.position);
-        transform.dirty = true;
-
-        if (world.has_component<physics::rigidbody>(skeleton.nodes[i]))
-        {
-            auto& rigidbody = world.component<physics::rigidbody>(skeleton.nodes[i]);
-            rigidbody.interface->angular_velocity(math::float3{0.0f, 0.0f, 0.0f});
-            rigidbody.interface->linear_velocity(math::float3{0.0f, 0.0f, 0.0f});
-            rigidbody.interface->clear_forces();
-        }
-    }
-    scene.sync_local(entity);
-
-    for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
-    {
-        auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
-
-        math::float4x4_simd to_world = math::simd::load(transform.world_matrix);
-        math::float4x4_simd initial =
-            math::simd::load(world.component<mmd_node>(skeleton.nodes[i]).initial_inverse);
-
-        math::float4x4_simd final_transform = math::matrix_simd::mul(initial, to_world);
-        math::simd::store(final_transform, skeleton.world[i]);
-    }
-    skeleton.parameter->set(0, skeleton.world.data(), skeleton.world.size());
 }
 } // namespace ash::sample::mmd

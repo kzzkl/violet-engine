@@ -6,13 +6,13 @@
 #include "graphics_debug.hpp"
 #include "graphics_interface_helper.hpp"
 #include "graphics_plugin.hpp"
-#include "render_parameter.hpp"
+#include "pipeline_parameter.hpp"
 #include "render_pipeline.hpp"
+#include "skinned_mesh.hpp"
 #include "transform.hpp"
 #include "type_trait.hpp"
 #include "view.hpp"
 #include "visual.hpp"
-#include <set>
 
 namespace ash::graphics
 {
@@ -27,12 +27,14 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
 
+    void skin_meshes();
     void render(ecs::entity camera_entity);
 
     void begin_frame();
     void end_frame();
 
     std::unique_ptr<render_pass_interface> make_render_pass(render_pass_info& info);
+    std::unique_ptr<compute_pipeline_interface> make_compute_pipeline(compute_pipeline_info& info);
 
     void make_pipeline_parameter_layout(
         std::string_view name,
@@ -43,10 +45,16 @@ public:
     std::unique_ptr<resource> make_vertex_buffer(
         const Vertex* data,
         std::size_t size,
+        vertex_buffer_flags flags = VERTEX_BUFFER_FLAG_NONE,
         bool dynamic = false)
     {
         auto& factory = m_plugin.factory();
-        vertex_buffer_desc desc = {data, sizeof(Vertex), size, dynamic};
+        vertex_buffer_desc desc = {
+            .vertices = data,
+            .vertex_size = sizeof(Vertex),
+            .vertex_count = size,
+            .flags = flags,
+            .dynamic = dynamic};
         return std::unique_ptr<resource>(factory.make_vertex_buffer(desc));
     }
 
@@ -95,10 +103,9 @@ private:
 
     ash::ecs::view<visual>* m_visual_view;
     ash::ecs::view<visual, scene::transform>* m_object_view;
+    ash::ecs::view<visual, skinned_mesh>* m_skinned_mesh_view;
 
     // ash::ecs::view<scene::transform>* m_tv;
-
-    std::set<render_pass*> m_render_passes;
 
     interface_map<pipeline_parameter_layout_interface> m_parameter_layouts;
 

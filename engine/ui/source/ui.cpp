@@ -235,7 +235,7 @@ bool ui::initialize(const dictionary& config)
     auto& world = system<ecs::world>();
     auto& event = system<core::event>();
 
-    m_ui_pass = std::make_unique<ui_pass>();
+    m_pipeline = std::make_unique<ui_pipeline>();
 
     m_ui_entity = world.create();
     world.add<graphics::visual>(m_ui_entity);
@@ -247,8 +247,11 @@ bool ui::initialize(const dictionary& config)
 
     for (std::size_t i = 0; i < 3; ++i)
     {
-        m_vertex_buffer.push_back(
-            graphics.make_vertex_buffer<ImDrawVert>(nullptr, 1024 * 16, true));
+        m_vertex_buffer.push_back(graphics.make_vertex_buffer<ImDrawVert>(
+            nullptr,
+            1024 * 16,
+            graphics::VERTEX_BUFFER_FLAG_NONE,
+            true));
         m_index_buffer.push_back(graphics.make_index_buffer<ImDrawIdx>(nullptr, 1024 * 32, true));
     }
 
@@ -417,8 +420,8 @@ void ui::end_frame()
 {
     auto& world = system<ecs::world>();
     auto& visual = world.component<graphics::visual>(m_ui_entity);
-    visual.submesh.clear();
-    m_scissor_rects.clear();
+    visual.submeshes.clear();
+    visual.materials.clear();
 
     ImGui::Render();
 
@@ -463,19 +466,24 @@ void ui::end_frame()
         {
             auto& command = list->CmdBuffer[j];
 
-            graphics::render_unit submesh = {};
-            submesh.vertex_buffer = m_vertex_buffer[m_frame_index].get();
-            submesh.index_buffer = m_index_buffer[m_frame_index].get();
-            submesh.index_start = command.IdxOffset + index_counter;
-            submesh.index_end = command.IdxOffset + command.ElemCount + index_counter;
-            submesh.vertex_base = command.VtxOffset + vertex_counter;
-            submesh.render_pass = m_ui_pass.get();
+            visual.vertex_buffers.push_back(m_vertex_buffer[m_frame_index].get());
+            visual.index_buffer = m_index_buffer[m_frame_index].get();
+
+            graphics::submesh mesh = {};
+            mesh.index_start = command.IdxOffset + index_counter;
+            mesh.index_end = command.IdxOffset + command.ElemCount + index_counter;
+            mesh.vertex_base = command.VtxOffset + vertex_counter;
+            visual.submeshes.push_back(mesh);
+
+            graphics::material material = {};
+            material.pipeline = m_pipeline.get();
 
             auto parameter = allocate_parameter();
             parameter->set(0, mvp);
             parameter->set(1, static_cast<graphics::resource*>(command.GetTexID()));
             // parameter->set(1, m_font.get());
-            submesh.parameters.push_back(parameter);
+            material.parameters.push_back(parameter);
+            visual.materials.push_back(material);
 
             ImVec2 clip_min(command.ClipRect.x - clip_off.x, command.ClipRect.y - clip_off.y);
             ImVec2 clip_max(command.ClipRect.z - clip_off.x, command.ClipRect.w - clip_off.y);
@@ -488,10 +496,7 @@ void ui::end_frame()
                 static_cast<std::uint32_t>(clip_min.y),
                 static_cast<std::uint32_t>(clip_max.x),
                 static_cast<std::uint32_t>(clip_max.y)};
-            m_scissor_rects.push_back(rect);
-            submesh.external = &m_scissor_rects.back();
-
-            visual.submesh.push_back(submesh);
+            m_pipeline->add_scissor(rect);
         }
 
         vertex_counter += list->VtxBuffer.Size;

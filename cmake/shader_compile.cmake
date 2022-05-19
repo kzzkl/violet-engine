@@ -18,6 +18,10 @@ function(target_shader_compile TARGET_NAME PARAMETERS OUTPUT_DIR COMPILER_EXECUT
                     set(OUTPUT_NAME "${OUTPUT_DIR}/${SHADER_NAME}.frag.cso")
                     set(PROFILE "ps_6_0")
                     set(ENTRY_POINT "ps_main")
+                elseif(PARAMETER STREQUAL "comp")
+                    set(OUTPUT_NAME "${OUTPUT_DIR}/${SHADER_NAME}.comp.cso")
+                    set(PROFILE "cs_6_0")
+                    set(ENTRY_POINT "cs_main")
                 endif()
                 add_custom_command(
                     TARGET ${TARGET_NAME}
@@ -34,6 +38,10 @@ function(target_shader_compile TARGET_NAME PARAMETERS OUTPUT_DIR COMPILER_EXECUT
                     set(OUTPUT_NAME "${OUTPUT_DIR}/${SHADER_NAME}.frag.spv")
                     set(PROFILE "frag")
                     set(ENTRY_POINT "ps_main")
+                elseif(PARAMETER STREQUAL "comp")
+                    set(OUTPUT_NAME "${OUTPUT_DIR}/${SHADER_NAME}.comp.spv")
+                    set(PROFILE "comp")
+                    set(ENTRY_POINT "cs_main")
                 endif()
                 add_custom_command(
                     TARGET ${TARGET_NAME}

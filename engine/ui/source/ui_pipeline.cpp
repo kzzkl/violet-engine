@@ -3,7 +3,7 @@
 
 namespace ash::ui
 {
-ui_pass::ui_pass()
+ui_pipeline::ui_pipeline()
 {
     auto& graphics = system<graphics::graphics>();
 
@@ -83,7 +83,9 @@ ui_pass::ui_pass()
     m_interface = graphics.make_render_pass(ui_pass_info);
 }
 
-void ui_pass::render(const graphics::camera& camera, graphics::render_command_interface* command)
+void ui_pipeline::render(
+    const graphics::camera& camera,
+    graphics::render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
@@ -91,20 +93,22 @@ void ui_pass::render(const graphics::camera& camera, graphics::render_command_in
         camera.render_target_resolve,
         camera.depth_stencil_buffer);
 
+    command->scissor(m_scissor_rects.data(), m_scissor_rects.size());
+
     for (auto& unit : units())
     {
-        command->parameter(0, unit->parameters[0]->parameter());
-
-        auto rect = static_cast<graphics::scissor_rect*>(unit->external);
-        command->scissor(*rect);
+        command->parameter(0, unit.parameters[0]->parameter());
         command->draw(
-            unit->vertex_buffer,
-            unit->index_buffer,
-            unit->index_start,
-            unit->index_end,
-            unit->vertex_base);
+            unit.vertex_buffers.data(),
+            unit.vertex_buffers.size(),
+            unit.index_buffer,
+            unit.index_start,
+            unit.index_end,
+            unit.vertex_base);
     }
 
     command->end(m_interface.get());
+
+    m_scissor_rects.clear();
 }
 } // namespace ash::ui

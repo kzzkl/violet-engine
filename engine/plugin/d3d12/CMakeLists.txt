@@ -4,6 +4,7 @@ add_library(${PROJECT_NAME} SHARED
     ./source/d3d12_command.cpp
     ./source/d3d12_common.cpp
     ./source/d3d12_context.cpp
+    ./source/d3d12_descriptor_heap.cpp
     ./source/d3d12_frame_resource.cpp
     ./source/d3d12_pipeline.cpp
     ./source/d3d12_plugin.cpp

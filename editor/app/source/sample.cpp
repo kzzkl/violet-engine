@@ -57,7 +57,7 @@ bool test_module::initialize(const dictionary& config)
         v.object = m_cube_object.back().get();
 
         graphics::render_unit submesh;
-        submesh.vertex_buffer = m_cube_vertex_buffer.get();
+        submesh.vertex_buffers.push_back(m_cube_vertex_buffer.get());
         submesh.index_buffer = m_cube_index_buffer.get();
         submesh.index_start = 0;
         submesh.index_end = cube_data.indices.size();
@@ -87,7 +87,7 @@ bool test_module::initialize(const dictionary& config)
         v.object = m_cube_object.back().get();
 
         graphics::render_unit submesh;
-        submesh.vertex_buffer = m_cube_vertex_buffer.get();
+        submesh.vertex_buffers.push_back(m_cube_vertex_buffer.get());
         submesh.index_buffer = m_cube_index_buffer.get();
         submesh.index_start = 0;
         submesh.index_end = cube_data.indices.size();

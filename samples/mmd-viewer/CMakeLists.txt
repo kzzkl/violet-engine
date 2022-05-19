@@ -29,6 +29,7 @@ include(${ASH_ROOT_DIR}/cmake/shader_compile.cmake)
 set(SHADERS "")
 list(APPEND SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/color.hlsl;vert;frag")
 list(APPEND SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/edge.hlsl;vert;frag")
+list(APPEND SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/skin.hlsl;comp")
 target_shader_compile(
     "${PROJECT_NAME}"
     "${SHADERS}"

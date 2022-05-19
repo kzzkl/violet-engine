@@ -60,9 +60,7 @@ private:
     std::size_t m_parameter_counter;
     std::vector<std::unique_ptr<graphics::pipeline_parameter>> m_parameter_pool;
 
-    std::deque<graphics::scissor_rect> m_scissor_rects;
-
-    std::unique_ptr<ui_pass> m_ui_pass;
+    std::unique_ptr<ui_pipeline> m_pipeline;
     std::size_t m_frame_index;
 
     bool m_enable_mouse;

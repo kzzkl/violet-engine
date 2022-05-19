@@ -2,7 +2,7 @@
 
 #include "component.hpp"
 #include "math.hpp"
-#include "render_parameter.hpp"
+#include "pipeline_parameter.hpp"
 
 namespace ash::graphics
 {

@@ -106,6 +106,7 @@ private:
         auto render_task = task.schedule("render", [this]() {
             auto& graphics = system<graphics::graphics>();
             graphics.begin_frame();
+            graphics.skin_meshes();
             graphics.render(m_camera);
             graphics.end_frame();
         });
@@ -169,7 +170,7 @@ private:
             };
 
             auto& v = world.component<graphics::visual>(m_actor);
-            v.submesh[0].parameters[1]->set(0, colors[index]);
+            v.materials[0].parameters[1]->set(0, colors[index]);
 
             index = (index + 1) % colors.size();
         }

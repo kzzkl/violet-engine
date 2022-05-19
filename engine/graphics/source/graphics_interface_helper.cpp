@@ -22,7 +22,7 @@ pipeline_info::pipeline_info() : primitive_topology(primitive_topology::TRIANGLE
 
 pipeline_desc pipeline_info::convert() noexcept
 {
-    pipeline_desc result;
+    pipeline_desc result = {};
     result.vertex_shader = vertex_shader.c_str();
     result.pixel_shader = pixel_shader.c_str();
 
@@ -58,6 +58,15 @@ render_pass_desc render_pass_info::convert() noexcept
     result.attachment_count = m_attachment_desc.size();
     result.subpasses = m_pass_desc.data();
     result.subpass_count = m_pass_desc.size();
+    return result;
+}
+
+compute_pipeline_desc compute_pipeline_info::convert() noexcept
+{
+    compute_pipeline_desc result = {};
+    result.compute_shader = compute_shader.c_str();
+    result.parameters = parameter_interfaces.data();
+    result.parameter_count = parameter_interfaces.size();
     return result;
 }
 } // namespace ash::graphics

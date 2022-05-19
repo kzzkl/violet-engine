@@ -71,27 +71,42 @@ void d3d12_render_command::parameter(std::size_t index, pipeline_parameter_inter
     }
 }
 
-void d3d12_render_command::scissor(const scissor_rect& rect)
+void d3d12_render_command::scissor(const scissor_rect* rects, std::size_t rect_size)
 {
-    D3D12_RECT r = {
-        static_cast<LONG>(rect.min_x),
-        static_cast<LONG>(rect.min_y),
-        static_cast<LONG>(rect.max_x),
-        static_cast<LONG>(rect.max_y)};
-    m_command_list->RSSetScissorRects(1, &r);
+    std::vector<D3D12_RECT> r;
+    r.reserve(rect_size);
+    for (std::size_t i = 0; i < rect_size; ++i)
+    {
+        r.push_back(
+            {static_cast<LONG>(rects[i].min_x),
+             static_cast<LONG>(rects[i].min_y),
+             static_cast<LONG>(rects[i].max_x),
+             static_cast<LONG>(rects[i].max_y)});
+    }
+    m_command_list->RSSetScissorRects(static_cast<UINT>(rect_size), r.data());
 }
 
 void d3d12_render_command::draw(
-    resource* vertex,
-    resource* index,
+    resource_interface* const* vertex_buffers,
+    std::size_t vertex_buffer_count,
+    resource_interface* index_buffer,
     std::size_t index_start,
     std::size_t index_end,
     std::size_t vertex_base)
 {
-    auto vb = static_cast<d3d12_resource*>(vertex)->vertex_buffer();
-    auto ib = static_cast<d3d12_resource*>(index)->index_buffer();
+    std::vector<D3D12_VERTEX_BUFFER_VIEW> vertex_buffer_views(vertex_buffer_count);
+    for (std::size_t i = 0; i < vertex_buffer_count; ++i)
+    {
+        vertex_buffer_views[i] =
+            static_cast<d3d12_resource*>(vertex_buffers[i])->vertex_buffer().view();
+    }
 
-    m_command_list->IASetVertexBuffers(0, 1, &vb.view());
+    auto ib = static_cast<d3d12_resource*>(index_buffer)->index_buffer();
+
+    m_command_list->IASetVertexBuffers(
+        0,
+        static_cast<UINT>(vertex_buffer_views.size()),
+        vertex_buffer_views.data());
     m_command_list->IASetIndexBuffer(&ib.view());
 
     m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -102,6 +117,57 @@ void d3d12_render_command::draw(
         static_cast<UINT>(index_start),
         static_cast<UINT>(vertex_base),
         0);
+}
+
+void d3d12_render_command::begin(compute_pipeline_interface* pipeline)
+{
+    auto cp = static_cast<d3d12_compute_pipeline*>(pipeline);
+    cp->begin(m_command_list.Get());
+}
+
+void d3d12_render_command::end(compute_pipeline_interface* pipeline)
+{
+    auto cp = static_cast<d3d12_compute_pipeline*>(pipeline);
+    cp->end(m_command_list.Get());
+}
+
+void d3d12_render_command::dispatch(std::size_t x, std::size_t y, std::size_t z)
+{
+    m_command_list->Dispatch(static_cast<UINT>(x), static_cast<UINT>(y), static_cast<UINT>(z));
+}
+
+void d3d12_render_command::compute_parameter(
+    std::size_t index,
+    pipeline_parameter_interface* parameter)
+{
+    d3d12_pipeline_parameter* p = static_cast<d3d12_pipeline_parameter*>(parameter);
+    p->sync();
+
+    if (p->tier() == d3d12_parameter_tier_type::TIER1)
+    {
+        auto tier1 = p->tier1();
+        if (tier1.type == D3D12_ROOT_PARAMETER_TYPE_CBV)
+            m_command_list->SetComputeRootConstantBufferView(
+                static_cast<UINT>(index),
+                tier1.address);
+        else if (tier1.type == D3D12_ROOT_PARAMETER_TYPE_SRV)
+            m_command_list->SetComputeRootShaderResourceView(
+                static_cast<UINT>(index),
+                tier1.address);
+        else if (tier1.type == D3D12_ROOT_PARAMETER_TYPE_UAV)
+        {
+            m_command_list->SetComputeRootUnorderedAccessView(
+                static_cast<UINT>(index),
+                tier1.address);
+        }
+    }
+    else
+    {
+        auto tier2 = p->tier2();
+        m_command_list->SetComputeRootDescriptorTable(
+            static_cast<UINT>(index),
+            tier2.base_gpu_handle);
+    }
 }
 
 void d3d12_render_command::allocator(D3D12CommandAllocator* allocator) noexcept

@@ -4,10 +4,10 @@
 
 namespace ash::graphics
 {
-class standard_pass : public render_pass
+class standard_pipeline : public render_pipeline
 {
 public:
-    standard_pass();
+    standard_pipeline();
 
     virtual void render(const camera& camera, render_command_interface* command) override;
 

@@ -6,21 +6,6 @@
 
 namespace ash::graphics::d3d12
 {
-d3d12_render_target_proxy d3d12_resource::render_target()
-{
-    throw d3d12_exception("The resource is not a render target");
-}
-
-d3d12_depth_stencil_buffer_proxy d3d12_resource::depth_stencil_buffer()
-{
-    throw d3d12_exception("The resource is not a depth stencil buffer");
-}
-
-d3d12_shader_resource_proxy d3d12_resource::shader_resource()
-{
-    throw d3d12_exception("The resource is not a shader resource");
-}
-
 d3d12_vertex_buffer_proxy d3d12_resource::vertex_buffer()
 {
     throw d3d12_exception("The resource is not a vertex buffer");
@@ -135,16 +120,16 @@ d3d12_render_target::~d3d12_render_target()
     }
 }
 
-d3d12_render_target_proxy d3d12_render_target::render_target()
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_render_target::rtv() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-    return d3d12_render_target_proxy(heap->cpu_handle(m_rtv_offset));
+    return heap->cpu_handle(m_rtv_offset);
 }
 
-d3d12_shader_resource_proxy d3d12_render_target::shader_resource()
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_render_target::srv() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-    return d3d12_shader_resource_proxy(heap->cpu_handle(m_srv_offset));
+    return heap->cpu_handle(m_srv_offset);
 }
 
 resource_format d3d12_render_target::format() const noexcept
@@ -248,10 +233,10 @@ d3d12_depth_stencil_buffer::~d3d12_depth_stencil_buffer()
     }
 }
 
-d3d12_depth_stencil_buffer_proxy d3d12_depth_stencil_buffer::depth_stencil_buffer()
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_depth_stencil_buffer::dsv() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-    return d3d12_depth_stencil_buffer_proxy(heap->cpu_handle(m_dsv_offset));
+    return heap->cpu_handle(m_dsv_offset);
 }
 
 resource_format d3d12_depth_stencil_buffer::format() const noexcept
@@ -422,16 +407,17 @@ d3d12_texture::d3d12_texture(const char* file, D3D12GraphicsCommandList* command
         srv_heap->cpu_handle(m_srv_offset));
 }
 
-d3d12_shader_resource_proxy d3d12_texture::shader_resource()
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_texture::srv() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-    return d3d12_shader_resource_proxy(heap->cpu_handle(m_srv_offset));
+    return heap->cpu_handle(m_srv_offset);
 }
 
 d3d12_default_buffer::d3d12_default_buffer(
     const void* data,
     std::size_t size,
-    D3D12GraphicsCommandList* command_list)
+    D3D12GraphicsCommandList* command_list,
+    D3D12_RESOURCE_FLAGS flags)
 {
     auto device = d3d12_context::device();
 
@@ -450,7 +436,7 @@ d3d12_default_buffer::d3d12_default_buffer(
 
     // Create default heap
     CD3DX12_HEAP_PROPERTIES default_heap_properties(D3D12_HEAP_TYPE_DEFAULT);
-    CD3DX12_RESOURCE_DESC default_desc = CD3DX12_RESOURCE_DESC::Buffer(size);
+    CD3DX12_RESOURCE_DESC default_desc = CD3DX12_RESOURCE_DESC::Buffer(size, flags);
 
     throw_if_failed(device->CreateCommittedResource(
         &default_heap_properties,
@@ -487,10 +473,11 @@ d3d12_default_buffer::d3d12_default_buffer(
 d3d12_upload_buffer::d3d12_upload_buffer(
     const void* data,
     std::size_t size,
-    D3D12GraphicsCommandList* command_list)
+    D3D12GraphicsCommandList* command_list,
+    D3D12_RESOURCE_FLAGS flags)
 {
     CD3DX12_HEAP_PROPERTIES heap_properties(D3D12_HEAP_TYPE_UPLOAD);
-    CD3DX12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(size);
+    CD3DX12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(size, flags);
 
     throw_if_failed(d3d12_context::device()->CreateCommittedResource(
         &heap_properties,
@@ -514,47 +501,6 @@ void d3d12_upload_buffer::upload(const void* data, std::size_t size, std::size_t
     memcpy(target, data, size);
 
     m_resource->Unmap(0, nullptr);
-}
-
-d3d12_descriptor_heap::d3d12_descriptor_heap(
-    D3D12_DESCRIPTOR_HEAP_TYPE type,
-    std::size_t size,
-    std::size_t increment_size,
-    D3D12_DESCRIPTOR_HEAP_FLAGS flag)
-    : m_increment_size(static_cast<UINT>(increment_size))
-{
-    D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-    desc.NumDescriptors = static_cast<UINT>(size);
-    desc.Type = type;
-    desc.Flags = flag;
-    desc.NodeMask = 0;
-    throw_if_failed(d3d12_context::device()->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_heap)));
-}
-
-std::size_t d3d12_descriptor_heap::allocate(std::size_t size)
-{
-    return m_index_allocator.allocate(size);
-}
-
-void d3d12_descriptor_heap::deallocate(std::size_t begin, std::size_t size)
-{
-    m_index_allocator.deallocate(begin, size);
-}
-
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_descriptor_heap::cpu_handle(std::size_t index)
-{
-    return CD3DX12_CPU_DESCRIPTOR_HANDLE(
-        m_heap->GetCPUDescriptorHandleForHeapStart(),
-        static_cast<UINT>(index),
-        m_increment_size);
-}
-
-D3D12_GPU_DESCRIPTOR_HANDLE d3d12_descriptor_heap::gpu_handle(std::size_t index)
-{
-    return CD3DX12_GPU_DESCRIPTOR_HANDLE(
-        m_heap->GetGPUDescriptorHandleForHeapStart(),
-        static_cast<UINT>(index),
-        m_increment_size);
 }
 
 d3d12_resource_manager::d3d12_resource_manager()

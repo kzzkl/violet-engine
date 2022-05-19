@@ -3,7 +3,7 @@
 
 namespace ash::graphics
 {
-standard_pass::standard_pass()
+standard_pipeline::standard_pipeline()
 {
     pipeline_parameter_layout_info standard_material;
     standard_material.parameters = {
@@ -74,7 +74,7 @@ standard_pass::standard_pass()
     m_interface = system<graphics>().make_render_pass(standard_pass_info);
 }
 
-void standard_pass::render(const camera& camera, render_command_interface* command)
+void standard_pipeline::render(const camera& camera, render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
@@ -86,20 +86,21 @@ void standard_pass::render(const camera& camera, render_command_interface* comma
     auto [width, height] = camera.render_target->extent();
     rect.max_x = width;
     rect.max_y = height;
-    command->scissor(rect);
+    command->scissor(&rect, 1);
 
     command->parameter(2, camera.parameter->parameter());
     for (auto& unit : units())
     {
-        command->parameter(0, unit->parameters[0]->parameter());
-        command->parameter(1, unit->parameters[1]->parameter());
+        command->parameter(0, unit.parameters[0]->parameter());
+        command->parameter(1, unit.parameters[1]->parameter());
 
         command->draw(
-            unit->vertex_buffer,
-            unit->index_buffer,
-            unit->index_start,
-            unit->index_end,
-            unit->vertex_base);
+            unit.vertex_buffers.data(),
+            unit.vertex_buffers.size(),
+            unit.index_buffer,
+            unit.index_start,
+            unit.index_end,
+            unit.vertex_base);
     }
 
     command->end(m_interface.get());

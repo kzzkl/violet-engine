@@ -20,15 +20,22 @@ public:
     virtual void end(render_pass_interface* render_pass) override;
     virtual void next(render_pass_interface* render_pass) override;
 
-    virtual void scissor(const scissor_rect& rect) override;
+    virtual void scissor(const scissor_rect* rects, std::size_t rect_size) override;
 
     virtual void parameter(std::size_t index, pipeline_parameter_interface* parameter) override;
     virtual void draw(
-        resource_interface* vertex,
-        resource_interface* index,
+        resource_interface* const* vertex_buffers,
+        std::size_t vertex_buffer_count,
+        resource_interface* index_buffer,
         std::size_t index_start,
         std::size_t index_end,
         std::size_t vertex_base) override;
+
+    virtual void begin(compute_pipeline_interface* pipeline) override;
+    virtual void end(compute_pipeline_interface* pipeline) override;
+    virtual void dispatch(std::size_t x, std::size_t y, std::size_t z) override;
+    virtual void compute_parameter(std::size_t index, pipeline_parameter_interface* parameter)
+        override;
 
     void allocator(D3D12CommandAllocator* allocator) noexcept;
     void reset();

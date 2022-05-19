@@ -1,56 +1,11 @@
 #pragma once
 
 #include "d3d12_common.hpp"
-#include "d3d12_frame_resource.hpp"
-#include <array>
-#include <deque>
+#include "d3d12_context.hpp"
+#include "d3d12_descriptor_heap.hpp"
 
 namespace ash::graphics::d3d12
 {
-class d3d12_render_target;
-class d3d12_render_target_proxy
-{
-public:
-    explicit d3d12_render_target_proxy(D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle)
-        : m_rtv_handle(rtv_handle)
-    {
-    }
-
-    inline D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle() const noexcept { return m_rtv_handle; }
-
-private:
-    D3D12_CPU_DESCRIPTOR_HANDLE m_rtv_handle;
-};
-
-class d3d12_depth_stencil_buffer;
-class d3d12_depth_stencil_buffer_proxy
-{
-public:
-    explicit d3d12_depth_stencil_buffer_proxy(D3D12_CPU_DESCRIPTOR_HANDLE dsv_handle)
-        : m_dsv_handle(dsv_handle)
-    {
-    }
-
-    inline D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle() const noexcept { return m_dsv_handle; }
-
-private:
-    D3D12_CPU_DESCRIPTOR_HANDLE m_dsv_handle;
-};
-
-class d3d12_shader_resource_proxy
-{
-public:
-    explicit d3d12_shader_resource_proxy(D3D12_CPU_DESCRIPTOR_HANDLE srv_handle)
-        : m_srv_handle(srv_handle)
-    {
-    }
-
-    D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle() const noexcept { return m_srv_handle; }
-
-private:
-    D3D12_CPU_DESCRIPTOR_HANDLE m_srv_handle;
-};
-
 class d3d12_vertex_buffer_proxy
 {
 public:
@@ -84,13 +39,30 @@ class d3d12_resource : public resource_interface
 public:
     virtual ~d3d12_resource() = default;
 
-    virtual d3d12_render_target_proxy render_target();
-    virtual d3d12_depth_stencil_buffer_proxy depth_stencil_buffer();
-    virtual d3d12_shader_resource_proxy shader_resource();
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE rtv() const
+    {
+        throw d3d12_exception("The resource is not a render target");
+    }
+
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE dsv() const
+    {
+        throw d3d12_exception("The resource is not a depth stencil buffer");
+    }
+
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE srv() const
+    {
+        throw d3d12_exception("The resource is not a shader resource");
+    }
+
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE uav() const
+    {
+        throw d3d12_exception("The resource is not a unordered access resource");
+    }
+
     virtual d3d12_vertex_buffer_proxy vertex_buffer();
     virtual d3d12_index_buffer_proxy index_buffer();
 
-    virtual D3D12Resource* resource() const noexcept = 0;
+    virtual D3D12Resource* handle() const noexcept = 0;
 
     virtual resource_format format() const noexcept override { return resource_format::UNDEFINED; }
     virtual resource_extent extent() const noexcept override { return {0, 0}; }
@@ -116,10 +88,10 @@ public:
     d3d12_render_target(d3d12_render_target&& other);
     virtual ~d3d12_render_target();
 
-    virtual d3d12_render_target_proxy render_target() override;
-    virtual d3d12_shader_resource_proxy shader_resource() override;
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE rtv() const override;
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE srv() const override;
 
-    virtual D3D12Resource* resource() const noexcept override { return m_resource.Get(); }
+    virtual D3D12Resource* handle() const noexcept override { return m_resource.Get(); }
 
     virtual resource_format format() const noexcept override;
     virtual resource_extent extent() const noexcept override;
@@ -144,10 +116,8 @@ public:
     d3d12_depth_stencil_buffer(d3d12_depth_stencil_buffer&& other);
     virtual ~d3d12_depth_stencil_buffer();
 
-    virtual d3d12_depth_stencil_buffer_proxy depth_stencil_buffer();
-
-    virtual D3D12Resource* resource() const noexcept override { return m_resource.Get(); }
-
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE dsv() const override;
+    virtual D3D12Resource* handle() const noexcept override { return m_resource.Get(); }
     virtual resource_format format() const noexcept override;
     virtual resource_extent extent() const noexcept override;
 
@@ -168,9 +138,8 @@ public:
         D3D12GraphicsCommandList* command_list);
     d3d12_texture(const char* file, D3D12GraphicsCommandList* command_list);
 
-    virtual d3d12_shader_resource_proxy shader_resource() override;
-
-    virtual D3D12Resource* resource() const noexcept override { return m_resource.Get(); }
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE srv() const override;
+    virtual D3D12Resource* handle() const noexcept override { return m_resource.Get(); }
 
 private:
     d3d12_ptr<D3D12Resource> m_resource;
@@ -183,9 +152,10 @@ public:
     d3d12_default_buffer(
         const void* data,
         std::size_t size,
-        D3D12GraphicsCommandList* command_list);
+        D3D12GraphicsCommandList* command_list,
+        D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE);
 
-    virtual D3D12Resource* resource() const noexcept override { return m_resource.Get(); }
+    virtual D3D12Resource* handle() const noexcept override { return m_resource.Get(); }
 
 private:
     d3d12_ptr<D3D12Resource> m_resource;
@@ -197,11 +167,12 @@ public:
     d3d12_upload_buffer(
         const void* data,
         std::size_t size,
-        D3D12GraphicsCommandList* command_list = nullptr);
+        D3D12GraphicsCommandList* command_list = nullptr,
+        D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE);
 
     virtual void upload(const void* data, std::size_t size, std::size_t offset) override;
 
-    virtual D3D12Resource* resource() const noexcept override { return m_resource.Get(); }
+    virtual D3D12Resource* handle() const noexcept override { return m_resource.Get(); }
 
 private:
     d3d12_ptr<D3D12Resource> m_resource;
@@ -213,11 +184,71 @@ class d3d12_vertex_buffer : public Impl
 public:
     d3d12_vertex_buffer() = default;
     d3d12_vertex_buffer(const vertex_buffer_desc& desc, D3D12GraphicsCommandList* command_list)
-        : Impl(desc.vertices, desc.vertex_size * desc.vertex_count, command_list)
+        : Impl(
+              desc.vertices,
+              desc.vertex_size * desc.vertex_count,
+              command_list,
+              (desc.flags & VERTEX_BUFFER_FLAG_SKIN_OUT)
+                  ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
+                  : D3D12_RESOURCE_FLAG_NONE),
+          m_uav_offset(INVALID_DESCRIPTOR_INDEX)
     {
-        m_view.BufferLocation = Impl::resource()->GetGPUVirtualAddress();
+        m_view.BufferLocation = Impl::handle()->GetGPUVirtualAddress();
         m_view.SizeInBytes = static_cast<UINT>(desc.vertex_size * desc.vertex_count);
         m_view.StrideInBytes = static_cast<UINT>(desc.vertex_size);
+
+        if (desc.flags & VERTEX_BUFFER_FLAG_SKIN_IN)
+        {
+            auto srv_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+            m_srv_offset = srv_heap->allocate(1);
+
+            D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
+            srv_desc.Format = DXGI_FORMAT_UNKNOWN;
+            srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+            srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            srv_desc.Buffer.FirstElement = 0;
+            srv_desc.Buffer.NumElements = static_cast<UINT>(desc.vertex_count);
+            srv_desc.Buffer.StructureByteStride = static_cast<UINT>(desc.vertex_size);
+            srv_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+
+            d3d12_context::device()->CreateShaderResourceView(
+                Impl::handle(),
+                &srv_desc,
+                srv_heap->cpu_handle(m_srv_offset));
+        }
+
+        if (desc.flags & VERTEX_BUFFER_FLAG_SKIN_OUT)
+        {
+            auto uav_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+            m_uav_offset = uav_heap->allocate(1);
+
+            D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = {};
+            uav_desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+            uav_desc.Format = DXGI_FORMAT_UNKNOWN;
+            uav_desc.Buffer.FirstElement = 0;
+            uav_desc.Buffer.NumElements = static_cast<UINT>(desc.vertex_count);
+            uav_desc.Buffer.StructureByteStride = static_cast<UINT>(desc.vertex_size);
+            uav_desc.Buffer.CounterOffsetInBytes = 0;
+            uav_desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+
+            d3d12_context::device()->CreateUnorderedAccessView(
+                Impl::handle(),
+                nullptr,
+                &uav_desc,
+                uav_heap->cpu_handle(m_uav_offset));
+        }
+    }
+
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE srv() const override
+    {
+        auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        return heap->cpu_handle(m_srv_offset);
+    }
+
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE uav() const override
+    {
+        auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        return heap->cpu_handle(m_uav_offset);
     }
 
     virtual d3d12_vertex_buffer_proxy vertex_buffer() noexcept override
@@ -227,6 +258,8 @@ public:
 
 private:
     D3D12_VERTEX_BUFFER_VIEW m_view;
+    std::size_t m_srv_offset;
+    std::size_t m_uav_offset;
 };
 
 template <typename Impl>
@@ -236,7 +269,7 @@ public:
     d3d12_index_buffer(const index_buffer_desc& desc, D3D12GraphicsCommandList* command_list)
         : Impl(desc.indices, desc.index_size * desc.index_count, command_list)
     {
-        m_view.BufferLocation = Impl::resource()->GetGPUVirtualAddress();
+        m_view.BufferLocation = Impl::handle()->GetGPUVirtualAddress();
         m_view.SizeInBytes = static_cast<UINT>(desc.index_size * desc.index_count);
 
         if (desc.index_size == 1)
@@ -257,96 +290,6 @@ public:
 private:
     D3D12_INDEX_BUFFER_VIEW m_view;
     std::size_t m_index_count;
-};
-
-template <typename T>
-class index_allocator
-{
-public:
-    using value_type = T;
-
-    struct index_range
-    {
-        value_type begin;
-        value_type end;
-    };
-
-public:
-    index_allocator() : m_next_index(0) {}
-
-    value_type allocate(std::size_t size = 1)
-    {
-        for (auto iter = m_free.begin(); iter < m_free.end(); ++iter)
-        {
-            if (iter->end - iter->begin >= size)
-            {
-                value_type result = iter->begin;
-
-                iter->begin += static_cast<value_type>(size);
-                if (iter->begin == iter->end)
-                    m_free.erase(iter);
-
-                return result;
-            }
-        }
-
-        value_type reuslt = m_next_index;
-        m_next_index += static_cast<value_type>(size);
-
-        return reuslt;
-    }
-
-    void deallocate(const value_type& begin, std::size_t size = 1)
-    {
-        value_type end = begin + size;
-        for (index_range& free_range : m_free)
-        {
-            if (free_range.begin == end)
-            {
-                free_range.begin -= size;
-                return;
-            }
-            else if (free_range.end == begin)
-            {
-                free_range.end += size;
-                return;
-            }
-        }
-
-        m_free.push_back(index_range{begin, end});
-    }
-
-private:
-    std::deque<index_range> m_free;
-    value_type m_next_index;
-};
-
-static constexpr std::size_t INVALID_DESCRIPTOR_INDEX = -1;
-
-class d3d12_descriptor_heap
-{
-public:
-    d3d12_descriptor_heap(
-        D3D12_DESCRIPTOR_HEAP_TYPE type,
-        std::size_t size,
-        std::size_t increment_size,
-        D3D12_DESCRIPTOR_HEAP_FLAGS flag = D3D12_DESCRIPTOR_HEAP_FLAG_NONE);
-
-    std::size_t allocate(std::size_t size = 1);
-    void deallocate(std::size_t begin, std::size_t size = 1);
-
-    inline D3D12DescriptorHeap* heap() const noexcept { return m_heap.Get(); }
-
-    D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle(std::size_t index);
-    D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle(std::size_t index);
-
-    inline UINT increment_size() const noexcept { return m_increment_size; }
-
-private:
-    index_allocator<std::size_t> m_index_allocator;
-    d3d12_ptr<D3D12DescriptorHeap> m_heap;
-
-    UINT m_increment_size;
 };
 
 class d3d12_resource_manager

@@ -21,6 +21,12 @@ public:
         return new d3d12_render_pass(desc);
     }
 
+    virtual compute_pipeline_interface* make_compute_pipeline(
+        const compute_pipeline_desc& desc) override
+    {
+        return new d3d12_compute_pipeline(desc);
+    }
+
     virtual pipeline_parameter_layout_interface* make_pipeline_parameter_layout(
         const pipeline_parameter_layout_desc& desc) override
     {

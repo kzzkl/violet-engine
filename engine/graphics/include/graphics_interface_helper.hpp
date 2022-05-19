@@ -56,6 +56,16 @@ private:
     std::vector<pipeline_desc> m_pass_desc;
 };
 
+class compute_pipeline_info
+{
+public:
+    compute_pipeline_desc convert() noexcept;
+
+    std::string compute_shader;
+    std::vector<std::string> parameters;
+    std::vector<pipeline_parameter_layout_interface*> parameter_interfaces;
+};
+
 class renderer_info : public renderer_desc
 {
 public:

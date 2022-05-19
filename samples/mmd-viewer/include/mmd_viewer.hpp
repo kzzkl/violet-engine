@@ -19,13 +19,13 @@ public:
     void update();
 
     void reset(ecs::entity entity);
-    void initialize_pose(ecs::entity entity);
 
 private:
     std::map<std::string, mmd_resource> m_resources;
-    ash::ecs::view<mmd_skeleton>* m_skeleton_view;
+    ash::ecs::view<mmd_skeleton, graphics::skinned_mesh>* m_skeleton_view;
     std::unique_ptr<mmd_loader> m_loader;
 
-    std::unique_ptr<mmd_pass> m_render_pass;
+    std::unique_ptr<mmd_render_pipeline> m_render_pipeline;
+    std::unique_ptr<mmd_skin_pipeline> m_skin_pipeline;
 };
 } // namespace ash::sample::mmd

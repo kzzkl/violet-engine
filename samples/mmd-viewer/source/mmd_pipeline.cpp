@@ -2,28 +2,22 @@
 
 namespace ash::sample::mmd
 {
-mmd_pass::mmd_pass()
+mmd_render_pipeline::mmd_render_pipeline()
 {
     auto& graphics = system<graphics::graphics>();
 
     graphics::pipeline_parameter_layout_info mmd_material;
     mmd_material.parameters = {
-        {graphics::pipeline_parameter_type::FLOAT4,  1}, // diffuse
-        {graphics::pipeline_parameter_type::FLOAT3,  1}, // specular
-        {graphics::pipeline_parameter_type::FLOAT,   1}, // specular_strength
-        {graphics::pipeline_parameter_type::UINT,    1}, // toon_mode
-        {graphics::pipeline_parameter_type::UINT,    1}, // spa_mode
-        {graphics::pipeline_parameter_type::TEXTURE, 1}, // tex
-        {graphics::pipeline_parameter_type::TEXTURE, 1}, // toon
-        {graphics::pipeline_parameter_type::TEXTURE, 1}  // spa
+        {graphics::pipeline_parameter_type::FLOAT4,          1}, // diffuse
+        {graphics::pipeline_parameter_type::FLOAT3,          1}, // specular
+        {graphics::pipeline_parameter_type::FLOAT,           1}, // specular_strength
+        {graphics::pipeline_parameter_type::UINT,            1}, // toon_mode
+        {graphics::pipeline_parameter_type::UINT,            1}, // spa_mode
+        {graphics::pipeline_parameter_type::SHADER_RESOURCE, 1}, // tex
+        {graphics::pipeline_parameter_type::SHADER_RESOURCE, 1}, // toon
+        {graphics::pipeline_parameter_type::SHADER_RESOURCE, 1}  // spa
     };
     graphics.make_pipeline_parameter_layout("mmd_material", mmd_material);
-
-    graphics::pipeline_parameter_layout_info mmd_skeleton;
-    mmd_skeleton.parameters = {
-        {graphics::pipeline_parameter_type::FLOAT4x4_ARRAY, 512}, // offset
-    };
-    graphics.make_pipeline_parameter_layout("mmd_skeleton", mmd_skeleton);
 
     // Color pass.
     graphics::pipeline_info color_pass_info = {};
@@ -42,7 +36,7 @@ mmd_pass::mmd_pass()
         {graphics::attachment_reference_type::UNUSE, 0}
     };
     color_pass_info.primitive_topology = graphics::primitive_topology::TRIANGLE_LIST;
-    color_pass_info.parameters = {"ash_object", "mmd_material", "mmd_skeleton", "ash_pass"};
+    color_pass_info.parameters = {"ash_object", "mmd_material", "ash_pass"};
     color_pass_info.samples = 4;
 
     // Edge pass.
@@ -62,7 +56,7 @@ mmd_pass::mmd_pass()
         {graphics::attachment_reference_type::RESOLVE, 0}
     };
     edge_pass_info.primitive_topology = graphics::primitive_topology::TRIANGLE_LIST;
-    edge_pass_info.parameters = {"mmd_skeleton", "ash_pass"};
+    edge_pass_info.parameters = {"ash_object"};
     edge_pass_info.samples = 4;
     edge_pass_info.rasterizer.cull_mode = graphics::cull_mode::FRONT;
     edge_pass_info.depth_stencil.depth_functor = graphics::depth_functor::LESS;
@@ -111,7 +105,9 @@ mmd_pass::mmd_pass()
     m_interface = graphics.make_render_pass(mmd_pass_info);
 }
 
-void mmd_pass::render(const graphics::camera& camera, graphics::render_command_interface* command)
+void mmd_render_pipeline::render(
+    const graphics::camera& camera,
+    graphics::render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
@@ -123,35 +119,78 @@ void mmd_pass::render(const graphics::camera& camera, graphics::render_command_i
     auto [width, height] = camera.render_target->extent();
     rect.max_x = width;
     rect.max_y = height;
-    command->scissor(rect);
+    command->scissor(&rect, 1);
 
-    command->parameter(3, camera.parameter->parameter());
+    command->parameter(2, camera.parameter->parameter());
     for (auto& unit : units())
     {
-        command->parameter(0, unit->parameters[0]->parameter());
-        command->parameter(1, unit->parameters[1]->parameter());
-        command->parameter(2, unit->parameters[2]->parameter());
+        command->parameter(0, unit.parameters[0]->parameter());
+        command->parameter(1, unit.parameters[1]->parameter());
 
         command->draw(
-            unit->vertex_buffer,
-            unit->index_buffer,
-            unit->index_start,
-            unit->index_end,
-            unit->vertex_base);
+            unit.vertex_buffers.data(),
+            unit.vertex_buffers.size(),
+            unit.index_buffer,
+            unit.index_start,
+            unit.index_end,
+            unit.vertex_base);
     }
 
     command->next(m_interface.get());
 
-    command->parameter(1, camera.parameter->parameter());
     for (auto& unit : units())
     {
-        command->parameter(0, unit->parameters[2]->parameter());
+        command->parameter(0, unit.parameters[0]->parameter());
         command->draw(
-            unit->vertex_buffer,
-            unit->index_buffer,
-            unit->index_start,
-            unit->index_end,
-            unit->vertex_base);
+            unit.vertex_buffers.data(),
+            unit.vertex_buffers.size(),
+            unit.index_buffer,
+            unit.index_start,
+            unit.index_end,
+            unit.vertex_base);
+    }
+
+    command->end(m_interface.get());
+}
+
+mmd_skin_pipeline::mmd_skin_pipeline()
+{
+    auto& graphics = system<graphics::graphics>();
+
+    graphics::pipeline_parameter_layout_info mmd_skin;
+    mmd_skin.parameters = {
+        {graphics::pipeline_parameter_type::FLOAT4x4_ARRAY,   512}, // bone transform.
+        {graphics::pipeline_parameter_type::SHADER_RESOURCE,  1  }, // input position.
+        {graphics::pipeline_parameter_type::SHADER_RESOURCE,  1  }, // input normal.
+        {graphics::pipeline_parameter_type::SHADER_RESOURCE,  1  }, // bone index.
+        {graphics::pipeline_parameter_type::SHADER_RESOURCE,  1  }, // bone weight.
+        {graphics::pipeline_parameter_type::UNORDERED_ACCESS, 1  }, // output position.
+        {graphics::pipeline_parameter_type::UNORDERED_ACCESS, 1  }  // output normal.
+    };
+    graphics.make_pipeline_parameter_layout("mmd_skin", mmd_skin);
+
+    graphics::compute_pipeline_info compute_pipeline_info = {};
+    compute_pipeline_info.compute_shader = "resource/shader/skin.comp";
+    compute_pipeline_info.parameters = {"mmd_skin"};
+
+    m_interface = system<graphics::graphics>().make_compute_pipeline(compute_pipeline_info);
+}
+
+void mmd_skin_pipeline::skin(graphics::render_command_interface* command)
+{
+    command->begin(m_interface.get());
+
+    for (auto& unit : units())
+    {
+        unit.parameter->set(1, unit.input_buffers[0]);
+        unit.parameter->set(2, unit.input_buffers[1]);
+        unit.parameter->set(3, unit.input_buffers[3]);
+        unit.parameter->set(4, unit.input_buffers[4]);
+        unit.parameter->set(5, unit.output_buffers[0]);
+        unit.parameter->set(6, unit.output_buffers[1]);
+        command->compute_parameter(0, unit.parameter->parameter());
+
+        command->dispatch(unit.vertex_count / 256 + 256, 1, 1);
     }
 
     command->end(m_interface.get());
