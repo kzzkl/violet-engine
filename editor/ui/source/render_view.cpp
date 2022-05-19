@@ -7,7 +7,7 @@
 
 namespace ash::editor
 {
-render_view::render_view(core::context* context) : editor_view(context)
+render_view::render_view()
 {
     auto& world = system<ecs::world>();
     auto& graphics = system<graphics::graphics>();
@@ -23,7 +23,7 @@ render_view::render_view(core::context* context) : editor_view(context)
     transform.scaling = {1.0f, 1.0f, 1.0f};
 
     auto& camera = world.component<graphics::camera>(m_scene_camera);
-    camera.parameter = graphics.make_render_parameter("ash_pass");
+    camera.parameter = graphics.make_pipeline_parameter("ash_pass");
 
     relation.link(m_scene_camera, scene.root());
 }
@@ -33,6 +33,7 @@ void render_view::draw(editor_data& data)
     auto& ui = system<ui::ui>();
     auto& graphics = system<graphics::graphics>();
     auto& scene = system<scene::scene>();
+    auto& world = system<ecs::world>();
 
     ui.style(ui::ui_style::WINDOW_PADDING, 0.0f, 0.0f);
     if (ui.window_ex("Render"))
@@ -54,8 +55,9 @@ void render_view::draw(editor_data& data)
         m_resize_flag = active;
     }
 
+    auto& camera = world.component<graphics::camera>(m_scene_camera);
     ui.texture(
-        m_render_target.get(),
+        camera.render_target_resolve,
         static_cast<float>(m_target_width),
         static_cast<float>(m_target_height));
 
@@ -153,21 +155,42 @@ void render_view::resize_target()
     if (m_target_width == 0 || m_target_height == 0)
         return;
 
+    log::debug("{} {}", m_target_width, m_target_height);
+
     auto& graphics = system<graphics::graphics>();
     auto& world = system<ecs::world>();
 
-    m_render_target = graphics.make_render_target(m_target_width, m_target_height, 4);
-    m_depth_stencil = graphics.make_depth_stencil(m_target_width, m_target_height, 4);
-
     auto& camera = world.component<graphics::camera>(m_scene_camera);
-    camera.render_target = m_render_target.get();
-    camera.depth_stencil = m_depth_stencil.get();
-    camera.mask = graphics::visual::mask_type::DEBUG | graphics::visual::mask_type::GROUP_1;
 
+    graphics::render_target_info render_target_info = {};
+    render_target_info.width = m_target_width;
+    render_target_info.height = m_target_height;
+    render_target_info.format = graphics.back_buffer_format();
+    render_target_info.samples = 4;
+    m_render_target = graphics.make_render_target(render_target_info);
+    camera.render_target = m_render_target.get();
+
+    graphics::render_target_info render_target_resolve_info = {};
+    render_target_resolve_info.width = m_target_width;
+    render_target_resolve_info.height = m_target_height;
+    render_target_resolve_info.format = graphics.back_buffer_format();
+    render_target_resolve_info.samples = 1;
+    m_render_target_resolve = graphics.make_render_target(render_target_resolve_info);
+    camera.render_target_resolve = m_render_target_resolve.get();
+
+    graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
+    depth_stencil_buffer_info.width = m_target_width;
+    depth_stencil_buffer_info.height = m_target_height;
+    depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
+    depth_stencil_buffer_info.samples = 4;
+    m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
+    camera.depth_stencil_buffer = m_depth_stencil_buffer.get();
+
+    camera.mask = graphics::visual::mask_type::DEBUG | graphics::visual::mask_type::GROUP_1;
     camera.set(
-        math::to_radians(30.0f),
+        math::to_radians(45.0f),
         static_cast<float>(m_target_width) / static_cast<float>(m_target_height),
-        0.01f,
+        0.3f,
         1000.0f);
 }
 

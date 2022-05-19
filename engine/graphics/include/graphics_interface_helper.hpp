@@ -56,6 +56,16 @@ private:
     std::vector<pipeline_desc> m_pass_desc;
 };
 
+class compute_pipeline_info
+{
+public:
+    compute_pipeline_desc convert() noexcept;
+
+    std::string compute_shader;
+    std::vector<std::string> parameters;
+    std::vector<pipeline_parameter_layout_interface*> parameter_interfaces;
+};
+
 class renderer_info : public renderer_desc
 {
 public:
@@ -73,4 +83,7 @@ class index_buffer_info : public index_buffer_desc
 public:
     index_buffer_desc convert() noexcept { return *this; }
 };
+
+using render_target_info = render_target_desc;
+using depth_stencil_buffer_info = depth_stencil_buffer_desc;
 } // namespace ash::graphics

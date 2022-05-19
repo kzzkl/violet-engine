@@ -8,10 +8,10 @@
 
 namespace ash::graphics
 {
-class debug_pass : public render_pass
+class debug_render_pipeline : public render_pipeline
 {
 public:
-    debug_pass(render_pass_interface* interface);
+    debug_render_pipeline(render_pass_interface* interface);
     virtual void render(const camera& camera, render_command_interface* command) override;
 };
 
@@ -48,6 +48,6 @@ private:
     std::vector<std::unique_ptr<resource_interface>> m_vertex_buffer;
     std::unique_ptr<resource_interface> m_index_buffer;
 
-    std::unique_ptr<debug_pass> m_pipeline;
+    std::unique_ptr<debug_render_pipeline> m_pipeline;
 };
 } // namespace ash::graphics

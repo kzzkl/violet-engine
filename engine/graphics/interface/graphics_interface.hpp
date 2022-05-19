@@ -44,6 +44,8 @@ public:
 
     virtual resource_extent extent() const noexcept = 0;
     virtual std::size_t size() const noexcept = 0;
+
+    virtual void upload(const void* data, std::size_t size, std::size_t offset = 0) {}
 };
 using resource = resource_interface;
 
@@ -80,7 +82,8 @@ enum class pipeline_parameter_type
     FLOAT4,
     FLOAT4x4,
     FLOAT4x4_ARRAY,
-    TEXTURE
+    SHADER_RESOURCE,
+    UNORDERED_ACCESS
 };
 
 struct pipeline_parameter_pair
@@ -150,7 +153,13 @@ struct blend_desc
 
 enum class depth_functor
 {
+    NEVER,
     LESS,
+    EQUAL,
+    LESS_EQUAL,
+    GREATER,
+    NOT_EQUAL,
+    GREATER_EQUAL,
     ALWAYS
 };
 
@@ -230,9 +239,10 @@ enum class attachment_store_op
 
 enum class attachment_type
 {
-    COLOR,
-    DEPTH,
-    RENDER_TARGET
+    RENDER_TARGET,
+    CAMERA_RENDER_TARGET,
+    CAMERA_RENDER_TARGET_RESOLVE,
+    CAMERA_DEPTH_STENCIL
 };
 
 struct attachment_desc
@@ -262,6 +272,21 @@ struct render_pass_desc
 
 class render_pass_interface
 {
+public:
+    virtual ~render_pass_interface() = default;
+};
+
+struct compute_pipeline_desc
+{
+    const char* compute_shader;
+    pipeline_parameter_layout_interface** parameters;
+    std::size_t parameter_count;
+};
+
+class compute_pipeline_interface
+{
+public:
+    virtual ~compute_pipeline_interface() = default;
 };
 
 struct scissor_rect
@@ -275,19 +300,31 @@ struct scissor_rect
 class render_command_interface
 {
 public:
-    virtual void begin(render_pass_interface* render_pass, resource_interface* render_target) = 0;
+    // Graphics.
+    virtual void begin(
+        render_pass_interface* render_pass,
+        resource_interface* render_target,
+        resource_interface* render_target_resolve,
+        resource_interface* depth_stencil_buffer) = 0;
     virtual void end(render_pass_interface* render_pass) = 0;
     virtual void next(render_pass_interface* render_pass) = 0;
 
-    virtual void scissor(const scissor_rect& rect) = 0;
+    virtual void scissor(const scissor_rect* rects, std::size_t rect_size) = 0;
 
     virtual void parameter(std::size_t i, pipeline_parameter_interface*) = 0;
     virtual void draw(
-        resource_interface* vertex,
-        resource_interface* index,
+        resource_interface* const* vertex_buffers,
+        std::size_t vertex_buffer_count,
+        resource_interface* index_buffer,
         std::size_t index_start,
         std::size_t index_end,
         std::size_t vertex_base) = 0;
+
+    // Compute.
+    virtual void begin(compute_pipeline_interface* pipeline) {}
+    virtual void end(compute_pipeline_interface* pipeline) {}
+    virtual void dispatch(std::size_t x, std::size_t y, std::size_t z) {}
+    virtual void compute_parameter(std::size_t index, pipeline_parameter_interface* parameter) {}
 };
 
 struct renderer_desc
@@ -316,11 +353,19 @@ public:
 };
 using renderer = renderer_interface;
 
+enum vertex_buffer_flags
+{
+    VERTEX_BUFFER_FLAG_NONE = 0,
+    VERTEX_BUFFER_FLAG_SKIN_IN = 0x1,
+    VERTEX_BUFFER_FLAG_SKIN_OUT = 0x2
+};
+
 struct vertex_buffer_desc
 {
     const void* vertices;
     std::size_t vertex_size;
     std::size_t vertex_count;
+    vertex_buffer_flags flags;
     bool dynamic;
 };
 
@@ -354,6 +399,8 @@ public:
     virtual renderer_interface* make_renderer(const renderer_desc& desc) = 0;
 
     virtual render_pass_interface* make_render_pass(const render_pass_desc& desc) = 0;
+    virtual compute_pipeline_interface* make_compute_pipeline(
+        const compute_pipeline_desc& desc) = 0;
 
     virtual pipeline_parameter_layout_interface* make_pipeline_parameter_layout(
         const pipeline_parameter_layout_desc& desc) = 0;

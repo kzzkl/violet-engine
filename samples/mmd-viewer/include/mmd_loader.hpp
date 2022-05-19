@@ -13,7 +13,7 @@ namespace ash::sample::mmd
 {
 struct mmd_resource
 {
-    std::unique_ptr<ash::graphics::resource> vertex_buffer;
+    std::vector<std::unique_ptr<ash::graphics::resource>> vertex_buffers;
     std::unique_ptr<ash::graphics::resource> index_buffer;
     std::vector<std::pair<std::size_t, std::size_t>> submesh;
 
@@ -27,12 +27,7 @@ struct mmd_resource
 class mmd_loader
 {
 public:
-    mmd_loader(
-        ecs::world& world,
-        core::relation& relation,
-        graphics::graphics& graphics,
-        scene::scene& scene,
-        physics::physics& physics);
+    mmd_loader();
 
     void initialize();
     bool load(
@@ -40,7 +35,8 @@ public:
         mmd_resource& resource,
         std::string_view pmx,
         std::string_view vmd,
-        graphics::render_pass* render_pass);
+        graphics::render_pipeline* render_pipeline,
+        graphics::skin_pipeline* skin_pipeline);
 
 private:
     void load_hierarchy(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader);
@@ -50,7 +46,7 @@ private:
         ecs::entity entity,
         mmd_resource& resource,
         const pmx_loader& loader,
-        graphics::render_pass* render_pass);
+        graphics::render_pipeline* render_pipeline);
     void load_ik(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader);
     void load_physics(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader);
 
@@ -61,11 +57,5 @@ private:
         const vmd_loader& vmd_loader);
 
     std::vector<std::unique_ptr<ash::graphics::resource>> m_internal_toon;
-
-    ecs::world& m_world;
-    core::relation& m_relation;
-    graphics::graphics& m_graphics;
-    scene::scene& m_scene;
-    physics::physics& m_physics;
 };
 } // namespace ash::sample::mmd

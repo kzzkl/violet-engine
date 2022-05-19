@@ -83,8 +83,26 @@ D3D12_DEPTH_STENCIL_DESC to_d3d12_depth_stencil_desc(const depth_stencil_desc& d
 
     switch (desc.depth_functor)
     {
+    case depth_functor::NEVER:
+        result.DepthFunc = D3D12_COMPARISON_FUNC_NEVER;
+        break;
     case depth_functor::LESS:
         result.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+        break;
+    case depth_functor::EQUAL:
+        result.DepthFunc = D3D12_COMPARISON_FUNC_EQUAL;
+        break;
+    case depth_functor::LESS_EQUAL:
+        result.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+        break;
+    case depth_functor::GREATER:
+        result.DepthFunc = D3D12_COMPARISON_FUNC_GREATER;
+        break;
+    case depth_functor::NOT_EQUAL:
+        result.DepthFunc = D3D12_COMPARISON_FUNC_NOT_EQUAL;
+        break;
+    case depth_functor::GREATER_EQUAL:
+        result.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
         break;
     case depth_functor::ALWAYS:
         result.DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS;
@@ -194,70 +212,93 @@ static const std::vector<CD3DX12_STATIC_SAMPLER_DESC> static_samplers = {
 d3d12_pipeline_parameter_layout::d3d12_pipeline_parameter_layout(
     const pipeline_parameter_layout_desc& desc)
     : m_cbv_count(0),
-      m_srv_count(0)
+      m_srv_count(0),
+      m_uav_count(0),
+      m_constant_buffer_size(0)
 {
     auto cal_align = [](std::size_t begin, std::size_t align) {
         return (begin + align - 1) & ~(align - 1);
     };
 
+    for (std::size_t i = 0; i < desc.size; ++i)
+    {
+        switch (desc.parameters[i].type)
+        {
+        case pipeline_parameter_type::SHADER_RESOURCE:
+            ++m_srv_count;
+            break;
+        case pipeline_parameter_type::UNORDERED_ACCESS:
+            ++m_uav_count;
+            break;
+        default:
+            m_cbv_count = 1;
+            break;
+        }
+    }
+
     std::size_t constant_offset = 0;
     std::size_t texture_offset = 0;
+    std::size_t unordered_access_offset = 0;
     m_parameters.reserve(desc.size);
     for (std::size_t i = 0; i < desc.size; ++i)
     {
-        std::size_t align_address = 0;
+        std::size_t offset = 0;
         std::size_t size = 0;
         switch (desc.parameters[i].type)
         {
         case pipeline_parameter_type::BOOL:
-            align_address = cal_align(constant_offset, 4);
+            offset = cal_align(constant_offset, 4);
             size = sizeof(bool);
+            constant_offset = offset + size;
             break;
         case pipeline_parameter_type::UINT:
-            align_address = cal_align(constant_offset, 4);
+            offset = cal_align(constant_offset, 4);
             size = sizeof(std::uint32_t);
+            constant_offset = offset + size;
             break;
         case pipeline_parameter_type::FLOAT:
-            align_address = cal_align(constant_offset, 4);
+            offset = cal_align(constant_offset, 4);
             size = sizeof(float);
+            constant_offset = offset + size;
             break;
         case pipeline_parameter_type::FLOAT2:
-            align_address = cal_align(constant_offset, 16);
+            offset = cal_align(constant_offset, 16);
             size = sizeof(math::float2);
+            constant_offset = offset + size;
             break;
         case pipeline_parameter_type::FLOAT3:
-            align_address = cal_align(constant_offset, 16);
+            offset = cal_align(constant_offset, 16);
             size = sizeof(math::float3);
+            constant_offset = offset + size;
             break;
         case pipeline_parameter_type::FLOAT4:
-            align_address = cal_align(constant_offset, 16);
+            offset = cal_align(constant_offset, 16);
             size = sizeof(math::float4);
+            constant_offset = offset + size;
             break;
         case pipeline_parameter_type::FLOAT4x4:
-            align_address = cal_align(constant_offset, 16);
+            offset = cal_align(constant_offset, 16);
             size = sizeof(math::float4x4);
+            constant_offset = offset + size;
             break;
         case pipeline_parameter_type::FLOAT4x4_ARRAY:
-            align_address = cal_align(constant_offset, 16);
+            offset = cal_align(constant_offset, 16);
             size = sizeof(math::float4x4) * desc.parameters[i].size;
+            constant_offset = offset + size;
+            break;
+        case pipeline_parameter_type::SHADER_RESOURCE:
+            offset = texture_offset;
+            ++texture_offset;
+            break;
+        case pipeline_parameter_type::UNORDERED_ACCESS:
+            offset = unordered_access_offset;
+            ++unordered_access_offset;
             break;
         default:
             break;
         }
 
-        if (desc.parameters[i].type == pipeline_parameter_type::TEXTURE)
-        {
-            ++m_srv_count;
-            align_address = texture_offset;
-            ++texture_offset;
-        }
-        else
-        {
-            m_cbv_count = 1;
-            constant_offset = align_address + size;
-        }
-
-        m_parameters.push_back(parameter_info{align_address, size, desc.parameters[i].type});
+        m_parameters.push_back(parameter_info{offset, size, desc.parameters[i].type});
     }
 
     m_constant_buffer_size = cal_align(constant_offset, 256);
@@ -273,6 +314,7 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(pipeline_parameter_layout_int
 
     std::size_t cbv_count = m_layout->cbv_count();
     std::size_t srv_count = m_layout->srv_count();
+    std::size_t uav_count = m_layout->uav_count();
 
     std::size_t buffer_size = m_layout->constant_buffer_size();
 
@@ -284,13 +326,27 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(pipeline_parameter_layout_int
             buffer_size * d3d12_frame_counter::frame_resource_count());
     }
 
-    if (srv_count != 0)
+    if (cbv_count != 0 && srv_count == 0 && uav_count == 0)
     {
-        m_textures.resize(srv_count);
+        m_tier = d3d12_parameter_tier_type::TIER1;
+
+        std::size_t gpu_buffer_offset = 0;
+        for (auto& iter_info : m_tier_info)
+        {
+            iter_info.tier1.type = D3D12_ROOT_PARAMETER_TYPE_CBV;
+            iter_info.tier1.address =
+                m_gpu_buffer->handle()->GetGPUVirtualAddress() + gpu_buffer_offset;
+            gpu_buffer_offset += buffer_size;
+        }
+    }
+    else if (srv_count != 0 || uav_count != 0)
+    {
+        m_shader_resources.resize(srv_count);
+        m_unordered_access_buffers.resize(uav_count);
 
         m_tier = d3d12_parameter_tier_type::TIER2;
 
-        std::size_t view_count = cbv_count + srv_count;
+        std::size_t view_count = cbv_count + srv_count + uav_count;
         auto heap = d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         std::size_t handle_offset =
             heap->allocate(view_count * d3d12_frame_counter::frame_resource_count());
@@ -305,28 +361,15 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(pipeline_parameter_layout_int
             {
                 D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_desc = {};
                 cbv_desc.BufferLocation =
-                    m_gpu_buffer->resource()->GetGPUVirtualAddress() + gpu_buffer_offset;
+                    m_gpu_buffer->handle()->GetGPUVirtualAddress() + gpu_buffer_offset;
                 cbv_desc.SizeInBytes = static_cast<UINT>(buffer_size);
                 d3d12_context::device()->CreateConstantBufferView(
                     &cbv_desc,
-                    heap->cpu_handle(handle_offset + srv_count));
+                    heap->cpu_handle(handle_offset));
                 gpu_buffer_offset += buffer_size;
             }
 
             handle_offset += view_count;
-        }
-    }
-    else if (cbv_count != 0)
-    {
-        m_tier = d3d12_parameter_tier_type::TIER1;
-
-        std::size_t gpu_buffer_offset = 0;
-        for (auto& iter_info : m_tier_info)
-        {
-            iter_info.tier1.type = D3D12_ROOT_PARAMETER_TYPE_CBV;
-            iter_info.tier1.address =
-                m_gpu_buffer->resource()->GetGPUVirtualAddress() + gpu_buffer_offset;
-            gpu_buffer_offset += buffer_size;
         }
     }
 }
@@ -413,7 +456,15 @@ void d3d12_pipeline_parameter::set(std::size_t index, const math::float4x4* data
 
 void d3d12_pipeline_parameter::set(std::size_t index, resource* texture)
 {
-    m_textures[m_layout->parameter_offset(index)] = static_cast<d3d12_resource*>(texture);
+    std::size_t offset = m_layout->parameter_offset(index);
+    if (m_layout->parameter_type(index) == pipeline_parameter_type::SHADER_RESOURCE)
+    {
+        m_shader_resources[offset] = static_cast<d3d12_resource*>(texture);
+    }
+    else if (m_layout->parameter_type(index) == pipeline_parameter_type::UNORDERED_ACCESS)
+    {
+        m_unordered_access_buffers[offset] = static_cast<d3d12_resource*>(texture);
+    }
     mark_dirty(index);
 }
 
@@ -434,21 +485,32 @@ void d3d12_pipeline_parameter::sync()
             continue;
 
         std::size_t offset = m_layout->parameter_offset(i);
-        if (m_layout->parameter_type(i) == pipeline_parameter_type::TEXTURE)
+        if (m_layout->parameter_type(i) == pipeline_parameter_type::SHADER_RESOURCE)
         {
-            d3d12_shader_resource_proxy texture = m_textures[offset]->shader_resource();
-
             auto heap =
                 d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
             CD3DX12_CPU_DESCRIPTOR_HANDLE target_handle(
                 m_tier_info[resource_index].tier2.base_cpu_handle,
-                static_cast<INT>(offset),
+                static_cast<INT>(m_layout->parameter_descriptor_index(i)),
                 heap->increment_size());
             d3d12_context::device()->CopyDescriptorsSimple(
                 1,
                 target_handle,
-                texture.cpu_handle(),
+                m_shader_resources[offset]->srv(),
+                D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        }
+        else if (m_layout->parameter_type(i) == pipeline_parameter_type::UNORDERED_ACCESS)
+        {
+            auto heap =
+                d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+            CD3DX12_CPU_DESCRIPTOR_HANDLE target_handle(
+                m_tier_info[resource_index].tier2.base_cpu_handle,
+                static_cast<INT>(m_layout->parameter_descriptor_index(i)),
+                heap->increment_size());
+            d3d12_context::device()->CopyDescriptorsSimple(
+                1,
+                target_handle,
+                m_unordered_access_buffers[offset]->uav(),
                 D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         }
         else
@@ -473,6 +535,105 @@ void d3d12_pipeline_parameter::mark_dirty(std::size_t index)
     m_dirty_counter[index] = d3d12_frame_counter::frame_resource_count();
 }
 
+d3d12_root_signature::d3d12_root_signature(
+    pipeline_parameter_layout_interface** parameters,
+    std::size_t parameter_count)
+{
+    std::vector<CD3DX12_ROOT_PARAMETER> root_parameter;
+    root_parameter.resize(parameter_count);
+
+    std::vector<std::vector<CD3DX12_DESCRIPTOR_RANGE>> range;
+    range.resize(parameter_count);
+
+    for (std::size_t i = 0; i < parameter_count; ++i)
+    {
+        auto layout = static_cast<const d3d12_pipeline_parameter_layout*>(parameters[i]);
+
+        UINT cbv_count = static_cast<UINT>(layout->cbv_count());
+        UINT srv_count = static_cast<UINT>(layout->srv_count());
+        UINT uav_count = static_cast<UINT>(layout->uav_count());
+
+        UINT register_space = static_cast<UINT>(i);
+        if (cbv_count == 1 && srv_count == 0 && uav_count == 0)
+        {
+            root_parameter[i].InitAsConstantBufferView(0, register_space);
+        }
+        else
+        {
+            if (cbv_count != 0)
+            {
+                CD3DX12_DESCRIPTOR_RANGE cbv_range;
+                cbv_range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, cbv_count, 0, register_space);
+                range[i].push_back(cbv_range);
+            }
+
+            if (srv_count != 0)
+            {
+                CD3DX12_DESCRIPTOR_RANGE srv_range;
+                srv_range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, srv_count, 0, register_space);
+                range[i].push_back(srv_range);
+            }
+
+            if (uav_count != 0)
+            {
+                CD3DX12_DESCRIPTOR_RANGE uav_range;
+                uav_range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, uav_count, 0, register_space);
+                range[i].push_back(uav_range);
+            }
+
+            root_parameter[i].InitAsDescriptorTable(
+                static_cast<UINT>(range[i].size()),
+                range[i].data());
+        }
+    }
+
+    CD3DX12_ROOT_SIGNATURE_DESC root_signature_desc(
+        static_cast<UINT>(root_parameter.size()),
+        root_parameter.data(),
+        static_cast<UINT>(static_samplers.size()),
+        static_samplers.data(),
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+    d3d12_ptr<D3DBlob> root_signature;
+    d3d12_ptr<D3DBlob> error;
+    HRESULT hr = D3D12SerializeRootSignature(
+        &root_signature_desc,
+        D3D_ROOT_SIGNATURE_VERSION_1,
+        &root_signature,
+        &error);
+
+    if (error != nullptr)
+    {
+        OutputDebugStringA(static_cast<char*>(error->GetBufferPointer()));
+    }
+    else
+    {
+        throw_if_failed(d3d12_context::device()->CreateRootSignature(
+            0,
+            root_signature->GetBufferPointer(),
+            root_signature->GetBufferSize(),
+            IID_PPV_ARGS(&m_root_signature)));
+    }
+}
+
+d3d12_ptr<D3DBlob> d3d12_pipeline::load_shader(std::string_view file)
+{
+    d3d12_ptr<D3DBlob> result;
+    d3d12_ptr<D3DBlob> error;
+
+    std::ifstream fin(std::string(file) + ".cso", std::ios::in | std::ios::binary);
+    if (!fin)
+        throw d3d12_exception("Unable to open shader file.");
+
+    fin.seekg(0, std::ios::end);
+    throw_if_failed(D3DCreateBlob(fin.tellg(), &result));
+    fin.seekg(0, std::ios::beg);
+    fin.read(static_cast<char*>(result->GetBufferPointer()), result->GetBufferSize());
+    fin.close();
+
+    return result;
+}
+
 d3d12_frame_buffer_layout::d3d12_frame_buffer_layout(
     attachment_desc* attachments,
     std::size_t count)
@@ -483,7 +644,7 @@ d3d12_frame_buffer_layout::d3d12_frame_buffer_layout(
 
 d3d12_frame_buffer::d3d12_frame_buffer(
     d3d12_render_pass* render_pass,
-    d3d12_resource* render_target)
+    const d3d12_camera_info& camera_info)
 {
     static const D3D12_RESOURCE_STATES resource_state_map[] = {
         D3D12_RESOURCE_STATE_COMMON,
@@ -491,43 +652,46 @@ d3d12_frame_buffer::d3d12_frame_buffer(
         D3D12_RESOURCE_STATE_DEPTH_WRITE,
         D3D12_RESOURCE_STATE_PRESENT};
 
-    auto [width, heigth] = render_target->extent();
+    auto [width, heigth] = camera_info.render_target->extent();
     for (auto& attachment : render_pass->frame_buffer_layout())
     {
         switch (attachment.type)
         {
-        case attachment_type::COLOR: {
-            auto color = std::make_unique<d3d12_render_target>(
-                width,
-                heigth,
-                attachment.samples,
-                attachment.format);
-            m_render_targets.push_back(color->render_target().cpu_handle());
-            m_attachments.push_back(attachment_info{
-                color.get(),
-                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
-                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
-            m_attachment_container.push_back(std::move(color));
-            break;
-        }
-        case attachment_type::DEPTH: {
-            auto depth = std::make_unique<d3d12_depth_stencil_buffer>(
-                width,
-                heigth,
-                attachment.samples,
-                attachment.format);
-            m_depth_stencil = depth->depth_stencil_buffer().cpu_handle();
-            m_attachments.push_back(attachment_info{
-                depth.get(),
-                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
-                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
-            m_attachment_container.push_back(std::move(depth));
-            break;
-        }
         case attachment_type::RENDER_TARGET: {
-            m_render_targets.push_back(render_target->render_target().cpu_handle());
+            auto render_target = std::make_unique<d3d12_render_target>(
+                width,
+                heigth,
+                attachment.samples,
+                attachment.format);
+            m_render_targets.push_back(render_target->rtv());
             m_attachments.push_back(attachment_info{
-                render_target,
+                render_target.get(),
+                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
+                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
+            m_attachment_container.push_back(std::move(render_target));
+            break;
+        }
+        case attachment_type::CAMERA_RENDER_TARGET_RESOLVE: {
+            /*m_render_targets.push_back(
+                camera_info.render_target_resolve->render_target().cpu_handle());*/
+            m_attachments.push_back(attachment_info{
+                camera_info.render_target_resolve,
+                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
+                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
+            break;
+        }
+        case attachment_type::CAMERA_RENDER_TARGET: {
+            m_render_targets.push_back(camera_info.render_target->rtv());
+            m_attachments.push_back(attachment_info{
+                camera_info.render_target,
+                resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
+                resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
+            break;
+        }
+        case attachment_type::CAMERA_DEPTH_STENCIL: {
+            m_depth_stencil = camera_info.depth_stencil_buffer->dsv();
+            m_attachments.push_back(attachment_info{
+                camera_info.depth_stencil_buffer,
                 resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
                 resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
             break;
@@ -547,13 +711,15 @@ void d3d12_frame_buffer::begin_render(D3D12GraphicsCommandList* command_list)
         if (attachment.resource->resource_state() != attachment.initial_state)
         {
             barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-                attachment.resource->resource(),
+                attachment.resource->handle(),
                 attachment.resource->resource_state(),
                 attachment.initial_state));
             attachment.resource->resource_state(attachment.initial_state);
         }
     }
-    command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
+
+    if (!barriers.empty())
+        command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
 
     static const float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
     for (auto handle : m_render_targets)
@@ -579,21 +745,25 @@ void d3d12_frame_buffer::end_render(D3D12GraphicsCommandList* command_list)
         if (attachment.resource->resource_state() != attachment.final_state)
         {
             barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-                attachment.resource->resource(),
+                attachment.resource->handle(),
                 attachment.resource->resource_state(),
                 attachment.final_state));
             attachment.resource->resource_state(attachment.final_state);
         }
     }
-    command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
+
+    if (!barriers.empty())
+        command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
 }
 
-d3d12_pipeline::d3d12_pipeline(const pipeline_desc& desc)
+d3d12_graphics_pipeline::d3d12_graphics_pipeline(const pipeline_desc& desc)
     : m_current_frame_buffer(nullptr),
       m_depth_index(-1)
 {
+    m_root_signature =
+        std::make_unique<d3d12_root_signature>(desc.parameters, desc.parameter_count);
+
     initialize_vertex_layout(desc);
-    initialize_pipeline_layout(desc);
     initialize_pipeline_state(desc);
 
     for (std::size_t i = 0; i < desc.reference_count; ++i)
@@ -616,19 +786,20 @@ d3d12_pipeline::d3d12_pipeline(const pipeline_desc& desc)
     }
 }
 
-void d3d12_pipeline::begin(D3D12GraphicsCommandList* command_list, d3d12_frame_buffer* frame_buffer)
+void d3d12_graphics_pipeline::begin(
+    D3D12GraphicsCommandList* command_list,
+    d3d12_frame_buffer* frame_buffer)
 {
     command_list->SetPipelineState(m_pipeline_state.Get());
-    command_list->SetGraphicsRootSignature(m_root_signature.Get());
+    command_list->SetGraphicsRootSignature(m_root_signature->handle());
 
     auto& attachments = frame_buffer->attachments();
 
     std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> render_targets;
     for (std::size_t i : m_color_indices)
-        render_targets.push_back(attachments[i].resource->render_target().cpu_handle());
+        render_targets.push_back(attachments[i].resource->rtv());
 
-    D3D12_CPU_DESCRIPTOR_HANDLE depth_stencil =
-        attachments[m_depth_index].resource->depth_stencil_buffer().cpu_handle();
+    D3D12_CPU_DESCRIPTOR_HANDLE depth_stencil = attachments[m_depth_index].resource->dsv();
 
     command_list->OMSetRenderTargets(
         static_cast<UINT>(render_targets.size()),
@@ -639,7 +810,7 @@ void d3d12_pipeline::begin(D3D12GraphicsCommandList* command_list, d3d12_frame_b
     m_current_frame_buffer = frame_buffer;
 }
 
-void d3d12_pipeline::end(D3D12GraphicsCommandList* command_list, bool final)
+void d3d12_graphics_pipeline::end(D3D12GraphicsCommandList* command_list, bool final)
 {
     if (m_resolve_indices.empty())
         return;
@@ -651,31 +822,32 @@ void d3d12_pipeline::end(D3D12GraphicsCommandList* command_list, bool final)
     {
         auto target = attachments[target_index].resource;
         barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-            target->resource(),
+            target->handle(),
             target->resource_state(),
             D3D12_RESOURCE_STATE_RESOLVE_DEST));
         target->resource_state(D3D12_RESOURCE_STATE_RESOLVE_DEST);
 
         auto source = attachments[source_index].resource;
         barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-            source->resource(),
+            source->handle(),
             source->resource_state(),
             D3D12_RESOURCE_STATE_RESOLVE_SOURCE));
         source->resource_state(D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
     }
 
-    command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
+    if (!barriers.empty())
+        command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
 
     for (auto [target_index, source_index] : m_resolve_indices)
     {
         auto target = attachments[target_index].resource;
         auto source = attachments[source_index].resource;
         command_list->ResolveSubresource(
-            target->resource(),
+            target->handle(),
             0,
-            source->resource(),
+            source->handle(),
             0,
-            source->resource()->GetDesc().Format);
+            source->handle()->GetDesc().Format);
     }
 
     if (!final)
@@ -686,24 +858,25 @@ void d3d12_pipeline::end(D3D12GraphicsCommandList* command_list, bool final)
         {
             auto target = attachments[target_index].resource;
             barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-                target->resource(),
+                target->handle(),
                 target->resource_state(),
                 attachments[target_index].initial_state));
             target->resource_state(attachments[target_index].initial_state);
 
             auto source = attachments[source_index].resource;
             barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-                source->resource(),
+                source->handle(),
                 source->resource_state(),
                 attachments[source_index].initial_state));
             source->resource_state(attachments[source_index].initial_state);
         }
 
-        command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
+        if (!barriers.empty())
+            command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
     }
 }
 
-void d3d12_pipeline::initialize_vertex_layout(const pipeline_desc& desc)
+void d3d12_graphics_pipeline::initialize_vertex_layout(const pipeline_desc& desc)
 {
     auto get_type = [](vertex_attribute_type type) -> DXGI_FORMAT {
         switch (type)
@@ -746,86 +919,15 @@ void d3d12_pipeline::initialize_vertex_layout(const pipeline_desc& desc)
             attribute.name,
             0,
             get_type(attribute.type),
+            static_cast<UINT>(i),
             0,
-            D3D12_APPEND_ALIGNED_ELEMENT,
             D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
             0};
         m_vertex_layout.push_back(desc);
     }
 }
 
-void d3d12_pipeline::initialize_pipeline_layout(const pipeline_desc& desc)
-{
-    std::vector<CD3DX12_ROOT_PARAMETER> root_parameter;
-    root_parameter.resize(desc.parameter_count);
-
-    std::vector<std::vector<CD3DX12_DESCRIPTOR_RANGE>> range;
-    range.resize(desc.parameter_count);
-
-    for (std::size_t i = 0; i < desc.parameter_count; ++i)
-    {
-        auto layout = static_cast<const d3d12_pipeline_parameter_layout*>(desc.parameters[i]);
-
-        UINT cbv_count = static_cast<UINT>(layout->cbv_count());
-        UINT srv_count = static_cast<UINT>(layout->srv_count());
-
-        UINT register_space = static_cast<UINT>(i);
-        if (cbv_count == 1 && srv_count == 0)
-        {
-            root_parameter[i].InitAsConstantBufferView(0, register_space);
-        }
-        else
-        {
-            if (srv_count != 0)
-            {
-                CD3DX12_DESCRIPTOR_RANGE srv_range;
-                srv_range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, srv_count, 0, register_space);
-                range[i].push_back(srv_range);
-            }
-
-            if (cbv_count != 0)
-            {
-                CD3DX12_DESCRIPTOR_RANGE cbv_range;
-                cbv_range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, cbv_count, 0, register_space);
-                range[i].push_back(cbv_range);
-            }
-
-            root_parameter[i].InitAsDescriptorTable(
-                static_cast<UINT>(range[i].size()),
-                range[i].data());
-        }
-    }
-
-    CD3DX12_ROOT_SIGNATURE_DESC root_signature_desc(
-        static_cast<UINT>(root_parameter.size()),
-        root_parameter.data(),
-        static_cast<UINT>(static_samplers.size()),
-        static_samplers.data(),
-        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-
-    d3d12_ptr<D3DBlob> root_signature;
-    d3d12_ptr<D3DBlob> error;
-    HRESULT hr = D3D12SerializeRootSignature(
-        &root_signature_desc,
-        D3D_ROOT_SIGNATURE_VERSION_1,
-        &root_signature,
-        &error);
-
-    if (error != nullptr)
-    {
-        OutputDebugStringA(static_cast<char*>(error->GetBufferPointer()));
-    }
-    else
-    {
-        throw_if_failed(d3d12_context::device()->CreateRootSignature(
-            0,
-            root_signature->GetBufferPointer(),
-            root_signature->GetBufferSize(),
-            IID_PPV_ARGS(&m_root_signature)));
-    }
-}
-
-void d3d12_pipeline::initialize_pipeline_state(const pipeline_desc& desc)
+void d3d12_graphics_pipeline::initialize_pipeline_state(const pipeline_desc& desc)
 {
     d3d12_ptr<D3DBlob> vs_blob = load_shader(desc.vertex_shader);
     d3d12_ptr<D3DBlob> ps_blob = load_shader(desc.pixel_shader);
@@ -843,7 +945,7 @@ void d3d12_pipeline::initialize_pipeline_state(const pipeline_desc& desc)
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc = {};
     pso_desc.InputLayout = {m_vertex_layout.data(), static_cast<UINT>(m_vertex_layout.size())};
-    pso_desc.pRootSignature = m_root_signature.Get();
+    pso_desc.pRootSignature = m_root_signature->handle();
     pso_desc.VS = CD3DX12_SHADER_BYTECODE(vs_blob.Get());
     pso_desc.PS = CD3DX12_SHADER_BYTECODE(ps_blob.Get());
     pso_desc.DepthStencilState = to_d3d12_depth_stencil_desc(desc.depth_stencil);
@@ -865,39 +967,25 @@ void d3d12_pipeline::initialize_pipeline_state(const pipeline_desc& desc)
         IID_PPV_ARGS(&m_pipeline_state)));
 }
 
-d3d12_ptr<D3DBlob> d3d12_pipeline::load_shader(std::string_view file)
-{
-    d3d12_ptr<D3DBlob> result;
-    d3d12_ptr<D3DBlob> error;
-
-    std::ifstream fin(file.data(), std::ios::in | std::ios::binary);
-    if (!fin)
-        throw d3d12_exception("Unable to open shader file.");
-
-    fin.seekg(0, std::ios::end);
-    throw_if_failed(D3DCreateBlob(fin.tellg(), &result));
-    fin.seekg(0, std::ios::beg);
-    fin.read(static_cast<char*>(result->GetBufferPointer()), result->GetBufferSize());
-    fin.close();
-
-    return result;
-}
-
 d3d12_render_pass::d3d12_render_pass(const render_pass_desc& desc)
-    : m_frame_buffer_layout(desc.attachments, desc.attachment_count)
+    : m_current_index(0),
+      m_current_frame_buffer(0),
+      m_frame_buffer_layout(desc.attachments, desc.attachment_count)
 {
     for (std::size_t i = 0; i < desc.subpass_count; ++i)
-        m_pipelines.push_back(std::make_unique<d3d12_pipeline>(desc.subpasses[i]));
+        m_pipelines.push_back(std::make_unique<d3d12_graphics_pipeline>(desc.subpasses[i]));
 }
 
-void d3d12_render_pass::begin(D3D12GraphicsCommandList* command_list, d3d12_resource* render_target)
+void d3d12_render_pass::begin(
+    D3D12GraphicsCommandList* command_list,
+    const d3d12_camera_info& camera_info)
 {
     m_current_index = 0;
     m_current_frame_buffer =
-        d3d12_context::frame_buffer().get_or_create_frame_buffer(this, render_target);
+        d3d12_context::frame_buffer().get_or_create_frame_buffer(this, camera_info);
     m_current_frame_buffer->begin_render(command_list);
 
-    auto [width, height] = render_target->extent();
+    auto [width, height] = camera_info.render_target->extent();
 
     D3D12_VIEWPORT viewport = {};
     viewport.Width = static_cast<float>(width);
@@ -926,23 +1014,51 @@ void d3d12_render_pass::next(D3D12GraphicsCommandList* command_list)
 
 d3d12_frame_buffer* d3d12_frame_buffer_manager::get_or_create_frame_buffer(
     d3d12_render_pass* render_pass,
-    d3d12_resource* render_target)
+    const d3d12_camera_info& camera_info)
 {
-    auto& result = m_frame_buffers[std::make_pair(render_pass, render_target)];
+    auto& result = m_frame_buffers[camera_info];
     if (result == nullptr)
-        result = std::make_unique<d3d12_frame_buffer>(render_pass, render_target);
+        result = std::make_unique<d3d12_frame_buffer>(render_pass, camera_info);
 
     return result.get();
 }
 
-void d3d12_frame_buffer_manager::notify_destroy(d3d12_resource* render_target)
+void d3d12_frame_buffer_manager::notify_destroy(d3d12_resource* resource)
 {
     for (auto iter = m_frame_buffers.begin(); iter != m_frame_buffers.end();)
     {
-        if (iter->first.second == render_target)
+        if (iter->first.render_target == resource ||
+            iter->first.render_target_resolve == resource ||
+            iter->first.depth_stencil_buffer == resource)
             iter = m_frame_buffers.erase(iter);
         else
             ++iter;
     }
+}
+
+d3d12_compute_pipeline::d3d12_compute_pipeline(const compute_pipeline_desc& desc)
+{
+    m_root_signature =
+        std::make_unique<d3d12_root_signature>(desc.parameters, desc.parameter_count);
+
+    d3d12_ptr<D3DBlob> vs_blob = load_shader(desc.compute_shader);
+
+    D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc = {};
+    pso_desc.pRootSignature = m_root_signature->handle();
+    pso_desc.CS = CD3DX12_SHADER_BYTECODE(vs_blob.Get());
+    pso_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+    throw_if_failed(d3d12_context::device()->CreateComputePipelineState(
+        &pso_desc,
+        IID_PPV_ARGS(&m_pipeline_state)));
+}
+
+void d3d12_compute_pipeline::begin(D3D12GraphicsCommandList* command_list)
+{
+    command_list->SetPipelineState(m_pipeline_state.Get());
+    command_list->SetComputeRootSignature(m_root_signature->handle());
+}
+
+void d3d12_compute_pipeline::end(D3D12GraphicsCommandList* command_list)
+{
 }
 } // namespace ash::graphics::d3d12

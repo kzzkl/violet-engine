@@ -1,9 +1,6 @@
 #pragma once
 
 #include "graphics_interface.hpp"
-#include "math.hpp"
-#include "texture.hpp"
-#include "type_trait.hpp"
 #include <memory>
 #include <vector>
 

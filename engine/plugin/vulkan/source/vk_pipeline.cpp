@@ -1,7 +1,6 @@
 #include "vk_pipeline.hpp"
 #include "vk_context.hpp"
 #include "vk_descriptor_pool.hpp"
-#include "vk_frame_buffer.hpp"
 #include "vk_renderer.hpp"
 #include "vk_sampler.hpp"
 #include <fstream>
@@ -383,7 +382,7 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
             offset += sizeof(math::float4);
             break;
         case vertex_attribute_type::COLOR:
-            attribute.format = VK_FORMAT_R8G8B8A8_UINT;
+            attribute.format = VK_FORMAT_R8G8B8A8_UNORM;
             offset += sizeof(std::uint8_t) * 4;
             break;
         default:
@@ -541,7 +540,7 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
 
 VkShaderModule vk_pipeline::load_shader(std::string_view file)
 {
-    std::ifstream fin(file.data(), std::ios::binary);
+    std::ifstream fin(std::string(file) + ".spv", std::ios::binary);
     ASH_VK_ASSERT(fin.is_open());
 
     std::vector<char> shader_data(fin.seekg(0, std::ios::end).tellg());
@@ -557,6 +556,132 @@ VkShaderModule vk_pipeline::load_shader(std::string_view file)
     throw_if_failed(vkCreateShaderModule(vk_context::device(), &shader_info, nullptr, &result));
 
     return result;
+}
+
+vk_frame_buffer_layout::vk_frame_buffer_layout(attachment_desc* attachment, std::size_t count)
+{
+    for (std::size_t i = 0; i < count; ++i)
+    {
+        attachment_info info = {};
+        info.type = attachment[i].type;
+        info.description.format = to_vk_format(attachment[i].format);
+        info.description.samples = to_vk_samples(attachment[i].samples);
+        info.description.loadOp = to_vk_attachment_load_op(attachment[i].load_op);
+        info.description.storeOp = to_vk_attachment_store_op(attachment[i].store_op);
+        info.description.stencilLoadOp = to_vk_attachment_load_op(attachment[i].stencil_load_op);
+        info.description.stencilStoreOp = to_vk_attachment_store_op(attachment[i].stencil_store_op);
+        info.description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        info.description.finalLayout = to_vk_image_layout(attachment[i].final_state);
+
+        m_attachments.push_back(info);
+    }
+}
+
+vk_frame_buffer::vk_frame_buffer(vk_render_pass* render_pass, const vk_camera_info& camera_info)
+{
+    auto device = vk_context::device();
+
+    std::vector<VkImageView> views;
+    resource_extent extent = camera_info.extent();
+
+    for (auto& attachment : render_pass->frame_buffer_layout())
+    {
+        VkClearValue clear_value = {};
+        switch (attachment.type)
+        {
+        case attachment_type::RENDER_TARGET: {
+            auto color = std::make_unique<vk_render_target>(
+                extent.width,
+                extent.height,
+                attachment.description.format,
+                attachment.description.samples);
+            views.push_back(color->view());
+            m_attachments.push_back(std::move(color));
+            clear_value.color = {0.0f, 0.0f, 0.0f, 1.0f};
+            break;
+        }
+        case attachment_type::CAMERA_RENDER_TARGET: {
+            views.push_back(camera_info.render_target->view());
+            clear_value.color = {0.0f, 0.0f, 0.0f, 1.0f};
+            break;
+        }
+        case attachment_type::CAMERA_RENDER_TARGET_RESOLVE: {
+            views.push_back(camera_info.render_target_resolve->view());
+            clear_value.color = {0.0f, 0.0f, 0.0f, 1.0f};
+            break;
+        }
+        case attachment_type::CAMERA_DEPTH_STENCIL: {
+            views.push_back(camera_info.depth_stencil_buffer->view());
+            clear_value.depthStencil = {1.0f, 0};
+            break;
+        }
+        default:
+            throw vk_exception("Invalid attachment type");
+        }
+        m_clear_values.push_back(clear_value);
+    }
+
+    VkFramebufferCreateInfo frame_buffer_info = {};
+    frame_buffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    frame_buffer_info.renderPass = render_pass->render_pass();
+    frame_buffer_info.attachmentCount = static_cast<std::uint32_t>(views.size());
+    frame_buffer_info.pAttachments = views.data();
+    frame_buffer_info.width = extent.width;
+    frame_buffer_info.height = extent.height;
+    frame_buffer_info.layers = 1;
+
+    throw_if_failed(vkCreateFramebuffer(device, &frame_buffer_info, nullptr, &m_frame_buffer));
+}
+
+vk_frame_buffer::vk_frame_buffer(vk_frame_buffer&& other)
+    : m_frame_buffer(other.m_frame_buffer),
+      m_attachments(std::move(other.m_attachments)),
+      m_clear_values(std::move(other.m_clear_values))
+{
+    other.m_frame_buffer = VK_NULL_HANDLE;
+}
+
+vk_frame_buffer::~vk_frame_buffer()
+{
+    if (m_frame_buffer != VK_NULL_HANDLE)
+    {
+        auto device = vk_context::device();
+        vkDestroyFramebuffer(device, m_frame_buffer, nullptr);
+    }
+}
+
+vk_frame_buffer& vk_frame_buffer::operator=(vk_frame_buffer&& other)
+{
+    m_frame_buffer = other.m_frame_buffer;
+    m_attachments = std::move(other.m_attachments);
+    m_clear_values = std::move(other.m_clear_values);
+
+    other.m_frame_buffer = VK_NULL_HANDLE;
+
+    return *this;
+}
+
+vk_frame_buffer* vk_frame_buffer_manager::get_or_create_frame_buffer(
+    vk_render_pass* render_pass,
+    const vk_camera_info& camera_info)
+{
+    auto& result = m_frame_buffers[camera_info];
+    if (result == nullptr)
+        result = std::make_unique<vk_frame_buffer>(render_pass, camera_info);
+
+    return result.get();
+}
+
+void vk_frame_buffer_manager::notify_destroy(vk_image* image)
+{
+    for (auto iter = m_frame_buffers.begin(); iter != m_frame_buffers.end();)
+    {
+        if (iter->first.render_target == image || iter->first.render_target_resolve == image ||
+            iter->first.depth_stencil_buffer == image)
+            iter = m_frame_buffers.erase(iter);
+        else
+            ++iter;
+    }
 }
 
 vk_render_pass::vk_render_pass(const render_pass_desc& desc)
@@ -580,11 +705,11 @@ vk_render_pass::~vk_render_pass()
     vkDestroyRenderPass(device, m_render_pass, nullptr);
 }
 
-void vk_render_pass::begin(VkCommandBuffer command_buffer, vk_image* render_target)
+void vk_render_pass::begin(VkCommandBuffer command_buffer, const vk_camera_info& camera_info)
 {
-    auto frame_buffer = vk_context::frame_buffer().get_or_create_frame_buffer(this, render_target);
+    auto frame_buffer = vk_context::frame_buffer().get_or_create_frame_buffer(this, camera_info);
 
-    auto [width, height] = render_target->extent();
+    auto [width, height] = camera_info.extent();
 
     VkRenderPassBeginInfo pass_info = {};
     pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -597,6 +722,15 @@ void vk_render_pass::begin(VkCommandBuffer command_buffer, vk_image* render_targ
     pass_info.pClearValues = frame_buffer->clear_values().data();
 
     vkCmdBeginRenderPass(command_buffer, &pass_info, VK_SUBPASS_CONTENTS_INLINE);
+
+    VkViewport viewport = {};
+    viewport.width = static_cast<float>(width);
+    viewport.height = static_cast<float>(height);
+    viewport.x = 0;
+    viewport.y = 0;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(command_buffer, 0, 1, &viewport);
 
     m_subpass_index = 0;
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelines[0].pipeline());

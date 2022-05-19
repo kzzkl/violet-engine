@@ -5,9 +5,11 @@
 #include "math.hpp"
 #include "relation.hpp"
 #include "scene.hpp"
+#include "skin_pipeline.hpp"
 #include "window.hpp"
 #include "window_event.hpp"
 #include <fstream>
+#include <set>
 
 using namespace ash::math;
 
@@ -60,9 +62,12 @@ bool graphics::initialize(const dictionary& config)
     auto& relation = system<core::relation>();
 
     world.register_component<visual>();
+    world.register_component<skinned_mesh>();
     world.register_component<camera>();
+    world.register_component<main_camera>();
     m_visual_view = world.make_view<visual>();
     m_object_view = world.make_view<visual, scene::transform>();
+    m_skinned_mesh_view = world.make_view<visual, skinned_mesh>();
     // m_tv = world.make_view<scene::transform>();
 
     event.subscribe<window::event_window_resize>(
@@ -73,6 +78,37 @@ bool graphics::initialize(const dictionary& config)
     // relation.link(m_debug->entity(), scene.root());
 
     return true;
+}
+
+void graphics::skin_meshes()
+{
+    auto command = m_renderer->allocate_command();
+
+    std::set<skin_pipeline*> pipelines;
+    m_skinned_mesh_view->each([&](visual& visual, skinned_mesh& skinned_mesh) {
+        auto pipeline = skinned_mesh.pipeline;
+        pipelines.insert(pipeline);
+        pipeline->add(skinned_mesh);
+    });
+
+    for (auto pipeline : pipelines)
+    {
+        pipeline->skin(command);
+        pipeline->clear();
+    }
+
+    m_skinned_mesh_view->each([&](visual& visual, skinned_mesh& skinned_mesh) {
+        visual.vertex_buffers.resize(skinned_mesh.vertex_buffers.size());
+        for (std::size_t i = 0; i < skinned_mesh.vertex_buffers.size(); ++i)
+        {
+            if (skinned_mesh.skinned_vertex_buffers[i] != nullptr)
+                visual.vertex_buffers[i] = skinned_mesh.skinned_vertex_buffers[i].get();
+            else
+                visual.vertex_buffers[i] = skinned_mesh.vertex_buffers[i];
+        }
+    });
+
+    m_renderer->execute(command);
 }
 
 void graphics::render(ecs::entity camera_entity)
@@ -137,31 +173,30 @@ void graphics::render(ecs::entity camera_entity)
         visual.object->set(2, model_view_projection);
     });
 
+    std::set<render_pipeline*> pipelines;
     m_visual_view->each([&, this](visual& visual) {
         if ((visual.mask & c.mask) == 0)
             return;
 
-        for (std::size_t i = 0; i < visual.submesh.size(); ++i)
+        for (std::size_t i = 0; i < visual.materials.size(); ++i)
         {
-            m_render_passes.insert(visual.submesh[i].render_pass);
-            visual.submesh[i].render_pass->add(&visual.submesh[i]);
+            auto pipeline = visual.materials[i].pipeline;
+            pipelines.insert(pipeline);
+            pipeline->add(visual, i);
         }
     });
 
     // Render.
     auto command = m_renderer->allocate_command();
 
-    // if (c.render_target == nullptr)
+    if (world.has_component<main_camera>(camera_entity))
+        c.render_target_resolve = m_renderer->back_buffer();
+
+    for (auto pipeline : pipelines)
     {
-        c.render_target = m_renderer->back_buffer();
+        pipeline->render(c, command);
+        pipeline->clear();
     }
-
-    for (auto render_pass : m_render_passes)
-        render_pass->render(c, command);
-
-    for (auto render_pass : m_render_passes)
-        render_pass->clear();
-    m_render_passes.clear();
 
     m_renderer->execute(command);
 }
@@ -185,11 +220,24 @@ std::unique_ptr<render_pass_interface> graphics::make_render_pass(render_pass_in
     {
         for (std::size_t i = 0; i < subpass.parameters.size(); ++i)
         {
+            ASH_ASSERT(
+                m_parameter_layouts.find(subpass.parameters[i]) != m_parameter_layouts.end());
             subpass.parameter_interfaces.push_back(
                 m_parameter_layouts[subpass.parameters[i]].get());
         }
     }
     return std::unique_ptr<render_pass_interface>(factory.make_render_pass(info.convert()));
+}
+
+std::unique_ptr<compute_pipeline_interface> graphics::make_compute_pipeline(
+    compute_pipeline_info& info)
+{
+    auto& factory = m_plugin.factory();
+    for (std::size_t i = 0; i < info.parameters.size(); ++i)
+        info.parameter_interfaces.push_back(m_parameter_layouts[info.parameters[i]].get());
+
+    return std::unique_ptr<compute_pipeline_interface>(
+        factory.make_compute_pipeline(info.convert()));
 }
 
 void graphics::make_pipeline_parameter_layout(
@@ -208,25 +256,8 @@ std::unique_ptr<pipeline_parameter> graphics::make_pipeline_parameter(std::strin
     return std::make_unique<pipeline_parameter>(factory.make_pipeline_parameter(layout));
 }
 
-/*std::unique_ptr<attachment_set_interface> graphics::make_attachment_set(attachment_set_info& info)
-{
-    auto& factory = m_plugin.factory();
-    return std::unique_ptr<attachment_set_interface>(factory.make_attachment_set(info.convert()));
-}*/
-
 std::unique_ptr<resource> graphics::make_texture(std::string_view file)
 {
-    /*std::ifstream fin(file.data(), std::ios::in | std::ios::binary);
-    if (!fin)
-    {
-        log::error("Can not open texture: {}.", file);
-        return nullptr;
-    }
-
-    std::vector<uint8_t> dds_data(fin.seekg(0, std::ios::end).tellg());
-    fin.seekg(0, std::ios::beg).read((char*)dds_data.data(), dds_data.size());
-    fin.close();*/
-
     auto& factory = m_plugin.factory();
     return std::unique_ptr<resource>(factory.make_texture(file.data()));
 }

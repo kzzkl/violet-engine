@@ -508,6 +508,10 @@ void vk_depth_stencil_buffer::destroy()
     m_extent = {};
 }
 
+vk_texture::vk_texture(const std::uint8_t* data, std::uint32_t width, std::uint32_t height)
+{
+}
+
 vk_texture::vk_texture(std::string_view file)
 {
     vk_image_loader loader;
@@ -620,11 +624,14 @@ void vk_texture::destroy()
     m_extent = {};
 }
 
-vk_vertex_buffer::vk_vertex_buffer(const vertex_buffer_desc& desc)
+vk_device_local_buffer::vk_device_local_buffer(
+    const void* data,
+    std::size_t size,
+    VkBufferUsageFlags flags)
 {
     auto device = vk_context::device();
 
-    std::uint32_t buffer_size = static_cast<std::uint32_t>(desc.vertex_size * desc.vertex_count);
+    std::uint32_t buffer_size = static_cast<std::uint32_t>(size);
 
     auto [staging_buffer, staging_buffer_memory] = create_buffer(
         buffer_size,
@@ -633,12 +640,12 @@ vk_vertex_buffer::vk_vertex_buffer(const vertex_buffer_desc& desc)
 
     void* mapping;
     vkMapMemory(device, staging_buffer_memory, 0, buffer_size, 0, &mapping);
-    std::memcpy(mapping, desc.vertices, buffer_size);
+    std::memcpy(mapping, data, buffer_size);
     vkUnmapMemory(device, staging_buffer_memory);
 
     auto [vertex_buffer, vertex_buffer_memory] = create_buffer(
         buffer_size,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     copy_buffer(staging_buffer, vertex_buffer, buffer_size);
@@ -648,10 +655,10 @@ vk_vertex_buffer::vk_vertex_buffer(const vertex_buffer_desc& desc)
 
     m_buffer = vertex_buffer;
     m_buffer_memory = vertex_buffer_memory;
-    m_buffer_size = buffer_size;
+    m_buffer_size = size;
 }
 
-vk_vertex_buffer::vk_vertex_buffer(vk_vertex_buffer&& other)
+vk_device_local_buffer::vk_device_local_buffer(vk_device_local_buffer&& other)
     : m_buffer(other.m_buffer),
       m_buffer_memory(other.m_buffer_memory),
       m_buffer_size(other.m_buffer_size)
@@ -661,12 +668,12 @@ vk_vertex_buffer::vk_vertex_buffer(vk_vertex_buffer&& other)
     other.m_buffer_size = 0;
 }
 
-vk_vertex_buffer::~vk_vertex_buffer()
+vk_device_local_buffer::~vk_device_local_buffer()
 {
     destroy();
 }
 
-vk_vertex_buffer& vk_vertex_buffer::operator=(vk_vertex_buffer&& other)
+vk_device_local_buffer& vk_device_local_buffer::operator=(vk_device_local_buffer&& other)
 {
     if (this != &other)
     {
@@ -684,7 +691,7 @@ vk_vertex_buffer& vk_vertex_buffer::operator=(vk_vertex_buffer&& other)
     return *this;
 }
 
-void vk_vertex_buffer::destroy()
+void vk_device_local_buffer::destroy()
 {
     if (m_buffer != VK_NULL_HANDLE)
     {
@@ -698,79 +705,63 @@ void vk_vertex_buffer::destroy()
     m_buffer_size = 0;
 }
 
-vk_index_buffer::vk_index_buffer(const index_buffer_desc& desc)
+vk_host_visible_buffer::vk_host_visible_buffer(
+    const void* data,
+    std::size_t size,
+    VkBufferUsageFlags flags)
 {
     auto device = vk_context::device();
 
-    std::uint32_t buffer_size = static_cast<std::uint32_t>(desc.index_size * desc.index_count);
+    std::uint32_t buffer_size = static_cast<std::uint32_t>(size);
 
-    auto [staging_buffer, staging_buffer_memory] = create_buffer(
+    auto [vertex_buffer, vertex_buffer_memory] = create_buffer(
         buffer_size,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        flags,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-    void* mapping;
-    vkMapMemory(device, staging_buffer_memory, 0, buffer_size, 0, &mapping);
-    std::memcpy(mapping, desc.indices, buffer_size);
-    vkUnmapMemory(device, staging_buffer_memory);
+    m_buffer = vertex_buffer;
+    m_buffer_memory = vertex_buffer_memory;
+    m_buffer_size = size;
 
-    auto [index_buffer, index_buffer_memory] = create_buffer(
-        buffer_size,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-    copy_buffer(staging_buffer, index_buffer, buffer_size);
-
-    vkDestroyBuffer(device, staging_buffer, nullptr);
-    vkFreeMemory(device, staging_buffer_memory, nullptr);
-
-    m_buffer = index_buffer;
-    m_buffer_memory = index_buffer_memory;
-
-    switch (desc.index_size)
-    {
-    case 2:
-        m_index_type = VK_INDEX_TYPE_UINT16;
-        break;
-    case 4:
-        m_index_type = VK_INDEX_TYPE_UINT32;
-        break;
-    default:
-        throw vk_exception("Invalid index size.");
-    }
-
-    m_buffer_size = buffer_size;
+    if (data != nullptr)
+        upload(data, size, 0);
 }
 
-vk_index_buffer::vk_index_buffer(vk_index_buffer&& other)
-    : m_index_type(other.m_index_type),
-      m_buffer(other.m_buffer),
+vk_host_visible_buffer::vk_host_visible_buffer(vk_host_visible_buffer&& other)
+    : m_buffer(other.m_buffer),
       m_buffer_memory(other.m_buffer_memory),
       m_buffer_size(other.m_buffer_size)
 {
-    other.m_index_type = VK_INDEX_TYPE_MAX_ENUM;
     other.m_buffer = VK_NULL_HANDLE;
     other.m_buffer_memory = VK_NULL_HANDLE;
     other.m_buffer_size = 0;
 }
 
-vk_index_buffer::~vk_index_buffer()
+vk_host_visible_buffer::~vk_host_visible_buffer()
 {
     destroy();
 }
 
-vk_index_buffer& vk_index_buffer::operator=(vk_index_buffer&& other)
+void vk_host_visible_buffer::upload(const void* data, std::size_t size, std::size_t offset)
+{
+    auto device = vk_context::device();
+
+    void* mapping;
+    vkMapMemory(device, m_buffer_memory, 0, static_cast<std::uint32_t>(size), 0, &mapping);
+    std::memcpy(mapping, data, static_cast<std::uint32_t>(size));
+    vkUnmapMemory(device, m_buffer_memory);
+}
+
+vk_host_visible_buffer& vk_host_visible_buffer::operator=(vk_host_visible_buffer&& other)
 {
     if (this != &other)
     {
         destroy();
 
-        m_index_type = other.m_index_type;
         m_buffer = other.m_buffer;
         m_buffer_memory = other.m_buffer_memory;
         m_buffer_size = other.m_buffer_size;
 
-        other.m_index_type = VK_INDEX_TYPE_MAX_ENUM;
         other.m_buffer = VK_NULL_HANDLE;
         other.m_buffer_memory = VK_NULL_HANDLE;
         other.m_buffer_size = 0;
@@ -779,7 +770,7 @@ vk_index_buffer& vk_index_buffer::operator=(vk_index_buffer&& other)
     return *this;
 }
 
-void vk_index_buffer::destroy()
+void vk_host_visible_buffer::destroy()
 {
     if (m_buffer != VK_NULL_HANDLE)
     {
@@ -788,7 +779,6 @@ void vk_index_buffer::destroy()
         vkFreeMemory(device, m_buffer_memory, nullptr);
     }
 
-    m_index_type = VK_INDEX_TYPE_MAX_ENUM;
     m_buffer = VK_NULL_HANDLE;
     m_buffer_memory = VK_NULL_HANDLE;
     m_buffer_size = 0;

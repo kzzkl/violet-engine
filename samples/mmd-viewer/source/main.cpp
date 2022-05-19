@@ -28,16 +28,7 @@ public:
         system<scene::scene>().sync_local();
 
         system<core::event>().subscribe<window::event_window_resize>(
-            [this](std::uint32_t width, std::uint32_t height) {
-                auto& world = system<ecs::world>();
-                auto& c_camera = world.component<graphics::camera>(m_camera);
-                c_camera.set(
-                    math::to_radians(45.0f),
-                    static_cast<float>(width) / static_cast<float>(height),
-                    0.3f,
-                    1000.0f,
-                    false);
-            });
+            [this](std::uint32_t width, std::uint32_t height) { resize_camera(width, height); });
 
         return true;
     }
@@ -89,17 +80,18 @@ private:
         auto& graphics = system<graphics::graphics>();
 
         m_camera = world.create();
-        world.add<core::link, graphics::camera, scene::transform>(m_camera);
-        auto& c_camera = world.component<graphics::camera>(m_camera);
-        c_camera.set(math::to_radians(45.0f), 1300.0f / 800.0f, 0.3f, 1000.0f, false);
+        world.add<core::link, graphics::camera, graphics::main_camera, scene::transform>(m_camera);
+        auto& camera = world.component<graphics::camera>(m_camera);
+        camera.parameter = graphics.make_pipeline_parameter("ash_pass");
 
-        c_camera.parameter = graphics.make_pipeline_parameter("ash_pass");
-
-        auto& c_transform = world.component<scene::transform>(m_camera);
-        c_transform.position = {0.0f, 11.0f, -30.0f};
-        c_transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
-        c_transform.scaling = {1.0f, 1.0f, 1.0f};
+        auto& transform = world.component<scene::transform>(m_camera);
+        transform.position = {0.0f, 11.0f, -30.0f};
+        transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+        transform.scaling = {1.0f, 1.0f, 1.0f};
         system<core::relation>().link(m_camera, scene.root());
+
+        auto window_rect = system<window::window>().rect();
+        resize_camera(window_rect.width, window_rect.height);
     }
 
     void initialize_task()
@@ -114,6 +106,7 @@ private:
         auto render_task = task.schedule("render", [this]() {
             auto& graphics = system<graphics::graphics>();
             graphics.begin_frame();
+            graphics.skin_meshes();
             graphics.render(m_camera);
             graphics.end_frame();
         });
@@ -121,6 +114,36 @@ private:
         window_task->add_dependency(*task.find("root"));
         update_task->add_dependency(*window_task);
         render_task->add_dependency(*update_task);
+    }
+
+    void resize_camera(std::uint32_t width, std::uint32_t height)
+    {
+        auto& world = system<ecs::world>();
+        auto& graphics = system<graphics::graphics>();
+
+        auto& camera = world.component<graphics::camera>(m_camera);
+        camera.set(
+            math::to_radians(45.0f),
+            static_cast<float>(width) / static_cast<float>(height),
+            0.3f,
+            1000.0f,
+            false);
+
+        graphics::render_target_info render_target_info = {};
+        render_target_info.width = width;
+        render_target_info.height = height;
+        render_target_info.format = graphics.back_buffer_format();
+        render_target_info.samples = 4;
+        m_render_target = graphics.make_render_target(render_target_info);
+        camera.render_target = m_render_target.get();
+
+        graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
+        depth_stencil_buffer_info.width = width;
+        depth_stencil_buffer_info.height = height;
+        depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
+        depth_stencil_buffer_info.samples = 4;
+        m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
+        camera.depth_stencil_buffer = m_depth_stencil_buffer.get();
     }
 
     void update_camera(float delta)
@@ -147,7 +170,7 @@ private:
             };
 
             auto& v = world.component<graphics::visual>(m_actor);
-            v.submesh[0].parameters[1]->set(0, colors[index]);
+            v.materials[0].parameters[1]->set(0, colors[index]);
 
             index = (index + 1) % colors.size();
         }
@@ -222,9 +245,12 @@ private:
     std::string m_title;
     core::application* m_app;
 
-    ecs::entity m_camera;
     ecs::entity m_actor;
     ecs::entity m_plane;
+
+    ecs::entity m_camera;
+    std::unique_ptr<graphics::resource> m_render_target;
+    std::unique_ptr<graphics::resource> m_depth_stencil_buffer;
 
     std::unique_ptr<physics::collision_shape_interface> m_plane_shape;
 

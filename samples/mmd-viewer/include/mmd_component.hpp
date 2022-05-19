@@ -3,7 +3,7 @@
 #include "entity.hpp"
 #include "math.hpp"
 #include "mmd_bezier.hpp"
-#include "render_parameter.hpp"
+#include "pipeline_parameter.hpp"
 #include <string>
 #include <vector>
 
@@ -95,8 +95,5 @@ struct mmd_skeleton
 
     std::vector<math::float4x4> local;
     std::vector<math::float4x4> world;
-    // std::vector<math::float4x4> transform;
-
-    std::unique_ptr<graphics::pipeline_parameter> parameter;
 };
 } // namespace ash::sample::mmd

@@ -16,14 +16,18 @@ cbuffer mmd_material : register(b0, space1)
     uint spa_mode;
 };
 
-[[vk::binding(0, 2)]]
-cbuffer mmd_skeleton : register(b0, space2)
-{
-    float4x4 offset[512];
-};
+[[vk::binding(1, 1)]]
+Texture2D tex : register(t0, space1);
 
-[[vk::binding(0, 3)]]
-cbuffer ash_pass : register(b0, space3)
+[[vk::binding(2, 1)]]
+Texture2D toon : register(t1, space1);
+
+[[vk::binding(3, 1)]]
+Texture2D spa : register(t2, space1);
+SamplerState sampler_wrap : register(s0);
+
+[[vk::binding(0, 2)]]
+cbuffer ash_pass : register(b0, space2)
 {
     float4 camera_position;
     float4 camera_direction;
@@ -32,17 +36,6 @@ cbuffer ash_pass : register(b0, space3)
     float4x4 transform_p;
     float4x4 transform_vp;
 };
-
-[[vk::binding(0, 1)]]
-Texture2D tex : register(t0, space1);
-
-[[vk::binding(1, 1)]]
-Texture2D toon : register(t1, space1);
-
-[[vk::binding(2, 1)]]
-Texture2D spa : register(t2, space1);
-
-SamplerState sampler_wrap : register(s0);
 
 struct vs_in
 {
@@ -63,26 +56,8 @@ struct vs_out
 vs_out vs_main(vs_in vin)
 {
     vs_out result;
-
-    float weights[4] = { 0.0, 0.0, 0.0, 0.0 };
-    weights[0] = vin.weight.x;
-    weights[1] = vin.weight.y;
-    weights[2] = vin.weight.z;
-    weights[3] = 1.0f - weights[0] - weights[1] - weights[2];
-
-    float4x4 m = float4x4(
-        0.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f);
-    for (int i = 0; i < 4; ++i)
-        m += weights[i] * offset[vin.bone[i]];
-
-    float4x4 mvp = mul(m, transform_vp);
-    float4x4 mv = mul(m, transform_v);
-
-    result.position = mul(float4(vin.position, 1.0f), mvp);
-    result.normal = mul(float4(vin.normal, 0.0f), mv).xyz;
+    result.position = mul(float4(vin.position, 1.0f), transform_mvp);
+    result.normal = mul(float4(vin.normal, 0.0f), transform_mv).xyz;
     result.uv = vin.uv;
 
     return result;

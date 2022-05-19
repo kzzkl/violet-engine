@@ -10,7 +10,7 @@ namespace ash::editor
 class root_view : public editor_view
 {
 public:
-    root_view() : editor_view(nullptr) {}
+    root_view() {}
     virtual void draw(editor_data& data) override {}
 };
 

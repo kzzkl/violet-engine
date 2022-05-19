@@ -10,8 +10,11 @@ class vk_command : public render_command_interface
 public:
     vk_command(VkCommandBuffer command_buffer);
 
-    virtual void begin(render_pass_interface* render_pass, resource_interface* render_target)
-        override;
+    virtual void begin(
+        render_pass_interface* render_pass,
+        resource_interface* render_target,
+        resource_interface* render_target_resolve,
+        resource_interface* depth_stencil_buffer) override;
     virtual void end(render_pass_interface* render_pass) override;
     virtual void next(render_pass_interface* render_pass) override;
 

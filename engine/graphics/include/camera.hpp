@@ -2,10 +2,14 @@
 
 #include "component.hpp"
 #include "math.hpp"
-#include "render_parameter.hpp"
+#include "pipeline_parameter.hpp"
 
 namespace ash::graphics
 {
+struct main_camera
+{
+};
+
 struct camera
 {
     void set(float fov, float aspect, float near_z, float far_z, bool flip_y = false)
@@ -20,8 +24,10 @@ struct camera
     math::float4x4 view;
     math::float4x4 projection;
 
-    resource_interface* render_target{nullptr};
-    resource_interface* depth_stencil{nullptr};
+    resource* render_target;
+    resource* render_target_resolve;
+    resource* depth_stencil_buffer;
+
     std::unique_ptr<pipeline_parameter> parameter;
 
     std::uint32_t mask{std::numeric_limits<std::uint32_t>::max()};

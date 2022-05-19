@@ -231,11 +231,11 @@ ui::ui() : system_base("ui")
 
 bool ui::initialize(const dictionary& config)
 {
-    /*auto& graphics = system<graphics::graphics>();
+    auto& graphics = system<graphics::graphics>();
     auto& world = system<ecs::world>();
-    auto& event = system<event>();
+    auto& event = system<core::event>();
 
-    m_pass = graphics.make_render_pass<ui_pass>("ui");
+    m_pipeline = std::make_unique<ui_pipeline>();
 
     m_ui_entity = world.create();
     world.add<graphics::visual>(m_ui_entity);
@@ -247,8 +247,11 @@ bool ui::initialize(const dictionary& config)
 
     for (std::size_t i = 0; i < 3; ++i)
     {
-        m_vertex_buffer.push_back(
-            graphics.make_vertex_buffer<ImDrawVert>(nullptr, 1024 * 16, true));
+        m_vertex_buffer.push_back(graphics.make_vertex_buffer<ImDrawVert>(
+            nullptr,
+            1024 * 16,
+            graphics::VERTEX_BUFFER_FLAG_NONE,
+            true));
         m_index_buffer.push_back(graphics.make_index_buffer<ImDrawIdx>(nullptr, 1024 * 32, true));
     }
 
@@ -287,7 +290,7 @@ bool ui::initialize(const dictionary& config)
         });
     event.subscribe<window::event_keyboard_char>(
         [](char c) { ImGui::GetIO().AddInputCharacter(c); });
-    event.subscribe<window::event_window_resize>([](std::uint32_t width, std::uint32_t height) {});*/
+    event.subscribe<window::event_window_resize>([](std::uint32_t width, std::uint32_t height) {});
 
     return true;
 }
@@ -399,8 +402,8 @@ void ui::begin_frame()
 
     window::window_rect rect = window.rect();
 
-    static auto old_time = system<timer>().now();
-    auto new_time = system<timer>().now();
+    static auto old_time = system<core::timer>().now();
+    auto new_time = system<core::timer>().now();
     float delta = (new_time - old_time).count() * 0.000000001f;
     old_time = new_time;
 
@@ -414,11 +417,11 @@ void ui::begin_frame()
 }
 
 void ui::end_frame()
-{/*
+{
     auto& world = system<ecs::world>();
     auto& visual = world.component<graphics::visual>(m_ui_entity);
-    visual.submesh.clear();
-    m_scissor_rects.clear();
+    visual.submeshes.clear();
+    visual.materials.clear();
 
     ImGui::Render();
 
@@ -463,19 +466,24 @@ void ui::end_frame()
         {
             auto& command = list->CmdBuffer[j];
 
-            graphics::render_unit submesh = {};
-            submesh.vertex_buffer = m_vertex_buffer[m_frame_index].get();
-            submesh.index_buffer = m_index_buffer[m_frame_index].get();
-            submesh.index_start = command.IdxOffset + index_counter;
-            submesh.index_end = command.IdxOffset + command.ElemCount + index_counter;
-            submesh.vertex_base = command.VtxOffset + vertex_counter;
-            submesh.pipeline = m_pipeline.get();
+            visual.vertex_buffers.push_back(m_vertex_buffer[m_frame_index].get());
+            visual.index_buffer = m_index_buffer[m_frame_index].get();
+
+            graphics::submesh mesh = {};
+            mesh.index_start = command.IdxOffset + index_counter;
+            mesh.index_end = command.IdxOffset + command.ElemCount + index_counter;
+            mesh.vertex_base = command.VtxOffset + vertex_counter;
+            visual.submeshes.push_back(mesh);
+
+            graphics::material material = {};
+            material.pipeline = m_pipeline.get();
 
             auto parameter = allocate_parameter();
-            parameter->set(0, mvp, false);
+            parameter->set(0, mvp);
             parameter->set(1, static_cast<graphics::resource*>(command.GetTexID()));
             // parameter->set(1, m_font.get());
-            submesh.parameters.push_back(parameter);
+            material.parameters.push_back(parameter);
+            visual.materials.push_back(material);
 
             ImVec2 clip_min(command.ClipRect.x - clip_off.x, command.ClipRect.y - clip_off.y);
             ImVec2 clip_max(command.ClipRect.z - clip_off.x, command.ClipRect.w - clip_off.y);
@@ -488,15 +496,12 @@ void ui::end_frame()
                 static_cast<std::uint32_t>(clip_min.y),
                 static_cast<std::uint32_t>(clip_max.x),
                 static_cast<std::uint32_t>(clip_max.y)};
-            m_scissor_rects.push_back(rect);
-            submesh.external = &m_scissor_rects.back();
-
-            visual.submesh.push_back(submesh);
+            m_pipeline->add_scissor(rect);
         }
 
         vertex_counter += list->VtxBuffer.Size;
         index_counter += list->IdxBuffer.Size;
-    }*/
+    }
 }
 
 void ui::initialize_theme()
@@ -574,10 +579,11 @@ void ui::initialize_font_texture()
     io.Fonts->SetTexID(m_font.get());
 }
 
-graphics::render_parameter* ui::allocate_parameter()
+graphics::pipeline_parameter* ui::allocate_parameter()
 {
     if (m_parameter_counter >= m_parameter_pool.size())
-        m_parameter_pool.push_back(system<graphics::graphics>().make_render_parameter("ui"));
+        m_parameter_pool.push_back(
+            system<graphics::graphics>().make_pipeline_parameter("ui_material"));
 
     ++m_parameter_counter;
     return m_parameter_pool[m_parameter_counter - 1].get();

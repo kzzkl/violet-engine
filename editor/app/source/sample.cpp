@@ -27,14 +27,15 @@ bool test_module::initialize(const dictionary& config)
     desc.box.width = 10.0f;
     m_plane_shape = physics.make_shape(desc);
 
+    m_standard_pass = std::make_unique<graphics::standard_pass>();
+
     graphics::geometry_data cube_data = graphics::geometry::box(1.0f, 1.0f, 1.0f);
     m_cube_vertex_buffer =
         graphics.make_vertex_buffer(cube_data.vertices.data(), cube_data.vertices.size());
     m_cube_index_buffer =
         graphics.make_index_buffer(cube_data.indices.data(), cube_data.indices.size());
-    m_cube_material = graphics.make_render_parameter("geometry_material");
+    m_cube_material = graphics.make_pipeline_parameter("standard_material");
     m_cube_material->set(0, math::float4{1.0f, 1.0f, 1.0f, 1.0f});
-    m_pipeline = graphics.make_render_pipeline<graphics::render_pipeline>("geometry");
 
     // Create cube.
     {
@@ -52,15 +53,15 @@ bool test_module::initialize(const dictionary& config)
         r.relation = m_cube_1;
 
         auto& v = world.component<graphics::visual>(m_cube_1);
-        m_cube_object.emplace_back(graphics.make_render_parameter("ash_object"));
+        m_cube_object.emplace_back(graphics.make_pipeline_parameter("ash_object"));
         v.object = m_cube_object.back().get();
 
         graphics::render_unit submesh;
-        submesh.vertex_buffer = m_cube_vertex_buffer.get();
+        submesh.vertex_buffers.push_back(m_cube_vertex_buffer.get());
         submesh.index_buffer = m_cube_index_buffer.get();
         submesh.index_start = 0;
         submesh.index_end = cube_data.indices.size();
-        submesh.pipeline = m_pipeline.get();
+        submesh.render_pass = m_standard_pass.get();
         submesh.parameters = {v.object, m_cube_material.get()};
         v.submesh.push_back(submesh);
 
@@ -82,15 +83,15 @@ bool test_module::initialize(const dictionary& config)
         r.relation = m_cube_2;
 
         auto& v = world.component<graphics::visual>(m_cube_2);
-        m_cube_object.emplace_back(graphics.make_render_parameter("ash_object"));
+        m_cube_object.emplace_back(graphics.make_pipeline_parameter("ash_object"));
         v.object = m_cube_object.back().get();
 
         graphics::render_unit submesh;
-        submesh.vertex_buffer = m_cube_vertex_buffer.get();
+        submesh.vertex_buffers.push_back(m_cube_vertex_buffer.get());
         submesh.index_buffer = m_cube_index_buffer.get();
         submesh.index_start = 0;
         submesh.index_end = cube_data.indices.size();
-        submesh.pipeline = m_pipeline.get();
+        submesh.render_pass = m_standard_pass.get();
         submesh.parameters = {v.object, m_cube_material.get()};
         v.submesh.push_back(submesh);
 

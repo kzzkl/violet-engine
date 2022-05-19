@@ -1,18 +1,9 @@
 [[vk::binding(0, 0)]]
-cbuffer mmd_skeleton : register(b0, space0)
+cbuffer ash_object : register(b0, space0)
 {
-    float4x4 offset[512];
-};
-
-[[vk::binding(0, 1)]]
-cbuffer ash_pass : register(b0, space1)
-{
-    float4 camera_position;
-    float4 camera_direction;
-
-    float4x4 transform_v;
-    float4x4 transform_p;
-    float4x4 transform_vp;
+    float4x4 transform_m;
+    float4x4 transform_mv;
+    float4x4 transform_mvp;
 };
 
 struct vs_in
@@ -31,27 +22,10 @@ struct vs_out
 
 vs_out vs_main(vs_in vin)
 {
-    float weights[4] = { 0.0, 0.0, 0.0, 0.0 };
-    weights[0] = vin.weight.x;
-    weights[1] = vin.weight.y;
-    weights[2] = vin.weight.z;
-    weights[3] = 1.0f - weights[0] - weights[1] - weights[2];
-
-    float4x4 m = float4x4(
-        0.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f);
-    for (int i = 0; i < 4; ++i)
-        m += weights[i] * offset[vin.bone[i]];
-
-    float4x4 mv = mul(m, transform_v);
-    float4x4 mvp = mul(m, transform_vp);
-
     vs_out result;
-    result.position = mul(float4(vin.position, 1.0f), mvp);
+    result.position = mul(float4(vin.position, 1.0f), transform_mvp);
 
-    float4 normal = mul(float4(vin.normal, 1.0f), mv);
+    float4 normal = mul(float4(vin.normal, 1.0f), transform_mv);
     float2 screen_normal = normalize(normal.xy);
     result.position.xy += screen_normal * result.position.w / 800.0f;
 

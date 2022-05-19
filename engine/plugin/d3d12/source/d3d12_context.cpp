@@ -1,6 +1,8 @@
 #include "d3d12_context.hpp"
+#include "d3d12_command.hpp"
 #include "d3d12_pipeline.hpp"
 #include "d3d12_renderer.hpp"
+#include "d3d12_resource.hpp"
 #include <DirectXColors.h>
 
 using namespace DirectX;

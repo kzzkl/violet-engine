@@ -8,8 +8,8 @@ namespace ash::editor
 class information_plane : public component_plane
 {
 public:
-    information_plane(core::context* context)
-        : component_plane("Information", ecs::component_index::value<ecs::information>(), context)
+    information_plane()
+        : component_plane("Information", ecs::component_index::value<ecs::information>())
     {
     }
 
@@ -26,8 +26,8 @@ public:
 class transform_plane : public component_plane
 {
 public:
-    transform_plane(core::context* context)
-        : component_plane("Transform", ecs::component_index::value<scene::transform>(), context)
+    transform_plane()
+        : component_plane("Transform", ecs::component_index::value<scene::transform>())
     {
     }
 
@@ -54,8 +54,8 @@ public:
 class visual_plane : public component_plane
 {
 public:
-    visual_plane(core::context* context)
-        : component_plane("Visual", ecs::component_index::value<graphics::visual>(), context)
+    visual_plane()
+        : component_plane("Visual", ecs::component_index::value<graphics::visual>())
     {
     }
 
@@ -66,9 +66,8 @@ public:
     }
 };
 
-component_view::component_view(core::context* context)
-    : editor_view(context),
-      m_planes(ecs::MAX_COMPONENT)
+component_view::component_view()
+    : m_planes(ecs::MAX_COMPONENT)
 {
     register_plane<ecs::information, information_plane>();
     register_plane<scene::transform, transform_plane>();

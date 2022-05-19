@@ -3,5 +3,8 @@
         "title": "ash engine",
         "width": 2000,
         "height": 1200
+    },
+    "graphics": {
+        "plugin": "ash-graphics-d3d12.dll"
     }
 }

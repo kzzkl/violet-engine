@@ -16,6 +16,18 @@ public:
     {
         return m_parameters[index].offset;
     }
+    inline std::size_t parameter_descriptor_index(std::size_t index) const
+    {
+        switch (m_parameters[index].type)
+        {
+        case pipeline_parameter_type::SHADER_RESOURCE:
+            return m_parameters[index].offset + m_cbv_count;
+        case pipeline_parameter_type::UNORDERED_ACCESS:
+            return m_parameters[index].offset + m_cbv_count + m_srv_count;
+        default:
+            return 0;
+        }
+    }
     inline std::size_t parameter_size(std::size_t index) const { return m_parameters[index].size; }
     inline pipeline_parameter_type parameter_type(std::size_t index) const
     {
@@ -26,6 +38,7 @@ public:
 
     inline std::size_t cbv_count() const noexcept { return m_cbv_count; }
     inline std::size_t srv_count() const noexcept { return m_srv_count; }
+    inline std::size_t uav_count() const noexcept { return m_uav_count; }
 
     inline std::size_t constant_buffer_size() const noexcept { return m_constant_buffer_size; }
 
@@ -41,6 +54,7 @@ private:
 
     std::size_t m_cbv_count;
     std::size_t m_srv_count;
+    std::size_t m_uav_count;
 
     std::size_t m_constant_buffer_size;
 };
@@ -110,8 +124,31 @@ private:
     d3d12_pipeline_parameter_layout* m_layout;
 
     std::vector<std::uint8_t> m_cpu_buffer;
-    std::vector<d3d12_resource*> m_textures;
+    std::vector<d3d12_resource*> m_shader_resources;
+    std::vector<d3d12_resource*> m_unordered_access_buffers;
     std::unique_ptr<d3d12_upload_buffer> m_gpu_buffer;
+};
+
+class d3d12_root_signature
+{
+public:
+    d3d12_root_signature(
+        pipeline_parameter_layout_interface** parameters,
+        std::size_t parameter_count);
+
+    D3D12RootSignature* handle() const noexcept { return m_root_signature.Get(); }
+
+private:
+    d3d12_ptr<D3D12RootSignature> m_root_signature;
+};
+
+class d3d12_pipeline
+{
+public:
+    virtual ~d3d12_pipeline() = default;
+
+protected:
+    d3d12_ptr<D3DBlob> load_shader(std::string_view file);
 };
 
 class d3d12_frame_buffer_layout
@@ -126,6 +163,20 @@ private:
     std::vector<attachment_desc> m_attachments;
 };
 
+struct d3d12_camera_info
+{
+    d3d12_resource* render_target;
+    d3d12_resource* render_target_resolve;
+    d3d12_resource* depth_stencil_buffer;
+
+    inline bool operator==(const d3d12_camera_info& other) const noexcept
+    {
+        return render_target == other.render_target &&
+               render_target_resolve == other.render_target_resolve &&
+               depth_stencil_buffer == other.depth_stencil_buffer;
+    }
+};
+
 class d3d12_render_pass;
 class d3d12_frame_buffer
 {
@@ -138,7 +189,7 @@ public:
     };
 
 public:
-    d3d12_frame_buffer(d3d12_render_pass* render_pass, d3d12_resource* render_target);
+    d3d12_frame_buffer(d3d12_render_pass* render_pass, const d3d12_camera_info& camera_info);
 
     void begin_render(D3D12GraphicsCommandList* command_list);
     void end_render(D3D12GraphicsCommandList* command_list);
@@ -153,10 +204,10 @@ private:
     std::vector<std::unique_ptr<d3d12_resource>> m_attachment_container;
 };
 
-class d3d12_pipeline
+class d3d12_graphics_pipeline : public d3d12_pipeline
 {
 public:
-    d3d12_pipeline(const pipeline_desc& desc);
+    d3d12_graphics_pipeline(const pipeline_desc& desc);
 
     void begin(D3D12GraphicsCommandList* command_list, d3d12_frame_buffer* frame_buffer);
     void end(D3D12GraphicsCommandList* command_list, bool final = false);
@@ -164,14 +215,11 @@ public:
 
 private:
     void initialize_vertex_layout(const pipeline_desc& desc);
-    void initialize_pipeline_layout(const pipeline_desc& desc);
     void initialize_pipeline_state(const pipeline_desc& desc);
-
-    d3d12_ptr<D3DBlob> load_shader(std::string_view file);
 
     std::vector<D3D12_INPUT_ELEMENT_DESC> m_vertex_layout;
 
-    d3d12_ptr<D3D12RootSignature> m_root_signature;
+    std::unique_ptr<d3d12_root_signature> m_root_signature;
     d3d12_ptr<D3D12PipelineState> m_pipeline_state;
 
     d3d12_frame_buffer* m_current_frame_buffer;
@@ -187,7 +235,7 @@ class d3d12_render_pass : public render_pass_interface
 public:
     d3d12_render_pass(const render_pass_desc& desc);
 
-    void begin(D3D12GraphicsCommandList* command_list, d3d12_resource* render_target);
+    void begin(D3D12GraphicsCommandList* command_list, const d3d12_camera_info& camera_info);
     void end(D3D12GraphicsCommandList* command_list);
     void next(D3D12GraphicsCommandList* command_list);
 
@@ -197,11 +245,11 @@ public:
     }
 
 private:
-    std::vector<std::unique_ptr<d3d12_pipeline>> m_pipelines;
+    std::vector<std::unique_ptr<d3d12_graphics_pipeline>> m_pipelines;
 
     struct pipeline_info
     {
-        std::unique_ptr<d3d12_pipeline> pipeline;
+        std::unique_ptr<d3d12_graphics_pipeline> pipeline;
         D3D12_CPU_DESCRIPTOR_HANDLE render_target;
         std::size_t render_target_count;
         D3D12_CPU_DESCRIPTOR_HANDLE depth_stencil;
@@ -218,21 +266,48 @@ class d3d12_frame_buffer_manager
 public:
     d3d12_frame_buffer* get_or_create_frame_buffer(
         d3d12_render_pass* render_pass,
-        d3d12_resource* render_target);
+        const d3d12_camera_info& camera_info);
 
-    void notify_destroy(d3d12_resource* render_target);
+    void notify_destroy(d3d12_resource* resource);
 
 private:
-    using key_type = std::pair<d3d12_render_pass*, d3d12_resource*>;
-    struct key_hash
+    struct d3d12_camera_info_hash
     {
-        template <class T1, class T2>
-        std::size_t operator()(const std::pair<T1, T2>& pair) const
+        std::size_t operator()(const d3d12_camera_info& key) const
         {
-            return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
+            std::size_t result = 0;
+            hash_combine(result, key.render_target);
+            hash_combine(result, key.render_target_resolve);
+            hash_combine(result, key.depth_stencil_buffer);
+
+            return result;
+        }
+
+        template <class T>
+        void hash_combine(std::size_t& s, const T& v) const
+        {
+            std::hash<T> h;
+            s ^= h(v) + 0x9e3779b9 + (s << 6) + (s >> 2);
         }
     };
 
-    std::unordered_map<key_type, std::unique_ptr<d3d12_frame_buffer>, key_hash> m_frame_buffers;
+    std::unordered_map<
+        d3d12_camera_info,
+        std::unique_ptr<d3d12_frame_buffer>,
+        d3d12_camera_info_hash>
+        m_frame_buffers;
+};
+
+class d3d12_compute_pipeline : public compute_pipeline_interface, public d3d12_pipeline
+{
+public:
+    d3d12_compute_pipeline(const compute_pipeline_desc& desc);
+
+    void begin(D3D12GraphicsCommandList* command_list);
+    void end(D3D12GraphicsCommandList* command_list);
+
+private:
+    std::unique_ptr<d3d12_root_signature> m_root_signature;
+    d3d12_ptr<D3D12PipelineState> m_pipeline_state;
 };
 } // namespace ash::graphics::d3d12
