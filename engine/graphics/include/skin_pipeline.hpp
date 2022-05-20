@@ -9,8 +9,8 @@ namespace ash::graphics
 {
 struct skin_unit
 {
-    std::vector<resource*> input_buffers;
-    std::vector<resource*> output_buffers;
+    std::vector<resource*> input_vertex_buffers;
+    std::vector<resource*> skinned_vertex_buffers;
     pipeline_parameter* parameter;
 
     std::size_t vertex_count;

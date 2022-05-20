@@ -42,8 +42,6 @@ struct vs_in
     float3 position : POSITION;
     float3 normal : NORMAL;
     float2 uv : UV;
-    uint4 bone : BONE;
-    float3 weight : BONE_WEIGHT;
 };
 
 struct vs_out
