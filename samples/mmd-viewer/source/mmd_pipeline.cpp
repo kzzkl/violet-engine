@@ -24,11 +24,9 @@ mmd_render_pipeline::mmd_render_pipeline()
     color_pass_info.vertex_shader = "resource/shader/color.vert";
     color_pass_info.pixel_shader = "resource/shader/color.frag";
     color_pass_info.vertex_attributes = {
-        {"POSITION",    graphics::vertex_attribute_type::FLOAT3}, // position
-        {"NORMAL",      graphics::vertex_attribute_type::FLOAT3}, // normal
-        {"UV",          graphics::vertex_attribute_type::FLOAT2}, // uv
-        {"BONE",        graphics::vertex_attribute_type::UINT4 }, // bone
-        {"BONE_WEIGHT", graphics::vertex_attribute_type::FLOAT3}, // bone weight
+        {"POSITION", graphics::vertex_attribute_type::FLOAT3}, // position
+        {"NORMAL",   graphics::vertex_attribute_type::FLOAT3}, // normal
+        {"UV",       graphics::vertex_attribute_type::FLOAT2}, // uv
     };
     color_pass_info.references = {
         {graphics::attachment_reference_type::COLOR, 0},
@@ -44,11 +42,8 @@ mmd_render_pipeline::mmd_render_pipeline()
     edge_pass_info.vertex_shader = "resource/shader/edge.vert";
     edge_pass_info.pixel_shader = "resource/shader/edge.frag";
     edge_pass_info.vertex_attributes = {
-        {"POSITION",    graphics::vertex_attribute_type::FLOAT3}, // position
-        {"NORMAL",      graphics::vertex_attribute_type::FLOAT3}, // normal
-        {"UV",          graphics::vertex_attribute_type::FLOAT2}, // uv
-        {"bone",        graphics::vertex_attribute_type::UINT4 }, // bone
-        {"BONE_WEIGHT", graphics::vertex_attribute_type::FLOAT3}, // bone weight
+        {"POSITION", graphics::vertex_attribute_type::FLOAT3}, // position
+        {"NORMAL",   graphics::vertex_attribute_type::FLOAT3}, // normal
     };
     edge_pass_info.references = {
         {graphics::attachment_reference_type::COLOR,   0},
@@ -122,6 +117,8 @@ void mmd_render_pipeline::render(
     command->scissor(&rect, 1);
 
     command->parameter(2, camera.parameter->parameter());
+
+    // Color pass.
     for (auto& unit : units())
     {
         command->parameter(0, unit.parameters[0]->parameter());
@@ -138,12 +135,17 @@ void mmd_render_pipeline::render(
 
     command->next(m_interface.get());
 
+    // Edge pass.
     for (auto& unit : units())
     {
         command->parameter(0, unit.parameters[0]->parameter());
+
+        std::array<graphics::resource*, 2> vertex_buffers = {
+            unit.vertex_buffers[0],
+            unit.vertex_buffers[1]};
         command->draw(
-            unit.vertex_buffers.data(),
-            unit.vertex_buffers.size(),
+            vertex_buffers.data(),
+            vertex_buffers.size(),
             unit.index_buffer,
             unit.index_start,
             unit.index_end,
@@ -182,12 +184,12 @@ void mmd_skin_pipeline::skin(graphics::render_command_interface* command)
 
     for (auto& unit : units())
     {
-        unit.parameter->set(1, unit.input_buffers[0]);
-        unit.parameter->set(2, unit.input_buffers[1]);
-        unit.parameter->set(3, unit.input_buffers[3]);
-        unit.parameter->set(4, unit.input_buffers[4]);
-        unit.parameter->set(5, unit.output_buffers[0]);
-        unit.parameter->set(6, unit.output_buffers[1]);
+        unit.parameter->set(1, unit.input_vertex_buffers[0]);
+        unit.parameter->set(2, unit.input_vertex_buffers[1]);
+        unit.parameter->set(3, unit.input_vertex_buffers[2]);
+        unit.parameter->set(4, unit.input_vertex_buffers[3]);
+        unit.parameter->set(5, unit.skinned_vertex_buffers[0]);
+        unit.parameter->set(6, unit.skinned_vertex_buffers[1]);
         command->compute_parameter(0, unit.parameter->parameter());
 
         command->dispatch(unit.vertex_count / 256 + 256, 1, 1);

@@ -8,7 +8,7 @@ namespace ash::graphics
 class skin_pipeline;
 struct skinned_mesh
 {
-    std::vector<resource*> vertex_buffers;
+    std::vector<resource*> input_vertex_buffers;
     std::vector<std::unique_ptr<resource>> skinned_vertex_buffers;
 
     skin_pipeline* pipeline;

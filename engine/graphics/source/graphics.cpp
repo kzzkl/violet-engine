@@ -98,13 +98,10 @@ void graphics::skin_meshes()
     }
 
     m_skinned_mesh_view->each([&](visual& visual, skinned_mesh& skinned_mesh) {
-        visual.vertex_buffers.resize(skinned_mesh.vertex_buffers.size());
-        for (std::size_t i = 0; i < skinned_mesh.vertex_buffers.size(); ++i)
+        for (std::size_t i = 0; i < skinned_mesh.skinned_vertex_buffers.size(); ++i)
         {
             if (skinned_mesh.skinned_vertex_buffers[i] != nullptr)
                 visual.vertex_buffers[i] = skinned_mesh.skinned_vertex_buffers[i].get();
-            else
-                visual.vertex_buffers[i] = skinned_mesh.vertex_buffers[i];
         }
     });
 

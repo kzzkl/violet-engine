@@ -185,27 +185,47 @@ void mmd_loader::load_mesh(ecs::entity entity, mmd_resource& resource, const pmx
         bone_weight.push_back(v.weight);
     }
 
-    resource.vertex_buffers.push_back(graphics.make_vertex_buffer(
+    enum mmd_vertex_attribute
+    {
+        MMD_VERTEX_ATTRIBUTE_POSITION,
+        MMD_VERTEX_ATTRIBUTE_NORMAL,
+        MMD_VERTEX_ATTRIBUTE_UV,
+        MMD_VERTEX_ATTRIBUTE_BONE,
+        MMD_VERTEX_ATTRIBUTE_BONE_WEIGHT,
+        MMD_VERTEX_ATTRIBUTE_NUM_TYPES
+    };
+    resource.vertex_buffers.resize(MMD_VERTEX_ATTRIBUTE_NUM_TYPES);
+
+    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_POSITION] = graphics.make_vertex_buffer(
         position.data(),
         position.size(),
-        graphics::VERTEX_BUFFER_FLAG_SKIN_IN));
-    resource.vertex_buffers.push_back(graphics.make_vertex_buffer(
+        graphics::VERTEX_BUFFER_FLAG_SKIN_IN);
+    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_NORMAL] = graphics.make_vertex_buffer(
         normal.data(),
         normal.size(),
-        graphics::VERTEX_BUFFER_FLAG_SKIN_IN));
-    resource.vertex_buffers.push_back(graphics.make_vertex_buffer(uv.data(), uv.size()));
-    resource.vertex_buffers.push_back(graphics.make_vertex_buffer(
-        bone.data(),
-        bone.size(),
-        graphics::VERTEX_BUFFER_FLAG_SKIN_IN));
-    resource.vertex_buffers.push_back(graphics.make_vertex_buffer(
+        graphics::VERTEX_BUFFER_FLAG_SKIN_IN);
+    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_UV] =
+        graphics.make_vertex_buffer(uv.data(), uv.size());
+    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_BONE] =
+        graphics.make_vertex_buffer(bone.data(), bone.size(), graphics::VERTEX_BUFFER_FLAG_SKIN_IN);
+    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_BONE_WEIGHT] = graphics.make_vertex_buffer(
         bone_weight.data(),
         bone_weight.size(),
-        graphics::VERTEX_BUFFER_FLAG_SKIN_IN));
+        graphics::VERTEX_BUFFER_FLAG_SKIN_IN);
+
+    auto& visual = world.component<graphics::visual>(entity);
+    visual.vertex_buffers = {
+        resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_POSITION].get(),
+        resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_NORMAL].get(),
+        resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_UV].get()};
 
     auto& skinned_mesh = world.component<graphics::skinned_mesh>(entity);
-    for (auto& vertex_buffer : resource.vertex_buffers)
-        skinned_mesh.vertex_buffers.push_back(vertex_buffer.get());
+    skinned_mesh.input_vertex_buffers = {
+        resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_POSITION].get(),
+        resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_NORMAL].get(),
+        resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_BONE].get(),
+        resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_BONE_WEIGHT].get()};
+
     skinned_mesh.skinned_vertex_buffers.push_back(graphics.make_vertex_buffer(
         position.data(),
         position.size(),
@@ -214,7 +234,7 @@ void mmd_loader::load_mesh(ecs::entity entity, mmd_resource& resource, const pmx
         normal.data(),
         normal.size(),
         graphics::VERTEX_BUFFER_FLAG_SKIN_OUT));
-    skinned_mesh.skinned_vertex_buffers.resize(skinned_mesh.vertex_buffers.size());
+    skinned_mesh.skinned_vertex_buffers.resize(visual.vertex_buffers.size());
     skinned_mesh.vertex_count = loader.vertices().size();
 
     // Make index buffer.
@@ -224,8 +244,6 @@ void mmd_loader::load_mesh(ecs::entity entity, mmd_resource& resource, const pmx
         indices.push_back(i);
 
     resource.index_buffer = graphics.make_index_buffer(indices.data(), indices.size());
-
-    auto& visual = world.component<graphics::visual>(entity);
     visual.index_buffer = resource.index_buffer.get();
 }
 
