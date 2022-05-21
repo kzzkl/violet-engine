@@ -33,7 +33,7 @@ public:
 
     std::vector<attachment_reference> references;
 
-    primitive_topology primitive_topology;
+    primitive_topology_type primitive_topology;
     std::size_t samples;
 };
 

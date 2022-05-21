@@ -180,10 +180,10 @@ struct rasterizer_desc
     cull_mode cull_mode;
 };
 
-enum class primitive_topology
+enum primitive_topology_type
 {
-    TRIANGLE_LIST,
-    LINE_LIST
+    PRIMITIVE_TOPOLOGY_TYPE_LINE,
+    PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE
 };
 
 enum class attachment_reference_type
@@ -218,7 +218,7 @@ struct pipeline_desc
 
     std::size_t samples;
 
-    primitive_topology primitive_topology;
+    primitive_topology_type primitive_topology;
 
     attachment_reference* references;
     std::size_t reference_count;
@@ -297,6 +297,12 @@ struct scissor_rect
     std::uint32_t max_y;
 };
 
+enum primitive_topology
+{
+    PRIMITIVE_TOPOLOGY_LINE_LIST,
+    PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+};
+
 class render_command_interface
 {
 public:
@@ -318,7 +324,13 @@ public:
         resource_interface* index_buffer,
         std::size_t index_start,
         std::size_t index_end,
-        std::size_t vertex_base) = 0;
+        std::size_t vertex_base,
+        primitive_topology primitive_topology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) = 0;
+
+    virtual void clear_render_target(
+        resource_interface* render_target,
+        const math::float4& color) = 0;
+    virtual void clear_depth_stencil(resource_interface* depth_stencil) = 0;
 
     // Compute.
     virtual void begin(compute_pipeline_interface* pipeline) {}

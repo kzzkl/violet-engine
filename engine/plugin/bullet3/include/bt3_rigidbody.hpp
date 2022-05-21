@@ -20,6 +20,7 @@ class bt3_rigidbody : public rigidbody_interface
 {
 public:
     bt3_rigidbody(const rigidbody_desc& desc);
+    virtual ~bt3_rigidbody();
 
     virtual void mass(float mass) override;
     virtual void shape(collision_shape_interface* shape) override;

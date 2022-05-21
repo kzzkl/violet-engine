@@ -48,6 +48,8 @@ public:
     void run();
     void stop();
 
+    void clear();
+
     handle find(std::string_view name);
 
 private:

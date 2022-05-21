@@ -18,22 +18,22 @@ struct submesh
     std::size_t vertex_base;
 };
 
+enum visual_groups : std::uint32_t
+{
+    VISUAL_GROUP_1 = 1,
+    VISUAL_GROUP_2 = VISUAL_GROUP_1 << 1,
+    VISUAL_GROUP_3 = VISUAL_GROUP_2 << 1,
+    VISUAL_GROUP_4 = VISUAL_GROUP_3 << 1,
+    VISUAL_GROUP_5 = VISUAL_GROUP_4 << 1,
+    VISUAL_GROUP_6 = VISUAL_GROUP_5 << 1,
+    VISUAL_GROUP_7 = VISUAL_GROUP_6 << 1,
+    VISUAL_GROUP_UI = VISUAL_GROUP_7 << 1,
+    VISUAL_GROUP_DEBUG = VISUAL_GROUP_UI << 1,
+    VISUAL_GROUP_EDITOR = VISUAL_GROUP_DEBUG << 1
+};
+
 struct visual
 {
-    enum mask_type : std::uint32_t
-    {
-        GROUP_1 = 1,
-        GROUP_2 = GROUP_1 << 1,
-        GROUP_3 = GROUP_2 << 1,
-        GROUP_4 = GROUP_3 << 1,
-        GROUP_5 = GROUP_4 << 1,
-        GROUP_6 = GROUP_5 << 1,
-        GROUP_7 = GROUP_6 << 1,
-        UI = GROUP_7 << 1,
-        DEBUG = UI << 1,
-        EDITOR = DEBUG << 1
-    };
-
     std::vector<resource_interface*> vertex_buffers;
     resource_interface* index_buffer;
 
@@ -41,6 +41,6 @@ struct visual
     std::vector<material> materials;
 
     pipeline_parameter* object;
-    std::uint32_t mask{GROUP_1};
+    visual_groups groups{VISUAL_GROUP_1};
 };
 } // namespace ash::graphics

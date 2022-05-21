@@ -71,9 +71,8 @@ void context::shutdown()
     auto& singleton = instance();
 
     singleton.m_task->stop();
-    for (auto& system : singleton.m_systems)
-    {
-        system->shutdown();
-    }
+    for (std::size_t index : singleton.m_installation_sequence)
+        singleton.m_systems[index]->shutdown();
+    singleton.m_world = nullptr;
 }
-} // namespace ash
+} // namespace ash::core

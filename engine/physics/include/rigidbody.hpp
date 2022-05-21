@@ -1,8 +1,8 @@
 #pragma once
 
-#include "ecs.hpp"
+#include "entity.hpp"
 #include "physics_interface.hpp"
-#include "transform.hpp"
+#include <memory>
 
 namespace ash::physics
 {
@@ -26,8 +26,6 @@ struct rigidbody
 
     math::float4x4 offset{math::matrix_plain::identity()};
     math::float4x4 offset_inverse{math::matrix_plain::identity()};
-
-    bool in_world{false};
 
     std::unique_ptr<rigidbody_interface> interface;
 };

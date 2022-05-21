@@ -8,27 +8,26 @@
 
 namespace ash::graphics
 {
-class debug_render_pipeline : public render_pipeline
+class graphics;
+class debug_pipeline : public render_pipeline
 {
 public:
-    debug_render_pipeline(render_pass_interface* interface);
+    debug_pipeline(graphics& graphics);
     virtual void render(const camera& camera, render_command_interface* command) override;
+
+private:
+    std::unique_ptr<render_pass_interface> m_interface;
 };
 
-class graphics;
 class graphics_debug
 {
 public:
-    struct vertex
-    {
-        math::float3 position;
-        math::float3 color;
-    };
+    static constexpr std::size_t MAX_VERTEX_COUNT = 4096 * 16;
 
 public:
-    graphics_debug(std::size_t frame_resource, graphics& graphics, ecs::world& world);
+    graphics_debug(std::size_t frame_resource);
 
-    void initialize();
+    void initialize(graphics& graphics);
     void sync();
 
     void begin_frame();
@@ -39,15 +38,16 @@ public:
     void draw_line(const math::float3& start, const math::float3& end, const math::float3& color);
 
 private:
-    ecs::world& m_world;
     ecs::entity m_entity;
 
-    std::vector<vertex> m_vertics;
+    std::vector<math::float3> m_vertex_position;
+    std::vector<math::float3> m_vertex_color;
 
-    std::size_t m_index;
-    std::vector<std::unique_ptr<resource_interface>> m_vertex_buffer;
+    std::vector<std::unique_ptr<resource_interface>> m_vertex_buffers;
     std::unique_ptr<resource_interface> m_index_buffer;
 
-    std::unique_ptr<debug_render_pipeline> m_pipeline;
+    std::unique_ptr<debug_pipeline> m_pipeline;
+
+    std::size_t m_frame_resource;
 };
 } // namespace ash::graphics

@@ -332,6 +332,11 @@ bool window_impl_win32::initialize(
     return true;
 }
 
+void window_impl_win32::shutdown()
+{
+    PostMessage(m_hwnd, WM_CLOSE, 0, 0);
+}
+
 void window_impl_win32::tick()
 {
     if (m_mouse_mode_change)

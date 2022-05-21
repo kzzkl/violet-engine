@@ -5,7 +5,6 @@
 #include "physics_plugin.hpp"
 #include "rigidbody.hpp"
 #include "transform.hpp"
-#include "view.hpp"
 
 namespace ash::physics
 {
@@ -21,10 +20,12 @@ public:
     virtual ~physics();
 
     virtual bool initialize(const dictionary& config) override;
+    virtual void shutdown() override;
 
     std::unique_ptr<collision_shape_interface> make_shape(const collision_shape_desc& desc)
     {
-        return std::unique_ptr<collision_shape_interface>(m_factory->make_collision_shape(desc));
+        return std::unique_ptr<collision_shape_interface>(
+            m_plugin.factory().make_collision_shape(desc));
     }
 
     std::unique_ptr<collision_shape_interface> make_shape(
@@ -33,7 +34,7 @@ public:
         std::size_t size)
     {
         return std::unique_ptr<collision_shape_interface>(
-            m_factory->make_collision_shape(child, offset, size));
+            m_plugin.factory().make_collision_shape(child, offset, size));
     }
 
     void simulation();
@@ -45,11 +46,12 @@ private:
 
     ecs::view<rigidbody>* m_view;
 
-    physics_plugin m_plugin;
-    factory* m_factory;
-
     std::vector<rigidbody_user_data> m_user_data;
-    std::vector<ecs::entity> m_initialize_list;
+
+    std::queue<ecs::entity> m_enter_world_list;
+    std::queue<ecs::entity> m_exit_world_list;
+
+    physics_plugin m_plugin;
 
 #if defined(ASH_PHYSICS_DEBUG_DRAW)
     class physics_debug;

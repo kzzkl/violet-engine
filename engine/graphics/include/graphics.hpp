@@ -11,7 +11,6 @@
 #include "skinned_mesh.hpp"
 #include "transform.hpp"
 #include "type_trait.hpp"
-#include "view.hpp"
 #include "visual.hpp"
 
 namespace ash::graphics

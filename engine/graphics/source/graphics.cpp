@@ -3,9 +3,8 @@
 #include "graphics_config.hpp"
 #include "log.hpp"
 #include "math.hpp"
-#include "relation.hpp"
-#include "scene.hpp"
 #include "skin_pipeline.hpp"
+#include "transform.hpp"
 #include "window.hpp"
 #include "window_event.hpp"
 #include <fstream>
@@ -58,8 +57,6 @@ bool graphics::initialize(const dictionary& config)
 
     auto& world = system<ecs::world>();
     auto& event = system<core::event>();
-    auto& scene = system<scene::scene>();
-    auto& relation = system<core::relation>();
 
     world.register_component<visual>();
     world.register_component<skinned_mesh>();
@@ -71,11 +68,11 @@ bool graphics::initialize(const dictionary& config)
     // m_tv = world.make_view<scene::transform>();
 
     event.subscribe<window::event_window_resize>(
+        "graphics",
         [this](std::uint32_t width, std::uint32_t height) { m_renderer->resize(width, height); });
 
-    m_debug = std::make_unique<graphics_debug>(m_config.frame_resource(), *this, world);
-    m_debug->initialize();
-    // relation.link(m_debug->entity(), scene.root());
+    m_debug = std::make_unique<graphics_debug>(m_config.frame_resource());
+    m_debug->initialize(*this);
 
     return true;
 }
@@ -115,7 +112,7 @@ void graphics::render(ecs::entity camera_entity)
     auto& c = world.component<camera>(camera_entity);
     auto& t = world.component<scene::transform>(camera_entity);
 
-    if (c.mask & visual::mask_type::DEBUG)
+    if (c.mask & VISUAL_GROUP_DEBUG)
         m_debug->sync();
 
     // Update camera data.
@@ -153,7 +150,7 @@ void graphics::render(ecs::entity camera_entity)
 
     // Update object data.
     m_object_view->each([&, this](visual& visual, scene::transform& transform) {
-        if ((visual.mask & c.mask) == 0)
+        if ((visual.groups & c.mask) == 0)
             return;
 
         math::float4x4_simd transform_m = math::simd::load(transform.world_matrix);
@@ -172,7 +169,7 @@ void graphics::render(ecs::entity camera_entity)
 
     std::set<render_pipeline*> pipelines;
     m_visual_view->each([&, this](visual& visual) {
-        if ((visual.mask & c.mask) == 0)
+        if ((visual.groups & c.mask) == 0)
             return;
 
         for (std::size_t i = 0; i < visual.materials.size(); ++i)
@@ -185,6 +182,8 @@ void graphics::render(ecs::entity camera_entity)
 
     // Render.
     auto command = m_renderer->allocate_command();
+    command->clear_render_target(c.render_target, {0.0f, 0.0f, 0.0f, 1.0f});
+    command->clear_depth_stencil(c.depth_stencil_buffer);
 
     if (world.has_component<main_camera>(camera_entity))
         c.render_target_resolve = m_renderer->back_buffer();

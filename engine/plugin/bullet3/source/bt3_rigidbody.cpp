@@ -52,6 +52,10 @@ bt3_rigidbody::bt3_rigidbody(const rigidbody_desc& desc) : m_transform(desc.init
     }
 }
 
+bt3_rigidbody::~bt3_rigidbody()
+{
+}
+
 void bt3_rigidbody::mass(float mass)
 {
     btVector3 inertia;

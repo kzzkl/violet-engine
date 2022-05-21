@@ -9,7 +9,7 @@ graphics_plugin::graphics_plugin()
 {
 }
 
-bool graphics_plugin::do_load()
+bool graphics_plugin::on_load()
 {
     make_factory make = static_cast<make_factory>(find_symbol("make_factory"));
     if (make == nullptr)
@@ -23,7 +23,7 @@ bool graphics_plugin::do_load()
     return true;
 }
 
-void graphics_plugin::do_unload()
+void graphics_plugin::on_unload()
 {
 }
 } // namespace ash::graphics

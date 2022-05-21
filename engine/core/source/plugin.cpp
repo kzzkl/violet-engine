@@ -54,7 +54,10 @@ void* dynamic_library_win32::find_symbol(std::string_view name)
     return GetProcAddress(m_lib, name.data());
 }
 
-plugin::plugin() : m_name("null"), m_library(std::make_unique<dynamic_library_win32>())
+plugin::plugin()
+    : m_name("null"),
+      m_library(std::make_unique<dynamic_library_win32>()),
+      m_loaded(false)
 {
 }
 
@@ -64,6 +67,12 @@ plugin::~plugin()
 
 bool plugin::load(std::string_view path)
 {
+    if (m_loaded)
+    {
+        log::error("The plugin has been loaded before.");
+        return false;
+    }
+
     if (!m_library->load(path))
     {
         log::error("Failed to load plugin: name[{}] path[{}]", m_name, path);
@@ -75,7 +84,7 @@ bool plugin::load(std::string_view path)
     if (!get_info)
     {
         log::error("Symbol not found in dynamic library: get_plugin_info");
-        unload();
+        m_library->unload();
         return false;
     }
     else
@@ -85,22 +94,27 @@ bool plugin::load(std::string_view path)
         m_version = info.version;
     }
 
-    if (do_load() == false)
+    if (on_load() == false)
     {
-        unload();
+        m_library->unload();
         return false;
     }
 
+    m_loaded = true;
     return true;
 }
 
 void plugin::unload()
 {
-    m_library->unload();
+    if (m_loaded)
+    {
+        on_unload();
+        m_library->unload();
+    }
 }
 
 void* plugin::find_symbol(std::string_view name)
 {
     return m_library->find_symbol(name);
 }
-} // namespace ash
+} // namespace ash::core

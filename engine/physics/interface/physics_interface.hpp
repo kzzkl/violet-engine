@@ -133,22 +133,6 @@ public:
     virtual rigidbody_interface* updated_rigidbody() = 0;
 };
 
-class factory_interface
-{
-public:
-    virtual ~factory_interface() = default;
-
-    virtual world_interface* make_world(const world_desc& desc) = 0;
-    virtual collision_shape_interface* make_collision_shape(const collision_shape_desc& desc) = 0;
-    virtual collision_shape_interface* make_collision_shape(
-        const collision_shape_interface* const* child,
-        const math::float4x4* offset,
-        std::size_t size) = 0;
-    virtual rigidbody_interface* make_rigidbody(const rigidbody_desc& desc) = 0;
-    virtual joint_interface* make_joint(const joint_desc& desc) = 0;
-};
-using factory = factory_interface;
-
 class debug_draw_interface
 {
 public:
@@ -161,13 +145,23 @@ public:
 };
 using debug_draw = debug_draw_interface;
 
-class context_interface
+class factory_interface
 {
 public:
-    virtual factory_interface* factory() = 0;
-    virtual void debug(debug_draw_interface* debug) {}
-};
-using context = context_interface;
+    virtual ~factory_interface() = default;
 
-using make_context = context_interface* (*)();
+    virtual world_interface* make_world(
+        const world_desc& desc,
+        debug_draw_interface* debug_draw = nullptr) = 0;
+    virtual collision_shape_interface* make_collision_shape(const collision_shape_desc& desc) = 0;
+    virtual collision_shape_interface* make_collision_shape(
+        const collision_shape_interface* const* child,
+        const math::float4x4* offset,
+        std::size_t size) = 0;
+    virtual rigidbody_interface* make_rigidbody(const rigidbody_desc& desc) = 0;
+    virtual joint_interface* make_joint(const joint_desc& desc) = 0;
+};
+using factory = factory_interface;
+
+using make_factory = factory_interface* (*)();
 } // namespace ash::physics

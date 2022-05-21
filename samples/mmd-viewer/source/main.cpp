@@ -25,12 +25,19 @@ public:
         initialize_camera();
         initialize_task();
 
-        system<scene::scene>().sync_local();
-
         system<core::event>().subscribe<window::event_window_resize>(
+            "sample_module",
             [this](std::uint32_t width, std::uint32_t height) { resize_camera(width, height); });
 
         return true;
+    }
+
+    virtual void shutdown() override
+    {
+        auto& world = system<ecs::world>();
+        world.release(m_actor);
+        world.release(m_plane);
+        world.release(m_camera);
     }
 
 private:

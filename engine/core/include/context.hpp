@@ -30,7 +30,7 @@ public:
     virtual ~system_base() = default;
 
     virtual bool initialize(const dictionary& config) = 0;
-    virtual void shutdown(){};
+    virtual void shutdown() {}
 
     inline std::string_view name() const noexcept { return m_name; }
 
@@ -54,9 +54,9 @@ public:
     template <derived_from_system T, typename... Args>
     static void install(Args&&... args)
     {
-        auto& singleton = instance();
-
         std::size_t index = system_index::value<T>();
+
+        auto& singleton = instance();
         if (singleton.m_systems.size() <= index)
             singleton.m_systems.resize(index + 1);
 
@@ -66,10 +66,31 @@ public:
             m->initialize(singleton.m_config[m->name().data()]);
             log::info("Module installed successfully: {}.", m->name());
             singleton.m_systems[index] = std::move(m);
+
+            singleton.m_installation_sequence.push_back(index);
         }
         else
         {
             log::warn("The system is already installed.");
+        }
+    }
+
+    template <derived_from_system T>
+    static void uninstall()
+    {
+        std::size_t index = system_index::value<T>();
+
+        auto& singleton = instance();
+        ASH_ASSERT(singleton.m_systems.size() > index);
+
+        if (singleton.m_systems[index] != nullptr)
+        {
+            singleton.m_systems[index]->shutdown();
+            singleton.m_systems[index] = nullptr;
+        }
+        else
+        {
+            log::warn("The system is not installed.");
         }
     }
 
@@ -116,6 +137,8 @@ private:
     std::unique_ptr<ash::ecs::world> m_world;
     std::unique_ptr<event> m_event;
     std::unique_ptr<timer> m_timer;
+
+    std::vector<std::size_t> m_installation_sequence;
 };
 } // namespace ash::core
 

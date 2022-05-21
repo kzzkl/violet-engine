@@ -21,17 +21,32 @@ template <typename Functor>
 class sequence_dispatcher : public dispatcher
 {
 public:
-    void subscribe(Functor&& functor) { m_process.push_back(std::forward<Functor>(functor)); }
+    void subscribe(std::string_view name, Functor&& functor)
+    {
+        m_process.push_back(std::pair<std::string, Functor>{name, std::forward<Functor>(functor)});
+    }
+
+    void unsubscribe(std::string_view name)
+    {
+        for (auto& process : m_process)
+        {
+            if (process.first == name)
+            {
+                std::swap(process, m_process.back());
+                m_process.pop_back();
+            }
+        }
+    }
 
     template <typename... Args>
     void publish(Args&&... args)
     {
         for (auto& process : m_process)
-            process(std::forward<Args>(args)...);
+            process.second(std::forward<Args>(args)...);
     }
 
 private:
-    std::vector<Functor> m_process;
+    std::vector<std::pair<std::string, Functor>> m_process;
 };
 
 /*
@@ -54,9 +69,15 @@ class event
 {
 public:
     template <typename Event, typename... Args>
-    void subscribe(Args&&... args)
+    void subscribe(std::string_view name, Args&&... args)
     {
-        event_dispatcher<Event>()->subscribe(std::forward<Args>(args)...);
+        event_dispatcher<Event>()->subscribe(name, std::forward<Args>(args)...);
+    }
+
+    template <typename Event>
+    void unsubscribe(std::string_view name)
+    {
+        event_dispatcher<Event>()->unsubscribe(name);
     }
 
     template <typename Event, typename... Args>
@@ -96,4 +117,4 @@ private:
 
     std::vector<std::unique_ptr<dispatcher>> m_dispatchers;
 };
-} // namespace ash
+} // namespace ash::core

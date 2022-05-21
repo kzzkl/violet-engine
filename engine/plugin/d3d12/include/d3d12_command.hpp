@@ -29,7 +29,12 @@ public:
         resource_interface* index_buffer,
         std::size_t index_start,
         std::size_t index_end,
-        std::size_t vertex_base) override;
+        std::size_t vertex_base,
+        primitive_topology primitive_topology) override;
+
+    virtual void clear_render_target(resource_interface* render_target, const math::float4& color)
+        override;
+    virtual void clear_depth_stencil(resource_interface* depth_stencil) override;
 
     virtual void begin(compute_pipeline_interface* pipeline) override;
     virtual void end(compute_pipeline_interface* pipeline) override;

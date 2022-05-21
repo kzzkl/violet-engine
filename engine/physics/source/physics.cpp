@@ -40,16 +40,15 @@ bool physics::initialize(const dictionary& config)
 {
     m_plugin.load("ash-physics-bullet3.dll");
 
-#if defined(ASH_PHYSICS_DEBUG_DRAW)
-    m_debug = std::make_unique<physics::physics_debug>(&system<ash::graphics::graphics>().debug());
-    m_plugin.debug(m_debug.get());
-#endif
-
-    m_factory = m_plugin.factory();
-
     world_desc desc = {};
     desc.gravity = {config["gravity"][0], config["gravity"][1], config["gravity"][2]};
-    m_world.reset(m_factory->make_world(desc));
+
+#if defined(ASH_PHYSICS_DEBUG_DRAW)
+    m_debug = std::make_unique<physics::physics_debug>(&system<ash::graphics::graphics>().debug());
+    m_world.reset(m_plugin.factory().make_world(desc, m_debug.get()));
+#else
+    m_world.reset(m_plugin.factory().make_world(desc));
+#endif
 
     auto& world = system<ash::ecs::world>();
     world.register_component<rigidbody>();
@@ -57,10 +56,29 @@ bool physics::initialize(const dictionary& config)
     m_view = world.make_view<rigidbody>();
 
     auto& event = system<core::event>();
-    event.subscribe<scene::event_enter_scene>(
-        [this](ecs::entity entity) { m_initialize_list.push_back(entity); });
+    event.subscribe<scene::event_enter_scene>("physics", [this](ecs::entity entity) {
+        m_enter_world_list.push(entity);
+    });
 
     return true;
+}
+
+void physics::shutdown()
+{
+    system<core::event>().unsubscribe<scene::event_enter_scene>("physics");
+
+    auto& world = system<ecs::world>();
+    world.each<joint>([](joint& joint) { joint.interface = nullptr; });
+    world.each<rigidbody>([this](rigidbody& rigidbody) {
+        // if (rigidbody.in_world)
+        //     m_world->remove(rigidbody.interface.get());
+        rigidbody.interface = nullptr;
+    });
+
+    world.destroy_view(m_view);
+
+    m_world = nullptr;
+    m_plugin.unload();
 }
 
 void physics::simulation()
@@ -69,11 +87,10 @@ void physics::simulation()
 
     system<scene::scene>().sync_local();
 
-    if (!m_initialize_list.empty())
+    while (!m_enter_world_list.empty())
     {
-        for (auto& entity : m_initialize_list)
-            initialize_entity(entity);
-        m_initialize_list.clear();
+        initialize_entity(m_enter_world_list.front());
+        m_enter_world_list.pop();
     }
 
     m_view->each([&](rigidbody& rigidbody) {
@@ -142,7 +159,7 @@ void physics::initialize_entity(ecs::entity entity)
             math::simd::store(math::matrix_simd::mul(offset, to_world), desc.initial_transform);
             math::simd::store(math::matrix_simd::inverse(offset), r.offset_inverse);
 
-            r.interface.reset(m_factory->make_rigidbody(desc));
+            r.interface.reset(m_plugin.factory().make_rigidbody(desc));
             r.interface->user_data_index = m_user_data.size();
             m_user_data.push_back({node});
 
@@ -173,7 +190,7 @@ void physics::initialize_entity(ecs::entity entity)
         desc.rigidbody_a = world.component<rigidbody>(j.relation_a).interface.get();
         desc.rigidbody_b = world.component<rigidbody>(j.relation_b).interface.get();
 
-        j.interface.reset(m_factory->make_joint(desc));
+        j.interface.reset(m_plugin.factory().make_joint(desc));
 
         m_world->add(j.interface.get());
     };

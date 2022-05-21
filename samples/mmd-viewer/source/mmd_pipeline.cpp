@@ -33,7 +33,7 @@ mmd_render_pipeline::mmd_render_pipeline()
         {graphics::attachment_reference_type::DEPTH, 0},
         {graphics::attachment_reference_type::UNUSE, 0}
     };
-    color_pass_info.primitive_topology = graphics::primitive_topology::TRIANGLE_LIST;
+    color_pass_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     color_pass_info.parameters = {"ash_object", "mmd_material", "ash_pass"};
     color_pass_info.samples = 4;
 
@@ -50,7 +50,7 @@ mmd_render_pipeline::mmd_render_pipeline()
         {graphics::attachment_reference_type::DEPTH,   0},
         {graphics::attachment_reference_type::RESOLVE, 0}
     };
-    edge_pass_info.primitive_topology = graphics::primitive_topology::TRIANGLE_LIST;
+    edge_pass_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     edge_pass_info.parameters = {"ash_object"};
     edge_pass_info.samples = 4;
     edge_pass_info.rasterizer.cull_mode = graphics::cull_mode::FRONT;

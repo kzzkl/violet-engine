@@ -15,6 +15,7 @@ public:
     window();
 
     virtual bool initialize(const dictionary& config) override;
+    virtual void shutdown() override;
 
     void tick();
 
