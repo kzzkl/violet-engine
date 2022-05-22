@@ -8,15 +8,14 @@ namespace ash::physics
 class physics_plugin : public core::plugin
 {
 public:
-    factory* factory() { return m_context->factory(); }
-
-    void debug(debug_draw* drawer) { m_context->debug(drawer); }
+    physics_plugin();
+    factory_interface& factory() { return *m_factory; }
 
 protected:
-    virtual bool do_load() override;
-    virtual void do_unload() override;
+    virtual bool on_load() override;
+    virtual void on_unload() override;
 
 private:
-    std::unique_ptr<context> m_context;
+    std::unique_ptr<factory_interface> m_factory;
 };
 } // namespace ash::physics

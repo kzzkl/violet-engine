@@ -10,7 +10,7 @@ pipeline_parameter_layout_desc pipeline_parameter_layout_info::convert() noexcep
     return result;
 }
 
-pipeline_info::pipeline_info() : primitive_topology(primitive_topology::TRIANGLE_LIST)
+pipeline_info::pipeline_info() : primitive_topology(PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
 {
     blend = {};
     blend.enable = false;

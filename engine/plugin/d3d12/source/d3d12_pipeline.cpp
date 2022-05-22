@@ -721,7 +721,7 @@ void d3d12_frame_buffer::begin_render(D3D12GraphicsCommandList* command_list)
     if (!barriers.empty())
         command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
 
-    static const float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
+    /*static const float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
     for (auto handle : m_render_targets)
     {
         command_list->ClearRenderTargetView(handle, clear_color, 0, nullptr);
@@ -733,7 +733,7 @@ void d3d12_frame_buffer::begin_render(D3D12GraphicsCommandList* command_list)
         1.0f,
         0,
         0,
-        nullptr);
+        nullptr);*/
 }
 
 void d3d12_frame_buffer::end_render(D3D12GraphicsCommandList* command_list)
@@ -957,9 +957,9 @@ void d3d12_graphics_pipeline::initialize_pipeline_state(const pipeline_desc& des
     pso_desc.SampleDesc.Count = sample_level.SampleCount;
     pso_desc.SampleDesc.Quality = sample_level.NumQualityLevels - 1;
     pso_desc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    if (desc.primitive_topology == primitive_topology::TRIANGLE_LIST)
+    if (desc.primitive_topology == PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
         pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    else if (desc.primitive_topology == primitive_topology::LINE_LIST)
+    else if (desc.primitive_topology == PRIMITIVE_TOPOLOGY_TYPE_LINE)
         pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
 
     throw_if_failed(d3d12_context::device()->CreateGraphicsPipelineState(

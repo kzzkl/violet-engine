@@ -27,7 +27,7 @@ standard_pipeline::standard_pipeline()
         {attachment_reference_type::DEPTH,   0},
         {attachment_reference_type::RESOLVE, 0}
     };
-    color_pass_info.primitive_topology = primitive_topology::TRIANGLE_LIST;
+    color_pass_info.primitive_topology = PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     color_pass_info.parameters = {"ash_object", "standard_material", "ash_pass"};
     color_pass_info.samples = 4;
 

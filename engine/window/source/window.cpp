@@ -29,6 +29,18 @@ bool window::initialize(const dictionary& config)
     return true;
 }
 
+void window::shutdown()
+{
+    auto& event = system<core::event>();
+    event.unregister_event<event_mouse_move>();
+    event.unregister_event<event_mouse_key>();
+    event.unregister_event<event_keyboard_key>();
+    event.unregister_event<event_keyboard_char>();
+    event.unregister_event<event_window_resize>();
+
+    m_impl->shutdown();
+}
+
 void window::tick()
 {
     auto& event = system<core::event>();

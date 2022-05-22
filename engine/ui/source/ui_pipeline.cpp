@@ -9,8 +9,8 @@ ui_pipeline::ui_pipeline()
 
     graphics::pipeline_parameter_layout_info ui_material;
     ui_material.parameters = {
-        {graphics::pipeline_parameter_type::FLOAT4x4, 1}, // ui_mvp
-        {graphics::pipeline_parameter_type::TEXTURE,  1}  // ui_texture
+        {graphics::pipeline_parameter_type::FLOAT4x4,        1}, // ui_mvp
+        {graphics::pipeline_parameter_type::SHADER_RESOURCE, 1}  // ui_texture
     };
     graphics.make_pipeline_parameter_layout("ui_material", ui_material);
 
@@ -28,7 +28,7 @@ ui_pipeline::ui_pipeline()
         {graphics::attachment_reference_type::DEPTH,   0},
         {graphics::attachment_reference_type::RESOLVE, 0}
     };
-    ui_pipeline_info.primitive_topology = graphics::primitive_topology::TRIANGLE_LIST;
+    ui_pipeline_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     ui_pipeline_info.parameters = {"ui_material"};
     ui_pipeline_info.samples = 4;
     ui_pipeline_info.depth_stencil.depth_functor = graphics::depth_functor::ALWAYS;

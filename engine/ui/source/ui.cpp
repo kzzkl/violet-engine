@@ -239,7 +239,7 @@ bool ui::initialize(const dictionary& config)
 
     m_ui_entity = world.create();
     world.add<graphics::visual>(m_ui_entity);
-    world.component<graphics::visual>(m_ui_entity).mask = graphics::visual::mask_type::UI;
+    world.component<graphics::visual>(m_ui_entity).groups = graphics::VISUAL_GROUP_UI;
 
     ImGui::CreateContext();
     initialize_theme();
@@ -256,6 +256,7 @@ bool ui::initialize(const dictionary& config)
     }
 
     event.subscribe<window::event_mouse_key>(
+        "ui",
         [this](window::mouse_key key, window::key_state state) {
             if (m_enable_mouse)
             {
@@ -271,7 +272,7 @@ bool ui::initialize(const dictionary& config)
             }
         });
 
-    event.subscribe<window::event_mouse_move>([this](window::mouse_mode mode, int x, int y) {
+    event.subscribe<window::event_mouse_move>("ui", [this](window::mouse_mode mode, int x, int y) {
         if (mode == window::mouse_mode::CURSOR_ABSOLUTE)
         {
             m_enable_mouse = true;
@@ -285,12 +286,16 @@ bool ui::initialize(const dictionary& config)
     });
 
     event.subscribe<window::event_keyboard_key>(
+        "ui",
         [](window::keyboard_key key, window::key_state state) {
             ImGui::GetIO().AddKeyEvent(convert_key(key), state.down());
         });
-    event.subscribe<window::event_keyboard_char>(
-        [](char c) { ImGui::GetIO().AddInputCharacter(c); });
-    event.subscribe<window::event_window_resize>([](std::uint32_t width, std::uint32_t height) {});
+    event.subscribe<window::event_keyboard_char>("ui", [](char c) {
+        ImGui::GetIO().AddInputCharacter(c);
+    });
+    event.subscribe<window::event_window_resize>(
+        "ui",
+        [](std::uint32_t width, std::uint32_t height) {});
 
     return true;
 }

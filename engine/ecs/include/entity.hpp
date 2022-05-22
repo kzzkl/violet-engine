@@ -18,6 +18,13 @@ struct entity
     }
 
     [[nodiscard]] bool operator!=(const entity& other) const noexcept { return !operator==(other); }
+    [[nodiscard]] bool operator<(const entity& other) const noexcept
+    {
+        if (index != other.index)
+            return index < other.index;
+        else
+            return version < other.version;
+    }
 };
 
 static constexpr entity INVALID_ENTITY = {-1, 0};

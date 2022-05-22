@@ -4,7 +4,6 @@
 #include "math.hpp"
 #include "mmd_component.hpp"
 #include "transform.hpp"
-#include "view.hpp"
 #include <vector>
 
 namespace ash::sample::mmd

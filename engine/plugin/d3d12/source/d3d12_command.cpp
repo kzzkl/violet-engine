@@ -92,7 +92,8 @@ void d3d12_render_command::draw(
     resource_interface* index_buffer,
     std::size_t index_start,
     std::size_t index_end,
-    std::size_t vertex_base)
+    std::size_t vertex_base,
+    primitive_topology primitive_topology)
 {
     std::vector<D3D12_VERTEX_BUFFER_VIEW> vertex_buffer_views(vertex_buffer_count);
     for (std::size_t i = 0; i < vertex_buffer_count; ++i)
@@ -109,7 +110,10 @@ void d3d12_render_command::draw(
         vertex_buffer_views.data());
     m_command_list->IASetIndexBuffer(&ib.view());
 
-    m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    static const D3D12_PRIMITIVE_TOPOLOGY primitive_topology_map[] = {
+        D3D_PRIMITIVE_TOPOLOGY_LINELIST,
+        D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST};
+    m_command_list->IASetPrimitiveTopology(primitive_topology_map[primitive_topology]);
 
     m_command_list->DrawIndexedInstanced(
         static_cast<UINT>(index_end - index_start),
@@ -117,6 +121,26 @@ void d3d12_render_command::draw(
         static_cast<UINT>(index_start),
         static_cast<UINT>(vertex_base),
         0);
+}
+
+void d3d12_render_command::clear_render_target(
+    resource_interface* render_target,
+    const math::float4& color)
+{
+    auto rt = static_cast<d3d12_resource*>(render_target);
+    m_command_list->ClearRenderTargetView(rt->rtv(), color.data, 0, nullptr);
+}
+
+void d3d12_render_command::clear_depth_stencil(resource_interface* depth_stencil)
+{
+    auto ds = static_cast<d3d12_resource*>(depth_stencil);
+    m_command_list->ClearDepthStencilView(
+        ds->dsv(),
+        D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
+        1.0f,
+        0,
+        0,
+        nullptr);
 }
 
 void d3d12_render_command::begin(compute_pipeline_interface* pipeline)

@@ -34,6 +34,11 @@ void task_manager::stop()
     m_thread_pool.stop();
 }
 
+void task_manager::clear()
+{
+    m_tasks.clear();
+}
+
 task_manager::handle task_manager::find(std::string_view name)
 {
     auto iter = m_tasks.find(name.data());

@@ -71,9 +71,14 @@ void context::shutdown()
     auto& singleton = instance();
 
     singleton.m_task->stop();
-    for (auto& system : singleton.m_systems)
+    for (auto iter = singleton.m_installation_sequence.rbegin();
+         iter != singleton.m_installation_sequence.rend();
+         ++iter)
     {
-        system->shutdown();
+        log::info("Module shutdown: {}.", singleton.m_systems[*iter]->name());
+        singleton.m_systems[*iter]->shutdown();
+        singleton.m_systems[*iter] = nullptr;
     }
+    singleton.m_world = nullptr;
 }
-} // namespace ash
+} // namespace ash::core

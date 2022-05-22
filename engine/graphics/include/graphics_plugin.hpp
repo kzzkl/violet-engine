@@ -13,8 +13,8 @@ public:
     factory_interface& factory() { return *m_factory; }
 
 protected:
-    virtual bool do_load() override;
-    virtual void do_unload() override;
+    virtual bool on_load() override;
+    virtual void on_unload() override;
 
 private:
     std::unique_ptr<factory_interface> m_factory;

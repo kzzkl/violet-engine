@@ -3,21 +3,26 @@
 
 namespace ash::physics
 {
-bool physics_plugin::do_load()
+physics_plugin::physics_plugin()
 {
-    make_context make = static_cast<make_context>(find_symbol("make_context"));
+}
+
+bool physics_plugin::on_load()
+{
+    make_factory make = static_cast<make_factory>(find_symbol("make_factory"));
     if (make == nullptr)
     {
-        log::error("Symbol not found in plugin: make_context.");
+        log::error("Symbol not found in plugin: make_factory.");
         return false;
     }
 
-    m_context.reset(make());
+    m_factory.reset(make());
 
     return true;
 }
 
-void physics_plugin::do_unload()
+void physics_plugin::on_unload()
 {
+    m_factory = nullptr;
 }
 } // namespace ash::physics

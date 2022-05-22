@@ -1,16 +1,13 @@
 #pragma once
 
-#include "ecs.hpp"
 #include "physics_interface.hpp"
-#include "transform.hpp"
+#include <memory>
 
 namespace ash::physics
 {
 struct rigidbody
 {
     static constexpr std::uint32_t COLLISION_MASK_ALL = -1;
-
-    ecs::entity relation{ecs::INVALID_ENTITY};
 
     rigidbody_type type{rigidbody_type::DYNAMIC};
     float mass{0.0f};
@@ -26,8 +23,6 @@ struct rigidbody
 
     math::float4x4 offset{math::matrix_plain::identity()};
     math::float4x4 offset_inverse{math::matrix_plain::identity()};
-
-    bool in_world{false};
 
     std::unique_ptr<rigidbody_interface> interface;
 };

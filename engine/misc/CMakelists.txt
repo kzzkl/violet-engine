@@ -3,6 +3,7 @@ include(${ASH_ROOT_DIR}/cmake/shader_compile.cmake)
 add_custom_target("graphics_shader_generater" ALL)
 
 set(SHADERS "")
+list(APPEND SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/engine/shader/debug.hlsl;vert;frag")
 list(APPEND SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/engine/shader/ui.hlsl;vert;frag")
 list(APPEND SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/engine/shader/standard.hlsl;vert;frag")
 target_shader_compile(

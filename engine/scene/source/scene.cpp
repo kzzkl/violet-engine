@@ -25,10 +25,12 @@ bool scene::initialize(const dictionary& config)
     event.register_event<event_enter_scene>();
     event.register_event<event_exit_scene>();
 
-    event.subscribe<core::event_link>(
-        [this](ecs::entity entity, core::link& link) { on_entity_link(entity, link); });
+    event.subscribe<core::event_link>("scene", [this](ecs::entity entity, core::link& link) {
+        on_entity_link(entity, link);
+    });
 
     event.subscribe<core::event_unlink>(
+        "scene",
         [this](ecs::entity entity, core::link& link, core::event_unlink_flag flag) {
             if (flag == core::event_unlink_flag::UNLINK)
                 on_entity_unlink(entity, link);

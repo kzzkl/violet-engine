@@ -73,6 +73,8 @@ public:
     virtual ~window_impl() = default;
 
     virtual bool initialize(std::uint32_t width, std::uint32_t height, std::string_view title) = 0;
+    virtual void shutdown() {}
+
     virtual void tick() = 0;
     virtual void show() = 0;
 

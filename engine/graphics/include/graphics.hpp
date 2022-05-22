@@ -11,7 +11,6 @@
 #include "skinned_mesh.hpp"
 #include "transform.hpp"
 #include "type_trait.hpp"
-#include "view.hpp"
 #include "visual.hpp"
 
 namespace ash::graphics
@@ -26,6 +25,7 @@ public:
     graphics() noexcept;
 
     virtual bool initialize(const dictionary& config) override;
+    virtual void shutdown() override;
 
     void skin_meshes();
     void render(ecs::entity camera_entity);

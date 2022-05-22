@@ -13,6 +13,8 @@ public:
 
     virtual bool initialize(std::uint32_t width, std::uint32_t height, std::string_view title)
         override;
+    virtual void shutdown() override;
+
     virtual void tick() override;
     virtual void show() override;
 

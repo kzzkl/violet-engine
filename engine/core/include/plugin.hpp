@@ -32,13 +32,14 @@ public:
 protected:
     void* find_symbol(std::string_view name);
 
-    virtual bool do_load() { return true; }
-    virtual void do_unload() {}
+    virtual bool on_load() { return true; }
+    virtual void on_unload() {}
 
 private:
     std::string m_name;
     plugin_version m_version;
 
     std::unique_ptr<dynamic_library> m_library;
+    bool m_loaded;
 };
 } // namespace ash

@@ -3,7 +3,6 @@
 #include "context.hpp"
 #include "link.hpp"
 #include "transform.hpp"
-#include "view.hpp"
 #include <memory>
 
 namespace ash::scene

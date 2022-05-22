@@ -69,6 +69,19 @@ bool d3d12_context::on_initialize(const renderer_desc& desc)
     return true;
 }
 
+void d3d12_context::on_shutdown()
+{
+    m_command->flush();
+
+    m_command = nullptr;
+    m_swap_chain = nullptr;
+    m_frame_buffer_manager = nullptr;
+    m_resource = nullptr;
+
+    m_factory = nullptr;
+    m_device = nullptr;
+}
+
 void d3d12_context::on_begin_frame()
 {
 }
