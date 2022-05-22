@@ -14,6 +14,7 @@ class d3d12_context
 {
 public:
     static bool initialize(const renderer_desc& desc) { return instance().on_initialize(desc); }
+    static void shutdown() { instance().on_shutdown(); }
 
     static void begin_frame() { instance().on_begin_frame(); }
     static void end_frame() { instance().on_end_frame(); }
@@ -37,6 +38,8 @@ private:
     static d3d12_context& instance() noexcept;
 
     bool on_initialize(const renderer_desc& desc);
+    void on_shutdown();
+
     void on_begin_frame();
     void on_end_frame();
 

@@ -46,6 +46,10 @@ bt3_world::~bt3_world()
     m_broadphase = nullptr;
     m_dispatcher = nullptr;
     m_collision = nullptr;
+
+#ifndef NDEBUG
+    m_debug_draw = nullptr;
+#endif
 }
 
 void bt3_world::add(

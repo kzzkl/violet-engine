@@ -77,6 +77,20 @@ bool graphics::initialize(const dictionary& config)
     return true;
 }
 
+void graphics::shutdown()
+{
+    auto& world = system<ecs::world>();
+    world.destroy_view(m_visual_view);
+    world.destroy_view(m_object_view);
+    world.destroy_view(m_skinned_mesh_view);
+
+    m_debug = nullptr;
+    m_parameter_layouts.clear();
+
+    m_renderer = nullptr;
+    m_plugin.unload();
+}
+
 void graphics::skin_meshes()
 {
     auto command = m_renderer->allocate_command();

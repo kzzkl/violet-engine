@@ -1,6 +1,5 @@
 #pragma once
 
-#include "entity.hpp"
 #include "physics_interface.hpp"
 #include <memory>
 
@@ -9,8 +8,6 @@ namespace ash::physics
 struct rigidbody
 {
     static constexpr std::uint32_t COLLISION_MASK_ALL = -1;
-
-    ecs::entity relation{ecs::INVALID_ENTITY};
 
     rigidbody_type type{rigidbody_type::DYNAMIC};
     float mass{0.0f};

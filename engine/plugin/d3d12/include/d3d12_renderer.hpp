@@ -13,7 +13,7 @@ public:
         std::uint32_t width,
         std::uint32_t height,
         std::size_t multiple_sampling = 1);
-    ~d3d12_swap_chain() = default;
+    ~d3d12_swap_chain();
 
     void resize(std::uint32_t width, std::uint32_t height);
     void present();
@@ -35,6 +35,7 @@ class d3d12_renderer : public renderer_interface
 {
 public:
     d3d12_renderer(const renderer_desc& desc);
+    virtual ~d3d12_renderer();
 
     virtual void begin_frame() override;
     virtual void end_frame() override;

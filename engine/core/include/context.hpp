@@ -87,6 +87,7 @@ public:
         {
             singleton.m_systems[index]->shutdown();
             singleton.m_systems[index] = nullptr;
+            log::info("Module uninstalled successfully: {}.", singleton.m_systems[index]->name());
         }
         else
         {

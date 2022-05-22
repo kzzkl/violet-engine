@@ -353,6 +353,8 @@ struct renderer_desc
 class renderer_interface
 {
 public:
+    virtual ~renderer_interface() = default;
+
     virtual void begin_frame() = 0;
     virtual void end_frame() = 0;
 
@@ -408,6 +410,8 @@ struct depth_stencil_buffer_desc
 class factory_interface
 {
 public:
+    virtual ~factory_interface() = default;
+
     virtual renderer_interface* make_renderer(const renderer_desc& desc) = 0;
 
     virtual render_pass_interface* make_render_pass(const render_pass_desc& desc) = 0;

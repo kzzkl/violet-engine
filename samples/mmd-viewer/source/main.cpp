@@ -75,7 +75,6 @@ private:
         auto& r = world.component<physics::rigidbody>(m_plane);
         r.shape = m_plane_shape.get();
         r.mass = 0.0f;
-        r.relation = m_plane;
 
         system<core::relation>().link(m_plane, system<scene::scene>().root());
     }

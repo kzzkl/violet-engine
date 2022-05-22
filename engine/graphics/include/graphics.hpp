@@ -25,6 +25,7 @@ public:
     graphics() noexcept;
 
     virtual bool initialize(const dictionary& config) override;
+    virtual void shutdown() override;
 
     void skin_meshes();
     void render(ecs::entity camera_entity);

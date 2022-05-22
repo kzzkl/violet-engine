@@ -25,5 +25,6 @@ bool graphics_plugin::on_load()
 
 void graphics_plugin::on_unload()
 {
+    m_factory = nullptr;
 }
 } // namespace ash::graphics

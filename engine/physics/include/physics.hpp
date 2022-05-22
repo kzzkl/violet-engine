@@ -44,7 +44,7 @@ private:
 
     std::unique_ptr<world_interface> m_world;
 
-    ecs::view<rigidbody>* m_view;
+    ecs::view<rigidbody, scene::transform>* m_view;
 
     std::vector<rigidbody_user_data> m_user_data;
 
@@ -52,10 +52,5 @@ private:
     std::queue<ecs::entity> m_exit_world_list;
 
     physics_plugin m_plugin;
-
-#if defined(ASH_PHYSICS_DEBUG_DRAW)
-    class physics_debug;
-    std::unique_ptr<physics_debug> m_debug;
-#endif
 };
 } // namespace ash::physics

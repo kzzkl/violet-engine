@@ -10,10 +10,19 @@
 namespace ash::physics
 {
 #if defined(ASH_PHYSICS_DEBUG_DRAW)
-class physics::physics_debug : public debug_draw_interface
+class physics_debug : public debug_draw_interface
 {
 public:
-    physics_debug(ash::graphics::graphics_debug* drawer) : m_drawer(drawer) {}
+    physics_debug() : m_drawer(nullptr) {}
+    virtual ~physics_debug() {}
+
+    static physics_debug& instance()
+    {
+        static physics_debug instance;
+        return instance;
+    }
+
+    void initialize(ash::graphics::graphics_debug* drawer) { m_drawer = drawer; }
 
     virtual void draw_line(
         const math::float3& start,
@@ -44,8 +53,8 @@ bool physics::initialize(const dictionary& config)
     desc.gravity = {config["gravity"][0], config["gravity"][1], config["gravity"][2]};
 
 #if defined(ASH_PHYSICS_DEBUG_DRAW)
-    m_debug = std::make_unique<physics::physics_debug>(&system<ash::graphics::graphics>().debug());
-    m_world.reset(m_plugin.factory().make_world(desc, m_debug.get()));
+    physics_debug::instance().initialize(&system<ash::graphics::graphics>().debug());
+    m_world.reset(m_plugin.factory().make_world(desc, &physics_debug::instance()));
 #else
     m_world.reset(m_plugin.factory().make_world(desc));
 #endif
@@ -53,7 +62,7 @@ bool physics::initialize(const dictionary& config)
     auto& world = system<ash::ecs::world>();
     world.register_component<rigidbody>();
     world.register_component<joint>();
-    m_view = world.make_view<rigidbody>();
+    m_view = world.make_view<rigidbody, scene::transform>();
 
     auto& event = system<core::event>();
     event.subscribe<scene::event_enter_scene>("physics", [this](ecs::entity entity) {
@@ -93,8 +102,7 @@ void physics::simulation()
         m_enter_world_list.pop();
     }
 
-    m_view->each([&](rigidbody& rigidbody) {
-        auto& transform = world.component<scene::transform>(rigidbody.relation);
+    m_view->each([&](rigidbody& rigidbody, scene::transform& transform) {
         if (transform.sync_count != 0 && rigidbody.type == rigidbody_type::KINEMATIC)
         {
             math::float4x4_simd to_world = math::simd::load(transform.world_matrix);
@@ -116,7 +124,7 @@ void physics::simulation()
 
         ecs::entity entity = m_user_data[updated->user_data_index].entity;
         auto& r = world.component<rigidbody>(entity);
-        auto& t = world.component<scene::transform>(r.relation);
+        auto& t = world.component<scene::transform>(entity);
 
         math::float4x4_simd to_world = math::simd::load(updated->transform());
         math::float4x4_simd offset_inverse = math::simd::load(r.offset_inverse);
@@ -138,11 +146,11 @@ void physics::initialize_entity(ecs::entity entity)
     auto& relation = system<core::relation>();
 
     auto init_rigidbody = [&, this](ecs::entity node) {
-        if (!world.has_component<rigidbody>(node))
+        if (!world.has_component<rigidbody>(node) || !world.has_component<scene::transform>(node))
             return;
 
         auto& r = world.component<rigidbody>(node);
-        auto& transform = world.component<scene::transform>(r.relation);
+        auto& transform = world.component<scene::transform>(node);
 
         if (r.interface == nullptr)
         {

@@ -35,6 +35,12 @@ d3d12_swap_chain::d3d12_swap_chain(
     reset_back_buffers();
 }
 
+d3d12_swap_chain::~d3d12_swap_chain()
+{
+    m_back_buffers.clear();
+    m_swap_chain = nullptr;
+}
+
 void d3d12_swap_chain::resize(std::uint32_t width, std::uint32_t height)
 {
     m_back_buffers.clear();
@@ -93,6 +99,11 @@ d3d12_renderer::d3d12_renderer(const renderer_desc& desc)
         adapter->GetDesc1(&desc);
         adapter.Reset();
     }
+}
+
+d3d12_renderer::~d3d12_renderer()
+{
+    d3d12_context::shutdown();
 }
 
 void d3d12_renderer::begin_frame()
