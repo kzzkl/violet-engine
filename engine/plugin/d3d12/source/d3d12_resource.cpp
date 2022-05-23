@@ -27,7 +27,7 @@ d3d12_render_target::d3d12_render_target(
     // Query sample level.
     D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS sample_level = {};
     sample_level.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
-    sample_level.Format = to_d3d12_format(format);
+    sample_level.Format = d3d12_utility::convert_format(format);
     sample_level.NumQualityLevels = 0;
     sample_level.SampleCount = static_cast<UINT>(samples);
     throw_if_failed(device->CheckFeatureSupport(
@@ -36,7 +36,7 @@ d3d12_render_target::d3d12_render_target(
         sizeof(sample_level)));
 
     CD3DX12_RESOURCE_DESC render_target_desc = CD3DX12_RESOURCE_DESC::Tex2D(
-        to_d3d12_format(format),
+        d3d12_utility::convert_format(format),
         static_cast<UINT>(width),
         static_cast<UINT>(height),
         1,
@@ -46,7 +46,7 @@ d3d12_render_target::d3d12_render_target(
         D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 
     D3D12_CLEAR_VALUE clear = {};
-    clear.Format = to_d3d12_format(format);
+    clear.Format = d3d12_utility::convert_format(format);
     clear.Color[0] = clear.Color[1] = clear.Color[2] = 0.0f;
     clear.Color[3] = 1.0f;
 
@@ -134,7 +134,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE d3d12_render_target::srv() const
 
 resource_format d3d12_render_target::format() const noexcept
 {
-    return to_ash_format(m_resource->GetDesc().Format);
+    return d3d12_utility::convert_format(m_resource->GetDesc().Format);
 }
 
 resource_extent d3d12_render_target::extent() const noexcept
@@ -173,7 +173,7 @@ d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(
     // Query sample level.
     D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS sample_level = {};
     sample_level.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
-    sample_level.Format = to_d3d12_format(format);
+    sample_level.Format = d3d12_utility::convert_format(format);
     sample_level.NumQualityLevels = 0;
     sample_level.SampleCount = static_cast<UINT>(samples);
     throw_if_failed(device->CheckFeatureSupport(
@@ -182,7 +182,7 @@ d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(
         sizeof(sample_level)));
 
     CD3DX12_RESOURCE_DESC depth_stencil_desc = CD3DX12_RESOURCE_DESC::Tex2D(
-        to_d3d12_format(format),
+        d3d12_utility::convert_format(format),
         static_cast<UINT>(width),
         static_cast<UINT>(height),
         1,
@@ -192,7 +192,7 @@ d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(
         D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL | D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE);
 
     D3D12_CLEAR_VALUE clear = {};
-    clear.Format = to_d3d12_format(format);
+    clear.Format = d3d12_utility::convert_format(format);
     clear.DepthStencil.Depth = 1.0f;
     clear.DepthStencil.Stencil = 0;
 
@@ -241,7 +241,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE d3d12_depth_stencil_buffer::dsv() const
 
 resource_format d3d12_depth_stencil_buffer::format() const noexcept
 {
-    return to_ash_format(m_resource->GetDesc().Format);
+    return d3d12_utility::convert_format(m_resource->GetDesc().Format);
 }
 
 resource_extent d3d12_depth_stencil_buffer::extent() const noexcept
@@ -270,14 +270,18 @@ d3d12_texture::d3d12_texture(
     const std::uint8_t* data,
     std::uint32_t width,
     std::uint32_t height,
+    resource_format format,
     D3D12GraphicsCommandList* command_list)
 {
+    DXGI_FORMAT texture_format = d3d12_utility::convert_format(format);
+    std::size_t element_size = d3d12_utility::element_size(texture_format);
+
     auto device = d3d12_context::device();
 
     // Create default buffer.
     CD3DX12_HEAP_PROPERTIES default_heap_properties(D3D12_HEAP_TYPE_DEFAULT);
     CD3DX12_RESOURCE_DESC default_desc = CD3DX12_RESOURCE_DESC::Tex2D(
-        DXGI_FORMAT_R8G8B8A8_UNORM,
+        texture_format,
         static_cast<UINT>(width),
         static_cast<UINT>(height));
     throw_if_failed(device->CreateCommittedResource(
@@ -289,7 +293,7 @@ d3d12_texture::d3d12_texture(
         IID_PPV_ARGS(&m_resource)));
 
     // Create upload buffer.
-    UINT width_pitch = (width * 4 + D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u) &
+    UINT width_pitch = (width * element_size + D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u) &
                        ~(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u);
 
     d3d12_ptr<ID3D12Resource> upload_resource;
@@ -303,15 +307,15 @@ d3d12_texture::d3d12_texture(
         nullptr,
         IID_PPV_ARGS(&upload_resource)));
 
-    void* mapped = NULL;
+    void* mapped = nullptr;
     D3D12_RANGE range = {0, height * width_pitch};
     upload_resource->Map(0, &range, &mapped);
     for (std::size_t i = 0; i < height; ++i)
     {
         memcpy(
             static_cast<std::uint8_t*>(mapped) + i * width_pitch,
-            data + i * width * 4,
-            width * 4);
+            data + i * width * element_size,
+            width * element_size);
     }
     upload_resource->Unmap(0, &range);
 
@@ -319,7 +323,7 @@ d3d12_texture::d3d12_texture(
     D3D12_TEXTURE_COPY_LOCATION source_location = {};
     source_location.pResource = upload_resource.Get();
     source_location.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-    source_location.PlacedFootprint.Footprint.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    source_location.PlacedFootprint.Footprint.Format = texture_format;
     source_location.PlacedFootprint.Footprint.Width = static_cast<UINT>(width);
     source_location.PlacedFootprint.Footprint.Height = static_cast<UINT>(height);
     source_location.PlacedFootprint.Footprint.Depth = 1;

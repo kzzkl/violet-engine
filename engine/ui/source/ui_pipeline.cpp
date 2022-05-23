@@ -93,7 +93,11 @@ void ui_pipeline::render(
         camera.render_target_resolve,
         camera.depth_stencil_buffer);
 
-    command->scissor(m_scissor_rects.data(), m_scissor_rects.size());
+    graphics::scissor_rect rect = {};
+    auto [width, height] = camera.render_target->extent();
+    rect.max_x = width;
+    rect.max_y = height;
+    command->scissor(&rect, 1);
 
     for (auto& unit : units())
     {
@@ -108,7 +112,5 @@ void ui_pipeline::render(
     }
 
     command->end(m_interface.get());
-
-    m_scissor_rects.clear();
 }
 } // namespace ash::ui

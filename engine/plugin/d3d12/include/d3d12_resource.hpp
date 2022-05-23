@@ -135,6 +135,7 @@ public:
         const std::uint8_t* data,
         std::uint32_t width,
         std::uint32_t height,
+        resource_format format,
         D3D12GraphicsCommandList* command_list);
     d3d12_texture(const char* file, D3D12GraphicsCommandList* command_list);
 

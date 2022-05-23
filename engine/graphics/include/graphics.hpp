@@ -72,10 +72,11 @@ public:
     std::unique_ptr<resource> make_texture(
         const std::uint8_t* data,
         std::uint32_t width,
-        std::uint32_t height)
+        std::uint32_t height,
+        resource_format format = resource_format::B8G8R8A8_UNORM)
     {
         auto& factory = m_plugin.factory();
-        return std::unique_ptr<resource>(factory.make_texture(data, width, height));
+        return std::unique_ptr<resource>(factory.make_texture(data, width, height, format));
     }
 
     std::unique_ptr<resource> make_render_target(const render_target_desc& desc)

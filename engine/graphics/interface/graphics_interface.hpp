@@ -11,11 +11,14 @@ enum class resource_format
 {
     UNDEFINED,
 
+    R8_UNORM,
+    R8_UINT,
+
     R8G8B8A8_UNORM,
     B8G8R8A8_UNORM,
 
     R32G32B32A32_FLOAT,
-    R32G32B32A32_INT,
+    R32G32B32A32_SINT,
     R32G32B32A32_UINT,
 
     D24_UNORM_S8_UINT
@@ -428,7 +431,8 @@ public:
     virtual resource_interface* make_texture(
         const std::uint8_t* data,
         std::uint32_t width,
-        std::uint32_t height) = 0;
+        std::uint32_t height,
+        resource_format format = resource_format::R8G8B8A8_UNORM) = 0;
     virtual resource_interface* make_texture(const char* file) = 0;
     virtual resource_interface* make_render_target(const render_target_desc& desc) = 0;
     virtual resource_interface* make_depth_stencil_buffer(

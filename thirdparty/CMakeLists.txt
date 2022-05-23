@@ -51,3 +51,10 @@ FetchContent_Declare(imgui
     GIT_TAG         docking
     SOURCE_DIR      ${ASH_THIRD_PARTY_DIR}/imgui)
 FetchContent_MakeAvailable(imgui)
+
+# freetype
+FetchContent_Declare(freetype
+    GIT_REPOSITORY  git@github.com:freetype/freetype.git
+    GIT_TAG         VER-2-12-1
+    SOURCE_DIR      ${ASH_THIRD_PARTY_DIR}/freetype)
+FetchContent_MakeAvailable(freetype)

@@ -20,10 +20,7 @@ public:
     virtual void render(const graphics::camera& camera, graphics::render_command_interface* command)
         override;
 
-    void add_scissor(const graphics::scissor_rect& rect) { m_scissor_rects.push_back(rect); }
-
 private:
     std::unique_ptr<graphics::render_pass_interface> m_interface;
-    std::vector<graphics::scissor_rect> m_scissor_rects;
 };
 } // namespace ash::ui

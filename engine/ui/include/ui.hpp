@@ -1,6 +1,8 @@
 #pragma once
 
 #include "context.hpp"
+#include "element_tree.hpp"
+#include "font.hpp"
 #include "graphics.hpp"
 #include "ui_pipeline.hpp"
 
@@ -23,46 +25,32 @@ public:
     void window_root(std::string_view label);
     void window_pop();
 
-    void text(std::string_view text);
+    void text(std::string_view text, const element_rect& rect);
 
     bool tree(std::string_view label, bool leaf = false);
     std::tuple<bool, bool> tree_ex(std::string_view label, bool leaf = false);
     void tree_pop();
 
     bool collapsing(std::string_view label);
-    void texture(graphics::resource* texture, float width, float height);
-
-    bool drag(std::string_view label, float& value, float speed = 0.1f);
-    bool drag(std::string_view label, math::float3& value, float speed = 0.1f);
-
-    void style(ui_style style, float x = 0.0f, float y = 0.0f);
-    void style_pop();
-
-    std::pair<std::uint32_t, std::uint32_t> window_size();
-    bool any_item_active() const;
+    void texture(graphics::resource* texture, const element_rect& rect);
 
     void begin_frame();
     void end_frame();
 
 private:
-    void initialize_theme();
-    void initialize_font_texture();
-
     graphics::pipeline_parameter* allocate_parameter();
 
-    ecs::entity m_ui_entity;
-
-    std::vector<std::unique_ptr<graphics::resource>> m_vertex_buffer;
-    std::vector<std::unique_ptr<graphics::resource>> m_index_buffer;
-
-    std::unique_ptr<graphics::resource> m_font;
+    std::vector<std::unique_ptr<graphics::resource>> m_vertex_buffers;
+    std::unique_ptr<graphics::resource> m_index_buffer;
 
     std::size_t m_parameter_counter;
     std::vector<std::unique_ptr<graphics::pipeline_parameter>> m_parameter_pool;
 
     std::unique_ptr<ui_pipeline> m_pipeline;
-    std::size_t m_frame_index;
 
-    bool m_enable_mouse;
+    std::unique_ptr<font> m_font;
+
+    ecs::entity m_root;
+    element_tree m_tree;
 };
 }; // namespace ash::ui
