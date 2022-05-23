@@ -1,42 +1,53 @@
+include(FetchContent)
+
 # Catch2
-make_directory(${CMAKE_CURRENT_SOURCE_DIR}/build/Catch2)
-execute_process(
-    COMMAND ${CMAKE_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/Catch2
-    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_SOURCE_DIR}/build/install/Catch2
-    -DCATCH_BUILD_TESTING=OFF
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build/Catch2)
-execute_process(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_SOURCE_DIR}/build/Catch2 --config Debug --target install)
-execute_process(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_SOURCE_DIR}/build/Catch2 --config Release --target install)
+set(CATCH_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(Catch2
+    GIT_REPOSITORY  git@github.com:catchorg/Catch2.git
+    GIT_TAG         v2.13.8
+    SOURCE_DIR      ${ASH_THIRD_PARTY_DIR}/Catch2)
+FetchContent_MakeAvailable(Catch2)
 
 # spdlog
-make_directory(${CMAKE_CURRENT_SOURCE_DIR}/build/spdlog)
-execute_process(
-    COMMAND ${CMAKE_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/spdlog
-    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_SOURCE_DIR}/build/install/spdlog
-    #-DSPDLOG_BUILD_SHARED=ON
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build/spdlog)
-execute_process(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_SOURCE_DIR}/build/spdlog --config Debug --target install)
-execute_process(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_SOURCE_DIR}/build/spdlog --config Release --target install)
+FetchContent_Declare(spdlog
+    GIT_REPOSITORY  git@github.com:gabime/spdlog.git
+    GIT_TAG         v1.9.2
+    SOURCE_DIR      ${ASH_THIRD_PARTY_DIR}/spdlog)
+FetchContent_MakeAvailable(spdlog)
 
 # nlohmann/json
-make_directory(${CMAKE_CURRENT_SOURCE_DIR}/build/json)
-execute_process(
-    COMMAND ${CMAKE_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/json
-    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_SOURCE_DIR}/build/install/json
-    -DJSON_BuildTests=OFF
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build/json)
-execute_process(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_SOURCE_DIR}/build/json --config Debug --target install)
-execute_process(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_SOURCE_DIR}/build/json --config Release --target install)
+FetchContent_Declare(json
+    GIT_REPOSITORY  git@github.com:nlohmann/json.git
+    GIT_TAG         v3.10.5
+    SOURCE_DIR      ${ASH_THIRD_PARTY_DIR}/json)
+FetchContent_MakeAvailable(json)
 
 # bullet3
-make_directory(${CMAKE_CURRENT_SOURCE_DIR}/build/bullet3)
-execute_process(
-    COMMAND ${CMAKE_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/bullet3
-    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_SOURCE_DIR}/build/install/bullet3
-    -DINSTALL_LIBS=ON
-    -DUSE_MSVC_RUNTIME_LIBRARY_DLL=ON
-    -DBUILD_UNIT_TESTS=OFF
-    -DBUILD_BULLET2_DEMOS=OFF
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build/bullet3)
-execute_process(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_SOURCE_DIR}/build/bullet3 --config Debug --target install)
-execute_process(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_SOURCE_DIR}/build/bullet3 --config Release --target install)
+set(BUILD_EXTRAS OFF CACHE BOOL "" FORCE)
+set(BUILD_PYBULLET OFF CACHE BOOL "" FORCE)
+set(BUILD_BULLET2_DEMOS OFF CACHE BOOL "" FORCE)
+set(BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
+set(BUILD_CPU_DEMOS OFF CACHE BOOL "" FORCE)
+set(BUILD_OPENGL3_DEMOS OFF CACHE BOOL "" FORCE)
+set(BUILD_OPENGL3_DEMOS OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(bullet3
+    GIT_REPOSITORY  git@github.com:bulletphysics/bullet3.git
+    GIT_TAG         3.22
+    SOURCE_DIR      ${ASH_THIRD_PARTY_DIR}/bullet3)
+FetchContent_MakeAvailable(bullet3)
+
+# stbimage
+FetchContent_Declare(stb
+    GIT_REPOSITORY  git@github.com:nothings/stb.git
+    GIT_TAG         master
+    SOURCE_DIR      ${ASH_THIRD_PARTY_DIR}/stb)
+FetchContent_MakeAvailable(stb)
+
+# imgui
+FetchContent_Declare(imgui
+    GIT_REPOSITORY  git@github.com:ocornut/imgui.git
+    GIT_TAG         docking
+    SOURCE_DIR      ${ASH_THIRD_PARTY_DIR}/imgui)
+FetchContent_MakeAvailable(imgui)

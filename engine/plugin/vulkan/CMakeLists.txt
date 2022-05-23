@@ -15,7 +15,8 @@ add_library(${PROJECT_NAME} SHARED
     ./source/vk_renderer.cpp
     ./source/vk_resource.cpp
     ./source/vk_sampler.cpp)
-add_library(ash::plugin::vulkan ALIAS ${PROJECT_NAME})
+
+set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "")
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE

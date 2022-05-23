@@ -1,8 +1,5 @@
 project(ash-common)
 
-find_package(spdlog REQUIRED PATHS ${ASH_THIRD_PARTY_INSTALL_DIR}/spdlog)
-find_package(nlohmann_json REQUIRED PATHS ${ASH_THIRD_PARTY_INSTALL_DIR}/json)
-
 add_library(${PROJECT_NAME} STATIC
     ./source/log.cpp)
 add_library(ash::common ALIAS ${PROJECT_NAME})

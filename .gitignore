@@ -40,3 +40,11 @@ install
 
 # generate
 generated
+
+# thirdparty
+thirdparty/Catch2
+thirdparty/bullet3
+thirdparty/imgui
+thirdparty/json
+thirdparty/spdlog
+thirdparty/stb
