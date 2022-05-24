@@ -1,4 +1,4 @@
-#include "graphics_plugin.hpp"
+#include "graphics/graphics_plugin.hpp"
 #include "log.hpp"
 
 using namespace ash::core;

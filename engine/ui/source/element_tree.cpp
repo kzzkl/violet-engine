@@ -1,10 +1,11 @@
-#include "element_tree.hpp"
-#include "context.hpp"
+#include "ui/element_tree.hpp"
+#include "core/context.hpp"
 
 namespace ash::ui
 {
 element_tree::element_tree()
 {
+    m_layout = std::make_unique<layout>();
 }
 
 void element_tree::text(std::string_view text, const font& font, const element_rect& rect)

@@ -1,5 +1,5 @@
 #include "test_common.hpp"
-#include "world.hpp"
+#include "ecs/world.hpp"
 
 using namespace ash::ecs;
 

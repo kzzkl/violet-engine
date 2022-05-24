@@ -1,10 +1,10 @@
-#include "physics.hpp"
-#include "relation.hpp"
-#include "scene.hpp"
-#include "scene_event.hpp"
+#include "physics/physics.hpp"
+#include "core/relation.hpp"
+#include "scene/scene.hpp"
+#include "scene/scene_event.hpp"
 
 #if defined(ASH_PHYSICS_DEBUG_DRAW)
-#    include "graphics.hpp"
+#    include "graphics/graphics.hpp"
 #endif
 
 namespace ash::physics

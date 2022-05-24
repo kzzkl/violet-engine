@@ -1,4 +1,4 @@
-#include "component.hpp"
+#include "ecs/component.hpp"
 #include "test_common.hpp"
 
 using namespace ash::ecs;

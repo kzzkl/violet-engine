@@ -1,5 +1,5 @@
-#include "font.hpp"
-#include "graphics.hpp"
+#include "ui/font.hpp"
+#include "graphics/graphics.hpp"
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -33,14 +33,6 @@ font::font(std::string_view font, std::size_t size)
         log::error("FT_Set_Char_Size failed.");
         return;
     }
-
-    /*struct glyph_info
-    {
-        int x0, y0, x1, y1; // coords of glyph in the texture atlas
-        int x_off, y_off;   // left & top bearing when rendering
-        int advance;        // x advance when rendering
-    };
-    std::array<glyph_info, 128> info;*/
 
     int max_dim = (1 + (face->size->metrics.height >> 6)) * ceilf(sqrtf(128));
     int tex_width = 1;
@@ -83,14 +75,6 @@ font::font(std::string_view font, std::size_t size)
         m_glyph[i].uv2 = {
             static_cast<float>(pen_x + bmp->width) / static_cast<float>(tex_width),
             static_cast<float>(pen_y + bmp->rows) / static_cast<float>(tex_height)};
-        /*info[i].x0 = pen_x;
-        info[i].y0 = pen_y;
-        info[i].x1 = pen_x + bmp->width;
-        info[i].y1 = pen_y + bmp->rows;
-
-        info[i].x_off = face->glyph->bitmap_left;
-        info[i].y_off = face->glyph->bitmap_top;
-        info[i].advance = face->glyph->advance.x >> 6;*/
 
         pen_x += bmp->width + 1;
     }

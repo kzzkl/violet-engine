@@ -1,12 +1,12 @@
 #pragma once
 
-#include "graphics_debug.hpp"
-#include "graphics.hpp"
-#include "link.hpp"
-#include "relation.hpp"
-#include "render_pipeline.hpp"
-#include "scene.hpp"
-#include "visual.hpp"
+#include "graphics/graphics_debug.hpp"
+#include "core/link.hpp"
+#include "core/relation.hpp"
+#include "graphics/graphics.hpp"
+#include "graphics/render_pipeline.hpp"
+#include "graphics/visual.hpp"
+#include "scene/scene.hpp"
 
 namespace ash::graphics
 {

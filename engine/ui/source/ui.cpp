@@ -1,8 +1,8 @@
-#include "ui.hpp"
-#include "graphics.hpp"
-#include "relation.hpp"
-#include "window.hpp"
-#include "window_event.hpp"
+#include "ui/ui.hpp"
+#include "core/relation.hpp"
+#include "graphics/graphics.hpp"
+#include "window/window.hpp"
+#include "window/window_event.hpp"
 
 namespace ash::ui
 {

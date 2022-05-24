@@ -1,5 +1,5 @@
-#include "standard_pipeline.hpp"
-#include "graphics.hpp"
+#include "graphics/standard_pipeline.hpp"
+#include "graphics/graphics.hpp"
 
 namespace ash::graphics
 {

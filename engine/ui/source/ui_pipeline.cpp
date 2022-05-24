@@ -1,5 +1,5 @@
-#include "ui_pipeline.hpp"
-#include "graphics.hpp"
+#include "ui/ui_pipeline.hpp"
+#include "graphics/graphics.hpp"
 
 namespace ash::ui
 {

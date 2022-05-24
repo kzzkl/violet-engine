@@ -1,4 +1,4 @@
-#include "graphics_config.hpp"
+#include "graphics/graphics_config.hpp"
 #include "log.hpp"
 
 namespace ash::graphics

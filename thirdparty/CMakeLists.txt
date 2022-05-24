@@ -58,3 +58,10 @@ FetchContent_Declare(freetype
     GIT_TAG         VER-2-12-1
     SOURCE_DIR      ${ASH_THIRD_PARTY_DIR}/freetype)
 FetchContent_MakeAvailable(freetype)
+
+# yoga
+FetchContent_Declare(yoga
+    GIT_REPOSITORY  git@github.com:facebook/yoga.git
+    GIT_TAG         v1.19.0
+    SOURCE_DIR      ${ASH_THIRD_PARTY_DIR}/yoga)
+FetchContent_MakeAvailable(yoga)

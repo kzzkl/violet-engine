@@ -1,6 +1,6 @@
-#include "input.hpp"
+#include "window/input.hpp"
 #include "log.hpp"
-#include "window_impl.hpp"
+#include "window/window_impl.hpp"
 
 namespace ash::window
 {

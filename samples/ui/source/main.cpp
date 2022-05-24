@@ -1,11 +1,11 @@
-#include "application.hpp"
+#include "core/application.hpp"
 #include "assert.hpp"
-#include "graphics.hpp"
-#include "relation.hpp"
-#include "scene.hpp"
-#include "ui.hpp"
-#include "window.hpp"
-#include "window_event.hpp"
+#include "graphics/graphics.hpp"
+#include "core/relation.hpp"
+#include "scene/scene.hpp"
+#include "ui/ui.hpp"
+#include "window/window.hpp"
+#include "window/window_event.hpp"
 
 namespace ash::sample::ui
 {

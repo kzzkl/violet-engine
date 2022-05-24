@@ -1,12 +1,12 @@
-#include "graphics.hpp"
-#include "context.hpp"
-#include "graphics_config.hpp"
+#include "graphics/graphics.hpp"
+#include "core/context.hpp"
+#include "graphics/graphics_config.hpp"
+#include "graphics/skin_pipeline.hpp"
 #include "log.hpp"
-#include "math.hpp"
-#include "skin_pipeline.hpp"
-#include "transform.hpp"
-#include "window.hpp"
-#include "window_event.hpp"
+#include "math/math.hpp"
+#include "scene/transform.hpp"
+#include "window/window.hpp"
+#include "window/window_event.hpp"
 #include <fstream>
 #include <set>
 

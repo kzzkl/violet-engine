@@ -1,8 +1,8 @@
 #include "mmd_viewer.hpp"
 #include "mmd_animation.hpp"
-#include "scene.hpp"
+#include "scene/scene.hpp"
 #include "transform.hpp"
-#include "window_event.hpp"
+#include "window/window_event.hpp"
 
 namespace ash::sample::mmd
 {
