@@ -23,7 +23,7 @@ public:
     keyboard_type& keyboard() { return m_keyboard; }
 
     void* handle() const { return m_impl->handle(); }
-    window_rect rect() const { return m_impl->rect(); }
+    window_extent extent() const { return m_impl->extent(); }
 
     void title(std::string_view title) { m_impl->title(title); }
 

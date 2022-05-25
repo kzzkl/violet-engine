@@ -82,11 +82,11 @@ void standard_pipeline::render(const camera& camera, render_command_interface* c
         camera.render_target_resolve,
         camera.depth_stencil_buffer);
 
-    scissor_rect rect = {};
+    scissor_extent extent = {};
     auto [width, height] = camera.render_target->extent();
-    rect.max_x = width;
-    rect.max_y = height;
-    command->scissor(&rect, 1);
+    extent.max_x = width;
+    extent.max_y = height;
+    command->scissor(&extent, 1);
 
     command->parameter(2, camera.parameter->parameter());
     for (auto& unit : units())

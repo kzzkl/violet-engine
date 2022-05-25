@@ -1,62 +1,64 @@
 #pragma once
 
-#include "ecs/entity.hpp"
-#include "font.hpp"
+#include "ecs/world.hpp"
 #include "graphics_interface.hpp"
-#include "layout.hpp"
-#include "math/math.hpp"
+#include "ui/element.hpp"
+#include <unordered_map>
 #include <vector>
 
 namespace ash::ui
 {
-struct element
-{
-    std::size_t index_start;
-    std::size_t index_end;
-    std::size_t vertex_base;
-
-    graphics::resource* texture;
-};
-
-struct element_rect
-{
-    std::uint32_t x;
-    std::uint32_t y;
-    std::uint32_t width;
-    std::uint32_t height;
-};
-
 class element_tree
 {
 public:
     element_tree();
 
-    void text(std::string_view text, const font& font, const element_rect& rect);
-    void texture(graphics::resource* texture, const element_rect& rect);
+    void link(element& child, element& parent);
 
-    void clear()
-    {
-        m_vertex_position.clear();
-        m_vertex_uv.clear();
-        m_indices.clear();
+    /**
+     * @brief Update mesh data.
+     * @return Whether mesh data update has occurred.
+     */
+    bool tick();
 
-        m_elements.clear();
-    }
+    ecs::entity root() const noexcept { return m_root; }
 
-    const std::vector<math::float2>& vertex_position() const noexcept { return m_vertex_position; }
-    const std::vector<math::float2>& vertex_uv() const noexcept { return m_vertex_uv; }
-    const std::vector<std::uint32_t>& indices() const noexcept { return m_indices; }
-    const std::vector<element>& elements() const noexcept { return m_elements; }
+    auto begin() const { return m_meshes.begin(); }
+    auto end() const { return m_meshes.end(); }
+
+    void resize(std::uint32_t width, std::uint32_t height);
 
 private:
-    void add_rect(const element_rect& rect, graphics::resource* texture = nullptr);
+    struct mesh_key
+    {
+        element_control_type type;
+        graphics::resource* texture;
 
-    std::vector<math::float2> m_vertex_position;
-    std::vector<math::float2> m_vertex_uv;
-    std::vector<std::uint32_t> m_indices;
+        bool operator==(const mesh_key& other) const noexcept
+        {
+            return type == other.type && texture == other.texture;
+        }
+    };
 
-    std::vector<element> m_elements;
+    struct mesh_hash
+    {
+        std::size_t operator()(const mesh_key& key) const
+        {
+            std::size_t type_hash = static_cast<std::size_t>(key.type);
+            std::size_t texture_hash = std::hash<graphics::resource*>()(key.texture);
+            type_hash ^= texture_hash + 0x9e3779b9 + (type_hash << 6) + (type_hash >> 2);
+            return type_hash;
+        }
+    };
+
+    std::unordered_map<mesh_key, element_mesh, mesh_hash> m_meshes;
+
+    ecs::entity m_root;
+    ecs::view<element>* m_view;
 
     std::unique_ptr<layout> m_layout;
+
+    float m_window_width;
+    float m_window_height;
 };
 } // namespace ash::ui

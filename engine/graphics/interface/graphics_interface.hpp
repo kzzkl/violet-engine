@@ -292,7 +292,7 @@ public:
     virtual ~compute_pipeline_interface() = default;
 };
 
-struct scissor_rect
+struct scissor_extent
 {
     std::uint32_t min_x;
     std::uint32_t min_y;
@@ -318,7 +318,7 @@ public:
     virtual void end(render_pass_interface* render_pass) = 0;
     virtual void next(render_pass_interface* render_pass) = 0;
 
-    virtual void scissor(const scissor_rect* rects, std::size_t rect_size) = 0;
+    virtual void scissor(const scissor_extent* extents, std::size_t size) = 0;
 
     virtual void parameter(std::size_t i, pipeline_parameter_interface*) = 0;
     virtual void draw(

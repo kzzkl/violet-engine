@@ -9,10 +9,16 @@ ui_pipeline::ui_pipeline()
 
     graphics::pipeline_parameter_layout_info ui_material;
     ui_material.parameters = {
-        {graphics::pipeline_parameter_type::FLOAT4x4,        1}, // ui_mvp
-        {graphics::pipeline_parameter_type::SHADER_RESOURCE, 1}  // ui_texture
+        {graphics::pipeline_parameter_type::UINT,            1}, // type: 0: font, 1: image
+        {graphics::pipeline_parameter_type::SHADER_RESOURCE, 1}  // texture
     };
     graphics.make_pipeline_parameter_layout("ui_material", ui_material);
+
+    graphics::pipeline_parameter_layout_info ui_mvp;
+    ui_mvp.parameters = {
+        {graphics::pipeline_parameter_type::FLOAT4x4, 1}, // mvp
+    };
+    graphics.make_pipeline_parameter_layout("ui_mvp", ui_mvp);
 
     // UI pass.
     graphics::pipeline_info ui_pipeline_info = {};
@@ -21,7 +27,7 @@ ui_pipeline::ui_pipeline()
     ui_pipeline_info.vertex_attributes = {
         {"POSITION", graphics::vertex_attribute_type::FLOAT2}, // position
         {"UV",       graphics::vertex_attribute_type::FLOAT2}, // uv
-        {"COLOR",    graphics::vertex_attribute_type::COLOR }  // normal
+        {"COLOR",    graphics::vertex_attribute_type::COLOR }  // color
     };
     ui_pipeline_info.references = {
         {graphics::attachment_reference_type::COLOR,   0},
@@ -29,14 +35,14 @@ ui_pipeline::ui_pipeline()
         {graphics::attachment_reference_type::RESOLVE, 0}
     };
     ui_pipeline_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    ui_pipeline_info.parameters = {"ui_material"};
+    ui_pipeline_info.parameters = {"ui_material", "ui_mvp"};
     ui_pipeline_info.samples = 4;
     ui_pipeline_info.depth_stencil.depth_functor = graphics::depth_functor::ALWAYS;
     ui_pipeline_info.blend.enable = true;
     ui_pipeline_info.blend.source_factor = graphics::blend_factor::SOURCE_ALPHA;
     ui_pipeline_info.blend.target_factor = graphics::blend_factor::SOURCE_INV_ALPHA;
     ui_pipeline_info.blend.op = graphics::blend_op::ADD;
-    ui_pipeline_info.blend.source_alpha_factor = graphics::blend_factor::ONE;
+    ui_pipeline_info.blend.source_alpha_factor = graphics::blend_factor::SOURCE_ALPHA;
     ui_pipeline_info.blend.target_alpha_factor = graphics::blend_factor::SOURCE_INV_ALPHA;
     ui_pipeline_info.blend.alpha_op = graphics::blend_op::ADD;
 
@@ -93,12 +99,13 @@ void ui_pipeline::render(
         camera.render_target_resolve,
         camera.depth_stencil_buffer);
 
-    graphics::scissor_rect rect = {};
+    graphics::scissor_extent extent = {};
     auto [width, height] = camera.render_target->extent();
-    rect.max_x = width;
-    rect.max_y = height;
-    command->scissor(&rect, 1);
+    extent.max_x = width;
+    extent.max_y = height;
+    command->scissor(&extent, 1);
 
+    command->parameter(1, units()[0].parameters[1]->parameter());
     for (auto& unit : units())
     {
         command->parameter(0, unit.parameters[0]->parameter());

@@ -27,7 +27,7 @@ font::font(std::string_view font, std::size_t size)
         return;
     }
 
-    error = FT_Set_Char_Size(face, 0, size * 64, 0, 0);
+    error = FT_Set_Char_Size(face, size * 64, 0, 96, 0);
     if (error)
     {
         log::error("FT_Set_Char_Size failed.");

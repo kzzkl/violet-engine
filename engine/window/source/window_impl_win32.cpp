@@ -398,16 +398,16 @@ void* window_impl_win32::handle() const
     return m_hwnd;
 }
 
-window_rect window_impl_win32::rect() const
+window_extent window_impl_win32::extent() const
 {
-    RECT rect = {};
-    GetClientRect(m_hwnd, &rect);
+    RECT extent = {};
+    GetClientRect(m_hwnd, &extent);
 
-    window_rect result = {};
-    result.x = rect.left;
-    result.y = rect.top;
-    result.width = rect.right - rect.left;
-    result.height = rect.bottom - rect.top;
+    window_extent result = {};
+    result.x = extent.left;
+    result.y = extent.top;
+    result.width = extent.right - extent.left;
+    result.height = extent.bottom - extent.top;
 
     return result;
 }

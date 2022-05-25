@@ -26,9 +26,9 @@ bool graphics::initialize(const dictionary& config)
 
     renderer_desc desc = {};
     desc.window_handle = window.handle();
-    window::window_rect rect = window.rect();
-    desc.width = rect.width;
-    desc.height = rect.height;
+    window::window_extent extent = window.extent();
+    desc.width = extent.width;
+    desc.height = extent.height;
     desc.render_concurrency = m_config.render_concurrency();
     desc.frame_resource = m_config.frame_resource();
 

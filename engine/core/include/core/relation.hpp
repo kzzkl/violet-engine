@@ -15,14 +15,14 @@ enum class event_unlink_flag
 
 struct event_link
 {
-    using functor = std::function<void(ash::ecs::entity, link&)>;
-    using dispatcher = ash::core::sequence_dispatcher<functor>;
+    using functor = std::function<void(ecs::entity, link&)>;
+    using dispatcher = sequence_dispatcher<functor>;
 };
 
 struct event_unlink
 {
-    using functor = std::function<void(ash::ecs::entity, link&, event_unlink_flag)>;
-    using dispatcher = ash::core::sequence_dispatcher<functor>;
+    using functor = std::function<void(ecs::entity, link&, event_unlink_flag)>;
+    using dispatcher = sequence_dispatcher<functor>;
 };
 
 class relation : public system_base

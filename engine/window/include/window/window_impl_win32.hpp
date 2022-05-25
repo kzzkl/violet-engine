@@ -19,7 +19,7 @@ public:
     virtual void show() override;
 
     virtual void* handle() const override;
-    virtual window_rect rect() const override;
+    virtual window_extent extent() const override;
 
     virtual void title(std::string_view title) override;
     virtual void change_mouse_mode(mouse_mode mode) override;

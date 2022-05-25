@@ -20,7 +20,7 @@ public:
     virtual void end(render_pass_interface* render_pass) override;
     virtual void next(render_pass_interface* render_pass) override;
 
-    virtual void scissor(const scissor_rect* rects, std::size_t rect_size) override;
+    virtual void scissor(const scissor_extent* extents, std::size_t size) override;
 
     virtual void parameter(std::size_t index, pipeline_parameter_interface* parameter) override;
     virtual void draw(

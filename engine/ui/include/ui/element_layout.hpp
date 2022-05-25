@@ -1,0 +1,150 @@
+#pragma once
+
+#include "element_extent.hpp"
+#include <memory>
+
+namespace ash::ui
+{
+enum layout_direction
+{
+    LAYOUT_DIRECTION_INHERIT,
+    LAYOUT_DIRECTION_LTR,
+    LAYOUT_DIRECTION_RTL
+};
+
+enum layout_flex_direction
+{
+    LAYOUT_FLEX_DIRECTION_COLUMN,
+    LAYOUT_FLEX_DIRECTION_COLUMN_REVERSE,
+    LAYOUT_FLEX_DIRECTION_ROW,
+    LAYOUT_FLEX_DIRECTION_ROW_REVERSE
+};
+
+enum layout_flex_wrap
+{
+    LAYOUT_FLEX_WRAP_NOWRAP,
+    LAYOUT_FLEX_WRAP_WRAP,
+    LAYOUT_FLEX_WRAP_WRAP_REVERSE
+};
+
+enum layout_justify
+{
+    LAYOUT_JUSTIFY_FLEX_START,
+    LAYOUT_JUSTIFY_CENTER,
+    LAYOUT_JUSTIFY_FLEX_END,
+    LAYOUT_JUSTIFY_SPACE_BETWEEN,
+    LAYOUT_JUSTIFY_SPACE_AROUND,
+    LAYOUT_JUSTIFY_SPACE_EVENLY
+};
+
+enum layout_align
+{
+    LAYOUT_ALIGN_AUTO,
+    LAYOUT_ALIGN_FLEX_START,
+    LAYOUT_ALIGN_CENTER,
+    LAYOUT_ALIGN_FLEX_END,
+    LAYOUT_ALIGN_STRETCH,
+    LAYOUT_ALIGN_BASELINE,
+    LAYOUT_ALIGN_SPACE_BETWEEN,
+    LAYOUT_ALIGN_SPACE_AROUND
+};
+
+class layout_node_impl
+{
+public:
+    virtual void direction(layout_direction direction) = 0;
+    virtual void flex_direction(layout_flex_direction flex_direction) = 0;
+    virtual void flex_basis(float basis) = 0;
+    virtual void flex_grow(float grow) = 0;
+    virtual void flex_shrink(float shrink) = 0;
+    virtual void flex_wrap(layout_flex_wrap wrap) = 0;
+    virtual void justify(layout_justify justify) = 0;
+    virtual void align_items(layout_align align) = 0;
+    virtual void align_self(layout_align align) = 0;
+    virtual void align_content(layout_align align) = 0;
+
+    virtual layout_direction direction() const = 0;
+    virtual layout_flex_direction flex_direction() const = 0;
+    virtual float flex_basis() const = 0;
+    virtual float flex_grow() const = 0;
+    virtual float flex_shrink() const = 0;
+    virtual layout_flex_wrap flex_wrap() const = 0;
+    virtual layout_justify justify() const = 0;
+    virtual layout_align align_items() const = 0;
+    virtual layout_align align_self() const = 0;
+    virtual layout_align align_content() const = 0;
+
+    virtual void parent(layout_node_impl* parent) = 0;
+
+    virtual void resize(float width, float height) = 0;
+    virtual element_extent extent() const = 0;
+
+    virtual bool dirty() const = 0;
+};
+
+class element_layout
+{
+public:
+    element_layout();
+
+    void direction(layout_direction direction) { m_impl->direction(direction); }
+    void flex_direction(layout_flex_direction flex_direction)
+    {
+        m_impl->flex_direction(flex_direction);
+    }
+    void flex_basis(float basis) { m_impl->flex_basis(basis); }
+    void flex_grow(float grow) { m_impl->flex_grow(grow); }
+    void flex_shrink(float shrink) { m_impl->flex_shrink(shrink); }
+    void flex_wrap(layout_flex_wrap wrap) { m_impl->flex_wrap(wrap); }
+    void justify(layout_justify justify) { m_impl->justify(justify); }
+    void align_items(layout_align align) { m_impl->align_items(align); }
+    void align_self(layout_align align) { m_impl->align_self(align); }
+    void align_content(layout_align align) { m_impl->align_content(align); }
+
+    layout_direction direction() const { return m_impl->direction(); }
+    layout_flex_direction flex_direction() const { return m_impl->flex_direction(); }
+    float flex_basis() const { return m_impl->flex_basis(); }
+    float flex_grow() const { return m_impl->flex_grow(); }
+    float flex_shrink() const { return m_impl->flex_shrink(); }
+    layout_flex_wrap flex_wrap() const { return m_impl->flex_wrap(); }
+    layout_justify justify() const { return m_impl->justify(); }
+    layout_align align_items() const { return m_impl->align_items(); }
+    layout_align align_self() const { return m_impl->align_self(); }
+    layout_align align_content() const { return m_impl->align_content(); }
+
+    void parent(element_layout* parent)
+    {
+        m_impl->parent(parent == nullptr ? nullptr : parent->m_impl.get());
+    }
+
+    void resize(float width, float height) { return m_impl->resize(width, height); }
+    element_extent extent() const { return m_impl->extent(); }
+
+    bool dirty() const { return m_impl->dirty(); }
+
+    layout_node_impl* impl() const noexcept { return m_impl.get(); }
+
+private:
+    std::unique_ptr<layout_node_impl> m_impl;
+};
+
+class layout_impl
+{
+public:
+    virtual void calculate(element_layout* root, float width, float height) = 0;
+};
+
+class layout
+{
+public:
+    layout(const element_layout& root);
+
+    void calculate(element_layout* root, float width, float height)
+    {
+        m_impl->calculate(root, width, height);
+    }
+
+private:
+    std::unique_ptr<layout_impl> m_impl;
+};
+} // namespace ash::ui

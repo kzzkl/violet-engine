@@ -5,7 +5,7 @@
 
 namespace ash::window
 {
-struct window_rect
+struct window_extent
 {
     std::uint32_t x;
     std::uint32_t y;
@@ -79,7 +79,7 @@ public:
     virtual void show() = 0;
 
     virtual void* handle() const = 0;
-    virtual window_rect rect() const = 0;
+    virtual window_extent extent() const = 0;
 
     virtual void title(std::string_view title) = 0;
     virtual void change_mouse_mode(mouse_mode mode) = 0;
