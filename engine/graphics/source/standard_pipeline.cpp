@@ -7,7 +7,7 @@ standard_pipeline::standard_pipeline()
 {
     pipeline_parameter_layout_info standard_material;
     standard_material.parameters = {
-        {pipeline_parameter_type::FLOAT4, 1}  // diffuse
+        {pipeline_parameter_type::FLOAT3, 1}  // diffuse
     };
     system<graphics>().make_pipeline_parameter_layout("standard_material", standard_material);
 
@@ -18,9 +18,6 @@ standard_pipeline::standard_pipeline()
     color_pass_info.vertex_attributes = {
         {"POSITION",    vertex_attribute_type::FLOAT3}, // position
         {"NORMAL",      vertex_attribute_type::FLOAT3}, // normal
-        {"UV",          vertex_attribute_type::FLOAT2}, // uv
-        {"BONE",        vertex_attribute_type::UINT4 }, // bone
-        {"BONE_WEIGHT", vertex_attribute_type::FLOAT3}, // bone weight
     };
     color_pass_info.references = {
         {attachment_reference_type::COLOR,   0},

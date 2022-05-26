@@ -1,6 +1,7 @@
 #include "ui/ui.hpp"
 #include "core/relation.hpp"
 #include "graphics/graphics.hpp"
+#include "ui/ui_event.hpp"
 #include "window/window.hpp"
 #include "window/window_event.hpp"
 
@@ -24,7 +25,7 @@ bool ui::initialize(const dictionary& config)
     m_pipeline = std::make_unique<ui_pipeline>();
     m_mvp_parameter = graphics.make_pipeline_parameter("ui_mvp");
 
-    m_vertex_buffers.push_back(graphics.make_vertex_buffer<math::float2>(
+    m_vertex_buffers.push_back(graphics.make_vertex_buffer<math::float3>(
         nullptr,
         2048,
         graphics::VERTEX_BUFFER_FLAG_NONE,
@@ -49,6 +50,8 @@ bool ui::initialize(const dictionary& config)
     for (auto& vertex_buffer : m_vertex_buffers)
         visual.vertex_buffers.push_back(vertex_buffer.get());
     visual.index_buffer = m_index_buffer.get();
+
+    event.register_event<event_calculate_layout>();
 
     event.subscribe<core::event_link>("ui", [&, this](ecs::entity entity, core::link& link) {
         if (world.has_component<element>(entity) && world.has_component<element>(link.parent))
@@ -91,32 +94,32 @@ void ui::end_frame()
     for (auto& [key, mesh] : *m_tree)
     {
         m_vertex_buffers[0]->upload(
-            mesh.vertex_position.data(),
-            mesh.vertex_position.size() * sizeof(math::float2),
-            vertex_offset * sizeof(math::float2));
+            mesh->vertex_position.data(),
+            mesh->vertex_position.size() * sizeof(math::float3),
+            vertex_offset * sizeof(math::float3));
         m_vertex_buffers[1]->upload(
-            mesh.vertex_uv.data(),
-            mesh.vertex_uv.size() * sizeof(math::float2),
+            mesh->vertex_uv.data(),
+            mesh->vertex_uv.size() * sizeof(math::float2),
             vertex_offset * sizeof(math::float2));
         m_vertex_buffers[2]->upload(
-            mesh.vertex_color.data(),
-            mesh.vertex_color.size() * sizeof(std::uint32_t),
+            mesh->vertex_color.data(),
+            mesh->vertex_color.size() * sizeof(std::uint32_t),
             vertex_offset * sizeof(std::uint32_t));
         m_index_buffer->upload(
-            mesh.indices.data(),
-            mesh.indices.size() * sizeof(std::uint32_t),
+            mesh->indices.data(),
+            mesh->indices.size() * sizeof(std::uint32_t),
             index_offset * sizeof(std::uint32_t));
 
         graphics::submesh submesh = {
             .index_start = index_offset,
-            .index_end = index_offset + mesh.indices.size(),
+            .index_end = index_offset + mesh->indices.size(),
             .vertex_base = vertex_offset};
         visual.submeshes.push_back(submesh);
 
         auto material_parameter = allocate_material_parameter();
         material_parameter->set(0, static_cast<std::uint32_t>(key.type));
         if (key.type != ELEMENT_CONTROL_TYPE_BLOCK)
-            material_parameter->set(1, mesh.texture);
+            material_parameter->set(1, mesh->texture);
 
         graphics::material material = {
             .pipeline = m_pipeline.get(),
@@ -124,8 +127,8 @@ void ui::end_frame()
         };
         visual.materials.push_back(material);
 
-        vertex_offset += mesh.vertex_position.size();
-        index_offset += mesh.indices.size();
+        vertex_offset += mesh->vertex_position.size();
+        index_offset += mesh->indices.size();
     }
 
     m_material_parameter_counter = 0;
@@ -155,7 +158,10 @@ graphics::pipeline_parameter* ui::allocate_material_parameter()
         m_material_parameter_pool.push_back(
             system<graphics::graphics>().make_pipeline_parameter("ui_material"));
 
+    auto result = m_material_parameter_pool[m_material_parameter_counter].get();
+    result->reset();
     ++m_material_parameter_counter;
-    return m_material_parameter_pool[m_material_parameter_counter - 1].get();
+
+    return result;
 }
 } // namespace ash::ui

@@ -23,13 +23,15 @@ label::label(std::string_view text, const font& font, std::uint32_t color)
         float x = static_cast<float>(pen_x) + static_cast<float>(glyph.bearing_x);
         float y = static_cast<float>(pen_y) - static_cast<float>(glyph.bearing_y);
 
-        m_mesh.vertex_position.push_back(math::float2{x, y});
+        m_mesh.vertex_position.push_back(math::float3{x, y, 0.0f});
         m_mesh.vertex_position.push_back(
-            math::float2{static_cast<float>(x + glyph.width), static_cast<float>(y)});
-        m_mesh.vertex_position.push_back(math::float2{
+            math::float3{static_cast<float>(x + glyph.width), static_cast<float>(y), 0.0f});
+        m_mesh.vertex_position.push_back(math::float3{
             static_cast<float>(x + glyph.width),
-            static_cast<float>(y + glyph.height)});
-        m_mesh.vertex_position.push_back(math::float2{x, static_cast<float>(y + glyph.height)});
+            static_cast<float>(y + glyph.height),
+            0.0f});
+        m_mesh.vertex_position.push_back(
+            math::float3{x, static_cast<float>(y + glyph.height), 0.0f});
 
         pen_x += glyph.advance;
 
@@ -63,10 +65,12 @@ void label::extent(const element_extent& extent)
     m_original_x = extent.x;
     m_original_y = extent.y + extent.height * 0.7f;
 
+    float z = depth();
     for (auto& position : m_mesh.vertex_position)
     {
         position[0] += offset_x;
         position[1] += offset_y;
+        position[2] = z;
     }
 }
 } // namespace ash::ui

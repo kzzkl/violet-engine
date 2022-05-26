@@ -25,7 +25,7 @@ ui_pipeline::ui_pipeline()
     ui_pipeline_info.vertex_shader = "engine/shader/ui.vert";
     ui_pipeline_info.pixel_shader = "engine/shader/ui.frag";
     ui_pipeline_info.vertex_attributes = {
-        {"POSITION", graphics::vertex_attribute_type::FLOAT2}, // position
+        {"POSITION", graphics::vertex_attribute_type::FLOAT3}, // position
         {"UV",       graphics::vertex_attribute_type::FLOAT2}, // uv
         {"COLOR",    graphics::vertex_attribute_type::COLOR }  // color
     };
@@ -37,7 +37,7 @@ ui_pipeline::ui_pipeline()
     ui_pipeline_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     ui_pipeline_info.parameters = {"ui_material", "ui_mvp"};
     ui_pipeline_info.samples = 4;
-    ui_pipeline_info.depth_stencil.depth_functor = graphics::depth_functor::ALWAYS;
+    ui_pipeline_info.depth_stencil.depth_functor = graphics::depth_functor::LESS;
     ui_pipeline_info.blend.enable = true;
     ui_pipeline_info.blend.source_factor = graphics::blend_factor::SOURCE_ALPHA;
     ui_pipeline_info.blend.target_factor = graphics::blend_factor::SOURCE_INV_ALPHA;

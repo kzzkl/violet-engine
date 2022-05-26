@@ -5,17 +5,12 @@
 
 namespace ash::graphics
 {
-struct geometry_vertex
-{
-    math::float3 position;
-    math::float3 normal;
-};
-
 using geometry_index = std::uint16_t;
 
 struct geometry_data
 {
-    std::vector<geometry_vertex> vertices;
+    std::vector<math::float3> position;
+    std::vector<math::float3> normal;
     std::vector<geometry_index> indices;
 };
 

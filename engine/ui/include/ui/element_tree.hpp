@@ -51,7 +51,11 @@ private:
         }
     };
 
-    std::unordered_map<mesh_key, element_mesh, mesh_hash> m_meshes;
+    element_mesh* allocate_mesh();
+
+    std::unordered_map<mesh_key, element_mesh*, mesh_hash> m_meshes;
+    std::vector<std::unique_ptr<element_mesh>> m_mesh_pool;
+    std::size_t m_mesh_pool_index;
 
     ecs::entity m_root;
     ecs::view<element>* m_view;

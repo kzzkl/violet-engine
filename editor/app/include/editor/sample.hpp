@@ -1,9 +1,9 @@
 #pragma once
 
-#include "context.hpp"
-#include "graphics.hpp"
-#include "physics.hpp"
-#include "standard_pipeline.hpp"
+#include "core/context.hpp"
+#include "graphics/graphics.hpp"
+#include "graphics/standard_pipeline.hpp"
+#include "physics/physics.hpp"
 
 namespace ash::editor
 {
@@ -18,9 +18,9 @@ private:
     std::unique_ptr<physics::collision_shape_interface> m_cube_shape;
     std::unique_ptr<physics::collision_shape_interface> m_plane_shape;
 
-    std::unique_ptr<graphics::standard_pass> m_standard_pass;
+    std::unique_ptr<graphics::standard_pipeline> m_pipeline;
 
-    std::unique_ptr<graphics::resource> m_cube_vertex_buffer;
+    std::vector<std::unique_ptr<graphics::resource>> m_cube_vertex_buffers;
     std::unique_ptr<graphics::resource> m_cube_index_buffer;
     std::unique_ptr<graphics::pipeline_parameter> m_cube_material;
     std::vector<std::unique_ptr<graphics::pipeline_parameter>> m_cube_object;

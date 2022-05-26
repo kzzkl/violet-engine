@@ -1,0 +1,15 @@
+d3d12_resource
+
+d3d12_image
+d3d12_back_buffer
+1. delete: 立即删除
+2. move: 
+
+d3d12_render_target
+1. delete: 延时删除，free RTV SRV
+d3d12_depth_stencil_buffer
+d3d12_texture
+
+d3d12_buffer
+d3d12_default_buffer
+d3d12_upload_buffer

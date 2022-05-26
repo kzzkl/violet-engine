@@ -9,36 +9,67 @@ geometry_data geometry::box(float x, float y, float z)
     float half_z = z * 0.5f;
 
     geometry_data result;
-    result.vertices = {
-        {{-half_x, half_y, half_z},   {0.0f, 1.0f, 0.0f} }, // up
-        {{half_x, half_y, half_z},    {0.0f, 1.0f, 0.0f} },
-        {{half_x, half_y, -half_z},   {0.0f, 1.0f, 0.0f} },
-        {{-half_x, half_y, -half_z},  {0.0f, 1.0f, 0.0f} },
+    result.position = {
+        {-half_x, half_y,  half_z }, // up
+        {half_x,  half_y,  half_z },
+        {half_x,  half_y,  -half_z},
+        {-half_x, half_y,  -half_z},
 
-        {{-half_x, -half_y, half_z},  {0.0f, -1.0f, 0.0f}}, // bottom
-        {{half_x, -half_y, half_z},   {0.0f, -1.0f, 0.0f}},
-        {{half_x, -half_y, -half_z},  {0.0f, -1.0f, 0.0f}},
-        {{-half_x, -half_y, -half_z}, {0.0f, -1.0f, 0.0f}},
+        {-half_x, -half_y, half_z }, // bottom
+        {half_x,  -half_y, half_z },
+        {half_x,  -half_y, -half_z},
+        {-half_x, -half_y, -half_z},
 
-        {{-half_x, half_y, half_z},   {-1.0f, 0.0f, 0.0f}}, // left
-        {{-half_x, half_y, -half_z},  {-1.0f, 0.0f, 0.0f}},
-        {{-half_x, -half_y, -half_z}, {-1.0f, 0.0f, 0.0f}},
-        {{-half_x, -half_y, half_z},  {-1.0f, 0.0f, 0.0f}},
+        {-half_x, half_y,  half_z }, // left
+        {-half_x, half_y,  -half_z},
+        {-half_x, -half_y, -half_z},
+        {-half_x, -half_y, half_z },
 
-        {{half_x, half_y, half_z},    {1.0f, 0.0f, 0.0f} }, // right
-        {{half_x, half_y, -half_z},   {1.0f, 0.0f, 0.0f} },
-        {{half_x, -half_y, -half_z},  {1.0f, 0.0f, 0.0f} },
-        {{half_x, -half_y, half_z},   {1.0f, 0.0f, 0.0f} },
+        {half_x,  half_y,  half_z }, // right
+        {half_x,  half_y,  -half_z},
+        {half_x,  -half_y, -half_z},
+        {half_x,  -half_y, half_z },
 
-        {{-half_x, half_y, -half_z},  {0.0f, 0.0f, -1.0f}}, // forward
-        {{half_x, half_y, -half_z},   {0.0f, 0.0f, -1.0f}},
-        {{half_x, -half_y, -half_z},  {0.0f, 0.0f, -1.0f}},
-        {{-half_x, -half_y, -half_z}, {0.0f, 0.0f, -1.0f}},
+        {-half_x, half_y,  -half_z}, // forward
+        {half_x,  half_y,  -half_z},
+        {half_x,  -half_y, -half_z},
+        {-half_x, -half_y, -half_z},
 
-        {{-half_x, half_y, half_z},   {0.0f, 0.0f, 1.0f} }, // back
-        {{half_x, half_y, half_z},    {0.0f, 0.0f, 1.0f} },
-        {{half_x, -half_y, half_z},   {0.0f, 0.0f, 1.0f} },
-        {{-half_x, -half_y, half_z},  {0.0f, 0.0f, 1.0f} }
+        {-half_x, half_y,  half_z }, // back
+        {half_x,  half_y,  half_z },
+        {half_x,  -half_y, half_z },
+        {-half_x, -half_y, half_z }
+    };
+    result.normal = {
+        {0.0f,  1.0f,  0.0f }, // up
+        {0.0f,  1.0f,  0.0f },
+        {0.0f,  1.0f,  0.0f },
+        {0.0f,  1.0f,  0.0f },
+
+        {0.0f,  -1.0f, 0.0f }, // bottom
+        {0.0f,  -1.0f, 0.0f },
+        {0.0f,  -1.0f, 0.0f },
+        {0.0f,  -1.0f, 0.0f },
+
+        {-1.0f, 0.0f,  0.0f }, // left
+        {-1.0f, 0.0f,  0.0f },
+        {-1.0f, 0.0f,  0.0f },
+        {-1.0f, 0.0f,  0.0f },
+
+        {1.0f,  0.0f,  0.0f }, // right
+        {1.0f,  0.0f,  0.0f },
+        {1.0f,  0.0f,  0.0f },
+        {1.0f,  0.0f,  0.0f },
+
+        {0.0f,  0.0f,  -1.0f}, // forward
+        {0.0f,  0.0f,  -1.0f},
+        {0.0f,  0.0f,  -1.0f},
+        {0.0f,  0.0f,  -1.0f},
+
+        {0.0f,  0.0f,  1.0f }, // back
+        {0.0f,  0.0f,  1.0f },
+        {0.0f,  0.0f,  1.0f },
+        {0.0f,  0.0f,  1.0f }
     };
 
     result.indices = {

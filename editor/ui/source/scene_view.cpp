@@ -1,73 +1,81 @@
-#include "render_view.hpp"
-#include "relation.hpp"
-#include "scene.hpp"
-#include "ui.hpp"
-#include "window.hpp"
-#include "world.hpp"
+#include "editor/scene_view.hpp"
+#include "core/relation.hpp"
+#include "ecs/world.hpp"
+#include "graphics/graphics.hpp"
+#include "scene/scene.hpp"
+#include "ui/controls/image.hpp"
+#include "ui/ui.hpp"
+#include "window/window.hpp"
 
 namespace ash::editor
 {
-render_view::render_view()
+scene_view::scene_view(ecs::entity ui_parent)
+    : m_camera_move_speed(1.0f),
+      m_camera_rotate_speed(0.1f),
+      m_width(0),
+      m_height(0)
 {
     auto& world = system<ecs::world>();
     auto& graphics = system<graphics::graphics>();
     auto& scene = system<scene::scene>();
     auto& relation = system<core::relation>();
 
-    m_scene_camera = world.create("scene_camera");
-    world.add<core::link, graphics::camera, scene::transform>(m_scene_camera);
+    // Create camera.
+    m_camera = world.create("scene camera");
+    world.add<core::link, graphics::camera, scene::transform>(m_camera);
 
-    auto& transform = world.component<scene::transform>(m_scene_camera);
+    auto& transform = world.component<scene::transform>(m_camera);
     transform.position = {0.0f, 0.0f, -50.0f};
     transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
     transform.scaling = {1.0f, 1.0f, 1.0f};
 
-    auto& camera = world.component<graphics::camera>(m_scene_camera);
+    auto& camera = world.component<graphics::camera>(m_camera);
     camera.parameter = graphics.make_pipeline_parameter("ash_pass");
 
-    relation.link(m_scene_camera, scene.root());
+    relation.link(m_camera, scene.root());
+
+    // Create ui.
+    m_ui = world.create("scene view ui");
+    world.add<core::link, ui::element>(m_ui);
+
+    auto& scene_image = world.component<ui::element>(m_ui);
+    scene_image.control = std::make_unique<ui::image>(nullptr);
+    scene_image.layout.resize(100.0f, 100.0f, false, false, true, true);
+    scene_image.show = true;
+
+    relation.link(m_ui, ui_parent);
 }
 
-void render_view::draw(editor_data& data)
+void scene_view::tick()
 {
-    auto& ui = system<ui::ui>();
     auto& graphics = system<graphics::graphics>();
-    auto& scene = system<scene::scene>();
+
+    if (m_width == 0 || m_height == 0)
+        return;
+
+    update_camera();
+    graphics.render(m_camera);
+}
+
+void scene_view::resize()
+{
     auto& world = system<ecs::world>();
 
-    ui.style(ui::ui_style::WINDOW_PADDING, 0.0f, 0.0f);
-    if (ui.window_ex("Render"))
-        update_camera();
-
-    auto active = ui.any_item_active();
-    if (m_resize_flag != active)
+    auto extent = world.component<ui::element>(m_ui).layout.extent();
+    if (static_cast<std::uint32_t>(extent.width) != m_width ||
+        static_cast<std::uint32_t>(extent.height) != m_height)
     {
-        if (m_resize_flag)
-        {
-            auto [width, height] = ui.window_size();
-            if (width != m_target_width || height != m_target_height)
-            {
-                m_target_width = width;
-                m_target_height = height;
-                resize_target();
-            }
-        }
-        m_resize_flag = active;
+        m_width = static_cast<std::uint32_t>(extent.width);
+        m_height = static_cast<std::uint32_t>(extent.height);
+        resize_camera();
+
+        auto& scene_image = world.component<ui::element>(m_ui);
+        auto image = static_cast<ui::image*>(scene_image.control.get());
+        image->texture(m_render_target_resolve.get());
     }
-
-    auto& camera = world.component<graphics::camera>(m_scene_camera);
-    ui.texture(
-        camera.render_target_resolve,
-        static_cast<float>(m_target_width),
-        static_cast<float>(m_target_height));
-
-    scene.sync_local();
-    graphics.render(m_scene_camera);
-    ui.window_pop();
-    ui.style_pop();
 }
 
-void render_view::update_camera()
+void scene_view::update_camera()
 {
     auto& mouse = system<window::window>().mouse();
 
@@ -96,7 +104,7 @@ void render_view::update_camera()
         old_mouse[0] = static_cast<float>(mouse.x());
         old_mouse[1] = static_cast<float>(mouse.y());
 
-        auto& transform = system<ecs::world>().component<scene::transform>(m_scene_camera);
+        auto& transform = system<ecs::world>().component<scene::transform>(m_camera);
 
         if (mouse.key(window::mouse_key::RIGHT_BUTTON).down())
         {
@@ -116,7 +124,7 @@ void render_view::update_camera()
             math::simd::store(rotation, transform.rotation);
 
             transform.dirty = true;
-            system<scene::scene>().sync_local(m_scene_camera);
+            system<scene::scene>().sync_local(m_camera);
         }
 
         if (mouse.key(window::mouse_key::MIDDLE_BUTTON).down())
@@ -150,71 +158,45 @@ void render_view::update_camera()
     }
 }
 
-void render_view::resize_target()
+void scene_view::resize_camera()
 {
-    if (m_target_width == 0 || m_target_height == 0)
+    if (m_width == 0 || m_height == 0)
         return;
-
-    log::debug("{} {}", m_target_width, m_target_height);
 
     auto& graphics = system<graphics::graphics>();
     auto& world = system<ecs::world>();
 
-    auto& camera = world.component<graphics::camera>(m_scene_camera);
+    auto& camera = world.component<graphics::camera>(m_camera);
 
     graphics::render_target_info render_target_info = {};
-    render_target_info.width = m_target_width;
-    render_target_info.height = m_target_height;
+    render_target_info.width = m_width;
+    render_target_info.height = m_height;
     render_target_info.format = graphics.back_buffer_format();
     render_target_info.samples = 4;
     m_render_target = graphics.make_render_target(render_target_info);
     camera.render_target = m_render_target.get();
 
     graphics::render_target_info render_target_resolve_info = {};
-    render_target_resolve_info.width = m_target_width;
-    render_target_resolve_info.height = m_target_height;
+    render_target_resolve_info.width = m_width;
+    render_target_resolve_info.height = m_height;
     render_target_resolve_info.format = graphics.back_buffer_format();
     render_target_resolve_info.samples = 1;
     m_render_target_resolve = graphics.make_render_target(render_target_resolve_info);
     camera.render_target_resolve = m_render_target_resolve.get();
 
     graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
-    depth_stencil_buffer_info.width = m_target_width;
-    depth_stencil_buffer_info.height = m_target_height;
+    depth_stencil_buffer_info.width = m_width;
+    depth_stencil_buffer_info.height = m_height;
     depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
     depth_stencil_buffer_info.samples = 4;
     m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
     camera.depth_stencil_buffer = m_depth_stencil_buffer.get();
 
-    camera.mask = graphics::visual::mask_type::DEBUG | graphics::visual::mask_type::GROUP_1;
+    camera.mask = graphics::VISUAL_GROUP_DEBUG | graphics::VISUAL_GROUP_1;
     camera.set(
         math::to_radians(45.0f),
-        static_cast<float>(m_target_width) / static_cast<float>(m_target_height),
+        static_cast<float>(m_width) / static_cast<float>(m_height),
         0.3f,
         1000.0f);
-}
-
-void render_view::draw_grid()
-{
-    auto& debug_draw = system<graphics::graphics>().debug();
-
-    std::size_t width = 10;
-    float half = static_cast<float>(width / 2);
-
-    for (std::size_t i = 0; i < width; ++i)
-    {
-        debug_draw.draw_line(
-            math::float3{-half, 0.0f, static_cast<float>(i)},
-            math::float3{half, 0.0f, static_cast<float>(i)},
-            math::float3{1.0f, 1.0f, 1.0f});
-    }
-
-    for (std::size_t j = 0; j < 10; ++j)
-    {
-        debug_draw.draw_line(
-            math::float3{static_cast<float>(j), 0.0f, -half},
-            math::float3{static_cast<float>(j), 0.0f, half},
-            math::float3{1.0f, 1.0f, 1.0f});
-    }
 }
 } // namespace ash::editor

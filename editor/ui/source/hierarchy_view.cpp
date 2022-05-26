@@ -1,45 +1,28 @@
-#include "hierarchy_view.hpp"
-#include "link.hpp"
-#include "scene.hpp"
-#include "ui.hpp"
+#include "editor/hierarchy_view.hpp"
+#include "core/context.hpp"
+#include "core/relation.hpp"
+#include "ui/controls/plane.hpp"
+#include "ui/element.hpp"
 
 namespace ash::editor
 {
-hierarchy_view::hierarchy_view()
+hierarchy_view::hierarchy_view(ecs::entity ui_parent)
 {
+    auto& world = system<ecs::world>();
+    auto& relation = system<core::relation>();
+
+    m_ui = world.create();
+    world.add<core::link, ui::element>(m_ui);
+
+    auto& hierarchy = world.component<ui::element>(m_ui);
+    hierarchy.control = std::make_unique<ui::plane>(ui::COLOR_BLUE_VIOLET);
+    hierarchy.layout.resize(0.0f, 50.0f, true, false, false, true);
+    hierarchy.show = true;
+
+    relation.link(m_ui, ui_parent);
 }
 
-void hierarchy_view::draw(editor_data& data)
+hierarchy_view::~hierarchy_view()
 {
-    auto& ui = system<ui::ui>();
-    auto& scene = system<scene::scene>();
-    auto& world = system<ecs::world>();
-
-    ui.window("Hierarchy");
-    auto& link = world.component<core::link>(scene.root());
-    for (ecs::entity child : link.children)
-        draw_node(child, data);
-    ui.window_pop();
-}
-
-void hierarchy_view::draw_node(ecs::entity entity, editor_data& data)
-{
-    auto& ui = system<ui::ui>();
-    auto& world = system<ecs::world>();
-
-    auto& info = world.component<ecs::information>(entity);
-    auto& link = world.component<core::link>(entity);
-
-    auto [open, clicked] = ui.tree_ex(info.name, link.children.empty());
-    if (clicked)
-        data.active_entity = entity;
-
-    if (open)
-    {
-        for (ecs::entity child : link.children)
-            draw_node(child, data);
-
-        ui.tree_pop();
-    }
 }
 } // namespace ash::editor

@@ -67,7 +67,14 @@ private:
         LAYOUT_ALIGN_SPACE_AROUND};
 
 public:
-    layout_node_impl_yoga() : m_children_count(0) { m_node = YGNodeNew(); }
+    layout_node_impl_yoga()
+        : m_config(nullptr),
+          m_absolute_x(0.0f),
+          m_absolute_y(0.0f),
+          m_children_count(0)
+    {
+        m_node = YGNodeNew();
+    }
 
     virtual void direction(layout_direction direction) override
     {
@@ -137,29 +144,66 @@ public:
     {
         auto yoga_parent = static_cast<layout_node_impl_yoga*>(parent);
         YGNodeInsertChild(yoga_parent->m_node, m_node, yoga_parent->m_children_count);
+        ++yoga_parent->m_children_count;
     }
 
-    virtual void resize(float width, float height) override
+    virtual void calculate_absolute_position(float parent_x, float parent_y) override
     {
-        YGNodeStyleSetWidth(m_node, width);
-        YGNodeStyleSetHeight(m_node, height);
+        m_absolute_x = parent_x + YGNodeLayoutGetLeft(m_node);
+        m_absolute_y = parent_y + YGNodeLayoutGetTop(m_node);
+    }
+
+    virtual void resize(
+        float width,
+        float height,
+        bool auto_width,
+        bool auto_height,
+        bool percent_width,
+        bool percent_height) override
+    {
+        if (auto_width)
+            YGNodeStyleSetWidthAuto(m_node);
+        else if (percent_width)
+            YGNodeStyleSetWidthPercent(m_node, width);
+        else
+            YGNodeStyleSetWidth(m_node, width);
+
+        if (auto_height)
+            YGNodeStyleSetHeightAuto(m_node);
+        else if (percent_height)
+            YGNodeStyleSetHeightPercent(m_node, height);
+        else
+            YGNodeStyleSetHeight(m_node, height);
     }
 
     virtual element_extent extent() const override
     {
         return element_extent{
-            .x = YGNodeLayoutGetLeft(m_node),
-            .y = YGNodeLayoutGetTop(m_node),
+            .x = m_absolute_x,
+            .y = m_absolute_y,
             .width = YGNodeLayoutGetWidth(m_node),
             .height = YGNodeLayoutGetHeight(m_node)};
     }
 
     virtual bool dirty() const override { return YGNodeIsDirty(m_node); }
 
+    virtual void reset_as_root() override
+    {
+        if (m_node != nullptr)
+            YGNodeFree(m_node);
+
+        m_config = YGConfigNew();
+        m_node = YGNodeNewWithConfig(m_config);
+    }
+
     inline YGNodeRef node() const noexcept { return m_node; }
 
 private:
     YGNodeRef m_node;
+    YGConfigRef m_config;
+
+    float m_absolute_x;
+    float m_absolute_y;
 
     std::uint32_t m_children_count;
 };
@@ -187,5 +231,10 @@ layout::layout(const element_layout& root)
 {
     auto yoga_node = static_cast<layout_node_impl_yoga*>(root.impl());
     m_impl = std::make_unique<layout_impl_yoga>(yoga_node->node());
+}
+
+void layout::calculate(element_layout* root, float width, float height)
+{
+    m_impl->calculate(root, width, height);
 }
 } // namespace ash::ui

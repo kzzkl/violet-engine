@@ -119,6 +119,8 @@ public:
     virtual void set(std::size_t index, const math::float4x4& value) = 0;
     virtual void set(std::size_t index, const math::float4x4* data, size_t size) = 0;
     virtual void set(std::size_t index, resource_interface* texture) = 0;
+
+    virtual void reset() = 0;
 };
 
 enum class blend_factor

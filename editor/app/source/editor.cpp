@@ -1,12 +1,11 @@
-#include "editor.hpp"
-#include "editor_layout.hpp"
-#include "graphics.hpp"
-#include "relation.hpp"
-#include "sample.hpp"
-#include "scene.hpp"
-#include "ui.hpp"
-#include "window.hpp"
-#include "window_event.hpp"
+#include "editor/editor.hpp"
+#include "core/relation.hpp"
+#include "editor/sample.hpp"
+#include "graphics/graphics.hpp"
+#include "scene/scene.hpp"
+#include "ui/ui.hpp"
+#include "window/window.hpp"
+#include "window/window_event.hpp"
 
 namespace ash::editor
 {
@@ -16,11 +15,18 @@ editor::editor() : core::system_base("editor")
 
 bool editor::initialize(const dictionary& config)
 {
+    m_ui = std::make_unique<editor_ui>();
+
     initialize_task();
     initialize_camera();
 
     system<core::event>().subscribe<window::event_window_resize>(
+        "editor",
         [this](std::uint32_t width, std::uint32_t height) { resize(width, height); });
+
+    // auto& ui = system<ui::ui>();
+    // ui.begin_frame();
+    // ui.end_frame();
 
     return true;
 }
@@ -37,13 +43,17 @@ void editor::initialize_task()
 
     auto draw_ui_task = task.schedule("draw ui", [&, this]() {
         auto& graphics = system<graphics::graphics>();
+        auto& ui = system<ui::ui>();
+
         test_update();
         scene.sync_local();
 
         system<physics::physics>().simulation();
 
         graphics.begin_frame();
-        draw();
+        ui.begin_frame();
+        m_ui->tick();
+        ui.end_frame();
         graphics.render(m_editor_camera);
         graphics.end_frame();
     });
@@ -69,7 +79,7 @@ void editor::initialize_camera()
 
     auto& camera = world.component<graphics::camera>(m_editor_camera);
     camera.parameter = graphics.make_pipeline_parameter("ash_pass");
-    camera.mask = graphics::visual::mask_type::EDITOR | graphics::visual::mask_type::UI;
+    camera.mask = graphics::VISUAL_GROUP_EDITOR | graphics::VISUAL_GROUP_UI;
     resize(2000, 1200);
 }
 
@@ -78,7 +88,7 @@ void editor::draw()
     auto& ui = system<ui::ui>();
 
     ui.begin_frame();
-    system<editor_layout>().draw();
+    m_ui->tick();
     ui.end_frame();
 }
 
@@ -141,7 +151,6 @@ void editor_app::initialize()
     m_app.install<graphics::graphics>();
     m_app.install<physics::physics>();
     m_app.install<ui::ui>();
-    m_app.install<editor_layout>();
     m_app.install<editor>();
     m_app.install<test_module>();
 }

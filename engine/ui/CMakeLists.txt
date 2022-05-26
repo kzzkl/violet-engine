@@ -8,8 +8,10 @@ add_library(ash::yoga ALIAS ash-yoga)
 
 # Build ash ui system.
 add_library(${PROJECT_NAME} STATIC
+    ./source/controls/image.cpp
     ./source/controls/label.cpp
     ./source/controls/plane.cpp
+    ./source/controls/tree.cpp
     ./source/element_layout.cpp
     ./source/element_tree.cpp
     ./source/font.cpp

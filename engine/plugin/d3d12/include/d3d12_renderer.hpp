@@ -28,7 +28,7 @@ protected:
     d3d12_ptr<DXGISwapChain> m_swap_chain;
 
     std::size_t m_back_buffer_counter;
-    std::vector<std::unique_ptr<d3d12_render_target>> m_back_buffers;
+    std::vector<std::unique_ptr<d3d12_back_buffer>> m_back_buffers;
 };
 
 class d3d12_renderer : public renderer_interface

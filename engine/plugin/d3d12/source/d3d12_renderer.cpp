@@ -71,7 +71,7 @@ void d3d12_swap_chain::reset_back_buffers()
     {
         d3d12_ptr<D3D12Resource> buffer;
         m_swap_chain->GetBuffer(i, IID_PPV_ARGS(&buffer));
-        m_back_buffers.push_back(std::make_unique<d3d12_render_target>(buffer));
+        m_back_buffers.push_back(std::make_unique<d3d12_back_buffer>(buffer));
     }
 }
 

@@ -59,8 +59,15 @@ public:
         throw d3d12_exception("The resource is not a unordered access resource");
     }
 
-    virtual d3d12_vertex_buffer_proxy vertex_buffer();
-    virtual d3d12_index_buffer_proxy index_buffer();
+    virtual d3d12_vertex_buffer_proxy vertex_buffer()
+    {
+        throw d3d12_exception("The resource is not a vertex buffer");
+    }
+
+    virtual d3d12_index_buffer_proxy index_buffer()
+    {
+        throw d3d12_exception("The resource is not a index buffer");
+    }
 
     virtual D3D12Resource* handle() const noexcept = 0;
 
@@ -71,11 +78,38 @@ public:
     inline void resource_state(D3D12_RESOURCE_STATES state) noexcept { m_resource_state = state; }
     inline D3D12_RESOURCE_STATES resource_state() const noexcept { return m_resource_state; }
 
-private:
+protected:
     D3D12_RESOURCE_STATES m_resource_state;
 };
 
-class d3d12_render_target : public d3d12_resource
+class d3d12_image : public d3d12_resource
+{
+public:
+    virtual resource_format format() const noexcept override;
+    virtual resource_extent extent() const noexcept override;
+
+    virtual D3D12Resource* handle() const noexcept override { return m_resource.Get(); }
+
+protected:
+    d3d12_ptr<D3D12Resource> m_resource;
+};
+
+class d3d12_back_buffer : public d3d12_image
+{
+public:
+    d3d12_back_buffer(d3d12_ptr<D3D12Resource> resource);
+    d3d12_back_buffer(d3d12_back_buffer&& other);
+    virtual ~d3d12_back_buffer();
+
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE rtv() const override;
+
+    d3d12_back_buffer& operator=(d3d12_back_buffer&& other);
+
+private:
+    std::size_t m_rtv_offset;
+};
+
+class d3d12_render_target : public d3d12_image
 {
 public:
     d3d12_render_target(
@@ -84,27 +118,20 @@ public:
         std::size_t samples,
         resource_format format);
     d3d12_render_target(const render_target_desc& desc);
-    d3d12_render_target(d3d12_ptr<D3D12Resource> resource);
     d3d12_render_target(d3d12_render_target&& other);
     virtual ~d3d12_render_target();
 
     virtual D3D12_CPU_DESCRIPTOR_HANDLE rtv() const override;
     virtual D3D12_CPU_DESCRIPTOR_HANDLE srv() const override;
 
-    virtual D3D12Resource* handle() const noexcept override { return m_resource.Get(); }
-
-    virtual resource_format format() const noexcept override;
-    virtual resource_extent extent() const noexcept override;
-
     d3d12_render_target& operator=(d3d12_render_target&& other);
 
 private:
-    d3d12_ptr<D3D12Resource> m_resource;
     std::size_t m_rtv_offset;
     std::size_t m_srv_offset;
 };
 
-class d3d12_depth_stencil_buffer : public d3d12_resource
+class d3d12_depth_stencil_buffer : public d3d12_image
 {
 public:
     d3d12_depth_stencil_buffer(
@@ -117,18 +144,14 @@ public:
     virtual ~d3d12_depth_stencil_buffer();
 
     virtual D3D12_CPU_DESCRIPTOR_HANDLE dsv() const override;
-    virtual D3D12Resource* handle() const noexcept override { return m_resource.Get(); }
-    virtual resource_format format() const noexcept override;
-    virtual resource_extent extent() const noexcept override;
 
     d3d12_depth_stencil_buffer& operator=(d3d12_depth_stencil_buffer&& other);
 
 private:
-    d3d12_ptr<D3D12Resource> m_resource;
     std::size_t m_dsv_offset;
 };
 
-class d3d12_texture : public d3d12_resource
+class d3d12_texture : public d3d12_image
 {
 public:
     d3d12_texture(
@@ -138,12 +161,14 @@ public:
         resource_format format,
         D3D12GraphicsCommandList* command_list);
     d3d12_texture(const char* file, D3D12GraphicsCommandList* command_list);
+    d3d12_texture(d3d12_texture&& other);
+    virtual ~d3d12_texture();
 
     virtual D3D12_CPU_DESCRIPTOR_HANDLE srv() const override;
-    virtual D3D12Resource* handle() const noexcept override { return m_resource.Get(); }
+
+    d3d12_texture& operator=(d3d12_texture&& other);
 
 private:
-    d3d12_ptr<D3D12Resource> m_resource;
     std::size_t m_srv_offset;
 };
 
@@ -313,7 +338,7 @@ public:
         return m_visible_heaps[type].get();
     }
 
-    void push_temporary_resource(d3d12_ptr<D3D12Resource> resource);
+    void delay_delete(d3d12_ptr<D3D12Resource> resource);
     void switch_frame_resources();
 
 private:

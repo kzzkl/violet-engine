@@ -1,6 +1,7 @@
 #pragma once
 
-#include "application.hpp"
+#include "core/application.hpp"
+#include "editor/editor_ui.hpp"
 #include "graphics_interface.hpp"
 
 namespace ash::editor
@@ -24,6 +25,8 @@ private:
     ecs::entity m_editor_camera;
     std::unique_ptr<graphics::resource> m_render_target;
     std::unique_ptr<graphics::resource> m_depth_stencil_buffer;
+
+    std::unique_ptr<editor_ui> m_ui;
 };
 
 class editor_app

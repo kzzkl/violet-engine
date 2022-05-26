@@ -24,6 +24,8 @@ public:
         m_parameter->set(index, value, size);
     }
 
+    void reset() { m_parameter->reset(); }
+
     pipeline_parameter_interface* parameter() const { return m_parameter.get(); }
 
 private:

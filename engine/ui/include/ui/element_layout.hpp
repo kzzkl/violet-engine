@@ -75,11 +75,20 @@ public:
     virtual layout_align align_content() const = 0;
 
     virtual void parent(layout_node_impl* parent) = 0;
+    virtual void calculate_absolute_position(float parent_x, float parent_y) = 0;
 
-    virtual void resize(float width, float height) = 0;
+    virtual void resize(
+        float width,
+        float height,
+        bool auto_width,
+        bool auto_height,
+        bool percent_width,
+        bool percent_height) = 0;
     virtual element_extent extent() const = 0;
 
     virtual bool dirty() const = 0;
+
+    virtual void reset_as_root() = 0;
 };
 
 class element_layout
@@ -116,8 +125,21 @@ public:
     {
         m_impl->parent(parent == nullptr ? nullptr : parent->m_impl.get());
     }
+    void calculate_absolute_position(float parent_x, float parent_y)
+    {
+        m_impl->calculate_absolute_position(parent_x, parent_y);
+    }
 
-    void resize(float width, float height) { return m_impl->resize(width, height); }
+    void resize(
+        float width,
+        float height,
+        bool auto_width = false,
+        bool auto_height = false,
+        bool percent_width = false,
+        bool percent_height = false)
+    {
+        m_impl->resize(width, height, auto_width, auto_height, percent_width, percent_height);
+    }
     element_extent extent() const { return m_impl->extent(); }
 
     bool dirty() const { return m_impl->dirty(); }
@@ -139,10 +161,7 @@ class layout
 public:
     layout(const element_layout& root);
 
-    void calculate(element_layout* root, float width, float height)
-    {
-        m_impl->calculate(root, width, height);
-    }
+    void calculate(element_layout* root, float width, float height);
 
 private:
     std::unique_ptr<layout_impl> m_impl;

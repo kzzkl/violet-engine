@@ -468,6 +468,20 @@ void d3d12_pipeline_parameter::set(std::size_t index, resource* texture)
     mark_dirty(index);
 }
 
+void d3d12_pipeline_parameter::reset()
+{
+    m_dirty = 0;
+    m_last_sync_frame = -1;
+
+    for (auto& dirty : m_dirty_counter)
+        dirty = 0;
+
+    for (std::size_t i = 0; i < m_shader_resources.size(); ++i)
+        m_shader_resources[i] = nullptr;
+    for (std::size_t i = 0; i < m_unordered_access_buffers.size(); ++i)
+        m_unordered_access_buffers[i] = nullptr;
+}
+
 void d3d12_pipeline_parameter::sync()
 {
     if (m_last_sync_frame == d3d12_frame_counter::frame_counter())
