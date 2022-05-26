@@ -4,6 +4,7 @@
 #include "ecs/world.hpp"
 #include "ui/controls/container.hpp"
 #include "ui/ui_event.hpp"
+#include "window/window.hpp"
 
 namespace ash::ui
 {
@@ -32,11 +33,6 @@ void element_tree::link(element& child, element& parent)
 
 bool element_tree::tick()
 {
-    auto& event = system<core::event>();
-    auto& world = system<ecs::world>();
-
-    auto& root_layout = world.component<element>(m_root).layout;
-
     bool layout_dirty = false;
     bool control_dirty = false;
     m_view->each([&](element& element) {
@@ -53,35 +49,125 @@ bool element_tree::tick()
         }
     });
 
-    if (!layout_dirty && !control_dirty)
-        return false;
-
     if (layout_dirty)
+        update_layout();
+
+    update_element_state();
+
+    if (layout_dirty || control_dirty)
     {
-        log::debug("calculate ui.");
-        m_layout->calculate(&root_layout, m_window_width, m_window_height);
+        update_mesh();
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
 
-        // The node coordinates stored in yoga are the relative coordinates of the parent node,
-        // which
-        // are converted to absolute coordinates here.
-        system<core::relation>().each_bfs(m_root, [&, this](ecs::entity node) {
-            if (!world.has_component<element>(node))
-                return;
+void element_tree::resize(std::uint32_t width, std::uint32_t height)
+{
+    auto& world = system<ecs::world>();
+    auto& root_element = world.component<element>(m_root);
+    root_element.layout.resize(width, height);
 
-            auto& link = world.component<core::link>(node);
-            if (link.parent == ecs::INVALID_ENTITY)
-                return;
+    m_window_width = static_cast<float>(width);
+    m_window_height = static_cast<float>(height);
+}
 
+void element_tree::update_layout()
+{
+    auto& event = system<core::event>();
+    auto& world = system<ecs::world>();
+
+    auto& root_layout = world.component<element>(m_root).layout;
+
+    log::debug("calculate ui.");
+    m_layout->calculate(&root_layout, m_window_width, m_window_height);
+
+    // The node coordinates stored in yoga are the relative coordinates of the parent node,
+    // which are converted to absolute coordinates here.
+    system<core::relation>().each_bfs(m_root, [&, this](ecs::entity node) -> bool {
+        if (!world.has_component<element>(node))
+            return false;
+
+        auto& link = world.component<core::link>(node);
+        if (link.parent != ecs::INVALID_ENTITY)
+        {
             auto& parent_element = world.component<element>(link.parent);
             element_extent parent_extent = parent_element.layout.extent();
 
             auto& node_element = world.component<element>(node);
             node_element.layout.calculate_absolute_position(parent_extent.x, parent_extent.y);
-        });
+        }
 
-        event.publish<event_calculate_layout>();
+        return true;
+    });
+
+    event.publish<event_calculate_layout>();
+}
+
+void element_tree::update_element_state()
+{
+    auto& mouse = system<window::window>().mouse();
+    if (mouse.mode() == window::MOUSE_MODE_RELATIVE)
+        return;
+
+    int mouse_x = mouse.x();
+    int mouse_y = mouse.y();
+
+    bool key_down = mouse.key(window::MOUSE_KEY_LEFT).down() ||
+                    mouse.key(window::MOUSE_KEY_MIDDLE).down() ||
+                    mouse.key(window::MOUSE_KEY_RIGHT).down();
+
+    auto& world = system<ecs::world>();
+
+    m_view->each([this](element& element) {
+        element.state = static_cast<element_state>((element.state << 1) & 0x03);
+    });
+
+    ecs::entity hot_node = ecs::INVALID_ENTITY;
+    system<core::relation>().each_bfs(m_root, [&](ecs::entity node) -> bool {
+        if (!world.has_component<element>(node))
+            return false;
+
+        auto& node_element = world.component<element>(node);
+        auto extent = node_element.layout.extent();
+        if (static_cast<int>(extent.x) < mouse_x &&
+            static_cast<int>(extent.x + extent.width) > mouse_x &&
+            static_cast<int>(extent.y) < mouse_y &&
+            static_cast<int>(extent.y + extent.height) > mouse_y)
+        {
+            hot_node = node;
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    });
+
+    if (key_down && hot_node != ecs::INVALID_ENTITY)
+    {
+        auto& hot_element = world.component<element>(hot_node);
+        hot_element.state = static_cast<element_state>(hot_element.state | 0x01);
+
+        if (m_focused_node != hot_node)
+        {
+            if (world.vaild(m_focused_node) && world.has_component<element>(m_focused_node))
+            {
+                auto& prev_focused_element = world.component<element>(m_focused_node);
+                prev_focused_element.focused = false;
+            }
+
+            hot_element.focused = true;
+            m_focused_node = hot_node;
+        }
     }
+}
 
+void element_tree::update_mesh()
+{
     for (auto& mesh : m_mesh_pool)
         mesh->reset();
     m_meshes.clear();
@@ -136,18 +222,6 @@ bool element_tree::tick()
             source_mesh->vertex_color.begin(),
             source_mesh->vertex_color.end());
     });
-
-    return true;
-}
-
-void element_tree::resize(std::uint32_t width, std::uint32_t height)
-{
-    auto& world = system<ecs::world>();
-    auto& root_element = world.component<element>(m_root);
-    root_element.layout.resize(width, height);
-
-    m_window_width = static_cast<float>(width);
-    m_window_height = static_cast<float>(height);
 }
 
 element_mesh* element_tree::allocate_mesh()

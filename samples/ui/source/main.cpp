@@ -142,7 +142,7 @@ private:
         static float h = 0.0f;
 
         auto& keyboard = system<window::window>().keyboard();
-        if (keyboard.key(window::keyboard_key::KEY_Q).down())
+        if (keyboard.key(window::KEYBOARD_KEY_Q).down())
         {
             auto& plane = world.component<ui::element>(m_plane);
             plane.layout.resize(200, h);

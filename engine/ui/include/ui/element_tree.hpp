@@ -51,6 +51,10 @@ private:
         }
     };
 
+    void update_layout();
+    void update_element_state();
+    void update_mesh();
+
     element_mesh* allocate_mesh();
 
     std::unordered_map<mesh_key, element_mesh*, mesh_hash> m_meshes;
@@ -58,6 +62,8 @@ private:
     std::size_t m_mesh_pool_index;
 
     ecs::entity m_root;
+    ecs::entity m_focused_node;
+
     ecs::view<element>* m_view;
 
     std::unique_ptr<layout> m_layout;

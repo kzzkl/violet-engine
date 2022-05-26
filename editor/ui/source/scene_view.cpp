@@ -10,8 +10,8 @@
 namespace ash::editor
 {
 scene_view::scene_view(ecs::entity ui_parent)
-    : m_camera_move_speed(1.0f),
-      m_camera_rotate_speed(0.1f),
+    : m_camera_move_speed(5.0f),
+      m_camera_rotate_speed(0.5f),
       m_width(0),
       m_height(0)
 {
@@ -49,11 +49,30 @@ scene_view::scene_view(ecs::entity ui_parent)
 void scene_view::tick()
 {
     auto& graphics = system<graphics::graphics>();
+    auto& world = system<ecs::world>();
 
     if (m_width == 0 || m_height == 0)
         return;
 
-    update_camera();
+    auto& scene_image = world.component<ui::element>(m_ui);
+    /*switch (scene_image.state)
+    {
+    case ui::ELEMENT_STATE_DEFAULT:
+        log::debug("default");
+        break;
+    case ui::ELEMENT_STATE_MOUSE_ENTER:
+        log::debug("enter");
+        break;
+    case ui::ELEMENT_STATE_MOUSE_EXIT:
+        log::debug("exit");
+        break;
+    case ui::ELEMENT_STATE_HOVER:
+        log::debug("hover");
+        break;
+    };*/
+    if (scene_image.focused)
+        update_camera();
+
     graphics.render(m_camera);
 }
 
@@ -80,8 +99,8 @@ void scene_view::update_camera()
     auto& mouse = system<window::window>().mouse();
 
     static bool flag = true;
-    bool key_down = mouse.key(window::mouse_key::MIDDLE_BUTTON).down() ||
-                    mouse.key(window::mouse_key::RIGHT_BUTTON).down() || mouse.whell() != 0;
+    bool key_down = mouse.key(window::MOUSE_KEY_MIDDLE).down() ||
+                    mouse.key(window::MOUSE_KEY_RIGHT).down() || mouse.whell() != 0;
 
     static math::float2 old_mouse = {0.0f, 0.0f};
     if (flag && key_down)
@@ -106,7 +125,7 @@ void scene_view::update_camera()
 
         auto& transform = system<ecs::world>().component<scene::transform>(m_camera);
 
-        if (mouse.key(window::mouse_key::RIGHT_BUTTON).down())
+        if (mouse.key(window::MOUSE_KEY_RIGHT).down())
         {
             math::float4x4_simd to_local =
                 math::matrix_simd::inverse(math::simd::load(transform.world_matrix));
@@ -127,7 +146,7 @@ void scene_view::update_camera()
             system<scene::scene>().sync_local(m_camera);
         }
 
-        if (mouse.key(window::mouse_key::MIDDLE_BUTTON).down())
+        if (mouse.key(window::MOUSE_KEY_MIDDLE).down())
         {
             math::float4_simd up = math::simd::load(transform.world_matrix[1]);
             math::float4_simd right = math::simd::load(transform.world_matrix[0]);

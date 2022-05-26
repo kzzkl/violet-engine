@@ -224,6 +224,8 @@ public:
         release_entity(entity);
     }
 
+    bool vaild(entity entity) const noexcept { return m_entity_registry.vaild(entity); }
+
     template <typename Component>
     [[nodiscard]] Component& component(entity entity)
     {

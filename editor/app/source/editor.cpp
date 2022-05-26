@@ -131,7 +131,7 @@ void editor::test_update()
 
     static int index = 0;
 
-    if (window.keyboard().key(window::keyboard_key::KEY_1).release())
+    if (window.keyboard().key(window::KEYBOARD_KEY_1).release())
     {
         ecs::entity cube = world.create("cube" + std::to_string(index++));
         world.add<core::link, scene::transform>(cube);
