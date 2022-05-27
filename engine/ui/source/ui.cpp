@@ -17,9 +17,7 @@ bool ui::initialize(const dictionary& config)
     auto& world = system<ecs::world>();
     auto& event = system<core::event>();
 
-    world.register_component<element>();
-
-    m_font = std::make_unique<font_type>("engine/font/consola.ttf", 13);
+    m_font = std::make_unique<font_type>("engine/font/Roboto-Regular.ttf", 13);
     m_tree = std::make_unique<element_tree>();
 
     m_pipeline = std::make_unique<ui_pipeline>();
@@ -53,16 +51,6 @@ bool ui::initialize(const dictionary& config)
 
     event.register_event<event_calculate_layout>();
 
-    event.subscribe<core::event_link>("ui", [&, this](ecs::entity entity, core::link& link) {
-        if (world.has_component<element>(entity) && world.has_component<element>(link.parent))
-        {
-            auto& child = world.component<element>(entity);
-            auto& parent = world.component<element>(link.parent);
-
-            m_tree->link(child, parent);
-        }
-    });
-
     event.subscribe<window::event_window_resize>(
         "ui",
         [this](std::uint32_t width, std::uint32_t height) { resize(width, height); });
@@ -75,14 +63,20 @@ bool ui::initialize(const dictionary& config)
 
 void ui::begin_frame()
 {
+    m_renderer.reset();
+    m_renderer.scissor_push({});
 }
 
 void ui::end_frame()
 {
     auto& world = system<ecs::world>();
 
-    if (!m_tree->tick())
+    m_tree->tick();
+
+    if (!m_tree->tree_dirty())
         return;
+
+    m_tree->render(m_renderer);
 
     auto& visual = world.component<graphics::visual>(m_entity);
     visual.submeshes.clear();
@@ -91,35 +85,35 @@ void ui::end_frame()
     std::size_t vertex_offset = 0;
     std::size_t index_offset = 0;
 
-    for (auto& [key, mesh] : *m_tree)
+    for (auto& batch : m_renderer)
     {
         m_vertex_buffers[0]->upload(
-            mesh->vertex_position.data(),
-            mesh->vertex_position.size() * sizeof(math::float3),
+            batch.vertex_position.data(),
+            batch.vertex_position.size() * sizeof(math::float3),
             vertex_offset * sizeof(math::float3));
         m_vertex_buffers[1]->upload(
-            mesh->vertex_uv.data(),
-            mesh->vertex_uv.size() * sizeof(math::float2),
+            batch.vertex_uv.data(),
+            batch.vertex_uv.size() * sizeof(math::float2),
             vertex_offset * sizeof(math::float2));
         m_vertex_buffers[2]->upload(
-            mesh->vertex_color.data(),
-            mesh->vertex_color.size() * sizeof(std::uint32_t),
+            batch.vertex_color.data(),
+            batch.vertex_color.size() * sizeof(std::uint32_t),
             vertex_offset * sizeof(std::uint32_t));
         m_index_buffer->upload(
-            mesh->indices.data(),
-            mesh->indices.size() * sizeof(std::uint32_t),
+            batch.indices.data(),
+            batch.indices.size() * sizeof(std::uint32_t),
             index_offset * sizeof(std::uint32_t));
 
         graphics::submesh submesh = {
             .index_start = index_offset,
-            .index_end = index_offset + mesh->indices.size(),
+            .index_end = index_offset + batch.indices.size(),
             .vertex_base = vertex_offset};
         visual.submeshes.push_back(submesh);
 
         auto material_parameter = allocate_material_parameter();
-        material_parameter->set(0, static_cast<std::uint32_t>(key.type));
-        if (key.type != ELEMENT_CONTROL_TYPE_BLOCK)
-            material_parameter->set(1, mesh->texture);
+        material_parameter->set(0, static_cast<std::uint32_t>(batch.type));
+        if (batch.type != RENDER_TYPE_BLOCK)
+            material_parameter->set(1, batch.texture);
 
         graphics::material material = {
             .pipeline = m_pipeline.get(),
@@ -127,8 +121,8 @@ void ui::end_frame()
         };
         visual.materials.push_back(material);
 
-        vertex_offset += mesh->vertex_position.size();
-        index_offset += mesh->indices.size();
+        vertex_offset += batch.vertex_position.size();
+        index_offset += batch.indices.size();
     }
 
     m_material_parameter_counter = 0;
@@ -136,7 +130,7 @@ void ui::end_frame()
 
 void ui::resize(std::uint32_t width, std::uint32_t height)
 {
-    m_tree->resize(width, height);
+    m_tree->resize_window(width, height);
 
     float L = 0.0f;
     float R = static_cast<float>(width);

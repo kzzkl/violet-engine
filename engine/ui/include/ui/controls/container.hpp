@@ -1,13 +1,12 @@
 #pragma once
 
-#include "ui/element_control.hpp"
+#include "ui/element.hpp"
 
 namespace ash::ui
 {
-class container : public element_control
+class container : public element
 {
 public:
-    container() { m_type = ELEMENT_CONTROL_TYPE_CONTAINER; }
-    virtual void extent(const element_extent& extent) override {}
+    container() {}
 };
 } // namespace ash::ui

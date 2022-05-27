@@ -9,7 +9,6 @@ label::label(std::string_view text, const font& font, std::uint32_t color)
 {
     ASH_ASSERT(!text.empty());
 
-    m_type = ELEMENT_CONTROL_TYPE_TEXT;
     m_mesh.texture = font.texture();
 
     std::uint32_t pen_x = 0;
@@ -57,7 +56,13 @@ label::label(std::string_view text, const font& font, std::uint32_t color)
     }
 }
 
-void label::extent(const element_extent& extent)
+void label::render(renderer& renderer)
+{
+    renderer.draw(RENDER_TYPE_TEXT, m_mesh);
+    element::render(renderer);
+}
+
+void label::on_extent_change(const element_extent& extent)
 {
     // baseline position = 0.7 * height
     float offset_x = extent.x - m_original_x;

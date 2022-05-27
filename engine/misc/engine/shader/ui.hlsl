@@ -38,17 +38,21 @@ vs_out vs_main(vs_in vin)
 
 float4 ps_main(vs_out pin) : SV_TARGET
 {
-    if (type == 2) // text
+    if (type == 0)
+    {
+        return pin.color;
+    }
+    else if (type == 1) // text
     {
         float4 color = ui_texture.Sample(text_sampler, pin.uv);
-        return float4(pin.color.rgb, color.r * pin.color.a);
+        return float4(pin.color.rgb, color.r * pin.color.a * 1.3);
     }
-    else if (type == 3) // image
+    else if (type == 2) // image 
     {
         return ui_texture.Sample(image_sampler, pin.uv);
     }
     else
     {
-        return pin.color;
+        return float4(0.0f, 0.0f, 0.0f, 0.0f);
     }
 }

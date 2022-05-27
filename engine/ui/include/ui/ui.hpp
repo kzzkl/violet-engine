@@ -23,7 +23,7 @@ public:
 
     font_type& font() { return *m_font; }
 
-    ecs::entity root() const noexcept { return m_tree->root(); }
+    element* root() const noexcept { return m_tree.get(); }
 
 private:
     void resize(std::uint32_t width, std::uint32_t height);
@@ -44,5 +44,7 @@ private:
 
     ecs::entity m_entity;
     std::unique_ptr<element_tree> m_tree;
+
+    renderer m_renderer;
 };
 }; // namespace ash::ui

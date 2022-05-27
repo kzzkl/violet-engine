@@ -67,13 +67,21 @@ private:
         LAYOUT_ALIGN_SPACE_AROUND};
 
 public:
-    layout_node_impl_yoga()
+    layout_node_impl_yoga(bool is_root)
         : m_config(nullptr),
           m_absolute_x(0.0f),
           m_absolute_y(0.0f),
           m_children_count(0)
     {
-        m_node = YGNodeNew();
+        if (is_root)
+        {
+            m_config = YGConfigNew();
+            m_node = YGNodeNewWithConfig(m_config);
+        }
+        else
+        {
+            m_node = YGNodeNew();
+        }
     }
 
     virtual void direction(layout_direction direction) override
@@ -147,6 +155,11 @@ public:
         ++yoga_parent->m_children_count;
     }
 
+    void calculate(float width, float height) override
+    {
+        YGNodeCalculateLayout(m_node, width, height, YGDirectionLTR);
+    }
+
     virtual void calculate_absolute_position(float parent_x, float parent_y) override
     {
         m_absolute_x = parent_x + YGNodeLayoutGetLeft(m_node);
@@ -187,17 +200,6 @@ public:
 
     virtual bool dirty() const override { return YGNodeIsDirty(m_node); }
 
-    virtual void reset_as_root() override
-    {
-        if (m_node != nullptr)
-            YGNodeFree(m_node);
-
-        m_config = YGConfigNew();
-        m_node = YGNodeNewWithConfig(m_config);
-    }
-
-    inline YGNodeRef node() const noexcept { return m_node; }
-
 private:
     YGNodeRef m_node;
     YGConfigRef m_config;
@@ -208,33 +210,8 @@ private:
     std::uint32_t m_children_count;
 };
 
-element_layout::element_layout() : m_impl(std::make_unique<layout_node_impl_yoga>())
+element_layout::element_layout(bool is_root)
+    : m_impl(std::make_unique<layout_node_impl_yoga>(is_root))
 {
-}
-
-class layout_impl_yoga : public layout_impl
-{
-public:
-    layout_impl_yoga(YGNodeRef root) : m_root(root) {}
-
-    virtual void calculate(element_layout* root, float width, float height) override
-    {
-        auto yoga_parent = static_cast<layout_node_impl_yoga*>(root->impl());
-        YGNodeCalculateLayout(yoga_parent->node(), width, height, YGDirectionLTR);
-    }
-
-private:
-    YGNodeRef m_root;
-};
-
-layout::layout(const element_layout& root)
-{
-    auto yoga_node = static_cast<layout_node_impl_yoga*>(root.impl());
-    m_impl = std::make_unique<layout_impl_yoga>(yoga_node->node());
-}
-
-void layout::calculate(element_layout* root, float width, float height)
-{
-    m_impl->calculate(root, width, height);
 }
 } // namespace ash::ui

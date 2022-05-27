@@ -4,7 +4,7 @@
 #include "graphics/graphics.hpp"
 #include "scene/scene.hpp"
 #include "ui/controls/label.hpp"
-#include "ui/controls/plane.hpp"
+#include "ui/controls/panel.hpp"
 #include "ui/ui.hpp"
 #include "window/window.hpp"
 #include "window/window_event.hpp"
@@ -57,21 +57,17 @@ private:
         auto& relation = system<core::relation>();
         auto& world = system<ecs::world>();
 
-        m_text = world.create();
-        world.add<core::link, ui::element>(m_text);
-        auto& text = world.component<ui::element>(m_text);
-        text.control = std::make_unique<ui::label>("hello world! qap", ui.font(), 0xFF00FF00);
-        text.layout.resize(100.0f, 20.0f);
-        text.show = true;
-        relation.link(m_text, ui.root());
+        ui.root()->flex_direction(ui::LAYOUT_FLEX_DIRECTION_COLUMN);
 
-        m_plane = world.create();
-        world.add<core::link, ui::element>(m_plane);
-        auto& plane = world.component<ui::element>(m_plane);
-        plane.control = std::make_unique<ui::plane>(0xFFFFFFFF);
-        plane.layout.resize(300.0f, 300.0f);
-        plane.show = true;
-        relation.link(m_plane, ui.root());
+        m_panel = std::make_unique<ui::panel>(ui::COLOR_AQUA);
+        m_panel->resize(300.0f, 300.0f);
+        m_panel->show = true;
+        m_panel->link(ui.root());
+
+        m_text = std::make_unique<ui::label>("hello world! qap", ui.font(), 0xFF00FF00);
+        m_text->resize(100.0f, 20.0f);
+        m_text->show = true;
+        m_text->link(ui.root());
     }
 
     void initialize_camera()
@@ -144,16 +140,15 @@ private:
         auto& keyboard = system<window::window>().keyboard();
         if (keyboard.key(window::KEYBOARD_KEY_Q).down())
         {
-            auto& plane = world.component<ui::element>(m_plane);
-            plane.layout.resize(200, h);
+            m_panel->resize(200, h);
             h += 0.05f;
         }
 
         ui.end_frame();
     }
 
-    ecs::entity m_text;
-    ecs::entity m_plane;
+    std::unique_ptr<ui::label> m_text;
+    std::unique_ptr<ui::panel> m_panel;
 
     ecs::entity m_camera;
     std::unique_ptr<graphics::resource> m_render_target;

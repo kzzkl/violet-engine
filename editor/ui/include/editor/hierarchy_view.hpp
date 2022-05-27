@@ -1,16 +1,13 @@
 #pragma once
 
-#include "ecs/entity.hpp"
+#include "ui/controls/panel.hpp"
 
 namespace ash::editor
 {
-class hierarchy_view
+class hierarchy_view : public ui::panel
 {
 public:
-    hierarchy_view(ecs::entity ui_parent);
+    hierarchy_view();
     ~hierarchy_view();
-
-private:
-    ecs::entity m_ui;
 };
 } // namespace ash::editor

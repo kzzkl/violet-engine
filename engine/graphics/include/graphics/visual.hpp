@@ -23,15 +23,15 @@ struct submesh
 enum visual_groups : std::uint32_t
 {
     VISUAL_GROUP_1 = 1,
-    VISUAL_GROUP_2 = VISUAL_GROUP_1 << 1,
-    VISUAL_GROUP_3 = VISUAL_GROUP_2 << 1,
-    VISUAL_GROUP_4 = VISUAL_GROUP_3 << 1,
-    VISUAL_GROUP_5 = VISUAL_GROUP_4 << 1,
-    VISUAL_GROUP_6 = VISUAL_GROUP_5 << 1,
-    VISUAL_GROUP_7 = VISUAL_GROUP_6 << 1,
-    VISUAL_GROUP_UI = VISUAL_GROUP_7 << 1,
-    VISUAL_GROUP_DEBUG = VISUAL_GROUP_UI << 1,
-    VISUAL_GROUP_EDITOR = VISUAL_GROUP_DEBUG << 1
+    VISUAL_GROUP_2 = 1 << 1,
+    VISUAL_GROUP_3 = 1 << 2,
+    VISUAL_GROUP_4 = 1 << 3,
+    VISUAL_GROUP_5 = 1 << 4,
+    VISUAL_GROUP_6 = 1 << 5,
+    VISUAL_GROUP_7 = 1 << 6,
+    VISUAL_GROUP_UI = 1 << 7,
+    VISUAL_GROUP_DEBUG = 1 << 8,
+    VISUAL_GROUP_EDITOR = 1 << 9
 };
 
 struct visual

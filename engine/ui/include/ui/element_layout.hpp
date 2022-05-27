@@ -75,6 +75,8 @@ public:
     virtual layout_align align_content() const = 0;
 
     virtual void parent(layout_node_impl* parent) = 0;
+
+    virtual void calculate(float width, float height) = 0;
     virtual void calculate_absolute_position(float parent_x, float parent_y) = 0;
 
     virtual void resize(
@@ -87,14 +89,12 @@ public:
     virtual element_extent extent() const = 0;
 
     virtual bool dirty() const = 0;
-
-    virtual void reset_as_root() = 0;
 };
 
 class element_layout
 {
 public:
-    element_layout();
+    element_layout(bool is_root);
 
     void direction(layout_direction direction) { m_impl->direction(direction); }
     void flex_direction(layout_flex_direction flex_direction)
@@ -121,10 +121,7 @@ public:
     layout_align align_self() const { return m_impl->align_self(); }
     layout_align align_content() const { return m_impl->align_content(); }
 
-    void parent(element_layout* parent)
-    {
-        m_impl->parent(parent == nullptr ? nullptr : parent->m_impl.get());
-    }
+    void calculate(float width, float height) { m_impl->calculate(width, height); }
     void calculate_absolute_position(float parent_x, float parent_y)
     {
         m_impl->calculate_absolute_position(parent_x, parent_y);
@@ -140,30 +137,18 @@ public:
     {
         m_impl->resize(width, height, auto_width, auto_height, percent_width, percent_height);
     }
-    element_extent extent() const { return m_impl->extent(); }
 
-    bool dirty() const { return m_impl->dirty(); }
+    bool layout_dirty() const { return m_impl->dirty(); }
 
-    layout_node_impl* impl() const noexcept { return m_impl.get(); }
+protected:
+    void layout_parent(element_layout* parent)
+    {
+        m_impl->parent(parent == nullptr ? nullptr : parent->m_impl.get());
+    }
+
+    element_extent layout_extent() const { return m_impl->extent(); }
 
 private:
     std::unique_ptr<layout_node_impl> m_impl;
-};
-
-class layout_impl
-{
-public:
-    virtual void calculate(element_layout* root, float width, float height) = 0;
-};
-
-class layout
-{
-public:
-    layout(const element_layout& root);
-
-    void calculate(element_layout* root, float width, float height);
-
-private:
-    std::unique_ptr<layout_impl> m_impl;
 };
 } // namespace ash::ui

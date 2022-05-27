@@ -1,11 +1,9 @@
-#include "ui/controls/plane.hpp"
+#include "ui/controls/panel.hpp"
 
 namespace ash::ui
 {
-plane::plane(std::uint32_t color)
+panel::panel(std::uint32_t color)
 {
-    m_type = ELEMENT_CONTROL_TYPE_BLOCK;
-
     m_mesh.vertex_position = {
         {0.0f, 0.0f, 0.0f},
         {0.0f, 0.0f, 0.0f},
@@ -22,7 +20,13 @@ plane::plane(std::uint32_t color)
     m_mesh.indices = {0, 1, 2, 0, 2, 3};
 }
 
-void plane::extent(const element_extent& extent)
+void panel::render(renderer& renderer)
+{
+    renderer.draw(RENDER_TYPE_BLOCK, m_mesh);
+    element::render(renderer);
+}
+
+void panel::on_extent_change(const element_extent& extent)
 {
     float z = depth();
     m_mesh.vertex_position = {

@@ -10,11 +10,13 @@ add_library(ash::yoga ALIAS ash-yoga)
 add_library(${PROJECT_NAME} STATIC
     ./source/controls/image.cpp
     ./source/controls/label.cpp
-    ./source/controls/plane.cpp
+    ./source/controls/panel.cpp
     ./source/controls/tree.cpp
     ./source/element_layout.cpp
     ./source/element_tree.cpp
+    ./source/element.cpp
     ./source/font.cpp
+    ./source/renderer.cpp
     ./source/ui_pipeline.cpp
     ./source/ui.cpp)
 add_library(ash::ui ALIAS ${PROJECT_NAME})
