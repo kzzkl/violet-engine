@@ -10,11 +10,11 @@ tree_node::tree_node(
     std::uint32_t background)
     : panel(background),
       m_label(std::make_unique<label>(text, font, color)),
-      m_container(std::make_unique<container>())
+      m_container(std::make_unique<element>())
 {
     flex_direction(LAYOUT_FLEX_DIRECTION_COLUMN);
     resize(0.0f, 0.0f, true, true);
-    padding(LAYOUT_EDGE_LEFT, 10.0f);
+    padding(20.0f);
 
     m_label->link(this);
     m_label->resize(100.0f, 40.0f, false, false, true, false);
@@ -31,12 +31,8 @@ tree_node::tree_node(
     m_container->link(this);
     m_container->resize(0.0f, 0.0f, true, true);
     m_container->hide();
-    m_container->padding(LAYOUT_EDGE_LEFT, 30);
+    m_container->padding(30);
     m_container->flex_direction(LAYOUT_FLEX_DIRECTION_COLUMN);
-}
-
-void tree_node::tick()
-{
 }
 
 tree::tree()

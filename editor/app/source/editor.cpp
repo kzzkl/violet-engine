@@ -51,9 +51,8 @@ void editor::initialize_task()
         system<physics::physics>().simulation();
 
         graphics.begin_frame();
-        ui.begin_frame();
         m_ui->tick();
-        ui.end_frame();
+        ui.tick();
         graphics.render(m_editor_camera);
         graphics.end_frame();
     });
@@ -81,15 +80,6 @@ void editor::initialize_camera()
     camera.parameter = graphics.make_pipeline_parameter("ash_pass");
     camera.mask = graphics::VISUAL_GROUP_EDITOR | graphics::VISUAL_GROUP_UI;
     resize(2000, 1200);
-}
-
-void editor::draw()
-{
-    auto& ui = system<ui::ui>();
-
-    ui.begin_frame();
-    m_ui->tick();
-    ui.end_frame();
 }
 
 void editor::resize(std::uint32_t width, std::uint32_t height)

@@ -14,7 +14,7 @@ class element_tree : public element
 public:
     element_tree();
 
-    virtual void tick() override;
+    void tick();
 
     void resize_window(float window_width, float window_height);
     bool tree_dirty() const noexcept { return m_tree_dirty; }

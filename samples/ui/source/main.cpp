@@ -77,18 +77,18 @@ private:
 
         m_tree_panel = std::make_unique<ui::panel>(ui::COLOR_GREEN);
         m_tree_panel->resize(50.0f, 50.0f);
-        m_tree_panel->link(m_tree_node->node_container());
+        m_tree_panel->link(m_tree_node->container());
 
         m_tree_node_2 = std::make_unique<ui::tree_node>(
             "node 2",
             ui.font(),
             ui::COLOR_BLACK,
             ui::COLOR_ORANGE_RED);
-        m_tree_node_2->link(m_tree_node->node_container());
+        m_tree_node_2->link(m_tree_node->container());
 
         m_tree_panel_2 = std::make_unique<ui::panel>(ui::COLOR_DARK_ORCHID);
         m_tree_panel_2->resize(50.0f, 50.0f);
-        m_tree_panel_2->link(m_tree_node_2->node_container());
+        m_tree_panel_2->link(m_tree_node_2->container());
     }
 
     void initialize_camera()
@@ -151,10 +151,9 @@ private:
     {
         auto& world = system<ecs::world>();
         auto& scene = system<scene::scene>();
-        scene.reset_sync_counter();
-
         auto& ui = system<ui::ui>();
-        ui.begin_frame();
+
+        scene.reset_sync_counter();
 
         static float h = 0.0f;
 
@@ -165,7 +164,7 @@ private:
             h += 0.05f;
         }
 
-        ui.end_frame();
+        ui.tick();
     }
 
     std::unique_ptr<ui::label> m_text;

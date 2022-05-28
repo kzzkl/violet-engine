@@ -61,15 +61,12 @@ bool ui::initialize(const dictionary& config)
     return true;
 }
 
-void ui::begin_frame()
-{
-    m_renderer.reset();
-    m_renderer.scissor_push({});
-}
-
-void ui::end_frame()
+void ui::tick()
 {
     auto& world = system<ecs::world>();
+
+    m_renderer.reset();
+    m_renderer.scissor_push({});
 
     m_tree->tick();
 

@@ -16,7 +16,6 @@ public:
 private:
     void initialize_task();
     void initialize_camera();
-    void draw();
 
     void resize(std::uint32_t width, std::uint32_t height);
 

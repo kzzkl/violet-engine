@@ -13,19 +13,19 @@ class element : public element_layout
 {
 public:
     element(bool is_root = false);
-    virtual ~element() = default;
+    virtual ~element();
 
-    virtual void tick() {}
     virtual void render(renderer& renderer);
 
     element_extent extent() const { return layout_extent(); }
-
     const element_mesh& mesh() const noexcept { return m_mesh; }
 
     bool control_dirty() const noexcept { return m_dirty; }
     void reset_control_dirty() noexcept { m_dirty = false; }
 
     void link(element* parent);
+    void unlink();
+
     element* parent() { return m_parent; }
     const std::vector<element*>& children() { return m_children; }
 

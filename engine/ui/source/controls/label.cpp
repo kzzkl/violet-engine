@@ -3,17 +3,23 @@
 
 namespace ash::ui
 {
-label::label(std::string_view text, const font& font, std::uint32_t color)
+label::label(std::string_view t, const font& font, std::uint32_t color)
     : m_original_x(0),
       m_original_y(0)
 {
+    text(t, font, color);
+}
+
+void label::text(std::string_view text, const font& font, std::uint32_t color)
+{
     ASH_ASSERT(!text.empty());
 
+    m_mesh.reset();
     m_baseline_offset = font.size() * 0.34;
     m_mesh.texture = font.texture();
 
-    std::uint32_t pen_x = 0;
-    std::uint32_t pen_y = 0;
+    std::uint32_t pen_x = m_original_x;
+    std::uint32_t pen_y = m_original_y;
 
     std::uint32_t vertex_base = 0;
     for (char c : text)
@@ -55,6 +61,8 @@ label::label(std::string_view text, const font& font, std::uint32_t color)
              vertex_base + 3});
         vertex_base += 4;
     }
+
+    mark_dirty();
 }
 
 void label::render(renderer& renderer)

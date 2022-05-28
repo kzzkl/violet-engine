@@ -87,11 +87,7 @@ private:
         LAYOUT_EDGE_ALL};
 
 public:
-    layout_node_impl_yoga(bool is_root)
-        : m_config(nullptr),
-          m_absolute_x(0.0f),
-          m_absolute_y(0.0f),
-          m_children_count(0)
+    layout_node_impl_yoga(bool is_root) : m_config(nullptr), m_absolute_x(0.0f), m_absolute_y(0.0f)
     {
         if (is_root)
         {
@@ -135,7 +131,7 @@ public:
     {
         YGNodeStyleSetAlignContent(m_node, INTERNAL_YOGA_ALIGN_MAP[align]);
     }
-    virtual void padding(layout_edge edge, float padding) override
+    virtual void padding(float padding, layout_edge edge) override
     {
         YGNodeStyleSetPadding(m_node, INTERNAL_YOGA_EDGE_MAP[edge], padding);
     }
@@ -183,11 +179,17 @@ public:
         return YGNodeStyleGetPadding(m_node, INTERNAL_YOGA_EDGE_MAP[edge]).value;
     }
 
-    virtual void parent(layout_node_impl* parent) override
+    virtual void link(layout_node_impl* parent) override
     {
         auto yoga_parent = static_cast<layout_node_impl_yoga*>(parent);
-        YGNodeInsertChild(yoga_parent->m_node, m_node, yoga_parent->m_children_count);
-        ++yoga_parent->m_children_count;
+        std::uint32_t index = YGNodeGetChildCount(yoga_parent->m_node);
+        YGNodeInsertChild(yoga_parent->m_node, m_node, index);
+    }
+
+    virtual void unlink() override
+    {
+        auto yoga_parent = YGNodeGetParent(m_node);
+        YGNodeRemoveChild(yoga_parent, m_node);
     }
 
     void calculate(float width, float height) override
@@ -241,8 +243,6 @@ private:
 
     float m_absolute_x;
     float m_absolute_y;
-
-    std::uint32_t m_children_count;
 };
 
 element_layout::element_layout(bool is_root)

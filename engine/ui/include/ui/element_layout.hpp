@@ -75,7 +75,7 @@ public:
     virtual void align_items(layout_align align) = 0;
     virtual void align_self(layout_align align) = 0;
     virtual void align_content(layout_align align) = 0;
-    virtual void padding(layout_edge edge, float padding) = 0;
+    virtual void padding(float padding, layout_edge edge) = 0;
     virtual void display(bool display) = 0;
 
     virtual layout_direction direction() const = 0;
@@ -90,7 +90,8 @@ public:
     virtual layout_align align_content() const = 0;
     virtual float padding(layout_edge edge) const = 0;
 
-    virtual void parent(layout_node_impl* parent) = 0;
+    virtual void link(layout_node_impl* parent) = 0;
+    virtual void unlink() = 0;
 
     virtual void calculate(float width, float height) = 0;
     virtual void calculate_absolute_position(float parent_x, float parent_y) = 0;
@@ -125,7 +126,10 @@ public:
     void align_items(layout_align align) { m_impl->align_items(align); }
     void align_self(layout_align align) { m_impl->align_self(align); }
     void align_content(layout_align align) { m_impl->align_content(align); }
-    void padding(layout_edge edge, float padding) { m_impl->padding(edge, padding); }
+    void padding(float padding, layout_edge edge = LAYOUT_EDGE_LEFT)
+    {
+        m_impl->padding(padding, edge);
+    }
 
     layout_direction direction() const { return m_impl->direction(); }
     layout_flex_direction flex_direction() const { return m_impl->flex_direction(); }
@@ -159,10 +163,8 @@ public:
     bool layout_dirty() const { return m_impl->dirty(); }
 
 protected:
-    void layout_parent(element_layout* parent)
-    {
-        m_impl->parent(parent == nullptr ? nullptr : parent->m_impl.get());
-    }
+    void layout_link(element_layout* parent) { m_impl->link(parent->m_impl.get()); }
+    void layout_unlink() { m_impl->unlink(); }
 
     element_extent layout_extent() const { return m_impl->extent(); }
     void layout_display(bool display) { m_impl->display(display); }

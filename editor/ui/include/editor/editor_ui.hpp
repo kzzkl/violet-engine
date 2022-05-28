@@ -1,5 +1,6 @@
 #pragma once
 
+#include "editor/component_view.hpp"
 #include "editor/hierarchy_view.hpp"
 #include "editor/scene_view.hpp"
 #include "ui/element.hpp"
@@ -21,5 +22,6 @@ private:
 
     std::unique_ptr<scene_view> m_scene_view;
     std::unique_ptr<hierarchy_view> m_hierarchy_view;
+    std::unique_ptr<component_view> m_component_view;
 };
 } // namespace ash::editor

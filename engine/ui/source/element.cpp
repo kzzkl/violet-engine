@@ -11,6 +11,15 @@ element::element(bool is_root)
 {
 }
 
+element::~element()
+{
+    for (auto child : m_children)
+        child->unlink();
+
+    if (m_parent != nullptr)
+        unlink();
+}
+
 void element::render(renderer& renderer)
 {
     for (element* child : m_children)
@@ -22,33 +31,36 @@ void element::render(renderer& renderer)
 
 void element::link(element* parent)
 {
-    if (m_parent != nullptr)
+    ASH_ASSERT(parent && m_parent == nullptr);
+
+    layout_link(parent);
+
+    parent->m_children.push_back(this);
+    parent->on_add_child(this);
+    update_depth(parent->m_depth);
+
+    m_parent = parent;
+}
+
+void element::unlink()
+{
+    if (m_parent == nullptr)
+        return;
+
+    layout_unlink();
+
+    for (auto iter = m_parent->m_children.begin(); iter != m_parent->m_children.end(); ++iter)
     {
-        for (auto iter = m_parent->m_children.begin(); iter != m_parent->m_children.end(); ++iter)
+        if (*iter == this)
         {
-            if (*iter == this)
-            {
-                m_children.erase(iter);
-                m_parent->on_remove_child(this);
-                break;
-            }
+            m_parent->m_children.erase(iter);
+            m_parent->on_remove_child(this);
+            break;
         }
     }
 
-    if (parent != nullptr)
-    {
-        parent->m_children.push_back(this);
-        parent->on_add_child(this);
-
-        layout_parent(parent);
-        update_depth(parent->m_depth);
-    }
-    else
-    {
-        m_depth = 0.0f;
-    }
-
-    m_parent = parent;
+    m_depth = 0.0f;
+    m_parent = nullptr;
 }
 
 void element::show()

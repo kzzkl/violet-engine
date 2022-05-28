@@ -1,6 +1,7 @@
 project(ash-editor-ui)
 
 add_library(${PROJECT_NAME}
+    ./source/component_view.cpp
     ./source/editor_ui.cpp
     ./source/hierarchy_view.cpp
     ./source/scene_view.cpp)

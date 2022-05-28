@@ -18,8 +18,7 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
 
-    void begin_frame();
-    void end_frame();
+    void tick();
 
     font_type& font() { return *m_font; }
 

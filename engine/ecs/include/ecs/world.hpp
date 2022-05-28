@@ -224,7 +224,10 @@ public:
         release_entity(entity);
     }
 
-    bool vaild(entity entity) const noexcept { return m_entity_registry.vaild(entity); }
+    [[nodiscard]] bool vaild(entity entity) const noexcept
+    {
+        return m_entity_registry.vaild(entity);
+    }
 
     template <typename Component>
     [[nodiscard]] Component& component(entity entity)
@@ -245,6 +248,16 @@ public:
     [[nodiscard]] bool has_component(entity entity, component_id component)
     {
         return m_entity_registry[entity].archetype->mask().test(component);
+    }
+
+    [[nodiscard]] const std::vector<component_id>& components(entity entity)
+    {
+        return m_entity_registry[entity].archetype->components();
+    }
+
+    [[nodiscard]] const component_mask& mask(entity entity)
+    {
+        return m_entity_registry[entity].archetype->mask();
     }
 
     template <typename... Components>

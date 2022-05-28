@@ -12,7 +12,7 @@ class scene_view : public ui::image
 public:
     scene_view();
 
-    virtual void tick() override;
+    void tick();
 
 public:
     virtual void on_extent_change(const ui::element_extent& element_extent) override;

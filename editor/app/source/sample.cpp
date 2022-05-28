@@ -41,7 +41,7 @@ bool test_module::initialize(const dictionary& config)
 
     // Create cube.
     {
-        m_cube_1 = world.create();
+        m_cube_1 = world.create("cube 1");
         world.add<core::link, physics::rigidbody, scene::transform, graphics::visual>(m_cube_1);
 
         auto& t = world.component<scene::transform>(m_cube_1);
@@ -76,7 +76,7 @@ bool test_module::initialize(const dictionary& config)
 
     // Cube 2.
     {
-        m_cube_2 = world.create();
+        m_cube_2 = world.create("cube 2");
         world.add<core::link, physics::rigidbody, scene::transform, graphics::visual>(m_cube_2);
 
         auto& t = world.component<scene::transform>(m_cube_2);
@@ -110,7 +110,7 @@ bool test_module::initialize(const dictionary& config)
 
     // Create plane.
     {
-        m_plane = world.create();
+        m_plane = world.create("plane");
         world.add<core::link, physics::rigidbody, scene::transform>(m_plane);
 
         auto& pt = world.component<scene::transform>(m_plane);
