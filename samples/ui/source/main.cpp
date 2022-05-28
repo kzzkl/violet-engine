@@ -5,6 +5,7 @@
 #include "scene/scene.hpp"
 #include "ui/controls/label.hpp"
 #include "ui/controls/panel.hpp"
+#include "ui/controls/tree.hpp"
 #include "ui/ui.hpp"
 #include "window/window.hpp"
 #include "window/window_event.hpp"
@@ -61,13 +62,33 @@ private:
 
         m_panel = std::make_unique<ui::panel>(ui::COLOR_AQUA);
         m_panel->resize(300.0f, 300.0f);
-        m_panel->show = true;
         m_panel->link(ui.root());
 
         m_text = std::make_unique<ui::label>("hello world! qap", ui.font(), 0xFF00FF00);
         m_text->resize(100.0f, 20.0f);
-        m_text->show = true;
         m_text->link(ui.root());
+
+        m_tree = std::make_unique<ui::tree>();
+        m_tree->resize(200.0f, 0.0f, false, true);
+        m_tree->link(ui.root());
+
+        m_tree_node = std::make_unique<ui::tree_node>("node 1", ui.font());
+        m_tree_node->link(m_tree.get());
+
+        m_tree_panel = std::make_unique<ui::panel>(ui::COLOR_GREEN);
+        m_tree_panel->resize(50.0f, 50.0f);
+        m_tree_panel->link(m_tree_node->node_container());
+
+        m_tree_node_2 = std::make_unique<ui::tree_node>(
+            "node 2",
+            ui.font(),
+            ui::COLOR_BLACK,
+            ui::COLOR_ORANGE_RED);
+        m_tree_node_2->link(m_tree_node->node_container());
+
+        m_tree_panel_2 = std::make_unique<ui::panel>(ui::COLOR_DARK_ORCHID);
+        m_tree_panel_2->resize(50.0f, 50.0f);
+        m_tree_panel_2->link(m_tree_node_2->node_container());
     }
 
     void initialize_camera()
@@ -149,6 +170,12 @@ private:
 
     std::unique_ptr<ui::label> m_text;
     std::unique_ptr<ui::panel> m_panel;
+
+    std::unique_ptr<ui::tree> m_tree;
+    std::unique_ptr<ui::tree_node> m_tree_node;
+    std::unique_ptr<ui::panel> m_tree_panel;
+    std::unique_ptr<ui::tree_node> m_tree_node_2;
+    std::unique_ptr<ui::panel> m_tree_panel_2;
 
     ecs::entity m_camera;
     std::unique_ptr<graphics::resource> m_render_target;

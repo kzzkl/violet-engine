@@ -15,8 +15,6 @@ public:
     virtual void tick() override;
 
 public:
-    virtual void on_blur() override { m_focused = false; }
-    virtual void on_focus() override;
     virtual void on_extent_change(const ui::element_extent& element_extent) override;
 
 private:
@@ -30,7 +28,7 @@ private:
 
     float m_camera_move_speed;
     float m_camera_rotate_speed;
-    
+
     bool m_mouse_flag;
     math::float2 m_mouse_position;
 

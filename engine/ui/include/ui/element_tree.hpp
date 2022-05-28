@@ -23,6 +23,8 @@ private:
     void update_input();
     void update_layout();
 
+    void bubble_click_event(element* node, window::mouse_key key);
+
     virtual void on_remove_child(element* child) override;
 
     template <typename Functor>

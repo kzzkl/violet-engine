@@ -36,6 +36,14 @@ scene_view::scene_view()
     camera.parameter = graphics.make_pipeline_parameter("ash_pass");
 
     relation.link(m_camera, scene.root());
+
+    on_blur = [this]() { m_focused = false; };
+    on_focus = [this]() {
+        m_focused = true;
+        auto& mouse = system<window::window>().mouse();
+        m_mouse_position[0] = static_cast<float>(mouse.x());
+        m_mouse_position[1] = static_cast<float>(mouse.y());
+    };
 }
 
 void scene_view::tick()
@@ -50,15 +58,6 @@ void scene_view::tick()
         update_camera();
 
     graphics.render(m_camera);
-}
-
-void scene_view::on_focus()
-{
-    m_focused = true;
-
-    auto& mouse = system<window::window>().mouse();
-    m_mouse_position[0] = static_cast<float>(mouse.x());
-    m_mouse_position[1] = static_cast<float>(mouse.y());
 }
 
 void scene_view::on_extent_change(const ui::element_extent& element_extent)

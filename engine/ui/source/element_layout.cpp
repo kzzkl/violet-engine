@@ -35,6 +35,16 @@ private:
         YGAlignBaseline,
         YGAlignSpaceBetween,
         YGAlignSpaceAround};
+    static constexpr YGEdge INTERNAL_YOGA_EDGE_MAP[] = {
+        YGEdgeLeft,
+        YGEdgeTop,
+        YGEdgeRight,
+        YGEdgeBottom,
+        YGEdgeStart,
+        YGEdgeEnd,
+        YGEdgeHorizontal,
+        YGEdgeVertical,
+        YGEdgeAll};
 
     static constexpr layout_direction YOGA_INTERNAL_DIRECTION_MAP[] = {
         LAYOUT_DIRECTION_INHERIT,
@@ -65,6 +75,16 @@ private:
         LAYOUT_ALIGN_BASELINE,
         LAYOUT_ALIGN_SPACE_BETWEEN,
         LAYOUT_ALIGN_SPACE_AROUND};
+    static constexpr layout_edge YOGA_INTERNAL_EDGE_MAP[] = {
+        LAYOUT_EDGE_LEFT,
+        LAYOUT_EDGE_TOP,
+        LAYOUT_EDGE_RIGHT,
+        LAYOUT_EDGE_BOTTOM,
+        LAYOUT_EDGE_START,
+        LAYOUT_EDGE_END,
+        LAYOUT_EDGE_HORIZONTAL,
+        LAYOUT_EDGE_VERTICAL,
+        LAYOUT_EDGE_ALL};
 
 public:
     layout_node_impl_yoga(bool is_root)
@@ -115,6 +135,17 @@ public:
     {
         YGNodeStyleSetAlignContent(m_node, INTERNAL_YOGA_ALIGN_MAP[align]);
     }
+    virtual void padding(layout_edge edge, float padding) override
+    {
+        YGNodeStyleSetPadding(m_node, INTERNAL_YOGA_EDGE_MAP[edge], padding);
+    }
+    virtual void display(bool display) override
+    {
+        if (display)
+            YGNodeStyleSetDisplay(m_node, YGDisplayFlex);
+        else
+            YGNodeStyleSetDisplay(m_node, YGDisplayNone);
+    }
 
     virtual layout_direction direction() const override
     {
@@ -146,6 +177,10 @@ public:
     virtual layout_align align_content() const override
     {
         return YOGA_INTERNAL_ALIGN_MAP[YGNodeStyleGetAlignContent(m_node)];
+    }
+    virtual float padding(layout_edge edge) const override
+    {
+        return YGNodeStyleGetPadding(m_node, INTERNAL_YOGA_EDGE_MAP[edge]).value;
     }
 
     virtual void parent(layout_node_impl* parent) override

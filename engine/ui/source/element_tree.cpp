@@ -14,7 +14,6 @@ element_tree::element_tree()
       m_tree_dirty(true)
 {
     flex_direction(LAYOUT_FLEX_DIRECTION_ROW);
-    show = true;
 }
 
 void element_tree::tick()
@@ -25,7 +24,7 @@ void element_tree::tick()
     bool control_dirty = false;
 
     bfs(this, [&](element* node) -> bool {
-        if (!node->show)
+        if (!node->display())
             return false;
 
         if (node->layout_dirty())
@@ -68,6 +67,9 @@ void element_tree::update_input()
 
     element* hot_node = nullptr;
     bfs(this, [&](element* node) {
+        if (!node->display())
+            return false;
+
         auto extent = node->extent();
         if (static_cast<int>(extent.x) < mouse_x &&
             static_cast<int>(extent.x + extent.width) > mouse_x &&
@@ -85,47 +87,49 @@ void element_tree::update_input()
 
     if (m_hot_node != hot_node)
     {
-        if (m_hot_node != nullptr)
+        if (m_hot_node != nullptr && m_hot_node->on_mouse_exit)
             m_hot_node->on_mouse_exit();
 
-        if (hot_node != nullptr)
+        if (hot_node != nullptr && hot_node->on_mouse_enter)
             hot_node->on_mouse_enter();
 
         m_hot_node = hot_node;
     }
-    else if (hot_node != nullptr)
+    else if (hot_node != nullptr && hot_node->on_hover)
     {
         hot_node->on_hover();
     }
 
-    if (hot_node != nullptr)
+    if (hot_node == nullptr)
+        return;
+
+    // Bubble click event.
+    bool key_down = false;
+    if (mouse.key(window::MOUSE_KEY_LEFT).press())
     {
-        bool key_down = false;
+        bubble_click_event(hot_node, window::MOUSE_KEY_LEFT);
+        key_down = true;
+    }
+    if (mouse.key(window::MOUSE_KEY_MIDDLE).press())
+    {
+        bubble_click_event(hot_node, window::MOUSE_KEY_MIDDLE);
+        key_down = true;
+    }
+    if (mouse.key(window::MOUSE_KEY_RIGHT).press())
+    {
+        bubble_click_event(hot_node, window::MOUSE_KEY_RIGHT);
+        key_down = true;
+    }
 
-        if (mouse.key(window::MOUSE_KEY_LEFT).press())
-        {
-            hot_node->on_mouse_click(window::MOUSE_KEY_LEFT);
-            key_down = true;
-        }
-        if (mouse.key(window::MOUSE_KEY_MIDDLE).press())
-        {
-            hot_node->on_mouse_click(window::MOUSE_KEY_MIDDLE);
-            key_down = true;
-        }
-        if (mouse.key(window::MOUSE_KEY_RIGHT).press())
-        {
-            hot_node->on_mouse_click(window::MOUSE_KEY_RIGHT);
-            key_down = true;
-        }
+    if (key_down && m_focused_node != hot_node)
+    {
+        if (m_focused_node != nullptr && m_focused_node->on_blur)
+            m_focused_node->on_blur();
 
-        if (key_down && m_focused_node != hot_node)
-        {
-            if (m_focused_node != nullptr)
-                m_focused_node->on_blur();
-
+        if (hot_node->on_focus)
             hot_node->on_focus();
-            m_focused_node = hot_node;
-        }
+
+        m_focused_node = hot_node;
     }
 }
 
@@ -136,14 +140,17 @@ void element_tree::update_layout()
     log::debug("calculate ui.");
     calculate(m_window_width, m_window_height);
 
-    // The node coordinates stored in yoga are the relative coordinates of the parent node,
-    // which are converted to absolute coordinates here.
     bfs(this, [&, this](element* node) -> bool {
+        if (!node->display())
+            return false;
+
         if (node->parent() != nullptr)
         {
+            // The node coordinates stored in yoga are the relative coordinates of the parent node,
+            // which are converted to absolute coordinates here.
             element_extent extent = node->parent()->extent();
             node->calculate_absolute_position(extent.x, extent.y);
-            
+
             extent = node->extent();
             node->on_extent_change(extent);
         }
@@ -151,6 +158,17 @@ void element_tree::update_layout()
     });
 
     event.publish<event_calculate_layout>();
+}
+
+void element_tree::bubble_click_event(element* node, window::mouse_key key)
+{
+    while (node != nullptr)
+    {
+        if (node->on_mouse_click && !node->on_mouse_click(key))
+            return;
+
+        node = node->parent();
+    }
 }
 
 void element_tree::on_remove_child(element* child)

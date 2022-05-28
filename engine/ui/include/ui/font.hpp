@@ -24,12 +24,14 @@ public:
     font(std::string_view font, std::size_t size);
 
     graphics::resource* texture() const noexcept { return m_texture.get(); }
-
     const glyph_data& glyph(char c) const noexcept { return m_glyph[c]; }
+
+    std::size_t size() const noexcept { return m_size; }
 
 private:
     std::unique_ptr<graphics::resource> m_texture;
-
     std::array<glyph_data, 128> m_glyph;
+
+    std::size_t m_size;
 };
 } // namespace ash::ui

@@ -49,6 +49,19 @@ enum layout_align
     LAYOUT_ALIGN_SPACE_AROUND
 };
 
+enum layout_edge
+{
+    LAYOUT_EDGE_LEFT,
+    LAYOUT_EDGE_TOP,
+    LAYOUT_EDGE_RIGHT,
+    LAYOUT_EDGE_BOTTOM,
+    LAYOUT_EDGE_START,
+    LAYOUT_EDGE_END,
+    LAYOUT_EDGE_HORIZONTAL,
+    LAYOUT_EDGE_VERTICAL,
+    LAYOUT_EDGE_ALL
+};
+
 class layout_node_impl
 {
 public:
@@ -62,6 +75,8 @@ public:
     virtual void align_items(layout_align align) = 0;
     virtual void align_self(layout_align align) = 0;
     virtual void align_content(layout_align align) = 0;
+    virtual void padding(layout_edge edge, float padding) = 0;
+    virtual void display(bool display) = 0;
 
     virtual layout_direction direction() const = 0;
     virtual layout_flex_direction flex_direction() const = 0;
@@ -73,6 +88,7 @@ public:
     virtual layout_align align_items() const = 0;
     virtual layout_align align_self() const = 0;
     virtual layout_align align_content() const = 0;
+    virtual float padding(layout_edge edge) const = 0;
 
     virtual void parent(layout_node_impl* parent) = 0;
 
@@ -109,6 +125,7 @@ public:
     void align_items(layout_align align) { m_impl->align_items(align); }
     void align_self(layout_align align) { m_impl->align_self(align); }
     void align_content(layout_align align) { m_impl->align_content(align); }
+    void padding(layout_edge edge, float padding) { m_impl->padding(edge, padding); }
 
     layout_direction direction() const { return m_impl->direction(); }
     layout_flex_direction flex_direction() const { return m_impl->flex_direction(); }
@@ -120,6 +137,7 @@ public:
     layout_align align_items() const { return m_impl->align_items(); }
     layout_align align_self() const { return m_impl->align_self(); }
     layout_align align_content() const { return m_impl->align_content(); }
+    float padding(layout_edge edge) { return m_impl->padding(edge); }
 
     void calculate(float width, float height) { m_impl->calculate(width, height); }
     void calculate_absolute_position(float parent_x, float parent_y)
@@ -147,6 +165,7 @@ protected:
     }
 
     element_extent layout_extent() const { return m_impl->extent(); }
+    void layout_display(bool display) { m_impl->display(display); }
 
 private:
     std::unique_ptr<layout_node_impl> m_impl;

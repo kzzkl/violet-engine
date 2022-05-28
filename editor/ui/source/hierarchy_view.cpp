@@ -8,10 +8,13 @@ namespace ash::editor
 {
 hierarchy_view::hierarchy_view() : ui::panel(ui::COLOR_BLUE_VIOLET)
 {
-    show = true;
 }
 
 hierarchy_view::~hierarchy_view()
+{
+}
+
+void hierarchy_view::tick()
 {
 }
 } // namespace ash::editor

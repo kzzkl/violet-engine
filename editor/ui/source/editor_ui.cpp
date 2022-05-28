@@ -18,14 +18,12 @@ editor_ui::editor_ui()
     m_root_container->resize(100.0f, 100.0f, false, false, true, true);
     m_root_container->direction(ui::LAYOUT_DIRECTION_LTR);
     m_root_container->flex_direction(ui::LAYOUT_FLEX_DIRECTION_ROW);
-    m_root_container->show = true;
     m_root_container->link(system<ui::ui>().root());
 
     // Create left container.
     m_left_container = std::make_unique<ui::container>();
     m_left_container->resize(0.0f, 0.0f, true, true);
     m_left_container->flex_grow(1.0f);
-    m_left_container->show = true;
     m_left_container->link(m_root_container.get());
 
     m_scene_view = std::make_unique<scene_view>();
@@ -36,7 +34,6 @@ editor_ui::editor_ui()
     m_right_container = std::make_unique<ui::container>();
     m_right_container->resize(300.0f, 0.0f, false, true);
     m_right_container->flex_direction(ui::LAYOUT_FLEX_DIRECTION_COLUMN);
-    m_right_container->show = true;
     m_right_container->link(m_root_container.get());
 
     m_hierarchy_view = std::make_unique<hierarchy_view>();

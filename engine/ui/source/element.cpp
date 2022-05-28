@@ -4,8 +4,9 @@ namespace ash::ui
 {
 element::element(bool is_root)
     : element_layout(is_root),
-      m_layer(0),
+      m_depth(1.0f),
       m_dirty(true),
+      m_display(true),
       m_parent(nullptr)
 {
 }
@@ -13,7 +14,10 @@ element::element(bool is_root)
 void element::render(renderer& renderer)
 {
     for (element* child : m_children)
-        child->render(renderer);
+    {
+        if (child->m_display)
+            child->render(renderer);
+    }
 }
 
 void element::link(element* parent)
@@ -37,14 +41,38 @@ void element::link(element* parent)
         parent->on_add_child(this);
 
         layout_parent(parent);
-        m_layer = parent->m_layer + 1;
+        update_depth(parent->m_depth);
     }
     else
     {
-        m_layer = 0;
+        m_depth = 0.0f;
     }
 
     m_parent = parent;
+}
+
+void element::show()
+{
+    if (m_display)
+        return;
+
+    if (on_show)
+        on_show();
+
+    layout_display(true);
+    m_display = true;
+}
+
+void element::hide()
+{
+    if (!m_display)
+        return;
+
+    if (on_hide)
+        on_hide();
+
+    layout_display(false);
+    m_display = false;
 }
 
 void element::on_add_child(element* child)
@@ -57,5 +85,13 @@ void element::on_remove_child(element* child)
 {
     if (m_parent != nullptr)
         m_parent->on_remove_child(child);
+}
+
+void element::update_depth(float parent_depth)
+{
+    m_depth = parent_depth - 0.01f;
+
+    for (element* child : m_children)
+        child->update_depth(m_depth);
 }
 } // namespace ash::ui

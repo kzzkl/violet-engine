@@ -9,6 +9,7 @@ label::label(std::string_view text, const font& font, std::uint32_t color)
 {
     ASH_ASSERT(!text.empty());
 
+    m_baseline_offset = font.size() * 0.34;
     m_mesh.texture = font.texture();
 
     std::uint32_t pen_x = 0;
@@ -64,11 +65,12 @@ void label::render(renderer& renderer)
 
 void label::on_extent_change(const element_extent& extent)
 {
-    // baseline position = 0.7 * height
+    float baseline = extent.y + extent.height * 0.5f + m_baseline_offset;
+
     float offset_x = extent.x - m_original_x;
-    float offset_y = extent.y + extent.height * 0.7f - m_original_y;
+    float offset_y = baseline - m_original_y;
     m_original_x = extent.x;
-    m_original_y = extent.y + extent.height * 0.7f;
+    m_original_y = baseline;
 
     float z = depth();
     for (auto& position : m_mesh.vertex_position)

@@ -68,10 +68,10 @@ void renderer::reset()
 {
     for (auto& batch : m_batch_pool)
     {
-        batch.vertex_position.clear();
-        batch.vertex_uv.clear();
-        batch.vertex_color.clear();
-        batch.indices.clear();
+        batch->vertex_position.clear();
+        batch->vertex_uv.clear();
+        batch->vertex_color.clear();
+        batch->indices.clear();
     }
     m_batch_pool_index = 0;
 
@@ -82,9 +82,9 @@ void renderer::reset()
 render_batch* renderer::allocate_batch()
 {
     if (m_batch_pool_index >= m_batch_pool.size())
-        m_batch_pool.resize(m_batch_pool_index + 1);
+        m_batch_pool.push_back(std::make_unique<render_batch>());
 
-    auto result = &m_batch_pool[m_batch_pool_index];
+    auto result = m_batch_pool[m_batch_pool_index].get();
     ++m_batch_pool_index;
     return result;
 }

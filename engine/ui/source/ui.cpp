@@ -88,32 +88,32 @@ void ui::end_frame()
     for (auto& batch : m_renderer)
     {
         m_vertex_buffers[0]->upload(
-            batch.vertex_position.data(),
-            batch.vertex_position.size() * sizeof(math::float3),
+            batch->vertex_position.data(),
+            batch->vertex_position.size() * sizeof(math::float3),
             vertex_offset * sizeof(math::float3));
         m_vertex_buffers[1]->upload(
-            batch.vertex_uv.data(),
-            batch.vertex_uv.size() * sizeof(math::float2),
+            batch->vertex_uv.data(),
+            batch->vertex_uv.size() * sizeof(math::float2),
             vertex_offset * sizeof(math::float2));
         m_vertex_buffers[2]->upload(
-            batch.vertex_color.data(),
-            batch.vertex_color.size() * sizeof(std::uint32_t),
+            batch->vertex_color.data(),
+            batch->vertex_color.size() * sizeof(std::uint32_t),
             vertex_offset * sizeof(std::uint32_t));
         m_index_buffer->upload(
-            batch.indices.data(),
-            batch.indices.size() * sizeof(std::uint32_t),
+            batch->indices.data(),
+            batch->indices.size() * sizeof(std::uint32_t),
             index_offset * sizeof(std::uint32_t));
 
         graphics::submesh submesh = {
             .index_start = index_offset,
-            .index_end = index_offset + batch.indices.size(),
+            .index_end = index_offset + batch->indices.size(),
             .vertex_base = vertex_offset};
         visual.submeshes.push_back(submesh);
 
         auto material_parameter = allocate_material_parameter();
-        material_parameter->set(0, static_cast<std::uint32_t>(batch.type));
-        if (batch.type != RENDER_TYPE_BLOCK)
-            material_parameter->set(1, batch.texture);
+        material_parameter->set(0, static_cast<std::uint32_t>(batch->type));
+        if (batch->type != RENDER_TYPE_BLOCK)
+            material_parameter->set(1, batch->texture);
 
         graphics::material material = {
             .pipeline = m_pipeline.get(),
@@ -121,8 +121,8 @@ void ui::end_frame()
         };
         visual.materials.push_back(material);
 
-        vertex_offset += batch.vertex_position.size();
-        index_offset += batch.indices.size();
+        vertex_offset += batch->vertex_position.size();
+        index_offset += batch->indices.size();
     }
 
     m_material_parameter_counter = 0;

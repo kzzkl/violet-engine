@@ -6,7 +6,7 @@
 
 namespace ash::ui
 {
-font::font(std::string_view font, std::size_t size)
+font::font(std::string_view font, std::size_t size) : m_size(size)
 {
     auto& graphics = system<graphics::graphics>();
 
@@ -45,7 +45,7 @@ font::font(std::string_view font, std::size_t size)
     int pen_x = 0, pen_y = 0;
     for (std::size_t i = 0; i < m_glyph.size(); ++i)
     {
-        FT_Load_Char(face, i, FT_LOAD_RENDER | FT_LOAD_FORCE_AUTOHINT | FT_LOAD_TARGET_LIGHT);
+        FT_Load_Char(face, i, FT_LOAD_RENDER | FT_LOAD_DEFAULT);
         FT_Bitmap* bmp = &face->glyph->bitmap;
 
         if (pen_x + bmp->width >= tex_width)
@@ -79,6 +79,7 @@ font::font(std::string_view font, std::size_t size)
         pen_x += bmp->width + 1;
     }
 
+    FT_Done_Face(face);
     FT_Done_FreeType(library);
 
     m_texture = graphics.make_texture(

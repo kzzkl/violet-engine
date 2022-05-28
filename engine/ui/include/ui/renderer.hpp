@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ui/element_mesh.hpp"
+#include <memory>
 #include <stack>
 #include <unordered_map>
 
@@ -77,6 +78,6 @@ private:
     std::stack<batch_map> m_scissor_stack;
 
     std::size_t m_batch_pool_index;
-    std::vector<render_batch> m_batch_pool;
+    std::vector<std::unique_ptr<render_batch>> m_batch_pool;
 };
 } // namespace ash::ui

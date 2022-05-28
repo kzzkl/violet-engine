@@ -19,5 +19,7 @@ public:
 private:
     float m_original_x;
     float m_original_y;
+
+    float m_baseline_offset;
 };
 } // namespace ash::ui
