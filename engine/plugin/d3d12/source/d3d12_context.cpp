@@ -82,11 +82,7 @@ void d3d12_context::on_shutdown()
     m_device = nullptr;
 }
 
-void d3d12_context::on_begin_frame()
-{
-}
-
-void d3d12_context::on_end_frame()
+void d3d12_context::on_present()
 {
     m_command->execute_batch();
     m_swap_chain->present();

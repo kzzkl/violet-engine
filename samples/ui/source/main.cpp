@@ -42,9 +42,8 @@ private:
             task::task_type::MAIN_THREAD);
         auto render_task = task.schedule("render", [this]() {
             auto& graphics = system<graphics::graphics>();
-            graphics.begin_frame();
             graphics.render(m_camera);
-            graphics.end_frame();
+            graphics.present();
         });
 
         window_task->add_dependency(*task.find("root"));

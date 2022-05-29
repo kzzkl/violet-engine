@@ -24,10 +24,6 @@ bool editor::initialize(const dictionary& config)
         "editor",
         [this](std::uint32_t width, std::uint32_t height) { resize(width, height); });
 
-    // auto& ui = system<ui::ui>();
-    // ui.begin_frame();
-    // ui.end_frame();
-
     return true;
 }
 
@@ -46,15 +42,13 @@ void editor::initialize_task()
         auto& ui = system<ui::ui>();
 
         test_update();
-        scene.sync_local();
 
         system<physics::physics>().simulation();
 
-        graphics.begin_frame();
         m_ui->tick();
         ui.tick();
         graphics.render(m_editor_camera);
-        graphics.end_frame();
+        graphics.present();
     });
 
     window_task->add_dependency(*task.find("root"));

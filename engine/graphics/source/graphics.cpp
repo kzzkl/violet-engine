@@ -211,16 +211,10 @@ void graphics::render(ecs::entity camera_entity)
     m_renderer->execute(command);
 }
 
-void graphics::begin_frame()
+void graphics::present()
 {
-    m_renderer->begin_frame();
-    m_debug->begin_frame();
-}
-
-void graphics::end_frame()
-{
-    m_debug->end_frame();
-    m_renderer->end_frame();
+    m_renderer->present();
+    m_debug->next_frame();
 }
 
 std::unique_ptr<render_pass_interface> graphics::make_render_pass(render_pass_info& info)

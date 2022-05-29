@@ -174,11 +174,7 @@ void graphics_debug::sync()
     v.submeshes[0].index_end = m_vertex_position.size();
 }
 
-void graphics_debug::begin_frame()
-{
-}
-
-void graphics_debug::end_frame()
+void graphics_debug::next_frame()
 {
     m_vertex_position.clear();
     m_vertex_color.clear();

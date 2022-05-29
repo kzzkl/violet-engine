@@ -37,8 +37,7 @@ public:
     d3d12_renderer(const renderer_desc& desc);
     virtual ~d3d12_renderer();
 
-    virtual void begin_frame() override;
-    virtual void end_frame() override;
+    virtual void present() override;
 
     virtual render_command_interface* allocate_command() override;
     virtual void execute(render_command_interface* command) override;

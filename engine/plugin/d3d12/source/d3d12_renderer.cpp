@@ -106,14 +106,9 @@ d3d12_renderer::~d3d12_renderer()
     d3d12_context::shutdown();
 }
 
-void d3d12_renderer::begin_frame()
+void d3d12_renderer::present()
 {
-    d3d12_context::begin_frame();
-}
-
-void d3d12_renderer::end_frame()
-{
-    d3d12_context::end_frame();
+    d3d12_context::present();
 }
 
 render_command_interface* d3d12_renderer::allocate_command()

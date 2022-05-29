@@ -78,11 +78,7 @@ void physics::shutdown()
 
     auto& world = system<ecs::world>();
     world.each<joint>([](joint& joint) { joint.interface = nullptr; });
-    world.each<rigidbody>([this](rigidbody& rigidbody) {
-        // if (rigidbody.in_world)
-        //     m_world->remove(rigidbody.interface.get());
-        rigidbody.interface = nullptr;
-    });
+    world.each<rigidbody>([this](rigidbody& rigidbody) { rigidbody.interface = nullptr; });
 
     world.destroy_view(m_view);
 

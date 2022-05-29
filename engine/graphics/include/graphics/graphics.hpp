@@ -30,8 +30,7 @@ public:
     void skin_meshes();
     void render(ecs::entity camera_entity);
 
-    void begin_frame();
-    void end_frame();
+    void present();
 
     std::unique_ptr<render_pass_interface> make_render_pass(render_pass_info& info);
     std::unique_ptr<compute_pipeline_interface> make_compute_pipeline(compute_pipeline_info& info);

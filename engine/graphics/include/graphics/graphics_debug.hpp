@@ -30,8 +30,7 @@ public:
     void initialize(graphics& graphics);
     void sync();
 
-    void begin_frame();
-    void end_frame();
+    void next_frame();
 
     ecs::entity entity() const noexcept { return m_entity; }
 

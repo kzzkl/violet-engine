@@ -360,8 +360,7 @@ class renderer_interface
 public:
     virtual ~renderer_interface() = default;
 
-    virtual void begin_frame() = 0;
-    virtual void end_frame() = 0;
+    virtual void present() = 0;
 
     virtual render_command_interface* allocate_command() = 0;
     virtual void execute(render_command_interface* command) = 0;
