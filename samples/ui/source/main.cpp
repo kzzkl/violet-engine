@@ -1,12 +1,16 @@
-#include "application.hpp"
 #include "assert.hpp"
-#include "graphics.hpp"
-#include "relation.hpp"
-#include "scene.hpp"
-#include "ui.hpp"
-#include "window.hpp"
+#include "core/application.hpp"
+#include "core/relation.hpp"
+#include "graphics/graphics.hpp"
+#include "scene/scene.hpp"
+#include "ui/controls/label.hpp"
+#include "ui/controls/panel.hpp"
+#include "ui/controls/tree.hpp"
+#include "ui/ui.hpp"
+#include "window/window.hpp"
+#include "window/window_event.hpp"
 
-namespace ash::sample ::ui
+namespace ash::sample
 {
 class test_system : public core::system_base
 {
@@ -16,7 +20,13 @@ public:
     virtual bool initialize(const dictionary& config) override
     {
         initialize_task();
+        initialize_ui();
         initialize_camera();
+
+        system<core::event>().subscribe<window::event_window_resize>(
+            "sample_module",
+            [this](std::uint32_t width, std::uint32_t height) { resize_camera(width, height); });
+
         return true;
     }
 
@@ -30,24 +40,67 @@ private:
             "window tick",
             [this]() { system<window::window>().tick(); },
             task::task_type::MAIN_THREAD);
-        auto render_task =
-            task.schedule("render", [this]() { system<graphics::graphics>().render(m_camera); });
+        auto render_task = task.schedule("render", [this]() {
+            auto& graphics = system<graphics::graphics>();
+            graphics.render(m_camera);
+            graphics.present();
+        });
 
         window_task->add_dependency(*task.find("root"));
         update_task->add_dependency(*window_task);
         render_task->add_dependency(*update_task);
     }
 
+    void initialize_ui()
+    {
+        auto& ui = system<ui::ui>();
+        auto& relation = system<core::relation>();
+        auto& world = system<ecs::world>();
+
+        ui.root()->flex_direction(ui::LAYOUT_FLEX_DIRECTION_COLUMN);
+
+        m_panel = std::make_unique<ui::panel>(ui::COLOR_AQUA);
+        m_panel->resize(300.0f, 300.0f);
+        m_panel->link(ui.root());
+
+        m_text = std::make_unique<ui::label>("hello world! qap", ui.font(), 0xFF00FF00);
+        m_text->resize(100.0f, 20.0f);
+        m_text->link(ui.root());
+
+        m_tree = std::make_unique<ui::tree>();
+        m_tree->resize(200.0f, 0.0f, false, true);
+        m_tree->link(ui.root());
+
+        m_tree_node = std::make_unique<ui::tree_node>("node 1", ui.font());
+        m_tree_node->link(m_tree.get());
+
+        m_tree_panel = std::make_unique<ui::panel>(ui::COLOR_GREEN);
+        m_tree_panel->resize(50.0f, 50.0f);
+        m_tree_panel->link(m_tree_node->container());
+
+        m_tree_node_2 = std::make_unique<ui::tree_node>(
+            "node 2",
+            ui.font(),
+            ui::COLOR_BLACK,
+            ui::COLOR_ORANGE_RED);
+        m_tree_node_2->link(m_tree_node->container());
+
+        m_tree_panel_2 = std::make_unique<ui::panel>(ui::COLOR_DARK_ORCHID);
+        m_tree_panel_2->resize(50.0f, 50.0f);
+        m_tree_panel_2->link(m_tree_node_2->container());
+    }
+
     void initialize_camera()
     {
-        auto& world = system<ash::ecs::world>();
-        auto& scene = system<ash::scene::scene>();
-        auto& relation = system<ash::core::relation>();
+        auto& world = system<ecs::world>();
+        auto& scene = system<scene::scene>();
+        auto& relation = system<core::relation>();
+        auto& graphics = system<graphics::graphics>();
 
         m_camera = world.create();
-        world.add<core::link, graphics::main_camera, graphics::camera, scene::transform>(m_camera);
+        world.add<core::link, graphics::camera, graphics::main_camera, scene::transform>(m_camera);
         auto& c_camera = world.component<graphics::camera>(m_camera);
-        c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
+        c_camera.parameter = graphics.make_pipeline_parameter("ash_pass");
 
         auto& c_transform = world.component<scene::transform>(m_camera);
         c_transform.position = {0.0f, 0.0f, -38.0f};
@@ -58,88 +111,87 @@ private:
         c_transform.dirty = true;
 
         relation.link(m_camera, scene.root());
+
+        auto window_extent = system<window::window>().extent();
+        resize_camera(window_extent.width, window_extent.height);
     }
 
-    void update_camera(float delta)
+    void resize_camera(std::uint32_t width, std::uint32_t height)
     {
         auto& world = system<ecs::world>();
-        auto& keyboard = system<window::window>().keyboard();
-        auto& mouse = system<window::window>().mouse();
+        auto& graphics = system<graphics::graphics>();
 
-        if (keyboard.key(window::keyboard_key::KEY_1).release())
-        {
-            if (mouse.mode() == window::mouse_mode::CURSOR_RELATIVE)
-                mouse.mode(window::mouse_mode::CURSOR_ABSOLUTE);
-            else
-                mouse.mode(window::mouse_mode::CURSOR_RELATIVE);
-            log::debug("{}", mouse.mode());
-        }
+        auto& camera = world.component<graphics::camera>(m_camera);
+        camera.set(
+            math::to_radians(45.0f),
+            static_cast<float>(width) / static_cast<float>(height),
+            0.3f,
+            1000.0f,
+            false);
 
-        auto& camera_transform = world.component<scene::transform>(m_camera);
-        if (mouse.mode() == window::mouse_mode::CURSOR_RELATIVE)
-        {
-            m_heading += mouse.x() * m_rotate_speed * delta;
-            m_pitch += mouse.y() * m_rotate_speed * delta;
-            m_pitch = std::clamp(m_pitch, -math::PI_PIDIV2, math::PI_PIDIV2);
-            camera_transform.rotation =
-                math::quaternion_plain::rotation_euler(m_heading, m_pitch, 0.0f);
-        }
+        graphics::render_target_info render_target_info = {};
+        render_target_info.width = width;
+        render_target_info.height = height;
+        render_target_info.format = graphics.back_buffer_format();
+        render_target_info.samples = 4;
+        m_render_target = graphics.make_render_target(render_target_info);
+        camera.render_target = m_render_target.get();
 
-        float x = 0, z = 0;
-        if (keyboard.key(window::keyboard_key::KEY_W).down())
-            z += 1.0f;
-        if (keyboard.key(window::keyboard_key::KEY_S).down())
-            z -= 1.0f;
-        if (keyboard.key(window::keyboard_key::KEY_D).down())
-            x += 1.0f;
-        if (keyboard.key(window::keyboard_key::KEY_A).down())
-            x -= 1.0f;
-
-        math::float4_simd s = math::simd::load(camera_transform.scaling);
-        math::float4_simd r = math::simd::load(camera_transform.rotation);
-        math::float4_simd t = math::simd::load(camera_transform.position);
-
-        math::float4x4_simd affine = math::matrix_simd::affine_transform(s, r, t);
-        math::float4_simd forward =
-            math::simd::set(x * m_move_speed * delta, 0.0f, z * m_move_speed * delta, 0.0f);
-        forward = math::matrix_simd::mul(forward, affine);
-
-        math::simd::store(math::vector_simd::add(forward, t), camera_transform.position);
-        camera_transform.dirty = true;
+        graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
+        depth_stencil_buffer_info.width = width;
+        depth_stencil_buffer_info.height = height;
+        depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
+        depth_stencil_buffer_info.samples = 4;
+        m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
+        camera.depth_stencil_buffer = m_depth_stencil_buffer.get();
     }
 
     void update()
     {
-        auto& world = system<ash::ecs::world>();
+        auto& world = system<ecs::world>();
         auto& scene = system<scene::scene>();
+        auto& ui = system<ui::ui>();
+
         scene.reset_sync_counter();
 
-        bool show = true;
-        auto& ui = system<ash::ui::ui>();
-        ui.begin_frame();
-        ui.end_frame();
+        static float h = 0.0f;
 
-        update_camera(system<ash::core::timer>().frame_delta());
-        system<scene::scene>().sync_local();
+        auto& keyboard = system<window::window>().keyboard();
+        if (keyboard.key(window::KEYBOARD_KEY_Q).down())
+        {
+            m_panel->resize(200, h);
+            h += 0.05f;
+        }
+
+        ui.tick();
     }
 
-    ecs::entity m_camera;
-    float m_heading = 0.0f, m_pitch = 0.0f;
+    std::unique_ptr<ui::label> m_text;
+    std::unique_ptr<ui::panel> m_panel;
 
-    float m_rotate_speed = 0.2f;
-    float m_move_speed = 7.0f;
+    std::unique_ptr<ui::tree> m_tree;
+    std::unique_ptr<ui::tree_node> m_tree_node;
+    std::unique_ptr<ui::panel> m_tree_panel;
+    std::unique_ptr<ui::tree_node> m_tree_node_2;
+    std::unique_ptr<ui::panel> m_tree_panel_2;
+
+    ecs::entity m_camera;
+    std::unique_ptr<graphics::resource> m_render_target;
+    std::unique_ptr<graphics::resource> m_depth_stencil_buffer;
 };
 
 class ui_app
 {
 public:
+    ui_app() : m_app("resource/config") {}
+
     void initialize()
     {
         m_app.install<window::window>();
         m_app.install<core::relation>();
         m_app.install<scene::scene>();
         m_app.install<graphics::graphics>();
-        m_app.install<ash::ui::ui>();
+        m_app.install<ui::ui>();
         m_app.install<test_system>();
     }
 
@@ -148,11 +200,11 @@ public:
 private:
     core::application m_app;
 };
-} // namespace ash::sample::ui
+} // namespace ash::sample
 
 int main()
 {
-    ash::sample ::ui::ui_app app;
+    ash::sample::ui_app app;
     app.initialize();
     app.run();
     return 0;

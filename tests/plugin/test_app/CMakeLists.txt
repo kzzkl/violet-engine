@@ -1,7 +1,5 @@
 project(test-plugin)
 
-find_package(Catch2 REQUIRED PATHS ${ASH_THIRD_PARTY_INSTALL_DIR}/Catch2)
-
 add_executable(${PROJECT_NAME}
     ./source/test_common.cpp
     ./source/test_main.cpp

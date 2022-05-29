@@ -1,11 +1,11 @@
-#include "application.hpp"
+#include "core/application.hpp"
 #include "geometry.hpp"
-#include "graphics.hpp"
+#include "graphics/graphics.hpp"
 #include "log.hpp"
 #include "physics.hpp"
-#include "relation.hpp"
-#include "scene.hpp"
-#include "window.hpp"
+#include "core/relation.hpp"
+#include "scene/scene.hpp"
+#include "window/window.hpp"
 
 using namespace ash::core;
 using namespace ash::graphics;

@@ -1,5 +1,5 @@
 #include "mmd_animation.hpp"
-#include "scene.hpp"
+#include "scene/scene.hpp"
 
 namespace ash::sample::mmd
 {

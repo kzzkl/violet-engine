@@ -1,4 +1,4 @@
-#include "plugin.hpp"
+#include "core/plugin.hpp"
 #include "log.hpp"
 #include <Windows.h>
 

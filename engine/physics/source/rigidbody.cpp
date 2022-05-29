@@ -1,4 +1,4 @@
-#include "rigidbody.hpp"
+#include "physics/rigidbody.hpp"
 
 namespace ash::physics
 {

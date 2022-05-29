@@ -60,8 +60,13 @@ inline void throw_if_failed(HRESULT hr)
 #    define ASH_D3D12_ASSERT(condition, ...)
 #endif
 
-DXGI_FORMAT to_d3d12_format(resource_format format);
-resource_format to_ash_format(DXGI_FORMAT format);
+struct d3d12_utility
+{
+    static DXGI_FORMAT convert_format(resource_format format);
+    static resource_format convert_format(DXGI_FORMAT format);
+
+    static std::size_t element_size(DXGI_FORMAT format);
+};
 
 static constexpr DXGI_FORMAT RENDER_TARGET_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM;
 static constexpr DXGI_FORMAT DEPTH_STENCIL_FORMAT = DXGI_FORMAT_D24_UNORM_S8_UINT;

@@ -1,4 +1,4 @@
-#include "editor.hpp"
+#include "editor/editor.hpp"
 
 int main()
 {

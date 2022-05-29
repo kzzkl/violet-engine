@@ -13,6 +13,8 @@ add_library(${PROJECT_NAME} SHARED
     ./source/d3d12_utility.cpp
     ./source/DDSTextureLoader12.cpp)
 
+set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "")
+
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         ./include

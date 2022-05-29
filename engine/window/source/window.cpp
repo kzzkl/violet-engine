@@ -1,7 +1,7 @@
-#include "window.hpp"
-#include "context.hpp"
-#include "window_event.hpp"
-#include "window_impl_win32.hpp"
+#include "window/window.hpp"
+#include "core/context.hpp"
+#include "window/window_event.hpp"
+#include "window/window_impl_win32.hpp"
 
 using namespace ash::core;
 

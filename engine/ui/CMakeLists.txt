@@ -1,30 +1,38 @@
 project(ash-ui)
 
-set(IMGUI_INCLUDE ${ASH_THIRD_PARTY_DIR}/imgui)
-set(IMGUI_SOURCE
-    ${ASH_THIRD_PARTY_DIR}/imgui/imgui.cpp
-    ${ASH_THIRD_PARTY_DIR}/imgui/imgui_demo.cpp
-    ${ASH_THIRD_PARTY_DIR}/imgui/imgui_draw.cpp
-    ${ASH_THIRD_PARTY_DIR}/imgui/imgui_tables.cpp
-    ${ASH_THIRD_PARTY_DIR}/imgui/imgui_widgets.cpp)
+# Build yoga layout engine.
+file(GLOB_RECURSE ASH_YOGA_SOURCE ${ASH_THIRD_PARTY_DIR}/yoga/yoga/*.cpp)
+add_library(ash-yoga STATIC ${ASH_YOGA_SOURCE})
+target_include_directories(ash-yoga PUBLIC ${ASH_THIRD_PARTY_DIR}/yoga/.)
+add_library(ash::yoga ALIAS ash-yoga)
 
+# Build ash ui system.
 add_library(${PROJECT_NAME} STATIC
+    ./source/controls/image.cpp
+    ./source/controls/label.cpp
+    ./source/controls/panel.cpp
+    ./source/controls/tree.cpp
+    ./source/element_layout.cpp
+    ./source/element_tree.cpp
+    ./source/element.cpp
+    ./source/font.cpp
+    ./source/renderer.cpp
     ./source/ui_pipeline.cpp
-    ./source/ui.cpp
-    ${IMGUI_SOURCE})
+    ./source/ui.cpp)
 add_library(ash::ui ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-        ./include
-    PRIVATE
-        ${IMGUI_INCLUDE})
+        ./include)
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
         ash::common
         ash::core
-        ash::graphics)
+        ash::graphics
+    PRIVATE
+        freetype
+        ash::yoga)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

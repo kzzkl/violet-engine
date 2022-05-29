@@ -1,17 +1,20 @@
-[[vk::binding(0, 0)]]
-cbuffer ui : register(b0, space0)
+cbuffer ui_material : register(b0, space0)
 {
-    float4x4 ui_mvp;
+    uint type;
 };
-
-[[vk::binding(1, 0)]]
 Texture2D ui_texture : register(t0, space0);
 
-SamplerState sampler_ui : register(s7);
+cbuffer ui_mvp : register(b0, space1)
+{
+    float4x4 mvp;
+}
+
+SamplerState image_sampler : register(s0);
+SamplerState text_sampler : register(s7);
 
 struct vs_in
 {
-    float2 position : POSITION;
+    float3 position : POSITION;
     float2 uv : UV;
     float4 color : COLOR;
 };
@@ -26,7 +29,7 @@ struct vs_out
 vs_out vs_main(vs_in vin)
 {
     vs_out result;
-    result.position = mul(float4(vin.position, 0.0f, 1.0f), ui_mvp);
+    result.position = mul(float4(vin.position, 1.0f), mvp);
     result.uv = vin.uv;
     result.color = vin.color;
 
@@ -35,6 +38,21 @@ vs_out vs_main(vs_in vin)
 
 float4 ps_main(vs_out pin) : SV_TARGET
 {
-    // return float4(1.0f, 1.0f, 1.0f, 1.0f);
-    return pin.color * ui_texture.Sample(sampler_ui, pin.uv);
+    if (type == 0)
+    {
+        return pin.color;
+    }
+    else if (type == 1) // text
+    {
+        float4 color = ui_texture.Sample(text_sampler, pin.uv);
+        return float4(pin.color.rgb, color.r * pin.color.a);
+    }
+    else if (type == 2) // image 
+    {
+        return ui_texture.Sample(image_sampler, pin.uv);
+    }
+    else
+    {
+        return float4(0.0f, 0.0f, 0.0f, 0.0f);
+    }
 }

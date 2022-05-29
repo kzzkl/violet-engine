@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math.hpp"
+#include "math/math.hpp"
 #include "plugin_interface.hpp"
 #include <cstddef>
 #include <cstdint>
@@ -11,11 +11,14 @@ enum class resource_format
 {
     UNDEFINED,
 
+    R8_UNORM,
+    R8_UINT,
+
     R8G8B8A8_UNORM,
     B8G8R8A8_UNORM,
 
     R32G32B32A32_FLOAT,
-    R32G32B32A32_INT,
+    R32G32B32A32_SINT,
     R32G32B32A32_UINT,
 
     D24_UNORM_S8_UINT
@@ -116,6 +119,8 @@ public:
     virtual void set(std::size_t index, const math::float4x4& value) = 0;
     virtual void set(std::size_t index, const math::float4x4* data, size_t size) = 0;
     virtual void set(std::size_t index, resource_interface* texture) = 0;
+
+    virtual void reset() = 0;
 };
 
 enum class blend_factor
@@ -289,7 +294,7 @@ public:
     virtual ~compute_pipeline_interface() = default;
 };
 
-struct scissor_rect
+struct scissor_extent
 {
     std::uint32_t min_x;
     std::uint32_t min_y;
@@ -315,7 +320,7 @@ public:
     virtual void end(render_pass_interface* render_pass) = 0;
     virtual void next(render_pass_interface* render_pass) = 0;
 
-    virtual void scissor(const scissor_rect* rects, std::size_t rect_size) = 0;
+    virtual void scissor(const scissor_extent* extents, std::size_t size) = 0;
 
     virtual void parameter(std::size_t i, pipeline_parameter_interface*) = 0;
     virtual void draw(
@@ -355,8 +360,7 @@ class renderer_interface
 public:
     virtual ~renderer_interface() = default;
 
-    virtual void begin_frame() = 0;
-    virtual void end_frame() = 0;
+    virtual void present() = 0;
 
     virtual render_command_interface* allocate_command() = 0;
     virtual void execute(render_command_interface* command) = 0;
@@ -428,7 +432,8 @@ public:
     virtual resource_interface* make_texture(
         const std::uint8_t* data,
         std::uint32_t width,
-        std::uint32_t height) = 0;
+        std::uint32_t height,
+        resource_format format = resource_format::R8G8B8A8_UNORM) = 0;
     virtual resource_interface* make_texture(const char* file) = 0;
     virtual resource_interface* make_render_target(const render_target_desc& desc) = 0;
     virtual resource_interface* make_depth_stencil_buffer(

@@ -1,12 +1,12 @@
-#include "graphics.hpp"
-#include "context.hpp"
-#include "graphics_config.hpp"
+#include "graphics/graphics.hpp"
+#include "core/context.hpp"
+#include "graphics/graphics_config.hpp"
+#include "graphics/skin_pipeline.hpp"
 #include "log.hpp"
-#include "math.hpp"
-#include "skin_pipeline.hpp"
-#include "transform.hpp"
-#include "window.hpp"
-#include "window_event.hpp"
+#include "math/math.hpp"
+#include "scene/transform.hpp"
+#include "window/window.hpp"
+#include "window/window_event.hpp"
 #include <fstream>
 #include <set>
 
@@ -26,9 +26,9 @@ bool graphics::initialize(const dictionary& config)
 
     renderer_desc desc = {};
     desc.window_handle = window.handle();
-    window::window_rect rect = window.rect();
-    desc.width = rect.width;
-    desc.height = rect.height;
+    window::window_extent extent = window.extent();
+    desc.width = extent.width;
+    desc.height = extent.height;
     desc.render_concurrency = m_config.render_concurrency();
     desc.frame_resource = m_config.frame_resource();
 
@@ -211,16 +211,10 @@ void graphics::render(ecs::entity camera_entity)
     m_renderer->execute(command);
 }
 
-void graphics::begin_frame()
+void graphics::present()
 {
-    m_renderer->begin_frame();
-    m_debug->begin_frame();
-}
-
-void graphics::end_frame()
-{
-    m_debug->end_frame();
-    m_renderer->end_frame();
+    m_renderer->present();
+    m_debug->next_frame();
 }
 
 std::unique_ptr<render_pass_interface> graphics::make_render_pass(render_pass_info& info)

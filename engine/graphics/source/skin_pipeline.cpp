@@ -1,4 +1,4 @@
-#include "skin_pipeline.hpp"
+#include "graphics/skin_pipeline.hpp"
 
 namespace ash::graphics
 {

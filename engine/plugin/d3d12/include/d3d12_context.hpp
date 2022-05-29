@@ -15,9 +15,7 @@ class d3d12_context
 public:
     static bool initialize(const renderer_desc& desc) { return instance().on_initialize(desc); }
     static void shutdown() { instance().on_shutdown(); }
-
-    static void begin_frame() { instance().on_begin_frame(); }
-    static void end_frame() { instance().on_end_frame(); }
+    static void present() { instance().on_present(); }
 
     inline static DXGIFactory* factory() noexcept { return instance().m_factory.Get(); }
     inline static D3D12Device* device() noexcept { return instance().m_device.Get(); }
@@ -39,9 +37,7 @@ private:
 
     bool on_initialize(const renderer_desc& desc);
     void on_shutdown();
-
-    void on_begin_frame();
-    void on_end_frame();
+    void on_present();
 
     d3d12_ptr<DXGIFactory> m_factory;
     d3d12_ptr<D3D12Device> m_device;

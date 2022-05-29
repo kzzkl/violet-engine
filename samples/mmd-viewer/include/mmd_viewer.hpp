@@ -1,7 +1,7 @@
 #pragma once
 
 #include "context.hpp"
-#include "graphics.hpp"
+#include "graphics/graphics.hpp"
 #include "mmd_loader.hpp"
 #include "mmd_pipeline.hpp"
 #include "physics.hpp"

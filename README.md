@@ -6,7 +6,7 @@
 
 ### Windows 10
 
-- cmake version 3.21.2
+- cmake version 3.19
 - DirectX 12
 
 ## 使用方法
@@ -14,7 +14,7 @@
 ### 克隆
 
 ```bash
-git clone --recurse-submodules git@github.com:kzzkl/ash-engine.git
+git clone git@github.com:kzzkl/ash-engine.git
 ```
 
 ### 编译
@@ -22,7 +22,7 @@ git clone --recurse-submodules git@github.com:kzzkl/ash-engine.git
 ```bash
 mkdir build
 cd build
-cmake -DASH_BUILD_THIRDPARTY=ON -DCMAKE_INSTALL_PREFIX=./install ..
+cmake -DCMAKE_INSTALL_PREFIX=./install ..
 cmake --build ./ --config Debug --target install
 ```
 
@@ -47,14 +47,14 @@ ash-engine
 │   ├───resource        资源系统，目前没有实现
 │   ├───scene           场景系统，管理、更新场景中节点的坐标信息
 │   ├───task            任务系统，引擎的多线程支持在这里实现
-│   ├───ui              UI 系统，目前是换皮的 Dear ImGui
+│   ├───ui              UI 系统
 │   └───window          对平台窗口的封装，目前只实现了 Win32 窗口
 ├───samples             示例，目前来说是用来验证引擎是否正常工作的测试程序
 │   ├───hello-world     年久失修，已经不记得这个是干啥的了
 │   ├───mmd-viewer      一个 MikuMikuDance 的查看器，支持 PMX、VMD 格式的模型和动作加载
-│   ├───physics         物理系统 Demo
-│   ├───task            任务系统 Demo
-│   └───ui              UI 系统 Demo
+│   ├───physics         物理 Demo
+│   ├───task            任务 Demo
+│   └───ui              UI Demo
 ├───tests               单元测试
 └───thirdparty          第三方库
 ```

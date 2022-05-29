@@ -1,5 +1,5 @@
-#include "standard_pipeline.hpp"
-#include "graphics.hpp"
+#include "graphics/standard_pipeline.hpp"
+#include "graphics/graphics.hpp"
 
 namespace ash::graphics
 {
@@ -7,7 +7,7 @@ standard_pipeline::standard_pipeline()
 {
     pipeline_parameter_layout_info standard_material;
     standard_material.parameters = {
-        {pipeline_parameter_type::FLOAT4, 1}  // diffuse
+        {pipeline_parameter_type::FLOAT3, 1}  // diffuse
     };
     system<graphics>().make_pipeline_parameter_layout("standard_material", standard_material);
 
@@ -18,9 +18,6 @@ standard_pipeline::standard_pipeline()
     color_pass_info.vertex_attributes = {
         {"POSITION",    vertex_attribute_type::FLOAT3}, // position
         {"NORMAL",      vertex_attribute_type::FLOAT3}, // normal
-        {"UV",          vertex_attribute_type::FLOAT2}, // uv
-        {"BONE",        vertex_attribute_type::UINT4 }, // bone
-        {"BONE_WEIGHT", vertex_attribute_type::FLOAT3}, // bone weight
     };
     color_pass_info.references = {
         {attachment_reference_type::COLOR,   0},
@@ -82,11 +79,11 @@ void standard_pipeline::render(const camera& camera, render_command_interface* c
         camera.render_target_resolve,
         camera.depth_stencil_buffer);
 
-    scissor_rect rect = {};
+    scissor_extent extent = {};
     auto [width, height] = camera.render_target->extent();
-    rect.max_x = width;
-    rect.max_y = height;
-    command->scissor(&rect, 1);
+    extent.max_x = width;
+    extent.max_y = height;
+    command->scissor(&extent, 1);
 
     command->parameter(2, camera.parameter->parameter());
     for (auto& unit : units())

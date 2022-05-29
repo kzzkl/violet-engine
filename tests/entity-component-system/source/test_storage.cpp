@@ -1,4 +1,4 @@
-#include "storage.hpp"
+#include "ecs/storage.hpp"
 #include "test_common.hpp"
 
 using namespace ash::ecs;

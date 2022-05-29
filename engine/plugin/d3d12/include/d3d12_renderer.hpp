@@ -28,7 +28,7 @@ protected:
     d3d12_ptr<DXGISwapChain> m_swap_chain;
 
     std::size_t m_back_buffer_counter;
-    std::vector<std::unique_ptr<d3d12_render_target>> m_back_buffers;
+    std::vector<std::unique_ptr<d3d12_back_buffer>> m_back_buffers;
 };
 
 class d3d12_renderer : public renderer_interface
@@ -37,8 +37,7 @@ public:
     d3d12_renderer(const renderer_desc& desc);
     virtual ~d3d12_renderer();
 
-    virtual void begin_frame() override;
-    virtual void end_frame() override;
+    virtual void present() override;
 
     virtual render_command_interface* allocate_command() override;
     virtual void execute(render_command_interface* command) override;

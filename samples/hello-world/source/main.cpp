@@ -1,7 +1,7 @@
-#include "application.hpp"
-#include "graphics.hpp"
+#include "core/application.hpp"
+#include "graphics/graphics.hpp"
 #include "log.hpp"
-#include "window.hpp"
+#include "window/window.hpp"
 #include <filesystem>
 #include <fstream>
 

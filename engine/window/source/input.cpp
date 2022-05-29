@@ -1,14 +1,10 @@
-#include "input.hpp"
+#include "window/input.hpp"
 #include "log.hpp"
-#include "window_impl.hpp"
+#include "window/window_impl.hpp"
 
 namespace ash::window
 {
-mouse::mouse(window_impl* impl) noexcept
-    : m_mode(mouse_mode::CURSOR_ABSOLUTE),
-      m_x(0),
-      m_y(0),
-      m_impl(impl)
+mouse::mouse(window_impl* impl) noexcept : m_mode(MOUSE_MODE_ABSOLUTE), m_x(0), m_y(0), m_impl(impl)
 {
 }
 
@@ -24,8 +20,8 @@ void mouse::mode(mouse_mode mode)
 
 void mouse::tick()
 {
-    key_device<mouse_key>::tick();
-    if (m_mode == mouse_mode::CURSOR_RELATIVE)
+    device_type::tick();
+    if (m_mode == MOUSE_MODE_RELATIVE)
         m_x = m_y = 0;
 
     m_whell = 0;

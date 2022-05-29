@@ -1,4 +1,4 @@
-#include "joint.hpp"
+#include "physics/joint.hpp"
 
 namespace ash::physics
 {

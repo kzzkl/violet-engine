@@ -94,6 +94,8 @@ public:
     virtual void set(std::size_t index, const math::float4x4* data, size_t size) override;
     virtual void set(std::size_t index, resource* texture) override;
 
+    virtual void reset() override;
+
     void sync();
 
     inline d3d12_parameter_tier_type tier() const noexcept { return m_tier; }

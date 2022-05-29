@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math.hpp"
+#include "math/math.hpp"
 #include "plugin_interface.hpp"
 
 namespace ash::physics

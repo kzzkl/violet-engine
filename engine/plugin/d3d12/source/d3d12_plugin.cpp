@@ -72,10 +72,11 @@ public:
     virtual resource_interface* make_texture(
         const std::uint8_t* data,
         std::uint32_t width,
-        std::uint32_t height) override
+        std::uint32_t height,
+        resource_format format) override
     {
         auto command_list = d3d12_context::command()->allocate_dynamic_command();
-        d3d12_texture* result = new d3d12_texture(data, width, height, command_list.get());
+        d3d12_texture* result = new d3d12_texture(data, width, height, format, command_list.get());
         d3d12_context::command()->execute_command(command_list);
         return result;
     }

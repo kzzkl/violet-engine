@@ -9,7 +9,7 @@ cbuffer ash_object : register(b0, space0)
 [[vk::binding(0, 1)]]
 cbuffer mmd_material : register(b0, space1)
 {
-    float4 color;
+    float3 color;
 };
 
 [[vk::binding(0, 2)]]
@@ -48,7 +48,8 @@ vs_out vs_main(vs_in vin)
 float4 ps_main(vs_out pin) : SV_TARGET
 {
     float3 light_dir = normalize(float3(-1.0f, 0.8f, -0.6f));
-    float c = dot(pin.normal, light_dir);
+    float3 normal = normalize(pin.normal);
+    float c = dot(normal, light_dir);
 
-    return color * 0.5 + color * c * 0.5;
+    return float4(color * (0.5f + c * 0.5f), 1.0f);
 }

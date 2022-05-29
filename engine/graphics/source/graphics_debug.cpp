@@ -1,12 +1,12 @@
 #pragma once
 
-#include "graphics_debug.hpp"
-#include "graphics.hpp"
-#include "link.hpp"
-#include "relation.hpp"
-#include "render_pipeline.hpp"
-#include "scene.hpp"
-#include "visual.hpp"
+#include "graphics/graphics_debug.hpp"
+#include "core/link.hpp"
+#include "core/relation.hpp"
+#include "graphics/graphics.hpp"
+#include "graphics/render_pipeline.hpp"
+#include "graphics/visual.hpp"
+#include "scene/scene.hpp"
 
 namespace ash::graphics
 {
@@ -80,11 +80,11 @@ void debug_pipeline::render(const camera& camera, render_command_interface* comm
         camera.render_target_resolve,
         camera.depth_stencil_buffer);
 
-    scissor_rect rect = {};
+    scissor_extent extent = {};
     auto [width, height] = camera.render_target->extent();
-    rect.max_x = width;
-    rect.max_y = height;
-    command->scissor(&rect, 1);
+    extent.max_x = width;
+    extent.max_y = height;
+    command->scissor(&extent, 1);
 
     command->parameter(0, camera.parameter->parameter());
     for (auto& unit : units())
@@ -174,11 +174,7 @@ void graphics_debug::sync()
     v.submeshes[0].index_end = m_vertex_position.size();
 }
 
-void graphics_debug::begin_frame()
-{
-}
-
-void graphics_debug::end_frame()
+void graphics_debug::next_frame()
 {
     m_vertex_position.clear();
     m_vertex_color.clear();

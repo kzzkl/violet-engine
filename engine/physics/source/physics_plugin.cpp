@@ -1,4 +1,4 @@
-#include "physics_plugin.hpp"
+#include "physics/physics_plugin.hpp"
 #include "log.hpp"
 
 namespace ash::physics

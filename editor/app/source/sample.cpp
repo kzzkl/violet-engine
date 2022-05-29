@@ -1,7 +1,7 @@
-#include "sample.hpp"
-#include "geometry.hpp"
-#include "relation.hpp"
-#include "scene.hpp"
+#include "editor/sample.hpp"
+#include "core/relation.hpp"
+#include "graphics/geometry.hpp"
+#include "scene/scene.hpp"
 
 namespace ash::editor
 {
@@ -27,19 +27,21 @@ bool test_module::initialize(const dictionary& config)
     desc.box.width = 10.0f;
     m_plane_shape = physics.make_shape(desc);
 
-    m_standard_pass = std::make_unique<graphics::standard_pass>();
+    m_pipeline = std::make_unique<graphics::standard_pipeline>();
 
     graphics::geometry_data cube_data = graphics::geometry::box(1.0f, 1.0f, 1.0f);
-    m_cube_vertex_buffer =
-        graphics.make_vertex_buffer(cube_data.vertices.data(), cube_data.vertices.size());
+    m_cube_vertex_buffers.push_back(
+        graphics.make_vertex_buffer(cube_data.position.data(), cube_data.position.size()));
+    m_cube_vertex_buffers.push_back(
+        graphics.make_vertex_buffer(cube_data.normal.data(), cube_data.normal.size()));
     m_cube_index_buffer =
         graphics.make_index_buffer(cube_data.indices.data(), cube_data.indices.size());
     m_cube_material = graphics.make_pipeline_parameter("standard_material");
-    m_cube_material->set(0, math::float4{1.0f, 1.0f, 1.0f, 1.0f});
+    m_cube_material->set(0, math::float3{1.0f, 1.0f, 1.0f});
 
     // Create cube.
     {
-        m_cube_1 = world.create();
+        m_cube_1 = world.create("cube 1");
         world.add<core::link, physics::rigidbody, scene::transform, graphics::visual>(m_cube_1);
 
         auto& t = world.component<scene::transform>(m_cube_1);
@@ -50,27 +52,31 @@ bool test_module::initialize(const dictionary& config)
         r.shape = m_cube_shape.get();
         r.mass = 1.0f;
         r.type = physics::rigidbody_type::KINEMATIC;
-        r.relation = m_cube_1;
 
         auto& v = world.component<graphics::visual>(m_cube_1);
         m_cube_object.emplace_back(graphics.make_pipeline_parameter("ash_object"));
         v.object = m_cube_object.back().get();
+        for (auto& vertex_buffer : m_cube_vertex_buffers)
+            v.vertex_buffers.push_back(vertex_buffer.get());
+        v.index_buffer = m_cube_index_buffer.get();
 
-        graphics::render_unit submesh;
-        submesh.vertex_buffers.push_back(m_cube_vertex_buffer.get());
-        submesh.index_buffer = m_cube_index_buffer.get();
+        graphics::submesh submesh = {};
+        submesh.vertex_base = 0;
         submesh.index_start = 0;
         submesh.index_end = cube_data.indices.size();
-        submesh.render_pass = m_standard_pass.get();
-        submesh.parameters = {v.object, m_cube_material.get()};
-        v.submesh.push_back(submesh);
+        v.submeshes.push_back(submesh);
+
+        graphics::material material = {};
+        material.pipeline = m_pipeline.get();
+        material.parameters = {v.object, m_cube_material.get()};
+        v.materials.push_back(material);
 
         relation.link(m_cube_1, scene.root());
     }
 
     // Cube 2.
     {
-        m_cube_2 = world.create();
+        m_cube_2 = world.create("cube 2");
         world.add<core::link, physics::rigidbody, scene::transform, graphics::visual>(m_cube_2);
 
         auto& t = world.component<scene::transform>(m_cube_2);
@@ -80,27 +86,31 @@ bool test_module::initialize(const dictionary& config)
         auto& r = world.component<physics::rigidbody>(m_cube_2);
         r.shape = m_cube_shape.get();
         r.mass = 1.0f;
-        r.relation = m_cube_2;
 
         auto& v = world.component<graphics::visual>(m_cube_2);
         m_cube_object.emplace_back(graphics.make_pipeline_parameter("ash_object"));
         v.object = m_cube_object.back().get();
+        for (auto& vertex_buffer : m_cube_vertex_buffers)
+            v.vertex_buffers.push_back(vertex_buffer.get());
+        v.index_buffer = m_cube_index_buffer.get();
 
-        graphics::render_unit submesh;
-        submesh.vertex_buffers.push_back(m_cube_vertex_buffer.get());
-        submesh.index_buffer = m_cube_index_buffer.get();
+        graphics::submesh submesh = {};
+        submesh.vertex_base = 0;
         submesh.index_start = 0;
         submesh.index_end = cube_data.indices.size();
-        submesh.render_pass = m_standard_pass.get();
-        submesh.parameters = {v.object, m_cube_material.get()};
-        v.submesh.push_back(submesh);
+        v.submeshes.push_back(submesh);
+
+        graphics::material material = {};
+        material.pipeline = m_pipeline.get();
+        material.parameters = {v.object, m_cube_material.get()};
+        v.materials.push_back(material);
 
         relation.link(m_cube_2, m_cube_1);
     }
 
     // Create plane.
     {
-        m_plane = world.create();
+        m_plane = world.create("plane");
         world.add<core::link, physics::rigidbody, scene::transform>(m_plane);
 
         auto& pt = world.component<scene::transform>(m_plane);
@@ -109,7 +119,6 @@ bool test_module::initialize(const dictionary& config)
         auto& pr = world.component<physics::rigidbody>(m_plane);
         pr.shape = m_plane_shape.get();
         pr.mass = 0.0f;
-        pr.relation = m_plane;
 
         relation.link(m_plane, scene.root());
     }

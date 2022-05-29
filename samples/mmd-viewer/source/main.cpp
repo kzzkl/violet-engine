@@ -1,15 +1,15 @@
-#include "application.hpp"
+#include "core/application.hpp"
 #include "geometry.hpp"
-#include "graphics.hpp"
+#include "graphics/graphics.hpp"
 #include "log.hpp"
 #include "mmd_animation.hpp"
 #include "mmd_viewer.hpp"
 #include "physics.hpp"
 #include "pmx_loader.hpp"
-#include "relation.hpp"
-#include "scene.hpp"
-#include "window.hpp"
-#include "window_event.hpp"
+#include "core/relation.hpp"
+#include "scene/scene.hpp"
+#include "window/window.hpp"
+#include "window/window_event.hpp"
 
 namespace ash::sample::mmd
 {

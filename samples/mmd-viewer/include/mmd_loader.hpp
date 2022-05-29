@@ -1,12 +1,12 @@
 #pragma once
 
 #include "entity.hpp"
-#include "graphics.hpp"
+#include "graphics/graphics.hpp"
 #include "mmd_component.hpp"
 #include "physics.hpp"
 #include "pmx_loader.hpp"
-#include "relation.hpp"
-#include "scene.hpp"
+#include "core/relation.hpp"
+#include "scene/scene.hpp"
 #include "vmd_loader.hpp"
 
 namespace ash::sample::mmd
