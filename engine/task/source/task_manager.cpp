@@ -6,11 +6,13 @@ namespace ash::task
 {
 task_manager::task_manager(std::size_t num_thread) : m_thread_pool(num_thread)
 {
-}
+    auto root_task = schedule(TASK_ROOT, []() {});
 
-task_manager::handle task_manager::schedule_group(std::string_view name, task_type type)
-{
-    return do_schedule<task_group>(name, type);
+    auto logic_start_task = schedule(TASK_GAME_LOGIC_START, []() {});
+    logic_start_task->add_dependency(*root_task);
+
+    auto logic_end_task = schedule(TASK_GAME_LOGIC_END, []() {});
+    logic_end_task->add_dependency(*logic_start_task);
 }
 
 void task_manager::execute(handle root)

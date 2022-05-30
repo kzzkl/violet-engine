@@ -27,7 +27,7 @@ struct entity
     }
 };
 
-static constexpr entity INVALID_ENTITY = {-1, 0};
+static constexpr entity INVALID_ENTITY = {0, 0};
 
 struct information
 {
@@ -46,6 +46,12 @@ struct entity_info
 class entity_registry
 {
 public:
+    entity_registry()
+    {
+        // Index 0 means invalid entity.
+        m_registry.push_back({.version = 1, .archetype = nullptr, .index = 0});
+    }
+
     entity add()
     {
         entity result = {static_cast<std::uint32_t>(m_registry.size()), 0};

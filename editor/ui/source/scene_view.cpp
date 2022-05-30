@@ -2,6 +2,7 @@
 #include "core/relation.hpp"
 #include "ecs/world.hpp"
 #include "graphics/graphics.hpp"
+#include "graphics/graphics_event.hpp"
 #include "scene/scene.hpp"
 #include "ui/controls/image.hpp"
 #include "ui/ui.hpp"
@@ -31,9 +32,6 @@ scene_view::scene_view()
     transform.position = {0.0f, 0.0f, -50.0f};
     transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
     transform.scaling = {1.0f, 1.0f, 1.0f};
-
-    auto& camera = world.component<graphics::camera>(m_camera);
-    camera.parameter = graphics.make_pipeline_parameter("ash_pass");
 
     relation.link(m_camera, scene.root());
 
@@ -74,6 +72,11 @@ void scene_view::on_extent_change(const ui::element_extent& element_extent)
 
         texture(m_render_target_resolve.get());
     }
+
+    auto& event = system<core::event>();
+    event.publish<graphics::event_render_extent_change>(
+        static_cast<std::uint32_t>(view_extent.width),
+        static_cast<std::uint32_t>(view_extent.height));
 }
 
 void scene_view::update_camera()
@@ -166,6 +169,7 @@ void scene_view::resize_camera()
     auto& world = system<ecs::world>();
 
     auto& camera = world.component<graphics::camera>(m_camera);
+    camera.mask = graphics::VISUAL_GROUP_DEBUG | graphics::VISUAL_GROUP_1;
 
     graphics::render_target_info render_target_info = {};
     render_target_info.width = m_width;
@@ -173,7 +177,7 @@ void scene_view::resize_camera()
     render_target_info.format = graphics.back_buffer_format();
     render_target_info.samples = 4;
     m_render_target = graphics.make_render_target(render_target_info);
-    camera.render_target = m_render_target.get();
+    camera.render_target(m_render_target.get());
 
     graphics::render_target_info render_target_resolve_info = {};
     render_target_resolve_info.width = m_width;
@@ -181,7 +185,7 @@ void scene_view::resize_camera()
     render_target_resolve_info.format = graphics.back_buffer_format();
     render_target_resolve_info.samples = 1;
     m_render_target_resolve = graphics.make_render_target(render_target_resolve_info);
-    camera.render_target_resolve = m_render_target_resolve.get();
+    camera.render_target_resolve(m_render_target_resolve.get());
 
     graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
     depth_stencil_buffer_info.width = m_width;
@@ -189,13 +193,6 @@ void scene_view::resize_camera()
     depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
     depth_stencil_buffer_info.samples = 4;
     m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
-    camera.depth_stencil_buffer = m_depth_stencil_buffer.get();
-
-    camera.mask = graphics::VISUAL_GROUP_DEBUG | graphics::VISUAL_GROUP_1;
-    camera.set(
-        math::to_radians(45.0f),
-        static_cast<float>(m_width) / static_cast<float>(m_height),
-        0.3f,
-        1000.0f);
+    camera.depth_stencil_buffer(m_depth_stencil_buffer.get());
 }
 } // namespace ash::editor

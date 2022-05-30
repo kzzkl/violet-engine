@@ -1,7 +1,9 @@
 #include "ui/ui.hpp"
 #include "core/relation.hpp"
 #include "graphics/graphics.hpp"
+#include "graphics/graphics_task.hpp"
 #include "ui/ui_event.hpp"
+#include "ui/ui_task.hpp"
 #include "window/window.hpp"
 #include "window/window_event.hpp"
 
@@ -57,6 +59,13 @@ bool ui::initialize(const dictionary& config)
 
     auto window_extent = system<window::window>().extent();
     resize(window_extent.width, window_extent.height);
+
+    auto& task = system<task::task_manager>();
+    auto ui_tick_task = task.schedule(TASK_UI_TICK, [this]() { tick(); });
+    ui_tick_task->add_dependency(*task.find(task::TASK_GAME_LOGIC_END));
+
+    auto render_task = task.find(graphics::TASK_GRAPHICS_RENDER);
+    render_task->add_dependency(*ui_tick_task);
 
     return true;
 }

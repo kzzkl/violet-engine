@@ -15,6 +15,8 @@ public:
     virtual bool initialize(const ash::dictionary& config) override;
 
 private:
+    void resize_camera(std::uint32_t width, std::uint32_t height);
+
     std::unique_ptr<physics::collision_shape_interface> m_cube_shape;
     std::unique_ptr<physics::collision_shape_interface> m_plane_shape;
 
@@ -24,6 +26,10 @@ private:
     std::unique_ptr<graphics::resource> m_cube_index_buffer;
     std::unique_ptr<graphics::pipeline_parameter> m_cube_material;
     std::vector<std::unique_ptr<graphics::pipeline_parameter>> m_cube_object;
+
+    ecs::entity m_camera;
+    std::unique_ptr<graphics::resource> m_render_target;
+    std::unique_ptr<graphics::resource> m_depth_stencil_buffer;
 
     ecs::entity m_cube_1, m_cube_2;
     ecs::entity m_plane;

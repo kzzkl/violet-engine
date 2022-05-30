@@ -76,17 +76,17 @@ void debug_pipeline::render(const camera& camera, render_command_interface* comm
 {
     command->begin(
         m_interface.get(),
-        camera.render_target,
-        camera.render_target_resolve,
-        camera.depth_stencil_buffer);
+        camera.render_target(),
+        camera.render_target_resolve(),
+        camera.depth_stencil_buffer());
 
     scissor_extent extent = {};
-    auto [width, height] = camera.render_target->extent();
+    auto [width, height] = camera.render_target()->extent();
     extent.max_x = width;
     extent.max_y = height;
     command->scissor(&extent, 1);
 
-    command->parameter(0, camera.parameter->parameter());
+    command->parameter(0, camera.parameter()->interface());
     for (auto& unit : units())
     {
         if (unit.index_start == unit.index_end)

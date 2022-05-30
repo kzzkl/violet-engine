@@ -28,9 +28,19 @@ public:
     virtual void shutdown() override;
 
     void skin_meshes();
-    void render(ecs::entity camera_entity);
-
+    void render(ecs::entity target_camera = ecs::INVALID_ENTITY);
     void present();
+
+    void game_camera(ecs::entity game_camera) noexcept { m_game_camera = game_camera; }
+    ecs::entity game_camera() const noexcept { return m_game_camera; }
+
+    void editor_camera(ecs::entity editor_camera, ecs::entity scene_camera) noexcept
+    {
+        ASH_ASSERT(editor_camera != ecs::INVALID_ENTITY && scene_camera != ecs::INVALID_ENTITY);
+
+        m_editor_camera = editor_camera;
+        m_scene_camera = scene_camera;
+    }
 
     std::unique_ptr<render_pass_interface> make_render_pass(render_pass_info& info);
     std::unique_ptr<compute_pipeline_interface> make_compute_pipeline(compute_pipeline_info& info);
@@ -95,17 +105,23 @@ public:
     graphics_debug& debug() { return *m_debug; }
 
     resource_format back_buffer_format() const { return m_renderer->back_buffer()->format(); }
+    resource_extent render_extent() const noexcept;
 
 private:
+    void render_main_camera();
+    bool editor_mode() const noexcept { return m_editor_camera != ecs::INVALID_ENTITY; }
+
     graphics_plugin m_plugin;
     std::unique_ptr<renderer> m_renderer;
     std::size_t m_back_buffer_index;
 
+    ecs::entity m_game_camera;
+    ecs::entity m_editor_camera;
+    ecs::entity m_scene_camera;
+
     ash::ecs::view<visual>* m_visual_view;
     ash::ecs::view<visual, scene::transform>* m_object_view;
     ash::ecs::view<visual, skinned_mesh>* m_skinned_mesh_view;
-
-    // ash::ecs::view<scene::transform>* m_tv;
 
     interface_map<pipeline_parameter_layout_interface> m_parameter_layouts;
 

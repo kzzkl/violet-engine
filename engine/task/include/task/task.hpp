@@ -43,13 +43,17 @@ public:
     task_type type() const noexcept { return m_type; }
 
 private:
+    void mark_dependency_dirty();
+
     void add_next_task(task& task);
     void remove_next_task(task& task);
 
     void reset_counter();
     void reset_counter_and_get_reachable_tasks(std::vector<task*>& next_tasks);
 
-    std::vector<task*> m_next;
+    std::size_t m_current_index;
+    std::size_t m_next_index;
+    std::array<std::vector<task*>, 2> m_next_task_list;
 
     std::uint8_t m_dependency_count;
     std::atomic<std::uint8_t> m_uncompleted_dependency_count;
@@ -72,19 +76,5 @@ public:
 
 private:
     Callable m_callable;
-};
-
-class task_group : public task
-{
-public:
-    task_group(std::string_view name, task_type type);
-
-    virtual void execute() override;
-
-    void add(task* task);
-    void remove(task* task);
-
-private:
-    std::vector<task*> m_tasks;
 };
 } // namespace ash::task

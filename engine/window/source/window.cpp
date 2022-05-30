@@ -2,6 +2,7 @@
 #include "core/context.hpp"
 #include "window/window_event.hpp"
 #include "window/window_impl_win32.hpp"
+#include "window/window_task.hpp"
 
 using namespace ash::core;
 
@@ -25,6 +26,16 @@ bool window::initialize(const dictionary& config)
     event.register_event<event_keyboard_key>();
     event.register_event<event_keyboard_char>();
     event.register_event<event_window_resize>();
+
+    auto& task = system<task::task_manager>();
+    auto window_tick_task = task.schedule(
+        TASK_WINDOW_TICK,
+        [this]() { tick(); },
+        task::task_type::MAIN_THREAD);
+    window_tick_task->add_dependency(*task.find(task::TASK_ROOT));
+
+    auto logic_start_task = task.find(task::TASK_GAME_LOGIC_START);
+    logic_start_task->add_dependency(*window_tick_task);
 
     return true;
 }

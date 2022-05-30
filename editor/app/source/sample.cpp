@@ -1,6 +1,7 @@
 #include "editor/sample.hpp"
 #include "core/relation.hpp"
 #include "graphics/geometry.hpp"
+#include "graphics/graphics_event.hpp"
 #include "scene/scene.hpp"
 
 namespace ash::editor
@@ -123,6 +124,53 @@ bool test_module::initialize(const dictionary& config)
         relation.link(m_plane, scene.root());
     }
 
+    // Initialize camera.
+    m_camera = world.create("main camera");
+    world.add<core::link, graphics::camera, scene::transform>(m_camera);
+    auto extent = graphics.render_extent();
+    resize_camera(extent.width, extent.height);
+    graphics.game_camera(m_camera);
+
+    relation.link(m_camera, scene.root());
+
+    // Initialize task.
+    auto& task = system<task::task_manager>();
+    auto game_logic = task.schedule("sample task", []() {
+        auto& physics = system<physics::physics>();
+        physics.simulation();
+    });
+    game_logic->add_dependency(*task.find(task::TASK_GAME_LOGIC_START));
+    task.find(task::TASK_GAME_LOGIC_END)->add_dependency(*game_logic);
+
+    auto& event = system<core::event>();
+    event.subscribe<graphics::event_render_extent_change>(
+        "editor sample",
+        [this](std::uint32_t width, std::uint32_t height) { resize_camera(width, height); });
+
     return true;
+}
+
+void test_module::resize_camera(std::uint32_t width, std::uint32_t height)
+{
+    auto& world = system<ecs::world>();
+    auto& graphics = system<graphics::graphics>();
+
+    auto& camera = world.component<graphics::camera>(m_camera);
+
+    graphics::render_target_info render_target_info = {};
+    render_target_info.width = width;
+    render_target_info.height = height;
+    render_target_info.format = graphics.back_buffer_format();
+    render_target_info.samples = 4;
+    m_render_target = graphics.make_render_target(render_target_info);
+    camera.render_target(m_render_target.get());
+
+    graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
+    depth_stencil_buffer_info.width = width;
+    depth_stencil_buffer_info.height = height;
+    depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
+    depth_stencil_buffer_info.samples = 4;
+    m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
+    camera.depth_stencil_buffer(m_depth_stencil_buffer.get());
 }
 } // namespace ash::editor

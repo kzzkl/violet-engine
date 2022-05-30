@@ -1,6 +1,8 @@
 #include "graphics/graphics.hpp"
 #include "core/context.hpp"
 #include "graphics/graphics_config.hpp"
+#include "graphics/graphics_event.hpp"
+#include "graphics/graphics_task.hpp"
 #include "graphics/skin_pipeline.hpp"
 #include "log.hpp"
 #include "math/math.hpp"
@@ -14,7 +16,14 @@ using namespace ash::math;
 
 namespace ash::graphics
 {
-graphics::graphics() noexcept : system_base("graphics")
+graphics::graphics() noexcept
+    : system_base("graphics"),
+      m_back_buffer_index(0),
+      m_game_camera(ecs::INVALID_ENTITY),
+      m_editor_camera(ecs::INVALID_ENTITY),
+      m_visual_view(nullptr),
+      m_object_view(nullptr),
+      m_skinned_mesh_view(nullptr)
 {
 }
 
@@ -61,18 +70,30 @@ bool graphics::initialize(const dictionary& config)
     world.register_component<visual>();
     world.register_component<skinned_mesh>();
     world.register_component<camera>();
-    world.register_component<main_camera>();
     m_visual_view = world.make_view<visual>();
     m_object_view = world.make_view<visual, scene::transform>();
     m_skinned_mesh_view = world.make_view<visual, skinned_mesh>();
-    // m_tv = world.make_view<scene::transform>();
 
+    event.register_event<event_render_extent_change>();
     event.subscribe<window::event_window_resize>(
         "graphics",
-        [this](std::uint32_t width, std::uint32_t height) { m_renderer->resize(width, height); });
+        [&, this](std::uint32_t width, std::uint32_t height) {
+            m_renderer->resize(width, height);
+
+            // The event_render_extent_change event is emitted by the editor module in editor mode.
+            if (!editor_mode())
+                event.publish<event_render_extent_change>(width, height);
+        });
 
     m_debug = std::make_unique<graphics_debug>(m_config.frame_resource());
     m_debug->initialize(*this);
+
+    auto& task = system<task::task_manager>();
+    auto render_task = task.schedule(TASK_GRAPHICS_RENDER, [this]() {
+        render_main_camera();
+        present();
+    });
+    render_task->add_dependency(*task.find(task::TASK_GAME_LOGIC_END));
 
     return true;
 }
@@ -119,47 +140,36 @@ void graphics::skin_meshes()
     m_renderer->execute(command);
 }
 
-void graphics::render(ecs::entity camera_entity)
+void graphics::render(ecs::entity target_camera)
 {
     auto& world = system<ecs::world>();
 
-    auto& c = world.component<camera>(camera_entity);
-    auto& t = world.component<scene::transform>(camera_entity);
+    auto& c = world.component<camera>(target_camera);
+    auto& transform = world.component<scene::transform>(target_camera);
 
     if (c.mask & VISUAL_GROUP_DEBUG)
         m_debug->sync();
 
     // Update camera data.
-    math::float4x4_simd transform_v;
-    math::float4x4_simd transform_p;
-    math::float4x4_simd transform_vp;
+    math::float4x4_simd world_simd = math::simd::load(transform.world_matrix);
+    math::float4x4_simd transform_v = math::matrix_simd::inverse(world_simd);
+    math::float4x4_simd transform_p = math::simd::load(c.projection());
+    math::float4x4_simd transform_vp = math::matrix_simd::mul(transform_v, transform_p);
 
-    if (t.sync_count != 0)
-    {
-        math::float4x4_simd world_simd = math::simd::load(t.world_matrix);
-        transform_v = math::matrix_simd::inverse(world_simd);
-        math::simd::store(transform_v, c.view);
-    }
-    else
-    {
-        transform_v = math::simd::load(c.view);
-    }
-
-    transform_p = math::simd::load(c.projection);
-    transform_vp = math::matrix_simd::mul(transform_v, transform_p);
-
-    if (t.sync_count != 0)
+    if (transform.sync_count != 0)
     {
         math::float4x4 view, projection, view_projection;
         math::simd::store(transform_v, view);
         math::simd::store(transform_p, projection);
         math::simd::store(transform_vp, view_projection);
 
-        c.parameter->set(0, float4{1.0f, 2.0f, 3.0f, 4.0f});
-        c.parameter->set(1, float4{5.0f, 6.0f, 7.0f, 8.0f});
-        c.parameter->set(2, view);
-        c.parameter->set(3, projection);
-        c.parameter->set(4, view_projection);
+        auto parameter = c.parameter();
+
+        parameter->set(0, float4{1.0f, 2.0f, 3.0f, 4.0f});
+        parameter->set(1, float4{5.0f, 6.0f, 7.0f, 8.0f});
+        parameter->set(2, view);
+        parameter->set(3, projection);
+        parameter->set(4, view_projection);
     }
 
     // Update object data.
@@ -196,11 +206,8 @@ void graphics::render(ecs::entity camera_entity)
 
     // Render.
     auto command = m_renderer->allocate_command();
-    command->clear_render_target(c.render_target, {0.0f, 0.0f, 0.0f, 1.0f});
-    command->clear_depth_stencil(c.depth_stencil_buffer);
-
-    if (world.has_component<main_camera>(camera_entity))
-        c.render_target_resolve = m_renderer->back_buffer();
+    command->clear_render_target(c.render_target(), {0.0f, 0.0f, 0.0f, 1.0f});
+    command->clear_depth_stencil(c.depth_stencil_buffer());
 
     for (auto pipeline : pipelines)
     {
@@ -264,5 +271,31 @@ std::unique_ptr<resource> graphics::make_texture(std::string_view file)
 {
     auto& factory = m_plugin.factory();
     return std::unique_ptr<resource>(factory.make_texture(file.data()));
+}
+
+resource_extent graphics::render_extent() const noexcept
+{
+    if (editor_mode())
+    {
+        auto& world = system<ecs::world>();
+        auto render_target = world.component<camera>(m_scene_camera).render_target();
+        if (render_target != nullptr)
+            return render_target->extent();
+        else
+            return m_renderer->back_buffer()->extent();
+    }
+    else
+    {
+        return m_renderer->back_buffer()->extent();
+    }
+}
+
+void graphics::render_main_camera()
+{
+    auto& world = system<ecs::world>();
+
+    ecs::entity main_camera = editor_mode() ? m_editor_camera : m_game_camera;
+    world.component<camera>(main_camera).render_target_resolve(m_renderer->back_buffer());
+    render(main_camera);
 }
 } // namespace ash::graphics

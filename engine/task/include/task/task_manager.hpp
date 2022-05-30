@@ -7,6 +7,10 @@
 
 namespace ash::task
 {
+static constexpr char TASK_ROOT[] = "root";
+static constexpr char TASK_GAME_LOGIC_START[] = "game logic start";
+static constexpr char TASK_GAME_LOGIC_END[] = "game logic end";
+
 class task_manager;
 class task_handle
 {
@@ -40,8 +44,6 @@ public:
     {
         return do_schedule<task_wrapper<Callable>>(name, type, callable);
     }
-
-    handle schedule_group(std::string_view name, task_type type = task_type::NONE);
 
     void execute(handle task);
 

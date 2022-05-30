@@ -98,9 +98,7 @@ private:
         auto& graphics = system<graphics::graphics>();
 
         m_camera = world.create();
-        world.add<core::link, graphics::camera, graphics::main_camera, scene::transform>(m_camera);
-        auto& c_camera = world.component<graphics::camera>(m_camera);
-        c_camera.parameter = graphics.make_pipeline_parameter("ash_pass");
+        world.add<core::link, graphics::camera, scene::transform>(m_camera);
 
         auto& c_transform = world.component<scene::transform>(m_camera);
         c_transform.position = {0.0f, 0.0f, -38.0f};
@@ -114,6 +112,8 @@ private:
 
         auto window_extent = system<window::window>().extent();
         resize_camera(window_extent.width, window_extent.height);
+
+        graphics.game_camera(m_camera);
     }
 
     void resize_camera(std::uint32_t width, std::uint32_t height)
@@ -122,12 +122,6 @@ private:
         auto& graphics = system<graphics::graphics>();
 
         auto& camera = world.component<graphics::camera>(m_camera);
-        camera.set(
-            math::to_radians(45.0f),
-            static_cast<float>(width) / static_cast<float>(height),
-            0.3f,
-            1000.0f,
-            false);
 
         graphics::render_target_info render_target_info = {};
         render_target_info.width = width;
@@ -135,7 +129,7 @@ private:
         render_target_info.format = graphics.back_buffer_format();
         render_target_info.samples = 4;
         m_render_target = graphics.make_render_target(render_target_info);
-        camera.render_target = m_render_target.get();
+        camera.render_target(m_render_target.get());
 
         graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
         depth_stencil_buffer_info.width = width;
@@ -143,7 +137,7 @@ private:
         depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
         depth_stencil_buffer_info.samples = 4;
         m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
-        camera.depth_stencil_buffer = m_depth_stencil_buffer.get();
+        camera.depth_stencil_buffer(m_depth_stencil_buffer.get());
     }
 
     void update()
