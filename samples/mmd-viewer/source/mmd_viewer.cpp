@@ -1,7 +1,7 @@
 #include "mmd_viewer.hpp"
 #include "mmd_animation.hpp"
 #include "scene/scene.hpp"
-#include "transform.hpp"
+#include "scene/transform.hpp"
 #include "window/window_event.hpp"
 
 namespace ash::sample::mmd
@@ -28,7 +28,7 @@ ash::ecs::entity mmd_viewer::load_mmd(
     std::string_view pmx,
     std::string_view vmd)
 {
-    ecs::entity entity = system<ecs::world>().create();
+    ecs::entity entity = system<ecs::world>().create(name);
     mmd_resource resource;
     if (m_loader->load(entity, resource, pmx, vmd, m_render_pipeline.get(), m_skin_pipeline.get()))
     {

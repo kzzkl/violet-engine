@@ -1,11 +1,11 @@
 #pragma once
 
-#include "entity.hpp"
+#include "core/relation.hpp"
+#include "ecs/entity.hpp"
 #include "graphics/graphics.hpp"
 #include "mmd_component.hpp"
-#include "physics.hpp"
+#include "physics/physics.hpp"
 #include "pmx_loader.hpp"
-#include "core/relation.hpp"
 #include "scene/scene.hpp"
 #include "vmd_loader.hpp"
 

@@ -14,6 +14,7 @@ void render_pipeline::add(const visual& visual, std::size_t submesh_index)
         .index_start = visual.submeshes[submesh_index].index_start,
         .index_end = visual.submeshes[submesh_index].index_end,
         .vertex_base = visual.submeshes[submesh_index].vertex_base,
-        .parameters = visual.materials[submesh_index].parameters});
+        .parameters = visual.materials[submesh_index].parameters,
+        .scissor = visual.materials[submesh_index].scissor});
 }
 } // namespace ash::graphics

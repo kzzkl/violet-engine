@@ -9,6 +9,9 @@
 
 namespace ash::ui
 {
+static constexpr std::size_t MAX_UI_VERTEX_COUNT = 4096 * 16;
+static constexpr std::size_t MAX_UI_INDEX_COUNT = MAX_UI_VERTEX_COUNT * 2;
+
 ui::ui() : system_base("ui"), m_material_parameter_counter(0)
 {
 }
@@ -27,20 +30,20 @@ bool ui::initialize(const dictionary& config)
 
     m_vertex_buffers.push_back(graphics.make_vertex_buffer<math::float3>(
         nullptr,
-        2048,
+        MAX_UI_VERTEX_COUNT,
         graphics::VERTEX_BUFFER_FLAG_NONE,
         true));
     m_vertex_buffers.push_back(graphics.make_vertex_buffer<math::float2>(
         nullptr,
-        2048,
+        MAX_UI_VERTEX_COUNT,
         graphics::VERTEX_BUFFER_FLAG_NONE,
         true));
     m_vertex_buffers.push_back(graphics.make_vertex_buffer<std::uint32_t>(
         nullptr,
-        2048,
+        MAX_UI_VERTEX_COUNT,
         graphics::VERTEX_BUFFER_FLAG_NONE,
         true));
-    m_index_buffer = graphics.make_index_buffer<std::uint32_t>(nullptr, 4096, true);
+    m_index_buffer = graphics.make_index_buffer<std::uint32_t>(nullptr, MAX_UI_INDEX_COUNT, true);
 
     m_entity = world.create("ui root");
     world.add<graphics::visual>(m_entity);
@@ -75,9 +78,9 @@ void ui::tick()
     auto& world = system<ecs::world>();
 
     m_renderer.reset();
-    m_renderer.scissor_push({});
 
-    m_tree->tick();
+    auto extent = system<window::window>().extent();
+    m_tree->tick(static_cast<float>(extent.width), static_cast<float>(extent.height));
 
     if (!m_tree->tree_dirty())
         return;
@@ -121,10 +124,15 @@ void ui::tick()
         if (batch->type != RENDER_TYPE_BLOCK)
             material_parameter->set(1, batch->texture);
 
-        graphics::material material = {
-            .pipeline = m_pipeline.get(),
-            .parameters = {material_parameter, m_mvp_parameter.get()}
-        };
+        graphics::material material = {};
+        material.pipeline = m_pipeline.get();
+        material.parameters = {material_parameter, m_mvp_parameter.get()};
+        material.scissor = graphics::scissor_extent{
+            .min_x = static_cast<std::uint32_t>(batch->scissor.x),
+            .min_y = static_cast<std::uint32_t>(batch->scissor.y),
+            .max_x = static_cast<std::uint32_t>(batch->scissor.x + batch->scissor.width),
+            .max_y = static_cast<std::uint32_t>(batch->scissor.y + batch->scissor.height)};
+
         visual.materials.push_back(material);
 
         vertex_offset += batch->vertex_position.size();
@@ -136,8 +144,6 @@ void ui::tick()
 
 void ui::resize(std::uint32_t width, std::uint32_t height)
 {
-    m_tree->resize_window(width, height);
-
     float L = 0.0f;
     float R = static_cast<float>(width);
     float T = 0.0f;

@@ -25,16 +25,4 @@ private:
 
     std::unique_ptr<editor_ui> m_ui;
 };
-
-class editor_app
-{
-public:
-    editor_app();
-
-    void initialize();
-    void run();
-
-private:
-    core::application m_app;
-};
 } // namespace ash::editor

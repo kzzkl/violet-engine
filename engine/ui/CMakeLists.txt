@@ -11,7 +11,9 @@ add_library(${PROJECT_NAME} STATIC
     ./source/controls/image.cpp
     ./source/controls/label.cpp
     ./source/controls/panel.cpp
+    ./source/controls/scroll_view.cpp
     ./source/controls/tree.cpp
+    ./source/controls/view.cpp
     ./source/element_layout.cpp
     ./source/element_tree.cpp
     ./source/element.cpp

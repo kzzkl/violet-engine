@@ -7,6 +7,7 @@ element::element(bool is_root)
       m_depth(1.0f),
       m_dirty(true),
       m_display(true),
+      m_extent{},
       m_parent(nullptr)
 {
 }
@@ -26,6 +27,16 @@ void element::render(renderer& renderer)
     {
         if (child->m_display)
             child->render(renderer);
+    }
+}
+
+void element::sync_extent()
+{
+    element_extent new_extent = layout_extent();
+    if (new_extent != m_extent)
+    {
+        m_extent = new_extent;
+        on_extent_change();
     }
 }
 

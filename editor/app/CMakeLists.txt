@@ -1,18 +1,16 @@
 project(ash-editor)
 
-add_executable(${PROJECT_NAME}
-    ./source/editor.cpp
-    ./source/main.cpp
-    ./source/sample.cpp)
+add_library(${PROJECT_NAME} STATIC
+    ./source/editor.cpp)
+add_library(ash::editor ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
-    PRIVATE
+    PUBLIC
         ./include)
 
 target_link_libraries(${PROJECT_NAME}
-    PRIVATE
-        ash::editor::ui
-        ash::physics)
+    PUBLIC
+        ash::editor::ui)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

@@ -19,7 +19,7 @@ tree_node::tree_node(
     m_label->link(this);
     m_label->resize(100.0f, 40.0f, false, false, true, false);
 
-    m_label->on_mouse_click = [this](window::mouse_key key) {
+    m_label->on_mouse_press = [this](window::mouse_key key, int x, int y) {
         if (m_container->display())
             m_container->hide();
         else

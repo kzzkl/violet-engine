@@ -17,7 +17,8 @@ scene_view::scene_view()
       m_mouse_flag(true),
       m_mouse_position{},
       m_width(0),
-      m_height(0)
+      m_height(0),
+      m_focused(false)
 {
     auto& world = system<ecs::world>();
     auto& graphics = system<graphics::graphics>();
@@ -58,16 +59,16 @@ void scene_view::tick()
     graphics.render(m_camera);
 }
 
-void scene_view::on_extent_change(const ui::element_extent& element_extent)
+void scene_view::on_extent_change()
 {
-    ui::image::on_extent_change(element_extent);
+    ui::image::on_extent_change();
 
-    auto view_extent = extent();
-    if (static_cast<std::uint32_t>(view_extent.width) != m_width ||
-        static_cast<std::uint32_t>(view_extent.height) != m_height)
+    auto& e = extent();
+    if (static_cast<std::uint32_t>(e.width) != m_width ||
+        static_cast<std::uint32_t>(e.height) != m_height)
     {
-        m_width = static_cast<std::uint32_t>(view_extent.width);
-        m_height = static_cast<std::uint32_t>(view_extent.height);
+        m_width = static_cast<std::uint32_t>(e.width);
+        m_height = static_cast<std::uint32_t>(e.height);
         resize_camera();
 
         texture(m_render_target_resolve.get());
@@ -75,8 +76,8 @@ void scene_view::on_extent_change(const ui::element_extent& element_extent)
 
     auto& event = system<core::event>();
     event.publish<graphics::event_render_extent_change>(
-        static_cast<std::uint32_t>(view_extent.width),
-        static_cast<std::uint32_t>(view_extent.height));
+        static_cast<std::uint32_t>(e.width),
+        static_cast<std::uint32_t>(e.height));
 }
 
 void scene_view::update_camera()

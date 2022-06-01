@@ -12,7 +12,7 @@ camera::camera() noexcept
       m_render_target(nullptr),
       m_render_target_resolve(nullptr),
       m_depth_stencil_buffer(nullptr),
-      mask(VISUAL_GROUP_1)
+      mask(VISUAL_GROUP_1 | VISUAL_GROUP_UI)
 {
     m_parameter = system<graphics>().make_pipeline_parameter("ash_pass");
 }

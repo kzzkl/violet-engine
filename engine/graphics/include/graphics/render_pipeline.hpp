@@ -17,6 +17,8 @@ struct render_unit
     std::size_t index_end;
     std::size_t vertex_base;
     std::vector<pipeline_parameter*> parameters;
+
+    scissor_extent scissor;
 };
 
 class render_pipeline

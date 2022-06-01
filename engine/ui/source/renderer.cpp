@@ -22,7 +22,6 @@ void renderer::draw(render_type type, const element_mesh& mesh)
         target_batch = allocate_batch();
         target_batch->type = type;
         target_batch->scissor = current.scissor;
-        target_batch->scissor_extent = current.scissor_extent;
         target_batch->texture = mesh.texture;
         current.map[key] = target_batch;
     }
@@ -54,9 +53,11 @@ void renderer::draw(render_type type, const element_mesh& mesh)
         mesh.vertex_color.end());
 }
 
-void renderer::scissor_push(const graphics::scissor_extent& extent)
+void renderer::scissor_push(const element_extent& extent)
 {
-    m_scissor_stack.push(batch_map());
+    batch_map map = {};
+    map.scissor = extent;
+    m_scissor_stack.push(map);
 }
 
 void renderer::scissor_pop()

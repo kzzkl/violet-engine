@@ -4,35 +4,27 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#include <fstream>
+
 namespace ash::ui
 {
-font::font(std::string_view font, std::size_t size) : m_size(size)
+font::font(std::string_view font, std::size_t size)
 {
-    auto& graphics = system<graphics::graphics>();
+    FT_Error error;
 
     FT_Library library;
-
-    FT_Error error = FT_Init_FreeType(&library);
+    error = FT_Init_FreeType(&library);
     if (error)
-    {
-        log::error("FT_Init_FreeType failed.");
-        return;
-    }
+        throw std::runtime_error("FT_Init_FreeType failed.");
 
     FT_Face face;
     error = FT_New_Face(library, font.data(), 0, &face);
     if (error)
-    {
-        log::error("FT_New_Face failed.");
-        return;
-    }
+        throw std::runtime_error("FT_New_Face failed.");
 
     error = FT_Set_Char_Size(face, size * 64, 0, 96, 0);
     if (error)
-    {
-        log::error("FT_Set_Char_Size failed.");
-        return;
-    }
+        throw std::runtime_error("FT_Set_Char_Size failed.");
 
     int max_dim = (1 + (face->size->metrics.height >> 6)) * ceilf(sqrtf(128));
     int tex_width = 1;
@@ -42,47 +34,70 @@ font::font(std::string_view font, std::size_t size) : m_size(size)
 
     std::vector<std::uint8_t> pixels(tex_width * tex_height);
 
-    int pen_x = 0, pen_y = 0;
-    for (std::size_t i = 0; i < m_glyph.size(); ++i)
-    {
-        FT_Load_Char(face, i, FT_LOAD_RENDER | FT_LOAD_DEFAULT);
-        FT_Bitmap* bmp = &face->glyph->bitmap;
+    auto draw_bitmap = [&pixels, tex_width, tex_height](FT_Bitmap* bitmap, FT_Int x, FT_Int y) {
+        FT_Int x_max = x + bitmap->width;
+        FT_Int y_max = y + bitmap->rows;
 
-        if (pen_x + bmp->width >= tex_width)
+        for (FT_Int i = x, p = 0; i < x_max; i++, p++)
         {
-            pen_x = 0;
-            pen_y += ((face->size->metrics.height >> 6) + 1);
-        }
-
-        for (int row = 0; row < bmp->rows; ++row)
-        {
-            for (int col = 0; col < bmp->width; ++col)
+            for (FT_Int j = y, q = 0; j < y_max; j++, q++)
             {
-                int x = pen_x + col;
-                int y = pen_y + row;
-                pixels[y * tex_width + x] = bmp->buffer[row * bmp->pitch + col];
+                if (i < 0 || j < 0 || i >= tex_width || j >= tex_height)
+                    continue;
+
+                pixels[j * tex_width + i] |= bitmap->buffer[q * bitmap->width + p];
             }
         }
+    };
 
-        m_glyph[i].width = bmp->width;
-        m_glyph[i].height = bmp->rows;
-        m_glyph[i].bearing_x = face->glyph->bitmap_left;
-        m_glyph[i].bearing_y = face->glyph->bitmap_top;
+    m_heigth = face->size->metrics.height >> 6;
+    FT_Vector pen = {0, static_cast<FT_Pos>(m_heigth)};
+    for (std::size_t i = 0; i < m_glyph.size(); ++i)
+    {
+        FT_Set_Transform(face, nullptr, &pen);
+
+        error = FT_Load_Char(face, i, FT_LOAD_RENDER);
+        if (error)
+            continue;
+
+        FT_GlyphSlot slot = face->glyph;
+
+        if (slot->bitmap_left + slot->bitmap.width >= tex_width)
+        {
+            pen.x = 0;
+            pen.y += m_heigth;
+
+            --i;
+            continue;
+        }
+
+        FT_Pos x_min = slot->bitmap_left;
+        FT_Pos x_max = x_min + slot->bitmap.width;
+        FT_Pos y_min = pen.y - slot->bitmap_top;
+        FT_Pos y_max = y_min + slot->bitmap.rows;
+
+        draw_bitmap(&slot->bitmap, x_min, y_min);
+
+        m_glyph[i].width = slot->bitmap.width;
+        m_glyph[i].height = slot->bitmap.rows;
+        m_glyph[i].bearing_x = face->glyph->metrics.horiBearingX >> 6;
+        m_glyph[i].bearing_y = face->glyph->metrics.horiBearingY >> 6;
         m_glyph[i].advance = face->glyph->advance.x >> 6;
         m_glyph[i].uv1 = {
-            static_cast<float>(pen_x) / static_cast<float>(tex_width),
-            static_cast<float>(pen_y) / static_cast<float>(tex_height)};
+            static_cast<float>(x_min) / static_cast<float>(tex_width),
+            static_cast<float>(y_min) / static_cast<float>(tex_height)};
         m_glyph[i].uv2 = {
-            static_cast<float>(pen_x + bmp->width) / static_cast<float>(tex_width),
-            static_cast<float>(pen_y + bmp->rows) / static_cast<float>(tex_height)};
+            static_cast<float>(x_max) / static_cast<float>(tex_width),
+            static_cast<float>(y_max) / static_cast<float>(tex_height)};
 
-        pen_x += bmp->width + 1;
+        pen.x += slot->advance.x;
+        pen.y += slot->advance.y;
     }
 
     FT_Done_Face(face);
     FT_Done_FreeType(library);
 
-    m_texture = graphics.make_texture(
+    m_texture = system<graphics::graphics>().make_texture(
         pixels.data(),
         tex_width,
         tex_height,

@@ -11,7 +11,7 @@ component_panel_base::component_panel_base(std::string_view component_name)
     m_title = std::make_unique<ui::panel>();
     m_title->resize(0.0f, 40.0f, true, false);
     m_title->padding(10.0f);
-    m_title->on_mouse_click = [this](window::mouse_key key) {
+    m_title->on_mouse_press = [this](window::mouse_key key, int x, int y) {
         if (m_container->display())
             m_container->hide();
         else

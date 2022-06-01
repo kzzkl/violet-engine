@@ -1,8 +1,8 @@
 #pragma once
 
 #include "graphics/graphics.hpp"
-#include "render_pipeline.hpp"
-#include "skin_pipeline.hpp"
+#include "graphics/render_pipeline.hpp"
+#include "graphics/skin_pipeline.hpp"
 
 namespace ash::sample::mmd
 {

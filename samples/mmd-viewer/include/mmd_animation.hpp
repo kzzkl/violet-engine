@@ -1,9 +1,9 @@
 #pragma once
 
-#include "context.hpp"
-#include "math.hpp"
+#include "core/context.hpp"
+#include "math/math.hpp"
 #include "mmd_component.hpp"
-#include "transform.hpp"
+#include "scene/transform.hpp"
 #include <vector>
 
 namespace ash::sample::mmd

@@ -1,11 +1,12 @@
 #include "ui/controls/label.hpp"
 #include "assert.hpp"
+#include "log.hpp"
 
 namespace ash::ui
 {
 label::label(std::string_view t, const font& font, std::uint32_t color)
-    : m_original_x(0),
-      m_original_y(0)
+    : m_original_x(0.0f),
+      m_original_y(0.0f)
 {
     text(t, font, color);
 }
@@ -15,11 +16,10 @@ void label::text(std::string_view text, const font& font, std::uint32_t color)
     ASH_ASSERT(!text.empty());
 
     m_mesh.reset();
-    m_baseline_offset = font.size() * 0.34;
     m_mesh.texture = font.texture();
 
     std::uint32_t pen_x = m_original_x;
-    std::uint32_t pen_y = m_original_y;
+    std::uint32_t pen_y = m_original_y + font.heigth();
 
     std::uint32_t vertex_base = 0;
     for (char c : text)
@@ -71,14 +71,14 @@ void label::render(renderer& renderer)
     element::render(renderer);
 }
 
-void label::on_extent_change(const element_extent& extent)
+void label::on_extent_change()
 {
-    float baseline = extent.y + extent.height * 0.5f + m_baseline_offset;
+    auto& e = extent();
 
-    float offset_x = extent.x - m_original_x;
-    float offset_y = baseline - m_original_y;
-    m_original_x = extent.x;
-    m_original_y = baseline;
+    float offset_x = e.x - m_original_x;
+    float offset_y = e.y - m_original_y;
+    m_original_x = e.x;
+    m_original_y = e.y;
 
     float z = depth();
     for (auto& position : m_mesh.vertex_position)

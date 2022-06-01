@@ -106,23 +106,23 @@ void mmd_render_pipeline::render(
 {
     command->begin(
         m_interface.get(),
-        camera.render_target,
-        camera.render_target_resolve,
-        camera.depth_stencil_buffer);
+        camera.render_target(),
+        camera.render_target_resolve(),
+        camera.depth_stencil_buffer());
 
-    graphics::scissor_rect rect = {};
-    auto [width, height] = camera.render_target->extent();
+    graphics::scissor_extent rect = {};
+    auto [width, height] = camera.render_target()->extent();
     rect.max_x = width;
     rect.max_y = height;
     command->scissor(&rect, 1);
 
-    command->parameter(2, camera.parameter->parameter());
+    command->parameter(2, camera.parameter()->interface());
 
     // Color pass.
     for (auto& unit : units())
     {
-        command->parameter(0, unit.parameters[0]->parameter());
-        command->parameter(1, unit.parameters[1]->parameter());
+        command->parameter(0, unit.parameters[0]->interface());
+        command->parameter(1, unit.parameters[1]->interface());
 
         command->draw(
             unit.vertex_buffers.data(),
@@ -138,7 +138,7 @@ void mmd_render_pipeline::render(
     // Edge pass.
     for (auto& unit : units())
     {
-        command->parameter(0, unit.parameters[0]->parameter());
+        command->parameter(0, unit.parameters[0]->interface());
 
         std::array<graphics::resource*, 2> vertex_buffers = {
             unit.vertex_buffers[0],
@@ -190,7 +190,7 @@ void mmd_skin_pipeline::skin(graphics::render_command_interface* command)
         unit.parameter->set(4, unit.input_vertex_buffers[3]);
         unit.parameter->set(5, unit.skinned_vertex_buffers[0]);
         unit.parameter->set(6, unit.skinned_vertex_buffers[1]);
-        command->compute_parameter(0, unit.parameter->parameter());
+        command->compute_parameter(0, unit.parameter->interface());
 
         command->dispatch(unit.vertex_count / 256 + 256, 1, 1);
     }

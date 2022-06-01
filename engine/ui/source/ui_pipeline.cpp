@@ -103,11 +103,12 @@ void ui_pipeline::render(
     auto [width, height] = camera.render_target()->extent();
     extent.max_x = width;
     extent.max_y = height;
-    command->scissor(&extent, 1);
 
     command->parameter(1, units()[0].parameters[1]->interface());
     for (auto& unit : units())
     {
+        command->scissor(&unit.scissor, 1);
+
         command->parameter(0, unit.parameters[0]->interface());
         command->draw(
             unit.vertex_buffers.data(),

@@ -41,14 +41,14 @@ if (ASH_BUILD_ENGINE)
     add_subdirectory(engine)
 endif()
 
+if (ASH_BUILD_EDITOR)
+    add_subdirectory(editor)
+endif()
+
 if (ASH_BUILD_TESTING)
     add_subdirectory(tests)
 endif()
 
 if (ASH_BUILD_EXAMPLES)
     add_subdirectory(samples)
-endif()
-
-if (ASH_BUILD_EDITOR)
-    add_subdirectory(editor)
 endif()

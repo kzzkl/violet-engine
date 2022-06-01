@@ -1,9 +1,9 @@
 #pragma once
 
-#include "entity.hpp"
-#include "math.hpp"
+#include "ecs/entity.hpp"
+#include "graphics/pipeline_parameter.hpp"
+#include "math/math.hpp"
 #include "mmd_bezier.hpp"
-#include "pipeline_parameter.hpp"
 #include <string>
 #include <vector>
 

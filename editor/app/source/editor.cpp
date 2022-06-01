@@ -1,7 +1,6 @@
 #include "editor/editor.hpp"
 #include "core/relation.hpp"
 #include "editor/editor_task.hpp"
-#include "editor/sample.hpp"
 #include "graphics/graphics.hpp"
 #include "scene/scene.hpp"
 #include "ui/ui.hpp"
@@ -88,26 +87,5 @@ void editor::resize(std::uint32_t width, std::uint32_t height)
     depth_stencil_buffer_info.samples = 4;
     m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
     camera.depth_stencil_buffer(m_depth_stencil_buffer.get());
-}
-
-editor_app::editor_app() : m_app("editor/config")
-{
-}
-
-void editor_app::initialize()
-{
-    m_app.install<window::window>();
-    m_app.install<core::relation>();
-    m_app.install<scene::scene>();
-    m_app.install<graphics::graphics>();
-    m_app.install<physics::physics>();
-    m_app.install<ui::ui>();
-    m_app.install<editor>();
-    m_app.install<test_module>();
-}
-
-void editor_app::run()
-{
-    m_app.run();
 }
 }; // namespace ash::editor

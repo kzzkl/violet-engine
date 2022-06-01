@@ -16,8 +16,8 @@ public:
 
     ecs::entity scene_camera() const noexcept { return m_camera; }
 
-public:
-    virtual void on_extent_change(const ui::element_extent& element_extent) override;
+protected:
+    virtual void on_extent_change() override;
 
 private:
     void update_camera();

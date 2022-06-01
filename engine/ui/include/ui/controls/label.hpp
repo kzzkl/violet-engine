@@ -16,15 +16,13 @@ public:
 
     virtual void render(renderer& renderer) override;
 
-public:
-    virtual void on_extent_change(const element_extent& extent) override;
+protected:
+    virtual void on_extent_change() override;
 
 private:
     std::string m_text;
 
     float m_original_x;
     float m_original_y;
-
-    float m_baseline_offset;
 };
 } // namespace ash::ui

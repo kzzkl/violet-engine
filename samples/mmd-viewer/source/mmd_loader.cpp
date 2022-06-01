@@ -83,7 +83,7 @@ void mmd_loader::load_hierarchy(
     skeleton.nodes.reserve(loader.bones().size());
     for (auto& pmx_bone : loader.bones())
     {
-        ecs::entity node_entity = world.create();
+        ecs::entity node_entity = world.create("node");
         world.add<core::link, scene::transform, mmd_node>(node_entity);
 
         auto& bone = world.component<mmd_node>(node_entity);
@@ -406,7 +406,7 @@ void mmd_loader::load_physics(ecs::entity entity, mmd_resource& resource, const 
         else
         {
             // Workaround multiple rigid bodies are attached to a node.
-            ecs::entity workaround_node = world.create();
+            ecs::entity workaround_node = world.create("rigidbody");
             world.add<core::link, physics::rigidbody, scene::transform>(workaround_node);
             relation.link(workaround_node, node);
             node = workaround_node;
@@ -450,11 +450,11 @@ void mmd_loader::load_physics(ecs::entity entity, mmd_resource& resource, const 
             math::matrix_plain::inverse(world.component<scene::transform>(node).world_matrix));
     }
 
-    ecs::entity joint_group = world.create();
+    ecs::entity joint_group = world.create("joints");
     world.add<core::link>(joint_group);
     for (auto& pmx_joint : loader.joints())
     {
-        ecs::entity joint_entity = world.create();
+        ecs::entity joint_entity = world.create("joint");
         world.add<core::link, physics::joint>(joint_entity);
         auto& joint = world.component<physics::joint>(joint_entity);
 

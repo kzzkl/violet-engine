@@ -62,6 +62,13 @@ enum layout_edge
     LAYOUT_EDGE_ALL
 };
 
+enum layout_position_type
+{
+    LAYOUT_POSITION_TYPE_STATIC,
+    LAYOUT_POSITION_TYPE_RELATIVE,
+    LAYOUT_POSITION_TYPE_ABSOLUTE
+};
+
 class layout_node_impl
 {
 public:
@@ -77,6 +84,8 @@ public:
     virtual void align_content(layout_align align) = 0;
     virtual void padding(float padding, layout_edge edge) = 0;
     virtual void display(bool display) = 0;
+    virtual void position_type(layout_position_type position_type) = 0;
+    virtual void position(float position, layout_edge edge, bool percent) = 0;
 
     virtual layout_direction direction() const = 0;
     virtual layout_flex_direction flex_direction() const = 0;
@@ -129,6 +138,14 @@ public:
     void padding(float padding, layout_edge edge = LAYOUT_EDGE_LEFT)
     {
         m_impl->padding(padding, edge);
+    }
+    virtual void position_type(layout_position_type position_type)
+    {
+        return m_impl->position_type(position_type);
+    }
+    virtual void position(float position, layout_edge edge, bool percent = false)
+    {
+        m_impl->position(position, edge, percent);
     }
 
     layout_direction direction() const { return m_impl->direction(); }

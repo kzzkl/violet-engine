@@ -13,7 +13,7 @@ public:
 
     void texture(graphics::resource* texture);
 
-public:
-    virtual void on_extent_change(const element_extent& extent) override;
+protected:
+    virtual void on_extent_change() override;
 };
 } // namespace ash::ui

@@ -8,14 +8,13 @@ namespace ash::ui
 element_tree::element_tree()
     : m_hot_node(nullptr),
       m_focused_node(nullptr),
-      m_window_width(0.0f),
-      m_window_height(0.0f),
+      m_drag_node(nullptr),
       m_tree_dirty(true)
 {
     flex_direction(LAYOUT_FLEX_DIRECTION_ROW);
 }
 
-void element_tree::tick()
+void element_tree::tick(float width, float height)
 {
     update_input();
 
@@ -39,20 +38,12 @@ void element_tree::tick()
     });
 
     if (layout_dirty)
-        update_layout();
+        update_layout(width, height);
 
     if (layout_dirty || control_dirty)
         m_tree_dirty = true;
     else
         m_tree_dirty = false;
-}
-
-void element_tree::resize_window(float window_width, float window_height)
-{
-    resize(window_width, window_height);
-
-    m_window_width = window_width;
-    m_window_height = window_height;
 }
 
 void element_tree::update_input()
@@ -103,23 +94,11 @@ void element_tree::update_input()
         return;
 
     // Bubble click event.
-    bool key_down = false;
-    if (mouse.key(window::MOUSE_KEY_LEFT).press())
-    {
-        bubble_click_event(hot_node, window::MOUSE_KEY_LEFT);
-        key_down = true;
-    }
-    if (mouse.key(window::MOUSE_KEY_MIDDLE).press())
-    {
-        bubble_click_event(hot_node, window::MOUSE_KEY_MIDDLE);
-        key_down = true;
-    }
-    if (mouse.key(window::MOUSE_KEY_RIGHT).press())
-    {
-        bubble_click_event(hot_node, window::MOUSE_KEY_RIGHT);
-        key_down = true;
-    }
+    bubble_mouse_event();
 
+    bool key_down = mouse.key(window::MOUSE_KEY_LEFT).press() ||
+                    mouse.key(window::MOUSE_KEY_MIDDLE).press() ||
+                    mouse.key(window::MOUSE_KEY_RIGHT).press();
     if (key_down && m_focused_node != hot_node)
     {
         if (m_focused_node != nullptr && m_focused_node->on_blur)
@@ -132,12 +111,12 @@ void element_tree::update_input()
     }
 }
 
-void element_tree::update_layout()
+void element_tree::update_layout(float width, float height)
 {
     auto& event = system<core::event>();
 
     log::debug("calculate ui.");
-    calculate(m_window_width, m_window_height);
+    calculate(width, height);
 
     bfs(this, [&, this](element* node) -> bool {
         if (!node->display())
@@ -149,24 +128,81 @@ void element_tree::update_layout()
             // which are converted to absolute coordinates here.
             element_extent extent = node->parent()->extent();
             node->calculate_absolute_position(extent.x, extent.y);
-
-            extent = node->extent();
-            node->on_extent_change(extent);
         }
+        node->sync_extent();
+
         return true;
     });
 
     event.publish<event_calculate_layout>();
 }
 
-void element_tree::bubble_click_event(element* node, window::mouse_key key)
+void element_tree::bubble_mouse_event()
 {
-    while (node != nullptr)
-    {
-        if (node->on_mouse_click && !node->on_mouse_click(key))
-            return;
+    auto& mouse = system<window::window>().mouse();
+    int mouse_x = mouse.x();
+    int mouse_y = mouse.y();
 
-        node = node->parent();
+    static const std::vector<window::mouse_key> keys = {
+        window::MOUSE_KEY_LEFT,
+        window::MOUSE_KEY_RIGHT,
+        window::MOUSE_KEY_MIDDLE};
+
+    for (auto key : keys)
+    {
+        if (mouse.key(key).press())
+        {
+            element* temp = m_hot_node;
+            while (temp != nullptr)
+            {
+                if (temp->on_mouse_press && !temp->on_mouse_press(key, mouse_x, mouse_y))
+                    break;
+                temp = temp->parent();
+            }
+            m_drag_node = m_hot_node;
+        }
+
+        if (mouse.key(key).release())
+        {
+            element* temp = m_hot_node;
+            while (temp != nullptr)
+            {
+                if (temp->on_mouse_release && !temp->on_mouse_release(key, mouse_x, mouse_y))
+                    break;
+                temp = temp->parent();
+            }
+            m_drag_node = nullptr;
+        }
+
+        if (mouse.key(key).down())
+        {
+            element* temp = m_hot_node;
+            while (temp != nullptr)
+            {
+                if (temp->on_mouse_down && !temp->on_mouse_down(key, mouse_x, mouse_y))
+                    break;
+                temp = temp->parent();
+            }
+        }
+
+        if (mouse.whell() != 0)
+        {
+            element* temp = m_hot_node;
+            while (temp != nullptr)
+            {
+                if (temp->on_mouse_wheel && !temp->on_mouse_wheel(mouse.whell()))
+                    break;
+                temp = temp->parent();
+            }
+        }
+    }
+
+    element* drag_node = m_drag_node;
+    while (drag_node != nullptr)
+    {
+        if (drag_node->on_mouse_drag && !drag_node->on_mouse_drag(mouse_x, mouse_y))
+            break;
+        drag_node = drag_node->parent();
     }
 }
 

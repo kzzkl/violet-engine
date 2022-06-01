@@ -7,22 +7,22 @@
 
 namespace ash::editor
 {
-hierarchy_node::hierarchy_node(ecs::entity entity, ecs::entity* selected)
-    : m_entity(entity),
-      m_selected(selected)
+hierarchy_view::hierarchy_node::hierarchy_node(hierarchy_view* view)
+    : m_entity(ecs::INVALID_ENTITY),
+      m_view(view)
 {
     auto& ui = system<ui::ui>();
 
     m_title = std::make_unique<ui::panel>();
     m_title->resize(0.0f, 30.0f, true, false);
     m_title->padding(10.0f);
-    m_title->on_mouse_click = [this](window::mouse_key key) {
+    m_title->on_mouse_press = [this](window::mouse_key key, int x, int y) {
         if (m_container->display())
-            m_container->hide();
+            collapse();
         else
-            m_container->show();
+            expand();
 
-        *m_selected = m_entity;
+        m_view->m_selected = m_entity;
         return false;
     };
     m_title->link(this);
@@ -37,11 +37,9 @@ hierarchy_node::hierarchy_node(ecs::entity entity, ecs::entity* selected)
     m_container->padding(10.0f);
     m_container->hide();
     m_container->link(this);
-
-    reset(entity);
 }
 
-void hierarchy_node::reset(ecs::entity entity)
+void hierarchy_view::hierarchy_node::reset(ecs::entity entity)
 {
     auto& world = system<ecs::world>();
     auto& ui = system<ui::ui>();
@@ -49,50 +47,72 @@ void hierarchy_node::reset(ecs::entity entity)
     auto& info = world.component<ecs::information>(entity);
     m_label->text(info.name, ui.font());
 
-    log::debug("{}", info.name);
+    m_entity = entity;
 }
 
-hierarchy_view::hierarchy_view() : ui::panel(ui::COLOR_BLUE_VIOLET), m_selected(ecs::INVALID_ENTITY)
+void hierarchy_view::hierarchy_node::expand()
+{
+    m_container->show();
+
+    auto& world = system<ecs::world>();
+    auto& link = world.component<core::link>(m_entity);
+
+    for (auto child : link.children)
+    {
+        auto child_node = m_view->allocate_node();
+        child_node->reset(child);
+        child_node->link(m_container.get());
+    }
+}
+
+void hierarchy_view::hierarchy_node::collapse()
+{
+    m_container->hide();
+
+    std::vector<hierarchy_node*> child_nodes;
+    for (auto child_node : m_container->children())
+        child_nodes.push_back(static_cast<hierarchy_node*>(child_node));
+
+    for (auto child_node : child_nodes)
+    {
+        child_node->unlink();
+        m_view->deallocate_node(child_node);
+    }
+}
+
+hierarchy_view::hierarchy_view() : m_selected(ecs::INVALID_ENTITY)
 {
     auto& event = system<core::event>();
     auto& scene = system<scene::scene>();
 
     flex_direction(ui::LAYOUT_FLEX_DIRECTION_COLUMN);
 
-    auto root_node = get_or_create_node(scene.root());
+    auto root_node = allocate_node();
+    root_node->reset(scene.root());
     root_node->link(this);
-
-    event.subscribe<scene::event_enter_scene>("hierarchy view", [this](ecs::entity entity) {
-        auto& world = system<ecs::world>();
-        auto& link = world.component<core::link>(entity);
-
-        if (link.parent != ecs::INVALID_ENTITY)
-        {
-            auto parent_node = m_node_pool[link.parent.index].get();
-            auto node = get_or_create_node(entity);
-
-            node->link(parent_node->container());
-        }
-    });
-
-    event.subscribe<scene::event_exit_scene>("hierarchy view", [this](ecs::entity entity) {
-        auto node = get_or_create_node(entity);
-        node->unlink();;
-    });
 }
 
 hierarchy_view::~hierarchy_view()
 {
 }
 
-hierarchy_node* hierarchy_view::get_or_create_node(ecs::entity entity)
+hierarchy_view::hierarchy_node* hierarchy_view::allocate_node()
 {
-    if (m_node_pool.size() <= entity.index)
-        m_node_pool.resize(entity.index + 1);
+    if (m_free_node.empty())
+    {
+        m_node_pool.push_back(std::make_unique<hierarchy_node>(this));
+        return m_node_pool.back().get();
+    }
+    else
+    {
+        auto result = m_free_node.front();
+        m_free_node.pop();
+        return result;
+    }
+}
 
-    if (m_node_pool[entity.index] == nullptr)
-        m_node_pool[entity.index] = std::make_unique<hierarchy_node>(entity, &m_selected);
-
-    return m_node_pool[entity.index].get();
+void hierarchy_view::deallocate_node(hierarchy_node* node)
+{
+    m_free_node.push(node);
 }
 } // namespace ash::editor

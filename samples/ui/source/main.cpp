@@ -2,13 +2,14 @@
 #include "core/application.hpp"
 #include "core/relation.hpp"
 #include "graphics/graphics.hpp"
+#include "graphics/graphics_event.hpp"
 #include "scene/scene.hpp"
 #include "ui/controls/label.hpp"
 #include "ui/controls/panel.hpp"
+#include "ui/controls/scroll_view.hpp"
 #include "ui/controls/tree.hpp"
 #include "ui/ui.hpp"
 #include "window/window.hpp"
-#include "window/window_event.hpp"
 
 namespace ash::sample
 {
@@ -23,7 +24,7 @@ public:
         initialize_ui();
         initialize_camera();
 
-        system<core::event>().subscribe<window::event_window_resize>(
+        system<core::event>().subscribe<graphics::event_render_extent_change>(
             "sample_module",
             [this](std::uint32_t width, std::uint32_t height) { resize_camera(width, height); });
 
@@ -36,19 +37,8 @@ private:
         auto& task = system<task::task_manager>();
 
         auto update_task = task.schedule("test update", [this]() { update(); });
-        auto window_task = task.schedule(
-            "window tick",
-            [this]() { system<window::window>().tick(); },
-            task::task_type::MAIN_THREAD);
-        auto render_task = task.schedule("render", [this]() {
-            auto& graphics = system<graphics::graphics>();
-            graphics.render(m_camera);
-            graphics.present();
-        });
-
-        window_task->add_dependency(*task.find("root"));
-        update_task->add_dependency(*window_task);
-        render_task->add_dependency(*update_task);
+        update_task->add_dependency(*task.find(task::TASK_GAME_LOGIC_START));
+        task.find(task::TASK_GAME_LOGIC_END)->add_dependency(*update_task);
     }
 
     void initialize_ui()
@@ -64,30 +54,12 @@ private:
         m_panel->link(ui.root());
 
         m_text = std::make_unique<ui::label>("hello world! qap", ui.font(), 0xFF00FF00);
-        m_text->resize(100.0f, 20.0f);
+        m_text->resize(100.0f, 30.0f);
         m_text->link(ui.root());
 
-        m_tree = std::make_unique<ui::tree>();
-        m_tree->resize(200.0f, 0.0f, false, true);
-        m_tree->link(ui.root());
-
-        m_tree_node = std::make_unique<ui::tree_node>("node 1", ui.font());
-        m_tree_node->link(m_tree.get());
-
-        m_tree_panel = std::make_unique<ui::panel>(ui::COLOR_GREEN);
-        m_tree_panel->resize(50.0f, 50.0f);
-        m_tree_panel->link(m_tree_node->container());
-
-        m_tree_node_2 = std::make_unique<ui::tree_node>(
-            "node 2",
-            ui.font(),
-            ui::COLOR_BLACK,
-            ui::COLOR_ORANGE_RED);
-        m_tree_node_2->link(m_tree_node->container());
-
-        m_tree_panel_2 = std::make_unique<ui::panel>(ui::COLOR_DARK_ORCHID);
-        m_tree_panel_2->resize(50.0f, 50.0f);
-        m_tree_panel_2->link(m_tree_node_2->container());
+        m_scroll = std::make_unique<ui::scroll_view>();
+        m_scroll->resize(400.0f, 500.0f);
+        m_scroll->link(ui.root());
     }
 
     void initialize_camera()
@@ -110,8 +82,8 @@ private:
 
         relation.link(m_camera, scene.root());
 
-        auto window_extent = system<window::window>().extent();
-        resize_camera(window_extent.width, window_extent.height);
+        auto extent = graphics.render_extent();
+        resize_camera(extent.width, extent.height);
 
         graphics.game_camera(m_camera);
     }
@@ -144,7 +116,6 @@ private:
     {
         auto& world = system<ecs::world>();
         auto& scene = system<scene::scene>();
-        auto& ui = system<ui::ui>();
 
         scene.reset_sync_counter();
 
@@ -157,17 +128,23 @@ private:
             h += 0.05f;
         }
 
-        ui.tick();
+        static std::uint32_t color = ui::COLOR_DARK_GREEN;
+        if (keyboard.key(window::KEYBOARD_KEY_1).press())
+        {
+            auto block = std::make_unique<ui::panel>(color);
+            block->resize(1000.0f, 100.0f);
+            block->link(m_scroll->container());
+            m_blocks.push_back(std::move(block));
+
+            color += 100;
+        }
     }
 
     std::unique_ptr<ui::label> m_text;
     std::unique_ptr<ui::panel> m_panel;
+    std::unique_ptr<ui::scroll_view> m_scroll;
 
-    std::unique_ptr<ui::tree> m_tree;
-    std::unique_ptr<ui::tree_node> m_tree_node;
-    std::unique_ptr<ui::panel> m_tree_panel;
-    std::unique_ptr<ui::tree_node> m_tree_node_2;
-    std::unique_ptr<ui::panel> m_tree_panel_2;
+    std::vector<std::unique_ptr<ui::element>> m_blocks;
 
     ecs::entity m_camera;
     std::unique_ptr<graphics::resource> m_render_target;

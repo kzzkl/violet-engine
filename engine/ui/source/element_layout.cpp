@@ -45,6 +45,10 @@ private:
         YGEdgeHorizontal,
         YGEdgeVertical,
         YGEdgeAll};
+    static constexpr YGPositionType INTERNAL_YOGA_POSITION_TYPE_MAP[] = {
+        YGPositionTypeStatic,
+        YGPositionTypeRelative,
+        YGPositionTypeAbsolute};
 
     static constexpr layout_direction YOGA_INTERNAL_DIRECTION_MAP[] = {
         LAYOUT_DIRECTION_INHERIT,
@@ -85,6 +89,10 @@ private:
         LAYOUT_EDGE_HORIZONTAL,
         LAYOUT_EDGE_VERTICAL,
         LAYOUT_EDGE_ALL};
+    static constexpr layout_position_type YOGA_INTERNAL_POSITION_TYPE_MAP[] = {
+        LAYOUT_POSITION_TYPE_STATIC,
+        LAYOUT_POSITION_TYPE_RELATIVE,
+        LAYOUT_POSITION_TYPE_ABSOLUTE};
 
 public:
     layout_node_impl_yoga(bool is_root) : m_config(nullptr), m_absolute_x(0.0f), m_absolute_y(0.0f)
@@ -141,6 +149,17 @@ public:
             YGNodeStyleSetDisplay(m_node, YGDisplayFlex);
         else
             YGNodeStyleSetDisplay(m_node, YGDisplayNone);
+    }
+    virtual void position_type(layout_position_type position_type) override
+    {
+        YGNodeStyleSetPositionType(m_node, INTERNAL_YOGA_POSITION_TYPE_MAP[position_type]);
+    }
+    virtual void position(float position, layout_edge edge, bool percent) override
+    {
+        if (percent)
+            YGNodeStyleSetPositionPercent(m_node, INTERNAL_YOGA_EDGE_MAP[edge], position);
+        else
+            YGNodeStyleSetPosition(m_node, INTERNAL_YOGA_EDGE_MAP[edge], position);
     }
 
     virtual layout_direction direction() const override

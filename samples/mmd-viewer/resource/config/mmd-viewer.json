@@ -4,8 +4,8 @@
     },
     "window": {
         "title": "你好",
-        "width": 1300,
-        "height": 800
+        "width": 2000,
+        "height": 1300
     },
     "graphics": {
         "plugin": "ash-graphics-d3d12.dll"
