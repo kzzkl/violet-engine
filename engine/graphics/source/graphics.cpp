@@ -156,21 +156,17 @@ void graphics::render(ecs::entity target_camera)
     math::float4x4_simd transform_p = math::simd::load(c.projection());
     math::float4x4_simd transform_vp = math::matrix_simd::mul(transform_v, transform_p);
 
-    if (transform.sync_count != 0)
-    {
-        math::float4x4 view, projection, view_projection;
-        math::simd::store(transform_v, view);
-        math::simd::store(transform_p, projection);
-        math::simd::store(transform_vp, view_projection);
+    math::float4x4 view, projection, view_projection;
+    math::simd::store(transform_v, view);
+    math::simd::store(transform_p, projection);
+    math::simd::store(transform_vp, view_projection);
 
-        auto parameter = c.parameter();
-
-        parameter->set(0, float4{1.0f, 2.0f, 3.0f, 4.0f});
-        parameter->set(1, float4{5.0f, 6.0f, 7.0f, 8.0f});
-        parameter->set(2, view);
-        parameter->set(3, projection);
-        parameter->set(4, view_projection);
-    }
+    auto parameter = c.parameter();
+    parameter->set(0, float4{1.0f, 2.0f, 3.0f, 4.0f});
+    parameter->set(1, float4{5.0f, 6.0f, 7.0f, 8.0f});
+    parameter->set(2, view);
+    parameter->set(3, projection);
+    parameter->set(4, view_projection);
 
     // Update object data.
     m_object_view->each([&, this](visual& visual, scene::transform& transform) {

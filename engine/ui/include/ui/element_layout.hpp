@@ -83,6 +83,7 @@ public:
     virtual void align_self(layout_align align) = 0;
     virtual void align_content(layout_align align) = 0;
     virtual void padding(float padding, layout_edge edge) = 0;
+    virtual void margin(float margin, layout_edge edge) = 0;
     virtual void display(bool display) = 0;
     virtual void position_type(layout_position_type position_type) = 0;
     virtual void position(float position, layout_edge edge, bool percent) = 0;
@@ -98,6 +99,7 @@ public:
     virtual layout_align align_self() const = 0;
     virtual layout_align align_content() const = 0;
     virtual float padding(layout_edge edge) const = 0;
+    virtual float margin(layout_edge edge) const = 0;
 
     virtual void link(layout_node_impl* parent) = 0;
     virtual void unlink() = 0;
@@ -135,10 +137,8 @@ public:
     void align_items(layout_align align) { m_impl->align_items(align); }
     void align_self(layout_align align) { m_impl->align_self(align); }
     void align_content(layout_align align) { m_impl->align_content(align); }
-    void padding(float padding, layout_edge edge = LAYOUT_EDGE_LEFT)
-    {
-        m_impl->padding(padding, edge);
-    }
+    void padding(float padding, layout_edge edge) { m_impl->padding(padding, edge); }
+    void margin(float margin, layout_edge edge) { m_impl->margin(margin, edge); }
     virtual void position_type(layout_position_type position_type)
     {
         return m_impl->position_type(position_type);
@@ -159,6 +159,7 @@ public:
     layout_align align_self() const { return m_impl->align_self(); }
     layout_align align_content() const { return m_impl->align_content(); }
     float padding(layout_edge edge) { return m_impl->padding(edge); }
+    float margin(layout_edge edge) { return m_impl->margin(edge); }
 
     void calculate(float width, float height) { m_impl->calculate(width, height); }
     void calculate_absolute_position(float parent_x, float parent_y)

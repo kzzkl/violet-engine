@@ -14,7 +14,7 @@ hierarchy_view::hierarchy_node::hierarchy_node(hierarchy_view* view)
     auto& ui = system<ui::ui>();
 
     m_title = std::make_unique<ui::panel>();
-    m_title->resize(0.0f, 30.0f, true, false);
+    m_title->resize(100.0f, 30.0f, false, false, true, false);
     m_title->padding(10.0f);
     m_title->on_mouse_press = [this](window::mouse_key key, int x, int y) {
         if (m_container->display())
@@ -33,7 +33,7 @@ hierarchy_view::hierarchy_node::hierarchy_node(hierarchy_view* view)
 
     m_container = std::make_unique<ui::element>();
     m_container->flex_direction(ui::LAYOUT_FLEX_DIRECTION_COLUMN);
-    m_container->resize(0.0f, 0.0f, true, true);
+    //m_container->resize(100.0f, 100.0f, false, false, true, true);
     m_container->padding(10.0f);
     m_container->hide();
     m_container->link(this);
@@ -82,14 +82,11 @@ void hierarchy_view::hierarchy_node::collapse()
 
 hierarchy_view::hierarchy_view() : m_selected(ecs::INVALID_ENTITY)
 {
-    auto& event = system<core::event>();
     auto& scene = system<scene::scene>();
-
-    flex_direction(ui::LAYOUT_FLEX_DIRECTION_COLUMN);
 
     auto root_node = allocate_node();
     root_node->reset(scene.root());
-    root_node->link(this);
+    root_node->link(container());
 }
 
 hierarchy_view::~hierarchy_view()
@@ -101,6 +98,7 @@ hierarchy_view::hierarchy_node* hierarchy_view::allocate_node()
     if (m_free_node.empty())
     {
         m_node_pool.push_back(std::make_unique<hierarchy_node>(this));
+        m_node_pool.back()->resize(300.0f, 0.0f, false, true, false, false);
         return m_node_pool.back().get();
     }
     else

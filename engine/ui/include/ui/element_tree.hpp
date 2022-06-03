@@ -21,7 +21,7 @@ private:
     void update_input();
     void update_layout(float width, float height);
 
-    void bubble_mouse_event();
+    void bubble_mouse_event(element* hot_node);
 
     virtual void on_remove_child(element* child) override;
 
@@ -47,6 +47,8 @@ private:
     element* m_hot_node;
     element* m_focused_node;
     element* m_drag_node;
+
+    std::vector<element*> m_mouse_over_nodes;
 
     bool m_tree_dirty;
 };

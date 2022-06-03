@@ -143,6 +143,10 @@ public:
     {
         YGNodeStyleSetPadding(m_node, INTERNAL_YOGA_EDGE_MAP[edge], padding);
     }
+    virtual void margin(float margin, layout_edge edge) override
+    {
+        YGNodeStyleSetMargin(m_node, INTERNAL_YOGA_EDGE_MAP[edge], margin);
+    }
     virtual void display(bool display) override
     {
         if (display)
@@ -196,6 +200,10 @@ public:
     virtual float padding(layout_edge edge) const override
     {
         return YGNodeStyleGetPadding(m_node, INTERNAL_YOGA_EDGE_MAP[edge]).value;
+    }
+    virtual float margin(layout_edge edge) const override
+    {
+        return YGNodeStyleGetMargin(m_node, INTERNAL_YOGA_EDGE_MAP[edge]).value;
     }
 
     virtual void link(layout_node_impl* parent) override

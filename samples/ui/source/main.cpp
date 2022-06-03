@@ -1,13 +1,10 @@
 #include "assert.hpp"
 #include "core/application.hpp"
 #include "core/relation.hpp"
+#include "gallery.hpp"
 #include "graphics/graphics.hpp"
 #include "graphics/graphics_event.hpp"
 #include "scene/scene.hpp"
-#include "ui/controls/label.hpp"
-#include "ui/controls/panel.hpp"
-#include "ui/controls/scroll_view.hpp"
-#include "ui/controls/tree.hpp"
 #include "ui/ui.hpp"
 #include "window/window.hpp"
 
@@ -43,23 +40,8 @@ private:
 
     void initialize_ui()
     {
-        auto& ui = system<ui::ui>();
-        auto& relation = system<core::relation>();
-        auto& world = system<ecs::world>();
-
-        ui.root()->flex_direction(ui::LAYOUT_FLEX_DIRECTION_COLUMN);
-
-        m_panel = std::make_unique<ui::panel>(ui::COLOR_AQUA);
-        m_panel->resize(300.0f, 300.0f);
-        m_panel->link(ui.root());
-
-        m_text = std::make_unique<ui::label>("hello world! qap", ui.font(), 0xFF00FF00);
-        m_text->resize(100.0f, 30.0f);
-        m_text->link(ui.root());
-
-        m_scroll = std::make_unique<ui::scroll_view>();
-        m_scroll->resize(400.0f, 500.0f);
-        m_scroll->link(ui.root());
+        m_gallery = std::make_unique<gallery>();
+        m_gallery->initialize();
     }
 
     void initialize_camera()
@@ -118,37 +100,13 @@ private:
         auto& scene = system<scene::scene>();
 
         scene.reset_sync_counter();
-
-        static float h = 0.0f;
-
-        auto& keyboard = system<window::window>().keyboard();
-        if (keyboard.key(window::KEYBOARD_KEY_Q).down())
-        {
-            m_panel->resize(200, h);
-            h += 0.05f;
-        }
-
-        static std::uint32_t color = ui::COLOR_DARK_GREEN;
-        if (keyboard.key(window::KEYBOARD_KEY_1).press())
-        {
-            auto block = std::make_unique<ui::panel>(color);
-            block->resize(1000.0f, 100.0f);
-            block->link(m_scroll->container());
-            m_blocks.push_back(std::move(block));
-
-            color += 100;
-        }
     }
-
-    std::unique_ptr<ui::label> m_text;
-    std::unique_ptr<ui::panel> m_panel;
-    std::unique_ptr<ui::scroll_view> m_scroll;
-
-    std::vector<std::unique_ptr<ui::element>> m_blocks;
 
     ecs::entity m_camera;
     std::unique_ptr<graphics::resource> m_render_target;
     std::unique_ptr<graphics::resource> m_depth_stencil_buffer;
+
+    std::unique_ptr<gallery> m_gallery;
 };
 
 class ui_app

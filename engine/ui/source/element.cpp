@@ -4,6 +4,8 @@ namespace ash::ui
 {
 element::element(bool is_root)
     : element_layout(is_root),
+      mouse_over(false),
+      m_layer(1),
       m_depth(1.0f),
       m_dirty(true),
       m_display(true),
@@ -112,7 +114,7 @@ void element::on_remove_child(element* child)
 
 void element::update_depth(float parent_depth)
 {
-    m_depth = parent_depth - 0.01f;
+    m_depth = parent_depth - 0.01f * m_layer;
 
     for (element* child : m_children)
         child->update_depth(m_depth);

@@ -20,6 +20,15 @@ panel::panel(std::uint32_t color)
     m_mesh.indices = {0, 1, 2, 0, 2, 3};
 }
 
+void panel::color(std::uint32_t color) noexcept
+{
+    if (m_mesh.vertex_color[0] != color)
+    {
+        m_mesh.vertex_color = {color, color, color, color};
+        mark_dirty();
+    }
+}
+
 void panel::render(renderer& renderer)
 {
     renderer.draw(RENDER_TYPE_BLOCK, m_mesh);

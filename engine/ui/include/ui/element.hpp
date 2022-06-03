@@ -35,15 +35,22 @@ public:
     void hide();
     bool display() const noexcept { return m_display; }
 
+    float depth() const noexcept { return m_depth; }
+    void layer(int layer) noexcept { m_layer = layer; }
+
+    std::string name;
+
 public:
+    bool mouse_over;
+
+    std::function<void()> on_mouse_leave;
     std::function<void()> on_mouse_enter;
-    std::function<void()> on_mouse_exit;
-    std::function<bool(window::mouse_key, int x, int y)> on_mouse_press;
-    std::function<bool(window::mouse_key, int x, int y)> on_mouse_release;
-    std::function<bool(window::mouse_key, int x, int y)> on_mouse_down;
+    std::function<void()> on_mouse_out;
+    std::function<void()> on_mouse_over;
+    std::function<bool(window::mouse_key key, int x, int y)> on_mouse_press;
+    std::function<bool(window::mouse_key key, int x, int y)> on_mouse_release;
     std::function<bool(int whell)> on_mouse_wheel;
     std::function<bool(int x, int y)> on_mouse_drag;
-    std::function<void()> on_hover;
 
     std::function<void()> on_blur;
     std::function<void()> on_focus;
@@ -58,13 +65,13 @@ protected:
     virtual void on_remove_child(element* child);
 
     void mark_dirty() noexcept { m_dirty = true; }
-    float depth() const noexcept { return m_depth; }
 
     element_mesh m_mesh;
 
 private:
     void update_depth(float parent_depth);
 
+    int m_layer;
     float m_depth;
     bool m_dirty;
     bool m_display;

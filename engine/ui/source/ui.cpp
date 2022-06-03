@@ -22,7 +22,8 @@ bool ui::initialize(const dictionary& config)
     auto& world = system<ecs::world>();
     auto& event = system<core::event>();
 
-    m_font = std::make_unique<font_type>("engine/font/Roboto-Regular.ttf", 13);
+    load_font("dripicons-v2", "engine/font/dripicons-v2.ttf", 20);
+
     m_tree = std::make_unique<element_tree>();
 
     m_pipeline = std::make_unique<ui_pipeline>();
@@ -142,6 +143,11 @@ void ui::tick()
     m_material_parameter_counter = 0;
 }
 
+void ui::load_font(std::string_view name, std::string_view ttf_file, std::size_t size)
+{
+    m_fonts[name.data()] = std::make_unique<font_type>(ttf_file, size);
+}
+
 void ui::resize(std::uint32_t width, std::uint32_t height)
 {
     float L = 0.0f;
@@ -156,6 +162,7 @@ void ui::resize(std::uint32_t width, std::uint32_t height)
             math::float4{0.0f,              0.0f,              0.5f, 0.0f},
             math::float4{(R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f}
     });
+    m_tree->resize(width, height);
 }
 
 graphics::pipeline_parameter* ui::allocate_material_parameter()

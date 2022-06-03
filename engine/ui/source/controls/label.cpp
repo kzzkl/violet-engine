@@ -4,40 +4,43 @@
 
 namespace ash::ui
 {
+label::label() : m_original_x(0.0f), m_original_y(0.0f)
+{
+}
+
 label::label(std::string_view t, const font& font, std::uint32_t color)
     : m_original_x(0.0f),
       m_original_y(0.0f)
 {
-    text(t, font, color);
+    reset(t, font, color);
 }
 
-void label::text(std::string_view text, const font& font, std::uint32_t color)
+void label::reset(std::string_view text, const font& font, std::uint32_t color)
 {
     ASH_ASSERT(!text.empty());
 
     m_mesh.reset();
     m_mesh.texture = font.texture();
 
-    std::uint32_t pen_x = m_original_x;
-    std::uint32_t pen_y = m_original_y + font.heigth();
+    float pen_x = m_original_x;
+    float pen_y = m_original_y + font.heigth() * 0.73f;
 
     std::uint32_t vertex_base = 0;
     for (char c : text)
     {
         auto& glyph = font.glyph(c);
 
-        float x = static_cast<float>(pen_x) + static_cast<float>(glyph.bearing_x);
-        float y = static_cast<float>(pen_y) - static_cast<float>(glyph.bearing_y);
+        float x = pen_x + glyph.bearing_x;
+        float y = pen_y - glyph.bearing_y;
 
-        m_mesh.vertex_position.push_back(math::float3{x, y, 0.0f});
-        m_mesh.vertex_position.push_back(
-            math::float3{static_cast<float>(x + glyph.width), static_cast<float>(y), 0.0f});
-        m_mesh.vertex_position.push_back(math::float3{
-            static_cast<float>(x + glyph.width),
-            static_cast<float>(y + glyph.height),
-            0.0f});
-        m_mesh.vertex_position.push_back(
-            math::float3{x, static_cast<float>(y + glyph.height), 0.0f});
+        m_mesh.vertex_position.insert(
+            m_mesh.vertex_position.end(),
+            {
+                {x,               y,                0.0f},
+                {x + glyph.width, y,                0.0f},
+                {x + glyph.width, y + glyph.height, 0.0f},
+                {x,               y + glyph.height, 0.0f}
+        });
 
         pen_x += glyph.advance;
 
@@ -62,6 +65,7 @@ void label::text(std::string_view text, const font& font, std::uint32_t color)
         vertex_base += 4;
     }
 
+    resize(pen_x, font.heigth());
     mark_dirty();
 }
 

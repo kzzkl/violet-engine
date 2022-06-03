@@ -35,6 +35,8 @@ protected:
     virtual void on_extent_change() override;
 
 private:
+    float m_height;
+
     scroll_bar* m_vertical_bar;
     scroll_bar* m_horizontal_bar;
 };
@@ -49,8 +51,6 @@ public:
 private:
     void sync_container_vertical_position(float bar_value);
     void sync_container_horizontal_position(float bar_value);
-
-    std::unique_ptr<element> m_layout_left;
 
     std::unique_ptr<scroll_bar> m_vertical_bar;
     std::unique_ptr<scroll_bar> m_horizontal_bar;

@@ -46,52 +46,55 @@ font::font(std::string_view font, std::size_t size)
                     continue;
 
                 pixels[j * tex_width + i] |= bitmap->buffer[q * bitmap->width + p];
+                // pixels[j * tex_width + i] = 0xFF;
             }
         }
     };
 
     m_heigth = face->size->metrics.height >> 6;
     FT_Vector pen = {0, static_cast<FT_Pos>(m_heigth)};
-    for (std::size_t i = 0; i < m_glyph.size(); ++i)
-    {
-        FT_Set_Transform(face, nullptr, &pen);
 
-        error = FT_Load_Char(face, i, FT_LOAD_RENDER);
+    FT_UInt index;
+    FT_ULong character = FT_Get_First_Char(face, &index);
+
+    while (true)
+    {
+        character = FT_Get_Next_Char(face, character, &index);
+        if (!index)
+            break;
+
+        error = FT_Load_Char(face, character, FT_LOAD_RENDER | FT_LOAD_FORCE_AUTOHINT);
         if (error)
             continue;
 
         FT_GlyphSlot slot = face->glyph;
 
-        if (slot->bitmap_left + slot->bitmap.width >= tex_width)
-        {
-            pen.x = 0;
-            pen.y += m_heigth;
-
-            --i;
-            continue;
-        }
-
-        FT_Pos x_min = slot->bitmap_left;
+        FT_Pos x_min = pen.x + slot->bitmap_left;
         FT_Pos x_max = x_min + slot->bitmap.width;
         FT_Pos y_min = pen.y - slot->bitmap_top;
         FT_Pos y_max = y_min + slot->bitmap.rows;
 
         draw_bitmap(&slot->bitmap, x_min, y_min);
 
-        m_glyph[i].width = slot->bitmap.width;
-        m_glyph[i].height = slot->bitmap.rows;
-        m_glyph[i].bearing_x = face->glyph->metrics.horiBearingX >> 6;
-        m_glyph[i].bearing_y = face->glyph->metrics.horiBearingY >> 6;
-        m_glyph[i].advance = face->glyph->advance.x >> 6;
-        m_glyph[i].uv1 = {
+        auto& glyph = m_glyph[character];
+        glyph.width = slot->bitmap.width;
+        glyph.height = slot->bitmap.rows;
+        glyph.bearing_x = slot->metrics.horiBearingX >> 6;
+        glyph.bearing_y = slot->bitmap_top;
+        glyph.advance = slot->advance.x >> 6;
+        glyph.uv1 = {
             static_cast<float>(x_min) / static_cast<float>(tex_width),
             static_cast<float>(y_min) / static_cast<float>(tex_height)};
-        m_glyph[i].uv2 = {
+        glyph.uv2 = {
             static_cast<float>(x_max) / static_cast<float>(tex_width),
             static_cast<float>(y_max) / static_cast<float>(tex_height)};
 
-        pen.x += slot->advance.x;
-        pen.y += slot->advance.y;
+        pen.x += m_heigth;
+        if (pen.x + m_heigth >= tex_width)
+        {
+            pen.x = 0;
+            pen.y += m_heigth;
+        }
     }
 
     FT_Done_Face(face);
@@ -102,5 +105,14 @@ font::font(std::string_view font, std::size_t size)
         tex_width,
         tex_height,
         graphics::resource_format::R8_UNORM);
+}
+
+const glyph_data& font::glyph(std::uint32_t character) const
+{
+    auto iter = m_glyph.find(character);
+    if (iter != m_glyph.end())
+        return iter->second;
+    else
+        throw std::out_of_range("The font file does not contain this character.");
 }
 } // namespace ash::ui

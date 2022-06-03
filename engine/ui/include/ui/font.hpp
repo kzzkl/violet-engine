@@ -1,9 +1,9 @@
 #pragma once
 
 #include "graphics_interface.hpp"
-#include <array>
 #include <memory>
 #include <string_view>
+#include <unordered_map>
 
 namespace ash::ui
 {
@@ -24,13 +24,13 @@ public:
     font(std::string_view font, std::size_t size);
 
     graphics::resource* texture() const noexcept { return m_texture.get(); }
-    const glyph_data& glyph(char c) const noexcept { return m_glyph[c]; }
+    const glyph_data& glyph(std::uint32_t character) const;
 
     std::uint32_t heigth() const noexcept { return m_heigth; }
 
 private:
     std::unique_ptr<graphics::resource> m_texture;
-    std::array<glyph_data, 128> m_glyph;
+    std::unordered_map<std::uint32_t, glyph_data> m_glyph;
 
     std::uint32_t m_heigth;
 };

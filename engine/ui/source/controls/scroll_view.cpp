@@ -53,6 +53,7 @@ scroll_bar::scroll_bar(bool vertical, std::uint32_t slider_color, std::uint32_t 
 
     m_slider->resize(100.0f, 100.0f, false, false, true, true);
     m_slider->link(this);
+    m_slider->name = "m_slider";
 }
 
 void scroll_bar::value(float v) noexcept
@@ -100,15 +101,22 @@ void scroll_container::on_extent_change()
     if (container_extent.height <= view_extent.height)
     {
         m_vertical_bar->hide();
+        position(0.0f, LAYOUT_EDGE_TOP);
+        position(0.0f, LAYOUT_EDGE_LEFT);
     }
     else
     {
         m_vertical_bar->show();
-        float slider_height = math::clamp(
-            view_extent.height * view_extent.height / container_extent.height,
-            30.0f,
-            view_extent.height);
-        m_vertical_bar->slider()->resize(100.0f, slider_height, false, false, true, false);
+        if (m_height != container_extent.height)
+        {
+            float slider_height = math::clamp(
+                view_extent.height * view_extent.height / container_extent.height,
+                30.0f,
+                view_extent.height);
+            m_vertical_bar->slider()->resize(100.0f, slider_height, false, false, true, false);
+
+            m_height = container_extent.height;
+        }
     }
 
     if (container_extent.width <= view_extent.width)
@@ -118,38 +126,47 @@ void scroll_container::on_extent_change()
     else
     {
         m_horizontal_bar->show();
-        float slider_width = math::clamp(
-            view_extent.width * view_extent.width / container_extent.width,
-            30.0f,
-            view_extent.width);
-        m_horizontal_bar->slider()->resize(slider_width, 100.0f, false, false, false, true);
+        if (m_height != container_extent.height)
+        {
+            float slider_width = math::clamp(
+                view_extent.width * view_extent.width / container_extent.width,
+                30.0f,
+                view_extent.width);
+            m_horizontal_bar->slider()->resize(slider_width, 100.0f, false, false, false, true);
+
+            m_height = container_extent.height;
+        }
     }
 }
 
 scroll_view::scroll_view() : panel(COLOR_BROWN)
 {
-    m_layout_left = std::make_unique<element>();
-    m_layout_left->flex_grow(1.0f);
-    m_layout_left->flex_direction(LAYOUT_FLEX_DIRECTION_COLUMN);
-
+    name = "scroll_view";
     m_vertical_bar = std::make_unique<scroll_bar>(true);
     m_vertical_bar->resize(8.0f, 100.0f, false, false, false, true);
+    m_vertical_bar->position_type(LAYOUT_POSITION_TYPE_ABSOLUTE);
+    m_vertical_bar->position(0.0f, LAYOUT_EDGE_RIGHT);
     m_vertical_bar->on_slide = [this](float value) { sync_container_vertical_position(value); };
+    m_vertical_bar->layer(10);
+    m_vertical_bar->link(this);
+    m_vertical_bar->name = "m_vertical_bar";
 
     m_horizontal_bar = std::make_unique<scroll_bar>(false);
     m_horizontal_bar->resize(100.0f, 8.0f, false, false, true, false);
+    m_horizontal_bar->position_type(LAYOUT_POSITION_TYPE_ABSOLUTE);
+    m_horizontal_bar->position(0.0f, LAYOUT_EDGE_BOTTOM);
     m_horizontal_bar->on_slide = [this](float value) { sync_container_horizontal_position(value); };
+    m_horizontal_bar->layer(10);
+    m_horizontal_bar->link(this);
 
     m_container_view = std::make_unique<view>();
     m_container_view->flex_grow(1.0f);
+    m_container_view->link(this);
+    m_container_view->name = "m_container_view";
     m_container = std::make_unique<scroll_container>(m_vertical_bar.get(), m_horizontal_bar.get());
     m_container->position_type(LAYOUT_POSITION_TYPE_ABSOLUTE);
-
-    m_layout_left->link(this);
-    m_vertical_bar->link(this);
-    m_container_view->link(m_layout_left.get());
     m_container->link(m_container_view.get());
-    m_horizontal_bar->link(m_layout_left.get());
+    m_container->name = "m_container";
 
     flex_direction(LAYOUT_FLEX_DIRECTION_ROW);
     on_mouse_wheel = [this](int whell) -> bool {

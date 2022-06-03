@@ -9,9 +9,10 @@ namespace ash::ui
 class label : public element
 {
 public:
+    label();
     label(std::string_view text, const font& font, std::uint32_t color = COLOR_BLACK);
 
-    void text(std::string_view text, const font& font, std::uint32_t color = COLOR_BLACK);
+    void reset(std::string_view text, const font& font, std::uint32_t color = COLOR_BLACK);
     std::string_view text() const noexcept { return m_text; }
 
     virtual void render(renderer& renderer) override;

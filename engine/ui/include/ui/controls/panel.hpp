@@ -10,6 +10,8 @@ class panel : public element
 public:
     panel(std::uint32_t color = COLOR_WHITE);
 
+    void color(std::uint32_t color) noexcept;
+
     virtual void render(renderer& renderer) override;
 
 protected:

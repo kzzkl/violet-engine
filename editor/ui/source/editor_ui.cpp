@@ -38,7 +38,7 @@ editor_ui::editor_ui()
 
     // Create hierarchy view.
     m_hierarchy_view = std::make_unique<hierarchy_view>();
-    m_hierarchy_view->resize(0.0f, 50.0f, true, false, false, true);
+    m_hierarchy_view->resize(100.0f, 50.0f, false, false, true, true);
     m_hierarchy_view->link(m_right_container.get());
 
     // Create component view.

@@ -55,18 +55,36 @@ void element_tree::update_input()
     int mouse_x = mouse.x();
     int mouse_y = mouse.y();
 
-    element* hot_node = nullptr;
+    auto in_extent = [](int x, int y, const element_extent& extent) -> bool {
+        return extent.x < x && extent.x + extent.width > x && extent.y < y &&
+               extent.y + extent.height > y;
+    };
+
+    for (element* node : m_mouse_over_nodes)
+    {
+        if (!in_extent(mouse_x, mouse_y, node->extent()))
+        {
+            if (node->on_mouse_out)
+                node->on_mouse_out();
+            node->mouse_over = false;
+        }
+    }
+    m_mouse_over_nodes.clear();
+
     bfs(this, [&](element* node) {
         if (!node->display())
             return false;
 
         auto extent = node->extent();
-        if (static_cast<int>(extent.x) < mouse_x &&
-            static_cast<int>(extent.x + extent.width) > mouse_x &&
-            static_cast<int>(extent.y) < mouse_y &&
-            static_cast<int>(extent.y + extent.height) > mouse_y)
+        if (in_extent(mouse_x, mouse_y, node->extent()))
         {
-            hot_node = node;
+            if (!node->mouse_over)
+            {
+                if (node->on_mouse_over)
+                    node->on_mouse_over();
+
+                m_mouse_over_nodes.push_back(node);
+            }
             return true;
         }
         else
@@ -75,40 +93,19 @@ void element_tree::update_input()
         }
     });
 
-    if (m_hot_node != hot_node)
+    element* hot_node = nullptr;
+    float depth = 1.0f;
+    for (auto node : m_mouse_over_nodes)
     {
-        if (m_hot_node != nullptr && m_hot_node->on_mouse_exit)
-            m_hot_node->on_mouse_exit();
-
-        if (hot_node != nullptr && hot_node->on_mouse_enter)
-            hot_node->on_mouse_enter();
-
-        m_hot_node = hot_node;
+        if (node->depth() < depth)
+        {
+            depth = node->depth();
+            hot_node = node;
+        }
     }
-    else if (hot_node != nullptr && hot_node->on_hover)
-    {
-        hot_node->on_hover();
-    }
-
-    if (hot_node == nullptr)
-        return;
 
     // Bubble click event.
-    bubble_mouse_event();
-
-    bool key_down = mouse.key(window::MOUSE_KEY_LEFT).press() ||
-                    mouse.key(window::MOUSE_KEY_MIDDLE).press() ||
-                    mouse.key(window::MOUSE_KEY_RIGHT).press();
-    if (key_down && m_focused_node != hot_node)
-    {
-        if (m_focused_node != nullptr && m_focused_node->on_blur)
-            m_focused_node->on_blur();
-
-        if (hot_node->on_focus)
-            hot_node->on_focus();
-
-        m_focused_node = hot_node;
-    }
+    bubble_mouse_event(hot_node);
 }
 
 void element_tree::update_layout(float width, float height)
@@ -137,7 +134,7 @@ void element_tree::update_layout(float width, float height)
     event.publish<event_calculate_layout>();
 }
 
-void element_tree::bubble_mouse_event()
+void element_tree::bubble_mouse_event(element* hot_node)
 {
     auto& mouse = system<window::window>().mouse();
     int mouse_x = mouse.x();
@@ -148,51 +145,42 @@ void element_tree::bubble_mouse_event()
         window::MOUSE_KEY_RIGHT,
         window::MOUSE_KEY_MIDDLE};
 
+    bool key_down = false;
     for (auto key : keys)
     {
         if (mouse.key(key).press())
         {
-            element* temp = m_hot_node;
-            while (temp != nullptr)
+            element* node = hot_node;
+            while (node != nullptr)
             {
-                if (temp->on_mouse_press && !temp->on_mouse_press(key, mouse_x, mouse_y))
+                if (node->on_mouse_press && !node->on_mouse_press(key, mouse_x, mouse_y))
                     break;
-                temp = temp->parent();
+                node = node->parent();
             }
-            m_drag_node = m_hot_node;
+            m_drag_node = hot_node;
+            key_down = true;
         }
 
         if (mouse.key(key).release())
         {
-            element* temp = m_hot_node;
-            while (temp != nullptr)
+            element* node = hot_node;
+            while (node != nullptr)
             {
-                if (temp->on_mouse_release && !temp->on_mouse_release(key, mouse_x, mouse_y))
+                if (node->on_mouse_release && !node->on_mouse_release(key, mouse_x, mouse_y))
                     break;
-                temp = temp->parent();
+                node = node->parent();
             }
             m_drag_node = nullptr;
         }
 
-        if (mouse.key(key).down())
-        {
-            element* temp = m_hot_node;
-            while (temp != nullptr)
-            {
-                if (temp->on_mouse_down && !temp->on_mouse_down(key, mouse_x, mouse_y))
-                    break;
-                temp = temp->parent();
-            }
-        }
-
         if (mouse.whell() != 0)
         {
-            element* temp = m_hot_node;
-            while (temp != nullptr)
+            element* node = hot_node;
+            while (node != nullptr)
             {
-                if (temp->on_mouse_wheel && !temp->on_mouse_wheel(mouse.whell()))
+                if (node->on_mouse_wheel && !node->on_mouse_wheel(mouse.whell()))
                     break;
-                temp = temp->parent();
+                node = node->parent();
             }
         }
     }
@@ -203,6 +191,28 @@ void element_tree::bubble_mouse_event()
         if (drag_node->on_mouse_drag && !drag_node->on_mouse_drag(mouse_x, mouse_y))
             break;
         drag_node = drag_node->parent();
+    }
+
+    if (m_hot_node != hot_node)
+    {
+        if (m_hot_node != nullptr && m_hot_node->on_mouse_leave)
+            m_hot_node->on_mouse_leave();
+
+        if (hot_node != nullptr && hot_node->on_mouse_enter)
+            hot_node->on_mouse_enter();
+
+        m_hot_node = hot_node;
+    }
+
+    if (hot_node != nullptr && key_down && m_focused_node != hot_node)
+    {
+        if (m_focused_node != nullptr && m_focused_node->on_blur)
+            m_focused_node->on_blur();
+
+        if (hot_node->on_focus)
+            hot_node->on_focus();
+
+        m_focused_node = hot_node;
     }
 }
 
