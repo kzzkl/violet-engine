@@ -78,11 +78,12 @@ public:
     virtual void flex_grow(float grow) = 0;
     virtual void flex_shrink(float shrink) = 0;
     virtual void flex_wrap(layout_flex_wrap wrap) = 0;
-    virtual void justify(layout_justify justify) = 0;
+    virtual void justify_content(layout_justify justify) = 0;
     virtual void align_items(layout_align align) = 0;
     virtual void align_self(layout_align align) = 0;
     virtual void align_content(layout_align align) = 0;
     virtual void padding(float padding, layout_edge edge) = 0;
+    virtual void border(float border, layout_edge edge) = 0;
     virtual void margin(float margin, layout_edge edge) = 0;
     virtual void display(bool display) = 0;
     virtual void position_type(layout_position_type position_type) = 0;
@@ -94,26 +95,32 @@ public:
     virtual float flex_grow() const = 0;
     virtual float flex_shrink() const = 0;
     virtual layout_flex_wrap flex_wrap() const = 0;
-    virtual layout_justify justify() const = 0;
+    virtual layout_justify justify_content() const = 0;
     virtual layout_align align_items() const = 0;
     virtual layout_align align_self() const = 0;
     virtual layout_align align_content() const = 0;
     virtual float padding(layout_edge edge) const = 0;
+    virtual float border(layout_edge edge) const = 0;
     virtual float margin(layout_edge edge) const = 0;
 
-    virtual void link(layout_node_impl* parent) = 0;
+    virtual void link(layout_node_impl* parent, std::size_t index) = 0;
     virtual void unlink() = 0;
 
     virtual void calculate(float width, float height) = 0;
     virtual void calculate_absolute_position(float parent_x, float parent_y) = 0;
 
-    virtual void resize(
-        float width,
-        float height,
-        bool auto_width,
-        bool auto_height,
-        bool percent_width,
-        bool percent_height) = 0;
+    virtual void width(float width) = 0;
+    virtual void width_auto() = 0;
+    virtual void width_percent(float width) = 0;
+    virtual void width_min(float width) = 0;
+    virtual void width_max(float width) = 0;
+
+    virtual void height(float height) = 0;
+    virtual void height_auto() = 0;
+    virtual void height_percent(float height) = 0;
+    virtual void height_min(float height) = 0;
+    virtual void height_max(float height) = 0;
+
     virtual element_extent extent() const = 0;
 
     virtual bool dirty() const = 0;
@@ -133,11 +140,12 @@ public:
     void flex_grow(float grow) { m_impl->flex_grow(grow); }
     void flex_shrink(float shrink) { m_impl->flex_shrink(shrink); }
     void flex_wrap(layout_flex_wrap wrap) { m_impl->flex_wrap(wrap); }
-    void justify(layout_justify justify) { m_impl->justify(justify); }
+    void justify_content(layout_justify justify) { m_impl->justify_content(justify); }
     void align_items(layout_align align) { m_impl->align_items(align); }
     void align_self(layout_align align) { m_impl->align_self(align); }
     void align_content(layout_align align) { m_impl->align_content(align); }
     void padding(float padding, layout_edge edge) { m_impl->padding(padding, edge); }
+    void border(float border, layout_edge edge) { m_impl->border(border, edge); }
     void margin(float margin, layout_edge edge) { m_impl->margin(margin, edge); }
     virtual void position_type(layout_position_type position_type)
     {
@@ -154,11 +162,12 @@ public:
     float flex_grow() const { return m_impl->flex_grow(); }
     float flex_shrink() const { return m_impl->flex_shrink(); }
     layout_flex_wrap flex_wrap() const { return m_impl->flex_wrap(); }
-    layout_justify justify() const { return m_impl->justify(); }
+    layout_justify justify_content() const { return m_impl->justify_content(); }
     layout_align align_items() const { return m_impl->align_items(); }
     layout_align align_self() const { return m_impl->align_self(); }
     layout_align align_content() const { return m_impl->align_content(); }
     float padding(layout_edge edge) { return m_impl->padding(edge); }
+    float border(layout_edge edge) { return m_impl->border(edge); }
     float margin(layout_edge edge) { return m_impl->margin(edge); }
 
     void calculate(float width, float height) { m_impl->calculate(width, height); }
@@ -167,21 +176,25 @@ public:
         m_impl->calculate_absolute_position(parent_x, parent_y);
     }
 
-    void resize(
-        float width,
-        float height,
-        bool auto_width = false,
-        bool auto_height = false,
-        bool percent_width = false,
-        bool percent_height = false)
-    {
-        m_impl->resize(width, height, auto_width, auto_height, percent_width, percent_height);
-    }
+    void width(float width) { return m_impl->width(width); }
+    void width_auto() { return m_impl->width_auto(); }
+    void width_percent(float width) { return m_impl->width_percent(width); }
+    void width_min(float width) { return m_impl->width_min(width); }
+    void width_max(float width) { return m_impl->width_max(width); }
+
+    void height(float height) { return m_impl->height(height); }
+    void height_auto() { return m_impl->height_auto(); }
+    void height_percent(float height) { return m_impl->height_percent(height); }
+    void height_min(float height) { return m_impl->height_min(height); }
+    void height_max(float height) { return m_impl->height_max(height); }
 
     bool layout_dirty() const { return m_impl->dirty(); }
 
 protected:
-    void layout_link(element_layout* parent) { m_impl->link(parent->m_impl.get()); }
+    void layout_link(element_layout* parent, std::size_t index)
+    {
+        m_impl->link(parent->m_impl.get(), index);
+    }
     void layout_unlink() { m_impl->unlink(); }
 
     element_extent layout_extent() const { return m_impl->extent(); }

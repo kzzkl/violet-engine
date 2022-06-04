@@ -22,7 +22,7 @@ bool ui::initialize(const dictionary& config)
     auto& world = system<ecs::world>();
     auto& event = system<core::event>();
 
-    load_font("dripicons-v2", "engine/font/dripicons-v2.ttf", 20);
+    load_font("remixicon", "engine/font/remixicon.ttf", 24);
 
     m_tree = std::make_unique<element_tree>();
 
@@ -162,7 +162,8 @@ void ui::resize(std::uint32_t width, std::uint32_t height)
             math::float4{0.0f,              0.0f,              0.5f, 0.0f},
             math::float4{(R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f}
     });
-    m_tree->resize(width, height);
+    m_tree->width(width);
+    m_tree->height(height);
 }
 
 graphics::pipeline_parameter* ui::allocate_material_parameter()

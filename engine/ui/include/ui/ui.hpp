@@ -40,7 +40,7 @@ private:
 
     std::unique_ptr<ui_pipeline> m_pipeline;
 
-    std::map<std::string, std::unique_ptr<font_type>> m_fonts;
+    std::unordered_map<std::string, std::unique_ptr<font_type>> m_fonts;
 
     ecs::entity m_entity;
     std::unique_ptr<element_tree> m_tree;

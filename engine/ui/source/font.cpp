@@ -26,7 +26,19 @@ font::font(std::string_view font, std::size_t size)
     if (error)
         throw std::runtime_error("FT_Set_Char_Size failed.");
 
-    int max_dim = (1 + (face->size->metrics.height >> 6)) * ceilf(sqrtf(128));
+    std::vector<FT_ULong> characters;
+    FT_UInt index;
+    FT_ULong c = FT_Get_First_Char(face, &index);
+    while (true)
+    {
+        characters.push_back(c);
+
+        c = FT_Get_Next_Char(face, c, &index);
+        if (!index)
+            break;
+    }
+
+    int max_dim = (1 + (face->size->metrics.height >> 6)) * ceilf(sqrtf(characters.size()));
     int tex_width = 1;
     while (tex_width < max_dim)
         tex_width <<= 1;
@@ -53,16 +65,8 @@ font::font(std::string_view font, std::size_t size)
 
     m_heigth = face->size->metrics.height >> 6;
     FT_Vector pen = {0, static_cast<FT_Pos>(m_heigth)};
-
-    FT_UInt index;
-    FT_ULong character = FT_Get_First_Char(face, &index);
-
-    while (true)
+    for (FT_ULong character : characters)
     {
-        character = FT_Get_Next_Char(face, character, &index);
-        if (!index)
-            break;
-
         error = FT_Load_Char(face, character, FT_LOAD_RENDER | FT_LOAD_FORCE_AUTOHINT);
         if (error)
             continue;
@@ -89,7 +93,7 @@ font::font(std::string_view font, std::size_t size)
             static_cast<float>(x_max) / static_cast<float>(tex_width),
             static_cast<float>(y_max) / static_cast<float>(tex_height)};
 
-        pen.x += m_heigth;
+        pen.x += slot->advance.x >> 6;
         if (pen.x + m_heigth >= tex_width)
         {
             pen.x = 0;

@@ -1,6 +1,7 @@
 project(ui)
 
 add_executable(${PROJECT_NAME}
+    ./source/button_page.cpp
     ./source/gallery_control.cpp
     ./source/gallery.cpp
     ./source/main.cpp

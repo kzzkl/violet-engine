@@ -64,9 +64,9 @@ void element_tree::update_input()
     {
         if (!in_extent(mouse_x, mouse_y, node->extent()))
         {
+            node->mouse_over = false;
             if (node->on_mouse_out)
                 node->on_mouse_out();
-            node->mouse_over = false;
         }
     }
     m_mouse_over_nodes.clear();
@@ -80,11 +80,11 @@ void element_tree::update_input()
         {
             if (!node->mouse_over)
             {
+                node->mouse_over = true;
                 if (node->on_mouse_over)
                     node->on_mouse_over();
-
-                m_mouse_over_nodes.push_back(node);
             }
+            m_mouse_over_nodes.push_back(node);
             return true;
         }
         else

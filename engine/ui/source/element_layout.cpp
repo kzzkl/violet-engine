@@ -123,7 +123,7 @@ public:
     {
         YGNodeStyleSetFlexWrap(m_node, INTERNAL_YOGA_FLEX_WRAP_MAP[wrap]);
     }
-    virtual void justify(layout_justify justify) override
+    virtual void justify_content(layout_justify justify) override
     {
         YGNodeStyleSetJustifyContent(m_node, INTERNAL_YOGA_JUSTIFY_MAP[justify]);
     }
@@ -142,6 +142,10 @@ public:
     virtual void padding(float padding, layout_edge edge) override
     {
         YGNodeStyleSetPadding(m_node, INTERNAL_YOGA_EDGE_MAP[edge], padding);
+    }
+    virtual void border(float border, layout_edge edge) override
+    {
+        YGNodeStyleSetBorder(m_node, INTERNAL_YOGA_EDGE_MAP[edge], border);
     }
     virtual void margin(float margin, layout_edge edge) override
     {
@@ -181,7 +185,7 @@ public:
     {
         return YOGA_INTERNAL_FLEX_WRAP_MAP[YGNodeStyleGetFlexWrap(m_node)];
     }
-    virtual layout_justify justify() const override
+    virtual layout_justify justify_content() const override
     {
         return YOGA_INTERNAL_JUSTIFY_MAP[YGNodeStyleGetJustifyContent(m_node)];
     }
@@ -201,16 +205,19 @@ public:
     {
         return YGNodeStyleGetPadding(m_node, INTERNAL_YOGA_EDGE_MAP[edge]).value;
     }
+    virtual float border(layout_edge edge) const override
+    {
+        return YGNodeStyleGetBorder(m_node, INTERNAL_YOGA_EDGE_MAP[edge]);
+    }
     virtual float margin(layout_edge edge) const override
     {
         return YGNodeStyleGetMargin(m_node, INTERNAL_YOGA_EDGE_MAP[edge]).value;
     }
 
-    virtual void link(layout_node_impl* parent) override
+    virtual void link(layout_node_impl* parent, std::size_t index) override
     {
         auto yoga_parent = static_cast<layout_node_impl_yoga*>(parent);
-        std::uint32_t index = YGNodeGetChildCount(yoga_parent->m_node);
-        YGNodeInsertChild(yoga_parent->m_node, m_node, index);
+        YGNodeInsertChild(yoga_parent->m_node, m_node, static_cast<std::uint32_t>(index));
     }
 
     virtual void unlink() override
@@ -230,28 +237,20 @@ public:
         m_absolute_y = parent_y + YGNodeLayoutGetTop(m_node);
     }
 
-    virtual void resize(
-        float width,
-        float height,
-        bool auto_width,
-        bool auto_height,
-        bool percent_width,
-        bool percent_height) override
-    {
-        if (auto_width)
-            YGNodeStyleSetWidthAuto(m_node);
-        else if (percent_width)
-            YGNodeStyleSetWidthPercent(m_node, width);
-        else
-            YGNodeStyleSetWidth(m_node, width);
+    virtual void width(float width) override { YGNodeStyleSetWidth(m_node, width); }
+    virtual void width_auto() override { YGNodeStyleSetWidthAuto(m_node); }
+    virtual void width_percent(float width) override { YGNodeStyleSetWidthPercent(m_node, width); }
+    virtual void width_min(float width) override { YGNodeStyleSetMinWidth(m_node, width); }
+    virtual void width_max(float width) override { YGNodeStyleSetMaxWidth(m_node, width); }
 
-        if (auto_height)
-            YGNodeStyleSetHeightAuto(m_node);
-        else if (percent_height)
-            YGNodeStyleSetHeightPercent(m_node, height);
-        else
-            YGNodeStyleSetHeight(m_node, height);
+    virtual void height(float height) override { YGNodeStyleSetHeight(m_node, height); }
+    virtual void height_auto() override { YGNodeStyleSetHeightAuto(m_node); }
+    virtual void height_percent(float height) override
+    {
+        YGNodeStyleSetHeightPercent(m_node, height);
     }
+    virtual void height_min(float height) override { YGNodeStyleSetMinHeight(m_node, height); }
+    virtual void height_max(float height) override { YGNodeStyleSetMaxHeight(m_node, height); }
 
     virtual element_extent extent() const override
     {

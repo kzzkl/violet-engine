@@ -26,6 +26,7 @@ public:
     void reset_control_dirty() noexcept { m_dirty = false; }
 
     void link(element* parent);
+    void link(element* parent, std::size_t index);
     void unlink();
 
     element* parent() { return m_parent; }
@@ -37,8 +38,6 @@ public:
 
     float depth() const noexcept { return m_depth; }
     void layer(int layer) noexcept { m_layer = layer; }
-
-    std::string name;
 
 public:
     bool mouse_over;

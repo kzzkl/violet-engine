@@ -22,6 +22,12 @@ struct style
         .font_size = 25,
         .margin_top = 20,
         .margin_bottom = 10};
+    static constexpr text_style title_2 = {
+        .font = "title 2",
+        .font_path = "engine/font/NotoSans-SemiBold.ttf",
+        .font_size = 20,
+        .margin_top = 10,
+        .margin_bottom = 5};
     static constexpr text_style content = {
         .font = "content",
         .font_path = "engine/font/NotoSans-Regular.ttf",
@@ -33,5 +39,4 @@ struct style
     static constexpr std::uint32_t page_color = 0xfffafafa;
     static constexpr std::uint32_t display_color = 0xffdfdfe1;
 };
-
 } // namespace ash::sample

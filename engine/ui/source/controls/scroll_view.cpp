@@ -51,9 +51,9 @@ scroll_bar::scroll_bar(bool vertical, std::uint32_t slider_color, std::uint32_t 
         };
     }
 
-    m_slider->resize(100.0f, 100.0f, false, false, true, true);
+    m_slider->width_percent(100.0f);
+    m_slider->height_percent(100.0f);
     m_slider->link(this);
-    m_slider->name = "m_slider";
 }
 
 void scroll_bar::value(float v) noexcept
@@ -113,7 +113,8 @@ void scroll_container::on_extent_change()
                 view_extent.height * view_extent.height / container_extent.height,
                 30.0f,
                 view_extent.height);
-            m_vertical_bar->slider()->resize(100.0f, slider_height, false, false, true, false);
+            m_vertical_bar->slider()->width_percent(100.0f);
+            m_vertical_bar->slider()->height(slider_height);
 
             m_height = container_extent.height;
         }
@@ -132,27 +133,28 @@ void scroll_container::on_extent_change()
                 view_extent.width * view_extent.width / container_extent.width,
                 30.0f,
                 view_extent.width);
-            m_horizontal_bar->slider()->resize(slider_width, 100.0f, false, false, false, true);
+            m_horizontal_bar->slider()->width(slider_width);
+            m_horizontal_bar->slider()->height_percent(100.0f);
 
             m_height = container_extent.height;
         }
     }
 }
 
-scroll_view::scroll_view() : panel(COLOR_BROWN)
+scroll_view::scroll_view(const scroll_view_style& style) : panel(style.background_color)
 {
-    name = "scroll_view";
-    m_vertical_bar = std::make_unique<scroll_bar>(true);
-    m_vertical_bar->resize(8.0f, 100.0f, false, false, false, true);
+    m_vertical_bar = std::make_unique<scroll_bar>(true, style.slider_color, style.bar_color);
+    m_vertical_bar->width(8.0f);
+    m_vertical_bar->height_percent(100.0f);
     m_vertical_bar->position_type(LAYOUT_POSITION_TYPE_ABSOLUTE);
     m_vertical_bar->position(0.0f, LAYOUT_EDGE_RIGHT);
     m_vertical_bar->on_slide = [this](float value) { sync_container_vertical_position(value); };
     m_vertical_bar->layer(10);
     m_vertical_bar->link(this);
-    m_vertical_bar->name = "m_vertical_bar";
 
-    m_horizontal_bar = std::make_unique<scroll_bar>(false);
-    m_horizontal_bar->resize(100.0f, 8.0f, false, false, true, false);
+    m_horizontal_bar = std::make_unique<scroll_bar>(false, style.slider_color, style.bar_color);
+    m_horizontal_bar->width_percent(100.0f);
+    m_horizontal_bar->height(8.0f);
     m_horizontal_bar->position_type(LAYOUT_POSITION_TYPE_ABSOLUTE);
     m_horizontal_bar->position(0.0f, LAYOUT_EDGE_BOTTOM);
     m_horizontal_bar->on_slide = [this](float value) { sync_container_horizontal_position(value); };
@@ -162,25 +164,32 @@ scroll_view::scroll_view() : panel(COLOR_BROWN)
     m_container_view = std::make_unique<view>();
     m_container_view->flex_grow(1.0f);
     m_container_view->link(this);
-    m_container_view->name = "m_container_view";
     m_container = std::make_unique<scroll_container>(m_vertical_bar.get(), m_horizontal_bar.get());
     m_container->position_type(LAYOUT_POSITION_TYPE_ABSOLUTE);
     m_container->link(m_container_view.get());
-    m_container->name = "m_container";
 
     flex_direction(LAYOUT_FLEX_DIRECTION_ROW);
-    on_mouse_wheel = [this](int whell) -> bool {
+    on_mouse_wheel = [scroll_sped = style.scroll_speed, this](int whell) -> bool {
         if (m_vertical_bar->display())
         {
-            auto& container_extent = m_container->extent();
-
-            float new_value = m_vertical_bar->value() - 20.0f / container_extent.height * whell;
+            float new_value =
+                m_vertical_bar->value() - scroll_sped / m_container->extent().height * whell;
             new_value = math::clamp(new_value, 0.0f, 1.0f);
             m_vertical_bar->value(new_value);
             sync_container_vertical_position(new_value);
         }
         return false;
     };
+}
+
+void scroll_view::add(element* element)
+{
+    element->link(m_container.get());
+}
+
+void scroll_view::remove(element* element)
+{
+    element->unlink();
 }
 
 void scroll_view::sync_container_vertical_position(float bar_value)

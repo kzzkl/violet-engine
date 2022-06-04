@@ -8,16 +8,17 @@ label::label() : m_original_x(0.0f), m_original_y(0.0f)
 {
 }
 
-label::label(std::string_view t, const font& font, std::uint32_t color)
-    : m_original_x(0.0f),
+label::label(std::string_view content, const font& font, std::uint32_t color)
+    : m_text_color(color),
+      m_original_x(0.0f),
       m_original_y(0.0f)
 {
-    reset(t, font, color);
+    text(content, font);
 }
 
-void label::reset(std::string_view text, const font& font, std::uint32_t color)
+void label::text(std::string_view content, const font& font)
 {
-    ASH_ASSERT(!text.empty());
+    ASH_ASSERT(!content.empty());
 
     m_mesh.reset();
     m_mesh.texture = font.texture();
@@ -26,7 +27,7 @@ void label::reset(std::string_view text, const font& font, std::uint32_t color)
     float pen_y = m_original_y + font.heigth() * 0.73f;
 
     std::uint32_t vertex_base = 0;
-    for (char c : text)
+    for (char c : content)
     {
         auto& glyph = font.glyph(c);
 
@@ -42,8 +43,6 @@ void label::reset(std::string_view text, const font& font, std::uint32_t color)
                 {x,               y + glyph.height, 0.0f}
         });
 
-        pen_x += glyph.advance;
-
         m_mesh.vertex_uv.insert(
             m_mesh.vertex_uv.end(),
             {
@@ -52,8 +51,7 @@ void label::reset(std::string_view text, const font& font, std::uint32_t color)
                 glyph.uv2,
                 {glyph.uv1[0], glyph.uv2[1]}
         });
-        m_mesh.vertex_color.insert(m_mesh.vertex_color.end(), 4, color);
-
+        m_mesh.vertex_color.insert(m_mesh.vertex_color.end(), 4, m_text_color);
         m_mesh.indices.insert(
             m_mesh.indices.end(),
             {vertex_base,
@@ -62,10 +60,25 @@ void label::reset(std::string_view text, const font& font, std::uint32_t color)
              vertex_base,
              vertex_base + 2,
              vertex_base + 3});
+
         vertex_base += 4;
+        pen_x += glyph.advance;
     }
 
-    resize(pen_x, font.heigth());
+    width(pen_x);
+    height(font.heigth());
+
+    m_text = content;
+
+    mark_dirty();
+}
+
+void label::text_color(std::uint32_t color)
+{
+    for (auto& c : m_mesh.vertex_color)
+        c = color;
+    m_text_color = color;
+
     mark_dirty();
 }
 

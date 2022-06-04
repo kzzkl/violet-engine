@@ -44,9 +44,14 @@ void element::sync_extent()
 
 void element::link(element* parent)
 {
+    link(parent, parent->children().size());
+}
+
+void element::link(element* parent, std::size_t index)
+{
     ASH_ASSERT(parent && m_parent == nullptr);
 
-    layout_link(parent);
+    layout_link(parent, index);
 
     parent->m_children.push_back(this);
     parent->on_add_child(this);

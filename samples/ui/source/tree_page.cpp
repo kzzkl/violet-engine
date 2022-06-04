@@ -5,27 +5,17 @@ namespace ash::sample
 {
 tree_page::tree_page()
 {
-    m_page_title = std::make_unique<text_title_1>("Tree");
-    m_page_title->link(this);
+    m_title = std::make_unique<text_title_1>("Tree");
+    m_title->link(this);
 
-    m_page_description = std::make_unique<text_content>(
+    m_description = std::make_unique<text_content>(
         "A tree control is a vertical list containing multiple nodes, each of which can be "
         "collapsed or expanded.");
-    m_page_description->link(this);
-
-    m_test = std::make_unique<text_content>(
-        "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z a b c d e f g h i j k l m n o p q r s "
-        "t u v w x y z");
-    m_test->link(this);
+    m_description->link(this);
 
     m_display = std::make_unique<display_panel>();
     m_display->link(this);
     initialize_sample_tree();
-
-    // dripicons-v2
-    auto& ui = system<ui::ui>();
-    m_icon = std::make_unique<ui::label>("a", ui.font("dripicons-v2"));
-    m_icon->link(this);
 }
 
 void tree_page::initialize_sample_tree()
@@ -33,7 +23,6 @@ void tree_page::initialize_sample_tree()
     auto& font = system<ui::ui>().font("content");
 
     m_tree = std::make_unique<ui::tree>();
-    // m_tree->resize(300.0f, 0.0f, false, true);
     m_tree->link(m_display.get());
 
     const std::vector<std::string> chapters = {

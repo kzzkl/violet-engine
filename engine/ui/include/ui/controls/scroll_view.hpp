@@ -8,10 +8,7 @@ namespace ash::ui
 class scroll_bar : public panel
 {
 public:
-    scroll_bar(
-        bool vertical = true,
-        std::uint32_t slider_color = COLOR_WHITE,
-        std::uint32_t bar_color = COLOR_GRAY);
+    scroll_bar(bool vertical, std::uint32_t slider_color, std::uint32_t bar_color);
 
     void value(float v) noexcept;
     float value() const noexcept;
@@ -41,10 +38,30 @@ private:
     scroll_bar* m_horizontal_bar;
 };
 
+struct scroll_view_style
+{
+    float scroll_speed;
+
+    std::uint32_t bar_color;
+    std::uint32_t slider_color;
+
+    std::uint32_t background_color;
+};
+
 class scroll_view : public panel
 {
 public:
-    scroll_view();
+    static constexpr scroll_view_style default_style = {
+        .scroll_speed = 30.0f,
+        .bar_color = COLOR_WHITE,
+        .slider_color = 0xFFAB938D,
+        .background_color = COLOR_WHITE};
+
+public:
+    scroll_view(const scroll_view_style& style = default_style);
+
+    void add(element* element);
+    void remove(element* element);
 
     element* container() const noexcept { return m_container.get(); }
 

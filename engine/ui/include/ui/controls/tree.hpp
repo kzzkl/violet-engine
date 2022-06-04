@@ -14,9 +14,11 @@ struct tree_node_style
     float padding_bottom;
     float padding_increment;
 
-    std::uint32_t font_color;
+    std::uint32_t text_color;
     std::uint32_t default_color;
     std::uint32_t highlight_color;
+
+    float icon_scale;
 };
 
 class tree_node : public element
@@ -26,9 +28,10 @@ public:
         .padding_top = 5.0f,
         .padding_bottom = 5.0f,
         .padding_increment = 30.0f,
-        .font_color = COLOR_BLACK,
+        .text_color = COLOR_BLACK,
         .default_color = 0xFFFAFAFA,
-        .highlight_color = 0xFFD8D8D9};
+        .highlight_color = 0xFFD8D8D9,
+        .icon_scale = 1.0f};
 
 public:
     tree_node() = default;
@@ -36,10 +39,18 @@ public:
         std::string_view name,
         const font& font,
         const tree_node_style& style = default_style);
+    tree_node(
+        std::string_view name,
+        const font& text_font,
+        std::uint32_t icon_index,
+        const font& icon_font,
+        const tree_node_style& style = default_style);
     virtual ~tree_node() = default;
 
     virtual void add(tree_node* child);
     virtual void remove(tree_node* child);
+
+    std::string name() const { return m_name->text(); }
 
 protected:
     virtual void on_select_node(tree_node* node);
@@ -48,6 +59,8 @@ private:
     friend class tree;
 
     float m_padding_increment;
+    float m_child_margin_offset;
+
     bool m_selected;
     tree_node* m_parent_node;
 
@@ -56,6 +69,7 @@ private:
 
     std::unique_ptr<panel> m_top;
     std::unique_ptr<font_icon> m_button;
+    std::unique_ptr<font_icon> m_icon;
     std::unique_ptr<label> m_name;
 
     std::unique_ptr<element> m_container;
