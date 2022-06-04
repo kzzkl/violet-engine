@@ -15,7 +15,6 @@ private:
 
     std::unique_ptr<text_title_1> m_title;
     std::unique_ptr<text_content> m_description;
-
     std::vector<std::unique_ptr<display_panel>> m_display;
 
     std::unique_ptr<text_title_2> m_button_title;

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "button_page.hpp"
-#include "tree_page.hpp"
+#include "gallery_control.hpp"
 #include "ui/controls/scroll_view.hpp"
+#include "ui/controls/tree.hpp"
 #include <map>
 
 namespace ash::sample
@@ -26,13 +26,6 @@ private:
 
     page* m_current_page;
     std::map<std::string, std::unique_ptr<page>> m_pages;
-
-    // Basic,
-    std::unique_ptr<ui::tree_node> m_basic_node;
-    std::unique_ptr<ui::tree_node> m_button_page_node;
-
-    // Views.
-    std::unique_ptr<ui::tree_node> m_views_node;
-    std::unique_ptr<ui::tree_node> m_tree_page_node;
+    std::map<std::string, std::unique_ptr<ui::tree_node>> m_nodes;
 };
 } // namespace ash::sample

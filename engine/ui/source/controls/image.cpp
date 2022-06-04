@@ -19,18 +19,29 @@ image::image(graphics::resource* texture)
     m_mesh.vertex_color = {0, 0, 0, 0};
     m_mesh.indices = {0, 1, 2, 0, 2, 3};
     m_mesh.texture = texture;
+
+    auto texture_extent = texture->extent();
+    width(texture_extent.width);
+    height(texture_extent.height);
+}
+
+void image::texture(graphics::resource* texture, bool resize)
+{
+    if (resize)
+    {
+        auto texture_extent = texture->extent();
+        width(texture_extent.width);
+        height(texture_extent.height);
+    }
+    m_mesh.texture = texture;
+
+    mark_dirty();
 }
 
 void image::render(renderer& renderer)
 {
     renderer.draw(RENDER_TYPE_IMAGE, m_mesh);
     element::render(renderer);
-}
-
-void image::texture(graphics::resource* texture)
-{
-    m_mesh.texture = texture;
-    mark_dirty();
 }
 
 void image::on_extent_change()

@@ -7,11 +7,11 @@ namespace ash::ui
 class image : public element
 {
 public:
-    image(graphics::resource* texture);
+    image(graphics::resource* texture = nullptr);
+
+    void texture(graphics::resource* texture, bool resize = false);
 
     virtual void render(renderer& renderer) override;
-
-    void texture(graphics::resource* texture);
 
 protected:
     virtual void on_extent_change() override;

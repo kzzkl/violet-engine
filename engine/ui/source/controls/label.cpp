@@ -1,6 +1,5 @@
 #include "ui/controls/label.hpp"
 #include "assert.hpp"
-#include "log.hpp"
 
 namespace ash::ui
 {
@@ -65,7 +64,7 @@ void label::text(std::string_view content, const font& font)
         pen_x += glyph.advance;
     }
 
-    width(pen_x);
+    width(pen_x - m_original_x);
     height(font.heigth());
 
     m_text = content;

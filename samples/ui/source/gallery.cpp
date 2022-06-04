@@ -1,5 +1,8 @@
 #include "gallery.hpp"
+#include "button_page.hpp"
+#include "image_page.hpp"
 #include "style.hpp"
+#include "tree_page.hpp"
 #include "ui/ui.hpp"
 
 namespace ash::sample
@@ -53,24 +56,33 @@ void gallery::initialize_basic()
     auto& text_font = system<ui::ui>().font("content");
     auto& icon_font = system<ui::ui>().font("remixicon");
 
-    m_basic_node = std::make_unique<ui::tree_node>(
+    m_nodes["Basic"] = std::make_unique<ui::tree_node>(
         "Basic",
         text_font,
         0xEB82,
         icon_font,
         m_navigation_node_style);
-    m_navigation_tree->add(m_basic_node.get());
+    m_navigation_tree->add(m_nodes["Basic"].get());
 
     // Button.
-    m_button_page_node = std::make_unique<ui::tree_node>(
+    m_pages["Button"] = std::make_unique<button_page>();
+    m_nodes["Button"] = std::make_unique<ui::tree_node>(
         "Button",
         text_font,
         0xEB7E,
         icon_font,
         m_navigation_node_style);
-    m_basic_node->add(m_button_page_node.get());
+    m_nodes["Basic"]->add(m_nodes["Button"].get());
 
-    m_pages["Button"] = std::make_unique<button_page>();
+    // Image.
+    m_pages["Image"] = std::make_unique<image_page>();
+    m_nodes["Image"] = std::make_unique<ui::tree_node>(
+        "Image",
+        text_font,
+        0xEE4A,
+        icon_font,
+        m_navigation_node_style);
+    m_nodes["Basic"]->add(m_nodes["Image"].get());
 }
 
 void gallery::initialize_views()
@@ -78,23 +90,22 @@ void gallery::initialize_views()
     auto& text_font = system<ui::ui>().font("content");
     auto& icon_font = system<ui::ui>().font("remixicon");
 
-    m_views_node = std::make_unique<ui::tree_node>(
+    m_nodes["Views"] = std::make_unique<ui::tree_node>(
         "Views",
         text_font,
         0xEE84,
         icon_font,
         m_navigation_node_style);
-    m_navigation_tree->add(m_views_node.get());
+    m_navigation_tree->add(m_nodes["Views"].get());
 
     // Tree.
-    m_tree_page_node = std::make_unique<ui::tree_node>(
+    m_pages["Tree"] = std::make_unique<tree_page>();
+    m_nodes["Tree"] = std::make_unique<ui::tree_node>(
         "Tree",
         text_font,
         0xEEBA,
         icon_font,
         m_navigation_node_style);
-    m_views_node->add(m_tree_page_node.get());
-
-    m_pages["Tree"] = std::make_unique<tree_page>();
+    m_nodes["Views"]->add(m_nodes["Tree"].get());
 }
 } // namespace ash::sample
