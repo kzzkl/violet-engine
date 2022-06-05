@@ -50,7 +50,16 @@ public:
     virtual void add(tree_node* child);
     virtual void remove(tree_node* child);
 
-    std::string name() const { return m_name->text(); }
+    void text(std::string_view text, const font& font) { m_text->text(text, font); }
+    void icon(std::uint32_t index, const font& font) { m_icon->icon(index, font); }
+    void icon_scale(float scale) { m_icon->icon_scale(scale); }
+
+    std::string text() const { return m_text->text(); }
+
+    void* user_data;
+
+    std::function<void()> on_expand;
+    std::function<void()> on_collapse;
 
 protected:
     virtual void on_select_node(tree_node* node);
@@ -70,7 +79,7 @@ private:
     std::unique_ptr<panel> m_top;
     std::unique_ptr<font_icon> m_button;
     std::unique_ptr<font_icon> m_icon;
-    std::unique_ptr<label> m_name;
+    std::unique_ptr<label> m_text;
 
     std::unique_ptr<element> m_container;
 };

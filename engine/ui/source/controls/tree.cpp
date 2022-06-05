@@ -23,7 +23,7 @@ tree_node::tree_node(std::string_view name, const font& font, const tree_node_st
     m_top->padding(style.padding_top, LAYOUT_EDGE_TOP);
     m_top->padding(style.padding_bottom, LAYOUT_EDGE_BOTTOM);
     m_top->padding(0.0f, LAYOUT_EDGE_LEFT);
-    m_top->border(font.heigth() * 1.5f, LAYOUT_EDGE_LEFT);
+    m_top->border(font.heigth() * 1.5f, LAYOUT_EDGE_HORIZONTAL);
     m_top->align_items(LAYOUT_ALIGN_CENTER);
     m_top->on_mouse_over = [this]() {
         if (!m_selected)
@@ -56,11 +56,17 @@ tree_node::tree_node(std::string_view name, const font& font, const tree_node_st
         {
             m_button->icon(CHEVRON_DOWN_INDEX, system<ui>().font("remixicon"));
             m_container->hide();
+
+            if (on_collapse)
+                on_collapse();
         }
         else
         {
             m_button->icon(CHEVRON_UP_INDEX, system<ui>().font("remixicon"));
             m_container->show();
+
+            if (on_expand)
+                on_expand();
         }
         return false;
     };
@@ -68,8 +74,8 @@ tree_node::tree_node(std::string_view name, const font& font, const tree_node_st
     m_button->height(font.heigth());
     m_button->link(m_top.get());
 
-    m_name = std::make_unique<label>(name, font, style.text_color);
-    m_name->link(m_top.get());
+    m_text = std::make_unique<label>(name, font, style.text_color);
+    m_text->link(m_top.get());
 
     m_container = std::make_unique<element>();
     m_container->width_percent(100.0f);

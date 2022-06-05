@@ -98,3 +98,17 @@ private:
     std::vector<entity_info> m_registry;
 };
 } // namespace ash::ecs
+
+namespace std
+{
+template <>
+struct hash<ash::ecs::entity>
+{
+    [[nodiscard]] std::size_t operator()(const ash::ecs::entity entity) const
+    {
+        std::size_t hash = entity.index;
+        hash ^= entity.version + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+        return hash;
+    }
+};
+} // namespace std

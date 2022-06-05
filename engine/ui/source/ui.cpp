@@ -23,6 +23,7 @@ bool ui::initialize(const dictionary& config)
     auto& event = system<core::event>();
 
     load_font("remixicon", "engine/font/remixicon.ttf", 24);
+    load_font("NotoSans-Regular", "engine/font/NotoSans-Regular.ttf", 13);
 
     m_tree = std::make_unique<element_tree>();
 
@@ -146,6 +147,15 @@ void ui::tick()
 void ui::load_font(std::string_view name, std::string_view ttf_file, std::size_t size)
 {
     m_fonts[name.data()] = std::make_unique<font_type>(ttf_file, size);
+}
+
+ui::font_type& ui::font(std::string_view name)
+{
+    auto iter = m_fonts.find(name.data());
+    if (iter != m_fonts.end())
+        return *iter->second;
+    else
+        throw std::out_of_range("Font not found.");
 }
 
 void ui::resize(std::uint32_t width, std::uint32_t height)

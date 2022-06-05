@@ -20,9 +20,12 @@ image::image(graphics::resource* texture)
     m_mesh.indices = {0, 1, 2, 0, 2, 3};
     m_mesh.texture = texture;
 
-    auto texture_extent = texture->extent();
-    width(texture_extent.width);
-    height(texture_extent.height);
+    if (texture != nullptr)
+    {
+        auto texture_extent = texture->extent();
+        width(texture_extent.width);
+        height(texture_extent.height);
+    }
 }
 
 void image::texture(graphics::resource* texture, bool resize)

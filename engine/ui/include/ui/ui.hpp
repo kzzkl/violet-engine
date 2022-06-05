@@ -8,6 +8,9 @@
 
 namespace ash::ui
 {
+static const char* DEFAULT_TEXT_FONT = "NotoSans-Regular";
+static const char* DEFAULT_ICON_FONT = "remixicon";
+
 class ui : public core::system_base
 {
 public:
@@ -21,7 +24,7 @@ public:
     void tick();
 
     void load_font(std::string_view name, std::string_view ttf_file, std::size_t size);
-    font_type& font(std::string_view name) { return *m_fonts[name.data()]; }
+    font_type& font(std::string_view name);
 
     element* root() const noexcept { return m_tree.get(); }
 

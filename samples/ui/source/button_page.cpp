@@ -23,8 +23,8 @@ button_page::button_page() : m_click_counter(0)
 
 void button_page::initialize_sample_button()
 {
-    auto& text_font = system<ui::ui>().font("content");
-    auto& icon_font = system<ui::ui>().font("remixicon");
+    auto& text_font = system<ui::ui>().font(ui::DEFAULT_TEXT_FONT);
+    auto& icon_font = system<ui::ui>().font(ui::DEFAULT_ICON_FONT);
 
     // Simple button.
     m_button_title = std::make_unique<text_title_2>("Simple button");

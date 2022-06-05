@@ -20,7 +20,7 @@ tree_page::tree_page()
 
 void tree_page::initialize_sample_tree()
 {
-    auto& font = system<ui::ui>().font("content");
+    auto& font = system<ui::ui>().font(ui::DEFAULT_TEXT_FONT);
 
     m_tree = std::make_unique<ui::tree>();
     m_tree->link(m_display.get());

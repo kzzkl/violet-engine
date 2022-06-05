@@ -32,6 +32,7 @@ protected:
     virtual void on_extent_change() override;
 
 private:
+    float m_width;
     float m_height;
 
     scroll_bar* m_vertical_bar;
@@ -42,6 +43,7 @@ struct scroll_view_style
 {
     float scroll_speed;
 
+    float bar_width;
     std::uint32_t bar_color;
     std::uint32_t slider_color;
 
@@ -53,6 +55,7 @@ class scroll_view : public panel
 public:
     static constexpr scroll_view_style default_style = {
         .scroll_speed = 30.0f,
+        .bar_width = 8.0f,
         .bar_color = COLOR_WHITE,
         .slider_color = 0xFFAB938D,
         .background_color = COLOR_WHITE};
@@ -68,6 +71,8 @@ public:
 private:
     void sync_container_vertical_position(float bar_value);
     void sync_container_horizontal_position(float bar_value);
+
+    std::unique_ptr<element> m_left;
 
     std::unique_ptr<scroll_bar> m_vertical_bar;
     std::unique_ptr<scroll_bar> m_horizontal_bar;

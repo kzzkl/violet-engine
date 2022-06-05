@@ -18,7 +18,6 @@ public:
     ecs::entity scene_camera() const noexcept { return m_scene_view->scene_camera(); }
 
 private:
-    std::unique_ptr<ui::element> m_root_container;
     std::unique_ptr<ui::element> m_left_container;
     std::unique_ptr<ui::element> m_right_container;
 

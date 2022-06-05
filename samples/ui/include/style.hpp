@@ -28,12 +28,7 @@ struct style
         .font_size = 20,
         .margin_top = 10,
         .margin_bottom = 5};
-    static constexpr text_style content = {
-        .font = "content",
-        .font_path = "engine/font/NotoSans-Regular.ttf",
-        .font_size = 13,
-        .margin_top = 5,
-        .margin_bottom = 5};
+    static constexpr text_style content = {.font_size = 13, .margin_top = 5, .margin_bottom = 5};
 
     static constexpr std::uint32_t background_color = 0xffdfdfe1;
     static constexpr std::uint32_t page_color = 0xfffafafa;

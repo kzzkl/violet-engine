@@ -17,7 +17,6 @@ void gallery::initialize()
 
     ui.load_font(style::title_1.font, style::title_1.font_path, style::title_1.font_size);
     ui.load_font(style::title_2.font, style::title_2.font_path, style::title_2.font_size);
-    ui.load_font(style::content.font, style::content.font_path, style::content.font_size);
 
     m_left = std::make_unique<ui::panel>(style::background_color);
     m_left->link(ui.root());
@@ -31,7 +30,7 @@ void gallery::initialize()
     m_navigation_tree = std::make_unique<ui::tree>();
     m_navigation_tree->width_min(300.0f);
     m_navigation_tree->on_select = [this](ui::tree_node* node) {
-        auto& page = m_pages[node->name()];
+        auto& page = m_pages[node->text()];
         if (page != nullptr && m_current_page != page.get())
         {
             if (m_current_page != nullptr)
@@ -45,6 +44,7 @@ void gallery::initialize()
 
     m_main_view = std::make_unique<ui::scroll_view>();
     m_main_view->flex_grow(1.0f);
+    //m_main_view->flex_wrap(ui::LAYOUT_FLEX_WRAP_NOWRAP);
     m_main_view->link(ui.root());
 
     initialize_basic();
@@ -53,8 +53,8 @@ void gallery::initialize()
 
 void gallery::initialize_basic()
 {
-    auto& text_font = system<ui::ui>().font("content");
-    auto& icon_font = system<ui::ui>().font("remixicon");
+    auto& text_font = system<ui::ui>().font(ui::DEFAULT_TEXT_FONT);
+    auto& icon_font = system<ui::ui>().font(ui::DEFAULT_ICON_FONT);
 
     m_nodes["Basic"] = std::make_unique<ui::tree_node>(
         "Basic",
@@ -87,8 +87,8 @@ void gallery::initialize_basic()
 
 void gallery::initialize_views()
 {
-    auto& text_font = system<ui::ui>().font("content");
-    auto& icon_font = system<ui::ui>().font("remixicon");
+    auto& text_font = system<ui::ui>().font(ui::DEFAULT_TEXT_FONT);
+    auto& icon_font = system<ui::ui>().font(ui::DEFAULT_ICON_FONT);
 
     m_nodes["Views"] = std::make_unique<ui::tree_node>(
         "Views",

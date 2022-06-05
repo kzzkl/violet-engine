@@ -7,12 +7,6 @@
 
 namespace ash::core
 {
-enum class event_unlink_flag
-{
-    UNLINK,
-    BEFORE_LINK
-};
-
 struct event_link
 {
     using functor = std::function<void(ecs::entity, link&)>;
@@ -21,7 +15,7 @@ struct event_link
 
 struct event_unlink
 {
-    using functor = std::function<void(ecs::entity, link&, event_unlink_flag)>;
+    using functor = std::function<void(ecs::entity, link&)>;
     using dispatcher = sequence_dispatcher<functor>;
 };
 
@@ -36,7 +30,7 @@ public:
     virtual bool initialize(const dictionary& config) override;
 
     void link(ecs::entity child_entity, ecs::entity parent_entity);
-    void unlink(ecs::entity entity, bool before_link = false);
+    void unlink(ecs::entity entity);
 
     template <typename Functor>
     void each_bfs(ecs::entity entity, Functor&& functor)

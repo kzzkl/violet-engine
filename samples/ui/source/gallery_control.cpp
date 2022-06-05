@@ -19,7 +19,7 @@ text_title_2::text_title_2(std::string_view content, std::uint32_t color)
 }
 
 text_content::text_content(std::string_view content, std::uint32_t color)
-    : label(content, system<ui::ui>().font("content"), color)
+    : label(content, system<ui::ui>().font(ui::DEFAULT_TEXT_FONT), color)
 {
     margin(style::content.margin_top, ui::LAYOUT_EDGE_TOP);
     margin(style::content.margin_bottom, ui::LAYOUT_EDGE_BOTTOM);

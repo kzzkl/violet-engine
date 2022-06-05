@@ -4,6 +4,8 @@
 #include "ui/controls/label.hpp"
 #include "ui/controls/panel.hpp"
 #include "ui/controls/scroll_view.hpp"
+#include "ui/controls/tree.hpp"
+#include <map>
 #include <queue>
 
 namespace ash::editor
@@ -17,34 +19,27 @@ public:
     ecs::entity selected_entity() const noexcept { return m_selected; }
 
 private:
-    class hierarchy_node : public ui::element
-    {
-    public:
-        hierarchy_node(hierarchy_view* view);
+    void load_entity(ecs::entity entity);
+    void unload_entity(ecs::entity entity);
 
-        void reset(ecs::entity entity);
-
-        element* container() const noexcept { return m_container.get(); }
-
-    private:
-        void expand();
-        void collapse();
-
-        std::unique_ptr<ui::panel> m_title;
-        std::unique_ptr<ui::label> m_label;
-
-        std::unique_ptr<element> m_container;
-
-        ecs::entity m_entity;
-        hierarchy_view* m_view;
-    };
-
-    hierarchy_node* allocate_node();
-    void deallocate_node(hierarchy_node* node);
+    ui::tree_node* allocate_node(ecs::entity entity, bool loaded);
+    void deallocate_node(ecs::entity entity);
 
     ecs::entity m_selected;
 
-    std::queue<hierarchy_node*> m_free_node;
-    std::vector<std::unique_ptr<hierarchy_node>> m_node_pool;
+    std::unique_ptr<ui::tree> m_tree;
+    std::queue<ui::tree_node*> m_free_node;
+    std::vector<std::unique_ptr<ui::tree_node>> m_node_pool;
+
+    struct entity_node
+    {
+        ui::tree_node* node;
+        bool loaded;
+    };
+
+    std::map<ecs::entity, entity_node> m_entity_to_node;
+    std::map<ui::tree_node*, ecs::entity> m_node_to_entity;
+
+    const ui::font* m_text_font;
 };
 } // namespace ash::editor
