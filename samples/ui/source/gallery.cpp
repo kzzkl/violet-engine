@@ -44,7 +44,6 @@ void gallery::initialize()
 
     m_main_view = std::make_unique<ui::scroll_view>();
     m_main_view->flex_grow(1.0f);
-    //m_main_view->flex_wrap(ui::LAYOUT_FLEX_WRAP_NOWRAP);
     m_main_view->link(ui.root());
 
     initialize_basic();

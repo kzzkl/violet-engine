@@ -28,15 +28,30 @@ class scroll_container : public element
 public:
     scroll_container(scroll_bar* vertical_bar, scroll_bar* horizontal_bar);
 
+    void update_scroll_bar(const element_extent& view_extent);
+
 protected:
     virtual void on_extent_change() override;
 
 private:
-    float m_width;
-    float m_height;
-
     scroll_bar* m_vertical_bar;
     scroll_bar* m_horizontal_bar;
+};
+
+class scroll_container_view : public view
+{
+public:
+    scroll_container_view(scroll_bar* vertical_bar, scroll_bar* horizontal_bar);
+
+    void sync_container_vertical_position(float bar_value);
+    void sync_container_horizontal_position(float bar_value);
+
+    element* container() const noexcept { return m_container.get(); }
+
+protected:
+    virtual void on_extent_change() override;
+
+    std::unique_ptr<scroll_container> m_container;
 };
 
 struct scroll_view_style
@@ -66,18 +81,15 @@ public:
     void add(element* element);
     void remove(element* element);
 
-    element* container() const noexcept { return m_container.get(); }
-
 private:
-    void sync_container_vertical_position(float bar_value);
-    void sync_container_horizontal_position(float bar_value);
+    // void sync_container_vertical_position(float bar_value);
+    // void sync_container_horizontal_position(float bar_value);
 
     std::unique_ptr<element> m_left;
 
     std::unique_ptr<scroll_bar> m_vertical_bar;
     std::unique_ptr<scroll_bar> m_horizontal_bar;
 
-    std::unique_ptr<view> m_container_view;
-    std::unique_ptr<scroll_container> m_container;
+    std::unique_ptr<scroll_container_view> m_container_view;
 };
 } // namespace ash::ui
