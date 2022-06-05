@@ -49,7 +49,9 @@ float4 ps_main(vs_out pin) : SV_TARGET
     }
     else if (type == 2) // image 
     {
-        return ui_texture.Sample(image_sampler, pin.uv);
+        float4 color = ui_texture.Sample(image_sampler, pin.uv);
+        color.a = 1.0f;
+        return color;
     }
     else
     {

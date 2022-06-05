@@ -23,7 +23,8 @@ target_link_libraries(${PROJECT_NAME}
         ash::graphics
         ash::math
         ash::scene
-        ash::physics)
+        ash::physics
+        ash::editor)
 
 include(${ASH_ROOT_DIR}/cmake/shader_compile.cmake)
 set(SHADERS "")

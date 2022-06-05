@@ -1,4 +1,5 @@
 #include "task/work_thread.hpp"
+#include "log.hpp"
 
 namespace ash::task
 {
@@ -68,6 +69,7 @@ void work_thread::loop(task_queue_group& queues)
         task* current_task = m_queue->pop();
         if (current_task)
         {
+            // log::debug("{}", current_task->name());
             current_task->execute_and_get_next_tasks(next_tasks);
             for (task* next_task : next_tasks)
                 queues[next_task->type()].push(next_task);

@@ -75,21 +75,21 @@ void standard_pipeline::render(const camera& camera, render_command_interface* c
 {
     command->begin(
         m_interface.get(),
-        camera.render_target,
-        camera.render_target_resolve,
-        camera.depth_stencil_buffer);
+        camera.render_target(),
+        camera.render_target_resolve(),
+        camera.depth_stencil_buffer());
 
     scissor_extent extent = {};
-    auto [width, height] = camera.render_target->extent();
+    auto [width, height] = camera.render_target()->extent();
     extent.max_x = width;
     extent.max_y = height;
     command->scissor(&extent, 1);
 
-    command->parameter(2, camera.parameter->parameter());
+    command->parameter(2, camera.parameter()->interface());
     for (auto& unit : units())
     {
-        command->parameter(0, unit.parameters[0]->parameter());
-        command->parameter(1, unit.parameters[1]->parameter());
+        command->parameter(0, unit.parameters[0]->interface());
+        command->parameter(1, unit.parameters[1]->interface());
 
         command->draw(
             unit.vertex_buffers.data(),

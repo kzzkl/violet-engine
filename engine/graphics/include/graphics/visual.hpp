@@ -11,6 +11,8 @@ struct material
 {
     render_pipeline* pipeline;
     std::vector<pipeline_parameter*> parameters;
+
+    scissor_extent scissor;
 };
 
 struct submesh

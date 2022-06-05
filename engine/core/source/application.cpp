@@ -21,7 +21,7 @@ void application::run()
     auto& task = system<task::task_manager>();
     task.run();
 
-    auto root_task = task.find("root");
+    auto root_task = task.find(task::TASK_ROOT);
 
     timer& time = system<timer>();
 
@@ -35,7 +35,7 @@ void application::run()
 
         nanoseconds delta = time.delta<timer::point::FRAME_START, timer::point::FRAME_END>();
         if (delta < time_per_frame)
-            timer::busy_sleep(time_per_frame - delta);
+            ;//timer::busy_sleep(time_per_frame - delta);
 
         s += (timer::now<steady_clock>() - time.time_point<timer::point::FRAME_START>());
 

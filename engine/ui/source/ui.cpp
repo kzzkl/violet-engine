@@ -1,12 +1,17 @@
 #include "ui/ui.hpp"
 #include "core/relation.hpp"
 #include "graphics/graphics.hpp"
+#include "graphics/graphics_task.hpp"
 #include "ui/ui_event.hpp"
+#include "ui/ui_task.hpp"
 #include "window/window.hpp"
 #include "window/window_event.hpp"
 
 namespace ash::ui
 {
+static constexpr std::size_t MAX_UI_VERTEX_COUNT = 4096 * 16;
+static constexpr std::size_t MAX_UI_INDEX_COUNT = MAX_UI_VERTEX_COUNT * 2;
+
 ui::ui() : system_base("ui"), m_material_parameter_counter(0)
 {
 }
@@ -17,7 +22,9 @@ bool ui::initialize(const dictionary& config)
     auto& world = system<ecs::world>();
     auto& event = system<core::event>();
 
-    m_font = std::make_unique<font_type>("engine/font/Roboto-Regular.ttf", 13);
+    load_font("remixicon", "engine/font/remixicon.ttf", 24);
+    load_font("NotoSans-Regular", "engine/font/NotoSans-Regular.ttf", 13);
+
     m_tree = std::make_unique<element_tree>();
 
     m_pipeline = std::make_unique<ui_pipeline>();
@@ -25,20 +32,20 @@ bool ui::initialize(const dictionary& config)
 
     m_vertex_buffers.push_back(graphics.make_vertex_buffer<math::float3>(
         nullptr,
-        2048,
+        MAX_UI_VERTEX_COUNT,
         graphics::VERTEX_BUFFER_FLAG_NONE,
         true));
     m_vertex_buffers.push_back(graphics.make_vertex_buffer<math::float2>(
         nullptr,
-        2048,
+        MAX_UI_VERTEX_COUNT,
         graphics::VERTEX_BUFFER_FLAG_NONE,
         true));
     m_vertex_buffers.push_back(graphics.make_vertex_buffer<std::uint32_t>(
         nullptr,
-        2048,
+        MAX_UI_VERTEX_COUNT,
         graphics::VERTEX_BUFFER_FLAG_NONE,
         true));
-    m_index_buffer = graphics.make_index_buffer<std::uint32_t>(nullptr, 4096, true);
+    m_index_buffer = graphics.make_index_buffer<std::uint32_t>(nullptr, MAX_UI_INDEX_COUNT, true);
 
     m_entity = world.create("ui root");
     world.add<graphics::visual>(m_entity);
@@ -58,6 +65,13 @@ bool ui::initialize(const dictionary& config)
     auto window_extent = system<window::window>().extent();
     resize(window_extent.width, window_extent.height);
 
+    auto& task = system<task::task_manager>();
+    auto ui_tick_task = task.schedule(TASK_UI_TICK, [this]() { tick(); });
+    ui_tick_task->add_dependency(*task.find(task::TASK_GAME_LOGIC_END));
+
+    auto render_task = task.find(graphics::TASK_GRAPHICS_RENDER);
+    render_task->add_dependency(*ui_tick_task);
+
     return true;
 }
 
@@ -66,9 +80,9 @@ void ui::tick()
     auto& world = system<ecs::world>();
 
     m_renderer.reset();
-    m_renderer.scissor_push({});
 
-    m_tree->tick();
+    auto extent = system<window::window>().extent();
+    m_tree->tick(static_cast<float>(extent.width), static_cast<float>(extent.height));
 
     if (!m_tree->tree_dirty())
         return;
@@ -112,10 +126,15 @@ void ui::tick()
         if (batch->type != RENDER_TYPE_BLOCK)
             material_parameter->set(1, batch->texture);
 
-        graphics::material material = {
-            .pipeline = m_pipeline.get(),
-            .parameters = {material_parameter, m_mvp_parameter.get()}
-        };
+        graphics::material material = {};
+        material.pipeline = m_pipeline.get();
+        material.parameters = {material_parameter, m_mvp_parameter.get()};
+        material.scissor = graphics::scissor_extent{
+            .min_x = static_cast<std::uint32_t>(batch->scissor.x),
+            .min_y = static_cast<std::uint32_t>(batch->scissor.y),
+            .max_x = static_cast<std::uint32_t>(batch->scissor.x + batch->scissor.width),
+            .max_y = static_cast<std::uint32_t>(batch->scissor.y + batch->scissor.height)};
+
         visual.materials.push_back(material);
 
         vertex_offset += batch->vertex_position.size();
@@ -125,10 +144,22 @@ void ui::tick()
     m_material_parameter_counter = 0;
 }
 
+void ui::load_font(std::string_view name, std::string_view ttf_file, std::size_t size)
+{
+    m_fonts[name.data()] = std::make_unique<font_type>(ttf_file, size);
+}
+
+ui::font_type& ui::font(std::string_view name)
+{
+    auto iter = m_fonts.find(name.data());
+    if (iter != m_fonts.end())
+        return *iter->second;
+    else
+        throw std::out_of_range("Font not found.");
+}
+
 void ui::resize(std::uint32_t width, std::uint32_t height)
 {
-    m_tree->resize_window(width, height);
-
     float L = 0.0f;
     float R = static_cast<float>(width);
     float T = 0.0f;
@@ -141,6 +172,8 @@ void ui::resize(std::uint32_t width, std::uint32_t height)
             math::float4{0.0f,              0.0f,              0.5f, 0.0f},
             math::float4{(R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f}
     });
+    m_tree->width(width);
+    m_tree->height(height);
 }
 
 graphics::pipeline_parameter* ui::allocate_material_parameter()

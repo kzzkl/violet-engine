@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math.hpp"
+#include "math/math.hpp"
 #include <array>
 #include <cstddef>
 #include <fstream>

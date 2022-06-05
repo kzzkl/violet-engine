@@ -17,13 +17,16 @@ public:
 
     virtual void render(renderer& renderer);
 
-    element_extent extent() const { return layout_extent(); }
+    const element_extent& extent() const noexcept { return m_extent; }
+    void sync_extent();
+
     const element_mesh& mesh() const noexcept { return m_mesh; }
 
     bool control_dirty() const noexcept { return m_dirty; }
     void reset_control_dirty() noexcept { m_dirty = false; }
 
     void link(element* parent);
+    void link(element* parent, std::size_t index);
     void unlink();
 
     element* parent() { return m_parent; }
@@ -33,11 +36,20 @@ public:
     void hide();
     bool display() const noexcept { return m_display; }
 
+    float depth() const noexcept { return m_depth; }
+    void layer(int layer) noexcept { m_layer = layer; }
+
 public:
+    bool mouse_over;
+
+    std::function<void()> on_mouse_leave;
     std::function<void()> on_mouse_enter;
-    std::function<void()> on_mouse_exit;
-    std::function<bool(window::mouse_key)> on_mouse_click;
-    std::function<void()> on_hover;
+    std::function<void()> on_mouse_out;
+    std::function<void()> on_mouse_over;
+    std::function<bool(window::mouse_key key, int x, int y)> on_mouse_press;
+    std::function<bool(window::mouse_key key, int x, int y)> on_mouse_release;
+    std::function<bool(int whell)> on_mouse_wheel;
+    std::function<bool(int x, int y)> on_mouse_drag;
 
     std::function<void()> on_blur;
     std::function<void()> on_focus;
@@ -45,23 +57,25 @@ public:
     std::function<void()> on_show;
     std::function<void()> on_hide;
 
-    virtual void on_extent_change(const element_extent& extent) {}
-
 protected:
+    virtual void on_extent_change() {}
+
     virtual void on_add_child(element* child);
     virtual void on_remove_child(element* child);
 
     void mark_dirty() noexcept { m_dirty = true; }
-    float depth() const noexcept { return m_depth; }
 
     element_mesh m_mesh;
 
 private:
     void update_depth(float parent_depth);
 
+    int m_layer;
     float m_depth;
     bool m_dirty;
     bool m_display;
+
+    element_extent m_extent;
 
     element* m_parent;
     std::vector<element*> m_children;

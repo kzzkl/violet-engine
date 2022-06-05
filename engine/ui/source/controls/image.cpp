@@ -19,6 +19,26 @@ image::image(graphics::resource* texture)
     m_mesh.vertex_color = {0, 0, 0, 0};
     m_mesh.indices = {0, 1, 2, 0, 2, 3};
     m_mesh.texture = texture;
+
+    if (texture != nullptr)
+    {
+        auto texture_extent = texture->extent();
+        width(texture_extent.width);
+        height(texture_extent.height);
+    }
+}
+
+void image::texture(graphics::resource* texture, bool resize)
+{
+    if (resize)
+    {
+        auto texture_extent = texture->extent();
+        width(texture_extent.width);
+        height(texture_extent.height);
+    }
+    m_mesh.texture = texture;
+
+    mark_dirty();
 }
 
 void image::render(renderer& renderer)
@@ -27,20 +47,15 @@ void image::render(renderer& renderer)
     element::render(renderer);
 }
 
-void image::texture(graphics::resource* texture)
+void image::on_extent_change()
 {
-    m_mesh.texture = texture;
-    mark_dirty();
-}
-
-void image::on_extent_change(const element_extent& extent)
-{
+    auto& e = extent();
     float z = depth();
     m_mesh.vertex_position = {
-        {extent.x,                extent.y,                 z},
-        {extent.x + extent.width, extent.y,                 z},
-        {extent.x + extent.width, extent.y + extent.height, z},
-        {extent.x,                extent.y + extent.height, z}
+        {e.x,           e.y,            z},
+        {e.x + e.width, e.y,            z},
+        {e.x + e.width, e.y + e.height, z},
+        {e.x,           e.y + e.height, z}
     };
 }
 } // namespace ash::ui

@@ -4,37 +4,41 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#include <fstream>
+
 namespace ash::ui
 {
-font::font(std::string_view font, std::size_t size) : m_size(size)
+font::font(std::string_view font, std::size_t size)
 {
-    auto& graphics = system<graphics::graphics>();
+    FT_Error error;
 
     FT_Library library;
-
-    FT_Error error = FT_Init_FreeType(&library);
+    error = FT_Init_FreeType(&library);
     if (error)
-    {
-        log::error("FT_Init_FreeType failed.");
-        return;
-    }
+        throw std::runtime_error("FT_Init_FreeType failed.");
 
     FT_Face face;
     error = FT_New_Face(library, font.data(), 0, &face);
     if (error)
-    {
-        log::error("FT_New_Face failed.");
-        return;
-    }
+        throw std::runtime_error("FT_New_Face failed.");
 
     error = FT_Set_Char_Size(face, size * 64, 0, 96, 0);
     if (error)
+        throw std::runtime_error("FT_Set_Char_Size failed.");
+
+    std::vector<FT_ULong> characters;
+    FT_UInt index;
+    FT_ULong c = FT_Get_First_Char(face, &index);
+    while (true)
     {
-        log::error("FT_Set_Char_Size failed.");
-        return;
+        characters.push_back(c);
+
+        c = FT_Get_Next_Char(face, c, &index);
+        if (!index)
+            break;
     }
 
-    int max_dim = (1 + (face->size->metrics.height >> 6)) * ceilf(sqrtf(128));
+    int max_dim = (1 + (face->size->metrics.height >> 6)) * ceilf(sqrtf(characters.size()));
     int tex_width = 1;
     while (tex_width < max_dim)
         tex_width <<= 1;
@@ -42,50 +46,77 @@ font::font(std::string_view font, std::size_t size) : m_size(size)
 
     std::vector<std::uint8_t> pixels(tex_width * tex_height);
 
-    int pen_x = 0, pen_y = 0;
-    for (std::size_t i = 0; i < m_glyph.size(); ++i)
-    {
-        FT_Load_Char(face, i, FT_LOAD_RENDER | FT_LOAD_DEFAULT);
-        FT_Bitmap* bmp = &face->glyph->bitmap;
+    auto draw_bitmap = [&pixels, tex_width, tex_height](FT_Bitmap* bitmap, FT_Int x, FT_Int y) {
+        FT_Int x_max = x + bitmap->width;
+        FT_Int y_max = y + bitmap->rows;
 
-        if (pen_x + bmp->width >= tex_width)
+        for (FT_Int i = x, p = 0; i < x_max; i++, p++)
         {
-            pen_x = 0;
-            pen_y += ((face->size->metrics.height >> 6) + 1);
-        }
-
-        for (int row = 0; row < bmp->rows; ++row)
-        {
-            for (int col = 0; col < bmp->width; ++col)
+            for (FT_Int j = y, q = 0; j < y_max; j++, q++)
             {
-                int x = pen_x + col;
-                int y = pen_y + row;
-                pixels[y * tex_width + x] = bmp->buffer[row * bmp->pitch + col];
+                if (i < 0 || j < 0 || i >= tex_width || j >= tex_height)
+                    continue;
+
+                pixels[j * tex_width + i] |= bitmap->buffer[q * bitmap->width + p];
+                // pixels[j * tex_width + i] = 0xFF;
             }
         }
+    };
 
-        m_glyph[i].width = bmp->width;
-        m_glyph[i].height = bmp->rows;
-        m_glyph[i].bearing_x = face->glyph->bitmap_left;
-        m_glyph[i].bearing_y = face->glyph->bitmap_top;
-        m_glyph[i].advance = face->glyph->advance.x >> 6;
-        m_glyph[i].uv1 = {
-            static_cast<float>(pen_x) / static_cast<float>(tex_width),
-            static_cast<float>(pen_y) / static_cast<float>(tex_height)};
-        m_glyph[i].uv2 = {
-            static_cast<float>(pen_x + bmp->width) / static_cast<float>(tex_width),
-            static_cast<float>(pen_y + bmp->rows) / static_cast<float>(tex_height)};
+    m_heigth = face->size->metrics.height >> 6;
+    FT_Vector pen = {0, static_cast<FT_Pos>(m_heigth)};
+    for (FT_ULong character : characters)
+    {
+        error = FT_Load_Char(face, character, FT_LOAD_RENDER | FT_LOAD_FORCE_AUTOHINT);
+        if (error)
+            continue;
 
-        pen_x += bmp->width + 1;
+        FT_GlyphSlot slot = face->glyph;
+
+        FT_Pos x_min = pen.x + slot->bitmap_left;
+        FT_Pos x_max = x_min + slot->bitmap.width;
+        FT_Pos y_min = pen.y - slot->bitmap_top;
+        FT_Pos y_max = y_min + slot->bitmap.rows;
+
+        draw_bitmap(&slot->bitmap, x_min, y_min);
+
+        auto& glyph = m_glyph[character];
+        glyph.width = slot->bitmap.width;
+        glyph.height = slot->bitmap.rows;
+        glyph.bearing_x = slot->metrics.horiBearingX >> 6;
+        glyph.bearing_y = slot->bitmap_top;
+        glyph.advance = slot->advance.x >> 6;
+        glyph.uv1 = {
+            static_cast<float>(x_min) / static_cast<float>(tex_width),
+            static_cast<float>(y_min) / static_cast<float>(tex_height)};
+        glyph.uv2 = {
+            static_cast<float>(x_max) / static_cast<float>(tex_width),
+            static_cast<float>(y_max) / static_cast<float>(tex_height)};
+
+        pen.x += slot->advance.x >> 6;
+        if (pen.x + m_heigth >= tex_width)
+        {
+            pen.x = 0;
+            pen.y += m_heigth;
+        }
     }
 
     FT_Done_Face(face);
     FT_Done_FreeType(library);
 
-    m_texture = graphics.make_texture(
+    m_texture = system<graphics::graphics>().make_texture(
         pixels.data(),
         tex_width,
         tex_height,
         graphics::resource_format::R8_UNORM);
+}
+
+const glyph_data& font::glyph(std::uint32_t character) const
+{
+    auto iter = m_glyph.find(character);
+    if (iter != m_glyph.end())
+        return iter->second;
+    else
+        throw std::out_of_range("The font file does not contain this character.");
 }
 } // namespace ash::ui

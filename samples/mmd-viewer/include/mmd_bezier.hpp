@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math.hpp"
+#include "math/math.hpp"
 
 namespace ash::sample::mmd
 {

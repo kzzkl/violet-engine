@@ -7,7 +7,9 @@ task::task(std::string_view name, task_type type)
     : m_dependency_count(0),
       m_uncompleted_dependency_count(0),
       m_name(name),
-      m_type(type)
+      m_type(type),
+      m_current_index(0),
+      m_next_index(0)
 {
 }
 
@@ -23,6 +25,8 @@ void task::execute_and_get_next_tasks(std::vector<task*>& next_tasks)
 
 void task::add_dependency(task& dependency)
 {
+    mark_dependency_dirty();
+
     dependency.add_next_task(*this);
 
     ++m_dependency_count;
@@ -31,25 +35,38 @@ void task::add_dependency(task& dependency)
 
 void task::remove_dependency(task& dependency)
 {
+    mark_dependency_dirty();
+
     dependency.remove_next_task(*this);
 
     --m_dependency_count;
     reset_counter();
 }
 
+void task::mark_dependency_dirty()
+{
+    if (m_current_index == m_next_index)
+    {
+        m_next_index = (m_current_index + 1) % m_next_task_list.size();
+        m_next_task_list[m_next_index] = m_next_task_list[m_current_index];
+    }
+}
+
 void task::add_next_task(task& task)
 {
-    m_next.push_back(&task);
+    m_next_task_list[m_next_index].push_back(&task);
 }
 
 void task::remove_next_task(task& task)
 {
-    for (auto iter = m_next.begin(); iter != m_next.end(); ++iter)
+    for (auto iter = m_next_task_list[m_next_index].begin();
+         iter != m_next_task_list[m_next_index].end();
+         ++iter)
     {
         if (*iter == &task)
         {
-            std::swap(*iter, m_next.back());
-            m_next.pop_back();
+            std::swap(*iter, m_next_task_list[m_next_index].back());
+            m_next_task_list[m_next_index].pop_back();
             break;
         }
     }
@@ -81,6 +98,7 @@ std::array<std::size_t, TASK_TYPE_COUNT> task::reachable_tasks_count()
 
 void task::reset_counter()
 {
+    m_current_index = m_next_index;
     m_uncompleted_dependency_count = m_dependency_count;
 }
 
@@ -88,39 +106,11 @@ void task::reset_counter_and_get_reachable_tasks(std::vector<task*>& next_tasks)
 {
     reset_counter();
 
-    for (task* next : m_next)
+    for (task* next : m_next_task_list[m_current_index])
     {
         --next->m_uncompleted_dependency_count;
         if (next->m_uncompleted_dependency_count == 0)
             next_tasks.push_back(next);
-    }
-}
-
-task_group::task_group(std::string_view name, task_type type) : task(name, type)
-{
-}
-
-void task_group::execute()
-{
-    for (auto t : m_tasks)
-        t->execute();
-}
-
-void task_group::add(task* task)
-{
-    m_tasks.push_back(task);
-}
-
-void task_group::remove(task* task)
-{
-    for (auto& t : m_tasks)
-    {
-        if (t == task)
-        {
-            t = m_tasks.back();
-            m_tasks.pop_back();
-            return;
-        }
     }
 }
 } // namespace ash::task

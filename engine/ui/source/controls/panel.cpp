@@ -20,20 +20,30 @@ panel::panel(std::uint32_t color)
     m_mesh.indices = {0, 1, 2, 0, 2, 3};
 }
 
+void panel::color(std::uint32_t color) noexcept
+{
+    if (m_mesh.vertex_color[0] != color)
+    {
+        m_mesh.vertex_color = {color, color, color, color};
+        mark_dirty();
+    }
+}
+
 void panel::render(renderer& renderer)
 {
     renderer.draw(RENDER_TYPE_BLOCK, m_mesh);
     element::render(renderer);
 }
 
-void panel::on_extent_change(const element_extent& extent)
+void panel::on_extent_change()
 {
+    auto& e = extent();
     float z = depth();
     m_mesh.vertex_position = {
-        {extent.x,                extent.y,                 z},
-        {extent.x + extent.width, extent.y,                 z},
-        {extent.x + extent.width, extent.y + extent.height, z},
-        {extent.x,                extent.y + extent.height, z}
+        {e.x,           e.y,            z},
+        {e.x + e.width, e.y,            z},
+        {e.x + e.width, e.y + e.height, z},
+        {e.x,           e.y + e.height, z}
     };
 }
 } // namespace ash::ui

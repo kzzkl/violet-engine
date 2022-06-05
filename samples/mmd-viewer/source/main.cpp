@@ -1,15 +1,22 @@
 #include "core/application.hpp"
-#include "geometry.hpp"
+#include "core/relation.hpp"
+#include "graphics/geometry.hpp"
 #include "graphics/graphics.hpp"
 #include "log.hpp"
 #include "mmd_animation.hpp"
 #include "mmd_viewer.hpp"
-#include "physics.hpp"
+#include "physics/physics.hpp"
 #include "pmx_loader.hpp"
-#include "core/relation.hpp"
 #include "scene/scene.hpp"
 #include "window/window.hpp"
 #include "window/window_event.hpp"
+
+#define EDITOR_MODE
+
+#if defined(EDITOR_MODE)
+#    include "ui/ui.hpp"
+#    include "editor/editor.hpp"
+#endif
 
 namespace ash::sample::mmd
 {
@@ -85,10 +92,8 @@ private:
         auto& scene = system<scene::scene>();
         auto& graphics = system<graphics::graphics>();
 
-        m_camera = world.create();
-        world.add<core::link, graphics::camera, graphics::main_camera, scene::transform>(m_camera);
-        auto& camera = world.component<graphics::camera>(m_camera);
-        camera.parameter = graphics.make_pipeline_parameter("ash_pass");
+        m_camera = world.create("main camera");
+        world.add<core::link, graphics::camera, scene::transform>(m_camera);
 
         auto& transform = world.component<scene::transform>(m_camera);
         transform.position = {0.0f, 11.0f, -30.0f};
@@ -96,30 +101,24 @@ private:
         transform.scaling = {1.0f, 1.0f, 1.0f};
         system<core::relation>().link(m_camera, scene.root());
 
-        auto window_rect = system<window::window>().rect();
-        resize_camera(window_rect.width, window_rect.height);
+        auto extent = graphics.render_extent();
+        resize_camera(extent.width, extent.height);
+
+        graphics.game_camera(m_camera);
     }
 
     void initialize_task()
     {
         auto& task = system<task::task_manager>();
 
-        auto update_task = task.schedule("test update", [this]() { update(); });
-        auto window_task = task.schedule(
-            "window tick",
-            [this]() { system<window::window>().tick(); },
-            task::task_type::MAIN_THREAD);
-        auto render_task = task.schedule("render", [this]() {
+        auto update_task = task.schedule("test update", [this]() {
+            update();
             auto& graphics = system<graphics::graphics>();
-            graphics.begin_frame();
             graphics.skin_meshes();
-            graphics.render(m_camera);
-            graphics.end_frame();
         });
 
-        window_task->add_dependency(*task.find("root"));
-        update_task->add_dependency(*window_task);
-        render_task->add_dependency(*update_task);
+        update_task->add_dependency(*task.find(task::TASK_GAME_LOGIC_START));
+        task.find(task::TASK_GAME_LOGIC_END)->add_dependency(*update_task);
     }
 
     void resize_camera(std::uint32_t width, std::uint32_t height)
@@ -128,12 +127,6 @@ private:
         auto& graphics = system<graphics::graphics>();
 
         auto& camera = world.component<graphics::camera>(m_camera);
-        camera.set(
-            math::to_radians(45.0f),
-            static_cast<float>(width) / static_cast<float>(height),
-            0.3f,
-            1000.0f,
-            false);
 
         graphics::render_target_info render_target_info = {};
         render_target_info.width = width;
@@ -141,7 +134,7 @@ private:
         render_target_info.format = graphics.back_buffer_format();
         render_target_info.samples = 4;
         m_render_target = graphics.make_render_target(render_target_info);
-        camera.render_target = m_render_target.get();
+        camera.render_target(m_render_target.get());
 
         graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
         depth_stencil_buffer_info.width = width;
@@ -149,7 +142,7 @@ private:
         depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
         depth_stencil_buffer_info.samples = 4;
         m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
-        camera.depth_stencil_buffer = m_depth_stencil_buffer.get();
+        camera.depth_stencil_buffer(m_depth_stencil_buffer.get());
     }
 
     void update_camera(float delta)
@@ -158,15 +151,15 @@ private:
         auto& keyboard = system<window::window>().keyboard();
         auto& mouse = system<window::window>().mouse();
 
-        if (keyboard.key(window::keyboard_key::KEY_1).release())
+        if (keyboard.key(window::KEYBOARD_KEY_1).release())
         {
-            if (mouse.mode() == window::mouse_mode::CURSOR_RELATIVE)
-                mouse.mode(window::mouse_mode::CURSOR_ABSOLUTE);
+            if (mouse.mode() == window::MOUSE_MODE_RELATIVE)
+                mouse.mode(window::MOUSE_MODE_ABSOLUTE);
             else
-                mouse.mode(window::mouse_mode::CURSOR_RELATIVE);
+                mouse.mode(window::MOUSE_MODE_RELATIVE);
         }
 
-        if (keyboard.key(window::keyboard_key::KEY_3).release())
+        if (keyboard.key(window::KEYBOARD_KEY_3).release())
         {
             static std::size_t index = 0;
             static std::vector<math::float4> colors = {
@@ -183,7 +176,7 @@ private:
 
         auto& camera_transform = world.component<scene::transform>(m_camera);
         camera_transform.dirty = true;
-        if (mouse.mode() == window::mouse_mode::CURSOR_RELATIVE)
+        if (mouse.mode() == window::MOUSE_MODE_RELATIVE)
         {
             m_heading += mouse.x() * m_rotate_speed * delta;
             m_pitch += mouse.y() * m_rotate_speed * delta;
@@ -193,13 +186,13 @@ private:
         }
 
         float x = 0, z = 0;
-        if (keyboard.key(window::keyboard_key::KEY_W).down())
+        if (keyboard.key(window::KEYBOARD_KEY_W).down())
             z += 1.0f;
-        if (keyboard.key(window::keyboard_key::KEY_S).down())
+        if (keyboard.key(window::KEYBOARD_KEY_S).down())
             z -= 1.0f;
-        if (keyboard.key(window::keyboard_key::KEY_D).down())
+        if (keyboard.key(window::KEYBOARD_KEY_D).down())
             x += 1.0f;
-        if (keyboard.key(window::keyboard_key::KEY_A).down())
+        if (keyboard.key(window::KEYBOARD_KEY_A).down())
             x -= 1.0f;
 
         math::float4_simd s = math::simd::load(camera_transform.scaling);
@@ -219,9 +212,9 @@ private:
         auto& keyboard = system<window::window>().keyboard();
 
         float move = 0.0f;
-        if (keyboard.key(window::keyboard_key::KEY_E).down())
+        if (keyboard.key(window::KEYBOARD_KEY_E).down())
             move += 1.0f;
-        if (keyboard.key(window::keyboard_key::KEY_Q).down())
+        if (keyboard.key(window::KEYBOARD_KEY_Q).down())
             move -= 1.0f;
 
         if (move != 0.0f)
@@ -234,7 +227,7 @@ private:
 
     void update()
     {
-        if (system<window::window>().keyboard().key(window::keyboard_key::KEY_ESCAPE).down())
+        if (system<window::window>().keyboard().key(window::KEYBOARD_KEY_ESCAPE).down())
             m_app->exit();
 
         auto& scene = system<scene::scene>();
@@ -278,10 +271,19 @@ public:
         m_app.install<physics::physics>();
         m_app.install<mmd_animation>();
         m_app.install<mmd_viewer>();
+
+#if defined(EDITOR_MODE)
+        m_app.install<ui::ui>();
+        m_app.install<editor::editor>();
+#endif
+
         m_app.install<sample_module>(&m_app);
     }
 
-    void run() { m_app.run(); }
+    void run()
+    {
+        m_app.run();
+    }
 
 private:
     core::application m_app;

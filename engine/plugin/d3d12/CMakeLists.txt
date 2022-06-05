@@ -6,6 +6,7 @@ add_library(${PROJECT_NAME} SHARED
     ./source/d3d12_context.cpp
     ./source/d3d12_descriptor_heap.cpp
     ./source/d3d12_frame_resource.cpp
+    ./source/d3d12_image_loader.cpp
     ./source/d3d12_pipeline.cpp
     ./source/d3d12_plugin.cpp
     ./source/d3d12_renderer.cpp
@@ -15,11 +16,13 @@ add_library(${PROJECT_NAME} SHARED
 
 set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "")
 
+set(STB_IMAGE_INCLUDE ${ASH_THIRD_PARTY_DIR}/stb)
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         ./include
         ${ASH_CORE_INTERFACE_DIR}
-        ${ASH_GRAPHICS_INTERFACE_DIR})
+        ${ASH_GRAPHICS_INTERFACE_DIR}
+        ${STB_IMAGE_INCLUDE})
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE

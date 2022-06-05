@@ -1,14 +1,12 @@
 #include "assert.hpp"
 #include "core/application.hpp"
 #include "core/relation.hpp"
+#include "gallery.hpp"
 #include "graphics/graphics.hpp"
+#include "graphics/graphics_event.hpp"
 #include "scene/scene.hpp"
-#include "ui/controls/label.hpp"
-#include "ui/controls/panel.hpp"
-#include "ui/controls/tree.hpp"
 #include "ui/ui.hpp"
 #include "window/window.hpp"
-#include "window/window_event.hpp"
 
 namespace ash::sample
 {
@@ -23,7 +21,7 @@ public:
         initialize_ui();
         initialize_camera();
 
-        system<core::event>().subscribe<window::event_window_resize>(
+        system<core::event>().subscribe<graphics::event_render_extent_change>(
             "sample_module",
             [this](std::uint32_t width, std::uint32_t height) { resize_camera(width, height); });
 
@@ -36,58 +34,14 @@ private:
         auto& task = system<task::task_manager>();
 
         auto update_task = task.schedule("test update", [this]() { update(); });
-        auto window_task = task.schedule(
-            "window tick",
-            [this]() { system<window::window>().tick(); },
-            task::task_type::MAIN_THREAD);
-        auto render_task = task.schedule("render", [this]() {
-            auto& graphics = system<graphics::graphics>();
-            graphics.render(m_camera);
-            graphics.present();
-        });
-
-        window_task->add_dependency(*task.find("root"));
-        update_task->add_dependency(*window_task);
-        render_task->add_dependency(*update_task);
+        update_task->add_dependency(*task.find(task::TASK_GAME_LOGIC_START));
+        task.find(task::TASK_GAME_LOGIC_END)->add_dependency(*update_task);
     }
 
     void initialize_ui()
     {
-        auto& ui = system<ui::ui>();
-        auto& relation = system<core::relation>();
-        auto& world = system<ecs::world>();
-
-        ui.root()->flex_direction(ui::LAYOUT_FLEX_DIRECTION_COLUMN);
-
-        m_panel = std::make_unique<ui::panel>(ui::COLOR_AQUA);
-        m_panel->resize(300.0f, 300.0f);
-        m_panel->link(ui.root());
-
-        m_text = std::make_unique<ui::label>("hello world! qap", ui.font(), 0xFF00FF00);
-        m_text->resize(100.0f, 20.0f);
-        m_text->link(ui.root());
-
-        m_tree = std::make_unique<ui::tree>();
-        m_tree->resize(200.0f, 0.0f, false, true);
-        m_tree->link(ui.root());
-
-        m_tree_node = std::make_unique<ui::tree_node>("node 1", ui.font());
-        m_tree_node->link(m_tree.get());
-
-        m_tree_panel = std::make_unique<ui::panel>(ui::COLOR_GREEN);
-        m_tree_panel->resize(50.0f, 50.0f);
-        m_tree_panel->link(m_tree_node->container());
-
-        m_tree_node_2 = std::make_unique<ui::tree_node>(
-            "node 2",
-            ui.font(),
-            ui::COLOR_BLACK,
-            ui::COLOR_ORANGE_RED);
-        m_tree_node_2->link(m_tree_node->container());
-
-        m_tree_panel_2 = std::make_unique<ui::panel>(ui::COLOR_DARK_ORCHID);
-        m_tree_panel_2->resize(50.0f, 50.0f);
-        m_tree_panel_2->link(m_tree_node_2->container());
+        m_gallery = std::make_unique<gallery>();
+        m_gallery->initialize();
     }
 
     void initialize_camera()
@@ -98,9 +52,7 @@ private:
         auto& graphics = system<graphics::graphics>();
 
         m_camera = world.create();
-        world.add<core::link, graphics::camera, graphics::main_camera, scene::transform>(m_camera);
-        auto& c_camera = world.component<graphics::camera>(m_camera);
-        c_camera.parameter = graphics.make_pipeline_parameter("ash_pass");
+        world.add<core::link, graphics::camera, scene::transform>(m_camera);
 
         auto& c_transform = world.component<scene::transform>(m_camera);
         c_transform.position = {0.0f, 0.0f, -38.0f};
@@ -112,8 +64,10 @@ private:
 
         relation.link(m_camera, scene.root());
 
-        auto window_extent = system<window::window>().extent();
-        resize_camera(window_extent.width, window_extent.height);
+        auto extent = graphics.render_extent();
+        resize_camera(extent.width, extent.height);
+
+        graphics.game_camera(m_camera);
     }
 
     void resize_camera(std::uint32_t width, std::uint32_t height)
@@ -122,12 +76,6 @@ private:
         auto& graphics = system<graphics::graphics>();
 
         auto& camera = world.component<graphics::camera>(m_camera);
-        camera.set(
-            math::to_radians(45.0f),
-            static_cast<float>(width) / static_cast<float>(height),
-            0.3f,
-            1000.0f,
-            false);
 
         graphics::render_target_info render_target_info = {};
         render_target_info.width = width;
@@ -135,7 +83,7 @@ private:
         render_target_info.format = graphics.back_buffer_format();
         render_target_info.samples = 4;
         m_render_target = graphics.make_render_target(render_target_info);
-        camera.render_target = m_render_target.get();
+        camera.render_target(m_render_target.get());
 
         graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
         depth_stencil_buffer_info.width = width;
@@ -143,41 +91,22 @@ private:
         depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
         depth_stencil_buffer_info.samples = 4;
         m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
-        camera.depth_stencil_buffer = m_depth_stencil_buffer.get();
+        camera.depth_stencil_buffer(m_depth_stencil_buffer.get());
     }
 
     void update()
     {
         auto& world = system<ecs::world>();
         auto& scene = system<scene::scene>();
-        auto& ui = system<ui::ui>();
 
         scene.reset_sync_counter();
-
-        static float h = 0.0f;
-
-        auto& keyboard = system<window::window>().keyboard();
-        if (keyboard.key(window::KEYBOARD_KEY_Q).down())
-        {
-            m_panel->resize(200, h);
-            h += 0.05f;
-        }
-
-        ui.tick();
     }
-
-    std::unique_ptr<ui::label> m_text;
-    std::unique_ptr<ui::panel> m_panel;
-
-    std::unique_ptr<ui::tree> m_tree;
-    std::unique_ptr<ui::tree_node> m_tree_node;
-    std::unique_ptr<ui::panel> m_tree_panel;
-    std::unique_ptr<ui::tree_node> m_tree_node_2;
-    std::unique_ptr<ui::panel> m_tree_panel_2;
 
     ecs::entity m_camera;
     std::unique_ptr<graphics::resource> m_render_target;
     std::unique_ptr<graphics::resource> m_depth_stencil_buffer;
+
+    std::unique_ptr<gallery> m_gallery;
 };
 
 class ui_app

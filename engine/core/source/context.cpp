@@ -59,8 +59,6 @@ void context::initialize(std::string_view config_path)
         num_thread = std::thread::hardware_concurrency();
 
     singleton.m_task = std::make_unique<ash::task::task_manager>(num_thread);
-    singleton.m_task->schedule("root", []() {});
-
     singleton.m_world = std::make_unique<ash::ecs::world>();
     singleton.m_event = std::make_unique<event>();
     singleton.m_timer = std::make_unique<timer>();

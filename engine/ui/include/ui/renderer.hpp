@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ui/element_extent.hpp"
 #include "ui/element_mesh.hpp"
 #include <memory>
 #include <stack>
@@ -19,8 +20,7 @@ struct render_batch
     render_type type;
     graphics::resource* texture;
 
-    bool scissor;
-    graphics::scissor_extent scissor_extent;
+    element_extent scissor;
 
     std::vector<math::float3> vertex_position;
     std::vector<math::float2> vertex_uv;
@@ -34,7 +34,7 @@ public:
     renderer();
 
     void draw(render_type type, const element_mesh& mesh);
-    void scissor_push(const graphics::scissor_extent& extent);
+    void scissor_push(const element_extent& extent);
     void scissor_pop();
 
     void reset();
@@ -67,8 +67,7 @@ private:
 
     struct batch_map
     {
-        bool scissor;
-        graphics::scissor_extent scissor_extent;
+        element_extent scissor;
         std::unordered_map<batch_key, render_batch*, batch_hash> map;
     };
 

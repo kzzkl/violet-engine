@@ -1,7 +1,7 @@
 #pragma once
 
 #include "graphics_interface.hpp"
-#include "ui/element.hpp"
+#include "ui/controls/view.hpp"
 #include <queue>
 #include <stack>
 #include <unordered_map>
@@ -9,21 +9,19 @@
 
 namespace ash::ui
 {
-class element_tree : public element
+class element_tree : public view
 {
 public:
     element_tree();
 
-    void tick();
-
-    void resize_window(float window_width, float window_height);
+    void tick(float width, float height);
     bool tree_dirty() const noexcept { return m_tree_dirty; }
 
 private:
     void update_input();
-    void update_layout();
+    void update_layout(float width, float height);
 
-    void bubble_click_event(element* node, window::mouse_key key);
+    void bubble_mouse_event(element* hot_node);
 
     virtual void on_remove_child(element* child) override;
 
@@ -48,9 +46,9 @@ private:
 
     element* m_hot_node;
     element* m_focused_node;
+    element* m_drag_node;
 
-    float m_window_width;
-    float m_window_height;
+    std::vector<element*> m_mouse_over_nodes;
 
     bool m_tree_dirty;
 };

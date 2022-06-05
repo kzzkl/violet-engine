@@ -4,9 +4,12 @@ namespace ash::ui
 {
 element::element(bool is_root)
     : element_layout(is_root),
+      mouse_over(false),
+      m_layer(1),
       m_depth(1.0f),
       m_dirty(true),
       m_display(true),
+      m_extent{},
       m_parent(nullptr)
 {
 }
@@ -29,11 +32,26 @@ void element::render(renderer& renderer)
     }
 }
 
+void element::sync_extent()
+{
+    element_extent new_extent = layout_extent();
+    if (new_extent != m_extent)
+    {
+        m_extent = new_extent;
+        on_extent_change();
+    }
+}
+
 void element::link(element* parent)
+{
+    link(parent, parent->children().size());
+}
+
+void element::link(element* parent, std::size_t index)
 {
     ASH_ASSERT(parent && m_parent == nullptr);
 
-    layout_link(parent);
+    layout_link(parent, index);
 
     parent->m_children.push_back(this);
     parent->on_add_child(this);
@@ -101,7 +119,7 @@ void element::on_remove_child(element* child)
 
 void element::update_depth(float parent_depth)
 {
-    m_depth = parent_depth - 0.01f;
+    m_depth = parent_depth - 0.01f * m_layer;
 
     for (element* child : m_children)
         child->update_depth(m_depth);

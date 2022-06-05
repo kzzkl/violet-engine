@@ -1,35 +1,46 @@
 #pragma once
 
 #include "ecs/component.hpp"
+#include "graphics/pipeline_parameter.hpp"
 #include "math/math.hpp"
-#include "pipeline_parameter.hpp"
 
 namespace ash::graphics
 {
-struct main_camera
+class camera
 {
-};
+public:
+    camera() noexcept;
 
-struct camera
-{
-    void set(float fov, float aspect, float near_z, float far_z, bool flip_y = false)
-    {
-        math::float4x4_simd proj = math::matrix_simd::perspective(fov, aspect, near_z, far_z);
-        math::simd::store(proj, projection);
+    void field_of_view(float fov) noexcept;
+    void clipping_planes(float near_z, float far_z) noexcept;
+    void flip_y(bool flip) noexcept;
 
-        if (flip_y)
-            projection[1][1] *= -1.0f;
-    }
+    void render_target(resource* render_target) noexcept;
+    void depth_stencil_buffer(resource* depth_stencil_buffer) noexcept;
+    void render_target_resolve(resource* render_target_resolve) noexcept;
 
-    math::float4x4 view;
-    math::float4x4 projection;
+    inline resource* render_target() const noexcept { return m_render_target; }
+    inline resource* render_target_resolve() const noexcept { return m_render_target_resolve; }
+    inline resource* depth_stencil_buffer() const noexcept { return m_depth_stencil_buffer; }
 
-    resource* render_target;
-    resource* render_target_resolve;
-    resource* depth_stencil_buffer;
+    const math::float4x4& projection() const noexcept { return m_projection; }
+    pipeline_parameter* parameter() const noexcept { return m_parameter.get(); }
 
-    std::unique_ptr<pipeline_parameter> parameter;
+    std::uint32_t mask;
 
-    std::uint32_t mask{std::numeric_limits<std::uint32_t>::max()};
+private:
+    void update_projection() noexcept;
+
+    float m_fov;
+    float m_near_z;
+    float m_far_z;
+    bool m_flip_y;
+    math::float4x4 m_projection;
+
+    resource* m_render_target;
+    resource* m_render_target_resolve;
+    resource* m_depth_stencil_buffer;
+
+    std::unique_ptr<pipeline_parameter> m_parameter;
 };
 } // namespace ash::graphics

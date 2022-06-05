@@ -1,10 +1,10 @@
 #pragma once
 
-#include "context.hpp"
+#include "core/context.hpp"
 #include "graphics/graphics.hpp"
 #include "mmd_loader.hpp"
 #include "mmd_pipeline.hpp"
-#include "physics.hpp"
+#include "physics/physics.hpp"
 
 namespace ash::sample::mmd
 {

@@ -258,7 +258,8 @@ window_impl_win32::window_impl_win32() noexcept
       m_mouse_mode(MOUSE_MODE_ABSOLUTE),
       m_mouse_x(0),
       m_mouse_y(0),
-      m_mouse_move(false)
+      m_mouse_move(false),
+      m_track_mouse_event_flag(false)
 {
 }
 
@@ -362,6 +363,17 @@ void window_impl_win32::tick()
     m_mouse_whell = 0;
     m_mouse_whell_move = false;
 
+    if (!m_track_mouse_event_flag)
+    {
+        TRACKMOUSEEVENT tme = {};
+        tme.cbSize = sizeof(TRACKMOUSEEVENT);
+        tme.hwndTrack = m_hwnd;
+        tme.dwFlags = TME_LEAVE;
+        TrackMouseEvent(&tme);
+
+        m_track_mouse_event_flag = true;
+    }
+
     MSG msg;
     while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
     {
@@ -460,6 +472,7 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
     case WM_MOUSEMOVE: {
         if (m_mouse_mode == MOUSE_MODE_ABSOLUTE)
             on_mouse_move(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
+        m_track_mouse_event_flag = false;
         break;
     }
     case WM_ENTERSIZEMOVE: {
@@ -527,6 +540,12 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
     }
     case WM_MOUSEWHEEL: {
         on_mouse_whell(static_cast<short>(HIWORD(wparam)) / 120);
+        break;
+    }
+    case WM_MOUSELEAVE: {
+        on_mouse_key(MOUSE_KEY_LEFT, false);
+        on_mouse_key(MOUSE_KEY_RIGHT, false);
+        on_mouse_key(MOUSE_KEY_MIDDLE, false);
         break;
     }
     case WM_KEYDOWN: {
