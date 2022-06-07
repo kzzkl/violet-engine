@@ -5,10 +5,20 @@
 
 namespace ash::ui
 {
+namespace
+{
+inline bool in_extent(int x, int y, const element_extent& extent)
+{
+    return extent.x < x && extent.x + extent.width > x && extent.y < y &&
+           extent.y + extent.height > y;
+}
+} // namespace
+
 element_tree::element_tree()
     : m_hot_node(nullptr),
       m_focused_node(nullptr),
       m_drag_node(nullptr),
+      m_dock_node(nullptr),
       m_tree_dirty(true)
 {
     flex_direction(LAYOUT_FLEX_DIRECTION_ROW);
@@ -17,6 +27,7 @@ element_tree::element_tree()
 void element_tree::tick(float width, float height)
 {
     update_input();
+    update_docking();
 
     bool layout_dirty = false;
     bool control_dirty = false;
@@ -55,11 +66,6 @@ void element_tree::update_input()
     int mouse_x = mouse.x();
     int mouse_y = mouse.y();
 
-    auto in_extent = [](int x, int y, const element_extent& extent) -> bool {
-        return extent.x < x && extent.x + extent.width > x && extent.y < y &&
-               extent.y + extent.height > y;
-    };
-
     for (element* node : m_mouse_over_nodes)
     {
         if (!in_extent(mouse_x, mouse_y, node->extent()))
@@ -71,7 +77,7 @@ void element_tree::update_input()
     }
     m_mouse_over_nodes.clear();
 
-    bfs(this, [&](element* node) {
+    bfs(this, [&](element* node) -> bool {
         if (!node->display())
             return false;
 
@@ -93,19 +99,66 @@ void element_tree::update_input()
         }
     });
 
-    element* hot_node = nullptr;
-    float depth = 1.0f;
-    for (auto node : m_mouse_over_nodes)
+    bubble_mouse_event(m_mouse_over_nodes.empty() ? nullptr : m_mouse_over_nodes.back());
+}
+
+void element_tree::update_docking()
+{
+    if (m_dock_node == nullptr && m_drag_node && m_drag_node->dockable())
     {
-        if (node->depth() < depth)
-        {
-            depth = node->depth();
-            hot_node = node;
-        }
+        m_dock_node = static_cast<dock_element*>(m_drag_node);
     }
 
-    // Bubble click event.
-    bubble_mouse_event(hot_node);
+    if (m_drag_node == nullptr && m_dock_node != nullptr)
+    {
+        dock_element* dock_target_node = nullptr;
+        for (element* node : m_mouse_over_nodes)
+        {
+            if (node != m_dock_node && node->dockable())
+                dock_target_node = static_cast<dock_element*>(node);
+        }
+
+        if (dock_target_node != nullptr)
+        {
+            auto& mouse = system<window::window>().mouse();
+            int mouse_x = mouse.x();
+            int mouse_y = mouse.y();
+
+            auto& extent = dock_target_node->extent();
+
+            layout_edge edge;
+            float min_distance = 100000.0f;
+
+            float distance = mouse_x - extent.x;
+            if (distance < min_distance)
+            {
+                edge = LAYOUT_EDGE_LEFT;
+                min_distance = distance;
+            }
+            distance = extent.x + extent.width - mouse_x;
+            if (distance < min_distance)
+            {
+                edge = LAYOUT_EDGE_RIGHT;
+                min_distance = distance;
+            }
+            distance = mouse_y - extent.y;
+            if (distance < min_distance)
+            {
+                edge = LAYOUT_EDGE_TOP;
+                min_distance = distance;
+            }
+            distance = extent.y + extent.height - mouse_y;
+            if (distance < min_distance)
+            {
+                edge = LAYOUT_EDGE_BOTTOM;
+                min_distance = distance;
+            }
+
+            m_dock_node->dock(dock_target_node, edge);
+        }
+
+        m_dock_node = nullptr;
+    }
 }
 
 void element_tree::update_layout(float width, float height)
@@ -157,7 +210,6 @@ void element_tree::bubble_mouse_event(element* hot_node)
                     break;
                 node = node->parent();
             }
-            m_drag_node = hot_node;
             key_down = true;
         }
 
@@ -170,7 +222,6 @@ void element_tree::bubble_mouse_event(element* hot_node)
                     break;
                 node = node->parent();
             }
-            m_drag_node = nullptr;
         }
 
         if (mouse.whell() != 0)
@@ -185,12 +236,28 @@ void element_tree::bubble_mouse_event(element* hot_node)
         }
     }
 
-    element* drag_node = m_drag_node;
-    while (drag_node != nullptr)
+    if (mouse.key(window::MOUSE_KEY_LEFT).down())
     {
-        if (drag_node->on_mouse_drag && !drag_node->on_mouse_drag(mouse_x, mouse_y))
-            break;
-        drag_node = drag_node->parent();
+        if (m_drag_node == nullptr)
+        {
+            m_drag_node = hot_node;
+            if (m_drag_node->on_mouse_drag_begin)
+                m_drag_node->on_mouse_drag_begin(mouse_x, mouse_y);
+        }
+        else
+        {
+            if (m_drag_node->on_mouse_drag)
+                m_drag_node->on_mouse_drag(mouse_x, mouse_y);
+        }
+    }
+    else
+    {
+        if (m_drag_node != nullptr)
+        {
+            if (m_drag_node->on_mouse_drag_end)
+                m_drag_node->on_mouse_drag_end(mouse_x, mouse_y);
+            m_drag_node = nullptr;
+        }
     }
 
     if (m_hot_node != hot_node)
@@ -223,5 +290,15 @@ void element_tree::on_remove_child(element* child)
 
     if (m_focused_node == child)
         m_focused_node = nullptr;
+
+    for (auto& node : m_mouse_over_nodes)
+    {
+        if (node == child)
+        {
+            node = m_mouse_over_nodes.back();
+            m_mouse_over_nodes.pop_back();
+            break;
+        }
+    }
 }
 } // namespace ash::ui

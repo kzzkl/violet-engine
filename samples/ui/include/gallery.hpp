@@ -17,6 +17,7 @@ public:
 private:
     void initialize_basic();
     void initialize_views();
+    void initialize_docking();
 
     std::unique_ptr<ui::panel> m_left;
     std::unique_ptr<ui::tree> m_navigation_tree;

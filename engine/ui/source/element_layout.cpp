@@ -252,6 +252,12 @@ public:
     virtual void height_min(float height) override { YGNodeStyleSetMinHeight(m_node, height); }
     virtual void height_max(float height) override { YGNodeStyleSetMaxHeight(m_node, height); }
 
+    virtual void copy_style(layout_node_impl* target)
+    {
+        auto target_node = static_cast<layout_node_impl_yoga*>(target)->m_node;
+        YGNodeCopyStyle(target_node, m_node);
+    }
+
     virtual element_extent extent() const override
     {
         return element_extent{

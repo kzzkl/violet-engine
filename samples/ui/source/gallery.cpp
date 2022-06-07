@@ -1,5 +1,6 @@
 #include "gallery.hpp"
 #include "button_page.hpp"
+#include "docking_page.hpp"
 #include "image_page.hpp"
 #include "style.hpp"
 #include "tree_page.hpp"
@@ -48,6 +49,7 @@ void gallery::initialize()
 
     initialize_basic();
     initialize_views();
+    initialize_docking();
 }
 
 void gallery::initialize_basic()
@@ -92,7 +94,7 @@ void gallery::initialize_views()
     m_nodes["Views"] = std::make_unique<ui::tree_node>(
         "Views",
         text_font,
-        0xEE84,
+        0xEE8F,
         icon_font,
         m_navigation_node_style);
     m_navigation_tree->add(m_nodes["Views"].get());
@@ -106,5 +108,20 @@ void gallery::initialize_views()
         icon_font,
         m_navigation_node_style);
     m_nodes["Views"]->add(m_nodes["Tree"].get());
+}
+
+void gallery::initialize_docking()
+{
+    auto& text_font = system<ui::ui>().font(ui::DEFAULT_TEXT_FONT);
+    auto& icon_font = system<ui::ui>().font(ui::DEFAULT_ICON_FONT);
+
+    m_nodes["Docking"] = std::make_unique<ui::tree_node>(
+        "Docking",
+        text_font,
+        0xEE84,
+        icon_font,
+        m_navigation_node_style);
+    m_navigation_tree->add(m_nodes["Docking"].get());
+    m_pages["Docking"] = std::make_unique<docking_page>();
 }
 } // namespace ash::sample

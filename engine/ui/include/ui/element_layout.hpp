@@ -121,6 +121,8 @@ public:
     virtual void height_min(float height) = 0;
     virtual void height_max(float height) = 0;
 
+    virtual void copy_style(layout_node_impl* target) = 0;
+
     virtual element_extent extent() const = 0;
 
     virtual bool dirty() const = 0;
@@ -187,6 +189,8 @@ public:
     void height_percent(float height) { return m_impl->height_percent(height); }
     void height_min(float height) { return m_impl->height_min(height); }
     void height_max(float height) { return m_impl->height_max(height); }
+
+    void copy_style(element_layout* target) { m_impl->copy_style(target->m_impl.get()); }
 
     bool layout_dirty() const { return m_impl->dirty(); }
 

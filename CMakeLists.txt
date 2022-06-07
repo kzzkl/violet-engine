@@ -29,7 +29,7 @@ option(ASH_BUILD_THIRDPARTY "Build thirdparty" ON)
 option(ASH_BUILD_ENGINE "Build engine" ON)
 option(ASH_BUILD_TESTING "Build test project" ON)
 option(ASH_BUILD_EXAMPLES "Build examples" ON)
-option(ASH_BUILD_EDITOR "Build editor" ON)
+option(ASH_BUILD_EDITOR "Build editor" OFF)
 
 message("Build start")
 

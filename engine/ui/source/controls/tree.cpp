@@ -71,7 +71,7 @@ tree_node::tree_node(std::string_view name, const font& font, const tree_node_st
         return false;
     };
     m_button->width(font.heigth() * 1.5f);
-    m_button->height(font.heigth());
+    m_button->height(font.heigth() * 1.5f);
     m_button->link(m_top.get());
 
     m_text = std::make_unique<label>(name, font, style.text_color);

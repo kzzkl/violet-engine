@@ -2,6 +2,7 @@ project(ui)
 
 add_executable(${PROJECT_NAME}
     ./source/button_page.cpp
+    ./source/docking_page.cpp
     ./source/gallery_control.cpp
     ./source/gallery.cpp
     ./source/image_page.cpp

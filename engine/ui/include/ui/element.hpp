@@ -29,15 +29,21 @@ public:
     void link(element* parent, std::size_t index);
     void unlink();
 
-    element* parent() { return m_parent; }
-    const std::vector<element*>& children() { return m_children; }
+    std::size_t link_index() const noexcept { return m_link_index; }
+
+    element* parent() const noexcept { return m_parent; }
+    const std::vector<element*>& children() const noexcept { return m_children; }
 
     void show();
     void hide();
     bool display() const noexcept { return m_display; }
 
     float depth() const noexcept { return m_depth; }
-    void layer(int layer) noexcept { m_layer = layer; }
+    void layer(int layer) noexcept;
+
+    virtual bool dockable() const noexcept { return false; }
+
+    std::string name;
 
 public:
     bool mouse_over;
@@ -49,7 +55,10 @@ public:
     std::function<bool(window::mouse_key key, int x, int y)> on_mouse_press;
     std::function<bool(window::mouse_key key, int x, int y)> on_mouse_release;
     std::function<bool(int whell)> on_mouse_wheel;
-    std::function<bool(int x, int y)> on_mouse_drag;
+
+    std::function<void(int x, int y)> on_mouse_drag_begin;
+    std::function<void(int x, int y)> on_mouse_drag;
+    std::function<void(int x, int y)> on_mouse_drag_end;
 
     std::function<void()> on_blur;
     std::function<void()> on_focus;
@@ -68,7 +77,7 @@ protected:
     element_mesh m_mesh;
 
 private:
-    void update_depth(float parent_depth);
+    void update_depth(float parent_depth) noexcept;
 
     int m_layer;
     float m_depth;
@@ -77,7 +86,28 @@ private:
 
     element_extent m_extent;
 
+    std::size_t m_link_index;
+
     element* m_parent;
     std::vector<element*> m_children;
+};
+
+class dock_element : public element
+{
+public:
+    dock_element();
+
+    void dock(dock_element* target, layout_edge edge);
+    void undock();
+
+    virtual bool dockable() const noexcept { return true; }
+
+private:
+    void move_up();
+    void move_down();
+
+    bool is_root() const noexcept { return m_dock_node == nullptr; }
+
+    std::shared_ptr<dock_element> m_dock_node;
 };
 } // namespace ash::ui

@@ -1,5 +1,4 @@
 #include "ui/controls/scroll_view.hpp"
-#include "log.hpp"
 
 namespace ash::ui
 {
@@ -12,7 +11,7 @@ scroll_bar::scroll_bar(bool vertical, std::uint32_t slider_color, std::uint32_t 
     if (vertical)
     {
         flex_direction(LAYOUT_FLEX_DIRECTION_COLUMN);
-        on_mouse_drag = [this](int x, int y) -> bool {
+        m_slider->on_mouse_drag = [this](int x, int y) {
             auto& bar_extent = extent();
             auto& slider_extent = m_slider->extent();
             float old_position = m_position;
@@ -26,14 +25,12 @@ scroll_bar::scroll_bar(bool vertical, std::uint32_t slider_color, std::uint32_t 
                 if (on_slide)
                     on_slide(value());
             }
-
-            return false;
         };
     }
     else
     {
         flex_direction(LAYOUT_FLEX_DIRECTION_ROW);
-        on_mouse_drag = [this](int x, int y) -> bool {
+        m_slider->on_mouse_drag = [this](int x, int y) {
             auto& bar_extent = extent();
             auto& slider_extent = m_slider->extent();
             float old_position = m_position;
@@ -46,8 +43,6 @@ scroll_bar::scroll_bar(bool vertical, std::uint32_t slider_color, std::uint32_t 
                 if (on_slide)
                     on_slide(value());
             }
-
-            return false;
         };
     }
 
