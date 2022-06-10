@@ -9,6 +9,52 @@
 
 namespace ash::ui
 {
+template <typename T>
+class element_event
+{
+};
+
+template <typename R, typename... Args>
+class element_event<R(Args...)>
+{
+public:
+    class handle_impl
+    {
+    public:
+        virtual ~handle_impl() = default;
+        virtual R operator()(Args... args) = 0;
+    };
+
+    class handle_wrapper : public handle_impl
+    {
+    public:
+        virtual R operator()(Args... args) override { return functor(args...); }
+        std::function<R(Args...)> functor;
+    };
+
+    class handle
+    {
+    public:
+        handle() noexcept = default;
+        handle(std::shared_ptr<handle_impl> handle) noexcept : m_handle(handle) {}
+
+        template <typename Functor>
+        handle(Functor&& functor)
+        {
+            auto wrapper = std::make_shared<handle_wrapper>();
+            wrapper->functor = functor;
+            m_handle = wrapper;
+        }
+
+        R operator()(Args... args) { return (*m_handle)(args...); }
+
+        operator bool() const noexcept { return m_handle != nullptr; }
+
+    private:
+        std::shared_ptr<handle_impl> m_handle;
+    };
+};
+
 class element : public element_layout
 {
 public:
@@ -29,33 +75,62 @@ public:
     void link(element* parent, std::size_t index);
     void unlink();
 
-    element* parent() { return m_parent; }
-    const std::vector<element*>& children() { return m_children; }
+    std::size_t link_index() const noexcept { return m_link_index; }
+
+    element* parent() const noexcept { return m_parent; }
+    const std::vector<element*>& children() const noexcept { return m_children; }
 
     void show();
     void hide();
     bool display() const noexcept { return m_display; }
 
     float depth() const noexcept { return m_depth; }
-    void layer(int layer) noexcept { m_layer = layer; }
+    void layer(int layer) noexcept;
+
+    virtual bool dockable() const noexcept { return false; }
+
+    std::string name;
 
 public:
+    using on_mouse_leave_event = element_event<void()>;
+    using on_mouse_enter_event = element_event<void()>;
+    using on_mouse_out_event = element_event<void()>;
+    using on_mouse_over_event = element_event<void()>;
+    using on_mouse_move_event = element_event<void(int, int)>;
+
+    using on_mouse_press_event = element_event<bool(window::mouse_key, int, int)>;
+    using on_mouse_release_event = element_event<bool(window::mouse_key, int, int)>;
+    using on_mouse_wheel_event = element_event<bool(int)>;
+
+    using on_mouse_drag_event = element_event<void(int, int)>;
+    using on_mouse_drag_begin_event = element_event<void(int, int)>;
+    using on_mouse_drag_end_event = element_event<void(int, int)>;
+
+    using on_blur_event = element_event<void()>;
+    using on_focus_event = element_event<void()>;
+    using on_show_event = element_event<void()>;
+    using on_hide_event = element_event<void()>;
+
+    on_mouse_leave_event::handle on_mouse_leave;
+    on_mouse_enter_event::handle on_mouse_enter;
+    on_mouse_out_event::handle on_mouse_out;
+    on_mouse_over_event::handle on_mouse_over;
+    on_mouse_move_event::handle on_mouse_move;
     bool mouse_over;
 
-    std::function<void()> on_mouse_leave;
-    std::function<void()> on_mouse_enter;
-    std::function<void()> on_mouse_out;
-    std::function<void()> on_mouse_over;
-    std::function<bool(window::mouse_key key, int x, int y)> on_mouse_press;
-    std::function<bool(window::mouse_key key, int x, int y)> on_mouse_release;
-    std::function<bool(int whell)> on_mouse_wheel;
-    std::function<bool(int x, int y)> on_mouse_drag;
+    on_mouse_press_event::handle on_mouse_press;
+    on_mouse_release_event::handle on_mouse_release;
+    on_mouse_wheel_event::handle on_mouse_wheel;
 
-    std::function<void()> on_blur;
-    std::function<void()> on_focus;
+    on_mouse_drag_event::handle on_mouse_drag;
+    on_mouse_drag_begin_event::handle on_mouse_drag_begin;
+    on_mouse_drag_end_event::handle on_mouse_drag_end;
 
-    std::function<void()> on_show;
-    std::function<void()> on_hide;
+    on_blur_event::handle on_blur;
+    on_focus_event::handle on_focus;
+
+    on_show_event::handle on_show;
+    on_hide_event::handle on_hide;
 
 protected:
     virtual void on_extent_change() {}
@@ -68,7 +143,7 @@ protected:
     element_mesh m_mesh;
 
 private:
-    void update_depth(float parent_depth);
+    void update_depth(float parent_depth) noexcept;
 
     int m_layer;
     float m_depth;
@@ -76,6 +151,8 @@ private:
     bool m_display;
 
     element_extent m_extent;
+
+    std::size_t m_link_index;
 
     element* m_parent;
     std::vector<element*> m_children;

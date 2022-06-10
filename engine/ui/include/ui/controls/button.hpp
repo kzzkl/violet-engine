@@ -8,21 +8,16 @@ namespace ash::ui
 {
 struct button_style
 {
-    std::uint32_t text_color;
-    std::uint32_t default_color;
-    std::uint32_t highlight_color;
+    const font* text_font{nullptr};
+    std::uint32_t text_color{COLOR_BLACK};
+    std::uint32_t default_color{0xFFFAFAFA};
+    std::uint32_t highlight_color{0xFFD8D8D9};
 };
 
 class button : public panel
 {
 public:
-    static constexpr button_style default_style = {
-        .text_color = COLOR_BLACK,
-        .default_color = 0xFFFAFAFA,
-        .highlight_color = 0xFFD8D8D9};
-
-public:
-    button(std::string_view text, const font& font, const button_style& style = default_style);
+    button(std::string_view text, const button_style& style);
 
 private:
     std::uint32_t m_default_color;
@@ -33,24 +28,16 @@ private:
 
 struct icon_button_style
 {
-    float icon_scale;
-    std::uint32_t default_color;
-    std::uint32_t highlight_color;
+    const font* icon_font;
+    float icon_scale{1.0f};
+    std::uint32_t default_color{COLOR_BLACK};
+    std::uint32_t highlight_color{0xFFFAFAFA};
 };
 
 class icon_button : public font_icon
 {
 public:
-    static constexpr icon_button_style default_style = {
-        .icon_scale = 1.0f,
-        .default_color = COLOR_BLACK,
-        .highlight_color = 0xFFFAFAFA};
-
-public:
-    icon_button(
-        std::uint32_t index,
-        const font& font,
-        const icon_button_style& style = default_style);
+    icon_button(std::uint32_t index, const icon_button_style& style = {});
 
 private:
     std::uint32_t m_default_color;

@@ -67,6 +67,8 @@ class window_impl
 {
 public:
     using mouse_type = mouse;
+    using mouse_mode_type = mouse_mode;
+    using mouse_cursor_type = mouse_cursor;
     using keyboard_type = keyboard;
 
 public:
@@ -82,7 +84,11 @@ public:
     virtual window_extent extent() const = 0;
 
     virtual void title(std::string_view title) = 0;
-    virtual void change_mouse_mode(mouse_mode mode) = 0;
+
+    virtual void mouse_mode(mouse_mode_type mode) = 0;
+    virtual void mouse_cursor(mouse_cursor_type cursor) = 0;
+
+    virtual mouse_mode_type mouse_mode() const noexcept = 0;
 
     void reset() noexcept { m_messages.clear(); }
     const std::vector<window_message>& messages() const noexcept { return m_messages; }

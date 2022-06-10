@@ -22,7 +22,11 @@ public:
     virtual window_extent extent() const override;
 
     virtual void title(std::string_view title) override;
-    virtual void change_mouse_mode(mouse_mode mode) override;
+
+    virtual void mouse_mode(mouse_mode_type mode) override;
+    virtual void mouse_cursor(mouse_cursor_type cursor) override;
+
+    virtual mouse_mode_type mouse_mode() const noexcept override { return m_mouse_mode; }
 
 private:
     static LRESULT CALLBACK wnd_create_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
@@ -39,8 +43,12 @@ private:
 
     static constexpr auto* m_class_name = L"ash-engine";
 
+    mouse_mode_type m_mouse_mode;
     bool m_mouse_mode_change;
-    mouse_mode m_mouse_mode;
+
+    mouse_cursor_type m_mouse_cursor;
+    std::vector<HCURSOR> m_mouse_cursor_handles;
+
     int m_mouse_x;
     int m_mouse_y;
     bool m_mouse_move;

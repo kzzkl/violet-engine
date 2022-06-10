@@ -42,7 +42,7 @@ void application::run()
         ++frame_counter;
         if (s > seconds(1))
         {
-            log::debug("FPS[{}] delta[{}]", frame_counter, delta.count());
+            // log::debug("FPS[{}] delta[{}]", frame_counter, delta.count());
             s = nanoseconds::zero();
             frame_counter = 0;
         }

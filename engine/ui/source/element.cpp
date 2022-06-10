@@ -1,4 +1,5 @@
 #include "ui/element.hpp"
+#include "log.hpp"
 
 namespace ash::ui
 {
@@ -10,17 +11,18 @@ element::element(bool is_root)
       m_dirty(true),
       m_display(true),
       m_extent{},
+      m_link_index(0),
       m_parent(nullptr)
 {
 }
 
 element::~element()
 {
-    for (auto child : m_children)
-        child->unlink();
+    ASH_ASSERT(m_children.empty());
+    ASH_ASSERT(m_parent == nullptr);
 
-    if (m_parent != nullptr)
-        unlink();
+    // if (m_parent != nullptr)
+    //     unlink();
 }
 
 void element::render(renderer& renderer)
@@ -52,8 +54,12 @@ void element::link(element* parent, std::size_t index)
     ASH_ASSERT(parent && m_parent == nullptr);
 
     layout_link(parent, index);
+    m_link_index = index;
 
-    parent->m_children.push_back(this);
+    auto iter = parent->m_children.insert(parent->m_children.begin() + index, this);
+    while (++iter != parent->m_children.end())
+        ++(*iter)->m_link_index;
+
     parent->on_add_child(this);
     update_depth(parent->m_depth);
 
@@ -67,14 +73,20 @@ void element::unlink()
 
     layout_unlink();
 
-    for (auto iter = m_parent->m_children.begin(); iter != m_parent->m_children.end(); ++iter)
+    auto iter = m_parent->m_children.begin();
+    for (; iter != m_parent->m_children.end(); ++iter)
     {
         if (*iter == this)
         {
-            m_parent->m_children.erase(iter);
+            iter = m_parent->m_children.erase(iter);
             m_parent->on_remove_child(this);
             break;
         }
+    }
+
+    for (; iter != m_parent->m_children.end(); ++iter)
+    {
+        --(*iter)->m_link_index;
     }
 
     m_depth = 0.0f;
@@ -105,6 +117,14 @@ void element::hide()
     m_display = false;
 }
 
+void element::layer(int layer) noexcept
+{
+    m_layer = layer;
+
+    if (m_parent != nullptr)
+        update_depth(m_parent->depth());
+}
+
 void element::on_add_child(element* child)
 {
     if (m_parent != nullptr)
@@ -117,7 +137,7 @@ void element::on_remove_child(element* child)
         m_parent->on_remove_child(child);
 }
 
-void element::update_depth(float parent_depth)
+void element::update_depth(float parent_depth) noexcept
 {
     m_depth = parent_depth - 0.01f * m_layer;
 

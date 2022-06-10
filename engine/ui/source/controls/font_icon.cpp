@@ -2,18 +2,20 @@
 
 namespace ash::ui
 {
-font_icon::font_icon(std::uint32_t index, const font& font, float scale, std::uint32_t color)
-    : m_icon_scale(scale),
-      m_icon_color(color)
+font_icon::font_icon(std::uint32_t index, const font_icon_style& style)
+    : m_icon_scale(style.icon_scale)
 {
-    icon(index, font);
-    width(font.heigth());
-    height(font.heigth());
+    m_mesh.vertex_position.resize(4);
+    m_mesh.vertex_color.resize(4);
+    m_mesh.indices = {0, 1, 2, 0, 2, 3};
+    icon(index, *style.icon_font);
+    icon_color(style.icon_color);
+    width(style.icon_font->heigth());
+    height(style.icon_font->heigth());
 }
 
 void font_icon::icon(std::uint32_t index, const font& font)
 {
-    m_mesh.reset();
     m_mesh.texture = font.texture();
 
     auto& glyph = font.glyph(index);
@@ -23,15 +25,12 @@ void font_icon::icon(std::uint32_t index, const font& font)
     m_icon_width = glyph.width;
     m_icon_height = glyph.height;
 
-    m_mesh.vertex_position.resize(4);
     m_mesh.vertex_uv = {
         glyph.uv1,
         {glyph.uv2[0], glyph.uv1[1]},
         glyph.uv2,
         {glyph.uv1[0], glyph.uv2[1]}
     };
-    m_mesh.vertex_color = {m_icon_color, m_icon_color, m_icon_color, m_icon_color};
-    m_mesh.indices = {0, 1, 2, 0, 2, 3};
 
     on_extent_change();
     mark_dirty();
@@ -48,7 +47,6 @@ void font_icon::icon_color(std::uint32_t color)
 {
     for (auto& c : m_mesh.vertex_color)
         c = color;
-    m_icon_color = color;
 
     mark_dirty();
 }
