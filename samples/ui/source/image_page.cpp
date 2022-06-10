@@ -8,7 +8,7 @@ image_page::image_page()
     m_title = std::make_unique<text_title_1>("Image");
     m_title->link(this);
 
-    m_description = std::make_unique<text_content>("You can use image controls to display image.");
+    m_description = std::make_unique<text_content>("You can use image control to display image.");
     m_description->link(this);
 
     for (std::size_t i = 0; i < 2; ++i)

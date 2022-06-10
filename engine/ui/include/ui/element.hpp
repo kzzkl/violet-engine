@@ -9,6 +9,52 @@
 
 namespace ash::ui
 {
+template <typename T>
+class element_event
+{
+};
+
+template <typename R, typename... Args>
+class element_event<R(Args...)>
+{
+public:
+    class handle_impl
+    {
+    public:
+        virtual ~handle_impl() = default;
+        virtual R operator()(Args... args) = 0;
+    };
+
+    class handle_wrapper : public handle_impl
+    {
+    public:
+        virtual R operator()(Args... args) override { return functor(args...); }
+        std::function<R(Args...)> functor;
+    };
+
+    class handle
+    {
+    public:
+        handle() noexcept = default;
+        handle(std::shared_ptr<handle_impl> handle) noexcept : m_handle(handle) {}
+
+        template <typename Functor>
+        handle(Functor&& functor)
+        {
+            auto wrapper = std::make_shared<handle_wrapper>();
+            wrapper->functor = functor;
+            m_handle = wrapper;
+        }
+
+        R operator()(Args... args) { return (*m_handle)(args...); }
+
+        operator bool() const noexcept { return m_handle != nullptr; }
+
+    private:
+        std::shared_ptr<handle_impl> m_handle;
+    };
+};
+
 class element : public element_layout
 {
 public:
@@ -46,25 +92,45 @@ public:
     std::string name;
 
 public:
+    using on_mouse_leave_event = element_event<void()>;
+    using on_mouse_enter_event = element_event<void()>;
+    using on_mouse_out_event = element_event<void()>;
+    using on_mouse_over_event = element_event<void()>;
+    using on_mouse_move_event = element_event<void(int, int)>;
+
+    using on_mouse_press_event = element_event<bool(window::mouse_key, int, int)>;
+    using on_mouse_release_event = element_event<bool(window::mouse_key, int, int)>;
+    using on_mouse_wheel_event = element_event<bool(int)>;
+
+    using on_mouse_drag_event = element_event<void(int, int)>;
+    using on_mouse_drag_begin_event = element_event<void(int, int)>;
+    using on_mouse_drag_end_event = element_event<void(int, int)>;
+
+    using on_blur_event = element_event<void()>;
+    using on_focus_event = element_event<void()>;
+    using on_show_event = element_event<void()>;
+    using on_hide_event = element_event<void()>;
+
+    on_mouse_leave_event::handle on_mouse_leave;
+    on_mouse_enter_event::handle on_mouse_enter;
+    on_mouse_out_event::handle on_mouse_out;
+    on_mouse_over_event::handle on_mouse_over;
+    on_mouse_move_event::handle on_mouse_move;
     bool mouse_over;
 
-    std::function<void()> on_mouse_leave;
-    std::function<void()> on_mouse_enter;
-    std::function<void()> on_mouse_out;
-    std::function<void()> on_mouse_over;
-    std::function<bool(window::mouse_key key, int x, int y)> on_mouse_press;
-    std::function<bool(window::mouse_key key, int x, int y)> on_mouse_release;
-    std::function<bool(int whell)> on_mouse_wheel;
+    on_mouse_press_event::handle on_mouse_press;
+    on_mouse_release_event::handle on_mouse_release;
+    on_mouse_wheel_event::handle on_mouse_wheel;
 
-    std::function<void(int x, int y)> on_mouse_drag_begin;
-    std::function<void(int x, int y)> on_mouse_drag;
-    std::function<void(int x, int y)> on_mouse_drag_end;
+    on_mouse_drag_event::handle on_mouse_drag;
+    on_mouse_drag_begin_event::handle on_mouse_drag_begin;
+    on_mouse_drag_end_event::handle on_mouse_drag_end;
 
-    std::function<void()> on_blur;
-    std::function<void()> on_focus;
+    on_blur_event::handle on_blur;
+    on_focus_event::handle on_focus;
 
-    std::function<void()> on_show;
-    std::function<void()> on_hide;
+    on_show_event::handle on_show;
+    on_hide_event::handle on_hide;
 
 protected:
     virtual void on_extent_change() {}
@@ -90,24 +156,5 @@ private:
 
     element* m_parent;
     std::vector<element*> m_children;
-};
-
-class dock_element : public element
-{
-public:
-    dock_element();
-
-    void dock(dock_element* target, layout_edge edge);
-    void undock();
-
-    virtual bool dockable() const noexcept { return true; }
-
-private:
-    void move_up();
-    void move_down();
-
-    bool is_root() const noexcept { return m_dock_node == nullptr; }
-
-    std::shared_ptr<dock_element> m_dock_node;
 };
 } // namespace ash::ui

@@ -56,27 +56,18 @@ protected:
 
 struct scroll_view_style
 {
-    float scroll_speed;
+    float scroll_speed{30.0f};
 
-    float bar_width;
-    std::uint32_t bar_color;
-    std::uint32_t slider_color;
-
-    std::uint32_t background_color;
+    float bar_width{8.0f};
+    std::uint32_t bar_color{COLOR_WHITE};
+    std::uint32_t slider_color{0xFFAB938D};
+    std::uint32_t background_color{COLOR_WHITE};
 };
 
 class scroll_view : public panel
 {
 public:
-    static constexpr scroll_view_style default_style = {
-        .scroll_speed = 30.0f,
-        .bar_width = 8.0f,
-        .bar_color = COLOR_WHITE,
-        .slider_color = 0xFFAB938D,
-        .background_color = COLOR_WHITE};
-
-public:
-    scroll_view(const scroll_view_style& style = default_style);
+    scroll_view(const scroll_view_style& style = {});
 
     void add(element* element);
     void remove(element* element);

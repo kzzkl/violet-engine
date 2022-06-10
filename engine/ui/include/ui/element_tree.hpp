@@ -1,7 +1,7 @@
 #pragma once
 
 #include "graphics_interface.hpp"
-#include "ui/controls/dock_panel.hpp"
+#include "ui/controls/dock_window.hpp"
 #include "ui/controls/view.hpp"
 #include <queue>
 #include <stack>

@@ -256,6 +256,7 @@ keyboard_key convert_key(WPARAM wparam)
 window_impl_win32::window_impl_win32() noexcept
     : m_mouse_mode_change(false),
       m_mouse_mode(MOUSE_MODE_ABSOLUTE),
+      m_mouse_cursor(MOUSE_CURSOR_ARROW),
       m_mouse_x(0),
       m_mouse_y(0),
       m_mouse_move(false),
@@ -324,6 +325,14 @@ bool window_impl_win32::initialize(
     {
         log::error("RegisterRawInputDevices failed");
     }
+
+    m_mouse_cursor_handles = {
+        LoadCursor(NULL, IDC_ARROW),
+        LoadCursor(NULL, IDC_SIZENWSE),
+        LoadCursor(NULL, IDC_SIZENESW),
+        LoadCursor(NULL, IDC_SIZEWE),
+        LoadCursor(NULL, IDC_SIZENS),
+        LoadCursor(NULL, IDC_SIZEALL)};
 
     m_window_width = width;
     m_window_height = height;
@@ -397,6 +406,8 @@ void window_impl_win32::tick()
         message.mouse_whell = m_mouse_whell;
         m_messages.push_back(message);
     }
+
+    m_mouse_cursor = MOUSE_CURSOR_ARROW;
 }
 
 void window_impl_win32::show()
@@ -429,10 +440,15 @@ void window_impl_win32::title(std::string_view title)
     SetWindowText(m_hwnd, string_to_wstring(title).c_str());
 }
 
-void window_impl_win32::change_mouse_mode(mouse_mode mode)
+void window_impl_win32::mouse_mode(mouse_mode_type mode)
 {
     m_mouse_mode = mode;
     m_mouse_mode_change = true;
+}
+
+void window_impl_win32::mouse_cursor(mouse_cursor_type cursor)
+{
+    m_mouse_cursor = cursor;
 }
 
 LRESULT CALLBACK
@@ -473,6 +489,14 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
         if (m_mouse_mode == MOUSE_MODE_ABSOLUTE)
             on_mouse_move(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
         m_track_mouse_event_flag = false;
+        break;
+    }
+    case WM_SETCURSOR: {
+        if (LOWORD(lparam) == HTCLIENT)
+        {
+            SetCursor(m_mouse_cursor_handles[m_mouse_cursor]);
+            return TRUE;
+        }
         break;
     }
     case WM_ENTERSIZEMOVE: {

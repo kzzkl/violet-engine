@@ -6,11 +6,17 @@
 
 namespace ash::ui
 {
+struct label_style
+{
+    const font* text_font{nullptr};
+    std::uint32_t text_color{COLOR_BLACK};
+};
+
 class label : public element
 {
 public:
     label();
-    label(std::string_view content, const font& font, std::uint32_t color = COLOR_BLACK);
+    label(std::string_view content, const label_style& style);
 
     void text(std::string_view content, const font& font);
     void text_color(std::uint32_t color);
@@ -24,7 +30,6 @@ protected:
 
 private:
     std::string m_text;
-    std::uint32_t m_text_color;
 
     float m_original_x;
     float m_original_y;

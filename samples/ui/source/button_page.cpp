@@ -31,7 +31,9 @@ void button_page::initialize_sample_button()
     m_button_title->link(this);
     m_display[0]->link(this);
 
-    m_button = std::make_unique<ui::button>("Default", text_font);
+    ui::button_style button_style = {};
+    button_style.text_font = &text_font;
+    m_button = std::make_unique<ui::button>("Default", button_style);
     m_button->width(150.0f);
     m_button->height(40.0f);
     m_button->on_mouse_press = [&, this](window::mouse_key key, int x, int y) -> bool {
@@ -41,7 +43,9 @@ void button_page::initialize_sample_button()
     };
     m_button->link(m_display[0].get());
 
-    m_button_text = std::make_unique<ui::label>("click: 0", text_font);
+    ui::label_style text_style = {};
+    text_style.text_font = &text_font;
+    m_button_text = std::make_unique<ui::label>("click: 0", text_style);
     m_button_text->margin(50.0f, ui::LAYOUT_EDGE_LEFT);
     m_button_text->link(m_display[0].get());
 
@@ -50,14 +54,16 @@ void button_page::initialize_sample_button()
     m_icon_button_title->link(this);
     m_display[1]->link(this);
 
-    m_icon_button = std::make_unique<ui::icon_button>(0xEA22, icon_font);
+    ui::icon_button_style icon_button_style = {};
+    icon_button_style.icon_font = &icon_font;
+    m_icon_button = std::make_unique<ui::icon_button>(0xEA22, icon_button_style);
     m_icon_button->on_mouse_press = [&, this](window::mouse_key key, int x, int y) -> bool {
         m_icon_button_text->text("Don't click me!", text_font);
         return false;
     };
     m_icon_button->link(m_display[1].get());
 
-    m_icon_button_text = std::make_unique<ui::label>("hello!", text_font);
+    m_icon_button_text = std::make_unique<ui::label>("hello!", text_style);
     m_icon_button_text->margin(50.0f, ui::LAYOUT_EDGE_LEFT);
     m_icon_button_text->link(m_display[1].get());
 }

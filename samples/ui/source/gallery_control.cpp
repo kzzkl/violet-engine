@@ -5,21 +5,29 @@
 namespace ash::sample
 {
 text_title_1::text_title_1(std::string_view content, std::uint32_t color)
-    : label(content, system<ui::ui>().font("title 1"), color)
+    : label(
+          content,
+          ui::label_style{.text_font = &system<ui::ui>().font("title 1"), .text_color = color})
 {
     margin(style::title_1.margin_top, ui::LAYOUT_EDGE_TOP);
     margin(style::title_1.margin_bottom, ui::LAYOUT_EDGE_BOTTOM);
 }
 
 text_title_2::text_title_2(std::string_view content, std::uint32_t color)
-    : label(content, system<ui::ui>().font("title 2"), color)
+    : label(
+          content,
+          ui::label_style{.text_font = &system<ui::ui>().font("title 2"), .text_color = color})
 {
     margin(style::title_2.margin_top, ui::LAYOUT_EDGE_TOP);
     margin(style::title_2.margin_bottom, ui::LAYOUT_EDGE_BOTTOM);
 }
 
 text_content::text_content(std::string_view content, std::uint32_t color)
-    : label(content, system<ui::ui>().font(ui::DEFAULT_TEXT_FONT), color)
+    : label(
+          content,
+          ui::label_style{
+              .text_font = &system<ui::ui>().font(ui::DEFAULT_TEXT_FONT),
+              .text_color = color})
 {
     margin(style::content.margin_top, ui::LAYOUT_EDGE_TOP);
     margin(style::content.margin_bottom, ui::LAYOUT_EDGE_BOTTOM);

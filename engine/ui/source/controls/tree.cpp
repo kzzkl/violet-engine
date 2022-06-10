@@ -7,7 +7,7 @@ namespace ash::ui
 static constexpr std::uint32_t CHEVRON_DOWN_INDEX = 0xEA4E;
 static constexpr std::uint32_t CHEVRON_UP_INDEX = 0xEA78;
 
-tree_node::tree_node(std::string_view name, const font& font, const tree_node_style& style)
+tree_node::tree_node(std::string_view name, const tree_node_style& style)
     : m_padding_increment(style.padding_increment),
       m_child_margin_offset(0.0f),
       m_selected(false),
@@ -23,7 +23,7 @@ tree_node::tree_node(std::string_view name, const font& font, const tree_node_st
     m_top->padding(style.padding_top, LAYOUT_EDGE_TOP);
     m_top->padding(style.padding_bottom, LAYOUT_EDGE_BOTTOM);
     m_top->padding(0.0f, LAYOUT_EDGE_LEFT);
-    m_top->border(font.heigth() * 1.5f, LAYOUT_EDGE_HORIZONTAL);
+    m_top->border(style.text_font->heigth() * 1.5f, LAYOUT_EDGE_HORIZONTAL);
     m_top->align_items(LAYOUT_ALIGN_CENTER);
     m_top->on_mouse_over = [this]() {
         if (!m_selected)
@@ -45,8 +45,10 @@ tree_node::tree_node(std::string_view name, const font& font, const tree_node_st
     };
     m_top->link(this);
 
-    m_button =
-        std::make_unique<font_icon>(CHEVRON_DOWN_INDEX, system<ui>().font("remixicon"), 0.5f);
+    font_icon_style icon_style = {};
+    icon_style.icon_font = &system<ui>().font(DEFAULT_ICON_FONT);
+    icon_style.icon_scale = 0.5f;
+    m_button = std::make_unique<font_icon>(CHEVRON_DOWN_INDEX, icon_style);
     m_button->hide();
     m_button->on_mouse_press = [this](window::mouse_key key, int x, int y) {
         if (m_container->children().empty())
@@ -70,11 +72,14 @@ tree_node::tree_node(std::string_view name, const font& font, const tree_node_st
         }
         return false;
     };
-    m_button->width(font.heigth() * 1.5f);
-    m_button->height(font.heigth() * 1.5f);
+    m_button->width(style.text_font->heigth() * 1.5f);
+    m_button->height(style.text_font->heigth() * 1.5f);
     m_button->link(m_top.get());
 
-    m_text = std::make_unique<label>(name, font, style.text_color);
+    label_style test_style = {};
+    test_style.text_font = style.text_font;
+    test_style.text_color = style.text_color;
+    m_text = std::make_unique<label>(name, test_style);
     m_text->link(m_top.get());
 
     m_container = std::make_unique<element>();
@@ -84,18 +89,15 @@ tree_node::tree_node(std::string_view name, const font& font, const tree_node_st
     m_container->link(this);
 }
 
-tree_node::tree_node(
-    std::string_view name,
-    const font& text_font,
-    std::uint32_t icon_index,
-    const font& icon_font,
-    const tree_node_style& style)
-    : tree_node(name, text_font, style)
+tree_node::tree_node(std::string_view name, std::uint32_t icon_index, const tree_node_style& style)
+    : tree_node(name, style)
 {
-    m_icon = std::make_unique<font_icon>(icon_index, icon_font, style.icon_scale);
-    m_icon->width(icon_font.heigth());
-    m_icon->height(icon_font.heigth());
-    m_icon->margin(icon_font.heigth() * style.icon_scale * 0.5f, LAYOUT_EDGE_RIGHT);
+    font_icon_style icon_style = {};
+    icon_style.icon_font = style.icon_font;
+    icon_style.icon_color = style.icon_color;
+    icon_style.icon_scale = style.icon_scale;
+    m_icon = std::make_unique<font_icon>(icon_index, icon_style);
+    m_icon->margin(style.icon_font->heigth() * style.icon_scale * 0.5f, LAYOUT_EDGE_RIGHT);
     m_icon->link(m_top.get(), 1);
 }
 

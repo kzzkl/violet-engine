@@ -7,12 +7,12 @@ label::label() : m_original_x(0.0f), m_original_y(0.0f)
 {
 }
 
-label::label(std::string_view content, const font& font, std::uint32_t color)
-    : m_text_color(color),
-      m_original_x(0.0f),
+label::label(std::string_view content, const label_style& style)
+    : m_original_x(0.0f),
       m_original_y(0.0f)
 {
-    text(content, font);
+    text(content, *style.text_font);
+    text_color(style.text_color);
 }
 
 void label::text(std::string_view content, const font& font)
@@ -50,7 +50,6 @@ void label::text(std::string_view content, const font& font)
                 glyph.uv2,
                 {glyph.uv1[0], glyph.uv2[1]}
         });
-        m_mesh.vertex_color.insert(m_mesh.vertex_color.end(), 4, m_text_color);
         m_mesh.indices.insert(
             m_mesh.indices.end(),
             {vertex_base,
@@ -63,6 +62,7 @@ void label::text(std::string_view content, const font& font)
         vertex_base += 4;
         pen_x += glyph.advance;
     }
+    m_mesh.vertex_color.resize(m_mesh.vertex_position.size());
 
     width(pen_x - m_original_x);
     height(font.heigth());
@@ -76,7 +76,6 @@ void label::text_color(std::uint32_t color)
 {
     for (auto& c : m_mesh.vertex_color)
         c = color;
-    m_text_color = color;
 
     mark_dirty();
 }

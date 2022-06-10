@@ -20,8 +20,6 @@ tree_page::tree_page()
 
 void tree_page::initialize_sample_tree()
 {
-    auto& font = system<ui::ui>().font(ui::DEFAULT_TEXT_FONT);
-
     m_tree = std::make_unique<ui::tree>();
     m_tree->link(m_display.get());
 
@@ -94,14 +92,17 @@ void tree_page::initialize_sample_tree()
         "Item 54: Familiarize yourself with the standard library, including TR1.",
         "Item 55: Familiarize yourself with Boost."};
 
+    ui::tree_node_style node_style = {};
+    node_style.text_font = &system<ui::ui>().font(ui::DEFAULT_TEXT_FONT);
+
     for (auto& chapter : chapters)
     {
-        m_chapters.push_back(std::make_unique<ui::tree_node>(chapter, font));
+        m_chapters.push_back(std::make_unique<ui::tree_node>(chapter, node_style));
         m_tree->add(m_chapters.back().get());
     }
 
     for (auto& item : items)
-        m_items.push_back(std::make_unique<ui::tree_node>(item, font));
+        m_items.push_back(std::make_unique<ui::tree_node>(item, node_style));
 
     std::size_t i = 0;
     for (; i < 4; ++i)

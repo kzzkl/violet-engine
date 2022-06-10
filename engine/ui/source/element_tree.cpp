@@ -193,6 +193,9 @@ void element_tree::bubble_mouse_event(element* hot_node)
     int mouse_x = mouse.x();
     int mouse_y = mouse.y();
 
+    if (hot_node != nullptr && hot_node->on_mouse_move)
+        hot_node->on_mouse_move(mouse_x, mouse_y);
+
     static const std::vector<window::mouse_key> keys = {
         window::MOUSE_KEY_LEFT,
         window::MOUSE_KEY_RIGHT,

@@ -9,7 +9,7 @@ add_library(ash::yoga ALIAS ash-yoga)
 # Build ash ui system.
 add_library(${PROJECT_NAME} STATIC
     ./source/controls/button.cpp
-    ./source/controls/dock_panel.cpp
+    ./source/controls/dock_window.cpp
     ./source/controls/font_icon.cpp
     ./source/controls/image.cpp
     ./source/controls/label.cpp

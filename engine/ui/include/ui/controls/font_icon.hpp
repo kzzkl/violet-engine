@@ -6,14 +6,17 @@
 
 namespace ash::ui
 {
+struct font_icon_style
+{
+    const font* icon_font;
+    std::uint32_t icon_color{COLOR_BLACK};
+    float icon_scale{1.0f};
+};
+
 class font_icon : public element
 {
 public:
-    font_icon(
-        std::uint32_t index,
-        const font& font,
-        float scale = 1.0f,
-        std::uint32_t color = COLOR_BLACK);
+    font_icon(std::uint32_t index, const font_icon_style& style);
 
     void icon(std::uint32_t index, const font& font);
     void icon_scale(float scale);
@@ -28,6 +31,5 @@ private:
     float m_icon_scale;
     float m_icon_width;
     float m_icon_height;
-    std::uint32_t m_icon_color;
 };
 } // namespace ash::ui

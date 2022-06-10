@@ -10,41 +10,27 @@ namespace ash::ui
 {
 struct tree_node_style
 {
-    float padding_top;
-    float padding_bottom;
-    float padding_increment;
+    const font* text_font;
+    std::uint32_t text_color{COLOR_BLACK};
 
-    std::uint32_t text_color;
-    std::uint32_t default_color;
-    std::uint32_t highlight_color;
+    const font* icon_font;
+    std::uint32_t icon_color{COLOR_BLACK};
+    float icon_scale{1.0f};
 
-    float icon_scale;
+    float padding_top{5.0f};
+    float padding_bottom{5.0f};
+    float padding_increment{30.0f};
+
+    std::uint32_t default_color{0xFFFAFAFA};
+    std::uint32_t highlight_color{0xFFD8D8D9};
 };
 
 class tree_node : public element
 {
 public:
-    static constexpr tree_node_style default_style = {
-        .padding_top = 5.0f,
-        .padding_bottom = 5.0f,
-        .padding_increment = 30.0f,
-        .text_color = COLOR_BLACK,
-        .default_color = 0xFFFAFAFA,
-        .highlight_color = 0xFFD8D8D9,
-        .icon_scale = 1.0f};
-
-public:
     tree_node() = default;
-    tree_node(
-        std::string_view name,
-        const font& font,
-        const tree_node_style& style = default_style);
-    tree_node(
-        std::string_view name,
-        const font& text_font,
-        std::uint32_t icon_index,
-        const font& icon_font,
-        const tree_node_style& style = default_style);
+    tree_node(std::string_view name, const tree_node_style& style = {});
+    tree_node(std::string_view name, std::uint32_t icon_index, const tree_node_style& style = {});
     virtual ~tree_node() = default;
 
     virtual void add(tree_node* child);
@@ -58,8 +44,12 @@ public:
 
     void* user_data;
 
-    std::function<void()> on_expand;
-    std::function<void()> on_collapse;
+public:
+    using on_expand_event = element_event<void()>;
+    using on_collapse_event = element_event<void()>;
+
+    on_expand_event::handle on_expand;
+    on_collapse_event::handle on_collapse;
 
 protected:
     virtual void on_select_node(tree_node* node);

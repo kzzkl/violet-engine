@@ -82,6 +82,16 @@ enum mouse_mode
     MOUSE_MODE_RELATIVE
 };
 
+enum mouse_cursor
+{
+    MOUSE_CURSOR_ARROW,
+    MOUSE_CURSOR_SIZE_NWSE,
+    MOUSE_CURSOR_SIZE_NESW,
+    MOUSE_CURSOR_SIZE_WE,
+    MOUSE_CURSOR_SIZE_NS,
+    MOUSE_CURSOR_SIZE_ALL
+};
+
 enum mouse_key
 {
     MOUSE_KEY_LEFT,
@@ -101,7 +111,9 @@ public:
     virtual ~mouse() = default;
 
     void mode(mouse_mode mode);
-    inline mouse_mode mode() const noexcept { return m_mode; }
+    void cursor(mouse_cursor cursor);
+
+    mouse_mode mode() const noexcept;
 
     inline int x() const noexcept { return m_x; }
     inline int y() const noexcept { return m_y; }
@@ -115,7 +127,6 @@ protected:
     int m_y;
     int m_whell;
 
-    mouse_mode m_mode;
     window_impl* m_impl;
 };
 
