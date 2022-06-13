@@ -47,15 +47,14 @@ void image::render(renderer& renderer)
     element::render(renderer);
 }
 
-void image::on_extent_change()
+void image::on_extent_change(const element_extent& extent)
 {
-    auto& e = extent();
     float z = depth();
     m_mesh.vertex_position = {
-        {e.x,           e.y,            z},
-        {e.x + e.width, e.y,            z},
-        {e.x + e.width, e.y + e.height, z},
-        {e.x,           e.y + e.height, z}
+        {extent.x,                extent.y,                 z},
+        {extent.x + extent.width, extent.y,                 z},
+        {extent.x + extent.width, extent.y + extent.height, z},
+        {extent.x,                extent.y + extent.height, z}
     };
 }
 } // namespace ash::ui

@@ -9,8 +9,8 @@ namespace
 {
 inline bool in_extent(int x, int y, const element_extent& extent)
 {
-    return extent.x < x && extent.x + extent.width > x && extent.y < y &&
-           extent.y + extent.height > y;
+    return extent.x <= x && extent.x + extent.width >= x && extent.y <= y &&
+           extent.y + extent.height >= y;
 }
 } // namespace
 
@@ -27,7 +27,7 @@ element_tree::element_tree()
 void element_tree::tick(float width, float height)
 {
     update_input();
-    update_docking();
+    // update_docking();
 
     bool layout_dirty = false;
     bool control_dirty = false;
@@ -99,10 +99,16 @@ void element_tree::update_input()
         }
     });
 
+    for (auto node : m_mouse_over_nodes)
+    {
+        if (node->on_mouse_move)
+            node->on_mouse_move(mouse_x, mouse_y);
+    }
+
     bubble_mouse_event(m_mouse_over_nodes.empty() ? nullptr : m_mouse_over_nodes.back());
 }
 
-void element_tree::update_docking()
+/*void element_tree::update_docking()
 {
     if (m_dock_node == nullptr && m_drag_node && m_drag_node->dockable())
     {
@@ -159,7 +165,7 @@ void element_tree::update_docking()
 
         m_dock_node = nullptr;
     }
-}
+}*/
 
 void element_tree::update_layout(float width, float height)
 {
@@ -192,9 +198,6 @@ void element_tree::bubble_mouse_event(element* hot_node)
     auto& mouse = system<window::window>().mouse();
     int mouse_x = mouse.x();
     int mouse_y = mouse.y();
-
-    if (hot_node != nullptr && hot_node->on_mouse_move)
-        hot_node->on_mouse_move(mouse_x, mouse_y);
 
     static const std::vector<window::mouse_key> keys = {
         window::MOUSE_KEY_LEFT,

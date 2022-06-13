@@ -20,8 +20,9 @@ component_panel_base::component_panel_base(std::string_view component_name)
     };
     m_title->link(this);
 
-    m_label = std::make_unique<ui::label>(component_name, ui.font(ui::DEFAULT_TEXT_FONT));
-    // m_label->resize(100.0f, 100.0f, false, false, true, true);
+    ui::label_style label_style = {};
+    label_style.text_font = &ui.font(ui::DEFAULT_TEXT_FONT);
+    m_label = std::make_unique<ui::label>(component_name, label_style);
     m_label->link(m_title.get());
 
     m_container = std::make_unique<ui::panel>(ui::COLOR_VIOLET);
@@ -38,7 +39,9 @@ public:
     component_panel<ecs::information>() : component_panel_base("Information")
     {
         auto& ui = system<ui::ui>();
-        m_name = std::make_unique<ui::label>("none", ui.font(ui::DEFAULT_TEXT_FONT));
+        ui::label_style label_style = {};
+        label_style.text_font = &ui.font(ui::DEFAULT_TEXT_FONT);
+        m_name = std::make_unique<ui::label>("none", label_style);
         m_name->width(100.0f);
         m_name->height(30.0f);
         m_name->link(m_container.get());
@@ -57,7 +60,9 @@ private:
     std::unique_ptr<ui::label> m_name;
 };
 
-component_view::component_view() : m_current_entity(ecs::INVALID_ENTITY)
+component_view::component_view()
+    : editor_view("Component", 0xEA43),
+      m_current_entity(ecs::INVALID_ENTITY)
 {
     register_component<ecs::information>();
 }

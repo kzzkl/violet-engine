@@ -73,7 +73,6 @@ tree_node::tree_node(std::string_view name, const tree_node_style& style)
         return false;
     };
     m_button->width(style.text_font->heigth() * 1.5f);
-    m_button->height(style.text_font->heigth() * 1.5f);
     m_button->link(m_top.get());
 
     label_style test_style = {};

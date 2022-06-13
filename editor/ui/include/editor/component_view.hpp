@@ -2,6 +2,7 @@
 
 #include "ecs/component.hpp"
 #include "ecs/entity.hpp"
+#include "editor/editor_view.hpp"
 #include "ui/controls/label.hpp"
 #include "ui/controls/panel.hpp"
 
@@ -26,7 +27,7 @@ class component_panel : public component_panel_base
 {
 };
 
-class component_view : public ui::panel
+class component_view : public editor_view
 {
 public:
     component_view();

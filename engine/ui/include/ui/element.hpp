@@ -6,6 +6,7 @@
 #include "ui/renderer.hpp"
 #include "window/input.hpp"
 #include <functional>
+#include <string>
 
 namespace ash::ui
 {
@@ -35,18 +36,30 @@ public:
     class handle
     {
     public:
-        handle() noexcept = default;
-        handle(std::shared_ptr<handle_impl> handle) noexcept : m_handle(handle) {}
-
         template <typename Functor>
-        handle(Functor&& functor)
+        void set(Functor&& functor) noexcept requires std::is_invocable_v<Functor, Args...>
         {
             auto wrapper = std::make_shared<handle_wrapper>();
             wrapper->functor = functor;
             m_handle = wrapper;
         }
 
+        void set(std::shared_ptr<handle_impl> handle) noexcept { m_handle = handle; }
+
         R operator()(Args... args) { return (*m_handle)(args...); }
+
+        template <typename Functor>
+        handle& operator=(Functor&& functor) noexcept requires std::is_invocable_v<Functor, Args...>
+        {
+            set(functor);
+            return *this;
+        }
+
+        handle& operator=(std::shared_ptr<handle_impl> handle) noexcept
+        {
+            set(handle);
+            return *this;
+        }
 
         operator bool() const noexcept { return m_handle != nullptr; }
 
@@ -87,8 +100,6 @@ public:
     float depth() const noexcept { return m_depth; }
     void layer(int layer) noexcept;
 
-    virtual bool dockable() const noexcept { return false; }
-
     std::string name;
 
 public:
@@ -111,6 +122,8 @@ public:
     using on_show_event = element_event<void()>;
     using on_hide_event = element_event<void()>;
 
+    using on_resize_event = element_event<void(int, int)>;
+
     on_mouse_leave_event::handle on_mouse_leave;
     on_mouse_enter_event::handle on_mouse_enter;
     on_mouse_out_event::handle on_mouse_out;
@@ -132,8 +145,11 @@ public:
     on_show_event::handle on_show;
     on_hide_event::handle on_hide;
 
+    on_resize_event::handle on_resize;
+
 protected:
-    virtual void on_extent_change() {}
+    virtual void on_extent_change(const element_extent& extent) {}
+    virtual void on_depth_change(float depth);
 
     virtual void on_add_child(element* child);
     virtual void on_remove_child(element* child);
@@ -143,7 +159,7 @@ protected:
     element_mesh m_mesh;
 
 private:
-    void update_depth(float parent_depth) noexcept;
+    void update_depth(float depth_offset) noexcept;
 
     int m_layer;
     float m_depth;

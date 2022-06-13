@@ -86,14 +86,12 @@ void label::render(renderer& renderer)
     element::render(renderer);
 }
 
-void label::on_extent_change()
+void label::on_extent_change(const element_extent& extent)
 {
-    auto& e = extent();
-
-    float offset_x = e.x - m_original_x;
-    float offset_y = e.y - m_original_y;
-    m_original_x = e.x;
-    m_original_y = e.y;
+    float offset_x = extent.x - m_original_x;
+    float offset_y = extent.y - m_original_y;
+    m_original_x = extent.x;
+    m_original_y = extent.y;
 
     float z = depth();
     for (auto& position : m_mesh.vertex_position)

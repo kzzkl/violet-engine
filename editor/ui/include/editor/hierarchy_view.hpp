@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ecs/entity.hpp"
+#include "editor/editor_view.hpp"
 #include "ui/controls/label.hpp"
 #include "ui/controls/panel.hpp"
 #include "ui/controls/scroll_view.hpp"
@@ -10,7 +11,7 @@
 
 namespace ash::editor
 {
-class hierarchy_view : public ui::scroll_view
+class hierarchy_view : public editor_view
 {
 public:
     hierarchy_view();
@@ -24,6 +25,9 @@ private:
 
     ui::tree_node* allocate_node(ecs::entity entity, bool loaded);
     void deallocate_node(ecs::entity entity);
+
+    std::unique_ptr<ui::scroll_view> m_scroll;
+    std::unique_ptr<ui::panel> m_test_panel;
 
     ecs::entity m_selected;
 

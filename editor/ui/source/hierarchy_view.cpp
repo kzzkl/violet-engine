@@ -7,7 +7,7 @@
 
 namespace ash::editor
 {
-hierarchy_view::hierarchy_view() : m_selected(ecs::INVALID_ENTITY)
+hierarchy_view::hierarchy_view() : editor_view("Hierarchy", 0xEA43), m_selected(ecs::INVALID_ENTITY)
 {
     auto& scene = system<scene::scene>();
     auto& ui = system<ui::ui>();
@@ -15,10 +15,21 @@ hierarchy_view::hierarchy_view() : m_selected(ecs::INVALID_ENTITY)
 
     m_text_font = &ui.font(ui::DEFAULT_TEXT_FONT);
 
+    m_scroll = std::make_unique<ui::scroll_view>();
+    m_scroll->width_percent(100.0f);
+    m_scroll->flex_grow(1.0f);
+    m_scroll->link(container());
+
+    m_test_panel = std::make_unique<ui::panel>(ui::COLOR_KHAKI);
+    m_test_panel->width_percent(100.0f);
+    m_test_panel->flex_grow(1.0f);
+    // m_test_panel->height_percent(100.0f);
+    // m_test_panel->link(container());
+
     m_tree = std::make_unique<ui::tree>();
     m_tree->width_percent(100.0f);
     m_tree->on_select = [this](ui::tree_node* node) { m_selected = m_node_to_entity[node]; };
-    add(m_tree.get());
+    m_scroll->add(m_tree.get());
 
     load_entity(scene.root());
 
@@ -91,7 +102,9 @@ ui::tree_node* hierarchy_view::allocate_node(ecs::entity entity, bool loaded)
     auto& info = system<ecs::world>().component<ecs::information>(entity);
     if (m_free_node.empty())
     {
-        auto node = std::make_unique<ui::tree_node>(info.name, *m_text_font);
+        ui::tree_node_style node_style = {};
+        node_style.text_font = m_text_font;
+        auto node = std::make_unique<ui::tree_node>(info.name, node_style);
         result = node.get();
         result->on_expand = [entity, result, this]() {
             auto& link = system<ecs::world>().component<core::link>(entity);

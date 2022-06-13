@@ -31,7 +31,7 @@ public:
     void update_scroll_bar(const element_extent& view_extent);
 
 protected:
-    virtual void on_extent_change() override;
+    virtual void on_extent_change(const element_extent& extent) override;
 
 private:
     scroll_bar* m_vertical_bar;
@@ -49,7 +49,7 @@ public:
     element* container() const noexcept { return m_container.get(); }
 
 protected:
-    virtual void on_extent_change() override;
+    virtual void on_extent_change(const element_extent& extent) override;
 
     std::unique_ptr<scroll_container> m_container;
 };
@@ -73,9 +73,6 @@ public:
     void remove(element* element);
 
 private:
-    // void sync_container_vertical_position(float bar_value);
-    // void sync_container_horizontal_position(float bar_value);
-
     std::unique_ptr<element> m_left;
 
     std::unique_ptr<scroll_bar> m_vertical_bar;

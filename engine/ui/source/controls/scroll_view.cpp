@@ -127,7 +127,7 @@ void scroll_container::update_scroll_bar(const element_extent& view_extent)
     }
 }
 
-void scroll_container::on_extent_change()
+void scroll_container::on_extent_change(const element_extent& extent)
 {
     update_scroll_bar(parent()->extent());
 }
@@ -157,9 +157,9 @@ void scroll_container_view::sync_container_horizontal_position(float bar_value)
         LAYOUT_EDGE_LEFT);
 }
 
-void scroll_container_view::on_extent_change()
+void scroll_container_view::on_extent_change(const element_extent& extent)
 {
-    m_container->update_scroll_bar(extent());
+    m_container->update_scroll_bar(extent);
 }
 
 scroll_view::scroll_view(const scroll_view_style& style) : panel(style.background_color)
