@@ -17,4 +17,12 @@ public:
 protected:
     virtual void on_extent_change(const element_extent& extent) override;
 };
+
+class view_panel : public panel
+{
+public:
+    view_panel(std::uint32_t color = COLOR_WHITE);
+
+    virtual void render(renderer& renderer) override;
+};
 } // namespace ash::ui

@@ -7,6 +7,7 @@ add_executable(${PROJECT_NAME}
     ./source/gallery.cpp
     ./source/image_page.cpp
     ./source/main.cpp
+    ./source/scroll_page.cpp
     ./source/tree_page.cpp)
 
 target_include_directories(${PROJECT_NAME}

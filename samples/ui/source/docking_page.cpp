@@ -38,7 +38,7 @@ void print_tree(ui::element* node, std::size_t block = 0)
     }
 }
 
-docking_page::docking_page() : m_selected_panel(nullptr)
+docking_page::docking_page()
 {
     name = "docking_page";
 
@@ -68,7 +68,7 @@ void docking_page::initialize_sample_docking()
 
     m_dock_area = std::make_unique<ui::dock_area>(700, 400);
     m_dock_area->link(m_display[0].get());
-    m_dock_area->dock(make_dock_panel());
+    m_dock_area->dock(make_dock_window());
     m_dock_area->name = "area";
 
     m_right = std::make_unique<ui::element>();
@@ -80,10 +80,10 @@ void docking_page::initialize_sample_docking()
     m_create_button = std::make_unique<ui::button>("Create Dock Window", button_style);
     m_create_button->height(45.0f);
     m_create_button->on_mouse_press = [&, this](window::mouse_key key, int x, int y) -> bool {
-        if (m_dock_panels.size() == sizeof(PANEL_COLOR) / sizeof(std::uint32_t))
+        if (m_dock_windows.size() == sizeof(PANEL_COLOR) / sizeof(std::uint32_t))
             return false;
 
-        auto new_panel = make_dock_panel();
+        auto new_panel = make_dock_window();
         new_panel->link(m_right.get());
         return false;
     };
@@ -106,7 +106,7 @@ void docking_page::initialize_sample_docking()
     m_test_button->link(this);
 }
 
-ui::dock_element* docking_page::make_dock_panel()
+ui::dock_element* docking_page::make_dock_window()
 {
     ++panel_counter;
 
@@ -115,31 +115,21 @@ ui::dock_element* docking_page::make_dock_panel()
     style.title_font = &system<ui::ui>().font(ui::DEFAULT_TEXT_FONT);
     style.container_color = PANEL_COLOR[panel_counter];
 
-    auto result = std::make_unique<ui::dock_window>(
-        "Window " + std::to_string(panel_counter),
-        m_dock_area.get(),
-        style);
+    std::string window_name = "Window " + std::to_string(panel_counter);
+    auto result = std::make_unique<ui::dock_window>(window_name, m_dock_area.get(), style);
     result->width(200.0f);
     result->height(200.0f);
-    /*result->on_mouse_press = [panel = result.get(),
-                              this](window::mouse_key key, int x, int y) -> bool {
-        log::debug("click: {}", panel->name);
-        if (panel == m_selected_panel)
-            return false;
+    result->name = window_name;
 
-        if (m_selected_panel == nullptr)
-        {
-            m_selected_panel = panel;
-        }
-        else
-        {
-            m_dock_area->dock(m_selected_panel, panel, ui::LAYOUT_EDGE_RIGHT);
-            m_selected_panel = nullptr;
-        }
-        return false;
-    };*/
-    result->name = "Window " + std::to_string(panel_counter);
-    m_dock_panels.push_back(std::move(result));
-    return m_dock_panels.back().get();
+    ui::label_style label_style = {};
+    label_style.text_font = &system<ui::ui>().font(ui::DEFAULT_TEXT_FONT);
+    auto label = std::make_unique<ui::label>(window_name, label_style);
+    label->margin(100.0f, ui::LAYOUT_EDGE_ALL);
+    result->add(label.get());
+
+    m_dock_windows.push_back(std::move(result));
+    m_window_labels.push_back(std::move(label));
+
+    return m_dock_windows.back().get();
 }
 } // namespace ash::sample

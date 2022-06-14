@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 3.19 FATAL_ERROR)
 
-project(ash-engine)
+if(NOT CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 20)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+endif()
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED true)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
+project(ash-engine)
 
 if (MSVC)
     add_compile_options(/wd4251)

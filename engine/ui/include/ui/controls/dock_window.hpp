@@ -3,6 +3,7 @@
 #include "ui/controls/dock_element.hpp"
 #include "ui/controls/label.hpp"
 #include "ui/controls/panel.hpp"
+#include "ui/controls/scroll_view.hpp"
 
 namespace ash::ui
 {
@@ -24,13 +25,16 @@ class dock_window : public dock_element
 public:
     dock_window(std::string_view title, dock_area* area, const dock_window_style& style);
 
+    void add(element* element);
+    void remove(element* element);
+
 private:
     static layout_edge in_edge(element* element, int x, int y);
 
     std::unique_ptr<label> m_title;
     std::unique_ptr<panel> m_tab;
 
-    std::unique_ptr<panel> m_container;
+    std::unique_ptr<scroll_view> m_container;
 
     layout_edge m_drag_edge;
     int m_drag_position;

@@ -2,6 +2,7 @@
 #include "button_page.hpp"
 #include "docking_page.hpp"
 #include "image_page.hpp"
+#include "scroll_page.hpp"
 #include "style.hpp"
 #include "tree_page.hpp"
 #include "ui/ui.hpp"
@@ -79,6 +80,11 @@ void gallery::initialize_views()
     m_pages["Tree"] = std::make_unique<tree_page>();
     m_nodes["Tree"] = std::make_unique<ui::tree_node>("Tree", 0xEEBA, m_navigation_node_style);
     m_nodes["Views"]->add(m_nodes["Tree"].get());
+
+    // Scroll.
+    m_pages["Scroll"] = std::make_unique<scroll_page>();
+    m_nodes["Scroll"] = std::make_unique<ui::tree_node>("Scroll", 0xEEBA, m_navigation_node_style);
+    m_nodes["Views"]->add(m_nodes["Scroll"].get());
 }
 
 void gallery::initialize_docking()

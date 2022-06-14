@@ -45,4 +45,15 @@ void panel::on_extent_change(const element_extent& extent)
         {extent.x,                extent.y + extent.height, z}
     };
 }
+
+view_panel::view_panel(std::uint32_t color) : panel(color)
+{
+}
+
+void view_panel::render(renderer& renderer)
+{
+    renderer.scissor_push(layout_extent());
+    panel::render(renderer);
+    renderer.scissor_pop();
+}
 } // namespace ash::ui

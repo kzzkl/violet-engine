@@ -19,7 +19,9 @@ void label::text(std::string_view content, const font& font)
 {
     ASH_ASSERT(!content.empty());
 
-    m_mesh.reset();
+    m_mesh.vertex_position.clear();
+    m_mesh.vertex_uv.clear();
+    m_mesh.indices.clear();
     m_mesh.texture = font.texture();
 
     float pen_x = m_original_x;
@@ -62,7 +64,11 @@ void label::text(std::string_view content, const font& font)
         vertex_base += 4;
         pen_x += glyph.advance;
     }
-    m_mesh.vertex_color.resize(m_mesh.vertex_position.size());
+
+    if (m_mesh.vertex_color.empty())
+        m_mesh.vertex_color.resize(m_mesh.vertex_position.size());
+    else
+        m_mesh.vertex_color.resize(m_mesh.vertex_position.size(), m_mesh.vertex_color[0]);
 
     width(pen_x - m_original_x);
     height(font.heigth());

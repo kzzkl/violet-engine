@@ -23,7 +23,7 @@ private:
     // void update_docking();
     void update_layout(float width, float height);
 
-    void bubble_mouse_event(element* hot_node);
+    void bubble_mouse_event(element* hot_node, element* drag_node);
 
     virtual void on_remove_child(element* child) override;
 

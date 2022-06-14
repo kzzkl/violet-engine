@@ -12,7 +12,8 @@ public:
 
     void value(float v) noexcept;
     float value() const noexcept;
-    element* slider() const noexcept { return m_slider.get(); }
+
+    void slider_size(float size);
 
     std::function<void(float)> on_slide;
 
@@ -21,37 +22,6 @@ private:
 
     float m_position;
     std::unique_ptr<panel> m_slider;
-};
-
-class scroll_container : public element
-{
-public:
-    scroll_container(scroll_bar* vertical_bar, scroll_bar* horizontal_bar);
-
-    void update_scroll_bar(const element_extent& view_extent);
-
-protected:
-    virtual void on_extent_change(const element_extent& extent) override;
-
-private:
-    scroll_bar* m_vertical_bar;
-    scroll_bar* m_horizontal_bar;
-};
-
-class scroll_container_view : public view
-{
-public:
-    scroll_container_view(scroll_bar* vertical_bar, scroll_bar* horizontal_bar);
-
-    void sync_container_vertical_position(float bar_value);
-    void sync_container_horizontal_position(float bar_value);
-
-    element* container() const noexcept { return m_container.get(); }
-
-protected:
-    virtual void on_extent_change(const element_extent& extent) override;
-
-    std::unique_ptr<scroll_container> m_container;
 };
 
 struct scroll_view_style
@@ -64,7 +34,7 @@ struct scroll_view_style
     std::uint32_t background_color{COLOR_WHITE};
 };
 
-class scroll_view : public panel
+class scroll_view : public view_panel
 {
 public:
     scroll_view(const scroll_view_style& style = {});
@@ -72,12 +42,21 @@ public:
     void add(element* element);
     void remove(element* element);
 
+protected:
+    virtual void on_extent_change(const element_extent& extent) override;
+
 private:
-    std::unique_ptr<element> m_left;
+    void update_container_vertical_position(float scroll_value);
+    void update_container_horizontal_position(float scroll_value);
+    void update_scroll_bar(
+        float view_width,
+        float view_height,
+        float container_width,
+        float container_height);
 
     std::unique_ptr<scroll_bar> m_vertical_bar;
     std::unique_ptr<scroll_bar> m_horizontal_bar;
 
-    std::unique_ptr<scroll_container_view> m_container_view;
+    std::unique_ptr<element> m_container;
 };
 } // namespace ash::ui
