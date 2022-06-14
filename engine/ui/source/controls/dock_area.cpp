@@ -1,12 +1,15 @@
 #include "ui/controls/dock_area.hpp"
-#include "log.hpp"
+#include "ui/controls/dock_window.hpp"
 #include <queue>
+#include <stdexcept>
 
 namespace ash::ui
 {
 dock_area::dock_area(int element_width, int element_height, std::uint32_t hover_color)
     : m_area_width(element_width),
-      m_area_height(element_height)
+      m_area_height(element_height),
+      m_docking_element(nullptr),
+      m_resize_element(nullptr)
 {
     width(element_width);
     height(element_height);
@@ -181,7 +184,7 @@ void dock_area::dock_end(int x, int y)
     }
 }
 
-void dock_area::dock_resize(dock_element* element, layout_edge edge, int offset)
+void dock_area::resize(dock_element* element, layout_edge edge, int offset)
 {
     if (offset == 0)
         return;
@@ -190,25 +193,27 @@ void dock_area::dock_resize(dock_element* element, layout_edge edge, int offset)
                                 ? LAYOUT_FLEX_DIRECTION_ROW
                                 : LAYOUT_FLEX_DIRECTION_COLUMN;
 
-    dock_element* resize_node = find_resize_element(element, edge);
+    m_resize_element = find_resize_element(element, edge);
 
-    auto& brother_nodes = resize_node->m_dock_parent->children();
+    auto& brother_nodes = m_resize_element->m_dock_parent->children();
     if (edge == LAYOUT_EDGE_RIGHT)
     {
-        resize_node = static_cast<dock_element*>(brother_nodes[resize_node->link_index() + 1]);
+        m_resize_element =
+            static_cast<dock_element*>(brother_nodes[m_resize_element->link_index() + 1]);
         edge = LAYOUT_EDGE_LEFT;
     }
     else if (edge == LAYOUT_EDGE_BOTTOM)
     {
-        resize_node = static_cast<dock_element*>(brother_nodes[resize_node->link_index() + 1]);
+        m_resize_element =
+            static_cast<dock_element*>(brother_nodes[m_resize_element->link_index() + 1]);
         edge = LAYOUT_EDGE_TOP;
     }
 
-    int index = resize_node->link_index();
+    int index = m_resize_element->link_index();
     if (edge == LAYOUT_EDGE_LEFT)
     {
-        float offset_percent = offset / resize_node->m_dock_parent->extent().width * 100.0f;
-        float min_size = 50.0f / resize_node->m_dock_parent->extent().width * 100.0f;
+        float offset_percent = offset / m_resize_element->m_dock_parent->extent().width * 100.0f;
+        float min_size = 50.0f / m_resize_element->m_dock_parent->extent().width * 100.0f;
 
         float a = 0.0f;
         if (offset_percent < 0)
@@ -232,7 +237,7 @@ void dock_area::dock_resize(dock_element* element, layout_edge edge, int offset)
                     a += remain;
                 }
             }
-            resize_node->dock_width(resize_node->m_width + a);
+            m_resize_element->dock_width(m_resize_element->m_width + a);
         }
         else
         {
@@ -260,8 +265,8 @@ void dock_area::dock_resize(dock_element* element, layout_edge edge, int offset)
     }
     else
     {
-        float offset_percent = offset / resize_node->m_dock_parent->extent().height * 100.0f;
-        float min_size = 50.0f / resize_node->m_dock_parent->extent().height * 100.0f;
+        float offset_percent = offset / m_resize_element->m_dock_parent->extent().height * 100.0f;
+        float min_size = 50.0f / m_resize_element->m_dock_parent->extent().height * 100.0f;
 
         float a = 0.0f;
         if (offset_percent < 0)
@@ -285,7 +290,7 @@ void dock_area::dock_resize(dock_element* element, layout_edge edge, int offset)
                     a += remain;
                 }
             }
-            resize_node->dock_height(resize_node->m_height + a);
+            m_resize_element->dock_height(m_resize_element->m_height + a);
         }
         else
         {
@@ -311,6 +316,33 @@ void dock_area::dock_resize(dock_element* element, layout_edge edge, int offset)
             prev_node->dock_height(prev_node->m_height + a);
         }
     }
+}
+
+void dock_area::resize_end()
+{
+    std::queue<dock_element*> nodes;
+    for (auto brother : m_resize_element->parent()->children())
+        nodes.push(static_cast<dock_element*>(brother));
+
+    while (!nodes.empty())
+    {
+        dock_element* node = nodes.front();
+        nodes.pop();
+
+        dock_window* window = dynamic_cast<dock_window*>(node);
+        if (window == nullptr)
+        {
+            for (auto child : node->children())
+                nodes.push(static_cast<dock_element*>(child));
+        }
+        else if (window->on_window_resize)
+        {
+            auto& window_extent = window->extent();
+            window->on_window_resize(window_extent.width, window_extent.height);
+        }
+    }
+
+    m_resize_element = nullptr;
 }
 
 void dock_area::move_up(dock_element* element)

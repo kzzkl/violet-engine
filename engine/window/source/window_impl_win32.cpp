@@ -515,7 +515,7 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
         m_window_width = LOWORD(lparam);
         m_window_height = HIWORD(lparam);
 
-        if (wparam == SIZE_MAXIMIZED)
+        if (wparam == SIZE_MAXIMIZED || wparam == SIZE_RESTORED)
         {
             on_window_resize(m_window_width, m_window_height);
             resize_flag = false;

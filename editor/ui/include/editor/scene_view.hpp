@@ -11,7 +11,7 @@ namespace ash::editor
 class scene_view : public editor_view
 {
 public:
-    scene_view();
+    scene_view(ui::dock_area* area);
 
     void tick();
 

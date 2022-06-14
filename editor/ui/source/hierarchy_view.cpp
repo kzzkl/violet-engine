@@ -7,7 +7,9 @@
 
 namespace ash::editor
 {
-hierarchy_view::hierarchy_view() : editor_view("Hierarchy", 0xEA43), m_selected(ecs::INVALID_ENTITY)
+hierarchy_view::hierarchy_view(ui::dock_area* area)
+    : editor_view("Hierarchy", area),
+      m_selected(ecs::INVALID_ENTITY)
 {
     auto& scene = system<scene::scene>();
     auto& ui = system<ui::ui>();
@@ -15,21 +17,10 @@ hierarchy_view::hierarchy_view() : editor_view("Hierarchy", 0xEA43), m_selected(
 
     m_text_font = &ui.font(ui::DEFAULT_TEXT_FONT);
 
-    m_scroll = std::make_unique<ui::scroll_view>();
-    m_scroll->width_percent(100.0f);
-    m_scroll->flex_grow(1.0f);
-    m_scroll->link(container());
-
-    m_test_panel = std::make_unique<ui::panel>(ui::COLOR_KHAKI);
-    m_test_panel->width_percent(100.0f);
-    m_test_panel->flex_grow(1.0f);
-    // m_test_panel->height_percent(100.0f);
-    // m_test_panel->link(container());
-
     m_tree = std::make_unique<ui::tree>();
     m_tree->width_percent(100.0f);
     m_tree->on_select = [this](ui::tree_node* node) { m_selected = m_node_to_entity[node]; };
-    m_scroll->add(m_tree.get());
+    add(m_tree.get());
 
     load_entity(scene.root());
 

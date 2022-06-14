@@ -1,5 +1,4 @@
 #include "ui/controls/button.hpp"
-#include "log.hpp"
 
 namespace ash::ui
 {

@@ -1,5 +1,4 @@
 #include "ui/element.hpp"
-#include "log.hpp"
 
 namespace ash::ui
 {
@@ -20,9 +19,6 @@ element::~element()
 {
     ASH_ASSERT(m_children.empty());
     ASH_ASSERT(m_parent == nullptr);
-
-    // if (m_parent != nullptr)
-    //     unlink();
 }
 
 void element::render(renderer& renderer)

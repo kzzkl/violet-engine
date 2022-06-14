@@ -156,6 +156,9 @@ void scroll_view::on_extent_change(const element_extent& extent)
 
     auto& container_extent = m_container->extent();
     update_scroll_bar(extent.width, extent.height, container_extent.width, container_extent.height);
+
+    m_container->width_min(extent.width);
+    m_container->height_min(extent.height);
 }
 
 void scroll_view::update_container_vertical_position(float scroll_value)

@@ -14,7 +14,7 @@ namespace ash::editor
 class hierarchy_view : public editor_view
 {
 public:
-    hierarchy_view();
+    hierarchy_view(ui::dock_area* area);
     virtual ~hierarchy_view();
 
     ecs::entity selected_entity() const noexcept { return m_selected; }
@@ -25,9 +25,6 @@ private:
 
     ui::tree_node* allocate_node(ecs::entity entity, bool loaded);
     void deallocate_node(ecs::entity entity);
-
-    std::unique_ptr<ui::scroll_view> m_scroll;
-    std::unique_ptr<ui::panel> m_test_panel;
 
     ecs::entity m_selected;
 

@@ -3,10 +3,10 @@
 
 namespace ash::editor
 {
-editor_view::editor_view(std::string_view title, std::uint32_t icon_index)
+editor_view::editor_view(std::string_view title, ui::dock_area* area)
     : ui::dock_window(
           title,
-          icon_index,
+          area,
           ui::dock_window_style{
               .icon_font = &system<ui::ui>().font(ui::DEFAULT_ICON_FONT),
               .title_font = &system<ui::ui>().font(ui::DEFAULT_TEXT_FONT),

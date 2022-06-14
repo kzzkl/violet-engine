@@ -10,8 +10,8 @@
 
 namespace ash::editor
 {
-scene_view::scene_view()
-    : editor_view("Scene", 0xEA43),
+scene_view::scene_view(ui::dock_area* area)
+    : editor_view("Scene", area),
       m_camera_move_speed(5.0f),
       m_camera_rotate_speed(0.5f),
       m_mouse_flag(true),
@@ -30,7 +30,7 @@ scene_view::scene_view()
     world.add<core::link, graphics::camera, scene::transform>(m_camera);
 
     auto& transform = world.component<scene::transform>(m_camera);
-    transform.position = {0.0f, 0.0f, -50.0f};
+    transform.position = {0.0f, 10.0f, -50.0f};
     transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
     transform.scaling = {1.0f, 1.0f, 1.0f};
 
@@ -44,7 +44,12 @@ scene_view::scene_view()
         m_mouse_position[0] = static_cast<float>(mouse.x());
         m_mouse_position[1] = static_cast<float>(mouse.y());
     };
-    m_image->on_resize = [this](int width, int height) {
+    m_image->width_percent(100.0f);
+    m_image->height_percent(100.0f);
+    add(m_image.get());
+
+    on_window_resize = [this](int width, int height) {
+        log::debug("Scene resize: {} {}", width, height);
         if (width != m_image_width || height != m_image_height)
         {
             m_image_width = width;
@@ -53,11 +58,9 @@ scene_view::scene_view()
 
             m_image->texture(m_render_target_resolve.get());
         }
-        log::debug("Scene resize: {} {}", width, height);
         auto& event = system<core::event>();
         event.publish<graphics::event_render_extent_change>(width, height);
     };
-    m_image->link(container());
 }
 
 void scene_view::tick()
@@ -71,7 +74,7 @@ void scene_view::tick()
     if (m_focused)
         update_camera();
 
-    // graphics.render(m_camera);
+    graphics.render(m_camera);
 }
 
 void scene_view::update_camera()

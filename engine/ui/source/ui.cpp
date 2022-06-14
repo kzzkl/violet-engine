@@ -2,7 +2,6 @@
 #include "core/relation.hpp"
 #include "graphics/graphics.hpp"
 #include "graphics/graphics_task.hpp"
-#include "ui/ui_event.hpp"
 #include "ui/ui_task.hpp"
 #include "window/window.hpp"
 #include "window/window_event.hpp"
@@ -55,8 +54,6 @@ bool ui::initialize(const dictionary& config)
     for (auto& vertex_buffer : m_vertex_buffers)
         visual.vertex_buffers.push_back(vertex_buffer.get());
     visual.index_buffer = m_index_buffer.get();
-
-    event.register_event<event_calculate_layout>();
 
     event.subscribe<window::event_window_resize>(
         "ui",

@@ -60,8 +60,8 @@ private:
     std::unique_ptr<ui::label> m_name;
 };
 
-component_view::component_view()
-    : editor_view("Component", 0xEA43),
+component_view::component_view(ui::dock_area* area)
+    : editor_view("Component", area),
       m_current_entity(ecs::INVALID_ENTITY)
 {
     register_component<ecs::information>();

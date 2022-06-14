@@ -7,7 +7,7 @@ namespace ash::editor
 class editor_view : public ui::dock_window
 {
 public:
-    editor_view(std::string_view title, std::uint32_t icon_index);
+    editor_view(std::string_view title, ui::dock_area* area);
 
 private:
 };

@@ -2,7 +2,6 @@
 #include "core/context.hpp"
 #include "core/relation.hpp"
 #include "ui/ui.hpp"
-#include "ui/ui_event.hpp"
 #include "window/window.hpp"
 
 namespace ash::editor
@@ -17,61 +16,25 @@ editor_ui::editor_ui()
 
     auto window_extent = window.extent();
 
+    m_dock_area = std::make_unique<ui::dock_area>(window_extent.width, window_extent.height);
+    m_dock_area->width_percent(100.0f);
+    m_dock_area->height_percent(100.0f);
+    m_dock_area->link(ui.root());
+
     // Create scene view.
-    m_scene_view = std::make_unique<scene_view>();
+    m_scene_view = std::make_unique<scene_view>(m_dock_area.get());
     m_scene_view->width(window_extent.width);
     m_scene_view->height(window_extent.height);
-    //m_scene_view->sync_extent();
     m_scene_view->name = "scene view";
-    // m_scene_view->m_width = window_extent.width;
-    // m_scene_view->m_height = window_extent.height;
-    m_scene_view->link(ui.root());
+    m_dock_area->dock(m_scene_view.get());
 
     // Create hierarchy view.
-    m_hierarchy_view = std::make_unique<hierarchy_view>();
-    m_hierarchy_view->dock(m_scene_view.get(), ui::LAYOUT_EDGE_RIGHT);
+    m_hierarchy_view = std::make_unique<hierarchy_view>(m_dock_area.get());
+    m_dock_area->dock(m_hierarchy_view.get(), m_scene_view.get(), ui::LAYOUT_EDGE_RIGHT);
 
     // Create component view.
-    m_component_view = std::make_unique<component_view>();
-    m_component_view->dock(m_hierarchy_view.get(), ui::LAYOUT_EDGE_BOTTOM);
-}
-
-void print_tree(ui::element* node, std::size_t block = 0)
-{
-    auto d = dynamic_cast<ui::dock_element*>(node);
-    if (d != nullptr)
-    {
-        std::string b(block, '-');
-        auto& e = node->extent();
-        log::debug(
-            "|{} {}({}, {}) ({} {} {} {})",
-            b,
-            node->name,
-            d->m_width,
-            d->m_height,
-            e.x,
-            e.y,
-            e.width,
-            e.height);
-    }
-    else
-    {
-        std::string b(block, '-');
-        auto& e = node->extent();
-        log::debug(
-            "|{} {}({} {} {} {})",
-            b,
-            node->name,
-            e.x,
-            e.y,
-            e.width,
-            e.height);
-    }
-
-    for (ui::element* child : node->children())
-    {
-        print_tree(child, block + 5);
-    }
+    m_component_view = std::make_unique<component_view>(m_dock_area.get());
+    m_dock_area->dock(m_component_view.get(), m_hierarchy_view.get(), ui::LAYOUT_EDGE_BOTTOM);
 }
 
 void editor_ui::tick()
@@ -79,8 +42,5 @@ void editor_ui::tick()
     m_scene_view->tick();
     ecs::entity selected_entity = m_hierarchy_view->selected_entity();
     m_component_view->show_component(selected_entity);
-
-    if (system<window::window>().keyboard().key(window::KEYBOARD_KEY_A).press())
-        print_tree(system<ui::ui>().root());
 }
 } // namespace ash::editor

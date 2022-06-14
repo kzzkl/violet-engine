@@ -18,7 +18,9 @@ public:
     void dock_move(int x, int y);
     void dock_end(int x, int y);
 
-    void dock_resize(dock_element* element, layout_edge edge, int offset);
+    bool resize() const noexcept { return m_resize_element != nullptr; }
+    void resize(dock_element* element, layout_edge edge, int offset);
+    void resize_end();
 
 private:
     void move_up(dock_element* element);
@@ -31,6 +33,7 @@ private:
     int m_area_height;
 
     dock_element* m_docking_element;
+    dock_element* m_resize_element;
 
     dock_element* m_hover_node;
     layout_edge m_hover_edge;

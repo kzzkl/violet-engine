@@ -1,7 +1,5 @@
 #include "ui/controls/dock_element.hpp"
-#include "log.hpp"
 #include "ui/controls/dock_area.hpp"
-#include <string>
 
 namespace ash::ui
 {

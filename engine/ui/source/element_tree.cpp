@@ -1,6 +1,5 @@
 #include "ui/element_tree.hpp"
 #include "core/context.hpp"
-#include "ui/ui_event.hpp"
 #include "window/window.hpp"
 
 namespace ash::ui
@@ -139,8 +138,6 @@ void element_tree::update_input()
 
 void element_tree::update_layout(float width, float height)
 {
-    auto& event = system<core::event>();
-
     log::debug("calculate ui.");
     calculate(width, height);
 
@@ -159,8 +156,6 @@ void element_tree::update_layout(float width, float height)
 
         return true;
     });
-
-    event.publish<event_calculate_layout>();
 }
 
 void element_tree::bubble_mouse_event(element* hot_node, element* drag_node)

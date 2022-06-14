@@ -85,19 +85,19 @@ dock_window::dock_window(std::string_view title, dock_area* area, const dock_win
         switch (m_drag_edge)
         {
         case LAYOUT_EDGE_LEFT:
-            m_dock_area->dock_resize(this, m_drag_edge, x - m_drag_position);
+            m_dock_area->resize(this, m_drag_edge, x - m_drag_position);
             m_drag_position = x;
             break;
         case LAYOUT_EDGE_TOP:
-            m_dock_area->dock_resize(this, m_drag_edge, y - m_drag_position);
+            m_dock_area->resize(this, m_drag_edge, y - m_drag_position);
             m_drag_position = y;
             break;
         case LAYOUT_EDGE_RIGHT:
-            m_dock_area->dock_resize(this, m_drag_edge, x - m_drag_position);
+            m_dock_area->resize(this, m_drag_edge, x - m_drag_position);
             m_drag_position = x;
             break;
         case LAYOUT_EDGE_BOTTOM:
-            m_dock_area->dock_resize(this, m_drag_edge, y - m_drag_position);
+            m_dock_area->resize(this, m_drag_edge, y - m_drag_position);
             m_drag_position = y;
             break;
         default:
@@ -105,7 +105,21 @@ dock_window::dock_window(std::string_view title, dock_area* area, const dock_win
         }
     };
 
-    m_container->on_mouse_drag_end = [this](int x, int y) { m_drag_edge = LAYOUT_EDGE_ALL; };
+    m_container->on_mouse_drag_end = [this](int x, int y) {
+        if (m_drag_edge != LAYOUT_EDGE_ALL)
+        {
+            m_dock_area->resize_end();
+            m_drag_edge = LAYOUT_EDGE_ALL;
+        }
+    };
+
+    m_container->on_resize = [this](int width, int height) {
+        if (!m_dock_area->resize())
+        {
+            if (on_window_resize)
+                on_window_resize(width, height);
+        }
+    };
 }
 
 void dock_window::add(element* element)

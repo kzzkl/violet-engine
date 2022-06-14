@@ -30,7 +30,7 @@ class component_panel : public component_panel_base
 class component_view : public editor_view
 {
 public:
-    component_view();
+    component_view(ui::dock_area* area);
 
     void show_component(ecs::entity entity);
 
