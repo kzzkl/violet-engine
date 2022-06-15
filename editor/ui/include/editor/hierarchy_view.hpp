@@ -1,19 +1,17 @@
 #pragma once
 
 #include "ecs/entity.hpp"
-#include "ui/controls/label.hpp"
-#include "ui/controls/panel.hpp"
-#include "ui/controls/scroll_view.hpp"
+#include "ui/controls/dock_window.hpp"
 #include "ui/controls/tree.hpp"
 #include <map>
 #include <queue>
 
 namespace ash::editor
 {
-class hierarchy_view : public ui::scroll_view
+class hierarchy_view : public ui::dock_window
 {
 public:
-    hierarchy_view();
+    hierarchy_view(ui::dock_area* area, const ui::dock_window_theme& theme);
     virtual ~hierarchy_view();
 
     ecs::entity selected_entity() const noexcept { return m_selected; }

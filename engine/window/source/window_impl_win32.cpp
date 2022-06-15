@@ -260,6 +260,9 @@ window_impl_win32::window_impl_win32() noexcept
       m_mouse_x(0),
       m_mouse_y(0),
       m_mouse_move(false),
+      m_window_width(0),
+      m_window_height(0),
+      m_window_resize(false),
       m_track_mouse_event_flag(false)
 {
 }
@@ -334,9 +337,6 @@ bool window_impl_win32::initialize(
         LoadCursor(NULL, IDC_SIZENS),
         LoadCursor(NULL, IDC_SIZEALL)};
 
-    m_window_width = width;
-    m_window_height = height;
-
     show();
 
     return true;
@@ -372,6 +372,9 @@ void window_impl_win32::tick()
     m_mouse_whell = 0;
     m_mouse_whell_move = false;
 
+    m_window_width = m_window_height = 0;
+    m_window_resize = false;
+
     if (!m_track_mouse_event_flag)
     {
         TRACKMOUSEEVENT tme = {};
@@ -404,6 +407,15 @@ void window_impl_win32::tick()
         window_message message;
         message.type = window_message::message_type::MOUSE_WHELL;
         message.mouse_whell = m_mouse_whell;
+        m_messages.push_back(message);
+    }
+
+    if (m_window_resize)
+    {
+        window_message message;
+        message.type = window_message::message_type::WINDOW_RESIZE;
+        message.window_resize.width = m_window_width;
+        message.window_resize.height = m_window_height;
         m_messages.push_back(message);
     }
 
@@ -481,8 +493,6 @@ LRESULT CALLBACK window_impl_win32::wnd_proc(HWND hwnd, UINT message, WPARAM wpa
 
 LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
-    static bool resize_flag = false;
-
     switch (message)
     {
     case WM_MOUSEMOVE: {
@@ -499,27 +509,8 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
         }
         break;
     }
-    case WM_ENTERSIZEMOVE: {
-        break;
-    }
-    case WM_EXITSIZEMOVE: {
-        if (resize_flag)
-        {
-            on_window_resize(m_window_width, m_window_height);
-            resize_flag = false;
-        }
-        break;
-    }
     case WM_SIZE: {
-        resize_flag = true;
-        m_window_width = LOWORD(lparam);
-        m_window_height = HIWORD(lparam);
-
-        if (wparam == SIZE_MAXIMIZED)
-        {
-            on_window_resize(m_window_width, m_window_height);
-            resize_flag = false;
-        }
+        on_window_resize(LOWORD(lparam), HIWORD(lparam));
         break;
     }
     case WM_INPUT: {
@@ -652,10 +643,11 @@ void window_impl_win32::on_window_move(int x, int y)
 
 void window_impl_win32::on_window_resize(std::uint32_t width, std::uint32_t height)
 {
-    window_message message;
-    message.type = window_message::message_type::WINDOW_RESIZE;
-    message.window_resize.width = width;
-    message.window_resize.height = height;
-    m_messages.push_back(message);
+    if (width == 0 || height == 0)
+        return;
+
+    m_window_width = width;
+    m_window_height = height;
+    m_window_resize = true;
 }
 } // namespace ash::window

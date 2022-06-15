@@ -58,6 +58,7 @@ private:
 
     std::uint32_t m_window_width;
     std::uint32_t m_window_height;
+    bool m_window_resize;
 
     HINSTANCE m_instance;
     HWND m_hwnd;

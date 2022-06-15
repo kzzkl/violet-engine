@@ -2,7 +2,7 @@
 #include "core/context.hpp"
 #include "core/relation.hpp"
 #include "ui/ui.hpp"
-#include "ui/ui_event.hpp"
+#include "window/window.hpp"
 
 namespace ash::editor
 {
@@ -12,34 +12,34 @@ editor_ui::editor_ui()
     auto& relation = system<core::relation>();
     auto& event = system<core::event>();
     auto& ui = system<ui::ui>();
+    auto& window = system<window::window>();
 
-    // Create left container.
-    m_left_container = std::make_unique<ui::element>();
-    m_left_container->flex_grow(1.0f);
-    m_left_container->link(ui.root());
+    auto window_extent = window.extent();
+
+    m_dock_area = std::make_unique<ui::dock_area>(
+        window_extent.width,
+        window_extent.height,
+        ui.theme<ui::dock_area_theme>("dark"));
+    m_dock_area->width_percent(100.0f);
+    m_dock_area->height_percent(100.0f);
+    m_dock_area->link(ui.root());
+
+    auto& view_theme = ui.theme<ui::dock_window_theme>("dark");
 
     // Create scene view.
-    m_scene_view = std::make_unique<scene_view>();
-    m_scene_view->width_percent(100.0f);
-    m_scene_view->height_percent(100.0f);
-    m_scene_view->link(m_left_container.get());
-
-    // Create right container.
-    m_right_container = std::make_unique<ui::element>();
-    m_right_container->width(300.0f);
-    m_right_container->flex_direction(ui::LAYOUT_FLEX_DIRECTION_COLUMN);
-    m_right_container->link(ui.root());
+    m_scene_view = std::make_unique<scene_view>(m_dock_area.get(), view_theme);
+    m_scene_view->width(window_extent.width);
+    m_scene_view->height(window_extent.height);
+    m_scene_view->name = "scene view";
+    m_dock_area->dock(m_scene_view.get());
 
     // Create hierarchy view.
-    m_hierarchy_view = std::make_unique<hierarchy_view>();
-    m_hierarchy_view->width_percent(100.0f);
-    m_hierarchy_view->height_percent(50.0f);
-    m_hierarchy_view->link(m_right_container.get());
+    m_hierarchy_view = std::make_unique<hierarchy_view>(m_dock_area.get(), view_theme);
+    m_dock_area->dock(m_hierarchy_view.get(), m_scene_view.get(), ui::LAYOUT_EDGE_RIGHT);
 
     // Create component view.
-    m_component_view = std::make_unique<component_view>();
-    m_component_view->height_percent(50.0f);
-    m_component_view->link(m_right_container.get());
+    m_component_view = std::make_unique<component_view>(m_dock_area.get(), view_theme);
+    m_dock_area->dock(m_component_view.get(), m_hierarchy_view.get(), ui::LAYOUT_EDGE_BOTTOM);
 }
 
 void editor_ui::tick()

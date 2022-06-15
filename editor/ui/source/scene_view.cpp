@@ -10,14 +10,14 @@
 
 namespace ash::editor
 {
-scene_view::scene_view()
-    : image(nullptr),
+scene_view::scene_view(ui::dock_area* area, const ui::dock_window_theme& theme)
+    : ui::dock_window("Scene", 0xEE4A, area, theme),
       m_camera_move_speed(5.0f),
       m_camera_rotate_speed(0.5f),
       m_mouse_flag(true),
       m_mouse_position{},
-      m_width(0),
-      m_height(0),
+      m_image_width(0),
+      m_image_height(0),
       m_focused(false)
 {
     auto& world = system<ecs::world>();
@@ -30,18 +30,36 @@ scene_view::scene_view()
     world.add<core::link, graphics::camera, scene::transform>(m_camera);
 
     auto& transform = world.component<scene::transform>(m_camera);
-    transform.position = {0.0f, 0.0f, -50.0f};
+    transform.position = {0.0f, 10.0f, -50.0f};
     transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
     transform.scaling = {1.0f, 1.0f, 1.0f};
 
     relation.link(m_camera, scene.root());
 
-    on_blur = [this]() { m_focused = false; };
-    on_focus = [this]() {
+    m_image = std::make_unique<ui::image>();
+    m_image->on_blur = [this]() { m_focused = false; };
+    m_image->on_focus = [this]() {
         m_focused = true;
         auto& mouse = system<window::window>().mouse();
         m_mouse_position[0] = static_cast<float>(mouse.x());
         m_mouse_position[1] = static_cast<float>(mouse.y());
+    };
+    m_image->width_percent(100.0f);
+    m_image->height_percent(100.0f);
+    add(m_image.get());
+
+    on_window_resize = [this](int width, int height) {
+        log::debug("Scene resize: {} {}", width, height);
+        if (width != m_image_width || height != m_image_height)
+        {
+            m_image_width = width;
+            m_image_height = height;
+            resize_camera();
+
+            m_image->texture(m_render_target_resolve.get());
+        }
+        auto& event = system<core::event>();
+        event.publish<graphics::event_render_extent_change>(width, height);
     };
 }
 
@@ -50,34 +68,13 @@ void scene_view::tick()
     auto& graphics = system<graphics::graphics>();
     auto& world = system<ecs::world>();
 
-    if (m_width == 0 || m_height == 0)
+    if (m_image_width == 0 || m_image_height == 0)
         return;
 
     if (m_focused)
         update_camera();
 
     graphics.render(m_camera);
-}
-
-void scene_view::on_extent_change()
-{
-    ui::image::on_extent_change();
-
-    auto& e = extent();
-    if (static_cast<std::uint32_t>(e.width) != m_width ||
-        static_cast<std::uint32_t>(e.height) != m_height)
-    {
-        m_width = static_cast<std::uint32_t>(e.width);
-        m_height = static_cast<std::uint32_t>(e.height);
-        resize_camera();
-
-        texture(m_render_target_resolve.get());
-    }
-
-    auto& event = system<core::event>();
-    event.publish<graphics::event_render_extent_change>(
-        static_cast<std::uint32_t>(e.width),
-        static_cast<std::uint32_t>(e.height));
 }
 
 void scene_view::update_camera()
@@ -163,7 +160,7 @@ void scene_view::update_camera()
 
 void scene_view::resize_camera()
 {
-    if (m_width == 0 || m_height == 0)
+    if (m_image_width == 0 || m_image_height == 0)
         return;
 
     auto& graphics = system<graphics::graphics>();
@@ -173,24 +170,24 @@ void scene_view::resize_camera()
     camera.mask = graphics::VISUAL_GROUP_DEBUG | graphics::VISUAL_GROUP_1;
 
     graphics::render_target_info render_target_info = {};
-    render_target_info.width = m_width;
-    render_target_info.height = m_height;
+    render_target_info.width = m_image_width;
+    render_target_info.height = m_image_height;
     render_target_info.format = graphics.back_buffer_format();
     render_target_info.samples = 4;
     m_render_target = graphics.make_render_target(render_target_info);
     camera.render_target(m_render_target.get());
 
     graphics::render_target_info render_target_resolve_info = {};
-    render_target_resolve_info.width = m_width;
-    render_target_resolve_info.height = m_height;
+    render_target_resolve_info.width = m_image_width;
+    render_target_resolve_info.height = m_image_height;
     render_target_resolve_info.format = graphics.back_buffer_format();
     render_target_resolve_info.samples = 1;
     m_render_target_resolve = graphics.make_render_target(render_target_resolve_info);
     camera.render_target_resolve(m_render_target_resolve.get());
 
     graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
-    depth_stencil_buffer_info.width = m_width;
-    depth_stencil_buffer_info.height = m_height;
+    depth_stencil_buffer_info.width = m_image_width;
+    depth_stencil_buffer_info.height = m_image_height;
     depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
     depth_stencil_buffer_info.samples = 4;
     m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);

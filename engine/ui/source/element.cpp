@@ -1,5 +1,4 @@
 #include "ui/element.hpp"
-#include "log.hpp"
 
 namespace ash::ui
 {
@@ -20,9 +19,6 @@ element::~element()
 {
     ASH_ASSERT(m_children.empty());
     ASH_ASSERT(m_parent == nullptr);
-
-    // if (m_parent != nullptr)
-    //     unlink();
 }
 
 void element::render(renderer& renderer)
@@ -40,7 +36,10 @@ void element::sync_extent()
     if (new_extent != m_extent)
     {
         m_extent = new_extent;
-        on_extent_change();
+        on_extent_change(m_extent);
+
+        if (on_resize)
+            on_resize(m_extent.width, m_extent.height);
     }
 }
 
@@ -125,6 +124,12 @@ void element::layer(int layer) noexcept
         update_depth(m_parent->depth());
 }
 
+void element::on_depth_change(float depth)
+{
+    for (auto& vertex : m_mesh.vertex_position)
+        vertex[2] = depth;
+}
+
 void element::on_add_child(element* child)
 {
     if (m_parent != nullptr)
@@ -140,6 +145,7 @@ void element::on_remove_child(element* child)
 void element::update_depth(float parent_depth) noexcept
 {
     m_depth = parent_depth - 0.01f * m_layer;
+    on_depth_change(m_depth);
 
     for (element* child : m_children)
         child->update_depth(m_depth);

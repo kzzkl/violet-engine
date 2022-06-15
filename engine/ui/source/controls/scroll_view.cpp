@@ -2,6 +2,25 @@
 
 namespace ash::ui
 {
+class scroll_bar : public panel
+{
+public:
+    scroll_bar(bool vertical, std::uint32_t slider_color, std::uint32_t bar_color);
+
+    void value(float v) noexcept;
+    float value() const noexcept;
+
+    void slider_size(float size);
+
+    std::function<void(float)> on_slide;
+
+private:
+    bool m_vertical;
+
+    float m_position;
+    std::unique_ptr<panel> m_slider;
+};
+
 scroll_bar::scroll_bar(bool vertical, std::uint32_t slider_color, std::uint32_t bar_color)
     : panel(bar_color),
       m_vertical(vertical),
@@ -80,124 +99,61 @@ float scroll_bar::value() const noexcept
         return (m_position - bar_extent.x) / (bar_extent.width - slider_extent.width);
 }
 
-scroll_container::scroll_container(scroll_bar* vertical_bar, scroll_bar* horizontal_bar)
-    : m_vertical_bar(vertical_bar),
-      m_horizontal_bar(horizontal_bar)
+void scroll_bar::slider_size(float size)
 {
-}
-
-void scroll_container::update_scroll_bar(const element_extent& view_extent)
-{
-    auto& container_extent = extent();
-
-    float view_width = view_extent.width;
-    float view_height = view_extent.height;
-    if (container_extent.height <= view_height)
-    {
-        m_vertical_bar->hide();
-        position(0.0f, LAYOUT_EDGE_TOP);
-        height_min(view_height);
-    }
+    if (m_vertical)
+        m_slider->height(size);
     else
-    {
-        height_min(view_height - m_vertical_bar->extent().width);
-        m_vertical_bar->show();
-
-        float slider_height =
-            math::clamp(view_height * view_height / container_extent.height, 30.0f, view_height);
-        m_vertical_bar->slider()->height(slider_height);
-
-        view_width -= m_vertical_bar->extent().width;
-    }
-
-    if (container_extent.width <= view_width)
-    {
-        m_horizontal_bar->hide();
-        position(0.0f, LAYOUT_EDGE_LEFT);
-        width_min(view_width);
-    }
-    else
-    {
-        width_min(view_width - m_horizontal_bar->extent().height);
-        m_horizontal_bar->show();
-
-        float slider_width =
-            math::clamp(view_width * view_width / container_extent.width, 30.0f, view_width);
-        m_horizontal_bar->slider()->width(slider_width);
-    }
+        m_slider->width(size);
 }
 
-void scroll_container::on_extent_change()
+scroll_view::scroll_view(const scroll_view_theme& theme) : view_panel(theme.background_color)
 {
-    update_scroll_bar(parent()->extent());
-}
+    justify_content(LAYOUT_JUSTIFY_CENTER);
+    align_items(LAYOUT_ALIGN_CENTER);
 
-scroll_container_view::scroll_container_view(scroll_bar* vertical_bar, scroll_bar* horizontal_bar)
-{
-    m_container = std::make_unique<scroll_container>(vertical_bar, horizontal_bar);
-    m_container->position_type(LAYOUT_POSITION_TYPE_ABSOLUTE);
-    m_container->link(this);
-}
-
-void scroll_container_view::sync_container_vertical_position(float bar_value)
-{
-    auto& container_extent = m_container->extent();
-    auto& view_extent = extent();
-    m_container->position(
-        bar_value * (view_extent.height - container_extent.height),
-        LAYOUT_EDGE_TOP);
-}
-
-void scroll_container_view::sync_container_horizontal_position(float bar_value)
-{
-    auto& container_extent = m_container->extent();
-    auto& view_extent = extent();
-    m_container->position(
-        bar_value * (view_extent.width - container_extent.width),
-        LAYOUT_EDGE_LEFT);
-}
-
-void scroll_container_view::on_extent_change()
-{
-    m_container->update_scroll_bar(extent());
-}
-
-scroll_view::scroll_view(const scroll_view_style& style) : panel(style.background_color)
-{
-    flex_direction(LAYOUT_FLEX_DIRECTION_ROW);
-    m_left = std::make_unique<element>();
-    m_left->flex_grow(1.0f);
-    m_left->flex_direction(LAYOUT_FLEX_DIRECTION_COLUMN);
-    m_left->link(this);
-
-    m_vertical_bar = std::make_unique<scroll_bar>(true, style.slider_color, style.bar_color);
-    m_vertical_bar->width(style.bar_width);
+    m_vertical_bar = std::make_unique<scroll_bar>(true, theme.slider_color, theme.bar_color);
+    m_vertical_bar->width(theme.bar_width);
+    m_vertical_bar->height_percent(90.0f);
+    m_vertical_bar->position_type(LAYOUT_POSITION_TYPE_ABSOLUTE);
+    m_vertical_bar->position(5.0f, LAYOUT_EDGE_RIGHT);
+    m_vertical_bar->layer(90);
     m_vertical_bar->on_slide = [this](float value) {
-        m_container_view->sync_container_vertical_position(value);
+        if (value == 1.0f)
+            return;
+        update_container_vertical_position(value);
     };
-
-    m_horizontal_bar = std::make_unique<scroll_bar>(false, style.slider_color, style.bar_color);
-    m_horizontal_bar->height(style.bar_width);
-    m_horizontal_bar->on_slide = [this](float value) {
-        m_container_view->sync_container_horizontal_position(value);
-    };
-
-    m_container_view =
-        std::make_unique<scroll_container_view>(m_vertical_bar.get(), m_horizontal_bar.get());
-    m_container_view->flex_grow(1.0f);
-    m_container_view->link(m_left.get());
-
     m_vertical_bar->link(this);
-    m_horizontal_bar->link(m_left.get());
 
-    on_mouse_wheel = [scroll_sped = style.scroll_speed, this](int whell) -> bool {
+    m_horizontal_bar = std::make_unique<scroll_bar>(false, theme.slider_color, theme.bar_color);
+    m_horizontal_bar->width_percent(90.0f);
+    m_horizontal_bar->height(theme.bar_width);
+    m_horizontal_bar->position_type(LAYOUT_POSITION_TYPE_ABSOLUTE);
+    m_horizontal_bar->position(5.0f, LAYOUT_EDGE_BOTTOM);
+    m_horizontal_bar->layer(90);
+    m_horizontal_bar->on_slide = [this](float value) {
+        if (value == 1.0f)
+            return;
+        update_container_horizontal_position(value);
+    };
+    m_horizontal_bar->link(this);
+
+    m_container = std::make_unique<element>();
+    m_container->position_type(LAYOUT_POSITION_TYPE_ABSOLUTE);
+    m_container->on_resize = [this](int width, int height) {
+        auto& e = extent();
+        update_scroll_bar(e.width, e.height, width, height);
+    };
+    m_container->link(this);
+
+    on_mouse_wheel = [scroll_speed = theme.scroll_speed, this](int whell) -> bool {
         if (m_vertical_bar->display())
         {
-            float new_value = m_vertical_bar->value() -
-                              scroll_sped / m_container_view->container()->extent().height * whell;
+            float new_value =
+                m_vertical_bar->value() - scroll_speed / m_container->extent().height * whell;
             new_value = math::clamp(new_value, 0.0f, 1.0f);
             m_vertical_bar->value(new_value);
-            m_container_view->sync_container_vertical_position(new_value);
+            update_container_vertical_position(new_value);
         }
         return false;
     };
@@ -205,11 +161,69 @@ scroll_view::scroll_view(const scroll_view_style& style) : panel(style.backgroun
 
 void scroll_view::add(element* element)
 {
-    element->link(m_container_view->container());
+    element->link(m_container.get());
 }
 
 void scroll_view::remove(element* element)
 {
     element->unlink();
+}
+
+void scroll_view::on_extent_change(const element_extent& extent)
+{
+    view_panel::on_extent_change(extent);
+
+    auto& container_extent = m_container->extent();
+    update_scroll_bar(extent.width, extent.height, container_extent.width, container_extent.height);
+
+    m_container->width_min(extent.width);
+    m_container->height_min(extent.height);
+}
+
+void scroll_view::update_container_vertical_position(float scroll_value)
+{
+    auto& container_extent = m_container->extent();
+    auto& view_extent = extent();
+    m_container->position(
+        scroll_value * (view_extent.height - container_extent.height),
+        LAYOUT_EDGE_TOP);
+}
+
+void scroll_view::update_container_horizontal_position(float scroll_value)
+{
+    auto& container_extent = m_container->extent();
+    auto& view_extent = extent();
+    m_container->position(
+        scroll_value * (view_extent.width - container_extent.width),
+        LAYOUT_EDGE_LEFT);
+}
+
+void scroll_view::update_scroll_bar(
+    float view_width,
+    float view_height,
+    float container_width,
+    float container_height)
+{
+    if (container_height <= view_height)
+    {
+        m_vertical_bar->hide();
+        m_container->position(0.0f, LAYOUT_EDGE_TOP);
+    }
+    else
+    {
+        m_vertical_bar->show();
+        m_vertical_bar->slider_size(view_height / container_height * view_height * 0.9f);
+    }
+
+    if (container_width <= view_width)
+    {
+        m_horizontal_bar->hide();
+        m_container->position(0.0f, LAYOUT_EDGE_LEFT);
+    }
+    else
+    {
+        m_horizontal_bar->show();
+        m_horizontal_bar->slider_size(view_width / container_width * view_width * 0.9f);
+    }
 }
 } // namespace ash::ui

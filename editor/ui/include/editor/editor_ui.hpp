@@ -3,6 +3,7 @@
 #include "editor/component_view.hpp"
 #include "editor/hierarchy_view.hpp"
 #include "editor/scene_view.hpp"
+#include "ui/controls/dock_area.hpp"
 #include "ui/element.hpp"
 #include <memory>
 
@@ -18,8 +19,7 @@ public:
     ecs::entity scene_camera() const noexcept { return m_scene_view->scene_camera(); }
 
 private:
-    std::unique_ptr<ui::element> m_left_container;
-    std::unique_ptr<ui::element> m_right_container;
+    std::unique_ptr<ui::dock_area> m_dock_area;
 
     std::unique_ptr<scene_view> m_scene_view;
     std::unique_ptr<hierarchy_view> m_hierarchy_view;

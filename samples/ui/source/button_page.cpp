@@ -3,68 +3,54 @@
 
 namespace ash::sample
 {
-button_page::button_page() : m_click_counter(0)
+button_page::button_page() : page("Button"), m_click_counter(0)
 {
-    m_title = std::make_unique<text_title_1>("Button");
-    m_title->link(this);
-
-    m_description = std::make_unique<text_content>("Commonly used buttons.");
-    m_description->link(this);
-
-    for (std::size_t i = 0; i < 2; ++i)
-    {
-        auto display = std::make_unique<display_panel>();
-        display->flex_direction(ui::LAYOUT_FLEX_DIRECTION_ROW);
-        display->align_items(ui::LAYOUT_ALIGN_CENTER);
-        m_display.push_back(std::move(display));
-    }
+    add_description("Commonly used buttons.");
     initialize_sample_button();
 }
 
 void button_page::initialize_sample_button()
 {
-    auto& text_font = system<ui::ui>().font(ui::DEFAULT_TEXT_FONT);
-    auto& icon_font = system<ui::ui>().font(ui::DEFAULT_ICON_FONT);
+    auto& ui = system<ui::ui>();
 
     // Simple button.
-    m_button_title = std::make_unique<text_title_2>("Simple button");
-    m_button_title->link(this);
-    m_display[0]->link(this);
+    add_subtitle("Simple button");
 
-    ui::button_style button_style = {};
-    button_style.text_font = &text_font;
-    m_button = std::make_unique<ui::button>("Default", button_style);
+    auto display_1 = add_display_panel();
+    display_1->flex_direction(ui::LAYOUT_FLEX_DIRECTION_ROW);
+    display_1->align_items(ui::LAYOUT_ALIGN_CENTER);
+
+    m_button = std::make_unique<ui::button>("Default", ui.theme<ui::button_theme>("dark"));
     m_button->width(150.0f);
     m_button->height(40.0f);
     m_button->on_mouse_press = [&, this](window::mouse_key key, int x, int y) -> bool {
         ++m_click_counter;
-        m_button_text->text("click: " + std::to_string(m_click_counter), text_font);
+        m_button_text->text("click: " + std::to_string(m_click_counter));
         return false;
     };
-    m_button->link(m_display[0].get());
+    m_button->link(display_1);
 
-    ui::label_style text_style = {};
-    text_style.text_font = &text_font;
-    m_button_text = std::make_unique<ui::label>("click: 0", text_style);
+    m_button_text = std::make_unique<ui::label>("click: 0", ui.theme<ui::label_theme>("dark"));
     m_button_text->margin(50.0f, ui::LAYOUT_EDGE_LEFT);
-    m_button_text->link(m_display[0].get());
+    m_button_text->link(display_1);
 
     // Icon button.
-    m_icon_button_title = std::make_unique<text_title_2>("Icon button");
-    m_icon_button_title->link(this);
-    m_display[1]->link(this);
+    add_subtitle("Icon button");
 
-    ui::icon_button_style icon_button_style = {};
-    icon_button_style.icon_font = &icon_font;
-    m_icon_button = std::make_unique<ui::icon_button>(0xEA22, icon_button_style);
+    auto display_2 = add_display_panel();
+    display_2->flex_direction(ui::LAYOUT_FLEX_DIRECTION_ROW);
+    display_2->align_items(ui::LAYOUT_ALIGN_CENTER);
+
+    m_icon_button =
+        std::make_unique<ui::icon_button>(0xEA22, ui.theme<ui::icon_button_theme>("dark"));
     m_icon_button->on_mouse_press = [&, this](window::mouse_key key, int x, int y) -> bool {
-        m_icon_button_text->text("Don't click me!", text_font);
+        m_icon_button_text->text("Don't click me!");
         return false;
     };
-    m_icon_button->link(m_display[1].get());
+    m_icon_button->link(display_2);
 
-    m_icon_button_text = std::make_unique<ui::label>("hello!", text_style);
+    m_icon_button_text = std::make_unique<ui::label>("hello!", ui.theme<ui::label_theme>("dark"));
     m_icon_button_text->margin(50.0f, ui::LAYOUT_EDGE_LEFT);
-    m_icon_button_text->link(m_display[1].get());
+    m_icon_button_text->link(display_2);
 }
 } // namespace ash::sample

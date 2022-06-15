@@ -109,22 +109,21 @@ public:
     virtual void calculate(float width, float height) = 0;
     virtual void calculate_absolute_position(float parent_x, float parent_y) = 0;
 
-    virtual void width(float width) = 0;
+    virtual void width(float value) = 0;
     virtual void width_auto() = 0;
-    virtual void width_percent(float width) = 0;
-    virtual void width_min(float width) = 0;
-    virtual void width_max(float width) = 0;
+    virtual void width_percent(float value) = 0;
+    virtual void width_min(float value) = 0;
+    virtual void width_max(float value) = 0;
 
-    virtual void height(float height) = 0;
+    virtual void height(float value) = 0;
     virtual void height_auto() = 0;
-    virtual void height_percent(float height) = 0;
-    virtual void height_min(float height) = 0;
-    virtual void height_max(float height) = 0;
+    virtual void height_percent(float value) = 0;
+    virtual void height_min(float value) = 0;
+    virtual void height_max(float value) = 0;
 
     virtual void copy_style(layout_node_impl* target) = 0;
 
     virtual element_extent extent() const = 0;
-
     virtual bool dirty() const = 0;
 };
 
@@ -178,17 +177,17 @@ public:
         m_impl->calculate_absolute_position(parent_x, parent_y);
     }
 
-    void width(float width) { return m_impl->width(width); }
+    void width(float value) { return m_impl->width(value); }
     void width_auto() { return m_impl->width_auto(); }
-    void width_percent(float width) { return m_impl->width_percent(width); }
-    void width_min(float width) { return m_impl->width_min(width); }
-    void width_max(float width) { return m_impl->width_max(width); }
+    void width_percent(float value) { return m_impl->width_percent(value); }
+    void width_min(float value) { return m_impl->width_min(value); }
+    void width_max(float value) { return m_impl->width_max(value); }
 
-    void height(float height) { return m_impl->height(height); }
+    void height(float value) { return m_impl->height(value); }
     void height_auto() { return m_impl->height_auto(); }
-    void height_percent(float height) { return m_impl->height_percent(height); }
-    void height_min(float height) { return m_impl->height_min(height); }
-    void height_max(float height) { return m_impl->height_max(height); }
+    void height_percent(float value) { return m_impl->height_percent(value); }
+    void height_min(float value) { return m_impl->height_min(value); }
+    void height_max(float value) { return m_impl->height_max(value); }
 
     void copy_style(element_layout* target) { m_impl->copy_style(target->m_impl.get()); }
 

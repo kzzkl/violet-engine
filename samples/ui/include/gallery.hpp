@@ -1,6 +1,6 @@
 #pragma once
 
-#include "gallery_control.hpp"
+#include "page.hpp"
 #include "ui/controls/scroll_view.hpp"
 #include "ui/controls/tree.hpp"
 #include <map>
@@ -15,13 +15,11 @@ public:
     void initialize();
 
 private:
-    void initialize_basic();
-    void initialize_views();
-    void initialize_docking();
+    void initialize_theme();
+    void initialize_navigation();
 
     std::unique_ptr<ui::panel> m_left;
     std::unique_ptr<ui::tree> m_navigation_tree;
-    ui::tree_node_style m_navigation_node_style;
 
     std::unique_ptr<ui::scroll_view> m_main_view;
 

@@ -237,20 +237,20 @@ public:
         m_absolute_y = parent_y + YGNodeLayoutGetTop(m_node);
     }
 
-    virtual void width(float width) override { YGNodeStyleSetWidth(m_node, width); }
+    virtual void width(float value) override { YGNodeStyleSetWidth(m_node, value); }
     virtual void width_auto() override { YGNodeStyleSetWidthAuto(m_node); }
-    virtual void width_percent(float width) override { YGNodeStyleSetWidthPercent(m_node, width); }
-    virtual void width_min(float width) override { YGNodeStyleSetMinWidth(m_node, width); }
-    virtual void width_max(float width) override { YGNodeStyleSetMaxWidth(m_node, width); }
+    virtual void width_percent(float value) override { YGNodeStyleSetWidthPercent(m_node, value); }
+    virtual void width_min(float value) override { YGNodeStyleSetMinWidth(m_node, value); }
+    virtual void width_max(float value) override { YGNodeStyleSetMaxWidth(m_node, value); }
 
-    virtual void height(float height) override { YGNodeStyleSetHeight(m_node, height); }
+    virtual void height(float value) override { YGNodeStyleSetHeight(m_node, value); }
     virtual void height_auto() override { YGNodeStyleSetHeightAuto(m_node); }
-    virtual void height_percent(float height) override
+    virtual void height_percent(float value) override
     {
-        YGNodeStyleSetHeightPercent(m_node, height);
+        YGNodeStyleSetHeightPercent(m_node, value);
     }
-    virtual void height_min(float height) override { YGNodeStyleSetMinHeight(m_node, height); }
-    virtual void height_max(float height) override { YGNodeStyleSetMaxHeight(m_node, height); }
+    virtual void height_min(float value) override { YGNodeStyleSetMinHeight(m_node, value); }
+    virtual void height_max(float value) override { YGNodeStyleSetMaxHeight(m_node, value); }
 
     virtual void copy_style(layout_node_impl* target)
     {

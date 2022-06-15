@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 3.19 FATAL_ERROR)
 
-project(ash-engine)
+if(NOT CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 20)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+endif()
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED true)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
+project(ash-engine)
 
 if (MSVC)
     add_compile_options(/wd4251)
@@ -29,7 +32,7 @@ option(ASH_BUILD_THIRDPARTY "Build thirdparty" ON)
 option(ASH_BUILD_ENGINE "Build engine" ON)
 option(ASH_BUILD_TESTING "Build test project" ON)
 option(ASH_BUILD_EXAMPLES "Build examples" ON)
-option(ASH_BUILD_EDITOR "Build editor" OFF)
+option(ASH_BUILD_EDITOR "Build editor" ON)
 
 message("Build start")
 

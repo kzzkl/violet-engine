@@ -14,6 +14,6 @@ public:
     virtual void render(renderer& renderer) override;
 
 protected:
-    virtual void on_extent_change() override;
+    virtual void on_extent_change(const element_extent& extent) override;
 };
 } // namespace ash::ui

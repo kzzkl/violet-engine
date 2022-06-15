@@ -2,8 +2,7 @@
 
 #include "ecs/component.hpp"
 #include "ecs/entity.hpp"
-#include "ui/controls/label.hpp"
-#include "ui/controls/panel.hpp"
+#include "ui/controls/dock_window.hpp"
 
 namespace ash::editor
 {
@@ -26,10 +25,10 @@ class component_panel : public component_panel_base
 {
 };
 
-class component_view : public ui::panel
+class component_view : public ui::dock_window
 {
 public:
-    component_view();
+    component_view(ui::dock_area* area, const ui::dock_window_theme& theme);
 
     void show_component(ecs::entity entity);
 

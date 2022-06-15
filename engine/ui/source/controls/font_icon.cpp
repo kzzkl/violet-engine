@@ -1,27 +1,30 @@
 #include "ui/controls/font_icon.hpp"
+#include "ui/font.hpp"
 
 namespace ash::ui
 {
-font_icon::font_icon(std::uint32_t index, const font_icon_style& style)
-    : m_icon_scale(style.icon_scale)
+font_icon::font_icon(std::uint32_t index, const font_icon_theme& theme)
+    : m_icon_scale(theme.icon_scale)
 {
+    m_font = theme.icon_font;
+
     m_mesh.vertex_position.resize(4);
     m_mesh.vertex_color.resize(4);
     m_mesh.indices = {0, 1, 2, 0, 2, 3};
-    icon(index, *style.icon_font);
-    icon_color(style.icon_color);
-    width(style.icon_font->heigth());
-    height(style.icon_font->heigth());
+    icon(index);
+    icon_color(theme.icon_color);
+    width(theme.icon_font->heigth() * theme.icon_scale);
+    height(theme.icon_font->heigth() * theme.icon_scale);
 }
 
-void font_icon::icon(std::uint32_t index, const font& font)
+void font_icon::icon(std::uint32_t index)
 {
-    m_mesh.texture = font.texture();
+    m_mesh.texture = m_font->texture();
 
-    auto& glyph = font.glyph(index);
+    auto& glyph = m_font->glyph(index);
 
     float x = static_cast<float>(glyph.bearing_x);
-    float y = font.heigth() - static_cast<float>(glyph.bearing_y);
+    float y = m_font->heigth() - static_cast<float>(glyph.bearing_y);
     m_icon_width = glyph.width;
     m_icon_height = glyph.height;
 
@@ -32,14 +35,14 @@ void font_icon::icon(std::uint32_t index, const font& font)
         {glyph.uv1[0], glyph.uv2[1]}
     };
 
-    on_extent_change();
+    on_extent_change(extent());
     mark_dirty();
 }
 
 void font_icon::icon_scale(float scale)
 {
     m_icon_scale = scale;
-    on_extent_change();
+    on_extent_change(extent());
     mark_dirty();
 }
 
@@ -57,14 +60,13 @@ void font_icon::render(renderer& renderer)
     element::render(renderer);
 }
 
-void font_icon::on_extent_change()
+void font_icon::on_extent_change(const element_extent& extent)
 {
     float width = m_icon_width * m_icon_scale;
     float height = m_icon_height * m_icon_scale;
 
-    auto& e = extent();
-    float x = (e.width - width) * 0.5f + e.x;
-    float y = (e.height - height) * 0.5f + e.y;
+    float x = (extent.width - width) * 0.5f + extent.x;
+    float y = (extent.height - height) * 0.5f + extent.y;
     float z = depth();
 
     m_mesh.vertex_position[0] = {x, y, z};

@@ -2,7 +2,7 @@
 #include "button_page.hpp"
 #include "docking_page.hpp"
 #include "image_page.hpp"
-#include "style.hpp"
+#include "scroll_page.hpp"
 #include "tree_page.hpp"
 #include "ui/ui.hpp"
 
@@ -16,19 +16,8 @@ void gallery::initialize()
 {
     auto& ui = system<ui::ui>();
 
-    ui.load_font(style::title_1.font, style::title_1.font_path, style::title_1.font_size);
-    ui.load_font(style::title_2.font, style::title_2.font_path, style::title_2.font_size);
-
-    m_left = std::make_unique<ui::panel>(style::background_color);
+    m_left = std::make_unique<ui::panel>(0xFF3B291E);
     m_left->link(ui.root());
-
-    m_navigation_node_style = {};
-    m_navigation_node_style.padding_top = 8.0f;
-    m_navigation_node_style.padding_bottom = 8.0f;
-    m_navigation_node_style.padding_increment = 10.0f;
-    m_navigation_node_style.icon_scale = 0.7f;
-    m_navigation_node_style.icon_font = &system<ui::ui>().font(ui::DEFAULT_ICON_FONT);
-    m_navigation_node_style.text_font = &system<ui::ui>().font(ui::DEFAULT_TEXT_FONT);
 
     m_navigation_tree = std::make_unique<ui::tree>();
     m_navigation_tree->width_min(300.0f);
@@ -45,49 +34,73 @@ void gallery::initialize()
     };
     m_navigation_tree->link(m_left.get());
 
-    m_main_view = std::make_unique<ui::scroll_view>();
+    m_main_view = std::make_unique<ui::scroll_view>(ui.theme<ui::scroll_view_theme>("dark"));
     m_main_view->flex_grow(1.0f);
     m_main_view->link(ui.root());
 
-    initialize_basic();
-    initialize_views();
-    initialize_docking();
+    initialize_theme();
+    initialize_navigation();
 }
 
-void gallery::initialize_basic()
+void gallery::initialize_theme()
 {
-    m_nodes["Basic"] = std::make_unique<ui::tree_node>("Basic", 0xEB82, m_navigation_node_style);
+    auto& ui = system<ui::ui>();
+
+    ui.load_font("gallery title 1", "engine/font/NotoSans-SemiBold.ttf", 25);
+    ui.load_font("gallery title 2", "engine/font/NotoSans-SemiBold.ttf", 20);
+
+    ui::label_theme title_1 = {
+        .text_font = &ui.font("gallery title 1"),
+        .text_color = ui::COLOR_WHITE};
+    ui.register_theme("gallery title 1", title_1);
+
+    ui::label_theme title_2 = {
+        .text_font = &ui.font("gallery title 2"),
+        .text_color = ui::COLOR_WHITE};
+    ui.register_theme("gallery title 2", title_2);
+
+    ui::tree_node_theme navigation_node_theme = ui.theme<ui::tree_node_theme>("dark");
+    navigation_node_theme.padding_top = 10.0f;
+    navigation_node_theme.padding_bottom = 10.0f;
+    navigation_node_theme.padding_increment = 10.0f;
+    navigation_node_theme.icon_scale = 0.7f;
+    ui.register_theme("gallery navigation", navigation_node_theme);
+}
+
+void gallery::initialize_navigation()
+{
+    auto& navigation_node_theme = system<ui::ui>().theme<ui::tree_node_theme>("gallery navigation");
+
+    // Basic.
+    m_nodes["Basic"] = std::make_unique<ui::tree_node>("Basic", 0xEB82, navigation_node_theme);
     m_navigation_tree->add(m_nodes["Basic"].get());
 
     // Button.
     m_pages["Button"] = std::make_unique<button_page>();
-    m_nodes["Button"] = std::make_unique<ui::tree_node>("Button", 0xEB7E, m_navigation_node_style);
+    m_nodes["Button"] = std::make_unique<ui::tree_node>("Button", 0xEB7E, navigation_node_theme);
     m_nodes["Basic"]->add(m_nodes["Button"].get());
 
     // Image.
     m_pages["Image"] = std::make_unique<image_page>();
-    m_nodes["Image"] = std::make_unique<ui::tree_node>("Image", 0xEE4A, m_navigation_node_style);
+    m_nodes["Image"] = std::make_unique<ui::tree_node>("Image", 0xEE4A, navigation_node_theme);
     m_nodes["Basic"]->add(m_nodes["Image"].get());
-}
 
-void gallery::initialize_views()
-{
-    m_nodes["Views"] = std::make_unique<ui::tree_node>("Views", 0xEE8F, m_navigation_node_style);
+    // Views.
+    m_nodes["Views"] = std::make_unique<ui::tree_node>("Views", 0xEE8F, navigation_node_theme);
     m_navigation_tree->add(m_nodes["Views"].get());
 
     // Tree.
     m_pages["Tree"] = std::make_unique<tree_page>();
-    m_nodes["Tree"] = std::make_unique<ui::tree_node>("Tree", 0xEEBA, m_navigation_node_style);
+    m_nodes["Tree"] = std::make_unique<ui::tree_node>("Tree", 0xEEBA, navigation_node_theme);
     m_nodes["Views"]->add(m_nodes["Tree"].get());
-}
 
-void gallery::initialize_docking()
-{
-    auto& text_font = system<ui::ui>().font(ui::DEFAULT_TEXT_FONT);
-    auto& icon_font = system<ui::ui>().font(ui::DEFAULT_ICON_FONT);
+    // Scroll.
+    m_pages["Scroll"] = std::make_unique<scroll_page>();
+    m_nodes["Scroll"] = std::make_unique<ui::tree_node>("Scroll", 0xEE98, navigation_node_theme);
+    m_nodes["Views"]->add(m_nodes["Scroll"].get());
 
-    m_nodes["Docking"] =
-        std::make_unique<ui::tree_node>("Docking", 0xEE84, m_navigation_node_style);
+    // Docking.
+    m_nodes["Docking"] = std::make_unique<ui::tree_node>("Docking", 0xEE84, navigation_node_theme);
     m_navigation_tree->add(m_nodes["Docking"].get());
     m_pages["Docking"] = std::make_unique<docking_page>();
 }
