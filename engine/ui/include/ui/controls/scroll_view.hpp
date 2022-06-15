@@ -1,43 +1,24 @@
 #pragma once
 
 #include "ui/controls/panel.hpp"
-#include "ui/controls/view.hpp"
 
 namespace ash::ui
 {
-class scroll_bar : public panel
+class scroll_bar;
+
+struct scroll_view_theme
 {
-public:
-    scroll_bar(bool vertical, std::uint32_t slider_color, std::uint32_t bar_color);
-
-    void value(float v) noexcept;
-    float value() const noexcept;
-
-    void slider_size(float size);
-
-    std::function<void(float)> on_slide;
-
-private:
-    bool m_vertical;
-
-    float m_position;
-    std::unique_ptr<panel> m_slider;
-};
-
-struct scroll_view_style
-{
-    float scroll_speed{30.0f};
-
-    float bar_width{8.0f};
-    std::uint32_t bar_color{COLOR_WHITE};
-    std::uint32_t slider_color{0xFFAB938D};
-    std::uint32_t background_color{COLOR_WHITE};
+    float scroll_speed;
+    float bar_width;
+    std::uint32_t bar_color;
+    std::uint32_t slider_color;
+    std::uint32_t background_color;
 };
 
 class scroll_view : public view_panel
 {
 public:
-    scroll_view(const scroll_view_style& style = {});
+    scroll_view(const scroll_view_theme& theme);
 
     void add(element* element);
     void remove(element* element);

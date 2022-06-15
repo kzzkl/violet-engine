@@ -3,25 +3,21 @@
 
 namespace ash::sample
 {
-tree_page::tree_page()
+tree_page::tree_page() : page("Tree")
 {
-    m_title = std::make_unique<text_title_1>("Tree");
-    m_title->link(this);
-
-    m_description = std::make_unique<text_content>(
+    add_description(
         "A tree control is a vertical list containing multiple nodes, each of which can be "
         "collapsed or expanded.");
-    m_description->link(this);
 
-    m_display = std::make_unique<display_panel>();
-    m_display->link(this);
     initialize_sample_tree();
 }
 
 void tree_page::initialize_sample_tree()
 {
+    auto display_1 = add_display_panel();
+
     m_tree = std::make_unique<ui::tree>();
-    m_tree->link(m_display.get());
+    m_tree->link(display_1);
 
     const std::vector<std::string> chapters = {
         "Chapter 1: Accustoming Yourself to C++",
@@ -92,17 +88,16 @@ void tree_page::initialize_sample_tree()
         "Item 54: Familiarize yourself with the standard library, including TR1.",
         "Item 55: Familiarize yourself with Boost."};
 
-    ui::tree_node_style node_style = {};
-    node_style.text_font = &system<ui::ui>().font(ui::DEFAULT_TEXT_FONT);
+    ui::tree_node_theme node_theme = system<ui::ui>().theme<ui::tree_node_theme>("dark");
 
     for (auto& chapter : chapters)
     {
-        m_chapters.push_back(std::make_unique<ui::tree_node>(chapter, node_style));
+        m_chapters.push_back(std::make_unique<ui::tree_node>(chapter, node_theme));
         m_tree->add(m_chapters.back().get());
     }
 
     for (auto& item : items)
-        m_items.push_back(std::make_unique<ui::tree_node>(item, node_style));
+        m_items.push_back(std::make_unique<ui::tree_node>(item, node_theme));
 
     std::size_t i = 0;
     for (; i < 4; ++i)

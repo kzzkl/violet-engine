@@ -1,11 +1,8 @@
 #pragma once
 
 #include "graphics_interface.hpp"
-#include "ui/controls/dock_window.hpp"
 #include "ui/controls/view.hpp"
 #include <queue>
-#include <stack>
-#include <unordered_map>
 #include <vector>
 
 namespace ash::ui
@@ -20,7 +17,6 @@ public:
 
 private:
     void update_input();
-    // void update_docking();
     void update_layout(float width, float height);
 
     void bubble_mouse_event(element* hot_node, element* drag_node);
@@ -49,8 +45,6 @@ private:
     element* m_hot_node;
     element* m_focused_node;
     element* m_drag_node;
-
-    dock_element* m_dock_node;
 
     std::vector<element*> m_mouse_over_nodes;
 

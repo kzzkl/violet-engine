@@ -16,24 +16,29 @@ editor_ui::editor_ui()
 
     auto window_extent = window.extent();
 
-    m_dock_area = std::make_unique<ui::dock_area>(window_extent.width, window_extent.height);
+    m_dock_area = std::make_unique<ui::dock_area>(
+        window_extent.width,
+        window_extent.height,
+        ui.theme<ui::dock_area_theme>("dark"));
     m_dock_area->width_percent(100.0f);
     m_dock_area->height_percent(100.0f);
     m_dock_area->link(ui.root());
 
+    auto& view_theme = ui.theme<ui::dock_window_theme>("dark");
+
     // Create scene view.
-    m_scene_view = std::make_unique<scene_view>(m_dock_area.get());
+    m_scene_view = std::make_unique<scene_view>(m_dock_area.get(), view_theme);
     m_scene_view->width(window_extent.width);
     m_scene_view->height(window_extent.height);
     m_scene_view->name = "scene view";
     m_dock_area->dock(m_scene_view.get());
 
     // Create hierarchy view.
-    m_hierarchy_view = std::make_unique<hierarchy_view>(m_dock_area.get());
+    m_hierarchy_view = std::make_unique<hierarchy_view>(m_dock_area.get(), view_theme);
     m_dock_area->dock(m_hierarchy_view.get(), m_scene_view.get(), ui::LAYOUT_EDGE_RIGHT);
 
     // Create component view.
-    m_component_view = std::make_unique<component_view>(m_dock_area.get());
+    m_component_view = std::make_unique<component_view>(m_dock_area.get(), view_theme);
     m_dock_area->dock(m_component_view.get(), m_hierarchy_view.get(), ui::LAYOUT_EDGE_BOTTOM);
 }
 

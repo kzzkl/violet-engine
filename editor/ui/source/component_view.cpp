@@ -1,5 +1,7 @@
 #include "editor/component_view.hpp"
 #include "core/context.hpp"
+#include "ui/controls/label.hpp"
+#include "ui/controls/panel.hpp"
 #include "ui/ui.hpp"
 
 namespace ash::editor
@@ -20,9 +22,7 @@ component_panel_base::component_panel_base(std::string_view component_name)
     };
     m_title->link(this);
 
-    ui::label_style label_style = {};
-    label_style.text_font = &ui.font(ui::DEFAULT_TEXT_FONT);
-    m_label = std::make_unique<ui::label>(component_name, label_style);
+    m_label = std::make_unique<ui::label>(component_name, ui.theme<ui::label_theme>("dark"));
     m_label->link(m_title.get());
 
     m_container = std::make_unique<ui::panel>(ui::COLOR_VIOLET);
@@ -39,9 +39,9 @@ public:
     component_panel<ecs::information>() : component_panel_base("Information")
     {
         auto& ui = system<ui::ui>();
-        ui::label_style label_style = {};
-        label_style.text_font = &ui.font(ui::DEFAULT_TEXT_FONT);
-        m_name = std::make_unique<ui::label>("none", label_style);
+        ui::label_theme label_theme = {};
+        label_theme.text_font = &ui.font(ui::DEFAULT_TEXT_FONT);
+        m_name = std::make_unique<ui::label>("none", label_theme);
         m_name->width(100.0f);
         m_name->height(30.0f);
         m_name->link(m_container.get());
@@ -50,18 +50,16 @@ public:
     virtual void show_component(ecs::entity entity) override
     {
         auto& world = system<ecs::world>();
-        auto& ui = system<ui::ui>();
-
         auto& info = world.component<ecs::information>(entity);
-        m_name->text(std::string("name: ") + info.name, ui.font(ui::DEFAULT_TEXT_FONT));
+        m_name->text(std::string("name: ") + info.name);
     }
 
 private:
     std::unique_ptr<ui::label> m_name;
 };
 
-component_view::component_view(ui::dock_area* area)
-    : editor_view("Component", area),
+component_view::component_view(ui::dock_area* area, const ui::dock_window_theme& theme)
+    : ui::dock_window("Component", 0xF161, area, theme),
       m_current_entity(ecs::INVALID_ENTITY)
 {
     register_component<ecs::information>();
@@ -89,8 +87,8 @@ void component_view::sync_component_panel(ecs::entity entity)
 {
     auto& world = system<ecs::world>();
 
-    for (auto& component_panel : m_current_panels)
-        component_panel->unlink();
+    for (auto component_panel : m_current_panels)
+        remove(component_panel);
     m_current_panels.clear();
 
     if (entity == ecs::INVALID_ENTITY)
@@ -101,7 +99,7 @@ void component_view::sync_component_panel(ecs::entity entity)
         if (component < m_component_panels.size() && m_component_panels[component] != nullptr)
         {
             m_current_panels.push_back(m_component_panels[component].get());
-            m_component_panels[component]->link(this);
+            add(m_component_panels[component].get());
         }
     }
 }

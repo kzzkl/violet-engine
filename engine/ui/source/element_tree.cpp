@@ -17,7 +17,6 @@ element_tree::element_tree()
     : m_hot_node(nullptr),
       m_focused_node(nullptr),
       m_drag_node(nullptr),
-      m_dock_node(nullptr),
       m_tree_dirty(true)
 {
     flex_direction(LAYOUT_FLEX_DIRECTION_ROW);
@@ -138,7 +137,7 @@ void element_tree::update_input()
 
 void element_tree::update_layout(float width, float height)
 {
-    log::debug("calculate ui.");
+    // log::debug("calculate ui.");
     calculate(width, height);
 
     bfs(this, [&, this](element* node) -> bool {

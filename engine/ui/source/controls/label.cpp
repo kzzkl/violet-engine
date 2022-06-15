@@ -1,5 +1,6 @@
 #include "ui/controls/label.hpp"
 #include "assert.hpp"
+#include "ui/font.hpp"
 
 namespace ash::ui
 {
@@ -7,30 +8,32 @@ label::label() : m_original_x(0.0f), m_original_y(0.0f)
 {
 }
 
-label::label(std::string_view content, const label_style& style)
+label::label(std::string_view content, const label_theme& theme)
     : m_original_x(0.0f),
       m_original_y(0.0f)
 {
-    text(content, *style.text_font);
-    text_color(style.text_color);
+    m_font = theme.text_font;
+
+    text(content);
+    text_color(theme.text_color);
 }
 
-void label::text(std::string_view content, const font& font)
+void label::text(std::string_view content)
 {
     ASH_ASSERT(!content.empty());
 
     m_mesh.vertex_position.clear();
     m_mesh.vertex_uv.clear();
     m_mesh.indices.clear();
-    m_mesh.texture = font.texture();
+    m_mesh.texture = m_font->texture();
 
     float pen_x = m_original_x;
-    float pen_y = m_original_y + font.heigth() * 0.73f;
+    float pen_y = m_original_y + m_font->heigth() * 0.75f;
 
     std::uint32_t vertex_base = 0;
     for (char c : content)
     {
-        auto& glyph = font.glyph(c);
+        auto& glyph = m_font->glyph(c);
 
         float x = pen_x + glyph.bearing_x;
         float y = pen_y - glyph.bearing_y;
@@ -71,7 +74,7 @@ void label::text(std::string_view content, const font& font)
         m_mesh.vertex_color.resize(m_mesh.vertex_position.size(), m_mesh.vertex_color[0]);
 
     width(pen_x - m_original_x);
-    height(font.heigth());
+    height(m_font->heigth());
 
     m_text = content;
 

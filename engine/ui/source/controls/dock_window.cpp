@@ -1,17 +1,26 @@
 #include "ui/controls/dock_window.hpp"
 #include "ui/controls/dock_area.hpp"
+#include "ui/controls/font_icon.hpp"
+#include "ui/controls/label.hpp"
+#include "ui/controls/panel.hpp"
+#include "ui/controls/scroll_view.hpp"
 #include "window/window.hpp"
 
 namespace ash::ui
 {
-dock_window::dock_window(std::string_view title, dock_area* area, const dock_window_style& style)
+dock_window::dock_window(std::string_view title, dock_area* area, const dock_window_theme& theme)
     : dock_element(area),
       m_drag_edge(LAYOUT_EDGE_ALL),
       m_drag_position(0)
 {
     flex_direction(LAYOUT_FLEX_DIRECTION_COLUMN);
 
-    m_tab = std::make_unique<panel>(style.bar_color);
+    m_tab = std::make_unique<panel>(theme.bar_color);
+    m_tab->flex_direction(LAYOUT_FLEX_DIRECTION_ROW);
+    m_tab->flex_wrap(LAYOUT_FLEX_WRAP_NOWRAP);
+    m_tab->align_items(LAYOUT_ALIGN_CENTER);
+    m_tab->padding(10.0f, LAYOUT_EDGE_HORIZONTAL);
+    m_tab->padding(3.0f, LAYOUT_EDGE_VERTICAL);
     m_tab->link(this);
     m_tab->on_mouse_drag_begin = [this](int x, int y) {
         if (m_dock_area != nullptr)
@@ -26,15 +35,20 @@ dock_window::dock_window(std::string_view title, dock_area* area, const dock_win
             m_dock_area->dock_end(x, y);
     };
 
-    label_style title_style = {};
-    title_style.text_font = style.title_font;
-    title_style.text_color = style.title_color;
-    m_title = std::make_unique<label>(title, title_style);
+    label_theme title_theme = {};
+    title_theme.text_font = theme.title_font;
+    title_theme.text_color = theme.title_color;
+    m_title = std::make_unique<label>(title, title_theme);
     m_title->link(m_tab.get());
 
-    scroll_view_style scroll_view_style = {};
-    scroll_view_style.background_color = style.container_color;
-    m_container = std::make_unique<scroll_view>(scroll_view_style);
+    scroll_view_theme scroll_view_theme = {
+        .scroll_speed = theme.scroll_speed,
+        .bar_width = theme.bar_width,
+        .bar_color = theme.bar_color,
+        .slider_color = theme.slider_color,
+        .background_color = theme.container_color};
+    scroll_view_theme.background_color = theme.container_color;
+    m_container = std::make_unique<scroll_view>(scroll_view_theme);
     m_container->flex_grow(1.0f);
     m_container->link(this);
 
@@ -120,6 +134,26 @@ dock_window::dock_window(std::string_view title, dock_area* area, const dock_win
                 on_window_resize(width, height);
         }
     };
+}
+
+dock_window::dock_window(
+    std::string_view title,
+    std::uint32_t icon,
+    dock_area* area,
+    const dock_window_theme& theme)
+    : dock_window(title, area, theme)
+{
+    font_icon_theme icon_theme = {};
+    icon_theme.icon_font = theme.icon_font;
+    icon_theme.icon_color = theme.icon_color;
+    icon_theme.icon_scale = theme.icon_scale;
+    m_icon = std::make_unique<font_icon>(icon, icon_theme);
+    m_icon->margin(5.0f, LAYOUT_EDGE_RIGHT);
+    m_icon->link(m_tab.get(), 0);
+}
+
+dock_window::~dock_window()
+{
 }
 
 void dock_window::add(element* element)

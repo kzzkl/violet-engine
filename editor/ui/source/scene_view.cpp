@@ -10,8 +10,8 @@
 
 namespace ash::editor
 {
-scene_view::scene_view(ui::dock_area* area)
-    : editor_view("Scene", area),
+scene_view::scene_view(ui::dock_area* area, const ui::dock_window_theme& theme)
+    : ui::dock_window("Scene", 0xEE4A, area, theme),
       m_camera_move_speed(5.0f),
       m_camera_rotate_speed(0.5f),
       m_mouse_flag(true),

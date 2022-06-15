@@ -1,11 +1,12 @@
 #include "ui/controls/dock_area.hpp"
 #include "ui/controls/dock_window.hpp"
+#include "ui/controls/panel.hpp"
 #include <queue>
 #include <stdexcept>
 
 namespace ash::ui
 {
-dock_area::dock_area(int element_width, int element_height, std::uint32_t hover_color)
+dock_area::dock_area(int element_width, int element_height, const dock_area_theme& theme)
     : m_area_width(element_width),
       m_area_height(element_height),
       m_docking_element(nullptr),
@@ -14,7 +15,7 @@ dock_area::dock_area(int element_width, int element_height, std::uint32_t hover_
     width(element_width);
     height(element_height);
 
-    m_hover_panel = std::make_unique<panel>(hover_color);
+    m_hover_panel = std::make_unique<panel>(theme.hover_color);
     m_hover_panel->position_type(LAYOUT_POSITION_TYPE_ABSOLUTE);
     m_hover_panel->hide();
     m_hover_panel->layer(90);
@@ -320,6 +321,9 @@ void dock_area::resize(dock_element* element, layout_edge edge, int offset)
 
 void dock_area::resize_end()
 {
+    if (m_resize_element == nullptr)
+        return;
+
     std::queue<dock_element*> nodes;
     for (auto brother : m_resize_element->parent()->children())
         nodes.push(static_cast<dock_element*>(brother));

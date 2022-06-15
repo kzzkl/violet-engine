@@ -1,14 +1,21 @@
 #pragma once
 
+#include "ui/color.hpp"
 #include "ui/controls/dock_element.hpp"
-#include "ui/controls/panel.hpp"
 
 namespace ash::ui
 {
+class panel;
+
+struct dock_area_theme
+{
+    std::uint32_t hover_color;
+};
+
 class dock_area : public element
 {
 public:
-    dock_area(int element_width, int element_height, std::uint32_t hover_color = COLOR_WHITE);
+    dock_area(int element_width, int element_height, const dock_area_theme& theme);
 
     void dock(dock_element* root);
     void dock(dock_element* source, dock_element* target, layout_edge edge);

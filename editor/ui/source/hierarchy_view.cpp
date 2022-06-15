@@ -7,8 +7,8 @@
 
 namespace ash::editor
 {
-hierarchy_view::hierarchy_view(ui::dock_area* area)
-    : editor_view("Hierarchy", area),
+hierarchy_view::hierarchy_view(ui::dock_area* area, const ui::dock_window_theme& theme)
+    : ui::dock_window("Hierarchy", 0xEEBA, area, theme),
       m_selected(ecs::INVALID_ENTITY)
 {
     auto& scene = system<scene::scene>();
@@ -93,9 +93,9 @@ ui::tree_node* hierarchy_view::allocate_node(ecs::entity entity, bool loaded)
     auto& info = system<ecs::world>().component<ecs::information>(entity);
     if (m_free_node.empty())
     {
-        ui::tree_node_style node_style = {};
-        node_style.text_font = m_text_font;
-        auto node = std::make_unique<ui::tree_node>(info.name, node_style);
+        auto node = std::make_unique<ui::tree_node>(
+            info.name,
+            system<ui::ui>().theme<ui::tree_node_theme>("dark"));
         result = node.get();
         result->on_expand = [entity, result, this]() {
             auto& link = system<ecs::world>().component<core::link>(entity);
@@ -107,7 +107,7 @@ ui::tree_node* hierarchy_view::allocate_node(ecs::entity entity, bool loaded)
     else
     {
         result = m_free_node.front();
-        result->text(info.name, *m_text_font);
+        result->text(info.name);
         m_free_node.pop();
     }
 

@@ -2,6 +2,25 @@
 
 namespace ash::ui
 {
+class scroll_bar : public panel
+{
+public:
+    scroll_bar(bool vertical, std::uint32_t slider_color, std::uint32_t bar_color);
+
+    void value(float v) noexcept;
+    float value() const noexcept;
+
+    void slider_size(float size);
+
+    std::function<void(float)> on_slide;
+
+private:
+    bool m_vertical;
+
+    float m_position;
+    std::unique_ptr<panel> m_slider;
+};
+
 scroll_bar::scroll_bar(bool vertical, std::uint32_t slider_color, std::uint32_t bar_color)
     : panel(bar_color),
       m_vertical(vertical),
@@ -88,13 +107,13 @@ void scroll_bar::slider_size(float size)
         m_slider->width(size);
 }
 
-scroll_view::scroll_view(const scroll_view_style& style) : view_panel(style.background_color)
+scroll_view::scroll_view(const scroll_view_theme& theme) : view_panel(theme.background_color)
 {
     justify_content(LAYOUT_JUSTIFY_CENTER);
     align_items(LAYOUT_ALIGN_CENTER);
 
-    m_vertical_bar = std::make_unique<scroll_bar>(true, style.slider_color, style.bar_color);
-    m_vertical_bar->width(style.bar_width);
+    m_vertical_bar = std::make_unique<scroll_bar>(true, theme.slider_color, theme.bar_color);
+    m_vertical_bar->width(theme.bar_width);
     m_vertical_bar->height_percent(90.0f);
     m_vertical_bar->position_type(LAYOUT_POSITION_TYPE_ABSOLUTE);
     m_vertical_bar->position(5.0f, LAYOUT_EDGE_RIGHT);
@@ -106,9 +125,9 @@ scroll_view::scroll_view(const scroll_view_style& style) : view_panel(style.back
     };
     m_vertical_bar->link(this);
 
-    m_horizontal_bar = std::make_unique<scroll_bar>(false, style.slider_color, style.bar_color);
+    m_horizontal_bar = std::make_unique<scroll_bar>(false, theme.slider_color, theme.bar_color);
     m_horizontal_bar->width_percent(90.0f);
-    m_horizontal_bar->height(style.bar_width);
+    m_horizontal_bar->height(theme.bar_width);
     m_horizontal_bar->position_type(LAYOUT_POSITION_TYPE_ABSOLUTE);
     m_horizontal_bar->position(5.0f, LAYOUT_EDGE_BOTTOM);
     m_horizontal_bar->layer(90);
@@ -127,7 +146,7 @@ scroll_view::scroll_view(const scroll_view_style& style) : view_panel(style.back
     };
     m_container->link(this);
 
-    on_mouse_wheel = [scroll_speed = style.scroll_speed, this](int whell) -> bool {
+    on_mouse_wheel = [scroll_speed = theme.scroll_speed, this](int whell) -> bool {
         if (m_vertical_bar->display())
         {
             float new_value =

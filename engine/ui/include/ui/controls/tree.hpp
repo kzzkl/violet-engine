@@ -1,48 +1,49 @@
 #pragma once
 
-#include "ui/controls/font_icon.hpp"
-#include "ui/controls/label.hpp"
-#include "ui/controls/panel.hpp"
+#include "ui/color.hpp"
 #include "ui/element.hpp"
 #include <string>
 
 namespace ash::ui
 {
-struct tree_node_style
+class font;
+class font_icon;
+class label;
+class panel;
+
+struct tree_node_theme
 {
     const font* text_font;
-    std::uint32_t text_color{COLOR_BLACK};
+    std::uint32_t text_color;
 
     const font* icon_font;
-    std::uint32_t icon_color{COLOR_BLACK};
-    float icon_scale{1.0f};
+    std::uint32_t icon_color;
+    float icon_scale;
 
-    float padding_top{5.0f};
-    float padding_bottom{5.0f};
-    float padding_increment{30.0f};
+    float padding_top;
+    float padding_bottom;
+    float padding_increment;
 
-    std::uint32_t default_color{0xFFFAFAFA};
-    std::uint32_t highlight_color{0xFFD8D8D9};
+    std::uint32_t default_color;
+    std::uint32_t highlight_color;
 };
 
 class tree_node : public element
 {
 public:
     tree_node() = default;
-    tree_node(std::string_view name, const tree_node_style& style = {});
-    tree_node(std::string_view name, std::uint32_t icon_index, const tree_node_style& style = {});
+    tree_node(std::string_view name, const tree_node_theme& theme);
+    tree_node(std::string_view name, std::uint32_t icon_index, const tree_node_theme& theme);
     virtual ~tree_node() = default;
 
     virtual void add(tree_node* child);
     virtual void remove(tree_node* child);
 
-    void text(std::string_view text, const font& font) { m_text->text(text, font); }
-    void icon(std::uint32_t index, const font& font) { m_icon->icon(index, font); }
-    void icon_scale(float scale) { m_icon->icon_scale(scale); }
+    void text(std::string_view text);
+    void icon(std::uint32_t index);
+    void icon_scale(float scale);
 
-    std::string text() const { return m_text->text(); }
-
-    void* user_data;
+    std::string text() const;
 
 public:
     using on_expand_event = element_event<void()>;

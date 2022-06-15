@@ -2,6 +2,10 @@
 #include "core/relation.hpp"
 #include "graphics/graphics.hpp"
 #include "graphics/graphics_task.hpp"
+#include "ui/controls.hpp"
+#include "ui/element_tree.hpp"
+#include "ui/theme.hpp"
+#include "ui/ui_pipeline.hpp"
 #include "ui/ui_task.hpp"
 #include "window/window.hpp"
 #include "window/window_event.hpp"
@@ -68,6 +72,8 @@ bool ui::initialize(const dictionary& config)
 
     auto render_task = task.find(graphics::TASK_GRAPHICS_RENDER);
     render_task->add_dependency(*ui_tick_task);
+
+    initialize_default_theme();
 
     return true;
 }
@@ -153,6 +159,82 @@ ui::font_type& ui::font(std::string_view name)
         return *iter->second;
     else
         throw std::out_of_range("Font not found.");
+}
+
+element* ui::root() const noexcept
+{
+    return m_tree.get();
+}
+
+void ui::initialize_default_theme()
+{
+    auto default_text_font = &font(DEFAULT_TEXT_FONT);
+    auto default_icon_font = &font(DEFAULT_ICON_FONT);
+
+    // Dark.
+    {
+        std::string theme_name = "dark";
+
+        button_theme button_dark = {
+            .text_font = default_text_font,
+            .text_color = COLOR_WHITE,
+            .default_color = 0xFF3B291E,
+            .highlight_color = 0xFFB2CC38};
+        register_theme(theme_name, button_dark);
+
+        icon_button_theme icon_button_dark = {
+            .icon_font = default_icon_font,
+            .icon_scale = 1.0f,
+            .default_color = 0xFF3B291E,
+            .highlight_color = 0xFFB2CC38};
+        register_theme(theme_name, icon_button_dark);
+
+        dock_area_theme dock_area_dark = {.hover_color = 0xFF3B291E};
+        register_theme(theme_name, dock_area_dark);
+
+        dock_window_theme dock_window_dark = {
+            .icon_font = default_icon_font,
+            .icon_color = COLOR_WHITE,
+            .icon_scale = 0.7f,
+            .title_font = default_text_font,
+            .title_color = COLOR_WHITE,
+            .scroll_speed = 30.0f,
+            .bar_width = 8.0f,
+            .bar_color = 0xFF3B291E,
+            .slider_color = 0xFFB2CC38,
+            .container_color = 0xFF5F4B3D};
+        register_theme(theme_name, dock_window_dark);
+
+        font_icon_theme font_icon_dark = {
+            .icon_font = default_icon_font,
+            .icon_color = COLOR_WHITE,
+            .icon_scale = 1.0f};
+        register_theme(theme_name, font_icon_dark);
+
+        label_theme label_dark = {.text_font = default_text_font, .text_color = COLOR_WHITE};
+        register_theme(theme_name, label_dark);
+
+        scroll_view_theme scroll_view_dark = {
+            .scroll_speed = 30.0f,
+            .bar_width = 8.0f,
+            .bar_color = 0xFF3B291E,
+            .slider_color = 0xFFB2CC38,
+            .background_color = 0xFF5F4B3D};
+        register_theme(theme_name, scroll_view_dark);
+
+        tree_node_theme tree_node_dark = {
+            .text_font = default_text_font,
+            .text_color = COLOR_WHITE,
+            .icon_font = default_icon_font,
+            .icon_color = COLOR_WHITE,
+            .icon_scale = 0.7f,
+            .padding_top = 5.0f,
+            .padding_bottom = 5.0f,
+            .padding_increment = 20.0f,
+            .default_color = 0xFF3B291E,
+            .highlight_color = 0xFFB2CC38};
+        register_theme(theme_name, tree_node_dark);
+    }
 }
 
 void ui::resize(std::uint32_t width, std::uint32_t height)

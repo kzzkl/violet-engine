@@ -1,17 +1,16 @@
 #pragma once
 
 #include "ecs/entity.hpp"
-#include "editor/editor_view.hpp"
 #include "graphics_interface.hpp"
+#include "ui/controls/dock_window.hpp"
 #include "ui/controls/image.hpp"
-#include <memory>
 
 namespace ash::editor
 {
-class scene_view : public editor_view
+class scene_view : public ui::dock_window
 {
 public:
-    scene_view(ui::dock_area* area);
+    scene_view(ui::dock_area* area, const ui::dock_window_theme& theme);
 
     void tick();
 
