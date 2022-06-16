@@ -36,8 +36,8 @@ public:
     tree_node(std::string_view name, std::uint32_t icon_index, const tree_node_theme& theme);
     virtual ~tree_node() = default;
 
-    virtual void add(tree_node* child);
-    virtual void remove(tree_node* child);
+    virtual void add_node(tree_node* child);
+    virtual void remove_node(tree_node* child);
 
     void text(std::string_view text);
     void icon(std::uint32_t index);
@@ -80,8 +80,9 @@ class tree : public tree_node
 public:
     tree();
 
-    virtual void add(tree_node* child) override;
+    virtual void add_node(tree_node* child) override;
 
+public:
     std::function<void(tree_node*)> on_select;
 
 protected:

@@ -20,8 +20,8 @@ class scroll_view : public view_panel
 public:
     scroll_view(const scroll_view_theme& theme);
 
-    void add(element* element);
-    void remove(element* element);
+    void add_item(element* item);
+    void remove_item(element* item);
 
 protected:
     virtual void on_extent_change(const element_extent& extent) override;

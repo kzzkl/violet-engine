@@ -38,8 +38,8 @@ public:
         const dock_window_theme& theme);
     virtual ~dock_window();
 
-    void add(element* element);
-    void remove(element* element);
+    void add_item(element* item);
+    void remove_item(element* item);
 
 public:
     using on_window_resize_event = element_event<void(int, int)>;

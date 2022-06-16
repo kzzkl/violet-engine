@@ -28,11 +28,11 @@ void button_page::initialize_sample_button()
         m_button_text->text("click: " + std::to_string(m_click_counter));
         return false;
     };
-    m_button->link(display_1);
+    display_1->add(m_button.get());
 
     m_button_text = std::make_unique<ui::label>("click: 0", ui.theme<ui::label_theme>("dark"));
     m_button_text->margin(50.0f, ui::LAYOUT_EDGE_LEFT);
-    m_button_text->link(display_1);
+    display_1->add(m_button_text.get());
 
     // Icon button.
     add_subtitle("Icon button");
@@ -47,10 +47,10 @@ void button_page::initialize_sample_button()
         m_icon_button_text->text("Don't click me!");
         return false;
     };
-    m_icon_button->link(display_2);
+    display_2->add(m_icon_button.get());
 
     m_icon_button_text = std::make_unique<ui::label>("hello!", ui.theme<ui::label_theme>("dark"));
     m_icon_button_text->margin(50.0f, ui::LAYOUT_EDGE_LEFT);
-    m_icon_button_text->link(display_2);
+    display_2->add(m_icon_button_text.get());
 }
 } // namespace ash::sample

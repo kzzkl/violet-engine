@@ -20,16 +20,16 @@ component_panel_base::component_panel_base(std::string_view component_name)
             m_container->show();
         return false;
     };
-    m_title->link(this);
+    add(m_title.get());
 
     m_label = std::make_unique<ui::label>(component_name, ui.theme<ui::label_theme>("dark"));
-    m_label->link(m_title.get());
+    m_title->add(m_label.get());
 
     m_container = std::make_unique<ui::panel>(ui::COLOR_VIOLET);
     m_container->flex_direction(ui::LAYOUT_FLEX_DIRECTION_COLUMN);
     m_container->padding(20.0f, ui::LAYOUT_EDGE_LEFT);
     m_container->hide();
-    m_container->link(this);
+    add(m_container.get());
 }
 
 template <>
@@ -44,7 +44,7 @@ public:
         m_name = std::make_unique<ui::label>("none", label_theme);
         m_name->width(100.0f);
         m_name->height(30.0f);
-        m_name->link(m_container.get());
+        m_container->add(m_name.get());
     }
 
     virtual void show_component(ecs::entity entity) override
@@ -99,7 +99,7 @@ void component_view::sync_component_panel(ecs::entity entity)
         if (component < m_component_panels.size() && m_component_panels[component] != nullptr)
         {
             m_current_panels.push_back(m_component_panels[component].get());
-            add(m_component_panels[component].get());
+            add_item(m_component_panels[component].get());
         }
     }
 }

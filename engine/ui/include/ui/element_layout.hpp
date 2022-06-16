@@ -103,8 +103,8 @@ public:
     virtual float border(layout_edge edge) const = 0;
     virtual float margin(layout_edge edge) const = 0;
 
-    virtual void link(layout_node_impl* parent, std::size_t index) = 0;
-    virtual void unlink() = 0;
+    virtual void add_child(layout_node_impl* child, std::size_t index) = 0;
+    virtual void remove_child(layout_node_impl* child) = 0;
 
     virtual void calculate(float width, float height) = 0;
     virtual void calculate_absolute_position(float parent_x, float parent_y) = 0;
@@ -194,11 +194,11 @@ public:
     bool layout_dirty() const { return m_impl->dirty(); }
 
 protected:
-    void layout_link(element_layout* parent, std::size_t index)
+    void layout_add_child(element_layout* child, std::size_t index)
     {
-        m_impl->link(parent->m_impl.get(), index);
+        m_impl->add_child(child->m_impl.get(), index);
     }
-    void layout_unlink() { m_impl->unlink(); }
+    void layout_remove_child(element_layout* child) { m_impl->remove_child(child->m_impl.get()); }
 
     element_extent layout_extent() const { return m_impl->extent(); }
     void layout_display(bool display) { m_impl->display(display); }

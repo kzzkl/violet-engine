@@ -84,9 +84,9 @@ public:
     bool control_dirty() const noexcept { return m_dirty; }
     void reset_control_dirty() noexcept { m_dirty = false; }
 
-    void link(element* parent);
-    void link(element* parent, std::size_t index);
-    void unlink();
+    void add(element* child, std::size_t index = -1);
+    void remove(element* child);
+    void remove_from_parent();
 
     std::size_t link_index() const noexcept { return m_link_index; }
 
@@ -151,7 +151,7 @@ protected:
     virtual void on_extent_change(const element_extent& extent) {}
     virtual void on_depth_change(float depth);
 
-    virtual void on_add_child(element* child);
+    virtual void on_add_child(element* child, std::size_t index);
     virtual void on_remove_child(element* child);
 
     void mark_dirty() noexcept { m_dirty = true; }

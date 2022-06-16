@@ -20,7 +20,7 @@ hierarchy_view::hierarchy_view(ui::dock_area* area, const ui::dock_window_theme&
     m_tree = std::make_unique<ui::tree>();
     m_tree->width_percent(100.0f);
     m_tree->on_select = [this](ui::tree_node* node) { m_selected = m_node_to_entity[node]; };
-    add(m_tree.get());
+    add_item(m_tree.get());
 
     load_entity(scene.root());
 
@@ -55,7 +55,7 @@ void hierarchy_view::load_entity(ecs::entity entity)
         if (link.parent != ecs::INVALID_ENTITY)
             m_entity_to_node[link.parent].node->add(node);
         else
-            m_tree->add(node);
+            m_tree->add_node(node);
     }
     else
     {
@@ -69,7 +69,7 @@ void hierarchy_view::load_entity(ecs::entity entity)
     for (auto child : link.children)
     {
         auto child_node = allocate_node(child, false);
-        node->add(child_node);
+        node->add_node(child_node);
     }
 }
 

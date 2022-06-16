@@ -46,7 +46,7 @@ scene_view::scene_view(ui::dock_area* area, const ui::dock_window_theme& theme)
     };
     m_image->width_percent(100.0f);
     m_image->height_percent(100.0f);
-    add(m_image.get());
+    add_item(m_image.get());
 
     on_window_resize = [this](int width, int height) {
         log::debug("Scene resize: {} {}", width, height);

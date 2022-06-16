@@ -65,7 +65,7 @@ scroll_bar::scroll_bar(bool vertical, std::uint32_t slider_color, std::uint32_t 
         };
     }
 
-    m_slider->link(this);
+    add(m_slider.get());
 }
 
 void scroll_bar::value(float v) noexcept
@@ -123,7 +123,7 @@ scroll_view::scroll_view(const scroll_view_theme& theme) : view_panel(theme.back
             return;
         update_container_vertical_position(value);
     };
-    m_vertical_bar->link(this);
+    add(m_vertical_bar.get());
 
     m_horizontal_bar = std::make_unique<scroll_bar>(false, theme.slider_color, theme.bar_color);
     m_horizontal_bar->width_percent(90.0f);
@@ -136,7 +136,7 @@ scroll_view::scroll_view(const scroll_view_theme& theme) : view_panel(theme.back
             return;
         update_container_horizontal_position(value);
     };
-    m_horizontal_bar->link(this);
+    add(m_horizontal_bar.get());
 
     m_container = std::make_unique<element>();
     m_container->position_type(LAYOUT_POSITION_TYPE_ABSOLUTE);
@@ -144,7 +144,7 @@ scroll_view::scroll_view(const scroll_view_theme& theme) : view_panel(theme.back
         auto& e = extent();
         update_scroll_bar(e.width, e.height, width, height);
     };
-    m_container->link(this);
+    add(m_container.get());
 
     on_mouse_wheel = [scroll_speed = theme.scroll_speed, this](int whell) -> bool {
         if (m_vertical_bar->display())
@@ -159,14 +159,14 @@ scroll_view::scroll_view(const scroll_view_theme& theme) : view_panel(theme.back
     };
 }
 
-void scroll_view::add(element* element)
+void scroll_view::add_item(element* item)
 {
-    element->link(m_container.get());
+    m_container->add(item);
 }
 
-void scroll_view::remove(element* element)
+void scroll_view::remove_item(element* item)
 {
-    element->unlink();
+    m_container->remove(item);
 }
 
 void scroll_view::on_extent_change(const element_extent& extent)

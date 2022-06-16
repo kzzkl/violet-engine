@@ -51,7 +51,7 @@ mmd_render_pipeline::mmd_render_pipeline()
         {graphics::attachment_reference_type::RESOLVE, 0}
     };
     edge_pass_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    edge_pass_info.parameters = {"ash_object"};
+    edge_pass_info.parameters = {"ash_object", "ash_pass"};
     edge_pass_info.samples = 4;
     edge_pass_info.rasterizer.cull_mode = graphics::cull_mode::FRONT;
     edge_pass_info.depth_stencil.depth_functor = graphics::depth_functor::LESS;
@@ -116,9 +116,8 @@ void mmd_render_pipeline::render(
     rect.max_y = height;
     command->scissor(&rect, 1);
 
-    command->parameter(2, camera.parameter()->interface());
-
     // Color pass.
+    command->parameter(2, camera.parameter()->interface());
     for (auto& unit : units())
     {
         command->parameter(0, unit.parameters[0]->interface());
@@ -136,6 +135,7 @@ void mmd_render_pipeline::render(
     command->next(m_interface.get());
 
     // Edge pass.
+    command->parameter(1, camera.parameter()->interface());
     for (auto& unit : units())
     {
         command->parameter(0, unit.parameters[0]->interface());

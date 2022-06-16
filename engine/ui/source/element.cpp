@@ -43,53 +43,19 @@ void element::sync_extent()
     }
 }
 
-void element::link(element* parent)
+void element::add(element* child, std::size_t index)
 {
-    link(parent, parent->children().size());
+    on_add_child(child, index);
 }
 
-void element::link(element* parent, std::size_t index)
+void element::remove(element* child)
 {
-    ASH_ASSERT(parent && m_parent == nullptr);
-
-    layout_link(parent, index);
-    m_link_index = index;
-
-    auto iter = parent->m_children.insert(parent->m_children.begin() + index, this);
-    while (++iter != parent->m_children.end())
-        ++(*iter)->m_link_index;
-
-    parent->on_add_child(this);
-    update_depth(parent->m_depth);
-
-    m_parent = parent;
+    on_remove_child(child);
 }
 
-void element::unlink()
+void element::remove_from_parent()
 {
-    if (m_parent == nullptr)
-        return;
-
-    layout_unlink();
-
-    auto iter = m_parent->m_children.begin();
-    for (; iter != m_parent->m_children.end(); ++iter)
-    {
-        if (*iter == this)
-        {
-            iter = m_parent->m_children.erase(iter);
-            m_parent->on_remove_child(this);
-            break;
-        }
-    }
-
-    for (; iter != m_parent->m_children.end(); ++iter)
-    {
-        --(*iter)->m_link_index;
-    }
-
-    m_depth = 0.0f;
-    m_parent = nullptr;
+    m_parent->remove(this);
 }
 
 void element::show()
@@ -130,16 +96,38 @@ void element::on_depth_change(float depth)
         vertex[2] = depth;
 }
 
-void element::on_add_child(element* child)
+void element::on_add_child(element* child, std::size_t index)
 {
-    if (m_parent != nullptr)
-        m_parent->on_add_child(child);
+    ASH_ASSERT(child && child->m_parent == nullptr);
+
+    if (index == -1)
+        index = m_children.size();
+
+    layout_add_child(child, index);
+    child->m_link_index = index;
+    child->m_parent = this;
+
+    auto iter = m_children.insert(m_children.begin() + index, child);
+    while (++iter != m_children.end())
+        ++(*iter)->m_link_index;
+
+    child->update_depth(m_depth);
 }
 
 void element::on_remove_child(element* child)
 {
-    if (m_parent != nullptr)
-        m_parent->on_remove_child(child);
+    ASH_ASSERT(child->m_parent == this);
+
+    auto iter = m_children.begin() + child->m_link_index;
+    iter = m_children.erase(iter);
+
+    for (; iter != m_children.end(); ++iter)
+        --(*iter)->m_link_index;
+
+    layout_remove_child(child);
+    child->m_depth = 0.0f;
+    child->m_link_index = -1;
+    child->m_parent = nullptr;
 }
 
 void element::update_depth(float parent_depth) noexcept

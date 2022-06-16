@@ -1,4 +1,5 @@
 #include "ui/element_layout.hpp"
+#include "assert.hpp"
 #include <yoga/Yoga.h>
 
 namespace ash::ui
@@ -214,16 +215,17 @@ public:
         return YGNodeStyleGetMargin(m_node, INTERNAL_YOGA_EDGE_MAP[edge]).value;
     }
 
-    virtual void link(layout_node_impl* parent, std::size_t index) override
+    virtual void add_child(layout_node_impl* child, std::size_t index) override
     {
-        auto yoga_parent = static_cast<layout_node_impl_yoga*>(parent);
-        YGNodeInsertChild(yoga_parent->m_node, m_node, static_cast<std::uint32_t>(index));
+        auto yoga_child = static_cast<layout_node_impl_yoga*>(child);
+        YGNodeInsertChild(m_node, yoga_child->m_node, static_cast<std::uint32_t>(index));
     }
 
-    virtual void unlink() override
+    virtual void remove_child(layout_node_impl* child) override
     {
-        auto yoga_parent = YGNodeGetParent(m_node);
-        YGNodeRemoveChild(yoga_parent, m_node);
+        auto yoga_child = static_cast<layout_node_impl_yoga*>(child);
+        ASH_ASSERT(YGNodeGetParent(yoga_child->m_node) == m_node);
+        YGNodeRemoveChild(m_node, yoga_child->m_node);
     }
 
     void calculate(float width, float height) override

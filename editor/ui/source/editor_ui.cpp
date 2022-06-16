@@ -22,7 +22,7 @@ editor_ui::editor_ui()
         ui.theme<ui::dock_area_theme>("dark"));
     m_dock_area->width_percent(100.0f);
     m_dock_area->height_percent(100.0f);
-    m_dock_area->link(ui.root());
+    ui.root()->add(m_dock_area.get());
 
     auto& view_theme = ui.theme<ui::dock_window_theme>("dark");
 

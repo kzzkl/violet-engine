@@ -16,7 +16,7 @@ button::button(std::string_view text, const button_theme& theme)
     label_theme.text_color = theme.text_color;
     label_theme.text_font = theme.text_font;
     m_label = std::make_unique<label>(text, label_theme);
-    m_label->link(this);
+    add(m_label.get());
 
     justify_content(LAYOUT_JUSTIFY_CENTER);
     align_items(LAYOUT_ALIGN_CENTER);
