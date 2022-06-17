@@ -11,9 +11,17 @@ public:
 
     void texture(graphics::resource* texture, bool resize = false);
 
-    virtual void render(renderer& renderer) override;
+    virtual const element_mesh* mesh() const noexcept override { return &m_mesh; }
 
 protected:
-    virtual void on_extent_change(const element_extent& extent) override;
+    virtual void on_extent_change(float width, float height) override;
+
+private:
+    std::array<math::float2, 4> m_position;
+    std::array<math::float2, 4> m_uv;
+    std::array<std::uint32_t, 4> m_color;
+    std::array<std::uint32_t, 6> m_indices;
+
+    element_mesh m_mesh;
 };
 } // namespace ash::ui

@@ -107,7 +107,7 @@ void scroll_bar::slider_size(float size)
         m_slider->width(size);
 }
 
-scroll_view::scroll_view(const scroll_view_theme& theme) : view_panel(theme.background_color)
+scroll_view::scroll_view(const scroll_view_theme& theme) : panel(theme.background_color, true)
 {
     justify_content(LAYOUT_JUSTIFY_CENTER);
     align_items(LAYOUT_ALIGN_CENTER);
@@ -169,15 +169,15 @@ void scroll_view::remove_item(element* item)
     m_container->remove(item);
 }
 
-void scroll_view::on_extent_change(const element_extent& extent)
+void scroll_view::on_extent_change(float width, float height)
 {
-    view_panel::on_extent_change(extent);
+    panel::on_extent_change(width, height);
 
     auto& container_extent = m_container->extent();
-    update_scroll_bar(extent.width, extent.height, container_extent.width, container_extent.height);
+    update_scroll_bar(width, height, container_extent.width, container_extent.height);
 
-    m_container->width_min(extent.width);
-    m_container->height_min(extent.height);
+    m_container->width_min(width);
+    m_container->height_min(height);
 }
 
 void scroll_view::update_container_vertical_position(float scroll_value)

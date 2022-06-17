@@ -112,6 +112,13 @@ void graphics::shutdown()
     m_plugin.unload();
 }
 
+void graphics::compute(compute_pipeline* pipeline)
+{
+    auto command = m_renderer->allocate_command();
+    pipeline->compute(command);
+    m_renderer->execute(command);
+}
+
 void graphics::skin_meshes()
 {
     auto command = m_renderer->allocate_command();

@@ -30,7 +30,7 @@ scene_view::scene_view(ui::dock_area* area, const ui::dock_window_theme& theme)
     world.add<core::link, graphics::camera, scene::transform>(m_camera);
 
     auto& transform = world.component<scene::transform>(m_camera);
-    transform.position = {0.0f, 10.0f, -50.0f};
+    transform.position = {0.0f, 10.0f, -40.0f};
     transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
     transform.scaling = {1.0f, 1.0f, 1.0f};
 

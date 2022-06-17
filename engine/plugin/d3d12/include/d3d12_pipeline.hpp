@@ -82,6 +82,7 @@ public:
     virtual void set(std::size_t index, const math::float2& value) override;
     virtual void set(std::size_t index, const math::float3& value) override;
     virtual void set(std::size_t index, const math::float4& value) override;
+    virtual void set(std::size_t index, const math::float4* data, size_t size) override;
     virtual void set(std::size_t index, const math::float4x4& value) override;
     virtual void set(std::size_t index, const math::float4x4* data, size_t size) override;
     virtual void set(std::size_t index, resource* texture) override;

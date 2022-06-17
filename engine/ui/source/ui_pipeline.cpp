@@ -13,6 +13,11 @@ ui_pipeline::ui_pipeline()
         {graphics::pipeline_parameter_type::SHADER_RESOURCE, 1}  // texture
     };
     graphics.make_pipeline_parameter_layout("ui_material", ui_material);
+    graphics::pipeline_parameter_layout_info ui_offset;
+    ui_offset.parameters = {
+        {graphics::pipeline_parameter_type::FLOAT4_ARRAY, 2048}, // offset
+    };
+    graphics.make_pipeline_parameter_layout("ui_offset", ui_offset);
 
     graphics::pipeline_parameter_layout_info ui_mvp;
     ui_mvp.parameters = {
@@ -25,9 +30,10 @@ ui_pipeline::ui_pipeline()
     ui_pipeline_info.vertex_shader = "engine/shader/ui.vert";
     ui_pipeline_info.pixel_shader = "engine/shader/ui.frag";
     ui_pipeline_info.vertex_attributes = {
-        {"POSITION", graphics::vertex_attribute_type::FLOAT3}, // position
-        {"UV",       graphics::vertex_attribute_type::FLOAT2}, // uv
-        {"COLOR",    graphics::vertex_attribute_type::COLOR }  // color
+        {"POSITION",     graphics::vertex_attribute_type::FLOAT2}, // position
+        {"UV",           graphics::vertex_attribute_type::FLOAT2}, // uv
+        {"COLOR",        graphics::vertex_attribute_type::COLOR }, // color
+        {"OFFSET_INDEX", graphics::vertex_attribute_type::UINT  }  // offset index
     };
     ui_pipeline_info.references = {
         {graphics::attachment_reference_type::COLOR,   0},
@@ -35,7 +41,7 @@ ui_pipeline::ui_pipeline()
         {graphics::attachment_reference_type::RESOLVE, 0}
     };
     ui_pipeline_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    ui_pipeline_info.parameters = {"ui_material", "ui_mvp"};
+    ui_pipeline_info.parameters = {"ui_material", "ui_offset", "ui_mvp"};
     ui_pipeline_info.samples = 4;
     ui_pipeline_info.depth_stencil.depth_functor = graphics::depth_functor::LESS;
     ui_pipeline_info.blend.enable = true;
@@ -104,12 +110,13 @@ void ui_pipeline::render(
     extent.max_x = width;
     extent.max_y = height;
 
-    command->parameter(1, units()[0].parameters[1]->interface());
+    command->parameter(1, units()[0].parameters[1]->interface()); // offset
+    command->parameter(2, units()[0].parameters[2]->interface()); // mvp
     for (auto& unit : units())
     {
         command->scissor(&unit.scissor, 1);
 
-        command->parameter(0, unit.parameters[0]->interface());
+        command->parameter(0, unit.parameters[0]->interface()); // material
         command->draw(
             unit.vertex_buffers.data(),
             unit.vertex_buffers.size(),

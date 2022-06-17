@@ -83,6 +83,7 @@ enum class pipeline_parameter_type
     FLOAT2,
     FLOAT3,
     FLOAT4,
+    FLOAT4_ARRAY,
     FLOAT4x4,
     FLOAT4x4_ARRAY,
     SHADER_RESOURCE,
@@ -103,6 +104,8 @@ struct pipeline_parameter_layout_desc
 
 class pipeline_parameter_layout_interface
 {
+public:
+    virtual ~pipeline_parameter_layout_interface() = default;
 };
 
 class pipeline_parameter_interface
@@ -116,11 +119,10 @@ public:
     virtual void set(std::size_t index, const math::float2& value) = 0;
     virtual void set(std::size_t index, const math::float3& value) = 0;
     virtual void set(std::size_t index, const math::float4& value) = 0;
+    virtual void set(std::size_t index, const math::float4* data, size_t size) = 0;
     virtual void set(std::size_t index, const math::float4x4& value) = 0;
     virtual void set(std::size_t index, const math::float4x4* data, size_t size) = 0;
     virtual void set(std::size_t index, resource_interface* texture) = 0;
-
-    virtual void reset() = 0;
 };
 
 enum class blend_factor
@@ -311,7 +313,9 @@ enum primitive_topology
 class render_command_interface
 {
 public:
-    // Graphics.
+    virtual ~render_command_interface() = default;
+
+    // Render.
     virtual void begin(
         render_pass_interface* render_pass,
         resource_interface* render_target,
@@ -374,8 +378,8 @@ using renderer = renderer_interface;
 enum vertex_buffer_flags
 {
     VERTEX_BUFFER_FLAG_NONE = 0,
-    VERTEX_BUFFER_FLAG_SKIN_IN = 0x1,
-    VERTEX_BUFFER_FLAG_SKIN_OUT = 0x2
+    VERTEX_BUFFER_FLAG_COMPUTE_IN = 0x1,
+    VERTEX_BUFFER_FLAG_COMPUTE_OUT = 0x2
 };
 
 struct vertex_buffer_desc
@@ -385,6 +389,7 @@ struct vertex_buffer_desc
     std::size_t vertex_count;
     vertex_buffer_flags flags;
     bool dynamic;
+    bool frame_resource;
 };
 
 struct index_buffer_desc
@@ -393,6 +398,7 @@ struct index_buffer_desc
     std::size_t index_size;
     std::size_t index_count;
     bool dynamic;
+    bool frame_resource;
 };
 
 struct render_target_desc

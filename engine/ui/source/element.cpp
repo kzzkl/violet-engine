@@ -1,4 +1,6 @@
 #include "ui/element.hpp"
+#include <queue>
+#include <stdexcept>
 
 namespace ash::ui
 {
@@ -21,36 +23,78 @@ element::~element()
     ASH_ASSERT(m_parent == nullptr);
 }
 
-void element::render(renderer& renderer)
+/*void element::render(renderer& renderer)
 {
     for (element* child : m_children)
     {
         if (child->m_display)
             child->render(renderer);
     }
-}
+}*/
 
 void element::sync_extent()
 {
     element_extent new_extent = layout_extent();
-    if (new_extent != m_extent)
+    if (new_extent.width != m_extent.width || new_extent.height != m_extent.height)
     {
         m_extent = new_extent;
-        on_extent_change(m_extent);
+        on_extent_change(m_extent.width, m_extent.height);
 
         if (on_resize)
             on_resize(m_extent.width, m_extent.height);
+    }
+    else if (new_extent.x != m_extent.x || new_extent.y != m_extent.y)
+    {
+        m_extent = new_extent;
     }
 }
 
 void element::add(element* child, std::size_t index)
 {
-    on_add_child(child, index);
+    ASH_ASSERT(child && child->m_parent == nullptr);
+
+    if (index == -1)
+        index = m_children.size();
+
+    layout_add_child(child, index);
+    child->m_link_index = index;
+    child->m_parent = this;
+
+    auto iter = m_children.insert(m_children.begin() + index, child);
+    while (++iter != m_children.end())
+        ++(*iter)->m_link_index;
+
+    child->update_depth(m_depth);
+
+    element* node = this;
+    while (node != nullptr)
+    {
+        node->on_add_child(child);
+        node = node->m_parent;
+    }
 }
 
 void element::remove(element* child)
 {
-    on_remove_child(child);
+    ASH_ASSERT(child->m_parent == this);
+
+    auto iter = m_children.begin() + child->m_link_index;
+    iter = m_children.erase(iter);
+
+    for (; iter != m_children.end(); ++iter)
+        --(*iter)->m_link_index;
+
+    layout_remove_child(child);
+    child->m_depth = 0.0f;
+    child->m_link_index = -1;
+    child->m_parent = nullptr;
+
+    element* node = this;
+    while (node != nullptr)
+    {
+        node->on_remove_child(child);
+        node = node->m_parent;
+    }
 }
 
 void element::remove_from_parent()
@@ -90,52 +134,23 @@ void element::layer(int layer) noexcept
         update_depth(m_parent->depth());
 }
 
-void element::on_depth_change(float depth)
-{
-    for (auto& vertex : m_mesh.vertex_position)
-        vertex[2] = depth;
-}
-
-void element::on_add_child(element* child, std::size_t index)
-{
-    ASH_ASSERT(child && child->m_parent == nullptr);
-
-    if (index == -1)
-        index = m_children.size();
-
-    layout_add_child(child, index);
-    child->m_link_index = index;
-    child->m_parent = this;
-
-    auto iter = m_children.insert(m_children.begin() + index, child);
-    while (++iter != m_children.end())
-        ++(*iter)->m_link_index;
-
-    child->update_depth(m_depth);
-}
-
-void element::on_remove_child(element* child)
-{
-    ASH_ASSERT(child->m_parent == this);
-
-    auto iter = m_children.begin() + child->m_link_index;
-    iter = m_children.erase(iter);
-
-    for (; iter != m_children.end(); ++iter)
-        --(*iter)->m_link_index;
-
-    layout_remove_child(child);
-    child->m_depth = 0.0f;
-    child->m_link_index = -1;
-    child->m_parent = nullptr;
-}
-
 void element::update_depth(float parent_depth) noexcept
 {
     m_depth = parent_depth - 0.01f * m_layer;
-    on_depth_change(m_depth);
 
-    for (element* child : m_children)
-        child->update_depth(m_depth);
+    std::queue<element*> bfs;
+    bfs.push(this);
+
+    while (!bfs.empty())
+    {
+        element* node = bfs.front();
+        bfs.pop();
+
+        for (element* child : node->m_children)
+        {
+            child->m_depth = node->m_depth - 0.01f * child->m_layer;
+            bfs.push(child);
+        }
+    }
 }
 } // namespace ash::ui

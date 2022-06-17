@@ -514,7 +514,7 @@ d3d12_vertex_buffer_default::d3d12_vertex_buffer_default(
     const vertex_buffer_desc& desc,
     D3D12GraphicsCommandList* command_list)
 {
-    D3D12_RESOURCE_FLAGS flags = (desc.flags & VERTEX_BUFFER_FLAG_SKIN_OUT)
+    D3D12_RESOURCE_FLAGS flags = (desc.flags & VERTEX_BUFFER_FLAG_COMPUTE_OUT)
                                      ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
                                      : D3D12_RESOURCE_FLAG_NONE;
 
@@ -527,7 +527,7 @@ d3d12_vertex_buffer_default::d3d12_vertex_buffer_default(
     m_view.SizeInBytes = static_cast<UINT>(desc.vertex_size * desc.vertex_count);
     m_view.StrideInBytes = static_cast<UINT>(desc.vertex_size);
 
-    if (desc.flags & VERTEX_BUFFER_FLAG_SKIN_IN)
+    if (desc.flags & VERTEX_BUFFER_FLAG_COMPUTE_IN)
     {
         auto srv_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         m_srv_offset = srv_heap->allocate(1);
@@ -547,7 +547,7 @@ d3d12_vertex_buffer_default::d3d12_vertex_buffer_default(
             srv_heap->cpu_handle(m_srv_offset));
     }
 
-    if (desc.flags & VERTEX_BUFFER_FLAG_SKIN_OUT)
+    if (desc.flags & VERTEX_BUFFER_FLAG_COMPUTE_OUT)
     {
         auto uav_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         m_uav_offset = uav_heap->allocate(1);
@@ -592,7 +592,7 @@ d3d12_vertex_buffer_dynamic::d3d12_vertex_buffer_dynamic(const vertex_buffer_des
       m_last_sync_frame(0)
 {
     m_size = desc.vertex_size * desc.vertex_count;
-    D3D12_RESOURCE_FLAGS flags = (desc.flags & VERTEX_BUFFER_FLAG_SKIN_OUT)
+    D3D12_RESOURCE_FLAGS flags = (desc.flags & VERTEX_BUFFER_FLAG_COMPUTE_OUT)
                                      ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
                                      : D3D12_RESOURCE_FLAG_NONE;
 
@@ -610,7 +610,7 @@ d3d12_vertex_buffer_dynamic::d3d12_vertex_buffer_dynamic(const vertex_buffer_des
         view.BufferLocation += m_size;
     }
 
-    if (desc.flags & VERTEX_BUFFER_FLAG_SKIN_IN)
+    if (desc.flags & VERTEX_BUFFER_FLAG_COMPUTE_IN)
     {
         auto srv_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         m_srv_offset = srv_heap->allocate(copy_count);
@@ -634,7 +634,7 @@ d3d12_vertex_buffer_dynamic::d3d12_vertex_buffer_dynamic(const vertex_buffer_des
         }
     }
 
-    if (desc.flags & VERTEX_BUFFER_FLAG_SKIN_OUT)
+    if (desc.flags & VERTEX_BUFFER_FLAG_COMPUTE_OUT)
     {
         auto uav_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         m_uav_offset = uav_heap->allocate(copy_count);

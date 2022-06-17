@@ -2,27 +2,18 @@
 
 #include "ecs/component.hpp"
 #include "ecs/entity.hpp"
+#include "ui/controls/collapse.hpp"
 #include "ui/controls/dock_window.hpp"
+#include "ui/ui.hpp"
 
 namespace ash::editor
 {
-class component_panel_base : public ui::element
+class component_panel : public ui::collapse
 {
 public:
-    component_panel_base(std::string_view component_name);
+    component_panel(std::string_view component_name, const ui::collapse_theme& theme);
 
     virtual void show_component(ecs::entity entity) = 0;
-
-protected:
-    std::unique_ptr<ui::panel> m_title;
-    std::unique_ptr<ui::label> m_label;
-
-    std::unique_ptr<element> m_container;
-};
-
-template <typename Component>
-class component_panel : public component_panel_base
-{
 };
 
 class component_view : public ui::dock_window
@@ -33,7 +24,7 @@ public:
     void show_component(ecs::entity entity);
 
 private:
-    template <typename Component>
+    template <typename Component, typename ComponentPanel>
     void register_component()
     {
         ecs::component_id id = ecs::component_index::value<Component>();
@@ -41,7 +32,13 @@ private:
             m_component_panels.resize(id + 1);
 
         if (m_component_panels[id] == nullptr)
-            m_component_panels[id] = std::make_unique<component_panel<Component>>();
+        {
+            m_component_panels[id] = std::make_unique<ComponentPanel>(
+                system<ui::ui>().theme<ui::collapse_theme>("dark"));
+            m_component_panels[id]->margin(5.0f, ui::LAYOUT_EDGE_BOTTOM);
+            m_component_panels[id]->hide();
+            add_item(m_component_panels[id].get());
+        }
     }
 
     void sync_component_panel(ecs::entity entity);
@@ -49,7 +46,7 @@ private:
     ecs::entity m_current_entity;
     ecs::component_mask m_component_mask;
 
-    std::vector<component_panel_base*> m_current_panels;
-    std::vector<std::unique_ptr<component_panel_base>> m_component_panels;
+    std::vector<component_panel*> m_current_panels;
+    std::vector<std::unique_ptr<component_panel>> m_component_panels;
 };
 } // namespace ash::editor

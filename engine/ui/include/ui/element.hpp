@@ -1,9 +1,7 @@
 #pragma once
 
-#include "math/math.hpp"
+#include "graphics_interface.hpp"
 #include "ui/element_layout.hpp"
-#include "ui/element_mesh.hpp"
-#include "ui/renderer.hpp"
 #include "window/input.hpp"
 #include <functional>
 #include <string>
@@ -68,18 +66,37 @@ public:
     };
 };
 
+enum element_mesh_type
+{
+    ELEMENT_MESH_TYPE_BLOCK,
+    ELEMENT_MESH_TYPE_TEXT,
+    ELEMENT_MESH_TYPE_IMAGE
+};
+
+struct element_mesh
+{
+    element_mesh_type type;
+
+    const math::float2* position;
+    const math::float2* uv;
+    const std::uint32_t* color;
+    std::size_t vertex_count;
+
+    const std::uint32_t* indices;
+    std::size_t index_count;
+
+    bool scissor;
+    graphics::resource* texture;
+};
+
 class element : public element_layout
 {
 public:
     element(bool is_root = false);
     virtual ~element();
 
-    virtual void render(renderer& renderer);
-
     const element_extent& extent() const noexcept { return m_extent; }
     void sync_extent();
-
-    const element_mesh& mesh() const noexcept { return m_mesh; }
 
     bool control_dirty() const noexcept { return m_dirty; }
     void reset_control_dirty() noexcept { m_dirty = false; }
@@ -99,6 +116,8 @@ public:
 
     float depth() const noexcept { return m_depth; }
     void layer(int layer) noexcept;
+
+    virtual const element_mesh* mesh() const noexcept { return nullptr; }
 
     std::string name;
 
@@ -148,15 +167,11 @@ public:
     on_resize_event::handle on_resize;
 
 protected:
-    virtual void on_extent_change(const element_extent& extent) {}
-    virtual void on_depth_change(float depth);
-
-    virtual void on_add_child(element* child, std::size_t index);
-    virtual void on_remove_child(element* child);
+    virtual void on_add_child(element* child) {}
+    virtual void on_remove_child(element* child) {}
+    virtual void on_extent_change(float width, float height) {}
 
     void mark_dirty() noexcept { m_dirty = true; }
-
-    element_mesh m_mesh;
 
 private:
     void update_depth(float depth_offset) noexcept;

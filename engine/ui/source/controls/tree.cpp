@@ -49,7 +49,7 @@ tree_node::tree_node(std::string_view name, const tree_node_theme& theme)
     add(m_top.get());
 
     font_icon_theme icon_theme = {};
-    icon_theme.icon_font = &system<ui>().font(DEFAULT_ICON_FONT);
+    icon_theme.icon_font = system<ui>().default_icon_font();
     icon_theme.icon_color = theme.text_color;
     icon_theme.icon_scale = 0.5f;
     m_button = std::make_unique<font_icon>(CHEVRON_DOWN_INDEX, icon_theme);

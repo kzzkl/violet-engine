@@ -1,16 +1,15 @@
 #pragma once
 
-#include "camera.hpp"
 #include "core/context.hpp"
+#include "graphics/compute_pipeline.hpp"
 #include "graphics/graphics_config.hpp"
 #include "graphics/graphics_debug.hpp"
 #include "graphics/graphics_interface_helper.hpp"
 #include "graphics/graphics_plugin.hpp"
-#include "graphics/render_pipeline.hpp"
+#include "graphics/pipeline_parameter.hpp"
+#include "graphics/skinned_mesh.hpp"
 #include "graphics/visual.hpp"
-#include "pipeline_parameter.hpp"
 #include "scene/transform.hpp"
-#include "skinned_mesh.hpp"
 #include "type_trait.hpp"
 
 namespace ash::graphics
@@ -26,6 +25,8 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
     virtual void shutdown() override;
+
+    void compute(compute_pipeline* pipeline);
 
     void skin_meshes();
     void render(ecs::entity target_camera = ecs::INVALID_ENTITY);
@@ -55,7 +56,8 @@ public:
         const Vertex* data,
         std::size_t size,
         vertex_buffer_flags flags = VERTEX_BUFFER_FLAG_NONE,
-        bool dynamic = false)
+        bool dynamic = false,
+        bool frame_resource = false)
     {
         auto& factory = m_plugin.factory();
         vertex_buffer_desc desc = {
@@ -63,7 +65,8 @@ public:
             .vertex_size = sizeof(Vertex),
             .vertex_count = size,
             .flags = flags,
-            .dynamic = dynamic};
+            .dynamic = dynamic,
+            .frame_resource = frame_resource};
         return std::unique_ptr<resource>(factory.make_vertex_buffer(desc));
     }
 
@@ -71,10 +74,16 @@ public:
     std::unique_ptr<resource> make_index_buffer(
         const Index* data,
         std::size_t size,
-        bool dynamic = false)
+        bool dynamic = false,
+        bool frame_resource = false)
     {
         auto& factory = m_plugin.factory();
-        index_buffer_desc desc = {data, sizeof(Index), size, dynamic};
+        index_buffer_desc desc = {
+            .indices = data,
+            .index_size = sizeof(Index),
+            .index_count = size,
+            .dynamic = dynamic,
+            .frame_resource = frame_resource};
         return std::unique_ptr<resource>(factory.make_index_buffer(desc));
     }
 

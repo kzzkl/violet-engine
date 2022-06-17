@@ -275,6 +275,11 @@ d3d12_pipeline_parameter_layout::d3d12_pipeline_parameter_layout(
             size = sizeof(math::float4);
             constant_offset = offset + size;
             break;
+        case pipeline_parameter_type::FLOAT4_ARRAY:
+            offset = cal_align(constant_offset, 16);
+            size = sizeof(math::float4) * desc.parameters[i].size;
+            constant_offset = offset + size;
+            break;
         case pipeline_parameter_type::FLOAT4x4:
             offset = cal_align(constant_offset, 16);
             size = sizeof(math::float4x4);
@@ -413,6 +418,15 @@ void d3d12_pipeline_parameter::set(std::size_t index, const math::float4& value)
         m_cpu_buffer.data() + m_layout->parameter_offset(index),
         &value,
         sizeof(math::float4));
+    mark_dirty(index);
+}
+
+void d3d12_pipeline_parameter::set(std::size_t index, const math::float4* data, size_t size)
+{
+    std::memcpy(
+        m_cpu_buffer.data() + m_layout->parameter_offset(index),
+        data,
+        sizeof(math::float4) * size);
     mark_dirty(index);
 }
 

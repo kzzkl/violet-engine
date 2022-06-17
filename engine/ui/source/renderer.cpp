@@ -7,62 +7,46 @@ renderer::renderer() : m_batch_pool_index(0)
 {
 }
 
-void renderer::draw(render_type type, const element_mesh& mesh)
+void renderer::draw(element* root)
 {
-    batch_key key = {type, mesh.texture};
-    if (key.type == RENDER_TYPE_IMAGE && key.texture == nullptr)
-        return;
+    std::stack<std::pair<element*, std::size_t>> dfs;
+    std::stack<batch_map> scissor_stack;
 
-    auto& current = current_batch_map();
-    render_batch* target_batch = nullptr;
+    dfs.push({root, 0});
 
-    auto iter = current.map.find(key);
-    if (iter == current.map.end())
+    while (!dfs.empty())
     {
-        target_batch = allocate_batch();
-        target_batch->type = type;
-        target_batch->scissor = current.scissor;
-        target_batch->texture = mesh.texture;
-        current.map[key] = target_batch;
+        auto [node, batch_map_index] = dfs.top();
+        dfs.pop();
+
+        if (batch_map_index != scissor_stack.size())
+        {
+            scissor_stack.pop();
+        }
+
+        auto& extent = node->extent();
+
+        auto mesh = node->mesh();
+        if (mesh != nullptr)
+        {
+            if (mesh->scissor)
+            {
+                batch_map map = {};
+                map.scissor = extent;
+                scissor_stack.push(map);
+
+                batch_map_index = scissor_stack.size();
+            }
+
+            draw(scissor_stack.top(), *mesh, extent.x, extent.y, node->depth());
+        }
+
+        for (element* child : node->children())
+        {
+            if (child->display())
+                dfs.push({child, batch_map_index});
+        }
     }
-    else
-    {
-        target_batch = iter->second;
-    }
-
-    std::uint32_t vertex_base = target_batch->vertex_position.size();
-    std::uint32_t index_base = target_batch->indices.size();
-    target_batch->indices.resize(target_batch->indices.size() + mesh.indices.size());
-    std::transform(
-        mesh.indices.begin(),
-        mesh.indices.end(),
-        target_batch->indices.begin() + index_base,
-        [vertex_base](std::uint32_t index) { return index + vertex_base; });
-
-    target_batch->vertex_position.insert(
-        target_batch->vertex_position.end(),
-        mesh.vertex_position.begin(),
-        mesh.vertex_position.end());
-    target_batch->vertex_uv.insert(
-        target_batch->vertex_uv.end(),
-        mesh.vertex_uv.begin(),
-        mesh.vertex_uv.end());
-    target_batch->vertex_color.insert(
-        target_batch->vertex_color.end(),
-        mesh.vertex_color.begin(),
-        mesh.vertex_color.end());
-}
-
-void renderer::scissor_push(const element_extent& extent)
-{
-    batch_map map = {};
-    map.scissor = extent;
-    m_scissor_stack.push(map);
-}
-
-void renderer::scissor_pop()
-{
-    m_scissor_stack.pop();
 }
 
 void renderer::reset()
@@ -72,12 +56,62 @@ void renderer::reset()
         batch->vertex_position.clear();
         batch->vertex_uv.clear();
         batch->vertex_color.clear();
+        batch->vertex_offset_index.clear();
         batch->indices.clear();
     }
     m_batch_pool_index = 0;
+    m_offset.clear();
+}
 
-    while (!m_scissor_stack.empty())
-        m_scissor_stack.pop();
+void renderer::draw(batch_map& batch_map, const element_mesh& mesh, float x, float y, float depth)
+{
+    batch_key key = {mesh.type, mesh.texture};
+    if (key.type == ELEMENT_MESH_TYPE_IMAGE && key.texture == nullptr)
+        return;
+
+    render_batch* target_batch = nullptr;
+
+    auto iter = batch_map.map.find(key);
+    if (iter == batch_map.map.end())
+    {
+        target_batch = allocate_batch();
+        target_batch->type = mesh.type;
+        target_batch->scissor = batch_map.scissor;
+        target_batch->texture = mesh.texture;
+        batch_map.map[key] = target_batch;
+    }
+    else
+    {
+        target_batch = iter->second;
+    }
+
+    std::uint32_t vertex_base = target_batch->vertex_position.size();
+    std::uint32_t index_base = target_batch->indices.size();
+    target_batch->indices.resize(target_batch->indices.size() + mesh.index_count);
+    std::transform(
+        mesh.indices,
+        mesh.indices + mesh.index_count,
+        target_batch->indices.begin() + index_base,
+        [vertex_base](std::uint32_t index) { return index + vertex_base; });
+
+    target_batch->vertex_position.insert(
+        target_batch->vertex_position.end(),
+        mesh.position,
+        mesh.position + mesh.vertex_count);
+    target_batch->vertex_uv.insert(
+        target_batch->vertex_uv.end(),
+        mesh.uv,
+        mesh.uv + mesh.vertex_count);
+    target_batch->vertex_color.insert(
+        target_batch->vertex_color.end(),
+        mesh.color,
+        mesh.color + mesh.vertex_count);
+    target_batch->vertex_offset_index.insert(
+        target_batch->vertex_offset_index.end(),
+        mesh.vertex_count,
+        m_offset.size());
+
+    m_offset.push_back({x, y, depth, 1.0f});
 }
 
 render_batch* renderer::allocate_batch()

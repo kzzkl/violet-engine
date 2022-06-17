@@ -24,16 +24,17 @@ public:
 
     std::string text() const noexcept { return m_text; }
 
-    virtual void render(renderer& renderer) override;
-
-protected:
-    virtual void on_extent_change(const element_extent& extent) override;
+    virtual const element_mesh* mesh() const noexcept override { return &m_mesh; }
 
 private:
     std::string m_text;
     const font* m_font;
 
-    float m_original_x;
-    float m_original_y;
+    std::vector<math::float2> m_position;
+    std::vector<math::float2> m_uv;
+    std::vector<std::uint32_t> m_color;
+    std::vector<std::uint32_t> m_indices;
+    
+    element_mesh m_mesh;
 };
 } // namespace ash::ui

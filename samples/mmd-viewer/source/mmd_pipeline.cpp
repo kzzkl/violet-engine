@@ -175,7 +175,7 @@ mmd_skin_pipeline::mmd_skin_pipeline()
     compute_pipeline_info.compute_shader = "resource/shader/skin.comp";
     compute_pipeline_info.parameters = {"mmd_skin"};
 
-    m_interface = system<graphics::graphics>().make_compute_pipeline(compute_pipeline_info);
+    m_interface = graphics.make_compute_pipeline(compute_pipeline_info);
 }
 
 void mmd_skin_pipeline::skin(graphics::render_command_interface* command)

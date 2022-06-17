@@ -4,12 +4,7 @@ namespace ash::ui
 {
 view::view()
 {
-}
-
-void view::render(renderer& renderer)
-{
-    renderer.scissor_push(layout_extent());
-    element::render(renderer);
-    renderer.scissor_pop();
+    m_mesh = {};
+    m_mesh.scissor = true;
 }
 } // namespace ash::ui

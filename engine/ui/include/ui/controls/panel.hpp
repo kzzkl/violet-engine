@@ -8,21 +8,21 @@ namespace ash::ui
 class panel : public element
 {
 public:
-    panel(std::uint32_t color = COLOR_WHITE);
+    panel(std::uint32_t color = COLOR_WHITE, bool scissor = false);
 
     void color(std::uint32_t color) noexcept;
 
-    virtual void render(renderer& renderer) override;
+    virtual const element_mesh* mesh() const noexcept override { return &m_mesh; }
 
 protected:
-    virtual void on_extent_change(const element_extent& extent) override;
-};
+    virtual void on_extent_change(float width, float height) override;
 
-class view_panel : public panel
-{
-public:
-    view_panel(std::uint32_t color = COLOR_WHITE);
+private:
+    std::array<math::float2, 4> m_position;
+    std::array<math::float2, 4> m_uv;
+    std::array<std::uint32_t, 4> m_color;
+    std::array<std::uint32_t, 6> m_indices;
 
-    virtual void render(renderer& renderer) override;
+    element_mesh m_mesh;
 };
 } // namespace ash::ui

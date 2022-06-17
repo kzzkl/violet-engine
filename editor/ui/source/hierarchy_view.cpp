@@ -12,10 +12,7 @@ hierarchy_view::hierarchy_view(ui::dock_area* area, const ui::dock_window_theme&
       m_selected(ecs::INVALID_ENTITY)
 {
     auto& scene = system<scene::scene>();
-    auto& ui = system<ui::ui>();
     auto& world = system<ecs::world>();
-
-    m_text_font = &ui.font(ui::DEFAULT_TEXT_FONT);
 
     m_tree = std::make_unique<ui::tree>();
     m_tree->width_percent(100.0f);
@@ -53,7 +50,7 @@ void hierarchy_view::load_entity(ecs::entity entity)
     {
         node = allocate_node(entity, true);
         if (link.parent != ecs::INVALID_ENTITY)
-            m_entity_to_node[link.parent].node->add(node);
+            m_entity_to_node[link.parent].node->add_node(node);
         else
             m_tree->add_node(node);
     }

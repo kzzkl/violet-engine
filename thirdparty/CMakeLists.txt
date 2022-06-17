@@ -48,6 +48,7 @@ FetchContent_Declare(stb
 FetchContent_MakeAvailable(stb)
 
 # freetype
+set(SKIP_INSTALL_ALL ON CACHE BOOL "" FORCE)
 FetchContent_Declare(freetype
     GIT_REPOSITORY  git@github.com:freetype/freetype.git
     GIT_TAG         VER-2-12-1

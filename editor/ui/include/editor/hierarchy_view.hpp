@@ -37,7 +37,5 @@ private:
 
     std::map<ecs::entity, entity_node> m_entity_to_node;
     std::map<ui::tree_node*, ecs::entity> m_node_to_entity;
-
-    const ui::font* m_text_font;
 };
 } // namespace ash::editor

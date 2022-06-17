@@ -50,12 +50,12 @@ void gallery::initialize_theme()
     ui.load_font("gallery title 2", "engine/font/NotoSans-SemiBold.ttf", 20);
 
     ui::label_theme title_1 = {
-        .text_font = &ui.font("gallery title 1"),
+        .text_font = ui.font("gallery title 1"),
         .text_color = ui::COLOR_WHITE};
     ui.register_theme("gallery title 1", title_1);
 
     ui::label_theme title_2 = {
-        .text_font = &ui.font("gallery title 2"),
+        .text_font = ui.font("gallery title 2"),
         .text_color = ui::COLOR_WHITE};
     ui.register_theme("gallery title 2", title_2);
 
