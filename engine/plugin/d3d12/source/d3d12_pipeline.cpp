@@ -237,8 +237,7 @@ d3d12_pipeline_parameter_layout::d3d12_pipeline_parameter_layout(
     }
 
     std::size_t constant_offset = 0;
-    std::size_t texture_offset = 0;
-    std::size_t unordered_access_offset = 0;
+    std::size_t descriptor_offset = m_cbv_count;
     m_parameters.reserve(desc.size);
     for (std::size_t i = 0; i < desc.size; ++i)
     {
@@ -287,12 +286,9 @@ d3d12_pipeline_parameter_layout::d3d12_pipeline_parameter_layout(
             constant_offset = offset + size;
             break;
         case pipeline_parameter_type::SHADER_RESOURCE:
-            offset = texture_offset;
-            ++texture_offset;
-            break;
         case pipeline_parameter_type::UNORDERED_ACCESS:
-            offset = unordered_access_offset;
-            ++unordered_access_offset;
+            offset = descriptor_offset;
+            ++descriptor_offset;
             break;
         default:
             break;
@@ -322,7 +318,6 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(pipeline_parameter_layout_int
     {
         m_cpu_buffer.resize(buffer_size);
         m_gpu_buffer = std::make_unique<d3d12_upload_buffer>(
-            nullptr,
             buffer_size * d3d12_frame_counter::frame_resource_count());
     }
 
@@ -341,12 +336,11 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(pipeline_parameter_layout_int
     }
     else if (srv_count != 0 || uav_count != 0)
     {
-        m_shader_resources.resize(srv_count);
-        m_unordered_access_buffers.resize(uav_count);
+        m_views.resize(cbv_count + srv_count + uav_count);
 
         m_tier = d3d12_parameter_tier_type::TIER2;
 
-        std::size_t view_count = cbv_count + srv_count + uav_count;
+        std::size_t view_count = m_layout->view_count();
         auto heap = d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         std::size_t handle_offset =
             heap->allocate(view_count * d3d12_frame_counter::frame_resource_count());
@@ -450,7 +444,6 @@ void d3d12_pipeline_parameter::set(std::size_t index, const math::float4x4* data
             &t,
             sizeof(math::float4x4));
     }
-
     mark_dirty(index);
 }
 
@@ -458,28 +451,10 @@ void d3d12_pipeline_parameter::set(std::size_t index, resource* texture)
 {
     std::size_t offset = m_layout->parameter_offset(index);
     if (m_layout->parameter_type(index) == pipeline_parameter_type::SHADER_RESOURCE)
-    {
-        m_shader_resources[offset] = static_cast<d3d12_resource*>(texture);
-    }
+        m_views[offset] = static_cast<d3d12_resource*>(texture)->srv();
     else if (m_layout->parameter_type(index) == pipeline_parameter_type::UNORDERED_ACCESS)
-    {
-        m_unordered_access_buffers[offset] = static_cast<d3d12_resource*>(texture);
-    }
+        m_views[offset] = static_cast<d3d12_resource*>(texture)->uav();
     mark_dirty(index);
-}
-
-void d3d12_pipeline_parameter::reset()
-{
-    m_dirty = 0;
-    m_last_sync_frame = -1;
-
-    for (auto& dirty : m_dirty_counter)
-        dirty = 0;
-
-    for (std::size_t i = 0; i < m_shader_resources.size(); ++i)
-        m_shader_resources[i] = nullptr;
-    for (std::size_t i = 0; i < m_unordered_access_buffers.size(); ++i)
-        m_unordered_access_buffers[i] = nullptr;
 }
 
 void d3d12_pipeline_parameter::sync()
@@ -499,32 +474,19 @@ void d3d12_pipeline_parameter::sync()
             continue;
 
         std::size_t offset = m_layout->parameter_offset(i);
-        if (m_layout->parameter_type(i) == pipeline_parameter_type::SHADER_RESOURCE)
+        if (m_layout->parameter_type(i) == pipeline_parameter_type::SHADER_RESOURCE ||
+            m_layout->parameter_type(i) == pipeline_parameter_type::UNORDERED_ACCESS)
         {
             auto heap =
                 d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
             CD3DX12_CPU_DESCRIPTOR_HANDLE target_handle(
                 m_tier_info[resource_index].tier2.base_cpu_handle,
-                static_cast<INT>(m_layout->parameter_descriptor_index(i)),
+                static_cast<INT>(offset),
                 heap->increment_size());
             d3d12_context::device()->CopyDescriptorsSimple(
                 1,
                 target_handle,
-                m_shader_resources[offset]->srv(),
-                D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        }
-        else if (m_layout->parameter_type(i) == pipeline_parameter_type::UNORDERED_ACCESS)
-        {
-            auto heap =
-                d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-            CD3DX12_CPU_DESCRIPTOR_HANDLE target_handle(
-                m_tier_info[resource_index].tier2.base_cpu_handle,
-                static_cast<INT>(m_layout->parameter_descriptor_index(i)),
-                heap->increment_size());
-            d3d12_context::device()->CopyDescriptorsSimple(
-                1,
-                target_handle,
-                m_unordered_access_buffers[offset]->uav(),
+                m_views[offset],
                 D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         }
         else

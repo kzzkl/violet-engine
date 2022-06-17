@@ -16,18 +16,6 @@ public:
     {
         return m_parameters[index].offset;
     }
-    inline std::size_t parameter_descriptor_index(std::size_t index) const
-    {
-        switch (m_parameters[index].type)
-        {
-        case pipeline_parameter_type::SHADER_RESOURCE:
-            return m_parameters[index].offset + m_cbv_count;
-        case pipeline_parameter_type::UNORDERED_ACCESS:
-            return m_parameters[index].offset + m_cbv_count + m_srv_count;
-        default:
-            return 0;
-        }
-    }
     inline std::size_t parameter_size(std::size_t index) const { return m_parameters[index].size; }
     inline pipeline_parameter_type parameter_type(std::size_t index) const
     {
@@ -39,6 +27,10 @@ public:
     inline std::size_t cbv_count() const noexcept { return m_cbv_count; }
     inline std::size_t srv_count() const noexcept { return m_srv_count; }
     inline std::size_t uav_count() const noexcept { return m_uav_count; }
+    inline std::size_t view_count() const noexcept
+    {
+        return m_cbv_count + m_srv_count + m_uav_count;
+    }
 
     inline std::size_t constant_buffer_size() const noexcept { return m_constant_buffer_size; }
 
@@ -94,8 +86,6 @@ public:
     virtual void set(std::size_t index, const math::float4x4* data, size_t size) override;
     virtual void set(std::size_t index, resource* texture) override;
 
-    virtual void reset() override;
-
     void sync();
 
     inline d3d12_parameter_tier_type tier() const noexcept { return m_tier; }
@@ -126,9 +116,8 @@ private:
     d3d12_pipeline_parameter_layout* m_layout;
 
     std::vector<std::uint8_t> m_cpu_buffer;
-    std::vector<d3d12_resource*> m_shader_resources;
-    std::vector<d3d12_resource*> m_unordered_access_buffers;
     std::unique_ptr<d3d12_upload_buffer> m_gpu_buffer;
+    std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_views;
 };
 
 class d3d12_root_signature

@@ -97,18 +97,16 @@ void d3d12_render_command::draw(
 {
     std::vector<D3D12_VERTEX_BUFFER_VIEW> vertex_buffer_views(vertex_buffer_count);
     for (std::size_t i = 0; i < vertex_buffer_count; ++i)
-    {
-        vertex_buffer_views[i] =
-            static_cast<d3d12_resource*>(vertex_buffers[i])->vertex_buffer().view();
-    }
+        vertex_buffer_views[i] = static_cast<d3d12_vertex_buffer*>(vertex_buffers[i])->view();
 
-    auto ib = static_cast<d3d12_resource*>(index_buffer)->index_buffer();
+    D3D12_INDEX_BUFFER_VIEW index_buffer_view =
+        static_cast<d3d12_index_buffer*>(index_buffer)->view();
 
     m_command_list->IASetVertexBuffers(
         0,
         static_cast<UINT>(vertex_buffer_views.size()),
         vertex_buffer_views.data());
-    m_command_list->IASetIndexBuffer(&ib.view());
+    m_command_list->IASetIndexBuffer(&index_buffer_view);
 
     static const D3D12_PRIMITIVE_TOPOLOGY primitive_topology_map[] = {
         D3D_PRIMITIVE_TOPOLOGY_LINELIST,
