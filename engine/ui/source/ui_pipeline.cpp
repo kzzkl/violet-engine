@@ -15,7 +15,7 @@ ui_pipeline::ui_pipeline()
     graphics.make_pipeline_parameter_layout("ui_material", ui_material);
     graphics::pipeline_parameter_layout_info ui_offset;
     ui_offset.parameters = {
-        {graphics::pipeline_parameter_type::FLOAT4_ARRAY, 2048}, // offset
+        {graphics::pipeline_parameter_type::FLOAT4_ARRAY, 1024}, // offset
     };
     graphics.make_pipeline_parameter_layout("ui_offset", ui_offset);
 

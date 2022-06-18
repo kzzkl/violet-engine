@@ -6,7 +6,7 @@ Texture2D ui_texture : register(t0, space0);
 
 cbuffer ui_offset : register(b0, space1)
 {
-    float4 offset[512];
+    float4 offset[1024];
 }
 
 cbuffer ui_mvp : register(b0, space2)
@@ -59,8 +59,7 @@ float4 ps_main(vs_out pin) : SV_TARGET
     else if (type == 2) // image 
     {
         float4 color = ui_texture.Sample(image_sampler, pin.uv);
-        color.a = 1.0f;
-        return color;
+        return float4(color.rgb, 1.0f);
     }
     else
     {
