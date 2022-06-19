@@ -87,6 +87,9 @@ void element_tree::update_input()
     element* hot_node = nullptr;
     float hot_node_depth = 1.0f;
 
+    element* focused_node = nullptr;
+    float focused_node_depth = 1.0f;
+
     element* drag_node = nullptr;
     float drag_node_depth = 1.0f;
 
@@ -111,6 +114,12 @@ void element_tree::update_input()
                 hot_node_depth = node->depth();
             }
 
+            if (focused_node_depth > node->depth() && node->on_focus)
+            {
+                focused_node = node;
+                focused_node_depth = node->depth();
+            }
+
             if (drag_node_depth > node->depth() &&
                 (node->on_mouse_drag_begin || node->on_mouse_drag || node->on_mouse_drag_end))
             {
@@ -132,7 +141,7 @@ void element_tree::update_input()
             node->on_mouse_move(mouse_x, mouse_y);
     }
 
-    bubble_mouse_event(hot_node, drag_node);
+    bubble_mouse_event(hot_node, focused_node, drag_node);
 }
 
 void element_tree::update_layout(float width, float height)
@@ -157,7 +166,7 @@ void element_tree::update_layout(float width, float height)
     });
 }
 
-void element_tree::bubble_mouse_event(element* hot_node, element* drag_node)
+void element_tree::bubble_mouse_event(element* hot_node, element* focused_node, element* drag_node)
 {
     auto& mouse = system<window::window>().mouse();
     int mouse_x = mouse.x();
@@ -244,15 +253,29 @@ void element_tree::bubble_mouse_event(element* hot_node, element* drag_node)
         m_hot_node = hot_node;
     }
 
-    if (hot_node != nullptr && key_down && m_focused_node != hot_node)
+    if (focused_node != m_focused_node && key_down)
     {
         if (m_focused_node != nullptr && m_focused_node->on_blur)
             m_focused_node->on_blur();
 
-        if (hot_node->on_focus)
-            hot_node->on_focus();
+        if (focused_node != nullptr && focused_node->on_focus)
+            focused_node->on_focus();
 
-        m_focused_node = hot_node;
+        m_focused_node = focused_node;
+    }
+
+    if (m_focused_node != nullptr && m_focused_node->on_input)
+    {
+        while (!m_input_chars.empty())
+        {
+            m_focused_node->on_input(m_input_chars.front());
+            m_input_chars.pop();
+        }
+    }
+    else
+    {
+        while (!m_input_chars.empty())
+            m_input_chars.pop();
     }
 }
 

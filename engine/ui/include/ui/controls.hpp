@@ -7,6 +7,7 @@
 #include "ui/controls/dock_window.hpp"
 #include "ui/controls/font_icon.hpp"
 #include "ui/controls/image.hpp"
+#include "ui/controls/input.hpp"
 #include "ui/controls/label.hpp"
 #include "ui/controls/panel.hpp"
 #include "ui/controls/scroll_view.hpp"

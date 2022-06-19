@@ -136,6 +136,8 @@ public:
     using on_mouse_drag_begin_event = element_event<void(int, int)>;
     using on_mouse_drag_end_event = element_event<void(int, int)>;
 
+    using on_input_event = element_event<void(char)>;
+
     using on_blur_event = element_event<void()>;
     using on_focus_event = element_event<void()>;
     using on_show_event = element_event<void()>;
@@ -157,6 +159,8 @@ public:
     on_mouse_drag_event::handle on_mouse_drag;
     on_mouse_drag_begin_event::handle on_mouse_drag_begin;
     on_mouse_drag_end_event::handle on_mouse_drag_end;
+
+    on_input_event::handle on_input;
 
     on_blur_event::handle on_blur;
     on_focus_event::handle on_focus;

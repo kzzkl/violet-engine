@@ -5,6 +5,7 @@ add_executable(${PROJECT_NAME}
     ./source/docking_page.cpp
     ./source/gallery.cpp
     ./source/image_page.cpp
+    ./source/input_page.cpp
     ./source/main.cpp
     ./source/page.cpp
     ./source/scroll_page.cpp

@@ -77,6 +77,7 @@ bool ui::initialize(const dictionary& config)
     event.subscribe<window::event_window_resize>(
         "ui",
         [this](std::uint32_t width, std::uint32_t height) { resize(width, height); });
+    event.subscribe<window::event_keyboard_char>("ui", [this](char c) { m_tree->input(c); });
 
     auto window_extent = system<window::window>().extent();
     resize(window_extent.width, window_extent.height);
@@ -260,6 +261,14 @@ void ui::initialize_default_theme()
             .icon_color = COLOR_WHITE,
             .icon_scale = 1.0f};
         register_theme(theme_name, font_icon_dark);
+
+        input_theme input_dark = {
+            .text_font = text_font,
+            .text_color = COLOR_WHITE,
+            .background_color = 0xFF3B291E,
+            .underline_color = 0xFFB2CC38,
+            .select_color = 0xFFB2CC38};
+        register_theme(theme_name, input_dark);
 
         label_theme label_dark = {.text_font = text_font, .text_color = COLOR_WHITE};
         register_theme(theme_name, label_dark);
