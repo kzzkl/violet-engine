@@ -101,14 +101,11 @@ void ui::tick()
     m_renderer.reset();
 
     auto extent = system<window::window>().extent();
-    auto layout_begin = std::chrono::steady_clock::now();
     m_tree->tick(static_cast<float>(extent.width), static_cast<float>(extent.height));
-    auto layout_end = std::chrono::steady_clock::now();
 
     if (!m_tree->tree_dirty())
         return;
 
-    auto render_begin = std::chrono::steady_clock::now();
     m_renderer.draw(m_tree.get());
     m_offset_parameter->set(0, m_renderer.offset().data(), m_renderer.offset().size());
 
@@ -167,13 +164,6 @@ void ui::tick()
         vertex_offset += batch->vertex_position.size();
         index_offset += batch->indices.size();
     }
-
-    auto render_end = std::chrono::steady_clock::now();
-
-    log::debug(
-        "layout: {}, render: {}",
-        (layout_end - layout_begin).count() * 0.000000001f,
-        (render_end - render_begin).count() * 0.000000001f);
 
     m_material_parameter_counter = 0;
 }

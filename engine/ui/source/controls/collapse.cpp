@@ -63,4 +63,9 @@ void collapse::remove_item(element* item)
 {
     m_container->remove(item);
 }
+
+bool collapse::is_open() const noexcept
+{
+    return m_container->display();
+}
 } // namespace ash::ui

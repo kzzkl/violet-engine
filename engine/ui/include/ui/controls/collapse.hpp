@@ -32,6 +32,8 @@ public:
     void add_item(element* item);
     void remove_item(element* item);
 
+    bool is_open() const noexcept;
+
     panel* container() const noexcept { return m_container.get(); }
 
 private:

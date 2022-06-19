@@ -12,9 +12,13 @@ public:
     input_page();
 
 private:
-    void initialize_sample_input();
+    void initialize_input_text();
+    void initialize_input_float();
 
-    std::unique_ptr<ui::input> m_input;
-    std::unique_ptr<ui::label> m_input_text;
+    std::unique_ptr<ui::input> m_input_text;
+    std::unique_ptr<ui::label> m_input_text_result;
+
+    std::unique_ptr<ui::input_float> m_input_float;
+    std::unique_ptr<ui::label> m_input_float_result;
 };
 } // namespace ash::sample

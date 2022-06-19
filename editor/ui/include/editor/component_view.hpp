@@ -13,7 +13,7 @@ class component_panel : public ui::collapse
 public:
     component_panel(std::string_view component_name, const ui::collapse_theme& theme);
 
-    virtual void show_component(ecs::entity entity) = 0;
+    virtual void tick(bool entity_change, ecs::entity entity) = 0;
 };
 
 class component_view : public ui::dock_window
@@ -21,7 +21,7 @@ class component_view : public ui::dock_window
 public:
     component_view(ui::dock_area* area, const ui::dock_window_theme& theme);
 
-    void show_component(ecs::entity entity);
+    void tick(ecs::entity entity);
 
 private:
     template <typename Component, typename ComponentPanel>

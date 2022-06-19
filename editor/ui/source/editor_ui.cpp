@@ -46,6 +46,6 @@ void editor_ui::tick()
 {
     m_scene_view->tick();
     ecs::entity selected_entity = m_hierarchy_view->selected_entity();
-    m_component_view->show_component(selected_entity);
+    m_component_view->tick(selected_entity);
 }
 } // namespace ash::editor

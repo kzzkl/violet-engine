@@ -40,7 +40,6 @@ void scroll_page::initialize_sample_scroll()
     for (std::size_t i = 0; i < 8; ++i)
     {
         auto panel = std::make_unique<ui::panel>(color[i]);
-        panel->name = "panel " + std::to_string(i);
         panel->width(200.0f);
         panel->height(200.0f);
         m_scroll_view->add_item(panel.get());

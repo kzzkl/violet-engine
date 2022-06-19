@@ -1,6 +1,7 @@
 #include "ui/controls/input.hpp"
 #include "log.hpp"
 #include "ui/font.hpp"
+#include <format>
 
 namespace ash::ui
 {
@@ -12,8 +13,9 @@ public:
     void text(std::string_view content);
     void text_color(std::uint32_t color);
 
-    void put_char(char c);
+    void select(int begin, int end) noexcept;
     void select_all();
+    std::pair<int, int> select_range() const noexcept { return {m_select_begin, m_select_end}; }
 
     std::string text() const noexcept { return m_text; }
     virtual const element_mesh* mesh() const noexcept override { return &m_mesh; }
@@ -158,43 +160,10 @@ void text_input::text_color(std::uint32_t color)
     mark_dirty();
 }
 
-void text_input::put_char(char c)
+void text_input::select(int begin, int end) noexcept
 {
-    if (m_select_begin != m_select_end)
-    {
-        if (m_select_begin < m_select_end)
-        {
-            m_text.erase(m_select_begin, m_select_end - m_select_begin);
-        }
-        else
-        {
-            m_text.erase(m_select_end, m_select_begin - m_select_end);
-            std::swap(m_select_begin, m_select_end);
-        }
-    }
-
-    if (c == 0x08)
-    {
-        // backspace
-        if (m_select_begin == m_select_end && m_select_begin > 0)
-        {
-            m_text.erase(m_select_begin - 1, 1);
-            --m_select_begin;
-        }
-    }
-    else if (0x20 <= c && c <= 0x7E)
-    {
-        m_text.insert(m_text.begin() + m_select_begin, c);
-        ++m_select_begin;
-    }
-    else
-    {
-        return;
-    }
-
-    m_select_end = m_select_begin;
-
-    text(m_text);
+    m_select_begin = begin;
+    m_select_end = end;
 
     if (on_select_text)
         on_select_text(m_position[m_select_begin * 4][0], m_position[m_select_end * 4][0]);
@@ -234,8 +203,6 @@ input::input(const input_theme& theme)
       m_background_color(theme.background_color),
       m_underline_color(theme.underline_color)
 {
-    // padding(10.0f, LAYOUT_EDGE_HORIZONTAL);
-
     m_text = std::make_unique<text_input>(theme.text_font, theme.text_color);
     m_text->layer(2);
     m_text->margin(10.0f, LAYOUT_EDGE_HORIZONTAL);
@@ -277,14 +244,19 @@ input::input(const input_theme& theme)
     on_blur = [this]() {
         m_select->hide();
         m_underline->hide();
-        if (m_text_change && on_text_change)
+        if (m_text_change)
         {
-            on_text_change(m_text->text());
+            if (!set_value(m_text->text()))
+                m_text->text(adjust_text());
+
+            if (on_text_change)
+                on_text_change(m_text->text());
+
             m_text_change = false;
         }
     };
     on_input = [this](char c) {
-        m_text->put_char(c);
+        put_char(c);
         m_text_change = true;
     };
 }
@@ -297,5 +269,79 @@ void input::text(std::string_view content)
 std::string input::text() const noexcept
 {
     return m_text->text();
+}
+
+void input::put_char(char c)
+{
+    std::string new_text = m_text->text();
+    auto [select_begin, select_end] = m_text->select_range();
+
+    if (select_begin != select_end)
+    {
+        if (select_begin < select_end)
+        {
+            new_text.erase(select_begin, select_end - select_begin);
+        }
+        else
+        {
+            new_text.erase(select_end, select_begin - select_end);
+            std::swap(select_begin, select_end);
+        }
+    }
+
+    if (c == 0x08)
+    {
+        // backspace
+        if (select_begin == select_end && select_begin > 0)
+        {
+            new_text.erase(select_begin - 1, 1);
+            --select_begin;
+        }
+    }
+    else if (0x20 <= c && c <= 0x7E)
+    {
+        new_text.insert(new_text.begin() + select_begin, c);
+        ++select_begin;
+    }
+    else
+    {
+        return;
+    }
+
+    m_text->text(new_text);
+    m_text->select(select_begin, select_begin);
+}
+
+input_float::input_float(const input_theme& theme) : input(theme), m_value(0.0f)
+{
+    text(std::format("{}", m_value));
+}
+
+void input_float::value(float value)
+{
+    m_value = value;
+    text(std::format("{}", m_value));
+}
+
+bool input_float::set_value(std::string_view text)
+{
+    try
+    {
+        m_value = std::stof(text.data());
+    }
+    catch (...)
+    {
+        return false;
+    }
+
+    if (on_value_change)
+        on_value_change(m_value);
+
+    return false;
+}
+
+std::string input_float::adjust_text() const noexcept
+{
+    return std::format("{}", m_value);
 }
 } // namespace ash::ui

@@ -1,6 +1,7 @@
 #include "docking_page.hpp"
 #include "ui/controls/dock_window.hpp"
 #include "ui/ui.hpp"
+#include <format>
 
 namespace ash::sample
 {
@@ -95,7 +96,7 @@ ui::dock_element* docking_page::make_dock_window()
     ui::dock_window_theme theme = ui.theme<ui::dock_window_theme>("dark");
     theme.container_color = PANEL_COLOR[panel_counter];
 
-    std::string window_name = "Window " + std::to_string(panel_counter);
+    std::string window_name = std::format("Window {}", panel_counter);
     auto result = std::make_unique<ui::dock_window>(window_name, 0xEA43, m_dock_area.get(), theme);
     result->width(200.0f);
     result->height(200.0f);

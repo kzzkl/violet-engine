@@ -1,5 +1,6 @@
 #include "button_page.hpp"
 #include "ui/ui.hpp"
+#include <format>
 
 namespace ash::sample
 {
@@ -25,7 +26,7 @@ void button_page::initialize_sample_button()
     m_button->height(40.0f);
     m_button->on_mouse_press = [&, this](window::mouse_key key, int x, int y) -> bool {
         ++m_click_counter;
-        m_button_text->text("click: " + std::to_string(m_click_counter));
+        m_button_text->text(std::format("click: {}", m_click_counter));
         return false;
     };
     display_1->add(m_button.get());

@@ -378,7 +378,6 @@ static std::size_t dock_counter = 0;
 void dock_area::move_down(dock_element* element)
 {
     auto new_dock_parent = std::make_shared<dock_element>(this);
-    new_dock_parent->name = "node " + std::to_string(dock_counter++);
     new_dock_parent->dock_width(element->m_width);
     new_dock_parent->dock_height(element->m_height);
     element->dock_width(100.0f);
