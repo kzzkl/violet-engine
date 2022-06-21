@@ -21,12 +21,12 @@ d3d12_render_command::d3d12_render_command(D3D12CommandAllocator* allocator, std
 }
 
 void d3d12_render_command::begin(
-    render_pass_interface* render_pass,
+    render_pipeline_interface* pipeline,
     resource_interface* render_target,
     resource_interface* render_target_resolve,
     resource_interface* depth_stencil_buffer)
 {
-    auto rp = static_cast<d3d12_render_pass*>(render_pass);
+    auto rp = static_cast<d3d12_render_pipeline*>(pipeline);
     d3d12_camera_info info = {
         .render_target = static_cast<d3d12_resource*>(render_target),
         .render_target_resolve = static_cast<d3d12_resource*>(render_target_resolve),
@@ -34,15 +34,15 @@ void d3d12_render_command::begin(
     rp->begin(m_command_list.Get(), info);
 }
 
-void d3d12_render_command::end(render_pass_interface* render_pass)
+void d3d12_render_command::end(render_pipeline_interface* pipeline)
 {
-    auto rp = static_cast<d3d12_render_pass*>(render_pass);
+    auto rp = static_cast<d3d12_render_pipeline*>(pipeline);
     rp->end(m_command_list.Get());
 }
 
-void d3d12_render_command::next(render_pass_interface* render_pass)
+void d3d12_render_command::next_pass(render_pipeline_interface* pipeline)
 {
-    auto rp = static_cast<d3d12_render_pass*>(render_pass);
+    auto rp = static_cast<d3d12_render_pipeline*>(pipeline);
     rp->next(m_command_list.Get());
 }
 

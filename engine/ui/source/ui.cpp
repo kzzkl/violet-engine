@@ -292,14 +292,14 @@ void ui::resize(std::uint32_t width, std::uint32_t height)
     float R = static_cast<float>(width);
     float T = 0.0f;
     float B = static_cast<float>(height);
-    m_mvp_parameter->set(
-        0,
-        math::float4x4{
-            math::float4{2.0f / (R - L),    0.0f,              0.0f, 0.0f},
-            math::float4{0.0f,              2.0f / (T - B),    0.0f, 0.0f},
-            math::float4{0.0f,              0.0f,              0.5f, 0.0f},
-            math::float4{(R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f}
-    });
+    math::float4x4 orthographic = math::matrix_plain::orthographic(
+        0.0f,
+        static_cast<float>(width),
+        static_cast<float>(height),
+        0.0f,
+        0.0f,
+        1.0f);
+    m_mvp_parameter->set(0, orthographic);
     m_tree->width(width);
     m_tree->height(height);
 }

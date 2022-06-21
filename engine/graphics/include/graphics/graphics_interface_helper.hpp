@@ -13,12 +13,12 @@ public:
     std::vector<pipeline_parameter_pair> parameters;
 };
 
-class pipeline_info
+class render_pass_info
 {
 public:
-    pipeline_info();
+    render_pass_info();
 
-    pipeline_desc convert() noexcept;
+    render_pass_desc convert() noexcept;
 
     std::string vertex_shader;
     std::string pixel_shader;
@@ -43,17 +43,17 @@ public:
     attachment_desc convert() noexcept { return *this; }
 };
 
-class render_pass_info
+class render_pipeline_info
 {
 public:
-    render_pass_desc convert() noexcept;
+    render_pipeline_desc convert() noexcept;
 
     std::vector<attachment_info> attachments;
-    std::vector<pipeline_info> subpasses;
+    std::vector<render_pass_info> passes;
 
 private:
     std::vector<attachment_desc> m_attachment_desc;
-    std::vector<pipeline_desc> m_pass_desc;
+    std::vector<render_pass_desc> m_pass_desc;
 };
 
 class compute_pipeline_info

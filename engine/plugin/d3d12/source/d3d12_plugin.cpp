@@ -16,9 +16,9 @@ public:
         return new d3d12_renderer(desc);
     }
 
-    virtual render_pass_interface* make_render_pass(const render_pass_desc& desc) override
+    virtual render_pipeline_interface* make_render_pipeline(const render_pipeline_desc& desc) override
     {
-        return new d3d12_render_pass(desc);
+        return new d3d12_render_pipeline(desc);
     }
 
     virtual compute_pipeline_interface* make_compute_pipeline(

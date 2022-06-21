@@ -43,7 +43,7 @@ public:
         m_scene_camera = scene_camera;
     }
 
-    std::unique_ptr<render_pass_interface> make_render_pass(render_pass_info& info);
+    std::unique_ptr<render_pipeline_interface> make_render_pipeline(render_pipeline_info& info);
     std::unique_ptr<compute_pipeline_interface> make_compute_pipeline(compute_pipeline_info& info);
 
     void make_pipeline_parameter_layout(

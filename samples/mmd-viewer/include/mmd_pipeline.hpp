@@ -15,7 +15,7 @@ public:
         override;
 
 private:
-    std::unique_ptr<graphics::render_pass_interface> m_interface;
+    std::unique_ptr<graphics::render_pipeline_interface> m_interface;
 };
 
 class mmd_skin_pipeline : public graphics::skin_pipeline

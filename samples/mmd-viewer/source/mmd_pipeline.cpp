@@ -20,7 +20,7 @@ mmd_render_pipeline::mmd_render_pipeline()
     graphics.make_pipeline_parameter_layout("mmd_material", mmd_material);
 
     // Color pass.
-    graphics::pipeline_info color_pass_info = {};
+    graphics::render_pass_info color_pass_info = {};
     color_pass_info.vertex_shader = "resource/shader/color.vert";
     color_pass_info.pixel_shader = "resource/shader/color.frag";
     color_pass_info.vertex_attributes = {
@@ -38,7 +38,7 @@ mmd_render_pipeline::mmd_render_pipeline()
     color_pass_info.samples = 4;
 
     // Edge pass.
-    graphics::pipeline_info edge_pass_info = {};
+    graphics::render_pass_info edge_pass_info = {};
     edge_pass_info.vertex_shader = "resource/shader/edge.vert";
     edge_pass_info.pixel_shader = "resource/shader/edge.frag";
     edge_pass_info.vertex_attributes = {
@@ -90,14 +90,14 @@ mmd_render_pipeline::mmd_render_pipeline()
     back_buffer.initial_state = graphics::resource_state::RENDER_TARGET;
     back_buffer.final_state = graphics::resource_state::PRESENT;
 
-    graphics::render_pass_info mmd_pass_info;
-    mmd_pass_info.attachments.push_back(render_target);
-    mmd_pass_info.attachments.push_back(depth_stencil);
-    mmd_pass_info.attachments.push_back(back_buffer);
-    mmd_pass_info.subpasses.push_back(color_pass_info);
-    mmd_pass_info.subpasses.push_back(edge_pass_info);
+    graphics::render_pipeline_info mmd_pipeline_info;
+    mmd_pipeline_info.attachments.push_back(render_target);
+    mmd_pipeline_info.attachments.push_back(depth_stencil);
+    mmd_pipeline_info.attachments.push_back(back_buffer);
+    mmd_pipeline_info.passes.push_back(color_pass_info);
+    mmd_pipeline_info.passes.push_back(edge_pass_info);
 
-    m_interface = graphics.make_render_pass(mmd_pass_info);
+    m_interface = graphics.make_render_pipeline(mmd_pipeline_info);
 }
 
 void mmd_render_pipeline::render(
@@ -132,7 +132,7 @@ void mmd_render_pipeline::render(
             unit.vertex_base);
     }
 
-    command->next(m_interface.get());
+    command->next_pass(m_interface.get());
 
     // Edge pass.
     command->parameter(1, camera.parameter()->interface());

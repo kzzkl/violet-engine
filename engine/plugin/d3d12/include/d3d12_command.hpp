@@ -13,12 +13,12 @@ public:
     d3d12_render_command(D3D12CommandAllocator* allocator, std::wstring_view name = L"");
 
     virtual void begin(
-        render_pass_interface* render_pass,
+        render_pipeline_interface* pipeline,
         resource_interface* render_target,
         resource_interface* render_target_resolve,
         resource_interface* depth_stencil_buffer) override;
-    virtual void end(render_pass_interface* render_pass) override;
-    virtual void next(render_pass_interface* render_pass) override;
+    virtual void end(render_pipeline_interface* pipeline) override;
+    virtual void next_pass(render_pipeline_interface* pipeline) override;
 
     virtual void scissor(const scissor_extent* extents, std::size_t size) override;
 

@@ -26,31 +26,31 @@ ui_pipeline::ui_pipeline()
     graphics.make_pipeline_parameter_layout("ui_mvp", ui_mvp);
 
     // UI pass.
-    graphics::pipeline_info ui_pipeline_info = {};
-    ui_pipeline_info.vertex_shader = "engine/shader/ui.vert";
-    ui_pipeline_info.pixel_shader = "engine/shader/ui.frag";
-    ui_pipeline_info.vertex_attributes = {
+    graphics::render_pass_info ui_pass_info = {};
+    ui_pass_info.vertex_shader = "engine/shader/ui.vert";
+    ui_pass_info.pixel_shader = "engine/shader/ui.frag";
+    ui_pass_info.vertex_attributes = {
         {"POSITION",     graphics::vertex_attribute_type::FLOAT2}, // position
         {"UV",           graphics::vertex_attribute_type::FLOAT2}, // uv
         {"COLOR",        graphics::vertex_attribute_type::COLOR }, // color
         {"OFFSET_INDEX", graphics::vertex_attribute_type::UINT  }  // offset index
     };
-    ui_pipeline_info.references = {
+    ui_pass_info.references = {
         {graphics::attachment_reference_type::COLOR,   0},
         {graphics::attachment_reference_type::DEPTH,   0},
         {graphics::attachment_reference_type::RESOLVE, 0}
     };
-    ui_pipeline_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    ui_pipeline_info.parameters = {"ui_material", "ui_offset", "ui_mvp"};
-    ui_pipeline_info.samples = 4;
-    ui_pipeline_info.depth_stencil.depth_functor = graphics::depth_functor::LESS;
-    ui_pipeline_info.blend.enable = true;
-    ui_pipeline_info.blend.source_factor = graphics::blend_factor::SOURCE_ALPHA;
-    ui_pipeline_info.blend.target_factor = graphics::blend_factor::SOURCE_INV_ALPHA;
-    ui_pipeline_info.blend.op = graphics::blend_op::ADD;
-    ui_pipeline_info.blend.source_alpha_factor = graphics::blend_factor::SOURCE_ALPHA;
-    ui_pipeline_info.blend.target_alpha_factor = graphics::blend_factor::SOURCE_INV_ALPHA;
-    ui_pipeline_info.blend.alpha_op = graphics::blend_op::ADD;
+    ui_pass_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    ui_pass_info.parameters = {"ui_material", "ui_offset", "ui_mvp"};
+    ui_pass_info.samples = 4;
+    ui_pass_info.depth_stencil.depth_functor = graphics::depth_functor::LESS;
+    ui_pass_info.blend.enable = true;
+    ui_pass_info.blend.source_factor = graphics::blend_factor::SOURCE_ALPHA;
+    ui_pass_info.blend.target_factor = graphics::blend_factor::SOURCE_INV_ALPHA;
+    ui_pass_info.blend.op = graphics::blend_op::ADD;
+    ui_pass_info.blend.source_alpha_factor = graphics::blend_factor::SOURCE_ALPHA;
+    ui_pass_info.blend.target_alpha_factor = graphics::blend_factor::SOURCE_INV_ALPHA;
+    ui_pass_info.blend.alpha_op = graphics::blend_op::ADD;
 
     // Attachment.
     graphics::attachment_info render_target = {};
@@ -86,13 +86,13 @@ ui_pipeline::ui_pipeline()
     back_buffer.initial_state = graphics::resource_state::RENDER_TARGET;
     back_buffer.final_state = graphics::resource_state::PRESENT;
 
-    graphics::render_pass_info ui_pass_info;
-    ui_pass_info.attachments.push_back(render_target);
-    ui_pass_info.attachments.push_back(depth_stencil);
-    ui_pass_info.attachments.push_back(back_buffer);
-    ui_pass_info.subpasses.push_back(ui_pipeline_info);
+    graphics::render_pipeline_info ui_pipeline_info;
+    ui_pipeline_info.attachments.push_back(render_target);
+    ui_pipeline_info.attachments.push_back(depth_stencil);
+    ui_pipeline_info.attachments.push_back(back_buffer);
+    ui_pipeline_info.passes.push_back(ui_pass_info);
 
-    m_interface = graphics.make_render_pass(ui_pass_info);
+    m_interface = graphics.make_render_pipeline(ui_pipeline_info);
 }
 
 void ui_pipeline::render(

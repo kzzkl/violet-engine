@@ -87,12 +87,12 @@ void gallery::initialize_navigation()
     m_nodes["Basic"]->add_node(m_nodes["Image"].get());
 
     // Form.
-    m_nodes["Form"] = std::make_unique<ui::tree_node>("Form", 0xEB82, navigation_node_theme);
+    m_nodes["Form"] = std::make_unique<ui::tree_node>("Form", 0xECDA, navigation_node_theme);
     m_navigation_tree->add_node(m_nodes["Form"].get());
 
     // Input.
     m_pages["Input"] = std::make_unique<input_page>();
-    m_nodes["Input"] = std::make_unique<ui::tree_node>("Input", 0xEE4A, navigation_node_theme);
+    m_nodes["Input"] = std::make_unique<ui::tree_node>("Input", 0xEE5E, navigation_node_theme);
     m_nodes["Form"]->add_node(m_nodes["Input"].get());
 
     // Views.

@@ -208,7 +208,7 @@ struct attachment_reference
     std::size_t resolve_relation;
 };
 
-struct pipeline_desc
+struct render_pass_desc
 {
     const char* vertex_shader;
     const char* pixel_shader;
@@ -268,19 +268,19 @@ struct attachment_desc
     std::size_t samples;
 };
 
-struct render_pass_desc
+struct render_pipeline_desc
 {
     attachment_desc* attachments;
     std::size_t attachment_count;
 
-    pipeline_desc* subpasses;
-    std::size_t subpass_count;
+    render_pass_desc* passes;
+    std::size_t pass_count;
 };
 
-class render_pass_interface
+class render_pipeline_interface
 {
 public:
-    virtual ~render_pass_interface() = default;
+    virtual ~render_pipeline_interface() = default;
 };
 
 struct compute_pipeline_desc
@@ -317,12 +317,12 @@ public:
 
     // Render.
     virtual void begin(
-        render_pass_interface* render_pass,
+        render_pipeline_interface* pipeline,
         resource_interface* render_target,
         resource_interface* render_target_resolve,
         resource_interface* depth_stencil_buffer) = 0;
-    virtual void end(render_pass_interface* render_pass) = 0;
-    virtual void next(render_pass_interface* render_pass) = 0;
+    virtual void end(render_pipeline_interface* pipeline) = 0;
+    virtual void next_pass(render_pipeline_interface* pipeline) = 0;
 
     virtual void scissor(const scissor_extent* extents, std::size_t size) = 0;
 
@@ -424,7 +424,7 @@ public:
 
     virtual renderer_interface* make_renderer(const renderer_desc& desc) = 0;
 
-    virtual render_pass_interface* make_render_pass(const render_pass_desc& desc) = 0;
+    virtual render_pipeline_interface* make_render_pipeline(const render_pipeline_desc& desc) = 0;
     virtual compute_pipeline_interface* make_compute_pipeline(
         const compute_pipeline_desc& desc) = 0;
 

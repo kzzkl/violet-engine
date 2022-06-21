@@ -35,12 +35,12 @@ target_shader_compile(
     "${PROJECT_NAME}"
     "${SHADERS}"
     "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated"
-    "${ASH_THIRD_PARTY_DIR}/Vulkan/glslangValidator.exe")
+    "${ASH_ROOT_DIR}/engine/shader/compiler/Vulkan/glslangValidator.exe")
 target_shader_compile(
     "${PROJECT_NAME}"
     "${SHADERS}"
     "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated"
-    "${ASH_THIRD_PARTY_DIR}/DirectX/dxc/dxc.exe")
+    "${ASH_ROOT_DIR}/engine/shader/compiler/DirectX/dxc/dxc.exe")
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/config DESTINATION bin/resource)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/mmd DESTINATION bin/resource)
