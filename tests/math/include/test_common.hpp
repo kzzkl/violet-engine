@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math.hpp"
+#include "math/math.hpp"
 #include <catch2/catch.hpp>
 
 namespace ash::test

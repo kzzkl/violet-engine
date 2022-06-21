@@ -16,7 +16,7 @@ public:
     virtual void render(const camera& camera, render_command_interface* command) override;
 
 private:
-    std::unique_ptr<render_pass_interface> m_interface;
+    std::unique_ptr<render_pipeline_interface> m_interface;
 };
 
 class graphics_debug

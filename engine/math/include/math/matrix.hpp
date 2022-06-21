@@ -122,18 +122,6 @@ public:
         };
     }
 
-    static inline matrix_type perspective(float fov, float aspect, float zn, float zf)
-    {
-        float h = 1.0f / tanf(fov * 0.5f); // view space height
-        float w = h / aspect;              // view space width
-        return matrix_type{
-            vector_type{w,    0.0f, 0.0f,                0.0f},
-            vector_type{0.0f, h,    0.0f,                0.0f},
-            vector_type{0.0f, 0.0f, zf / (zf - zn),      1.0f},
-            vector_type{0.0f, 0.0f, zn * zf / (zn - zf), 0.0f}
-        };
-    }
-
     static inline matrix_type scaling(float x, float y, float z)
     {
         return matrix_type{
@@ -329,6 +317,48 @@ public:
 
         translation = m[3];
     }
+
+    static inline matrix_type orthographic(
+        float left,
+        float right,
+        float bottom,
+        float top,
+        float near_z,
+        float far_z)
+    {
+        float w = 1.0f / (right - left);
+        float h = 1.0f / (top - bottom);
+        float d = 1.0f / (far_z - near_z);
+        return matrix_type{
+            vector_type{w + w,               0.0f,                0.0f,        0.0f},
+            vector_type{0.0f,                h + h,               0.0f,        0.0f},
+            vector_type{0.0f,                0,                   d,           0.0f},
+            vector_type{(left + right) * -w, (bottom + top) * -h, near_z * -d, 1.0f}
+        };
+    }
+
+    static inline matrix_type orthographic(float width, float height, float near_z, float far_z)
+    {
+        float d = 1.0f / (far_z - near_z);
+        return matrix_type{
+            vector_type{2.0f / width, 0.0f,          0.0f,        0.0f},
+            vector_type{0.0f,         2.0f / height, 0.0f,        0.0f},
+            vector_type{0.0f,         0.0f,          d,           0.0f},
+            vector_type{0.0f,         0.0f,          near_z * -d, 1.0f}
+        };
+    }
+
+    static inline matrix_type perspective(float fov, float aspect, float zn, float zf)
+    {
+        float h = 1.0f / tanf(fov * 0.5f); // view space height
+        float w = h / aspect;              // view space width
+        return matrix_type{
+            vector_type{w,    0.0f, 0.0f,                0.0f},
+            vector_type{0.0f, h,    0.0f,                0.0f},
+            vector_type{0.0f, 0.0f, zf / (zf - zn),      1.0f},
+            vector_type{0.0f, 0.0f, zn * zf / (zn - zf), 0.0f}
+        };
+    }
 };
 
 class matrix_simd
@@ -441,13 +471,6 @@ public:
             simd::identity_row<1>(),
             simd::identity_row<2>(),
             simd::identity_row<3>()};
-    }
-
-    static inline matrix_type perspective(float fov, float aspect, float zn, float zf)
-    {
-        // TODO
-        float4x4 result = matrix_plain::perspective(fov, aspect, zn, zf);
-        return simd::load(result);
     }
 
     static inline matrix_type scaling(float x, float y, float z)
@@ -582,6 +605,13 @@ public:
         rotation = quaternion_simd::rotation_matrix(r);
 
         translation = m[3];
+    }
+
+    static inline matrix_type perspective(float fov, float aspect, float zn, float zf)
+    {
+        // TODO
+        float4x4 result = matrix_plain::perspective(fov, aspect, zn, zf);
+        return simd::load(result);
     }
 };
 } // namespace ash::math

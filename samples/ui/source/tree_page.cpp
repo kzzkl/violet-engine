@@ -17,7 +17,7 @@ void tree_page::initialize_sample_tree()
     auto display_1 = add_display_panel();
 
     m_tree = std::make_unique<ui::tree>();
-    m_tree->link(display_1);
+    display_1->add(m_tree.get());
 
     const std::vector<std::string> chapters = {
         "Chapter 1: Accustoming Yourself to C++",
@@ -93,7 +93,7 @@ void tree_page::initialize_sample_tree()
     for (auto& chapter : chapters)
     {
         m_chapters.push_back(std::make_unique<ui::tree_node>(chapter, node_theme));
-        m_tree->add(m_chapters.back().get());
+        m_tree->add_node(m_chapters.back().get());
     }
 
     for (auto& item : items)
@@ -101,22 +101,22 @@ void tree_page::initialize_sample_tree()
 
     std::size_t i = 0;
     for (; i < 4; ++i)
-        m_chapters[0]->add(m_items[i].get());
+        m_chapters[0]->add_node(m_items[i].get());
     for (; i < 12; ++i)
-        m_chapters[1]->add(m_items[i].get());
+        m_chapters[1]->add_node(m_items[i].get());
     for (; i < 17; ++i)
-        m_chapters[2]->add(m_items[i].get());
+        m_chapters[2]->add_node(m_items[i].get());
     for (; i < 25; ++i)
-        m_chapters[3]->add(m_items[i].get());
+        m_chapters[3]->add_node(m_items[i].get());
     for (; i < 31; ++i)
-        m_chapters[4]->add(m_items[i].get());
+        m_chapters[4]->add_node(m_items[i].get());
     for (; i < 40; ++i)
-        m_chapters[5]->add(m_items[i].get());
+        m_chapters[5]->add_node(m_items[i].get());
     for (; i < 48; ++i)
-        m_chapters[6]->add(m_items[i].get());
+        m_chapters[6]->add_node(m_items[i].get());
     for (; i < 52; ++i)
-        m_chapters[7]->add(m_items[i].get());
+        m_chapters[7]->add_node(m_items[i].get());
     for (; i < 55; ++i)
-        m_chapters[8]->add(m_items[i].get());
+        m_chapters[8]->add_node(m_items[i].get());
 }
 } // namespace ash::sample

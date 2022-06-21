@@ -19,12 +19,12 @@ dock_area::dock_area(int element_width, int element_height, const dock_area_them
     m_hover_panel->position_type(LAYOUT_POSITION_TYPE_ABSOLUTE);
     m_hover_panel->hide();
     m_hover_panel->layer(90);
-    m_hover_panel->link(this);
+    add(m_hover_panel.get());
 }
 
 void dock_area::dock(dock_element* root)
 {
-    root->link(this);
+    add(root);
     root->dock_width(100.0f);
     root->dock_height(100.0f);
     root->m_dock_area = this;
@@ -78,15 +78,15 @@ void dock_area::dock(dock_element* source, dock_element* target, layout_edge edg
         break;
     }
 
-    source->unlink();
-    source->link(target->m_dock_parent.get(), link_index);
+    target->m_dock_parent->add(source, link_index);
     source->m_dock_parent = target->m_dock_parent;
 }
 
 void dock_area::undock(dock_element* element)
 {
     std::size_t index = element->link_index();
-    element->unlink();
+    if (element->parent() != nullptr)
+        element->remove_from_parent();
 
     if (element->m_dock_parent == nullptr)
         return;
@@ -109,7 +109,7 @@ void dock_area::undock(dock_element* element)
     }
     else
     {
-        element->m_dock_parent->unlink();
+        element->m_dock_parent->remove_from_parent();
     }
 
     element->m_dock_parent = nullptr;
@@ -358,19 +358,18 @@ void dock_area::move_up(dock_element* element)
     element->dock_width(parent->m_width);
     element->dock_height(parent->m_height);
 
-    // If the parent node is the root node, return directly.
     if (parent->m_dock_parent == nullptr)
     {
-        element->unlink();
-        element->link(this);
-        parent->unlink();
+        element->remove_from_parent();
+        add(element);
+        parent->remove_from_parent();
         element->m_dock_parent = nullptr;
     }
     else
     {
-        element->unlink();
-        element->link(parent->m_dock_parent.get(), parent->link_index());
-        parent->unlink();
+        element->remove_from_parent();
+        parent->m_dock_parent->add(element, parent->link_index());
+        parent->remove_from_parent();
         parent = parent->m_dock_parent;
     }
 }
@@ -379,7 +378,6 @@ static std::size_t dock_counter = 0;
 void dock_area::move_down(dock_element* element)
 {
     auto new_dock_parent = std::make_shared<dock_element>(this);
-    new_dock_parent->name = "node " + std::to_string(dock_counter++);
     new_dock_parent->dock_width(element->m_width);
     new_dock_parent->dock_height(element->m_height);
     element->dock_width(100.0f);
@@ -388,16 +386,16 @@ void dock_area::move_down(dock_element* element)
     auto& parent = element->m_dock_parent;
     if (parent == nullptr)
     {
-        new_dock_parent->link(element->parent(), element->link_index());
+        element->parent()->add(new_dock_parent.get(), element->link_index());
     }
     else
     {
-        new_dock_parent->link(parent.get(), element->link_index());
+        parent->add(new_dock_parent.get(), element->link_index());
         new_dock_parent->m_dock_parent = parent;
     }
 
-    element->unlink();
-    element->link(new_dock_parent.get());
+    element->remove_from_parent();
+    new_dock_parent->add(element);
     parent = new_dock_parent;
 }
 

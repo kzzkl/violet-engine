@@ -1,6 +1,7 @@
 #include "docking_page.hpp"
 #include "ui/controls/dock_window.hpp"
 #include "ui/ui.hpp"
+#include <format>
 
 namespace ash::sample
 {
@@ -56,13 +57,13 @@ void docking_page::initialize_sample_docking()
     display_1->flex_direction(ui::LAYOUT_FLEX_DIRECTION_ROW);
 
     m_dock_area = std::make_unique<ui::dock_area>(700, 400, ui.theme<ui::dock_area_theme>("dark"));
-    m_dock_area->link(display_1);
+    display_1->add(m_dock_area.get());
     m_dock_area->dock(make_dock_window());
     m_dock_area->name = "area";
 
     m_right = std::make_unique<ui::element>();
     m_right->margin(50.0f, ui::LAYOUT_EDGE_LEFT);
-    m_right->link(display_1);
+    display_1->add(m_right.get());
 
     m_create_button =
         std::make_unique<ui::button>("Create Dock Window", ui.theme<ui::button_theme>("dark"));
@@ -72,10 +73,10 @@ void docking_page::initialize_sample_docking()
             return false;
 
         auto new_panel = make_dock_window();
-        new_panel->link(m_right.get());
+        m_right->add(new_panel);
         return false;
     };
-    m_create_button->link(this);
+    add(m_create_button.get());
 
     m_print_button = std::make_unique<ui::button>("Print Tree", ui.theme<ui::button_theme>("dark"));
     m_print_button->height(45.0f);
@@ -83,7 +84,7 @@ void docking_page::initialize_sample_docking()
         print_tree(display_1);
         return false;
     };
-    m_print_button->link(this);
+    add(m_print_button.get());
 }
 
 ui::dock_element* docking_page::make_dock_window()
@@ -95,7 +96,7 @@ ui::dock_element* docking_page::make_dock_window()
     ui::dock_window_theme theme = ui.theme<ui::dock_window_theme>("dark");
     theme.container_color = PANEL_COLOR[panel_counter];
 
-    std::string window_name = "Window " + std::to_string(panel_counter);
+    std::string window_name = std::format("Window {}", panel_counter);
     auto result = std::make_unique<ui::dock_window>(window_name, 0xEA43, m_dock_area.get(), theme);
     result->width(200.0f);
     result->height(200.0f);
@@ -105,7 +106,7 @@ ui::dock_element* docking_page::make_dock_window()
     label_theme.text_color = ui::COLOR_BLACK;
     auto label = std::make_unique<ui::label>(window_name, label_theme);
     label->margin(100.0f, ui::LAYOUT_EDGE_ALL);
-    result->add(label.get());
+    result->add_item(label.get());
 
     m_dock_windows.push_back(std::move(result));
     m_window_labels.push_back(std::move(label));

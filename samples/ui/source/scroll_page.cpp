@@ -21,7 +21,7 @@ void scroll_page::initialize_sample_scroll()
     m_scroll_view = std::make_unique<ui::scroll_view>(ui.theme<ui::scroll_view_theme>("dark"));
     m_scroll_view->width(600.0f);
     m_scroll_view->height(400.0f);
-    m_scroll_view->link(display_1);
+    display_1->add(m_scroll_view.get());
 
     std::vector<std::uint32_t> color = {
         ui::COLOR_ANTIQUE_WHITE,
@@ -40,10 +40,9 @@ void scroll_page::initialize_sample_scroll()
     for (std::size_t i = 0; i < 8; ++i)
     {
         auto panel = std::make_unique<ui::panel>(color[i]);
-        panel->name = "panel " + std::to_string(i);
         panel->width(200.0f);
         panel->height(200.0f);
-        m_scroll_view->add(panel.get());
+        m_scroll_view->add_item(panel.get());
         m_panels.push_back(std::move(panel));
     }
 }

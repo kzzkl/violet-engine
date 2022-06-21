@@ -21,6 +21,6 @@ public:
         override;
 
 private:
-    std::unique_ptr<graphics::render_pass_interface> m_interface;
+    std::unique_ptr<graphics::render_pipeline_interface> m_interface;
 };
 } // namespace ash::ui

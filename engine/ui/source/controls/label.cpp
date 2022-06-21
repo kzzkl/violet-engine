@@ -4,31 +4,31 @@
 
 namespace ash::ui
 {
-label::label() : m_original_x(0.0f), m_original_y(0.0f)
+label::label()
 {
 }
 
 label::label(std::string_view content, const label_theme& theme)
-    : m_original_x(0.0f),
-      m_original_y(0.0f)
 {
     m_font = theme.text_font;
 
     text(content);
     text_color(theme.text_color);
+
+    m_mesh.type = ELEMENT_MESH_TYPE_TEXT;
+    m_mesh.scissor = false;
 }
 
 void label::text(std::string_view content)
 {
     ASH_ASSERT(!content.empty());
 
-    m_mesh.vertex_position.clear();
-    m_mesh.vertex_uv.clear();
-    m_mesh.indices.clear();
-    m_mesh.texture = m_font->texture();
+    m_position.clear();
+    m_uv.clear();
+    m_indices.clear();
 
-    float pen_x = m_original_x;
-    float pen_y = m_original_y + m_font->heigth() * 0.75f;
+    float pen_x = 0.0f;
+    float pen_y = m_font->heigth() * 0.75f;
 
     std::uint32_t vertex_base = 0;
     for (char c : content)
@@ -38,25 +38,25 @@ void label::text(std::string_view content)
         float x = pen_x + glyph.bearing_x;
         float y = pen_y - glyph.bearing_y;
 
-        m_mesh.vertex_position.insert(
-            m_mesh.vertex_position.end(),
+        m_position.insert(
+            m_position.end(),
             {
-                {x,               y,                0.0f},
-                {x + glyph.width, y,                0.0f},
-                {x + glyph.width, y + glyph.height, 0.0f},
-                {x,               y + glyph.height, 0.0f}
+                {x,               y               },
+                {x + glyph.width, y               },
+                {x + glyph.width, y + glyph.height},
+                {x,               y + glyph.height}
         });
 
-        m_mesh.vertex_uv.insert(
-            m_mesh.vertex_uv.end(),
+        m_uv.insert(
+            m_uv.end(),
             {
                 glyph.uv1,
                 {glyph.uv2[0], glyph.uv1[1]},
                 glyph.uv2,
                 {glyph.uv1[0], glyph.uv2[1]}
         });
-        m_mesh.indices.insert(
-            m_mesh.indices.end(),
+        m_indices.insert(
+            m_indices.end(),
             {vertex_base,
              vertex_base + 1,
              vertex_base + 2,
@@ -68,12 +68,20 @@ void label::text(std::string_view content)
         pen_x += glyph.advance;
     }
 
-    if (m_mesh.vertex_color.empty())
-        m_mesh.vertex_color.resize(m_mesh.vertex_position.size());
+    if (m_color.empty())
+        m_color.resize(m_position.size());
     else
-        m_mesh.vertex_color.resize(m_mesh.vertex_position.size(), m_mesh.vertex_color[0]);
+        m_color.resize(m_position.size(), m_color[0]);
 
-    width(pen_x - m_original_x);
+    m_mesh.position = m_position.data();
+    m_mesh.uv = m_uv.data();
+    m_mesh.color = m_color.data();
+    m_mesh.vertex_count = m_position.size();
+    m_mesh.indices = m_indices.data();
+    m_mesh.index_count = m_indices.size();
+    m_mesh.texture = m_font->texture();
+
+    width(pen_x);
     height(m_font->heigth());
 
     m_text = content;
@@ -83,31 +91,9 @@ void label::text(std::string_view content)
 
 void label::text_color(std::uint32_t color)
 {
-    for (auto& c : m_mesh.vertex_color)
+    for (auto& c : m_color)
         c = color;
 
     mark_dirty();
-}
-
-void label::render(renderer& renderer)
-{
-    renderer.draw(RENDER_TYPE_TEXT, m_mesh);
-    element::render(renderer);
-}
-
-void label::on_extent_change(const element_extent& extent)
-{
-    float offset_x = extent.x - m_original_x;
-    float offset_y = extent.y - m_original_y;
-    m_original_x = extent.x;
-    m_original_y = extent.y;
-
-    float z = depth();
-    for (auto& position : m_mesh.vertex_position)
-    {
-        position[0] += offset_x;
-        position[1] += offset_y;
-        position[2] = z;
-    }
 }
 } // namespace ash::ui

@@ -12,3 +12,4 @@ add_subdirectory(window)
 
 add_subdirectory(plugin)
 add_subdirectory(misc)
+add_subdirectory(shader)

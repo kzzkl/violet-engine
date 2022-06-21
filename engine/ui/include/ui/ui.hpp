@@ -4,13 +4,11 @@
 #include "font.hpp"
 #include "graphics/pipeline_parameter.hpp"
 #include "ui/element.hpp"
+#include "ui/renderer.hpp"
 #include "ui/theme.hpp"
 
 namespace ash::ui
 {
-static const char* DEFAULT_TEXT_FONT = "NotoSans-Regular";
-static const char* DEFAULT_ICON_FONT = "remixicon";
-
 class element_tree;
 class ui_pipeline;
 class ui : public core::system_base
@@ -26,7 +24,10 @@ public:
     void tick();
 
     void load_font(std::string_view name, std::string_view ttf_file, std::size_t size);
-    font_type& font(std::string_view name);
+    const font_type* font(std::string_view name);
+
+    const font_type* default_text_font();
+    const font_type* default_icon_font();
 
     element* root() const noexcept;
 
@@ -52,6 +53,7 @@ private:
     std::unique_ptr<graphics::resource> m_index_buffer;
 
     std::unique_ptr<graphics::pipeline_parameter> m_mvp_parameter;
+    std::unique_ptr<graphics::pipeline_parameter> m_offset_parameter;
 
     std::size_t m_material_parameter_counter;
     std::vector<std::unique_ptr<graphics::pipeline_parameter>> m_material_parameter_pool;

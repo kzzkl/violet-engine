@@ -223,6 +223,32 @@ TEST_CASE("matrix_plain::decompose", "[matrix]")
     CHECK(equal(rotation, float4{0.0661214888f, 0.132242978f, 0.198364466f, 0.968912423f}));
     CHECK(equal(translation, float4{6.0f, 5.0f, 4.5f, 1.0f}));
 }
+
+TEST_CASE("matrix_plain::orthographic", "[matrix]")
+{
+    float4x4 result = matrix::orthographic(-5.0f, 4.0f, 8.0f, -1.0f, -3.0f, 6.0f);
+    CHECK(equal(
+        result,
+        float4x4{
+            float4{0.222222224f, 0.0f,          0.0f,         0.0f},
+            float4{0.0f,         -0.222222224f, 0.0f,         0.0f},
+            float4{0.0f,         0.0f,          0.111111112f, 0.0f},
+            float4{0.111111112f, 0.777777791f,  0.333333343f, 1.0f}
+    }));
+}
+
+TEST_CASE("matrix_plain::orthographic center", "[matrix]")
+{
+    float4x4 result = matrix::orthographic(-5.0f, 4.0f, 8.0f, -1.0f);
+    CHECK(equal(
+        result,
+        float4x4{
+            float4{-0.4f, 0.0f, 0.0f,          0.0f},
+            float4{0.0f,  0.5f, 0.0f,          0.0f},
+            float4{0.0f,  0.0f, -0.111111112f, 0.0f},
+            float4{0.0f,  0.0f, 0.888888896f,  1.0f}
+    }));
+}
 } // namespace math_plain
 
 namespace math_simd

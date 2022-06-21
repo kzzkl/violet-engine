@@ -112,6 +112,13 @@ void graphics::shutdown()
     m_plugin.unload();
 }
 
+void graphics::compute(compute_pipeline* pipeline)
+{
+    auto command = m_renderer->allocate_command();
+    pipeline->compute(command);
+    m_renderer->execute(command);
+}
+
 void graphics::skin_meshes()
 {
     auto command = m_renderer->allocate_command();
@@ -220,20 +227,19 @@ void graphics::present()
     m_debug->next_frame();
 }
 
-std::unique_ptr<render_pass_interface> graphics::make_render_pass(render_pass_info& info)
+std::unique_ptr<render_pipeline_interface> graphics::make_render_pipeline(
+    render_pipeline_info& info)
 {
     auto& factory = m_plugin.factory();
-    for (auto& subpass : info.subpasses)
+    for (auto& pass : info.passes)
     {
-        for (std::size_t i = 0; i < subpass.parameters.size(); ++i)
+        for (std::size_t i = 0; i < pass.parameters.size(); ++i)
         {
-            ASH_ASSERT(
-                m_parameter_layouts.find(subpass.parameters[i]) != m_parameter_layouts.end());
-            subpass.parameter_interfaces.push_back(
-                m_parameter_layouts[subpass.parameters[i]].get());
+            ASH_ASSERT(m_parameter_layouts.find(pass.parameters[i]) != m_parameter_layouts.end());
+            pass.parameter_interfaces.push_back(m_parameter_layouts[pass.parameters[i]].get());
         }
     }
-    return std::unique_ptr<render_pass_interface>(factory.make_render_pass(info.convert()));
+    return std::unique_ptr<render_pipeline_interface>(factory.make_render_pipeline(info.convert()));
 }
 
 std::unique_ptr<compute_pipeline_interface> graphics::make_compute_pipeline(

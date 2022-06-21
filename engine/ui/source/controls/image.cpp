@@ -4,21 +4,26 @@ namespace ash::ui
 {
 image::image(graphics::resource* texture)
 {
-    m_mesh.vertex_position = {
-        {0.0f, 0.0f, 0.0f},
-        {0.0f, 0.0f, 0.0f},
-        {0.0f, 0.0f, 0.0f},
-        {0.0f, 0.0f, 0.0f}
+    m_position = {};
+    m_uv = {
+        math::float2{0.0f, 0.0f},
+        math::float2{1.0f, 0.0f},
+        math::float2{1.0f, 1.0f},
+        math::float2{0.0f, 1.0f}
     };
-    m_mesh.vertex_uv = {
-        {0.0f, 0.0f},
-        {1.0f, 0.0f},
-        {1.0f, 1.0f},
-        {0.0f, 1.0f}
-    };
-    m_mesh.vertex_color = {0, 0, 0, 0};
-    m_mesh.indices = {0, 1, 2, 0, 2, 3};
-    m_mesh.texture = texture;
+    m_color = {0, 0, 0, 0};
+    m_indices = {0, 1, 2, 0, 2, 3};
+
+    m_mesh = {
+        .type = ELEMENT_MESH_TYPE_IMAGE,
+        .position = m_position.data(),
+        .uv = m_uv.data(),
+        .color = m_color.data(),
+        .vertex_count = 4,
+        .indices = m_indices.data(),
+        .index_count = 6,
+        .scissor = false,
+        .texture = texture};
 
     if (texture != nullptr)
     {
@@ -41,20 +46,10 @@ void image::texture(graphics::resource* texture, bool resize)
     mark_dirty();
 }
 
-void image::render(renderer& renderer)
+void image::on_extent_change(float width, float height)
 {
-    renderer.draw(RENDER_TYPE_IMAGE, m_mesh);
-    element::render(renderer);
-}
-
-void image::on_extent_change(const element_extent& extent)
-{
-    float z = depth();
-    m_mesh.vertex_position = {
-        {extent.x,                extent.y,                 z},
-        {extent.x + extent.width, extent.y,                 z},
-        {extent.x + extent.width, extent.y + extent.height, z},
-        {extent.x,                extent.y + extent.height, z}
-    };
+    m_position[1] = {width, 0.0f};
+    m_position[2] = {width, height};
+    m_position[3] = {0.0f, height};
 }
 } // namespace ash::ui

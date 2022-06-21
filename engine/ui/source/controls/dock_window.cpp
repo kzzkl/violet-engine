@@ -21,7 +21,7 @@ dock_window::dock_window(std::string_view title, dock_area* area, const dock_win
     m_tab->align_items(LAYOUT_ALIGN_CENTER);
     m_tab->padding(10.0f, LAYOUT_EDGE_HORIZONTAL);
     m_tab->padding(3.0f, LAYOUT_EDGE_VERTICAL);
-    m_tab->link(this);
+    add(m_tab.get());
     m_tab->on_mouse_drag_begin = [this](int x, int y) {
         if (m_dock_area != nullptr)
             m_dock_area->dock_begin(this, x, y);
@@ -39,7 +39,7 @@ dock_window::dock_window(std::string_view title, dock_area* area, const dock_win
     title_theme.text_font = theme.title_font;
     title_theme.text_color = theme.title_color;
     m_title = std::make_unique<label>(title, title_theme);
-    m_title->link(m_tab.get());
+    m_tab->add(m_title.get());
 
     scroll_view_theme scroll_view_theme = {
         .scroll_speed = theme.scroll_speed,
@@ -50,7 +50,7 @@ dock_window::dock_window(std::string_view title, dock_area* area, const dock_win
     scroll_view_theme.background_color = theme.container_color;
     m_container = std::make_unique<scroll_view>(scroll_view_theme);
     m_container->flex_grow(1.0f);
-    m_container->link(this);
+    add(m_container.get());
 
     auto& mouse = system<window::window>().mouse();
     m_container->on_mouse_move = [&, this](int x, int y) {
@@ -149,21 +149,21 @@ dock_window::dock_window(
     icon_theme.icon_scale = theme.icon_scale;
     m_icon = std::make_unique<font_icon>(icon, icon_theme);
     m_icon->margin(5.0f, LAYOUT_EDGE_RIGHT);
-    m_icon->link(m_tab.get(), 0);
+    m_tab->add(m_icon.get(), 0);
 }
 
 dock_window::~dock_window()
 {
 }
 
-void dock_window::add(element* element)
+void dock_window::add_item(element* item)
 {
-    m_container->add(element);
+    m_container->add_item(item);
 }
 
-void dock_window::remove(element* element)
+void dock_window::remove_item(element* item)
 {
-    m_container->remove(element);
+    m_container->remove_item(item);
 }
 
 layout_edge dock_window::in_edge(element* element, int x, int y)

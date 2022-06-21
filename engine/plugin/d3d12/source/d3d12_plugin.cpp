@@ -16,9 +16,9 @@ public:
         return new d3d12_renderer(desc);
     }
 
-    virtual render_pass_interface* make_render_pass(const render_pass_desc& desc) override
+    virtual render_pipeline_interface* make_render_pipeline(const render_pipeline_desc& desc) override
     {
-        return new d3d12_render_pass(desc);
+        return new d3d12_render_pipeline(desc);
     }
 
     virtual compute_pipeline_interface* make_compute_pipeline(
@@ -43,12 +43,12 @@ public:
     {
         if (desc.dynamic)
         {
-            return new d3d12_vertex_buffer<d3d12_upload_buffer>(desc, nullptr);
+            return new d3d12_vertex_buffer_dynamic(desc);
         }
         else
         {
             auto command_list = d3d12_context::command()->allocate_dynamic_command();
-            auto result = new d3d12_vertex_buffer<d3d12_default_buffer>(desc, command_list.get());
+            auto result = new d3d12_vertex_buffer_default(desc, command_list.get());
             d3d12_context::command()->execute_command(command_list);
             return result;
         }
@@ -58,12 +58,12 @@ public:
     {
         if (desc.dynamic)
         {
-            return new d3d12_index_buffer<d3d12_upload_buffer>(desc, nullptr);
+            return new d3d12_index_buffer_dynamic(desc);
         }
         else
         {
             auto command_list = d3d12_context::command()->allocate_dynamic_command();
-            auto result = new d3d12_index_buffer<d3d12_default_buffer>(desc, command_list.get());
+            auto result = new d3d12_index_buffer_default(desc, command_list.get());
             d3d12_context::command()->execute_command(command_list);
             return result;
         }

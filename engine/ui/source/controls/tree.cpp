@@ -46,10 +46,10 @@ tree_node::tree_node(std::string_view name, const tree_node_theme& theme)
 
         return false;
     };
-    m_top->link(this);
+    add(m_top.get());
 
     font_icon_theme icon_theme = {};
-    icon_theme.icon_font = &system<ui>().font(DEFAULT_ICON_FONT);
+    icon_theme.icon_font = system<ui>().default_icon_font();
     icon_theme.icon_color = theme.text_color;
     icon_theme.icon_scale = 0.5f;
     m_button = std::make_unique<font_icon>(CHEVRON_DOWN_INDEX, icon_theme);
@@ -77,19 +77,19 @@ tree_node::tree_node(std::string_view name, const tree_node_theme& theme)
         return false;
     };
     m_button->width(theme.text_font->heigth() * 1.5f);
-    m_button->link(m_top.get());
+    m_top->add(m_button.get());
 
     label_theme text_theme = {};
     text_theme.text_font = theme.text_font;
     text_theme.text_color = theme.text_color;
     m_text = std::make_unique<label>(name, text_theme);
-    m_text->link(m_top.get());
+    m_top->add(m_text.get());
 
     m_container = std::make_unique<element>();
     m_container->width_percent(100.0f);
     m_container->hide();
     m_container->flex_direction(LAYOUT_FLEX_DIRECTION_COLUMN);
-    m_container->link(this);
+    add(m_container.get());
 }
 
 tree_node::tree_node(std::string_view name, std::uint32_t icon_index, const tree_node_theme& theme)
@@ -101,10 +101,10 @@ tree_node::tree_node(std::string_view name, std::uint32_t icon_index, const tree
     icon_theme.icon_scale = theme.icon_scale;
     m_icon = std::make_unique<font_icon>(icon_index, icon_theme);
     m_icon->margin(theme.icon_font->heigth() * theme.icon_scale * 0.5f, LAYOUT_EDGE_RIGHT);
-    m_icon->link(m_top.get(), 1);
+    m_top->add(m_icon.get(), 1);
 }
 
-void tree_node::add(tree_node* child)
+void tree_node::add_node(tree_node* child)
 {
     if (m_container->children().empty())
     {
@@ -112,14 +112,14 @@ void tree_node::add(tree_node* child)
         m_top->border(0.0f, LAYOUT_EDGE_LEFT);
     }
 
-    child->link(m_container.get());
+    m_container->add(child);
     child->m_top->padding(m_top->padding(LAYOUT_EDGE_LEFT) + m_padding_increment, LAYOUT_EDGE_LEFT);
     child->m_parent_node = this;
 }
 
-void tree_node::remove(tree_node* child)
+void tree_node::remove_node(tree_node* child)
 {
-    child->unlink();
+    m_container->remove(child);
     child->m_parent_node = nullptr;
 
     if (m_container->children().empty())
@@ -160,9 +160,9 @@ tree::tree() : m_selected_node(nullptr)
     flex_direction(LAYOUT_FLEX_DIRECTION_COLUMN);
 }
 
-void tree::add(tree_node* child)
+void tree::add_node(tree_node* child)
 {
-    child->link(this);
+    add(child);
     child->m_parent_node = this;
 }
 

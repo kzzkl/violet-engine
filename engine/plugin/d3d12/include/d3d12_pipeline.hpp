@@ -16,18 +16,6 @@ public:
     {
         return m_parameters[index].offset;
     }
-    inline std::size_t parameter_descriptor_index(std::size_t index) const
-    {
-        switch (m_parameters[index].type)
-        {
-        case pipeline_parameter_type::SHADER_RESOURCE:
-            return m_parameters[index].offset + m_cbv_count;
-        case pipeline_parameter_type::UNORDERED_ACCESS:
-            return m_parameters[index].offset + m_cbv_count + m_srv_count;
-        default:
-            return 0;
-        }
-    }
     inline std::size_t parameter_size(std::size_t index) const { return m_parameters[index].size; }
     inline pipeline_parameter_type parameter_type(std::size_t index) const
     {
@@ -39,6 +27,10 @@ public:
     inline std::size_t cbv_count() const noexcept { return m_cbv_count; }
     inline std::size_t srv_count() const noexcept { return m_srv_count; }
     inline std::size_t uav_count() const noexcept { return m_uav_count; }
+    inline std::size_t view_count() const noexcept
+    {
+        return m_cbv_count + m_srv_count + m_uav_count;
+    }
 
     inline std::size_t constant_buffer_size() const noexcept { return m_constant_buffer_size; }
 
@@ -90,11 +82,10 @@ public:
     virtual void set(std::size_t index, const math::float2& value) override;
     virtual void set(std::size_t index, const math::float3& value) override;
     virtual void set(std::size_t index, const math::float4& value) override;
+    virtual void set(std::size_t index, const math::float4* data, size_t size) override;
     virtual void set(std::size_t index, const math::float4x4& value) override;
     virtual void set(std::size_t index, const math::float4x4* data, size_t size) override;
     virtual void set(std::size_t index, resource* texture) override;
-
-    virtual void reset() override;
 
     void sync();
 
@@ -126,9 +117,8 @@ private:
     d3d12_pipeline_parameter_layout* m_layout;
 
     std::vector<std::uint8_t> m_cpu_buffer;
-    std::vector<d3d12_resource*> m_shader_resources;
-    std::vector<d3d12_resource*> m_unordered_access_buffers;
     std::unique_ptr<d3d12_upload_buffer> m_gpu_buffer;
+    std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_views;
 };
 
 class d3d12_root_signature
@@ -142,15 +132,6 @@ public:
 
 private:
     d3d12_ptr<D3D12RootSignature> m_root_signature;
-};
-
-class d3d12_pipeline
-{
-public:
-    virtual ~d3d12_pipeline() = default;
-
-protected:
-    d3d12_ptr<D3DBlob> load_shader(std::string_view file);
 };
 
 class d3d12_frame_buffer_layout
@@ -179,7 +160,7 @@ struct d3d12_camera_info
     }
 };
 
-class d3d12_render_pass;
+class d3d12_render_pipeline;
 class d3d12_frame_buffer
 {
 public:
@@ -191,7 +172,7 @@ public:
     };
 
 public:
-    d3d12_frame_buffer(d3d12_render_pass* render_pass, const d3d12_camera_info& camera_info);
+    d3d12_frame_buffer(d3d12_render_pipeline* pipeline, const d3d12_camera_info& camera_info);
 
     void begin_render(D3D12GraphicsCommandList* command_list);
     void end_render(D3D12GraphicsCommandList* command_list);
@@ -206,18 +187,18 @@ private:
     std::vector<std::unique_ptr<d3d12_resource>> m_attachment_container;
 };
 
-class d3d12_graphics_pipeline : public d3d12_pipeline
+class d3d12_render_pass
 {
 public:
-    d3d12_graphics_pipeline(const pipeline_desc& desc);
+    d3d12_render_pass(const render_pass_desc& desc);
 
     void begin(D3D12GraphicsCommandList* command_list, d3d12_frame_buffer* frame_buffer);
     void end(D3D12GraphicsCommandList* command_list, bool final = false);
     inline D3D12PipelineState* pipeline_state() const noexcept { return m_pipeline_state.Get(); }
 
 private:
-    void initialize_vertex_layout(const pipeline_desc& desc);
-    void initialize_pipeline_state(const pipeline_desc& desc);
+    void initialize_vertex_layout(const render_pass_desc& desc);
+    void initialize_pipeline_state(const render_pass_desc& desc);
 
     std::vector<D3D12_INPUT_ELEMENT_DESC> m_vertex_layout;
 
@@ -232,10 +213,10 @@ private:
     std::vector<std::pair<std::size_t, std::size_t>> m_resolve_indices;
 };
 
-class d3d12_render_pass : public render_pass_interface
+class d3d12_render_pipeline : public render_pipeline_interface
 {
 public:
-    d3d12_render_pass(const render_pass_desc& desc);
+    d3d12_render_pipeline(const render_pipeline_desc& desc);
 
     void begin(D3D12GraphicsCommandList* command_list, const d3d12_camera_info& camera_info);
     void end(D3D12GraphicsCommandList* command_list);
@@ -247,11 +228,11 @@ public:
     }
 
 private:
-    std::vector<std::unique_ptr<d3d12_graphics_pipeline>> m_pipelines;
+    std::vector<std::unique_ptr<d3d12_render_pass>> m_passes;
 
-    struct pipeline_info
+    struct pass_info
     {
-        std::unique_ptr<d3d12_graphics_pipeline> pipeline;
+        std::unique_ptr<d3d12_render_pass> pass;
         D3D12_CPU_DESCRIPTOR_HANDLE render_target;
         std::size_t render_target_count;
         D3D12_CPU_DESCRIPTOR_HANDLE depth_stencil;
@@ -267,7 +248,7 @@ class d3d12_frame_buffer_manager
 {
 public:
     d3d12_frame_buffer* get_or_create_frame_buffer(
-        d3d12_render_pass* render_pass,
+        d3d12_render_pipeline* pipeline,
         const d3d12_camera_info& camera_info);
 
     void notify_destroy(d3d12_resource* resource);
@@ -300,7 +281,7 @@ private:
         m_frame_buffers;
 };
 
-class d3d12_compute_pipeline : public compute_pipeline_interface, public d3d12_pipeline
+class d3d12_compute_pipeline : public compute_pipeline_interface
 {
 public:
     d3d12_compute_pipeline(const compute_pipeline_desc& desc);

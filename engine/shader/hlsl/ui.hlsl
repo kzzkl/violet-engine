@@ -4,7 +4,12 @@ cbuffer ui_material : register(b0, space0)
 };
 Texture2D ui_texture : register(t0, space0);
 
-cbuffer ui_mvp : register(b0, space1)
+cbuffer ui_offset : register(b0, space1)
+{
+    float4 offset[1024];
+}
+
+cbuffer ui_mvp : register(b0, space2)
 {
     float4x4 mvp;
 }
@@ -14,9 +19,10 @@ SamplerState text_sampler : register(s7);
 
 struct vs_in
 {
-    float3 position : POSITION;
+    float2 position : POSITION;
     float2 uv : UV;
     float4 color : COLOR;
+    uint offset_index : OFFSET_INDEX;
 };
 
 struct vs_out
@@ -28,8 +34,11 @@ struct vs_out
 
 vs_out vs_main(vs_in vin)
 {
+    float4 position = offset[vin.offset_index];
+    position.xy += vin.position;
+
     vs_out result;
-    result.position = mul(float4(vin.position, 1.0f), mvp);
+    result.position = mul(position, mvp);
     result.uv = vin.uv;
     result.color = vin.color;
 
@@ -50,8 +59,7 @@ float4 ps_main(vs_out pin) : SV_TARGET
     else if (type == 2) // image 
     {
         float4 color = ui_texture.Sample(image_sampler, pin.uv);
-        color.a = 1.0f;
-        return color;
+        return float4(color.rgb, 1.0f);
     }
     else
     {

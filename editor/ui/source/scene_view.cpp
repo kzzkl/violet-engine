@@ -30,7 +30,7 @@ scene_view::scene_view(ui::dock_area* area, const ui::dock_window_theme& theme)
     world.add<core::link, graphics::camera, scene::transform>(m_camera);
 
     auto& transform = world.component<scene::transform>(m_camera);
-    transform.position = {0.0f, 10.0f, -50.0f};
+    transform.position = {0.0f, 10.0f, -40.0f};
     transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
     transform.scaling = {1.0f, 1.0f, 1.0f};
 
@@ -46,7 +46,7 @@ scene_view::scene_view(ui::dock_area* area, const ui::dock_window_theme& theme)
     };
     m_image->width_percent(100.0f);
     m_image->height_percent(100.0f);
-    add(m_image.get());
+    add_item(m_image.get());
 
     on_window_resize = [this](int width, int height) {
         log::debug("Scene resize: {} {}", width, height);

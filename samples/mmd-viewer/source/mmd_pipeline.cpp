@@ -20,7 +20,7 @@ mmd_render_pipeline::mmd_render_pipeline()
     graphics.make_pipeline_parameter_layout("mmd_material", mmd_material);
 
     // Color pass.
-    graphics::pipeline_info color_pass_info = {};
+    graphics::render_pass_info color_pass_info = {};
     color_pass_info.vertex_shader = "resource/shader/color.vert";
     color_pass_info.pixel_shader = "resource/shader/color.frag";
     color_pass_info.vertex_attributes = {
@@ -38,7 +38,7 @@ mmd_render_pipeline::mmd_render_pipeline()
     color_pass_info.samples = 4;
 
     // Edge pass.
-    graphics::pipeline_info edge_pass_info = {};
+    graphics::render_pass_info edge_pass_info = {};
     edge_pass_info.vertex_shader = "resource/shader/edge.vert";
     edge_pass_info.pixel_shader = "resource/shader/edge.frag";
     edge_pass_info.vertex_attributes = {
@@ -51,7 +51,7 @@ mmd_render_pipeline::mmd_render_pipeline()
         {graphics::attachment_reference_type::RESOLVE, 0}
     };
     edge_pass_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    edge_pass_info.parameters = {"ash_object"};
+    edge_pass_info.parameters = {"ash_object", "ash_pass"};
     edge_pass_info.samples = 4;
     edge_pass_info.rasterizer.cull_mode = graphics::cull_mode::FRONT;
     edge_pass_info.depth_stencil.depth_functor = graphics::depth_functor::LESS;
@@ -90,14 +90,14 @@ mmd_render_pipeline::mmd_render_pipeline()
     back_buffer.initial_state = graphics::resource_state::RENDER_TARGET;
     back_buffer.final_state = graphics::resource_state::PRESENT;
 
-    graphics::render_pass_info mmd_pass_info;
-    mmd_pass_info.attachments.push_back(render_target);
-    mmd_pass_info.attachments.push_back(depth_stencil);
-    mmd_pass_info.attachments.push_back(back_buffer);
-    mmd_pass_info.subpasses.push_back(color_pass_info);
-    mmd_pass_info.subpasses.push_back(edge_pass_info);
+    graphics::render_pipeline_info mmd_pipeline_info;
+    mmd_pipeline_info.attachments.push_back(render_target);
+    mmd_pipeline_info.attachments.push_back(depth_stencil);
+    mmd_pipeline_info.attachments.push_back(back_buffer);
+    mmd_pipeline_info.passes.push_back(color_pass_info);
+    mmd_pipeline_info.passes.push_back(edge_pass_info);
 
-    m_interface = graphics.make_render_pass(mmd_pass_info);
+    m_interface = graphics.make_render_pipeline(mmd_pipeline_info);
 }
 
 void mmd_render_pipeline::render(
@@ -116,9 +116,8 @@ void mmd_render_pipeline::render(
     rect.max_y = height;
     command->scissor(&rect, 1);
 
-    command->parameter(2, camera.parameter()->interface());
-
     // Color pass.
+    command->parameter(2, camera.parameter()->interface());
     for (auto& unit : units())
     {
         command->parameter(0, unit.parameters[0]->interface());
@@ -133,9 +132,10 @@ void mmd_render_pipeline::render(
             unit.vertex_base);
     }
 
-    command->next(m_interface.get());
+    command->next_pass(m_interface.get());
 
     // Edge pass.
+    command->parameter(1, camera.parameter()->interface());
     for (auto& unit : units())
     {
         command->parameter(0, unit.parameters[0]->interface());
@@ -175,7 +175,7 @@ mmd_skin_pipeline::mmd_skin_pipeline()
     compute_pipeline_info.compute_shader = "resource/shader/skin.comp";
     compute_pipeline_info.parameters = {"mmd_skin"};
 
-    m_interface = system<graphics::graphics>().make_compute_pipeline(compute_pipeline_info);
+    m_interface = graphics.make_compute_pipeline(compute_pipeline_info);
 }
 
 void mmd_skin_pipeline::skin(graphics::render_command_interface* command)

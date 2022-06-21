@@ -1,9 +1,7 @@
 #pragma once
 
-#include "math/math.hpp"
+#include "graphics_interface.hpp"
 #include "ui/element_layout.hpp"
-#include "ui/element_mesh.hpp"
-#include "ui/renderer.hpp"
 #include "window/input.hpp"
 #include <functional>
 #include <string>
@@ -68,25 +66,44 @@ public:
     };
 };
 
+enum element_mesh_type
+{
+    ELEMENT_MESH_TYPE_BLOCK,
+    ELEMENT_MESH_TYPE_TEXT,
+    ELEMENT_MESH_TYPE_IMAGE
+};
+
+struct element_mesh
+{
+    element_mesh_type type;
+
+    const math::float2* position;
+    const math::float2* uv;
+    const std::uint32_t* color;
+    std::size_t vertex_count;
+
+    const std::uint32_t* indices;
+    std::size_t index_count;
+
+    bool scissor;
+    graphics::resource* texture;
+};
+
 class element : public element_layout
 {
 public:
     element(bool is_root = false);
     virtual ~element();
 
-    virtual void render(renderer& renderer);
-
     const element_extent& extent() const noexcept { return m_extent; }
     void sync_extent();
-
-    const element_mesh& mesh() const noexcept { return m_mesh; }
 
     bool control_dirty() const noexcept { return m_dirty; }
     void reset_control_dirty() noexcept { m_dirty = false; }
 
-    void link(element* parent);
-    void link(element* parent, std::size_t index);
-    void unlink();
+    void add(element* child, std::size_t index = -1);
+    void remove(element* child);
+    void remove_from_parent();
 
     std::size_t link_index() const noexcept { return m_link_index; }
 
@@ -99,6 +116,8 @@ public:
 
     float depth() const noexcept { return m_depth; }
     void layer(int layer) noexcept;
+
+    virtual const element_mesh* mesh() const noexcept { return nullptr; }
 
     std::string name;
 
@@ -116,6 +135,8 @@ public:
     using on_mouse_drag_event = element_event<void(int, int)>;
     using on_mouse_drag_begin_event = element_event<void(int, int)>;
     using on_mouse_drag_end_event = element_event<void(int, int)>;
+
+    using on_input_event = element_event<void(char)>;
 
     using on_blur_event = element_event<void()>;
     using on_focus_event = element_event<void()>;
@@ -139,6 +160,8 @@ public:
     on_mouse_drag_begin_event::handle on_mouse_drag_begin;
     on_mouse_drag_end_event::handle on_mouse_drag_end;
 
+    on_input_event::handle on_input;
+
     on_blur_event::handle on_blur;
     on_focus_event::handle on_focus;
 
@@ -148,15 +171,11 @@ public:
     on_resize_event::handle on_resize;
 
 protected:
-    virtual void on_extent_change(const element_extent& extent) {}
-    virtual void on_depth_change(float depth);
-
-    virtual void on_add_child(element* child);
-    virtual void on_remove_child(element* child);
+    virtual void on_add_child(element* child) {}
+    virtual void on_remove_child(element* child) {}
+    virtual void on_extent_change(float width, float height) {}
 
     void mark_dirty() noexcept { m_dirty = true; }
-
-    element_mesh m_mesh;
 
 private:
     void update_depth(float depth_offset) noexcept;

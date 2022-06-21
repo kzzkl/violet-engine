@@ -12,7 +12,7 @@ standard_pipeline::standard_pipeline()
     system<graphics>().make_pipeline_parameter_layout("standard_material", standard_material);
 
     // Color pass.
-    pipeline_info color_pass_info = {};
+    render_pass_info color_pass_info = {};
     color_pass_info.vertex_shader = "engine/shader/standard.vert";
     color_pass_info.pixel_shader = "engine/shader/standard.frag";
     color_pass_info.vertex_attributes = {
@@ -62,13 +62,13 @@ standard_pipeline::standard_pipeline()
     render_target_resolve.initial_state = resource_state::RENDER_TARGET;
     render_target_resolve.final_state = resource_state::RENDER_TARGET;
 
-    render_pass_info standard_pass_info;
-    standard_pass_info.attachments.push_back(render_target);
-    standard_pass_info.attachments.push_back(depth_stencil);
-    standard_pass_info.attachments.push_back(render_target_resolve);
-    standard_pass_info.subpasses.push_back(color_pass_info);
+    render_pipeline_info standard_pipeline_info;
+    standard_pipeline_info.attachments.push_back(render_target);
+    standard_pipeline_info.attachments.push_back(depth_stencil);
+    standard_pipeline_info.attachments.push_back(render_target_resolve);
+    standard_pipeline_info.passes.push_back(color_pass_info);
 
-    m_interface = system<graphics>().make_render_pass(standard_pass_info);
+    m_interface = system<graphics>().make_render_pipeline(standard_pipeline_info);
 }
 
 void standard_pipeline::render(const camera& camera, render_command_interface* command)

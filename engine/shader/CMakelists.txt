@@ -1,0 +1,20 @@
+include(${ASH_ROOT_DIR}/cmake/shader_compile.cmake)
+
+add_custom_target("graphics_shader_generater" ALL)
+
+set(SHADERS "")
+list(APPEND SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/hlsl/debug.hlsl;vert;frag")
+list(APPEND SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/hlsl/ui.hlsl;vert;frag")
+list(APPEND SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/hlsl/standard.hlsl;vert;frag")
+target_shader_compile(
+    "graphics_shader_generater"
+    "${SHADERS}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/generated"
+    "${CMAKE_CURRENT_SOURCE_DIR}/compiler/Vulkan/glslangValidator.exe")
+target_shader_compile(
+    "graphics_shader_generater"
+    "${SHADERS}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/generated"
+    "${CMAKE_CURRENT_SOURCE_DIR}/compiler/DirectX/dxc/dxc.exe")
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/generated/ DESTINATION bin/engine/shader)

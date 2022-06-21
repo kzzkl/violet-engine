@@ -83,7 +83,7 @@ font::font(std::string_view font, std::size_t size)
         auto& glyph = m_glyph[character];
         glyph.width = slot->bitmap.width;
         glyph.height = slot->bitmap.rows;
-        glyph.bearing_x = slot->metrics.horiBearingX >> 6;
+        glyph.bearing_x = slot->bitmap_left;
         glyph.bearing_y = slot->bitmap_top;
         glyph.advance = slot->advance.x >> 6;
         glyph.uv1 = {
@@ -93,7 +93,7 @@ font::font(std::string_view font, std::size_t size)
             static_cast<float>(x_max) / static_cast<float>(tex_width),
             static_cast<float>(y_max) / static_cast<float>(tex_height)};
 
-        pen.x += slot->advance.x >> 6;
+        pen.x += (slot->advance.x >> 6) + 1;
         if (pen.x + m_heigth >= tex_width)
         {
             pen.x = 0;

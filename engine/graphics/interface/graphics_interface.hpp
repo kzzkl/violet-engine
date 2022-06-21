@@ -83,6 +83,7 @@ enum class pipeline_parameter_type
     FLOAT2,
     FLOAT3,
     FLOAT4,
+    FLOAT4_ARRAY,
     FLOAT4x4,
     FLOAT4x4_ARRAY,
     SHADER_RESOURCE,
@@ -103,6 +104,8 @@ struct pipeline_parameter_layout_desc
 
 class pipeline_parameter_layout_interface
 {
+public:
+    virtual ~pipeline_parameter_layout_interface() = default;
 };
 
 class pipeline_parameter_interface
@@ -116,11 +119,10 @@ public:
     virtual void set(std::size_t index, const math::float2& value) = 0;
     virtual void set(std::size_t index, const math::float3& value) = 0;
     virtual void set(std::size_t index, const math::float4& value) = 0;
+    virtual void set(std::size_t index, const math::float4* data, size_t size) = 0;
     virtual void set(std::size_t index, const math::float4x4& value) = 0;
     virtual void set(std::size_t index, const math::float4x4* data, size_t size) = 0;
     virtual void set(std::size_t index, resource_interface* texture) = 0;
-
-    virtual void reset() = 0;
 };
 
 enum class blend_factor
@@ -206,7 +208,7 @@ struct attachment_reference
     std::size_t resolve_relation;
 };
 
-struct pipeline_desc
+struct render_pass_desc
 {
     const char* vertex_shader;
     const char* pixel_shader;
@@ -266,19 +268,19 @@ struct attachment_desc
     std::size_t samples;
 };
 
-struct render_pass_desc
+struct render_pipeline_desc
 {
     attachment_desc* attachments;
     std::size_t attachment_count;
 
-    pipeline_desc* subpasses;
-    std::size_t subpass_count;
+    render_pass_desc* passes;
+    std::size_t pass_count;
 };
 
-class render_pass_interface
+class render_pipeline_interface
 {
 public:
-    virtual ~render_pass_interface() = default;
+    virtual ~render_pipeline_interface() = default;
 };
 
 struct compute_pipeline_desc
@@ -311,14 +313,16 @@ enum primitive_topology
 class render_command_interface
 {
 public:
-    // Graphics.
+    virtual ~render_command_interface() = default;
+
+    // Render.
     virtual void begin(
-        render_pass_interface* render_pass,
+        render_pipeline_interface* pipeline,
         resource_interface* render_target,
         resource_interface* render_target_resolve,
         resource_interface* depth_stencil_buffer) = 0;
-    virtual void end(render_pass_interface* render_pass) = 0;
-    virtual void next(render_pass_interface* render_pass) = 0;
+    virtual void end(render_pipeline_interface* pipeline) = 0;
+    virtual void next_pass(render_pipeline_interface* pipeline) = 0;
 
     virtual void scissor(const scissor_extent* extents, std::size_t size) = 0;
 
@@ -374,8 +378,8 @@ using renderer = renderer_interface;
 enum vertex_buffer_flags
 {
     VERTEX_BUFFER_FLAG_NONE = 0,
-    VERTEX_BUFFER_FLAG_SKIN_IN = 0x1,
-    VERTEX_BUFFER_FLAG_SKIN_OUT = 0x2
+    VERTEX_BUFFER_FLAG_COMPUTE_IN = 0x1,
+    VERTEX_BUFFER_FLAG_COMPUTE_OUT = 0x2
 };
 
 struct vertex_buffer_desc
@@ -385,6 +389,7 @@ struct vertex_buffer_desc
     std::size_t vertex_count;
     vertex_buffer_flags flags;
     bool dynamic;
+    bool frame_resource;
 };
 
 struct index_buffer_desc
@@ -393,6 +398,7 @@ struct index_buffer_desc
     std::size_t index_size;
     std::size_t index_count;
     bool dynamic;
+    bool frame_resource;
 };
 
 struct render_target_desc
@@ -418,7 +424,7 @@ public:
 
     virtual renderer_interface* make_renderer(const renderer_desc& desc) = 0;
 
-    virtual render_pass_interface* make_render_pass(const render_pass_desc& desc) = 0;
+    virtual render_pipeline_interface* make_render_pipeline(const render_pipeline_desc& desc) = 0;
     virtual compute_pipeline_interface* make_compute_pipeline(
         const compute_pipeline_desc& desc) = 0;
 

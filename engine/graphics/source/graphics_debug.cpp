@@ -13,7 +13,7 @@ namespace ash::graphics
 debug_pipeline::debug_pipeline(graphics& graphics)
 {
     // Color pass.
-    pipeline_info color_pass_info = {};
+    render_pass_info color_pass_info = {};
     color_pass_info.vertex_shader = "engine/shader/debug.vert";
     color_pass_info.pixel_shader = "engine/shader/debug.frag";
     color_pass_info.vertex_attributes = {
@@ -63,13 +63,13 @@ debug_pipeline::debug_pipeline(graphics& graphics)
     render_target_resolve.initial_state = resource_state::RENDER_TARGET;
     render_target_resolve.final_state = resource_state::PRESENT;
 
-    render_pass_info pass_info;
-    pass_info.attachments.push_back(render_target);
-    pass_info.attachments.push_back(depth_stencil);
-    pass_info.attachments.push_back(render_target_resolve);
-    pass_info.subpasses.push_back(color_pass_info);
+    render_pipeline_info pipeline_info;
+    pipeline_info.attachments.push_back(render_target);
+    pipeline_info.attachments.push_back(depth_stencil);
+    pipeline_info.attachments.push_back(render_target_resolve);
+    pipeline_info.passes.push_back(color_pass_info);
 
-    m_interface = graphics.make_render_pass(pass_info);
+    m_interface = graphics.make_render_pipeline(pipeline_info);
 }
 
 void debug_pipeline::render(const camera& camera, render_command_interface* command)

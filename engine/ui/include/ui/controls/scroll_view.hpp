@@ -15,16 +15,16 @@ struct scroll_view_theme
     std::uint32_t background_color;
 };
 
-class scroll_view : public view_panel
+class scroll_view : public panel
 {
 public:
     scroll_view(const scroll_view_theme& theme);
 
-    void add(element* element);
-    void remove(element* element);
+    void add_item(element* item);
+    void remove_item(element* item);
 
 protected:
-    virtual void on_extent_change(const element_extent& extent) override;
+    virtual void on_extent_change(float width, float height) override;
 
 private:
     void update_container_vertical_position(float scroll_value);

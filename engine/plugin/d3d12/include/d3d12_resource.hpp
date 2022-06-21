@@ -6,74 +6,23 @@
 
 namespace ash::graphics::d3d12
 {
-class d3d12_vertex_buffer_proxy
-{
-public:
-    d3d12_vertex_buffer_proxy(const D3D12_VERTEX_BUFFER_VIEW& view) : m_view(view) {}
-
-    const D3D12_VERTEX_BUFFER_VIEW& view() const noexcept { return m_view; }
-
-private:
-    const D3D12_VERTEX_BUFFER_VIEW& m_view;
-};
-
-class d3d12_index_buffer_proxy
-{
-public:
-    d3d12_index_buffer_proxy(const D3D12_INDEX_BUFFER_VIEW& view, std::size_t index_count)
-        : m_view(view),
-          m_index_count(index_count)
-    {
-    }
-
-    inline const D3D12_INDEX_BUFFER_VIEW& view() const noexcept { return m_view; }
-    inline std::size_t index_count() const noexcept { return m_index_count; }
-
-private:
-    const D3D12_INDEX_BUFFER_VIEW& m_view;
-    std::size_t m_index_count;
-};
-
 class d3d12_resource : public resource_interface
 {
 public:
     virtual ~d3d12_resource() = default;
 
-    virtual D3D12_CPU_DESCRIPTOR_HANDLE rtv() const
-    {
-        throw d3d12_exception("The resource is not a render target");
-    }
-
-    virtual D3D12_CPU_DESCRIPTOR_HANDLE dsv() const
-    {
-        throw d3d12_exception("The resource is not a depth stencil buffer");
-    }
-
-    virtual D3D12_CPU_DESCRIPTOR_HANDLE srv() const
-    {
-        throw d3d12_exception("The resource is not a shader resource");
-    }
-
-    virtual D3D12_CPU_DESCRIPTOR_HANDLE uav() const
-    {
-        throw d3d12_exception("The resource is not a unordered access resource");
-    }
-
-    virtual d3d12_vertex_buffer_proxy vertex_buffer()
-    {
-        throw d3d12_exception("The resource is not a vertex buffer");
-    }
-
-    virtual d3d12_index_buffer_proxy index_buffer()
-    {
-        throw d3d12_exception("The resource is not a index buffer");
-    }
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE rtv() const;
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE dsv() const;
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE srv() const;
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE uav() const;
 
     virtual D3D12Resource* handle() const noexcept = 0;
 
     virtual resource_format format() const noexcept override { return resource_format::UNDEFINED; }
     virtual resource_extent extent() const noexcept override { return {0, 0}; }
     virtual std::size_t size() const noexcept override { return 0; }
+
+    virtual void upload(const void* data, std::size_t size, std::size_t offset) override;
 
     inline void resource_state(D3D12_RESOURCE_STATES state) noexcept { m_resource_state = state; }
     inline D3D12_RESOURCE_STATES resource_state() const noexcept { return m_resource_state; }
@@ -190,13 +139,10 @@ private:
 class d3d12_upload_buffer : public d3d12_resource
 {
 public:
-    d3d12_upload_buffer(
-        const void* data,
-        std::size_t size,
-        D3D12GraphicsCommandList* command_list = nullptr,
-        D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE);
+    d3d12_upload_buffer(std::size_t size, D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE);
 
     virtual void upload(const void* data, std::size_t size, std::size_t offset) override;
+    void copy(std::size_t begin, std::size_t size, std::size_t target);
 
     virtual D3D12Resource* handle() const noexcept override { return m_resource.Get(); }
 
@@ -204,118 +150,112 @@ private:
     d3d12_ptr<D3D12Resource> m_resource;
 };
 
-template <typename Impl>
-class d3d12_vertex_buffer : public Impl
+class d3d12_vertex_buffer : public d3d12_resource
 {
 public:
-    d3d12_vertex_buffer() = default;
-    d3d12_vertex_buffer(const vertex_buffer_desc& desc, D3D12GraphicsCommandList* command_list)
-        : Impl(
-              desc.vertices,
-              desc.vertex_size * desc.vertex_count,
-              command_list,
-              (desc.flags & VERTEX_BUFFER_FLAG_SKIN_OUT)
-                  ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
-                  : D3D12_RESOURCE_FLAG_NONE),
-          m_uav_offset(INVALID_DESCRIPTOR_INDEX)
-    {
-        m_view.BufferLocation = Impl::handle()->GetGPUVirtualAddress();
-        m_view.SizeInBytes = static_cast<UINT>(desc.vertex_size * desc.vertex_count);
-        m_view.StrideInBytes = static_cast<UINT>(desc.vertex_size);
+    virtual ~d3d12_vertex_buffer() = default;
+    virtual const D3D12_VERTEX_BUFFER_VIEW& view() const noexcept = 0;
+};
 
-        if (desc.flags & VERTEX_BUFFER_FLAG_SKIN_IN)
-        {
-            auto srv_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-            m_srv_offset = srv_heap->allocate(1);
+class d3d12_vertex_buffer_default : public d3d12_vertex_buffer
+{
+public:
+    d3d12_vertex_buffer_default(
+        const vertex_buffer_desc& desc,
+        D3D12GraphicsCommandList* command_list);
+    virtual ~d3d12_vertex_buffer_default() = default;
 
-            D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
-            srv_desc.Format = DXGI_FORMAT_UNKNOWN;
-            srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-            srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            srv_desc.Buffer.FirstElement = 0;
-            srv_desc.Buffer.NumElements = static_cast<UINT>(desc.vertex_count);
-            srv_desc.Buffer.StructureByteStride = static_cast<UINT>(desc.vertex_size);
-            srv_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+    virtual const D3D12_VERTEX_BUFFER_VIEW& view() const noexcept override;
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE srv() const override;
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE uav() const override;
 
-            d3d12_context::device()->CreateShaderResourceView(
-                Impl::handle(),
-                &srv_desc,
-                srv_heap->cpu_handle(m_srv_offset));
-        }
-
-        if (desc.flags & VERTEX_BUFFER_FLAG_SKIN_OUT)
-        {
-            auto uav_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-            m_uav_offset = uav_heap->allocate(1);
-
-            D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = {};
-            uav_desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-            uav_desc.Format = DXGI_FORMAT_UNKNOWN;
-            uav_desc.Buffer.FirstElement = 0;
-            uav_desc.Buffer.NumElements = static_cast<UINT>(desc.vertex_count);
-            uav_desc.Buffer.StructureByteStride = static_cast<UINT>(desc.vertex_size);
-            uav_desc.Buffer.CounterOffsetInBytes = 0;
-            uav_desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
-
-            d3d12_context::device()->CreateUnorderedAccessView(
-                Impl::handle(),
-                nullptr,
-                &uav_desc,
-                uav_heap->cpu_handle(m_uav_offset));
-        }
-    }
-
-    virtual D3D12_CPU_DESCRIPTOR_HANDLE srv() const override
-    {
-        auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        return heap->cpu_handle(m_srv_offset);
-    }
-
-    virtual D3D12_CPU_DESCRIPTOR_HANDLE uav() const override
-    {
-        auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        return heap->cpu_handle(m_uav_offset);
-    }
-
-    virtual d3d12_vertex_buffer_proxy vertex_buffer() noexcept override
-    {
-        return d3d12_vertex_buffer_proxy(m_view);
-    }
+    virtual D3D12Resource* handle() const noexcept override { return m_buffer->handle(); }
 
 private:
+    std::unique_ptr<d3d12_default_buffer> m_buffer;
+
     D3D12_VERTEX_BUFFER_VIEW m_view;
     std::size_t m_srv_offset;
     std::size_t m_uav_offset;
 };
 
-template <typename Impl>
-class d3d12_index_buffer : public Impl
+class d3d12_vertex_buffer_dynamic : public d3d12_vertex_buffer
 {
 public:
-    d3d12_index_buffer(const index_buffer_desc& desc, D3D12GraphicsCommandList* command_list)
-        : Impl(desc.indices, desc.index_size * desc.index_count, command_list)
-    {
-        m_view.BufferLocation = Impl::handle()->GetGPUVirtualAddress();
-        m_view.SizeInBytes = static_cast<UINT>(desc.index_size * desc.index_count);
+    d3d12_vertex_buffer_dynamic(const vertex_buffer_desc& desc);
+    virtual ~d3d12_vertex_buffer_dynamic() = default;
 
-        if (desc.index_size == 1)
-            m_view.Format = DXGI_FORMAT_R8_UINT;
-        else if (desc.index_size == 2)
-            m_view.Format = DXGI_FORMAT_R16_UINT;
-        else if (desc.index_size == 4)
-            m_view.Format = DXGI_FORMAT_R32_UINT;
-        else
-            throw std::out_of_range("Invalid index size.");
-    }
+    virtual void upload(const void* data, std::size_t size, std::size_t offset) override;
 
-    virtual d3d12_index_buffer_proxy index_buffer() noexcept override
-    {
-        return d3d12_index_buffer_proxy(m_view, m_index_count);
-    }
+    virtual const D3D12_VERTEX_BUFFER_VIEW& view() const noexcept override;
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE srv() const override;
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE uav() const override;
+
+    virtual D3D12Resource* handle() const noexcept override { return m_buffer->handle(); }
 
 private:
-    D3D12_INDEX_BUFFER_VIEW m_view;
+    std::unique_ptr<d3d12_upload_buffer> m_buffer;
+
+    std::size_t m_size;
+    bool m_frame_resource;
+
+    std::vector<D3D12_VERTEX_BUFFER_VIEW> m_views;
+    std::size_t m_srv_offset;
+    std::size_t m_uav_offset;
+
+    std::size_t m_current_index;
+    std::size_t m_last_sync_frame;
+};
+
+class d3d12_index_buffer : public d3d12_resource
+{
+public:
+    d3d12_index_buffer(std::size_t index_count);
+    virtual ~d3d12_index_buffer() = default;
+
+    virtual const D3D12_INDEX_BUFFER_VIEW& view() const noexcept = 0;
+    std::size_t index_count() const noexcept { return m_index_count; }
+
+private:
     std::size_t m_index_count;
+};
+
+class d3d12_index_buffer_default : public d3d12_index_buffer
+{
+public:
+    d3d12_index_buffer_default(
+        const index_buffer_desc& desc,
+        D3D12GraphicsCommandList* command_list);
+    virtual ~d3d12_index_buffer_default() = default;
+
+    virtual const D3D12_INDEX_BUFFER_VIEW& view() const noexcept override;
+    virtual D3D12Resource* handle() const noexcept override { return m_buffer->handle(); }
+
+private:
+    std::unique_ptr<d3d12_default_buffer> m_buffer;
+    D3D12_INDEX_BUFFER_VIEW m_view;
+};
+
+class d3d12_index_buffer_dynamic : public d3d12_index_buffer
+{
+public:
+    d3d12_index_buffer_dynamic(const index_buffer_desc& desc);
+
+    virtual void upload(const void* data, std::size_t size, std::size_t offset) override;
+
+    virtual const D3D12_INDEX_BUFFER_VIEW& view() const noexcept override;
+    virtual D3D12Resource* handle() const noexcept override { return m_buffer->handle(); }
+
+private:
+    std::unique_ptr<d3d12_upload_buffer> m_buffer;
+
+    std::size_t m_size;
+    bool m_frame_resource;
+
+    std::vector<D3D12_INDEX_BUFFER_VIEW> m_views;
+
+    std::size_t m_current_index;
+    std::size_t m_last_sync_frame;
 };
 
 class d3d12_resource_manager
