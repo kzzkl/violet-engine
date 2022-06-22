@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/context.hpp"
 #include "ecs/archetype.hpp"
 #include <functional>
 #include <queue>
@@ -90,10 +91,10 @@ public:
     }
 };
 
-class world
+class world : public core::system_base
 {
 public:
-    world() { register_component<information>(); }
+    world() : core::system_base("ecs") { register_component<information>(); }
     ~world()
     {
         for (auto& [_, archetype] : m_archetypes)

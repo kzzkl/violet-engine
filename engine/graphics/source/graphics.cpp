@@ -4,9 +4,8 @@
 #include "graphics/graphics_event.hpp"
 #include "graphics/graphics_task.hpp"
 #include "graphics/skin_pipeline.hpp"
-#include "log.hpp"
-#include "math/math.hpp"
 #include "scene/transform.hpp"
+#include "task/task_manager.hpp"
 #include "window/window.hpp"
 #include "window/window_event.hpp"
 #include <fstream>
@@ -49,8 +48,6 @@ bool graphics::initialize(const dictionary& config)
     pipeline_parameter_layout_info ash_object;
     ash_object.parameters = {
         {pipeline_parameter_type::FLOAT4x4, 1}, // transform_m
-        {pipeline_parameter_type::FLOAT4x4, 1}, // transform_mv
-        {pipeline_parameter_type::FLOAT4x4, 1}  // transform_mvp
     };
     make_pipeline_parameter_layout("ash_object", ash_object);
 
@@ -63,6 +60,16 @@ bool graphics::initialize(const dictionary& config)
         {pipeline_parameter_type::FLOAT4x4, 1}  // transform_vp
     };
     make_pipeline_parameter_layout("ash_pass", ash_pass);
+
+    pipeline_parameter_layout_info ash_light;
+    ash_light.parameters = {
+        {pipeline_parameter_type::FLOAT3, 1}, // ambient_light
+        {pipeline_parameter_type::FLOAT3, 1}
+    };
+    make_pipeline_parameter_layout("ash_light", ash_light);
+
+    m_light_parameter = make_pipeline_parameter("ash_light");
+    m_light_parameter->set(0, math::float3{1.0f, 0.0f, 0.0f});
 
     auto& world = system<ecs::world>();
     auto& event = system<core::event>();
@@ -81,7 +88,7 @@ bool graphics::initialize(const dictionary& config)
             m_renderer->resize(width, height);
 
             // The event_render_extent_change event is emitted by the editor module in editor mode.
-            if (!editor_mode())
+            if (!is_editor_mode())
                 event.publish<event_render_extent_change>(width, height);
         });
 
@@ -90,7 +97,7 @@ bool graphics::initialize(const dictionary& config)
 
     auto& task = system<task::task_manager>();
     auto render_task = task.schedule(TASK_GRAPHICS_RENDER, [this]() {
-        render_main_camera();
+        render();
         present();
     });
     render_task->add_dependency(*task.find(task::TASK_GAME_LOGIC_END));
@@ -149,82 +156,24 @@ void graphics::skin_meshes()
 
 void graphics::render(ecs::entity target_camera)
 {
-    auto& world = system<ecs::world>();
-
-    auto& c = world.component<camera>(target_camera);
-    auto& transform = world.component<scene::transform>(target_camera);
-
-    if (c.mask & VISUAL_GROUP_DEBUG)
-        m_debug->sync();
-
-    // Update camera data.
-    math::float4x4_simd world_simd = math::simd::load(transform.world_matrix);
-    math::float4x4_simd transform_v = math::matrix_simd::inverse(world_simd);
-    math::float4x4_simd transform_p = math::simd::load(c.projection());
-    math::float4x4_simd transform_vp = math::matrix_simd::mul(transform_v, transform_p);
-
-    math::float4x4 view, projection, view_projection;
-    math::simd::store(transform_v, view);
-    math::simd::store(transform_p, projection);
-    math::simd::store(transform_vp, view_projection);
-
-    auto parameter = c.parameter();
-    parameter->set(0, float4{1.0f, 2.0f, 3.0f, 4.0f});
-    parameter->set(1, float4{5.0f, 6.0f, 7.0f, 8.0f});
-    parameter->set(2, view);
-    parameter->set(3, projection);
-    parameter->set(4, view_projection);
-
-    // Update object data.
-    m_object_view->each([&, this](visual& visual, scene::transform& transform) {
-        if ((visual.groups & c.mask) == 0)
-            return;
-
-        math::float4x4_simd transform_m = math::simd::load(transform.world_matrix);
-        math::float4x4_simd transform_mv = math::matrix_simd::mul(transform_m, transform_v);
-        math::float4x4_simd transform_mvp = math::matrix_simd::mul(transform_mv, transform_p);
-
-        math::float4x4 model, model_view, model_view_projection;
-        math::simd::store(transform_m, model);
-        math::simd::store(transform_mv, model_view);
-        math::simd::store(transform_mvp, model_view_projection);
-
-        visual.object->set(0, model);
-        visual.object->set(1, model_view);
-        visual.object->set(2, model_view_projection);
-    });
-
-    std::set<render_pipeline*> pipelines;
-    m_visual_view->each([&, this](visual& visual) {
-        if ((visual.groups & c.mask) == 0)
-            return;
-
-        for (std::size_t i = 0; i < visual.materials.size(); ++i)
-        {
-            auto pipeline = visual.materials[i].pipeline;
-            pipelines.insert(pipeline);
-            pipeline->add(visual, i);
-        }
-    });
-
-    // Render.
-    auto command = m_renderer->allocate_command();
-    command->clear_render_target(c.render_target(), {0.0f, 0.0f, 0.0f, 1.0f});
-    command->clear_depth_stencil(c.depth_stencil_buffer());
-
-    for (auto pipeline : pipelines)
-    {
-        pipeline->render(c, command);
-        pipeline->clear();
-    }
-
-    m_renderer->execute(command);
+    m_render_queue.push(target_camera);
 }
 
-void graphics::present()
+resource_extent graphics::render_extent() const noexcept
 {
-    m_renderer->present();
-    m_debug->next_frame();
+    if (is_editor_mode())
+    {
+        auto& world = system<ecs::world>();
+        auto render_target = world.component<camera>(m_scene_camera).render_target();
+        if (render_target != nullptr)
+            return render_target->extent();
+        else
+            return m_renderer->back_buffer()->extent();
+    }
+    else
+    {
+        return m_renderer->back_buffer()->extent();
+    }
 }
 
 std::unique_ptr<render_pipeline_interface> graphics::make_render_pipeline(
@@ -275,29 +224,91 @@ std::unique_ptr<resource> graphics::make_texture(std::string_view file)
     return std::unique_ptr<resource>(factory.make_texture(file.data()));
 }
 
-resource_extent graphics::render_extent() const noexcept
-{
-    if (editor_mode())
-    {
-        auto& world = system<ecs::world>();
-        auto render_target = world.component<camera>(m_scene_camera).render_target();
-        if (render_target != nullptr)
-            return render_target->extent();
-        else
-            return m_renderer->back_buffer()->extent();
-    }
-    else
-    {
-        return m_renderer->back_buffer()->extent();
-    }
-}
-
-void graphics::render_main_camera()
+void graphics::render()
 {
     auto& world = system<ecs::world>();
 
-    ecs::entity main_camera = editor_mode() ? m_editor_camera : m_game_camera;
+    ecs::entity main_camera = is_editor_mode() ? m_editor_camera : m_game_camera;
     world.component<camera>(main_camera).render_target_resolve(m_renderer->back_buffer());
-    render(main_camera);
+    m_render_queue.push(main_camera);
+
+    // Update object data.
+    m_object_view->each([&, this](visual& visual, scene::transform& transform) {
+        visual.object->set(0, transform.world_matrix);
+    });
+
+    // Render camera.
+    while (!m_render_queue.empty())
+    {
+        render_camera(m_render_queue.front());
+        m_render_queue.pop();
+    }
+}
+
+void graphics::present()
+{
+    m_renderer->present();
+    m_debug->next_frame();
+}
+
+void graphics::render_camera(ecs::entity camera_entity)
+{
+    auto& world = system<ecs::world>();
+
+    auto& render_camera = world.component<camera>(camera_entity);
+    auto& transform = world.component<scene::transform>(camera_entity);
+
+    if (render_camera.mask & VISUAL_GROUP_DEBUG)
+        m_debug->sync();
+
+    // Update camera data.
+    math::float4x4_simd world_simd = math::simd::load(transform.world_matrix);
+    math::float4x4_simd transform_v = math::matrix_simd::inverse(world_simd);
+    math::float4x4_simd transform_p = math::simd::load(render_camera.projection());
+    math::float4x4_simd transform_vp = math::matrix_simd::mul(transform_v, transform_p);
+
+    math::float4x4 view, projection, view_projection;
+    math::simd::store(transform_v, view);
+    math::simd::store(transform_p, projection);
+    math::simd::store(transform_vp, view_projection);
+
+    auto parameter = render_camera.parameter();
+    parameter->set(0, float4{1.0f, 2.0f, 3.0f, 4.0f});
+    parameter->set(1, float4{5.0f, 6.0f, 7.0f, 8.0f});
+    parameter->set(2, view);
+    parameter->set(3, projection);
+    parameter->set(4, view_projection);
+
+    std::unordered_map<render_pipeline*, render_scene> render_scenes;
+    m_visual_view->each([&, this](visual& visual) {
+        if ((visual.groups & render_camera.mask) == 0)
+            return;
+
+        for (std::size_t i = 0; i < visual.materials.size(); ++i)
+        {
+            auto& render_scene = render_scenes[visual.materials[i].pipeline];
+            render_scene.units.push_back(render_unit{
+                .vertex_buffers = visual.vertex_buffers,
+                .index_buffer = visual.index_buffer,
+                .index_start = visual.submeshes[i].index_start,
+                .index_end = visual.submeshes[i].index_end,
+                .vertex_base = visual.submeshes[i].vertex_base,
+                .parameters = visual.materials[i].parameters,
+                .scissor = visual.materials[i].scissor});
+        }
+    });
+
+    // Render.
+    auto command = m_renderer->allocate_command();
+    command->clear_render_target(render_camera.render_target(), {0.0f, 0.0f, 0.0f, 1.0f});
+    command->clear_depth_stencil(render_camera.depth_stencil_buffer());
+
+    for (auto& [pipeline, render_scene] : render_scenes)
+    {
+        render_scene.light_parameter = m_light_parameter.get();
+        pipeline->render(render_camera, render_scene, command);
+    }
+
+    m_renderer->execute(command);
 }
 } // namespace ash::graphics

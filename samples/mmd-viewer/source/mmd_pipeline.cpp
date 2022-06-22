@@ -102,6 +102,7 @@ mmd_render_pipeline::mmd_render_pipeline()
 
 void mmd_render_pipeline::render(
     const graphics::camera& camera,
+    const graphics::render_scene& scene,
     graphics::render_command_interface* command)
 {
     command->begin(
@@ -118,7 +119,7 @@ void mmd_render_pipeline::render(
 
     // Color pass.
     command->parameter(2, camera.parameter()->interface());
-    for (auto& unit : units())
+    for (auto& unit : scene.units)
     {
         command->parameter(0, unit.parameters[0]->interface());
         command->parameter(1, unit.parameters[1]->interface());
@@ -136,7 +137,7 @@ void mmd_render_pipeline::render(
 
     // Edge pass.
     command->parameter(1, camera.parameter()->interface());
-    for (auto& unit : units())
+    for (auto& unit : scene.units)
     {
         command->parameter(0, unit.parameters[0]->interface());
 

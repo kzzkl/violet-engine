@@ -1,5 +1,6 @@
 #include "editor/component_view.hpp"
 #include "core/context.hpp"
+#include "ecs/world.hpp"
 #include "scene/transform.hpp"
 #include "ui/controls/input.hpp"
 #include "ui/controls/label.hpp"

@@ -2,8 +2,6 @@
 cbuffer ash_object : register(b0, space0)
 {
     float4x4 transform_m;
-    float4x4 transform_mv;
-    float4x4 transform_mvp;
 };
 
 [[vk::binding(0, 1)]]
@@ -39,7 +37,7 @@ vs_out vs_main(vs_in vin)
 {
     vs_out result;
 
-    result.position = mul(float4(vin.position, 1.0f), transform_mvp);
+    result.position = mul(mul(float4(vin.position, 1.0f), transform_m), transform_vp);
     result.normal = mul(float4(vin.normal, 0.0f), transform_m).xyz;
 
     return result;

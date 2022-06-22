@@ -2,6 +2,7 @@
 #include "core/relation.hpp"
 #include "graphics/graphics.hpp"
 #include "graphics/graphics_task.hpp"
+#include "task/task_manager.hpp"
 #include "ui/controls.hpp"
 #include "ui/element_tree.hpp"
 #include "ui/theme.hpp"

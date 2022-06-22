@@ -1,5 +1,6 @@
 #include "window/window.hpp"
 #include "core/context.hpp"
+#include "task/task_manager.hpp"
 #include "window/window_event.hpp"
 #include "window/window_impl_win32.hpp"
 #include "window/window_task.hpp"

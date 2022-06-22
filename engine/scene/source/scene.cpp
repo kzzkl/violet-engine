@@ -1,5 +1,6 @@
 #include "scene/scene.hpp"
 #include "core/relation.hpp"
+#include "core/relation_event.hpp"
 #include "scene/scene_event.hpp"
 
 namespace ash::scene

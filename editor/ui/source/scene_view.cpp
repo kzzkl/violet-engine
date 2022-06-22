@@ -1,5 +1,6 @@
 #include "editor/scene_view.hpp"
 #include "core/relation.hpp"
+#include "core/timer.hpp"
 #include "ecs/world.hpp"
 #include "graphics/graphics.hpp"
 #include "graphics/graphics_event.hpp"

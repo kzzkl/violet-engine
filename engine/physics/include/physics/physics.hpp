@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/context.hpp"
+#include "ecs/world.hpp"
 #include "physics/joint.hpp"
 #include "physics/physics_plugin.hpp"
 #include "physics/rigidbody.hpp"

@@ -472,6 +472,7 @@ d3d12_default_buffer::d3d12_default_buffer(
 }
 
 d3d12_upload_buffer::d3d12_upload_buffer(std::size_t size, D3D12_RESOURCE_FLAGS flags)
+    : m_mapped(nullptr)
 {
     CD3DX12_HEAP_PROPERTIES heap_properties(D3D12_HEAP_TYPE_UPLOAD);
     CD3DX12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(size, flags);
@@ -484,17 +485,20 @@ d3d12_upload_buffer::d3d12_upload_buffer(std::size_t size, D3D12_RESOURCE_FLAGS 
         nullptr,
         IID_PPV_ARGS(&m_resource)));
     resource_state(D3D12_RESOURCE_STATE_GENERIC_READ);
+
+    throw_if_failed(m_resource->Map(0, nullptr, &m_mapped));
+}
+
+d3d12_upload_buffer::~d3d12_upload_buffer()
+{
+    if (m_mapped && m_resource)
+        m_resource->Unmap(0, nullptr);
 }
 
 void d3d12_upload_buffer::upload(const void* data, std::size_t size, std::size_t offset)
 {
-    void* mapped;
-    throw_if_failed(m_resource->Map(0, nullptr, &mapped));
-
-    void* target = static_cast<std::uint8_t*>(mapped) + offset;
+    void* target = static_cast<std::uint8_t*>(m_mapped) + offset;
     std::memcpy(target, data, size);
-
-    m_resource->Unmap(0, nullptr);
 }
 
 void d3d12_upload_buffer::copy(std::size_t begin, std::size_t size, std::size_t target)

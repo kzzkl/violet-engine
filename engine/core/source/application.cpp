@@ -1,4 +1,8 @@
 #include "core/application.hpp"
+#include "core/event.hpp"
+#include "core/timer.hpp"
+#include "ecs/world.hpp"
+#include "task/task_manager.hpp"
 
 using namespace ash::task;
 
@@ -7,6 +11,11 @@ namespace ash::core
 application::application(std::string_view config_path)
 {
     context::initialize(config_path);
+
+    context::install<task::task_manager>();
+    context::install<ecs::world>();
+    context::install<event>();
+    context::install<timer>();
 }
 
 void application::run()
@@ -35,7 +44,7 @@ void application::run()
 
         nanoseconds delta = time.delta<timer::point::FRAME_START, timer::point::FRAME_END>();
         if (delta < time_per_frame)
-            ;//timer::busy_sleep(time_per_frame - delta);
+            ; // timer::busy_sleep(time_per_frame - delta);
 
         s += (timer::now<steady_clock>() - time.time_point<timer::point::FRAME_START>());
 
@@ -55,4 +64,4 @@ void application::exit()
 {
     m_exit = true;
 }
-} // namespace ash
+} // namespace ash::core

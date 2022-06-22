@@ -1,10 +1,9 @@
 #pragma once
 
-#include "camera.hpp"
+#include "graphics/camera.hpp"
+#include "graphics/light.hpp"
+#include "graphics/pipeline_parameter.hpp"
 #include "graphics/visual.hpp"
-#include "graphics_interface.hpp"
-#include "pipeline_parameter.hpp"
-#include <vector>
 
 namespace ash::graphics
 {
@@ -21,21 +20,22 @@ struct render_unit
     scissor_extent scissor;
 };
 
+struct render_scene
+{
+    pipeline_parameter* light_parameter;
+
+    std::vector<render_unit> units;
+};
+
 class render_pipeline
 {
 public:
     render_pipeline();
     virtual ~render_pipeline() = default;
 
-    void add(const visual& visual, std::size_t submesh_index);
-    void clear() { m_units.clear(); }
-
-    virtual void render(const camera& camera, render_command_interface* command) = 0;
-
-protected:
-    const std::vector<render_unit>& units() const { return m_units; }
-
-private:
-    std::vector<render_unit> m_units;
+    virtual void render(
+        const camera& camera,
+        const render_scene& scene,
+        render_command_interface* command) = 0;
 };
 } // namespace ash::graphics

@@ -97,6 +97,7 @@ ui_pipeline::ui_pipeline()
 
 void ui_pipeline::render(
     const graphics::camera& camera,
+    const graphics::render_scene& scene,
     graphics::render_command_interface* command)
 {
     command->begin(
@@ -110,9 +111,9 @@ void ui_pipeline::render(
     extent.max_x = width;
     extent.max_y = height;
 
-    command->parameter(1, units()[0].parameters[1]->interface()); // offset
-    command->parameter(2, units()[0].parameters[2]->interface()); // mvp
-    for (auto& unit : units())
+    command->parameter(1, scene.units[0].parameters[1]->interface()); // offset
+    command->parameter(2, scene.units[0].parameters[2]->interface()); // mvp
+    for (auto& unit : scene.units)
     {
         command->scissor(&unit.scissor, 1);
 

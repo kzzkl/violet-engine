@@ -140,6 +140,7 @@ class d3d12_upload_buffer : public d3d12_resource
 {
 public:
     d3d12_upload_buffer(std::size_t size, D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE);
+    virtual ~d3d12_upload_buffer();
 
     virtual void upload(const void* data, std::size_t size, std::size_t offset) override;
     void copy(std::size_t begin, std::size_t size, std::size_t target);
@@ -148,6 +149,7 @@ public:
 
 private:
     d3d12_ptr<D3D12Resource> m_resource;
+    void* m_mapped;
 };
 
 class d3d12_vertex_buffer : public d3d12_resource

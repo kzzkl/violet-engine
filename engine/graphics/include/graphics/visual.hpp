@@ -1,20 +1,10 @@
 #pragma once
 
-#include "graphics/pipeline_parameter.hpp"
-#include "graphics_interface.hpp"
+#include "graphics/material.hpp"
 #include <vector>
 
 namespace ash::graphics
 {
-class render_pipeline;
-struct material
-{
-    render_pipeline* pipeline;
-    std::vector<pipeline_parameter*> parameters;
-
-    scissor_extent scissor;
-};
-
 struct submesh
 {
     std::size_t index_start;

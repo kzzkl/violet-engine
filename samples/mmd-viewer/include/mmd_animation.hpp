@@ -1,10 +1,10 @@
 #pragma once
 
 #include "core/context.hpp"
+#include "ecs/world.hpp"
 #include "math/math.hpp"
 #include "mmd_component.hpp"
 #include "scene/transform.hpp"
-#include <vector>
 
 namespace ash::sample::mmd
 {

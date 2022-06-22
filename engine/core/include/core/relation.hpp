@@ -2,23 +2,12 @@
 
 #include "core/context.hpp"
 #include "core/link.hpp"
+#include "ecs/world.hpp"
 #include <queue>
 #include <stack>
 
 namespace ash::core
 {
-struct event_link
-{
-    using functor = std::function<void(ecs::entity, link&)>;
-    using dispatcher = sequence_dispatcher<functor>;
-};
-
-struct event_unlink
-{
-    using functor = std::function<void(ecs::entity, link&)>;
-    using dispatcher = sequence_dispatcher<functor>;
-};
-
 class relation : public system_base
 {
 public:
@@ -95,7 +84,5 @@ public:
                 dfs.push(child);
         }
     }
-
-private:
 };
-} // namespace ash
+} // namespace ash::core

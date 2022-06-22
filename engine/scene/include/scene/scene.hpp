@@ -2,6 +2,7 @@
 
 #include "core/context.hpp"
 #include "core/link.hpp"
+#include "ecs/world.hpp"
 #include "scene/transform.hpp"
 #include <memory>
 

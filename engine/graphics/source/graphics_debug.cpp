@@ -72,7 +72,10 @@ debug_pipeline::debug_pipeline(graphics& graphics)
     m_interface = graphics.make_render_pipeline(pipeline_info);
 }
 
-void debug_pipeline::render(const camera& camera, render_command_interface* command)
+void debug_pipeline::render(
+    const camera& camera,
+    const render_scene& scene,
+    render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
@@ -87,7 +90,7 @@ void debug_pipeline::render(const camera& camera, render_command_interface* comm
     command->scissor(&extent, 1);
 
     command->parameter(0, camera.parameter()->interface());
-    for (auto& unit : units())
+    for (auto& unit : scene.units)
     {
         if (unit.index_start == unit.index_end)
             continue;

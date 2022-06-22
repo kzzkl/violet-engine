@@ -1,5 +1,6 @@
 #include "editor/editor_ui.hpp"
 #include "core/context.hpp"
+#include "core/event.hpp"
 #include "core/relation.hpp"
 #include "ui/ui.hpp"
 #include "window/window.hpp"

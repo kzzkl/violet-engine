@@ -6,6 +6,7 @@
 #include "graphics/graphics_debug.hpp"
 #include "graphics/graphics_interface_helper.hpp"
 #include "graphics/graphics_plugin.hpp"
+#include "graphics/light.hpp"
 #include "graphics/pipeline_parameter.hpp"
 #include "graphics/skinned_mesh.hpp"
 #include "graphics/visual.hpp"
@@ -29,8 +30,7 @@ public:
     void compute(compute_pipeline* pipeline);
 
     void skin_meshes();
-    void render(ecs::entity target_camera = ecs::INVALID_ENTITY);
-    void present();
+    void render(ecs::entity camera_entity);
 
     void game_camera(ecs::entity game_camera) noexcept { m_game_camera = game_camera; }
     ecs::entity game_camera() const noexcept { return m_game_camera; }
@@ -43,6 +43,12 @@ public:
         m_scene_camera = scene_camera;
     }
 
+    graphics_debug& debug() { return *m_debug; }
+
+    resource_format back_buffer_format() const { return m_renderer->back_buffer()->format(); }
+    resource_extent render_extent() const noexcept;
+
+public:
     std::unique_ptr<render_pipeline_interface> make_render_pipeline(render_pipeline_info& info);
     std::unique_ptr<compute_pipeline_interface> make_compute_pipeline(compute_pipeline_info& info);
 
@@ -111,14 +117,12 @@ public:
 
     std::unique_ptr<resource> make_texture(std::string_view file);
 
-    graphics_debug& debug() { return *m_debug; }
-
-    resource_format back_buffer_format() const { return m_renderer->back_buffer()->format(); }
-    resource_extent render_extent() const noexcept;
-
 private:
-    void render_main_camera();
-    bool editor_mode() const noexcept { return m_editor_camera != ecs::INVALID_ENTITY; }
+    void render();
+    void render_camera(ecs::entity camera_entity);
+    void present();
+
+    bool is_editor_mode() const noexcept { return m_editor_camera != ecs::INVALID_ENTITY; }
 
     graphics_plugin m_plugin;
     std::unique_ptr<renderer> m_renderer;
@@ -128,9 +132,15 @@ private:
     ecs::entity m_editor_camera;
     ecs::entity m_scene_camera;
 
-    ash::ecs::view<visual>* m_visual_view;
-    ash::ecs::view<visual, scene::transform>* m_object_view;
-    ash::ecs::view<visual, skinned_mesh>* m_skinned_mesh_view;
+    std::queue<ecs::entity> m_render_queue;
+
+    std::unique_ptr<pipeline_parameter> m_light_parameter;
+
+    ecs::view<visual>* m_visual_view;
+    ecs::view<visual, scene::transform>* m_object_view;
+    ecs::view<visual, skinned_mesh>* m_skinned_mesh_view;
+
+    ecs::view<point_light>* m_point_light_view;
 
     interface_map<pipeline_parameter_layout_interface> m_parameter_layouts;
 

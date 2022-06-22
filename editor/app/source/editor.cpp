@@ -3,6 +3,7 @@
 #include "editor/editor_task.hpp"
 #include "graphics/graphics.hpp"
 #include "scene/scene.hpp"
+#include "task/task_manager.hpp"
 #include "ui/ui.hpp"
 #include "ui/ui_task.hpp"
 #include "window/window.hpp"

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "assert.hpp"
-#include "index_generator.hpp"
+#include "core/context.hpp"
 #include <memory>
 #include <string>
 #include <vector>
@@ -66,9 +66,11 @@ struct event_dispatcher
 template <typename T>
 using event_dispatcher_t = event_dispatcher<T>::type;
 
-class event
+class event : public system_base
 {
 public:
+    event() : system_base("event") {}
+
     template <typename Event, typename... Args>
     void subscribe(std::string_view name, Args&&... args)
     {

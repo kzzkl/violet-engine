@@ -5,6 +5,7 @@
 #include "graphics/graphics.hpp"
 #include "graphics/graphics_event.hpp"
 #include "scene/scene.hpp"
+#include "task/task_manager.hpp"
 #include "ui/ui.hpp"
 #include "window/window.hpp"
 

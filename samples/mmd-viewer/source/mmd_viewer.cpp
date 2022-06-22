@@ -1,4 +1,5 @@
 #include "mmd_viewer.hpp"
+#include "core/timer.hpp"
 #include "mmd_animation.hpp"
 #include "scene/scene.hpp"
 #include "scene/transform.hpp"

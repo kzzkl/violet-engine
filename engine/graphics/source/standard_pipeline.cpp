@@ -16,8 +16,8 @@ standard_pipeline::standard_pipeline()
     color_pass_info.vertex_shader = "engine/shader/standard.vert";
     color_pass_info.pixel_shader = "engine/shader/standard.frag";
     color_pass_info.vertex_attributes = {
-        {"POSITION",    vertex_attribute_type::FLOAT3}, // position
-        {"NORMAL",      vertex_attribute_type::FLOAT3}, // normal
+        {"POSITION", vertex_attribute_type::FLOAT3}, // position
+        {"NORMAL",   vertex_attribute_type::FLOAT3}, // normal
     };
     color_pass_info.references = {
         {attachment_reference_type::COLOR,   0},
@@ -71,7 +71,10 @@ standard_pipeline::standard_pipeline()
     m_interface = system<graphics>().make_render_pipeline(standard_pipeline_info);
 }
 
-void standard_pipeline::render(const camera& camera, render_command_interface* command)
+void standard_pipeline::render(
+    const camera& camera,
+    const render_scene& scene,
+    render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
@@ -86,7 +89,7 @@ void standard_pipeline::render(const camera& camera, render_command_interface* c
     command->scissor(&extent, 1);
 
     command->parameter(2, camera.parameter()->interface());
-    for (auto& unit : units())
+    for (auto& unit : scene.units)
     {
         command->parameter(0, unit.parameters[0]->interface());
         command->parameter(1, unit.parameters[1]->interface());
