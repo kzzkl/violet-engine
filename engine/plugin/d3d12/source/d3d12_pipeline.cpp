@@ -238,7 +238,7 @@ d3d12_pipeline_parameter_layout::d3d12_pipeline_parameter_layout(
         return (begin + align - 1) & ~(align - 1);
     };
 
-    for (std::size_t i = 0; i < desc.size; ++i)
+    for (std::size_t i = 0; i < desc.parameter_count; ++i)
     {
         switch (desc.parameters[i].type)
         {
@@ -256,8 +256,8 @@ d3d12_pipeline_parameter_layout::d3d12_pipeline_parameter_layout(
 
     std::size_t constant_offset = 0;
     std::size_t descriptor_offset = m_cbv_count;
-    m_parameters.reserve(desc.size);
-    for (std::size_t i = 0; i < desc.size; ++i)
+    m_parameters.reserve(desc.parameter_count);
+    for (std::size_t i = 0; i < desc.parameter_count; ++i)
     {
         std::size_t offset = 0;
         std::size_t size = 0;
@@ -306,6 +306,11 @@ d3d12_pipeline_parameter_layout::d3d12_pipeline_parameter_layout(
         case pipeline_parameter_type::FLOAT4x4_ARRAY:
             offset = cal_align(constant_offset, 16);
             size = sizeof(math::float4x4) * desc.parameters[i].size;
+            constant_offset = offset + size;
+            break;
+        case pipeline_parameter_type::CONSTANT_BUFFER:
+            offset = cal_align(constant_offset, 16);
+            size = desc.parameters[i].size;
             constant_offset = offset + size;
             break;
         case pipeline_parameter_type::SHADER_RESOURCE:
@@ -479,7 +484,13 @@ void d3d12_pipeline_parameter::set(std::size_t index, const math::float4x4* data
     mark_dirty(index);
 }
 
-void d3d12_pipeline_parameter::set(std::size_t index, resource* texture)
+void d3d12_pipeline_parameter::set(std::size_t index, const void* data, size_t size)
+{
+    std::memcpy(m_cpu_buffer.data() + m_layout->parameter_offset(index), data, size);
+    mark_dirty(index);
+}
+
+void d3d12_pipeline_parameter::set(std::size_t index, resource_interface* texture)
 {
     std::size_t offset = m_layout->parameter_offset(index);
     if (m_layout->parameter_type(index) == pipeline_parameter_type::SHADER_RESOURCE)
@@ -544,7 +555,7 @@ void d3d12_pipeline_parameter::mark_dirty(std::size_t index)
 }
 
 d3d12_root_signature::d3d12_root_signature(
-    pipeline_parameter_layout_interface** parameters,
+    pipeline_parameter_layout_interface* const* parameters,
     std::size_t parameter_count)
 {
     std::vector<CD3DX12_ROOT_PARAMETER> root_parameter;
@@ -625,7 +636,7 @@ d3d12_root_signature::d3d12_root_signature(
 }
 
 d3d12_frame_buffer_layout::d3d12_frame_buffer_layout(
-    attachment_desc* attachments,
+    const attachment_desc* attachments,
     std::size_t count)
 {
     for (std::size_t i = 0; i < count; ++i)

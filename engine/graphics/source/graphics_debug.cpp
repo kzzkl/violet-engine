@@ -3,14 +3,14 @@
 #include "graphics/graphics_debug.hpp"
 #include "core/link.hpp"
 #include "core/relation.hpp"
-#include "graphics/graphics.hpp"
 #include "graphics/render_pipeline.hpp"
+#include "graphics/rhi.hpp"
 #include "graphics/visual.hpp"
 #include "scene/scene.hpp"
 
 namespace ash::graphics
 {
-debug_pipeline::debug_pipeline(graphics& graphics)
+debug_pipeline::debug_pipeline()
 {
     // Color pass.
     render_pass_info color_pass_info = {};
@@ -32,7 +32,7 @@ debug_pipeline::debug_pipeline(graphics& graphics)
     // Attachment.
     attachment_info render_target = {};
     render_target.type = attachment_type::CAMERA_RENDER_TARGET;
-    render_target.format = graphics.back_buffer_format();
+    render_target.format = rhi::back_buffer_format();
     render_target.load_op = attachment_load_op::LOAD;
     render_target.store_op = attachment_store_op::STORE;
     render_target.stencil_load_op = attachment_load_op::DONT_CARE;
@@ -54,7 +54,7 @@ debug_pipeline::debug_pipeline(graphics& graphics)
 
     attachment_info render_target_resolve = {};
     render_target_resolve.type = attachment_type::CAMERA_RENDER_TARGET_RESOLVE;
-    render_target_resolve.format = graphics.back_buffer_format();
+    render_target_resolve.format = rhi::back_buffer_format();
     render_target_resolve.load_op = attachment_load_op::CLEAR;
     render_target_resolve.store_op = attachment_store_op::DONT_CARE;
     render_target_resolve.stencil_load_op = attachment_load_op::DONT_CARE;
@@ -69,7 +69,7 @@ debug_pipeline::debug_pipeline(graphics& graphics)
     pipeline_info.attachments.push_back(render_target_resolve);
     pipeline_info.passes.push_back(color_pass_info);
 
-    m_interface = graphics.make_render_pipeline(pipeline_info);
+    m_interface = rhi::make_render_pipeline(pipeline_info);
 }
 
 void debug_pipeline::render(
@@ -89,7 +89,7 @@ void debug_pipeline::render(
     extent.max_y = height;
     command->scissor(&extent, 1);
 
-    command->parameter(0, camera.parameter()->interface());
+    command->parameter(0, camera.parameter());
     for (auto& unit : scene.units)
     {
         if (unit.index_start == unit.index_end)
@@ -112,19 +112,18 @@ graphics_debug::graphics_debug(std::size_t frame_resource)
     : m_vertex_buffers(2),
       m_frame_resource(frame_resource)
 {
-    auto& g = system<graphics>();
 }
 
-void graphics_debug::initialize(graphics& graphics)
+void graphics_debug::initialize()
 {
-    m_pipeline = std::make_unique<debug_pipeline>(graphics);
+    m_pipeline = std::make_unique<debug_pipeline>();
 
-    m_vertex_buffers[0] = graphics.make_vertex_buffer<math::float3>(
+    m_vertex_buffers[0] = rhi::make_vertex_buffer<math::float3>(
         nullptr,
         MAX_VERTEX_COUNT * m_frame_resource,
         VERTEX_BUFFER_FLAG_NONE,
         true);
-    m_vertex_buffers[1] = graphics.make_vertex_buffer<math::float3>(
+    m_vertex_buffers[1] = rhi::make_vertex_buffer<math::float3>(
         nullptr,
         MAX_VERTEX_COUNT * m_frame_resource,
         VERTEX_BUFFER_FLAG_NONE,
@@ -133,7 +132,7 @@ void graphics_debug::initialize(graphics& graphics)
     std::vector<std::uint32_t> index_data(MAX_VERTEX_COUNT);
     for (std::uint32_t i = 0; i < MAX_VERTEX_COUNT; ++i)
         index_data[i] = i;
-    m_index_buffer = graphics.make_index_buffer(index_data.data(), index_data.size());
+    m_index_buffer = rhi::make_index_buffer(index_data.data(), index_data.size());
 
     auto& world = system<ecs::world>();
     auto& scene = system<scene::scene>();

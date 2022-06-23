@@ -1,5 +1,5 @@
 #include "ui/font.hpp"
-#include "graphics/graphics.hpp"
+#include "graphics/rhi.hpp"
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -104,7 +104,7 @@ font::font(std::string_view font, std::size_t size)
     FT_Done_Face(face);
     FT_Done_FreeType(library);
 
-    m_texture = system<graphics::graphics>().make_texture(
+    m_texture = graphics::rhi::make_texture(
         pixels.data(),
         tex_width,
         tex_height,

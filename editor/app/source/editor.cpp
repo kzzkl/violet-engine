@@ -2,6 +2,7 @@
 #include "core/relation.hpp"
 #include "editor/editor_task.hpp"
 #include "graphics/graphics.hpp"
+#include "graphics/rhi.hpp"
 #include "scene/scene.hpp"
 #include "task/task_manager.hpp"
 #include "ui/ui.hpp"
@@ -44,9 +45,7 @@ void editor::initialize_task()
 void editor::initialize_camera()
 {
     auto& world = system<ecs::world>();
-    auto& relation = system<core::relation>();
     auto& graphics = system<graphics::graphics>();
-    auto& scene = system<scene::scene>();
     auto& window = system<window::window>();
 
     m_editor_camera = world.create("editor_camera");
@@ -69,16 +68,15 @@ void editor::initialize_camera()
 void editor::resize(std::uint32_t width, std::uint32_t height)
 {
     auto& world = system<ecs::world>();
-    auto& graphics = system<graphics::graphics>();
 
     auto& camera = world.component<graphics::camera>(m_editor_camera);
 
     graphics::render_target_info render_target_info = {};
-    render_target_info.format = graphics.back_buffer_format();
+    render_target_info.format = graphics::rhi::back_buffer_format();
     render_target_info.width = width;
     render_target_info.height = height;
     render_target_info.samples = 4;
-    m_render_target = graphics.make_render_target(render_target_info);
+    m_render_target = graphics::rhi::make_render_target(render_target_info);
     camera.render_target(m_render_target.get());
 
     graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
@@ -86,7 +84,7 @@ void editor::resize(std::uint32_t width, std::uint32_t height)
     depth_stencil_buffer_info.width = width;
     depth_stencil_buffer_info.height = height;
     depth_stencil_buffer_info.samples = 4;
-    m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
+    m_depth_stencil_buffer = graphics::rhi::make_depth_stencil_buffer(depth_stencil_buffer_info);
     camera.depth_stencil_buffer(m_depth_stencil_buffer.get());
 }
 }; // namespace ash::editor

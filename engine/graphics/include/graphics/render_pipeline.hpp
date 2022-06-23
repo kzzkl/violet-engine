@@ -2,7 +2,6 @@
 
 #include "graphics/camera.hpp"
 #include "graphics/light.hpp"
-#include "graphics/pipeline_parameter.hpp"
 #include "graphics/visual.hpp"
 
 namespace ash::graphics
@@ -15,15 +14,14 @@ struct render_unit
     std::size_t index_start;
     std::size_t index_end;
     std::size_t vertex_base;
-    std::vector<pipeline_parameter*> parameters;
+    std::vector<pipeline_parameter_interface*> parameters;
 
     scissor_extent scissor;
 };
 
 struct render_scene
 {
-    pipeline_parameter* light_parameter;
-
+    pipeline_parameter_interface* light_parameter;
     std::vector<render_unit> units;
 };
 

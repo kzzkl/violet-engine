@@ -1,4 +1,5 @@
 #include "mmd_loader.hpp"
+#include "graphics/rhi.hpp"
 #include <iostream>
 
 namespace ash::sample::mmd
@@ -25,7 +26,7 @@ void mmd_loader::initialize()
     auto& graphics = system<graphics::graphics>();
 
     for (auto& path : internal_toon_path)
-        m_internal_toon.push_back(graphics.make_texture("resource/mmd/" + path));
+        m_internal_toon.push_back(graphics::rhi::make_texture("resource/mmd/" + path));
 }
 
 bool mmd_loader::load(
@@ -51,12 +52,12 @@ bool mmd_loader::load(
         entity);
 
     auto& visual = world.component<graphics::visual>(entity);
-    resource.object_parameter = graphics.make_pipeline_parameter("ash_object");
+    resource.object_parameter = graphics::rhi::make_pipeline_parameter("ash_object");
     visual.object = resource.object_parameter.get();
 
     auto& skinned_mesh = world.component<graphics::skinned_mesh>(entity);
     skinned_mesh.pipeline = skin_pipeline;
-    skinned_mesh.parameter = graphics.make_pipeline_parameter("mmd_skin");
+    skinned_mesh.parameter = graphics::rhi::make_pipeline_parameter("mmd_skin");
 
     load_hierarchy(entity, resource, pmx_loader);
     load_mesh(entity, resource, pmx_loader);
@@ -196,22 +197,27 @@ void mmd_loader::load_mesh(ecs::entity entity, mmd_resource& resource, const pmx
     };
     resource.vertex_buffers.resize(MMD_VERTEX_ATTRIBUTE_NUM_TYPES);
 
-    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_POSITION] = graphics.make_vertex_buffer(
-        position.data(),
-        position.size(),
-        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
-    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_NORMAL] = graphics.make_vertex_buffer(
-        normal.data(),
-        normal.size(),
-        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
+    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_POSITION] =
+        graphics::rhi::make_vertex_buffer(
+            position.data(),
+            position.size(),
+            graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
+    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_NORMAL] =
+        graphics::rhi::make_vertex_buffer(
+            normal.data(),
+            normal.size(),
+            graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
     resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_UV] =
-        graphics.make_vertex_buffer(uv.data(), uv.size());
-    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_BONE] =
-        graphics.make_vertex_buffer(bone.data(), bone.size(), graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
-    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_BONE_WEIGHT] = graphics.make_vertex_buffer(
-        bone_weight.data(),
-        bone_weight.size(),
+        graphics::rhi::make_vertex_buffer(uv.data(), uv.size());
+    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_BONE] = graphics::rhi::make_vertex_buffer(
+        bone.data(),
+        bone.size(),
         graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
+    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_BONE_WEIGHT] =
+        graphics::rhi::make_vertex_buffer(
+            bone_weight.data(),
+            bone_weight.size(),
+            graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
 
     auto& visual = world.component<graphics::visual>(entity);
     visual.vertex_buffers = {
@@ -226,11 +232,11 @@ void mmd_loader::load_mesh(ecs::entity entity, mmd_resource& resource, const pmx
         resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_BONE].get(),
         resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_BONE_WEIGHT].get()};
 
-    skinned_mesh.skinned_vertex_buffers.push_back(graphics.make_vertex_buffer(
+    skinned_mesh.skinned_vertex_buffers.push_back(graphics::rhi::make_vertex_buffer(
         position.data(),
         position.size(),
         graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT));
-    skinned_mesh.skinned_vertex_buffers.push_back(graphics.make_vertex_buffer(
+    skinned_mesh.skinned_vertex_buffers.push_back(graphics::rhi::make_vertex_buffer(
         normal.data(),
         normal.size(),
         graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT));
@@ -243,7 +249,8 @@ void mmd_loader::load_mesh(ecs::entity entity, mmd_resource& resource, const pmx
     for (std::int32_t i : loader.indices())
         indices.push_back(i);
 
-    resource.index_buffer = graphics.make_index_buffer(indices.data(), indices.size());
+    resource.index_buffer =
+        graphics::rhi::make_index_buffer(indices.data(), indices.size());
     visual.index_buffer = resource.index_buffer.get();
 }
 
@@ -254,7 +261,7 @@ void mmd_loader::load_texture(ecs::entity entity, mmd_resource& resource, const 
     for (auto& texture_path : loader.textures())
     {
         std::string dds_path = texture_path.substr(0, texture_path.find_last_of('.')) + ".dds";
-        resource.textures.push_back(graphics.make_texture(dds_path));
+        resource.textures.push_back(graphics::rhi::make_texture(dds_path));
     }
 }
 
@@ -269,7 +276,7 @@ void mmd_loader::load_material(
 
     for (auto& mmd_material : loader.materials())
     {
-        auto parameter = graphics.make_pipeline_parameter("mmd_material");
+        auto parameter = graphics::rhi::make_pipeline_parameter("mmd_material");
         parameter->set(0, mmd_material.diffuse);
         parameter->set(1, mmd_material.specular);
         parameter->set(2, mmd_material.specular_strength);

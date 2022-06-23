@@ -34,7 +34,7 @@ struct visual
     std::vector<submesh> submeshes;
     std::vector<material> materials;
 
-    pipeline_parameter* object;
+    pipeline_parameter_interface* object;
     visual_groups groups{VISUAL_GROUP_1};
 };
 } // namespace ash::graphics

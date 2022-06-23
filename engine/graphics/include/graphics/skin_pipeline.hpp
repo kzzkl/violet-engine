@@ -1,17 +1,15 @@
 #pragma once
 
+#include "graphics/skinned_mesh.hpp"
 #include "graphics/visual.hpp"
-#include "pipeline_parameter.hpp"
-#include "skinned_mesh.hpp"
-#include <vector>
 
 namespace ash::graphics
 {
 struct skin_unit
 {
-    std::vector<resource*> input_vertex_buffers;
-    std::vector<resource*> skinned_vertex_buffers;
-    pipeline_parameter* parameter;
+    std::vector<resource_interface*> input_vertex_buffers;
+    std::vector<resource_interface*> skinned_vertex_buffers;
+    pipeline_parameter_interface* parameter;
 
     std::size_t vertex_count;
 };

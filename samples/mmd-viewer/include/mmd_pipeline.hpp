@@ -1,6 +1,5 @@
 #pragma once
 
-#include "graphics/graphics.hpp"
 #include "graphics/render_pipeline.hpp"
 #include "graphics/skin_pipeline.hpp"
 

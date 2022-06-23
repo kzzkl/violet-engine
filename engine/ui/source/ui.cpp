@@ -1,7 +1,7 @@
 #include "ui/ui.hpp"
-#include "core/relation.hpp"
-#include "graphics/graphics.hpp"
+#include "ecs/world.hpp"
 #include "graphics/graphics_task.hpp"
+#include "graphics/rhi.hpp"
 #include "task/task_manager.hpp"
 #include "ui/controls.hpp"
 #include "ui/element_tree.hpp"
@@ -22,7 +22,6 @@ ui::ui() : system_base("ui"), m_material_parameter_counter(0)
 
 bool ui::initialize(const dictionary& config)
 {
-    auto& graphics = system<graphics::graphics>();
     auto& world = system<ecs::world>();
     auto& event = system<core::event>();
 
@@ -32,39 +31,39 @@ bool ui::initialize(const dictionary& config)
     m_tree = std::make_unique<element_tree>();
 
     m_pipeline = std::make_unique<ui_pipeline>();
-    m_mvp_parameter = graphics.make_pipeline_parameter("ui_mvp");
-    m_offset_parameter = graphics.make_pipeline_parameter("ui_offset");
+    m_mvp_parameter = graphics::rhi::make_pipeline_parameter("ui_mvp");
+    m_offset_parameter = graphics::rhi::make_pipeline_parameter("ui_offset");
 
     // Position.
-    m_vertex_buffers.push_back(graphics.make_vertex_buffer<math::float2>(
+    m_vertex_buffers.push_back(graphics::rhi::make_vertex_buffer<math::float2>(
         nullptr,
         MAX_UI_VERTEX_COUNT,
         graphics::VERTEX_BUFFER_FLAG_NONE,
         true,
         true));
     // UV.
-    m_vertex_buffers.push_back(graphics.make_vertex_buffer<math::float2>(
+    m_vertex_buffers.push_back(graphics::rhi::make_vertex_buffer<math::float2>(
         nullptr,
         MAX_UI_VERTEX_COUNT,
         graphics::VERTEX_BUFFER_FLAG_NONE,
         true,
         true));
     // Color.
-    m_vertex_buffers.push_back(graphics.make_vertex_buffer<std::uint32_t>(
+    m_vertex_buffers.push_back(graphics::rhi::make_vertex_buffer<std::uint32_t>(
         nullptr,
         MAX_UI_VERTEX_COUNT,
         graphics::VERTEX_BUFFER_FLAG_NONE,
         true,
         true));
     // Offset index.
-    m_vertex_buffers.push_back(graphics.make_vertex_buffer<std::uint32_t>(
+    m_vertex_buffers.push_back(graphics::rhi::make_vertex_buffer<std::uint32_t>(
         nullptr,
         MAX_UI_VERTEX_COUNT,
         graphics::VERTEX_BUFFER_FLAG_NONE,
         true,
         true));
     m_index_buffer =
-        graphics.make_index_buffer<std::uint32_t>(nullptr, MAX_UI_INDEX_COUNT, true, true);
+        graphics::rhi::make_index_buffer<std::uint32_t>(nullptr, MAX_UI_INDEX_COUNT, true, true);
 
     m_entity = world.create("ui root");
     world.add<graphics::visual>(m_entity);
@@ -305,11 +304,10 @@ void ui::resize(std::uint32_t width, std::uint32_t height)
     m_tree->height(height);
 }
 
-graphics::pipeline_parameter* ui::allocate_material_parameter()
+graphics::pipeline_parameter_interface* ui::allocate_material_parameter()
 {
     if (m_material_parameter_counter >= m_material_parameter_pool.size())
-        m_material_parameter_pool.push_back(
-            system<graphics::graphics>().make_pipeline_parameter("ui_material"));
+        m_material_parameter_pool.push_back(graphics::rhi::make_pipeline_parameter("ui_material"));
 
     auto result = m_material_parameter_pool[m_material_parameter_counter].get();
     ++m_material_parameter_counter;

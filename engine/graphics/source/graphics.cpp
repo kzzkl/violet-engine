@@ -1,8 +1,8 @@
 #include "graphics/graphics.hpp"
 #include "core/context.hpp"
-#include "graphics/graphics_config.hpp"
 #include "graphics/graphics_event.hpp"
 #include "graphics/graphics_task.hpp"
+#include "graphics/rhi.hpp"
 #include "graphics/skin_pipeline.hpp"
 #include "scene/transform.hpp"
 #include "task/task_manager.hpp"
@@ -28,47 +28,38 @@ graphics::graphics() noexcept
 
 bool graphics::initialize(const dictionary& config)
 {
-    m_config.load(config);
-
     auto& window = system<ash::window::window>();
 
-    renderer_desc desc = {};
-    desc.window_handle = window.handle();
+    rhi_info info = {};
+    info.window_handle = window.handle();
     window::window_extent extent = window.extent();
-    desc.width = extent.width;
-    desc.height = extent.height;
-    desc.render_concurrency = m_config.render_concurrency();
-    desc.frame_resource = m_config.frame_resource();
+    info.width = extent.width;
+    info.height = extent.height;
+    info.render_concurrency = config["render_concurrency"];
+    info.frame_resource = config["frame_resource"];
+    rhi::initialize(config["plugin"], info);
 
-    if (!m_plugin.load(m_config.plugin()))
-        return false;
-
-    m_renderer.reset(m_plugin.factory().make_renderer(desc));
-
-    pipeline_parameter_layout_info ash_object;
-    ash_object.parameters = {
+    std::vector<pipeline_parameter_pair> ash_object = {
         {pipeline_parameter_type::FLOAT4x4, 1}, // transform_m
     };
-    make_pipeline_parameter_layout("ash_object", ash_object);
+    rhi::register_pipeline_parameter_layout("ash_object", ash_object);
 
-    pipeline_parameter_layout_info ash_pass;
-    ash_pass.parameters = {
+    std::vector<pipeline_parameter_pair> ash_pass = {
         {pipeline_parameter_type::FLOAT4,   1}, // camera_position
         {pipeline_parameter_type::FLOAT4,   1}, // camera_direction
         {pipeline_parameter_type::FLOAT4x4, 1}, // transform_v
         {pipeline_parameter_type::FLOAT4x4, 1}, // transform_p
         {pipeline_parameter_type::FLOAT4x4, 1}  // transform_vp
     };
-    make_pipeline_parameter_layout("ash_pass", ash_pass);
+    rhi::register_pipeline_parameter_layout("ash_pass", ash_pass);
 
-    pipeline_parameter_layout_info ash_light;
-    ash_light.parameters = {
+    std::vector<pipeline_parameter_pair> ash_light = {
         {pipeline_parameter_type::FLOAT3, 1}, // ambient_light
         {pipeline_parameter_type::FLOAT3, 1}
     };
-    make_pipeline_parameter_layout("ash_light", ash_light);
+    rhi::register_pipeline_parameter_layout("ash_light", ash_light);
 
-    m_light_parameter = make_pipeline_parameter("ash_light");
+    m_light_parameter = rhi::make_pipeline_parameter("ash_light");
     m_light_parameter->set(0, math::float3{1.0f, 0.0f, 0.0f});
 
     auto& world = system<ecs::world>();
@@ -85,15 +76,15 @@ bool graphics::initialize(const dictionary& config)
     event.subscribe<window::event_window_resize>(
         "graphics",
         [&, this](std::uint32_t width, std::uint32_t height) {
-            m_renderer->resize(width, height);
+            rhi::renderer().resize(width, height);
 
             // The event_render_extent_change event is emitted by the editor module in editor mode.
             if (!is_editor_mode())
                 event.publish<event_render_extent_change>(width, height);
         });
 
-    m_debug = std::make_unique<graphics_debug>(m_config.frame_resource());
-    m_debug->initialize(*this);
+    m_debug = std::make_unique<graphics_debug>(config["frame_resource"]);
+    m_debug->initialize();
 
     auto& task = system<task::task_manager>();
     auto render_task = task.schedule(TASK_GRAPHICS_RENDER, [this]() {
@@ -113,22 +104,18 @@ void graphics::shutdown()
     world.destroy_view(m_skinned_mesh_view);
 
     m_debug = nullptr;
-    m_parameter_layouts.clear();
-
-    m_renderer = nullptr;
-    m_plugin.unload();
 }
 
 void graphics::compute(compute_pipeline* pipeline)
 {
-    auto command = m_renderer->allocate_command();
+    auto command = rhi::renderer().allocate_command();
     pipeline->compute(command);
-    m_renderer->execute(command);
+    rhi::renderer().execute(command);
 }
 
 void graphics::skin_meshes()
 {
-    auto command = m_renderer->allocate_command();
+    auto command = rhi::renderer().allocate_command();
 
     std::set<skin_pipeline*> pipelines;
     m_skinned_mesh_view->each([&](visual& visual, skinned_mesh& skinned_mesh) {
@@ -151,7 +138,7 @@ void graphics::skin_meshes()
         }
     });
 
-    m_renderer->execute(command);
+    rhi::renderer().execute(command);
 }
 
 void graphics::render(ecs::entity target_camera)
@@ -168,60 +155,12 @@ resource_extent graphics::render_extent() const noexcept
         if (render_target != nullptr)
             return render_target->extent();
         else
-            return m_renderer->back_buffer()->extent();
+            return rhi::renderer().back_buffer()->extent();
     }
     else
     {
-        return m_renderer->back_buffer()->extent();
+        return rhi::renderer().back_buffer()->extent();
     }
-}
-
-std::unique_ptr<render_pipeline_interface> graphics::make_render_pipeline(
-    render_pipeline_info& info)
-{
-    auto& factory = m_plugin.factory();
-    for (auto& pass : info.passes)
-    {
-        for (std::size_t i = 0; i < pass.parameters.size(); ++i)
-        {
-            ASH_ASSERT(m_parameter_layouts.find(pass.parameters[i]) != m_parameter_layouts.end());
-            pass.parameter_interfaces.push_back(m_parameter_layouts[pass.parameters[i]].get());
-        }
-    }
-    return std::unique_ptr<render_pipeline_interface>(factory.make_render_pipeline(info.convert()));
-}
-
-std::unique_ptr<compute_pipeline_interface> graphics::make_compute_pipeline(
-    compute_pipeline_info& info)
-{
-    auto& factory = m_plugin.factory();
-    for (std::size_t i = 0; i < info.parameters.size(); ++i)
-        info.parameter_interfaces.push_back(m_parameter_layouts[info.parameters[i]].get());
-
-    return std::unique_ptr<compute_pipeline_interface>(
-        factory.make_compute_pipeline(info.convert()));
-}
-
-void graphics::make_pipeline_parameter_layout(
-    std::string_view name,
-    pipeline_parameter_layout_info& info)
-{
-    auto& factory = m_plugin.factory();
-    m_parameter_layouts[name.data()].reset(factory.make_pipeline_parameter_layout(info.convert()));
-}
-
-std::unique_ptr<pipeline_parameter> graphics::make_pipeline_parameter(std::string_view name)
-{
-    auto layout = m_parameter_layouts[name.data()].get();
-    ASH_ASSERT(layout);
-    auto& factory = m_plugin.factory();
-    return std::make_unique<pipeline_parameter>(factory.make_pipeline_parameter(layout));
-}
-
-std::unique_ptr<resource> graphics::make_texture(std::string_view file)
-{
-    auto& factory = m_plugin.factory();
-    return std::unique_ptr<resource>(factory.make_texture(file.data()));
 }
 
 void graphics::render()
@@ -229,7 +168,7 @@ void graphics::render()
     auto& world = system<ecs::world>();
 
     ecs::entity main_camera = is_editor_mode() ? m_editor_camera : m_game_camera;
-    world.component<camera>(main_camera).render_target_resolve(m_renderer->back_buffer());
+    world.component<camera>(main_camera).render_target_resolve(rhi::renderer().back_buffer());
     m_render_queue.push(main_camera);
 
     // Update object data.
@@ -247,7 +186,7 @@ void graphics::render()
 
 void graphics::present()
 {
-    m_renderer->present();
+    rhi::renderer().present();
     m_debug->next_frame();
 }
 
@@ -299,7 +238,7 @@ void graphics::render_camera(ecs::entity camera_entity)
     });
 
     // Render.
-    auto command = m_renderer->allocate_command();
+    auto command = rhi::renderer().allocate_command();
     command->clear_render_target(render_camera.render_target(), {0.0f, 0.0f, 0.0f, 1.0f});
     command->clear_depth_stencil(render_camera.depth_stencil_buffer());
 
@@ -309,6 +248,6 @@ void graphics::render_camera(ecs::entity camera_entity)
         pipeline->render(render_camera, render_scene, command);
     }
 
-    m_renderer->execute(command);
+    rhi::renderer().execute(command);
 }
 } // namespace ash::graphics

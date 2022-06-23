@@ -4,6 +4,7 @@
 #include "gallery.hpp"
 #include "graphics/graphics.hpp"
 #include "graphics/graphics_event.hpp"
+#include "graphics/rhi.hpp"
 #include "scene/scene.hpp"
 #include "task/task_manager.hpp"
 #include "ui/ui.hpp"
@@ -81,9 +82,9 @@ private:
         graphics::render_target_info render_target_info = {};
         render_target_info.width = width;
         render_target_info.height = height;
-        render_target_info.format = graphics.back_buffer_format();
+        render_target_info.format = graphics::rhi::back_buffer_format();
         render_target_info.samples = 4;
-        m_render_target = graphics.make_render_target(render_target_info);
+        m_render_target = graphics::rhi::make_render_target(render_target_info);
         camera.render_target(m_render_target.get());
 
         graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
@@ -91,7 +92,8 @@ private:
         depth_stencil_buffer_info.height = height;
         depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
         depth_stencil_buffer_info.samples = 4;
-        m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
+        m_depth_stencil_buffer =
+            graphics::rhi::make_depth_stencil_buffer(depth_stencil_buffer_info);
         camera.depth_stencil_buffer(m_depth_stencil_buffer.get());
     }
 
@@ -104,8 +106,8 @@ private:
     }
 
     ecs::entity m_camera;
-    std::unique_ptr<graphics::resource> m_render_target;
-    std::unique_ptr<graphics::resource> m_depth_stencil_buffer;
+    std::unique_ptr<graphics::resource_interface> m_render_target;
+    std::unique_ptr<graphics::resource_interface> m_depth_stencil_buffer;
 
     std::unique_ptr<gallery> m_gallery;
 };

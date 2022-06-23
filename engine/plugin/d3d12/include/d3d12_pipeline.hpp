@@ -85,7 +85,8 @@ public:
     virtual void set(std::size_t index, const math::float4* data, size_t size) override;
     virtual void set(std::size_t index, const math::float4x4& value) override;
     virtual void set(std::size_t index, const math::float4x4* data, size_t size) override;
-    virtual void set(std::size_t index, resource* texture) override;
+    virtual void set(std::size_t index, const void* data, size_t size) override;
+    virtual void set(std::size_t index, resource_interface* texture) override;
 
     void sync();
 
@@ -125,7 +126,7 @@ class d3d12_root_signature
 {
 public:
     d3d12_root_signature(
-        pipeline_parameter_layout_interface** parameters,
+        pipeline_parameter_layout_interface* const* parameters,
         std::size_t parameter_count);
 
     D3D12RootSignature* handle() const noexcept { return m_root_signature.Get(); }
@@ -137,7 +138,7 @@ private:
 class d3d12_frame_buffer_layout
 {
 public:
-    d3d12_frame_buffer_layout(attachment_desc* attachments, std::size_t count);
+    d3d12_frame_buffer_layout(const attachment_desc* attachments, std::size_t count);
 
     auto begin() const { return m_attachments.begin(); }
     auto end() const { return m_attachments.end(); }

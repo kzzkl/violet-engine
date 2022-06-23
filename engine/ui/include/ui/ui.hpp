@@ -2,7 +2,6 @@
 
 #include "core/context.hpp"
 #include "ecs/entity.hpp"
-#include "graphics/pipeline_parameter.hpp"
 #include "ui/element.hpp"
 #include "ui/font.hpp"
 #include "ui/renderer.hpp"
@@ -48,16 +47,16 @@ private:
     void initialize_default_theme();
     void resize(std::uint32_t width, std::uint32_t height);
 
-    graphics::pipeline_parameter* allocate_material_parameter();
+    graphics::pipeline_parameter_interface* allocate_material_parameter();
 
-    std::vector<std::unique_ptr<graphics::resource>> m_vertex_buffers;
-    std::unique_ptr<graphics::resource> m_index_buffer;
+    std::vector<std::unique_ptr<graphics::resource_interface>> m_vertex_buffers;
+    std::unique_ptr<graphics::resource_interface> m_index_buffer;
 
-    std::unique_ptr<graphics::pipeline_parameter> m_mvp_parameter;
-    std::unique_ptr<graphics::pipeline_parameter> m_offset_parameter;
+    std::unique_ptr<graphics::pipeline_parameter_interface> m_mvp_parameter;
+    std::unique_ptr<graphics::pipeline_parameter_interface> m_offset_parameter;
 
     std::size_t m_material_parameter_counter;
-    std::vector<std::unique_ptr<graphics::pipeline_parameter>> m_material_parameter_pool;
+    std::vector<std::unique_ptr<graphics::pipeline_parameter_interface>> m_material_parameter_pool;
 
     std::unique_ptr<ui_pipeline> m_pipeline;
 

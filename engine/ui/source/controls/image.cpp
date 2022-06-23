@@ -2,7 +2,7 @@
 
 namespace ash::ui
 {
-image::image(graphics::resource* texture)
+image::image(graphics::resource_interface* texture)
 {
     m_position = {};
     m_uv = {
@@ -33,7 +33,7 @@ image::image(graphics::resource* texture)
     }
 }
 
-void image::texture(graphics::resource* texture, bool resize)
+void image::texture(graphics::resource_interface* texture, bool resize)
 {
     if (resize)
     {

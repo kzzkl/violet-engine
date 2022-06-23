@@ -10,7 +10,7 @@ namespace ash::ui
 struct render_batch
 {
     element_mesh_type type;
-    graphics::resource* texture;
+    graphics::resource_interface* texture;
 
     element_extent scissor;
 
@@ -40,8 +40,8 @@ private:
         element_extent scissor;
 
         render_batch* block_batch;
-        std::unordered_map<graphics::resource*, render_batch*> text_batch;
-        std::unordered_map<graphics::resource*, render_batch*> image_batch;
+        std::unordered_map<graphics::resource_interface*, render_batch*> text_batch;
+        std::unordered_map<graphics::resource_interface*, render_batch*> image_batch;
     };
 
     void draw(batch_map& batch_map, const element_mesh& mesh, float x, float y, float depth);
@@ -49,7 +49,7 @@ private:
     render_batch* allocate_batch(
         element_mesh_type type,
         const element_extent& scissor,
-        graphics::resource* texture);
+        graphics::resource_interface* texture);
 
     std::vector<math::float4> m_offset; // x, y, depth
 

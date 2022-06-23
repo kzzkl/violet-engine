@@ -1,13 +1,12 @@
 #include "mmd_pipeline.hpp"
+#include "graphics/rhi.hpp"
+#include <array>
 
 namespace ash::sample::mmd
 {
 mmd_render_pipeline::mmd_render_pipeline()
 {
-    auto& graphics = system<graphics::graphics>();
-
-    graphics::pipeline_parameter_layout_info mmd_material;
-    mmd_material.parameters = {
+    std::vector<graphics::pipeline_parameter_pair> mmd_material = {
         {graphics::pipeline_parameter_type::FLOAT4,          1}, // diffuse
         {graphics::pipeline_parameter_type::FLOAT3,          1}, // specular
         {graphics::pipeline_parameter_type::FLOAT,           1}, // specular_strength
@@ -17,7 +16,7 @@ mmd_render_pipeline::mmd_render_pipeline()
         {graphics::pipeline_parameter_type::SHADER_RESOURCE, 1}, // toon
         {graphics::pipeline_parameter_type::SHADER_RESOURCE, 1}  // spa
     };
-    graphics.make_pipeline_parameter_layout("mmd_material", mmd_material);
+    graphics::rhi::register_pipeline_parameter_layout("mmd_material", mmd_material);
 
     // Color pass.
     graphics::render_pass_info color_pass_info = {};
@@ -59,7 +58,7 @@ mmd_render_pipeline::mmd_render_pipeline()
     // Attachment.
     graphics::attachment_info render_target = {};
     render_target.type = graphics::attachment_type::CAMERA_RENDER_TARGET;
-    render_target.format = graphics.back_buffer_format();
+    render_target.format = graphics::rhi::back_buffer_format();
     render_target.load_op = graphics::attachment_load_op::CLEAR;
     render_target.store_op = graphics::attachment_store_op::STORE;
     render_target.stencil_load_op = graphics::attachment_load_op::DONT_CARE;
@@ -81,7 +80,7 @@ mmd_render_pipeline::mmd_render_pipeline()
 
     graphics::attachment_info back_buffer = {};
     back_buffer.type = graphics::attachment_type::CAMERA_RENDER_TARGET_RESOLVE;
-    back_buffer.format = graphics.back_buffer_format();
+    back_buffer.format = graphics::rhi::back_buffer_format();
     back_buffer.load_op = graphics::attachment_load_op::CLEAR;
     back_buffer.store_op = graphics::attachment_store_op::DONT_CARE;
     back_buffer.stencil_load_op = graphics::attachment_load_op::DONT_CARE;
@@ -97,7 +96,7 @@ mmd_render_pipeline::mmd_render_pipeline()
     mmd_pipeline_info.passes.push_back(color_pass_info);
     mmd_pipeline_info.passes.push_back(edge_pass_info);
 
-    m_interface = graphics.make_render_pipeline(mmd_pipeline_info);
+    m_interface = graphics::rhi::make_render_pipeline(mmd_pipeline_info);
 }
 
 void mmd_render_pipeline::render(
@@ -118,11 +117,11 @@ void mmd_render_pipeline::render(
     command->scissor(&rect, 1);
 
     // Color pass.
-    command->parameter(2, camera.parameter()->interface());
+    command->parameter(2, camera.parameter());
     for (auto& unit : scene.units)
     {
-        command->parameter(0, unit.parameters[0]->interface());
-        command->parameter(1, unit.parameters[1]->interface());
+        command->parameter(0, unit.parameters[0]);
+        command->parameter(1, unit.parameters[1]);
 
         command->draw(
             unit.vertex_buffers.data(),
@@ -136,12 +135,12 @@ void mmd_render_pipeline::render(
     command->next_pass(m_interface.get());
 
     // Edge pass.
-    command->parameter(1, camera.parameter()->interface());
+    command->parameter(1, camera.parameter());
     for (auto& unit : scene.units)
     {
-        command->parameter(0, unit.parameters[0]->interface());
+        command->parameter(0, unit.parameters[0]);
 
-        std::array<graphics::resource*, 2> vertex_buffers = {
+        std::array<graphics::resource_interface*, 2> vertex_buffers = {
             unit.vertex_buffers[0],
             unit.vertex_buffers[1]};
         command->draw(
@@ -158,10 +157,7 @@ void mmd_render_pipeline::render(
 
 mmd_skin_pipeline::mmd_skin_pipeline()
 {
-    auto& graphics = system<graphics::graphics>();
-
-    graphics::pipeline_parameter_layout_info mmd_skin;
-    mmd_skin.parameters = {
+    std::vector<graphics::pipeline_parameter_pair> mmd_skin = {
         {graphics::pipeline_parameter_type::FLOAT4x4_ARRAY,   512}, // bone transform.
         {graphics::pipeline_parameter_type::SHADER_RESOURCE,  1  }, // input position.
         {graphics::pipeline_parameter_type::SHADER_RESOURCE,  1  }, // input normal.
@@ -170,13 +166,13 @@ mmd_skin_pipeline::mmd_skin_pipeline()
         {graphics::pipeline_parameter_type::UNORDERED_ACCESS, 1  }, // output position.
         {graphics::pipeline_parameter_type::UNORDERED_ACCESS, 1  }  // output normal.
     };
-    graphics.make_pipeline_parameter_layout("mmd_skin", mmd_skin);
+    graphics::rhi::register_pipeline_parameter_layout("mmd_skin", mmd_skin);
 
     graphics::compute_pipeline_info compute_pipeline_info = {};
     compute_pipeline_info.compute_shader = "resource/shader/skin.comp";
     compute_pipeline_info.parameters = {"mmd_skin"};
 
-    m_interface = graphics.make_compute_pipeline(compute_pipeline_info);
+    m_interface = graphics::rhi::make_compute_pipeline(compute_pipeline_info);
 }
 
 void mmd_skin_pipeline::skin(graphics::render_command_interface* command)
@@ -191,7 +187,7 @@ void mmd_skin_pipeline::skin(graphics::render_command_interface* command)
         unit.parameter->set(4, unit.input_vertex_buffers[3]);
         unit.parameter->set(5, unit.skinned_vertex_buffers[0]);
         unit.parameter->set(6, unit.skinned_vertex_buffers[1]);
-        command->compute_parameter(0, unit.parameter->interface());
+        command->compute_parameter(0, unit.parameter);
 
         command->dispatch(unit.vertex_count / 256 + 256, 1, 1);
     }

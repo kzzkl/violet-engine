@@ -7,9 +7,9 @@ namespace ash::ui
 class image : public element
 {
 public:
-    image(graphics::resource* texture = nullptr);
+    image(graphics::resource_interface* texture = nullptr);
 
-    void texture(graphics::resource* texture, bool resize = false);
+    void texture(graphics::resource_interface* texture, bool resize = false);
 
     virtual const element_mesh* mesh() const noexcept override { return &m_mesh; }
 

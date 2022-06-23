@@ -13,15 +13,15 @@ namespace ash::sample::mmd
 {
 struct mmd_resource
 {
-    std::vector<std::unique_ptr<ash::graphics::resource>> vertex_buffers;
-    std::unique_ptr<ash::graphics::resource> index_buffer;
+    std::vector<std::unique_ptr<graphics::resource_interface>> vertex_buffers;
+    std::unique_ptr<graphics::resource_interface> index_buffer;
     std::vector<std::pair<std::size_t, std::size_t>> submesh;
 
-    std::vector<std::unique_ptr<ash::graphics::resource>> textures;
-    std::vector<std::unique_ptr<ash::graphics::pipeline_parameter>> materials;
-    std::unique_ptr<ash::graphics::pipeline_parameter> object_parameter;
+    std::vector<std::unique_ptr<graphics::resource_interface>> textures;
+    std::vector<std::unique_ptr<graphics::pipeline_parameter_interface>> materials;
+    std::unique_ptr<graphics::pipeline_parameter_interface> object_parameter;
 
-    std::vector<std::unique_ptr<ash::physics::collision_shape_interface>> collision_shapes;
+    std::vector<std::unique_ptr<physics::collision_shape_interface>> collision_shapes;
 };
 
 class mmd_loader
@@ -56,6 +56,6 @@ private:
         const pmx_loader& pmx_loader,
         const vmd_loader& vmd_loader);
 
-    std::vector<std::unique_ptr<ash::graphics::resource>> m_internal_toon;
+    std::vector<std::unique_ptr<graphics::resource_interface>> m_internal_toon;
 };
 } // namespace ash::sample::mmd

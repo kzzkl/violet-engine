@@ -14,6 +14,6 @@ private:
     void initialize_sample_image();
 
     std::unique_ptr<ui::image> m_file_image;
-    std::unique_ptr<graphics::resource> m_cat_image;
+    std::unique_ptr<graphics::resource_interface> m_cat_image;
 };
 } // namespace ash::sample

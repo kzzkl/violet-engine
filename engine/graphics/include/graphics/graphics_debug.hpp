@@ -8,11 +8,10 @@
 
 namespace ash::graphics
 {
-class graphics;
 class debug_pipeline : public render_pipeline
 {
 public:
-    debug_pipeline(graphics& graphics);
+    debug_pipeline();
     virtual void render(
         const camera& camera,
         const render_scene& scene,
@@ -30,7 +29,7 @@ public:
 public:
     graphics_debug(std::size_t frame_resource);
 
-    void initialize(graphics& graphics);
+    void initialize();
     void sync();
 
     void next_frame();

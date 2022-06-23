@@ -1,15 +1,14 @@
 #include "graphics/standard_pipeline.hpp"
-#include "graphics/graphics.hpp"
+#include "graphics/rhi.hpp"
 
 namespace ash::graphics
 {
 standard_pipeline::standard_pipeline()
 {
-    pipeline_parameter_layout_info standard_material;
-    standard_material.parameters = {
+    std::vector<pipeline_parameter_pair> standard_material = {
         {pipeline_parameter_type::FLOAT3, 1}  // diffuse
     };
-    system<graphics>().make_pipeline_parameter_layout("standard_material", standard_material);
+    rhi::register_pipeline_parameter_layout("standard_material", standard_material);
 
     // Color pass.
     render_pass_info color_pass_info = {};
@@ -31,7 +30,7 @@ standard_pipeline::standard_pipeline()
     // Attachment.
     attachment_info render_target = {};
     render_target.type = attachment_type::CAMERA_RENDER_TARGET;
-    render_target.format = system<graphics>().back_buffer_format();
+    render_target.format = rhi::back_buffer_format();
     render_target.load_op = attachment_load_op::LOAD;
     render_target.store_op = attachment_store_op::STORE;
     render_target.stencil_load_op = attachment_load_op::DONT_CARE;
@@ -53,7 +52,7 @@ standard_pipeline::standard_pipeline()
 
     attachment_info render_target_resolve = {};
     render_target_resolve.type = attachment_type::CAMERA_RENDER_TARGET_RESOLVE;
-    render_target_resolve.format = system<graphics>().back_buffer_format();
+    render_target_resolve.format = rhi::back_buffer_format();
     render_target_resolve.load_op = attachment_load_op::CLEAR;
     render_target_resolve.store_op = attachment_store_op::DONT_CARE;
     render_target_resolve.stencil_load_op = attachment_load_op::DONT_CARE;
@@ -68,7 +67,7 @@ standard_pipeline::standard_pipeline()
     standard_pipeline_info.attachments.push_back(render_target_resolve);
     standard_pipeline_info.passes.push_back(color_pass_info);
 
-    m_interface = system<graphics>().make_render_pipeline(standard_pipeline_info);
+    m_interface = rhi::make_render_pipeline(standard_pipeline_info);
 }
 
 void standard_pipeline::render(
@@ -88,11 +87,11 @@ void standard_pipeline::render(
     extent.max_y = height;
     command->scissor(&extent, 1);
 
-    command->parameter(2, camera.parameter()->interface());
+    command->parameter(2, camera.parameter());
     for (auto& unit : scene.units)
     {
-        command->parameter(0, unit.parameters[0]->interface());
-        command->parameter(1, unit.parameters[1]->interface());
+        command->parameter(0, unit.parameters[0]);
+        command->parameter(1, unit.parameters[1]);
 
         command->draw(
             unit.vertex_buffers.data(),

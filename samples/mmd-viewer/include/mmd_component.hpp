@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ecs/entity.hpp"
-#include "graphics/pipeline_parameter.hpp"
 #include "math/math.hpp"
 #include "mmd_bezier.hpp"
 #include <string>

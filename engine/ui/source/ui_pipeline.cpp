@@ -1,29 +1,25 @@
 #include "ui/ui_pipeline.hpp"
-#include "graphics/graphics.hpp"
+#include "graphics/rhi.hpp"
 
 namespace ash::ui
 {
 ui_pipeline::ui_pipeline()
 {
-    auto& graphics = system<graphics::graphics>();
-
-    graphics::pipeline_parameter_layout_info ui_material;
-    ui_material.parameters = {
+    std::vector<graphics::pipeline_parameter_pair> ui_material = {
         {graphics::pipeline_parameter_type::UINT,            1}, // type: 0: font, 1: image
         {graphics::pipeline_parameter_type::SHADER_RESOURCE, 1}  // texture
     };
-    graphics.make_pipeline_parameter_layout("ui_material", ui_material);
-    graphics::pipeline_parameter_layout_info ui_offset;
-    ui_offset.parameters = {
+    graphics::rhi::register_pipeline_parameter_layout("ui_material", ui_material);
+
+    std::vector<graphics::pipeline_parameter_pair> ui_offset = {
         {graphics::pipeline_parameter_type::FLOAT4_ARRAY, 1024}, // offset
     };
-    graphics.make_pipeline_parameter_layout("ui_offset", ui_offset);
+    graphics::rhi::register_pipeline_parameter_layout("ui_offset", ui_offset);
 
-    graphics::pipeline_parameter_layout_info ui_mvp;
-    ui_mvp.parameters = {
+    std::vector<graphics::pipeline_parameter_pair> ui_mvp = {
         {graphics::pipeline_parameter_type::FLOAT4x4, 1}, // mvp
     };
-    graphics.make_pipeline_parameter_layout("ui_mvp", ui_mvp);
+    graphics::rhi::register_pipeline_parameter_layout("ui_mvp", ui_mvp);
 
     // UI pass.
     graphics::render_pass_info ui_pass_info = {};
@@ -55,7 +51,7 @@ ui_pipeline::ui_pipeline()
     // Attachment.
     graphics::attachment_info render_target = {};
     render_target.type = graphics::attachment_type::CAMERA_RENDER_TARGET;
-    render_target.format = graphics.back_buffer_format();
+    render_target.format = graphics::rhi::back_buffer_format();
     render_target.load_op = graphics::attachment_load_op::CLEAR;
     render_target.store_op = graphics::attachment_store_op::STORE;
     render_target.stencil_load_op = graphics::attachment_load_op::DONT_CARE;
@@ -77,7 +73,7 @@ ui_pipeline::ui_pipeline()
 
     graphics::attachment_info back_buffer = {};
     back_buffer.type = graphics::attachment_type::CAMERA_RENDER_TARGET_RESOLVE;
-    back_buffer.format = graphics.back_buffer_format();
+    back_buffer.format = graphics::rhi::back_buffer_format();
     back_buffer.load_op = graphics::attachment_load_op::CLEAR;
     back_buffer.store_op = graphics::attachment_store_op::DONT_CARE;
     back_buffer.stencil_load_op = graphics::attachment_load_op::DONT_CARE;
@@ -92,7 +88,7 @@ ui_pipeline::ui_pipeline()
     ui_pipeline_info.attachments.push_back(back_buffer);
     ui_pipeline_info.passes.push_back(ui_pass_info);
 
-    m_interface = graphics.make_render_pipeline(ui_pipeline_info);
+    m_interface = graphics::rhi::make_render_pipeline(ui_pipeline_info);
 }
 
 void ui_pipeline::render(
@@ -111,13 +107,13 @@ void ui_pipeline::render(
     extent.max_x = width;
     extent.max_y = height;
 
-    command->parameter(1, scene.units[0].parameters[1]->interface()); // offset
-    command->parameter(2, scene.units[0].parameters[2]->interface()); // mvp
+    command->parameter(1, scene.units[0].parameters[1]); // offset
+    command->parameter(2, scene.units[0].parameters[2]); // mvp
     for (auto& unit : scene.units)
     {
         command->scissor(&unit.scissor, 1);
 
-        command->parameter(0, unit.parameters[0]->interface()); // material
+        command->parameter(0, unit.parameters[0]); // material
         command->draw(
             unit.vertex_buffers.data(),
             unit.vertex_buffers.size(),

@@ -86,7 +86,7 @@ struct element_mesh
     std::size_t index_count;
 
     bool scissor;
-    graphics::resource* texture;
+    graphics::resource_interface* texture;
 };
 
 class element : public element_layout

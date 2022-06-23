@@ -158,7 +158,7 @@ void renderer::draw(batch_map& batch_map, const element_mesh& mesh, float x, flo
 render_batch* renderer::allocate_batch(
     element_mesh_type type,
     const element_extent& scissor,
-    graphics::resource* texture)
+    graphics::resource_interface* texture)
 {
     if (m_batch_pool_index >= m_batch_pool.size())
         m_batch_pool.push_back(std::make_unique<render_batch>());

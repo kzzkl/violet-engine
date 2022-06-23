@@ -4,6 +4,7 @@
 #include "ecs/world.hpp"
 #include "graphics/graphics.hpp"
 #include "graphics/graphics_event.hpp"
+#include "graphics/rhi.hpp"
 #include "scene/scene.hpp"
 #include "ui/controls/image.hpp"
 #include "ui/ui.hpp"
@@ -22,7 +23,6 @@ scene_view::scene_view(ui::dock_area* area, const ui::dock_window_theme& theme)
       m_focused(false)
 {
     auto& world = system<ecs::world>();
-    auto& graphics = system<graphics::graphics>();
     auto& scene = system<scene::scene>();
     auto& relation = system<core::relation>();
 
@@ -164,7 +164,6 @@ void scene_view::resize_camera()
     if (m_image_width == 0 || m_image_height == 0)
         return;
 
-    auto& graphics = system<graphics::graphics>();
     auto& world = system<ecs::world>();
 
     auto& camera = world.component<graphics::camera>(m_camera);
@@ -173,17 +172,17 @@ void scene_view::resize_camera()
     graphics::render_target_info render_target_info = {};
     render_target_info.width = m_image_width;
     render_target_info.height = m_image_height;
-    render_target_info.format = graphics.back_buffer_format();
+    render_target_info.format = graphics::rhi::back_buffer_format();
     render_target_info.samples = 4;
-    m_render_target = graphics.make_render_target(render_target_info);
+    m_render_target = graphics::rhi::make_render_target(render_target_info);
     camera.render_target(m_render_target.get());
 
     graphics::render_target_info render_target_resolve_info = {};
     render_target_resolve_info.width = m_image_width;
     render_target_resolve_info.height = m_image_height;
-    render_target_resolve_info.format = graphics.back_buffer_format();
+    render_target_resolve_info.format = graphics::rhi::back_buffer_format();
     render_target_resolve_info.samples = 1;
-    m_render_target_resolve = graphics.make_render_target(render_target_resolve_info);
+    m_render_target_resolve = graphics::rhi::make_render_target(render_target_resolve_info);
     camera.render_target_resolve(m_render_target_resolve.get());
 
     graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
@@ -191,7 +190,7 @@ void scene_view::resize_camera()
     depth_stencil_buffer_info.height = m_image_height;
     depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
     depth_stencil_buffer_info.samples = 4;
-    m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
+    m_depth_stencil_buffer = graphics::rhi::make_depth_stencil_buffer(depth_stencil_buffer_info);
     camera.depth_stencil_buffer(m_depth_stencil_buffer.get());
 }
 } // namespace ash::editor

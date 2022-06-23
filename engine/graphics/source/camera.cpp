@@ -1,5 +1,6 @@
 #include "graphics/camera.hpp"
-#include "graphics/graphics.hpp"
+#include "graphics/rhi.hpp"
+#include "graphics/visual.hpp"
 
 namespace ash::graphics
 {
@@ -14,7 +15,7 @@ camera::camera() noexcept
       m_depth_stencil_buffer(nullptr),
       mask(VISUAL_GROUP_1 | VISUAL_GROUP_UI)
 {
-    m_parameter = system<graphics>().make_pipeline_parameter("ash_pass");
+    m_parameter = rhi::make_pipeline_parameter("ash_pass");
 }
 
 void camera::field_of_view(float fov) noexcept
@@ -36,18 +37,18 @@ void camera::flip_y(bool flip) noexcept
     update_projection();
 }
 
-void camera::render_target(resource* render_target) noexcept
+void camera::render_target(resource_interface* render_target) noexcept
 {
     m_render_target = render_target;
     update_projection();
 }
 
-void camera::depth_stencil_buffer(resource* depth_stencil_buffer) noexcept
+void camera::depth_stencil_buffer(resource_interface* depth_stencil_buffer) noexcept
 {
     m_depth_stencil_buffer = depth_stencil_buffer;
 }
 
-void camera::render_target_resolve(resource* render_target_resolve) noexcept
+void camera::render_target_resolve(resource_interface* render_target_resolve) noexcept
 {
     m_render_target_resolve = render_target_resolve;
 }
