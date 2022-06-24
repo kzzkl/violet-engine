@@ -90,7 +90,7 @@ private:
         graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
         depth_stencil_buffer_info.width = width;
         depth_stencil_buffer_info.height = height;
-        depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
+        depth_stencil_buffer_info.format = graphics::RESOURCE_FORMAT_D24_UNORM_S8_UINT;
         depth_stencil_buffer_info.samples = 4;
         m_depth_stencil_buffer =
             graphics::rhi::make_depth_stencil_buffer(depth_stencil_buffer_info);

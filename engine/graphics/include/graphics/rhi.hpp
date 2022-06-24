@@ -55,17 +55,18 @@ public:
     static renderer_interface& renderer();
     static resource_format back_buffer_format();
 
-    static void register_pipeline_parameter_layout(
+    static pipeline_parameter_layout_interface* register_pipeline_parameter_layout(
         std::string_view name,
         const std::vector<pipeline_parameter_pair>& parameters);
+    static pipeline_parameter_layout_interface* find_pipeline_parameter_layout(
+        std::string_view name);
+    static std::unique_ptr<pipeline_parameter_interface> make_pipeline_parameter(
+        pipeline_parameter_layout_interface* layout);
 
     static std::unique_ptr<render_pipeline_interface> make_render_pipeline(
         const render_pipeline_info& info);
     static std::unique_ptr<compute_pipeline_interface> make_compute_pipeline(
         const compute_pipeline_info& info);
-
-    static std::unique_ptr<pipeline_parameter_interface> make_pipeline_parameter(
-        std::string_view name);
 
     template <typename Vertex>
     static std::unique_ptr<resource_interface> make_vertex_buffer(
@@ -105,7 +106,7 @@ public:
         const std::uint8_t* data,
         std::uint32_t width,
         std::uint32_t height,
-        resource_format format = resource_format::B8G8R8A8_UNORM);
+        resource_format format = RESOURCE_FORMAT_B8G8R8A8_UNORM);
     static std::unique_ptr<resource_interface> make_render_target(const render_target_desc& desc);
     static std::unique_ptr<resource_interface> make_depth_stencil_buffer(
         const depth_stencil_buffer_desc& desc);
@@ -117,9 +118,6 @@ private:
 
     static rhi& instance();
     static rhi_interface& impl();
-
-    static pipeline_parameter_layout_interface* find_pipeline_parameter_layout(
-        std::string_view name);
 
     std::unique_ptr<rhi_plugin> m_plugin;
 

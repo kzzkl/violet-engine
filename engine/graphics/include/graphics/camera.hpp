@@ -1,12 +1,36 @@
 #pragma once
 
-#include "ecs/component.hpp"
-#include "math/math.hpp"
+#include "graphics/pipeline_parameter.hpp"
 
 namespace ash::graphics
 {
-class resource_interface;
-class pipeline_parameter_interface;
+class camera_pipeline_parameter : public pipeline_parameter
+{
+public:
+public:
+    camera_pipeline_parameter();
+
+    void position(const math::float3& position);
+    void direction(const math::float3& direction);
+    void view(const math::float4x4& view);
+    void projection(const math::float4x4& projection);
+    void view_projection(const math::float4x4& view_projection);
+
+    static std::vector<pipeline_parameter_pair> layout();
+
+private:
+    struct constant_data
+    {
+        math::float3 position;
+        float _padding_1;
+        math::float3 direction;
+        float _padding_2;
+        math::float4x4 view;
+        math::float4x4 projection;
+        math::float4x4 view_projection;
+    };
+};
+
 class camera
 {
 public:
@@ -31,7 +55,8 @@ public:
     }
 
     const math::float4x4& projection() const noexcept { return m_projection; }
-    pipeline_parameter_interface* parameter() const noexcept { return m_parameter.get(); }
+
+    camera_pipeline_parameter* pipeline_parameter() const noexcept { return m_parameter.get(); }
 
     std::uint32_t mask;
 
@@ -48,6 +73,6 @@ private:
     resource_interface* m_render_target_resolve;
     resource_interface* m_depth_stencil_buffer;
 
-    std::unique_ptr<pipeline_parameter_interface> m_parameter;
+    std::unique_ptr<camera_pipeline_parameter> m_parameter;
 };
 } // namespace ash::graphics

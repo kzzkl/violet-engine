@@ -165,7 +165,7 @@ private:
         world.add<link, main_camera, camera, transform>(m_camera);
         auto& c_camera = world.component<camera>(m_camera);
         c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
-        c_camera.parameter = graphics.make_render_parameter("ash_pass");
+        c_camera.parameter = graphics.make_render_parameter("ash_camera");
 
         auto& c_transform = world.component<transform>(m_camera);
         c_transform.position = {0.0f, 0.0f, -38.0f};

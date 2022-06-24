@@ -21,17 +21,17 @@ vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
     {
         switch (desc.parameters[i].type)
         {
-        case pipeline_parameter_type::BOOL:
-        case pipeline_parameter_type::UINT:
-        case pipeline_parameter_type::FLOAT:
-        case pipeline_parameter_type::FLOAT2:
-        case pipeline_parameter_type::FLOAT3:
-        case pipeline_parameter_type::FLOAT4:
-        case pipeline_parameter_type::FLOAT4x4:
-        case pipeline_parameter_type::FLOAT4x4_ARRAY:
+        case PIPELINE_PARAMETER_TYPE_BOOL:
+        case PIPELINE_PARAMETER_TYPE_UINT:
+        case PIPELINE_PARAMETER_TYPE_FLOAT:
+        case PIPELINE_PARAMETER_TYPE_FLOAT2:
+        case PIPELINE_PARAMETER_TYPE_FLOAT3:
+        case PIPELINE_PARAMETER_TYPE_FLOAT4:
+        case PIPELINE_PARAMETER_TYPE_FLOAT4x4:
+        case PIPELINE_PARAMETER_TYPE_FLOAT4x4_ARRAY:
             m_ubo_count = 1;
             break;
-        case pipeline_parameter_type::TEXTURE:
+        case PIPELINE_PARAMETER_TYPE_TEXTURE:
             ++m_cis_count;
             break;
         default:
@@ -103,45 +103,45 @@ vk_pipeline_parameter::vk_pipeline_parameter(pipeline_parameter_layout_interface
         std::size_t size = 0;
         switch (parameter.type)
         {
-        case pipeline_parameter_type::BOOL:
+        case PIPELINE_PARAMETER_TYPE_BOOL:
             align_address = cal_align(ubo_offset, 4);
             size = sizeof(bool);
             break;
-        case pipeline_parameter_type::UINT:
+        case PIPELINE_PARAMETER_TYPE_UINT:
             align_address = cal_align(ubo_offset, 4);
             size = sizeof(std::uint32_t);
             break;
-        case pipeline_parameter_type::FLOAT:
+        case PIPELINE_PARAMETER_TYPE_FLOAT:
             align_address = cal_align(ubo_offset, 4);
             size = sizeof(float);
             break;
-        case pipeline_parameter_type::FLOAT2:
+        case PIPELINE_PARAMETER_TYPE_FLOAT2:
             align_address = cal_align(ubo_offset, 8);
             size = sizeof(math::float2);
             break;
-        case pipeline_parameter_type::FLOAT3:
+        case PIPELINE_PARAMETER_TYPE_FLOAT3:
             align_address = cal_align(ubo_offset, 16);
             size = sizeof(math::float3);
             break;
-        case pipeline_parameter_type::FLOAT4:
+        case PIPELINE_PARAMETER_TYPE_FLOAT4:
             align_address = cal_align(ubo_offset, 16);
             size = sizeof(math::float4);
             break;
-        case pipeline_parameter_type::FLOAT4x4:
+        case PIPELINE_PARAMETER_TYPE_FLOAT4x4:
             align_address = cal_align(ubo_offset, 16);
             size = sizeof(math::float4x4);
             break;
-        case pipeline_parameter_type::FLOAT4x4_ARRAY:
+        case PIPELINE_PARAMETER_TYPE_FLOAT4x4_ARRAY:
             align_address = cal_align(ubo_offset, 16);
             size = sizeof(math::float4x4) * parameter.size;
             break;
-        case pipeline_parameter_type::TEXTURE:
+        case PIPELINE_PARAMETER_TYPE_TEXTURE:
             break;
         default:
             throw vk_exception("Invalid pipeline parameter type.");
         }
 
-        if (parameter.type == pipeline_parameter_type::TEXTURE)
+        if (parameter.type == PIPELINE_PARAMETER_TYPE_TEXTURE)
         {
             align_address = texture_offset;
             ++texture_offset;
@@ -247,7 +247,7 @@ void vk_pipeline_parameter::sync()
         if (info.dirty == 0)
             continue;
 
-        if (info.type == pipeline_parameter_type::TEXTURE)
+        if (info.type == PIPELINE_PARAMETER_TYPE_TEXTURE)
         {
             auto texture = m_textures[info.offset];
 
@@ -333,55 +333,55 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
         ++location;
         switch (desc.vertex_attributes[i].type)
         {
-        case vertex_attribute_type::INT:
+        case VERTEX_ATTRIBUTE_TYPE_INT:
             attribute.format = VK_FORMAT_R32_SINT;
             offset += sizeof(std::int32_t);
             break;
-        case vertex_attribute_type::INT2:
+        case VERTEX_ATTRIBUTE_TYPE_INT2:
             attribute.format = VK_FORMAT_R32G32_SINT;
             offset += sizeof(std::int32_t) * 2;
             break;
-        case vertex_attribute_type::INT3:
+        case VERTEX_ATTRIBUTE_TYPE_INT3:
             attribute.format = VK_FORMAT_R32G32B32_SINT;
             offset += sizeof(std::int32_t) * 3;
             break;
-        case vertex_attribute_type::INT4:
+        case VERTEX_ATTRIBUTE_TYPE_INT4:
             attribute.format = VK_FORMAT_R32G32B32A32_SINT;
             offset += sizeof(std::int32_t) * 4;
             break;
-        case vertex_attribute_type::UINT:
+        case VERTEX_ATTRIBUTE_TYPE_UINT:
             attribute.format = VK_FORMAT_R32_UINT;
             offset += sizeof(std::uint32_t);
             break;
-        case vertex_attribute_type::UINT2:
+        case VERTEX_ATTRIBUTE_TYPE_UINT2:
             attribute.format = VK_FORMAT_R32G32_UINT;
             offset += sizeof(std::uint32_t) * 2;
             break;
-        case vertex_attribute_type::UINT3:
+        case VERTEX_ATTRIBUTE_TYPE_UINT3:
             attribute.format = VK_FORMAT_R32G32B32_UINT;
             offset += sizeof(std::uint32_t) * 3;
             break;
-        case vertex_attribute_type::UINT4:
+        case VERTEX_ATTRIBUTE_TYPE_UINT4:
             attribute.format = VK_FORMAT_R32G32B32A32_UINT;
             offset += sizeof(std::uint32_t) * 4;
             break;
-        case vertex_attribute_type::FLOAT:
+        case VERTEX_ATTRIBUTE_TYPE_FLOAT:
             attribute.format = VK_FORMAT_R32_SFLOAT;
             offset += sizeof(float);
             break;
-        case vertex_attribute_type::FLOAT2:
+        case VERTEX_ATTRIBUTE_TYPE_FLOAT2:
             attribute.format = VK_FORMAT_R32G32_SFLOAT;
             offset += sizeof(math::float2);
             break;
-        case vertex_attribute_type::FLOAT3:
+        case VERTEX_ATTRIBUTE_TYPE_FLOAT3:
             attribute.format = VK_FORMAT_R32G32B32_SFLOAT;
             offset += sizeof(math::float3);
             break;
-        case vertex_attribute_type::FLOAT4:
+        case VERTEX_ATTRIBUTE_TYPE_FLOAT4:
             attribute.format = VK_FORMAT_R32G32B32A32_SFLOAT;
             offset += sizeof(math::float4);
             break;
-        case vertex_attribute_type::COLOR:
+        case VERTEX_ATTRIBUTE_TYPE_COLOR:
             attribute.format = VK_FORMAT_R8G8B8A8_UNORM;
             offset += sizeof(std::uint8_t) * 4;
             break;
@@ -440,13 +440,13 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
     rasterization_info.depthBiasSlopeFactor = 0.0f;
     switch (desc.rasterizer.cull_mode)
     {
-    case cull_mode::NONE:
+    case CULL_MODE_NONE:
         rasterization_info.cullMode = VK_CULL_MODE_NONE;
         break;
-    case cull_mode::FRONT:
+    case CULL_MODE_FRONT:
         rasterization_info.cullMode = VK_CULL_MODE_FRONT_BIT;
         break;
-    case cull_mode::BACK:
+    case CULL_MODE_BACK:
         rasterization_info.cullMode = VK_CULL_MODE_BACK_BIT;
         break;
     default:
@@ -589,7 +589,7 @@ vk_frame_buffer::vk_frame_buffer(vk_render_pass* render_pass, const vk_camera_in
         VkClearValue clear_value = {};
         switch (attachment.type)
         {
-        case attachment_type::RENDER_TARGET: {
+        case ATTACHMENT_TYPE_RENDER_TARGET: {
             auto color = std::make_unique<vk_render_target>(
                 extent.width,
                 extent.height,
@@ -600,17 +600,17 @@ vk_frame_buffer::vk_frame_buffer(vk_render_pass* render_pass, const vk_camera_in
             clear_value.color = {0.0f, 0.0f, 0.0f, 1.0f};
             break;
         }
-        case attachment_type::CAMERA_RENDER_TARGET: {
+        case ATTACHMENT_TYPE_CAMERA_RENDER_TARGET: {
             views.push_back(camera_info.render_target->view());
             clear_value.color = {0.0f, 0.0f, 0.0f, 1.0f};
             break;
         }
-        case attachment_type::CAMERA_RENDER_TARGET_RESOLVE: {
+        case ATTACHMENT_TYPE_CAMERA_RENDER_TARGET_RESOLVE: {
             views.push_back(camera_info.render_target_resolve->view());
             clear_value.color = {0.0f, 0.0f, 0.0f, 1.0f};
             break;
         }
-        case attachment_type::CAMERA_DEPTH_STENCIL: {
+        case ATTACHMENT_TYPE_CAMERA_DEPTH_STENCIL: {
             views.push_back(camera_info.depth_stencil_buffer->view());
             clear_value.depthStencil = {1.0f, 0};
             break;
@@ -770,29 +770,29 @@ void vk_render_pass::create_pass(const render_pass_desc& desc)
         {
             switch (desc.subpasses[i].references[j].type)
             {
-            case attachment_reference_type::UNUSE:
+            case ATTACHMENT_REFERENCE_TYPE_UNUSE:
                 break;
-            case attachment_reference_type::INPUT: {
+            case ATTACHMENT_REFERENCE_TYPE_INPUT: {
                 VkAttachmentReference attachment_ref = {};
                 attachment_ref.attachment = static_cast<std::uint32_t>(j);
                 attachment_ref.layout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
                 reference[i].input.push_back(attachment_ref);
                 break;
             }
-            case attachment_reference_type::COLOR: {
+            case ATTACHMENT_REFERENCE_TYPE_COLOR: {
                 VkAttachmentReference attachment_ref = {};
                 attachment_ref.attachment = static_cast<std::uint32_t>(j);
                 attachment_ref.layout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
                 reference[i].color.push_back(attachment_ref);
                 break;
             }
-            case attachment_reference_type::DEPTH: {
+            case ATTACHMENT_REFERENCE_TYPE_DEPTH: {
                 reference[i].depth.attachment = static_cast<std::uint32_t>(j);
                 reference[i].depth.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
                 subpasses[i].pDepthStencilAttachment = &reference[i].depth;
                 break;
             }
-            case attachment_reference_type::RESOLVE: {
+            case ATTACHMENT_REFERENCE_TYPE_RESOLVE: {
                 has_resolve_attachment = true;
                 break;
             }
@@ -809,7 +809,7 @@ void vk_render_pass::create_pass(const render_pass_desc& desc)
             reference[i].resolve.resize(reference[i].color.size(), attachment_ref);
             for (std::size_t j = 0; j < desc.subpasses[i].reference_count; ++j)
             {
-                if (desc.subpasses[i].references[j].type == attachment_reference_type::RESOLVE)
+                if (desc.subpasses[i].references[j].type == ATTACHMENT_REFERENCE_TYPE_RESOLVE)
                 {
                     std::size_t resolve_relation = desc.subpasses[i].references[j].resolve_relation;
                     reference[i].resolve[resolve_relation].attachment =

@@ -188,7 +188,7 @@ void scene_view::resize_camera()
     graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
     depth_stencil_buffer_info.width = m_image_width;
     depth_stencil_buffer_info.height = m_image_height;
-    depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
+    depth_stencil_buffer_info.format = graphics::RESOURCE_FORMAT_D24_UNORM_S8_UINT;
     depth_stencil_buffer_info.samples = 4;
     m_depth_stencil_buffer = graphics::rhi::make_depth_stencil_buffer(depth_stencil_buffer_info);
     camera.depth_stencil_buffer(m_depth_stencil_buffer.get());

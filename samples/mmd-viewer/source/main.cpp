@@ -139,7 +139,7 @@ private:
         graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
         depth_stencil_buffer_info.width = width;
         depth_stencil_buffer_info.height = height;
-        depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
+        depth_stencil_buffer_info.format = graphics::RESOURCE_FORMAT_D24_UNORM_S8_UINT;
         depth_stencil_buffer_info.samples = 4;
         m_depth_stencil_buffer =
             graphics::rhi::make_depth_stencil_buffer(depth_stencil_buffer_info);
@@ -158,21 +158,6 @@ private:
                 mouse.mode(window::MOUSE_MODE_ABSOLUTE);
             else
                 mouse.mode(window::MOUSE_MODE_RELATIVE);
-        }
-
-        if (keyboard.key(window::KEYBOARD_KEY_3).release())
-        {
-            static std::size_t index = 0;
-            static std::vector<math::float4> colors = {
-                math::float4{1.0f, 0.0f, 0.0f, 1.0f},
-                math::float4{0.0f, 1.0f, 0.0f, 1.0f},
-                math::float4{0.0f, 0.0f, 1.0f, 1.0f}
-            };
-
-            auto& v = world.component<graphics::visual>(m_actor);
-            v.materials[0].parameters[1]->set(0, colors[index]);
-
-            index = (index + 1) % colors.size();
         }
 
         auto& camera_transform = world.component<scene::transform>(m_camera);

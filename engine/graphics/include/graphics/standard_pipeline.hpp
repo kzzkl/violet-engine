@@ -4,6 +4,22 @@
 
 namespace ash::graphics
 {
+class standard_material_pipeline_parameter : public pipeline_parameter
+{
+public:
+    standard_material_pipeline_parameter();
+
+    void diffuse(const math::float3& diffuse);
+    static std::vector<pipeline_parameter_pair> layout();
+
+private:
+    struct constant_data
+    {
+        math::float3 diffuse;
+        float _padding_1;
+    };
+};
+
 class standard_pipeline : public render_pipeline
 {
 public:

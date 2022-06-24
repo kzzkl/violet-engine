@@ -1,6 +1,11 @@
 #include "mmd_loader.hpp"
+#include "core/relation.hpp"
 #include "graphics/rhi.hpp"
-#include <iostream>
+#include "mmd_component.hpp"
+#include "physics/physics.hpp"
+#include "pmx_loader.hpp"
+#include "scene/scene.hpp"
+#include "vmd_loader.hpp"
 
 namespace ash::sample::mmd
 {
@@ -23,8 +28,6 @@ void mmd_loader::initialize()
         "toon10.dds",
     };
 
-    auto& graphics = system<graphics::graphics>();
-
     for (auto& path : internal_toon_path)
         m_internal_toon.push_back(graphics::rhi::make_texture("resource/mmd/" + path));
 }
@@ -38,7 +41,6 @@ bool mmd_loader::load(
     graphics::skin_pipeline* skin_pipeline)
 {
     auto& world = system<ecs::world>();
-    auto& graphics = system<graphics::graphics>();
 
     pmx_loader pmx_loader;
     if (!pmx_loader.load(pmx))
@@ -52,12 +54,11 @@ bool mmd_loader::load(
         entity);
 
     auto& visual = world.component<graphics::visual>(entity);
-    resource.object_parameter = graphics::rhi::make_pipeline_parameter("ash_object");
-    visual.object = resource.object_parameter.get();
+    visual.object_parameter = std::make_unique<graphics::object_pipeline_parameter>();
 
     auto& skinned_mesh = world.component<graphics::skinned_mesh>(entity);
     skinned_mesh.pipeline = skin_pipeline;
-    skinned_mesh.parameter = graphics::rhi::make_pipeline_parameter("mmd_skin");
+    skinned_mesh.parameter = std::make_unique<skin_pipeline_parameter>();
 
     load_hierarchy(entity, resource, pmx_loader);
     load_mesh(entity, resource, pmx_loader);
@@ -76,7 +77,6 @@ void mmd_loader::load_hierarchy(
     const pmx_loader& loader)
 {
     auto& world = system<ecs::world>();
-    auto& graphics = system<graphics::graphics>();
     auto& relation = system<core::relation>();
     auto& scene = system<scene::scene>();
 
@@ -163,7 +163,6 @@ void mmd_loader::load_hierarchy(
 void mmd_loader::load_mesh(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader)
 {
     auto& world = system<ecs::world>();
-    auto& graphics = system<graphics::graphics>();
 
     // Make vertex buffer.
     std::vector<math::float3> position;
@@ -197,27 +196,24 @@ void mmd_loader::load_mesh(ecs::entity entity, mmd_resource& resource, const pmx
     };
     resource.vertex_buffers.resize(MMD_VERTEX_ATTRIBUTE_NUM_TYPES);
 
-    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_POSITION] =
-        graphics::rhi::make_vertex_buffer(
-            position.data(),
-            position.size(),
-            graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
-    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_NORMAL] =
-        graphics::rhi::make_vertex_buffer(
-            normal.data(),
-            normal.size(),
-            graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
+    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_POSITION] = graphics::rhi::make_vertex_buffer(
+        position.data(),
+        position.size(),
+        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
+    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_NORMAL] = graphics::rhi::make_vertex_buffer(
+        normal.data(),
+        normal.size(),
+        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
     resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_UV] =
         graphics::rhi::make_vertex_buffer(uv.data(), uv.size());
     resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_BONE] = graphics::rhi::make_vertex_buffer(
         bone.data(),
         bone.size(),
         graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
-    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_BONE_WEIGHT] =
-        graphics::rhi::make_vertex_buffer(
-            bone_weight.data(),
-            bone_weight.size(),
-            graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
+    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_BONE_WEIGHT] = graphics::rhi::make_vertex_buffer(
+        bone_weight.data(),
+        bone_weight.size(),
+        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
 
     auto& visual = world.component<graphics::visual>(entity);
     visual.vertex_buffers = {
@@ -249,15 +245,12 @@ void mmd_loader::load_mesh(ecs::entity entity, mmd_resource& resource, const pmx
     for (std::int32_t i : loader.indices())
         indices.push_back(i);
 
-    resource.index_buffer =
-        graphics::rhi::make_index_buffer(indices.data(), indices.size());
+    resource.index_buffer = graphics::rhi::make_index_buffer(indices.data(), indices.size());
     visual.index_buffer = resource.index_buffer.get();
 }
 
 void mmd_loader::load_texture(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader)
 {
-    auto& graphics = system<graphics::graphics>();
-
     for (auto& texture_path : loader.textures())
     {
         std::string dds_path = texture_path.substr(0, texture_path.find_last_of('.')) + ".dds";
@@ -271,36 +264,34 @@ void mmd_loader::load_material(
     const pmx_loader& loader,
     graphics::render_pipeline* render_pipeline)
 {
-    auto& world = system<ecs::world>();
-    auto& graphics = system<graphics::graphics>();
-
     for (auto& mmd_material : loader.materials())
     {
-        auto parameter = graphics::rhi::make_pipeline_parameter("mmd_material");
-        parameter->set(0, mmd_material.diffuse);
-        parameter->set(1, mmd_material.specular);
-        parameter->set(2, mmd_material.specular_strength);
-        parameter->set(3, mmd_material.toon_index == -1 ? std::uint32_t(0) : std::uint32_t(1));
-        parameter->set(4, static_cast<std::uint32_t>(mmd_material.sphere_mode));
-        parameter->set(5, resource.textures[mmd_material.texture_index].get());
+        auto parameter = std::make_unique<material_pipeline_parameter>();
+        parameter->diffuse(mmd_material.diffuse);
+        parameter->specular(mmd_material.specular);
+        parameter->specular_strength(mmd_material.specular_strength);
+        parameter->toon_mode(mmd_material.toon_index == -1 ? std::uint32_t(0) : std::uint32_t(1));
+        parameter->spa_mode(static_cast<std::uint32_t>(mmd_material.sphere_mode));
+        parameter->tex(resource.textures[mmd_material.texture_index].get());
 
         if (mmd_material.toon_index != -1)
         {
             if (mmd_material.toon_mode == toon_mode::TEXTURE)
-                parameter->set(6, resource.textures[mmd_material.toon_index].get());
+                parameter->toon(resource.textures[mmd_material.toon_index].get());
             else if (mmd_material.toon_mode == toon_mode::INTERNAL)
-                parameter->set(6, m_internal_toon[mmd_material.toon_index].get());
+                parameter->toon(m_internal_toon[mmd_material.toon_index].get());
             else
                 throw std::runtime_error("Invalid toon mode");
         }
         if (mmd_material.sphere_mode != sphere_mode::DISABLED)
-            parameter->set(7, resource.textures[mmd_material.sphere_index].get());
+            parameter->spa(resource.textures[mmd_material.sphere_index].get());
 
         resource.materials.push_back(std::move(parameter));
     }
 
     resource.submesh = loader.submesh();
 
+    auto& world = system<ecs::world>();
     auto& visual = world.component<graphics::visual>(entity);
     for (std::size_t i = 0; i < resource.submesh.size(); ++i)
     {
@@ -311,7 +302,9 @@ void mmd_loader::load_material(
 
         graphics::material material = {};
         material.pipeline = render_pipeline;
-        material.parameters = {visual.object, resource.materials[i].get()};
+        material.parameters = {
+            visual.object_parameter->interface(),
+            resource.materials[i]->interface()};
         visual.materials.push_back(material);
     }
 }

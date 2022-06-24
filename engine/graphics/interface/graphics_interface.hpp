@@ -7,29 +7,29 @@
 
 namespace ash::graphics
 {
-enum class resource_format
+enum resource_format
 {
-    UNDEFINED,
+    RESOURCE_FORMAT_UNDEFINED,
 
-    R8_UNORM,
-    R8_UINT,
+    RESOURCE_FORMAT_R8_UNORM,
+    RESOURCE_FORMAT_R8_UINT,
 
-    R8G8B8A8_UNORM,
-    B8G8R8A8_UNORM,
+    RESOURCE_FORMAT_R8G8B8A8_UNORM,
+    RESOURCE_FORMAT_B8G8R8A8_UNORM,
 
-    R32G32B32A32_FLOAT,
-    R32G32B32A32_SINT,
-    R32G32B32A32_UINT,
+    RESOURCE_FORMAT_R32G32B32A32_FLOAT,
+    RESOURCE_FORMAT_R32G32B32A32_SINT,
+    RESOURCE_FORMAT_R32G32B32A32_UINT,
 
-    D24_UNORM_S8_UINT
+    RESOURCE_FORMAT_D24_UNORM_S8_UINT
 };
 
-enum class resource_state
+enum resource_state
 {
-    UNDEFINED,
-    RENDER_TARGET,
-    DEPTH_STENCIL,
-    PRESENT
+    RESOURCE_STATE_UNDEFINED,
+    RESOURCE_STATE_RENDER_TARGET,
+    RESOURCE_STATE_DEPTH_STENCIL,
+    RESOURCE_STATE_PRESENT
 };
 
 struct resource_extent
@@ -51,21 +51,21 @@ public:
     virtual void upload(const void* data, std::size_t size, std::size_t offset = 0) {}
 };
 
-enum class vertex_attribute_type : std::uint8_t
+enum vertex_attribute_type
 {
-    INT,    // R32 INT
-    INT2,   // R32G32 INT
-    INT3,   // R32G32B32 INT
-    INT4,   // R32G32B32A32 INT
-    UINT,   // R32 UINT
-    UINT2,  // R32G32 UINT
-    UINT3,  // R32G32B32 UINT
-    UINT4,  // R32G32B32A32 UINT
-    FLOAT,  // R32 FLOAT
-    FLOAT2, // R32G32 FLOAT
-    FLOAT3, // R32G32B32 FLOAT
-    FLOAT4, // R32G32B32A32 FLOAT
-    COLOR   // R8G8B8A8
+    VERTEX_ATTRIBUTE_TYPE_INT,    // R32 INT
+    VERTEX_ATTRIBUTE_TYPE_INT2,   // R32G32 INT
+    VERTEX_ATTRIBUTE_TYPE_INT3,   // R32G32B32 INT
+    VERTEX_ATTRIBUTE_TYPE_INT4,   // R32G32B32A32 INT
+    VERTEX_ATTRIBUTE_TYPE_UINT,   // R32 UINT
+    VERTEX_ATTRIBUTE_TYPE_UINT2,  // R32G32 UINT
+    VERTEX_ATTRIBUTE_TYPE_UINT3,  // R32G32B32 UINT
+    VERTEX_ATTRIBUTE_TYPE_UINT4,  // R32G32B32A32 UINT
+    VERTEX_ATTRIBUTE_TYPE_FLOAT,  // R32 FLOAT
+    VERTEX_ATTRIBUTE_TYPE_FLOAT2, // R32G32 FLOAT
+    VERTEX_ATTRIBUTE_TYPE_FLOAT3, // R32G32B32 FLOAT
+    VERTEX_ATTRIBUTE_TYPE_FLOAT4, // R32G32B32A32 FLOAT
+    VERTEX_ATTRIBUTE_TYPE_COLOR   // R8G8B8A8
 };
 
 struct vertex_attribute
@@ -74,20 +74,11 @@ struct vertex_attribute
     vertex_attribute_type type;
 };
 
-enum class pipeline_parameter_type
+enum pipeline_parameter_type
 {
-    BOOL,
-    UINT,
-    FLOAT,
-    FLOAT2,
-    FLOAT3,
-    FLOAT4,
-    FLOAT4_ARRAY,
-    FLOAT4x4,
-    FLOAT4x4_ARRAY,
-    CONSTANT_BUFFER,
-    SHADER_RESOURCE,
-    UNORDERED_ACCESS
+    PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER,
+    PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,
+    PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS
 };
 
 struct pipeline_parameter_pair
@@ -113,37 +104,30 @@ class pipeline_parameter_interface
 public:
     virtual ~pipeline_parameter_interface() = default;
 
-    virtual void set(std::size_t index, bool value) = 0;
-    virtual void set(std::size_t index, std::uint32_t value) = 0;
-    virtual void set(std::size_t index, float value) = 0;
-    virtual void set(std::size_t index, const math::float2& value) = 0;
-    virtual void set(std::size_t index, const math::float3& value) = 0;
-    virtual void set(std::size_t index, const math::float4& value) = 0;
-    virtual void set(std::size_t index, const math::float4* data, size_t size) = 0;
-    virtual void set(std::size_t index, const math::float4x4& value) = 0;
-    virtual void set(std::size_t index, const math::float4x4* data, size_t size) = 0;
     virtual void set(std::size_t index, const void* data, size_t size) = 0;
     virtual void set(std::size_t index, resource_interface* texture) = 0;
+
+    virtual void* constant_buffer_pointer(std::size_t index) = 0;
 };
 
-enum class blend_factor
+enum blend_factor
 {
-    ZERO,
-    ONE,
-    SOURCE_COLOR,
-    SOURCE_ALPHA,
-    SOURCE_INV_ALPHA,
-    TARGET_COLOR,
-    TARGET_ALPHA,
-    TARGET_INV_ALPHA
+    BLEND_FACTOR_ZERO,
+    BLEND_FACTOR_ONE,
+    BLEND_FACTOR_SOURCE_COLOR,
+    BLEND_FACTOR_SOURCE_ALPHA,
+    BLEND_FACTOR_SOURCE_INV_ALPHA,
+    BLEND_FACTOR_TARGET_COLOR,
+    BLEND_FACTOR_TARGET_ALPHA,
+    BLEND_FACTOR_TARGET_INV_ALPHA
 };
 
-enum class blend_op
+enum blend_op
 {
-    ADD,
-    SUBTRACT,
-    MIN,
-    MAX
+    BLEND_OP_ADD,
+    BLEND_OP_SUBTRACT,
+    BLEND_OP_MIN,
+    BLEND_OP_MAX
 };
 
 struct blend_desc
@@ -159,16 +143,16 @@ struct blend_desc
     blend_op alpha_op;
 };
 
-enum class depth_functor
+enum depth_functor
 {
-    NEVER,
-    LESS,
-    EQUAL,
-    LESS_EQUAL,
-    GREATER,
-    NOT_EQUAL,
-    GREATER_EQUAL,
-    ALWAYS
+    DEPTH_FUNCTOR_NEVER,
+    DEPTH_FUNCTOR_LESS,
+    DEPTH_FUNCTOR_EQUAL,
+    DEPTH_FUNCTOR_LESS_EQUAL,
+    DEPTH_FUNCTOR_GREATER,
+    DEPTH_FUNCTOR_NOT_EQUAL,
+    DEPTH_FUNCTOR_GREATER_EQUAL,
+    DEPTH_FUNCTOR_ALWAYS
 };
 
 struct depth_stencil_desc
@@ -176,11 +160,11 @@ struct depth_stencil_desc
     depth_functor depth_functor;
 };
 
-enum class cull_mode
+enum cull_mode
 {
-    NONE,
-    FRONT,
-    BACK
+    CULL_MODE_NONE,
+    CULL_MODE_FRONT,
+    CULL_MODE_BACK
 };
 
 struct rasterizer_desc
@@ -194,13 +178,13 @@ enum primitive_topology_type
     PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE
 };
 
-enum class attachment_reference_type
+enum attachment_reference_type
 {
-    UNUSE,
-    INPUT,
-    COLOR,
-    DEPTH,
-    RESOLVE
+    ATTACHMENT_REFERENCE_TYPE_UNUSE,
+    ATTACHMENT_REFERENCE_TYPE_INPUT,
+    ATTACHMENT_REFERENCE_TYPE_COLOR,
+    ATTACHMENT_REFERENCE_TYPE_DEPTH,
+    ATTACHMENT_REFERENCE_TYPE_RESOLVE
 };
 
 struct attachment_reference
@@ -232,25 +216,25 @@ struct render_pass_desc
     std::size_t reference_count;
 };
 
-enum class attachment_load_op
+enum attachment_load_op
 {
-    LOAD,
-    CLEAR,
-    DONT_CARE
+    ATTACHMENT_LOAD_OP_LOAD,
+    ATTACHMENT_LOAD_OP_CLEAR,
+    ATTACHMENT_LOAD_OP_DONT_CARE
 };
 
-enum class attachment_store_op
+enum attachment_store_op
 {
-    STORE,
-    DONT_CARE
+    ATTACHMENT_STORE_OP_STORE,
+    ATTACHMENT_STORE_OP_DONT_CARE
 };
 
-enum class attachment_type
+enum attachment_type
 {
-    RENDER_TARGET,
-    CAMERA_RENDER_TARGET,
-    CAMERA_RENDER_TARGET_RESOLVE,
-    CAMERA_DEPTH_STENCIL
+    ATTACHMENT_TYPE_RENDER_TARGET,
+    ATTACHMENT_TYPE_CAMERA_RENDER_TARGET,
+    ATTACHMENT_TYPE_CAMERA_RENDER_TARGET_RESOLVE,
+    ATTACHMENT_TYPE_CAMERA_DEPTH_STENCIL
 };
 
 struct attachment_desc
@@ -441,7 +425,7 @@ public:
         const std::uint8_t* data,
         std::uint32_t width,
         std::uint32_t height,
-        resource_format format = resource_format::R8G8B8A8_UNORM) = 0;
+        resource_format format = RESOURCE_FORMAT_R8G8B8A8_UNORM) = 0;
     virtual resource_interface* make_texture(const char* file) = 0;
     virtual resource_interface* make_render_target(const render_target_desc& desc) = 0;
     virtual resource_interface* make_depth_stencil_buffer(

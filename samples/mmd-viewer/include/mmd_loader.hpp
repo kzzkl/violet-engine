@@ -1,13 +1,8 @@
 #pragma once
 
-#include "core/relation.hpp"
 #include "ecs/entity.hpp"
-#include "graphics/graphics.hpp"
-#include "mmd_component.hpp"
-#include "physics/physics.hpp"
-#include "pmx_loader.hpp"
-#include "scene/scene.hpp"
-#include "vmd_loader.hpp"
+#include "mmd_pipeline.hpp"
+#include "physics_interface.hpp"
 
 namespace ash::sample::mmd
 {
@@ -18,12 +13,13 @@ struct mmd_resource
     std::vector<std::pair<std::size_t, std::size_t>> submesh;
 
     std::vector<std::unique_ptr<graphics::resource_interface>> textures;
-    std::vector<std::unique_ptr<graphics::pipeline_parameter_interface>> materials;
-    std::unique_ptr<graphics::pipeline_parameter_interface> object_parameter;
+    std::vector<std::unique_ptr<material_pipeline_parameter>> materials;
 
     std::vector<std::unique_ptr<physics::collision_shape_interface>> collision_shapes;
 };
 
+class pmx_loader;
+class vmd_loader;
 class mmd_loader
 {
 public:

@@ -167,6 +167,6 @@ d3d12_image_loader::load_result d3d12_image_loader::load_other(
 
     stbi_image_free(stb_pixels);
 
-    return load(pixels.data(), width, height, resource_format::R8G8B8A8_UNORM, command_list);
+    return load(pixels.data(), width, height, RESOURCE_FORMAT_R8G8B8A8_UNORM, command_list);
 }
 } // namespace ash::graphics::d3d12

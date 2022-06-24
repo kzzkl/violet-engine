@@ -3,7 +3,7 @@ cbuffer ash_object : register(b0, space0)
     float4x4 transform_m;
 };
 
-cbuffer ash_pass : register(b0, space1)
+cbuffer ash_camera : register(b0, space1)
 {
     float4 camera_position;
     float4 camera_direction;

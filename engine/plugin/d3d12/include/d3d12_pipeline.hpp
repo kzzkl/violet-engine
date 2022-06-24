@@ -76,29 +76,13 @@ public:
 public:
     d3d12_pipeline_parameter(pipeline_parameter_layout_interface* layout);
 
-    virtual void set(std::size_t index, bool value) override;
-    virtual void set(std::size_t index, std::uint32_t value) override;
-    virtual void set(std::size_t index, float value) override;
-    virtual void set(std::size_t index, const math::float2& value) override;
-    virtual void set(std::size_t index, const math::float3& value) override;
-    virtual void set(std::size_t index, const math::float4& value) override;
-    virtual void set(std::size_t index, const math::float4* data, size_t size) override;
-    virtual void set(std::size_t index, const math::float4x4& value) override;
-    virtual void set(std::size_t index, const math::float4x4* data, size_t size) override;
     virtual void set(std::size_t index, const void* data, size_t size) override;
     virtual void set(std::size_t index, resource_interface* texture) override;
-
-    void sync();
+    virtual void* constant_buffer_pointer(std::size_t index) override;
 
     inline d3d12_parameter_tier_type tier() const noexcept { return m_tier; }
-    inline tier1_info tier1() const noexcept
-    {
-        return m_tier_info[d3d12_frame_counter::frame_resource_index()].tier1;
-    }
-    inline tier2_info tier2() const noexcept
-    {
-        return m_tier_info[d3d12_frame_counter::frame_resource_index()].tier2;
-    }
+    inline tier1_info tier1() const noexcept { return m_tier_info[m_current_index].tier1; }
+    inline tier2_info tier2() const noexcept { return m_tier_info[m_current_index].tier2; }
 
 private:
     union tier_info {
@@ -106,20 +90,20 @@ private:
         tier2_info tier2;
     };
 
-    void mark_dirty(std::size_t index);
+    void sync_frame_resource();
+
+    void copy_buffer(const void* data, std::size_t size, std::size_t offset);
+    void copy_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE descriptor, std::size_t offset);
 
     d3d12_parameter_tier_type m_tier;
     std::vector<tier_info> m_tier_info;
 
-    std::size_t m_dirty;
-    std::size_t m_last_sync_frame;
-    std::vector<std::size_t> m_dirty_counter;
-
     d3d12_pipeline_parameter_layout* m_layout;
 
-    std::vector<std::uint8_t> m_cpu_buffer;
     std::unique_ptr<d3d12_upload_buffer> m_gpu_buffer;
-    std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_views;
+    std::vector<std::pair<D3D12_CPU_DESCRIPTOR_HANDLE, std::size_t>> m_views;
+    std::size_t m_current_index;
+    std::size_t m_last_sync_frame;
 };
 
 class d3d12_root_signature

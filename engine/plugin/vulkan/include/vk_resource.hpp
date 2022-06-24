@@ -7,7 +7,7 @@ namespace ash::graphics::vk
 class vk_resource : public resource_interface
 {
 public:
-    virtual resource_format format() const noexcept override { return resource_format::UNDEFINED; }
+    virtual resource_format format() const noexcept override { return RESOURCE_FORMAT_UNDEFINED; }
     virtual resource_extent extent() const noexcept override { return {0, 0}; }
     virtual std::size_t size() const noexcept override { return 0; }
 

@@ -8,8 +8,8 @@ namespace ash::graphics
 render_pass_info::render_pass_info()
 {
     blend.enable = false;
-    depth_stencil.depth_functor = depth_functor::LESS;
-    rasterizer.cull_mode = cull_mode::BACK;
+    depth_stencil.depth_functor = DEPTH_FUNCTOR_LESS;
+    rasterizer.cull_mode = CULL_MODE_BACK;
 }
 
 class rhi_plugin : public core::plugin
@@ -66,7 +66,7 @@ resource_format rhi::back_buffer_format()
     return instance().m_renderer->back_buffer()->format();
 }
 
-void rhi::register_pipeline_parameter_layout(
+pipeline_parameter_layout_interface* rhi::register_pipeline_parameter_layout(
     std::string_view name,
     const std::vector<pipeline_parameter_pair>& parameters)
 {
@@ -78,6 +78,22 @@ void rhi::register_pipeline_parameter_layout(
     }
     auto interface = impl().make_pipeline_parameter_layout(desc);
     instance().m_parameter_layouts[name.data()].reset(interface);
+    return interface;
+}
+
+pipeline_parameter_layout_interface* rhi::find_pipeline_parameter_layout(std::string_view name)
+{
+    auto iter = instance().m_parameter_layouts.find(name.data());
+    if (iter != instance().m_parameter_layouts.end())
+        return iter->second.get();
+    else
+        return nullptr;
+}
+
+std::unique_ptr<pipeline_parameter_interface> rhi::make_pipeline_parameter(
+    pipeline_parameter_layout_interface* layout)
+{
+    return std::unique_ptr<pipeline_parameter_interface>(impl().make_pipeline_parameter(layout));
 }
 
 std::unique_ptr<render_pipeline_interface> rhi::make_render_pipeline(
@@ -142,13 +158,6 @@ std::unique_ptr<compute_pipeline_interface> rhi::make_compute_pipeline(
     return std::unique_ptr<compute_pipeline_interface>(impl().make_compute_pipeline(desc));
 }
 
-std::unique_ptr<pipeline_parameter_interface> rhi::make_pipeline_parameter(std::string_view name)
-{
-    auto layout = find_pipeline_parameter_layout(name);
-    ASH_ASSERT(layout);
-    return std::unique_ptr<pipeline_parameter_interface>(impl().make_pipeline_parameter(layout));
-}
-
 std::unique_ptr<resource_interface> rhi::make_texture(
     const std::uint8_t* data,
     std::uint32_t width,
@@ -177,14 +186,5 @@ std::unique_ptr<resource_interface> rhi::make_texture(std::string_view file)
 rhi_interface& rhi::impl()
 {
     return instance().m_plugin->rhi_impl();
-}
-
-pipeline_parameter_layout_interface* rhi::find_pipeline_parameter_layout(std::string_view name)
-{
-    auto iter = instance().m_parameter_layouts.find(name.data());
-    if (iter != instance().m_parameter_layouts.end())
-        return iter->second.get();
-    else
-        return nullptr;
 }
 } // namespace ash::graphics

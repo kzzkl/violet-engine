@@ -108,7 +108,7 @@ font::font(std::string_view font, std::size_t size)
         pixels.data(),
         tex_width,
         tex_height,
-        graphics::resource_format::R8_UNORM);
+        graphics::RESOURCE_FORMAT_R8_UNORM);
 }
 
 const glyph_data& font::glyph(std::uint32_t character) const

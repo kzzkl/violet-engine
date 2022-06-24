@@ -49,7 +49,6 @@ void d3d12_render_command::next_pass(render_pipeline_interface* pipeline)
 void d3d12_render_command::parameter(std::size_t index, pipeline_parameter_interface* parameter)
 {
     d3d12_pipeline_parameter* p = static_cast<d3d12_pipeline_parameter*>(parameter);
-    p->sync();
     if (p->tier() == d3d12_parameter_tier_type::TIER1)
     {
         auto tier1 = p->tier1();
@@ -163,7 +162,6 @@ void d3d12_render_command::compute_parameter(
     pipeline_parameter_interface* parameter)
 {
     d3d12_pipeline_parameter* p = static_cast<d3d12_pipeline_parameter*>(parameter);
-    p->sync();
 
     if (p->tier() == d3d12_parameter_tier_type::TIER1)
     {

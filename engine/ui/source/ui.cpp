@@ -28,11 +28,20 @@ bool ui::initialize(const dictionary& config)
     load_font("remixicon", "engine/font/remixicon.ttf", 24);
     load_font("NotoSans-Regular", "engine/font/NotoSans-Regular.ttf", 13);
 
-    m_tree = std::make_unique<element_tree>();
+    // Register ui pipeline parameter layout.
+    graphics::rhi::register_pipeline_parameter_layout("ui_mvp", mvp_pipeline_parameter::layout());
+    graphics::rhi::register_pipeline_parameter_layout(
+        "ui_offset",
+        offset_pipeline_parameter::layout());
+    graphics::rhi::register_pipeline_parameter_layout(
+        "ui_material",
+        material_pipeline_parameter::layout());
 
     m_pipeline = std::make_unique<ui_pipeline>();
-    m_mvp_parameter = graphics::rhi::make_pipeline_parameter("ui_mvp");
-    m_offset_parameter = graphics::rhi::make_pipeline_parameter("ui_offset");
+    m_mvp_parameter = std::make_unique<mvp_pipeline_parameter>();
+    m_offset_parameter = std::make_unique<offset_pipeline_parameter>();
+
+    m_tree = std::make_unique<element_tree>();
 
     // Position.
     m_vertex_buffers.push_back(graphics::rhi::make_vertex_buffer<math::float2>(
@@ -107,7 +116,7 @@ void ui::tick()
         return;
 
     m_renderer.draw(m_tree.get());
-    m_offset_parameter->set(0, m_renderer.offset().data(), m_renderer.offset().size());
+    m_offset_parameter->offset(m_renderer.offset());
 
     auto& visual = world.component<graphics::visual>(m_entity);
     visual.submeshes.clear();
@@ -146,13 +155,16 @@ void ui::tick()
         visual.submeshes.push_back(submesh);
 
         auto material_parameter = allocate_material_parameter();
-        material_parameter->set(0, static_cast<std::uint32_t>(batch->type));
+        material_parameter->mesh_type(batch->type);
         if (batch->type != ELEMENT_MESH_TYPE_BLOCK)
-            material_parameter->set(1, batch->texture);
+            material_parameter->texture(batch->texture);
 
         graphics::material material = {};
         material.pipeline = m_pipeline.get();
-        material.parameters = {material_parameter, m_offset_parameter.get(), m_mvp_parameter.get()};
+        material.parameters = {
+            material_parameter->interface(),
+            m_offset_parameter->interface(),
+            m_mvp_parameter->interface()};
         material.scissor = graphics::scissor_extent{
             .min_x = static_cast<std::uint32_t>(batch->scissor.x),
             .min_y = static_cast<std::uint32_t>(batch->scissor.y),
@@ -299,15 +311,15 @@ void ui::resize(std::uint32_t width, std::uint32_t height)
         0.0f,
         0.0f,
         1.0f);
-    m_mvp_parameter->set(0, orthographic);
+    m_mvp_parameter->mvp_matrix(orthographic);
     m_tree->width(width);
     m_tree->height(height);
 }
 
-graphics::pipeline_parameter_interface* ui::allocate_material_parameter()
+material_pipeline_parameter* ui::allocate_material_parameter()
 {
     if (m_material_parameter_counter >= m_material_parameter_pool.size())
-        m_material_parameter_pool.push_back(graphics::rhi::make_pipeline_parameter("ui_material"));
+        m_material_parameter_pool.push_back(std::make_unique<material_pipeline_parameter>());
 
     auto result = m_material_parameter_pool[m_material_parameter_counter].get();
     ++m_material_parameter_counter;

@@ -25,7 +25,7 @@ Texture2D spa : register(t2, space1);
 SamplerState sampler_wrap : register(s0);
 
 [[vk::binding(0, 2)]]
-cbuffer ash_pass : register(b0, space2)
+cbuffer ash_camera : register(b0, space2)
 {
     float4 camera_position;
     float4 camera_direction;

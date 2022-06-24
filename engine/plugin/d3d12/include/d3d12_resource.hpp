@@ -18,7 +18,7 @@ public:
 
     virtual D3D12Resource* handle() const noexcept = 0;
 
-    virtual resource_format format() const noexcept override { return resource_format::UNDEFINED; }
+    virtual resource_format format() const noexcept override { return RESOURCE_FORMAT_UNDEFINED; }
     virtual resource_extent extent() const noexcept override { return {0, 0}; }
     virtual std::size_t size() const noexcept override { return 0; }
 
@@ -145,6 +145,7 @@ public:
     virtual void upload(const void* data, std::size_t size, std::size_t offset) override;
     void copy(std::size_t begin, std::size_t size, std::size_t target);
 
+    void* mapped_pointer() const noexcept { return m_mapped; }
     virtual D3D12Resource* handle() const noexcept override { return m_resource.Get(); }
 
 private:

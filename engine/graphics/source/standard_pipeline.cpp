@@ -3,63 +3,75 @@
 
 namespace ash::graphics
 {
+standard_material_pipeline_parameter::standard_material_pipeline_parameter()
+    : pipeline_parameter("standard_material")
+{
+}
+
+void standard_material_pipeline_parameter::diffuse(const math::float3& diffuse)
+{
+    field<constant_data>(0).diffuse = diffuse;
+}
+
+std::vector<pipeline_parameter_pair> standard_material_pipeline_parameter::layout()
+{
+    return {
+        {PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER, sizeof(constant_data)}
+    };
+}
+
 standard_pipeline::standard_pipeline()
 {
-    std::vector<pipeline_parameter_pair> standard_material = {
-        {pipeline_parameter_type::FLOAT3, 1}  // diffuse
-    };
-    rhi::register_pipeline_parameter_layout("standard_material", standard_material);
-
     // Color pass.
     render_pass_info color_pass_info = {};
     color_pass_info.vertex_shader = "engine/shader/standard.vert";
     color_pass_info.pixel_shader = "engine/shader/standard.frag";
     color_pass_info.vertex_attributes = {
-        {"POSITION", vertex_attribute_type::FLOAT3}, // position
-        {"NORMAL",   vertex_attribute_type::FLOAT3}, // normal
+        {"POSITION", VERTEX_ATTRIBUTE_TYPE_FLOAT3}, // position
+        {"NORMAL",   VERTEX_ATTRIBUTE_TYPE_FLOAT3}, // normal
     };
     color_pass_info.references = {
-        {attachment_reference_type::COLOR,   0},
-        {attachment_reference_type::DEPTH,   0},
-        {attachment_reference_type::RESOLVE, 0}
+        {ATTACHMENT_REFERENCE_TYPE_COLOR,   0},
+        {ATTACHMENT_REFERENCE_TYPE_DEPTH,   0},
+        {ATTACHMENT_REFERENCE_TYPE_RESOLVE, 0}
     };
     color_pass_info.primitive_topology = PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    color_pass_info.parameters = {"ash_object", "standard_material", "ash_pass"};
+    color_pass_info.parameters = {"ash_object", "standard_material", "ash_camera"};
     color_pass_info.samples = 4;
 
     // Attachment.
     attachment_info render_target = {};
-    render_target.type = attachment_type::CAMERA_RENDER_TARGET;
+    render_target.type = ATTACHMENT_TYPE_CAMERA_RENDER_TARGET;
     render_target.format = rhi::back_buffer_format();
-    render_target.load_op = attachment_load_op::LOAD;
-    render_target.store_op = attachment_store_op::STORE;
-    render_target.stencil_load_op = attachment_load_op::DONT_CARE;
-    render_target.stencil_store_op = attachment_store_op::DONT_CARE;
+    render_target.load_op = ATTACHMENT_LOAD_OP_LOAD;
+    render_target.store_op = ATTACHMENT_STORE_OP_STORE;
+    render_target.stencil_load_op = ATTACHMENT_LOAD_OP_DONT_CARE;
+    render_target.stencil_store_op = ATTACHMENT_STORE_OP_DONT_CARE;
     render_target.samples = 4;
-    render_target.initial_state = resource_state::RENDER_TARGET;
-    render_target.final_state = resource_state::RENDER_TARGET;
+    render_target.initial_state = RESOURCE_STATE_RENDER_TARGET;
+    render_target.final_state = RESOURCE_STATE_RENDER_TARGET;
 
     attachment_info depth_stencil = {};
-    depth_stencil.type = attachment_type::CAMERA_DEPTH_STENCIL;
-    depth_stencil.format = resource_format::D24_UNORM_S8_UINT;
-    depth_stencil.load_op = attachment_load_op::LOAD;
-    depth_stencil.store_op = attachment_store_op::STORE;
-    depth_stencil.stencil_load_op = attachment_load_op::DONT_CARE;
-    depth_stencil.stencil_store_op = attachment_store_op::DONT_CARE;
+    depth_stencil.type = ATTACHMENT_TYPE_CAMERA_DEPTH_STENCIL;
+    depth_stencil.format = RESOURCE_FORMAT_D24_UNORM_S8_UINT;
+    depth_stencil.load_op = ATTACHMENT_LOAD_OP_LOAD;
+    depth_stencil.store_op = ATTACHMENT_STORE_OP_STORE;
+    depth_stencil.stencil_load_op = ATTACHMENT_LOAD_OP_DONT_CARE;
+    depth_stencil.stencil_store_op = ATTACHMENT_STORE_OP_DONT_CARE;
     depth_stencil.samples = 4;
-    depth_stencil.initial_state = resource_state::DEPTH_STENCIL;
-    depth_stencil.final_state = resource_state::DEPTH_STENCIL;
+    depth_stencil.initial_state = RESOURCE_STATE_DEPTH_STENCIL;
+    depth_stencil.final_state = RESOURCE_STATE_DEPTH_STENCIL;
 
     attachment_info render_target_resolve = {};
-    render_target_resolve.type = attachment_type::CAMERA_RENDER_TARGET_RESOLVE;
+    render_target_resolve.type = ATTACHMENT_TYPE_CAMERA_RENDER_TARGET_RESOLVE;
     render_target_resolve.format = rhi::back_buffer_format();
-    render_target_resolve.load_op = attachment_load_op::CLEAR;
-    render_target_resolve.store_op = attachment_store_op::DONT_CARE;
-    render_target_resolve.stencil_load_op = attachment_load_op::DONT_CARE;
-    render_target_resolve.stencil_store_op = attachment_store_op::DONT_CARE;
+    render_target_resolve.load_op = ATTACHMENT_LOAD_OP_CLEAR;
+    render_target_resolve.store_op = ATTACHMENT_STORE_OP_DONT_CARE;
+    render_target_resolve.stencil_load_op = ATTACHMENT_LOAD_OP_DONT_CARE;
+    render_target_resolve.stencil_store_op = ATTACHMENT_STORE_OP_DONT_CARE;
     render_target_resolve.samples = 1;
-    render_target_resolve.initial_state = resource_state::RENDER_TARGET;
-    render_target_resolve.final_state = resource_state::RENDER_TARGET;
+    render_target_resolve.initial_state = RESOURCE_STATE_RENDER_TARGET;
+    render_target_resolve.final_state = RESOURCE_STATE_RENDER_TARGET;
 
     render_pipeline_info standard_pipeline_info;
     standard_pipeline_info.attachments.push_back(render_target);
@@ -87,7 +99,7 @@ void standard_pipeline::render(
     extent.max_y = height;
     command->scissor(&extent, 1);
 
-    command->parameter(2, camera.parameter());
+    command->parameter(2, camera.pipeline_parameter()->interface());
     for (auto& unit : scene.units)
     {
         command->parameter(0, unit.parameters[0]);

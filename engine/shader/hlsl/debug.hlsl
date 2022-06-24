@@ -1,4 +1,4 @@
-cbuffer ash_pass : register(b0)
+cbuffer ash_camera : register(b0)
 {
     float4 camera_position;
     float4 camera_direction;

@@ -4,6 +4,7 @@
 #include "graphics/graphics_task.hpp"
 #include "graphics/rhi.hpp"
 #include "graphics/skin_pipeline.hpp"
+#include "graphics/standard_pipeline.hpp"
 #include "scene/transform.hpp"
 #include "task/task_manager.hpp"
 #include "window/window.hpp"
@@ -39,28 +40,11 @@ bool graphics::initialize(const dictionary& config)
     info.frame_resource = config["frame_resource"];
     rhi::initialize(config["plugin"], info);
 
-    std::vector<pipeline_parameter_pair> ash_object = {
-        {pipeline_parameter_type::FLOAT4x4, 1}, // transform_m
-    };
-    rhi::register_pipeline_parameter_layout("ash_object", ash_object);
-
-    std::vector<pipeline_parameter_pair> ash_pass = {
-        {pipeline_parameter_type::FLOAT4,   1}, // camera_position
-        {pipeline_parameter_type::FLOAT4,   1}, // camera_direction
-        {pipeline_parameter_type::FLOAT4x4, 1}, // transform_v
-        {pipeline_parameter_type::FLOAT4x4, 1}, // transform_p
-        {pipeline_parameter_type::FLOAT4x4, 1}  // transform_vp
-    };
-    rhi::register_pipeline_parameter_layout("ash_pass", ash_pass);
-
-    std::vector<pipeline_parameter_pair> ash_light = {
-        {pipeline_parameter_type::FLOAT3, 1}, // ambient_light
-        {pipeline_parameter_type::FLOAT3, 1}
-    };
-    rhi::register_pipeline_parameter_layout("ash_light", ash_light);
-
-    m_light_parameter = rhi::make_pipeline_parameter("ash_light");
-    m_light_parameter->set(0, math::float3{1.0f, 0.0f, 0.0f});
+    rhi::register_pipeline_parameter_layout("ash_object", object_pipeline_parameter::layout());
+    rhi::register_pipeline_parameter_layout("ash_camera", camera_pipeline_parameter::layout());
+    rhi::register_pipeline_parameter_layout(
+        "standard_material",
+        standard_material_pipeline_parameter::layout());
 
     auto& world = system<ecs::world>();
     auto& event = system<core::event>();
@@ -173,7 +157,7 @@ void graphics::render()
 
     // Update object data.
     m_object_view->each([&, this](visual& visual, scene::transform& transform) {
-        visual.object->set(0, transform.world_matrix);
+        visual.object_parameter->world_matrix(transform.world_matrix);
     });
 
     // Render camera.
@@ -206,17 +190,12 @@ void graphics::render_camera(ecs::entity camera_entity)
     math::float4x4_simd transform_p = math::simd::load(render_camera.projection());
     math::float4x4_simd transform_vp = math::matrix_simd::mul(transform_v, transform_p);
 
-    math::float4x4 view, projection, view_projection;
+    math::float4x4 view, view_projection;
     math::simd::store(transform_v, view);
-    math::simd::store(transform_p, projection);
     math::simd::store(transform_vp, view_projection);
-
-    auto parameter = render_camera.parameter();
-    parameter->set(0, float4{1.0f, 2.0f, 3.0f, 4.0f});
-    parameter->set(1, float4{5.0f, 6.0f, 7.0f, 8.0f});
-    parameter->set(2, view);
-    parameter->set(3, projection);
-    parameter->set(4, view_projection);
+    render_camera.pipeline_parameter()->view(view);
+    render_camera.pipeline_parameter()->projection(render_camera.projection());
+    render_camera.pipeline_parameter()->view_projection(view_projection);
 
     std::unordered_map<render_pipeline*, render_scene> render_scenes;
     m_visual_view->each([&, this](visual& visual) {

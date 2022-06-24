@@ -276,7 +276,7 @@ vk_back_buffer::vk_back_buffer(vk_back_buffer&& other)
 {
     other.m_image_view = VK_NULL_HANDLE;
     other.m_image = VK_NULL_HANDLE;
-    other.m_format = resource_format::UNDEFINED;
+    other.m_format = RESOURCE_FORMAT_UNDEFINED;
     other.m_extent = {};
 }
 
@@ -298,7 +298,7 @@ vk_back_buffer& vk_back_buffer::operator=(vk_back_buffer&& other)
 
         other.m_image_view = VK_NULL_HANDLE;
         other.m_image = VK_NULL_HANDLE;
-        other.m_format = resource_format::UNDEFINED;
+        other.m_format = RESOURCE_FORMAT_UNDEFINED;
         other.m_extent = {};
     }
 
@@ -316,7 +316,7 @@ void vk_back_buffer::destroy()
 
     m_image_view = VK_NULL_HANDLE;
     m_image = VK_NULL_HANDLE;
-    m_format = resource_format::UNDEFINED;
+    m_format = RESOURCE_FORMAT_UNDEFINED;
     m_extent = {};
 }
 
@@ -365,7 +365,7 @@ vk_render_target::vk_render_target(vk_render_target&& other)
     other.m_image_view = VK_NULL_HANDLE;
     other.m_image = VK_NULL_HANDLE;
     other.m_image_memory = VK_NULL_HANDLE;
-    other.m_format = resource_format::UNDEFINED;
+    other.m_format = RESOURCE_FORMAT_UNDEFINED;
     other.m_extent = {};
 }
 
@@ -389,7 +389,7 @@ vk_render_target& vk_render_target::operator=(vk_render_target&& other)
         other.m_image_view = VK_NULL_HANDLE;
         other.m_image = VK_NULL_HANDLE;
         other.m_image_memory = VK_NULL_HANDLE;
-        other.m_format = resource_format::UNDEFINED;
+        other.m_format = RESOURCE_FORMAT_UNDEFINED;
         other.m_extent = {};
     }
 
@@ -411,7 +411,7 @@ void vk_render_target::destroy()
     m_image_view = VK_NULL_HANDLE;
     m_image = VK_NULL_HANDLE;
     m_image_memory = VK_NULL_HANDLE;
-    m_format = resource_format::UNDEFINED;
+    m_format = RESOURCE_FORMAT_UNDEFINED;
     m_extent = {};
 }
 
@@ -460,7 +460,7 @@ vk_depth_stencil_buffer::vk_depth_stencil_buffer(vk_depth_stencil_buffer&& other
     other.m_image_view = VK_NULL_HANDLE;
     other.m_image = VK_NULL_HANDLE;
     other.m_image_memory = VK_NULL_HANDLE;
-    other.m_format = resource_format::UNDEFINED;
+    other.m_format = RESOURCE_FORMAT_UNDEFINED;
     other.m_extent = {};
 }
 
@@ -484,7 +484,7 @@ vk_depth_stencil_buffer& vk_depth_stencil_buffer::operator=(vk_depth_stencil_buf
         other.m_image_view = VK_NULL_HANDLE;
         other.m_image = VK_NULL_HANDLE;
         other.m_image_memory = VK_NULL_HANDLE;
-        other.m_format = resource_format::UNDEFINED;
+        other.m_format = RESOURCE_FORMAT_UNDEFINED;
         other.m_extent = {};
     }
 
@@ -504,7 +504,7 @@ void vk_depth_stencil_buffer::destroy()
     m_image_view = VK_NULL_HANDLE;
     m_image = VK_NULL_HANDLE;
     m_image_memory = VK_NULL_HANDLE;
-    m_format = resource_format::UNDEFINED;
+    m_format = RESOURCE_FORMAT_UNDEFINED;
     m_extent = {};
 }
 
@@ -576,7 +576,7 @@ vk_texture::vk_texture(vk_texture&& other)
     other.m_image_view = VK_NULL_HANDLE;
     other.m_image = VK_NULL_HANDLE;
     other.m_image_memory = VK_NULL_HANDLE;
-    other.m_format = resource_format::UNDEFINED;
+    other.m_format = RESOURCE_FORMAT_UNDEFINED;
     other.m_extent = {};
 }
 
@@ -600,7 +600,7 @@ vk_texture& vk_texture::operator=(vk_texture&& other)
         other.m_image_view = VK_NULL_HANDLE;
         other.m_image = VK_NULL_HANDLE;
         other.m_image_memory = VK_NULL_HANDLE;
-        other.m_format = resource_format::UNDEFINED;
+        other.m_format = RESOURCE_FORMAT_UNDEFINED;
         other.m_extent = {};
     }
 
@@ -620,7 +620,7 @@ void vk_texture::destroy()
     m_image_view = VK_NULL_HANDLE;
     m_image = VK_NULL_HANDLE;
     m_image_memory = VK_NULL_HANDLE;
-    m_format = resource_format::UNDEFINED;
+    m_format = RESOURCE_FORMAT_UNDEFINED;
     m_extent = {};
 }
 

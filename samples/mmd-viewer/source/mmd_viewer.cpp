@@ -1,5 +1,6 @@
 #include "mmd_viewer.hpp"
 #include "core/timer.hpp"
+#include "graphics/rhi.hpp"
 #include "mmd_animation.hpp"
 #include "scene/scene.hpp"
 #include "scene/transform.hpp"
@@ -17,6 +18,13 @@ bool mmd_viewer::initialize(const dictionary& config)
 
     m_loader = std::make_unique<mmd_loader>();
     m_loader->initialize();
+
+    graphics::rhi::register_pipeline_parameter_layout(
+        "mmd_material",
+        material_pipeline_parameter::layout());
+    graphics::rhi::register_pipeline_parameter_layout(
+        "mmd_skin",
+        skin_pipeline_parameter::layout());
 
     m_render_pipeline = std::make_unique<mmd_render_pipeline>();
     m_skin_pipeline = std::make_unique<mmd_skin_pipeline>();
@@ -88,7 +96,9 @@ void mmd_viewer::update()
             math::simd::store(final_transform, skeleton.world[i]);
         }
 
-        skinned_mesh.parameter->set(0, skeleton.world.data(), skeleton.world.size());
+        auto parameter = dynamic_cast<skin_pipeline_parameter*>(skinned_mesh.parameter.get());
+        ASH_ASSERT(parameter);
+        parameter->bone_transform(skeleton.world);
     });
 }
 
