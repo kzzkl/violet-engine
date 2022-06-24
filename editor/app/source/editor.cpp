@@ -57,7 +57,7 @@ void editor::initialize_camera()
     transform.scaling = {1.0f, 1.0f, 1.0f};
 
     auto& camera = world.component<graphics::camera>(m_editor_camera);
-    camera.mask = graphics::VISUAL_GROUP_EDITOR | graphics::VISUAL_GROUP_UI;
+    camera.render_groups = graphics::RENDER_GROUP_EDITOR | graphics::RENDER_GROUP_UI;
 
     auto extent = window.extent();
     resize(extent.width, extent.height);

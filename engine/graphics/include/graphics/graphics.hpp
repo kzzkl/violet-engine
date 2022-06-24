@@ -4,8 +4,8 @@
 #include "graphics/compute_pipeline.hpp"
 #include "graphics/graphics_debug.hpp"
 #include "graphics/light.hpp"
+#include "graphics/mesh_render.hpp"
 #include "graphics/skinned_mesh.hpp"
-#include "graphics/visual.hpp"
 #include "scene/transform.hpp"
 #include "type_trait.hpp"
 
@@ -56,9 +56,9 @@ private:
 
     std::unique_ptr<pipeline_parameter_interface> m_light_parameter;
 
-    ecs::view<visual>* m_visual_view;
-    ecs::view<visual, scene::transform>* m_object_view;
-    ecs::view<visual, skinned_mesh>* m_skinned_mesh_view;
+    ecs::view<mesh_render>* m_render_view;
+    ecs::view<mesh_render, scene::transform>* m_object_view;
+    ecs::view<mesh_render, skinned_mesh>* m_skinned_mesh_view;
 
     ecs::view<point_light>* m_point_light_view;
 

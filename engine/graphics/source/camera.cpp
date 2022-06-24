@@ -1,6 +1,6 @@
 #include "graphics/camera.hpp"
+#include "graphics/mesh_render.hpp"
 #include "graphics/rhi.hpp"
-#include "graphics/visual.hpp"
 
 namespace ash::graphics
 {
@@ -50,7 +50,7 @@ camera::camera() noexcept
       m_render_target(nullptr),
       m_render_target_resolve(nullptr),
       m_depth_stencil_buffer(nullptr),
-      mask(VISUAL_GROUP_1 | VISUAL_GROUP_UI)
+      render_groups(RENDER_GROUP_1 | RENDER_GROUP_UI)
 {
     m_parameter = std::make_unique<camera_pipeline_parameter>();
 }

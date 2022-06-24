@@ -50,11 +50,15 @@ bool mmd_loader::load(
     if (!vmd_loader.load(vmd))
         return false;
 
-    world.add<core::link, scene::transform, graphics::visual, graphics::skinned_mesh, mmd_skeleton>(
-        entity);
+    world.add<
+        core::link,
+        scene::transform,
+        graphics::mesh_render,
+        graphics::skinned_mesh,
+        mmd_skeleton>(entity);
 
-    auto& visual = world.component<graphics::visual>(entity);
-    visual.object_parameter = std::make_unique<graphics::object_pipeline_parameter>();
+    auto& mesh_render = world.component<graphics::mesh_render>(entity);
+    mesh_render.object_parameter = std::make_unique<graphics::object_pipeline_parameter>();
 
     auto& skinned_mesh = world.component<graphics::skinned_mesh>(entity);
     skinned_mesh.pipeline = skin_pipeline;
@@ -215,8 +219,8 @@ void mmd_loader::load_mesh(ecs::entity entity, mmd_resource& resource, const pmx
         bone_weight.size(),
         graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
 
-    auto& visual = world.component<graphics::visual>(entity);
-    visual.vertex_buffers = {
+    auto& mesh_render = world.component<graphics::mesh_render>(entity);
+    mesh_render.vertex_buffers = {
         resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_POSITION].get(),
         resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_NORMAL].get(),
         resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_UV].get()};
@@ -236,7 +240,7 @@ void mmd_loader::load_mesh(ecs::entity entity, mmd_resource& resource, const pmx
         normal.data(),
         normal.size(),
         graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT));
-    skinned_mesh.skinned_vertex_buffers.resize(visual.vertex_buffers.size());
+    skinned_mesh.skinned_vertex_buffers.resize(mesh_render.vertex_buffers.size());
     skinned_mesh.vertex_count = loader.vertices().size();
 
     // Make index buffer.
@@ -246,7 +250,7 @@ void mmd_loader::load_mesh(ecs::entity entity, mmd_resource& resource, const pmx
         indices.push_back(i);
 
     resource.index_buffer = graphics::rhi::make_index_buffer(indices.data(), indices.size());
-    visual.index_buffer = resource.index_buffer.get();
+    mesh_render.index_buffer = resource.index_buffer.get();
 }
 
 void mmd_loader::load_texture(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader)
@@ -292,20 +296,20 @@ void mmd_loader::load_material(
     resource.submesh = loader.submesh();
 
     auto& world = system<ecs::world>();
-    auto& visual = world.component<graphics::visual>(entity);
+    auto& mesh_render = world.component<graphics::mesh_render>(entity);
     for (std::size_t i = 0; i < resource.submesh.size(); ++i)
     {
         graphics::submesh mesh = {};
         mesh.index_start = resource.submesh[i].first;
         mesh.index_end = resource.submesh[i].second;
-        visual.submeshes.push_back(mesh);
+        mesh_render.submeshes.push_back(mesh);
 
         graphics::material material = {};
         material.pipeline = render_pipeline;
         material.parameters = {
-            visual.object_parameter->interface(),
+            mesh_render.object_parameter->interface(),
             resource.materials[i]->interface()};
-        visual.materials.push_back(material);
+        mesh_render.materials.push_back(material);
     }
 }
 

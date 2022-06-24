@@ -21,7 +21,7 @@ graphics::graphics() noexcept
       m_back_buffer_index(0),
       m_game_camera(ecs::INVALID_ENTITY),
       m_editor_camera(ecs::INVALID_ENTITY),
-      m_visual_view(nullptr),
+      m_render_view(nullptr),
       m_object_view(nullptr),
       m_skinned_mesh_view(nullptr)
 {
@@ -49,12 +49,12 @@ bool graphics::initialize(const dictionary& config)
     auto& world = system<ecs::world>();
     auto& event = system<core::event>();
 
-    world.register_component<visual>();
+    world.register_component<mesh_render>();
     world.register_component<skinned_mesh>();
     world.register_component<camera>();
-    m_visual_view = world.make_view<visual>();
-    m_object_view = world.make_view<visual, scene::transform>();
-    m_skinned_mesh_view = world.make_view<visual, skinned_mesh>();
+    m_render_view = world.make_view<mesh_render>();
+    m_object_view = world.make_view<mesh_render, scene::transform>();
+    m_skinned_mesh_view = world.make_view<mesh_render, skinned_mesh>();
 
     event.register_event<event_render_extent_change>();
     event.subscribe<window::event_window_resize>(
@@ -83,7 +83,7 @@ bool graphics::initialize(const dictionary& config)
 void graphics::shutdown()
 {
     auto& world = system<ecs::world>();
-    world.destroy_view(m_visual_view);
+    world.destroy_view(m_render_view);
     world.destroy_view(m_object_view);
     world.destroy_view(m_skinned_mesh_view);
 
@@ -102,7 +102,7 @@ void graphics::skin_meshes()
     auto command = rhi::renderer().allocate_command();
 
     std::set<skin_pipeline*> pipelines;
-    m_skinned_mesh_view->each([&](visual& visual, skinned_mesh& skinned_mesh) {
+    m_skinned_mesh_view->each([&](mesh_render& mesh_render, skinned_mesh& skinned_mesh) {
         auto pipeline = skinned_mesh.pipeline;
         pipelines.insert(pipeline);
         pipeline->add(skinned_mesh);
@@ -114,11 +114,11 @@ void graphics::skin_meshes()
         pipeline->clear();
     }
 
-    m_skinned_mesh_view->each([&](visual& visual, skinned_mesh& skinned_mesh) {
+    m_skinned_mesh_view->each([&](mesh_render& mesh_render, skinned_mesh& skinned_mesh) {
         for (std::size_t i = 0; i < skinned_mesh.skinned_vertex_buffers.size(); ++i)
         {
             if (skinned_mesh.skinned_vertex_buffers[i] != nullptr)
-                visual.vertex_buffers[i] = skinned_mesh.skinned_vertex_buffers[i].get();
+                mesh_render.vertex_buffers[i] = skinned_mesh.skinned_vertex_buffers[i].get();
         }
     });
 
@@ -156,8 +156,8 @@ void graphics::render()
     m_render_queue.push(main_camera);
 
     // Update object data.
-    m_object_view->each([&, this](visual& visual, scene::transform& transform) {
-        visual.object_parameter->world_matrix(transform.world_matrix);
+    m_object_view->each([&, this](mesh_render& mesh_render, scene::transform& transform) {
+        mesh_render.object_parameter->world_matrix(transform.world_matrix);
     });
 
     // Render camera.
@@ -181,7 +181,7 @@ void graphics::render_camera(ecs::entity camera_entity)
     auto& render_camera = world.component<camera>(camera_entity);
     auto& transform = world.component<scene::transform>(camera_entity);
 
-    if (render_camera.mask & VISUAL_GROUP_DEBUG)
+    if (render_camera.render_groups & RENDER_GROUP_DEBUG)
         m_debug->sync();
 
     // Update camera data.
@@ -198,21 +198,21 @@ void graphics::render_camera(ecs::entity camera_entity)
     render_camera.pipeline_parameter()->view_projection(view_projection);
 
     std::unordered_map<render_pipeline*, render_scene> render_scenes;
-    m_visual_view->each([&, this](visual& visual) {
-        if ((visual.groups & render_camera.mask) == 0)
+    m_render_view->each([&, this](mesh_render& mesh_render) {
+        if ((mesh_render.render_groups & render_camera.render_groups) == 0)
             return;
 
-        for (std::size_t i = 0; i < visual.materials.size(); ++i)
+        for (std::size_t i = 0; i < mesh_render.materials.size(); ++i)
         {
-            auto& render_scene = render_scenes[visual.materials[i].pipeline];
+            auto& render_scene = render_scenes[mesh_render.materials[i].pipeline];
             render_scene.units.push_back(render_unit{
-                .vertex_buffers = visual.vertex_buffers,
-                .index_buffer = visual.index_buffer,
-                .index_start = visual.submeshes[i].index_start,
-                .index_end = visual.submeshes[i].index_end,
-                .vertex_base = visual.submeshes[i].vertex_base,
-                .parameters = visual.materials[i].parameters,
-                .scissor = visual.materials[i].scissor});
+                .vertex_buffers = mesh_render.vertex_buffers,
+                .index_buffer = mesh_render.index_buffer,
+                .index_start = mesh_render.submeshes[i].index_start,
+                .index_end = mesh_render.submeshes[i].index_end,
+                .vertex_base = mesh_render.submeshes[i].vertex_base,
+                .parameters = mesh_render.materials[i].parameters,
+                .scissor = mesh_render.materials[i].scissor});
         }
     });
 

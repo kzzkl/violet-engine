@@ -1,9 +1,9 @@
 #include "core/application.hpp"
+#include "core/relation.hpp"
 #include "geometry.hpp"
 #include "graphics/graphics.hpp"
 #include "log.hpp"
 #include "physics.hpp"
-#include "core/relation.hpp"
 #include "scene/scene.hpp"
 #include "window/window.hpp"
 
@@ -54,7 +54,7 @@ public:
         // Create cube.
         {
             m_cube_1 = world.create();
-            world.add<link, rigidbody, transform, visual>(m_cube_1);
+            world.add<link, rigidbody, transform, mesh_render>(m_cube_1);
 
             auto& t = world.component<transform>(m_cube_1);
             t.position = {1.0f, 0.0f, 0.0f};
@@ -66,7 +66,7 @@ public:
             r.type = rigidbody_type::KINEMATIC;
             r.relation = m_cube_1;
 
-            auto& v = world.component<visual>(m_cube_1);
+            auto& v = world.component<mesh_render>(m_cube_1);
             m_cube_object.emplace_back(graphics.make_render_parameter("ash_object"));
             v.object = m_cube_object.back().get();
 
@@ -85,7 +85,7 @@ public:
         // Cube 2.
         {
             m_cube_2 = world.create();
-            world.add<link, rigidbody, transform, visual>(m_cube_2);
+            world.add<link, rigidbody, transform, mesh_render>(m_cube_2);
 
             auto& t = world.component<transform>(m_cube_2);
             t.position = {-1.0f, 0.0f, 0.0f};
@@ -96,7 +96,7 @@ public:
             r.mass = 1.0f;
             r.relation = m_cube_2;
 
-            auto& v = world.component<visual>(m_cube_2);
+            auto& v = world.component<mesh_render>(m_cube_2);
             m_cube_object.emplace_back(graphics.make_render_parameter("ash_object"));
             v.object = m_cube_object.back().get();
 

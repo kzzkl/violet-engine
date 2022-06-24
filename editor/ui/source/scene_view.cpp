@@ -167,7 +167,7 @@ void scene_view::resize_camera()
     auto& world = system<ecs::world>();
 
     auto& camera = world.component<graphics::camera>(m_camera);
-    camera.mask = graphics::VISUAL_GROUP_DEBUG | graphics::VISUAL_GROUP_1;
+    camera.render_groups = graphics::RENDER_GROUP_DEBUG | graphics::RENDER_GROUP_1;
 
     graphics::render_target_info render_target_info = {};
     render_target_info.width = m_image_width;

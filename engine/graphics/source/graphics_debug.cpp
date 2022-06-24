@@ -3,9 +3,9 @@
 #include "graphics/graphics_debug.hpp"
 #include "core/link.hpp"
 #include "core/relation.hpp"
+#include "graphics/mesh_render.hpp"
 #include "graphics/render_pipeline.hpp"
 #include "graphics/rhi.hpp"
-#include "graphics/visual.hpp"
 #include "scene/scene.hpp"
 
 namespace ash::graphics
@@ -139,10 +139,10 @@ void graphics_debug::initialize()
     auto& relation = system<core::relation>();
 
     m_entity = world.create("graphics debug");
-    world.add<visual, core::link>(m_entity);
+    world.add<mesh_render, core::link>(m_entity);
 
-    auto& v = world.component<visual>(m_entity);
-    v.groups = VISUAL_GROUP_DEBUG;
+    auto& v = world.component<mesh_render>(m_entity);
+    v.render_groups = RENDER_GROUP_DEBUG;
 
     for (auto& vertex_buffer : m_vertex_buffers)
         v.vertex_buffers.push_back(vertex_buffer.get());
@@ -161,7 +161,7 @@ void graphics_debug::initialize()
 void graphics_debug::sync()
 {
     auto& world = system<ecs::world>();
-    auto& v = world.component<visual>(m_entity);
+    auto& v = world.component<mesh_render>(m_entity);
 
     m_vertex_buffers[0]->upload(
         m_vertex_position.data(),
@@ -182,7 +182,7 @@ void graphics_debug::next_frame()
     m_vertex_color.clear();
 
     auto& world = system<ecs::world>();
-    auto& v = world.component<visual>(m_entity);
+    auto& v = world.component<mesh_render>(m_entity);
 
     v.submeshes[0].vertex_base += MAX_VERTEX_COUNT;
     v.submeshes[0].vertex_base %= MAX_VERTEX_COUNT * m_frame_resource;

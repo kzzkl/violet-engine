@@ -1,4 +1,4 @@
-#include "graphics/visual.hpp"
+#include "graphics/mesh_render.hpp"
 
 namespace ash::graphics
 {

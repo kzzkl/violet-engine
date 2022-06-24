@@ -1,6 +1,7 @@
 #pragma once
 
 #include "graphics/pipeline_parameter.hpp"
+#include "graphics/render_group.hpp"
 
 namespace ash::graphics
 {
@@ -58,7 +59,7 @@ public:
 
     camera_pipeline_parameter* pipeline_parameter() const noexcept { return m_parameter.get(); }
 
-    std::uint32_t mask;
+    std::uint32_t render_groups;
 
 private:
     void update_projection() noexcept;

@@ -1,7 +1,7 @@
 #pragma once
 
+#include "graphics/mesh_render.hpp"
 #include "graphics/skinned_mesh.hpp"
-#include "graphics/visual.hpp"
 
 namespace ash::graphics
 {

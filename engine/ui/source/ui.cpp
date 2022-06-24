@@ -75,13 +75,13 @@ bool ui::initialize(const dictionary& config)
         graphics::rhi::make_index_buffer<std::uint32_t>(nullptr, MAX_UI_INDEX_COUNT, true, true);
 
     m_entity = world.create("ui root");
-    world.add<graphics::visual>(m_entity);
+    world.add<graphics::mesh_render>(m_entity);
 
-    auto& visual = world.component<graphics::visual>(m_entity);
-    visual.groups = graphics::VISUAL_GROUP_UI;
+    auto& mesh_render = world.component<graphics::mesh_render>(m_entity);
+    mesh_render.render_groups = graphics::RENDER_GROUP_UI;
     for (auto& vertex_buffer : m_vertex_buffers)
-        visual.vertex_buffers.push_back(vertex_buffer.get());
-    visual.index_buffer = m_index_buffer.get();
+        mesh_render.vertex_buffers.push_back(vertex_buffer.get());
+    mesh_render.index_buffer = m_index_buffer.get();
 
     event.subscribe<window::event_window_resize>(
         "ui",
@@ -118,9 +118,9 @@ void ui::tick()
     m_renderer.draw(m_tree.get());
     m_offset_parameter->offset(m_renderer.offset());
 
-    auto& visual = world.component<graphics::visual>(m_entity);
-    visual.submeshes.clear();
-    visual.materials.clear();
+    auto& mesh_render = world.component<graphics::mesh_render>(m_entity);
+    mesh_render.submeshes.clear();
+    mesh_render.materials.clear();
 
     std::size_t vertex_offset = 0;
     std::size_t index_offset = 0;
@@ -152,7 +152,7 @@ void ui::tick()
             .index_start = index_offset,
             .index_end = index_offset + batch->indices.size(),
             .vertex_base = vertex_offset};
-        visual.submeshes.push_back(submesh);
+        mesh_render.submeshes.push_back(submesh);
 
         auto material_parameter = allocate_material_parameter();
         material_parameter->mesh_type(batch->type);
@@ -171,7 +171,7 @@ void ui::tick()
             .max_x = static_cast<std::uint32_t>(batch->scissor.x + batch->scissor.width),
             .max_y = static_cast<std::uint32_t>(batch->scissor.y + batch->scissor.height)};
 
-        visual.materials.push_back(material);
+        mesh_render.materials.push_back(material);
 
         vertex_offset += batch->vertex_position.size();
         index_offset += batch->indices.size();
