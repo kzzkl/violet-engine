@@ -198,4 +198,25 @@ void graphics_debug::draw_line(
     m_vertex_color.push_back(color);
     m_vertex_color.push_back(color);
 }
+
+void graphics_debug::draw_aabb(
+    const math::float3& min,
+    const math::float3& max,
+    const math::float3& color)
+{
+    math::float3 t1 = {min[0], max[1], max[2]};
+    math::float3 t2 = {max[0], max[1], max[2]};
+    math::float3 t3 = {max[0], max[1], min[2]};
+    math::float3 t4 = {min[0], max[1], min[2]};
+
+    math::float3 b1 = {min[0], min[1], max[2]};
+    math::float3 b2 = {max[0], min[1], max[2]};
+    math::float3 b3 = {max[0], min[1], min[2]};
+    math::float3 b4 = {min[0], min[1], min[2]};
+
+    m_vertex_position.insert(m_vertex_position.end(), {t1, b1, t2, b2, t3, b3, t4, b4,
+                                                       t1, t2, b1, b2, b3, b4, t3, t4,
+                                                       t1, t4, t2, t3, b1, b4, b2, b3});
+    m_vertex_color.insert(m_vertex_color.end(), 24, color);
+}
 } // namespace ash::graphics

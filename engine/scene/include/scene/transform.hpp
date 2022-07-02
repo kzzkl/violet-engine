@@ -17,8 +17,6 @@ struct transform
     math::float4x4 world_matrix;
 
     bool dirty;
-    std::size_t sync_count;
-
     bool in_scene;
 };
 } // namespace ash::scene

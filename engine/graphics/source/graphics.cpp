@@ -152,6 +152,7 @@ void graphics::render()
     auto& world = system<ecs::world>();
 
     ecs::entity main_camera = is_editor_mode() ? m_editor_camera : m_game_camera;
+    ASH_ASSERT(main_camera != ecs::INVALID_ENTITY);
     world.component<camera>(main_camera).render_target_resolve(rhi::renderer().back_buffer());
     m_render_queue.push(main_camera);
 

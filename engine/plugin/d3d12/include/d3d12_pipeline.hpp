@@ -75,6 +75,7 @@ public:
 
 public:
     d3d12_pipeline_parameter(pipeline_parameter_layout_interface* layout);
+    virtual ~d3d12_pipeline_parameter();
 
     virtual void set(std::size_t index, const void* data, size_t size) override;
     virtual void set(std::size_t index, resource_interface* texture) override;

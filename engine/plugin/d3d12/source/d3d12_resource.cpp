@@ -491,8 +491,11 @@ d3d12_upload_buffer::d3d12_upload_buffer(std::size_t size, D3D12_RESOURCE_FLAGS 
 
 d3d12_upload_buffer::~d3d12_upload_buffer()
 {
-    if (m_mapped && m_resource)
+    if (m_mapped)
         m_resource->Unmap(0, nullptr);
+
+    if (m_resource)
+        d3d12_context::resource()->delay_delete(m_resource);
 }
 
 void d3d12_upload_buffer::upload(const void* data, std::size_t size, std::size_t offset)

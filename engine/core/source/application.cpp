@@ -22,11 +22,6 @@ void application::run()
 {
     using namespace std::chrono;
 
-    std::size_t frame_counter = 0;
-
-    nanoseconds s(0);
-    nanoseconds time_per_frame(1000000000 / 240);
-
     auto& task = system<task::task_manager>();
     task.run();
 
@@ -42,19 +37,12 @@ void application::run()
         task.execute(root_task);
         time.tick<timer::point::FRAME_END>();
 
+        /*
+        static constexpr nanoseconds time_per_frame(1000000000 / 240);
         nanoseconds delta = time.delta<timer::point::FRAME_START, timer::point::FRAME_END>();
         if (delta < time_per_frame)
-            ; // timer::busy_sleep(time_per_frame - delta);
-
-        s += (timer::now<steady_clock>() - time.time_point<timer::point::FRAME_START>());
-
-        ++frame_counter;
-        if (s > seconds(1))
-        {
-            // log::debug("FPS[{}] delta[{}]", frame_counter, delta.count());
-            s = nanoseconds::zero();
-            frame_counter = 0;
-        }
+            timer::busy_sleep(time_per_frame - delta);
+        */
     }
 
     context::shutdown();

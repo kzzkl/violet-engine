@@ -71,7 +71,7 @@ standard_pipeline::standard_pipeline()
     render_target_resolve.stencil_store_op = ATTACHMENT_STORE_OP_DONT_CARE;
     render_target_resolve.samples = 1;
     render_target_resolve.initial_state = RESOURCE_STATE_RENDER_TARGET;
-    render_target_resolve.final_state = RESOURCE_STATE_RENDER_TARGET;
+    render_target_resolve.final_state = RESOURCE_STATE_PRESENT;
 
     render_pipeline_info standard_pipeline_info;
     standard_pipeline_info.attachments.push_back(render_target);

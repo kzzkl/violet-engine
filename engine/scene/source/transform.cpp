@@ -10,7 +10,6 @@ transform::transform()
       parent_matrix(math::matrix_plain::identity()),
       world_matrix(math::matrix_plain::identity()),
       dirty(true),
-      sync_count(0),
       in_scene(false)
 {
 }

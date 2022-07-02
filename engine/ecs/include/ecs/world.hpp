@@ -122,7 +122,7 @@ public:
         }
         else
         {
-            entity result = m_free_entity.front();
+            result = m_free_entity.front();
             m_free_entity.pop();
             result = m_entity_registry.update(result);
         }

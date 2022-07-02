@@ -5,6 +5,11 @@
 #include "window/window_impl_win32.hpp"
 #include "window/window_task.hpp"
 
+#if defined(ASH_WINDOW_SHOW_FPS)
+#    include "core/timer.hpp"
+#endif
+#include "core/timer.hpp"
+
 using namespace ash::core;
 
 namespace ash::window
@@ -12,7 +17,9 @@ namespace ash::window
 window::window()
     : system_base("window"),
       m_impl(std::make_unique<window_impl_win32>()),
-      m_mouse(m_impl.get())
+      m_mouse(m_impl.get()),
+      m_average_duration(0.0f),
+      m_fps(0)
 {
 }
 
@@ -20,6 +27,8 @@ bool window::initialize(const dictionary& config)
 {
     if (!m_impl->initialize(config["width"], config["height"], config["title"]))
         return false;
+
+    m_title = config["title"];
 
     auto& event = system<core::event>();
     event.register_event<event_mouse_move>();
@@ -110,5 +119,24 @@ void window::tick()
             break;
         }
     }
+
+#if defined(ASH_WINDOW_SHOW_FPS)
+    static constexpr float fps_alpha = 0.01f;
+    float delta_time = system<core::timer>().frame_delta();
+    m_average_duration = delta_time * fps_alpha + m_average_duration * (1.0f - fps_alpha);
+    m_fps = 1.0f / m_average_duration;
+
+    m_impl->title(std::format("{}  FPS {}", m_title, m_fps));
+#endif
+}
+
+void window::title(std::string_view title)
+{
+    m_title = title;
+#if defined(ASH_WINDOW_SHOW_FPS)
+    m_impl->title(std::format("{}  FPS {}", m_title, m_fps));
+#else
+    m_impl->title(title);
+#endif
 }
 } // namespace ash::window

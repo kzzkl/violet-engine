@@ -100,7 +100,7 @@ void physics::simulation()
     }
 
     m_view->each([&](rigidbody& rigidbody, scene::transform& transform) {
-        if (transform.sync_count != 0 && rigidbody.type == rigidbody_type::KINEMATIC)
+        if (rigidbody.type == rigidbody_type::KINEMATIC)
         {
             math::float4x4_simd to_world = math::simd::load(transform.world_matrix);
             math::float4x4_simd offset = math::simd::load(rigidbody.offset);

@@ -7,7 +7,7 @@ namespace ash::core
 class application
 {
 public:
-    application(std::string_view config_path = "config");
+    application(std::string_view config_path = "resource/config");
     application(const application&) = delete;
 
     template <derived_from_system T, typename... Args>

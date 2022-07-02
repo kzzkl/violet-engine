@@ -37,6 +37,7 @@ public:
     ecs::entity entity() const noexcept { return m_entity; }
 
     void draw_line(const math::float3& start, const math::float3& end, const math::float3& color);
+    void draw_aabb(const math::float3& min, const math::float3& max, const math::float3& color);
 
 private:
     ecs::entity m_entity;

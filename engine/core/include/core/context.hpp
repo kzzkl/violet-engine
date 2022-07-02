@@ -91,7 +91,9 @@ public:
     template <typename T>
     static T& system() requires derived_from_system<T>
     {
-        return *static_cast<T*>(instance().m_systems[system_index::value<T>()].get());
+        auto system_pointer = instance().m_systems[system_index::value<T>()].get();
+        ASH_ASSERT(dynamic_cast<T*>(system_pointer));
+        return *static_cast<T*>(system_pointer);
     }
 
 private:

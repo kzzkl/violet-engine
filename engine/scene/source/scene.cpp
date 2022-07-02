@@ -1,6 +1,7 @@
 #include "scene/scene.hpp"
 #include "core/relation.hpp"
 #include "core/relation_event.hpp"
+#include "scene/bounding_box.hpp"
 #include "scene/scene_event.hpp"
 
 namespace ash::scene
@@ -13,6 +14,7 @@ bool scene::initialize(const dictionary& config)
 {
     auto& world = system<ecs::world>();
     world.register_component<transform>();
+    world.register_component<bounding_box>();
     m_view = world.make_view<transform>();
 
     m_root = world.create("scene");
@@ -93,7 +95,6 @@ void scene::sync_local(ecs::entity root)
             node_transform.world_matrix = node_transform.parent_matrix;
         }
 
-        ++node_transform.sync_count;
         node_transform.dirty = false;
 
         return true;
@@ -155,7 +156,6 @@ void scene::sync_world(ecs::entity root)
         math::simd::store(rotation, node_transform.rotation);
         math::simd::store(position, node_transform.position);
 
-        ++node_transform.sync_count;
         node_transform.dirty = false;
 
         return true;
@@ -168,9 +168,8 @@ void scene::sync_world(ecs::entity root)
     }
 }
 
-void scene::reset_sync_counter()
+void scene::rebuild_bvh_tree()
 {
-    m_view->each([](transform& transform) { transform.sync_count = 0; });
 }
 
 void scene::on_entity_link(ecs::entity entity, core::link& link)

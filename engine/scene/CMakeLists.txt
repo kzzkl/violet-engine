@@ -1,6 +1,8 @@
 project(ash-scene)
 
 add_library(${PROJECT_NAME} STATIC
+    ./source/bounding_box.cpp
+    ./source/bvh_tree.cpp
     ./source/scene.cpp
     ./source/transform.cpp)
 add_library(ash::scene ALIAS ${PROJECT_NAME})

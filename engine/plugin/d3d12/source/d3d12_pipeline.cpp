@@ -348,6 +348,10 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(pipeline_parameter_layout_int
     }
 }
 
+d3d12_pipeline_parameter::~d3d12_pipeline_parameter()
+{
+}
+
 void d3d12_pipeline_parameter::set(std::size_t index, const void* data, size_t size)
 {
     copy_buffer(data, size, m_layout->parameter_offset(index));

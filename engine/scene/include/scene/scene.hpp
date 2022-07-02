@@ -23,9 +23,7 @@ public:
     void sync_world();
     void sync_world(ecs::entity root);
 
-    scene& operator=(const scene&) = delete;
-
-    void reset_sync_counter();
+    void rebuild_bvh_tree();
 
 private:
     void on_entity_link(ecs::entity entity, core::link& link);
