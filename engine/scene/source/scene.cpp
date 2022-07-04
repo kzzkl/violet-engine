@@ -168,8 +168,17 @@ void scene::sync_world(ecs::entity root)
     }
 }
 
-void scene::rebuild_bvh_tree()
+void scene::frustum_culling(const std::vector<math::float4>& frustum)
 {
+    m_static_bvh.frustum_culling(frustum);
+    m_dynamic_bvh.frustum_culling(frustum);
+
+    m_bounding_box_view->each([this](bounding_box& bounding_box) {
+        if (bounding_box.dynamic())
+            bounding_box.visible(m_dynamic_bvh.visible(bounding_box.proxy_id()));
+        else
+            bounding_box.visible(m_static_bvh.visible(bounding_box.proxy_id()));
+    });
 }
 
 void scene::on_entity_link(ecs::entity entity, core::link& link)
@@ -190,6 +199,21 @@ void scene::on_entity_link(ecs::entity entity, core::link& link)
                 event.publish<event_enter_scene>(entity);
             else
                 event.publish<event_exit_scene>(entity);
+        }
+
+        if (world.has_component<bounding_box>(entity))
+        {
+            auto& bounding = world.component<bounding_box>(entity);
+            if (bounding.dynamic())
+            {
+                std::size_t proxy_id = m_dynamic_bvh.add(bounding.aabb());
+                bounding.proxy_id(proxy_id);
+            }
+            else
+            {
+                std::size_t proxy_id = m_static_bvh.add(bounding.aabb());
+                bounding.proxy_id(proxy_id);
+            }
         }
     }
 }

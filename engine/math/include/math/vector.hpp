@@ -44,6 +44,36 @@ public:
         return {a[0] - b[0], a[1] - b[1], a[2] - b[2], a[3] - b[3]};
     }
 
+    inline static float2 mul(const vector2& a, const vector2& b)
+    {
+        return {a[0] * b[0], a[1] * b[1]};
+    }
+
+    inline static float3 mul(const vector3& a, const vector3& b)
+    {
+        return {a[0] * b[0], a[1] * b[1], a[2] * b[2]};
+    }
+
+    inline static vector_type mul(const vector_type& a, const vector_type& b)
+    {
+        return {a[0] * b[0], a[1] * b[1], a[2] * b[2], a[3] * b[3]};
+    }
+
+    inline static float2 div(const vector2& a, const vector2& b)
+    {
+        return {a[0] / b[0], a[1] / b[1]};
+    }
+
+    inline static float3 div(const vector3& a, const vector3& b)
+    {
+        return {a[0] / b[0], a[1] / b[1], a[2] / b[2]};
+    }
+
+    inline static vector_type div(const vector_type& a, const vector_type& b)
+    {
+        return {a[0] / b[0], a[1] / b[1], a[2] / b[2], a[3] / b[3]};
+    }
+
     inline static float dot(const vector2& a, const vector2& b)
     {
         return a[0] * b[0] + a[1] * b[1];
@@ -152,23 +182,18 @@ public:
     using vector_type = float4_simd;
 
 public:
-    inline static vector_type add(const vector_type& a, const vector_type& b)
-    {
-        return _mm_add_ps(a, b);
-    }
+    inline static vector_type add(vector_type a, vector_type b) { return _mm_add_ps(a, b); }
+    inline static vector_type sub(vector_type a, vector_type b) { return _mm_sub_ps(a, b); }
+    inline static vector_type mul(vector_type a, vector_type b) { return _mm_mul_ps(a, b); }
+    inline static vector_type div(vector_type a, vector_type b) { return _mm_div_ps(a, b); }
 
-    inline static vector_type sub(const vector_type& a, const vector_type& b)
-    {
-        return _mm_sub_ps(a, b);
-    }
-
-    inline static float dot(const vector_type& a, const vector_type& b)
+    inline static float dot(vector_type a, vector_type b)
     {
         __m128 t1 = dot_v(a, b);
         return _mm_cvtss_f32(t1);
     }
 
-    inline static vector_type dot_v(const vector_type& a, const vector_type& b)
+    inline static vector_type dot_v(vector_type a, vector_type b)
     {
         __m128 t1 = _mm_mul_ps(a, b);
         __m128 t2 = simd::shuffle<1, 0, 3, 2>(t1);
@@ -177,7 +202,7 @@ public:
         return _mm_add_ps(t1, t2);
     }
 
-    inline static vector_type cross(const vector_type& a, const vector_type& b)
+    inline static vector_type cross(vector_type a, vector_type b)
     {
         __m128 t1 = simd::shuffle<1, 2, 0, 0>(a);
         __m128 t2 = simd::shuffle<2, 0, 1, 0>(b);
@@ -191,30 +216,41 @@ public:
         return _mm_and_ps(t2, simd::mask<0x1110>());
     }
 
-    inline static vector_type scale(const vector_type& v, float scale)
+    inline static vector_type scale(vector_type v, float scale)
     {
         __m128 s = _mm_set_ps1(scale);
         return _mm_mul_ps(v, s);
     }
 
-    inline static float length(const vector_type& v)
+    inline static float length_vec3(vector_type v)
+    {
+        __m128 t1 = length_vec3_v(_mm_and_ps(v, simd::mask<0x1110>()));
+        return _mm_cvtss_f32(t1);
+    }
+
+    inline static vector_type length_vec3_v(vector_type v)
+    {
+        return length_v(_mm_and_ps(v, simd::mask<0x1110>()));
+    }
+
+    inline static float length(vector_type v)
     {
         __m128 t1 = length_v(v);
         return _mm_cvtss_f32(t1);
     }
 
-    inline static vector_type length_v(const vector_type& v)
+    inline static vector_type length_v(vector_type v)
     {
         __m128 t1 = dot_v(v, v);
         return _mm_sqrt_ps(t1);
     }
 
-    inline static vector_type normalize_vec3(const vector_type& v)
+    inline static vector_type normalize_vec3(vector_type v)
     {
         return normalize(_mm_and_ps(v, simd::mask<0x1110>()));
     }
 
-    inline static vector_type normalize(const vector_type& v)
+    inline static vector_type normalize(vector_type v)
     {
         __m128 t1 = _mm_mul_ps(v, v);
         __m128 t2 = simd::shuffle<1, 0, 3, 2>(t1);
@@ -226,9 +262,9 @@ public:
         return _mm_div_ps(v, t1);
     }
 
-    inline static vector_type sqrt(const vector_type& v) { return _mm_sqrt_ps(v); }
+    inline static vector_type sqrt(vector_type v) { return _mm_sqrt_ps(v); }
 
-    inline static vector_type reciprocal_sqrt(const vector_type& v)
+    inline static vector_type reciprocal_sqrt(vector_type v)
     {
         __m128 sqrt = _mm_sqrt_ps(v);
         __m128 one = simd::set(1.0f);
@@ -236,6 +272,6 @@ public:
         return _mm_div_ps(one, sqrt);
     }
 
-    inline static vector_type reciprocal_sqrt_fast(const vector_type& v) { return _mm_rsqrt_ps(v); }
+    inline static vector_type reciprocal_sqrt_fast(vector_type v) { return _mm_rsqrt_ps(v); }
 };
 } // namespace ash::math

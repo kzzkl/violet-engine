@@ -16,15 +16,32 @@ class bounding_box
 public:
     bounding_box();
 
-    void aabb(const std::vector<math::float3>& vertices, const math::float4x4& transform);
+    bool transform(const math::float4x4& transform);
+
+    void aabb(
+        const std::vector<math::float3>& vertices,
+        const math::float4x4& transform,
+        bool dynamic = false,
+        float fatten = 1.0f);
     const bounding_volume_aabb& aabb() const noexcept { return m_aabb; }
+
+    void visible(bool visible) noexcept { m_visible = visible; }
+    bool visible() const noexcept { return m_visible; }
 
     std::size_t proxy_id() const noexcept { return m_proxy_id; }
     void proxy_id(std::size_t id) noexcept { m_proxy_id = id; }
 
+    bool dynamic() const noexcept { return m_dynamic; }
+
 private:
     bounding_volume_aabb m_aabb;
+    bounding_volume_aabb m_internal_aabb;
+    bounding_volume_aabb m_mesh_aabb;
+
+    float m_fatten;
 
     std::size_t m_proxy_id;
+    bool m_visible;
+    bool m_dynamic;
 };
 } // namespace ash::scene

@@ -16,6 +16,11 @@ public:
 
     void clear();
 
+    std::size_t update(std::size_t proxy_id, const bounding_volume_aabb& aabb);
+
+    bool visible(std::size_t proxy_id) const noexcept { return m_nodes[proxy_id].visible; }
+    void frustum_culling(const std::vector<math::float4>& frustum);
+
     template <typename T>
     void print(T&& functor)
     {
@@ -30,7 +35,7 @@ public:
             auto index = dfs.top();
             dfs.pop();
 
-            functor(m_nodes[index].aabb);
+            functor(m_nodes[index].aabb, m_nodes[index].visible);
 
             if (m_nodes[index].depth > 0)
             {
@@ -50,6 +55,8 @@ private:
         std::size_t right_child;
 
         int depth;
+
+        bool visible;
     };
 
     void balance(std::size_t index);

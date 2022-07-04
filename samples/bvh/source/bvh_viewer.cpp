@@ -46,31 +46,77 @@ void bvh_viewer::initialize_graphics_resource()
     m_cube_material->diffuse(math::float3{1.0f, 1.0f, 1.0f});
     m_pipeline = std::make_unique<graphics::standard_pipeline>();
 
-    // Initialize camera.
     auto& world = system<ecs::world>();
     auto& scene = system<scene::scene>();
     auto& relation = system<core::relation>();
 
-    m_camera = world.create();
-    world.add<core::link, graphics::camera, scene::transform>(m_camera);
-    auto& camera = world.component<graphics::camera>(m_camera);
-    camera.field_of_view(math::to_radians(30.0f));
-    camera.clipping_planes(0.01f, 1000.0f);
+    {
+        // Initialize main camera.
+        m_camera = world.create();
+        world.add<core::link, graphics::camera, scene::transform>(m_camera);
+        auto& camera = world.component<graphics::camera>(m_camera);
+        camera.field_of_view(math::to_radians(30.0f));
+        camera.clipping_planes(0.01f, 1000.0f);
 
-    auto& transform = world.component<scene::transform>(m_camera);
-    transform.position = {0.0f, 0.0f, -38.0f};
-    transform.world_matrix = math::matrix_plain::affine_transform(
-        transform.scaling,
-        transform.rotation,
-        transform.position);
+        auto& transform = world.component<scene::transform>(m_camera);
+        transform.position = {0.0f, 0.0f, -38.0f};
+        transform.world_matrix = math::matrix_plain::affine_transform(
+            transform.scaling,
+            transform.rotation,
+            transform.position);
+        relation.link(m_camera, scene.root());
 
-    relation.link(m_camera, scene.root());
+        auto& graphics = system<graphics::graphics>();
+        auto extent = graphics.render_extent();
+        resize_camera(extent.width, extent.height);
 
-    auto& graphics = system<graphics::graphics>();
-    auto extent = graphics.render_extent();
-    resize_camera(extent.width, extent.height);
+        graphics.game_camera(m_camera);
+    }
 
-    graphics.game_camera(m_camera);
+    {
+        // Initialize small camera.
+        m_small_camera = world.create();
+        world.add<core::link, graphics::camera, scene::transform>(m_small_camera);
+        auto& camera = world.component<graphics::camera>(m_small_camera);
+        camera.field_of_view(math::to_radians(30.0f));
+        camera.clipping_planes(0.01f, 1000.0f);
+        camera.render_groups |= graphics::RENDER_GROUP_DEBUG;
+        camera.render_groups ^= graphics::RENDER_GROUP_UI;
+
+        auto& transform = world.component<scene::transform>(m_small_camera);
+        transform.position = {0.0f, 0.0f, -50.0f};
+        transform.world_matrix = math::matrix_plain::affine_transform(
+            transform.scaling,
+            transform.rotation,
+            transform.position);
+        relation.link(m_small_camera, scene.root());
+
+        graphics::render_target_info render_target_info = {};
+        render_target_info.width = 400.0f;
+        render_target_info.height = 400.0f;
+        render_target_info.format = graphics::rhi::back_buffer_format();
+        render_target_info.samples = 4;
+        m_small_render_target = graphics::rhi::make_render_target(render_target_info);
+        camera.render_target(m_small_render_target.get());
+
+        graphics::render_target_info render_target_resolve_info = {};
+        render_target_resolve_info.width = 400.0f;
+        render_target_resolve_info.height = 400.0f;
+        render_target_resolve_info.format = graphics::rhi::back_buffer_format();
+        render_target_resolve_info.samples = 1;
+        m_small_render_target_resolve =
+            graphics::rhi::make_render_target(render_target_resolve_info);
+        camera.render_target_resolve(m_small_render_target_resolve.get());
+
+        graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
+        depth_stencil_buffer_info.width = 400.0f;
+        depth_stencil_buffer_info.height = 400.0f;
+        depth_stencil_buffer_info.format = graphics::RESOURCE_FORMAT_D24_UNORM_S8_UINT;
+        depth_stencil_buffer_info.samples = 4;
+        m_small_depth_stencil_buffer =
+            graphics::rhi::make_depth_stencil_buffer(depth_stencil_buffer_info);
+        camera.depth_stencil_buffer(m_small_depth_stencil_buffer.get());
+    }
 }
 
 void bvh_viewer::initialize_task()
@@ -79,9 +125,11 @@ void bvh_viewer::initialize_task()
 
     auto tick_task = task.schedule("bvh tick", [this]() {
         update_camera();
-        system<scene::scene>().sync_local();
+        move_cube();
 
         draw_aabb();
+
+        system<graphics::graphics>().render(m_small_camera);
     });
 
     tick_task->add_dependency(*task.find(task::TASK_GAME_LOGIC_START));
@@ -109,6 +157,45 @@ void bvh_viewer::initialize_ui()
         return false;
     };
     ui.root()->add(m_remove_button.get());
+
+    m_small_view = std::make_unique<ui::image>(m_small_render_target_resolve.get());
+    m_small_view->position_type(ui::LAYOUT_POSITION_TYPE_ABSOLUTE);
+    m_small_view->position(0.0f, ui::LAYOUT_EDGE_RIGHT);
+    m_small_view->position(0.0f, ui::LAYOUT_EDGE_BOTTOM);
+    ui.root()->add(m_small_view.get());
+}
+
+void bvh_viewer::move_cube()
+{
+    auto& world = system<ecs::world>();
+
+    float delta = system<core::timer>().frame_delta();
+    for (std::size_t i = 0; i < m_cubes.size(); ++i)
+    {
+        auto& transform = world.component<scene::transform>(m_cubes[i].first);
+        if (transform.position[0] > 10.0f || transform.position[0] < -10.0f ||
+            transform.position[1] > 10.0f || transform.position[1] < -10.0f)
+        {
+            m_move_direction[i][0] = -m_move_direction[i][0];
+            m_move_direction[i][1] = -m_move_direction[i][1];
+        }
+        transform.position[0] += m_move_direction[i][0] * delta;
+        transform.position[1] += m_move_direction[i][1] * delta;
+
+        transform.dirty = true;
+    }
+
+    system<scene::scene>().sync_local();
+
+    for (std::size_t i = 0; i < m_cubes.size(); ++i)
+    {
+        auto& bounding_box = world.component<scene::bounding_box>(m_cubes[i].first);
+        auto& transform = world.component<scene::transform>(m_cubes[i].first);
+        if (bounding_box.transform(transform.world_matrix))
+        {
+            m_cubes[i].second = m_tree.update(m_cubes[i].second, bounding_box.aabb());
+        }
+    }
 }
 
 void bvh_viewer::draw_aabb()
@@ -118,8 +205,41 @@ void bvh_viewer::draw_aabb()
         drawer.draw_aabb(bounding_box.min, bounding_box.max, math::float3{0.0f, 1.0f, 0.0f});
     });*/
 
-    m_tree.print([&drawer](const scene::bounding_volume_aabb& aabb) {
-        drawer.draw_aabb(aabb.min, aabb.max, math::float3{1.0f, 0.0f, 0.0f});
+    auto& camera = system<ecs::world>().component<graphics::camera>(m_camera);
+    auto& transform = system<ecs::world>().component<scene::transform>(m_camera);
+
+    math::float4x4 vp = math::matrix_plain::mul(
+        math::matrix_plain::inverse(transform.world_matrix),
+        camera.projection());
+
+    math::float4_simd x = math::simd::set(vp[0][0], vp[1][0], vp[2][0], vp[3][0]);
+    math::float4_simd y = math::simd::set(vp[0][1], vp[1][1], vp[2][1], vp[3][1]);
+    math::float4_simd z = math::simd::set(vp[0][2], vp[1][2], vp[2][2], vp[3][2]);
+    math::float4_simd w = math::simd::set(vp[0][3], vp[1][3], vp[2][3], vp[3][3]);
+
+    std::vector<math::float4> planes(6);
+    std::vector<math::float4_simd> ps = {
+        math::vector_simd::add(w, x),
+        math::vector_simd::sub(w, x),
+        math::vector_simd::add(w, y),
+        math::vector_simd::sub(w, y),
+        z,
+        math::vector_simd::sub(w, z)};
+
+    for (std::size_t i = 0; i < 6; ++i)
+    {
+        math::float4_simd length = math::vector_simd::length_vec3_v(ps[i]);
+        ps[i] = math::vector_simd::div(ps[i], length);
+        math::simd::store(ps[i], planes[i]);
+    }
+
+    m_tree.frustum_culling(planes);
+
+    m_tree.print([&drawer](const scene::bounding_volume_aabb& aabb, bool visible) {
+        if (visible)
+            drawer.draw_aabb(aabb.min, aabb.max, math::float3{0.0f, 1.0f, 0.0f});
+        else
+            drawer.draw_aabb(aabb.min, aabb.max, math::float3{1.0f, 0.0f, 0.0f});
     });
 }
 
@@ -226,9 +346,10 @@ void bvh_viewer::add_cube(bool random)
     mesh.submeshes.push_back(graphics::submesh{0, 36, 0});
 
     auto& transform = world.component<scene::transform>(cube);
+
+    static std::default_random_engine random_engine;
     if (random)
     {
-        static std::default_random_engine random_engine;
         static std::uniform_real_distribution<float> pu(-10, 10);
         static std::uniform_real_distribution<float> ru(-math::PI, math::PI);
         transform.position[0] = pu(random_engine);
@@ -255,10 +376,14 @@ void bvh_viewer::add_cube(bool random)
     scene.sync_local();
 
     auto& bounding_box = world.component<scene::bounding_box>(cube);
-    bounding_box.aabb(m_cube_mesh_data.position, transform.world_matrix);
+    bounding_box.aabb(m_cube_mesh_data.position, transform.world_matrix, true);
 
     std::size_t proxy_id = m_tree.add(bounding_box.aabb());
     m_cubes.push_back({cube, proxy_id});
+
+    static std::uniform_real_distribution<float> tu(-1.0f, 1.0f);
+    m_move_direction.emplace_back(
+        math::float3{tu(random_engine), tu(random_engine), tu(random_engine)});
 }
 
 void bvh_viewer::remove_cube()
@@ -272,6 +397,7 @@ void bvh_viewer::remove_cube()
     m_tree.remove(m_cubes[index].second);
 
     std::swap(m_cubes[index], m_cubes.back());
+    std::swap(m_move_direction[index], m_move_direction.back());
 
     system<core::relation>().unlink(m_cubes.back().first);
     system<ecs::world>().release(m_cubes.back().first);

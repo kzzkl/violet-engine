@@ -109,6 +109,8 @@ void bvh_tree::remove(std::size_t proxy_id)
         {
             m_root_index = sibling_index;
         }
+
+        deallocate_node(parent_index);
     }
 
     deallocate_node(proxy_id);
@@ -116,6 +118,57 @@ void bvh_tree::remove(std::size_t proxy_id)
 
 void bvh_tree::clear()
 {
+}
+
+std::size_t bvh_tree::update(std::size_t proxy_id, const bounding_volume_aabb& aabb)
+{
+    remove(proxy_id);
+    return add(aabb);
+}
+
+void bvh_tree::frustum_culling(const std::vector<math::float4>& frustum)
+{
+    if (m_root_index == -1)
+        return;
+
+    for (bvh_node& node : m_nodes)
+        node.visible = false;
+
+    std::stack<std::size_t> dfs;
+    dfs.push(m_root_index);
+
+    while (!dfs.empty())
+    {
+        auto index = dfs.top();
+        dfs.pop();
+
+        bool cull = false;
+        for (std::size_t i = 0; i < 6; ++i)
+        {
+            math::float4_simd vertex = math::simd::set(
+                frustum[i][0] < 0.0f ? m_nodes[index].aabb.min[0] : m_nodes[index].aabb.max[0],
+                frustum[i][1] < 0.0f ? m_nodes[index].aabb.min[1] : m_nodes[index].aabb.max[1],
+                frustum[i][2] < 0.0f ? m_nodes[index].aabb.min[2] : m_nodes[index].aabb.max[2],
+                0.0f);
+            math::float4_simd normal = math::simd::load(frustum[i]);
+            if (math::vector_simd::dot(vertex, normal) + frustum[i][3] < 0.0f)
+            {
+                cull = true;
+                break;
+            }
+        }
+
+        if (!cull)
+        {
+            m_nodes[index].visible = true;
+
+            if (m_nodes[index].depth > 0)
+            {
+                dfs.push(m_nodes[index].left_child);
+                dfs.push(m_nodes[index].right_child);
+            }
+        }
+    }
 }
 
 void bvh_tree::balance(std::size_t index)
