@@ -79,7 +79,7 @@ private:
         world.add<core::link, physics::rigidbody, scene::transform>(m_plane);
 
         auto& t = world.component<scene::transform>(m_plane);
-        t.position = {0.0f, -3.0f, 0.0f};
+        t.position(math::float3{0.0f, -3.0f, 0.0f});
 
         auto& r = world.component<physics::rigidbody>(m_plane);
         r.shape = m_plane_shape.get();
@@ -98,9 +98,7 @@ private:
         world.add<core::link, graphics::camera, scene::transform>(m_camera);
 
         auto& transform = world.component<scene::transform>(m_camera);
-        transform.position = {0.0f, 11.0f, -30.0f};
-        transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
-        transform.scaling = {1.0f, 1.0f, 1.0f};
+        transform.position(math::float3{0.0f, 11.0f, -30.0f});
         system<core::relation>().link(m_camera, scene.root());
 
         auto extent = graphics.render_extent();
@@ -161,14 +159,12 @@ private:
         }
 
         auto& camera_transform = world.component<scene::transform>(m_camera);
-        camera_transform.dirty = true;
         if (mouse.mode() == window::MOUSE_MODE_RELATIVE)
         {
             m_heading += mouse.x() * m_rotate_speed * delta;
             m_pitch += mouse.y() * m_rotate_speed * delta;
             m_pitch = std::clamp(m_pitch, -math::PI_PIDIV2, math::PI_PIDIV2);
-            camera_transform.rotation =
-                math::quaternion_plain::rotation_euler(m_heading, m_pitch, 0.0f);
+            camera_transform.rotation_euler(math::float3{m_heading, m_pitch, 0.0f});
         }
 
         float x = 0, z = 0;
@@ -181,15 +177,15 @@ private:
         if (keyboard.key(window::KEYBOARD_KEY_A).down())
             x -= 1.0f;
 
-        math::float4_simd s = math::simd::load(camera_transform.scaling);
-        math::float4_simd r = math::simd::load(camera_transform.rotation);
-        math::float4_simd t = math::simd::load(camera_transform.position);
+        math::float4_simd s = math::simd::load(camera_transform.scale());
+        math::float4_simd r = math::simd::load(camera_transform.rotation());
+        math::float4_simd t = math::simd::load(camera_transform.position());
 
         math::float4x4_simd affine = math::matrix_simd::affine_transform(s, r, t);
         math::float4_simd forward =
             math::simd::set(x * m_move_speed * delta, 0.0f, z * m_move_speed * delta, 0.0f);
         forward = math::matrix_simd::mul(forward, affine);
-        math::simd::store(math::vector_simd::add(forward, t), camera_transform.position);
+        camera_transform.position(math::vector_simd::add(forward, t));
     }
 
     void update_actor(float delta)
@@ -206,8 +202,9 @@ private:
         if (move != 0.0f)
         {
             auto& actor_transform = world.component<scene::transform>(m_actor);
-            actor_transform.position[0] += move * m_move_speed * delta;
-            actor_transform.dirty = true;
+            math::float3 position = actor_transform.position();
+            position[0] += move * m_move_speed * delta;
+            actor_transform.position(position);
         }
     }
 
@@ -215,9 +212,6 @@ private:
     {
         if (system<window::window>().keyboard().key(window::KEYBOARD_KEY_ESCAPE).down())
             m_app->exit();
-
-        auto& scene = system<scene::scene>();
-        scene.reset_sync_counter();
 
         float delta = system<core::timer>().frame_delta();
         update_camera(delta);

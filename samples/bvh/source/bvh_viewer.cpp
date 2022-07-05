@@ -59,11 +59,7 @@ void bvh_viewer::initialize_graphics_resource()
         camera.clipping_planes(0.01f, 1000.0f);
 
         auto& transform = world.component<scene::transform>(m_camera);
-        transform.position = {0.0f, 0.0f, -38.0f};
-        transform.world_matrix = math::matrix_plain::affine_transform(
-            transform.scaling,
-            transform.rotation,
-            transform.position);
+        transform.position(math::float3{0.0f, 0.0f, -38.0f});
         relation.link(m_camera, scene.root());
 
         auto& graphics = system<graphics::graphics>();
@@ -84,11 +80,7 @@ void bvh_viewer::initialize_graphics_resource()
         camera.render_groups ^= graphics::RENDER_GROUP_UI;
 
         auto& transform = world.component<scene::transform>(m_small_camera);
-        transform.position = {0.0f, 0.0f, -50.0f};
-        transform.world_matrix = math::matrix_plain::affine_transform(
-            transform.scaling,
-            transform.rotation,
-            transform.position);
+        transform.position(math::float3{0.0f, 0.0f, -50.0f});
         relation.link(m_small_camera, scene.root());
 
         graphics::render_target_info render_target_info = {};
@@ -126,7 +118,7 @@ void bvh_viewer::initialize_task()
     auto tick_task = task.schedule("bvh tick", [this]() {
         update_camera();
         move_cube();
-
+        frustum_culling();
         draw_aabb();
 
         system<graphics::graphics>().render(m_small_camera);
@@ -172,44 +164,32 @@ void bvh_viewer::move_cube()
     float delta = system<core::timer>().frame_delta();
     for (std::size_t i = 0; i < m_cubes.size(); ++i)
     {
-        auto& transform = world.component<scene::transform>(m_cubes[i].first);
-        if (transform.position[0] > 10.0f || transform.position[0] < -10.0f ||
-            transform.position[1] > 10.0f || transform.position[1] < -10.0f)
+        auto& transform = world.component<scene::transform>(m_cubes[i]);
+
+        math::float3 position = transform.position();
+        if (position[0] > 10.0f || position[0] < -10.0f || position[1] > 10.0f ||
+            position[1] < -10.0f)
         {
             m_move_direction[i][0] = -m_move_direction[i][0];
             m_move_direction[i][1] = -m_move_direction[i][1];
         }
-        transform.position[0] += m_move_direction[i][0] * delta;
-        transform.position[1] += m_move_direction[i][1] * delta;
+        position[0] += m_move_direction[i][0] * delta;
+        position[1] += m_move_direction[i][1] * delta;
 
-        transform.dirty = true;
+        transform.position(position);
+        transform.rotation(math::quaternion_plain::rotation_euler(position));
     }
 
     system<scene::scene>().sync_local();
-
-    for (std::size_t i = 0; i < m_cubes.size(); ++i)
-    {
-        auto& bounding_box = world.component<scene::bounding_box>(m_cubes[i].first);
-        auto& transform = world.component<scene::transform>(m_cubes[i].first);
-        if (bounding_box.transform(transform.world_matrix))
-        {
-            m_cubes[i].second = m_tree.update(m_cubes[i].second, bounding_box.aabb());
-        }
-    }
 }
 
-void bvh_viewer::draw_aabb()
+void bvh_viewer::frustum_culling()
 {
-    auto& drawer = system<graphics::graphics>().debug();
-    /*m_aabb_view->each([&drawer](scene::transform& transform, scene::bounding_box& bounding_box) {
-        drawer.draw_aabb(bounding_box.min, bounding_box.max, math::float3{0.0f, 1.0f, 0.0f});
-    });*/
-
     auto& camera = system<ecs::world>().component<graphics::camera>(m_camera);
     auto& transform = system<ecs::world>().component<scene::transform>(m_camera);
 
     math::float4x4 vp = math::matrix_plain::mul(
-        math::matrix_plain::inverse(transform.world_matrix),
+        math::matrix_plain::inverse(transform.to_world()),
         camera.projection());
 
     math::float4_simd x = math::simd::set(vp[0][0], vp[1][0], vp[2][0], vp[3][0]);
@@ -233,13 +213,25 @@ void bvh_viewer::draw_aabb()
         math::simd::store(ps[i], planes[i]);
     }
 
-    m_tree.frustum_culling(planes);
+    system<scene::scene>().frustum_culling(planes);
 
-    m_tree.print([&drawer](const scene::bounding_volume_aabb& aabb, bool visible) {
-        if (visible)
-            drawer.draw_aabb(aabb.min, aabb.max, math::float3{0.0f, 1.0f, 0.0f});
+    // m_tree.frustum_culling(planes);
+}
+
+void bvh_viewer::draw_aabb()
+{
+    auto& drawer = system<graphics::graphics>().debug();
+    m_aabb_view->each([&drawer](scene::transform& transform, scene::bounding_box& bounding_box) {
+        if (bounding_box.visible())
+            drawer.draw_aabb(
+                bounding_box.aabb().min,
+                bounding_box.aabb().max,
+                math::float3{0.0f, 1.0f, 0.0f});
         else
-            drawer.draw_aabb(aabb.min, aabb.max, math::float3{1.0f, 0.0f, 0.0f});
+            drawer.draw_aabb(
+                bounding_box.aabb().min,
+                bounding_box.aabb().max,
+                math::float3{1.0f, 0.0f, 0.0f});
     });
 }
 
@@ -278,7 +270,7 @@ void bvh_viewer::update_camera()
         m_heading += mouse.x() * m_rotate_speed * delta;
         m_pitch += mouse.y() * m_rotate_speed * delta;
         m_pitch = std::clamp(m_pitch, -math::PI_PIDIV2, math::PI_PIDIV2);
-        transform.rotation = math::quaternion_plain::rotation_euler(m_heading, m_pitch, 0.0f);
+        transform.rotation_euler({m_heading, m_pitch, 0.0f});
     }
 
     float x = 0, z = 0;
@@ -291,17 +283,16 @@ void bvh_viewer::update_camera()
     if (keyboard.key(window::KEYBOARD_KEY_A).down())
         x -= 1.0f;
 
-    math::float4_simd s = math::simd::load(transform.scaling);
-    math::float4_simd r = math::simd::load(transform.rotation);
-    math::float4_simd t = math::simd::load(transform.position);
+    math::float4_simd s = math::simd::load(transform.scale());
+    math::float4_simd r = math::simd::load(transform.rotation());
+    math::float4_simd t = math::simd::load(transform.position());
 
     math::float4x4_simd affine = math::matrix_simd::affine_transform(s, r, t);
     math::float4_simd forward =
         math::simd::set(x * m_move_speed * delta, 0.0f, z * m_move_speed * delta, 0.0f);
     forward = math::matrix_simd::mul(forward, affine);
 
-    math::simd::store(math::vector_simd::add(forward, t), transform.position);
-    transform.dirty = true;
+    transform.position(math::vector_simd::add(forward, t));
 }
 
 void bvh_viewer::resize_camera(std::uint32_t width, std::uint32_t height)
@@ -352,34 +343,28 @@ void bvh_viewer::add_cube(bool random)
     {
         static std::uniform_real_distribution<float> pu(-10, 10);
         static std::uniform_real_distribution<float> ru(-math::PI, math::PI);
-        transform.position[0] = pu(random_engine);
-        transform.position[1] = pu(random_engine);
-        // transform.position[2] = pu(random_engine);
-        transform.rotation = math::quaternion_plain::rotation_euler(
-            ru(random_engine),
-            ru(random_engine),
-            ru(random_engine));
+        transform.position(math::float3{pu(random_engine), pu(random_engine), 0.0f});
+        transform.rotation_euler(
+            math::float3{ru(random_engine), ru(random_engine), ru(random_engine)});
     }
     else
     {
         static float x = 0.0f;
-        transform.position[0] = x;
-        transform.position[1] = x;
+        transform.position(math::float3{x, x, 0.0f});
         x += 1.5f;
     }
-    transform.dirty = true;
 
     auto& scene = system<scene::scene>();
     auto& relation = system<core::relation>();
 
+    auto& bounding_box = world.component<scene::bounding_box>(cube);
+    bounding_box.aabb(m_cube_mesh_data.position, transform.to_world(), true);
+
     relation.link(cube, scene.root());
     scene.sync_local();
 
-    auto& bounding_box = world.component<scene::bounding_box>(cube);
-    bounding_box.aabb(m_cube_mesh_data.position, transform.world_matrix, true);
-
-    std::size_t proxy_id = m_tree.add(bounding_box.aabb());
-    m_cubes.push_back({cube, proxy_id});
+    // std::size_t proxy_id = m_tree.add(bounding_box.aabb());
+    m_cubes.push_back(cube);
 
     static std::uniform_real_distribution<float> tu(-1.0f, 1.0f);
     m_move_direction.emplace_back(
@@ -394,13 +379,12 @@ void bvh_viewer::remove_cube()
     static std::default_random_engine random_engine;
 
     std::size_t index = random_engine() % m_cubes.size();
-    m_tree.remove(m_cubes[index].second);
 
     std::swap(m_cubes[index], m_cubes.back());
     std::swap(m_move_direction[index], m_move_direction.back());
 
-    system<core::relation>().unlink(m_cubes.back().first);
-    system<ecs::world>().release(m_cubes.back().first);
+    system<core::relation>().unlink(m_cubes.back());
+    system<ecs::world>().release(m_cubes.back());
 
     m_cubes.pop_back();
 }

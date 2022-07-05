@@ -158,7 +158,7 @@ void graphics::render()
 
     // Update object data.
     m_object_view->each([&, this](mesh_render& mesh_render, scene::transform& transform) {
-        mesh_render.object_parameter->world_matrix(transform.world_matrix);
+        mesh_render.object_parameter->world_matrix(transform.to_world());
     });
 
     // Render camera.
@@ -186,7 +186,7 @@ void graphics::render_camera(ecs::entity camera_entity)
         m_debug->sync();
 
     // Update camera data.
-    math::float4x4_simd world_simd = math::simd::load(transform.world_matrix);
+    math::float4x4_simd world_simd = math::simd::load(transform.to_world());
     math::float4x4_simd transform_v = math::matrix_simd::inverse(world_simd);
     math::float4x4_simd transform_p = math::simd::load(render_camera.projection());
     math::float4x4_simd transform_vp = math::matrix_simd::mul(transform_v, transform_p);

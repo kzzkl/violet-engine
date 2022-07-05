@@ -26,6 +26,7 @@ private:
     void initialize_task();
 
     void move_cube();
+    void frustum_culling();
     void draw_aabb();
     void update_camera();
 
@@ -33,7 +34,7 @@ private:
     void add_cube(bool random);
     void remove_cube();
 
-    std::vector<std::pair<ecs::entity, std::size_t>> m_cubes;
+    std::vector<ecs::entity> m_cubes;
     std::vector<math::float3> m_move_direction;
 
     ecs::view<scene::transform, scene::bounding_box>* m_aabb_view;
@@ -61,7 +62,7 @@ private:
     std::unique_ptr<graphics::resource_interface> m_small_render_target_resolve;
     std::unique_ptr<graphics::resource_interface> m_small_depth_stencil_buffer;
 
-    scene::bvh_tree m_tree;
+    // scene::bvh_tree m_tree;
 
     std::unique_ptr<ui::button> m_add_button;
     std::unique_ptr<ui::button> m_remove_button;

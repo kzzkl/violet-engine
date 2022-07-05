@@ -69,8 +69,6 @@ void bounding_box::aabb(
     bool dynamic,
     float fatten)
 {
-    math::float4x4_simd world_matrix = math::simd::load(transform);
-
     float inf = std::numeric_limits<float>::infinity();
     math::float4_simd min = math::simd::set(inf, inf, inf, 1.0);
     math::float4_simd max = math::simd::set(-inf, -inf, -inf, 1.0);
@@ -92,6 +90,8 @@ void bounding_box::aabb(
     }
     else
     {
+        math::float4x4_simd world_matrix = math::simd::load(transform);
+
         for (auto& vertex : vertices)
         {
             math::float4_simd v = math::simd::load(vertex, 1.0f);
@@ -103,5 +103,7 @@ void bounding_box::aabb(
         math::simd::store(min, m_aabb.min);
         math::simd::store(max, m_aabb.max);
     }
+
+    m_dynamic = dynamic;
 }
 } // namespace ash::scene

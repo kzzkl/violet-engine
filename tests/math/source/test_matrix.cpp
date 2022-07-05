@@ -33,19 +33,9 @@ TEST_CASE("matrix_plain::mul", "[matrix]")
 
     float4 v = {1.0f, 2.0f, 3.0f, 0.0f};
     CHECK(equal(matrix::mul(v, a), float4{38.0f, 44.0f, 50.0f, 56.0f}));
-}
-
-TEST_CASE("matrix_plain::scale", "[matrix]")
-{
-    float4x4 a = {
-        float4{1.0f,  2.0f,  3.0f,  4.0f },
-        float4{5.0f,  6.0f,  7.0f,  8.0f },
-        float4{9.0f,  10.0f, 11.0f, 12.0f},
-        float4{13.0f, 14.0f, 15.0f, 16.0f}
-    };
 
     CHECK(equal(
-        matrix::scale(a, 0.5f),
+        matrix::mul(a, 0.5f),
         float4x4{
             float4{0.5f, 1.0f, 1.5f, 2.0f},
             float4{2.5f, 3.0f, 3.5f, 4.0f},
@@ -117,9 +107,9 @@ TEST_CASE("matrix_plain::identity", "[matrix]")
     }));
 }
 
-TEST_CASE("matrix_plain::scaling", "[matrix]")
+TEST_CASE("matrix_plain::scale", "[matrix]")
 {
-    float4x4 result = matrix::scaling(float4{0.5f, 1.0f, 2.0f, 0.0f});
+    float4x4 result = matrix::scale(float3{0.5f, 1.0f, 2.0f});
     CHECK(equal(
         result,
         float4x4{

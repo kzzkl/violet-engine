@@ -104,21 +104,20 @@ void mmd_loader::load_hierarchy(
         auto& node_entity = skeleton.nodes[i];
 
         auto& node_transform = world.component<scene::transform>(node_entity);
-        node_transform.dirty = true;
 
         if (pmx_bone.parent_index != -1)
         {
             auto& pmx_parent_bone = loader.bones()[pmx_bone.parent_index];
             auto& parent_node = skeleton.nodes[pmx_bone.parent_index];
 
-            node_transform.position =
-                math::vector_plain::sub(pmx_bone.position, pmx_parent_bone.position);
+            node_transform.position(
+                math::vector_plain::sub(pmx_bone.position, pmx_parent_bone.position));
 
             relation.link(node_entity, parent_node);
         }
         else
         {
-            node_transform.position = pmx_bone.position;
+            node_transform.position(pmx_bone.position);
             relation.link(node_entity, entity);
         }
     }
@@ -130,7 +129,7 @@ void mmd_loader::load_hierarchy(
         auto& bone = world.component<mmd_node>(skeleton.nodes[i]);
         auto& node_transform = world.component<scene::transform>(skeleton.nodes[i]);
 
-        math::float4x4_simd initial = math::simd::load(node_transform.world_matrix);
+        math::float4x4_simd initial = math::simd::load(node_transform.to_world());
         math::float4x4_simd inverse = math::matrix_simd::inverse(initial);
         math::simd::store(inverse, bone.initial_inverse);
 
@@ -147,7 +146,7 @@ void mmd_loader::load_hierarchy(
             bone.inherit_weight = pmx_bone.inherit_weight;
         }
 
-        bone.initial_position = node_transform.position;
+        bone.initial_position = node_transform.position();
         bone.initial_rotation = {0.0f, 0.0f, 0.0f, 1.0f};
         bone.initial_scale = {1.0f, 1.0f, 1.0f};
     }
@@ -451,7 +450,7 @@ void mmd_loader::load_physics(ecs::entity entity, mmd_resource& resource, const 
                 math::float3{1.0f, 1.0f, 1.0f},
                 pmx_rigidbody.rotate,
                 pmx_rigidbody.translate),
-            math::matrix_plain::inverse(world.component<scene::transform>(node).world_matrix));
+            math::matrix_plain::inverse(world.component<scene::transform>(node).to_world()));
     }
 
     ecs::entity joint_group = world.create("joints");

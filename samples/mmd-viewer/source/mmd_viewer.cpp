@@ -66,15 +66,16 @@ void mmd_viewer::update()
     animation.evaluate(delta * 30.0f);
     animation.update(false);
     m_skeleton_view->each([&](mmd_skeleton& skeleton, graphics::skinned_mesh&) {
+        math::float3 position;
+        math::float4 rotation;
+        math::float3 scale;
         for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
         {
             auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
-            math::matrix_plain::decompose(
-                skeleton.local[i],
-                transform.scaling,
-                transform.rotation,
-                transform.position);
-            transform.dirty = true;
+            math::matrix_plain::decompose(skeleton.local[i], scale, rotation, position);
+            transform.scale(scale);
+            transform.rotation(rotation);
+            transform.position(position);
         }
     });
     scene.sync_local();
@@ -88,7 +89,7 @@ void mmd_viewer::update()
         {
             auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
 
-            math::float4x4_simd to_world = math::simd::load(transform.world_matrix);
+            math::float4x4_simd to_world = math::simd::load(transform.to_world());
             math::float4x4_simd initial =
                 math::simd::load(world.component<mmd_node>(skeleton.nodes[i]).initial_inverse);
 
@@ -112,11 +113,9 @@ void mmd_viewer::reset(ecs::entity entity)
     {
         auto& node = world.component<mmd_node>(node_entity);
         auto& node_transform = world.component<scene::transform>(node_entity);
-        node_transform.dirty = true;
-
-        node_transform.position = node.initial_position;
-        node_transform.rotation = node.initial_rotation;
-        node_transform.scaling = node.initial_scale;
+        node_transform.position(node.initial_position);
+        node_transform.rotation(node.initial_rotation);
+        node_transform.scale(node.initial_scale);
 
         node.inherit_translate = {0.0f, 0.0f, 0.0f};
         node.inherit_rotate = {0.0f, 0.0f, 0.0f, 1.0f};

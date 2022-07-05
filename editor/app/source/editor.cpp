@@ -52,9 +52,7 @@ void editor::initialize_camera()
     world.add<graphics::camera, scene::transform>(m_editor_camera);
 
     auto& transform = world.component<scene::transform>(m_editor_camera);
-    transform.position = {0.0f, 11.0f, -60.0f};
-    transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
-    transform.scaling = {1.0f, 1.0f, 1.0f};
+    transform.position(math::float3{0.0f, 11.0f, -60.0f});
 
     auto& camera = world.component<graphics::camera>(m_editor_camera);
     camera.render_groups = graphics::RENDER_GROUP_EDITOR | graphics::RENDER_GROUP_UI;

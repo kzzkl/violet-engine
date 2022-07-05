@@ -102,7 +102,7 @@ void physics::simulation()
     m_view->each([&](rigidbody& rigidbody, scene::transform& transform) {
         if (rigidbody.type == rigidbody_type::KINEMATIC)
         {
-            math::float4x4_simd to_world = math::simd::load(transform.world_matrix);
+            math::float4x4_simd to_world = math::simd::load(transform.to_world());
             math::float4x4_simd offset = math::simd::load(rigidbody.offset);
 
             math::float4x4 rigidbody_to_world;
@@ -125,8 +125,7 @@ void physics::simulation()
 
         math::float4x4_simd to_world = math::simd::load(updated->transform());
         math::float4x4_simd offset_inverse = math::simd::load(r.offset_inverse);
-        math::simd::store(math::matrix_simd::mul(offset_inverse, to_world), t.world_matrix);
-        t.dirty = true;
+        t.to_world(math::matrix_simd::mul(offset_inverse, to_world));
     }
 
     system<scene::scene>().sync_world();
@@ -159,7 +158,7 @@ void physics::initialize_entity(ecs::entity entity)
             desc.restitution = r.restitution;
             desc.friction = r.friction;
             desc.shape = r.shape;
-            math::float4x4_simd to_world = math::simd::load(transform.world_matrix);
+            math::float4x4_simd to_world = math::simd::load(transform.to_world());
             math::float4x4_simd offset = math::simd::load(r.offset);
             math::simd::store(math::matrix_simd::mul(offset, to_world), desc.initial_transform);
             math::simd::store(math::matrix_simd::inverse(offset), r.offset_inverse);

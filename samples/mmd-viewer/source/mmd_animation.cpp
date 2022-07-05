@@ -183,12 +183,12 @@ void mmd_animation::update_local(mmd_skeleton& skeleton, bool after_physics)
         auto& animation = world.component<mmd_node_animation>(node_entity);
 
         math::float3 translate =
-            math::vector_plain::add(animation.animation_translate, transform.position);
+            math::vector_plain::add(animation.animation_translate, transform.position());
         if (node.is_inherit_translation)
             translate = math::vector_plain::add(translate, node.inherit_translate);
 
         math::float4 rotate =
-            math::quaternion_plain::mul(animation.animation_rotate, transform.rotation);
+            math::quaternion_plain::mul(animation.animation_rotate, transform.rotation());
         if (world.has_component<mmd_ik_link>(node_entity))
             rotate = math::quaternion_plain::mul(
                 world.component<mmd_ik_link>(node_entity).ik_rotate,
@@ -197,7 +197,7 @@ void mmd_animation::update_local(mmd_skeleton& skeleton, bool after_physics)
             rotate = math::quaternion_plain::mul(rotate, node.inherit_rotate);
 
         skeleton.local[node.index] =
-            math::matrix_plain::affine_transform(transform.scaling, rotate, translate);
+            math::matrix_plain::affine_transform(transform.scale(), rotate, translate);
     }
 }
 
@@ -224,7 +224,7 @@ void mmd_animation::update_world(mmd_skeleton& skeleton, bool after_physics)
         {
             auto& parent = world.component<scene::transform>(link.parent);
             skeleton.world[node.index] =
-                math::matrix_plain::mul(skeleton.local[node.index], parent.world_matrix);
+                math::matrix_plain::mul(skeleton.local[node.index], parent.to_world());
         }
     }
 }
@@ -241,12 +241,12 @@ void mmd_animation::update_transform(mmd_skeleton& skeleton, std::size_t index)
         auto& animation = world.component<mmd_node_animation>(root);
 
         math::float3 translate =
-            math::vector_plain::add(animation.animation_translate, transform.position);
+            math::vector_plain::add(animation.animation_translate, transform.position());
         if (node.is_inherit_translation)
             translate = math::vector_plain::add(translate, node.inherit_translate);
 
         math::float4 rotate =
-            math::quaternion_plain::mul(animation.animation_rotate, transform.rotation);
+            math::quaternion_plain::mul(animation.animation_rotate, transform.rotation());
         if (world.has_component<mmd_ik_link>(root))
             rotate =
                 math::quaternion_plain::mul(world.component<mmd_ik_link>(root).ik_rotate, rotate);
@@ -254,7 +254,7 @@ void mmd_animation::update_transform(mmd_skeleton& skeleton, std::size_t index)
             rotate = math::quaternion_plain::mul(rotate, node.inherit_rotate);
 
         skeleton.local[node.index] =
-            math::matrix_plain::affine_transform(transform.scaling, rotate, translate);
+            math::matrix_plain::affine_transform(transform.scale(), rotate, translate);
     }
 
     // Update world.
@@ -282,7 +282,7 @@ void mmd_animation::update_transform(mmd_skeleton& skeleton, std::size_t index)
             {
                 auto& parent = world.component<scene::transform>(link.parent);
                 skeleton.world[node.index] =
-                    math::matrix_plain::mul(skeleton.local[node.index], parent.world_matrix);
+                    math::matrix_plain::mul(skeleton.local[node.index], parent.to_world());
             }
 
             for (auto& c : link.children)
@@ -311,7 +311,7 @@ void mmd_animation::update_inherit(
         {
             rotate = math::quaternion_plain::mul(
                 inherit_animation.animation_rotate,
-                inherit_transform.rotation);
+                inherit_transform.rotation());
         }
         else
         {
@@ -323,7 +323,7 @@ void mmd_animation::update_inherit(
             {
                 rotate = math::quaternion_plain::mul(
                     inherit_animation.animation_rotate,
-                    inherit_transform.rotation);
+                    inherit_transform.rotation());
             }
         }
 
@@ -346,7 +346,7 @@ void mmd_animation::update_inherit(
         if (node.inherit_local_flag)
         {
             translate =
-                math::vector_plain::sub(inherit_transform.position, inherit.initial_position);
+                math::vector_plain::sub(inherit_transform.position(), inherit.initial_position);
         }
         else
         {
@@ -357,7 +357,7 @@ void mmd_animation::update_inherit(
             else
             {
                 translate =
-                    math::vector_plain::sub(inherit_transform.position, inherit.initial_position);
+                    math::vector_plain::sub(inherit_transform.position(), inherit.initial_position);
             }
         }
         node.inherit_translate = math::vector_plain::scale(translate, node.inherit_weight);
@@ -488,7 +488,7 @@ void mmd_animation::ik_solve_core(
         auto& transform = world.component<scene::transform>(link_entity);
 
         auto animation_rotate =
-            math::quaternion_plain::mul(animation.animation_rotate, transform.rotation);
+            math::quaternion_plain::mul(animation.animation_rotate, transform.rotation());
         auto link_rotate = math::quaternion_plain::mul(link.ik_rotate, animation_rotate);
         link_rotate = math::quaternion_plain::mul(link_rotate, rotate);
 
@@ -594,7 +594,7 @@ void mmd_animation::ik_solve_plane(
     auto& animation = world.component<mmd_node_animation>(link_entity);
     auto& transform = world.component<scene::transform>(link_entity);
     auto animation_rotate =
-        math::quaternion_plain::mul(animation.animation_rotate, transform.rotation);
+        math::quaternion_plain::mul(animation.animation_rotate, transform.rotation());
 
     link.ik_rotate = math::quaternion_plain::rotation_axis(rotate_axis, new_angle);
     link.ik_rotate = math::quaternion_plain::mul(

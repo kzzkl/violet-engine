@@ -26,12 +26,14 @@ public:
 
     void frustum_culling(const std::vector<math::float4>& frustum);
 
+    void draw_aabb();
+
 private:
     void on_entity_link(ecs::entity entity, core::link& link);
     void on_entity_unlink(ecs::entity entity, core::link& link);
 
     ash::ecs::view<transform>* m_view;
-    ash::ecs::view<bounding_box>* m_bounding_box_view;
+    ash::ecs::view<transform, bounding_box>* m_bounding_box_view;
     ash::ecs::entity m_root;
 
     bvh_tree m_static_bvh;

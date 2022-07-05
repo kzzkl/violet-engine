@@ -31,9 +31,9 @@ scene_view::scene_view(ui::dock_area* area, const ui::dock_window_theme& theme)
     world.add<core::link, graphics::camera, scene::transform>(m_camera);
 
     auto& transform = world.component<scene::transform>(m_camera);
-    transform.position = {0.0f, 10.0f, -40.0f};
-    transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
-    transform.scaling = {1.0f, 1.0f, 1.0f};
+    transform.position(math::float3{0.0f, 10.0f, -40.0f});
+    transform.rotation(math::float4{0.0f, 0.0f, 0.0f, 1.0f});
+    transform.scale(math::float3{1.0f, 1.0f, 1.0f});
 
     relation.link(m_camera, scene.root());
 
@@ -110,7 +110,7 @@ void scene_view::update_camera()
         if (mouse.key(window::MOUSE_KEY_RIGHT).down())
         {
             math::float4x4_simd to_local =
-                math::matrix_simd::inverse(math::simd::load(transform.world_matrix));
+                math::matrix_simd::inverse(math::simd::load(transform.to_world()));
 
             math::float4_simd rotate_x = math::quaternion_simd::rotation_axis(
                 math::simd::set(1.0f, 0.0f, 0.0f, 0.0f),
@@ -119,42 +119,37 @@ void scene_view::update_camera()
                 to_local[1],
                 relative_x * delta * m_camera_rotate_speed);
 
-            math::float4_simd rotation = math::simd::load(transform.rotation);
+            math::float4_simd rotation = math::simd::load(transform.rotation());
             rotation = math::quaternion_simd::mul(rotation, rotate_y);
             rotation = math::quaternion_simd::mul(rotation, rotate_x);
-            math::simd::store(rotation, transform.rotation);
+            transform.rotation(rotation);
 
-            transform.dirty = true;
             system<scene::scene>().sync_local(m_camera);
         }
 
         if (mouse.key(window::MOUSE_KEY_MIDDLE).down())
         {
-            math::float4_simd up = math::simd::load(transform.world_matrix[1]);
-            math::float4_simd right = math::simd::load(transform.world_matrix[0]);
+            math::float4_simd up = math::simd::load(transform.to_world()[1]);
+            math::float4_simd right = math::simd::load(transform.to_world()[0]);
 
             up = math::vector_simd::scale(up, relative_y * delta * m_camera_move_speed);
             right = math::vector_simd::scale(right, -relative_x * delta * m_camera_move_speed);
 
-            math::float4_simd position = math::simd::load(transform.position);
+            math::float4_simd position = math::simd::load(transform.position());
             position = math::vector_simd::add(position, up);
             position = math::vector_simd::add(position, right);
-            math::simd::store(position, transform.position);
-
-            transform.dirty = true;
+            transform.position(position);
         }
 
         if (mouse.whell() != 0)
         {
-            math::float4_simd forward = math::simd::load(transform.world_matrix[2]);
+            math::float4_simd forward = math::simd::load(transform.to_world()[2]);
             forward =
                 math::vector_simd::scale(forward, mouse.whell() * delta * m_camera_move_speed * 50);
 
-            math::float4_simd position = math::simd::load(transform.position);
+            math::float4_simd position = math::simd::load(transform.position());
             position = math::vector_simd::add(position, forward);
-            math::simd::store(position, transform.position);
-
-            transform.dirty = true;
+            transform.position(position);
         }
     }
 }
