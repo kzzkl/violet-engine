@@ -111,7 +111,7 @@ void mmd_loader::load_hierarchy(
             auto& parent_node = skeleton.nodes[pmx_bone.parent_index];
 
             node_transform.position(
-                math::vector_plain::sub(pmx_bone.position, pmx_parent_bone.position));
+                math::vector::sub(pmx_bone.position, pmx_parent_bone.position));
 
             relation.link(node_entity, parent_node);
         }
@@ -396,7 +396,7 @@ void mmd_loader::load_physics(ecs::entity entity, mmd_resource& resource, const 
 
     for (auto& pmx_rigidbody : loader.rigidbodies())
     {
-        rigidbody_transform.push_back(math::matrix_plain::affine_transform(
+        rigidbody_transform.push_back(math::matrix::affine_transform(
             math::float3{1.0f, 1.0f, 1.0f},
             pmx_rigidbody.rotate,
             pmx_rigidbody.translate));
@@ -445,12 +445,12 @@ void mmd_loader::load_physics(ecs::entity entity, mmd_resource& resource, const 
         rigidbody.collision_group = 1 << pmx_rigidbody.group;
         rigidbody.collision_mask = pmx_rigidbody.collision_group;
 
-        rigidbody.offset = math::matrix_plain::mul(
-            math::matrix_plain::affine_transform(
+        rigidbody.offset = math::matrix::mul(
+            math::matrix::affine_transform(
                 math::float3{1.0f, 1.0f, 1.0f},
                 pmx_rigidbody.rotate,
                 pmx_rigidbody.translate),
-            math::matrix_plain::inverse(world.component<scene::transform>(node).to_world()));
+            math::matrix::inverse(world.component<scene::transform>(node).to_world()));
     }
 
     ecs::entity joint_group = world.create("joints");

@@ -21,8 +21,8 @@ struct rigidbody
     std::uint32_t collision_group{1};
     std::uint32_t collision_mask{COLLISION_MASK_ALL};
 
-    math::float4x4 offset{math::matrix_plain::identity()};
-    math::float4x4 offset_inverse{math::matrix_plain::identity()};
+    math::float4x4 offset{math::matrix::identity()};
+    math::float4x4 offset_inverse{math::matrix::identity()};
 
     std::unique_ptr<rigidbody_interface> interface;
 };

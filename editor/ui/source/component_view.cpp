@@ -91,7 +91,7 @@ void transform_panel::tick(bool entity_change, ecs::entity entity)
     auto& transform = world.component<scene::transform>(m_entity);
     auto& position = transform.position();
     auto& scale = transform.scale();
-    auto euler = math::euler_plain::rotation_quaternion(transform.rotation());
+    auto euler = math::euler::rotation_quaternion(transform.rotation());
     for (std::size_t i = 0; i < 3; ++i)
     {
         // Update position.
@@ -172,9 +172,9 @@ void transform_panel::initialize_rotation()
         m_rotation_input[i]->on_value_change = [&, i, this](float value) {
             auto& transform = world.component<scene::transform>(m_entity);
 
-            auto euler = math::euler_plain::rotation_quaternion(transform.rotation());
+            auto euler = math::euler::rotation_quaternion(transform.rotation());
             euler[i] = value;
-            transform.rotation(math::quaternion_plain::rotation_euler(euler));
+            transform.rotation(math::quaternion::rotation_euler(euler));
         };
         m_rotation->add(m_rotation_input[i].get());
 

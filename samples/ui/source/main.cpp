@@ -58,7 +58,7 @@ private:
 
         auto& c_transform = world.component<scene::transform>(m_camera);
         c_transform.position = {0.0f, 0.0f, -38.0f};
-        c_transform.world_matrix = math::matrix_plain::affine_transform(
+        c_transform.world_matrix = math::matrix::affine_transform(
             c_transform.scaling,
             c_transform.rotation,
             c_transform.position);

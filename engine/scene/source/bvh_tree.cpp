@@ -283,7 +283,7 @@ std::size_t bvh_tree::rotate(std::size_t index)
 float bvh_tree::calculate_cost(const bounding_volume_aabb& aabb)
 {
     // SAH.
-    math::float3 d = math::vector_plain::sub(aabb.max, aabb.min);
+    math::float3 d = math::vector::sub(aabb.max, aabb.min);
     return d[0] * d[1] + d[1] * d[2] + d[2] * d[0];
 }
 

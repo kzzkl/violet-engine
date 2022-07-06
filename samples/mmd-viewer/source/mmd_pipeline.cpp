@@ -209,7 +209,7 @@ void skin_pipeline_parameter::bone_transform(const std::vector<math::float4x4>& 
     ASH_ASSERT(bone_transform.size() <= constant.bone_transform.size());
 
     for (std::size_t i = 0; i < bone_transform.size(); ++i)
-        constant.bone_transform[i] = math::matrix_plain::transpose(bone_transform[i]);
+        constant.bone_transform[i] = math::matrix::transpose(bone_transform[i]);
 }
 
 void skin_pipeline_parameter::input_position(graphics::resource_interface* position)

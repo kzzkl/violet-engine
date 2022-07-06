@@ -5,7 +5,7 @@
 
 namespace ash::math
 {
-class quaternion_plain
+class quaternion
 {
 public:
     using quaternion_type = float4;
@@ -80,7 +80,7 @@ public:
             }
         }
 
-        result = vector_plain::scale(result, 0.5f / sqrtf(t));
+        result = vector::scale(result, 0.5f / sqrtf(t));
         return result;
     }
 
@@ -120,17 +120,17 @@ public:
 
     static inline quaternion_type inverse(const quaternion_type& q)
     {
-        return vector_plain::scale(conjugate(q), 1.0f / vector_plain::dot(q, q));
+        return vector::scale(conjugate(q), 1.0f / vector::dot(q, q));
     }
 
     static inline quaternion_type slerp(const quaternion_type& a, const quaternion_type& b, float t)
     {
-        float cos_omega = vector_plain::dot(a, b);
+        float cos_omega = vector::dot(a, b);
 
         quaternion_type c = b;
         if (cos_omega < 0.0f)
         {
-            c = vector_plain::scale(b, -1.0f);
+            c = vector::scale(b, -1.0f);
             cos_omega = -cos_omega;
         }
 
@@ -170,7 +170,7 @@ public:
         // TODO
         float4 a;
         simd::store(axis, a);
-        float4 result = quaternion_plain::rotation_axis(a, radians);
+        float4 result = quaternion::rotation_axis(a, radians);
         return simd::load(result);
     }
 
@@ -179,7 +179,7 @@ public:
         // TODO
         float4 e;
         simd::store(euler, e);
-        float4 result = quaternion_plain::rotation_euler(e);
+        float4 result = quaternion::rotation_euler(e);
         return simd::load(result);
     }
 
@@ -188,7 +188,7 @@ public:
         // TODO
         float4x4 temp;
         simd::store(m, temp);
-        float4 q = quaternion_plain::rotation_matrix(temp);
+        float4 q = quaternion::rotation_matrix(temp);
         return simd::load(q);
     }
 

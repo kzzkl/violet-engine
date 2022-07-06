@@ -40,7 +40,7 @@ public:
 
     void rotation_euler(const math::float3& euler)
     {
-        m_rotation = math::quaternion_plain::rotation_euler(euler);
+        m_rotation = math::quaternion::rotation_euler(euler);
         m_dirty = true;
     }
 
@@ -75,8 +75,8 @@ public:
 
     bool dirty() const noexcept { return m_dirty; }
 
-    void reset_sync_count() noexcept { m_sync_count = 0; }
     std::size_t sync_count() const noexcept { return m_sync_count; }
+    void reset_sync_count() noexcept { m_sync_count = 0; }
 
 private:
     math::float3 m_position;

@@ -177,7 +177,7 @@ void bvh_viewer::move_cube()
         position[1] += m_move_direction[i][1] * delta;
 
         transform.position(position);
-        transform.rotation(math::quaternion_plain::rotation_euler(position));
+        transform.rotation(math::quaternion::rotation_euler(position));
     }
 
     system<scene::scene>().sync_local();
@@ -188,8 +188,8 @@ void bvh_viewer::frustum_culling()
     auto& camera = system<ecs::world>().component<graphics::camera>(m_camera);
     auto& transform = system<ecs::world>().component<scene::transform>(m_camera);
 
-    math::float4x4 vp = math::matrix_plain::mul(
-        math::matrix_plain::inverse(transform.to_world()),
+    math::float4x4 vp = math::matrix::mul(
+        math::matrix::inverse(transform.to_world()),
         camera.projection());
 
     math::float4_simd x = math::simd::set(vp[0][0], vp[1][0], vp[2][0], vp[3][0]);

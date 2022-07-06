@@ -8,7 +8,7 @@
 
 namespace ash::math
 {
-class matrix_plain
+class matrix
 {
 public:
     static inline float4x4 mul(const float4x4& m1, const float4x4& m2)
@@ -279,17 +279,17 @@ public:
         float4& rotation,
         float3& translation)
     {
-        scale[0] = vector_plain::length(m[0]);
-        scale[1] = vector_plain::length(m[1]);
-        scale[2] = vector_plain::length(m[2]);
+        scale[0] = vector::length(m[0]);
+        scale[1] = vector::length(m[1]);
+        scale[2] = vector::length(m[2]);
 
         float4x4 r = {
-            vector_plain::scale(m[0], 1.0f / scale[0]),
-            vector_plain::scale(m[1], 1.0f / scale[1]),
-            vector_plain::scale(m[2], 1.0f / scale[2]),
+            vector::scale(m[0], 1.0f / scale[0]),
+            vector::scale(m[1], 1.0f / scale[1]),
+            vector::scale(m[2], 1.0f / scale[2]),
             {0.0f, 0.0f, 0.0f, 1.0f}
         };
-        rotation = quaternion_plain::rotation_matrix(r);
+        rotation = quaternion::rotation_matrix(r);
 
         translation = {m[3][0], m[3][1], m[3][2]};
     }
@@ -300,17 +300,17 @@ public:
         float4& rotation,
         float4& translation)
     {
-        scale[0] = vector_plain::length(m[0]);
-        scale[1] = vector_plain::length(m[1]);
-        scale[2] = vector_plain::length(m[2]);
+        scale[0] = vector::length(m[0]);
+        scale[1] = vector::length(m[1]);
+        scale[2] = vector::length(m[2]);
 
         float4x4 r = {
-            vector_plain::scale(m[0], 1.0f / scale[0]),
-            vector_plain::scale(m[1], 1.0f / scale[1]),
-            vector_plain::scale(m[2], 1.0f / scale[2]),
+            vector::scale(m[0], 1.0f / scale[0]),
+            vector::scale(m[1], 1.0f / scale[1]),
+            vector::scale(m[2], 1.0f / scale[2]),
             {0.0f, 0.0f, 0.0f, 1.0f}
         };
-        rotation = quaternion_plain::rotation_matrix(r);
+        rotation = quaternion::rotation_matrix(r);
 
         translation = m[3];
     }
@@ -453,7 +453,7 @@ public:
         // TODO
         float4x4 result;
         simd::store(m, result);
-        result = matrix_plain::inverse(result);
+        result = matrix::inverse(result);
         return simd::load(result);
     }
 
@@ -603,7 +603,7 @@ public:
     static inline float4x4_simd perspective(float fov, float aspect, float zn, float zf)
     {
         // TODO
-        float4x4 result = matrix_plain::perspective(fov, aspect, zn, zf);
+        float4x4 result = matrix::perspective(fov, aspect, zn, zf);
         return simd::load(result);
     }
 };

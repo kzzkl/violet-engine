@@ -20,17 +20,17 @@ void camera_pipeline_parameter::direction(const math::float3& direction)
 
 void camera_pipeline_parameter::view(const math::float4x4& view)
 {
-    field<constant_data>(0).view = math::matrix_plain::transpose(view);
+    field<constant_data>(0).view = math::matrix::transpose(view);
 }
 
 void camera_pipeline_parameter::projection(const math::float4x4& projection)
 {
-    field<constant_data>(0).projection = math::matrix_plain::transpose(projection);
+    field<constant_data>(0).projection = math::matrix::transpose(projection);
 }
 
 void camera_pipeline_parameter::view_projection(const math::float4x4& view_projection)
 {
-    field<constant_data>(0).view_projection = math::matrix_plain::transpose(view_projection);
+    field<constant_data>(0).view_projection = math::matrix::transpose(view_projection);
 }
 
 std::vector<pipeline_parameter_pair> camera_pipeline_parameter::layout()
@@ -46,7 +46,7 @@ camera::camera() noexcept
       m_near_z(0.3f),
       m_far_z(1000.0f),
       m_flip_y(false),
-      m_projection(math::matrix_plain::identity()),
+      m_projection(math::matrix::identity()),
       m_render_target(nullptr),
       m_render_target_resolve(nullptr),
       m_depth_stencil_buffer(nullptr),

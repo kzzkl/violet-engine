@@ -58,7 +58,7 @@ public:
 
             auto& t = world.component<transform>(m_cube_1);
             t.position = {1.0f, 0.0f, 0.0f};
-            t.rotation = math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f);
+            t.rotation = math::quaternion::rotation_euler(1.0f, 1.0f, 0.5f);
 
             auto& r = world.component<rigidbody>(m_cube_1);
             r.shape = m_cube_shape.get();
@@ -89,7 +89,7 @@ public:
 
             auto& t = world.component<transform>(m_cube_2);
             t.position = {-1.0f, 0.0f, 0.0f};
-            t.rotation = math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f);
+            t.rotation = math::quaternion::rotation_euler(1.0f, 1.0f, 0.5f);
 
             auto& r = world.component<rigidbody>(m_cube_2);
             r.shape = m_cube_shape.get();
@@ -169,7 +169,7 @@ private:
 
         auto& c_transform = world.component<transform>(m_camera);
         c_transform.position = {0.0f, 0.0f, -38.0f};
-        c_transform.world_matrix = math::matrix_plain::affine_transform(
+        c_transform.world_matrix = math::matrix::affine_transform(
             c_transform.scaling,
             c_transform.rotation,
             c_transform.position);
@@ -242,7 +242,7 @@ private:
             m_pitch += mouse.y() * m_rotate_speed * delta;
             m_pitch = std::clamp(m_pitch, -math::PI_PIDIV2, math::PI_PIDIV2);
             camera_transform.rotation =
-                math::quaternion_plain::rotation_euler(m_heading, m_pitch, 0.0f);
+                math::quaternion::rotation_euler(m_heading, m_pitch, 0.0f);
         }
 
         float x = 0, z = 0;

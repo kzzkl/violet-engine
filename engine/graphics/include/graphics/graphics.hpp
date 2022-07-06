@@ -6,6 +6,7 @@
 #include "graphics/light.hpp"
 #include "graphics/mesh_render.hpp"
 #include "graphics/skinned_mesh.hpp"
+#include "scene/bounding_box.hpp"
 #include "scene/transform.hpp"
 #include "type_trait.hpp"
 
@@ -20,8 +21,6 @@ public:
     virtual void shutdown() override;
 
     void compute(compute_pipeline* pipeline);
-
-    void skin_meshes();
     void render(ecs::entity camera_entity);
 
     void game_camera(ecs::entity game_camera) noexcept { m_game_camera = game_camera; }
@@ -40,6 +39,7 @@ public:
     resource_extent render_extent() const noexcept;
 
 private:
+    void skin_meshes();
     void render();
     void render_camera(ecs::entity camera_entity);
     void present();

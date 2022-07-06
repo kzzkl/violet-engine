@@ -5,7 +5,7 @@
 
 namespace ash::math
 {
-class euler_plain
+class euler
 {
 public:
     using euler_type = float3;

@@ -304,7 +304,7 @@ void ui::resize(std::uint32_t width, std::uint32_t height)
     float R = static_cast<float>(width);
     float T = 0.0f;
     float B = static_cast<float>(height);
-    math::float4x4 orthographic = math::matrix_plain::orthographic(
+    math::float4x4 orthographic = math::matrix::orthographic(
         0.0f,
         static_cast<float>(width),
         static_cast<float>(height),

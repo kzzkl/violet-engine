@@ -33,14 +33,14 @@ math::float2 mmd_bezier::sample(float t) const noexcept
     static constexpr math::float2 p0 = {0.0f, 0.0f};
     static constexpr math::float2 p3 = {1.0f, 1.0f};
 
-    math::float2 p01 = math::vector_plain::lerp(p0, m_p1, t);
-    math::float2 p12 = math::vector_plain::lerp(m_p1, m_p2, t);
-    math::float2 p23 = math::vector_plain::lerp(m_p2, p3, t);
+    math::float2 p01 = math::vector::lerp(p0, m_p1, t);
+    math::float2 p12 = math::vector::lerp(m_p1, m_p2, t);
+    math::float2 p23 = math::vector::lerp(m_p2, p3, t);
 
-    math::float2 p012 = math::vector_plain::lerp(p01, p12, t);
-    math::float2 p123 = math::vector_plain::lerp(p12, p23, t);
+    math::float2 p012 = math::vector::lerp(p01, p12, t);
+    math::float2 p123 = math::vector::lerp(p12, p23, t);
 
-    return math::vector_plain::lerp(p012, p123, t);
+    return math::vector::lerp(p012, p123, t);
 }
 
 float mmd_bezier::sample_x(float t) const noexcept

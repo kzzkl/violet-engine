@@ -5,7 +5,7 @@
 
 namespace ash::math
 {
-class vector_plain
+class vector
 {
 public:
     using vector2 = float2;

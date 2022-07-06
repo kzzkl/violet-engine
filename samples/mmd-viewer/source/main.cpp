@@ -4,6 +4,7 @@
 #include "graphics/geometry.hpp"
 #include "graphics/graphics.hpp"
 #include "graphics/rhi.hpp"
+#include "graphics/standard_pipeline.hpp"
 #include "mmd_animation.hpp"
 #include "mmd_viewer.hpp"
 #include "physics/physics.hpp"
@@ -66,24 +67,42 @@ private:
 
     void initialize_plane()
     {
-        physics::collision_shape_desc desc;
-        desc.type = physics::collision_shape_type::BOX;
-        desc.box.length = 1000.0f;
-        desc.box.height = 0.5f;
-        desc.box.width = 1000.0f;
-        m_plane_shape = system<physics::physics>().make_shape(desc);
+        auto plane_mesh_data = graphics::geometry::box(1.0f, 1.0f, 1.0f);
+        m_plane_positon_buffer = graphics::rhi::make_vertex_buffer(
+            plane_mesh_data.position.data(),
+            plane_mesh_data.position.size());
+        m_plane_normal_buffer = graphics::rhi::make_vertex_buffer(
+            plane_mesh_data.normal.data(),
+            plane_mesh_data.normal.size());
+        m_plane_index_buffer = graphics::rhi::make_index_buffer(
+            plane_mesh_data.indices.data(),
+            plane_mesh_data.indices.size());
+        m_plane_material = std::make_unique<graphics::standard_material_pipeline_parameter>();
+        m_plane_material->diffuse(math::float3{1.0f, 1.0f, 1.0f});
+        m_standard_pipeline = std::make_unique<graphics::standard_pipeline>();
 
         ecs::world& world = system<ecs::world>();
+
         m_plane = world.create();
+        world.add<core::link, graphics::mesh_render, scene::transform, scene::bounding_box>(
+            m_plane);
 
-        world.add<core::link, physics::rigidbody, scene::transform>(m_plane);
+        auto& transform = world.component<scene::transform>(m_plane);
+        transform.position(math::float3{0.0f, -0.25f, 0.0f});
+        transform.scale(math::float3{100.0f, 0.5f, 100.0f});
 
-        auto& t = world.component<scene::transform>(m_plane);
-        t.position(math::float3{0.0f, -3.0f, 0.0f});
+        auto& mesh_render = world.component<graphics::mesh_render>(m_plane);
+        mesh_render.vertex_buffers = {m_plane_positon_buffer.get(), m_plane_normal_buffer.get()};
+        mesh_render.index_buffer = m_plane_index_buffer.get();
+        mesh_render.object_parameter = std::make_unique<graphics::object_pipeline_parameter>();
 
-        auto& r = world.component<physics::rigidbody>(m_plane);
-        r.shape = m_plane_shape.get();
-        r.mass = 0.0f;
+        graphics::material material = {};
+        material.pipeline = m_standard_pipeline.get();
+        material.parameters = {
+            mesh_render.object_parameter->interface(),
+            m_plane_material->interface()};
+        mesh_render.materials.push_back(material);
+        mesh_render.submeshes.push_back(graphics::submesh{0, 36, 0});
 
         system<core::relation>().link(m_plane, system<scene::scene>().root());
     }
@@ -111,11 +130,7 @@ private:
     {
         auto& task = system<task::task_manager>();
 
-        auto update_task = task.schedule("test update", [this]() {
-            update();
-            auto& graphics = system<graphics::graphics>();
-            graphics.skin_meshes();
-        });
+        auto update_task = task.schedule("test update", [this]() { update(); });
 
         update_task->add_dependency(*task.find(task::TASK_GAME_LOGIC_START));
         task.find(task::TASK_GAME_LOGIC_END)->add_dependency(*update_task);
@@ -231,7 +246,11 @@ private:
     std::unique_ptr<graphics::resource_interface> m_render_target;
     std::unique_ptr<graphics::resource_interface> m_depth_stencil_buffer;
 
-    std::unique_ptr<physics::collision_shape_interface> m_plane_shape;
+    std::unique_ptr<graphics::resource_interface> m_plane_positon_buffer;
+    std::unique_ptr<graphics::resource_interface> m_plane_normal_buffer;
+    std::unique_ptr<graphics::resource_interface> m_plane_index_buffer;
+    std::unique_ptr<graphics::standard_material_pipeline_parameter> m_plane_material;
+    std::unique_ptr<graphics::standard_pipeline> m_standard_pipeline;
 
     float m_heading = 0.0f, m_pitch = 0.0f;
 

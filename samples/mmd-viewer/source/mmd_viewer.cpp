@@ -72,7 +72,7 @@ void mmd_viewer::update()
         for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
         {
             auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
-            math::matrix_plain::decompose(skeleton.local[i], scale, rotation, position);
+            math::matrix::decompose(skeleton.local[i], scale, rotation, position);
             transform.scale(scale);
             transform.rotation(rotation);
             transform.position(position);

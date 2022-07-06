@@ -9,7 +9,7 @@ mvp_pipeline_parameter::mvp_pipeline_parameter() : graphics::pipeline_parameter(
 
 void mvp_pipeline_parameter::mvp_matrix(const math::float4x4& mvp)
 {
-    field<math::float4x4>(0) = math::matrix_plain::transpose(mvp);
+    field<math::float4x4>(0) = math::matrix::transpose(mvp);
 }
 
 std::vector<graphics::pipeline_parameter_pair> mvp_pipeline_parameter::layout()

@@ -7,8 +7,8 @@ transform::transform()
     : m_position{0.0f, 0.0f, 0.0f},
       m_rotation{0.0f, 0.0f, 0.0f, 1.0f},
       m_scale{1.0f, 1.0f, 1.0f},
-      m_to_parent(math::matrix_plain::identity()),
-      m_to_world(math::matrix_plain::identity()),
+      m_to_parent(math::matrix::identity()),
+      m_to_world(math::matrix::identity()),
       m_in_scene(false),
       m_dirty(false),
       m_sync_count(0)

@@ -5,11 +5,10 @@
 #include "graphics/rhi.hpp"
 #include "graphics/skin_pipeline.hpp"
 #include "graphics/standard_pipeline.hpp"
-#include "scene/transform.hpp"
+#include "scene/scene.hpp"
 #include "task/task_manager.hpp"
 #include "window/window.hpp"
 #include "window/window_event.hpp"
-#include <fstream>
 #include <set>
 
 using namespace ash::math;
@@ -97,6 +96,28 @@ void graphics::compute(compute_pipeline* pipeline)
     rhi::renderer().execute(command);
 }
 
+void graphics::render(ecs::entity target_camera)
+{
+    m_render_queue.push(target_camera);
+}
+
+resource_extent graphics::render_extent() const noexcept
+{
+    if (is_editor_mode())
+    {
+        auto& world = system<ecs::world>();
+        auto render_target = world.component<camera>(m_scene_camera).render_target();
+        if (render_target != nullptr)
+            return render_target->extent();
+        else
+            return rhi::renderer().back_buffer()->extent();
+    }
+    else
+    {
+        return rhi::renderer().back_buffer()->extent();
+    }
+}
+
 void graphics::skin_meshes()
 {
     auto command = rhi::renderer().allocate_command();
@@ -125,28 +146,6 @@ void graphics::skin_meshes()
     rhi::renderer().execute(command);
 }
 
-void graphics::render(ecs::entity target_camera)
-{
-    m_render_queue.push(target_camera);
-}
-
-resource_extent graphics::render_extent() const noexcept
-{
-    if (is_editor_mode())
-    {
-        auto& world = system<ecs::world>();
-        auto render_target = world.component<camera>(m_scene_camera).render_target();
-        if (render_target != nullptr)
-            return render_target->extent();
-        else
-            return rhi::renderer().back_buffer()->extent();
-    }
-    else
-    {
-        return rhi::renderer().back_buffer()->extent();
-    }
-}
-
 void graphics::render()
 {
     auto& world = system<ecs::world>();
@@ -155,6 +154,12 @@ void graphics::render()
     ASH_ASSERT(main_camera != ecs::INVALID_ENTITY);
     world.component<camera>(main_camera).render_target_resolve(rhi::renderer().back_buffer());
     m_render_queue.push(main_camera);
+
+    // Upload debug draw data.
+    m_debug->sync();
+
+    // Skin.
+    skin_meshes();
 
     // Update object data.
     m_object_view->each([&, this](mesh_render& mesh_render, scene::transform& transform) {
@@ -169,21 +174,13 @@ void graphics::render()
     }
 }
 
-void graphics::present()
-{
-    rhi::renderer().present();
-    m_debug->next_frame();
-}
-
 void graphics::render_camera(ecs::entity camera_entity)
 {
     auto& world = system<ecs::world>();
+    auto& scene = system<scene::scene>();
 
     auto& render_camera = world.component<camera>(camera_entity);
     auto& transform = world.component<scene::transform>(camera_entity);
-
-    if (render_camera.render_groups & RENDER_GROUP_DEBUG)
-        m_debug->sync();
 
     // Update camera data.
     math::float4x4_simd world_simd = math::simd::load(transform.to_world());
@@ -198,10 +195,52 @@ void graphics::render_camera(ecs::entity camera_entity)
     render_camera.pipeline_parameter()->projection(render_camera.projection());
     render_camera.pipeline_parameter()->view_projection(view_projection);
 
+    // Frustum culling.
+    math::float4_simd x = math::simd::set(
+        view_projection[0][0],
+        view_projection[1][0],
+        view_projection[2][0],
+        view_projection[3][0]);
+    math::float4_simd y = math::simd::set(
+        view_projection[0][1],
+        view_projection[1][1],
+        view_projection[2][1],
+        view_projection[3][1]);
+    math::float4_simd z = math::simd::set(
+        view_projection[0][2],
+        view_projection[1][2],
+        view_projection[2][2],
+        view_projection[3][2]);
+    math::float4_simd w = math::simd::set(
+        view_projection[0][3],
+        view_projection[1][3],
+        view_projection[2][3],
+        view_projection[3][3]);
+
+    std::vector<math::float4> planes(6);
+    std::vector<math::float4_simd> ps = {
+        math::vector_simd::add(w, x),
+        math::vector_simd::sub(w, x),
+        math::vector_simd::add(w, y),
+        math::vector_simd::sub(w, y),
+        z,
+        math::vector_simd::sub(w, z)};
+
+    for (std::size_t i = 0; i < 6; ++i)
+    {
+        math::float4_simd length = math::vector_simd::length_vec3_v(ps[i]);
+        ps[i] = math::vector_simd::div(ps[i], length);
+        math::simd::store(ps[i], planes[i]);
+    }
+    scene.frustum_culling(planes);
+
+    // Render.
     std::unordered_map<render_pipeline*, render_scene> render_scenes;
     m_render_view->each([&, this](mesh_render& mesh_render) {
         if ((mesh_render.render_groups & render_camera.render_groups) == 0)
             return;
+        // if ((mesh_render.render_groups & RENDER_GROUP_UI) == 0 && !bounding_box.visible())
+        //     return;
 
         for (std::size_t i = 0; i < mesh_render.materials.size(); ++i)
         {
@@ -229,5 +268,11 @@ void graphics::render_camera(ecs::entity camera_entity)
     }
 
     rhi::renderer().execute(command);
+}
+
+void graphics::present()
+{
+    rhi::renderer().present();
+    m_debug->next_frame();
 }
 } // namespace ash::graphics
