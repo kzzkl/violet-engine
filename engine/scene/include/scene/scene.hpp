@@ -16,6 +16,7 @@ public:
     scene(const scene&) = delete;
 
     virtual bool initialize(const dictionary& config) override;
+    virtual void on_begin_frame() override;
 
     ecs::entity root() const noexcept { return m_root; }
 
@@ -32,8 +33,6 @@ private:
     void on_entity_link(ecs::entity entity, core::link& link);
     void on_entity_unlink(ecs::entity entity, core::link& link);
 
-    ash::ecs::view<transform>* m_view;
-    ash::ecs::view<transform, bounding_box>* m_bounding_box_view;
     ash::ecs::entity m_root;
 
     bvh_tree m_static_bvh;

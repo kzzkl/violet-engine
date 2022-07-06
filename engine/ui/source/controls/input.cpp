@@ -314,13 +314,13 @@ void input::put_char(char c)
 
 input_float::input_float(const input_theme& theme) : input(theme), m_value(0.0f)
 {
-    text(std::format("{}", m_value));
+    text(std::format("{:.5f}", m_value));
 }
 
 void input_float::value(float value)
 {
     m_value = value;
-    text(std::format("{}", m_value));
+    text(std::format("{:.5f}", m_value));
 }
 
 bool input_float::set_value(std::string_view text)

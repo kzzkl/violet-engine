@@ -18,7 +18,7 @@ window::window()
     : system_base("window"),
       m_impl(std::make_unique<window_impl_win32>()),
       m_mouse(m_impl.get()),
-      m_average_duration(0.0f),
+      m_average_duration(1.0f / 60.0f),
       m_fps(0)
 {
 }

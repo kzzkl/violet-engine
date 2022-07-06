@@ -34,7 +34,9 @@ void application::run()
     while (!m_exit)
     {
         time.tick<timer::point::FRAME_START>();
+        context::begin_frame();
         task.execute(root_task);
+        context::end_frame();
         time.tick<timer::point::FRAME_END>();
 
         /*

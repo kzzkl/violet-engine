@@ -53,12 +53,5 @@ private:
             return lhs < rhs.frame;
         });
     }
-
-    ecs::view<mmd_skeleton>* m_view;
-
-    ecs::view<mmd_node, mmd_node_animation>* m_node_view;
-    ecs::view<mmd_node, mmd_ik_solver>* m_ik_view;
-
-    ecs::view<mmd_node, scene::transform>* m_transform_view;
 };
 } // namespace ash::sample::mmd

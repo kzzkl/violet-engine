@@ -23,7 +23,6 @@ public:
 
 private:
     std::map<std::string, mmd_resource> m_resources;
-    ash::ecs::view<mmd_skeleton, graphics::skinned_mesh>* m_skeleton_view;
     std::unique_ptr<mmd_loader> m_loader;
 
     std::unique_ptr<mmd_render_pipeline> m_render_pipeline;

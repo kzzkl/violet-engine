@@ -14,8 +14,6 @@ bool mmd_viewer::initialize(const dictionary& config)
     world.register_component<mmd_node>();
     world.register_component<mmd_skeleton>();
 
-    m_skeleton_view = world.make_view<mmd_skeleton, graphics::skinned_mesh>();
-
     m_loader = std::make_unique<mmd_loader>();
     m_loader->initialize();
 
@@ -57,50 +55,53 @@ void mmd_viewer::update()
     auto& scene = system<scene::scene>();
     auto& animation = system<mmd_animation>();
 
-    m_skeleton_view->each([&](ecs::entity entity, mmd_skeleton& skeleton, graphics::skinned_mesh&) {
-        reset(entity);
-    });
+    world.view<mmd_skeleton, graphics::skinned_mesh>().each(
+        [&](ecs::entity entity, mmd_skeleton& skeleton, graphics::skinned_mesh&) {
+            reset(entity);
+        });
 
     static float delta = 0.0f;
     delta += system<core::timer>().frame_delta();
     animation.evaluate(delta * 30.0f);
     animation.update(false);
-    m_skeleton_view->each([&](mmd_skeleton& skeleton, graphics::skinned_mesh&) {
-        math::float3 position;
-        math::float4 rotation;
-        math::float3 scale;
-        for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
-        {
-            auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
-            math::matrix::decompose(skeleton.local[i], scale, rotation, position);
-            transform.scale(scale);
-            transform.rotation(rotation);
-            transform.position(position);
-        }
-    });
+    world.view<mmd_skeleton, graphics::skinned_mesh>().each(
+        [&](mmd_skeleton& skeleton, graphics::skinned_mesh&) {
+            math::float3 position;
+            math::float4 rotation;
+            math::float3 scale;
+            for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
+            {
+                auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
+                math::matrix::decompose(skeleton.local[i], scale, rotation, position);
+                transform.scale(scale);
+                transform.rotation(rotation);
+                transform.position(position);
+            }
+        });
     scene.sync_local();
 
     system<physics::physics>().simulation();
 
     animation.update(true);
 
-    m_skeleton_view->each([&](mmd_skeleton& skeleton, graphics::skinned_mesh& skinned_mesh) {
-        for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
-        {
-            auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
+    world.view<mmd_skeleton, graphics::skinned_mesh>().each(
+        [&](mmd_skeleton& skeleton, graphics::skinned_mesh& skinned_mesh) {
+            for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
+            {
+                auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
 
-            math::float4x4_simd to_world = math::simd::load(transform.to_world());
-            math::float4x4_simd initial =
-                math::simd::load(world.component<mmd_node>(skeleton.nodes[i]).initial_inverse);
+                math::float4x4_simd to_world = math::simd::load(transform.to_world());
+                math::float4x4_simd initial =
+                    math::simd::load(world.component<mmd_node>(skeleton.nodes[i]).initial_inverse);
 
-            math::float4x4_simd final_transform = math::matrix_simd::mul(initial, to_world);
-            math::simd::store(final_transform, skeleton.world[i]);
-        }
+                math::float4x4_simd final_transform = math::matrix_simd::mul(initial, to_world);
+                math::simd::store(final_transform, skeleton.world[i]);
+            }
 
-        auto parameter = dynamic_cast<skin_pipeline_parameter*>(skinned_mesh.parameter.get());
-        ASH_ASSERT(parameter);
-        parameter->bone_transform(skeleton.world);
-    });
+            auto parameter = dynamic_cast<skin_pipeline_parameter*>(skinned_mesh.parameter.get());
+            ASH_ASSERT(parameter);
+            parameter->bone_transform(skeleton.world);
+        });
 }
 
 void mmd_viewer::reset(ecs::entity entity)

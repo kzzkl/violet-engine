@@ -19,10 +19,7 @@ graphics::graphics() noexcept
     : system_base("graphics"),
       m_back_buffer_index(0),
       m_game_camera(ecs::INVALID_ENTITY),
-      m_editor_camera(ecs::INVALID_ENTITY),
-      m_render_view(nullptr),
-      m_object_view(nullptr),
-      m_skinned_mesh_view(nullptr)
+      m_editor_camera(ecs::INVALID_ENTITY)
 {
 }
 
@@ -51,9 +48,6 @@ bool graphics::initialize(const dictionary& config)
     world.register_component<mesh_render>();
     world.register_component<skinned_mesh>();
     world.register_component<camera>();
-    m_render_view = world.make_view<mesh_render>();
-    m_object_view = world.make_view<mesh_render, scene::transform>();
-    m_skinned_mesh_view = world.make_view<mesh_render, skinned_mesh>();
 
     event.register_event<event_render_extent_change>();
     event.subscribe<window::event_window_resize>(
@@ -81,11 +75,6 @@ bool graphics::initialize(const dictionary& config)
 
 void graphics::shutdown()
 {
-    auto& world = system<ecs::world>();
-    world.destroy_view(m_render_view);
-    world.destroy_view(m_object_view);
-    world.destroy_view(m_skinned_mesh_view);
-
     m_debug = nullptr;
 }
 
@@ -120,14 +109,17 @@ resource_extent graphics::render_extent() const noexcept
 
 void graphics::skin_meshes()
 {
+    auto& world = system<ecs::world>();
+
     auto command = rhi::renderer().allocate_command();
 
     std::set<skin_pipeline*> pipelines;
-    m_skinned_mesh_view->each([&](mesh_render& mesh_render, skinned_mesh& skinned_mesh) {
-        auto pipeline = skinned_mesh.pipeline;
-        pipelines.insert(pipeline);
-        pipeline->add(skinned_mesh);
-    });
+    world.view<mesh_render, skinned_mesh>().each(
+        [&](mesh_render& mesh_render, skinned_mesh& skinned_mesh) {
+            auto pipeline = skinned_mesh.pipeline;
+            pipelines.insert(pipeline);
+            pipeline->add(skinned_mesh);
+        });
 
     for (auto pipeline : pipelines)
     {
@@ -135,13 +127,14 @@ void graphics::skin_meshes()
         pipeline->clear();
     }
 
-    m_skinned_mesh_view->each([&](mesh_render& mesh_render, skinned_mesh& skinned_mesh) {
-        for (std::size_t i = 0; i < skinned_mesh.skinned_vertex_buffers.size(); ++i)
-        {
-            if (skinned_mesh.skinned_vertex_buffers[i] != nullptr)
-                mesh_render.vertex_buffers[i] = skinned_mesh.skinned_vertex_buffers[i].get();
-        }
-    });
+    world.view<mesh_render, skinned_mesh>().each(
+        [&](mesh_render& mesh_render, skinned_mesh& skinned_mesh) {
+            for (std::size_t i = 0; i < skinned_mesh.skinned_vertex_buffers.size(); ++i)
+            {
+                if (skinned_mesh.skinned_vertex_buffers[i] != nullptr)
+                    mesh_render.vertex_buffers[i] = skinned_mesh.skinned_vertex_buffers[i].get();
+            }
+        });
 
     rhi::renderer().execute(command);
 }
@@ -162,9 +155,10 @@ void graphics::render()
     skin_meshes();
 
     // Update object data.
-    m_object_view->each([&, this](mesh_render& mesh_render, scene::transform& transform) {
-        mesh_render.object_parameter->world_matrix(transform.to_world());
-    });
+    world.view<mesh_render, scene::transform>().each(
+        [&, this](mesh_render& mesh_render, scene::transform& transform) {
+            mesh_render.object_parameter->world_matrix(transform.to_world());
+        });
 
     // Render camera.
     while (!m_render_queue.empty())
@@ -236,7 +230,7 @@ void graphics::render_camera(ecs::entity camera_entity)
 
     // Render.
     std::unordered_map<render_pipeline*, render_scene> render_scenes;
-    m_render_view->each([&, this](mesh_render& mesh_render) {
+    world.view<mesh_render>().each([&, this](mesh_render& mesh_render) {
         if ((mesh_render.render_groups & render_camera.render_groups) == 0)
             return;
         // if ((mesh_render.render_groups & RENDER_GROUP_UI) == 0 && !bounding_box.visible())

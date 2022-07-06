@@ -6,7 +6,7 @@
 
 namespace ash::scene
 {
-scene::scene() : system_base("scene"), m_view(nullptr)
+scene::scene() : system_base("scene")
 {
 }
 
@@ -15,8 +15,6 @@ bool scene::initialize(const dictionary& config)
     auto& world = system<ecs::world>();
     world.register_component<transform>();
     world.register_component<bounding_box>();
-    m_view = world.make_view<transform>();
-    m_bounding_box_view = world.make_view<transform, bounding_box>();
 
     m_root = world.create("scene");
     world.add<core::link, transform>(m_root);
@@ -37,6 +35,12 @@ bool scene::initialize(const dictionary& config)
     });
 
     return true;
+}
+
+void scene::on_begin_frame()
+{
+    auto& world = system<ecs::world>();
+    world.view<transform>().each([](transform& transform) { transform.reset_sync_count(); });
 }
 
 void scene::sync_local()
@@ -152,24 +156,31 @@ void scene::sync_world(ecs::entity root)
 
 void scene::frustum_culling(const std::vector<math::float4>& frustum)
 {
-    m_bounding_box_view->each([this](transform& transform, bounding_box& bounding_box) {
-        if (bounding_box.dynamic() && bounding_box.transform(transform.to_world()))
-        {
-            std::size_t new_proxy_id =
-                m_dynamic_bvh.update(bounding_box.proxy_id(), bounding_box.aabb());
-            bounding_box.proxy_id(new_proxy_id);
-        }
-    });
+    auto& world = system<ecs::world>();
+
+    world.view<transform, bounding_box>().each(
+        [this](transform& transform, bounding_box& bounding_box) {
+            if (bounding_box.dynamic() && transform.sync_count() != 0)
+            {
+                if (bounding_box.transform(transform.to_world()))
+                {
+                    std::size_t new_proxy_id =
+                        m_dynamic_bvh.update(bounding_box.proxy_id(), bounding_box.aabb());
+                    bounding_box.proxy_id(new_proxy_id);
+                }
+            }
+        });
 
     m_static_bvh.frustum_culling(frustum);
     m_dynamic_bvh.frustum_culling(frustum);
 
-    m_bounding_box_view->each([this](transform& transform, bounding_box& bounding_box) {
-        if (bounding_box.dynamic())
-            bounding_box.visible(m_dynamic_bvh.visible(bounding_box.proxy_id()));
-        else
-            bounding_box.visible(m_static_bvh.visible(bounding_box.proxy_id()));
-    });
+    world.view<transform, bounding_box>().each(
+        [this](transform& transform, bounding_box& bounding_box) {
+            if (bounding_box.dynamic())
+                bounding_box.visible(m_dynamic_bvh.visible(bounding_box.proxy_id()));
+            else
+                bounding_box.visible(m_static_bvh.visible(bounding_box.proxy_id()));
+        });
 }
 
 void scene::on_entity_link(ecs::entity entity, core::link& link)

@@ -24,9 +24,6 @@ bool bvh_viewer::initialize(const dictionary& config)
     initialize_ui();
     initialize_task();
 
-    auto& world = system<ecs::world>();
-    m_aabb_view = world.make_view<scene::transform, scene::bounding_box>();
-
     return true;
 }
 
@@ -188,9 +185,8 @@ void bvh_viewer::frustum_culling()
     auto& camera = system<ecs::world>().component<graphics::camera>(m_camera);
     auto& transform = system<ecs::world>().component<scene::transform>(m_camera);
 
-    math::float4x4 vp = math::matrix::mul(
-        math::matrix::inverse(transform.to_world()),
-        camera.projection());
+    math::float4x4 vp =
+        math::matrix::mul(math::matrix::inverse(transform.to_world()), camera.projection());
 
     math::float4_simd x = math::simd::set(vp[0][0], vp[1][0], vp[2][0], vp[3][0]);
     math::float4_simd y = math::simd::set(vp[0][1], vp[1][1], vp[2][1], vp[3][1]);
@@ -220,19 +216,22 @@ void bvh_viewer::frustum_culling()
 
 void bvh_viewer::draw_aabb()
 {
+    auto& world = system<ecs::world>();
+
     auto& drawer = system<graphics::graphics>().debug();
-    m_aabb_view->each([&drawer](scene::transform& transform, scene::bounding_box& bounding_box) {
-        if (bounding_box.visible())
-            drawer.draw_aabb(
-                bounding_box.aabb().min,
-                bounding_box.aabb().max,
-                math::float3{0.0f, 1.0f, 0.0f});
-        else
-            drawer.draw_aabb(
-                bounding_box.aabb().min,
-                bounding_box.aabb().max,
-                math::float3{1.0f, 0.0f, 0.0f});
-    });
+    world.view<scene::transform, scene::bounding_box>().each(
+        [&drawer](scene::transform& transform, scene::bounding_box& bounding_box) {
+            if (bounding_box.visible())
+                drawer.draw_aabb(
+                    bounding_box.aabb().min,
+                    bounding_box.aabb().max,
+                    math::float3{0.0f, 1.0f, 0.0f});
+            else
+                drawer.draw_aabb(
+                    bounding_box.aabb().min,
+                    bounding_box.aabb().max,
+                    math::float3{1.0f, 0.0f, 0.0f});
+        });
 }
 
 void bvh_viewer::update_camera()

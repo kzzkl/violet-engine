@@ -56,12 +56,6 @@ private:
 
     std::unique_ptr<pipeline_parameter_interface> m_light_parameter;
 
-    ecs::view<mesh_render>* m_render_view;
-    ecs::view<mesh_render, scene::transform>* m_object_view;
-    ecs::view<mesh_render, skinned_mesh>* m_skinned_mesh_view;
-
-    ecs::view<point_light>* m_point_light_view;
-
     std::unique_ptr<graphics_debug> m_debug;
 };
 } // namespace ash::graphics

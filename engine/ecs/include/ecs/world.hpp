@@ -1,98 +1,19 @@
 #pragma once
 
 #include "core/context.hpp"
-#include "ecs/archetype.hpp"
+#include "ecs/view.hpp"
 #include <functional>
 #include <queue>
 #include <unordered_map>
 
 namespace ash::ecs
 {
-class view_base
-{
-public:
-    view_base(const component_mask& mask) noexcept : m_mask(mask) {}
-    virtual ~view_base() = default;
-
-    const component_mask& mask() const noexcept { return m_mask; }
-
-    void add_archetype(archetype* archetype) { m_list.push_back(archetype); }
-
-protected:
-    template <typename Functor>
-    void each_archetype(Functor&& functor)
-    {
-        for (auto archetype : m_list)
-            functor(*archetype);
-    }
-
-private:
-    std::vector<archetype*> m_list;
-    component_mask m_mask;
-};
-
-template <typename Functor, typename... Args>
-concept view_functor_component = requires(Functor&& f, Args&... args)
-{
-    f(args...);
-};
-
-template <typename Functor, typename... Args>
-concept view_functor_entity_component = requires(Functor&& f, entity e, Args&... args)
-{
-    f(e, args...);
-};
-
-template <typename Functor, typename... Args>
-concept view_functor =
-    view_functor_component<Functor, Args...> || view_functor_entity_component<Functor, Args...>;
-
-template <typename... Components>
-class view : public view_base
-{
-public:
-    view(const component_mask& mask) noexcept : view_base(mask) {}
-
-    template <typename Functor>
-    void each(Functor&& functor) requires view_functor<Functor, Components...>
-    {
-        auto each_functor = [&](archetype& archetype) {
-            for (std::size_t i = 0; i < archetype.size(); i += archetype.entity_per_chunk())
-            {
-                auto iter = archetype.begin() + i;
-                std::tuple<Components*...> components = {&iter.template component<Components>()...};
-                std::size_t counter = std::min(archetype.size() - i, archetype.entity_per_chunk());
-                while (counter--)
-                {
-                    if constexpr (view_functor_component<Functor, Components...>)
-                    {
-                        std::apply(
-                            [&](auto&&... args) {
-                                functor(*args...);
-                                (++args, ...);
-                            },
-                            components);
-                    }
-                    else
-                    {
-                        std::apply(
-                            [&](auto&&... args) {
-                                functor(iter.entity(), *args...);
-                                (++args, ...);
-                            },
-                            components);
-                        ++iter;
-                    }
-                }
-            }
-        };
-
-        each_archetype(each_functor);
-    }
-};
-
 class world : public core::system_base
 {
+public:
+    template <typename... Components>
+    using view_type = view<Components...>;
+
 public:
     world() : core::system_base("ecs") { register_component<information>(); }
     ~world()
@@ -262,47 +183,10 @@ public:
     }
 
     template <typename... Components>
-    void each(std::function<void(Components&...)>&& functor)
+    view_type<Components...>& view()
     {
-        component_mask m = make_mask<Components...>();
-        view<Components...> v(m);
-        for (auto& [mask, archetype] : m_archetypes)
-        {
-            if ((m & mask) == m)
-                v.add_archetype(archetype.get());
-        }
-
-        v.each(functor);
-    }
-
-    template <typename... Components>
-    view<Components...>* make_view()
-    {
-        component_mask m = make_mask<Components...>();
-        auto v = std::make_unique<view<Components...>>(m);
-
-        for (auto& [mask, archetype] : m_archetypes)
-        {
-            if ((m & mask) == m)
-                v->add_archetype(archetype.get());
-        }
-
-        auto result = v.get();
-        m_views.push_back(std::move(v));
-        return result;
-    }
-
-    void destroy_view(view_base* view)
-    {
-        for (auto& v : m_views)
-        {
-            if (v.get() == view)
-            {
-                std::swap(v, m_views.back());
-                m_views.pop_back();
-                break;
-            }
-        }
+        static view_type<Components...>* v = get_or_create_view<Components...>();
+        return *v;
     }
 
 private:
@@ -319,6 +203,30 @@ private:
         component_mask result;
         (result.set(component_index::value<Components>()), ...);
         return result;
+    }
+
+    template <typename... Components>
+    view_type<Components...>* get_or_create_view()
+    {
+        component_mask m = make_mask<Components...>();
+
+        auto iter = m_views.find(m);
+        if (iter == m_views.end())
+        {
+            auto v = std::make_unique<view_type<Components...>>(m);
+            for (auto& [mask, archetype] : m_archetypes)
+            {
+                if ((m & mask) == m)
+                    v->add_archetype(archetype.get());
+            }
+            auto result = v.get();
+            m_views[m] = std::move(v);
+            return result;
+        }
+        else
+        {
+            return static_cast<view_type<Components...>*>(iter->second.get());
+        }
     }
 
     template <typename... Components>
@@ -346,9 +254,9 @@ private:
         auto result =
             std::make_unique<archetype>(components, m_component_registry, m_entity_registry);
 
-        for (auto& v : m_views)
+        for (auto& [mask, v] : m_views)
         {
-            if ((v->mask() & result->mask()) == v->mask())
+            if ((mask & result->mask()) == mask)
                 v->add_archetype(result.get());
         }
 
@@ -365,7 +273,7 @@ private:
         m_free_entity.push(entity);
     }
 
-    std::vector<std::unique_ptr<view_base>> m_views;
+    std::unordered_map<component_mask, std::unique_ptr<view_base>> m_views;
 
     std::queue<entity> m_free_entity;
     std::unordered_map<component_mask, std::unique_ptr<archetype>> m_archetypes;

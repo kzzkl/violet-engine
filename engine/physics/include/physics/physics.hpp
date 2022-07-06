@@ -45,8 +45,6 @@ private:
 
     std::unique_ptr<world_interface> m_world;
 
-    ecs::view<rigidbody, scene::transform>* m_view;
-
     std::vector<rigidbody_user_data> m_user_data;
 
     std::queue<ecs::entity> m_enter_world_list;

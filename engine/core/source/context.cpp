@@ -53,7 +53,6 @@ void context::initialize(std::string_view config_path)
                 singleton.m_config[key].update(value, true);
         }
     }
-
 }
 
 void context::shutdown()
@@ -68,5 +67,21 @@ void context::shutdown()
         singleton.m_systems[*iter]->shutdown();
         singleton.m_systems[*iter] = nullptr;
     }
+}
+
+void context::begin_frame()
+{
+    auto& singleton = instance();
+
+    for (auto& system : singleton.m_systems)
+        system->on_begin_frame();
+}
+
+void context::end_frame()
+{
+    auto& singleton = instance();
+
+    for (auto& system : singleton.m_systems)
+        system->on_end_frame();
 }
 } // namespace ash::core

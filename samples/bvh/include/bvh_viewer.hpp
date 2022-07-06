@@ -37,8 +37,6 @@ private:
     std::vector<ecs::entity> m_cubes;
     std::vector<math::float3> m_move_direction;
 
-    ecs::view<scene::transform, scene::bounding_box>* m_aabb_view;
-
     ecs::entity m_camera;
     float m_heading = 0.0f;
     float m_pitch = 0.0f;

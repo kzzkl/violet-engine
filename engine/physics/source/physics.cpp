@@ -63,7 +63,6 @@ bool physics::initialize(const dictionary& config)
     auto& world = system<ash::ecs::world>();
     world.register_component<rigidbody>();
     world.register_component<joint>();
-    m_view = world.make_view<rigidbody, scene::transform>();
 
     auto& event = system<core::event>();
     event.subscribe<scene::event_enter_scene>("physics", [this](ecs::entity entity) {
@@ -78,10 +77,8 @@ void physics::shutdown()
     system<core::event>().unsubscribe<scene::event_enter_scene>("physics");
 
     auto& world = system<ecs::world>();
-    world.each<joint>([](joint& joint) { joint.interface = nullptr; });
-    world.each<rigidbody>([this](rigidbody& rigidbody) { rigidbody.interface = nullptr; });
-
-    world.destroy_view(m_view);
+    world.view<joint>().each([](joint& joint) { joint.interface = nullptr; });
+    world.view<rigidbody>().each([](rigidbody& rigidbody) { rigidbody.interface = nullptr; });
 
     m_world = nullptr;
     m_plugin.unload();
@@ -99,17 +96,18 @@ void physics::simulation()
         m_enter_world_list.pop();
     }
 
-    m_view->each([&](rigidbody& rigidbody, scene::transform& transform) {
-        if (rigidbody.type == rigidbody_type::KINEMATIC)
-        {
-            math::float4x4_simd to_world = math::simd::load(transform.to_world());
-            math::float4x4_simd offset = math::simd::load(rigidbody.offset);
+    world.view<rigidbody, scene::transform>().each(
+        [&](rigidbody& rigidbody, scene::transform& transform) {
+            if (rigidbody.type == rigidbody_type::KINEMATIC && transform.sync_count() != 0)
+            {
+                math::float4x4_simd to_world = math::simd::load(transform.to_world());
+                math::float4x4_simd offset = math::simd::load(rigidbody.offset);
 
-            math::float4x4 rigidbody_to_world;
-            math::simd::store(math::matrix_simd::mul(offset, to_world), rigidbody_to_world);
-            rigidbody.interface->transform(rigidbody_to_world);
-        }
-    });
+                math::float4x4 rigidbody_to_world;
+                math::simd::store(math::matrix_simd::mul(offset, to_world), rigidbody_to_world);
+                rigidbody.interface->transform(rigidbody_to_world);
+            }
+        });
 
     m_world->simulation(system<core::timer>().frame_delta());
 
