@@ -13,8 +13,8 @@ cbuffer mmd_material : register(b0, space1)
 [[vk::binding(0, 2)]]
 cbuffer ash_camera : register(b0, space2)
 {
-    float4 camera_position;
-    float4 camera_direction;
+    float3 camera_position;
+    float3 camera_direction;
 
     float4x4 transform_v;
     float4x4 transform_p;

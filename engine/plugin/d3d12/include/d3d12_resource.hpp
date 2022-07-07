@@ -9,6 +9,8 @@ namespace ash::graphics::d3d12
 class d3d12_resource : public resource_interface
 {
 public:
+    d3d12_resource();
+    d3d12_resource(const d3d12_resource&) = delete;
     virtual ~d3d12_resource() = default;
 
     virtual D3D12_CPU_DESCRIPTOR_HANDLE rtv() const;
@@ -26,6 +28,8 @@ public:
 
     inline void resource_state(D3D12_RESOURCE_STATES state) noexcept { m_resource_state = state; }
     inline D3D12_RESOURCE_STATES resource_state() const noexcept { return m_resource_state; }
+
+    d3d12_resource& operator=(const d3d12_resource&) = delete;
 
 protected:
     D3D12_RESOURCE_STATES m_resource_state;
@@ -47,12 +51,9 @@ class d3d12_back_buffer : public d3d12_image
 {
 public:
     d3d12_back_buffer(d3d12_ptr<D3D12Resource> resource);
-    d3d12_back_buffer(d3d12_back_buffer&& other);
     virtual ~d3d12_back_buffer();
 
     virtual D3D12_CPU_DESCRIPTOR_HANDLE rtv() const override;
-
-    d3d12_back_buffer& operator=(d3d12_back_buffer&& other);
 
 private:
     std::size_t m_rtv_offset;
@@ -67,13 +68,10 @@ public:
         std::size_t samples,
         resource_format format);
     d3d12_render_target(const render_target_desc& desc);
-    d3d12_render_target(d3d12_render_target&& other);
     virtual ~d3d12_render_target();
 
     virtual D3D12_CPU_DESCRIPTOR_HANDLE rtv() const override;
     virtual D3D12_CPU_DESCRIPTOR_HANDLE srv() const override;
-
-    d3d12_render_target& operator=(d3d12_render_target&& other);
 
 private:
     std::size_t m_rtv_offset;
@@ -89,12 +87,9 @@ public:
         std::size_t samples,
         resource_format format);
     d3d12_depth_stencil_buffer(const depth_stencil_buffer_desc& desc);
-    d3d12_depth_stencil_buffer(d3d12_depth_stencil_buffer&& other);
     virtual ~d3d12_depth_stencil_buffer();
 
     virtual D3D12_CPU_DESCRIPTOR_HANDLE dsv() const override;
-
-    d3d12_depth_stencil_buffer& operator=(d3d12_depth_stencil_buffer&& other);
 
 private:
     std::size_t m_dsv_offset;
@@ -110,12 +105,23 @@ public:
         resource_format format,
         D3D12GraphicsCommandList* command_list);
     d3d12_texture(const char* file, D3D12GraphicsCommandList* command_list);
-    d3d12_texture(d3d12_texture&& other);
     virtual ~d3d12_texture();
 
     virtual D3D12_CPU_DESCRIPTOR_HANDLE srv() const override;
 
-    d3d12_texture& operator=(d3d12_texture&& other);
+private:
+    std::size_t m_srv_offset;
+};
+
+class d3d12_texture_cube : public d3d12_image
+{
+public:
+    d3d12_texture_cube(
+        const std::vector<std::string_view>& files,
+        D3D12GraphicsCommandList* command_list);
+    virtual ~d3d12_texture_cube();
+
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE srv() const override;
 
 private:
     std::size_t m_srv_offset;

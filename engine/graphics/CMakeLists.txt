@@ -10,6 +10,7 @@ add_library(${PROJECT_NAME} STATIC
     ./source/render_pipeline.cpp
     ./source/rhi.cpp
     ./source/skin_pipeline.cpp
+    ./source/sky_pipeline.cpp
     ./source/standard_pipeline.cpp)
 add_library(ash::graphics ALIAS ${PROJECT_NAME})
 

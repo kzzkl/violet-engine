@@ -171,11 +171,14 @@ static const std::vector<CD3DX12_STATIC_SAMPLER_DESC> static_samplers = {
         D3D12_TEXTURE_ADDRESS_MODE_CLAMP), // addressW
 
     CD3DX12_STATIC_SAMPLER_DESC(
-        2,                                // shaderRegister
-        D3D12_FILTER_MIN_MAG_MIP_LINEAR,  // filter
-        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
-        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
-        D3D12_TEXTURE_ADDRESS_MODE_WRAP), // addressW
+        2,                               // shaderRegister
+        D3D12_FILTER_MIN_MAG_MIP_LINEAR, // filter
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP, // addressU
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP, // addressV
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP, // addressW
+        0.0f,                            // mipLODBias
+        1,                               // maxAnisotropy
+        D3D12_COMPARISON_FUNC_ALWAYS),   // comparisonFunc
 
     CD3DX12_STATIC_SAMPLER_DESC(
         3,                                 // shaderRegister
@@ -608,20 +611,6 @@ void d3d12_frame_buffer::begin_render(D3D12GraphicsCommandList* command_list)
 
     if (!barriers.empty())
         command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
-
-    /*static const float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
-    for (auto handle : m_render_targets)
-    {
-        command_list->ClearRenderTargetView(handle, clear_color, 0, nullptr);
-    }
-
-    command_list->ClearDepthStencilView(
-        m_depth_stencil,
-        D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
-        1.0f,
-        0,
-        0,
-        nullptr);*/
 }
 
 void d3d12_frame_buffer::end_render(D3D12GraphicsCommandList* command_list)

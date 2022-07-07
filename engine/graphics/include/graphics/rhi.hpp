@@ -107,10 +107,19 @@ public:
         std::uint32_t width,
         std::uint32_t height,
         resource_format format = RESOURCE_FORMAT_B8G8R8A8_UNORM);
+    static std::unique_ptr<resource_interface> make_texture(std::string_view file);
+
+    static std::unique_ptr<resource_interface> make_texture_cube(
+        std::string_view right,
+        std::string_view left,
+        std::string_view top,
+        std::string_view bottom,
+        std::string_view front,
+        std::string_view back);
+
     static std::unique_ptr<resource_interface> make_render_target(const render_target_desc& desc);
     static std::unique_ptr<resource_interface> make_depth_stencil_buffer(
         const depth_stencil_buffer_desc& desc);
-    static std::unique_ptr<resource_interface> make_texture(std::string_view file);
 
 private:
     template <typename T>

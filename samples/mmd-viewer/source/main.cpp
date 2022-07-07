@@ -1,6 +1,7 @@
 #include "core/application.hpp"
 #include "core/relation.hpp"
 #include "core/timer.hpp"
+#include "graphics/camera.hpp"
 #include "graphics/geometry.hpp"
 #include "graphics/graphics.hpp"
 #include "graphics/rhi.hpp"

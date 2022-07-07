@@ -1,9 +1,11 @@
 #include "graphics/graphics.hpp"
 #include "core/context.hpp"
+#include "graphics/camera.hpp"
 #include "graphics/graphics_event.hpp"
 #include "graphics/graphics_task.hpp"
 #include "graphics/rhi.hpp"
 #include "graphics/skin_pipeline.hpp"
+#include "graphics/sky_pipeline.hpp"
 #include "graphics/standard_pipeline.hpp"
 #include "scene/scene.hpp"
 #include "task/task_manager.hpp"
@@ -41,6 +43,18 @@ bool graphics::initialize(const dictionary& config)
     rhi::register_pipeline_parameter_layout(
         "standard_material",
         standard_material_pipeline_parameter::layout());
+    rhi::register_pipeline_parameter_layout("ash_sky", sky_pipeline_parameter::layout());
+
+    m_sky_texture = rhi::make_texture_cube(
+        "engine/texture/skybox/cloudymorning_left.png",
+        "engine/texture/skybox/cloudymorning_right.png",
+        "engine/texture/skybox/cloudymorning_top.png",
+        "engine/texture/skybox/cloudymorning_bottom.png",
+        "engine/texture/skybox/cloudymorning_front.png",
+        "engine/texture/skybox/cloudymorning_back.png");
+    m_sky_parameter = std::make_unique<sky_pipeline_parameter>();
+    m_sky_parameter->texture(m_sky_texture.get());
+    m_sky_pipeline = std::make_unique<sky_pipeline>();
 
     auto& world = system<ecs::world>();
     auto& event = system<core::event>();
@@ -182,6 +196,10 @@ void graphics::render_camera(ecs::entity camera_entity)
     math::float4x4_simd transform_p = math::simd::load(render_camera.projection());
     math::float4x4_simd transform_vp = math::matrix_simd::mul(transform_v, transform_p);
 
+    math::float3 position;
+    math::simd::store(world_simd[3], position);
+    render_camera.pipeline_parameter()->position(position);
+
     math::float4x4 view, view_projection;
     math::simd::store(transform_v, view);
     math::simd::store(transform_vp, view_projection);
@@ -239,26 +257,42 @@ void graphics::render_camera(ecs::entity camera_entity)
         for (std::size_t i = 0; i < mesh_render.materials.size(); ++i)
         {
             auto& render_scene = render_scenes[mesh_render.materials[i].pipeline];
-            render_scene.units.push_back(render_unit{
-                .vertex_buffers = mesh_render.vertex_buffers,
+            render_scene.units.emplace_back(render_unit{
+                .vertex_buffers = mesh_render.vertex_buffers.data(),
                 .index_buffer = mesh_render.index_buffer,
                 .index_start = mesh_render.submeshes[i].index_start,
                 .index_end = mesh_render.submeshes[i].index_end,
                 .vertex_base = mesh_render.submeshes[i].vertex_base,
-                .parameters = mesh_render.materials[i].parameters,
+                .parameters = mesh_render.materials[i].parameters.data(),
                 .scissor = mesh_render.materials[i].scissor});
         }
     });
 
-    // Render.
     auto command = rhi::renderer().allocate_command();
     command->clear_render_target(render_camera.render_target(), {0.0f, 0.0f, 0.0f, 1.0f});
     command->clear_depth_stencil(render_camera.depth_stencil_buffer());
 
     for (auto& [pipeline, render_scene] : render_scenes)
     {
+        render_scene.camera_parameter = render_camera.pipeline_parameter()->interface();
         render_scene.light_parameter = m_light_parameter.get();
-        pipeline->render(render_camera, render_scene, command);
+        render_scene.render_target = render_camera.render_target();
+        render_scene.render_target_resolve = render_camera.render_target_resolve();
+        render_scene.depth_stencil_buffer = render_camera.depth_stencil_buffer();
+        pipeline->render(render_scene, command);
+    }
+
+    if (camera_entity != m_editor_camera)
+    {
+        // Render sky.
+        render_scene sky_scene;
+        sky_scene.camera_parameter = render_camera.pipeline_parameter()->interface();
+        sky_scene.light_parameter = m_light_parameter.get();
+        sky_scene.sky_parameter = m_sky_parameter->interface();
+        sky_scene.render_target = render_camera.render_target();
+        sky_scene.render_target_resolve = render_camera.render_target_resolve();
+        sky_scene.depth_stencil_buffer = render_camera.depth_stencil_buffer();
+        m_sky_pipeline->render(sky_scene, command);
     }
 
     rhi::renderer().execute(command);

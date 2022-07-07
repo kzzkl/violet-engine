@@ -5,6 +5,10 @@
 
 namespace ash::graphics::d3d12
 {
+d3d12_resource::d3d12_resource() : m_resource_state(D3D12_RESOURCE_STATE_COMMON)
+{
+}
+
 D3D12_CPU_DESCRIPTOR_HANDLE d3d12_resource::rtv() const
 {
     throw d3d12_exception("This resource is not a render target.");
@@ -56,16 +60,6 @@ d3d12_back_buffer::d3d12_back_buffer(d3d12_ptr<D3D12Resource> resource)
     device->CreateRenderTargetView(m_resource.Get(), nullptr, rtv_heap->cpu_handle(m_rtv_offset));
 }
 
-d3d12_back_buffer::d3d12_back_buffer(d3d12_back_buffer&& other)
-{
-    m_resource = other.m_resource;
-    m_resource_state = other.m_resource_state;
-    m_rtv_offset = other.m_rtv_offset;
-
-    other.m_resource = nullptr;
-    other.m_rtv_offset = INVALID_DESCRIPTOR_INDEX;
-}
-
 d3d12_back_buffer::~d3d12_back_buffer()
 {
     if (m_rtv_offset != INVALID_DESCRIPTOR_INDEX)
@@ -81,18 +75,6 @@ D3D12_CPU_DESCRIPTOR_HANDLE d3d12_back_buffer::rtv() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
     return heap->cpu_handle(m_rtv_offset);
-}
-
-d3d12_back_buffer& d3d12_back_buffer::operator=(d3d12_back_buffer&& other)
-{
-    m_resource = other.m_resource;
-    m_resource_state = other.m_resource_state;
-    m_rtv_offset = other.m_rtv_offset;
-
-    other.m_resource = nullptr;
-    other.m_rtv_offset = INVALID_DESCRIPTOR_INDEX;
-
-    return *this;
 }
 
 d3d12_render_target::d3d12_render_target(
@@ -155,18 +137,6 @@ d3d12_render_target::d3d12_render_target(const render_target_desc& desc)
 {
 }
 
-d3d12_render_target::d3d12_render_target(d3d12_render_target&& other)
-    : m_rtv_offset(other.m_rtv_offset),
-      m_srv_offset(other.m_srv_offset)
-{
-    m_resource = other.m_resource;
-    m_resource_state = other.m_resource_state;
-
-    other.m_resource = nullptr;
-    other.m_rtv_offset = INVALID_DESCRIPTOR_INDEX;
-    other.m_srv_offset = INVALID_DESCRIPTOR_INDEX;
-}
-
 d3d12_render_target::~d3d12_render_target()
 {
     if (m_resource != nullptr)
@@ -198,26 +168,6 @@ D3D12_CPU_DESCRIPTOR_HANDLE d3d12_render_target::srv() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     return heap->cpu_handle(m_srv_offset);
-}
-
-d3d12_render_target& d3d12_render_target::operator=(d3d12_render_target&& other)
-{
-    if (m_resource != nullptr)
-    {
-        d3d12_context::frame_buffer().notify_destroy(this);
-        d3d12_context::resource()->delay_delete(m_resource);
-    }
-    m_resource = other.m_resource;
-    m_resource_state = other.m_resource_state;
-
-    m_rtv_offset = other.m_rtv_offset;
-    m_srv_offset = other.m_srv_offset;
-
-    other.m_resource = nullptr;
-    other.m_rtv_offset = INVALID_DESCRIPTOR_INDEX;
-    other.m_srv_offset = INVALID_DESCRIPTOR_INDEX;
-
-    return *this;
 }
 
 d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(
@@ -275,21 +225,6 @@ d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(const depth_stencil_buffe
 {
 }
 
-d3d12_depth_stencil_buffer::d3d12_depth_stencil_buffer(d3d12_depth_stencil_buffer&& other)
-    : m_dsv_offset(other.m_dsv_offset)
-{
-    if (m_resource != nullptr)
-    {
-        d3d12_context::frame_buffer().notify_destroy(this);
-        d3d12_context::resource()->delay_delete(m_resource);
-    }
-    m_resource = other.m_resource;
-    m_resource_state = other.m_resource_state;
-
-    other.m_resource = nullptr;
-    other.m_dsv_offset = INVALID_DESCRIPTOR_INDEX;
-}
-
 d3d12_depth_stencil_buffer::~d3d12_depth_stencil_buffer()
 {
     if (m_resource != nullptr)
@@ -309,26 +244,6 @@ D3D12_CPU_DESCRIPTOR_HANDLE d3d12_depth_stencil_buffer::dsv() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
     return heap->cpu_handle(m_dsv_offset);
-}
-
-d3d12_depth_stencil_buffer& d3d12_depth_stencil_buffer::operator=(
-    d3d12_depth_stencil_buffer&& other)
-{
-    if (m_resource != nullptr)
-    {
-        d3d12_context::frame_buffer().notify_destroy(this);
-        d3d12_context::resource()->delay_delete(m_resource);
-    }
-
-    m_resource = other.m_resource;
-    m_resource_state = other.m_resource_state;
-
-    m_dsv_offset = other.m_dsv_offset;
-
-    other.m_resource = nullptr;
-    other.m_dsv_offset = INVALID_DESCRIPTOR_INDEX;
-
-    return *this;
 }
 
 d3d12_texture::d3d12_texture(
@@ -371,15 +286,6 @@ d3d12_texture::d3d12_texture(const char* file, D3D12GraphicsCommandList* command
     resource_state(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 }
 
-d3d12_texture::d3d12_texture(d3d12_texture&& other) : m_srv_offset(other.m_srv_offset)
-{
-    m_resource = other.m_resource;
-    m_resource_state = other.m_resource_state;
-
-    other.m_resource = nullptr;
-    other.m_srv_offset = INVALID_DESCRIPTOR_INDEX;
-}
-
 d3d12_texture::~d3d12_texture()
 {
     if (m_resource != nullptr)
@@ -398,20 +304,48 @@ D3D12_CPU_DESCRIPTOR_HANDLE d3d12_texture::srv() const
     return heap->cpu_handle(m_srv_offset);
 }
 
-d3d12_texture& d3d12_texture::operator=(d3d12_texture&& other)
+d3d12_texture_cube::d3d12_texture_cube(
+    const std::vector<std::string_view>& files,
+    D3D12GraphicsCommandList* command_list)
+{
+    auto [resource, temporary] = d3d12_image_loader::load_cube(files, command_list);
+    m_resource = resource;
+    d3d12_context::resource()->delay_delete(temporary);
+
+    // Create SRV.
+    auto srv_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    m_srv_offset = srv_heap->allocate(1);
+    D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
+    desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+    desc.TextureCube.MostDetailedMip = 0;
+    desc.TextureCube.MipLevels = m_resource->GetDesc().MipLevels;
+    desc.TextureCube.ResourceMinLODClamp = 0.0f;
+    desc.Format = m_resource->GetDesc().Format;
+    d3d12_context::device()->CreateShaderResourceView(
+        m_resource.Get(),
+        &desc,
+        srv_heap->cpu_handle(m_srv_offset));
+
+    resource_state(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+}
+
+d3d12_texture_cube::~d3d12_texture_cube()
 {
     if (m_resource != nullptr)
         d3d12_context::resource()->delay_delete(m_resource);
 
-    m_resource = other.m_resource;
-    m_resource_state = other.m_resource_state;
+    if (m_srv_offset != INVALID_DESCRIPTOR_INDEX)
+    {
+        auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        heap->deallocate(m_srv_offset);
+    }
+}
 
-    m_srv_offset = other.m_srv_offset;
-
-    other.m_resource = nullptr;
-    other.m_srv_offset = INVALID_DESCRIPTOR_INDEX;
-
-    return *this;
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_texture_cube::srv() const
+{
+    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    return heap->cpu_handle(m_srv_offset);
 }
 
 d3d12_default_buffer::d3d12_default_buffer(

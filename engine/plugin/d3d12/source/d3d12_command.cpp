@@ -85,13 +85,10 @@ void d3d12_render_command::scissor(const scissor_extent* extents, std::size_t si
     m_command_list->RSSetScissorRects(static_cast<UINT>(size), r.data());
 }
 
-void d3d12_render_command::draw(
+void d3d12_render_command::input_assembly_state(
     resource_interface* const* vertex_buffers,
     std::size_t vertex_buffer_count,
     resource_interface* index_buffer,
-    std::size_t index_start,
-    std::size_t index_end,
-    std::size_t vertex_base,
     primitive_topology primitive_topology)
 {
     std::vector<D3D12_VERTEX_BUFFER_VIEW> vertex_buffer_views(vertex_buffer_count);
@@ -111,7 +108,22 @@ void d3d12_render_command::draw(
         D3D_PRIMITIVE_TOPOLOGY_LINELIST,
         D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST};
     m_command_list->IASetPrimitiveTopology(primitive_topology_map[primitive_topology]);
+}
 
+void d3d12_render_command::draw(std::size_t vertex_start, std::size_t vertex_end)
+{
+    m_command_list->DrawInstanced(
+        static_cast<UINT>(vertex_end - vertex_start),
+        1,
+        static_cast<UINT>(vertex_start),
+        0);
+}
+
+void d3d12_render_command::draw_indexed(
+    std::size_t index_start,
+    std::size_t index_end,
+    std::size_t vertex_base)
+{
     m_command_list->DrawIndexedInstanced(
         static_cast<UINT>(index_end - index_start),
         1,

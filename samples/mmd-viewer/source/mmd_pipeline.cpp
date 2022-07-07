@@ -144,56 +144,42 @@ mmd_render_pipeline::mmd_render_pipeline()
 }
 
 void mmd_render_pipeline::render(
-    const graphics::camera& camera,
     const graphics::render_scene& scene,
     graphics::render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
-        camera.render_target(),
-        camera.render_target_resolve(),
-        camera.depth_stencil_buffer());
+        scene.render_target,
+        scene.render_target_resolve,
+        scene.depth_stencil_buffer);
 
     graphics::scissor_extent rect = {};
-    auto [width, height] = camera.render_target()->extent();
+    auto [width, height] = scene.render_target->extent();
     rect.max_x = width;
     rect.max_y = height;
     command->scissor(&rect, 1);
 
     // Color pass.
-    command->parameter(2, camera.pipeline_parameter()->interface());
+    command->parameter(2, scene.camera_parameter);
     for (auto& unit : scene.units)
     {
         command->parameter(0, unit.parameters[0]);
         command->parameter(1, unit.parameters[1]);
 
-        command->draw(
-            unit.vertex_buffers.data(),
-            unit.vertex_buffers.size(),
-            unit.index_buffer,
-            unit.index_start,
-            unit.index_end,
-            unit.vertex_base);
+        command->input_assembly_state(unit.vertex_buffers, 3, unit.index_buffer);
+        command->draw_indexed(unit.index_start, unit.index_end, unit.vertex_base);
     }
 
     command->next_pass(m_interface.get());
 
     // Edge pass.
-    command->parameter(1, camera.pipeline_parameter()->interface());
+    command->parameter(1, scene.camera_parameter);
     for (auto& unit : scene.units)
     {
         command->parameter(0, unit.parameters[0]);
 
-        std::array<graphics::resource_interface*, 2> vertex_buffers = {
-            unit.vertex_buffers[0],
-            unit.vertex_buffers[1]};
-        command->draw(
-            vertex_buffers.data(),
-            vertex_buffers.size(),
-            unit.index_buffer,
-            unit.index_start,
-            unit.index_end,
-            unit.vertex_base);
+        command->input_assembly_state(unit.vertex_buffers, 2, unit.index_buffer);
+        command->draw_indexed(unit.index_start, unit.index_end, unit.vertex_base);
     }
 
     command->end(m_interface.get());

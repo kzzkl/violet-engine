@@ -21,6 +21,10 @@ public:
         resource_format format,
         D3D12GraphicsCommandList* command_list);
 
+    static load_result load_cube(
+        const std::vector<std::string_view>& files,
+        D3D12GraphicsCommandList* command_list);
+
 private:
     static load_result load_dds(std::string_view file, D3D12GraphicsCommandList* command_list);
     static load_result load_other(std::string_view file, D3D12GraphicsCommandList* command_list);

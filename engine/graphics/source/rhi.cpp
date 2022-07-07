@@ -167,6 +167,28 @@ std::unique_ptr<resource_interface> rhi::make_texture(
     return std::unique_ptr<resource_interface>(impl().make_texture(data, width, height, format));
 }
 
+std::unique_ptr<resource_interface> rhi::make_texture(std::string_view file)
+{
+    return std::unique_ptr<resource_interface>(impl().make_texture(file.data()));
+}
+
+std::unique_ptr<resource_interface> rhi::make_texture_cube(
+    std::string_view right,
+    std::string_view left,
+    std::string_view top,
+    std::string_view bottom,
+    std::string_view front,
+    std::string_view back)
+{
+    return std::unique_ptr<resource_interface>(impl().make_texture_cube(
+        right.data(),
+        left.data(),
+        top.data(),
+        bottom.data(),
+        front.data(),
+        back.data()));
+}
+
 std::unique_ptr<resource_interface> rhi::make_render_target(const render_target_desc& desc)
 {
     return std::unique_ptr<resource_interface>(impl().make_render_target(desc));
@@ -176,11 +198,6 @@ std::unique_ptr<resource_interface> rhi::make_depth_stencil_buffer(
     const depth_stencil_buffer_desc& desc)
 {
     return std::unique_ptr<resource_interface>(impl().make_depth_stencil_buffer(desc));
-}
-
-std::unique_ptr<resource_interface> rhi::make_texture(std::string_view file)
-{
-    return std::unique_ptr<resource_interface>(impl().make_texture(file.data()));
 }
 
 rhi_interface& rhi::impl()

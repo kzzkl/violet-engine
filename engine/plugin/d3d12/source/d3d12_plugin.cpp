@@ -89,6 +89,21 @@ public:
         return result;
     }
 
+    virtual resource_interface* make_texture_cube(
+        const char* left,
+        const char* right,
+        const char* top,
+        const char* bottom,
+        const char* front,
+        const char* back) override
+    {
+        auto command_list = d3d12_context::command()->allocate_dynamic_command();
+        d3d12_texture_cube* result =
+            new d3d12_texture_cube({left, right, top, bottom, front, back}, command_list.get());
+        d3d12_context::command()->execute_command(command_list);
+        return result;
+    }
+
     virtual resource_interface* make_render_target(const render_target_desc& desc) override
     {
         return new d3d12_render_target(desc);

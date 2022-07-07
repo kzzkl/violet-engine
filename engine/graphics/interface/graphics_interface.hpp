@@ -312,14 +312,17 @@ public:
     virtual void scissor(const scissor_extent* extents, std::size_t size) = 0;
 
     virtual void parameter(std::size_t i, pipeline_parameter_interface*) = 0;
-    virtual void draw(
+
+    virtual void input_assembly_state(
         resource_interface* const* vertex_buffers,
         std::size_t vertex_buffer_count,
         resource_interface* index_buffer,
+        primitive_topology primitive_topology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) = 0;
+    virtual void draw(std::size_t vertex_start, std::size_t vertex_end) = 0;
+    virtual void draw_indexed(
         std::size_t index_start,
         std::size_t index_end,
-        std::size_t vertex_base,
-        primitive_topology primitive_topology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) = 0;
+        std::size_t vertex_base) = 0;
 
     virtual void clear_render_target(
         resource_interface* render_target,
@@ -421,12 +424,21 @@ public:
 
     virtual resource_interface* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
     virtual resource_interface* make_index_buffer(const index_buffer_desc& desc) = 0;
+
     virtual resource_interface* make_texture(
         const std::uint8_t* data,
         std::uint32_t width,
         std::uint32_t height,
         resource_format format = RESOURCE_FORMAT_R8G8B8A8_UNORM) = 0;
     virtual resource_interface* make_texture(const char* file) = 0;
+    virtual resource_interface* make_texture_cube(
+        const char* left,
+        const char* right,
+        const char* top,
+        const char* bottom,
+        const char* front,
+        const char* back) = 0;
+
     virtual resource_interface* make_render_target(const render_target_desc& desc) = 0;
     virtual resource_interface* make_depth_stencil_buffer(
         const depth_stencil_buffer_desc& desc) = 0;

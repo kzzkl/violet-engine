@@ -39,7 +39,6 @@ public:
     ui_pipeline();
 
     virtual void render(
-        const graphics::camera& camera,
         const graphics::render_scene& scene,
         graphics::render_command_interface* command) override;
 

@@ -1,6 +1,7 @@
 #include "ui/ui.hpp"
 #include "ecs/world.hpp"
 #include "graphics/graphics_task.hpp"
+#include "graphics/mesh_render.hpp"
 #include "graphics/rhi.hpp"
 #include "task/task_manager.hpp"
 #include "ui/controls.hpp"

@@ -12,6 +12,8 @@
 
 namespace ash::graphics
 {
+class sky_pipeline_parameter;
+class sky_pipeline;
 class graphics : public core::system_base
 {
 public:
@@ -55,6 +57,11 @@ private:
     std::queue<ecs::entity> m_render_queue;
 
     std::unique_ptr<pipeline_parameter_interface> m_light_parameter;
+
+    // Sky.
+    std::unique_ptr<resource_interface> m_sky_texture;
+    std::unique_ptr<sky_pipeline_parameter> m_sky_parameter;
+    std::unique_ptr<sky_pipeline> m_sky_pipeline;
 
     std::unique_ptr<graphics_debug> m_debug;
 };

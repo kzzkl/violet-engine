@@ -72,37 +72,32 @@ debug_pipeline::debug_pipeline()
     m_interface = rhi::make_render_pipeline(pipeline_info);
 }
 
-void debug_pipeline::render(
-    const camera& camera,
-    const render_scene& scene,
-    render_command_interface* command)
+void debug_pipeline::render(const render_scene& scene, render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
-        camera.render_target(),
-        camera.render_target_resolve(),
-        camera.depth_stencil_buffer());
+        scene.render_target,
+        scene.render_target_resolve,
+        scene.depth_stencil_buffer);
 
     scissor_extent extent = {};
-    auto [width, height] = camera.render_target()->extent();
+    auto [width, height] = scene.render_target->extent();
     extent.max_x = width;
     extent.max_y = height;
     command->scissor(&extent, 1);
 
-    command->parameter(0, camera.pipeline_parameter()->interface());
+    command->parameter(0, scene.camera_parameter);
     for (auto& unit : scene.units)
     {
         if (unit.index_start == unit.index_end)
             continue;
 
-        command->draw(
-            unit.vertex_buffers.data(),
-            unit.vertex_buffers.size(),
+        command->input_assembly_state(
+            unit.vertex_buffers,
+            2,
             unit.index_buffer,
-            unit.index_start,
-            unit.index_end,
-            unit.vertex_base,
             PRIMITIVE_TOPOLOGY_LINE_LIST);
+        command->draw_indexed(unit.index_start, unit.index_end, unit.vertex_base);
     }
 
     command->end(m_interface.get());

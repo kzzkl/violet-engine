@@ -132,18 +132,17 @@ ui_pipeline::ui_pipeline()
 }
 
 void ui_pipeline::render(
-    const graphics::camera& camera,
     const graphics::render_scene& scene,
     graphics::render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
-        camera.render_target(),
-        camera.render_target_resolve(),
-        camera.depth_stencil_buffer());
+        scene.render_target,
+        scene.render_target_resolve,
+        scene.depth_stencil_buffer);
 
     graphics::scissor_extent extent = {};
-    auto [width, height] = camera.render_target()->extent();
+    auto [width, height] = scene.render_target->extent();
     extent.max_x = width;
     extent.max_y = height;
 
@@ -154,13 +153,9 @@ void ui_pipeline::render(
         command->scissor(&unit.scissor, 1);
 
         command->parameter(0, unit.parameters[0]); // material
-        command->draw(
-            unit.vertex_buffers.data(),
-            unit.vertex_buffers.size(),
-            unit.index_buffer,
-            unit.index_start,
-            unit.index_end,
-            unit.vertex_base);
+
+        command->input_assembly_state(unit.vertex_buffers, 4, unit.index_buffer);
+        command->draw_indexed(unit.index_start, unit.index_end, unit.vertex_base);
     }
 
     command->end(m_interface.get());

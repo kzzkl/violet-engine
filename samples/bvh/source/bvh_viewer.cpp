@@ -1,6 +1,7 @@
 #include "bvh_viewer.hpp"
 #include "core/relation.hpp"
 #include "core/timer.hpp"
+#include "graphics/camera.hpp"
 #include "graphics/graphics.hpp"
 #include "graphics/mesh_render.hpp"
 #include "graphics/rhi.hpp"

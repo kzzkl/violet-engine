@@ -1,6 +1,7 @@
 #include "editor/editor.hpp"
 #include "core/relation.hpp"
 #include "editor/editor_task.hpp"
+#include "graphics/camera.hpp"
 #include "graphics/graphics.hpp"
 #include "graphics/rhi.hpp"
 #include "scene/scene.hpp"
