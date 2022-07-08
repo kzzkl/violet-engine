@@ -2,6 +2,7 @@
 #include "core/application.hpp"
 #include "core/relation.hpp"
 #include "gallery.hpp"
+#include "graphics/camera.hpp"
 #include "graphics/graphics.hpp"
 #include "graphics/graphics_event.hpp"
 #include "graphics/rhi.hpp"
@@ -57,12 +58,7 @@ private:
         world.add<core::link, graphics::camera, scene::transform>(m_camera);
 
         auto& c_transform = world.component<scene::transform>(m_camera);
-        c_transform.position = {0.0f, 0.0f, -38.0f};
-        c_transform.world_matrix = math::matrix::affine_transform(
-            c_transform.scaling,
-            c_transform.rotation,
-            c_transform.position);
-        c_transform.dirty = true;
+        c_transform.position(math::float3{0.0f, 0.0f, -38.0f});
 
         relation.link(m_camera, scene.root());
 
@@ -99,10 +95,6 @@ private:
 
     void update()
     {
-        auto& world = system<ecs::world>();
-        auto& scene = system<scene::scene>();
-
-        scene.reset_sync_counter();
     }
 
     ecs::entity m_camera;

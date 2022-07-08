@@ -26,7 +26,6 @@ private:
     void initialize_task();
 
     void move_cube();
-    void frustum_culling();
     void draw_aabb();
     void update_camera();
 

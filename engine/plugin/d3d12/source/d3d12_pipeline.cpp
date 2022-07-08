@@ -218,7 +218,7 @@ static const std::vector<CD3DX12_STATIC_SAMPLER_DESC> static_samplers = {
 
     CD3DX12_STATIC_SAMPLER_DESC(
         7,                                // shaderRegister
-        D3D12_FILTER_MIN_MAG_MIP_LINEAR,  // filter
+        D3D12_FILTER_ANISOTROPIC,         // filter
         D3D12_TEXTURE_ADDRESS_MODE_CLAMP, // addressU
         D3D12_TEXTURE_ADDRESS_MODE_CLAMP, // addressV
         D3D12_TEXTURE_ADDRESS_MODE_CLAMP, // addressW

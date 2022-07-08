@@ -95,6 +95,7 @@ void sky_pipeline::render(const render_scene& scene, render_command_interface* c
     command->parameter(0, scene.camera_parameter);
     command->parameter(1, scene.sky_parameter);
 
+    command->input_assembly_state(nullptr, 0, nullptr, PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
     command->draw(0, 36);
 
     command->end(m_interface.get());

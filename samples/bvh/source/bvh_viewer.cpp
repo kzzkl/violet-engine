@@ -116,7 +116,6 @@ void bvh_viewer::initialize_task()
     auto tick_task = task.schedule("bvh tick", [this]() {
         update_camera();
         move_cube();
-        frustum_culling();
         draw_aabb();
 
         system<graphics::graphics>().render(m_small_camera);
@@ -179,40 +178,6 @@ void bvh_viewer::move_cube()
     }
 
     system<scene::scene>().sync_local();
-}
-
-void bvh_viewer::frustum_culling()
-{
-    auto& camera = system<ecs::world>().component<graphics::camera>(m_camera);
-    auto& transform = system<ecs::world>().component<scene::transform>(m_camera);
-
-    math::float4x4 vp =
-        math::matrix::mul(math::matrix::inverse(transform.to_world()), camera.projection());
-
-    math::float4_simd x = math::simd::set(vp[0][0], vp[1][0], vp[2][0], vp[3][0]);
-    math::float4_simd y = math::simd::set(vp[0][1], vp[1][1], vp[2][1], vp[3][1]);
-    math::float4_simd z = math::simd::set(vp[0][2], vp[1][2], vp[2][2], vp[3][2]);
-    math::float4_simd w = math::simd::set(vp[0][3], vp[1][3], vp[2][3], vp[3][3]);
-
-    std::vector<math::float4> planes(6);
-    std::vector<math::float4_simd> ps = {
-        math::vector_simd::add(w, x),
-        math::vector_simd::sub(w, x),
-        math::vector_simd::add(w, y),
-        math::vector_simd::sub(w, y),
-        z,
-        math::vector_simd::sub(w, z)};
-
-    for (std::size_t i = 0; i < 6; ++i)
-    {
-        math::float4_simd length = math::vector_simd::length_vec3_v(ps[i]);
-        ps[i] = math::vector_simd::div(ps[i], length);
-        math::simd::store(ps[i], planes[i]);
-    }
-
-    system<scene::scene>().frustum_culling(planes);
-
-    // m_tree.frustum_culling(planes);
 }
 
 void bvh_viewer::draw_aabb()

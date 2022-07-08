@@ -137,36 +137,91 @@ void bvh_tree::frustum_culling(const std::vector<math::float4>& frustum)
     std::stack<std::size_t> dfs;
     dfs.push(m_root_index);
 
+    std::stack<std::size_t> inside_nodes;
     while (!dfs.empty())
     {
-        auto index = dfs.top();
+        std::size_t index = dfs.top();
         dfs.pop();
 
         bool cull = false;
+        bool inside = true;
         for (std::size_t i = 0; i < 6; ++i)
         {
-            math::float4_simd vertex = math::simd::set(
-                frustum[i][0] < 0.0f ? m_nodes[index].aabb.min[0] : m_nodes[index].aabb.max[0],
-                frustum[i][1] < 0.0f ? m_nodes[index].aabb.min[1] : m_nodes[index].aabb.max[1],
-                frustum[i][2] < 0.0f ? m_nodes[index].aabb.min[2] : m_nodes[index].aabb.max[2],
-                0.0f);
+            math::float4_align max_vertex = {};
+            math::float4_align min_vertex = {};
+            if (frustum[i][0] < 0.0f)
+            {
+                max_vertex[0] = m_nodes[index].aabb.min[0];
+                min_vertex[0] = m_nodes[index].aabb.max[0];
+            }
+            else
+            {
+                max_vertex[0] = m_nodes[index].aabb.max[0];
+                min_vertex[0] = m_nodes[index].aabb.min[0];
+            }
+
+            if (frustum[i][1] < 0.0f)
+            {
+                max_vertex[1] = m_nodes[index].aabb.min[1];
+                min_vertex[1] = m_nodes[index].aabb.max[1];
+            }
+            else
+            {
+                max_vertex[1] = m_nodes[index].aabb.max[1];
+                min_vertex[1] = m_nodes[index].aabb.min[1];
+            }
+
+            if (frustum[i][2] < 0.0f)
+            {
+                max_vertex[2] = m_nodes[index].aabb.min[2];
+                min_vertex[2] = m_nodes[index].aabb.max[2];
+            }
+            else
+            {
+                max_vertex[2] = m_nodes[index].aabb.max[2];
+                min_vertex[2] = m_nodes[index].aabb.min[2];
+            }
+
+            math::float4_simd max = math::simd::load(max_vertex);
             math::float4_simd normal = math::simd::load(frustum[i]);
-            if (math::vector_simd::dot(vertex, normal) + frustum[i][3] < 0.0f)
+            if (math::vector_simd::dot(max, normal) + frustum[i][3] < 0.0f)
             {
                 cull = true;
                 break;
+            }
+            else if (inside)
+            {
+                math::float4_simd min = math::simd::load(min_vertex);
+                if (math::vector_simd::dot(min, normal) + frustum[i][3] < 0.0f)
+                    inside = false;
             }
         }
 
         if (!cull)
         {
             m_nodes[index].visible = true;
-
-            if (m_nodes[index].depth > 0)
+            if (inside)
+            {
+                inside_nodes.push(index);
+            }
+            else if (m_nodes[index].depth > 0)
             {
                 dfs.push(m_nodes[index].left_child);
                 dfs.push(m_nodes[index].right_child);
             }
+        }
+    }
+
+    while (!inside_nodes.empty())
+    {
+        std::size_t index = inside_nodes.top();
+        inside_nodes.pop();
+
+        m_nodes[index].visible = true;
+        if (m_nodes[index].depth > 0)
+        {
+            inside_nodes.push(m_nodes[index].left_child);
+            inside_nodes.push(m_nodes[index].right_child);
         }
     }
 }

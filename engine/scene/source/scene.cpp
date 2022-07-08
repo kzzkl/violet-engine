@@ -171,7 +171,7 @@ void scene::frustum_culling(const std::vector<math::float4>& frustum)
             }
         });
 
-    m_static_bvh.frustum_culling(frustum);
+    //m_static_bvh.frustum_culling(frustum);
     m_dynamic_bvh.frustum_culling(frustum);
 
     world.view<transform, bounding_box>().each(
