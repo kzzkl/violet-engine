@@ -1,8 +1,11 @@
 #include "editor/scene_view.hpp"
 #include "core/relation.hpp"
+#include "core/timer.hpp"
 #include "ecs/world.hpp"
+#include "graphics/camera.hpp"
 #include "graphics/graphics.hpp"
 #include "graphics/graphics_event.hpp"
+#include "graphics/rhi.hpp"
 #include "scene/scene.hpp"
 #include "ui/controls/image.hpp"
 #include "ui/ui.hpp"
@@ -21,7 +24,6 @@ scene_view::scene_view(ui::dock_area* area, const ui::dock_window_theme& theme)
       m_focused(false)
 {
     auto& world = system<ecs::world>();
-    auto& graphics = system<graphics::graphics>();
     auto& scene = system<scene::scene>();
     auto& relation = system<core::relation>();
 
@@ -30,9 +32,9 @@ scene_view::scene_view(ui::dock_area* area, const ui::dock_window_theme& theme)
     world.add<core::link, graphics::camera, scene::transform>(m_camera);
 
     auto& transform = world.component<scene::transform>(m_camera);
-    transform.position = {0.0f, 10.0f, -40.0f};
-    transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
-    transform.scaling = {1.0f, 1.0f, 1.0f};
+    transform.position(math::float3{0.0f, 0.0f, -10.0f});
+    transform.rotation(math::float4{0.0f, 0.0f, 0.0f, 1.0f});
+    transform.scale(math::float3{1.0f, 1.0f, 1.0f});
 
     relation.link(m_camera, scene.root());
 
@@ -109,7 +111,7 @@ void scene_view::update_camera()
         if (mouse.key(window::MOUSE_KEY_RIGHT).down())
         {
             math::float4x4_simd to_local =
-                math::matrix_simd::inverse(math::simd::load(transform.world_matrix));
+                math::matrix_simd::inverse(math::simd::load(transform.to_world()));
 
             math::float4_simd rotate_x = math::quaternion_simd::rotation_axis(
                 math::simd::set(1.0f, 0.0f, 0.0f, 0.0f),
@@ -118,42 +120,37 @@ void scene_view::update_camera()
                 to_local[1],
                 relative_x * delta * m_camera_rotate_speed);
 
-            math::float4_simd rotation = math::simd::load(transform.rotation);
+            math::float4_simd rotation = math::simd::load(transform.rotation());
             rotation = math::quaternion_simd::mul(rotation, rotate_y);
             rotation = math::quaternion_simd::mul(rotation, rotate_x);
-            math::simd::store(rotation, transform.rotation);
+            transform.rotation(rotation);
 
-            transform.dirty = true;
             system<scene::scene>().sync_local(m_camera);
         }
 
         if (mouse.key(window::MOUSE_KEY_MIDDLE).down())
         {
-            math::float4_simd up = math::simd::load(transform.world_matrix[1]);
-            math::float4_simd right = math::simd::load(transform.world_matrix[0]);
+            math::float4_simd up = math::simd::load(transform.to_world()[1]);
+            math::float4_simd right = math::simd::load(transform.to_world()[0]);
 
             up = math::vector_simd::scale(up, relative_y * delta * m_camera_move_speed);
             right = math::vector_simd::scale(right, -relative_x * delta * m_camera_move_speed);
 
-            math::float4_simd position = math::simd::load(transform.position);
+            math::float4_simd position = math::simd::load(transform.position());
             position = math::vector_simd::add(position, up);
             position = math::vector_simd::add(position, right);
-            math::simd::store(position, transform.position);
-
-            transform.dirty = true;
+            transform.position(position);
         }
 
         if (mouse.whell() != 0)
         {
-            math::float4_simd forward = math::simd::load(transform.world_matrix[2]);
+            math::float4_simd forward = math::simd::load(transform.to_world()[2]);
             forward =
                 math::vector_simd::scale(forward, mouse.whell() * delta * m_camera_move_speed * 50);
 
-            math::float4_simd position = math::simd::load(transform.position);
+            math::float4_simd position = math::simd::load(transform.position());
             position = math::vector_simd::add(position, forward);
-            math::simd::store(position, transform.position);
-
-            transform.dirty = true;
+            transform.position(position);
         }
     }
 }
@@ -163,34 +160,33 @@ void scene_view::resize_camera()
     if (m_image_width == 0 || m_image_height == 0)
         return;
 
-    auto& graphics = system<graphics::graphics>();
     auto& world = system<ecs::world>();
 
     auto& camera = world.component<graphics::camera>(m_camera);
-    camera.mask = graphics::VISUAL_GROUP_DEBUG | graphics::VISUAL_GROUP_1;
+    camera.render_groups = graphics::RENDER_GROUP_DEBUG | graphics::RENDER_GROUP_1;
 
     graphics::render_target_info render_target_info = {};
     render_target_info.width = m_image_width;
     render_target_info.height = m_image_height;
-    render_target_info.format = graphics.back_buffer_format();
+    render_target_info.format = graphics::rhi::back_buffer_format();
     render_target_info.samples = 4;
-    m_render_target = graphics.make_render_target(render_target_info);
+    m_render_target = graphics::rhi::make_render_target(render_target_info);
     camera.render_target(m_render_target.get());
 
     graphics::render_target_info render_target_resolve_info = {};
     render_target_resolve_info.width = m_image_width;
     render_target_resolve_info.height = m_image_height;
-    render_target_resolve_info.format = graphics.back_buffer_format();
+    render_target_resolve_info.format = graphics::rhi::back_buffer_format();
     render_target_resolve_info.samples = 1;
-    m_render_target_resolve = graphics.make_render_target(render_target_resolve_info);
+    m_render_target_resolve = graphics::rhi::make_render_target(render_target_resolve_info);
     camera.render_target_resolve(m_render_target_resolve.get());
 
     graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
     depth_stencil_buffer_info.width = m_image_width;
     depth_stencil_buffer_info.height = m_image_height;
-    depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
+    depth_stencil_buffer_info.format = graphics::RESOURCE_FORMAT_D24_UNORM_S8_UINT;
     depth_stencil_buffer_info.samples = 4;
-    m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
+    m_depth_stencil_buffer = graphics::rhi::make_depth_stencil_buffer(depth_stencil_buffer_info);
     camera.depth_stencil_buffer(m_depth_stencil_buffer.get());
 }
 } // namespace ash::editor

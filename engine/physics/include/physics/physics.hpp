@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/context.hpp"
+#include "ecs/world.hpp"
 #include "physics/joint.hpp"
 #include "physics/physics_plugin.hpp"
 #include "physics/rigidbody.hpp"
@@ -43,8 +44,6 @@ private:
     void initialize_entity(ecs::entity entity);
 
     std::unique_ptr<world_interface> m_world;
-
-    ecs::view<rigidbody, scene::transform>* m_view;
 
     std::vector<rigidbody_user_data> m_user_data;
 

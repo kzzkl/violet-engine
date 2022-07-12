@@ -498,7 +498,7 @@ bool pmx_loader::load_rigidbody(std::ifstream& fin)
 
         math::float3 rotate;
         read<math::float3>(fin, rotate);
-        rigidbody.rotate = math::quaternion_plain::rotation_euler(rotate[1], rotate[0], rotate[2]);
+        rigidbody.rotate = math::quaternion::rotation_euler(rotate[1], rotate[0], rotate[2]);
 
         read<float>(fin, rigidbody.mass);
         read<float>(fin, rigidbody.translate_dimmer);
@@ -529,7 +529,7 @@ bool pmx_loader::load_joint(std::ifstream& fin)
         read<math::float3>(fin, joint.translate);
         math::float3 rotate;
         read<math::float3>(fin, rotate);
-        joint.rotate = math::quaternion_plain::rotation_euler(rotate[1], rotate[0], rotate[2]);
+        joint.rotate = math::quaternion::rotation_euler(rotate[1], rotate[0], rotate[2]);
 
         read<math::float3>(fin, joint.translate_min);
         read<math::float3>(fin, joint.translate_max);

@@ -34,7 +34,7 @@ protected:
 class d3d12_renderer : public renderer_interface
 {
 public:
-    d3d12_renderer(const renderer_desc& desc);
+    d3d12_renderer();
     virtual ~d3d12_renderer();
 
     virtual void present() override;

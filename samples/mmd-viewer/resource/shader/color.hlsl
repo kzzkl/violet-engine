@@ -2,8 +2,6 @@
 cbuffer ash_object : register(b0, space0)
 {
     float4x4 transform_m;
-    float4x4 transform_mv;
-    float4x4 transform_mvp;
 };
 
 [[vk::binding(0, 1)]]
@@ -27,10 +25,10 @@ Texture2D spa : register(t2, space1);
 SamplerState sampler_wrap : register(s0);
 
 [[vk::binding(0, 2)]]
-cbuffer ash_pass : register(b0, space2)
+cbuffer ash_camera : register(b0, space2)
 {
-    float4 camera_position;
-    float4 camera_direction;
+    float3 camera_position;
+    float3 camera_direction;
 
     float4x4 transform_v;
     float4x4 transform_p;
@@ -54,8 +52,8 @@ struct vs_out
 vs_out vs_main(vs_in vin)
 {
     vs_out result;
-    result.position = mul(float4(vin.position, 1.0f), transform_mvp);
-    result.normal = mul(float4(vin.normal, 0.0f), transform_mv).xyz;
+    result.position = mul(mul(float4(vin.position, 1.0f), transform_m), transform_vp);
+    result.normal = mul(mul(float4(vin.normal, 0.0f), transform_m), transform_v).xyz;
     result.uv = vin.uv;
 
     return result;

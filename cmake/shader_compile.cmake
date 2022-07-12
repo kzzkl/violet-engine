@@ -23,12 +23,16 @@ function(target_shader_compile TARGET_NAME PARAMETERS OUTPUT_DIR COMPILER_EXECUT
                     set(PROFILE "cs_6_0")
                     set(ENTRY_POINT "cs_main")
                 endif()
+
+                set(DXC_CMD_DEBUG ${COMPILER_EXECUTABLE} ${SHADER_PATH} -T ${PROFILE} -E ${ENTRY_POINT} -Fo ${OUTPUT_NAME} -Wno-ignored-attributes -all-resources-bound -Zi -Qembed_debug)
+                set(DXC_CMD_RELEASE ${COMPILER_EXECUTABLE} ${SHADER_PATH} -T ${PROFILE} -E ${ENTRY_POINT} -Fo ${OUTPUT_NAME} -Wno-ignored-attributes -all-resources-bound)
                 add_custom_command(
                     TARGET ${TARGET_NAME}
                     POST_BUILD
-                    COMMAND ${COMPILER_EXECUTABLE} ${SHADER_PATH} -T ${PROFILE} -E ${ENTRY_POINT} -Fo ${OUTPUT_NAME} -Wno-ignored-attributes -all-resources-bound
+                    COMMAND "$<$<CONFIG:Debug>:${DXC_CMD_DEBUG}>$<$<CONFIG:Release>:${DXC_CMD_RELEASE}>"
                     DEPENDS ${SHADER_PATH}
-                    WORKING_DIRECTORY "${WORKING_DIR}")
+                    WORKING_DIRECTORY "${WORKING_DIR}"
+                    COMMAND_EXPAND_LISTS)
             elseif(COMPILER_NAME STREQUAL "glslangValidator")
                 if(PARAMETER STREQUAL "vert")
                     set(OUTPUT_NAME "${OUTPUT_DIR}/${SHADER_NAME}.vert.spv")

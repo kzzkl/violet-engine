@@ -1,5 +1,6 @@
 #include "editor/component_view.hpp"
 #include "core/context.hpp"
+#include "ecs/world.hpp"
 #include "scene/transform.hpp"
 #include "ui/controls/input.hpp"
 #include "ui/controls/label.hpp"
@@ -55,7 +56,7 @@ public:
 private:
     void initialize_position();
     void initialize_rotation();
-    void initialize_scaling();
+    void initialize_scale();
 
     std::unique_ptr<ui::element> m_position;
     std::array<std::unique_ptr<ui::label>, 4> m_position_label;
@@ -65,9 +66,9 @@ private:
     std::array<std::unique_ptr<ui::label>, 4> m_rotation_label;
     std::array<std::unique_ptr<ui::input_float>, 3> m_rotation_input;
 
-    std::unique_ptr<ui::element> m_scaling;
-    std::array<std::unique_ptr<ui::label>, 4> m_scaling_label;
-    std::array<std::unique_ptr<ui::input_float>, 3> m_scaling_input;
+    std::unique_ptr<ui::element> m_scale;
+    std::array<std::unique_ptr<ui::label>, 4> m_scale_label;
+    std::array<std::unique_ptr<ui::input_float>, 3> m_scale_input;
 
     ecs::entity m_entity;
 };
@@ -77,7 +78,7 @@ transform_panel::transform_panel(const ui::collapse_theme& theme)
 {
     initialize_position();
     initialize_rotation();
-    initialize_scaling();
+    initialize_scale();
 }
 
 void transform_panel::tick(bool entity_change, ecs::entity entity)
@@ -88,20 +89,22 @@ void transform_panel::tick(bool entity_change, ecs::entity entity)
     auto& world = system<ecs::world>();
 
     auto& transform = world.component<scene::transform>(m_entity);
-    auto euler = math::euler_plain::rotation_quaternion(transform.rotation);
+    auto& position = transform.position();
+    auto& scale = transform.scale();
+    auto euler = math::euler::rotation_quaternion(transform.rotation());
     for (std::size_t i = 0; i < 3; ++i)
     {
         // Update position.
-        if (m_position_input[i]->value() != transform.position[i])
-            m_position_input[i]->value(transform.position[i]);
+        if (m_position_input[i]->value() != position[i])
+            m_position_input[i]->value(position[i]);
 
         // Update rotation.
         if (m_rotation_input[i]->value() != euler[i])
             m_rotation_input[i]->value(euler[i]);
 
-        // Update scaling.
-        if (m_scaling_input[i]->value() != transform.scaling[i])
-            m_scaling_input[i]->value(transform.scaling[i]);
+        // Update scale.
+        if (m_scale_input[i]->value() != scale[i])
+            m_scale_input[i]->value(scale[i]);
     }
 }
 
@@ -130,8 +133,9 @@ void transform_panel::initialize_position()
         m_position_input[i]->width(80.0f);
         m_position_input[i]->on_value_change = [&, i, this](float value) {
             auto& transform = world.component<scene::transform>(m_entity);
-            transform.position[i] = value;
-            transform.dirty = true;
+            math::float3 position = transform.position();
+            position[i] = value;
+            transform.position(position);
         };
         m_position->add(m_position_input[i].get());
 
@@ -168,10 +172,9 @@ void transform_panel::initialize_rotation()
         m_rotation_input[i]->on_value_change = [&, i, this](float value) {
             auto& transform = world.component<scene::transform>(m_entity);
 
-            auto euler = math::euler_plain::rotation_quaternion(transform.rotation);
+            auto euler = math::euler::rotation_quaternion(transform.rotation());
             euler[i] = value;
-            transform.rotation = math::quaternion_plain::rotation_euler(euler);
-            transform.dirty = true;
+            transform.rotation(math::quaternion::rotation_euler(euler));
         };
         m_rotation->add(m_rotation_input[i].get());
 
@@ -182,7 +185,7 @@ void transform_panel::initialize_rotation()
     m_rotation->add(m_rotation_label[3].get());
 }
 
-void transform_panel::initialize_scaling()
+void transform_panel::initialize_scale()
 {
     auto& ui = system<ui::ui>();
     auto& world = system<ecs::world>();
@@ -190,33 +193,34 @@ void transform_panel::initialize_scaling()
     auto label_theme = ui.theme<ui::label_theme>("dark");
     auto input_theme = ui.theme<ui::input_theme>("dark");
 
-    m_scaling = std::make_unique<ui::element>();
-    m_scaling->flex_direction(ui::LAYOUT_FLEX_DIRECTION_ROW_REVERSE);
-    m_scaling->margin(5.0f, ui::LAYOUT_EDGE_BOTTOM);
-    add_item(m_scaling.get());
+    m_scale = std::make_unique<ui::element>();
+    m_scale->flex_direction(ui::LAYOUT_FLEX_DIRECTION_ROW_REVERSE);
+    m_scale->margin(5.0f, ui::LAYOUT_EDGE_BOTTOM);
+    add_item(m_scale.get());
 
-    m_scaling_label[0] = std::make_unique<ui::label>("X", label_theme);
-    m_scaling_label[1] = std::make_unique<ui::label>("Y", label_theme);
-    m_scaling_label[2] = std::make_unique<ui::label>("Z", label_theme);
-    m_scaling_label[3] = std::make_unique<ui::label>("Scaling", label_theme);
-    m_scaling_label[3]->flex_grow(1.0f);
+    m_scale_label[0] = std::make_unique<ui::label>("X", label_theme);
+    m_scale_label[1] = std::make_unique<ui::label>("Y", label_theme);
+    m_scale_label[2] = std::make_unique<ui::label>("Z", label_theme);
+    m_scale_label[3] = std::make_unique<ui::label>("scale", label_theme);
+    m_scale_label[3]->flex_grow(1.0f);
 
     for (int i = 2; i >= 0; --i)
     {
-        m_scaling_input[i] = std::make_unique<ui::input_float>(input_theme);
-        m_scaling_input[i]->width(80.0f);
-        m_scaling_input[i]->on_value_change = [&, i, this](float value) {
+        m_scale_input[i] = std::make_unique<ui::input_float>(input_theme);
+        m_scale_input[i]->width(80.0f);
+        m_scale_input[i]->on_value_change = [&, i, this](float value) {
             auto& transform = world.component<scene::transform>(m_entity);
-            transform.scaling[i] = value;
-            transform.dirty = true;
+            math::float3 scale = transform.scale();
+            scale[i] = value;
+            transform.scale(scale);
         };
-        m_scaling->add(m_scaling_input[i].get());
+        m_scale->add(m_scale_input[i].get());
 
-        m_scaling_label[i]->width(20.0f);
-        m_scaling_label[i]->margin(10.0f, ui::LAYOUT_EDGE_LEFT);
-        m_scaling->add(m_scaling_label[i].get());
+        m_scale_label[i]->width(20.0f);
+        m_scale_label[i]->margin(10.0f, ui::LAYOUT_EDGE_LEFT);
+        m_scale->add(m_scale_label[i].get());
     }
-    m_scaling->add(m_scaling_label[3].get());
+    m_scale->add(m_scale_label[3].get());
 }
 
 component_view::component_view(ui::dock_area* area, const ui::dock_window_theme& theme)

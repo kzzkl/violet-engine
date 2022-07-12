@@ -81,24 +81,8 @@ std::size_t d3d12_swap_chain::back_buffer_index() const noexcept
     return m_back_buffer_counter & 1;
 }
 
-d3d12_renderer::d3d12_renderer(const renderer_desc& desc)
+d3d12_renderer::d3d12_renderer()
 {
-    d3d12_context::initialize(desc);
-
-    auto factory = d3d12_context::factory();
-    auto device = d3d12_context::device();
-
-    // Get adapter information.
-    d3d12_ptr<DXGIAdapter> adapter;
-    for (UINT i = 0;; ++i)
-    {
-        if (factory->EnumAdapters1(i, &adapter) == DXGI_ERROR_NOT_FOUND)
-            break;
-
-        DXGI_ADAPTER_DESC1 desc;
-        adapter->GetDesc1(&desc);
-        adapter.Reset();
-    }
 }
 
 d3d12_renderer::~d3d12_renderer()

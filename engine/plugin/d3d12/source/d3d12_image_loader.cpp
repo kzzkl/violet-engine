@@ -87,13 +87,84 @@ d3d12_image_loader::load_result d3d12_image_loader::load(
     target_location.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
     target_location.SubresourceIndex = 0;
 
-    command_list->CopyTextureRegion(&target_location, 0, 0, 0, &source_location, NULL);
+    command_list->CopyTextureRegion(&target_location, 0, 0, 0, &source_location, nullptr);
 
     CD3DX12_RESOURCE_BARRIER transition = CD3DX12_RESOURCE_BARRIER::Transition(
         result.resource.Get(),
         D3D12_RESOURCE_STATE_COPY_DEST,
         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     command_list->ResourceBarrier(1, &transition);
+
+    return result;
+}
+
+d3d12_image_loader::load_result d3d12_image_loader::load_cube(
+    const std::vector<std::string_view>& files,
+    D3D12GraphicsCommandList* command_list)
+{
+    ASH_D3D12_ASSERT(files.size() == 6);
+
+    load_result result = {};
+
+    int width, height, channels;
+    std::vector<stbi_uc*> pixels(6);
+    std::vector<D3D12_SUBRESOURCE_DATA> subresources(6);
+    for (std::size_t i = 0; i < 6; ++i)
+    {
+        stbi_uc* data = stbi_load(files[i].data(), &width, &height, &channels, STBI_rgb_alpha);
+        ASH_D3D12_ASSERT(data != nullptr);
+        pixels[i] = data;
+        subresources[i].pData = data;
+        subresources[i].RowPitch = width * 4;
+        subresources[i].SlicePitch = 0;
+    }
+
+    auto device = d3d12_context::device();
+
+    // Create default buffer.
+    CD3DX12_RESOURCE_DESC default_desc =
+        CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R8G8B8A8_UNORM, width, height, 6, 1);
+    CD3DX12_HEAP_PROPERTIES default_heap_properties(D3D12_HEAP_TYPE_DEFAULT);
+    throw_if_failed(device->CreateCommittedResource(
+        &default_heap_properties,
+        D3D12_HEAP_FLAG_NONE,
+        &default_desc,
+        D3D12_RESOURCE_STATE_COPY_DEST,
+        nullptr,
+        IID_PPV_ARGS(&result.resource)));
+
+    // Create upload buffer.
+    const UINT64 upload_resource_size = GetRequiredIntermediateSize(
+        result.resource.Get(),
+        0,
+        static_cast<UINT>(subresources.size()));
+    CD3DX12_HEAP_PROPERTIES heap_properties(D3D12_HEAP_TYPE_UPLOAD);
+    CD3DX12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(upload_resource_size);
+    throw_if_failed(d3d12_context::device()->CreateCommittedResource(
+        &heap_properties,
+        D3D12_HEAP_FLAG_NONE,
+        &desc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&result.temporary)));
+
+    UpdateSubresources(
+        command_list,
+        result.resource.Get(),
+        result.temporary.Get(),
+        0,
+        0,
+        static_cast<UINT>(subresources.size()),
+        subresources.data());
+
+    CD3DX12_RESOURCE_BARRIER transition = CD3DX12_RESOURCE_BARRIER::Transition(
+        result.resource.Get(),
+        D3D12_RESOURCE_STATE_COPY_DEST,
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    command_list->ResourceBarrier(1, &transition);
+
+    for (stbi_uc* data : pixels)
+        stbi_image_free(data);
 
     return result;
 }
@@ -167,6 +238,6 @@ d3d12_image_loader::load_result d3d12_image_loader::load_other(
 
     stbi_image_free(stb_pixels);
 
-    return load(pixels.data(), width, height, resource_format::R8G8B8A8_UNORM, command_list);
+    return load(pixels.data(), width, height, RESOURCE_FORMAT_R8G8B8A8_UNORM, command_list);
 }
 } // namespace ash::graphics::d3d12

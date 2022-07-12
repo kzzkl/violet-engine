@@ -1,6 +1,7 @@
 #pragma once
 
 #include "pipeline_parameter.hpp"
+#include <memory>
 #include <vector>
 
 namespace ash::graphics
@@ -8,8 +9,8 @@ namespace ash::graphics
 class skin_pipeline;
 struct skinned_mesh
 {
-    std::vector<resource*> input_vertex_buffers;
-    std::vector<std::unique_ptr<resource>> skinned_vertex_buffers;
+    std::vector<resource_interface*> input_vertex_buffers;
+    std::vector<std::unique_ptr<resource_interface>> skinned_vertex_buffers;
 
     skin_pipeline* pipeline;
     std::unique_ptr<pipeline_parameter> parameter;

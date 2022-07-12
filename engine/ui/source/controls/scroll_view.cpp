@@ -117,7 +117,7 @@ scroll_view::scroll_view(const scroll_view_theme& theme) : panel(theme.backgroun
     m_vertical_bar->height_percent(90.0f);
     m_vertical_bar->position_type(LAYOUT_POSITION_TYPE_ABSOLUTE);
     m_vertical_bar->position(5.0f, LAYOUT_EDGE_RIGHT);
-    m_vertical_bar->layer(90);
+    m_vertical_bar->layer(50);
     m_vertical_bar->on_slide = [this](float value) {
         if (value == 1.0f)
             return;
@@ -130,7 +130,7 @@ scroll_view::scroll_view(const scroll_view_theme& theme) : panel(theme.backgroun
     m_horizontal_bar->height(theme.bar_width);
     m_horizontal_bar->position_type(LAYOUT_POSITION_TYPE_ABSOLUTE);
     m_horizontal_bar->position(5.0f, LAYOUT_EDGE_BOTTOM);
-    m_horizontal_bar->layer(90);
+    m_horizontal_bar->layer(50);
     m_horizontal_bar->on_slide = [this](float value) {
         if (value == 1.0f)
             return;

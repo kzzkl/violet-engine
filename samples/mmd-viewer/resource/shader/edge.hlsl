@@ -1,14 +1,12 @@
 cbuffer ash_object : register(b0, space0)
 {
     float4x4 transform_m;
-    float4x4 transform_mv;
-    float4x4 transform_mvp;
 };
 
-cbuffer ash_pass : register(b0, space1)
+cbuffer ash_camera : register(b0, space1)
 {
-    float4 camera_position;
-    float4 camera_direction;
+    float3 camera_position;
+    float3 camera_direction;
 
     float4x4 transform_v;
     float4x4 transform_p;
@@ -28,8 +26,8 @@ struct vs_out
 
 vs_out vs_main(vs_in vin)
 {
-    float4 position = mul(float4(vin.position, 1.0f), transform_mv);
-    float4 normal = mul(float4(vin.normal, 0.0f), transform_mv);
+    float4 position = mul(mul(float4(vin.position, 1.0f), transform_m), transform_v);
+    float4 normal = mul(mul(float4(vin.normal, 0.0f), transform_m), transform_v);
     normal = normalize(normal);
     normal.z -= 0.4f;
     position += normal * 0.01f;

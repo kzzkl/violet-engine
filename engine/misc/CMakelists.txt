@@ -1,2 +1,3 @@
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/engine/config DESTINATION bin/engine)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/engine/font DESTINATION bin/engine)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/engine/texture DESTINATION bin/engine)

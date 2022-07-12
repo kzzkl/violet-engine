@@ -2,6 +2,7 @@
 
 #include "graphics_interface.hpp"
 #include <memory>
+#include <string_view>
 #include <vector>
 
 namespace ash::graphics
@@ -9,23 +10,19 @@ namespace ash::graphics
 class pipeline_parameter
 {
 public:
-    pipeline_parameter(pipeline_parameter_interface* interface) : m_interface(interface) {}
+    pipeline_parameter(std::string_view layout_name);
+    virtual ~pipeline_parameter() = default;
 
+    pipeline_parameter_interface* interface() const noexcept { return m_interface.get(); }
+
+protected:
     template <typename T>
-    void set(std::size_t index, const T& value) noexcept
+    T& field(std::size_t index)
     {
-        m_interface->set(index, value);
+        return *static_cast<T*>(field_pointer(index));
     }
 
-    template <typename T>
-    void set(std::size_t index, const T* value, std::size_t size)
-    {
-        m_interface->set(index, value, size);
-    }
-
-    // void reset() { m_interface->reset(); }
-
-    pipeline_parameter_interface* interface() const { return m_interface.get(); }
+    void* field_pointer(std::size_t index);
 
 private:
     std::unique_ptr<pipeline_parameter_interface> m_interface;

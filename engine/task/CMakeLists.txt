@@ -14,7 +14,8 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        ash::common)
+        ash::common
+        ash::core)
 
 install(DIRECTORY ./include/ DESTINATION include/ash/task)
 

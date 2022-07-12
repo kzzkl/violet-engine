@@ -53,22 +53,12 @@ void context::initialize(std::string_view config_path)
                 singleton.m_config[key].update(value, true);
         }
     }
-
-    std::size_t num_thread = singleton.m_config["core"]["threads"];
-    if (num_thread == 0)
-        num_thread = std::thread::hardware_concurrency();
-
-    singleton.m_task = std::make_unique<ash::task::task_manager>(num_thread);
-    singleton.m_world = std::make_unique<ash::ecs::world>();
-    singleton.m_event = std::make_unique<event>();
-    singleton.m_timer = std::make_unique<timer>();
 }
 
 void context::shutdown()
 {
     auto& singleton = instance();
 
-    singleton.m_task->stop();
     for (auto iter = singleton.m_installation_sequence.rbegin();
          iter != singleton.m_installation_sequence.rend();
          ++iter)
@@ -77,6 +67,21 @@ void context::shutdown()
         singleton.m_systems[*iter]->shutdown();
         singleton.m_systems[*iter] = nullptr;
     }
-    singleton.m_world = nullptr;
+}
+
+void context::begin_frame()
+{
+    auto& singleton = instance();
+
+    for (auto& system : singleton.m_systems)
+        system->on_begin_frame();
+}
+
+void context::end_frame()
+{
+    auto& singleton = instance();
+
+    for (auto& system : singleton.m_systems)
+        system->on_end_frame();
 }
 } // namespace ash::core

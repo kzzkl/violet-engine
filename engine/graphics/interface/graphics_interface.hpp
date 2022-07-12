@@ -7,29 +7,29 @@
 
 namespace ash::graphics
 {
-enum class resource_format
+enum resource_format
 {
-    UNDEFINED,
+    RESOURCE_FORMAT_UNDEFINED,
 
-    R8_UNORM,
-    R8_UINT,
+    RESOURCE_FORMAT_R8_UNORM,
+    RESOURCE_FORMAT_R8_UINT,
 
-    R8G8B8A8_UNORM,
-    B8G8R8A8_UNORM,
+    RESOURCE_FORMAT_R8G8B8A8_UNORM,
+    RESOURCE_FORMAT_B8G8R8A8_UNORM,
 
-    R32G32B32A32_FLOAT,
-    R32G32B32A32_SINT,
-    R32G32B32A32_UINT,
+    RESOURCE_FORMAT_R32G32B32A32_FLOAT,
+    RESOURCE_FORMAT_R32G32B32A32_SINT,
+    RESOURCE_FORMAT_R32G32B32A32_UINT,
 
-    D24_UNORM_S8_UINT
+    RESOURCE_FORMAT_D24_UNORM_S8_UINT
 };
 
-enum class resource_state
+enum resource_state
 {
-    UNDEFINED,
-    RENDER_TARGET,
-    DEPTH_STENCIL,
-    PRESENT
+    RESOURCE_STATE_UNDEFINED,
+    RESOURCE_STATE_RENDER_TARGET,
+    RESOURCE_STATE_DEPTH_STENCIL,
+    RESOURCE_STATE_PRESENT
 };
 
 struct resource_extent
@@ -50,23 +50,22 @@ public:
 
     virtual void upload(const void* data, std::size_t size, std::size_t offset = 0) {}
 };
-using resource = resource_interface;
 
-enum class vertex_attribute_type : std::uint8_t
+enum vertex_attribute_type
 {
-    INT,    // R32 INT
-    INT2,   // R32G32 INT
-    INT3,   // R32G32B32 INT
-    INT4,   // R32G32B32A32 INT
-    UINT,   // R32 UINT
-    UINT2,  // R32G32 UINT
-    UINT3,  // R32G32B32 UINT
-    UINT4,  // R32G32B32A32 UINT
-    FLOAT,  // R32 FLOAT
-    FLOAT2, // R32G32 FLOAT
-    FLOAT3, // R32G32B32 FLOAT
-    FLOAT4, // R32G32B32A32 FLOAT
-    COLOR   // R8G8B8A8
+    VERTEX_ATTRIBUTE_TYPE_INT,    // R32 INT
+    VERTEX_ATTRIBUTE_TYPE_INT2,   // R32G32 INT
+    VERTEX_ATTRIBUTE_TYPE_INT3,   // R32G32B32 INT
+    VERTEX_ATTRIBUTE_TYPE_INT4,   // R32G32B32A32 INT
+    VERTEX_ATTRIBUTE_TYPE_UINT,   // R32 UINT
+    VERTEX_ATTRIBUTE_TYPE_UINT2,  // R32G32 UINT
+    VERTEX_ATTRIBUTE_TYPE_UINT3,  // R32G32B32 UINT
+    VERTEX_ATTRIBUTE_TYPE_UINT4,  // R32G32B32A32 UINT
+    VERTEX_ATTRIBUTE_TYPE_FLOAT,  // R32 FLOAT
+    VERTEX_ATTRIBUTE_TYPE_FLOAT2, // R32G32 FLOAT
+    VERTEX_ATTRIBUTE_TYPE_FLOAT3, // R32G32B32 FLOAT
+    VERTEX_ATTRIBUTE_TYPE_FLOAT4, // R32G32B32A32 FLOAT
+    VERTEX_ATTRIBUTE_TYPE_COLOR   // R8G8B8A8
 };
 
 struct vertex_attribute
@@ -75,31 +74,23 @@ struct vertex_attribute
     vertex_attribute_type type;
 };
 
-enum class pipeline_parameter_type
+enum pipeline_parameter_type
 {
-    BOOL,
-    UINT,
-    FLOAT,
-    FLOAT2,
-    FLOAT3,
-    FLOAT4,
-    FLOAT4_ARRAY,
-    FLOAT4x4,
-    FLOAT4x4_ARRAY,
-    SHADER_RESOURCE,
-    UNORDERED_ACCESS
+    PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER,
+    PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,
+    PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS
 };
 
 struct pipeline_parameter_pair
 {
     pipeline_parameter_type type;
-    std::size_t size; // Only for array.
+    std::size_t size;
 };
 
 struct pipeline_parameter_layout_desc
 {
-    pipeline_parameter_pair* parameters;
-    std::size_t size;
+    pipeline_parameter_pair parameters[16];
+    std::size_t parameter_count;
 };
 
 class pipeline_parameter_layout_interface
@@ -113,36 +104,30 @@ class pipeline_parameter_interface
 public:
     virtual ~pipeline_parameter_interface() = default;
 
-    virtual void set(std::size_t index, bool value) = 0;
-    virtual void set(std::size_t index, std::uint32_t value) = 0;
-    virtual void set(std::size_t index, float value) = 0;
-    virtual void set(std::size_t index, const math::float2& value) = 0;
-    virtual void set(std::size_t index, const math::float3& value) = 0;
-    virtual void set(std::size_t index, const math::float4& value) = 0;
-    virtual void set(std::size_t index, const math::float4* data, size_t size) = 0;
-    virtual void set(std::size_t index, const math::float4x4& value) = 0;
-    virtual void set(std::size_t index, const math::float4x4* data, size_t size) = 0;
+    virtual void set(std::size_t index, const void* data, size_t size) = 0;
     virtual void set(std::size_t index, resource_interface* texture) = 0;
+
+    virtual void* constant_buffer_pointer(std::size_t index) = 0;
 };
 
-enum class blend_factor
+enum blend_factor
 {
-    ZERO,
-    ONE,
-    SOURCE_COLOR,
-    SOURCE_ALPHA,
-    SOURCE_INV_ALPHA,
-    TARGET_COLOR,
-    TARGET_ALPHA,
-    TARGET_INV_ALPHA
+    BLEND_FACTOR_ZERO,
+    BLEND_FACTOR_ONE,
+    BLEND_FACTOR_SOURCE_COLOR,
+    BLEND_FACTOR_SOURCE_ALPHA,
+    BLEND_FACTOR_SOURCE_INV_ALPHA,
+    BLEND_FACTOR_TARGET_COLOR,
+    BLEND_FACTOR_TARGET_ALPHA,
+    BLEND_FACTOR_TARGET_INV_ALPHA
 };
 
-enum class blend_op
+enum blend_op
 {
-    ADD,
-    SUBTRACT,
-    MIN,
-    MAX
+    BLEND_OP_ADD,
+    BLEND_OP_SUBTRACT,
+    BLEND_OP_MIN,
+    BLEND_OP_MAX
 };
 
 struct blend_desc
@@ -158,16 +143,16 @@ struct blend_desc
     blend_op alpha_op;
 };
 
-enum class depth_functor
+enum depth_functor
 {
-    NEVER,
-    LESS,
-    EQUAL,
-    LESS_EQUAL,
-    GREATER,
-    NOT_EQUAL,
-    GREATER_EQUAL,
-    ALWAYS
+    DEPTH_FUNCTOR_NEVER,
+    DEPTH_FUNCTOR_LESS,
+    DEPTH_FUNCTOR_EQUAL,
+    DEPTH_FUNCTOR_LESS_EQUAL,
+    DEPTH_FUNCTOR_GREATER,
+    DEPTH_FUNCTOR_NOT_EQUAL,
+    DEPTH_FUNCTOR_GREATER_EQUAL,
+    DEPTH_FUNCTOR_ALWAYS
 };
 
 struct depth_stencil_desc
@@ -175,11 +160,11 @@ struct depth_stencil_desc
     depth_functor depth_functor;
 };
 
-enum class cull_mode
+enum cull_mode
 {
-    NONE,
-    FRONT,
-    BACK
+    CULL_MODE_NONE,
+    CULL_MODE_FRONT,
+    CULL_MODE_BACK
 };
 
 struct rasterizer_desc
@@ -193,13 +178,13 @@ enum primitive_topology_type
     PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE
 };
 
-enum class attachment_reference_type
+enum attachment_reference_type
 {
-    UNUSE,
-    INPUT,
-    COLOR,
-    DEPTH,
-    RESOLVE
+    ATTACHMENT_REFERENCE_TYPE_UNUSE,
+    ATTACHMENT_REFERENCE_TYPE_INPUT,
+    ATTACHMENT_REFERENCE_TYPE_COLOR,
+    ATTACHMENT_REFERENCE_TYPE_DEPTH,
+    ATTACHMENT_REFERENCE_TYPE_RESOLVE
 };
 
 struct attachment_reference
@@ -213,10 +198,10 @@ struct render_pass_desc
     const char* vertex_shader;
     const char* pixel_shader;
 
-    vertex_attribute* vertex_attributes;
+    vertex_attribute vertex_attributes[16];
     std::size_t vertex_attribute_count;
 
-    pipeline_parameter_layout_interface** parameters;
+    pipeline_parameter_layout_interface* parameters[16];
     std::size_t parameter_count;
 
     blend_desc blend;
@@ -227,29 +212,29 @@ struct render_pass_desc
 
     primitive_topology_type primitive_topology;
 
-    attachment_reference* references;
+    attachment_reference references[16];
     std::size_t reference_count;
 };
 
-enum class attachment_load_op
+enum attachment_load_op
 {
-    LOAD,
-    CLEAR,
-    DONT_CARE
+    ATTACHMENT_LOAD_OP_LOAD,
+    ATTACHMENT_LOAD_OP_CLEAR,
+    ATTACHMENT_LOAD_OP_DONT_CARE
 };
 
-enum class attachment_store_op
+enum attachment_store_op
 {
-    STORE,
-    DONT_CARE
+    ATTACHMENT_STORE_OP_STORE,
+    ATTACHMENT_STORE_OP_DONT_CARE
 };
 
-enum class attachment_type
+enum attachment_type
 {
-    RENDER_TARGET,
-    CAMERA_RENDER_TARGET,
-    CAMERA_RENDER_TARGET_RESOLVE,
-    CAMERA_DEPTH_STENCIL
+    ATTACHMENT_TYPE_RENDER_TARGET,
+    ATTACHMENT_TYPE_CAMERA_RENDER_TARGET,
+    ATTACHMENT_TYPE_CAMERA_RENDER_TARGET_RESOLVE,
+    ATTACHMENT_TYPE_CAMERA_DEPTH_STENCIL
 };
 
 struct attachment_desc
@@ -270,10 +255,10 @@ struct attachment_desc
 
 struct render_pipeline_desc
 {
-    attachment_desc* attachments;
+    attachment_desc attachments[16];
     std::size_t attachment_count;
 
-    render_pass_desc* passes;
+    render_pass_desc passes[16];
     std::size_t pass_count;
 };
 
@@ -286,7 +271,7 @@ public:
 struct compute_pipeline_desc
 {
     const char* compute_shader;
-    pipeline_parameter_layout_interface** parameters;
+    pipeline_parameter_layout_interface* parameters[16];
     std::size_t parameter_count;
 };
 
@@ -327,14 +312,17 @@ public:
     virtual void scissor(const scissor_extent* extents, std::size_t size) = 0;
 
     virtual void parameter(std::size_t i, pipeline_parameter_interface*) = 0;
-    virtual void draw(
+
+    virtual void input_assembly_state(
         resource_interface* const* vertex_buffers,
         std::size_t vertex_buffer_count,
         resource_interface* index_buffer,
+        primitive_topology primitive_topology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) = 0;
+    virtual void draw(std::size_t vertex_start, std::size_t vertex_end) = 0;
+    virtual void draw_indexed(
         std::size_t index_start,
         std::size_t index_end,
-        std::size_t vertex_base,
-        primitive_topology primitive_topology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) = 0;
+        std::size_t vertex_base) = 0;
 
     virtual void clear_render_target(
         resource_interface* render_target,
@@ -346,17 +334,6 @@ public:
     virtual void end(compute_pipeline_interface* pipeline) {}
     virtual void dispatch(std::size_t x, std::size_t y, std::size_t z) {}
     virtual void compute_parameter(std::size_t index, pipeline_parameter_interface* parameter) {}
-};
-
-struct renderer_desc
-{
-    std::uint32_t width;
-    std::uint32_t height;
-
-    void* window_handle;
-
-    std::size_t frame_resource;
-    std::size_t render_concurrency;
 };
 
 class renderer_interface
@@ -373,7 +350,6 @@ public:
 
     virtual void resize(std::uint32_t width, std::uint32_t height) = 0;
 };
-using renderer = renderer_interface;
 
 enum vertex_buffer_flags
 {
@@ -417,12 +393,25 @@ struct depth_stencil_buffer_desc
     resource_format format;
 };
 
-class factory_interface
+struct rhi_desc
+{
+    std::uint32_t width;
+    std::uint32_t height;
+
+    void* window_handle;
+
+    std::size_t frame_resource;
+    std::size_t render_concurrency;
+};
+
+class rhi_interface
 {
 public:
-    virtual ~factory_interface() = default;
+    virtual ~rhi_interface() = default;
 
-    virtual renderer_interface* make_renderer(const renderer_desc& desc) = 0;
+    virtual void initialize(const rhi_desc& desc) = 0;
+
+    virtual renderer_interface* make_renderer() = 0;
 
     virtual render_pipeline_interface* make_render_pipeline(const render_pipeline_desc& desc) = 0;
     virtual compute_pipeline_interface* make_compute_pipeline(
@@ -435,17 +424,24 @@ public:
 
     virtual resource_interface* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
     virtual resource_interface* make_index_buffer(const index_buffer_desc& desc) = 0;
+
     virtual resource_interface* make_texture(
         const std::uint8_t* data,
         std::uint32_t width,
         std::uint32_t height,
-        resource_format format = resource_format::R8G8B8A8_UNORM) = 0;
+        resource_format format = RESOURCE_FORMAT_R8G8B8A8_UNORM) = 0;
     virtual resource_interface* make_texture(const char* file) = 0;
+    virtual resource_interface* make_texture_cube(
+        const char* left,
+        const char* right,
+        const char* top,
+        const char* bottom,
+        const char* front,
+        const char* back) = 0;
+
     virtual resource_interface* make_render_target(const render_target_desc& desc) = 0;
     virtual resource_interface* make_depth_stencil_buffer(
         const depth_stencil_buffer_desc& desc) = 0;
 };
-using factory = factory_interface;
-
-using make_factory = factory_interface* (*)();
+using make_rhi = rhi_interface* (*)();
 } // namespace ash::graphics

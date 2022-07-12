@@ -23,9 +23,9 @@ private:
     std::unique_ptr<ui::image> m_image;
 
     ecs::entity m_camera;
-    std::unique_ptr<graphics::resource> m_render_target;
-    std::unique_ptr<graphics::resource> m_render_target_resolve;
-    std::unique_ptr<graphics::resource> m_depth_stencil_buffer;
+    std::unique_ptr<graphics::resource_interface> m_render_target;
+    std::unique_ptr<graphics::resource_interface> m_render_target_resolve;
+    std::unique_ptr<graphics::resource_interface> m_depth_stencil_buffer;
 
     float m_camera_move_speed;
     float m_camera_rotate_speed;

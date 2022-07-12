@@ -14,21 +14,21 @@ D3D12_BLEND_DESC to_d3d12_blend_desc(const blend_desc& desc)
     auto convert_factor = [](blend_factor factor) {
         switch (factor)
         {
-        case blend_factor::ZERO:
+        case BLEND_FACTOR_ZERO:
             return D3D12_BLEND_ZERO;
-        case blend_factor::ONE:
+        case BLEND_FACTOR_ONE:
             return D3D12_BLEND_ONE;
-        case blend_factor::SOURCE_COLOR:
+        case BLEND_FACTOR_SOURCE_COLOR:
             return D3D12_BLEND_SRC_COLOR;
-        case blend_factor::SOURCE_ALPHA:
+        case BLEND_FACTOR_SOURCE_ALPHA:
             return D3D12_BLEND_SRC_ALPHA;
-        case blend_factor::SOURCE_INV_ALPHA:
+        case BLEND_FACTOR_SOURCE_INV_ALPHA:
             return D3D12_BLEND_INV_SRC_ALPHA;
-        case blend_factor::TARGET_COLOR:
+        case BLEND_FACTOR_TARGET_COLOR:
             return D3D12_BLEND_DEST_COLOR;
-        case blend_factor::TARGET_ALPHA:
+        case BLEND_FACTOR_TARGET_ALPHA:
             return D3D12_BLEND_DEST_ALPHA;
-        case blend_factor::TARGET_INV_ALPHA:
+        case BLEND_FACTOR_TARGET_INV_ALPHA:
             return D3D12_BLEND_INV_DEST_ALPHA;
         default:
             throw d3d12_exception("Invalid blend factor.");
@@ -38,13 +38,13 @@ D3D12_BLEND_DESC to_d3d12_blend_desc(const blend_desc& desc)
     auto convert_op = [](blend_op op) {
         switch (op)
         {
-        case blend_op::ADD:
+        case BLEND_OP_ADD:
             return D3D12_BLEND_OP_ADD;
-        case blend_op::SUBTRACT:
+        case BLEND_OP_SUBTRACT:
             return D3D12_BLEND_OP_SUBTRACT;
-        case blend_op::MIN:
+        case BLEND_OP_MIN:
             return D3D12_BLEND_OP_MIN;
-        case blend_op::MAX:
+        case BLEND_OP_MAX:
             return D3D12_BLEND_OP_MAX;
         default:
             throw d3d12_exception("Invalid blend op.");
@@ -83,28 +83,28 @@ D3D12_DEPTH_STENCIL_DESC to_d3d12_depth_stencil_desc(const depth_stencil_desc& d
 
     switch (desc.depth_functor)
     {
-    case depth_functor::NEVER:
+    case DEPTH_FUNCTOR_NEVER:
         result.DepthFunc = D3D12_COMPARISON_FUNC_NEVER;
         break;
-    case depth_functor::LESS:
+    case DEPTH_FUNCTOR_LESS:
         result.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
         break;
-    case depth_functor::EQUAL:
+    case DEPTH_FUNCTOR_EQUAL:
         result.DepthFunc = D3D12_COMPARISON_FUNC_EQUAL;
         break;
-    case depth_functor::LESS_EQUAL:
+    case DEPTH_FUNCTOR_LESS_EQUAL:
         result.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
         break;
-    case depth_functor::GREATER:
+    case DEPTH_FUNCTOR_GREATER:
         result.DepthFunc = D3D12_COMPARISON_FUNC_GREATER;
         break;
-    case depth_functor::NOT_EQUAL:
+    case DEPTH_FUNCTOR_NOT_EQUAL:
         result.DepthFunc = D3D12_COMPARISON_FUNC_NOT_EQUAL;
         break;
-    case depth_functor::GREATER_EQUAL:
+    case DEPTH_FUNCTOR_GREATER_EQUAL:
         result.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
         break;
-    case depth_functor::ALWAYS:
+    case DEPTH_FUNCTOR_ALWAYS:
         result.DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS;
         break;
     default:
@@ -120,13 +120,13 @@ D3D12_RASTERIZER_DESC to_d3d12_rasterizer_desc(const rasterizer_desc& desc)
 
     switch (desc.cull_mode)
     {
-    case cull_mode::NONE:
+    case CULL_MODE_NONE:
         result.CullMode = D3D12_CULL_MODE_NONE;
         break;
-    case cull_mode::FRONT:
+    case CULL_MODE_FRONT:
         result.CullMode = D3D12_CULL_MODE_FRONT;
         break;
-    case cull_mode::BACK:
+    case CULL_MODE_BACK:
         result.CullMode = D3D12_CULL_MODE_BACK;
         break;
     default:
@@ -171,11 +171,14 @@ static const std::vector<CD3DX12_STATIC_SAMPLER_DESC> static_samplers = {
         D3D12_TEXTURE_ADDRESS_MODE_CLAMP), // addressW
 
     CD3DX12_STATIC_SAMPLER_DESC(
-        2,                                // shaderRegister
-        D3D12_FILTER_MIN_MAG_MIP_LINEAR,  // filter
-        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
-        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
-        D3D12_TEXTURE_ADDRESS_MODE_WRAP), // addressW
+        2,                               // shaderRegister
+        D3D12_FILTER_MIN_MAG_MIP_LINEAR, // filter
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP, // addressU
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP, // addressV
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP, // addressW
+        0.0f,                            // mipLODBias
+        1,                               // maxAnisotropy
+        D3D12_COMPARISON_FUNC_ALWAYS),   // comparisonFunc
 
     CD3DX12_STATIC_SAMPLER_DESC(
         3,                                 // shaderRegister
@@ -215,7 +218,7 @@ static const std::vector<CD3DX12_STATIC_SAMPLER_DESC> static_samplers = {
 
     CD3DX12_STATIC_SAMPLER_DESC(
         7,                                // shaderRegister
-        D3D12_FILTER_MIN_MAG_MIP_LINEAR,  // filter
+        D3D12_FILTER_ANISOTROPIC,         // filter
         D3D12_TEXTURE_ADDRESS_MODE_CLAMP, // addressU
         D3D12_TEXTURE_ADDRESS_MODE_CLAMP, // addressV
         D3D12_TEXTURE_ADDRESS_MODE_CLAMP, // addressW
@@ -238,14 +241,14 @@ d3d12_pipeline_parameter_layout::d3d12_pipeline_parameter_layout(
         return (begin + align - 1) & ~(align - 1);
     };
 
-    for (std::size_t i = 0; i < desc.size; ++i)
+    for (std::size_t i = 0; i < desc.parameter_count; ++i)
     {
         switch (desc.parameters[i].type)
         {
-        case pipeline_parameter_type::SHADER_RESOURCE:
+        case PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE:
             ++m_srv_count;
             break;
-        case pipeline_parameter_type::UNORDERED_ACCESS:
+        case PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS:
             ++m_uav_count;
             break;
         default:
@@ -256,60 +259,20 @@ d3d12_pipeline_parameter_layout::d3d12_pipeline_parameter_layout(
 
     std::size_t constant_offset = 0;
     std::size_t descriptor_offset = m_cbv_count;
-    m_parameters.reserve(desc.size);
-    for (std::size_t i = 0; i < desc.size; ++i)
+    m_parameters.reserve(desc.parameter_count);
+    for (std::size_t i = 0; i < desc.parameter_count; ++i)
     {
         std::size_t offset = 0;
         std::size_t size = 0;
         switch (desc.parameters[i].type)
         {
-        case pipeline_parameter_type::BOOL:
-            offset = cal_align(constant_offset, 4);
-            size = sizeof(bool);
-            constant_offset = offset + size;
-            break;
-        case pipeline_parameter_type::UINT:
-            offset = cal_align(constant_offset, 4);
-            size = sizeof(std::uint32_t);
-            constant_offset = offset + size;
-            break;
-        case pipeline_parameter_type::FLOAT:
-            offset = cal_align(constant_offset, 4);
-            size = sizeof(float);
-            constant_offset = offset + size;
-            break;
-        case pipeline_parameter_type::FLOAT2:
+        case PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER:
             offset = cal_align(constant_offset, 16);
-            size = sizeof(math::float2);
+            size = desc.parameters[i].size;
             constant_offset = offset + size;
             break;
-        case pipeline_parameter_type::FLOAT3:
-            offset = cal_align(constant_offset, 16);
-            size = sizeof(math::float3);
-            constant_offset = offset + size;
-            break;
-        case pipeline_parameter_type::FLOAT4:
-            offset = cal_align(constant_offset, 16);
-            size = sizeof(math::float4);
-            constant_offset = offset + size;
-            break;
-        case pipeline_parameter_type::FLOAT4_ARRAY:
-            offset = cal_align(constant_offset, 16);
-            size = sizeof(math::float4) * desc.parameters[i].size;
-            constant_offset = offset + size;
-            break;
-        case pipeline_parameter_type::FLOAT4x4:
-            offset = cal_align(constant_offset, 16);
-            size = sizeof(math::float4x4);
-            constant_offset = offset + size;
-            break;
-        case pipeline_parameter_type::FLOAT4x4_ARRAY:
-            offset = cal_align(constant_offset, 16);
-            size = sizeof(math::float4x4) * desc.parameters[i].size;
-            constant_offset = offset + size;
-            break;
-        case pipeline_parameter_type::SHADER_RESOURCE:
-        case pipeline_parameter_type::UNORDERED_ACCESS:
+        case PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE:
+        case PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS:
             offset = descriptor_offset;
             ++descriptor_offset;
             break;
@@ -324,13 +287,11 @@ d3d12_pipeline_parameter_layout::d3d12_pipeline_parameter_layout(
 }
 
 d3d12_pipeline_parameter::d3d12_pipeline_parameter(pipeline_parameter_layout_interface* layout)
-    : m_dirty(0),
-      m_last_sync_frame(-1),
-      m_tier_info(d3d12_frame_counter::frame_resource_count()),
-      m_layout(static_cast<d3d12_pipeline_parameter_layout*>(layout))
+    : m_tier_info(d3d12_frame_counter::frame_resource_count()),
+      m_layout(static_cast<d3d12_pipeline_parameter_layout*>(layout)),
+      m_current_index(0),
+      m_last_sync_frame(0)
 {
-    m_dirty_counter.resize(m_layout->parameter_count(), 0);
-
     std::size_t cbv_count = m_layout->cbv_count();
     std::size_t srv_count = m_layout->srv_count();
     std::size_t uav_count = m_layout->uav_count();
@@ -339,7 +300,6 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(pipeline_parameter_layout_int
 
     if (cbv_count != 0)
     {
-        m_cpu_buffer.resize(buffer_size);
         m_gpu_buffer = std::make_unique<d3d12_upload_buffer>(
             buffer_size * d3d12_frame_counter::frame_resource_count());
     }
@@ -391,160 +351,101 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(pipeline_parameter_layout_int
     }
 }
 
-void d3d12_pipeline_parameter::set(std::size_t index, bool value)
+d3d12_pipeline_parameter::~d3d12_pipeline_parameter()
 {
-    std::memcpy(m_cpu_buffer.data() + m_layout->parameter_offset(index), &value, sizeof(bool));
-    mark_dirty(index);
 }
 
-void d3d12_pipeline_parameter::set(std::size_t index, std::uint32_t value)
+void d3d12_pipeline_parameter::set(std::size_t index, const void* data, size_t size)
 {
-    std::memcpy(
-        m_cpu_buffer.data() + m_layout->parameter_offset(index),
-        &value,
-        sizeof(std::uint32_t));
-    mark_dirty(index);
+    copy_buffer(data, size, m_layout->parameter_offset(index));
 }
 
-void d3d12_pipeline_parameter::set(std::size_t index, float value)
-{
-    std::memcpy(m_cpu_buffer.data() + m_layout->parameter_offset(index), &value, sizeof(float));
-    mark_dirty(index);
-}
-
-void d3d12_pipeline_parameter::set(std::size_t index, const math::float2& value)
-{
-    std::memcpy(
-        m_cpu_buffer.data() + m_layout->parameter_offset(index),
-        &value,
-        sizeof(math::float2));
-    mark_dirty(index);
-}
-
-void d3d12_pipeline_parameter::set(std::size_t index, const math::float3& value)
-{
-    std::memcpy(
-        m_cpu_buffer.data() + m_layout->parameter_offset(index),
-        &value,
-        sizeof(math::float3));
-    mark_dirty(index);
-}
-
-void d3d12_pipeline_parameter::set(std::size_t index, const math::float4& value)
-{
-    std::memcpy(
-        m_cpu_buffer.data() + m_layout->parameter_offset(index),
-        &value,
-        sizeof(math::float4));
-    mark_dirty(index);
-}
-
-void d3d12_pipeline_parameter::set(std::size_t index, const math::float4* data, size_t size)
-{
-    std::memcpy(
-        m_cpu_buffer.data() + m_layout->parameter_offset(index),
-        data,
-        sizeof(math::float4) * size);
-    mark_dirty(index);
-}
-
-void d3d12_pipeline_parameter::set(std::size_t index, const math::float4x4& value)
-{
-    math::float4x4 t;
-    math::float4x4_simd m = math::simd::load(value);
-    m = math::matrix_simd::transpose(m);
-    math::simd::store(m, t);
-
-    std::memcpy(
-        m_cpu_buffer.data() + m_layout->parameter_offset(index),
-        &t,
-        sizeof(math::float4x4));
-    mark_dirty(index);
-}
-
-void d3d12_pipeline_parameter::set(std::size_t index, const math::float4x4* data, size_t size)
-{
-    math::float4x4 t;
-    for (std::size_t i = 0; i < size; ++i)
-    {
-        math::float4x4_simd m = math::simd::load(data[i]);
-        m = math::matrix_simd::transpose(m);
-        math::simd::store(m, t);
-
-        std::memcpy(
-            m_cpu_buffer.data() + m_layout->parameter_offset(index) + sizeof(math::float4x4) * i,
-            &t,
-            sizeof(math::float4x4));
-    }
-    mark_dirty(index);
-}
-
-void d3d12_pipeline_parameter::set(std::size_t index, resource* texture)
+void d3d12_pipeline_parameter::set(std::size_t index, resource_interface* texture)
 {
     std::size_t offset = m_layout->parameter_offset(index);
-    if (m_layout->parameter_type(index) == pipeline_parameter_type::SHADER_RESOURCE)
-        m_views[offset] = static_cast<d3d12_resource*>(texture)->srv();
-    else if (m_layout->parameter_type(index) == pipeline_parameter_type::UNORDERED_ACCESS)
-        m_views[offset] = static_cast<d3d12_resource*>(texture)->uav();
-    mark_dirty(index);
+    if (m_layout->parameter_type(index) == PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE)
+        copy_descriptor(static_cast<d3d12_resource*>(texture)->srv(), offset);
+    else if (m_layout->parameter_type(index) == PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS)
+        copy_descriptor(static_cast<d3d12_resource*>(texture)->uav(), offset);
 }
 
-void d3d12_pipeline_parameter::sync()
+void* d3d12_pipeline_parameter::constant_buffer_pointer(std::size_t index)
 {
-    if (m_last_sync_frame == d3d12_frame_counter::frame_counter())
+    sync_frame_resource();
+
+    std::uint8_t* mapped_pointer = reinterpret_cast<std::uint8_t*>(m_gpu_buffer->mapped_pointer());
+    return mapped_pointer + m_current_index * m_layout->constant_buffer_size() +
+           m_layout->parameter_offset(index);
+}
+
+void d3d12_pipeline_parameter::sync_frame_resource()
+{
+    std::size_t current_frame = d3d12_frame_counter::frame_counter();
+    if (m_last_sync_frame == current_frame)
         return;
 
-    m_last_sync_frame = d3d12_frame_counter::frame_counter();
+    std::size_t frame_resource_count = d3d12_frame_counter::frame_resource_count();
+    std::size_t next_index = (m_current_index + 1) % frame_resource_count;
 
-    if (m_dirty == 0)
-        return;
+    // Copy constant buffer.
+    std::size_t buffer_size = m_layout->constant_buffer_size();
+    m_gpu_buffer->copy(m_current_index * buffer_size, buffer_size, next_index * buffer_size);
 
-    std::size_t resource_index = d3d12_frame_counter::frame_resource_index();
-    for (std::size_t i = 0; i < m_dirty_counter.size(); ++i)
+    // Copy descriptor.
+    for (std::size_t i = 0; i < m_views.size(); ++i)
     {
-        if (m_dirty_counter[i] == 0)
+        auto& [descriptor, dirty_counter] = m_views[i];
+        if (dirty_counter == 0)
             continue;
-
-        std::size_t offset = m_layout->parameter_offset(i);
-        if (m_layout->parameter_type(i) == pipeline_parameter_type::SHADER_RESOURCE ||
-            m_layout->parameter_type(i) == pipeline_parameter_type::UNORDERED_ACCESS)
-        {
-            auto heap =
-                d3d12_context::resource()->visible_heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-            CD3DX12_CPU_DESCRIPTOR_HANDLE target_handle(
-                m_tier_info[resource_index].tier2.base_cpu_handle,
-                static_cast<INT>(offset),
-                heap->increment_size());
-            d3d12_context::device()->CopyDescriptorsSimple(
-                1,
-                target_handle,
-                m_views[offset],
-                D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        }
         else
-        {
-            m_gpu_buffer->upload(
-                m_cpu_buffer.data() + offset,
-                m_layout->parameter_size(i),
-                m_cpu_buffer.size() * resource_index + offset);
-        }
+            --dirty_counter;
 
-        --m_dirty_counter[i];
-        if (m_dirty_counter[i] == 0)
-            --m_dirty;
+        auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        CD3DX12_CPU_DESCRIPTOR_HANDLE target_handle(
+            m_tier_info[next_index].tier2.base_cpu_handle,
+            static_cast<INT>(i),
+            heap->increment_size());
+
+        d3d12_context::device()->CopyDescriptorsSimple(
+            1,
+            target_handle,
+            descriptor,
+            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     }
+
+    m_current_index = next_index;
+    m_last_sync_frame = current_frame;
 }
 
-void d3d12_pipeline_parameter::mark_dirty(std::size_t index)
+void d3d12_pipeline_parameter::copy_buffer(const void* data, std::size_t size, std::size_t offset)
 {
-    if (m_dirty_counter[index] == 0)
-        ++m_dirty;
+    sync_frame_resource();
 
-    m_dirty_counter[index] = d3d12_frame_counter::frame_resource_count();
+    m_gpu_buffer->upload(data, size, offset + m_current_index * m_layout->constant_buffer_size());
+}
+
+void d3d12_pipeline_parameter::copy_descriptor(
+    D3D12_CPU_DESCRIPTOR_HANDLE descriptor,
+    std::size_t offset)
+{
+    sync_frame_resource();
+
+    m_views[offset] = {descriptor, d3d12_frame_counter::frame_resource_count() - 1};
+    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    CD3DX12_CPU_DESCRIPTOR_HANDLE target_handle(
+        m_tier_info[m_current_index].tier2.base_cpu_handle,
+        static_cast<INT>(offset),
+        heap->increment_size());
+
+    d3d12_context::device()->CopyDescriptorsSimple(
+        1,
+        target_handle,
+        descriptor,
+        D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 }
 
 d3d12_root_signature::d3d12_root_signature(
-    pipeline_parameter_layout_interface** parameters,
+    pipeline_parameter_layout_interface* const* parameters,
     std::size_t parameter_count)
 {
     std::vector<CD3DX12_ROOT_PARAMETER> root_parameter;
@@ -625,7 +526,7 @@ d3d12_root_signature::d3d12_root_signature(
 }
 
 d3d12_frame_buffer_layout::d3d12_frame_buffer_layout(
-    attachment_desc* attachments,
+    const attachment_desc* attachments,
     std::size_t count)
 {
     for (std::size_t i = 0; i < count; ++i)
@@ -647,7 +548,7 @@ d3d12_frame_buffer::d3d12_frame_buffer(
     {
         switch (attachment.type)
         {
-        case attachment_type::RENDER_TARGET: {
+        case ATTACHMENT_TYPE_RENDER_TARGET: {
             auto render_target = std::make_unique<d3d12_render_target>(
                 width,
                 heigth,
@@ -661,7 +562,7 @@ d3d12_frame_buffer::d3d12_frame_buffer(
             m_attachment_container.push_back(std::move(render_target));
             break;
         }
-        case attachment_type::CAMERA_RENDER_TARGET_RESOLVE: {
+        case ATTACHMENT_TYPE_CAMERA_RENDER_TARGET_RESOLVE: {
             /*m_render_targets.push_back(
                 camera_info.render_target_resolve->render_target().cpu_handle());*/
             m_attachments.push_back(attachment_info{
@@ -670,7 +571,7 @@ d3d12_frame_buffer::d3d12_frame_buffer(
                 resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
             break;
         }
-        case attachment_type::CAMERA_RENDER_TARGET: {
+        case ATTACHMENT_TYPE_CAMERA_RENDER_TARGET: {
             m_render_targets.push_back(camera_info.render_target->rtv());
             m_attachments.push_back(attachment_info{
                 camera_info.render_target,
@@ -678,7 +579,7 @@ d3d12_frame_buffer::d3d12_frame_buffer(
                 resource_state_map[static_cast<std::size_t>(attachment.final_state)]});
             break;
         }
-        case attachment_type::CAMERA_DEPTH_STENCIL: {
+        case ATTACHMENT_TYPE_CAMERA_DEPTH_STENCIL: {
             m_depth_stencil = camera_info.depth_stencil_buffer->dsv();
             m_attachments.push_back(attachment_info{
                 camera_info.depth_stencil_buffer,
@@ -710,20 +611,6 @@ void d3d12_frame_buffer::begin_render(D3D12GraphicsCommandList* command_list)
 
     if (!barriers.empty())
         command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
-
-    /*static const float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
-    for (auto handle : m_render_targets)
-    {
-        command_list->ClearRenderTargetView(handle, clear_color, 0, nullptr);
-    }
-
-    command_list->ClearDepthStencilView(
-        m_depth_stencil,
-        D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
-        1.0f,
-        0,
-        0,
-        nullptr);*/
 }
 
 void d3d12_frame_buffer::end_render(D3D12GraphicsCommandList* command_list)
@@ -760,14 +647,14 @@ d3d12_render_pass::d3d12_render_pass(const render_pass_desc& desc)
     {
         switch (desc.references[i].type)
         {
-        case attachment_reference_type::INPUT:
-        case attachment_reference_type::COLOR:
+        case ATTACHMENT_REFERENCE_TYPE_INPUT:
+        case ATTACHMENT_REFERENCE_TYPE_COLOR:
             m_color_indices.push_back(i);
             break;
-        case attachment_reference_type::DEPTH:
+        case ATTACHMENT_REFERENCE_TYPE_DEPTH:
             m_depth_index = i;
             break;
-        case attachment_reference_type::RESOLVE:
+        case ATTACHMENT_REFERENCE_TYPE_RESOLVE:
             m_resolve_indices.push_back({i, desc.references[i].resolve_relation});
             break;
         default:
@@ -871,31 +758,31 @@ void d3d12_render_pass::initialize_vertex_layout(const render_pass_desc& desc)
     auto get_type = [](vertex_attribute_type type) -> DXGI_FORMAT {
         switch (type)
         {
-        case vertex_attribute_type::INT:
+        case VERTEX_ATTRIBUTE_TYPE_INT:
             return DXGI_FORMAT_R32_SINT;
-        case vertex_attribute_type::INT2:
+        case VERTEX_ATTRIBUTE_TYPE_INT2:
             return DXGI_FORMAT_R32G32_SINT;
-        case vertex_attribute_type::INT3:
+        case VERTEX_ATTRIBUTE_TYPE_INT3:
             return DXGI_FORMAT_R32G32B32_SINT;
-        case vertex_attribute_type::INT4:
+        case VERTEX_ATTRIBUTE_TYPE_INT4:
             return DXGI_FORMAT_R32G32B32A32_SINT;
-        case vertex_attribute_type::UINT:
+        case VERTEX_ATTRIBUTE_TYPE_UINT:
             return DXGI_FORMAT_R32_UINT;
-        case vertex_attribute_type::UINT2:
+        case VERTEX_ATTRIBUTE_TYPE_UINT2:
             return DXGI_FORMAT_R32G32_UINT;
-        case vertex_attribute_type::UINT3:
+        case VERTEX_ATTRIBUTE_TYPE_UINT3:
             return DXGI_FORMAT_R32G32B32_UINT;
-        case vertex_attribute_type::UINT4:
+        case VERTEX_ATTRIBUTE_TYPE_UINT4:
             return DXGI_FORMAT_R32G32B32A32_UINT;
-        case vertex_attribute_type::FLOAT:
+        case VERTEX_ATTRIBUTE_TYPE_FLOAT:
             return DXGI_FORMAT_R32_FLOAT;
-        case vertex_attribute_type::FLOAT2:
+        case VERTEX_ATTRIBUTE_TYPE_FLOAT2:
             return DXGI_FORMAT_R32G32_FLOAT;
-        case vertex_attribute_type::FLOAT3:
+        case VERTEX_ATTRIBUTE_TYPE_FLOAT3:
             return DXGI_FORMAT_R32G32B32_FLOAT;
-        case vertex_attribute_type::FLOAT4:
+        case VERTEX_ATTRIBUTE_TYPE_FLOAT4:
             return DXGI_FORMAT_R32G32B32A32_FLOAT;
-        case vertex_attribute_type::COLOR:
+        case VERTEX_ATTRIBUTE_TYPE_COLOR:
             return DXGI_FORMAT_R8G8B8A8_UNORM;
         default:
             return DXGI_FORMAT_UNKNOWN;

@@ -1,10 +1,12 @@
 #include "scene/scene.hpp"
 #include "core/relation.hpp"
+#include "core/relation_event.hpp"
+#include "scene/bounding_box.hpp"
 #include "scene/scene_event.hpp"
 
 namespace ash::scene
 {
-scene::scene() : system_base("scene"), m_view(nullptr)
+scene::scene() : system_base("scene")
 {
 }
 
@@ -12,14 +14,13 @@ bool scene::initialize(const dictionary& config)
 {
     auto& world = system<ecs::world>();
     world.register_component<transform>();
-    m_view = world.make_view<transform>();
+    world.register_component<bounding_box>();
 
     m_root = world.create("scene");
     world.add<core::link, transform>(m_root);
 
     auto& root_transform = world.component<transform>(m_root);
-    root_transform.dirty = false;
-    root_transform.in_scene = true;
+    root_transform.in_scene(true);
 
     auto& event = system<core::event>();
     event.register_event<event_enter_scene>();
@@ -34,6 +35,12 @@ bool scene::initialize(const dictionary& config)
     });
 
     return true;
+}
+
+void scene::on_begin_frame()
+{
+    auto& world = system<ecs::world>();
+    world.view<transform>().each([](transform& transform) { transform.reset_sync_count(); });
 }
 
 void scene::sync_local()
@@ -51,7 +58,7 @@ void scene::sync_local(ecs::entity root)
             return false;
 
         auto& node_transform = world.component<transform>(entity);
-        if (node_transform.dirty)
+        if (node_transform.dirty())
         {
             dirty_entities.push(entity);
             return false;
@@ -61,7 +68,7 @@ void scene::sync_local(ecs::entity root)
             return true;
         }
     };
-    system<core::relation>().each_bfs(root, find_dirty);
+    system<core::relation>().each_bfs(root, find_dirty, true);
 
     auto update_local = [&](ecs::entity entity) {
         if (!world.has_component<transform>(entity))
@@ -70,30 +77,21 @@ void scene::sync_local(ecs::entity root)
         auto& node_transform = world.component<transform>(entity);
         auto& node_link = world.component<core::link>(entity);
 
-        // Update to parent matrix.
-        math::float4_simd scale = math::simd::load(node_transform.scaling);
-        math::float4_simd rotation = math::simd::load(node_transform.rotation);
-        math::float4_simd translation = math::simd::load(node_transform.position);
+        ASH_ASSERT(node_link.parent != ecs::INVALID_ENTITY);
 
+        // Update to parent matrix.
+        math::float4_simd scale = math::simd::load(node_transform.scale());
+        math::float4_simd rotation = math::simd::load(node_transform.rotation());
+        math::float4_simd translation = math::simd::load(node_transform.position());
         math::float4x4_simd to_parent =
             math::matrix_simd::affine_transform(scale, rotation, translation);
-        math::simd::store(to_parent, node_transform.parent_matrix);
 
         // Update to world matrix.
-        if (node_link.parent != ecs::INVALID_ENTITY)
-        {
-            auto& parent = world.component<transform>(node_link.parent);
-            math::float4x4_simd parent_to_world = math::simd::load(parent.world_matrix);
-            math::float4x4_simd to_world = math::matrix_simd::mul(to_parent, parent_to_world);
-            math::simd::store(to_world, node_transform.world_matrix);
-        }
-        else
-        {
-            node_transform.world_matrix = node_transform.parent_matrix;
-        }
+        auto& parent = world.component<transform>(node_link.parent);
+        math::float4x4_simd parent_to_world = math::simd::load(parent.to_world());
+        math::float4x4_simd to_world = math::matrix_simd::mul(to_parent, parent_to_world);
 
-        ++node_transform.sync_count;
-        node_transform.dirty = false;
+        node_transform.sync(to_parent, to_world);
 
         return true;
     };
@@ -120,7 +118,7 @@ void scene::sync_world(ecs::entity root)
             return false;
 
         auto& node_transform = world.component<transform>(entity);
-        if (node_transform.dirty)
+        if (node_transform.dirty())
         {
             dirty_entities.push(entity);
             return false;
@@ -130,7 +128,7 @@ void scene::sync_world(ecs::entity root)
             return true;
         }
     };
-    system<core::relation>().each_bfs(root, find_dirty);
+    system<core::relation>().each_bfs(root, find_dirty, true);
 
     auto update_world = [&](ecs::entity entity) {
         if (!world.has_component<transform>(entity))
@@ -140,22 +138,11 @@ void scene::sync_world(ecs::entity root)
         auto& node_link = world.component<core::link>(entity);
         auto& parent = world.component<transform>(node_link.parent);
 
-        math::float4x4_simd parent_to_world = math::simd::load(parent.world_matrix);
-        math::float4x4_simd to_world = math::simd::load(node_transform.world_matrix);
+        math::float4x4_simd parent_to_world = math::simd::load(parent.to_world());
+        math::float4x4_simd to_world = math::simd::load(node_transform.to_world());
         math::float4x4_simd to_parent =
             math::matrix_simd::mul(to_world, math::matrix_simd::inverse(parent_to_world));
-
-        // Update transform data.
-        math::float4_simd scaling, rotation, position;
-        math::matrix_simd::decompose(to_parent, scaling, rotation, position);
-
-        math::simd::store(to_parent, node_transform.parent_matrix);
-        math::simd::store(scaling, node_transform.scaling);
-        math::simd::store(rotation, node_transform.rotation);
-        math::simd::store(position, node_transform.position);
-
-        ++node_transform.sync_count;
-        node_transform.dirty = false;
+        node_transform.sync(to_parent);
 
         return true;
     };
@@ -167,9 +154,33 @@ void scene::sync_world(ecs::entity root)
     }
 }
 
-void scene::reset_sync_counter()
+void scene::frustum_culling(const std::vector<math::float4>& frustum)
 {
-    m_view->each([](transform& transform) { transform.sync_count = 0; });
+    auto& world = system<ecs::world>();
+
+    world.view<transform, bounding_box>().each(
+        [this](transform& transform, bounding_box& bounding_box) {
+            if (bounding_box.dynamic() && transform.sync_count() != 0)
+            {
+                if (bounding_box.transform(transform.to_world()))
+                {
+                    std::size_t new_proxy_id =
+                        m_dynamic_bvh.update(bounding_box.proxy_id(), bounding_box.aabb());
+                    bounding_box.proxy_id(new_proxy_id);
+                }
+            }
+        });
+
+    //m_static_bvh.frustum_culling(frustum);
+    m_dynamic_bvh.frustum_culling(frustum);
+
+    world.view<transform, bounding_box>().each(
+        [this](transform& transform, bounding_box& bounding_box) {
+            if (bounding_box.dynamic())
+                bounding_box.visible(m_dynamic_bvh.visible(bounding_box.proxy_id()));
+            else
+                bounding_box.visible(m_static_bvh.visible(bounding_box.proxy_id()));
+        });
 }
 
 void scene::on_entity_link(ecs::entity entity, core::link& link)
@@ -182,14 +193,33 @@ void scene::on_entity_link(ecs::entity entity, core::link& link)
         auto& child = world.component<transform>(entity);
         auto& parent = world.component<transform>(link.parent);
 
-        if (child.in_scene != parent.in_scene)
+        if (child.in_scene() != parent.in_scene())
         {
-            child.in_scene = parent.in_scene;
-
-            if (child.in_scene)
+            if (parent.in_scene())
+            {
+                child.in_scene(true);
                 event.publish<event_enter_scene>(entity);
+            }
             else
+            {
+                child.in_scene(false);
                 event.publish<event_exit_scene>(entity);
+            }
+        }
+
+        if (world.has_component<bounding_box>(entity))
+        {
+            auto& bounding = world.component<bounding_box>(entity);
+            if (bounding.dynamic())
+            {
+                std::size_t proxy_id = m_dynamic_bvh.add(bounding.aabb());
+                bounding.proxy_id(proxy_id);
+            }
+            else
+            {
+                std::size_t proxy_id = m_static_bvh.add(bounding.aabb());
+                bounding.proxy_id(proxy_id);
+            }
         }
     }
 }
@@ -202,9 +232,9 @@ void scene::on_entity_unlink(ecs::entity entity, core::link& link)
     if (world.has_component<transform>(entity))
     {
         auto& node_transform = world.component<transform>(entity);
-        if (node_transform.in_scene)
+        if (node_transform.in_scene())
         {
-            node_transform.in_scene = false;
+            node_transform.in_scene(false);
             event.publish<event_exit_scene>(entity);
         }
     }

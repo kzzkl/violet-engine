@@ -1,29 +1,25 @@
 #pragma once
 
-#include "core/relation.hpp"
 #include "ecs/entity.hpp"
-#include "graphics/graphics.hpp"
-#include "mmd_component.hpp"
-#include "physics/physics.hpp"
-#include "pmx_loader.hpp"
-#include "scene/scene.hpp"
-#include "vmd_loader.hpp"
+#include "mmd_pipeline.hpp"
+#include "physics_interface.hpp"
 
 namespace ash::sample::mmd
 {
 struct mmd_resource
 {
-    std::vector<std::unique_ptr<ash::graphics::resource>> vertex_buffers;
-    std::unique_ptr<ash::graphics::resource> index_buffer;
+    std::vector<std::unique_ptr<graphics::resource_interface>> vertex_buffers;
+    std::unique_ptr<graphics::resource_interface> index_buffer;
     std::vector<std::pair<std::size_t, std::size_t>> submesh;
 
-    std::vector<std::unique_ptr<ash::graphics::resource>> textures;
-    std::vector<std::unique_ptr<ash::graphics::pipeline_parameter>> materials;
-    std::unique_ptr<ash::graphics::pipeline_parameter> object_parameter;
+    std::vector<std::unique_ptr<graphics::resource_interface>> textures;
+    std::vector<std::unique_ptr<material_pipeline_parameter>> materials;
 
-    std::vector<std::unique_ptr<ash::physics::collision_shape_interface>> collision_shapes;
+    std::vector<std::unique_ptr<physics::collision_shape_interface>> collision_shapes;
 };
 
+class pmx_loader;
+class vmd_loader;
 class mmd_loader
 {
 public:
@@ -56,6 +52,6 @@ private:
         const pmx_loader& pmx_loader,
         const vmd_loader& vmd_loader);
 
-    std::vector<std::unique_ptr<ash::graphics::resource>> m_internal_toon;
+    std::vector<std::unique_ptr<graphics::resource_interface>> m_internal_toon;
 };
 } // namespace ash::sample::mmd

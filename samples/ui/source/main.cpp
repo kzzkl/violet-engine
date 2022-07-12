@@ -2,9 +2,12 @@
 #include "core/application.hpp"
 #include "core/relation.hpp"
 #include "gallery.hpp"
+#include "graphics/camera.hpp"
 #include "graphics/graphics.hpp"
 #include "graphics/graphics_event.hpp"
+#include "graphics/rhi.hpp"
 #include "scene/scene.hpp"
+#include "task/task_manager.hpp"
 #include "ui/ui.hpp"
 #include "window/window.hpp"
 
@@ -55,12 +58,7 @@ private:
         world.add<core::link, graphics::camera, scene::transform>(m_camera);
 
         auto& c_transform = world.component<scene::transform>(m_camera);
-        c_transform.position = {0.0f, 0.0f, -38.0f};
-        c_transform.world_matrix = math::matrix_plain::affine_transform(
-            c_transform.scaling,
-            c_transform.rotation,
-            c_transform.position);
-        c_transform.dirty = true;
+        c_transform.position(math::float3{0.0f, 0.0f, -38.0f});
 
         relation.link(m_camera, scene.root());
 
@@ -80,31 +78,28 @@ private:
         graphics::render_target_info render_target_info = {};
         render_target_info.width = width;
         render_target_info.height = height;
-        render_target_info.format = graphics.back_buffer_format();
+        render_target_info.format = graphics::rhi::back_buffer_format();
         render_target_info.samples = 4;
-        m_render_target = graphics.make_render_target(render_target_info);
+        m_render_target = graphics::rhi::make_render_target(render_target_info);
         camera.render_target(m_render_target.get());
 
         graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
         depth_stencil_buffer_info.width = width;
         depth_stencil_buffer_info.height = height;
-        depth_stencil_buffer_info.format = graphics::resource_format::D24_UNORM_S8_UINT;
+        depth_stencil_buffer_info.format = graphics::RESOURCE_FORMAT_D24_UNORM_S8_UINT;
         depth_stencil_buffer_info.samples = 4;
-        m_depth_stencil_buffer = graphics.make_depth_stencil_buffer(depth_stencil_buffer_info);
+        m_depth_stencil_buffer =
+            graphics::rhi::make_depth_stencil_buffer(depth_stencil_buffer_info);
         camera.depth_stencil_buffer(m_depth_stencil_buffer.get());
     }
 
     void update()
     {
-        auto& world = system<ecs::world>();
-        auto& scene = system<scene::scene>();
-
-        scene.reset_sync_counter();
     }
 
     ecs::entity m_camera;
-    std::unique_ptr<graphics::resource> m_render_target;
-    std::unique_ptr<graphics::resource> m_depth_stencil_buffer;
+    std::unique_ptr<graphics::resource_interface> m_render_target;
+    std::unique_ptr<graphics::resource_interface> m_depth_stencil_buffer;
 
     std::unique_ptr<gallery> m_gallery;
 };

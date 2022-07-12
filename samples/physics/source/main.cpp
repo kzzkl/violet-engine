@@ -1,9 +1,9 @@
 #include "core/application.hpp"
+#include "core/relation.hpp"
 #include "geometry.hpp"
 #include "graphics/graphics.hpp"
 #include "log.hpp"
 #include "physics.hpp"
-#include "core/relation.hpp"
 #include "scene/scene.hpp"
 #include "window/window.hpp"
 
@@ -54,11 +54,11 @@ public:
         // Create cube.
         {
             m_cube_1 = world.create();
-            world.add<link, rigidbody, transform, visual>(m_cube_1);
+            world.add<link, rigidbody, transform, mesh_render>(m_cube_1);
 
             auto& t = world.component<transform>(m_cube_1);
             t.position = {1.0f, 0.0f, 0.0f};
-            t.rotation = math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f);
+            t.rotation = math::quaternion::rotation_euler(1.0f, 1.0f, 0.5f);
 
             auto& r = world.component<rigidbody>(m_cube_1);
             r.shape = m_cube_shape.get();
@@ -66,7 +66,7 @@ public:
             r.type = rigidbody_type::KINEMATIC;
             r.relation = m_cube_1;
 
-            auto& v = world.component<visual>(m_cube_1);
+            auto& v = world.component<mesh_render>(m_cube_1);
             m_cube_object.emplace_back(graphics.make_render_parameter("ash_object"));
             v.object = m_cube_object.back().get();
 
@@ -85,18 +85,18 @@ public:
         // Cube 2.
         {
             m_cube_2 = world.create();
-            world.add<link, rigidbody, transform, visual>(m_cube_2);
+            world.add<link, rigidbody, transform, mesh_render>(m_cube_2);
 
             auto& t = world.component<transform>(m_cube_2);
             t.position = {-1.0f, 0.0f, 0.0f};
-            t.rotation = math::quaternion_plain::rotation_euler(1.0f, 1.0f, 0.5f);
+            t.rotation = math::quaternion::rotation_euler(1.0f, 1.0f, 0.5f);
 
             auto& r = world.component<rigidbody>(m_cube_2);
             r.shape = m_cube_shape.get();
             r.mass = 1.0f;
             r.relation = m_cube_2;
 
-            auto& v = world.component<visual>(m_cube_2);
+            auto& v = world.component<mesh_render>(m_cube_2);
             m_cube_object.emplace_back(graphics.make_render_parameter("ash_object"));
             v.object = m_cube_object.back().get();
 
@@ -165,11 +165,11 @@ private:
         world.add<link, main_camera, camera, transform>(m_camera);
         auto& c_camera = world.component<camera>(m_camera);
         c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
-        c_camera.parameter = graphics.make_render_parameter("ash_pass");
+        c_camera.parameter = graphics.make_render_parameter("ash_camera");
 
         auto& c_transform = world.component<transform>(m_camera);
         c_transform.position = {0.0f, 0.0f, -38.0f};
-        c_transform.world_matrix = math::matrix_plain::affine_transform(
+        c_transform.world_matrix = math::matrix::affine_transform(
             c_transform.scaling,
             c_transform.rotation,
             c_transform.position);
@@ -242,7 +242,7 @@ private:
             m_pitch += mouse.y() * m_rotate_speed * delta;
             m_pitch = std::clamp(m_pitch, -math::PI_PIDIV2, math::PI_PIDIV2);
             camera_transform.rotation =
-                math::quaternion_plain::rotation_euler(m_heading, m_pitch, 0.0f);
+                math::quaternion::rotation_euler(m_heading, m_pitch, 0.0f);
         }
 
         float x = 0, z = 0;

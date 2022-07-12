@@ -2,6 +2,7 @@
 
 #include "core/context.hpp"
 #include "graphics/graphics.hpp"
+#include "mmd_component.hpp"
 #include "mmd_loader.hpp"
 #include "mmd_pipeline.hpp"
 #include "physics/physics.hpp"
@@ -22,7 +23,6 @@ public:
 
 private:
     std::map<std::string, mmd_resource> m_resources;
-    ash::ecs::view<mmd_skeleton, graphics::skinned_mesh>* m_skeleton_view;
     std::unique_ptr<mmd_loader> m_loader;
 
     std::unique_ptr<mmd_render_pipeline> m_render_pipeline;

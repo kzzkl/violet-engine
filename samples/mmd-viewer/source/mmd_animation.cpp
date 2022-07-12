@@ -10,22 +10,21 @@ bool mmd_animation::initialize(const dictionary& config)
     world.register_component<mmd_ik_solver>();
     world.register_component<mmd_ik_link>();
 
-    m_view = world.make_view<mmd_skeleton>();
-    m_node_view = world.make_view<mmd_node, mmd_node_animation>();
-    m_ik_view = world.make_view<mmd_node, mmd_ik_solver>();
-    m_transform_view = world.make_view<mmd_node, scene::transform>();
-
     return true;
 }
 
 void mmd_animation::evaluate(float t, float weight)
 {
-    std::map<std::string, std::pair<mmd_node*, mmd_node_animation*>> m;
-    m_node_view->each([=, &m](mmd_node& node, mmd_node_animation& node_animation) {
-        evaluate_node(node, node_animation, t, weight);
-    });
+    auto& world = system<ecs::world>();
 
-    m_ik_view->each([=](mmd_node& node, mmd_ik_solver& ik) { evaluate_ik(node, ik, t, weight); });
+    std::map<std::string, std::pair<mmd_node*, mmd_node_animation*>> m;
+    world.view<mmd_node, mmd_node_animation>().each(
+        [=, &m](mmd_node& node, mmd_node_animation& node_animation) {
+            evaluate_node(node, node_animation, t, weight);
+        });
+
+    world.view<mmd_node, mmd_ik_solver>().each(
+        [=](mmd_node& node, mmd_ik_solver& ik) { evaluate_ik(node, ik, t, weight); });
 }
 
 void mmd_animation::evaluate_node(
@@ -63,17 +62,15 @@ void mmd_animation::evaluate_node(
 
             float time = (t - key0.frame) / static_cast<float>(key1.frame - key0.frame);
 
-            translate = math::vector_plain::lerp(
+            translate = math::vector::lerp(
                 key0.translate,
                 key1.translate,
                 math::float3{
                     key1.tx_bezier.evaluate(time),
                     key1.ty_bezier.evaluate(time),
                     key1.tz_bezier.evaluate(time)});
-            rotate = math::quaternion_plain::slerp(
-                key0.rotate,
-                key1.rotate,
-                key1.r_bezier.evaluate(time));
+            rotate =
+                math::quaternion::slerp(key0.rotate, key1.rotate, key1.r_bezier.evaluate(time));
 
             node_animation.offset = std::distance(node_animation.keys.cbegin(), bound);
         }
@@ -87,21 +84,21 @@ void mmd_animation::evaluate_node(
     else
     {
         node_animation.animation_rotate =
-            math::quaternion_plain::slerp(node_animation.base_animation_rotate, rotate, weight);
+            math::quaternion::slerp(node_animation.base_animation_rotate, rotate, weight);
         node_animation.animation_translate =
-            math::vector_plain::lerp(node_animation.base_animation_translate, translate, weight);
+            math::vector::lerp(node_animation.base_animation_translate, translate, weight);
     }
 }
 
 void mmd_animation::update(bool after_physics)
 {
     auto& world = system<ecs::world>();
-    m_view->each([&](ecs::entity entity, mmd_skeleton& skeleton) {
+    world.view<mmd_skeleton>().each([&](ecs::entity entity, mmd_skeleton& skeleton) {
         update_local(skeleton, after_physics);
         update_world(skeleton, after_physics);
     });
 
-    m_view->each([&](ecs::entity entity, mmd_skeleton& skeleton) {
+    world.view<mmd_skeleton>().each([&](ecs::entity entity, mmd_skeleton& skeleton) {
         for (auto& node_entity : skeleton.sorted_nodes)
         {
             auto& node = world.component<mmd_node>(node_entity);
@@ -124,7 +121,7 @@ void mmd_animation::update(bool after_physics)
             }
         }
     });
-    m_view->each([&](ecs::entity entity, mmd_skeleton& skeleton) {
+    world.view<mmd_skeleton>().each([&](ecs::entity entity, mmd_skeleton& skeleton) {
         update_local(skeleton, after_physics);
         update_world(skeleton, after_physics);
     });
@@ -183,21 +180,20 @@ void mmd_animation::update_local(mmd_skeleton& skeleton, bool after_physics)
         auto& animation = world.component<mmd_node_animation>(node_entity);
 
         math::float3 translate =
-            math::vector_plain::add(animation.animation_translate, transform.position);
+            math::vector::add(animation.animation_translate, transform.position());
         if (node.is_inherit_translation)
-            translate = math::vector_plain::add(translate, node.inherit_translate);
+            translate = math::vector::add(translate, node.inherit_translate);
 
         math::float4 rotate =
-            math::quaternion_plain::mul(animation.animation_rotate, transform.rotation);
+            math::quaternion::mul(animation.animation_rotate, transform.rotation());
         if (world.has_component<mmd_ik_link>(node_entity))
-            rotate = math::quaternion_plain::mul(
-                world.component<mmd_ik_link>(node_entity).ik_rotate,
-                rotate);
+            rotate =
+                math::quaternion::mul(world.component<mmd_ik_link>(node_entity).ik_rotate, rotate);
         if (node.is_inherit_rotation)
-            rotate = math::quaternion_plain::mul(rotate, node.inherit_rotate);
+            rotate = math::quaternion::mul(rotate, node.inherit_rotate);
 
         skeleton.local[node.index] =
-            math::matrix_plain::affine_transform(transform.scaling, rotate, translate);
+            math::matrix::affine_transform(transform.scale(), rotate, translate);
     }
 }
 
@@ -218,13 +214,13 @@ void mmd_animation::update_world(mmd_skeleton& skeleton, bool after_physics)
         {
             auto& parent = world.component<mmd_node>(link.parent);
             skeleton.world[node.index] =
-                math::matrix_plain::mul(skeleton.local[node.index], skeleton.world[parent.index]);
+                math::matrix::mul(skeleton.local[node.index], skeleton.world[parent.index]);
         }
         else
         {
             auto& parent = world.component<scene::transform>(link.parent);
             skeleton.world[node.index] =
-                math::matrix_plain::mul(skeleton.local[node.index], parent.world_matrix);
+                math::matrix::mul(skeleton.local[node.index], parent.to_world());
         }
     }
 }
@@ -241,20 +237,19 @@ void mmd_animation::update_transform(mmd_skeleton& skeleton, std::size_t index)
         auto& animation = world.component<mmd_node_animation>(root);
 
         math::float3 translate =
-            math::vector_plain::add(animation.animation_translate, transform.position);
+            math::vector::add(animation.animation_translate, transform.position());
         if (node.is_inherit_translation)
-            translate = math::vector_plain::add(translate, node.inherit_translate);
+            translate = math::vector::add(translate, node.inherit_translate);
 
         math::float4 rotate =
-            math::quaternion_plain::mul(animation.animation_rotate, transform.rotation);
+            math::quaternion::mul(animation.animation_rotate, transform.rotation());
         if (world.has_component<mmd_ik_link>(root))
-            rotate =
-                math::quaternion_plain::mul(world.component<mmd_ik_link>(root).ik_rotate, rotate);
+            rotate = math::quaternion::mul(world.component<mmd_ik_link>(root).ik_rotate, rotate);
         if (node.is_inherit_rotation)
-            rotate = math::quaternion_plain::mul(rotate, node.inherit_rotate);
+            rotate = math::quaternion::mul(rotate, node.inherit_rotate);
 
         skeleton.local[node.index] =
-            math::matrix_plain::affine_transform(transform.scaling, rotate, translate);
+            math::matrix::affine_transform(transform.scale(), rotate, translate);
     }
 
     // Update world.
@@ -274,15 +269,14 @@ void mmd_animation::update_transform(mmd_skeleton& skeleton, std::size_t index)
             if (world.has_component<mmd_node>(link.parent))
             {
                 auto& parent = world.component<mmd_node>(link.parent);
-                skeleton.world[node.index] = math::matrix_plain::mul(
-                    skeleton.local[node.index],
-                    skeleton.world[parent.index]);
+                skeleton.world[node.index] =
+                    math::matrix::mul(skeleton.local[node.index], skeleton.world[parent.index]);
             }
             else
             {
                 auto& parent = world.component<scene::transform>(link.parent);
                 skeleton.world[node.index] =
-                    math::matrix_plain::mul(skeleton.local[node.index], parent.world_matrix);
+                    math::matrix::mul(skeleton.local[node.index], parent.to_world());
             }
 
             for (auto& c : link.children)
@@ -309,9 +303,9 @@ void mmd_animation::update_inherit(
         math::float4 rotate;
         if (node.inherit_local_flag)
         {
-            rotate = math::quaternion_plain::mul(
+            rotate = math::quaternion::mul(
                 inherit_animation.animation_rotate,
-                inherit_transform.rotation);
+                inherit_transform.rotation());
         }
         else
         {
@@ -321,9 +315,9 @@ void mmd_animation::update_inherit(
             }
             else
             {
-                rotate = math::quaternion_plain::mul(
+                rotate = math::quaternion::mul(
                     inherit_animation.animation_rotate,
-                    inherit_transform.rotation);
+                    inherit_transform.rotation());
             }
         }
 
@@ -331,10 +325,10 @@ void mmd_animation::update_inherit(
         if (world.has_component<mmd_ik_link>(node.inherit_node))
         {
             auto& link = world.component<mmd_ik_link>(node.inherit_node);
-            rotate = math::quaternion_plain::mul(link.ik_rotate, rotate);
+            rotate = math::quaternion::mul(link.ik_rotate, rotate);
         }
 
-        node.inherit_rotate = math::quaternion_plain::slerp(
+        node.inherit_rotate = math::quaternion::slerp(
             math::float4{0.0f, 0.0f, 0.0f, 1.0f},
             rotate,
             node.inherit_weight);
@@ -345,8 +339,7 @@ void mmd_animation::update_inherit(
         math::float3 translate;
         if (node.inherit_local_flag)
         {
-            translate =
-                math::vector_plain::sub(inherit_transform.position, inherit.initial_position);
+            translate = math::vector::sub(inherit_transform.position(), inherit.initial_position);
         }
         else
         {
@@ -357,10 +350,10 @@ void mmd_animation::update_inherit(
             else
             {
                 translate =
-                    math::vector_plain::sub(inherit_transform.position, inherit.initial_position);
+                    math::vector::sub(inherit_transform.position(), inherit.initial_position);
             }
         }
-        node.inherit_translate = math::vector_plain::scale(translate, node.inherit_weight);
+        node.inherit_translate = math::vector::scale(translate, node.inherit_weight);
     }
 
     // update_local(node, transform);
@@ -390,8 +383,7 @@ void mmd_animation::update_ik(mmd_skeleton& skeleton, mmd_node& node, mmd_ik_sol
         auto target_position = skeleton.world[target_node.index].row[3];
         auto ik_position = skeleton.world[node.index].row[3];
 
-        float dist =
-            math::vector_plain::length(math::vector_plain::sub(target_position, ik_position));
+        float dist = math::vector::length(math::vector::sub(target_position, ik_position));
         if (dist < max_dist)
         {
             max_dist = dist;
@@ -488,13 +480,12 @@ void mmd_animation::ik_solve_core(
         auto& transform = world.component<scene::transform>(link_entity);
 
         auto animation_rotate =
-            math::quaternion_plain::mul(animation.animation_rotate, transform.rotation);
-        auto link_rotate = math::quaternion_plain::mul(link.ik_rotate, animation_rotate);
-        link_rotate = math::quaternion_plain::mul(link_rotate, rotate);
+            math::quaternion::mul(animation.animation_rotate, transform.rotation());
+        auto link_rotate = math::quaternion::mul(link.ik_rotate, animation_rotate);
+        link_rotate = math::quaternion::mul(link_rotate, rotate);
 
-        link.ik_rotate = math::quaternion_plain::mul(
-            link_rotate,
-            math::quaternion_plain::inverse(animation_rotate));
+        link.ik_rotate =
+            math::quaternion::mul(link_rotate, math::quaternion::inverse(animation_rotate));
         static std::size_t counter = 0;
 
         update_transform(skeleton, link_node.index);
@@ -550,19 +541,19 @@ void mmd_animation::ik_solve_plane(
     math::float4 link_target_vec;
     math::simd::store(math::vector_simd::normalize_vec3(link_target_position), link_target_vec);
 
-    auto dot = math::vector_plain::dot(link_ik_vec, link_target_vec);
+    auto dot = math::vector::dot(link_ik_vec, link_target_vec);
     dot = math::clamp(dot, -1.0f, 1.0f);
 
     float angle = std::acos(dot);
     angle = math::clamp(angle, -ik.limit_angle, ik.limit_angle);
 
-    auto rotate1 = math::quaternion_plain::rotation_axis(rotate_axis, angle);
-    auto target_vec1 = math::quaternion_plain::mul_vec(rotate1, link_target_vec);
-    auto dot1 = math::vector_plain::dot(target_vec1, link_ik_vec);
+    auto rotate1 = math::quaternion::rotation_axis(rotate_axis, angle);
+    auto target_vec1 = math::quaternion::mul_vec(rotate1, link_target_vec);
+    auto dot1 = math::vector::dot(target_vec1, link_ik_vec);
 
-    auto rotate2 = math::quaternion_plain::rotation_axis(rotate_axis, -angle);
-    auto target_vec2 = math::quaternion_plain::mul_vec(rotate2, link_target_vec);
-    auto dot2 = math::vector_plain::dot(target_vec2, link_ik_vec);
+    auto rotate2 = math::quaternion::rotation_axis(rotate_axis, -angle);
+    auto target_vec2 = math::quaternion::mul_vec(rotate2, link_target_vec);
+    auto dot2 = math::vector::dot(target_vec2, link_ik_vec);
 
     auto& link = world.component<mmd_ik_link>(link_entity);
     auto new_angle = link.plane_mode_angle;
@@ -593,13 +584,11 @@ void mmd_animation::ik_solve_plane(
 
     auto& animation = world.component<mmd_node_animation>(link_entity);
     auto& transform = world.component<scene::transform>(link_entity);
-    auto animation_rotate =
-        math::quaternion_plain::mul(animation.animation_rotate, transform.rotation);
+    auto animation_rotate = math::quaternion::mul(animation.animation_rotate, transform.rotation());
 
-    link.ik_rotate = math::quaternion_plain::rotation_axis(rotate_axis, new_angle);
-    link.ik_rotate = math::quaternion_plain::mul(
-        link.ik_rotate,
-        math::quaternion_plain::inverse(animation_rotate));
+    link.ik_rotate = math::quaternion::rotation_axis(rotate_axis, new_angle);
+    link.ik_rotate =
+        math::quaternion::mul(link.ik_rotate, math::quaternion::inverse(animation_rotate));
 
     update_transform(skeleton, link_node.index);
 }

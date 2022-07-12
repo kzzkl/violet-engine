@@ -1,16 +1,18 @@
 project(ash-graphics)
 
 add_library(${PROJECT_NAME} STATIC
+    ./source/blinn_phong_pipeline.cpp
     ./source/camera.cpp
     ./source/geometry.cpp
-    ./source/graphics_config.cpp
     ./source/graphics_debug.cpp
-    ./source/graphics_interface_helper.cpp
-    ./source/graphics_plugin.cpp
     ./source/graphics.cpp
+    ./source/light.cpp
+    ./source/mesh_render.cpp
+    ./source/pipeline_parameter.cpp
     ./source/render_pipeline.cpp
+    ./source/rhi.cpp
     ./source/skin_pipeline.cpp
-    ./source/standard_pipeline.cpp)
+    ./source/sky_pipeline.cpp)
 add_library(ash::graphics ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}

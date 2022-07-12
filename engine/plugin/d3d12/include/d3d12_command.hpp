@@ -23,14 +23,18 @@ public:
     virtual void scissor(const scissor_extent* extents, std::size_t size) override;
 
     virtual void parameter(std::size_t index, pipeline_parameter_interface* parameter) override;
-    virtual void draw(
+
+    virtual void input_assembly_state(
         resource_interface* const* vertex_buffers,
         std::size_t vertex_buffer_count,
         resource_interface* index_buffer,
+        primitive_topology primitive_topology) override;
+
+    virtual void draw(std::size_t vertex_start, std::size_t vertex_end) override;
+    virtual void draw_indexed(
         std::size_t index_start,
         std::size_t index_end,
-        std::size_t vertex_base,
-        primitive_topology primitive_topology) override;
+        std::size_t vertex_base) override;
 
     virtual void clear_render_target(resource_interface* render_target, const math::float4& color)
         override;

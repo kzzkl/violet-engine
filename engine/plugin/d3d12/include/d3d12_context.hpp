@@ -13,7 +13,7 @@ class d3d12_frame_buffer_manager;
 class d3d12_context
 {
 public:
-    static bool initialize(const renderer_desc& desc) { return instance().on_initialize(desc); }
+    static bool initialize(const rhi_desc& desc) { return instance().on_initialize(desc); }
     static void shutdown() { instance().on_shutdown(); }
     static void present() { instance().on_present(); }
 
@@ -35,7 +35,7 @@ private:
     d3d12_context() noexcept;
     static d3d12_context& instance() noexcept;
 
-    bool on_initialize(const renderer_desc& desc);
+    bool on_initialize(const rhi_desc& desc);
     void on_shutdown();
     void on_present();
 

@@ -2,6 +2,8 @@
 
 #include "core/context.hpp"
 #include "core/link.hpp"
+#include "ecs/world.hpp"
+#include "scene/bvh_tree.hpp"
 #include "scene/transform.hpp"
 #include <memory>
 
@@ -14,6 +16,7 @@ public:
     scene(const scene&) = delete;
 
     virtual bool initialize(const dictionary& config) override;
+    virtual void on_begin_frame() override;
 
     ecs::entity root() const noexcept { return m_root; }
 
@@ -22,15 +25,17 @@ public:
     void sync_world();
     void sync_world(ecs::entity root);
 
-    scene& operator=(const scene&) = delete;
+    void frustum_culling(const std::vector<math::float4>& frustum);
 
-    void reset_sync_counter();
+    void draw_aabb();
 
 private:
     void on_entity_link(ecs::entity entity, core::link& link);
     void on_entity_unlink(ecs::entity entity, core::link& link);
 
-    ash::ecs::view<transform>* m_view;
     ash::ecs::entity m_root;
+
+    bvh_tree m_static_bvh;
+    bvh_tree m_dynamic_bvh;
 };
 } // namespace ash::scene

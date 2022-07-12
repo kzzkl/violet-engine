@@ -1,13 +1,9 @@
 #pragma once
 
 #include "assert.hpp"
-#include "core/event.hpp"
-#include "core/timer.hpp"
 #include "dictionary.hpp"
-#include "ecs/world.hpp"
 #include "index_generator.hpp"
 #include "log.hpp"
-#include "task/task_manager.hpp"
 #include <memory>
 #include <string_view>
 #include <type_traits>
@@ -29,19 +25,17 @@ public:
     system_base(std::string_view name) noexcept;
     virtual ~system_base() = default;
 
-    virtual bool initialize(const dictionary& config) = 0;
+    virtual bool initialize(const dictionary& config) { return true; }
     virtual void shutdown() {}
+
+    virtual void on_begin_frame() {}
+    virtual void on_end_frame() {}
 
     inline std::string_view name() const noexcept { return m_name; }
 
 private:
     std::string m_name;
 };
-
-template <typename T>
-concept internal_system =
-    std::is_same_v<T, ash::task::task_manager> || std::is_same_v<T, ash::ecs::world> ||
-    std::is_same_v<T, ash::core::timer> || std::is_same_v<T, event>;
 
 template <typename T>
 concept derived_from_system = std::is_base_of<system_base, T>::value;
@@ -97,34 +91,15 @@ public:
 
     static void shutdown();
 
+    static void begin_frame();
+    static void end_frame();
+
     template <typename T>
-    static T& system() requires derived_from_system<T> || internal_system<T>
+    static T& system() requires derived_from_system<T>
     {
-        return *static_cast<T*>(instance().m_systems[system_index::value<T>()].get());
-    }
-
-    template <>
-    static ash::task::task_manager& system<ash::task::task_manager>()
-    {
-        return *instance().m_task;
-    }
-
-    template <>
-    static ash::ecs::world& system<ash::ecs::world>()
-    {
-        return *instance().m_world;
-    }
-
-    template <>
-    static ash::core::event& system<ash::core::event>()
-    {
-        return *instance().m_event;
-    }
-
-    template <>
-    static ash::core::timer& system<ash::core::timer>()
-    {
-        return *instance().m_timer;
+        auto system_pointer = instance().m_systems[system_index::value<T>()].get();
+        ASH_ASSERT(dynamic_cast<T*>(system_pointer));
+        return *static_cast<T*>(system_pointer);
     }
 
 private:
@@ -134,11 +109,6 @@ private:
     std::map<std::string, dictionary> m_config;
 
     std::vector<std::unique_ptr<system_base>> m_systems;
-    std::unique_ptr<ash::task::task_manager> m_task;
-    std::unique_ptr<ash::ecs::world> m_world;
-    std::unique_ptr<event> m_event;
-    std::unique_ptr<timer> m_timer;
-
     std::vector<std::size_t> m_installation_sequence;
 };
 } // namespace ash::core

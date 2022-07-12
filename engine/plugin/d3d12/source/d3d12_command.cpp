@@ -49,7 +49,6 @@ void d3d12_render_command::next_pass(render_pipeline_interface* pipeline)
 void d3d12_render_command::parameter(std::size_t index, pipeline_parameter_interface* parameter)
 {
     d3d12_pipeline_parameter* p = static_cast<d3d12_pipeline_parameter*>(parameter);
-    p->sync();
     if (p->tier() == d3d12_parameter_tier_type::TIER1)
     {
         auto tier1 = p->tier1();
@@ -86,33 +85,51 @@ void d3d12_render_command::scissor(const scissor_extent* extents, std::size_t si
     m_command_list->RSSetScissorRects(static_cast<UINT>(size), r.data());
 }
 
-void d3d12_render_command::draw(
+void d3d12_render_command::input_assembly_state(
     resource_interface* const* vertex_buffers,
     std::size_t vertex_buffer_count,
     resource_interface* index_buffer,
-    std::size_t index_start,
-    std::size_t index_end,
-    std::size_t vertex_base,
     primitive_topology primitive_topology)
 {
-    std::vector<D3D12_VERTEX_BUFFER_VIEW> vertex_buffer_views(vertex_buffer_count);
-    for (std::size_t i = 0; i < vertex_buffer_count; ++i)
-        vertex_buffer_views[i] = static_cast<d3d12_vertex_buffer*>(vertex_buffers[i])->view();
+    if (vertex_buffers != nullptr)
+    {
+        std::vector<D3D12_VERTEX_BUFFER_VIEW> vertex_buffer_views(vertex_buffer_count);
+        for (std::size_t i = 0; i < vertex_buffer_count; ++i)
+            vertex_buffer_views[i] = static_cast<d3d12_vertex_buffer*>(vertex_buffers[i])->view();
 
-    D3D12_INDEX_BUFFER_VIEW index_buffer_view =
-        static_cast<d3d12_index_buffer*>(index_buffer)->view();
+        m_command_list->IASetVertexBuffers(
+            0,
+            static_cast<UINT>(vertex_buffer_views.size()),
+            vertex_buffer_views.data());
+    }
 
-    m_command_list->IASetVertexBuffers(
-        0,
-        static_cast<UINT>(vertex_buffer_views.size()),
-        vertex_buffer_views.data());
-    m_command_list->IASetIndexBuffer(&index_buffer_view);
+    if (index_buffer != nullptr)
+    {
+        D3D12_INDEX_BUFFER_VIEW index_buffer_view =
+            static_cast<d3d12_index_buffer*>(index_buffer)->view();
+        m_command_list->IASetIndexBuffer(&index_buffer_view);
+    }
 
     static const D3D12_PRIMITIVE_TOPOLOGY primitive_topology_map[] = {
         D3D_PRIMITIVE_TOPOLOGY_LINELIST,
         D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST};
     m_command_list->IASetPrimitiveTopology(primitive_topology_map[primitive_topology]);
+}
 
+void d3d12_render_command::draw(std::size_t vertex_start, std::size_t vertex_end)
+{
+    m_command_list->DrawInstanced(
+        static_cast<UINT>(vertex_end - vertex_start),
+        1,
+        static_cast<UINT>(vertex_start),
+        0);
+}
+
+void d3d12_render_command::draw_indexed(
+    std::size_t index_start,
+    std::size_t index_end,
+    std::size_t vertex_base)
+{
     m_command_list->DrawIndexedInstanced(
         static_cast<UINT>(index_end - index_start),
         1,
@@ -163,7 +180,6 @@ void d3d12_render_command::compute_parameter(
     pipeline_parameter_interface* parameter)
 {
     d3d12_pipeline_parameter* p = static_cast<d3d12_pipeline_parameter*>(parameter);
-    p->sync();
 
     if (p->tier() == d3d12_parameter_tier_type::TIER1)
     {

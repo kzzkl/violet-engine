@@ -1,12 +1,13 @@
 #pragma once
 
+#include "core/context.hpp"
 #include <array>
 #include <chrono>
 #include <thread>
 
 namespace ash::core
 {
-class timer
+class timer : public system_base
 {
 public:
     enum point
@@ -21,6 +22,8 @@ public:
     using steady_time_point = std::chrono::time_point<std::chrono::steady_clock>;
 
 public:
+    timer() : system_base("timer") {}
+
     template <typename Clock = std::chrono::steady_clock>
     static std::chrono::time_point<Clock> now()
     {

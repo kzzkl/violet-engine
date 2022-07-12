@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/context.hpp"
 #include "task/task.hpp"
 #include "task/task_queue.hpp"
 #include "task/thread_pool.hpp"
@@ -31,13 +32,15 @@ private:
 template <typename T>
 concept derived_from_task = std::is_base_of<task, T>::value;
 
-class task_manager
+class task_manager : public core::system_base
 {
 public:
     using handle = task_handle;
 
 public:
-    task_manager(std::size_t num_thread);
+    task_manager();
+
+    virtual bool initialize(const dictionary& config) override;
 
     template <typename Callable>
     handle schedule(std::string_view name, Callable callable, task_type type = task_type::NONE)
@@ -68,7 +71,7 @@ private:
 
     std::unordered_map<std::string, std::unique_ptr<task>> m_tasks;
 
-    task_queue_group m_queues;
-    thread_pool m_thread_pool;
+    std::unique_ptr<task_queue_group> m_queues;
+    std::unique_ptr<thread_pool> m_thread_pool;
 };
 } // namespace ash::task

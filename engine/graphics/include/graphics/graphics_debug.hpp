@@ -8,12 +8,11 @@
 
 namespace ash::graphics
 {
-class graphics;
 class debug_pipeline : public render_pipeline
 {
 public:
-    debug_pipeline(graphics& graphics);
-    virtual void render(const camera& camera, render_command_interface* command) override;
+    debug_pipeline();
+    virtual void render(const render_scene& scene, render_command_interface* command) override;
 
 private:
     std::unique_ptr<render_pipeline_interface> m_interface;
@@ -27,7 +26,7 @@ public:
 public:
     graphics_debug(std::size_t frame_resource);
 
-    void initialize(graphics& graphics);
+    void initialize();
     void sync();
 
     void next_frame();
@@ -35,6 +34,7 @@ public:
     ecs::entity entity() const noexcept { return m_entity; }
 
     void draw_line(const math::float3& start, const math::float3& end, const math::float3& color);
+    void draw_aabb(const math::float3& min, const math::float3& max, const math::float3& color);
 
 private:
     ecs::entity m_entity;

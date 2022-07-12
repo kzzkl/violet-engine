@@ -1,7 +1,9 @@
 #include "ui/ui.hpp"
-#include "core/relation.hpp"
-#include "graphics/graphics.hpp"
+#include "ecs/world.hpp"
 #include "graphics/graphics_task.hpp"
+#include "graphics/mesh_render.hpp"
+#include "graphics/rhi.hpp"
+#include "task/task_manager.hpp"
 #include "ui/controls.hpp"
 #include "ui/element_tree.hpp"
 #include "ui/theme.hpp"
@@ -21,58 +23,66 @@ ui::ui() : system_base("ui"), m_material_parameter_counter(0)
 
 bool ui::initialize(const dictionary& config)
 {
-    auto& graphics = system<graphics::graphics>();
     auto& world = system<ecs::world>();
     auto& event = system<core::event>();
 
     load_font("remixicon", "engine/font/remixicon.ttf", 24);
     load_font("NotoSans-Regular", "engine/font/NotoSans-Regular.ttf", 13);
 
-    m_tree = std::make_unique<element_tree>();
+    // Register ui pipeline parameter layout.
+    graphics::rhi::register_pipeline_parameter_layout("ui_mvp", mvp_pipeline_parameter::layout());
+    graphics::rhi::register_pipeline_parameter_layout(
+        "ui_offset",
+        offset_pipeline_parameter::layout());
+    graphics::rhi::register_pipeline_parameter_layout(
+        "ui_material",
+        material_pipeline_parameter::layout());
 
     m_pipeline = std::make_unique<ui_pipeline>();
-    m_mvp_parameter = graphics.make_pipeline_parameter("ui_mvp");
-    m_offset_parameter = graphics.make_pipeline_parameter("ui_offset");
+    m_mvp_parameter = std::make_unique<mvp_pipeline_parameter>();
+    m_offset_parameter = std::make_unique<offset_pipeline_parameter>();
+
+    m_tree = std::make_unique<element_tree>();
 
     // Position.
-    m_vertex_buffers.push_back(graphics.make_vertex_buffer<math::float2>(
+    m_vertex_buffers.push_back(graphics::rhi::make_vertex_buffer<math::float2>(
         nullptr,
         MAX_UI_VERTEX_COUNT,
         graphics::VERTEX_BUFFER_FLAG_NONE,
         true,
         true));
     // UV.
-    m_vertex_buffers.push_back(graphics.make_vertex_buffer<math::float2>(
+    m_vertex_buffers.push_back(graphics::rhi::make_vertex_buffer<math::float2>(
         nullptr,
         MAX_UI_VERTEX_COUNT,
         graphics::VERTEX_BUFFER_FLAG_NONE,
         true,
         true));
     // Color.
-    m_vertex_buffers.push_back(graphics.make_vertex_buffer<std::uint32_t>(
+    m_vertex_buffers.push_back(graphics::rhi::make_vertex_buffer<std::uint32_t>(
         nullptr,
         MAX_UI_VERTEX_COUNT,
         graphics::VERTEX_BUFFER_FLAG_NONE,
         true,
         true));
     // Offset index.
-    m_vertex_buffers.push_back(graphics.make_vertex_buffer<std::uint32_t>(
+    m_vertex_buffers.push_back(graphics::rhi::make_vertex_buffer<std::uint32_t>(
         nullptr,
         MAX_UI_VERTEX_COUNT,
         graphics::VERTEX_BUFFER_FLAG_NONE,
         true,
         true));
     m_index_buffer =
-        graphics.make_index_buffer<std::uint32_t>(nullptr, MAX_UI_INDEX_COUNT, true, true);
+        graphics::rhi::make_index_buffer<std::uint32_t>(nullptr, MAX_UI_INDEX_COUNT, true, true);
 
     m_entity = world.create("ui root");
-    world.add<graphics::visual>(m_entity);
+    world.add<graphics::mesh_render>(m_entity);
 
-    auto& visual = world.component<graphics::visual>(m_entity);
-    visual.groups = graphics::VISUAL_GROUP_UI;
+    auto& mesh_render = world.component<graphics::mesh_render>(m_entity);
+    mesh_render.render_groups = graphics::RENDER_GROUP_UI;
     for (auto& vertex_buffer : m_vertex_buffers)
-        visual.vertex_buffers.push_back(vertex_buffer.get());
-    visual.index_buffer = m_index_buffer.get();
+        mesh_render.vertex_buffers.push_back(vertex_buffer.get());
+    mesh_render.index_buffer = m_index_buffer.get();
 
     event.subscribe<window::event_window_resize>(
         "ui",
@@ -107,11 +117,11 @@ void ui::tick()
         return;
 
     m_renderer.draw(m_tree.get());
-    m_offset_parameter->set(0, m_renderer.offset().data(), m_renderer.offset().size());
+    m_offset_parameter->offset(m_renderer.offset());
 
-    auto& visual = world.component<graphics::visual>(m_entity);
-    visual.submeshes.clear();
-    visual.materials.clear();
+    auto& mesh_render = world.component<graphics::mesh_render>(m_entity);
+    mesh_render.submeshes.clear();
+    mesh_render.materials.clear();
 
     std::size_t vertex_offset = 0;
     std::size_t index_offset = 0;
@@ -143,23 +153,26 @@ void ui::tick()
             .index_start = index_offset,
             .index_end = index_offset + batch->indices.size(),
             .vertex_base = vertex_offset};
-        visual.submeshes.push_back(submesh);
+        mesh_render.submeshes.push_back(submesh);
 
         auto material_parameter = allocate_material_parameter();
-        material_parameter->set(0, static_cast<std::uint32_t>(batch->type));
+        material_parameter->mesh_type(batch->type);
         if (batch->type != ELEMENT_MESH_TYPE_BLOCK)
-            material_parameter->set(1, batch->texture);
+            material_parameter->texture(batch->texture);
 
         graphics::material material = {};
         material.pipeline = m_pipeline.get();
-        material.parameters = {material_parameter, m_offset_parameter.get(), m_mvp_parameter.get()};
+        material.parameters = {
+            material_parameter->interface(),
+            m_offset_parameter->interface(),
+            m_mvp_parameter->interface()};
         material.scissor = graphics::scissor_extent{
             .min_x = static_cast<std::uint32_t>(batch->scissor.x),
             .min_y = static_cast<std::uint32_t>(batch->scissor.y),
             .max_x = static_cast<std::uint32_t>(batch->scissor.x + batch->scissor.width),
             .max_y = static_cast<std::uint32_t>(batch->scissor.y + batch->scissor.height)};
 
-        visual.materials.push_back(material);
+        mesh_render.materials.push_back(material);
 
         vertex_offset += batch->vertex_position.size();
         index_offset += batch->indices.size();
@@ -292,23 +305,22 @@ void ui::resize(std::uint32_t width, std::uint32_t height)
     float R = static_cast<float>(width);
     float T = 0.0f;
     float B = static_cast<float>(height);
-    math::float4x4 orthographic = math::matrix_plain::orthographic(
+    math::float4x4 orthographic = math::matrix::orthographic(
         0.0f,
         static_cast<float>(width),
         static_cast<float>(height),
         0.0f,
         0.0f,
         1.0f);
-    m_mvp_parameter->set(0, orthographic);
+    m_mvp_parameter->mvp_matrix(orthographic);
     m_tree->width(width);
     m_tree->height(height);
 }
 
-graphics::pipeline_parameter* ui::allocate_material_parameter()
+material_pipeline_parameter* ui::allocate_material_parameter()
 {
     if (m_material_parameter_counter >= m_material_parameter_pool.size())
-        m_material_parameter_pool.push_back(
-            system<graphics::graphics>().make_pipeline_parameter("ui_material"));
+        m_material_parameter_pool.push_back(std::make_unique<material_pipeline_parameter>());
 
     auto result = m_material_parameter_pool[m_material_parameter_counter].get();
     ++m_material_parameter_counter;

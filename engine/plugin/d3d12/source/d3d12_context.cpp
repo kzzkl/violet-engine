@@ -19,7 +19,7 @@ d3d12_context& d3d12_context::instance() noexcept
     return instance;
 }
 
-bool d3d12_context::on_initialize(const renderer_desc& desc)
+bool d3d12_context::on_initialize(const rhi_desc& desc)
 {
     d3d12_frame_counter::initialize(0, desc.frame_resource);
 

@@ -8,15 +8,15 @@
 
 namespace ash::graphics::d3d12
 {
-class d3d12_factory : public factory_interface
+class d3d12_rhi : public rhi_interface
 {
 public:
-    virtual renderer_interface* make_renderer(const renderer_desc& desc) override
-    {
-        return new d3d12_renderer(desc);
-    }
+    virtual void initialize(const rhi_desc& desc) override { d3d12_context::initialize(desc); }
 
-    virtual render_pipeline_interface* make_render_pipeline(const render_pipeline_desc& desc) override
+    virtual renderer_interface* make_renderer() override { return new d3d12_renderer(); }
+
+    virtual render_pipeline_interface* make_render_pipeline(
+        const render_pipeline_desc& desc) override
     {
         return new d3d12_render_pipeline(desc);
     }
@@ -89,6 +89,21 @@ public:
         return result;
     }
 
+    virtual resource_interface* make_texture_cube(
+        const char* left,
+        const char* right,
+        const char* top,
+        const char* bottom,
+        const char* front,
+        const char* back) override
+    {
+        auto command_list = d3d12_context::command()->allocate_dynamic_command();
+        d3d12_texture_cube* result =
+            new d3d12_texture_cube({left, right, top, bottom, front, back}, command_list.get());
+        d3d12_context::command()->execute_command(command_list);
+        return result;
+    }
+
     virtual resource_interface* make_render_target(const render_target_desc& desc) override
     {
         return new d3d12_render_target(desc);
@@ -117,8 +132,8 @@ extern "C"
         return info;
     }
 
-    PLUGIN_API ash::graphics::factory_interface* make_factory()
+    PLUGIN_API ash::graphics::rhi_interface* make_rhi()
     {
-        return new ash::graphics::d3d12::d3d12_factory();
+        return new ash::graphics::d3d12::d3d12_rhi();
     }
 }

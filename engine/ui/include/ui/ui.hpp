@@ -1,15 +1,18 @@
 #pragma once
 
 #include "core/context.hpp"
-#include "font.hpp"
-#include "graphics/pipeline_parameter.hpp"
+#include "ecs/entity.hpp"
 #include "ui/element.hpp"
+#include "ui/font.hpp"
 #include "ui/renderer.hpp"
 #include "ui/theme.hpp"
 
 namespace ash::ui
 {
 class element_tree;
+class mvp_pipeline_parameter;
+class offset_pipeline_parameter;
+class material_pipeline_parameter;
 class ui_pipeline;
 class ui : public core::system_base
 {
@@ -47,16 +50,16 @@ private:
     void initialize_default_theme();
     void resize(std::uint32_t width, std::uint32_t height);
 
-    graphics::pipeline_parameter* allocate_material_parameter();
+    material_pipeline_parameter* allocate_material_parameter();
 
-    std::vector<std::unique_ptr<graphics::resource>> m_vertex_buffers;
-    std::unique_ptr<graphics::resource> m_index_buffer;
+    std::vector<std::unique_ptr<graphics::resource_interface>> m_vertex_buffers;
+    std::unique_ptr<graphics::resource_interface> m_index_buffer;
 
-    std::unique_ptr<graphics::pipeline_parameter> m_mvp_parameter;
-    std::unique_ptr<graphics::pipeline_parameter> m_offset_parameter;
+    std::unique_ptr<mvp_pipeline_parameter> m_mvp_parameter;
+    std::unique_ptr<offset_pipeline_parameter> m_offset_parameter;
 
     std::size_t m_material_parameter_counter;
-    std::vector<std::unique_ptr<graphics::pipeline_parameter>> m_material_parameter_pool;
+    std::vector<std::unique_ptr<material_pipeline_parameter>> m_material_parameter_pool;
 
     std::unique_ptr<ui_pipeline> m_pipeline;
 

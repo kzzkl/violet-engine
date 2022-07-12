@@ -10,7 +10,7 @@
         "width": 700,
         "height": 400
     },
-    "core": {
+    "task": {
         "threads": 0
     },
     "physics": {
