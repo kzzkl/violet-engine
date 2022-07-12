@@ -5,7 +5,7 @@
 #include "graphics/graphics.hpp"
 #include "graphics/mesh_render.hpp"
 #include "graphics/rhi.hpp"
-#include "graphics/standard_pipeline.hpp"
+#include "graphics/blinn_phong_pipeline.hpp"
 #include "scene/bvh_tree.hpp"
 #include "scene/scene.hpp"
 #include "task/task_manager.hpp"
@@ -14,6 +14,7 @@
 #include <random>
 
 namespace ash::sample
+
 {
 bvh_viewer::bvh_viewer() : core::system_base("bvh_viewer")
 {
@@ -40,9 +41,9 @@ void bvh_viewer::initialize_graphics_resource()
     m_cube_index_buffer = graphics::rhi::make_index_buffer(
         m_cube_mesh_data.indices.data(),
         m_cube_mesh_data.indices.size());
-    m_cube_material = std::make_unique<graphics::standard_material_pipeline_parameter>();
+    m_cube_material = std::make_unique<graphics::blinn_phong_material_pipeline_parameter>();
     m_cube_material->diffuse(math::float3{1.0f, 1.0f, 1.0f});
-    m_pipeline = std::make_unique<graphics::standard_pipeline>();
+    m_pipeline = std::make_unique<graphics::blinn_phong_pipeline>();
 
     auto& world = system<ecs::world>();
     auto& scene = system<scene::scene>();
@@ -216,19 +217,6 @@ void bvh_viewer::update_camera()
             mouse.mode(window::MOUSE_MODE_RELATIVE);
     }
 
-    if (keyboard.key(window::KEYBOARD_KEY_3).release())
-    {
-        static std::size_t index = 0;
-        static std::vector<math::float3> colors = {
-            math::float3{1.0f, 0.0f, 0.0f},
-            math::float3{0.0f, 1.0f, 0.0f},
-            math::float3{0.0f, 0.0f, 1.0f}
-        };
-
-        m_cube_material->diffuse(colors[index]);
-        index = (index + 1) % colors.size();
-    }
-
     auto& transform = world.component<scene::transform>(m_camera);
     if (mouse.mode() == window::MOUSE_MODE_RELATIVE)
     {
@@ -328,7 +316,6 @@ void bvh_viewer::add_cube(bool random)
     relation.link(cube, scene.root());
     scene.sync_local();
 
-    // std::size_t proxy_id = m_tree.add(bounding_box.aabb());
     m_cubes.push_back(cube);
 
     static std::uniform_real_distribution<float> tu(-1.0f, 1.0f);

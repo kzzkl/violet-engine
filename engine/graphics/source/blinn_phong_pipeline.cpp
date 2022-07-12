@@ -1,31 +1,41 @@
-#include "graphics/standard_pipeline.hpp"
+#include "graphics/blinn_phong_pipeline.hpp"
 #include "graphics/rhi.hpp"
 
 namespace ash::graphics
 {
-standard_material_pipeline_parameter::standard_material_pipeline_parameter()
-    : pipeline_parameter("standard_material")
+blinn_phong_material_pipeline_parameter::blinn_phong_material_pipeline_parameter()
+    : pipeline_parameter("ash_blinn_phong_material")
 {
 }
 
-void standard_material_pipeline_parameter::diffuse(const math::float3& diffuse)
+void blinn_phong_material_pipeline_parameter::diffuse(const math::float3& diffuse)
 {
     field<constant_data>(0).diffuse = diffuse;
 }
 
-std::vector<pipeline_parameter_pair> standard_material_pipeline_parameter::layout()
+void blinn_phong_material_pipeline_parameter::fresnel(const math::float3& fresnel)
+{
+    field<constant_data>(0).fresnel = fresnel;
+}
+
+void blinn_phong_material_pipeline_parameter::roughness(float roughness)
+{
+    field<constant_data>(0).roughness = roughness;
+}
+
+std::vector<pipeline_parameter_pair> blinn_phong_material_pipeline_parameter::layout()
 {
     return {
         {PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER, sizeof(constant_data)}
     };
 }
 
-standard_pipeline::standard_pipeline()
+blinn_phong_pipeline::blinn_phong_pipeline()
 {
     // Color pass.
     render_pass_info color_pass_info = {};
-    color_pass_info.vertex_shader = "engine/shader/standard.vert";
-    color_pass_info.pixel_shader = "engine/shader/standard.frag";
+    color_pass_info.vertex_shader = "engine/shader/blinn_phong.vert";
+    color_pass_info.pixel_shader = "engine/shader/blinn_phong.frag";
     color_pass_info.vertex_attributes = {
         {"POSITION", VERTEX_ATTRIBUTE_TYPE_FLOAT3}, // position
         {"NORMAL",   VERTEX_ATTRIBUTE_TYPE_FLOAT3}, // normal
@@ -36,7 +46,8 @@ standard_pipeline::standard_pipeline()
         {ATTACHMENT_REFERENCE_TYPE_RESOLVE, 0}
     };
     color_pass_info.primitive_topology = PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    color_pass_info.parameters = {"ash_object", "standard_material", "ash_camera"};
+    color_pass_info
+        .parameters = {"ash_object", "ash_blinn_phong_material", "ash_camera", "ash_light"};
     color_pass_info.samples = 4;
 
     // Attachment.
@@ -73,16 +84,16 @@ standard_pipeline::standard_pipeline()
     render_target_resolve.initial_state = RESOURCE_STATE_RENDER_TARGET;
     render_target_resolve.final_state = RESOURCE_STATE_PRESENT;
 
-    render_pipeline_info standard_pipeline_info;
-    standard_pipeline_info.attachments.push_back(render_target);
-    standard_pipeline_info.attachments.push_back(depth_stencil);
-    standard_pipeline_info.attachments.push_back(render_target_resolve);
-    standard_pipeline_info.passes.push_back(color_pass_info);
+    render_pipeline_info blinn_phong_pipeline_info;
+    blinn_phong_pipeline_info.attachments.push_back(render_target);
+    blinn_phong_pipeline_info.attachments.push_back(depth_stencil);
+    blinn_phong_pipeline_info.attachments.push_back(render_target_resolve);
+    blinn_phong_pipeline_info.passes.push_back(color_pass_info);
 
-    m_interface = rhi::make_render_pipeline(standard_pipeline_info);
+    m_interface = rhi::make_render_pipeline(blinn_phong_pipeline_info);
 }
 
-void standard_pipeline::render(const render_scene& scene, render_command_interface* command)
+void blinn_phong_pipeline::render(const render_scene& scene, render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
@@ -97,6 +108,7 @@ void standard_pipeline::render(const render_scene& scene, render_command_interfa
     command->scissor(&extent, 1);
 
     command->parameter(2, scene.camera_parameter);
+    command->parameter(3, scene.light_parameter);
     for (auto& unit : scene.units)
     {
         command->parameter(0, unit.parameters[0]);

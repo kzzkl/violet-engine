@@ -1,12 +1,13 @@
 #include "graphics/graphics.hpp"
 #include "core/context.hpp"
+#include "graphics/blinn_phong_pipeline.hpp"
 #include "graphics/camera.hpp"
 #include "graphics/graphics_event.hpp"
 #include "graphics/graphics_task.hpp"
+#include "graphics/light.hpp"
 #include "graphics/rhi.hpp"
 #include "graphics/skin_pipeline.hpp"
 #include "graphics/sky_pipeline.hpp"
-#include "graphics/standard_pipeline.hpp"
 #include "scene/scene.hpp"
 #include "task/task_manager.hpp"
 #include "window/window.hpp"
@@ -41,9 +42,12 @@ bool graphics::initialize(const dictionary& config)
     rhi::register_pipeline_parameter_layout("ash_object", object_pipeline_parameter::layout());
     rhi::register_pipeline_parameter_layout("ash_camera", camera_pipeline_parameter::layout());
     rhi::register_pipeline_parameter_layout(
-        "standard_material",
-        standard_material_pipeline_parameter::layout());
+        "ash_blinn_phong_material",
+        blinn_phong_material_pipeline_parameter::layout());
+    rhi::register_pipeline_parameter_layout("ash_light", light_pipeline_parameter::layout());
     rhi::register_pipeline_parameter_layout("ash_sky", sky_pipeline_parameter::layout());
+
+    m_light_parameter = std::make_unique<light_pipeline_parameter>();
 
     m_sky_texture = rhi::make_texture_cube(
         "engine/texture/skybox/cloudymorning_left.png",
@@ -62,6 +66,7 @@ bool graphics::initialize(const dictionary& config)
     world.register_component<mesh_render>();
     world.register_component<skinned_mesh>();
     world.register_component<camera>();
+    world.register_component<directional_light>();
 
     event.register_event<event_render_extent_change>();
     event.subscribe<window::event_window_resize>(
@@ -191,14 +196,15 @@ void graphics::render_camera(ecs::entity camera_entity)
     auto& transform = world.component<scene::transform>(camera_entity);
 
     // Update camera data.
-    math::float4x4_simd world_simd = math::simd::load(transform.to_world());
-    math::float4x4_simd transform_v = math::matrix_simd::inverse(world_simd);
+    auto& to_world = transform.to_world();
+    math::float4x4_simd transform_v = math::matrix_simd::inverse(math::simd::load(to_world));
     math::float4x4_simd transform_p = math::simd::load(render_camera.projection());
     math::float4x4_simd transform_vp = math::matrix_simd::mul(transform_v, transform_p);
 
-    math::float3 position;
-    math::simd::store(world_simd[3], position);
-    render_camera.pipeline_parameter()->position(position);
+    render_camera.pipeline_parameter()->position(
+        math::float3{to_world[3][0], to_world[3][1], to_world[3][2]});
+    render_camera.pipeline_parameter()->direction(
+        math::float3{to_world[0][2], to_world[1][2], to_world[2][2]});
 
     math::float4x4 view, view_projection;
     math::simd::store(transform_v, view);
@@ -246,6 +252,17 @@ void graphics::render_camera(ecs::entity camera_entity)
     }
     scene.frustum_culling(planes);
 
+    // Update light.
+    world.view<directional_light, scene::transform>().each(
+        [this](directional_light& light, scene::transform& transform) {
+            auto& to_world = transform.to_world();
+            m_light_parameter->directional_light(
+                0,
+                light.color(),
+                math::float3{-to_world[0][2], -to_world[1][2], -to_world[2][2]});
+        });
+    m_light_parameter->directional_light_count(1);
+
     // Render.
     std::unordered_map<render_pipeline*, render_scene> render_scenes;
     world.view<mesh_render>().each([&, this](mesh_render& mesh_render) {
@@ -275,7 +292,7 @@ void graphics::render_camera(ecs::entity camera_entity)
     for (auto& [pipeline, render_scene] : render_scenes)
     {
         render_scene.camera_parameter = render_camera.pipeline_parameter()->interface();
-        render_scene.light_parameter = m_light_parameter.get();
+        render_scene.light_parameter = m_light_parameter->interface();
         render_scene.render_target = render_camera.render_target();
         render_scene.render_target_resolve = render_camera.render_target_resolve();
         render_scene.depth_stencil_buffer = render_camera.depth_stencil_buffer();
@@ -287,7 +304,7 @@ void graphics::render_camera(ecs::entity camera_entity)
         // Render sky.
         render_scene sky_scene;
         sky_scene.camera_parameter = render_camera.pipeline_parameter()->interface();
-        sky_scene.light_parameter = m_light_parameter.get();
+        sky_scene.light_parameter = m_light_parameter->interface();
         sky_scene.sky_parameter = m_sky_parameter->interface();
         sky_scene.render_target = render_camera.render_target();
         sky_scene.render_target_resolve = render_camera.render_target_resolve();

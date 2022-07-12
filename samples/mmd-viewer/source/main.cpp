@@ -1,11 +1,11 @@
 #include "core/application.hpp"
 #include "core/relation.hpp"
 #include "core/timer.hpp"
+#include "graphics/blinn_phong_pipeline.hpp"
 #include "graphics/camera.hpp"
 #include "graphics/geometry.hpp"
 #include "graphics/graphics.hpp"
 #include "graphics/rhi.hpp"
-#include "graphics/standard_pipeline.hpp"
 #include "mmd_animation.hpp"
 #include "mmd_viewer.hpp"
 #include "physics/physics.hpp"
@@ -32,7 +32,7 @@ public:
     virtual bool initialize(const dictionary& config) override
     {
         initialize_resource();
-        initialize_plane();
+        initialize_scene();
         initialize_camera();
         initialize_task();
 
@@ -66,8 +66,12 @@ private:
         relation.link(m_actor, scene.root());
     }
 
-    void initialize_plane()
+    void initialize_scene()
     {
+        auto& relation = system<core::relation>();
+        auto& scene = system<scene::scene>();
+        auto& world = system<ecs::world>();
+
         auto plane_mesh_data = graphics::geometry::box(1.0f, 1.0f, 1.0f);
         m_plane_positon_buffer = graphics::rhi::make_vertex_buffer(
             plane_mesh_data.position.data(),
@@ -78,11 +82,11 @@ private:
         m_plane_index_buffer = graphics::rhi::make_index_buffer(
             plane_mesh_data.indices.data(),
             plane_mesh_data.indices.size());
-        m_plane_material = std::make_unique<graphics::standard_material_pipeline_parameter>();
+        m_plane_material = std::make_unique<graphics::blinn_phong_material_pipeline_parameter>();
         m_plane_material->diffuse(math::float3{1.0f, 1.0f, 1.0f});
-        m_standard_pipeline = std::make_unique<graphics::standard_pipeline>();
-
-        ecs::world& world = system<ecs::world>();
+        m_plane_material->fresnel(math::float3{0.01f, 0.01f, 0.01f});
+        m_plane_material->roughness(0.2f);
+        m_blinn_phong_pipeline = std::make_unique<graphics::blinn_phong_pipeline>();
 
         m_plane = world.create();
         world.add<core::link, graphics::mesh_render, scene::transform, scene::bounding_box>(
@@ -98,14 +102,20 @@ private:
         mesh_render.object_parameter = std::make_unique<graphics::object_pipeline_parameter>();
 
         graphics::material material = {};
-        material.pipeline = m_standard_pipeline.get();
+        material.pipeline = m_blinn_phong_pipeline.get();
         material.parameters = {
             mesh_render.object_parameter->interface(),
             m_plane_material->interface()};
         mesh_render.materials.push_back(material);
         mesh_render.submeshes.push_back(graphics::submesh{0, 36, 0});
 
-        system<core::relation>().link(m_plane, system<scene::scene>().root());
+        relation.link(m_plane, scene.root());
+
+        m_light = world.create("light");
+        world.add<scene::transform, core::link, graphics::directional_light>(m_light);
+        auto& directional_light = world.component<graphics::directional_light>(m_light);
+        directional_light.color(math::float3{0.5f, 0.5f, 0.5f});
+        relation.link(m_light, scene.root());
     }
 
     void initialize_camera()
@@ -242,6 +252,7 @@ private:
 
     ecs::entity m_actor;
     ecs::entity m_plane;
+    ecs::entity m_light;
 
     ecs::entity m_camera;
     std::unique_ptr<graphics::resource_interface> m_render_target;
@@ -250,8 +261,8 @@ private:
     std::unique_ptr<graphics::resource_interface> m_plane_positon_buffer;
     std::unique_ptr<graphics::resource_interface> m_plane_normal_buffer;
     std::unique_ptr<graphics::resource_interface> m_plane_index_buffer;
-    std::unique_ptr<graphics::standard_material_pipeline_parameter> m_plane_material;
-    std::unique_ptr<graphics::standard_pipeline> m_standard_pipeline;
+    std::unique_ptr<graphics::blinn_phong_material_pipeline_parameter> m_plane_material;
+    std::unique_ptr<graphics::blinn_phong_pipeline> m_blinn_phong_pipeline;
 
     float m_heading = 0.0f, m_pitch = 0.0f;
 

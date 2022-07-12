@@ -4,26 +4,31 @@
 
 namespace ash::graphics
 {
-class standard_material_pipeline_parameter : public pipeline_parameter
+class blinn_phong_material_pipeline_parameter : public pipeline_parameter
 {
 public:
-    standard_material_pipeline_parameter();
+    blinn_phong_material_pipeline_parameter();
 
     void diffuse(const math::float3& diffuse);
+    void fresnel(const math::float3& fresnel);
+    void roughness(float roughness);
+
     static std::vector<pipeline_parameter_pair> layout();
 
 private:
     struct constant_data
     {
         math::float3 diffuse;
-        float _padding_1;
+        float _padding_0;
+        math::float3 fresnel;
+        float roughness;
     };
 };
 
-class standard_pipeline : public render_pipeline
+class blinn_phong_pipeline : public render_pipeline
 {
 public:
-    standard_pipeline();
+    blinn_phong_pipeline();
 
     virtual void render(const render_scene& scene, render_command_interface* command) override;
 

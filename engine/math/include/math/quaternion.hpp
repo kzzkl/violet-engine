@@ -8,49 +8,44 @@ namespace ash::math
 class quaternion
 {
 public:
-    using quaternion_type = float4;
-    using vector_type = float4;
-    using matrix_type = float4x4;
-
-public:
-    static inline quaternion_type rotation_axis(const float3& axis, float radians)
+    static inline float4 rotation_axis(const float3& axis, float radians)
     {
         auto [sin, cos] = sin_cos(radians * 0.5f);
         return {axis[0] * sin, axis[1] * sin, axis[2] * sin, cos};
     }
 
-    static inline quaternion_type rotation_axis(const vector_type& axis, float radians)
+    static inline float4 rotation_axis(const float4& axis, float radians)
     {
         auto [sin, cos] = sin_cos(radians * 0.5f);
         return {axis[0] * sin, axis[1] * sin, axis[2] * sin, cos};
     }
 
-    static inline quaternion_type rotation_euler(float heading, float pitch, float bank)
+    static inline float4 rotation_euler(float pitch, float heading, float bank)
     {
-        auto [h_sin, h_cos] = sin_cos(heading * 0.5f);
         auto [p_sin, p_cos] = sin_cos(pitch * 0.5f);
+        auto [h_sin, h_cos] = sin_cos(heading * 0.5f);
         auto [b_sin, b_cos] = sin_cos(bank * 0.5f);
 
-        return quaternion_type{
+        return float4{
             h_cos * p_sin * b_cos + h_sin * p_cos * b_sin,
             h_sin * p_cos * b_cos - h_cos * p_sin * b_sin,
             h_cos * p_cos * b_sin - h_sin * p_sin * b_cos,
             h_cos * p_cos * b_cos + h_sin * p_sin * b_sin};
     }
 
-    static inline quaternion_type rotation_euler(const float3& euler)
+    static inline float4 rotation_euler(const float3& euler)
     {
         return rotation_euler(euler[0], euler[1], euler[2]);
     }
 
-    static inline quaternion_type rotation_euler(const vector_type& euler)
+    static inline float4 rotation_euler(const float4& euler)
     {
         return rotation_euler(euler[0], euler[1], euler[2]);
     }
 
-    static inline quaternion_type rotation_matrix(const matrix_type& m)
+    static inline float4 rotation_matrix(const float4x4& m)
     {
-        quaternion_type result;
+        float4 result;
         float t;
 
         if (m[2][2] < 0.0f) // x^2 + y ^2 > z^2 + w^2
@@ -84,16 +79,16 @@ public:
         return result;
     }
 
-    static inline quaternion_type mul(const quaternion_type& a, const quaternion_type& b)
+    static inline float4 mul(const float4& a, const float4& b)
     {
-        return quaternion_type{
+        return float4{
             a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
             a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
             a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
             a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]};
     }
 
-    static inline vector_type mul_vec(const quaternion_type& q, const vector_type& v)
+    static inline float4 mul_vec(const float4& q, const float4& v)
     {
         float xxd = 2.0f * q[0] * q[0];
         float xyd = 2.0f * q[0] * q[1];
@@ -106,28 +101,25 @@ public:
         float zwd = 2.0f * q[2] * q[3];
         float wwd = 2.0f * q[3] * q[3];
 
-        return vector_type{
+        return float4{
             v[0] * (xxd + wwd - 1.0f) + v[1] * (xyd - zwd) + v[2] * (xzd + ywd),
             v[0] * (xyd + zwd) + v[1] * (yyd + wwd - 1.0f) + v[2] * (yzd - xwd),
             v[0] * (xzd - ywd) + v[1] * (yzd + xwd) + v[2] * (zzd + wwd - 1.0f),
             0.0f};
     }
 
-    static inline quaternion_type conjugate(const quaternion_type& q)
-    {
-        return quaternion_type{-q[0], -q[1], -q[2], q[3]};
-    }
+    static inline float4 conjugate(const float4& q) { return float4{-q[0], -q[1], -q[2], q[3]}; }
 
-    static inline quaternion_type inverse(const quaternion_type& q)
+    static inline float4 inverse(const float4& q)
     {
         return vector::scale(conjugate(q), 1.0f / vector::dot(q, q));
     }
 
-    static inline quaternion_type slerp(const quaternion_type& a, const quaternion_type& b, float t)
+    static inline float4 slerp(const float4& a, const float4& b, float t)
     {
         float cos_omega = vector::dot(a, b);
 
-        quaternion_type c = b;
+        float4 c = b;
         if (cos_omega < 0.0f)
         {
             c = vector::scale(b, -1.0f);
@@ -160,12 +152,7 @@ public:
 struct quaternion_simd
 {
 public:
-    using quaternion_type = float4_simd;
-    using vector_type = float4_simd;
-    using matrix_type = float4x4_simd;
-
-public:
-    static inline quaternion_type rotation_axis(const vector_type& axis, float radians)
+    static inline float4_simd rotation_axis(const float4_simd& axis, float radians)
     {
         // TODO
         float4 a;
@@ -174,7 +161,7 @@ public:
         return simd::load(result);
     }
 
-    static inline quaternion_type rotation_euler(const vector_type& euler)
+    static inline float4_simd rotation_euler(const float4_simd& euler)
     {
         // TODO
         float4 e;
@@ -183,7 +170,7 @@ public:
         return simd::load(result);
     }
 
-    static inline quaternion_type rotation_matrix(const matrix_type& m)
+    static inline float4_simd rotation_matrix(const float4x4_simd& m)
     {
         // TODO
         float4x4 temp;
@@ -192,7 +179,7 @@ public:
         return simd::load(q);
     }
 
-    static inline quaternion_type mul(const quaternion_type& a, const quaternion_type& b)
+    static inline float4_simd mul(const float4_simd& a, const float4_simd& b)
     {
         static const __m128 c1 = simd::set(1.0f, 1.0f, 1.0f, -1.0f);
         static const __m128 c2 = simd::set(-1.0f, -1.0f, -1.0f, -1.0f);

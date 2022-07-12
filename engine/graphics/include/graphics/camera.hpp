@@ -23,9 +23,9 @@ private:
     struct constant_data
     {
         math::float3 position;
-        float _padding_1;
+        float _padding_0;
         math::float3 direction;
-        float _padding_2;
+        float _padding_1;
         math::float4x4 view;
         math::float4x4 projection;
         math::float4x4 view_projection;

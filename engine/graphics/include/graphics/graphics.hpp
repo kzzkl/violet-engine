@@ -3,7 +3,6 @@
 #include "core/context.hpp"
 #include "graphics/compute_pipeline.hpp"
 #include "graphics/graphics_debug.hpp"
-#include "graphics/light.hpp"
 #include "graphics/mesh_render.hpp"
 #include "graphics/skinned_mesh.hpp"
 #include "scene/bounding_box.hpp"
@@ -12,6 +11,7 @@
 
 namespace ash::graphics
 {
+class light_pipeline_parameter;
 class sky_pipeline_parameter;
 class sky_pipeline;
 class graphics : public core::system_base
@@ -56,7 +56,7 @@ private:
 
     std::queue<ecs::entity> m_render_queue;
 
-    std::unique_ptr<pipeline_parameter_interface> m_light_parameter;
+    std::unique_ptr<light_pipeline_parameter> m_light_parameter;
 
     // Sky.
     std::unique_ptr<resource_interface> m_sky_texture;

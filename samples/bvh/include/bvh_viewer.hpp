@@ -4,7 +4,7 @@
 #include "ecs/entity.hpp"
 #include "ecs/world.hpp"
 #include "graphics/geometry.hpp"
-#include "graphics/standard_pipeline.hpp"
+#include "graphics/blinn_phong_pipeline.hpp"
 #include "scene/bounding_box.hpp"
 #include "scene/bvh_tree.hpp"
 #include "scene/transform.hpp"
@@ -48,8 +48,8 @@ private:
     std::unique_ptr<graphics::resource_interface> m_cube_normal_buffer;
     std::unique_ptr<graphics::resource_interface> m_cube_index_buffer;
 
-    std::unique_ptr<graphics::standard_material_pipeline_parameter> m_cube_material;
-    std::unique_ptr<graphics::standard_pipeline> m_pipeline;
+    std::unique_ptr<graphics::blinn_phong_material_pipeline_parameter> m_cube_material;
+    std::unique_ptr<graphics::blinn_phong_pipeline> m_pipeline;
 
     std::unique_ptr<graphics::resource_interface> m_render_target;
     std::unique_ptr<graphics::resource_interface> m_depth_stencil_buffer;
