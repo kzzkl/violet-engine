@@ -85,7 +85,7 @@ void tree_page::initialize_sample_tree()
         "Item 51: Adhere to convention when writing new and delete.",
         "Item 52: Write placement delete if you write placement new.",
         "Item 53: Pay attention to compiler warnings.",
-        "Item 54: Familiarize yourself with the blinn_phong library, including TR1.",
+        "Item 54: Familiarize yourself with the standard library, including TR1.",
         "Item 55: Familiarize yourself with Boost."};
 
     ui::tree_node_theme node_theme = system<ui::ui>().theme<ui::tree_node_theme>("dark");

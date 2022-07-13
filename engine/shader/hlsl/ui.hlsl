@@ -54,6 +54,9 @@ float4 ps_main(vs_out pin) : SV_TARGET
     else if (type == 1) // text
     {
         float4 color = ui_texture.Sample(text_sampler, pin.uv);
+
+        // Gamma correct
+        color = pow(color, 1.0f / 2.2f);
         return float4(pin.color.rgb, color.r * pin.color.a);
     }
     else if (type == 2) // image 
