@@ -66,35 +66,40 @@ void mmd_viewer::update()
     animation.update(false);
     world.view<mmd_skeleton, graphics::skinned_mesh>().each(
         [&](mmd_skeleton& skeleton, graphics::skinned_mesh&) {
-            math::float3 position;
-            math::float4 rotation;
-            math::float3 scale;
+            math::float4_simd scale;
+            math::float4_simd rotation;
+            math::float4_simd position;
             for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
             {
                 auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
-                math::matrix::decompose(skeleton.local[i], scale, rotation, position);
+                math::matrix_simd::decompose(
+                    math::simd::load(skeleton.local[i]),
+                    scale,
+                    rotation,
+                    position);
                 transform.scale(scale);
                 transform.rotation(rotation);
                 transform.position(position);
             }
         });
-    scene.sync_local();
 
-    system<physics::physics>().simulation();
+    // system<physics::physics>().simulation();
 
     animation.update(true);
 
     world.view<mmd_skeleton, graphics::skinned_mesh>().each(
         [&](mmd_skeleton& skeleton, graphics::skinned_mesh& skinned_mesh) {
+            math::float4x4_simd to_world;
+            math::float4x4_simd initial_inverse;
+            math::float4x4_simd final_transform;
             for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
             {
                 auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
+                auto& node = world.component<mmd_node>(skeleton.nodes[i]);
 
-                math::float4x4_simd to_world = math::simd::load(transform.to_world());
-                math::float4x4_simd initial =
-                    math::simd::load(world.component<mmd_node>(skeleton.nodes[i]).initial_inverse);
-
-                math::float4x4_simd final_transform = math::matrix_simd::mul(initial, to_world);
+                to_world = math::simd::load(transform.to_world());
+                initial_inverse = math::simd::load(node.initial_inverse);
+                final_transform = math::matrix_simd::mul(initial_inverse, to_world);
                 math::simd::store(final_transform, skeleton.world[i]);
             }
 

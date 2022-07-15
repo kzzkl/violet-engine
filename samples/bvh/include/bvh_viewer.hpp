@@ -3,8 +3,8 @@
 #include "core/context.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/world.hpp"
-#include "graphics/geometry.hpp"
 #include "graphics/blinn_phong_pipeline.hpp"
+#include "graphics/geometry.hpp"
 #include "scene/bounding_box.hpp"
 #include "scene/bvh_tree.hpp"
 #include "scene/transform.hpp"
@@ -33,6 +33,7 @@ private:
     void add_cube(bool random);
     void remove_cube();
 
+    ecs::entity m_light;
     std::vector<ecs::entity> m_cubes;
     std::vector<math::float3> m_move_direction;
 

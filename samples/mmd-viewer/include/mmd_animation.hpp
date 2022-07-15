@@ -24,9 +24,11 @@ private:
 
     void update_local(mmd_skeleton& skeleton, bool after_physics);
     void update_world(mmd_skeleton& skeleton, bool after_physics);
-    void update_transform(mmd_skeleton& skeleton, std::size_t index);
 
-    void update_inherit(mmd_node& node, mmd_node_animation& animation, scene::transform& transform);
+    void update_local(mmd_skeleton& skeleton, ecs::entity entity);
+    void update_world(mmd_skeleton& skeleton, ecs::entity entity);
+
+    void update_inherit(mmd_node& node);
     void update_ik(mmd_skeleton& skeleton, mmd_node& node, mmd_ik_solver& ik);
 
     void ik_solve_core(
@@ -49,7 +51,7 @@ private:
         if (keys.empty() || keys.size() < start)
             return keys.end();
 
-        return std::upper_bound(keys.begin(), keys.end(), t, [](int32_t lhs, const Key& rhs) {
+        return std::upper_bound(keys.begin(), keys.end(), t, [](std::int32_t lhs, const Key& rhs) {
             return lhs < rhs.frame;
         });
     }

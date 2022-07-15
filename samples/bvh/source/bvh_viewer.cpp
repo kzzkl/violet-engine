@@ -1,11 +1,12 @@
 #include "bvh_viewer.hpp"
 #include "core/relation.hpp"
 #include "core/timer.hpp"
+#include "graphics/blinn_phong_pipeline.hpp"
 #include "graphics/camera.hpp"
 #include "graphics/graphics.hpp"
+#include "graphics/graphics_event.hpp"
 #include "graphics/mesh_render.hpp"
 #include "graphics/rhi.hpp"
-#include "graphics/blinn_phong_pipeline.hpp"
 #include "scene/bvh_tree.hpp"
 #include "scene/scene.hpp"
 #include "task/task_manager.hpp"
@@ -25,6 +26,20 @@ bool bvh_viewer::initialize(const dictionary& config)
     initialize_graphics_resource();
     initialize_ui();
     initialize_task();
+
+    system<core::event>().subscribe<graphics::event_render_extent_change>(
+        "sample_module",
+        [this](std::uint32_t width, std::uint32_t height) { resize_camera(width, height); });
+
+    auto& world = system<ecs::world>();
+    auto& scene = system<scene::scene>();
+    auto& relation = system<core::relation>();
+
+    m_light = world.create("light");
+    world.add<scene::transform, core::link, graphics::directional_light>(m_light);
+    auto& directional_light = world.component<graphics::directional_light>(m_light);
+    directional_light.color(math::float3{0.5f, 0.5f, 0.5f});
+    relation.link(m_light, scene.root());
 
     return true;
 }
@@ -223,7 +238,7 @@ void bvh_viewer::update_camera()
         m_heading += mouse.x() * m_rotate_speed * delta;
         m_pitch += mouse.y() * m_rotate_speed * delta;
         m_pitch = std::clamp(m_pitch, -math::PI_PIDIV2, math::PI_PIDIV2);
-        transform.rotation_euler({m_heading, m_pitch, 0.0f});
+        transform.rotation_euler({m_pitch, m_heading, 0.0f});
     }
 
     float x = 0, z = 0;

@@ -5,6 +5,7 @@
 #include "graphics/camera.hpp"
 #include "graphics/geometry.hpp"
 #include "graphics/graphics.hpp"
+#include "graphics/graphics_event.hpp"
 #include "graphics/rhi.hpp"
 #include "mmd_animation.hpp"
 #include "mmd_viewer.hpp"
@@ -13,7 +14,6 @@
 #include "scene/scene.hpp"
 #include "task/task_manager.hpp"
 #include "window/window.hpp"
-#include "window/window_event.hpp"
 
 #define EDITOR_MODE
 
@@ -36,7 +36,7 @@ public:
         initialize_camera();
         initialize_task();
 
-        system<core::event>().subscribe<window::event_window_resize>(
+        system<core::event>().subscribe<graphics::event_render_extent_change>(
             "sample_module",
             [this](std::uint32_t width, std::uint32_t height) { resize_camera(width, height); });
 
@@ -61,7 +61,7 @@ private:
         m_actor = system<mmd_viewer>().load_mmd(
             "sora",
             "resource/model/sora/Sora.pmx",
-            "resource/model/sora/test.vmd");
+            "E:/workspace/ash-document/model/test2.vmd");
 
         relation.link(m_actor, scene.root());
     }
@@ -190,7 +190,7 @@ private:
             m_heading += mouse.x() * m_rotate_speed * delta;
             m_pitch += mouse.y() * m_rotate_speed * delta;
             m_pitch = std::clamp(m_pitch, -math::PI_PIDIV2, math::PI_PIDIV2);
-            camera_transform.rotation_euler(math::float3{m_heading, m_pitch, 0.0f});
+            camera_transform.rotation_euler(math::float3{m_pitch, m_heading, 0.0f});
         }
 
         float x = 0, z = 0;

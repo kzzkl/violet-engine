@@ -8,6 +8,8 @@ namespace ash::math
 class quaternion
 {
 public:
+    static constexpr inline float4 identity() { return {0.0f, 0.0f, 0.0f, 1.0f}; }
+
     static inline float4 rotation_axis(const float3& axis, float radians)
     {
         auto [sin, cos] = sin_cos(radians * 0.5f);
@@ -75,7 +77,7 @@ public:
             }
         }
 
-        result = vector::scale(result, 0.5f / sqrtf(t));
+        result = vector::mul(result, 0.5f / sqrtf(t));
         return result;
     }
 
@@ -112,7 +114,7 @@ public:
 
     static inline float4 inverse(const float4& q)
     {
-        return vector::scale(conjugate(q), 1.0f / vector::dot(q, q));
+        return vector::mul(conjugate(q), 1.0f / vector::dot(q, q));
     }
 
     static inline float4 slerp(const float4& a, const float4& b, float t)
@@ -122,7 +124,7 @@ public:
         float4 c = b;
         if (cos_omega < 0.0f)
         {
-            c = vector::scale(b, -1.0f);
+            c = vector::mul(b, -1.0f);
             cos_omega = -cos_omega;
         }
 
@@ -152,7 +154,9 @@ public:
 struct quaternion_simd
 {
 public:
-    static inline float4_simd rotation_axis(const float4_simd& axis, float radians)
+    static inline float4_simd identity() { return simd::identity_row<3>(); }
+
+    static inline float4_simd rotation_axis(float4_simd axis, float radians)
     {
         // TODO
         float4 a;
@@ -161,7 +165,7 @@ public:
         return simd::load(result);
     }
 
-    static inline float4_simd rotation_euler(const float4_simd& euler)
+    static inline float4_simd rotation_euler(float4_simd euler)
     {
         // TODO
         float4 e;
@@ -179,7 +183,7 @@ public:
         return simd::load(q);
     }
 
-    static inline float4_simd mul(const float4_simd& a, const float4_simd& b)
+    static inline float4_simd mul(float4_simd a, float4_simd b)
     {
         static const __m128 c1 = simd::set(1.0f, 1.0f, 1.0f, -1.0f);
         static const __m128 c2 = simd::set(-1.0f, -1.0f, -1.0f, -1.0f);
@@ -192,33 +196,82 @@ public:
         t2 = simd::shuffle<3, 3, 3, 0>(b); // [bw, bw, bw, bx]
         t1 = _mm_mul_ps(t1, t2);           // [ax * bw, ay * bw, az * bw, ax * bx]
         t1 = _mm_mul_ps(t1, c1);           // [ax * bw, ay * bw, az * bw, -ax * bx]
-
-        result = _mm_add_ps(result, t1); // [aw * bx + ax * bw,
-                                         //  aw * by + ay * bw,
-                                         //  aw * bz + az * bw,
-                                         //  aw * bw - ax * bx]
+        result = _mm_add_ps(result, t1);   // [aw * bx + ax * bw,
+                                           //  aw * by + ay * bw,
+                                           //  aw * bz + az * bw,
+                                           //  aw * bw - ax * bx]
 
         t1 = simd::shuffle<1, 2, 0, 1>(a); // [ay, az, ax, ay]
         t2 = simd::shuffle<2, 0, 1, 1>(b); // [bz, bx, by, by]
         t1 = _mm_mul_ps(t1, t2);           // [ay * bz, az * bx, ax * by, ay * by]
         t1 = _mm_mul_ps(t1, c1);           // [ay * bz, az * bx, ax * by, -ay * by]
-
-        result = _mm_add_ps(result, t1); // [aw * bx + ax * bw + ay * bz,
-                                         //  aw * by + ay * bw + az * bx,
-                                         //  aw * bz + az * bw + ax * by,
-                                         //  aw * bw - ax * bx - ay * by]
+        result = _mm_add_ps(result, t1);   // [aw * bx + ax * bw + ay * bz,
+                                           //  aw * by + ay * bw + az * bx,
+                                           //  aw * bz + az * bw + ax * by,
+                                           //  aw * bw - ax * bx - ay * by]
 
         t1 = simd::shuffle<2, 0, 1, 2>(a); // [az, ax, ay, az]
         t2 = simd::shuffle<1, 2, 0, 2>(b); // [by, bz, bx, bz]
         t1 = _mm_mul_ps(t1, t2);           // [az * by, ax * bz, ay * bx, az * bz]
         t1 = _mm_mul_ps(t1, c2);           // [-az * by, -ax * bz, -ay * bx, -az * bz]
-
-        result = _mm_add_ps(result, t1); // [aw * bx + ax * bw + ay * bz - az * by,
-                                         //  aw * by + ay * bw + az * bx - ax * bz,
-                                         //  aw * bz + az * bw + ax * by - ay * bx,
-                                         //  aw * bw - ax * bx - ay * by - az * bz]
+        result = _mm_add_ps(result, t1);   // [aw * bx + ax * bw + ay * bz - az * by,
+                                           //  aw * by + ay * bw + az * bx - ax * bz,
+                                           //  aw * bz + az * bw + ax * by - ay * bx,
+                                           //  aw * bw - ax * bx - ay * by - az * bz]
 
         return result;
+    }
+
+    static inline float4_simd mul_vec(float4_simd q, float4_simd v)
+    {
+        __m128 t1 = _mm_and_ps(v, simd::mask<0x1110>());
+        __m128 t2 = conjugate(q);
+        t2 = mul(t1, t2);
+        return mul(q, t2);
+    }
+
+    static inline float4_simd conjugate(float4_simd q)
+    {
+        __m128 t1 = simd::set(-1.0f, -1.0f, -1.0f, 1.0f);
+        return _mm_mul_ps(q, t1);
+    }
+
+    static inline float4_simd inverse(float4_simd q)
+    {
+        __m128 t1 = conjugate(q);
+        __m128 t2 = vector_simd::dot_v(q, q);
+        return vector_simd::div(t1, t2);
+    }
+
+    static inline float4_simd slerp(float4_simd a, float4_simd b, float t)
+    {
+        float cos_omega = vector_simd::dot(a, b);
+
+        if (cos_omega < 0.0f)
+        {
+            b = vector_simd::mul(b, -1.0f);
+            cos_omega = -cos_omega;
+        }
+
+        float k0, k1;
+        if (cos_omega > 0.9999f)
+        {
+            k0 = 1.0f - t;
+            k1 = t;
+        }
+        else
+        {
+            float sin_omega = sqrtf(1.0f - cos_omega * cos_omega);
+            float omega = atan2f(sin_omega, cos_omega);
+            float div = 1.0f / sin_omega;
+            k0 = sinf((1.0f - t) * omega) * div;
+            k1 = sinf(t * omega) * div;
+        }
+
+        __m128 t1 = vector_simd::mul(a, k0);
+        __m128 t2 = vector_simd::mul(b, k1);
+
+        return _mm_add_ps(t1, t2);
     }
 };
 } // namespace ash::math

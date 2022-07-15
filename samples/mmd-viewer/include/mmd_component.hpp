@@ -62,7 +62,7 @@ struct mmd_ik_solver
         bool enable;
     };
 
-    bool enable;
+    bool enable{true};
     float limit_angle;
 
     std::size_t offset;

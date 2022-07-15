@@ -133,8 +133,8 @@ void scene_view::update_camera()
             math::float4_simd up = math::simd::load(transform.to_world()[1]);
             math::float4_simd right = math::simd::load(transform.to_world()[0]);
 
-            up = math::vector_simd::scale(up, relative_y * delta * m_camera_move_speed);
-            right = math::vector_simd::scale(right, -relative_x * delta * m_camera_move_speed);
+            up = math::vector_simd::mul(up, relative_y * delta * m_camera_move_speed);
+            right = math::vector_simd::mul(right, -relative_x * delta * m_camera_move_speed);
 
             math::float4_simd position = math::simd::load(transform.position());
             position = math::vector_simd::add(position, up);
@@ -146,7 +146,7 @@ void scene_view::update_camera()
         {
             math::float4_simd forward = math::simd::load(transform.to_world()[2]);
             forward =
-                math::vector_simd::scale(forward, mouse.whell() * delta * m_camera_move_speed * 50);
+                math::vector_simd::mul(forward, mouse.whell() * delta * m_camera_move_speed * 50);
 
             math::float4_simd position = math::simd::load(transform.position());
             position = math::vector_simd::add(position, forward);

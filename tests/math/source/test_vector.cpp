@@ -20,6 +20,12 @@ TEST_CASE("vector::sub", "[vector]")
     CHECK(equal(math::vector::sub(a, b), math::float4{0.0f, -1.0f, -2.0f, -3.0f}));
 }
 
+TEST_CASE("vector::mul", "[vector]")
+{
+    math::float4 a = {1.0f, 2.0f, 3.0f, 4.0f};
+    CHECK(equal(math::vector::mul(a, 2.0f), math::float4{2.0f, 4.0f, 6.0f, 8.0f}));
+}
+
 TEST_CASE("vector::dot", "[vector]")
 {
     math::float4 a = {1.0f, 2.0f, 3.0f, 4.0f};
@@ -35,10 +41,11 @@ TEST_CASE("vector::cross", "[vector]")
     CHECK(equal(math::vector::cross(a, b), math::float4{-2.0f, 4.0f, -2.0f, 0.0f}));
 }
 
-TEST_CASE("vector::scale", "[vector]")
+TEST_CASE("vector::lerp", "[vector]")
 {
-    math::float4 a = {1.0f, 2.0f, 3.0f, 4.0f};
-    CHECK(equal(math::vector::scale(a, 2.0f), math::float4{2.0f, 4.0f, 6.0f, 8.0f}));
+    math::float4 a = {1.0f, 2.0f, 3.0f, 0.0f};
+    math::float4 b = {3.0f, 4.0f, 5.0f, 0.0f};
+    CHECK(equal(math::vector::lerp(a, b, 0.5f), math::float4{2.0f, 3.0f, 4.0f, 0.0f}));
 }
 
 TEST_CASE("vector::length", "[vector]")
@@ -91,6 +98,15 @@ TEST_CASE("vector_simd::sub", "[vector][simd]")
     CHECK(equal(result, math::float4{-2.0f, -2.0f, -2.0f, -2.0f}));
 }
 
+TEST_CASE("vector_simd::mul", "[vector][simd]")
+{
+    math::float4_simd a = math::simd::set(1.0f, 2.0f, 3.0f, 4.0f);
+
+    math::float4 result;
+    simd::store(math::vector_simd::mul(a, 0.5f), result);
+    CHECK(equal(result, math::float4{0.5f, 1.0f, 1.5f, 2.0f}));
+}
+
 TEST_CASE("vector_simd::dot", "[vector][simd]")
 {
     math::float4_simd a = math::simd::set(1.0f, 2.0f, 3.0f, 4.0f);
@@ -109,13 +125,14 @@ TEST_CASE("vector_simd::cross", "[vector][simd]")
     CHECK(equal(result, math::float4{-2.0f, 4.0f, -2.0f, 0.0f}));
 }
 
-TEST_CASE("vector_simd::scale", "[vector][simd]")
+TEST_CASE("vector_simd::lerp", "[vector][simd]")
 {
-    math::float4_simd a = math::simd::set(1.0f, 2.0f, 3.0f, 4.0f);
+    math::float4_simd a = math::simd::set(1.0f, 2.0f, 3.0f, 0.0f);
+    math::float4_simd b = math::simd::set(3.0f, 4.0f, 5.0f, 0.0f);
 
     math::float4 result;
-    simd::store(math::vector_simd::scale(a, 0.5f), result);
-    CHECK(equal(result, math::float4{0.5f, 1.0f, 1.5f, 2.0f}));
+    math::simd::store(math::vector_simd::lerp(a, b, 0.5f), result);
+    CHECK(equal(result, math::float4{2.0f, 3.0f, 4.0f, 0.0f}));
 }
 
 TEST_CASE("vector_simd::length", "[vector][simd]")

@@ -110,8 +110,7 @@ void mmd_loader::load_hierarchy(
             auto& pmx_parent_bone = loader.bones()[pmx_bone.parent_index];
             auto& parent_node = skeleton.nodes[pmx_bone.parent_index];
 
-            node_transform.position(
-                math::vector::sub(pmx_bone.position, pmx_parent_bone.position));
+            node_transform.position(math::vector::sub(pmx_bone.position, pmx_parent_bone.position));
 
             relation.link(node_entity, parent_node);
         }
@@ -560,8 +559,17 @@ void mmd_loader::load_animation(
     }
 
     // IK.
-    // TODO
-    /*std::map<std::string, mmd_ik_animation*> ik_map;
+    std::map<std::string, mmd_ik_solver*> ik_map;
+    for (auto& node_entity : skeletion.nodes)
+    {
+        if (world.has_component<mmd_ik_solver>(node_entity))
+        {
+            auto& bone = world.component<mmd_node>(node_entity);
+            auto& ik_solver = world.component<mmd_ik_solver>(node_entity);
+            ik_map[bone.name] = &ik_solver;
+        }
+    }
+
     for (auto& ik : vmd_loader.iks())
     {
         for (auto& info : ik.infos)
@@ -569,8 +577,19 @@ void mmd_loader::load_animation(
             auto iter = ik_map.find(info.name);
             if (iter != ik_map.end())
             {
+                mmd_ik_solver::key key = {};
+                key.frame = ik.frame;
+                key.enable = info.enable;
+                iter->second->keys.push_back(key);
             }
         }
-    }*/
+    }
+
+    for (auto [key, value] : ik_map)
+    {
+        std::sort(value->keys.begin(), value->keys.end(), [](const auto& a, const auto& b) {
+            return a.frame < b.frame;
+        });
+    }
 }
 } // namespace ash::sample::mmd

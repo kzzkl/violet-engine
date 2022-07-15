@@ -15,12 +15,9 @@ transform::transform()
 {
 }
 
-void transform::sync(const math::float4x4& parent_matrix, const math::float4x4& world_matrix)
+void transform::sync(const math::float4x4& parent_matrix)
 {
-    m_to_parent = parent_matrix;
-    m_to_world = world_matrix;
-    m_dirty = false;
-    ++m_sync_count;
+    sync(math::simd::load(parent_matrix));
 }
 
 void transform::sync(const math::float4x4_simd& parent_matrix)
@@ -33,6 +30,14 @@ void transform::sync(const math::float4x4_simd& parent_matrix)
     math::simd::store(rotation, m_rotation);
     math::simd::store(position, m_position);
 
+    m_dirty = false;
+    ++m_sync_count;
+}
+
+void transform::sync(const math::float4x4& parent_matrix, const math::float4x4& world_matrix)
+{
+    m_to_parent = parent_matrix;
+    m_to_world = world_matrix;
     m_dirty = false;
     ++m_sync_count;
 }
