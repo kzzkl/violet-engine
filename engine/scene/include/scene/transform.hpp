@@ -10,8 +10,9 @@ class transform
 public:
     transform();
 
-    void sync(const math::float4x4& parent_matrix, const math::float4x4& world_matrix);
+    void sync(const math::float4x4& parent_matrix);
     void sync(const math::float4x4_simd& parent_matrix);
+    void sync(const math::float4x4& parent_matrix, const math::float4x4& world_matrix);
     void sync(const math::float4x4_simd& parent_matrix, const math::float4x4_simd& world_matrix);
 
     void position(const math::float3& value) noexcept
@@ -20,7 +21,7 @@ public:
         m_dirty = true;
     }
 
-    void position(const math::float4_simd& value) noexcept
+    void position(math::float4_simd value) noexcept
     {
         math::simd::store(value, m_position);
         m_dirty = true;
@@ -32,7 +33,7 @@ public:
         m_dirty = true;
     }
 
-    void rotation(const math::float4_simd& value) noexcept
+    void rotation(math::float4_simd value) noexcept
     {
         math::simd::store(value, m_rotation);
         m_dirty = true;
@@ -47,6 +48,12 @@ public:
     void scale(const math::float3& value) noexcept
     {
         m_scale = value;
+        m_dirty = true;
+    }
+
+    void scale(math::float4_simd value) noexcept
+    {
+        math::simd::store(value, m_scale);
         m_dirty = true;
     }
 

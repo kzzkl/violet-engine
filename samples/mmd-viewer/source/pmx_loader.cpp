@@ -235,8 +235,8 @@ bool pmx_loader::load_material(std::ifstream& fin)
         read<float>(fin, mat.specular_strength);
         read<math::float3>(fin, mat.ambient);
         read<draw_flag>(fin, mat.flag);
-        read<math::float4>(fin, mat.edge);
-        read<float>(fin, mat.edge_scale);
+        read<math::float4>(fin, mat.edge_color);
+        read<float>(fin, mat.edge_size);
         mat.texture_index = read_index(fin, m_header.texture_index_size);
         mat.sphere_index = read_index(fin, m_header.texture_index_size);
 
@@ -355,82 +355,85 @@ bool pmx_loader::load_morph(std::ifstream& fin)
 
         switch (morph.type)
         {
-        case pmx_morph_type::GROUP:
-            morph.group_morph.resize(count);
-            for (auto& group : morph.group_morph)
+        case pmx_morph_type::GROUP: {
+            morph.group_morphs.resize(count);
+            for (auto& group : morph.group_morphs)
             {
                 group.index = read_index(fin, m_header.morph_index_size);
                 read<float>(fin, group.weight);
             }
             break;
-        case pmx_morph_type::VERTEX:
-            morph.vertex_morph.resize(count);
-            for (auto& vertex : morph.vertex_morph)
+        }
+        case pmx_morph_type::VERTEX: {
+            morph.vertex_morphs.resize(count);
+            for (auto& vertex_morph : morph.vertex_morphs)
             {
-                vertex.index = read_index(fin, m_header.vertex_index_size);
-                read<math::float3>(fin, vertex.translation);
+                vertex_morph.index = read_index(fin, m_header.vertex_index_size);
+                read<math::float3>(fin, vertex_morph.translation);
             }
             break;
-        case pmx_morph_type::BONE:
-            morph.bone_morph.resize(count);
-            for (auto& bone : morph.bone_morph)
+        }
+        case pmx_morph_type::BONE: {
+            morph.bone_morphs.resize(count);
+            for (auto& bone_morph : morph.bone_morphs)
             {
-                bone.index = read_index(fin, m_header.bone_index_size);
-                read<math::float3>(fin, bone.translation);
-                read<math::float4>(fin, bone.rotation);
+                bone_morph.index = read_index(fin, m_header.bone_index_size);
+                read<math::float3>(fin, bone_morph.translation);
+                read<math::float4>(fin, bone_morph.rotation);
             }
             break;
-
+        }
         case pmx_morph_type::UV:
-        case pmx_morph_type::EXT_UV1:
-        case pmx_morph_type::EXT_UV2:
-        case pmx_morph_type::EXT_UV3:
-        case pmx_morph_type::EXT_UV4:
-            morph.uv_morph.resize(count);
-            for (auto& uv : morph.uv_morph)
+        case pmx_morph_type::UV_EXT_1:
+        case pmx_morph_type::UV_EXT_2:
+        case pmx_morph_type::UV_EXT_3:
+        case pmx_morph_type::UV_EXT_4: {
+            morph.uv_morphs.resize(count);
+            for (auto& uv_morph : morph.uv_morphs)
             {
-                uv.index = read_index(fin, m_header.vertex_index_size);
-                read<math::float4>(fin, uv.value);
+                uv_morph.index = read_index(fin, m_header.vertex_index_size);
+                read<math::float4>(fin, uv_morph.uv);
             }
             break;
-
-        case pmx_morph_type::MATERIAL:
-            morph.material_morph.resize(count);
-            for (auto& material : morph.material_morph)
+        }
+        case pmx_morph_type::MATERIAL: {
+            morph.material_morphs.resize(count);
+            for (auto& material_morph : morph.material_morphs)
             {
-                material.index = read_index(fin, m_header.material_index_size);
-                read<std::uint8_t>(fin, material.operate);
-                read<math::float4>(fin, material.diffuse);
-                read<math::float3>(fin, material.specular);
-                read<float>(fin, material.specular_strength);
-                read<math::float3>(fin, material.ambient);
-                read<math::float4>(fin, material.edge_color);
-                read<float>(fin, material.edge_scale);
-                read<math::float4>(fin, material.tex_tint);
-                read<math::float4>(fin, material.spa_tint);
-                read<math::float4>(fin, material.toon_tint);
+                material_morph.index = read_index(fin, m_header.material_index_size);
+                read<std::uint8_t>(fin, material_morph.operate);
+                read<math::float4>(fin, material_morph.diffuse);
+                read<math::float3>(fin, material_morph.specular);
+                read<float>(fin, material_morph.specular_strength);
+                read<math::float3>(fin, material_morph.ambient);
+                read<math::float4>(fin, material_morph.edge_color);
+                read<float>(fin, material_morph.edge_scale);
+                read<math::float4>(fin, material_morph.tex_tint);
+                read<math::float4>(fin, material_morph.spa_tint);
+                read<math::float4>(fin, material_morph.toon_tint);
             }
             break;
-
-        case pmx_morph_type::FLIP:
-            morph.flip_morph.resize(count);
-            for (auto& flip : morph.flip_morph)
+        }
+        case pmx_morph_type::FLIP: {
+            morph.flip_morphs.resize(count);
+            for (auto& flip_morph : morph.flip_morphs)
             {
-                flip.index = read_index(fin, m_header.morph_index_size);
-                read<float>(fin, flip.weight);
+                flip_morph.index = read_index(fin, m_header.morph_index_size);
+                read<float>(fin, flip_morph.weight);
             }
             break;
-
-        case pmx_morph_type::IMPULSE:
-            morph.impulse_morph.resize(count);
-            for (auto& impulse : morph.impulse_morph)
+        }
+        case pmx_morph_type::IMPULSE: {
+            morph.impulse_morphs.resize(count);
+            for (auto& impulse_morph : morph.impulse_morphs)
             {
-                impulse.index = read_index(fin, m_header.rigidbody_index_size);
-                read<std::uint8_t>(fin, impulse.local_flag);
-                read<math::float3>(fin, impulse.translate_velocity);
-                read<math::float3>(fin, impulse.rotate_torque);
+                impulse_morph.index = read_index(fin, m_header.rigidbody_index_size);
+                read<std::uint8_t>(fin, impulse_morph.local_flag);
+                read<math::float3>(fin, impulse_morph.translate_velocity);
+                read<math::float3>(fin, impulse_morph.rotate_torque);
             }
             break;
+        }
         default:
             return false;
         }

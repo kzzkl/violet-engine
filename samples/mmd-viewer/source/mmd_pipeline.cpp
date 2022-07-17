@@ -12,26 +12,43 @@ material_pipeline_parameter::material_pipeline_parameter()
 void material_pipeline_parameter::diffuse(const math::float4& diffuse)
 {
     field<constant_data>(0).diffuse = diffuse;
+    m_data.diffuse = diffuse;
 }
 
 void material_pipeline_parameter::specular(const math::float3& specular)
 {
     field<constant_data>(0).specular = specular;
+    m_data.specular = specular;
 }
 
 void material_pipeline_parameter::specular_strength(float specular_strength)
 {
     field<constant_data>(0).specular_strength = specular_strength;
+    m_data.specular_strength = specular_strength;
+}
+
+void material_pipeline_parameter::edge_color(const math::float4& edge_color)
+{
+    field<constant_data>(0).edge_color = edge_color;
+    m_data.edge_color = edge_color;
+}
+
+void material_pipeline_parameter::edge_size(float edge_size)
+{
+    field<constant_data>(0).edge_size = edge_size;
+    m_data.edge_size = edge_size;
 }
 
 void material_pipeline_parameter::toon_mode(std::uint32_t toon_mode)
 {
     field<constant_data>(0).toon_mode = toon_mode;
+    m_data.toon_mode = toon_mode;
 }
 
 void material_pipeline_parameter::spa_mode(std::uint32_t spa_mode)
 {
     field<constant_data>(0).spa_mode = spa_mode;
+    m_data.spa_mode = spa_mode;
 }
 
 void material_pipeline_parameter::tex(graphics::resource_interface* tex)
@@ -77,7 +94,7 @@ mmd_render_pipeline::mmd_render_pipeline()
         {graphics::ATTACHMENT_REFERENCE_TYPE_UNUSE, 0}
     };
     color_pass_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    color_pass_info.parameters = {"ash_object", "mmd_material", "ash_camera"};
+    color_pass_info.parameters = {"ash_object", "mmd_material", "ash_camera", "ash_light"};
     color_pass_info.samples = 4;
 
     // Edge pass.
@@ -94,7 +111,7 @@ mmd_render_pipeline::mmd_render_pipeline()
         {graphics::ATTACHMENT_REFERENCE_TYPE_RESOLVE, 0}
     };
     edge_pass_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    edge_pass_info.parameters = {"ash_object", "ash_camera"};
+    edge_pass_info.parameters = {"ash_object", "mmd_material", "ash_camera"};
     edge_pass_info.samples = 4;
     edge_pass_info.rasterizer.cull_mode = graphics::CULL_MODE_FRONT;
     edge_pass_info.depth_stencil.depth_functor = graphics::DEPTH_FUNCTOR_LESS;
@@ -161,6 +178,7 @@ void mmd_render_pipeline::render(
 
     // Color pass.
     command->parameter(2, scene.camera_parameter);
+    command->parameter(3, scene.light_parameter);
     for (auto& unit : scene.units)
     {
         command->parameter(0, unit.parameters[0]);
@@ -173,10 +191,11 @@ void mmd_render_pipeline::render(
     command->next_pass(m_interface.get());
 
     // Edge pass.
-    command->parameter(1, scene.camera_parameter);
+    command->parameter(2, scene.camera_parameter);
     for (auto& unit : scene.units)
     {
         command->parameter(0, unit.parameters[0]);
+        command->parameter(1, unit.parameters[1]);
 
         command->input_assembly_state(unit.vertex_buffers, 2, unit.index_buffer);
         command->draw_indexed(unit.index_start, unit.index_end, unit.vertex_base);
@@ -208,24 +227,44 @@ void skin_pipeline_parameter::input_normal(graphics::resource_interface* normal)
     interface()->set(2, normal);
 }
 
-void skin_pipeline_parameter::input_bone_index(graphics::resource_interface* bone_index)
+void skin_pipeline_parameter::input_uv(graphics::resource_interface* uv)
 {
-    interface()->set(3, bone_index);
+    interface()->set(3, uv);
 }
 
-void skin_pipeline_parameter::input_bone_weight(graphics::resource_interface* bone_weight)
+void skin_pipeline_parameter::bone_index(graphics::resource_interface* bone_index)
 {
-    interface()->set(4, bone_weight);
+    interface()->set(4, bone_index);
+}
+
+void skin_pipeline_parameter::bone_weight(graphics::resource_interface* bone_weight)
+{
+    interface()->set(5, bone_weight);
+}
+
+void skin_pipeline_parameter::vertex_morph(graphics::resource_interface* vertex_morph)
+{
+    interface()->set(6, vertex_morph);
+}
+
+void skin_pipeline_parameter::uv_morph(graphics::resource_interface* uv_morph)
+{
+    interface()->set(7, uv_morph);
 }
 
 void skin_pipeline_parameter::output_position(graphics::resource_interface* position)
 {
-    interface()->set(5, position);
+    interface()->set(8, position);
 }
 
 void skin_pipeline_parameter::output_normal(graphics::resource_interface* normal)
 {
-    interface()->set(6, normal);
+    interface()->set(9, normal);
+}
+
+void skin_pipeline_parameter::output_uv(graphics::resource_interface* uv)
+{
+    interface()->set(10, uv);
 }
 
 std::vector<graphics::pipeline_parameter_pair> skin_pipeline_parameter::layout()
@@ -235,10 +274,14 @@ std::vector<graphics::pipeline_parameter_pair> skin_pipeline_parameter::layout()
          sizeof(constant_data)                                }, // bone transform.
         {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // input position.
         {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // input normal.
+        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // input uv.
         {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // bone index.
         {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // bone weight.
+        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // vertex morph.
+        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // uv morph.
         {graphics::PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS, 1}, // output position.
-        {graphics::PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS, 1}  // output normal.
+        {graphics::PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS, 1}, // output normal.
+        {graphics::PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS, 1}  // output uv.
     };
 }
 
@@ -257,14 +300,7 @@ void mmd_skin_pipeline::skin(graphics::render_command_interface* command)
 
     for (auto& unit : units())
     {
-        unit.parameter->set(1, unit.input_vertex_buffers[0]);
-        unit.parameter->set(2, unit.input_vertex_buffers[1]);
-        unit.parameter->set(3, unit.input_vertex_buffers[2]);
-        unit.parameter->set(4, unit.input_vertex_buffers[3]);
-        unit.parameter->set(5, unit.skinned_vertex_buffers[0]);
-        unit.parameter->set(6, unit.skinned_vertex_buffers[1]);
         command->compute_parameter(0, unit.parameter);
-
         command->dispatch(unit.vertex_count / 256 + 256, 1, 1);
     }
 

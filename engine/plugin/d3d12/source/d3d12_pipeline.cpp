@@ -563,8 +563,6 @@ d3d12_frame_buffer::d3d12_frame_buffer(
             break;
         }
         case ATTACHMENT_TYPE_CAMERA_RENDER_TARGET_RESOLVE: {
-            /*m_render_targets.push_back(
-                camera_info.render_target_resolve->render_target().cpu_handle());*/
             m_attachments.push_back(attachment_info{
                 camera_info.render_target_resolve,
                 resource_state_map[static_cast<std::size_t>(attachment.initial_state)],

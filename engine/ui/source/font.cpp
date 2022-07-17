@@ -67,7 +67,7 @@ font::font(std::string_view font, std::size_t size)
     FT_Vector pen = {0, static_cast<FT_Pos>(m_heigth)};
     for (FT_ULong character : characters)
     {
-        error = FT_Load_Char(face, character, FT_LOAD_RENDER | FT_LOAD_FORCE_AUTOHINT);
+        error = FT_Load_Char(face, character, FT_LOAD_RENDER);
         if (error)
             continue;
 

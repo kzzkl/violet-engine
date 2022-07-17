@@ -1,30 +1,25 @@
-[[vk::binding(0, 0)]]
 cbuffer ash_object : register(b0, space0)
 {
     float4x4 transform_m;
 };
 
-[[vk::binding(0, 1)]]
 cbuffer mmd_material : register(b0, space1)
 {
     float4 diffuse;
     float3 specular;
     float specular_strength;
+    float4 edge_color;
+    float3 ambient;
+    float edge_size;
     uint toon_mode;
     uint spa_mode;
 };
 
-[[vk::binding(1, 1)]]
 Texture2D tex : register(t0, space1);
-
-[[vk::binding(2, 1)]]
 Texture2D toon : register(t1, space1);
-
-[[vk::binding(3, 1)]]
 Texture2D spa : register(t2, space1);
-SamplerState sampler_wrap : register(s0);
+SamplerState sampler_clamp : register(s1);
 
-[[vk::binding(0, 2)]]
 cbuffer ash_camera : register(b0, space2)
 {
     float3 camera_position;
@@ -33,6 +28,20 @@ cbuffer ash_camera : register(b0, space2)
     float4x4 transform_v;
     float4x4 transform_p;
     float4x4 transform_vp;
+};
+
+struct ash_directional_light_data
+{
+    float3 direction;
+    float _padding_0;
+    float3 color;
+    float _padding_1;
+};
+
+cbuffer ash_light : register(b0, space3)
+{
+    ash_directional_light_data directional_light[4];
+    uint directional_light_count;
 };
 
 struct vs_in
@@ -45,7 +54,8 @@ struct vs_in
 struct vs_out
 {
     float4 position : SV_POSITION;
-    float3 normal : NORMAL;
+    float3 world_normal : W_NORMAL;
+    float3 screen_normal : S_NORMAL;
     float2 uv : UV;
 };
 
@@ -53,7 +63,8 @@ vs_out vs_main(vs_in vin)
 {
     vs_out result;
     result.position = mul(mul(float4(vin.position, 1.0f), transform_m), transform_vp);
-    result.normal = mul(mul(float4(vin.normal, 0.0f), transform_m), transform_v).xyz;
+    result.world_normal = mul(float4(vin.normal, 0.0f), transform_m).xyz;
+    result.screen_normal = mul(float4(result.world_normal, 0.0f), transform_v).xyz;
     result.uv = vin.uv;
 
     return result;
@@ -61,16 +72,15 @@ vs_out vs_main(vs_in vin)
 
 float4 ps_main(vs_out pin) : SV_TARGET
 {
-    float4 color = tex.Sample(sampler_wrap, pin. uv);
-    //clip(color.w < 0.1f ? -1 : 1);
-
-    pin.normal = normalize(pin.normal);
+    float4 color = tex.Sample(sampler_clamp, pin. uv);
+    float3 world_normal = normalize(pin.world_normal);
+    float3 screen_normal = normalize(pin.screen_normal);
     color = color * diffuse;
 
     if (spa_mode != 0)
     {
-        float2 spa_uv = {pin.normal.x * 0.5f + 0.5f, 1.0f - (pin.normal.y * 0.5f + 0.5f)};
-        float3 spa_color = spa.Sample(sampler_wrap, spa_uv).rgb;
+        float2 spa_uv = float2(screen_normal.x * 0.5f + 0.5f, 1.0f - (screen_normal.y * 0.5f + 0.5f));
+        float3 spa_color = spa.Sample(sampler_clamp, spa_uv).rgb;
 
         if (spa_mode == 1)
             color *= float4(spa_color, 1.0f);
@@ -80,15 +90,15 @@ float4 ps_main(vs_out pin) : SV_TARGET
 
     if (toon_mode != 0)
     {
-        float3 light = {1.0f, 1.0f, 1.0f};
-        float3 light_dir = normalize(float3(1.0f, -1.0f, 1.0f));
-
-        float c = dot(pin.normal, light_dir);
+        float c = 0.0f;
+        for (uint i = 0; i < directional_light_count; ++i)
+        {
+            c = dot(world_normal, normalize(-directional_light[0].direction));
+        }
         c = clamp(c + 0.5f, 0.0f, 1.0f);
-        
-        color *= toon.Sample(sampler_wrap, float2(0.0f, c));
+
+        color *= toon.Sample(sampler_clamp, float2(0.0f, c));
     }
 
-    // return float4(1.0f, 1.0f, 1.0f, 1.0f);
     return color;
 }

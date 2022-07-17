@@ -53,6 +53,18 @@ public:
         return {a[0] * b[0], a[1] * b[1], a[2] * b[2], a[3] * b[3]};
     }
 
+    inline static float2 mul(const float2& v, float scale) { return {v[0] * scale, v[1] * scale}; }
+
+    inline static float3 mul(const float3& v, float scale)
+    {
+        return {v[0] * scale, v[1] * scale, v[2] * scale};
+    }
+
+    inline static float4 mul(const float4& v, float scale)
+    {
+        return {v[0] * scale, v[1] * scale, v[2] * scale, v[3] * scale};
+    }
+
     inline static float2 div(const float2& a, const float2& b)
     {
         return {a[0] / b[0], a[1] / b[1]};
@@ -90,21 +102,6 @@ public:
         return {a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]};
     }
 
-    inline static float2 scale(const float2& v, float scale)
-    {
-        return {v[0] * scale, v[1] * scale};
-    }
-
-    inline static float3 scale(const float3& v, float scale)
-    {
-        return {v[0] * scale, v[1] * scale, v[2] * scale};
-    }
-
-    inline static float4 scale(const float4& v, float scale)
-    {
-        return {v[0] * scale, v[1] * scale, v[2] * scale, v[3] * scale};
-    }
-
     inline static float2 lerp(const float2& a, const float2& b, float m)
     {
         return {a[0] + m * (b[0] - a[0]), a[1] + m * (b[1] - a[1])};
@@ -132,6 +129,15 @@ public:
             a[3] + m * (b[3] - a[3])};
     }
 
+    inline static float4 lerp(const float4& a, const float4& b, const float4& m)
+    {
+        return {
+            a[0] + m[0] * (b[0] - a[0]),
+            a[1] + m[1] * (b[1] - a[1]),
+            a[2] + m[2] * (b[2] - a[2]),
+            a[3] + m[3] * (b[3] - a[3])};
+    }
+
     inline static float length(const float2& v) { return sqrtf(dot(v, v)); }
 
     inline static float length(const float3& v) { return sqrtf(dot(v, v)); }
@@ -141,19 +147,19 @@ public:
     inline static float2 normalize(const float2& v)
     {
         float s = 1.0f / length(v);
-        return scale(v, s);
+        return mul(v, s);
     }
 
     inline static float3 normalize(const float3& v)
     {
         float s = 1.0f / length(v);
-        return scale(v, s);
+        return mul(v, s);
     }
 
     inline static float4 normalize(const float4& v)
     {
         float s = 1.0f / length(v);
-        return scale(v, s);
+        return mul(v, s);
     }
 
     inline static float4 sqrt(const float4& v)
@@ -173,6 +179,11 @@ public:
     inline static float4_simd add(float4_simd a, float4_simd b) { return _mm_add_ps(a, b); }
     inline static float4_simd sub(float4_simd a, float4_simd b) { return _mm_sub_ps(a, b); }
     inline static float4_simd mul(float4_simd a, float4_simd b) { return _mm_mul_ps(a, b); }
+    inline static float4_simd mul(float4_simd v, float scale)
+    {
+        __m128 s = _mm_set_ps1(scale);
+        return _mm_mul_ps(v, s);
+    }
     inline static float4_simd div(float4_simd a, float4_simd b) { return _mm_div_ps(a, b); }
 
     inline static float dot(float4_simd a, float4_simd b)
@@ -204,10 +215,17 @@ public:
         return _mm_and_ps(t2, simd::mask<0x1110>());
     }
 
-    inline static float4_simd scale(float4_simd v, float scale)
+    inline static float4_simd lerp(float4_simd a, float4_simd b, float m)
     {
-        __m128 s = _mm_set_ps1(scale);
-        return _mm_mul_ps(v, s);
+        return lerp(a, b, _mm_set_ps1(m));
+    }
+
+    inline static float4_simd lerp(float4_simd a, float4_simd b, float4_simd m)
+    {
+        __m128 t1 = _mm_sub_ps(b, a);
+        t1 = _mm_mul_ps(t1, m);
+        t1 = _mm_add_ps(a, t1);
+        return t1;
     }
 
     inline static float length_vec3(float4_simd v)

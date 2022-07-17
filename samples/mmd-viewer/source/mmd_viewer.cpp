@@ -13,6 +13,7 @@ bool mmd_viewer::initialize(const dictionary& config)
     auto& world = system<ash::ecs::world>();
     world.register_component<mmd_node>();
     world.register_component<mmd_skeleton>();
+    world.register_component<mmd_morph_controler>();
 
     m_loader = std::make_unique<mmd_loader>();
     m_loader->initialize();
@@ -66,19 +67,22 @@ void mmd_viewer::update()
     animation.update(false);
     world.view<mmd_skeleton, graphics::skinned_mesh>().each(
         [&](mmd_skeleton& skeleton, graphics::skinned_mesh&) {
-            math::float3 position;
-            math::float4 rotation;
-            math::float3 scale;
+            math::float4_simd scale;
+            math::float4_simd rotation;
+            math::float4_simd position;
             for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
             {
                 auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
-                math::matrix::decompose(skeleton.local[i], scale, rotation, position);
+                math::matrix_simd::decompose(
+                    math::simd::load(skeleton.local[i]),
+                    scale,
+                    rotation,
+                    position);
                 transform.scale(scale);
                 transform.rotation(rotation);
                 transform.position(position);
             }
         });
-    scene.sync_local();
 
     system<physics::physics>().simulation();
 
@@ -86,15 +90,17 @@ void mmd_viewer::update()
 
     world.view<mmd_skeleton, graphics::skinned_mesh>().each(
         [&](mmd_skeleton& skeleton, graphics::skinned_mesh& skinned_mesh) {
+            math::float4x4_simd to_world;
+            math::float4x4_simd initial_inverse;
+            math::float4x4_simd final_transform;
             for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
             {
                 auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
+                auto& node = world.component<mmd_node>(skeleton.nodes[i]);
 
-                math::float4x4_simd to_world = math::simd::load(transform.to_world());
-                math::float4x4_simd initial =
-                    math::simd::load(world.component<mmd_node>(skeleton.nodes[i]).initial_inverse);
-
-                math::float4x4_simd final_transform = math::matrix_simd::mul(initial, to_world);
+                to_world = math::simd::load(transform.to_world());
+                initial_inverse = math::simd::load(node.initial_inverse);
+                final_transform = math::matrix_simd::mul(initial_inverse, to_world);
                 math::simd::store(final_transform, skeleton.world[i]);
             }
 
@@ -118,8 +124,8 @@ void mmd_viewer::reset(ecs::entity entity)
         node_transform.rotation(node.initial_rotation);
         node_transform.scale(node.initial_scale);
 
-        node.inherit_translate = {0.0f, 0.0f, 0.0f};
-        node.inherit_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
+        node.inherit_translation = {0.0f, 0.0f, 0.0f};
+        node.inherit_rotation = {0.0f, 0.0f, 0.0f, 1.0f};
     }
 }
 } // namespace ash::sample::mmd

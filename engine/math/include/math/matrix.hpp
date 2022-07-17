@@ -284,9 +284,9 @@ public:
         scale[2] = vector::length(m[2]);
 
         float4x4 r = {
-            vector::scale(m[0], 1.0f / scale[0]),
-            vector::scale(m[1], 1.0f / scale[1]),
-            vector::scale(m[2], 1.0f / scale[2]),
+            vector::mul(m[0], 1.0f / scale[0]),
+            vector::mul(m[1], 1.0f / scale[1]),
+            vector::mul(m[2], 1.0f / scale[2]),
             {0.0f, 0.0f, 0.0f, 1.0f}
         };
         rotation = quaternion::rotation_matrix(r);
@@ -305,9 +305,9 @@ public:
         scale[2] = vector::length(m[2]);
 
         float4x4 r = {
-            vector::scale(m[0], 1.0f / scale[0]),
-            vector::scale(m[1], 1.0f / scale[1]),
-            vector::scale(m[2], 1.0f / scale[2]),
+            vector::mul(m[0], 1.0f / scale[0]),
+            vector::mul(m[1], 1.0f / scale[1]),
+            vector::mul(m[2], 1.0f / scale[2]),
             {0.0f, 0.0f, 0.0f, 1.0f}
         };
         rotation = quaternion::rotation_matrix(r);

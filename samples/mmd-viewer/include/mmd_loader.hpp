@@ -43,12 +43,11 @@ private:
         mmd_resource& resource,
         const pmx_loader& loader,
         graphics::render_pipeline* render_pipeline);
-    void load_ik(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader);
     void load_physics(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader);
-
+    void load_ik(ecs::entity entity, const pmx_loader& loader);
+    void load_morph(ecs::entity entity, const pmx_loader& pmx_loader, const vmd_loader& vmd_loader);
     void load_animation(
         ecs::entity entity,
-        mmd_resource& resource,
         const pmx_loader& pmx_loader,
         const vmd_loader& vmd_loader);
 

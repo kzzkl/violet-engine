@@ -3,7 +3,19 @@ cbuffer ash_object : register(b0, space0)
     float4x4 transform_m;
 };
 
-cbuffer ash_camera : register(b0, space1)
+cbuffer mmd_material : register(b0, space1)
+{
+    float4 diffuse;
+    float3 specular;
+    float specular_strength;
+    float4 edge_color;
+    float3 ambient;
+    float edge_size;
+    uint toon_mode;
+    uint spa_mode;
+};
+
+cbuffer ash_camera : register(b0, space2)
 {
     float3 camera_position;
     float3 camera_direction;
@@ -26,13 +38,11 @@ struct vs_out
 
 vs_out vs_main(vs_in vin)
 {
-    float4 position = mul(mul(float4(vin.position, 1.0f), transform_m), transform_v);
+    float4 position = mul(mul(float4(vin.position, 1.0f), transform_m), transform_vp);
     float4 normal = mul(mul(float4(vin.normal, 0.0f), transform_m), transform_v);
-    normal = normalize(normal);
-    normal.z -= 0.4f;
-    position += normal * 0.01f;
+    float2 screen_normal = normalize(normal.xy);
 
-    position = mul(position, transform_p);
+    position.xy += screen_normal * 0.003f * edge_size * position.w;
 
     vs_out result;
     result.position = position;
@@ -41,5 +51,5 @@ vs_out vs_main(vs_in vin)
 
 float4 ps_main(vs_out pin) : SV_TARGET
 {
-    return float4(0.0f, 0.0f, 0.0f, 1.0f);
+    return edge_color;
 }

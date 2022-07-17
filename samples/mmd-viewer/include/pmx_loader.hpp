@@ -84,8 +84,8 @@ struct pmx_material
     float specular_strength;
     math::float3 ambient;
     draw_flag flag;
-    math::float4 edge;
-    float edge_scale;
+    math::float4 edge_color;
+    float edge_size;
 
     std::int32_t texture_index;
     sphere_mode sphere_mode;
@@ -152,10 +152,10 @@ enum class pmx_morph_type : std::uint8_t
     VERTEX,
     BONE,
     UV,
-    EXT_UV1,
-    EXT_UV2,
-    EXT_UV3,
-    EXT_UV4,
+    UV_EXT_1,
+    UV_EXT_2,
+    UV_EXT_3,
+    UV_EXT_4,
     MATERIAL,
     FLIP,
     IMPULSE
@@ -183,7 +183,7 @@ struct pmx_bone_morph
 struct pmx_uv_morph
 {
     std::int32_t index;
-    math::float4 value;
+    math::float4 uv;
 };
 
 struct pmx_material_morph
@@ -224,13 +224,13 @@ struct pmx_morph
     std::uint8_t control_panel;
     pmx_morph_type type;
 
-    std::vector<pmx_group_morph> group_morph;
-    std::vector<pmx_vertex_morph> vertex_morph;
-    std::vector<pmx_bone_morph> bone_morph;
-    std::vector<pmx_uv_morph> uv_morph;
-    std::vector<pmx_material_morph> material_morph;
-    std::vector<pmx_flip_morph> flip_morph;
-    std::vector<pmx_impulse_morph> impulse_morph;
+    std::vector<pmx_group_morph> group_morphs;
+    std::vector<pmx_vertex_morph> vertex_morphs;
+    std::vector<pmx_bone_morph> bone_morphs;
+    std::vector<pmx_uv_morph> uv_morphs;
+    std::vector<pmx_material_morph> material_morphs;
+    std::vector<pmx_flip_morph> flip_morphs;
+    std::vector<pmx_impulse_morph> impulse_morphs;
 };
 
 enum class pmx_frame_type : std::uint8_t
@@ -337,6 +337,7 @@ public:
     const std::vector<std::string>& textures() const noexcept { return m_textures; }
 
     const std::vector<pmx_bone>& bones() const noexcept { return m_bones; }
+    const std::vector<pmx_morph>& morph() const noexcept { return m_morphs; }
 
     const std::vector<pmx_rigidbody>& rigidbodies() const noexcept { return m_rigidbodies; }
     const std::vector<pmx_joint>& joints() const noexcept { return m_joints; }

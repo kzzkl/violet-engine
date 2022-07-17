@@ -9,11 +9,6 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 project(ash-engine)
 
-if (MSVC)
-    add_compile_options(/wd4251)
-    add_compile_options(/wd4275)
-endif()
-
 if (WIN32)
     add_definitions(-DUNICODE)
     add_definitions(-D_UNICODE)
