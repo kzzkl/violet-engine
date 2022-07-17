@@ -24,6 +24,7 @@ public:
     virtual resource_extent extent() const noexcept override { return {0, 0}; }
     virtual std::size_t size() const noexcept override { return 0; }
 
+    virtual void* pointer() override;
     virtual void upload(const void* data, std::size_t size, std::size_t offset) override;
 
     inline void resource_state(D3D12_RESOURCE_STATES state) noexcept { m_resource_state = state; }
@@ -137,6 +138,7 @@ public:
         D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE);
 
     virtual D3D12Resource* handle() const noexcept override { return m_resource.Get(); }
+    virtual std::size_t size() const noexcept override { return m_resource->GetDesc().Width; }
 
 private:
     d3d12_ptr<D3D12Resource> m_resource;
@@ -148,11 +150,13 @@ public:
     d3d12_upload_buffer(std::size_t size, D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE);
     virtual ~d3d12_upload_buffer();
 
+    virtual void* pointer() override { return m_mapped; }
     virtual void upload(const void* data, std::size_t size, std::size_t offset) override;
     void copy(std::size_t begin, std::size_t size, std::size_t target);
 
     void* mapped_pointer() const noexcept { return m_mapped; }
     virtual D3D12Resource* handle() const noexcept override { return m_resource.Get(); }
+    virtual std::size_t size() const noexcept override { return m_resource->GetDesc().Width; }
 
 private:
     d3d12_ptr<D3D12Resource> m_resource;
@@ -179,6 +183,7 @@ public:
     virtual D3D12_CPU_DESCRIPTOR_HANDLE uav() const override;
 
     virtual D3D12Resource* handle() const noexcept override { return m_buffer->handle(); }
+    virtual std::size_t size() const noexcept override { return m_buffer->size(); }
 
 private:
     std::unique_ptr<d3d12_default_buffer> m_buffer;
@@ -194,6 +199,7 @@ public:
     d3d12_vertex_buffer_dynamic(const vertex_buffer_desc& desc);
     virtual ~d3d12_vertex_buffer_dynamic() = default;
 
+    virtual void* pointer() override { return m_buffer->pointer(); }
     virtual void upload(const void* data, std::size_t size, std::size_t offset) override;
 
     virtual const D3D12_VERTEX_BUFFER_VIEW& view() const noexcept override;
@@ -201,6 +207,7 @@ public:
     virtual D3D12_CPU_DESCRIPTOR_HANDLE uav() const override;
 
     virtual D3D12Resource* handle() const noexcept override { return m_buffer->handle(); }
+    virtual std::size_t size() const noexcept override { return m_buffer->size(); }
 
 private:
     std::unique_ptr<d3d12_upload_buffer> m_buffer;
@@ -239,6 +246,7 @@ public:
 
     virtual const D3D12_INDEX_BUFFER_VIEW& view() const noexcept override;
     virtual D3D12Resource* handle() const noexcept override { return m_buffer->handle(); }
+    virtual std::size_t size() const noexcept override { return m_buffer->size(); }
 
 private:
     std::unique_ptr<d3d12_default_buffer> m_buffer;
@@ -250,10 +258,12 @@ class d3d12_index_buffer_dynamic : public d3d12_index_buffer
 public:
     d3d12_index_buffer_dynamic(const index_buffer_desc& desc);
 
+    virtual void* pointer() override { return m_buffer->pointer(); }
     virtual void upload(const void* data, std::size_t size, std::size_t offset) override;
 
     virtual const D3D12_INDEX_BUFFER_VIEW& view() const noexcept override;
     virtual D3D12Resource* handle() const noexcept override { return m_buffer->handle(); }
+    virtual std::size_t size() const noexcept override { return m_buffer->size(); }
 
 private:
     std::unique_ptr<d3d12_upload_buffer> m_buffer;

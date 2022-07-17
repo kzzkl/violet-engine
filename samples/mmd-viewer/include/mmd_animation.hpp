@@ -21,6 +21,7 @@ public:
 private:
     void evaluate_node(mmd_node& node, mmd_node_animation& animation, float t, float weight);
     void evaluate_ik(mmd_node& node, mmd_ik_solver& ik, float t, float weight);
+    void evaluate_morph(ecs::entity entity, mmd_morph_controler& morph_controler, float t);
 
     void update_local(mmd_skeleton& skeleton, bool after_physics);
     void update_world(mmd_skeleton& skeleton, bool after_physics);

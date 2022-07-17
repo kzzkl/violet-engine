@@ -13,6 +13,7 @@ bool mmd_viewer::initialize(const dictionary& config)
     auto& world = system<ash::ecs::world>();
     world.register_component<mmd_node>();
     world.register_component<mmd_skeleton>();
+    world.register_component<mmd_morph_controler>();
 
     m_loader = std::make_unique<mmd_loader>();
     m_loader->initialize();
@@ -83,7 +84,7 @@ void mmd_viewer::update()
             }
         });
 
-    // system<physics::physics>().simulation();
+    system<physics::physics>().simulation();
 
     animation.update(true);
 
@@ -123,8 +124,8 @@ void mmd_viewer::reset(ecs::entity entity)
         node_transform.rotation(node.initial_rotation);
         node_transform.scale(node.initial_scale);
 
-        node.inherit_translate = {0.0f, 0.0f, 0.0f};
-        node.inherit_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
+        node.inherit_translation = {0.0f, 0.0f, 0.0f};
+        node.inherit_rotation = {0.0f, 0.0f, 0.0f, 1.0f};
     }
 }
 } // namespace ash::sample::mmd

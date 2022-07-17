@@ -25,6 +25,11 @@ void mmd_animation::evaluate(float t, float weight)
 
     world.view<mmd_node, mmd_ik_solver>().each(
         [=](mmd_node& node, mmd_ik_solver& ik) { evaluate_ik(node, ik, t, weight); });
+
+    world.view<mmd_morph_controler>().each(
+        [=](ecs::entity entity, mmd_morph_controler& morph_controler) {
+            evaluate_morph(entity, morph_controler, t);
+        });
 }
 
 void mmd_animation::update(bool after_physics)
@@ -71,8 +76,8 @@ void mmd_animation::evaluate_node(
 {
     if (node_animation.keys.empty())
     {
-        node_animation.animation_translate = {0.0f, 0.0f, 0.0f};
-        node_animation.animation_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
+        node_animation.translation = {0.0f, 0.0f, 0.0f};
+        node_animation.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
         return;
     }
 
@@ -119,17 +124,17 @@ void mmd_animation::evaluate_node(
     if (weight != 1.0f)
     {
         rotate = math::quaternion_simd::slerp(
-            math::simd::load(node_animation.base_animation_rotate),
+            math::simd::load(node_animation.base_rotation),
             rotate,
             weight);
         translate = math::vector_simd::lerp(
-            math::simd::load(node_animation.base_animation_translate),
+            math::simd::load(node_animation.base_translation),
             translate,
             weight);
     }
 
-    math::simd::store(translate, node_animation.animation_translate);
-    math::simd::store(rotate, node_animation.animation_rotate);
+    math::simd::store(translate, node_animation.translation);
+    math::simd::store(rotate, node_animation.rotation);
 }
 
 void mmd_animation::evaluate_ik(mmd_node& node, mmd_ik_solver& ik, float t, float weight)
@@ -168,6 +173,48 @@ void mmd_animation::evaluate_ik(mmd_node& node, mmd_ik_solver& ik, float t, floa
             ik.enable = ik.base_animation;
         else
             ik.enable = enable;
+    }
+}
+
+void mmd_animation::evaluate_morph(
+    ecs::entity entity,
+    mmd_morph_controler& morph_controler,
+    float t)
+{
+    std::memset(
+        morph_controler.vertex_morph_result->pointer(),
+        0,
+        morph_controler.vertex_morph_result->size());
+
+    for (auto& morph : morph_controler.morphs)
+    {
+        if (morph->keys.empty())
+            continue;
+
+        auto bound = bound_key(morph->keys, static_cast<std::int32_t>(t), morph->offset);
+
+        float weight = 0.0f;
+        if (bound == morph->keys.end())
+        {
+            weight = morph->keys.back().weight;
+        }
+        else if (bound == morph->keys.begin())
+        {
+            weight = bound->weight;
+        }
+        else
+        {
+            const auto& key0 = *(bound - 1);
+            const auto& key1 = *bound;
+
+            float offset = (t - key0.frame) / (key1.frame - key0.frame);
+            weight = key0.weight + (key1.weight - key0.weight) * offset;
+
+            morph->offset = std::distance(morph->keys.cbegin(), bound);
+        }
+
+        if (weight != 0.0f)
+            morph->evaluate(weight, entity);
     }
 }
 
@@ -222,13 +269,13 @@ void mmd_animation::update_local(mmd_skeleton& skeleton, ecs::entity entity)
     auto& node = world.component<mmd_node>(entity);
 
     math::float4_simd translate = math::vector_simd::add(
-        math::simd::load(animation.animation_translate),
+        math::simd::load(animation.translation),
         math::simd::load(transform.position()));
     if (node.is_inherit_translation)
-        translate = math::vector_simd::add(translate, math::simd::load(node.inherit_translate));
+        translate = math::vector_simd::add(translate, math::simd::load(node.inherit_translation));
 
     math::float4_simd rotate = math::quaternion_simd::mul(
-        math::simd::load(animation.animation_rotate),
+        math::simd::load(animation.rotation),
         math::simd::load(transform.rotation()));
     if (world.has_component<mmd_ik_link>(entity))
     {
@@ -236,7 +283,7 @@ void mmd_animation::update_local(mmd_skeleton& skeleton, ecs::entity entity)
         rotate = math::quaternion_simd::mul(math::simd::load(ik_link.ik_rotate), rotate);
     }
     if (node.is_inherit_rotation)
-        rotate = math::quaternion_simd::mul(rotate, math::simd::load(node.inherit_rotate));
+        rotate = math::quaternion_simd::mul(rotate, math::simd::load(node.inherit_rotation));
 
     math::simd::store(
         math::matrix_simd::affine_transform(math::simd::load(transform.scale()), rotate, translate),
@@ -296,12 +343,12 @@ void mmd_animation::update_inherit(mmd_node& node)
         math::float4_simd rotate;
         if (!node.inherit_local_flag && inherit.inherit_node != ecs::INVALID_ENTITY)
         {
-            rotate = math::simd::load(inherit.inherit_rotate);
+            rotate = math::simd::load(inherit.inherit_rotation);
         }
         else
         {
             rotate = math::quaternion_simd::mul(
-                math::simd::load(inherit_animation.animation_rotate),
+                math::simd::load(inherit_animation.rotation),
                 math::simd::load(inherit_transform.rotation()));
         }
 
@@ -316,7 +363,7 @@ void mmd_animation::update_inherit(mmd_node& node)
             math::quaternion_simd::identity(),
             rotate,
             node.inherit_weight);
-        math::simd::store(rotate, node.inherit_rotate);
+        math::simd::store(rotate, node.inherit_rotation);
     }
 
     if (node.is_inherit_translation)
@@ -324,7 +371,7 @@ void mmd_animation::update_inherit(mmd_node& node)
         math::float4_simd translate;
         if (!node.inherit_local_flag && inherit.inherit_node != ecs::INVALID_ENTITY)
         {
-            translate = math::simd::load(inherit.inherit_translate);
+            translate = math::simd::load(inherit.inherit_translation);
         }
         else
         {
@@ -333,7 +380,7 @@ void mmd_animation::update_inherit(mmd_node& node)
                 math::simd::load(inherit.initial_position));
         }
         translate = math::vector_simd::mul(translate, node.inherit_weight);
-        math::simd::store(translate, node.inherit_translate);
+        math::simd::store(translate, node.inherit_translation);
     }
 }
 
@@ -459,16 +506,15 @@ void mmd_animation::ik_solve_core(
         auto& animation = world.component<mmd_node_animation>(link_entity);
         auto& transform = world.component<scene::transform>(link_entity);
 
-        math::float4_simd animation_rotate = math::quaternion_simd::mul(
-            math::simd::load(animation.animation_rotate),
+        math::float4_simd rotation = math::quaternion_simd::mul(
+            math::simd::load(animation.rotation),
             math::simd::load(transform.rotation()));
 
         math::float4_simd link_rotate = math::simd::load(link.ik_rotate);
-        link_rotate = math::quaternion_simd::mul(link_rotate, animation_rotate);
+        link_rotate = math::quaternion_simd::mul(link_rotate, rotation);
         link_rotate = math::quaternion_simd::mul(link_rotate, rotate);
-        link_rotate = math::quaternion_simd::mul(
-            link_rotate,
-            math::quaternion_simd::inverse(animation_rotate));
+        link_rotate =
+            math::quaternion_simd::mul(link_rotate, math::quaternion_simd::inverse(rotation));
         math::simd::store(link_rotate, link.ik_rotate);
 
         update_local(skeleton, link_entity);
@@ -561,13 +607,12 @@ void mmd_animation::ik_solve_plane(
 
     auto& animation = world.component<mmd_node_animation>(link_entity);
     auto& transform = world.component<scene::transform>(link_entity);
-    math::float4_simd animation_rotate = math::quaternion_simd::mul(
-        math::simd::load(animation.animation_rotate),
+    math::float4_simd rotation = math::quaternion_simd::mul(
+        math::simd::load(animation.rotation),
         math::simd::load(transform.rotation()));
 
     math::float4_simd link_rotate = math::quaternion_simd::rotation_axis(rotate_axis, new_angle);
-    link_rotate =
-        math::quaternion_simd::mul(link_rotate, math::quaternion_simd::inverse(animation_rotate));
+    link_rotate = math::quaternion_simd::mul(link_rotate, math::quaternion_simd::inverse(rotation));
 
     math::simd::store(link_rotate, link.ik_rotate);
 

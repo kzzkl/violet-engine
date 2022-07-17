@@ -113,6 +113,11 @@ private:
 
         m_light = world.create("light");
         world.add<scene::transform, core::link, graphics::directional_light>(m_light);
+        world.component<scene::transform>(m_light).rotation_euler(math::float3{
+            math::to_radians(-60.0f),
+            math::to_radians(20.0f),
+            math::to_radians(10.0f)});
+
         auto& directional_light = world.component<graphics::directional_light>(m_light);
         directional_light.color(math::float3{0.5f, 0.5f, 0.5f});
         relation.link(m_light, scene.root());

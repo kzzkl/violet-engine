@@ -26,7 +26,7 @@ struct vmd_motion
 
 struct vmd_morph
 {
-    std::string blend_shape_name;
+    std::string morph_name;
     std::uint32_t frame;
     float weight;
 };
@@ -75,6 +75,7 @@ public:
     bool load(std::string_view path);
 
     const std::vector<vmd_motion> motions() const noexcept { return m_motions; }
+    const std::vector<vmd_morph> morphs() const noexcept { return m_morphs; }
     const std::vector<vmd_ik> iks() const noexcept { return m_iks; }
 
 private:

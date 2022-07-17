@@ -14,6 +14,10 @@ public:
     void diffuse(const math::float4& diffuse);
     void specular(const math::float3& specular);
     void specular_strength(float specular_strength);
+
+    void edge_color(const math::float4& edge_color);
+    void edge_size(float edge_size);
+
     void toon_mode(std::uint32_t toon_mode);
     void spa_mode(std::uint32_t spa_mode);
 
@@ -29,9 +33,14 @@ private:
         math::float4 diffuse;
         math::float3 specular;
         float specular_strength;
+        math::float4 edge_color;
+        math::float3 ambient;
+        float edge_size;
         std::uint32_t toon_mode;
         std::uint32_t spa_mode;
     };
+
+    constant_data m_data;
 };
 
 class mmd_render_pipeline : public graphics::render_pipeline
@@ -55,10 +64,15 @@ public:
     void bone_transform(const std::vector<math::float4x4>& bone_transform);
     void input_position(graphics::resource_interface* position);
     void input_normal(graphics::resource_interface* normal);
-    void input_bone_index(graphics::resource_interface* bone_index);
-    void input_bone_weight(graphics::resource_interface* bone_weight);
+    void input_uv(graphics::resource_interface* uv);
+    void bone_index(graphics::resource_interface* bone_index);
+    void bone_weight(graphics::resource_interface* bone_weight);
+    void vertex_morph(graphics::resource_interface* vertex_morph);
+    void uv_morph(graphics::resource_interface* uv_morph);
+
     void output_position(graphics::resource_interface* position);
     void output_normal(graphics::resource_interface* normal);
+    void output_uv(graphics::resource_interface* uv);
 
     static std::vector<graphics::pipeline_parameter_pair> layout();
 

@@ -78,7 +78,7 @@ void vmd_loader::load_morph(std::ifstream& fin)
 
         char name[15] = {};
         read(fin, name);
-        convert<encode_type::SHIFT_JIS, encode_type::UTF8>(name, morph.blend_shape_name);
+        convert<encode_type::SHIFT_JIS, encode_type::UTF8>(name, morph.morph_name);
 
         read(fin, morph.frame);
         read(fin, morph.weight);

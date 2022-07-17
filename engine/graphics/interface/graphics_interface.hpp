@@ -48,6 +48,7 @@ public:
     virtual resource_extent extent() const noexcept = 0;
     virtual std::size_t size() const noexcept = 0;
 
+    virtual void* pointer() { return nullptr; }
     virtual void upload(const void* data, std::size_t size, std::size_t offset = 0) {}
 };
 

@@ -29,6 +29,11 @@ D3D12_CPU_DESCRIPTOR_HANDLE d3d12_resource::uav() const
     throw d3d12_exception("This resource is not a unordered access resource.");
 }
 
+void* d3d12_resource::pointer()
+{
+    throw d3d12_exception("This resource is not a upload buffer.");
+}
+
 void d3d12_resource::upload(const void* data, std::size_t size, std::size_t offset)
 {
     throw d3d12_exception("This resource cannot be uploaded.");
