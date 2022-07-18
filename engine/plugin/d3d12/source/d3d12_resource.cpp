@@ -361,19 +361,6 @@ d3d12_default_buffer::d3d12_default_buffer(
 {
     auto device = d3d12_context::device();
 
-    // Create intermediate upload heap.
-    CD3DX12_HEAP_PROPERTIES upload_heap_properties(D3D12_HEAP_TYPE_UPLOAD);
-    CD3DX12_RESOURCE_DESC upload_desc = CD3DX12_RESOURCE_DESC::Buffer(size);
-
-    d3d12_ptr<D3D12Resource> upload_resource;
-    throw_if_failed(device->CreateCommittedResource(
-        &upload_heap_properties,
-        D3D12_HEAP_FLAG_NONE,
-        &upload_desc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&upload_resource)));
-
     // Create default heap
     CD3DX12_HEAP_PROPERTIES default_heap_properties(D3D12_HEAP_TYPE_DEFAULT);
     CD3DX12_RESOURCE_DESC default_desc = CD3DX12_RESOURCE_DESC::Buffer(size, flags);
@@ -382,32 +369,49 @@ d3d12_default_buffer::d3d12_default_buffer(
         &default_heap_properties,
         D3D12_HEAP_FLAG_NONE,
         &default_desc,
-        D3D12_RESOURCE_STATE_COPY_DEST,
+        data == nullptr ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COPY_DEST,
         nullptr,
         IID_PPV_ARGS(&m_resource)));
 
-    // Copy data.
-    D3D12_SUBRESOURCE_DATA subresource = {};
-    subresource.pData = data;
-    subresource.RowPitch = size;
-    subresource.SlicePitch = size;
-    UpdateSubresources(
-        command_list,
-        m_resource.Get(),
-        upload_resource.Get(),
-        0,
-        0,
-        1,
-        &subresource);
+    if (data != nullptr)
+    {
+        // Create intermediate upload heap.
+        CD3DX12_HEAP_PROPERTIES upload_heap_properties(D3D12_HEAP_TYPE_UPLOAD);
+        CD3DX12_RESOURCE_DESC upload_desc = CD3DX12_RESOURCE_DESC::Buffer(size);
 
-    CD3DX12_RESOURCE_BARRIER transition = CD3DX12_RESOURCE_BARRIER::Transition(
-        m_resource.Get(),
-        D3D12_RESOURCE_STATE_COPY_DEST,
-        D3D12_RESOURCE_STATE_GENERIC_READ);
-    command_list->ResourceBarrier(1, &transition);
+        d3d12_ptr<D3D12Resource> upload_resource;
+        throw_if_failed(device->CreateCommittedResource(
+            &upload_heap_properties,
+            D3D12_HEAP_FLAG_NONE,
+            &upload_desc,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&upload_resource)));
+
+        // Copy data.
+        D3D12_SUBRESOURCE_DATA subresource = {};
+        subresource.pData = data;
+        subresource.RowPitch = size;
+        subresource.SlicePitch = size;
+        UpdateSubresources(
+            command_list,
+            m_resource.Get(),
+            upload_resource.Get(),
+            0,
+            0,
+            1,
+            &subresource);
+
+        CD3DX12_RESOURCE_BARRIER transition = CD3DX12_RESOURCE_BARRIER::Transition(
+            m_resource.Get(),
+            D3D12_RESOURCE_STATE_COPY_DEST,
+            D3D12_RESOURCE_STATE_GENERIC_READ);
+        command_list->ResourceBarrier(1, &transition);
+
+        d3d12_context::resource()->delay_delete(upload_resource);
+    }
+
     resource_state(D3D12_RESOURCE_STATE_GENERIC_READ);
-
-    d3d12_context::resource()->delay_delete(upload_resource);
 }
 
 d3d12_upload_buffer::d3d12_upload_buffer(std::size_t size, D3D12_RESOURCE_FLAGS flags)

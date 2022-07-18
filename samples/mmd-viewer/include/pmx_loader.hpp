@@ -1,8 +1,9 @@
 #pragma once
 
 #include "math/math.hpp"
+#include "mmd_pipeline.hpp"
+#include "physics_interface.hpp"
 #include <fstream>
-#include <string>
 #include <vector>
 
 namespace ash::sample::mmd
@@ -94,7 +95,7 @@ struct pmx_material
     std::int32_t toon_index;
 
     std::string meta_data;
-    std::int32_t num_indices;
+    std::int32_t index_count;
 };
 
 enum pmx_bone_flag : std::uint16_t
@@ -322,34 +323,63 @@ struct pmx_joint
     math::float3 spring_rotate_factor;
 };
 
+enum pmx_vertex_attribute
+{
+    PMX_VERTEX_ATTRIBUTE_POSITION,
+    PMX_VERTEX_ATTRIBUTE_NORMAL,
+    PMX_VERTEX_ATTRIBUTE_UV,
+    PMX_VERTEX_ATTRIBUTE_BONE,
+    PMX_VERTEX_ATTRIBUTE_BONE_WEIGHT,
+    PMX_VERTEX_ATTRIBUTE_NUM_TYPES
+};
+
 class pmx_loader
 {
 public:
-    pmx_loader();
-    bool load(std::string_view path);
+    pmx_loader() noexcept;
+    bool load(
+        std::string_view path,
+        const std::vector<graphics::resource_interface*>& internal_toon);
 
-    const std::vector<pmx_vertex>& vertices() const noexcept { return m_vertices; }
-    const std::vector<std::int32_t>& indices() const noexcept { return m_indices; }
+    std::size_t vertex_count() const noexcept { return m_vertex_count; }
+    graphics::resource_interface* vertex_buffers(pmx_vertex_attribute attribute) const
+    {
+        return m_vertex_buffers[attribute].get();
+    }
+    graphics::resource_interface* index_buffer() const { return m_index_buffer.get(); }
 
-    std::vector<std::pair<std::size_t, std::size_t>> submesh() const noexcept;
+    const std::vector<std::pair<std::size_t, std::size_t>>& submesh() const noexcept
+    {
+        return m_submesh;
+    }
 
-    const std::vector<pmx_material>& materials() const noexcept { return m_materials; }
-    const std::vector<std::string>& textures() const noexcept { return m_textures; }
+    material_pipeline_parameter* materials(std::size_t index) const noexcept
+    {
+        return m_materials[index].get();
+    }
+    graphics::resource_interface* texture(std::size_t index) const
+    {
+        return m_textures[index].get();
+    }
 
     const std::vector<pmx_bone>& bones() const noexcept { return m_bones; }
     const std::vector<pmx_morph>& morph() const noexcept { return m_morphs; }
 
+    physics::collision_shape_interface* collision_shape(std::size_t index) const noexcept
+    {
+        return m_collision_shapes[index].get();
+    }
     const std::vector<pmx_rigidbody>& rigidbodies() const noexcept { return m_rigidbodies; }
     const std::vector<pmx_joint>& joints() const noexcept { return m_joints; }
-
-    const std::vector<std::string>& internal_toon() const noexcept { return m_internal_toon; }
 
 private:
     bool load_header(std::ifstream& fin);
     bool load_vertex(std::ifstream& fin);
     bool load_index(std::ifstream& fin);
-    bool load_texture(std::ifstream& fin);
-    bool load_material(std::ifstream& fin);
+    bool load_texture(std::ifstream& fin, std::string_view root_path);
+    bool load_material(
+        std::ifstream& fin,
+        const std::vector<graphics::resource_interface*>& internal_toon);
     bool load_bone(std::ifstream& fin);
     bool load_morph(std::ifstream& fin);
     bool load_display_frame(std::ifstream& fin);
@@ -361,19 +391,21 @@ private:
 
     pmx_header m_header;
 
-    std::vector<pmx_vertex> m_vertices;
-    std::vector<std::int32_t> m_indices;
-    std::vector<std::string> m_textures;
-
-    std::vector<pmx_material> m_materials;
     std::vector<pmx_bone> m_bones;
     std::vector<pmx_morph> m_morphs;
     std::vector<pmx_display_data> m_display_frames;
     std::vector<pmx_rigidbody> m_rigidbodies;
     std::vector<pmx_joint> m_joints;
 
-    std::vector<std::string> m_internal_toon;
+    std::vector<std::unique_ptr<graphics::resource_interface>> m_vertex_buffers;
+    std::size_t m_vertex_count;
 
-    std::string m_root_path;
+    std::unique_ptr<graphics::resource_interface> m_index_buffer;
+    std::vector<std::pair<std::size_t, std::size_t>> m_submesh;
+
+    std::vector<std::unique_ptr<graphics::resource_interface>> m_textures;
+    std::vector<std::unique_ptr<material_pipeline_parameter>> m_materials;
+
+    std::vector<std::unique_ptr<physics::collision_shape_interface>> m_collision_shapes;
 };
 } // namespace ash::sample::mmd

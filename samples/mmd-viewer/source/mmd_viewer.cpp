@@ -2,12 +2,22 @@
 #include "core/timer.hpp"
 #include "graphics/rhi.hpp"
 #include "mmd_animation.hpp"
+#include "mmd_loader.hpp"
+#include "physics/physics.hpp"
 #include "scene/scene.hpp"
 #include "scene/transform.hpp"
 #include "window/window_event.hpp"
 
 namespace ash::sample::mmd
 {
+mmd_viewer::mmd_viewer() : system_base("mmd_viewer")
+{
+}
+
+mmd_viewer::~mmd_viewer()
+{
+}
+
 bool mmd_viewer::initialize(const dictionary& config)
 {
     auto& world = system<ash::ecs::world>();
@@ -37,10 +47,8 @@ ash::ecs::entity mmd_viewer::load_mmd(
     std::string_view vmd)
 {
     ecs::entity entity = system<ecs::world>().create(name);
-    mmd_resource resource;
-    if (m_loader->load(entity, resource, pmx, vmd, m_render_pipeline.get(), m_skin_pipeline.get()))
+    if (m_loader->load(entity, pmx, vmd, m_render_pipeline.get(), m_skin_pipeline.get()))
     {
-        m_resources[name.data()] = std::move(resource);
         return entity;
     }
     else
@@ -48,6 +56,16 @@ ash::ecs::entity mmd_viewer::load_mmd(
         system<ecs::world>().release(entity);
         return ecs::INVALID_ENTITY;
     }
+}
+
+bool mmd_viewer::load_pmx(std::string_view pmx)
+{
+    return m_loader->load_pmx(pmx);
+}
+
+bool mmd_viewer::load_vmd(std::string_view vmd)
+{
+    return m_loader->load_vmd(vmd);
 }
 
 void mmd_viewer::update()

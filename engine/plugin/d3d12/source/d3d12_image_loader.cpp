@@ -37,7 +37,9 @@ d3d12_image_loader::load_result d3d12_image_loader::load(
     CD3DX12_RESOURCE_DESC default_desc = CD3DX12_RESOURCE_DESC::Tex2D(
         texture_format,
         static_cast<UINT>(width),
-        static_cast<UINT>(height));
+        static_cast<UINT>(height),
+        1,
+        1);
     throw_if_failed(device->CreateCommittedResource(
         &default_heap_properties,
         D3D12_HEAP_FLAG_NONE,

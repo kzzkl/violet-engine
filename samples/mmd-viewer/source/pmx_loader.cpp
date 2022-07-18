@@ -1,6 +1,8 @@
 #include "pmx_loader.hpp"
 #include "encode.hpp"
+#include "graphics/rhi.hpp"
 #include "log.hpp"
+#include "physics/physics.hpp"
 #include <fstream>
 #include <map>
 
@@ -12,30 +14,19 @@ static void read(std::istream& fin, T& dest)
     fin.read(reinterpret_cast<char*>(&dest), sizeof(T));
 }
 
-pmx_loader::pmx_loader()
+pmx_loader::pmx_loader() noexcept
 {
-    m_internal_toon = {
-        "toon01.dds",
-        "toon02.dds",
-        "toon03.dds",
-        "toon04.dds",
-        "toon05.dds",
-        "toon06.dds",
-        "toon07.dds",
-        "toon08.dds",
-        "toon09.dds",
-        "toon10.dds",
-    };
 }
 
-bool pmx_loader::load(std::string_view path)
+bool pmx_loader::load(
+    std::string_view path,
+    const std::vector<graphics::resource_interface*>& internal_toon)
 {
     std::ifstream fin(path.data(), std::ios::binary);
     if (!fin.is_open())
         return false;
 
-    m_root_path = path;
-    m_root_path = m_root_path.substr(0, m_root_path.find_last_of('/'));
+    std::string_view root_path = path.substr(0, path.find_last_of('/'));
 
     if (!load_header(fin))
         return false;
@@ -46,10 +37,10 @@ bool pmx_loader::load(std::string_view path)
     if (!load_index(fin))
         return false;
 
-    if (!load_texture(fin))
+    if (!load_texture(fin, root_path))
         return false;
 
-    if (!load_material(fin))
+    if (!load_material(fin, internal_toon))
         return false;
 
     if (!load_bone(fin))
@@ -68,21 +59,6 @@ bool pmx_loader::load(std::string_view path)
         return false;
 
     return true;
-}
-
-std::vector<std::pair<std::size_t, std::size_t>> pmx_loader::submesh() const noexcept
-{
-    std::vector<std::pair<std::size_t, std::size_t>> result;
-    result.reserve(m_materials.size());
-
-    std::size_t offset = 0;
-    for (auto& material : m_materials)
-    {
-        result.push_back(std::make_pair(offset, offset + material.num_indices));
-        offset += material.num_indices;
-    }
-
-    return result;
 }
 
 bool pmx_loader::load_header(std::ifstream& fin)
@@ -115,13 +91,14 @@ bool pmx_loader::load_vertex(std::ifstream& fin)
 {
     std::int32_t vertex_count;
     read<std::int32_t>(fin, vertex_count);
+    m_vertex_count = vertex_count;
 
-    m_vertices.resize(vertex_count);
+    std::vector<pmx_vertex> vertices(m_vertex_count);
 
-    for (auto& v : m_vertices)
+    for (auto& v : vertices)
         v.add_uv.resize(m_header.num_add_vec4);
 
-    for (pmx_vertex& vertex : m_vertices)
+    for (pmx_vertex& vertex : vertices)
     {
         read<math::float3>(fin, vertex.position);
         read<math::float3>(fin, vertex.normal);
@@ -191,41 +168,92 @@ bool pmx_loader::load_vertex(std::ifstream& fin)
         read<float>(fin, vertex.edge_scale);
     }
 
+    // Make vertex buffer.
+    std::vector<math::float3> position;
+    std::vector<math::float3> normal;
+    std::vector<math::float2> uv;
+    std::vector<math::uint4> bone;
+    std::vector<math::float3> bone_weight;
+
+    position.reserve(m_vertex_count);
+    normal.reserve(m_vertex_count);
+    uv.reserve(m_vertex_count);
+    bone.reserve(m_vertex_count);
+    bone_weight.reserve(m_vertex_count);
+    for (const pmx_vertex& v : vertices)
+    {
+        position.push_back(v.position);
+        normal.push_back(v.normal);
+        uv.push_back(v.uv);
+        bone.push_back(v.bone);
+        bone_weight.push_back(v.weight);
+    }
+
+    m_vertex_buffers.resize(PMX_VERTEX_ATTRIBUTE_NUM_TYPES);
+
+    m_vertex_buffers[PMX_VERTEX_ATTRIBUTE_POSITION] = graphics::rhi::make_vertex_buffer(
+        position.data(),
+        position.size(),
+        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
+    m_vertex_buffers[PMX_VERTEX_ATTRIBUTE_NORMAL] = graphics::rhi::make_vertex_buffer(
+        normal.data(),
+        normal.size(),
+        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
+    m_vertex_buffers[PMX_VERTEX_ATTRIBUTE_UV] = graphics::rhi::make_vertex_buffer(
+        uv.data(),
+        uv.size(),
+        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
+    m_vertex_buffers[PMX_VERTEX_ATTRIBUTE_BONE] = graphics::rhi::make_vertex_buffer(
+        bone.data(),
+        bone.size(),
+        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
+    m_vertex_buffers[PMX_VERTEX_ATTRIBUTE_BONE_WEIGHT] = graphics::rhi::make_vertex_buffer(
+        bone_weight.data(),
+        bone_weight.size(),
+        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
+
     return true;
 }
 
 bool pmx_loader::load_index(std::ifstream& fin)
 {
-    std::int32_t num_index;
-    read<std::int32_t>(fin, num_index);
-    m_indices.reserve(num_index);
+    std::int32_t index_count;
+    read<std::int32_t>(fin, index_count);
+    std::vector<std::int32_t> indices;
+    indices.reserve(index_count);
 
-    for (std::int32_t i = 0; i < num_index; ++i)
-        m_indices.push_back(read_index(fin, m_header.vertex_index_size));
+    for (std::int32_t i = 0; i < index_count; ++i)
+        indices.push_back(read_index(fin, m_header.vertex_index_size));
 
-    return true;
-}
-
-bool pmx_loader::load_texture(std::ifstream& fin)
-{
-    std::int32_t num_texture;
-    read<std::int32_t>(fin, num_texture);
-
-    m_textures.reserve(num_texture);
-    for (std::int32_t i = 0; i < num_texture; ++i)
-        m_textures.push_back(m_root_path + "/" + read_text(fin));
+    // Make index buffer.
+    m_index_buffer = graphics::rhi::make_index_buffer(indices.data(), indices.size());
 
     return true;
 }
 
-bool pmx_loader::load_material(std::ifstream& fin)
+bool pmx_loader::load_texture(std::ifstream& fin, std::string_view root_path)
 {
-    std::int32_t num_material;
-    read<std::int32_t>(fin, num_material);
+    std::int32_t texture_count;
+    read<std::int32_t>(fin, texture_count);
 
-    m_materials.resize(num_material);
+    for (std::int32_t i = 0; i < texture_count; ++i)
+    {
+        std::string path = std::string(root_path) + "/" + read_text(fin);
+        m_textures.push_back(graphics::rhi::make_texture(path));
+    }
 
-    for (auto& mat : m_materials)
+    return true;
+}
+
+bool pmx_loader::load_material(
+    std::ifstream& fin,
+    const std::vector<graphics::resource_interface*>& internal_toon)
+{
+    std::int32_t material_count;
+    read<std::int32_t>(fin, material_count);
+
+    std::vector<pmx_material> materials(material_count);
+    for (auto& mat : materials)
     {
         mat.name_jp = read_text(fin);
         mat.name_en = read_text(fin);
@@ -259,17 +287,55 @@ bool pmx_loader::load_material(std::ifstream& fin)
         }
 
         mat.meta_data = read_text(fin);
-        read<std::int32_t>(fin, mat.num_indices);
+        read<std::int32_t>(fin, mat.index_count);
     }
+
+    m_submesh.reserve(materials.size());
+    std::size_t offset = 0;
+    for (auto& material : materials)
+    {
+        m_submesh.push_back(std::make_pair(offset, offset + material.index_count));
+        offset += material.index_count;
+    }
+
+    for (auto& mmd_material : materials)
+    {
+        auto parameter = std::make_unique<material_pipeline_parameter>();
+        parameter->diffuse(mmd_material.diffuse);
+        parameter->specular(mmd_material.specular);
+        parameter->specular_strength(mmd_material.specular_strength);
+        parameter->edge_color(mmd_material.edge_color);
+        parameter->edge_size(mmd_material.edge_size);
+        parameter->toon_mode(mmd_material.toon_index == -1 ? std::uint32_t(0) : std::uint32_t(1));
+        parameter->spa_mode(static_cast<std::uint32_t>(mmd_material.sphere_mode));
+
+        if (mmd_material.texture_index != -1)
+            parameter->tex(m_textures[mmd_material.texture_index].get());
+
+        if (mmd_material.toon_index != -1)
+        {
+            if (mmd_material.toon_mode == toon_mode::TEXTURE)
+                parameter->toon(m_textures[mmd_material.toon_index].get());
+            else if (mmd_material.toon_mode == toon_mode::INTERNAL)
+                parameter->toon(internal_toon[mmd_material.toon_index]);
+            else
+                throw std::runtime_error("Invalid toon mode");
+        }
+        if (mmd_material.sphere_mode != sphere_mode::DISABLED)
+            parameter->spa(m_textures[mmd_material.sphere_index].get());
+
+        m_materials.push_back(std::move(parameter));
+    }
+
     return true;
 }
 
 bool pmx_loader::load_bone(std::ifstream& fin)
 {
-    std::int32_t num_bone;
-    read<std::int32_t>(fin, num_bone);
+    std::int32_t bone_count;
+    read<std::int32_t>(fin, bone_count);
 
-    m_bones.resize(num_bone);
+    m_bones.resize(bone_count);
     for (pmx_bone& bone : m_bones)
     {
         bone.name_jp = read_text(fin);
@@ -337,10 +403,10 @@ bool pmx_loader::load_bone(std::ifstream& fin)
 
 bool pmx_loader::load_morph(std::ifstream& fin)
 {
-    std::int32_t num_morph;
-    read<std::int32_t>(fin, num_morph);
+    std::int32_t morph_count;
+    read<std::int32_t>(fin, morph_count);
 
-    m_morphs.resize(num_morph);
+    m_morphs.resize(morph_count);
 
     for (pmx_morph& morph : m_morphs)
     {
@@ -481,9 +547,9 @@ bool pmx_loader::load_display_frame(std::ifstream& fin)
 
 bool pmx_loader::load_rigidbody(std::ifstream& fin)
 {
-    std::int32_t numRigidBody;
-    read<std::int32_t>(fin, numRigidBody);
-    m_rigidbodies.resize(numRigidBody);
+    std::int32_t rigidbody_count;
+    read<std::int32_t>(fin, rigidbody_count);
+    m_rigidbodies.resize(rigidbody_count);
 
     for (pmx_rigidbody& rigidbody : m_rigidbodies)
     {
@@ -509,6 +575,38 @@ bool pmx_loader::load_rigidbody(std::ifstream& fin)
         read<float>(fin, rigidbody.repulsion);
         read<float>(fin, rigidbody.friction);
         read<pmx_rigidbody_mode>(fin, rigidbody.mode);
+    }
+
+    auto& physics = system<physics::physics>();
+    auto make_shape = [&](const pmx_rigidbody& pmx_rigidbody)
+        -> std::unique_ptr<physics::collision_shape_interface> {
+        physics::collision_shape_desc desc = {};
+        switch (pmx_rigidbody.shape)
+        {
+        case pmx_rigidbody_shape_type::SPHERE:
+            desc.type = physics::collision_shape_type::SPHERE;
+            desc.sphere.radius = pmx_rigidbody.size[0];
+            break;
+        case pmx_rigidbody_shape_type::BOX:
+            desc.type = physics::collision_shape_type::BOX;
+            desc.box.length = pmx_rigidbody.size[0] * 2.0f;
+            desc.box.height = pmx_rigidbody.size[1] * 2.0f;
+            desc.box.width = pmx_rigidbody.size[2] * 2.0f;
+            break;
+        case pmx_rigidbody_shape_type::CAPSULE:
+            desc.type = physics::collision_shape_type::CAPSULE;
+            desc.capsule.radius = pmx_rigidbody.size[0];
+            desc.capsule.height = pmx_rigidbody.size[1];
+            break;
+        default:
+            return nullptr;
+        };
+        return physics.make_shape(desc);
+    };
+
+    for (pmx_rigidbody& rigidbody : m_rigidbodies)
+    {
+        m_collision_shapes.push_back(make_shape(rigidbody));
     }
 
     return true;

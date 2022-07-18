@@ -62,6 +62,7 @@ void mmd_animation::update(bool after_physics)
             }
         }
     });
+
     world.view<mmd_skeleton>().each([&](ecs::entity entity, mmd_skeleton& skeleton) {
         update_local(skeleton, after_physics);
         update_world(skeleton, after_physics);
@@ -342,15 +343,9 @@ void mmd_animation::update_inherit(mmd_node& node)
     {
         math::float4_simd rotate;
         if (!node.inherit_local_flag && inherit.inherit_node != ecs::INVALID_ENTITY)
-        {
             rotate = math::simd::load(inherit.inherit_rotation);
-        }
         else
-        {
-            rotate = math::quaternion_simd::mul(
-                math::simd::load(inherit_animation.rotation),
-                math::simd::load(inherit_transform.rotation()));
-        }
+            rotate = math::simd::load(inherit_animation.rotation);
 
         // IK
         if (world.has_component<mmd_ik_link>(node.inherit_node))
