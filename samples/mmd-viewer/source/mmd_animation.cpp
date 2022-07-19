@@ -62,6 +62,7 @@ void mmd_animation::update(bool after_physics)
             }
         }
     });
+
     world.view<mmd_skeleton>().each([&](ecs::entity entity, mmd_skeleton& skeleton) {
         update_local(skeleton, after_physics);
         update_world(skeleton, after_physics);
@@ -342,15 +343,9 @@ void mmd_animation::update_inherit(mmd_node& node)
     {
         math::float4_simd rotate;
         if (!node.inherit_local_flag && inherit.inherit_node != ecs::INVALID_ENTITY)
-        {
             rotate = math::simd::load(inherit.inherit_rotation);
-        }
         else
-        {
-            rotate = math::quaternion_simd::mul(
-                math::simd::load(inherit_animation.rotation),
-                math::simd::load(inherit_transform.rotation()));
-        }
+            rotate = math::simd::load(inherit_animation.rotation);
 
         // IK
         if (world.has_component<mmd_ik_link>(node.inherit_node))
@@ -405,9 +400,8 @@ void mmd_animation::update_ik(mmd_skeleton& skeleton, mmd_node& node, mmd_ik_sol
 
         auto& target_node = world.component<mmd_node>(ik.ik_target);
 
-        math::float4_simd target_position =
-            math::simd::load(skeleton.world[target_node.index].row[3]);
-        math::float4_simd ik_position = math::simd::load(skeleton.world[node.index].row[3]);
+        math::float4_simd target_position = math::simd::load(skeleton.world[target_node.index][3]);
+        math::float4_simd ik_position = math::simd::load(skeleton.world[node.index][3]);
 
         float dist =
             math::vector_simd::length(math::vector_simd::sub(target_position, ik_position));
@@ -442,9 +436,9 @@ void mmd_animation::ik_solve_core(
 {
     auto& world = system<ecs::world>();
 
-    math::float4_simd ik_position = math::simd::load(skeleton.world[node.index].row[3]);
+    math::float4_simd ik_position = math::simd::load(skeleton.world[node.index][3]);
     auto& target_node = world.component<mmd_node>(ik.ik_target);
-    math::float4_simd target_position = math::simd::load(skeleton.world[target_node.index].row[3]);
+    math::float4_simd target_position = math::simd::load(skeleton.world[target_node.index][3]);
     for (std::size_t i = 0; i < ik.links.size(); ++i)
     {
         auto& link_entity = ik.links[i];
@@ -551,10 +545,10 @@ void mmd_animation::ik_solve_plane(
     auto& link_entity = ik.links[link_index];
     auto& link_node = world.component<mmd_node>(link_entity);
 
-    math::float4_simd ik_position = math::simd::load(skeleton.world[node.index].row[3]);
+    math::float4_simd ik_position = math::simd::load(skeleton.world[node.index][3]);
 
     auto& target_node = world.component<mmd_node>(ik.ik_target);
-    math::float4_simd target_position = math::simd::load(skeleton.world[target_node.index].row[3]);
+    math::float4_simd target_position = math::simd::load(skeleton.world[target_node.index][3]);
     math::float4x4_simd link_inverse =
         math::matrix_simd::inverse(math::simd::load(skeleton.world[link_node.index]));
 

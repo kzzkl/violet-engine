@@ -45,7 +45,6 @@ target_shader_compile(
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/config DESTINATION bin/resource)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/mmd DESTINATION bin/resource)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/model DESTINATION bin/resource)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated/ DESTINATION bin/resource/shader)
 
 install(TARGETS ${PROJECT_NAME}

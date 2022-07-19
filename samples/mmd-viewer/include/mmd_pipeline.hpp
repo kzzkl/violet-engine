@@ -65,8 +65,11 @@ public:
     void input_position(graphics::resource_interface* position);
     void input_normal(graphics::resource_interface* normal);
     void input_uv(graphics::resource_interface* uv);
-    void bone_index(graphics::resource_interface* bone_index);
-    void bone_weight(graphics::resource_interface* bone_weight);
+
+    void skin(graphics::resource_interface* skin);
+    void bdef_bone(graphics::resource_interface* bdef_bone);
+    void sdef_bone(graphics::resource_interface* sdef_bone);
+
     void vertex_morph(graphics::resource_interface* vertex_morph);
     void uv_morph(graphics::resource_interface* uv_morph);
 
@@ -79,7 +82,8 @@ public:
 private:
     struct constant_data
     {
-        std::array<math::float4x4, 512> bone_transform;
+        std::array<math::float4x3, 512> bone_transform;
+        std::array<math::float4, 512> bone_quaternion;
     };
 };
 

@@ -15,7 +15,7 @@
 #include "task/task_manager.hpp"
 #include "window/window.hpp"
 
-#define EDITOR_MODE
+// #define EDITOR_MODE
 
 #if defined(EDITOR_MODE)
 #    include "editor/editor.hpp"
@@ -47,23 +47,26 @@ public:
     {
         auto& world = system<ecs::world>();
         world.release(m_actor);
-        world.release(m_plane);
+        world.release(m_stage);
         world.release(m_camera);
     }
 
 private:
     void initialize_resource()
     {
-        auto& world = system<ecs::world>();
-        auto& scene = system<scene::scene>();
-        auto& relation = system<core::relation>();
+        auto& viewer = system<mmd_viewer>();
 
-        m_actor = system<mmd_viewer>().load_mmd(
+        viewer.load_pmx("E:/workspace/ash-document/model/sora/Sora.pmx");
+        viewer.load_vmd("E:/workspace/ash-document/model/test2.vmd");
+        viewer.load_pmx("E:/workspace/ash-document/model/Beach Cabin/Beach Cabin.pmx");
+
+        m_actor = viewer.load_mmd(
             "sora",
-            "resource/model/sora/Sora.pmx",
+            "E:/workspace/ash-document/model/sora/Sora.pmx",
             "E:/workspace/ash-document/model/test2.vmd");
 
-        relation.link(m_actor, scene.root());
+        m_stage =
+            viewer.load_mmd("stage", "E:/workspace/ash-document/model/Beach Cabin/Beach Cabin.pmx");
     }
 
     void initialize_scene()
@@ -72,51 +75,17 @@ private:
         auto& scene = system<scene::scene>();
         auto& world = system<ecs::world>();
 
-        auto plane_mesh_data = graphics::geometry::box(1.0f, 1.0f, 1.0f);
-        m_plane_positon_buffer = graphics::rhi::make_vertex_buffer(
-            plane_mesh_data.position.data(),
-            plane_mesh_data.position.size());
-        m_plane_normal_buffer = graphics::rhi::make_vertex_buffer(
-            plane_mesh_data.normal.data(),
-            plane_mesh_data.normal.size());
-        m_plane_index_buffer = graphics::rhi::make_index_buffer(
-            plane_mesh_data.indices.data(),
-            plane_mesh_data.indices.size());
-        m_plane_material = std::make_unique<graphics::blinn_phong_material_pipeline_parameter>();
-        m_plane_material->diffuse(math::float3{1.0f, 1.0f, 1.0f});
-        m_plane_material->fresnel(math::float3{0.01f, 0.01f, 0.01f});
-        m_plane_material->roughness(0.2f);
-        m_blinn_phong_pipeline = std::make_unique<graphics::blinn_phong_pipeline>();
-
-        m_plane = world.create();
-        world.add<core::link, graphics::mesh_render, scene::transform, scene::bounding_box>(
-            m_plane);
-
-        auto& transform = world.component<scene::transform>(m_plane);
-        transform.position(math::float3{0.0f, -0.25f, 0.0f});
-        transform.scale(math::float3{100.0f, 0.5f, 100.0f});
-
-        auto& mesh_render = world.component<graphics::mesh_render>(m_plane);
-        mesh_render.vertex_buffers = {m_plane_positon_buffer.get(), m_plane_normal_buffer.get()};
-        mesh_render.index_buffer = m_plane_index_buffer.get();
-        mesh_render.object_parameter = std::make_unique<graphics::object_pipeline_parameter>();
-
-        graphics::material material = {};
-        material.pipeline = m_blinn_phong_pipeline.get();
-        material.parameters = {
-            mesh_render.object_parameter->interface(),
-            m_plane_material->interface()};
-        mesh_render.materials.push_back(material);
-        mesh_render.submeshes.push_back(graphics::submesh{0, 36, 0});
-
-        relation.link(m_plane, scene.root());
-
         m_light = world.create("light");
         world.add<scene::transform, core::link, graphics::directional_light>(m_light);
         world.component<scene::transform>(m_light).rotation_euler(math::float3{
             math::to_radians(-60.0f),
             math::to_radians(20.0f),
             math::to_radians(10.0f)});
+
+        auto& actor_transform = world.component<scene::transform>(m_actor);
+        actor_transform.position(math::float3{0.0f, 0.0f, -5.0f});
+        relation.link(m_actor, scene.root());
+        relation.link(m_stage, scene.root());
 
         auto& directional_light = world.component<graphics::directional_light>(m_light);
         directional_light.color(math::float3{0.5f, 0.5f, 0.5f});
@@ -256,18 +225,12 @@ private:
     core::application* m_app;
 
     ecs::entity m_actor;
-    ecs::entity m_plane;
+    ecs::entity m_stage;
     ecs::entity m_light;
 
     ecs::entity m_camera;
     std::unique_ptr<graphics::resource_interface> m_render_target;
     std::unique_ptr<graphics::resource_interface> m_depth_stencil_buffer;
-
-    std::unique_ptr<graphics::resource_interface> m_plane_positon_buffer;
-    std::unique_ptr<graphics::resource_interface> m_plane_normal_buffer;
-    std::unique_ptr<graphics::resource_interface> m_plane_index_buffer;
-    std::unique_ptr<graphics::blinn_phong_material_pipeline_parameter> m_plane_material;
-    std::unique_ptr<graphics::blinn_phong_pipeline> m_blinn_phong_pipeline;
 
     float m_heading = 0.0f, m_pitch = 0.0f;
 

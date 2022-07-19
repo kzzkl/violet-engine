@@ -3,9 +3,7 @@
 #include "graphics/rhi.hpp"
 #include "mmd_component.hpp"
 #include "physics/physics.hpp"
-#include "pmx_loader.hpp"
 #include "scene/scene.hpp"
-#include "vmd_loader.hpp"
 
 namespace ash::sample::mmd
 {
@@ -34,51 +32,61 @@ void mmd_loader::initialize()
 
 bool mmd_loader::load(
     ecs::entity entity,
-    mmd_resource& resource,
     std::string_view pmx,
     std::string_view vmd,
     graphics::render_pipeline* render_pipeline,
     graphics::skin_pipeline* skin_pipeline)
 {
     auto& world = system<ecs::world>();
+    bool static_model = vmd.empty();
 
-    pmx_loader pmx_loader;
-    if (!pmx_loader.load(pmx))
-        return false;
-
-    vmd_loader vmd_loader;
-    if (!vmd_loader.load(vmd))
-        return false;
-
-    world.add<
-        core::link,
-        scene::transform,
-        graphics::mesh_render,
-        graphics::skinned_mesh,
-        mmd_skeleton>(entity);
+    if (static_model)
+        world.add<core::link, scene::transform, graphics::mesh_render, mmd_skeleton>(entity);
+    else
+        world.add<
+            core::link,
+            scene::transform,
+            graphics::mesh_render,
+            graphics::skinned_mesh,
+            mmd_skeleton>(entity);
 
     auto& mesh_render = world.component<graphics::mesh_render>(entity);
     mesh_render.object_parameter = std::make_unique<graphics::object_pipeline_parameter>();
 
-    auto& skinned_mesh = world.component<graphics::skinned_mesh>(entity);
-    skinned_mesh.pipeline = skin_pipeline;
-
-    load_hierarchy(entity, resource, pmx_loader);
-    load_mesh(entity, resource, pmx_loader);
-    load_texture(entity, resource, pmx_loader);
-    load_material(entity, resource, pmx_loader, render_pipeline);
-    load_physics(entity, resource, pmx_loader);
+    pmx_loader& pmx_loader = m_pmx[pmx.data()];
+    load_hierarchy(entity, pmx_loader);
+    load_mesh(entity, pmx_loader, static_model ? nullptr : skin_pipeline);
+    load_material(entity, pmx_loader, render_pipeline);
+    load_physics(entity, pmx_loader);
     load_ik(entity, pmx_loader);
-    load_morph(entity, pmx_loader, vmd_loader);
-    load_animation(entity, pmx_loader, vmd_loader);
+
+    if (!static_model)
+    {
+        vmd_loader& vmd_loader = m_vmd[vmd.data()];
+        load_morph(entity, pmx_loader, vmd_loader);
+        load_animation(entity, pmx_loader, vmd_loader);
+    }
 
     return true;
 }
 
-void mmd_loader::load_hierarchy(
-    ecs::entity entity,
-    mmd_resource& resource,
-    const pmx_loader& loader)
+bool mmd_loader::load_pmx(std::string_view pmx)
+{
+    pmx_loader& pmx_loader = m_pmx[pmx.data()];
+
+    std::vector<graphics::resource_interface*> internal_toon;
+    for (auto& toon : m_internal_toon)
+        internal_toon.push_back(toon.get());
+    return pmx_loader.load(pmx, internal_toon);
+}
+
+bool mmd_loader::load_vmd(std::string_view vmd)
+{
+    vmd_loader& vmd_loader = m_vmd[vmd.data()];
+    return vmd_loader.load(vmd);
+}
+
+void mmd_loader::load_hierarchy(ecs::entity entity, const pmx_loader& loader)
 {
     auto& world = system<ecs::world>();
     auto& relation = system<core::relation>();
@@ -89,7 +97,7 @@ void mmd_loader::load_hierarchy(
     for (auto& pmx_bone : loader.bones())
     {
         ecs::entity node_entity = world.create("node");
-        world.add<core::link, scene::transform, mmd_node>(node_entity);
+        world.add<core::link, scene::transform, mmd_node, mmd_node_animation>(node_entity);
 
         auto& bone = world.component<mmd_node>(node_entity);
         bone.name = pmx_bone.name_jp;
@@ -162,165 +170,82 @@ void mmd_loader::load_hierarchy(
         });
 }
 
-void mmd_loader::load_mesh(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader)
+void mmd_loader::load_mesh(
+    ecs::entity entity,
+    const pmx_loader& loader,
+    graphics::skin_pipeline* skin_pipeline)
 {
     auto& world = system<ecs::world>();
 
-    // Make vertex buffer.
-    std::vector<math::float3> position;
-    std::vector<math::float3> normal;
-    std::vector<math::float2> uv;
-    std::vector<math::uint4> bone;
-    std::vector<math::float3> bone_weight;
-
-    position.reserve(loader.vertices().size());
-    normal.reserve(loader.vertices().size());
-    uv.reserve(loader.vertices().size());
-    bone.reserve(loader.vertices().size());
-    bone_weight.reserve(loader.vertices().size());
-    for (const pmx_vertex& v : loader.vertices())
-    {
-        position.push_back(v.position);
-        normal.push_back(v.normal);
-        uv.push_back(v.uv);
-        bone.push_back(v.bone);
-        bone_weight.push_back(v.weight);
-    }
-
-    enum mmd_vertex_attribute
-    {
-        MMD_VERTEX_ATTRIBUTE_POSITION,
-        MMD_VERTEX_ATTRIBUTE_NORMAL,
-        MMD_VERTEX_ATTRIBUTE_UV,
-        MMD_VERTEX_ATTRIBUTE_BONE,
-        MMD_VERTEX_ATTRIBUTE_BONE_WEIGHT,
-        MMD_VERTEX_ATTRIBUTE_NUM_TYPES
-    };
-    resource.vertex_buffers.resize(MMD_VERTEX_ATTRIBUTE_NUM_TYPES);
-
-    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_POSITION] = graphics::rhi::make_vertex_buffer(
-        position.data(),
-        position.size(),
-        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
-    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_NORMAL] = graphics::rhi::make_vertex_buffer(
-        normal.data(),
-        normal.size(),
-        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
-    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_UV] = graphics::rhi::make_vertex_buffer(
-        uv.data(),
-        uv.size(),
-        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
-    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_BONE] = graphics::rhi::make_vertex_buffer(
-        bone.data(),
-        bone.size(),
-        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
-    resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_BONE_WEIGHT] = graphics::rhi::make_vertex_buffer(
-        bone_weight.data(),
-        bone_weight.size(),
-        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
-
     auto& mesh_render = world.component<graphics::mesh_render>(entity);
     mesh_render.vertex_buffers = {
-        resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_POSITION].get(),
-        resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_NORMAL].get(),
-        resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_UV].get()};
+        loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_POSITION),
+        loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_NORMAL),
+        loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_UV)};
+    mesh_render.index_buffer = loader.index_buffer();
 
-    auto& skinned_mesh = world.component<graphics::skinned_mesh>(entity);
-    skinned_mesh.skinned_vertex_buffers.resize(mesh_render.vertex_buffers.size());
-    skinned_mesh.skinned_vertex_buffers[MMD_VERTEX_ATTRIBUTE_POSITION] =
-        graphics::rhi::make_vertex_buffer(
-            position.data(),
-            position.size(),
-            graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT);
-    skinned_mesh.skinned_vertex_buffers[MMD_VERTEX_ATTRIBUTE_NORMAL] =
-        graphics::rhi::make_vertex_buffer(
-            normal.data(),
-            normal.size(),
-            graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT);
-    skinned_mesh.skinned_vertex_buffers[MMD_VERTEX_ATTRIBUTE_UV] =
-        graphics::rhi::make_vertex_buffer(
-            uv.data(),
-            uv.size(),
-            graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT);
-    skinned_mesh.vertex_count = loader.vertices().size();
-
-    auto skin_parameter = std::make_unique<skin_pipeline_parameter>();
-    skin_parameter->input_position(resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_POSITION].get());
-    skin_parameter->input_normal(resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_NORMAL].get());
-    skin_parameter->bone_index(resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_BONE].get());
-    skin_parameter->bone_weight(resource.vertex_buffers[MMD_VERTEX_ATTRIBUTE_BONE_WEIGHT].get());
-    skin_parameter->output_position(skinned_mesh.skinned_vertex_buffers[0].get());
-    skin_parameter->output_normal(skinned_mesh.skinned_vertex_buffers[1].get());
-    skinned_mesh.parameter = std::move(skin_parameter);
-
-    // Make index buffer.
-    std::vector<std::int32_t> indices;
-    indices.reserve(loader.indices().size());
-    for (std::int32_t i : loader.indices())
-        indices.push_back(i);
-
-    resource.index_buffer = graphics::rhi::make_index_buffer(indices.data(), indices.size());
-    mesh_render.index_buffer = resource.index_buffer.get();
-}
-
-void mmd_loader::load_texture(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader)
-{
-    for (auto& texture_path : loader.textures())
+    if (skin_pipeline != nullptr)
     {
-        std::string dds_path = texture_path.substr(0, texture_path.find_last_of('.')) + ".dds";
-        resource.textures.push_back(graphics::rhi::make_texture(dds_path));
+        auto& skinned_mesh = world.component<graphics::skinned_mesh>(entity);
+        skinned_mesh.pipeline = skin_pipeline;
+        skinned_mesh.skinned_vertex_buffers.resize(mesh_render.vertex_buffers.size());
+        skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_POSITION] =
+            graphics::rhi::make_vertex_buffer<math::float3>(
+                nullptr,
+                loader.vertex_count(),
+                graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT);
+        skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_NORMAL] =
+            graphics::rhi::make_vertex_buffer<math::float3>(
+                nullptr,
+                loader.vertex_count(),
+                graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT);
+        skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_UV] =
+            graphics::rhi::make_vertex_buffer<math::float2>(
+                nullptr,
+                loader.vertex_count(),
+                graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT);
+        skinned_mesh.vertex_count = loader.vertex_count();
+
+        auto skin_parameter = std::make_unique<skin_pipeline_parameter>();
+        skin_parameter->input_position(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_POSITION));
+        skin_parameter->input_normal(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_NORMAL));
+        skin_parameter->input_uv(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_UV));
+
+        skin_parameter->skin(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_SKIN));
+        skin_parameter->bdef_bone(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_BDEF_BONE));
+        skin_parameter->sdef_bone(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_SDEF_BONE));
+
+        skin_parameter->output_position(
+            skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_POSITION].get());
+        skin_parameter->output_normal(
+            skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_NORMAL].get());
+        skin_parameter->output_uv(
+            skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_UV].get());
+        skinned_mesh.parameter = std::move(skin_parameter);
     }
 }
 
 void mmd_loader::load_material(
     ecs::entity entity,
-    mmd_resource& resource,
     const pmx_loader& loader,
     graphics::render_pipeline* render_pipeline)
 {
-    for (auto& mmd_material : loader.materials())
-    {
-        auto parameter = std::make_unique<material_pipeline_parameter>();
-        parameter->diffuse(mmd_material.diffuse);
-        parameter->specular(mmd_material.specular);
-        parameter->specular_strength(mmd_material.specular_strength);
-        parameter->edge_color(mmd_material.edge_color);
-        parameter->edge_size(mmd_material.edge_size);
-        parameter->toon_mode(mmd_material.toon_index == -1 ? std::uint32_t(0) : std::uint32_t(1));
-        parameter->spa_mode(static_cast<std::uint32_t>(mmd_material.sphere_mode));
-        parameter->tex(resource.textures[mmd_material.texture_index].get());
-
-        if (mmd_material.toon_index != -1)
-        {
-            if (mmd_material.toon_mode == toon_mode::TEXTURE)
-                parameter->toon(resource.textures[mmd_material.toon_index].get());
-            else if (mmd_material.toon_mode == toon_mode::INTERNAL)
-                parameter->toon(m_internal_toon[mmd_material.toon_index].get());
-            else
-                throw std::runtime_error("Invalid toon mode");
-        }
-        if (mmd_material.sphere_mode != sphere_mode::DISABLED)
-            parameter->spa(resource.textures[mmd_material.sphere_index].get());
-
-        resource.materials.push_back(std::move(parameter));
-    }
-
-    resource.submesh = loader.submesh();
-
     auto& world = system<ecs::world>();
     auto& mesh_render = world.component<graphics::mesh_render>(entity);
-    for (std::size_t i = 0; i < resource.submesh.size(); ++i)
+
+    auto& submesh = loader.submesh();
+    for (std::size_t i = 0; i < submesh.size(); ++i)
     {
         graphics::submesh mesh = {};
-        mesh.index_start = resource.submesh[i].first;
-        mesh.index_end = resource.submesh[i].second;
+        mesh.index_start = submesh[i].first;
+        mesh.index_end = submesh[i].second;
         mesh_render.submeshes.push_back(mesh);
 
         graphics::material material = {};
         material.pipeline = render_pipeline;
         material.parameters = {
             mesh_render.object_parameter->interface(),
-            resource.materials[i]->interface()};
+            loader.materials(i)->interface()};
         mesh_render.materials.push_back(material);
     }
 }
@@ -370,7 +295,7 @@ void mmd_loader::load_ik(ecs::entity entity, const pmx_loader& loader)
     }
 }
 
-void mmd_loader::load_physics(ecs::entity entity, mmd_resource& resource, const pmx_loader& loader)
+void mmd_loader::load_physics(ecs::entity entity, const pmx_loader& loader)
 {
     auto& world = system<ecs::world>();
     auto& relation = system<core::relation>();
@@ -381,34 +306,10 @@ void mmd_loader::load_physics(ecs::entity entity, mmd_resource& resource, const 
     std::vector<math::float4x4> rigidbody_transform;
     rigidbody_transform.reserve(loader.rigidbodies().size());
 
-    auto make_shape = [&](const pmx_rigidbody& pmx_rigidbody)
-        -> std::unique_ptr<physics::collision_shape_interface> {
-        physics::collision_shape_desc desc = {};
-        switch (pmx_rigidbody.shape)
-        {
-        case pmx_rigidbody_shape_type::SPHERE:
-            desc.type = physics::collision_shape_type::SPHERE;
-            desc.sphere.radius = pmx_rigidbody.size[0];
-            break;
-        case pmx_rigidbody_shape_type::BOX:
-            desc.type = physics::collision_shape_type::BOX;
-            desc.box.length = pmx_rigidbody.size[0] * 2.0f;
-            desc.box.height = pmx_rigidbody.size[1] * 2.0f;
-            desc.box.width = pmx_rigidbody.size[2] * 2.0f;
-            break;
-        case pmx_rigidbody_shape_type::CAPSULE:
-            desc.type = physics::collision_shape_type::CAPSULE;
-            desc.capsule.radius = pmx_rigidbody.size[0];
-            desc.capsule.height = pmx_rigidbody.size[1];
-            break;
-        default:
-            return nullptr;
-        };
-        return physics.make_shape(desc);
-    };
-
-    for (auto& pmx_rigidbody : loader.rigidbodies())
+    for (std::size_t i = 0; i < loader.rigidbodies().size(); ++i)
     {
+        auto& pmx_rigidbody = loader.rigidbodies()[i];
+
         rigidbody_transform.push_back(math::matrix::affine_transform(
             math::float3{1.0f, 1.0f, 1.0f},
             pmx_rigidbody.rotate,
@@ -429,10 +330,8 @@ void mmd_loader::load_physics(ecs::entity entity, mmd_resource& resource, const 
             system<scene::scene>().sync_local(node);
         }
 
-        resource.collision_shapes.push_back(make_shape(pmx_rigidbody));
-
         auto& rigidbody = world.component<physics::rigidbody>(node);
-        rigidbody.shape = resource.collision_shapes.back().get();
+        rigidbody.shape = loader.collision_shape(i);
 
         switch (pmx_rigidbody.mode)
         {
@@ -615,13 +514,13 @@ void mmd_loader::load_morph(
 
     morph_controler.vertex_morph_result = graphics::rhi::make_vertex_buffer<math::float3>(
         nullptr,
-        pmx_loader.vertices().size(),
+        pmx_loader.vertex_count(),
         graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN,
         true,
         true);
     morph_controler.uv_morph_result = graphics::rhi::make_vertex_buffer<math::float2>(
         nullptr,
-        pmx_loader.vertices().size(),
+        pmx_loader.vertex_count(),
         graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN,
         true,
         true);
@@ -644,7 +543,6 @@ void mmd_loader::load_animation(
     std::map<std::string, mmd_node_animation*> node_map;
     for (auto& node_entity : skeletion.nodes)
     {
-        world.add<mmd_node_animation>(node_entity);
         auto& animation = world.component<mmd_node_animation>(node_entity);
 
         auto& bone = world.component<mmd_node>(node_entity);
