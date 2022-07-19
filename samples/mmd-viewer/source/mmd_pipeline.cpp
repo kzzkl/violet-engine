@@ -214,7 +214,13 @@ void skin_pipeline_parameter::bone_transform(const std::vector<math::float4x4>& 
     ASH_ASSERT(bone_transform.size() <= constant.bone_transform.size());
 
     for (std::size_t i = 0; i < bone_transform.size(); ++i)
-        constant.bone_transform[i] = math::matrix::transpose(bone_transform[i]);
+    {
+        math::float4x4_simd m = math::simd::load(bone_transform[i]);
+        math::float4_simd q = math::quaternion_simd::rotation_matrix(m);
+
+        math::simd::store(math::matrix_simd::transpose(m), constant.bone_transform[i]);
+        math::simd::store(q, constant.bone_quaternion[i]);
+    }
 }
 
 void skin_pipeline_parameter::input_position(graphics::resource_interface* position)
@@ -232,39 +238,44 @@ void skin_pipeline_parameter::input_uv(graphics::resource_interface* uv)
     interface()->set(3, uv);
 }
 
-void skin_pipeline_parameter::bone_index(graphics::resource_interface* bone_index)
+void skin_pipeline_parameter::skin(graphics::resource_interface* skin)
 {
-    interface()->set(4, bone_index);
+    interface()->set(4, skin);
 }
 
-void skin_pipeline_parameter::bone_weight(graphics::resource_interface* bone_weight)
+void skin_pipeline_parameter::bdef_bone(graphics::resource_interface* bdef_bone)
 {
-    interface()->set(5, bone_weight);
+    interface()->set(5, bdef_bone);
+}
+
+void skin_pipeline_parameter::sdef_bone(graphics::resource_interface* sdef_bone)
+{
+    interface()->set(6, sdef_bone);
 }
 
 void skin_pipeline_parameter::vertex_morph(graphics::resource_interface* vertex_morph)
 {
-    interface()->set(6, vertex_morph);
+    interface()->set(7, vertex_morph);
 }
 
 void skin_pipeline_parameter::uv_morph(graphics::resource_interface* uv_morph)
 {
-    interface()->set(7, uv_morph);
+    interface()->set(8, uv_morph);
 }
 
 void skin_pipeline_parameter::output_position(graphics::resource_interface* position)
 {
-    interface()->set(8, position);
+    interface()->set(9, position);
 }
 
 void skin_pipeline_parameter::output_normal(graphics::resource_interface* normal)
 {
-    interface()->set(9, normal);
+    interface()->set(10, normal);
 }
 
 void skin_pipeline_parameter::output_uv(graphics::resource_interface* uv)
 {
-    interface()->set(10, uv);
+    interface()->set(11, uv);
 }
 
 std::vector<graphics::pipeline_parameter_pair> skin_pipeline_parameter::layout()
@@ -275,8 +286,9 @@ std::vector<graphics::pipeline_parameter_pair> skin_pipeline_parameter::layout()
         {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // input position.
         {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // input normal.
         {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // input uv.
-        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // bone index.
-        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // bone weight.
+        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // skin.
+        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // bdef bone.
+        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // sdef bone.
         {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // vertex morph.
         {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // uv morph.
         {graphics::PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS, 1}, // output position.

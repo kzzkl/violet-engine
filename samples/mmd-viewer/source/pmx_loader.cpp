@@ -95,102 +95,148 @@ bool pmx_loader::load_vertex(std::ifstream& fin)
 
     std::vector<pmx_vertex> vertices(m_vertex_count);
 
-    for (auto& v : vertices)
-        v.add_uv.resize(m_header.num_add_vec4);
+    std::vector<math::float3> position(m_vertex_count);
+    std::vector<math::float3> normal(m_vertex_count);
+    std::vector<math::float2> uv(m_vertex_count);
 
-    for (pmx_vertex& vertex : vertices)
+    // first: skin type(0: BDEF, 1: SDEF), second: skin data index
+    std::vector<math::uint2> skin(m_vertex_count);
+    std::vector<float> edge(m_vertex_count);
+
+    std::vector<std::vector<math::float4>> add_uv(m_vertex_count);
+    for (auto& v : add_uv)
+        v.resize(m_header.num_add_vec4);
+
+    // BDEF.
+    struct bdef_data
     {
-        read<math::float3>(fin, vertex.position);
-        read<math::float3>(fin, vertex.normal);
-        read<math::float2>(fin, vertex.uv);
+        math::uint4 index;
+        math::float4 weight;
+    };
+    std::vector<bdef_data> bdef_bone;
 
-        for (std::uint8_t i = 0; i < m_header.num_add_vec4; ++i)
-        {
-            read<math::float4>(fin, vertex.add_uv[i]);
-        }
+    // SDEF.
+    struct sdef_data
+    {
+        math::uint2 index;
+        math::float2 weight;
+        math::float3 center;
+        float _padding_0;
+        math::float3 r0;
+        float _padding_1;
+        math::float3 r1;
+        float _padding_2;
+    };
+    std::vector<sdef_data> sdef_bone;
+
+    for (std::size_t i = 0; i < m_vertex_count; ++i)
+    {
+        read<math::float3>(fin, position[i]);
+        read<math::float3>(fin, normal[i]);
+        read<math::float2>(fin, uv[i]);
+
+        for (std::uint8_t j = 0; j < m_header.num_add_vec4; ++j)
+            read<math::float4>(fin, add_uv[i][j]);
 
         pmx_vertex_weight weight_type;
         read<pmx_vertex_weight>(fin, weight_type);
 
-        float unused;
         switch (weight_type)
         {
         case pmx_vertex_weight::BDEF1: {
-            vertex.bone.data[0] = read_index(fin, m_header.bone_index_size);
-            vertex.weight.data[0] = 1.0f;
+            bdef_data data = {};
+            data.index[0] = read_index(fin, m_header.bone_index_size);
+            data.weight = {1.0f, 0.0f, 0.0f, 0.0f};
+
+            skin[i][0] = 0;
+            skin[i][1] = bdef_bone.size();
+            bdef_bone.push_back(data);
             break;
         }
         case pmx_vertex_weight::BDEF2: {
-            vertex.bone.data[0] = read_index(fin, m_header.bone_index_size);
-            vertex.bone.data[1] = read_index(fin, m_header.bone_index_size);
-            read<float>(fin, vertex.weight.data[0]);
-            vertex.weight.data[1] = 1.0f - vertex.weight.data[0];
+            bdef_data data = {};
+            data.index[0] = read_index(fin, m_header.bone_index_size);
+            data.index[1] = read_index(fin, m_header.bone_index_size);
+
+            read<float>(fin, data.weight[0]);
+            data.weight[1] = 1.0f - data.weight[0];
+
+            skin[i][0] = 0;
+            skin[i][1] = bdef_bone.size();
+            bdef_bone.push_back(data);
             break;
         }
         case pmx_vertex_weight::BDEF4: {
-            vertex.bone.data[0] = read_index(fin, m_header.bone_index_size);
-            vertex.bone.data[1] = read_index(fin, m_header.bone_index_size);
-            vertex.bone.data[2] = read_index(fin, m_header.bone_index_size);
-            vertex.bone.data[3] = read_index(fin, m_header.bone_index_size);
-            read<float>(fin, vertex.weight.data[0]);
-            read<float>(fin, vertex.weight.data[1]);
-            read<float>(fin, vertex.weight.data[2]);
-            read<float>(fin, unused);
+            bdef_data data = {};
+            data.index[0] = read_index(fin, m_header.bone_index_size);
+            data.index[1] = read_index(fin, m_header.bone_index_size);
+            data.index[2] = read_index(fin, m_header.bone_index_size);
+            data.index[3] = read_index(fin, m_header.bone_index_size);
+            read<float>(fin, data.weight[0]);
+            read<float>(fin, data.weight[1]);
+            read<float>(fin, data.weight[2]);
+            read<float>(fin, data.weight[3]);
+
+            skin[i][0] = 0;
+            skin[i][1] = bdef_bone.size();
+            bdef_bone.push_back(data);
             break;
         }
         case pmx_vertex_weight::SDEF: {
-            vertex.bone.data[0] = read_index(fin, m_header.bone_index_size);
-            vertex.bone.data[1] = read_index(fin, m_header.bone_index_size);
-            read<float>(fin, vertex.weight.data[0]);
-            vertex.weight.data[1] = 1.0f - vertex.weight.data[0];
+            sdef_data data = {};
+            data.index[0] = read_index(fin, m_header.bone_index_size);
+            data.index[1] = read_index(fin, m_header.bone_index_size);
+            read<float>(fin, data.weight[0]);
+            data.weight[1] = 1.0f - data.weight[0];
+            read<math::float3>(fin, data.center);
+            read<math::float3>(fin, data.r0);
+            read<math::float3>(fin, data.r1);
 
-            math::float3 ignore;
-            read<math::float3>(fin, ignore);
-            read<math::float3>(fin, ignore);
-            read<math::float3>(fin, ignore);
+            math::float4_simd center = math::simd::load(data.center);
+            math::float4_simd r0 = math::simd::load(data.r0);
+            math::float4_simd r1 = math::simd::load(data.r1);
+            math::float4_simd rw = math::vector_simd::add(
+                math::vector_simd::mul(r0, data.weight[0]),
+                math::vector_simd::mul(r1, data.weight[1]));
+            r0 = math::vector_simd::add(center, r0);
+            r0 = math::vector_simd::sub(r0, rw);
+            r0 = math::vector_simd::add(center, r0);
+            r0 = math::vector_simd::mul(r0, 0.5f);
+            r1 = math::vector_simd::add(center, r1);
+            r1 = math::vector_simd::sub(r1, rw);
+            r1 = math::vector_simd::add(center, r1);
+            r1 = math::vector_simd::mul(r1, 0.5f);
+
+            math::simd::store(r0, data.r0);
+            math::simd::store(r1, data.r1);
+
+            skin[i][0] = 1;
+            skin[i][1] = sdef_bone.size();
+            sdef_bone.push_back(data);
             break;
         }
         case pmx_vertex_weight::QDEF: {
-            vertex.bone.data[0] = read_index(fin, m_header.bone_index_size);
-            vertex.bone.data[1] = read_index(fin, m_header.bone_index_size);
-            vertex.bone.data[2] = read_index(fin, m_header.bone_index_size);
-            vertex.bone.data[3] = read_index(fin, m_header.bone_index_size);
-            read<float>(fin, vertex.weight.data[0]);
-            read<float>(fin, vertex.weight.data[1]);
-            read<float>(fin, vertex.weight.data[2]);
-            read<float>(fin, unused);
+            read_index(fin, m_header.bone_index_size);
+            read_index(fin, m_header.bone_index_size);
+            read_index(fin, m_header.bone_index_size);
+            read_index(fin, m_header.bone_index_size);
+
+            float ignore;
+            read<float>(fin, ignore);
+            read<float>(fin, ignore);
+            read<float>(fin, ignore);
+            read<float>(fin, ignore);
             break;
         }
         default:
             break;
         }
 
-        read<float>(fin, vertex.edge_scale);
+        read<float>(fin, edge[i]);
     }
 
     // Make vertex buffer.
-    std::vector<math::float3> position;
-    std::vector<math::float3> normal;
-    std::vector<math::float2> uv;
-    std::vector<math::uint4> bone;
-    std::vector<math::float3> bone_weight;
-
-    position.reserve(m_vertex_count);
-    normal.reserve(m_vertex_count);
-    uv.reserve(m_vertex_count);
-    bone.reserve(m_vertex_count);
-    bone_weight.reserve(m_vertex_count);
-    for (const pmx_vertex& v : vertices)
-    {
-        position.push_back(v.position);
-        normal.push_back(v.normal);
-        uv.push_back(v.uv);
-        bone.push_back(v.bone);
-        bone_weight.push_back(v.weight);
-    }
-
     m_vertex_buffers.resize(PMX_VERTEX_ATTRIBUTE_NUM_TYPES);
-
     m_vertex_buffers[PMX_VERTEX_ATTRIBUTE_POSITION] = graphics::rhi::make_vertex_buffer(
         position.data(),
         position.size(),
@@ -203,14 +249,26 @@ bool pmx_loader::load_vertex(std::ifstream& fin)
         uv.data(),
         uv.size(),
         graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
-    m_vertex_buffers[PMX_VERTEX_ATTRIBUTE_BONE] = graphics::rhi::make_vertex_buffer(
-        bone.data(),
-        bone.size(),
+    m_vertex_buffers[PMX_VERTEX_ATTRIBUTE_SKIN] = graphics::rhi::make_vertex_buffer(
+        skin.data(),
+        skin.size(),
         graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
-    m_vertex_buffers[PMX_VERTEX_ATTRIBUTE_BONE_WEIGHT] = graphics::rhi::make_vertex_buffer(
-        bone_weight.data(),
-        bone_weight.size(),
-        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
+
+    if (!bdef_bone.empty())
+    {
+        m_vertex_buffers[PMX_VERTEX_ATTRIBUTE_BDEF_BONE] = graphics::rhi::make_vertex_buffer(
+            bdef_bone.data(),
+            bdef_bone.size(),
+            graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
+    }
+
+    if (!sdef_bone.empty())
+    {
+        m_vertex_buffers[PMX_VERTEX_ATTRIBUTE_SDEF_BONE] = graphics::rhi::make_vertex_buffer(
+            sdef_bone.data(),
+            sdef_bone.size(),
+            graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
+    }
 
     return true;
 }

@@ -400,9 +400,8 @@ void mmd_animation::update_ik(mmd_skeleton& skeleton, mmd_node& node, mmd_ik_sol
 
         auto& target_node = world.component<mmd_node>(ik.ik_target);
 
-        math::float4_simd target_position =
-            math::simd::load(skeleton.world[target_node.index].row[3]);
-        math::float4_simd ik_position = math::simd::load(skeleton.world[node.index].row[3]);
+        math::float4_simd target_position = math::simd::load(skeleton.world[target_node.index][3]);
+        math::float4_simd ik_position = math::simd::load(skeleton.world[node.index][3]);
 
         float dist =
             math::vector_simd::length(math::vector_simd::sub(target_position, ik_position));
@@ -437,9 +436,9 @@ void mmd_animation::ik_solve_core(
 {
     auto& world = system<ecs::world>();
 
-    math::float4_simd ik_position = math::simd::load(skeleton.world[node.index].row[3]);
+    math::float4_simd ik_position = math::simd::load(skeleton.world[node.index][3]);
     auto& target_node = world.component<mmd_node>(ik.ik_target);
-    math::float4_simd target_position = math::simd::load(skeleton.world[target_node.index].row[3]);
+    math::float4_simd target_position = math::simd::load(skeleton.world[target_node.index][3]);
     for (std::size_t i = 0; i < ik.links.size(); ++i)
     {
         auto& link_entity = ik.links[i];
@@ -546,10 +545,10 @@ void mmd_animation::ik_solve_plane(
     auto& link_entity = ik.links[link_index];
     auto& link_node = world.component<mmd_node>(link_entity);
 
-    math::float4_simd ik_position = math::simd::load(skeleton.world[node.index].row[3]);
+    math::float4_simd ik_position = math::simd::load(skeleton.world[node.index][3]);
 
     auto& target_node = world.component<mmd_node>(ik.ik_target);
-    math::float4_simd target_position = math::simd::load(skeleton.world[target_node.index].row[3]);
+    math::float4_simd target_position = math::simd::load(skeleton.world[target_node.index][3]);
     math::float4x4_simd link_inverse =
         math::matrix_simd::inverse(math::simd::load(skeleton.world[link_node.index]));
 

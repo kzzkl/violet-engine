@@ -42,8 +42,6 @@ struct pmx_vertex
     math::float3 position;
     math::float3 normal;
     math::float2 uv;
-    math::uint4 bone;
-    math::float3 weight;
 
     float edge_scale;
     std::vector<math::float4> add_uv;
@@ -328,8 +326,12 @@ enum pmx_vertex_attribute
     PMX_VERTEX_ATTRIBUTE_POSITION,
     PMX_VERTEX_ATTRIBUTE_NORMAL,
     PMX_VERTEX_ATTRIBUTE_UV,
-    PMX_VERTEX_ATTRIBUTE_BONE,
-    PMX_VERTEX_ATTRIBUTE_BONE_WEIGHT,
+    PMX_VERTEX_ATTRIBUTE_EDGE,
+
+    PMX_VERTEX_ATTRIBUTE_SKIN,
+    PMX_VERTEX_ATTRIBUTE_BDEF_BONE,
+    PMX_VERTEX_ATTRIBUTE_SDEF_BONE,
+
     PMX_VERTEX_ATTRIBUTE_NUM_TYPES
 };
 

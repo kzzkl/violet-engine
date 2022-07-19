@@ -210,8 +210,11 @@ void mmd_loader::load_mesh(
         skin_parameter->input_position(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_POSITION));
         skin_parameter->input_normal(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_NORMAL));
         skin_parameter->input_uv(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_UV));
-        skin_parameter->bone_index(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_BONE));
-        skin_parameter->bone_weight(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_BONE_WEIGHT));
+
+        skin_parameter->skin(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_SKIN));
+        skin_parameter->bdef_bone(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_BDEF_BONE));
+        skin_parameter->sdef_bone(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_SDEF_BONE));
+
         skin_parameter->output_position(
             skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_POSITION].get());
         skin_parameter->output_normal(
