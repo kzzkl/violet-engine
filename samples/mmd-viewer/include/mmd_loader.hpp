@@ -27,7 +27,10 @@ public:
 
 private:
     void load_hierarchy(ecs::entity entity, const pmx_loader& loader);
-    void load_mesh(ecs::entity entity, const pmx_loader& loader);
+    void load_mesh(
+        ecs::entity entity,
+        const pmx_loader& loader,
+        graphics::skin_pipeline* skin_pipeline);
     void load_material(
         ecs::entity entity,
         const pmx_loader& loader,

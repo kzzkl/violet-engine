@@ -188,6 +188,20 @@ public:
         _mm_store_ps(&destination[0], source);
     }
 
+    static inline void store(const float4x4_simd& source, float4x3& destination)
+    {
+        _mm_storeu_ps(&destination[0][0], source[0]);
+        _mm_storeu_ps(&destination[1][0], source[1]);
+        _mm_storeu_ps(&destination[2][0], source[2]);
+    }
+
+    static inline void store(const float4x4_simd& source, float4x3_align& destination)
+    {
+        _mm_store_ps(&destination[0][0], source[0]);
+        _mm_store_ps(&destination[1][0], source[1]);
+        _mm_store_ps(&destination[2][0], source[2]);
+    }
+
     static inline void store(const float4x4_simd& source, float4x4& destination)
     {
         _mm_storeu_ps(&destination[0][0], source[0]);

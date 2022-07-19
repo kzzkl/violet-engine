@@ -38,27 +38,29 @@ bool mmd_loader::load(
     graphics::skin_pipeline* skin_pipeline)
 {
     auto& world = system<ecs::world>();
-    world.add<
-        core::link,
-        scene::transform,
-        graphics::mesh_render,
-        graphics::skinned_mesh,
-        mmd_skeleton>(entity);
+    bool static_model = vmd.empty();
+
+    if (static_model)
+        world.add<core::link, scene::transform, graphics::mesh_render, mmd_skeleton>(entity);
+    else
+        world.add<
+            core::link,
+            scene::transform,
+            graphics::mesh_render,
+            graphics::skinned_mesh,
+            mmd_skeleton>(entity);
 
     auto& mesh_render = world.component<graphics::mesh_render>(entity);
     mesh_render.object_parameter = std::make_unique<graphics::object_pipeline_parameter>();
 
-    auto& skinned_mesh = world.component<graphics::skinned_mesh>(entity);
-    skinned_mesh.pipeline = skin_pipeline;
-
     pmx_loader& pmx_loader = m_pmx[pmx.data()];
     load_hierarchy(entity, pmx_loader);
-    load_mesh(entity, pmx_loader);
+    load_mesh(entity, pmx_loader, static_model ? nullptr : skin_pipeline);
     load_material(entity, pmx_loader, render_pipeline);
     load_physics(entity, pmx_loader);
     load_ik(entity, pmx_loader);
 
-    if (!vmd.empty())
+    if (!static_model)
     {
         vmd_loader& vmd_loader = m_vmd[vmd.data()];
         load_morph(entity, pmx_loader, vmd_loader);
@@ -168,7 +170,10 @@ void mmd_loader::load_hierarchy(ecs::entity entity, const pmx_loader& loader)
         });
 }
 
-void mmd_loader::load_mesh(ecs::entity entity, const pmx_loader& loader)
+void mmd_loader::load_mesh(
+    ecs::entity entity,
+    const pmx_loader& loader,
+    graphics::skin_pipeline* skin_pipeline)
 {
     auto& world = system<ecs::world>();
 
@@ -177,40 +182,44 @@ void mmd_loader::load_mesh(ecs::entity entity, const pmx_loader& loader)
         loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_POSITION),
         loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_NORMAL),
         loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_UV)};
-
-    auto& skinned_mesh = world.component<graphics::skinned_mesh>(entity);
-    skinned_mesh.skinned_vertex_buffers.resize(mesh_render.vertex_buffers.size());
-    skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_POSITION] =
-        graphics::rhi::make_vertex_buffer<math::float3>(
-            nullptr,
-            loader.vertex_count(),
-            graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT);
-    skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_NORMAL] =
-        graphics::rhi::make_vertex_buffer<math::float3>(
-            nullptr,
-            loader.vertex_count(),
-            graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT);
-    skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_UV] =
-        graphics::rhi::make_vertex_buffer<math::float2>(
-            nullptr,
-            loader.vertex_count(),
-            graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT);
-    skinned_mesh.vertex_count = loader.vertex_count();
-
-    auto skin_parameter = std::make_unique<skin_pipeline_parameter>();
-    skin_parameter->input_position(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_POSITION));
-    skin_parameter->input_normal(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_NORMAL));
-    skin_parameter->input_uv(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_UV));
-    skin_parameter->bone_index(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_BONE));
-    skin_parameter->bone_weight(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_BONE_WEIGHT));
-    skin_parameter->output_position(
-        skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_POSITION].get());
-    skin_parameter->output_normal(
-        skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_NORMAL].get());
-    skin_parameter->output_uv(skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_UV].get());
-    skinned_mesh.parameter = std::move(skin_parameter);
-
     mesh_render.index_buffer = loader.index_buffer();
+
+    if (skin_pipeline != nullptr)
+    {
+        auto& skinned_mesh = world.component<graphics::skinned_mesh>(entity);
+        skinned_mesh.pipeline = skin_pipeline;
+        skinned_mesh.skinned_vertex_buffers.resize(mesh_render.vertex_buffers.size());
+        skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_POSITION] =
+            graphics::rhi::make_vertex_buffer<math::float3>(
+                nullptr,
+                loader.vertex_count(),
+                graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT);
+        skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_NORMAL] =
+            graphics::rhi::make_vertex_buffer<math::float3>(
+                nullptr,
+                loader.vertex_count(),
+                graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT);
+        skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_UV] =
+            graphics::rhi::make_vertex_buffer<math::float2>(
+                nullptr,
+                loader.vertex_count(),
+                graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT);
+        skinned_mesh.vertex_count = loader.vertex_count();
+
+        auto skin_parameter = std::make_unique<skin_pipeline_parameter>();
+        skin_parameter->input_position(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_POSITION));
+        skin_parameter->input_normal(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_NORMAL));
+        skin_parameter->input_uv(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_UV));
+        skin_parameter->bone_index(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_BONE));
+        skin_parameter->bone_weight(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_BONE_WEIGHT));
+        skin_parameter->output_position(
+            skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_POSITION].get());
+        skin_parameter->output_normal(
+            skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_NORMAL].get());
+        skin_parameter->output_uv(
+            skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_UV].get());
+        skinned_mesh.parameter = std::move(skin_parameter);
+    }
 }
 
 void mmd_loader::load_material(
