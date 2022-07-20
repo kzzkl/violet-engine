@@ -121,9 +121,7 @@ void physics::simulation()
         auto& r = world.component<rigidbody>(entity);
         auto& t = world.component<scene::transform>(entity);
 
-        math::float4x4_simd to_world = math::simd::load(updated->transform());
-        math::float4x4_simd offset_inverse = math::simd::load(r.offset_inverse);
-        t.to_world(math::matrix_simd::mul(offset_inverse, to_world));
+        r.reflection->reflect(updated->transform(), r, t);
     }
 
     system<scene::scene>().sync_world();

@@ -7,6 +7,22 @@
 
 namespace ash::sample::mmd
 {
+class mmd_merge_rigidbody_transform_reflection : public physics::rigidbody_transform_reflection
+{
+public:
+    virtual void reflect(
+        const math::float4x4& rigidbody_transform,
+        const physics::rigidbody& rigidbody,
+        scene::transform& transform) const noexcept override
+    {
+        math::float4x4_simd to_world = math::simd::load(rigidbody_transform);
+        math::float4x4_simd offset_inverse = math::simd::load(rigidbody.offset_inverse);
+        to_world = math::matrix_simd::mul(offset_inverse, to_world);
+        to_world[3] = math::simd::load(transform.to_world()[3]);
+        transform.to_world(to_world);
+    }
+};
+
 mmd_loader::mmd_loader()
 {
 }
@@ -27,7 +43,7 @@ void mmd_loader::initialize()
     };
 
     for (auto& path : internal_toon_path)
-        m_internal_toon.push_back(graphics::rhi::make_texture("resource/mmd/" + path));
+        m_internal_toon.push_back(graphics::rhi::make_texture("mmd-viewer/mmd/" + path));
 }
 
 bool mmd_loader::load(
@@ -181,7 +197,8 @@ void mmd_loader::load_mesh(
     mesh_render.vertex_buffers = {
         loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_POSITION),
         loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_NORMAL),
-        loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_UV)};
+        loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_UV),
+        loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_EDGE)};
     mesh_render.index_buffer = loader.index_buffer();
 
     if (skin_pipeline != nullptr)
@@ -253,7 +270,6 @@ void mmd_loader::load_material(
 void mmd_loader::load_ik(ecs::entity entity, const pmx_loader& loader)
 {
     auto& world = system<ecs::world>();
-
     auto& skeleton = world.component<mmd_skeleton>(entity);
 
     for (std::size_t i = 0; i < loader.bones().size(); ++i)
@@ -298,25 +314,32 @@ void mmd_loader::load_ik(ecs::entity entity, const pmx_loader& loader)
 void mmd_loader::load_physics(ecs::entity entity, const pmx_loader& loader)
 {
     auto& world = system<ecs::world>();
+    auto& scene = system<scene::scene>();
     auto& relation = system<core::relation>();
     auto& physics = system<physics::physics>();
 
     auto& skeleton = world.component<mmd_skeleton>(entity);
 
+    std::vector<std::size_t> rigidbody_count(loader.bones().size());
     std::vector<math::float4x4> rigidbody_transform;
     rigidbody_transform.reserve(loader.rigidbodies().size());
-
-    for (std::size_t i = 0; i < loader.rigidbodies().size(); ++i)
+    for (auto& pmx_rigidbody : loader.rigidbodies())
     {
-        auto& pmx_rigidbody = loader.rigidbodies()[i];
-
         rigidbody_transform.push_back(math::matrix::affine_transform(
             math::float3{1.0f, 1.0f, 1.0f},
             pmx_rigidbody.rotate,
             pmx_rigidbody.translate));
+        ++rigidbody_count[pmx_rigidbody.bone_index];
+    }
+
+    std::vector<ecs::entity> rigidbody_nodes;
+    rigidbody_nodes.reserve(loader.rigidbodies().size());
+    for (std::size_t i = 0; i < loader.rigidbodies().size(); ++i)
+    {
+        auto& pmx_rigidbody = loader.rigidbodies()[i];
 
         ecs::entity node = skeleton.nodes[pmx_rigidbody.bone_index];
-        if (!world.has_component<physics::rigidbody>(node))
+        if (rigidbody_count[pmx_rigidbody.bone_index] == 1)
         {
             world.add<physics::rigidbody>(node);
         }
@@ -326,9 +349,11 @@ void mmd_loader::load_physics(ecs::entity entity, const pmx_loader& loader)
             ecs::entity workaround_node = world.create("rigidbody");
             world.add<core::link, physics::rigidbody, scene::transform>(workaround_node);
             relation.link(workaround_node, node);
+            scene.sync_local(workaround_node);
+
             node = workaround_node;
-            system<scene::scene>().sync_local(node);
         }
+        rigidbody_nodes.push_back(node);
 
         auto& rigidbody = world.component<physics::rigidbody>(node);
         rigidbody.shape = loader.collision_shape(i);
@@ -342,7 +367,8 @@ void mmd_loader::load_physics(ecs::entity entity, const pmx_loader& loader)
             rigidbody.type = physics::rigidbody_type::DYNAMIC;
             break;
         case pmx_rigidbody_mode::MERGE:
-            rigidbody.type = physics::rigidbody_type::KINEMATIC;
+            rigidbody.type = physics::rigidbody_type::DYNAMIC;
+            rigidbody.reflection = std::make_unique<mmd_merge_rigidbody_transform_reflection>();
             break;
         default:
             break;
@@ -356,12 +382,8 @@ void mmd_loader::load_physics(ecs::entity entity, const pmx_loader& loader)
         rigidbody.friction = pmx_rigidbody.friction;
         rigidbody.collision_group = 1 << pmx_rigidbody.group;
         rigidbody.collision_mask = pmx_rigidbody.collision_group;
-
         rigidbody.offset = math::matrix::mul(
-            math::matrix::affine_transform(
-                math::float3{1.0f, 1.0f, 1.0f},
-                pmx_rigidbody.rotate,
-                pmx_rigidbody.translate),
+            rigidbody_transform[i],
             math::matrix::inverse(world.component<scene::transform>(node).to_world()));
     }
 
@@ -373,10 +395,8 @@ void mmd_loader::load_physics(ecs::entity entity, const pmx_loader& loader)
         world.add<core::link, physics::joint>(joint_entity);
         auto& joint = world.component<physics::joint>(joint_entity);
 
-        joint.relation_a =
-            skeleton.nodes[loader.rigidbodies()[pmx_joint.rigidbody_a_index].bone_index];
-        joint.relation_b =
-            skeleton.nodes[loader.rigidbodies()[pmx_joint.rigidbody_b_index].bone_index];
+        joint.relation_a = rigidbody_nodes[pmx_joint.rigidbody_a_index];
+        joint.relation_b = rigidbody_nodes[pmx_joint.rigidbody_b_index];
         joint.min_linear = pmx_joint.translate_min;
         joint.max_linear = pmx_joint.translate_max;
         joint.min_angular = pmx_joint.rotate_min;

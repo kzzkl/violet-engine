@@ -249,6 +249,8 @@ bool pmx_loader::load_vertex(std::ifstream& fin)
         uv.data(),
         uv.size(),
         graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN);
+    m_vertex_buffers[PMX_VERTEX_ATTRIBUTE_EDGE] =
+        graphics::rhi::make_vertex_buffer(edge.data(), edge.size());
     m_vertex_buffers[PMX_VERTEX_ATTRIBUTE_SKIN] = graphics::rhi::make_vertex_buffer(
         skin.data(),
         skin.size(),
@@ -625,7 +627,7 @@ bool pmx_loader::load_rigidbody(std::ifstream& fin)
 
         math::float3 rotate;
         read<math::float3>(fin, rotate);
-        rigidbody.rotate = math::quaternion::rotation_euler(rotate[1], rotate[0], rotate[2]);
+        rigidbody.rotate = math::quaternion::rotation_euler(rotate);
 
         read<float>(fin, rigidbody.mass);
         read<float>(fin, rigidbody.translate_dimmer);

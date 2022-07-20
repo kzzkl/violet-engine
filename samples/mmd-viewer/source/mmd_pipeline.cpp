@@ -81,8 +81,8 @@ mmd_render_pipeline::mmd_render_pipeline()
 {
     // Color pass.
     graphics::render_pass_info color_pass_info = {};
-    color_pass_info.vertex_shader = "resource/shader/color.vert";
-    color_pass_info.pixel_shader = "resource/shader/color.frag";
+    color_pass_info.vertex_shader = "mmd-viewer/shader/color.vert";
+    color_pass_info.pixel_shader = "mmd-viewer/shader/color.frag";
     color_pass_info.vertex_attributes = {
         {"POSITION", graphics::VERTEX_ATTRIBUTE_TYPE_FLOAT3}, // position
         {"NORMAL",   graphics::VERTEX_ATTRIBUTE_TYPE_FLOAT3}, // normal
@@ -99,11 +99,12 @@ mmd_render_pipeline::mmd_render_pipeline()
 
     // Edge pass.
     graphics::render_pass_info edge_pass_info = {};
-    edge_pass_info.vertex_shader = "resource/shader/edge.vert";
-    edge_pass_info.pixel_shader = "resource/shader/edge.frag";
+    edge_pass_info.vertex_shader = "mmd-viewer/shader/edge.vert";
+    edge_pass_info.pixel_shader = "mmd-viewer/shader/edge.frag";
     edge_pass_info.vertex_attributes = {
         {"POSITION", graphics::VERTEX_ATTRIBUTE_TYPE_FLOAT3}, // position
         {"NORMAL",   graphics::VERTEX_ATTRIBUTE_TYPE_FLOAT3}, // normal
+        {"EDGE",     graphics::VERTEX_ATTRIBUTE_TYPE_FLOAT }  // edge
     };
     edge_pass_info.references = {
         {graphics::ATTACHMENT_REFERENCE_TYPE_COLOR,   0},
@@ -184,7 +185,11 @@ void mmd_render_pipeline::render(
         command->parameter(0, unit.parameters[0]);
         command->parameter(1, unit.parameters[1]);
 
-        command->input_assembly_state(unit.vertex_buffers, 3, unit.index_buffer);
+        graphics::resource_interface* vertex_buffers[] = {
+            unit.vertex_buffers[0],
+            unit.vertex_buffers[1],
+            unit.vertex_buffers[2]};
+        command->input_assembly_state(vertex_buffers, 3, unit.index_buffer);
         command->draw_indexed(unit.index_start, unit.index_end, unit.vertex_base);
     }
 
@@ -197,7 +202,11 @@ void mmd_render_pipeline::render(
         command->parameter(0, unit.parameters[0]);
         command->parameter(1, unit.parameters[1]);
 
-        command->input_assembly_state(unit.vertex_buffers, 2, unit.index_buffer);
+        graphics::resource_interface* vertex_buffers[] = {
+            unit.vertex_buffers[0],
+            unit.vertex_buffers[1],
+            unit.vertex_buffers[3]};
+        command->input_assembly_state(vertex_buffers, 3, unit.index_buffer);
         command->draw_indexed(unit.index_start, unit.index_end, unit.vertex_base);
     }
 
@@ -300,7 +309,7 @@ std::vector<graphics::pipeline_parameter_pair> skin_pipeline_parameter::layout()
 mmd_skin_pipeline::mmd_skin_pipeline()
 {
     graphics::compute_pipeline_info compute_pipeline_info = {};
-    compute_pipeline_info.compute_shader = "resource/shader/skin.comp";
+    compute_pipeline_info.compute_shader = "mmd-viewer/shader/skin.comp";
     compute_pipeline_info.parameters = {"mmd_skin"};
 
     m_interface = graphics::rhi::make_compute_pipeline(compute_pipeline_info);

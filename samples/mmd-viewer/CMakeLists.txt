@@ -43,9 +43,9 @@ target_shader_compile(
     "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated"
     "${ASH_ROOT_DIR}/engine/shader/compiler/DirectX/dxc/dxc.exe")
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/config DESTINATION bin/resource)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/mmd DESTINATION bin/resource)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated/ DESTINATION bin/resource/shader)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/config DESTINATION bin/mmd-viewer)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/mmd DESTINATION bin/mmd-viewer)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated/ DESTINATION bin/mmd-viewer/shader)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

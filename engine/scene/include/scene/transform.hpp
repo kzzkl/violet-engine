@@ -8,7 +8,7 @@ namespace ash::scene
 class transform
 {
 public:
-    transform();
+    transform() noexcept;
 
     void sync(const math::float4x4& parent_matrix);
     void sync(const math::float4x4_simd& parent_matrix);
@@ -81,6 +81,7 @@ public:
     bool in_scene() const noexcept { return m_in_scene; }
 
     bool dirty() const noexcept { return m_dirty; }
+    void mark_dirty() noexcept { m_dirty = true; }
 
     std::size_t sync_count() const noexcept { return m_sync_count; }
     void reset_sync_count() noexcept { m_sync_count = 0; }

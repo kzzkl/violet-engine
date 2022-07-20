@@ -3,7 +3,7 @@
 
 namespace ash::scene
 {
-transform::transform()
+transform::transform() noexcept
     : m_position{0.0f, 0.0f, 0.0f},
       m_rotation{0.0f, 0.0f, 0.0f, 1.0f},
       m_scale{1.0f, 1.0f, 1.0f},

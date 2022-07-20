@@ -44,8 +44,10 @@ void mmd_animation::update(bool after_physics)
         for (auto& node_entity : skeleton.sorted_nodes)
         {
             auto& node = world.component<mmd_node>(node_entity);
-            if (after_physics == node.deform_after_physics &&
-                node.inherit_node != ecs::INVALID_ENTITY)
+            if (node.deform_after_physics != after_physics)
+                continue;
+
+            if (node.inherit_node != ecs::INVALID_ENTITY)
             {
                 update_inherit(node);
                 update_world(skeleton, node_entity);

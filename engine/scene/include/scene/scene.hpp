@@ -16,7 +16,7 @@ public:
     scene(const scene&) = delete;
 
     virtual bool initialize(const dictionary& config) override;
-    virtual void on_begin_frame() override;
+    virtual void on_end_frame() override;
 
     ecs::entity root() const noexcept { return m_root; }
 

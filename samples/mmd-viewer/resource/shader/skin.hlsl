@@ -127,7 +127,7 @@ void cs_main(int3 dtid : SV_DispatchThreadID)
         position += (mul(float4(sdef_bone[skin_index].r1, 1.0f), m1) * w1).xyz;
 
         position_out[dtid.x] = position;
-        normal_out[dtid.x] = mul(normal_in[dtid.x], (float3x3)rotate_m);
+        normal_out[dtid.x] = mul(normal_in[dtid.x], rotate_m);
     }
 
     uv_out[dtid.x] = uv_in[dtid.x] + uv_morph[dtid.x];

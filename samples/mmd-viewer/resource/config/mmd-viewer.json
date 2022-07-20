@@ -1,9 +1,6 @@
 {
-    "test_module": {
-        "title": "test app"
-    },
     "window": {
-        "title": "你好",
+        "title": "MMD Viewer",
         "width": 2000,
         "height": 1300
     },
