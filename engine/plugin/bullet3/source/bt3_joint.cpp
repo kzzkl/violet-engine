@@ -36,22 +36,40 @@ bt3_joint::bt3_joint(const joint_desc& desc)
     m_constraint->setAngularLowerLimit(convert_vector(desc.min_angular));
     m_constraint->setAngularUpperLimit(convert_vector(desc.max_angular));
 
-    for (int i = 0; i < 3; ++i)
+    for (int i = 0; i < 6; ++i)
     {
-        if (desc.spring_translate_factor[i] != 0)
-        {
-            m_constraint->enableSpring(i, true);
-            m_constraint->setStiffness(i, desc.spring_translate_factor[i]);
-        }
+        m_constraint->enableSpring(i, desc.spring_enable[i]);
+        m_constraint->setStiffness(i, desc.stiffness[i]);
     }
+}
 
-    for (int i = 0; i < 3; ++i)
-    {
-        if (desc.spring_rotate_factor[i] != 0)
-        {
-            m_constraint->enableSpring(i + 3, true);
-            m_constraint->setStiffness(i + 3, desc.spring_rotate_factor[i]);
-        }
-    }
+void bt3_joint::min_linear(const math::float3& linear)
+{
+    m_constraint->setLinearLowerLimit(convert_vector(linear));
+}
+
+void bt3_joint::max_linear(const math::float3& linear)
+{
+    m_constraint->setLinearUpperLimit(convert_vector(linear));
+}
+
+void bt3_joint::min_angular(const math::float3& angular)
+{
+    m_constraint->setAngularLowerLimit(convert_vector(angular));
+}
+
+void bt3_joint::max_angular(const math::float3& angular)
+{
+    m_constraint->setAngularUpperLimit(convert_vector(angular));
+}
+
+void bt3_joint::spring_enable(std::size_t i, bool enable)
+{
+    m_constraint->enableSpring(i, enable);
+}
+
+void bt3_joint::stiffness(std::size_t i, float stiffness)
+{
+    m_constraint->setStiffness(i, stiffness);
 }
 } // namespace ash::physics::bullet3

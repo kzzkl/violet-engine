@@ -62,9 +62,9 @@ struct vs_out
 vs_out vs_main(vs_in vin)
 {
     vs_out result;
-    result.position = mul(mul(float4(vin.position, 1.0f), transform_m), transform_vp);
-    result.world_normal = mul(float4(vin.normal, 0.0f), transform_m).xyz;
-    result.screen_normal = mul(float4(result.world_normal, 0.0f), transform_v).xyz;
+    result.position = mul(float4(vin.position, 1.0f), transform_vp);
+    result.world_normal = vin.normal;
+    result.screen_normal = mul(result.world_normal, (float3x3)transform_v);
     result.uv = vin.uv;
 
     return result;

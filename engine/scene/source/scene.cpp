@@ -37,7 +37,7 @@ bool scene::initialize(const dictionary& config)
     return true;
 }
 
-void scene::on_begin_frame()
+void scene::on_end_frame()
 {
     auto& world = system<ecs::world>();
     world.view<transform>().each([](transform& transform) { transform.reset_sync_count(); });
@@ -68,7 +68,7 @@ void scene::sync_local(ecs::entity root)
             return true;
         }
     };
-    system<core::relation>().each_bfs(root, find_dirty, true);
+    system<core::relation>().each_bfs(root, find_dirty);
 
     auto update_local = [&](ecs::entity entity) {
         if (!world.has_component<transform>(entity))
@@ -128,7 +128,7 @@ void scene::sync_world(ecs::entity root)
             return true;
         }
     };
-    system<core::relation>().each_bfs(root, find_dirty, true);
+    system<core::relation>().each_bfs(root, find_dirty);
 
     auto update_world = [&](ecs::entity entity) {
         if (!world.has_component<transform>(entity))
@@ -206,6 +206,7 @@ void scene::on_entity_link(ecs::entity entity, core::link& link)
                 event.publish<event_exit_scene>(entity);
             }
         }
+        child.mark_dirty();
 
         if (world.has_component<bounding_box>(entity))
         {

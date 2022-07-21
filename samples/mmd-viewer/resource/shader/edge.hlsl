@@ -29,6 +29,7 @@ struct vs_in
 {
     float3 position : POSITION;
     float3 normal : NORMAL;
+    float edge : EDGE;
 };
 
 struct vs_out
@@ -38,11 +39,11 @@ struct vs_out
 
 vs_out vs_main(vs_in vin)
 {
-    float4 position = mul(mul(float4(vin.position, 1.0f), transform_m), transform_vp);
-    float4 normal = mul(mul(float4(vin.normal, 0.0f), transform_m), transform_v);
+    float4 position = mul(float4(vin.position, 1.0f), transform_vp);
+    float3 normal = mul(vin.normal, (float3x3)transform_v);
     float2 screen_normal = normalize(normal.xy);
 
-    position.xy += screen_normal * 0.003f * edge_size * position.w;
+    position.xy += screen_normal * 0.003f * edge_size * vin.edge * position.w;
 
     vs_out result;
     result.position = position;

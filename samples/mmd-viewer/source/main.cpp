@@ -83,7 +83,7 @@ private:
             math::to_radians(10.0f)});
 
         auto& actor_transform = world.component<scene::transform>(m_actor);
-        actor_transform.position(math::float3{0.0f, 0.0f, -5.0f});
+        actor_transform.position(math::float3{0.0f, 0.0f, -10.0f});
         relation.link(m_actor, scene.root());
         relation.link(m_stage, scene.root());
 
@@ -101,8 +101,12 @@ private:
         m_camera = world.create("main camera");
         world.add<core::link, graphics::camera, scene::transform>(m_camera);
 
+        // auto& camera = world.component<graphics::camera>(m_camera);
+        // camera.render_groups |= graphics::RENDER_GROUP_DEBUG;
+
         auto& transform = world.component<scene::transform>(m_camera);
-        transform.position(math::float3{0.0f, 11.0f, -30.0f});
+        transform.position(math::float3{0.0f, 15.0f, -30.0f});
+        transform.rotation_euler(math::float3{math::to_radians(10.0f), 0.0f, 0.0f});
         system<core::relation>().link(m_camera, scene.root());
 
         auto extent = graphics.render_extent();
@@ -149,22 +153,28 @@ private:
         auto& world = system<ecs::world>();
         auto& keyboard = system<window::window>().keyboard();
         auto& mouse = system<window::window>().mouse();
+        auto& camera_transform = world.component<scene::transform>(m_camera);
 
         if (keyboard.key(window::KEYBOARD_KEY_1).release())
         {
             if (mouse.mode() == window::MOUSE_MODE_RELATIVE)
+            {
                 mouse.mode(window::MOUSE_MODE_ABSOLUTE);
+            }
             else
+            {
                 mouse.mode(window::MOUSE_MODE_RELATIVE);
+                m_camera_rotation = math::euler::rotation_quaternion(camera_transform.rotation());
+            }
         }
 
-        auto& camera_transform = world.component<scene::transform>(m_camera);
         if (mouse.mode() == window::MOUSE_MODE_RELATIVE)
         {
-            m_heading += mouse.x() * m_rotate_speed * delta;
-            m_pitch += mouse.y() * m_rotate_speed * delta;
-            m_pitch = std::clamp(m_pitch, -math::PI_PIDIV2, math::PI_PIDIV2);
-            camera_transform.rotation_euler(math::float3{m_pitch, m_heading, 0.0f});
+            m_camera_rotation[1] += mouse.x() * m_rotate_speed * delta;
+            m_camera_rotation[0] += mouse.y() * m_rotate_speed * delta;
+            m_camera_rotation[0] =
+                std::clamp(m_camera_rotation[0], -math::PI_PIDIV2, math::PI_PIDIV2);
+            camera_transform.rotation_euler(m_camera_rotation);
         }
 
         float x = 0, z = 0;
@@ -232,7 +242,7 @@ private:
     std::unique_ptr<graphics::resource_interface> m_render_target;
     std::unique_ptr<graphics::resource_interface> m_depth_stencil_buffer;
 
-    float m_heading = 0.0f, m_pitch = 0.0f;
+    math::float3 m_camera_rotation{};
 
     float m_rotate_speed = 0.2f;
     float m_move_speed = 7.0f;
@@ -241,7 +251,7 @@ private:
 class mmd_viewer_app
 {
 public:
-    mmd_viewer_app() : m_app("resource/config")
+    mmd_viewer_app() : m_app("mmd-viewer/config")
     {
         m_app.install<window::window>();
         m_app.install<core::relation>();

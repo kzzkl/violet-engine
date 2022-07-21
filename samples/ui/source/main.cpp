@@ -107,7 +107,7 @@ private:
 class ui_app
 {
 public:
-    ui_app() : m_app("resource/config") {}
+    ui_app() : m_app("ui/config") {}
 
     void initialize()
     {

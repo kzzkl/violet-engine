@@ -56,8 +56,8 @@ struct rigidbody_desc
     collision_shape_interface* shape;
     float mass;
 
-    float linear_dimmer;
-    float angular_dimmer;
+    float linear_damping;
+    float angular_damping;
     float restitution;
     float friction;
 
@@ -70,6 +70,9 @@ public:
     virtual ~rigidbody_interface() = default;
 
     virtual void mass(float mass) = 0;
+    virtual void damping(float linear_damping, float angular_damping) = 0;
+    virtual void restitution(float restitution) = 0;
+    virtual void friction(float friction) = 0;
     virtual void shape(collision_shape_interface* shape) = 0;
 
     virtual const math::float4x4& transform() const = 0;
@@ -99,14 +102,23 @@ struct joint_desc
     math::float3 min_angular;
     math::float3 max_angular;
 
-    math::float3 spring_translate_factor;
-    math::float3 spring_rotate_factor;
+    bool spring_enable[6];
+    float stiffness[6];
 };
 
 class joint_interface
 {
 public:
     virtual ~joint_interface() = default;
+
+    virtual void min_linear(const math::float3& linear) = 0;
+    virtual void max_linear(const math::float3& linear) = 0;
+
+    virtual void min_angular(const math::float3& angular) = 0;
+    virtual void max_angular(const math::float3& angular) = 0;
+
+    virtual void spring_enable(std::size_t i, bool enable) = 0;
+    virtual void stiffness(std::size_t i, float stiffness) = 0;
 };
 
 struct world_desc

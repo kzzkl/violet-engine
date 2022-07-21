@@ -36,8 +36,8 @@ bt3_rigidbody::bt3_rigidbody(const rigidbody_desc& desc) : m_transform(desc.init
         shape,
         local_inertia);
 
-    info.m_linearDamping = desc.linear_dimmer;
-    info.m_angularDamping = desc.angular_dimmer;
+    info.m_linearDamping = desc.linear_damping;
+    info.m_angularDamping = desc.angular_damping;
     info.m_restitution = desc.restitution;
     info.m_friction = desc.friction;
     info.m_additionalDamping = true;
@@ -63,6 +63,21 @@ void bt3_rigidbody::mass(float mass)
     btVector3 inertia;
     m_rigidbody->getCollisionShape()->calculateLocalInertia(mass, inertia);
     m_rigidbody->setMassProps(mass, inertia);
+}
+
+void bt3_rigidbody::damping(float linear_damping, float angular_damping)
+{
+    m_rigidbody->setDamping(linear_damping, angular_damping);
+}
+
+void bt3_rigidbody::restitution(float restitution)
+{
+    m_rigidbody->setRestitution(restitution);
+}
+
+void bt3_rigidbody::friction(float friction)
+{
+    m_rigidbody->setFriction(friction);
 }
 
 void bt3_rigidbody::shape(collision_shape_interface* shape)

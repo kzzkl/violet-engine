@@ -23,6 +23,9 @@ public:
     virtual ~bt3_rigidbody();
 
     virtual void mass(float mass) override;
+    virtual void damping(float linear_damping, float angular_damping) override;
+    virtual void restitution(float restitution) override;
+    virtual void friction(float friction) override;
     virtual void shape(collision_shape_interface* shape) override;
 
     virtual const math::float4x4& transform() const override;
