@@ -16,7 +16,7 @@ public:
         scene::transform& transform) const noexcept override
     {
         math::float4x4_simd to_world = math::simd::load(rigidbody_transform);
-        math::float4x4_simd offset_inverse = math::simd::load(rigidbody.offset_inverse);
+        math::float4x4_simd offset_inverse = math::simd::load(rigidbody.offset_inverse());
         to_world = math::matrix_simd::mul(offset_inverse, to_world);
         to_world[3] = math::simd::load(transform.to_world()[3]);
         transform.to_world(to_world);
@@ -356,35 +356,35 @@ void mmd_loader::load_physics(ecs::entity entity, const pmx_loader& loader)
         rigidbody_nodes.push_back(node);
 
         auto& rigidbody = world.component<physics::rigidbody>(node);
-        rigidbody.shape = loader.collision_shape(i);
+        rigidbody.shape(loader.collision_shape(i));
 
         switch (pmx_rigidbody.mode)
         {
         case pmx_rigidbody_mode::STATIC:
-            rigidbody.type = physics::rigidbody_type::KINEMATIC;
+            rigidbody.type(physics::rigidbody_type::KINEMATIC);
             break;
         case pmx_rigidbody_mode::DYNAMIC:
-            rigidbody.type = physics::rigidbody_type::DYNAMIC;
+            rigidbody.type(physics::rigidbody_type::DYNAMIC);
             break;
         case pmx_rigidbody_mode::MERGE:
-            rigidbody.type = physics::rigidbody_type::DYNAMIC;
-            rigidbody.reflection = std::make_unique<mmd_merge_rigidbody_transform_reflection>();
+            rigidbody.type(physics::rigidbody_type::DYNAMIC);
+            rigidbody.reflection<mmd_merge_rigidbody_transform_reflection>();
             break;
         default:
             break;
         }
 
-        rigidbody.mass =
-            pmx_rigidbody.mode == pmx_rigidbody_mode::STATIC ? 0.0f : pmx_rigidbody.mass;
-        rigidbody.linear_dimmer = pmx_rigidbody.translate_dimmer;
-        rigidbody.angular_dimmer = pmx_rigidbody.rotate_dimmer;
-        rigidbody.restitution = pmx_rigidbody.repulsion;
-        rigidbody.friction = pmx_rigidbody.friction;
-        rigidbody.collision_group = 1 << pmx_rigidbody.group;
-        rigidbody.collision_mask = pmx_rigidbody.collision_group;
-        rigidbody.offset = math::matrix::mul(
+        rigidbody.mass(
+            pmx_rigidbody.mode == pmx_rigidbody_mode::STATIC ? 0.0f : pmx_rigidbody.mass);
+        rigidbody.linear_damping(pmx_rigidbody.linear_damping);
+        rigidbody.angular_damping(pmx_rigidbody.angular_damping);
+        rigidbody.restitution(pmx_rigidbody.repulsion);
+        rigidbody.friction(pmx_rigidbody.friction);
+        rigidbody.collision_group(1 << pmx_rigidbody.group);
+        rigidbody.collision_mask(pmx_rigidbody.collision_group);
+        rigidbody.offset(math::matrix::mul(
             rigidbody_transform[i],
-            math::matrix::inverse(world.component<scene::transform>(node).to_world()));
+            math::matrix::inverse(world.component<scene::transform>(node).to_world())));
     }
 
     ecs::entity joint_group = world.create("joints");
@@ -395,21 +395,29 @@ void mmd_loader::load_physics(ecs::entity entity, const pmx_loader& loader)
         world.add<core::link, physics::joint>(joint_entity);
         auto& joint = world.component<physics::joint>(joint_entity);
 
-        joint.relation_a = rigidbody_nodes[pmx_joint.rigidbody_a_index];
-        joint.relation_b = rigidbody_nodes[pmx_joint.rigidbody_b_index];
-        joint.min_linear = pmx_joint.translate_min;
-        joint.max_linear = pmx_joint.translate_max;
-        joint.min_angular = pmx_joint.rotate_min;
-        joint.max_angular = pmx_joint.rotate_max;
-        joint.spring_translate_factor = pmx_joint.spring_translate_factor;
-        joint.spring_rotate_factor = pmx_joint.spring_rotate_factor;
+        joint.min_linear(pmx_joint.translate_min);
+        joint.max_linear(pmx_joint.translate_max);
+        joint.min_angular(pmx_joint.rotate_min);
+        joint.max_angular(pmx_joint.rotate_max);
 
-        math::float4_simd position = math::simd::load(pmx_joint.translate);
-        math::float4_simd rotation = math::simd::load(pmx_joint.rotate);
+        joint.stiffness(0, pmx_joint.spring_translate_factor[0]);
+        joint.stiffness(1, pmx_joint.spring_translate_factor[1]);
+        joint.stiffness(2, pmx_joint.spring_translate_factor[2]);
+        joint.stiffness(3, pmx_joint.spring_rotate_factor[0]);
+        joint.stiffness(4, pmx_joint.spring_rotate_factor[1]);
+        joint.stiffness(5, pmx_joint.spring_rotate_factor[2]);
+
+        joint.spring_enable(0, pmx_joint.spring_translate_factor[0] != 0.0f);
+        joint.spring_enable(1, pmx_joint.spring_translate_factor[1] != 0.0f);
+        joint.spring_enable(2, pmx_joint.spring_translate_factor[2] != 0.0f);
+        joint.spring_enable(3, pmx_joint.spring_rotate_factor[0] != 0.0f);
+        joint.spring_enable(4, pmx_joint.spring_rotate_factor[1] != 0.0f);
+        joint.spring_enable(5, pmx_joint.spring_rotate_factor[2] != 0.0f);
+
         math::float4x4_simd joint_world = math::matrix_simd::affine_transform(
             math::simd::set(1.0f, 1.0f, 1.0f, 0.0f),
-            rotation,
-            position);
+            math::simd::load(pmx_joint.rotate),
+            math::simd::load(pmx_joint.translate));
 
         math::float4x4_simd inverse_a = math::matrix_simd::inverse(
             math::simd::load(rigidbody_transform[pmx_joint.rigidbody_a_index]));
@@ -419,14 +427,27 @@ void mmd_loader::load_physics(ecs::entity entity, const pmx_loader& loader)
             math::simd::load(rigidbody_transform[pmx_joint.rigidbody_b_index]));
         math::float4x4_simd offset_b = math::matrix_simd::mul(joint_world, inverse_b);
 
-        math::float4_simd scale;
-        math::matrix_simd::decompose(offset_a, scale, rotation, position);
-        math::simd::store(position, joint.relative_position_a);
-        math::simd::store(rotation, joint.relative_rotation_a);
+        math::float4_simd scale_a, position_a, rotation_a;
+        math::matrix_simd::decompose(offset_a, scale_a, rotation_a, position_a);
+        math::float3 relative_position_a;
+        math::float4 relative_rotation_a;
+        math::simd::store(position_a, relative_position_a);
+        math::simd::store(rotation_a, relative_rotation_a);
 
-        math::matrix_simd::decompose(offset_b, scale, rotation, position);
-        math::simd::store(position, joint.relative_position_b);
-        math::simd::store(rotation, joint.relative_rotation_b);
+        math::float4_simd scale_b, position_b, rotation_b;
+        math::matrix_simd::decompose(offset_b, scale_b, rotation_b, position_b);
+        math::float3 relative_position_b;
+        math::float4 relative_rotation_b;
+        math::simd::store(position_b, relative_position_b);
+        math::simd::store(rotation_b, relative_rotation_b);
+
+        joint.relative_rigidbody(
+            rigidbody_nodes[pmx_joint.rigidbody_a_index],
+            relative_position_a,
+            relative_rotation_a,
+            rigidbody_nodes[pmx_joint.rigidbody_b_index],
+            relative_position_b,
+            relative_rotation_b);
 
         relation.link(joint_entity, joint_group);
     }

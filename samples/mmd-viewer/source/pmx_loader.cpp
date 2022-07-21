@@ -630,8 +630,8 @@ bool pmx_loader::load_rigidbody(std::ifstream& fin)
         rigidbody.rotate = math::quaternion::rotation_euler(rotate);
 
         read<float>(fin, rigidbody.mass);
-        read<float>(fin, rigidbody.translate_dimmer);
-        read<float>(fin, rigidbody.rotate_dimmer);
+        read<float>(fin, rigidbody.linear_damping);
+        read<float>(fin, rigidbody.angular_damping);
         read<float>(fin, rigidbody.repulsion);
         read<float>(fin, rigidbody.friction);
         read<pmx_rigidbody_mode>(fin, rigidbody.mode);

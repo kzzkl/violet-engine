@@ -77,8 +77,8 @@ void physics::shutdown()
     system<core::event>().unsubscribe<scene::event_enter_scene>("physics");
 
     auto& world = system<ecs::world>();
-    world.view<joint>().each([](joint& joint) { joint.interface = nullptr; });
-    world.view<rigidbody>().each([](rigidbody& rigidbody) { rigidbody.interface = nullptr; });
+    world.view<joint>().each([](joint& joint) { joint.reset_interface(nullptr); });
+    world.view<rigidbody>().each([](rigidbody& rigidbody) { rigidbody.reset_interface(nullptr); });
 
     m_world = nullptr;
     m_plugin.unload();
@@ -98,14 +98,14 @@ void physics::simulation()
 
     world.view<rigidbody, scene::transform>().each(
         [&](rigidbody& rigidbody, scene::transform& transform) {
-            if (rigidbody.type == rigidbody_type::KINEMATIC && transform.sync_count() != 0)
+            if (rigidbody.type() == rigidbody_type::KINEMATIC && transform.sync_count() != 0)
             {
                 math::float4x4_simd to_world = math::simd::load(transform.to_world());
-                math::float4x4_simd offset = math::simd::load(rigidbody.offset);
+                math::float4x4_simd offset = math::simd::load(rigidbody.offset());
 
                 math::float4x4 rigidbody_to_world;
                 math::simd::store(math::matrix_simd::mul(offset, to_world), rigidbody_to_world);
-                rigidbody.interface->transform(rigidbody_to_world);
+                rigidbody.interface()->transform(rigidbody_to_world);
             }
         });
 
@@ -120,8 +120,7 @@ void physics::simulation()
         ecs::entity entity = m_user_data[updated->user_data_index].entity;
         auto& r = world.component<rigidbody>(entity);
         auto& t = world.component<scene::transform>(entity);
-
-        r.reflection->reflect(updated->transform(), r, t);
+        r.sync_world(updated->transform(), t);
     }
 
     system<scene::scene>().sync_world();
@@ -144,27 +143,26 @@ void physics::initialize_entity(ecs::entity entity)
         auto& r = world.component<rigidbody>(node);
         auto& transform = world.component<scene::transform>(node);
 
-        if (r.interface == nullptr)
+        if (r.interface() == nullptr)
         {
             rigidbody_desc desc = {};
-            desc.type = r.type;
-            desc.mass = r.mass;
-            desc.linear_dimmer = r.linear_dimmer;
-            desc.angular_dimmer = r.angular_dimmer;
-            desc.restitution = r.restitution;
-            desc.friction = r.friction;
-            desc.shape = r.shape;
+            desc.type = r.type();
+            desc.mass = r.mass();
+            desc.linear_damping = r.linear_damping();
+            desc.angular_damping = r.angular_damping();
+            desc.restitution = r.restitution();
+            desc.friction = r.friction();
+            desc.shape = r.shape();
             math::float4x4_simd to_world = math::simd::load(transform.to_world());
-            math::float4x4_simd offset = math::simd::load(r.offset);
+            math::float4x4_simd offset = math::simd::load(r.offset());
             math::simd::store(math::matrix_simd::mul(offset, to_world), desc.initial_transform);
-            math::simd::store(math::matrix_simd::inverse(offset), r.offset_inverse);
 
-            r.interface.reset(m_plugin.factory().make_rigidbody(desc));
-            r.interface->user_data_index = m_user_data.size();
+            r.reset_interface(m_plugin.factory().make_rigidbody(desc));
+            r.interface()->user_data_index = m_user_data.size();
             m_user_data.push_back({node});
-
-            m_world->add(r.interface.get(), r.collision_group, r.collision_mask);
         }
+
+        m_world->add(r.interface(), r.collision_group(), r.collision_mask());
     };
 
     auto init_joint = [&, this](ecs::entity node) {
@@ -172,27 +170,31 @@ void physics::initialize_entity(ecs::entity entity)
             return;
 
         auto& j = world.component<joint>(node);
-        if (j.interface != nullptr)
-            return;
+        if (j.interface() == nullptr)
+        {
+            joint_desc desc = {};
+            desc.relative_position_a = j.relative_position_a();
+            desc.relative_rotation_a = j.relative_rotation_a();
+            desc.relative_position_b = j.relative_position_b();
+            desc.relative_rotation_b = j.relative_rotation_b();
+            desc.min_linear = j.min_linear();
+            desc.max_linear = j.max_linear();
+            desc.min_angular = j.min_angular();
+            desc.max_angular = j.max_angular();
 
-        joint_desc desc = {};
-        desc.relative_position_a = j.relative_position_a;
-        desc.relative_rotation_a = j.relative_rotation_a;
-        desc.relative_position_b = j.relative_position_b;
-        desc.relative_rotation_b = j.relative_rotation_b;
-        desc.min_linear = j.min_linear;
-        desc.max_linear = j.max_linear;
-        desc.min_angular = j.min_angular;
-        desc.max_angular = j.max_angular;
-        desc.spring_translate_factor = j.spring_translate_factor;
-        desc.spring_rotate_factor = j.spring_rotate_factor;
+            for (std::size_t i = 0; i < 6; ++i)
+            {
+                desc.spring_enable[i] = j.spring_enable()[i];
+                desc.stiffness[i] = j.stiffness()[i];
+            }
 
-        desc.rigidbody_a = world.component<rigidbody>(j.relation_a).interface.get();
-        desc.rigidbody_b = world.component<rigidbody>(j.relation_b).interface.get();
+            desc.rigidbody_a = world.component<rigidbody>(j.relative_a()).interface();
+            desc.rigidbody_b = world.component<rigidbody>(j.relative_b()).interface();
 
-        j.interface.reset(m_plugin.factory().make_joint(desc));
+            j.reset_interface(m_plugin.factory().make_joint(desc));
+        }
 
-        m_world->add(j.interface.get());
+        m_world->add(j.interface());
     };
 
     relation.each_bfs(entity, init_rigidbody);

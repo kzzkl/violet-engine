@@ -282,8 +282,8 @@ struct pmx_rigidbody
     math::float3 translate;
     math::float4 rotate;
     float mass;
-    float translate_dimmer;
-    float rotate_dimmer;
+    float linear_damping;
+    float angular_damping;
     float repulsion;
     float friction;
 
