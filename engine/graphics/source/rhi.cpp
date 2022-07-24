@@ -130,8 +130,8 @@ std::unique_ptr<render_pipeline_interface> rhi::make_render_pipeline(
             ++pass_desc.reference_count;
         }
 
-        pass_desc.vertex_shader = pass.vertex_shader.c_str();
-        pass_desc.pixel_shader = pass.pixel_shader.c_str();
+        pass_desc.vertex_shader = pass.vertex_shader.empty() ? nullptr : pass.vertex_shader.c_str();
+        pass_desc.pixel_shader = pass.pixel_shader.empty() ? nullptr : pass.pixel_shader.c_str();
 
         pass_desc.blend = pass.blend;
         pass_desc.depth_stencil = pass.depth_stencil;

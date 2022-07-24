@@ -212,7 +212,7 @@ public:
         t1 = _mm_mul_ps(t1, t2);
         t2 = _mm_sub_ps(t3, t1);
 
-        return _mm_and_ps(t2, simd::mask<0x1110>());
+        return _mm_and_ps(t2, simd::mask_v<1, 1, 1, 0>);
     }
 
     inline static float4_simd lerp(float4_simd a, float4_simd b, float m)
@@ -230,13 +230,13 @@ public:
 
     inline static float length_vec3(float4_simd v)
     {
-        __m128 t1 = length_vec3_v(_mm_and_ps(v, simd::mask<0x1110>()));
+        __m128 t1 = length_vec3_v(_mm_and_ps(v, simd::mask_v<1, 1, 1, 0>));
         return _mm_cvtss_f32(t1);
     }
 
     inline static float4_simd length_vec3_v(float4_simd v)
     {
-        return length_v(_mm_and_ps(v, simd::mask<0x1110>()));
+        return length_v(_mm_and_ps(v, simd::mask_v<1, 1, 1, 0>));
     }
 
     inline static float length(float4_simd v)
@@ -253,7 +253,7 @@ public:
 
     inline static float4_simd normalize_vec3(float4_simd v)
     {
-        return normalize(_mm_and_ps(v, simd::mask<0x1110>()));
+        return normalize(_mm_and_ps(v, simd::mask_v<1, 1, 1, 0>));
     }
 
     inline static float4_simd normalize(float4_simd v)

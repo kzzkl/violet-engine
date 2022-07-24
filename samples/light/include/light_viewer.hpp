@@ -25,6 +25,7 @@ private:
 
     ecs::entity m_cube;
     ecs::entity m_sphere;
+    ecs::entity m_plane;
     ecs::entity m_light;
 
     graphics::geometry_data m_cube_mesh_data;
@@ -38,8 +39,7 @@ private:
     std::unique_ptr<graphics::resource_interface> m_sphere_index_buffer;
 
     ecs::entity m_camera;
-    float m_heading = 0.0f;
-    float m_pitch = 0.0f;
+    math::float3 m_camera_rotation{};
     float m_rotate_speed = 0.8f;
     float m_move_speed = 7.0f;
 

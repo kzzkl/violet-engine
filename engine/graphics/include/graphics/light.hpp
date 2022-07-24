@@ -1,7 +1,7 @@
 #pragma once
 
 #include "graphics/pipeline_parameter.hpp"
-#include "math/math.hpp"
+#include "graphics/shadow_map.hpp"
 
 namespace ash::graphics
 {
@@ -17,8 +17,12 @@ public:
     void color(const math::float3& color) noexcept { m_color = color; }
     const math::float3& color() const noexcept { return m_color; }
 
+    shadow_map* shadow() const noexcept { return m_shadow_map.get(); }
+
 private:
     math::float3 m_color;
+
+    std::unique_ptr<shadow_map> m_shadow_map;
 };
 
 class light_pipeline_parameter : public pipeline_parameter

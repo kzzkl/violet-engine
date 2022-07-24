@@ -5,6 +5,7 @@ namespace ash::graphics
 {
 directional_light::directional_light() : m_color{1.0f, 1.0f, 1.0f}
 {
+    m_shadow_map = std::make_unique<shadow_map>(2048);
 }
 
 light_pipeline_parameter::light_pipeline_parameter() : pipeline_parameter("ash_light")

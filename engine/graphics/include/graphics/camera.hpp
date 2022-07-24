@@ -37,8 +37,9 @@ class camera
 public:
     camera() noexcept;
 
-    void field_of_view(float fov) noexcept;
-    void clipping_planes(float near_z, float far_z) noexcept;
+    void perspective(float fov, float near_z, float far_z);
+    void orthographic(float width, float near_z, float far_z);
+
     void flip_y(bool flip) noexcept;
 
     void render_target(resource_interface* render_target) noexcept;
@@ -64,9 +65,29 @@ public:
 private:
     void update_projection() noexcept;
 
-    float m_fov;
-    float m_near_z;
-    float m_far_z;
+    enum projection_type
+    {
+        PROJECTION_TYPE_PERSPECTIVE,
+        PROJECTION_TYPE_ORTHOGRAPHIC
+    };
+
+    projection_type m_projection_type;
+    union {
+        struct
+        {
+            float fov;
+            float near_z;
+            float far_z;
+        } perspective;
+
+        struct
+        {
+            float width;
+            float near_z;
+            float far_z;
+        } orthographic;
+    } m_data;
+
     bool m_flip_y;
     math::float4x4 m_projection;
 

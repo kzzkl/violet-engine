@@ -12,9 +12,10 @@ class debug_pipeline : public render_pipeline
 {
 public:
     debug_pipeline();
-    virtual void render(const render_scene& scene, render_command_interface* command) override;
 
 private:
+    virtual void on_render(const render_scene& scene, render_command_interface* command) override;
+
     std::unique_ptr<render_pipeline_interface> m_interface;
 };
 

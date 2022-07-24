@@ -1,19 +1,17 @@
 #pragma once
 
 #include "core/context.hpp"
-#include "graphics/compute_pipeline.hpp"
 #include "graphics/graphics_debug.hpp"
-#include "graphics/mesh_render.hpp"
-#include "graphics/skinned_mesh.hpp"
-#include "scene/bounding_box.hpp"
-#include "scene/transform.hpp"
-#include "type_trait.hpp"
 
 namespace ash::graphics
 {
 class light_pipeline_parameter;
 class sky_pipeline_parameter;
 class sky_pipeline;
+class shadow_pipeline;
+class shadow_map_pipeline_parameter;
+class compute_pipeline;
+
 class graphics : public core::system_base
 {
 public:
@@ -41,9 +39,13 @@ public:
     resource_extent render_extent() const noexcept;
 
 private:
-    void skin_meshes();
+    void skinning();
     void render();
     void render_camera(ecs::entity camera_entity);
+    void render_shadow_map(
+        ecs::entity light_entity,
+        const std::array<math::float4, 8>& frustum_vertices,
+        render_command_interface* command);
     void present();
 
     bool is_editor_mode() const noexcept { return m_editor_camera != ecs::INVALID_ENTITY; }
@@ -62,6 +64,11 @@ private:
     std::unique_ptr<resource_interface> m_sky_texture;
     std::unique_ptr<sky_pipeline_parameter> m_sky_parameter;
     std::unique_ptr<sky_pipeline> m_sky_pipeline;
+
+    // Shadow.
+    std::unique_ptr<shadow_pipeline> m_shadow_pipeline;
+    std::vector<std::unique_ptr<shadow_map_pipeline_parameter>> m_shadow_parameter_pool;
+    std::size_t m_shadow_parameter_counter;
 
     std::unique_ptr<graphics_debug> m_debug;
 };

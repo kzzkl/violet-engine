@@ -476,8 +476,8 @@ void mmd_animation::ik_solve_core(
             }
         }
 
-        math::float4x4_simd link_inverse =
-            math::matrix_simd::inverse(math::simd::load(skeleton.world[link_node.index]));
+        math::float4x4_simd link_inverse = math::matrix_simd::inverse_transform_no_scale(
+            math::simd::load(skeleton.world[link_node.index]));
 
         math::float4_simd link_ik_position = math::matrix_simd::mul(ik_position, link_inverse);
         math::float4_simd link_target_position =
@@ -551,8 +551,8 @@ void mmd_animation::ik_solve_plane(
 
     auto& target_node = world.component<mmd_node>(ik.ik_target);
     math::float4_simd target_position = math::simd::load(skeleton.world[target_node.index][3]);
-    math::float4x4_simd link_inverse =
-        math::matrix_simd::inverse(math::simd::load(skeleton.world[link_node.index]));
+    math::float4x4_simd link_inverse = math::matrix_simd::inverse_transform_no_scale(
+        math::simd::load(skeleton.world[link_node.index]));
 
     math::float4_simd link_ik_vec = math::matrix_simd::mul(ik_position, link_inverse);
     link_ik_vec = math::vector_simd::normalize_vec3(link_ik_vec);

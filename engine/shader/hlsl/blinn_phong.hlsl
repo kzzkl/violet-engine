@@ -61,7 +61,7 @@ vs_out vs_main(vs_in vin)
 
 float4 ps_main(vs_out pin) : SV_TARGET
 {
-    float3 ambient_light = float3(0.1f, 0.1f, 0.1f);
+    float3 ambient_light = float3(0.3f, 0.3f, 0.3f);
 
     float3 normal = normalize(pin.normal);
     float3 view_direction = normalize(camera_position - pin.world_position);
@@ -71,8 +71,9 @@ float4 ps_main(vs_out pin) : SV_TARGET
 
     for (uint i = 0; i < directional_light_count; ++i)
     {
-        float3 half_direction = normalize(directional_light[i].direction + view_direction);
-        float incident_cos = dot(normal, directional_light[i].direction);
+        float3 light_direction = -directional_light[i].direction;
+        float3 half_direction = normalize(light_direction + view_direction);
+        float incident_cos = dot(normal, light_direction);
 
         float3 light_strength = max(0.0f, incident_cos) * directional_light[i].color;
 

@@ -154,7 +154,7 @@ public:
 struct quaternion_simd
 {
 public:
-    static inline float4_simd identity() { return simd::identity_row<3>(); }
+    static inline float4_simd identity() { return simd::identity_row_v<3>; }
 
     static inline float4_simd rotation_axis(float4_simd axis, float radians)
     {
@@ -224,7 +224,7 @@ public:
 
     static inline float4_simd mul_vec(float4_simd q, float4_simd v)
     {
-        __m128 t1 = _mm_and_ps(v, simd::mask<0x1110>());
+        __m128 t1 = _mm_and_ps(v, simd::mask_v<1, 1, 1, 0>);
         __m128 t2 = conjugate(q);
         t2 = mul(t1, t2);
         return mul(q, t2);

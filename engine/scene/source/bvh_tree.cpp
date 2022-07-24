@@ -126,7 +126,7 @@ std::size_t bvh_tree::update(std::size_t proxy_id, const bounding_volume_aabb& a
     return add(aabb);
 }
 
-void bvh_tree::frustum_culling(const std::vector<math::float4>& frustum)
+void bvh_tree::frustum_culling(const std::array<math::float4, 6>& frustum)
 {
     if (m_root_index == -1)
         return;

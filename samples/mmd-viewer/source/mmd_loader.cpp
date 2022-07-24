@@ -153,7 +153,7 @@ void mmd_loader::load_hierarchy(ecs::entity entity, const pmx_loader& loader)
         auto& node_transform = world.component<scene::transform>(skeleton.nodes[i]);
 
         math::float4x4_simd initial = math::simd::load(node_transform.to_world());
-        math::float4x4_simd inverse = math::matrix_simd::inverse(initial);
+        math::float4x4_simd inverse = math::matrix_simd::inverse_transform_no_scale(initial);
         math::simd::store(inverse, bone.initial_inverse);
 
         bone.layer = pmx_bone.layer;
@@ -419,11 +419,11 @@ void mmd_loader::load_physics(ecs::entity entity, const pmx_loader& loader)
             math::simd::load(pmx_joint.rotate),
             math::simd::load(pmx_joint.translate));
 
-        math::float4x4_simd inverse_a = math::matrix_simd::inverse(
+        math::float4x4_simd inverse_a = math::matrix_simd::inverse_transform_no_scale(
             math::simd::load(rigidbody_transform[pmx_joint.rigidbody_a_index]));
         math::float4x4_simd offset_a = math::matrix_simd::mul(joint_world, inverse_a);
 
-        math::float4x4_simd inverse_b = math::matrix_simd::inverse(
+        math::float4x4_simd inverse_b = math::matrix_simd::inverse_transform_no_scale(
             math::simd::load(rigidbody_transform[pmx_joint.rigidbody_b_index]));
         math::float4x4_simd offset_b = math::matrix_simd::mul(joint_world, inverse_b);
 

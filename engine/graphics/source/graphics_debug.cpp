@@ -72,7 +72,7 @@ debug_pipeline::debug_pipeline()
     m_interface = rhi::make_render_pipeline(pipeline_info);
 }
 
-void debug_pipeline::render(const render_scene& scene, render_command_interface* command)
+void debug_pipeline::on_render(const render_scene& scene, render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
@@ -87,17 +87,17 @@ void debug_pipeline::render(const render_scene& scene, render_command_interface*
     command->scissor(&extent, 1);
 
     command->parameter(0, scene.camera_parameter);
-    for (auto& unit : scene.units)
+    for (auto& item : scene.items)
     {
-        if (unit.index_start == unit.index_end)
+        if (item.index_start == item.index_end)
             continue;
 
         command->input_assembly_state(
-            unit.vertex_buffers,
+            item.vertex_buffers,
             2,
-            unit.index_buffer,
+            item.index_buffer,
             PRIMITIVE_TOPOLOGY_LINE_LIST);
-        command->draw_indexed(unit.index_start, unit.index_end, unit.vertex_base);
+        command->draw_indexed(item.index_start, item.index_end, item.vertex_base);
     }
 
     command->end(m_interface.get());

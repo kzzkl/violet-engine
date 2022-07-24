@@ -5,6 +5,7 @@ add_custom_target("graphics_shader_generater" ALL)
 set(SHADERS "")
 list(APPEND SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/hlsl/blinn_phong.hlsl;vert;frag")
 list(APPEND SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/hlsl/debug.hlsl;vert;frag")
+list(APPEND SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/hlsl/shadow.hlsl;vert;frag")
 list(APPEND SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/hlsl/sky.hlsl;vert;frag")
 list(APPEND SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/hlsl/ui.hlsl;vert;frag")
 target_shader_compile(

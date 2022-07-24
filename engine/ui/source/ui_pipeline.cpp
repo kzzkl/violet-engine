@@ -131,7 +131,7 @@ ui_pipeline::ui_pipeline()
     m_interface = graphics::rhi::make_render_pipeline(ui_pipeline_info);
 }
 
-void ui_pipeline::render(
+void ui_pipeline::on_render(
     const graphics::render_scene& scene,
     graphics::render_command_interface* command)
 {
@@ -146,16 +146,16 @@ void ui_pipeline::render(
     extent.max_x = width;
     extent.max_y = height;
 
-    command->parameter(1, scene.units[0].parameters[1]); // offset
-    command->parameter(2, scene.units[0].parameters[2]); // mvp
-    for (auto& unit : scene.units)
+    command->parameter(1, scene.items[0].additional_parameters[1]); // offset
+    command->parameter(2, scene.items[0].additional_parameters[2]); // mvp
+    for (auto& item : scene.items)
     {
-        command->scissor(&unit.scissor, 1);
+        command->scissor(&item.scissor, 1);
 
-        command->parameter(0, unit.parameters[0]); // material
+        command->parameter(0, item.additional_parameters[0]); // material
 
-        command->input_assembly_state(unit.vertex_buffers, 4, unit.index_buffer);
-        command->draw_indexed(unit.index_start, unit.index_end, unit.vertex_base);
+        command->input_assembly_state(item.vertex_buffers, 4, item.index_buffer);
+        command->draw_indexed(item.index_start, item.index_end, item.vertex_base);
     }
 
     command->end(m_interface.get());

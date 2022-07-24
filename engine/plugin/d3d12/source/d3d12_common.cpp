@@ -24,6 +24,8 @@ DXGI_FORMAT d3d12_utility::convert_format(resource_format format)
         return DXGI_FORMAT_R32G32B32A32_UINT;
     case RESOURCE_FORMAT_D24_UNORM_S8_UINT:
         return DXGI_FORMAT_D24_UNORM_S8_UINT;
+    case RESOURCE_FORMAT_D32_FLOAT:
+        return DXGI_FORMAT_D32_FLOAT;
     default:
         throw d3d12_exception("Invalid resource format.");
     };
@@ -51,6 +53,8 @@ resource_format d3d12_utility::convert_format(DXGI_FORMAT format)
         return RESOURCE_FORMAT_R32G32B32A32_UINT;
     case DXGI_FORMAT_D24_UNORM_S8_UINT:
         return RESOURCE_FORMAT_D24_UNORM_S8_UINT;
+    case DXGI_FORMAT_D32_FLOAT:
+        return RESOURCE_FORMAT_D32_FLOAT;
     default:
         throw d3d12_exception("Invalid resource format.");
     };

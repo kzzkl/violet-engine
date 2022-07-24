@@ -141,7 +141,7 @@ void scene::sync_world(ecs::entity root)
         math::float4x4_simd parent_to_world = math::simd::load(parent.to_world());
         math::float4x4_simd to_world = math::simd::load(node_transform.to_world());
         math::float4x4_simd to_parent =
-            math::matrix_simd::mul(to_world, math::matrix_simd::inverse(parent_to_world));
+            math::matrix_simd::mul(to_world, math::matrix_simd::inverse_transform(parent_to_world));
         node_transform.sync(to_parent);
 
         return true;
@@ -154,10 +154,9 @@ void scene::sync_world(ecs::entity root)
     }
 }
 
-void scene::frustum_culling(const std::vector<math::float4>& frustum)
+void scene::update_bounding_box()
 {
     auto& world = system<ecs::world>();
-
     world.view<transform, bounding_box>().each(
         [this](transform& transform, bounding_box& bounding_box) {
             if (bounding_box.dynamic() && transform.sync_count() != 0)
@@ -170,12 +169,20 @@ void scene::frustum_culling(const std::vector<math::float4>& frustum)
                 }
             }
         });
+}
 
-    //m_static_bvh.frustum_culling(frustum);
+void scene::frustum_culling(const std::array<math::float4, 6>& frustum)
+{
+    auto& world = system<ecs::world>();
+
+    // m_static_bvh.frustum_culling(frustum);
     m_dynamic_bvh.frustum_culling(frustum);
 
     world.view<transform, bounding_box>().each(
         [this](transform& transform, bounding_box& bounding_box) {
+            if (bounding_box.proxy_id() == -1)
+                return;
+
             if (bounding_box.dynamic())
                 bounding_box.visible(m_dynamic_bvh.visible(bounding_box.proxy_id()));
             else

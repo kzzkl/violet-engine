@@ -21,6 +21,85 @@ struct alignas(16) float4x4_simd
 struct simd
 {
 public:
+    template <typename T>
+    struct alignas(16) convert;
+
+    template <>
+    struct alignas(16) convert<float>
+    {
+        union {
+            float t[4];
+            __m128 v;
+        };
+
+        inline operator __m128() const { return v; }
+    };
+
+    template <>
+    struct alignas(16) convert<uint32_t>
+    {
+        union {
+            uint32_t t[4];
+            __m128 v;
+        };
+
+        inline operator __m128() const { return v; }
+    };
+
+    template <std::uint32_t C1, std::uint32_t C2, std::uint32_t C3, std::uint32_t C4>
+    struct mask
+    {
+        static_assert(C1 < 2 && C2 < 2 && C3 < 2 && C4 < 2);
+        static constexpr convert<uint32_t> value =
+            {0xFFFFFFFF * C1, 0xFFFFFFFF * C2, 0xFFFFFFFF * C3, 0xFFFFFFFF * C4};
+    };
+
+    template <std::uint32_t C1, std::uint32_t C2, std::uint32_t C3, std::uint32_t C4>
+    static constexpr auto mask_v = mask<C1, C2, C3, C4>::value;
+
+    template <std::uint32_t C1, std::uint32_t C2, std::uint32_t C3, std::uint32_t C4>
+    struct shuffle_control
+    {
+        static_assert(C1 < 4 && C2 < 4 && C3 < 4 && C4 < 4);
+        static constexpr std::uint32_t value = (C4 << 6) | (C3 << 4) | (C2 << 2) | C1;
+    };
+
+    template <std::uint32_t C1, std::uint32_t C2, std::uint32_t C3, std::uint32_t C4>
+    static constexpr auto shuffle_control_v = shuffle_control<C1, C2, C3, C4>::value;
+
+    template <std::uint32_t I>
+    struct identity_row;
+
+    template <>
+    struct identity_row<0>
+    {
+        static constexpr convert<float> value = {1.0f, 0.0f, 0.0f, 0.0f};
+    };
+
+    template <>
+    struct identity_row<1>
+    {
+        static constexpr convert<float> value = {0.0f, 1.0f, 0.0f, 0.0f};
+    };
+
+    template <>
+    struct identity_row<2>
+    {
+        static constexpr convert<float> value = {0.0f, 0.0f, 1.0f, 0.0f};
+    };
+
+    template <>
+    struct identity_row<3>
+    {
+        static constexpr convert<float> value = {0.0f, 0.0f, 0.0f, 1.0f};
+    };
+
+    template <std::uint32_t I>
+    static constexpr auto identity_row_v = identity_row<I>::value;
+
+    static constexpr convert<float> one = {1.0f, 1.0f, 1.0f, 1.0f};
+
+public:
     template <std::uint32_t I>
     static inline float get(float4_simd v)
     {
@@ -38,20 +117,7 @@ public:
     static inline float4_simd set(float v) { return _mm_set_ps1(v); }
     static inline float4_simd set(float x, float y, float z, float w)
     {
-        return _mm_setr_ps(x, y, z, w);
-    }
-    static inline float4_simd set(
-        std::uint32_t x,
-        std::uint32_t y,
-        std::uint32_t z,
-        std::uint32_t w)
-    {
-        union {
-            __m128 v;
-            __m128i i;
-        };
-        i = _mm_setr_epi32(x, y, z, w);
-        return v;
+        return _mm_set_ps(w, z, y, x);
     }
 
     static inline float4x4_simd set(
@@ -79,17 +145,15 @@ public:
             set(m41, m42, m43, m44)};
     }
 
-    template <std::uint32_t Mask>
-    static inline float4_simd mask()
-    {
-        static const float4_simd value = make_mask(Mask);
-        return value;
-    }
-
     template <std::uint32_t C1, std::uint32_t C2, std::uint32_t C3, std::uint32_t C4>
     static inline float4_simd shuffle(float4_simd a, float4_simd b)
     {
-        return _mm_shuffle_ps(a, b, shuffle_control<C1, C2, C3, C4>::value);
+        if constexpr (C1 == 0 && C2 == 1 && C3 == 0 && C4 == 1)
+            return _mm_movelh_ps(a, b);
+        else if constexpr (C1 == 2 && C2 == 3 && C3 == 2 && C4 == 3)
+            return _mm_movehl_ps(b, a);
+        else
+            return _mm_shuffle_ps(a, b, shuffle_control_v<C1, C2, C3, C4>);
     }
 
     template <std::uint32_t C1, std::uint32_t C2, std::uint32_t C3, std::uint32_t C4>
@@ -216,47 +280,6 @@ public:
         _mm_store_ps(&destination[1][0], source[1]);
         _mm_store_ps(&destination[2][0], source[2]);
         _mm_store_ps(&destination[3][0], source[3]);
-    }
-
-    template <std::uint32_t I>
-    static inline float4_simd identity_row()
-    {
-        if constexpr (I == 0)
-        {
-            static const float4_simd result = set(1.0f, 0.0f, 0.0f, 0.0f);
-            return result;
-        }
-        else if constexpr (I == 1)
-        {
-            static const float4_simd result = set(0.0f, 1.0f, 0.0f, 0.0f);
-            return result;
-        }
-        else if constexpr (I == 2)
-        {
-            static const float4_simd result = set(0.0f, 0.0f, 1.0f, 0.0f);
-            return result;
-        }
-        else if constexpr (I == 3)
-        {
-            static const float4_simd result = set(0.0f, 0.0f, 0.0f, 1.0f);
-            return result;
-        }
-    }
-
-private:
-    template <std::uint32_t C1, std::uint32_t C2, std::uint32_t C3, std::uint32_t C4>
-    struct shuffle_control
-    {
-        static constexpr std::uint32_t value = (C4 << 6) | (C3 << 4) | (C2 << 2) | C1;
-    };
-
-    static inline float4_simd make_mask(std::uint32_t mask)
-    {
-        std::uint32_t x = (mask & 0x1000) == 0x1000 ? 0xFFFFFFFF : 0x00000000;
-        std::uint32_t y = (mask & 0x0100) == 0x0100 ? 0xFFFFFFFF : 0x00000000;
-        std::uint32_t z = (mask & 0x0010) == 0x0010 ? 0xFFFFFFFF : 0x00000000;
-        std::uint32_t w = (mask & 0x0001) == 0x0001 ? 0xFFFFFFFF : 0x00000000;
-        return set(x, y, z, w);
     }
 };
 } // namespace ash::math
