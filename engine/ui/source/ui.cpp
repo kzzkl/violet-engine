@@ -30,12 +30,14 @@ bool ui::initialize(const dictionary& config)
     load_font("NotoSans-Regular", "engine/font/NotoSans-Regular.ttf", 13);
 
     // Register ui pipeline parameter layout.
-    graphics::rhi::register_pipeline_parameter_layout("ui_mvp", mvp_pipeline_parameter::layout());
     graphics::rhi::register_pipeline_parameter_layout(
-        "ui_offset",
+        "ash_ui_mvp",
+        mvp_pipeline_parameter::layout());
+    graphics::rhi::register_pipeline_parameter_layout(
+        "ash_ui_offset",
         offset_pipeline_parameter::layout());
     graphics::rhi::register_pipeline_parameter_layout(
-        "ui_material",
+        "ash_ui_material",
         material_pipeline_parameter::layout());
 
     m_pipeline = std::make_unique<ui_pipeline>();

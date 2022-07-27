@@ -2,6 +2,7 @@
 
 #include "core/context.hpp"
 #include "graphics/graphics_debug.hpp"
+#include "scene/transform.hpp"
 
 namespace ash::graphics
 {
@@ -42,11 +43,10 @@ private:
     void skinning();
     void render();
     void render_camera(ecs::entity camera_entity);
-    void render_shadow_map(
-        ecs::entity light_entity,
-        const std::array<math::float4, 8>& frustum_vertices,
-        render_command_interface* command);
+    void render_light(const math::float4x4& camera_vp, render_command_interface* command);
     void present();
+
+    shadow_map* allocate_shadow_map();
 
     bool is_editor_mode() const noexcept { return m_editor_camera != ecs::INVALID_ENTITY; }
 
@@ -67,8 +67,8 @@ private:
 
     // Shadow.
     std::unique_ptr<shadow_pipeline> m_shadow_pipeline;
-    std::vector<std::unique_ptr<shadow_map_pipeline_parameter>> m_shadow_parameter_pool;
-    std::size_t m_shadow_parameter_counter;
+    std::vector<std::unique_ptr<shadow_map>> m_shadow_map_pool;
+    std::size_t m_shadow_map_counter;
 
     std::unique_ptr<graphics_debug> m_debug;
 };

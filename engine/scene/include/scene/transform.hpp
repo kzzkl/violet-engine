@@ -78,6 +78,11 @@ public:
     const math::float4x4& to_parent() const noexcept { return m_to_parent; }
     const math::float4x4& to_world() const noexcept { return m_to_world; }
 
+    math::float3 forward() const noexcept
+    {
+        return math::float3{m_to_world[2][0], m_to_world[2][1], m_to_world[2][2]};
+    }
+
     bool in_scene() const noexcept { return m_in_scene; }
 
     bool dirty() const noexcept { return m_dirty; }

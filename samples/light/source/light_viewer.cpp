@@ -1,8 +1,10 @@
 #include "light_viewer.hpp"
+#include "core/event.hpp"
 #include "core/relation.hpp"
 #include "core/timer.hpp"
 #include "graphics/camera.hpp"
 #include "graphics/graphics.hpp"
+#include "graphics/graphics_event.hpp"
 #include "graphics/mesh_render.hpp"
 #include "graphics/rhi.hpp"
 #include "scene/scene.hpp"
@@ -20,6 +22,10 @@ bool light_viewer::initialize(const dictionary& config)
     initialize_graphics_resource();
     initialize_task();
     initialize_scene();
+
+    system<core::event>().subscribe<graphics::event_render_extent_change>(
+        "sample_module",
+        [this](std::uint32_t width, std::uint32_t height) { resize_camera(width, height); });
 
     return true;
 }
@@ -65,7 +71,7 @@ void light_viewer::initialize_graphics_resource()
     m_camera = world.create("main camera");
     world.add<core::link, graphics::camera, scene::transform>(m_camera);
     auto& camera = world.component<graphics::camera>(m_camera);
-    // camera.perspective(math::to_radians(45.0f), 0.03f, 1000.0f);
+    camera.perspective(math::to_radians(45.0f), 0.03f, 20.0f);
     // camera.orthographic(10.0f, 0.03f, 1000.0f);
 
     auto& transform = world.component<scene::transform>(m_camera);
@@ -85,6 +91,8 @@ void light_viewer::initialize_task()
     auto tick_task = task.schedule("bvh tick", [this]() {
         update_camera();
         system<scene::scene>().sync_local();
+
+        debug();
     });
 
     tick_task->add_dependency(*task.find(task::TASK_GAME_LOGIC_START));
@@ -105,7 +113,7 @@ void light_viewer::initialize_scene()
         auto& transform = world.component<scene::transform>(m_light);
         transform.position(math::float3{0.0f, 50.0f, 0.0f});
         transform.rotation_euler(
-            math::float3{math::to_radians(80.0f), math::to_radians(0.0f), 0.0f});
+            math::float3{math::to_radians(60.0f), math::to_radians(40.0f), 0.0f});
 
         auto& directional_light = world.component<graphics::directional_light>(m_light);
         directional_light.color(math::float3{0.5f, 0.5f, 0.5f});
@@ -114,55 +122,79 @@ void light_viewer::initialize_scene()
 
     {
         // Cube.
-        m_cube = world.create("cube");
-        world.add<scene::transform, scene::bounding_box, graphics::mesh_render, core::link>(m_cube);
+        float x = -10.0f;
+        float z = -10.0f;
 
-        auto& mesh = world.component<graphics::mesh_render>(m_cube);
-        mesh.vertex_buffers = {m_cube_positon_buffer.get(), m_cube_normal_buffer.get()};
-        mesh.index_buffer = m_cube_index_buffer.get();
-        mesh.object_parameter = std::make_unique<graphics::object_pipeline_parameter>();
+        for (std::size_t i = 0; i < 10; ++i)
+        {
+            for (std::size_t j = 0; j < 10; ++j)
+            {
+                ecs::entity cube = world.create(std::format("cube {}-{}", i, j));
+                world.add<scene::transform, scene::bounding_box, graphics::mesh_render, core::link>(
+                    cube);
 
-        graphics::material material = {};
-        material.pipeline = m_pipeline.get();
-        material.parameters = {m_material->interface()};
-        mesh.materials.push_back(material);
-        mesh.submeshes.push_back(graphics::submesh{0, m_cube_mesh_data.indices.size(), 0});
+                auto& mesh = world.component<graphics::mesh_render>(cube);
+                mesh.vertex_buffers = {m_cube_positon_buffer.get(), m_cube_normal_buffer.get()};
+                mesh.index_buffer = m_cube_index_buffer.get();
+                mesh.object_parameter = std::make_unique<graphics::object_pipeline_parameter>();
 
-        auto& transform = world.component<scene::transform>(m_cube);
-        transform.position(math::float3{0.0f, 0.5f, 0.0f});
-        scene.sync_local();
+                graphics::material material = {};
+                material.pipeline = m_pipeline.get();
+                material.parameters = {m_material->interface()};
+                mesh.materials.push_back(material);
+                mesh.submeshes.push_back(graphics::submesh{0, m_cube_mesh_data.indices.size(), 0});
 
-        auto& bounding_box = world.component<scene::bounding_box>(m_cube);
-        bounding_box.aabb(m_cube_mesh_data.position, transform.to_world(), true);
+                auto& transform = world.component<scene::transform>(cube);
+                transform.position(math::float3{x + i * 2.0f, 0.5f, z + j * 2.0f});
+                scene.sync_local();
 
-        relation.link(m_cube, scene.root());
+                auto& bounding_box = world.component<scene::bounding_box>(cube);
+                bounding_box.aabb(m_cube_mesh_data.position, transform.to_world(), true);
+
+                relation.link(cube, scene.root());
+
+                m_cubes.push_back(cube);
+            }
+        }
     }
 
     {
         // Sphere.
-        m_sphere = world.create("sphere");
-        world.add<scene::transform, scene::bounding_box, graphics::mesh_render, core::link>(
-            m_sphere);
+        float x = -10.0f;
+        float y = 2.0f;
 
-        auto& mesh = world.component<graphics::mesh_render>(m_sphere);
-        mesh.vertex_buffers = {m_sphere_positon_buffer.get(), m_sphere_normal_buffer.get()};
-        mesh.index_buffer = m_sphere_index_buffer.get();
-        mesh.object_parameter = std::make_unique<graphics::object_pipeline_parameter>();
+        for (std::size_t i = 0; i < 10; ++i)
+        {
+            for (std::size_t j = 0; j < 10; ++j)
+            {
+                ecs::entity sphere = world.create(std::format("sphere {}-{}", i, j));
+                world.add<scene::transform, scene::bounding_box, graphics::mesh_render, core::link>(
+                    sphere);
 
-        graphics::material material = {};
-        material.pipeline = m_pipeline.get();
-        material.parameters = {m_material->interface()};
-        mesh.materials.push_back(material);
-        mesh.submeshes.push_back(graphics::submesh{0, m_sphere_mesh_data.indices.size(), 0});
+                auto& mesh = world.component<graphics::mesh_render>(sphere);
+                mesh.vertex_buffers = {m_sphere_positon_buffer.get(), m_sphere_normal_buffer.get()};
+                mesh.index_buffer = m_sphere_index_buffer.get();
+                mesh.object_parameter = std::make_unique<graphics::object_pipeline_parameter>();
 
-        auto& transform = world.component<scene::transform>(m_sphere);
-        transform.position(math::float3{0.0f, 3.0f, 0.0f});
-        scene.sync_local();
+                graphics::material material = {};
+                material.pipeline = m_pipeline.get();
+                material.parameters = {m_material->interface()};
+                mesh.materials.push_back(material);
+                mesh.submeshes.push_back(
+                    graphics::submesh{0, m_sphere_mesh_data.indices.size(), 0});
 
-        auto& bounding_box = world.component<scene::bounding_box>(m_sphere);
-        bounding_box.aabb(m_sphere_mesh_data.position, transform.to_world(), true);
+                auto& transform = world.component<scene::transform>(sphere);
+                transform.position(math::float3{x + i * 2.0f, y + j * 2.0f, 0.0f});
+                scene.sync_local();
 
-        relation.link(m_sphere, scene.root());
+                auto& bounding_box = world.component<scene::bounding_box>(sphere);
+                bounding_box.aabb(m_sphere_mesh_data.position, transform.to_world(), true);
+
+                relation.link(sphere, scene.root());
+
+                m_sphere.push_back(sphere);
+            }
+        }
     }
 
     {
@@ -246,48 +278,6 @@ void light_viewer::update_camera()
     forward = math::matrix_simd::mul(forward, affine);
 
     camera_transform.position(math::vector_simd::add(forward, t));
-
-    system<scene::scene>().sync_local();
-
-    auto& to_world = camera_transform.to_world();
-    auto& render_camera = world.component<graphics::camera>(m_camera);
-
-    math::float4x4_simd transform_v =
-        math::matrix_simd::inverse_transform(math::simd::load(to_world));
-    math::float4x4_simd transform_p = math::simd::load(render_camera.projection());
-    math::float4x4_simd transform_vp = math::matrix_simd::mul(transform_v, transform_p);
-    math::float4x4 view_projection;
-    math::simd::store(transform_vp, view_projection);
-
-    auto frustum_vertices = math::utility::frustum_vertices(view_projection);
-    auto& debug_draw = system<graphics::graphics>().debug();
-    debug_draw.draw_line(frustum_vertices[0], frustum_vertices[1], math::float3{1.0f, 0.0f, 1.0f});
-    debug_draw.draw_line(frustum_vertices[1], frustum_vertices[3], math::float3{1.0f, 0.0f, 1.0f});
-    debug_draw.draw_line(frustum_vertices[3], frustum_vertices[2], math::float3{1.0f, 0.0f, 1.0f});
-    debug_draw.draw_line(frustum_vertices[2], frustum_vertices[0], math::float3{1.0f, 0.0f, 1.0f});
-
-    debug_draw.draw_line(frustum_vertices[2], frustum_vertices[6], math::float3{1.0f, 0.0f, 1.0f});
-    debug_draw.draw_line(frustum_vertices[3], frustum_vertices[7], math::float3{1.0f, 0.0f, 1.0f});
-    debug_draw.draw_line(frustum_vertices[0], frustum_vertices[4], math::float3{1.0f, 0.0f, 1.0f});
-    debug_draw.draw_line(frustum_vertices[1], frustum_vertices[5], math::float3{1.0f, 0.0f, 1.0f});
-
-    debug_draw.draw_line(frustum_vertices[4], frustum_vertices[5], math::float3{1.0f, 1.0f, 1.0f});
-    debug_draw.draw_line(frustum_vertices[5], frustum_vertices[7], math::float3{1.0f, 1.0f, 1.0f});
-    debug_draw.draw_line(frustum_vertices[7], frustum_vertices[6], math::float3{1.0f, 1.0f, 1.0f});
-    debug_draw.draw_line(frustum_vertices[6], frustum_vertices[4], math::float3{1.0f, 1.0f, 1.0f});
-
-    debug_draw.draw_line(
-        math::float3{-100.0f, 0.0f, 0.0f},
-        math::float3{100.0f, 0.0f, 0.0f},
-        math::float3{1.0f, 0.0f, 0.0f});
-    debug_draw.draw_line(
-        math::float3{0.0f, -100.0f, 0.0f},
-        math::float3{0.0f, 100.0f, 0.0f},
-        math::float3{0.0f, 1.0f, 0.0f});
-    debug_draw.draw_line(
-        math::float3{0.0f, 0.0f, -100.0f},
-        math::float3{0.0f, 0.0f, 100.0f},
-        math::float3{0.0f, 0.0f, 1.0f});
 }
 
 void light_viewer::resize_camera(std::uint32_t width, std::uint32_t height)
@@ -311,5 +301,82 @@ void light_viewer::resize_camera(std::uint32_t width, std::uint32_t height)
     depth_stencil_buffer_info.samples = 4;
     m_depth_stencil_buffer = graphics::rhi::make_depth_stencil_buffer(depth_stencil_buffer_info);
     camera.depth_stencil_buffer(m_depth_stencil_buffer.get());
+}
+
+void light_viewer::debug()
+{
+    auto& debug_draw = system<graphics::graphics>().debug();
+
+    debug_draw.draw_line(
+        math::float3{-100.0f, 0.0f, 0.0f},
+        math::float3{100.0f, 0.0f, 0.0f},
+        math::float3{1.0f, 0.0f, 0.0f});
+    debug_draw.draw_line(
+        math::float3{0.0f, -100.0f, 0.0f},
+        math::float3{0.0f, 100.0f, 0.0f},
+        math::float3{0.0f, 1.0f, 0.0f});
+    debug_draw.draw_line(
+        math::float3{0.0f, 0.0f, -100.0f},
+        math::float3{0.0f, 0.0f, 100.0f},
+        math::float3{0.0f, 0.0f, 1.0f});
+
+    auto draw_frustum = [&](const auto& frustum) {
+        debug_draw.draw_line(frustum[0], frustum[1], math::float3{1.0f, 0.0f, 1.0f});
+        debug_draw.draw_line(frustum[1], frustum[3], math::float3{1.0f, 0.0f, 1.0f});
+        debug_draw.draw_line(frustum[3], frustum[2], math::float3{1.0f, 0.0f, 1.0f});
+        debug_draw.draw_line(frustum[2], frustum[0], math::float3{1.0f, 0.0f, 1.0f});
+
+        debug_draw.draw_line(frustum[2], frustum[6], math::float3{1.0f, 0.0f, 1.0f});
+        debug_draw.draw_line(frustum[3], frustum[7], math::float3{1.0f, 0.0f, 1.0f});
+        debug_draw.draw_line(frustum[0], frustum[4], math::float3{1.0f, 0.0f, 1.0f});
+        debug_draw.draw_line(frustum[1], frustum[5], math::float3{1.0f, 0.0f, 1.0f});
+
+        debug_draw.draw_line(frustum[4], frustum[5], math::float3{1.0f, 1.0f, 1.0f});
+        debug_draw.draw_line(frustum[5], frustum[7], math::float3{1.0f, 1.0f, 1.0f});
+        debug_draw.draw_line(frustum[7], frustum[6], math::float3{1.0f, 1.0f, 1.0f});
+        debug_draw.draw_line(frustum[6], frustum[4], math::float3{1.0f, 1.0f, 1.0f});
+    };
+
+    auto& world = system<ecs::world>();
+
+    auto& camera_transform = world.component<scene::transform>(m_camera);
+    auto& camera = world.component<graphics::camera>(m_camera);
+    math::float4x4_simd camera_v =
+        math::matrix_simd::inverse_transform(math::simd::load(camera_transform.to_world()));
+    math::float4x4_simd camera_p = math::simd::load(camera.projection());
+    math::float4x4_simd camera_vp = math::matrix_simd::mul(camera_v, camera_p);
+    math::float4x4 camera_view_projection;
+    math::simd::store(camera_vp, camera_view_projection);
+
+    auto camera_frustum_vertices = math::utility::frustum_vertices(camera_view_projection);
+    draw_frustum(camera_frustum_vertices);
+
+    auto& light_transform = world.component<scene::transform>(m_light);
+    math::float4x4_simd light_to_world = math::simd::load(light_transform.to_world());
+    math::float4x4_simd light_v = math::matrix_simd::inverse_transform(light_to_world);
+
+    math::float4_simd aabb_min = math::simd::set(std::numeric_limits<float>::max());
+    math::float4_simd aabb_max = math::simd::set(std::numeric_limits<float>::min());
+    for (std::size_t i = 0; i < 8; ++i)
+    {
+        math::float4_simd v = math::simd::load(camera_frustum_vertices[i], 1.0f);
+        v = math::matrix_simd::mul(v, light_v);
+        aabb_min = math::simd::min(aabb_min, v);
+        aabb_max = math::simd::max(aabb_max, v);
+    }
+
+    math::float4x4_simd light_vp = math::matrix_simd::orthographic(
+        math::simd::get<0>(aabb_min),
+        math::simd::get<0>(aabb_max),
+        math::simd::get<1>(aabb_min),
+        math::simd::get<1>(aabb_max),
+        math::simd::get<2>(aabb_min),
+        math::simd::get<2>(aabb_max));
+    light_vp = math::matrix_simd::mul(light_v, light_vp);
+    math::float4x4 light_view_projection;
+    math::simd::store(light_vp, light_view_projection);
+
+    auto light_frustum_vertices = math::utility::frustum_vertices(light_view_projection);
+    draw_frustum(light_frustum_vertices);
 }
 } // namespace ash::sample

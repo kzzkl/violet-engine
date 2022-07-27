@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vector.hpp"
+#include "matrix.hpp"
 #include <array>
 
 namespace ash::math
@@ -8,28 +8,16 @@ namespace ash::math
 struct utility
 {
 public:
-    static inline std::array<float4, 6> frustum_planes(const float4x4& view_projection)
+    static inline std::array<float4, 6> frustum_planes(const float4x4& projection)
     {
-        float4_simd x = simd::set(
-            view_projection[0][0],
-            view_projection[1][0],
-            view_projection[2][0],
-            view_projection[3][0]);
-        float4_simd y = simd::set(
-            view_projection[0][1],
-            view_projection[1][1],
-            view_projection[2][1],
-            view_projection[3][1]);
-        float4_simd z = simd::set(
-            view_projection[0][2],
-            view_projection[1][2],
-            view_projection[2][2],
-            view_projection[3][2]);
-        float4_simd w = simd::set(
-            view_projection[0][3],
-            view_projection[1][3],
-            view_projection[2][3],
-            view_projection[3][3]);
+        float4_simd x =
+            simd::set(projection[0][0], projection[1][0], projection[2][0], projection[3][0]);
+        float4_simd y =
+            simd::set(projection[0][1], projection[1][1], projection[2][1], projection[3][1]);
+        float4_simd z =
+            simd::set(projection[0][2], projection[1][2], projection[2][2], projection[3][2]);
+        float4_simd w =
+            simd::set(projection[0][3], projection[1][3], projection[2][3], projection[3][3]);
 
         std::array<float4, 6> planes;
 
@@ -60,30 +48,34 @@ public:
         return planes;
     }
 
-    static inline std::array<float3, 8> frustum_vertices(const float4x4& view_projection)
+    static inline std::array<float3, 8> frustum_vertices(const float4x4& projection)
     {
-        float4x4_simd vp_inverse = matrix_simd::inverse(simd::load(view_projection));
+        float4x4_simd vp_inverse = matrix_simd::inverse(simd::load(projection));
 
         std::array<float3, 8> vertices;
         for (std::size_t i = 0; i < 8; ++i)
         {
             float4_simd v = simd::load(ndc[i]);
             v = matrix_simd::mul(v, vp_inverse);
+            float4_simd w = simd::replicate<3>(v);
+            v = vector_simd::div(v, w);
             simd::store(v, vertices[i]);
         }
 
         return vertices;
     }
 
-    static inline std::array<float4, 8> frustum_vertices_vec4(const float4x4& view_projection)
+    static inline std::array<float4, 8> frustum_vertices_vec4(const float4x4& projection)
     {
-        float4x4_simd vp_inverse = matrix_simd::inverse(simd::load(view_projection));
+        float4x4_simd vp_inverse = matrix_simd::inverse(simd::load(projection));
 
         std::array<float4, 8> vertices;
         for (std::size_t i = 0; i < 8; ++i)
         {
             float4_simd v = simd::load(ndc[i]);
             v = matrix_simd::mul(v, vp_inverse);
+            float4_simd w = simd::replicate<3>(v);
+            v = vector_simd::div(v, w);
             simd::store(v, vertices[i]);
         }
 
@@ -96,10 +88,10 @@ private:
         float4_align{1.0f,  -1.0f, 0.0f, 1.0f},
         float4_align{-1.0f, 1.0f,  0.0f, 1.0f},
         float4_align{1.0f,  1.0f,  0.0f, 1.0f},
-        float4_align{-1.0f, -1.0f, 1.0f,  1.0f},
-        float4_align{1.0f,  -1.0f, 1.0f,  1.0f},
-        float4_align{-1.0f, 1.0f,  1.0f,  1.0f},
-        float4_align{1.0f,  1.0f,  1.0f,  1.0f}
+        float4_align{-1.0f, -1.0f, 1.0f, 1.0f},
+        float4_align{1.0f,  -1.0f, 1.0f, 1.0f},
+        float4_align{-1.0f, 1.0f,  1.0f, 1.0f},
+        float4_align{1.0f,  1.0f,  1.0f, 1.0f}
     };
 };
 } // namespace ash::math

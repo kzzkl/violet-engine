@@ -28,6 +28,7 @@ enum resource_format
 enum resource_state
 {
     RESOURCE_STATE_UNDEFINED,
+    RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
     RESOURCE_STATE_RENDER_TARGET,
     RESOURCE_STATE_DEPTH_STENCIL,
     RESOURCE_STATE_PRESENT
@@ -379,6 +380,13 @@ struct index_buffer_desc
     bool frame_resource;
 };
 
+struct shadow_map_desc
+{
+    std::uint32_t width;
+    std::uint32_t height;
+    std::size_t samples;
+};
+
 struct render_target_desc
 {
     std::uint32_t width;
@@ -440,6 +448,8 @@ public:
         const char* bottom,
         const char* front,
         const char* back) = 0;
+
+    virtual resource_interface* make_shadow_map(const shadow_map_desc& desc) = 0;
 
     virtual resource_interface* make_render_target(const render_target_desc& desc) = 0;
     virtual resource_interface* make_depth_stencil_buffer(

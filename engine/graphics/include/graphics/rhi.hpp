@@ -41,6 +41,7 @@ struct compute_pipeline_info
     std::vector<std::string> parameters;
 };
 
+using shadow_map_info = shadow_map_desc;
 using depth_stencil_buffer_info = depth_stencil_buffer_desc;
 using render_target_info = render_target_desc;
 
@@ -117,9 +118,12 @@ public:
         std::string_view front,
         std::string_view back);
 
-    static std::unique_ptr<resource_interface> make_render_target(const render_target_desc& desc);
+    static std::unique_ptr<resource_interface> make_shadow_map(
+        const shadow_map_info& info);
+
+    static std::unique_ptr<resource_interface> make_render_target(const render_target_info& info);
     static std::unique_ptr<resource_interface> make_depth_stencil_buffer(
-        const depth_stencil_buffer_desc& desc);
+        const depth_stencil_buffer_info& info);
 
 private:
     template <typename T>

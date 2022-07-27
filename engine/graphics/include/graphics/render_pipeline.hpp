@@ -1,7 +1,6 @@
 #pragma once
 
 #include "graphics/light.hpp"
-#include "graphics/shadow_map.hpp"
 
 namespace ash::graphics
 {
@@ -20,6 +19,7 @@ struct render_item
     scissor_extent scissor;
 };
 
+class shadow_map;
 struct render_scene
 {
     pipeline_parameter_interface* camera_parameter;

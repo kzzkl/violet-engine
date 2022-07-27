@@ -353,6 +353,103 @@ D3D12_CPU_DESCRIPTOR_HANDLE d3d12_texture_cube::srv() const
     return heap->cpu_handle(m_srv_offset);
 }
 
+d3d12_shadow_map::d3d12_shadow_map(const shadow_map_desc& desc)
+{
+    auto device = d3d12_context::device();
+
+    // Query sample level.
+    /*D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS sample_level = {};
+    sample_level.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+    sample_level.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    sample_level.NumQualityLevels = 0;
+    sample_level.SampleCount = static_cast<UINT>(desc.samples);
+    throw_if_failed(device->CheckFeatureSupport(
+        D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
+        &sample_level,
+        sizeof(sample_level)));*/
+
+    CD3DX12_HEAP_PROPERTIES heap_properties(D3D12_HEAP_TYPE_DEFAULT);
+    CD3DX12_RESOURCE_DESC shadow_map_desc = CD3DX12_RESOURCE_DESC::Tex2D(
+        DXGI_FORMAT_D24_UNORM_S8_UINT,
+        static_cast<UINT>(desc.width),
+        static_cast<UINT>(desc.height),
+        1,
+        1,
+        1,
+        0,
+        D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+
+    D3D12_CLEAR_VALUE clear = {};
+    clear.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    clear.DepthStencil.Depth = 1.0f;
+    clear.DepthStencil.Stencil = 0;
+
+    device->CreateCommittedResource(
+        &heap_properties,
+        D3D12_HEAP_FLAG_NONE,
+        &shadow_map_desc,
+        D3D12_RESOURCE_STATE_DEPTH_WRITE,
+        &clear,
+        IID_PPV_ARGS(&m_resource));
+    m_resource_state = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+
+    D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc;
+    dsv_desc.Flags = D3D12_DSV_FLAG_NONE;
+    dsv_desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+    dsv_desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    dsv_desc.Texture2D.MipSlice = 0;
+
+    auto dsv_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+    m_dsv_offset = dsv_heap->allocate(1);
+    device->CreateDepthStencilView(m_resource.Get(), &dsv_desc, dsv_heap->cpu_handle(m_dsv_offset));
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
+    srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srv_desc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+    srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srv_desc.Texture2D.MostDetailedMip = 0;
+    srv_desc.Texture2D.MipLevels = 1;
+    srv_desc.Texture2D.ResourceMinLODClamp = 0.0f;
+    srv_desc.Texture2D.PlaneSlice = 0;
+
+    auto srv_heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    m_srv_offset = srv_heap->allocate(1);
+    device->CreateShaderResourceView(
+        m_resource.Get(),
+        &srv_desc,
+        srv_heap->cpu_handle(m_srv_offset));
+}
+
+d3d12_shadow_map::~d3d12_shadow_map()
+{
+    if (m_resource != nullptr)
+        d3d12_context::resource()->delay_delete(m_resource);
+
+    if (m_srv_offset != INVALID_DESCRIPTOR_INDEX)
+    {
+        auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        heap->deallocate(m_srv_offset);
+    }
+
+    if (m_dsv_offset != INVALID_DESCRIPTOR_INDEX)
+    {
+        auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+        heap->deallocate(m_dsv_offset);
+    }
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_shadow_map::srv() const
+{
+    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    return heap->cpu_handle(m_srv_offset);
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_shadow_map::dsv() const
+{
+    auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+    return heap->cpu_handle(m_dsv_offset);
+}
+
 d3d12_default_buffer::d3d12_default_buffer(
     const void* data,
     std::size_t size,

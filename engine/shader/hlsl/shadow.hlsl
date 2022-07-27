@@ -1,12 +1,12 @@
-cbuffer ash_object : register(b0, space0)
-{
-    float4x4 transform_m;
-};
+#include "ash_mvp.hlsl"
 
-cbuffer ash_shadow : register(b0, space1)
+ConstantBuffer<ash_object> object : register(b0, space0);
+
+struct ash_shadow
 {
     float4x4 light_vp;
 };
+ConstantBuffer<ash_shadow> shadow : register(b0, space1);
 
 struct vs_in
 {
@@ -21,11 +21,6 @@ struct vs_out
 vs_out vs_main(vs_in vin)
 {
     vs_out result;
-    result.position = mul(mul(float4(vin.position, 1.0f), transform_m), light_vp);
+    result.position = mul(mul(float4(vin.position, 1.0f), object.transform_m), shadow.light_vp);
     return result;
-}
-
-float4 ps_main(vs_out pin) : SV_TARGET
-{
-    return float4(1.0f, 0.0f, 0.0f, 1.0f);
 }

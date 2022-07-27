@@ -128,6 +128,20 @@ private:
     std::size_t m_srv_offset;
 };
 
+class d3d12_shadow_map : public d3d12_image
+{
+public:
+    d3d12_shadow_map(const shadow_map_desc& desc);
+    virtual ~d3d12_shadow_map();
+
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE srv() const override;
+    virtual D3D12_CPU_DESCRIPTOR_HANDLE dsv() const override;
+
+private:
+    std::size_t m_srv_offset;
+    std::size_t m_dsv_offset;
+};
+
 class d3d12_default_buffer : public d3d12_resource
 {
 public:

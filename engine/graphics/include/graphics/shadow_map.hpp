@@ -25,16 +25,15 @@ private:
 class shadow_map
 {
 public:
-    shadow_map(std::size_t resolution);
+    shadow_map(std::uint32_t resolution);
 
-    void parameter(shadow_map_pipeline_parameter* parameter) noexcept { m_parameter = parameter; }
+    void light_view_projection(const math::float4x4& view_projection);
+
     pipeline_parameter_interface* parameter() const noexcept { return m_parameter->interface(); }
-
     resource_interface* depth_buffer() const noexcept { return m_shadow_map.get(); }
 
-    std::unique_ptr<resource_interface> m_test;
 private:
     std::unique_ptr<resource_interface> m_shadow_map;
-    shadow_map_pipeline_parameter* m_parameter;
+    std::unique_ptr<shadow_map_pipeline_parameter> m_parameter;
 };
 } // namespace ash::graphics

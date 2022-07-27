@@ -17,6 +17,8 @@ public:
     void projection(const math::float4x4& projection);
     void view_projection(const math::float4x4& view_projection);
 
+    std::array<math::float4, 8> frustum_vertices(std::size_t index) const noexcept;
+
     static std::vector<pipeline_parameter_pair> layout();
 
 private:
@@ -90,6 +92,9 @@ private:
 
     bool m_flip_y;
     math::float4x4 m_projection;
+
+    std::vector<float> m_frustum_divide;
+    std::vector<math::float3> m_frustum_corners;
 
     resource_interface* m_render_target;
     resource_interface* m_render_target_resolve;

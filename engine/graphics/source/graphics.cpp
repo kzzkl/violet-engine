@@ -7,6 +7,7 @@
 #include "graphics/graphics_task.hpp"
 #include "graphics/light.hpp"
 #include "graphics/rhi.hpp"
+#include "graphics/shadow_map.hpp"
 #include "graphics/shadow_pipeline.hpp"
 #include "graphics/skinning_pipeline.hpp"
 #include "graphics/sky_pipeline.hpp"
@@ -25,7 +26,7 @@ graphics::graphics() noexcept
       m_back_buffer_index(0),
       m_game_camera(ecs::INVALID_ENTITY),
       m_editor_camera(ecs::INVALID_ENTITY),
-      m_shadow_parameter_counter(0)
+      m_shadow_map_counter(0)
 {
 }
 
@@ -195,7 +196,7 @@ void graphics::render()
         m_render_queue.pop();
     }
 
-    m_shadow_parameter_counter = 0;
+    m_shadow_map_counter = 0;
 }
 
 void graphics::render_camera(ecs::entity camera_entity)
@@ -207,20 +208,17 @@ void graphics::render_camera(ecs::entity camera_entity)
     auto& transform = world.component<scene::transform>(camera_entity);
 
     // Update camera data.
-    auto& to_world = transform.to_world();
-    math::float4x4_simd transform_v =
-        math::matrix_simd::inverse_transform(math::simd::load(to_world));
-    math::float4x4_simd transform_p = math::simd::load(render_camera.projection());
-    math::float4x4_simd transform_vp = math::matrix_simd::mul(transform_v, transform_p);
+    math::float4x4_simd camera_v =
+        math::matrix_simd::inverse_transform(math::simd::load(transform.to_world()));
+    math::float4x4_simd camera_p = math::simd::load(render_camera.projection());
+    math::float4x4_simd camera_vp = math::matrix_simd::mul(camera_v, camera_p);
 
-    render_camera.pipeline_parameter()->position(
-        math::float3{to_world[3][0], to_world[3][1], to_world[3][2]});
-    render_camera.pipeline_parameter()->direction(
-        math::float3{to_world[2][0], to_world[2][1], to_world[2][2]});
+    render_camera.pipeline_parameter()->position(transform.position());
+    render_camera.pipeline_parameter()->direction(transform.forward());
 
     math::float4x4 view, view_projection;
-    math::simd::store(transform_v, view);
-    math::simd::store(transform_vp, view_projection);
+    math::simd::store(camera_v, view);
+    math::simd::store(camera_vp, view_projection);
     render_camera.pipeline_parameter()->view(view);
     render_camera.pipeline_parameter()->projection(render_camera.projection());
     render_camera.pipeline_parameter()->view_projection(view_projection);
@@ -229,20 +227,7 @@ void graphics::render_camera(ecs::entity camera_entity)
     auto command = rhi::renderer().allocate_command();
 
     // Update light data and render shadow map.
-    auto frustum_vertices = math::utility::frustum_vertices_vec4(view_projection);
-    world.view<directional_light, scene::transform>().each(
-        [this,
-         &frustum_vertices,
-         command](ecs::entity entity, directional_light& light, scene::transform& transform) {
-            auto& to_world = transform.to_world();
-            m_light_parameter->directional_light(
-                0,
-                light.color(),
-                math::float3{to_world[2][0], to_world[2][1], to_world[2][2]});
-
-            render_shadow_map(entity, frustum_vertices, command);
-        });
-    m_light_parameter->directional_light_count(1);
+    render_light(view_projection, command);
 
     // Frustum culling.
     scene.frustum_culling(math::utility::frustum_planes(view_projection));
@@ -311,98 +296,112 @@ void graphics::render_camera(ecs::entity camera_entity)
     rhi::renderer().execute(command);
 }
 
-void graphics::render_shadow_map(
-    ecs::entity light_entity,
-    const std::array<math::float4, 8>& frustum_vertices,
-    render_command_interface* command)
+void graphics::render_light(const math::float4x4& camera_vp, render_command_interface* command)
 {
     auto& world = system<ecs::world>();
     auto& scene = system<scene::scene>();
 
-    auto& light_transform = world.component<scene::transform>(light_entity);
-    math::float4x4_simd to_world = math::simd::load(light_transform.to_world());
-    math::float4x4_simd to_light = math::matrix_simd::inverse_transform(to_world);
+    std::size_t directional_light_counter = 0;
 
-    math::float4_simd aabb_min = math::simd::set(std::numeric_limits<float>::max());
-    math::float4_simd aabb_max = math::simd::set(std::numeric_limits<float>::min());
-    for (std::size_t i = 0; i < 8; ++i)
-    {
-        math::float4_simd v = math::simd::load(frustum_vertices[i]);
-        v = math::matrix_simd::mul(v, to_light);
-        aabb_min = math::simd::min(aabb_min, v);
-        aabb_max = math::simd::max(aabb_max, v);
-    }
+    auto frustum_vertices = math::utility::frustum_vertices_vec4(camera_vp);
+    world.view<directional_light, scene::transform>().each(
+        [&](directional_light& light, scene::transform& transform) {
+            math::float4x4_simd light_v =
+                math::matrix_simd::inverse_transform(math::simd::load(transform.to_world()));
 
-    math::float4_simd range = math::vector_simd::sub(aabb_max, aabb_min);
-    math::float4x4_simd vp = math::matrix_simd::orthographic(
-        math::simd::get<0>(range),
-        math::simd::get<1>(range),
-        -100.0f,
-        1000.0f);
-    // math::float4x4_simd vp = math::matrix_simd::orthographic(20.0f, 20.0f, 0.01f, 1000.0f);
-    vp = math::matrix_simd::mul(to_light, vp);
+            math::float4_simd aabb_min = math::simd::set(std::numeric_limits<float>::max());
+            math::float4_simd aabb_max = math::simd::set(std::numeric_limits<float>::min());
+            for (std::size_t i = 0; i < 8; ++i)
+            {
+                math::float4_simd v = math::simd::load(frustum_vertices[i]);
+                v = math::matrix_simd::mul(v, light_v);
+                aabb_min = math::simd::min(aabb_min, v);
+                aabb_max = math::simd::max(aabb_max, v);
+            }
 
-    math::float4x4 view_projection;
-    math::simd::store(vp, view_projection);
+            math::float4x4_simd light_vp = math::matrix_simd::mul(
+                light_v,
+                math::matrix_simd::orthographic(
+                    math::simd::get<0>(aabb_min),
+                    math::simd::get<0>(aabb_max),
+                    math::simd::get<1>(aabb_min),
+                    math::simd::get<1>(aabb_max),
+                    math::simd::get<2>(aabb_min) - 100.0f,
+                    math::simd::get<2>(aabb_max)));
 
-    scene.frustum_culling(math::utility::frustum_planes(view_projection));
+            math::float4x4 view_projection;
+            math::simd::store(light_vp, view_projection);
 
-    world.view<mesh_render>().each([&, this](ecs::entity entity, mesh_render& mesh_render) {
-        // if ((mesh_render.render_groups & render_camera.render_groups) == 0)
-        //     return;
+            scene.frustum_culling(math::utility::frustum_planes(view_projection));
+            world.view<mesh_render>().each([&, this](ecs::entity entity, mesh_render& mesh_render) {
+                // if ((mesh_render.render_groups & render_camera.render_groups) == 0)
+                //     return;
 
-        // Check visibility.
-        // if (world.has_component<scene::bounding_box>(entity))
-        // {
-        //     auto& bounding_box = world.component<scene::bounding_box>(entity);
-        //     if (!bounding_box.visible())
-        //         return;
-        // }
+                // Check visibility.
+                if (world.has_component<scene::bounding_box>(entity))
+                {
+                    auto& bounding_box = world.component<scene::bounding_box>(entity);
+                    if (!bounding_box.visible())
+                        return;
+                }
 
-        for (std::size_t i = 0; i < mesh_render.materials.size(); ++i)
-        {
-            render_item item = {};
-            if (mesh_render.object_parameter != nullptr)
-                item.object_parameter = mesh_render.object_parameter->interface();
-            else
-                continue;
+                for (std::size_t i = 0; i < mesh_render.materials.size(); ++i)
+                {
+                    render_item item = {};
+                    if (mesh_render.object_parameter != nullptr)
+                        item.object_parameter = mesh_render.object_parameter->interface();
+                    else
+                        continue;
 
-            item.vertex_buffers = mesh_render.vertex_buffers.data();
-            item.index_buffer = mesh_render.index_buffer;
-            item.index_start = mesh_render.submeshes[i].index_start;
-            item.index_end = mesh_render.submeshes[i].index_end;
-            item.vertex_base = mesh_render.submeshes[i].vertex_base;
+                    item.vertex_buffers = mesh_render.vertex_buffers.data();
+                    item.index_buffer = mesh_render.index_buffer;
+                    item.index_start = mesh_render.submeshes[i].index_start;
+                    item.index_end = mesh_render.submeshes[i].index_end;
+                    item.vertex_base = mesh_render.submeshes[i].vertex_base;
 
-            m_shadow_pipeline->add_item(item);
-        }
-    });
+                    m_shadow_pipeline->add_item(item);
+                }
+            });
 
-    auto& light = world.component<directional_light>(light_entity);
+            shadow_map* shadow = allocate_shadow_map();
+            shadow->light_view_projection(view_projection);
 
-    auto shadow_map = light.shadow();
-    command->clear_depth_stencil(shadow_map->depth_buffer());
+            m_shadow_pipeline->shadow(shadow);
+            m_shadow_pipeline->render(command);
 
-    shadow_map_pipeline_parameter* shadow_parameter = nullptr;
-    if (m_shadow_parameter_counter >= m_shadow_parameter_pool.size())
-    {
-        m_shadow_parameter_pool.emplace_back(std::make_unique<shadow_map_pipeline_parameter>());
-        shadow_parameter = m_shadow_parameter_pool.back().get();
-    }
-    else
-    {
-        shadow_parameter = m_shadow_parameter_pool[m_shadow_parameter_counter].get();
-    }
-    shadow_parameter->light_view_projection(view_projection);
-    shadow_map->parameter(shadow_parameter);
-    ++m_shadow_parameter_counter;
+            m_light_parameter->directional_light(
+                directional_light_counter,
+                light.color(),
+                transform.forward(),
+                view_projection,
+                shadow->depth_buffer());
 
-    m_shadow_pipeline->shadow(shadow_map);
-    m_shadow_pipeline->render(command);
+            ++directional_light_counter;
+        });
+
+    m_light_parameter->directional_light_count(directional_light_counter);
 }
 
 void graphics::present()
 {
     rhi::renderer().present();
     m_debug->next_frame();
+}
+
+shadow_map* graphics::allocate_shadow_map()
+{
+    shadow_map* shadow = nullptr;
+    if (m_shadow_map_counter >= m_shadow_map_pool.size())
+    {
+        m_shadow_map_pool.emplace_back(std::make_unique<shadow_map>(2048));
+        shadow = m_shadow_map_pool.back().get();
+    }
+    else
+    {
+        shadow = m_shadow_map_pool[m_shadow_map_counter].get();
+    }
+    ++m_shadow_map_counter;
+
+    return shadow;
 }
 } // namespace ash::graphics

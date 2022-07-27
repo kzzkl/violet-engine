@@ -363,6 +363,17 @@ public:
         translation = m[3];
     }
 
+    static inline float4x4 orthographic(float width, float height, float near_z, float far_z)
+    {
+        float d = 1.0f / (far_z - near_z);
+        return float4x4{
+            float4{2.0f / width, 0.0f,          0.0f,        0.0f},
+            float4{0.0f,         2.0f / height, 0.0f,        0.0f},
+            float4{0.0f,         0.0f,          d,           0.0f},
+            float4{0.0f,         0.0f,          near_z * -d, 1.0f}
+        };
+    }
+
     static inline float4x4 orthographic(
         float left,
         float right,
@@ -379,17 +390,6 @@ public:
             float4{0.0f,                h + h,               0.0f,        0.0f},
             float4{0.0f,                0,                   d,           0.0f},
             float4{(left + right) * -w, (bottom + top) * -h, near_z * -d, 1.0f}
-        };
-    }
-
-    static inline float4x4 orthographic(float width, float height, float near_z, float far_z)
-    {
-        float d = 1.0f / (far_z - near_z);
-        return float4x4{
-            float4{2.0f / width, 0.0f,          0.0f,        0.0f},
-            float4{0.0f,         2.0f / height, 0.0f,        0.0f},
-            float4{0.0f,         0.0f,          d,           0.0f},
-            float4{0.0f,         0.0f,          near_z * -d, 1.0f}
         };
     }
 
@@ -793,6 +793,31 @@ public:
 
         // [0.0, 0.0, d, near_z * -d]
         result[3] = simd::shuffle<0, 1, 1, 3>(t2, t1);
+
+        return result;
+    }
+
+    static inline float4x4_simd orthographic(
+        float left,
+        float right,
+        float bottom,
+        float top,
+        float near_z,
+        float far_z)
+    {
+        __m128 t1 = simd::set(left, bottom, near_z, 1.0f);
+        __m128 t2 = simd::set(right, top, far_z, 0.0f);
+        __m128 t3 = _mm_div_ps(simd::one, _mm_sub_ps(t2, t1));
+
+        float4x4_simd result;
+        t2 = _mm_add_ps(t1, t2);
+        t2 = simd::shuffle<0, 1, 2, 3>(t2, t1);
+        result[3] = _mm_mul_ps(t2, _mm_sub_ps(_mm_setzero_ps(), t3));
+        result[2] = _mm_and_ps(simd::mask_v<0, 0, 1, 0>, t3);
+
+        t3 = _mm_add_ps(t3, t3);
+        result[0] = _mm_and_ps(simd::mask_v<1, 0, 0, 0>, t3);
+        result[1] = _mm_and_ps(simd::mask_v<0, 1, 0, 0>, t3);
 
         return result;
     }

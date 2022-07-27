@@ -20,11 +20,12 @@ private:
     void initialize_scene();
 
     void update_camera();
-
     void resize_camera(std::uint32_t width, std::uint32_t height);
 
-    ecs::entity m_cube;
-    ecs::entity m_sphere;
+    void debug();
+
+    std::vector<ecs::entity> m_cubes;
+    std::vector<ecs::entity> m_sphere;
     ecs::entity m_plane;
     ecs::entity m_light;
 

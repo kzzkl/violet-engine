@@ -3,7 +3,7 @@
 
 namespace ash::ui
 {
-mvp_pipeline_parameter::mvp_pipeline_parameter() : graphics::pipeline_parameter("ui_mvp")
+mvp_pipeline_parameter::mvp_pipeline_parameter() : graphics::pipeline_parameter("ash_ui_mvp")
 {
 }
 
@@ -19,7 +19,8 @@ std::vector<graphics::pipeline_parameter_pair> mvp_pipeline_parameter::layout()
     };
 }
 
-offset_pipeline_parameter::offset_pipeline_parameter() : graphics::pipeline_parameter("ui_offset")
+offset_pipeline_parameter::offset_pipeline_parameter()
+    : graphics::pipeline_parameter("ash_ui_offset")
 {
 }
 
@@ -37,7 +38,7 @@ std::vector<graphics::pipeline_parameter_pair> offset_pipeline_parameter::layout
 }
 
 material_pipeline_parameter::material_pipeline_parameter()
-    : graphics::pipeline_parameter("ui_material")
+    : graphics::pipeline_parameter("ash_ui_material")
 {
 }
 

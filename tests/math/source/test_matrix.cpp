@@ -254,19 +254,7 @@ TEST_CASE("matrix::decompose", "[matrix]")
 
 TEST_CASE("matrix::orthographic", "[matrix]")
 {
-    math::float4x4 result = math::matrix::orthographic(-5.0f, 4.0f, 8.0f, -1.0f, -3.0f, 6.0f);
-    CHECK(equal(
-        result,
-        math::float4x4{
-            math::float4{0.222222224f, 0.0f,          0.0f,         0.0f},
-            math::float4{0.0f,         -0.222222224f, 0.0f,         0.0f},
-            math::float4{0.0f,         0.0f,          0.111111112f, 0.0f},
-            math::float4{0.111111112f, 0.777777791f,  0.333333343f, 1.0f}
-    }));
-}
-
-TEST_CASE("matrix::orthographic center", "[matrix]")
-{
+    // Center.
     math::float4x4 result = math::matrix::orthographic(-5.0f, 4.0f, 8.0f, -1.0f);
     CHECK(equal(
         result,
@@ -275,6 +263,17 @@ TEST_CASE("matrix::orthographic center", "[matrix]")
             math::float4{0.0f,  0.5f, 0.0f,          0.0f},
             math::float4{0.0f,  0.0f, -0.111111112f, 0.0f},
             math::float4{0.0f,  0.0f, 0.888888896f,  1.0f}
+    }));
+
+    // Off center.
+    result = math::matrix::orthographic(-5.0f, 4.0f, -1.0f, 8.0f, -3.0f, 6.0f);
+    CHECK(equal(
+        result,
+        math::float4x4{
+            math::float4{0.222222224f, 0.0f,          0.0f,         0.0f},
+            math::float4{0.0f,         0.222222224f,  0.0f,         0.0f},
+            math::float4{0.0f,         0.0f,          0.111111112f, 0.0f},
+            math::float4{0.111111112f, -0.777777791f, 0.333333343f, 1.0f}
     }));
 }
 
@@ -589,17 +588,31 @@ TEST_CASE("matrix_simd::decompose", "[matrix][simd]")
     CHECK(equal(translation, math::simd::set(6.0f, 5.0f, 4.5f, 1.0f)));
 }
 
-TEST_CASE("matrix_simd::orthographic center", "[matrix][simd]")
+TEST_CASE("matrix_simd::orthographic", "[matrix]")
 {
+    // Center.
     math::float4x4 result;
-    math::simd::store(math::matrix_simd::orthographic(-5.0f, 4.0f, 8.0f, -1.0f), result);
+    math::simd::store(math::matrix_simd::orthographic(20.0f, 10.0f, -10.0f, 20.0f), result);
     CHECK(equal(
         result,
         math::float4x4{
-            math::float4{-0.4f, 0.0f, 0.0f,          0.0f},
-            math::float4{0.0f,  0.5f, 0.0f,          0.0f},
-            math::float4{0.0f,  0.0f, -0.111111112f, 0.0f},
-            math::float4{0.0f,  0.0f, 0.888888896f,  1.0f}
+            math::float4{0.1f, 0.0f, 0.0f,         0.0f},
+            math::float4{0.0f, 0.2f, 0.0f,         0.0f},
+            math::float4{0.0f, 0.0f, 0.0333333351, 0.0f},
+            math::float4{0.0f, 0.0f, 0.333333343,  1.0f}
+    }));
+
+    // Off center.
+    math::simd::store(
+        math::matrix_simd::orthographic(-5.0f, 4.0f, -1.0f, 8.0f, -3.0f, 6.0f),
+        result);
+    CHECK(equal(
+        result,
+        math::float4x4{
+            math::float4{0.222222224f, 0.0f,          0.0f,         0.0f},
+            math::float4{0.0f,         0.222222224f,  0.0f,         0.0f},
+            math::float4{0.0f,         0.0f,          0.111111112f, 0.0f},
+            math::float4{0.111111112f, -0.777777791f, 0.333333343f, 1.0f}
     }));
 }
 } // namespace ash::test
