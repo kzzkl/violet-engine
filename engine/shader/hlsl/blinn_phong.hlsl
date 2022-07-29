@@ -13,11 +13,10 @@ struct ash_blinn_phong_material
 ConstantBuffer<ash_blinn_phong_material> material : register(b0, space1);
 
 ConstantBuffer<ash_camera> camera : register(b0, space2);
-ConstantBuffer<ash_light> light : register(b0, space3);
 
+ConstantBuffer<ash_light> light : register(b0, space3);
 Texture2D<float> shadow_map : register(t0, space3);
 SamplerComparisonState shadow_sampler : register(s6);
-SamplerState shadow_sampler_debug : register(s6);
 
 struct vs_in
 {
@@ -29,7 +28,7 @@ struct vs_out
 {
     float4 position : SV_POSITION;
     float3 world_position : W_POSITION;
-    float4 shadow_position : S_POSITION;
+    float4 shadow_position[ASH_MAX_SHADOW_COUNT] : S_POSITION;
     float3 normal : NORMAL;
 };
 
@@ -40,7 +39,10 @@ vs_out vs_main(vs_in vin)
     float4 world_position = mul(float4(vin.position, 1.0f), object.transform_m);
     result.world_position = world_position.xyz;
 
-    result.shadow_position = mul(world_position, light.directional_light[0].light_vp);
+    for (uint i = 0 ; i < light.shadow_count; ++i)
+    {
+        result.shadow_position[i] = mul(world_position, light.shadow_v[i]);
+    }
 
     result.position = mul(world_position, camera.transform_vp);
     result.normal = mul(vin.normal, (float3x3)object.transform_m);
@@ -58,8 +60,6 @@ float calculate_shadow_factor(float4 shadow_position)
 
     uint width, height, mip_count;
     shadow_map.GetDimensions(0, width, height, mip_count);
-
-    // return shadow_map.SampleCmpLevelZero(shadow_sampler, uv, depth).r;
 
     // Texel size.
     float dx = 1.0f / (float)width;
@@ -105,7 +105,7 @@ float4 ps_main(vs_out pin) : SV_TARGET
         float incident_cos = dot(normal, light_direction);
 
         float3 light_strength = max(0.0f, incident_cos) * light.directional_light[i].color;
-        light_strength = light_strength  * calculate_shadow_factor(pin.shadow_position);
+        light_strength = light_strength  * calculate_shadow_factor(pin.shadow_position[0]);
 
         // diffuse
         color += light_strength * material.diffuse;

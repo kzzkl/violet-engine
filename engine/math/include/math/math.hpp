@@ -5,5 +5,4 @@
 #include "misc.hpp"
 #include "quaternion.hpp"
 #include "simd.hpp"
-#include "utility.hpp"
 #include "vector.hpp"

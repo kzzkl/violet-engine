@@ -2,6 +2,7 @@
 #include "core/context.hpp"
 #include "graphics/blinn_phong_pipeline.hpp"
 #include "graphics/camera.hpp"
+#include "graphics/camera_frustum.hpp"
 #include "graphics/compute_pipeline.hpp"
 #include "graphics/graphics_event.hpp"
 #include "graphics/graphics_task.hpp"
@@ -227,10 +228,10 @@ void graphics::render_camera(ecs::entity camera_entity)
     auto command = rhi::renderer().allocate_command();
 
     // Update light data and render shadow map.
-    render_light(view_projection, command);
+    render_shadow(view_projection, command);
 
     // Frustum culling.
-    scene.frustum_culling(math::utility::frustum_planes(view_projection));
+    scene.frustum_culling(camera_frustum::planes(view_projection));
 
     // Draw object.
     std::set<render_pipeline*> render_pipelines;
@@ -296,85 +297,96 @@ void graphics::render_camera(ecs::entity camera_entity)
     rhi::renderer().execute(command);
 }
 
-void graphics::render_light(const math::float4x4& camera_vp, render_command_interface* command)
+void graphics::render_shadow(const math::float4x4& camera_vp, render_command_interface* command)
 {
     auto& world = system<ecs::world>();
     auto& scene = system<scene::scene>();
 
     std::size_t directional_light_counter = 0;
+    auto frustum_vertices = camera_frustum::vertices_vec4(camera_vp);
+    std::vector<float> frustum_division = {0.1f, 0.2f, 0.3f, 0.4f};
 
-    auto frustum_vertices = math::utility::frustum_vertices_vec4(camera_vp);
+    auto render_directional_light_shadow = [&](const math::float4x4_simd& light_v) {
+        math::float4_simd aabb_min = math::simd::set(std::numeric_limits<float>::max());
+        math::float4_simd aabb_max = math::simd::set(std::numeric_limits<float>::min());
+        for (std::size_t i = 0; i < 8; ++i)
+        {
+            math::float4_simd v = math::simd::load(frustum_vertices[i]);
+            v = math::matrix_simd::mul(v, light_v);
+            aabb_min = math::simd::min(aabb_min, v);
+            aabb_max = math::simd::max(aabb_max, v);
+        }
+
+        math::float4x4_simd light_p = math::matrix_simd::orthographic(
+            math::simd::get<0>(aabb_min),
+            math::simd::get<0>(aabb_max),
+            math::simd::get<1>(aabb_min),
+            math::simd::get<1>(aabb_max),
+            math::simd::get<2>(aabb_min) - 100.0f,
+            math::simd::get<2>(aabb_max));
+
+        math::float4x4_simd light_vp = math::matrix_simd::mul(light_v, light_p);
+
+        math::float4x4 view_projection;
+        math::simd::store(light_vp, view_projection);
+
+        scene.frustum_culling(camera_frustum::planes(view_projection));
+        world.view<mesh_render>().each([&, this](ecs::entity entity, mesh_render& mesh_render) {
+            // if ((mesh_render.render_groups & render_camera.render_groups) == 0)
+            //     return;
+
+            // Check visibility.
+            if (world.has_component<scene::bounding_box>(entity))
+            {
+                auto& bounding_box = world.component<scene::bounding_box>(entity);
+                if (!bounding_box.visible())
+                    return;
+            }
+
+            for (std::size_t i = 0; i < mesh_render.materials.size(); ++i)
+            {
+                render_item item = {};
+                if (mesh_render.object_parameter != nullptr)
+                    item.object_parameter = mesh_render.object_parameter->interface();
+                else
+                    continue;
+
+                item.vertex_buffers = mesh_render.vertex_buffers.data();
+                item.index_buffer = mesh_render.index_buffer;
+                item.index_start = mesh_render.submeshes[i].index_start;
+                item.index_end = mesh_render.submeshes[i].index_end;
+                item.vertex_base = mesh_render.submeshes[i].vertex_base;
+
+                m_shadow_pipeline->add_item(item);
+            }
+        });
+
+        shadow_map* shadow = allocate_shadow_map();
+        shadow->light_view_projection(view_projection);
+
+        m_shadow_pipeline->shadow(shadow);
+        m_shadow_pipeline->render(command);
+
+        m_light_parameter->shadow(0, view_projection, {}, {});
+        m_light_parameter->shadow_map(0, 0, shadow->depth_buffer());
+        m_light_parameter->shadow_count(1, 1);
+    };
+
     world.view<directional_light, scene::transform>().each(
         [&](directional_light& light, scene::transform& transform) {
             math::float4x4_simd light_v =
                 math::matrix_simd::inverse_transform(math::simd::load(transform.to_world()));
 
-            math::float4_simd aabb_min = math::simd::set(std::numeric_limits<float>::max());
-            math::float4_simd aabb_max = math::simd::set(std::numeric_limits<float>::min());
-            for (std::size_t i = 0; i < 8; ++i)
-            {
-                math::float4_simd v = math::simd::load(frustum_vertices[i]);
-                v = math::matrix_simd::mul(v, light_v);
-                aabb_min = math::simd::min(aabb_min, v);
-                aabb_max = math::simd::max(aabb_max, v);
-            }
+            render_directional_light_shadow(light_v);
 
-            math::float4x4_simd light_vp = math::matrix_simd::mul(
-                light_v,
-                math::matrix_simd::orthographic(
-                    math::simd::get<0>(aabb_min),
-                    math::simd::get<0>(aabb_max),
-                    math::simd::get<1>(aabb_min),
-                    math::simd::get<1>(aabb_max),
-                    math::simd::get<2>(aabb_min) - 100.0f,
-                    math::simd::get<2>(aabb_max)));
-
-            math::float4x4 view_projection;
-            math::simd::store(light_vp, view_projection);
-
-            scene.frustum_culling(math::utility::frustum_planes(view_projection));
-            world.view<mesh_render>().each([&, this](ecs::entity entity, mesh_render& mesh_render) {
-                // if ((mesh_render.render_groups & render_camera.render_groups) == 0)
-                //     return;
-
-                // Check visibility.
-                if (world.has_component<scene::bounding_box>(entity))
-                {
-                    auto& bounding_box = world.component<scene::bounding_box>(entity);
-                    if (!bounding_box.visible())
-                        return;
-                }
-
-                for (std::size_t i = 0; i < mesh_render.materials.size(); ++i)
-                {
-                    render_item item = {};
-                    if (mesh_render.object_parameter != nullptr)
-                        item.object_parameter = mesh_render.object_parameter->interface();
-                    else
-                        continue;
-
-                    item.vertex_buffers = mesh_render.vertex_buffers.data();
-                    item.index_buffer = mesh_render.index_buffer;
-                    item.index_start = mesh_render.submeshes[i].index_start;
-                    item.index_end = mesh_render.submeshes[i].index_end;
-                    item.vertex_base = mesh_render.submeshes[i].vertex_base;
-
-                    m_shadow_pipeline->add_item(item);
-                }
-            });
-
-            shadow_map* shadow = allocate_shadow_map();
-            shadow->light_view_projection(view_projection);
-
-            m_shadow_pipeline->shadow(shadow);
-            m_shadow_pipeline->render(command);
-
+            math::float4x4 light_view;
+            math::simd::store(light_v, light_view);
             m_light_parameter->directional_light(
                 directional_light_counter,
                 light.color(),
                 transform.forward(),
-                view_projection,
-                shadow->depth_buffer());
+                true,
+                directional_light_counter);
 
             ++directional_light_counter;
         });

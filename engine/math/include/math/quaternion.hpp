@@ -10,19 +10,19 @@ class quaternion
 public:
     static constexpr inline float4 identity() { return {0.0f, 0.0f, 0.0f, 1.0f}; }
 
-    static inline float4 rotation_axis(const float3& axis, float radians)
+    [[nodiscard]] static inline float4 rotation_axis(const float3& axis, float radians)
     {
         auto [sin, cos] = sin_cos(radians * 0.5f);
         return {axis[0] * sin, axis[1] * sin, axis[2] * sin, cos};
     }
 
-    static inline float4 rotation_axis(const float4& axis, float radians)
+    [[nodiscard]] static inline float4 rotation_axis(const float4& axis, float radians)
     {
         auto [sin, cos] = sin_cos(radians * 0.5f);
         return {axis[0] * sin, axis[1] * sin, axis[2] * sin, cos};
     }
 
-    static inline float4 rotation_euler(float pitch, float heading, float bank)
+    [[nodiscard]] static inline float4 rotation_euler(float pitch, float heading, float bank)
     {
         auto [p_sin, p_cos] = sin_cos(pitch * 0.5f);
         auto [h_sin, h_cos] = sin_cos(heading * 0.5f);
@@ -35,17 +35,17 @@ public:
             h_cos * p_cos * b_cos + h_sin * p_sin * b_sin};
     }
 
-    static inline float4 rotation_euler(const float3& euler)
+    [[nodiscard]] static inline float4 rotation_euler(const float3& euler)
     {
         return rotation_euler(euler[0], euler[1], euler[2]);
     }
 
-    static inline float4 rotation_euler(const float4& euler)
+    [[nodiscard]] static inline float4 rotation_euler(const float4& euler)
     {
         return rotation_euler(euler[0], euler[1], euler[2]);
     }
 
-    static inline float4 rotation_matrix(const float4x4& m)
+    [[nodiscard]] static inline float4 rotation_matrix(const float4x4& m)
     {
         float4 result;
         float t;
@@ -81,7 +81,7 @@ public:
         return result;
     }
 
-    static inline float4 mul(const float4& a, const float4& b)
+    [[nodiscard]] static inline float4 mul(const float4& a, const float4& b)
     {
         return float4{
             a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
@@ -90,7 +90,7 @@ public:
             a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]};
     }
 
-    static inline float4 mul_vec(const float4& q, const float4& v)
+    [[nodiscard]] static inline float4 mul_vec(const float4& q, const float4& v)
     {
         float xxd = 2.0f * q[0] * q[0];
         float xyd = 2.0f * q[0] * q[1];
@@ -110,14 +110,17 @@ public:
             0.0f};
     }
 
-    static inline float4 conjugate(const float4& q) { return float4{-q[0], -q[1], -q[2], q[3]}; }
+    [[nodiscard]] static inline float4 conjugate(const float4& q)
+    {
+        return float4{-q[0], -q[1], -q[2], q[3]};
+    }
 
-    static inline float4 inverse(const float4& q)
+    [[nodiscard]] static inline float4 inverse(const float4& q)
     {
         return vector::mul(conjugate(q), 1.0f / vector::dot(q, q));
     }
 
-    static inline float4 slerp(const float4& a, const float4& b, float t)
+    [[nodiscard]] static inline float4 slerp(const float4& a, const float4& b, float t)
     {
         float cos_omega = vector::dot(a, b);
 
@@ -154,9 +157,9 @@ public:
 struct quaternion_simd
 {
 public:
-    static inline float4_simd identity() { return simd::identity_row_v<3>; }
+    [[nodiscard]] static inline float4_simd identity() { return simd::identity_row_v<3>; }
 
-    static inline float4_simd rotation_axis(float4_simd axis, float radians)
+    [[nodiscard]] static inline float4_simd rotation_axis(float4_simd axis, float radians)
     {
         // TODO
         float4 a;
@@ -165,7 +168,7 @@ public:
         return simd::load(result);
     }
 
-    static inline float4_simd rotation_euler(float4_simd euler)
+    [[nodiscard]] static inline float4_simd rotation_euler(float4_simd euler)
     {
         // TODO
         float4 e;
@@ -174,7 +177,7 @@ public:
         return simd::load(result);
     }
 
-    static inline float4_simd rotation_matrix(const float4x4_simd& m)
+    [[nodiscard]] static inline float4_simd rotation_matrix(const float4x4_simd& m)
     {
         // TODO
         float4x4 temp;
@@ -183,7 +186,7 @@ public:
         return simd::load(q);
     }
 
-    static inline float4_simd mul(float4_simd a, float4_simd b)
+    [[nodiscard]] static inline float4_simd mul(float4_simd a, float4_simd b)
     {
         static const __m128 c1 = simd::set(1.0f, 1.0f, 1.0f, -1.0f);
         static const __m128 c2 = simd::set(-1.0f, -1.0f, -1.0f, -1.0f);
@@ -222,7 +225,7 @@ public:
         return result;
     }
 
-    static inline float4_simd mul_vec(float4_simd q, float4_simd v)
+    [[nodiscard]] static inline float4_simd mul_vec(float4_simd q, float4_simd v)
     {
         __m128 t1 = _mm_and_ps(v, simd::mask_v<1, 1, 1, 0>);
         __m128 t2 = conjugate(q);
@@ -230,20 +233,20 @@ public:
         return mul(q, t2);
     }
 
-    static inline float4_simd conjugate(float4_simd q)
+    [[nodiscard]] static inline float4_simd conjugate(float4_simd q)
     {
         __m128 t1 = simd::set(-1.0f, -1.0f, -1.0f, 1.0f);
         return _mm_mul_ps(q, t1);
     }
 
-    static inline float4_simd inverse(float4_simd q)
+    [[nodiscard]] static inline float4_simd inverse(float4_simd q)
     {
         __m128 t1 = conjugate(q);
         __m128 t2 = vector_simd::dot_v(q, q);
         return vector_simd::div(t1, t2);
     }
 
-    static inline float4_simd slerp(float4_simd a, float4_simd b, float t)
+    [[nodiscard]] static inline float4_simd slerp(float4_simd a, float4_simd b, float t)
     {
         float cos_omega = vector_simd::dot(a, b);
 

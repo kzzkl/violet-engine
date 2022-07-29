@@ -305,7 +305,7 @@ void light_viewer::resize_camera(std::uint32_t width, std::uint32_t height)
 
 void light_viewer::debug()
 {
-    auto& debug_draw = system<graphics::graphics>().debug();
+    /*auto& debug_draw = system<graphics::graphics>().debug();
 
     debug_draw.draw_line(
         math::float3{-100.0f, 0.0f, 0.0f},
@@ -377,6 +377,6 @@ void light_viewer::debug()
     math::simd::store(light_vp, light_view_projection);
 
     auto light_frustum_vertices = math::utility::frustum_vertices(light_view_projection);
-    draw_frustum(light_frustum_vertices);
+    draw_frustum(light_frustum_vertices);*/
 }
 } // namespace ash::sample

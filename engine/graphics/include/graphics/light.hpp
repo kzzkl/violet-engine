@@ -1,6 +1,7 @@
 #pragma once
 
 #include "graphics/pipeline_parameter.hpp"
+#include <array>
 
 namespace ash::graphics
 {
@@ -26,6 +27,9 @@ public:
     static constexpr std::size_t MAX_DIRECTIONAL_LIGHT_COUNT = 4;
     static constexpr std::size_t MAX_POINT_LIGHT_COUNT = 20;
 
+    static constexpr std::size_t MAX_SHADOW_COUNT = 4;
+    static constexpr std::size_t MAX_CASCADED_COUNT = 4;
+
 public:
     light_pipeline_parameter();
 
@@ -33,9 +37,17 @@ public:
         std::size_t index,
         const math::float3& color,
         const math::float3& direction,
-        const math::float4x4& light_vp,
-        resource_interface* shadow_map);
+        bool shadow,
+        std::size_t shadow_index);
     void directional_light_count(std::size_t count);
+
+    void shadow(
+        std::size_t index,
+        const math::float4x4& shadow_v,
+        const std::array<math::float4, MAX_CASCADED_COUNT>& cascaded_scale,
+        const std::array<math::float4, MAX_CASCADED_COUNT>& cascaded_offset);
+    void shadow_map(std::size_t index, std::size_t cascaded, resource_interface* shadow_map);
+    void shadow_count(std::size_t shadow_count, std::size_t cascaded_count);
 
     static std::vector<pipeline_parameter_pair> layout();
 
@@ -43,16 +55,22 @@ private:
     struct directional_light_data
     {
         math::float3 direction;
-        float _padding_0;
+        std::uint32_t shadow;
         math::float3 color;
-        float _padding_1;
-        math::float4x4 light_vp;
+        std::uint32_t shadow_index;
     };
 
     struct constant_data
     {
         directional_light_data directional_lights[MAX_DIRECTIONAL_LIGHT_COUNT];
+
+        math::float4x4 shadow_v[MAX_SHADOW_COUNT];
+        math::float4 cascaded_scale[MAX_SHADOW_COUNT][MAX_CASCADED_COUNT];
+        math::float4 cascaded_offset[MAX_SHADOW_COUNT][MAX_CASCADED_COUNT];
+
         std::uint32_t directional_light_count;
+        std::uint32_t shadow_count;
+        std::uint32_t cascaded_count;
     };
 };
 } // namespace ash::graphics

@@ -246,10 +246,10 @@ d3d12_pipeline_parameter_layout::d3d12_pipeline_parameter_layout(
         switch (desc.parameters[i].type)
         {
         case PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE:
-            ++m_srv_count;
+            m_srv_count += desc.parameters[i].size;
             break;
         case PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS:
-            ++m_uav_count;
+            m_uav_count += desc.parameters[i].size;
             break;
         default:
             m_cbv_count = 1;

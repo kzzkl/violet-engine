@@ -11,7 +11,7 @@ namespace ash::math
 class matrix
 {
 public:
-    static inline float4x4 mul(const float4x4& m1, const float4x4& m2)
+    [[nodiscard]] static inline float4x4 mul(const float4x4& m1, const float4x4& m2)
     {
         float4x4 result = {};
         for (std::size_t i = 0; i < 4; ++i)
@@ -25,7 +25,7 @@ public:
         return result;
     }
 
-    static inline float4 mul(const float4& v, const float4x4& m)
+    [[nodiscard]] static inline float4 mul(const float4& v, const float4x4& m)
     {
         return {
             m[0][0] * v[0] + m[1][0] * v[1] + m[2][0] * v[2] + m[3][0] * v[3],
@@ -34,7 +34,7 @@ public:
             m[0][3] * v[0] + m[1][3] * v[1] + m[2][3] * v[2] + m[3][3] * v[3]};
     }
 
-    static inline float4x4 mul(const float4x4& m, float scale)
+    [[nodiscard]] static inline float4x4 mul(const float4x4& m, float scale)
     {
         float4x4 result = {};
         for (std::size_t i = 0; i < 4; ++i)
@@ -45,7 +45,7 @@ public:
         return result;
     }
 
-    static inline float4x4 transpose(const float4x4& m)
+    [[nodiscard]] static inline float4x4 transpose(const float4x4& m)
     {
         float4x4 result = {};
         for (std::size_t i = 0; i < 4; ++i)
@@ -56,7 +56,7 @@ public:
         return result;
     }
 
-    static inline float determinant(const float4x4& m)
+    [[nodiscard]] static inline float determinant(const float4x4& m)
     {
         float det11 = m[0][0] * (m[1][1] * (m[2][2] * m[3][3] - m[2][3] * m[3][2]) -
                                  m[1][2] * (m[2][1] * m[3][3] - m[2][3] * m[3][1]) +
@@ -74,7 +74,7 @@ public:
         return det11 - det12 + det13 - det14;
     }
 
-    static inline float4x4 inverse(const float4x4& m)
+    [[nodiscard]] static inline float4x4 inverse(const float4x4& m)
     {
         float A2323 = m[2][2] * m[3][3] - m[2][3] * m[3][2];
         float A1323 = m[2][1] * m[3][3] - m[2][3] * m[3][1];
@@ -122,7 +122,7 @@ public:
         return result;
     }
 
-    static inline float4x4 inverse_transform(const float4x4& m)
+    [[nodiscard]] static inline float4x4 inverse_transform(const float4x4& m)
     {
         float x_scale = 1.0f / (m[0][0] * m[0][0] + m[0][1] * m[0][1] + m[0][2] * m[0][2]);
         float y_scale = 1.0f / (m[1][0] * m[1][0] + m[1][1] * m[1][1] + m[1][2] * m[1][2]);
@@ -141,7 +141,7 @@ public:
         return result;
     }
 
-    static inline float4x4 inverse_transform_no_scale(const float4x4& m)
+    [[nodiscard]] static inline float4x4 inverse_transform_no_scale(const float4x4& m)
     {
         float4x4 result;
         result[0] = {m[0][0], m[1][0], m[2][0], 0.0f};
@@ -156,7 +156,7 @@ public:
         return result;
     }
 
-    static constexpr inline float4x4 identity()
+    [[nodiscard]] static constexpr inline float4x4 identity()
     {
         return float4x4{
             float4{1.0f, 0.0f, 0.0f, 0.0f},
@@ -166,7 +166,7 @@ public:
         };
     }
 
-    static inline float4x4 scale(float x, float y, float z)
+    [[nodiscard]] static inline float4x4 scale(float x, float y, float z)
     {
         return float4x4{
             float4{x,    0.0f, 0.0f, 0.0f},
@@ -176,10 +176,10 @@ public:
         };
     }
 
-    static inline float4x4 scale(const float3& v) { return scale(v[0], v[1], v[2]); }
-    static inline float4x4 scale(const float4& v) { return scale(v[0], v[1], v[2]); }
+    [[nodiscard]] static inline float4x4 scale(const float3& v) { return scale(v[0], v[1], v[2]); }
+    [[nodiscard]] static inline float4x4 scale(const float4& v) { return scale(v[0], v[1], v[2]); }
 
-    static inline float4x4 scale_axis(const float4& axis, float scale)
+    [[nodiscard]] static inline float4x4 scale_axis(const float4& axis, float scale)
     {
         float x2 = axis[0] * axis[0];
         float xy = axis[0] * axis[1];
@@ -204,7 +204,7 @@ public:
         return result;
     }
 
-    static inline float4x4 rotation_axis(const float4& axis, float radians)
+    [[nodiscard]] static inline float4x4 rotation_axis(const float4& axis, float radians)
     {
         auto [sin, cos] = sin_cos(radians);
 
@@ -231,7 +231,7 @@ public:
         return result;
     }
 
-    static inline float4x4 rotation_x_axis(float radians)
+    [[nodiscard]] static inline float4x4 rotation_x_axis(float radians)
     {
         auto [sin, cos] = sin_cos(radians);
 
@@ -244,7 +244,7 @@ public:
         return result;
     }
 
-    static inline float4x4 rotation_y_axis(float radians)
+    [[nodiscard]] static inline float4x4 rotation_y_axis(float radians)
     {
         auto [sin, cos] = sin_cos(radians);
 
@@ -257,7 +257,7 @@ public:
         return result;
     }
 
-    static inline float4x4 rotation_z_axis(float radians)
+    [[nodiscard]] static inline float4x4 rotation_z_axis(float radians)
     {
         auto [sin, cos] = sin_cos(radians);
 
@@ -270,7 +270,7 @@ public:
         return result;
     }
 
-    static inline float4x4 rotation_quaternion(const float4& quaternion)
+    [[nodiscard]] static inline float4x4 rotation_quaternion(const float4& quaternion)
     {
         float xxd = 2.0f * quaternion[0] * quaternion[0];
         float xyd = 2.0f * quaternion[0] * quaternion[1];
@@ -291,7 +291,7 @@ public:
         };
     }
 
-    static inline float4x4 affine_transform(
+    [[nodiscard]] static inline float4x4 affine_transform(
         const float3& scale,
         const float4& rotation,
         const float3& translation)
@@ -306,7 +306,7 @@ public:
         };
     }
 
-    static inline float4x4 affine_transform(
+    [[nodiscard]] static inline float4x4 affine_transform(
         const float4& scale,
         const float4& rotation,
         const float4& translation)
@@ -321,7 +321,7 @@ public:
         };
     }
 
-    static inline void decompose(
+    [[nodiscard]] static inline void decompose(
         const float4x4& m,
         float3& scale,
         float4& rotation,
@@ -342,7 +342,7 @@ public:
         translation = {m[3][0], m[3][1], m[3][2]};
     }
 
-    static inline void decompose(
+    [[nodiscard]] static inline void decompose(
         const float4x4& m,
         float4& scale,
         float4& rotation,
@@ -363,7 +363,11 @@ public:
         translation = m[3];
     }
 
-    static inline float4x4 orthographic(float width, float height, float near_z, float far_z)
+    [[nodiscard]] static inline float4x4 orthographic(
+        float width,
+        float height,
+        float near_z,
+        float far_z)
     {
         float d = 1.0f / (far_z - near_z);
         return float4x4{
@@ -374,7 +378,7 @@ public:
         };
     }
 
-    static inline float4x4 orthographic(
+    [[nodiscard]] static inline float4x4 orthographic(
         float left,
         float right,
         float bottom,
@@ -393,7 +397,7 @@ public:
         };
     }
 
-    static inline float4x4 perspective(float fov, float aspect, float zn, float zf)
+    [[nodiscard]] static inline float4x4 perspective(float fov, float aspect, float zn, float zf)
     {
         float h = 1.0f / tanf(fov * 0.5f); // view space height
         float w = h / aspect;              // view space width
@@ -409,7 +413,7 @@ public:
 class matrix_simd
 {
 public:
-    static inline float4x4_simd mul(const float4x4_simd& m1, const float4x4_simd& m2)
+    [[nodiscard]] static inline float4x4_simd mul(const float4x4_simd& m1, const float4x4_simd& m2)
     {
         __m128 temp;
         float4x4_simd result;
@@ -441,7 +445,7 @@ public:
         return result;
     }
 
-    static inline float4_simd mul(float4_simd v, const float4x4_simd& m)
+    [[nodiscard]] static inline float4_simd mul(float4_simd v, const float4x4_simd& m)
     {
         __m128 t = simd::replicate<0>(v);
         t = _mm_mul_ps(t, m[0]);
@@ -462,14 +466,14 @@ public:
         return result;
     }
 
-    static inline float4_simd mul_mat2(float4_simd a, float4_simd b)
+    [[nodiscard]] static inline float4_simd mul_mat2(float4_simd a, float4_simd b)
     {
         __m128 t1 = _mm_mul_ps(a, simd::shuffle<0, 3, 0, 3>(b));
         __m128 t2 = _mm_mul_ps(simd::shuffle<1, 0, 3, 2>(a), simd::shuffle<2, 1, 2, 1>(b));
         return _mm_add_ps(t1, t2);
     }
 
-    static inline float4x4_simd scale(const float4x4_simd& m, float scale)
+    [[nodiscard]] static inline float4x4_simd scale(const float4x4_simd& m, float scale)
     {
         float4x4_simd result;
         __m128 s = _mm_set_ps1(scale);
@@ -482,7 +486,7 @@ public:
         return result;
     }
 
-    static inline float4x4_simd transpose(const float4x4_simd& m)
+    [[nodiscard]] static inline float4x4_simd transpose(const float4x4_simd& m)
     {
         __m128 t1 = simd::shuffle<0, 1, 0, 1>(m[0], m[1]);
         __m128 t2 = simd::shuffle<0, 1, 0, 1>(m[2], m[3]);
@@ -498,12 +502,12 @@ public:
         return result;
     }
 
-    static inline float determinant(const float4x4_simd& m)
+    [[nodiscard]] static inline float determinant(const float4x4_simd& m)
     {
         // TODO
     }
 
-    static inline float4x4_simd inverse(const float4x4_simd& m)
+    [[nodiscard]] static inline float4x4_simd inverse(const float4x4_simd& m)
     {
         // https://lxjk.github.io/2017/09/03/Fast-4x4-Matrix-Inverse-with-SSE-SIMD-Explained.html
 
@@ -558,7 +562,7 @@ public:
         return result;
     }
 
-    static inline float4x4_simd inverse_transform(const float4x4_simd& m)
+    [[nodiscard]] static inline float4x4_simd inverse_transform(const float4x4_simd& m)
     {
         float4x4_simd result;
 
@@ -601,7 +605,7 @@ public:
         return result;
     }
 
-    static inline float4x4_simd inverse_transform_no_scale(const float4x4_simd& m)
+    [[nodiscard]] static inline float4x4_simd inverse_transform_no_scale(const float4x4_simd& m)
     {
         float4x4_simd result;
 
@@ -633,7 +637,7 @@ public:
         return result;
     }
 
-    static inline float4x4_simd identity()
+    [[nodiscard]] static inline float4x4_simd identity()
     {
         return float4x4_simd{
             simd::identity_row_v<0>,
@@ -642,7 +646,7 @@ public:
             simd::identity_row_v<3>};
     }
 
-    static inline float4x4_simd scale(float x, float y, float z)
+    [[nodiscard]] static inline float4x4_simd scale(float x, float y, float z)
     {
         return float4x4_simd{
             _mm_setr_ps(x, 0.0f, 0.0f, 0.0f),
@@ -651,7 +655,7 @@ public:
             simd::identity_row_v<3>};
     }
 
-    static inline float4x4_simd scale(float4_simd v)
+    [[nodiscard]] static inline float4x4_simd scale(float4_simd v)
     {
         return float4x4_simd{
             _mm_and_ps(v, simd::mask_v<1, 0, 0, 0>),
@@ -660,32 +664,32 @@ public:
             simd::identity_row_v<3>};
     }
 
-    static inline float4x4_simd scale_axis(float4_simd axis, float scale)
+    [[nodiscard]] static inline float4x4_simd scale_axis(float4_simd axis, float scale)
     {
         // TODO
     }
 
-    static inline float4x4_simd rotation_axis(float4_simd axis, float radians)
+    [[nodiscard]] static inline float4x4_simd rotation_axis(float4_simd axis, float radians)
     {
         // TODO
     }
 
-    static inline float4x4_simd rotation_x_axis(float radians)
+    [[nodiscard]] static inline float4x4_simd rotation_x_axis(float radians)
     {
         // TODO
     }
 
-    static inline float4x4_simd rotation_y_axis(float radians)
+    [[nodiscard]] static inline float4x4_simd rotation_y_axis(float radians)
     {
         // TODO
     }
 
-    static inline float4x4_simd rotation_z_axis(float radians)
+    [[nodiscard]] static inline float4x4_simd rotation_z_axis(float radians)
     {
         // TODO
     }
 
-    static inline float4x4_simd rotation_quaternion(float4_simd quaternion)
+    [[nodiscard]] static inline float4x4_simd rotation_quaternion(float4_simd quaternion)
     {
         const __m128 c = simd::set(1.0f, 1.0f, 1.0f, 0.0f);
 
@@ -731,7 +735,7 @@ public:
         return result;
     }
 
-    static inline float4x4_simd affine_transform(
+    [[nodiscard]] static inline float4x4_simd affine_transform(
         float4_simd scale,
         float4_simd rotation,
         float4_simd translation)
@@ -752,7 +756,7 @@ public:
         return result;
     }
 
-    static inline void decompose(
+    [[nodiscard]] static inline void decompose(
         const float4x4_simd& m,
         float4_simd& scale,
         float4_simd& rotation,
@@ -776,7 +780,11 @@ public:
         translation = m[3];
     }
 
-    static inline float4x4_simd orthographic(float width, float height, float near_z, float far_z)
+    [[nodiscard]] static inline float4x4_simd orthographic(
+        float width,
+        float height,
+        float near_z,
+        float far_z)
     {
         float d = 1.0f / (far_z - near_z);
         __m128 t1 = _mm_setr_ps(2.0f / width, 2.0f / height, d, near_z * -d);
@@ -797,7 +805,7 @@ public:
         return result;
     }
 
-    static inline float4x4_simd orthographic(
+    [[nodiscard]] static inline float4x4_simd orthographic(
         float left,
         float right,
         float bottom,
@@ -822,7 +830,11 @@ public:
         return result;
     }
 
-    static inline float4x4_simd perspective(float fov, float aspect, float zn, float zf)
+    [[nodiscard]] static inline float4x4_simd perspective(
+        float fov,
+        float aspect,
+        float zn,
+        float zf)
     {
         // TODO
         float4x4 result = matrix::perspective(fov, aspect, zn, zf);
@@ -830,14 +842,14 @@ public:
     }
 
 private:
-    static inline float4_simd mul_adj_mat2(float4_simd a, float4_simd b)
+    [[nodiscard]] static inline float4_simd mul_adj_mat2(float4_simd a, float4_simd b)
     {
         __m128 t1 = _mm_mul_ps(simd::shuffle<3, 3, 0, 0>(a), b);
         __m128 t2 = _mm_mul_ps(simd::shuffle<1, 1, 2, 2>(a), simd::shuffle<2, 3, 0, 1>(b));
         return _mm_sub_ps(t1, t2);
     }
 
-    static inline float4_simd mul_mat2_adj(float4_simd a, float4_simd b)
+    [[nodiscard]] static inline float4_simd mul_mat2_adj(float4_simd a, float4_simd b)
     {
         __m128 t1 = _mm_mul_ps(a, simd::shuffle<3, 0, 3, 0>(b));
         __m128 t2 = _mm_mul_ps(simd::shuffle<1, 0, 3, 2>(a), simd::shuffle<2, 1, 2, 1>(b));

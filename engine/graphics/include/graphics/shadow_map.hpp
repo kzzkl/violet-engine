@@ -1,5 +1,6 @@
 #pragma once
 
+#include "graphics/light.hpp"
 #include "graphics/pipeline_parameter.hpp"
 #include "graphics_interface.hpp"
 #include <memory>
@@ -22,6 +23,7 @@ private:
     };
 };
 
+class shadow_pipeline;
 class shadow_map
 {
 public:

@@ -8,7 +8,6 @@ namespace ash::graphics
 class camera_pipeline_parameter : public pipeline_parameter
 {
 public:
-public:
     camera_pipeline_parameter();
 
     void position(const math::float3& position);
@@ -92,9 +91,6 @@ private:
 
     bool m_flip_y;
     math::float4x4 m_projection;
-
-    std::vector<float> m_frustum_divide;
-    std::vector<math::float3> m_frustum_corners;
 
     resource_interface* m_render_target;
     resource_interface* m_render_target_resolve;

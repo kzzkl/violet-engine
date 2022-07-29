@@ -43,7 +43,7 @@ private:
     void skinning();
     void render();
     void render_camera(ecs::entity camera_entity);
-    void render_light(const math::float4x4& camera_vp, render_command_interface* command);
+    void render_shadow(const math::float4x4& camera_vp, render_command_interface* command);
     void present();
 
     shadow_map* allocate_shadow_map();

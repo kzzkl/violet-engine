@@ -101,7 +101,7 @@ public:
 
 public:
     template <std::uint32_t I>
-    static inline float get(float4_simd v)
+    [[nodiscard]] static inline float get(float4_simd v)
     {
         if constexpr (I == 0)
         {
@@ -114,13 +114,13 @@ public:
         }
     }
 
-    static inline float4_simd set(float v) { return _mm_set_ps1(v); }
-    static inline float4_simd set(float x, float y, float z, float w)
+    [[nodiscard]] static inline float4_simd set(float v) { return _mm_set_ps1(v); }
+    [[nodiscard]] static inline float4_simd set(float x, float y, float z, float w)
     {
         return _mm_set_ps(w, z, y, x);
     }
 
-    static inline float4x4_simd set(
+    [[nodiscard]] static inline float4x4_simd set(
         float m11,
         float m12,
         float m13,
@@ -146,7 +146,7 @@ public:
     }
 
     template <std::uint32_t C1, std::uint32_t C2, std::uint32_t C3, std::uint32_t C4>
-    static inline float4_simd shuffle(float4_simd a, float4_simd b)
+    [[nodiscard]] static inline float4_simd shuffle(float4_simd a, float4_simd b)
     {
         if constexpr (C1 == 0 && C2 == 1 && C3 == 0 && C4 == 1)
             return _mm_movelh_ps(a, b);
@@ -157,13 +157,13 @@ public:
     }
 
     template <std::uint32_t C1, std::uint32_t C2, std::uint32_t C3, std::uint32_t C4>
-    static inline float4_simd shuffle(float4_simd v)
+    [[nodiscard]] static inline float4_simd shuffle(float4_simd v)
     {
         return shuffle<C1, C2, C3, C4>(v, v);
     }
 
     template <std::uint32_t C>
-    static inline float4_simd replicate(float4_simd v)
+    [[nodiscard]] static inline float4_simd replicate(float4_simd v)
     {
         return shuffle<C, C, C, C>(v);
     }
@@ -173,18 +173,18 @@ public:
 #pragma push_macro("max")
 #undef min
 #undef max
-    static inline float4_simd min(float4_simd a, float4_simd b)
+    [[nodiscard]] static inline float4_simd min(float4_simd a, float4_simd b)
     {
         return _mm_min_ps(a, b);
     }
-    static inline float4_simd max(float4_simd a, float4_simd b)
+    [[nodiscard]] static inline float4_simd max(float4_simd a, float4_simd b)
     {
         return _mm_max_ps(a, b);
     }
 #pragma pop_macro("min")
 #pragma pop_macro("max")
 
-    static inline float4_simd load(const float3& v)
+    [[nodiscard]] static inline float4_simd load(const float3& v)
     {
         __m128 x = _mm_load_ss(&v[0]);
         __m128 y = _mm_load_ss(&v[1]);
@@ -193,7 +193,7 @@ public:
         return _mm_movelh_ps(xy, z);
     }
 
-    static inline float4_simd load(const float3& v, float w)
+    [[nodiscard]] static inline float4_simd load(const float3& v, float w)
     {
         __m128 t1 = _mm_load_ss(&v[0]);
         __m128 t2 = _mm_load_ss(&v[1]);
@@ -204,17 +204,17 @@ public:
         return _mm_movelh_ps(t1, t3);
     }
 
-    static inline float4_simd load(const float4& v)
+    [[nodiscard]] static inline float4_simd load(const float4& v)
     {
         return _mm_loadu_ps(&v[0]);
     }
 
-    static inline float4_simd load(const float4_align& v)
+    [[nodiscard]] static inline float4_simd load(const float4_align& v)
     {
         return _mm_load_ps(&v[0]);
     }
 
-    static inline float4x4_simd load(const float4x4& m)
+    [[nodiscard]] static inline float4x4_simd load(const float4x4& m)
     {
         return {
             _mm_loadu_ps(&m[0][0]),
@@ -223,7 +223,7 @@ public:
             _mm_loadu_ps(&m[3][0])};
     }
 
-    static inline float4x4_simd load(const float4x4_align& m)
+    [[nodiscard]] static inline float4x4_simd load(const float4x4_align& m)
     {
         return {
             _mm_load_ps(&m[0][0]),

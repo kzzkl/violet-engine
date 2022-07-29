@@ -13,17 +13,17 @@ static constexpr float PI_PIDIV4 = PI / 4.0f;
 static constexpr float PI_PIDIV180 = PI / 180.0f;
 static constexpr float PI_180DIVPI = 180.0f / PI;
 
-inline float to_radians(float degrees)
+[[nodiscard]] inline float to_radians(float degrees)
 {
     return degrees * PI_PIDIV180;
 }
 
-inline float to_degrees(float radians)
+[[nodiscard]] inline float to_degrees(float radians)
 {
     return radians * PI_180DIVPI;
 }
 
-inline std::pair<float, float> sin_cos(float radians)
+[[nodiscard]] inline std::pair<float, float> sin_cos(float radians)
 {
     float temp = radians * PI_1DIV2PI;
     if (temp > 0.0f)
@@ -64,7 +64,7 @@ inline std::pair<float, float> sin_cos(float radians)
     return {sin, cos * sign};
 }
 
-inline float clamp(float value, float min, float max)
+[[nodiscard]] inline float clamp(float value, float min, float max)
 {
     if (value < min)
         return min;
