@@ -360,13 +360,16 @@ void d3d12_pipeline_parameter::set(std::size_t index, const void* data, size_t s
     copy_buffer(data, size, m_layout->parameter_offset(index));
 }
 
-void d3d12_pipeline_parameter::set(std::size_t index, resource_interface* texture)
+void d3d12_pipeline_parameter::set(
+    std::size_t index,
+    resource_interface* texture,
+    std::size_t offset)
 {
-    std::size_t offset = m_layout->parameter_offset(index);
+    std::size_t parameter_offset = m_layout->parameter_offset(index) + offset;
     if (m_layout->parameter_type(index) == PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE)
-        copy_descriptor(static_cast<d3d12_resource*>(texture)->srv(), offset);
+        copy_descriptor(static_cast<d3d12_resource*>(texture)->srv(), parameter_offset);
     else if (m_layout->parameter_type(index) == PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS)
-        copy_descriptor(static_cast<d3d12_resource*>(texture)->uav(), offset);
+        copy_descriptor(static_cast<d3d12_resource*>(texture)->uav(), parameter_offset);
 }
 
 void* d3d12_pipeline_parameter::constant_buffer_pointer(std::size_t index)

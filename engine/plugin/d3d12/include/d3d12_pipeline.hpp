@@ -78,7 +78,7 @@ public:
     virtual ~d3d12_pipeline_parameter();
 
     virtual void set(std::size_t index, const void* data, size_t size) override;
-    virtual void set(std::size_t index, resource_interface* texture) override;
+    virtual void set(std::size_t index, resource_interface* texture, std::size_t offset) override;
     virtual void* constant_buffer_pointer(std::size_t index) override;
 
     inline d3d12_parameter_tier_type tier() const noexcept { return m_tier; }

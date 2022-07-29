@@ -77,6 +77,22 @@ void camera::orthographic(float width, float near_z, float far_z)
     update_projection();
 }
 
+float camera::near_z() const noexcept
+{
+    if (m_projection_type == PROJECTION_TYPE_PERSPECTIVE)
+        return m_data.perspective.near_z;
+    else
+        return m_data.orthographic.near_z;
+}
+
+float camera::far_z() const noexcept
+{
+    if (m_projection_type == PROJECTION_TYPE_PERSPECTIVE)
+        return m_data.perspective.far_z;
+    else
+        return m_data.orthographic.far_z;
+}
+
 void camera::flip_y(bool flip) noexcept
 {
     m_flip_y = flip;

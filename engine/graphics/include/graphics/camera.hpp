@@ -41,6 +41,9 @@ public:
     void perspective(float fov, float near_z, float far_z);
     void orthographic(float width, float near_z, float far_z);
 
+    float near_z() const noexcept;
+    float far_z() const noexcept;
+
     void flip_y(bool flip) noexcept;
 
     void render_target(resource_interface* render_target) noexcept;

@@ -43,7 +43,11 @@ private:
     void skinning();
     void render();
     void render_camera(ecs::entity camera_entity);
-    void render_shadow(const math::float4x4& camera_vp, render_command_interface* command);
+    shadow_map* render_shadow(
+        const math::float4x4& light_view,
+        const math::float4* frustum_vertex,
+        render_command_interface* command,
+        math::float4x4& light_projection);
     void present();
 
     shadow_map* allocate_shadow_map();
@@ -69,6 +73,8 @@ private:
     std::unique_ptr<shadow_pipeline> m_shadow_pipeline;
     std::vector<std::unique_ptr<shadow_map>> m_shadow_map_pool;
     std::size_t m_shadow_map_counter;
+    std::size_t m_shadow_cascade_count;
+    math::float4 m_shadow_cascade_splits;
 
     std::unique_ptr<graphics_debug> m_debug;
 };

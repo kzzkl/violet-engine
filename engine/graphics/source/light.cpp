@@ -37,8 +37,8 @@ void light_pipeline_parameter::directional_light_count(std::size_t count)
 void light_pipeline_parameter::shadow(
     std::size_t index,
     const math::float4x4& shadow_v,
-    const std::array<math::float4, MAX_CASCADED_COUNT>& cascaded_scale,
-    const std::array<math::float4, MAX_CASCADED_COUNT>& cascaded_offset)
+    const std::array<math::float4, MAX_CASCADED_COUNT>& cascade_scale,
+    const std::array<math::float4, MAX_CASCADED_COUNT>& cascade_offset)
 {
     auto& parameter = field<constant_data>(0);
 
@@ -46,24 +46,29 @@ void light_pipeline_parameter::shadow(
 
     for (std::size_t i = 0; i < MAX_CASCADED_COUNT; ++i)
     {
-        parameter.cascaded_scale[index][i] = cascaded_scale[i];
-        parameter.cascaded_offset[index][i] = cascaded_offset[i];
+        parameter.cascade_scale[index][i] = cascade_scale[i];
+        parameter.cascade_offset[index][i] = cascade_offset[i];
     }
 }
 
 void light_pipeline_parameter::shadow_map(
     std::size_t index,
-    std::size_t cascaded,
+    std::size_t cascade,
     resource_interface* shadow_map)
 {
-    interface()->set(1 + index * MAX_CASCADED_COUNT + cascaded, shadow_map);
+    interface()->set(1, shadow_map, index * MAX_CASCADED_COUNT + cascade);
 }
 
-void light_pipeline_parameter::shadow_count(std::size_t shadow_count, std::size_t cascaded_count)
+void light_pipeline_parameter::shadow_cascade_depths(const math::float4& cascade_depths)
+{
+    field<constant_data>(0).cascade_depths = cascade_depths;
+}
+
+void light_pipeline_parameter::shadow_count(std::size_t shadow_count, std::size_t cascade_count)
 {
     auto& parameter = field<constant_data>(0);
     parameter.shadow_count = shadow_count;
-    parameter.cascaded_count = cascaded_count;
+    parameter.cascade_count = cascade_count;
 }
 
 std::vector<pipeline_parameter_pair> light_pipeline_parameter::layout()

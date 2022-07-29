@@ -44,10 +44,11 @@ public:
     void shadow(
         std::size_t index,
         const math::float4x4& shadow_v,
-        const std::array<math::float4, MAX_CASCADED_COUNT>& cascaded_scale,
-        const std::array<math::float4, MAX_CASCADED_COUNT>& cascaded_offset);
-    void shadow_map(std::size_t index, std::size_t cascaded, resource_interface* shadow_map);
-    void shadow_count(std::size_t shadow_count, std::size_t cascaded_count);
+        const std::array<math::float4, MAX_CASCADED_COUNT>& cascade_scale,
+        const std::array<math::float4, MAX_CASCADED_COUNT>& cascade_offset);
+    void shadow_map(std::size_t index, std::size_t cascade, resource_interface* shadow_map);
+    void shadow_cascade_depths(const math::float4& cascade_depths);
+    void shadow_count(std::size_t shadow_count, std::size_t cascade_count);
 
     static std::vector<pipeline_parameter_pair> layout();
 
@@ -65,12 +66,13 @@ private:
         directional_light_data directional_lights[MAX_DIRECTIONAL_LIGHT_COUNT];
 
         math::float4x4 shadow_v[MAX_SHADOW_COUNT];
-        math::float4 cascaded_scale[MAX_SHADOW_COUNT][MAX_CASCADED_COUNT];
-        math::float4 cascaded_offset[MAX_SHADOW_COUNT][MAX_CASCADED_COUNT];
+        math::float4 cascade_depths;
+        math::float4 cascade_scale[MAX_SHADOW_COUNT][MAX_CASCADED_COUNT];
+        math::float4 cascade_offset[MAX_SHADOW_COUNT][MAX_CASCADED_COUNT];
 
         std::uint32_t directional_light_count;
         std::uint32_t shadow_count;
-        std::uint32_t cascaded_count;
+        std::uint32_t cascade_count;
     };
 };
 } // namespace ash::graphics

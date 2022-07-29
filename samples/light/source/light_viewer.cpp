@@ -3,6 +3,7 @@
 #include "core/relation.hpp"
 #include "core/timer.hpp"
 #include "graphics/camera.hpp"
+#include "graphics/camera_frustum.hpp"
 #include "graphics/graphics.hpp"
 #include "graphics/graphics_event.hpp"
 #include "graphics/mesh_render.hpp"
@@ -71,7 +72,7 @@ void light_viewer::initialize_graphics_resource()
     m_camera = world.create("main camera");
     world.add<core::link, graphics::camera, scene::transform>(m_camera);
     auto& camera = world.component<graphics::camera>(m_camera);
-    camera.perspective(math::to_radians(45.0f), 0.03f, 20.0f);
+    camera.perspective(math::to_radians(45.0f), 0.03f, 100.0f);
     // camera.orthographic(10.0f, 0.03f, 1000.0f);
 
     auto& transform = world.component<scene::transform>(m_camera);
@@ -92,7 +93,7 @@ void light_viewer::initialize_task()
         update_camera();
         system<scene::scene>().sync_local();
 
-        debug();
+        // debug();
     });
 
     tick_task->add_dependency(*task.find(task::TASK_GAME_LOGIC_START));
@@ -216,7 +217,7 @@ void light_viewer::initialize_scene()
 
         auto& transform = world.component<scene::transform>(m_plane);
         transform.position(math::float3{0.0f, 0.0f, 0.0f});
-        transform.scale(math::float3{50.0f, 0.05f, 50.0f});
+        transform.scale(math::float3{500.0f, 0.05f, 500.0f});
         scene.sync_local();
 
         auto& bounding_box = world.component<scene::bounding_box>(m_plane);
@@ -305,22 +306,9 @@ void light_viewer::resize_camera(std::uint32_t width, std::uint32_t height)
 
 void light_viewer::debug()
 {
-    /*auto& debug_draw = system<graphics::graphics>().debug();
+    auto& debug_draw = system<graphics::graphics>().debug();
 
-    debug_draw.draw_line(
-        math::float3{-100.0f, 0.0f, 0.0f},
-        math::float3{100.0f, 0.0f, 0.0f},
-        math::float3{1.0f, 0.0f, 0.0f});
-    debug_draw.draw_line(
-        math::float3{0.0f, -100.0f, 0.0f},
-        math::float3{0.0f, 100.0f, 0.0f},
-        math::float3{0.0f, 1.0f, 0.0f});
-    debug_draw.draw_line(
-        math::float3{0.0f, 0.0f, -100.0f},
-        math::float3{0.0f, 0.0f, 100.0f},
-        math::float3{0.0f, 0.0f, 1.0f});
-
-    auto draw_frustum = [&](const auto& frustum) {
+    auto draw_frustum = [&](const auto* frustum) {
         debug_draw.draw_line(frustum[0], frustum[1], math::float3{1.0f, 0.0f, 1.0f});
         debug_draw.draw_line(frustum[1], frustum[3], math::float3{1.0f, 0.0f, 1.0f});
         debug_draw.draw_line(frustum[3], frustum[2], math::float3{1.0f, 0.0f, 1.0f});
@@ -348,35 +336,64 @@ void light_viewer::debug()
     math::float4x4 camera_view_projection;
     math::simd::store(camera_vp, camera_view_projection);
 
-    auto camera_frustum_vertices = math::utility::frustum_vertices(camera_view_projection);
-    draw_frustum(camera_frustum_vertices);
+    std::size_t shadow_cascade_count = 4;
+    math::float4 shadow_cascade_splits = {0.067f, 0.133f, 0.267f, 0.533f};
+
+    auto camera_frustum_vertices = graphics::camera_frustum::vertices(camera_view_projection);
+
+    std::vector<math::float3> frustum_cascade_vertices((shadow_cascade_count + 1) * 4);
+    for (std::size_t i = 0; i < 4; ++i)
+    {
+        // Near plane vertices.
+        frustum_cascade_vertices[i] = camera_frustum_vertices[i];
+        // Far plane vertices.
+        frustum_cascade_vertices[frustum_cascade_vertices.size() - 4 + i] =
+            camera_frustum_vertices[i + 4];
+    }
+
+    for (std::size_t i = 1; i < shadow_cascade_count; ++i)
+    {
+        for (std::size_t j = 0; j < 4; ++j)
+        {
+            math::float4_simd n = math::simd::load(camera_frustum_vertices[j]);
+            math::float4_simd f = math::simd::load(camera_frustum_vertices[j + 4]);
+
+            math::float4_simd m = math::vector_simd::lerp(n, f, shadow_cascade_splits[i - 1]);
+            math::simd::store(m, frustum_cascade_vertices[i * 4 + j]);
+        }
+    }
 
     auto& light_transform = world.component<scene::transform>(m_light);
     math::float4x4_simd light_to_world = math::simd::load(light_transform.to_world());
     math::float4x4_simd light_v = math::matrix_simd::inverse_transform(light_to_world);
-
-    math::float4_simd aabb_min = math::simd::set(std::numeric_limits<float>::max());
-    math::float4_simd aabb_max = math::simd::set(std::numeric_limits<float>::min());
-    for (std::size_t i = 0; i < 8; ++i)
+    for (std::size_t cascade = 0; cascade < shadow_cascade_count; ++cascade)
     {
-        math::float4_simd v = math::simd::load(camera_frustum_vertices[i], 1.0f);
-        v = math::matrix_simd::mul(v, light_v);
-        aabb_min = math::simd::min(aabb_min, v);
-        aabb_max = math::simd::max(aabb_max, v);
+        auto cascade_vertices = frustum_cascade_vertices.data() + cascade * 4;
+        draw_frustum(cascade_vertices);
+
+        math::float4_simd aabb_min = math::simd::set(std::numeric_limits<float>::max());
+        math::float4_simd aabb_max = math::simd::set(std::numeric_limits<float>::lowest());
+        for (std::size_t i = 0; i < 8; ++i)
+        {
+            math::float4_simd v = math::simd::load(cascade_vertices[i], 1.0f);
+            v = math::matrix_simd::mul(v, light_v);
+            aabb_min = math::simd::min(aabb_min, v);
+            aabb_max = math::simd::max(aabb_max, v);
+        }
+
+        math::float4x4_simd light_vp = math::matrix_simd::orthographic(
+            math::simd::get<0>(aabb_min),
+            math::simd::get<0>(aabb_max),
+            math::simd::get<1>(aabb_min),
+            math::simd::get<1>(aabb_max),
+            math::simd::get<2>(aabb_min),
+            math::simd::get<2>(aabb_max));
+        light_vp = math::matrix_simd::mul(light_v, light_vp);
+        math::float4x4 light_view_projection;
+        math::simd::store(light_vp, light_view_projection);
+
+        auto light_frustum_vertices = graphics::camera_frustum::vertices(light_view_projection);
+        draw_frustum(light_frustum_vertices.data());
     }
-
-    math::float4x4_simd light_vp = math::matrix_simd::orthographic(
-        math::simd::get<0>(aabb_min),
-        math::simd::get<0>(aabb_max),
-        math::simd::get<1>(aabb_min),
-        math::simd::get<1>(aabb_max),
-        math::simd::get<2>(aabb_min),
-        math::simd::get<2>(aabb_max));
-    light_vp = math::matrix_simd::mul(light_v, light_vp);
-    math::float4x4 light_view_projection;
-    math::simd::store(light_vp, light_view_projection);
-
-    auto light_frustum_vertices = math::utility::frustum_vertices(light_view_projection);
-    draw_frustum(light_frustum_vertices);*/
 }
 } // namespace ash::sample

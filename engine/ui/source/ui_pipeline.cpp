@@ -78,7 +78,7 @@ ui_pipeline::ui_pipeline()
         {graphics::ATTACHMENT_REFERENCE_TYPE_RESOLVE, 0}
     };
     ui_pass_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    ui_pass_info.parameters = {"ui_material", "ui_offset", "ui_mvp"};
+    ui_pass_info.parameters = {"ash_ui_material", "ash_ui_offset", "ash_ui_mvp"};
     ui_pass_info.samples = 4;
     ui_pass_info.depth_stencil.depth_functor = graphics::DEPTH_FUNCTOR_LESS;
     ui_pass_info.blend.enable = true;

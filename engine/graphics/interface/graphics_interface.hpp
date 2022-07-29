@@ -108,7 +108,7 @@ public:
     virtual ~pipeline_parameter_interface() = default;
 
     virtual void set(std::size_t index, const void* data, size_t size) = 0;
-    virtual void set(std::size_t index, resource_interface* texture) = 0;
+    virtual void set(std::size_t index, resource_interface* texture, std::size_t offset = 0) = 0;
 
     virtual void* constant_buffer_pointer(std::size_t index) = 0;
 };

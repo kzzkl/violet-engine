@@ -119,8 +119,9 @@ std::unique_ptr<render_pipeline_interface> rhi::make_render_pipeline(
 
         for (auto& parameter : pass.parameters)
         {
-            pass_desc.parameters[pass_desc.parameter_count] =
-                find_pipeline_parameter_layout(parameter);
+            auto layout = find_pipeline_parameter_layout(parameter);
+            ASH_ASSERT(layout != nullptr);
+            pass_desc.parameters[pass_desc.parameter_count] = layout;
             ++pass_desc.parameter_count;
         }
 
@@ -151,7 +152,9 @@ std::unique_ptr<compute_pipeline_interface> rhi::make_compute_pipeline(
 
     for (auto& parameter : info.parameters)
     {
-        desc.parameters[desc.parameter_count] = find_pipeline_parameter_layout(parameter);
+        auto layout = find_pipeline_parameter_layout(parameter);
+        ASH_ASSERT(layout != nullptr);
+        desc.parameters[desc.parameter_count] = layout;
         ++desc.parameter_count;
     }
 
