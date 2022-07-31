@@ -1,7 +1,7 @@
-cbuffer ash_object : register(b0, space0)
-{
-    float4x4 transform_m;
-};
+#include "ash_mvp.hlsl"
+#include "ash_light.hlsl"
+
+ConstantBuffer<ash_object> object : register(b0, space0);
 
 cbuffer mmd_material : register(b0, space1)
 {
@@ -14,35 +14,15 @@ cbuffer mmd_material : register(b0, space1)
     uint toon_mode;
     uint spa_mode;
 };
-
 Texture2D tex : register(t0, space1);
 Texture2D toon : register(t1, space1);
 Texture2D spa : register(t2, space1);
 SamplerState sampler_clamp : register(s1);
 
-cbuffer ash_camera : register(b0, space2)
-{
-    float3 camera_position;
-    float3 camera_direction;
-
-    float4x4 transform_v;
-    float4x4 transform_p;
-    float4x4 transform_vp;
-};
-
-struct ash_directional_light_data
-{
-    float3 direction;
-    float _padding_0;
-    float3 color;
-    float _padding_1;
-};
-
-cbuffer ash_light : register(b0, space3)
-{
-    ash_directional_light_data directional_light[4];
-    uint directional_light_count;
-};
+ConstantBuffer<ash_camera> camera : register(b0, space2);
+ConstantBuffer<ash_light> light : register(b0, space3);
+Texture2D<float> shadow_map[16] : register(t0, space3);
+SamplerComparisonState shadow_sampler : register(s6);
 
 struct vs_in
 {
@@ -54,20 +34,40 @@ struct vs_in
 struct vs_out
 {
     float4 position : SV_POSITION;
-    float3 world_normal : W_NORMAL;
-    float3 screen_normal : S_NORMAL;
+    float3 world_normal : WORLD_NORMAL;
+    float3 screen_normal : SCREEN_NORMAL;
     float2 uv : UV;
+
+    float4 shadow_position[ASH_MAX_SHADOW_COUNT] : SHADOW_POSITION;
+    float camera_depth : CAMERA_DEPTH;
 };
 
 vs_out vs_main(vs_in vin)
 {
+    float4 world_positon = mul(float4(vin.position, 1.0f), object.transform_m);
+
     vs_out result;
-    result.position = mul(float4(vin.position, 1.0f), transform_vp);
-    result.world_normal = vin.normal;
-    result.screen_normal = mul(result.world_normal, (float3x3)transform_v);
+    result.position = mul(world_positon, camera.transform_vp);
+    result.world_normal = mul(vin.normal, (float3x3)object.transform_m);
+    result.screen_normal = mul(result.world_normal, (float3x3)camera.transform_v);
     result.uv = vin.uv;
 
+    for (uint i = 0 ; i < light.shadow_count; ++i)
+        result.shadow_position[i] = mul(world_positon, light.shadow_v[i]);
+    result.camera_depth = mul(world_positon, camera.transform_v).z;
+
     return result;
+}
+
+float shadow_factor(uint light_index, float camera_depth, float4 shadow_position)
+{
+    uint cascade_index = shadow_cascade_index(camera_depth, light);
+
+    shadow_position.xyz /= shadow_position.w;
+    shadow_position *= light.cascade_scale[light_index][cascade_index];
+    shadow_position += light.cascade_offset[light_index][cascade_index];
+    
+    return shadow_pcf(shadow_map[light_index * 4 + cascade_index], shadow_sampler, shadow_position);
 }
 
 float4 ps_main(vs_out pin) : SV_TARGET
@@ -91,11 +91,12 @@ float4 ps_main(vs_out pin) : SV_TARGET
     if (toon_mode != 0)
     {
         float c = 0.0f;
-        for (uint i = 0; i < directional_light_count; ++i)
+        for (uint i = 0; i < light.directional_light_count; ++i)
         {
-            c = dot(world_normal, normalize(-directional_light[0].direction));
+            c = max(0.0f, dot(world_normal, -light.directional_light[i].direction));
+            c *= shadow_factor(i, pin.camera_depth, pin.shadow_position[i]);
+            c = 1.0f - c;
         }
-        c = clamp(c + 0.5f, 0.0f, 1.0f);
 
         color *= toon.Sample(sampler_clamp, float2(0.0f, c));
     }

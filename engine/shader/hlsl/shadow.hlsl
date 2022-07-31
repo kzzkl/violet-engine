@@ -22,5 +22,6 @@ vs_out vs_main(vs_in vin)
 {
     vs_out result;
     result.position = mul(mul(float4(vin.position, 1.0f), object.transform_m), shadow.light_vp);
+    // result.position = mul(float4(vin.position, 1.0f), shadow.light_vp);
     return result;
 }

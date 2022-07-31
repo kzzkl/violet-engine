@@ -27,7 +27,7 @@ private:
     std::vector<ecs::entity> m_cubes;
     std::vector<ecs::entity> m_sphere;
     ecs::entity m_plane;
-    ecs::entity m_light;
+    std::vector<ecs::entity> m_lights;
 
     graphics::geometry_data m_cube_mesh_data;
     std::unique_ptr<graphics::resource_interface> m_cube_positon_buffer;

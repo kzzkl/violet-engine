@@ -69,9 +69,10 @@ void bounding_box::aabb(
     bool dynamic,
     float fatten)
 {
-    float inf = std::numeric_limits<float>::infinity();
-    math::float4_simd min = math::simd::set(inf, inf, inf, 1.0);
-    math::float4_simd max = math::simd::set(-inf, -inf, -inf, 1.0);
+    float float_min = std::numeric_limits<float>::lowest();
+    float float_max = std::numeric_limits<float>::max();
+    math::float4_simd min = math::simd::set(float_max, float_max, float_max, 1.0);
+    math::float4_simd max = math::simd::set(float_min, float_min, float_min, 1.0);
 
     if (dynamic)
     {

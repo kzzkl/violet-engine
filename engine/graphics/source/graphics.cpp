@@ -1,5 +1,4 @@
 #include "graphics/graphics.hpp"
-#include "core/context.hpp"
 #include "graphics/blinn_phong_pipeline.hpp"
 #include "graphics/camera.hpp"
 #include "graphics/camera_frustum.hpp"
@@ -56,6 +55,7 @@ bool graphics::initialize(const dictionary& config)
         blinn_phong_material_pipeline_parameter::layout());
 
     m_light_parameter = std::make_unique<light_pipeline_parameter>();
+    m_light_parameter->ambient_light(math::float3{0.5f, 0.5f, 0.5f});
 
     m_sky_texture = rhi::make_texture_cube(
         "engine/texture/skybox/cloudymorning_left.png",
@@ -134,6 +134,19 @@ resource_extent graphics::render_extent() const noexcept
     {
         return rhi::renderer().back_buffer()->extent();
     }
+}
+
+void graphics::ambient_light(const math::float3& ambient_light)
+{
+    m_light_parameter->ambient_light(ambient_light);
+}
+
+void graphics::shadow_cascade(std::size_t cascade_count, const math::float4& cascade_splits)
+{
+    ASH_ASSERT(cascade_count < light_pipeline_parameter::MAX_CASCADED_COUNT);
+
+    m_shadow_cascade_count = cascade_count;
+    m_shadow_cascade_splits = cascade_splits;
 }
 
 void graphics::skinning()
@@ -219,93 +232,21 @@ void graphics::render_camera(ecs::entity camera_entity)
     render_camera.pipeline_parameter()->position(transform.position());
     render_camera.pipeline_parameter()->direction(transform.forward());
 
-    math::float4x4 view, view_projection;
-    math::simd::store(camera_v, view);
-    math::simd::store(camera_vp, view_projection);
-    render_camera.pipeline_parameter()->view(view);
+    math::float4x4 camera_view, camera_view_projection;
+    math::simd::store(camera_v, camera_view);
+    math::simd::store(camera_vp, camera_view_projection);
+    render_camera.pipeline_parameter()->view(camera_view);
     render_camera.pipeline_parameter()->projection(render_camera.projection());
-    render_camera.pipeline_parameter()->view_projection(view_projection);
+    render_camera.pipeline_parameter()->view_projection(camera_view_projection);
 
     // Render.
     auto command = rhi::renderer().allocate_command();
 
     // Update light data and render shadow map.
-    auto frustum_vertices = camera_frustum::vertices_vec4(view_projection);
-    std::vector<math::float4> frustum_cascade_vertices((m_shadow_cascade_count + 1) * 4);
-    for (std::size_t i = 0; i < 4; ++i)
-    {
-        // Near plane vertices.
-        frustum_cascade_vertices[i] = frustum_vertices[i];
-        // Far plane vertices.
-        frustum_cascade_vertices[frustum_cascade_vertices.size() - 4 + i] = frustum_vertices[i + 4];
-    }
-
-    for (std::size_t i = 1; i < m_shadow_cascade_count; ++i)
-    {
-        for (std::size_t j = 0; j < 4; ++j)
-        {
-            math::float4_simd n = math::simd::load(frustum_vertices[j]);
-            math::float4_simd f = math::simd::load(frustum_vertices[j + 4]);
-
-            math::float4_simd m = math::vector_simd::lerp(n, f, m_shadow_cascade_splits[i - 1]);
-            math::simd::store(m, frustum_cascade_vertices[i * 4 + j]);
-        }
-    }
-
-    std::size_t directional_light_counter = 0;
-    world.view<directional_light, scene::transform>().each(
-        [&](directional_light& light, scene::transform& transform) {
-            math::float4x4_simd light_v =
-                math::matrix_simd::inverse_transform(math::simd::load(transform.to_world()));
-            math::float4x4 light_view;
-            math::simd::store(light_v, light_view);
-
-            std::array<math::float4, 4> cascade_scale;
-            std::array<math::float4, 4> cascade_offset;
-            for (std::size_t i = 0; i < 4; ++i)
-            {
-                math::float4x4 light_projection;
-                shadow_map* shadow_map = render_shadow(
-                    light_view,
-                    frustum_cascade_vertices.data() + i * 4,
-                    command,
-                    light_projection);
-
-                cascade_scale[i] =
-                    {light_projection[0][0], light_projection[1][1], light_projection[2][2], 1.0f};
-                cascade_offset[i] = light_projection[3];
-
-                m_light_parameter->shadow_map(0, i, shadow_map->depth_buffer());
-            }
-            m_light_parameter->shadow(0, light_view, cascade_scale, cascade_offset);
-
-            m_light_parameter->directional_light(
-                directional_light_counter,
-                light.color(),
-                transform.forward(),
-                true,
-                directional_light_counter);
-
-            ++directional_light_counter;
-        });
-    m_light_parameter->shadow_count(1, 4);
-
-    math::float4_simd camera_near_z = math::simd::set(render_camera.near_z());
-    math::float4_simd camera_far_z = math::simd::set(render_camera.far_z());
-
-    math::float4 shadow_cascade_splits;
-    math::simd::store(
-        math::vector_simd::lerp(
-            camera_near_z,
-            camera_far_z,
-            math::simd::load(m_shadow_cascade_splits)),
-        shadow_cascade_splits);
-    m_light_parameter->shadow_cascade_depths(shadow_cascade_splits);
-
-    m_light_parameter->directional_light_count(directional_light_counter);
+    render_shadow(render_camera.near_z(), render_camera.far_z(), camera_view_projection, command);
 
     // Frustum culling.
-    scene.frustum_culling(camera_frustum::planes(view_projection));
+    scene.frustum_culling(camera_frustum::planes(camera_view_projection));
 
     // Draw object.
     std::set<render_pipeline*> render_pipelines;
@@ -371,7 +312,89 @@ void graphics::render_camera(ecs::entity camera_entity)
     rhi::renderer().execute(command);
 }
 
-shadow_map* graphics::render_shadow(
+void graphics::render_shadow(
+    float camera_near_z,
+    float camera_far_z,
+    const math::float4x4& camera_view_projection,
+    render_command_interface* command)
+{
+    auto& world = system<ecs::world>();
+    auto& scene = system<scene::scene>();
+
+    auto frustum_vertices = camera_frustum::vertices_vec4(camera_view_projection);
+    std::vector<math::float4> frustum_cascade_vertices((m_shadow_cascade_count + 1) * 4);
+    for (std::size_t i = 0; i < 4; ++i)
+    {
+        // Near plane vertices.
+        frustum_cascade_vertices[i] = frustum_vertices[i];
+        // Far plane vertices.
+        frustum_cascade_vertices[frustum_cascade_vertices.size() - 4 + i] = frustum_vertices[i + 4];
+    }
+
+    for (std::size_t i = 1; i < m_shadow_cascade_count; ++i)
+    {
+        for (std::size_t j = 0; j < 4; ++j)
+        {
+            math::float4_simd n = math::simd::load(frustum_vertices[j]);
+            math::float4_simd f = math::simd::load(frustum_vertices[j + 4]);
+
+            math::float4_simd m = math::vector_simd::lerp(n, f, m_shadow_cascade_splits[i - 1]);
+            math::simd::store(m, frustum_cascade_vertices[i * 4 + j]);
+        }
+    }
+
+    std::size_t directional_light_counter = 0;
+    world.view<directional_light, scene::transform>().each([&](directional_light& light,
+                                                               scene::transform& transform) {
+        math::float4x4_simd light_v =
+            math::matrix_simd::inverse_transform(math::simd::load(transform.to_world()));
+        math::float4x4 light_view;
+        math::simd::store(light_v, light_view);
+
+        std::array<math::float4, 4> cascade_scale;
+        std::array<math::float4, 4> cascade_offset;
+        for (std::size_t i = 0; i < 4; ++i)
+        {
+            math::float4x4 light_projection;
+            shadow_map* shadow_map = render_shadow_cascade(
+                light_view,
+                frustum_cascade_vertices.data() + i * 4,
+                command,
+                light_projection);
+
+            cascade_scale[i] =
+                {light_projection[0][0], light_projection[1][1], light_projection[2][2], 1.0f};
+            cascade_offset[i] = light_projection[3];
+
+            m_light_parameter->shadow_map(directional_light_counter, i, shadow_map->depth_buffer());
+        }
+        m_light_parameter
+            ->shadow(directional_light_counter, light_view, cascade_scale, cascade_offset);
+
+        m_light_parameter->directional_light(
+            directional_light_counter,
+            light.color(),
+            transform.forward(),
+            true,
+            directional_light_counter);
+
+        ++directional_light_counter;
+    });
+    m_light_parameter->shadow_count(directional_light_counter, m_shadow_cascade_count);
+
+    math::float4 shadow_cascade_splits;
+    math::simd::store(
+        math::vector_simd::lerp(
+            math::simd::set(camera_near_z),
+            math::simd::set(camera_far_z),
+            math::simd::load(m_shadow_cascade_splits)),
+        shadow_cascade_splits);
+    m_light_parameter->shadow_cascade_depths(shadow_cascade_splits);
+
+    m_light_parameter->directional_light_count(directional_light_counter);
+}
+
+shadow_map* graphics::render_shadow_cascade(
     const math::float4x4& light_view,
     const math::float4* frustum_vertex,
     render_command_interface* command,
@@ -409,9 +432,6 @@ shadow_map* graphics::render_shadow(
 
     scene.frustum_culling(camera_frustum::planes(view_projection));
     world.view<mesh_render>().each([&, this](ecs::entity entity, mesh_render& mesh_render) {
-        // if ((mesh_render.render_groups & render_camera.render_groups) == 0)
-        //     return;
-
         // Check visibility.
         if (world.has_component<scene::bounding_box>(entity))
         {

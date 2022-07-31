@@ -250,17 +250,16 @@ void mmd_animation::update_world(mmd_skeleton& skeleton, bool after_physics)
         {
             auto& parent = world.component<mmd_node>(link.parent);
             parent_to_world = math::simd::load(skeleton.world[parent.index]);
+
+            math::float4x4_simd to_parent = math::simd::load(skeleton.local[node.index]);
+            math::simd::store(
+                math::matrix_simd::mul(to_parent, parent_to_world),
+                skeleton.world[node.index]);
         }
         else
         {
-            auto& parent = world.component<scene::transform>(link.parent);
-            parent_to_world = math::simd::load(parent.to_world());
+            skeleton.world[node.index] = skeleton.local[node.index];
         }
-
-        math::float4x4_simd to_parent = math::simd::load(skeleton.local[node.index]);
-        math::simd::store(
-            math::matrix_simd::mul(to_parent, parent_to_world),
-            skeleton.world[node.index]);
     }
 }
 
@@ -307,24 +306,22 @@ void mmd_animation::update_world(mmd_skeleton& skeleton, ecs::entity entity)
 
         auto& node = world.component<mmd_node>(node_entity);
         auto& link = world.component<core::link>(node_entity);
-        auto& transform = world.component<scene::transform>(node_entity);
 
         math::float4x4_simd parent_to_world;
         if (world.has_component<mmd_node>(link.parent))
         {
             auto& parent = world.component<mmd_node>(link.parent);
             parent_to_world = math::simd::load(skeleton.world[parent.index]);
+
+            math::float4x4_simd to_parent = math::simd::load(skeleton.local[node.index]);
+            math::simd::store(
+                math::matrix_simd::mul(to_parent, parent_to_world),
+                skeleton.world[node.index]);
         }
         else
         {
-            auto& parent = world.component<scene::transform>(link.parent);
-            parent_to_world = math::simd::load(parent.to_world());
+            skeleton.world[node.index] = skeleton.local[node.index];
         }
-
-        math::float4x4_simd to_parent = math::simd::load(skeleton.local[node.index]);
-        math::simd::store(
-            math::matrix_simd::mul(to_parent, parent_to_world),
-            skeleton.world[node.index]);
 
         for (auto& c : link.children)
         {
@@ -532,13 +529,13 @@ void mmd_animation::ik_solve_plane(
     switch (axis)
     {
     case 0: // x axis
-        rotate_axis = math::simd::identity_row<1>();
+        rotate_axis = math::simd::identity_row_v<1>;
         break;
     case 1: // y axis
-        rotate_axis = math::simd::identity_row<2>();
+        rotate_axis = math::simd::identity_row_v<2>;
         break;
     case 2: // z axis
-        rotate_axis = math::simd::identity_row<3>();
+        rotate_axis = math::simd::identity_row_v<3>;
         break;
     default:
         return;

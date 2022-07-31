@@ -33,6 +33,7 @@ public:
 public:
     light_pipeline_parameter();
 
+    void ambient_light(const math::float3& color);
     void directional_light(
         std::size_t index,
         const math::float3& color,
@@ -64,13 +65,14 @@ private:
     struct constant_data
     {
         directional_light_data directional_lights[MAX_DIRECTIONAL_LIGHT_COUNT];
+        std::uint32_t directional_light_count;
+        math::float3 ambient_light;
 
         math::float4x4 shadow_v[MAX_SHADOW_COUNT];
         math::float4 cascade_depths;
         math::float4 cascade_scale[MAX_SHADOW_COUNT][MAX_CASCADED_COUNT];
         math::float4 cascade_offset[MAX_SHADOW_COUNT][MAX_CASCADED_COUNT];
 
-        std::uint32_t directional_light_count;
         std::uint32_t shadow_count;
         std::uint32_t cascade_count;
     };

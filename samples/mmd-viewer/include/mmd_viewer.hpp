@@ -30,6 +30,6 @@ private:
     std::unique_ptr<mmd_loader> m_loader;
 
     std::unique_ptr<mmd_render_pipeline> m_render_pipeline;
-    std::unique_ptr<mmd_skin_pipeline> m_skin_pipeline;
+    std::unique_ptr<mmd_skinning_pipeline> m_skinning_pipeline;
 };
 } // namespace ash::sample::mmd

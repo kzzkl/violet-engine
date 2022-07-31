@@ -11,6 +11,11 @@ light_pipeline_parameter::light_pipeline_parameter() : pipeline_parameter("ash_l
 {
 }
 
+void light_pipeline_parameter::ambient_light(const math::float3& color)
+{
+    field<constant_data>(0).ambient_light = color;
+}
+
 void light_pipeline_parameter::directional_light(
     std::size_t index,
     const math::float3& color,

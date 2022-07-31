@@ -15,7 +15,7 @@ void skinning_pipeline::add(const skinned_mesh& skinned_mesh)
 
 void skinning_pipeline::skinning(render_command_interface* command)
 {
-    on_skinning(command);
+    on_skinning(m_items, command);
     clear();
 }
 } // namespace ash::graphics

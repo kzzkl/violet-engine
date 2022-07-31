@@ -33,10 +33,10 @@ bool mmd_viewer::initialize(const dictionary& config)
         material_pipeline_parameter::layout());
     graphics::rhi::register_pipeline_parameter_layout(
         "mmd_skin",
-        skin_pipeline_parameter::layout());
+        skinning_pipeline_parameter::layout());
 
     m_render_pipeline = std::make_unique<mmd_render_pipeline>();
-    m_skin_pipeline = std::make_unique<mmd_skin_pipeline>();
+    m_skinning_pipeline = std::make_unique<mmd_skinning_pipeline>();
 
     return true;
 }
@@ -47,7 +47,7 @@ ash::ecs::entity mmd_viewer::load_mmd(
     std::string_view vmd)
 {
     ecs::entity entity = system<ecs::world>().create(name);
-    if (m_loader->load(entity, pmx, vmd, m_render_pipeline.get(), m_skin_pipeline.get()))
+    if (m_loader->load(entity, pmx, vmd, m_render_pipeline.get(), m_skinning_pipeline.get()))
     {
         return entity;
     }
@@ -83,26 +83,41 @@ void mmd_viewer::update()
     delta += system<core::timer>().frame_delta();
     animation.evaluate(delta * 30.0f);
     animation.update(false);
-    world.view<mmd_skeleton, graphics::skinned_mesh>().each(
-        [&](mmd_skeleton& skeleton, graphics::skinned_mesh&) {
-            math::float4_simd scale;
-            math::float4_simd rotation;
-            math::float4_simd position;
+    world.view<mmd_skeleton>().each([&](mmd_skeleton& skeleton) {
+        math::float4_simd scale;
+        math::float4_simd rotation;
+        math::float4_simd position;
+        for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
+        {
+            auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
+            math::matrix_simd::decompose(
+                math::simd::load(skeleton.local[i]),
+                scale,
+                rotation,
+                position);
+            transform.scale(scale);
+            transform.rotation(rotation);
+            transform.position(position);
+        }
+    });
+
+    system<physics::physics>().simulation();
+
+    world.view<mmd_skeleton, scene::transform>().each(
+        [&](mmd_skeleton& skeleton, scene::transform& transform) {
+            math::float4x4_simd root_to_local = math::simd::load(transform.to_world());
+            root_to_local = math::matrix_simd::inverse_transform(root_to_local);
+
             for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
             {
                 auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
-                math::matrix_simd::decompose(
-                    math::simd::load(skeleton.local[i]),
-                    scale,
-                    rotation,
-                    position);
-                transform.scale(scale);
-                transform.rotation(rotation);
-                transform.position(position);
+                skeleton.local[i] = transform.to_parent();
+
+                math::float4x4_simd to_world = math::simd::load(transform.to_world());
+                to_world = math::matrix_simd::mul(to_world, root_to_local);
+                math::simd::store(to_world, skeleton.world[i]);
             }
         });
-
-    system<physics::physics>().simulation();
 
     animation.update(true);
 
@@ -113,16 +128,16 @@ void mmd_viewer::update()
             math::float4x4_simd final_transform;
             for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
             {
-                auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
                 auto& node = world.component<mmd_node>(skeleton.nodes[i]);
 
-                to_world = math::simd::load(transform.to_world());
+                to_world = math::simd::load(skeleton.world[i]);
                 initial_inverse = math::simd::load(node.initial_inverse);
                 final_transform = math::matrix_simd::mul(initial_inverse, to_world);
                 math::simd::store(final_transform, skeleton.world[i]);
             }
 
-            auto parameter = dynamic_cast<skin_pipeline_parameter*>(skinned_mesh.parameter.get());
+            auto parameter =
+                dynamic_cast<skinning_pipeline_parameter*>(skinned_mesh.parameter.get());
             ASH_ASSERT(parameter);
             parameter->bone_transform(skeleton.world);
         });

@@ -51,7 +51,7 @@ bool mmd_loader::load(
     std::string_view pmx,
     std::string_view vmd,
     graphics::render_pipeline* render_pipeline,
-    graphics::skin_pipeline* skin_pipeline)
+    graphics::skinning_pipeline* skinning_pipeline)
 {
     auto& world = system<ecs::world>();
     bool static_model = vmd.empty();
@@ -71,7 +71,7 @@ bool mmd_loader::load(
 
     pmx_loader& pmx_loader = m_pmx[pmx.data()];
     load_hierarchy(entity, pmx_loader);
-    load_mesh(entity, pmx_loader, static_model ? nullptr : skin_pipeline);
+    load_mesh(entity, pmx_loader, static_model ? nullptr : skinning_pipeline);
     load_material(entity, pmx_loader, render_pipeline);
     load_physics(entity, pmx_loader);
     load_ik(entity, pmx_loader);
@@ -189,7 +189,7 @@ void mmd_loader::load_hierarchy(ecs::entity entity, const pmx_loader& loader)
 void mmd_loader::load_mesh(
     ecs::entity entity,
     const pmx_loader& loader,
-    graphics::skin_pipeline* skin_pipeline)
+    graphics::skinning_pipeline* skinning_pipeline)
 {
     auto& world = system<ecs::world>();
 
@@ -201,10 +201,10 @@ void mmd_loader::load_mesh(
         loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_EDGE)};
     mesh_render.index_buffer = loader.index_buffer();
 
-    if (skin_pipeline != nullptr)
+    if (skinning_pipeline != nullptr)
     {
         auto& skinned_mesh = world.component<graphics::skinned_mesh>(entity);
-        skinned_mesh.pipeline = skin_pipeline;
+        skinned_mesh.pipeline = skinning_pipeline;
         skinned_mesh.skinned_vertex_buffers.resize(mesh_render.vertex_buffers.size());
         skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_POSITION] =
             graphics::rhi::make_vertex_buffer<math::float3>(
@@ -223,7 +223,7 @@ void mmd_loader::load_mesh(
                 graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT);
         skinned_mesh.vertex_count = loader.vertex_count();
 
-        auto skin_parameter = std::make_unique<skin_pipeline_parameter>();
+        auto skin_parameter = std::make_unique<skinning_pipeline_parameter>();
         skin_parameter->input_position(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_POSITION));
         skin_parameter->input_normal(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_NORMAL));
         skin_parameter->input_uv(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_UV));
@@ -260,9 +260,7 @@ void mmd_loader::load_material(
 
         graphics::material material = {};
         material.pipeline = render_pipeline;
-        material.parameters = {
-            mesh_render.object_parameter->interface(),
-            loader.materials(i)->interface()};
+        material.parameters = {loader.materials(i)->interface()};
         mesh_render.materials.push_back(material);
     }
 }
@@ -567,7 +565,7 @@ void mmd_loader::load_morph(
         true);
 
     auto& skinned_mesh = world.component<graphics::skinned_mesh>(entity);
-    auto skin_parameter = static_cast<skin_pipeline_parameter*>(skinned_mesh.parameter.get());
+    auto skin_parameter = static_cast<skinning_pipeline_parameter*>(skinned_mesh.parameter.get());
     skin_parameter->vertex_morph(morph_controler.vertex_morph_result.get());
     skin_parameter->uv_morph(morph_controler.uv_morph_result.get());
 }

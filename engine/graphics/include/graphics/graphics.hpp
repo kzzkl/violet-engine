@@ -2,7 +2,6 @@
 
 #include "core/context.hpp"
 #include "graphics/graphics_debug.hpp"
-#include "scene/transform.hpp"
 
 namespace ash::graphics
 {
@@ -35,15 +34,23 @@ public:
         m_scene_camera = scene_camera;
     }
 
-    graphics_debug& debug() { return *m_debug; }
-
     resource_extent render_extent() const noexcept;
+
+    void ambient_light(const math::float3& ambient_light);
+    void shadow_cascade(std::size_t cascade_count, const math::float4& cascade_splits);
+
+    graphics_debug& debug() { return *m_debug; }
 
 private:
     void skinning();
     void render();
     void render_camera(ecs::entity camera_entity);
-    shadow_map* render_shadow(
+    void render_shadow(
+        float camera_near_z,
+        float camera_far_z,
+        const math::float4x4& camera_view_projection,
+        render_command_interface* command);
+    shadow_map* render_shadow_cascade(
         const math::float4x4& light_view,
         const math::float4* frustum_vertex,
         render_command_interface* command,

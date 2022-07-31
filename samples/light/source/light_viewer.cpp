@@ -108,17 +108,22 @@ void light_viewer::initialize_scene()
 
     {
         // Light.
-        m_light = world.create("light");
-        world.add<scene::transform, core::link, graphics::directional_light>(m_light);
+        for (std::size_t i = 0; i < 2; ++i)
+        {
+            ecs::entity light = world.create("light");
+            world.add<scene::transform, core::link, graphics::directional_light>(light);
 
-        auto& transform = world.component<scene::transform>(m_light);
-        transform.position(math::float3{0.0f, 50.0f, 0.0f});
-        transform.rotation_euler(
-            math::float3{math::to_radians(60.0f), math::to_radians(40.0f), 0.0f});
+            auto& transform = world.component<scene::transform>(light);
+            transform.position(math::float3{0.0f, 50.0f, 0.0f});
+            transform.rotation_euler(
+                math::float3{math::to_radians(60.0f), math::to_radians(i * 20.0f), 0.0f});
 
-        auto& directional_light = world.component<graphics::directional_light>(m_light);
-        directional_light.color(math::float3{0.5f, 0.5f, 0.5f});
-        relation.link(m_light, scene.root());
+            auto& directional_light = world.component<graphics::directional_light>(light);
+            directional_light.color(math::float3{0.5f, 0.5f, 0.5f});
+            relation.link(light, scene.root());
+
+            m_lights.push_back(light);
+        }
     }
 
     {
@@ -306,7 +311,7 @@ void light_viewer::resize_camera(std::uint32_t width, std::uint32_t height)
 
 void light_viewer::debug()
 {
-    auto& debug_draw = system<graphics::graphics>().debug();
+    /*auto& debug_draw = system<graphics::graphics>().debug();
 
     auto draw_frustum = [&](const auto* frustum) {
         debug_draw.draw_line(frustum[0], frustum[1], math::float3{1.0f, 0.0f, 1.0f});
@@ -394,6 +399,6 @@ void light_viewer::debug()
 
         auto light_frustum_vertices = graphics::camera_frustum::vertices(light_view_projection);
         draw_frustum(light_frustum_vertices.data());
-    }
+    }*/
 }
 } // namespace ash::sample

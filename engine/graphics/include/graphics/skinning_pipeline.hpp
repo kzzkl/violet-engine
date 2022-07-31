@@ -25,7 +25,9 @@ public:
     void skinning(render_command_interface* command);
 
 private:
-    virtual void on_skinning(render_command_interface* command) = 0;
+    virtual void on_skinning(
+        const std::vector<skinning_item>& items,
+        render_command_interface* command) = 0;
 
     std::vector<skinning_item> m_items;
 };

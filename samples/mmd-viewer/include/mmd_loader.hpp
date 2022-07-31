@@ -20,7 +20,7 @@ public:
         std::string_view pmx,
         std::string_view vmd,
         graphics::render_pipeline* render_pipeline,
-        graphics::skin_pipeline* skin_pipeline);
+        graphics::skinning_pipeline* skinning_pipeline);
 
     bool load_pmx(std::string_view pmx);
     bool load_vmd(std::string_view vmd);
@@ -30,7 +30,7 @@ private:
     void load_mesh(
         ecs::entity entity,
         const pmx_loader& loader,
-        graphics::skin_pipeline* skin_pipeline);
+        graphics::skinning_pipeline* skinning_pipeline);
     void load_material(
         ecs::entity entity,
         const pmx_loader& loader,
