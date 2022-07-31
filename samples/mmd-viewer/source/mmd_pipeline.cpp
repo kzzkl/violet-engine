@@ -161,7 +161,7 @@ mmd_render_pipeline::mmd_render_pipeline()
     m_interface = graphics::rhi::make_render_pipeline(mmd_pipeline_info);
 }
 
-void mmd_render_pipeline::render(
+void mmd_render_pipeline::on_render(
     const graphics::render_scene& scene,
     graphics::render_command_interface* command)
 {
@@ -180,44 +180,44 @@ void mmd_render_pipeline::render(
     // Color pass.
     command->parameter(2, scene.camera_parameter);
     command->parameter(3, scene.light_parameter);
-    for (auto& unit : scene.units)
+    for (auto& item : scene.items)
     {
-        command->parameter(0, unit.parameters[0]);
-        command->parameter(1, unit.parameters[1]);
+        command->parameter(0, item.object_parameter);
+        command->parameter(1, item.additional_parameters[0]);
 
         graphics::resource_interface* vertex_buffers[] = {
-            unit.vertex_buffers[0],
-            unit.vertex_buffers[1],
-            unit.vertex_buffers[2]};
-        command->input_assembly_state(vertex_buffers, 3, unit.index_buffer);
-        command->draw_indexed(unit.index_start, unit.index_end, unit.vertex_base);
+            item.vertex_buffers[0],
+            item.vertex_buffers[1],
+            item.vertex_buffers[2]};
+        command->input_assembly_state(vertex_buffers, 3, item.index_buffer);
+        command->draw_indexed(item.index_start, item.index_end, item.vertex_base);
     }
 
     command->next_pass(m_interface.get());
 
     // Edge pass.
     command->parameter(2, scene.camera_parameter);
-    for (auto& unit : scene.units)
+    for (auto& item : scene.items)
     {
-        command->parameter(0, unit.parameters[0]);
-        command->parameter(1, unit.parameters[1]);
+        command->parameter(0, item.object_parameter);
+        command->parameter(1, item.additional_parameters[0]);
 
         graphics::resource_interface* vertex_buffers[] = {
-            unit.vertex_buffers[0],
-            unit.vertex_buffers[1],
-            unit.vertex_buffers[3]};
-        command->input_assembly_state(vertex_buffers, 3, unit.index_buffer);
-        command->draw_indexed(unit.index_start, unit.index_end, unit.vertex_base);
+            item.vertex_buffers[0],
+            item.vertex_buffers[1],
+            item.vertex_buffers[3]};
+        command->input_assembly_state(vertex_buffers, 3, item.index_buffer);
+        command->draw_indexed(item.index_start, item.index_end, item.vertex_base);
     }
 
     command->end(m_interface.get());
 }
 
-skin_pipeline_parameter::skin_pipeline_parameter() : graphics::pipeline_parameter("mmd_skin")
+skinning_pipeline_parameter::skinning_pipeline_parameter() : graphics::pipeline_parameter("mmd_skin")
 {
 }
 
-void skin_pipeline_parameter::bone_transform(const std::vector<math::float4x4>& bone_transform)
+void skinning_pipeline_parameter::bone_transform(const std::vector<math::float4x4>& bone_transform)
 {
     auto& constant = field<constant_data>(0);
     ASH_ASSERT(bone_transform.size() <= constant.bone_transform.size());
@@ -232,62 +232,62 @@ void skin_pipeline_parameter::bone_transform(const std::vector<math::float4x4>& 
     }
 }
 
-void skin_pipeline_parameter::input_position(graphics::resource_interface* position)
+void skinning_pipeline_parameter::input_position(graphics::resource_interface* position)
 {
     interface()->set(1, position);
 }
 
-void skin_pipeline_parameter::input_normal(graphics::resource_interface* normal)
+void skinning_pipeline_parameter::input_normal(graphics::resource_interface* normal)
 {
     interface()->set(2, normal);
 }
 
-void skin_pipeline_parameter::input_uv(graphics::resource_interface* uv)
+void skinning_pipeline_parameter::input_uv(graphics::resource_interface* uv)
 {
     interface()->set(3, uv);
 }
 
-void skin_pipeline_parameter::skin(graphics::resource_interface* skin)
+void skinning_pipeline_parameter::skin(graphics::resource_interface* skin)
 {
     interface()->set(4, skin);
 }
 
-void skin_pipeline_parameter::bdef_bone(graphics::resource_interface* bdef_bone)
+void skinning_pipeline_parameter::bdef_bone(graphics::resource_interface* bdef_bone)
 {
     interface()->set(5, bdef_bone);
 }
 
-void skin_pipeline_parameter::sdef_bone(graphics::resource_interface* sdef_bone)
+void skinning_pipeline_parameter::sdef_bone(graphics::resource_interface* sdef_bone)
 {
     interface()->set(6, sdef_bone);
 }
 
-void skin_pipeline_parameter::vertex_morph(graphics::resource_interface* vertex_morph)
+void skinning_pipeline_parameter::vertex_morph(graphics::resource_interface* vertex_morph)
 {
     interface()->set(7, vertex_morph);
 }
 
-void skin_pipeline_parameter::uv_morph(graphics::resource_interface* uv_morph)
+void skinning_pipeline_parameter::uv_morph(graphics::resource_interface* uv_morph)
 {
     interface()->set(8, uv_morph);
 }
 
-void skin_pipeline_parameter::output_position(graphics::resource_interface* position)
+void skinning_pipeline_parameter::output_position(graphics::resource_interface* position)
 {
     interface()->set(9, position);
 }
 
-void skin_pipeline_parameter::output_normal(graphics::resource_interface* normal)
+void skinning_pipeline_parameter::output_normal(graphics::resource_interface* normal)
 {
     interface()->set(10, normal);
 }
 
-void skin_pipeline_parameter::output_uv(graphics::resource_interface* uv)
+void skinning_pipeline_parameter::output_uv(graphics::resource_interface* uv)
 {
     interface()->set(11, uv);
 }
 
-std::vector<graphics::pipeline_parameter_pair> skin_pipeline_parameter::layout()
+std::vector<graphics::pipeline_parameter_pair> skinning_pipeline_parameter::layout()
 {
     return {
         {graphics::PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER,
@@ -306,7 +306,7 @@ std::vector<graphics::pipeline_parameter_pair> skin_pipeline_parameter::layout()
     };
 }
 
-mmd_skin_pipeline::mmd_skin_pipeline()
+mmd_skinning_pipeline::mmd_skinning_pipeline()
 {
     graphics::compute_pipeline_info compute_pipeline_info = {};
     compute_pipeline_info.compute_shader = "mmd-viewer/shader/skin.comp";
@@ -315,14 +315,16 @@ mmd_skin_pipeline::mmd_skin_pipeline()
     m_interface = graphics::rhi::make_compute_pipeline(compute_pipeline_info);
 }
 
-void mmd_skin_pipeline::skin(graphics::render_command_interface* command)
+void mmd_skinning_pipeline::on_skinning(
+    const std::vector<graphics::skinning_item>& items,
+    graphics::render_command_interface* command)
 {
     command->begin(m_interface.get());
 
-    for (auto& unit : units())
+    for (auto& item : items)
     {
-        command->compute_parameter(0, unit.parameter);
-        command->dispatch(unit.vertex_count / 256 + 256, 1, 1);
+        command->compute_parameter(0, item.parameter);
+        command->dispatch(item.vertex_count / 256 + 256, 1, 1);
     }
 
     command->end(m_interface.get());

@@ -246,10 +246,10 @@ d3d12_pipeline_parameter_layout::d3d12_pipeline_parameter_layout(
         switch (desc.parameters[i].type)
         {
         case PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE:
-            ++m_srv_count;
+            m_srv_count += desc.parameters[i].size;
             break;
         case PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS:
-            ++m_uav_count;
+            m_uav_count += desc.parameters[i].size;
             break;
         default:
             m_cbv_count = 1;
@@ -360,13 +360,16 @@ void d3d12_pipeline_parameter::set(std::size_t index, const void* data, size_t s
     copy_buffer(data, size, m_layout->parameter_offset(index));
 }
 
-void d3d12_pipeline_parameter::set(std::size_t index, resource_interface* texture)
+void d3d12_pipeline_parameter::set(
+    std::size_t index,
+    resource_interface* texture,
+    std::size_t offset)
 {
-    std::size_t offset = m_layout->parameter_offset(index);
+    std::size_t parameter_offset = m_layout->parameter_offset(index) + offset;
     if (m_layout->parameter_type(index) == PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE)
-        copy_descriptor(static_cast<d3d12_resource*>(texture)->srv(), offset);
+        copy_descriptor(static_cast<d3d12_resource*>(texture)->srv(), parameter_offset);
     else if (m_layout->parameter_type(index) == PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS)
-        copy_descriptor(static_cast<d3d12_resource*>(texture)->uav(), offset);
+        copy_descriptor(static_cast<d3d12_resource*>(texture)->uav(), parameter_offset);
 }
 
 void* d3d12_pipeline_parameter::constant_buffer_pointer(std::size_t index)
@@ -539,19 +542,27 @@ d3d12_frame_buffer::d3d12_frame_buffer(
 {
     static const D3D12_RESOURCE_STATES resource_state_map[] = {
         D3D12_RESOURCE_STATE_COMMON,
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
         D3D12_RESOURCE_STATE_RENDER_TARGET,
         D3D12_RESOURCE_STATE_DEPTH_WRITE,
         D3D12_RESOURCE_STATE_PRESENT};
 
-    auto [width, heigth] = camera_info.render_target->extent();
+    resource_extent extent = {};
+    if (camera_info.render_target != nullptr)
+        extent = camera_info.render_target->extent();
+    else if (camera_info.depth_stencil_buffer != nullptr)
+        extent = camera_info.depth_stencil_buffer->extent();
+    else
+        throw d3d12_exception("Invalid camera info.");
+
     for (auto& attachment : pipeline->frame_buffer_layout())
     {
         switch (attachment.type)
         {
         case ATTACHMENT_TYPE_RENDER_TARGET: {
             auto render_target = std::make_unique<d3d12_render_target>(
-                width,
-                heigth,
+                extent.width,
+                extent.height,
                 attachment.samples,
                 attachment.format);
             m_render_targets.push_back(render_target->rtv());
@@ -631,19 +642,21 @@ void d3d12_frame_buffer::end_render(D3D12GraphicsCommandList* command_list)
         command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
 }
 
-d3d12_render_pass::d3d12_render_pass(const render_pass_desc& desc)
+d3d12_render_pass::d3d12_render_pass(const render_pipeline_desc& desc, std::size_t index)
     : m_current_frame_buffer(nullptr),
       m_depth_index(-1)
 {
+    auto& pass_desc = desc.passes[index];
+
     m_root_signature =
-        std::make_unique<d3d12_root_signature>(desc.parameters, desc.parameter_count);
+        std::make_unique<d3d12_root_signature>(pass_desc.parameters, pass_desc.parameter_count);
 
-    initialize_vertex_layout(desc);
-    initialize_pipeline_state(desc);
+    initialize_vertex_layout(desc, index);
+    initialize_pipeline_state(desc, index);
 
-    for (std::size_t i = 0; i < desc.reference_count; ++i)
+    for (std::size_t i = 0; i < pass_desc.reference_count; ++i)
     {
-        switch (desc.references[i].type)
+        switch (pass_desc.references[i].type)
         {
         case ATTACHMENT_REFERENCE_TYPE_INPUT:
         case ATTACHMENT_REFERENCE_TYPE_COLOR:
@@ -653,7 +666,7 @@ d3d12_render_pass::d3d12_render_pass(const render_pass_desc& desc)
             m_depth_index = i;
             break;
         case ATTACHMENT_REFERENCE_TYPE_RESOLVE:
-            m_resolve_indices.push_back({i, desc.references[i].resolve_relation});
+            m_resolve_indices.push_back({i, pass_desc.references[i].resolve_relation});
             break;
         default:
             break;
@@ -751,7 +764,9 @@ void d3d12_render_pass::end(D3D12GraphicsCommandList* command_list, bool final)
     }
 }
 
-void d3d12_render_pass::initialize_vertex_layout(const render_pass_desc& desc)
+void d3d12_render_pass::initialize_vertex_layout(
+    const render_pipeline_desc& desc,
+    std::size_t index)
 {
     auto get_type = [](vertex_attribute_type type) -> DXGI_FORMAT {
         switch (type)
@@ -787,10 +802,11 @@ void d3d12_render_pass::initialize_vertex_layout(const render_pass_desc& desc)
         };
     };
 
-    for (std::size_t i = 0; i < desc.vertex_attribute_count; ++i)
+    auto& pass_desc = desc.passes[index];
+    for (std::size_t i = 0; i < pass_desc.vertex_attribute_count; ++i)
     {
-        auto& attribute = desc.vertex_attributes[i];
-        D3D12_INPUT_ELEMENT_DESC desc = {
+        auto& attribute = pass_desc.vertex_attributes[i];
+        D3D12_INPUT_ELEMENT_DESC element_desc = {
             attribute.name,
             0,
             get_type(attribute.type),
@@ -798,21 +814,22 @@ void d3d12_render_pass::initialize_vertex_layout(const render_pass_desc& desc)
             0,
             D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
             0};
-        m_vertex_layout.push_back(desc);
+        m_vertex_layout.push_back(element_desc);
     }
 }
 
-void d3d12_render_pass::initialize_pipeline_state(const render_pass_desc& desc)
+void d3d12_render_pass::initialize_pipeline_state(
+    const render_pipeline_desc& desc,
+    std::size_t index)
 {
-    d3d12_ptr<D3DBlob> vs_blob = load_shader(desc.vertex_shader);
-    d3d12_ptr<D3DBlob> ps_blob = load_shader(desc.pixel_shader);
+    auto& pass_desc = desc.passes[index];
 
     // Query render target sample level.
     D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS sample_level = {};
     sample_level.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
     sample_level.Format = RENDER_TARGET_FORMAT;
     sample_level.NumQualityLevels = 0;
-    sample_level.SampleCount = static_cast<UINT>(desc.samples);
+    sample_level.SampleCount = static_cast<UINT>(pass_desc.samples);
     throw_if_failed(d3d12_context::device()->CheckFeatureSupport(
         D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
         &sample_level,
@@ -821,20 +838,47 @@ void d3d12_render_pass::initialize_pipeline_state(const render_pass_desc& desc)
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc = {};
     pso_desc.InputLayout = {m_vertex_layout.data(), static_cast<UINT>(m_vertex_layout.size())};
     pso_desc.pRootSignature = m_root_signature->handle();
-    pso_desc.VS = CD3DX12_SHADER_BYTECODE(vs_blob.Get());
-    pso_desc.PS = CD3DX12_SHADER_BYTECODE(ps_blob.Get());
-    pso_desc.DepthStencilState = to_d3d12_depth_stencil_desc(desc.depth_stencil);
-    pso_desc.BlendState = to_d3d12_blend_desc(desc.blend);
-    pso_desc.RasterizerState = to_d3d12_rasterizer_desc(desc.rasterizer);
+
+    d3d12_ptr<D3DBlob> vs_blob;
+    if (pass_desc.vertex_shader != nullptr)
+    {
+        vs_blob = load_shader(pass_desc.vertex_shader);
+        pso_desc.VS = CD3DX12_SHADER_BYTECODE(vs_blob.Get());
+    }
+
+    d3d12_ptr<D3DBlob> ps_blob;
+    if (pass_desc.pixel_shader != nullptr)
+    {
+        ps_blob = load_shader(pass_desc.pixel_shader);
+        pso_desc.PS = CD3DX12_SHADER_BYTECODE(ps_blob.Get());
+    }
+
+    pso_desc.DepthStencilState = to_d3d12_depth_stencil_desc(pass_desc.depth_stencil);
+    pso_desc.BlendState = to_d3d12_blend_desc(pass_desc.blend);
+    pso_desc.RasterizerState = to_d3d12_rasterizer_desc(pass_desc.rasterizer);
     pso_desc.SampleMask = UINT_MAX;
-    pso_desc.NumRenderTargets = 1;
-    pso_desc.RTVFormats[0] = RENDER_TARGET_FORMAT;
     pso_desc.SampleDesc.Count = sample_level.SampleCount;
     pso_desc.SampleDesc.Quality = sample_level.NumQualityLevels - 1;
-    pso_desc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    if (desc.primitive_topology == PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
+
+    std::size_t rtv_counter = 0;
+    for (std::size_t i = 0; i < pass_desc.reference_count; ++i)
+    {
+        if (pass_desc.references[i].type == ATTACHMENT_REFERENCE_TYPE_COLOR)
+        {
+            pso_desc.RTVFormats[rtv_counter] =
+                d3d12_utility::convert_format(desc.attachments[i].format);
+            ++rtv_counter;
+        }
+        else if (pass_desc.references[i].type == ATTACHMENT_REFERENCE_TYPE_DEPTH)
+        {
+            pso_desc.DSVFormat = d3d12_utility::convert_format(desc.attachments[i].format);
+        }
+    }
+    pso_desc.NumRenderTargets = rtv_counter;
+
+    if (pass_desc.primitive_topology == PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
         pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    else if (desc.primitive_topology == PRIMITIVE_TOPOLOGY_TYPE_LINE)
+    else if (pass_desc.primitive_topology == PRIMITIVE_TOPOLOGY_TYPE_LINE)
         pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
 
     throw_if_failed(d3d12_context::device()->CreateGraphicsPipelineState(
@@ -848,7 +892,7 @@ d3d12_render_pipeline::d3d12_render_pipeline(const render_pipeline_desc& desc)
       m_frame_buffer_layout(desc.attachments, desc.attachment_count)
 {
     for (std::size_t i = 0; i < desc.pass_count; ++i)
-        m_passes.push_back(std::make_unique<d3d12_render_pass>(desc.passes[i]));
+        m_passes.push_back(std::make_unique<d3d12_render_pass>(desc, i));
 }
 
 void d3d12_render_pipeline::begin(
@@ -860,7 +904,7 @@ void d3d12_render_pipeline::begin(
         d3d12_context::frame_buffer().get_or_create_frame_buffer(this, camera_info);
     m_current_frame_buffer->begin_render(command_list);
 
-    auto [width, height] = camera_info.render_target->extent();
+    auto [width, height] = m_current_frame_buffer->extent();
 
     D3D12_VIEWPORT viewport = {};
     viewport.Width = static_cast<float>(width);

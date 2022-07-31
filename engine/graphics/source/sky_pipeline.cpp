@@ -78,7 +78,7 @@ sky_pipeline::sky_pipeline()
     m_interface = rhi::make_render_pipeline(pipeline_info);
 }
 
-void sky_pipeline::render(const render_scene& scene, render_command_interface* command)
+void sky_pipeline::on_render(const render_scene& scene, render_command_interface* command)
 {
     command->begin(
         m_interface.get(),

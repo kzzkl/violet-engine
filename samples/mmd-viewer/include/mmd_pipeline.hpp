@@ -1,7 +1,7 @@
 #pragma once
 
 #include "graphics/render_pipeline.hpp"
-#include "graphics/skin_pipeline.hpp"
+#include "graphics/skinning_pipeline.hpp"
 #include <array>
 
 namespace ash::sample::mmd
@@ -48,18 +48,18 @@ class mmd_render_pipeline : public graphics::render_pipeline
 public:
     mmd_render_pipeline();
 
-    virtual void render(
+private:
+    virtual void on_render(
         const graphics::render_scene& scene,
         graphics::render_command_interface* command) override;
 
-private:
     std::unique_ptr<graphics::render_pipeline_interface> m_interface;
 };
 
-class skin_pipeline_parameter : public graphics::pipeline_parameter
+class skinning_pipeline_parameter : public graphics::pipeline_parameter
 {
 public:
-    skin_pipeline_parameter();
+    skinning_pipeline_parameter();
 
     void bone_transform(const std::vector<math::float4x4>& bone_transform);
     void input_position(graphics::resource_interface* position);
@@ -87,14 +87,16 @@ private:
     };
 };
 
-class mmd_skin_pipeline : public graphics::skin_pipeline
+class mmd_skinning_pipeline : public graphics::skinning_pipeline
 {
 public:
-    mmd_skin_pipeline();
-
-    virtual void skin(graphics::render_command_interface* command) override;
+    mmd_skinning_pipeline();
 
 private:
+    virtual void on_skinning(
+        const std::vector<graphics::skinning_item>& items,
+        graphics::render_command_interface* command) override;
+
     std::unique_ptr<graphics::compute_pipeline_interface> m_interface;
 };
 } // namespace ash::sample::mmd

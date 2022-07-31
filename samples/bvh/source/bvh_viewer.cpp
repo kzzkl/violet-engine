@@ -68,9 +68,6 @@ void bvh_viewer::initialize_graphics_resource()
         // Initialize main camera.
         m_camera = world.create();
         world.add<core::link, graphics::camera, scene::transform>(m_camera);
-        auto& camera = world.component<graphics::camera>(m_camera);
-        camera.field_of_view(math::to_radians(30.0f));
-        camera.clipping_planes(0.01f, 1000.0f);
 
         auto& transform = world.component<scene::transform>(m_camera);
         transform.position(math::float3{0.0f, 0.0f, -38.0f});
@@ -88,8 +85,6 @@ void bvh_viewer::initialize_graphics_resource()
         m_small_camera = world.create();
         world.add<core::link, graphics::camera, scene::transform>(m_small_camera);
         auto& camera = world.component<graphics::camera>(m_small_camera);
-        camera.field_of_view(math::to_radians(30.0f));
-        camera.clipping_planes(0.01f, 1000.0f);
         camera.render_groups |= graphics::RENDER_GROUP_DEBUG;
         camera.render_groups ^= graphics::RENDER_GROUP_UI;
 

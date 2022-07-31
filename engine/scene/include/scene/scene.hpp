@@ -25,7 +25,8 @@ public:
     void sync_world();
     void sync_world(ecs::entity root);
 
-    void frustum_culling(const std::vector<math::float4>& frustum);
+    void update_bounding_box();
+    void frustum_culling(const std::array<math::float4, 6>& frustum);
 
     void draw_aabb();
 

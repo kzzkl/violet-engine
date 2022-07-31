@@ -119,8 +119,9 @@ std::unique_ptr<render_pipeline_interface> rhi::make_render_pipeline(
 
         for (auto& parameter : pass.parameters)
         {
-            pass_desc.parameters[pass_desc.parameter_count] =
-                find_pipeline_parameter_layout(parameter);
+            auto layout = find_pipeline_parameter_layout(parameter);
+            ASH_ASSERT(layout != nullptr);
+            pass_desc.parameters[pass_desc.parameter_count] = layout;
             ++pass_desc.parameter_count;
         }
 
@@ -130,8 +131,8 @@ std::unique_ptr<render_pipeline_interface> rhi::make_render_pipeline(
             ++pass_desc.reference_count;
         }
 
-        pass_desc.vertex_shader = pass.vertex_shader.c_str();
-        pass_desc.pixel_shader = pass.pixel_shader.c_str();
+        pass_desc.vertex_shader = pass.vertex_shader.empty() ? nullptr : pass.vertex_shader.c_str();
+        pass_desc.pixel_shader = pass.pixel_shader.empty() ? nullptr : pass.pixel_shader.c_str();
 
         pass_desc.blend = pass.blend;
         pass_desc.depth_stencil = pass.depth_stencil;
@@ -151,7 +152,9 @@ std::unique_ptr<compute_pipeline_interface> rhi::make_compute_pipeline(
 
     for (auto& parameter : info.parameters)
     {
-        desc.parameters[desc.parameter_count] = find_pipeline_parameter_layout(parameter);
+        auto layout = find_pipeline_parameter_layout(parameter);
+        ASH_ASSERT(layout != nullptr);
+        desc.parameters[desc.parameter_count] = layout;
         ++desc.parameter_count;
     }
 
@@ -189,15 +192,20 @@ std::unique_ptr<resource_interface> rhi::make_texture_cube(
         back.data()));
 }
 
-std::unique_ptr<resource_interface> rhi::make_render_target(const render_target_desc& desc)
+std::unique_ptr<resource_interface> rhi::make_shadow_map(const shadow_map_info& info)
 {
-    return std::unique_ptr<resource_interface>(impl().make_render_target(desc));
+    return std::unique_ptr<resource_interface>(impl().make_shadow_map(info));
+}
+
+std::unique_ptr<resource_interface> rhi::make_render_target(const render_target_info& info)
+{
+    return std::unique_ptr<resource_interface>(impl().make_render_target(info));
 }
 
 std::unique_ptr<resource_interface> rhi::make_depth_stencil_buffer(
-    const depth_stencil_buffer_desc& desc)
+    const depth_stencil_buffer_info& info)
 {
-    return std::unique_ptr<resource_interface>(impl().make_depth_stencil_buffer(desc));
+    return std::unique_ptr<resource_interface>(impl().make_depth_stencil_buffer(info));
 }
 
 rhi_interface& rhi::impl()

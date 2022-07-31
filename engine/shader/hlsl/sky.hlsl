@@ -1,12 +1,6 @@
-cbuffer ash_camera : register(b0, space0)
-{
-    float3 camera_position;
-    float3 camera_direction;
+#include "ash_mvp.hlsl"
 
-    float4x4 transform_v;
-    float4x4 transform_p;
-    float4x4 transform_vp;
-};
+ConstantBuffer<ash_camera> camera : register(b0, space0);
 
 TextureCube sky_texture : register(t0, space1);
 SamplerState sky_sampler : register(s2);
@@ -48,10 +42,10 @@ vs_out vs_main(vs_in vin)
         1, 5, 6,
         6, 2, 1}; // x+, y+, x-, y-, z+, z-*/
 
-    float3 position = camera_position + vertices[indices[vin.vertex_id]];
+    float3 position = camera.position + vertices[indices[vin.vertex_id]];
 
     vs_out result;
-    result.position = mul(float4(position, 1.0f), transform_vp).xyww;
+    result.position = mul(float4(position, 1.0f), camera.transform_vp).xyww;
     result.uvw = vertices[indices[vin.vertex_id]];
     return result;
 }

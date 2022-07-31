@@ -1,7 +1,6 @@
-cbuffer ash_object : register(b0, space0)
-{
-    float4x4 transform_m;
-};
+#include "ash_mvp.hlsl"
+
+ConstantBuffer<ash_object> object : register(b0, space0);
 
 cbuffer mmd_material : register(b0, space1)
 {
@@ -15,15 +14,8 @@ cbuffer mmd_material : register(b0, space1)
     uint spa_mode;
 };
 
-cbuffer ash_camera : register(b0, space2)
-{
-    float3 camera_position;
-    float3 camera_direction;
 
-    float4x4 transform_v;
-    float4x4 transform_p;
-    float4x4 transform_vp;
-};
+ConstantBuffer<ash_camera> camera : register(b0, space2);
 
 struct vs_in
 {
@@ -39,8 +31,8 @@ struct vs_out
 
 vs_out vs_main(vs_in vin)
 {
-    float4 position = mul(float4(vin.position, 1.0f), transform_vp);
-    float3 normal = mul(vin.normal, (float3x3)transform_v);
+    float4 position = mul(mul(float4(vin.position, 1.0f), object.transform_m), camera.transform_vp);
+    float3 normal = mul(mul(vin.normal, (float3x3)object.transform_m), (float3x3)camera.transform_v);
     float2 screen_normal = normalize(normal.xy);
 
     position.xy += screen_normal * 0.003f * edge_size * vin.edge * position.w;

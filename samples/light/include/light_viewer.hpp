@@ -20,12 +20,14 @@ private:
     void initialize_scene();
 
     void update_camera();
-
     void resize_camera(std::uint32_t width, std::uint32_t height);
 
-    ecs::entity m_cube;
-    ecs::entity m_sphere;
-    ecs::entity m_light;
+    void debug();
+
+    std::vector<ecs::entity> m_cubes;
+    std::vector<ecs::entity> m_sphere;
+    ecs::entity m_plane;
+    std::vector<ecs::entity> m_lights;
 
     graphics::geometry_data m_cube_mesh_data;
     std::unique_ptr<graphics::resource_interface> m_cube_positon_buffer;
@@ -38,8 +40,7 @@ private:
     std::unique_ptr<graphics::resource_interface> m_sphere_index_buffer;
 
     ecs::entity m_camera;
-    float m_heading = 0.0f;
-    float m_pitch = 0.0f;
+    math::float3 m_camera_rotation{};
     float m_rotate_speed = 0.8f;
     float m_move_speed = 7.0f;
 

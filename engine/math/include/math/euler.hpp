@@ -8,7 +8,7 @@ namespace ash::math
 class euler
 {
 public:
-    static inline float3 rotation_quaternion(const float4& q)
+    [[nodiscard]] static inline float3 rotation_quaternion(const float4& q)
     {
         float sp = -2.0f * (q[1] * q[2] - q[3] * q[0]);
         if (std::fabs(sp) > 0.9999f)

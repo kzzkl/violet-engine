@@ -1,18 +1,21 @@
-cbuffer ui_material : register(b0, space0)
+struct ash_ui_material
 {
     uint type;
 };
+ConstantBuffer<ash_ui_material> material : register(b0, space0);
 Texture2D ui_texture : register(t0, space0);
 
-cbuffer ui_offset : register(b0, space1)
+struct ash_ui_offset
 {
     float4 offset[1024];
-}
+};
+ConstantBuffer<ash_ui_offset> offset : register(b0, space1);
 
-cbuffer ui_mvp : register(b0, space2)
+struct ash_ui_mvp
 {
     float4x4 mvp;
-}
+};
+ConstantBuffer<ash_ui_mvp> mvp : register(b0, space2);
 
 SamplerState image_sampler : register(s0);
 SamplerState text_sampler : register(s7);
@@ -34,11 +37,11 @@ struct vs_out
 
 vs_out vs_main(vs_in vin)
 {
-    float4 position = offset[vin.offset_index];
+    float4 position = offset.offset[vin.offset_index];
     position.xy += vin.position;
 
     vs_out result;
-    result.position = mul(position, mvp);
+    result.position = mul(position, mvp.mvp);
     result.uv = vin.uv;
     result.color = vin.color;
 
@@ -47,11 +50,11 @@ vs_out vs_main(vs_in vin)
 
 float4 ps_main(vs_out pin) : SV_TARGET
 {
-    if (type == 0)
+    if (material.type == 0)
     {
         return pin.color;
     }
-    else if (type == 1) // text
+    else if (material.type == 1) // text
     {
         float4 color = ui_texture.Sample(text_sampler, pin.uv);
 
@@ -59,7 +62,7 @@ float4 ps_main(vs_out pin) : SV_TARGET
         color = pow(color, 1.0f / 2.2f);
         return float4(pin.color.rgb, color.r * pin.color.a);
     }
-    else if (type == 2) // image 
+    else if (material.type == 2) // image 
     {
         float4 color = ui_texture.Sample(image_sampler, pin.uv);
         return float4(color.rgb, 1.0f);

@@ -78,7 +78,7 @@ public:
     virtual ~d3d12_pipeline_parameter();
 
     virtual void set(std::size_t index, const void* data, size_t size) override;
-    virtual void set(std::size_t index, resource_interface* texture) override;
+    virtual void set(std::size_t index, resource_interface* texture, std::size_t offset) override;
     virtual void* constant_buffer_pointer(std::size_t index) override;
 
     inline d3d12_parameter_tier_type tier() const noexcept { return m_tier; }
@@ -165,6 +165,8 @@ public:
 
     const std::vector<attachment_info>& attachments() const noexcept { return m_attachments; }
 
+    resource_extent extent() const { return m_attachments[0].resource->extent(); }
+
 private:
     std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_render_targets;
     D3D12_CPU_DESCRIPTOR_HANDLE m_depth_stencil;
@@ -176,15 +178,15 @@ private:
 class d3d12_render_pass
 {
 public:
-    d3d12_render_pass(const render_pass_desc& desc);
+    d3d12_render_pass(const render_pipeline_desc& desc, std::size_t index);
 
     void begin(D3D12GraphicsCommandList* command_list, d3d12_frame_buffer* frame_buffer);
     void end(D3D12GraphicsCommandList* command_list, bool final = false);
     inline D3D12PipelineState* pipeline_state() const noexcept { return m_pipeline_state.Get(); }
 
 private:
-    void initialize_vertex_layout(const render_pass_desc& desc);
-    void initialize_pipeline_state(const render_pass_desc& desc);
+    void initialize_vertex_layout(const render_pipeline_desc& desc, std::size_t index);
+    void initialize_pipeline_state(const render_pipeline_desc& desc, std::size_t index);
 
     std::vector<D3D12_INPUT_ELEMENT_DESC> m_vertex_layout;
 

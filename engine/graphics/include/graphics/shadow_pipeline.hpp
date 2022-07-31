@@ -4,19 +4,10 @@
 
 namespace ash::graphics
 {
-class sky_pipeline_parameter : public pipeline_parameter
+class shadow_pipeline : public render_pipeline
 {
 public:
-    sky_pipeline_parameter();
-
-    void texture(resource_interface* texture);
-    static std::vector<pipeline_parameter_pair> layout();
-};
-
-class sky_pipeline : public render_pipeline
-{
-public:
-    sky_pipeline();
+    shadow_pipeline();
 
 private:
     virtual void on_render(const render_scene& scene, render_command_interface* command) override;

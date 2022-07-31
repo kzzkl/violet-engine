@@ -5,7 +5,7 @@
 
 namespace ash::graphics
 {
-struct skin_unit
+struct skinning_item
 {
     std::vector<resource_interface*> input_vertex_buffers;
     std::vector<resource_interface*> skinned_vertex_buffers;
@@ -14,20 +14,21 @@ struct skin_unit
     std::size_t vertex_count;
 };
 
-class skin_pipeline
+class skinning_pipeline
 {
 public:
-    virtual ~skin_pipeline() = default;
+    virtual ~skinning_pipeline() = default;
 
     void add(const skinned_mesh& skinned_mesh);
-    void clear() noexcept { m_units.clear(); }
+    void clear() noexcept { m_items.clear(); }
 
-    virtual void skin(render_command_interface* command) = 0;
-
-protected:
-    const std::vector<skin_unit>& units() const { return m_units; }
+    void skinning(render_command_interface* command);
 
 private:
-    std::vector<skin_unit> m_units;
+    virtual void on_skinning(
+        const std::vector<skinning_item>& items,
+        render_command_interface* command) = 0;
+
+    std::vector<skinning_item> m_items;
 };
 } // namespace ash::graphics

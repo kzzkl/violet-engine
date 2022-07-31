@@ -26,7 +26,7 @@ std::size_t bvh_tree::add(const bounding_volume_aabb& aabb)
     std::size_t best_sibling_index = m_root_index;
     std::queue<std::pair<std::size_t, float>> bfs;
     bfs.push({m_root_index, 0.0f});
-    float min_cost = std::numeric_limits<float>::infinity();
+    float min_cost = std::numeric_limits<float>::lowest();
     while (!bfs.empty())
     {
         auto [sibling_index, inherited_cost] = bfs.front();
@@ -126,7 +126,7 @@ std::size_t bvh_tree::update(std::size_t proxy_id, const bounding_volume_aabb& a
     return add(aabb);
 }
 
-void bvh_tree::frustum_culling(const std::vector<math::float4>& frustum)
+void bvh_tree::frustum_culling(const std::array<math::float4, 6>& frustum)
 {
     if (m_root_index == -1)
         return;

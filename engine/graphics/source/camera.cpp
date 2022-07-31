@@ -42,30 +42,55 @@ std::vector<pipeline_parameter_pair> camera_pipeline_parameter::layout()
 }
 
 camera::camera() noexcept
-    : m_fov(45.0f),
-      m_near_z(0.3f),
-      m_far_z(1000.0f),
-      m_flip_y(false),
+    : m_flip_y(false),
       m_projection(math::matrix::identity()),
       m_render_target(nullptr),
       m_render_target_resolve(nullptr),
       m_depth_stencil_buffer(nullptr),
       render_groups(RENDER_GROUP_1 | RENDER_GROUP_UI)
 {
+    m_projection_type = PROJECTION_TYPE_PERSPECTIVE;
+    m_data.perspective.fov = 45.0f;
+    m_data.perspective.near_z = 0.3f;
+    m_data.perspective.far_z = 1000.0f;
+
     m_parameter = std::make_unique<camera_pipeline_parameter>();
 }
 
-void camera::field_of_view(float fov) noexcept
+void camera::perspective(float fov, float near_z, float far_z)
 {
-    m_fov = fov;
+    m_projection_type = PROJECTION_TYPE_PERSPECTIVE;
+    m_data.perspective.fov = fov;
+    m_data.perspective.near_z = near_z;
+    m_data.perspective.far_z = far_z;
+
     update_projection();
 }
 
-void camera::clipping_planes(float near_z, float far_z) noexcept
+void camera::orthographic(float width, float near_z, float far_z)
 {
-    m_near_z = near_z;
-    m_far_z = far_z;
+    m_projection_type = PROJECTION_TYPE_ORTHOGRAPHIC;
+    m_data.orthographic.width = width;
+    m_data.orthographic.near_z = near_z;
+    m_data.orthographic.far_z = far_z;
+
     update_projection();
+}
+
+float camera::near_z() const noexcept
+{
+    if (m_projection_type == PROJECTION_TYPE_PERSPECTIVE)
+        return m_data.perspective.near_z;
+    else
+        return m_data.orthographic.near_z;
+}
+
+float camera::far_z() const noexcept
+{
+    if (m_projection_type == PROJECTION_TYPE_PERSPECTIVE)
+        return m_data.perspective.far_z;
+    else
+        return m_data.orthographic.far_z;
 }
 
 void camera::flip_y(bool flip) noexcept
@@ -96,10 +121,25 @@ void camera::update_projection() noexcept
         return;
 
     auto extent = m_render_target->extent();
-    float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
-
-    math::float4x4_simd proj = math::matrix_simd::perspective(m_fov, aspect, m_near_z, m_far_z);
-    math::simd::store(proj, m_projection);
+    if (m_projection_type == PROJECTION_TYPE_PERSPECTIVE)
+    {
+        float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
+        math::float4x4_simd proj = math::matrix_simd::perspective(
+            m_data.perspective.fov,
+            aspect,
+            m_data.perspective.near_z,
+            m_data.perspective.far_z);
+        math::simd::store(proj, m_projection);
+    }
+    else
+    {
+        math::float4x4_simd proj = math::matrix_simd::orthographic(
+            m_data.orthographic.width,
+            m_data.orthographic.width / extent.width * extent.height,
+            m_data.orthographic.near_z,
+            m_data.orthographic.far_z);
+        math::simd::store(proj, m_projection);
+    }
 
     if (m_flip_y)
         m_projection[1][1] *= -1.0f;

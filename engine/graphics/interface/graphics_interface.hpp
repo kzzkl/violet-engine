@@ -21,12 +21,14 @@ enum resource_format
     RESOURCE_FORMAT_R32G32B32A32_SINT,
     RESOURCE_FORMAT_R32G32B32A32_UINT,
 
-    RESOURCE_FORMAT_D24_UNORM_S8_UINT
+    RESOURCE_FORMAT_D24_UNORM_S8_UINT,
+    RESOURCE_FORMAT_D32_FLOAT
 };
 
 enum resource_state
 {
     RESOURCE_STATE_UNDEFINED,
+    RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
     RESOURCE_STATE_RENDER_TARGET,
     RESOURCE_STATE_DEPTH_STENCIL,
     RESOURCE_STATE_PRESENT
@@ -106,7 +108,7 @@ public:
     virtual ~pipeline_parameter_interface() = default;
 
     virtual void set(std::size_t index, const void* data, size_t size) = 0;
-    virtual void set(std::size_t index, resource_interface* texture) = 0;
+    virtual void set(std::size_t index, resource_interface* texture, std::size_t offset = 0) = 0;
 
     virtual void* constant_buffer_pointer(std::size_t index) = 0;
 };
@@ -378,6 +380,13 @@ struct index_buffer_desc
     bool frame_resource;
 };
 
+struct shadow_map_desc
+{
+    std::uint32_t width;
+    std::uint32_t height;
+    std::size_t samples;
+};
+
 struct render_target_desc
 {
     std::uint32_t width;
@@ -439,6 +448,8 @@ public:
         const char* bottom,
         const char* front,
         const char* back) = 0;
+
+    virtual resource_interface* make_shadow_map(const shadow_map_desc& desc) = 0;
 
     virtual resource_interface* make_render_target(const render_target_desc& desc) = 0;
     virtual resource_interface* make_depth_stencil_buffer(

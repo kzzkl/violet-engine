@@ -8,7 +8,6 @@ namespace ash::graphics
 class camera_pipeline_parameter : public pipeline_parameter
 {
 public:
-public:
     camera_pipeline_parameter();
 
     void position(const math::float3& position);
@@ -16,6 +15,8 @@ public:
     void view(const math::float4x4& view);
     void projection(const math::float4x4& projection);
     void view_projection(const math::float4x4& view_projection);
+
+    std::array<math::float4, 8> frustum_vertices(std::size_t index) const noexcept;
 
     static std::vector<pipeline_parameter_pair> layout();
 
@@ -37,8 +38,12 @@ class camera
 public:
     camera() noexcept;
 
-    void field_of_view(float fov) noexcept;
-    void clipping_planes(float near_z, float far_z) noexcept;
+    void perspective(float fov, float near_z, float far_z);
+    void orthographic(float width, float near_z, float far_z);
+
+    float near_z() const noexcept;
+    float far_z() const noexcept;
+
     void flip_y(bool flip) noexcept;
 
     void render_target(resource_interface* render_target) noexcept;
@@ -64,9 +69,29 @@ public:
 private:
     void update_projection() noexcept;
 
-    float m_fov;
-    float m_near_z;
-    float m_far_z;
+    enum projection_type
+    {
+        PROJECTION_TYPE_PERSPECTIVE,
+        PROJECTION_TYPE_ORTHOGRAPHIC
+    };
+
+    projection_type m_projection_type;
+    union {
+        struct
+        {
+            float fov;
+            float near_z;
+            float far_z;
+        } perspective;
+
+        struct
+        {
+            float width;
+            float near_z;
+            float far_z;
+        } orthographic;
+    } m_data;
+
     bool m_flip_y;
     math::float4x4 m_projection;
 

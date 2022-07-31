@@ -104,6 +104,11 @@ public:
         return result;
     }
 
+    virtual resource_interface* make_shadow_map(const shadow_map_desc& desc) override
+    {
+        return new d3d12_shadow_map(desc);
+    }
+
     virtual resource_interface* make_render_target(const render_target_desc& desc) override
     {
         return new d3d12_render_target(desc);

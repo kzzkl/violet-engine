@@ -15,8 +15,8 @@ int main()
     app.install<core::relation>();
     app.install<scene::scene>();
     app.install<graphics::graphics>();
-    app.install<ui::ui>();
-    app.install<editor::editor>();
+    // app.install<ui::ui>();
+    // app.install<editor::editor>();
     app.install<sample::light_viewer>();
 
     app.run();

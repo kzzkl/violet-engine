@@ -58,15 +58,16 @@ private:
 
         viewer.load_pmx("E:/workspace/ash-document/model/sora/Sora.pmx");
         viewer.load_vmd("E:/workspace/ash-document/model/test2.vmd");
-        viewer.load_pmx("E:/workspace/ash-document/model/Beach Cabin/Beach Cabin.pmx");
+        viewer.load_pmx("E:/workspace/ash-document/model/Beach Cabin/Beach Cabin 2.pmx");
 
         m_actor = viewer.load_mmd(
             "sora",
             "E:/workspace/ash-document/model/sora/Sora.pmx",
             "E:/workspace/ash-document/model/test2.vmd");
 
-        m_stage =
-            viewer.load_mmd("stage", "E:/workspace/ash-document/model/Beach Cabin/Beach Cabin.pmx");
+        m_stage = viewer.load_mmd(
+            "stage",
+            "E:/workspace/ash-document/model/Beach Cabin/Beach Cabin 2.pmx");
     }
 
     void initialize_scene()
@@ -77,10 +78,8 @@ private:
 
         m_light = world.create("light");
         world.add<scene::transform, core::link, graphics::directional_light>(m_light);
-        world.component<scene::transform>(m_light).rotation_euler(math::float3{
-            math::to_radians(-60.0f),
-            math::to_radians(20.0f),
-            math::to_radians(10.0f)});
+        world.component<scene::transform>(m_light).rotation_euler(
+            math::float3{math::to_radians(50.0f), math::to_radians(-30.0f), 0.0f});
 
         auto& actor_transform = world.component<scene::transform>(m_actor);
         actor_transform.position(math::float3{0.0f, 0.0f, -10.0f});
@@ -101,8 +100,8 @@ private:
         m_camera = world.create("main camera");
         world.add<core::link, graphics::camera, scene::transform>(m_camera);
 
-        // auto& camera = world.component<graphics::camera>(m_camera);
-        // camera.render_groups |= graphics::RENDER_GROUP_DEBUG;
+        auto& camera = world.component<graphics::camera>(m_camera);
+        camera.render_groups |= graphics::RENDER_GROUP_DEBUG;
 
         auto& transform = world.component<scene::transform>(m_camera);
         transform.position(math::float3{0.0f, 15.0f, -30.0f});

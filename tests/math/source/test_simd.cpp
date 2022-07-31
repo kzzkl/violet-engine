@@ -6,7 +6,7 @@ namespace ash::test
 {
 TEST_CASE("simd::mask", "[simd]")
 {
-    auto v1 = simd::mask<0x1101>();
+    auto v1 = simd::mask_v<1, 1, 0, 1>;
     auto v2 = simd::set(0xFFFFFFFF, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF);
 
     float4 f1;

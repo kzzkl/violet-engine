@@ -93,7 +93,7 @@ blinn_phong_pipeline::blinn_phong_pipeline()
     m_interface = rhi::make_render_pipeline(blinn_phong_pipeline_info);
 }
 
-void blinn_phong_pipeline::render(const render_scene& scene, render_command_interface* command)
+void blinn_phong_pipeline::on_render(const render_scene& scene, render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
@@ -109,13 +109,13 @@ void blinn_phong_pipeline::render(const render_scene& scene, render_command_inte
 
     command->parameter(2, scene.camera_parameter);
     command->parameter(3, scene.light_parameter);
-    for (auto& unit : scene.units)
+    for (auto& item : scene.items)
     {
-        command->parameter(0, unit.parameters[0]);
-        command->parameter(1, unit.parameters[1]);
+        command->parameter(0, item.object_parameter);
+        command->parameter(1, item.additional_parameters[0]); // material
 
-        command->input_assembly_state(unit.vertex_buffers, 2, unit.index_buffer);
-        command->draw_indexed(unit.index_start, unit.index_end, unit.vertex_base);
+        command->input_assembly_state(item.vertex_buffers, 2, item.index_buffer);
+        command->draw_indexed(item.index_start, item.index_end, item.vertex_base);
     }
 
     command->end(m_interface.get());

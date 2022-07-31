@@ -22,6 +22,8 @@ set(ASH_CORE_INTERFACE_DIR ${PROJECT_SOURCE_DIR}/engine/core/interface)
 set(ASH_GRAPHICS_INTERFACE_DIR ${PROJECT_SOURCE_DIR}/engine/graphics/interface)
 set(ASH_PHYSICS_INTERFACE_DIR ${PROJECT_SOURCE_DIR}/engine/physics/interface)
 
+set(ASH_SHADER_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/engine/shader/hlsl/include)
+
 option(ASH_BUILD_THIRDPARTY "Build thirdparty" ON)
 
 option(ASH_BUILD_ENGINE "Build engine" ON)

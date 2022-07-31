@@ -1,12 +1,6 @@
-cbuffer ash_camera : register(b0)
-{
-    float3 camera_position;
-    float3 camera_direction;
+#include "ash_mvp.hlsl"
 
-    float4x4 transform_v;
-    float4x4 transform_p;
-    float4x4 transform_vp;
-};
+ConstantBuffer<ash_camera> camera : register(b0, space0);
 
 struct vs_in
 {
@@ -24,7 +18,7 @@ vs_out vs_main(vs_in vin)
 {
     vs_out result;
 
-    result.position = mul(float4(vin.position, 1.0f), transform_vp);
+    result.position = mul(float4(vin.position, 1.0f), camera.transform_vp);
     result.color = vin.color;
 
     return result;
