@@ -25,7 +25,7 @@ public:
     template <typename T>
     void print(T&& functor)
     {
-        if (m_root_index == -1)
+        if (m_root_index == INVALID_NODE_INDEX)
             return;
 
         std::stack<std::size_t> dfs;
@@ -47,6 +47,8 @@ public:
     }
 
 private:
+    static constexpr std::size_t INVALID_NODE_INDEX = -1;
+
     struct bvh_node
     {
         bounding_volume_aabb aabb;

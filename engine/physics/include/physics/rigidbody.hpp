@@ -22,7 +22,7 @@ public:
 class rigidbody
 {
 public:
-    static constexpr std::uint32_t COLLISION_MASK_ALL = -1;
+    static constexpr std::uint32_t COLLISION_MASK_ALL = 0xFFFFFFFF;
 
 public:
     rigidbody();

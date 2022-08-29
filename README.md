@@ -1,6 +1,6 @@
 # Ash Game Engine
 
-一个在休息期间倒腾的小项目，用来记录自己美好的假期时光。
+一个在休息期间倒腾的实验性质的游戏引擎，用来记录美好的假期时光。
 
 ## 环境需求
 
@@ -50,7 +50,6 @@ ash-engine
 │   ├───ui              UI 系统
 │   └───window          对平台窗口的封装，目前只实现了 Win32 窗口
 ├───samples             示例，目前来说是用来验证引擎是否正常工作的测试程序
-│   ├───hello-world     年久失修，已经不记得这个是干啥的了
 │   ├───mmd-viewer      一个 MikuMikuDance 的查看器，支持 PMX、VMD 格式的模型和动作加载
 │   ├───physics         物理 Demo
 │   ├───task            任务 Demo
@@ -58,3 +57,17 @@ ash-engine
 ├───tests               单元测试
 └───thirdparty          第三方库
 ```
+
+## 一些截图
+
+### MMD Viewer
+
+路径：ash-engine/samples/mmd-viewer
+
+![MMD](documents\screenshot\mmd.png)
+
+### UI 
+
+路径：ash-engine/samples/ui
+
+![UI](documents\screenshot\ui.png)
