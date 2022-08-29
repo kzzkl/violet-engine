@@ -203,7 +203,7 @@ private:
         };
 
         std::vector<layout_info> list(components.size());
-        std::transform(components.begin(), components.end(), list.begin(), [this](component_id id) {
+        std::transform(components.cbegin(), components.cend(), list.begin(), [this](component_id id) {
             return layout_info{
                 id,
                 m_component_registry->at(id).size(),

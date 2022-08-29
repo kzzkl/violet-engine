@@ -72,15 +72,13 @@ void d3d12_render_command::parameter(std::size_t index, pipeline_parameter_inter
 
 void d3d12_render_command::scissor(const scissor_extent* extents, std::size_t size)
 {
-    std::vector<D3D12_RECT> r;
-    r.reserve(size);
+    std::vector<D3D12_RECT> r(size);
     for (std::size_t i = 0; i < size; ++i)
     {
-        r.push_back(
-            {static_cast<LONG>(extents[i].min_x),
-             static_cast<LONG>(extents[i].min_y),
-             static_cast<LONG>(extents[i].max_x),
-             static_cast<LONG>(extents[i].max_y)});
+        r[i].left = static_cast<LONG>(extents[i].min_x);
+        r[i].top = static_cast<LONG>(extents[i].min_y),
+        r[i].right = static_cast<LONG>(extents[i].max_x),
+        r[i].bottom = static_cast<LONG>(extents[i].max_y);
     }
     m_command_list->RSSetScissorRects(static_cast<UINT>(size), r.data());
 }

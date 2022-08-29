@@ -419,28 +419,32 @@ public:
         float4x4_simd result;
 
         // row 1
-        temp = _mm_mul_ps(simd::replicate<0>(m1[0]), m2[0]);
-        temp = _mm_add_ps(_mm_mul_ps(simd::replicate<1>(m1[0]), m2[1]), temp);
-        temp = _mm_add_ps(_mm_mul_ps(simd::replicate<2>(m1[0]), m2[2]), temp);
-        result[0] = _mm_add_ps(_mm_mul_ps(simd::replicate<3>(m1[0]), m2[3]), temp);
+        __m128 row = m1[0];
+        temp = _mm_mul_ps(simd::replicate<0>(row), m2[0]);
+        temp = _mm_add_ps(_mm_mul_ps(simd::replicate<1>(row), m2[1]), temp);
+        temp = _mm_add_ps(_mm_mul_ps(simd::replicate<2>(row), m2[2]), temp);
+        result[0] = _mm_add_ps(_mm_mul_ps(simd::replicate<3>(row), m2[3]), temp);
 
         // row 2
-        temp = _mm_mul_ps(simd::replicate<0>(m1[1]), m2[0]);
-        temp = _mm_add_ps(_mm_mul_ps(simd::replicate<1>(m1[1]), m2[1]), temp);
-        temp = _mm_add_ps(_mm_mul_ps(simd::replicate<2>(m1[1]), m2[2]), temp);
-        result[1] = _mm_add_ps(_mm_mul_ps(simd::replicate<3>(m1[1]), m2[3]), temp);
+        row = m1[1];
+        temp = _mm_mul_ps(simd::replicate<0>(row), m2[0]);
+        temp = _mm_add_ps(_mm_mul_ps(simd::replicate<1>(row), m2[1]), temp);
+        temp = _mm_add_ps(_mm_mul_ps(simd::replicate<2>(row), m2[2]), temp);
+        result[1] = _mm_add_ps(_mm_mul_ps(simd::replicate<3>(row), m2[3]), temp);
 
         // row 3
-        temp = _mm_mul_ps(simd::replicate<0>(m1[2]), m2[0]);
-        temp = _mm_add_ps(_mm_mul_ps(simd::replicate<1>(m1[2]), m2[1]), temp);
-        temp = _mm_add_ps(_mm_mul_ps(simd::replicate<2>(m1[2]), m2[2]), temp);
-        result[2] = _mm_add_ps(_mm_mul_ps(simd::replicate<3>(m1[2]), m2[3]), temp);
+        row = m1[2];
+        temp = _mm_mul_ps(simd::replicate<0>(row), m2[0]);
+        temp = _mm_add_ps(_mm_mul_ps(simd::replicate<1>(row), m2[1]), temp);
+        temp = _mm_add_ps(_mm_mul_ps(simd::replicate<2>(row), m2[2]), temp);
+        result[2] = _mm_add_ps(_mm_mul_ps(simd::replicate<3>(row), m2[3]), temp);
 
         // row 4
-        temp = _mm_mul_ps(simd::replicate<0>(m1[3]), m2[0]);
-        temp = _mm_add_ps(_mm_mul_ps(simd::replicate<1>(m1[3]), m2[1]), temp);
-        temp = _mm_add_ps(_mm_mul_ps(simd::replicate<2>(m1[3]), m2[2]), temp);
-        result[3] = _mm_add_ps(_mm_mul_ps(simd::replicate<3>(m1[3]), m2[3]), temp);
+        row = m1[3];
+        temp = _mm_mul_ps(simd::replicate<0>(row), m2[0]);
+        temp = _mm_add_ps(_mm_mul_ps(simd::replicate<1>(row), m2[1]), temp);
+        temp = _mm_add_ps(_mm_mul_ps(simd::replicate<2>(row), m2[2]), temp);
+        result[3] = _mm_add_ps(_mm_mul_ps(simd::replicate<3>(row), m2[3]), temp);
 
         return result;
     }

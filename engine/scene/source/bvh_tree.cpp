@@ -4,8 +4,6 @@
 
 namespace ash::scene
 {
-static constexpr std::size_t INVALID_NODE_INDEX = -1;
-
 bvh_tree::bvh_tree() : m_root_index(INVALID_NODE_INDEX)
 {
 }
@@ -141,6 +139,7 @@ void bvh_tree::frustum_culling(const std::array<math::float4, 6>& frustum)
     while (!dfs.empty())
     {
         std::size_t index = dfs.top();
+        bounding_volume_aabb aabb = m_nodes[index].aabb;
         dfs.pop();
 
         bool cull = false;
@@ -149,38 +148,13 @@ void bvh_tree::frustum_culling(const std::array<math::float4, 6>& frustum)
         {
             math::float4_align max_vertex = {};
             math::float4_align min_vertex = {};
-            if (frustum[i][0] < 0.0f)
-            {
-                max_vertex[0] = m_nodes[index].aabb.min[0];
-                min_vertex[0] = m_nodes[index].aabb.max[0];
-            }
-            else
-            {
-                max_vertex[0] = m_nodes[index].aabb.max[0];
-                min_vertex[0] = m_nodes[index].aabb.min[0];
-            }
 
-            if (frustum[i][1] < 0.0f)
-            {
-                max_vertex[1] = m_nodes[index].aabb.min[1];
-                min_vertex[1] = m_nodes[index].aabb.max[1];
-            }
-            else
-            {
-                max_vertex[1] = m_nodes[index].aabb.max[1];
-                min_vertex[1] = m_nodes[index].aabb.min[1];
-            }
-
-            if (frustum[i][2] < 0.0f)
-            {
-                max_vertex[2] = m_nodes[index].aabb.min[2];
-                min_vertex[2] = m_nodes[index].aabb.max[2];
-            }
-            else
-            {
-                max_vertex[2] = m_nodes[index].aabb.max[2];
-                min_vertex[2] = m_nodes[index].aabb.min[2];
-            }
+            min_vertex[0] = frustum[i][0] < 0.0f ? aabb.max[0] : aabb.min[0];
+            max_vertex[0] = frustum[i][0] < 0.0f ? aabb.min[0] : aabb.max[0];
+            min_vertex[1] = frustum[i][1] < 0.0f ? aabb.max[1] : aabb.min[1];
+            max_vertex[1] = frustum[i][1] < 0.0f ? aabb.min[1] : aabb.max[1];
+            min_vertex[2] = frustum[i][2] < 0.0f ? aabb.max[2] : aabb.min[2];
+            max_vertex[2] = frustum[i][2] < 0.0f ? aabb.min[2] : aabb.max[2];
 
             math::float4_simd max = math::simd::load(max_vertex);
             math::float4_simd normal = math::simd::load(frustum[i]);

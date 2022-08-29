@@ -59,14 +59,13 @@ void task::add_next_task(task& task)
 
 void task::remove_next_task(task& task)
 {
-    for (auto iter = m_next_task_list[m_next_index].begin();
-         iter != m_next_task_list[m_next_index].end();
-         ++iter)
+    auto& list = m_next_task_list[m_next_index];
+    for (auto iter = list.begin(); iter != list.end(); ++iter)
     {
         if (*iter == &task)
         {
-            std::swap(*iter, m_next_task_list[m_next_index].back());
-            m_next_task_list[m_next_index].pop_back();
+            std::swap(*iter, list.back());
+            list.pop_back();
             break;
         }
     }

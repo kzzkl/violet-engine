@@ -24,7 +24,7 @@ public:
 
     value_type allocate(std::size_t size = 1)
     {
-        for (auto iter = m_free.begin(); iter < m_free.end(); ++iter)
+        for (auto iter = m_free.begin(); iter != m_free.end(); ++iter)
         {
             if (iter->end - iter->begin >= size)
             {
