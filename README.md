@@ -64,10 +64,10 @@ ash-engine
 
 路径：ash-engine/samples/mmd-viewer
 
-![MMD](documents\screenshot\mmd.png)
+![MMD](documents/screenshot/mmd.png)
 
 ### UI 
 
 路径：ash-engine/samples/ui
 
-![UI](documents\screenshot\ui.png)
+![UI](documents/screenshot/ui.png)
