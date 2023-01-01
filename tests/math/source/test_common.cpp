@@ -1,6 +1,6 @@
 #include "test_common.hpp"
 
-#define VALUE_WITH_MARGIN(v) Approx(v).margin(0.00000005)
+#define VALUE_WITH_MARGIN(v) Catch::Approx(v).margin(0.00000005)
 
 using namespace ash::math;
 
