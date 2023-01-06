@@ -62,6 +62,9 @@ std::vector<graphics::pipeline_parameter_pair> material_pipeline_parameter::layo
 
 ui_pipeline::ui_pipeline()
 {
+    m_mvp_parameter = std::make_unique<mvp_pipeline_parameter>();
+    m_offset_parameter = std::make_unique<offset_pipeline_parameter>();
+
     // UI pass.
     graphics::render_pass_info ui_pass_info = {};
     ui_pass_info.vertex_shader = "engine/shader/ui.vert";
@@ -132,28 +135,38 @@ ui_pipeline::ui_pipeline()
     m_interface = graphics::rhi::make_render_pipeline(ui_pipeline_info);
 }
 
-void ui_pipeline::on_render(
-    const graphics::render_scene& scene,
+void ui_pipeline::set_mvp_matrix(const math::float4x4& mvp)
+{
+    m_mvp_parameter->mvp_matrix(mvp);
+}
+
+void ui_pipeline::set_offset(const std::vector<math::float4>& offset)
+{
+    m_offset_parameter->offset(offset);
+}
+
+void ui_pipeline::render(
+    const graphics::render_context& context,
     graphics::render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
-        scene.render_target,
-        scene.render_target_resolve,
-        scene.depth_stencil_buffer);
+        context.render_target,
+        context.render_target_resolve,
+        context.depth_stencil_buffer);
 
     graphics::scissor_extent extent = {};
-    auto [width, height] = scene.render_target->extent();
+    auto [width, height] = context.render_target->extent();
     extent.max_x = width;
     extent.max_y = height;
 
-    command->parameter(1, scene.items[0].additional_parameters[1]); // offset
-    command->parameter(2, scene.items[0].additional_parameters[2]); // mvp
-    for (auto& item : scene.items)
+    command->parameter(1, m_offset_parameter->interface()); // offset
+    command->parameter(2, m_mvp_parameter->interface());    // mvp
+    for (auto& item : context.items)
     {
         command->scissor(&item.scissor, 1);
 
-        command->parameter(0, item.additional_parameters[0]); // material
+        command->parameter(0, item.material_parameter); // material
 
         command->input_assembly_state(item.vertex_buffers, 4, item.index_buffer);
         command->draw_indexed(item.index_start, item.index_end, item.vertex_base);

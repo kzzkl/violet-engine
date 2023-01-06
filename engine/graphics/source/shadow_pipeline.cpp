@@ -38,20 +38,20 @@ shadow_pipeline::shadow_pipeline()
     m_interface = rhi::make_render_pipeline(pipeline_info);
 }
 
-void shadow_pipeline::on_render(const render_scene& scene, render_command_interface* command)
+void shadow_pipeline::render(const render_context& context, render_command_interface* command)
 {
-    command->begin(m_interface.get(), nullptr, nullptr, scene.shadow_map->depth_buffer());
+    command->begin(m_interface.get(), nullptr, nullptr, context.shadow_map->depth_buffer());
 
-    command->clear_depth_stencil(scene.shadow_map->depth_buffer());
+    command->clear_depth_stencil(context.shadow_map->depth_buffer());
 
     scissor_extent extent = {};
-    auto [width, height] = scene.shadow_map->depth_buffer()->extent();
+    auto [width, height] = context.shadow_map->depth_buffer()->extent();
     extent.max_x = width;
     extent.max_y = height;
     command->scissor(&extent, 1);
 
-    command->parameter(1, scene.shadow_map->parameter());
-    for (auto& item : scene.items)
+    command->parameter(1, context.shadow_map->parameter());
+    for (auto& item : context.items)
     {
         command->parameter(0, item.object_parameter);
 

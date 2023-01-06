@@ -1,7 +1,6 @@
 #pragma once
 
 #include "graphics_interface.hpp"
-#include <vector>
 
 namespace ash::graphics
 {
@@ -9,7 +8,7 @@ class render_pipeline;
 struct material
 {
     render_pipeline* pipeline;
-    std::vector<pipeline_parameter_interface*> parameters;
+    pipeline_parameter_interface* parameter;
 
     scissor_extent scissor;
 };

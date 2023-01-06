@@ -72,22 +72,22 @@ debug_pipeline::debug_pipeline()
     m_interface = rhi::make_render_pipeline(pipeline_info);
 }
 
-void debug_pipeline::on_render(const render_scene& scene, render_command_interface* command)
+void debug_pipeline::render(const render_context& context, render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
-        scene.render_target,
-        scene.render_target_resolve,
-        scene.depth_stencil_buffer);
+        context.render_target,
+        context.render_target_resolve,
+        context.depth_stencil_buffer);
 
     scissor_extent extent = {};
-    auto [width, height] = scene.render_target->extent();
+    auto [width, height] = context.render_target->extent();
     extent.max_x = width;
     extent.max_y = height;
     command->scissor(&extent, 1);
 
-    command->parameter(0, scene.camera_parameter);
-    for (auto& item : scene.items)
+    command->parameter(0, context.camera_parameter);
+    for (auto& item : context.items)
     {
         if (item.index_start == item.index_end)
             continue;
@@ -148,7 +148,10 @@ void graphics_debug::initialize()
         .index_end = 0,
         .vertex_base = 0,
     });
-    v.materials.push_back(material{.pipeline = m_pipeline.get(), .parameters = {}});
+
+    material material = {};
+    material.pipeline = m_pipeline.get();
+    v.materials.push_back(material);
 
     relation.link(m_entity, scene.root());
 }

@@ -93,26 +93,26 @@ blinn_phong_pipeline::blinn_phong_pipeline()
     m_interface = rhi::make_render_pipeline(blinn_phong_pipeline_info);
 }
 
-void blinn_phong_pipeline::on_render(const render_scene& scene, render_command_interface* command)
+void blinn_phong_pipeline::render(const render_context& context, render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
-        scene.render_target,
-        scene.render_target_resolve,
-        scene.depth_stencil_buffer);
+        context.render_target,
+        context.render_target_resolve,
+        context.depth_stencil_buffer);
 
     scissor_extent extent = {};
-    auto [width, height] = scene.render_target->extent();
+    auto [width, height] = context.render_target->extent();
     extent.max_x = width;
     extent.max_y = height;
     command->scissor(&extent, 1);
 
-    command->parameter(2, scene.camera_parameter);
-    command->parameter(3, scene.light_parameter);
-    for (auto& item : scene.items)
+    command->parameter(2, context.camera_parameter);
+    command->parameter(3, context.light_parameter);
+    for (auto& item : context.items)
     {
         command->parameter(0, item.object_parameter);
-        command->parameter(1, item.additional_parameters[0]); // material
+        command->parameter(1, item.material_parameter); // material
 
         command->input_assembly_state(item.vertex_buffers, 2, item.index_buffer);
         command->draw_indexed(item.index_start, item.index_end, item.vertex_base);

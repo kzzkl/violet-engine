@@ -68,6 +68,7 @@ private:
     ecs::entity m_scene_camera;
 
     std::queue<ecs::entity> m_render_queue;
+    std::unordered_map<render_pipeline*, render_context> m_render_contexts;
 
     std::unique_ptr<light_pipeline_parameter> m_light_parameter;
 

@@ -249,7 +249,7 @@ void graphics::render_camera(ecs::entity camera_entity)
     scene.frustum_culling(camera_frustum::planes(camera_view_projection));
 
     // Draw object.
-    std::set<render_pipeline*> render_pipelines;
+    // std::set<render_pipeline*> render_pipelines;
     world.view<mesh_render>().each([&, this](ecs::entity entity, mesh_render& mesh_render) {
         if ((mesh_render.render_groups & render_camera.render_groups) == 0)
             return;
@@ -270,43 +270,43 @@ void graphics::render_camera(ecs::entity camera_entity)
             item.index_start = mesh_render.submeshes[i].index_start;
             item.index_end = mesh_render.submeshes[i].index_end;
             item.vertex_base = mesh_render.submeshes[i].vertex_base;
-            item.additional_parameters = mesh_render.materials[i].parameters.data();
+            item.material_parameter = mesh_render.materials[i].parameter;
             item.scissor = mesh_render.materials[i].scissor;
 
             if (mesh_render.object_parameter != nullptr)
                 item.object_parameter = mesh_render.object_parameter->interface();
 
-            mesh_render.materials[i].pipeline->add_item(item);
-
-            render_pipelines.insert(mesh_render.materials[i].pipeline);
+            m_render_contexts[mesh_render.materials[i].pipeline].items.emplace_back(item);
         }
     });
 
     command->clear_render_target(render_camera.render_target(), {0.0f, 0.0f, 0.0f, 1.0f});
     command->clear_depth_stencil(render_camera.depth_stencil_buffer());
 
-    for (auto& pipeline : render_pipelines)
+    for (auto& [pipeline, context] : m_render_contexts)
     {
-        pipeline->camera_parameter(render_camera.pipeline_parameter()->interface());
-        pipeline->light_parameter(m_light_parameter->interface());
-        pipeline->render_target(
-            render_camera.render_target(),
-            render_camera.render_target_resolve(),
-            render_camera.depth_stencil_buffer());
-        pipeline->render(command);
+        context.camera_parameter = render_camera.pipeline_parameter()->interface();
+        context.light_parameter = m_light_parameter->interface();
+        context.render_target = render_camera.render_target();
+        context.render_target_resolve = render_camera.render_target_resolve();
+        context.depth_stencil_buffer = render_camera.depth_stencil_buffer();
+
+        pipeline->render(context, command);
+        context.items.clear();
     }
 
     if (camera_entity != m_editor_camera)
     {
         // Render sky.
-        m_sky_pipeline->camera_parameter(render_camera.pipeline_parameter()->interface());
-        m_sky_pipeline->light_parameter(m_light_parameter->interface());
-        m_sky_pipeline->sky_parameter(m_sky_parameter->interface());
-        m_sky_pipeline->render_target(
-            render_camera.render_target(),
-            render_camera.render_target_resolve(),
-            render_camera.depth_stencil_buffer());
-        m_sky_pipeline->render(command);
+        render_context sky_context = {};
+        sky_context.camera_parameter = render_camera.pipeline_parameter()->interface();
+        sky_context.light_parameter = m_light_parameter->interface();
+        sky_context.sky_parameter = m_sky_parameter->interface();
+        sky_context.render_target = render_camera.render_target();
+        sky_context.render_target_resolve = render_camera.render_target_resolve();
+        sky_context.depth_stencil_buffer = render_camera.depth_stencil_buffer();
+
+        m_sky_pipeline->render(sky_context, command);
     }
 
     rhi::renderer().execute(command);
@@ -430,6 +430,8 @@ shadow_map* graphics::render_shadow_cascade(
     math::float4x4 view_projection;
     math::simd::store(light_vp, view_projection);
 
+    render_context shadow_context;
+
     scene.frustum_culling(camera_frustum::planes(view_projection));
     world.view<mesh_render>().each([&, this](ecs::entity entity, mesh_render& mesh_render) {
         // Check visibility.
@@ -454,16 +456,15 @@ shadow_map* graphics::render_shadow_cascade(
             item.index_end = mesh_render.submeshes[i].index_end;
             item.vertex_base = mesh_render.submeshes[i].vertex_base;
 
-            m_shadow_pipeline->add_item(item);
+            shadow_context.items.emplace_back(item);
         }
     });
 
     shadow_map* shadow = allocate_shadow_map();
     shadow->light_view_projection(view_projection);
 
-    m_shadow_pipeline->shadow(shadow);
-    m_shadow_pipeline->render(command);
-    m_shadow_pipeline->clear();
+    shadow_context.shadow_map = shadow;
+    m_shadow_pipeline->render(shadow_context, command);
 
     return shadow;
 }

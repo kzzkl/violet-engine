@@ -78,22 +78,22 @@ sky_pipeline::sky_pipeline()
     m_interface = rhi::make_render_pipeline(pipeline_info);
 }
 
-void sky_pipeline::on_render(const render_scene& scene, render_command_interface* command)
+void sky_pipeline::render(const render_context& context, render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
-        scene.render_target,
-        scene.render_target_resolve,
-        scene.depth_stencil_buffer);
+        context.render_target,
+        context.render_target_resolve,
+        context.depth_stencil_buffer);
 
     scissor_extent extent = {};
-    auto [width, height] = scene.render_target->extent();
+    auto [width, height] = context.render_target->extent();
     extent.max_x = width;
     extent.max_y = height;
     command->scissor(&extent, 1);
 
-    command->parameter(0, scene.camera_parameter);
-    command->parameter(1, scene.sky_parameter);
+    command->parameter(0, context.camera_parameter);
+    command->parameter(1, context.sky_parameter);
 
     command->input_assembly_state(nullptr, 0, nullptr, PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
     command->draw(0, 36);

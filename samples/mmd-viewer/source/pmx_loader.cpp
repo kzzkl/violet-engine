@@ -360,7 +360,7 @@ bool pmx_loader::load_material(
 
     for (auto& mmd_material : materials)
     {
-        auto parameter = std::make_unique<material_pipeline_parameter>();
+        auto parameter = std::make_unique<mmd_material_parameter>();
         parameter->diffuse(mmd_material.diffuse);
         parameter->specular(mmd_material.specular);
         parameter->specular_strength(mmd_material.specular_strength);

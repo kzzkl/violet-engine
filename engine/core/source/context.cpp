@@ -38,19 +38,22 @@ void context::initialize(std::string_view config_path)
         }
     }
 
-    for (auto iter : std::filesystem::directory_iterator(config_path))
+    if (config_path != "")
     {
-        if (iter.is_regular_file() && iter.path().extension() == ".json")
+        for (auto iter : std::filesystem::directory_iterator(config_path))
         {
-            std::ifstream fin(iter.path());
-            if (!fin.is_open())
-                continue;
+            if (iter.is_regular_file() && iter.path().extension() == ".json")
+            {
+                std::ifstream fin(iter.path());
+                if (!fin.is_open())
+                    continue;
 
-            dictionary config;
-            fin >> config;
+                dictionary config;
+                fin >> config;
 
-            for (auto& [key, value] : config.items())
-                singleton.m_config[key].update(value, true);
+                for (auto& [key, value] : config.items())
+                    singleton.m_config[key].update(value, true);
+            }
         }
     }
 }

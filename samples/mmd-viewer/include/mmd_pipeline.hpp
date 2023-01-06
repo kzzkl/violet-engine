@@ -6,10 +6,10 @@
 
 namespace ash::sample::mmd
 {
-class material_pipeline_parameter : public graphics::pipeline_parameter
+class mmd_material_parameter : public graphics::pipeline_parameter
 {
 public:
-    material_pipeline_parameter();
+    mmd_material_parameter();
 
     void diffuse(const math::float4& diffuse);
     void specular(const math::float3& specular);
@@ -48,11 +48,11 @@ class mmd_render_pipeline : public graphics::render_pipeline
 public:
     mmd_render_pipeline();
 
-private:
-    virtual void on_render(
-        const graphics::render_scene& scene,
+    virtual void render(
+        const graphics::render_context& context,
         graphics::render_command_interface* command) override;
 
+private:
     std::unique_ptr<graphics::render_pipeline_interface> m_interface;
 };
 

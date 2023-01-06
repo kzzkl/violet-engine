@@ -30,9 +30,9 @@ class blinn_phong_pipeline : public render_pipeline
 public:
     blinn_phong_pipeline();
 
-private:
-    virtual void on_render(const render_scene& scene, render_command_interface* command) override;
+    virtual void render(const render_context& context, render_command_interface* command) override;
 
+private:
     std::unique_ptr<render_pipeline_interface> m_interface;
 };
 } // namespace ash::graphics

@@ -258,9 +258,9 @@ void mmd_loader::load_material(
         mesh.index_end = submesh[i].second;
         mesh_render.submeshes.push_back(mesh);
 
-        graphics::material material = {};
+        graphics::material material;
         material.pipeline = render_pipeline;
-        material.parameters = {loader.materials(i)->interface()};
+        material.parameter = loader.materials(i)->interface();
         mesh_render.materials.push_back(material);
     }
 }

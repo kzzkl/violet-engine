@@ -30,7 +30,7 @@ bool mmd_viewer::initialize(const dictionary& config)
 
     graphics::rhi::register_pipeline_parameter_layout(
         "mmd_material",
-        material_pipeline_parameter::layout());
+        mmd_material_parameter::layout());
     graphics::rhi::register_pipeline_parameter_layout(
         "mmd_skin",
         skinning_pipeline_parameter::layout());
