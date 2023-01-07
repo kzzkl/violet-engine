@@ -1,7 +1,7 @@
-#include "ash_mvp.hlsl"
-#include "ash_light.hlsl"
+#include "violet_mvp.hlsl"
+#include "violet_light.hlsl"
 
-ConstantBuffer<ash_object> object : register(b0, space0);
+ConstantBuffer<violet_object> object : register(b0, space0);
 
 cbuffer mmd_material : register(b0, space1)
 {
@@ -19,8 +19,8 @@ Texture2D toon : register(t1, space1);
 Texture2D spa : register(t2, space1);
 SamplerState sampler_clamp : register(s1);
 
-ConstantBuffer<ash_camera> camera : register(b0, space2);
-ConstantBuffer<ash_light> light : register(b0, space3);
+ConstantBuffer<violet_camera> camera : register(b0, space2);
+ConstantBuffer<violet_light> light : register(b0, space3);
 Texture2D<float> shadow_map[16] : register(t0, space3);
 SamplerComparisonState shadow_sampler : register(s6);
 
@@ -38,7 +38,7 @@ struct vs_out
     float3 screen_normal : SCREEN_NORMAL;
     float2 uv : UV;
 
-    float4 shadow_position[ASH_MAX_SHADOW_COUNT] : SHADOW_POSITION;
+    float4 shadow_position[VIOLET_MAX_SHADOW_COUNT] : SHADOW_POSITION;
     float camera_depth : CAMERA_DEPTH;
 };
 

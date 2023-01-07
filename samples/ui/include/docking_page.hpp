@@ -5,7 +5,7 @@
 #include "ui/controls/dock_area.hpp"
 #include "ui/controls/dock_window.hpp"
 
-namespace ash::sample
+namespace violet::sample
 {
 class docking_page : public page
 {
@@ -24,4 +24,4 @@ private:
     std::unique_ptr<ui::button> m_create_button;
     std::unique_ptr<ui::button> m_print_button;
 };
-} // namespace ash::sample
+} // namespace violet::sample

@@ -3,8 +3,8 @@
 #include <set>
 #include <thread>
 
-using namespace ash::task;
-using namespace ash::test;
+using namespace violet::task;
+using namespace violet::test;
 
 TEST_CASE("Concurrent allocate and deallocate of nodes", "[lock_free_node_pool][lock_free_queue]")
 {

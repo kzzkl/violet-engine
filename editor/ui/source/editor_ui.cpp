@@ -5,7 +5,7 @@
 #include "ui/ui.hpp"
 #include "window/window.hpp"
 
-namespace ash::editor
+namespace violet::editor
 {
 editor_ui::editor_ui()
 {
@@ -49,4 +49,4 @@ void editor_ui::tick()
     ecs::entity selected_entity = m_hierarchy_view->selected_entity();
     m_component_view->tick(selected_entity);
 }
-} // namespace ash::editor
+} // namespace violet::editor

@@ -7,7 +7,7 @@
 #include "tree_page.hpp"
 #include "ui/ui.hpp"
 
-namespace ash::sample
+namespace violet::sample
 {
 gallery::gallery() : m_current_page(nullptr)
 {
@@ -114,4 +114,4 @@ void gallery::initialize_navigation()
     m_navigation_tree->add_node(m_nodes["Docking"].get());
     m_pages["Docking"] = std::make_unique<docking_page>();
 }
-} // namespace ash::sample
+} // namespace violet::sample

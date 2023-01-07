@@ -5,7 +5,7 @@
 #include "ui/controls/dock_window.hpp"
 #include "ui/controls/image.hpp"
 
-namespace ash::editor
+namespace violet::editor
 {
 class scene_view : public ui::dock_window
 {
@@ -38,4 +38,4 @@ private:
 
     bool m_focused;
 };
-} // namespace ash::editor
+} // namespace violet::editor

@@ -3,9 +3,9 @@
 #include "plugin.hpp"
 #include <catch2/catch.hpp>
 
-namespace ash::test
+namespace violet::test
 {
-class hello_plugin : public ash::core::plugin
+class hello_plugin : public violet::core::plugin
 {
 public:
     hello_plugin();
@@ -20,4 +20,4 @@ private:
     using add_impl = int (*)(int, int);
     add_impl m_add_impl;
 };
-} // namespace ash::test
+} // namespace violet::test

@@ -9,10 +9,10 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        ash::ecs
-        ash::core
-        ash::window
-        ash::graphics)
+        violet::ecs
+        violet::core
+        violet::window
+        violet::graphics)
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/shader DESTINATION bin/resource)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/config DESTINATION bin)

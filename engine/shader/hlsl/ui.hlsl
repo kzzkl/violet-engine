@@ -1,21 +1,21 @@
-struct ash_ui_material
+struct violet_ui_material
 {
     uint type;
 };
-ConstantBuffer<ash_ui_material> material : register(b0, space0);
+ConstantBuffer<violet_ui_material> material : register(b0, space0);
 Texture2D ui_texture : register(t0, space0);
 
-struct ash_ui_offset
+struct violet_ui_offset
 {
     float4 offset[1024];
 };
-ConstantBuffer<ash_ui_offset> offset : register(b0, space1);
+ConstantBuffer<violet_ui_offset> offset : register(b0, space1);
 
-struct ash_ui_mvp
+struct violet_ui_mvp
 {
     float4x4 mvp;
 };
-ConstantBuffer<ash_ui_mvp> mvp : register(b0, space2);
+ConstantBuffer<violet_ui_mvp> mvp : register(b0, space2);
 
 SamplerState image_sampler : register(s0);
 SamplerState text_sampler : register(s7);

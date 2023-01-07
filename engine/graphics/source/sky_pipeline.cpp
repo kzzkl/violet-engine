@@ -1,9 +1,9 @@
 #include "graphics/sky_pipeline.hpp"
 #include "graphics/rhi.hpp"
 
-namespace ash::graphics
+namespace violet::graphics
 {
-sky_pipeline_parameter::sky_pipeline_parameter() : pipeline_parameter("ash_sky")
+sky_pipeline_parameter::sky_pipeline_parameter() : pipeline_parameter("violet_sky")
 {
 }
 
@@ -30,7 +30,7 @@ sky_pipeline::sky_pipeline()
         {ATTACHMENT_REFERENCE_TYPE_RESOLVE, 0}
     };
     pass_info.primitive_topology = PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    pass_info.parameters = {"ash_camera", "ash_sky"};
+    pass_info.parameters = {"violet_camera", "violet_sky"};
     pass_info.samples = 4;
     pass_info.rasterizer.cull_mode = CULL_MODE_NONE;
     pass_info.depth_stencil.depth_functor = DEPTH_FUNCTOR_LESS_EQUAL;
@@ -100,4 +100,4 @@ void sky_pipeline::render(const render_context& context, render_command_interfac
 
     command->end(m_interface.get());
 }
-} // namespace ash::graphics
+} // namespace violet::graphics

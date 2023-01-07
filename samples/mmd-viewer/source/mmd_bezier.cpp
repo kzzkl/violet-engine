@@ -1,6 +1,6 @@
 #include "mmd_bezier.hpp"
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 mmd_bezier::mmd_bezier(const math::float2& p1, const math::float2& p2) noexcept : m_p1(p1), m_p2(p2)
 {
@@ -68,4 +68,4 @@ void mmd_bezier::set(const math::float2& p1, const math::float2& p2) noexcept
     m_p1 = p1;
     m_p2 = p2;
 }
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

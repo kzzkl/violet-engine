@@ -8,7 +8,7 @@
 #include "graphics/rhi.hpp"
 #include "scene/scene.hpp"
 
-namespace ash::graphics
+namespace violet::graphics
 {
 debug_pipeline::debug_pipeline()
 {
@@ -26,7 +26,7 @@ debug_pipeline::debug_pipeline()
         {ATTACHMENT_REFERENCE_TYPE_RESOLVE, 0}
     };
     color_pass_info.primitive_topology = PRIMITIVE_TOPOLOGY_TYPE_LINE;
-    color_pass_info.parameters = {"ash_camera"};
+    color_pass_info.parameters = {"violet_camera"};
     color_pass_info.samples = 4;
 
     // Attachment.
@@ -217,4 +217,4 @@ void graphics_debug::draw_aabb(
                                                        t1, t4, t2, t3, b1, b4, b2, b3});
     m_vertex_color.insert(m_vertex_color.end(), 24, color);
 }
-} // namespace ash::graphics
+} // namespace violet::graphics

@@ -4,7 +4,7 @@
 #include <memory>
 #include <string_view>
 
-namespace ash::core
+namespace violet::core
 {
 class dynamic_library
 {
@@ -42,4 +42,4 @@ private:
     std::unique_ptr<dynamic_library> m_library;
     bool m_loaded;
 };
-} // namespace ash
+} // namespace violet

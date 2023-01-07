@@ -2,7 +2,7 @@
 #include "vk_command.hpp"
 #include "vk_context.hpp"
 
-namespace ash::graphics::vk
+namespace violet::graphics::vk
 {
 vk_swap_chain::vk_swap_chain(VkSurfaceKHR surface, std::uint32_t width, std::uint32_t height)
     : m_swap_chain(VK_NULL_HANDLE)
@@ -102,7 +102,7 @@ VkSurfaceFormatKHR vk_swap_chain::choose_surface_format(VkSurfaceKHR surface)
 
     std::uint32_t format_count;
     vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, nullptr);
-    ASH_VK_ASSERT(format_count != 0);
+    VIOLET_VK_ASSERT(format_count != 0);
 
     std::vector<VkSurfaceFormatKHR> formats(format_count);
     if (!formats.empty())
@@ -167,7 +167,7 @@ VkPresentModeKHR vk_swap_chain::choose_present_mode(VkSurfaceKHR surface)
         surface,
         &present_mode_count,
         nullptr);
-    ASH_VK_ASSERT(present_mode_count != 0);
+    VIOLET_VK_ASSERT(present_mode_count != 0);
 
     std::vector<VkPresentModeKHR> present_modes(present_mode_count);
     if (!present_modes.empty())
@@ -253,4 +253,4 @@ void vk_renderer::resize(std::uint32_t width, std::uint32_t height)
 {
     vk_context::swap_chain().resize(width, height);
 }
-} // namespace ash::graphics::vk
+} // namespace violet::graphics::vk

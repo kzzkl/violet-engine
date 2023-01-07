@@ -3,7 +3,7 @@
 #include "page.hpp"
 #include "ui/controls/scroll_view.hpp"
 
-namespace ash::sample
+namespace violet::sample
 {
 class scroll_page : public page
 {
@@ -16,4 +16,4 @@ private:
     std::unique_ptr<ui::scroll_view> m_scroll_view;
     std::vector<std::unique_ptr<ui::panel>> m_panels;
 };
-} // namespace ash::sample
+} // namespace violet::sample

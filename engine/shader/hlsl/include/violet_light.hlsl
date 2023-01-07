@@ -1,4 +1,4 @@
-struct ash_directional_light_data
+struct violet_directional_light_data
 {
     float3 direction;
     bool shadow;
@@ -6,25 +6,25 @@ struct ash_directional_light_data
     uint shadow_index;
 };
 
-#define ASH_MAX_SHADOW_COUNT 4
-#define ASH_MAX_CASCADED_COUNT 4
+#define VIOLET_MAX_SHADOW_COUNT 4
+#define VIOLET_MAX_CASCADED_COUNT 4
 
-struct ash_light
+struct violet_light
 {
-    ash_directional_light_data directional_light[4];
+    violet_directional_light_data directional_light[4];
     uint directional_light_count;
     float3 ambient_light;
 
-    float4x4 shadow_v[ASH_MAX_SHADOW_COUNT];
+    float4x4 shadow_v[VIOLET_MAX_SHADOW_COUNT];
     float4 cascade_depths;
-    float4 cascade_scale[ASH_MAX_SHADOW_COUNT][ASH_MAX_CASCADED_COUNT];
-    float4 cascade_offset[ASH_MAX_SHADOW_COUNT][ASH_MAX_CASCADED_COUNT];
+    float4 cascade_scale[VIOLET_MAX_SHADOW_COUNT][VIOLET_MAX_CASCADED_COUNT];
+    float4 cascade_offset[VIOLET_MAX_SHADOW_COUNT][VIOLET_MAX_CASCADED_COUNT];
 
     uint shadow_count;
     uint cascade_count;
 };
 
-uint shadow_cascade_index(float camera_depth, ash_light light)
+uint shadow_cascade_index(float camera_depth, violet_light light)
 {
     if (camera_depth < light.cascade_depths[0])
         return 0;

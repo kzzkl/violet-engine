@@ -2,7 +2,7 @@
 
 #include "graphics_interface.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 enum element_mesh_type
 {
@@ -26,4 +26,4 @@ struct element_mesh
     bool scissor;
     graphics::resource_interface* texture;
 };
-} // namespace ash::ui
+} // namespace violet::ui

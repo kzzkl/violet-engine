@@ -7,7 +7,7 @@
 #include "physics/rigidbody.hpp"
 #include "scene/transform.hpp"
 
-namespace ash::physics
+namespace violet::physics
 {
 struct rigidbody_user_data
 {
@@ -52,4 +52,4 @@ private:
 
     physics_plugin m_plugin;
 };
-} // namespace ash::physics
+} // namespace violet::physics

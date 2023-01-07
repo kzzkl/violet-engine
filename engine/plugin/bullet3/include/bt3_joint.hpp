@@ -3,7 +3,7 @@
 #include "bt3_common.hpp"
 #include "physics_interface.hpp"
 
-namespace ash::physics::bullet3
+namespace violet::physics::bullet3
 {
 class bt3_joint : public joint_interface
 {
@@ -25,4 +25,4 @@ public:
 private:
     std::unique_ptr<btGeneric6DofSpringConstraint> m_constraint;
 };
-} // namespace ash::physics::bullet3
+} // namespace violet::physics::bullet3

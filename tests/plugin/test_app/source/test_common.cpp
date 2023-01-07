@@ -1,6 +1,6 @@
 #include "test_common.hpp"
 
-namespace ash::test
+namespace violet::test
 {
 hello_plugin::hello_plugin() : m_add_impl(nullptr)
 {
@@ -23,4 +23,4 @@ bool hello_plugin::do_load()
 void hello_plugin::do_unload()
 {
 }
-} // namespace ash::test
+} // namespace violet::test

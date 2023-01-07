@@ -2,7 +2,7 @@
 
 #include "ui/controls/panel.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 class font;
 class text_input;
@@ -65,4 +65,4 @@ private:
 
     float m_value;
 };
-} // namespace ash::ui
+} // namespace violet::ui

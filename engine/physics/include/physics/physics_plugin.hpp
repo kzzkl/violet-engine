@@ -3,7 +3,7 @@
 #include "core/plugin.hpp"
 #include "physics_interface.hpp"
 
-namespace ash::physics
+namespace violet::physics
 {
 class physics_plugin : public core::plugin
 {
@@ -18,4 +18,4 @@ protected:
 private:
     std::unique_ptr<factory_interface> m_factory;
 };
-} // namespace ash::physics
+} // namespace violet::physics

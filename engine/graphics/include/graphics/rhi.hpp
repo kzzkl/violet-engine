@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace ash::graphics
+namespace violet::graphics
 {
 using attachment_info = attachment_desc;
 
@@ -118,8 +118,7 @@ public:
         std::string_view front,
         std::string_view back);
 
-    static std::unique_ptr<resource_interface> make_shadow_map(
-        const shadow_map_info& info);
+    static std::unique_ptr<resource_interface> make_shadow_map(const shadow_map_info& info);
 
     static std::unique_ptr<resource_interface> make_render_target(const render_target_info& info);
     static std::unique_ptr<resource_interface> make_depth_stencil_buffer(
@@ -137,4 +136,4 @@ private:
     std::unique_ptr<renderer_interface> m_renderer;
     interface_map<pipeline_parameter_layout_interface> m_parameter_layouts;
 };
-} // namespace ash::graphics
+} // namespace violet::graphics

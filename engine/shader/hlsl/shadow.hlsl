@@ -1,12 +1,12 @@
-#include "ash_mvp.hlsl"
+#include "violet_mvp.hlsl"
 
-ConstantBuffer<ash_object> object : register(b0, space0);
+ConstantBuffer<violet_object> object : register(b0, space0);
 
-struct ash_shadow
+struct violet_shadow
 {
     float4x4 light_vp;
 };
-ConstantBuffer<ash_shadow> shadow : register(b0, space1);
+ConstantBuffer<violet_shadow> shadow : register(b0, space1);
 
 struct vs_in
 {

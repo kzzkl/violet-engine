@@ -1,12 +1,12 @@
-project(ash-ui)
+project(violet-ui)
 
 # Build yoga layout engine.
-file(GLOB_RECURSE ASH_YOGA_SOURCE ${ASH_THIRD_PARTY_DIR}/yoga/yoga/*.cpp)
-add_library(ash-yoga STATIC ${ASH_YOGA_SOURCE})
-target_include_directories(ash-yoga PUBLIC ${ASH_THIRD_PARTY_DIR}/yoga/.)
-add_library(ash::yoga ALIAS ash-yoga)
+file(GLOB_RECURSE VIOLET_YOGA_SOURCE ${VIOLET_THIRD_PARTY_DIR}/yoga/yoga/*.cpp)
+add_library(violet-yoga STATIC ${VIOLET_YOGA_SOURCE})
+target_include_directories(violet-yoga PUBLIC ${VIOLET_THIRD_PARTY_DIR}/yoga/.)
+add_library(violet::yoga ALIAS violet-yoga)
 
-# Build ash ui system.
+# Build ui system.
 add_library(${PROJECT_NAME} STATIC
     ./source/controls/button.cpp
     ./source/controls/collapse.cpp
@@ -28,20 +28,20 @@ add_library(${PROJECT_NAME} STATIC
     ./source/renderer.cpp
     ./source/ui_pipeline.cpp
     ./source/ui.cpp)
-add_library(ash::ui ALIAS ${PROJECT_NAME})
+add_library(violet::ui ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-        ./include)
+    ./include)
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        ash::common
-        ash::core
-        ash::graphics
+    violet::common
+    violet::core
+    violet::graphics
     PRIVATE
-        freetype
-        ash::yoga)
+    freetype
+    violet::yoga)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

@@ -2,7 +2,7 @@
 #include "graphics/rhi.hpp"
 #include "graphics/shadow_map.hpp"
 
-namespace ash::graphics
+namespace violet::graphics
 {
 shadow_pipeline::shadow_pipeline()
 {
@@ -15,7 +15,7 @@ shadow_pipeline::shadow_pipeline()
         {ATTACHMENT_REFERENCE_TYPE_DEPTH, 0}
     };
     pass_info.primitive_topology = PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    pass_info.parameters = {"ash_object", "ash_shadow"};
+    pass_info.parameters = {"violet_object", "violet_shadow"};
     pass_info.samples = 1;
     pass_info.rasterizer.cull_mode = CULL_MODE_BACK;
     pass_info.depth_stencil.depth_functor = DEPTH_FUNCTOR_LESS_EQUAL;
@@ -61,4 +61,4 @@ void shadow_pipeline::render(const render_context& context, render_command_inter
 
     command->end(m_interface.get());
 }
-} // namespace ash::graphics
+} // namespace violet::graphics

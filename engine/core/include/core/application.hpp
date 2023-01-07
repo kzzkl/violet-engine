@@ -2,7 +2,7 @@
 
 #include "core/context.hpp"
 
-namespace ash::core
+namespace violet::core
 {
 class application
 {
@@ -24,4 +24,4 @@ public:
 private:
     std::atomic<bool> m_exit;
 };
-} // namespace ash::core
+} // namespace violet::core

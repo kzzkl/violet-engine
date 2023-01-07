@@ -4,7 +4,7 @@
 #include "graphics/skinning_pipeline.hpp"
 #include <array>
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 class mmd_material_parameter : public graphics::pipeline_parameter
 {
@@ -99,4 +99,4 @@ private:
 
     std::unique_ptr<graphics::compute_pipeline_interface> m_interface;
 };
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

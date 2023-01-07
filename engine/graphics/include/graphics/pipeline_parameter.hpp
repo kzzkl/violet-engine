@@ -5,7 +5,7 @@
 #include <string_view>
 #include <vector>
 
-namespace ash::graphics
+namespace violet::graphics
 {
 class pipeline_parameter
 {
@@ -27,4 +27,4 @@ protected:
 private:
     std::unique_ptr<pipeline_parameter_interface> m_interface;
 };
-} // namespace ash::graphics
+} // namespace violet::graphics

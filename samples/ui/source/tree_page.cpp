@@ -1,7 +1,7 @@
 #include "tree_page.hpp"
 #include "ui/ui.hpp"
 
-namespace ash::sample
+namespace violet::sample
 {
 tree_page::tree_page() : page("Tree")
 {
@@ -119,4 +119,4 @@ void tree_page::initialize_sample_tree()
     for (; i < 55; ++i)
         m_chapters[8]->add_node(m_items[i].get());
 }
-} // namespace ash::sample
+} // namespace violet::sample

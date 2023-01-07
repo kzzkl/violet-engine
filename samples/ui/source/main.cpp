@@ -11,7 +11,7 @@
 #include "ui/ui.hpp"
 #include "window/window.hpp"
 
-namespace ash::sample
+namespace violet::sample
 {
 class test_system : public core::system_base
 {
@@ -124,11 +124,11 @@ public:
 private:
     core::application m_app;
 };
-} // namespace ash::sample
+} // namespace violet::sample
 
 int main()
 {
-    ash::sample::ui_app app;
+    violet::sample::ui_app app;
     app.initialize();
     app.run();
     return 0;

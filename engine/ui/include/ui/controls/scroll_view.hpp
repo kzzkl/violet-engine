@@ -2,7 +2,7 @@
 
 #include "ui/controls/panel.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 class scroll_bar;
 
@@ -40,4 +40,4 @@ private:
 
     std::unique_ptr<element> m_container;
 };
-} // namespace ash::ui
+} // namespace violet::ui

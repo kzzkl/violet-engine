@@ -8,13 +8,13 @@
 
 int main()
 {
-    ash::core::application app;
-    app.install<ash::window::window>();
-    app.install<ash::core::relation>();
-    app.install<ash::scene::scene>();
-    app.install<ash::graphics::graphics>();
-    app.install<ash::ui::ui>();
-    app.install<ash::sample::bvh_viewer>();
+    violet::core::application app;
+    app.install<violet::window::window>();
+    app.install<violet::core::relation>();
+    app.install<violet::scene::scene>();
+    app.install<violet::graphics::graphics>();
+    app.install<violet::ui::ui>();
+    app.install<violet::sample::bvh_viewer>();
 
     app.run();
 

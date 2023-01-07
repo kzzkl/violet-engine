@@ -3,7 +3,7 @@
 #include "vk_common.hpp"
 #include "vk_resource.hpp"
 
-namespace ash::graphics::vk
+namespace violet::graphics::vk
 {
 class vk_pipeline_parameter_layout : public pipeline_parameter_layout_interface
 {
@@ -114,7 +114,7 @@ struct vk_camera_info
 
     resource_extent extent() const
     {
-        ASH_VK_ASSERT(
+        VIOLET_VK_ASSERT(
             render_target != nullptr || render_target_resolve != nullptr ||
             depth_stencil_buffer != nullptr);
 
@@ -194,9 +194,9 @@ private:
         std::size_t operator()(const vk_camera_info& key) const
         {
             std::size_t result = 0;
-            hash_combine(result, key.render_target->view());
-            hash_combine(result, key.depth_stencil_buffer->view());
-            hash_combine(
+            hviolet_combine(result, key.render_target->view());
+            hviolet_combine(result, key.depth_stencil_buffer->view());
+            hviolet_combine(
                 result,
                 key.render_target_resolve == nullptr ? VK_NULL_HANDLE
                                                      : key.render_target_resolve->view());
@@ -205,7 +205,7 @@ private:
         }
 
         template <class T>
-        void hash_combine(std::size_t& s, const T& v) const
+        void hviolet_combine(std::size_t& s, const T& v) const
         {
             std::hash<T> h;
             s ^= h(v) + 0x9e3779b9 + (s << 6) + (s >> 2);
@@ -241,4 +241,4 @@ private:
 
     std::unique_ptr<vk_frame_buffer_layout> m_frame_buffer_layout;
 };
-} // namespace ash::graphics::vk
+} // namespace violet::graphics::vk

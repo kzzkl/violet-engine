@@ -4,7 +4,7 @@
 #include "editor/editor_ui.hpp"
 #include "graphics_interface.hpp"
 
-namespace ash::editor
+namespace violet::editor
 {
 class editor : public core::system_base
 {
@@ -25,4 +25,4 @@ private:
 
     std::unique_ptr<editor_ui> m_ui;
 };
-} // namespace ash::editor
+} // namespace violet::editor

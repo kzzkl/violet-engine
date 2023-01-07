@@ -1,10 +1,10 @@
 #include "ui/controls/view.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 view::view()
 {
     m_mesh = {};
     m_mesh.scissor = true;
 }
-} // namespace ash::ui
+} // namespace violet::ui

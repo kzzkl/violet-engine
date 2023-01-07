@@ -2,7 +2,7 @@
 #include "ui/ui.hpp"
 #include <format>
 
-namespace ash::sample
+namespace violet::sample
 {
 input_page::input_page() : page("Input")
 {
@@ -58,4 +58,4 @@ void input_page::initialize_input_float()
     m_input_float_result->margin(200.0f, ui::LAYOUT_EDGE_LEFT);
     display->add(m_input_float_result.get());
 }
-} // namespace ash::sample
+} // namespace violet::sample

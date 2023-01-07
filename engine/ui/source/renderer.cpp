@@ -2,7 +2,7 @@
 #include "log.hpp"
 #include <algorithm>
 
-namespace ash::ui
+namespace violet::ui
 {
 renderer::renderer() : m_batch_pool_index(0)
 {
@@ -172,4 +172,4 @@ render_batch* renderer::allocate_batch(
 
     return result;
 }
-} // namespace ash::ui
+} // namespace violet::ui

@@ -5,7 +5,7 @@
 #include <queue>
 #include <stack>
 
-namespace ash::scene
+namespace violet::scene
 {
 class bvh_tree
 {
@@ -76,4 +76,4 @@ private:
     std::deque<bvh_node> m_nodes;
     std::queue<std::size_t> m_free_nodes;
 };
-} // namespace ash::scene
+} // namespace violet::scene

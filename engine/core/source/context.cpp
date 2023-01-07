@@ -2,7 +2,7 @@
 #include <filesystem>
 #include <fstream>
 
-namespace ash::core
+namespace violet::core
 {
 system_base::system_base(std::string_view name) noexcept : m_name(name)
 {
@@ -87,4 +87,4 @@ void context::end_frame()
     for (auto& system : singleton.m_systems)
         system->on_end_frame();
 }
-} // namespace ash::core
+} // namespace violet::core

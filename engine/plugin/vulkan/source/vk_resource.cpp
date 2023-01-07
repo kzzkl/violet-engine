@@ -4,7 +4,7 @@
 #include "vk_image_loader.hpp"
 #include "vk_renderer.hpp"
 
-namespace ash::graphics::vk
+namespace violet::graphics::vk
 {
 std::pair<VkBuffer, VkDeviceMemory> vk_resource::create_buffer(
     VkDeviceSize size,
@@ -258,7 +258,7 @@ vk_back_buffer::vk_back_buffer(VkImage image, VkFormat format, const VkExtent2D&
     : m_image(image)
 {
     m_image_view = create_image_view(image, format, VK_IMAGE_ASPECT_COLOR_BIT);
-    m_format = to_ash_format(format);
+    m_format = to_violet_format(format);
     m_extent = extent;
 
     transition_image_layout(
@@ -347,7 +347,7 @@ vk_render_target::vk_render_target(
 
     m_extent.width = width;
     m_extent.height = height;
-    m_format = to_ash_format(format);
+    m_format = to_violet_format(format);
 }
 
 vk_render_target::vk_render_target(const render_target_desc& desc)
@@ -442,7 +442,7 @@ vk_depth_stencil_buffer::vk_depth_stencil_buffer(
 
     m_extent.width = width;
     m_extent.height = height;
-    m_format = to_ash_format(format);
+    m_format = to_violet_format(format);
 }
 
 vk_depth_stencil_buffer::vk_depth_stencil_buffer(const depth_stencil_buffer_desc& desc)
@@ -850,4 +850,4 @@ void vk_uniform_buffer::destroy()
     vkDestroyBuffer(device, m_buffer, nullptr);
     vkFreeMemory(device, m_buffer_memory, nullptr);
 }
-} // namespace ash::graphics::vk
+} // namespace violet::graphics::vk

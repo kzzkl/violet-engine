@@ -1,11 +1,11 @@
 #include "mmd_animation.hpp"
 #include "scene/scene.hpp"
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 bool mmd_animation::initialize(const dictionary& config)
 {
-    auto& world = system<ash::ecs::world>();
+    auto& world = system<violet::ecs::world>();
     world.register_component<mmd_node_animation>();
     world.register_component<mmd_ik_solver>();
     world.register_component<mmd_ik_link>();
@@ -612,4 +612,4 @@ void mmd_animation::ik_solve_plane(
     update_local(skeleton, link_entity);
     update_world(skeleton, link_entity);
 }
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

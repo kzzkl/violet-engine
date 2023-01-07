@@ -4,7 +4,7 @@
 #include "ui/element.hpp"
 #include <string>
 
-namespace ash::ui
+namespace violet::ui
 {
 class font;
 class font_icon;
@@ -91,4 +91,4 @@ protected:
 private:
     tree_node* m_selected_node;
 };
-} // namespace ash::ui
+} // namespace violet::ui

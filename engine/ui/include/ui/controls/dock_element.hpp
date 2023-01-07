@@ -2,7 +2,7 @@
 
 #include "ui/element.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 class dock_area;
 class dock_element : public element
@@ -26,4 +26,4 @@ private:
 
     std::shared_ptr<dock_element> m_dock_parent;
 };
-} // namespace ash::ui
+} // namespace violet::ui

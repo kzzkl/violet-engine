@@ -2,7 +2,7 @@
 #include "bt3_shape.hpp"
 #include "bt3_world.hpp"
 
-namespace ash::physics::bullet3
+namespace violet::physics::bullet3
 {
 void bt3_motion_state::getWorldTransform(btTransform& centerOfMassWorldTrans) const
 {
@@ -109,4 +109,4 @@ void bt3_rigidbody::clear_forces()
 {
     m_rigidbody->clearForces();
 }
-} // namespace ash::physics::bullet3
+} // namespace violet::physics::bullet3

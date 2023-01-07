@@ -2,7 +2,7 @@
 #include "assert.hpp"
 #include "log.hpp"
 
-namespace ash::window
+namespace violet::window
 {
 namespace
 {
@@ -292,7 +292,7 @@ bool window_impl_win32::initialize(
     RECT windowRect = {0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
     AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, false);
 
-    ASH_ASSERT(title.size() < 128, "The title is too long");
+    VIOLET_ASSERT(title.size() < 128, "The title is too long");
     std::wstring wtitle = string_to_wstring(title);
 
     m_hwnd = CreateWindow(
@@ -650,4 +650,4 @@ void window_impl_win32::on_window_resize(std::uint32_t width, std::uint32_t heig
     m_window_height = height;
     m_window_resize = true;
 }
-} // namespace ash::window
+} // namespace violet::window

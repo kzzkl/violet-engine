@@ -7,7 +7,7 @@
 #include "ui/controls/panel.hpp"
 #include "ui/ui.hpp"
 
-namespace ash::editor
+namespace violet::editor
 {
 component_panel::component_panel(std::string_view component_name, const ui::collapse_theme& theme)
     : ui::collapse(component_name, theme)
@@ -277,4 +277,4 @@ void component_view::sync_component_panel(ecs::entity entity)
         }
     }
 }
-} // namespace ash::editor
+} // namespace violet::editor

@@ -22,7 +22,7 @@
 #    include "ui/ui.hpp"
 #endif
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 class sample_module : public core::system_base
 {
@@ -56,18 +56,18 @@ private:
     {
         auto& viewer = system<mmd_viewer>();
 
-        viewer.load_pmx("E:/workspace/ash-document/model/sora/Sora.pmx");
-        viewer.load_vmd("E:/workspace/ash-document/model/test2.vmd");
-        viewer.load_pmx("E:/workspace/ash-document/model/Beach Cabin/Beach Cabin 2.pmx");
+        viewer.load_pmx("E:/workspace/violet-document/model/sora/Sora.pmx");
+        viewer.load_vmd("E:/workspace/violet-document/model/test2.vmd");
+        viewer.load_pmx("E:/workspace/violet-document/model/Beach Cabin/Beach Cabin 2.pmx");
 
         m_actor = viewer.load_mmd(
             "sora",
-            "E:/workspace/ash-document/model/sora/Sora.pmx",
-            "E:/workspace/ash-document/model/test2.vmd");
+            "E:/workspace/violet-document/model/sora/Sora.pmx",
+            "E:/workspace/violet-document/model/test2.vmd");
 
         m_stage = viewer.load_mmd(
             "stage",
-            "E:/workspace/ash-document/model/Beach Cabin/Beach Cabin 2.pmx");
+            "E:/workspace/violet-document/model/Beach Cabin/Beach Cabin 2.pmx");
     }
 
     void initialize_scene()
@@ -276,11 +276,11 @@ public:
 private:
     core::application m_app;
 };
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd
 
 int main()
 {
-    ash::sample::mmd::mmd_viewer_app app;
+    violet::sample::mmd::mmd_viewer_app app;
     app.run();
 
     return 0;

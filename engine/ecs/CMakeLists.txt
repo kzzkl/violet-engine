@@ -1,18 +1,18 @@
-project(ash-ecs)
+project(violet-ecs)
 
 add_library(${PROJECT_NAME} INTERFACE)
-add_library(ash::ecs ALIAS ${PROJECT_NAME})
+add_library(violet::ecs ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     INTERFACE
-        ./include)
+    ./include)
 
 target_link_libraries(${PROJECT_NAME}
     INTERFACE
-        ash::common
-        ash::core)
+    violet::common
+    violet::core)
 
-install(DIRECTORY ./include/ DESTINATION include/ash/ecs)
+install(DIRECTORY ./include/ DESTINATION include/violet/ecs)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

@@ -17,9 +17,9 @@
 #include "window/window_event.hpp"
 #include <set>
 
-using namespace ash::math;
+using namespace violet::math;
 
-namespace ash::graphics
+namespace violet::graphics
 {
 graphics::graphics() noexcept
     : system_base("graphics"),
@@ -34,7 +34,7 @@ graphics::graphics() noexcept
 
 bool graphics::initialize(const dictionary& config)
 {
-    auto& window = system<ash::window::window>();
+    auto& window = system<window::window>();
 
     rhi_info info = {};
     info.window_handle = window.handle();
@@ -45,13 +45,15 @@ bool graphics::initialize(const dictionary& config)
     info.frame_resource = config["frame_resource"];
     rhi::initialize(config["plugin"], info);
 
-    rhi::register_pipeline_parameter_layout("ash_object", object_pipeline_parameter::layout());
-    rhi::register_pipeline_parameter_layout("ash_camera", camera_pipeline_parameter::layout());
-    rhi::register_pipeline_parameter_layout("ash_light", light_pipeline_parameter::layout());
-    rhi::register_pipeline_parameter_layout("ash_sky", sky_pipeline_parameter::layout());
-    rhi::register_pipeline_parameter_layout("ash_shadow", shadow_map_pipeline_parameter::layout());
+    rhi::register_pipeline_parameter_layout("violet_object", object_pipeline_parameter::layout());
+    rhi::register_pipeline_parameter_layout("violet_camera", camera_pipeline_parameter::layout());
+    rhi::register_pipeline_parameter_layout("violet_light", light_pipeline_parameter::layout());
+    rhi::register_pipeline_parameter_layout("violet_sky", sky_pipeline_parameter::layout());
     rhi::register_pipeline_parameter_layout(
-        "ash_blinn_phong_material",
+        "violet_shadow",
+        shadow_map_pipeline_parameter::layout());
+    rhi::register_pipeline_parameter_layout(
+        "violet_blinn_phong_material",
         blinn_phong_material_pipeline_parameter::layout());
 
     m_light_parameter = std::make_unique<light_pipeline_parameter>();
@@ -143,7 +145,7 @@ void graphics::ambient_light(const math::float3& ambient_light)
 
 void graphics::shadow_cascade(std::size_t cascade_count, const math::float4& cascade_splits)
 {
-    ASH_ASSERT(cascade_count < light_pipeline_parameter::MAX_CASCADED_COUNT);
+    VIOLET_ASSERT(cascade_count < light_pipeline_parameter::MAX_CASCADED_COUNT);
 
     m_shadow_cascade_count = cascade_count;
     m_shadow_cascade_splits = cascade_splits;
@@ -189,7 +191,7 @@ void graphics::render()
     scene.update_bounding_box();
 
     ecs::entity main_camera = is_editor_mode() ? m_editor_camera : m_game_camera;
-    ASH_ASSERT(main_camera != ecs::INVALID_ENTITY);
+    VIOLET_ASSERT(main_camera != ecs::INVALID_ENTITY);
     world.component<camera>(main_camera).render_target_resolve(rhi::renderer().back_buffer());
     m_render_queue.push(main_camera);
 
@@ -491,4 +493,4 @@ shadow_map* graphics::allocate_shadow_map()
 
     return shadow;
 }
-} // namespace ash::graphics
+} // namespace violet::graphics

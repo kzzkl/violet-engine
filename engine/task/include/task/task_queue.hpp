@@ -7,7 +7,7 @@
 #include <functional>
 #include <future>
 
-namespace ash::task
+namespace violet::task
 {
 class task_queue
 {
@@ -73,4 +73,4 @@ private:
     std::promise<void> m_done;
     std::atomic<std::uint32_t> m_remaining_tasks_count;
 };
-} // namespace ash::task
+} // namespace violet::task

@@ -1,7 +1,7 @@
 #include "core/relation.hpp"
 #include "core/relation_event.hpp"
 
-namespace ash::core
+namespace violet::core
 {
 relation::relation() : system_base("relation")
 {
@@ -23,7 +23,7 @@ void relation::link(ecs::entity child_entity, ecs::entity parent_entity)
 {
     auto& world = system<ecs::world>();
     auto& child = world.component<link_type>(child_entity);
-    ASH_ASSERT(child.parent == ecs::INVALID_ENTITY);
+    VIOLET_ASSERT(child.parent == ecs::INVALID_ENTITY);
 
     auto& parent = world.component<link_type>(parent_entity);
     parent.children.push_back(child_entity);
@@ -36,7 +36,7 @@ void relation::unlink(ecs::entity entity)
 {
     auto& world = system<ecs::world>();
     auto& child = world.component<link_type>(entity);
-    ASH_ASSERT(child.parent != ecs::INVALID_ENTITY);
+    VIOLET_ASSERT(child.parent != ecs::INVALID_ENTITY);
 
     auto& parent = world.component<link_type>(child.parent);
     for (auto iter = parent.children.begin(); iter != parent.children.end(); ++iter)
@@ -53,4 +53,4 @@ void relation::unlink(ecs::entity entity)
 
     system<event>().publish<event_unlink>(entity, child);
 }
-} // namespace ash::core
+} // namespace violet::core

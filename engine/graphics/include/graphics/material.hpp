@@ -2,7 +2,7 @@
 
 #include "graphics_interface.hpp"
 
-namespace ash::graphics
+namespace violet::graphics
 {
 class render_pipeline;
 struct material
@@ -12,4 +12,4 @@ struct material
 
     scissor_extent scissor;
 };
-} // namespace ash::graphics
+} // namespace violet::graphics

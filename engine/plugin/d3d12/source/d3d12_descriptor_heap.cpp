@@ -1,7 +1,7 @@
 #include "d3d12_descriptor_heap.hpp"
 #include "d3d12_context.hpp"
 
-namespace ash::graphics::d3d12
+namespace violet::graphics::d3d12
 {
 d3d12_descriptor_heap::d3d12_descriptor_heap(
     D3D12_DESCRIPTOR_HEAP_TYPE type,
@@ -43,4 +43,4 @@ D3D12_GPU_DESCRIPTOR_HANDLE d3d12_descriptor_heap::gpu_handle(std::size_t index)
         static_cast<UINT>(index),
         m_increment_size);
 }
-} // namespace ash::graphics::d3d12
+} // namespace violet::graphics::d3d12

@@ -1,7 +1,7 @@
 #include "ui/controls/font_icon.hpp"
 #include "ui/font.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 font_icon::font_icon(std::uint32_t index, const font_icon_theme& theme)
     : m_icon_scale(theme.icon_scale)
@@ -79,4 +79,4 @@ void font_icon::on_extent_change(float width, float height)
     m_position[2] = {x + icon_width, y + icon_height};
     m_position[3] = {x, y + icon_height};
 }
-} // namespace ash::ui
+} // namespace violet::ui

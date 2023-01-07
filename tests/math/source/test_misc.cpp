@@ -1,9 +1,9 @@
 #include "test_common.hpp"
 #include <cmath>
 
-using namespace ash::math;
+using namespace violet::math;
 
-namespace ash::test
+namespace violet::test
 {
 TEST_CASE("sin_cos", "[misc]")
 {
@@ -11,4 +11,4 @@ TEST_CASE("sin_cos", "[misc]")
     CHECK(equal(s, sin(0.358f)));
     CHECK(equal(c, cos(0.358f)));
 }
-} // namespace ash::test
+} // namespace violet::test

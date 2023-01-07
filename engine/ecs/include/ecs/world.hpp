@@ -6,7 +6,7 @@
 #include <queue>
 #include <unordered_map>
 
-namespace ash::ecs
+namespace violet::ecs
 {
 class world : public core::system_base
 {
@@ -58,7 +58,7 @@ public:
     template <typename... Components>
     void reserve(entity entity)
     {
-        ASH_ASSERT(m_entity_registry[entity].archetype != nullptr);
+        VIOLET_ASSERT(m_entity_registry[entity].archetype != nullptr);
 
         auto archetype = m_entity_registry[entity].archetype;
         component_mask new_mask = archetype->mask() | make_mask<Components...>();
@@ -84,12 +84,12 @@ public:
     template <typename... Components>
     void add(entity entity)
     {
-        ASH_ASSERT(m_entity_registry[entity].archetype != nullptr);
+        VIOLET_ASSERT(m_entity_registry[entity].archetype != nullptr);
 
         auto archetype = m_entity_registry[entity].archetype;
         component_mask new_mask = archetype->mask() | make_mask<Components...>();
 
-        ASH_ASSERT(
+        VIOLET_ASSERT(
             new_mask != archetype->mask(),
             "You cannot add more than one component of the same type");
 
@@ -114,7 +114,7 @@ public:
         auto archetype = m_entity_registry[entity].archetype;
         component_mask new_mask = archetype->mask() ^ make_mask<Components...>();
 
-        ASH_ASSERT(new_mask != archetype->mask());
+        VIOLET_ASSERT(new_mask != archetype->mask());
 
         if (!new_mask.none())
         {
@@ -154,7 +154,7 @@ public:
     template <typename Component>
     [[nodiscard]] Component& component(entity entity)
     {
-        ASH_ASSERT(has_component<Component>(entity));
+        VIOLET_ASSERT(has_component<Component>(entity));
 
         auto iter = m_entity_registry[entity].archetype->begin() + m_entity_registry[entity].index;
         return iter.component<Component>();
@@ -281,4 +281,4 @@ private:
     entity_registry m_entity_registry;
     component_registry m_component_registry;
 };
-} // namespace ash::ecs
+} // namespace violet::ecs

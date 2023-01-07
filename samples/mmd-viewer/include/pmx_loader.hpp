@@ -6,7 +6,7 @@
 #include <fstream>
 #include <vector>
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 enum class pmx_vertex_weight : std::uint8_t
 {
@@ -410,4 +410,4 @@ private:
 
     std::vector<std::unique_ptr<physics::collision_shape_interface>> m_collision_shapes;
 };
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

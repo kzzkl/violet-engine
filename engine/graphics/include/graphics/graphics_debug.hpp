@@ -6,7 +6,7 @@
 #include <memory>
 #include <vector>
 
-namespace ash::graphics
+namespace violet::graphics
 {
 class debug_pipeline : public render_pipeline
 {
@@ -50,4 +50,4 @@ private:
 
     std::size_t m_frame_resource;
 };
-} // namespace ash::graphics
+} // namespace violet::graphics

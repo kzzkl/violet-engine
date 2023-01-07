@@ -2,7 +2,7 @@
 #include "assert.hpp"
 #include "graphics/rhi.hpp"
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 mmd_material_parameter::mmd_material_parameter() : graphics::pipeline_parameter("mmd_material")
 {
@@ -93,7 +93,7 @@ mmd_render_pipeline::mmd_render_pipeline()
         {graphics::ATTACHMENT_REFERENCE_TYPE_UNUSE, 0}
     };
     color_pass_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    color_pass_info.parameters = {"ash_object", "mmd_material", "ash_camera", "ash_light"};
+    color_pass_info.parameters = {"violet_object", "mmd_material", "violet_camera", "violet_light"};
     color_pass_info.samples = 4;
 
     // Edge pass.
@@ -111,7 +111,7 @@ mmd_render_pipeline::mmd_render_pipeline()
         {graphics::ATTACHMENT_REFERENCE_TYPE_RESOLVE, 0}
     };
     edge_pass_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    edge_pass_info.parameters = {"ash_object", "mmd_material", "ash_camera"};
+    edge_pass_info.parameters = {"violet_object", "mmd_material", "violet_camera"};
     edge_pass_info.samples = 4;
     edge_pass_info.rasterizer.cull_mode = graphics::CULL_MODE_FRONT;
     edge_pass_info.depth_stencil.depth_functor = graphics::DEPTH_FUNCTOR_LESS;
@@ -220,7 +220,7 @@ skinning_pipeline_parameter::skinning_pipeline_parameter()
 void skinning_pipeline_parameter::bone_transform(const std::vector<math::float4x4>& bone_transform)
 {
     auto& constant = field<constant_data>(0);
-    ASH_ASSERT(bone_transform.size() <= constant.bone_transform.size());
+    VIOLET_ASSERT(bone_transform.size() <= constant.bone_transform.size());
 
     for (std::size_t i = 0; i < bone_transform.size(); ++i)
     {
@@ -329,4 +329,4 @@ void mmd_skinning_pipeline::on_skinning(
 
     command->end(m_interface.get());
 }
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

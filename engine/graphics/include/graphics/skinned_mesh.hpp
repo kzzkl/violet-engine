@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 
-namespace ash::graphics
+namespace violet::graphics
 {
 class skinning_pipeline;
 struct skinned_mesh
@@ -16,4 +16,4 @@ struct skinned_mesh
 
     std::size_t vertex_count;
 };
-} // namespace ash::graphics
+} // namespace violet::graphics

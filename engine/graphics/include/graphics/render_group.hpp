@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace ash::graphics
+namespace violet::graphics
 {
 enum render_groups : std::uint32_t
 {
@@ -17,4 +17,4 @@ enum render_groups : std::uint32_t
     RENDER_GROUP_DEBUG = 1 << 8,
     RENDER_GROUP_EDITOR = 1 << 9
 };
-} // namespace ash::graphics
+} // namespace violet::graphics

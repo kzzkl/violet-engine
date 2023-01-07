@@ -3,7 +3,7 @@
 #include "bt3_common.hpp"
 #include <vector>
 
-namespace ash::physics::bullet3
+namespace violet::physics::bullet3
 {
 class bt3_shape : public collision_shape_interface
 {
@@ -21,4 +21,4 @@ public:
 protected:
     std::unique_ptr<btCollisionShape> m_shape;
 };
-} // namespace ash::physics::bullet3
+} // namespace violet::physics::bullet3

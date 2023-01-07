@@ -4,7 +4,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-namespace ash::graphics::vk
+namespace violet::graphics::vk
 {
 #define DDSD_CAPS 0x1
 #define DDSD_HEIGHT 0x2
@@ -232,4 +232,4 @@ bool vk_image_loader::load_other(std::string_view file)
 
     return true;
 }
-} // namespace ash::graphics::vk
+} // namespace violet::graphics::vk

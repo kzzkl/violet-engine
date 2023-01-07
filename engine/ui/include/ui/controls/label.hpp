@@ -3,7 +3,7 @@
 #include "ui/color.hpp"
 #include "ui/element.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 class font;
 
@@ -34,7 +34,7 @@ private:
     std::vector<math::float2> m_uv;
     std::vector<std::uint32_t> m_color;
     std::vector<std::uint32_t> m_indices;
-    
+
     element_mesh m_mesh;
 };
-} // namespace ash::ui
+} // namespace violet::ui

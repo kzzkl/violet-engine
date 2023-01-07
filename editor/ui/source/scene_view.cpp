@@ -11,7 +11,7 @@
 #include "ui/ui.hpp"
 #include "window/window.hpp"
 
-namespace ash::editor
+namespace violet::editor
 {
 scene_view::scene_view(ui::dock_area* area, const ui::dock_window_theme& theme)
     : ui::dock_window("Scene", 0xEE4A, area, theme),
@@ -189,4 +189,4 @@ void scene_view::resize_camera()
     m_depth_stencil_buffer = graphics::rhi::make_depth_stencil_buffer(depth_stencil_buffer_info);
     camera.depth_stencil_buffer(m_depth_stencil_buffer.get());
 }
-} // namespace ash::editor
+} // namespace violet::editor

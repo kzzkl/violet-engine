@@ -5,7 +5,7 @@
 #include <chrono>
 #include <thread>
 
-namespace ash::core
+namespace violet::core
 {
 class timer : public system_base
 {
@@ -75,4 +75,4 @@ private:
     std::size_t m_index;
     std::array<steady_time_point, NUM_TIME_POINT> m_time_point;
 };
-} // namespace ash::core
+} // namespace violet::core

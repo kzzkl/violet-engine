@@ -6,7 +6,7 @@
 #include "graphics_interface.hpp"
 #include <cstring>
 
-namespace ash::graphics::d3d12
+namespace violet::graphics::d3d12
 {
 class d3d12_rhi : public rhi_interface
 {
@@ -120,13 +120,13 @@ public:
         return new d3d12_depth_stencil_buffer(desc);
     }
 };
-} // namespace ash::graphics::d3d12
+} // namespace violet::graphics::d3d12
 
 extern "C"
 {
-    PLUGIN_API ash::core::plugin_info get_plugin_info()
+    PLUGIN_API violet::core::plugin_info get_plugin_info()
     {
-        ash::core::plugin_info info = {};
+        violet::core::plugin_info info = {};
 
         char name[] = "graphics-d3d12";
         memcpy(info.name, name, sizeof(name));
@@ -137,8 +137,8 @@ extern "C"
         return info;
     }
 
-    PLUGIN_API ash::graphics::rhi_interface* make_rhi()
+    PLUGIN_API violet::graphics::rhi_interface* make_rhi()
     {
-        return new ash::graphics::d3d12::d3d12_rhi();
+        return new violet::graphics::d3d12::d3d12_rhi();
     }
 }

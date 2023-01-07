@@ -4,7 +4,7 @@
 #include "bt3_rigidbody.hpp"
 #include <vector>
 
-namespace ash::physics::bullet3
+namespace violet::physics::bullet3
 {
 class bt3_world : public world_interface
 {
@@ -88,4 +88,4 @@ private:
     std::unique_ptr<bt3_debug_draw> m_debug_draw;
 #endif
 };
-} // namespace ash::physics::bullet3
+} // namespace violet::physics::bullet3

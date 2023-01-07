@@ -2,7 +2,7 @@
 
 #include "vk_common.hpp"
 
-namespace ash::graphics::vk
+namespace violet::graphics::vk
 {
 class vk_descriptor_pool
 {
@@ -15,4 +15,4 @@ public:
 private:
     VkDescriptorPool m_descriptor_pool;
 };
-} // namespace ash::graphics::vk
+} // namespace violet::graphics::vk

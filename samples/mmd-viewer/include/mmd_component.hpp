@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 struct mmd_node
 {
@@ -220,4 +220,4 @@ struct mmd_morph_controler
     std::unique_ptr<graphics::resource_interface> vertex_morph_result;
     std::unique_ptr<graphics::resource_interface> uv_morph_result;
 };
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

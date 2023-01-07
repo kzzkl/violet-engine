@@ -1,9 +1,9 @@
-#include "test_common.hpp"
 #include "ecs/world.hpp"
+#include "test_common.hpp"
 
-using namespace ash::ecs;
+using namespace violet::ecs;
 
-namespace ash::test
+namespace violet::test
 {
 TEST_CASE("world::create", "[world]")
 {
@@ -141,4 +141,4 @@ TEST_CASE("view", "[world]")
     for (int i = 0; i < 1000000; ++i)
         CHECK(world.component<position>(entities[i]).x == i);
 }*/
-} // namespace ash::test
+} // namespace violet::test

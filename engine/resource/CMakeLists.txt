@@ -1,16 +1,16 @@
-project(ash-resource)
+project(violet-resource)
 
 add_library(${PROJECT_NAME} STATIC
     ./source/resource_manager.cpp)
-add_library(ash::resource ALIAS ${PROJECT_NAME})
+add_library(violet::resource ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-        ./include)
+    ./include)
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        ash::core)
+    violet::core)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

@@ -1,6 +1,6 @@
-#include "ash_mvp.hlsl"
+#include "violet_mvp.hlsl"
 
-ConstantBuffer<ash_camera> camera : register(b0, space0);
+ConstantBuffer<violet_camera> camera : register(b0, space0);
 
 struct vs_in
 {

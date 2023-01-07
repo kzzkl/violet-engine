@@ -3,7 +3,7 @@
 
 using namespace std;
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 namespace
 {
@@ -1950,4 +1950,4 @@ bool convert<encode_type::SHIFT_JIS, encode_type::UTF8>(
 
     return true;
 }
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

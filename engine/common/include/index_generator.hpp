@@ -1,6 +1,6 @@
 #pragma once
 
-namespace ash
+namespace violet
 {
 template <typename T, typename Index, Index Initial = 0>
 class index_generator
@@ -23,4 +23,4 @@ private:
         return next++;
     }
 };
-} // namespace ash
+} // namespace violet

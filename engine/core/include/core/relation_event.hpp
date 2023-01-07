@@ -4,7 +4,7 @@
 #include "core/link.hpp"
 #include "ecs/entity.hpp"
 
-namespace ash::core
+namespace violet::core
 {
 struct event_link
 {
@@ -18,4 +18,4 @@ struct event_unlink
     using dispatcher = sequence_dispatcher<functor>;
 };
 
-} // namespace ash::core
+} // namespace violet::core

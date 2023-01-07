@@ -2,7 +2,7 @@
 
 #include "ecs/archetype.hpp"
 
-namespace ash::ecs
+namespace violet::ecs
 {
 class view_base
 {
@@ -28,16 +28,11 @@ private:
 };
 
 template <typename Functor, typename... Args>
-concept view_functor_component = requires(Functor&& f, Args&... args)
-{
-    f(args...);
-};
+concept view_functor_component = requires(Functor&& f, Args&... args) { f(args...); };
 
 template <typename Functor, typename... Args>
-concept view_functor_entity_component = requires(Functor&& f, entity e, Args&... args)
-{
-    f(e, args...);
-};
+concept view_functor_entity_component =
+    requires(Functor&& f, entity e, Args&... args) { f(e, args...); };
 
 template <typename Functor, typename... Args>
 concept view_functor =
@@ -50,7 +45,8 @@ public:
     view(const component_mask& mask) noexcept : view_base(mask) {}
 
     template <typename Functor>
-    void each(Functor&& functor) requires view_functor<Functor, Components...>
+    void each(Functor&& functor)
+        requires view_functor<Functor, Components...>
     {
         auto each_functor = [&](archetype& archetype) {
             for (std::size_t i = 0; i < archetype.size(); i += archetype.entity_per_chunk())
@@ -86,4 +82,4 @@ public:
         each_archetype(each_functor);
     }
 };
-} // namespace ash::ecs
+} // namespace violet::ecs

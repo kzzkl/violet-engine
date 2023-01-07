@@ -1,9 +1,9 @@
 #include "ui/ui_pipeline.hpp"
 #include "graphics/rhi.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
-mvp_pipeline_parameter::mvp_pipeline_parameter() : graphics::pipeline_parameter("ash_ui_mvp")
+mvp_pipeline_parameter::mvp_pipeline_parameter() : graphics::pipeline_parameter("violet_ui_mvp")
 {
 }
 
@@ -20,7 +20,7 @@ std::vector<graphics::pipeline_parameter_pair> mvp_pipeline_parameter::layout()
 }
 
 offset_pipeline_parameter::offset_pipeline_parameter()
-    : graphics::pipeline_parameter("ash_ui_offset")
+    : graphics::pipeline_parameter("violet_ui_offset")
 {
 }
 
@@ -38,7 +38,7 @@ std::vector<graphics::pipeline_parameter_pair> offset_pipeline_parameter::layout
 }
 
 material_pipeline_parameter::material_pipeline_parameter()
-    : graphics::pipeline_parameter("ash_ui_material")
+    : graphics::pipeline_parameter("violet_ui_material")
 {
 }
 
@@ -81,7 +81,7 @@ ui_pipeline::ui_pipeline()
         {graphics::ATTACHMENT_REFERENCE_TYPE_RESOLVE, 0}
     };
     ui_pass_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    ui_pass_info.parameters = {"ash_ui_material", "ash_ui_offset", "ash_ui_mvp"};
+    ui_pass_info.parameters = {"violet_ui_material", "violet_ui_offset", "violet_ui_mvp"};
     ui_pass_info.samples = 4;
     ui_pass_info.depth_stencil.depth_functor = graphics::DEPTH_FUNCTOR_LESS;
     ui_pass_info.blend.enable = true;
@@ -174,4 +174,4 @@ void ui_pipeline::render(
 
     command->end(m_interface.get());
 }
-} // namespace ash::ui
+} // namespace violet::ui

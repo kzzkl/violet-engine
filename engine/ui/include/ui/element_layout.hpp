@@ -3,7 +3,7 @@
 #include "element_extent.hpp"
 #include <memory>
 
-namespace ash::ui
+namespace violet::ui
 {
 enum layout_direction
 {
@@ -206,4 +206,4 @@ protected:
 private:
     std::unique_ptr<layout_node_impl> m_impl;
 };
-} // namespace ash::ui
+} // namespace violet::ui

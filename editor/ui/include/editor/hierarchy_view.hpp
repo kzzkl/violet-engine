@@ -6,7 +6,7 @@
 #include <map>
 #include <queue>
 
-namespace ash::editor
+namespace violet::editor
 {
 class hierarchy_view : public ui::dock_window
 {
@@ -38,4 +38,4 @@ private:
     std::map<ecs::entity, entity_node> m_entity_to_node;
     std::map<ui::tree_node*, ecs::entity> m_node_to_entity;
 };
-} // namespace ash::editor
+} // namespace violet::editor

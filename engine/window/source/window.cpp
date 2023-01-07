@@ -5,14 +5,14 @@
 #include "window/window_impl_win32.hpp"
 #include "window/window_task.hpp"
 
-#if defined(ASH_WINDOW_SHOW_FPS)
+#if defined(VIOLET_WINDOW_SHOW_FPS)
 #    include "core/timer.hpp"
 #endif
 #include "core/timer.hpp"
 
-using namespace ash::core;
+using namespace violet::core;
 
-namespace ash::window
+namespace violet::window
 {
 window::window()
     : system_base("window"),
@@ -120,7 +120,7 @@ void window::tick()
         }
     }
 
-#if defined(ASH_WINDOW_SHOW_FPS)
+#if defined(VIOLET_WINDOW_SHOW_FPS)
     static constexpr float fps_alpha = 0.01f;
     float delta_time = system<core::timer>().frame_delta();
     m_average_duration = delta_time * fps_alpha + m_average_duration * (1.0f - fps_alpha);
@@ -133,10 +133,10 @@ void window::tick()
 void window::title(std::string_view title)
 {
     m_title = title;
-#if defined(ASH_WINDOW_SHOW_FPS)
+#if defined(VIOLET_WINDOW_SHOW_FPS)
     m_impl->title(std::format("{}  FPS {}", m_title, m_fps));
 #else
     m_impl->title(title);
 #endif
 }
-} // namespace ash::window
+} // namespace violet::window

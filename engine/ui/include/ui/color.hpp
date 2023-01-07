@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace ash::ui
+namespace violet::ui
 {
 enum color : std::uint32_t
 {
@@ -150,4 +150,4 @@ enum color : std::uint32_t
     COLOR_YELLOW = 0XFF00FFFF,
     COLOR_YELLOW_GREEN = 0XFF32CD9A
 };
-} // namespace ash::ui
+} // namespace violet::ui

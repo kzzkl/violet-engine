@@ -5,7 +5,7 @@
 #include "physics/physics.hpp"
 #include "scene/scene.hpp"
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 class mmd_merge_rigidbody_transform_reflection : public physics::rigidbody_transform_reflection
 {
@@ -659,4 +659,4 @@ void mmd_loader::load_animation(
         });
     }
 }
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

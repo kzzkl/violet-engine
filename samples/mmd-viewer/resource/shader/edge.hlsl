@@ -1,6 +1,6 @@
-#include "ash_mvp.hlsl"
+#include "violet_mvp.hlsl"
 
-ConstantBuffer<ash_object> object : register(b0, space0);
+ConstantBuffer<violet_object> object : register(b0, space0);
 
 cbuffer mmd_material : register(b0, space1)
 {
@@ -15,7 +15,7 @@ cbuffer mmd_material : register(b0, space1)
 };
 
 
-ConstantBuffer<ash_camera> camera : register(b0, space2);
+ConstantBuffer<violet_camera> camera : register(b0, space2);
 
 struct vs_in
 {

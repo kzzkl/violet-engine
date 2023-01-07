@@ -2,7 +2,7 @@
 #include "core/context.hpp"
 #include "window/window.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 namespace
 {
@@ -297,4 +297,4 @@ void element_tree::on_remove_child(element* child)
         }
     }
 }
-} // namespace ash::ui
+} // namespace violet::ui

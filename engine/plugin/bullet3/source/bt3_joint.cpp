@@ -1,7 +1,7 @@
 #include "bt3_joint.hpp"
 #include "bt3_rigidbody.hpp"
 
-namespace ash::physics::bullet3
+namespace violet::physics::bullet3
 {
 bt3_joint::bt3_joint(const joint_desc& desc)
 {
@@ -72,4 +72,4 @@ void bt3_joint::stiffness(std::size_t i, float stiffness)
 {
     m_constraint->setStiffness(i, stiffness);
 }
-} // namespace ash::physics::bullet3
+} // namespace violet::physics::bullet3

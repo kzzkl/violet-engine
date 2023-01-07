@@ -6,7 +6,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-namespace ash::graphics::d3d12
+namespace violet::graphics::d3d12
 {
 d3d12_image_loader::load_result d3d12_image_loader::load(
     std::string_view file,
@@ -104,7 +104,7 @@ d3d12_image_loader::load_result d3d12_image_loader::load_cube(
     const std::vector<std::string_view>& files,
     D3D12GraphicsCommandList* command_list)
 {
-    ASH_D3D12_ASSERT(files.size() == 6);
+    VIOLET_D3D12_ASSERT(files.size() == 6);
 
     load_result result = {};
 
@@ -114,7 +114,7 @@ d3d12_image_loader::load_result d3d12_image_loader::load_cube(
     for (std::size_t i = 0; i < 6; ++i)
     {
         stbi_uc* data = stbi_load(files[i].data(), &width, &height, &channels, STBI_rgb_alpha);
-        ASH_D3D12_ASSERT(data != nullptr);
+        VIOLET_D3D12_ASSERT(data != nullptr);
         pixels[i] = data;
         subresources[i].pData = data;
         subresources[i].RowPitch = width * 4;
@@ -242,4 +242,4 @@ d3d12_image_loader::load_result d3d12_image_loader::load_other(
 
     return load(pixels.data(), width, height, RESOURCE_FORMAT_R8G8B8A8_UNORM, command_list);
 }
-} // namespace ash::graphics::d3d12
+} // namespace violet::graphics::d3d12

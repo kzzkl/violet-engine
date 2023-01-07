@@ -2,7 +2,7 @@
 #include "bt3_joint.hpp"
 #include "bt3_rigidbody.hpp"
 
-namespace ash::physics::bullet3
+namespace violet::physics::bullet3
 {
 bt3_world::bt3_world(const world_desc& desc, debug_draw_interface* debug_draw)
 {
@@ -86,4 +86,4 @@ void bt3_world::simulation(float time_step)
         m_world->debugDrawWorld();
 #endif
 }
-} // namespace ash::physics::bullet3
+} // namespace violet::physics::bullet3

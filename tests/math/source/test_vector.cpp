@@ -1,8 +1,8 @@
 #include "test_common.hpp"
 
-using namespace ash::math;
+using namespace violet::math;
 
-namespace ash::test
+namespace violet::test
 {
 TEST_CASE("vector::add", "[vector]")
 {
@@ -165,4 +165,4 @@ TEST_CASE("vector_simd::reciprocal_sqrt", "[vector][simd]")
         math::vector_simd::reciprocal_sqrt(a),
         math::simd::set(1.0f, 0.707106781f, 0.577350269f, 0.5f)));
 }
-} // namespace ash::test
+} // namespace violet::test

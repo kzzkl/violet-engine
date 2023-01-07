@@ -2,7 +2,7 @@
 
 #include "graphics/render_pipeline.hpp"
 
-namespace ash::graphics
+namespace violet::graphics
 {
 class blinn_phong_material_pipeline_parameter : public pipeline_parameter
 {
@@ -35,4 +35,4 @@ public:
 private:
     std::unique_ptr<render_pipeline_interface> m_interface;
 };
-} // namespace ash::graphics
+} // namespace violet::graphics

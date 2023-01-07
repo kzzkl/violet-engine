@@ -3,7 +3,7 @@
 #include "ui/ui.hpp"
 #include <format>
 
-namespace ash::sample
+namespace violet::sample
 {
 static constexpr std::uint32_t PANEL_COLOR[] = {
     ui::COLOR_ANTIQUE_WHITE,
@@ -113,4 +113,4 @@ ui::dock_element* docking_page::make_dock_window()
 
     return m_dock_windows.back().get();
 }
-} // namespace ash::sample
+} // namespace violet::sample

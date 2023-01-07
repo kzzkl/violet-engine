@@ -4,10 +4,10 @@
 #include "mmd_component.hpp"
 #include "mmd_pipeline.hpp"
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 class mmd_loader;
-class mmd_viewer : public ash::core::system_base
+class mmd_viewer : public violet::core::system_base
 {
 public:
     mmd_viewer();
@@ -15,7 +15,7 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
 
-    ash::ecs::entity load_mmd(
+    violet::ecs::entity load_mmd(
         std::string_view name,
         std::string_view pmx,
         std::string_view vmd = "");
@@ -32,4 +32,4 @@ private:
     std::unique_ptr<mmd_render_pipeline> m_render_pipeline;
     std::unique_ptr<mmd_skinning_pipeline> m_skinning_pipeline;
 };
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

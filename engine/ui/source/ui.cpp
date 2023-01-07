@@ -12,7 +12,7 @@
 #include "window/window.hpp"
 #include "window/window_event.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 static constexpr std::size_t MAX_UI_VERTEX_COUNT = 4096 * 16;
 static constexpr std::size_t MAX_UI_INDEX_COUNT = MAX_UI_VERTEX_COUNT * 2;
@@ -31,13 +31,13 @@ bool ui::initialize(const dictionary& config)
 
     // Register ui pipeline parameter layout.
     graphics::rhi::register_pipeline_parameter_layout(
-        "ash_ui_mvp",
+        "violet_ui_mvp",
         mvp_pipeline_parameter::layout());
     graphics::rhi::register_pipeline_parameter_layout(
-        "ash_ui_offset",
+        "violet_ui_offset",
         offset_pipeline_parameter::layout());
     graphics::rhi::register_pipeline_parameter_layout(
-        "ash_ui_material",
+        "violet_ui_material",
         material_pipeline_parameter::layout());
 
     m_pipeline = std::make_unique<ui_pipeline>();
@@ -324,4 +324,4 @@ material_pipeline_parameter* ui::allocate_material_parameter()
 
     return result;
 }
-} // namespace ash::ui
+} // namespace violet::ui

@@ -1,6 +1,6 @@
 #pragma once
 
-namespace ash::ui
+namespace violet::ui
 {
 struct element_extent
 {
@@ -9,4 +9,4 @@ struct element_extent
     float width;
     float height;
 };
-} // namespace ash::ui
+} // namespace violet::ui

@@ -2,7 +2,7 @@
 #include "test_common.hpp"
 #include <limits>
 
-using namespace ash::task;
+using namespace violet::task;
 
 TEST_CASE("atomic operation on a tagged_pointer is lock-free", "[tagged_pointer]")
 {

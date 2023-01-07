@@ -1,9 +1,9 @@
 #include "test_common.hpp"
 #include <cmath>
 
-using namespace ash::math;
+using namespace violet::math;
 
-namespace ash::test
+namespace violet::test
 {
 TEST_CASE("quaternion::rotation_axis", "[quaternion]")
 {
@@ -66,4 +66,4 @@ TEST_CASE("quaternion_simd::mul_vec", "[quaternion][simd]")
     float4_simd result = quaternion_simd::mul_vec(quat, v);
     CHECK(equal(result, simd::set(0.123301663f, 0.139379591f, 0.172988042f, 0.0f)));
 }
-} // namespace ash::test
+} // namespace violet::test

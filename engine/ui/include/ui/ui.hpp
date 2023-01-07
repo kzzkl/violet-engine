@@ -7,7 +7,7 @@
 #include "ui/renderer.hpp"
 #include "ui/theme.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 class element_tree;
 class mvp_pipeline_parameter;
@@ -68,4 +68,4 @@ private:
 
     renderer m_renderer;
 };
-}; // namespace ash::ui
+}; // namespace violet::ui

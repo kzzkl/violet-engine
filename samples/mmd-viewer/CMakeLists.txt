@@ -14,31 +14,31 @@ add_executable(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        ash::ecs
-        ash::core
-        ash::window
-        ash::graphics
-        ash::math
-        ash::scene
-        ash::physics
-        ash::editor)
+    violet::ecs
+    violet::core
+    violet::window
+    violet::graphics
+    violet::math
+    violet::scene
+    violet::physics
+    violet::editor)
 
-include(${ASH_ROOT_DIR}/cmake/shader_compile.cmake)
+include(${VIOLET_ROOT_DIR}/cmake/shader_compile.cmake)
 target_shader_compile(
     "${PROJECT_NAME}"
     "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/color.hlsl"
     "vert;frag"
-    "${ASH_SHADER_INCLUDE_DIR}"
+    "${VIOLET_SHADER_INCLUDE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated")
 target_shader_compile(
     "${PROJECT_NAME}"
     "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/edge.hlsl"
     "vert;frag"
-    "${ASH_SHADER_INCLUDE_DIR}"
+    "${VIOLET_SHADER_INCLUDE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated")
 target_shader_compile(
     "${PROJECT_NAME}"
@@ -56,6 +56,6 @@ install(TARGETS ${PROJECT_NAME}
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)
 
-if (MSVC)
+if(MSVC)
     set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/install/bin)
 endif()

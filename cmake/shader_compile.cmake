@@ -25,7 +25,7 @@ function(compile_shader_dxc TARGET_NAME SHADER_PATH TYPE INCLUDE_DIR OUTPUT_DIR)
     set(DXC_CMD_DEBUG ${DXC_PATH} ${SHADER_PATH} -T ${PROFILE} -E ${ENTRY_POINT} -Fo ${OUTPUT_NAME} -Wno-ignored-attributes -all-resources-bound -Zi -Qembed_debug)
     set(DXC_CMD_RELEASE ${DXC_PATH} ${SHADER_PATH} -T ${PROFILE} -E ${ENTRY_POINT} -Fo ${OUTPUT_NAME} -Wno-ignored-attributes -all-resources-bound)
 
-    if (NOT INCLUDE_DIR STREQUAL "")
+    if(NOT INCLUDE_DIR STREQUAL "")
         set(DXC_CMD_DEBUG ${DXC_CMD_DEBUG} -I ${INCLUDE_DIR})
     endif()
 
@@ -71,6 +71,7 @@ endfunction()
 function(target_shader_compile TARGET_NAME SHADER_PATH TYPES INCLUDE_DIR OUTPUT_DIR)
     foreach(TYPE ${TYPES})
         compile_shader_dxc(${TARGET_NAME} "${SHADER_PATH}" ${TYPE} "${INCLUDE_DIR}" "${OUTPUT_DIR}")
-        #compile_shader_glslang(${TARGET_NAME} "${SHADER_PATH}" ${TYPE} "${INCLUDE_DIR}" "${OUTPUT_DIR}")
+
+        # compile_shader_glslang(${TARGET_NAME} "${SHADER_PATH}" ${TYPE} "${INCLUDE_DIR}" "${OUTPUT_DIR}")
     endforeach()
 endfunction()

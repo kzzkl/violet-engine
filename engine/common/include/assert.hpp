@@ -2,7 +2,7 @@
 
 #ifndef NDEBUG
 #    include <cassert>
-#    define ASH_ASSERT(condition, ...) assert(condition)
+#    define VIOLET_ASSERT(condition, ...) assert(condition)
 #else
-#    define ASH_ASSERT(condition, ...)
+#    define VIOLET_ASSERT(condition, ...)
 #endif

@@ -1,11 +1,11 @@
-#include "test_common.hpp"
 #include "ecs/world.hpp"
+#include "test_common.hpp"
 #include <chrono>
 #include <iostream>
 
-using namespace ash::ecs;
+using namespace violet::ecs;
 
-namespace ash::test
+namespace violet::test
 {
 class timer
 {
@@ -57,4 +57,4 @@ TEST_CASE("Iterating entities", "[benchmark]")
     elapsed = timer.elapse();
     std::cout << "Iterating entities with entity: " << elapsed << " seconds" << std::endl;
 }
-} // namespace ash::test
+} // namespace violet::test

@@ -2,7 +2,7 @@
 
 #include "vk_common.hpp"
 
-namespace ash::graphics::vk
+namespace violet::graphics::vk
 {
 class vk_resource : public resource_interface
 {
@@ -309,4 +309,4 @@ private:
     VkDeviceMemory m_buffer_memory;
     std::size_t m_buffer_size;
 };
-} // namespace ash::graphics::vk
+} // namespace violet::graphics::vk

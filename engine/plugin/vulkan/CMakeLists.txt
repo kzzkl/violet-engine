@@ -1,8 +1,8 @@
-project(ash-graphics-vulkan)
+project(violet-graphics-vulkan)
 
 find_package(Vulkan REQUIRED)
 
-set(STB_IMAGE_INCLUDE ${ASH_THIRD_PARTY_DIR}/stb)
+set(STB_IMAGE_INCLUDE ${VIOLET_THIRD_PARTY_DIR}/stb)
 
 add_library(${PROJECT_NAME} SHARED
     ./source/vk_command.cpp
@@ -20,15 +20,15 @@ set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "")
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-        ./include
-        ${ASH_CORE_INTERFACE_DIR}
-        ${ASH_GRAPHICS_INTERFACE_DIR}
-        ${STB_IMAGE_INCLUDE})
+    ./include
+    ${VIOLET_CORE_INTERFACE_DIR}
+    ${VIOLET_GRAPHICS_INTERFACE_DIR}
+    ${STB_IMAGE_INCLUDE})
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        ash::math
-        Vulkan::Vulkan)
+    violet::math
+    Vulkan::Vulkan)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

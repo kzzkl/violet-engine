@@ -2,7 +2,7 @@
 
 #include "vk_common.hpp"
 
-namespace ash::graphics::vk
+namespace violet::graphics::vk
 {
 class vk_sampler
 {
@@ -18,4 +18,4 @@ public:
 private:
     VkSampler m_sampler;
 };
-} // namespace ash::graphics::vk
+} // namespace violet::graphics::vk

@@ -1,20 +1,20 @@
-project(ash-scene)
+project(violet-scene)
 
 add_library(${PROJECT_NAME} STATIC
     ./source/bounding_box.cpp
     ./source/bvh_tree.cpp
     ./source/scene.cpp
     ./source/transform.cpp)
-add_library(ash::scene ALIAS ${PROJECT_NAME})
+add_library(violet::scene ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-        ./include)
+    ./include)
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        ash::core
-        ash::math)
+    violet::core
+    violet::math)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

@@ -4,7 +4,7 @@
 
 #define PLUGIN_API __declspec(dllexport)
 
-namespace ash::core
+namespace violet::core
 {
 struct plugin_version
 {
@@ -19,4 +19,4 @@ struct plugin_info
 };
 
 using get_plugin_info = plugin_info (*)();
-} // namespace ash
+} // namespace violet

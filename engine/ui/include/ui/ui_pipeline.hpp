@@ -3,7 +3,7 @@
 #include "graphics/render_pipeline.hpp"
 #include "ui/element_mesh.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 class mvp_pipeline_parameter : public graphics::pipeline_parameter
 {
@@ -51,4 +51,4 @@ private:
     std::unique_ptr<mvp_pipeline_parameter> m_mvp_parameter;
     std::unique_ptr<offset_pipeline_parameter> m_offset_parameter;
 };
-} // namespace ash::ui
+} // namespace violet::ui

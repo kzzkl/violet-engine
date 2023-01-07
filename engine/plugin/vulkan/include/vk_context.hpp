@@ -2,7 +2,7 @@
 
 #include "vk_common.hpp"
 
-namespace ash::graphics::vk
+namespace violet::graphics::vk
 {
 class vk_swap_chain;
 class vk_render_pass;
@@ -130,4 +130,4 @@ private:
     VkDebugUtilsMessengerEXT m_debug_callback;
 #endif
 };
-} // namespace ash::graphics::vk
+} // namespace violet::graphics::vk

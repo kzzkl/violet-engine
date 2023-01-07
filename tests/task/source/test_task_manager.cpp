@@ -2,8 +2,8 @@
 #include "test_common.hpp"
 #include <iostream>
 
-using namespace ash::task;
-using namespace ash::test;
+using namespace violet::task;
+using namespace violet::test;
 
 TEST_CASE("test_task_manager", "[task_manager]")
 {

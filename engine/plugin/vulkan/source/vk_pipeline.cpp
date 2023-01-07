@@ -5,7 +5,7 @@
 #include "vk_sampler.hpp"
 #include <fstream>
 
-namespace ash::graphics::vk
+namespace violet::graphics::vk
 {
 vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
     const pipeline_parameter_layout_desc& desc)
@@ -541,7 +541,7 @@ vk_pipeline::vk_pipeline(const pipeline_desc& desc, VkRenderPass render_pass, st
 VkShaderModule vk_pipeline::load_shader(std::string_view file)
 {
     std::ifstream fin(std::string(file) + ".spv", std::ios::binary);
-    ASH_VK_ASSERT(fin.is_open());
+    VIOLET_VK_ASSERT(fin.is_open());
 
     std::vector<char> shader_data(fin.seekg(0, std::ios::end).tellg());
     fin.seekg(0, std::ios::beg).read(shader_data.data(), shader_data.size());
@@ -878,4 +878,4 @@ void vk_render_pass::create_pass(const render_pass_desc& desc)
 
     throw_if_failed(vkCreateRenderPass(vk_context::device(), &pass_info, nullptr, &m_render_pass));
 }
-} // namespace ash::graphics::vk
+} // namespace violet::graphics::vk

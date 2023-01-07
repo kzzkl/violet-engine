@@ -9,7 +9,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace ash::core
+namespace violet::core
 {
 struct system_index : public index_generator<system_index, std::size_t>
 {
@@ -75,7 +75,7 @@ public:
         std::size_t index = system_index::value<T>();
 
         auto& singleton = instance();
-        ASH_ASSERT(singleton.m_systems.size() > index);
+        VIOLET_ASSERT(singleton.m_systems.size() > index);
 
         if (singleton.m_systems[index] != nullptr)
         {
@@ -95,10 +95,11 @@ public:
     static void end_frame();
 
     template <typename T>
-    static T& system() requires derived_from_system<T>
+    static T& system()
+        requires derived_from_system<T>
     {
         auto system_pointer = instance().m_systems[system_index::value<T>()].get();
-        ASH_ASSERT(dynamic_cast<T*>(system_pointer));
+        VIOLET_ASSERT(dynamic_cast<T*>(system_pointer));
         return *static_cast<T*>(system_pointer);
     }
 
@@ -111,13 +112,13 @@ private:
     std::vector<std::unique_ptr<system_base>> m_systems;
     std::vector<std::size_t> m_installation_sequence;
 };
-} // namespace ash::core
+} // namespace violet::core
 
-namespace ash
+namespace violet
 {
 template <typename T>
 T& system()
 {
     return core::context::system<T>();
 }
-} // namespace ash
+} // namespace violet

@@ -3,7 +3,7 @@
 #include "math/math.hpp"
 #include "plugin_interface.hpp"
 
-namespace ash::physics
+namespace violet::physics
 {
 enum class collision_shape_type
 {
@@ -176,4 +176,4 @@ public:
 using factory = factory_interface;
 
 using make_factory = factory_interface* (*)();
-} // namespace ash::physics
+} // namespace violet::physics

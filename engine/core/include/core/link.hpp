@@ -3,11 +3,11 @@
 #include "ecs/entity.hpp"
 #include <vector>
 
-namespace ash::core
+namespace violet::core
 {
 struct link
 {
-    ash::ecs::entity parent{ecs::INVALID_ENTITY};
-    std::vector<ash::ecs::entity> children;
+    ecs::entity parent{ecs::INVALID_ENTITY};
+    std::vector<ecs::entity> children;
 };
-} // namespace ash
+} // namespace violet::core

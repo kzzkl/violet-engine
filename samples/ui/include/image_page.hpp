@@ -3,7 +3,7 @@
 #include "page.hpp"
 #include "ui/controls/image.hpp"
 
-namespace ash::sample
+namespace violet::sample
 {
 class image_page : public page
 {
@@ -16,4 +16,4 @@ private:
     std::unique_ptr<ui::image> m_file_image;
     std::unique_ptr<graphics::resource_interface> m_cat_image;
 };
-} // namespace ash::sample
+} // namespace violet::sample

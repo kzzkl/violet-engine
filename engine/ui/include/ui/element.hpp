@@ -6,7 +6,7 @@
 #include <functional>
 #include <string>
 
-namespace ash::ui
+namespace violet::ui
 {
 template <typename T>
 class element_event
@@ -35,7 +35,8 @@ public:
     {
     public:
         template <typename Functor>
-        void set(Functor&& functor) noexcept requires std::is_invocable_v<Functor, Args...>
+        void set(Functor&& functor) noexcept
+            requires std::is_invocable_v<Functor, Args...>
         {
             auto wrapper = std::make_shared<handle_wrapper>();
             wrapper->functor = functor;
@@ -47,7 +48,8 @@ public:
         R operator()(Args... args) { return (*m_handle)(args...); }
 
         template <typename Functor>
-        handle& operator=(Functor&& functor) noexcept requires std::is_invocable_v<Functor, Args...>
+        handle& operator=(Functor&& functor) noexcept
+            requires std::is_invocable_v<Functor, Args...>
         {
             set(functor);
             return *this;
@@ -169,4 +171,4 @@ private:
     element* m_parent;
     std::vector<element*> m_children;
 };
-} // namespace ash::ui
+} // namespace violet::ui

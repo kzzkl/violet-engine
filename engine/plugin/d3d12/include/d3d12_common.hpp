@@ -8,7 +8,7 @@
 #include <string>
 #include <wrl.h>
 
-namespace ash::graphics::d3d12
+namespace violet::graphics::d3d12
 {
 using DXGIAdapter = IDXGIAdapter1;
 using DXGIFactory = IDXGIFactory4;
@@ -55,9 +55,9 @@ inline void throw_if_failed(HRESULT hr)
 
 #ifndef NDEBUG
 #    include <cassert>
-#    define ASH_D3D12_ASSERT(condition, ...) assert(condition)
+#    define VIOLET_D3D12_ASSERT(condition, ...) assert(condition)
 #else
-#    define ASH_D3D12_ASSERT(condition, ...)
+#    define VIOLET_D3D12_ASSERT(condition, ...)
 #endif
 
 struct d3d12_utility
@@ -70,4 +70,4 @@ struct d3d12_utility
 
 static constexpr DXGI_FORMAT RENDER_TARGET_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM;
 static constexpr DXGI_FORMAT DEPTH_STENCIL_FORMAT = DXGI_FORMAT_D24_UNORM_S8_UINT;
-} // namespace ash::graphics::d3d12
+} // namespace violet::graphics::d3d12

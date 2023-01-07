@@ -3,7 +3,7 @@
 #include "page.hpp"
 #include "ui/controls/tree.hpp"
 
-namespace ash::sample
+namespace violet::sample
 {
 class tree_page : public page
 {
@@ -18,4 +18,4 @@ private:
     std::vector<std::unique_ptr<ui::tree_node>> m_chapters;
     std::vector<std::unique_ptr<ui::tree_node>> m_items;
 };
-} // namespace ash::sample
+} // namespace violet::sample

@@ -1,28 +1,28 @@
-project(ash-physics)
+project(violet-physics)
 
-option(ASH_PHYSICS_DEBUG_DRAW "Whether to show rigid body wireframe" OFF)
+option(VIOLET_PHYSICS_DEBUG_DRAW "Whether to show rigid body wireframe" OFF)
 
 add_library(${PROJECT_NAME} STATIC
     ./source/joint.cpp
     ./source/physics_plugin.cpp
     ./source/physics.cpp
     ./source/rigidbody.cpp)
-add_library(ash::physics ALIAS ${PROJECT_NAME})
+add_library(violet::physics ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-        ./include
-        ./interface)
+    ./include
+    ./interface)
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        ash::core
-        ash::math
-        ash::scene)
+    violet::core
+    violet::math
+    violet::scene)
 
-if (${ASH_PHYSICS_DEBUG_DRAW})
-    target_compile_definitions(${PROJECT_NAME} PRIVATE ASH_PHYSICS_DEBUG_DRAW)
-    target_link_libraries(${PROJECT_NAME} PUBLIC ash::graphics)
+if(${VIOLET_PHYSICS_DEBUG_DRAW})
+    target_compile_definitions(${PROJECT_NAME} PRIVATE VIOLET_PHYSICS_DEBUG_DRAW)
+    target_link_libraries(${PROJECT_NAME} PUBLIC violet::graphics)
 endif()
 
 install(TARGETS ${PROJECT_NAME}

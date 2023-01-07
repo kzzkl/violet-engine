@@ -1,9 +1,9 @@
-struct ash_object
+struct violet_object
 {
     float4x4 transform_m;
 };
 
-struct ash_camera
+struct violet_camera
 {
     float3 position;
     float _padding_0;

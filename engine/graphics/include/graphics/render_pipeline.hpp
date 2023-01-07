@@ -3,7 +3,7 @@
 #include "graphics/light.hpp"
 #include <map>
 
-namespace ash::graphics
+namespace violet::graphics
 {
 struct render_item
 {
@@ -44,4 +44,4 @@ public:
 
     virtual void render(const render_context& context, render_command_interface* command) = 0;
 };
-} // namespace ash::graphics
+} // namespace violet::graphics

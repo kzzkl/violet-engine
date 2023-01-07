@@ -5,7 +5,7 @@
 #include "scene/scene_event.hpp"
 #include "ui/ui.hpp"
 
-namespace ash::editor
+namespace violet::editor
 {
 hierarchy_view::hierarchy_view(ui::dock_area* area, const ui::dock_window_theme& theme)
     : ui::dock_window("Hierarchy", 0xEEBA, area, theme),
@@ -121,4 +121,4 @@ void hierarchy_view::deallocate_node(ecs::entity entity)
     m_entity_to_node.erase(entity);
     m_node_to_entity.erase(node);
 }
-} // namespace ash::editor
+} // namespace violet::editor

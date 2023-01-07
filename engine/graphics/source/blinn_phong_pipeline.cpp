@@ -1,10 +1,10 @@
 #include "graphics/blinn_phong_pipeline.hpp"
 #include "graphics/rhi.hpp"
 
-namespace ash::graphics
+namespace violet::graphics
 {
 blinn_phong_material_pipeline_parameter::blinn_phong_material_pipeline_parameter()
-    : pipeline_parameter("ash_blinn_phong_material")
+    : pipeline_parameter("violet_blinn_phong_material")
 {
 }
 
@@ -46,8 +46,8 @@ blinn_phong_pipeline::blinn_phong_pipeline()
         {ATTACHMENT_REFERENCE_TYPE_RESOLVE, 0}
     };
     color_pass_info.primitive_topology = PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    color_pass_info
-        .parameters = {"ash_object", "ash_blinn_phong_material", "ash_camera", "ash_light"};
+    color_pass_info.parameters =
+        {"violet_object", "violet_blinn_phong_material", "violet_camera", "violet_light"};
     color_pass_info.samples = 4;
 
     // Attachment.
@@ -120,4 +120,4 @@ void blinn_phong_pipeline::render(const render_context& context, render_command_
 
     command->end(m_interface.get());
 }
-} // namespace ash::graphics
+} // namespace violet::graphics

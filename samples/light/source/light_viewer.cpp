@@ -12,7 +12,7 @@
 #include "task/task_manager.hpp"
 #include "window/window.hpp"
 
-namespace ash::sample
+namespace violet::sample
 {
 light_viewer::light_viewer() : core::system_base("light_viewer")
 {
@@ -401,4 +401,4 @@ void light_viewer::debug()
         draw_frustum(light_frustum_vertices.data());
     }*/
 }
-} // namespace ash::sample
+} // namespace violet::sample

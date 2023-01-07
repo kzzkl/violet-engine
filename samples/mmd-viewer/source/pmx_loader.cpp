@@ -6,7 +6,7 @@
 #include <fstream>
 #include <map>
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 template <typename T>
 static void read(std::istream& fin, T& dest)
@@ -763,4 +763,4 @@ std::string pmx_loader::read_text(std::ifstream& fin)
         return "";
     }
 }
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd
