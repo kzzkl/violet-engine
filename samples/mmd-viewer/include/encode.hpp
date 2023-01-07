@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 enum class encode_type
 {
@@ -52,4 +52,4 @@ template <>
 bool convert<encode_type::SHIFT_JIS, encode_type::UTF8>(
     const std::string& input,
     std::string& output);
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

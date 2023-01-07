@@ -3,7 +3,7 @@
 #include "graphics/mesh_render.hpp"
 #include "graphics/skinned_mesh.hpp"
 
-namespace ash::graphics
+namespace violet::graphics
 {
 struct skinning_item
 {
@@ -31,4 +31,4 @@ private:
 
     std::vector<skinning_item> m_items;
 };
-} // namespace ash::graphics
+} // namespace violet::graphics

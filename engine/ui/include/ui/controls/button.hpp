@@ -3,7 +3,7 @@
 #include "ui/controls/font_icon.hpp"
 #include "ui/controls/panel.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 class label;
 
@@ -44,4 +44,4 @@ private:
     std::uint32_t m_default_color;
     std::uint32_t m_highlight_color;
 };
-} // namespace ash::ui
+} // namespace violet::ui

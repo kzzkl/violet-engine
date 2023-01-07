@@ -1,6 +1,6 @@
 #include "bt3_shape.hpp"
 
-namespace ash::physics::bullet3
+namespace violet::physics::bullet3
 {
 bt3_shape::bt3_shape(const collision_shape_desc& desc)
 {
@@ -40,4 +40,4 @@ bt3_shape::bt3_shape(
 
     m_shape = std::move(shape);
 }
-} // namespace ash::physics::bullet3
+} // namespace violet::physics::bullet3

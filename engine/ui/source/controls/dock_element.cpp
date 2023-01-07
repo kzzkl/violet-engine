@@ -1,7 +1,7 @@
 #include "ui/controls/dock_element.hpp"
 #include "ui/controls/dock_area.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 static std::size_t dock_counter = 0;
 
@@ -20,4 +20,4 @@ void dock_element::dock_height(float value) noexcept
     m_height = value;
     height_percent(value);
 }
-} // namespace ash::ui
+} // namespace violet::ui

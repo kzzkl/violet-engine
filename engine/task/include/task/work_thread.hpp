@@ -3,7 +3,7 @@
 #include "task/task_queue.hpp"
 #include <thread>
 
-namespace ash::task
+namespace violet::task
 {
 class work_thread
 {
@@ -38,4 +38,4 @@ class work_thread_main
 public:
     static void run(task_queue_group& queues, std::size_t task_count);
 };
-} // namespace ash::task
+} // namespace violet::task

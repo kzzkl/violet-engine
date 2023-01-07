@@ -1,7 +1,7 @@
 #include "task/work_thread.hpp"
 #include "log.hpp"
 
-namespace ash::task
+namespace violet::task
 {
 work_thread::work_thread() noexcept : m_stop(true), m_queue(nullptr), m_type(task_type::NONE)
 {
@@ -108,4 +108,4 @@ void work_thread_main::run(task_queue_group& queues, std::size_t task_count)
         }
     }
 }
-} // namespace ash::task
+} // namespace violet::task

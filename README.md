@@ -1,4 +1,4 @@
-# Ash Game Engine
+# Violet Game Engine
 
 一个在休息期间倒腾的实验性质的游戏引擎，用来记录美好的假期时光。
 
@@ -14,7 +14,7 @@
 ### 克隆
 
 ```bash
-git clone git@github.com:kzzkl/ash-engine.git
+git clone git@github.com:kzzkl/violet-engine.git
 ```
 
 ### 编译
@@ -29,7 +29,7 @@ cmake --build ./ --config Debug --target install
 ## 项目结构
 
 ```
-ash-engine
+violet-engine
 ├───documents           文档
 ├───editor              引擎编辑器
 ├───engine              引擎代码
@@ -62,12 +62,8 @@ ash-engine
 
 ### MMD Viewer
 
-路径：ash-engine/samples/mmd-viewer
-
 ![MMD](documents/screenshot/mmd.png)
 
 ### UI 
-
-路径：ash-engine/samples/ui
 
 ![UI](documents/screenshot/ui.png)

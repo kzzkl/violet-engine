@@ -3,7 +3,7 @@
 #include "core/context.hpp"
 #include "graphics/graphics_debug.hpp"
 
-namespace ash::graphics
+namespace violet::graphics
 {
 class light_pipeline_parameter;
 class sky_pipeline_parameter;
@@ -28,7 +28,7 @@ public:
 
     void editor_camera(ecs::entity editor_camera, ecs::entity scene_camera) noexcept
     {
-        ASH_ASSERT(editor_camera != ecs::INVALID_ENTITY && scene_camera != ecs::INVALID_ENTITY);
+        VIOLET_ASSERT(editor_camera != ecs::INVALID_ENTITY && scene_camera != ecs::INVALID_ENTITY);
 
         m_editor_camera = editor_camera;
         m_scene_camera = scene_camera;
@@ -68,6 +68,7 @@ private:
     ecs::entity m_scene_camera;
 
     std::queue<ecs::entity> m_render_queue;
+    std::unordered_map<render_pipeline*, render_context> m_render_contexts;
 
     std::unique_ptr<light_pipeline_parameter> m_light_parameter;
 
@@ -85,4 +86,4 @@ private:
 
     std::unique_ptr<graphics_debug> m_debug;
 };
-} // namespace ash::graphics
+} // namespace violet::graphics

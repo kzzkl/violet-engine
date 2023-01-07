@@ -5,7 +5,7 @@
 #include <memory>
 #include <string_view>
 
-namespace ash
+namespace violet
 {
 class log
 {
@@ -42,4 +42,4 @@ private:
 
     std::shared_ptr<spdlog::logger> m_logger;
 };
-} // namespace ash
+} // namespace violet

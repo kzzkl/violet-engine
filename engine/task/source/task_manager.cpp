@@ -2,7 +2,7 @@
 #include "log.hpp"
 #include <future>
 
-namespace ash::task
+namespace violet::task
 {
 task_manager::task_manager() : core::system_base("task")
 {
@@ -62,4 +62,4 @@ task_manager::handle task_manager::find(std::string_view name)
     else
         return handle(iter->second.get());
 }
-} // namespace ash::task
+} // namespace violet::task

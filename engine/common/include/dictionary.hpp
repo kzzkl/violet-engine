@@ -2,7 +2,7 @@
 
 #include <nlohmann/json.hpp>
 
-namespace ash
+namespace violet
 {
 using dictionary = nlohmann::json;
 }

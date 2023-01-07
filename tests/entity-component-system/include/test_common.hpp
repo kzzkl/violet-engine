@@ -1,8 +1,8 @@
 #pragma once
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_test_macros.hpp>
 
-namespace ash::test
+namespace violet::test
 {
 struct position
 {
@@ -75,4 +75,4 @@ private:
     static inline int m_move_assignment{0};
     static inline int m_destruct{0};
 };
-} // namespace test
+} // namespace violet::test

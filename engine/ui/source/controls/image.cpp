@@ -1,6 +1,6 @@
 #include "ui/controls/image.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 image::image(graphics::resource_interface* texture)
 {
@@ -52,4 +52,4 @@ void image::on_extent_change(float width, float height)
     m_position[2] = {width, height};
     m_position[3] = {0.0f, height};
 }
-} // namespace ash::ui
+} // namespace violet::ui

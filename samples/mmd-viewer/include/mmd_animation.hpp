@@ -6,9 +6,9 @@
 #include "mmd_component.hpp"
 #include "scene/transform.hpp"
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
-class mmd_animation : public ash::core::system_base
+class mmd_animation : public violet::core::system_base
 {
 public:
     mmd_animation() : system_base("mmd_animation") {}
@@ -57,4 +57,4 @@ private:
         });
     }
 };
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

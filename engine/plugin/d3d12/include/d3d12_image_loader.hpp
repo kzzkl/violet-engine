@@ -2,7 +2,7 @@
 
 #include "d3d12_common.hpp"
 
-namespace ash::graphics::d3d12
+namespace violet::graphics::d3d12
 {
 class d3d12_image_loader
 {
@@ -29,4 +29,4 @@ private:
     static load_result load_dds(std::string_view file, D3D12GraphicsCommandList* command_list);
     static load_result load_other(std::string_view file, D3D12GraphicsCommandList* command_list);
 };
-} // namespace ash::graphics::d3d12
+} // namespace violet::graphics::d3d12

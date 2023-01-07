@@ -1,7 +1,7 @@
 #include "image_page.hpp"
 #include "graphics/rhi.hpp"
 
-namespace ash::sample
+namespace violet::sample
 {
 image_page::image_page() : page("Image")
 {
@@ -23,4 +23,4 @@ void image_page::initialize_sample_image()
     m_file_image = std::make_unique<ui::image>(m_cat_image.get());
     display_1->add(m_file_image.get());
 }
-} // namespace ash::sample
+} // namespace violet::sample

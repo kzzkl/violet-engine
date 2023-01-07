@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace ash
+namespace violet
 {
 class uuid
 {
@@ -77,4 +77,4 @@ struct uuid_hash
 {
     constexpr std::size_t operator()(const uuid& key) const noexcept { return key.hash(); }
 };
-} // namespace ash
+} // namespace violet

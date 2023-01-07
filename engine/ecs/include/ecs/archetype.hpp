@@ -6,7 +6,7 @@
 #include "ecs/storage.hpp"
 #include <algorithm>
 
-namespace ash::ecs
+namespace violet::ecs
 {
 template <typename Archetype>
 class archetype_iterator
@@ -111,10 +111,10 @@ public:
 
     void move(entity entity, archetype& target)
     {
-        ASH_ASSERT(this != &target);
+        VIOLET_ASSERT(this != &target);
 
         auto& entity_info = m_entity_registry->at(entity);
-        ASH_ASSERT(entity_info.archetype == this);
+        VIOLET_ASSERT(entity_info.archetype == this);
 
         auto [source_chunk_index, source_entity_index] = std::div(
             static_cast<const long>(entity_info.index),
@@ -159,7 +159,7 @@ public:
     void remove(entity entity)
     {
         auto& entity_info = m_entity_registry->at(entity);
-        ASH_ASSERT(entity_info.archetype == this);
+        VIOLET_ASSERT(entity_info.archetype == this);
 
         remove(entity_info.index);
     }
@@ -203,12 +203,16 @@ private:
         };
 
         std::vector<layout_info> list(components.size());
-        std::transform(components.cbegin(), components.cend(), list.begin(), [this](component_id id) {
-            return layout_info{
-                id,
-                m_component_registry->at(id).size(),
-                m_component_registry->at(id).align()};
-        });
+        std::transform(
+            components.cbegin(),
+            components.cend(),
+            list.begin(),
+            [this](component_id id) {
+                return layout_info{
+                    id,
+                    m_component_registry->at(id).size(),
+                    m_component_registry->at(id).align()};
+            });
 
         std::sort(list.begin(), list.end(), [](const auto& a, const auto& b) {
             return a.align == b.align ? a.id < b.id : a.align > b.align;
@@ -320,4 +324,4 @@ private:
     std::size_t m_entity_per_chunk;
     std::array<std::uint16_t, MAX_COMPONENT> m_offset;
 };
-} // namespace ash::ecs
+} // namespace violet::ecs

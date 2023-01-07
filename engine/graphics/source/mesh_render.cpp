@@ -1,8 +1,8 @@
 #include "graphics/mesh_render.hpp"
 
-namespace ash::graphics
+namespace violet::graphics
 {
-object_pipeline_parameter::object_pipeline_parameter() : pipeline_parameter("ash_object")
+object_pipeline_parameter::object_pipeline_parameter() : pipeline_parameter("violet_object")
 {
 }
 
@@ -17,4 +17,4 @@ std::vector<pipeline_parameter_pair> object_pipeline_parameter::layout()
         {PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER, sizeof(math::float4x4)}  // transform_m
     };
 }
-} // namespace ash::graphics
+} // namespace violet::graphics

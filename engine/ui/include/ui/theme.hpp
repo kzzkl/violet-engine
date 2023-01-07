@@ -3,7 +3,7 @@
 #include <map>
 #include <string>
 
-namespace ash::ui
+namespace violet::ui
 {
 class theme_manager
 {
@@ -57,4 +57,4 @@ public:
 private:
     std::vector<std::unique_ptr<theme_map_base>> m_theme_maps;
 };
-} // namespace ash::ui
+} // namespace violet::ui

@@ -1,7 +1,7 @@
 #include "physics/physics_plugin.hpp"
 #include "log.hpp"
 
-namespace ash::physics
+namespace violet::physics
 {
 physics_plugin::physics_plugin()
 {
@@ -25,4 +25,4 @@ void physics_plugin::on_unload()
 {
     m_factory = nullptr;
 }
-} // namespace ash::physics
+} // namespace violet::physics

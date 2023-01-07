@@ -3,7 +3,7 @@
 #include "ui/color.hpp"
 #include "ui/controls/dock_element.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 class font;
 class label;
@@ -58,4 +58,4 @@ private:
     layout_edge m_drag_edge;
     int m_drag_position;
 };
-} // namespace ash::ui
+} // namespace violet::ui

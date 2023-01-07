@@ -5,7 +5,7 @@
 #include <string_view>
 #include <unordered_map>
 
-namespace ash::graphics::d3d12
+namespace violet::graphics::d3d12
 {
 class d3d12_pipeline_parameter_layout : public pipeline_parameter_layout_interface
 {
@@ -247,15 +247,15 @@ private:
         std::size_t operator()(const d3d12_camera_info& key) const
         {
             std::size_t result = 0;
-            hash_combine(result, key.render_target);
-            hash_combine(result, key.render_target_resolve);
-            hash_combine(result, key.depth_stencil_buffer);
+            hviolet_combine(result, key.render_target);
+            hviolet_combine(result, key.render_target_resolve);
+            hviolet_combine(result, key.depth_stencil_buffer);
 
             return result;
         }
 
         template <class T>
-        void hash_combine(std::size_t& s, const T& v) const
+        void hviolet_combine(std::size_t& s, const T& v) const
         {
             std::hash<T> h;
             s ^= h(v) + 0x9e3779b9 + (s << 6) + (s >> 2);
@@ -281,4 +281,4 @@ private:
     std::unique_ptr<d3d12_root_signature> m_root_signature;
     d3d12_ptr<D3D12PipelineState> m_pipeline_state;
 };
-} // namespace ash::graphics::d3d12
+} // namespace violet::graphics::d3d12

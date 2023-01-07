@@ -6,7 +6,7 @@
 
 #include <fstream>
 
-namespace ash::ui
+namespace violet::ui
 {
 font::font(std::string_view font, std::size_t size)
 {
@@ -119,4 +119,4 @@ const glyph_data& font::glyph(std::uint32_t character) const
     else
         throw std::out_of_range("The font file does not contain this character.");
 }
-} // namespace ash::ui
+} // namespace violet::ui

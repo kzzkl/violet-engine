@@ -2,7 +2,7 @@
 #include <queue>
 #include <stdexcept>
 
-namespace ash::ui
+namespace violet::ui
 {
 element::element(bool is_root)
     : element_layout(is_root),
@@ -19,8 +19,8 @@ element::element(bool is_root)
 
 element::~element()
 {
-    ASH_ASSERT(m_children.empty());
-    ASH_ASSERT(m_parent == nullptr);
+    VIOLET_ASSERT(m_children.empty());
+    VIOLET_ASSERT(m_parent == nullptr);
 }
 
 /*void element::render(renderer& renderer)
@@ -51,7 +51,7 @@ void element::sync_extent()
 
 void element::add(element* child, std::size_t index)
 {
-    ASH_ASSERT(child && child->m_parent == nullptr);
+    VIOLET_ASSERT(child && child->m_parent == nullptr);
 
     if (index == -1)
         index = m_children.size();
@@ -76,7 +76,7 @@ void element::add(element* child, std::size_t index)
 
 void element::remove(element* child)
 {
-    ASH_ASSERT(child->m_parent == this);
+    VIOLET_ASSERT(child->m_parent == this);
 
     auto iter = m_children.begin() + child->m_link_index;
     iter = m_children.erase(iter);
@@ -153,4 +153,4 @@ void element::update_depth(float parent_depth) noexcept
         }
     }
 }
-} // namespace ash::ui
+} // namespace violet::ui

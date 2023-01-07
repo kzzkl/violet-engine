@@ -2,7 +2,7 @@
 #include "ui/controls/font_icon.hpp"
 #include "ui/controls/label.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 button::button(std::string_view text, const button_theme& theme)
     : panel(theme.default_color),
@@ -35,4 +35,4 @@ icon_button::icon_button(std::uint32_t index, const icon_button_theme& theme)
     on_mouse_over = [this]() { icon_color(m_highlight_color); };
     on_mouse_out = [this]() { icon_color(m_default_color); };
 }
-} // namespace ash::ui
+} // namespace violet::ui

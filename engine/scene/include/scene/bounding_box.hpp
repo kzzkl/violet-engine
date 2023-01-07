@@ -3,7 +3,7 @@
 #include "math/math.hpp"
 #include <vector>
 
-namespace ash::scene
+namespace violet::scene
 {
 struct bounding_volume_aabb
 {
@@ -44,4 +44,4 @@ private:
     bool m_visible;
     bool m_dynamic;
 };
-} // namespace ash::scene
+} // namespace violet::scene

@@ -4,7 +4,7 @@
 #include <queue>
 #include <stdexcept>
 
-namespace ash::ui
+namespace violet::ui
 {
 dock_area::dock_area(int element_width, int element_height, const dock_area_theme& theme)
     : m_area_width(element_width),
@@ -353,7 +353,7 @@ void dock_area::move_up(dock_element* element)
 {
     auto& parent = element->m_dock_parent;
 
-    ASH_ASSERT(parent->children().size() == 1);
+    VIOLET_ASSERT(parent->children().size() == 1);
 
     element->dock_width(parent->m_width);
     element->dock_height(parent->m_height);
@@ -476,4 +476,4 @@ dock_element* dock_area::find_resize_element(dock_element* element, layout_edge 
         }
     }
 }
-} // namespace ash::ui
+} // namespace violet::ui

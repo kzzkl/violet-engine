@@ -3,7 +3,7 @@
 #include "math/math.hpp"
 #include <array>
 
-namespace ash::graphics
+namespace violet::graphics
 {
 struct camera_frustum
 {
@@ -94,4 +94,4 @@ private:
         math::float4_align{1.0f,  1.0f,  1.0f, 1.0f}
     };
 };
-} // namespace ash::graphics
+} // namespace violet::graphics

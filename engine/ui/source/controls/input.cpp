@@ -3,7 +3,7 @@
 #include "ui/font.hpp"
 #include <format>
 
-namespace ash::ui
+namespace violet::ui
 {
 class text_input : public element
 {
@@ -344,4 +344,4 @@ std::string input_float::adjust_text() const noexcept
 {
     return std::format("{}", m_value);
 }
-} // namespace ash::ui
+} // namespace violet::ui

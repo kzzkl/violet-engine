@@ -10,8 +10,8 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        ash::graphics
-        ash::editor)
+        violet::graphics
+        violet::editor)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-namespace ash
+namespace violet
 {
 template <typename... Types>
 class type_list
@@ -50,4 +50,4 @@ public:
         return (std::is_same<T, Types>::value || ...);
     }
 };
-} // namespace ash
+} // namespace violet

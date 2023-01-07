@@ -1,7 +1,7 @@
 #include "task/task.hpp"
 #include <queue>
 
-namespace ash::task
+namespace violet::task
 {
 task::task(std::string_view name, task_type type)
     : m_dependency_count(0),
@@ -112,4 +112,4 @@ void task::reset_counter_and_get_reachable_tasks(std::vector<task*>& next_tasks)
             next_tasks.push_back(next);
     }
 }
-} // namespace ash::task
+} // namespace violet::task

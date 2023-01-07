@@ -8,7 +8,7 @@
 
 int main()
 {
-    using namespace ash;
+    using namespace violet;
 
     core::application app;
     app.install<window::window>();

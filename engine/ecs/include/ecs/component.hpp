@@ -7,7 +7,7 @@
 #include <memory>
 #include <vector>
 
-namespace ash::ecs
+namespace violet::ecs
 {
 using component_id = std::uint16_t;
 
@@ -77,4 +77,4 @@ static constexpr std::size_t MAX_COMPONENT = 512;
 using component_mask = std::bitset<MAX_COMPONENT>;
 
 using component_registry = std::array<component_info, MAX_COMPONENT>;
-} // namespace ash::ecs
+} // namespace violet::ecs

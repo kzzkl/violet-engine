@@ -1,0 +1,21 @@
+[submodule "thirdparty/Catch2"]
+	path = thirdparty/Catch2
+	url = https://github.com/catchorg/Catch2.git
+[submodule "thirdparty/spdlog"]
+	path = thirdparty/spdlog
+	url = https://github.com/gabime/spdlog.git
+[submodule "thirdparty/json"]
+	path = thirdparty/json
+	url = https://github.com/nlohmann/json.git
+[submodule "thirdparty/bullet3"]
+	path = thirdparty/bullet3
+	url = https://github.com/bulletphysics/bullet3.git
+[submodule "thirdparty/stb"]
+	path = thirdparty/stb
+	url = https://github.com/nothings/stb.git
+[submodule "thirdparty/freetype"]
+	path = thirdparty/freetype
+	url = https://github.com/freetype/freetype.git
+[submodule "thirdparty/yoga"]
+	path = thirdparty/yoga
+	url = https://github.com/facebook/yoga.git

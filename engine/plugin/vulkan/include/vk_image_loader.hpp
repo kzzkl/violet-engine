@@ -6,7 +6,7 @@
 #include <string_view>
 #include <vector>
 
-namespace ash::graphics::vk
+namespace violet::graphics::vk
 {
 struct vk_image_data
 {
@@ -32,4 +32,4 @@ private:
 
     std::vector<vk_image_data> m_mipmap;
 };
-} // namespace ash::graphics::vk
+} // namespace violet::graphics::vk

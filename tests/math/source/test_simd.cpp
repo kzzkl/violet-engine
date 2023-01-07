@@ -1,8 +1,8 @@
 #include "test_common.hpp"
 
-using namespace ash::math;
+using namespace violet::math;
 
-namespace ash::test
+namespace violet::test
 {
 TEST_CASE("simd::mask", "[simd]")
 {
@@ -39,4 +39,4 @@ TEST_CASE("simd::store", "[simd]")
     simd::store(v, r3);
     CHECK(equal(r3, float3{1.0f, 2.0f, 3.0f}));
 }
-} // namespace ash::test
+} // namespace violet::test

@@ -1,7 +1,7 @@
 #include "page.hpp"
 #include "ui/ui.hpp"
 
-namespace ash::sample
+namespace violet::sample
 {
 page::page(std::string_view title)
 {
@@ -53,4 +53,4 @@ ui::panel* page::add_display_panel()
 
     return m_display_panels.back().get();
 }
-} // namespace ash::sample
+} // namespace violet::sample

@@ -12,7 +12,7 @@
 #include "task/task_manager.hpp"
 #include "window/window.hpp"
 
-namespace ash::sample
+namespace violet::sample
 {
 light_viewer::light_viewer() : core::system_base("light_viewer")
 {
@@ -146,7 +146,7 @@ void light_viewer::initialize_scene()
 
                 graphics::material material = {};
                 material.pipeline = m_pipeline.get();
-                material.parameters = {m_material->interface()};
+                material.parameter = m_material->interface();
                 mesh.materials.push_back(material);
                 mesh.submeshes.push_back(graphics::submesh{0, m_cube_mesh_data.indices.size(), 0});
 
@@ -184,7 +184,7 @@ void light_viewer::initialize_scene()
 
                 graphics::material material = {};
                 material.pipeline = m_pipeline.get();
-                material.parameters = {m_material->interface()};
+                material.parameter = m_material->interface();
                 mesh.materials.push_back(material);
                 mesh.submeshes.push_back(
                     graphics::submesh{0, m_sphere_mesh_data.indices.size(), 0});
@@ -216,7 +216,7 @@ void light_viewer::initialize_scene()
 
         graphics::material material = {};
         material.pipeline = m_pipeline.get();
-        material.parameters = {m_material->interface()};
+        material.parameter = m_material->interface();
         mesh.materials.push_back(material);
         mesh.submeshes.push_back(graphics::submesh{0, m_cube_mesh_data.indices.size(), 0});
 
@@ -401,4 +401,4 @@ void light_viewer::debug()
         draw_frustum(light_frustum_vertices.data());
     }*/
 }
-} // namespace ash::sample
+} // namespace violet::sample

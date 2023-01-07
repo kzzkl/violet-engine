@@ -2,7 +2,7 @@
 
 #include "ui/element.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 class image : public element
 {
@@ -24,4 +24,4 @@ private:
 
     element_mesh m_mesh;
 };
-} // namespace ash::ui
+} // namespace violet::ui

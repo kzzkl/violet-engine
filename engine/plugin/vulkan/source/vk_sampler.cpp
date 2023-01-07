@@ -1,7 +1,7 @@
 #include "vk_sampler.hpp"
 #include "vk_context.hpp"
 
-namespace ash::graphics::vk
+namespace violet::graphics::vk
 {
 vk_sampler::vk_sampler()
 {
@@ -48,4 +48,4 @@ vk_sampler& vk_sampler::operator=(vk_sampler&& other)
 
     return *this;
 }
-} // namespace ash::graphics::vk
+} // namespace violet::graphics::vk

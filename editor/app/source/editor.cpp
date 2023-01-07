@@ -12,7 +12,7 @@
 #include "window/window_event.hpp"
 #include "window/window_task.hpp"
 
-namespace ash::editor
+namespace violet::editor
 {
 editor::editor() : core::system_base("editor")
 {
@@ -86,4 +86,4 @@ void editor::resize(std::uint32_t width, std::uint32_t height)
     m_depth_stencil_buffer = graphics::rhi::make_depth_stencil_buffer(depth_stencil_buffer_info);
     camera.depth_stencil_buffer(m_depth_stencil_buffer.get());
 }
-}; // namespace ash::editor
+}; // namespace violet::editor

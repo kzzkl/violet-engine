@@ -3,7 +3,7 @@
 #include "graphics/pipeline_parameter.hpp"
 #include <array>
 
-namespace ash::graphics
+namespace violet::graphics
 {
 struct point_light
 {
@@ -77,4 +77,4 @@ private:
         std::uint32_t cascade_count;
     };
 };
-} // namespace ash::graphics
+} // namespace violet::graphics

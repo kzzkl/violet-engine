@@ -1,8 +1,9 @@
 #pragma once
 
 #include "graphics/light.hpp"
+#include <map>
 
-namespace ash::graphics
+namespace violet::graphics
 {
 struct render_item
 {
@@ -14,13 +15,13 @@ struct render_item
     std::size_t vertex_base;
 
     pipeline_parameter_interface* object_parameter;
-    pipeline_parameter_interface** additional_parameters;
+    pipeline_parameter_interface* material_parameter;
 
     scissor_extent scissor;
 };
 
 class shadow_map;
-struct render_scene
+struct render_context
 {
     pipeline_parameter_interface* camera_parameter;
     pipeline_parameter_interface* light_parameter;
@@ -41,24 +42,6 @@ public:
     render_pipeline();
     virtual ~render_pipeline() = default;
 
-    void camera_parameter(pipeline_parameter_interface* parameter) noexcept;
-    void light_parameter(pipeline_parameter_interface* parameter) noexcept;
-    void sky_parameter(pipeline_parameter_interface* parameter) noexcept;
-    void shadow(shadow_map* shadow_map) noexcept;
-
-    void render_target(
-        resource_interface* render_target,
-        resource_interface* render_target_resolve,
-        resource_interface* depth_stencil_buffer);
-
-    void add_item(const render_item& item);
-    void clear();
-
-    void render(render_command_interface* command);
-
-private:
-    virtual void on_render(const render_scene& scene, render_command_interface* command) = 0;
-
-    render_scene m_scene;
+    virtual void render(const render_context& context, render_command_interface* command) = 0;
 };
-} // namespace ash::graphics
+} // namespace violet::graphics

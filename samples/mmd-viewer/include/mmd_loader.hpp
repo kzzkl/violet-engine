@@ -7,7 +7,7 @@
 #include "vmd_loader.hpp"
 #include <map>
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 class mmd_loader
 {
@@ -48,4 +48,4 @@ private:
     std::map<std::string, pmx_loader> m_pmx;
     std::map<std::string, vmd_loader> m_vmd;
 };
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

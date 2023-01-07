@@ -6,7 +6,7 @@
 #include <fstream>
 #include <vector>
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 enum class pmx_vertex_weight : std::uint8_t
 {
@@ -355,7 +355,7 @@ public:
         return m_submesh;
     }
 
-    material_pipeline_parameter* materials(std::size_t index) const noexcept
+    mmd_material_parameter* materials(std::size_t index) const noexcept
     {
         return m_materials[index].get();
     }
@@ -406,8 +406,8 @@ private:
     std::vector<std::pair<std::size_t, std::size_t>> m_submesh;
 
     std::vector<std::unique_ptr<graphics::resource_interface>> m_textures;
-    std::vector<std::unique_ptr<material_pipeline_parameter>> m_materials;
+    std::vector<std::unique_ptr<mmd_material_parameter>> m_materials;
 
     std::vector<std::unique_ptr<physics::collision_shape_interface>> m_collision_shapes;
 };
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

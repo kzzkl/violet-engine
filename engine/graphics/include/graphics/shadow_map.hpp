@@ -5,7 +5,7 @@
 #include "graphics_interface.hpp"
 #include <memory>
 
-namespace ash::graphics
+namespace violet::graphics
 {
 class shadow_map_pipeline_parameter : public pipeline_parameter
 {
@@ -38,4 +38,4 @@ private:
     std::unique_ptr<resource_interface> m_shadow_map;
     std::unique_ptr<shadow_map_pipeline_parameter> m_parameter;
 };
-} // namespace ash::graphics
+} // namespace violet::graphics

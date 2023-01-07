@@ -3,7 +3,7 @@
 #include "core/event.hpp"
 #include "window/input.hpp"
 
-namespace ash::window
+namespace violet::window
 {
 struct event_mouse_move
 {
@@ -29,4 +29,4 @@ struct event_window_resize
 {
     using dispatcher = core::sequence_dispatcher<std::function<void(std::uint32_t, std::uint32_t)>>;
 };
-} // namespace ash::window
+} // namespace violet::window

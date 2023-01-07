@@ -7,8 +7,8 @@
 #include <stdlib.h>
 #include <thread>
 
-using namespace ash::task;
-using namespace ash::common;
+using namespace violet::task;
+using namespace violet::common;
 
 struct test_class
 {
@@ -119,7 +119,7 @@ bool test_pool()
     return s.size() == NUM_THREAD * NUM_DATA_PER_THREAD;
 }
 
-using namespace ash::task;
+using namespace violet::task;
 
 void test_task()
 {

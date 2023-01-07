@@ -4,7 +4,7 @@
 #include "ui/controls/input.hpp"
 #include "ui/controls/label.hpp"
 
-namespace ash::sample
+namespace violet::sample
 {
 class input_page : public page
 {
@@ -21,4 +21,4 @@ private:
     std::unique_ptr<ui::input_float> m_input_float;
     std::unique_ptr<ui::label> m_input_float_result;
 };
-} // namespace ash::sample
+} // namespace violet::sample

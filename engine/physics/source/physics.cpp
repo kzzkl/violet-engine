@@ -4,13 +4,13 @@
 #include "scene/scene.hpp"
 #include "scene/scene_event.hpp"
 
-#if defined(ASH_PHYSICS_DEBUG_DRAW)
+#if defined(VIOLET_PHYSICS_DEBUG_DRAW)
 #    include "graphics/graphics.hpp"
 #endif
 
-namespace ash::physics
+namespace violet::physics
 {
-#if defined(ASH_PHYSICS_DEBUG_DRAW)
+#if defined(VIOLET_PHYSICS_DEBUG_DRAW)
 class physics_debug : public debug_draw_interface
 {
 public:
@@ -23,7 +23,7 @@ public:
         return instance;
     }
 
-    void initialize(ash::graphics::graphics_debug* drawer) { m_drawer = drawer; }
+    void initialize(graphics::graphics_debug* drawer) { m_drawer = drawer; }
 
     virtual void draw_line(
         const math::float3& start,
@@ -34,7 +34,7 @@ public:
     }
 
 private:
-    ash::graphics::graphics_debug* m_drawer;
+    graphics::graphics_debug* m_drawer;
 };
 #endif
 
@@ -48,19 +48,19 @@ physics::~physics()
 
 bool physics::initialize(const dictionary& config)
 {
-    m_plugin.load("ash-physics-bullet3.dll");
+    m_plugin.load("violet-physics-bullet3.dll");
 
     world_desc desc = {};
     desc.gravity = {config["gravity"][0], config["gravity"][1], config["gravity"][2]};
 
-#if defined(ASH_PHYSICS_DEBUG_DRAW)
-    physics_debug::instance().initialize(&system<ash::graphics::graphics>().debug());
+#if defined(VIOLET_PHYSICS_DEBUG_DRAW)
+    physics_debug::instance().initialize(&system<graphics::graphics>().debug());
     m_world.reset(m_plugin.factory().make_world(desc, &physics_debug::instance()));
 #else
     m_world.reset(m_plugin.factory().make_world(desc));
 #endif
 
-    auto& world = system<ash::ecs::world>();
+    auto& world = system<ecs::world>();
     world.register_component<rigidbody>();
     world.register_component<joint>();
 
@@ -125,7 +125,7 @@ void physics::simulation()
 
     system<scene::scene>().sync_world();
 
-#if defined(ASH_PHYSICS_DEBUG_DRAW)
+#if defined(VIOLET_PHYSICS_DEBUG_DRAW)
     m_world->debug();
 #endif
 }
@@ -200,4 +200,4 @@ void physics::initialize_entity(ecs::entity entity)
     relation.each_bfs(entity, init_rigidbody);
     relation.each_bfs(entity, init_joint);
 }
-} // namespace ash::physics
+} // namespace violet::physics

@@ -3,7 +3,7 @@
 #include "bt3_shape.hpp"
 #include "bt3_world.hpp"
 
-namespace ash::physics::bullet3
+namespace violet::physics::bullet3
 {
 
 class bt3_factory : public factory
@@ -39,13 +39,13 @@ public:
         return new bt3_joint(desc);
     }
 };
-} // namespace ash::physics::bullet3
+} // namespace violet::physics::bullet3
 
 extern "C"
 {
-    PLUGIN_API ash::core::plugin_info get_plugin_info()
+    PLUGIN_API violet::core::plugin_info get_plugin_info()
     {
-        ash::core::plugin_info info = {};
+        violet::core::plugin_info info = {};
 
         char name[] = "physics-bullet3";
         memcpy(info.name, name, sizeof(name));
@@ -56,8 +56,8 @@ extern "C"
         return info;
     }
 
-    PLUGIN_API ash::physics::factory* make_factory()
+    PLUGIN_API violet::physics::factory* make_factory()
     {
-        return new ash::physics::bullet3::bt3_factory();
+        return new violet::physics::bullet3::bt3_factory();
     }
 }

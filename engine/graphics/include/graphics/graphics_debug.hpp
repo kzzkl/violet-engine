@@ -6,16 +6,16 @@
 #include <memory>
 #include <vector>
 
-namespace ash::graphics
+namespace violet::graphics
 {
 class debug_pipeline : public render_pipeline
 {
 public:
     debug_pipeline();
 
-private:
-    virtual void on_render(const render_scene& scene, render_command_interface* command) override;
+    virtual void render(const render_context& context, render_command_interface* command) override;
 
+private:
     std::unique_ptr<render_pipeline_interface> m_interface;
 };
 
@@ -50,4 +50,4 @@ private:
 
     std::size_t m_frame_resource;
 };
-} // namespace ash::graphics
+} // namespace violet::graphics

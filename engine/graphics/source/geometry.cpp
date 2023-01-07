@@ -1,6 +1,6 @@
 #include "graphics/geometry.hpp"
 
-namespace ash::graphics
+namespace violet::graphics
 {
 geometry_data geometry::box(float x, float y, float z) noexcept
 {
@@ -147,4 +147,4 @@ geometry_data geometry::shpere(float diameter, std::size_t slice, std::size_t st
 
     return result;
 }
-} // namespace ash::graphics
+} // namespace violet::graphics

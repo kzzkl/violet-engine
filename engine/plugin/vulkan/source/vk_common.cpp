@@ -1,6 +1,6 @@
 #include "vk_common.hpp"
 
-namespace ash::graphics::vk
+namespace violet::graphics::vk
 {
 VkSampleCountFlagBits to_vk_samples(std::size_t samples)
 {
@@ -71,7 +71,7 @@ VkFormat to_vk_format(resource_format format)
     }
 }
 
-resource_format to_ash_format(VkFormat format)
+resource_format to_violet_format(VkFormat format)
 {
     switch (format)
     {
@@ -110,4 +110,4 @@ VkImageLayout to_vk_image_layout(resource_state state)
         throw vk_exception("Invalid resource state.");
     }
 }
-} // namespace ash::graphics::vk
+} // namespace violet::graphics::vk

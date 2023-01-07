@@ -5,7 +5,7 @@
 #include "ui/controls/tree.hpp"
 #include <map>
 
-namespace ash::sample
+namespace violet::sample
 {
 class gallery
 {
@@ -27,4 +27,4 @@ private:
     std::map<std::string, std::unique_ptr<page>> m_pages;
     std::map<std::string, std::unique_ptr<ui::tree_node>> m_nodes;
 };
-} // namespace ash::sample
+} // namespace violet::sample

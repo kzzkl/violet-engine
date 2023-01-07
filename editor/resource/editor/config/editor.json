@@ -1,10 +1,10 @@
 {
     "window": {
-        "title": "Ash Engine Editor",
+        "title": "Violet Engine Editor",
         "width": 2000,
         "height": 1200
     },
     "graphics": {
-        "plugin": "ash-graphics-d3d12.dll"
+        "plugin": "violet-graphics-d3d12.dll"
     }
 }

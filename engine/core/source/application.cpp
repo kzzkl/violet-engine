@@ -4,9 +4,9 @@
 #include "ecs/world.hpp"
 #include "task/task_manager.hpp"
 
-using namespace ash::task;
+using namespace violet::task;
 
-namespace ash::core
+namespace violet::core
 {
 application::application(std::string_view config_path)
 {
@@ -54,4 +54,4 @@ void application::exit()
 {
     m_exit = true;
 }
-} // namespace ash::core
+} // namespace violet::core

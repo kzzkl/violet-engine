@@ -3,7 +3,7 @@
 #include "ui/controls/label.hpp"
 #include "ui/controls/panel.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 collapse::collapse(std::string_view title, const collapse_theme& theme)
 {
@@ -68,4 +68,4 @@ bool collapse::is_open() const noexcept
 {
     return m_container->display();
 }
-} // namespace ash::ui
+} // namespace violet::ui

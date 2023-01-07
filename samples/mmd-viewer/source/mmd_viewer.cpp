@@ -8,7 +8,7 @@
 #include "scene/transform.hpp"
 #include "window/window_event.hpp"
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 mmd_viewer::mmd_viewer() : system_base("mmd_viewer")
 {
@@ -20,7 +20,7 @@ mmd_viewer::~mmd_viewer()
 
 bool mmd_viewer::initialize(const dictionary& config)
 {
-    auto& world = system<ash::ecs::world>();
+    auto& world = system<violet::ecs::world>();
     world.register_component<mmd_node>();
     world.register_component<mmd_skeleton>();
     world.register_component<mmd_morph_controler>();
@@ -30,7 +30,7 @@ bool mmd_viewer::initialize(const dictionary& config)
 
     graphics::rhi::register_pipeline_parameter_layout(
         "mmd_material",
-        material_pipeline_parameter::layout());
+        mmd_material_parameter::layout());
     graphics::rhi::register_pipeline_parameter_layout(
         "mmd_skin",
         skinning_pipeline_parameter::layout());
@@ -41,7 +41,7 @@ bool mmd_viewer::initialize(const dictionary& config)
     return true;
 }
 
-ash::ecs::entity mmd_viewer::load_mmd(
+violet::ecs::entity mmd_viewer::load_mmd(
     std::string_view name,
     std::string_view pmx,
     std::string_view vmd)
@@ -138,7 +138,7 @@ void mmd_viewer::update()
 
             auto parameter =
                 dynamic_cast<skinning_pipeline_parameter*>(skinned_mesh.parameter.get());
-            ASH_ASSERT(parameter);
+            VIOLET_ASSERT(parameter);
             parameter->bone_transform(skeleton.world);
         });
 }
@@ -161,4 +161,4 @@ void mmd_viewer::reset(ecs::entity entity)
         node.inherit_rotation = {0.0f, 0.0f, 0.0f, 1.0f};
     }
 }
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

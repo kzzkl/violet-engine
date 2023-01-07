@@ -1,9 +1,9 @@
 #include "graphics/shadow_map.hpp"
 #include "graphics/rhi.hpp"
 
-namespace ash::graphics
+namespace violet::graphics
 {
-shadow_map_pipeline_parameter::shadow_map_pipeline_parameter() : pipeline_parameter("ash_shadow")
+shadow_map_pipeline_parameter::shadow_map_pipeline_parameter() : pipeline_parameter("violet_shadow")
 {
 }
 
@@ -34,4 +34,4 @@ void shadow_map::light_view_projection(const math::float4x4& view_projection)
 {
     m_parameter->light_view_projection(view_projection);
 }
-} // namespace ash::graphics
+} // namespace violet::graphics

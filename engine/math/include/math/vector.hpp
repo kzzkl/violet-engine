@@ -3,7 +3,7 @@
 #include "simd.hpp"
 #include "type.hpp"
 
-namespace ash::math
+namespace violet::math
 {
 class vector
 {
@@ -301,4 +301,4 @@ public:
         return _mm_rsqrt_ps(v);
     }
 };
-} // namespace ash::math
+} // namespace violet::math

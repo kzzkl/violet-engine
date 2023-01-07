@@ -4,7 +4,7 @@
 #include <Windows.h>
 #include <windowsx.h>
 
-namespace ash::window
+namespace violet::window
 {
 class window_impl_win32 : public window_impl
 {
@@ -41,7 +41,7 @@ private:
     void on_window_move(int x, int y);
     void on_window_resize(std::uint32_t width, std::uint32_t height);
 
-    static constexpr auto* m_class_name = L"ash-engine";
+    static constexpr auto* m_class_name = L"violet-engine";
 
     mouse_mode_type m_mouse_mode;
     bool m_mouse_mode_change;
@@ -65,4 +65,4 @@ private:
 
     bool m_track_mouse_event_flag;
 };
-} // namespace ash::window
+} // namespace violet::window

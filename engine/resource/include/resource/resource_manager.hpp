@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-namespace ash::resource
+namespace violet::resource
 {
 struct resource_index : public index_generator<resource_index, std::size_t>
 {
@@ -21,4 +21,4 @@ public:
 private:
     // std::vector<std::unique_ptr<dispatcher>> m_managers;
 };
-} // namespace ash::resource
+} // namespace violet::resource

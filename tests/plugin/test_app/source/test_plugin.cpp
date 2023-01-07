@@ -1,8 +1,8 @@
 #include "plugin.hpp"
 #include "test_common.hpp"
 
-using namespace ash::core;
-using namespace ash::test;
+using namespace violet::core;
+using namespace violet::test;
 
 TEST_CASE("Load plugin", "[plugin]")
 {

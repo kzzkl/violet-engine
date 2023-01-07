@@ -4,7 +4,7 @@
 #include "scene/bounding_box.hpp"
 #include "scene/scene_event.hpp"
 
-namespace ash::scene
+namespace violet::scene
 {
 scene::scene() : system_base("scene")
 {
@@ -77,7 +77,7 @@ void scene::sync_local(ecs::entity root)
         auto& node_transform = world.component<transform>(entity);
         auto& node_link = world.component<core::link>(entity);
 
-        ASH_ASSERT(node_link.parent != ecs::INVALID_ENTITY);
+        VIOLET_ASSERT(node_link.parent != ecs::INVALID_ENTITY);
 
         // Update to parent matrix.
         math::float4_simd scale = math::simd::load(node_transform.scale());
@@ -247,4 +247,4 @@ void scene::on_entity_unlink(ecs::entity entity, core::link& link)
         }
     }
 }
-} // namespace ash::scene
+} // namespace violet::scene

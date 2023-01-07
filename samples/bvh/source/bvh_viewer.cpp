@@ -14,7 +14,7 @@
 #include "window/window.hpp"
 #include <random>
 
-namespace ash::sample
+namespace violet::sample
 
 {
 bvh_viewer::bvh_viewer() : core::system_base("bvh_viewer")
@@ -295,7 +295,7 @@ void bvh_viewer::add_cube(bool random)
 
     graphics::material material = {};
     material.pipeline = m_pipeline.get();
-    material.parameters = {m_cube_material->interface()};
+    material.parameter = m_cube_material->interface();
     mesh.materials.push_back(material);
     mesh.submeshes.push_back(graphics::submesh{0, 36, 0});
 
@@ -350,4 +350,4 @@ void bvh_viewer::remove_cube()
 
     m_cubes.pop_back();
 }
-} // namespace ash::sample
+} // namespace violet::sample

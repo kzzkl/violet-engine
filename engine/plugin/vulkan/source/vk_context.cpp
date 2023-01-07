@@ -7,7 +7,7 @@
 #include <iostream>
 #include <vector>
 
-namespace ash::graphics::vk
+namespace violet::graphics::vk
 {
 vk_frame_counter::vk_frame_counter() noexcept : m_frame_counter(0), m_frame_resousrce_count(0)
 {
@@ -81,7 +81,7 @@ void vk_context::on_deinitialize()
 #ifndef NODEBUG
     auto destroy_debug_func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
         vkGetInstanceProcAddr(m_instance, "vkDestroyDebugUtilsMessengerEXT"));
-    ASH_VK_ASSERT(destroy_debug_func != nullptr);
+    VIOLET_VK_ASSERT(destroy_debug_func != nullptr);
     destroy_debug_func(m_instance, m_debug_callback, nullptr);
 #endif
     vkDestroyDevice(m_device, nullptr);
@@ -128,9 +128,9 @@ void vk_context::create_instance()
     // Create vulkan instance.
     VkApplicationInfo app_info = {};
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    app_info.pApplicationName = "Ash Engine Application";
+    app_info.pApplicationName = "Violet Engine Application";
     app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    app_info.pEngineName = "Ash Engine";
+    app_info.pEngineName = "Violet Engine";
     app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     app_info.apiVersion = VK_API_VERSION_1_2;
 
@@ -140,7 +140,7 @@ void vk_context::create_instance()
 
     std::vector<const char*> extensions;
     extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-#ifdef ASH_VK_WIN32
+#ifdef VIOLET_VK_WIN32
     extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 #endif
 
@@ -174,7 +174,7 @@ void vk_context::create_instance()
 
     auto create_debug_func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
         vkGetInstanceProcAddr(m_instance, "vkCreateDebugUtilsMessengerEXT"));
-    ASH_VK_ASSERT(create_debug_func != nullptr);
+    VIOLET_VK_ASSERT(create_debug_func != nullptr);
 
     throw_if_failed(create_debug_func(m_instance, &debug_info, nullptr, &m_debug_callback));
 #endif
@@ -182,7 +182,7 @@ void vk_context::create_instance()
 
 void vk_context::create_surface(void* window_handle)
 {
-#ifdef ASH_VK_WIN32
+#ifdef VIOLET_VK_WIN32
     VkWin32SurfaceCreateInfoKHR surface_info = {};
     surface_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
     surface_info.hwnd = static_cast<HWND>(window_handle);
@@ -190,7 +190,7 @@ void vk_context::create_surface(void* window_handle)
 
     auto create_surface_func = reinterpret_cast<PFN_vkCreateWin32SurfaceKHR>(
         vkGetInstanceProcAddr(m_instance, "vkCreateWin32SurfaceKHR"));
-    ASH_VK_ASSERT(create_surface_func != nullptr);
+    VIOLET_VK_ASSERT(create_surface_func != nullptr);
     throw_if_failed(create_surface_func(m_instance, &surface_info, nullptr, &m_surface));
 #endif
 }
@@ -397,4 +397,4 @@ bool vk_context::check_device_swap_chain_support(VkPhysicalDevice device)
 
     return format_count != 0 && present_mode_count != 0;
 }
-} // namespace ash::graphics::vk
+} // namespace violet::graphics::vk

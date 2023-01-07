@@ -3,7 +3,7 @@
 #include "ui/controls/label.hpp"
 #include "ui/controls/panel.hpp"
 
-namespace ash::sample
+namespace violet::sample
 {
 class page : public ui::element
 {
@@ -24,4 +24,4 @@ private:
     std::vector<std::unique_ptr<ui::label>> m_descriptions;
     std::vector<std::unique_ptr<ui::panel>> m_display_panels;
 };
-} // namespace ash::sample
+} // namespace violet::sample

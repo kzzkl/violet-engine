@@ -4,7 +4,7 @@
 #include "scene/transform.hpp"
 #include <memory>
 
-namespace ash::physics
+namespace violet::physics
 {
 class rigidbody;
 class rigidbody_transform_reflection
@@ -53,7 +53,8 @@ public:
     void sync_world(const math::float4x4& rigidbody_transform, scene::transform& transform);
 
     template <typename T, typename... Args>
-    void reflection(Args&&... args) requires std::is_base_of_v<rigidbody_transform_reflection, T>
+    void reflection(Args&&... args)
+        requires std::is_base_of_v<rigidbody_transform_reflection, T>
     {
         m_reflection = std::make_unique<T>(std::forward<Args>(args)...);
     }
@@ -80,4 +81,4 @@ private:
     std::unique_ptr<rigidbody_transform_reflection> m_reflection;
     std::unique_ptr<rigidbody_interface> m_interface;
 };
-} // namespace ash::physics
+} // namespace violet::physics

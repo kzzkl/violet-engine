@@ -1,4 +1,4 @@
-include(${ASH_ROOT_DIR}/cmake/shader_compile.cmake)
+include(${VIOLET_ROOT_DIR}/cmake/shader_compile.cmake)
 
 add_custom_target("graphics_shader_generater" ALL)
 

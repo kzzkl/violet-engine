@@ -1,9 +1,9 @@
 #include "graphics/sky_pipeline.hpp"
 #include "graphics/rhi.hpp"
 
-namespace ash::graphics
+namespace violet::graphics
 {
-sky_pipeline_parameter::sky_pipeline_parameter() : pipeline_parameter("ash_sky")
+sky_pipeline_parameter::sky_pipeline_parameter() : pipeline_parameter("violet_sky")
 {
 }
 
@@ -30,7 +30,7 @@ sky_pipeline::sky_pipeline()
         {ATTACHMENT_REFERENCE_TYPE_RESOLVE, 0}
     };
     pass_info.primitive_topology = PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    pass_info.parameters = {"ash_camera", "ash_sky"};
+    pass_info.parameters = {"violet_camera", "violet_sky"};
     pass_info.samples = 4;
     pass_info.rasterizer.cull_mode = CULL_MODE_NONE;
     pass_info.depth_stencil.depth_functor = DEPTH_FUNCTOR_LESS_EQUAL;
@@ -78,26 +78,26 @@ sky_pipeline::sky_pipeline()
     m_interface = rhi::make_render_pipeline(pipeline_info);
 }
 
-void sky_pipeline::on_render(const render_scene& scene, render_command_interface* command)
+void sky_pipeline::render(const render_context& context, render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
-        scene.render_target,
-        scene.render_target_resolve,
-        scene.depth_stencil_buffer);
+        context.render_target,
+        context.render_target_resolve,
+        context.depth_stencil_buffer);
 
     scissor_extent extent = {};
-    auto [width, height] = scene.render_target->extent();
+    auto [width, height] = context.render_target->extent();
     extent.max_x = width;
     extent.max_y = height;
     command->scissor(&extent, 1);
 
-    command->parameter(0, scene.camera_parameter);
-    command->parameter(1, scene.sky_parameter);
+    command->parameter(0, context.camera_parameter);
+    command->parameter(1, context.sky_parameter);
 
     command->input_assembly_state(nullptr, 0, nullptr, PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
     command->draw(0, 36);
 
     command->end(m_interface.get());
 }
-} // namespace ash::graphics
+} // namespace violet::graphics

@@ -5,7 +5,7 @@ add_library(${PROJECT_NAME} SHARED
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-        ${ASH_CORE_INTERFACE_DIR})
+    ${VIOLET_CORE_INTERFACE_DIR})
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

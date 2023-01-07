@@ -1,7 +1,7 @@
 #include "vk_descriptor_pool.hpp"
 #include "vk_context.hpp"
 
-namespace ash::graphics::vk
+namespace violet::graphics::vk
 {
 vk_descriptor_pool::vk_descriptor_pool()
 {
@@ -41,4 +41,4 @@ VkDescriptorSet vk_descriptor_pool::allocate_descriptor_set(VkDescriptorSetLayou
 
     return result;
 }
-} // namespace ash::graphics::vk
+} // namespace violet::graphics::vk

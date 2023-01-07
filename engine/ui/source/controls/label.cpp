@@ -2,7 +2,7 @@
 #include "assert.hpp"
 #include "ui/font.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 label::label()
 {
@@ -21,7 +21,7 @@ label::label(std::string_view content, const label_theme& theme)
 
 void label::text(std::string_view content)
 {
-    ASH_ASSERT(!content.empty());
+    VIOLET_ASSERT(!content.empty());
 
     m_position.clear();
     m_uv.clear();
@@ -96,4 +96,4 @@ void label::text_color(std::uint32_t color)
 
     mark_dirty();
 }
-} // namespace ash::ui
+} // namespace violet::ui

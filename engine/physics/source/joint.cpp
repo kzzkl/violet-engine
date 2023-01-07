@@ -1,6 +1,6 @@
 #include "physics/joint.hpp"
 
-namespace ash::physics
+namespace violet::physics
 {
 joint::joint()
     : m_relative_a(ecs::INVALID_ENTITY),
@@ -24,7 +24,7 @@ void joint::relative_rigidbody(
     const math::float3& relative_position_b,
     const math::float4& relative_rotation_b)
 {
-    ASH_ASSERT(m_interface == nullptr);
+    VIOLET_ASSERT(m_interface == nullptr);
 
     m_relative_a = rigidbody_a;
     m_relative_position_a = relative_position_a;
@@ -76,4 +76,4 @@ void joint::stiffness(std::size_t i, float stiffness)
     if (m_interface != nullptr)
         m_interface->stiffness(i, stiffness);
 }
-} // namespace ash::physics
+} // namespace violet::physics

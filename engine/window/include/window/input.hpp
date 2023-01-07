@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-namespace ash::window
+namespace violet::window
 {
 class key_state
 {
@@ -33,7 +33,7 @@ public:
     inline key_state key(KeyType key) const noexcept
     {
         std::size_t index = static_cast<std::uint32_t>(key);
-        ASH_ASSERT(index < KeyCount);
+        VIOLET_ASSERT(index < KeyCount);
 
         return key_state(m_key_state[index]);
     }
@@ -41,7 +41,7 @@ public:
     void key_down(KeyType key) noexcept
     {
         std::size_t index = static_cast<std::uint32_t>(key);
-        ASH_ASSERT(index < KeyCount);
+        VIOLET_ASSERT(index < KeyCount);
 
         m_key_state[index] = ((m_key_state[index] << 1) & 0x2) | 0x1;
         m_update_key.push_back(key);
@@ -50,7 +50,7 @@ public:
     void key_up(KeyType key) noexcept
     {
         std::size_t index = static_cast<std::uint32_t>(key);
-        ASH_ASSERT(index < KeyCount);
+        VIOLET_ASSERT(index < KeyCount);
 
         m_key_state[index] = (m_key_state[index] << 1) & 0x2;
         m_update_key.push_back(key);
@@ -243,4 +243,4 @@ class keyboard : public key_device<keyboard_key, KEYBOARD_KEY_COUNT>
 public:
     keyboard() noexcept;
 };
-} // namespace ash::window
+} // namespace violet::window

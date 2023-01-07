@@ -1,6 +1,6 @@
 #include "ui/controls/scroll_view.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 class scroll_bar : public panel
 {
@@ -226,4 +226,4 @@ void scroll_view::update_scroll_bar(
         m_horizontal_bar->slider_size(view_width / container_width * view_width * 0.9f);
     }
 }
-} // namespace ash::ui
+} // namespace violet::ui

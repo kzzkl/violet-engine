@@ -2,7 +2,7 @@
 
 #include "bt3_common.hpp"
 
-namespace ash::physics::bullet3
+namespace violet::physics::bullet3
 {
 class bt3_world;
 class bt3_rigidbody;
@@ -45,4 +45,4 @@ private:
 
     math::float4x4 m_transform;
 };
-} // namespace ash::physics::bullet3
+} // namespace violet::physics::bullet3

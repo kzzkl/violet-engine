@@ -7,7 +7,7 @@
 #include "ui/element.hpp"
 #include <memory>
 
-namespace ash::editor
+namespace violet::editor
 {
 class editor_ui
 {
@@ -25,4 +25,4 @@ private:
     std::unique_ptr<hierarchy_view> m_hierarchy_view;
     std::unique_ptr<component_view> m_component_view;
 };
-} // namespace ash::editor
+} // namespace violet::editor

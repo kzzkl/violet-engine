@@ -3,9 +3,9 @@
 #include "core/context.hpp"
 #include "window/window_impl.hpp"
 
-namespace ash::window
+namespace violet::window
 {
-class window : public ash::core::system_base
+class window : public core::system_base
 {
 public:
     using mouse_type = mouse;
@@ -35,9 +35,9 @@ private:
 
     std::string m_title;
 
-#if defined(ASH_WINDOW_SHOW_FPS)
+#if defined(VIOLET_WINDOW_SHOW_FPS)
     float m_average_duration;
     int m_fps;
 #endif
 };
-} // namespace ash::window
+} // namespace violet::window

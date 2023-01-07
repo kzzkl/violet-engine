@@ -1,7 +1,7 @@
 #include "vmd_loader.hpp"
 #include "encode.hpp"
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 template <typename T>
 static void read(std::istream& fin, T& dest)
@@ -166,4 +166,4 @@ void vmd_loader::load_ik(std::ifstream& fin)
         m_iks.push_back(ik);
     }
 }
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

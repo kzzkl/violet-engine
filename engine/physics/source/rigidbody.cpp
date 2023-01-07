@@ -1,7 +1,7 @@
 #include "physics/rigidbody.hpp"
 #include "physics/physics.hpp"
 
-namespace ash::physics
+namespace violet::physics
 {
 void rigidbody_transform_reflection::reflect(
     const math::float4x4& rigidbody_transform,
@@ -81,4 +81,4 @@ void rigidbody::sync_world(const math::float4x4& rigidbody_transform, scene::tra
 {
     m_reflection->reflect(rigidbody_transform, *this, transform);
 }
-} // namespace ash::physics
+} // namespace violet::physics

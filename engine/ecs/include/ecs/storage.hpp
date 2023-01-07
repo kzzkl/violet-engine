@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-namespace ash::ecs
+namespace violet::ecs
 {
 static constexpr std::size_t CHUNK_SIZE = 1024 * 16;
 
@@ -36,4 +36,4 @@ public:
 private:
     std::vector<std::unique_ptr<chunk>> m_chunks;
 };
-} // namespace ash::ecs
+} // namespace violet::ecs

@@ -5,7 +5,7 @@
 #include "ui/ui.hpp"
 #include "window/window.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 static constexpr std::uint32_t CHEVRON_DOWN_INDEX = 0xEA4E;
 static constexpr std::uint32_t CHEVRON_UP_INDEX = 0xEA78;
@@ -182,4 +182,4 @@ void tree::on_select_node(tree_node* node)
             on_select(node);
     }
 }
-} // namespace ash::ui
+} // namespace violet::ui

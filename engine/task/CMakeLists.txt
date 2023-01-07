@@ -1,4 +1,4 @@
-project(ash-task)
+project(violet-task)
 
 add_library(${PROJECT_NAME} STATIC
     ./source/task_manager.cpp
@@ -6,18 +6,18 @@ add_library(${PROJECT_NAME} STATIC
     ./source/task.cpp
     ./source/thread_pool.cpp
     ./source/work_thread.cpp)
-add_library(ash::task ALIAS ${PROJECT_NAME})
+add_library(violet::task ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-        ./include)
+    ./include)
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        ash::common
-        ash::core)
+    violet::common
+    violet::core)
 
-install(DIRECTORY ./include/ DESTINATION include/ash/task)
+install(DIRECTORY ./include/ DESTINATION include/violet/task)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

@@ -4,7 +4,7 @@
 #include "vk_pipeline.hpp"
 #include "vk_resource.hpp"
 
-namespace ash::graphics::vk
+namespace violet::graphics::vk
 {
 class vk_swap_chain
 {
@@ -58,4 +58,4 @@ public:
 
     virtual void resize(std::uint32_t width, std::uint32_t height) override;
 };
-} // namespace ash::graphics::vk
+} // namespace violet::graphics::vk

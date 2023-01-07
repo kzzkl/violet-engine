@@ -7,9 +7,9 @@
 #include "scene/transform.hpp"
 #include <memory>
 
-namespace ash::scene
+namespace violet::scene
 {
-class scene : public ash::core::system_base
+class scene : public core::system_base
 {
 public:
     scene();
@@ -34,9 +34,9 @@ private:
     void on_entity_link(ecs::entity entity, core::link& link);
     void on_entity_unlink(ecs::entity entity, core::link& link);
 
-    ash::ecs::entity m_root;
+    ecs::entity m_root;
 
     bvh_tree m_static_bvh;
     bvh_tree m_dynamic_bvh;
 };
-} // namespace ash::scene
+} // namespace violet::scene

@@ -3,7 +3,7 @@
 #include "window/input.hpp"
 #include <string_view>
 
-namespace ash::window
+namespace violet::window
 {
 struct window_extent
 {
@@ -96,4 +96,4 @@ public:
 protected:
     std::vector<window_message> m_messages;
 };
-} // namespace ash::window
+} // namespace violet::window

@@ -3,7 +3,7 @@
 #include "type.hpp"
 #include <immintrin.h>
 
-namespace ash::math
+namespace violet::math
 {
 using int4_simd = __m128i;
 using float4_simd = __m128;
@@ -204,10 +204,7 @@ public:
         return _mm_movelh_ps(t1, t3);
     }
 
-    [[nodiscard]] static inline float4_simd load(const float4& v)
-    {
-        return _mm_loadu_ps(&v[0]);
-    }
+    [[nodiscard]] static inline float4_simd load(const float4& v) { return _mm_loadu_ps(&v[0]); }
 
     [[nodiscard]] static inline float4_simd load(const float4_align& v)
     {
@@ -282,4 +279,4 @@ public:
         _mm_store_ps(&destination[3][0], source[3]);
     }
 };
-} // namespace ash::math
+} // namespace violet::math

@@ -1,8 +1,8 @@
 #include "test_common.hpp"
 
-using namespace ash::math;
+using namespace violet::math;
 
-namespace ash::test
+namespace violet::test
 {
 TEST_CASE("matrix::mul", "[matrix]")
 {
@@ -615,4 +615,4 @@ TEST_CASE("matrix_simd::orthographic", "[matrix]")
             math::float4{0.111111112f, -0.777777791f, 0.333333343f, 1.0f}
     }));
 }
-} // namespace ash::test
+} // namespace violet::test

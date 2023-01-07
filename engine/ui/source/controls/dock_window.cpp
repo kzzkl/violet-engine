@@ -6,7 +6,7 @@
 #include "ui/controls/scroll_view.hpp"
 #include "window/window.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 dock_window::dock_window(std::string_view title, dock_area* area, const dock_window_theme& theme)
     : dock_element(area),
@@ -180,4 +180,4 @@ layout_edge dock_window::in_edge(element* element, int x, int y)
     else
         return LAYOUT_EDGE_ALL;
 }
-} // namespace ash::ui
+} // namespace violet::ui

@@ -7,26 +7,26 @@
 #include "scene/scene.hpp"
 #include "window/window.hpp"
 
-using namespace ash::core;
-using namespace ash::graphics;
-using namespace ash::window;
-using namespace ash::ecs;
-using namespace ash::scene;
-using namespace ash::physics;
+using namespace violet::core;
+using namespace violet::graphics;
+using namespace violet::window;
+using namespace violet::ecs;
+using namespace violet::scene;
+using namespace violet::physics;
 
-namespace ash::sample::physics
+namespace violet::sample::physics
 {
 class test_module : public system_base
 {
 public:
     test_module(application* app) : system_base("test_module") {}
 
-    virtual bool initialize(const ash::dictionary& config) override
+    virtual bool initialize(const violet::dictionary& config) override
     {
-        auto& world = system<ash::ecs::world>();
-        auto& graphics = system<ash::graphics::graphics>();
-        auto& scene = system<ash::scene::scene>();
-        auto& relation = system<ash::core::relation>();
+        auto& world = system<violet::ecs::world>();
+        auto& graphics = system<violet::graphics::graphics>();
+        auto& scene = system<violet::scene::scene>();
+        auto& relation = system<violet::core::relation>();
 
         // Create rigidbody shape.
         collision_shape_desc desc;
@@ -34,13 +34,13 @@ public:
         desc.box.length = 1.0f;
         desc.box.height = 1.0f;
         desc.box.width = 1.0f;
-        m_cube_shape = system<ash::physics::physics>().make_shape(desc);
+        m_cube_shape = system<violet::physics::physics>().make_shape(desc);
 
         desc.type = collision_shape_type::BOX;
         desc.box.length = 10.0f;
         desc.box.height = 0.05f;
         desc.box.width = 10.0f;
-        m_plane_shape = system<ash::physics::physics>().make_shape(desc);
+        m_plane_shape = system<violet::physics::physics>().make_shape(desc);
 
         geometry_data cube_data = geometry::box(1.0f, 1.0f, 1.0f);
         m_cube_vertex_buffer =
@@ -67,7 +67,7 @@ public:
             r.relation = m_cube_1;
 
             auto& v = world.component<mesh_render>(m_cube_1);
-            m_cube_object.emplace_back(graphics.make_render_parameter("ash_object"));
+            m_cube_object.emplace_back(graphics.make_render_parameter("violet_object"));
             v.object = m_cube_object.back().get();
 
             render_unit submesh;
@@ -97,7 +97,7 @@ public:
             r.relation = m_cube_2;
 
             auto& v = world.component<mesh_render>(m_cube_2);
-            m_cube_object.emplace_back(graphics.make_render_parameter("ash_object"));
+            m_cube_object.emplace_back(graphics.make_render_parameter("violet_object"));
             v.object = m_cube_object.back().get();
 
             render_unit submesh;
@@ -137,7 +137,7 @@ public:
 private:
     void initialize_task()
     {
-        auto& task = system<ash::task::task_manager>();
+        auto& task = system<violet::task::task_manager>();
 
         auto window_task = task.schedule(
             "window tick",
@@ -156,16 +156,16 @@ private:
 
     void initialize_camera()
     {
-        auto& world = system<ash::ecs::world>();
-        auto& scene = system<ash::scene::scene>();
-        auto& relation = system<ash::core::relation>();
-        auto& graphics = system<ash::graphics::graphics>();
+        auto& world = system<violet::ecs::world>();
+        auto& scene = system<violet::scene::scene>();
+        auto& relation = system<violet::core::relation>();
+        auto& graphics = system<violet::graphics::graphics>();
 
         m_camera = world.create();
         world.add<link, main_camera, camera, transform>(m_camera);
         auto& c_camera = world.component<camera>(m_camera);
         c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
-        c_camera.parameter = graphics.make_render_parameter("ash_camera");
+        c_camera.parameter = graphics.make_render_parameter("violet_camera");
 
         auto& c_transform = world.component<transform>(m_camera);
         c_transform.position = {0.0f, 0.0f, -38.0f};
@@ -182,17 +182,17 @@ private:
         auto& scene = system<scene::scene>();
         scene.reset_sync_counter();
 
-        float delta = system<ash::core::timer>().frame_delta();
+        float delta = system<violet::core::timer>().frame_delta();
         update_camera(delta);
         update_actor(delta);
 
-        system<ash::physics::physics>().simulation();
+        system<violet::physics::physics>().simulation();
     }
 
     void update_actor(float delta)
     {
-        auto& world = system<ash::ecs::world>();
-        auto& keyboard = system<ash::window::window>().keyboard();
+        auto& world = system<violet::ecs::world>();
+        auto& keyboard = system<violet::window::window>().keyboard();
 
         float move = 0.0f;
         if (keyboard.key(keyboard_key::KEY_E).down())
@@ -210,9 +210,9 @@ private:
 
     void update_camera(float delta)
     {
-        auto& world = system<ash::ecs::world>();
-        auto& keyboard = system<ash::window::window>().keyboard();
-        auto& mouse = system<ash::window::window>().mouse();
+        auto& world = system<violet::ecs::world>();
+        auto& keyboard = system<violet::window::window>().keyboard();
+        auto& mouse = system<violet::window::window>().mouse();
 
         if (keyboard.key(keyboard_key::KEY_1).release())
         {
@@ -241,8 +241,7 @@ private:
             m_heading += mouse.x() * m_rotate_speed * delta;
             m_pitch += mouse.y() * m_rotate_speed * delta;
             m_pitch = std::clamp(m_pitch, -math::PI_PIDIV2, math::PI_PIDIV2);
-            camera_transform.rotation =
-                math::quaternion::rotation_euler(m_heading, m_pitch, 0.0f);
+            camera_transform.rotation = math::quaternion::rotation_euler(m_heading, m_pitch, 0.0f);
         }
 
         float x = 0, z = 0;
@@ -287,17 +286,17 @@ private:
     float m_rotate_speed = 0.2f;
     float m_move_speed = 7.0f;
 };
-} // namespace ash::sample::physics
+} // namespace violet::sample::physics
 
 int main()
 {
     application app;
     app.install<window>();
-    app.install<ash::core::relation>();
+    app.install<violet::core::relation>();
     app.install<scene>();
     app.install<graphics>();
     app.install<physics>();
-    app.install<ash::sample::physics::test_module>(&app);
+    app.install<violet::sample::physics::test_module>(&app);
 
     app.run();
 

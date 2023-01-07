@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-namespace ash::ecs
+namespace violet::ecs
 {
 struct entity
 {
@@ -72,39 +72,39 @@ public:
 
     [[nodiscard]] entity_info& at(entity entity) noexcept
     {
-        ASH_ASSERT(vaild(entity));
+        VIOLET_ASSERT(vaild(entity));
         return m_registry.at(entity.index);
     }
 
     [[nodiscard]] const entity_info& at(entity entity) const noexcept
     {
-        ASH_ASSERT(vaild(entity));
+        VIOLET_ASSERT(vaild(entity));
         return m_registry.at(entity.index);
     }
 
     [[nodiscard]] entity_info& operator[](entity entity) noexcept
     {
-        ASH_ASSERT(vaild(entity));
+        VIOLET_ASSERT(vaild(entity));
         return m_registry[entity.index];
     }
 
     [[nodiscard]] const entity_info& operator[](entity entity) const noexcept
     {
-        ASH_ASSERT(vaild(entity));
+        VIOLET_ASSERT(vaild(entity));
         return m_registry[entity.index];
     }
 
 private:
     std::vector<entity_info> m_registry;
 };
-} // namespace ash::ecs
+} // namespace violet::ecs
 
 namespace std
 {
 template <>
-struct hash<ash::ecs::entity>
+struct hash<violet::ecs::entity>
 {
-    [[nodiscard]] std::size_t operator()(const ash::ecs::entity entity) const
+    [[nodiscard]] std::size_t operator()(const violet::ecs::entity entity) const
     {
         std::size_t hash = entity.index;
         hash ^= entity.version + 0x9e3779b9 + (hash << 6) + (hash >> 2);

@@ -4,7 +4,7 @@
 
 #ifdef WIN32
 #    include <Windows.h>
-#    define ASH_VK_WIN32
+#    define VIOLET_VK_WIN32
 #    define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
@@ -12,12 +12,12 @@
 
 #ifndef NDEBUG
 #    include <cassert>
-#    define ASH_VK_ASSERT(condition, ...) assert(condition)
+#    define VIOLET_VK_ASSERT(condition, ...) assert(condition)
 #else
-#    define ASH_VK_ASSERT(condition, ...)
+#    define VIOLET_VK_ASSERT(condition, ...)
 #endif
 
-namespace ash::graphics::vk
+namespace violet::graphics::vk
 {
 class vk_exception : public std::runtime_error
 {
@@ -53,7 +53,7 @@ VkAttachmentLoadOp to_vk_attachment_load_op(attachment_load_op op);
 VkAttachmentStoreOp to_vk_attachment_store_op(attachment_store_op op);
 
 VkFormat to_vk_format(resource_format format);
-resource_format to_ash_format(VkFormat format);
+resource_format to_violet_format(VkFormat format);
 
 VkImageLayout to_vk_image_layout(resource_state state);
-} // namespace ash::graphics::vk
+} // namespace violet::graphics::vk

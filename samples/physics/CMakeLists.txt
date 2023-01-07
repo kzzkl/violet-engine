@@ -9,13 +9,13 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        ash::ecs
-        ash::core
-        ash::window
-        ash::graphics
-        ash::math
-        ash::scene
-        ash::physics)
+        violet::ecs
+        violet::core
+        violet::window
+        violet::graphics
+        violet::math
+        violet::scene
+        violet::physics)
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource DESTINATION bin)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/config DESTINATION bin)

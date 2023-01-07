@@ -5,7 +5,7 @@
 #include <stack>
 #include <unordered_map>
 
-namespace ash::ui
+namespace violet::ui
 {
 struct render_batch
 {
@@ -56,4 +56,4 @@ private:
     std::size_t m_batch_pool_index;
     std::vector<std::unique_ptr<render_batch>> m_batch_pool;
 };
-} // namespace ash::ui
+} // namespace violet::ui

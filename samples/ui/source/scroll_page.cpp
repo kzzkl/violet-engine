@@ -1,7 +1,7 @@
 #include "scroll_page.hpp"
 #include "ui/ui.hpp"
 
-namespace ash::sample
+namespace violet::sample
 {
 scroll_page::scroll_page() : page("Scroll")
 {
@@ -46,4 +46,4 @@ void scroll_page::initialize_sample_scroll()
         m_panels.push_back(std::move(panel));
     }
 }
-} // namespace ash::sample
+} // namespace violet::sample

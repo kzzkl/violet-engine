@@ -2,9 +2,9 @@
 #include "graphics/mesh_render.hpp"
 #include "graphics/rhi.hpp"
 
-namespace ash::graphics
+namespace violet::graphics
 {
-camera_pipeline_parameter::camera_pipeline_parameter() : pipeline_parameter("ash_camera")
+camera_pipeline_parameter::camera_pipeline_parameter() : pipeline_parameter("violet_camera")
 {
 }
 
@@ -144,4 +144,4 @@ void camera::update_projection() noexcept
     if (m_flip_y)
         m_projection[1][1] *= -1.0f;
 }
-} // namespace ash::graphics
+} // namespace violet::graphics

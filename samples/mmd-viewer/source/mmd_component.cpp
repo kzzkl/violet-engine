@@ -3,7 +3,7 @@
 #include "graphics/mesh_render.hpp"
 #include "scene/transform.hpp"
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 void mmd_morph_controler::group_morph::evaluate(float weight, ecs::entity entity)
 {
@@ -81,4 +81,4 @@ void mmd_morph_controler::material_morph::evaluate(float weight, ecs::entity ent
         }
     }
 }
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

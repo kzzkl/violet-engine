@@ -3,7 +3,7 @@
 #include "d3d12_common.hpp"
 #include "d3d12_resource.hpp"
 
-namespace ash::graphics::d3d12
+namespace violet::graphics::d3d12
 {
 class d3d12_swap_chain
 {
@@ -46,4 +46,4 @@ public:
 
     virtual void resize(std::uint32_t width, std::uint32_t height) override;
 };
-} // namespace ash::graphics::d3d12
+} // namespace violet::graphics::d3d12

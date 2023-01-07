@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace ash::core
+namespace violet::core
 {
 struct event_index : public index_generator<event_index, std::size_t>
 {
@@ -96,7 +96,7 @@ public:
         if (m_dispatchers.size() <= index)
             m_dispatchers.resize(index + 1);
 
-        ASH_ASSERT(m_dispatchers[index] == nullptr);
+        VIOLET_ASSERT(m_dispatchers[index] == nullptr);
 
         m_dispatchers[index] =
             std::make_unique<event_dispatcher_t<Event>>(std::forward<Args>(args)...);
@@ -120,4 +120,4 @@ private:
 
     std::vector<std::unique_ptr<dispatcher>> m_dispatchers;
 };
-} // namespace ash::core
+} // namespace violet::core

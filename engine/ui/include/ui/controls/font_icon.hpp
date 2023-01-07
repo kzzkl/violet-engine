@@ -3,7 +3,7 @@
 #include "ui/color.hpp"
 #include "ui/element.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 class font;
 
@@ -42,4 +42,4 @@ private:
 
     element_mesh m_mesh;
 };
-} // namespace ash::ui
+} // namespace violet::ui

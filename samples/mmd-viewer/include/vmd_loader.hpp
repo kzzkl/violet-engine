@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 struct vmd_header
 {
@@ -95,4 +95,4 @@ private:
     std::vector<vmd_shadow> m_shadows;
     std::vector<vmd_ik> m_iks;
 };
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

@@ -1,12 +1,12 @@
 {
     "graphics": {
-        "plugin": "ash-graphics-d3d12.dll",
+        "plugin": "violet-graphics-d3d12.dll",
         "render_concurrency": 4,
         "frame_resource": 3,
         "samples": 4
     },
     "window": {
-        "title": "ash app",
+        "title": "violet app",
         "width": 700,
         "height": 400
     },

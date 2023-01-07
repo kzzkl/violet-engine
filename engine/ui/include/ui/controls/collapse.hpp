@@ -2,7 +2,7 @@
 
 #include "ui/element.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 class font;
 class font_icon;
@@ -43,4 +43,4 @@ private:
 
     std::unique_ptr<panel> m_container;
 };
-} // namespace ash::ui
+} // namespace violet::ui

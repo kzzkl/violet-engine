@@ -3,7 +3,7 @@
 #include "page.hpp"
 #include "ui/controls/button.hpp"
 
-namespace ash::sample
+namespace violet::sample
 {
 class button_page : public page
 {
@@ -20,4 +20,4 @@ private:
     std::unique_ptr<ui::icon_button> m_icon_button;
     std::unique_ptr<ui::label> m_icon_button_text;
 };
-} // namespace ash::sample
+} // namespace violet::sample

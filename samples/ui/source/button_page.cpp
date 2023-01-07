@@ -2,7 +2,7 @@
 #include "ui/ui.hpp"
 #include <format>
 
-namespace ash::sample
+namespace violet::sample
 {
 button_page::button_page() : page("Button"), m_click_counter(0)
 {
@@ -54,4 +54,4 @@ void button_page::initialize_sample_button()
     m_icon_button_text->margin(50.0f, ui::LAYOUT_EDGE_LEFT);
     display_2->add(m_icon_button_text.get());
 }
-} // namespace ash::sample
+} // namespace violet::sample

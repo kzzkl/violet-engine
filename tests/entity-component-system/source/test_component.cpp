@@ -1,9 +1,9 @@
 #include "ecs/component.hpp"
 #include "test_common.hpp"
 
-using namespace ash::ecs;
+using namespace violet::ecs;
 
-namespace ash::test
+namespace violet::test
 {
 TEST_CASE("get type id", "[component_index]")
 {
@@ -18,4 +18,4 @@ TEST_CASE("get type id", "[component_index]")
     CHECK(type1 != type3);
     CHECK(type1 == type4);
 }
-} // namespace ash::test
+} // namespace violet::test

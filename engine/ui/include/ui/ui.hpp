@@ -7,7 +7,7 @@
 #include "ui/renderer.hpp"
 #include "ui/theme.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 class element_tree;
 class mvp_pipeline_parameter;
@@ -55,9 +55,6 @@ private:
     std::vector<std::unique_ptr<graphics::resource_interface>> m_vertex_buffers;
     std::unique_ptr<graphics::resource_interface> m_index_buffer;
 
-    std::unique_ptr<mvp_pipeline_parameter> m_mvp_parameter;
-    std::unique_ptr<offset_pipeline_parameter> m_offset_parameter;
-
     std::size_t m_material_parameter_counter;
     std::vector<std::unique_ptr<material_pipeline_parameter>> m_material_parameter_pool;
 
@@ -71,4 +68,4 @@ private:
 
     renderer m_renderer;
 };
-}; // namespace ash::ui
+}; // namespace violet::ui

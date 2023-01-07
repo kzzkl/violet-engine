@@ -2,12 +2,12 @@
 
 #include "core/context.hpp"
 
-namespace ash::core
+namespace violet::core
 {
 class application
 {
 public:
-    application(std::string_view config_path = "resource/config");
+    application(std::string_view config_path = "");
     application(const application&) = delete;
 
     template <derived_from_system T, typename... Args>
@@ -24,4 +24,4 @@ public:
 private:
     std::atomic<bool> m_exit;
 };
-} // namespace ash::core
+} // namespace violet::core

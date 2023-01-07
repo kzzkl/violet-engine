@@ -1,6 +1,6 @@
-#include "ash_mvp.hlsl"
+#include "violet_mvp.hlsl"
 
-ConstantBuffer<ash_camera> camera : register(b0, space0);
+ConstantBuffer<violet_camera> camera : register(b0, space0);
 
 TextureCube sky_texture : register(t0, space1);
 SamplerState sky_sampler : register(s2);

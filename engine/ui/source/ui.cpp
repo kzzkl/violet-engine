@@ -12,7 +12,7 @@
 #include "window/window.hpp"
 #include "window/window_event.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 static constexpr std::size_t MAX_UI_VERTEX_COUNT = 4096 * 16;
 static constexpr std::size_t MAX_UI_INDEX_COUNT = MAX_UI_VERTEX_COUNT * 2;
@@ -31,18 +31,16 @@ bool ui::initialize(const dictionary& config)
 
     // Register ui pipeline parameter layout.
     graphics::rhi::register_pipeline_parameter_layout(
-        "ash_ui_mvp",
+        "violet_ui_mvp",
         mvp_pipeline_parameter::layout());
     graphics::rhi::register_pipeline_parameter_layout(
-        "ash_ui_offset",
+        "violet_ui_offset",
         offset_pipeline_parameter::layout());
     graphics::rhi::register_pipeline_parameter_layout(
-        "ash_ui_material",
+        "violet_ui_material",
         material_pipeline_parameter::layout());
 
     m_pipeline = std::make_unique<ui_pipeline>();
-    m_mvp_parameter = std::make_unique<mvp_pipeline_parameter>();
-    m_offset_parameter = std::make_unique<offset_pipeline_parameter>();
 
     m_tree = std::make_unique<element_tree>();
 
@@ -119,7 +117,7 @@ void ui::tick()
         return;
 
     m_renderer.draw(m_tree.get());
-    m_offset_parameter->offset(m_renderer.offset());
+    m_pipeline->set_offset(m_renderer.offset());
 
     auto& mesh_render = world.component<graphics::mesh_render>(m_entity);
     mesh_render.submeshes.clear();
@@ -164,10 +162,7 @@ void ui::tick()
 
         graphics::material material = {};
         material.pipeline = m_pipeline.get();
-        material.parameters = {
-            material_parameter->interface(),
-            m_offset_parameter->interface(),
-            m_mvp_parameter->interface()};
+        material.parameter = material_parameter->interface();
         material.scissor = graphics::scissor_extent{
             .min_x = static_cast<std::uint32_t>(batch->scissor.x),
             .min_y = static_cast<std::uint32_t>(batch->scissor.y),
@@ -314,7 +309,7 @@ void ui::resize(std::uint32_t width, std::uint32_t height)
         0.0f,
         0.0f,
         1.0f);
-    m_mvp_parameter->mvp_matrix(orthographic);
+    m_pipeline->set_mvp_matrix(orthographic);
     m_tree->width(width);
     m_tree->height(height);
 }
@@ -329,4 +324,4 @@ material_pipeline_parameter* ui::allocate_material_parameter()
 
     return result;
 }
-} // namespace ash::ui
+} // namespace violet::ui

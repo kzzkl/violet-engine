@@ -1,7 +1,7 @@
 #include "d3d12_utility.hpp"
 #include <windows.h>
 
-namespace ash::graphics::d3d12
+namespace violet::graphics::d3d12
 {
 std::wstring string_to_wstring(std::string_view str)
 {
@@ -32,4 +32,4 @@ std::string wstring_to_string(std::wstring_view str)
 
     return buffer;
 }
-} // namespace ash::graphics::d3d12
+} // namespace violet::graphics::d3d12

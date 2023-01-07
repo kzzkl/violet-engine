@@ -6,7 +6,7 @@
 #include "ui/controls/dock_window.hpp"
 #include "ui/ui.hpp"
 
-namespace ash::editor
+namespace violet::editor
 {
 class component_panel : public ui::collapse
 {
@@ -49,4 +49,4 @@ private:
     std::vector<component_panel*> m_current_panels;
     std::vector<std::unique_ptr<component_panel>> m_component_panels;
 };
-} // namespace ash::editor
+} // namespace violet::editor

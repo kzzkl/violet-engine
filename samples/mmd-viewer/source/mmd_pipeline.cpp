@@ -2,75 +2,74 @@
 #include "assert.hpp"
 #include "graphics/rhi.hpp"
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
-material_pipeline_parameter::material_pipeline_parameter()
-    : graphics::pipeline_parameter("mmd_material")
+mmd_material_parameter::mmd_material_parameter() : graphics::pipeline_parameter("mmd_material")
 {
 }
 
-void material_pipeline_parameter::diffuse(const math::float4& diffuse)
+void mmd_material_parameter::diffuse(const math::float4& diffuse)
 {
     field<constant_data>(0).diffuse = diffuse;
     m_data.diffuse = diffuse;
 }
 
-void material_pipeline_parameter::specular(const math::float3& specular)
+void mmd_material_parameter::specular(const math::float3& specular)
 {
     field<constant_data>(0).specular = specular;
     m_data.specular = specular;
 }
 
-void material_pipeline_parameter::specular_strength(float specular_strength)
+void mmd_material_parameter::specular_strength(float specular_strength)
 {
     field<constant_data>(0).specular_strength = specular_strength;
     m_data.specular_strength = specular_strength;
 }
 
-void material_pipeline_parameter::edge_color(const math::float4& edge_color)
+void mmd_material_parameter::edge_color(const math::float4& edge_color)
 {
     field<constant_data>(0).edge_color = edge_color;
     m_data.edge_color = edge_color;
 }
 
-void material_pipeline_parameter::edge_size(float edge_size)
+void mmd_material_parameter::edge_size(float edge_size)
 {
     field<constant_data>(0).edge_size = edge_size;
     m_data.edge_size = edge_size;
 }
 
-void material_pipeline_parameter::toon_mode(std::uint32_t toon_mode)
+void mmd_material_parameter::toon_mode(std::uint32_t toon_mode)
 {
     field<constant_data>(0).toon_mode = toon_mode;
     m_data.toon_mode = toon_mode;
 }
 
-void material_pipeline_parameter::spa_mode(std::uint32_t spa_mode)
+void mmd_material_parameter::spa_mode(std::uint32_t spa_mode)
 {
     field<constant_data>(0).spa_mode = spa_mode;
     m_data.spa_mode = spa_mode;
 }
 
-void material_pipeline_parameter::tex(graphics::resource_interface* tex)
+void mmd_material_parameter::tex(graphics::resource_interface* tex)
 {
     interface()->set(1, tex);
 }
 
-void material_pipeline_parameter::toon(graphics::resource_interface* toon)
+void mmd_material_parameter::toon(graphics::resource_interface* toon)
 {
     interface()->set(2, toon);
 }
 
-void material_pipeline_parameter::spa(graphics::resource_interface* spa)
+void mmd_material_parameter::spa(graphics::resource_interface* spa)
 {
     interface()->set(3, spa);
 }
 
-std::vector<graphics::pipeline_parameter_pair> material_pipeline_parameter::layout()
+std::vector<graphics::pipeline_parameter_pair> mmd_material_parameter::layout()
 {
     return {
         {graphics::PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER,
-         sizeof(material_pipeline_parameter::constant_data)  }, // constant
+         sizeof(mmd_material_parameter::constant_data)       }, // constant
         {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1}, // tex
         {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1}, // toon
         {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1}  // spa
@@ -94,7 +93,7 @@ mmd_render_pipeline::mmd_render_pipeline()
         {graphics::ATTACHMENT_REFERENCE_TYPE_UNUSE, 0}
     };
     color_pass_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    color_pass_info.parameters = {"ash_object", "mmd_material", "ash_camera", "ash_light"};
+    color_pass_info.parameters = {"violet_object", "mmd_material", "violet_camera", "violet_light"};
     color_pass_info.samples = 4;
 
     // Edge pass.
@@ -112,7 +111,7 @@ mmd_render_pipeline::mmd_render_pipeline()
         {graphics::ATTACHMENT_REFERENCE_TYPE_RESOLVE, 0}
     };
     edge_pass_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    edge_pass_info.parameters = {"ash_object", "mmd_material", "ash_camera"};
+    edge_pass_info.parameters = {"violet_object", "mmd_material", "violet_camera"};
     edge_pass_info.samples = 4;
     edge_pass_info.rasterizer.cull_mode = graphics::CULL_MODE_FRONT;
     edge_pass_info.depth_stencil.depth_functor = graphics::DEPTH_FUNCTOR_LESS;
@@ -161,29 +160,29 @@ mmd_render_pipeline::mmd_render_pipeline()
     m_interface = graphics::rhi::make_render_pipeline(mmd_pipeline_info);
 }
 
-void mmd_render_pipeline::on_render(
-    const graphics::render_scene& scene,
+void mmd_render_pipeline::render(
+    const graphics::render_context& context,
     graphics::render_command_interface* command)
 {
     command->begin(
         m_interface.get(),
-        scene.render_target,
-        scene.render_target_resolve,
-        scene.depth_stencil_buffer);
+        context.render_target,
+        context.render_target_resolve,
+        context.depth_stencil_buffer);
 
     graphics::scissor_extent rect = {};
-    auto [width, height] = scene.render_target->extent();
+    auto [width, height] = context.render_target->extent();
     rect.max_x = width;
     rect.max_y = height;
     command->scissor(&rect, 1);
 
     // Color pass.
-    command->parameter(2, scene.camera_parameter);
-    command->parameter(3, scene.light_parameter);
-    for (auto& item : scene.items)
+    command->parameter(2, context.camera_parameter);
+    command->parameter(3, context.light_parameter);
+    for (auto& item : context.items)
     {
         command->parameter(0, item.object_parameter);
-        command->parameter(1, item.additional_parameters[0]);
+        command->parameter(1, item.material_parameter);
 
         graphics::resource_interface* vertex_buffers[] = {
             item.vertex_buffers[0],
@@ -196,11 +195,11 @@ void mmd_render_pipeline::on_render(
     command->next_pass(m_interface.get());
 
     // Edge pass.
-    command->parameter(2, scene.camera_parameter);
-    for (auto& item : scene.items)
+    command->parameter(2, context.camera_parameter);
+    for (auto& item : context.items)
     {
         command->parameter(0, item.object_parameter);
-        command->parameter(1, item.additional_parameters[0]);
+        command->parameter(1, item.material_parameter);
 
         graphics::resource_interface* vertex_buffers[] = {
             item.vertex_buffers[0],
@@ -213,14 +212,15 @@ void mmd_render_pipeline::on_render(
     command->end(m_interface.get());
 }
 
-skinning_pipeline_parameter::skinning_pipeline_parameter() : graphics::pipeline_parameter("mmd_skin")
+skinning_pipeline_parameter::skinning_pipeline_parameter()
+    : graphics::pipeline_parameter("mmd_skin")
 {
 }
 
 void skinning_pipeline_parameter::bone_transform(const std::vector<math::float4x4>& bone_transform)
 {
     auto& constant = field<constant_data>(0);
-    ASH_ASSERT(bone_transform.size() <= constant.bone_transform.size());
+    VIOLET_ASSERT(bone_transform.size() <= constant.bone_transform.size());
 
     for (std::size_t i = 0; i < bone_transform.size(); ++i)
     {
@@ -329,4 +329,4 @@ void mmd_skinning_pipeline::on_skinning(
 
     command->end(m_interface.get());
 }
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

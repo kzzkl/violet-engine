@@ -5,7 +5,7 @@
 #include "graphics/blinn_phong_pipeline.hpp"
 #include "graphics/geometry.hpp"
 
-namespace ash::sample
+namespace violet::sample
 {
 class light_viewer : public core::system_base
 {
@@ -50,4 +50,4 @@ private:
     std::unique_ptr<graphics::blinn_phong_material_pipeline_parameter> m_material;
     std::unique_ptr<graphics::blinn_phong_pipeline> m_pipeline;
 };
-} // namespace ash::sample
+} // namespace violet::sample

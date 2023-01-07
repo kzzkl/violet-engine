@@ -1,4 +1,4 @@
-project(ash-graphics-d3d12)
+project(violet-graphics-d3d12)
 
 add_library(${PROJECT_NAME} SHARED
     ./source/d3d12_command.cpp
@@ -16,21 +16,21 @@ add_library(${PROJECT_NAME} SHARED
 
 set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "")
 
-set(STB_IMAGE_INCLUDE ${ASH_THIRD_PARTY_DIR}/stb)
+set(STB_IMAGE_INCLUDE ${VIOLET_THIRD_PARTY_DIR}/stb)
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-        ./include
-        ${ASH_CORE_INTERFACE_DIR}
-        ${ASH_GRAPHICS_INTERFACE_DIR}
-        ${STB_IMAGE_INCLUDE})
+    ./include
+    ${VIOLET_CORE_INTERFACE_DIR}
+    ${VIOLET_GRAPHICS_INTERFACE_DIR}
+    ${STB_IMAGE_INCLUDE})
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        d3d12
-        dxgi
-        dxguid
-        d3dcompiler
-        ash::math)
+    d3d12
+    dxgi
+    dxguid
+    d3dcompiler
+    violet::math)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

@@ -3,7 +3,7 @@
 #include "vk_renderer.hpp"
 #include "vk_resource.hpp"
 
-namespace ash::graphics::vk
+namespace violet::graphics::vk
 {
 class vk_factory : public factory_interface
 {
@@ -70,13 +70,13 @@ public:
         return new vk_depth_stencil_buffer(desc);
     }
 };
-} // namespace ash::graphics::vk
+} // namespace violet::graphics::vk
 
 extern "C"
 {
-    PLUGIN_API ash::core::plugin_info get_plugin_info()
+    PLUGIN_API violet::core::plugin_info get_plugin_info()
     {
-        ash::core::plugin_info info = {};
+        violet::core::plugin_info info = {};
 
         char name[] = "graphics-vulkan";
         memcpy(info.name, name, sizeof(name));
@@ -87,8 +87,8 @@ extern "C"
         return info;
     }
 
-    PLUGIN_API ash::graphics::factory_interface* make_factory()
+    PLUGIN_API violet::graphics::factory_interface* make_factory()
     {
-        return new ash::graphics::vk::vk_factory();
+        return new violet::graphics::vk::vk_factory();
     }
 }

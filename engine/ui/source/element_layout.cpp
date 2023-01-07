@@ -2,7 +2,7 @@
 #include "assert.hpp"
 #include <yoga/Yoga.h>
 
-namespace ash::ui
+namespace violet::ui
 {
 class layout_node_impl_yoga : public layout_node_impl
 {
@@ -224,7 +224,7 @@ public:
     virtual void remove_child(layout_node_impl* child) override
     {
         auto yoga_child = static_cast<layout_node_impl_yoga*>(child);
-        ASH_ASSERT(YGNodeGetParent(yoga_child->m_node) == m_node);
+        VIOLET_ASSERT(YGNodeGetParent(yoga_child->m_node) == m_node);
         YGNodeRemoveChild(m_node, yoga_child->m_node);
     }
 
@@ -283,4 +283,4 @@ element_layout::element_layout(bool is_root)
     : m_impl(std::make_unique<layout_node_impl_yoga>(is_root))
 {
 }
-} // namespace ash::ui
+} // namespace violet::ui

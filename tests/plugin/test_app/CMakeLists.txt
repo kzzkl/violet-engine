@@ -11,7 +11,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        ash::core
+        violet::core
         Catch2::Catch2)
 
 install(TARGETS ${PROJECT_NAME}

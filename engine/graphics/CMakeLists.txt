@@ -1,4 +1,4 @@
-project(ash-graphics)
+project(violet-graphics)
 
 add_library(${PROJECT_NAME} STATIC
     ./source/blinn_phong_pipeline.cpp
@@ -15,19 +15,19 @@ add_library(${PROJECT_NAME} STATIC
     ./source/shadow_pipeline.cpp
     ./source/skinning_pipeline.cpp
     ./source/sky_pipeline.cpp)
-add_library(ash::graphics ALIAS ${PROJECT_NAME})
+add_library(violet::graphics ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-        ./include
-        ./interface)
+    ./include
+    ./interface)
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        ash::core
-        ash::window
-        ash::math
-        ash::scene)
+    violet::core
+    violet::window
+    violet::math
+    violet::scene)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

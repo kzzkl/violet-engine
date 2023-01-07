@@ -3,7 +3,7 @@
 #include "ui/color.hpp"
 #include "ui/controls/dock_element.hpp"
 
-namespace ash::ui
+namespace violet::ui
 {
 class panel;
 
@@ -46,4 +46,4 @@ private:
     layout_edge m_hover_edge;
     std::unique_ptr<panel> m_hover_panel;
 };
-} // namespace ash::ui
+} // namespace violet::ui

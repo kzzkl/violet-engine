@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace ash::graphics
+namespace violet::graphics
 {
 enum resource_format
 {
@@ -456,4 +456,4 @@ public:
         const depth_stencil_buffer_desc& desc) = 0;
 };
 using make_rhi = rhi_interface* (*)();
-} // namespace ash::graphics
+} // namespace violet::graphics

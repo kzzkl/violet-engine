@@ -5,7 +5,7 @@
 #include <queue>
 #include <vector>
 
-namespace ash::ui
+namespace violet::ui
 {
 class element_tree : public view
 {
@@ -54,4 +54,4 @@ private:
 
     bool m_tree_dirty;
 };
-} // namespace ash::ui
+} // namespace violet::ui

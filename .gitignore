@@ -38,13 +38,3 @@ install
 
 # generate
 generated
-
-# thirdparty
-thirdparty/bullet3
-thirdparty/Catch2
-thirdparty/freetype
-thirdparty/imgui
-thirdparty/json
-thirdparty/spdlog
-thirdparty/stb
-thirdparty/yoga

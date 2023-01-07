@@ -2,7 +2,7 @@
 
 #include "math/math.hpp"
 
-namespace ash::sample::mmd
+namespace violet::sample::mmd
 {
 class mmd_bezier
 {
@@ -22,4 +22,4 @@ private:
     math::float2 m_p1;
     math::float2 m_p2;
 };
-} // namespace ash::sample::mmd
+} // namespace violet::sample::mmd

@@ -1,9 +1,9 @@
 #include "task.hpp"
 #include "test_common.hpp"
 
-using namespace ash::task;
+using namespace violet::task;
 
-namespace ash::test
+namespace violet::test
 {
 class test_task : public task
 {
@@ -29,4 +29,4 @@ TEST_CASE("dependencies between tasks", "[task]")
     task3.add_dependency(task1);
     CHECK(task1.get_reachable_tasks_size() == 3);
 }
-} // namespace ash::test
+} // namespace violet::test
