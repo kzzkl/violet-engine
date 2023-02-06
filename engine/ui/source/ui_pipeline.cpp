@@ -83,7 +83,7 @@ ui_pipeline::ui_pipeline()
     ui_pass_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     ui_pass_info.parameters = {"violet_ui_material", "violet_ui_offset", "violet_ui_mvp"};
     ui_pass_info.samples = 4;
-    ui_pass_info.depth_stencil.depth_functor = graphics::DEPTH_FUNCTOR_LESS;
+    ui_pass_info.depth_stencil.depth_functor = graphics::DEPTH_STENCIL_FUNCTOR_LESS;
     ui_pass_info.blend.enable = true;
     ui_pass_info.blend.source_factor = graphics::BLEND_FACTOR_SOURCE_ALPHA;
     ui_pass_info.blend.target_factor = graphics::BLEND_FACTOR_SOURCE_INV_ALPHA;

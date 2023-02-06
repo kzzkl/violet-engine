@@ -18,7 +18,7 @@ shadow_pipeline::shadow_pipeline()
     pass_info.parameters = {"violet_object", "violet_shadow"};
     pass_info.samples = 1;
     pass_info.rasterizer.cull_mode = CULL_MODE_BACK;
-    pass_info.depth_stencil.depth_functor = DEPTH_FUNCTOR_LESS_EQUAL;
+    pass_info.depth_stencil.depth_functor = DEPTH_STENCIL_FUNCTOR_LESS_EQUAL;
 
     attachment_info depth = {};
     depth.type = ATTACHMENT_TYPE_CAMERA_DEPTH_STENCIL;

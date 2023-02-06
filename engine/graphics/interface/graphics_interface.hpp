@@ -10,17 +10,13 @@ namespace violet::graphics
 enum resource_format
 {
     RESOURCE_FORMAT_UNDEFINED,
-
     RESOURCE_FORMAT_R8_UNORM,
     RESOURCE_FORMAT_R8_UINT,
-
     RESOURCE_FORMAT_R8G8B8A8_UNORM,
     RESOURCE_FORMAT_B8G8R8A8_UNORM,
-
     RESOURCE_FORMAT_R32G32B32A32_FLOAT,
     RESOURCE_FORMAT_R32G32B32A32_SINT,
     RESOURCE_FORMAT_R32G32B32A32_UINT,
-
     RESOURCE_FORMAT_D24_UNORM_S8_UINT,
     RESOURCE_FORMAT_D32_FLOAT
 };
@@ -146,21 +142,39 @@ struct blend_desc
     blend_op alpha_op;
 };
 
-enum depth_functor
+enum depth_stencil_functor
 {
-    DEPTH_FUNCTOR_NEVER,
-    DEPTH_FUNCTOR_LESS,
-    DEPTH_FUNCTOR_EQUAL,
-    DEPTH_FUNCTOR_LESS_EQUAL,
-    DEPTH_FUNCTOR_GREATER,
-    DEPTH_FUNCTOR_NOT_EQUAL,
-    DEPTH_FUNCTOR_GREATER_EQUAL,
-    DEPTH_FUNCTOR_ALWAYS
+    DEPTH_STENCIL_FUNCTOR_NEVER,
+    DEPTH_STENCIL_FUNCTOR_LESS,
+    DEPTH_STENCIL_FUNCTOR_EQUAL,
+    DEPTH_STENCIL_FUNCTOR_LESS_EQUAL,
+    DEPTH_STENCIL_FUNCTOR_GREATER,
+    DEPTH_STENCIL_FUNCTOR_NOT_EQUAL,
+    DEPTH_STENCIL_FUNCTOR_GREATER_EQUAL,
+    DEPTH_STENCIL_FUNCTOR_ALWAYS
+};
+
+enum stencil_op
+{
+    STENCIL_OP_KEEP,
+    STENCIL_OP_ZERO,
+    STENCIL_OP_REPLACE,
+    STENCIL_OP_INCR_SAT,
+    STENCIL_OP_DECR_SAT,
+    STENCIL_OP_INVERT,
+    STENCIL_OP_INCR,
+    STENCIL_OP_DECR
 };
 
 struct depth_stencil_desc
 {
-    depth_functor depth_functor;
+    bool depth_enable;
+    depth_stencil_functor depth_functor;
+
+    bool stencil_enable;
+    depth_stencil_functor stencil_functor;
+    stencil_op stencil_pass_op;
+    stencil_op stencil_fail_op;
 };
 
 enum cull_mode
@@ -330,7 +344,12 @@ public:
     virtual void clear_render_target(
         resource_interface* render_target,
         const math::float4& color) = 0;
-    virtual void clear_depth_stencil(resource_interface* depth_stencil) = 0;
+    virtual void clear_depth_stencil(
+        resource_interface* depth_stencil,
+        bool clear_depth = true,
+        float depth = 1.0f,
+        bool clear_stencil = true,
+        std::uint8_t stencil = 0) = 0;
 
     // Compute.
     virtual void begin(compute_pipeline_interface* pipeline) {}

@@ -38,7 +38,12 @@ public:
 
     virtual void clear_render_target(resource_interface* render_target, const math::float4& color)
         override;
-    virtual void clear_depth_stencil(resource_interface* depth_stencil) override;
+    virtual void clear_depth_stencil(
+        resource_interface* depth_stencil,
+        bool clear_depth,
+        float depth,
+        bool clear_stencil,
+        std::uint8_t stencil) override;
 
     virtual void begin(compute_pipeline_interface* pipeline) override;
     virtual void end(compute_pipeline_interface* pipeline) override;

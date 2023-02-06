@@ -33,7 +33,7 @@ sky_pipeline::sky_pipeline()
     pass_info.parameters = {"violet_camera", "violet_sky"};
     pass_info.samples = 4;
     pass_info.rasterizer.cull_mode = CULL_MODE_NONE;
-    pass_info.depth_stencil.depth_functor = DEPTH_FUNCTOR_LESS_EQUAL;
+    pass_info.depth_stencil.depth_functor = DEPTH_STENCIL_FUNCTOR_LESS_EQUAL;
 
     // Attachment.
     attachment_info render_target = {};

@@ -114,7 +114,7 @@ mmd_render_pipeline::mmd_render_pipeline()
     edge_pass_info.parameters = {"violet_object", "mmd_material", "violet_camera"};
     edge_pass_info.samples = 4;
     edge_pass_info.rasterizer.cull_mode = graphics::CULL_MODE_FRONT;
-    edge_pass_info.depth_stencil.depth_functor = graphics::DEPTH_FUNCTOR_LESS;
+    edge_pass_info.depth_stencil.depth_functor = graphics::DEPTH_STENCIL_FUNCTOR_LESS;
 
     // Attachment.
     graphics::attachment_info render_target = {};

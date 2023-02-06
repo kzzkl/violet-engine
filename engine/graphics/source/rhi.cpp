@@ -8,8 +8,15 @@ namespace violet::graphics
 render_pass_info::render_pass_info()
 {
     blend.enable = false;
-    depth_stencil.depth_functor = DEPTH_FUNCTOR_LESS;
+
     rasterizer.cull_mode = CULL_MODE_BACK;
+
+    depth_stencil.depth_enable = true;
+    depth_stencil.depth_functor = DEPTH_STENCIL_FUNCTOR_LESS;
+    depth_stencil.stencil_enable = false;
+    depth_stencil.stencil_pass_op = STENCIL_OP_KEEP;
+    depth_stencil.stencil_fail_op = STENCIL_OP_KEEP;
+    depth_stencil.stencil_functor = DEPTH_STENCIL_FUNCTOR_ALWAYS;
 }
 
 class rhi_plugin : public core::plugin

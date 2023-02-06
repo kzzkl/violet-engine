@@ -251,7 +251,6 @@ void graphics::render_camera(ecs::entity camera_entity)
     scene.frustum_culling(camera_frustum::planes(camera_view_projection));
 
     // Draw object.
-    // std::set<render_pipeline*> render_pipelines;
     world.view<mesh_render>().each([&, this](ecs::entity entity, mesh_render& mesh_render) {
         if ((mesh_render.render_groups & render_camera.render_groups) == 0)
             return;

@@ -144,16 +144,22 @@ void d3d12_render_command::clear_render_target(
     m_command_list->ClearRenderTargetView(rt->rtv(), color.data, 0, nullptr);
 }
 
-void d3d12_render_command::clear_depth_stencil(resource_interface* depth_stencil)
+void d3d12_render_command::clear_depth_stencil(
+    resource_interface* depth_stencil,
+    bool clear_depth,
+    float depth,
+    bool clear_stencil,
+    std::uint8_t stencil)
 {
     auto ds = static_cast<d3d12_resource*>(depth_stencil);
-    m_command_list->ClearDepthStencilView(
-        ds->dsv(),
-        D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
-        1.0f,
-        0,
-        0,
-        nullptr);
+
+    D3D12_CLEAR_FLAGS flag = {};
+    if (clear_depth)
+        flag |= D3D12_CLEAR_FLAG_DEPTH;
+    if (clear_stencil)
+        flag |= D3D12_CLEAR_FLAG_STENCIL;
+
+    m_command_list->ClearDepthStencilView(ds->dsv(), flag, depth, stencil, 0, nullptr);
 }
 
 void d3d12_render_command::begin(compute_pipeline_interface* pipeline)

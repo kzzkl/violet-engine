@@ -146,7 +146,7 @@ void element_tree::update_input()
 
 void element_tree::update_layout(float width, float height)
 {
-    // log::debug("calculate ui.");
+    log::debug("calculate ui.");
     calculate(width, height);
 
     bfs(this, [&, this](element* node) -> bool {

@@ -11,59 +11,32 @@ namespace
 {
 D3D12_BLEND_DESC to_d3d12_blend_desc(const blend_desc& desc)
 {
-    auto convert_factor = [](blend_factor factor) {
-        switch (factor)
-        {
-        case BLEND_FACTOR_ZERO:
-            return D3D12_BLEND_ZERO;
-        case BLEND_FACTOR_ONE:
-            return D3D12_BLEND_ONE;
-        case BLEND_FACTOR_SOURCE_COLOR:
-            return D3D12_BLEND_SRC_COLOR;
-        case BLEND_FACTOR_SOURCE_ALPHA:
-            return D3D12_BLEND_SRC_ALPHA;
-        case BLEND_FACTOR_SOURCE_INV_ALPHA:
-            return D3D12_BLEND_INV_SRC_ALPHA;
-        case BLEND_FACTOR_TARGET_COLOR:
-            return D3D12_BLEND_DEST_COLOR;
-        case BLEND_FACTOR_TARGET_ALPHA:
-            return D3D12_BLEND_DEST_ALPHA;
-        case BLEND_FACTOR_TARGET_INV_ALPHA:
-            return D3D12_BLEND_INV_DEST_ALPHA;
-        default:
-            throw d3d12_exception("Invalid blend factor.");
-        };
-    };
+    D3D12_BLEND blend[] = {
+        D3D12_BLEND_ZERO,
+        D3D12_BLEND_ONE,
+        D3D12_BLEND_SRC_COLOR,
+        D3D12_BLEND_SRC_ALPHA,
+        D3D12_BLEND_INV_SRC_ALPHA,
+        D3D12_BLEND_DEST_COLOR,
+        D3D12_BLEND_DEST_ALPHA,
+        D3D12_BLEND_INV_DEST_ALPHA};
 
-    auto convert_op = [](blend_op op) {
-        switch (op)
-        {
-        case BLEND_OP_ADD:
-            return D3D12_BLEND_OP_ADD;
-        case BLEND_OP_SUBTRACT:
-            return D3D12_BLEND_OP_SUBTRACT;
-        case BLEND_OP_MIN:
-            return D3D12_BLEND_OP_MIN;
-        case BLEND_OP_MAX:
-            return D3D12_BLEND_OP_MAX;
-        default:
-            throw d3d12_exception("Invalid blend op.");
-        }
-    };
+    D3D12_BLEND_OP blend_op[] =
+        {D3D12_BLEND_OP_ADD, D3D12_BLEND_OP_SUBTRACT, D3D12_BLEND_OP_MIN, D3D12_BLEND_OP_MAX};
 
-    D3D12_BLEND_DESC result = {};
+    D3D12_BLEND_DESC result = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     if (desc.enable)
     {
         result.AlphaToCoverageEnable = true;
 
         D3D12_RENDER_TARGET_BLEND_DESC render_target_blend = {};
         render_target_blend.BlendEnable = true;
-        render_target_blend.SrcBlend = convert_factor(desc.source_factor);
-        render_target_blend.DestBlend = convert_factor(desc.target_factor);
-        render_target_blend.BlendOp = convert_op(desc.op);
-        render_target_blend.SrcBlendAlpha = convert_factor(desc.source_alpha_factor);
-        render_target_blend.DestBlendAlpha = convert_factor(desc.target_alpha_factor);
-        render_target_blend.BlendOpAlpha = convert_op(desc.alpha_op);
+        render_target_blend.SrcBlend = blend[desc.source_factor];
+        render_target_blend.DestBlend = blend[desc.target_factor];
+        render_target_blend.BlendOp = blend_op[desc.op];
+        render_target_blend.SrcBlendAlpha = blend[desc.source_alpha_factor];
+        render_target_blend.DestBlendAlpha = blend[desc.target_alpha_factor];
+        render_target_blend.BlendOpAlpha = blend_op[desc.alpha_op];
         render_target_blend.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
         for (UINT i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
@@ -79,59 +52,51 @@ D3D12_BLEND_DESC to_d3d12_blend_desc(const blend_desc& desc)
 
 D3D12_DEPTH_STENCIL_DESC to_d3d12_depth_stencil_desc(const depth_stencil_desc& desc)
 {
+    D3D12_COMPARISON_FUNC comparison_func[] = {
+        D3D12_COMPARISON_FUNC_NEVER,
+        D3D12_COMPARISON_FUNC_LESS,
+        D3D12_COMPARISON_FUNC_EQUAL,
+        D3D12_COMPARISON_FUNC_LESS_EQUAL,
+        D3D12_COMPARISON_FUNC_GREATER,
+        D3D12_COMPARISON_FUNC_NOT_EQUAL,
+        D3D12_COMPARISON_FUNC_GREATER_EQUAL,
+        D3D12_COMPARISON_FUNC_ALWAYS};
+
+    D3D12_STENCIL_OP stencil_op[] = {
+        D3D12_STENCIL_OP_KEEP,
+        D3D12_STENCIL_OP_ZERO,
+        D3D12_STENCIL_OP_REPLACE,
+        D3D12_STENCIL_OP_INCR_SAT,
+        D3D12_STENCIL_OP_DECR_SAT,
+        D3D12_STENCIL_OP_INVERT,
+        D3D12_STENCIL_OP_INCR,
+        D3D12_STENCIL_OP_DECR};
+
     D3D12_DEPTH_STENCIL_DESC result = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 
-    switch (desc.depth_functor)
-    {
-    case DEPTH_FUNCTOR_NEVER:
-        result.DepthFunc = D3D12_COMPARISON_FUNC_NEVER;
-        break;
-    case DEPTH_FUNCTOR_LESS:
-        result.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-        break;
-    case DEPTH_FUNCTOR_EQUAL:
-        result.DepthFunc = D3D12_COMPARISON_FUNC_EQUAL;
-        break;
-    case DEPTH_FUNCTOR_LESS_EQUAL:
-        result.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-        break;
-    case DEPTH_FUNCTOR_GREATER:
-        result.DepthFunc = D3D12_COMPARISON_FUNC_GREATER;
-        break;
-    case DEPTH_FUNCTOR_NOT_EQUAL:
-        result.DepthFunc = D3D12_COMPARISON_FUNC_NOT_EQUAL;
-        break;
-    case DEPTH_FUNCTOR_GREATER_EQUAL:
-        result.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-        break;
-    case DEPTH_FUNCTOR_ALWAYS:
-        result.DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS;
-        break;
-    default:
-        throw d3d12_exception("Invalid depth functor.");
-    };
+    result.DepthEnable = desc.depth_enable;
+    result.DepthFunc = comparison_func[desc.depth_functor];
+
+    result.StencilEnable = desc.stencil_enable;
+    result.BackFace.StencilFunc = comparison_func[desc.stencil_functor];
+    result.BackFace.StencilPassOp = stencil_op[desc.stencil_pass_op];
+    result.BackFace.StencilFailOp = stencil_op[desc.stencil_fail_op];
+    result.FrontFace.StencilFunc = comparison_func[desc.stencil_functor];
+    result.FrontFace.StencilPassOp = stencil_op[desc.stencil_pass_op];
+    result.FrontFace.StencilFailOp = stencil_op[desc.stencil_fail_op];
 
     return result;
 }
 
 D3D12_RASTERIZER_DESC to_d3d12_rasterizer_desc(const rasterizer_desc& desc)
 {
-    D3D12_RASTERIZER_DESC result = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    D3D12_CULL_MODE cull_mode[] = {
+        D3D12_CULL_MODE_NONE,
+        D3D12_CULL_MODE_FRONT,
+        D3D12_CULL_MODE_BACK};
 
-    switch (desc.cull_mode)
-    {
-    case CULL_MODE_NONE:
-        result.CullMode = D3D12_CULL_MODE_NONE;
-        break;
-    case CULL_MODE_FRONT:
-        result.CullMode = D3D12_CULL_MODE_FRONT;
-        break;
-    case CULL_MODE_BACK:
-        result.CullMode = D3D12_CULL_MODE_BACK;
-        break;
-    default:
-        throw d3d12_exception("Invalid depth functor.");
-    };
+    D3D12_RASTERIZER_DESC result = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    result.CullMode = cull_mode[desc.cull_mode];
 
     return result;
 }
