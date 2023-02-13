@@ -7,10 +7,14 @@ namespace violet::graphics
 class sky_pipeline_parameter : public pipeline_parameter
 {
 public:
+    static constexpr pipeline_parameter_desc layout = {
+        .parameters = {{PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1}},
+        .parameter_count = 1};
+
+public:
     sky_pipeline_parameter();
 
     void texture(resource_interface* texture);
-    static std::vector<pipeline_parameter_pair> layout();
 };
 
 class sky_pipeline : public render_pipeline

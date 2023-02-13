@@ -1,6 +1,6 @@
 #include "d3d12_context.hpp"
 #include "d3d12_command.hpp"
-#include "d3d12_pipeline.hpp"
+#include "d3d12_cache.hpp"
 #include "d3d12_renderer.hpp"
 #include "d3d12_resource.hpp"
 #include <DirectXColors.h>
@@ -60,7 +60,7 @@ bool d3d12_context::on_initialize(const rhi_desc& desc)
 
     m_command = std::make_unique<d3d12_command_queue>(desc.render_concurrency);
     m_resource = std::make_unique<d3d12_resource_manager>();
-    m_frame_buffer_manager = std::make_unique<d3d12_frame_buffer_manager>();
+    m_cache = std::make_unique<d3d12_cache>();
     m_swap_chain = std::make_unique<d3d12_swap_chain>(
         static_cast<HWND>(desc.window_handle),
         desc.width,
@@ -75,7 +75,7 @@ void d3d12_context::on_shutdown()
 
     m_command = nullptr;
     m_swap_chain = nullptr;
-    m_frame_buffer_manager = nullptr;
+    m_cache = nullptr;
     m_resource = nullptr;
 
     m_factory = nullptr;

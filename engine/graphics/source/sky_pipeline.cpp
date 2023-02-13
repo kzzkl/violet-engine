@@ -1,9 +1,10 @@
 #include "graphics/sky_pipeline.hpp"
+#include "graphics/camera.hpp"
 #include "graphics/rhi.hpp"
 
 namespace violet::graphics
 {
-sky_pipeline_parameter::sky_pipeline_parameter() : pipeline_parameter("violet_sky")
+sky_pipeline_parameter::sky_pipeline_parameter() : pipeline_parameter(layout)
 {
 }
 
@@ -12,31 +13,32 @@ void sky_pipeline_parameter::texture(resource_interface* texture)
     interface()->set(0, texture);
 }
 
-std::vector<pipeline_parameter_pair> sky_pipeline_parameter::layout()
-{
-    return {
-        {PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1}
-    };
-}
-
 sky_pipeline::sky_pipeline()
 {
-    render_pass_info pass_info = {};
-    pass_info.vertex_shader = "engine/shader/sky.vert";
-    pass_info.pixel_shader = "engine/shader/sky.frag";
-    pass_info.references = {
-        {ATTACHMENT_REFERENCE_TYPE_COLOR,   0},
-        {ATTACHMENT_REFERENCE_TYPE_DEPTH,   0},
-        {ATTACHMENT_REFERENCE_TYPE_RESOLVE, 0}
-    };
-    pass_info.primitive_topology = PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    pass_info.parameters = {"violet_camera", "violet_sky"};
-    pass_info.samples = 4;
-    pass_info.rasterizer.cull_mode = CULL_MODE_NONE;
-    pass_info.depth_stencil.depth_functor = DEPTH_STENCIL_FUNCTOR_LESS_EQUAL;
+    render_pipeline_desc desc;
+
+    render_pass_desc& sky_pass = desc.passes[0];
+    sky_pass.vertex_shader = "engine/shader/sky.vert";
+    sky_pass.pixel_shader = "engine/shader/sky.frag";
+
+    sky_pass.references[0] = {ATTACHMENT_REFERENCE_TYPE_COLOR, 0};
+    sky_pass.references[1] = {ATTACHMENT_REFERENCE_TYPE_DEPTH, 0};
+    sky_pass.references[2] = {ATTACHMENT_REFERENCE_TYPE_RESOLVE, 0};
+    sky_pass.reference_count = 3;
+
+    sky_pass.parameters[0] = camera_pipeline_parameter::layout;
+    sky_pass.parameters[1] = sky_pipeline_parameter::layout;
+    sky_pass.parameter_count = 2;
+
+    sky_pass.primitive_topology = PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    sky_pass.samples = 4;
+    sky_pass.rasterizer.cull_mode = CULL_MODE_NONE;
+    sky_pass.depth_stencil.depth_functor = DEPTH_STENCIL_FUNCTOR_LESS_EQUAL;
+
+    desc.pass_count = 1;
 
     // Attachment.
-    attachment_info render_target = {};
+    attachment_desc& render_target = desc.attachments[0];
     render_target.type = ATTACHMENT_TYPE_CAMERA_RENDER_TARGET;
     render_target.format = rhi::back_buffer_format();
     render_target.load_op = ATTACHMENT_LOAD_OP_LOAD;
@@ -47,7 +49,7 @@ sky_pipeline::sky_pipeline()
     render_target.initial_state = RESOURCE_STATE_RENDER_TARGET;
     render_target.final_state = RESOURCE_STATE_RENDER_TARGET;
 
-    attachment_info depth_stencil = {};
+    attachment_desc& depth_stencil = desc.attachments[1];
     depth_stencil.type = ATTACHMENT_TYPE_CAMERA_DEPTH_STENCIL;
     depth_stencil.format = RESOURCE_FORMAT_D24_UNORM_S8_UINT;
     depth_stencil.load_op = ATTACHMENT_LOAD_OP_LOAD;
@@ -58,7 +60,7 @@ sky_pipeline::sky_pipeline()
     depth_stencil.initial_state = RESOURCE_STATE_DEPTH_STENCIL;
     depth_stencil.final_state = RESOURCE_STATE_DEPTH_STENCIL;
 
-    attachment_info render_target_resolve = {};
+    attachment_desc render_target_resolve = desc.attachments[2];
     render_target_resolve.type = ATTACHMENT_TYPE_CAMERA_RENDER_TARGET_RESOLVE;
     render_target_resolve.format = rhi::back_buffer_format();
     render_target_resolve.load_op = ATTACHMENT_LOAD_OP_CLEAR;
@@ -69,13 +71,9 @@ sky_pipeline::sky_pipeline()
     render_target_resolve.initial_state = RESOURCE_STATE_RENDER_TARGET;
     render_target_resolve.final_state = RESOURCE_STATE_PRESENT;
 
-    render_pipeline_info pipeline_info;
-    pipeline_info.attachments.push_back(render_target);
-    pipeline_info.attachments.push_back(depth_stencil);
-    pipeline_info.attachments.push_back(render_target_resolve);
-    pipeline_info.passes.push_back(pass_info);
+    desc.attachment_count = 3;
 
-    m_interface = rhi::make_render_pipeline(pipeline_info);
+    m_interface = rhi::make_render_pipeline(desc);
 }
 
 void sky_pipeline::render(const render_context& context, render_command_interface* command)

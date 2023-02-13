@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/pipeline_parameter.hpp"
+#include "graphics/pipeline.hpp"
 #include <array>
 
 namespace violet::graphics
@@ -30,30 +30,6 @@ public:
     static constexpr std::size_t MAX_SHADOW_COUNT = 4;
     static constexpr std::size_t MAX_CASCADED_COUNT = 4;
 
-public:
-    light_pipeline_parameter();
-
-    void ambient_light(const math::float3& color);
-    void directional_light(
-        std::size_t index,
-        const math::float3& color,
-        const math::float3& direction,
-        bool shadow,
-        std::size_t shadow_index);
-    void directional_light_count(std::size_t count);
-
-    void shadow(
-        std::size_t index,
-        const math::float4x4& shadow_v,
-        const std::array<math::float4, MAX_CASCADED_COUNT>& cascade_scale,
-        const std::array<math::float4, MAX_CASCADED_COUNT>& cascade_offset);
-    void shadow_map(std::size_t index, std::size_t cascade, resource_interface* shadow_map);
-    void shadow_cascade_depths(const math::float4& cascade_depths);
-    void shadow_count(std::size_t shadow_count, std::size_t cascade_count);
-
-    static std::vector<pipeline_parameter_pair> layout();
-
-private:
     struct directional_light_data
     {
         math::float3 direction;
@@ -76,5 +52,33 @@ private:
         std::uint32_t shadow_count;
         std::uint32_t cascade_count;
     };
+
+    static constexpr pipeline_parameter_desc layout = {
+        .parameters = {
+            {PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER, sizeof(constant_data)},
+            {PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, MAX_SHADOW_COUNT* MAX_CASCADED_COUNT}},
+        .parameter_count = 2
+    };
+
+public:
+    light_pipeline_parameter();
+
+    void ambient_light(const math::float3& color);
+    void directional_light(
+        std::size_t index,
+        const math::float3& color,
+        const math::float3& direction,
+        bool shadow,
+        std::size_t shadow_index);
+    void directional_light_count(std::size_t count);
+
+    void shadow(
+        std::size_t index,
+        const math::float4x4& shadow_v,
+        const std::array<math::float4, MAX_CASCADED_COUNT>& cascade_scale,
+        const std::array<math::float4, MAX_CASCADED_COUNT>& cascade_offset);
+    void shadow_map(std::size_t index, std::size_t cascade, resource_interface* shadow_map);
+    void shadow_cascade_depths(const math::float4& cascade_depths);
+    void shadow_count(std::size_t shadow_count, std::size_t cascade_count);
 };
 } // namespace violet::graphics

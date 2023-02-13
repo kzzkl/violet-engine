@@ -7,7 +7,7 @@ directional_light::directional_light() : m_color{1.0f, 1.0f, 1.0f}
 {
 }
 
-light_pipeline_parameter::light_pipeline_parameter() : pipeline_parameter("violet_light")
+light_pipeline_parameter::light_pipeline_parameter() : pipeline_parameter(layout)
 {
 }
 
@@ -74,14 +74,5 @@ void light_pipeline_parameter::shadow_count(std::size_t shadow_count, std::size_
     auto& parameter = field<constant_data>(0);
     parameter.shadow_count = shadow_count;
     parameter.cascade_count = cascade_count;
-}
-
-std::vector<pipeline_parameter_pair> light_pipeline_parameter::layout()
-{
-    const std::size_t shadow_map_count = MAX_SHADOW_COUNT * MAX_CASCADED_COUNT;
-    return {
-        {PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER, sizeof(constant_data)}, // Light attributes
-        {PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, shadow_map_count     }  // Shadow map
-    };
 }
 } // namespace violet::graphics

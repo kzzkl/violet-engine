@@ -1,7 +1,7 @@
 #pragma once
 
 #include "graphics/material.hpp"
-#include "graphics/pipeline_parameter.hpp"
+#include "graphics/pipeline.hpp"
 #include "graphics/render_group.hpp"
 
 namespace violet::graphics
@@ -16,11 +16,14 @@ struct submesh
 class object_pipeline_parameter : public pipeline_parameter
 {
 public:
+    static constexpr pipeline_parameter_desc layout = {
+        .parameters = {{PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER, sizeof(math::float4x4)}},
+        .parameter_count = 1};
+
+public:
     object_pipeline_parameter();
 
     void world_matrix(const math::float4x4& matrix);
-
-    static std::vector<pipeline_parameter_pair> layout();
 };
 
 struct mesh_render

@@ -7,15 +7,6 @@ namespace violet::graphics
 class blinn_phong_material_pipeline_parameter : public pipeline_parameter
 {
 public:
-    blinn_phong_material_pipeline_parameter();
-
-    void diffuse(const math::float3& diffuse);
-    void fresnel(const math::float3& fresnel);
-    void roughness(float roughness);
-
-    static std::vector<pipeline_parameter_pair> layout();
-
-private:
     struct constant_data
     {
         math::float3 diffuse;
@@ -23,6 +14,17 @@ private:
         math::float3 fresnel;
         float roughness;
     };
+
+    static constexpr pipeline_parameter_desc layout = {
+        .parameters = {{PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER, sizeof(constant_data)}},
+        .parameter_count = 1};
+
+public:
+    blinn_phong_material_pipeline_parameter();
+
+    void diffuse(const math::float3& diffuse);
+    void fresnel(const math::float3& fresnel);
+    void roughness(float roughness);
 };
 
 class blinn_phong_pipeline : public render_pipeline

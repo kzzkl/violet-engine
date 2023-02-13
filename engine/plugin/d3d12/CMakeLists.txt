@@ -1,6 +1,7 @@
 project(violet-graphics-d3d12)
 
 add_library(${PROJECT_NAME} SHARED
+    ./source/d3d12_cache.cpp
     ./source/d3d12_command.cpp
     ./source/d3d12_common.cpp
     ./source/d3d12_context.cpp

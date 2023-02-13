@@ -27,16 +27,10 @@ public:
         return new d3d12_compute_pipeline(desc);
     }
 
-    virtual pipeline_parameter_layout_interface* make_pipeline_parameter_layout(
-        const pipeline_parameter_layout_desc& desc) override
-    {
-        return new d3d12_pipeline_parameter_layout(desc);
-    }
-
     virtual pipeline_parameter_interface* make_pipeline_parameter(
-        pipeline_parameter_layout_interface* layout) override
+        const pipeline_parameter_desc& desc) override
     {
-        return new d3d12_pipeline_parameter(layout);
+        return new d3d12_pipeline_parameter(desc);
     }
 
     virtual resource_interface* make_vertex_buffer(const vertex_buffer_desc& desc) override

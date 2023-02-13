@@ -3,6 +3,7 @@
 #include "graphics/graphics_debug.hpp"
 #include "core/link.hpp"
 #include "core/relation.hpp"
+#include "graphics/camera.hpp"
 #include "graphics/mesh_render.hpp"
 #include "graphics/render_pipeline.hpp"
 #include "graphics/rhi.hpp"
@@ -12,25 +13,31 @@ namespace violet::graphics
 {
 debug_pipeline::debug_pipeline()
 {
+    render_pipeline_desc desc;
+
     // Color pass.
-    render_pass_info color_pass_info = {};
-    color_pass_info.vertex_shader = "engine/shader/debug.vert";
-    color_pass_info.pixel_shader = "engine/shader/debug.frag";
-    color_pass_info.vertex_attributes = {
-        {"POSITION", VERTEX_ATTRIBUTE_TYPE_FLOAT3}, // position
-        {"COLOR",    VERTEX_ATTRIBUTE_TYPE_FLOAT3}, // color
-    };
-    color_pass_info.references = {
-        {ATTACHMENT_REFERENCE_TYPE_COLOR,   0},
-        {ATTACHMENT_REFERENCE_TYPE_DEPTH,   0},
-        {ATTACHMENT_REFERENCE_TYPE_RESOLVE, 0}
-    };
-    color_pass_info.primitive_topology = PRIMITIVE_TOPOLOGY_TYPE_LINE;
-    color_pass_info.parameters = {"violet_camera"};
-    color_pass_info.samples = 4;
+    render_pass_desc& color_pass = desc.passes[0];
+    color_pass.vertex_shader = "engine/shader/debug.vert";
+    color_pass.pixel_shader = "engine/shader/debug.frag";
+
+    color_pass.vertex_attributes[0] = {"POSITION", VERTEX_ATTRIBUTE_TYPE_FLOAT3}; // position
+    color_pass.vertex_attributes[1] = {"COLOR", VERTEX_ATTRIBUTE_TYPE_FLOAT3};    // color
+    color_pass.vertex_attribute_count = 2;
+
+    color_pass.references[0] = {ATTACHMENT_REFERENCE_TYPE_COLOR, 0};
+    color_pass.references[1] = {ATTACHMENT_REFERENCE_TYPE_DEPTH, 0};
+    color_pass.references[2] = {ATTACHMENT_REFERENCE_TYPE_RESOLVE, 0};
+    color_pass.reference_count = 3;
+
+    color_pass.primitive_topology = PRIMITIVE_TOPOLOGY_TYPE_LINE;
+    color_pass.parameters[0] = camera_pipeline_parameter::layout;
+    color_pass.parameter_count = 1;
+    color_pass.samples = 4;
+
+    desc.pass_count = 1;
 
     // Attachment.
-    attachment_info render_target = {};
+    attachment_desc& render_target = desc.attachments[0];
     render_target.type = ATTACHMENT_TYPE_CAMERA_RENDER_TARGET;
     render_target.format = rhi::back_buffer_format();
     render_target.load_op = ATTACHMENT_LOAD_OP_LOAD;
@@ -41,7 +48,7 @@ debug_pipeline::debug_pipeline()
     render_target.initial_state = RESOURCE_STATE_RENDER_TARGET;
     render_target.final_state = RESOURCE_STATE_RENDER_TARGET;
 
-    attachment_info depth_stencil = {};
+    attachment_desc& depth_stencil = desc.attachments[1];
     depth_stencil.type = ATTACHMENT_TYPE_CAMERA_DEPTH_STENCIL;
     depth_stencil.format = RESOURCE_FORMAT_D24_UNORM_S8_UINT;
     depth_stencil.load_op = ATTACHMENT_LOAD_OP_LOAD;
@@ -52,7 +59,7 @@ debug_pipeline::debug_pipeline()
     depth_stencil.initial_state = RESOURCE_STATE_DEPTH_STENCIL;
     depth_stencil.final_state = RESOURCE_STATE_DEPTH_STENCIL;
 
-    attachment_info render_target_resolve = {};
+    attachment_desc& render_target_resolve = desc.attachments[2];
     render_target_resolve.type = ATTACHMENT_TYPE_CAMERA_RENDER_TARGET_RESOLVE;
     render_target_resolve.format = rhi::back_buffer_format();
     render_target_resolve.load_op = ATTACHMENT_LOAD_OP_CLEAR;
@@ -63,13 +70,9 @@ debug_pipeline::debug_pipeline()
     render_target_resolve.initial_state = RESOURCE_STATE_RENDER_TARGET;
     render_target_resolve.final_state = RESOURCE_STATE_PRESENT;
 
-    render_pipeline_info pipeline_info;
-    pipeline_info.attachments.push_back(render_target);
-    pipeline_info.attachments.push_back(depth_stencil);
-    pipeline_info.attachments.push_back(render_target_resolve);
-    pipeline_info.passes.push_back(color_pass_info);
+    desc.attachment_count = 3;
 
-    m_interface = rhi::make_render_pipeline(pipeline_info);
+    m_interface = rhi::make_render_pipeline(desc);
 }
 
 void debug_pipeline::render(const render_context& context, render_command_interface* command)

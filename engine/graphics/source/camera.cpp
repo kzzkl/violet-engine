@@ -4,7 +4,7 @@
 
 namespace violet::graphics
 {
-camera_pipeline_parameter::camera_pipeline_parameter() : pipeline_parameter("violet_camera")
+camera_pipeline_parameter::camera_pipeline_parameter() : pipeline_parameter(layout)
 {
 }
 
@@ -31,14 +31,6 @@ void camera_pipeline_parameter::projection(const math::float4x4& projection)
 void camera_pipeline_parameter::view_projection(const math::float4x4& view_projection)
 {
     field<constant_data>(0).view_projection = math::matrix::transpose(view_projection);
-}
-
-std::vector<pipeline_parameter_pair> camera_pipeline_parameter::layout()
-{
-    return {
-        {PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER,
-         sizeof(camera_pipeline_parameter::constant_data)}
-    };
 }
 
 camera::camera() noexcept

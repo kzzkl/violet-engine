@@ -8,7 +8,7 @@ namespace violet::graphics::d3d12
 class d3d12_command_queue;
 class d3d12_swap_chain;
 class d3d12_resource_manager;
-class d3d12_frame_buffer_manager;
+class d3d12_cache;
 
 class d3d12_context
 {
@@ -26,9 +26,9 @@ public:
     {
         return instance().m_resource.get();
     }
-    inline static d3d12_frame_buffer_manager& frame_buffer() noexcept
+    inline static d3d12_cache& cache() noexcept
     {
-        return *instance().m_frame_buffer_manager;
+        return *instance().m_cache;
     }
 
 private:
@@ -45,6 +45,6 @@ private:
     std::unique_ptr<d3d12_command_queue> m_command;
     std::unique_ptr<d3d12_swap_chain> m_swap_chain;
     std::unique_ptr<d3d12_resource_manager> m_resource;
-    std::unique_ptr<d3d12_frame_buffer_manager> m_frame_buffer_manager;
+    std::unique_ptr<d3d12_cache> m_cache;
 };
 } // namespace violet::graphics::d3d12

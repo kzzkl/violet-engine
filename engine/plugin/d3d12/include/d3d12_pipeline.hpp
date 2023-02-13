@@ -7,10 +7,10 @@
 
 namespace violet::graphics::d3d12
 {
-class d3d12_pipeline_parameter_layout : public pipeline_parameter_layout_interface
+class d3d12_pipeline_parameter_layout
 {
 public:
-    d3d12_pipeline_parameter_layout(const pipeline_parameter_layout_desc& desc);
+    d3d12_pipeline_parameter_layout(const pipeline_parameter_desc& desc);
 
     inline std::size_t parameter_offset(std::size_t index) const
     {
@@ -74,7 +74,7 @@ public:
     };
 
 public:
-    d3d12_pipeline_parameter(pipeline_parameter_layout_interface* layout);
+    d3d12_pipeline_parameter(const pipeline_parameter_desc& desc);
     virtual ~d3d12_pipeline_parameter();
 
     virtual void set(std::size_t index, const void* data, size_t size) override;
@@ -111,7 +111,7 @@ class d3d12_root_signature
 {
 public:
     d3d12_root_signature(
-        pipeline_parameter_layout_interface* const* parameters,
+        const pipeline_parameter_desc* const parameters,
         std::size_t parameter_count);
 
     D3D12RootSignature* handle() const noexcept { return m_root_signature.Get(); }
@@ -137,13 +137,6 @@ struct d3d12_camera_info
     d3d12_resource* render_target;
     d3d12_resource* render_target_resolve;
     d3d12_resource* depth_stencil_buffer;
-
-    inline bool operator==(const d3d12_camera_info& other) const noexcept
-    {
-        return render_target == other.render_target &&
-               render_target_resolve == other.render_target_resolve &&
-               depth_stencil_buffer == other.depth_stencil_buffer;
-    }
 };
 
 class d3d12_render_pipeline;
@@ -230,43 +223,6 @@ private:
     d3d12_frame_buffer* m_current_frame_buffer;
 
     d3d12_frame_buffer_layout m_frame_buffer_layout;
-};
-
-class d3d12_frame_buffer_manager
-{
-public:
-    d3d12_frame_buffer* get_or_create_frame_buffer(
-        d3d12_render_pipeline* pipeline,
-        const d3d12_camera_info& camera_info);
-
-    void notify_destroy(d3d12_resource* resource);
-
-private:
-    struct d3d12_camera_info_hash
-    {
-        std::size_t operator()(const d3d12_camera_info& key) const
-        {
-            std::size_t result = 0;
-            hviolet_combine(result, key.render_target);
-            hviolet_combine(result, key.render_target_resolve);
-            hviolet_combine(result, key.depth_stencil_buffer);
-
-            return result;
-        }
-
-        template <class T>
-        void hviolet_combine(std::size_t& s, const T& v) const
-        {
-            std::hash<T> h;
-            s ^= h(v) + 0x9e3779b9 + (s << 6) + (s >> 2);
-        }
-    };
-
-    std::unordered_map<
-        d3d12_camera_info,
-        std::unique_ptr<d3d12_frame_buffer>,
-        d3d12_camera_info_hash>
-        m_frame_buffers;
 };
 
 class d3d12_compute_pipeline : public compute_pipeline_interface

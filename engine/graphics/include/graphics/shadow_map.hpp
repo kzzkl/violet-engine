@@ -1,7 +1,7 @@
 #pragma once
 
 #include "graphics/light.hpp"
-#include "graphics/pipeline_parameter.hpp"
+#include "graphics/pipeline.hpp"
 #include "graphics_interface.hpp"
 #include <memory>
 
@@ -10,17 +10,20 @@ namespace violet::graphics
 class shadow_map_pipeline_parameter : public pipeline_parameter
 {
 public:
-    shadow_map_pipeline_parameter();
-
-    void light_view_projection(const math::float4x4& view_projection);
-
-    static std::vector<pipeline_parameter_pair> layout();
-
-private:
     struct constant_data
     {
         math::float4x4 light_view_projection;
     };
+
+    static constexpr pipeline_parameter_desc layout = {
+        .parameters = {PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER, sizeof(constant_data)},
+        .parameter_count = 1
+    };
+
+public:
+    shadow_map_pipeline_parameter();
+
+    void light_view_projection(const math::float4x4& view_projection);
 };
 
 class shadow_pipeline;

@@ -3,7 +3,7 @@
 
 namespace violet::graphics
 {
-shadow_map_pipeline_parameter::shadow_map_pipeline_parameter() : pipeline_parameter("violet_shadow")
+shadow_map_pipeline_parameter::shadow_map_pipeline_parameter() : pipeline_parameter(layout)
 {
 }
 
@@ -12,20 +12,12 @@ void shadow_map_pipeline_parameter::light_view_projection(const math::float4x4& 
     field<constant_data>(0).light_view_projection = math::matrix::transpose(view_projection);
 }
 
-std::vector<pipeline_parameter_pair> shadow_map_pipeline_parameter::layout()
-{
-    return {
-        {PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER,
-         sizeof(shadow_map_pipeline_parameter::constant_data)}
-    };
-}
-
 shadow_map::shadow_map(std::uint32_t resolution) : m_parameter(nullptr)
 {
-    shadow_map_info info;
-    info.width = info.height = resolution;
-    info.samples = 1;
-    m_shadow_map = rhi::make_shadow_map(info);
+    shadow_map_desc desc;
+    desc.width = desc.height = resolution;
+    desc.samples = 1;
+    m_shadow_map = rhi::make_shadow_map(desc);
 
     m_parameter = std::make_unique<shadow_map_pipeline_parameter>();
 }

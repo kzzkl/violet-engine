@@ -1,6 +1,6 @@
 #pragma once
 
-#include "pipeline_parameter.hpp"
+#include "pipeline.hpp"
 #include <memory>
 #include <vector>
 

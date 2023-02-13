@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/pipeline_parameter.hpp"
+#include "graphics/pipeline.hpp"
 #include "graphics/render_group.hpp"
 
 namespace violet::graphics
@@ -8,19 +8,6 @@ namespace violet::graphics
 class camera_pipeline_parameter : public pipeline_parameter
 {
 public:
-    camera_pipeline_parameter();
-
-    void position(const math::float3& position);
-    void direction(const math::float3& direction);
-    void view(const math::float4x4& view);
-    void projection(const math::float4x4& projection);
-    void view_projection(const math::float4x4& view_projection);
-
-    std::array<math::float4, 8> frustum_vertices(std::size_t index) const noexcept;
-
-    static std::vector<pipeline_parameter_pair> layout();
-
-private:
     struct constant_data
     {
         math::float3 position;
@@ -31,6 +18,21 @@ private:
         math::float4x4 projection;
         math::float4x4 view_projection;
     };
+
+    static constexpr pipeline_parameter_desc layout = {
+        .parameters = {{PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER, sizeof(constant_data)}},
+        .parameter_count = 1};
+
+public:
+    camera_pipeline_parameter();
+
+    void position(const math::float3& position);
+    void direction(const math::float3& direction);
+    void view(const math::float4x4& view);
+    void projection(const math::float4x4& projection);
+    void view_projection(const math::float4x4& view_projection);
+
+    std::array<math::float4, 8> frustum_vertices(std::size_t index) const noexcept;
 };
 
 class camera

@@ -28,13 +28,6 @@ bool mmd_viewer::initialize(const dictionary& config)
     m_loader = std::make_unique<mmd_loader>();
     m_loader->initialize();
 
-    graphics::rhi::register_pipeline_parameter_layout(
-        "mmd_material",
-        mmd_material_parameter::layout());
-    graphics::rhi::register_pipeline_parameter_layout(
-        "mmd_skin",
-        skinning_pipeline_parameter::layout());
-
     m_render_pipeline = std::make_unique<mmd_render_pipeline>();
     m_skinning_pipeline = std::make_unique<mmd_skinning_pipeline>();
 

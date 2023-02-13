@@ -36,25 +36,14 @@ bool graphics::initialize(const dictionary& config)
 {
     auto& window = system<window::window>();
 
-    rhi_info info = {};
-    info.window_handle = window.handle();
+    rhi_desc desc = {};
+    desc.window_handle = window.handle();
     window::window_extent extent = window.extent();
-    info.width = extent.width;
-    info.height = extent.height;
-    info.render_concurrency = config["render_concurrency"];
-    info.frame_resource = config["frame_resource"];
-    rhi::initialize(config["plugin"], info);
-
-    rhi::register_pipeline_parameter_layout("violet_object", object_pipeline_parameter::layout());
-    rhi::register_pipeline_parameter_layout("violet_camera", camera_pipeline_parameter::layout());
-    rhi::register_pipeline_parameter_layout("violet_light", light_pipeline_parameter::layout());
-    rhi::register_pipeline_parameter_layout("violet_sky", sky_pipeline_parameter::layout());
-    rhi::register_pipeline_parameter_layout(
-        "violet_shadow",
-        shadow_map_pipeline_parameter::layout());
-    rhi::register_pipeline_parameter_layout(
-        "violet_blinn_phong_material",
-        blinn_phong_material_pipeline_parameter::layout());
+    desc.width = extent.width;
+    desc.height = extent.height;
+    desc.render_concurrency = config["render_concurrency"];
+    desc.frame_resource = config["frame_resource"];
+    rhi::initialize(config["plugin"], desc);
 
     m_light_parameter = std::make_unique<light_pipeline_parameter>();
     m_light_parameter->ambient_light(math::float3{0.5f, 0.5f, 0.5f});

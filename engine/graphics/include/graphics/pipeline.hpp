@@ -1,8 +1,6 @@
 #pragma once
 
-#include "graphics_interface.hpp"
-#include <memory>
-#include <string_view>
+#include "graphics/rhi.hpp"
 #include <vector>
 
 namespace violet::graphics
@@ -10,8 +8,8 @@ namespace violet::graphics
 class pipeline_parameter
 {
 public:
-    pipeline_parameter(std::string_view layout_name);
-    virtual ~pipeline_parameter() = default;
+    pipeline_parameter(const pipeline_parameter_desc& desc);
+    virtual ~pipeline_parameter() {}
 
     pipeline_parameter_interface* interface() const noexcept { return m_interface.get(); }
 

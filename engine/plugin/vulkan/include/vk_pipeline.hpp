@@ -194,9 +194,9 @@ private:
         std::size_t operator()(const vk_camera_info& key) const
         {
             std::size_t result = 0;
-            hviolet_combine(result, key.render_target->view());
-            hviolet_combine(result, key.depth_stencil_buffer->view());
-            hviolet_combine(
+            hash_combine(result, key.render_target->view());
+            hash_combine(result, key.depth_stencil_buffer->view());
+            hash_combine(
                 result,
                 key.render_target_resolve == nullptr ? VK_NULL_HANDLE
                                                      : key.render_target_resolve->view());
@@ -205,7 +205,7 @@ private:
         }
 
         template <class T>
-        void hviolet_combine(std::size_t& s, const T& v) const
+        void hash_combine(std::size_t& s, const T& v) const
         {
             std::hash<T> h;
             s ^= h(v) + 0x9e3779b9 + (s << 6) + (s >> 2);

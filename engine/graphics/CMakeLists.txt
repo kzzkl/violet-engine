@@ -8,7 +8,7 @@ add_library(${PROJECT_NAME} STATIC
     ./source/graphics.cpp
     ./source/light.cpp
     ./source/mesh_render.cpp
-    ./source/pipeline_parameter.cpp
+    ./source/pipeline.cpp
     ./source/render_pipeline.cpp
     ./source/rhi.cpp
     ./source/shadow_map.cpp

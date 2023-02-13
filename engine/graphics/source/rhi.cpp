@@ -5,20 +5,6 @@
 
 namespace violet::graphics
 {
-render_pass_info::render_pass_info()
-{
-    blend.enable = false;
-
-    rasterizer.cull_mode = CULL_MODE_BACK;
-
-    depth_stencil.depth_enable = true;
-    depth_stencil.depth_functor = DEPTH_STENCIL_FUNCTOR_LESS;
-    depth_stencil.stencil_enable = false;
-    depth_stencil.stencil_pass_op = STENCIL_OP_KEEP;
-    depth_stencil.stencil_fail_op = STENCIL_OP_KEEP;
-    depth_stencil.stencil_functor = DEPTH_STENCIL_FUNCTOR_ALWAYS;
-}
-
 class rhi_plugin : public core::plugin
 {
 public:
@@ -53,12 +39,12 @@ rhi& rhi::instance()
     return instance;
 }
 
-void rhi::initialize(std::string_view plugin, const rhi_info& info)
+void rhi::initialize(std::string_view plugin, const rhi_desc& desc)
 {
     instance().m_plugin = std::make_unique<rhi_plugin>();
     instance().m_plugin->load(plugin);
 
-    impl().initialize(info);
+    impl().initialize(desc);
 
     instance().m_renderer.reset(impl().make_renderer());
 }
@@ -73,98 +59,22 @@ resource_format rhi::back_buffer_format()
     return instance().m_renderer->back_buffer()->format();
 }
 
-pipeline_parameter_layout_interface* rhi::register_pipeline_parameter_layout(
-    std::string_view name,
-    const std::vector<pipeline_parameter_pair>& parameters)
-{
-    pipeline_parameter_layout_desc desc = {};
-    for (auto& parameter : parameters)
-    {
-        desc.parameters[desc.parameter_count] = parameter;
-        ++desc.parameter_count;
-    }
-    auto interface = impl().make_pipeline_parameter_layout(desc);
-    instance().m_parameter_layouts[name.data()].reset(interface);
-    return interface;
-}
-
-pipeline_parameter_layout_interface* rhi::find_pipeline_parameter_layout(std::string_view name)
-{
-    auto iter = instance().m_parameter_layouts.find(name.data());
-    if (iter != instance().m_parameter_layouts.end())
-        return iter->second.get();
-    else
-        return nullptr;
-}
-
 std::unique_ptr<pipeline_parameter_interface> rhi::make_pipeline_parameter(
-    pipeline_parameter_layout_interface* layout)
+    const pipeline_parameter_desc& desc)
 {
-    return std::unique_ptr<pipeline_parameter_interface>(impl().make_pipeline_parameter(layout));
+    pipeline_parameter_interface* interface = impl().make_pipeline_parameter(desc);
+    return std::unique_ptr<pipeline_parameter_interface>(interface);
 }
 
 std::unique_ptr<render_pipeline_interface> rhi::make_render_pipeline(
-    const render_pipeline_info& info)
+    const render_pipeline_desc& desc)
 {
-    render_pipeline_desc desc = {};
-    for (auto& attachment : info.attachments)
-    {
-        desc.attachments[desc.attachment_count] = attachment;
-        ++desc.attachment_count;
-    }
-
-    for (auto& pass : info.passes)
-    {
-        render_pass_desc& pass_desc = desc.passes[desc.pass_count];
-        ++desc.pass_count;
-
-        for (auto& vertex_attribute : pass.vertex_attributes)
-        {
-            pass_desc.vertex_attributes[pass_desc.vertex_attribute_count] = vertex_attribute;
-            ++pass_desc.vertex_attribute_count;
-        }
-
-        for (auto& parameter : pass.parameters)
-        {
-            auto layout = find_pipeline_parameter_layout(parameter);
-            VIOLET_ASSERT(layout != nullptr);
-            pass_desc.parameters[pass_desc.parameter_count] = layout;
-            ++pass_desc.parameter_count;
-        }
-
-        for (auto& reference : pass.references)
-        {
-            pass_desc.references[pass_desc.reference_count] = reference;
-            ++pass_desc.reference_count;
-        }
-
-        pass_desc.vertex_shader = pass.vertex_shader.empty() ? nullptr : pass.vertex_shader.c_str();
-        pass_desc.pixel_shader = pass.pixel_shader.empty() ? nullptr : pass.pixel_shader.c_str();
-
-        pass_desc.blend = pass.blend;
-        pass_desc.depth_stencil = pass.depth_stencil;
-        pass_desc.rasterizer = pass.rasterizer;
-        pass_desc.primitive_topology = pass.primitive_topology;
-        pass_desc.samples = pass.samples;
-    }
-
     return std::unique_ptr<render_pipeline_interface>(impl().make_render_pipeline(desc));
 }
 
 std::unique_ptr<compute_pipeline_interface> rhi::make_compute_pipeline(
-    const compute_pipeline_info& info)
+    const compute_pipeline_desc& desc)
 {
-    compute_pipeline_desc desc = {};
-    desc.compute_shader = info.compute_shader.c_str();
-
-    for (auto& parameter : info.parameters)
-    {
-        auto layout = find_pipeline_parameter_layout(parameter);
-        VIOLET_ASSERT(layout != nullptr);
-        desc.parameters[desc.parameter_count] = layout;
-        ++desc.parameter_count;
-    }
-
     return std::unique_ptr<compute_pipeline_interface>(impl().make_compute_pipeline(desc));
 }
 
@@ -199,20 +109,20 @@ std::unique_ptr<resource_interface> rhi::make_texture_cube(
         back.data()));
 }
 
-std::unique_ptr<resource_interface> rhi::make_shadow_map(const shadow_map_info& info)
+std::unique_ptr<resource_interface> rhi::make_shadow_map(const shadow_map_desc& desc)
 {
-    return std::unique_ptr<resource_interface>(impl().make_shadow_map(info));
+    return std::unique_ptr<resource_interface>(impl().make_shadow_map(desc));
 }
 
-std::unique_ptr<resource_interface> rhi::make_render_target(const render_target_info& info)
+std::unique_ptr<resource_interface> rhi::make_render_target(const render_target_desc& desc)
 {
-    return std::unique_ptr<resource_interface>(impl().make_render_target(info));
+    return std::unique_ptr<resource_interface>(impl().make_render_target(desc));
 }
 
 std::unique_ptr<resource_interface> rhi::make_depth_stencil_buffer(
-    const depth_stencil_buffer_info& info)
+    const depth_stencil_buffer_desc& desc)
 {
-    return std::unique_ptr<resource_interface>(impl().make_depth_stencil_buffer(info));
+    return std::unique_ptr<resource_interface>(impl().make_depth_stencil_buffer(desc));
 }
 
 rhi_interface& rhi::impl()

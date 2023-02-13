@@ -1,4 +1,5 @@
 #include "d3d12_pipeline.hpp"
+#include "d3d12_cache.hpp"
 #include "d3d12_context.hpp"
 #include "d3d12_utility.hpp"
 #include <d3dcompiler.h>
@@ -196,7 +197,7 @@ static const std::vector<CD3DX12_STATIC_SAMPLER_DESC> static_samplers = {
         D3D12_SHADER_VISIBILITY_PIXEL)};
 
 d3d12_pipeline_parameter_layout::d3d12_pipeline_parameter_layout(
-    const pipeline_parameter_layout_desc& desc)
+    const pipeline_parameter_desc& desc)
     : m_cbv_count(0),
       m_srv_count(0),
       m_uav_count(0),
@@ -251,12 +252,13 @@ d3d12_pipeline_parameter_layout::d3d12_pipeline_parameter_layout(
     m_constant_buffer_size = cal_align(constant_offset, 256);
 }
 
-d3d12_pipeline_parameter::d3d12_pipeline_parameter(pipeline_parameter_layout_interface* layout)
+d3d12_pipeline_parameter::d3d12_pipeline_parameter(const pipeline_parameter_desc& desc)
     : m_tier_info(d3d12_frame_counter::frame_resource_count()),
-      m_layout(static_cast<d3d12_pipeline_parameter_layout*>(layout)),
       m_current_index(0),
       m_last_sync_frame(0)
 {
+    m_layout = d3d12_context::cache().get_or_create_pipeline_parameter_layout(desc);
+
     std::size_t cbv_count = m_layout->cbv_count();
     std::size_t srv_count = m_layout->srv_count();
     std::size_t uav_count = m_layout->uav_count();
@@ -413,7 +415,7 @@ void d3d12_pipeline_parameter::copy_descriptor(
 }
 
 d3d12_root_signature::d3d12_root_signature(
-    pipeline_parameter_layout_interface* const* parameters,
+    const pipeline_parameter_desc* const parameters,
     std::size_t parameter_count)
 {
     std::vector<CD3DX12_ROOT_PARAMETER> root_parameter;
@@ -424,7 +426,7 @@ d3d12_root_signature::d3d12_root_signature(
 
     for (std::size_t i = 0; i < parameter_count; ++i)
     {
-        auto layout = static_cast<const d3d12_pipeline_parameter_layout*>(parameters[i]);
+        auto layout = d3d12_context::cache().get_or_create_pipeline_parameter_layout(parameters[i]);
 
         UINT cbv_count = static_cast<UINT>(layout->cbv_count());
         UINT srv_count = static_cast<UINT>(layout->srv_count());
@@ -865,12 +867,11 @@ void d3d12_render_pipeline::begin(
     const d3d12_camera_info& camera_info)
 {
     m_current_index = 0;
-    m_current_frame_buffer =
-        d3d12_context::frame_buffer().get_or_create_frame_buffer(this, camera_info);
+    m_current_frame_buffer = d3d12_context::cache().get_or_create_frame_buffer(this, camera_info);
     m_current_frame_buffer->begin_render(command_list);
 
     auto [width, height] = m_current_frame_buffer->extent();
-
+     
     D3D12_VIEWPORT viewport = {};
     viewport.Width = static_cast<float>(width);
     viewport.Height = static_cast<float>(height);
@@ -894,30 +895,6 @@ void d3d12_render_pipeline::next(D3D12GraphicsCommandList* command_list)
     m_passes[m_current_index]->end(command_list);
     ++m_current_index;
     m_passes[m_current_index]->begin(command_list, m_current_frame_buffer);
-}
-
-d3d12_frame_buffer* d3d12_frame_buffer_manager::get_or_create_frame_buffer(
-    d3d12_render_pipeline* pipeline,
-    const d3d12_camera_info& camera_info)
-{
-    auto& result = m_frame_buffers[camera_info];
-    if (result == nullptr)
-        result = std::make_unique<d3d12_frame_buffer>(pipeline, camera_info);
-
-    return result.get();
-}
-
-void d3d12_frame_buffer_manager::notify_destroy(d3d12_resource* resource)
-{
-    for (auto iter = m_frame_buffers.begin(); iter != m_frame_buffers.end();)
-    {
-        if (iter->first.render_target == resource ||
-            iter->first.render_target_resolve == resource ||
-            iter->first.depth_stencil_buffer == resource)
-            iter = m_frame_buffers.erase(iter);
-        else
-            ++iter;
-    }
 }
 
 d3d12_compute_pipeline::d3d12_compute_pipeline(const compute_pipeline_desc& desc)

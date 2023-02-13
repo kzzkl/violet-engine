@@ -1,7 +1,7 @@
 #include "d3d12_resource.hpp"
+#include "d3d12_cache.hpp"
 #include "d3d12_context.hpp"
 #include "d3d12_image_loader.hpp"
-#include "d3d12_pipeline.hpp"
 
 namespace violet::graphics::d3d12
 {
@@ -69,7 +69,7 @@ d3d12_back_buffer::~d3d12_back_buffer()
 {
     if (m_rtv_offset != INVALID_DESCRIPTOR_INDEX)
     {
-        d3d12_context::frame_buffer().notify_destroy(this);
+        d3d12_context::cache().on_resource_destroy(this);
 
         auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
         heap->deallocate(m_rtv_offset);
@@ -146,7 +146,7 @@ d3d12_render_target::~d3d12_render_target()
 {
     if (m_resource != nullptr)
     {
-        d3d12_context::frame_buffer().notify_destroy(this);
+        d3d12_context::cache().on_resource_destroy(this);
         d3d12_context::resource()->delay_delete(m_resource);
     }
 
@@ -234,7 +234,7 @@ d3d12_depth_stencil_buffer::~d3d12_depth_stencil_buffer()
 {
     if (m_resource != nullptr)
     {
-        d3d12_context::frame_buffer().notify_destroy(this);
+        d3d12_context::cache().on_resource_destroy(this);
         d3d12_context::resource()->delay_delete(m_resource);
     }
 
