@@ -1,16 +1,16 @@
 project(violet-core)
 
 add_library(${PROJECT_NAME} STATIC
-    ./source/application.cpp
-    ./source/context.cpp
-    ./source/plugin.cpp
-    ./source/relation.cpp)
+    ./private/application.cpp
+    ./private/context.cpp
+    ./private/plugin.cpp
+    ./private/relation.cpp)
 add_library(violet::core ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-    ./include
-    ./interface)
+    ./interface
+    ./public)
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC

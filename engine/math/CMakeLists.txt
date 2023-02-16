@@ -5,7 +5,7 @@ add_library(violet::math ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     INTERFACE
-    ./include)
+    ./public)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

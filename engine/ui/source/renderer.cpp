@@ -1,5 +1,5 @@
 #include "ui/renderer.hpp"
-#include "log.hpp"
+#include "common/log.hpp"
 #include <algorithm>
 
 namespace violet::ui

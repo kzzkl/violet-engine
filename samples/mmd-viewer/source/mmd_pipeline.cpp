@@ -1,5 +1,5 @@
 #include "mmd_pipeline.hpp"
-#include "assert.hpp"
+#include "common/assert.hpp"
 #include "graphics/camera.hpp"
 #include "graphics/rhi.hpp"
 

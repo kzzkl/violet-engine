@@ -3,16 +3,18 @@ project(violet-physics)
 option(VIOLET_PHYSICS_DEBUG_DRAW "Whether to show rigid body wireframe" OFF)
 
 add_library(${PROJECT_NAME} STATIC
-    ./source/joint.cpp
-    ./source/physics_plugin.cpp
-    ./source/physics.cpp
-    ./source/rigidbody.cpp)
+    ./private/joint.cpp
+    ./private/physics_plugin.cpp
+    ./private/physics.cpp
+    ./private/rigidbody.cpp)
 add_library(violet::physics ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-    ./include
-    ./interface)
+    ./interface
+    ./public
+    PRIVATE
+    ./private)
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC

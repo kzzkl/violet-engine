@@ -1,5 +1,5 @@
 #include "ui/controls/label.hpp"
-#include "assert.hpp"
+#include "common/assert.hpp"
 #include "ui/font.hpp"
 
 namespace violet::ui

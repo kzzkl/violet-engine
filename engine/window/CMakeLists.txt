@@ -3,14 +3,16 @@ project(violet-window)
 option(VIOLET_WINDOW_SHOW_FPS "Whether to display the frame rate on the title bar." ON)
 
 add_library(${PROJECT_NAME} STATIC
-    ./source/input.cpp
-    ./source/window_impl_win32.cpp
-    ./source/window.cpp)
+    ./private/input.cpp
+    ./private/window_impl_win32.cpp
+    ./private/window.cpp)
 add_library(violet::window ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-    ./include)
+    ./public
+    PRIVATE
+    ./private)
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC

@@ -5,14 +5,12 @@ add_library(violet::ecs ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     INTERFACE
-    ./include)
+    ./public)
 
 target_link_libraries(${PROJECT_NAME}
     INTERFACE
     violet::common
     violet::core)
-
-install(DIRECTORY ./include/ DESTINATION include/violet/ecs)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

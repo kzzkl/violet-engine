@@ -1,4 +1,4 @@
-#include "assert.hpp"
+#include "common/assert.hpp"
 #include "core/application.hpp"
 #include "core/relation.hpp"
 #include "gallery.hpp"

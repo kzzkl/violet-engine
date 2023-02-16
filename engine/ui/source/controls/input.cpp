@@ -1,5 +1,5 @@
 #include "ui/controls/input.hpp"
-#include "log.hpp"
+#include "common/log.hpp"
 #include "ui/font.hpp"
 #include <format>
 

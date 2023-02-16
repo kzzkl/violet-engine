@@ -1,6 +1,6 @@
 #include "core/application.hpp"
 #include "graphics/graphics.hpp"
-#include "log.hpp"
+#include "common/log.hpp"
 #include "window/window.hpp"
 #include <filesystem>
 #include <fstream>
