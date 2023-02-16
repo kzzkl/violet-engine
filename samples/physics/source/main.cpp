@@ -2,7 +2,7 @@
 #include "core/relation.hpp"
 #include "geometry.hpp"
 #include "graphics/graphics.hpp"
-#include "log.hpp"
+#include "common/log.hpp"
 #include "physics.hpp"
 #include "scene/scene.hpp"
 #include "window/window.hpp"

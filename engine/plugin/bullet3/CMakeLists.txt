@@ -1,17 +1,17 @@
 project(violet-physics-bullet3)
 
 add_library(${PROJECT_NAME} SHARED
-    ./source/bt3_joint.cpp
-    ./source/bt3_plugin.cpp
-    ./source/bt3_rigidbody.cpp
-    ./source/bt3_shape.cpp
-    ./source/bt3_world.cpp)
+    ./private/bt3_joint.cpp
+    ./private/bt3_plugin.cpp
+    ./private/bt3_rigidbody.cpp
+    ./private/bt3_shape.cpp
+    ./private/bt3_world.cpp)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "")
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-    ./include
+    ./private
     ${VIOLET_CORE_INTERFACE_DIR}
     ${VIOLET_PHYSICS_INTERFACE_DIR}
     ${VIOLET_THIRD_PARTY_DIR}/bullet3/src)

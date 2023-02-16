@@ -29,17 +29,6 @@ bool ui::initialize(const dictionary& config)
     load_font("remixicon", "engine/font/remixicon.ttf", 24);
     load_font("NotoSans-Regular", "engine/font/NotoSans-Regular.ttf", 13);
 
-    // Register ui pipeline parameter layout.
-    graphics::rhi::register_pipeline_parameter_layout(
-        "violet_ui_mvp",
-        mvp_pipeline_parameter::layout());
-    graphics::rhi::register_pipeline_parameter_layout(
-        "violet_ui_offset",
-        offset_pipeline_parameter::layout());
-    graphics::rhi::register_pipeline_parameter_layout(
-        "violet_ui_material",
-        material_pipeline_parameter::layout());
-
     m_pipeline = std::make_unique<ui_pipeline>();
 
     m_tree = std::make_unique<element_tree>();

@@ -1,12 +1,12 @@
 project(violet-resource)
 
 add_library(${PROJECT_NAME} STATIC
-    ./source/resource_manager.cpp)
+    ./private/resource_manager.cpp)
 add_library(violet::resource ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-    ./include)
+    ./public)
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC

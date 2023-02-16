@@ -10,17 +10,13 @@ namespace violet::graphics
 enum resource_format
 {
     RESOURCE_FORMAT_UNDEFINED,
-
     RESOURCE_FORMAT_R8_UNORM,
     RESOURCE_FORMAT_R8_UINT,
-
     RESOURCE_FORMAT_R8G8B8A8_UNORM,
     RESOURCE_FORMAT_B8G8R8A8_UNORM,
-
     RESOURCE_FORMAT_R32G32B32A32_FLOAT,
     RESOURCE_FORMAT_R32G32B32A32_SINT,
     RESOURCE_FORMAT_R32G32B32A32_UINT,
-
     RESOURCE_FORMAT_D24_UNORM_S8_UINT,
     RESOURCE_FORMAT_D32_FLOAT
 };
@@ -87,19 +83,13 @@ enum pipeline_parameter_type
 struct pipeline_parameter_pair
 {
     pipeline_parameter_type type;
-    std::size_t size;
+    std::size_t size = 0;
 };
 
-struct pipeline_parameter_layout_desc
+struct pipeline_parameter_desc
 {
     pipeline_parameter_pair parameters[16];
-    std::size_t parameter_count;
-};
-
-class pipeline_parameter_layout_interface
-{
-public:
-    virtual ~pipeline_parameter_layout_interface() = default;
+    std::size_t parameter_count = 0;
 };
 
 class pipeline_parameter_interface
@@ -135,7 +125,7 @@ enum blend_op
 
 struct blend_desc
 {
-    bool enable;
+    bool enable = false;
 
     blend_factor source_factor;
     blend_factor target_factor;
@@ -146,21 +136,39 @@ struct blend_desc
     blend_op alpha_op;
 };
 
-enum depth_functor
+enum depth_stencil_functor
 {
-    DEPTH_FUNCTOR_NEVER,
-    DEPTH_FUNCTOR_LESS,
-    DEPTH_FUNCTOR_EQUAL,
-    DEPTH_FUNCTOR_LESS_EQUAL,
-    DEPTH_FUNCTOR_GREATER,
-    DEPTH_FUNCTOR_NOT_EQUAL,
-    DEPTH_FUNCTOR_GREATER_EQUAL,
-    DEPTH_FUNCTOR_ALWAYS
+    DEPTH_STENCIL_FUNCTOR_NEVER,
+    DEPTH_STENCIL_FUNCTOR_LESS,
+    DEPTH_STENCIL_FUNCTOR_EQUAL,
+    DEPTH_STENCIL_FUNCTOR_LESS_EQUAL,
+    DEPTH_STENCIL_FUNCTOR_GREATER,
+    DEPTH_STENCIL_FUNCTOR_NOT_EQUAL,
+    DEPTH_STENCIL_FUNCTOR_GREATER_EQUAL,
+    DEPTH_STENCIL_FUNCTOR_ALWAYS
+};
+
+enum stencil_op
+{
+    STENCIL_OP_KEEP,
+    STENCIL_OP_ZERO,
+    STENCIL_OP_REPLACE,
+    STENCIL_OP_INCR_SAT,
+    STENCIL_OP_DECR_SAT,
+    STENCIL_OP_INVERT,
+    STENCIL_OP_INCR,
+    STENCIL_OP_DECR
 };
 
 struct depth_stencil_desc
 {
-    depth_functor depth_functor;
+    bool depth_enable = true;
+    depth_stencil_functor depth_functor = DEPTH_STENCIL_FUNCTOR_LESS;
+
+    bool stencil_enable = false;
+    depth_stencil_functor stencil_functor = DEPTH_STENCIL_FUNCTOR_ALWAYS;
+    stencil_op stencil_pass_op = STENCIL_OP_KEEP;
+    stencil_op stencil_fail_op = STENCIL_OP_KEEP;
 };
 
 enum cull_mode
@@ -172,7 +180,7 @@ enum cull_mode
 
 struct rasterizer_desc
 {
-    cull_mode cull_mode;
+    cull_mode cull_mode = CULL_MODE_BACK;
 };
 
 enum primitive_topology_type
@@ -198,14 +206,14 @@ struct attachment_reference
 
 struct render_pass_desc
 {
-    const char* vertex_shader;
-    const char* pixel_shader;
+    const char* vertex_shader = nullptr;
+    const char* pixel_shader = nullptr;
 
     vertex_attribute vertex_attributes[16];
-    std::size_t vertex_attribute_count;
+    std::size_t vertex_attribute_count = 0;
 
-    pipeline_parameter_layout_interface* parameters[16];
-    std::size_t parameter_count;
+    pipeline_parameter_desc parameters[16];
+    std::size_t parameter_count = 0;
 
     blend_desc blend;
     depth_stencil_desc depth_stencil;
@@ -216,7 +224,7 @@ struct render_pass_desc
     primitive_topology_type primitive_topology;
 
     attachment_reference references[16];
-    std::size_t reference_count;
+    std::size_t reference_count = 0;
 };
 
 enum attachment_load_op
@@ -259,10 +267,10 @@ struct attachment_desc
 struct render_pipeline_desc
 {
     attachment_desc attachments[16];
-    std::size_t attachment_count;
+    std::size_t attachment_count = 0;
 
     render_pass_desc passes[16];
-    std::size_t pass_count;
+    std::size_t pass_count = 0;
 };
 
 class render_pipeline_interface
@@ -273,9 +281,9 @@ public:
 
 struct compute_pipeline_desc
 {
-    const char* compute_shader;
-    pipeline_parameter_layout_interface* parameters[16];
-    std::size_t parameter_count;
+    const char* compute_shader = nullptr;
+    pipeline_parameter_desc parameters[16];
+    std::size_t parameter_count = 0;
 };
 
 class compute_pipeline_interface
@@ -330,7 +338,12 @@ public:
     virtual void clear_render_target(
         resource_interface* render_target,
         const math::float4& color) = 0;
-    virtual void clear_depth_stencil(resource_interface* depth_stencil) = 0;
+    virtual void clear_depth_stencil(
+        resource_interface* depth_stencil,
+        bool clear_depth = true,
+        float depth = 1.0f,
+        bool clear_stencil = true,
+        std::uint8_t stencil = 0) = 0;
 
     // Compute.
     virtual void begin(compute_pipeline_interface* pipeline) {}
@@ -365,7 +378,7 @@ struct vertex_buffer_desc
 {
     const void* vertices;
     std::size_t vertex_size;
-    std::size_t vertex_count;
+    std::size_t vertex_count = 0;
     vertex_buffer_flags flags;
     bool dynamic;
     bool frame_resource;
@@ -375,7 +388,7 @@ struct index_buffer_desc
 {
     const void* indices;
     std::size_t index_size;
-    std::size_t index_count;
+    std::size_t index_count = 0;
     bool dynamic;
     bool frame_resource;
 };
@@ -427,10 +440,8 @@ public:
     virtual compute_pipeline_interface* make_compute_pipeline(
         const compute_pipeline_desc& desc) = 0;
 
-    virtual pipeline_parameter_layout_interface* make_pipeline_parameter_layout(
-        const pipeline_parameter_layout_desc& desc) = 0;
     virtual pipeline_parameter_interface* make_pipeline_parameter(
-        pipeline_parameter_layout_interface* layout) = 0;
+        const pipeline_parameter_desc& desc) = 0;
 
     virtual resource_interface* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
     virtual resource_interface* make_index_buffer(const index_buffer_desc& desc) = 0;

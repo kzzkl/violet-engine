@@ -1,15 +1,15 @@
 project(violet-scene)
 
 add_library(${PROJECT_NAME} STATIC
-    ./source/bounding_box.cpp
-    ./source/bvh_tree.cpp
-    ./source/scene.cpp
-    ./source/transform.cpp)
+    ./private/bounding_box.cpp
+    ./private/bvh_tree.cpp
+    ./private/scene.cpp
+    ./private/transform.cpp)
 add_library(violet::scene ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-    ./include)
+    ./public)
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC

@@ -1,53 +1,47 @@
 #include "mmd_pipeline.hpp"
-#include "assert.hpp"
+#include "common/assert.hpp"
+#include "graphics/camera.hpp"
 #include "graphics/rhi.hpp"
 
 namespace violet::sample::mmd
 {
-mmd_material_parameter::mmd_material_parameter() : graphics::pipeline_parameter("mmd_material")
+mmd_material_parameter::mmd_material_parameter() : graphics::pipeline_parameter(layout)
 {
 }
 
 void mmd_material_parameter::diffuse(const math::float4& diffuse)
 {
     field<constant_data>(0).diffuse = diffuse;
-    m_data.diffuse = diffuse;
 }
 
 void mmd_material_parameter::specular(const math::float3& specular)
 {
     field<constant_data>(0).specular = specular;
-    m_data.specular = specular;
 }
 
 void mmd_material_parameter::specular_strength(float specular_strength)
 {
     field<constant_data>(0).specular_strength = specular_strength;
-    m_data.specular_strength = specular_strength;
 }
 
 void mmd_material_parameter::edge_color(const math::float4& edge_color)
 {
     field<constant_data>(0).edge_color = edge_color;
-    m_data.edge_color = edge_color;
 }
 
 void mmd_material_parameter::edge_size(float edge_size)
 {
     field<constant_data>(0).edge_size = edge_size;
-    m_data.edge_size = edge_size;
 }
 
 void mmd_material_parameter::toon_mode(std::uint32_t toon_mode)
 {
     field<constant_data>(0).toon_mode = toon_mode;
-    m_data.toon_mode = toon_mode;
 }
 
 void mmd_material_parameter::spa_mode(std::uint32_t spa_mode)
 {
     field<constant_data>(0).spa_mode = spa_mode;
-    m_data.spa_mode = spa_mode;
 }
 
 void mmd_material_parameter::tex(graphics::resource_interface* tex)
@@ -65,59 +59,67 @@ void mmd_material_parameter::spa(graphics::resource_interface* spa)
     interface()->set(3, spa);
 }
 
-std::vector<graphics::pipeline_parameter_pair> mmd_material_parameter::layout()
-{
-    return {
-        {graphics::PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER,
-         sizeof(mmd_material_parameter::constant_data)       }, // constant
-        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1}, // tex
-        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1}, // toon
-        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1}  // spa
-    };
-}
-
 mmd_render_pipeline::mmd_render_pipeline()
 {
+    graphics::render_pipeline_desc desc;
+
     // Color pass.
-    graphics::render_pass_info color_pass_info = {};
-    color_pass_info.vertex_shader = "mmd-viewer/shader/color.vert";
-    color_pass_info.pixel_shader = "mmd-viewer/shader/color.frag";
-    color_pass_info.vertex_attributes = {
-        {"POSITION", graphics::VERTEX_ATTRIBUTE_TYPE_FLOAT3}, // position
-        {"NORMAL",   graphics::VERTEX_ATTRIBUTE_TYPE_FLOAT3}, // normal
-        {"UV",       graphics::VERTEX_ATTRIBUTE_TYPE_FLOAT2}, // uv
-    };
-    color_pass_info.references = {
-        {graphics::ATTACHMENT_REFERENCE_TYPE_COLOR, 0},
-        {graphics::ATTACHMENT_REFERENCE_TYPE_DEPTH, 0},
-        {graphics::ATTACHMENT_REFERENCE_TYPE_UNUSE, 0}
-    };
-    color_pass_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    color_pass_info.parameters = {"violet_object", "mmd_material", "violet_camera", "violet_light"};
-    color_pass_info.samples = 4;
+    graphics::render_pass_desc& color_pass = desc.passes[0];
+    color_pass.vertex_shader = "mmd-viewer/shader/color.vert";
+    color_pass.pixel_shader = "mmd-viewer/shader/color.frag";
+
+    color_pass.vertex_attributes[0] = {
+        "POSITION",
+        graphics::VERTEX_ATTRIBUTE_TYPE_FLOAT3}; // position
+    color_pass.vertex_attributes[1] = {"NORMAL", graphics::VERTEX_ATTRIBUTE_TYPE_FLOAT3}; // normal
+    color_pass.vertex_attributes[2] = {"UV", graphics::VERTEX_ATTRIBUTE_TYPE_FLOAT2};     // uv
+    color_pass.vertex_attribute_count = 3;
+
+    color_pass.references[0] = {graphics::ATTACHMENT_REFERENCE_TYPE_COLOR, 0};
+    color_pass.references[1] = {graphics::ATTACHMENT_REFERENCE_TYPE_DEPTH, 0};
+    color_pass.references[2] = {graphics::ATTACHMENT_REFERENCE_TYPE_UNUSE, 0};
+    color_pass.reference_count = 3;
+
+    color_pass.parameters[0] = graphics::object_pipeline_parameter::layout;
+    color_pass.parameters[1] = mmd_material_parameter::layout;
+    color_pass.parameters[2] = graphics::camera_pipeline_parameter::layout;
+    color_pass.parameters[3] = graphics::light_pipeline_parameter::layout;
+    color_pass.parameter_count = 4;
+
+    color_pass.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    color_pass.samples = 4;
 
     // Edge pass.
-    graphics::render_pass_info edge_pass_info = {};
-    edge_pass_info.vertex_shader = "mmd-viewer/shader/edge.vert";
-    edge_pass_info.pixel_shader = "mmd-viewer/shader/edge.frag";
-    edge_pass_info.vertex_attributes = {
-        {"POSITION", graphics::VERTEX_ATTRIBUTE_TYPE_FLOAT3}, // position
-        {"NORMAL",   graphics::VERTEX_ATTRIBUTE_TYPE_FLOAT3}, // normal
-        {"EDGE",     graphics::VERTEX_ATTRIBUTE_TYPE_FLOAT }  // edge
-    };
-    edge_pass_info.references = {
-        {graphics::ATTACHMENT_REFERENCE_TYPE_COLOR,   0},
-        {graphics::ATTACHMENT_REFERENCE_TYPE_DEPTH,   0},
-        {graphics::ATTACHMENT_REFERENCE_TYPE_RESOLVE, 0}
-    };
-    edge_pass_info.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    edge_pass_info.parameters = {"violet_object", "mmd_material", "violet_camera"};
-    edge_pass_info.samples = 4;
-    edge_pass_info.rasterizer.cull_mode = graphics::CULL_MODE_FRONT;
-    edge_pass_info.depth_stencil.depth_functor = graphics::DEPTH_FUNCTOR_LESS;
+    graphics::render_pass_desc& edge_pass = desc.passes[1];
+    edge_pass.vertex_shader = "mmd-viewer/shader/edge.vert";
+    edge_pass.pixel_shader = "mmd-viewer/shader/edge.frag";
+
+    edge_pass.vertex_attributes[0] = {
+        "POSITION",
+        graphics::VERTEX_ATTRIBUTE_TYPE_FLOAT3};                                         // position
+    edge_pass.vertex_attributes[1] = {"NORMAL", graphics::VERTEX_ATTRIBUTE_TYPE_FLOAT3}; // normal
+    edge_pass.vertex_attributes[2] = {"EDGE", graphics::VERTEX_ATTRIBUTE_TYPE_FLOAT};    // edge
+    edge_pass.vertex_attribute_count = 3;
+
+    edge_pass.references[0] = {graphics::ATTACHMENT_REFERENCE_TYPE_COLOR, 0};
+    edge_pass.references[1] = {graphics::ATTACHMENT_REFERENCE_TYPE_DEPTH, 0};
+    edge_pass.references[2] = {graphics::ATTACHMENT_REFERENCE_TYPE_RESOLVE, 0};
+    edge_pass.reference_count = 3;
+
+    edge_pass.parameters[0] = graphics::object_pipeline_parameter::layout;
+    edge_pass.parameters[1] = mmd_material_parameter::layout;
+    edge_pass.parameters[2] = graphics::camera_pipeline_parameter::layout;
+    edge_pass.parameter_count = 3;
+
+    edge_pass.primitive_topology = graphics::PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    edge_pass.samples = 4;
+    edge_pass.rasterizer.cull_mode = graphics::CULL_MODE_FRONT;
+    edge_pass.depth_stencil.depth_functor = graphics::DEPTH_STENCIL_FUNCTOR_LESS;
+
+    desc.pass_count = 2;
 
     // Attachment.
-    graphics::attachment_info render_target = {};
+    graphics::attachment_desc& render_target = desc.attachments[0];
     render_target.type = graphics::ATTACHMENT_TYPE_CAMERA_RENDER_TARGET;
     render_target.format = graphics::rhi::back_buffer_format();
     render_target.load_op = graphics::ATTACHMENT_LOAD_OP_CLEAR;
@@ -128,7 +130,7 @@ mmd_render_pipeline::mmd_render_pipeline()
     render_target.initial_state = graphics::RESOURCE_STATE_RENDER_TARGET;
     render_target.final_state = graphics::RESOURCE_STATE_RENDER_TARGET;
 
-    graphics::attachment_info depth_stencil = {};
+    graphics::attachment_desc& depth_stencil = desc.attachments[1];
     depth_stencil.type = graphics::ATTACHMENT_TYPE_CAMERA_DEPTH_STENCIL;
     depth_stencil.format = graphics::RESOURCE_FORMAT_D24_UNORM_S8_UINT;
     depth_stencil.load_op = graphics::ATTACHMENT_LOAD_OP_CLEAR;
@@ -139,7 +141,7 @@ mmd_render_pipeline::mmd_render_pipeline()
     depth_stencil.initial_state = graphics::RESOURCE_STATE_DEPTH_STENCIL;
     depth_stencil.final_state = graphics::RESOURCE_STATE_DEPTH_STENCIL;
 
-    graphics::attachment_info back_buffer = {};
+    graphics::attachment_desc& back_buffer = desc.attachments[2];
     back_buffer.type = graphics::ATTACHMENT_TYPE_CAMERA_RENDER_TARGET_RESOLVE;
     back_buffer.format = graphics::rhi::back_buffer_format();
     back_buffer.load_op = graphics::ATTACHMENT_LOAD_OP_CLEAR;
@@ -150,14 +152,9 @@ mmd_render_pipeline::mmd_render_pipeline()
     back_buffer.initial_state = graphics::RESOURCE_STATE_RENDER_TARGET;
     back_buffer.final_state = graphics::RESOURCE_STATE_PRESENT;
 
-    graphics::render_pipeline_info mmd_pipeline_info;
-    mmd_pipeline_info.attachments.push_back(render_target);
-    mmd_pipeline_info.attachments.push_back(depth_stencil);
-    mmd_pipeline_info.attachments.push_back(back_buffer);
-    mmd_pipeline_info.passes.push_back(color_pass_info);
-    mmd_pipeline_info.passes.push_back(edge_pass_info);
+    desc.attachment_count = 3;
 
-    m_interface = graphics::rhi::make_render_pipeline(mmd_pipeline_info);
+    m_interface = graphics::rhi::make_render_pipeline(desc);
 }
 
 void mmd_render_pipeline::render(
@@ -212,8 +209,7 @@ void mmd_render_pipeline::render(
     command->end(m_interface.get());
 }
 
-skinning_pipeline_parameter::skinning_pipeline_parameter()
-    : graphics::pipeline_parameter("mmd_skin")
+skinning_pipeline_parameter::skinning_pipeline_parameter() : graphics::pipeline_parameter(layout)
 {
 }
 
@@ -287,32 +283,15 @@ void skinning_pipeline_parameter::output_uv(graphics::resource_interface* uv)
     interface()->set(11, uv);
 }
 
-std::vector<graphics::pipeline_parameter_pair> skinning_pipeline_parameter::layout()
-{
-    return {
-        {graphics::PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER,
-         sizeof(constant_data)                                }, // bone transform.
-        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // input position.
-        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // input normal.
-        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // input uv.
-        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // skin.
-        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // bdef bone.
-        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // sdef bone.
-        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // vertex morph.
-        {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,  1}, // uv morph.
-        {graphics::PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS, 1}, // output position.
-        {graphics::PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS, 1}, // output normal.
-        {graphics::PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS, 1}  // output uv.
-    };
-}
-
 mmd_skinning_pipeline::mmd_skinning_pipeline()
 {
-    graphics::compute_pipeline_info compute_pipeline_info = {};
-    compute_pipeline_info.compute_shader = "mmd-viewer/shader/skin.comp";
-    compute_pipeline_info.parameters = {"mmd_skin"};
+    graphics::compute_pipeline_desc compute_pipeline = {};
+    compute_pipeline.compute_shader = "mmd-viewer/shader/skin.comp";
 
-    m_interface = graphics::rhi::make_compute_pipeline(compute_pipeline_info);
+    compute_pipeline.parameters[0] = skinning_pipeline_parameter::layout;
+    compute_pipeline.parameter_count = 1;
+
+    m_interface = graphics::rhi::make_compute_pipeline(compute_pipeline);
 }
 
 void mmd_skinning_pipeline::on_skinning(

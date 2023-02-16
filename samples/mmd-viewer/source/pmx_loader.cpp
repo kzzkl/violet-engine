@@ -1,7 +1,7 @@
 #include "pmx_loader.hpp"
+#include "common/log.hpp"
 #include "encode.hpp"
 #include "graphics/rhi.hpp"
-#include "log.hpp"
 #include "physics/physics.hpp"
 #include <fstream>
 #include <map>

@@ -9,6 +9,29 @@ namespace violet::sample::mmd
 class mmd_material_parameter : public graphics::pipeline_parameter
 {
 public:
+    struct constant_data
+    {
+        math::float4 diffuse;
+        math::float3 specular;
+        float specular_strength;
+        math::float4 edge_color;
+        math::float3 ambient;
+        float edge_size;
+        std::uint32_t toon_mode;
+        std::uint32_t spa_mode;
+    };
+
+    static constexpr graphics::pipeline_parameter_desc layout = {
+        .parameters =
+            {{graphics::PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER,
+              sizeof(mmd_material_parameter::constant_data)},
+                         {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1},
+                         {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1},
+                         {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1}},
+        .parameter_count = 4
+    };
+
+public:
     mmd_material_parameter();
 
     void diffuse(const math::float4& diffuse);
@@ -24,23 +47,6 @@ public:
     void tex(graphics::resource_interface* tex);
     void toon(graphics::resource_interface* toon);
     void spa(graphics::resource_interface* spa);
-
-    static std::vector<graphics::pipeline_parameter_pair> layout();
-
-private:
-    struct constant_data
-    {
-        math::float4 diffuse;
-        math::float3 specular;
-        float specular_strength;
-        math::float4 edge_color;
-        math::float3 ambient;
-        float edge_size;
-        std::uint32_t toon_mode;
-        std::uint32_t spa_mode;
-    };
-
-    constant_data m_data;
 };
 
 class mmd_render_pipeline : public graphics::render_pipeline
@@ -59,6 +65,31 @@ private:
 class skinning_pipeline_parameter : public graphics::pipeline_parameter
 {
 public:
+    struct constant_data
+    {
+        std::array<math::float4x3, 512> bone_transform;
+        std::array<math::float4, 512> bone_quaternion;
+    };
+
+    static constexpr graphics::pipeline_parameter_desc layout = {
+        .parameters =
+            {{graphics::PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER,
+              sizeof(constant_data)}, // bone transform.
+             {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1}, // input position.
+             {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1}, // input normal.
+             {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1}, // input uv.
+             {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1}, // skin.
+             {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1}, // bdef bone.
+             {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1}, // sdef bone.
+             {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1}, // vertex morph.
+             {graphics::PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1}, // uv morph.
+             {graphics::PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS, 1}, // output position.
+             {graphics::PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS, 1}, // output normal.
+             {graphics::PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS, 1}}, // output uv.
+        .parameter_count = 12
+    };
+
+public:
     skinning_pipeline_parameter();
 
     void bone_transform(const std::vector<math::float4x4>& bone_transform);
@@ -76,15 +107,6 @@ public:
     void output_position(graphics::resource_interface* position);
     void output_normal(graphics::resource_interface* normal);
     void output_uv(graphics::resource_interface* uv);
-
-    static std::vector<graphics::pipeline_parameter_pair> layout();
-
-private:
-    struct constant_data
-    {
-        std::array<math::float4x3, 512> bone_transform;
-        std::array<math::float4, 512> bone_quaternion;
-    };
 };
 
 class mmd_skinning_pipeline : public graphics::skinning_pipeline

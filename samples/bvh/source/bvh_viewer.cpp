@@ -92,30 +92,29 @@ void bvh_viewer::initialize_graphics_resource()
         transform.position(math::float3{0.0f, 0.0f, -50.0f});
         relation.link(m_small_camera, scene.root());
 
-        graphics::render_target_info render_target_info = {};
-        render_target_info.width = 400.0f;
-        render_target_info.height = 400.0f;
-        render_target_info.format = graphics::rhi::back_buffer_format();
-        render_target_info.samples = 4;
-        m_small_render_target = graphics::rhi::make_render_target(render_target_info);
+        graphics::render_target_desc render_target = {};
+        render_target.width = 400.0f;
+        render_target.height = 400.0f;
+        render_target.format = graphics::rhi::back_buffer_format();
+        render_target.samples = 4;
+        m_small_render_target = graphics::rhi::make_render_target(render_target);
         camera.render_target(m_small_render_target.get());
 
-        graphics::render_target_info render_target_resolve_info = {};
-        render_target_resolve_info.width = 400.0f;
-        render_target_resolve_info.height = 400.0f;
-        render_target_resolve_info.format = graphics::rhi::back_buffer_format();
-        render_target_resolve_info.samples = 1;
-        m_small_render_target_resolve =
-            graphics::rhi::make_render_target(render_target_resolve_info);
+        graphics::render_target_desc render_target_resolve = {};
+        render_target_resolve.width = 400.0f;
+        render_target_resolve.height = 400.0f;
+        render_target_resolve.format = graphics::rhi::back_buffer_format();
+        render_target_resolve.samples = 1;
+        m_small_render_target_resolve = graphics::rhi::make_render_target(render_target_resolve);
         camera.render_target_resolve(m_small_render_target_resolve.get());
 
-        graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
-        depth_stencil_buffer_info.width = 400.0f;
-        depth_stencil_buffer_info.height = 400.0f;
-        depth_stencil_buffer_info.format = graphics::RESOURCE_FORMAT_D24_UNORM_S8_UINT;
-        depth_stencil_buffer_info.samples = 4;
+        graphics::depth_stencil_buffer_desc depth_stencil_buffer = {};
+        depth_stencil_buffer.width = 400.0f;
+        depth_stencil_buffer.height = 400.0f;
+        depth_stencil_buffer.format = graphics::RESOURCE_FORMAT_D24_UNORM_S8_UINT;
+        depth_stencil_buffer.samples = 4;
         m_small_depth_stencil_buffer =
-            graphics::rhi::make_depth_stencil_buffer(depth_stencil_buffer_info);
+            graphics::rhi::make_depth_stencil_buffer(depth_stencil_buffer);
         camera.depth_stencil_buffer(m_small_depth_stencil_buffer.get());
     }
 }
@@ -264,20 +263,20 @@ void bvh_viewer::resize_camera(std::uint32_t width, std::uint32_t height)
     auto& camera = world.component<graphics::camera>(m_camera);
     camera.render_groups |= graphics::RENDER_GROUP_DEBUG;
 
-    graphics::render_target_info render_target_info = {};
-    render_target_info.width = width;
-    render_target_info.height = height;
-    render_target_info.format = graphics::rhi::back_buffer_format();
-    render_target_info.samples = 4;
-    m_render_target = graphics::rhi::make_render_target(render_target_info);
+    graphics::render_target_desc render_target = {};
+    render_target.width = width;
+    render_target.height = height;
+    render_target.format = graphics::rhi::back_buffer_format();
+    render_target.samples = 4;
+    m_render_target = graphics::rhi::make_render_target(render_target);
     camera.render_target(m_render_target.get());
 
-    graphics::depth_stencil_buffer_info depth_stencil_buffer_info = {};
-    depth_stencil_buffer_info.width = width;
-    depth_stencil_buffer_info.height = height;
-    depth_stencil_buffer_info.format = graphics::RESOURCE_FORMAT_D24_UNORM_S8_UINT;
-    depth_stencil_buffer_info.samples = 4;
-    m_depth_stencil_buffer = graphics::rhi::make_depth_stencil_buffer(depth_stencil_buffer_info);
+    graphics::depth_stencil_buffer_desc depth_stencil_buffer = {};
+    depth_stencil_buffer.width = width;
+    depth_stencil_buffer.height = height;
+    depth_stencil_buffer.format = graphics::RESOURCE_FORMAT_D24_UNORM_S8_UINT;
+    depth_stencil_buffer.samples = 4;
+    m_depth_stencil_buffer = graphics::rhi::make_depth_stencil_buffer(depth_stencil_buffer);
     camera.depth_stencil_buffer(m_depth_stencil_buffer.get());
 }
 
