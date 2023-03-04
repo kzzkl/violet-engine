@@ -8,37 +8,41 @@ add_library(violet::yoga ALIAS violet-yoga)
 
 # Build ui system.
 add_library(${PROJECT_NAME} STATIC
-    ./source/controls/button.cpp
-    ./source/controls/collapse.cpp
-    ./source/controls/dock_area.cpp
-    ./source/controls/dock_element.cpp
-    ./source/controls/dock_window.cpp
-    ./source/controls/font_icon.cpp
-    ./source/controls/image.cpp
-    ./source/controls/input.cpp
-    ./source/controls/label.cpp
-    ./source/controls/panel.cpp
-    ./source/controls/scroll_view.cpp
-    ./source/controls/tree.cpp
-    ./source/controls/view.cpp
-    ./source/element_layout.cpp
-    ./source/element_tree.cpp
-    ./source/element.cpp
-    ./source/font.cpp
-    ./source/renderer.cpp
-    ./source/ui_pipeline.cpp
-    ./source/ui.cpp)
+    ./private/controls/button.cpp
+    ./private/controls/collapse.cpp
+    ./private/controls/dock_area.cpp
+    ./private/controls/dock_node.cpp
+    ./private/controls/dock_window.cpp
+    ./private/controls/font_icon.cpp
+    ./private/controls/image.cpp
+    ./private/controls/input.cpp
+    ./private/controls/label.cpp
+    ./private/controls/panel.cpp
+    ./private/controls/scroll_view.cpp
+    ./private/controls/tree.cpp
+    ./private/controls/view.cpp
+    ./private/event/event_node.cpp
+    ./private/layout/layout_node_yoga.cpp
+    ./private/render/renderer.cpp
+    ./private/render/ui_pipeline.cpp
+    ./private/control.cpp
+    ./private/control_tree.cpp
+    ./private/font.cpp
+    ./private/ui.cpp)
 add_library(violet::ui ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-    ./include)
+    ./public
+    PRIVATE
+    ./private)
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
     violet::common
     violet::core
     violet::graphics
+    violet::window
     PRIVATE
     freetype
     violet::yoga)

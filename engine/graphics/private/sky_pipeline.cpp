@@ -60,7 +60,7 @@ sky_pipeline::sky_pipeline()
     depth_stencil.initial_state = RESOURCE_STATE_DEPTH_STENCIL;
     depth_stencil.final_state = RESOURCE_STATE_DEPTH_STENCIL;
 
-    attachment_desc render_target_resolve = desc.attachments[2];
+    attachment_desc& render_target_resolve = desc.attachments[2];
     render_target_resolve.type = ATTACHMENT_TYPE_CAMERA_RENDER_TARGET_RESOLVE;
     render_target_resolve.format = rhi::back_buffer_format();
     render_target_resolve.load_op = ATTACHMENT_LOAD_OP_CLEAR;

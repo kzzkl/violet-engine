@@ -15,12 +15,12 @@ void scroll_page::initialize_sample_scroll()
     auto& ui = system<ui::ui>();
 
     auto display_1 = add_display_panel();
-    display_1->flex_direction(ui::LAYOUT_FLEX_DIRECTION_ROW);
-    display_1->align_items(ui::LAYOUT_ALIGN_CENTER);
+    display_1->layout()->set_flex_direction(ui::LAYOUT_FLEX_DIRECTION_ROW);
+    display_1->layout()->set_align_items(ui::LAYOUT_ALIGN_CENTER);
 
     m_scroll_view = std::make_unique<ui::scroll_view>(ui.theme<ui::scroll_view_theme>("dark"));
-    m_scroll_view->width(600.0f);
-    m_scroll_view->height(400.0f);
+    m_scroll_view->layout()->set_width(600.0f);
+    m_scroll_view->layout()->set_height(400.0f);
     display_1->add(m_scroll_view.get());
 
     std::vector<std::uint32_t> color = {
@@ -40,8 +40,8 @@ void scroll_page::initialize_sample_scroll()
     for (std::size_t i = 0; i < 8; ++i)
     {
         auto panel = std::make_unique<ui::panel>(color[i]);
-        panel->width(200.0f);
-        panel->height(200.0f);
+        panel->layout()->set_width(200.0f);
+        panel->layout()->set_height(200.0f);
         m_scroll_view->add_item(panel.get());
         m_panels.push_back(std::move(panel));
     }
