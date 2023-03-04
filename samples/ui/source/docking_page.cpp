@@ -19,9 +19,9 @@ static constexpr std::uint32_t PANEL_COLOR[] = {
     ui::COLOR_DARK_SALMON,
     ui::COLOR_DARK_SEA_GREEN};
 
-void print_tree(ui::element* node, std::size_t block = 0)
+void print_tree(ui::control* node, std::size_t block = 0)
 {
-    auto d = dynamic_cast<ui::dock_element*>(node);
+    auto d = dynamic_cast<ui::dock_node*>(node);
     std::string b(block, '-');
     if (d != nullptr)
     {
@@ -33,7 +33,7 @@ void print_tree(ui::element* node, std::size_t block = 0)
         log::debug("|{} {}", b, node->name);
     }
 
-    for (ui::element* child : node->children())
+    for (ui::control* child : node->children())
     {
         print_tree(child, block + 5);
     }
@@ -54,21 +54,21 @@ void docking_page::initialize_sample_docking()
     auto& ui = system<ui::ui>();
 
     auto display_1 = add_display_panel();
-    display_1->flex_direction(ui::LAYOUT_FLEX_DIRECTION_ROW);
+    display_1->layout()->set_flex_direction(ui::LAYOUT_FLEX_DIRECTION_ROW);
 
     m_dock_area = std::make_unique<ui::dock_area>(700, 400, ui.theme<ui::dock_area_theme>("dark"));
     display_1->add(m_dock_area.get());
     m_dock_area->dock(make_dock_window());
     m_dock_area->name = "area";
 
-    m_right = std::make_unique<ui::element>();
-    m_right->margin(50.0f, ui::LAYOUT_EDGE_LEFT);
+    m_right = std::make_unique<ui::control>();
+    m_right->layout()->set_margin(50.0f, ui::LAYOUT_EDGE_LEFT);
     display_1->add(m_right.get());
 
     m_create_button =
         std::make_unique<ui::button>("Create Dock Window", ui.theme<ui::button_theme>("dark"));
-    m_create_button->height(45.0f);
-    m_create_button->on_mouse_press = [&, this](window::mouse_key key, int x, int y) -> bool {
+    m_create_button->layout()->set_height(45.0f);
+    m_create_button->event()->on_mouse_press = [&, this](window::mouse_key key, int x, int y) -> bool {
         if (m_dock_windows.size() == sizeof(PANEL_COLOR) / sizeof(std::uint32_t))
             return false;
 
@@ -79,15 +79,15 @@ void docking_page::initialize_sample_docking()
     add(m_create_button.get());
 
     m_print_button = std::make_unique<ui::button>("Print Tree", ui.theme<ui::button_theme>("dark"));
-    m_print_button->height(45.0f);
-    m_print_button->on_mouse_press = [=, this](window::mouse_key key, int x, int y) -> bool {
+    m_print_button->layout()->set_height(45.0f);
+    m_print_button->event()->on_mouse_press = [=, this](window::mouse_key key, int x, int y) -> bool {
         print_tree(display_1);
         return false;
     };
     add(m_print_button.get());
 }
 
-ui::dock_element* docking_page::make_dock_window()
+ui::dock_node* docking_page::make_dock_window()
 {
     auto& ui = system<ui::ui>();
 
@@ -98,14 +98,14 @@ ui::dock_element* docking_page::make_dock_window()
 
     std::string window_name = std::format("Window {}", panel_counter);
     auto result = std::make_unique<ui::dock_window>(window_name, 0xEA43, m_dock_area.get(), theme);
-    result->width(200.0f);
-    result->height(200.0f);
+    result->layout()->set_width(200.0f);
+    result->layout()->set_height(200.0f);
     result->name = window_name;
 
     auto label_theme = ui.theme<ui::label_theme>("dark");
     label_theme.text_color = ui::COLOR_BLACK;
     auto label = std::make_unique<ui::label>(window_name, label_theme);
-    label->margin(100.0f, ui::LAYOUT_EDGE_ALL);
+    label->layout()->set_margin(100.0f, ui::LAYOUT_EDGE_ALL);
     result->add_item(label.get());
 
     m_dock_windows.push_back(std::move(result));

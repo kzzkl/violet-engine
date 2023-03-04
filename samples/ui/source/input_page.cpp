@@ -19,11 +19,11 @@ void input_page::initialize_input_text()
     add_subtitle("Text input");
 
     auto display = add_display_panel();
-    display->flex_direction(ui::LAYOUT_FLEX_DIRECTION_ROW);
-    display->align_items(ui::LAYOUT_ALIGN_CENTER);
+    display->layout()->set_flex_direction(ui::LAYOUT_FLEX_DIRECTION_ROW);
+    display->layout()->set_align_items(ui::LAYOUT_ALIGN_CENTER);
 
     m_input_text = std::make_unique<ui::input>(ui.theme<ui::input_theme>("dark"));
-    m_input_text->width(200.0f);
+    m_input_text->layout()->set_width(200.0f);
     m_input_text->on_text_change = [this](std::string_view text) {
         if (text.empty())
             m_input_text_result->text(" ");
@@ -33,7 +33,7 @@ void input_page::initialize_input_text()
     display->add(m_input_text.get());
 
     m_input_text_result = std::make_unique<ui::label>(" ", ui.theme<ui::label_theme>("dark"));
-    m_input_text_result->margin(200.0f, ui::LAYOUT_EDGE_LEFT);
+    m_input_text_result->layout()->set_margin(200.0f, ui::LAYOUT_EDGE_LEFT);
     display->add(m_input_text_result.get());
 }
 
@@ -44,18 +44,18 @@ void input_page::initialize_input_float()
     add_subtitle("Float input");
 
     auto display = add_display_panel();
-    display->flex_direction(ui::LAYOUT_FLEX_DIRECTION_ROW);
-    display->align_items(ui::LAYOUT_ALIGN_CENTER);
+    display->layout()->set_flex_direction(ui::LAYOUT_FLEX_DIRECTION_ROW);
+    display->layout()->set_align_items(ui::LAYOUT_ALIGN_CENTER);
 
     m_input_float = std::make_unique<ui::input_float>(ui.theme<ui::input_theme>("dark"));
-    m_input_float->width(200.0f);
+    m_input_float->layout()->set_width(200.0f);
     m_input_float->on_value_change = [this](float value) {
         m_input_float_result->text(std::format("{}", value));
     };
     display->add(m_input_float.get());
 
     m_input_float_result = std::make_unique<ui::label>(" ", ui.theme<ui::label_theme>("dark"));
-    m_input_float_result->margin(200.0f, ui::LAYOUT_EDGE_LEFT);
+    m_input_float_result->layout()->set_margin(200.0f, ui::LAYOUT_EDGE_LEFT);
     display->add(m_input_float_result.get());
 }
 } // namespace violet::sample

@@ -16,8 +16,8 @@ void image_page::initialize_sample_image()
     add_subtitle("Image loaded from file");
 
     auto display_1 = add_display_panel();
-    display_1->flex_direction(ui::LAYOUT_FLEX_DIRECTION_ROW);
-    display_1->align_items(ui::LAYOUT_ALIGN_CENTER);
+    display_1->layout()->set_flex_direction(ui::LAYOUT_FLEX_DIRECTION_ROW);
+    display_1->layout()->set_align_items(ui::LAYOUT_ALIGN_CENTER);
 
     m_cat_image = graphics::rhi::make_texture("ui/image/huhu.jpg");
     m_file_image = std::make_unique<ui::image>(m_cat_image.get());

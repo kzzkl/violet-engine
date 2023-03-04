@@ -5,7 +5,7 @@
 
 namespace violet::sample
 {
-class page : public ui::element
+class page : public ui::control
 {
 public:
     page(std::string_view title);

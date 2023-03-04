@@ -21,7 +21,7 @@ void gallery::initialize()
     ui.root()->add(m_left.get());
 
     m_navigation_tree = std::make_unique<ui::tree>();
-    m_navigation_tree->width_min(300.0f);
+    m_navigation_tree->layout()->set_width_min(300.0f);
     m_navigation_tree->on_select = [this](ui::tree_node* node) {
         auto& page = m_pages[node->text()];
         if (page != nullptr && m_current_page != page.get())
@@ -36,7 +36,7 @@ void gallery::initialize()
     m_left->add(m_navigation_tree.get());
 
     m_main_view = std::make_unique<ui::scroll_view>(ui.theme<ui::scroll_view_theme>("dark"));
-    m_main_view->flex_grow(1.0f);
+    m_main_view->layout()->set_flex_grow(1.0f);
     ui.root()->add(m_main_view.get());
 
     initialize_theme();

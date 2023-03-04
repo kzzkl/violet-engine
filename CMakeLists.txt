@@ -42,7 +42,7 @@ if(VIOLET_BUILD_ENGINE)
 endif()
 
 if(VIOLET_BUILD_EDITOR)
-    add_subdirectory(editor)
+    # add_subdirectory(editor)
 endif()
 
 if(VIOLET_BUILD_TESTING)
