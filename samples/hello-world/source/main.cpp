@@ -1,53 +1,42 @@
-#include "core/application.hpp"
-#include "graphics/graphics.hpp"
-#include "common/log.hpp"
+#include "core/context/engine.hpp"
+#include "core/node/node.hpp"
 #include "window/window.hpp"
 #include <filesystem>
 #include <fstream>
 
 using namespace violet::core;
 
-class test_module : public violet::core::system_base
+namespace violet::sample
+{
+class hello_world : public core::engine_module
 {
 public:
-    test_module(int data) : system_base("test_module"), m_data(data) {}
+    hello_world() : core::engine_module("hello_world") {}
 
-    virtual bool initialize(const violet::dictionary& config) override
+    virtual bool initialize(const dictionary& config)
     {
-        m_title = config["title"];
+        violet::log::info(config["text"]);
+
+        auto& world = engine::get_world();
+
+        m_test_object = std::make_unique<core::node>("test");
+
         return true;
     }
 
+    virtual void shutdown() {}
+
 private:
-    std::string m_title;
-    int m_data;
+    std::unique_ptr<core::node> m_test_object;
 };
-
-void test_json()
-{
-    violet::dictionary json1 =
-        R"({"test": {"title":"test app","array":["1","2","3"],"array2":[{"name":"1"}]}})"_json;
-
-    violet::dictionary json2 =
-        R"({"test": {"title":"test app2","array":["1","2","3","4"],"array2":[{"name":"2"}]}})"_json;
-
-    json1.update(json2, true);
-
-    violet::log::info("{}", json1);
-}
+} // namespace violet::sample
 
 int main()
 {
-    // test_json();
-
-    violet::log::info("hello world");
-
-    application app;
-    app.install<test_module>(99);
-    app.install<violet::window::window>();
-    app.install<violet::graphics::graphics>();
-
-    app.run();
+    engine::initialize("");
+    engine::install<violet::window::window>();
+    engine::install<violet::sample::hello_world>();
+    engine::run();
 
     return 0;
 }

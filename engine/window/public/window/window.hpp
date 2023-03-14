@@ -1,13 +1,13 @@
 #pragma once
 
-#include "core/context.hpp"
+#include "core/context/engine_module.hpp"
 #include "window/input.hpp"
 #include "window/window_extent.hpp"
 
 namespace violet::window
 {
 class window_impl;
-class window : public core::system_base
+class window : public core::engine_module
 {
 public:
     using mouse_type = mouse;

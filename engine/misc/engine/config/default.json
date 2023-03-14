@@ -1,4 +1,7 @@
 {
+    "engine": {
+        "task_thread_count": 0
+    },
     "graphics": {
         "plugin": "violet-graphics-d3d12.dll",
         "render_concurrency": 4,
@@ -9,9 +12,6 @@
         "title": "violet app",
         "width": 700,
         "height": 400
-    },
-    "task": {
-        "threads": 0
     },
     "physics": {
         "gravity": [

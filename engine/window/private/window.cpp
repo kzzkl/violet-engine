@@ -1,22 +1,14 @@
 #include "window/window.hpp"
-#include "core/context.hpp"
-#include "task/task_manager.hpp"
+#include "core/context/engine.hpp"
 #include "window/window_event.hpp"
 #include "window/window_task.hpp"
 #include "window_impl.hpp"
 #include "window_impl_win32.hpp"
 
-#if defined(VIOLET_WINDOW_SHOW_FPS)
-#    include "core/timer.hpp"
-#endif
-#include "core/timer.hpp"
-
-using namespace violet::core;
-
 namespace violet::window
 {
 window::window()
-    : system_base("window"),
+    : core::engine_module("window"),
       m_impl(std::make_unique<window_impl_win32>()),
       m_mouse(m_impl.get()),
       m_average_duration(1.0f / 60.0f),
@@ -31,21 +23,21 @@ bool window::initialize(const dictionary& config)
 
     m_title = config["title"];
 
-    auto& event = system<core::event>();
+    auto& event = core::engine::get_event();
     event.register_event<event_mouse_move>();
     event.register_event<event_mouse_key>();
     event.register_event<event_keyboard_key>();
     event.register_event<event_keyboard_char>();
     event.register_event<event_window_resize>();
 
-    auto& task = system<task::task_manager>();
+    auto& task = core::engine::get_task_manager();
     auto window_tick_task = task.schedule(
         TASK_WINDOW_TICK,
         [this]() { tick(); },
-        task::task_type::MAIN_THREAD);
-    window_tick_task->add_dependency(*task.find(task::TASK_ROOT));
+        core::task_type::MAIN_THREAD);
+    window_tick_task->add_dependency(*task.find(core::TASK_ROOT));
 
-    auto logic_start_task = task.find(task::TASK_GAME_LOGIC_START);
+    auto logic_start_task = task.find(core::TASK_GAME_LOGIC_START);
     logic_start_task->add_dependency(*window_tick_task);
 
     return true;
@@ -53,7 +45,7 @@ bool window::initialize(const dictionary& config)
 
 void window::shutdown()
 {
-    auto& event = system<core::event>();
+    auto& event = core::engine::get_event();
     event.unregister_event<event_mouse_move>();
     event.unregister_event<event_mouse_key>();
     event.unregister_event<event_keyboard_key>();
@@ -65,7 +57,7 @@ void window::shutdown()
 
 void window::tick()
 {
-    auto& event = system<core::event>();
+    auto& event = core::engine::get_event();
 
     m_mouse.tick();
     m_keyboard.tick();
@@ -123,7 +115,7 @@ void window::tick()
 
 #if defined(VIOLET_WINDOW_SHOW_FPS)
     static constexpr float fps_alpha = 0.01f;
-    float delta_time = system<core::timer>().frame_delta();
+    float delta_time = core::engine::get_timer().frame_delta();
     m_average_duration = delta_time * fps_alpha + m_average_duration * (1.0f - fps_alpha);
     m_fps = 1.0f / m_average_duration;
 

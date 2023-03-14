@@ -31,8 +31,6 @@ public:
     void view(const math::float4x4& view);
     void projection(const math::float4x4& projection);
     void view_projection(const math::float4x4& view_projection);
-
-    std::array<math::float4, 8> frustum_vertices(std::size_t index) const noexcept;
 };
 
 class camera

@@ -1,7 +1,12 @@
-project(hello-world)
+project(test-node)
 
 add_executable(${PROJECT_NAME}
-    ./source/main.cpp)
+    ./source/test_benchmark.cpp
+    ./source/test_component.cpp
+    ./source/test_main.cpp
+    ./source/test_node.cpp
+    ./source/test_storage.cpp
+    ./source/test_world.cpp)
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
@@ -10,11 +15,7 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
     violet::core
-    violet::window)
-
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/config DESTINATION bin/engine)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/shader DESTINATION bin/resource)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/config DESTINATION bin)
+    Catch2::Catch2)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

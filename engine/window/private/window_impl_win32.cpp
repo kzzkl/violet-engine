@@ -580,9 +580,9 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
         break;
     }
     default:
-        return DefWindowProc(hwnd, message, wparam, lparam);
+        break;
     }
-    return 0;
+    return DefWindowProc(hwnd, message, wparam, lparam);
 }
 
 void window_impl_win32::on_mouse_move(int x, int y)

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/event.hpp"
+#include "core/event/event.hpp"
 #include "window/input.hpp"
 
 namespace violet::window
