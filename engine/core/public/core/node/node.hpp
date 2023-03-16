@@ -25,20 +25,20 @@ public:
 
         T* operator->() const
         {
-            update_pointer();
+            sync_pointer();
             return m_pointer;
         }
 
         T* operator*() const
         {
-            update_pointer();
+            sync_pointer();
             return *m_pointer;
         }
 
         operator bool() const { return is_valid(); }
 
     private:
-        void update_pointer() const
+        void sync_pointer() const
         {
             auto [entity_version, component_version] =
                 m_node->get_world().get_version(m_node->m_entity);
@@ -49,7 +49,7 @@ public:
             }
             else if (m_version != component_version)
             {
-                m_pointer = &m_node->get_world().component<T>(m_node->m_entity);
+                m_pointer = &m_node->get_world().get_component<T>(m_node->m_entity);
                 m_version = component_version;
             }
         }

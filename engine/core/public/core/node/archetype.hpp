@@ -55,7 +55,7 @@ public:
     }
 
     template <typename Component>
-    Component& component()
+    Component& get_component()
     {
         auto [chunk_index, entity_index] = std::div(
             static_cast<const long>(m_offset),
@@ -130,11 +130,11 @@ public:
         return m_entity_per_chunk;
     }
 
-    [[nodiscard]] inline const std::vector<component_id>& components() const noexcept
+    [[nodiscard]] inline const std::vector<component_id>& get_components() const noexcept
     {
         return m_components;
     }
-    [[nodiscard]] inline const component_mask& mask() const noexcept { return m_mask; }
+    [[nodiscard]] inline const component_mask& get_mask() const noexcept { return m_mask; }
 
 private:
     friend class iterator;

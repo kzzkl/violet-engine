@@ -43,13 +43,15 @@ TEST_CASE("Iterating entities", "[benchmark]")
 
     timer.start();
 
-    world.each<core::view<position>>([](position& position) { position.x = 100; });
+    core::view<position> view(world);
+
+    view.each([](position& position) { position.x = 100; });
 
     auto elapsed = timer.elapse();
     std::cout << "Iterating entities without entity: " << elapsed << " seconds" << std::endl;
 
     timer.start();
-    world.each<core::view<position>>([](position& position) { position.x = 100; });
+    view.each([](position& position) { position.x = 100; });
     elapsed = timer.elapse();
     std::cout << "Iterating entities with entity: " << elapsed << " seconds" << std::endl;
 }

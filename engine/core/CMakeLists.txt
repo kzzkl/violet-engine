@@ -8,6 +8,7 @@ set(CONTEXT_SOURCE
 set(NODE_SOURCE
     ./private/node/archetype.cpp
     ./private/node/node.cpp
+    ./private/node/view.cpp
     ./private/node/world.cpp)
 
 set(TASK_SOURCE

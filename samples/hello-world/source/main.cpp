@@ -1,8 +1,10 @@
 #include "core/context/engine.hpp"
 #include "core/node/node.hpp"
 #include "window/window.hpp"
+#include "window/window_event.hpp"
 #include <filesystem>
 #include <fstream>
+#include <thread>
 
 using namespace violet::core;
 
@@ -17,7 +19,11 @@ public:
     {
         violet::log::info(config["text"]);
 
-        auto& world = engine::get_world();
+        auto& event = engine::get_event();
+        event.subscribe<window::event_window_destroy>("hello_world", []() {
+            violet::log::info("close window");
+            engine::exit();
+        });
 
         m_test_object = std::make_unique<core::node>("test");
 

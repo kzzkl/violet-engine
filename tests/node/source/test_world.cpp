@@ -71,12 +71,12 @@ TEST_CASE("world::component", "[world]")
     core::entity e1 = world.create();
     world.add<position>(e1);
 
-    position& p1 = world.component<position>(e1);
+    position& p1 = world.get_component<position>(e1);
     position* ptr1 = &p1;
     p1 = {1, 2, 3};
 
     world.add<int>(e1);
-    position& p2 = world.component<position>(e1);
+    position& p2 = world.get_component<position>(e1);
     position* ptr2 = &p2;
 
     CHECK(ptr1 != ptr2);
@@ -95,12 +95,13 @@ TEST_CASE("view", "[world]")
     world.add<int>(e1);
     world.add<int>(e2);
 
-    world.component<int>(e1) = 1;
-    world.component<int>(e2) = 2;
+    world.get_component<int>(e1) = 1;
+    world.get_component<int>(e2) = 2;
 
-    world.each<core::view<int>>([](int& value) { value += 10; });
+    core::view<int> view(world);
+    view.each([](int& value) { value += 10; });
 
-    CHECK(world.component<int>(e1) == 11);
-    CHECK(world.component<int>(e2) == 12);
+    CHECK(world.get_component<int>(e1) == 11);
+    CHECK(world.get_component<int>(e2) == 12);
 }
 } // namespace violet::test

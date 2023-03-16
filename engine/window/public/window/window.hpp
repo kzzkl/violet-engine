@@ -15,19 +15,20 @@ public:
 
 public:
     window();
+    virtual ~window();
 
     virtual bool initialize(const dictionary& config) override;
     virtual void shutdown() override;
 
     void tick();
 
-    mouse_type& mouse() { return m_mouse; }
-    keyboard_type& keyboard() { return m_keyboard; }
+    mouse_type& get_mouse() { return m_mouse; }
+    keyboard_type& get_keyboard() { return m_keyboard; }
 
-    void* handle() const;
-    window_extent extent() const;
+    void* get_handle() const;
+    window_extent get_extent() const;
 
-    void title(std::string_view title);
+    void set_title(std::string_view title);
 
 private:
     std::unique_ptr<window_impl> m_impl;
@@ -36,10 +37,5 @@ private:
     keyboard_type m_keyboard;
 
     std::string m_title;
-
-#if defined(VIOLET_WINDOW_SHOW_FPS)
-    float m_average_duration;
-    int m_fps;
-#endif
 };
 } // namespace violet::window

@@ -19,11 +19,11 @@ public:
     }
 
 private:
-    using duration_type = std::chrono::duration<double, std::ratio<1, FPS>>;
-    using time_point_type = std::chrono::time_point<std::chrono::steady_clock, duration_type>;
+    using sleep_duration = std::chrono::duration<double, std::ratio<1, FPS>>;
+    using sleep_time_point = std::chrono::time_point<std::chrono::steady_clock, sleep_duration>;
 
-    duration_type m_time_between_frames;
-    time_point_type m_time_point;
+    sleep_duration m_time_between_frames;
+    sleep_time_point m_time_point;
 };
 
 engine::engine() : m_exit(true)

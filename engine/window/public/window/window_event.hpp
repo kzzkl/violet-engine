@@ -29,4 +29,9 @@ struct event_window_resize
 {
     using dispatcher = core::sequence_dispatcher<std::function<void(std::uint32_t, std::uint32_t)>>;
 };
+
+struct event_window_destroy
+{
+    using dispatcher = core::sequence_dispatcher<std::function<void()>>;
+};
 } // namespace violet::window

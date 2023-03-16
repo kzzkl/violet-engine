@@ -44,14 +44,14 @@ public:
 
         component_mask new_mask = make_mask<Components...>();
         if (old_archetype != nullptr)
-            new_mask |= old_archetype->mask();
+            new_mask |= old_archetype->get_mask();
 
         auto iter = m_archetypes.find(new_mask);
         if (iter == m_archetypes.cend())
         {
             std::vector<component_id> components;
             if (old_archetype != nullptr)
-                components = old_archetype->components();
+                components = old_archetype->get_components();
             (components.push_back(component_index::value<Components>()), ...);
             new_archetype = make_archetype(components);
         }
@@ -79,8 +79,8 @@ public:
         entity_info& info = m_entity_infos[entity.index];
         VIOLET_ASSERT(info.archetype);
 
-        component_mask new_mask = info.archetype->mask() ^ make_mask<Components...>();
-        VIOLET_ASSERT(new_mask != info.archetype->mask());
+        component_mask new_mask = info.archetype->get_mask() ^ make_mask<Components...>();
+        VIOLET_ASSERT(new_mask != info.archetype->get_mask());
 
         if (!new_mask.none())
         {
@@ -93,7 +93,7 @@ public:
                 component_mask remove_mask;
                 (remove_mask.set(component_index::value<Components>()), ...);
 
-                std::vector<component_id> old_components = info.archetype->components();
+                std::vector<component_id> old_components = info.archetype->get_components();
                 std::vector<component_id> new_components;
                 for (component_id id : old_components)
                 {
@@ -139,13 +139,13 @@ public:
     [[nodiscard]] std::pair<std::uint16_t, std::uint16_t> get_version(entity entity) const;
 
     template <typename Component>
-    [[nodiscard]] Component& component(entity entity)
+    [[nodiscard]] Component& get_component(entity entity)
     {
         VIOLET_ASSERT(has_component<Component>(entity));
 
         auto iter = m_entity_infos[entity.index].archetype->begin() +
                     m_entity_infos[entity.index].archetype_index;
-        return iter.component<Component>();
+        return iter.get_component<Component>();
     }
 
     template <typename Component>
@@ -158,18 +158,12 @@ public:
     [[nodiscard]] bool has_component(entity entity, component_id component)
     {
         VIOLET_ASSERT(is_valid(entity).first);
-        return m_entity_infos[entity.index].archetype->mask().test(component);
-    }
-
-    template <typename T, typename Functor>
-    void each(Functor&& functor)
-    {
-        T view;
-        for (auto& [mask, archetype] : m_archetypes)
-            view.each(*archetype, std::forward<Functor>(functor));
+        return m_entity_infos[entity.index].archetype->get_mask().test(component);
     }
 
 private:
+    friend class view_base;
+
     void update_entity_index(
         std::size_t entity_index,
         archetype* new_archetype,
@@ -198,9 +192,14 @@ private:
         auto& result = m_archetypes[mask];
 
         if (result == nullptr)
+        {
+            ++m_view_version;
             return make_archetype<Components...>();
+        }
         else
+        {
             return result.get();
+        }
     }
 
     template <typename... Components>
@@ -214,6 +213,8 @@ private:
     archetype* make_archetype(const std::vector<component_id>& components);
 
     std::queue<std::uint32_t> m_free_entity;
+
+    std::uint32_t m_view_version;
     std::unordered_map<component_mask, std::unique_ptr<archetype>> m_archetypes;
     std::unordered_map<archetype*, std::vector<std::size_t>> m_archetype_index_map;
 

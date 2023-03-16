@@ -110,14 +110,13 @@ public:
     mouse(window_impl* impl) noexcept;
     virtual ~mouse() = default;
 
-    void mode(mouse_mode mode);
-    void cursor(mouse_cursor cursor);
+    void set_mode(mouse_mode mode);
+    mouse_mode get_mode() const noexcept;
+    void set_cursor(mouse_cursor cursor);
 
-    mouse_mode mode() const noexcept;
-
-    inline int x() const noexcept { return m_x; }
-    inline int y() const noexcept { return m_y; }
-    inline int whell() const noexcept { return m_whell; }
+    inline int get_x() const noexcept { return m_x; }
+    inline int get_y() const noexcept { return m_y; }
+    inline int get_whell() const noexcept { return m_whell; }
 
     virtual void tick() override;
 

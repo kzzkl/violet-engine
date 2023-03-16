@@ -254,16 +254,24 @@ keyboard_key convert_key(WPARAM wparam)
 } // namespace
 
 window_impl_win32::window_impl_win32() noexcept
-    : m_mouse_mode_change(false),
-      m_mouse_mode(MOUSE_MODE_ABSOLUTE),
+    : m_mouse_mode(MOUSE_MODE_ABSOLUTE),
+      m_mouse_mode_change(false),
       m_mouse_cursor(MOUSE_CURSOR_ARROW),
       m_mouse_x(0),
       m_mouse_y(0),
       m_mouse_move(false),
+      m_mouse_whell(0),
+      m_mouse_whell_move(false),
       m_window_width(0),
       m_window_height(0),
       m_window_resize(false),
+      m_window_destroy(false),
+      m_hwnd(nullptr),
       m_track_mouse_event_flag(false)
+{
+}
+
+window_impl_win32::~window_impl_win32()
 {
 }
 
@@ -344,7 +352,8 @@ bool window_impl_win32::initialize(
 
 void window_impl_win32::shutdown()
 {
-    PostMessage(m_hwnd, WM_CLOSE, 0, 0);
+    if (!m_window_destroy)
+        PostMessage(m_hwnd, WM_CLOSE, 0, 0);
 }
 
 void window_impl_win32::tick()
@@ -428,12 +437,12 @@ void window_impl_win32::show()
     UpdateWindow(m_hwnd);
 }
 
-void* window_impl_win32::handle() const
+void* window_impl_win32::get_handle() const
 {
     return m_hwnd;
 }
 
-window_extent window_impl_win32::extent() const
+window_extent window_impl_win32::get_extent() const
 {
     RECT extent = {};
     GetClientRect(m_hwnd, &extent);
@@ -447,18 +456,18 @@ window_extent window_impl_win32::extent() const
     return result;
 }
 
-void window_impl_win32::title(std::string_view title)
+void window_impl_win32::set_title(std::string_view title)
 {
     SetWindowText(m_hwnd, string_to_wstring(title).c_str());
 }
 
-void window_impl_win32::mouse_mode(mouse_mode_type mode)
+void window_impl_win32::set_mouse_mode(mouse_mode_type mode)
 {
     m_mouse_mode = mode;
     m_mouse_mode_change = true;
 }
 
-void window_impl_win32::mouse_cursor(mouse_cursor_type cursor)
+void window_impl_win32::set_mouse_cursor(mouse_cursor_type cursor)
 {
     m_mouse_cursor = cursor;
 }
@@ -579,6 +588,11 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
         on_keyboard_char(static_cast<char>(wparam));
         break;
     }
+    case WM_DESTROY: {
+        on_window_destroy();
+        PostQuitMessage(0);
+        return 1;
+    }
     default:
         break;
     }
@@ -602,7 +616,7 @@ void window_impl_win32::on_mouse_move(int x, int y)
 
 void window_impl_win32::on_mouse_key(mouse_key key, bool down)
 {
-    window_message message;
+    window_message message = {};
     message.type = window_message::message_type::MOUSE_KEY;
     message.mouse_key.key = key;
     message.mouse_key.down = down;
@@ -617,7 +631,7 @@ void window_impl_win32::on_mouse_whell(int value)
 
 void window_impl_win32::on_keyboard_key(keyboard_key key, bool down)
 {
-    window_message message;
+    window_message message = {};
     message.type = window_message::message_type::KEYBOARD_KEY;
     message.keyboard_key.key = key;
     message.keyboard_key.down = down;
@@ -626,7 +640,7 @@ void window_impl_win32::on_keyboard_key(keyboard_key key, bool down)
 
 void window_impl_win32::on_keyboard_char(char c)
 {
-    window_message message;
+    window_message message = {};
     message.type = window_message::message_type::KEYBOARD_CHAR;
     message.keyboard_char = c;
     m_messages.push_back(message);
@@ -634,7 +648,7 @@ void window_impl_win32::on_keyboard_char(char c)
 
 void window_impl_win32::on_window_move(int x, int y)
 {
-    window_message message;
+    window_message message = {};
     message.type = window_message::message_type::WINDOW_MOVE;
     message.window_move.x = x;
     message.window_move.y = y;
@@ -649,5 +663,14 @@ void window_impl_win32::on_window_resize(std::uint32_t width, std::uint32_t heig
     m_window_width = width;
     m_window_height = height;
     m_window_resize = true;
+}
+
+void window_impl_win32::on_window_destroy()
+{
+    m_window_destroy = true;
+
+    window_message message = {};
+    message.type = window_message::message_type::WINDOW_DESTROY;
+    m_messages.push_back(message);
 }
 } // namespace violet::window

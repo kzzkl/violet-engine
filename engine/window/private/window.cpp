@@ -1,7 +1,6 @@
 #include "window/window.hpp"
 #include "core/context/engine.hpp"
 #include "window/window_event.hpp"
-#include "window/window_task.hpp"
 #include "window_impl.hpp"
 #include "window_impl_win32.hpp"
 
@@ -10,9 +9,11 @@ namespace violet::window
 window::window()
     : core::engine_module("window"),
       m_impl(std::make_unique<window_impl_win32>()),
-      m_mouse(m_impl.get()),
-      m_average_duration(1.0f / 60.0f),
-      m_fps(0)
+      m_mouse(m_impl.get())
+{
+}
+
+window::~window()
 {
 }
 
@@ -29,10 +30,11 @@ bool window::initialize(const dictionary& config)
     event.register_event<event_keyboard_key>();
     event.register_event<event_keyboard_char>();
     event.register_event<event_window_resize>();
+    event.register_event<event_window_destroy>();
 
     auto& task = core::engine::get_task_manager();
     auto window_tick_task = task.schedule(
-        TASK_WINDOW_TICK,
+        "window_tick",
         [this]() { tick(); },
         core::task_type::MAIN_THREAD);
     window_tick_task->add_dependency(*task.find(core::TASK_ROOT));
@@ -51,6 +53,7 @@ void window::shutdown()
     event.unregister_event<event_keyboard_key>();
     event.unregister_event<event_keyboard_char>();
     event.unregister_event<event_window_resize>();
+    event.unregister_event<event_window_destroy>();
 
     m_impl->shutdown();
 }
@@ -65,7 +68,7 @@ void window::tick()
     m_impl->reset();
     m_impl->tick();
 
-    for (auto& message : m_impl->messages())
+    for (auto& message : m_impl->get_messages())
     {
         switch (message.type)
         {
@@ -73,7 +76,7 @@ void window::tick()
             m_mouse.m_x = message.mouse_move.x;
             m_mouse.m_y = message.mouse_move.y;
             event.publish<event_mouse_move>(
-                m_mouse.mode(),
+                m_mouse.get_mode(),
                 message.mouse_move.x,
                 message.mouse_move.y);
             break;
@@ -108,38 +111,28 @@ void window::tick()
                 message.window_resize.width,
                 message.window_resize.height);
             break;
+        case window_message::message_type::WINDOW_DESTROY:
+            event.publish<event_window_destroy>();
+            break;
         default:
             break;
         }
     }
-
-#if defined(VIOLET_WINDOW_SHOW_FPS)
-    static constexpr float fps_alpha = 0.01f;
-    float delta_time = core::engine::get_timer().frame_delta();
-    m_average_duration = delta_time * fps_alpha + m_average_duration * (1.0f - fps_alpha);
-    m_fps = 1.0f / m_average_duration;
-
-    m_impl->title(std::format("{}  FPS {}", m_title, m_fps));
-#endif
 }
 
-void* window::handle() const
+void* window::get_handle() const
 {
-    return m_impl->handle();
+    return m_impl->get_handle();
 }
 
-window_extent window::extent() const
+window_extent window::get_extent() const
 {
-    return m_impl->extent();
+    return m_impl->get_extent();
 }
 
-void window::title(std::string_view title)
+void window::set_title(std::string_view title)
 {
     m_title = title;
-#if defined(VIOLET_WINDOW_SHOW_FPS)
-    m_impl->title(std::format("{}  FPS {}", m_title, m_fps));
-#else
-    m_impl->title(title);
-#endif
+    m_impl->set_title(title);
 }
 } // namespace violet::window

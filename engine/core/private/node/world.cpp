@@ -2,7 +2,7 @@
 
 namespace violet::core
 {
-world::world()
+world::world() : m_view_version(0)
 {
 }
 
@@ -92,6 +92,6 @@ void world::update_entity_index(
 archetype* world::make_archetype(const std::vector<component_id>& components)
 {
     auto result = std::make_unique<archetype>(components, m_component_infos);
-    return (m_archetypes[result->mask()] = std::move(result)).get();
+    return (m_archetypes[result->get_mask()] = std::move(result)).get();
 }
 } // namespace violet::core
