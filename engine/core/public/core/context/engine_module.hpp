@@ -17,7 +17,7 @@ public:
     virtual void on_begin_frame() {}
     virtual void on_end_frame() {}
 
-    inline std::string_view name() const noexcept { return m_name; }
+    inline std::string_view get_name() const noexcept { return m_name; }
 
 private:
     std::string m_name;

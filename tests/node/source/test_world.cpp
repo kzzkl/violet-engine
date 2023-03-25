@@ -1,21 +1,21 @@
-#include "test_common.hpp"
+#include "test_node_common.hpp"
 
 namespace violet::test
 {
 TEST_CASE("world::create", "[world]")
 {
     core::world world;
-    core::entity e1 = world.create();
+    core::entity e1 = world.create(nullptr);
     CHECK(e1.index == 0);
     CHECK(e1.entity_version == 0);
 
-    core::entity e2 = world.create();
+    core::entity e2 = world.create(nullptr);
     CHECK(e2.index == 1);
     CHECK(e2.entity_version == 0);
 
     world.release(e2);
 
-    core::entity e3 = world.create();
+    core::entity e3 = world.create(nullptr);
     CHECK(e3.index == 1);
     CHECK(e3.entity_version == 1);
 }
@@ -26,8 +26,8 @@ TEST_CASE("world::add & world::remove", "[world]")
 
     core::world world;
 
-    core::entity e1 = world.create();
-    core::entity e2 = world.create();
+    core::entity e1 = world.create(nullptr);
+    core::entity e2 = world.create(nullptr);
 
     world.add<life_counter<0>>(e1);
     CHECK(life_counter<0>::check(1, 0, 0, 0, 0, 0));
@@ -52,7 +52,7 @@ TEST_CASE("world::add & world::remove 2", "[world]")
 
     for (std::size_t i = 0; i < 3; ++i)
     {
-        core::entity e = world.create();
+        core::entity e = world.create(nullptr);
         world.add<position>(e);
         entities.push_back(e);
     }
@@ -68,7 +68,7 @@ TEST_CASE("world::component", "[world]")
 {
     core::world world;
 
-    core::entity e1 = world.create();
+    core::entity e1 = world.create(nullptr);
     world.add<position>(e1);
 
     position& p1 = world.get_component<position>(e1);
@@ -89,8 +89,8 @@ TEST_CASE("view", "[world]")
 {
     core::world world;
 
-    core::entity e1 = world.create();
-    core::entity e2 = world.create();
+    core::entity e1 = world.create(nullptr);
+    core::entity e2 = world.create(nullptr);
 
     world.add<int>(e1);
     world.add<int>(e2);

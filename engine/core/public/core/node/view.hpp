@@ -40,10 +40,15 @@ public:
 
         for (archetype* archetype : archetypes)
         {
-            for (auto iter = archetype->begin(); iter != archetype->end(); ++iter)
+            std::tuple<Components*...> components;
+            for (std::size_t i = 0; i < archetype->size(); ++i)
             {
-                std::tuple<Components*...> components = {
-                    &iter.template get_component<Components>()...};
+                if (i % archetype->entity_per_chunk() == 0)
+                {
+                    auto iter = archetype->begin() + i;
+                    components = {&iter.template get_component<Components>()...};
+                }
+
                 std::apply(
                     [&](auto&&... args) {
                         functor(*args...);

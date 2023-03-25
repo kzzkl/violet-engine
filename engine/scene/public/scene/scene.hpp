@@ -1,42 +1,21 @@
 #pragma once
 
-#include "core/context.hpp"
-#include "core/link.hpp"
-#include "ecs/world.hpp"
-#include "scene/bvh_tree.hpp"
-#include "scene/transform.hpp"
-#include <memory>
+#include "core/context/engine_module.hpp"
+#include "math/math.hpp"
 
 namespace violet::scene
 {
-class scene : public core::system_base
+class scene : public core::engine_module
 {
 public:
     scene();
-    scene(const scene&) = delete;
 
     virtual bool initialize(const dictionary& config) override;
     virtual void on_end_frame() override;
 
-    ecs::entity root() const noexcept { return m_root; }
-
-    void sync_local();
-    void sync_local(ecs::entity root);
-    void sync_world();
-    void sync_world(ecs::entity root);
-
+    void update_transform();
     void update_bounding_box();
+
     void frustum_culling(const std::array<math::float4, 6>& frustum);
-
-    void draw_aabb();
-
-private:
-    void on_entity_link(ecs::entity entity, core::link& link);
-    void on_entity_unlink(ecs::entity entity, core::link& link);
-
-    ecs::entity m_root;
-
-    bvh_tree m_static_bvh;
-    bvh_tree m_dynamic_bvh;
 };
 } // namespace violet::scene

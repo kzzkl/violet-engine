@@ -11,7 +11,7 @@ node::node(std::string_view name, world* world) noexcept
     if (m_world == nullptr)
         m_world = &engine::get_world();
 
-    m_entity = m_world->create();
+    m_entity = m_world->create(this);
 }
 
 node::~node()

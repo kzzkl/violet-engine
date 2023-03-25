@@ -39,11 +39,11 @@ public:
         if (singleton.m_modules[index] == nullptr)
         {
             auto m = std::make_unique<T>(std::forward<Args>(args)...);
-            m->initialize(singleton.m_config[m->name().data()]);
-            log::info("Module installed successfully: {}.", m->name());
+            m->initialize(singleton.m_config[m->get_name().data()]);
+            log::info("Module installed successfully: {}.", m->get_name());
             singleton.m_modules[index] = std::move(m);
 
-            singleton.m_installation_sequence.push_back(index);
+            singleton.m_install_sequence.push_back(index);
         }
         else
         {
@@ -55,27 +55,12 @@ public:
     static void uninstall()
     {
         std::size_t index = module_index::value<T>();
-
         auto& singleton = instance();
-        VIOLET_ASSERT(singleton.m_modules.size() > index);
-
-        if (singleton.m_modules[index] != nullptr)
-        {
-            singleton.m_modules[index]->shutdown();
-            singleton.m_modules[index] = nullptr;
-            log::info("Module uninstalled successfully: {}.", singleton.m_modules[index]->name());
-        }
-        else
-        {
-            log::warn("The module is not installed.");
-        }
+        singleton.uninstall(index);
     }
 
     static void run();
     static void exit();
-
-    static void begin_frame();
-    static void end_frame();
 
     template <typename T>
     static T& get_module()
@@ -86,6 +71,8 @@ public:
         return *static_cast<T*>(pointer);
     }
 
+    static bool has_module(std::string_view name);
+
     static event& get_event() { return *instance().m_event; }
     static timer& get_timer() { return *instance().m_timer; }
     static world& get_world() { return *instance().m_world; }
@@ -95,10 +82,17 @@ private:
     engine();
     static engine& instance();
 
+    void uninstall(std::size_t index);
+
+    void main_loop();
+
+    void begin_frame();
+    void end_frame();
+
     std::map<std::string, dictionary> m_config;
 
     std::vector<std::unique_ptr<engine_module>> m_modules;
-    std::vector<std::size_t> m_installation_sequence;
+    std::vector<std::size_t> m_install_sequence;
 
     std::unique_ptr<event> m_event;
     std::unique_ptr<timer> m_timer;

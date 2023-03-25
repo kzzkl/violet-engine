@@ -6,6 +6,7 @@ set(CONTEXT_SOURCE
     ./private/context/plugin.cpp)
 
 set(NODE_SOURCE
+    ./private/node/archetype_chunk.cpp
     ./private/node/archetype.cpp
     ./private/node/node.cpp
     ./private/node/view.cpp
@@ -33,7 +34,6 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-    violet::math
     violet::common)
 
 install(TARGETS ${PROJECT_NAME}

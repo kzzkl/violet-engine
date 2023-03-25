@@ -8,36 +8,8 @@
 
 namespace violet::core
 {
-class archetype_storage
-{
-public:
-    static constexpr std::size_t CHUNK_SIZE = 1024 * 16;
-
-    class alignas(64) chunk
-    {
-    public:
-        inline std::uint8_t* data() noexcept { return m_data.data(); }
-
-    private:
-        std::array<std::uint8_t, CHUNK_SIZE> m_data;
-    };
-
-public:
-    void push_chunk() { m_chunks.push_back(std::make_unique<chunk>()); }
-    void pop_chunk() noexcept { m_chunks.pop_back(); }
-
-    void* get(std::size_t chunk_index, std::size_t offset = 0) noexcept
-    {
-        return m_chunks[chunk_index]->data() + offset;
-    }
-
-    void clear() noexcept { m_chunks.clear(); }
-
-    std::size_t size() const noexcept { return m_chunks.size(); }
-
-private:
-    std::vector<std::unique_ptr<chunk>> m_chunks;
-};
+class archetype_chunk;
+class archetype_chunk_allocator;
 
 template <typename Archetype>
 class archetype_iterator
@@ -65,7 +37,7 @@ public:
         std::size_t address = m_archetype->m_offset[id] +
                               entity_index * m_archetype->m_component_infos->at(id)->size();
 
-        return *static_cast<Component*>(m_archetype->m_storage.get(chunk_index, address));
+        return *static_cast<Component*>(m_archetype->get_data_pointer(chunk_index, address));
     }
 
     self_type operator+(std::size_t offset) const noexcept
@@ -112,7 +84,8 @@ public:
 public:
     archetype(
         const std::vector<component_id>& components,
-        const component_registry& component_registry) noexcept;
+        const component_registry& component_registry,
+        archetype_chunk_allocator* allocator) noexcept;
 
     virtual ~archetype();
 
@@ -148,10 +121,10 @@ private:
 
     [[nodiscard]] std::size_t capacity() const noexcept
     {
-        return m_entity_per_chunk * m_storage.size();
+        return m_entity_per_chunk * m_chunks.size();
     }
 
-    archetype_storage m_storage;
+    void* get_data_pointer(std::size_t chunk_index, std::size_t offset);
 
     const component_registry* m_component_infos;
 
@@ -159,7 +132,11 @@ private:
     component_mask m_mask;
 
     std::size_t m_size;
+
     std::size_t m_entity_per_chunk;
+    archetype_chunk_allocator* m_chunk_allocator;
+    std::vector<archetype_chunk*> m_chunks;
+
     std::array<std::uint16_t, MAX_COMPONENT> m_offset;
 };
 } // namespace violet::core

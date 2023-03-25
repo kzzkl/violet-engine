@@ -1,12 +1,15 @@
 #include "core/node/archetype.hpp"
+#include "node/archetype_chunk.hpp"
 
 namespace violet::core
 {
 archetype::archetype(
     const std::vector<component_id>& components,
-    const component_registry& m_component_infos) noexcept
+    const component_registry& m_component_infos,
+    archetype_chunk_allocator* allocator) noexcept
     : m_component_infos(&m_component_infos),
       m_components(components),
+      m_chunk_allocator(allocator),
       m_size(0)
 {
     for (component_id id : components)
@@ -48,8 +51,8 @@ std::size_t archetype::move(std::size_t index, archetype& target)
             std::size_t source_offset = m_offset[id] + source_entity_index * info.size();
             std::size_t target_offset = target.m_offset[id] + target_entity_index * info.size();
             info.move_construct(
-                m_storage.get(source_chunk_index, source_offset),
-                target.m_storage.get(target_chunk_index, target_offset));
+                get_data_pointer(source_chunk_index, source_offset),
+                target.get_data_pointer(target_chunk_index, target_offset));
         }
     }
 
@@ -60,7 +63,7 @@ std::size_t archetype::move(std::size_t index, archetype& target)
             auto& info = *m_component_infos->at(id);
 
             std::size_t offset = target.m_offset[id] + target_entity_index * info.size();
-            info.construct(target.m_storage.get(target_chunk_index, offset));
+            info.construct(target.get_data_pointer(target_chunk_index, offset));
         }
     }
 
@@ -81,7 +84,10 @@ void archetype::remove(std::size_t index)
     --m_size;
 
     if (m_size % m_entity_per_chunk == 0)
-        m_storage.pop_chunk();
+    {
+        m_chunk_allocator->deallocate(m_chunks.back());
+        m_chunks.pop_back();
+    }
 }
 
 void archetype::clear() noexcept
@@ -89,7 +95,10 @@ void archetype::clear() noexcept
     for (std::size_t i = 0; i < m_size; ++i)
         destruct(i);
 
-    m_storage.clear();
+    for (archetype_chunk* chunk : m_chunks)
+        m_chunk_allocator->deallocate(chunk);
+    m_chunks.clear();
+
     m_size = 0;
 }
 
@@ -120,7 +129,7 @@ void archetype::initialize_layout(const std::vector<component_id>& components)
     for (const auto& info : list)
         entity_size += info.size;
 
-    m_entity_per_chunk = archetype_storage::CHUNK_SIZE / entity_size;
+    m_entity_per_chunk = archetype_chunk::CHUNK_SIZE / entity_size;
 
     std::size_t offset = 0;
     for (const auto& info : list)
@@ -134,7 +143,7 @@ std::size_t archetype::allocate()
 {
     std::size_t index = m_size;
     if (index >= capacity())
-        m_storage.push_chunk();
+        m_chunks.push_back(m_chunk_allocator->allocate());
 
     ++m_size;
     return index;
@@ -150,7 +159,7 @@ void archetype::construct(std::size_t index)
         auto& info = *m_component_infos->at(id);
 
         std::size_t offset = m_offset[id] + entity_index * info.size();
-        info.construct(m_storage.get(chunk_index, offset));
+        info.construct(get_data_pointer(chunk_index, offset));
     }
 }
 
@@ -164,7 +173,7 @@ void archetype::destruct(std::size_t index)
         auto& info = *m_component_infos->at(id);
 
         std::size_t offset = m_offset[id] + entity_index * info.size();
-        info.destruct(m_storage.get(chunk_index, offset));
+        info.destruct(get_data_pointer(chunk_index, offset));
     }
 }
 
@@ -182,7 +191,14 @@ void archetype::swap(std::size_t a, std::size_t b)
 
         std::size_t a_offset = m_offset[id] + a_entity_index * info.size();
         std::size_t b_offset = m_offset[id] + b_entity_index * info.size();
-        info.swap(m_storage.get(a_chunk_index, a_offset), m_storage.get(b_chunk_index, b_offset));
+        info.swap(
+            get_data_pointer(a_chunk_index, a_offset),
+            get_data_pointer(b_chunk_index, b_offset));
     }
+}
+
+void* archetype::get_data_pointer(std::size_t chunk_index, std::size_t offset)
+{
+    return &m_chunks[chunk_index]->data[offset];
 }
 } // namespace violet::core

@@ -8,6 +8,13 @@
 
 namespace violet::core
 {
+class node;
+
+struct entity_record
+{
+    std::size_t entity_index;
+};
+
 class world
 {
 public:
@@ -28,7 +35,7 @@ public:
     world();
     ~world();
 
-    [[nodiscard]] entity create();
+    [[nodiscard]] entity create(node* owner);
 
     void release(entity entity);
 
@@ -64,12 +71,12 @@ public:
         {
             std::size_t new_archetype_index =
                 old_archetype->move(info.archetype_index, *new_archetype);
-            update_entity_index(entity.index, new_archetype, new_archetype_index);
+            on_entity_move(entity.index, new_archetype, new_archetype_index);
         }
         else
         {
             std::size_t new_archetype_index = new_archetype->add();
-            update_entity_index(entity.index, new_archetype, new_archetype_index);
+            on_entity_move(entity.index, new_archetype, new_archetype_index);
         }
     }
 
@@ -110,12 +117,12 @@ public:
 
             std::size_t new_archetype_index =
                 old_archetype->move(info.archetype_index, *new_archetype);
-            update_entity_index(entity.index, new_archetype, new_archetype_index);
+            on_entity_move(entity.index, new_archetype, new_archetype_index);
         }
         else
         {
             info.archetype->remove(info.archetype_index);
-            update_entity_index(entity.index, nullptr, 0);
+            on_entity_move(entity.index, nullptr, 0);
         }
     }
 
@@ -164,7 +171,7 @@ public:
 private:
     friend class view_base;
 
-    void update_entity_index(
+    void on_entity_move(
         std::size_t entity_index,
         archetype* new_archetype,
         std::size_t new_archetype_index);
@@ -215,8 +222,9 @@ private:
     std::queue<std::uint32_t> m_free_entity;
 
     std::uint32_t m_view_version;
+
+    std::unique_ptr<archetype_chunk_allocator> m_archetype_chunk_allocator;
     std::unordered_map<component_mask, std::unique_ptr<archetype>> m_archetypes;
-    std::unordered_map<archetype*, std::vector<std::size_t>> m_archetype_index_map;
 
     component_registry m_component_infos;
     std::vector<entity_info> m_entity_infos;

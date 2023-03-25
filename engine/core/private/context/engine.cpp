@@ -85,42 +85,7 @@ void engine::initialize(std::string_view config_path)
 
 void engine::run()
 {
-    using namespace std::chrono;
-    auto& singleton = instance();
-
-    if (!singleton.m_exit)
-        return;
-    else
-        singleton.m_exit = false;
-
-    singleton.m_task_manager->run();
-    auto root_task = singleton.m_task_manager->find(TASK_ROOT);
-
-    frame_rater<60> frame_rater;
-    timer& time = get_timer();
-
-    time.tick<timer::point::FRAME_START>();
-    time.tick<timer::point::FRAME_END>();
-    while (!singleton.m_exit)
-    {
-        time.tick<timer::point::FRAME_START>();
-        engine::begin_frame();
-        singleton.m_task_manager->execute(root_task);
-        engine::end_frame();
-        time.tick<timer::point::FRAME_END>();
-
-        frame_rater.sleep();
-    }
-
-    // shutdown
-    for (auto iter = singleton.m_installation_sequence.rbegin();
-         iter != singleton.m_installation_sequence.rend();
-         ++iter)
-    {
-        log::info("Module shutdown: {}.", singleton.m_modules[*iter]->name());
-        singleton.m_modules[*iter]->shutdown();
-        singleton.m_modules[*iter] = nullptr;
-    }
+    instance().main_loop();
 }
 
 void engine::exit()
@@ -128,19 +93,88 @@ void engine::exit()
     instance().m_exit = true;
 }
 
+void engine::main_loop()
+{
+    if (!m_exit)
+        return;
+    else
+        m_exit = false;
+
+    m_task_manager->run();
+    auto root_task = m_task_manager->find(TASK_ROOT);
+
+    frame_rater<60> frame_rater;
+    timer& time = get_timer();
+
+    time.tick<timer::point::FRAME_START>();
+    time.tick<timer::point::FRAME_END>();
+    while (!m_exit)
+    {
+        time.tick<timer::point::FRAME_START>();
+        begin_frame();
+        m_task_manager->execute(root_task);
+        end_frame();
+        time.tick<timer::point::FRAME_END>();
+
+        frame_rater.sleep();
+    }
+
+    // shutdown
+    for (auto iter = m_install_sequence.rbegin(); iter != m_install_sequence.rend(); ++iter)
+    {
+        log::info("Module shutdown: {}.", m_modules[*iter]->get_name());
+        m_modules[*iter]->shutdown();
+        m_modules[*iter] = nullptr;
+    }
+}
+
 void engine::begin_frame()
 {
-    auto& singleton = instance();
-
-    for (auto& module : singleton.m_modules)
+    for (auto& module : m_modules)
         module->on_begin_frame();
 }
 
 void engine::end_frame()
 {
+    for (auto& module : m_modules)
+        module->on_end_frame();
+}
+
+bool engine::has_module(std::string_view name)
+{
     auto& singleton = instance();
 
     for (auto& module : singleton.m_modules)
-        module->on_end_frame();
+    {
+        if (module->get_name() == name)
+            return true;
+    }
+
+    return false;
+}
+
+void engine::uninstall(std::size_t index)
+{
+    VIOLET_ASSERT(m_modules.size() > index);
+
+    if (m_modules[index] != nullptr)
+    {
+        m_modules[index]->shutdown();
+        m_modules[index] = nullptr;
+
+        for (auto iter = m_install_sequence.begin(); iter != m_install_sequence.end(); ++iter)
+        {
+            if (*iter == index)
+            {
+                m_install_sequence.erase(iter);
+                break;
+            }
+        }
+        log::info("Module uninstalled successfully: {}.", m_modules[index]->get_name());
+    }
+    else
+    {
+        log::warn("The module is not installed.");
+    }
 }
 } // namespace violet::core
