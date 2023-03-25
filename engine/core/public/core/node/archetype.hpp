@@ -6,7 +6,7 @@
 #include <array>
 #include <vector>
 
-namespace violet::core
+namespace violet
 {
 class archetype_chunk;
 class archetype_chunk_allocator;
@@ -139,4 +139,4 @@ private:
 
     std::array<std::uint16_t, MAX_COMPONENT> m_offset;
 };
-} // namespace violet::core
+} // namespace violet

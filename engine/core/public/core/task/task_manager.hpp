@@ -4,7 +4,7 @@
 #include <memory>
 #include <unordered_map>
 
-namespace violet::core
+namespace violet
 {
 static constexpr char TASK_ROOT[] = "root";
 static constexpr char TASK_GAME_LOGIC_START[] = "game logic start";
@@ -74,4 +74,4 @@ private:
     std::unique_ptr<task_queue_group> m_queues;
     std::unique_ptr<thread_pool> m_thread_pool;
 };
-} // namespace violet::core
+} // namespace violet

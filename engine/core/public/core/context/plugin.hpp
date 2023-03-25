@@ -4,7 +4,7 @@
 #include <memory>
 #include <string_view>
 
-namespace violet::core
+namespace violet
 {
 class dynamic_library
 {

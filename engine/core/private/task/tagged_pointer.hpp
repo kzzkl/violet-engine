@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <limits>
 
-namespace violet::core
+namespace violet
 {
 template <typename T>
 class tagged_pointer_compression
@@ -67,4 +67,4 @@ tagged_pointer<T1> tagged_pointer_cast(tagged_pointer<T2> p)
     tagged_pointer<T1> result(static_cast<T1*>(p.pointer()), p.tag());
     return result;
 }
-} // namespace violet::core
+} // namespace violet

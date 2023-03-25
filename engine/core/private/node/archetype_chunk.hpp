@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 
-namespace violet::core
+namespace violet
 {
 struct alignas(64) archetype_chunk
 {
@@ -22,4 +22,4 @@ private:
     std::vector<archetype_chunk*> m_free;
     std::vector<std::unique_ptr<archetype_chunk>> m_chunks;
 };
-} // namespace violet::core
+} // namespace violet

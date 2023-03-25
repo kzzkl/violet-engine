@@ -1,7 +1,7 @@
 #include "core/node/node.hpp"
 #include "core/context/engine.hpp"
 
-namespace violet::core
+namespace violet
 {
 node::node(std::string_view name, world* world) noexcept
     : m_name(name),
@@ -46,4 +46,4 @@ void node::remove(node* child)
         }
     }
 }
-} // namespace violet::core
+} // namespace violet

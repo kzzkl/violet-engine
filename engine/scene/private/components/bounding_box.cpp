@@ -14,34 +14,34 @@ bounding_box::bounding_box()
 {
 }
 
-bool bounding_box::transform(const math::float4x4& transform)
+bool bounding_box::transform(const float4x4& transform)
 {
-    math::float4_simd axis =
-        math::simd::set(transform[0][0], transform[1][0], transform[2][0], 0.0f);
-    math::float4_simd xa = math::vector_simd::mul(axis, math::simd::set(m_mesh_aabb.min[0]));
-    math::float4_simd xb = math::vector_simd::mul(axis, math::simd::set(m_mesh_aabb.max[0]));
+    float4_simd axis =
+        simd::set(transform[0][0], transform[1][0], transform[2][0], 0.0f);
+    float4_simd xa = vector_simd::mul(axis, simd::set(m_mesh_aabb.min[0]));
+    float4_simd xb = vector_simd::mul(axis, simd::set(m_mesh_aabb.max[0]));
 
-    axis = math::simd::set(transform[0][1], transform[1][1], transform[2][1], 0.0f);
-    math::float4_simd ya = math::vector_simd::mul(axis, math::simd::set(m_mesh_aabb.min[1]));
-    math::float4_simd yb = math::vector_simd::mul(axis, math::simd::set(m_mesh_aabb.max[1]));
+    axis = simd::set(transform[0][1], transform[1][1], transform[2][1], 0.0f);
+    float4_simd ya = vector_simd::mul(axis, simd::set(m_mesh_aabb.min[1]));
+    float4_simd yb = vector_simd::mul(axis, simd::set(m_mesh_aabb.max[1]));
 
-    axis = math::simd::set(transform[0][2], transform[1][2], transform[2][2], 0.0f);
-    math::float4_simd za = math::vector_simd::mul(axis, math::simd::set(m_mesh_aabb.min[2]));
-    math::float4_simd zb = math::vector_simd::mul(axis, math::simd::set(m_mesh_aabb.max[2]));
+    axis = simd::set(transform[0][2], transform[1][2], transform[2][2], 0.0f);
+    float4_simd za = vector_simd::mul(axis, simd::set(m_mesh_aabb.min[2]));
+    float4_simd zb = vector_simd::mul(axis, simd::set(m_mesh_aabb.max[2]));
 
-    math::float4_simd min = math::simd::load(transform[3]);
-    math::float4_simd max = min;
+    float4_simd min = simd::load(transform[3]);
+    float4_simd max = min;
 
-    min = math::vector_simd::add(min, math::simd::min(xa, xb));
-    min = math::vector_simd::add(min, math::simd::min(ya, yb));
-    min = math::vector_simd::add(min, math::simd::min(za, zb));
+    min = vector_simd::add(min, simd::min(xa, xb));
+    min = vector_simd::add(min, simd::min(ya, yb));
+    min = vector_simd::add(min, simd::min(za, zb));
 
-    max = math::vector_simd::add(max, math::simd::max(xa, xb));
-    max = math::vector_simd::add(max, math::simd::max(ya, yb));
-    max = math::vector_simd::add(max, math::simd::max(za, zb));
+    max = vector_simd::add(max, simd::max(xa, xb));
+    max = vector_simd::add(max, simd::max(ya, yb));
+    max = vector_simd::add(max, simd::max(za, zb));
 
-    math::simd::store(min, m_internal_aabb.min);
-    math::simd::store(max, m_internal_aabb.max);
+    simd::store(min, m_internal_aabb.min);
+    simd::store(max, m_internal_aabb.max);
 
     bool inside =
         (m_internal_aabb.min[0] >= m_aabb.min[0] && m_internal_aabb.max[0] <= m_aabb.max[0]) &&
@@ -50,11 +50,11 @@ bool bounding_box::transform(const math::float4x4& transform)
 
     if (!inside)
     {
-        math::float4_simd f = math::simd::set(m_fatten);
-        min = math::vector_simd::sub(min, f);
-        max = math::vector_simd::add(max, f);
-        math::simd::store(min, m_aabb.min);
-        math::simd::store(max, m_aabb.max);
+        float4_simd f = simd::set(m_fatten);
+        min = vector_simd::sub(min, f);
+        max = vector_simd::add(max, f);
+        simd::store(min, m_aabb.min);
+        simd::store(max, m_aabb.max);
         return true;
     }
     else
@@ -64,45 +64,45 @@ bool bounding_box::transform(const math::float4x4& transform)
 }
 
 void bounding_box::aabb(
-    const std::vector<math::float3>& vertices,
-    const math::float4x4& transform,
+    const std::vector<float3>& vertices,
+    const float4x4& transform,
     bool dynamic,
     float fatten)
 {
     float float_min = std::numeric_limits<float>::lowest();
     float float_max = std::numeric_limits<float>::max();
-    math::float4_simd min = math::simd::set(float_max, float_max, float_max, 1.0);
-    math::float4_simd max = math::simd::set(float_min, float_min, float_min, 1.0);
+    float4_simd min = simd::set(float_max, float_max, float_max, 1.0);
+    float4_simd max = simd::set(float_min, float_min, float_min, 1.0);
 
     if (dynamic)
     {
         for (auto& vertex : vertices)
         {
-            math::float4_simd v = math::simd::load(vertex, 1.0f);
-            min = math::simd::min(min, v);
-            max = math::simd::max(max, v);
+            float4_simd v = simd::load(vertex, 1.0f);
+            min = simd::min(min, v);
+            max = simd::max(max, v);
         }
 
-        math::simd::store(min, m_mesh_aabb.min);
-        math::simd::store(max, m_mesh_aabb.max);
+        simd::store(min, m_mesh_aabb.min);
+        simd::store(max, m_mesh_aabb.max);
 
         m_fatten = fatten;
         this->transform(transform);
     }
     else
     {
-        math::float4x4_simd world_matrix = math::simd::load(transform);
+        float4x4_simd world_matrix = simd::load(transform);
 
         for (auto& vertex : vertices)
         {
-            math::float4_simd v = math::simd::load(vertex, 1.0f);
-            v = math::matrix_simd::mul(v, world_matrix);
-            min = math::simd::min(min, v);
-            max = math::simd::max(max, v);
+            float4_simd v = simd::load(vertex, 1.0f);
+            v = matrix_simd::mul(v, world_matrix);
+            min = simd::min(min, v);
+            max = simd::max(max, v);
         }
 
-        math::simd::store(min, m_aabb.min);
-        math::simd::store(max, m_aabb.max);
+        simd::store(min, m_aabb.min);
+        simd::store(max, m_aabb.max);
     }
 
     m_dynamic = dynamic;

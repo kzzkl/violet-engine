@@ -20,7 +20,7 @@ private:
 TEST_CASE("Create entities", "[benchmark]")
 {
     timer timer;
-    core::world world;
+    world world;
 
     timer.start();
     for (std::size_t i = 0; i < 1000000; i++)
@@ -33,7 +33,7 @@ TEST_CASE("Create entities", "[benchmark]")
 TEST_CASE("Iterating entities", "[benchmark]")
 {
     timer timer;
-    core::world world;
+    world world;
 
     for (std::size_t i = 0; i < 1000000; ++i)
     {
@@ -42,13 +42,13 @@ TEST_CASE("Iterating entities", "[benchmark]")
     }
 
     timer.start();
-    core::view<core::node*, position> view_with_node(world);
-    view_with_node.each([](core::node* node, position& position) { position.x = 100; });
+    view<node*, position> view_with_node(world);
+    view_with_node.each([](node* node, position& position) { position.x = 100; });
     auto elapsed = timer.elapse();
     std::cout << "Iterating entities with node pointer: " << elapsed << " seconds" << std::endl;
 
     timer.start();
-    core::view<position> view_without_node(world);
+    view<position> view_without_node(world);
     view_without_node.each([](position& position) { position.x = 100; });
     elapsed = timer.elapse();
     std::cout << "Iterating entities without node pointer: " << elapsed << " seconds" << std::endl;
@@ -57,12 +57,12 @@ TEST_CASE("Iterating entities", "[benchmark]")
 TEST_CASE("Access components", "[benchmark]")
 {
     timer timer;
-    core::world world;
+    world world;
 
-    core::node n1("test_node", &world);
+    node n1("test_node", &world);
     n1.add_component<position>();
 
-    core::component_ptr<position> p = n1.get_component<position>();
+    component_ptr<position> p = n1.get_component<position>();
 
     timer.start();
     for (std::size_t i = 0; i < 1000000; ++i)

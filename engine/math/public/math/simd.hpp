@@ -3,7 +3,7 @@
 #include "type.hpp"
 #include <immintrin.h>
 
-namespace violet::math
+namespace violet
 {
 using int4_simd = __m128i;
 using float4_simd = __m128;
@@ -279,4 +279,4 @@ public:
         _mm_store_ps(&destination[3][0], source[3]);
     }
 };
-} // namespace violet::math
+} // namespace violet

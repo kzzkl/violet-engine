@@ -66,7 +66,7 @@ bool physics::initialize(const dictionary& config)
     world.register_component<rigidbody>();
     world.register_component<joint>();
 
-    auto& event = system<core::event>();
+    auto& event = system<event>();
     event.subscribe<scene::event_enter_scene>("physics", [this](ecs::entity entity) {
         m_enter_world_list.push(entity);
     });
@@ -76,7 +76,7 @@ bool physics::initialize(const dictionary& config)
 
 void physics::shutdown()
 {
-    system<core::event>().unsubscribe<scene::event_enter_scene>("physics");
+    system<event>().unsubscribe<scene::event_enter_scene>("physics");
 
     auto& world = system<ecs::world>();
     world.view<joint>().each([](joint& joint) { joint.reset_interface(nullptr); });
@@ -111,7 +111,7 @@ void physics::simulation()
             }
         });
 
-    m_world->simulation(system<core::timer>().frame_delta());
+    m_world->simulation(system<timer>().frame_delta());
 
     while (true)
     {
@@ -151,7 +151,7 @@ void physics::initialize_entity(ecs::entity entity)
 {
     auto& world = system<ecs::world>();
     auto& scene = system<scene::scene>();
-    auto& relation = system<core::relation>();
+    auto& relation = system<relation>();
 
     auto init_rigidbody = [&, this](ecs::entity node) {
         if (!world.has_component<rigidbody>(node) || !world.has_component<scene::transform>(node))

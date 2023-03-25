@@ -2,7 +2,7 @@
 
 #include "work_thread.hpp"
 
-namespace violet::core
+namespace violet
 {
 class thread_pool
 {
@@ -21,4 +21,4 @@ private:
     std::vector<work_thread> m_threads;
     task_queue_group* m_queues;
 };
-} // namespace violet::core
+} // namespace violet

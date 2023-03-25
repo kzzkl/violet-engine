@@ -1,10 +1,10 @@
 #pragma once
 
+#include "math/rect.hpp"
 #include "window/input.hpp"
-#include "window/window_extent.hpp"
 #include <string_view>
 
-namespace violet::window
+namespace violet
 {
 struct window_message
 {
@@ -75,7 +75,7 @@ public:
     virtual void show() = 0;
 
     virtual void* get_handle() const = 0;
-    virtual window_extent get_extent() const = 0;
+    virtual rect<std::uint32_t> get_extent() const = 0;
 
     virtual void set_title(std::string_view title) = 0;
 
@@ -90,4 +90,4 @@ public:
 protected:
     std::vector<window_message> m_messages;
 };
-} // namespace violet::window
+} // namespace violet

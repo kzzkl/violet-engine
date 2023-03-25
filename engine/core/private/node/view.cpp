@@ -1,7 +1,7 @@
 #include "core/node/view.hpp"
 #include "core/node/world.hpp"
 
-namespace violet::core
+namespace violet
 {
 view_base::view_base(world& world) noexcept : m_world(&world)
 {
@@ -33,4 +33,4 @@ const std::vector<archetype*>& view_base::sync_archetype_list()
 
     return m_archetypes;
 }
-} // namespace violet::core
+} // namespace violet

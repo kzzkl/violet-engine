@@ -3,7 +3,7 @@
 #include "misc.hpp"
 #include "vector.hpp"
 
-namespace violet::math
+namespace violet
 {
 class quaternion
 {
@@ -277,4 +277,4 @@ public:
         return _mm_add_ps(t1, t2);
     }
 };
-} // namespace violet::math
+} // namespace violet

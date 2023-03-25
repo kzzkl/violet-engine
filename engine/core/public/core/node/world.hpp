@@ -6,7 +6,7 @@
 #include <queue>
 #include <unordered_map>
 
-namespace violet::core
+namespace violet
 {
 class node;
 
@@ -229,4 +229,4 @@ private:
     component_registry m_component_infos;
     std::vector<entity_info> m_entity_infos;
 };
-} // namespace violet::core
+} // namespace violet

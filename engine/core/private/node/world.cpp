@@ -1,7 +1,7 @@
 #include "core/node/world.hpp"
 #include "node/archetype_chunk.hpp"
 
-namespace violet::core
+namespace violet
 {
 world::world() : m_view_version(0)
 {
@@ -92,4 +92,4 @@ archetype* world::make_archetype(const std::vector<component_id>& components)
         m_archetype_chunk_allocator.get());
     return (m_archetypes[result->get_mask()] = std::move(result)).get();
 }
-} // namespace violet::core
+} // namespace violet

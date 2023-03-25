@@ -22,7 +22,7 @@ bool ui::initialize(const dictionary& config)
 {
     m_renderer = std::make_unique<renderer>();
 
-    auto& event = system<core::event>();
+    auto& event = system<event>();
 
     load_font("remixicon", "engine/font/remixicon.ttf", 24);
     load_font("NotoSans-Regular", "engine/font/NotoSans-Regular.ttf", 13);

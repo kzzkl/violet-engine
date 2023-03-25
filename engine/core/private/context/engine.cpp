@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <fstream>
 
-namespace violet::core
+namespace violet
 {
 template <std::uint32_t FPS>
 class frame_rater
@@ -177,4 +177,4 @@ void engine::uninstall(std::size_t index)
         log::warn("The module is not installed.");
     }
 }
-} // namespace violet::core
+} // namespace violet

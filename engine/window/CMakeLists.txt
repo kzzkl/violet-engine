@@ -14,6 +14,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
+    violet::math
     violet::core)
 
 install(TARGETS ${PROJECT_NAME}

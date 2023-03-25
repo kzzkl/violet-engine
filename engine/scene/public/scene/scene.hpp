@@ -5,7 +5,7 @@
 
 namespace violet::scene
 {
-class scene : public core::engine_module
+class scene : public engine_module
 {
 public:
     scene();
@@ -16,6 +16,6 @@ public:
     void update_transform();
     void update_bounding_box();
 
-    void frustum_culling(const std::array<math::float4, 6>& frustum);
+    void frustum_culling(const std::array<float4, 6>& frustum);
 };
 } // namespace violet::scene

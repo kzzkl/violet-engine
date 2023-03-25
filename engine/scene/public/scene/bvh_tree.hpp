@@ -20,7 +20,7 @@ public:
     std::size_t update(std::size_t proxy_id, const bounding_volume_aabb& aabb);
 
     bool visible(std::size_t proxy_id) const noexcept { return m_nodes[proxy_id].visible; }
-    void frustum_culling(const std::array<math::float4, 6>& frustum);
+    void frustum_culling(const std::array<float4, 6>& frustum);
 
     template <typename T>
     void print(T&& functor)

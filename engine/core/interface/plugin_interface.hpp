@@ -4,7 +4,7 @@
 
 #define PLUGIN_API __declspec(dllexport)
 
-namespace violet::core
+namespace violet
 {
 struct plugin_version
 {

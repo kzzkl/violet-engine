@@ -1,7 +1,5 @@
 #include "test_common.hpp"
 
-using namespace violet::math;
-
 namespace violet::test
 {
 TEST_CASE("simd::mask", "[simd]")

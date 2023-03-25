@@ -1,6 +1,6 @@
 #include "thread_pool.hpp"
 
-namespace violet::core
+namespace violet
 {
 thread_pool::thread_pool(std::size_t num_thread) : m_queues(nullptr)
 {
@@ -33,4 +33,4 @@ void thread_pool::stop()
 
     m_queues->notify_task_completion(true);
 }
-} // namespace violet::core
+} // namespace violet

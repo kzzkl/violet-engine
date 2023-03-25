@@ -1,7 +1,7 @@
 #include "node/archetype_chunk.hpp"
 #include "common/assert.hpp"
 
-namespace violet::core
+namespace violet
 {
 archetype_chunk* archetype_chunk_allocator::allocate()
 {
@@ -24,4 +24,4 @@ void archetype_chunk_allocator::deallocate(archetype_chunk* chunk)
     VIOLET_ASSERT(chunk != nullptr);
     m_free.push_back(chunk);
 }
-} // namespace violet::core
+} // namespace violet

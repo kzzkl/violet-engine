@@ -1,13 +1,13 @@
 #pragma once
 
 #include "core/context/engine_module.hpp"
+#include "math/rect.hpp"
 #include "window/input.hpp"
-#include "window/window_extent.hpp"
 
-namespace violet::window
+namespace violet
 {
 class window_impl;
-class window : public core::engine_module
+class window : public engine_module
 {
 public:
     using mouse_type = mouse;
@@ -26,7 +26,7 @@ public:
     keyboard_type& get_keyboard() { return m_keyboard; }
 
     void* get_handle() const;
-    window_extent get_extent() const;
+    rect<std::uint32_t> get_extent() const;
 
     void set_title(std::string_view title);
 
@@ -38,4 +38,4 @@ private:
 
     std::string m_title;
 };
-} // namespace violet::window
+} // namespace violet

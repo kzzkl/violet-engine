@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace violet::graphics
+namespace violet
 {
 enum resource_format
 {
@@ -335,9 +335,7 @@ public:
         std::size_t index_end,
         std::size_t vertex_base) = 0;
 
-    virtual void clear_render_target(
-        resource_interface* render_target,
-        const math::float4& color) = 0;
+    virtual void clear_render_target(resource_interface* render_target, const float4& color) = 0;
     virtual void clear_depth_stencil(
         resource_interface* depth_stencil,
         bool clear_depth = true,
@@ -467,4 +465,4 @@ public:
         const depth_stencil_buffer_desc& desc) = 0;
 };
 using make_rhi = rhi_interface* (*)();
-} // namespace violet::graphics
+} // namespace violet

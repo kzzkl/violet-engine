@@ -5,7 +5,7 @@
 
 namespace violet::physics
 {
-class physics_plugin : public core::plugin
+class physics_plugin : public plugin
 {
 public:
     physics_plugin();

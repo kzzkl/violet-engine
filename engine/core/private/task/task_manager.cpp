@@ -4,7 +4,7 @@
 #include "task/thread_pool.hpp"
 #include <future>
 
-namespace violet::core
+namespace violet
 {
 task_manager::task_manager(std::size_t thread_count)
 {
@@ -61,4 +61,4 @@ task_manager::handle task_manager::find(std::string_view name)
     else
         return handle(iter->second.get());
 }
-} // namespace violet::core
+} // namespace violet

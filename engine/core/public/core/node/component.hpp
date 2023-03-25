@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <memory>
 
-namespace violet::core
+namespace violet
 {
 using component_id = std::uint16_t;
 
@@ -54,4 +54,4 @@ static constexpr std::size_t MAX_COMPONENT = 512;
 using component_mask = std::bitset<MAX_COMPONENT>;
 
 using component_registry = std::array<std::unique_ptr<component_info>, MAX_COMPONENT>;
-} // namespace violet::core
+} // namespace violet

@@ -7,8 +7,8 @@ namespace violet::scene
 {
 struct bounding_volume_aabb
 {
-    math::float3 min;
-    math::float3 max;
+    float3 min;
+    float3 max;
 };
 
 class bounding_box
@@ -16,11 +16,11 @@ class bounding_box
 public:
     bounding_box();
 
-    bool transform(const math::float4x4& transform);
+    bool transform(const float4x4& transform);
 
     void aabb(
-        const std::vector<math::float3>& vertices,
-        const math::float4x4& transform,
+        const std::vector<float3>& vertices,
+        const float4x4& transform,
         bool dynamic = false,
         float fatten = 1.0f);
     const bounding_volume_aabb& aabb() const noexcept { return m_aabb; }

@@ -2,7 +2,7 @@
 
 #include <utility>
 
-namespace violet::math
+namespace violet
 {
 static constexpr float PI = 3.141592654f;
 static constexpr float PI_2PI = 2.0f * PI;
@@ -73,4 +73,4 @@ static constexpr float PI_180DIVPI = 180.0f / PI;
     else
         return value;
 }
-} // namespace violet::math
+} // namespace violet

@@ -3,7 +3,7 @@
 #include "type.hpp"
 #include <cmath>
 
-namespace violet::math
+namespace violet
 {
 class euler
 {
@@ -27,4 +27,4 @@ public:
         }
     }
 };
-} // namespace violet::math
+} // namespace violet

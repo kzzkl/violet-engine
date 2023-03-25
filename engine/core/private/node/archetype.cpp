@@ -1,7 +1,7 @@
 #include "core/node/archetype.hpp"
 #include "node/archetype_chunk.hpp"
 
-namespace violet::core
+namespace violet
 {
 archetype::archetype(
     const std::vector<component_id>& components,
@@ -201,4 +201,4 @@ void* archetype::get_data_pointer(std::size_t chunk_index, std::size_t offset)
 {
     return &m_chunks[chunk_index]->data[offset];
 }
-} // namespace violet::core
+} // namespace violet

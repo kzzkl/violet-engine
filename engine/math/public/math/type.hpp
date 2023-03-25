@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace violet::math
+namespace violet
 {
 template <typename T, std::size_t S>
 struct packed
@@ -40,4 +40,4 @@ using float4x4 = packed<float4, 4>;
 struct alignas(16) float4x4_align : float4x4
 {
 };
-} // namespace violet::math
+} // namespace violet

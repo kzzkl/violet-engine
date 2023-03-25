@@ -4,10 +4,10 @@
 #include "window_impl.hpp"
 #include "window_impl_win32.hpp"
 
-namespace violet::window
+namespace violet
 {
 window::window()
-    : core::engine_module("window"),
+    : engine_module("window"),
       m_impl(std::make_unique<window_impl_win32>()),
       m_mouse(m_impl.get())
 {
@@ -24,7 +24,7 @@ bool window::initialize(const dictionary& config)
 
     m_title = config["title"];
 
-    auto& event = core::engine::get_event();
+    auto& event = engine::get_event();
     event.register_event<event_mouse_move>();
     event.register_event<event_mouse_key>();
     event.register_event<event_keyboard_key>();
@@ -32,14 +32,14 @@ bool window::initialize(const dictionary& config)
     event.register_event<event_window_resize>();
     event.register_event<event_window_destroy>();
 
-    auto& task = core::engine::get_task_manager();
+    auto& task = engine::get_task_manager();
     auto window_tick_task = task.schedule(
         "window_tick",
         [this]() { tick(); },
-        core::task_type::MAIN_THREAD);
-    window_tick_task->add_dependency(*task.find(core::TASK_ROOT));
+        task_type::MAIN_THREAD);
+    window_tick_task->add_dependency(*task.find(TASK_ROOT));
 
-    auto logic_start_task = task.find(core::TASK_GAME_LOGIC_START);
+    auto logic_start_task = task.find(TASK_GAME_LOGIC_START);
     logic_start_task->add_dependency(*window_tick_task);
 
     return true;
@@ -47,7 +47,7 @@ bool window::initialize(const dictionary& config)
 
 void window::shutdown()
 {
-    auto& event = core::engine::get_event();
+    auto& event = engine::get_event();
     event.unregister_event<event_mouse_move>();
     event.unregister_event<event_mouse_key>();
     event.unregister_event<event_keyboard_key>();
@@ -60,7 +60,7 @@ void window::shutdown()
 
 void window::tick()
 {
-    auto& event = core::engine::get_event();
+    auto& event = engine::get_event();
 
     m_mouse.tick();
     m_keyboard.tick();
@@ -125,7 +125,7 @@ void* window::get_handle() const
     return m_impl->get_handle();
 }
 
-window_extent window::get_extent() const
+rect<std::uint32_t> window::get_extent() const
 {
     return m_impl->get_extent();
 }
@@ -135,4 +135,4 @@ void window::set_title(std::string_view title)
     m_title = title;
     m_impl->set_title(title);
 }
-} // namespace violet::window
+} // namespace violet

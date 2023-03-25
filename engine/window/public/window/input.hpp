@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-namespace violet::window
+namespace violet
 {
 class key_state
 {
@@ -242,4 +242,4 @@ class keyboard : public key_device<keyboard_key, KEYBOARD_KEY_COUNT>
 public:
     keyboard() noexcept;
 };
-} // namespace violet::window
+} // namespace violet

@@ -3,9 +3,9 @@
 
 extern "C"
 {
-    PLUGIN_API violet::core::external::plugin_info get_plugin_info()
+    PLUGIN_API violet::external::plugin_info get_plugin_info()
     {
-        using namespace violet::core::external;
+        using namespace violet::external;
         plugin_info info = {};
 
         char name[] = "hello-plugin";

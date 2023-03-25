@@ -2,7 +2,7 @@
 #include "common/log.hpp"
 #include "window_impl.hpp"
 
-namespace violet::window
+namespace violet
 {
 mouse::mouse(window_impl* impl) noexcept : m_x(0), m_y(0), m_impl(impl)
 {
@@ -36,4 +36,4 @@ void mouse::tick()
 keyboard::keyboard() noexcept
 {
 }
-} // namespace violet::window
+} // namespace violet

@@ -4,7 +4,7 @@
 #include <Windows.h>
 #include <windowsx.h>
 
-namespace violet::window
+namespace violet
 {
 class window_impl_win32 : public window_impl
 {
@@ -20,7 +20,7 @@ public:
     virtual void show() override;
 
     virtual void* get_handle() const override;
-    virtual window_extent get_extent() const override;
+    virtual rect<std::uint32_t> get_extent() const override;
 
     virtual void set_title(std::string_view title) override;
 
@@ -68,4 +68,4 @@ private:
 
     bool m_track_mouse_event_flag;
 };
-} // namespace violet::window
+} // namespace violet

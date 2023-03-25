@@ -2,7 +2,7 @@
 
 #include "core/node/archetype.hpp"
 
-namespace violet::core
+namespace violet
 {
 class world;
 class view_base
@@ -59,4 +59,4 @@ public:
         }
     }
 };
-} // namespace violet::core
+} // namespace violet

@@ -1,7 +1,7 @@
 #include "task_queue.hpp"
 #include "common/log.hpp"
 
-namespace violet::core
+namespace violet
 {
 task_queue::task_queue() : m_size(0)
 {
@@ -85,4 +85,4 @@ void task_queue_group::notify_task_completion(bool force)
         }
     }
 }
-} // namespace violet::core
+} // namespace violet

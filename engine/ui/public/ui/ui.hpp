@@ -9,7 +9,7 @@ namespace violet::ui
 {
 class control_tree;
 class renderer;
-class ui : public core::system_base
+class ui : public system_base
 {
 public:
     using font_type = font;

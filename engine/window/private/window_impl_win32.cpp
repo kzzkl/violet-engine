@@ -2,7 +2,7 @@
 #include "common/assert.hpp"
 #include "common/log.hpp"
 
-namespace violet::window
+namespace violet
 {
 namespace
 {
@@ -442,12 +442,12 @@ void* window_impl_win32::get_handle() const
     return m_hwnd;
 }
 
-window_extent window_impl_win32::get_extent() const
+rect<std::uint32_t> window_impl_win32::get_extent() const
 {
     RECT extent = {};
     GetClientRect(m_hwnd, &extent);
 
-    window_extent result = {};
+    rect<std::uint32_t> result = {};
     result.x = extent.left;
     result.y = extent.top;
     result.width = extent.right - extent.left;
@@ -673,4 +673,4 @@ void window_impl_win32::on_window_destroy()
     message.type = window_message::message_type::WINDOW_DESTROY;
     m_messages.push_back(message);
 }
-} // namespace violet::window
+} // namespace violet

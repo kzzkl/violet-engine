@@ -3,7 +3,7 @@
 #include "common/dictionary.hpp"
 #include <string_view>
 
-namespace violet::core
+namespace violet
 {
 class engine_module
 {
@@ -22,4 +22,4 @@ public:
 private:
     std::string m_name;
 };
-} // namespace violet::core
+} // namespace violet

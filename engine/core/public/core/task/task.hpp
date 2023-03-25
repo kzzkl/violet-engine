@@ -5,7 +5,7 @@
 #include <string_view>
 #include <vector>
 
-namespace violet::core
+namespace violet
 {
 enum class task_type : std::uint8_t
 {
@@ -77,4 +77,4 @@ public:
 private:
     Callable m_callable;
 };
-} // namespace violet::core
+} // namespace violet

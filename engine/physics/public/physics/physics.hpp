@@ -14,7 +14,7 @@ struct rigidbody_user_data
 };
 
 class physics_plugin;
-class physics : public core::system_base
+class physics : public system_base
 {
 public:
     physics() noexcept;

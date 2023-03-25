@@ -12,7 +12,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace violet::core
+namespace violet
 {
 template <typename T>
 concept derived_from_module = std::is_base_of<engine_module, T>::value;
@@ -101,4 +101,4 @@ private:
 
     std::atomic<bool> m_exit;
 };
-} // namespace violet::core
+} // namespace violet

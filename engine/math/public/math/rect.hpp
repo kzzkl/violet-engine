@@ -1,6 +1,6 @@
 #pragma once
 
-namespace violet::math
+namespace violet
 {
 template <typename T>
 struct rect
@@ -13,10 +13,9 @@ struct rect
     value_type width;
     value_type height;
 
-    template <typename T>
     void contain(T px, T py) const noexcept
     {
         return x <= px && x + width >= px && y <= py && y + height >= py;
     }
 };
-} // namespace violet::math
+} // namespace violet

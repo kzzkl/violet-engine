@@ -4,7 +4,7 @@
 #include <chrono>
 #include <thread>
 
-namespace violet::core
+namespace violet
 {
 class timer
 {
@@ -61,4 +61,4 @@ public:
 private:
     std::array<steady_time_point, NUM_TIME_POINT> m_time_point;
 };
-} // namespace violet::core
+} // namespace violet

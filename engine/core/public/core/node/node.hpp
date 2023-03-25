@@ -3,7 +3,7 @@
 #include "core/node/world.hpp"
 #include <string_view>
 
-namespace violet::core
+namespace violet
 {
 
 class node
@@ -107,4 +107,4 @@ private:
 
 template <typename T>
 using component_ptr = node::component_handle<T>;
-} // namespace violet::core
+} // namespace violet

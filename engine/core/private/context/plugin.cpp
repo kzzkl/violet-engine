@@ -2,7 +2,7 @@
 #include "common/log.hpp"
 #include <Windows.h>
 
-namespace violet::core
+namespace violet
 {
 class dynamic_library_win32 : public dynamic_library
 {
@@ -117,4 +117,4 @@ void* plugin::find_symbol(std::string_view name)
 {
     return m_library->find_symbol(name);
 }
-} // namespace violet::core
+} // namespace violet

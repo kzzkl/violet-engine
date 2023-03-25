@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-namespace violet::core
+namespace violet
 {
 struct event_index : public index_generator<event_index, std::size_t>
 {
@@ -119,4 +119,4 @@ private:
 
     std::vector<std::unique_ptr<dispatcher>> m_dispatchers;
 };
-} // namespace violet::core
+} // namespace violet
