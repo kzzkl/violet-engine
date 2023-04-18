@@ -10,6 +10,7 @@ namespace violet
 class key_state
 {
 public:
+    key_state() : m_state(0) {}
     explicit key_state(unsigned char state) noexcept : m_state(state) {}
 
     inline bool down() const noexcept { return m_state & 0x1; }

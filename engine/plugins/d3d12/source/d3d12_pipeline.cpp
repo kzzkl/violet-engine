@@ -280,7 +280,7 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(const pipeline_parameter_desc
         {
             iter_info.tier1.type = D3D12_ROOT_PARAMETER_TYPE_CBV;
             iter_info.tier1.address =
-                m_gpu_buffer->handle()->GetGPUVirtualAddress() + gpu_buffer_offset;
+                m_gpu_buffer->get_handle()->GetGPUVirtualAddress() + gpu_buffer_offset;
             gpu_buffer_offset += buffer_size;
         }
     }
@@ -305,7 +305,7 @@ d3d12_pipeline_parameter::d3d12_pipeline_parameter(const pipeline_parameter_desc
             {
                 D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_desc = {};
                 cbv_desc.BufferLocation =
-                    m_gpu_buffer->handle()->GetGPUVirtualAddress() + gpu_buffer_offset;
+                    m_gpu_buffer->get_handle()->GetGPUVirtualAddress() + gpu_buffer_offset;
                 cbv_desc.SizeInBytes = static_cast<UINT>(buffer_size);
                 d3d12_context::device()->CreateConstantBufferView(
                     &cbv_desc,
@@ -334,16 +334,16 @@ void d3d12_pipeline_parameter::set(
 {
     std::size_t parameter_offset = m_layout->parameter_offset(index) + offset;
     if (m_layout->parameter_type(index) == PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE)
-        copy_descriptor(static_cast<d3d12_resource*>(texture)->srv(), parameter_offset);
+        copy_descriptor(static_cast<d3d12_resource*>(texture)->get_srv(), parameter_offset);
     else if (m_layout->parameter_type(index) == PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS)
-        copy_descriptor(static_cast<d3d12_resource*>(texture)->uav(), parameter_offset);
+        copy_descriptor(static_cast<d3d12_resource*>(texture)->get_uav(), parameter_offset);
 }
 
-void* d3d12_pipeline_parameter::constant_buffer_pointer(std::size_t index)
+void* d3d12_pipeline_parameter::get_constant_buffer_pointer(std::size_t index)
 {
     sync_frame_resource();
 
-    std::uint8_t* mapped_pointer = reinterpret_cast<std::uint8_t*>(m_gpu_buffer->mapped_pointer());
+    std::uint8_t* mapped_pointer = static_cast<std::uint8_t*>(m_gpu_buffer->get_mapped_pointer());
     return mapped_pointer + m_current_index * m_layout->constant_buffer_size() +
            m_layout->parameter_offset(index);
 }
@@ -516,9 +516,9 @@ d3d12_frame_buffer::d3d12_frame_buffer(
 
     resource_extent extent = {};
     if (camera_info.render_target != nullptr)
-        extent = camera_info.render_target->extent();
+        extent = camera_info.render_target->get_extent();
     else if (camera_info.depth_stencil_buffer != nullptr)
-        extent = camera_info.depth_stencil_buffer->extent();
+        extent = camera_info.depth_stencil_buffer->get_extent();
     else
         throw d3d12_exception("Invalid camera info.");
 
@@ -532,7 +532,7 @@ d3d12_frame_buffer::d3d12_frame_buffer(
                 extent.height,
                 attachment.samples,
                 attachment.format);
-            m_render_targets.push_back(render_target->rtv());
+            m_render_targets.push_back(render_target->get_rtv());
             m_attachments.push_back(attachment_info{
                 render_target.get(),
                 resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
@@ -548,7 +548,7 @@ d3d12_frame_buffer::d3d12_frame_buffer(
             break;
         }
         case ATTACHMENT_TYPE_CAMERA_RENDER_TARGET: {
-            m_render_targets.push_back(camera_info.render_target->rtv());
+            m_render_targets.push_back(camera_info.render_target->get_rtv());
             m_attachments.push_back(attachment_info{
                 camera_info.render_target,
                 resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
@@ -556,7 +556,7 @@ d3d12_frame_buffer::d3d12_frame_buffer(
             break;
         }
         case ATTACHMENT_TYPE_CAMERA_DEPTH_STENCIL: {
-            m_depth_stencil = camera_info.depth_stencil_buffer->dsv();
+            m_depth_stencil = camera_info.depth_stencil_buffer->get_dsv();
             m_attachments.push_back(attachment_info{
                 camera_info.depth_stencil_buffer,
                 resource_state_map[static_cast<std::size_t>(attachment.initial_state)],
@@ -575,13 +575,13 @@ void d3d12_frame_buffer::begin_render(D3D12GraphicsCommandList* command_list)
     barriers.reserve(m_attachments.size());
     for (auto& attachment : m_attachments)
     {
-        if (attachment.resource->resource_state() != attachment.initial_state)
+        if (attachment.resource->get_resource_state() != attachment.initial_state)
         {
             barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-                attachment.resource->handle(),
-                attachment.resource->resource_state(),
+                attachment.resource->get_handle(),
+                attachment.resource->get_resource_state(),
                 attachment.initial_state));
-            attachment.resource->resource_state(attachment.initial_state);
+            attachment.resource->set_resource_state(attachment.initial_state);
         }
     }
 
@@ -595,13 +595,13 @@ void d3d12_frame_buffer::end_render(D3D12GraphicsCommandList* command_list)
     barriers.reserve(m_attachments.size());
     for (auto& attachment : m_attachments)
     {
-        if (attachment.resource->resource_state() != attachment.final_state)
+        if (attachment.resource->get_resource_state() != attachment.final_state)
         {
             barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-                attachment.resource->handle(),
-                attachment.resource->resource_state(),
+                attachment.resource->get_handle(),
+                attachment.resource->get_resource_state(),
                 attachment.final_state));
-            attachment.resource->resource_state(attachment.final_state);
+            attachment.resource->set_resource_state(attachment.final_state);
         }
     }
 
@@ -652,9 +652,9 @@ void d3d12_render_pass::begin(
 
     std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> render_targets;
     for (std::size_t i : m_color_indices)
-        render_targets.push_back(attachments[i].resource->rtv());
+        render_targets.push_back(attachments[i].resource->get_rtv());
 
-    D3D12_CPU_DESCRIPTOR_HANDLE depth_stencil = attachments[m_depth_index].resource->dsv();
+    D3D12_CPU_DESCRIPTOR_HANDLE depth_stencil = attachments[m_depth_index].resource->get_dsv();
 
     command_list->OMSetRenderTargets(
         static_cast<UINT>(render_targets.size()),
@@ -677,17 +677,17 @@ void d3d12_render_pass::end(D3D12GraphicsCommandList* command_list, bool final)
     {
         auto target = attachments[target_index].resource;
         barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-            target->handle(),
-            target->resource_state(),
+            target->get_handle(),
+            target->get_resource_state(),
             D3D12_RESOURCE_STATE_RESOLVE_DEST));
-        target->resource_state(D3D12_RESOURCE_STATE_RESOLVE_DEST);
+        target->set_resource_state(D3D12_RESOURCE_STATE_RESOLVE_DEST);
 
         auto source = attachments[source_index].resource;
         barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-            source->handle(),
-            source->resource_state(),
+            source->get_handle(),
+            source->get_resource_state(),
             D3D12_RESOURCE_STATE_RESOLVE_SOURCE));
-        source->resource_state(D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+        source->set_resource_state(D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
     }
 
     if (!barriers.empty())
@@ -698,11 +698,11 @@ void d3d12_render_pass::end(D3D12GraphicsCommandList* command_list, bool final)
         auto target = attachments[target_index].resource;
         auto source = attachments[source_index].resource;
         command_list->ResolveSubresource(
-            target->handle(),
+            target->get_handle(),
             0,
-            source->handle(),
+            source->get_handle(),
             0,
-            source->handle()->GetDesc().Format);
+            source->get_handle()->GetDesc().Format);
     }
 
     if (!final)
@@ -713,17 +713,17 @@ void d3d12_render_pass::end(D3D12GraphicsCommandList* command_list, bool final)
         {
             auto target = attachments[target_index].resource;
             barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-                target->handle(),
-                target->resource_state(),
+                target->get_handle(),
+                target->get_resource_state(),
                 attachments[target_index].initial_state));
-            target->resource_state(attachments[target_index].initial_state);
+            target->set_resource_state(attachments[target_index].initial_state);
 
             auto source = attachments[source_index].resource;
             barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-                source->handle(),
-                source->resource_state(),
+                source->get_handle(),
+                source->get_resource_state(),
                 attachments[source_index].initial_state));
-            source->resource_state(attachments[source_index].initial_state);
+            source->set_resource_state(attachments[source_index].initial_state);
         }
 
         if (!barriers.empty())
@@ -870,8 +870,8 @@ void d3d12_render_pipeline::begin(
     m_current_frame_buffer = d3d12_context::cache().get_or_create_frame_buffer(this, camera_info);
     m_current_frame_buffer->begin_render(command_list);
 
-    auto [width, height] = m_current_frame_buffer->extent();
-     
+    auto [width, height] = m_current_frame_buffer->get_extent();
+
     D3D12_VIEWPORT viewport = {};
     viewport.Width = static_cast<float>(width);
     viewport.Height = static_cast<float>(height);

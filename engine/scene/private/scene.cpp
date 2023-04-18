@@ -3,7 +3,7 @@
 #include "core/context/engine.hpp"
 #include "core/node/node.hpp"
 
-namespace violet::scene
+namespace violet
 {
 scene::scene() : engine_module("scene")
 {
@@ -11,13 +11,14 @@ scene::scene() : engine_module("scene")
 
 bool scene::initialize(const dictionary& config)
 {
-    return true;
-}
+    auto& engine_task = engine::get_task_graph();
 
-void scene::on_end_frame()
-{
-    view<transform> view(engine::get_world());
-    view.each([](transform& transform) { transform.reset_update_count(); });
+    engine_task.end_frame.add_task("scene end", []() {
+        view<transform> view(engine::get_world());
+        view.each([](transform& transform) { transform.reset_update_count(); });
+    });
+
+    return true;
 }
 
 void scene::update_transform()
@@ -69,4 +70,4 @@ void scene::update_transform()
         }
     }
 }
-} // namespace violet::scene
+} // namespace violet

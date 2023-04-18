@@ -1,12 +1,12 @@
 #pragma once
 
 #include "common/assert.hpp"
-#include "common/index_generator.hpp"
 #include "common/log.hpp"
+#include "common/type_index.hpp"
 #include "core/context/engine_module.hpp"
-#include "core/event/event.hpp"
+#include "core/context/engine_task.hpp"
 #include "core/node/world.hpp"
-#include "core/task/task_manager.hpp"
+#include "core/task/task_executor.hpp"
 #include "core/timer/timer.hpp"
 #include <memory>
 #include <type_traits>
@@ -20,7 +20,7 @@ concept derived_from_module = std::is_base_of<engine_module, T>::value;
 class engine
 {
 private:
-    struct module_index : public index_generator<module_index, std::size_t>
+    struct module_index : public type_index<module_index, std::size_t>
     {
     };
 
@@ -73,10 +73,11 @@ public:
 
     static bool has_module(std::string_view name);
 
-    static event& get_event() { return *instance().m_event; }
     static timer& get_timer() { return *instance().m_timer; }
     static world& get_world() { return *instance().m_world; }
-    static task_manager& get_task_manager() { return *instance().m_task_manager; }
+
+    static engine_task_graph& get_task_graph() { return instance().m_task_graph; }
+    static task_executor& get_task_executor() { return *instance().m_task_executor; }
 
 private:
     engine();
@@ -86,18 +87,16 @@ private:
 
     void main_loop();
 
-    void begin_frame();
-    void end_frame();
-
     std::map<std::string, dictionary> m_config;
 
     std::vector<std::unique_ptr<engine_module>> m_modules;
     std::vector<std::size_t> m_install_sequence;
 
-    std::unique_ptr<event> m_event;
     std::unique_ptr<timer> m_timer;
     std::unique_ptr<world> m_world;
-    std::unique_ptr<task_manager> m_task_manager;
+
+    engine_task_graph m_task_graph;
+    std::unique_ptr<task_executor> m_task_executor;
 
     std::atomic<bool> m_exit;
 };

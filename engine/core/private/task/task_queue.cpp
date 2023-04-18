@@ -1,88 +1,37 @@
-#include "task_queue.hpp"
-#include "common/log.hpp"
+#include "task/task_queue.hpp"
 
 namespace violet
 {
-task_queue::task_queue() : m_size(0)
+task_queue::task_queue() : m_exit(false)
 {
 }
 
 task* task_queue::pop()
 {
-    task* result = nullptr;
-    if (m_queue.pop(result))
+    task* task = nullptr;
+    while (!m_queue.pop(task))
     {
-        m_size.fetch_sub(1);
-        return result;
-    }
-    else
-    {
-        return nullptr;
-    }
-}
+        std::this_thread::yield();
 
-void task_queue::push(task* t)
-{
-    m_queue.push(t);
-
-    std::lock_guard<std::mutex> lg(m_lock);
-    m_size.fetch_add(1);
-    m_cv.notify_one();
-}
-
-void task_queue::notify()
-{
-    m_cv.notify_all();
-}
-
-void task_queue::wait_task()
-{
-    std::unique_lock<std::mutex> ul(m_lock);
-    m_cv.wait(ul, [this]() { return m_size.load() > 0; });
-}
-
-void task_queue::wait_task(std::function<bool()> exit)
-{
-    std::unique_lock<std::mutex> ul(m_lock);
-    m_cv.wait(ul, [this, &exit]() { return m_size.load() > 0 || exit(); });
-}
-
-std::future<void> task_queue_group::execute(task* t, std::size_t task_count)
-{
-    m_remaining_tasks_count = static_cast<std::uint32_t>(task_count);
-    m_done = std::promise<void>();
-
-    switch (t->type())
-    {
-    case task_type::NONE:
-        queue(task_type::NONE).push(t);
-        break;
-    case task_type::MAIN_THREAD:
-        queue(task_type::MAIN_THREAD).push(t);
-        break;
-    default:
-        break;
+        if (m_exit)
+            return nullptr;
     }
 
-    return m_done.get_future();
+    return task;
 }
 
-void task_queue_group::notify_task_completion(bool force)
+void task_queue::push(task* task)
 {
-    while (true)
-    {
-        std::uint32_t old_value = m_remaining_tasks_count.load();
-        std::uint32_t new_value = force ? 0 : old_value - 1;
+    m_queue.push(task);
+}
 
-        if (old_value == m_remaining_tasks_count.load())
-        {
-            if (m_remaining_tasks_count.compare_exchange_weak(old_value, new_value))
-            {
-                if (old_value != 0 && new_value == 0)
-                    m_done.set_value();
-                break;
-            }
-        }
-    }
+void task_queue::start()
+{
+    m_exit = false;
+}
+
+void task_queue::stop()
+{
+    m_exit = true;
 }
 } // namespace violet

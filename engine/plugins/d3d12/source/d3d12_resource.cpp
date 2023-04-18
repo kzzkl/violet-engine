@@ -9,27 +9,27 @@ d3d12_resource::d3d12_resource() : m_resource_state(D3D12_RESOURCE_STATE_COMMON)
 {
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_resource::rtv() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_resource::get_rtv() const
 {
     throw d3d12_exception("This resource is not a render target.");
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_resource::dsv() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_resource::get_dsv() const
 {
     throw d3d12_exception("This resource is not a depth stencil buffer.");
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_resource::srv() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_resource::get_srv() const
 {
     throw d3d12_exception("This resource is not a shader resource.");
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_resource::uav() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_resource::get_uav() const
 {
     throw d3d12_exception("This resource is not a unordered access resource.");
 }
 
-void* d3d12_resource::pointer()
+void* d3d12_resource::get_buffer()
 {
     throw d3d12_exception("This resource is not a upload buffer.");
 }
@@ -39,12 +39,12 @@ void d3d12_resource::upload(const void* data, std::size_t size, std::size_t offs
     throw d3d12_exception("This resource cannot be uploaded.");
 }
 
-resource_format d3d12_image::format() const noexcept
+resource_format d3d12_image::get_format() const noexcept
 {
     return d3d12_utility::convert_format(m_resource->GetDesc().Format);
 }
 
-resource_extent d3d12_image::extent() const noexcept
+resource_extent d3d12_image::get_extent() const noexcept
 {
     auto desc = m_resource->GetDesc();
     return resource_extent{
@@ -76,7 +76,7 @@ d3d12_back_buffer::~d3d12_back_buffer()
     }
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_back_buffer::rtv() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_back_buffer::get_rtv() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
     return heap->cpu_handle(m_rtv_offset);
@@ -163,13 +163,13 @@ d3d12_render_target::~d3d12_render_target()
     }
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_render_target::rtv() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_render_target::get_rtv() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
     return heap->cpu_handle(m_rtv_offset);
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_render_target::srv() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_render_target::get_srv() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     return heap->cpu_handle(m_srv_offset);
@@ -245,7 +245,7 @@ d3d12_depth_stencil_buffer::~d3d12_depth_stencil_buffer()
     }
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_depth_stencil_buffer::dsv() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_depth_stencil_buffer::get_dsv() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
     return heap->cpu_handle(m_dsv_offset);
@@ -303,7 +303,7 @@ d3d12_texture::~d3d12_texture()
     }
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_texture::srv() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_texture::get_srv() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     return heap->cpu_handle(m_srv_offset);
@@ -347,7 +347,7 @@ d3d12_texture_cube::~d3d12_texture_cube()
     }
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_texture_cube::srv() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_texture_cube::get_srv() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     return heap->cpu_handle(m_srv_offset);
@@ -438,13 +438,13 @@ d3d12_shadow_map::~d3d12_shadow_map()
     }
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_shadow_map::srv() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_shadow_map::get_srv() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     return heap->cpu_handle(m_srv_offset);
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_shadow_map::dsv() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_shadow_map::get_dsv() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
     return heap->cpu_handle(m_dsv_offset);
@@ -570,7 +570,7 @@ d3d12_vertex_buffer_default::d3d12_vertex_buffer_default(
         desc.vertex_size * desc.vertex_count,
         command_list,
         flags);
-    m_view.BufferLocation = m_buffer->handle()->GetGPUVirtualAddress();
+    m_view.BufferLocation = m_buffer->get_handle()->GetGPUVirtualAddress();
     m_view.SizeInBytes = static_cast<UINT>(desc.vertex_size * desc.vertex_count);
     m_view.StrideInBytes = static_cast<UINT>(desc.vertex_size);
 
@@ -589,7 +589,7 @@ d3d12_vertex_buffer_default::d3d12_vertex_buffer_default(
         srv_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 
         d3d12_context::device()->CreateShaderResourceView(
-            m_buffer->handle(),
+            m_buffer->get_handle(),
             &srv_desc,
             srv_heap->cpu_handle(m_srv_offset));
     }
@@ -609,25 +609,25 @@ d3d12_vertex_buffer_default::d3d12_vertex_buffer_default(
         uav_desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
 
         d3d12_context::device()->CreateUnorderedAccessView(
-            m_buffer->handle(),
+            m_buffer->get_handle(),
             nullptr,
             &uav_desc,
             uav_heap->cpu_handle(m_uav_offset));
     }
 }
 
-const D3D12_VERTEX_BUFFER_VIEW& d3d12_vertex_buffer_default::view() const noexcept
+const D3D12_VERTEX_BUFFER_VIEW& d3d12_vertex_buffer_default::get_view() const noexcept
 {
     return m_view;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_vertex_buffer_default::srv() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_vertex_buffer_default::get_srv() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     return heap->cpu_handle(m_srv_offset);
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_vertex_buffer_default::uav() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_vertex_buffer_default::get_uav() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     return heap->cpu_handle(m_uav_offset);
@@ -647,7 +647,7 @@ d3d12_vertex_buffer_dynamic::d3d12_vertex_buffer_dynamic(const vertex_buffer_des
     m_buffer = std::make_unique<d3d12_upload_buffer>(m_size * copy_count, flags);
 
     D3D12_VERTEX_BUFFER_VIEW view = {};
-    view.BufferLocation = m_buffer->handle()->GetGPUVirtualAddress();
+    view.BufferLocation = m_buffer->get_handle()->GetGPUVirtualAddress();
     view.SizeInBytes = static_cast<UINT>(m_size);
     view.StrideInBytes = static_cast<UINT>(desc.vertex_size);
 
@@ -673,7 +673,7 @@ d3d12_vertex_buffer_dynamic::d3d12_vertex_buffer_dynamic(const vertex_buffer_des
         for (std::size_t i = 0; i < copy_count; ++i)
         {
             d3d12_context::device()->CreateShaderResourceView(
-                m_buffer->handle(),
+                m_buffer->get_handle(),
                 &srv_desc,
                 srv_heap->cpu_handle(m_srv_offset + i));
 
@@ -697,7 +697,7 @@ d3d12_vertex_buffer_dynamic::d3d12_vertex_buffer_dynamic(const vertex_buffer_des
         for (std::size_t i = 0; i < copy_count; ++i)
         {
             d3d12_context::device()->CreateUnorderedAccessView(
-                m_buffer->handle(),
+                m_buffer->get_handle(),
                 nullptr,
                 &uav_desc,
                 uav_heap->cpu_handle(m_uav_offset));
@@ -736,18 +736,18 @@ void d3d12_vertex_buffer_dynamic::upload(const void* data, std::size_t size, std
     }
 }
 
-const D3D12_VERTEX_BUFFER_VIEW& d3d12_vertex_buffer_dynamic::view() const noexcept
+const D3D12_VERTEX_BUFFER_VIEW& d3d12_vertex_buffer_dynamic::get_view() const noexcept
 {
     return m_views[m_current_index];
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_vertex_buffer_dynamic::srv() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_vertex_buffer_dynamic::get_srv() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     return heap->cpu_handle(m_srv_offset + m_current_index);
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE d3d12_vertex_buffer_dynamic::uav() const
+D3D12_CPU_DESCRIPTOR_HANDLE d3d12_vertex_buffer_dynamic::get_uav() const
 {
     auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     return heap->cpu_handle(m_uav_offset + m_current_index);
@@ -767,7 +767,7 @@ d3d12_index_buffer_default::d3d12_index_buffer_default(
         desc.index_size * desc.index_count,
         command_list);
 
-    m_view.BufferLocation = m_buffer->handle()->GetGPUVirtualAddress();
+    m_view.BufferLocation = m_buffer->get_handle()->GetGPUVirtualAddress();
     m_view.SizeInBytes = static_cast<UINT>(desc.index_size * desc.index_count);
 
     if (desc.index_size == 1)
@@ -780,7 +780,7 @@ d3d12_index_buffer_default::d3d12_index_buffer_default(
         throw std::out_of_range("Invalid index size.");
 }
 
-const D3D12_INDEX_BUFFER_VIEW& d3d12_index_buffer_default::view() const noexcept
+const D3D12_INDEX_BUFFER_VIEW& d3d12_index_buffer_default::get_view() const noexcept
 {
     return m_view;
 }
@@ -797,7 +797,7 @@ d3d12_index_buffer_dynamic::d3d12_index_buffer_dynamic(const index_buffer_desc& 
     m_buffer = std::make_unique<d3d12_upload_buffer>(m_size * copy_count);
 
     D3D12_INDEX_BUFFER_VIEW view = {};
-    view.BufferLocation = m_buffer->handle()->GetGPUVirtualAddress();
+    view.BufferLocation = m_buffer->get_handle()->GetGPUVirtualAddress();
     view.SizeInBytes = static_cast<UINT>(m_size);
 
     if (desc.index_size == 1)
@@ -845,7 +845,7 @@ void d3d12_index_buffer_dynamic::upload(const void* data, std::size_t size, std:
     }
 }
 
-const D3D12_INDEX_BUFFER_VIEW& d3d12_index_buffer_dynamic::view() const noexcept
+const D3D12_INDEX_BUFFER_VIEW& d3d12_index_buffer_dynamic::get_view() const noexcept
 {
     return m_views[m_current_index];
 }

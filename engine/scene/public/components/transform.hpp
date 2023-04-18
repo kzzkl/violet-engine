@@ -2,7 +2,7 @@
 
 #include "math/math.hpp"
 
-namespace violet::scene
+namespace violet
 {
 class transform
 {
@@ -57,4 +57,4 @@ private:
     std::uint8_t m_dirty_flag;
     std::size_t m_update_count;
 };
-} // namespace violet::scene
+} // namespace violet

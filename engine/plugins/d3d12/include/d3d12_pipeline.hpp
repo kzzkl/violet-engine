@@ -79,7 +79,7 @@ public:
 
     virtual void set(std::size_t index, const void* data, size_t size) override;
     virtual void set(std::size_t index, resource_interface* texture, std::size_t offset) override;
-    virtual void* constant_buffer_pointer(std::size_t index) override;
+    virtual void* get_constant_buffer_pointer(std::size_t index) override;
 
     inline d3d12_parameter_tier_type tier() const noexcept { return m_tier; }
     inline tier1_info tier1() const noexcept { return m_tier_info[m_current_index].tier1; }
@@ -158,7 +158,7 @@ public:
 
     const std::vector<attachment_info>& attachments() const noexcept { return m_attachments; }
 
-    resource_extent extent() const { return m_attachments[0].resource->extent(); }
+    resource_extent get_extent() const { return m_attachments[0].resource->get_extent(); }
 
 private:
     std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_render_targets;

@@ -46,7 +46,7 @@ void d3d12_render_command::next_pass(render_pipeline_interface* pipeline)
     rp->next(m_command_list.Get());
 }
 
-void d3d12_render_command::parameter(std::size_t index, pipeline_parameter_interface* parameter)
+void d3d12_render_command::set_parameter(std::size_t index, pipeline_parameter_interface* parameter)
 {
     d3d12_pipeline_parameter* p = static_cast<d3d12_pipeline_parameter*>(parameter);
     if (p->tier() == d3d12_parameter_tier_type::TIER1)
@@ -70,7 +70,7 @@ void d3d12_render_command::parameter(std::size_t index, pipeline_parameter_inter
     }
 }
 
-void d3d12_render_command::scissor(const scissor_extent* extents, std::size_t size)
+void d3d12_render_command::set_scissor(const scissor_extent* extents, std::size_t size)
 {
     std::vector<D3D12_RECT> r(size);
     for (std::size_t i = 0; i < size; ++i)
@@ -83,7 +83,7 @@ void d3d12_render_command::scissor(const scissor_extent* extents, std::size_t si
     m_command_list->RSSetScissorRects(static_cast<UINT>(size), r.data());
 }
 
-void d3d12_render_command::input_assembly_state(
+void d3d12_render_command::set_input_assembly_state(
     resource_interface* const* vertex_buffers,
     std::size_t vertex_buffer_count,
     resource_interface* index_buffer,
@@ -93,7 +93,8 @@ void d3d12_render_command::input_assembly_state(
     {
         std::vector<D3D12_VERTEX_BUFFER_VIEW> vertex_buffer_views(vertex_buffer_count);
         for (std::size_t i = 0; i < vertex_buffer_count; ++i)
-            vertex_buffer_views[i] = static_cast<d3d12_vertex_buffer*>(vertex_buffers[i])->view();
+            vertex_buffer_views[i] =
+                static_cast<d3d12_vertex_buffer*>(vertex_buffers[i])->get_view();
 
         m_command_list->IASetVertexBuffers(
             0,
@@ -104,7 +105,7 @@ void d3d12_render_command::input_assembly_state(
     if (index_buffer != nullptr)
     {
         D3D12_INDEX_BUFFER_VIEW index_buffer_view =
-            static_cast<d3d12_index_buffer*>(index_buffer)->view();
+            static_cast<d3d12_index_buffer*>(index_buffer)->get_view();
         m_command_list->IASetIndexBuffer(&index_buffer_view);
     }
 
@@ -141,7 +142,7 @@ void d3d12_render_command::clear_render_target(
     const float4& color)
 {
     auto rt = static_cast<d3d12_resource*>(render_target);
-    m_command_list->ClearRenderTargetView(rt->rtv(), color.data, 0, nullptr);
+    m_command_list->ClearRenderTargetView(rt->get_rtv(), color.data, 0, nullptr);
 }
 
 void d3d12_render_command::clear_depth_stencil(
@@ -159,7 +160,7 @@ void d3d12_render_command::clear_depth_stencil(
     if (clear_stencil)
         flag |= D3D12_CLEAR_FLAG_STENCIL;
 
-    m_command_list->ClearDepthStencilView(ds->dsv(), flag, depth, stencil, 0, nullptr);
+    m_command_list->ClearDepthStencilView(ds->get_dsv(), flag, depth, stencil, 0, nullptr);
 }
 
 void d3d12_render_command::begin(compute_pipeline_interface* pipeline)
@@ -179,7 +180,7 @@ void d3d12_render_command::dispatch(std::size_t x, std::size_t y, std::size_t z)
     m_command_list->Dispatch(static_cast<UINT>(x), static_cast<UINT>(y), static_cast<UINT>(z));
 }
 
-void d3d12_render_command::compute_parameter(
+void d3d12_render_command::set_compute_parameter(
     std::size_t index,
     pipeline_parameter_interface* parameter)
 {

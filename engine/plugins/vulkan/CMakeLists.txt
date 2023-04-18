@@ -2,28 +2,35 @@ project(violet-graphics-vulkan)
 
 find_package(Vulkan REQUIRED)
 
-set(STB_IMAGE_INCLUDE ${VIOLET_THIRD_PARTY_DIR}/stb)
+set(HPP_FILES
+    ./include/vk_command.hpp
+    ./include/vk_common.hpp
+    ./include/vk_framebuffer_cache.hpp
+    ./include/vk_pipeline.hpp
+    ./include/vk_resource.hpp
+    ./include/vk_rhi.hpp
+    ./include/vk_util.hpp)
+source_group("Header Files" FILES ${HPP_FILES})
 
-add_library(${PROJECT_NAME} SHARED
-    ./private/vk_command.cpp
-    ./private/vk_common.cpp
-    ./private/vk_context.cpp
-    ./private/vk_descriptor_pool.cpp
-    ./private/vk_image_loader.cpp
-    ./private/vk_pipeline.cpp
-    ./private/vk_plugin.cpp
-    ./private/vk_renderer.cpp
-    ./private/vk_resource.cpp
-    ./private/vk_sampler.cpp)
+set(CPP_FILES
+    ./source/vk_command.cpp
+    ./source/vk_framebuffer_cache.cpp
+    ./source/vk_pipeline.cpp
+    ./source/vk_resource.cpp
+    ./source/vk_rhi.cpp
+    ./source/vk_util.cpp)
+source_group("Source Files" FILES ${CPP_FILES})
+
+add_library(${PROJECT_NAME} SHARED ${HPP_FILES} ${CPP_FILES})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "")
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-    ./private
-    ${VIOLET_CORE_INTERFACE_DIR}
-    ${VIOLET_GRAPHICS_INTERFACE_DIR}
-    ${STB_IMAGE_INCLUDE})
+    ./include
+    ${VIOLET_ROOT_DIR}/engine/core/public
+    ${VIOLET_ROOT_DIR}/engine/graphics/public
+    ${VIOLET_THIRD_PARTY_DIR}/stb)
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE

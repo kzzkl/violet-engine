@@ -9,9 +9,9 @@ add_library(${PROJECT_NAME} SHARED
     ./source/d3d12_frame_resource.cpp
     ./source/d3d12_image_loader.cpp
     ./source/d3d12_pipeline.cpp
-    ./source/d3d12_plugin.cpp
     ./source/d3d12_renderer.cpp
     ./source/d3d12_resource.cpp
+    ./source/d3d12_rhi.cpp
     ./source/d3d12_utility.cpp
     ./source/DDSTextureLoader12.cpp)
 
@@ -20,8 +20,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "")
 target_include_directories(${PROJECT_NAME}
     PRIVATE
     ./include
-    ${VIOLET_ROOT_DIR}/engine/core/interface
-    ${VIOLET_ROOT_DIR}/engine/graphics/interface
+    ${VIOLET_ROOT_DIR}/engine/core/public
+    ${VIOLET_ROOT_DIR}/engine/graphics/public
     ${VIOLET_THIRD_PARTY_DIR}/stb)
 
 target_link_libraries(${PROJECT_NAME}

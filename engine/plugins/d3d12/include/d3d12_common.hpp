@@ -1,7 +1,7 @@
 #pragma once
 
 #include "d3dx12.h"
-#include "graphics_interface.hpp"
+#include "interface/graphics_interface.hpp"
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <stdexcept>

@@ -13,11 +13,9 @@ set(NODE_SOURCE
     ./private/node/world.cpp)
 
 set(TASK_SOURCE
-    ./private/task/task_manager.cpp
+    ./private/task/task_executor.cpp
     ./private/task/task_queue.cpp
-    ./private/task/task.cpp
-    ./private/task/thread_pool.cpp
-    ./private/task/work_thread.cpp)
+    ./private/task/task.cpp)
 
 add_library(${PROJECT_NAME} STATIC
     ${CONTEXT_SOURCE}
@@ -27,7 +25,6 @@ add_library(violet::core ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-    ./interface
     ./public
     PRIVATE
     ./private)

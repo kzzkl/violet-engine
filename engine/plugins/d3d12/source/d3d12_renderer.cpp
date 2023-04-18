@@ -114,7 +114,7 @@ void d3d12_renderer::execute(render_command_interface* command)
     d3d12_context::command()->execute_command(c);
 }
 
-resource_interface* d3d12_renderer::back_buffer()
+resource_interface* d3d12_renderer::get_back_buffer()
 {
     return d3d12_context::swap_chain().render_target();
 }

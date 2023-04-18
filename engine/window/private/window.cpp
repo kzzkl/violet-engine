@@ -1,6 +1,6 @@
 #include "window/window.hpp"
 #include "core/context/engine.hpp"
-#include "window/window_event.hpp"
+#include "window/window_task.hpp"
 #include "window_impl.hpp"
 #include "window_impl_win32.hpp"
 
@@ -24,43 +24,22 @@ bool window::initialize(const dictionary& config)
 
     m_title = config["title"];
 
-    auto& event = engine::get_event();
-    event.register_event<event_mouse_move>();
-    event.register_event<event_mouse_key>();
-    event.register_event<event_keyboard_key>();
-    event.register_event<event_keyboard_char>();
-    event.register_event<event_window_resize>();
-    event.register_event<event_window_destroy>();
-
-    auto& task = engine::get_task_manager();
-    auto window_tick_task = task.schedule(
-        "window_tick",
-        [this]() { tick(); },
-        task_type::MAIN_THREAD);
-    window_tick_task->add_dependency(*task.find(TASK_ROOT));
-
-    auto logic_start_task = task.find(TASK_GAME_LOGIC_START);
-    logic_start_task->add_dependency(*window_tick_task);
+    engine::get_task_graph().tick.add_task(
+        "window tick",
+        [this](float delta) { tick(); },
+        TASK_OPTION_MAIN_THREAD);
 
     return true;
 }
 
 void window::shutdown()
 {
-    auto& event = engine::get_event();
-    event.unregister_event<event_mouse_move>();
-    event.unregister_event<event_mouse_key>();
-    event.unregister_event<event_keyboard_key>();
-    event.unregister_event<event_keyboard_char>();
-    event.unregister_event<event_window_resize>();
-    event.unregister_event<event_window_destroy>();
-
     m_impl->shutdown();
 }
 
 void window::tick()
 {
-    auto& event = engine::get_event();
+    auto& task_executor = engine::get_task_executor();
 
     m_mouse.tick();
     m_keyboard.tick();
@@ -72,48 +51,63 @@ void window::tick()
     {
         switch (message.type)
         {
-        case window_message::message_type::MOUSE_MOVE:
+        case window_message::message_type::MOUSE_MOVE: {
             m_mouse.m_x = message.mouse_move.x;
             m_mouse.m_y = message.mouse_move.y;
-            event.publish<event_mouse_move>(
+
+            task_executor.execute_sync(
+                m_task_graph.mouse_move,
                 m_mouse.get_mode(),
                 message.mouse_move.x,
                 message.mouse_move.y);
             break;
-        case window_message::message_type::MOUSE_KEY:
+        }
+        case window_message::message_type::MOUSE_KEY: {
             if (message.mouse_key.down)
                 m_mouse.key_down(message.mouse_key.key);
             else
                 m_mouse.key_up(message.mouse_key.key);
-            event.publish<event_mouse_key>(
+
+            task_executor.execute_sync(
+                m_task_graph.mouse_key,
                 message.mouse_key.key,
                 m_mouse.key(message.mouse_key.key));
             break;
-        case window_message::message_type::MOUSE_WHELL:
+        }
+        case window_message::message_type::MOUSE_WHELL: {
             m_mouse.m_whell = message.mouse_whell;
             break;
-        case window_message::message_type::KEYBOARD_KEY:
+        }
+        case window_message::message_type::KEYBOARD_KEY: {
             if (message.keyboard_key.down)
                 m_keyboard.key_down(message.keyboard_key.key);
             else
                 m_keyboard.key_up(message.keyboard_key.key);
-            event.publish<event_keyboard_key>(
+
+            task_executor.execute_sync(
+                m_task_graph.keyboard_key,
                 message.keyboard_key.key,
                 m_keyboard.key(message.keyboard_key.key));
             break;
-        case window_message::message_type::KEYBOARD_CHAR:
-            event.publish<event_keyboard_char>(message.keyboard_char);
+        }
+        case window_message::message_type::KEYBOARD_CHAR: {
+            task_executor.execute_sync(m_task_graph.keyboard_char, message.keyboard_char);
             break;
-        case window_message::message_type::WINDOW_MOVE:
+        }
+        case window_message::message_type::WINDOW_MOVE: {
             break;
-        case window_message::message_type::WINDOW_RESIZE:
-            event.publish<event_window_resize>(
+        }
+        case window_message::message_type::WINDOW_RESIZE: {
+            task_executor.execute_sync(
+                m_task_graph.window_resize,
                 message.window_resize.width,
                 message.window_resize.height);
             break;
-        case window_message::message_type::WINDOW_DESTROY:
-            event.publish<event_window_destroy>();
+        }
+        case window_message::message_type::WINDOW_DESTROY: {
+            task_executor.execute_sync(m_task_graph.window_destroy);
             break;
+        }
         default:
             break;
         }

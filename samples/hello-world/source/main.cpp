@@ -2,7 +2,7 @@
 #include "core/node/node.hpp"
 #include "graphics/graphics.hpp"
 #include "window/window.hpp"
-#include "window/window_event.hpp"
+#include "window/window_task.hpp"
 #include <filesystem>
 #include <fstream>
 #include <thread>
@@ -18,8 +18,8 @@ public:
     {
         log::info(config["text"]);
 
-        auto& event = engine::get_event();
-        event.subscribe<event_window_destroy>("hello_world", []() {
+        auto& window_module = engine::get_module<window>();
+        window_module.get_task_graph().window_destroy.add_task("exit", []() {
             log::info("close window");
             engine::exit();
         });

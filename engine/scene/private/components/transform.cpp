@@ -1,6 +1,6 @@
 #include "components/transform.hpp"
 
-namespace violet::scene
+namespace violet
 {
 transform::transform() noexcept
     : m_position{0.0f, 0.0f, 0.0f},
@@ -134,4 +134,4 @@ std::size_t transform::get_update_count() const noexcept
 {
     return m_update_count;
 }
-} // namespace violet::scene
+} // namespace violet

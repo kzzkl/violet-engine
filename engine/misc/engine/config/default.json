@@ -3,7 +3,7 @@
         "task_thread_count": 0
     },
     "graphics": {
-        "plugin": "violet-graphics-d3d12.dll",
+        "plugin": "violet-graphics-vulkan.dll",
         "render_concurrency": 4,
         "frame_resource": 3,
         "samples": 4

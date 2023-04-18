@@ -1,6 +1,5 @@
 #include "core/context/engine.hpp"
 #include "core/node/world.hpp"
-#include "core/task/task_manager.hpp"
 #include <filesystem>
 #include <fstream>
 
@@ -75,12 +74,9 @@ void engine::initialize(std::string_view config_path)
         }
     }
 
-    singleton.m_event = std::make_unique<event>();
     singleton.m_timer = std::make_unique<timer>();
     singleton.m_world = std::make_unique<world>();
-
-    std::size_t thread_count = singleton.m_config["engine"]["task_thread_count"];
-    singleton.m_task_manager = std::make_unique<task_manager>(thread_count);
+    singleton.m_task_executor = std::make_unique<task_executor>();
 }
 
 void engine::run()
@@ -100,9 +96,6 @@ void engine::main_loop()
     else
         m_exit = false;
 
-    m_task_manager->run();
-    auto root_task = m_task_manager->find(TASK_ROOT);
-
     frame_rater<60> frame_rater;
     timer& time = get_timer();
 
@@ -111,9 +104,11 @@ void engine::main_loop()
     while (!m_exit)
     {
         time.tick<timer::point::FRAME_START>();
-        begin_frame();
-        m_task_manager->execute(root_task);
-        end_frame();
+
+        m_task_executor->execute_sync(m_task_graph.begin_frame);
+        m_task_executor->execute_sync(m_task_graph.tick, time.frame_delta());
+        m_task_executor->execute_sync(m_task_graph.end_frame);
+
         time.tick<timer::point::FRAME_END>();
 
         frame_rater.sleep();
@@ -126,18 +121,6 @@ void engine::main_loop()
         m_modules[*iter]->shutdown();
         m_modules[*iter] = nullptr;
     }
-}
-
-void engine::begin_frame()
-{
-    for (auto& module : m_modules)
-        module->on_begin_frame();
-}
-
-void engine::end_frame()
-{
-    for (auto& module : m_modules)
-        module->on_end_frame();
 }
 
 bool engine::has_module(std::string_view name)

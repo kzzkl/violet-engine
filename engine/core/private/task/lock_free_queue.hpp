@@ -1,10 +1,74 @@
 #pragma once
 
-#include "tagged_pointer.hpp"
 #include <atomic>
+#include <cstdint>
+#include <limits>
 
 namespace violet
 {
+template <typename T>
+class tagged_pointer_compression
+{
+public:
+    using value_type = T;
+
+    using tag_type = std::uint16_t;
+    using address_type = std::uint64_t;
+
+public:
+    tagged_pointer_compression() : m_address(0) {}
+    tagged_pointer_compression(value_type* p) { m_address = reinterpret_cast<address_type>(p); }
+    tagged_pointer_compression(value_type* p, tag_type tag)
+    {
+        m_address = reinterpret_cast<address_type>(p);
+        m_tag[TAG_INDEX] = tag;
+    }
+
+    tag_type next_tag() const
+    {
+        tag_type next = (m_tag[TAG_INDEX] + 1) & std::numeric_limits<tag_type>::max();
+        return next;
+    }
+    tag_type tag() const { return m_tag[TAG_INDEX]; }
+
+    void pointer(value_type* p)
+    {
+        tag_type tag = m_tag[TAG_INDEX];
+        m_address = reinterpret_cast<address_type>(p);
+        m_tag[TAG_INDEX] = tag;
+    }
+
+    value_type* pointer() const
+    {
+        address_type address = m_address & ADDRESS_MASK;
+        return reinterpret_cast<value_type*>(address);
+    }
+
+    value_type* operator->() { return pointer(); }
+
+    bool operator==(const tagged_pointer_compression& p) const { return m_address == p.m_address; }
+    bool operator!=(const tagged_pointer_compression& p) const { return !operator==(p); }
+
+private:
+    static constexpr address_type ADDRESS_MASK = 0xFFFFFFFFFFFFUL;
+    static constexpr int TAG_INDEX = 3;
+
+    union {
+        tag_type m_tag[4];
+        address_type m_address;
+    };
+};
+
+template <typename T>
+using tagged_pointer = tagged_pointer_compression<T>;
+
+template <typename T1, typename T2>
+tagged_pointer<T1> tagged_pointer_cast(tagged_pointer<T2> p)
+{
+    tagged_pointer<T1> result(static_cast<T1*>(p.pointer()), p.tag());
+    return result;
+}
+
 /**
  * @brief A pool that caches lock-free queue nodes
  *
@@ -125,10 +189,17 @@ private:
     };
 
     using pool_type = lock_free_node_pool<node_type>;
-    using node_handle = pool_type::node_handle;
+    using node_handle = typename pool_type::node_handle;
 
 public:
     lock_free_queue() { m_head = m_tail = m_pool.allocate(); }
+    ~lock_free_queue()
+    {
+        value_type temp;
+        while (pop(temp))
+        {
+        }
+    }
 
     /**
      * @brief Push the object into the queue.
@@ -136,38 +207,14 @@ public:
      * The push operation is thread-safe. Internally, it will try to connect the node to the end of
      * the queue in a loop.
      *
-     * @param data object
+     * @param value object
      */
-    void push(const value_type& data)
+    void push(const value_type& value)
     {
-        node_handle new_node = m_pool.allocate();
-        new_node->data = data;
-        new_node->next = nullptr;
-
-        while (true)
-        {
-            node_handle old_tail = m_tail.load();
-            node_handle old_tail_next = old_tail->next.load();
-
-            if (old_tail == m_tail.load())
-            {
-                if (old_tail_next == nullptr)
-                {
-                    node_handle new_tail_next(new_node.pointer(), old_tail_next.next_tag());
-                    if (old_tail->next.compare_exchange_weak(old_tail_next, new_tail_next))
-                    {
-                        node_handle new_tail(new_node.pointer(), old_tail.next_tag());
-                        m_tail.compare_exchange_strong(old_tail, new_tail);
-                        return;
-                    }
-                }
-                else
-                {
-                    node_handle new_tail(old_tail_next.pointer(), old_tail.next_tag());
-                    m_tail.compare_exchange_strong(old_tail, new_tail);
-                }
-            }
-        }
+        node_handle node = m_pool.allocate();
+        node->data = value;
+        node->next = nullptr;
+        insert_node(node);
     }
 
     /**
@@ -219,16 +266,35 @@ public:
         }
     }
 
-    /**
-     * @brief Returns whether the queue is empty.
-     *
-     * This operation is only guaranteed to be correct if no other thread is performing push or pop.
-     *
-     * @return Is the queue empty
-     */
-    bool empty() const { return m_head.load() == m_tail.load(); }
-
 private:
+    void insert_node(node_handle node)
+    {
+        while (true)
+        {
+            node_handle old_tail = m_tail.load();
+            node_handle old_tail_next = old_tail->next.load();
+
+            if (old_tail == m_tail.load())
+            {
+                if (old_tail_next == nullptr)
+                {
+                    node_handle new_tail_next(node.pointer(), old_tail_next.next_tag());
+                    if (old_tail->next.compare_exchange_weak(old_tail_next, new_tail_next))
+                    {
+                        node_handle new_tail(node.pointer(), old_tail.next_tag());
+                        m_tail.compare_exchange_strong(old_tail, new_tail);
+                        return;
+                    }
+                }
+                else
+                {
+                    node_handle new_tail(old_tail_next.pointer(), old_tail.next_tag());
+                    m_tail.compare_exchange_strong(old_tail, new_tail);
+                }
+            }
+        }
+    }
+
     pool_type m_pool;
 
     std::atomic<node_handle> m_head;

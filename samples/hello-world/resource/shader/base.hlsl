@@ -1,37 +1,31 @@
-cbuffer object : register(b0)
-{
-    float4x4 model_view_proj;
-};
-
-cbuffer material : register(b1)
-{
-    float4 color;
-    float4 color2;
-}
-
-struct vs_in
-{
-    float3 position : POSITION;
-    float4 color : COLOR;
-};
-
 struct vs_out
 {
     float4 position : SV_POSITION;
-    float4 color : COLOR;
+    float3 color : COLOR;
 };
 
-vs_out vs_main(vs_in vin)
+vs_out vs_main(uint vertex_id
+               : SV_VertexID)
 {
+    float2 position[3] = {
+        float2(0.0, -0.5),
+        float2(0.5, 0.5),
+        float2(-0.5, 0.5)};
+
+    float3 color[3] = {
+        float3(1.0, 0.0, 0.0),
+        float3(0.0, 1.0, 0.0),
+        float3(0.0, 0.0, 1.0)};
+
     vs_out result;
 
-    result.position = mul(float4(vin.position, 1.0f), model_view_proj);
-    result.color = color;
+    result.position = float4(position[vertex_id], 0.0, 1.0);
+    result.color = color[vertex_id];
 
     return result;
 }
 
 float4 ps_main(vs_out pin) : SV_TARGET
 {
-    return pin.color;
+    return float4(pin.color, 1.0);
 }

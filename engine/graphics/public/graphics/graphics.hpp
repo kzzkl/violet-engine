@@ -1,10 +1,11 @@
 #pragma once
 
 #include "core/context/engine_module.hpp"
-#include "graphics/rhi/rhi.hpp"
+#include "interface/graphics_interface.hpp"
 
 namespace violet
 {
+class rhi_plugin;
 class graphics : public engine_module
 {
 public:
@@ -13,9 +14,11 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
 
-    rhi& get_rhi() const { return *m_rhi; }
+    void render();
+
+    rhi_interface* get_rhi() const;
 
 private:
-    std::unique_ptr<rhi> m_rhi;
+    std::unique_ptr<rhi_plugin> m_plugin;
 };
 } // namespace violet

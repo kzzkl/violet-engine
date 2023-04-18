@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/index_generator.hpp"
+#include "common/type_index.hpp"
 #include <bitset>
 #include <cstdint>
 #include <memory>
@@ -9,7 +9,7 @@ namespace violet
 {
 using component_id = std::uint16_t;
 
-struct component_index : public index_generator<component_index, component_id>
+struct component_index : public type_index<component_index, component_id>
 {
 };
 

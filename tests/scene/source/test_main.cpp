@@ -5,7 +5,7 @@
 int main(int argc, char* argv[])
 {
     violet::engine::initialize("");
-    violet::engine::install<violet::scene::scene>();
+    violet::engine::install<violet::scene>();
 
     return Catch::Session().run(argc, argv);
 }

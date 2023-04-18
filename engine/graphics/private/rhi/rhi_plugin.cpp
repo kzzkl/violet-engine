@@ -12,13 +12,13 @@ bool rhi_plugin::on_load()
         return false;
     }
 
-    m_rhi_impl.reset(make());
+    m_rhi.reset(make());
 
     return true;
 }
 
 void rhi_plugin::on_unload()
 {
-    m_rhi_impl = nullptr;
+    m_rhi = nullptr;
 }
 } // namespace violet

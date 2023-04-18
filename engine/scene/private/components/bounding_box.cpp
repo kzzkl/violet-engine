@@ -1,7 +1,7 @@
 #include "scene/bounding_box.hpp"
 #include <limits>
 
-namespace violet::scene
+namespace violet
 {
 bounding_box::bounding_box()
     : m_aabb{},
@@ -107,4 +107,4 @@ void bounding_box::aabb(
 
     m_dynamic = dynamic;
 }
-} // namespace violet::scene
+} // namespace violet

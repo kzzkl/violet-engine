@@ -2,7 +2,7 @@
 #include "common/log.hpp"
 #include <stack>
 
-namespace violet::scene
+namespace violet
 {
 bvh_tree::bvh_tree() : m_root_index(INVALID_NODE_INDEX)
 {
@@ -359,4 +359,4 @@ void bvh_tree::deallocate_node(std::size_t index)
 {
     m_free_nodes.push(index);
 }
-} // namespace violet::scene
+} // namespace violet
