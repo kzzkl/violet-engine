@@ -1,15 +1,15 @@
-#include "scene/scene.hpp"
+#include "scene/scene_module.hpp"
 #include "components/transform.hpp"
 #include "core/context/engine.hpp"
 #include "core/node/node.hpp"
 
 namespace violet
 {
-scene::scene() : engine_module("scene")
+scene_module::scene_module() : engine_module("scene")
 {
 }
 
-bool scene::initialize(const dictionary& config)
+bool scene_module::initialize(const dictionary& config)
 {
     auto& engine_task = engine::get_task_graph();
 
@@ -21,7 +21,7 @@ bool scene::initialize(const dictionary& config)
     return true;
 }
 
-void scene::update_transform()
+void scene_module::update_transform()
 {
     std::queue<node*> bfs;
 

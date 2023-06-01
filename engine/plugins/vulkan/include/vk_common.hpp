@@ -1,6 +1,6 @@
 #pragma once
 
-#include "interface/graphics_interface.hpp"
+#include "graphics/rhi.hpp"
 #include <stdexcept>
 
 #ifdef _WIN32

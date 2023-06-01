@@ -1,6 +1,6 @@
 #pragma once
 
-#include "interface/plugin_interface.hpp"
+#include "core/plugin/plugin_interface.hpp"
 #include "math/math.hpp"
 #include <cstddef>
 #include <cstdint>
@@ -37,10 +37,10 @@ struct resource_extent
     std::uint32_t height;
 };
 
-class resource_interface
+class rhi_resource
 {
 public:
-    virtual ~resource_interface() = default;
+    virtual ~rhi_resource() = default;
 
     virtual resource_format get_format() const noexcept = 0;
     virtual resource_extent get_extent() const noexcept = 0;
@@ -118,10 +118,10 @@ struct render_pass_desc
     std::size_t pass_count = 0;
 };
 
-class render_pass_interface
+class rhi_render_pass
 {
 public:
-    virtual ~render_pass_interface() = default;
+    virtual ~rhi_render_pass() = default;
 };
 
 enum pipeline_parameter_type
@@ -143,13 +143,13 @@ struct pipeline_parameter_desc
     std::size_t parameter_count = 0;
 };
 
-class pipeline_parameter_interface
+class rhi_pipeline_parameter
 {
 public:
-    virtual ~pipeline_parameter_interface() = default;
+    virtual ~rhi_pipeline_parameter() = default;
 
     virtual void set(std::size_t index, const void* data, size_t size) = 0;
-    virtual void set(std::size_t index, resource_interface* texture) = 0;
+    virtual void set(std::size_t index, rhi_resource* texture) = 0;
 
     virtual void* get_constant_buffer_pointer(std::size_t index) = 0;
 };
@@ -257,10 +257,10 @@ struct rasterizer_desc
     cull_mode cull_mode = CULL_MODE_BACK;
 };
 
-enum primitive_topology_type
+enum primitive_topology
 {
-    PRIMITIVE_TOPOLOGY_TYPE_LINE,
-    PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE
+    PRIMITIVE_TOPOLOGY_LINE_LIST,
+    PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
 };
 
 struct render_pipeline_desc
@@ -268,10 +268,10 @@ struct render_pipeline_desc
     const char* vertex_shader = nullptr;
     const char* pixel_shader = nullptr;
 
-    vertex_attribute vertex_attributes[16];
+    vertex_attribute* vertex_attributes;
     std::size_t vertex_attribute_count = 0;
 
-    pipeline_parameter_desc parameters[16];
+    pipeline_parameter_desc* parameters;
     std::size_t parameter_count = 0;
 
     blend_desc blend;
@@ -280,16 +280,16 @@ struct render_pipeline_desc
 
     std::size_t samples;
 
-    primitive_topology_type primitive_topology;
+    primitive_topology primitive_topology;
 
-    render_pass_interface* render_pass;
+    rhi_render_pass* render_pass;
     std::size_t render_subpass_index;
 };
 
-class render_pipeline_interface
+class rhi_render_pipeline
 {
 public:
-    virtual ~render_pipeline_interface() = default;
+    virtual ~rhi_render_pipeline() = default;
 };
 
 struct scissor_extent
@@ -300,26 +300,20 @@ struct scissor_extent
     std::uint32_t max_y;
 };
 
-enum primitive_topology
-{
-    PRIMITIVE_TOPOLOGY_LINE_LIST,
-    PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
-};
-
-class render_command_interface
+class rhi_render_command
 {
 public:
-    virtual ~render_command_interface() = default;
+    virtual ~rhi_render_command() = default;
 
     virtual void begin(
-        render_pass_interface* render_pass,
-        resource_interface* const* attachments,
+        rhi_render_pass* render_pass,
+        rhi_resource* const* attachments,
         std::size_t attachment_count) = 0;
     virtual void end() = 0;
     virtual void next() = 0;
 
-    virtual void set_pipeline(render_pipeline_interface* render_pipeline) = 0;
-    virtual void set_parameter(std::size_t index, pipeline_parameter_interface* parameter) = 0;
+    virtual void set_pipeline(rhi_render_pipeline* render_pipeline) = 0;
+    virtual void set_parameter(std::size_t index, rhi_pipeline_parameter* parameter) = 0;
 
     virtual void set_viewport(
         float x,
@@ -331,9 +325,9 @@ public:
     virtual void set_scissor(const scissor_extent* extents, std::size_t size) = 0;
 
     virtual void set_input_assembly_state(
-        resource_interface* const* vertex_buffers,
+        rhi_resource* const* vertex_buffers,
         std::size_t vertex_buffer_count,
-        resource_interface* index_buffer,
+        rhi_resource* index_buffer,
         primitive_topology primitive_topology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) = 0;
 
     virtual void draw(std::size_t vertex_start, std::size_t vertex_end) = 0;
@@ -342,9 +336,9 @@ public:
         std::size_t index_end,
         std::size_t vertex_base) = 0;
 
-    virtual void clear_render_target(resource_interface* render_target, const float4& color) = 0;
+    virtual void clear_render_target(rhi_resource* render_target, const float4& color) = 0;
     virtual void clear_depth_stencil(
-        resource_interface* depth_stencil,
+        rhi_resource* depth_stencil,
         bool clear_depth = true,
         float depth = 1.0f,
         bool clear_stencil = true,
@@ -411,36 +405,36 @@ struct rhi_desc
     std::size_t render_concurrency;
 };
 
-class rhi_interface
+class rhi_context
 {
 public:
-    virtual ~rhi_interface() = default;
+    virtual ~rhi_context() = default;
 
     virtual bool initialize(const rhi_desc& desc) = 0;
 
-    virtual render_command_interface* allocate_command() = 0;
-    virtual void execute(render_command_interface* command) = 0;
+    virtual rhi_render_command* allocate_command() = 0;
+    virtual void execute(rhi_render_command* command) = 0;
 
     virtual void present() = 0;
     virtual void resize(std::uint32_t width, std::uint32_t height) = 0;
 
-    virtual resource_interface* get_back_buffer() = 0;
+    virtual rhi_resource* get_back_buffer() = 0;
 
-    virtual render_pipeline_interface* make_render_pipeline(const render_pipeline_desc& desc) = 0;
+    virtual rhi_render_pipeline* make_render_pipeline(const render_pipeline_desc& desc) = 0;
 
-    virtual pipeline_parameter_interface* make_pipeline_parameter(
+    virtual rhi_pipeline_parameter* make_pipeline_parameter(
         const pipeline_parameter_desc& desc) = 0;
 
-    virtual resource_interface* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
-    virtual resource_interface* make_index_buffer(const index_buffer_desc& desc) = 0;
+    virtual rhi_resource* make_vertex_buffer(const vertex_buffer_desc& desc) = 0;
+    virtual rhi_resource* make_index_buffer(const index_buffer_desc& desc) = 0;
 
-    virtual resource_interface* make_texture(
+    virtual rhi_resource* make_texture(
         const std::uint8_t* data,
         std::uint32_t width,
         std::uint32_t height,
         resource_format format = RESOURCE_FORMAT_R8G8B8A8_UNORM) = 0;
-    virtual resource_interface* make_texture(const char* file) = 0;
-    virtual resource_interface* make_texture_cube(
+    virtual rhi_resource* make_texture(const char* file) = 0;
+    virtual rhi_resource* make_texture_cube(
         const char* left,
         const char* right,
         const char* top,
@@ -448,12 +442,11 @@ public:
         const char* front,
         const char* back) = 0;
 
-    virtual resource_interface* make_shadow_map(const shadow_map_desc& desc) = 0;
+    virtual rhi_resource* make_shadow_map(const shadow_map_desc& desc) = 0;
 
-    virtual resource_interface* make_render_target(const render_target_desc& desc) = 0;
-    virtual resource_interface* make_depth_stencil_buffer(
-        const depth_stencil_buffer_desc& desc) = 0;
+    virtual rhi_resource* make_render_target(const render_target_desc& desc) = 0;
+    virtual rhi_resource* make_depth_stencil_buffer(const depth_stencil_buffer_desc& desc) = 0;
 };
-using make_rhi = rhi_interface* (*)();
-using destroy_rhi = void (*)(rhi_interface*);
+using make_rhi = rhi_context* (*)();
+using destroy_rhi = void (*)(rhi_context*);
 } // namespace violet

@@ -1,6 +1,6 @@
 #include "graphics/material/basic_material.hpp"
 #include "core/context/engine.hpp"
-#include "graphics/graphics.hpp"
+#include "graphics/graphics_module.hpp"
 
 namespace violet
 {
@@ -19,9 +19,9 @@ const float3& basic_material::get_color() const noexcept
     return m_data.color;
 }
 
-basic_pipeline::basic_pipeline()
+basic_pipeline::basic_pipeline() : render_pipeline({"position", "normal"})
 {
-    auto& engine_graphics = engine::get_module<graphics>();
+    auto& graphics = engine::get_module<graphics_module>();
 
     render_pipeline_desc desc = {};
 
@@ -74,7 +74,7 @@ basic_pipeline::basic_pipeline()
     m_interface.reset(engine_graphics.get_rhi()->make_render_pipeline(desc));
 }
 
-void basic_pipeline::on_render(const std::vector<mesh*>& meshes, render_command_interface* command)
+void basic_pipeline::on_render(const std::vector<mesh*>& meshes, rhi_render_command* command)
 {
 }
 } // namespace violet

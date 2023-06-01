@@ -57,7 +57,7 @@ enum class d3d12_parameter_tier_type
     TIER2  // Descriptor Table
 };
 
-class d3d12_pipeline_parameter : public pipeline_parameter_interface
+class d3d12_pipeline_parameter : public rhi_pipeline_parameter
 {
 public:
     struct tier1_info
@@ -78,7 +78,7 @@ public:
     virtual ~d3d12_pipeline_parameter();
 
     virtual void set(std::size_t index, const void* data, size_t size) override;
-    virtual void set(std::size_t index, resource_interface* texture, std::size_t offset) override;
+    virtual void set(std::size_t index, rhi_resource* texture, std::size_t offset) override;
     virtual void* get_constant_buffer_pointer(std::size_t index) override;
 
     inline d3d12_parameter_tier_type tier() const noexcept { return m_tier; }
@@ -194,7 +194,7 @@ private:
     std::vector<std::pair<std::size_t, std::size_t>> m_resolve_indices;
 };
 
-class d3d12_render_pipeline : public render_pipeline_interface
+class d3d12_render_pipeline : public rhi_render_pipeline
 {
 public:
     d3d12_render_pipeline(const render_pipeline_desc& desc);

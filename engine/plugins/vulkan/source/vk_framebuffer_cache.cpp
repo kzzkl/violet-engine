@@ -46,7 +46,7 @@ VkFramebuffer vk_framebuffer_cache::get_framebuffer(
     return value.framebuffer;
 }
 
-void vk_framebuffer_cache::on_image_destroy(VkImageView image_view)
+void vk_framebuffer_cache::on_destroy_image(VkImageView image_view)
 {
     for (auto iter = m_framebuffers.begin(); iter != m_framebuffers.end();)
     {

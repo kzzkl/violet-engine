@@ -32,7 +32,7 @@ std::size_t archetype::add()
 
 std::size_t archetype::move(std::size_t index, archetype& target)
 {
-    VIOLET_ASSERT(this != &target);
+    assert(this != &target);
 
     auto [source_chunk_index, source_entity_index] =
         std::div(static_cast<const long>(index), static_cast<const long>(m_entity_per_chunk));
@@ -73,7 +73,7 @@ std::size_t archetype::move(std::size_t index, archetype& target)
 
 void archetype::remove(std::size_t index)
 {
-    VIOLET_ASSERT(index < m_size);
+    assert(index < m_size);
 
     std::size_t back_index = m_size - 1;
 

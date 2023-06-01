@@ -18,7 +18,7 @@ public:
         std::uint32_t height,
         VkClearValue* clear_value = nullptr);
 
-    void on_image_destroy(VkImageView image_view);
+    void on_destroy_image(VkImageView image_view);
 
 private:
     using key_type = std::size_t;

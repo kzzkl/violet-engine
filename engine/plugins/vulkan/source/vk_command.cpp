@@ -16,8 +16,8 @@ vk_command::~vk_command()
 }
 
 void vk_command::begin(
-    render_pass_interface* render_pass,
-    resource_interface* const* attachments,
+    rhi_render_pass* render_pass,
+    rhi_resource* const* attachments,
     std::size_t attachment_count)
 {
     VIOLET_VK_ASSERT(m_current_render_pass == nullptr);
@@ -69,13 +69,13 @@ void vk_command::next()
     vkCmdNextSubpass(m_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-void vk_command::set_pipeline(render_pipeline_interface* render_pipeline)
+void vk_command::set_pipeline(rhi_render_pipeline* render_pipeline)
 {
     vk_render_pipeline* pipeline = static_cast<vk_render_pipeline*>(render_pipeline);
     vkCmdBindPipeline(m_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->get_pipeline());
 }
 
-void vk_command::set_parameter(std::size_t index, pipeline_parameter_interface* parameter)
+void vk_command::set_parameter(std::size_t index, rhi_pipeline_parameter* parameter)
 {
 }
 
@@ -94,9 +94,9 @@ void vk_command::set_scissor(const scissor_extent* extents, std::size_t size)
 }
 
 void vk_command::set_input_assembly_state(
-    resource_interface* const* vertex_buffers,
+    rhi_resource* const* vertex_buffers,
     std::size_t vertex_buffer_count,
-    resource_interface* index_buffer,
+    rhi_resource* index_buffer,
     primitive_topology primitive_topology)
 {
 }
@@ -112,12 +112,12 @@ void vk_command::draw_indexed(
 {
 }
 
-void vk_command::clear_render_target(resource_interface* render_target, const float4& color)
+void vk_command::clear_render_target(rhi_resource* render_target, const float4& color)
 {
 }
 
 void vk_command::clear_depth_stencil(
-    resource_interface* depth_stencil,
+    rhi_resource* depth_stencil,
     bool clear_depth,
     float depth,
     bool clear_stencil,

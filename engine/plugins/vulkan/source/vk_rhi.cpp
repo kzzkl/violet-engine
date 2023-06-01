@@ -101,27 +101,32 @@ void vk_rhi::present()
     m_frame_resource_index = m_frame_count % 3;
 }
 
-render_pipeline_interface* vk_rhi::make_render_pipeline(const render_pipeline_desc& desc)
+rhi_resource* vk_rhi::get_back_buffer()
+{
+    return &m_swapchain_images[m_frame_count % m_swapchain_images.size()];
+}
+
+rhi_render_pipeline* vk_rhi::make_render_pipeline(const render_pipeline_desc& desc)
 {
     return nullptr;
 }
 
-pipeline_parameter_interface* vk_rhi::make_pipeline_parameter(const pipeline_parameter_desc& desc)
+rhi_pipeline_parameter* vk_rhi::make_pipeline_parameter(const pipeline_parameter_desc& desc)
 {
     return nullptr;
 }
 
-resource_interface* vk_rhi::make_vertex_buffer(const vertex_buffer_desc& desc)
+rhi_resource* vk_rhi::make_vertex_buffer(const vertex_buffer_desc& desc)
 {
     return nullptr;
 }
 
-resource_interface* vk_rhi::make_index_buffer(const index_buffer_desc& desc)
+rhi_resource* vk_rhi::make_index_buffer(const index_buffer_desc& desc)
 {
     return nullptr;
 }
 
-resource_interface* vk_rhi::make_texture(
+rhi_resource* vk_rhi::make_texture(
     const std::uint8_t* data,
     std::uint32_t width,
     std::uint32_t height,
@@ -130,12 +135,12 @@ resource_interface* vk_rhi::make_texture(
     return nullptr;
 }
 
-resource_interface* vk_rhi::make_texture(const char* file)
+rhi_resource* vk_rhi::make_texture(const char* file)
 {
     return nullptr;
 }
 
-resource_interface* vk_rhi::make_texture_cube(
+rhi_resource* vk_rhi::make_texture_cube(
     const char* left,
     const char* right,
     const char* top,
@@ -146,17 +151,17 @@ resource_interface* vk_rhi::make_texture_cube(
     return nullptr;
 }
 
-resource_interface* vk_rhi::make_shadow_map(const shadow_map_desc& desc)
+rhi_resource* vk_rhi::make_shadow_map(const shadow_map_desc& desc)
 {
     return nullptr;
 }
 
-resource_interface* vk_rhi::make_render_target(const render_target_desc& desc)
+rhi_resource* vk_rhi::make_render_target(const render_target_desc& desc)
 {
     return nullptr;
 }
 
-resource_interface* vk_rhi::make_depth_stencil_buffer(const depth_stencil_buffer_desc& desc)
+rhi_resource* vk_rhi::make_depth_stencil_buffer(const depth_stencil_buffer_desc& desc)
 {
     return nullptr;
 }
@@ -515,12 +520,12 @@ extern "C"
         return info;
     }
 
-    PLUGIN_API violet::rhi_interface* make_rhi()
+    PLUGIN_API violet::rhi_context* make_rhi()
     {
         return new violet::vk::vk_rhi();
     }
 
-    PLUGIN_API void destroy_rhi(violet::rhi_interface* rhi)
+    PLUGIN_API void destroy_rhi(violet::rhi_context* rhi)
     {
         delete rhi;
     }

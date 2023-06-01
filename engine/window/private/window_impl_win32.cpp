@@ -1,6 +1,6 @@
 #include "window_impl_win32.hpp"
-#include "common/assert.hpp"
 #include "common/log.hpp"
+#include <cassert>
 
 namespace violet
 {
@@ -300,7 +300,7 @@ bool window_impl_win32::initialize(
     RECT windowRect = {0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
     AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, false);
 
-    VIOLET_ASSERT(title.size() < 128, "The title is too long");
+    assert(title.size() < 128, "The title is too long");
     std::wstring wtitle = string_to_wstring(title);
 
     m_hwnd = CreateWindow(

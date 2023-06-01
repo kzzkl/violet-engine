@@ -6,7 +6,7 @@
 
 namespace violet::d3d12
 {
-class d3d12_resource : public resource_interface
+class d3d12_resource : public rhi_resource
 {
 public:
     d3d12_resource();

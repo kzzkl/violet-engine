@@ -17,7 +17,7 @@ VkImageView vk_image::create_image_view(VkImageViewCreateInfo* info)
 
 void vk_image::destroy_image_view(VkImageView image_view)
 {
-    m_rhi->get_framebuffer_cache()->on_image_destroy(image_view);
+    m_rhi->get_framebuffer_cache()->on_destroy_image(image_view);
     vkDestroyImageView(m_rhi->get_device(), image_view, nullptr);
 }
 

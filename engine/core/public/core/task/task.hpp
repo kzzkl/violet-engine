@@ -226,7 +226,7 @@ public:
         on_topology_change();
     }
 
-    void link(task* before, task* after)
+    void add_dependency(task* before, task* after)
     {
         if (!is_valid_task(before) || !is_valid_task(after))
             return;
@@ -239,7 +239,7 @@ public:
         on_topology_change();
     }
 
-    void unlink(task* before, task* after)
+    void remove_dependency(task* before, task* after)
     {
         if (!is_valid_task(before) || !is_valid_task(after))
             return;

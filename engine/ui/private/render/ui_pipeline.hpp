@@ -46,7 +46,7 @@ public:
     material_pipeline_parameter();
 
     void mesh_type(control_mesh_type type);
-    void texture(graphics::resource_interface* texture);
+    void texture(graphics::rhi_resource* texture);
 };
 
 class ui_pipeline : public graphics::render_pipeline
@@ -59,10 +59,10 @@ public:
 
     virtual void render(
         const graphics::render_context& context,
-        graphics::render_command_interface* command) override;
+        graphics::rhi_render_command* command) override;
 
 private:
-    std::unique_ptr<graphics::render_pipeline_interface> m_interface;
+    std::unique_ptr<graphics::rhi_render_pipeline> m_interface;
 
     std::unique_ptr<mvp_pipeline_parameter> m_mvp_parameter;
     std::unique_ptr<offset_pipeline_parameter> m_offset_parameter;

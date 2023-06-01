@@ -29,6 +29,8 @@ public:
         return true;
     }
 
+    void notify_all() { m_cv.notify_all(); }
+
 private:
     std::queue<value_type> m_queue;
 

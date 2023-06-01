@@ -329,7 +329,7 @@ void d3d12_pipeline_parameter::set(std::size_t index, const void* data, size_t s
 
 void d3d12_pipeline_parameter::set(
     std::size_t index,
-    resource_interface* texture,
+    rhi_resource* texture,
     std::size_t offset)
 {
     std::size_t parameter_offset = m_layout->parameter_offset(index) + offset;

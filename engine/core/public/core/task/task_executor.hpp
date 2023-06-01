@@ -8,7 +8,7 @@ class task_queue;
 class task_executor
 {
 public:
-    task_executor(std::size_t thread_count = 0);
+    task_executor();
     ~task_executor();
 
     template <typename... Args>
@@ -36,7 +36,7 @@ public:
         }
     }
 
-    void pause();
+    void run(std::size_t thread_count = 0);
     void stop();
 
 private:
@@ -49,6 +49,6 @@ private:
     std::unique_ptr<task_queue> m_main_thread_queue;
     std::unique_ptr<thread_pool> m_thread_pool;
 
-    std::atomic<bool> m_pause;
+    std::atomic<bool> m_stop;
 };
 } // namespace violet

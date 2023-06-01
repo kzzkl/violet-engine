@@ -1,7 +1,7 @@
 #pragma once
 
-#include "common/assert.hpp"
 #include <array>
+#include <cassert>
 #include <memory>
 #include <vector>
 
@@ -34,7 +34,7 @@ public:
     inline key_state key(KeyType key) const noexcept
     {
         std::size_t index = static_cast<std::uint32_t>(key);
-        VIOLET_ASSERT(index < KeyCount);
+        assert(index < KeyCount);
 
         return key_state(m_key_state[index]);
     }
@@ -42,7 +42,7 @@ public:
     void key_down(KeyType key) noexcept
     {
         std::size_t index = static_cast<std::uint32_t>(key);
-        VIOLET_ASSERT(index < KeyCount);
+        assert(index < KeyCount);
 
         m_key_state[index] = ((m_key_state[index] << 1) & 0x2) | 0x1;
         m_update_key.push_back(key);
@@ -51,7 +51,7 @@ public:
     void key_up(KeyType key) noexcept
     {
         std::size_t index = static_cast<std::uint32_t>(key);
-        VIOLET_ASSERT(index < KeyCount);
+        assert(index < KeyCount);
 
         m_key_state[index] = (m_key_state[index] << 1) & 0x2;
         m_update_key.push_back(key);
@@ -122,7 +122,7 @@ public:
     virtual void tick() override;
 
 protected:
-    friend class window;
+    friend class window_module;
     int m_x;
     int m_y;
     int m_whell;

@@ -1,5 +1,5 @@
 #include "layout/layout_node_yoga.hpp"
-#include "common/assert.hpp"
+#include <cassert>
 
 namespace violet::ui
 {
@@ -378,7 +378,7 @@ void layout_node_yoga::add_child(layout_node* child, std::size_t index)
 void layout_node_yoga::remove_child(layout_node* child)
 {
     auto yoga_child = static_cast<layout_node_yoga*>(child);
-    VIOLET_ASSERT(YGNodeGetParent(yoga_child->m_node) == m_node);
+    assert(YGNodeGetParent(yoga_child->m_node) == m_node);
     YGNodeRemoveChild(m_node, yoga_child->m_node);
 }
 

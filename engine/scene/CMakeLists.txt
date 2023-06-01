@@ -2,7 +2,7 @@ project(violet-scene)
 
 add_library(${PROJECT_NAME} STATIC
     ./private/components/transform.cpp
-    ./private/scene.cpp)
+    ./private/scene_module.cpp)
 add_library(violet::scene ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}

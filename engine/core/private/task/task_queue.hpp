@@ -9,20 +9,83 @@ namespace violet
 class task_queue
 {
 public:
-    // using queue_type = lock_free_queue<task*>;
-    using queue_type = thread_safe_queue<task*>;
+    virtual ~task_queue() = default;
 
+    virtual task* pop() = 0;
+    virtual void push(task* task) = 0;
+
+    virtual void close() = 0;
+};
+
+class task_queue_thread_safe : public task_queue
+{
 public:
-    task_queue();
+    task_queue_thread_safe() : m_close(false) {}
 
-    task* pop();
-    void push(task* task);
+    virtual void push(task* task) override
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_queue.push(task);
+        m_cv.notify_one();
+    }
 
-    void start();
-    void stop();
+    virtual task* pop() override
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        m_cv.wait(lock, [this] { return !m_queue.empty() || m_close; });
+
+        if (!m_queue.empty())
+        {
+            task* task = m_queue.front();
+            m_queue.pop();
+            return task;
+        }
+        else
+        {
+            return nullptr;
+        }
+    }
+
+    virtual void close() override
+    {
+        m_close = true;
+        m_cv.notify_all();
+    }
 
 private:
-    queue_type m_queue;
-    std::atomic<bool> m_exit;
+    std::queue<task*> m_queue;
+
+    std::condition_variable m_cv;
+    std::mutex m_mutex;
+
+    std::atomic<bool> m_close;
+};
+
+class task_queue_lock_free : public task_queue
+{
+public:
+    task_queue_lock_free() : m_close(false) {}
+
+    virtual void push(task* task) override { m_queue.push(task); }
+
+    virtual task* pop() override
+    {
+        task* task = nullptr;
+        while (!m_queue.pop(task))
+        {
+            std::this_thread::yield();
+
+            if (m_close)
+                return nullptr;
+        }
+
+        return task;
+    }
+
+    virtual void close() override { m_close = true; }
+
+private:
+    lock_free_queue<task*> m_queue;
+    std::atomic<bool> m_close;
 };
 } // namespace violet

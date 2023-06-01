@@ -96,6 +96,8 @@ void engine::main_loop()
     else
         m_exit = false;
 
+    m_task_executor->run();
+
     frame_rater<60> frame_rater;
     timer& time = get_timer();
 
@@ -113,6 +115,7 @@ void engine::main_loop()
 
         frame_rater.sleep();
     }
+    m_task_executor->stop();
 
     // shutdown
     for (auto iter = m_install_sequence.rbegin(); iter != m_install_sequence.rend(); ++iter)
@@ -138,7 +141,7 @@ bool engine::has_module(std::string_view name)
 
 void engine::uninstall(std::size_t index)
 {
-    VIOLET_ASSERT(m_modules.size() > index);
+    assert(m_modules.size() > index);
 
     if (m_modules[index] != nullptr)
     {

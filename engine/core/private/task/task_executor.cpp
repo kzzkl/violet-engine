@@ -11,7 +11,7 @@ public:
     ~thread_pool() { join(); }
 
     template <typename F>
-    void run(F functor)
+    void run(F&& functor)
     {
         for (auto& thread : m_threads)
             thread = std::thread(functor);
@@ -30,13 +30,26 @@ private:
     std::vector<std::thread> m_threads;
 };
 
-task_executor::task_executor(std::size_t thread_count)
+task_executor::task_executor() : m_stop(true)
 {
+    m_queue = std::make_unique<task_queue_lock_free>();
+    m_main_thread_queue = std::make_unique<task_queue_lock_free>();
+}
+
+task_executor::~task_executor()
+{
+    stop();
+}
+
+void task_executor::run(std::size_t thread_count)
+{
+    if (!m_stop)
+        return;
+
+    m_stop = false;
+
     if (thread_count == 0)
         thread_count = std::thread::hardware_concurrency();
-
-    m_queue = std::make_unique<task_queue>();
-    m_main_thread_queue = std::make_unique<task_queue>();
 
     m_thread_pool = std::make_unique<thread_pool>(thread_count);
     m_thread_pool->run([this]() {
@@ -52,16 +65,17 @@ task_executor::task_executor(std::size_t thread_count)
     });
 }
 
-task_executor::~task_executor()
-{
-    stop();
-}
-
 void task_executor::stop()
 {
-    m_queue->stop();
-    m_main_thread_queue->stop();
+    if (m_stop)
+        return;
+
+    m_stop = true;
+
+    m_queue->close();
+    m_main_thread_queue->close();
     m_thread_pool->join();
+    m_thread_pool = nullptr;
 }
 
 void task_executor::execute_task(task* task)

@@ -1,12 +1,14 @@
 project(violet-graphics)
 
 add_library(${PROJECT_NAME} STATIC
-    #./private/material/basic_material.cpp
-    ./private/rhi/node_parameter.cpp
-    ./private/rhi/pipeline_parameter.cpp
-    ./private/rhi/render_pipeline.cpp
-    ./private/rhi/rhi_plugin.cpp
-    ./private/graphics.cpp)
+    ./private/components/mesh.cpp
+    # ./private/material/basic_material.cpp
+    ./private/render_graph/node_parameter.cpp
+    ./private/render_graph/pipeline_parameter.cpp
+    ./private/render_graph/render_graph.cpp
+    ./private/render_graph/render_pipeline.cpp
+    ./private/rhi_plugin.cpp
+    ./private/graphics_module.cpp)
 add_library(violet::graphics ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}

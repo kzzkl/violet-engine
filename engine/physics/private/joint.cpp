@@ -24,7 +24,7 @@ void joint::relative_rigidbody(
     const math::float3& relative_position_b,
     const math::float4& relative_rotation_b)
 {
-    VIOLET_ASSERT(m_interface == nullptr);
+    assert(m_interface == nullptr);
 
     m_relative_a = rigidbody_a;
     m_relative_position_a = relative_position_a;

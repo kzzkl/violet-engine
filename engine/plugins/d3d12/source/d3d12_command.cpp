@@ -21,10 +21,10 @@ d3d12_render_command::d3d12_render_command(D3D12CommandAllocator* allocator, std
 }
 
 void d3d12_render_command::begin(
-    render_pipeline_interface* pipeline,
-    resource_interface* render_target,
-    resource_interface* render_target_resolve,
-    resource_interface* depth_stencil_buffer)
+    rhi_render_pipeline* pipeline,
+    rhi_resource* render_target,
+    rhi_resource* render_target_resolve,
+    rhi_resource* depth_stencil_buffer)
 {
     auto rp = static_cast<d3d12_render_pipeline*>(pipeline);
     d3d12_camera_info info = {
@@ -34,19 +34,19 @@ void d3d12_render_command::begin(
     rp->begin(m_command_list.Get(), info);
 }
 
-void d3d12_render_command::end(render_pipeline_interface* pipeline)
+void d3d12_render_command::end(rhi_render_pipeline* pipeline)
 {
     auto rp = static_cast<d3d12_render_pipeline*>(pipeline);
     rp->end(m_command_list.Get());
 }
 
-void d3d12_render_command::next_pass(render_pipeline_interface* pipeline)
+void d3d12_render_command::next_pass(rhi_render_pipeline* pipeline)
 {
     auto rp = static_cast<d3d12_render_pipeline*>(pipeline);
     rp->next(m_command_list.Get());
 }
 
-void d3d12_render_command::set_parameter(std::size_t index, pipeline_parameter_interface* parameter)
+void d3d12_render_command::set_parameter(std::size_t index, rhi_pipeline_parameter* parameter)
 {
     d3d12_pipeline_parameter* p = static_cast<d3d12_pipeline_parameter*>(parameter);
     if (p->tier() == d3d12_parameter_tier_type::TIER1)
@@ -84,9 +84,9 @@ void d3d12_render_command::set_scissor(const scissor_extent* extents, std::size_
 }
 
 void d3d12_render_command::set_input_assembly_state(
-    resource_interface* const* vertex_buffers,
+    rhi_resource* const* vertex_buffers,
     std::size_t vertex_buffer_count,
-    resource_interface* index_buffer,
+    rhi_resource* index_buffer,
     primitive_topology primitive_topology)
 {
     if (vertex_buffers != nullptr)
@@ -138,7 +138,7 @@ void d3d12_render_command::draw_indexed(
 }
 
 void d3d12_render_command::clear_render_target(
-    resource_interface* render_target,
+    rhi_resource* render_target,
     const float4& color)
 {
     auto rt = static_cast<d3d12_resource*>(render_target);
@@ -146,7 +146,7 @@ void d3d12_render_command::clear_render_target(
 }
 
 void d3d12_render_command::clear_depth_stencil(
-    resource_interface* depth_stencil,
+    rhi_resource* depth_stencil,
     bool clear_depth,
     float depth,
     bool clear_stencil,
@@ -182,7 +182,7 @@ void d3d12_render_command::dispatch(std::size_t x, std::size_t y, std::size_t z)
 
 void d3d12_render_command::set_compute_parameter(
     std::size_t index,
-    pipeline_parameter_interface* parameter)
+    rhi_pipeline_parameter* parameter)
 {
     d3d12_pipeline_parameter* p = static_cast<d3d12_pipeline_parameter*>(parameter);
 

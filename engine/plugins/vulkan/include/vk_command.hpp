@@ -8,7 +8,7 @@ namespace violet::vk
 {
 class vk_rhi;
 class vk_render_pass;
-class vk_command : public render_command_interface
+class vk_command : public rhi_render_command
 {
 public:
     vk_command(VkCommandBuffer command_buffer, vk_rhi* rhi) noexcept;
@@ -18,14 +18,14 @@ public:
 
 public:
     virtual void begin(
-        render_pass_interface* render_pass,
-        resource_interface* const* attachments,
+        rhi_render_pass* render_pass,
+        rhi_resource* const* attachments,
         std::size_t attachment_count) override;
     virtual void end() override;
     virtual void next() override;
 
-    virtual void set_pipeline(render_pipeline_interface* render_pipeline) override;
-    virtual void set_parameter(std::size_t index, pipeline_parameter_interface* parameter) override;
+    virtual void set_pipeline(rhi_render_pipeline* render_pipeline) override;
+    virtual void set_parameter(std::size_t index, rhi_pipeline_parameter* parameter) override;
 
     virtual void set_viewport(
         float x,
@@ -37,9 +37,9 @@ public:
     virtual void set_scissor(const scissor_extent* extents, std::size_t size) override;
 
     virtual void set_input_assembly_state(
-        resource_interface* const* vertex_buffers,
+        rhi_resource* const* vertex_buffers,
         std::size_t vertex_buffer_count,
-        resource_interface* index_buffer,
+        rhi_resource* index_buffer,
         primitive_topology primitive_topology) override;
 
     virtual void draw(std::size_t vertex_start, std::size_t vertex_end) override;
@@ -48,10 +48,10 @@ public:
         std::size_t index_end,
         std::size_t vertex_base) override;
 
-    virtual void clear_render_target(resource_interface* render_target, const float4& color)
+    virtual void clear_render_target(rhi_resource* render_target, const float4& color)
         override;
     virtual void clear_depth_stencil(
-        resource_interface* depth_stencil,
+        rhi_resource* depth_stencil,
         bool clear_depth,
         float depth,
         bool clear_stencil,

@@ -8,15 +8,15 @@
 namespace violet
 {
 class window_impl;
-class window : public engine_module
+class window_module : public engine_module
 {
 public:
     using mouse_type = mouse;
     using keyboard_type = keyboard;
 
 public:
-    window();
-    virtual ~window();
+    window_module();
+    virtual ~window_module();
 
     virtual bool initialize(const dictionary& config) override;
     virtual void shutdown() override;

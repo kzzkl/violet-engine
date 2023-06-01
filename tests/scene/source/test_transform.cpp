@@ -17,6 +17,6 @@ TEST_CASE("transform update", "[transform]")
 
     n1.add(&n2);
 
-    engine::get_module<scene>().update_transform();
+    engine::get_module<scene_module>().update_transform();
 }
 } // namespace violet::test

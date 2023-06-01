@@ -2,7 +2,7 @@
 
 namespace violet::ui
 {
-image::image(graphics::resource_interface* texture)
+image::image(graphics::rhi_resource* texture)
 {
     m_position = {};
     m_uv = {
@@ -33,7 +33,7 @@ image::image(graphics::resource_interface* texture)
     }
 }
 
-void image::texture(graphics::resource_interface* texture, bool resize)
+void image::texture(graphics::rhi_resource* texture, bool resize)
 {
     if (resize)
     {

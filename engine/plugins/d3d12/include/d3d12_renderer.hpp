@@ -39,10 +39,10 @@ public:
 
     virtual void present() override;
 
-    virtual render_command_interface* allocate_command() override;
-    virtual void execute(render_command_interface* command) override;
+    virtual rhi_render_command* allocate_command() override;
+    virtual void execute(rhi_render_command* command) override;
 
-    virtual resource_interface* get_back_buffer() override;
+    virtual rhi_resource* get_back_buffer() override;
 
     virtual void resize(std::uint32_t width, std::uint32_t height) override;
 };

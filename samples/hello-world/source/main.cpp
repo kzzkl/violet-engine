@@ -1,7 +1,7 @@
 #include "core/context/engine.hpp"
 #include "core/node/node.hpp"
-#include "graphics/graphics.hpp"
-#include "window/window.hpp"
+#include "graphics/graphics_module.hpp"
+#include "window/window_module.hpp"
 #include "window/window_task.hpp"
 #include <filesystem>
 #include <fstream>
@@ -18,8 +18,8 @@ public:
     {
         log::info(config["text"]);
 
-        auto& window_module = engine::get_module<window>();
-        window_module.get_task_graph().window_destroy.add_task("exit", []() {
+        auto& window = engine::get_module<window_module>();
+        window.get_task_graph().window_destroy.add_task("exit", []() {
             log::info("close window");
             engine::exit();
         });
@@ -41,8 +41,8 @@ int main()
     using namespace violet;
 
     engine::initialize("");
-    engine::install<window>();
-    engine::install<graphics>();
+    engine::install<window_module>();
+    engine::install<graphics_module>();
     engine::install<sample::hello_world>();
     engine::run();
 

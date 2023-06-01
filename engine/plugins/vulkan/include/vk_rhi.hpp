@@ -7,7 +7,7 @@
 
 namespace violet::vk
 {
-class vk_rhi : public rhi_interface
+class vk_rhi : public rhi_context
 {
 public:
     vk_rhi() noexcept;
@@ -16,33 +16,33 @@ public:
 
     virtual bool initialize(const rhi_desc& desc) override;
 
-    virtual render_command_interface* allocate_command() override { return nullptr; }
-    virtual void execute(render_command_interface* command) override {}
+    virtual rhi_render_command* allocate_command() override { return nullptr; }
+    virtual void execute(rhi_render_command* command) override {}
 
     virtual void present() override;
     virtual void resize(std::uint32_t width, std::uint32_t height) override {}
 
-    virtual resource_interface* get_back_buffer() override { return nullptr; }
+    virtual rhi_resource* get_back_buffer() override;
 
     vk_rhi& operator=(const vk_rhi&) = delete;
 
 public:
-    virtual render_pipeline_interface* make_render_pipeline(
+    virtual rhi_render_pipeline* make_render_pipeline(
         const render_pipeline_desc& desc) override;
 
-    virtual pipeline_parameter_interface* make_pipeline_parameter(
+    virtual rhi_pipeline_parameter* make_pipeline_parameter(
         const pipeline_parameter_desc& desc) override;
 
-    virtual resource_interface* make_vertex_buffer(const vertex_buffer_desc& desc) override;
-    virtual resource_interface* make_index_buffer(const index_buffer_desc& desc) override;
+    virtual rhi_resource* make_vertex_buffer(const vertex_buffer_desc& desc) override;
+    virtual rhi_resource* make_index_buffer(const index_buffer_desc& desc) override;
 
-    virtual resource_interface* make_texture(
+    virtual rhi_resource* make_texture(
         const std::uint8_t* data,
         std::uint32_t width,
         std::uint32_t height,
         resource_format format = RESOURCE_FORMAT_R8G8B8A8_UNORM) override;
-    virtual resource_interface* make_texture(const char* file) override;
-    virtual resource_interface* make_texture_cube(
+    virtual rhi_resource* make_texture(const char* file) override;
+    virtual rhi_resource* make_texture_cube(
         const char* left,
         const char* right,
         const char* top,
@@ -50,10 +50,10 @@ public:
         const char* front,
         const char* back) override;
 
-    virtual resource_interface* make_shadow_map(const shadow_map_desc& desc) override;
+    virtual rhi_resource* make_shadow_map(const shadow_map_desc& desc) override;
 
-    virtual resource_interface* make_render_target(const render_target_desc& desc) override;
-    virtual resource_interface* make_depth_stencil_buffer(
+    virtual rhi_resource* make_render_target(const render_target_desc& desc) override;
+    virtual rhi_resource* make_depth_stencil_buffer(
         const depth_stencil_buffer_desc& desc) override;
 
 public:

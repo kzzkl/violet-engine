@@ -5,10 +5,10 @@
 
 namespace violet
 {
-class scene : public engine_module
+class scene_module : public engine_module
 {
 public:
-    scene();
+    scene_module();
 
     virtual bool initialize(const dictionary& config) override;
 

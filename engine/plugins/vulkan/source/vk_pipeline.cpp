@@ -154,7 +154,7 @@ void vk_pipeline_parameter::set(std::size_t index, const void* data, size_t size
 {
 }
 
-void vk_pipeline_parameter::set(std::size_t index, resource_interface* texture)
+void vk_pipeline_parameter::set(std::size_t index, rhi_resource* texture)
 {
 }
 

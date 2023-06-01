@@ -1,22 +1,22 @@
 #pragma once
 
 #include "core/context/engine_module.hpp"
-#include "interface/graphics_interface.hpp"
+#include "graphics/rhi.hpp"
 
 namespace violet
 {
 class rhi_plugin;
-class graphics : public engine_module
+class graphics_module : public engine_module
 {
 public:
-    graphics();
-    virtual ~graphics();
+    graphics_module();
+    virtual ~graphics_module();
 
     virtual bool initialize(const dictionary& config) override;
 
     void render();
 
-    rhi_interface* get_rhi() const;
+    rhi_context* get_rhi() const;
 
 private:
     std::unique_ptr<rhi_plugin> m_plugin;

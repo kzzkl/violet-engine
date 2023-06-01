@@ -5,7 +5,7 @@
 namespace violet::vk
 {
 class vk_rhi;
-class vk_resource : public resource_interface
+class vk_resource : public rhi_resource
 {
 public:
     vk_resource() = default;

@@ -84,10 +84,10 @@ public:
     void remove(entity entity)
     {
         entity_info& info = m_entity_infos[entity.index];
-        VIOLET_ASSERT(info.archetype);
+        assert(info.archetype);
 
         component_mask new_mask = info.archetype->get_mask() ^ make_mask<Components...>();
-        VIOLET_ASSERT(new_mask != info.archetype->get_mask());
+        assert(new_mask != info.archetype->get_mask());
 
         if (!new_mask.none())
         {
@@ -148,7 +148,7 @@ public:
     template <typename Component>
     [[nodiscard]] Component& get_component(entity entity)
     {
-        VIOLET_ASSERT(has_component<Component>(entity));
+        assert(has_component<Component>(entity));
 
         auto iter = m_entity_infos[entity.index].archetype->begin() +
                     m_entity_infos[entity.index].archetype_index;
@@ -164,7 +164,7 @@ public:
 
     [[nodiscard]] bool has_component(entity entity, component_id component)
     {
-        VIOLET_ASSERT(is_valid(entity).first);
+        assert(is_valid(entity).first);
         return m_entity_infos[entity.index].archetype->get_mask().test(component);
     }
 

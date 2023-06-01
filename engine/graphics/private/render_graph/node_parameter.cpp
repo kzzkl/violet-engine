@@ -1,4 +1,4 @@
-#include "graphics/rhi/node_parameter.hpp"
+#include "graphics/render_graph/node_parameter.hpp"
 
 namespace violet
 {

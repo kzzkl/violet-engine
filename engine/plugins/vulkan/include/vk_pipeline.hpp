@@ -7,7 +7,7 @@
 namespace violet::vk
 {
 class vk_rhi;
-class vk_render_pass : public render_pass_interface
+class vk_render_pass : public rhi_render_pass
 {
 public:
     vk_render_pass(const render_pass_desc& desc, vk_rhi* rhi);
@@ -25,20 +25,20 @@ private:
     vk_rhi* m_rhi;
 };
 
-class vk_pipeline_parameter : public pipeline_parameter_interface
+class vk_pipeline_parameter : public rhi_pipeline_parameter
 {
 public:
     vk_pipeline_parameter(const pipeline_parameter_desc& desc);
     virtual ~vk_pipeline_parameter();
 
     virtual void set(std::size_t index, const void* data, size_t size) override;
-    virtual void set(std::size_t index, resource_interface* texture) override;
+    virtual void set(std::size_t index, rhi_resource* texture) override;
 
 private:
 
 };
 
-class vk_render_pipeline : public render_pipeline_interface
+class vk_render_pipeline : public rhi_render_pipeline
 {
 public:
     vk_render_pipeline(

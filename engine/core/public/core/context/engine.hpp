@@ -1,6 +1,5 @@
 #pragma once
 
-#include "common/assert.hpp"
 #include "common/log.hpp"
 #include "common/type_index.hpp"
 #include "core/context/engine_module.hpp"
@@ -8,6 +7,7 @@
 #include "core/node/world.hpp"
 #include "core/task/task_executor.hpp"
 #include "core/timer/timer.hpp"
+#include <cassert>
 #include <memory>
 #include <type_traits>
 #include <vector>
@@ -67,7 +67,7 @@ public:
         requires derived_from_module<T>
     {
         auto pointer = instance().m_modules[module_index::value<T>()].get();
-        VIOLET_ASSERT(dynamic_cast<T*>(pointer));
+        assert(dynamic_cast<T*>(pointer));
         return *static_cast<T*>(pointer);
     }
 

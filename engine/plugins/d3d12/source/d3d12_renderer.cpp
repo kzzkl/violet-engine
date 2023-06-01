@@ -95,7 +95,7 @@ void d3d12_renderer::present()
     d3d12_context::present();
 }
 
-render_command_interface* d3d12_renderer::allocate_command()
+rhi_render_command* d3d12_renderer::allocate_command()
 {
     d3d12_render_command* command = d3d12_context::command()->allocate_render_command();
 
@@ -108,13 +108,13 @@ render_command_interface* d3d12_renderer::allocate_command()
     return command;
 }
 
-void d3d12_renderer::execute(render_command_interface* command)
+void d3d12_renderer::execute(rhi_render_command* command)
 {
     d3d12_render_command* c = static_cast<d3d12_render_command*>(command);
     d3d12_context::command()->execute_command(c);
 }
 
-resource_interface* d3d12_renderer::get_back_buffer()
+rhi_resource* d3d12_renderer::get_back_buffer()
 {
     return d3d12_context::swap_chain().render_target();
 }

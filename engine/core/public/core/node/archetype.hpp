@@ -1,9 +1,9 @@
 #pragma once
 
-#include "common/assert.hpp"
 #include "core/node/component.hpp"
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <vector>
 
 namespace violet

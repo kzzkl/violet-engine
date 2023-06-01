@@ -353,7 +353,7 @@ void dock_area::move_up(dock_node* control)
 {
     auto& parent = control->m_dock_parent;
 
-    VIOLET_ASSERT(parent->children().size() == 1);
+    assert(parent->children().size() == 1);
 
     control->dock_width(parent->m_width);
     control->dock_height(parent->m_height);

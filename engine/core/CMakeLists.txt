@@ -2,8 +2,7 @@ project(violet-core)
 
 set(CONTEXT_SOURCE
     ./private/context/engine_module.cpp
-    ./private/context/engine.cpp
-    ./private/context/plugin.cpp)
+    ./private/context/engine.cpp)
 
 set(NODE_SOURCE
     ./private/node/archetype_chunk.cpp
@@ -12,14 +11,17 @@ set(NODE_SOURCE
     ./private/node/view.cpp
     ./private/node/world.cpp)
 
+set(PLUGIN_SOURCE
+    ./private/plugin/plugin.cpp)
+
 set(TASK_SOURCE
     ./private/task/task_executor.cpp
-    ./private/task/task_queue.cpp
     ./private/task/task.cpp)
 
 add_library(${PROJECT_NAME} STATIC
     ${CONTEXT_SOURCE}
     ${NODE_SOURCE}
+    ${PLUGIN_SOURCE}
     ${TASK_SOURCE})
 add_library(violet::core ALIAS ${PROJECT_NAME})
 

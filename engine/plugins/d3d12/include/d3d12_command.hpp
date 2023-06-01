@@ -7,27 +7,27 @@
 
 namespace violet::d3d12
 {
-class d3d12_render_command : public render_command_interface
+class d3d12_render_command : public rhi_render_command
 {
 public:
     d3d12_render_command(D3D12CommandAllocator* allocator, std::wstring_view name = L"");
 
     virtual void begin(
-        render_pipeline_interface* pipeline,
-        resource_interface* render_target,
-        resource_interface* render_target_resolve,
-        resource_interface* depth_stencil_buffer) override;
-    virtual void end(render_pipeline_interface* pipeline) override;
-    virtual void next_pass(render_pipeline_interface* pipeline) override;
+        rhi_render_pipeline* pipeline,
+        rhi_resource* render_target,
+        rhi_resource* render_target_resolve,
+        rhi_resource* depth_stencil_buffer) override;
+    virtual void end(rhi_render_pipeline* pipeline) override;
+    virtual void next_pass(rhi_render_pipeline* pipeline) override;
 
     virtual void set_scissor(const scissor_extent* extents, std::size_t size) override;
 
-    virtual void set_parameter(std::size_t index, pipeline_parameter_interface* parameter) override;
+    virtual void set_parameter(std::size_t index, rhi_pipeline_parameter* parameter) override;
 
     virtual void set_input_assembly_state(
-        resource_interface* const* vertex_buffers,
+        rhi_resource* const* vertex_buffers,
         std::size_t vertex_buffer_count,
-        resource_interface* index_buffer,
+        rhi_resource* index_buffer,
         primitive_topology primitive_topology) override;
 
     virtual void draw(std::size_t vertex_start, std::size_t vertex_end) override;
@@ -36,10 +36,10 @@ public:
         std::size_t index_end,
         std::size_t vertex_base) override;
 
-    virtual void clear_render_target(resource_interface* render_target, const float4& color)
+    virtual void clear_render_target(rhi_resource* render_target, const float4& color)
         override;
     virtual void clear_depth_stencil(
-        resource_interface* depth_stencil,
+        rhi_resource* depth_stencil,
         bool clear_depth,
         float depth,
         bool clear_stencil,
@@ -48,7 +48,7 @@ public:
     virtual void begin(compute_pipeline_interface* pipeline) override;
     virtual void end(compute_pipeline_interface* pipeline) override;
     virtual void dispatch(std::size_t x, std::size_t y, std::size_t z) override;
-    virtual void set_compute_parameter(std::size_t index, pipeline_parameter_interface* parameter)
+    virtual void set_compute_parameter(std::size_t index, rhi_pipeline_parameter* parameter)
         override;
 
     void allocator(D3D12CommandAllocator* allocator) noexcept;

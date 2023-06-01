@@ -32,10 +32,9 @@ class basic_pipeline : public render_pipeline
 protected:
     basic_pipeline();
 
-    virtual void on_render(const std::vector<mesh*>& meshes, render_command_interface* command)
-        override;
+    virtual void on_render(rhi_render_command* command) override;
 
 private:
-    std::unique_ptr<render_pipeline_interface> m_interface;
+    std::unique_ptr<rhi_render_pipeline> m_interface;
 };
 } // namespace violet

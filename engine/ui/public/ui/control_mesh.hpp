@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics_interface.hpp"
+#include "rhi.hpp"
 
 namespace violet::ui
 {
@@ -24,6 +24,6 @@ struct control_mesh
     std::size_t index_count;
 
     bool scissor;
-    graphics::resource_interface* texture;
+    graphics::rhi_resource* texture;
 };
 } // namespace violet::ui

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "interface/graphics_interface.hpp"
+#include "graphics/rhi.hpp"
 #include <memory>
 
 namespace violet
@@ -11,7 +11,7 @@ public:
     pipeline_parameter(const pipeline_parameter_desc& desc);
     virtual ~pipeline_parameter() {}
 
-    pipeline_parameter_interface* get_interface() const noexcept { return m_interface.get(); }
+    rhi_pipeline_parameter* get_interface() const noexcept { return m_interface.get(); }
 
     template <typename T>
     T& get_field(std::size_t index)
@@ -22,6 +22,6 @@ public:
     void* get_field_pointer(std::size_t index);
 
 private:
-    std::unique_ptr<pipeline_parameter_interface> m_interface;
+    std::unique_ptr<rhi_pipeline_parameter> m_interface;
 };
 } // namespace violet

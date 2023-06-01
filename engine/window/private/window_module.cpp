@@ -1,4 +1,4 @@
-#include "window/window.hpp"
+#include "window/window_module.hpp"
 #include "core/context/engine.hpp"
 #include "window/window_task.hpp"
 #include "window_impl.hpp"
@@ -6,18 +6,18 @@
 
 namespace violet
 {
-window::window()
+window_module::window_module()
     : engine_module("window"),
       m_impl(std::make_unique<window_impl_win32>()),
       m_mouse(m_impl.get())
 {
 }
 
-window::~window()
+window_module::~window_module()
 {
 }
 
-bool window::initialize(const dictionary& config)
+bool window_module::initialize(const dictionary& config)
 {
     if (!m_impl->initialize(config["width"], config["height"], config["title"]))
         return false;
@@ -32,12 +32,12 @@ bool window::initialize(const dictionary& config)
     return true;
 }
 
-void window::shutdown()
+void window_module::shutdown()
 {
     m_impl->shutdown();
 }
 
-void window::tick()
+void window_module::tick()
 {
     auto& task_executor = engine::get_task_executor();
 
@@ -114,17 +114,17 @@ void window::tick()
     }
 }
 
-void* window::get_handle() const
+void* window_module::get_handle() const
 {
     return m_impl->get_handle();
 }
 
-rect<std::uint32_t> window::get_extent() const
+rect<std::uint32_t> window_module::get_extent() const
 {
     return m_impl->get_extent();
 }
 
-void window::set_title(std::string_view title)
+void window_module::set_title(std::string_view title)
 {
     m_title = title;
     m_impl->set_title(title);

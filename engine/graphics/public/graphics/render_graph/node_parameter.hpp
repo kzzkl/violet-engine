@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/rhi/pipeline_parameter.hpp"
+#include "graphics/render_graph/pipeline_parameter.hpp"
 
 namespace violet
 {

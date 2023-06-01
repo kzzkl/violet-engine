@@ -31,7 +31,7 @@ void material_pipeline_parameter::mesh_type(control_mesh_type type)
     field<std::uint32_t>(0) = static_cast<std::uint32_t>(type);
 }
 
-void material_pipeline_parameter::texture(graphics::resource_interface* texture)
+void material_pipeline_parameter::texture(graphics::rhi_resource* texture)
 {
     interface()->set(1, texture);
 }
@@ -130,7 +130,7 @@ void ui_pipeline::set_offset(const std::vector<math::float4>& offset)
 
 void ui_pipeline::render(
     const graphics::render_context& context,
-    graphics::render_command_interface* command)
+    graphics::rhi_render_command* command)
 {
     command->begin(
         m_interface.get(),
