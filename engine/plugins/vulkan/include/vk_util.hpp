@@ -4,8 +4,12 @@
 
 namespace violet::vk
 {
-VkFormat convert(resource_format format);
-resource_format convert(VkFormat format);
+class vk_util
+{
+public:
+    static VkFormat map_format(rhi_resource_format format);
+    static rhi_resource_format map_format(VkFormat format);
 
-VkImageLayout convert(resource_state state);
-}
+    static VkImageLayout map_state(rhi_resource_state state);
+};
+} // namespace violet::vk

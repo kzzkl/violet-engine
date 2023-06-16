@@ -1,4 +1,4 @@
-#include "rhi/rhi_plugin.hpp"
+#include "rhi_plugin.hpp"
 #include "common/log.hpp"
 
 namespace violet

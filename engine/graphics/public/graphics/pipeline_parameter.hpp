@@ -8,18 +8,14 @@ namespace violet
 class pipeline_parameter
 {
 public:
-    pipeline_parameter(const pipeline_parameter_desc& desc);
+    pipeline_parameter(const rhi_pipeline_parameter_desc& desc);
     virtual ~pipeline_parameter() {}
 
     rhi_pipeline_parameter* get_interface() const noexcept { return m_interface.get(); }
 
-    template <typename T>
-    T& get_field(std::size_t index)
-    {
-        return *static_cast<T*>(get_field_pointer(index));
-    }
-
-    void* get_field_pointer(std::size_t index);
+protected:
+    void set(std::size_t index, const void* data, size_t size);
+    void set(std::size_t index, rhi_resource* texture);
 
 private:
     std::unique_ptr<rhi_pipeline_parameter> m_interface;

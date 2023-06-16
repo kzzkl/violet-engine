@@ -1,14 +1,14 @@
 #pragma once
 
-#include "graphics/render_graph/pipeline_parameter.hpp"
+#include "graphics/pipeline_parameter.hpp"
 
 namespace violet
 {
 class node_parameter : public pipeline_parameter
 {
 public:
-    static constexpr pipeline_parameter_desc layout = {
-        .parameters = {{PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER, sizeof(float4x4)}},
+    static constexpr rhi_pipeline_parameter_desc layout = {
+        .parameters = {{RHI_PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER, sizeof(float4x4)}},
         .parameter_count = 1};
 
 public:

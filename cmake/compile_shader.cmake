@@ -1,8 +1,5 @@
-set(DXC_PATH "${CMAKE_SOURCE_DIR}/engine/graphics/shaders/compiler/DirectX/dxc/dxc.exe")
-set(DXC_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/engine/graphics/shaders/compiler/DirectX/dxc")
-
-set(GLSLANG_PATH "${CMAKE_SOURCE_DIR}/engine/graphics/shaders/compiler/Vulkan/glslangValidator.exe")
-set(GLSLANG_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/engine/graphics/shaders/compiler/Vulkan")
+set(DXC_PATH "${VIOLET_THIRD_PARTY_DIR}/dxc/dxc.exe")
+set(DXC_WORKING_DIRECTORY "${VIOLET_THIRD_PARTY_DIR}/dxc")
 
 # dxc
 function(compile_shader_dxc TARGET_NAME SHADER_PATH TYPE INCLUDE_DIR OUTPUT_DIR)
@@ -38,40 +35,44 @@ function(compile_shader_dxc TARGET_NAME SHADER_PATH TYPE INCLUDE_DIR OUTPUT_DIR)
         COMMAND_EXPAND_LISTS)
 endfunction()
 
-# glslang
-function(compile_shader_glslang TARGET_NAME SHADER_PATH TYPE INCLUDE_DIR OUTPUT_DIR)
-    get_filename_component(SHADER_NAME ${SHADER_PATH} NAME_WE)
+function(compile_shader_glslang)
+    set(GLSLANG_PATH "${VIOLET_THIRD_PARTY_DIR}/glslang/glslangValidator.exe")
+    set(GLSLANG_WORKING_DIRECTORY "${VIOLET_THIRD_PARTY_DIR}/glslang")
 
-    if(TYPE STREQUAL "vert")
-        set(OUTPUT_NAME "${OUTPUT_DIR}/${SHADER_NAME}.vert.spv")
-        set(PROFILE "vert")
-        set(ENTRY_POINT "vs_main")
-    elseif(TYPE STREQUAL "frag")
-        set(OUTPUT_NAME "${OUTPUT_DIR}/${SHADER_NAME}.frag.spv")
-        set(PROFILE "frag")
-        set(ENTRY_POINT "ps_main")
-    elseif(TYPE STREQUAL "comp")
-        set(OUTPUT_NAME "${OUTPUT_DIR}/${SHADER_NAME}.comp.spv")
-        set(PROFILE "comp")
-        set(ENTRY_POINT "cs_main")
-    endif()
+    set(oneValueArgs TARGET SOURCE)
+    set(multiValueArgs STAGES INCLUDE_DIRS)
 
-    add_custom_command(
-        TARGET ${TARGET_NAME}
-        POST_BUILD
-        COMMAND ${GLSLANG_PATH} -D --client vulkan100 -S ${PROFILE} -e ${ENTRY_POINT} ${SHADER_PATH} -o ${OUTPUT_NAME} --auto-sampled-textures
-        DEPENDS ${SHADER_PATH}
-        WORKING_DIRECTORY "${GLSLANG_WORKING_DIRECTORY}")
-endfunction()
+    cmake_parse_arguments(COMPILE_SHADER "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGV})
 
-function(test TARGET_NAME SHADER_PATH TYPE INCLUDE_DIR)
-    message("${TARGET_NAME} ${SHADER_PATH} ${TYPE}")
-endfunction()
+    set(OUTPUT_DIR ${CMAKE_BINARY_DIR}/shaders/${COMPILE_SHADER_TARGET})
+    file(MAKE_DIRECTORY ${OUTPUT_DIR})
 
-function(target_compile_shader TARGET_NAME SHADER_PATH TYPES INCLUDE_DIR OUTPUT_DIR)
-    foreach(TYPE ${TYPES})
-        compile_shader_dxc(${TARGET_NAME} "${SHADER_PATH}" ${TYPE} "${INCLUDE_DIR}" "${OUTPUT_DIR}")
+    get_filename_component(SHADER_NAME ${COMPILE_SHADER_SOURCE} NAME_WE)
+    foreach(STAGE ${COMPILE_SHADER_STAGES})
+        if(STAGE STREQUAL "vert")
+            set(OUTPUT_NAME "${OUTPUT_DIR}/${SHADER_NAME}.vert.spv")
+            set(ENTRY_POINT "vs_main")
+        elseif(STAGE STREQUAL "frag")
+            set(OUTPUT_NAME "${OUTPUT_DIR}/${SHADER_NAME}.frag.spv")
+            set(ENTRY_POINT "ps_main")
+        elseif(STAGE STREQUAL "comp")
+            set(OUTPUT_NAME "${OUTPUT_DIR}/${SHADER_NAME}.comp.spv")
+            set(ENTRY_POINT "cs_main")
+        endif()
 
-        # compile_shader_glslang(${TARGET_NAME} "${SHADER_PATH}" ${TYPE} "${INCLUDE_DIR}" "${OUTPUT_DIR}")
+        set(COMMAND_LINE ${GLSLANG_PATH} -D --client vulkan100 -S ${STAGE} -e ${ENTRY_POINT} ${COMPILE_SHADER_SOURCE} -o ${OUTPUT_NAME} --auto-sampled-textures)
+        foreach(INCLUDE ${COMPILE_SHADER_INCLUDE_DIRS})
+            set(COMMAND_LINE ${COMMAND_LINE} -I${INCLUDE})
+        endforeach()
+
+        add_custom_command(
+            TARGET ${COMPILE_SHADER_TARGET}
+            # OUTPUT ${OUTPUT_NAME}
+            POST_BUILD
+            COMMAND ${COMMAND_LINE}
+            DEPENDS ${COMPILE_SHADER_SOURCE}
+            WORKING_DIRECTORY "${GLSLANG_WORKING_DIRECTORY}")
+
     endforeach()
+
 endfunction()

@@ -5,19 +5,23 @@ find_package(Vulkan REQUIRED)
 set(HPP_FILES
     ./include/vk_command.hpp
     ./include/vk_common.hpp
-    ./include/vk_framebuffer_cache.hpp
+    ./include/vk_framebuffer.hpp
     ./include/vk_pipeline.hpp
+    ./include/vk_render_pass.hpp
     ./include/vk_resource.hpp
     ./include/vk_rhi.hpp
+    ./include/vk_sync.hpp
     ./include/vk_util.hpp)
 source_group("Header Files" FILES ${HPP_FILES})
 
 set(CPP_FILES
     ./source/vk_command.cpp
-    ./source/vk_framebuffer_cache.cpp
+    ./source/vk_framebuffer.cpp
     ./source/vk_pipeline.cpp
+    ./source/vk_render_pass.cpp
     ./source/vk_resource.cpp
     ./source/vk_rhi.cpp
+    ./source/vk_sync.cpp
     ./source/vk_util.cpp)
 source_group("Source Files" FILES ${CPP_FILES})
 

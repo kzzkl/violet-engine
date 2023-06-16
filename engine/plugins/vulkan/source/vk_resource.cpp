@@ -17,7 +17,6 @@ VkImageView vk_image::create_image_view(VkImageViewCreateInfo* info)
 
 void vk_image::destroy_image_view(VkImageView image_view)
 {
-    m_rhi->get_framebuffer_cache()->on_destroy_image(image_view);
     vkDestroyImageView(m_rhi->get_device(), image_view, nullptr);
 }
 
@@ -76,12 +75,12 @@ VkImageView vk_swapchain_image::get_image_view() const noexcept
     return m_image_view;
 }
 
-resource_format vk_swapchain_image::get_format() const noexcept
+rhi_resource_format vk_swapchain_image::get_format() const noexcept
 {
-    return convert(m_format);
+    return vk_util::map_format(m_format);
 }
 
-resource_extent vk_swapchain_image::get_extent() const noexcept
+rhi_resource_extent vk_swapchain_image::get_extent() const noexcept
 {
     return {m_extent.width, m_extent.height};
 }

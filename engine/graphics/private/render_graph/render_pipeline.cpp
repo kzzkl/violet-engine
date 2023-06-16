@@ -1,16 +1,19 @@
 #include "graphics/render_graph/render_pipeline.hpp"
-#include "core/context/engine.hpp"
-#include "graphics/graphics_module.hpp"
+#include "graphics/render_graph/render_pass.hpp"
 
 namespace violet
 {
-render_pipeline::render_pipeline(std::string_view name, std::size_t index)
-    : render_node(name, index),
+render_pipeline::render_pipeline(
+    std::string_view name,
+    rhi_context* rhi,
+    render_pass* render_pass,
+    std::size_t subpass)
+    : render_node(name, rhi),
       m_blend{.enable = false},
       m_samples(1),
-      m_primitive_topology(PRIMITIVE_TOPOLOGY_TRIANGLE_LIST),
-      m_render_pass(nullptr),
-      m_subpass(0)
+      m_primitive_topology(RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST),
+      m_render_pass(render_pass),
+      m_subpass(subpass)
 {
     m_blend.enable = false;
     m_samples = 1;
@@ -18,6 +21,8 @@ render_pipeline::render_pipeline(std::string_view name, std::size_t index)
 
 render_pipeline::~render_pipeline()
 {
+    if (m_interface != nullptr)
+        get_rhi()->destroy_render_pipeline(m_interface);
 }
 
 void render_pipeline::set_shader(std::string_view vertex, std::string_view pixel)
@@ -26,28 +31,33 @@ void render_pipeline::set_shader(std::string_view vertex, std::string_view pixel
     m_pixel_shader = pixel;
 }
 
-void render_pipeline::set_vertex_layout(const std::vector<vertex_attribute>& vertex_layout)
+void render_pipeline::set_vertex_layout(const vertex_layout& vertex_layout)
 {
     m_vertex_layout = vertex_layout;
 }
 
+const render_pipeline::vertex_layout& render_pipeline::get_vertex_layout() const noexcept
+{
+    return m_vertex_layout;
+}
+
 void render_pipeline::set_parameter_layout(
-    const std::vector<pipeline_parameter_desc>& parameter_layout)
+    const std::vector<rhi_pipeline_parameter_desc>& parameter_layout)
 {
     m_parameter_layout = parameter_layout;
 }
 
-void render_pipeline::set_blend(const blend_desc& blend) noexcept
+void render_pipeline::set_blend(const rhi_blend_desc& blend) noexcept
 {
     m_blend = blend;
 }
 
-void render_pipeline::set_depth_stencil(const depth_stencil_desc& depth_stencil) noexcept
+void render_pipeline::set_depth_stencil(const rhi_depth_stencil_desc& depth_stencil) noexcept
 {
     m_depth_stencil = depth_stencil;
 }
 
-void render_pipeline::set_rasterizer(const rasterizer_desc& rasterizer) noexcept
+void render_pipeline::set_rasterizer(const rhi_rasterizer_desc& rasterizer) noexcept
 {
     m_rasterizer = rasterizer;
 }
@@ -57,24 +67,22 @@ void render_pipeline::set_samples(std::size_t samples) noexcept
     m_samples = samples;
 }
 
-void render_pipeline::set_primitive_topology(primitive_topology primitive_topology) noexcept
+void render_pipeline::set_primitive_topology(rhi_primitive_topology primitive_topology) noexcept
 {
     m_primitive_topology = primitive_topology;
 }
 
-void render_pipeline::set_render_pass(render_pass* render_pass, std::size_t subpass) noexcept
-{
-    m_render_pass = render_pass;
-    m_subpass = subpass;
-}
-
 bool render_pipeline::compile()
 {
-    render_pipeline_desc desc = {};
+    std::vector<rhi_vertex_attribute> vertex_attributes;
+    for (auto& attribute : m_vertex_layout)
+        vertex_attributes.push_back({attribute.first.c_str(), attribute.second});
+
+    rhi_render_pipeline_desc desc = {};
     desc.vertex_shader = m_vertex_shader.c_str();
     desc.pixel_shader = m_pixel_shader.c_str();
-    desc.vertex_attributes = m_vertex_layout.data();
-    desc.vertex_attribute_count = m_vertex_layout.size();
+    desc.vertex_attributes = vertex_attributes.data();
+    desc.vertex_attribute_count = vertex_attributes.size();
     desc.parameters = m_parameter_layout.data();
     desc.parameter_count = m_parameter_layout.size();
     desc.blend = m_blend;
@@ -85,8 +93,7 @@ bool render_pipeline::compile()
     desc.render_pass = m_render_pass->get_interface();
     desc.render_subpass_index = m_subpass;
 
-    rhi_context* rhi = engine::get_module<graphics_module>().get_rhi();
-    m_interface.reset(rhi->make_render_pipeline(desc));
+    m_interface = get_rhi()->make_render_pipeline(desc);
 
     return m_interface != nullptr;
 }

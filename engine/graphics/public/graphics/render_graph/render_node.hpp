@@ -1,5 +1,6 @@
 #pragma once
 
+#include "graphics/rhi.hpp"
 #include <string>
 
 namespace violet
@@ -7,16 +8,18 @@ namespace violet
 class render_node
 {
 public:
-    render_node(std::string_view name, std::size_t index) : m_name(name), m_index(index) {}
+    render_node(std::string_view name, rhi_context* rhi) : m_name(name), m_rhi(rhi) {}
     virtual ~render_node() = default;
 
-    virtual bool compile() = 0;
+    virtual bool compile() { return false; }
 
     const std::string& get_name() const noexcept { return m_name; }
-    std::size_t get_index() const noexcept { return m_index; }
+
+protected:
+    rhi_context* get_rhi() const noexcept { return m_rhi; }
 
 private:
     std::string m_name;
-    std::size_t m_index;
+    rhi_context* m_rhi;
 };
 } // namespace violet

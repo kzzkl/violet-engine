@@ -11,11 +11,11 @@ public:
     vk_resource() = default;
     virtual ~vk_resource() = default;
 
-    virtual resource_format get_format() const noexcept override
+    virtual rhi_resource_format get_format() const noexcept override
     {
-        return RESOURCE_FORMAT_UNDEFINED;
+        return RHI_RESOURCE_FORMAT_UNDEFINED;
     }
-    virtual resource_extent get_extent() const noexcept override { return {0, 0}; }
+    virtual rhi_resource_extent get_extent() const noexcept override { return {0, 0}; }
     virtual std::size_t get_buffer_size() const noexcept override { return 0; }
 };
 
@@ -45,8 +45,8 @@ public:
     virtual ~vk_swapchain_image();
 
     virtual VkImageView get_image_view() const noexcept override;
-    virtual resource_format get_format() const noexcept override;
-    virtual resource_extent get_extent() const noexcept override;
+    virtual rhi_resource_format get_format() const noexcept override;
+    virtual rhi_resource_extent get_extent() const noexcept override;
 
     vk_swapchain_image& operator=(const vk_swapchain_image&) = delete;
     vk_swapchain_image& operator=(vk_swapchain_image&& other) noexcept;

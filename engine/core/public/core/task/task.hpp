@@ -7,6 +7,7 @@
 #include <mutex>
 #include <queue>
 #include <vector>
+#include <cassert>
 
 namespace violet
 {
@@ -130,11 +131,7 @@ public:
     }
 
     template <typename F>
-    task* add_task(
-        std::string_view name,
-        F&& functor,
-        task_option option = TASK_OPTION_NONE,
-        bool link_root = true)
+    task* add_task(std::string_view name, F&& functor, task_option option = TASK_OPTION_NONE)
     {
         std::lock_guard<std::mutex> lg(m_lock);
 
@@ -153,24 +150,14 @@ public:
         std::unique_ptr<task> new_task =
             std::make_unique<task_wrapper>(name, index, option, this, std::forward<F>(functor));
         task* result = new_task.get();
-
         m_tasks[index] = std::move(new_task);
-
-        if (link_root)
-        {
-            get_root()->m_successors.push_back(result);
-            result->m_dependents.push_back(get_root());
-
-            on_topology_change();
-        }
 
         return result;
     }
 
     void remove_task(task* root, bool remove_successor = true)
     {
-        if (!is_valid_task(root))
-            return;
+        assert(is_valid_task(root));
 
         std::lock_guard<std::mutex> lg(m_lock);
 
@@ -228,8 +215,7 @@ public:
 
     void add_dependency(task* before, task* after)
     {
-        if (!is_valid_task(before) || !is_valid_task(after))
-            return;
+        assert(is_valid_task(before) && is_valid_task(after));
 
         std::lock_guard<std::mutex> lg(m_lock);
 
@@ -241,8 +227,7 @@ public:
 
     void remove_dependency(task* before, task* after)
     {
-        if (!is_valid_task(before) || !is_valid_task(after))
-            return;
+        assert(is_valid_task(before) && is_valid_task(after));
 
         std::lock_guard<std::mutex> lg(m_lock);
 
@@ -265,6 +250,15 @@ public:
     }
 
     task* get_root() const noexcept { return m_tasks[0].get(); }
+    task* get_task(std::string_view name) const
+    {
+        for (const auto& task : m_tasks)
+        {
+            if (task->get_name() == name)
+                return task.get();
+        }
+        return nullptr;
+    }
 
     std::size_t get_task_count(task_option option)
     {
@@ -306,7 +300,10 @@ private:
             m_promise.set_value();
     }
 
-    bool is_valid_task(task* task) { return m_tasks[task->get_index()].get() == task; }
+    bool is_valid_task(task* task)
+    {
+        return task != nullptr && m_tasks[task->get_index()].get() == task;
+    }
 
     std::mutex m_lock;
     std::promise<void> m_promise;

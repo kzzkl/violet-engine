@@ -32,8 +32,8 @@ private:
 
 task_executor::task_executor() : m_stop(true)
 {
-    m_queue = std::make_unique<task_queue_lock_free>();
-    m_main_thread_queue = std::make_unique<task_queue_lock_free>();
+    m_queue = std::make_unique<task_queue_thread_safe>();
+    m_main_thread_queue = std::make_unique<task_queue_thread_safe>();
 }
 
 task_executor::~task_executor()

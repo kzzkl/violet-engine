@@ -5,6 +5,8 @@
 
 namespace violet
 {
+constexpr const char* TASK_NAME_WINDOW_TICK = "window tick";
+
 struct window_task_graph
 {
     task_graph<mouse_mode, int, int> mouse_move;

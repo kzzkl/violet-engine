@@ -1,148 +1,60 @@
 #include "vk_pipeline.hpp"
+#include "vk_render_pass.hpp"
 #include "vk_rhi.hpp"
 #include "vk_util.hpp"
 #include <fstream>
 
 namespace violet::vk
 {
-vk_render_pass::vk_render_pass(const render_pass_desc& desc, vk_rhi* rhi)
-    : m_extent{512, 512},
-      m_rhi(rhi)
+namespace
 {
-    auto convert_load_op = [](render_attachment_load_op op) {
-        switch (op)
-        {
-        case RENDER_ATTACHMENT_LOAD_OP_LOAD:
-            return VK_ATTACHMENT_LOAD_OP_LOAD;
-        case RENDER_ATTACHMENT_LOAD_OP_CLEAR:
-            return VK_ATTACHMENT_LOAD_OP_CLEAR;
-        case RENDER_ATTACHMENT_LOAD_OP_DONT_CARE:
-            return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        default:
-            throw std::runtime_error("Invalid load op.");
-        }
-    };
-
-    auto convert_store_op = [](render_attachment_store_op op) {
-        switch (op)
-        {
-        case RENDER_ATTACHMENT_STORE_OP_STORE:
-            return VK_ATTACHMENT_STORE_OP_STORE;
-        case RENDER_ATTACHMENT_STORE_OP_DONT_CARE:
-            return VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        default:
-            throw std::runtime_error("Invalid store op.");
-        }
-    };
-
-    std::vector<VkAttachmentDescription> attachments;
-    for (std::size_t i = 0; i < desc.attachment_count; ++i)
-    {
-        VkAttachmentDescription attachment = {};
-        attachment.format = convert(desc.attachments[i].format);
-        switch (desc.attachments[i].samples)
-        {
-        case 1:
-            attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-            break;
-        case 2:
-            attachment.samples = VK_SAMPLE_COUNT_2_BIT;
-            break;
-        case 4:
-            attachment.samples = VK_SAMPLE_COUNT_4_BIT;
-            break;
-        case 8:
-            attachment.samples = VK_SAMPLE_COUNT_8_BIT;
-            break;
-        default:
-            throw std::runtime_error("Invalid sample count.");
-        }
-
-        attachment.loadOp = convert_load_op(desc.attachments[i].load_op);
-        attachment.storeOp = convert_store_op(desc.attachments[i].store_op);
-        attachment.stencilLoadOp = convert_load_op(desc.attachments[i].stencil_load_op);
-        attachment.stencilStoreOp = convert_store_op(desc.attachments[i].stencil_store_op);
-        attachment.initialLayout = convert(desc.attachments[i].initial_state);
-        attachment.finalLayout = convert(desc.attachments[i].final_state);
-
-        attachments.push_back(attachment);
-    }
-
-    std::vector<VkSubpassDescription> subpasses;
-    std::vector<std::vector<VkAttachmentReference>> input(desc.pass_count);
-    std::vector<std::vector<VkAttachmentReference>> color(desc.pass_count);
-    std::vector<std::vector<VkAttachmentReference>> resolve(desc.pass_count);
-    std::vector<VkAttachmentReference> depth(desc.pass_count);
-    for (std::size_t i = 0; i < desc.pass_count; ++i)
-    {
-        bool has_resolve_attachment = false;
-        for (std::size_t j = 0; j < desc.subpasses[i].reference_count; ++j)
-        {
-            switch (desc.subpasses[i].references[j].type)
-            {
-            case RENDER_ATTACHMENT_REFERENCE_TYPE_INPUT: {
-                VkAttachmentReference ref = {};
-                ref.attachment = desc.subpasses[i].references[j].index;
-                ref.layout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-                input[i].push_back(ref);
-                break;
-            }
-            case RENDER_ATTACHMENT_REFERENCE_TYPE_COLOR: {
-                VkAttachmentReference ref = {};
-                ref.attachment = desc.subpasses[i].references[j].index;
-                ref.layout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-                color[i].push_back(ref);
-                break;
-            }
-            case RENDER_ATTACHMENT_REFERENCE_TYPE_DEPTH: {
-                depth[i].attachment = static_cast<std::uint32_t>(j);
-                depth[i].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-                subpasses[i].pDepthStencilAttachment = &depth[i];
-                break;
-            }
-            case RENDER_ATTACHMENT_REFERENCE_TYPE_RESOLVE: {
-                has_resolve_attachment = true;
-                break;
-            }
-            default:
-                throw std::runtime_error("Invalid attachment reference type.");
-            }
-        }
-
-        if (has_resolve_attachment)
-        {
-            resolve[i].resize(color[i].size());
-            for (std::size_t j = 0; j < desc.subpasses[i].reference_count; ++j)
-            {
-                std::size_t resolve_index = desc.subpasses[i].references[j].resolve_index;
-                resolve[i][resolve_index].attachment = static_cast<std::uint32_t>(j);
-            }
-            subpasses[i].pResolveAttachments = resolve[i].data();
-        }
-
-        subpasses[i].pInputAttachments = input[i].data();
-        subpasses[i].inputAttachmentCount = static_cast<std::uint32_t>(input[i].size());
-        subpasses[i].pColorAttachments = color[i].data();
-        subpasses[i].colorAttachmentCount = static_cast<std::uint32_t>(input[i].size());
-    }
-
-    VkRenderPassCreateInfo render_pass_info = {};
-    render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    render_pass_info.pAttachments = attachments.data();
-    render_pass_info.attachmentCount = static_cast<std::uint32_t>(attachments.size());
-    render_pass_info.pSubpasses = subpasses.data();
-    render_pass_info.subpassCount = static_cast<std::uint32_t>(subpasses.size());
-
-    throw_if_failed(
-        vkCreateRenderPass(m_rhi->get_device(), &render_pass_info, nullptr, &m_render_pass));
-}
-
-vk_render_pass::~vk_render_pass()
+std::uint32_t get_vertex_attribute_stride(rhi_resource_format format) noexcept
 {
-    vkDestroyRenderPass(m_rhi->get_device(), m_render_pass, nullptr);
+    switch (format)
+    {
+    case RHI_RESOURCE_FORMAT_R8_UNORM:
+    case RHI_RESOURCE_FORMAT_R8_SNORM:
+    case RHI_RESOURCE_FORMAT_R8_UINT:
+    case RHI_RESOURCE_FORMAT_R8_SINT:
+        return 1;
+    case RHI_RESOURCE_FORMAT_R8G8_UNORM:
+    case RHI_RESOURCE_FORMAT_R8G8_SNORM:
+    case RHI_RESOURCE_FORMAT_R8G8_UINT:
+    case RHI_RESOURCE_FORMAT_R8G8_SINT:
+        return 2;
+    case RHI_RESOURCE_FORMAT_R8G8B8_UNORM:
+    case RHI_RESOURCE_FORMAT_R8G8B8_SNORM:
+    case RHI_RESOURCE_FORMAT_R8G8B8_UINT:
+    case RHI_RESOURCE_FORMAT_R8G8B8_SINT:
+        return 3;
+    case RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM:
+    case RHI_RESOURCE_FORMAT_R8G8B8A8_SNORM:
+    case RHI_RESOURCE_FORMAT_R8G8B8A8_UINT:
+    case RHI_RESOURCE_FORMAT_R8G8B8A8_SINT:
+        return 4;
+    case RHI_RESOURCE_FORMAT_R32_UINT:
+    case RHI_RESOURCE_FORMAT_R32_SINT:
+    case RHI_RESOURCE_FORMAT_R32_FLOAT:
+        return 4;
+    case RHI_RESOURCE_FORMAT_R32G32_UINT:
+    case RHI_RESOURCE_FORMAT_R32G32_SINT:
+    case RHI_RESOURCE_FORMAT_R32G32_FLOAT:
+        return 8;
+    case RHI_RESOURCE_FORMAT_R32G32B32_UINT:
+    case RHI_RESOURCE_FORMAT_R32G32B32_SINT:
+    case RHI_RESOURCE_FORMAT_R32G32B32_FLOAT:
+        return 12;
+    case RHI_RESOURCE_FORMAT_R32G32B32A32_UINT:
+    case RHI_RESOURCE_FORMAT_R32G32B32A32_SINT:
+    case RHI_RESOURCE_FORMAT_R32G32B32A32_FLOAT:
+        return 16;
+    default:
+        return 0;
+    }
 }
+} // namespace
 
-vk_pipeline_parameter::vk_pipeline_parameter(const pipeline_parameter_desc& desc)
+vk_pipeline_parameter::vk_pipeline_parameter(const rhi_pipeline_parameter_desc& desc)
 {
 }
 
@@ -159,7 +71,7 @@ void vk_pipeline_parameter::set(std::size_t index, rhi_resource* texture)
 }
 
 vk_render_pipeline::vk_render_pipeline(
-    const render_pipeline_desc& desc,
+    const rhi_render_pipeline_desc& desc,
     VkExtent2D extent,
     vk_rhi* rhi)
     : m_rhi(rhi)
@@ -180,12 +92,31 @@ vk_render_pipeline::vk_render_pipeline(
         vert_shader_stage_info,
         frag_shader_stage_info};
 
+    std::vector<VkVertexInputBindingDescription> binding_descriptions;
+    std::vector<VkVertexInputAttributeDescription> attribute_descriptions;
+    for (std::size_t i = 0; i < desc.vertex_attribute_count; ++i)
+    {
+        VkVertexInputBindingDescription binding = {};
+        binding.binding = static_cast<std::uint32_t>(i);
+        binding.stride = get_vertex_attribute_stride(desc.vertex_attributes[i].format);
+        binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        binding_descriptions.push_back(binding);
+
+        VkVertexInputAttributeDescription attribute = {};
+        attribute.binding = binding.binding;
+        attribute.format = vk_util::map_format(desc.vertex_attributes[i].format);
+        attribute.location = static_cast<std::uint32_t>(i);
+        attribute_descriptions.push_back(attribute);
+    }
+
     VkPipelineVertexInputStateCreateInfo vertex_input_state_info = {};
     vertex_input_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertex_input_state_info.pVertexAttributeDescriptions = nullptr;
-    vertex_input_state_info.vertexAttributeDescriptionCount = 0;
-    vertex_input_state_info.pVertexBindingDescriptions = nullptr;
-    vertex_input_state_info.vertexBindingDescriptionCount = 0;
+    vertex_input_state_info.pVertexAttributeDescriptions = attribute_descriptions.data();
+    vertex_input_state_info.vertexAttributeDescriptionCount =
+        static_cast<std::uint32_t>(attribute_descriptions.size());
+    vertex_input_state_info.pVertexBindingDescriptions = binding_descriptions.data();
+    vertex_input_state_info.vertexBindingDescriptionCount =
+        static_cast<std::uint32_t>(binding_descriptions.size());
 
     VkPipelineInputAssemblyStateCreateInfo input_assembly_state_info = {};
     input_assembly_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -224,13 +155,13 @@ vk_render_pipeline::vk_render_pipeline(
     rasterization_state_info.depthBiasSlopeFactor = 0.0f;
     switch (desc.rasterizer.cull_mode)
     {
-    case CULL_MODE_NONE:
+    case RHI_CULL_MODE_NONE:
         rasterization_state_info.cullMode = VK_CULL_MODE_NONE;
         break;
-    case CULL_MODE_FRONT:
+    case RHI_CULL_MODE_FRONT:
         rasterization_state_info.cullMode = VK_CULL_MODE_FRONT_BIT;
         break;
-    case CULL_MODE_BACK:
+    case RHI_CULL_MODE_BACK:
         rasterization_state_info.cullMode = VK_CULL_MODE_BACK_BIT;
         break;
     default:

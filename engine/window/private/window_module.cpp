@@ -24,10 +24,12 @@ bool window_module::initialize(const dictionary& config)
 
     m_title = config["title"];
 
-    engine::get_task_graph().tick.add_task(
-        "window tick",
-        [this](float delta) { tick(); },
+    auto& begin_frame_graph = engine::get_task_graph().begin_frame;
+    task* tick_task = begin_frame_graph.add_task(
+        TASK_NAME_WINDOW_TICK,
+        [this]() { tick(); },
         TASK_OPTION_MAIN_THREAD);
+    begin_frame_graph.add_dependency(begin_frame_graph.get_root(), tick_task);
 
     return true;
 }

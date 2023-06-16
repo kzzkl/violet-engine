@@ -1,4 +1,9 @@
 #include "vk_rhi.hpp"
+#include "vk_command.hpp"
+#include "vk_framebuffer.hpp"
+#include "vk_pipeline.hpp"
+#include "vk_render_pass.hpp"
+#include "vk_sync.hpp"
 #include <algorithm>
 #include <iostream>
 
@@ -23,6 +28,7 @@ vk_rhi::vk_rhi() noexcept
       m_device(VK_NULL_HANDLE),
       m_surface(VK_NULL_HANDLE),
       m_swapchain(VK_NULL_HANDLE),
+      m_swapchain_image_index(0),
       m_graphics_queue(VK_NULL_HANDLE),
       m_present_queue(VK_NULL_HANDLE),
       m_queue_family_indices{},
@@ -38,6 +44,11 @@ vk_rhi::vk_rhi() noexcept
 vk_rhi::~vk_rhi()
 {
     std::cout << "delete rhi" << std::endl;
+
+    vkDeviceWaitIdle(m_device);
+
+    m_graphics_queue = nullptr;
+    m_present_queue = nullptr;
 
     m_swapchain_images.clear();
 
@@ -88,17 +99,52 @@ bool vk_rhi::initialize(const rhi_desc& desc)
 #endif
 
     initialize_logic_device(device_desired_extensions);
-    m_framebuffer_cache = std::make_unique<vk_framebuffer_cache>(m_device);
-
     initialize_swapchain(desc);
 
     return true;
+}
+
+rhi_render_command* vk_rhi::allocate_command()
+{
+    return m_graphics_queue->allocate_command();
+}
+
+void vk_rhi::execute(rhi_render_command* command, rhi_fence* fence)
+{
+    m_graphics_queue->execute(static_cast<vk_command*>(command), static_cast<vk_fence*>(fence));
+}
+
+void vk_rhi::begin_frame()
+{
+    vkAcquireNextImageKHR(
+        m_device,
+        m_swapchain,
+        UINT64_MAX,
+        m_swapchain_image_available_semaphore,
+        VK_NULL_HANDLE,
+        &m_swapchain_image_index);
+}
+
+void vk_rhi::end_frame()
+{
 }
 
 void vk_rhi::present()
 {
     ++m_frame_count;
     m_frame_resource_index = m_frame_count % 3;
+
+    VkSwapchainKHR swap_chains[] = {m_swapchain};
+
+    VkPresentInfoKHR present_info{};
+    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    // present_info.waitSemaphoreCount = 1;
+    // present_info.pWaitSemaphores = &m_render_finished;
+    present_info.swapchainCount = 1;
+    present_info.pSwapchains = swap_chains;
+    present_info.pImageIndices = &m_swapchain_image_index;
+
+    vkQueuePresentKHR(m_present_queue->get_queue(), &present_info);
 }
 
 rhi_resource* vk_rhi::get_back_buffer()
@@ -106,22 +152,52 @@ rhi_resource* vk_rhi::get_back_buffer()
     return &m_swapchain_images[m_frame_count % m_swapchain_images.size()];
 }
 
-rhi_render_pipeline* vk_rhi::make_render_pipeline(const render_pipeline_desc& desc)
+rhi_render_pass* vk_rhi::make_render_pass(const rhi_render_pass_desc& desc)
+{
+    return new vk_render_pass(desc, this);
+}
+
+void vk_rhi::destroy_render_pass(rhi_render_pass* render_pass)
+{
+    delete render_pass;
+}
+
+rhi_render_pipeline* vk_rhi::make_render_pipeline(const rhi_render_pipeline_desc& desc)
+{
+    return new vk_render_pipeline(desc, VkExtent2D{128, 128}, this);
+}
+
+void vk_rhi::destroy_render_pipeline(rhi_render_pipeline* render_pipeline)
+{
+    delete render_pipeline;
+}
+
+rhi_pipeline_parameter* vk_rhi::make_pipeline_parameter(const rhi_pipeline_parameter_desc& desc)
 {
     return nullptr;
 }
 
-rhi_pipeline_parameter* vk_rhi::make_pipeline_parameter(const pipeline_parameter_desc& desc)
+void vk_rhi::destroy_pipeline_parameter(rhi_pipeline_parameter* pipeline_parameter)
+{
+    delete pipeline_parameter;
+}
+
+rhi_framebuffer* vk_rhi::make_framebuffer(const rhi_framebuffer_desc& desc)
+{
+    return new vk_framebuffer(desc, this);
+}
+
+void vk_rhi::destroy_framebuffer(rhi_framebuffer* framebuffer)
+{
+    delete framebuffer;
+}
+
+rhi_resource* vk_rhi::make_vertex_buffer(const rhi_vertex_buffer_desc& desc)
 {
     return nullptr;
 }
 
-rhi_resource* vk_rhi::make_vertex_buffer(const vertex_buffer_desc& desc)
-{
-    return nullptr;
-}
-
-rhi_resource* vk_rhi::make_index_buffer(const index_buffer_desc& desc)
+rhi_resource* vk_rhi::make_index_buffer(const rhi_index_buffer_desc& desc)
 {
     return nullptr;
 }
@@ -130,7 +206,7 @@ rhi_resource* vk_rhi::make_texture(
     const std::uint8_t* data,
     std::uint32_t width,
     std::uint32_t height,
-    resource_format format)
+    rhi_resource_format format)
 {
     return nullptr;
 }
@@ -151,19 +227,39 @@ rhi_resource* vk_rhi::make_texture_cube(
     return nullptr;
 }
 
-rhi_resource* vk_rhi::make_shadow_map(const shadow_map_desc& desc)
+rhi_resource* vk_rhi::make_shadow_map(const rhi_shadow_map_desc& desc)
 {
     return nullptr;
 }
 
-rhi_resource* vk_rhi::make_render_target(const render_target_desc& desc)
+rhi_resource* vk_rhi::make_render_target(const rhi_render_target_desc& desc)
 {
     return nullptr;
 }
 
-rhi_resource* vk_rhi::make_depth_stencil_buffer(const depth_stencil_buffer_desc& desc)
+rhi_resource* vk_rhi::make_depth_stencil_buffer(const rhi_depth_stencil_buffer_desc& desc)
 {
     return nullptr;
+}
+
+rhi_fence* vk_rhi::make_fence()
+{
+    return new vk_fence(this);
+}
+
+void vk_rhi::destroy_fence(rhi_fence* fence)
+{
+    delete fence;
+}
+
+rhi_semaphore* vk_rhi::make_semaphore()
+{
+    return new vk_semaphore(this);
+}
+
+void vk_rhi::destroy_semaphore(rhi_semaphore* semaphore)
+{
+    delete semaphore;
 }
 
 bool vk_rhi::initialize_instance(
@@ -361,8 +457,8 @@ void vk_rhi::initialize_logic_device(const std::vector<const char*>& enabled_ext
 
     throw_if_failed(vkCreateDevice(m_physical_device, &device_info, nullptr, &m_device));
 
-    vkGetDeviceQueue(m_device, m_queue_family_indices.graphics, 0, &m_graphics_queue);
-    vkGetDeviceQueue(m_device, m_queue_family_indices.present, 0, &m_present_queue);
+    m_graphics_queue = std::make_unique<vk_command_queue>(m_queue_family_indices.graphics, this);
+    m_present_queue = std::make_unique<vk_command_queue>(m_queue_family_indices.present, this);
 }
 
 void vk_rhi::initialize_swapchain(const rhi_desc& desc)
@@ -479,6 +575,14 @@ void vk_rhi::initialize_swapchain(const rhi_desc& desc)
             swapchain_info.imageExtent,
             this);
     }
+
+    VkSemaphoreCreateInfo semaphore_info = {};
+    semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    throw_if_failed(vkCreateSemaphore(
+        m_device,
+        &semaphore_info,
+        nullptr,
+        &m_swapchain_image_available_semaphore));
 }
 
 bool vk_rhi::check_extension_support(
