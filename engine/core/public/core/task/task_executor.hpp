@@ -1,6 +1,6 @@
 #pragma once
 
-#include "task.hpp"
+#include "core/task/task.hpp"
 
 namespace violet
 {
@@ -11,12 +11,13 @@ public:
     task_executor();
     ~task_executor();
 
-    template <typename... Args>
-    std::future<void> execute(task_graph<Args...>& graph, const Args&... args)
+    template <typename G, typename... Args>
+    std::future<void> execute(G& graph, Args&&... args)
     {
-        std::future<void> future = graph.prepare(args...);
+        std::future<void> future = graph.reset();
         if (graph.get_task_count(TASK_OPTION_NONE) > 1)
         {
+            graph.set_argument(std::forward<Args>(args)...);
             execute_task(graph.get_root());
 
             std::size_t main_thread_task_count = graph.get_task_count(TASK_OPTION_MAIN_THREAD);
@@ -26,12 +27,14 @@ public:
         return future;
     }
 
-    template <typename... Args>
-    void execute_sync(task_graph<Args...>& graph, const Args&... args)
+    template <typename G, typename... Args>
+    void execute_sync(G& graph, Args&&... args)
     {
+        std::future<void> future = graph.reset();
         if (graph.get_task_count(TASK_OPTION_NONE) > 1)
         {
-            std::future<void> future = execute(graph, args...);
+            graph.set_argument(std::forward<Args>(args)...);
+            execute_task(graph.get_root());
             future.get();
         }
     }
@@ -42,7 +45,7 @@ public:
 private:
     class thread_pool;
 
-    void execute_task(task* task);
+    void execute_task(task_base* task);
     void execute_main_thread_task(std::size_t task_count);
 
     std::unique_ptr<task_queue> m_queue;

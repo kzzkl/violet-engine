@@ -1,4 +1,4 @@
-#include "test_node_common.hpp"
+#include "test_common.hpp"
 #include <chrono>
 #include <iostream>
 

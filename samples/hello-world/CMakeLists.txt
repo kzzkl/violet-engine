@@ -9,8 +9,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-    violet::window
-    violet::graphics)
+    violet::core)
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/config DESTINATION bin/engine)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/shader DESTINATION bin/resource)

@@ -1,26 +1,23 @@
 project(test-task)
 
 add_executable(${PROJECT_NAME}
-    ./source/test_lock_free_queue.cpp
     ./source/test_main.cpp
-    ./source/test_tagged_pointer.cpp
-    ./source/test_task_manager.cpp
     ./source/test_task.cpp)
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-        ./include)
+    ./include)
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        violet::task
-        Catch2::Catch2)
+    violet::core
+    Catch2::Catch2)
 
 install(TARGETS ${PROJECT_NAME}
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib)
+    RUNTIME DESTINATION bin/test
+    LIBRARY DESTINATION lib/test
+    ARCHIVE DESTINATION lib/test)
 
 if (MSVC)
-    set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/install/bin)
+    set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/install/bin/test)
 endif()
