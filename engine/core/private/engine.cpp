@@ -108,9 +108,9 @@ void engine::main_loop()
     {
         time.tick(timer::point::FRAME_START);
 
-        m_task_executor->execute_sync(m_frame_begin_task);
-        m_task_executor->execute_sync(m_tick_task, time.get_frame_delta());
-        m_task_executor->execute_sync(m_frame_end_task);
+        m_task_executor->execute_sync(m_frame_begin);
+        m_task_executor->execute_sync(m_tick, time.get_frame_delta());
+        m_task_executor->execute_sync(m_frame_end);
 
         time.tick(timer::point::FRAME_END);
 

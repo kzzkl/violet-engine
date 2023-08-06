@@ -349,33 +349,34 @@ public:
         task_root(task_graph* graph) : task_base(TASK_OPTION_NONE, graph) {}
 
         template <typename Functor>
-        auto& then(Functor f)
+        auto& then(Functor f, task_option option)
         {
             using next_type = typename next_task<Functor>::type;
 
             if constexpr (sizeof...(Args) != 0)
             {
-                auto& task = make_task<next_type>(f, m_result);
+                auto& task = make_task<next_type>(f, m_result, option);
                 add_successor(&task);
                 return task;
             }
             else
             {
-                auto& task = make_task<next_type>(f);
+                auto& task = make_task<next_type>(f, option);
                 add_successor(&task);
                 return task;
             }
         }
 
-        void set_argument(Args&&... args)
+        template <typename... Ts>
+        void set_argument(Ts&&... args)
         {
-            if constexpr (sizeof...(Args) != 0)
+            if constexpr (sizeof...(Ts) != 0)
             {
                 if (m_result.value)
-                    *m_result.value = std::make_tuple(std::forward<Args>(args)...);
+                    *m_result.value = std::make_tuple(std::forward<Ts>(args)...);
                 else
                     m_result.value =
-                        std::make_unique<result_type>(std::make_tuple(std::forward<Args>(args)...));
+                        std::make_unique<result_type>(std::make_tuple(std::forward<Ts>(args)...));
             }
         }
 
@@ -389,14 +390,18 @@ public:
     task_graph() : m_root(this) {}
 
     template <typename Functor>
-    auto& then(Functor functor)
+    auto& then(Functor functor, task_option option = TASK_OPTION_NONE)
     {
-        return m_root.then(functor);
+        return m_root.then(functor, option);
     }
 
     // task_all& all(const std::vector<task*>& dependents);
 
-    void set_argument(Args&&... args) { m_root.set_argument(std::forward<Args>(args)...); }
+    template <typename... Ts>
+    void set_argument(Ts&&... args)
+    {
+        m_root.set_argument(std::forward<Ts>(args)...);
+    }
 
     task_base* get_root() noexcept { return &m_root; }
 

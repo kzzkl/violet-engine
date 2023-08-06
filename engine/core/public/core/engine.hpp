@@ -77,9 +77,9 @@ public:
 
     static task_executor& get_task_executor() { return *instance().m_task_executor; }
 
-    static task_graph<>& on_frame_begin() { return instance().m_frame_begin_task; }
-    static task_graph<>& on_frame_end() { return instance().m_frame_end_task; }
-    static task_graph<float>& on_tick() { return instance().m_tick_task; }
+    static task_graph<>& on_frame_begin() { return instance().m_frame_begin; }
+    static task_graph<>& on_frame_end() { return instance().m_frame_end; }
+    static task_graph<float>& on_tick() { return instance().m_tick; }
 
 private:
     engine();
@@ -99,9 +99,9 @@ private:
 
     std::unique_ptr<task_executor> m_task_executor;
 
-    task_graph<> m_frame_begin_task;
-    task_graph<float> m_tick_task;
-    task_graph<> m_frame_end_task;
+    task_graph<> m_frame_begin;
+    task_graph<float> m_tick;
+    task_graph<> m_frame_end;
 
     std::atomic<bool> m_exit;
 };

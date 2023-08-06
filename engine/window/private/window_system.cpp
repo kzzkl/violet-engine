@@ -1,6 +1,5 @@
 #include "window/window_system.hpp"
 #include "core/engine.hpp"
-#include "window/window_task.hpp"
 #include "window_impl.hpp"
 #include "window_impl_win32.hpp"
 
@@ -24,12 +23,14 @@ bool window_system::initialize(const dictionary& config)
 
     m_title = config["title"];
 
-    auto& begin_frame_graph = engine::get_task_graph().begin_frame;
+    engine::on_frame_begin().then([this]() { tick(); }, TASK_OPTION_MAIN_THREAD);
+
+    /*auto& begin_frame_graph = engine::get_task_graph().begin_frame;
     task* tick_task = begin_frame_graph.add_task(
         TASK_NAME_WINDOW_TICK,
         [this]() { tick(); },
         TASK_OPTION_MAIN_THREAD);
-    begin_frame_graph.add_dependency(begin_frame_graph.get_root(), tick_task);
+    begin_frame_graph.add_dependency(begin_frame_graph.get_root(), tick_task);*/
 
     return true;
 }
@@ -58,7 +59,7 @@ void window_system::tick()
             m_mouse.m_y = message.mouse_move.y;
 
             task_executor.execute_sync(
-                m_task_graph.mouse_move,
+                m_on_mouse_move,
                 m_mouse.get_mode(),
                 message.mouse_move.x,
                 message.mouse_move.y);
@@ -71,7 +72,7 @@ void window_system::tick()
                 m_mouse.key_up(message.mouse_key.key);
 
             task_executor.execute_sync(
-                m_task_graph.mouse_key,
+                m_on_mouse_key,
                 message.mouse_key.key,
                 m_mouse.key(message.mouse_key.key));
             break;
@@ -87,13 +88,13 @@ void window_system::tick()
                 m_keyboard.key_up(message.keyboard_key.key);
 
             task_executor.execute_sync(
-                m_task_graph.keyboard_key,
+                m_on_keyboard_key,
                 message.keyboard_key.key,
                 m_keyboard.key(message.keyboard_key.key));
             break;
         }
         case window_message::message_type::KEYBOARD_CHAR: {
-            task_executor.execute_sync(m_task_graph.keyboard_char, message.keyboard_char);
+            task_executor.execute_sync(m_on_keyboard_char, message.keyboard_char);
             break;
         }
         case window_message::message_type::WINDOW_MOVE: {
@@ -101,13 +102,13 @@ void window_system::tick()
         }
         case window_message::message_type::WINDOW_RESIZE: {
             task_executor.execute_sync(
-                m_task_graph.window_resize,
+                m_on_window_resize,
                 message.window_resize.width,
                 message.window_resize.height);
             break;
         }
         case window_message::message_type::WINDOW_DESTROY: {
-            task_executor.execute_sync(m_task_graph.window_destroy);
+            task_executor.execute_sync(m_on_window_destroy);
             break;
         }
         default:
