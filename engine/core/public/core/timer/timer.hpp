@@ -29,33 +29,28 @@ public:
         return Clock::now();
     }
 
-    template <point P>
-    void tick()
+    void tick(point point)
     {
-        if constexpr (P == FRAME_START)
+        if (point == FRAME_START)
         {
             m_time_point[PRE_FRAME_START] = m_time_point[FRAME_START];
             m_time_point[PRE_FRAME_END] = m_time_point[FRAME_END];
         }
 
-        m_time_point[P] = now<std::chrono::steady_clock>();
+        m_time_point[point] = now<std::chrono::steady_clock>();
     }
 
-    template <point P>
-    inline steady_time_point time_point() const noexcept
+    inline steady_time_point time_point(point point) const noexcept { return m_time_point[point]; }
+
+    template <typename D = std::chrono::nanoseconds>
+    inline D get_delta(point start, point end) const noexcept
     {
-        return m_time_point[P];
+        return std::chrono::duration_cast<D>(m_time_point[end] - m_time_point[start]);
     }
 
-    template <point S, point E, typename D = std::chrono::nanoseconds>
-    inline D delta() const noexcept
+    inline float get_frame_delta() const noexcept
     {
-        return std::chrono::duration_cast<D>(m_time_point[E] - m_time_point[S]);
-    }
-
-    inline float frame_delta() const noexcept
-    {
-        return delta<PRE_FRAME_START, FRAME_START>().count() * 0.000000001f;
+        return get_delta(PRE_FRAME_START, FRAME_START).count() * 0.000000001f;
     }
 
 private:

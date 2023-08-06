@@ -19,8 +19,6 @@ public:
 
     virtual bool initialize(const dictionary& config)
     {
-        log::info(config["text"]);
-
         auto& window = engine::get_module<window_module>();
         window.get_task_graph().window_destroy.add_task(
             "exit",

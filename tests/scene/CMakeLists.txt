@@ -14,10 +14,10 @@ target_link_libraries(${PROJECT_NAME}
     Catch2::Catch2)
 
 install(TARGETS ${PROJECT_NAME}
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib)
+    RUNTIME DESTINATION bin/test
+    LIBRARY DESTINATION lib/test
+    ARCHIVE DESTINATION lib/test)
 
 if(MSVC)
-    set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/install/bin)
+    set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/install/bin/test)
 endif()

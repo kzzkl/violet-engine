@@ -1,8 +1,8 @@
 project(violet-core)
 
 set(CONTEXT_SOURCE
-    ./private/context/engine_module.cpp
-    ./private/context/engine.cpp)
+    ./private/engine_system.cpp
+    ./private/engine.cpp)
 
 set(NODE_SOURCE
     ./private/node/archetype_chunk.cpp

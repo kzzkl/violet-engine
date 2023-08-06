@@ -1,4 +1,4 @@
-#include "core/context/engine.hpp"
+#include "core/engine.hpp"
 #include "core/node/world.hpp"
 #include <filesystem>
 #include <fstream>
@@ -101,17 +101,18 @@ void engine::main_loop()
     frame_rater<60> frame_rater;
     timer& time = get_timer();
 
-    time.tick<timer::point::FRAME_START>();
-    time.tick<timer::point::FRAME_END>();
+    time.tick(timer::point::FRAME_START);
+    time.tick(timer::point::FRAME_END);
+
     while (!m_exit)
     {
-        time.tick<timer::point::FRAME_START>();
+        time.tick(timer::point::FRAME_START);
 
-        m_task_executor->execute_sync(m_task_graph.begin_frame);
-        m_task_executor->execute_sync(m_task_graph.tick, time.frame_delta());
-        m_task_executor->execute_sync(m_task_graph.end_frame);
+        m_task_executor->execute_sync(m_frame_begin);
+        m_task_executor->execute_sync(m_tick, time.get_frame_delta());
+        m_task_executor->execute_sync(m_frame_end);
 
-        time.tick<timer::point::FRAME_END>();
+        time.tick(timer::point::FRAME_END);
 
         frame_rater.sleep();
     }
@@ -120,19 +121,19 @@ void engine::main_loop()
     // shutdown
     for (auto iter = m_install_sequence.rbegin(); iter != m_install_sequence.rend(); ++iter)
     {
-        log::info("Module shutdown: {}.", m_modules[*iter]->get_name());
-        m_modules[*iter]->shutdown();
-        m_modules[*iter] = nullptr;
+        log::info("System shutdown: {}.", m_systems[*iter]->get_name());
+        m_systems[*iter]->shutdown();
+        m_systems[*iter] = nullptr;
     }
 }
 
-bool engine::has_module(std::string_view name)
+bool engine::has_system(std::string_view name)
 {
     auto& singleton = instance();
 
-    for (auto& module : singleton.m_modules)
+    for (auto& system : singleton.m_systems)
     {
-        if (module->get_name() == name)
+        if (system->get_name() == name)
             return true;
     }
 
@@ -141,12 +142,12 @@ bool engine::has_module(std::string_view name)
 
 void engine::uninstall(std::size_t index)
 {
-    assert(m_modules.size() > index);
+    assert(m_systems.size() > index);
 
-    if (m_modules[index] != nullptr)
+    if (m_systems[index] != nullptr)
     {
-        m_modules[index]->shutdown();
-        m_modules[index] = nullptr;
+        m_systems[index]->shutdown();
+        m_systems[index] = nullptr;
 
         for (auto iter = m_install_sequence.begin(); iter != m_install_sequence.end(); ++iter)
         {
@@ -156,11 +157,11 @@ void engine::uninstall(std::size_t index)
                 break;
             }
         }
-        log::info("Module uninstalled successfully: {}.", m_modules[index]->get_name());
+        log::info("System uninstalled successfully: {}.", m_systems[index]->get_name());
     }
     else
     {
-        log::warn("The module is not installed.");
+        log::warn("The system is not installed.");
     }
 }
 } // namespace violet

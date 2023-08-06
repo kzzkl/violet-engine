@@ -6,8 +6,9 @@ render_graph::render_graph(rhi_context* rhi) : m_rhi(rhi)
 {
 }
 
-void render_graph::add_resource(std::string_view name)
+render_resource* render_graph::add_resource(std::string_view name)
 {
+    return nullptr;
 }
 
 render_pass* render_graph::add_render_pass(std::string_view name)

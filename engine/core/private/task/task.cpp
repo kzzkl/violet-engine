@@ -2,52 +2,44 @@
 
 namespace violet
 {
-task::task(std::string_view name, std::size_t index, task_option option)
-    : m_uncompleted_dependency_count(0),
-      m_name(name),
-      m_index(index),
-      m_option(option)
-{
-}
-
-std::vector<task*> task::execute()
+std::vector<task_base*> task_base::execute()
 {
     execute_impl();
 
-    for (task* successor : m_successors)
+    std::vector<task_base*> result;
+    for (task_base* successor : m_successors)
+    {
         successor->m_uncompleted_dependency_count.fetch_sub(1);
 
-    m_uncompleted_dependency_count = static_cast<std::uint32_t>(m_dependents.size());
-
-    std::vector<task*> successors;
-    for (task* successor : m_successors)
-    {
         std::uint32_t expected = 0;
         if (successor->m_uncompleted_dependency_count.compare_exchange_strong(
                 expected,
                 static_cast<std::uint32_t>(successor->m_dependents.size())))
         {
-            successors.push_back(successor);
+            result.push_back(successor);
         }
     }
-    return successors;
+
+    m_graph->on_task_complete();
+
+    return result;
 }
 
-std::vector<task*> task::visit()
+std::vector<task_base*> task_base::visit()
 {
-    std::queue<task*> bfs;
+    std::queue<task_base*> bfs;
     bfs.push(this);
 
-    std::vector<task*> result;
+    std::vector<task_base*> result;
 
     while (!bfs.empty())
     {
-        task* temp = bfs.front();
+        task_base* temp = bfs.front();
         bfs.pop();
 
         result.push_back(temp);
 
-        for (task* successor : temp->m_successors)
+        for (task_base* successor : temp->m_successors)
         {
             --successor->m_uncompleted_dependency_count;
 
@@ -63,4 +55,18 @@ std::vector<task*> task::visit()
 
     return result;
 }
+
+/*task_all::task_all(const std::vector<task_base*>& dependents, task_graph* graph)
+    : task(TASK_OPTION_NONE, graph)
+{
+    for (task_base* dependent : dependents)
+    {
+        task::add_successor(dependent, this);
+    }
+}
+
+task_all& task_graph::all(const std::vector<task_base*>& dependents)
+{
+    return make_task<task_all>(dependents, this);
+}*/
 } // namespace violet

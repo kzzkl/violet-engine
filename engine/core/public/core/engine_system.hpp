@@ -5,11 +5,11 @@
 
 namespace violet
 {
-class engine_module
+class engine_system
 {
 public:
-    engine_module(std::string_view name) noexcept;
-    virtual ~engine_module() = default;
+    engine_system(std::string_view name) noexcept;
+    virtual ~engine_system() = default;
 
     virtual bool initialize(const dictionary& config) { return true; }
     virtual void shutdown() {}
