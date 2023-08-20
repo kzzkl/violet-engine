@@ -1,14 +1,14 @@
 #pragma once
 
-#include "core/context/engine_module.hpp"
+#include "core/engine_system.hpp"
 #include "math/math.hpp"
 
 namespace violet
 {
-class scene_module : public engine_module
+class scene_system : public engine_system
 {
 public:
-    scene_module();
+    scene_system();
 
     virtual bool initialize(const dictionary& config) override;
 

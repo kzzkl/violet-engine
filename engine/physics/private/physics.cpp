@@ -1,6 +1,6 @@
 #include "physics/physics.hpp"
 #include "core/relation.hpp"
-#include "core/timer.hpp"
+#include "core.hpp"
 #include "physics_plugin.hpp"
 #include "scene/scene.hpp"
 #include "scene/scene_event.hpp"

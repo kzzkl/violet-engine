@@ -1,7 +1,7 @@
 #pragma once
 
 #include "graphics/geometry.hpp"
-#include "graphics/material.hpp"
+#include "graphics/material/material.hpp"
 #include "graphics/node_parameter.hpp"
 #include "graphics/render_graph/render_pipeline.hpp"
 #include <memory>

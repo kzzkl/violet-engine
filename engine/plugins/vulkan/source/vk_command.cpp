@@ -51,6 +51,7 @@ void vk_command::begin(rhi_render_pass* render_pass, rhi_framebuffer* framebuffe
 void vk_command::end()
 {
     vkCmdEndRenderPass(m_command_buffer);
+    m_current_render_pass = nullptr;
 }
 
 void vk_command::next()
@@ -141,6 +142,12 @@ void vk_command::clear_depth_stencil(
 {
 }
 
+void vk_command::reset()
+{
+    m_current_render_pass = nullptr;
+    throw_if_failed(vkResetCommandBuffer(m_command_buffer, 0));
+}
+
 vk_command_queue::vk_command_queue(std::uint32_t queue_family_index, vk_rhi* rhi) : m_rhi(rhi)
 {
     VkCommandPoolCreateInfo command_pool_info = {};
@@ -204,16 +211,16 @@ void vk_command_queue::execute(vk_command* command, vk_fence* fence)
     VkCommandBuffer command_buffer = command->get_command_buffer();
     throw_if_failed(vkEndCommandBuffer(command_buffer));
 
-    // VkSemaphore signalSemaphores[] = {vk_context::render_finished_semaphore()};
-    // VkSemaphore waitSemaphores[] = {vk_context::image_available_semaphore()};
+    VkSemaphore signal_semaphores[] = {m_rhi->get_render_finished_semaphore()->get_semaphore()};
+    VkSemaphore wait_semaphores[] = {m_rhi->get_image_available_semaphore()->get_semaphore()};
     VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
     VkSubmitInfo submit_info = {};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    // submit_info.signalSemaphoreCount = 1;
-    // submit_info.pSignalSemaphores = signalSemaphores;
-    // submit_info.waitSemaphoreCount = 1;
-    // submit_info.pWaitSemaphores = waitSemaphores;
+    submit_info.signalSemaphoreCount = 1;
+    submit_info.pSignalSemaphores = signal_semaphores;
+    submit_info.waitSemaphoreCount = 1;
+    submit_info.pWaitSemaphores = wait_semaphores;
     submit_info.pWaitDstStageMask = wait_stages;
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &command_buffer;
@@ -223,5 +230,16 @@ void vk_command_queue::execute(vk_command* command, vk_fence* fence)
         1,
         &submit_info,
         fence == nullptr ? VK_NULL_HANDLE : fence->get_fence()));
+}
+
+void vk_command_queue::begin_frame()
+{
+    auto& commands = m_active_commands[m_rhi->get_frame_resource_index()];
+    for (vk_command* command : commands)
+    {
+        command->reset();
+        m_free_commands.push_back(command);
+    }
+    commands.clear();
 }
 } // namespace violet::vk

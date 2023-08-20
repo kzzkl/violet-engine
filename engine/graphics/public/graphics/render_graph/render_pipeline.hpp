@@ -23,11 +23,7 @@ public:
     using vertex_layout = std::vector<std::pair<std::string, rhi_resource_format>>;
 
 public:
-    render_pipeline(
-        std::string_view name,
-        rhi_context* rhi,
-        render_pass* render_pass,
-        std::size_t subpass);
+    render_pipeline(std::string_view name, rhi_context* rhi);
     virtual ~render_pipeline();
 
     void set_shader(std::string_view vertex, std::string_view pixel);
@@ -41,13 +37,11 @@ public:
     void set_depth_stencil(const rhi_depth_stencil_desc& depth_stencil) noexcept;
     void set_rasterizer(const rhi_rasterizer_desc& rasterizer) noexcept;
 
-    void set_samples(std::size_t samples) noexcept;
+    void set_samples(rhi_sample_count samples) noexcept;
     void set_primitive_topology(rhi_primitive_topology primitive_topology) noexcept;
 
-    render_pass* get_render_pass() const noexcept { return m_render_pass; }
-    std::size_t get_subpass() const noexcept { return m_subpass; }
-
-    virtual bool compile() override;
+    bool compile(rhi_render_pass* render_pass, std::size_t subpass_index);
+    void execute(rhi_render_command* command);
 
     rhi_render_pipeline* get_interface() const noexcept { return m_interface; }
 
@@ -61,12 +55,10 @@ private:
     rhi_depth_stencil_desc m_depth_stencil;
     rhi_rasterizer_desc m_rasterizer;
 
-    std::size_t m_samples;
+    rhi_sample_count m_samples;
     rhi_primitive_topology m_primitive_topology;
 
-    render_pass* m_render_pass;
-    std::size_t m_subpass;
-
+    rhi_render_pipeline_desc m_desc;
     rhi_render_pipeline* m_interface;
 };
 } // namespace violet

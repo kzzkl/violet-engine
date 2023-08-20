@@ -5,7 +5,6 @@
 
 namespace violet
 {
-
 class node
 {
 public:

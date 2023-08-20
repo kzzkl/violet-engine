@@ -5,7 +5,7 @@
 #include "core/engine_system.hpp"
 #include "core/node/world.hpp"
 #include "core/task/task_executor.hpp"
-#include "core/timer/timer.hpp"
+#include "core/timer.hpp"
 #include <cassert>
 #include <memory>
 #include <type_traits>
@@ -77,9 +77,9 @@ public:
 
     static task_executor& get_task_executor() { return *instance().m_task_executor; }
 
-    static task_graph<>& on_frame_begin() { return instance().m_frame_begin; }
-    static task_graph<>& on_frame_end() { return instance().m_frame_end; }
-    static task_graph<float>& on_tick() { return instance().m_tick; }
+    static task<>& on_frame_begin() { return instance().m_frame_begin.get_root(); }
+    static task<>& on_frame_end() { return instance().m_frame_end.get_root(); }
+    static task<float>& on_tick() { return instance().m_tick.get_root(); }
 
 private:
     engine();

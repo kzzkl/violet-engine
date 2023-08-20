@@ -49,8 +49,10 @@ vk_rhi::~vk_rhi()
 
     m_graphics_queue = nullptr;
     m_present_queue = nullptr;
-
     m_swapchain_images.clear();
+
+    m_image_available_semaphores.clear();
+    m_in_flight_fences.clear();
 
 #ifndef NDEBUG
     auto vkDestroyDebugUtilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)
@@ -63,7 +65,7 @@ vk_rhi::~vk_rhi()
 
 bool vk_rhi::initialize(const rhi_desc& desc)
 {
-    m_frame_resource_count = desc.frame_resource;
+    m_frame_resource_count = desc.frame_resource_count;
 
     std::vector<const char*> instance_desired_layers;
     std::vector<const char*> instance_desired_extensions = {VK_KHR_SURFACE_EXTENSION_NAME};
@@ -81,7 +83,6 @@ bool vk_rhi::initialize(const rhi_desc& desc)
         return false;
 
     std::vector<const char*> device_desired_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-
     if (!initialize_physical_device(device_desired_extensions))
         return false;
 
@@ -99,7 +100,8 @@ bool vk_rhi::initialize(const rhi_desc& desc)
 #endif
 
     initialize_logic_device(device_desired_extensions);
-    initialize_swapchain(desc);
+    initialize_swapchain(desc.width, desc.height);
+    initialize_sync();
 
     return true;
 }
@@ -120,36 +122,59 @@ void vk_rhi::begin_frame()
         m_device,
         m_swapchain,
         UINT64_MAX,
-        m_swapchain_image_available_semaphore,
+        m_image_available_semaphores[m_frame_resource_index]->get_semaphore(),
         VK_NULL_HANDLE,
         &m_swapchain_image_index);
+
+    VkFence fences[] = {m_in_flight_fences[m_frame_resource_index]->get_fence()};
+    vkWaitForFences(m_device, 1, fences, VK_TRUE, UINT64_MAX);
+    vkResetFences(m_device, 1, fences);
+
+    m_graphics_queue->begin_frame();
 }
 
 void vk_rhi::end_frame()
 {
+    ++m_frame_count;
+    m_frame_resource_index = m_frame_count % 3;
 }
 
 void vk_rhi::present()
 {
-    ++m_frame_count;
-    m_frame_resource_index = m_frame_count % 3;
+    VkSwapchainKHR swapchains[] = {m_swapchain};
+    std::uint32_t image_indices[] = {m_swapchain_image_index};
 
-    VkSwapchainKHR swap_chains[] = {m_swapchain};
+    VkSemaphore wait_semaphores[] = {get_render_finished_semaphore()->get_semaphore()};
 
     VkPresentInfoKHR present_info{};
     present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    // present_info.waitSemaphoreCount = 1;
-    // present_info.pWaitSemaphores = &m_render_finished;
+    present_info.waitSemaphoreCount = 1;
+    present_info.pWaitSemaphores = wait_semaphores;
     present_info.swapchainCount = 1;
-    present_info.pSwapchains = swap_chains;
-    present_info.pImageIndices = &m_swapchain_image_index;
+    present_info.pSwapchains = swapchains;
+    present_info.pImageIndices = image_indices;
 
     vkQueuePresentKHR(m_present_queue->get_queue(), &present_info);
 }
 
 rhi_resource* vk_rhi::get_back_buffer()
 {
-    return &m_swapchain_images[m_frame_count % m_swapchain_images.size()];
+    return &m_swapchain_images[m_swapchain_image_index];
+}
+
+vk_semaphore* vk_rhi::get_render_finished_semaphore()
+{
+    return m_render_finished_semaphores[m_frame_resource_index].get();
+}
+
+vk_semaphore* vk_rhi::get_image_available_semaphore()
+{
+    return m_image_available_semaphores[m_frame_resource_index].get();
+}
+
+rhi_fence* vk_rhi::get_fence()
+{
+    return m_in_flight_fences[m_frame_resource_index].get();
 }
 
 rhi_render_pass* vk_rhi::make_render_pass(const rhi_render_pass_desc& desc)
@@ -461,7 +486,7 @@ void vk_rhi::initialize_logic_device(const std::vector<const char*>& enabled_ext
     m_present_queue = std::make_unique<vk_command_queue>(m_queue_family_indices.present, this);
 }
 
-void vk_rhi::initialize_swapchain(const rhi_desc& desc)
+void vk_rhi::initialize_swapchain(std::uint32_t width, std::uint32_t height)
 {
     VkSurfaceCapabilitiesKHR capabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physical_device, m_surface, &capabilities);
@@ -519,12 +544,10 @@ void vk_rhi::initialize_swapchain(const rhi_desc& desc)
     }
     else
     {
-        swapchain_info.imageExtent.width = std::clamp(
-            desc.width,
-            capabilities.minImageExtent.width,
-            capabilities.maxImageExtent.width);
+        swapchain_info.imageExtent.width =
+            std::clamp(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
         swapchain_info.imageExtent.height = std::clamp(
-            desc.height,
+            height,
             capabilities.minImageExtent.height,
             capabilities.maxImageExtent.height);
     }
@@ -575,14 +598,16 @@ void vk_rhi::initialize_swapchain(const rhi_desc& desc)
             swapchain_info.imageExtent,
             this);
     }
+}
 
-    VkSemaphoreCreateInfo semaphore_info = {};
-    semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    throw_if_failed(vkCreateSemaphore(
-        m_device,
-        &semaphore_info,
-        nullptr,
-        &m_swapchain_image_available_semaphore));
+void vk_rhi::initialize_sync()
+{
+    for (std::size_t i = 0; i < m_frame_resource_count; ++i)
+    {
+        m_render_finished_semaphores.push_back(std::make_unique<vk_semaphore>(this));
+        m_image_available_semaphores.push_back(std::make_unique<vk_semaphore>(this));
+        m_in_flight_fences.push_back(std::make_unique<vk_fence>(this));
+    }
 }
 
 bool vk_rhi::check_extension_support(

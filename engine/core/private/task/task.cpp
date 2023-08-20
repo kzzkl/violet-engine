@@ -1,7 +1,16 @@
 #include "core/task/task.hpp"
+#include <queue>
 
 namespace violet
 {
+task_base::task_base(task_option option, task_graph_base* graph) : m_option(option), m_graph(graph)
+{
+}
+
+task_base::~task_base()
+{
+}
+
 std::vector<task_base*> task_base::execute()
 {
     execute_impl();
@@ -56,17 +65,48 @@ std::vector<task_base*> task_base::visit()
     return result;
 }
 
-/*task_all::task_all(const std::vector<task_base*>& dependents, task_graph* graph)
-    : task(TASK_OPTION_NONE, graph)
+void task_base::add_successor(task_base* successor)
 {
-    for (task_base* dependent : dependents)
-    {
-        task::add_successor(dependent, this);
-    }
+    m_successors.push_back(successor);
+    successor->m_dependents.push_back(this);
+    ++successor->m_uncompleted_dependency_count;
 }
 
-task_all& task_graph::all(const std::vector<task_base*>& dependents)
+std::future<void> task_graph_base::reset(task_base* root) noexcept
 {
-    return make_task<task_all>(dependents, this);
-}*/
+    if (m_dirty)
+    {
+        m_accessible_tasks = root->visit();
+        m_dirty = false;
+    }
+    m_incomplete_count = m_accessible_tasks.size();
+    m_promise = std::promise<void>();
+
+    return m_promise.get_future();
+}
+
+void task_graph_base::on_task_complete()
+{
+    m_incomplete_count.fetch_sub(1);
+
+    std::uint32_t expected = 0;
+    if (m_incomplete_count.compare_exchange_strong(
+            expected,
+            static_cast<std::uint32_t>(m_accessible_tasks.size())))
+        m_promise.set_value();
+}
+
+std::size_t task_graph_base::get_task_count(int option) const noexcept
+{
+    if (option == TASK_OPTION_NONE)
+        return m_accessible_tasks.size();
+
+    std::size_t result = 0;
+    for (task_base* task : m_accessible_tasks)
+    {
+        if ((task->get_option() & option) == option)
+            ++result;
+    }
+    return result;
+}
 } // namespace violet

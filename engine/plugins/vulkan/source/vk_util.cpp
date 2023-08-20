@@ -158,6 +158,27 @@ rhi_resource_format vk_util::map_format(VkFormat format)
     }
 }
 
+VkSampleCountFlagBits vk_util::map_sample_count(rhi_sample_count samples)
+{
+    switch (samples)
+    {
+    case RHI_SAMPLE_COUNT_1:
+        return VK_SAMPLE_COUNT_1_BIT;
+    case RHI_SAMPLE_COUNT_2:
+        return VK_SAMPLE_COUNT_2_BIT;
+    case RHI_SAMPLE_COUNT_4:
+        return VK_SAMPLE_COUNT_4_BIT;
+    case RHI_SAMPLE_COUNT_8:
+        return VK_SAMPLE_COUNT_8_BIT;
+    case RHI_SAMPLE_COUNT_16:
+        return VK_SAMPLE_COUNT_16_BIT;
+    case RHI_SAMPLE_COUNT_32:
+        return VK_SAMPLE_COUNT_32_BIT;
+    default:
+        return VK_SAMPLE_COUNT_1_BIT;
+    }
+}
+
 VkImageLayout vk_util::map_state(rhi_resource_state state)
 {
     switch (state)

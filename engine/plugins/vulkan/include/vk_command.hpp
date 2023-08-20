@@ -53,6 +53,8 @@ public:
         bool clear_stencil,
         std::uint8_t stencil) override;
 
+    void reset();
+
 private:
     VkCommandBuffer m_command_buffer;
 
@@ -69,6 +71,8 @@ public:
     vk_command* allocate_command();
 
     void execute(vk_command* command, vk_fence* fence);
+
+    void begin_frame();
 
     VkQueue get_queue() const noexcept { return m_queue; }
 

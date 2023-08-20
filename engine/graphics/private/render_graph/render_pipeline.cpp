@@ -3,20 +3,12 @@
 
 namespace violet
 {
-render_pipeline::render_pipeline(
-    std::string_view name,
-    rhi_context* rhi,
-    render_pass* render_pass,
-    std::size_t subpass)
+render_pipeline::render_pipeline(std::string_view name, rhi_context* rhi)
     : render_node(name, rhi),
       m_blend{.enable = false},
-      m_samples(1),
-      m_primitive_topology(RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST),
-      m_render_pass(render_pass),
-      m_subpass(subpass)
+      m_samples(RHI_SAMPLE_COUNT_1),
+      m_primitive_topology(RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
 {
-    m_blend.enable = false;
-    m_samples = 1;
 }
 
 render_pipeline::~render_pipeline()
@@ -62,7 +54,7 @@ void render_pipeline::set_rasterizer(const rhi_rasterizer_desc& rasterizer) noex
     m_rasterizer = rasterizer;
 }
 
-void render_pipeline::set_samples(std::size_t samples) noexcept
+void render_pipeline::set_samples(rhi_sample_count samples) noexcept
 {
     m_samples = samples;
 }
@@ -72,7 +64,7 @@ void render_pipeline::set_primitive_topology(rhi_primitive_topology primitive_to
     m_primitive_topology = primitive_topology;
 }
 
-bool render_pipeline::compile()
+bool render_pipeline::compile(rhi_render_pass* render_pass, std::size_t subpass_index)
 {
     std::vector<rhi_vertex_attribute> vertex_attributes;
     for (auto& attribute : m_vertex_layout)
@@ -90,11 +82,17 @@ bool render_pipeline::compile()
     desc.rasterizer = m_rasterizer;
     desc.samples = m_samples;
     desc.primitive_topology = m_primitive_topology;
-    desc.render_pass = m_render_pass->get_interface();
-    desc.render_subpass_index = m_subpass;
+    desc.render_pass = render_pass;
+    desc.render_subpass_index = subpass_index;
 
     m_interface = get_rhi()->make_render_pipeline(desc);
 
     return m_interface != nullptr;
+}
+
+void render_pipeline::execute(rhi_render_command* command)
+{
+    command->set_pipeline(m_interface);
+    command->draw(0, 3);
 }
 } // namespace violet

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/plugin/plugin_interface.hpp"
+#include "core/plugin_interface.hpp"
 #include <memory>
 #include <string_view>
 

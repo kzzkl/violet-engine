@@ -1,28 +1,28 @@
 #pragma once
 
-#include "core/context/engine_module.hpp"
+#include "core/engine_system.hpp"
 #include "graphics/render_graph/render_graph.hpp"
 #include "graphics/rhi.hpp"
 
 namespace violet
 {
 class rhi_plugin;
-class graphics_module : public engine_module
+class graphics_system : public engine_system
 {
 public:
-    graphics_module();
-    virtual ~graphics_module();
+    graphics_system();
+    virtual ~graphics_system();
 
     virtual bool initialize(const dictionary& config) override;
 
-    render_graph* get_render_graph() noexcept { return m_render_graph.get(); }
+    void render(render_graph* graph);
+
     rhi_context* get_rhi() const;
 
 private:
     void render();
 
-    std::unique_ptr<render_graph> m_render_graph;
-
+    std::vector<render_graph*> m_render_graphs;
     std::unique_ptr<rhi_plugin> m_plugin;
 };
 } // namespace violet

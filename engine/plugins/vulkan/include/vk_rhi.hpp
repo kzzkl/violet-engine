@@ -8,6 +8,8 @@
 namespace violet::vk
 {
 class vk_command_queue;
+class vk_semaphore;
+class vk_fence;
 class vk_rhi : public rhi_context
 {
 public:
@@ -27,6 +29,10 @@ public:
     virtual void resize(std::uint32_t width, std::uint32_t height) override {}
 
     virtual rhi_resource* get_back_buffer() override;
+
+    vk_semaphore* get_render_finished_semaphore();
+    vk_semaphore* get_image_available_semaphore();
+    virtual rhi_fence* get_fence() override;
 
     vk_rhi& operator=(const vk_rhi&) = delete;
 
@@ -92,7 +98,8 @@ private:
         const std::vector<const char*>& desired_extensions);
     bool initialize_physical_device(const std::vector<const char*>& desired_extensions);
     void initialize_logic_device(const std::vector<const char*>& enabled_extensions);
-    void initialize_swapchain(const rhi_desc& desc);
+    void initialize_swapchain(std::uint32_t width, std::uint32_t height);
+    void initialize_sync();
 
     bool check_extension_support(
         const std::vector<const char*>& desired_extensions,
@@ -107,7 +114,6 @@ private:
     VkSwapchainKHR m_swapchain;
     std::vector<vk_swapchain_image> m_swapchain_images;
     std::uint32_t m_swapchain_image_index;
-    VkSemaphore m_swapchain_image_available_semaphore;
 
     queue_family_indices m_queue_family_indices;
     std::unique_ptr<vk_command_queue> m_graphics_queue;
@@ -116,6 +122,10 @@ private:
     std::size_t m_frame_count;
     std::size_t m_frame_resource_count;
     std::size_t m_frame_resource_index;
+
+    std::vector<std::unique_ptr<vk_semaphore>> m_render_finished_semaphores;
+    std::vector<std::unique_ptr<vk_semaphore>> m_image_available_semaphores;
+    std::vector<std::unique_ptr<vk_fence>> m_in_flight_fences;
 
 #ifndef NDEUBG
     VkDebugUtilsMessengerEXT m_debug_messenger;

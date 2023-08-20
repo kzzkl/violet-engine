@@ -1,24 +1,23 @@
-#include "graphics/graphics_module.hpp"
+#include "graphics/graphics_system.hpp"
 #include "components/mesh.hpp"
 #include "components/transform.hpp"
-#include "core/context/engine.hpp"
-#include "graphics/graphics_task.hpp"
+#include "core/engine.hpp"
 #include "rhi_plugin.hpp"
-#include "window/window_module.hpp"
+#include "window/window_system.hpp"
 
 namespace violet
 {
-graphics_module::graphics_module() : engine_module("graphics")
+graphics_system::graphics_system() : engine_system("graphics")
 {
 }
 
-graphics_module::~graphics_module()
+graphics_system::~graphics_system()
 {
 }
 
-bool graphics_module::initialize(const dictionary& config)
+bool graphics_system::initialize(const dictionary& config)
 {
-    auto& window = engine::get_module<window_module>();
+    auto& window = engine::get_system<window_system>();
     rect<std::uint32_t> extent = window.get_extent();
 
     rhi_desc rhi_desc = {};
@@ -26,42 +25,43 @@ bool graphics_module::initialize(const dictionary& config)
     rhi_desc.height = extent.height;
     rhi_desc.window_handle = window.get_handle();
     rhi_desc.render_concurrency = config["render_concurrency"];
-    rhi_desc.frame_resource = config["frame_resource"];
+    rhi_desc.frame_resource_count = config["frame_resource_count"];
 
     m_plugin = std::make_unique<rhi_plugin>();
     m_plugin->load(config["plugin"]);
     m_plugin->get_rhi()->initialize(rhi_desc);
 
-    m_render_graph = std::make_unique<render_graph>(m_plugin->get_rhi());
-
-    auto& begin_frame_graph = engine::get_task_graph().begin_frame;
-    task* begin_frame_task = begin_frame_graph.add_task(
-        TASK_NAME_GRAPHICS_BEGIN_FRAME,
-        [this]() { get_rhi()->begin_frame(); });
-    begin_frame_graph.add_dependency(
-        begin_frame_graph.get_task(TASK_NAME_WINDOW_TICK),
-        begin_frame_task);
-
-    auto& end_frame_graph = engine::get_task_graph().end_frame;
-    task* render_task = end_frame_graph.add_task(
-        TASK_NAME_GRAPHICS_RENDER,
+    window.on_tick().then([this]() { get_rhi()->begin_frame(); });
+    engine::on_frame_end().then(
         [this]()
         {
             render();
             get_rhi()->present();
+            get_rhi()->end_frame();
         });
-    end_frame_graph.add_dependency(end_frame_graph.get_root(), render_task);
 
     return true;
 }
 
-rhi_context* graphics_module::get_rhi() const
+void graphics_system::render(render_graph* graph)
+{
+    m_render_graphs.push_back(graph);
+}
+
+rhi_context* graphics_system::get_rhi() const
 {
     return m_plugin->get_rhi();
 }
 
-void graphics_module::render()
+void graphics_system::render()
 {
+    for (render_graph* render_graph : m_render_graphs)
+    {
+        render_graph->execute();
+    }
+    m_render_graphs.clear();
+    return;
+
     view<mesh, transform> mesh_view(engine::get_world());
 
     struct render_unit

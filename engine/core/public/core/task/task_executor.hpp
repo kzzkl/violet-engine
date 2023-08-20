@@ -18,7 +18,7 @@ public:
         if (graph.get_task_count(TASK_OPTION_NONE) > 1)
         {
             graph.set_argument(std::forward<Args>(args)...);
-            execute_task(graph.get_root());
+            execute_task(&graph.get_root());
 
             std::size_t main_thread_task_count = graph.get_task_count(TASK_OPTION_MAIN_THREAD);
             execute_main_thread_task(main_thread_task_count);
@@ -34,7 +34,7 @@ public:
         if (graph.get_task_count(TASK_OPTION_NONE) > 1)
         {
             graph.set_argument(std::forward<Args>(args)...);
-            execute_task(graph.get_root());
+            execute_task(&graph.get_root());
 
             std::size_t main_thread_task_count = graph.get_task_count(TASK_OPTION_MAIN_THREAD);
             execute_main_thread_task(main_thread_task_count);

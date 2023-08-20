@@ -1,45 +1,47 @@
-#include "scene/scene_module.hpp"
+#include "scene/scene_system.hpp"
 #include "components/transform.hpp"
-#include "core/context/engine.hpp"
+#include "core/engine.hpp"
 #include "core/node/node.hpp"
 
 namespace violet
 {
-scene_module::scene_module() : engine_module("scene")
+scene_system::scene_system() : engine_system("scene")
 {
 }
 
-bool scene_module::initialize(const dictionary& config)
+bool scene_system::initialize(const dictionary& config)
 {
-    auto& engine_task = engine::get_task_graph();
-
-    engine_task.end_frame.add_task("scene end", []() {
-        view<transform> view(engine::get_world());
-        view.each([](transform& transform) { transform.reset_update_count(); });
-    });
+    engine::on_frame_end().then(
+        []()
+        {
+            view<transform> view(engine::get_world());
+            view.each([](transform& transform) { transform.reset_update_count(); });
+        });
 
     return true;
 }
 
-void scene_module::update_transform()
+void scene_system::update_transform()
 {
     std::queue<node*> bfs;
 
     // Update local matrix.
     view<node*, transform> view(engine::get_world());
-    view.each([&bfs](node* node, transform& transform) {
-        if (node->get_parent() == nullptr)
-            bfs.push(node);
+    view.each(
+        [&bfs](node* node, transform& transform)
+        {
+            if (node->get_parent() == nullptr)
+                bfs.push(node);
 
-        if (transform.get_dirty_flag() & transform::DIRTY_FLAG_LOCAL == 0)
-            return;
+            if (transform.get_dirty_flag() & transform::DIRTY_FLAG_LOCAL == 0)
+                return;
 
-        float4x4_simd local_matrix = matrix_simd::affine_transform(
-            simd::load(transform.get_scale()),
-            simd::load(transform.get_rotation()),
-            simd::load(transform.get_position()));
-        transform.update_local(local_matrix);
-    });
+            float4x4_simd local_matrix = matrix_simd::affine_transform(
+                simd::load(transform.get_scale()),
+                simd::load(transform.get_rotation()),
+                simd::load(transform.get_position()));
+            transform.update_local(local_matrix);
+        });
 
     // Update world matrix.
     while (!bfs.empty())

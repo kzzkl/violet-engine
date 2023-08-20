@@ -1,12 +1,12 @@
 #include "graphics/pipeline_parameter.hpp"
-#include "core/context/engine.hpp"
-#include "graphics/graphics_module.hpp"
+#include "core/engine.hpp"
+#include "graphics/graphics_system.hpp"
 
 namespace violet
 {
 pipeline_parameter::pipeline_parameter(const rhi_pipeline_parameter_desc& desc)
 {
-    auto& graphics = engine::get_module<graphics_module>();
+    auto& graphics = engine::get_system<graphics_system>();
     m_interface.reset(graphics.get_rhi()->make_pipeline_parameter(desc));
 }
 

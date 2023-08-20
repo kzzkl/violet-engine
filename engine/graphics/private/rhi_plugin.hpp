@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/plugin/plugin.hpp"
+#include "core/plugin.hpp"
 #include "graphics/rhi.hpp"
 
 namespace violet

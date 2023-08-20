@@ -40,24 +40,7 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_rhi* rhi)
     {
         VkAttachmentDescription attachment = {};
         attachment.format = vk_util::map_format(desc.attachments[i].format);
-        switch (desc.attachments[i].samples)
-        {
-        case 1:
-            attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-            break;
-        case 2:
-            attachment.samples = VK_SAMPLE_COUNT_2_BIT;
-            break;
-        case 4:
-            attachment.samples = VK_SAMPLE_COUNT_4_BIT;
-            break;
-        case 8:
-            attachment.samples = VK_SAMPLE_COUNT_8_BIT;
-            break;
-        default:
-            throw std::runtime_error("Invalid sample count.");
-        }
-
+        attachment.samples = vk_util::map_sample_count(desc.attachments[i].samples);
         attachment.loadOp = map_load_op(desc.attachments[i].load_op);
         attachment.storeOp = map_store_op(desc.attachments[i].store_op);
         attachment.stencilLoadOp = map_load_op(desc.attachments[i].stencil_load_op);

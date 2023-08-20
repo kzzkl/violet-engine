@@ -8,7 +8,8 @@ namespace violet
 window_system::window_system()
     : engine_system("window"),
       m_impl(std::make_unique<window_impl_win32>()),
-      m_mouse(m_impl.get())
+      m_mouse(m_impl.get()),
+      m_on_tick(nullptr)
 {
 }
 
@@ -23,14 +24,7 @@ bool window_system::initialize(const dictionary& config)
 
     m_title = config["title"];
 
-    engine::on_frame_begin().then([this]() { tick(); }, TASK_OPTION_MAIN_THREAD);
-
-    /*auto& begin_frame_graph = engine::get_task_graph().begin_frame;
-    task* tick_task = begin_frame_graph.add_task(
-        TASK_NAME_WINDOW_TICK,
-        [this]() { tick(); },
-        TASK_OPTION_MAIN_THREAD);
-    begin_frame_graph.add_dependency(begin_frame_graph.get_root(), tick_task);*/
+    m_on_tick = &engine::on_frame_begin().then([this]() { tick(); }, TASK_OPTION_MAIN_THREAD);
 
     return true;
 }
@@ -102,13 +96,13 @@ void window_system::tick()
         }
         case window_message::message_type::WINDOW_RESIZE: {
             task_executor.execute_sync(
-                m_on_window_resize,
+                m_on_resize,
                 message.window_resize.width,
                 message.window_resize.height);
             break;
         }
         case window_message::message_type::WINDOW_DESTROY: {
-            task_executor.execute_sync(m_on_window_destroy);
+            task_executor.execute_sync(m_on_destroy);
             break;
         }
         default:

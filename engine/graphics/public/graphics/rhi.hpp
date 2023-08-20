@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/plugin/plugin_interface.hpp"
+#include "core/plugin_interface.hpp"
 #include "math/math.hpp"
 #include <cstddef>
 #include <cstdint>
@@ -62,6 +62,16 @@ struct rhi_resource_extent
     std::uint32_t height;
 };
 
+enum rhi_sample_count
+{
+    RHI_SAMPLE_COUNT_1,
+    RHI_SAMPLE_COUNT_2,
+    RHI_SAMPLE_COUNT_4,
+    RHI_SAMPLE_COUNT_8,
+    RHI_SAMPLE_COUNT_16,
+    RHI_SAMPLE_COUNT_32,
+};
+
 class rhi_resource
 {
 public:
@@ -101,7 +111,7 @@ struct rhi_attachment_desc
     rhi_resource_state initial_state;
     rhi_resource_state final_state;
 
-    std::size_t samples;
+    rhi_sample_count samples;
 };
 
 enum rhi_attachment_reference_type
@@ -280,7 +290,7 @@ struct rhi_render_pipeline_desc
     rhi_depth_stencil_desc depth_stencil;
     rhi_rasterizer_desc rasterizer;
 
-    std::size_t samples;
+    rhi_sample_count samples;
 
     rhi_primitive_topology primitive_topology;
 
@@ -401,14 +411,14 @@ struct rhi_shadow_map_desc
 {
     std::uint32_t width;
     std::uint32_t height;
-    std::size_t samples;
+    rhi_sample_count samples;
 };
 
 struct rhi_render_target_desc
 {
     std::uint32_t width;
     std::uint32_t height;
-    std::size_t samples;
+    rhi_sample_count samples;
     rhi_resource_format format;
 };
 
@@ -416,7 +426,7 @@ struct rhi_depth_stencil_buffer_desc
 {
     std::uint32_t width;
     std::uint32_t height;
-    std::size_t samples;
+    rhi_sample_count samples;
     rhi_resource_format format;
 };
 
@@ -427,7 +437,7 @@ struct rhi_desc
 
     void* window_handle;
 
-    std::size_t frame_resource;
+    std::size_t frame_resource_count;
     std::size_t render_concurrency;
 };
 
@@ -448,6 +458,7 @@ public:
     virtual void resize(std::uint32_t width, std::uint32_t height) = 0;
 
     virtual rhi_resource* get_back_buffer() = 0;
+    virtual rhi_fence* get_fence() = 0;
 
 public:
     virtual rhi_render_pass* make_render_pass(const rhi_render_pass_desc& desc) = 0;
