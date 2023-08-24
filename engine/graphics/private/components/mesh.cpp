@@ -4,7 +4,6 @@ namespace violet
 {
 mesh::mesh()
 {
-    m_node_parameter = std::make_unique<node_parameter>();
 }
 
 void mesh::set_geometry(geometry* geometry)
@@ -24,12 +23,12 @@ void mesh::set_submesh_count(std::size_t count)
 
 void mesh::set_material(std::size_t submesh_index, material* material)
 {
-    auto& pipelines = material->get_pipelines();
+    /*auto& pipelines = material->get_pipelines();
 
     for (auto [pipeline, parameter] : pipelines)
     {
         auto& vertex_layout = pipeline->get_vertex_layout();
-    }
+    }*/
 
     /*
     auto& vertex_layout = material.pipeline->get_vertex_layout();

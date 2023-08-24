@@ -11,6 +11,8 @@ render_graph::render_graph(rhi_context* rhi) : m_rhi(rhi)
 
 render_graph::~render_graph()
 {
+    for (rhi_semaphore* sempahore : m_render_finished_semaphores)
+        m_rhi->destroy_semaphore(sempahore);
 }
 
 render_resource* render_graph::add_resource(std::string_view name)
@@ -33,11 +35,9 @@ bool render_graph::compile()
             return false;
     }
 
-    for (auto& pass : m_render_passes)
-    {
-        if (!pass->compile())
-            return false;
-    }
+    m_render_finished_semaphores.resize(m_rhi->get_frame_resource_count());
+    for (std::size_t i = 0; i < m_render_finished_semaphores.size(); ++i)
+        m_render_finished_semaphores[i] = m_rhi->make_semaphore();
 
     return true;
 }
@@ -48,21 +48,28 @@ void render_graph::execute()
 
     rhi_render_command* command = m_rhi->allocate_command();
 
-    rhi_scissor_rect rect = {
-        .min_x = 0,
-        .min_y = 0,
-        .max_x = m_rhi->get_back_buffer()->get_extent().width,
-        .max_y = m_rhi->get_back_buffer()->get_extent().height};
-    command->set_scissor(&rect, 1);
-
     for (auto& render_pass : m_render_passes)
         render_pass->execute(command);
 
-    m_rhi->execute(command, m_rhi->get_fence());
+    rhi_semaphore* signal_semaphore[] = {get_render_finished_semaphore()};
+    rhi_semaphore* wait_semphores[] = {m_rhi->get_image_available_semaphore()};
+    m_rhi->execute(
+        &command,
+        1,
+        signal_semaphore,
+        1,
+        wait_semphores,
+        1,
+        m_rhi->get_in_flight_fence());
 }
 
-render_resource* render_graph::get_back_buffer()
+render_resource* render_graph::get_back_buffer() const
 {
     return m_resources[0].get();
+}
+
+rhi_semaphore* render_graph::get_render_finished_semaphore() const
+{
+    return m_render_finished_semaphores[m_rhi->get_frame_resource_index()];
 }
 } // namespace violet

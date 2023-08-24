@@ -32,13 +32,9 @@ bool graphics_system::initialize(const dictionary& config)
     m_plugin->get_rhi()->initialize(rhi_desc);
 
     window.on_tick().then([this]() { get_rhi()->begin_frame(); });
-    engine::on_frame_end().then(
-        [this]()
-        {
-            render();
-            get_rhi()->present();
-            get_rhi()->end_frame();
-        });
+    window.on_resize().then([this](std::uint32_t width, std::uint32_t height)
+                            { get_rhi()->resize(width, height); });
+    engine::on_frame_end().then([this]() { render(); });
 
     return true;
 }
@@ -55,14 +51,21 @@ rhi_context* graphics_system::get_rhi() const
 
 void graphics_system::render()
 {
+    std::vector<rhi_semaphore*> render_finished_semaphores;
+    render_finished_semaphores.reserve(m_render_graphs.size());
     for (render_graph* render_graph : m_render_graphs)
     {
         render_graph->execute();
+        render_finished_semaphores.push_back(render_graph->get_render_finished_semaphore());
     }
     m_render_graphs.clear();
+
+    get_rhi()->present(render_finished_semaphores.data(), render_finished_semaphores.size());
+    get_rhi()->end_frame();
+
     return;
 
-    view<mesh, transform> mesh_view(engine::get_world());
+    /*view<mesh, transform> mesh_view(engine::get_world());
 
     struct render_unit
     {
@@ -115,6 +118,6 @@ void graphics_system::render()
                 return a.material_parameter < b.material_parameter;
 
             return a.vertex_attribute_hash < b.vertex_attribute_hash;
-        });
+        });*/
 }
 } // namespace violet

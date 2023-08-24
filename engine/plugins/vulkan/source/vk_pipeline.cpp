@@ -54,7 +54,18 @@ std::uint32_t get_vertex_attribute_stride(rhi_resource_format format) noexcept
 }
 } // namespace
 
-vk_pipeline_parameter::vk_pipeline_parameter(const rhi_pipeline_parameter_desc& desc)
+vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
+    const rhi_pipeline_parameter_layout_desc& desc,
+    vk_rhi* rhi)
+    : m_rhi(rhi)
+{
+}
+
+vk_pipeline_parameter_layout::~vk_pipeline_parameter_layout()
+{
+}
+
+vk_pipeline_parameter::vk_pipeline_parameter()
 {
 }
 

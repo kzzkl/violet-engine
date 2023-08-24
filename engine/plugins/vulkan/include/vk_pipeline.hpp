@@ -6,10 +6,21 @@
 
 namespace violet::vk
 {
+class vk_rhi;
+class vk_pipeline_parameter_layout : public rhi_pipeline_parameter_layout
+{
+public:
+    vk_pipeline_parameter_layout(const rhi_pipeline_parameter_layout_desc& desc, vk_rhi* rhi);
+    virtual ~vk_pipeline_parameter_layout();
+
+private:
+    vk_rhi* m_rhi;
+};
+
 class vk_pipeline_parameter : public rhi_pipeline_parameter
 {
 public:
-    vk_pipeline_parameter(const rhi_pipeline_parameter_desc& desc);
+    vk_pipeline_parameter();
     virtual ~vk_pipeline_parameter();
 
     virtual void set(std::size_t index, const void* data, size_t size) override;
@@ -18,7 +29,6 @@ public:
 private:
 };
 
-class vk_rhi;
 class vk_render_pipeline : public rhi_render_pipeline
 {
 public:

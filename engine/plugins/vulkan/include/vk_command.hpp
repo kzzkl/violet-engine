@@ -24,13 +24,7 @@ public:
     virtual void set_pipeline(rhi_render_pipeline* render_pipeline) override;
     virtual void set_parameter(std::size_t index, rhi_pipeline_parameter* parameter) override;
 
-    virtual void set_viewport(
-        float x,
-        float y,
-        float width,
-        float height,
-        float min_depth,
-        float max_depth) override;
+    virtual void set_viewport(const rhi_viewport& viewport) override;
     virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) override;
 
     virtual void set_input_assembly_state(
@@ -70,7 +64,15 @@ public:
 
     vk_command* allocate_command();
 
-    void execute(vk_command* command, vk_fence* fence);
+    void execute(
+        rhi_render_command* const* commands,
+        std::size_t command_count,
+        rhi_semaphore* const* signal_semaphores,
+        std::size_t signal_semaphore_count,
+        rhi_semaphore* const* wait_semaphores,
+        std::size_t wait_semaphore_count,
+        rhi_fence* fence);
+    void execute_sync(rhi_render_command* command);
 
     void begin_frame();
 
@@ -84,6 +86,7 @@ private:
     std::vector<vk_command*> m_free_commands;
     std::vector<std::unique_ptr<vk_command>> m_commands;
 
+    std::unique_ptr<vk_fence> m_fence;
     vk_rhi* m_rhi;
 };
 } // namespace violet::vk

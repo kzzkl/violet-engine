@@ -9,6 +9,8 @@ namespace violet
 class geometry
 {
 public:
+    geometry(rhi_context* rhi);
+
     template <typename T>
     void set_indices(const std::vector<T>& indices)
     {

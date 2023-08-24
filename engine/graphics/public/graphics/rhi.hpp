@@ -77,13 +77,15 @@ class rhi_resource
 public:
     virtual ~rhi_resource() = default;
 
+    // For texture.
     virtual rhi_resource_format get_format() const noexcept = 0;
     virtual rhi_resource_extent get_extent() const noexcept = 0;
 
+    // For buffer.
     virtual void* get_buffer() { return nullptr; }
     virtual std::size_t get_buffer_size() const noexcept = 0;
 
-    virtual void upload(const void* data, std::size_t size, std::size_t offset = 0) {}
+    virtual std::size_t get_hash() const noexcept = 0;
 };
 
 enum rhi_attachment_load_op
@@ -162,16 +164,22 @@ enum rhi_pipeline_parameter_type
     RHI_PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS
 };
 
-struct rhi_pipeline_parameter_pair
+struct rhi_pipeline_parameter_layout_pair
 {
     rhi_pipeline_parameter_type type;
     std::size_t size = 0;
 };
 
-struct rhi_pipeline_parameter_desc
+struct rhi_pipeline_parameter_layout_desc
 {
-    rhi_pipeline_parameter_pair parameters[16];
+    rhi_pipeline_parameter_layout_pair parameters[16];
     std::size_t parameter_count = 0;
+};
+
+class rhi_pipeline_parameter_layout
+{
+public:
+    virtual ~rhi_pipeline_parameter_layout() = default;
 };
 
 class rhi_pipeline_parameter
@@ -283,7 +291,7 @@ struct rhi_render_pipeline_desc
     rhi_vertex_attribute* vertex_attributes;
     std::size_t vertex_attribute_count = 0;
 
-    rhi_pipeline_parameter_desc* parameters;
+    rhi_pipeline_parameter_layout** parameters;
     std::size_t parameter_count = 0;
 
     rhi_blend_desc blend;
@@ -317,6 +325,16 @@ public:
     virtual ~rhi_framebuffer() = default;
 };
 
+struct rhi_viewport
+{
+    float x;
+    float y;
+    float width;
+    float height;
+    float min_depth;
+    float max_depth;
+};
+
 struct rhi_scissor_rect
 {
     std::uint32_t min_x;
@@ -337,13 +355,7 @@ public:
     virtual void set_pipeline(rhi_render_pipeline* render_pipeline) = 0;
     virtual void set_parameter(std::size_t index, rhi_pipeline_parameter* parameter) = 0;
 
-    virtual void set_viewport(
-        float x,
-        float y,
-        float width,
-        float height,
-        float min_depth,
-        float max_depth) = 0;
+    virtual void set_viewport(const rhi_viewport& viewport) = 0;
     virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) = 0;
 
     virtual void set_input_assembly_state(
@@ -390,9 +402,9 @@ enum rhi_vertex_buffer_flags
 
 struct rhi_vertex_buffer_desc
 {
-    const void* vertices;
-    std::size_t vertex_size;
-    std::size_t vertex_count = 0;
+    const void* data;
+    std::size_t size;
+
     rhi_vertex_buffer_flags flags;
     bool dynamic;
     bool frame_resource;
@@ -449,16 +461,29 @@ public:
     virtual bool initialize(const rhi_desc& desc) = 0;
 
     virtual rhi_render_command* allocate_command() = 0;
-    virtual void execute(rhi_render_command* command, rhi_fence* fence) = 0;
+    virtual void execute(
+        rhi_render_command* const* commands,
+        std::size_t command_count,
+        rhi_semaphore* const* signal_semaphores,
+        std::size_t signal_semaphore_count,
+        rhi_semaphore* const* wait_semaphores,
+        std::size_t wait_semaphore_count,
+        rhi_fence* fence) = 0;
 
     virtual void begin_frame() = 0;
     virtual void end_frame() = 0;
-    virtual void present() = 0;
+    virtual void present(
+        rhi_semaphore* const* wait_semaphores,
+        std::size_t wait_semaphore_count) = 0;
 
     virtual void resize(std::uint32_t width, std::uint32_t height) = 0;
 
     virtual rhi_resource* get_back_buffer() = 0;
-    virtual rhi_fence* get_fence() = 0;
+    virtual rhi_fence* get_in_flight_fence() = 0;
+    virtual rhi_semaphore* get_image_available_semaphore() = 0;
+
+    virtual std::size_t get_frame_resource_count() const noexcept = 0;
+    virtual std::size_t get_frame_resource_index() const noexcept = 0;
 
 public:
     virtual rhi_render_pass* make_render_pass(const rhi_render_pass_desc& desc) = 0;
@@ -467,9 +492,10 @@ public:
     virtual rhi_render_pipeline* make_render_pipeline(const rhi_render_pipeline_desc& desc) = 0;
     virtual void destroy_render_pipeline(rhi_render_pipeline* render_pipeline) = 0;
 
-    virtual rhi_pipeline_parameter* make_pipeline_parameter(
-        const rhi_pipeline_parameter_desc& desc) = 0;
-    virtual void destroy_pipeline_parameter(rhi_pipeline_parameter* pipeline_parameter) = 0;
+    virtual rhi_pipeline_parameter_layout* make_pipeline_parameter_layout(
+        const rhi_pipeline_parameter_layout_desc& desc) = 0;
+    virtual void destroy_pipeline_parameter_layout(
+        rhi_pipeline_parameter_layout* pipeline_parameter_layout) = 0;
 
     virtual rhi_framebuffer* make_framebuffer(const rhi_framebuffer_desc& desc) = 0;
     virtual void destroy_framebuffer(rhi_framebuffer* framebuffer) = 0;

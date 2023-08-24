@@ -10,6 +10,8 @@ namespace violet::vk
 class vk_command_queue;
 class vk_semaphore;
 class vk_fence;
+class vk_destruction_list;
+
 class vk_rhi : public rhi_context
 {
 public:
@@ -20,19 +22,28 @@ public:
     virtual bool initialize(const rhi_desc& desc) override;
 
     virtual rhi_render_command* allocate_command() override;
-    virtual void execute(rhi_render_command* command, rhi_fence* fence) override;
+    virtual void execute(
+        rhi_render_command* const* commands,
+        std::size_t command_count,
+        rhi_semaphore* const* signal_semaphores,
+        std::size_t signal_semaphore_count,
+        rhi_semaphore* const* wait_semaphores,
+        std::size_t wait_semaphore_count,
+        rhi_fence* fence) override;
 
     virtual void begin_frame() override;
     virtual void end_frame() override;
-    virtual void present() override;
+    virtual void present(rhi_semaphore* const* wait_semaphores, std::size_t wait_semaphore_count)
+        override;
 
-    virtual void resize(std::uint32_t width, std::uint32_t height) override {}
+    virtual void resize(std::uint32_t width, std::uint32_t height) override;
 
     virtual rhi_resource* get_back_buffer() override;
 
-    vk_semaphore* get_render_finished_semaphore();
-    vk_semaphore* get_image_available_semaphore();
-    virtual rhi_fence* get_fence() override;
+    virtual rhi_fence* get_in_flight_fence() override;
+    virtual rhi_semaphore* get_image_available_semaphore() override;
+
+    vk_command_queue* get_graphics_queue() const noexcept { return m_graphics_queue.get(); }
 
     vk_rhi& operator=(const vk_rhi&) = delete;
 
@@ -44,9 +55,10 @@ public:
         const rhi_render_pipeline_desc& desc) override;
     virtual void destroy_render_pipeline(rhi_render_pipeline* render_pipeline) override;
 
-    virtual rhi_pipeline_parameter* make_pipeline_parameter(
-        const rhi_pipeline_parameter_desc& desc) override;
-    virtual void destroy_pipeline_parameter(rhi_pipeline_parameter* pipeline_parameter) override;
+    virtual rhi_pipeline_parameter_layout* make_pipeline_parameter_layout(
+        const rhi_pipeline_parameter_layout_desc& desc) override;
+    virtual void destroy_pipeline_parameter_layout(
+        rhi_pipeline_parameter_layout* pipeline_parameter_layout) override;
 
     virtual rhi_framebuffer* make_framebuffer(const rhi_framebuffer_desc& desc) override;
     virtual void destroy_framebuffer(rhi_framebuffer* framebuffer) override;
@@ -80,11 +92,19 @@ public:
     virtual rhi_semaphore* make_semaphore() override;
     virtual void destroy_semaphore(rhi_semaphore* semaphore) override;
 
+    virtual std::size_t get_frame_resource_count() const noexcept override
+    {
+        return m_frame_resource_count;
+    }
+
+    virtual std::size_t get_frame_resource_index() const noexcept override
+    {
+        return m_frame_resource_index;
+    }
+
 public:
     VkDevice get_device() const noexcept { return m_device; }
-
-    std::size_t get_frame_resource_count() const noexcept { return m_frame_resource_count; }
-    std::size_t get_frame_resource_index() const noexcept { return m_frame_resource_index; }
+    VkPhysicalDevice get_physical_device() const noexcept { return m_physical_device; }
 
 private:
     struct queue_family_indices
@@ -112,7 +132,7 @@ private:
     VkSurfaceKHR m_surface;
 
     VkSwapchainKHR m_swapchain;
-    std::vector<vk_swapchain_image> m_swapchain_images;
+    std::vector<std::unique_ptr<vk_swapchain_image>> m_swapchain_images;
     std::uint32_t m_swapchain_image_index;
 
     queue_family_indices m_queue_family_indices;
@@ -123,9 +143,10 @@ private:
     std::size_t m_frame_resource_count;
     std::size_t m_frame_resource_index;
 
-    std::vector<std::unique_ptr<vk_semaphore>> m_render_finished_semaphores;
     std::vector<std::unique_ptr<vk_semaphore>> m_image_available_semaphores;
     std::vector<std::unique_ptr<vk_fence>> m_in_flight_fences;
+
+    std::unique_ptr<vk_destruction_list> m_destruction_list;
 
 #ifndef NDEUBG
     VkDebugUtilsMessengerEXT m_debug_messenger;

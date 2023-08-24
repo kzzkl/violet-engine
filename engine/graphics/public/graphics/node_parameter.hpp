@@ -4,7 +4,7 @@
 
 namespace violet
 {
-class node_parameter : public pipeline_parameter
+/*class node_parameter : public pipeline_parameter
 {
 public:
     static constexpr rhi_pipeline_parameter_desc layout = {
@@ -15,5 +15,5 @@ public:
     node_parameter();
 
     void set_world_matrix(const float4x4& matrix);
-};
+};*/
 } // namespace violet

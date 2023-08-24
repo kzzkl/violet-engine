@@ -2,6 +2,10 @@
 
 namespace violet
 {
+geometry::geometry(rhi_context* rhi)
+{
+}
+
 rhi_resource* geometry::get_attribute(std::string_view name)
 {
     auto iter = m_vertex_buffers.find(name.data());

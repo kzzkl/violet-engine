@@ -72,22 +72,16 @@ void vk_command::set_parameter(std::size_t index, rhi_pipeline_parameter* parame
 {
 }
 
-void vk_command::set_viewport(
-    float x,
-    float y,
-    float width,
-    float height,
-    float min_depth,
-    float max_depth)
+void vk_command::set_viewport(const rhi_viewport& viewport)
 {
-    VkViewport viewport = {};
-    viewport.x = x;
-    viewport.y = y;
-    viewport.width = width;
-    viewport.height = height;
-    viewport.minDepth = min_depth;
-    viewport.maxDepth = max_depth;
-    vkCmdSetViewport(m_command_buffer, 0, 1, &viewport);
+    VkViewport vp = {
+        .x = viewport.x,
+        .y = viewport.y,
+        .width = viewport.width,
+        .height = viewport.height,
+        .minDepth = viewport.min_depth,
+        .maxDepth = viewport.max_depth};
+    vkCmdSetViewport(m_command_buffer, 0, 1, &vp);
 }
 
 void vk_command::set_scissor(const rhi_scissor_rect* rects, std::size_t size)
@@ -115,6 +109,20 @@ void vk_command::set_input_assembly_state(
     rhi_resource* index_buffer,
     rhi_primitive_topology primitive_topology)
 {
+    std::vector<VkBuffer> buffers(vertex_buffer_count);
+    std::vector<VkDeviceSize> offsets(vertex_buffer_count);
+    for (std::size_t i = 0; i < vertex_buffer_count; ++i)
+    {
+        buffers[i] = static_cast<vk_vertex_buffer*>(vertex_buffers[i])->get_buffer_handle();
+        offsets[i] = 0;
+    }
+
+    vkCmdBindVertexBuffers(
+        m_command_buffer,
+        0,
+        static_cast<std::uint32_t>(vertex_buffer_count),
+        buffers.data(),
+        offsets.data());
 }
 
 void vk_command::draw(std::size_t vertex_start, std::size_t vertex_end)
@@ -161,6 +169,8 @@ vk_command_queue::vk_command_queue(std::uint32_t queue_family_index, vk_rhi* rhi
     m_active_commands.resize(m_rhi->get_frame_resource_count());
 
     vkGetDeviceQueue(m_rhi->get_device(), queue_family_index, 0, &m_queue);
+
+    m_fence = std::make_unique<vk_fence>(m_rhi);
 }
 
 vk_command_queue::~vk_command_queue()
@@ -206,30 +216,53 @@ vk_command* vk_command_queue::allocate_command()
     return command;
 }
 
-void vk_command_queue::execute(vk_command* command, vk_fence* fence)
+void vk_command_queue::execute(
+    rhi_render_command* const* commands,
+    std::size_t command_count,
+    rhi_semaphore* const* signal_semaphores,
+    std::size_t signal_semaphore_count,
+    rhi_semaphore* const* wait_semaphores,
+    std::size_t wait_semaphore_count,
+    rhi_fence* fence)
 {
-    VkCommandBuffer command_buffer = command->get_command_buffer();
-    throw_if_failed(vkEndCommandBuffer(command_buffer));
+    std::vector<VkCommandBuffer> vk_commands(command_count);
+    for (std::size_t i = 0; i < command_count; ++i)
+    {
+        vk_commands[i] = static_cast<vk_command*>(commands[i])->get_command_buffer();
+        throw_if_failed(vkEndCommandBuffer(vk_commands[i]));
+    }
 
-    VkSemaphore signal_semaphores[] = {m_rhi->get_render_finished_semaphore()->get_semaphore()};
-    VkSemaphore wait_semaphores[] = {m_rhi->get_image_available_semaphore()->get_semaphore()};
+    std::vector<VkSemaphore> vk_signal_semaphores(signal_semaphore_count);
+    for (std::size_t i = 0; i < signal_semaphore_count; ++i)
+        vk_signal_semaphores[i] = static_cast<vk_semaphore*>(signal_semaphores[i])->get_semaphore();
+
+    std::vector<VkSemaphore> vk_wait_semaphores(wait_semaphore_count);
+    for (std::size_t i = 0; i < wait_semaphore_count; ++i)
+        vk_wait_semaphores[i] = static_cast<vk_semaphore*>(wait_semaphores[i])->get_semaphore();
+
     VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
     VkSubmitInfo submit_info = {};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.signalSemaphoreCount = 1;
-    submit_info.pSignalSemaphores = signal_semaphores;
-    submit_info.waitSemaphoreCount = 1;
-    submit_info.pWaitSemaphores = wait_semaphores;
+    submit_info.pSignalSemaphores = vk_signal_semaphores.data();
+    submit_info.signalSemaphoreCount = static_cast<std::uint32_t>(vk_signal_semaphores.size());
+    submit_info.pWaitSemaphores = vk_wait_semaphores.data();
+    submit_info.waitSemaphoreCount = static_cast<std::uint32_t>(vk_wait_semaphores.size());
     submit_info.pWaitDstStageMask = wait_stages;
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &command_buffer;
+    submit_info.commandBufferCount = static_cast<std::uint32_t>(vk_commands.size());
+    submit_info.pCommandBuffers = vk_commands.data();
 
     throw_if_failed(vkQueueSubmit(
         m_queue,
         1,
         &submit_info,
-        fence == nullptr ? VK_NULL_HANDLE : fence->get_fence()));
+        fence == nullptr ? VK_NULL_HANDLE : static_cast<vk_fence*>(fence)->get_fence()));
+}
+
+void vk_command_queue::execute_sync(rhi_render_command* command)
+{
+    execute(&command, 1, nullptr, 0, nullptr, 0, m_fence.get());
+    m_fence->wait();
 }
 
 void vk_command_queue::begin_frame()

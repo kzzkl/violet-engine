@@ -1,6 +1,8 @@
 #include "graphics/render_graph/render_pass.hpp"
 #include "common/hash.hpp"
+#include "common/log.hpp"
 #include "graphics/render_graph/render_pipeline.hpp"
+#include <cassert>
 
 namespace violet
 {
@@ -101,8 +103,13 @@ render_pass::render_pass(std::string_view name, rhi_context* rhi)
 
 render_pass::~render_pass()
 {
+    rhi_context* rhi = get_rhi();
+
     if (m_interface != nullptr)
-        get_rhi()->destroy_render_pass(m_interface);
+        rhi->destroy_render_pass(m_interface);
+
+    for (auto& [key, value] : m_framebuffer_cache)
+        rhi->destroy_framebuffer(value);
 }
 
 render_attachment* render_pass::add_attachment(std::string_view name, render_resource* resource)
@@ -147,7 +154,23 @@ bool render_pass::compile()
 
 void render_pass::execute(rhi_render_command* command)
 {
+    assert(!m_attachments.empty());
+
     update_framebuffer_cache();
+
+    rhi_resource_extent extent = m_attachments[0]->get_resource()->get_extent();
+    rhi_scissor_rect scissor =
+        {.min_x = 0, .min_y = 0, .max_x = extent.width, .max_y = extent.height};
+    command->set_scissor(&scissor, 1);
+
+    rhi_viewport viewport = {
+        .x = 0,
+        .y = 0,
+        .width = static_cast<float>(extent.width),
+        .height = static_cast<float>(extent.height),
+        .min_depth = 0.0f,
+        .max_depth = 1.0f};
+    command->set_viewport(viewport);
 
     command->begin(m_interface, m_framebuffer);
 
@@ -163,14 +186,9 @@ void render_pass::execute(rhi_render_command* command)
 
 void render_pass::update_framebuffer_cache()
 {
-    // if (!m_framebuffer_dirty)
-    //     return;
-    // m_framebuffer_dirty = false;
-
-    std::hash<void*> h;
     std::size_t hash = 0;
     for (auto& attachment : m_attachments)
-        hash = hash_combine(hash, h(attachment->get_resource()));
+        hash = hash_combine(hash, attachment->get_resource()->get_hash());
 
     auto iter = m_framebuffer_cache.find(hash);
     if (iter == m_framebuffer_cache.end())

@@ -34,8 +34,6 @@ public:
     void set_material_count(std::size_t count);
     std::size_t get_material_count() const noexcept;
 
-    node_parameter* get_node_parameter() const noexcept { return m_node_parameter.get(); }
-
     using call = void (*)(
         const submesh& submesh,
         rhi_render_pipeline* pipeline,
@@ -75,7 +73,5 @@ private:
 
     std::vector<submesh> m_submeshes;
     std::vector<material_wrapper> m_materials;
-
-    std::unique_ptr<node_parameter> m_node_parameter;
 };
 } // namespace violet

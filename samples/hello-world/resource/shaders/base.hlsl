@@ -1,13 +1,18 @@
+struct vs_in
+{
+    [[vk::location(0)]] float2 position: POSITION;
+    [[vk::location(1)]] float3 color: COLOR;
+};
+
 struct vs_out
 {
     float4 position : SV_POSITION;
     float3 color : COLOR;
 };
 
-vs_out vs_main(uint vertex_id
-               : SV_VertexID)
+vs_out vs_main(vs_in input)
 {
-    float2 position[3] = {
+    /*float2 position[3] = {
         float2(0.0, -0.5),
         float2(0.5, 0.5),
         float2(-0.5, 0.5)};
@@ -15,17 +20,17 @@ vs_out vs_main(uint vertex_id
     float3 color[3] = {
         float3(1.0, 0.0, 0.0),
         float3(0.0, 1.0, 0.0),
-        float3(0.0, 0.0, 1.0)};
+        float3(0.0, 0.0, 1.0)};*/
 
-    vs_out result;
+    vs_out output;
 
-    result.position = float4(position[vertex_id], 0.0, 1.0);
-    result.color = color[vertex_id];
+    output.position = float4(input.position, 0.0, 1.0);
+    output.color = input.color;
 
-    return result;
+    return output;
 }
 
-float4 ps_main(vs_out pin) : SV_TARGET
+float4 ps_main(vs_out input) : SV_TARGET
 {
-    return float4(pin.color, 1.0);
+    return float4(input.color, 1.0);
 }

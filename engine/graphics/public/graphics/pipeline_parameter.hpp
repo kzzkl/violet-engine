@@ -5,7 +5,7 @@
 
 namespace violet
 {
-class pipeline_parameter
+/*class pipeline_parameter
 {
 public:
     pipeline_parameter(const rhi_pipeline_parameter_desc& desc);
@@ -19,5 +19,5 @@ protected:
 
 private:
     std::unique_ptr<rhi_pipeline_parameter> m_interface;
-};
+};*/
 } // namespace violet

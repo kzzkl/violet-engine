@@ -40,7 +40,7 @@ public:
         return true;
     }
 
-    virtual void shutdown() {}
+    virtual void shutdown() { m_render_graph = nullptr; }
 
 private:
     void initialize_render()
@@ -67,13 +67,44 @@ private:
         pipeline->set_shader(
             "hello-world/resource/shaders/base.vert.spv",
             "hello-world/resource/shaders/base.frag.spv");
+        pipeline->set_vertex_layout({
+            {"position", RHI_RESOURCE_FORMAT_R32G32_FLOAT   },
+            {"color",    RHI_RESOURCE_FORMAT_R32G32B32_FLOAT}
+        });
 
         m_render_graph->compile();
+
+        std::vector<float2> position = {
+            float2{0.0f,  -0.5f},
+            float2{0.5f,  0.5f },
+            float2{-0.5f, 0.5f }
+        };
+        rhi_vertex_buffer_desc position_buffer_desc = {};
+        position_buffer_desc.data = position.data();
+        position_buffer_desc.size = position.size() * sizeof(float2);
+        position_buffer_desc.dynamic = true;
+        m_position_buffer = graphics.get_rhi()->make_vertex_buffer(position_buffer_desc);
+
+        std::vector<float3> color = {
+            float3{1.0f, 0.0f, 0.0f},
+            float3{0.0f, 1.0f, 0.0f},
+            float3{0.0f, 1.0f, 1.0f},
+        };
+        rhi_vertex_buffer_desc color_buffer_desc = {};
+        color_buffer_desc.data = color.data();
+        color_buffer_desc.size = color.size() * sizeof(float3);
+        color_buffer_desc.dynamic = true;
+        m_color_buffer = graphics.get_rhi()->make_vertex_buffer(color_buffer_desc);
+
+        pipeline->set_mesh({m_position_buffer, m_color_buffer});
     }
 
     std::unique_ptr<node> m_test_object;
 
     std::unique_ptr<render_graph> m_render_graph;
+
+    rhi_resource* m_position_buffer;
+    rhi_resource* m_color_buffer;
 };
 } // namespace violet::sample
 
