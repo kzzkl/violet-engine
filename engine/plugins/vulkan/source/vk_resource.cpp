@@ -155,24 +155,50 @@ vk_vertex_buffer::vk_vertex_buffer(const rhi_vertex_buffer_desc& desc, vk_rhi* r
     : vk_buffer(rhi),
       m_mapping_pointer(nullptr)
 {
-    VkBufferCreateInfo buffer_info = {};
-    buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buffer_info.size = desc.size;
-    buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    VkMemoryPropertyFlags flags;
-    if (desc.dynamic)
-        flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-
-    create_buffer(desc.size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, flags, m_buffer, m_memory);
     m_buffer_size = desc.size;
 
+    VkDevice device = get_rhi()->get_device();
     if (desc.dynamic)
     {
-        vkMapMemory(get_rhi()->get_device(), m_memory, 0, m_buffer_size, 0, &m_mapping_pointer);
+        create_buffer(
+            m_buffer_size,
+            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            m_buffer,
+            m_memory);
+
+        vkMapMemory(device, m_memory, 0, m_buffer_size, 0, &m_mapping_pointer);
         if (desc.data != nullptr)
             std::memcpy(m_mapping_pointer, desc.data, m_buffer_size);
+    }
+    else
+    {
+        create_buffer(
+            m_buffer_size,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            m_buffer,
+            m_memory);
+
+        VkBuffer staging_buffer;
+        VkDeviceMemory staging_memory;
+
+        create_buffer(
+            m_buffer_size,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            staging_buffer,
+            staging_memory);
+
+        void* mapping_pointer = nullptr;
+        vkMapMemory(device, staging_memory, 0, m_buffer_size, 0, &mapping_pointer);
+
+        assert(desc.data != nullptr);
+        std::memcpy(mapping_pointer, desc.data, m_buffer_size);
+        vkUnmapMemory(device, staging_memory);
+
+        copy_buffer(staging_buffer, m_buffer, m_buffer_size);
+        destroy_buffer(staging_buffer, staging_memory);
     }
 }
 
@@ -182,6 +208,75 @@ vk_vertex_buffer::~vk_vertex_buffer()
 }
 
 std::size_t vk_vertex_buffer::get_hash() const noexcept
+{
+    std::hash<void*> hasher;
+    return hasher(m_buffer);
+}
+
+vk_index_buffer::vk_index_buffer(const rhi_index_buffer_desc& desc, vk_rhi* rhi)
+    : vk_buffer(rhi),
+      m_mapping_pointer(nullptr)
+{
+    m_buffer_size = desc.size;
+
+    if (desc.index_size == 2)
+        m_index_type = VK_INDEX_TYPE_UINT16;
+    else if (desc.index_size == 4)
+        m_index_type = VK_INDEX_TYPE_UINT32;
+    else
+        throw vk_exception("invalid index size.");
+
+    VkDevice device = get_rhi()->get_device();
+    if (desc.dynamic)
+    {
+        create_buffer(
+            m_buffer_size,
+            VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            m_buffer,
+            m_memory);
+
+        vkMapMemory(device, m_memory, 0, m_buffer_size, 0, &m_mapping_pointer);
+        if (desc.data != nullptr)
+            std::memcpy(m_mapping_pointer, desc.data, m_buffer_size);
+    }
+    else
+    {
+        create_buffer(
+            m_buffer_size,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            m_buffer,
+            m_memory);
+
+        VkBuffer staging_buffer;
+        VkDeviceMemory staging_memory;
+
+        create_buffer(
+            m_buffer_size,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            staging_buffer,
+            staging_memory);
+
+        void* mapping_pointer = nullptr;
+        vkMapMemory(device, staging_memory, 0, m_buffer_size, 0, &mapping_pointer);
+
+        assert(desc.data != nullptr);
+        std::memcpy(mapping_pointer, desc.data, m_buffer_size);
+        vkUnmapMemory(device, staging_memory);
+
+        copy_buffer(staging_buffer, m_buffer, m_buffer_size);
+        destroy_buffer(staging_buffer, staging_memory);
+    }
+}
+
+vk_index_buffer::~vk_index_buffer()
+{
+    destroy_buffer(m_buffer, m_memory);
+}
+
+std::size_t vk_index_buffer::get_hash() const noexcept
 {
     std::hash<void*> hasher;
     return hasher(m_buffer);

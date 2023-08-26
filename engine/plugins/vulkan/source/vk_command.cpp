@@ -103,11 +103,9 @@ void vk_command::set_scissor(const rhi_scissor_rect* rects, std::size_t size)
         scissors.data());
 }
 
-void vk_command::set_input_assembly_state(
+void vk_command::set_vertex_buffers(
     rhi_resource* const* vertex_buffers,
-    std::size_t vertex_buffer_count,
-    rhi_resource* index_buffer,
-    rhi_primitive_topology primitive_topology)
+    std::size_t vertex_buffer_count)
 {
     std::vector<VkBuffer> buffers(vertex_buffer_count);
     std::vector<VkDeviceSize> offsets(vertex_buffer_count);
@@ -116,7 +114,6 @@ void vk_command::set_input_assembly_state(
         buffers[i] = static_cast<vk_vertex_buffer*>(vertex_buffers[i])->get_buffer_handle();
         offsets[i] = 0;
     }
-
     vkCmdBindVertexBuffers(
         m_command_buffer,
         0,
@@ -125,16 +122,27 @@ void vk_command::set_input_assembly_state(
         offsets.data());
 }
 
-void vk_command::draw(std::size_t vertex_start, std::size_t vertex_end)
+void vk_command::set_index_buffer(rhi_resource* index_buffer)
 {
-    vkCmdDraw(m_command_buffer, vertex_end - vertex_start, 1, vertex_start, 0);
+    vk_index_buffer* buffer = static_cast<vk_index_buffer*>(index_buffer);
+    vkCmdBindIndexBuffer(
+        m_command_buffer,
+        buffer->get_buffer_handle(),
+        0,
+        buffer->get_index_type());
+}
+
+void vk_command::draw(std::size_t vertex_start, std::size_t vertex_count)
+{
+    vkCmdDraw(m_command_buffer, vertex_count, 1, vertex_start, 0);
 }
 
 void vk_command::draw_indexed(
     std::size_t index_start,
-    std::size_t index_end,
+    std::size_t index_count,
     std::size_t vertex_base)
 {
+    vkCmdDrawIndexed(m_command_buffer, index_count, 1, 0, 0, 0);
 }
 
 void vk_command::clear_render_target(rhi_resource* render_target, const float4& color)
@@ -170,7 +178,7 @@ vk_command_queue::vk_command_queue(std::uint32_t queue_family_index, vk_rhi* rhi
 
     vkGetDeviceQueue(m_rhi->get_device(), queue_family_index, 0, &m_queue);
 
-    m_fence = std::make_unique<vk_fence>(m_rhi);
+    m_fence = std::make_unique<vk_fence>(false, m_rhi);
 }
 
 vk_command_queue::~vk_command_queue()

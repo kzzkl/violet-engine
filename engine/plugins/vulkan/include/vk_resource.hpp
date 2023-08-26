@@ -102,4 +102,28 @@ private:
 
     void* m_mapping_pointer;
 };
+
+class vk_index_buffer : public vk_buffer
+{
+public:
+    vk_index_buffer(const rhi_index_buffer_desc& desc, vk_rhi* rhi);
+    virtual ~vk_index_buffer();
+
+    virtual void* get_buffer() override { return m_mapping_pointer; }
+    virtual std::size_t get_buffer_size() const noexcept override { return m_buffer_size; }
+
+    virtual std::size_t get_hash() const noexcept override;
+
+    virtual VkBuffer get_buffer_handle() const noexcept override { return m_buffer; }
+    VkIndexType get_index_type() const noexcept { return m_index_type; }
+
+private:
+    VkBuffer m_buffer;
+    VkDeviceMemory m_memory;
+    std::size_t m_buffer_size;
+
+    void* m_mapping_pointer;
+
+    VkIndexType m_index_type;
+};
 } // namespace violet::vk

@@ -8,7 +8,7 @@ class vk_rhi;
 class vk_fence : public rhi_fence
 {
 public:
-    vk_fence(vk_rhi* rhi);
+    vk_fence(bool signaled, vk_rhi* rhi);
     vk_fence(const vk_fence&) = delete;
     virtual ~vk_fence();
 

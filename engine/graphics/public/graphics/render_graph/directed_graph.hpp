@@ -23,7 +23,6 @@ public:
 
     std::size_t operator-(directed_graph_iterator other) const noexcept
     {
-
         return m_index - other.m_index;
     }
 

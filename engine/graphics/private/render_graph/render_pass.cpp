@@ -6,12 +6,12 @@
 
 namespace violet
 {
-render_attachment::render_attachment(std::size_t index, render_resource* resource)
+render_attachment::render_attachment(std::size_t index, render_resource& resource)
     : m_desc{},
       m_index(index),
       m_resource(resource)
 {
-    m_desc.format = resource->get_format();
+    m_desc.format = resource.get_format();
 }
 
 void render_attachment::set_load_op(rhi_attachment_load_op op)
@@ -57,25 +57,39 @@ render_subpass::render_subpass(
 }
 
 void render_subpass::add_reference(
-    render_attachment* attachment,
+    render_attachment& attachment,
     rhi_attachment_reference_type type,
-    rhi_resource_state state,
-    render_attachment* resolve)
+    rhi_resource_state state)
 {
     auto& desc = m_desc.references[m_desc.reference_count];
     desc.type = type;
     desc.state = state;
-    desc.index = attachment->get_index();
-    desc.resolve_index = resolve ? resolve->get_index() : 0;
+    desc.index = attachment.get_index();
+    desc.resolve_index = 0;
 
     ++m_desc.reference_count;
 }
 
-render_pipeline* render_subpass::add_pipeline(std::string_view name)
+void render_subpass::add_reference(
+    render_attachment& attachment,
+    rhi_attachment_reference_type type,
+    rhi_resource_state state,
+    render_attachment& resolve)
+{
+    auto& desc = m_desc.references[m_desc.reference_count];
+    desc.type = type;
+    desc.state = state;
+    desc.index = attachment.get_index();
+    desc.resolve_index = resolve.get_index();
+
+    ++m_desc.reference_count;
+}
+
+render_pipeline& render_subpass::add_pipeline(std::string_view name)
 {
     auto pipeline = std::make_unique<render_pipeline>(name, get_rhi());
     m_pipelines.push_back(std::move(pipeline));
-    return m_pipelines.back().get();
+    return *m_pipelines.back();
 }
 
 bool render_subpass::compile()
@@ -112,18 +126,18 @@ render_pass::~render_pass()
         rhi->destroy_framebuffer(value);
 }
 
-render_attachment* render_pass::add_attachment(std::string_view name, render_resource* resource)
+render_attachment& render_pass::add_attachment(std::string_view name, render_resource& resource)
 {
     auto attachment = std::make_unique<render_attachment>(m_attachments.size(), resource);
     m_attachments.push_back(std::move(attachment));
-    return m_attachments.back().get();
+    return *m_attachments.back();
 }
 
-render_subpass* render_pass::add_subpass(std::string_view name)
+render_subpass& render_pass::add_subpass(std::string_view name)
 {
     auto subpass = std::make_unique<render_subpass>(name, get_rhi(), this, m_subpasses.size());
     m_subpasses.push_back(std::move(subpass));
-    return m_subpasses.back().get();
+    return *m_subpasses.back();
 }
 
 bool render_pass::compile()

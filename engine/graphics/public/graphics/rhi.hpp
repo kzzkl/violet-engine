@@ -358,16 +358,15 @@ public:
     virtual void set_viewport(const rhi_viewport& viewport) = 0;
     virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) = 0;
 
-    virtual void set_input_assembly_state(
+    virtual void set_vertex_buffers(
         rhi_resource* const* vertex_buffers,
-        std::size_t vertex_buffer_count,
-        rhi_resource* index_buffer,
-        rhi_primitive_topology primitive_topology = RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) = 0;
+        std::size_t vertex_buffer_count) = 0;
+    virtual void set_index_buffer(rhi_resource* index_buffer) = 0;
 
-    virtual void draw(std::size_t vertex_start, std::size_t vertex_end) = 0;
+    virtual void draw(std::size_t vertex_start, std::size_t vertex_count) = 0;
     virtual void draw_indexed(
         std::size_t index_start,
-        std::size_t index_end,
+        std::size_t index_count,
         std::size_t vertex_base) = 0;
 
     virtual void clear_render_target(rhi_resource* render_target, const float4& color) = 0;
@@ -412,9 +411,11 @@ struct rhi_vertex_buffer_desc
 
 struct rhi_index_buffer_desc
 {
-    const void* indices;
+    const void* data;
+    std::size_t size;
+
     std::size_t index_size;
-    std::size_t index_count = 0;
+
     bool dynamic;
     bool frame_resource;
 };
@@ -501,7 +502,10 @@ public:
     virtual void destroy_framebuffer(rhi_framebuffer* framebuffer) = 0;
 
     virtual rhi_resource* make_vertex_buffer(const rhi_vertex_buffer_desc& desc) = 0;
+    virtual void destroy_vertex_buffer(rhi_resource* vertex_buffer) = 0;
+
     virtual rhi_resource* make_index_buffer(const rhi_index_buffer_desc& desc) = 0;
+    virtual void destroy_index_buffer(rhi_resource* index_buffer) = 0;
 
     virtual rhi_resource* make_texture(
         const std::uint8_t* data,
@@ -522,7 +526,7 @@ public:
     virtual rhi_resource* make_render_target(const rhi_render_target_desc& desc) = 0;
     virtual rhi_resource* make_depth_stencil_buffer(const rhi_depth_stencil_buffer_desc& desc) = 0;
 
-    virtual rhi_fence* make_fence() = 0;
+    virtual rhi_fence* make_fence(bool signaled) = 0;
     virtual void destroy_fence(rhi_fence* fence) = 0;
 
     virtual rhi_semaphore* make_semaphore() = 0;

@@ -7,7 +7,7 @@
 
 namespace violet
 {
-graphics_system::graphics_system() : engine_system("graphics")
+graphics_system::graphics_system() : engine_system("graphics"), m_idle(false)
 {
 }
 
@@ -31,10 +31,10 @@ bool graphics_system::initialize(const dictionary& config)
     m_plugin->load(config["plugin"]);
     m_plugin->get_rhi()->initialize(rhi_desc);
 
-    window.on_tick().then([this]() { get_rhi()->begin_frame(); });
+    window.on_tick().then([this]() { begin_frame(); });
     window.on_resize().then([this](std::uint32_t width, std::uint32_t height)
                             { get_rhi()->resize(width, height); });
-    engine::on_frame_end().then([this]() { render(); });
+    engine::on_frame_end().then([this]() { end_frame(); });
 
     return true;
 }
@@ -49,8 +49,23 @@ rhi_context* graphics_system::get_rhi() const
     return m_plugin->get_rhi();
 }
 
+void graphics_system::begin_frame()
+{
+    if (!m_idle)
+        get_rhi()->begin_frame();
+}
+
+void graphics_system::end_frame()
+{
+    render();
+}
+
 void graphics_system::render()
 {
+    m_idle = m_render_graphs.empty();
+    if (m_idle)
+        return;
+
     std::vector<rhi_semaphore*> render_finished_semaphores;
     render_finished_semaphores.reserve(m_render_graphs.size());
     for (render_graph* render_graph : m_render_graphs)

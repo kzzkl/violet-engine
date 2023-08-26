@@ -20,9 +20,13 @@ public:
     rhi_context* get_rhi() const;
 
 private:
+    void begin_frame();
+    void end_frame();
     void render();
 
     std::vector<render_graph*> m_render_graphs;
     std::unique_ptr<rhi_plugin> m_plugin;
+
+    bool m_idle;
 };
 } // namespace violet

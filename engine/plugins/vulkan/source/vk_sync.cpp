@@ -3,11 +3,11 @@
 
 namespace violet::vk
 {
-vk_fence::vk_fence(vk_rhi* rhi) : m_rhi(rhi)
+vk_fence::vk_fence(bool signaled, vk_rhi* rhi) : m_rhi(rhi)
 {
     VkFenceCreateInfo fence_info = {};
     fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    fence_info.flags = signaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0;
     throw_if_failed(vkCreateFence(rhi->get_device(), &fence_info, nullptr, &m_fence));
 }
 

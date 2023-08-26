@@ -93,7 +93,8 @@ bool render_pipeline::compile(rhi_render_pass* render_pass, std::size_t subpass_
 void render_pipeline::execute(rhi_render_command* command)
 {
     command->set_pipeline(m_interface);
-    command->set_input_assembly_state(m_vertex_buffers.data(), m_vertex_buffers.size(), nullptr);
-    command->draw(0, 3);
+    command->set_vertex_buffers(m_vertex_buffers.data(), m_vertex_buffers.size());
+    command->set_index_buffer(m_index_buffer);
+    command->draw_indexed(0, 6, 0);
 }
 } // namespace violet

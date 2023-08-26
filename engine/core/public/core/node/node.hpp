@@ -60,7 +60,8 @@ public:
     };
 
 public:
-    node(std::string_view name, world* world = nullptr) noexcept;
+    node(std::string_view name, world& world) noexcept;
+    node(const node&) = delete;
     ~node();
 
     void add(node* child);
@@ -70,7 +71,7 @@ public:
     [[nodiscard]] const std::vector<node*> get_children() const noexcept { return m_children; }
 
     template <typename Component>
-    component_handle<Component> get_component()
+    [[nodiscard]] component_handle<Component> get_component()
     {
         return component_handle<Component>(this);
     }
@@ -90,15 +91,17 @@ public:
     template <typename Component>
     [[nodiscard]] bool has_component()
     {
-        return m_world->has_component<Component>(m_entity);
+        return m_world.has_component<Component>(m_entity);
     }
 
-    world& get_world() const { return *m_world; }
+    [[nodiscard]] world& get_world() const { return m_world; }
+
+    node& operator=(const node&) = delete;
 
 private:
     std::string m_name;
     entity m_entity;
-    world* m_world;
+    world& m_world;
 
     node* m_parent;
     std::vector<node*> m_children;

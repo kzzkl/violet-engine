@@ -2,6 +2,7 @@
 
 #include "vk_common.hpp"
 #include "vk_resource.hpp"
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -11,6 +12,21 @@ class vk_command_queue;
 class vk_semaphore;
 class vk_fence;
 class vk_destruction_list;
+
+struct vk_frame_resource
+{
+    void execute_delay_tasks()
+    {
+        for (auto& task : delay_tasks)
+            task();
+        delay_tasks.clear();
+    }
+
+    std::unique_ptr<vk_semaphore> image_available_semaphore;
+    std::unique_ptr<vk_fence> in_flight_fence;
+
+    std::vector<std::function<void()>> delay_tasks;
+};
 
 class vk_rhi : public rhi_context
 {
@@ -64,7 +80,10 @@ public:
     virtual void destroy_framebuffer(rhi_framebuffer* framebuffer) override;
 
     virtual rhi_resource* make_vertex_buffer(const rhi_vertex_buffer_desc& desc) override;
+    virtual void destroy_vertex_buffer(rhi_resource* vertex_buffer) override;
+
     virtual rhi_resource* make_index_buffer(const rhi_index_buffer_desc& desc) override;
+    virtual void destroy_index_buffer(rhi_resource* index_buffer) override;
 
     virtual rhi_resource* make_texture(
         const std::uint8_t* data,
@@ -86,7 +105,7 @@ public:
     virtual rhi_resource* make_depth_stencil_buffer(
         const rhi_depth_stencil_buffer_desc& desc) override;
 
-    virtual rhi_fence* make_fence() override;
+    virtual rhi_fence* make_fence(bool signaled) override;
     virtual void destroy_fence(rhi_fence* fence) override;
 
     virtual rhi_semaphore* make_semaphore() override;
@@ -103,6 +122,13 @@ public:
     }
 
 public:
+    template <typename T>
+    void delay_delete(T* object)
+    {
+        vk_frame_resource& frame_resource = m_frame_resources[m_frame_resource_index];
+        frame_resource.delay_tasks.push_back([object]() { delete object; });
+    }
+
     VkDevice get_device() const noexcept { return m_device; }
     VkPhysicalDevice get_physical_device() const noexcept { return m_physical_device; }
 
@@ -119,7 +145,7 @@ private:
     bool initialize_physical_device(const std::vector<const char*>& desired_extensions);
     void initialize_logic_device(const std::vector<const char*>& enabled_extensions);
     void initialize_swapchain(std::uint32_t width, std::uint32_t height);
-    void initialize_sync();
+    void initialize_frame_resources(std::size_t frame_resource_count);
 
     bool check_extension_support(
         const std::vector<const char*>& desired_extensions,
@@ -143,10 +169,7 @@ private:
     std::size_t m_frame_resource_count;
     std::size_t m_frame_resource_index;
 
-    std::vector<std::unique_ptr<vk_semaphore>> m_image_available_semaphores;
-    std::vector<std::unique_ptr<vk_fence>> m_in_flight_fences;
-
-    std::unique_ptr<vk_destruction_list> m_destruction_list;
+    std::vector<vk_frame_resource> m_frame_resources;
 
 #ifndef NDEUBG
     VkDebugUtilsMessengerEXT m_debug_messenger;

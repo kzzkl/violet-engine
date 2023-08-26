@@ -27,16 +27,15 @@ public:
     virtual void set_viewport(const rhi_viewport& viewport) override;
     virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) override;
 
-    virtual void set_input_assembly_state(
+    virtual void set_vertex_buffers(
         rhi_resource* const* vertex_buffers,
-        std::size_t vertex_buffer_count,
-        rhi_resource* index_buffer,
-        rhi_primitive_topology primitive_topology) override;
+        std::size_t vertex_buffer_count) override;
+    virtual void set_index_buffer(rhi_resource* index_buffer) override;
 
-    virtual void draw(std::size_t vertex_start, std::size_t vertex_end) override;
+    virtual void draw(std::size_t vertex_start, std::size_t vertex_count) override;
     virtual void draw_indexed(
         std::size_t index_start,
-        std::size_t index_end,
+        std::size_t index_count,
         std::size_t vertex_base) override;
 
     virtual void clear_render_target(rhi_resource* render_target, const float4& color) override;

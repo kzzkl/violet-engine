@@ -43,9 +43,10 @@ public:
     bool compile(rhi_render_pass* render_pass, std::size_t subpass_index);
     void execute(rhi_render_command* command);
 
-    void set_mesh(const std::vector<rhi_resource*>& vertex_buffers)
+    void set_mesh(const std::vector<rhi_resource*>& vertex_buffers, rhi_resource* index_buffer)
     {
         m_vertex_buffers = vertex_buffers;
+        m_index_buffer = index_buffer;
     }
 
     rhi_render_pipeline* get_interface() const noexcept { return m_interface; }
@@ -66,5 +67,6 @@ private:
     rhi_render_pipeline* m_interface;
 
     std::vector<rhi_resource*> m_vertex_buffers;
+    rhi_resource* m_index_buffer;
 };
 } // namespace violet
