@@ -13,5 +13,10 @@ public:
     static VkSampleCountFlagBits map_sample_count(rhi_sample_count samples);
 
     static VkImageLayout map_state(rhi_resource_state state);
+
+    static inline std::size_t hash_combine(std::size_t seed, std::size_t value)
+    {
+        return seed ^ (value + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+    }
 };
 } // namespace violet::vk

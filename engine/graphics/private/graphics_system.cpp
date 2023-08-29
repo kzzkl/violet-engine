@@ -26,6 +26,7 @@ bool graphics_system::initialize(const dictionary& config)
     rhi_desc.window_handle = window.get_handle();
     rhi_desc.render_concurrency = config["render_concurrency"];
     rhi_desc.frame_resource_count = config["frame_resource_count"];
+    rhi_desc.frame_resource_count = 2;
 
     m_plugin = std::make_unique<rhi_plugin>();
     m_plugin->load(config["plugin"]);

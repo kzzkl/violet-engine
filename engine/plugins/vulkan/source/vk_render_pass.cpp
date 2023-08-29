@@ -19,7 +19,7 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_rhi* rhi)
         case RHI_ATTACHMENT_LOAD_OP_DONT_CARE:
             return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         default:
-            throw std::runtime_error("Invalid load op.");
+            throw vk_exception("Invalid load op.");
         }
     };
 
@@ -31,7 +31,7 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_rhi* rhi)
         case RHI_ATTACHMENT_STORE_OP_DONT_CARE:
             return VK_ATTACHMENT_STORE_OP_DONT_CARE;
         default:
-            throw std::runtime_error("Invalid store op.");
+            throw vk_exception("Invalid store op.");
         }
     };
 
@@ -85,7 +85,7 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_rhi* rhi)
                 break;
             }
             default:
-                throw std::runtime_error("Invalid attachment reference type.");
+                throw vk_exception("Invalid attachment reference type.");
             }
         }
 

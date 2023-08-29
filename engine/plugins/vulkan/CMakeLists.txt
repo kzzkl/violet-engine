@@ -6,6 +6,7 @@ set(HPP_FILES
     ./include/vk_command.hpp
     ./include/vk_common.hpp
     ./include/vk_framebuffer.hpp
+    ./include/vk_image_loader.hpp
     ./include/vk_pipeline.hpp
     ./include/vk_render_pass.hpp
     ./include/vk_resource.hpp
@@ -17,6 +18,7 @@ source_group("Header Files" FILES ${HPP_FILES})
 set(CPP_FILES
     ./source/vk_command.cpp
     ./source/vk_framebuffer.cpp
+    ./source/vk_image_loader.cpp
     ./source/vk_pipeline.cpp
     ./source/vk_render_pass.cpp
     ./source/vk_resource.cpp

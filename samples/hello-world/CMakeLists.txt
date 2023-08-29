@@ -24,8 +24,8 @@ compile_shader_glslang(
     STAGES "vert" "frag")
 
 file(GLOB SHADER_FILES "${CMAKE_BINARY_DIR}/shaders/${PROJECT_NAME}/*.spv")
-install(FILES ${SHADER_FILES} DESTINATION bin/${PROJECT_NAME}/resource/shaders)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/config DESTINATION bin/${PROJECT_NAME})
+install(FILES ${SHADER_FILES} DESTINATION bin/${PROJECT_NAME}/shaders)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/ DESTINATION bin/${PROJECT_NAME})
 
 if(MSVC)
     set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/install/bin)

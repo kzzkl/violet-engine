@@ -35,7 +35,7 @@ public:
 
     void set_blend(const rhi_blend_desc& blend) noexcept;
     void set_depth_stencil(const rhi_depth_stencil_desc& depth_stencil) noexcept;
-    void set_rasterizer(const rhi_rasterizer_desc& rasterizer) noexcept;
+    void set_cull_mode(rhi_cull_mode cull_mode) noexcept;
 
     void set_samples(rhi_sample_count samples) noexcept;
     void set_primitive_topology(rhi_primitive_topology primitive_topology) noexcept;
@@ -43,10 +43,14 @@ public:
     bool compile(rhi_render_pass* render_pass, std::size_t subpass_index);
     void execute(rhi_render_command* command);
 
-    void set_mesh(const std::vector<rhi_resource*>& vertex_buffers, rhi_resource* index_buffer)
+    void set_mesh(
+        const std::vector<rhi_resource*>& vertex_buffers,
+        rhi_resource* index_buffer,
+        rhi_pipeline_parameter* parameter)
     {
         m_vertex_buffers = vertex_buffers;
         m_index_buffer = index_buffer;
+        m_parameter = parameter;
     }
 
     rhi_render_pipeline* get_interface() const noexcept { return m_interface; }
@@ -57,16 +61,12 @@ private:
     vertex_layout m_vertex_layout;
     std::vector<rhi_pipeline_parameter_layout*> m_parameter_layout;
 
-    rhi_blend_desc m_blend;
-    rhi_depth_stencil_desc m_depth_stencil;
-    rhi_rasterizer_desc m_rasterizer;
-
-    rhi_sample_count m_samples;
-    rhi_primitive_topology m_primitive_topology;
+    rhi_render_pipeline_desc m_desc;
 
     rhi_render_pipeline* m_interface;
 
     std::vector<rhi_resource*> m_vertex_buffers;
     rhi_resource* m_index_buffer;
+    rhi_pipeline_parameter* m_parameter;
 };
 } // namespace violet

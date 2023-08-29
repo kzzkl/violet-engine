@@ -25,6 +25,30 @@ public:
     vk_resource& operator=(const vk_resource&) = delete;
 
 protected:
+    void create_device_local_buffer(
+        const void* data,
+        VkDeviceSize size,
+        VkBufferUsageFlags usage,
+        VkBuffer& buffer,
+        VkDeviceMemory& memory);
+
+    void create_host_visible_buffer(
+        const void* data,
+        VkDeviceSize size,
+        VkBufferUsageFlags usage,
+        VkBuffer& buffer,
+        VkDeviceMemory& memory);
+
+    void create_buffer(
+        VkDeviceSize size,
+        VkBufferUsageFlags usage,
+        VkMemoryPropertyFlags properties,
+        VkBuffer& buffer,
+        VkDeviceMemory& memory);
+    void destroy_buffer(VkBuffer buffer, VkDeviceMemory memory);
+
+    void copy_buffer(VkBuffer source, VkBuffer target, VkDeviceSize size);
+
     vk_rhi* get_rhi() const noexcept { return m_rhi; }
 
 private:
@@ -35,12 +59,53 @@ class vk_image : public vk_resource
 {
 public:
     vk_image(vk_rhi* rhi);
+    virtual ~vk_image();
 
-    virtual VkImageView get_image_view() const noexcept = 0;
+    VkImageView get_image_view() const noexcept;
+    virtual rhi_resource_format get_format() const noexcept override;
+    virtual rhi_resource_extent get_extent() const noexcept override;
+    virtual std::size_t get_hash() const noexcept override;
 
 protected:
-    void create_image_view(VkImageViewCreateInfo* info, VkImageView& image_view);
+    void set(
+        VkImage image,
+        VkDeviceMemory memory,
+        VkImageView image_view,
+        VkFormat format,
+        VkExtent2D extent,
+        std::size_t hash);
+
+    void create_image(
+        std::uint32_t width,
+        std::uint32_t height,
+        VkFormat format,
+        VkSampleCountFlagBits samples,
+        VkImageUsageFlags usage,
+        VkMemoryPropertyFlags properties,
+        VkImage& image,
+        VkDeviceMemory& memory);
+    void destroy_image(VkImage image, VkDeviceMemory memory);
+
+    void create_image_view(const VkImageViewCreateInfo& info, VkImageView& image_view);
     void destroy_image_view(VkImageView image_view);
+
+    void copy_buffer_to_image(
+        VkBuffer buffer,
+        VkImage image,
+        std::uint32_t width,
+        std::uint32_t height);
+
+    void transition_image_layout(VkImage image, VkImageLayout old_layout, VkImageLayout new_layout);
+
+private:
+    VkImage m_image;
+    VkDeviceMemory m_memory;
+    VkImageView m_image_view;
+
+    VkFormat m_format;
+    VkExtent2D m_extent;
+
+    std::size_t m_hash;
 };
 
 class vk_swapchain_image : public vk_image
@@ -48,19 +113,13 @@ class vk_swapchain_image : public vk_image
 public:
     vk_swapchain_image(VkImage image, VkFormat format, const VkExtent2D& extent, vk_rhi* rhi);
     virtual ~vk_swapchain_image();
+};
 
-    virtual VkImageView get_image_view() const noexcept override;
-    virtual rhi_resource_format get_format() const noexcept override;
-    virtual rhi_resource_extent get_extent() const noexcept override;
-
-    virtual std::size_t get_hash() const noexcept override;
-
-protected:
-    VkImage m_image;
-    VkImageView m_image_view;
-
-    VkFormat m_format;
-    VkExtent2D m_extent;
+class vk_texture : public vk_image
+{
+public:
+    vk_texture(const char* file, vk_rhi* rhi);
+    virtual ~vk_texture();
 };
 
 class vk_buffer : public vk_resource
@@ -69,17 +128,6 @@ public:
     vk_buffer(vk_rhi* rhi);
 
     virtual VkBuffer get_buffer_handle() const noexcept = 0;
-
-protected:
-    void create_buffer(
-        VkDeviceSize size,
-        VkBufferUsageFlags usage,
-        VkMemoryPropertyFlags properties,
-        VkBuffer& buffer,
-        VkDeviceMemory& memory);
-    void destroy_buffer(VkBuffer buffer, VkDeviceMemory memory);
-
-    void copy_buffer(VkBuffer source, VkBuffer target, VkDeviceSize size);
 };
 
 class vk_vertex_buffer : public vk_buffer
@@ -91,7 +139,11 @@ public:
     virtual void* get_buffer() override { return m_mapping_pointer; }
     virtual std::size_t get_buffer_size() const noexcept override { return m_buffer_size; }
 
-    virtual std::size_t get_hash() const noexcept override;
+    virtual std::size_t get_hash() const noexcept override
+    {
+        std::hash<void*> hasher;
+        return hasher(m_buffer);
+    }
 
     virtual VkBuffer get_buffer_handle() const noexcept override { return m_buffer; }
 
@@ -112,7 +164,11 @@ public:
     virtual void* get_buffer() override { return m_mapping_pointer; }
     virtual std::size_t get_buffer_size() const noexcept override { return m_buffer_size; }
 
-    virtual std::size_t get_hash() const noexcept override;
+    virtual std::size_t get_hash() const noexcept override
+    {
+        std::hash<void*> hasher;
+        return hasher(m_buffer);
+    }
 
     virtual VkBuffer get_buffer_handle() const noexcept override { return m_buffer; }
     VkIndexType get_index_type() const noexcept { return m_index_type; }
@@ -125,5 +181,30 @@ private:
     void* m_mapping_pointer;
 
     VkIndexType m_index_type;
+};
+
+class vk_uniform_buffer : public vk_buffer
+{
+public:
+    vk_uniform_buffer(void* data, std::size_t size, vk_rhi* rhi);
+    virtual ~vk_uniform_buffer();
+
+    virtual void* get_buffer() override { return m_mapping_pointer; }
+    virtual std::size_t get_buffer_size() const noexcept override { return m_buffer_size; }
+
+    virtual std::size_t get_hash() const noexcept override
+    {
+        std::hash<void*> hasher;
+        return hasher(m_buffer);
+    }
+
+    virtual VkBuffer get_buffer_handle() const noexcept override { return m_buffer; }
+
+private:
+    VkBuffer m_buffer;
+    VkDeviceMemory m_memory;
+    std::size_t m_buffer_size;
+
+    void* m_mapping_pointer;
 };
 } // namespace violet::vk

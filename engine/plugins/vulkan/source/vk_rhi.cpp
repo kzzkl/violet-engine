@@ -6,6 +6,7 @@
 #include "vk_sync.hpp"
 #include <algorithm>
 #include <iostream>
+#include <set>
 
 namespace violet::vk
 {
@@ -55,6 +56,8 @@ vk_rhi::~vk_rhi()
         frame_resource.execute_delay_tasks();
     m_frame_resources.clear();
 
+    vkDestroyDescriptorPool(m_device, m_descriptor_pool, nullptr);
+
 #ifndef NDEBUG
     auto vkDestroyDebugUtilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)
         vkGetInstanceProcAddr(m_instance, "vkDestroyDebugUtilsMessengerEXT");
@@ -100,12 +103,13 @@ bool vk_rhi::initialize(const rhi_desc& desc)
         vkGetInstanceProcAddr(m_instance, "vkCreateWin32SurfaceKHR"));
     throw_if_failed(vkCreateWin32SurfaceKHR(m_instance, &surface_info, nullptr, &m_surface));
 #else
-    throw std::runtime_error("Unsupported platform");
+    throw vk_exception("Unsupported platform");
 #endif
 
     initialize_logic_device(device_desired_extensions);
     initialize_swapchain(desc.width, desc.height);
     initialize_frame_resources(desc.frame_resource_count);
+    initialize_descriptor_pool();
 
     return true;
 }
@@ -138,6 +142,10 @@ void vk_rhi::begin_frame()
 {
     vk_frame_resource& frame_resource = m_frame_resources[m_frame_resource_index];
 
+    VkFence fences[] = {frame_resource.in_flight_fence->get_fence()};
+
+    vkWaitForFences(m_device, 1, fences, VK_TRUE, UINT64_MAX);
+
     vkAcquireNextImageKHR(
         m_device,
         m_swapchain,
@@ -146,8 +154,6 @@ void vk_rhi::begin_frame()
         VK_NULL_HANDLE,
         &m_swapchain_image_index);
 
-    VkFence fences[] = {frame_resource.in_flight_fence->get_fence()};
-    vkWaitForFences(m_device, 1, fences, VK_TRUE, UINT64_MAX);
     vkResetFences(m_device, 1, fences);
 
     frame_resource.execute_delay_tasks();
@@ -158,32 +164,18 @@ void vk_rhi::begin_frame()
 void vk_rhi::end_frame()
 {
     ++m_frame_count;
-    m_frame_resource_index = m_frame_count % 3;
+    m_frame_resource_index = m_frame_count % m_frame_resource_count;
 }
 
 void vk_rhi::present(rhi_semaphore* const* wait_semaphores, std::size_t wait_semaphore_count)
 {
-    VkSwapchainKHR swapchains[] = {m_swapchain};
-    std::uint32_t image_indices[] = {m_swapchain_image_index};
-
-    std::vector<VkSemaphore> vk_wait_semaphores(wait_semaphore_count);
-    for (std::size_t i = 0; i < wait_semaphore_count; ++i)
-        vk_wait_semaphores[i] = static_cast<vk_semaphore*>(wait_semaphores[i])->get_semaphore();
-
-    VkPresentInfoKHR present_info{};
-    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    present_info.pWaitSemaphores = vk_wait_semaphores.data();
-    present_info.waitSemaphoreCount = static_cast<std::uint32_t>(vk_wait_semaphores.size());
-    present_info.swapchainCount = 1;
-    present_info.pSwapchains = swapchains;
-    present_info.pImageIndices = image_indices;
-
-    vkQueuePresentKHR(m_present_queue->get_queue(), &present_info);
+    m_present_queue
+        ->present(m_swapchain, m_swapchain_image_index, wait_semaphores, wait_semaphore_count);
 }
 
 void vk_rhi::resize(std::uint32_t width, std::uint32_t height)
 {
-    vkDeviceWaitIdle(m_device);
+    throw_if_failed(vkDeviceWaitIdle(m_device));
 
     m_swapchain_images.clear();
     vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
@@ -206,7 +198,7 @@ rhi_semaphore* vk_rhi::get_image_available_semaphore()
     return m_frame_resources[m_frame_resource_index].image_available_semaphore.get();
 }
 
-rhi_render_pass* vk_rhi::make_render_pass(const rhi_render_pass_desc& desc)
+rhi_render_pass* vk_rhi::create_render_pass(const rhi_render_pass_desc& desc)
 {
     return new vk_render_pass(desc, this);
 }
@@ -216,7 +208,7 @@ void vk_rhi::destroy_render_pass(rhi_render_pass* render_pass)
     delay_delete(render_pass);
 }
 
-rhi_render_pipeline* vk_rhi::make_render_pipeline(const rhi_render_pipeline_desc& desc)
+rhi_render_pipeline* vk_rhi::create_render_pipeline(const rhi_render_pipeline_desc& desc)
 {
     return new vk_render_pipeline(desc, VkExtent2D{128, 128}, this);
 }
@@ -226,10 +218,10 @@ void vk_rhi::destroy_render_pipeline(rhi_render_pipeline* render_pipeline)
     delay_delete(render_pipeline);
 }
 
-rhi_pipeline_parameter_layout* vk_rhi::make_pipeline_parameter_layout(
+rhi_pipeline_parameter_layout* vk_rhi::create_pipeline_parameter_layout(
     const rhi_pipeline_parameter_layout_desc& desc)
 {
-    return nullptr;
+    return new vk_pipeline_parameter_layout(desc, this);
 }
 
 void vk_rhi::destroy_pipeline_parameter_layout(
@@ -238,7 +230,17 @@ void vk_rhi::destroy_pipeline_parameter_layout(
     delete pipeline_parameter_layout;
 }
 
-rhi_framebuffer* vk_rhi::make_framebuffer(const rhi_framebuffer_desc& desc)
+rhi_pipeline_parameter* vk_rhi::create_pipeline_parameter(rhi_pipeline_parameter_layout* layout)
+{
+    return new vk_pipeline_parameter(static_cast<vk_pipeline_parameter_layout*>(layout), this);
+}
+
+void vk_rhi::destroy_pipeline_parameter(rhi_pipeline_parameter* pipeline_parameter)
+{
+    delay_delete(pipeline_parameter);
+}
+
+rhi_framebuffer* vk_rhi::create_framebuffer(const rhi_framebuffer_desc& desc)
 {
     return new vk_framebuffer(desc, this);
 }
@@ -248,7 +250,7 @@ void vk_rhi::destroy_framebuffer(rhi_framebuffer* framebuffer)
     delay_delete(framebuffer);
 }
 
-rhi_resource* vk_rhi::make_vertex_buffer(const rhi_vertex_buffer_desc& desc)
+rhi_resource* vk_rhi::create_vertex_buffer(const rhi_vertex_buffer_desc& desc)
 {
     return new vk_vertex_buffer(desc, this);
 }
@@ -258,7 +260,7 @@ void vk_rhi::destroy_vertex_buffer(rhi_resource* vertex_buffer)
     delay_delete(vertex_buffer);
 }
 
-rhi_resource* vk_rhi::make_index_buffer(const rhi_index_buffer_desc& desc)
+rhi_resource* vk_rhi::create_index_buffer(const rhi_index_buffer_desc& desc)
 {
     return new vk_index_buffer(desc, this);
 }
@@ -268,7 +270,7 @@ void vk_rhi::destroy_index_buffer(rhi_resource* index_buffer)
     delay_delete(index_buffer);
 }
 
-rhi_resource* vk_rhi::make_texture(
+rhi_resource* vk_rhi::create_texture(
     const std::uint8_t* data,
     std::uint32_t width,
     std::uint32_t height,
@@ -277,12 +279,17 @@ rhi_resource* vk_rhi::make_texture(
     return nullptr;
 }
 
-rhi_resource* vk_rhi::make_texture(const char* file)
+rhi_resource* vk_rhi::create_texture(const char* file)
 {
-    return nullptr;
+    return new vk_texture(file, this);
 }
 
-rhi_resource* vk_rhi::make_texture_cube(
+void vk_rhi::destroy_texture(rhi_resource* texture)
+{
+    delay_delete(texture);
+}
+
+rhi_resource* vk_rhi::create_texture_cube(
     const char* left,
     const char* right,
     const char* top,
@@ -293,22 +300,22 @@ rhi_resource* vk_rhi::make_texture_cube(
     return nullptr;
 }
 
-rhi_resource* vk_rhi::make_shadow_map(const rhi_shadow_map_desc& desc)
+rhi_resource* vk_rhi::create_shadow_map(const rhi_shadow_map_desc& desc)
 {
     return nullptr;
 }
 
-rhi_resource* vk_rhi::make_render_target(const rhi_render_target_desc& desc)
+rhi_resource* vk_rhi::create_render_target(const rhi_render_target_desc& desc)
 {
     return nullptr;
 }
 
-rhi_resource* vk_rhi::make_depth_stencil_buffer(const rhi_depth_stencil_buffer_desc& desc)
+rhi_resource* vk_rhi::create_depth_stencil_buffer(const rhi_depth_stencil_buffer_desc& desc)
 {
     return nullptr;
 }
 
-rhi_fence* vk_rhi::make_fence(bool signaled)
+rhi_fence* vk_rhi::create_fence(bool signaled)
 {
     return new vk_fence(signaled, this);
 }
@@ -318,7 +325,7 @@ void vk_rhi::destroy_fence(rhi_fence* fence)
     delay_delete(fence);
 }
 
-rhi_semaphore* vk_rhi::make_semaphore()
+rhi_semaphore* vk_rhi::create_semaphore()
 {
     return new vk_semaphore(this);
 }
@@ -326,6 +333,20 @@ rhi_semaphore* vk_rhi::make_semaphore()
 void vk_rhi::destroy_semaphore(rhi_semaphore* semaphore)
 {
     delay_delete(semaphore);
+}
+
+VkDescriptorSet vk_rhi::allocate_descriptor_set(VkDescriptorSetLayout layout)
+{
+    VkDescriptorSetAllocateInfo allocate_info = {};
+    allocate_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocate_info.descriptorPool = m_descriptor_pool;
+    allocate_info.descriptorSetCount = 1;
+    allocate_info.pSetLayouts = &layout;
+
+    VkDescriptorSet result;
+    throw_if_failed(vkAllocateDescriptorSets(m_device, &allocate_info, &result));
+
+    return result;
 }
 
 bool vk_rhi::initialize_instance(
@@ -478,7 +499,7 @@ void vk_rhi::initialize_logic_device(const std::vector<const char*>& enabled_ext
         &queue_family_count,
         queue_families.data());
 
-    m_queue_family_indices = {};
+    m_queue_family_indices = {100, 100};
     for (std::uint32_t i = 0; i < queue_families.size(); ++i)
     {
         if (queue_families[i].queueCount == 0)
@@ -492,11 +513,11 @@ void vk_rhi::initialize_logic_device(const std::vector<const char*>& enabled_ext
         if (present_support)
             m_queue_family_indices.present = i;
 
-        if (m_queue_family_indices.graphics != 0 && m_queue_family_indices.present != 0)
+        if (m_queue_family_indices.graphics != 100 && m_queue_family_indices.present != 100)
             break;
     }
 
-    std::vector<std::uint32_t> queue_indices = {
+    std::set<std::uint32_t> queue_indices = {
         m_queue_family_indices.graphics,
         m_queue_family_indices.present};
     std::vector<VkDeviceQueueCreateInfo> queue_infos = {};
@@ -523,8 +544,8 @@ void vk_rhi::initialize_logic_device(const std::vector<const char*>& enabled_ext
 
     throw_if_failed(vkCreateDevice(m_physical_device, &device_info, nullptr, &m_device));
 
-    m_graphics_queue = std::make_unique<vk_command_queue>(m_queue_family_indices.graphics, this);
-    m_present_queue = std::make_unique<vk_command_queue>(m_queue_family_indices.present, this);
+    m_graphics_queue = std::make_unique<vk_graphics_queue>(m_queue_family_indices.graphics, this);
+    m_present_queue = std::make_unique<vk_present_queue>(m_queue_family_indices.present, this);
 }
 
 void vk_rhi::initialize_swapchain(std::uint32_t width, std::uint32_t height)
@@ -568,10 +589,10 @@ void vk_rhi::initialize_swapchain(std::uint32_t width, std::uint32_t height)
     swapchain_info.imageColorSpace = formats[0].colorSpace;
     for (auto& format : formats)
     {
-        if (format.format == VK_FORMAT_R8G8B8A8_UNORM &&
+        if (format.format == VK_FORMAT_B8G8R8A8_SRGB &&
             format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
         {
-            swapchain_info.imageFormat = VK_FORMAT_R8G8B8A8_UNORM;
+            swapchain_info.imageFormat = VK_FORMAT_B8G8R8A8_SRGB;
             swapchain_info.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
             break;
         }
@@ -609,8 +630,6 @@ void vk_rhi::initialize_swapchain(std::uint32_t width, std::uint32_t height)
     if (m_queue_family_indices.graphics == m_queue_family_indices.present)
     {
         swapchain_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        swapchain_info.queueFamilyIndexCount = 0;
-        swapchain_info.pQueueFamilyIndices = nullptr;
     }
     else
     {
@@ -643,7 +662,6 @@ void vk_rhi::initialize_swapchain(std::uint32_t width, std::uint32_t height)
 
 void vk_rhi::initialize_frame_resources(std::size_t frame_resource_count)
 {
-    m_frame_resource_count = frame_resource_count;
     m_frame_resources.resize(frame_resource_count);
 
     for (vk_frame_resource& frame_resource : m_frame_resources)
@@ -651,6 +669,22 @@ void vk_rhi::initialize_frame_resources(std::size_t frame_resource_count)
         frame_resource.image_available_semaphore = std::make_unique<vk_semaphore>(this);
         frame_resource.in_flight_fence = std::make_unique<vk_fence>(true, this);
     }
+}
+
+void vk_rhi::initialize_descriptor_pool()
+{
+    std::vector<VkDescriptorPoolSize> pool_size = {
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1024},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1024}
+    };
+
+    VkDescriptorPoolCreateInfo pool_info = {};
+    pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pool_info.poolSizeCount = static_cast<std::uint32_t>(pool_size.size());
+    pool_info.pPoolSizes = pool_size.data();
+    pool_info.maxSets = 512;
+
+    throw_if_failed(vkCreateDescriptorPool(m_device, &pool_info, nullptr, &m_descriptor_pool));
 }
 
 bool vk_rhi::check_extension_support(
@@ -692,7 +726,7 @@ extern "C"
         return info;
     }
 
-    PLUGIN_API violet::rhi_context* make_rhi()
+    PLUGIN_API violet::rhi_context* create_rhi()
     {
         return new violet::vk::vk_rhi();
     }

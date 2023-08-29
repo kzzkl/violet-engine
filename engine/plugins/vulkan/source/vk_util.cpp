@@ -48,6 +48,8 @@ VkFormat vk_util::map_format(rhi_resource_format format)
         return VK_FORMAT_B8G8R8A8_UINT;
     case RHI_RESOURCE_FORMAT_B8G8R8A8_SINT:
         return VK_FORMAT_B8G8R8A8_SINT;
+    case RHI_RESOURCE_FORMAT_B8G8R8A8_SRGB:
+        return VK_FORMAT_B8G8R8A8_SRGB;
     case RHI_RESOURCE_FORMAT_R32_UINT:
         return VK_FORMAT_R32_UINT;
     case RHI_RESOURCE_FORMAT_R32_SINT:
@@ -125,6 +127,8 @@ rhi_resource_format vk_util::map_format(VkFormat format)
         return RHI_RESOURCE_FORMAT_B8G8R8A8_UINT;
     case VK_FORMAT_B8G8R8A8_SINT:
         return RHI_RESOURCE_FORMAT_B8G8R8A8_SINT;
+    case VK_FORMAT_B8G8R8A8_SRGB:
+        return RHI_RESOURCE_FORMAT_B8G8R8A8_SRGB;
     case VK_FORMAT_R32_UINT:
         return RHI_RESOURCE_FORMAT_R32_UINT;
     case VK_FORMAT_R32_SINT:

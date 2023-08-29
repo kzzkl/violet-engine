@@ -30,6 +30,7 @@ enum rhi_resource_format
     RHI_RESOURCE_FORMAT_B8G8R8A8_SNORM,
     RHI_RESOURCE_FORMAT_B8G8R8A8_UINT,
     RHI_RESOURCE_FORMAT_B8G8R8A8_SINT,
+    RHI_RESOURCE_FORMAT_B8G8R8A8_SRGB,
     RHI_RESOURCE_FORMAT_R32_UINT,
     RHI_RESOURCE_FORMAT_R32_SINT,
     RHI_RESOURCE_FORMAT_R32_FLOAT,
@@ -159,7 +160,7 @@ public:
 
 enum rhi_pipeline_parameter_type
 {
-    RHI_PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER,
+    RHI_PIPELINE_PARAMETER_TYPE_UNIFORM_BUFFER,
     RHI_PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,
     RHI_PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS
 };
@@ -187,7 +188,7 @@ class rhi_pipeline_parameter
 public:
     virtual ~rhi_pipeline_parameter() = default;
 
-    virtual void set(std::size_t index, const void* data, size_t size) = 0;
+    virtual void set(std::size_t index, const void* data, std::size_t size, std::size_t offset) = 0;
     virtual void set(std::size_t index, rhi_resource* texture) = 0;
 };
 
@@ -353,7 +354,7 @@ public:
     virtual void next() = 0;
 
     virtual void set_pipeline(rhi_render_pipeline* render_pipeline) = 0;
-    virtual void set_parameter(std::size_t index, rhi_pipeline_parameter* parameter) = 0;
+    virtual void set_parameter(std::size_t index, rhi_pipeline_parameter* pipeline_parameter) = 0;
 
     virtual void set_viewport(const rhi_viewport& viewport) = 0;
     virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) = 0;
@@ -487,33 +488,39 @@ public:
     virtual std::size_t get_frame_resource_index() const noexcept = 0;
 
 public:
-    virtual rhi_render_pass* make_render_pass(const rhi_render_pass_desc& desc) = 0;
+    virtual rhi_render_pass* create_render_pass(const rhi_render_pass_desc& desc) = 0;
     virtual void destroy_render_pass(rhi_render_pass* render_pass) = 0;
 
-    virtual rhi_render_pipeline* make_render_pipeline(const rhi_render_pipeline_desc& desc) = 0;
+    virtual rhi_render_pipeline* create_render_pipeline(const rhi_render_pipeline_desc& desc) = 0;
     virtual void destroy_render_pipeline(rhi_render_pipeline* render_pipeline) = 0;
 
-    virtual rhi_pipeline_parameter_layout* make_pipeline_parameter_layout(
+    virtual rhi_pipeline_parameter_layout* create_pipeline_parameter_layout(
         const rhi_pipeline_parameter_layout_desc& desc) = 0;
     virtual void destroy_pipeline_parameter_layout(
         rhi_pipeline_parameter_layout* pipeline_parameter_layout) = 0;
 
-    virtual rhi_framebuffer* make_framebuffer(const rhi_framebuffer_desc& desc) = 0;
+    virtual rhi_pipeline_parameter* create_pipeline_parameter(
+        rhi_pipeline_parameter_layout* layout) = 0;
+    virtual void destroy_pipeline_parameter(rhi_pipeline_parameter* pipeline_parameter) = 0;
+
+    virtual rhi_framebuffer* create_framebuffer(const rhi_framebuffer_desc& desc) = 0;
     virtual void destroy_framebuffer(rhi_framebuffer* framebuffer) = 0;
 
-    virtual rhi_resource* make_vertex_buffer(const rhi_vertex_buffer_desc& desc) = 0;
+    virtual rhi_resource* create_vertex_buffer(const rhi_vertex_buffer_desc& desc) = 0;
     virtual void destroy_vertex_buffer(rhi_resource* vertex_buffer) = 0;
 
-    virtual rhi_resource* make_index_buffer(const rhi_index_buffer_desc& desc) = 0;
+    virtual rhi_resource* create_index_buffer(const rhi_index_buffer_desc& desc) = 0;
     virtual void destroy_index_buffer(rhi_resource* index_buffer) = 0;
 
-    virtual rhi_resource* make_texture(
+    virtual rhi_resource* create_texture(
         const std::uint8_t* data,
         std::uint32_t width,
         std::uint32_t height,
         rhi_resource_format format = RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM) = 0;
-    virtual rhi_resource* make_texture(const char* file) = 0;
-    virtual rhi_resource* make_texture_cube(
+    virtual rhi_resource* create_texture(const char* file) = 0;
+    virtual void destroy_texture(rhi_resource* texture) = 0;
+
+    virtual rhi_resource* create_texture_cube(
         const char* left,
         const char* right,
         const char* top,
@@ -521,17 +528,18 @@ public:
         const char* front,
         const char* back) = 0;
 
-    virtual rhi_resource* make_shadow_map(const rhi_shadow_map_desc& desc) = 0;
+    virtual rhi_resource* create_shadow_map(const rhi_shadow_map_desc& desc) = 0;
 
-    virtual rhi_resource* make_render_target(const rhi_render_target_desc& desc) = 0;
-    virtual rhi_resource* make_depth_stencil_buffer(const rhi_depth_stencil_buffer_desc& desc) = 0;
+    virtual rhi_resource* create_render_target(const rhi_render_target_desc& desc) = 0;
+    virtual rhi_resource* create_depth_stencil_buffer(
+        const rhi_depth_stencil_buffer_desc& desc) = 0;
 
-    virtual rhi_fence* make_fence(bool signaled) = 0;
+    virtual rhi_fence* create_fence(bool signaled) = 0;
     virtual void destroy_fence(rhi_fence* fence) = 0;
 
-    virtual rhi_semaphore* make_semaphore() = 0;
+    virtual rhi_semaphore* create_semaphore() = 0;
     virtual void destroy_semaphore(rhi_semaphore* semaphore) = 0;
 };
-using make_rhi = rhi_context* (*)();
+using create_rhi = rhi_context* (*)();
 using destroy_rhi = void (*)(rhi_context*);
 } // namespace violet

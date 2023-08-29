@@ -1,6 +1,6 @@
 struct vs_in
 {
-    [[vk::location(0)]] float2 position: POSITION;
+    [[vk::location(0)]] float3 position: POSITION;
     [[vk::location(1)]] float3 color: COLOR;
 };
 
@@ -10,11 +10,18 @@ struct vs_out
     float3 color : COLOR;
 };
 
+struct UBO
+{
+	float4x4 mvp;
+};
+
+cbuffer ubo : register(b0, space0) { UBO ubo; }
+
 vs_out vs_main(vs_in input)
 {
     vs_out output;
 
-    output.position = float4(input.position, 0.0, 1.0);
+    output.position = mul(ubo.mvp, float4(input.position, 1.0));
     output.color = input.color;
 
     return output;

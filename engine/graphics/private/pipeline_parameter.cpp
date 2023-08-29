@@ -7,7 +7,7 @@ namespace violet
 /*pipeline_parameter::pipeline_parameter(const rhi_pipeline_parameter_desc& desc)
 {
     auto& graphics = engine::get_system<graphics_system>();
-    m_interface.reset(graphics.get_rhi()->make_pipeline_parameter(desc));
+    m_interface.reset(graphics.get_rhi()->create_pipeline_parameter(desc));
 }
 
 void pipeline_parameter::set(std::size_t index, const void* data, size_t size)

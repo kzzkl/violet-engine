@@ -5,14 +5,14 @@ namespace violet
 {
 bool rhi_plugin::on_load()
 {
-    make_rhi make = static_cast<make_rhi>(find_symbol("make_rhi"));
-    if (make == nullptr)
+    create_rhi create = static_cast<create_rhi>(find_symbol("create_rhi"));
+    if (create == nullptr)
     {
-        log::error("Symbol not found in plugin: make_rhi.");
+        log::error("Symbol not found in plugin: create_rhi.");
         return false;
     }
 
-    m_rhi.reset(make());
+    m_rhi.reset(create());
 
     return true;
 }

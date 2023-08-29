@@ -37,15 +37,6 @@ void vk_command::begin(rhi_render_pass* render_pass, rhi_framebuffer* framebuffe
     render_pass_begin_info.clearValueCount = 1;
 
     vkCmdBeginRenderPass(m_command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
-
-    VkViewport viewport = {};
-    viewport.width = static_cast<float>(extent.width);
-    viewport.height = static_cast<float>(extent.height);
-    viewport.x = 0;
-    viewport.y = 0;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(m_command_buffer, 0, 1, &viewport);
 }
 
 void vk_command::end()
@@ -61,15 +52,27 @@ void vk_command::next()
 
 void vk_command::set_pipeline(rhi_render_pipeline* render_pipeline)
 {
-    vk_render_pipeline* casted_render_pipeline = static_cast<vk_render_pipeline*>(render_pipeline);
-    vkCmdBindPipeline(
-        m_command_buffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        casted_render_pipeline->get_pipeline());
+    vk_render_pipeline* pipeline = static_cast<vk_render_pipeline*>(render_pipeline);
+    vkCmdBindPipeline(m_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->get_pipeline());
+
+    m_current_pipeline_layout = pipeline->get_pipeline_layout();
 }
 
-void vk_command::set_parameter(std::size_t index, rhi_pipeline_parameter* parameter)
+void vk_command::set_parameter(std::size_t index, rhi_pipeline_parameter* pipeline_parameter)
 {
+    vk_pipeline_parameter* parameter = static_cast<vk_pipeline_parameter*>(pipeline_parameter);
+    // parameter->sync();
+
+    VkDescriptorSet descriptor_sets[] = {parameter->get_descriptor_set()};
+    vkCmdBindDescriptorSets(
+        m_command_buffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        m_current_pipeline_layout,
+        0,
+        1,
+        descriptor_sets,
+        0,
+        nullptr);
 }
 
 void vk_command::set_viewport(const rhi_viewport& viewport)
@@ -164,7 +167,7 @@ void vk_command::reset()
     throw_if_failed(vkResetCommandBuffer(m_command_buffer, 0));
 }
 
-vk_command_queue::vk_command_queue(std::uint32_t queue_family_index, vk_rhi* rhi) : m_rhi(rhi)
+vk_graphics_queue::vk_graphics_queue(std::uint32_t queue_family_index, vk_rhi* rhi) : m_rhi(rhi)
 {
     VkCommandPoolCreateInfo command_pool_info = {};
     command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -181,12 +184,12 @@ vk_command_queue::vk_command_queue(std::uint32_t queue_family_index, vk_rhi* rhi
     m_fence = std::make_unique<vk_fence>(false, m_rhi);
 }
 
-vk_command_queue::~vk_command_queue()
+vk_graphics_queue::~vk_graphics_queue()
 {
     vkDestroyCommandPool(m_rhi->get_device(), m_command_pool, nullptr);
 }
 
-vk_command* vk_command_queue::allocate_command()
+vk_command* vk_graphics_queue::allocate_command()
 {
     if (m_free_commands.empty())
     {
@@ -224,7 +227,7 @@ vk_command* vk_command_queue::allocate_command()
     return command;
 }
 
-void vk_command_queue::execute(
+void vk_graphics_queue::execute(
     rhi_render_command* const* commands,
     std::size_t command_count,
     rhi_semaphore* const* signal_semaphores,
@@ -267,13 +270,13 @@ void vk_command_queue::execute(
         fence == nullptr ? VK_NULL_HANDLE : static_cast<vk_fence*>(fence)->get_fence()));
 }
 
-void vk_command_queue::execute_sync(rhi_render_command* command)
+void vk_graphics_queue::execute_sync(rhi_render_command* command)
 {
     execute(&command, 1, nullptr, 0, nullptr, 0, m_fence.get());
     m_fence->wait();
 }
 
-void vk_command_queue::begin_frame()
+void vk_graphics_queue::begin_frame()
 {
     auto& commands = m_active_commands[m_rhi->get_frame_resource_index()];
     for (vk_command* command : commands)
@@ -282,5 +285,42 @@ void vk_command_queue::begin_frame()
         m_free_commands.push_back(command);
     }
     commands.clear();
+}
+
+vk_present_queue::vk_present_queue(std::uint32_t queue_family_index, vk_rhi* rhi)
+{
+    vkGetDeviceQueue(rhi->get_device(), queue_family_index, 0, &m_queue);
+}
+
+vk_present_queue::~vk_present_queue()
+{
+}
+
+void vk_present_queue::present(
+    VkSwapchainKHR swapchain,
+    std::uint32_t image_index,
+    rhi_semaphore* const* wait_semaphores,
+    std::size_t wait_semaphore_count)
+{
+    VkSwapchainKHR swapchains[] = {swapchain};
+    std::uint32_t image_indices[] = {image_index};
+
+    std::vector<VkSemaphore> semaphores(wait_semaphore_count);
+    for (std::size_t i = 0; i < wait_semaphore_count; ++i)
+        semaphores[i] = static_cast<vk_semaphore*>(wait_semaphores[i])->get_semaphore();
+
+    VkPresentInfoKHR present_info{};
+    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    present_info.pWaitSemaphores = semaphores.data();
+    present_info.waitSemaphoreCount = static_cast<std::uint32_t>(semaphores.size());
+    present_info.swapchainCount = 1;
+    present_info.pSwapchains = swapchains;
+    present_info.pImageIndices = image_indices;
+
+    VkResult result = vkQueuePresentKHR(m_queue, &present_info);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+        return;
+    else
+        throw_if_failed(result);
 }
 } // namespace violet::vk

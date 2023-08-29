@@ -152,7 +152,7 @@ bool render_pass::compile()
         desc.subpasses[i] = m_subpasses[i]->get_desc();
     desc.subpass_count = m_subpasses.size();
 
-    m_interface = get_rhi()->make_render_pass(desc);
+    m_interface = get_rhi()->create_render_pass(desc);
 
     if (m_interface == nullptr)
         return false;
@@ -172,6 +172,8 @@ void render_pass::execute(rhi_render_command* command)
 
     update_framebuffer_cache();
 
+    command->begin(m_interface, m_framebuffer);
+
     rhi_resource_extent extent = m_attachments[0]->get_resource()->get_extent();
     rhi_scissor_rect scissor =
         {.min_x = 0, .min_y = 0, .max_x = extent.width, .max_y = extent.height};
@@ -185,8 +187,6 @@ void render_pass::execute(rhi_render_command* command)
         .min_depth = 0.0f,
         .max_depth = 1.0f};
     command->set_viewport(viewport);
-
-    command->begin(m_interface, m_framebuffer);
 
     for (std::size_t i = 0; i < m_subpasses.size(); ++i)
     {
@@ -214,7 +214,7 @@ void render_pass::update_framebuffer_cache()
             desc.attachments[i] = m_attachments[i]->get_resource();
         desc.attachment_count = m_attachments.size();
 
-        m_framebuffer = get_rhi()->make_framebuffer(desc);
+        m_framebuffer = get_rhi()->create_framebuffer(desc);
         m_framebuffer_cache[hash] = m_framebuffer;
     }
     else

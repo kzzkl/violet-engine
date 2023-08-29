@@ -114,7 +114,7 @@ void engine::main_loop()
 
         time.tick(timer::point::FRAME_END);
 
-        frame_rater.sleep();
+        // frame_rater.sleep();
     }
     m_task_executor->stop();
 

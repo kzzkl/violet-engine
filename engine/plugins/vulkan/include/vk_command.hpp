@@ -22,7 +22,8 @@ public:
     virtual void next() override;
 
     virtual void set_pipeline(rhi_render_pipeline* render_pipeline) override;
-    virtual void set_parameter(std::size_t index, rhi_pipeline_parameter* parameter) override;
+    virtual void set_parameter(std::size_t index, rhi_pipeline_parameter* pipeline_parameter)
+        override;
 
     virtual void set_viewport(const rhi_viewport& viewport) override;
     virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) override;
@@ -52,14 +53,16 @@ private:
     VkCommandBuffer m_command_buffer;
 
     VkRenderPass m_current_render_pass;
+    VkPipelineLayout m_current_pipeline_layout;
+
     vk_rhi* m_rhi;
 };
 
-class vk_command_queue
+class vk_graphics_queue
 {
 public:
-    vk_command_queue(std::uint32_t queue_family_index, vk_rhi* rhi);
-    ~vk_command_queue();
+    vk_graphics_queue(std::uint32_t queue_family_index, vk_rhi* rhi);
+    ~vk_graphics_queue();
 
     vk_command* allocate_command();
 
@@ -87,5 +90,23 @@ private:
 
     std::unique_ptr<vk_fence> m_fence;
     vk_rhi* m_rhi;
+};
+
+class vk_present_queue
+{
+public:
+    vk_present_queue(std::uint32_t queue_family_index, vk_rhi* rhi);
+    ~vk_present_queue();
+
+    void present(
+        VkSwapchainKHR swapchain,
+        std::uint32_t image_index,
+        rhi_semaphore* const* wait_semaphores,
+        std::size_t wait_semaphore_count);
+
+    VkQueue get_queue() const noexcept { return m_queue; }
+
+private:
+    VkQueue m_queue;
 };
 } // namespace violet::vk

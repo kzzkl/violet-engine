@@ -4,9 +4,6 @@ namespace violet
 {
 render_graph::render_graph(rhi_context* rhi) : m_rhi(rhi)
 {
-    render_resource& back_buffer = add_resource("back buffer");
-    back_buffer.set_format(m_rhi->get_back_buffer()->get_format());
-    back_buffer.set_resource(m_rhi->get_back_buffer());
 }
 
 render_graph::~render_graph()
@@ -46,7 +43,7 @@ bool render_graph::compile()
 
     m_render_finished_semaphores.resize(m_rhi->get_frame_resource_count());
     for (std::size_t i = 0; i < m_render_finished_semaphores.size(); ++i)
-        m_render_finished_semaphores[i] = m_rhi->make_semaphore();
+        m_render_finished_semaphores[i] = m_rhi->create_semaphore();
 
     return true;
 }

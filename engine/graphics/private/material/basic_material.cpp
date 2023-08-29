@@ -71,7 +71,7 @@ basic_pipeline::basic_pipeline() : render_pipeline({"position", "normal"})
     render_target_resolve.initial_state = RESOURCE_STATE_RENDER_TARGET;
     render_target_resolve.final_state = RESOURCE_STATE_PRESENT;
 
-    m_interface.reset(engine_graphics.get_rhi()->make_render_pipeline(desc));
+    m_interface.reset(engine_graphics.get_rhi()->create_render_pipeline(desc));
 }
 
 void basic_pipeline::on_render(const std::vector<mesh*>& meshes, rhi_render_command* command)

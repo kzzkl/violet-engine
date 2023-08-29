@@ -1,5 +1,6 @@
 #include "vk_pipeline.hpp"
 #include "vk_render_pass.hpp"
+#include "vk_resource.hpp"
 #include "vk_rhi.hpp"
 #include "vk_util.hpp"
 #include <fstream>
@@ -59,26 +60,193 @@ vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
     vk_rhi* rhi)
     : m_rhi(rhi)
 {
+    std::vector<VkDescriptorSetLayoutBinding> bindings;
+
+    m_parameter_infos.resize(desc.parameter_count);
+    std::size_t uniform_buffer_count = 0;
+
+    for (std::size_t i = 0; i < desc.parameter_count; ++i)
+    {
+        VkDescriptorSetLayoutBinding binding = {};
+        binding.binding = static_cast<std::uint32_t>(i);
+
+        switch (desc.parameters[i].type)
+        {
+        case RHI_PIPELINE_PARAMETER_TYPE_UNIFORM_BUFFER: {
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            binding.descriptorCount = 1;
+            binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+            binding.pImmutableSamplers = nullptr;
+
+            m_parameter_infos[i].index = uniform_buffer_count;
+            m_parameter_infos[i].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            m_parameter_infos[i].uniform_buffer.size = desc.parameters[i].size;
+
+            ++uniform_buffer_count;
+
+            break;
+        }
+        default:
+            break;
+        }
+
+        bindings.push_back(binding);
+    }
+
+    VkDescriptorSetLayoutCreateInfo descriptor_set_layout_info = {};
+    descriptor_set_layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    descriptor_set_layout_info.pBindings = bindings.data();
+    descriptor_set_layout_info.bindingCount = static_cast<std::uint32_t>(bindings.size());
+
+    throw_if_failed(vkCreateDescriptorSetLayout(
+        m_rhi->get_device(),
+        &descriptor_set_layout_info,
+        nullptr,
+        &m_layout));
 }
 
 vk_pipeline_parameter_layout::~vk_pipeline_parameter_layout()
 {
+    vkDestroyDescriptorSetLayout(m_rhi->get_device(), m_layout, nullptr);
 }
 
-vk_pipeline_parameter::vk_pipeline_parameter()
+vk_pipeline_parameter::vk_pipeline_parameter(vk_pipeline_parameter_layout* layout, vk_rhi* rhi)
+    : m_layout(layout),
+      m_last_update_frame(0),
+      m_last_sync_frame(-1),
+      m_rhi(rhi)
 {
+    auto& parameter_infos = m_layout->get_parameter_infos();
+    for (auto& parameter_info : parameter_infos)
+    {
+        switch (parameter_info.type)
+        {
+        case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
+            auto uniform_buffer = std::make_unique<vk_uniform_buffer>(
+                nullptr,
+                parameter_info.uniform_buffer.size * rhi->get_frame_resource_count(),
+                m_rhi);
+
+            m_uniform_buffers.push_back(std::move(uniform_buffer));
+            break;
+        }
+
+        default:
+            throw vk_exception("Invalid parameter type.");
+        }
+    }
+    m_parameter_update_frame.resize(parameter_infos.size());
+
+    m_descriptor_sets.resize(rhi->get_frame_resource_count());
+    for (std::size_t i = 0; i < m_descriptor_sets.size(); ++i)
+    {
+        m_descriptor_sets[i] = rhi->allocate_descriptor_set(layout->get_layout());
+
+        std::vector<VkWriteDescriptorSet> descriptor_write;
+        std::vector<VkDescriptorBufferInfo> buffer_infos;
+        buffer_infos.reserve(parameter_infos.size());
+
+        for (std::size_t j = 0; j < parameter_infos.size(); ++j)
+        {
+            if (parameter_infos[j].type != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                continue;
+
+            VkDescriptorBufferInfo info = {};
+            info.buffer = m_uniform_buffers[parameter_infos[j].index]->get_buffer_handle();
+            info.offset = parameter_infos[j].uniform_buffer.size * i;
+            info.range = parameter_infos[j].uniform_buffer.size;
+            buffer_infos.push_back(info);
+
+            VkWriteDescriptorSet write = {};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstSet = m_descriptor_sets[i];
+            write.dstBinding = static_cast<std::uint32_t>(j);
+            write.dstArrayElement = 0;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            write.descriptorCount = 1;
+            write.pBufferInfo = &buffer_infos.back();
+            write.pImageInfo = nullptr;
+            write.pTexelBufferView = nullptr;
+
+            descriptor_write.push_back(write);
+        }
+
+        if (!descriptor_write.empty())
+        {
+            vkUpdateDescriptorSets(
+                m_rhi->get_device(),
+                static_cast<std::uint32_t>(descriptor_write.size()),
+                descriptor_write.data(),
+                0,
+                nullptr);
+        }
+    }
 }
 
 vk_pipeline_parameter::~vk_pipeline_parameter()
 {
 }
 
-void vk_pipeline_parameter::set(std::size_t index, const void* data, size_t size)
+void vk_pipeline_parameter::set(
+    std::size_t index,
+    const void* data,
+    std::size_t size,
+    std::size_t offset)
 {
+    sync();
+
+    std::size_t frame_resource_index = m_rhi->get_frame_resource_index();
+
+    auto& parameter_info = m_layout->get_parameter_infos()[index];
+    assert(parameter_info.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+    void* buffer = m_uniform_buffers[parameter_info.index]->get_buffer();
+    void* target = static_cast<std::uint8_t*>(buffer) + offset +
+                   parameter_info.uniform_buffer.size * frame_resource_index;
+
+    std::memcpy(target, data, size);
+
+    m_last_update_frame = m_parameter_update_frame[index] = m_rhi->get_frame_count();
 }
 
 void vk_pipeline_parameter::set(std::size_t index, rhi_resource* texture)
 {
+}
+
+VkDescriptorSet vk_pipeline_parameter::get_descriptor_set() const noexcept
+{
+    return m_descriptor_sets[m_rhi->get_frame_resource_index()];
+}
+
+void vk_pipeline_parameter::sync()
+{
+    std::size_t corrent_frame = m_rhi->get_frame_count();
+    std::size_t frame_resource_count = m_rhi->get_frame_resource_count();
+    if (m_last_sync_frame == corrent_frame ||
+        m_last_update_frame + frame_resource_count < corrent_frame)
+        return;
+    m_last_sync_frame = corrent_frame;
+
+    std::size_t current_index = m_rhi->get_frame_resource_index();
+    std::size_t previous_index = (current_index + frame_resource_count - 1) % frame_resource_count;
+
+    for (std::size_t i = 0; i < m_parameter_update_frame.size(); ++i)
+    {
+        if (m_parameter_update_frame[i] + frame_resource_count < corrent_frame)
+            continue;
+
+        auto& parameter_info = m_layout->get_parameter_infos()[i];
+        if (parameter_info.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+        {
+            void* buffer = m_uniform_buffers[parameter_info.index]->get_buffer();
+            std::size_t size = parameter_info.uniform_buffer.size;
+
+            void* source = static_cast<std::uint8_t*>(buffer) + previous_index * size;
+            void* target = static_cast<std::uint8_t*>(buffer) + current_index * size;
+
+            std::memcpy(target, source, size);
+        }
+    }
 }
 
 vk_render_pipeline::vk_render_pipeline(
@@ -176,7 +344,7 @@ vk_render_pipeline::vk_render_pipeline(
         rasterization_state_info.cullMode = VK_CULL_MODE_BACK_BIT;
         break;
     default:
-        throw std::runtime_error("Invalid cull mode.");
+        throw vk_exception("Invalid cull mode.");
     }
 
     VkPipelineMultisampleStateCreateInfo multisample_state_info = {};
@@ -214,11 +382,16 @@ vk_render_pipeline::vk_render_pipeline(
     color_blend_info.blendConstants[3] = 0.0f;
 
     std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
+    for (std::size_t i = 0; i < desc.parameter_count; ++i)
+    {
+        descriptor_set_layouts.push_back(
+            static_cast<vk_pipeline_parameter_layout*>(desc.parameters[i])->get_layout());
+    }
 
     VkPipelineLayoutCreateInfo layout_info = {};
     layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layout_info.setLayoutCount = static_cast<std::uint32_t>(descriptor_set_layouts.size());
     layout_info.pSetLayouts = descriptor_set_layouts.data();
+    layout_info.setLayoutCount = static_cast<std::uint32_t>(descriptor_set_layouts.size());
     throw_if_failed(
         vkCreatePipelineLayout(m_rhi->get_device(), &layout_info, nullptr, &m_pipeline_layout));
 
@@ -272,7 +445,7 @@ VkShaderModule vk_render_pipeline::load_shader(std::string_view path)
 {
     std::ifstream fin(path.data(), std::ios::binary);
     if (!fin.is_open())
-        throw std::runtime_error("Failed to open file!");
+        throw vk_exception("Failed to open file!");
 
     fin.seekg(0, std::ios::end);
     std::size_t buffer_size = fin.tellg();
