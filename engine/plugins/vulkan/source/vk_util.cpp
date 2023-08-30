@@ -197,4 +197,36 @@ VkImageLayout vk_util::map_state(rhi_resource_state state)
         return VK_IMAGE_LAYOUT_UNDEFINED;
     }
 }
+
+VkFilter vk_util::map_filter(rhi_filter filter)
+{
+    switch (filter)
+    {
+    case RHI_FILTER_NEAREST:
+        return VK_FILTER_NEAREST;
+    case RHI_FILTER_LINEAR:
+        return VK_FILTER_LINEAR;
+    default:
+        throw vk_exception("Invalid filter type.");
+    }
+}
+
+VkSamplerAddressMode vk_util::map_sampler_address_mode(rhi_sampler_address_mode address_mode)
+{
+    switch (address_mode)
+    {
+    case RHI_SAMPLER_ADDRESS_MODE_REPEAT:
+        return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    case RHI_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT:
+        return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+    case RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE:
+        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    case RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER:
+        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+    case RHI_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:
+        return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
+    default:
+        throw vk_exception("Invalid sampler address mode.");
+    }
+}
 } // namespace violet::vk

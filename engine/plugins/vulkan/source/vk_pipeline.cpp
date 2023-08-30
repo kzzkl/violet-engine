@@ -64,6 +64,7 @@ vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
 
     m_parameter_infos.resize(desc.parameter_count);
     std::size_t uniform_buffer_count = 0;
+    std::size_t image_count = 0;
 
     for (std::size_t i = 0; i < desc.parameter_count; ++i)
     {
@@ -83,7 +84,18 @@ vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
             m_parameter_infos[i].uniform_buffer.size = desc.parameters[i].size;
 
             ++uniform_buffer_count;
+            break;
+        }
+        case RHI_PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE: {
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            binding.descriptorCount = 1;
+            binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+            binding.pImmutableSamplers = nullptr;
 
+            m_parameter_infos[i].index = image_count;
+            m_parameter_infos[i].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+
+            ++image_count;
             break;
         }
         default:
@@ -119,20 +131,14 @@ vk_pipeline_parameter::vk_pipeline_parameter(vk_pipeline_parameter_layout* layou
     auto& parameter_infos = m_layout->get_parameter_infos();
     for (auto& parameter_info : parameter_infos)
     {
-        switch (parameter_info.type)
+        if (parameter_info.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
         {
-        case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
             auto uniform_buffer = std::make_unique<vk_uniform_buffer>(
                 nullptr,
                 parameter_info.uniform_buffer.size * rhi->get_frame_resource_count(),
                 m_rhi);
 
             m_uniform_buffers.push_back(std::move(uniform_buffer));
-            break;
-        }
-
-        default:
-            throw vk_exception("Invalid parameter type.");
         }
     }
     m_parameter_update_frame.resize(parameter_infos.size());
@@ -148,27 +154,42 @@ vk_pipeline_parameter::vk_pipeline_parameter(vk_pipeline_parameter_layout* layou
 
         for (std::size_t j = 0; j < parameter_infos.size(); ++j)
         {
-            if (parameter_infos[j].type != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-                continue;
+            if (parameter_infos[j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+            {
+                VkDescriptorBufferInfo info = {};
+                info.buffer = m_uniform_buffers[parameter_infos[j].index]->get_buffer_handle();
+                info.offset = parameter_infos[j].uniform_buffer.size * i;
+                info.range = parameter_infos[j].uniform_buffer.size;
+                buffer_infos.push_back(info);
 
-            VkDescriptorBufferInfo info = {};
-            info.buffer = m_uniform_buffers[parameter_infos[j].index]->get_buffer_handle();
-            info.offset = parameter_infos[j].uniform_buffer.size * i;
-            info.range = parameter_infos[j].uniform_buffer.size;
-            buffer_infos.push_back(info);
+                VkWriteDescriptorSet write = {};
+                write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                write.dstSet = m_descriptor_sets[i];
+                write.dstBinding = static_cast<std::uint32_t>(j);
+                write.dstArrayElement = 0;
+                write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                write.descriptorCount = 1;
+                write.pBufferInfo = &buffer_infos.back();
+                write.pImageInfo = nullptr;
+                write.pTexelBufferView = nullptr;
 
-            VkWriteDescriptorSet write = {};
-            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstSet = m_descriptor_sets[i];
-            write.dstBinding = static_cast<std::uint32_t>(j);
-            write.dstArrayElement = 0;
-            write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            write.descriptorCount = 1;
-            write.pBufferInfo = &buffer_infos.back();
-            write.pImageInfo = nullptr;
-            write.pTexelBufferView = nullptr;
+                descriptor_write.push_back(write);
+            }
+            else if (parameter_infos[j].type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+            {
+                // VkWriteDescriptorSet write = {};
+                // write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                // write.dstSet = m_descriptor_sets[i];
+                // write.dstBinding = static_cast<std::uint32_t>(j);
+                // write.dstArrayElement = 0;
+                // write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                // write.descriptorCount = 1;
+                // write.pBufferInfo = nullptr;
+                // write.pImageInfo = nullptr;
+                // write.pTexelBufferView = nullptr;
 
-            descriptor_write.push_back(write);
+                // descriptor_write.push_back(write);
+            }
         }
 
         if (!descriptor_write.empty())
@@ -209,8 +230,31 @@ void vk_pipeline_parameter::set(
     m_last_update_frame = m_parameter_update_frame[index] = m_rhi->get_frame_count();
 }
 
-void vk_pipeline_parameter::set(std::size_t index, rhi_resource* texture)
+void vk_pipeline_parameter::set(std::size_t index, rhi_resource* texture, rhi_sampler* sampler)
 {
+    sync();
+
+    vk_image* image = static_cast<vk_image*>(texture);
+
+    VkDescriptorImageInfo info = {};
+    info.imageView = image->get_image_view();
+    info.imageLayout = image->get_image_layout();
+    info.sampler = static_cast<vk_sampler*>(sampler)->get_sampler();
+
+    VkWriteDescriptorSet write = {};
+    write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write.dstSet = m_descriptor_sets[m_rhi->get_frame_resource_index()];
+    write.dstBinding = static_cast<std::uint32_t>(index);
+    write.dstArrayElement = 0;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    write.descriptorCount = 1;
+    write.pBufferInfo = nullptr;
+    write.pImageInfo = &info;
+    write.pTexelBufferView = nullptr;
+
+    vkUpdateDescriptorSets(m_rhi->get_device(), 1, &write, 0, nullptr);
+
+    m_last_update_frame = m_parameter_update_frame[index] = m_rhi->get_frame_count();
 }
 
 VkDescriptorSet vk_pipeline_parameter::get_descriptor_set() const noexcept
@@ -230,6 +274,8 @@ void vk_pipeline_parameter::sync()
     std::size_t current_index = m_rhi->get_frame_resource_index();
     std::size_t previous_index = (current_index + frame_resource_count - 1) % frame_resource_count;
 
+    std::vector<VkCopyDescriptorSet> descriptor_copy;
+
     for (std::size_t i = 0; i < m_parameter_update_frame.size(); ++i)
     {
         if (m_parameter_update_frame[i] + frame_resource_count < corrent_frame)
@@ -246,6 +292,29 @@ void vk_pipeline_parameter::sync()
 
             std::memcpy(target, source, size);
         }
+        else if (parameter_info.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+        {
+            VkCopyDescriptorSet copy = {};
+            copy.sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
+            copy.srcSet = m_descriptor_sets[previous_index];
+            copy.srcBinding = i;
+            copy.srcArrayElement = 0;
+            copy.dstSet = m_descriptor_sets[current_index];
+            copy.dstBinding = i;
+            copy.dstArrayElement = 0;
+            copy.descriptorCount = 1;
+            descriptor_copy.push_back(copy);
+        }
+    }
+
+    if (!descriptor_copy.empty())
+    {
+        vkUpdateDescriptorSets(
+            m_rhi->get_device(),
+            0,
+            nullptr,
+            static_cast<std::uint32_t>(descriptor_copy.size()),
+            descriptor_copy.data());
     }
 }
 

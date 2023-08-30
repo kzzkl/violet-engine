@@ -148,30 +148,16 @@ vk_image::~vk_image()
     destroy_image_view(m_image_view);
 }
 
-VkImageView vk_image::get_image_view() const noexcept
-{
-    return m_image_view;
-}
-
 rhi_resource_format vk_image::get_format() const noexcept
 {
     return vk_util::map_format(m_format);
-}
-
-rhi_resource_extent vk_image::get_extent() const noexcept
-{
-    return {m_extent.width, m_extent.height};
-}
-
-std::size_t vk_image::get_hash() const noexcept
-{
-    return m_hash;
 }
 
 void vk_image::set(
     VkImage image,
     VkDeviceMemory memory,
     VkImageView image_view,
+    VkImageLayout image_layout,
     VkFormat format,
     VkExtent2D extent,
     std::size_t hash)
@@ -179,6 +165,7 @@ void vk_image::set(
     m_image = image;
     m_memory = memory;
     m_image_view = image_view;
+    m_image_layout = image_layout;
     m_format = format;
     m_extent = extent;
     m_hash = hash;
@@ -234,9 +221,23 @@ void vk_image::destroy_image(VkImage image, VkDeviceMemory memory)
     vkFreeMemory(device, memory, nullptr);
 }
 
-void vk_image::create_image_view(const VkImageViewCreateInfo& info, VkImageView& image_view)
+void vk_image::create_image_view(VkImage image, VkFormat format, VkImageView& image_view)
 {
-    vkCreateImageView(get_rhi()->get_device(), &info, nullptr, &image_view);
+    VkImageViewCreateInfo image_view_info = {};
+    image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    image_view_info.image = image;
+    image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    image_view_info.format = format;
+    image_view_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    image_view_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    image_view_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    image_view_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_view_info.subresourceRange.baseMipLevel = 0;
+    image_view_info.subresourceRange.levelCount = 1;
+    image_view_info.subresourceRange.baseArrayLayer = 0;
+    image_view_info.subresourceRange.layerCount = 1;
+    vkCreateImageView(get_rhi()->get_device(), &image_view_info, nullptr, &image_view);
 }
 
 void vk_image::destroy_image_view(VkImageView image_view)
@@ -372,28 +373,19 @@ vk_swapchain_image::vk_swapchain_image(
     : vk_image(rhi)
 {
     VkImageView image_view;
-
-    VkImageViewCreateInfo image_view_info = {};
-    image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    image_view_info.image = image;
-    image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    image_view_info.format = format;
-    image_view_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    image_view_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    image_view_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    image_view_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-    image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_view_info.subresourceRange.baseMipLevel = 0;
-    image_view_info.subresourceRange.levelCount = 1;
-    image_view_info.subresourceRange.baseArrayLayer = 0;
-    image_view_info.subresourceRange.layerCount = 1;
-    create_image_view(image_view_info, image_view);
+    create_image_view(image, format, image_view);
 
     std::hash<void*> hasher;
     std::size_t hash = vk_util::hash_combine(hasher(image), hasher(image_view));
     hash = vk_util::hash_combine(hash, get_rhi()->get_frame_count());
 
-    set(VK_NULL_HANDLE, VK_NULL_HANDLE, image_view, format, extent, hash);
+    set(VK_NULL_HANDLE,
+        VK_NULL_HANDLE,
+        image_view,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        format,
+        extent,
+        hash);
 }
 
 vk_swapchain_image::~vk_swapchain_image()
@@ -439,26 +431,48 @@ vk_texture::vk_texture(const char* file, vk_rhi* rhi) : vk_image(rhi)
     destroy_buffer(staging_buffer, staging_memory);
 
     VkImageView image_view;
-    VkImageViewCreateInfo image_view_info = {};
-    image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    image_view_info.image = image;
-    image_view_info.format = data.format;
-    image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_view_info.subresourceRange.baseMipLevel = 0;
-    image_view_info.subresourceRange.levelCount = 1;
-    image_view_info.subresourceRange.baseArrayLayer = 0;
-    image_view_info.subresourceRange.layerCount = 1;
-    create_image_view(image_view_info, image_view);
+    create_image_view(image, data.format, image_view);
 
     std::hash<void*> hasher;
     std::size_t hash = vk_util::hash_combine(hasher(image), hasher(image_view));
 
-    set(image, memory, image_view, data.format, VkExtent2D{data.width, data.height}, hash);
+    set(image,
+        memory,
+        image_view,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        data.format,
+        VkExtent2D{data.width, data.height},
+        hash);
 }
 
 vk_texture::~vk_texture()
 {
+}
+
+vk_sampler::vk_sampler(const rhi_sampler_desc& desc, vk_rhi* rhi) : m_rhi(rhi)
+{
+    VkSamplerCreateInfo sampler_info = {};
+    sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    sampler_info.magFilter = vk_util::map_filter(desc.mag_filter);
+    sampler_info.minFilter = vk_util::map_filter(desc.min_filter);
+    sampler_info.addressModeU = vk_util::map_sampler_address_mode(desc.address_mode_u);
+    sampler_info.addressModeV = vk_util::map_sampler_address_mode(desc.address_mode_v);
+    sampler_info.addressModeW = vk_util::map_sampler_address_mode(desc.address_mode_w);
+    sampler_info.anisotropyEnable = VK_TRUE;
+    sampler_info.maxAnisotropy =
+        m_rhi->get_physical_device_properties().limits.maxSamplerAnisotropy;
+    sampler_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    sampler_info.unnormalizedCoordinates = VK_FALSE;
+    sampler_info.compareEnable = VK_FALSE;
+    sampler_info.compareOp = VK_COMPARE_OP_ALWAYS;
+    sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+
+    throw_if_failed(vkCreateSampler(m_rhi->get_device(), &sampler_info, nullptr, &m_sampler));
+}
+
+vk_sampler::~vk_sampler()
+{
+    vkDestroySampler(m_rhi->get_device(), m_sampler, nullptr);
 }
 
 vk_buffer::vk_buffer(vk_rhi* rhi) : vk_resource(rhi)

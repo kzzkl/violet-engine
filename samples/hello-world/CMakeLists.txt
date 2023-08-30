@@ -18,7 +18,7 @@ install(TARGETS ${PROJECT_NAME}
     ARCHIVE DESTINATION lib)
 
 include(${VIOLET_ROOT_DIR}/cmake/compile_shader.cmake)
-compile_shader_glslang(
+compile_shader_dxc(
     TARGET ${PROJECT_NAME}
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resource/shaders/base.hlsl"
     STAGES "vert" "frag")

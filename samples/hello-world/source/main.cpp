@@ -41,10 +41,14 @@ public:
         rhi_context* rhi = engine::get_system<graphics_system>().get_rhi();
         rhi->destroy_vertex_buffer(m_position_buffer);
         rhi->destroy_vertex_buffer(m_color_buffer);
+        rhi->destroy_vertex_buffer(m_uv_buffer);
         rhi->destroy_index_buffer(m_index_buffer);
 
-        rhi->destroy_pipeline_parameter(m_mvp);
-        rhi->destroy_pipeline_parameter_layout(m_mvp_layout);
+        rhi->destroy_pipeline_parameter(m_parameter);
+        rhi->destroy_pipeline_parameter_layout(m_parameter_layout);
+
+        rhi->destroy_texture(m_texture);
+        rhi->destroy_sampler(m_sampler);
     }
 
 private:
@@ -75,23 +79,26 @@ private:
             "hello-world/shaders/base.frag.spv");
         pipeline.set_vertex_layout({
             {"position", RHI_RESOURCE_FORMAT_R32G32B32_FLOAT},
-            {"color",    RHI_RESOURCE_FORMAT_R32G32B32_FLOAT}
+            {"color",    RHI_RESOURCE_FORMAT_R32G32B32_FLOAT},
+            {"uv",       RHI_RESOURCE_FORMAT_R32G32_FLOAT   }
         });
         pipeline.set_cull_mode(RHI_CULL_MODE_NONE);
 
         rhi_pipeline_parameter_layout_desc layout_desc = {};
         layout_desc.parameters[0] = {RHI_PIPELINE_PARAMETER_TYPE_UNIFORM_BUFFER, sizeof(float4x4)};
-        layout_desc.parameter_count = 1;
-        m_mvp_layout = graphics.get_rhi()->create_pipeline_parameter_layout(layout_desc);
-        pipeline.set_parameter_layout({m_mvp_layout});
+        layout_desc.parameters[1] = {RHI_PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1};
+        layout_desc.parameter_count = 2;
+        m_parameter_layout = graphics.get_rhi()->create_pipeline_parameter_layout(layout_desc);
+        pipeline.set_parameter_layout({m_parameter_layout});
+        m_pipeline = &pipeline;
 
         m_render_graph->compile();
 
         std::vector<float3> position = {
-            float3{-0.5f, -0.5f, 0.0f},
-            float3{0.5f,  -0.5f, 0.0f},
-            float3{0.5f,  0.5f,  0.0f},
-            float3{-0.5f, 0.5f,  0.0f}
+            {-0.5f, -0.5f, 0.0f},
+            {0.5f,  -0.5f, 0.0f},
+            {0.5f,  0.5f,  0.0f},
+            {-0.5f, 0.5f,  0.0f}
         };
         rhi_vertex_buffer_desc position_buffer_desc = {};
         position_buffer_desc.data = position.data();
@@ -100,16 +107,28 @@ private:
         m_position_buffer = graphics.get_rhi()->create_vertex_buffer(position_buffer_desc);
 
         std::vector<float3> color = {
-            float3{1.0f, 0.0f, 0.0f},
-            float3{0.0f, 1.0f, 0.0f},
-            float3{0.0f, 1.0f, 1.0f},
-            float3{0.0f, 0.0f, 1.0f},
+            {1.0f, 0.0f, 0.0f},
+            {0.0f, 1.0f, 0.0f},
+            {0.0f, 1.0f, 1.0f},
+            {0.0f, 0.0f, 1.0f},
         };
         rhi_vertex_buffer_desc color_buffer_desc = {};
         color_buffer_desc.data = color.data();
         color_buffer_desc.size = color.size() * sizeof(float3);
         color_buffer_desc.dynamic = false;
         m_color_buffer = graphics.get_rhi()->create_vertex_buffer(color_buffer_desc);
+
+        std::vector<float2> uv = {
+            {1.0f, 0.0f},
+            {0.0f, 0.0f},
+            {0.0f, 1.0f},
+            {1.0f, 1.0f}
+        };
+        rhi_vertex_buffer_desc uv_buffer_desc = {};
+        uv_buffer_desc.data = uv.data();
+        uv_buffer_desc.size = uv.size() * sizeof(float2);
+        uv_buffer_desc.dynamic = false;
+        m_uv_buffer = graphics.get_rhi()->create_vertex_buffer(uv_buffer_desc);
 
         std::vector<std::uint32_t> indices = {0, 1, 2, 2, 3, 0};
         rhi_index_buffer_desc index_buffer_desc = {};
@@ -119,11 +138,18 @@ private:
         index_buffer_desc.dynamic = false;
         m_index_buffer = graphics.get_rhi()->create_index_buffer(index_buffer_desc);
 
-        m_mvp = graphics.get_rhi()->create_pipeline_parameter(m_mvp_layout);
-
-        m_pipeline = &pipeline;
-
         m_texture = graphics.get_rhi()->create_texture("hello-world/test.jpg");
+
+        rhi_sampler_desc sampler_desc = {};
+        sampler_desc.min_filter = RHI_FILTER_LINEAR;
+        sampler_desc.mag_filter = RHI_FILTER_LINEAR;
+        sampler_desc.address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
+        sampler_desc.address_mode_v = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
+        sampler_desc.address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
+        m_sampler = graphics.get_rhi()->create_sampler(sampler_desc);
+
+        m_parameter = graphics.get_rhi()->create_pipeline_parameter(m_parameter_layout);
+        m_parameter->set(1, m_texture, m_sampler);
     }
 
     render_pipeline* m_pipeline;
@@ -166,9 +192,12 @@ private:
 
         std::size_t index =
             engine::get_system<graphics_system>().get_rhi()->get_frame_resource_index();
-        m_mvp->set(0, &mvp, sizeof(mvp), 0);
+        m_parameter->set(0, &mvp, sizeof(mvp), 0);
 
-        m_pipeline->set_mesh({m_position_buffer, m_color_buffer}, m_index_buffer, m_mvp);
+        m_pipeline->set_mesh(
+            {m_position_buffer, m_color_buffer, m_uv_buffer},
+            m_index_buffer,
+            m_parameter);
 
         m_rotate += delta * 1.0f;
     }
@@ -179,12 +208,14 @@ private:
 
     rhi_resource* m_position_buffer;
     rhi_resource* m_color_buffer;
+    rhi_resource* m_uv_buffer;
     rhi_resource* m_index_buffer;
 
-    rhi_pipeline_parameter_layout* m_mvp_layout;
-    rhi_pipeline_parameter* m_mvp;
+    rhi_pipeline_parameter_layout* m_parameter_layout;
+    rhi_pipeline_parameter* m_parameter;
 
     rhi_resource* m_texture;
+    rhi_sampler* m_sampler;
 
     float m_rotate = 0.0f;
 };

@@ -1,38 +1,56 @@
-set(DXC_PATH "${VIOLET_THIRD_PARTY_DIR}/dxc/dxc.exe")
-set(DXC_WORKING_DIRECTORY "${VIOLET_THIRD_PARTY_DIR}/dxc")
-
 # dxc
-function(compile_shader_dxc TARGET_NAME SHADER_PATH TYPE INCLUDE_DIR OUTPUT_DIR)
-    get_filename_component(SHADER_NAME ${SHADER_PATH} NAME_WE)
+function(compile_shader_dxc)
+    set(DXC_PATH "${VIOLET_THIRD_PARTY_DIR}/dxc/dxc.exe")
+    set(DXC_WORKING_DIRECTORY "${VIOLET_THIRD_PARTY_DIR}/dxc")
 
-    if(TYPE STREQUAL "vert")
-        set(OUTPUT_NAME "${OUTPUT_DIR}/${SHADER_NAME}.vert.cso")
-        set(PROFILE "vs_6_0")
-        set(ENTRY_POINT "vs_main")
-    elseif(TYPE STREQUAL "frag")
-        set(OUTPUT_NAME "${OUTPUT_DIR}/${SHADER_NAME}.frag.cso")
-        set(PROFILE "ps_6_0")
-        set(ENTRY_POINT "ps_main")
-    elseif(TYPE STREQUAL "comp")
-        set(OUTPUT_NAME "${OUTPUT_DIR}/${SHADER_NAME}.comp.cso")
-        set(PROFILE "cs_6_0")
-        set(ENTRY_POINT "cs_main")
-    endif()
+    set(oneValueArgs TARGET SOURCE)
+    set(multiValueArgs STAGES INCLUDE_DIRS)
+    cmake_parse_arguments(COMPILE_SHADER "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGV})
 
-    set(DXC_CMD_DEBUG ${DXC_PATH} ${SHADER_PATH} -T ${PROFILE} -E ${ENTRY_POINT} -Fo ${OUTPUT_NAME} -Wno-ignored-attributes -all-resources-bound -Zi -Qembed_debug)
-    set(DXC_CMD_RELEASE ${DXC_PATH} ${SHADER_PATH} -T ${PROFILE} -E ${ENTRY_POINT} -Fo ${OUTPUT_NAME} -Wno-ignored-attributes -all-resources-bound)
+    set(OUTPUT_DIR ${CMAKE_BINARY_DIR}/shaders/${COMPILE_SHADER_TARGET})
+    file(MAKE_DIRECTORY ${OUTPUT_DIR})
 
-    if(NOT INCLUDE_DIR STREQUAL "")
-        set(DXC_CMD_DEBUG ${DXC_CMD_DEBUG} -I ${INCLUDE_DIR})
-    endif()
+    get_filename_component(SHADER_NAME ${COMPILE_SHADER_SOURCE} NAME_WE)
+    foreach(STAGE ${COMPILE_SHADER_STAGES})
+        if(STAGE STREQUAL "vert")
+            set(OUTPUT_NAME "${OUTPUT_DIR}/${SHADER_NAME}.vert.spv")
+            set(PROFILE "vs_6_0")
+            set(ENTRY_POINT "vs_main")
+        elseif(STAGE STREQUAL "frag")
+            set(OUTPUT_NAME "${OUTPUT_DIR}/${SHADER_NAME}.frag.spv")
+            set(PROFILE "ps_6_0")
+            set(ENTRY_POINT "ps_main")
+        elseif(STAGE STREQUAL "comp")
+            set(OUTPUT_NAME "${OUTPUT_DIR}/${SHADER_NAME}.comp.spv")
+            set(PROFILE "cs_6_0")
+            set(ENTRY_POINT "cs_main")
+        endif()
 
-    add_custom_command(
-        TARGET ${TARGET_NAME}
-        POST_BUILD
-        COMMAND "$<$<CONFIG:Debug>:${DXC_CMD_DEBUG}>$<$<CONFIG:Release>:${DXC_CMD_RELEASE}>"
-        DEPENDS ${SHADER_PATH}
-        WORKING_DIRECTORY "${DXC_WORKING_DIRECTORY}"
-        COMMAND_EXPAND_LISTS)
+        set(COMMAND_LINE_DEBUG ${DXC_PATH} -spirv ${COMPILE_SHADER_SOURCE} -T ${PROFILE} -E ${ENTRY_POINT} -Fo ${OUTPUT_NAME} -Wno-ignored-attributes -all-resources-bound -Zi -Qembed_debug)
+        set(COMMAND_LINE_RELEASE ${DXC_PATH} -spirv ${COMPILE_SHADER_SOURCE} -T ${PROFILE} -E ${ENTRY_POINT} -Fo ${OUTPUT_NAME} -Wno-ignored-attributes -all-resources-bound)
+
+        set(COMMAND_LINE "")
+        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            set(COMMAND_LINE ${COMMAND_LINE_DEBUG})
+        elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+            set(COMMAND_LINE ${COMMAND_LINE_RELEASE})
+        endif()
+
+        message(STATUS "${COMMAND_LINE}")
+
+        foreach(INCLUDE ${COMPILE_SHADER_INCLUDE_DIRS})
+            set(COMMAND_LINE ${COMMAND_LINE} -I${INCLUDE})
+        endforeach()
+
+        add_custom_command(
+            TARGET ${COMPILE_SHADER_TARGET}
+            POST_BUILD
+            COMMAND ${COMMAND_LINE}
+            DEPENDS ${SHADER_PATH}
+            WORKING_DIRECTORY "${DXC_WORKING_DIRECTORY}"
+            COMMAND_EXPAND_LISTS)
+
+    endforeach()
 endfunction()
 
 function(compile_shader_glslang)
@@ -41,7 +59,6 @@ function(compile_shader_glslang)
 
     set(oneValueArgs TARGET SOURCE)
     set(multiValueArgs STAGES INCLUDE_DIRS)
-
     cmake_parse_arguments(COMPILE_SHADER "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGV})
 
     set(OUTPUT_DIR ${CMAKE_BINARY_DIR}/shaders/${COMPILE_SHADER_TARGET})
@@ -74,5 +91,4 @@ function(compile_shader_glslang)
             WORKING_DIRECTORY "${GLSLANG_WORKING_DIRECTORY}")
 
     endforeach()
-
 endfunction()

@@ -90,6 +90,9 @@ public:
     virtual rhi_resource* create_index_buffer(const rhi_index_buffer_desc& desc) override;
     virtual void destroy_index_buffer(rhi_resource* index_buffer) override;
 
+    virtual rhi_sampler* create_sampler(const rhi_sampler_desc& desc) override;
+    virtual void destroy_sampler(rhi_sampler* sampler) override;
+
     virtual rhi_resource* create_texture(
         const std::uint8_t* data,
         std::uint32_t width,
@@ -142,6 +145,10 @@ public:
 
     VkDevice get_device() const noexcept { return m_device; }
     VkPhysicalDevice get_physical_device() const noexcept { return m_physical_device; }
+    VkPhysicalDeviceProperties get_physical_device_properties() const noexcept
+    {
+        return m_physical_device_properties;
+    }
 
 private:
     struct queue_family_indices
@@ -165,6 +172,7 @@ private:
 
     VkInstance m_instance;
     VkPhysicalDevice m_physical_device;
+    VkPhysicalDeviceProperties m_physical_device_properties;
     VkDevice m_device;
 
     VkSurfaceKHR m_surface;

@@ -51,7 +51,7 @@ public:
 
     virtual void set(std::size_t index, const void* data, std::size_t size, std::size_t offset)
         override;
-    virtual void set(std::size_t index, rhi_resource* texture) override;
+    virtual void set(std::size_t index, rhi_resource* texture, rhi_sampler* sampler) override;
 
     VkDescriptorSet get_descriptor_set() const noexcept;
 

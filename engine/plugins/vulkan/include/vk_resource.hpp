@@ -61,16 +61,22 @@ public:
     vk_image(vk_rhi* rhi);
     virtual ~vk_image();
 
-    VkImageView get_image_view() const noexcept;
+    VkImageView get_image_view() const noexcept { return m_image_view; }
+    VkImageLayout get_image_layout() const noexcept { return m_image_layout; }
+
     virtual rhi_resource_format get_format() const noexcept override;
-    virtual rhi_resource_extent get_extent() const noexcept override;
-    virtual std::size_t get_hash() const noexcept override;
+    virtual rhi_resource_extent get_extent() const noexcept override
+    {
+        return {m_extent.width, m_extent.height};
+    }
+    virtual std::size_t get_hash() const noexcept override { return m_hash; }
 
 protected:
     void set(
         VkImage image,
         VkDeviceMemory memory,
         VkImageView image_view,
+        VkImageLayout image_layout,
         VkFormat format,
         VkExtent2D extent,
         std::size_t hash);
@@ -86,7 +92,7 @@ protected:
         VkDeviceMemory& memory);
     void destroy_image(VkImage image, VkDeviceMemory memory);
 
-    void create_image_view(const VkImageViewCreateInfo& info, VkImageView& image_view);
+    void create_image_view(VkImage image, VkFormat format, VkImageView& image_view);
     void destroy_image_view(VkImageView image_view);
 
     void copy_buffer_to_image(
@@ -101,6 +107,7 @@ private:
     VkImage m_image;
     VkDeviceMemory m_memory;
     VkImageView m_image_view;
+    VkImageLayout m_image_layout;
 
     VkFormat m_format;
     VkExtent2D m_extent;
@@ -120,6 +127,22 @@ class vk_texture : public vk_image
 public:
     vk_texture(const char* file, vk_rhi* rhi);
     virtual ~vk_texture();
+};
+
+class vk_sampler : public rhi_sampler
+{
+public:
+    vk_sampler(const rhi_sampler_desc& desc, vk_rhi* rhi);
+    vk_sampler(const vk_sampler&) = delete;
+    virtual ~vk_sampler();
+
+    VkSampler get_sampler() const noexcept { return m_sampler; }
+
+    vk_sampler& operator=(const vk_sampler&) = delete;
+
+private:
+    VkSampler m_sampler;
+    vk_rhi* m_rhi;
 };
 
 class vk_buffer : public vk_resource

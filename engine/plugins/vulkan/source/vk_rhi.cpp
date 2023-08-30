@@ -270,6 +270,16 @@ void vk_rhi::destroy_index_buffer(rhi_resource* index_buffer)
     delay_delete(index_buffer);
 }
 
+rhi_sampler* vk_rhi::create_sampler(const rhi_sampler_desc& desc)
+{
+    return new vk_sampler(desc, this);
+}
+
+void vk_rhi::destroy_sampler(rhi_sampler* sampler)
+{
+    delay_delete(sampler);
+}
+
 rhi_resource* vk_rhi::create_texture(
     const std::uint8_t* data,
     std::uint32_t width,
@@ -475,10 +485,13 @@ bool vk_rhi::initialize_physical_device(const std::vector<const char*>& desired_
 
         VkPhysicalDeviceFeatures features = {};
         vkGetPhysicalDeviceFeatures(device, &features);
+        if (features.samplerAnisotropy == VK_FALSE)
+            continue;
 
         if (physical_device_score < score)
         {
             m_physical_device = device;
+            m_physical_device_properties = properties;
             physical_device_score = score;
         }
     }
@@ -532,7 +545,8 @@ void vk_rhi::initialize_logic_device(const std::vector<const char*>& enabled_ext
 
         queue_infos.push_back(queue_info);
     }
-    VkPhysicalDeviceFeatures desired_features = {};
+    VkPhysicalDeviceFeatures enabled_features = {};
+    enabled_features.samplerAnisotropy = VK_TRUE;
 
     VkDeviceCreateInfo device_info = {};
     device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -540,7 +554,7 @@ void vk_rhi::initialize_logic_device(const std::vector<const char*>& enabled_ext
     device_info.queueCreateInfoCount = static_cast<std::uint32_t>(queue_infos.size());
     device_info.ppEnabledExtensionNames = enabled_extensions.data();
     device_info.enabledExtensionCount = static_cast<std::uint32_t>(enabled_extensions.size());
-    device_info.pEnabledFeatures = &desired_features;
+    device_info.pEnabledFeatures = &enabled_features;
 
     throw_if_failed(vkCreateDevice(m_physical_device, &device_info, nullptr, &m_device));
 

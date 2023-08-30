@@ -89,6 +89,37 @@ public:
     virtual std::size_t get_hash() const noexcept = 0;
 };
 
+enum rhi_filter
+{
+    RHI_FILTER_NEAREST,
+    RHI_FILTER_LINEAR
+};
+
+enum rhi_sampler_address_mode
+{
+    RHI_SAMPLER_ADDRESS_MODE_REPEAT,
+    RHI_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
+    RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+    RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+    RHI_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE
+};
+
+struct rhi_sampler_desc
+{
+    rhi_filter mag_filter;
+    rhi_filter min_filter;
+
+    rhi_sampler_address_mode address_mode_u;
+    rhi_sampler_address_mode address_mode_v;
+    rhi_sampler_address_mode address_mode_w;
+};
+
+class rhi_sampler
+{
+public:
+    virtual ~rhi_sampler() = default;
+};
+
 enum rhi_attachment_load_op
 {
     RHI_ATTACHMENT_LOAD_OP_LOAD,
@@ -189,7 +220,7 @@ public:
     virtual ~rhi_pipeline_parameter() = default;
 
     virtual void set(std::size_t index, const void* data, std::size_t size, std::size_t offset) = 0;
-    virtual void set(std::size_t index, rhi_resource* texture) = 0;
+    virtual void set(std::size_t index, rhi_resource* texture, rhi_sampler* sampler) = 0;
 };
 
 struct rhi_vertex_attribute
@@ -511,6 +542,9 @@ public:
 
     virtual rhi_resource* create_index_buffer(const rhi_index_buffer_desc& desc) = 0;
     virtual void destroy_index_buffer(rhi_resource* index_buffer) = 0;
+
+    virtual rhi_sampler* create_sampler(const rhi_sampler_desc& desc) = 0;
+    virtual void destroy_sampler(rhi_sampler* sampler) = 0;
 
     virtual rhi_resource* create_texture(
         const std::uint8_t* data,
