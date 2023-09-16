@@ -23,6 +23,6 @@ AllowAllConstructorInitializersOnNextLine: false
 AlignArrayOfStructures: Left
 AllowShortIfStatementsOnASingleLine: Never
 LambdaBreakBeforeCall: true
-# AllowShortLambdasOnASingleLine: false
+AllowShortLambdasOnASingleLine: false
 BraceWrapping:
   BeforeLambdaBody: true

@@ -59,6 +59,7 @@ public:
     void execute(rhi_render_command* command);
 
     rhi_render_subpass_desc get_desc() const noexcept { return m_desc; }
+    std::size_t get_index() const noexcept { return m_index; }
 
 private:
     std::vector<render_attachment*> m_references;
@@ -80,6 +81,14 @@ public:
     render_attachment& add_attachment(std::string_view name, render_resource& resource);
     render_subpass& add_subpass(std::string_view name);
 
+    void add_dependency(
+        std::size_t source_index,
+        rhi_pipeline_stage_flags source_stage,
+        rhi_access_flags source_access,
+        std::size_t target_index,
+        rhi_pipeline_stage_flags target_stage,
+        rhi_access_flags target_access);
+
     bool compile();
     void execute(rhi_render_command* command);
 
@@ -92,6 +101,7 @@ private:
 
     std::vector<std::unique_ptr<render_attachment>> m_attachments;
     std::vector<std::unique_ptr<render_subpass>> m_subpasses;
+    std::vector<rhi_render_subpass_dependency_desc> m_dependencies;
 
     rhi_framebuffer* m_framebuffer;
     std::unordered_map<std::size_t, rhi_framebuffer*> m_framebuffer_cache;

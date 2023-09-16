@@ -140,6 +140,24 @@ render_subpass& render_pass::add_subpass(std::string_view name)
     return *m_subpasses.back();
 }
 
+void render_pass::add_dependency(
+    std::size_t source_index,
+    rhi_pipeline_stage_flags source_stage,
+    rhi_access_flags source_access,
+    std::size_t target_index,
+    rhi_pipeline_stage_flags target_stage,
+    rhi_access_flags target_access)
+{
+    rhi_render_subpass_dependency_desc dependency = {};
+    dependency.source = source_index;
+    dependency.source_stage = source_stage;
+    dependency.source_access = source_access;
+    dependency.target = target_index;
+    dependency.target_stage = target_stage;
+    dependency.target_access = target_access;
+    m_dependencies.push_back(dependency);
+}
+
 bool render_pass::compile()
 {
     rhi_render_pass_desc desc = {};
@@ -151,6 +169,10 @@ bool render_pass::compile()
     for (std::size_t i = 0; i < m_subpasses.size(); ++i)
         desc.subpasses[i] = m_subpasses[i]->get_desc();
     desc.subpass_count = m_subpasses.size();
+
+    for (std::size_t i = 0; i < m_dependencies.size(); ++i)
+        desc.dependencies[i] = m_dependencies[i];
+    desc.dependency_count = m_dependencies.size();
 
     m_interface = get_rhi()->create_render_pass(desc);
 

@@ -58,13 +58,17 @@ public:
     void sync();
 
 private:
+    struct frame_resource
+    {
+        VkDescriptorSet descriptor_set;
+        std::vector<std::size_t> descriptor_update_count;
+    };
+
     vk_pipeline_parameter_layout* m_layout;
     std::vector<std::unique_ptr<vk_uniform_buffer>> m_uniform_buffers;
-    std::vector<VkDescriptorSet> m_descriptor_sets;
+    std::vector<frame_resource> m_frame_resources;
 
-    std::size_t m_last_update_frame;
-    std::size_t m_last_sync_frame;
-    std::vector<std::size_t> m_parameter_update_frame;
+    std::size_t m_not_updated_count;
 
     vk_rhi* m_rhi;
 };

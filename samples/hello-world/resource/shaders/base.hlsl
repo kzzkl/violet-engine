@@ -20,9 +20,9 @@ struct UBO
 cbuffer ubo : register(b0, space0) { UBO ubo; }
 
 [[vk::combinedImageSampler]]
-Texture2D<float4> texture : register(t1, space0);
+Texture2D<float4> texture : register(t0, space1);
 [[vk::combinedImageSampler]]
-SamplerState texture_sampler : register(s1, space0);
+SamplerState texture_sampler : register(s0, space1);
 
 vs_out vs_main(vs_in input)
 {

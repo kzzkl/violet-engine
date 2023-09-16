@@ -7,13 +7,28 @@
 
 namespace violet
 {
-struct render_item
+struct render_mesh
 {
+    std::vector<rhi_resource*> vertex_buffers;
     rhi_resource* index_buffer;
-    rhi_resource* const* vertex_buffers;
 
-    rhi_pipeline_parameter* node_parameter;
-    rhi_pipeline_parameter* material_parameter;
+    std::size_t vertex_base;
+    std::size_t index_start;
+    std::size_t index_count;
+
+    rhi_pipeline_parameter* node;
+    rhi_pipeline_parameter* material;
+};
+
+struct render_context
+{
+    std::vector<render_mesh> meshes;
+};
+
+enum render_pipeline_parameter_type
+{
+    RENDER_PIPELINE_PARAMETER_TYPE_NODE,
+    RENDER_PIPELINE_PARAMETER_TYPE_MATERIAL
 };
 
 class render_pass;
@@ -21,6 +36,8 @@ class render_pipeline : public render_node
 {
 public:
     using vertex_layout = std::vector<std::pair<std::string, rhi_resource_format>>;
+    using parameter_layout =
+        std::vector<std::pair<rhi_pipeline_parameter_layout*, render_pipeline_parameter_type>>;
 
 public:
     render_pipeline(std::string_view name, rhi_context* rhi);
@@ -31,7 +48,9 @@ public:
     void set_vertex_layout(const vertex_layout& vertex_layout);
     const vertex_layout& get_vertex_layout() const noexcept;
 
-    void set_parameter_layout(const std::vector<rhi_pipeline_parameter_layout*>& parameter_layout);
+    void set_parameter_layout(const parameter_layout& parameter_layout);
+    rhi_pipeline_parameter_layout* get_parameter_layout(
+        render_pipeline_parameter_type type) const noexcept;
 
     void set_blend(const rhi_blend_desc& blend) noexcept;
     void set_depth_stencil(const rhi_depth_stencil_desc& depth_stencil) noexcept;
@@ -43,30 +62,22 @@ public:
     bool compile(rhi_render_pass* render_pass, std::size_t subpass_index);
     void execute(rhi_render_command* command);
 
-    void set_mesh(
-        const std::vector<rhi_resource*>& vertex_buffers,
-        rhi_resource* index_buffer,
-        rhi_pipeline_parameter* parameter)
-    {
-        m_vertex_buffers = vertex_buffers;
-        m_index_buffer = index_buffer;
-        m_parameter = parameter;
-    }
+    void add_mesh(const render_mesh& mesh);
 
     rhi_render_pipeline* get_interface() const noexcept { return m_interface; }
 
 private:
+    virtual void render(rhi_render_command* command, std::vector<render_mesh>& meshes);
+
     std::string m_vertex_shader;
     std::string m_pixel_shader;
     vertex_layout m_vertex_layout;
-    std::vector<rhi_pipeline_parameter_layout*> m_parameter_layout;
+    parameter_layout m_parameter_layout;
 
     rhi_render_pipeline_desc m_desc;
 
     rhi_render_pipeline* m_interface;
 
-    std::vector<rhi_resource*> m_vertex_buffers;
-    rhi_resource* m_index_buffer;
-    rhi_pipeline_parameter* m_parameter;
+    std::vector<render_mesh> m_meshes;
 };
 } // namespace violet

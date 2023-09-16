@@ -112,8 +112,10 @@ public:
     virtual rhi_resource* create_shadow_map(const rhi_shadow_map_desc& desc) override;
 
     virtual rhi_resource* create_render_target(const rhi_render_target_desc& desc) override;
+
     virtual rhi_resource* create_depth_stencil_buffer(
         const rhi_depth_stencil_buffer_desc& desc) override;
+    virtual void destroy_depth_stencil_buffer(rhi_resource* depth_stencil_buffer) override;
 
     virtual rhi_fence* create_fence(bool signaled) override;
     virtual void destroy_fence(rhi_fence* fence) override;

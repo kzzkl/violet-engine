@@ -140,6 +140,7 @@ vk_image::vk_image(vk_rhi* rhi)
       m_format(VK_FORMAT_UNDEFINED),
       m_extent{0, 0}
 {
+    m_clear_value.color = {0.0f, 0.0f, 0.0f, 1.0f};
 }
 
 vk_image::~vk_image()
@@ -151,24 +152,6 @@ vk_image::~vk_image()
 rhi_resource_format vk_image::get_format() const noexcept
 {
     return vk_util::map_format(m_format);
-}
-
-void vk_image::set(
-    VkImage image,
-    VkDeviceMemory memory,
-    VkImageView image_view,
-    VkImageLayout image_layout,
-    VkFormat format,
-    VkExtent2D extent,
-    std::size_t hash)
-{
-    m_image = image;
-    m_memory = memory;
-    m_image_view = image_view;
-    m_image_layout = image_layout;
-    m_format = format;
-    m_extent = extent;
-    m_hash = hash;
 }
 
 void vk_image::create_image(
@@ -221,7 +204,11 @@ void vk_image::destroy_image(VkImage image, VkDeviceMemory memory)
     vkFreeMemory(device, memory, nullptr);
 }
 
-void vk_image::create_image_view(VkImage image, VkFormat format, VkImageView& image_view)
+void vk_image::create_image_view(
+    VkImage image,
+    VkFormat format,
+    VkImageAspectFlags aspect_mask,
+    VkImageView& image_view)
 {
     VkImageViewCreateInfo image_view_info = {};
     image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -232,7 +219,7 @@ void vk_image::create_image_view(VkImage image, VkFormat format, VkImageView& im
     image_view_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
     image_view_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
     image_view_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-    image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_view_info.subresourceRange.aspectMask = aspect_mask;
     image_view_info.subresourceRange.baseMipLevel = 0;
     image_view_info.subresourceRange.levelCount = 1;
     image_view_info.subresourceRange.baseArrayLayer = 0;
@@ -373,22 +360,59 @@ vk_swapchain_image::vk_swapchain_image(
     : vk_image(rhi)
 {
     VkImageView image_view;
-    create_image_view(image, format, image_view);
+    create_image_view(image, format, VK_IMAGE_ASPECT_COLOR_BIT, image_view);
 
     std::hash<void*> hasher;
     std::size_t hash = vk_util::hash_combine(hasher(image), hasher(image_view));
     hash = vk_util::hash_combine(hash, get_rhi()->get_frame_count());
 
-    set(VK_NULL_HANDLE,
-        VK_NULL_HANDLE,
-        image_view,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        format,
-        extent,
-        hash);
+    set_image_view(image_view);
+    set_format(format);
+    set_extent(extent);
+    set_hash(hash);
+    set_clear_value(VkClearColorValue{0.0f, 0.0f, 0.0f, 1.0f});
 }
 
 vk_swapchain_image::~vk_swapchain_image()
+{
+}
+
+vk_depth_stencil::vk_depth_stencil(const rhi_depth_stencil_buffer_desc& desc, vk_rhi* rhi)
+    : vk_image(rhi)
+{
+    VkImage image;
+    VkDeviceMemory memory;
+
+    VkFormat format = vk_util::map_format(desc.format);
+    create_image(
+        desc.width,
+        desc.height,
+        format,
+        vk_util::map_sample_count(desc.samples),
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        image,
+        memory);
+
+    VkImageView image_view;
+    create_image_view(
+        image,
+        format,
+        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+        image_view);
+
+    std::hash<void*> hasher;
+    std::size_t hash = vk_util::hash_combine(hasher(image), hasher(image_view));
+
+    set_image(image, memory);
+    set_image_view(image_view);
+    set_format(format);
+    set_extent(VkExtent2D{desc.width, desc.height});
+    set_clear_value(VkClearDepthStencilValue{1.0, 0});
+    set_hash(hash);
+}
+
+vk_depth_stencil::~vk_depth_stencil()
 {
 }
 
@@ -431,18 +455,17 @@ vk_texture::vk_texture(const char* file, vk_rhi* rhi) : vk_image(rhi)
     destroy_buffer(staging_buffer, staging_memory);
 
     VkImageView image_view;
-    create_image_view(image, data.format, image_view);
+    create_image_view(image, data.format, VK_IMAGE_ASPECT_COLOR_BIT, image_view);
 
     std::hash<void*> hasher;
     std::size_t hash = vk_util::hash_combine(hasher(image), hasher(image_view));
 
-    set(image,
-        memory,
-        image_view,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        data.format,
-        VkExtent2D{data.width, data.height},
-        hash);
+    set_image(image, memory);
+    set_image_view(image_view);
+    set_image_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    set_format(data.format);
+    set_extent(VkExtent2D{data.width, data.height});
+    set_hash(hash);
 }
 
 vk_texture::~vk_texture()

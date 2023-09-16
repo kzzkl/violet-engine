@@ -12,9 +12,10 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
 
-    void update_transform();
     void update_bounding_box();
 
     void frustum_culling(const std::array<float4, 6>& frustum);
+
+private:
 };
 } // namespace violet

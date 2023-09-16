@@ -322,7 +322,12 @@ rhi_resource* vk_rhi::create_render_target(const rhi_render_target_desc& desc)
 
 rhi_resource* vk_rhi::create_depth_stencil_buffer(const rhi_depth_stencil_buffer_desc& desc)
 {
-    return nullptr;
+    return new vk_depth_stencil(desc, this);
+}
+
+void vk_rhi::destroy_depth_stencil_buffer(rhi_resource* depth_stencil_buffer)
+{
+    delay_delete(depth_stencil_buffer);
 }
 
 rhi_fence* vk_rhi::create_fence(bool signaled)

@@ -25,7 +25,7 @@ void vk_command::begin(rhi_render_pass* render_pass, rhi_framebuffer* framebuffe
 
     vk_framebuffer* casted_framebuffer = static_cast<vk_framebuffer*>(framebuffer);
     rhi_resource_extent extent = casted_framebuffer->get_extent();
-    VkClearValue clear_values = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+    auto& clear_values = casted_framebuffer->get_clear_values();
 
     VkRenderPassBeginInfo render_pass_begin_info = {};
     render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -33,8 +33,8 @@ void vk_command::begin(rhi_render_pass* render_pass, rhi_framebuffer* framebuffe
     render_pass_begin_info.framebuffer = casted_framebuffer->get_framebuffer();
     render_pass_begin_info.renderArea.offset = {0, 0};
     render_pass_begin_info.renderArea.extent = {extent.width, extent.height};
-    render_pass_begin_info.pClearValues = &clear_values;
-    render_pass_begin_info.clearValueCount = 1;
+    render_pass_begin_info.pClearValues = clear_values.data();
+    render_pass_begin_info.clearValueCount = static_cast<std::uint32_t>(clear_values.size());
 
     vkCmdBeginRenderPass(m_command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 }
@@ -61,14 +61,14 @@ void vk_command::set_pipeline(rhi_render_pipeline* render_pipeline)
 void vk_command::set_parameter(std::size_t index, rhi_pipeline_parameter* pipeline_parameter)
 {
     vk_pipeline_parameter* parameter = static_cast<vk_pipeline_parameter*>(pipeline_parameter);
-    // parameter->sync();
+    parameter->sync();
 
     VkDescriptorSet descriptor_sets[] = {parameter->get_descriptor_set()};
     vkCmdBindDescriptorSets(
         m_command_buffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
         m_current_pipeline_layout,
-        0,
+        static_cast<std::uint32_t>(index),
         1,
         descriptor_sets,
         0,

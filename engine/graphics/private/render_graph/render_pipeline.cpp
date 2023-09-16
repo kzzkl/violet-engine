@@ -35,13 +35,20 @@ const render_pipeline::vertex_layout& render_pipeline::get_vertex_layout() const
     return m_vertex_layout;
 }
 
-void render_pipeline::set_parameter_layout(
-    const std::vector<rhi_pipeline_parameter_layout*>& parameter_layout)
+void render_pipeline::set_parameter_layout(const parameter_layout& parameter_layout)
 {
     m_parameter_layout = parameter_layout;
+}
 
-    m_desc.parameters = m_parameter_layout.data();
-    m_desc.parameter_count = m_parameter_layout.size();
+rhi_pipeline_parameter_layout* render_pipeline::get_parameter_layout(
+    render_pipeline_parameter_type type) const noexcept
+{
+    for (auto& parameter : m_parameter_layout)
+    {
+        if (parameter.second == type)
+            return parameter.first;
+    }
+    return nullptr;
 }
 
 void render_pipeline::set_blend(const rhi_blend_desc& blend) noexcept
@@ -80,6 +87,13 @@ bool render_pipeline::compile(rhi_render_pass* render_pass, std::size_t subpass_
     m_desc.render_pass = render_pass;
     m_desc.render_subpass_index = subpass_index;
 
+    std::vector<rhi_pipeline_parameter_layout*> parameter_layout;
+    for (auto& parameter : m_parameter_layout)
+        parameter_layout.push_back(parameter.first);
+
+    m_desc.parameters = parameter_layout.data();
+    m_desc.parameter_count = parameter_layout.size();
+
     m_interface = get_rhi()->create_render_pipeline(m_desc);
 
     return m_interface != nullptr;
@@ -88,9 +102,23 @@ bool render_pipeline::compile(rhi_render_pass* render_pass, std::size_t subpass_
 void render_pipeline::execute(rhi_render_command* command)
 {
     command->set_pipeline(m_interface);
-    command->set_vertex_buffers(m_vertex_buffers.data(), m_vertex_buffers.size());
-    command->set_index_buffer(m_index_buffer);
-    command->set_parameter(0, m_parameter);
-    command->draw_indexed(0, 6, 0);
+    render(command, m_meshes);
+}
+
+void render_pipeline::add_mesh(const render_mesh& mesh)
+{
+    m_meshes.push_back(mesh);
+}
+
+void render_pipeline::render(rhi_render_command* command, std::vector<render_mesh>& meshes)
+{
+    for (render_mesh& mesh : meshes)
+    {
+        command->set_vertex_buffers(mesh.vertex_buffers.data(), mesh.vertex_buffers.size());
+        command->set_index_buffer(mesh.index_buffer);
+        command->set_parameter(0, mesh.node);
+        command->set_parameter(1, mesh.material);
+        command->draw_indexed(0, 12, 0);
+    }
 }
 } // namespace violet

@@ -1,20 +1,13 @@
 #pragma once
 
+#include "core/node/node.hpp"
 #include "math/math.hpp"
+#include <vector>
 
 namespace violet
 {
 class transform
 {
-public:
-    enum dirty_flag : std::uint8_t
-    {
-        DIRTY_FLAG_NONE = 0,
-        DIRTY_FLAG_LOCAL = 1,
-        DIRTY_FLAG_WORLD = 1 << 1,
-        DIRTY_FLAG_ALL = DIRTY_FLAG_LOCAL | DIRTY_FLAG_WORLD
-    };
-
 public:
     transform() noexcept;
 
@@ -36,25 +29,53 @@ public:
     const float4x4& get_local_matrix() const noexcept;
     const float4x4& get_world_matrix() const noexcept;
 
-    void update_local(const float4x4& local_matrix);
-    void update_local(const float4x4_simd& local_matrix);
-    void update_world(const float4x4& world_matrix);
-    void update_world(const float4x4_simd& world_matrix);
+    void set_parent(const component_ptr<transform>& parent) noexcept { m_parent = parent; }
+    component_ptr<transform> get_parent() const noexcept { return m_parent; }
 
-    std::size_t get_update_count() const noexcept;
-    void reset_update_count() noexcept { m_update_count = 0; }
+    void add_child(const component_ptr<transform>& child);
+    void remove_child(const component_ptr<transform>& child);
 
-    std::uint8_t get_dirty_flag() const noexcept { return m_dirty_flag; }
+    template <typename Functor>
+    void each_children(Functor functor)
+    {
+        for (auto& child : m_children)
+            functor(&(*child));
+    }
+
+    template <typename Functor>
+    void bfs(Functor functor)
+    {
+        std::queue<transform*> bfs;
+        bfs.push(this);
+
+        while (!bfs.empty())
+        {
+            transform* node = bfs.front();
+            bfs.pop();
+
+            if (functor(*node))
+            {
+                for (auto& child : node->m_children)
+                    bfs.push(&(*child));
+            }
+        }
+    }
 
 private:
+    void update_local() noexcept;
+    void mark_dirty();
+
     float3 m_position;
     float4 m_rotation;
     float3 m_scale;
 
     float4x4 m_local_matrix;
-    float4x4 m_world_matrix;
+    mutable float4x4 m_world_matrix;
+    mutable bool m_world_dirty;
 
-    std::uint8_t m_dirty_flag;
     std::size_t m_update_count;
+
+    component_ptr<transform> m_parent;
+    std::vector<component_ptr<transform>> m_children;
 };
 } // namespace violet

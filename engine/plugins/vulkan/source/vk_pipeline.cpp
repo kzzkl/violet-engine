@@ -124,8 +124,7 @@ vk_pipeline_parameter_layout::~vk_pipeline_parameter_layout()
 
 vk_pipeline_parameter::vk_pipeline_parameter(vk_pipeline_parameter_layout* layout, vk_rhi* rhi)
     : m_layout(layout),
-      m_last_update_frame(0),
-      m_last_sync_frame(-1),
+      m_not_updated_count(0),
       m_rhi(rhi)
 {
     auto& parameter_infos = m_layout->get_parameter_infos();
@@ -141,12 +140,13 @@ vk_pipeline_parameter::vk_pipeline_parameter(vk_pipeline_parameter_layout* layou
             m_uniform_buffers.push_back(std::move(uniform_buffer));
         }
     }
-    m_parameter_update_frame.resize(parameter_infos.size());
+    m_frame_resources.resize(rhi->get_frame_resource_count());
+    for (auto& frame_resource : m_frame_resources)
+        frame_resource.descriptor_update_count.resize(parameter_infos.size());
 
-    m_descriptor_sets.resize(rhi->get_frame_resource_count());
-    for (std::size_t i = 0; i < m_descriptor_sets.size(); ++i)
+    for (std::size_t i = 0; i < m_frame_resources.size(); ++i)
     {
-        m_descriptor_sets[i] = rhi->allocate_descriptor_set(layout->get_layout());
+        m_frame_resources[i].descriptor_set = rhi->allocate_descriptor_set(layout->get_layout());
 
         std::vector<VkWriteDescriptorSet> descriptor_write;
         std::vector<VkDescriptorBufferInfo> buffer_infos;
@@ -164,7 +164,7 @@ vk_pipeline_parameter::vk_pipeline_parameter(vk_pipeline_parameter_layout* layou
 
                 VkWriteDescriptorSet write = {};
                 write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                write.dstSet = m_descriptor_sets[i];
+                write.dstSet = m_frame_resources[i].descriptor_set;
                 write.dstBinding = static_cast<std::uint32_t>(j);
                 write.dstArrayElement = 0;
                 write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -174,21 +174,6 @@ vk_pipeline_parameter::vk_pipeline_parameter(vk_pipeline_parameter_layout* layou
                 write.pTexelBufferView = nullptr;
 
                 descriptor_write.push_back(write);
-            }
-            else if (parameter_infos[j].type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-            {
-                // VkWriteDescriptorSet write = {};
-                // write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                // write.dstSet = m_descriptor_sets[i];
-                // write.dstBinding = static_cast<std::uint32_t>(j);
-                // write.dstArrayElement = 0;
-                // write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                // write.descriptorCount = 1;
-                // write.pBufferInfo = nullptr;
-                // write.pImageInfo = nullptr;
-                // write.pTexelBufferView = nullptr;
-
-                // descriptor_write.push_back(write);
             }
         }
 
@@ -216,23 +201,31 @@ void vk_pipeline_parameter::set(
 {
     sync();
 
-    std::size_t frame_resource_index = m_rhi->get_frame_resource_index();
+    std::size_t frame_resource_count = m_rhi->get_frame_resource_count();
+    std::size_t current_index = m_rhi->get_frame_resource_index();
+    std::size_t previous_index = (current_index + frame_resource_count - 1) % frame_resource_count;
 
     auto& parameter_info = m_layout->get_parameter_infos()[index];
     assert(parameter_info.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
     void* buffer = m_uniform_buffers[parameter_info.index]->get_buffer();
     void* target = static_cast<std::uint8_t*>(buffer) + offset +
-                   parameter_info.uniform_buffer.size * frame_resource_index;
+                   parameter_info.uniform_buffer.size * current_index;
 
     std::memcpy(target, data, size);
 
-    m_last_update_frame = m_parameter_update_frame[index] = m_rhi->get_frame_count();
+    m_frame_resources[current_index].descriptor_update_count[index] =
+        m_frame_resources[previous_index].descriptor_update_count[index] + 1;
+    m_not_updated_count += m_rhi->get_frame_resource_count() - 1;
 }
 
 void vk_pipeline_parameter::set(std::size_t index, rhi_resource* texture, rhi_sampler* sampler)
 {
     sync();
+
+    std::size_t frame_resource_count = m_rhi->get_frame_resource_count();
+    std::size_t current_index = m_rhi->get_frame_resource_index();
+    std::size_t previous_index = (current_index + frame_resource_count - 1) % frame_resource_count;
 
     vk_image* image = static_cast<vk_image*>(texture);
 
@@ -243,7 +236,7 @@ void vk_pipeline_parameter::set(std::size_t index, rhi_resource* texture, rhi_sa
 
     VkWriteDescriptorSet write = {};
     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    write.dstSet = m_descriptor_sets[m_rhi->get_frame_resource_index()];
+    write.dstSet = m_frame_resources[current_index].descriptor_set;
     write.dstBinding = static_cast<std::uint32_t>(index);
     write.dstArrayElement = 0;
     write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -254,31 +247,35 @@ void vk_pipeline_parameter::set(std::size_t index, rhi_resource* texture, rhi_sa
 
     vkUpdateDescriptorSets(m_rhi->get_device(), 1, &write, 0, nullptr);
 
-    m_last_update_frame = m_parameter_update_frame[index] = m_rhi->get_frame_count();
+    m_frame_resources[current_index].descriptor_update_count[index] =
+        m_frame_resources[previous_index].descriptor_update_count[index] + 1;
+    m_not_updated_count += m_rhi->get_frame_resource_count() - 1;
 }
 
 VkDescriptorSet vk_pipeline_parameter::get_descriptor_set() const noexcept
 {
-    return m_descriptor_sets[m_rhi->get_frame_resource_index()];
+    return m_frame_resources[m_rhi->get_frame_resource_index()].descriptor_set;
 }
 
 void vk_pipeline_parameter::sync()
 {
-    std::size_t corrent_frame = m_rhi->get_frame_count();
-    std::size_t frame_resource_count = m_rhi->get_frame_resource_count();
-    if (m_last_sync_frame == corrent_frame ||
-        m_last_update_frame + frame_resource_count < corrent_frame)
+    if (m_not_updated_count == 0)
         return;
-    m_last_sync_frame = corrent_frame;
+
+    std::size_t frame_resource_count = m_rhi->get_frame_resource_count();
 
     std::size_t current_index = m_rhi->get_frame_resource_index();
     std::size_t previous_index = (current_index + frame_resource_count - 1) % frame_resource_count;
 
+    auto& current_frame_resource = m_frame_resources[current_index];
+    auto& previous_frame_resource = m_frame_resources[previous_index];
+
     std::vector<VkCopyDescriptorSet> descriptor_copy;
 
-    for (std::size_t i = 0; i < m_parameter_update_frame.size(); ++i)
+    for (std::size_t i = 0; i < current_frame_resource.descriptor_update_count.size(); ++i)
     {
-        if (m_parameter_update_frame[i] + frame_resource_count < corrent_frame)
+        if (current_frame_resource.descriptor_update_count[i] >=
+            previous_frame_resource.descriptor_update_count[i])
             continue;
 
         auto& parameter_info = m_layout->get_parameter_infos()[i];
@@ -296,15 +293,19 @@ void vk_pipeline_parameter::sync()
         {
             VkCopyDescriptorSet copy = {};
             copy.sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
-            copy.srcSet = m_descriptor_sets[previous_index];
+            copy.srcSet = previous_frame_resource.descriptor_set;
             copy.srcBinding = i;
             copy.srcArrayElement = 0;
-            copy.dstSet = m_descriptor_sets[current_index];
+            copy.dstSet = current_frame_resource.descriptor_set;
             copy.dstBinding = i;
             copy.dstArrayElement = 0;
             copy.descriptorCount = 1;
             descriptor_copy.push_back(copy);
         }
+
+        current_frame_resource.descriptor_update_count[i] =
+            previous_frame_resource.descriptor_update_count[i];
+        --m_not_updated_count;
     }
 
     if (!descriptor_copy.empty())

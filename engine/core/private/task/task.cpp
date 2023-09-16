@@ -3,7 +3,10 @@
 
 namespace violet
 {
-task_base::task_base(task_option option, task_graph_base* graph) : m_option(option), m_graph(graph)
+task_base::task_base(task_option option, task_graph_base* graph) noexcept
+    : m_uncompleted_dependency_count(0),
+      m_option(option),
+      m_graph(graph)
 {
 }
 
@@ -70,6 +73,10 @@ void task_base::add_successor(task_base* successor)
     m_successors.push_back(successor);
     successor->m_dependents.push_back(this);
     ++successor->m_uncompleted_dependency_count;
+}
+
+task_graph_base::task_graph_base() noexcept : m_dirty(false), m_incomplete_count(0)
+{
 }
 
 std::future<void> task_graph_base::reset(task_base* root) noexcept

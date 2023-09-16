@@ -9,7 +9,8 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_rhi* rhi)
     : m_extent{512, 512},
       m_rhi(rhi)
 {
-    auto map_load_op = [](rhi_attachment_load_op op) {
+    auto map_load_op = [](rhi_attachment_load_op op)
+    {
         switch (op)
         {
         case RHI_ATTACHMENT_LOAD_OP_LOAD:
@@ -23,7 +24,8 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_rhi* rhi)
         }
     };
 
-    auto map_store_op = [](rhi_attachment_store_op op) {
+    auto map_store_op = [](rhi_attachment_store_op op)
+    {
         switch (op)
         {
         case RHI_ATTACHMENT_STORE_OP_STORE:
@@ -54,8 +56,8 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_rhi* rhi)
     std::vector<VkSubpassDescription> subpasses(desc.subpass_count);
     std::vector<std::vector<VkAttachmentReference>> input(desc.subpass_count);
     std::vector<std::vector<VkAttachmentReference>> color(desc.subpass_count);
+    std::vector<VkAttachmentReference> depth_stencil(desc.subpass_count);
     std::vector<std::vector<VkAttachmentReference>> resolve(desc.subpass_count);
-    std::vector<VkAttachmentReference> depth(desc.subpass_count);
     for (std::size_t i = 0; i < desc.subpass_count; ++i)
     {
         bool has_resolve_attachment = false;
@@ -74,12 +76,10 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_rhi* rhi)
                 color[i].push_back(ref);
                 break;
             }
-            // case ATTACHMENT_REFERENCE_TYPE_DEPTH: {
-            //     depth[i].attachment = static_cast<std::uint32_t>(j);
-            //     depth[i].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-            //     subpasses[i].pDepthStencilAttachment = &depth[i];
-            //     break;
-            // }
+            case RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL: {
+                depth_stencil[i] = ref;
+                break;
+            }
             case RHI_ATTACHMENT_REFERENCE_TYPE_RESOLVE: {
                 has_resolve_attachment = true;
                 break;
@@ -104,6 +104,27 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_rhi* rhi)
         subpasses[i].inputAttachmentCount = static_cast<std::uint32_t>(input[i].size());
         subpasses[i].pColorAttachments = color[i].data();
         subpasses[i].colorAttachmentCount = static_cast<std::uint32_t>(color[i].size());
+        subpasses[i].pDepthStencilAttachment = &depth_stencil[i];
+    }
+
+    std::vector<VkSubpassDependency> dependencies(desc.dependency_count);
+    for (std::size_t i = 0; i < desc.dependency_count; ++i)
+    {
+        dependencies[i].srcSubpass = desc.dependencies[i].source == RHI_RENDER_SUBPASS_EXTERNAL
+                                         ? VK_SUBPASS_EXTERNAL
+                                         : static_cast<std::uint32_t>(desc.dependencies[i].source);
+        dependencies[i].srcStageMask =
+            vk_util::map_pipeline_stage_flags(desc.dependencies[i].source_stage);
+        dependencies[i].srcAccessMask =
+            vk_util::map_access_flags(desc.dependencies[i].source_access);
+
+        dependencies[i].dstSubpass = desc.dependencies[i].target == RHI_RENDER_SUBPASS_EXTERNAL
+                                         ? VK_SUBPASS_EXTERNAL
+                                         : static_cast<std::uint32_t>(desc.dependencies[i].target);
+        dependencies[i].dstStageMask =
+            vk_util::map_pipeline_stage_flags(desc.dependencies[i].target_stage);
+        dependencies[i].dstAccessMask =
+            vk_util::map_access_flags(desc.dependencies[i].target_access);
     }
 
     VkRenderPassCreateInfo render_pass_info = {};
@@ -112,6 +133,8 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_rhi* rhi)
     render_pass_info.attachmentCount = static_cast<std::uint32_t>(attachments.size());
     render_pass_info.pSubpasses = subpasses.data();
     render_pass_info.subpassCount = static_cast<std::uint32_t>(subpasses.size());
+    render_pass_info.pDependencies = dependencies.data();
+    render_pass_info.dependencyCount = static_cast<std::uint32_t>(dependencies.size());
 
     throw_if_failed(
         vkCreateRenderPass(m_rhi->get_device(), &render_pass_info, nullptr, &m_render_pass));

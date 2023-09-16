@@ -56,7 +56,7 @@ class task_graph_base;
 class task_base
 {
 public:
-    task_base(task_option option, task_graph_base* graph = nullptr);
+    task_base(task_option option, task_graph_base* graph = nullptr) noexcept;
     virtual ~task_base();
 
     std::vector<task_base*> execute();
@@ -81,14 +81,14 @@ private:
 
     std::atomic<std::uint32_t> m_uncompleted_dependency_count;
 
-    task_graph_base* m_graph;
     task_option m_option;
+    task_graph_base* m_graph;
 };
 
 class task_graph_base
 {
 public:
-    task_graph_base() : m_dirty(false) {}
+    task_graph_base() noexcept;
     virtual ~task_graph_base() = default;
 
     template <typename T, typename... Args>

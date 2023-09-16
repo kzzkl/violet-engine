@@ -29,7 +29,7 @@ entity world::create(node* owner)
         result.entity_version = m_entity_infos[result.index].entity_version;
     }
 
-    add<node*, entity_record>(result);
+    add_component<node*, entity_record>(result);
     get_component<node*>(result) = owner;
     get_component<entity_record>(result).entity_index = result.index;
 

@@ -1,0 +1,32 @@
+#include "graphics/pipeline/basic_pipeline.hpp"
+#include <algorithm>
+
+namespace violet
+{
+basic_pipeline::basic_pipeline(rhi_context* rhi) : render_pipeline("basic pipeline", rhi)
+{
+    
+}
+
+void basic_pipeline::render(rhi_render_command* command, render_context& context)
+{
+    std::sort(
+        context.meshes.begin(),
+        context.meshes.end(),
+        [](const render_mesh& a, const render_mesh& b) { return a.material < b.material; });
+
+    rhi_pipeline_parameter* current_material = nullptr;
+    for (render_mesh& mesh : context.meshes)
+    {
+        command->set_vertex_buffers(mesh.vertex_buffers.data(), mesh.vertex_buffers.size());
+        command->set_index_buffer(mesh.index_buffer);
+        command->set_parameter(0, mesh.node);
+        if (current_material != mesh.material)
+        {
+            command->set_parameter(1, mesh.material);
+            current_material = mesh.material;
+        }
+        command->draw_indexed(mesh.index_start, mesh.index_count, mesh.vertex_base);
+    }
+}
+} // namespace violet

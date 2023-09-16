@@ -12,15 +12,20 @@ public:
     class component_handle
     {
     public:
-        component_handle(node* node) : m_version(-1), m_node(node), m_pointer(nullptr) {}
+        component_handle(node* node = nullptr) : m_version(-1), m_node(node), m_pointer(nullptr) {}
 
         bool is_valid() const
         {
+            if (m_node == nullptr)
+                return false;
+
             auto [entity_version, component_version] =
                 m_node->get_world().get_version(m_node->m_entity);
             return m_node->m_entity.entity_version == entity_version &&
                    m_version == component_version;
         }
+
+        node* get_node() const noexcept { return m_node; }
 
         T* operator->() const
         {
@@ -28,7 +33,7 @@ public:
             return m_pointer;
         }
 
-        T* operator*() const
+        T& operator*() const
         {
             sync_pointer();
             return *m_pointer;
@@ -64,8 +69,8 @@ public:
     node(const node&) = delete;
     ~node();
 
-    void add(node* child);
-    void remove(node* child);
+    void add_child(node* child);
+    void remove_child(node* child);
 
     [[nodiscard]] node* get_parent() const noexcept { return m_parent; }
     [[nodiscard]] const std::vector<node*> get_children() const noexcept { return m_children; }
@@ -77,15 +82,16 @@ public:
     }
 
     template <typename... Components>
-    void add_component()
+    auto add_component()
     {
-        m_world->add<Components...>(m_entity);
+        m_world.add_component<Components...>(m_entity);
+        return std::make_tuple(get_component<Components>()...);
     }
 
     template <typename... Components>
     void remove_component()
     {
-        m_world->remove<Components...>(m_entity);
+        m_world.remove_component<Components...>(m_entity);
     }
 
     template <typename Component>

@@ -17,6 +17,9 @@ public:
     static VkFilter map_filter(rhi_filter filter);
     static VkSamplerAddressMode map_sampler_address_mode(rhi_sampler_address_mode address_mode);
 
+    static VkPipelineStageFlags map_pipeline_stage_flags(rhi_pipeline_stage_flags flags);
+    static VkAccessFlags map_access_flags(rhi_access_flags flags);
+
     static inline std::size_t hash_combine(std::size_t seed, std::size_t value)
     {
         return seed ^ (value + 0x9e3779b9 + (seed << 6) + (seed >> 2));

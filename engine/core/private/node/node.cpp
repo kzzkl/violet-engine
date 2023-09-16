@@ -16,19 +16,19 @@ node::~node()
         m_world.release(m_entity);
 }
 
-void node::add(node* child)
+void node::add_child(node* child)
 {
     if (child == nullptr || child->m_parent == this)
         return;
 
     if (child->m_parent != nullptr)
-        child->m_parent->remove(child);
+        child->m_parent->remove_child(child);
 
     child->m_parent = this;
     m_children.push_back(child);
 }
 
-void node::remove(node* child)
+void node::remove_child(node* child)
 {
     for (std::size_t i = 0; i < m_children.size(); ++i)
     {

@@ -32,10 +32,31 @@ bool graphics_system::initialize(const dictionary& config)
     m_plugin->load(config["plugin"]);
     m_plugin->get_rhi()->initialize(rhi_desc);
 
-    window.on_tick().then([this]() { begin_frame(); });
-    window.on_resize().then([this](std::uint32_t width, std::uint32_t height)
-                            { get_rhi()->resize(width, height); });
-    engine::on_frame_end().then([this]() { end_frame(); });
+    rhi_pipeline_parameter_layout_desc node_layout_desc = {};
+    node_layout_desc.parameters[0] = {RHI_PIPELINE_PARAMETER_TYPE_UNIFORM_BUFFER, sizeof(float4x4)};
+    node_layout_desc.parameter_count = 1;
+    add_pipeline_parameter_layout("node", node_layout_desc);
+
+    rhi_pipeline_parameter_layout_desc texture_layout_desc = {};
+    texture_layout_desc.parameters[0] = {RHI_PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1};
+    texture_layout_desc.parameter_count = 1;
+    add_pipeline_parameter_layout("texture", texture_layout_desc);
+
+    window.on_tick().then(
+        [this]()
+        {
+            begin_frame();
+        });
+    window.on_resize().then(
+        [this](std::uint32_t width, std::uint32_t height)
+        {
+            get_rhi()->resize(width, height);
+        });
+    engine::on_frame_end().then(
+        [this]()
+        {
+            end_frame();
+        });
 
     return true;
 }
@@ -43,6 +64,16 @@ bool graphics_system::initialize(const dictionary& config)
 void graphics_system::render(render_graph* graph)
 {
     m_render_graphs.push_back(graph);
+}
+
+void graphics_system::add_pipeline_parameter_layout(
+    std::string_view name,
+    const rhi_pipeline_parameter_layout_desc& desc)
+{
+    if (m_pipeline_parameter_layouts.find(name.data()) != m_pipeline_parameter_layouts.end())
+        return;
+
+    m_pipeline_parameter_layouts[name.data()] = get_rhi()->create_pipeline_parameter_layout(desc);
 }
 
 rhi_context* graphics_system::get_rhi() const
@@ -66,6 +97,20 @@ void graphics_system::render()
     m_idle = m_render_graphs.empty();
     if (m_idle)
         return;
+
+    view<mesh, transform> mesh_view(engine::get_world());
+    mesh_view.each(
+        [](mesh& mesh, transform& transform)
+        {
+            // if (transform.get_update_count() != 0)
+            mesh.set_m(transform.get_world_matrix());
+
+            mesh.each_submesh(
+                [](const render_mesh& submesh, render_pipeline* pipeline)
+                {
+                    pipeline->add_mesh(submesh);
+                });
+        });
 
     std::vector<rhi_semaphore*> render_finished_semaphores;
     render_finished_semaphores.reserve(m_render_graphs.size());

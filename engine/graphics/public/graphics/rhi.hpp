@@ -52,8 +52,7 @@ enum rhi_resource_state
     RHI_RESOURCE_STATE_UNDEFINED,
     RHI_RESOURCE_STATE_SHADER_RESOURCE,
     RHI_RESOURCE_STATE_RENDER_TARGET,
-    RHI_RESOURCE_STATE_DEPTH_READ,
-    RHI_RESOURCE_STATE_DEPTH_WRITE,
+    RHI_RESOURCE_STATE_DEPTH_STENCIL,
     RHI_RESOURCE_STATE_PRESENT
 };
 
@@ -152,6 +151,7 @@ enum rhi_attachment_reference_type
 {
     RHI_ATTACHMENT_REFERENCE_TYPE_INPUT,
     RHI_ATTACHMENT_REFERENCE_TYPE_COLOR,
+    RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL,
     RHI_ATTACHMENT_REFERENCE_TYPE_RESOLVE
 };
 
@@ -170,17 +170,54 @@ struct rhi_attachment_reference
 
 struct rhi_render_subpass_desc
 {
-    rhi_attachment_reference references[16];
+    rhi_attachment_reference references[32];
     std::size_t reference_count = 0;
+};
+
+enum rhi_pipeline_stage_flag
+{
+    RHI_PIPELINE_STAGE_FLAG_BEGIN = 1 << 0,
+    RHI_PIPELINE_STAGE_FLAG_VERTEX = 1 << 1,
+    RHI_PIPELINE_STAGE_FLAG_EARLY_DEPTH_STENCIL = 1 << 2,
+    RHI_PIPELINE_STAGE_FLAG_PIXEL = 1 << 3,
+    RHI_PIPELINE_STAGE_FLAG_LATE_DEPTH_STENCIL = 1 << 4,
+    RHI_PIPELINE_STAGE_FLAG_COLOR_OUTPUT = 1 << 5,
+    RHI_PIPELINE_STAGE_FLAG_END = 1 << 6,
+};
+using rhi_pipeline_stage_flags = std::uint32_t;
+
+enum rhi_access_flag
+{
+    RHI_ACCESS_FLAG_COLOR_READ = 1 << 0,
+    RHI_ACCESS_FLAG_COLOR_WRITE = 1 << 1,
+    RHI_ACCESS_FLAG_DEPTH_STENCIL_READ = 1 << 2,
+    RHI_ACCESS_FLAG_DEPTH_STENCIL_WRITE = 1 << 3
+};
+using rhi_access_flags = std::uint32_t;
+
+#define RHI_RENDER_SUBPASS_EXTERNAL (~0U)
+
+struct rhi_render_subpass_dependency_desc
+{
+    std::size_t source;
+    rhi_pipeline_stage_flags source_stage;
+    rhi_access_flags source_access;
+
+    std::size_t target;
+    rhi_pipeline_stage_flags target_stage;
+    rhi_access_flags target_access;
 };
 
 struct rhi_render_pass_desc
 {
-    rhi_attachment_desc attachments[16];
+    rhi_attachment_desc attachments[32];
     std::size_t attachment_count = 0;
 
-    rhi_render_subpass_desc subpasses[16];
+    rhi_render_subpass_desc subpasses[32];
     std::size_t subpass_count = 0;
+
+    rhi_render_subpass_dependency_desc dependencies[32];
+    std::size_t dependency_count;
 };
 
 class rhi_render_pass
@@ -204,7 +241,7 @@ struct rhi_pipeline_parameter_layout_pair
 
 struct rhi_pipeline_parameter_layout_desc
 {
-    rhi_pipeline_parameter_layout_pair parameters[16];
+    rhi_pipeline_parameter_layout_pair parameters[32];
     std::size_t parameter_count = 0;
 };
 
@@ -427,8 +464,8 @@ public:
 enum rhi_vertex_buffer_flags
 {
     RHI_VERTEX_BUFFER_FLAG_NONE = 0,
-    RHI_VERTEX_BUFFER_FLAG_COMPUTE_IN = 0x1,
-    RHI_VERTEX_BUFFER_FLAG_COMPUTE_OUT = 0x2
+    RHI_VERTEX_BUFFER_FLAG_COMPUTE_IN = 1 << 1,
+    RHI_VERTEX_BUFFER_FLAG_COMPUTE_OUT = 1 << 2
 };
 
 struct rhi_vertex_buffer_desc
@@ -438,7 +475,6 @@ struct rhi_vertex_buffer_desc
 
     rhi_vertex_buffer_flags flags;
     bool dynamic;
-    bool frame_resource;
 };
 
 struct rhi_index_buffer_desc
@@ -449,7 +485,6 @@ struct rhi_index_buffer_desc
     std::size_t index_size;
 
     bool dynamic;
-    bool frame_resource;
 };
 
 struct rhi_shadow_map_desc
@@ -567,6 +602,7 @@ public:
     virtual rhi_resource* create_render_target(const rhi_render_target_desc& desc) = 0;
     virtual rhi_resource* create_depth_stencil_buffer(
         const rhi_depth_stencil_buffer_desc& desc) = 0;
+    virtual void destroy_depth_stencil_buffer(rhi_resource* depth_stencil_buffer) = 0;
 
     virtual rhi_fence* create_fence(bool signaled) = 0;
     virtual void destroy_fence(rhi_fence* fence) = 0;

@@ -191,6 +191,8 @@ VkImageLayout vk_util::map_state(rhi_resource_state state)
         return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     case RHI_RESOURCE_STATE_RENDER_TARGET:
         return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    case RHI_RESOURCE_STATE_DEPTH_STENCIL:
+        return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     case RHI_RESOURCE_STATE_PRESENT:
         return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     default:
@@ -228,5 +230,40 @@ VkSamplerAddressMode vk_util::map_sampler_address_mode(rhi_sampler_address_mode 
     default:
         throw vk_exception("Invalid sampler address mode.");
     }
+}
+
+VkPipelineStageFlags vk_util::map_pipeline_stage_flags(rhi_pipeline_stage_flags flags)
+{
+    VkPipelineStageFlags result = 0;
+    result |= (flags & RHI_PIPELINE_STAGE_FLAG_BEGIN) ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_FLAG_VERTEX) ? VK_PIPELINE_STAGE_VERTEX_SHADER_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_FLAG_EARLY_DEPTH_STENCIL)
+                  ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                  : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_FLAG_PIXEL) ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_FLAG_LATE_DEPTH_STENCIL)
+                  ? VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+                  : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_FLAG_COLOR_OUTPUT)
+                  ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                  : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_FLAG_END) ? VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT : 0;
+
+    return result;
+}
+
+VkAccessFlags vk_util::map_access_flags(rhi_access_flags flags)
+{
+    VkAccessFlags result = 0;
+    result |= (flags & RHI_ACCESS_FLAG_COLOR_READ) ? VK_ACCESS_COLOR_ATTACHMENT_READ_BIT : 0;
+    result |= (flags & RHI_ACCESS_FLAG_COLOR_WRITE) ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : 0;
+    result |= (flags & RHI_ACCESS_FLAG_DEPTH_STENCIL_READ)
+                  ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
+                  : 0;
+    result |= (flags & RHI_ACCESS_FLAG_DEPTH_STENCIL_WRITE)
+                  ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+                  : 0;
+
+    return result;
 }
 } // namespace violet::vk

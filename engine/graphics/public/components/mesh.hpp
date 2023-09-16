@@ -1,77 +1,61 @@
 #pragma once
 
 #include "graphics/geometry.hpp"
-#include "graphics/material/material.hpp"
-#include "graphics/node_parameter.hpp"
-#include "graphics/render_graph/render_pipeline.hpp"
+#include "graphics/render_graph/material.hpp"
 #include <memory>
 #include <vector>
 
 namespace violet
 {
-struct submesh
-{
-    std::size_t index_begin;
-    std::size_t index_end;
-    std::size_t vertex_offset;
-
-    std::size_t material_index;
-};
-
 class mesh
 {
 public:
     mesh();
+    mesh(const mesh&) = delete;
+    mesh(mesh&& other) noexcept;
+    ~mesh();
 
     void set_geometry(geometry* geometry);
+    void add_submesh(
+        std::size_t vertex_base,
+        std::size_t index_start,
+        std::size_t index_count,
+        material* material);
 
-    void set_submesh(std::size_t index, const submesh& submesh);
-    void set_submesh_count(std::size_t count);
+    void set_m(const float4x4& m);
+    void set_mv(const float4x4& mv);
+    void set_mvp(const float4x4& mvp);
 
-    void set_material(std::size_t index, material* material);
-    material* get_material(std::size_t index);
+    rhi_pipeline_parameter* get_node_parameter() const noexcept { return m_node_parameter; }
 
-    void set_material_count(std::size_t count);
-    std::size_t get_material_count() const noexcept;
-
-    using call = void (*)(
-        const submesh& submesh,
-        rhi_render_pipeline* pipeline,
-        rhi_pipeline_parameter* material_parameter,
-        const std::vector<rhi_resource*>& vertex_attributes,
-        std::size_t vertex_attribute_hash);
+    mesh& operator=(const mesh&) = delete;
+    mesh& operator=(mesh&& other) noexcept;
 
     template <typename Functor>
-    void each_render_unit(Functor&& functor) const
+    void each_submesh(Functor functor) const
     {
         for (const submesh& submesh : m_submeshes)
         {
-            const auto& material_wrapper = m_materials[submesh.material_index];
-            const auto& pipelines = material_wrapper.material->get_pipelines();
-
-            for (std::size_t i = 0; i < pipelines.size(); ++i)
-            {
-                functor(
-                    submesh,
-                    pipelines[i].first->get_interface(),
-                    pipelines[i].second->get_interface(),
-                    material_wrapper.vertex_attributes[i],
-                    material_wrapper.vertex_attribute_hash[i]);
-            }
+            for (std::size_t i = 0; i < submesh.render_meshes.size(); ++i)
+                functor(submesh.render_meshes[i], submesh.render_pipelines[i]);
         }
     }
 
 private:
-    struct material_wrapper
+    struct submesh
     {
+        std::size_t vertex_base;
+        std::size_t index_start;
+        std::size_t index_count;
         material* material;
-        std::vector<std::vector<rhi_resource*>> vertex_attributes;
-        std::vector<std::size_t> vertex_attribute_hash;
+
+        std::vector<render_mesh> render_meshes;
+        std::vector<render_pipeline*> render_pipelines;
     };
 
-    geometry* m_geometry;
+    rhi_pipeline_parameter* m_node_parameter;
 
+    geometry* m_geometry;
     std::vector<submesh> m_submeshes;
-    std::vector<material_wrapper> m_materials;
 };
 } // namespace violet

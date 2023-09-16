@@ -1,3 +1,5 @@
+#include "components/mesh.hpp"
+#include "components/transform.hpp"
 #include "core/engine.hpp"
 #include "core/node/node.hpp"
 #include "graphics/graphics_system.hpp"
@@ -11,15 +13,25 @@ namespace violet::sample
 class hello_world : public engine_system
 {
 public:
-    hello_world() : engine_system("hello_world") {}
+    hello_world()
+        : engine_system("hello_world"),
+          m_texture(nullptr),
+          m_sampler(nullptr),
+          m_depth_stencil(nullptr)
+    {
+    }
 
     virtual bool initialize(const dictionary& config)
     {
         log::info(config["text"]);
 
         auto& window = engine::get_system<window_system>();
-        window.on_resize().then([this](std::uint32_t width, std::uint32_t height)
-                                { log::info("Window resize: {} {}", width, height); });
+        window.on_resize().then(
+            [this](std::uint32_t width, std::uint32_t height)
+            {
+                log::info("Window resize: {} {}", width, height);
+                resize(width, height);
+            });
 
         engine::on_tick().then(
             [this](float delta)
@@ -28,9 +40,12 @@ public:
                 engine::get_system<graphics_system>().render(m_render_graph.get());
             });
 
-        m_test_object = std::make_unique<node>("test", engine::get_world());
-
         initialize_render();
+
+        m_test_object = std::make_unique<node>("test", engine::get_world());
+        auto [mesh_handle, transform_handle] = m_test_object->add_component<mesh, transform>();
+        mesh_handle->set_geometry(m_geometry.get());
+        mesh_handle->add_submesh(0, 0, 12, m_material);
 
         return true;
     }
@@ -39,39 +54,57 @@ public:
     {
         m_render_graph = nullptr;
         rhi_context* rhi = engine::get_system<graphics_system>().get_rhi();
-        rhi->destroy_vertex_buffer(m_position_buffer);
-        rhi->destroy_vertex_buffer(m_color_buffer);
-        rhi->destroy_vertex_buffer(m_uv_buffer);
-        rhi->destroy_index_buffer(m_index_buffer);
 
-        rhi->destroy_pipeline_parameter(m_parameter);
-        rhi->destroy_pipeline_parameter_layout(m_parameter_layout);
+        m_geometry = nullptr;
 
         rhi->destroy_texture(m_texture);
         rhi->destroy_sampler(m_sampler);
+
+        rhi->destroy_depth_stencil_buffer(m_depth_stencil);
     }
 
 private:
     void initialize_render()
     {
         auto& graphics = engine::get_system<graphics_system>();
+        auto& window = engine::get_system<window_system>();
+        auto extent = window.get_extent();
+
         m_render_graph = std::make_unique<render_graph>(graphics.get_rhi());
 
         render_resource& back_buffer = m_render_graph->add_resource("back buffer", true);
+        render_resource& depth_stencil_buffer =
+            m_render_graph->add_resource("depth stencil buffer");
+        depth_stencil_buffer.set_format(RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT);
+
+        resize(extent.width, extent.height);
 
         render_pass& main = m_render_graph->add_render_pass("main");
 
-        render_attachment& output = main.add_attachment("output", back_buffer);
-        output.set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
-        output.set_final_state(RHI_RESOURCE_STATE_PRESENT);
-        output.set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
-        output.set_store_op(RHI_ATTACHMENT_STORE_OP_STORE);
+        render_attachment& output_attachment = main.add_attachment("output", back_buffer);
+        output_attachment.set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
+        output_attachment.set_final_state(RHI_RESOURCE_STATE_PRESENT);
+        output_attachment.set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
+        output_attachment.set_store_op(RHI_ATTACHMENT_STORE_OP_STORE);
+
+        render_attachment& depth_stencil_attachment =
+            main.add_attachment("depth stencil", depth_stencil_buffer);
+        depth_stencil_attachment.set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
+        depth_stencil_attachment.set_final_state(RHI_RESOURCE_STATE_DEPTH_STENCIL);
+        depth_stencil_attachment.set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
+        depth_stencil_attachment.set_store_op(RHI_ATTACHMENT_STORE_OP_DONT_CARE);
+        depth_stencil_attachment.set_stencil_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
+        depth_stencil_attachment.set_stencil_store_op(RHI_ATTACHMENT_STORE_OP_DONT_CARE);
 
         render_subpass& color_pass = main.add_subpass("color");
         color_pass.add_reference(
-            output,
+            output_attachment,
             RHI_ATTACHMENT_REFERENCE_TYPE_COLOR,
             RHI_RESOURCE_STATE_RENDER_TARGET);
+        color_pass.add_reference(
+            depth_stencil_attachment,
+            RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL,
+            RHI_RESOURCE_STATE_DEPTH_STENCIL);
 
         render_pipeline& pipeline = color_pass.add_pipeline("color");
         pipeline.set_shader(
@@ -84,59 +117,22 @@ private:
         });
         pipeline.set_cull_mode(RHI_CULL_MODE_NONE);
 
-        rhi_pipeline_parameter_layout_desc layout_desc = {};
-        layout_desc.parameters[0] = {RHI_PIPELINE_PARAMETER_TYPE_UNIFORM_BUFFER, sizeof(float4x4)};
-        layout_desc.parameters[1] = {RHI_PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1};
-        layout_desc.parameter_count = 2;
-        m_parameter_layout = graphics.get_rhi()->create_pipeline_parameter_layout(layout_desc);
-        pipeline.set_parameter_layout({m_parameter_layout});
+        pipeline.set_parameter_layout({
+            {graphics.get_pipeline_parameter_layout("node"),    RENDER_PIPELINE_PARAMETER_TYPE_NODE},
+            {graphics.get_pipeline_parameter_layout("texture"),
+             RENDER_PIPELINE_PARAMETER_TYPE_MATERIAL                                               }
+        });
         m_pipeline = &pipeline;
 
+        main.add_dependency(
+            RHI_RENDER_SUBPASS_EXTERNAL,
+            RHI_PIPELINE_STAGE_FLAG_COLOR_OUTPUT | RHI_PIPELINE_STAGE_FLAG_EARLY_DEPTH_STENCIL,
+            0,
+            color_pass.get_index(),
+            RHI_PIPELINE_STAGE_FLAG_COLOR_OUTPUT | RHI_PIPELINE_STAGE_FLAG_EARLY_DEPTH_STENCIL,
+            RHI_ACCESS_FLAG_COLOR_WRITE | RHI_ACCESS_FLAG_DEPTH_STENCIL_WRITE);
+
         m_render_graph->compile();
-
-        std::vector<float3> position = {
-            {-0.5f, -0.5f, 0.0f},
-            {0.5f,  -0.5f, 0.0f},
-            {0.5f,  0.5f,  0.0f},
-            {-0.5f, 0.5f,  0.0f}
-        };
-        rhi_vertex_buffer_desc position_buffer_desc = {};
-        position_buffer_desc.data = position.data();
-        position_buffer_desc.size = position.size() * sizeof(float3);
-        position_buffer_desc.dynamic = false;
-        m_position_buffer = graphics.get_rhi()->create_vertex_buffer(position_buffer_desc);
-
-        std::vector<float3> color = {
-            {1.0f, 0.0f, 0.0f},
-            {0.0f, 1.0f, 0.0f},
-            {0.0f, 1.0f, 1.0f},
-            {0.0f, 0.0f, 1.0f},
-        };
-        rhi_vertex_buffer_desc color_buffer_desc = {};
-        color_buffer_desc.data = color.data();
-        color_buffer_desc.size = color.size() * sizeof(float3);
-        color_buffer_desc.dynamic = false;
-        m_color_buffer = graphics.get_rhi()->create_vertex_buffer(color_buffer_desc);
-
-        std::vector<float2> uv = {
-            {1.0f, 0.0f},
-            {0.0f, 0.0f},
-            {0.0f, 1.0f},
-            {1.0f, 1.0f}
-        };
-        rhi_vertex_buffer_desc uv_buffer_desc = {};
-        uv_buffer_desc.data = uv.data();
-        uv_buffer_desc.size = uv.size() * sizeof(float2);
-        uv_buffer_desc.dynamic = false;
-        m_uv_buffer = graphics.get_rhi()->create_vertex_buffer(uv_buffer_desc);
-
-        std::vector<std::uint32_t> indices = {0, 1, 2, 2, 3, 0};
-        rhi_index_buffer_desc index_buffer_desc = {};
-        index_buffer_desc.data = indices.data();
-        index_buffer_desc.size = indices.size() * sizeof(std::uint32_t);
-        index_buffer_desc.index_size = sizeof(std::uint32_t);
-        index_buffer_desc.dynamic = false;
-        m_index_buffer = graphics.get_rhi()->create_index_buffer(index_buffer_desc);
 
         m_texture = graphics.get_rhi()->create_texture("hello-world/test.jpg");
 
@@ -148,8 +144,51 @@ private:
         sampler_desc.address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
         m_sampler = graphics.get_rhi()->create_sampler(sampler_desc);
 
-        m_parameter = graphics.get_rhi()->create_pipeline_parameter(m_parameter_layout);
-        m_parameter->set(1, m_texture, m_sampler);
+        m_geometry = std::make_unique<geometry>(graphics.get_rhi());
+        std::vector<float3> position = {
+            {-0.5f, -0.5f, -0.2f},
+            {0.5f,  -0.5f, -0.2f},
+            {0.5f,  0.5f,  -0.2f},
+            {-0.5f, 0.5f,  -0.2f},
+            {-0.5f, -0.5f, 0.2f },
+            {0.5f,  -0.5f, 0.2f },
+            {0.5f,  0.5f,  0.2f },
+            {-0.5f, 0.5f,  0.2f }
+        };
+        m_geometry->add_attribute("position", position);
+        std::vector<float3> color = {
+            {1.0f, 0.0f, 0.0f},
+            {0.0f, 1.0f, 0.0f},
+            {0.0f, 1.0f, 1.0f},
+            {0.0f, 0.0f, 1.0f},
+            {1.0f, 0.0f, 0.0f},
+            {0.0f, 1.0f, 0.0f},
+            {0.0f, 1.0f, 1.0f},
+            {0.0f, 0.0f, 1.0f}
+        };
+        m_geometry->add_attribute("color", color);
+        std::vector<float2> uv = {
+            {1.0f, 0.0f},
+            {0.0f, 0.0f},
+            {0.0f, 1.0f},
+            {1.0f, 1.0f},
+            {1.0f, 0.0f},
+            {0.0f, 0.0f},
+            {0.0f, 1.0f},
+            {1.0f, 1.0f}
+        };
+        m_geometry->add_attribute("uv", uv);
+        std::vector<std::uint32_t> indices = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
+        m_geometry->set_indices(indices);
+
+        material_layout& material_layout = m_render_graph->add_material_layout("text material");
+        material_layout.add_pipeline(pipeline);
+        material_layout.add_field(
+            "texture",
+            {.pipeline_index = 0, .field_index = 0, .size = 1, .offset = 0});
+
+        m_material = material_layout.add_material("test");
+        m_material->set("texture", m_texture, m_sampler);
     }
 
     render_pipeline* m_pipeline;
@@ -180,8 +219,13 @@ private:
         v = matrix_simd::inverse_transform(v);
 
         float4x4_simd mvp = matrix_simd::mul(matrix_simd::mul(m, v), p);
-        float4x4 data;
-        simd::store(mvp, data);
+
+        auto transform_ptr = m_test_object->get_component<transform>();
+        transform_ptr->set_rotation(
+            quaternion_simd::rotation_axis(simd::set(1.0f, 0.0f, 0.0f, 0.0f), m_rotate));
+
+        m_rotate += delta * 2.0f;
+        return;
 
         static auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -190,32 +234,34 @@ private:
             std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime)
                 .count();
 
-        std::size_t index =
-            engine::get_system<graphics_system>().get_rhi()->get_frame_resource_index();
-        m_parameter->set(0, &mvp, sizeof(mvp), 0);
+        m_rotate += delta * 2.0f;
+    }
 
-        m_pipeline->set_mesh(
-            {m_position_buffer, m_color_buffer, m_uv_buffer},
-            m_index_buffer,
-            m_parameter);
+    void resize(std::uint32_t width, std::uint32_t height)
+    {
+        rhi_context* rhi = engine::get_system<graphics_system>().get_rhi();
+        rhi->destroy_depth_stencil_buffer(m_depth_stencil);
 
-        m_rotate += delta * 1.0f;
+        rhi_depth_stencil_buffer_desc depth_stencil_buffer_desc = {};
+        depth_stencil_buffer_desc.width = width;
+        depth_stencil_buffer_desc.height = height;
+        depth_stencil_buffer_desc.samples = RHI_SAMPLE_COUNT_1;
+        depth_stencil_buffer_desc.format = RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT;
+        m_depth_stencil = rhi->create_depth_stencil_buffer(depth_stencil_buffer_desc);
+
+        m_render_graph->get_resource("depth stencil buffer").set_resource(m_depth_stencil);
     }
 
     std::unique_ptr<node> m_test_object;
+    std::unique_ptr<geometry> m_geometry;
+    material* m_material;
 
     std::unique_ptr<render_graph> m_render_graph;
 
-    rhi_resource* m_position_buffer;
-    rhi_resource* m_color_buffer;
-    rhi_resource* m_uv_buffer;
-    rhi_resource* m_index_buffer;
-
-    rhi_pipeline_parameter_layout* m_parameter_layout;
-    rhi_pipeline_parameter* m_parameter;
-
     rhi_resource* m_texture;
     rhi_sampler* m_sampler;
+
+    rhi_resource* m_depth_stencil;
 
     float m_rotate = 0.0f;
 };
@@ -225,7 +271,7 @@ int main()
 {
     using namespace violet;
 
-    engine::initialize("");
+    engine::initialize("hello-world/config");
     engine::install<window_system>();
     engine::install<graphics_system>();
     engine::install<sample::hello_world>();

@@ -13,7 +13,6 @@ public:
 
     const std::string& get_name() const noexcept { return m_name; }
 
-protected:
     rhi_context* get_rhi() const noexcept { return m_rhi; }
 
 private:

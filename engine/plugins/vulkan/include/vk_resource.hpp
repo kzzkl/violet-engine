@@ -63,6 +63,7 @@ public:
 
     VkImageView get_image_view() const noexcept { return m_image_view; }
     VkImageLayout get_image_layout() const noexcept { return m_image_layout; }
+    VkClearValue get_clear_value() const noexcept { return m_clear_value; }
 
     virtual rhi_resource_format get_format() const noexcept override;
     virtual rhi_resource_extent get_extent() const noexcept override
@@ -72,14 +73,26 @@ public:
     virtual std::size_t get_hash() const noexcept override { return m_hash; }
 
 protected:
-    void set(
-        VkImage image,
-        VkDeviceMemory memory,
-        VkImageView image_view,
-        VkImageLayout image_layout,
-        VkFormat format,
-        VkExtent2D extent,
-        std::size_t hash);
+    void set_image(VkImage image, VkDeviceMemory memory) noexcept
+    {
+        m_image = image;
+        m_memory = memory;
+    }
+    void set_image_view(VkImageView image_view) noexcept { m_image_view = image_view; }
+    void set_image_layout(VkImageLayout image_layout) noexcept { m_image_layout = image_layout; }
+    void set_format(VkFormat format) noexcept { m_format = format; }
+    void set_extent(VkExtent2D extent) noexcept { m_extent = extent; }
+
+    void set_clear_value(VkClearColorValue clear_value) noexcept
+    {
+        m_clear_value.color = clear_value;
+    }
+    void set_clear_value(VkClearDepthStencilValue clear_value) noexcept
+    {
+        m_clear_value.depthStencil = clear_value;
+    }
+
+    void set_hash(std::size_t hash) noexcept { m_hash = hash; }
 
     void create_image(
         std::uint32_t width,
@@ -92,7 +105,11 @@ protected:
         VkDeviceMemory& memory);
     void destroy_image(VkImage image, VkDeviceMemory memory);
 
-    void create_image_view(VkImage image, VkFormat format, VkImageView& image_view);
+    void create_image_view(
+        VkImage image,
+        VkFormat format,
+        VkImageAspectFlags aspect_mask,
+        VkImageView& image_view);
     void destroy_image_view(VkImageView image_view);
 
     void copy_buffer_to_image(
@@ -112,6 +129,8 @@ private:
     VkFormat m_format;
     VkExtent2D m_extent;
 
+    VkClearValue m_clear_value;
+
     std::size_t m_hash;
 };
 
@@ -120,6 +139,13 @@ class vk_swapchain_image : public vk_image
 public:
     vk_swapchain_image(VkImage image, VkFormat format, const VkExtent2D& extent, vk_rhi* rhi);
     virtual ~vk_swapchain_image();
+};
+
+class vk_depth_stencil : public vk_image
+{
+public:
+    vk_depth_stencil(const rhi_depth_stencil_buffer_desc& desc, vk_rhi* rhi);
+    virtual ~vk_depth_stencil();
 };
 
 class vk_texture : public vk_image

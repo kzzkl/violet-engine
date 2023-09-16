@@ -39,8 +39,16 @@ public:
 
     void release(entity entity);
 
+    template <typename Component, typename ComponentInfo = component_info_default<Component>>
+    void register_component()
+    {
+        component_id id = component_index::value<Component>();
+        assert(m_component_infos[id] == nullptr);
+        m_component_infos[id] = std::make_unique<ComponentInfo>();
+    }
+
     template <typename... Components>
-    void add(entity entity)
+    void add_component(entity entity)
     {
         (register_component<Components>(), ...);
 
@@ -81,7 +89,7 @@ public:
     }
 
     template <typename... Components>
-    void remove(entity entity)
+    void remove_component(entity entity)
     {
         entity_info& info = m_entity_infos[entity.index];
         assert(info.archetype);
@@ -175,14 +183,6 @@ private:
         std::size_t entity_index,
         archetype* new_archetype,
         std::size_t new_archetype_index);
-
-    template <typename Component>
-    void register_component()
-    {
-        component_id id = component_index::value<Component>();
-        if (m_component_infos[id] == nullptr)
-            m_component_infos[id] = std::make_unique<component_info_default<Component>>();
-    }
 
     template <typename... Components>
     component_mask make_mask()

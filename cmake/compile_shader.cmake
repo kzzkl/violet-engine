@@ -36,8 +36,6 @@ function(compile_shader_dxc)
             set(COMMAND_LINE ${COMMAND_LINE_RELEASE})
         endif()
 
-        message(STATUS "${COMMAND_LINE}")
-
         foreach(INCLUDE ${COMPILE_SHADER_INCLUDE_DIRS})
             set(COMMAND_LINE ${COMMAND_LINE} -I${INCLUDE})
         endforeach()
