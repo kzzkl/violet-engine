@@ -19,7 +19,7 @@ class material_layout : public render_node
 public:
     material_layout(std::string_view name, rhi_context* rhi);
 
-    void add_pipeline(render_pipeline& pipeline);
+    void add_pipeline(render_pipeline* pipeline);
 
     void add_field(std::string_view name, const material_field& field)
     {

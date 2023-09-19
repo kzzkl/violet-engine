@@ -26,7 +26,7 @@ public:
     void set_mv(const float4x4& mv);
     void set_mvp(const float4x4& mvp);
 
-    rhi_pipeline_parameter* get_node_parameter() const noexcept { return m_node_parameter; }
+    rhi_pipeline_parameter* get_parameter() const noexcept { return m_parameter; }
 
     mesh& operator=(const mesh&) = delete;
     mesh& operator=(mesh&& other) noexcept;
@@ -53,7 +53,7 @@ private:
         std::vector<render_pipeline*> render_pipelines;
     };
 
-    rhi_pipeline_parameter* m_node_parameter;
+    rhi_pipeline_parameter* m_parameter;
 
     geometry* m_geometry;
     std::vector<submesh> m_submeshes;

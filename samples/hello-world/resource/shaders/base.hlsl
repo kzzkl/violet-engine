@@ -12,23 +12,32 @@ struct vs_out
     float2 uv: UV;
 };
 
-struct UBO
+struct violet_mesh
 {
-	float4x4 mvp;
+	float4x4 model;
 };
 
-cbuffer ubo : register(b0, space0) { UBO ubo; }
+cbuffer mesh : register(b0, space0) { violet_mesh mesh; }
 
 [[vk::combinedImageSampler]]
 Texture2D<float4> texture : register(t0, space1);
 [[vk::combinedImageSampler]]
 SamplerState texture_sampler : register(s0, space1);
 
+struct violet_camera
+{
+    float4x4 view;
+    float4x4 project;
+    float4x4 view_projection;
+};
+
+cbuffer camera : register(b0, space2) { violet_camera camera; }
+
 vs_out vs_main(vs_in input)
 {
     vs_out output;
 
-    output.position = mul(ubo.mvp, float4(input.position, 1.0));
+    output.position = mul(camera.view_projection, mul(mesh.model, float4(input.position, 1.0)));
     output.color = input.color;
     output.uv = input.uv;
 

@@ -102,22 +102,29 @@ bool render_pipeline::compile(rhi_render_pass* render_pass, std::size_t subpass_
 void render_pipeline::execute(rhi_render_command* command)
 {
     command->set_pipeline(m_interface);
-    render(command, m_meshes);
+    render(command, m_context);
+    m_context.meshes.clear();
 }
 
 void render_pipeline::add_mesh(const render_mesh& mesh)
 {
-    m_meshes.push_back(mesh);
+    m_context.meshes.push_back(mesh);
 }
 
-void render_pipeline::render(rhi_render_command* command, std::vector<render_mesh>& meshes)
+void render_pipeline::set_camera_parameter(rhi_pipeline_parameter* parameter) noexcept
 {
-    for (render_mesh& mesh : meshes)
+    m_context.camera_parameter = parameter;
+}
+
+void render_pipeline::render(rhi_render_command* command, render_context& context)
+{
+    for (render_mesh& mesh : m_context.meshes)
     {
         command->set_vertex_buffers(mesh.vertex_buffers.data(), mesh.vertex_buffers.size());
         command->set_index_buffer(mesh.index_buffer);
         command->set_parameter(0, mesh.node);
         command->set_parameter(1, mesh.material);
+        command->set_parameter(2, context.camera_parameter);
         command->draw_indexed(0, 12, 0);
     }
 }

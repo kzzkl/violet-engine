@@ -22,6 +22,7 @@ struct render_mesh
 
 struct render_context
 {
+    rhi_pipeline_parameter* camera_parameter;
     std::vector<render_mesh> meshes;
 };
 
@@ -63,11 +64,12 @@ public:
     void execute(rhi_render_command* command);
 
     void add_mesh(const render_mesh& mesh);
+    void set_camera_parameter(rhi_pipeline_parameter* parameter) noexcept;
 
     rhi_render_pipeline* get_interface() const noexcept { return m_interface; }
 
 private:
-    virtual void render(rhi_render_command* command, std::vector<render_mesh>& meshes);
+    virtual void render(rhi_render_command* command, render_context& context);
 
     std::string m_vertex_shader;
     std::string m_pixel_shader;
@@ -78,6 +80,6 @@ private:
 
     rhi_render_pipeline* m_interface;
 
-    std::vector<render_mesh> m_meshes;
+    render_context m_context;
 };
 } // namespace violet

@@ -43,8 +43,8 @@ public:
     void register_component()
     {
         component_id id = component_index::value<Component>();
-        assert(m_component_infos[id] == nullptr);
-        m_component_infos[id] = std::make_unique<ComponentInfo>();
+        if (m_component_infos[id] == nullptr)
+            m_component_infos[id] = std::make_unique<ComponentInfo>();
     }
 
     template <typename... Components>

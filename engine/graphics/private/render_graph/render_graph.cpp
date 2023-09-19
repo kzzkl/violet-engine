@@ -12,35 +12,16 @@ render_graph::~render_graph()
         m_rhi->destroy_semaphore(sempahore);
 }
 
-render_resource& render_graph::add_resource(std::string_view name, bool back_buffer)
-{
-    auto iter = m_resources.find(name.data());
-    if (iter != m_resources.end())
-        return *iter->second;
-
-    auto resource = std::make_unique<render_resource>(name, m_rhi);
-    if (back_buffer)
-    {
-        m_back_buffer = resource.get();
-        resource->set_format(m_rhi->get_back_buffer()->get_format());
-        resource->set_resource(m_rhi->get_back_buffer());
-    }
-
-    render_resource& result = *resource;
-    m_resources[name.data()] = std::move(resource);
-    return result;
-}
-
-render_pass& render_graph::add_render_pass(std::string_view name)
+render_pass* render_graph::add_render_pass(std::string_view name)
 {
     m_render_passes.push_back(std::make_unique<render_pass>(name, m_rhi));
-    return *m_render_passes.back();
+    return m_render_passes.back().get();
 }
 
-material_layout& render_graph::add_material_layout(std::string_view name)
+material_layout* render_graph::add_material_layout(std::string_view name)
 {
     m_material_layouts[name.data()] = std::make_unique<material_layout>(name, m_rhi);
-    return *m_material_layouts[name.data()];
+    return m_material_layouts[name.data()].get();
 }
 
 bool render_graph::compile()
@@ -60,9 +41,6 @@ bool render_graph::compile()
 
 void render_graph::execute()
 {
-    if (m_back_buffer != nullptr)
-        m_back_buffer->set_resource(m_rhi->get_back_buffer());
-
     rhi_render_command* command = m_rhi->allocate_command();
 
     for (auto& render_pass : m_render_passes)
@@ -78,11 +56,6 @@ void render_graph::execute()
         wait_semphores,
         1,
         m_rhi->get_in_flight_fence());
-}
-
-render_resource& render_graph::get_resource(std::string_view name)
-{
-    return *m_resources[name.data()];
 }
 
 rhi_semaphore* render_graph::get_render_finished_semaphore() const

@@ -6,9 +6,9 @@ material_layout::material_layout(std::string_view name, rhi_context* rhi) : rend
 {
 }
 
-void material_layout::add_pipeline(render_pipeline& pipeline)
+void material_layout::add_pipeline(render_pipeline* pipeline)
 {
-    m_pipelines.push_back(&pipeline);
+    m_pipelines.push_back(pipeline);
 }
 
 material* material_layout::add_material(std::string_view name)

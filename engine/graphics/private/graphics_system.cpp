@@ -1,4 +1,5 @@
 #include "graphics/graphics_system.hpp"
+#include "components/camera.hpp"
 #include "components/mesh.hpp"
 #include "components/transform.hpp"
 #include "core/engine.hpp"
@@ -32,15 +33,17 @@ bool graphics_system::initialize(const dictionary& config)
     m_plugin->load(config["plugin"]);
     m_plugin->get_rhi()->initialize(rhi_desc);
 
-    rhi_pipeline_parameter_layout_desc node_layout_desc = {};
-    node_layout_desc.parameters[0] = {RHI_PIPELINE_PARAMETER_TYPE_UNIFORM_BUFFER, sizeof(float4x4)};
-    node_layout_desc.parameter_count = 1;
-    add_pipeline_parameter_layout("node", node_layout_desc);
+    rhi_pipeline_parameter_layout_desc mesh_layout_desc = {};
+    mesh_layout_desc.parameters[0] = {RHI_PIPELINE_PARAMETER_TYPE_UNIFORM_BUFFER, sizeof(float4x4)};
+    mesh_layout_desc.parameter_count = 1;
+    add_pipeline_parameter_layout("mesh", mesh_layout_desc);
 
     rhi_pipeline_parameter_layout_desc texture_layout_desc = {};
     texture_layout_desc.parameters[0] = {RHI_PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1};
     texture_layout_desc.parameter_count = 1;
     add_pipeline_parameter_layout("texture", texture_layout_desc);
+
+    add_pipeline_parameter_layout("camera", camera_parameter::layout);
 
     window.on_tick().then(
         [this]()
@@ -59,6 +62,12 @@ bool graphics_system::initialize(const dictionary& config)
         });
 
     return true;
+}
+
+void graphics_system::shutdown()
+{
+    for (auto [name, layout] : m_pipeline_parameter_layouts)
+        get_rhi()->destroy_pipeline_parameter_layout(layout);
 }
 
 void graphics_system::render(render_graph* graph)
@@ -98,6 +107,21 @@ void graphics_system::render()
     if (m_idle)
         return;
 
+    view<camera, transform> camera_view(engine::get_world());
+    camera_view.each(
+        [this](camera& camera, transform& transform)
+        {
+            camera.set_view(matrix::inverse(transform.get_world_matrix()));
+            camera.set_back_buffer(get_rhi()->get_back_buffer());
+
+            render_pass* render_pass = camera.get_render_pass();
+            render_pass->add_camera(
+                camera.get_scissor(),
+                camera.get_viewport(),
+                camera.get_parameter(),
+                camera.get_framebuffer());
+        });
+
     view<mesh, transform> mesh_view(engine::get_world());
     mesh_view.each(
         [](mesh& mesh, transform& transform)
@@ -123,62 +147,5 @@ void graphics_system::render()
 
     get_rhi()->present(render_finished_semaphores.data(), render_finished_semaphores.size());
     get_rhi()->end_frame();
-
-    return;
-
-    /*view<mesh, transform> mesh_view(engine::get_world());
-
-    struct render_unit
-    {
-        rhi_render_pipeline* pipeline;
-        rhi_pipeline_parameter* material_parameter;
-
-        rhi_resource* const* vertex_attributes;
-        std::size_t vertex_attribute_count;
-        std::size_t vertex_attribute_hash;
-
-        std::size_t index_begin;
-        std::size_t index_end;
-        std::size_t vertex_offset;
-    };
-
-    std::vector<render_unit> render_queue;
-    mesh_view.each(
-        [&render_queue](mesh& mesh, transform& transform)
-        {
-            if (transform.get_update_count() != 0)
-                mesh.get_node_parameter()->set_world_matrix(transform.get_world_matrix());
-
-            mesh.each_render_unit(
-                [&render_queue](
-                    const submesh& submesh,
-                    rhi_render_pipeline* pipeline,
-                    rhi_pipeline_parameter* material_parameter,
-                    const std::vector<rhi_resource*>& vertex_attributes,
-                    std::size_t vertex_attribute_hash)
-                {
-                    render_queue.push_back(render_unit{
-                        .pipeline = pipeline,
-                        .material_parameter = material_parameter,
-                        .vertex_attributes = vertex_attributes.data(),
-                        .vertex_attribute_count = vertex_attributes.size(),
-                        .index_begin = submesh.index_begin,
-                        .index_end = submesh.index_end,
-                        .vertex_offset = submesh.vertex_offset});
-                });
-        });
-
-    std::sort(
-        render_queue.begin(),
-        render_queue.end(),
-        [](const render_unit& a, const render_unit& b)
-        {
-            if (a.pipeline != b.pipeline)
-                return a.pipeline < b.pipeline;
-            if (a.material_parameter != b.material_parameter)
-                return a.material_parameter < b.material_parameter;
-
-            return a.vertex_attribute_hash < b.vertex_attribute_hash;
-        });*/
 }
 } // namespace violet

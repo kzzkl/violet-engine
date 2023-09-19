@@ -1,3 +1,4 @@
+#include "components/camera.hpp"
 #include "components/mesh.hpp"
 #include "components/transform.hpp"
 #include "core/engine.hpp"
@@ -43,9 +44,9 @@ public:
         initialize_render();
 
         m_test_object = std::make_unique<node>("test", engine::get_world());
-        auto [mesh_handle, transform_handle] = m_test_object->add_component<mesh, transform>();
-        mesh_handle->set_geometry(m_geometry.get());
-        mesh_handle->add_submesh(0, 0, 12, m_material);
+        auto [mesh_ptr, transform_ptr] = m_test_object->add_component<mesh, transform>();
+        mesh_ptr->set_geometry(m_geometry.get());
+        mesh_ptr->add_submesh(0, 0, 12, m_material);
 
         return true;
     }
@@ -72,63 +73,59 @@ private:
 
         m_render_graph = std::make_unique<render_graph>(graphics.get_rhi());
 
-        render_resource& back_buffer = m_render_graph->add_resource("back buffer", true);
-        render_resource& depth_stencil_buffer =
-            m_render_graph->add_resource("depth stencil buffer");
-        depth_stencil_buffer.set_format(RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT);
+        render_pass* main = m_render_graph->add_render_pass("main");
 
-        resize(extent.width, extent.height);
+        render_attachment* output_attachment = main->add_attachment("output");
+        output_attachment->set_format(graphics.get_rhi()->get_back_buffer()->get_format());
+        output_attachment->set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
+        output_attachment->set_final_state(RHI_RESOURCE_STATE_PRESENT);
+        output_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
+        output_attachment->set_store_op(RHI_ATTACHMENT_STORE_OP_STORE);
 
-        render_pass& main = m_render_graph->add_render_pass("main");
+        render_attachment* depth_stencil_attachment = main->add_attachment("depth stencil");
+        depth_stencil_attachment->set_format(RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT);
+        depth_stencil_attachment->set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
+        depth_stencil_attachment->set_final_state(RHI_RESOURCE_STATE_DEPTH_STENCIL);
+        depth_stencil_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
+        depth_stencil_attachment->set_store_op(RHI_ATTACHMENT_STORE_OP_DONT_CARE);
+        depth_stencil_attachment->set_stencil_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
+        depth_stencil_attachment->set_stencil_store_op(RHI_ATTACHMENT_STORE_OP_DONT_CARE);
 
-        render_attachment& output_attachment = main.add_attachment("output", back_buffer);
-        output_attachment.set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
-        output_attachment.set_final_state(RHI_RESOURCE_STATE_PRESENT);
-        output_attachment.set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
-        output_attachment.set_store_op(RHI_ATTACHMENT_STORE_OP_STORE);
-
-        render_attachment& depth_stencil_attachment =
-            main.add_attachment("depth stencil", depth_stencil_buffer);
-        depth_stencil_attachment.set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
-        depth_stencil_attachment.set_final_state(RHI_RESOURCE_STATE_DEPTH_STENCIL);
-        depth_stencil_attachment.set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
-        depth_stencil_attachment.set_store_op(RHI_ATTACHMENT_STORE_OP_DONT_CARE);
-        depth_stencil_attachment.set_stencil_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
-        depth_stencil_attachment.set_stencil_store_op(RHI_ATTACHMENT_STORE_OP_DONT_CARE);
-
-        render_subpass& color_pass = main.add_subpass("color");
-        color_pass.add_reference(
+        render_subpass* color_pass = main->add_subpass("color");
+        color_pass->add_reference(
             output_attachment,
             RHI_ATTACHMENT_REFERENCE_TYPE_COLOR,
             RHI_RESOURCE_STATE_RENDER_TARGET);
-        color_pass.add_reference(
+        color_pass->add_reference(
             depth_stencil_attachment,
             RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL,
             RHI_RESOURCE_STATE_DEPTH_STENCIL);
 
-        render_pipeline& pipeline = color_pass.add_pipeline("color");
-        pipeline.set_shader(
+        render_pipeline* pipeline = color_pass->add_pipeline("color");
+        pipeline->set_shader(
             "hello-world/shaders/base.vert.spv",
             "hello-world/shaders/base.frag.spv");
-        pipeline.set_vertex_layout({
+        pipeline->set_vertex_layout({
             {"position", RHI_RESOURCE_FORMAT_R32G32B32_FLOAT},
             {"color",    RHI_RESOURCE_FORMAT_R32G32B32_FLOAT},
             {"uv",       RHI_RESOURCE_FORMAT_R32G32_FLOAT   }
         });
-        pipeline.set_cull_mode(RHI_CULL_MODE_NONE);
+        pipeline->set_cull_mode(RHI_CULL_MODE_NONE);
 
-        pipeline.set_parameter_layout({
-            {graphics.get_pipeline_parameter_layout("node"),    RENDER_PIPELINE_PARAMETER_TYPE_NODE},
+        pipeline->set_parameter_layout({
+            {graphics.get_pipeline_parameter_layout("mesh"),    RENDER_PIPELINE_PARAMETER_TYPE_NODE},
             {graphics.get_pipeline_parameter_layout("texture"),
-             RENDER_PIPELINE_PARAMETER_TYPE_MATERIAL                                               }
+             RENDER_PIPELINE_PARAMETER_TYPE_MATERIAL                                               },
+            {graphics.get_pipeline_parameter_layout("camera"),
+             RENDER_PIPELINE_PARAMETER_TYPE_NODE                                                   }
         });
-        m_pipeline = &pipeline;
+        m_pipeline = pipeline;
 
-        main.add_dependency(
+        main->add_dependency(
             RHI_RENDER_SUBPASS_EXTERNAL,
             RHI_PIPELINE_STAGE_FLAG_COLOR_OUTPUT | RHI_PIPELINE_STAGE_FLAG_EARLY_DEPTH_STENCIL,
             0,
-            color_pass.get_index(),
+            color_pass->get_index(),
             RHI_PIPELINE_STAGE_FLAG_COLOR_OUTPUT | RHI_PIPELINE_STAGE_FLAG_EARLY_DEPTH_STENCIL,
             RHI_ACCESS_FLAG_COLOR_WRITE | RHI_ACCESS_FLAG_DEPTH_STENCIL_WRITE);
 
@@ -181,14 +178,24 @@ private:
         std::vector<std::uint32_t> indices = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
         m_geometry->set_indices(indices);
 
-        material_layout& material_layout = m_render_graph->add_material_layout("text material");
-        material_layout.add_pipeline(pipeline);
-        material_layout.add_field(
+        material_layout* material_layout = m_render_graph->add_material_layout("text material");
+        material_layout->add_pipeline(pipeline);
+        material_layout->add_field(
             "texture",
             {.pipeline_index = 0, .field_index = 0, .size = 1, .offset = 0});
 
-        m_material = material_layout.add_material("test");
+        m_material = material_layout->add_material("test");
         m_material->set("texture", m_texture, m_sampler);
+
+        m_camera = std::make_unique<node>("main camera", engine::get_world());
+        auto [camera_ptr, transform_ptr] = m_camera->add_component<camera, transform>();
+        camera_ptr->set_render_pass(main);
+        camera_ptr->set_attachment(0, graphics.get_rhi()->get_back_buffer(), true);
+        camera_ptr->resize(extent.width, extent.height);
+
+        transform_ptr->set_position(0.0f, 0.0f, -5.0f);
+
+        resize(extent.width, extent.height);
     }
 
     render_pipeline* m_pipeline;
@@ -225,16 +232,6 @@ private:
             quaternion_simd::rotation_axis(simd::set(1.0f, 0.0f, 0.0f, 0.0f), m_rotate));
 
         m_rotate += delta * 2.0f;
-        return;
-
-        static auto startTime = std::chrono::high_resolution_clock::now();
-
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time =
-            std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime)
-                .count();
-
-        m_rotate += delta * 2.0f;
     }
 
     void resize(std::uint32_t width, std::uint32_t height)
@@ -249,9 +246,17 @@ private:
         depth_stencil_buffer_desc.format = RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT;
         m_depth_stencil = rhi->create_depth_stencil_buffer(depth_stencil_buffer_desc);
 
-        m_render_graph->get_resource("depth stencil buffer").set_resource(m_depth_stencil);
+        // m_render_graph->get_resource("depth stencil buffer")->set_resource(m_depth_stencil);
+
+        if (m_camera)
+        {
+            auto camera_ptr = m_camera->get_component<camera>();
+            camera_ptr->resize(width, height);
+            camera_ptr->set_attachment(1, m_depth_stencil);
+        }
     }
 
+    std::unique_ptr<node> m_camera;
     std::unique_ptr<node> m_test_object;
     std::unique_ptr<geometry> m_geometry;
     material* m_material;

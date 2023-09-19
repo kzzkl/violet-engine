@@ -14,6 +14,7 @@ public:
     virtual ~graphics_system();
 
     virtual bool initialize(const dictionary& config) override;
+    virtual void shutdown() override;
 
     void render(render_graph* graph);
 
