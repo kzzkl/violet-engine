@@ -1,27 +1,26 @@
 #include "components/camera.hpp"
 #include "common/hash.hpp"
-#include "core/engine.hpp"
-#include "graphics/graphics_system.hpp"
+#include "graphics/render_graph/render_graph.hpp"
 
 namespace violet
 {
 camera::camera()
-    : m_render_pass(nullptr),
+    : m_parameter(nullptr),
+      m_render_pass(nullptr),
       m_back_buffer_index(-1),
       m_framebuffer_dirty(false),
       m_framebuffer(nullptr)
 {
-    auto& graphics = engine::get_system<graphics_system>();
-
-    rhi_pipeline_parameter_layout* layout = graphics.get_pipeline_parameter_layout("camera");
-    m_parameter = graphics.get_rhi()->create_pipeline_parameter(layout);
-
     m_perspective.fov = 45.0f;
     m_perspective.near_z = 0.1f;
     m_perspective.far_z = 1000.0f;
 
     m_parameter_data.view = matrix::identity();
-    update_projection();
+    m_parameter_data.projection = matrix::perspective(
+        m_perspective.fov,
+        static_cast<float>(m_viewport.width) / static_cast<float>(m_viewport.height),
+        m_perspective.near_z,
+        m_perspective.far_z);
 }
 
 camera::camera(camera&& other) noexcept
@@ -45,13 +44,15 @@ camera::camera(camera&& other) noexcept
 
 camera::~camera()
 {
-    rhi_context* rhi = engine::get_system<graphics_system>().get_rhi();
+    if (m_render_pass)
+    {
+        rhi_renderer* rhi = m_render_pass->get_context()->get_rhi();
+        if (m_parameter != nullptr)
+            rhi->destroy_parameter(m_parameter);
 
-    if (m_parameter != nullptr)
-        rhi->destroy_pipeline_parameter(m_parameter);
-
-    for (auto [hash, framebuffer] : m_framebuffer_cache)
-        rhi->destroy_framebuffer(framebuffer);
+        for (auto [hash, framebuffer] : m_framebuffer_cache)
+            rhi->destroy_framebuffer(framebuffer);
+    }
 }
 
 void camera::set_perspective(float fov, float near_z, float far_z)
@@ -72,6 +73,14 @@ void camera::set_render_pass(render_pass* render_pass)
 {
     m_render_pass = render_pass;
     m_attachments.resize(render_pass->get_attachment_count());
+
+    if (m_parameter == nullptr)
+    {
+        rhi_renderer* rhi = render_pass->get_context()->get_rhi();
+        rhi_parameter_layout* layout =
+            render_pass->get_context()->get_parameter_layout("violet camera");
+        m_parameter = rhi->create_parameter(layout);
+    }
 }
 
 void camera::set_attachment(std::size_t index, rhi_resource* attachment, bool back_buffer)
@@ -113,7 +122,7 @@ rhi_framebuffer* camera::get_framebuffer()
             desc.attachments[i] = m_attachments[i];
         desc.attachment_count = m_attachments.size();
 
-        m_framebuffer = m_render_pass->get_rhi()->create_framebuffer(desc);
+        m_framebuffer = m_render_pass->get_context()->get_rhi()->create_framebuffer(desc);
         m_framebuffer_cache[hash] = m_framebuffer;
     }
     else

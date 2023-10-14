@@ -27,23 +27,10 @@ bool graphics_system::initialize(const dictionary& config)
     rhi_desc.window_handle = window.get_handle();
     rhi_desc.render_concurrency = config["render_concurrency"];
     rhi_desc.frame_resource_count = config["frame_resource_count"];
-    rhi_desc.frame_resource_count = 2;
 
     m_plugin = std::make_unique<rhi_plugin>();
     m_plugin->load(config["plugin"]);
     m_plugin->get_rhi()->initialize(rhi_desc);
-
-    rhi_pipeline_parameter_layout_desc mesh_layout_desc = {};
-    mesh_layout_desc.parameters[0] = {RHI_PIPELINE_PARAMETER_TYPE_UNIFORM_BUFFER, sizeof(float4x4)};
-    mesh_layout_desc.parameter_count = 1;
-    add_pipeline_parameter_layout("mesh", mesh_layout_desc);
-
-    rhi_pipeline_parameter_layout_desc texture_layout_desc = {};
-    texture_layout_desc.parameters[0] = {RHI_PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE, 1};
-    texture_layout_desc.parameter_count = 1;
-    add_pipeline_parameter_layout("texture", texture_layout_desc);
-
-    add_pipeline_parameter_layout("camera", camera_parameter::layout);
 
     window.on_tick().then(
         [this]()
@@ -66,8 +53,6 @@ bool graphics_system::initialize(const dictionary& config)
 
 void graphics_system::shutdown()
 {
-    for (auto [name, layout] : m_pipeline_parameter_layouts)
-        get_rhi()->destroy_pipeline_parameter_layout(layout);
 }
 
 void graphics_system::render(render_graph* graph)
@@ -75,17 +60,7 @@ void graphics_system::render(render_graph* graph)
     m_render_graphs.push_back(graph);
 }
 
-void graphics_system::add_pipeline_parameter_layout(
-    std::string_view name,
-    const rhi_pipeline_parameter_layout_desc& desc)
-{
-    if (m_pipeline_parameter_layouts.find(name.data()) != m_pipeline_parameter_layouts.end())
-        return;
-
-    m_pipeline_parameter_layouts[name.data()] = get_rhi()->create_pipeline_parameter_layout(desc);
-}
-
-rhi_context* graphics_system::get_rhi() const
+rhi_renderer* graphics_system::get_rhi() const
 {
     return m_plugin->get_rhi();
 }
@@ -127,7 +102,10 @@ void graphics_system::render()
         [](mesh& mesh, transform& transform)
         {
             // if (transform.get_update_count() != 0)
-            mesh.set_m(transform.get_world_matrix());
+            mesh.set_mvp(
+                transform.get_local_matrix(),
+                matrix::identity(),
+                transform.get_world_matrix());
 
             mesh.each_submesh(
                 [](const render_mesh& submesh, render_pipeline* pipeline)

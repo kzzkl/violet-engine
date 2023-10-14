@@ -1,7 +1,6 @@
 #include "vk_resource.hpp"
 #include "vk_command.hpp"
 #include "vk_image_loader.hpp"
-#include "vk_rhi.hpp"
 #include "vk_util.hpp"
 
 namespace violet::vk
@@ -29,7 +28,7 @@ std::uint32_t find_memory_type(
 }
 } // namespace
 
-vk_resource::vk_resource(vk_rhi* rhi) : m_rhi(rhi)
+vk_resource::vk_resource(vk_context* context) : m_context(context)
 {
 }
 
@@ -79,9 +78,9 @@ void vk_resource::create_host_visible_buffer(
     if (data != nullptr)
     {
         void* mapping_pointer = nullptr;
-        vkMapMemory(m_rhi->get_device(), memory, 0, size, 0, &mapping_pointer);
+        vkMapMemory(m_context->get_device(), memory, 0, size, 0, &mapping_pointer);
         std::memcpy(mapping_pointer, data, size);
-        vkUnmapMemory(m_rhi->get_device(), memory);
+        vkUnmapMemory(m_context->get_device(), memory);
     }
 }
 
@@ -92,7 +91,7 @@ void vk_resource::create_buffer(
     VkBuffer& buffer,
     VkDeviceMemory& memory)
 {
-    VkDevice device = m_rhi->get_device();
+    VkDevice device = m_context->get_device();
 
     VkBufferCreateInfo buffer_info = {};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -109,7 +108,7 @@ void vk_resource::create_buffer(
     allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocate_info.allocationSize = requirements.size;
     allocate_info.memoryTypeIndex =
-        find_memory_type(requirements.memoryTypeBits, properties, m_rhi->get_physical_device());
+        find_memory_type(requirements.memoryTypeBits, properties, m_context->get_physical_device());
 
     throw_if_failed(vkAllocateMemory(device, &allocate_info, nullptr, &memory));
     throw_if_failed(vkBindBufferMemory(device, buffer, memory, 0));
@@ -117,14 +116,14 @@ void vk_resource::create_buffer(
 
 void vk_resource::destroy_buffer(VkBuffer buffer, VkDeviceMemory memory)
 {
-    VkDevice device = m_rhi->get_device();
+    VkDevice device = m_context->get_device();
     vkDestroyBuffer(device, buffer, nullptr);
     vkFreeMemory(device, memory, nullptr);
 }
 
 void vk_resource::copy_buffer(VkBuffer source, VkBuffer target, VkDeviceSize size)
 {
-    vk_graphics_queue* graphics_queue = m_rhi->get_graphics_queue();
+    vk_graphics_queue* graphics_queue = m_context->get_graphics_queue();
     vk_command* command = graphics_queue->allocate_command();
 
     VkBufferCopy copy_region = {0, 0, size};
@@ -132,8 +131,8 @@ void vk_resource::copy_buffer(VkBuffer source, VkBuffer target, VkDeviceSize siz
     graphics_queue->execute_sync(command);
 }
 
-vk_image::vk_image(vk_rhi* rhi)
-    : vk_resource(rhi),
+vk_image::vk_image(vk_context* context)
+    : vk_resource(context),
       m_image(VK_NULL_HANDLE),
       m_memory(VK_NULL_HANDLE),
       m_image_view(VK_NULL_HANDLE),
@@ -164,7 +163,7 @@ void vk_image::create_image(
     VkImage& image,
     VkDeviceMemory& memory)
 {
-    auto device = get_rhi()->get_device();
+    auto device = get_context()->get_device();
 
     VkImageCreateInfo image_info = {};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -190,8 +189,10 @@ void vk_image::create_image(
     VkMemoryAllocateInfo allocate_info = {};
     allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocate_info.allocationSize = requirements.size;
-    allocate_info.memoryTypeIndex =
-        find_memory_type(requirements.memoryTypeBits, properties, get_rhi()->get_physical_device());
+    allocate_info.memoryTypeIndex = find_memory_type(
+        requirements.memoryTypeBits,
+        properties,
+        get_context()->get_physical_device());
 
     throw_if_failed(vkAllocateMemory(device, &allocate_info, nullptr, &memory));
     throw_if_failed(vkBindImageMemory(device, image, memory, 0));
@@ -199,7 +200,7 @@ void vk_image::create_image(
 
 void vk_image::destroy_image(VkImage image, VkDeviceMemory memory)
 {
-    VkDevice device = get_rhi()->get_device();
+    VkDevice device = get_context()->get_device();
     vkDestroyImage(device, image, nullptr);
     vkFreeMemory(device, memory, nullptr);
 }
@@ -224,12 +225,12 @@ void vk_image::create_image_view(
     image_view_info.subresourceRange.levelCount = 1;
     image_view_info.subresourceRange.baseArrayLayer = 0;
     image_view_info.subresourceRange.layerCount = 1;
-    vkCreateImageView(get_rhi()->get_device(), &image_view_info, nullptr, &image_view);
+    vkCreateImageView(get_context()->get_device(), &image_view_info, nullptr, &image_view);
 }
 
 void vk_image::destroy_image_view(VkImageView image_view)
 {
-    vkDestroyImageView(get_rhi()->get_device(), image_view, nullptr);
+    vkDestroyImageView(get_context()->get_device(), image_view, nullptr);
 }
 
 void vk_image::copy_buffer_to_image(
@@ -238,7 +239,7 @@ void vk_image::copy_buffer_to_image(
     std::uint32_t width,
     std::uint32_t height)
 {
-    vk_graphics_queue* graphics_queue = get_rhi()->get_graphics_queue();
+    vk_graphics_queue* graphics_queue = get_context()->get_graphics_queue();
     vk_command* command = graphics_queue->allocate_command();
 
     VkBufferImageCopy region = {};
@@ -268,7 +269,7 @@ void vk_image::transition_image_layout(
     VkImageLayout old_layout,
     VkImageLayout new_layout)
 {
-    vk_graphics_queue* graphics_queue = get_rhi()->get_graphics_queue();
+    vk_graphics_queue* graphics_queue = get_context()->get_graphics_queue();
     vk_command* command = graphics_queue->allocate_command();
 
     VkImageMemoryBarrier barrier = {};
@@ -352,33 +353,8 @@ void vk_image::transition_image_layout(
     graphics_queue->execute_sync(command);
 }
 
-vk_swapchain_image::vk_swapchain_image(
-    VkImage image,
-    VkFormat format,
-    const VkExtent2D& extent,
-    vk_rhi* rhi)
-    : vk_image(rhi)
-{
-    VkImageView image_view;
-    create_image_view(image, format, VK_IMAGE_ASPECT_COLOR_BIT, image_view);
-
-    std::hash<void*> hasher;
-    std::size_t hash = vk_util::hash_combine(hasher(image), hasher(image_view));
-    hash = vk_util::hash_combine(hash, get_rhi()->get_frame_count());
-
-    set_image_view(image_view);
-    set_format(format);
-    set_extent(extent);
-    set_hash(hash);
-    set_clear_value(VkClearColorValue{0.0f, 0.0f, 0.0f, 1.0f});
-}
-
-vk_swapchain_image::~vk_swapchain_image()
-{
-}
-
-vk_depth_stencil::vk_depth_stencil(const rhi_depth_stencil_buffer_desc& desc, vk_rhi* rhi)
-    : vk_image(rhi)
+vk_depth_stencil::vk_depth_stencil(const rhi_depth_stencil_buffer_desc& desc, vk_context* context)
+    : vk_image(context)
 {
     VkImage image;
     VkDeviceMemory memory;
@@ -416,7 +392,7 @@ vk_depth_stencil::~vk_depth_stencil()
 {
 }
 
-vk_texture::vk_texture(const char* file, vk_rhi* rhi) : vk_image(rhi)
+vk_texture::vk_texture(const char* file, vk_context* context) : vk_image(context)
 {
     vk_image_loader loader;
     if (!loader.load(file))
@@ -472,7 +448,7 @@ vk_texture::~vk_texture()
 {
 }
 
-vk_sampler::vk_sampler(const rhi_sampler_desc& desc, vk_rhi* rhi) : m_rhi(rhi)
+vk_sampler::vk_sampler(const rhi_sampler_desc& desc, vk_context* context) : m_context(context)
 {
     VkSamplerCreateInfo sampler_info = {};
     sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -483,32 +459,32 @@ vk_sampler::vk_sampler(const rhi_sampler_desc& desc, vk_rhi* rhi) : m_rhi(rhi)
     sampler_info.addressModeW = vk_util::map_sampler_address_mode(desc.address_mode_w);
     sampler_info.anisotropyEnable = VK_TRUE;
     sampler_info.maxAnisotropy =
-        m_rhi->get_physical_device_properties().limits.maxSamplerAnisotropy;
+        m_context->get_physical_device_properties().limits.maxSamplerAnisotropy;
     sampler_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
     sampler_info.unnormalizedCoordinates = VK_FALSE;
     sampler_info.compareEnable = VK_FALSE;
     sampler_info.compareOp = VK_COMPARE_OP_ALWAYS;
     sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 
-    throw_if_failed(vkCreateSampler(m_rhi->get_device(), &sampler_info, nullptr, &m_sampler));
+    throw_if_failed(vkCreateSampler(m_context->get_device(), &sampler_info, nullptr, &m_sampler));
 }
 
 vk_sampler::~vk_sampler()
 {
-    vkDestroySampler(m_rhi->get_device(), m_sampler, nullptr);
+    vkDestroySampler(m_context->get_device(), m_sampler, nullptr);
 }
 
-vk_buffer::vk_buffer(vk_rhi* rhi) : vk_resource(rhi)
+vk_buffer::vk_buffer(vk_context* context) : vk_resource(context)
 {
 }
 
-vk_vertex_buffer::vk_vertex_buffer(const rhi_vertex_buffer_desc& desc, vk_rhi* rhi)
-    : vk_buffer(rhi),
+vk_vertex_buffer::vk_vertex_buffer(const rhi_vertex_buffer_desc& desc, vk_context* context)
+    : vk_buffer(context),
       m_mapping_pointer(nullptr)
 {
     m_buffer_size = desc.size;
 
-    VkDevice device = get_rhi()->get_device();
+    VkDevice device = get_context()->get_device();
     if (desc.dynamic)
     {
         create_host_visible_buffer(
@@ -533,13 +509,13 @@ vk_vertex_buffer::vk_vertex_buffer(const rhi_vertex_buffer_desc& desc, vk_rhi* r
 vk_vertex_buffer::~vk_vertex_buffer()
 {
     if (m_mapping_pointer)
-        vkUnmapMemory(get_rhi()->get_device(), m_memory);
+        vkUnmapMemory(get_context()->get_device(), m_memory);
 
     destroy_buffer(m_buffer, m_memory);
 }
 
-vk_index_buffer::vk_index_buffer(const rhi_index_buffer_desc& desc, vk_rhi* rhi)
-    : vk_buffer(rhi),
+vk_index_buffer::vk_index_buffer(const rhi_index_buffer_desc& desc, vk_context* context)
+    : vk_buffer(context),
       m_mapping_pointer(nullptr)
 {
     m_buffer_size = desc.size;
@@ -551,7 +527,7 @@ vk_index_buffer::vk_index_buffer(const rhi_index_buffer_desc& desc, vk_rhi* rhi)
     else
         throw vk_exception("Invalid index size.");
 
-    VkDevice device = get_rhi()->get_device();
+    VkDevice device = get_context()->get_device();
     if (desc.dynamic)
     {
         create_host_visible_buffer(
@@ -577,13 +553,13 @@ vk_index_buffer::vk_index_buffer(const rhi_index_buffer_desc& desc, vk_rhi* rhi)
 vk_index_buffer::~vk_index_buffer()
 {
     if (m_mapping_pointer)
-        vkUnmapMemory(get_rhi()->get_device(), m_memory);
+        vkUnmapMemory(get_context()->get_device(), m_memory);
 
     destroy_buffer(m_buffer, m_memory);
 }
 
-vk_uniform_buffer::vk_uniform_buffer(void* data, std::size_t size, vk_rhi* rhi)
-    : vk_buffer(rhi),
+vk_uniform_buffer::vk_uniform_buffer(void* data, std::size_t size, vk_context* context)
+    : vk_buffer(context),
       m_mapping_pointer(nullptr)
 {
     m_buffer_size = size;
@@ -594,13 +570,13 @@ vk_uniform_buffer::vk_uniform_buffer(void* data, std::size_t size, vk_rhi* rhi)
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         m_buffer,
         m_memory);
-    vkMapMemory(get_rhi()->get_device(), m_memory, 0, m_buffer_size, 0, &m_mapping_pointer);
+    vkMapMemory(get_context()->get_device(), m_memory, 0, m_buffer_size, 0, &m_mapping_pointer);
 }
 
 vk_uniform_buffer::~vk_uniform_buffer()
 {
     if (m_mapping_pointer)
-        vkUnmapMemory(get_rhi()->get_device(), m_memory);
+        vkUnmapMemory(get_context()->get_device(), m_memory);
 
     destroy_buffer(m_buffer, m_memory);
 }

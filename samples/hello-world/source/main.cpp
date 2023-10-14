@@ -11,6 +11,34 @@
 
 namespace violet::sample
 {
+class color_pipeline : public render_pipeline
+{
+public:
+    color_pipeline(render_context* context) : render_pipeline(context)
+    {
+        set_shader("hello-world/shaders/base.vert.spv", "hello-world/shaders/base.frag.spv");
+        set_vertex_attributes({
+            {"position", RHI_RESOURCE_FORMAT_R32G32B32_FLOAT},
+            {"color",    RHI_RESOURCE_FORMAT_R32G32B32_FLOAT},
+            {"uv",       RHI_RESOURCE_FORMAT_R32G32_FLOAT   }
+        });
+        set_cull_mode(RHI_CULL_MODE_NONE);
+
+        rhi_parameter_layout* material_layout = context->add_parameter_layout(
+            "color pipeline",
+            {
+                {RHI_PARAMETER_TYPE_SHADER_RESOURCE, 1}
+        });
+
+        set_parameter_layouts({
+            {context->get_parameter_layout("violet mesh"),   RENDER_PIPELINE_PARAMETER_TYPE_MESH    },
+            {material_layout,                                RENDER_PIPELINE_PARAMETER_TYPE_MATERIAL},
+            {context->get_parameter_layout("violet camera"),
+             RENDER_PIPELINE_PARAMETER_TYPE_CAMERA                                                  }
+        });
+    }
+};
+
 class hello_world : public engine_system
 {
 public:
@@ -45,7 +73,7 @@ public:
 
         m_test_object = std::make_unique<node>("test", engine::get_world());
         auto [mesh_ptr, transform_ptr] = m_test_object->add_component<mesh, transform>();
-        mesh_ptr->set_geometry(m_geometry.get());
+        mesh_ptr->set_geometry(m_geometry);
         mesh_ptr->add_submesh(0, 0, 12, m_material);
 
         return true;
@@ -53,8 +81,11 @@ public:
 
     virtual void shutdown()
     {
+        m_test_object = nullptr;
+        m_camera = nullptr;
+
         m_render_graph = nullptr;
-        rhi_context* rhi = engine::get_system<graphics_system>().get_rhi();
+        rhi_renderer* rhi = engine::get_system<graphics_system>().get_rhi();
 
         m_geometry = nullptr;
 
@@ -101,31 +132,15 @@ private:
             RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL,
             RHI_RESOURCE_STATE_DEPTH_STENCIL);
 
-        render_pipeline* pipeline = color_pass->add_pipeline("color");
-        pipeline->set_shader(
-            "hello-world/shaders/base.vert.spv",
-            "hello-world/shaders/base.frag.spv");
-        pipeline->set_vertex_layout({
-            {"position", RHI_RESOURCE_FORMAT_R32G32B32_FLOAT},
-            {"color",    RHI_RESOURCE_FORMAT_R32G32B32_FLOAT},
-            {"uv",       RHI_RESOURCE_FORMAT_R32G32_FLOAT   }
-        });
-        pipeline->set_cull_mode(RHI_CULL_MODE_NONE);
+        render_pipeline* pipeline = color_pass->add_pipeline<color_pipeline>("color");
 
-        pipeline->set_parameter_layout({
-            {graphics.get_pipeline_parameter_layout("mesh"),    RENDER_PIPELINE_PARAMETER_TYPE_NODE},
-            {graphics.get_pipeline_parameter_layout("texture"),
-             RENDER_PIPELINE_PARAMETER_TYPE_MATERIAL                                               },
-            {graphics.get_pipeline_parameter_layout("camera"),
-             RENDER_PIPELINE_PARAMETER_TYPE_NODE                                                   }
-        });
         m_pipeline = pipeline;
 
         main->add_dependency(
-            RHI_RENDER_SUBPASS_EXTERNAL,
+            nullptr,
             RHI_PIPELINE_STAGE_FLAG_COLOR_OUTPUT | RHI_PIPELINE_STAGE_FLAG_EARLY_DEPTH_STENCIL,
             0,
-            color_pass->get_index(),
+            color_pass,
             RHI_PIPELINE_STAGE_FLAG_COLOR_OUTPUT | RHI_PIPELINE_STAGE_FLAG_EARLY_DEPTH_STENCIL,
             RHI_ACCESS_FLAG_COLOR_WRITE | RHI_ACCESS_FLAG_DEPTH_STENCIL_WRITE);
 
@@ -141,7 +156,7 @@ private:
         sampler_desc.address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
         m_sampler = graphics.get_rhi()->create_sampler(sampler_desc);
 
-        m_geometry = std::make_unique<geometry>(graphics.get_rhi());
+        m_geometry = m_render_graph->add_geometry("test model");
         std::vector<float3> position = {
             {-0.5f, -0.5f, -0.2f},
             {0.5f,  -0.5f, -0.2f},
@@ -236,7 +251,7 @@ private:
 
     void resize(std::uint32_t width, std::uint32_t height)
     {
-        rhi_context* rhi = engine::get_system<graphics_system>().get_rhi();
+        rhi_renderer* rhi = engine::get_system<graphics_system>().get_rhi();
         rhi->destroy_depth_stencil_buffer(m_depth_stencil);
 
         rhi_depth_stencil_buffer_desc depth_stencil_buffer_desc = {};
@@ -258,7 +273,7 @@ private:
 
     std::unique_ptr<node> m_camera;
     std::unique_ptr<node> m_test_object;
-    std::unique_ptr<geometry> m_geometry;
+    geometry* m_geometry;
     material* m_material;
 
     std::unique_ptr<render_graph> m_render_graph;

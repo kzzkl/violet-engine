@@ -1,17 +1,16 @@
 #pragma once
 
-#include "vk_common.hpp"
+#include "vk_context.hpp"
 #include "vk_sync.hpp"
 #include <memory>
 #include <vector>
 
 namespace violet::vk
 {
-class vk_rhi;
 class vk_command : public rhi_render_command
 {
 public:
-    vk_command(VkCommandBuffer command_buffer, vk_rhi* rhi) noexcept;
+    vk_command(VkCommandBuffer command_buffer, vk_context* context) noexcept;
     virtual ~vk_command();
 
     VkCommandBuffer get_command_buffer() const noexcept { return m_command_buffer; }
@@ -22,8 +21,7 @@ public:
     virtual void next() override;
 
     virtual void set_pipeline(rhi_render_pipeline* render_pipeline) override;
-    virtual void set_parameter(std::size_t index, rhi_pipeline_parameter* pipeline_parameter)
-        override;
+    virtual void set_parameter(std::size_t index, rhi_parameter* parameter) override;
 
     virtual void set_viewport(const rhi_viewport& viewport) override;
     virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) override;
@@ -55,13 +53,13 @@ private:
     VkRenderPass m_current_render_pass;
     VkPipelineLayout m_current_pipeline_layout;
 
-    vk_rhi* m_rhi;
+    vk_context* m_context;
 };
 
 class vk_graphics_queue
 {
 public:
-    vk_graphics_queue(std::uint32_t queue_family_index, vk_rhi* rhi);
+    vk_graphics_queue(std::uint32_t queue_family_index, vk_context* context);
     ~vk_graphics_queue();
 
     vk_command* allocate_command();
@@ -79,9 +77,11 @@ public:
     void begin_frame();
 
     VkQueue get_queue() const noexcept { return m_queue; }
+    std::uint32_t get_family_index() const noexcept { return m_family_index; }
 
 private:
     VkQueue m_queue;
+    std::uint32_t m_family_index;
 
     VkCommandPool m_command_pool;
     std::vector<std::vector<vk_command*>> m_active_commands;
@@ -89,13 +89,13 @@ private:
     std::vector<std::unique_ptr<vk_command>> m_commands;
 
     std::unique_ptr<vk_fence> m_fence;
-    vk_rhi* m_rhi;
+    vk_context* m_context;
 };
 
 class vk_present_queue
 {
 public:
-    vk_present_queue(std::uint32_t queue_family_index, vk_rhi* rhi);
+    vk_present_queue(std::uint32_t queue_family_index, vk_context* context);
     ~vk_present_queue();
 
     void present(
@@ -105,8 +105,10 @@ public:
         std::size_t wait_semaphore_count);
 
     VkQueue get_queue() const noexcept { return m_queue; }
+    std::uint32_t get_family_index() const noexcept { return m_family_index; }
 
 private:
     VkQueue m_queue;
+    std::uint32_t m_family_index;
 };
 } // namespace violet::vk

@@ -1,15 +1,15 @@
 #pragma once
 
 #include "vk_common.hpp"
+#include "vk_context.hpp"
 #include <vector>
 
 namespace violet::vk
 {
-class vk_rhi;
 class vk_framebuffer : public rhi_framebuffer
 {
 public:
-    vk_framebuffer(const rhi_framebuffer_desc& desc, vk_rhi* rhi);
+    vk_framebuffer(const rhi_framebuffer_desc& desc, vk_context* context);
     virtual ~vk_framebuffer();
 
     VkFramebuffer get_framebuffer() const noexcept { return m_framebuffer; }
@@ -23,6 +23,6 @@ private:
 
     std::vector<VkClearValue> m_clear_values;
 
-    vk_rhi* m_rhi;
+    vk_context* m_context;
 };
 } // namespace violet::vk

@@ -7,8 +7,8 @@ namespace violet
 {
 struct camera_parameter
 {
-    static constexpr rhi_pipeline_parameter_layout_desc layout = {
-        .parameters = {{RHI_PIPELINE_PARAMETER_TYPE_UNIFORM_BUFFER, sizeof(float4x4) * 3}},
+    static constexpr rhi_parameter_layout_desc layout = {
+        .parameters = {{RHI_PARAMETER_TYPE_UNIFORM_BUFFER, sizeof(float4x4) * 3}},
         .parameter_count = 1};
 
     float4x4 view;
@@ -38,7 +38,7 @@ public:
 
     rhi_framebuffer* get_framebuffer();
 
-    rhi_pipeline_parameter* get_parameter() const noexcept { return m_parameter; }
+    rhi_parameter* get_parameter() const noexcept { return m_parameter; }
 
     void resize(std::uint32_t width, std::uint32_t height);
 
@@ -59,7 +59,7 @@ private:
     perspective_data m_perspective;
 
     camera_parameter m_parameter_data;
-    rhi_pipeline_parameter* m_parameter;
+    rhi_parameter* m_parameter;
     render_pass* m_render_pass;
 
     rhi_scissor_rect m_scissor;

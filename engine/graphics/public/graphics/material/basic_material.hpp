@@ -1,11 +1,11 @@
 #pragma once
 
-#include "graphics/rhi/pipeline_parameter.hpp"
+#include "graphics/rhi/parameter.hpp"
 #include "graphics/rhi/render_pipeline.hpp"
 
 namespace violet
 {
-class basic_material : public pipeline_parameter
+class basic_material : public parameter
 {
 public:
     struct constant_data
@@ -13,7 +13,7 @@ public:
         float3 color;
     };
 
-    static constexpr pipeline_parameter_desc layout = {
+    static constexpr parameter_desc layout = {
         .parameters = {{PIPELINE_PARAMETER_TYPE_CONSTANT_BUFFER, sizeof(constant_data)}},
         .parameter_count = 1};
 

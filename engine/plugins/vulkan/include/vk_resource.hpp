@@ -1,15 +1,14 @@
 #pragma once
 
-#include "vk_common.hpp"
+#include "vk_context.hpp"
 #include <vector>
 
 namespace violet::vk
 {
-class vk_rhi;
 class vk_resource : public rhi_resource
 {
 public:
-    vk_resource(vk_rhi* rhi);
+    vk_resource(vk_context* context);
     vk_resource(const vk_resource&) = delete;
     virtual ~vk_resource() = default;
 
@@ -49,16 +48,16 @@ protected:
 
     void copy_buffer(VkBuffer source, VkBuffer target, VkDeviceSize size);
 
-    vk_rhi* get_rhi() const noexcept { return m_rhi; }
+    vk_context* get_context() const noexcept { return m_context; }
 
 private:
-    vk_rhi* m_rhi;
+    vk_context* m_context;
 };
 
 class vk_image : public vk_resource
 {
 public:
-    vk_image(vk_rhi* rhi);
+    vk_image(vk_context* context);
     virtual ~vk_image();
 
     VkImageView get_image_view() const noexcept { return m_image_view; }
@@ -134,31 +133,24 @@ private:
     std::size_t m_hash;
 };
 
-class vk_swapchain_image : public vk_image
-{
-public:
-    vk_swapchain_image(VkImage image, VkFormat format, const VkExtent2D& extent, vk_rhi* rhi);
-    virtual ~vk_swapchain_image();
-};
-
 class vk_depth_stencil : public vk_image
 {
 public:
-    vk_depth_stencil(const rhi_depth_stencil_buffer_desc& desc, vk_rhi* rhi);
+    vk_depth_stencil(const rhi_depth_stencil_buffer_desc& desc, vk_context* context);
     virtual ~vk_depth_stencil();
 };
 
 class vk_texture : public vk_image
 {
 public:
-    vk_texture(const char* file, vk_rhi* rhi);
+    vk_texture(const char* file, vk_context* context);
     virtual ~vk_texture();
 };
 
 class vk_sampler : public rhi_sampler
 {
 public:
-    vk_sampler(const rhi_sampler_desc& desc, vk_rhi* rhi);
+    vk_sampler(const rhi_sampler_desc& desc, vk_context* context);
     vk_sampler(const vk_sampler&) = delete;
     virtual ~vk_sampler();
 
@@ -168,13 +160,13 @@ public:
 
 private:
     VkSampler m_sampler;
-    vk_rhi* m_rhi;
+    vk_context* m_context;
 };
 
 class vk_buffer : public vk_resource
 {
 public:
-    vk_buffer(vk_rhi* rhi);
+    vk_buffer(vk_context* context);
 
     virtual VkBuffer get_buffer_handle() const noexcept = 0;
 };
@@ -182,7 +174,7 @@ public:
 class vk_vertex_buffer : public vk_buffer
 {
 public:
-    vk_vertex_buffer(const rhi_vertex_buffer_desc& desc, vk_rhi* rhi);
+    vk_vertex_buffer(const rhi_vertex_buffer_desc& desc, vk_context* context);
     virtual ~vk_vertex_buffer();
 
     virtual void* get_buffer() override { return m_mapping_pointer; }
@@ -207,7 +199,7 @@ private:
 class vk_index_buffer : public vk_buffer
 {
 public:
-    vk_index_buffer(const rhi_index_buffer_desc& desc, vk_rhi* rhi);
+    vk_index_buffer(const rhi_index_buffer_desc& desc, vk_context* context);
     virtual ~vk_index_buffer();
 
     virtual void* get_buffer() override { return m_mapping_pointer; }
@@ -235,7 +227,7 @@ private:
 class vk_uniform_buffer : public vk_buffer
 {
 public:
-    vk_uniform_buffer(void* data, std::size_t size, vk_rhi* rhi);
+    vk_uniform_buffer(void* data, std::size_t size, vk_context* context);
     virtual ~vk_uniform_buffer();
 
     virtual void* get_buffer() override { return m_mapping_pointer; }

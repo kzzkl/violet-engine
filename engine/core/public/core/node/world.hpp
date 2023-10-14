@@ -39,18 +39,18 @@ public:
 
     void release(entity entity);
 
-    template <typename Component, typename ComponentInfo = component_info_default<Component>>
-    void register_component()
+    template <typename Component, typename ComponentInfo, typename... Args>
+    void register_component(bool replace, Args&&... args)
     {
         component_id id = component_index::value<Component>();
-        if (m_component_infos[id] == nullptr)
-            m_component_infos[id] = std::make_unique<ComponentInfo>();
+        if (m_component_infos[id] == nullptr || replace)
+            m_component_infos[id] = std::make_unique<ComponentInfo>(std::forward<Args>(args)...);
     }
 
     template <typename... Components>
     void add_component(entity entity)
     {
-        (register_component<Components>(), ...);
+        (register_component<Components, component_info_default<Components>>(false), ...);
 
         entity_info& info = m_entity_infos[entity.index];
 

@@ -44,15 +44,7 @@ void render_attachment::set_final_state(rhi_resource_state state) noexcept
     m_desc.final_state = state;
 }
 
-render_subpass::render_subpass(
-    std::string_view name,
-    rhi_context* rhi,
-    render_pass* render_pass,
-    std::size_t index)
-    : render_node(name, rhi),
-      m_desc{},
-      m_render_pass(render_pass),
-      m_index(index)
+render_subpass::render_subpass(render_context* context) : render_node(context), m_desc{}, m_index(0)
 {
 }
 
@@ -85,25 +77,19 @@ void render_subpass::add_reference(
     ++m_desc.reference_count;
 }
 
-render_pipeline* render_subpass::add_pipeline(std::string_view name)
-{
-    auto pipeline = std::make_unique<render_pipeline>(name, get_rhi());
-    m_pipelines.push_back(std::move(pipeline));
-    return m_pipelines.back().get();
-}
-
-bool render_subpass::compile()
+bool render_subpass::compile(rhi_render_pass* render_pass, std::size_t index)
 {
     for (auto& pipeline : m_pipelines)
     {
-        if (!pipeline->compile(m_render_pass->get_interface(), m_index))
+        if (!pipeline->compile(render_pass, index))
             return false;
     }
+    m_index = index;
 
     return true;
 }
 
-void render_subpass::execute(rhi_render_command* command, rhi_pipeline_parameter* camera_parameter)
+void render_subpass::execute(rhi_render_command* command, rhi_parameter* camera_parameter)
 {
     for (auto& pipeline : m_pipelines)
     {
@@ -112,16 +98,13 @@ void render_subpass::execute(rhi_render_command* command, rhi_pipeline_parameter
     }
 }
 
-render_pass::render_pass(std::string_view name, rhi_context* rhi)
-    : render_node(name, rhi),
-      m_interface(nullptr)
+render_pass::render_pass(render_context* context) : render_node(context), m_interface(nullptr)
 {
 }
 
 render_pass::~render_pass()
 {
-    rhi_context* rhi = get_rhi();
-
+    rhi_renderer* rhi = get_context()->get_rhi();
     if (m_interface != nullptr)
         rhi->destroy_render_pass(m_interface);
 }
@@ -135,24 +118,24 @@ render_attachment* render_pass::add_attachment(std::string_view name)
 
 render_subpass* render_pass::add_subpass(std::string_view name)
 {
-    auto subpass = std::make_unique<render_subpass>(name, get_rhi(), this, m_subpasses.size());
+    auto subpass = std::make_unique<render_subpass>(get_context());
     m_subpasses.push_back(std::move(subpass));
     return m_subpasses.back().get();
 }
 
 void render_pass::add_dependency(
-    std::size_t source_index,
+    render_subpass* source,
     rhi_pipeline_stage_flags source_stage,
     rhi_access_flags source_access,
-    std::size_t target_index,
+    render_subpass* target,
     rhi_pipeline_stage_flags target_stage,
     rhi_access_flags target_access)
 {
     rhi_render_subpass_dependency_desc dependency = {};
-    dependency.source = source_index;
+    dependency.source = source == nullptr ? RHI_RENDER_SUBPASS_EXTERNAL : source->get_index();
     dependency.source_stage = source_stage;
     dependency.source_access = source_access;
-    dependency.target = target_index;
+    dependency.target = target == nullptr ? RHI_RENDER_SUBPASS_EXTERNAL : target->get_index();
     dependency.target_stage = target_stage;
     dependency.target_access = target_access;
     m_dependencies.push_back(dependency);
@@ -161,7 +144,7 @@ void render_pass::add_dependency(
 void render_pass::add_camera(
     rhi_scissor_rect scissor,
     rhi_viewport viewport,
-    rhi_pipeline_parameter* parameter,
+    rhi_parameter* parameter,
     rhi_framebuffer* framebuffer)
 {
     return m_cameras.push_back({scissor, viewport, parameter, framebuffer});
@@ -183,14 +166,14 @@ bool render_pass::compile()
         desc.dependencies[i] = m_dependencies[i];
     desc.dependency_count = m_dependencies.size();
 
-    m_interface = get_rhi()->create_render_pass(desc);
+    m_interface = get_context()->get_rhi()->create_render_pass(desc);
 
     if (m_interface == nullptr)
         return false;
 
-    for (auto& subpass : m_subpasses)
+    for (std::size_t i = 0; i < m_subpasses.size(); ++i)
     {
-        if (!subpass->compile())
+        if (!m_subpasses[i]->compile(m_interface, i))
             return false;
     }
 

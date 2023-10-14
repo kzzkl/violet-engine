@@ -1,16 +1,18 @@
-#include "graphics/geometry.hpp"
+#include "graphics/render_graph/geometry.hpp"
 
 namespace violet
 {
-geometry::geometry(rhi_context* rhi) : m_index_buffer(nullptr), m_rhi(rhi)
+geometry::geometry(render_context* context) : render_node(context), m_index_buffer(nullptr)
 {
 }
 
 geometry::~geometry()
 {
+    rhi_renderer* rhi = get_context()->get_rhi();
+
     for (auto [key, value] : m_vertex_buffers)
-        m_rhi->destroy_vertex_buffer(value);
-    m_rhi->destroy_index_buffer(m_index_buffer);
+        rhi->destroy_vertex_buffer(value);
+    rhi->destroy_index_buffer(m_index_buffer);
 }
 
 rhi_resource* geometry::get_vertex_buffer(std::string_view name)
@@ -30,7 +32,7 @@ void geometry::add_attribute(std::string_view name, const void* data, std::size_
     rhi_vertex_buffer_desc desc = {};
     desc.data = data;
     desc.size = size;
-    m_vertex_buffers[name.data()] = m_rhi->create_vertex_buffer(desc);
+    m_vertex_buffers[name.data()] = get_context()->get_rhi()->create_vertex_buffer(desc);
 }
 
 void geometry::set_indices(const void* data, std::size_t size, std::size_t index_size)
@@ -42,6 +44,6 @@ void geometry::set_indices(const void* data, std::size_t size, std::size_t index
     desc.data = data;
     desc.size = size;
     desc.index_size = index_size;
-    m_index_buffer = m_rhi->create_index_buffer(desc);
+    m_index_buffer = get_context()->get_rhi()->create_index_buffer(desc);
 }
 } // namespace violet

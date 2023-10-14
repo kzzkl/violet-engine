@@ -3,7 +3,7 @@
 
 namespace violet
 {
-render_pipeline::render_pipeline(std::string_view name, rhi_context* rhi) : render_node(name, rhi)
+render_pipeline::render_pipeline(render_context* context) : render_node(context)
 {
     m_desc.blend.enable = false;
     m_desc.samples = RHI_SAMPLE_COUNT_1;
@@ -12,8 +12,9 @@ render_pipeline::render_pipeline(std::string_view name, rhi_context* rhi) : rend
 
 render_pipeline::~render_pipeline()
 {
+    rhi_renderer* rhi = get_context()->get_rhi();
     if (m_interface != nullptr)
-        get_rhi()->destroy_render_pipeline(m_interface);
+        rhi->destroy_render_pipeline(m_interface);
 }
 
 void render_pipeline::set_shader(std::string_view vertex, std::string_view pixel)
@@ -25,25 +26,25 @@ void render_pipeline::set_shader(std::string_view vertex, std::string_view pixel
     m_desc.pixel_shader = m_pixel_shader.c_str();
 }
 
-void render_pipeline::set_vertex_layout(const vertex_layout& vertex_layout)
+void render_pipeline::set_vertex_attributes(const vertex_attributes& vertex_attributes)
 {
-    m_vertex_layout = vertex_layout;
+    m_vertex_attributes = vertex_attributes;
 }
 
-const render_pipeline::vertex_layout& render_pipeline::get_vertex_layout() const noexcept
+const render_pipeline::vertex_attributes& render_pipeline::get_vertex_attributes() const noexcept
 {
-    return m_vertex_layout;
+    return m_vertex_attributes;
 }
 
-void render_pipeline::set_parameter_layout(const parameter_layout& parameter_layout)
+void render_pipeline::set_parameter_layouts(const parameter_layouts& parameter_layouts)
 {
-    m_parameter_layout = parameter_layout;
+    m_parameter_layouts = parameter_layouts;
 }
 
-rhi_pipeline_parameter_layout* render_pipeline::get_parameter_layout(
-    render_pipeline_parameter_type type) const noexcept
+rhi_parameter_layout* render_pipeline::get_parameter_layout(
+    render_parameter_type type) const noexcept
 {
-    for (auto& parameter : m_parameter_layout)
+    for (auto& parameter : m_parameter_layouts)
     {
         if (parameter.second == type)
             return parameter.first;
@@ -79,7 +80,7 @@ void render_pipeline::set_primitive_topology(rhi_primitive_topology primitive_to
 bool render_pipeline::compile(rhi_render_pass* render_pass, std::size_t subpass_index)
 {
     std::vector<rhi_vertex_attribute> vertex_attributes;
-    for (auto& attribute : m_vertex_layout)
+    for (auto& attribute : m_vertex_attributes)
         vertex_attributes.push_back({attribute.first.c_str(), attribute.second});
 
     m_desc.vertex_attributes = vertex_attributes.data();
@@ -87,14 +88,14 @@ bool render_pipeline::compile(rhi_render_pass* render_pass, std::size_t subpass_
     m_desc.render_pass = render_pass;
     m_desc.render_subpass_index = subpass_index;
 
-    std::vector<rhi_pipeline_parameter_layout*> parameter_layout;
-    for (auto& parameter : m_parameter_layout)
-        parameter_layout.push_back(parameter.first);
+    std::vector<rhi_parameter_layout*> parameter_layouts;
+    for (auto& parameter : m_parameter_layouts)
+        parameter_layouts.push_back(parameter.first);
 
-    m_desc.parameters = parameter_layout.data();
-    m_desc.parameter_count = parameter_layout.size();
+    m_desc.parameters = parameter_layouts.data();
+    m_desc.parameter_count = parameter_layouts.size();
 
-    m_interface = get_rhi()->create_render_pipeline(m_desc);
+    m_interface = get_context()->get_rhi()->create_render_pipeline(m_desc);
 
     return m_interface != nullptr;
 }
@@ -102,29 +103,29 @@ bool render_pipeline::compile(rhi_render_pass* render_pass, std::size_t subpass_
 void render_pipeline::execute(rhi_render_command* command)
 {
     command->set_pipeline(m_interface);
-    render(command, m_context);
-    m_context.meshes.clear();
+    render(command, m_render_data);
+    m_render_data.meshes.clear();
 }
 
 void render_pipeline::add_mesh(const render_mesh& mesh)
 {
-    m_context.meshes.push_back(mesh);
+    m_render_data.meshes.push_back(mesh);
 }
 
-void render_pipeline::set_camera_parameter(rhi_pipeline_parameter* parameter) noexcept
+void render_pipeline::set_camera_parameter(rhi_parameter* parameter) noexcept
 {
-    m_context.camera_parameter = parameter;
+    m_render_data.camera_parameter = parameter;
 }
 
-void render_pipeline::render(rhi_render_command* command, render_context& context)
+void render_pipeline::render(rhi_render_command* command, render_data& data)
 {
-    for (render_mesh& mesh : m_context.meshes)
+    for (render_mesh& mesh : data.meshes)
     {
         command->set_vertex_buffers(mesh.vertex_buffers.data(), mesh.vertex_buffers.size());
         command->set_index_buffer(mesh.index_buffer);
         command->set_parameter(0, mesh.node);
         command->set_parameter(1, mesh.material);
-        command->set_parameter(2, context.camera_parameter);
+        command->set_parameter(2, data.camera_parameter);
         command->draw_indexed(0, 12, 0);
     }
 }

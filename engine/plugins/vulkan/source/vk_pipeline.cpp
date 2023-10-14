@@ -1,7 +1,6 @@
 #include "vk_pipeline.hpp"
 #include "vk_render_pass.hpp"
 #include "vk_resource.hpp"
-#include "vk_rhi.hpp"
 #include "vk_util.hpp"
 #include <fstream>
 
@@ -55,10 +54,8 @@ std::uint32_t get_vertex_attribute_stride(rhi_resource_format format) noexcept
 }
 } // namespace
 
-vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
-    const rhi_pipeline_parameter_layout_desc& desc,
-    vk_rhi* rhi)
-    : m_rhi(rhi)
+vk_parameter_layout::vk_parameter_layout(const rhi_parameter_layout_desc& desc, vk_context* context)
+    : m_context(context)
 {
     std::vector<VkDescriptorSetLayoutBinding> bindings;
 
@@ -73,7 +70,7 @@ vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
 
         switch (desc.parameters[i].type)
         {
-        case RHI_PIPELINE_PARAMETER_TYPE_UNIFORM_BUFFER: {
+        case RHI_PARAMETER_TYPE_UNIFORM_BUFFER: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             binding.descriptorCount = 1;
             binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -86,7 +83,7 @@ vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
             ++uniform_buffer_count;
             break;
         }
-        case RHI_PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE: {
+        case RHI_PARAMETER_TYPE_SHADER_RESOURCE: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             binding.descriptorCount = 1;
             binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -111,21 +108,20 @@ vk_pipeline_parameter_layout::vk_pipeline_parameter_layout(
     descriptor_set_layout_info.bindingCount = static_cast<std::uint32_t>(bindings.size());
 
     throw_if_failed(vkCreateDescriptorSetLayout(
-        m_rhi->get_device(),
+        m_context->get_device(),
         &descriptor_set_layout_info,
         nullptr,
         &m_layout));
 }
 
-vk_pipeline_parameter_layout::~vk_pipeline_parameter_layout()
+vk_parameter_layout::~vk_parameter_layout()
 {
-    vkDestroyDescriptorSetLayout(m_rhi->get_device(), m_layout, nullptr);
+    vkDestroyDescriptorSetLayout(m_context->get_device(), m_layout, nullptr);
 }
 
-vk_pipeline_parameter::vk_pipeline_parameter(vk_pipeline_parameter_layout* layout, vk_rhi* rhi)
+vk_parameter::vk_parameter(vk_parameter_layout* layout, vk_context* context)
     : m_layout(layout),
-      m_not_updated_count(0),
-      m_rhi(rhi)
+      m_context(context)
 {
     auto& parameter_infos = m_layout->get_parameter_infos();
     for (auto& parameter_info : parameter_infos)
@@ -134,19 +130,20 @@ vk_pipeline_parameter::vk_pipeline_parameter(vk_pipeline_parameter_layout* layou
         {
             auto uniform_buffer = std::make_unique<vk_uniform_buffer>(
                 nullptr,
-                parameter_info.uniform_buffer.size * rhi->get_frame_resource_count(),
-                m_rhi);
+                parameter_info.uniform_buffer.size * m_context->get_frame_resource_count(),
+                m_context);
 
             m_uniform_buffers.push_back(std::move(uniform_buffer));
         }
     }
-    m_frame_resources.resize(rhi->get_frame_resource_count());
+    m_frame_resources.resize(m_context->get_frame_resource_count());
     for (auto& frame_resource : m_frame_resources)
         frame_resource.descriptor_update_count.resize(parameter_infos.size());
 
     for (std::size_t i = 0; i < m_frame_resources.size(); ++i)
     {
-        m_frame_resources[i].descriptor_set = rhi->allocate_descriptor_set(layout->get_layout());
+        m_frame_resources[i].descriptor_set =
+            m_context->allocate_descriptor_set(layout->get_layout());
 
         std::vector<VkWriteDescriptorSet> descriptor_write;
         std::vector<VkDescriptorBufferInfo> buffer_infos;
@@ -180,7 +177,7 @@ vk_pipeline_parameter::vk_pipeline_parameter(vk_pipeline_parameter_layout* layou
         if (!descriptor_write.empty())
         {
             vkUpdateDescriptorSets(
-                m_rhi->get_device(),
+                m_context->get_device(),
                 static_cast<std::uint32_t>(descriptor_write.size()),
                 descriptor_write.data(),
                 0,
@@ -189,21 +186,15 @@ vk_pipeline_parameter::vk_pipeline_parameter(vk_pipeline_parameter_layout* layou
     }
 }
 
-vk_pipeline_parameter::~vk_pipeline_parameter()
+vk_parameter::~vk_parameter()
 {
 }
 
-void vk_pipeline_parameter::set(
-    std::size_t index,
-    const void* data,
-    std::size_t size,
-    std::size_t offset)
+void vk_parameter::set(std::size_t index, const void* data, std::size_t size, std::size_t offset)
 {
     sync();
 
-    std::size_t frame_resource_count = m_rhi->get_frame_resource_count();
-    std::size_t current_index = m_rhi->get_frame_resource_index();
-    std::size_t previous_index = (current_index + frame_resource_count - 1) % frame_resource_count;
+    std::size_t current_index = m_context->get_frame_resource_index();
 
     auto& parameter_info = m_layout->get_parameter_infos()[index];
     assert(parameter_info.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -214,17 +205,15 @@ void vk_pipeline_parameter::set(
 
     std::memcpy(target, data, size);
 
-    m_frame_resources[current_index].descriptor_update_count[index] =
-        m_frame_resources[previous_index].descriptor_update_count[index] + 1;
-    m_not_updated_count += m_rhi->get_frame_resource_count() - 1;
+    mark_dirty(index);
 }
 
-void vk_pipeline_parameter::set(std::size_t index, rhi_resource* texture, rhi_sampler* sampler)
+void vk_parameter::set(std::size_t index, rhi_resource* texture, rhi_sampler* sampler)
 {
     sync();
 
-    std::size_t frame_resource_count = m_rhi->get_frame_resource_count();
-    std::size_t current_index = m_rhi->get_frame_resource_index();
+    std::size_t frame_resource_count = m_context->get_frame_resource_count();
+    std::size_t current_index = m_context->get_frame_resource_index();
     std::size_t previous_index = (current_index + frame_resource_count - 1) % frame_resource_count;
 
     vk_image* image = static_cast<vk_image*>(texture);
@@ -245,30 +234,29 @@ void vk_pipeline_parameter::set(std::size_t index, rhi_resource* texture, rhi_sa
     write.pImageInfo = &info;
     write.pTexelBufferView = nullptr;
 
-    vkUpdateDescriptorSets(m_rhi->get_device(), 1, &write, 0, nullptr);
+    vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
 
-    m_frame_resources[current_index].descriptor_update_count[index] =
-        m_frame_resources[previous_index].descriptor_update_count[index] + 1;
-    m_not_updated_count += m_rhi->get_frame_resource_count() - 1;
+    mark_dirty(index);
 }
 
-VkDescriptorSet vk_pipeline_parameter::get_descriptor_set() const noexcept
+VkDescriptorSet vk_parameter::get_descriptor_set() const noexcept
 {
-    return m_frame_resources[m_rhi->get_frame_resource_index()].descriptor_set;
+    return m_frame_resources[m_context->get_frame_resource_index()].descriptor_set;
 }
 
-void vk_pipeline_parameter::sync()
+void vk_parameter::sync()
 {
-    if (m_not_updated_count == 0)
-        return;
+    std::size_t frame_resource_count = m_context->get_frame_resource_count();
 
-    std::size_t frame_resource_count = m_rhi->get_frame_resource_count();
-
-    std::size_t current_index = m_rhi->get_frame_resource_index();
+    std::size_t current_index = m_context->get_frame_resource_index();
     std::size_t previous_index = (current_index + frame_resource_count - 1) % frame_resource_count;
 
     auto& current_frame_resource = m_frame_resources[current_index];
     auto& previous_frame_resource = m_frame_resources[previous_index];
+
+    if (current_frame_resource.update_count >= previous_frame_resource.update_count)
+        return;
+    current_frame_resource.update_count = previous_frame_resource.update_count;
 
     std::vector<VkCopyDescriptorSet> descriptor_copy;
 
@@ -277,6 +265,8 @@ void vk_pipeline_parameter::sync()
         if (current_frame_resource.descriptor_update_count[i] >=
             previous_frame_resource.descriptor_update_count[i])
             continue;
+        current_frame_resource.descriptor_update_count[i] =
+            previous_frame_resource.descriptor_update_count[i];
 
         auto& parameter_info = m_layout->get_parameter_infos()[i];
         if (parameter_info.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
@@ -302,16 +292,12 @@ void vk_pipeline_parameter::sync()
             copy.descriptorCount = 1;
             descriptor_copy.push_back(copy);
         }
-
-        current_frame_resource.descriptor_update_count[i] =
-            previous_frame_resource.descriptor_update_count[i];
-        --m_not_updated_count;
     }
 
     if (!descriptor_copy.empty())
     {
         vkUpdateDescriptorSets(
-            m_rhi->get_device(),
+            m_context->get_device(),
             0,
             nullptr,
             static_cast<std::uint32_t>(descriptor_copy.size()),
@@ -319,11 +305,25 @@ void vk_pipeline_parameter::sync()
     }
 }
 
+void vk_parameter::mark_dirty(std::size_t descriptor_index)
+{
+    std::size_t frame_resource_count = m_context->get_frame_resource_count();
+    std::size_t current_index = m_context->get_frame_resource_index();
+    std::size_t previous_index = (current_index + frame_resource_count - 1) % frame_resource_count;
+
+    auto& current_frame_resource = m_frame_resources[current_index];
+    auto& previous_frame_resource = m_frame_resources[previous_index];
+
+    current_frame_resource.descriptor_update_count[descriptor_index] =
+        previous_frame_resource.descriptor_update_count[descriptor_index] + 1;
+    current_frame_resource.update_count = previous_frame_resource.update_count + 1;
+}
+
 vk_render_pipeline::vk_render_pipeline(
     const rhi_render_pipeline_desc& desc,
     VkExtent2D extent,
-    vk_rhi* rhi)
-    : m_rhi(rhi)
+    vk_context* context)
+    : m_context(context)
 {
     VkPipelineShaderStageCreateInfo vert_shader_stage_info = {};
     vert_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -455,7 +455,7 @@ vk_render_pipeline::vk_render_pipeline(
     for (std::size_t i = 0; i < desc.parameter_count; ++i)
     {
         descriptor_set_layouts.push_back(
-            static_cast<vk_pipeline_parameter_layout*>(desc.parameters[i])->get_layout());
+            static_cast<vk_parameter_layout*>(desc.parameters[i])->get_layout());
     }
 
     VkPipelineLayoutCreateInfo layout_info = {};
@@ -463,7 +463,7 @@ vk_render_pipeline::vk_render_pipeline(
     layout_info.pSetLayouts = descriptor_set_layouts.data();
     layout_info.setLayoutCount = static_cast<std::uint32_t>(descriptor_set_layouts.size());
     throw_if_failed(
-        vkCreatePipelineLayout(m_rhi->get_device(), &layout_info, nullptr, &m_pipeline_layout));
+        vkCreatePipelineLayout(m_context->get_device(), &layout_info, nullptr, &m_pipeline_layout));
 
     std::vector<VkDynamicState> dynamic_state = {
         VK_DYNAMIC_STATE_VIEWPORT,
@@ -494,21 +494,21 @@ vk_render_pipeline::vk_render_pipeline(
     pipeline_info.pDepthStencilState = &depth_stencil_state_info;
 
     throw_if_failed(vkCreateGraphicsPipelines(
-        m_rhi->get_device(),
+        m_context->get_device(),
         VK_NULL_HANDLE,
         1,
         &pipeline_info,
         nullptr,
         &m_pipeline));
 
-    vkDestroyShaderModule(m_rhi->get_device(), vert_shader_stage_info.module, nullptr);
-    vkDestroyShaderModule(m_rhi->get_device(), frag_shader_stage_info.module, nullptr);
+    vkDestroyShaderModule(m_context->get_device(), vert_shader_stage_info.module, nullptr);
+    vkDestroyShaderModule(m_context->get_device(), frag_shader_stage_info.module, nullptr);
 }
 
 vk_render_pipeline::~vk_render_pipeline()
 {
-    vkDestroyPipeline(m_rhi->get_device(), m_pipeline, nullptr);
-    vkDestroyPipelineLayout(m_rhi->get_device(), m_pipeline_layout, nullptr);
+    vkDestroyPipeline(m_context->get_device(), m_pipeline, nullptr);
+    vkDestroyPipelineLayout(m_context->get_device(), m_pipeline_layout, nullptr);
 }
 
 VkShaderModule vk_render_pipeline::load_shader(std::string_view path)
@@ -532,7 +532,7 @@ VkShaderModule vk_render_pipeline::load_shader(std::string_view path)
 
     VkShaderModule result = VK_NULL_HANDLE;
     throw_if_failed(
-        vkCreateShaderModule(m_rhi->get_device(), &shader_module_info, nullptr, &result));
+        vkCreateShaderModule(m_context->get_device(), &shader_module_info, nullptr, &result));
     return result;
 }
 } // namespace violet::vk

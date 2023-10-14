@@ -17,7 +17,7 @@ class material;
 class material_layout : public render_node
 {
 public:
-    material_layout(std::string_view name, rhi_context* rhi);
+    material_layout(render_context* context);
 
     void add_pipeline(render_pipeline* pipeline);
 
@@ -34,9 +34,9 @@ public:
 
     material* add_material(std::string_view name);
 
-    const std::vector<render_pipeline*>& get_pipelines() const noexcept { return m_pipelines; }
-
 private:
+    friend class material;
+
     std::vector<render_pipeline*> m_pipelines;
     std::unordered_map<std::string, material_field> m_fields;
 
@@ -63,7 +63,7 @@ public:
     template <typename Functor>
     void each_pipeline(Functor functor)
     {
-        auto& pipelines = m_layout->get_pipelines();
+        auto& pipelines = m_layout->m_pipelines;
         for (std::size_t i = 0; i < pipelines.size(); ++i)
             functor(pipelines[i], m_parameters[i]);
     }
@@ -73,6 +73,6 @@ public:
 private:
     material_layout* m_layout;
 
-    std::vector<rhi_pipeline_parameter*> m_parameters;
+    std::vector<rhi_parameter*> m_parameters;
 };
 } // namespace violet

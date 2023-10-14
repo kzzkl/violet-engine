@@ -4,7 +4,7 @@
 
 namespace violet
 {
-basic_material::basic_material() : pipeline_parameter(layout)
+basic_material::basic_material() : parameter(layout)
 {
 }
 

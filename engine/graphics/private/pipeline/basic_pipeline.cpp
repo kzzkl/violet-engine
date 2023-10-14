@@ -3,20 +3,22 @@
 
 namespace violet
 {
-basic_pipeline::basic_pipeline(rhi_context* rhi) : render_pipeline("basic pipeline", rhi)
+basic_pipeline::basic_pipeline(render_context* context) : render_pipeline(context)
 {
-    
 }
 
-void basic_pipeline::render(rhi_render_command* command, render_context& context)
+void basic_pipeline::render(rhi_render_command* command, render_data& data)
 {
     std::sort(
-        context.meshes.begin(),
-        context.meshes.end(),
-        [](const render_mesh& a, const render_mesh& b) { return a.material < b.material; });
+        data.meshes.begin(),
+        data.meshes.end(),
+        [](const render_mesh& a, const render_mesh& b)
+        {
+            return a.material < b.material;
+        });
 
-    rhi_pipeline_parameter* current_material = nullptr;
-    for (render_mesh& mesh : context.meshes)
+    rhi_parameter* current_material = nullptr;
+    for (render_mesh& mesh : data.meshes)
     {
         command->set_vertex_buffers(mesh.vertex_buffers.data(), mesh.vertex_buffers.size());
         command->set_index_buffer(mesh.index_buffer);

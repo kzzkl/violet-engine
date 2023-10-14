@@ -1,22 +1,22 @@
 #pragma once
 
+#include "graphics/render_graph/render_context.hpp"
 #include "graphics/rhi.hpp"
-#include <string>
 
 namespace violet
 {
 class render_node
 {
 public:
-    render_node(std::string_view name, rhi_context* rhi) : m_name(name), m_rhi(rhi) {}
-    virtual ~render_node() = default;
+    render_node(render_context* context);
+    render_node(const render_node&) = delete;
+    virtual ~render_node();
 
-    const std::string& get_name() const noexcept { return m_name; }
+    render_node& operator=(const render_context&) = delete;
 
-    rhi_context* get_rhi() const noexcept { return m_rhi; }
+    render_context* get_context() const noexcept { return m_context; }
 
 private:
-    std::string m_name;
-    rhi_context* m_rhi;
+    render_context* m_context;
 };
 } // namespace violet

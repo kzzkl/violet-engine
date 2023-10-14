@@ -1,12 +1,12 @@
 #include "vk_framebuffer.hpp"
 #include "vk_render_pass.hpp"
 #include "vk_resource.hpp"
-#include "vk_rhi.hpp"
 #include <vector>
 
 namespace violet::vk
 {
-vk_framebuffer::vk_framebuffer(const rhi_framebuffer_desc& desc, vk_rhi* rhi) : m_rhi(rhi)
+vk_framebuffer::vk_framebuffer(const rhi_framebuffer_desc& desc, vk_context* context)
+    : m_context(context)
 {
     std::vector<VkImageView> image_views(desc.attachment_count);
     for (std::size_t i = 0; i < desc.attachment_count; ++i)
@@ -28,12 +28,12 @@ vk_framebuffer::vk_framebuffer(const rhi_framebuffer_desc& desc, vk_rhi* rhi) : 
     framebuffer_info.layers = 1;
 
     throw_if_failed(
-        vkCreateFramebuffer(rhi->get_device(), &framebuffer_info, nullptr, &m_framebuffer));
+        vkCreateFramebuffer(context->get_device(), &framebuffer_info, nullptr, &m_framebuffer));
 }
 
 vk_framebuffer::~vk_framebuffer()
 {
     if (m_framebuffer)
-        vkDestroyFramebuffer(m_rhi->get_device(), m_framebuffer, nullptr);
+        vkDestroyFramebuffer(m_context->get_device(), m_framebuffer, nullptr);
 }
 } // namespace violet::vk

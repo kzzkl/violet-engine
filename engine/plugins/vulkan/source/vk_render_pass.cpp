@@ -1,13 +1,12 @@
 #include "vk_render_pass.hpp"
-#include "vk_rhi.hpp"
 #include "vk_util.hpp"
 #include <vector>
 
 namespace violet::vk
 {
-vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_rhi* rhi)
+vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* context)
     : m_extent{512, 512},
-      m_rhi(rhi)
+      m_context(context)
 {
     auto map_load_op = [](rhi_attachment_load_op op)
     {
@@ -137,11 +136,11 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_rhi* rhi)
     render_pass_info.dependencyCount = static_cast<std::uint32_t>(dependencies.size());
 
     throw_if_failed(
-        vkCreateRenderPass(m_rhi->get_device(), &render_pass_info, nullptr, &m_render_pass));
+        vkCreateRenderPass(m_context->get_device(), &render_pass_info, nullptr, &m_render_pass));
 }
 
 vk_render_pass::~vk_render_pass()
 {
-    vkDestroyRenderPass(m_rhi->get_device(), m_render_pass, nullptr);
+    vkDestroyRenderPass(m_context->get_device(), m_render_pass, nullptr);
 }
 } // namespace violet::vk

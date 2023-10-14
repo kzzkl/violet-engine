@@ -1,6 +1,5 @@
 #pragma once
 
-#include "graphics/render_graph/render_node.hpp"
 #include "graphics/render_graph/render_pipeline.hpp"
 #include <memory>
 #include <unordered_map>
@@ -34,11 +33,7 @@ private:
 class render_subpass : public render_node
 {
 public:
-    render_subpass(
-        std::string_view name,
-        rhi_context* rhi,
-        render_pass* render_pass,
-        std::size_t index);
+    render_subpass(render_context* context);
 
     void add_reference(
         render_attachment* attachment,
@@ -50,10 +45,18 @@ public:
         rhi_resource_state state,
         render_attachment* resolve);
 
-    render_pipeline* add_pipeline(std::string_view name);
+    template <typename T = render_pipeline, typename... Args>
+    T* add_pipeline(std::string_view name, Args&&... args)
+    {
+        auto pipeline = std::make_unique<T>(get_context(), std::forward<Args>(args)...);
+        T* result = pipeline.get();
 
-    bool compile();
-    void execute(rhi_render_command* command, rhi_pipeline_parameter* camera_parameter);
+        m_pipelines.push_back(std::move(pipeline));
+        return result;
+    }
+
+    bool compile(rhi_render_pass* render_pass, std::size_t index);
+    void execute(rhi_render_command* command, rhi_parameter* camera_parameter);
 
     rhi_render_subpass_desc get_desc() const noexcept { return m_desc; }
     std::size_t get_index() const noexcept { return m_index; }
@@ -62,7 +65,6 @@ private:
     std::vector<render_attachment*> m_references;
     rhi_render_subpass_desc m_desc;
 
-    render_pass* m_render_pass;
     std::size_t m_index;
 
     std::vector<std::unique_ptr<render_pipeline>> m_pipelines;
@@ -71,25 +73,24 @@ private:
 class render_pass : public render_node
 {
 public:
-    render_pass(std::string_view name, rhi_context* rhi);
-    render_pass(const render_pass&) = delete;
+    render_pass(render_context* context);
     virtual ~render_pass();
 
     render_attachment* add_attachment(std::string_view name);
     render_subpass* add_subpass(std::string_view name);
 
     void add_dependency(
-        std::size_t source_index,
+        render_subpass* source,
         rhi_pipeline_stage_flags source_stage,
         rhi_access_flags source_access,
-        std::size_t target_index,
+        render_subpass* target,
         rhi_pipeline_stage_flags target_stage,
         rhi_access_flags target_access);
 
     void add_camera(
         rhi_scissor_rect scissor,
         rhi_viewport viewport,
-        rhi_pipeline_parameter* parameter,
+        rhi_parameter* parameter,
         rhi_framebuffer* framebuffer);
 
     bool compile();
@@ -98,14 +99,12 @@ public:
     rhi_render_pass* get_interface() const noexcept { return m_interface; }
     std::size_t get_attachment_count() const noexcept { return m_attachments.size(); }
 
-    render_pass& operator=(const render_pass&) = delete;
-
 private:
     struct render_camera
     {
         rhi_scissor_rect scissor;
         rhi_viewport viewport;
-        rhi_pipeline_parameter* parameter;
+        rhi_parameter* parameter;
         rhi_framebuffer* framebuffer;
     };
 

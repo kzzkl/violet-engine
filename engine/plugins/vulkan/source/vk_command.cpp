@@ -2,14 +2,14 @@
 #include "vk_framebuffer.hpp"
 #include "vk_pipeline.hpp"
 #include "vk_render_pass.hpp"
-#include "vk_rhi.hpp"
+#include "vk_resource.hpp"
 
 namespace violet::vk
 {
-vk_command::vk_command(VkCommandBuffer command_buffer, vk_rhi* rhi) noexcept
+vk_command::vk_command(VkCommandBuffer command_buffer, vk_context* context) noexcept
     : m_command_buffer(command_buffer),
       m_current_render_pass(nullptr),
-      m_rhi(rhi)
+      m_context(context)
 {
 }
 
@@ -58,12 +58,12 @@ void vk_command::set_pipeline(rhi_render_pipeline* render_pipeline)
     m_current_pipeline_layout = pipeline->get_pipeline_layout();
 }
 
-void vk_command::set_parameter(std::size_t index, rhi_pipeline_parameter* pipeline_parameter)
+void vk_command::set_parameter(std::size_t index, rhi_parameter* parameter)
 {
-    vk_pipeline_parameter* parameter = static_cast<vk_pipeline_parameter*>(pipeline_parameter);
-    parameter->sync();
+    vk_parameter* p = static_cast<vk_parameter*>(parameter);
+    p->sync();
 
-    VkDescriptorSet descriptor_sets[] = {parameter->get_descriptor_set()};
+    VkDescriptorSet descriptor_sets[] = {p->get_descriptor_set()};
     vkCmdBindDescriptorSets(
         m_command_buffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -167,7 +167,9 @@ void vk_command::reset()
     throw_if_failed(vkResetCommandBuffer(m_command_buffer, 0));
 }
 
-vk_graphics_queue::vk_graphics_queue(std::uint32_t queue_family_index, vk_rhi* rhi) : m_rhi(rhi)
+vk_graphics_queue::vk_graphics_queue(std::uint32_t queue_family_index, vk_context* context)
+    : m_family_index(queue_family_index),
+      m_context(context)
 {
     VkCommandPoolCreateInfo command_pool_info = {};
     command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -175,18 +177,18 @@ vk_graphics_queue::vk_graphics_queue(std::uint32_t queue_family_index, vk_rhi* r
     command_pool_info.queueFamilyIndex = queue_family_index;
 
     throw_if_failed(
-        vkCreateCommandPool(m_rhi->get_device(), &command_pool_info, nullptr, &m_command_pool));
+        vkCreateCommandPool(m_context->get_device(), &command_pool_info, nullptr, &m_command_pool));
 
-    m_active_commands.resize(m_rhi->get_frame_resource_count());
+    m_active_commands.resize(m_context->get_frame_resource_count());
 
-    vkGetDeviceQueue(m_rhi->get_device(), queue_family_index, 0, &m_queue);
+    vkGetDeviceQueue(m_context->get_device(), queue_family_index, 0, &m_queue);
 
-    m_fence = std::make_unique<vk_fence>(false, m_rhi);
+    m_fence = std::make_unique<vk_fence>(false, m_context);
 }
 
 vk_graphics_queue::~vk_graphics_queue()
 {
-    vkDestroyCommandPool(m_rhi->get_device(), m_command_pool, nullptr);
+    vkDestroyCommandPool(m_context->get_device(), m_command_pool, nullptr);
 }
 
 vk_command* vk_graphics_queue::allocate_command()
@@ -202,14 +204,14 @@ vk_command* vk_graphics_queue::allocate_command()
         std::vector<VkCommandBuffer> command_buffers(
             command_buffer_allocate_info.commandBufferCount);
         throw_if_failed(vkAllocateCommandBuffers(
-            m_rhi->get_device(),
+            m_context->get_device(),
             &command_buffer_allocate_info,
             command_buffers.data()));
 
         for (VkCommandBuffer command_buffer : command_buffers)
         {
             std::unique_ptr<vk_command> command =
-                std::make_unique<vk_command>(command_buffer, m_rhi);
+                std::make_unique<vk_command>(command_buffer, m_context);
             m_free_commands.push_back(command.get());
             m_commands.push_back(std::move(command));
         }
@@ -217,7 +219,7 @@ vk_command* vk_graphics_queue::allocate_command()
 
     vk_command* command = m_free_commands.back();
     m_free_commands.pop_back();
-    m_active_commands[m_rhi->get_frame_resource_index()].push_back(command);
+    m_active_commands[m_context->get_frame_resource_index()].push_back(command);
 
     VkCommandBufferBeginInfo command_buffer_begin_info = {};
     command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -278,7 +280,7 @@ void vk_graphics_queue::execute_sync(rhi_render_command* command)
 
 void vk_graphics_queue::begin_frame()
 {
-    auto& commands = m_active_commands[m_rhi->get_frame_resource_index()];
+    auto& commands = m_active_commands[m_context->get_frame_resource_index()];
     for (vk_command* command : commands)
     {
         command->reset();
@@ -287,9 +289,10 @@ void vk_graphics_queue::begin_frame()
     commands.clear();
 }
 
-vk_present_queue::vk_present_queue(std::uint32_t queue_family_index, vk_rhi* rhi)
+vk_present_queue::vk_present_queue(std::uint32_t queue_family_index, vk_context* context)
+    : m_family_index(queue_family_index)
 {
-    vkGetDeviceQueue(rhi->get_device(), queue_family_index, 0, &m_queue);
+    vkGetDeviceQueue(context->get_device(), queue_family_index, 0, &m_queue);
 }
 
 vk_present_queue::~vk_present_queue()

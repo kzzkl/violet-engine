@@ -1,17 +1,15 @@
 #pragma once
 
-#include "graphics/rhi.hpp"
-#include <string>
+#include "graphics/render_graph/render_node.hpp"
 #include <unordered_map>
 
 namespace violet
 {
-class geometry
+class geometry : public render_node
 {
 public:
-    geometry(rhi_context* rhi);
-    geometry(const geometry&) = delete;
-    ~geometry();
+    geometry(render_context* context);
+    virtual ~geometry();
 
     template <typename T>
     void add_attribute(std::string_view name, const std::vector<T>& attribute)
@@ -28,15 +26,11 @@ public:
     rhi_resource* get_vertex_buffer(std::string_view name);
     rhi_resource* get_index_buffer() const noexcept { return m_index_buffer; }
 
-    geometry& operator=(const geometry&) = delete;
-
 private:
     void add_attribute(std::string_view name, const void* data, std::size_t size);
     void set_indices(const void* data, std::size_t size, std::size_t index_size);
 
     std::unordered_map<std::string, rhi_resource*> m_vertex_buffers;
     rhi_resource* m_index_buffer;
-
-    rhi_context* m_rhi;
 };
 } // namespace violet

@@ -1,14 +1,13 @@
 #pragma once
 
-#include "vk_common.hpp"
+#include "vk_context.hpp"
 
 namespace violet::vk
 {
-class vk_rhi;
 class vk_render_pass : public rhi_render_pass
 {
 public:
-    vk_render_pass(const rhi_render_pass_desc& desc, vk_rhi* rhi);
+    vk_render_pass(const rhi_render_pass_desc& desc, vk_context* context);
     vk_render_pass(const vk_render_pass&) = delete;
     virtual ~vk_render_pass();
 
@@ -20,6 +19,6 @@ private:
     VkExtent2D m_extent;
     VkRenderPass m_render_pass;
 
-    vk_rhi* m_rhi;
+    vk_context* m_context;
 };
 } // namespace violet::vk

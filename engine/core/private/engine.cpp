@@ -98,7 +98,7 @@ void engine::main_loop()
 
     m_task_executor->run();
 
-    frame_rater<60> frame_rater;
+    frame_rater<30> frame_rater;
     timer& time = get_timer();
 
     time.tick(timer::point::FRAME_START);

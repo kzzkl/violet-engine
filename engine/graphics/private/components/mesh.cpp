@@ -1,15 +1,10 @@
 #include "components/mesh.hpp"
-#include "core/engine.hpp"
-#include "graphics/graphics_system.hpp"
+#include <cassert>
 
 namespace violet
 {
-mesh::mesh()
+mesh::mesh() : m_parameter(nullptr), m_geometry(nullptr)
 {
-    auto& graphics = engine::get_system<graphics_system>();
-
-    rhi_pipeline_parameter_layout* layout = graphics.get_pipeline_parameter_layout("mesh");
-    m_parameter = graphics.get_rhi()->create_pipeline_parameter(layout);
 }
 
 mesh::mesh(mesh&& other) noexcept
@@ -24,15 +19,19 @@ mesh::mesh(mesh&& other) noexcept
 mesh::~mesh()
 {
     if (m_parameter != nullptr)
-    {
-        auto& graphics = engine::get_system<graphics_system>();
-        graphics.get_rhi()->destroy_pipeline_parameter(m_parameter);
-    }
+        m_geometry->get_context()->get_rhi()->destroy_parameter(m_parameter);
 }
 
 void mesh::set_geometry(geometry* geometry)
 {
     m_geometry = geometry;
+
+    if (m_parameter == nullptr)
+    {
+        rhi_renderer* rhi = geometry->get_context()->get_rhi();
+        rhi_parameter_layout* layout = geometry->get_context()->get_parameter_layout("violet mesh");
+        m_parameter = rhi->create_parameter(layout);
+    }
 }
 
 void mesh::add_submesh(
@@ -50,7 +49,7 @@ void mesh::add_submesh(
     submesh.material = material;
 
     material->each_pipeline(
-        [=, this, &submesh](render_pipeline* pipeline, rhi_pipeline_parameter* parameter)
+        [=, this, &submesh](render_pipeline* pipeline, rhi_parameter* parameter)
         {
             render_mesh render_mesh = {};
             render_mesh.vertex_base = vertex_base;
@@ -60,7 +59,7 @@ void mesh::add_submesh(
             render_mesh.material = parameter;
             render_mesh.index_buffer = m_geometry->get_index_buffer();
 
-            for (auto [name, format] : pipeline->get_vertex_layout())
+            for (auto [name, format] : pipeline->get_vertex_attributes())
                 render_mesh.vertex_buffers.push_back(m_geometry->get_vertex_buffer(name));
 
             submesh.render_meshes.push_back(render_mesh);
@@ -70,18 +69,10 @@ void mesh::add_submesh(
     m_submeshes.push_back(submesh);
 }
 
-void mesh::set_m(const float4x4& m)
+void mesh::set_mvp(const float4x4& m, const float4x4& mv, const float4x4& mvp)
 {
     m_parameter->set(0, &m, sizeof(float4x4), 0);
-}
-
-void mesh::set_mv(const float4x4& mv)
-{
     m_parameter->set(0, &mv, sizeof(float4x4), sizeof(float4x4));
-}
-
-void mesh::set_mvp(const float4x4& mvp)
-{
     m_parameter->set(0, &mvp, sizeof(float4x4), sizeof(float4x4) * 2);
 }
 

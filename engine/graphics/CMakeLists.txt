@@ -5,11 +5,13 @@ add_library(${PROJECT_NAME} STATIC
     ./private/components/mesh.cpp
     # ./private/material/basic_material.cpp
     ./private/pipeline/basic_pipeline.cpp
+    ./private/render_graph/geometry.cpp
     ./private/render_graph/material.cpp
+    ./private/render_graph/render_context.cpp
     ./private/render_graph/render_graph.cpp
+    ./private/render_graph/render_node.cpp
     ./private/render_graph/render_pass.cpp
     ./private/render_graph/render_pipeline.cpp
-    ./private/geometry.cpp
     ./private/graphics_system.cpp
     ./private/rhi_plugin.cpp)
 add_library(violet::graphics ALIAS ${PROJECT_NAME})

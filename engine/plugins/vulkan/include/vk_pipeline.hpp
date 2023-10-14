@@ -1,15 +1,14 @@
 #pragma once
 
 #include "vk_common.hpp"
+#include "vk_context.hpp"
 #include <memory>
 #include <string>
-#include <vector>
 
 namespace violet::vk
 {
-class vk_rhi;
 class vk_uniform_buffer;
-class vk_pipeline_parameter_layout : public rhi_pipeline_parameter_layout
+class vk_parameter_layout : public rhi_parameter_layout
 {
 public:
     struct parameter_info
@@ -26,8 +25,8 @@ public:
     };
 
 public:
-    vk_pipeline_parameter_layout(const rhi_pipeline_parameter_layout_desc& desc, vk_rhi* rhi);
-    virtual ~vk_pipeline_parameter_layout();
+    vk_parameter_layout(const rhi_parameter_layout_desc& desc, vk_context* context);
+    virtual ~vk_parameter_layout();
 
     const std::vector<parameter_info>& get_parameter_infos() const noexcept
     {
@@ -40,14 +39,14 @@ private:
     VkDescriptorSetLayout m_layout;
     std::vector<parameter_info> m_parameter_infos;
 
-    vk_rhi* m_rhi;
+    vk_context* m_context;
 };
 
-class vk_pipeline_parameter : public rhi_pipeline_parameter
+class vk_parameter : public rhi_parameter
 {
 public:
-    vk_pipeline_parameter(vk_pipeline_parameter_layout* layout, vk_rhi* rhi);
-    virtual ~vk_pipeline_parameter();
+    vk_parameter(vk_parameter_layout* layout, vk_context* context);
+    virtual ~vk_parameter();
 
     virtual void set(std::size_t index, const void* data, std::size_t size, std::size_t offset)
         override;
@@ -62,21 +61,26 @@ private:
     {
         VkDescriptorSet descriptor_set;
         std::vector<std::size_t> descriptor_update_count;
+
+        std::size_t update_count;
     };
 
-    vk_pipeline_parameter_layout* m_layout;
+    void mark_dirty(std::size_t descriptor_index);
+
+    vk_parameter_layout* m_layout;
     std::vector<std::unique_ptr<vk_uniform_buffer>> m_uniform_buffers;
     std::vector<frame_resource> m_frame_resources;
 
-    std::size_t m_not_updated_count;
-
-    vk_rhi* m_rhi;
+    vk_context* m_context;
 };
 
 class vk_render_pipeline : public rhi_render_pipeline
 {
 public:
-    vk_render_pipeline(const rhi_render_pipeline_desc& desc, VkExtent2D extent, vk_rhi* rhi);
+    vk_render_pipeline(
+        const rhi_render_pipeline_desc& desc,
+        VkExtent2D extent,
+        vk_context* context);
     vk_render_pipeline(const vk_render_pipeline&) = delete;
     virtual ~vk_render_pipeline();
 
@@ -91,6 +95,6 @@ private:
     VkPipeline m_pipeline;
     VkPipelineLayout m_pipeline_layout;
 
-    vk_rhi* m_rhi;
+    vk_context* m_context;
 };
 } // namespace violet::vk

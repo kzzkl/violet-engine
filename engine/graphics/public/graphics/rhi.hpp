@@ -226,35 +226,35 @@ public:
     virtual ~rhi_render_pass() = default;
 };
 
-enum rhi_pipeline_parameter_type
+enum rhi_parameter_type
 {
-    RHI_PIPELINE_PARAMETER_TYPE_UNIFORM_BUFFER,
-    RHI_PIPELINE_PARAMETER_TYPE_SHADER_RESOURCE,
-    RHI_PIPELINE_PARAMETER_TYPE_UNORDERED_ACCESS
+    RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
+    RHI_PARAMETER_TYPE_SHADER_RESOURCE,
+    RHI_PARAMETER_TYPE_UNORDERED_ACCESS
 };
 
-struct rhi_pipeline_parameter_layout_pair
+struct rhi_parameter_layout_pair
 {
-    rhi_pipeline_parameter_type type;
+    rhi_parameter_type type;
     std::size_t size = 0;
 };
 
-struct rhi_pipeline_parameter_layout_desc
+struct rhi_parameter_layout_desc
 {
-    rhi_pipeline_parameter_layout_pair parameters[32];
+    rhi_parameter_layout_pair parameters[32];
     std::size_t parameter_count = 0;
 };
 
-class rhi_pipeline_parameter_layout
+class rhi_parameter_layout
 {
 public:
-    virtual ~rhi_pipeline_parameter_layout() = default;
+    virtual ~rhi_parameter_layout() = default;
 };
 
-class rhi_pipeline_parameter
+class rhi_parameter
 {
 public:
-    virtual ~rhi_pipeline_parameter() = default;
+    virtual ~rhi_parameter() = default;
 
     virtual void set(std::size_t index, const void* data, std::size_t size, std::size_t offset) = 0;
     virtual void set(std::size_t index, rhi_resource* texture, rhi_sampler* sampler) = 0;
@@ -360,7 +360,7 @@ struct rhi_render_pipeline_desc
     rhi_vertex_attribute* vertex_attributes;
     std::size_t vertex_attribute_count = 0;
 
-    rhi_pipeline_parameter_layout** parameters;
+    rhi_parameter_layout** parameters;
     std::size_t parameter_count = 0;
 
     rhi_blend_desc blend;
@@ -422,7 +422,7 @@ public:
     virtual void next() = 0;
 
     virtual void set_pipeline(rhi_render_pipeline* render_pipeline) = 0;
-    virtual void set_parameter(std::size_t index, rhi_pipeline_parameter* pipeline_parameter) = 0;
+    virtual void set_parameter(std::size_t index, rhi_parameter* parameter) = 0;
 
     virtual void set_viewport(const rhi_viewport& viewport) = 0;
     virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) = 0;
@@ -521,10 +521,10 @@ struct rhi_desc
     std::size_t render_concurrency;
 };
 
-class rhi_context
+class rhi_renderer
 {
 public:
-    virtual ~rhi_context() = default;
+    virtual ~rhi_renderer() = default;
 
     virtual bool initialize(const rhi_desc& desc) = 0;
 
@@ -560,14 +560,12 @@ public:
     virtual rhi_render_pipeline* create_render_pipeline(const rhi_render_pipeline_desc& desc) = 0;
     virtual void destroy_render_pipeline(rhi_render_pipeline* render_pipeline) = 0;
 
-    virtual rhi_pipeline_parameter_layout* create_pipeline_parameter_layout(
-        const rhi_pipeline_parameter_layout_desc& desc) = 0;
-    virtual void destroy_pipeline_parameter_layout(
-        rhi_pipeline_parameter_layout* pipeline_parameter_layout) = 0;
+    virtual rhi_parameter_layout* create_parameter_layout(
+        const rhi_parameter_layout_desc& desc) = 0;
+    virtual void destroy_parameter_layout(rhi_parameter_layout* parameter_layout) = 0;
 
-    virtual rhi_pipeline_parameter* create_pipeline_parameter(
-        rhi_pipeline_parameter_layout* layout) = 0;
-    virtual void destroy_pipeline_parameter(rhi_pipeline_parameter* pipeline_parameter) = 0;
+    virtual rhi_parameter* create_parameter(rhi_parameter_layout* layout) = 0;
+    virtual void destroy_parameter(rhi_parameter* parameter) = 0;
 
     virtual rhi_framebuffer* create_framebuffer(const rhi_framebuffer_desc& desc) = 0;
     virtual void destroy_framebuffer(rhi_framebuffer* framebuffer) = 0;
@@ -610,6 +608,6 @@ public:
     virtual rhi_semaphore* create_semaphore() = 0;
     virtual void destroy_semaphore(rhi_semaphore* semaphore) = 0;
 };
-using create_rhi = rhi_context* (*)();
-using destroy_rhi = void (*)(rhi_context*);
+using create_rhi = rhi_renderer* (*)();
+using destroy_rhi = void (*)(rhi_renderer*);
 } // namespace violet

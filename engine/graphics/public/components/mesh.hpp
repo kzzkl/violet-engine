@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/geometry.hpp"
+#include "graphics/render_graph/geometry.hpp"
 #include "graphics/render_graph/material.hpp"
 #include <memory>
 #include <vector>
@@ -22,11 +22,9 @@ public:
         std::size_t index_count,
         material* material);
 
-    void set_m(const float4x4& m);
-    void set_mv(const float4x4& mv);
-    void set_mvp(const float4x4& mvp);
+    void set_mvp(const float4x4& m, const float4x4& mv, const float4x4& mvp);
 
-    rhi_pipeline_parameter* get_parameter() const noexcept { return m_parameter; }
+    rhi_parameter* get_parameter() const noexcept { return m_parameter; }
 
     mesh& operator=(const mesh&) = delete;
     mesh& operator=(mesh&& other) noexcept;
@@ -53,7 +51,7 @@ private:
         std::vector<render_pipeline*> render_pipelines;
     };
 
-    rhi_pipeline_parameter* m_parameter;
+    rhi_parameter* m_parameter;
 
     geometry* m_geometry;
     std::vector<submesh> m_submeshes;
