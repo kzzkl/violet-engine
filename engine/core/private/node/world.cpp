@@ -40,7 +40,10 @@ void world::release(entity entity)
 {
     entity_info& info = m_entity_infos[entity.index];
     if (info.archetype != nullptr)
+    {
         info.archetype->remove(info.archetype_index);
+        on_entity_move(entity.index, nullptr, 0);
+    }
 
     info.archetype = nullptr;
     info.archetype_index = 0;

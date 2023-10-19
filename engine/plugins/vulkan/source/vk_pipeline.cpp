@@ -188,6 +188,8 @@ vk_parameter::vk_parameter(vk_parameter_layout* layout, vk_context* context)
 
 vk_parameter::~vk_parameter()
 {
+    for (frame_resource& frame_resource : m_frame_resources)
+        m_context->free_descriptor_set(frame_resource.descriptor_set);
 }
 
 void vk_parameter::set(std::size_t index, const void* data, std::size_t size, std::size_t offset)
@@ -374,9 +376,9 @@ vk_render_pipeline::vk_render_pipeline(
 
     VkViewport viewport = {};
     viewport.x = 0.0f;
-    viewport.y = 0.0f;
+    viewport.y = extent.height;
     viewport.width = extent.width;
-    viewport.height = extent.height;
+    viewport.height = -extent.height;
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 

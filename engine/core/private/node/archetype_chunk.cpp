@@ -19,7 +19,7 @@ archetype_chunk* archetype_chunk_allocator::allocate()
     return result;
 }
 
-void archetype_chunk_allocator::deallocate(archetype_chunk* chunk)
+void archetype_chunk_allocator::free(archetype_chunk* chunk)
 {
     assert(chunk != nullptr);
     m_free.push_back(chunk);

@@ -1,6 +1,8 @@
 #include "components/camera.hpp"
 #include "components/mesh.hpp"
+#include "components/orbit_control.hpp"
 #include "components/transform.hpp"
+#include "control/control_system.hpp"
 #include "core/engine.hpp"
 #include "core/node/node.hpp"
 #include "graphics/graphics_system.hpp"
@@ -37,6 +39,20 @@ public:
              RENDER_PIPELINE_PARAMETER_TYPE_CAMERA                                                  }
         });
     }
+
+private:
+    void render(rhi_render_command* command, render_data& data)
+    {
+        for (render_mesh& mesh : data.meshes)
+        {
+            command->set_vertex_buffers(mesh.vertex_buffers.data(), mesh.vertex_buffers.size());
+            command->set_index_buffer(mesh.index_buffer);
+            command->set_parameter(0, mesh.node);
+            command->set_parameter(1, mesh.material);
+            command->set_parameter(2, data.camera_parameter);
+            command->draw_indexed(0, 12, 0);
+        }
+    }
 };
 
 class hello_world : public engine_system
@@ -71,8 +87,8 @@ public:
 
         initialize_render();
 
-        m_test_object = std::make_unique<node>("test", engine::get_world());
-        auto [mesh_ptr, transform_ptr] = m_test_object->add_component<mesh, transform>();
+        m_object = std::make_unique<node>("test", engine::get_world());
+        auto [mesh_ptr, transform_ptr] = m_object->add_component<mesh, transform>();
         mesh_ptr->set_geometry(m_geometry);
         mesh_ptr->add_submesh(0, 0, 12, m_material);
 
@@ -81,7 +97,7 @@ public:
 
     virtual void shutdown()
     {
-        m_test_object = nullptr;
+        m_object = nullptr;
         m_camera = nullptr;
 
         m_render_graph = nullptr;
@@ -180,14 +196,14 @@ private:
         };
         m_geometry->add_attribute("color", color);
         std::vector<float2> uv = {
-            {1.0f, 0.0f},
-            {0.0f, 0.0f},
             {0.0f, 1.0f},
             {1.0f, 1.0f},
             {1.0f, 0.0f},
             {0.0f, 0.0f},
             {0.0f, 1.0f},
-            {1.0f, 1.0f}
+            {1.0f, 1.0f},
+            {1.0f, 0.0f},
+            {0.0f, 0.0f}
         };
         m_geometry->add_attribute("uv", uv);
         std::vector<std::uint32_t> indices = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
@@ -203,12 +219,16 @@ private:
         m_material->set("texture", m_texture, m_sampler);
 
         m_camera = std::make_unique<node>("main camera", engine::get_world());
-        auto [camera_ptr, transform_ptr] = m_camera->add_component<camera, transform>();
+        auto [camera_ptr, transform_ptr, orbit_control_ptr] =
+            m_camera->add_component<camera, transform, orbit_control>();
         camera_ptr->set_render_pass(main);
         camera_ptr->set_attachment(0, graphics.get_rhi()->get_back_buffer(), true);
         camera_ptr->resize(extent.width, extent.height);
 
-        transform_ptr->set_position(0.0f, 0.0f, -5.0f);
+        transform_ptr->set_position(0.0f, 2.0f, -5.0f);
+        // transform_ptr->lookat(float3{0.0f, 0.0f, 0.0f}, float3{0.0f, 1.0f, 0.0f});
+
+        orbit_control_ptr->r = 5.0f;
 
         resize(extent.width, extent.height);
     }
@@ -217,6 +237,7 @@ private:
 
     void tick(float delta)
     {
+        return;
         auto& window = engine::get_system<window_system>();
         auto rect = window.get_extent();
 
@@ -242,7 +263,7 @@ private:
 
         float4x4_simd mvp = matrix_simd::mul(matrix_simd::mul(m, v), p);
 
-        auto transform_ptr = m_test_object->get_component<transform>();
+        auto transform_ptr = m_object->get_component<transform>();
         transform_ptr->set_rotation(
             quaternion_simd::rotation_axis(simd::set(1.0f, 0.0f, 0.0f, 0.0f), m_rotate));
 
@@ -272,7 +293,7 @@ private:
     }
 
     std::unique_ptr<node> m_camera;
-    std::unique_ptr<node> m_test_object;
+    std::unique_ptr<node> m_object;
     geometry* m_geometry;
     material* m_material;
 
@@ -294,6 +315,7 @@ int main()
     engine::initialize("hello-world/config");
     engine::install<window_system>();
     engine::install<graphics_system>();
+    engine::install<control_system>();
     engine::install<sample::hello_world>();
 
     engine::get_system<window_system>().on_destroy().then(

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "graphics/render_graph/render_context.hpp"
-#include "graphics/rhi.hpp"
+#include "graphics/render_interface.hpp"
 
 namespace violet
 {

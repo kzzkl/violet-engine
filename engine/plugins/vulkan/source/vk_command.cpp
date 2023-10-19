@@ -79,9 +79,9 @@ void vk_command::set_viewport(const rhi_viewport& viewport)
 {
     VkViewport vp = {
         .x = viewport.x,
-        .y = viewport.y,
+        .y = viewport.height - viewport.y,
         .width = viewport.width,
-        .height = viewport.height,
+        .height = -viewport.height,
         .minDepth = viewport.min_depth,
         .maxDepth = viewport.max_depth};
     vkCmdSetViewport(m_command_buffer, 0, 1, &vp);

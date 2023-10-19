@@ -7,7 +7,7 @@ render_graph::render_graph(rhi_renderer* rhi) : m_context(rhi)
     m_context.add_parameter_layout(
         "violet mesh",
         {
-            {RHI_PARAMETER_TYPE_UNIFORM_BUFFER, sizeof(float4x4) * 3}
+            {RHI_PARAMETER_TYPE_UNIFORM_BUFFER, sizeof(float4x4)}
     });
     m_context.add_parameter_layout(
         "violet camera",

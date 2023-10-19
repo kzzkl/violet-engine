@@ -23,9 +23,9 @@ std::size_t d3d12_descriptor_heap::allocate(std::size_t size)
     return m_index_allocator.allocate(size);
 }
 
-void d3d12_descriptor_heap::deallocate(std::size_t begin, std::size_t size)
+void d3d12_descriptor_heap::free(std::size_t begin, std::size_t size)
 {
-    m_index_allocator.deallocate(begin, size);
+    m_index_allocator.free(begin, size);
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE d3d12_descriptor_heap::cpu_handle(std::size_t index) const

@@ -16,7 +16,7 @@ class archetype_chunk_allocator
 {
 public:
     archetype_chunk* allocate();
-    void deallocate(archetype_chunk* chunk);
+    void free(archetype_chunk* chunk);
 
 private:
     std::vector<archetype_chunk*> m_free;

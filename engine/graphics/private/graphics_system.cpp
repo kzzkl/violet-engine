@@ -102,11 +102,7 @@ void graphics_system::render()
         [](mesh& mesh, transform& transform)
         {
             // if (transform.get_update_count() != 0)
-            mesh.set_mvp(
-                transform.get_local_matrix(),
-                matrix::identity(),
-                transform.get_world_matrix());
-
+            mesh.set_model_matrix(transform.get_world_matrix());
             mesh.each_submesh(
                 [](const render_mesh& submesh, render_pipeline* pipeline)
                 {

@@ -234,7 +234,7 @@ private:
             remove_edge(wrapper.out.back());
 
         m_vertices[index] = nullptr;
-        deallocate_vertex(index);
+        free_vertex(index);
     }
 
     void remove_edge(index_type index)
@@ -248,7 +248,7 @@ private:
         to_in.erase(std::next(std::find(to_in.rbegin(), to_in.rend(), index)).base());
 
         m_edges[index] = nullptr;
-        deallocate_edge(index);
+        free_edge(index);
     }
 
     index_type allocate_vertex()
@@ -266,7 +266,7 @@ private:
         }
     }
 
-    void deallocate_vertex(index_type index) { m_free_vertices.push_back(index); }
+    void free_vertex(index_type index) { m_free_vertices.push_back(index); }
 
     index_type allocate_edge()
     {
@@ -283,7 +283,7 @@ private:
         }
     }
 
-    void deallocate_edge(index_type index) { m_free_edges.push_back(index); }
+    void free_edge(index_type index) { m_free_edges.push_back(index); }
 
     std::vector<std::unique_ptr<vertex_wrapper>> m_vertices;
     std::vector<std::unique_ptr<edge_wrapper>> m_edges;

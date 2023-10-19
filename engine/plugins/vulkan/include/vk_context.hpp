@@ -21,6 +21,7 @@ public:
     void next_frame() noexcept;
 
     VkDescriptorSet allocate_descriptor_set(VkDescriptorSetLayout layout);
+    void free_descriptor_set(VkDescriptorSet descriptor_set);
 
     vk_graphics_queue* get_graphics_queue() const noexcept { return m_graphics_queue.get(); }
     vk_present_queue* get_present_queue() const noexcept { return m_present_queue.get(); }

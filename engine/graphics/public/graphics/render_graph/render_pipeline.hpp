@@ -69,7 +69,7 @@ public:
     rhi_render_pipeline* get_interface() const noexcept { return m_interface; }
 
 private:
-    virtual void render(rhi_render_command* command, render_data& data);
+    virtual void render(rhi_render_command* command, render_data& data) = 0;
 
     std::string m_vertex_shader;
     std::string m_pixel_shader;

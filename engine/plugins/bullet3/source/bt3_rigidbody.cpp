@@ -2,23 +2,22 @@
 #include "bt3_shape.hpp"
 #include "bt3_world.hpp"
 
-namespace violet::physics::bullet3
+namespace violet::bt3
 {
 void bt3_motion_state::getWorldTransform(btTransform& centerOfMassWorldTrans) const
 {
-    centerOfMassWorldTrans.setFromOpenGLMatrix(&rigidbody->transform()[0][0]);
+    centerOfMassWorldTrans.setFromOpenGLMatrix(&rigidbody->get_transform()[0][0]);
 }
 
 void bt3_motion_state::setWorldTransform(const btTransform& centerOfMassWorldTrans)
 {
-    math::float4x4 world_matrix;
+    float4x4 world_matrix;
     centerOfMassWorldTrans.getOpenGLMatrix(&world_matrix[0][0]);
-    rigidbody->transform(world_matrix);
-
-    world->add_updated_rigidbody(rigidbody);
+    rigidbody->set_transform(world_matrix);
+    rigidbody->set_updated_flag(true);
 }
 
-bt3_rigidbody::bt3_rigidbody(const rigidbody_desc& desc) : m_transform(desc.initial_transform)
+bt3_rigidbody::bt3_rigidbody(const pei_rigidbody_desc& desc) : m_transform(desc.initial_transform)
 {
     m_motion_state = std::make_unique<bt3_motion_state>();
     m_motion_state->rigidbody = this;
@@ -44,7 +43,7 @@ bt3_rigidbody::bt3_rigidbody(const rigidbody_desc& desc) : m_transform(desc.init
 
     m_rigidbody = std::make_unique<btRigidBody>(info);
 
-    if (desc.type == rigidbody_type::KINEMATIC)
+    if (desc.type == PEI_RIGIDBODY_TYPE_KINEMATIC)
     {
         m_rigidbody->setCollisionFlags(
             m_rigidbody->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
@@ -58,49 +57,49 @@ bt3_rigidbody::~bt3_rigidbody()
         m_motion_state->world->remove(this);
 }
 
-void bt3_rigidbody::mass(float mass)
+void bt3_rigidbody::set_mass(float mass)
 {
     btVector3 inertia;
     m_rigidbody->getCollisionShape()->calculateLocalInertia(mass, inertia);
     m_rigidbody->setMassProps(mass, inertia);
 }
 
-void bt3_rigidbody::damping(float linear_damping, float angular_damping)
+void bt3_rigidbody::set_damping(float linear_damping, float angular_damping)
 {
     m_rigidbody->setDamping(linear_damping, angular_damping);
 }
 
-void bt3_rigidbody::restitution(float restitution)
+void bt3_rigidbody::set_restitution(float restitution)
 {
     m_rigidbody->setRestitution(restitution);
 }
 
-void bt3_rigidbody::friction(float friction)
+void bt3_rigidbody::set_friction(float friction)
 {
     m_rigidbody->setFriction(friction);
 }
 
-void bt3_rigidbody::shape(collision_shape_interface* shape)
+void bt3_rigidbody::set_shape(pei_collision_shape* shape)
 {
     m_rigidbody->setCollisionShape(static_cast<bt3_shape*>(shape)->shape());
 }
 
-const math::float4x4& bt3_rigidbody::transform() const
+const float4x4& bt3_rigidbody::get_transform() const
 {
     return m_transform;
 }
 
-void bt3_rigidbody::transform(const math::float4x4& world)
+void bt3_rigidbody::set_transform(const float4x4& world)
 {
     m_transform = world;
 }
 
-void bt3_rigidbody::angular_velocity(const math::float3& velocity)
+void bt3_rigidbody::set_angular_velocity(const float3& velocity)
 {
     m_rigidbody->setAngularVelocity(convert_vector(velocity));
 }
 
-void bt3_rigidbody::linear_velocity(const math::float3& velocity)
+void bt3_rigidbody::set_linear_velocity(const float3& velocity)
 {
     m_rigidbody->setLinearVelocity(convert_vector(velocity));
 }
@@ -109,4 +108,4 @@ void bt3_rigidbody::clear_forces()
 {
     m_rigidbody->clearForces();
 }
-} // namespace violet::physics::bullet3
+} // namespace violet::bt3

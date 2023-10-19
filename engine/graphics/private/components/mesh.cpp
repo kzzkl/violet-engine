@@ -69,11 +69,9 @@ void mesh::add_submesh(
     m_submeshes.push_back(submesh);
 }
 
-void mesh::set_mvp(const float4x4& m, const float4x4& mv, const float4x4& mvp)
+void mesh::set_model_matrix(const float4x4& m)
 {
     m_parameter->set(0, &m, sizeof(float4x4), 0);
-    m_parameter->set(0, &mv, sizeof(float4x4), sizeof(float4x4));
-    m_parameter->set(0, &mvp, sizeof(float4x4), sizeof(float4x4) * 2);
 }
 
 mesh& mesh::operator=(mesh&& other) noexcept

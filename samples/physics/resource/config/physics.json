@@ -1,40 +1,8 @@
 {
-    "test_module": {
-        "title": "test app"
-    },
     "window": {
-        "title": "你好",
+        "title": "Physics",
         "width": 1300,
         "height": 800
     },
-    "graphics": {
-        "vertex_layout": {},
-        "pass_parameter_layout": {},
-        "pipeline": {},
-        "technique": [
-            {
-                "name": "",
-                "render_target": {
-                    "shadow_mapping": "texture",
-                    "render_target": "texture"
-                },
-                "pass": [
-                    {
-                        "name": "pass 1",
-                        "in": {
-                            "object": ""
-                        },
-                        "out": "shadow_mapping"
-                    },
-                    {
-                        "name": "pass 2",
-                        "in": [
-                            "object"
-                        ],
-                        "out": "render_target"
-                    }
-                ]
-            }
-        ]
-    }
+    "physics_demo": {}
 }

@@ -9,8 +9,8 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-    violet::window
-    violet::graphics)
+    violet::graphics
+    violet::control)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

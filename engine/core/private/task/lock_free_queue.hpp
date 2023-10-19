@@ -129,7 +129,7 @@ public:
      *
      * @param node
      */
-    void deallocate(node_handle node)
+    void free(node_handle node)
     {
         node_pointer old_head = m_free.load(std::memory_order_consume);
         node_type* new_head_ptr = pointer(node).pointer();
@@ -258,7 +258,7 @@ public:
                     node_handle new_head(old_head_next.pointer(), old_head.next_tag());
                     if (m_head.compare_exchange_weak(old_head, new_head))
                     {
-                        m_pool.deallocate(old_head);
+                        m_pool.free(old_head);
                         return true;
                     }
                 }

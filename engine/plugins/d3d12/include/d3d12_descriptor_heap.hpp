@@ -44,7 +44,7 @@ public:
         return reuslt;
     }
 
-    void deallocate(const value_type& begin, std::size_t size = 1)
+    void free(const value_type& begin, std::size_t size = 1)
     {
         value_type end = begin + size;
         for (index_range& free_range : m_free)
@@ -81,7 +81,7 @@ public:
         D3D12_DESCRIPTOR_HEAP_FLAGS flag = D3D12_DESCRIPTOR_HEAP_FLAG_NONE);
 
     std::size_t allocate(std::size_t size = 1);
-    void deallocate(std::size_t begin, std::size_t size = 1);
+    void free(std::size_t begin, std::size_t size = 1);
 
     inline D3D12DescriptorHeap* heap() const noexcept { return m_heap.Get(); }
 

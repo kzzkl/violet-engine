@@ -96,7 +96,9 @@ bool vk_context::initialize(const rhi_desc& desc)
     if (!initialize_instance(instance_desired_layers, instance_desired_extensions))
         return false;
 
-    std::vector<const char*> device_desired_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+    std::vector<const char*> device_desired_extensions = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_KHR_MAINTENANCE1_EXTENSION_NAME};
     if (!initialize_physical_device(device_desired_extensions))
         return false;
 
@@ -139,14 +141,20 @@ VkDescriptorSet vk_context::allocate_descriptor_set(VkDescriptorSetLayout layout
     return result;
 }
 
+void vk_context::free_descriptor_set(VkDescriptorSet descriptor_set)
+{
+    vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &descriptor_set);
+}
+
 bool vk_context::initialize_instance(
     const std::vector<const char*>& desired_layers,
     const std::vector<const char*>& desired_extensions)
 {
     std::uint32_t available_layer_count = 0;
-    vkEnumerateInstanceLayerProperties(&available_layer_count, nullptr);
+    throw_if_failed(vkEnumerateInstanceLayerProperties(&available_layer_count, nullptr));
     std::vector<VkLayerProperties> available_layers(available_layer_count);
-    vkEnumerateInstanceLayerProperties(&available_layer_count, available_layers.data());
+    throw_if_failed(
+        vkEnumerateInstanceLayerProperties(&available_layer_count, available_layers.data()));
 
     for (const char* layer : desired_layers)
     {
@@ -351,9 +359,10 @@ void vk_context::initialize_descriptor_pool()
 
     VkDescriptorPoolCreateInfo pool_info = {};
     pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    pool_info.poolSizeCount = static_cast<std::uint32_t>(pool_size.size());
-    pool_info.pPoolSizes = pool_size.data();
+    pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
     pool_info.maxSets = 512;
+    pool_info.pPoolSizes = pool_size.data();
+    pool_info.poolSizeCount = static_cast<std::uint32_t>(pool_size.size());
 
     throw_if_failed(vkCreateDescriptorPool(m_device, &pool_info, nullptr, &m_descriptor_pool));
 }

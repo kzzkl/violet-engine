@@ -21,6 +21,7 @@ class plugin
 {
 public:
     plugin();
+    plugin(const plugin&) = delete;
     virtual ~plugin();
 
     bool load(std::string_view path);
@@ -28,6 +29,8 @@ public:
 
     inline std::string_view get_name() const noexcept { return m_name; }
     inline plugin_version get_version() const noexcept { return m_version; }
+
+    plugin& operator=(const plugin&) = delete;
 
 protected:
     void* find_symbol(std::string_view name);

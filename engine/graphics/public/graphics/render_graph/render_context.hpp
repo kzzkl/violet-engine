@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/rhi.hpp"
+#include "graphics/render_interface.hpp"
 #include <map>
 #include <string>
 #include <vector>

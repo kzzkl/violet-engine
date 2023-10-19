@@ -72,7 +72,7 @@ d3d12_back_buffer::~d3d12_back_buffer()
         d3d12_context::cache().on_resource_destroy(this);
 
         auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        heap->deallocate(m_rtv_offset);
+        heap->free(m_rtv_offset);
     }
 }
 
@@ -153,13 +153,13 @@ d3d12_render_target::~d3d12_render_target()
     if (m_rtv_offset != INVALID_DESCRIPTOR_INDEX)
     {
         auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        heap->deallocate(m_rtv_offset);
+        heap->free(m_rtv_offset);
     }
 
     if (m_srv_offset != INVALID_DESCRIPTOR_INDEX)
     {
         auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        heap->deallocate(m_srv_offset);
+        heap->free(m_srv_offset);
     }
 }
 
@@ -241,7 +241,7 @@ d3d12_depth_stencil_buffer::~d3d12_depth_stencil_buffer()
     if (m_dsv_offset != INVALID_DESCRIPTOR_INDEX)
     {
         auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-        heap->deallocate(m_dsv_offset);
+        heap->free(m_dsv_offset);
     }
 }
 
@@ -299,7 +299,7 @@ d3d12_texture::~d3d12_texture()
     if (m_srv_offset != INVALID_DESCRIPTOR_INDEX)
     {
         auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        heap->deallocate(m_srv_offset);
+        heap->free(m_srv_offset);
     }
 }
 
@@ -343,7 +343,7 @@ d3d12_texture_cube::~d3d12_texture_cube()
     if (m_srv_offset != INVALID_DESCRIPTOR_INDEX)
     {
         auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        heap->deallocate(m_srv_offset);
+        heap->free(m_srv_offset);
     }
 }
 
@@ -428,13 +428,13 @@ d3d12_shadow_map::~d3d12_shadow_map()
     if (m_srv_offset != INVALID_DESCRIPTOR_INDEX)
     {
         auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        heap->deallocate(m_srv_offset);
+        heap->free(m_srv_offset);
     }
 
     if (m_dsv_offset != INVALID_DESCRIPTOR_INDEX)
     {
         auto heap = d3d12_context::resource()->heap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-        heap->deallocate(m_dsv_offset);
+        heap->free(m_dsv_offset);
     }
 }
 

@@ -108,10 +108,10 @@ void bvh_tree::remove(std::size_t proxy_id)
             m_root_index = sibling_index;
         }
 
-        deallocate_node(parent_index);
+        free_node(parent_index);
     }
 
-    deallocate_node(proxy_id);
+    free_node(proxy_id);
 }
 
 void bvh_tree::clear()
@@ -355,7 +355,7 @@ std::size_t bvh_tree::allocate_node()
     return result;
 }
 
-void bvh_tree::deallocate_node(std::size_t index)
+void bvh_tree::free_node(std::size_t index)
 {
     m_free_nodes.push(index);
 }

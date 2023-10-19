@@ -18,7 +18,6 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-    violet::ecs
     violet::core
     violet::window
     violet::graphics
@@ -27,29 +26,25 @@ target_link_libraries(${PROJECT_NAME}
     violet::physics
     violet::editor)
 
-include(${VIOLET_ROOT_DIR}/cmake/shader_compile.cmake)
-target_shader_compile(
-    "${PROJECT_NAME}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/color.hlsl"
-    "vert;frag"
-    "${VIOLET_SHADER_INCLUDE_DIR}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated")
-target_shader_compile(
-    "${PROJECT_NAME}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/edge.hlsl"
-    "vert;frag"
-    "${VIOLET_SHADER_INCLUDE_DIR}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated")
-target_shader_compile(
-    "${PROJECT_NAME}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/skin.hlsl"
-    "comp"
-    ""
-    "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated")
+include(${VIOLET_ROOT_DIR}/cmake/compile_shader.cmake)
+compile_shader_dxc(
+    TARGET ${PROJECT_NAME}
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resource/shaders/color.hlsl"
+    STAGES "vert" "frag")
+compile_shader_dxc(
+    TARGET ${PROJECT_NAME}
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resource/shaders/edge.hlsl"
+    STAGES "vert" "frag")
+compile_shader_dxc(
+    TARGET ${PROJECT_NAME}
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resource/shaders/skin.hlsl"
+    STAGES "vert" "frag")
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/config DESTINATION bin/mmd-viewer)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/mmd DESTINATION bin/mmd-viewer)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated/ DESTINATION bin/mmd-viewer/shader)
+file(GLOB SHADER_FILES "${CMAKE_BINARY_DIR}/shaders/${PROJECT_NAME}/*.spv")
+
+file(GLOB SHADER_FILES "${CMAKE_BINARY_DIR}/shaders/${PROJECT_NAME}/*.spv")
+install(FILES ${SHADER_FILES} DESTINATION bin/${PROJECT_NAME}/shaders)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/ DESTINATION bin/${PROJECT_NAME})
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

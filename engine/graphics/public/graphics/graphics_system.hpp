@@ -2,7 +2,7 @@
 
 #include "core/engine_system.hpp"
 #include "graphics/render_graph/render_graph.hpp"
-#include "graphics/rhi.hpp"
+#include "graphics/render_interface.hpp"
 
 namespace violet
 {

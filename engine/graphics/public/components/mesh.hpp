@@ -22,7 +22,7 @@ public:
         std::size_t index_count,
         material* material);
 
-    void set_mvp(const float4x4& m, const float4x4& mv, const float4x4& mvp);
+    void set_model_matrix(const float4x4& m);
 
     rhi_parameter* get_parameter() const noexcept { return m_parameter; }
 

@@ -26,6 +26,12 @@ public:
     void set_scale(float4_simd value) noexcept;
     const float3& get_scale() const noexcept;
 
+    float3 get_up() const noexcept;
+
+    void lookat(const float3& target, const float3& up) noexcept;
+
+    void set_world_matrix(const float4x4& matrix);
+
     const float4x4& get_local_matrix() const noexcept;
     const float4x4& get_world_matrix() const noexcept;
 

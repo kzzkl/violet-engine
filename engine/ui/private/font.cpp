@@ -1,5 +1,5 @@
 #include "ui/font.hpp"
-#include "graphics/rhi.hpp"
+#include "graphics/render_interface.hpp"
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -46,7 +46,8 @@ font::font(std::string_view font, std::size_t size)
 
     std::vector<std::uint8_t> pixels(tex_width * tex_height);
 
-    auto draw_bitmap = [&pixels, tex_width, tex_height](FT_Bitmap* bitmap, FT_Int x, FT_Int y) {
+    auto draw_bitmap = [&pixels, tex_width, tex_height](FT_Bitmap* bitmap, FT_Int x, FT_Int y)
+    {
         FT_Int x_max = x + bitmap->width;
         FT_Int y_max = y + bitmap->rows;
 

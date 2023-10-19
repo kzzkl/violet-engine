@@ -14,17 +14,6 @@ public:
     public:
         component_handle(node* node = nullptr) : m_version(-1), m_node(node), m_pointer(nullptr) {}
 
-        bool is_valid() const
-        {
-            if (m_node == nullptr)
-                return false;
-
-            auto [entity_version, component_version] =
-                m_node->get_world().get_version(m_node->m_entity);
-            return m_node->m_entity.entity_version == entity_version &&
-                   m_version == component_version;
-        }
-
         node* get_node() const noexcept { return m_node; }
 
         T* operator->() const
@@ -39,7 +28,7 @@ public:
             return *m_pointer;
         }
 
-        operator bool() const { return is_valid(); }
+        operator bool() const noexcept { return m_node != nullptr; }
 
     private:
         void sync_pointer() const

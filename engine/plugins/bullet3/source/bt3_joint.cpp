@@ -1,9 +1,9 @@
 #include "bt3_joint.hpp"
 #include "bt3_rigidbody.hpp"
 
-namespace violet::physics::bullet3
+namespace violet::bt3
 {
-bt3_joint::bt3_joint(const joint_desc& desc)
+bt3_joint::bt3_joint(const pei_joint_desc& desc)
 {
     btMatrix3x3 rotate_a;
     rotate_a.setRotation(convert_quaternion(desc.relative_rotation_a));
@@ -21,8 +21,8 @@ bt3_joint::bt3_joint(const joint_desc& desc)
     frame_b.setOrigin(convert_vector(desc.relative_position_b));
     frame_b.setBasis(rotate_b);
 
-    btRigidBody* rigidbody_a = static_cast<bt3_rigidbody*>(desc.rigidbody_a)->rigidbody();
-    btRigidBody* rigidbody_b = static_cast<bt3_rigidbody*>(desc.rigidbody_b)->rigidbody();
+    btRigidBody* rigidbody_a = static_cast<bt3_rigidbody*>(desc.rigidbody_a)->get_rigidbody();
+    btRigidBody* rigidbody_b = static_cast<bt3_rigidbody*>(desc.rigidbody_b)->get_rigidbody();
 
     m_constraint = std::make_unique<btGeneric6DofSpringConstraint>(
         *rigidbody_a,
@@ -43,33 +43,33 @@ bt3_joint::bt3_joint(const joint_desc& desc)
     }
 }
 
-void bt3_joint::min_linear(const math::float3& linear)
+void bt3_joint::set_min_linear(const float3& linear)
 {
     m_constraint->setLinearLowerLimit(convert_vector(linear));
 }
 
-void bt3_joint::max_linear(const math::float3& linear)
+void bt3_joint::set_max_linear(const float3& linear)
 {
     m_constraint->setLinearUpperLimit(convert_vector(linear));
 }
 
-void bt3_joint::min_angular(const math::float3& angular)
+void bt3_joint::set_min_angular(const float3& angular)
 {
     m_constraint->setAngularLowerLimit(convert_vector(angular));
 }
 
-void bt3_joint::max_angular(const math::float3& angular)
+void bt3_joint::set_max_angular(const float3& angular)
 {
     m_constraint->setAngularUpperLimit(convert_vector(angular));
 }
 
-void bt3_joint::spring_enable(std::size_t i, bool enable)
+void bt3_joint::set_spring_enable(std::size_t i, bool enable)
 {
     m_constraint->enableSpring(i, enable);
 }
 
-void bt3_joint::stiffness(std::size_t i, float stiffness)
+void bt3_joint::set_stiffness(std::size_t i, float stiffness)
 {
     m_constraint->setStiffness(i, stiffness);
 }
-} // namespace violet::physics::bullet3
+} // namespace violet::bt3

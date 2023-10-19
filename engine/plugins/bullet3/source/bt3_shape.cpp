@@ -1,19 +1,19 @@
 #include "bt3_shape.hpp"
 
-namespace violet::physics::bullet3
+namespace violet::bt3
 {
-bt3_shape::bt3_shape(const collision_shape_desc& desc)
+bt3_shape::bt3_shape(const pei_collision_shape_desc& desc)
 {
     switch (desc.type)
     {
-    case collision_shape_type::BOX:
+    case PEI_COLLISION_SHAPE_TYPE_BOX:
         m_shape = std::make_unique<btBoxShape>(
             btVector3(desc.box.length * 0.5f, desc.box.height * 0.5f, desc.box.width * 0.5f));
         break;
-    case collision_shape_type::SPHERE:
+    case PEI_COLLISION_SHAPE_TYPE_SPHERE:
         m_shape = std::make_unique<btSphereShape>(desc.sphere.radius);
         break;
-    case collision_shape_type::CAPSULE:
+    case PEI_COLLISION_SHAPE_TYPE_CAPSULE:
         if (desc.capsule.height < 0.000001f)
             m_shape = std::make_unique<btSphereShape>(desc.capsule.radius);
         else
@@ -25,8 +25,8 @@ bt3_shape::bt3_shape(const collision_shape_desc& desc)
 }
 
 bt3_shape::bt3_shape(
-    const collision_shape_interface* const* child,
-    const math::float4x4* offset,
+    const pei_collision_shape* const* child,
+    const float4x4* offset,
     std::size_t size)
 {
     auto shape = std::make_unique<btCompoundShape>();
@@ -40,4 +40,4 @@ bt3_shape::bt3_shape(
 
     m_shape = std::move(shape);
 }
-} // namespace violet::physics::bullet3
+} // namespace violet::bt3

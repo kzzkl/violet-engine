@@ -1,5 +1,5 @@
 #include "render/ui_pipeline.hpp"
-#include "graphics/rhi.hpp"
+#include "graphics/render_interface.hpp"
 
 namespace violet::ui
 {

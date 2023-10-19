@@ -85,7 +85,7 @@ void archetype::remove(std::size_t index)
 
     if (m_size % m_entity_per_chunk == 0)
     {
-        m_chunk_allocator->deallocate(m_chunks.back());
+        m_chunk_allocator->free(m_chunks.back());
         m_chunks.pop_back();
     }
 }
@@ -96,7 +96,7 @@ void archetype::clear() noexcept
         destruct(i);
 
     for (archetype_chunk* chunk : m_chunks)
-        m_chunk_allocator->deallocate(chunk);
+        m_chunk_allocator->free(chunk);
     m_chunks.clear();
 
     m_size = 0;

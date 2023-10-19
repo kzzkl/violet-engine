@@ -69,7 +69,7 @@ private:
     bounding_volume_aabb union_box(const bounding_volume_aabb& a, const bounding_volume_aabb& b);
 
     std::size_t allocate_node();
-    void deallocate_node(std::size_t index);
+    void free_node(std::size_t index);
 
     std::size_t m_root_index;
 

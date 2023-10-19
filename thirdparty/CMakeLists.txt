@@ -16,7 +16,7 @@ set(BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
 set(BUILD_CPU_DEMOS OFF CACHE BOOL "" FORCE)
 set(BUILD_OPENGL3_DEMOS OFF CACHE BOOL "" FORCE)
 set(BUILD_OPENGL3_DEMOS OFF CACHE BOOL "" FORCE)
-# add_subdirectory(bullet3)
+add_subdirectory(bullet3)
 
 # stbimage
 add_library(stb INTERFACE)
