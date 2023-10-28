@@ -3,7 +3,7 @@
 
 namespace violet
 {
-basic_pipeline::basic_pipeline(render_context* context) : render_pipeline(context)
+basic_pipeline::basic_pipeline(graphics_context* context) : render_pipeline(context)
 {
 }
 
@@ -28,7 +28,7 @@ void basic_pipeline::render(rhi_render_command* command, render_data& data)
             command->set_parameter(1, mesh.material);
             current_material = mesh.material;
         }
-        command->draw_indexed(mesh.index_start, mesh.index_count, mesh.vertex_base);
+        command->draw_indexed(mesh.index_start, mesh.index_count, mesh.vertex_start);
     }
 }
 } // namespace violet

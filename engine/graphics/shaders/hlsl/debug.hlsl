@@ -1,11 +1,11 @@
-#include "violet_mvp.hlsl"
+#include "violet_camera.hlsl"
 
 ConstantBuffer<violet_camera> camera : register(b0, space0);
 
 struct vs_in
 {
-    float3 position : POSITION;
-    float3 color : COLOR;
+    [[vk::location(0)]] float3 position : POSITION;
+    [[vk::location(1)]] float3 color : COLOR;
 };
 
 struct vs_out
@@ -14,17 +14,17 @@ struct vs_out
     float3 color : COLOR;
 };
 
-vs_out vs_main(vs_in vin)
+vs_out vs_main(vs_in input)
 {
-    vs_out result;
+    vs_out output;
 
-    result.position = mul(float4(vin.position, 1.0f), camera.transform_vp);
-    result.color = vin.color;
+    output.position = mul(camera.view_projection, float4(input.position, 1.0f));
+    output.color = input.color;
 
-    return result;
+    return output;
 }
 
-float4 ps_main(vs_out pin) : SV_TARGET
+float4 ps_main(vs_out input) : SV_TARGET
 {
-    return float4(pin.color, 1.0f);
+    return float4(input.color, 1.0f);
 }

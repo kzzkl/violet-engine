@@ -17,7 +17,7 @@ class material;
 class material_layout : public render_node
 {
 public:
-    material_layout(render_context* context);
+    material_layout(graphics_context* context);
 
     void add_pipeline(render_pipeline* pipeline);
 

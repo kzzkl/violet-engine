@@ -8,12 +8,33 @@
 
 namespace violet
 {
+class mesh_component_info : public component_info_default<mesh>
+{
+public:
+    mesh_component_info(rhi_renderer* rhi, rhi_parameter_layout* mesh_parameter_layout)
+        : m_rhi(rhi),
+          m_mesh_parameter_layout(mesh_parameter_layout)
+    {
+    }
+
+    virtual void construct(void* target) override
+    {
+        new (target) mesh(m_rhi, m_mesh_parameter_layout);
+    }
+
+private:
+    rhi_renderer* m_rhi;
+    rhi_parameter_layout* m_mesh_parameter_layout;
+};
+
 graphics_system::graphics_system() : engine_system("graphics"), m_idle(false)
 {
 }
 
 graphics_system::~graphics_system()
 {
+    m_context = nullptr;
+    m_plugin->unload();
 }
 
 bool graphics_system::initialize(const dictionary& config)
@@ -32,6 +53,8 @@ bool graphics_system::initialize(const dictionary& config)
     m_plugin->load(config["plugin"]);
     m_plugin->get_rhi()->initialize(rhi_desc);
 
+    m_context = std::make_unique<graphics_context>(m_plugin->get_rhi());
+
     window.on_tick().then(
         [this]()
         {
@@ -40,13 +63,18 @@ bool graphics_system::initialize(const dictionary& config)
     window.on_resize().then(
         [this](std::uint32_t width, std::uint32_t height)
         {
-            get_rhi()->resize(width, height);
+            m_plugin->get_rhi()->resize(width, height);
         });
     engine::on_frame_end().then(
         [this]()
         {
             end_frame();
         });
+
+    engine::get_world().register_component<mesh, mesh_component_info>(
+        m_plugin->get_rhi(),
+        m_context->get_parameter_layout("violet mesh"));
+    engine::get_world().register_component<camera>();
 
     return true;
 }
@@ -60,15 +88,10 @@ void graphics_system::render(render_graph* graph)
     m_render_graphs.push_back(graph);
 }
 
-rhi_renderer* graphics_system::get_rhi() const
-{
-    return m_plugin->get_rhi();
-}
-
 void graphics_system::begin_frame()
 {
     if (!m_idle)
-        get_rhi()->begin_frame();
+        m_context->get_rhi()->begin_frame();
 }
 
 void graphics_system::end_frame()
@@ -87,7 +110,7 @@ void graphics_system::render()
         [this](camera& camera, transform& transform)
         {
             camera.set_view(matrix::inverse(transform.get_world_matrix()));
-            camera.set_back_buffer(get_rhi()->get_back_buffer());
+            camera.set_back_buffer(m_context->get_rhi()->get_back_buffer());
 
             render_pass* render_pass = camera.get_render_pass();
             render_pass->add_camera(
@@ -119,7 +142,9 @@ void graphics_system::render()
     }
     m_render_graphs.clear();
 
-    get_rhi()->present(render_finished_semaphores.data(), render_finished_semaphores.size());
-    get_rhi()->end_frame();
+    m_context->get_rhi()->present(
+        render_finished_semaphores.data(),
+        render_finished_semaphores.size());
+    m_context->get_rhi()->end_frame();
 }
 } // namespace violet

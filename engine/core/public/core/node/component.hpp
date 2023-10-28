@@ -38,7 +38,13 @@ class component_info_default : public component_info
 public:
     component_info_default() : component_info(sizeof(Component), alignof(Component)) {}
 
-    virtual void construct(void* target) override { new (target) Component(); }
+    virtual void construct(void* target) override
+    {
+        if constexpr (std::is_constructible_v<Component>)
+            new (target) Component();
+        else
+            throw std::exception("");
+    }
     virtual void move_construct(void* source, void* target) override
     {
         new (target) Component(std::move(*static_cast<Component*>(source)));

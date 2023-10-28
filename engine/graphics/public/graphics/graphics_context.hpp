@@ -7,12 +7,12 @@
 
 namespace violet
 {
-class render_context
+class graphics_context
 {
 public:
-    render_context(rhi_renderer* rhi);
-    render_context(const render_context&) = delete;
-    ~render_context();
+    graphics_context(rhi_renderer* rhi);
+    graphics_context(const graphics_context&) = delete;
+    ~graphics_context();
 
     rhi_parameter_layout* add_parameter_layout(
         std::string_view name,
@@ -21,7 +21,7 @@ public:
 
     rhi_renderer* get_rhi() const noexcept { return m_rhi; }
 
-    render_context& operator=(const render_context&) = delete;
+    graphics_context& operator=(const graphics_context&) = delete;
 
 private:
     rhi_renderer* m_rhi;

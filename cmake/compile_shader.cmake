@@ -4,7 +4,7 @@ function(compile_shader_dxc)
     set(DXC_WORKING_DIRECTORY "${VIOLET_THIRD_PARTY_DIR}/dxc")
 
     set(oneValueArgs TARGET SOURCE)
-    set(multiValueArgs STAGES INCLUDE_DIRS)
+    set(multiValueArgs STAGES INCLUDES)
     cmake_parse_arguments(COMPILE_SHADER "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGV})
 
     set(OUTPUT_DIR ${CMAKE_BINARY_DIR}/shaders/${COMPILE_SHADER_TARGET})
@@ -36,7 +36,7 @@ function(compile_shader_dxc)
             set(COMMAND_LINE ${COMMAND_LINE_RELEASE})
         endif()
 
-        foreach(INCLUDE ${COMPILE_SHADER_INCLUDE_DIRS})
+        foreach(INCLUDE ${COMPILE_SHADER_INCLUDES})
             set(COMMAND_LINE ${COMMAND_LINE} -I${INCLUDE})
         endforeach()
 
@@ -56,7 +56,7 @@ function(compile_shader_glslang)
     set(GLSLANG_WORKING_DIRECTORY "${VIOLET_THIRD_PARTY_DIR}/glslang")
 
     set(oneValueArgs TARGET SOURCE)
-    set(multiValueArgs STAGES INCLUDE_DIRS)
+    set(multiValueArgs STAGES INCLUDES)
     cmake_parse_arguments(COMPILE_SHADER "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGV})
 
     set(OUTPUT_DIR ${CMAKE_BINARY_DIR}/shaders/${COMPILE_SHADER_TARGET})
@@ -76,7 +76,7 @@ function(compile_shader_glslang)
         endif()
 
         set(COMMAND_LINE ${GLSLANG_PATH} -D --client vulkan100 -S ${STAGE} -e ${ENTRY_POINT} ${COMPILE_SHADER_SOURCE} -o ${OUTPUT_NAME} --auto-sampled-textures)
-        foreach(INCLUDE ${COMPILE_SHADER_INCLUDE_DIRS})
+        foreach(INCLUDE ${COMPILE_SHADER_INCLUDES})
             set(COMMAND_LINE ${COMMAND_LINE} -I${INCLUDE})
         endforeach()
 

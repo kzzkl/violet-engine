@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/render_graph/geometry.hpp"
+#include "graphics/geometry.hpp"
 #include "graphics/render_graph/material.hpp"
 #include <memory>
 #include <vector>
@@ -10,17 +10,27 @@ namespace violet
 class mesh
 {
 public:
-    mesh();
+    mesh(rhi_renderer* rhi, rhi_parameter_layout* mesh_parameter_layout);
     mesh(const mesh&) = delete;
     mesh(mesh&& other) noexcept;
     ~mesh();
 
     void set_geometry(geometry* geometry);
+    geometry* get_geometry() const noexcept { return m_geometry; }
+
     void add_submesh(
-        std::size_t vertex_base,
+        std::size_t vertex_start,
+        std::size_t vertex_count,
         std::size_t index_start,
         std::size_t index_count,
         material* material);
+
+    void set_submesh(
+        std::size_t index,
+        std::size_t vertex_start,
+        std::size_t vertex_count,
+        std::size_t index_start,
+        std::size_t index_count);
 
     void set_model_matrix(const float4x4& m);
 
@@ -42,11 +52,7 @@ public:
 private:
     struct submesh
     {
-        std::size_t vertex_base;
-        std::size_t index_start;
-        std::size_t index_count;
         material* material;
-
         std::vector<render_mesh> render_meshes;
         std::vector<render_pipeline*> render_pipelines;
     };
@@ -55,5 +61,7 @@ private:
 
     geometry* m_geometry;
     std::vector<submesh> m_submeshes;
+
+    rhi_renderer* m_rhi;
 };
 } // namespace violet

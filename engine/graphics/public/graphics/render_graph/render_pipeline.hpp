@@ -12,7 +12,8 @@ struct render_mesh
     std::vector<rhi_resource*> vertex_buffers;
     rhi_resource* index_buffer;
 
-    std::size_t vertex_base;
+    std::size_t vertex_start;
+    std::size_t vertex_count;
     std::size_t index_start;
     std::size_t index_count;
 
@@ -42,7 +43,7 @@ public:
     using parameter_layouts = std::vector<std::pair<rhi_parameter_layout*, render_parameter_type>>;
 
 public:
-    render_pipeline(render_context* context);
+    render_pipeline(graphics_context* context);
     virtual ~render_pipeline();
 
     void set_shader(std::string_view vertex, std::string_view pixel);

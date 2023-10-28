@@ -3,7 +3,7 @@
 
 namespace violet
 {
-render_pipeline::render_pipeline(render_context* context) : render_node(context)
+render_pipeline::render_pipeline(graphics_context* context) : render_node(context)
 {
     m_desc.blend.enable = false;
     m_desc.samples = RHI_SAMPLE_COUNT_1;

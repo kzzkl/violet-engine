@@ -11,11 +11,8 @@ public:
     bt3_joint(const pei_joint_desc& desc);
     virtual ~bt3_joint() = default;
 
-    virtual void set_min_linear(const float3& linear) override;
-    virtual void set_max_linear(const float3& linear) override;
-
-    virtual void set_min_angular(const float3& angular) override;
-    virtual void set_max_angular(const float3& angular) override;
+    virtual void set_linear(const float3& min, const float3& max) override;
+    virtual void set_angular(const float3& min, const float3& max) override;
 
     virtual void set_spring_enable(std::size_t i, bool enable) override;
     virtual void set_stiffness(std::size_t i, float stiffness) override;

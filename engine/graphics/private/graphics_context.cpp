@@ -1,19 +1,29 @@
-#include "graphics/render_graph/render_context.hpp"
+#include "graphics/graphics_context.hpp"
 #include <cassert>
 
 namespace violet
 {
-render_context::render_context(rhi_renderer* rhi) : m_rhi(rhi)
+graphics_context::graphics_context(rhi_renderer* rhi) : m_rhi(rhi)
 {
+    add_parameter_layout(
+        "violet mesh",
+        {
+            {RHI_PARAMETER_TYPE_UNIFORM_BUFFER, sizeof(float4x4)}
+    });
+    add_parameter_layout(
+        "violet camera",
+        {
+            {RHI_PARAMETER_TYPE_UNIFORM_BUFFER, sizeof(float4x4) * 3}
+    });
 }
 
-render_context::~render_context()
+graphics_context::~graphics_context()
 {
     for (auto& [name, layout] : m_parameter_layouts)
         m_rhi->destroy_parameter_layout(layout);
 }
 
-rhi_parameter_layout* render_context::add_parameter_layout(
+rhi_parameter_layout* graphics_context::add_parameter_layout(
     std::string_view name,
     const std::vector<std::pair<rhi_parameter_type, std::size_t>>& layout)
 {
@@ -32,7 +42,7 @@ rhi_parameter_layout* render_context::add_parameter_layout(
     return interface;
 }
 
-rhi_parameter_layout* render_context::get_parameter_layout(std::string_view name) const
+rhi_parameter_layout* graphics_context::get_parameter_layout(std::string_view name) const
 {
     auto iter = m_parameter_layouts.find(name.data());
     if (iter == m_parameter_layouts.end())

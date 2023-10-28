@@ -1,9 +1,10 @@
 #include "components/rigidbody.hpp"
+#include "physics/physics_world.hpp"
 
 namespace violet
 {
 rigidbody::rigidbody()
-    : m_collision_group(0),
+    : m_collision_group(1),
       m_collision_mask(0xFFFFFFFF),
       m_rigidbody(nullptr),
       m_pei(nullptr)
@@ -83,6 +84,12 @@ const float4x4& rigidbody::get_transform() const
     return m_rigidbody->get_transform();
 }
 
+joint* rigidbody::add_joint()
+{
+    m_joints.push_back(std::make_unique<joint>());
+    return m_joints.back().get();
+}
+
 void rigidbody::set_updated_flag(bool flag)
 {
     m_rigidbody->set_updated_flag(flag);
@@ -112,5 +119,39 @@ rigidbody& rigidbody::operator=(rigidbody&& other)
     other.m_pei = nullptr;
 
     return *this;
+}
+
+void joint::set_target(
+    component_ptr<rigidbody> target,
+    const float3& position,
+    const float4& rotation)
+{
+    m_target = target;
+}
+
+void joint::set_linear(const float3& min, const float3& max)
+{
+    m_desc.min_linear = min;
+    m_desc.max_linear = max;
+    if (m_joint)
+        m_joint->set_linear(min, max);
+}
+
+void joint::set_angular(const float3& min, const float3& max)
+{
+    m_desc.min_angular = min;
+    m_desc.max_angular = max;
+    if (m_joint)
+        m_joint->set_angular(min, max);
+}
+
+void joint::set_spring_enable(std::size_t index, bool enable)
+{
+    m_desc.spring_enable[index] = enable;
+}
+
+void joint::set_stiffness(std::size_t index, float stiffness)
+{
+    m_desc.stiffness[index] = stiffness;
 }
 } // namespace violet

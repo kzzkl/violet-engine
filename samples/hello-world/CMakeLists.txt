@@ -21,7 +21,8 @@ include(${VIOLET_ROOT_DIR}/cmake/compile_shader.cmake)
 compile_shader_dxc(
     TARGET ${PROJECT_NAME}
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resource/shaders/base.hlsl"
-    STAGES "vert" "frag")
+    STAGES "vert" "frag"
+    INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
 
 file(GLOB SHADER_FILES "${CMAKE_BINARY_DIR}/shaders/${PROJECT_NAME}/*.spv")
 install(FILES ${SHADER_FILES} DESTINATION bin/${PROJECT_NAME}/shaders)

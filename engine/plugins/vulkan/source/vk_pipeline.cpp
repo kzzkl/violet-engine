@@ -371,8 +371,18 @@ vk_render_pipeline::vk_render_pipeline(
 
     VkPipelineInputAssemblyStateCreateInfo input_assembly_state_info = {};
     input_assembly_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    input_assembly_state_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     input_assembly_state_info.primitiveRestartEnable = VK_FALSE;
+    switch (desc.primitive_topology)
+    {
+    case RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
+        input_assembly_state_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        break;
+    case RHI_PRIMITIVE_TOPOLOGY_LINE_LIST:
+        input_assembly_state_info.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+        break;
+    default:
+        throw vk_exception("Invalid primitive topology.");
+    }
 
     VkViewport viewport = {};
     viewport.x = 0.0f;

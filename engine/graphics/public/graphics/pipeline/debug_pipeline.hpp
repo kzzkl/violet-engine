@@ -4,10 +4,10 @@
 
 namespace violet
 {
-class basic_pipeline : public render_pipeline
+class debug_pipeline : public render_pipeline
 {
 public:
-    basic_pipeline(graphics_context* context);
+    debug_pipeline(graphics_context* context);
 
 private:
     virtual void render(rhi_render_command* command, render_data& data);

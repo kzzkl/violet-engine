@@ -2,7 +2,7 @@
 
 namespace violet
 {
-material_layout::material_layout(render_context* context) : render_node(context)
+material_layout::material_layout(graphics_context* context) : render_node(context)
 {
 }
 

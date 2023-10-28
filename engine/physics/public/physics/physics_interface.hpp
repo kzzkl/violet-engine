@@ -89,13 +89,13 @@ public:
 
 struct pei_joint_desc
 {
-    pei_rigidbody* rigidbody_a;
-    pei_rigidbody* rigidbody_b;
+    pei_rigidbody* source;
+    float3 source_position;
+    float4 source_rotation;
 
-    float3 relative_position_a;
-    float4 relative_rotation_a;
-    float3 relative_position_b;
-    float4 relative_rotation_b;
+    pei_rigidbody* target;
+    float3 target_position;
+    float4 target_rotation;
 
     float3 min_linear;
     float3 max_linear;
@@ -112,14 +112,11 @@ class pei_joint
 public:
     virtual ~pei_joint() = default;
 
-    virtual void set_min_linear(const float3& linear) = 0;
-    virtual void set_max_linear(const float3& linear) = 0;
+    virtual void set_linear(const float3& min, const float3& max) = 0;
+    virtual void set_angular(const float3& min, const float3& max) = 0;
 
-    virtual void set_min_angular(const float3& angular) = 0;
-    virtual void set_max_angular(const float3& angular) = 0;
-
-    virtual void set_spring_enable(std::size_t i, bool enable) = 0;
-    virtual void set_stiffness(std::size_t i, float stiffness) = 0;
+    virtual void set_spring_enable(std::size_t index, bool enable) = 0;
+    virtual void set_stiffness(std::size_t index, float stiffness) = 0;
 };
 
 class pei_debug_draw

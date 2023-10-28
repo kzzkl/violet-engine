@@ -21,6 +21,8 @@ bool scene_system::initialize(const dictionary& config)
                 });
         });
 
+    engine::get_world().register_component<transform>();
+
     return true;
 }
 } // namespace violet

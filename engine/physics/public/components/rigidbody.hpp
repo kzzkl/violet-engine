@@ -1,9 +1,11 @@
 #pragma once
 
+#include "core/node/node.hpp"
 #include "physics/physics_interface.hpp"
 
 namespace violet
 {
+class joint;
 class rigidbody
 {
 public:
@@ -28,6 +30,8 @@ public:
     void set_transform(const float4x4& transform);
     const float4x4& get_transform() const;
 
+    joint* add_joint();
+
     void set_updated_flag(bool flag);
     bool get_updated_flag() const;
 
@@ -42,6 +46,32 @@ private:
 
     pei_rigidbody_desc m_desc;
     pei_rigidbody* m_rigidbody;
+
+    std::vector<std::unique_ptr<joint>> m_joints;
+
     pei_plugin* m_pei;
+};
+
+class joint
+{
+public:
+    void set_target(
+        component_ptr<rigidbody> target,
+        const float3& position,
+        const float4& rotation);
+
+    void set_linear(const float3& min, const float3& max);
+    void set_angular(const float3& min, const float3& max);
+
+    void set_spring_enable(std::size_t index, bool enable);
+    void set_stiffness(std::size_t index, float stiffness);
+
+private:
+    friend class physics_world;
+
+    component_ptr<rigidbody> m_target;
+
+    pei_joint_desc m_desc;
+    pei_joint* m_joint;
 };
 } // namespace violet

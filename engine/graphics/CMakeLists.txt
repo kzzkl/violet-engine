@@ -5,13 +5,14 @@ add_library(${PROJECT_NAME} STATIC
     ./private/components/mesh.cpp
     # ./private/material/basic_material.cpp
     ./private/pipeline/basic_pipeline.cpp
-    ./private/render_graph/geometry.cpp
+    ./private/pipeline/debug_pipeline.cpp
     ./private/render_graph/material.cpp
-    ./private/render_graph/render_context.cpp
     ./private/render_graph/render_graph.cpp
     ./private/render_graph/render_node.cpp
     ./private/render_graph/render_pass.cpp
     ./private/render_graph/render_pipeline.cpp
+    ./private/geometry.cpp
+    ./private/graphics_context.cpp
     ./private/graphics_system.cpp
     ./private/rhi_plugin.cpp)
 add_library(violet::graphics ALIAS ${PROJECT_NAME})
@@ -33,3 +34,13 @@ install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)
+
+include(${VIOLET_ROOT_DIR}/cmake/compile_shader.cmake)
+compile_shader_dxc(
+    TARGET ${PROJECT_NAME}
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/hlsl/debug.hlsl"
+    STAGES "vert" "frag"
+    INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
+
+file(GLOB SHADER_FILES "${CMAKE_BINARY_DIR}/shaders/${PROJECT_NAME}/*.spv")
+install(FILES ${SHADER_FILES} DESTINATION bin/engine/shaders)

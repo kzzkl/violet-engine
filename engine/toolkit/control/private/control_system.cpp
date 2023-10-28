@@ -19,6 +19,8 @@ bool control_system::initialize(const dictionary& config)
             tick(delta);
         });
 
+    engine::get_world().register_component<orbit_control>();
+
     return true;
 }
 

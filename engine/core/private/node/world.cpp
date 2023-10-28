@@ -6,6 +6,9 @@ namespace violet
 world::world() : m_view_version(0)
 {
     m_archetype_chunk_allocator = std::make_unique<archetype_chunk_allocator>();
+
+    register_component<node*>();
+    register_component<entity_record>();
 }
 
 world::~world()

@@ -16,7 +16,7 @@ namespace violet::sample
 class color_pipeline : public render_pipeline
 {
 public:
-    color_pipeline(render_context* context) : render_pipeline(context)
+    color_pipeline(graphics_context* context) : render_pipeline(context)
     {
         set_shader("hello-world/shaders/base.vert.spv", "hello-world/shaders/base.frag.spv");
         set_vertex_attributes({
@@ -89,8 +89,8 @@ public:
 
         m_object = std::make_unique<node>("test", engine::get_world());
         auto [mesh_ptr, transform_ptr] = m_object->add_component<mesh, transform>();
-        mesh_ptr->set_geometry(m_geometry);
-        mesh_ptr->add_submesh(0, 0, 12, m_material);
+        mesh_ptr->set_geometry(m_geometry.get());
+        mesh_ptr->add_submesh(0, 0, 0, 12, m_material);
 
         return true;
     }
@@ -101,7 +101,7 @@ public:
         m_camera = nullptr;
 
         m_render_graph = nullptr;
-        rhi_renderer* rhi = engine::get_system<graphics_system>().get_rhi();
+        rhi_renderer* rhi = engine::get_system<graphics_system>().get_context()->get_rhi();
 
         m_geometry = nullptr;
 
@@ -118,12 +118,13 @@ private:
         auto& window = engine::get_system<window_system>();
         auto extent = window.get_extent();
 
-        m_render_graph = std::make_unique<render_graph>(graphics.get_rhi());
+        rhi_renderer* rhi = graphics.get_context()->get_rhi();
 
+        m_render_graph = std::make_unique<render_graph>(graphics.get_context());
         render_pass* main = m_render_graph->add_render_pass("main");
 
         render_attachment* output_attachment = main->add_attachment("output");
-        output_attachment->set_format(graphics.get_rhi()->get_back_buffer()->get_format());
+        output_attachment->set_format(rhi->get_back_buffer()->get_format());
         output_attachment->set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
         output_attachment->set_final_state(RHI_RESOURCE_STATE_PRESENT);
         output_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
@@ -162,7 +163,7 @@ private:
 
         m_render_graph->compile();
 
-        m_texture = graphics.get_rhi()->create_texture("hello-world/test.jpg");
+        m_texture = rhi->create_texture("hello-world/test.jpg");
 
         rhi_sampler_desc sampler_desc = {};
         sampler_desc.min_filter = RHI_FILTER_LINEAR;
@@ -170,9 +171,9 @@ private:
         sampler_desc.address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
         sampler_desc.address_mode_v = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
         sampler_desc.address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-        m_sampler = graphics.get_rhi()->create_sampler(sampler_desc);
+        m_sampler = rhi->create_sampler(sampler_desc);
 
-        m_geometry = m_render_graph->add_geometry("test model");
+        m_geometry = std::make_unique<geometry>(rhi);
         std::vector<float3> position = {
             {-0.5f, -0.5f, -0.2f},
             {0.5f,  -0.5f, -0.2f},
@@ -222,7 +223,7 @@ private:
         auto [camera_ptr, transform_ptr, orbit_control_ptr] =
             m_camera->add_component<camera, transform, orbit_control>();
         camera_ptr->set_render_pass(main);
-        camera_ptr->set_attachment(0, graphics.get_rhi()->get_back_buffer(), true);
+        camera_ptr->set_attachment(0, rhi->get_back_buffer(), true);
         camera_ptr->resize(extent.width, extent.height);
 
         transform_ptr->set_position(0.0f, 2.0f, -5.0f);
@@ -272,7 +273,7 @@ private:
 
     void resize(std::uint32_t width, std::uint32_t height)
     {
-        rhi_renderer* rhi = engine::get_system<graphics_system>().get_rhi();
+        rhi_renderer* rhi = engine::get_system<graphics_system>().get_context()->get_rhi();
         rhi->destroy_depth_stencil_buffer(m_depth_stencil);
 
         rhi_depth_stencil_buffer_desc depth_stencil_buffer_desc = {};
@@ -294,7 +295,7 @@ private:
 
     std::unique_ptr<node> m_camera;
     std::unique_ptr<node> m_object;
-    geometry* m_geometry;
+    std::unique_ptr<geometry> m_geometry;
     material* m_material;
 
     std::unique_ptr<render_graph> m_render_graph;

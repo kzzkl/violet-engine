@@ -145,6 +145,8 @@ void camera::resize(std::uint32_t width, std::uint32_t height)
     m_viewport.max_depth = 1.0f;
 
     update_projection();
+
+    m_framebuffer_cache.clear();
 }
 
 camera& camera::operator=(camera&& other) noexcept

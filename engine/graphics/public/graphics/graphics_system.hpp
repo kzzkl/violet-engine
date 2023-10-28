@@ -18,7 +18,7 @@ public:
 
     void render(render_graph* graph);
 
-    rhi_renderer* get_rhi() const;
+    graphics_context* get_context() const noexcept { return m_context.get(); }
 
 private:
     void begin_frame();
@@ -27,6 +27,7 @@ private:
 
     std::vector<render_graph*> m_render_graphs;
 
+    std::unique_ptr<graphics_context> m_context;
     std::unique_ptr<rhi_plugin> m_plugin;
 
     bool m_idle;

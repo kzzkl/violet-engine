@@ -44,7 +44,7 @@ void render_attachment::set_final_state(rhi_resource_state state) noexcept
     m_desc.final_state = state;
 }
 
-render_subpass::render_subpass(render_context* context) : render_node(context), m_desc{}, m_index(0)
+render_subpass::render_subpass(graphics_context* context) : render_node(context), m_desc{}, m_index(0)
 {
 }
 
@@ -98,7 +98,7 @@ void render_subpass::execute(rhi_render_command* command, rhi_parameter* camera_
     }
 }
 
-render_pass::render_pass(render_context* context) : render_node(context), m_interface(nullptr)
+render_pass::render_pass(graphics_context* context) : render_node(context), m_interface(nullptr)
 {
 }
 

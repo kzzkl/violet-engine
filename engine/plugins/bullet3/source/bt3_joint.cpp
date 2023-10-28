@@ -6,23 +6,23 @@ namespace violet::bt3
 bt3_joint::bt3_joint(const pei_joint_desc& desc)
 {
     btMatrix3x3 rotate_a;
-    rotate_a.setRotation(convert_quaternion(desc.relative_rotation_a));
+    rotate_a.setRotation(convert_quaternion(desc.source_rotation));
 
     btTransform frame_a;
     frame_a.setIdentity();
-    frame_a.setOrigin(convert_vector(desc.relative_position_a));
+    frame_a.setOrigin(convert_vector(desc.source_position));
     frame_a.setBasis(rotate_a);
 
     btMatrix3x3 rotate_b;
-    rotate_b.setRotation(convert_quaternion(desc.relative_rotation_b));
+    rotate_b.setRotation(convert_quaternion(desc.target_rotation));
 
     btTransform frame_b;
     frame_b.setIdentity();
-    frame_b.setOrigin(convert_vector(desc.relative_position_b));
+    frame_b.setOrigin(convert_vector(desc.target_position));
     frame_b.setBasis(rotate_b);
 
-    btRigidBody* rigidbody_a = static_cast<bt3_rigidbody*>(desc.rigidbody_a)->get_rigidbody();
-    btRigidBody* rigidbody_b = static_cast<bt3_rigidbody*>(desc.rigidbody_b)->get_rigidbody();
+    btRigidBody* rigidbody_a = static_cast<bt3_rigidbody*>(desc.source)->get_rigidbody();
+    btRigidBody* rigidbody_b = static_cast<bt3_rigidbody*>(desc.target)->get_rigidbody();
 
     m_constraint = std::make_unique<btGeneric6DofSpringConstraint>(
         *rigidbody_a,
@@ -43,24 +43,16 @@ bt3_joint::bt3_joint(const pei_joint_desc& desc)
     }
 }
 
-void bt3_joint::set_min_linear(const float3& linear)
+void bt3_joint::set_linear(const float3& min, const float3& max)
 {
-    m_constraint->setLinearLowerLimit(convert_vector(linear));
+    m_constraint->setLinearLowerLimit(convert_vector(min));
+    m_constraint->setLinearUpperLimit(convert_vector(max));
 }
 
-void bt3_joint::set_max_linear(const float3& linear)
+void bt3_joint::set_angular(const float3& min, const float3& max)
 {
-    m_constraint->setLinearUpperLimit(convert_vector(linear));
-}
-
-void bt3_joint::set_min_angular(const float3& angular)
-{
-    m_constraint->setAngularLowerLimit(convert_vector(angular));
-}
-
-void bt3_joint::set_max_angular(const float3& angular)
-{
-    m_constraint->setAngularUpperLimit(convert_vector(angular));
+    m_constraint->setAngularLowerLimit(convert_vector(min));
+    m_constraint->setAngularUpperLimit(convert_vector(max));
 }
 
 void bt3_joint::set_spring_enable(std::size_t i, bool enable)

@@ -33,7 +33,7 @@ private:
 class render_subpass : public render_node
 {
 public:
-    render_subpass(render_context* context);
+    render_subpass(graphics_context* context);
 
     void add_reference(
         render_attachment* attachment,
@@ -73,7 +73,7 @@ private:
 class render_pass : public render_node
 {
 public:
-    render_pass(render_context* context);
+    render_pass(graphics_context* context);
     virtual ~render_pass();
 
     render_attachment* add_attachment(std::string_view name);

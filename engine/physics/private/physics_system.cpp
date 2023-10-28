@@ -56,6 +56,8 @@ bool physics_system::initialize(const dictionary& config)
             simulation();
         });
 
+    engine::get_world().register_component<rigidbody>();
+
     return true;
 }
 

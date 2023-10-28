@@ -1,3 +1,6 @@
+#include "violet_mesh.hlsl"
+#include "violet_camera.hlsl"
+
 struct vs_in
 {
     [[vk::location(0)]] float3 position: POSITION;
@@ -12,26 +15,14 @@ struct vs_out
     float2 uv: UV;
 };
 
-struct violet_mesh
-{
-	float4x4 model;
-};
-
-cbuffer mesh : register(b0, space0) { violet_mesh mesh; }
+ConstantBuffer<violet_mesh> mesh : register(b0, space0);
 
 [[vk::combinedImageSampler]]
 Texture2D<float4> texture : register(t0, space1);
 [[vk::combinedImageSampler]]
 SamplerState texture_sampler : register(s0, space1);
 
-struct violet_camera
-{
-    float4x4 view;
-    float4x4 project;
-    float4x4 view_projection;
-};
-
-cbuffer camera : register(b0, space2) { violet_camera camera; }
+ConstantBuffer<violet_camera> camera : register(b0, space2);
 
 vs_out vs_main(vs_in input)
 {

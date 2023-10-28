@@ -2,7 +2,7 @@
 
 namespace violet
 {
-render_node::render_node(render_context* context) : m_context(context)
+render_node::render_node(graphics_context* context) : m_context(context)
 {
 }
 
