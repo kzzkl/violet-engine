@@ -112,6 +112,11 @@ void bt3_world::remove(pei_rigidbody* rigidbody)
     m_world->removeCollisionObject(static_cast<bt3_rigidbody*>(rigidbody)->get_rigidbody());
 }
 
+void bt3_world::remove(pei_joint* joint)
+{
+    m_world->removeConstraint(static_cast<bt3_joint*>(joint)->get_constraint());
+}
+
 void bt3_world::simulation(float time_step)
 {
     m_world->stepSimulation(time_step);

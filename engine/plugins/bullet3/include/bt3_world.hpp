@@ -19,6 +19,7 @@ public:
     virtual void add(pei_joint* joint) override;
 
     virtual void remove(pei_rigidbody* rigidbody) override;
+    virtual void remove(pei_joint* joint) override;
 
     virtual void simulation(float time_step) override;
 

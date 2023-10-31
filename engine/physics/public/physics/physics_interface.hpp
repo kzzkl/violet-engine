@@ -105,6 +105,7 @@ struct pei_joint_desc
 
     bool spring_enable[6];
     float stiffness[6];
+    float damping[6];
 };
 
 class pei_joint
@@ -117,6 +118,7 @@ public:
 
     virtual void set_spring_enable(std::size_t index, bool enable) = 0;
     virtual void set_stiffness(std::size_t index, float stiffness) = 0;
+    virtual void set_damping(std::size_t index, float damping) = 0;
 };
 
 class pei_debug_draw
@@ -145,6 +147,7 @@ public:
     virtual void add(pei_joint* joint) = 0;
 
     virtual void remove(pei_rigidbody* rigidbody) = 0;
+    virtual void remove(pei_joint* joint) = 0;
 
     virtual void simulation(float time_step) = 0;
 

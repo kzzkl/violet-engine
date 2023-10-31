@@ -1,6 +1,7 @@
 project(violet-core)
 
 set(CORE_SOURCE
+    ./private/engine_context.cpp
     ./private/engine_system.cpp
     ./private/engine.cpp
     ./private/plugin.cpp)

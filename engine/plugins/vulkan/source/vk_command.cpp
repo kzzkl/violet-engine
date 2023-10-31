@@ -145,7 +145,7 @@ void vk_command::draw_indexed(
     std::size_t index_count,
     std::size_t vertex_base)
 {
-    vkCmdDrawIndexed(m_command_buffer, index_count, 1, 0, 0, 0);
+    vkCmdDrawIndexed(m_command_buffer, index_count, 1, index_start, vertex_base, 0);
 }
 
 void vk_command::clear_render_target(rhi_resource* render_target, const float4& color)

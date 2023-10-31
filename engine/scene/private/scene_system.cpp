@@ -1,6 +1,5 @@
 #include "scene/scene_system.hpp"
 #include "components/transform.hpp"
-#include "core/engine.hpp"
 #include "core/node/node.hpp"
 
 namespace violet
@@ -11,17 +10,17 @@ scene_system::scene_system() : engine_system("scene")
 
 bool scene_system::initialize(const dictionary& config)
 {
-    engine::on_frame_end().then(
-        []()
+    on_frame_end().then(
+        [this]()
         {
-            view<transform> view(engine::get_world());
+            view<transform> view(get_world());
             view.each(
                 [](transform& transform)
                 {
                 });
         });
 
-    engine::get_world().register_component<transform>();
+    get_world().register_component<transform>();
 
     return true;
 }

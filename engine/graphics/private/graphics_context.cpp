@@ -25,16 +25,13 @@ graphics_context::~graphics_context()
 
 rhi_parameter_layout* graphics_context::add_parameter_layout(
     std::string_view name,
-    const std::vector<std::pair<rhi_parameter_type, std::size_t>>& layout)
+    const std::vector<rhi_parameter_layout_pair>& layout)
 {
-    assert(get_parameter_layout(name) == nullptr);
+    assert(m_parameter_layouts.find(name.data()) == m_parameter_layouts.end());
 
     rhi_parameter_layout_desc desc = {};
     for (std::size_t i = 0; i < layout.size(); ++i)
-    {
-        desc.parameters[i].type = layout[i].first;
-        desc.parameters[i].size = layout[i].second;
-    }
+        desc.parameters[i] = layout[i];
     desc.parameter_count = layout.size();
 
     rhi_parameter_layout* interface = m_rhi->create_parameter_layout(desc);
@@ -44,10 +41,6 @@ rhi_parameter_layout* graphics_context::add_parameter_layout(
 
 rhi_parameter_layout* graphics_context::get_parameter_layout(std::string_view name) const
 {
-    auto iter = m_parameter_layouts.find(name.data());
-    if (iter == m_parameter_layouts.end())
-        return nullptr;
-    else
-        return iter->second;
+    return m_parameter_layouts.at(name.data());
 }
 } // namespace violet

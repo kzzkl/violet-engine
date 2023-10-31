@@ -1,11 +1,12 @@
+#include "common/log.hpp"
 #include "components/camera.hpp"
 #include "components/mesh.hpp"
 #include "components/orbit_control.hpp"
 #include "components/transform.hpp"
 #include "control/control_system.hpp"
 #include "core/engine.hpp"
-#include "core/node/node.hpp"
 #include "graphics/graphics_system.hpp"
+#include "scene/scene_system.hpp"
 #include "window/window_system.hpp"
 #include <filesystem>
 #include <fstream>
@@ -70,7 +71,7 @@ public:
     {
         log::info(config["text"]);
 
-        auto& window = engine::get_system<window_system>();
+        auto& window = get_system<window_system>();
         window.on_resize().then(
             [this](std::uint32_t width, std::uint32_t height)
             {
@@ -78,16 +79,16 @@ public:
                 resize(width, height);
             });
 
-        engine::on_tick().then(
+        on_tick().then(
             [this](float delta)
             {
                 tick(delta);
-                engine::get_system<graphics_system>().render(m_render_graph.get());
+                get_system<graphics_system>().render(m_render_graph.get());
             });
 
         initialize_render();
 
-        m_object = std::make_unique<node>("test", engine::get_world());
+        m_object = std::make_unique<node>("test", get_world());
         auto [mesh_ptr, transform_ptr] = m_object->add_component<mesh, transform>();
         mesh_ptr->set_geometry(m_geometry.get());
         mesh_ptr->add_submesh(0, 0, 0, 12, m_material);
@@ -101,7 +102,7 @@ public:
         m_camera = nullptr;
 
         m_render_graph = nullptr;
-        rhi_renderer* rhi = engine::get_system<graphics_system>().get_context()->get_rhi();
+        rhi_renderer* rhi = get_system<graphics_system>().get_context()->get_rhi();
 
         m_geometry = nullptr;
 
@@ -114,8 +115,8 @@ public:
 private:
     void initialize_render()
     {
-        auto& graphics = engine::get_system<graphics_system>();
-        auto& window = engine::get_system<window_system>();
+        auto& graphics = get_system<graphics_system>();
+        auto& window = get_system<window_system>();
         auto extent = window.get_extent();
 
         rhi_renderer* rhi = graphics.get_context()->get_rhi();
@@ -150,8 +151,6 @@ private:
             RHI_RESOURCE_STATE_DEPTH_STENCIL);
 
         render_pipeline* pipeline = color_pass->add_pipeline<color_pipeline>("color");
-
-        m_pipeline = pipeline;
 
         main->add_dependency(
             nullptr,
@@ -219,7 +218,7 @@ private:
         m_material = material_layout->add_material("test");
         m_material->set("texture", m_texture, m_sampler);
 
-        m_camera = std::make_unique<node>("main camera", engine::get_world());
+        m_camera = std::make_unique<node>("main camera", get_world());
         auto [camera_ptr, transform_ptr, orbit_control_ptr] =
             m_camera->add_component<camera, transform, orbit_control>();
         camera_ptr->set_render_pass(main);
@@ -234,12 +233,10 @@ private:
         resize(extent.width, extent.height);
     }
 
-    render_pipeline* m_pipeline;
-
     void tick(float delta)
     {
         return;
-        auto& window = engine::get_system<window_system>();
+        auto& window = get_system<window_system>();
         auto rect = window.get_extent();
 
         if (rect.width == 0 || rect.height == 0)
@@ -273,7 +270,7 @@ private:
 
     void resize(std::uint32_t width, std::uint32_t height)
     {
-        rhi_renderer* rhi = engine::get_system<graphics_system>().get_context()->get_rhi();
+        rhi_renderer* rhi = get_system<graphics_system>().get_context()->get_rhi();
         rhi->destroy_depth_stencil_buffer(m_depth_stencil);
 
         rhi_depth_stencil_buffer_desc depth_stencil_buffer_desc = {};
@@ -313,20 +310,22 @@ int main()
 {
     using namespace violet;
 
-    engine::initialize("hello-world/config");
-    engine::install<window_system>();
-    engine::install<graphics_system>();
-    engine::install<control_system>();
-    engine::install<sample::hello_world>();
+    engine engine;
+    engine.initialize("hello-world/config");
+    engine.install<window_system>();
+    engine.install<scene_system>();
+    engine.install<graphics_system>();
+    engine.install<control_system>();
+    engine.install<sample::hello_world>();
 
-    engine::get_system<window_system>().on_destroy().then(
-        []()
+    engine.get_system<window_system>().on_destroy().then(
+        [&engine]()
         {
             log::info("Close window");
-            engine::exit();
+            engine.exit();
         });
 
-    engine::run();
+    engine.run();
 
     return 0;
 }

@@ -1,5 +1,6 @@
 #include "core/engine.hpp"
-#include "core/node/world.hpp"
+#include "common/log.hpp"
+#include "engine_context.hpp"
 #include <filesystem>
 #include <fstream>
 
@@ -29,16 +30,12 @@ engine::engine() : m_exit(true)
 {
 }
 
-engine& engine::instance()
+engine::~engine()
 {
-    static engine instance;
-    return instance;
 }
 
 void engine::initialize(std::string_view config_path)
 {
-    auto& singleton = instance();
-
     for (auto iter : std::filesystem::directory_iterator("engine/config"))
     {
         if (iter.is_regular_file() && iter.path().extension() == ".json")
@@ -51,7 +48,7 @@ void engine::initialize(std::string_view config_path)
             fin >> config;
 
             for (auto& [key, value] : config.items())
-                singleton.m_config[key].update(value, true);
+                m_config[key].update(value, true);
         }
     }
 
@@ -69,38 +66,26 @@ void engine::initialize(std::string_view config_path)
                 fin >> config;
 
                 for (auto& [key, value] : config.items())
-                    singleton.m_config[key].update(value, true);
+                    m_config[key].update(value, true);
             }
         }
     }
 
-    singleton.m_timer = std::make_unique<timer>();
-    singleton.m_world = std::make_unique<world>();
-    singleton.m_task_executor = std::make_unique<task_executor>();
+    m_context = std::make_unique<engine_context>();
 }
 
 void engine::run()
-{
-    instance().main_loop();
-}
-
-void engine::exit()
-{
-    instance().m_exit = true;
-}
-
-void engine::main_loop()
 {
     if (!m_exit)
         return;
     else
         m_exit = false;
 
-    m_task_executor->run();
+    task_executor& executor = m_context->get_task_executor();
+    executor.run();
 
     frame_rater<30> frame_rater;
-    timer& time = get_timer();
-
+    timer& time = m_context->get_timer();
     time.tick(timer::point::FRAME_START);
     time.tick(timer::point::FRAME_END);
 
@@ -108,60 +93,66 @@ void engine::main_loop()
     {
         time.tick(timer::point::FRAME_START);
 
-        m_task_executor->execute_sync(m_frame_begin);
-        m_task_executor->execute_sync(m_tick, time.get_frame_delta());
-        m_task_executor->execute_sync(m_frame_end);
+        executor.execute_sync(m_context->get_frame_begin_task());
+        executor.execute_sync(m_context->get_tick_task(), time.get_frame_delta());
+        executor.execute_sync(m_context->get_frame_end_task());
 
         time.tick(timer::point::FRAME_END);
 
         // frame_rater.sleep();
     }
-    m_task_executor->stop();
+    executor.stop();
 
     // shutdown
-    for (auto iter = m_install_sequence.rbegin(); iter != m_install_sequence.rend(); ++iter)
+    for (auto iter = m_systems.rbegin(); iter != m_systems.rend(); ++iter)
     {
-        log::info("System shutdown: {}.", m_systems[*iter]->get_name());
-        m_systems[*iter]->shutdown();
-        m_systems[*iter] = nullptr;
+        log::info("System shutdown: {}.", (*iter)->get_name());
+        (*iter)->shutdown();
+        (*iter) = nullptr;
     }
 }
 
-bool engine::has_system(std::string_view name)
+void engine::exit()
 {
-    auto& singleton = instance();
+    m_exit = true;
+}
 
-    for (auto& system : singleton.m_systems)
-    {
-        if (system->get_name() == name)
-            return true;
-    }
-
-    return false;
+void engine::install(std::size_t index, std::unique_ptr<engine_system>&& system)
+{
+    system->m_context = m_context.get();
+    system->initialize(m_config[system->get_name().data()]);
+    m_context->set_system(index, system.get());
+    log::info("System installed successfully: {}.", system->get_name());
+    m_systems.push_back(std::move(system));
 }
 
 void engine::uninstall(std::size_t index)
 {
-    assert(m_systems.size() > index);
-
-    if (m_systems[index] != nullptr)
+    engine_system* system = m_context->get_system(index);
+    if (system)
     {
-        m_systems[index]->shutdown();
-        m_systems[index] = nullptr;
+        system->shutdown();
+        m_context->set_system(index, nullptr);
 
-        for (auto iter = m_install_sequence.begin(); iter != m_install_sequence.end(); ++iter)
+        for (auto iter = m_systems.begin(); iter != m_systems.end(); ++iter)
         {
-            if (*iter == index)
+            if ((*iter).get() == system)
             {
-                m_install_sequence.erase(iter);
+                m_systems.erase(iter);
                 break;
             }
         }
-        log::info("System uninstalled successfully: {}.", m_systems[index]->get_name());
+
+        log::info("System uninstalled successfully: {}.", system->get_name());
     }
     else
     {
         log::warn("The system is not installed.");
     }
+}
+
+engine_system* engine::get_system(std::size_t index)
+{
+    return m_context->get_system(index);
 }
 } // namespace violet

@@ -14,7 +14,12 @@ void material_layout::add_pipeline(render_pipeline* pipeline)
 material* material_layout::add_material(std::string_view name)
 {
     m_materials[name.data()] = std::make_unique<material>(this);
-    return m_materials[name.data()].get();
+    return m_materials.at(name.data()).get();
+}
+
+material* material_layout::get_material(std::string_view name) const
+{
+    return m_materials.at(name.data()).get();
 }
 
 material::material(material_layout* layout) : m_layout(layout)

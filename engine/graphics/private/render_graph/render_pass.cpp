@@ -44,7 +44,10 @@ void render_attachment::set_final_state(rhi_resource_state state) noexcept
     m_desc.final_state = state;
 }
 
-render_subpass::render_subpass(graphics_context* context) : render_node(context), m_desc{}, m_index(0)
+render_subpass::render_subpass(graphics_context* context)
+    : render_node(context),
+      m_desc{},
+      m_index(0)
 {
 }
 
@@ -75,6 +78,16 @@ void render_subpass::add_reference(
     desc.resolve_index = resolve->get_index();
 
     ++m_desc.reference_count;
+}
+
+render_pipeline* render_subpass::get_pipeline(std::string_view name) const
+{
+    for (auto& pipeline : m_pipelines)
+    {
+        if (pipeline->get_name() == name)
+            return pipeline.get();
+    }
+    return nullptr;
 }
 
 bool render_subpass::compile(rhi_render_pass* render_pass, std::size_t index)
@@ -121,6 +134,17 @@ render_subpass* render_pass::add_subpass(std::string_view name)
     auto subpass = std::make_unique<render_subpass>(get_context());
     m_subpasses.push_back(std::move(subpass));
     return m_subpasses.back().get();
+}
+
+render_pipeline* render_pass::get_pipeline(std::string_view name) const
+{
+    for (auto& subpass : m_subpasses)
+    {
+        render_pipeline* pipeline = subpass->get_pipeline(name);
+        if (pipeline)
+            return pipeline;
+    }
+    return nullptr;
 }
 
 void render_pass::add_dependency(

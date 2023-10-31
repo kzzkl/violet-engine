@@ -49,11 +49,13 @@ public:
     T* add_pipeline(std::string_view name, Args&&... args)
     {
         auto pipeline = std::make_unique<T>(get_context(), std::forward<Args>(args)...);
+        pipeline->set_name(name);
         T* result = pipeline.get();
 
         m_pipelines.push_back(std::move(pipeline));
         return result;
     }
+    render_pipeline* get_pipeline(std::string_view name) const;
 
     bool compile(rhi_render_pass* render_pass, std::size_t index);
     void execute(rhi_render_command* command, rhi_parameter* camera_parameter);
@@ -78,6 +80,8 @@ public:
 
     render_attachment* add_attachment(std::string_view name);
     render_subpass* add_subpass(std::string_view name);
+
+    render_pipeline* get_pipeline(std::string_view name) const;
 
     void add_dependency(
         render_subpass* source,

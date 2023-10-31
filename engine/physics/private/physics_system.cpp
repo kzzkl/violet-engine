@@ -1,6 +1,5 @@
 #include "physics/physics_system.hpp"
 #include "components/transform.hpp"
-#include "core/engine.hpp"
 #include "physics_plugin.hpp"
 
 #if defined(VIOLET_PHYSICS_DEBUG_DRAW)
@@ -37,6 +36,17 @@ private:
 };
 #endif
 
+class rigidbody_component_info : public component_info_default<rigidbody>
+{
+public:
+    rigidbody_component_info(pei_plugin* pei) : m_pei(pei) {}
+
+    virtual void construct(void* target) override { new (target) rigidbody(m_pei); }
+
+private:
+    pei_plugin* m_pei;
+};
+
 physics_system::physics_system() : engine_system("physics")
 {
 }
@@ -50,13 +60,13 @@ bool physics_system::initialize(const dictionary& config)
     m_plugin = std::make_unique<physics_plugin>();
     m_plugin->load(config["plugin"]);
 
-    engine::on_frame_begin().then(
+    on_frame_begin().then(
         [this]()
         {
             simulation();
         });
 
-    engine::get_world().register_component<rigidbody>();
+    get_world().register_component<rigidbody, rigidbody_component_info>(m_plugin->get_pei());
 
     return true;
 }
@@ -77,7 +87,7 @@ pei_plugin* physics_system::get_pei() const noexcept
 
 void physics_system::simulation()
 {
-    float step = engine::get_timer().get_frame_delta();
+    float step = get_timer().get_frame_delta();
     for (physics_world* world : m_worlds)
         world->simulation(step);
 
@@ -89,7 +99,7 @@ void physics_system::simulation()
     };
     std::vector<updated_object> updated_objects;
 
-    view<transform, rigidbody> view(engine::get_world());
+    view<transform, rigidbody> view(get_world());
     view.each(
         [&updated_objects](transform& t, rigidbody& r)
         {

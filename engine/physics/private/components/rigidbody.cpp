@@ -3,11 +3,12 @@
 
 namespace violet
 {
-rigidbody::rigidbody()
+rigidbody::rigidbody(pei_plugin* pei) noexcept
     : m_collision_group(1),
       m_collision_mask(0xFFFFFFFF),
       m_rigidbody(nullptr),
-      m_pei(nullptr)
+      m_world(nullptr),
+      m_pei(pei)
 {
     m_desc.type = PEI_RIGIDBODY_TYPE_DYNAMIC;
     m_desc.shape = nullptr;
@@ -19,14 +20,38 @@ rigidbody::rigidbody()
     m_desc.initial_transform = matrix::identity();
 }
 
-rigidbody::rigidbody(rigidbody&& other) : rigidbody()
+rigidbody::rigidbody(rigidbody&& other) noexcept
 {
-    *this = std::move(other);
+    m_collision_group = other.m_collision_group;
+    m_collision_mask = other.m_collision_mask;
+
+    m_desc = other.m_desc;
+    m_rigidbody = other.m_rigidbody;
+    m_joints = std::move(other.m_joints);
+    m_world = other.m_world;
+    m_pei = other.m_pei;
+
+    other.m_rigidbody = nullptr;
+    other.m_world = nullptr;
+    other.m_pei = nullptr;
 }
 
 rigidbody::~rigidbody()
 {
-    if (m_pei && m_rigidbody)
+    for (auto& joint : m_joints)
+    {
+        if (joint->m_joint)
+        {
+            if (m_world)
+                m_world->remove(joint->m_joint);
+            m_pei->destroy_joint(joint->m_joint);
+        }
+    }
+
+    if (m_world)
+        m_world->remove(m_rigidbody);
+
+    if (m_rigidbody)
         m_pei->destroy_rigidbody(m_rigidbody);
 }
 
@@ -84,9 +109,11 @@ const float4x4& rigidbody::get_transform() const
     return m_rigidbody->get_transform();
 }
 
-joint* rigidbody::add_joint()
+joint* rigidbody::add_joint(const float3& position, const float4& rotation)
 {
     m_joints.push_back(std::make_unique<joint>());
+    m_joints.back()->m_desc.source_position = position;
+    m_joints.back()->m_desc.source_rotation = rotation;
     return m_joints.back().get();
 }
 
@@ -100,7 +127,38 @@ bool rigidbody::get_updated_flag() const
     return m_rigidbody->get_updated_flag();
 }
 
-rigidbody& rigidbody::operator=(rigidbody&& other)
+pei_rigidbody* rigidbody::get_rigidbody()
+{
+    if (m_rigidbody == nullptr)
+        m_rigidbody = m_pei->create_rigidbody(m_desc);
+
+    return m_rigidbody;
+}
+
+std::vector<pei_joint*> rigidbody::get_joints()
+{
+    std::vector<pei_joint*> joints;
+    for (auto& joint : m_joints)
+    {
+        if (joint->m_joint == nullptr)
+        {
+            joint->m_desc.source = get_rigidbody();
+            joint->m_desc.target = joint->m_target->get_rigidbody();
+            joint->m_joint = m_pei->create_joint(joint->m_desc);
+        }
+
+        joints.push_back(joint->m_joint);
+    }
+
+    return joints;
+}
+
+void rigidbody::set_world(pei_world* world)
+{
+    m_world = world;
+}
+
+rigidbody& rigidbody::operator=(rigidbody&& other) noexcept
 {
     if (this == &other)
         return *this;
@@ -113,12 +171,21 @@ rigidbody& rigidbody::operator=(rigidbody&& other)
 
     m_desc = other.m_desc;
     m_rigidbody = other.m_rigidbody;
+    m_joints = std::move(other.m_joints);
+    m_world = other.m_world;
     m_pei = other.m_pei;
 
     other.m_rigidbody = nullptr;
+    other.m_world = nullptr;
     other.m_pei = nullptr;
 
     return *this;
+}
+
+joint::joint() : m_desc{}, m_joint(nullptr)
+{
+    m_desc.source_rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+    m_desc.target_rotation = {0.0f, 0.0f, 0.0f, 1.0f};
 }
 
 void joint::set_target(
@@ -127,6 +194,8 @@ void joint::set_target(
     const float4& rotation)
 {
     m_target = target;
+    m_desc.target_position = position;
+    m_desc.target_rotation = rotation;
 }
 
 void joint::set_linear(const float3& min, const float3& max)
@@ -148,10 +217,21 @@ void joint::set_angular(const float3& min, const float3& max)
 void joint::set_spring_enable(std::size_t index, bool enable)
 {
     m_desc.spring_enable[index] = enable;
+    if (m_joint)
+        m_joint->set_spring_enable(index, enable);
 }
 
 void joint::set_stiffness(std::size_t index, float stiffness)
 {
     m_desc.stiffness[index] = stiffness;
+    if (m_joint)
+        m_joint->set_stiffness(index, stiffness);
+}
+
+void joint::set_damping(std::size_t index, float damping)
+{
+    m_desc.damping[index] = damping;
+    if (m_joint)
+        m_joint->set_damping(index, damping);
 }
 } // namespace violet

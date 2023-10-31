@@ -114,10 +114,6 @@ font::font(std::string_view font, std::size_t size)
 
 const glyph_data& font::glyph(std::uint32_t character) const
 {
-    auto iter = m_glyph.find(character);
-    if (iter != m_glyph.end())
-        return iter->second;
-    else
-        throw std::out_of_range("The font file does not contain this character.");
+    return m_glyph.at(character);
 }
 } // namespace violet::ui

@@ -237,6 +237,9 @@ struct rhi_parameter_layout_pair
 {
     rhi_parameter_type type;
     std::size_t size = 0;
+
+    bool vertex_shader = true;
+    bool pixel_shader = true;
 };
 
 struct rhi_parameter_layout_desc

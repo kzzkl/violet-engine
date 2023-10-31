@@ -16,7 +16,7 @@ public:
 
     rhi_parameter_layout* add_parameter_layout(
         std::string_view name,
-        const std::vector<std::pair<rhi_parameter_type, std::size_t>>& layout);
+        const std::vector<rhi_parameter_layout_pair>& layout);
     rhi_parameter_layout* get_parameter_layout(std::string_view name) const;
 
     rhi_renderer* get_rhi() const noexcept { return m_rhi; }

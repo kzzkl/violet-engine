@@ -61,9 +61,6 @@ public:
     void add_child(node* child);
     void remove_child(node* child);
 
-    [[nodiscard]] node* get_parent() const noexcept { return m_parent; }
-    [[nodiscard]] const std::vector<node*> get_children() const noexcept { return m_children; }
-
     template <typename Component>
     [[nodiscard]] component_handle<Component> get_component()
     {
@@ -97,9 +94,6 @@ private:
     std::string m_name;
     entity m_entity;
     world& m_world;
-
-    node* m_parent;
-    std::vector<node*> m_children;
 };
 
 template <typename T>

@@ -33,6 +33,7 @@ public:
     }
 
     material* add_material(std::string_view name);
+    material* get_material(std::string_view name) const;
 
 private:
     friend class material;

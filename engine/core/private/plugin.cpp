@@ -39,7 +39,7 @@ bool dynamic_library_win32::load(std::string_view path)
     }
     else
     {
-        log::error("Failed to load dynamic lib: paht[{}] error[{}]", path, GetLastError());
+        log::error("Failed to load dynamic lib: path[{}] error[{}]", path, GetLastError());
         return false;
     }
 }

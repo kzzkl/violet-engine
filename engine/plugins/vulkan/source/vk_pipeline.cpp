@@ -55,7 +55,8 @@ std::uint32_t get_vertex_attribute_stride(rhi_resource_format format) noexcept
 } // namespace
 
 vk_parameter_layout::vk_parameter_layout(const rhi_parameter_layout_desc& desc, vk_context* context)
-    : m_context(context)
+    : m_layout(VK_NULL_HANDLE),
+      m_context(context)
 {
     std::vector<VkDescriptorSetLayoutBinding> bindings;
 
@@ -67,18 +68,26 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_layout_desc& desc, 
     {
         VkDescriptorSetLayoutBinding binding = {};
         binding.binding = static_cast<std::uint32_t>(i);
+        if (desc.parameters[i].vertex_shader)
+            binding.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
+        if (desc.parameters[i].pixel_shader)
+            binding.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
 
         switch (desc.parameters[i].type)
         {
         case RHI_PARAMETER_TYPE_UNIFORM_BUFFER: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             binding.descriptorCount = 1;
-            binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
             binding.pImmutableSamplers = nullptr;
 
             m_parameter_infos[i].index = uniform_buffer_count;
             m_parameter_infos[i].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            m_parameter_infos[i].uniform_buffer.size = desc.parameters[i].size;
+
+            VkDeviceSize uniform_alignment =
+                m_context->get_physical_device_properties().limits.minUniformBufferOffsetAlignment;
+            m_parameter_infos[i].uniform_buffer.size =
+                (desc.parameters[i].size + uniform_alignment - 1) / uniform_alignment *
+                uniform_alignment;
 
             ++uniform_buffer_count;
             break;
@@ -86,7 +95,6 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_layout_desc& desc, 
         case RHI_PARAMETER_TYPE_SHADER_RESOURCE: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             binding.descriptorCount = 1;
-            binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
             binding.pImmutableSamplers = nullptr;
 
             m_parameter_infos[i].index = image_count;

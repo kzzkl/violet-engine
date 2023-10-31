@@ -2,7 +2,6 @@
 #include "components/camera.hpp"
 #include "components/mesh.hpp"
 #include "components/transform.hpp"
-#include "core/engine.hpp"
 #include "rhi_plugin.hpp"
 #include "window/window_system.hpp"
 
@@ -39,7 +38,7 @@ graphics_system::~graphics_system()
 
 bool graphics_system::initialize(const dictionary& config)
 {
-    auto& window = engine::get_system<window_system>();
+    auto& window = get_system<window_system>();
     rect<std::uint32_t> extent = window.get_extent();
 
     rhi_desc rhi_desc = {};
@@ -65,16 +64,16 @@ bool graphics_system::initialize(const dictionary& config)
         {
             m_plugin->get_rhi()->resize(width, height);
         });
-    engine::on_frame_end().then(
+    on_frame_end().then(
         [this]()
         {
             end_frame();
         });
 
-    engine::get_world().register_component<mesh, mesh_component_info>(
+    get_world().register_component<mesh, mesh_component_info>(
         m_plugin->get_rhi(),
         m_context->get_parameter_layout("violet mesh"));
-    engine::get_world().register_component<camera>();
+    get_world().register_component<camera>();
 
     return true;
 }
@@ -105,7 +104,7 @@ void graphics_system::render()
     if (m_idle)
         return;
 
-    view<camera, transform> camera_view(engine::get_world());
+    view<camera, transform> camera_view(get_world());
     camera_view.each(
         [this](camera& camera, transform& transform)
         {
@@ -120,7 +119,7 @@ void graphics_system::render()
                 camera.get_framebuffer());
         });
 
-    view<mesh, transform> mesh_view(engine::get_world());
+    view<mesh, transform> mesh_view(get_world());
     mesh_view.each(
         [](mesh& mesh, transform& transform)
         {

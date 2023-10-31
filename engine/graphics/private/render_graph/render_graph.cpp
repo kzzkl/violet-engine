@@ -17,7 +17,29 @@ render_graph::~render_graph()
 render_pass* render_graph::add_render_pass(std::string_view name)
 {
     m_render_passes.push_back(std::make_unique<render_pass>(m_context));
+    m_render_passes.back()->set_name(name);
     return m_render_passes.back().get();
+}
+
+render_pass* render_graph::get_render_pass(std::string_view name) const
+{
+    for (auto& render_pass : m_render_passes)
+    {
+        if (render_pass->get_name() == name)
+            return render_pass.get();
+    }
+    return nullptr;
+}
+
+render_pipeline* render_graph::get_pipeline(std::string_view name) const
+{
+    for (auto& pass : m_render_passes)
+    {
+        render_pipeline* pipeline = pass->get_pipeline(name);
+        if (pipeline)
+            return pipeline;
+    }
+    return nullptr;
 }
 
 material_layout* render_graph::add_material_layout(std::string_view name)
@@ -28,11 +50,22 @@ material_layout* render_graph::add_material_layout(std::string_view name)
 
 material_layout* render_graph::get_material_layout(std::string_view name) const
 {
-    auto iter = m_material_layouts.find(name.data());
-    if (iter != m_material_layouts.end())
-        return iter->second.get();
-    else
-        return nullptr;
+    return m_material_layouts.at(name.data()).get();
+}
+
+material* render_graph::add_material(material_layout* layout, std::string_view name)
+{
+    return layout->add_material(name);
+}
+
+material* render_graph::add_material(std::string_view layout, std::string_view name)
+{
+    return get_material_layout(layout)->add_material(name);
+}
+
+material* render_graph::get_material(std::string_view layout, std::string_view name) const
+{
+    return get_material_layout(layout)->get_material(name);
 }
 
 bool render_graph::compile()

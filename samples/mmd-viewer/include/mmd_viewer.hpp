@@ -1,35 +1,44 @@
 #pragma once
 
-#include "core/context.hpp"
-#include "mmd_component.hpp"
-#include "mmd_pipeline.hpp"
+#include "core/engine_system.hpp"
+#include "core/node/node.hpp"
+#include "graphics/geometry.hpp"
+#include "mmd_render.hpp"
 
-namespace violet::sample::mmd
+namespace violet::sample
 {
-class mmd_loader;
-class mmd_viewer : public violet::core::system_base
+class mmd_viewer : public engine_system
 {
 public:
     mmd_viewer();
     virtual ~mmd_viewer();
 
     virtual bool initialize(const dictionary& config) override;
-
-    violet::ecs::entity load_mmd(
-        std::string_view name,
-        std::string_view pmx,
-        std::string_view vmd = "");
-    bool load_pmx(std::string_view pmx);
-    bool load_vmd(std::string_view vmd);
-
-    void update();
-
-    void reset(ecs::entity entity);
+    virtual void shutdown() override;
 
 private:
-    std::unique_ptr<mmd_loader> m_loader;
+    struct mmd_model
+    {
+        std::vector<rhi_resource*> textures;
+        std::vector<material*> materials;
 
-    std::unique_ptr<mmd_render_pipeline> m_render_pipeline;
-    std::unique_ptr<mmd_skinning_pipeline> m_skinning_pipeline;
+        std::unique_ptr<geometry> geometry;
+        std::unique_ptr<node> model;
+    };
+
+    void initialize_render();
+    void load_model(std::string_view path);
+
+    void tick(float delta);
+    void resize(std::uint32_t width, std::uint32_t height);
+
+    std::unique_ptr<mmd_render_graph> m_render_graph;
+    rhi_resource* m_depth_stencil;
+    rhi_sampler* m_sampler;
+
+    std::vector<rhi_resource*> m_internal_toons;
+
+    std::map<std::string, mmd_model> m_models;
+    std::unique_ptr<node> m_camera;
 };
-} // namespace violet::sample::mmd
+} // namespace violet::sample

@@ -1,5 +1,4 @@
 #include "window/window_system.hpp"
-#include "core/engine.hpp"
 #include "window_impl.hpp"
 #include "window_impl_win32.hpp"
 
@@ -24,7 +23,12 @@ bool window_system::initialize(const dictionary& config)
 
     m_title = config["title"];
 
-    m_on_tick = &engine::on_frame_begin().then([this]() { tick(); }, TASK_OPTION_MAIN_THREAD);
+    m_on_tick = &on_frame_begin().then(
+        [this]()
+        {
+            tick();
+        },
+        TASK_OPTION_MAIN_THREAD);
 
     return true;
 }
@@ -36,7 +40,7 @@ void window_system::shutdown()
 
 void window_system::tick()
 {
-    auto& task_executor = engine::get_task_executor();
+    auto& executor = get_task_executor();
 
     m_mouse.tick();
     m_keyboard.tick();
@@ -52,7 +56,7 @@ void window_system::tick()
             m_mouse.m_x = message.mouse_move.x;
             m_mouse.m_y = message.mouse_move.y;
 
-            task_executor.execute_sync(
+            executor.execute_sync(
                 m_on_mouse_move,
                 m_mouse.get_mode(),
                 message.mouse_move.x,
@@ -65,7 +69,7 @@ void window_system::tick()
             else
                 m_mouse.key_up(message.mouse_key.key);
 
-            task_executor.execute_sync(
+            executor.execute_sync(
                 m_on_mouse_key,
                 message.mouse_key.key,
                 m_mouse.key(message.mouse_key.key));
@@ -81,28 +85,28 @@ void window_system::tick()
             else
                 m_keyboard.key_up(message.keyboard_key.key);
 
-            task_executor.execute_sync(
+            executor.execute_sync(
                 m_on_keyboard_key,
                 message.keyboard_key.key,
                 m_keyboard.key(message.keyboard_key.key));
             break;
         }
         case window_message::message_type::KEYBOARD_CHAR: {
-            task_executor.execute_sync(m_on_keyboard_char, message.keyboard_char);
+            executor.execute_sync(m_on_keyboard_char, message.keyboard_char);
             break;
         }
         case window_message::message_type::WINDOW_MOVE: {
             break;
         }
         case window_message::message_type::WINDOW_RESIZE: {
-            task_executor.execute_sync(
+            executor.execute_sync(
                 m_on_resize,
                 message.window_resize.width,
                 message.window_resize.height);
             break;
         }
         case window_message::message_type::WINDOW_DESTROY: {
-            task_executor.execute_sync(m_on_destroy);
+            executor.execute_sync(m_on_destroy);
             break;
         }
         default:
