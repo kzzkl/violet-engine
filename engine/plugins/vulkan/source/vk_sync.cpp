@@ -7,7 +7,7 @@ vk_fence::vk_fence(bool signaled, vk_context* context) : m_context(context)
     VkFenceCreateInfo fence_info = {};
     fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fence_info.flags = signaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0;
-    throw_if_failed(vkCreateFence(m_context->get_device(), &fence_info, nullptr, &m_fence));
+    vk_check(vkCreateFence(m_context->get_device(), &fence_info, nullptr, &m_fence));
 }
 
 vk_fence::~vk_fence()
@@ -25,7 +25,7 @@ vk_semaphore::vk_semaphore(vk_context* context) : m_context(context)
 {
     VkSemaphoreCreateInfo semaphore_info = {};
     semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    throw_if_failed(
+    vk_check(
         vkCreateSemaphore(m_context->get_device(), &semaphore_info, nullptr, &m_semaphore));
 }
 

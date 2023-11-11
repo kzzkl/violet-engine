@@ -3,7 +3,8 @@
 
 namespace violet
 {
-render_pipeline::render_pipeline(graphics_context* context) : render_node(context)
+render_pipeline::render_pipeline(std::string_view name, graphics_context* context)
+    : render_node(name, context)
 {
     m_desc.blend.enable = false;
     m_desc.samples = RHI_SAMPLE_COUNT_1;
@@ -17,13 +18,13 @@ render_pipeline::~render_pipeline()
         rhi->destroy_render_pipeline(m_interface);
 }
 
-void render_pipeline::set_shader(std::string_view vertex, std::string_view pixel)
+void render_pipeline::set_shader(std::string_view vertex, std::string_view fragment)
 {
     m_vertex_shader = vertex;
-    m_pixel_shader = pixel;
+    m_fragment_shader = fragment;
 
     m_desc.vertex_shader = m_vertex_shader.c_str();
-    m_desc.pixel_shader = m_pixel_shader.c_str();
+    m_desc.fragment_shader = m_fragment_shader.c_str();
 }
 
 void render_pipeline::set_vertex_attributes(const vertex_attributes& vertex_attributes)
@@ -102,7 +103,7 @@ bool render_pipeline::compile(rhi_render_pass* render_pass, std::size_t subpass_
 
 void render_pipeline::execute(rhi_render_command* command)
 {
-    command->set_pipeline(m_interface);
+    command->set_render_pipeline(m_interface);
     render(command, m_render_data);
     m_render_data.meshes.clear();
 }

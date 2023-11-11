@@ -331,9 +331,32 @@ struct pmx_mesh
         std::size_t material_index;
     };
 
+    struct bdef_data
+    {
+        uint4 index;
+        float4 weight;
+    };
+
+    struct sdef_data
+    {
+        uint2 index;
+        float2 weight;
+        float3 center;
+        float _padding_0;
+        float3 r0;
+        float _padding_1;
+        float3 r1;
+        float _padding_2;
+    };
+
     std::vector<float3> position;
     std::vector<float3> normal;
     std::vector<float2> uv;
+
+    std::vector<uint2> skin; // first: skin type(0: BDEF, 1: SDEF), second: skin data index
+    std::vector<bdef_data> bdef;
+    std::vector<sdef_data> sdef;
+
     std::vector<std::int32_t> indices;
 
     std::vector<std::string> textures;

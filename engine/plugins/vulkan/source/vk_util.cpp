@@ -240,7 +240,8 @@ VkPipelineStageFlags vk_util::map_pipeline_stage_flags(rhi_pipeline_stage_flags 
     result |= (flags & RHI_PIPELINE_STAGE_FLAG_EARLY_DEPTH_STENCIL)
                   ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
                   : 0;
-    result |= (flags & RHI_PIPELINE_STAGE_FLAG_PIXEL) ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT : 0;
+    result |=
+        (flags & RHI_PIPELINE_STAGE_FLAG_FRAGMENT) ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT : 0;
     result |= (flags & RHI_PIPELINE_STAGE_FLAG_LATE_DEPTH_STENCIL)
                   ? VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
                   : 0;

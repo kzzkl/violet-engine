@@ -6,6 +6,8 @@ add_library(${PROJECT_NAME} STATIC
     # ./private/material/basic_material.cpp
     ./private/pipeline/basic_pipeline.cpp
     ./private/pipeline/debug_pipeline.cpp
+    ./private/render_graph/compute_pass.cpp
+    ./private/render_graph/compute_pipeline.cpp
     ./private/render_graph/material.cpp
     ./private/render_graph/render_graph.cpp
     ./private/render_graph/render_node.cpp

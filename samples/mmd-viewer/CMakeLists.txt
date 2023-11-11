@@ -3,7 +3,9 @@ project(mmd-viewer)
 add_executable(${PROJECT_NAME}
     ./source/encode.cpp
     ./source/main.cpp
+    ./source/mmd_loader.cpp
     ./source/mmd_render.cpp
+    ./source/mmd_skeleton.cpp
     ./source/mmd_viewer.cpp
     ./source/pmx_loader.cpp)
 
@@ -22,6 +24,13 @@ compile_shader_dxc(
     TARGET ${PROJECT_NAME}
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/color.hlsl"
     STAGES "vert" "frag"
+    INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
+    
+include(${VIOLET_ROOT_DIR}/cmake/compile_shader.cmake)
+compile_shader_dxc(
+    TARGET ${PROJECT_NAME}
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/skinning.hlsl"
+    STAGES "comp"
     INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
 
 file(GLOB SHADER_FILES "${CMAKE_BINARY_DIR}/shaders/${PROJECT_NAME}/*.spv")

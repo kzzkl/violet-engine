@@ -1,15 +1,13 @@
-#include "core/node/node.hpp"
+#include "core/ecs/actor.hpp"
 
 namespace violet
 {
-node::node(std::string_view name, world& world) noexcept
-    : m_name(name),
-      m_world(world)
+actor::actor(std::string_view name, world& world) noexcept : m_name(name), m_world(world)
 {
     m_entity = m_world.create(this);
 }
 
-node::~node()
+actor::~actor()
 {
     if (m_entity.index != INVALID_ENTITY_INDEX)
         m_world.release(m_entity);

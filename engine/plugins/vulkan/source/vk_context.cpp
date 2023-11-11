@@ -110,7 +110,7 @@ bool vk_context::initialize(const rhi_desc& desc)
 
     auto vkCreateWin32SurfaceKHR = reinterpret_cast<PFN_vkCreateWin32SurfaceKHR>(
         vkGetInstanceProcAddr(m_instance, "vkCreateWin32SurfaceKHR"));
-    throw_if_failed(vkCreateWin32SurfaceKHR(m_instance, &surface_info, nullptr, &m_surface));
+    vk_check(vkCreateWin32SurfaceKHR(m_instance, &surface_info, nullptr, &m_surface));
 #else
     throw vk_exception("Unsupported platform");
 #endif
@@ -136,7 +136,7 @@ VkDescriptorSet vk_context::allocate_descriptor_set(VkDescriptorSetLayout layout
     allocate_info.pSetLayouts = &layout;
 
     VkDescriptorSet result;
-    throw_if_failed(vkAllocateDescriptorSets(m_device, &allocate_info, &result));
+    vk_check(vkAllocateDescriptorSets(m_device, &allocate_info, &result));
 
     return result;
 }
@@ -151,9 +151,9 @@ bool vk_context::initialize_instance(
     const std::vector<const char*>& desired_extensions)
 {
     std::uint32_t available_layer_count = 0;
-    throw_if_failed(vkEnumerateInstanceLayerProperties(&available_layer_count, nullptr));
+    vk_check(vkEnumerateInstanceLayerProperties(&available_layer_count, nullptr));
     std::vector<VkLayerProperties> available_layers(available_layer_count);
-    throw_if_failed(
+    vk_check(
         vkEnumerateInstanceLayerProperties(&available_layer_count, available_layers.data()));
 
     for (const char* layer : desired_layers)
@@ -174,10 +174,10 @@ bool vk_context::initialize_instance(
     }
 
     std::uint32_t available_extension_count = 0;
-    throw_if_failed(
+    vk_check(
         vkEnumerateInstanceExtensionProperties(nullptr, &available_extension_count, nullptr));
     std::vector<VkExtensionProperties> available_extensions(available_extension_count);
-    throw_if_failed(vkEnumerateInstanceExtensionProperties(
+    vk_check(vkEnumerateInstanceExtensionProperties(
         nullptr,
         &available_extension_count,
         available_extensions.data()));
@@ -219,7 +219,7 @@ bool vk_context::initialize_instance(
     instance_info.pNext = &debug_info;
 #endif
 
-    throw_if_failed(vkCreateInstance(&instance_info, nullptr, &m_instance));
+    vk_check(vkCreateInstance(&instance_info, nullptr, &m_instance));
     if (m_instance == VK_NULL_HANDLE)
         return false;
 
@@ -227,7 +227,7 @@ bool vk_context::initialize_instance(
     auto vkCreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
         vkGetInstanceProcAddr(m_instance, "vkCreateDebugUtilsMessengerEXT"));
 
-    throw_if_failed(
+    vk_check(
         vkCreateDebugUtilsMessengerEXT(m_instance, &debug_info, nullptr, &m_debug_messenger));
 #endif
 
@@ -237,22 +237,22 @@ bool vk_context::initialize_instance(
 bool vk_context::initialize_physical_device(const std::vector<const char*>& desired_extensions)
 {
     std::uint32_t devices_count = 0;
-    throw_if_failed(vkEnumeratePhysicalDevices(m_instance, &devices_count, nullptr));
+    vk_check(vkEnumeratePhysicalDevices(m_instance, &devices_count, nullptr));
     std::vector<VkPhysicalDevice> available_devices(devices_count);
-    throw_if_failed(
+    vk_check(
         vkEnumeratePhysicalDevices(m_instance, &devices_count, available_devices.data()));
 
     std::uint32_t physical_device_score = 0;
     for (VkPhysicalDevice device : available_devices)
     {
         std::uint32_t available_extension_count = 0;
-        throw_if_failed(vkEnumerateDeviceExtensionProperties(
+        vk_check(vkEnumerateDeviceExtensionProperties(
             device,
             nullptr,
             &available_extension_count,
             nullptr));
         std::vector<VkExtensionProperties> available_extensions(available_extension_count);
-        throw_if_failed(vkEnumerateDeviceExtensionProperties(
+        vk_check(vkEnumerateDeviceExtensionProperties(
             device,
             nullptr,
             &available_extension_count,
@@ -344,7 +344,7 @@ void vk_context::initialize_logic_device(const std::vector<const char*>& enabled
     device_info.enabledExtensionCount = static_cast<std::uint32_t>(enabled_extensions.size());
     device_info.pEnabledFeatures = &enabled_features;
 
-    throw_if_failed(vkCreateDevice(m_physical_device, &device_info, nullptr, &m_device));
+    vk_check(vkCreateDevice(m_physical_device, &device_info, nullptr, &m_device));
 
     m_graphics_queue = std::make_unique<vk_graphics_queue>(graphics_queue_family_index, this);
     m_present_queue = std::make_unique<vk_present_queue>(present_queue_family_index, this);
@@ -364,6 +364,6 @@ void vk_context::initialize_descriptor_pool()
     pool_info.pPoolSizes = pool_size.data();
     pool_info.poolSizeCount = static_cast<std::uint32_t>(pool_size.size());
 
-    throw_if_failed(vkCreateDescriptorPool(m_device, &pool_info, nullptr, &m_descriptor_pool));
+    vk_check(vkCreateDescriptorPool(m_device, &pool_info, nullptr, &m_descriptor_pool));
 }
 } // namespace violet::vk

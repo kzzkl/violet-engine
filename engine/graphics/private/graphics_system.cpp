@@ -16,7 +16,7 @@ public:
     {
     }
 
-    virtual void construct(void* target) override
+    virtual void construct(actor* owner, void* target) override
     {
         new (target) mesh(m_rhi, m_mesh_parameter_layout);
     }

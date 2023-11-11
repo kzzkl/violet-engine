@@ -2,7 +2,8 @@
 
 namespace violet
 {
-debug_pipeline::debug_pipeline(graphics_context* context) : render_pipeline(context)
+debug_pipeline::debug_pipeline(std::string_view name, graphics_context* context)
+    : render_pipeline(name, context)
 {
     set_shader("engine/shaders/debug.vert.spv", "engine/shaders/debug.frag.spv");
     set_primitive_topology(RHI_PRIMITIVE_TOPOLOGY_LINE_LIST);
@@ -17,7 +18,7 @@ debug_pipeline::debug_pipeline(graphics_context* context) : render_pipeline(cont
 
 void debug_pipeline::render(rhi_render_command* command, render_data& data)
 {
-    command->set_parameter(0, data.camera_parameter);
+    command->set_render_parameter(0, data.camera_parameter);
     for (render_mesh& mesh : data.meshes)
     {
         command->set_vertex_buffers(mesh.vertex_buffers.data(), mesh.vertex_buffers.size());

@@ -70,6 +70,10 @@ public:
         const rhi_render_pipeline_desc& desc) override;
     virtual void destroy_render_pipeline(rhi_render_pipeline* render_pipeline) override;
 
+    virtual rhi_compute_pipeline* create_compute_pipeline(
+        const rhi_compute_pipeline_desc& desc) override;
+    virtual void destroy_compute_pipeline(rhi_compute_pipeline* compute_pipeline) override;
+
     virtual rhi_parameter_layout* create_parameter_layout(
         const rhi_parameter_layout_desc& desc) override;
     virtual void destroy_parameter_layout(rhi_parameter_layout* parameter_layout) override;
@@ -80,11 +84,8 @@ public:
     virtual rhi_framebuffer* create_framebuffer(const rhi_framebuffer_desc& desc) override;
     virtual void destroy_framebuffer(rhi_framebuffer* framebuffer) override;
 
-    virtual rhi_resource* create_vertex_buffer(const rhi_vertex_buffer_desc& desc) override;
-    virtual void destroy_vertex_buffer(rhi_resource* vertex_buffer) override;
-
-    virtual rhi_resource* create_index_buffer(const rhi_index_buffer_desc& desc) override;
-    virtual void destroy_index_buffer(rhi_resource* index_buffer) override;
+    virtual rhi_resource* create_buffer(const rhi_buffer_desc& desc) override;
+    virtual void destroy_buffer(rhi_resource* buffer) override;
 
     virtual rhi_sampler* create_sampler(const rhi_sampler_desc& desc) override;
     virtual void destroy_sampler(rhi_sampler* sampler) override;
@@ -104,8 +105,6 @@ public:
         const char* bottom,
         const char* front,
         const char* back) override;
-
-    virtual rhi_resource* create_shadow_map(const rhi_shadow_map_desc& desc) override;
 
     virtual rhi_resource* create_render_target(const rhi_render_target_desc& desc) override;
 

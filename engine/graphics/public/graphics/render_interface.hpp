@@ -179,7 +179,7 @@ enum rhi_pipeline_stage_flag
     RHI_PIPELINE_STAGE_FLAG_BEGIN = 1 << 0,
     RHI_PIPELINE_STAGE_FLAG_VERTEX = 1 << 1,
     RHI_PIPELINE_STAGE_FLAG_EARLY_DEPTH_STENCIL = 1 << 2,
-    RHI_PIPELINE_STAGE_FLAG_PIXEL = 1 << 3,
+    RHI_PIPELINE_STAGE_FLAG_FRAGMENT = 1 << 3,
     RHI_PIPELINE_STAGE_FLAG_LATE_DEPTH_STENCIL = 1 << 4,
     RHI_PIPELINE_STAGE_FLAG_COLOR_OUTPUT = 1 << 5,
     RHI_PIPELINE_STAGE_FLAG_END = 1 << 6,
@@ -229,17 +229,23 @@ public:
 enum rhi_parameter_type
 {
     RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-    RHI_PARAMETER_TYPE_SHADER_RESOURCE,
-    RHI_PARAMETER_TYPE_UNORDERED_ACCESS
+    RHI_PARAMETER_TYPE_STORAGE_BUFFER,
+    RHI_PARAMETER_TYPE_TEXTURE
 };
+
+enum rhi_parameter_flag
+{
+    RHI_PARAMETER_FLAG_VERTEX = 1 << 0,
+    RHI_PARAMETER_FLAG_FRAGMENT = 1 << 1,
+    RHI_PARAMETER_FLAG_COMPUTE = 1 << 2
+};
+using rhi_parameter_flags = std::uint32_t;
 
 struct rhi_parameter_layout_pair
 {
     rhi_parameter_type type;
     std::size_t size = 0;
-
-    bool vertex_shader = true;
-    bool pixel_shader = true;
+    rhi_parameter_flags flags;
 };
 
 struct rhi_parameter_layout_desc
@@ -259,8 +265,13 @@ class rhi_parameter
 public:
     virtual ~rhi_parameter() = default;
 
-    virtual void set(std::size_t index, const void* data, std::size_t size, std::size_t offset) = 0;
-    virtual void set(std::size_t index, rhi_resource* texture, rhi_sampler* sampler) = 0;
+    virtual void set_uniform(
+        std::size_t index,
+        const void* data,
+        std::size_t size,
+        std::size_t offset) = 0;
+    virtual void set_texture(std::size_t index, rhi_resource* texture, rhi_sampler* sampler) = 0;
+    virtual void set_storage(std::size_t index, rhi_resource* storage_buffer) = 0;
 };
 
 struct rhi_vertex_attribute
@@ -358,7 +369,7 @@ enum rhi_primitive_topology
 struct rhi_render_pipeline_desc
 {
     const char* vertex_shader = nullptr;
-    const char* pixel_shader = nullptr;
+    const char* fragment_shader = nullptr;
 
     rhi_vertex_attribute* vertex_attributes;
     std::size_t vertex_attribute_count = 0;
@@ -382,6 +393,20 @@ class rhi_render_pipeline
 {
 public:
     virtual ~rhi_render_pipeline() = default;
+};
+
+struct rhi_compute_pipeline_desc
+{
+    const char* compute_shader = nullptr;
+
+    rhi_parameter_layout** parameters;
+    std::size_t parameter_count = 0;
+};
+
+class rhi_compute_pipeline
+{
+public:
+    virtual ~rhi_compute_pipeline() = default;
 };
 
 struct rhi_framebuffer_desc
@@ -424,8 +449,10 @@ public:
     virtual void end() = 0;
     virtual void next() = 0;
 
-    virtual void set_pipeline(rhi_render_pipeline* render_pipeline) = 0;
-    virtual void set_parameter(std::size_t index, rhi_parameter* parameter) = 0;
+    virtual void set_render_pipeline(rhi_render_pipeline* render_pipeline) = 0;
+    virtual void set_render_parameter(std::size_t index, rhi_parameter* parameter) = 0;
+    virtual void set_compute_pipeline(rhi_compute_pipeline* compute_pipeline) = 0;
+    virtual void set_compute_parameter(std::size_t index, rhi_parameter* parameter) = 0;
 
     virtual void set_viewport(const rhi_viewport& viewport) = 0;
     virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) = 0;
@@ -440,6 +467,8 @@ public:
         std::size_t index_start,
         std::size_t index_count,
         std::size_t vertex_base) = 0;
+
+    virtual void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) = 0;
 
     virtual void clear_render_target(rhi_resource* render_target, const float4& color) = 0;
     virtual void clear_depth_stencil(
@@ -464,39 +493,6 @@ public:
     virtual ~rhi_semaphore() = default;
 };
 
-enum rhi_vertex_buffer_flags
-{
-    RHI_VERTEX_BUFFER_FLAG_NONE = 0,
-    RHI_VERTEX_BUFFER_FLAG_COMPUTE_IN = 1 << 1,
-    RHI_VERTEX_BUFFER_FLAG_COMPUTE_OUT = 1 << 2
-};
-
-struct rhi_vertex_buffer_desc
-{
-    const void* data;
-    std::size_t size;
-
-    rhi_vertex_buffer_flags flags;
-    bool dynamic;
-};
-
-struct rhi_index_buffer_desc
-{
-    const void* data;
-    std::size_t size;
-
-    std::size_t index_size;
-
-    bool dynamic;
-};
-
-struct rhi_shadow_map_desc
-{
-    std::uint32_t width;
-    std::uint32_t height;
-    rhi_sample_count samples;
-};
-
 struct rhi_render_target_desc
 {
     std::uint32_t width;
@@ -511,6 +507,28 @@ struct rhi_depth_stencil_buffer_desc
     std::uint32_t height;
     rhi_sample_count samples;
     rhi_resource_format format;
+};
+
+enum rhi_buffer_flag
+{
+    RHI_BUFFER_FLAG_VERTEX = 1 << 0,
+    RHI_BUFFER_FLAG_INDEX = 1 << 1,
+    RHI_BUFFER_FLAG_STORAGE = 1 << 2,
+    RHI_BUFFER_FLAG_HOST_VISIBLE = 1 << 3
+};
+using rhi_buffer_flags = std::uint32_t;
+
+struct rhi_buffer_desc
+{
+    const void* data;
+    std::size_t size;
+
+    rhi_buffer_flags flags;
+
+    struct index_info
+    {
+        std::size_t size;
+    } index;
 };
 
 struct rhi_desc
@@ -563,6 +581,10 @@ public:
     virtual rhi_render_pipeline* create_render_pipeline(const rhi_render_pipeline_desc& desc) = 0;
     virtual void destroy_render_pipeline(rhi_render_pipeline* render_pipeline) = 0;
 
+    virtual rhi_compute_pipeline* create_compute_pipeline(
+        const rhi_compute_pipeline_desc& desc) = 0;
+    virtual void destroy_compute_pipeline(rhi_compute_pipeline* compute_pipeline) = 0;
+
     virtual rhi_parameter_layout* create_parameter_layout(
         const rhi_parameter_layout_desc& desc) = 0;
     virtual void destroy_parameter_layout(rhi_parameter_layout* parameter_layout) = 0;
@@ -573,11 +595,8 @@ public:
     virtual rhi_framebuffer* create_framebuffer(const rhi_framebuffer_desc& desc) = 0;
     virtual void destroy_framebuffer(rhi_framebuffer* framebuffer) = 0;
 
-    virtual rhi_resource* create_vertex_buffer(const rhi_vertex_buffer_desc& desc) = 0;
-    virtual void destroy_vertex_buffer(rhi_resource* vertex_buffer) = 0;
-
-    virtual rhi_resource* create_index_buffer(const rhi_index_buffer_desc& desc) = 0;
-    virtual void destroy_index_buffer(rhi_resource* index_buffer) = 0;
+    virtual rhi_resource* create_buffer(const rhi_buffer_desc& desc) = 0;
+    virtual void destroy_buffer(rhi_resource* buffer) = 0;
 
     virtual rhi_sampler* create_sampler(const rhi_sampler_desc& desc) = 0;
     virtual void destroy_sampler(rhi_sampler* sampler) = 0;
@@ -597,8 +616,6 @@ public:
         const char* bottom,
         const char* front,
         const char* back) = 0;
-
-    virtual rhi_resource* create_shadow_map(const rhi_shadow_map_desc& desc) = 0;
 
     virtual rhi_resource* create_render_target(const rhi_render_target_desc& desc) = 0;
     virtual rhi_resource* create_depth_stencil_buffer(

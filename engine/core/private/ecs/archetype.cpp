@@ -1,14 +1,14 @@
-#include "core/node/archetype.hpp"
-#include "node/archetype_chunk.hpp"
+#include "core/ecs/archetype.hpp"
+#include "ecs/archetype_chunk.hpp"
 
 namespace violet
 {
 archetype::archetype(
     const std::vector<component_id>& components,
-    const component_registry& m_component_infos,
+    const component_table& component_table,
     archetype_chunk_allocator* allocator) noexcept
-    : m_component_infos(&m_component_infos),
-      m_components(components),
+    : m_components(components),
+      m_component_table(component_table),
       m_chunk_allocator(allocator),
       m_size(0)
 {
@@ -46,11 +46,12 @@ std::size_t archetype::move(std::size_t index, archetype& target)
     {
         if (target.m_mask.test(id))
         {
-            auto& info = *m_component_infos->at(id);
+            auto& info = *m_component_table[id];
 
             std::size_t source_offset = m_offset[id] + source_entity_index * info.size();
             std::size_t target_offset = target.m_offset[id] + target_entity_index * info.size();
             info.move_construct(
+                iterator(this, index).get_component<actor*>(),
                 get_data_pointer(source_chunk_index, source_offset),
                 target.get_data_pointer(target_chunk_index, target_offset));
         }
@@ -60,10 +61,12 @@ std::size_t archetype::move(std::size_t index, archetype& target)
     {
         if (!m_mask.test(id))
         {
-            auto& info = *m_component_infos->at(id);
+            auto& info = *m_component_table[id];
 
             std::size_t offset = target.m_offset[id] + target_entity_index * info.size();
-            info.construct(target.get_data_pointer(target_chunk_index, offset));
+            info.construct(
+                iterator(this, index).get_component<actor*>(),
+                target.get_data_pointer(target_chunk_index, offset));
         }
     }
 
@@ -114,16 +117,22 @@ void archetype::initialize_layout(const std::vector<component_id>& components)
     };
 
     std::vector<layout_info> list(components.size());
-    std::transform(components.cbegin(), components.cend(), list.begin(), [this](component_id id) {
-        return layout_info{
-            id,
-            m_component_infos->at(id)->size(),
-            m_component_infos->at(id)->align()};
-    });
+    std::transform(
+        components.cbegin(),
+        components.cend(),
+        list.begin(),
+        [this](component_id id)
+        {
+            return layout_info{id, m_component_table[id]->size(), m_component_table[id]->align()};
+        });
 
-    std::sort(list.begin(), list.end(), [](const auto& a, const auto& b) {
-        return a.align == b.align ? a.id < b.id : a.align > b.align;
-    });
+    std::sort(
+        list.begin(),
+        list.end(),
+        [](const auto& a, const auto& b)
+        {
+            return a.align == b.align ? a.id < b.id : a.align > b.align;
+        });
 
     std::size_t entity_size = 0;
     for (const auto& info : list)
@@ -156,10 +165,12 @@ void archetype::construct(std::size_t index)
 
     for (component_id id : m_components)
     {
-        auto& info = *m_component_infos->at(id);
+        auto& info = *m_component_table[id];
 
         std::size_t offset = m_offset[id] + entity_index * info.size();
-        info.construct(get_data_pointer(chunk_index, offset));
+        info.construct(
+            iterator(this, index).get_component<actor*>(),
+            get_data_pointer(chunk_index, offset));
     }
 }
 
@@ -170,7 +181,7 @@ void archetype::destruct(std::size_t index)
 
     for (component_id id : m_components)
     {
-        auto& info = *m_component_infos->at(id);
+        auto& info = *m_component_table[id];
 
         std::size_t offset = m_offset[id] + entity_index * info.size();
         info.destruct(get_data_pointer(chunk_index, offset));
@@ -187,7 +198,7 @@ void archetype::swap(std::size_t a, std::size_t b)
 
     for (component_id id : m_components)
     {
-        auto& info = *m_component_infos->at(id);
+        auto& info = *m_component_table[id];
 
         std::size_t a_offset = m_offset[id] + a_entity_index * info.size();
         std::size_t b_offset = m_offset[id] + b_entity_index * info.size();

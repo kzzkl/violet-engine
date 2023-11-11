@@ -1,5 +1,5 @@
-#include "core/node/view.hpp"
-#include "core/node/world.hpp"
+#include "core/ecs/view.hpp"
+#include "core/ecs/world.hpp"
 
 namespace violet
 {

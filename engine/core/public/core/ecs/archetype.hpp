@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/node/component.hpp"
+#include "core/ecs/component.hpp"
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -34,8 +34,8 @@ public:
             static_cast<const long>(m_archetype->m_entity_per_chunk));
 
         std::size_t id = component_index::value<Component>();
-        std::size_t address = m_archetype->m_offset[id] +
-                              entity_index * m_archetype->m_component_infos->at(id)->size();
+        std::size_t address =
+            m_archetype->m_offset[id] + entity_index * m_archetype->m_component_table[id]->size();
 
         return *static_cast<Component*>(m_archetype->get_data_pointer(chunk_index, address));
     }
@@ -84,7 +84,7 @@ public:
 public:
     archetype(
         const std::vector<component_id>& components,
-        const component_registry& component_registry,
+        const component_table& component_table,
         archetype_chunk_allocator* allocator) noexcept;
 
     virtual ~archetype();
@@ -126,9 +126,9 @@ private:
 
     void* get_data_pointer(std::size_t chunk_index, std::size_t offset);
 
-    const component_registry* m_component_infos;
-
     std::vector<component_id> m_components;
+    const component_table& m_component_table;
+
     component_mask m_mask;
 
     std::size_t m_size;

@@ -2,14 +2,14 @@
 
 namespace violet
 {
-transform::transform() noexcept
+transform::transform(actor* owner) noexcept
     : m_position{0.0f, 0.0f, 0.0f},
       m_rotation{0.0f, 0.0f, 0.0f, 1.0f},
       m_scale{1.0f, 1.0f, 1.0f},
       m_local_matrix(matrix::identity()),
       m_world_matrix(matrix::identity()),
-      m_update_count(0),
-      m_world_dirty(false)
+      m_world_dirty(false),
+      m_owner(owner)
 {
 }
 
@@ -146,6 +146,25 @@ void transform::set_world_matrix(const float4x4& matrix)
     mark_dirty();
 }
 
+void transform::set_world_matrix(const float4x4_simd& matrix)
+{
+    if (m_parent)
+    {
+        float4x4_simd parent_to_world = simd::load(m_parent->get_world_matrix());
+        simd::store(
+            matrix_simd::mul(matrix, matrix_simd::inverse_transform(parent_to_world)),
+            m_local_matrix);
+    }
+    else
+    {
+        simd::store(matrix, m_local_matrix);
+        simd::store(matrix, m_world_matrix);
+    }
+
+    matrix::decompose(m_local_matrix, m_scale, m_rotation, m_position);
+    mark_dirty();
+}
+
 const float4x4& transform::get_local_matrix() const noexcept
 {
     return m_local_matrix;
@@ -156,14 +175,14 @@ const float4x4& transform::get_world_matrix() const noexcept
     if (m_world_dirty)
     {
         const transform* node = this;
-        std::vector<const transform*> path = {node};
-        while (node->m_parent->m_world_dirty)
+        std::vector<const transform*> path;
+        do
         {
             path.push_back(node);
-            node = &(*node->m_parent);
-        }
+            node = node->m_parent.get();
+        } while (node->m_world_dirty);
 
-        for (auto iter = path.rbegin(); iter != path.rbegin(); ++iter)
+        for (auto iter = path.rbegin(); iter != path.rend(); ++iter)
         {
             simd::store(
                 matrix_simd::mul(
@@ -182,13 +201,17 @@ void transform::add_child(const component_ptr<transform>& child)
 {
     child->m_world_dirty = true;
     m_children.push_back(child);
+
+    if (child->m_parent)
+        child->m_parent->remove_child(child);
+    child->m_parent = m_owner->get<transform>();
 }
 
 void transform::remove_child(const component_ptr<transform>& child)
 {
     for (auto iter = m_children.begin(); iter != m_children.end(); ++iter)
     {
-        if (iter->get_node() == child.get_node())
+        if (iter->get_owner() == child.get_owner())
         {
             std::swap(*iter, m_children.back());
             m_children.pop_back();

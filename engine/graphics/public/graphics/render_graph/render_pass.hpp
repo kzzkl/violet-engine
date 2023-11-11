@@ -2,7 +2,6 @@
 
 #include "graphics/render_graph/render_pipeline.hpp"
 #include <memory>
-#include <unordered_map>
 #include <vector>
 
 namespace violet
@@ -33,7 +32,7 @@ private:
 class render_subpass : public render_node
 {
 public:
-    render_subpass(graphics_context* context);
+    render_subpass(std::string_view name, graphics_context* context);
 
     void add_reference(
         render_attachment* attachment,
@@ -45,11 +44,10 @@ public:
         rhi_resource_state state,
         render_attachment* resolve);
 
-    template <typename T = render_pipeline, typename... Args>
+    template <typename T, typename... Args>
     T* add_pipeline(std::string_view name, Args&&... args)
     {
-        auto pipeline = std::make_unique<T>(get_context(), std::forward<Args>(args)...);
-        pipeline->set_name(name);
+        auto pipeline = std::make_unique<T>(name, get_context(), std::forward<Args>(args)...);
         T* result = pipeline.get();
 
         m_pipelines.push_back(std::move(pipeline));
@@ -75,7 +73,7 @@ private:
 class render_pass : public render_node
 {
 public:
-    render_pass(graphics_context* context);
+    render_pass(std::string_view name, graphics_context* context);
     virtual ~render_pass();
 
     render_attachment* add_attachment(std::string_view name);

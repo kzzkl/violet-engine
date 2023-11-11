@@ -3,6 +3,13 @@
 
 namespace violet
 {
+float4x4 rigidbody_reflector::reflect(
+    const float4x4& rigidbody_world,
+    const float4x4& transform_world)
+{
+    return rigidbody_world;
+}
+
 rigidbody::rigidbody(pei_plugin* pei) noexcept
     : m_collision_group(1),
       m_collision_mask(0xFFFFFFFF),
@@ -10,6 +17,8 @@ rigidbody::rigidbody(pei_plugin* pei) noexcept
       m_world(nullptr),
       m_pei(pei)
 {
+    m_offset = m_offset_inverse = matrix::identity();
+
     m_desc.type = PEI_RIGIDBODY_TYPE_DYNAMIC;
     m_desc.shape = nullptr;
     m_desc.mass = 0.0f;
@@ -18,6 +27,8 @@ rigidbody::rigidbody(pei_plugin* pei) noexcept
     m_desc.restitution = 0.0f;
     m_desc.friction = 0.0f;
     m_desc.initial_transform = matrix::identity();
+
+    m_reflector = std::make_unique<rigidbody_reflector>();
 }
 
 rigidbody::rigidbody(rigidbody&& other) noexcept
@@ -25,11 +36,15 @@ rigidbody::rigidbody(rigidbody&& other) noexcept
     m_collision_group = other.m_collision_group;
     m_collision_mask = other.m_collision_mask;
 
+    m_offset = other.m_offset;
+    m_offset_inverse = other.m_offset_inverse;
+
     m_desc = other.m_desc;
     m_rigidbody = other.m_rigidbody;
     m_joints = std::move(other.m_joints);
     m_world = other.m_world;
     m_pei = other.m_pei;
+    m_reflector = std::move(other.m_reflector);
 
     other.m_rigidbody = nullptr;
     other.m_world = nullptr;
@@ -109,6 +124,12 @@ const float4x4& rigidbody::get_transform() const
     return m_rigidbody->get_transform();
 }
 
+void rigidbody::set_offset(const float4x4& offset) noexcept
+{
+    m_offset = offset;
+    m_offset_inverse = matrix::inverse(offset);
+}
+
 joint* rigidbody::add_joint(const float3& position, const float4& rotation)
 {
     m_joints.push_back(std::make_unique<joint>());
@@ -169,11 +190,15 @@ rigidbody& rigidbody::operator=(rigidbody&& other) noexcept
     m_collision_group = other.m_collision_group;
     m_collision_mask = other.m_collision_mask;
 
+    m_offset = other.m_offset;
+    m_offset_inverse = other.m_offset_inverse;
+
     m_desc = other.m_desc;
     m_rigidbody = other.m_rigidbody;
     m_joints = std::move(other.m_joints);
     m_world = other.m_world;
     m_pei = other.m_pei;
+    m_reflector = std::move(other.m_reflector);
 
     other.m_rigidbody = nullptr;
     other.m_world = nullptr;

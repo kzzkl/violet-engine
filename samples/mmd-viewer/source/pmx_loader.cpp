@@ -78,36 +78,13 @@ bool pmx_loader::load_mesh(std::ifstream& fin)
     m_mesh.position.resize(vertex_count);
     m_mesh.normal.resize(vertex_count);
     m_mesh.uv.resize(vertex_count);
+    m_mesh.skin.resize(vertex_count);
 
-    // first: skin type(0: BDEF, 1: SDEF), second: skin data index
-    std::vector<uint2> skin(vertex_count);
     std::vector<float> edge(vertex_count);
 
     std::vector<std::vector<float4>> add_uv(vertex_count);
     for (auto& v : add_uv)
         v.resize(m_header.num_add_vec4);
-
-    // BDEF.
-    struct bdef_data
-    {
-        uint4 index;
-        float4 weight;
-    };
-    std::vector<bdef_data> bdef_bone;
-
-    // SDEF.
-    struct sdef_data
-    {
-        uint2 index;
-        float2 weight;
-        float3 center;
-        float _padding_0;
-        float3 r0;
-        float _padding_1;
-        float3 r1;
-        float _padding_2;
-    };
-    std::vector<sdef_data> sdef_bone;
 
     for (std::size_t i = 0; i < vertex_count; ++i)
     {
@@ -124,30 +101,30 @@ bool pmx_loader::load_mesh(std::ifstream& fin)
         switch (weight_type)
         {
         case PMX_VERTEX_TYPE_BDEF1: {
-            bdef_data data = {};
+            pmx_mesh::bdef_data data = {};
             data.index[0] = read_index(fin, m_header.bone_index_size);
             data.weight = {1.0f, 0.0f, 0.0f, 0.0f};
 
-            skin[i][0] = 0;
-            skin[i][1] = bdef_bone.size();
-            bdef_bone.push_back(data);
+            m_mesh.skin[i][0] = 0;
+            m_mesh.skin[i][1] = m_mesh.bdef.size();
+            m_mesh.bdef.push_back(data);
             break;
         }
         case PMX_VERTEX_TYPE_BDEF2: {
-            bdef_data data = {};
+            pmx_mesh::bdef_data data = {};
             data.index[0] = read_index(fin, m_header.bone_index_size);
             data.index[1] = read_index(fin, m_header.bone_index_size);
 
             read<float>(fin, data.weight[0]);
             data.weight[1] = 1.0f - data.weight[0];
 
-            skin[i][0] = 0;
-            skin[i][1] = bdef_bone.size();
-            bdef_bone.push_back(data);
+            m_mesh.skin[i][0] = 0;
+            m_mesh.skin[i][1] = m_mesh.bdef.size();
+            m_mesh.bdef.push_back(data);
             break;
         }
         case PMX_VERTEX_TYPE_BDEF4: {
-            bdef_data data = {};
+            pmx_mesh::bdef_data data = {};
             data.index[0] = read_index(fin, m_header.bone_index_size);
             data.index[1] = read_index(fin, m_header.bone_index_size);
             data.index[2] = read_index(fin, m_header.bone_index_size);
@@ -157,13 +134,13 @@ bool pmx_loader::load_mesh(std::ifstream& fin)
             read<float>(fin, data.weight[2]);
             read<float>(fin, data.weight[3]);
 
-            skin[i][0] = 0;
-            skin[i][1] = bdef_bone.size();
-            bdef_bone.push_back(data);
+            m_mesh.skin[i][0] = 0;
+            m_mesh.skin[i][1] = m_mesh.bdef.size();
+            m_mesh.bdef.push_back(data);
             break;
         }
         case PMX_VERTEX_TYPE_SDEF: {
-            sdef_data data = {};
+            pmx_mesh::sdef_data data = {};
             data.index[0] = read_index(fin, m_header.bone_index_size);
             data.index[1] = read_index(fin, m_header.bone_index_size);
             read<float>(fin, data.weight[0]);
@@ -190,9 +167,9 @@ bool pmx_loader::load_mesh(std::ifstream& fin)
             simd::store(r0, data.r0);
             simd::store(r1, data.r1);
 
-            skin[i][0] = 1;
-            skin[i][1] = sdef_bone.size();
-            sdef_bone.push_back(data);
+            m_mesh.skin[i][0] = 1;
+            m_mesh.skin[i][1] = m_mesh.sdef.size();
+            m_mesh.sdef.push_back(data);
             break;
         }
         case PMX_VERTEX_TYPE_QDEF: {

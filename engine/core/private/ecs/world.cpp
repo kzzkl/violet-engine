@@ -1,5 +1,5 @@
-#include "core/node/world.hpp"
-#include "node/archetype_chunk.hpp"
+#include "core/ecs/world.hpp"
+#include "ecs/archetype_chunk.hpp"
 
 namespace violet
 {
@@ -7,7 +7,7 @@ world::world() : m_view_version(0)
 {
     m_archetype_chunk_allocator = std::make_unique<archetype_chunk_allocator>();
 
-    register_component<node*>();
+    register_component<actor*>();
     register_component<entity_record>();
 }
 
@@ -17,7 +17,7 @@ world::~world()
         archetype->clear();
 }
 
-entity world::create(node* owner)
+entity world::create(actor* owner)
 {
     entity result;
     if (m_free_entity.empty())
@@ -32,8 +32,8 @@ entity world::create(node* owner)
         result.entity_version = m_entity_infos[result.index].entity_version;
     }
 
-    add_component<node*, entity_record>(result);
-    get_component<node*>(result) = owner;
+    add_component<actor*, entity_record>(result);
+    get_component<actor*>(result) = owner;
     get_component<entity_record>(result).entity_index = result.index;
 
     return result;
@@ -94,7 +94,7 @@ archetype* world::make_archetype(const std::vector<component_id>& components)
 {
     auto result = std::make_unique<archetype>(
         components,
-        m_component_infos,
+        m_component_table,
         m_archetype_chunk_allocator.get());
     return (m_archetypes[result->get_mask()] = std::move(result)).get();
 }

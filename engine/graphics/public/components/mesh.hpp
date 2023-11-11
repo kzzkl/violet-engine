@@ -36,9 +36,6 @@ public:
 
     rhi_parameter* get_parameter() const noexcept { return m_parameter; }
 
-    mesh& operator=(const mesh&) = delete;
-    mesh& operator=(mesh&& other) noexcept;
-
     template <typename Functor>
     void each_submesh(Functor functor) const
     {
@@ -48,6 +45,9 @@ public:
                 functor(submesh.render_meshes[i], submesh.render_pipelines[i]);
         }
     }
+
+    mesh& operator=(const mesh&) = delete;
+    mesh& operator=(mesh&& other) noexcept;
 
 private:
     struct submesh

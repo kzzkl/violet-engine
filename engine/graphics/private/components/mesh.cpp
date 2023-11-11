@@ -47,7 +47,7 @@ void mesh::add_submesh(
             render_mesh.vertex_count = vertex_count;
             render_mesh.index_start = index_start;
             render_mesh.index_count = index_count;
-            render_mesh.node = m_parameter;
+            render_mesh.transform = m_parameter;
             render_mesh.material = parameter;
             render_mesh.index_buffer = m_geometry->get_index_buffer();
 
@@ -77,7 +77,7 @@ void mesh::set_submesh(
 
 void mesh::set_model_matrix(const float4x4& m)
 {
-    m_parameter->set(0, &m, sizeof(float4x4), 0);
+    m_parameter->set_uniform(0, &m, sizeof(float4x4), 0);
 }
 
 mesh& mesh::operator=(mesh&& other) noexcept

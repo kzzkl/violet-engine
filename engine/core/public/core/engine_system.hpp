@@ -2,7 +2,7 @@
 
 #include "common/dictionary.hpp"
 #include "common/type_index.hpp"
-#include "core/node/world.hpp"
+#include "core/ecs/world.hpp"
 #include "core/task/task_executor.hpp"
 #include "core/timer.hpp"
 

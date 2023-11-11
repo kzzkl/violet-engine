@@ -27,7 +27,7 @@ vk_framebuffer::vk_framebuffer(const rhi_framebuffer_desc& desc, vk_context* con
     framebuffer_info.height = m_extent.height;
     framebuffer_info.layers = 1;
 
-    throw_if_failed(
+    vk_check(
         vkCreateFramebuffer(context->get_device(), &framebuffer_info, nullptr, &m_framebuffer));
 }
 

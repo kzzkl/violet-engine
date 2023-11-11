@@ -1,4 +1,6 @@
 #include "physics/physics_world.hpp"
+#include "components/rigidbody.hpp"
+#include "components/transform.hpp"
 
 namespace violet
 {
@@ -16,18 +18,20 @@ physics_world::~physics_world()
     m_pei->destroy_world(m_world);
 }
 
-void physics_world::add(component_ptr<rigidbody> rigidbody)
+void physics_world::add(actor* actor)
 {
-    rigidbody->set_world(m_world);
+    auto added_rigidbody = actor->get<rigidbody>();
+    auto added_transform = actor->get<transform>();
+    added_rigidbody->set_transform(
+        matrix::mul(added_rigidbody->get_offset(), added_transform->get_world_matrix()));
+    added_rigidbody->set_world(m_world);
 
     m_world->add(
-        rigidbody->get_rigidbody(),
-        rigidbody->get_collision_group(),
-        rigidbody->get_collision_mask());
+        added_rigidbody->get_rigidbody(),
+        added_rigidbody->get_collision_group(),
+        added_rigidbody->get_collision_mask());
 
-    auto joints = rigidbody->get_joints();
-
-    for (pei_joint* joint : joints)
+    for (pei_joint* joint : added_rigidbody->get_joints())
         m_world->add(joint);
 }
 

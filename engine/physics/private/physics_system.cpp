@@ -1,47 +1,16 @@
 #include "physics/physics_system.hpp"
+#include "components/rigidbody.hpp"
 #include "components/transform.hpp"
 #include "physics_plugin.hpp"
 
-#if defined(VIOLET_PHYSICS_DEBUG_DRAW)
-#    include "graphics/graphics.hpp"
-#endif
-
 namespace violet
 {
-#if defined(VIOLET_PHYSICS_DEBUG_DRAW)
-class physics_debug : public debug_draw_interface
-{
-public:
-    physics_debug() : m_drawer(nullptr) {}
-    virtual ~physics_debug() {}
-
-    static physics_debug& instance()
-    {
-        static physics_debug instance;
-        return instance;
-    }
-
-    void initialize(graphics::graphics_debug* drawer) { m_drawer = drawer; }
-
-    virtual void draw_line(
-        const math::float3& start,
-        const math::float3& end,
-        const math::float3& color) override
-    {
-        m_drawer->draw_line(start, end, color);
-    }
-
-private:
-    graphics::graphics_debug* m_drawer;
-};
-#endif
-
 class rigidbody_component_info : public component_info_default<rigidbody>
 {
 public:
     rigidbody_component_info(pei_plugin* pei) : m_pei(pei) {}
 
-    virtual void construct(void* target) override { new (target) rigidbody(m_pei); }
+    virtual void construct(actor* owner, void* target) override { new (target) rigidbody(m_pei); }
 
 private:
     pei_plugin* m_pei;
@@ -87,6 +56,23 @@ pei_plugin* physics_system::get_pei() const noexcept
 
 void physics_system::simulation()
 {
+    view<transform, rigidbody> view(get_world());
+
+    view.each(
+        [](transform& transform, rigidbody& rigidbody)
+        {
+            if (rigidbody.get_type() == PEI_RIGIDBODY_TYPE_KINEMATIC)
+            {
+                float4x4_simd world_matrix = simd::load(transform.get_world_matrix());
+                float4x4_simd offset_matrix = simd::load(rigidbody.get_offset());
+                world_matrix = matrix_simd::mul(offset_matrix, world_matrix);
+
+                float4x4 world;
+                simd::store(world_matrix, world);
+                rigidbody.get_rigidbody()->set_transform(world);
+            }
+        });
+
     float step = get_timer().get_frame_delta();
     for (physics_world* world : m_worlds)
         world->simulation(step);
@@ -99,24 +85,23 @@ void physics_system::simulation()
     };
     std::vector<updated_object> updated_objects;
 
-    view<transform, rigidbody> view(get_world());
     view.each(
-        [&updated_objects](transform& t, rigidbody& r)
+        [&updated_objects](transform& transform, rigidbody& rigidbody)
         {
-            if (!r.get_updated_flag())
+            if (!rigidbody.get_updated_flag())
                 return;
 
-            r.set_updated_flag(false);
+            rigidbody.set_updated_flag(false);
 
             std::size_t depth = 0;
-            auto parent = t.get_parent();
+            auto parent = transform.get_parent();
             while (parent)
             {
                 ++depth;
                 parent = parent->get_parent();
             }
 
-            updated_objects.push_back(updated_object{&t, &r, depth});
+            updated_objects.push_back(updated_object{&transform, &rigidbody, depth});
         });
 
     std::sort(
@@ -128,7 +113,17 @@ void physics_system::simulation()
         });
 
     for (updated_object& object : updated_objects)
-        object.transform->set_world_matrix(object.rigidbody->get_transform());
+    {
+        float4x4_simd world_matrix = simd::load(object.rigidbody->get_transform());
+        float4x4_simd offset_matrix = simd::load(object.rigidbody->get_offset_inverse());
+        world_matrix = matrix_simd::mul(offset_matrix, world_matrix);
+
+        float4x4 world;
+        simd::store(world_matrix, world);
+        world =
+            object.rigidbody->get_reflector()->reflect(world, object.transform->get_world_matrix());
+        object.transform->set_world_matrix(world);
+    }
 
     m_worlds.clear();
 }

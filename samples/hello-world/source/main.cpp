@@ -17,7 +17,8 @@ namespace violet::sample
 class color_pipeline : public render_pipeline
 {
 public:
-    color_pipeline(graphics_context* context) : render_pipeline(context)
+    color_pipeline(std::string_view name, graphics_context* context)
+        : render_pipeline(name, context)
     {
         set_shader("hello-world/shaders/base.vert.spv", "hello-world/shaders/base.frag.spv");
         set_vertex_attributes({
@@ -30,7 +31,7 @@ public:
         rhi_parameter_layout* material_layout = context->add_parameter_layout(
             "color pipeline",
             {
-                {RHI_PARAMETER_TYPE_SHADER_RESOURCE, 1}
+                {RHI_PARAMETER_TYPE_TEXTURE, 1}
         });
 
         set_parameter_layouts({
@@ -48,9 +49,9 @@ private:
         {
             command->set_vertex_buffers(mesh.vertex_buffers.data(), mesh.vertex_buffers.size());
             command->set_index_buffer(mesh.index_buffer);
-            command->set_parameter(0, mesh.node);
-            command->set_parameter(1, mesh.material);
-            command->set_parameter(2, data.camera_parameter);
+            command->set_render_parameter(0, mesh.transform);
+            command->set_render_parameter(1, mesh.material);
+            command->set_render_parameter(2, data.camera_parameter);
             command->draw_indexed(0, 12, 0);
         }
     }
@@ -88,8 +89,8 @@ public:
 
         initialize_render();
 
-        m_object = std::make_unique<node>("test", get_world());
-        auto [mesh_ptr, transform_ptr] = m_object->add_component<mesh, transform>();
+        m_object = std::make_unique<actor>("test", get_world());
+        auto [mesh_ptr, transform_ptr] = m_object->add<mesh, transform>();
         mesh_ptr->set_geometry(m_geometry.get());
         mesh_ptr->add_submesh(0, 0, 0, 12, m_material);
 
@@ -218,9 +219,9 @@ private:
         m_material = material_layout->add_material("test");
         m_material->set("texture", m_texture, m_sampler);
 
-        m_camera = std::make_unique<node>("main camera", get_world());
+        m_camera = std::make_unique<actor>("main camera", get_world());
         auto [camera_ptr, transform_ptr, orbit_control_ptr] =
-            m_camera->add_component<camera, transform, orbit_control>();
+            m_camera->add<camera, transform, orbit_control>();
         camera_ptr->set_render_pass(main);
         camera_ptr->set_attachment(0, rhi->get_back_buffer(), true);
         camera_ptr->resize(extent.width, extent.height);
@@ -261,7 +262,7 @@ private:
 
         float4x4_simd mvp = matrix_simd::mul(matrix_simd::mul(m, v), p);
 
-        auto transform_ptr = m_object->get_component<transform>();
+        auto [transform_ptr] = m_object->add<transform>();
         transform_ptr->set_rotation(
             quaternion_simd::rotation_axis(simd::set(1.0f, 0.0f, 0.0f, 0.0f), m_rotate));
 
@@ -284,14 +285,14 @@ private:
 
         if (m_camera)
         {
-            auto camera_ptr = m_camera->get_component<camera>();
+            auto camera_ptr = m_camera->get<camera>();
             camera_ptr->resize(width, height);
             camera_ptr->set_attachment(1, m_depth_stencil);
         }
     }
 
-    std::unique_ptr<node> m_camera;
-    std::unique_ptr<node> m_object;
+    std::unique_ptr<actor> m_camera;
+    std::unique_ptr<actor> m_object;
     std::unique_ptr<geometry> m_geometry;
     material* m_material;
 

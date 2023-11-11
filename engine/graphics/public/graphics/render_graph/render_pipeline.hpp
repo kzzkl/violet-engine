@@ -2,7 +2,6 @@
 
 #include "graphics/render_graph/render_node.hpp"
 #include <memory>
-#include <string>
 #include <vector>
 
 namespace violet
@@ -17,7 +16,7 @@ struct render_mesh
     std::size_t index_start;
     std::size_t index_count;
 
-    rhi_parameter* node;
+    rhi_parameter* transform;
     rhi_parameter* material;
 };
 
@@ -43,10 +42,10 @@ public:
     using parameter_layouts = std::vector<std::pair<rhi_parameter_layout*, render_parameter_type>>;
 
 public:
-    render_pipeline(graphics_context* context);
+    render_pipeline(std::string_view name, graphics_context* context);
     virtual ~render_pipeline();
 
-    void set_shader(std::string_view vertex, std::string_view pixel);
+    void set_shader(std::string_view vertex, std::string_view fragment);
 
     void set_vertex_attributes(const vertex_attributes& vertex_attributes);
     const vertex_attributes& get_vertex_attributes() const noexcept;
@@ -67,13 +66,11 @@ public:
     void add_mesh(const render_mesh& mesh);
     void set_camera_parameter(rhi_parameter* parameter) noexcept;
 
-    rhi_render_pipeline* get_interface() const noexcept { return m_interface; }
-
 private:
     virtual void render(rhi_render_command* command, render_data& data) = 0;
 
     std::string m_vertex_shader;
-    std::string m_pixel_shader;
+    std::string m_fragment_shader;
     vertex_attributes m_vertex_attributes;
     parameter_layouts m_parameter_layouts;
 

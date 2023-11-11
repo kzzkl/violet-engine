@@ -17,7 +17,7 @@ class material;
 class material_layout : public render_node
 {
 public:
-    material_layout(graphics_context* context);
+    material_layout(std::string_view name, graphics_context* context);
 
     void add_pipeline(render_pipeline* pipeline);
 
@@ -56,9 +56,10 @@ public:
     {
         auto& field = m_layout->get_field(name);
         m_parameters[field.pipeline_index]
-            ->set(field.field_index, &value, field.size, field.offset);
+            ->set_uniform(field.field_index, &value, field.size, field.offset);
     }
 
+    void set(std::string_view name, rhi_resource* storage_buffer);
     void set(std::string_view name, rhi_resource* texture, rhi_sampler* sampler);
 
     template <typename Functor>

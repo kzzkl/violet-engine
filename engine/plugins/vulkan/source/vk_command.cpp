@@ -8,7 +8,8 @@ namespace violet::vk
 {
 vk_command::vk_command(VkCommandBuffer command_buffer, vk_context* context) noexcept
     : m_command_buffer(command_buffer),
-      m_current_render_pass(nullptr),
+      m_current_render_pass(VK_NULL_HANDLE),
+      m_current_pipeline_layout(VK_NULL_HANDLE),
       m_context(context)
 {
 }
@@ -50,7 +51,7 @@ void vk_command::next()
     vkCmdNextSubpass(m_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-void vk_command::set_pipeline(rhi_render_pipeline* render_pipeline)
+void vk_command::set_render_pipeline(rhi_render_pipeline* render_pipeline)
 {
     vk_render_pipeline* pipeline = static_cast<vk_render_pipeline*>(render_pipeline);
     vkCmdBindPipeline(m_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->get_pipeline());
@@ -58,7 +59,7 @@ void vk_command::set_pipeline(rhi_render_pipeline* render_pipeline)
     m_current_pipeline_layout = pipeline->get_pipeline_layout();
 }
 
-void vk_command::set_parameter(std::size_t index, rhi_parameter* parameter)
+void vk_command::set_render_parameter(std::size_t index, rhi_parameter* parameter)
 {
     vk_parameter* p = static_cast<vk_parameter*>(parameter);
     p->sync();
@@ -67,6 +68,31 @@ void vk_command::set_parameter(std::size_t index, rhi_parameter* parameter)
     vkCmdBindDescriptorSets(
         m_command_buffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
+        m_current_pipeline_layout,
+        static_cast<std::uint32_t>(index),
+        1,
+        descriptor_sets,
+        0,
+        nullptr);
+}
+
+void vk_command::set_compute_pipeline(rhi_compute_pipeline* compute_pipeline)
+{
+    vk_compute_pipeline* pipeline = static_cast<vk_compute_pipeline*>(compute_pipeline);
+    vkCmdBindPipeline(m_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->get_pipeline());
+
+    m_current_pipeline_layout = pipeline->get_pipeline_layout();
+}
+
+void vk_command::set_compute_parameter(std::size_t index, rhi_parameter* parameter)
+{
+    vk_parameter* p = static_cast<vk_parameter*>(parameter);
+    p->sync();
+
+    VkDescriptorSet descriptor_sets[] = {p->get_descriptor_set()};
+    vkCmdBindDescriptorSets(
+        m_command_buffer,
+        VK_PIPELINE_BIND_POINT_COMPUTE,
         m_current_pipeline_layout,
         static_cast<std::uint32_t>(index),
         1,
@@ -148,6 +174,11 @@ void vk_command::draw_indexed(
     vkCmdDrawIndexed(m_command_buffer, index_count, 1, index_start, vertex_base, 0);
 }
 
+void vk_command::dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z)
+{
+    vkCmdDispatch(m_command_buffer, x, y, z);
+}
+
 void vk_command::clear_render_target(rhi_resource* render_target, const float4& color)
 {
 }
@@ -163,8 +194,9 @@ void vk_command::clear_depth_stencil(
 
 void vk_command::reset()
 {
-    m_current_render_pass = nullptr;
-    throw_if_failed(vkResetCommandBuffer(m_command_buffer, 0));
+    m_current_render_pass = VK_NULL_HANDLE;
+    m_current_pipeline_layout = VK_NULL_HANDLE;
+    vk_check(vkResetCommandBuffer(m_command_buffer, 0));
 }
 
 vk_graphics_queue::vk_graphics_queue(std::uint32_t queue_family_index, vk_context* context)
@@ -176,7 +208,7 @@ vk_graphics_queue::vk_graphics_queue(std::uint32_t queue_family_index, vk_contex
     command_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     command_pool_info.queueFamilyIndex = queue_family_index;
 
-    throw_if_failed(
+    vk_check(
         vkCreateCommandPool(m_context->get_device(), &command_pool_info, nullptr, &m_command_pool));
 
     m_active_commands.resize(m_context->get_frame_resource_count());
@@ -203,7 +235,7 @@ vk_command* vk_graphics_queue::allocate_command()
 
         std::vector<VkCommandBuffer> command_buffers(
             command_buffer_allocate_info.commandBufferCount);
-        throw_if_failed(vkAllocateCommandBuffers(
+        vk_check(vkAllocateCommandBuffers(
             m_context->get_device(),
             &command_buffer_allocate_info,
             command_buffers.data()));
@@ -223,8 +255,7 @@ vk_command* vk_graphics_queue::allocate_command()
 
     VkCommandBufferBeginInfo command_buffer_begin_info = {};
     command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    throw_if_failed(
-        vkBeginCommandBuffer(command->get_command_buffer(), &command_buffer_begin_info));
+    vk_check(vkBeginCommandBuffer(command->get_command_buffer(), &command_buffer_begin_info));
 
     return command;
 }
@@ -242,7 +273,7 @@ void vk_graphics_queue::execute(
     for (std::size_t i = 0; i < command_count; ++i)
     {
         vk_commands[i] = static_cast<vk_command*>(commands[i])->get_command_buffer();
-        throw_if_failed(vkEndCommandBuffer(vk_commands[i]));
+        vk_check(vkEndCommandBuffer(vk_commands[i]));
     }
 
     std::vector<VkSemaphore> vk_signal_semaphores(signal_semaphore_count);
@@ -265,7 +296,7 @@ void vk_graphics_queue::execute(
     submit_info.commandBufferCount = static_cast<std::uint32_t>(vk_commands.size());
     submit_info.pCommandBuffers = vk_commands.data();
 
-    throw_if_failed(vkQueueSubmit(
+    vk_check(vkQueueSubmit(
         m_queue,
         1,
         &submit_info,
@@ -324,6 +355,6 @@ void vk_present_queue::present(
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
         return;
     else
-        throw_if_failed(result);
+        vk_check(result);
 }
 } // namespace violet::vk

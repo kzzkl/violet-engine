@@ -16,6 +16,12 @@ struct mmd_material
     std::uint32_t spa_mode;
 };
 
+struct mmd_skinning_bone
+{
+    float4x3 offset;
+    float4 quaternion;
+};
+
 class mmd_render_graph : public render_graph
 {
 public:

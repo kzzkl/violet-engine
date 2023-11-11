@@ -101,7 +101,7 @@ void vk_renderer::present(rhi_semaphore* const* wait_semaphores, std::size_t wai
 
 void vk_renderer::resize(std::uint32_t width, std::uint32_t height)
 {
-    throw_if_failed(vkDeviceWaitIdle(m_context->get_device()));
+    vk_check(vkDeviceWaitIdle(m_context->get_device()));
     m_swapchain->resize(width, height);
 }
 
@@ -140,6 +140,16 @@ void vk_renderer::destroy_render_pipeline(rhi_render_pipeline* render_pipeline)
     delay_delete(render_pipeline);
 }
 
+rhi_compute_pipeline* vk_renderer::create_compute_pipeline(const rhi_compute_pipeline_desc& desc)
+{
+    return new vk_compute_pipeline(desc, m_context.get());
+}
+
+void vk_renderer::destroy_compute_pipeline(rhi_compute_pipeline* compute_pipeline)
+{
+    delay_delete(compute_pipeline);
+}
+
 rhi_parameter_layout* vk_renderer::create_parameter_layout(const rhi_parameter_layout_desc& desc)
 {
     return new vk_parameter_layout(desc, m_context.get());
@@ -170,24 +180,21 @@ void vk_renderer::destroy_framebuffer(rhi_framebuffer* framebuffer)
     delay_delete(framebuffer);
 }
 
-rhi_resource* vk_renderer::create_vertex_buffer(const rhi_vertex_buffer_desc& desc)
+rhi_resource* vk_renderer::create_buffer(const rhi_buffer_desc& desc)
 {
-    return new vk_vertex_buffer(desc, m_context.get());
+    if (desc.flags & RHI_BUFFER_FLAG_VERTEX)
+        return new vk_vertex_buffer(desc, m_context.get());
+    else if (desc.flags & RHI_BUFFER_FLAG_INDEX)
+        return new vk_index_buffer(desc, m_context.get());
+    else if (desc.flags & RHI_BUFFER_FLAG_STORAGE)
+        return new vk_storage_buffer(desc, m_context.get());
+    else
+        return nullptr;
 }
 
-void vk_renderer::destroy_vertex_buffer(rhi_resource* vertex_buffer)
+void vk_renderer::destroy_buffer(rhi_resource* buffer)
 {
-    delay_delete(vertex_buffer);
-}
-
-rhi_resource* vk_renderer::create_index_buffer(const rhi_index_buffer_desc& desc)
-{
-    return new vk_index_buffer(desc, m_context.get());
-}
-
-void vk_renderer::destroy_index_buffer(rhi_resource* index_buffer)
-{
-    delay_delete(index_buffer);
+    delay_delete(buffer);
 }
 
 rhi_sampler* vk_renderer::create_sampler(const rhi_sampler_desc& desc)
@@ -226,11 +233,6 @@ rhi_resource* vk_renderer::create_texture_cube(
     const char* bottom,
     const char* front,
     const char* back)
-{
-    return nullptr;
-}
-
-rhi_resource* vk_renderer::create_shadow_map(const rhi_shadow_map_desc& desc)
 {
     return nullptr;
 }

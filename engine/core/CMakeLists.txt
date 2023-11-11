@@ -6,12 +6,12 @@ set(CORE_SOURCE
     ./private/engine.cpp
     ./private/plugin.cpp)
 
-set(NODE_SOURCE
-    ./private/node/archetype_chunk.cpp
-    ./private/node/archetype.cpp
-    ./private/node/node.cpp
-    ./private/node/view.cpp
-    ./private/node/world.cpp)
+set(ECS_SOURCE
+    ./private/ecs/actor.cpp
+    ./private/ecs/archetype_chunk.cpp
+    ./private/ecs/archetype.cpp
+    ./private/ecs/view.cpp
+    ./private/ecs/world.cpp)
 
 set(TASK_SOURCE
     ./private/task/task_executor.cpp
@@ -19,7 +19,7 @@ set(TASK_SOURCE
 
 add_library(${PROJECT_NAME} STATIC
     ${CORE_SOURCE}
-    ${NODE_SOURCE}
+    ${ECS_SOURCE}
     ${TASK_SOURCE})
 add_library(violet::core ALIAS ${PROJECT_NAME})
 

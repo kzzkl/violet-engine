@@ -8,12 +8,16 @@ graphics_context::graphics_context(rhi_renderer* rhi) : m_rhi(rhi)
     add_parameter_layout(
         "violet mesh",
         {
-            {RHI_PARAMETER_TYPE_UNIFORM_BUFFER, sizeof(float4x4)}
+            {RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
+             sizeof(float4x4),
+             RHI_PARAMETER_FLAG_VERTEX | RHI_PARAMETER_FLAG_FRAGMENT}
     });
     add_parameter_layout(
         "violet camera",
         {
-            {RHI_PARAMETER_TYPE_UNIFORM_BUFFER, sizeof(float4x4) * 3}
+            {RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
+             sizeof(float4x4) * 3,
+             RHI_PARAMETER_FLAG_VERTEX | RHI_PARAMETER_FLAG_FRAGMENT}
     });
 }
 

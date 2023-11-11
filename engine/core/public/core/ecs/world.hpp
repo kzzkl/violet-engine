@@ -1,15 +1,13 @@
 #pragma once
 
-#include "core/node/entity.hpp"
-#include "core/node/view.hpp"
+#include "core/ecs/entity.hpp"
+#include "core/ecs/view.hpp"
 #include <functional>
 #include <queue>
 #include <unordered_map>
 
 namespace violet
 {
-class node;
-
 struct entity_record
 {
     std::size_t entity_index;
@@ -35,7 +33,7 @@ public:
     world();
     ~world();
 
-    [[nodiscard]] entity create(node* owner);
+    [[nodiscard]] entity create(actor* owner);
 
     void release(entity entity);
 
@@ -46,22 +44,21 @@ public:
     void register_component(Args&&... args)
     {
         component_id id = component_index::value<Component>();
-        assert(m_component_infos[id] == nullptr);
-        m_component_infos[id] = std::make_unique<ComponentInfo>(std::forward<Args>(args)...);
+        assert(m_component_table[id] == nullptr);
+        m_component_table[id] = std::make_unique<ComponentInfo>(std::forward<Args>(args)...);
     }
 
     template <typename Component>
     bool is_component_register()
     {
         component_id id = component_index::value<Component>();
-        return m_component_infos[id] != nullptr;
+        return m_component_table[id] != nullptr;
     }
 
     template <typename... Components>
     void add_component(entity entity)
     {
         (assert(is_component_register<Components>()), ...);
-        // (register_component<Components>(false), ...);
 
         entity_info& info = m_entity_infos[entity.index];
 
@@ -237,7 +234,7 @@ private:
     std::unique_ptr<archetype_chunk_allocator> m_archetype_chunk_allocator;
     std::unordered_map<component_mask, std::unique_ptr<archetype>> m_archetypes;
 
-    component_registry m_component_infos;
+    component_table m_component_table;
     std::vector<entity_info> m_entity_infos;
 };
 } // namespace violet

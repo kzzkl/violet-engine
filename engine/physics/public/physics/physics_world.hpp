@@ -1,7 +1,6 @@
 #pragma once
 
-#include "components/rigidbody.hpp"
-#include "core/node/node.hpp"
+#include "core/ecs/actor.hpp"
 #include "physics/physics_interface.hpp"
 
 namespace violet
@@ -13,7 +12,7 @@ public:
     physics_world(const physics_world&) = delete;
     ~physics_world();
 
-    void add(component_ptr<rigidbody> rigidbody);
+    void add(actor* actor);
 
     void simulation(float time_step);
 

@@ -44,8 +44,8 @@ void render_attachment::set_final_state(rhi_resource_state state) noexcept
     m_desc.final_state = state;
 }
 
-render_subpass::render_subpass(graphics_context* context)
-    : render_node(context),
+render_subpass::render_subpass(std::string_view name, graphics_context* context)
+    : render_node(name, context),
       m_desc{},
       m_index(0)
 {
@@ -111,7 +111,9 @@ void render_subpass::execute(rhi_render_command* command, rhi_parameter* camera_
     }
 }
 
-render_pass::render_pass(graphics_context* context) : render_node(context), m_interface(nullptr)
+render_pass::render_pass(std::string_view name, graphics_context* context)
+    : render_node(name, context),
+      m_interface(nullptr)
 {
 }
 
@@ -131,8 +133,7 @@ render_attachment* render_pass::add_attachment(std::string_view name)
 
 render_subpass* render_pass::add_subpass(std::string_view name)
 {
-    auto subpass = std::make_unique<render_subpass>(get_context());
-    m_subpasses.push_back(std::move(subpass));
+    m_subpasses.push_back(std::make_unique<render_subpass>(name, get_context()));
     return m_subpasses.back().get();
 }
 

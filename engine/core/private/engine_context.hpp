@@ -1,7 +1,7 @@
 #pragma once
 
+#include "core/ecs/world.hpp"
 #include "core/engine_system.hpp"
-#include "core/node/world.hpp"
 #include "core/task/task_executor.hpp"
 #include "core/timer.hpp"
 

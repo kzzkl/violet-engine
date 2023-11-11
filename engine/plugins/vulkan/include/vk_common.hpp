@@ -39,7 +39,7 @@ private:
     VkResult m_result;
 };
 
-inline void throw_if_failed(VkResult result)
+inline void vk_check(VkResult result)
 {
     if (result != VK_SUCCESS)
         throw vk_exception(result);

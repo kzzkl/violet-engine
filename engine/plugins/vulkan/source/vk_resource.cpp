@@ -99,7 +99,7 @@ void vk_resource::create_buffer(
     buffer_info.usage = usage;
     buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    throw_if_failed(vkCreateBuffer(device, &buffer_info, nullptr, &buffer));
+    vk_check(vkCreateBuffer(device, &buffer_info, nullptr, &buffer));
 
     VkMemoryRequirements requirements;
     vkGetBufferMemoryRequirements(device, buffer, &requirements);
@@ -110,8 +110,8 @@ void vk_resource::create_buffer(
     allocate_info.memoryTypeIndex =
         find_memory_type(requirements.memoryTypeBits, properties, m_context->get_physical_device());
 
-    throw_if_failed(vkAllocateMemory(device, &allocate_info, nullptr, &memory));
-    throw_if_failed(vkBindBufferMemory(device, buffer, memory, 0));
+    vk_check(vkAllocateMemory(device, &allocate_info, nullptr, &memory));
+    vk_check(vkBindBufferMemory(device, buffer, memory, 0));
 }
 
 void vk_resource::destroy_buffer(VkBuffer buffer, VkDeviceMemory memory)
@@ -181,7 +181,7 @@ void vk_image::create_image(
     image_info.samples = samples;
     image_info.flags = 0; // Optional
 
-    throw_if_failed(vkCreateImage(device, &image_info, nullptr, &image));
+    vk_check(vkCreateImage(device, &image_info, nullptr, &image));
 
     VkMemoryRequirements requirements;
     vkGetImageMemoryRequirements(device, image, &requirements);
@@ -194,8 +194,8 @@ void vk_image::create_image(
         properties,
         get_context()->get_physical_device());
 
-    throw_if_failed(vkAllocateMemory(device, &allocate_info, nullptr, &memory));
-    throw_if_failed(vkBindImageMemory(device, image, memory, 0));
+    vk_check(vkAllocateMemory(device, &allocate_info, nullptr, &memory));
+    vk_check(vkBindImageMemory(device, image, memory, 0));
 }
 
 void vk_image::destroy_image(VkImage image, VkDeviceMemory memory)
@@ -466,7 +466,7 @@ vk_sampler::vk_sampler(const rhi_sampler_desc& desc, vk_context* context) : m_co
     sampler_info.compareOp = VK_COMPARE_OP_ALWAYS;
     sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 
-    throw_if_failed(vkCreateSampler(m_context->get_device(), &sampler_info, nullptr, &m_sampler));
+    vk_check(vkCreateSampler(m_context->get_device(), &sampler_info, nullptr, &m_sampler));
 }
 
 vk_sampler::~vk_sampler()
@@ -478,31 +478,26 @@ vk_buffer::vk_buffer(vk_context* context) : vk_resource(context)
 {
 }
 
-vk_vertex_buffer::vk_vertex_buffer(const rhi_vertex_buffer_desc& desc, vk_context* context)
+vk_vertex_buffer::vk_vertex_buffer(const rhi_buffer_desc& desc, vk_context* context)
     : vk_buffer(context),
       m_mapping_pointer(nullptr)
 {
+    assert(desc.flags & RHI_BUFFER_FLAG_VERTEX);
+
     m_buffer_size = desc.size;
 
-    VkDevice device = get_context()->get_device();
-    if (desc.dynamic)
+    VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    if (desc.flags & RHI_BUFFER_FLAG_STORAGE)
+        usage_flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+    if (desc.flags & RHI_BUFFER_FLAG_HOST_VISIBLE)
     {
-        create_host_visible_buffer(
-            desc.data,
-            m_buffer_size,
-            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            m_buffer,
-            m_memory);
-        vkMapMemory(device, m_memory, 0, m_buffer_size, 0, &m_mapping_pointer);
+        create_host_visible_buffer(desc.data, m_buffer_size, usage_flags, m_buffer, m_memory);
+        vkMapMemory(get_context()->get_device(), m_memory, 0, m_buffer_size, 0, &m_mapping_pointer);
     }
     else
     {
-        create_device_local_buffer(
-            desc.data,
-            m_buffer_size,
-            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            m_buffer,
-            m_memory);
+        create_device_local_buffer(desc.data, m_buffer_size, usage_flags, m_buffer, m_memory);
     }
 }
 
@@ -514,39 +509,33 @@ vk_vertex_buffer::~vk_vertex_buffer()
     destroy_buffer(m_buffer, m_memory);
 }
 
-vk_index_buffer::vk_index_buffer(const rhi_index_buffer_desc& desc, vk_context* context)
+vk_index_buffer::vk_index_buffer(const rhi_buffer_desc& desc, vk_context* context)
     : vk_buffer(context),
       m_mapping_pointer(nullptr)
 {
+    assert(desc.flags & RHI_BUFFER_FLAG_INDEX);
+
     m_buffer_size = desc.size;
 
-    if (desc.index_size == 2)
+    VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    if (desc.flags & RHI_BUFFER_FLAG_STORAGE)
+        usage_flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+    if (desc.index.size == 2)
         m_index_type = VK_INDEX_TYPE_UINT16;
-    else if (desc.index_size == 4)
+    else if (desc.index.size == 4)
         m_index_type = VK_INDEX_TYPE_UINT32;
     else
         throw vk_exception("Invalid index size.");
 
-    VkDevice device = get_context()->get_device();
-    if (desc.dynamic)
+    if (desc.flags & RHI_BUFFER_FLAG_HOST_VISIBLE)
     {
-        create_host_visible_buffer(
-            desc.data,
-            m_buffer_size,
-            VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-            m_buffer,
-            m_memory);
-
-        vkMapMemory(device, m_memory, 0, m_buffer_size, 0, &m_mapping_pointer);
+        create_host_visible_buffer(desc.data, m_buffer_size, usage_flags, m_buffer, m_memory);
+        vkMapMemory(get_context()->get_device(), m_memory, 0, m_buffer_size, 0, &m_mapping_pointer);
     }
     else
     {
-        create_device_local_buffer(
-            desc.data,
-            m_buffer_size,
-            VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-            m_buffer,
-            m_memory);
+        create_device_local_buffer(desc.data, m_buffer_size, usage_flags, m_buffer, m_memory);
     }
 }
 
@@ -574,6 +563,41 @@ vk_uniform_buffer::vk_uniform_buffer(void* data, std::size_t size, vk_context* c
 }
 
 vk_uniform_buffer::~vk_uniform_buffer()
+{
+    if (m_mapping_pointer)
+        vkUnmapMemory(get_context()->get_device(), m_memory);
+
+    destroy_buffer(m_buffer, m_memory);
+}
+
+vk_storage_buffer::vk_storage_buffer(const rhi_buffer_desc& desc, vk_context* context)
+    : vk_buffer(context),
+      m_mapping_pointer(nullptr)
+{
+    m_buffer_size = desc.size;
+
+    if (desc.flags & RHI_BUFFER_FLAG_HOST_VISIBLE)
+    {
+        create_host_visible_buffer(
+            desc.data,
+            m_buffer_size,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            m_buffer,
+            m_memory);
+        vkMapMemory(get_context()->get_device(), m_memory, 0, m_buffer_size, 0, &m_mapping_pointer);
+    }
+    else
+    {
+        create_device_local_buffer(
+            desc.data,
+            m_buffer_size,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            m_buffer,
+            m_memory);
+    }
+}
+
+vk_storage_buffer::~vk_storage_buffer()
 {
     if (m_mapping_pointer)
         vkUnmapMemory(get_context()->get_device(), m_memory);

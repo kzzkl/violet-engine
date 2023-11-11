@@ -52,6 +52,30 @@ std::uint32_t get_vertex_attribute_stride(rhi_resource_format format) noexcept
         return 0;
     }
 }
+
+VkShaderModule load_shader(std::string_view path, VkDevice device)
+{
+    std::ifstream fin(path.data(), std::ios::binary);
+    if (!fin.is_open())
+        throw vk_exception("Failed to open file!");
+
+    fin.seekg(0, std::ios::end);
+    std::size_t buffer_size = fin.tellg();
+
+    std::vector<char> buffer(buffer_size);
+    fin.seekg(0);
+    fin.read(buffer.data(), buffer_size);
+    fin.close();
+
+    VkShaderModuleCreateInfo shader_module_info = {};
+    shader_module_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    shader_module_info.pCode = reinterpret_cast<std::uint32_t*>(buffer.data());
+    shader_module_info.codeSize = buffer.size();
+
+    VkShaderModule result = VK_NULL_HANDLE;
+    vk_check(vkCreateShaderModule(device, &shader_module_info, nullptr, &result));
+    return result;
+}
 } // namespace
 
 vk_parameter_layout::vk_parameter_layout(const rhi_parameter_layout_desc& desc, vk_context* context)
@@ -62,16 +86,19 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_layout_desc& desc, 
 
     m_parameter_infos.resize(desc.parameter_count);
     std::size_t uniform_buffer_count = 0;
+    std::size_t storage_buffer_count = 0;
     std::size_t image_count = 0;
 
     for (std::size_t i = 0; i < desc.parameter_count; ++i)
     {
         VkDescriptorSetLayoutBinding binding = {};
         binding.binding = static_cast<std::uint32_t>(i);
-        if (desc.parameters[i].vertex_shader)
+        if (desc.parameters[i].flags & RHI_PARAMETER_FLAG_VERTEX)
             binding.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
-        if (desc.parameters[i].pixel_shader)
+        if (desc.parameters[i].flags & RHI_PARAMETER_FLAG_FRAGMENT)
             binding.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+        if (desc.parameters[i].flags & RHI_PARAMETER_FLAG_COMPUTE)
+            binding.stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
 
         switch (desc.parameters[i].type)
         {
@@ -92,7 +119,18 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_layout_desc& desc, 
             ++uniform_buffer_count;
             break;
         }
-        case RHI_PARAMETER_TYPE_SHADER_RESOURCE: {
+        case RHI_PARAMETER_TYPE_STORAGE_BUFFER: {
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            binding.descriptorCount = 1;
+            binding.pImmutableSamplers = nullptr;
+
+            m_parameter_infos[i].index = storage_buffer_count;
+            m_parameter_infos[i].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+            ++storage_buffer_count;
+            break;
+        }
+        case RHI_PARAMETER_TYPE_TEXTURE: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             binding.descriptorCount = 1;
             binding.pImmutableSamplers = nullptr;
@@ -115,7 +153,7 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_layout_desc& desc, 
     descriptor_set_layout_info.pBindings = bindings.data();
     descriptor_set_layout_info.bindingCount = static_cast<std::uint32_t>(bindings.size());
 
-    throw_if_failed(vkCreateDescriptorSetLayout(
+    vk_check(vkCreateDescriptorSetLayout(
         m_context->get_device(),
         &descriptor_set_layout_info,
         nullptr,
@@ -200,7 +238,11 @@ vk_parameter::~vk_parameter()
         m_context->free_descriptor_set(frame_resource.descriptor_set);
 }
 
-void vk_parameter::set(std::size_t index, const void* data, std::size_t size, std::size_t offset)
+void vk_parameter::set_uniform(
+    std::size_t index,
+    const void* data,
+    std::size_t size,
+    std::size_t offset)
 {
     sync();
 
@@ -218,13 +260,9 @@ void vk_parameter::set(std::size_t index, const void* data, std::size_t size, st
     mark_dirty(index);
 }
 
-void vk_parameter::set(std::size_t index, rhi_resource* texture, rhi_sampler* sampler)
+void vk_parameter::set_texture(std::size_t index, rhi_resource* texture, rhi_sampler* sampler)
 {
     sync();
-
-    std::size_t frame_resource_count = m_context->get_frame_resource_count();
-    std::size_t current_index = m_context->get_frame_resource_index();
-    std::size_t previous_index = (current_index + frame_resource_count - 1) % frame_resource_count;
 
     vk_image* image = static_cast<vk_image*>(texture);
 
@@ -235,13 +273,40 @@ void vk_parameter::set(std::size_t index, rhi_resource* texture, rhi_sampler* sa
 
     VkWriteDescriptorSet write = {};
     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    write.dstSet = m_frame_resources[current_index].descriptor_set;
+    write.dstSet = m_frame_resources[m_context->get_frame_resource_index()].descriptor_set;
     write.dstBinding = static_cast<std::uint32_t>(index);
     write.dstArrayElement = 0;
     write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     write.descriptorCount = 1;
     write.pBufferInfo = nullptr;
     write.pImageInfo = &info;
+    write.pTexelBufferView = nullptr;
+
+    vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
+
+    mark_dirty(index);
+}
+
+void vk_parameter::set_storage(std::size_t index, rhi_resource* storage_buffer)
+{
+    sync();
+
+    vk_buffer* buffer = static_cast<vk_buffer*>(storage_buffer);
+
+    VkDescriptorBufferInfo info = {};
+    info.buffer = buffer->get_buffer_handle();
+    info.offset = 0;
+    info.range = buffer->get_buffer_size();
+
+    VkWriteDescriptorSet write = {};
+    write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write.dstSet = m_frame_resources[m_context->get_frame_resource_index()].descriptor_set;
+    write.dstBinding = static_cast<std::uint32_t>(index);
+    write.dstArrayElement = 0;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    write.descriptorCount = 1;
+    write.pBufferInfo = &info;
+    write.pImageInfo = nullptr;
     write.pTexelBufferView = nullptr;
 
     vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
@@ -289,7 +354,9 @@ void vk_parameter::sync()
 
             std::memcpy(target, source, size);
         }
-        else if (parameter_info.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+        else if (
+            parameter_info.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
+            parameter_info.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
         {
             VkCopyDescriptorSet copy = {};
             copy.sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
@@ -333,18 +400,20 @@ vk_render_pipeline::vk_render_pipeline(
     const rhi_render_pipeline_desc& desc,
     VkExtent2D extent,
     vk_context* context)
-    : m_context(context)
+    : m_pipeline(VK_NULL_HANDLE),
+      m_pipeline_layout(VK_NULL_HANDLE),
+      m_context(context)
 {
     VkPipelineShaderStageCreateInfo vert_shader_stage_info = {};
     vert_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vert_shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vert_shader_stage_info.module = load_shader(desc.vertex_shader);
+    vert_shader_stage_info.module = load_shader(desc.vertex_shader, m_context->get_device());
     vert_shader_stage_info.pName = "vs_main";
 
     VkPipelineShaderStageCreateInfo frag_shader_stage_info = {};
     frag_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     frag_shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    frag_shader_stage_info.module = load_shader(desc.pixel_shader);
+    frag_shader_stage_info.module = load_shader(desc.fragment_shader, m_context->get_device());
     frag_shader_stage_info.pName = "ps_main";
 
     VkPipelineShaderStageCreateInfo shader_stage_infos[] = {
@@ -482,7 +551,7 @@ vk_render_pipeline::vk_render_pipeline(
     layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     layout_info.pSetLayouts = descriptor_set_layouts.data();
     layout_info.setLayoutCount = static_cast<std::uint32_t>(descriptor_set_layouts.size());
-    throw_if_failed(
+    vk_check(
         vkCreatePipelineLayout(m_context->get_device(), &layout_info, nullptr, &m_pipeline_layout));
 
     std::vector<VkDynamicState> dynamic_state = {
@@ -513,7 +582,7 @@ vk_render_pipeline::vk_render_pipeline(
     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
     pipeline_info.pDepthStencilState = &depth_stencil_state_info;
 
-    throw_if_failed(vkCreateGraphicsPipelines(
+    vk_check(vkCreateGraphicsPipelines(
         m_context->get_device(),
         VK_NULL_HANDLE,
         1,
@@ -531,28 +600,52 @@ vk_render_pipeline::~vk_render_pipeline()
     vkDestroyPipelineLayout(m_context->get_device(), m_pipeline_layout, nullptr);
 }
 
-VkShaderModule vk_render_pipeline::load_shader(std::string_view path)
+vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, vk_context* context)
+    : m_pipeline(VK_NULL_HANDLE),
+      m_pipeline_layout(VK_NULL_HANDLE),
+      m_context(context)
 {
-    std::ifstream fin(path.data(), std::ios::binary);
-    if (!fin.is_open())
-        throw vk_exception("Failed to open file!");
+    VkPipelineShaderStageCreateInfo shader_stage_info = {};
+    shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shader_stage_info.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    shader_stage_info.module = load_shader(desc.compute_shader, m_context->get_device());
+    shader_stage_info.pName = "cs_main";
 
-    fin.seekg(0, std::ios::end);
-    std::size_t buffer_size = fin.tellg();
+    std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
+    for (std::size_t i = 0; i < desc.parameter_count; ++i)
+    {
+        descriptor_set_layouts.push_back(
+            static_cast<vk_parameter_layout*>(desc.parameters[i])->get_layout());
+    }
 
-    std::vector<char> buffer(buffer_size);
-    fin.seekg(0);
-    fin.read(buffer.data(), buffer_size);
-    fin.close();
+    VkPipelineLayoutCreateInfo layout_info = {};
+    layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    layout_info.pSetLayouts = descriptor_set_layouts.data();
+    layout_info.setLayoutCount = static_cast<std::uint32_t>(descriptor_set_layouts.size());
+    vk_check(
+        vkCreatePipelineLayout(m_context->get_device(), &layout_info, nullptr, &m_pipeline_layout));
 
-    VkShaderModuleCreateInfo shader_module_info = {};
-    shader_module_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    shader_module_info.pCode = reinterpret_cast<std::uint32_t*>(buffer.data());
-    shader_module_info.codeSize = buffer.size();
+    VkComputePipelineCreateInfo pipeline_info = {};
+    pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
+    pipeline_info.basePipelineIndex = -1;
+    pipeline_info.stage = shader_stage_info;
+    pipeline_info.layout = m_pipeline_layout;
 
-    VkShaderModule result = VK_NULL_HANDLE;
-    throw_if_failed(
-        vkCreateShaderModule(m_context->get_device(), &shader_module_info, nullptr, &result));
-    return result;
+    vk_check(vkCreateComputePipelines(
+        m_context->get_device(),
+        VK_NULL_HANDLE,
+        1,
+        &pipeline_info,
+        nullptr,
+        &m_pipeline));
+
+    vkDestroyShaderModule(m_context->get_device(), shader_stage_info.module, nullptr);
+}
+
+vk_compute_pipeline::~vk_compute_pipeline()
+{
+    vkDestroyPipeline(m_context->get_device(), m_pipeline, nullptr);
+    vkDestroyPipelineLayout(m_context->get_device(), m_pipeline_layout, nullptr);
 }
 } // namespace violet::vk

@@ -48,9 +48,14 @@ public:
     vk_parameter(vk_parameter_layout* layout, vk_context* context);
     virtual ~vk_parameter();
 
-    virtual void set(std::size_t index, const void* data, std::size_t size, std::size_t offset)
+    virtual void set_uniform(
+        std::size_t index,
+        const void* data,
+        std::size_t size,
+        std::size_t offset) override;
+    virtual void set_texture(std::size_t index, rhi_resource* texture, rhi_sampler* sampler)
         override;
-    virtual void set(std::size_t index, rhi_resource* texture, rhi_sampler* sampler) override;
+    virtual void set_storage(std::size_t index, rhi_resource* storage_buffer) override;
 
     VkDescriptorSet get_descriptor_set() const noexcept;
 
@@ -90,8 +95,25 @@ public:
     vk_render_pipeline& operator=(const vk_render_pipeline&) = delete;
 
 private:
-    VkShaderModule load_shader(std::string_view path);
+    VkPipeline m_pipeline;
+    VkPipelineLayout m_pipeline_layout;
 
+    vk_context* m_context;
+};
+
+class vk_compute_pipeline : public rhi_compute_pipeline
+{
+public:
+    vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, vk_context* context);
+    vk_compute_pipeline(const vk_render_pipeline&) = delete;
+    virtual ~vk_compute_pipeline();
+
+    VkPipeline get_pipeline() const noexcept { return m_pipeline; }
+    VkPipelineLayout get_pipeline_layout() const noexcept { return m_pipeline_layout; }
+
+    vk_render_pipeline& operator=(const vk_render_pipeline&) = delete;
+
+private:
     VkPipeline m_pipeline;
     VkPipelineLayout m_pipeline_layout;
 

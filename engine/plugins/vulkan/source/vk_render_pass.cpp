@@ -135,7 +135,7 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
     render_pass_info.pDependencies = dependencies.data();
     render_pass_info.dependencyCount = static_cast<std::uint32_t>(dependencies.size());
 
-    throw_if_failed(
+    vk_check(
         vkCreateRenderPass(m_context->get_device(), &render_pass_info, nullptr, &m_render_pass));
 }
 

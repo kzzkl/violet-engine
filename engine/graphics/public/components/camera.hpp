@@ -2,6 +2,7 @@
 
 #include "graphics/render_graph/render_pass.hpp"
 #include "math/math.hpp"
+#include <unordered_map>
 
 namespace violet
 {

@@ -1,4 +1,6 @@
 #include "test_common.hpp"
+#include <chrono>
+#include <iostream>
 
 namespace violet::test
 {
@@ -55,9 +57,7 @@ TEST_CASE("vector::length", "[vector]")
 TEST_CASE("vector::normalize", "[vector]")
 {
     float4 a = {1.0f, 2.0f, 3.0f, 0.0f};
-    CHECK(equal(
-        vector::normalize(a),
-        float4{0.267261237f, 0.534522474f, 0.801783681f, 0.0f}));
+    CHECK(equal(vector::normalize(a), float4{0.267261237f, 0.534522474f, 0.801783681f, 0.0f}));
 }
 
 TEST_CASE("vector::sqrt", "[vector]")
@@ -69,9 +69,7 @@ TEST_CASE("vector::sqrt", "[vector]")
 TEST_CASE("vector::reciprocal_sqrt", "[vector]")
 {
     float4 a = {1.0f, 2.0f, 3.0f, 4.0f};
-    CHECK(equal(
-        vector::reciprocal_sqrt(a),
-        float4{1.0f, 0.707106781f, 0.577350269f, 0.5f}));
+    CHECK(equal(vector::reciprocal_sqrt(a), float4{1.0f, 0.707106781f, 0.577350269f, 0.5f}));
 }
 
 TEST_CASE("vector_simd::add", "[vector][simd]")
@@ -152,15 +150,55 @@ TEST_CASE("vector_simd::normalize", "[vector][simd]")
 TEST_CASE("vector_simd::sqrt", "[vector][simd]")
 {
     float4_simd a = simd::set(1.0f, 2.0f, 3.0f, 0.0f);
-    CHECK(
-        equal(vector_simd::sqrt(a), simd::set(1.0f, 1.414213562f, 1.732050807f, 0.0f)));
+    CHECK(equal(vector_simd::sqrt(a), simd::set(1.0f, 1.414213562f, 1.732050807f, 0.0f)));
 }
 
 TEST_CASE("vector_simd::reciprocal_sqrt", "[vector][simd]")
 {
     float4_simd a = simd::set(1.0f, 2.0f, 3.0f, 4.0f);
-    CHECK(equal(
-        vector_simd::reciprocal_sqrt(a),
-        simd::set(1.0f, 0.707106781f, 0.577350269f, 0.5f)));
+    CHECK(
+        equal(vector_simd::reciprocal_sqrt(a), simd::set(1.0f, 0.707106781f, 0.577350269f, 0.5f)));
 }
+
+/*TEST_CASE("vector_simd::benchmark", "[vector][simd]")
+{
+    float4 data = {};
+    float4 add = {1.0f, 2.0f, 3.0f, 4.0f};
+
+    auto t1 = std::chrono::steady_clock::now();
+    for (std::size_t i = 0; i < 100000000; ++i)
+    {
+        float4_simd v = simd::load(data);
+        float4_simd a = simd::load(add);
+
+        v = vector_simd::add(v, a);
+        v = vector_simd::normalize(v);
+        v = vector_simd::mul(v, a);
+        v = vector_simd::normalize(v);
+        simd::store(v, data);
+    }
+    auto t2 = std::chrono::steady_clock::now();
+    std::cout << data[0] << " " << data[1] << " " << data[2] << " " << data[3]
+        << std::endl;
+
+    data = {};
+
+    auto t3 = std::chrono::steady_clock::now();
+    float4_simd d = simd::load(data);
+    float4_simd a = simd::load(add);
+    for (std::size_t i = 0; i < 100000000; ++i) {
+        d = vector_simd::add(d, a);
+        d = vector_simd::normalize(d);
+        d = vector_simd::mul(d, a);
+        d = vector_simd::normalize(d);
+    }
+    simd::store(d, data);
+    auto t4 = std::chrono::steady_clock::now();
+
+    std::cout << (t2 - t1).count() / 1000000000.0f << " " << (t4 - t3).count() / 1000000000.0f
+              << std::endl;
+
+    std::cout << data[0] << " " << data[1] << " " << data[2] << " " << data[3]
+        << std::endl;
+}*/
 } // namespace violet::test

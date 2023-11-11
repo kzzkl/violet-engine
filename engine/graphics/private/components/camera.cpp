@@ -187,6 +187,6 @@ void camera::update_parameter()
     float4x4_simd p = simd::load(m_parameter_data.projection);
     simd::store(matrix_simd::mul(v, p), m_parameter_data.view_projection);
 
-    m_parameter->set(0, &m_parameter_data, sizeof(camera_parameter), 0);
+    m_parameter->set_uniform(0, &m_parameter_data, sizeof(camera_parameter), 0);
 }
 } // namespace violet

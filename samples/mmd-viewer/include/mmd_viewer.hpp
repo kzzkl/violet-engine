@@ -1,12 +1,13 @@
 #pragma once
 
 #include "core/engine_system.hpp"
-#include "core/node/node.hpp"
-#include "graphics/geometry.hpp"
+#include "mmd_loader.hpp"
 #include "mmd_render.hpp"
+#include "physics/physics_world.hpp"
 
 namespace violet::sample
 {
+class physics_debug;
 class mmd_viewer : public engine_system
 {
 public:
@@ -17,28 +18,20 @@ public:
     virtual void shutdown() override;
 
 private:
-    struct mmd_model
-    {
-        std::vector<rhi_resource*> textures;
-        std::vector<material*> materials;
-
-        std::unique_ptr<geometry> geometry;
-        std::unique_ptr<node> model;
-    };
-
     void initialize_render();
-    void load_model(std::string_view path);
 
     void tick(float delta);
     void resize(std::uint32_t width, std::uint32_t height);
 
     std::unique_ptr<mmd_render_graph> m_render_graph;
     rhi_resource* m_depth_stencil;
-    rhi_sampler* m_sampler;
 
-    std::vector<rhi_resource*> m_internal_toons;
+    std::unique_ptr<actor> m_camera;
 
-    std::map<std::string, mmd_model> m_models;
-    std::unique_ptr<node> m_camera;
+    std::unique_ptr<physics_world> m_physics_world;
+    std::unique_ptr<physics_debug> m_physics_debug;
+
+    std::unique_ptr<mmd_loader> m_loader;
+    mmd_model* m_model;
 };
 } // namespace violet::sample

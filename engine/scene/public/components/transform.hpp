@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/node/node.hpp"
+#include "core/ecs/actor.hpp"
 #include "math/math.hpp"
 #include <vector>
 
@@ -9,7 +9,7 @@ namespace violet
 class transform
 {
 public:
-    transform() noexcept;
+    transform(actor* owner) noexcept;
 
     void set_position(float x, float y, float z) noexcept;
     void set_position(const float3& position) noexcept;
@@ -31,6 +31,7 @@ public:
     void lookat(const float3& target, const float3& up) noexcept;
 
     void set_world_matrix(const float4x4& matrix);
+    void set_world_matrix(const float4x4_simd& matrix);
 
     const float4x4& get_local_matrix() const noexcept;
     const float4x4& get_world_matrix() const noexcept;
@@ -79,9 +80,9 @@ private:
     mutable float4x4 m_world_matrix;
     mutable bool m_world_dirty;
 
-    std::size_t m_update_count;
-
     component_ptr<transform> m_parent;
     std::vector<component_ptr<transform>> m_children;
+
+    actor* m_owner;
 };
 } // namespace violet

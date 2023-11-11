@@ -59,7 +59,7 @@ vk_swapchain::~vk_swapchain()
 
 std::uint32_t vk_swapchain::acquire_next_image(VkSemaphore signal_semaphore)
 {
-    throw_if_failed(vkAcquireNextImageKHR(
+    vk_check(vkAcquireNextImageKHR(
         m_context->get_device(),
         m_swapchain,
         UINT64_MAX,
@@ -176,7 +176,7 @@ void vk_swapchain::resize(std::uint32_t width, std::uint32_t height)
     swapchain_info.clipped = VK_TRUE;
     swapchain_info.oldSwapchain = VK_NULL_HANDLE;
 
-    throw_if_failed(
+    vk_check(
         vkCreateSwapchainKHR(m_context->get_device(), &swapchain_info, nullptr, &m_swapchain));
 
     std::uint32_t swapchain_image_count = 0;

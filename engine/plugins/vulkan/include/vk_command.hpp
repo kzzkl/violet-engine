@@ -20,8 +20,10 @@ public:
     virtual void end() override;
     virtual void next() override;
 
-    virtual void set_pipeline(rhi_render_pipeline* render_pipeline) override;
-    virtual void set_parameter(std::size_t index, rhi_parameter* parameter) override;
+    virtual void set_render_pipeline(rhi_render_pipeline* render_pipeline) override;
+    virtual void set_render_parameter(std::size_t index, rhi_parameter* parameter) override;
+    virtual void set_compute_pipeline(rhi_compute_pipeline* compute_pipeline) override;
+    virtual void set_compute_parameter(std::size_t index, rhi_parameter* parameter) override;
 
     virtual void set_viewport(const rhi_viewport& viewport) override;
     virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) override;
@@ -36,6 +38,8 @@ public:
         std::size_t index_start,
         std::size_t index_count,
         std::size_t vertex_base) override;
+
+    virtual void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) override;
 
     virtual void clear_render_target(rhi_resource* render_target, const float4& color) override;
     virtual void clear_depth_stencil(

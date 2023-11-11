@@ -1,10 +1,18 @@
 #pragma once
 
-#include "core/node/node.hpp"
+#include "core/ecs/actor.hpp"
 #include "physics/physics_interface.hpp"
 
 namespace violet
 {
+class rigidbody_reflector
+{
+public:
+    ~rigidbody_reflector() = default;
+
+    virtual float4x4 reflect(const float4x4& rigidbody_world, const float4x4& transform_world);
+};
+
 class joint;
 class rigidbody
 {
@@ -15,6 +23,8 @@ public:
     ~rigidbody();
 
     void set_type(pei_rigidbody_type type);
+    pei_rigidbody_type get_type() const noexcept { return m_desc.type; }
+
     void set_shape(pei_collision_shape* shape);
     void set_mass(float mass) noexcept;
     void set_damping(float linear_damping, float angular_damping);
@@ -30,12 +40,23 @@ public:
     void set_transform(const float4x4& transform);
     const float4x4& get_transform() const;
 
+    void set_offset(const float4x4& offset) noexcept;
+    const float4x4& get_offset() const noexcept { return m_offset; }
+    const float4x4& get_offset_inverse() const noexcept { return m_offset_inverse; }
+
     joint* add_joint(
         const float3& position = {},
         const float4& rotation = {0.0f, 0.0f, 0.0f, 1.0f});
 
     void set_updated_flag(bool flag);
     bool get_updated_flag() const;
+
+    template <typename T, typename... Args>
+    void set_reflector(Args&&... args)
+    {
+        m_reflector = std::make_unique<T>(std::forward<Args>(args)...);
+    }
+    rigidbody_reflector* get_reflector() const noexcept { return m_reflector.get(); }
 
     pei_rigidbody* get_rigidbody();
     std::vector<pei_joint*> get_joints();
@@ -49,13 +70,17 @@ private:
     std::uint32_t m_collision_group;
     std::uint32_t m_collision_mask;
 
+    float4x4 m_offset;
+    float4x4 m_offset_inverse;
+
     pei_rigidbody_desc m_desc;
     pei_rigidbody* m_rigidbody;
 
     std::vector<std::unique_ptr<joint>> m_joints;
 
-    pei_world* m_world;
+    std::unique_ptr<rigidbody_reflector> m_reflector;
 
+    pei_world* m_world;
     pei_plugin* m_pei;
 };
 

@@ -174,7 +174,7 @@ public:
 class vk_vertex_buffer : public vk_buffer
 {
 public:
-    vk_vertex_buffer(const rhi_vertex_buffer_desc& desc, vk_context* context);
+    vk_vertex_buffer(const rhi_buffer_desc& desc, vk_context* context);
     virtual ~vk_vertex_buffer();
 
     virtual void* get_buffer() override { return m_mapping_pointer; }
@@ -199,7 +199,7 @@ private:
 class vk_index_buffer : public vk_buffer
 {
 public:
-    vk_index_buffer(const rhi_index_buffer_desc& desc, vk_context* context);
+    vk_index_buffer(const rhi_buffer_desc& desc, vk_context* context);
     virtual ~vk_index_buffer();
 
     virtual void* get_buffer() override { return m_mapping_pointer; }
@@ -229,6 +229,31 @@ class vk_uniform_buffer : public vk_buffer
 public:
     vk_uniform_buffer(void* data, std::size_t size, vk_context* context);
     virtual ~vk_uniform_buffer();
+
+    virtual void* get_buffer() override { return m_mapping_pointer; }
+    virtual std::size_t get_buffer_size() const noexcept override { return m_buffer_size; }
+
+    virtual std::size_t get_hash() const noexcept override
+    {
+        std::hash<void*> hasher;
+        return hasher(m_buffer);
+    }
+
+    virtual VkBuffer get_buffer_handle() const noexcept override { return m_buffer; }
+
+private:
+    VkBuffer m_buffer;
+    VkDeviceMemory m_memory;
+    std::size_t m_buffer_size;
+
+    void* m_mapping_pointer;
+};
+
+class vk_storage_buffer : public vk_buffer
+{
+public:
+    vk_storage_buffer(const rhi_buffer_desc& desc, vk_context* context);
+    virtual ~vk_storage_buffer();
 
     virtual void* get_buffer() override { return m_mapping_pointer; }
     virtual std::size_t get_buffer_size() const noexcept override { return m_buffer_size; }
