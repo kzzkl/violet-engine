@@ -1,4 +1,4 @@
-#include "mmd_skeleton.hpp"
+#include "components/mmd_skeleton.hpp"
 #include "mmd_render.hpp"
 
 namespace violet::sample
@@ -22,8 +22,11 @@ mmd_skeleton::mmd_skeleton(mmd_skeleton&& other) noexcept
 
 mmd_skeleton::~mmd_skeleton()
 {
-    m_rhi->destroy_parameter(m_skeleton_parameter);
-    m_rhi->destroy_parameter(m_skinning_parameter);
+    if (m_rhi != nullptr)
+    {
+        m_rhi->destroy_parameter(m_skeleton_parameter);
+        m_rhi->destroy_parameter(m_skinning_parameter);
+    }
 }
 
 void mmd_skeleton::set_skinning_input(

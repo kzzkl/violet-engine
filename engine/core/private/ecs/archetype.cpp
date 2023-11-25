@@ -79,12 +79,18 @@ void archetype::remove(std::size_t index)
     assert(index < m_size);
 
     std::size_t back_index = m_size - 1;
-
-    if (index != back_index)
-        swap(index, back_index);
-
-    destruct(back_index);
-    --m_size;
+    if (back_index == index)
+    {
+        destruct(index);
+        --m_size;
+    }
+    else
+    {
+        destruct(index);
+        move_construct(back_index, index);
+        destruct(back_index);
+        --m_size;
+    }
 
     if (m_size % m_entity_per_chunk == 0)
     {
@@ -174,6 +180,28 @@ void archetype::construct(std::size_t index)
     }
 }
 
+void archetype::move_construct(std::size_t source, std::size_t target)
+{
+    auto [source_chunk_index, source_entity_index] =
+        std::div(static_cast<const long>(source), static_cast<const long>(m_entity_per_chunk));
+
+    auto [target_chunk_index, target_entity_index] =
+        std::div(static_cast<const long>(target), static_cast<const long>(m_entity_per_chunk));
+
+    for (component_id id : m_components)
+    {
+        auto& info = *m_component_table[id];
+
+        std::size_t source_offset = m_offset[id] + source_entity_index * info.size();
+        std::size_t target_offset = m_offset[id] + target_entity_index * info.size();
+
+        info.move_construct(
+            iterator(this, source).get_component<actor*>(),
+            get_data_pointer(source_chunk_index, source_offset),
+            get_data_pointer(target_chunk_index, target_offset));
+    }
+}
+
 void archetype::destruct(std::size_t index)
 {
     auto [chunk_index, entity_index] =
@@ -185,26 +213,6 @@ void archetype::destruct(std::size_t index)
 
         std::size_t offset = m_offset[id] + entity_index * info.size();
         info.destruct(get_data_pointer(chunk_index, offset));
-    }
-}
-
-void archetype::swap(std::size_t a, std::size_t b)
-{
-    auto [a_chunk_index, a_entity_index] =
-        std::div(static_cast<const long>(a), static_cast<const long>(m_entity_per_chunk));
-
-    auto [b_chunk_index, b_entity_index] =
-        std::div(static_cast<const long>(b), static_cast<const long>(m_entity_per_chunk));
-
-    for (component_id id : m_components)
-    {
-        auto& info = *m_component_table[id];
-
-        std::size_t a_offset = m_offset[id] + a_entity_index * info.size();
-        std::size_t b_offset = m_offset[id] + b_entity_index * info.size();
-        info.swap(
-            get_data_pointer(a_chunk_index, a_offset),
-            get_data_pointer(b_chunk_index, b_offset));
     }
 }
 

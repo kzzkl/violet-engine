@@ -44,9 +44,17 @@ public:
     const float4x4& get_offset() const noexcept { return m_offset; }
     const float4x4& get_offset_inverse() const noexcept { return m_offset_inverse; }
 
+    void set_activation_state(pei_rigidbody_activation_state activation_state);
+
+    void clear_forces();
+
     joint* add_joint(
-        const float3& position = {},
-        const float4& rotation = {0.0f, 0.0f, 0.0f, 1.0f});
+        component_ptr<rigidbody> target,
+        const float3& source_position = {},
+        const float4& source_rotation = {0.0f, 0.0f, 0.0f, 1.0f},
+        const float3& target_position = {},
+        const float4& target_rotation = {0.0f, 0.0f, 0.0f, 1.0f});
+    void remove_joint(joint* joint);
 
     void set_updated_flag(bool flag);
     bool get_updated_flag() const;
@@ -67,6 +75,8 @@ public:
     rigidbody& operator=(rigidbody&& other) noexcept;
 
 private:
+    friend class joint;
+
     std::uint32_t m_collision_group;
     std::uint32_t m_collision_mask;
 
@@ -77,6 +87,7 @@ private:
     pei_rigidbody* m_rigidbody;
 
     std::vector<std::unique_ptr<joint>> m_joints;
+    std::vector<joint*> m_slave_joints;
 
     std::unique_ptr<rigidbody_reflector> m_reflector;
 
@@ -87,12 +98,16 @@ private:
 class joint
 {
 public:
-    joint();
-
-    void set_target(
+    joint(
+        rigidbody* source,
         component_ptr<rigidbody> target,
-        const float3& position = {},
-        const float4& rotation = {0.0f, 0.0f, 0.0f, 1.0f});
+        const float3& source_position,
+        const float4& source_rotation,
+        const float3& target_position,
+        const float4& target_rotation,
+        pei_plugin* pei);
+    joint(const joint&) = delete;
+    ~joint();
 
     void set_linear(const float3& min, const float3& max);
     void set_angular(const float3& min, const float3& max);
@@ -101,12 +116,16 @@ public:
     void set_stiffness(std::size_t index, float stiffness);
     void set_damping(std::size_t index, float damping);
 
+    pei_joint* get_joint() const noexcept { return m_joint; }
+
+    joint& operator=(const joint&) = delete;
+
 private:
     friend class rigidbody;
 
+    rigidbody* m_source;
     component_ptr<rigidbody> m_target;
-
-    pei_joint_desc m_desc;
     pei_joint* m_joint;
+    pei_plugin* m_pei;
 };
 } // namespace violet

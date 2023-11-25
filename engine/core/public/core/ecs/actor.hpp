@@ -30,9 +30,7 @@ public:
             if (m_owner == nullptr)
                 return false;
 
-            auto [entity_version, component_version] =
-                m_owner->get_world().get_version(m_owner->m_entity);
-            return entity_version == m_owner->m_entity.entity_version &&
+            return m_owner->get_world().is_valid(m_owner->m_entity).first &&
                    m_owner->get_world().has_component<T>(m_owner->m_entity);
         }
 
@@ -70,6 +68,7 @@ public:
         return m_world.has_component<Component>(m_entity);
     }
 
+    [[nodiscard]] const std::string& get_name() const noexcept { return m_name; }
     [[nodiscard]] world& get_world() const { return m_world; }
 
     actor& operator=(const actor&) = delete;

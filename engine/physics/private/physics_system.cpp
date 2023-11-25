@@ -29,11 +29,14 @@ bool physics_system::initialize(const dictionary& config)
     m_plugin = std::make_unique<physics_plugin>();
     m_plugin->load(config["plugin"]);
 
-    on_frame_begin().then(
-        [this]()
-        {
-            simulation();
-        });
+    if (config["tick"])
+    {
+        on_frame_begin().then(
+            [this]()
+            {
+                simulation();
+            });
+    }
 
     get_world().register_component<rigidbody, rigidbody_component_info>(m_plugin->get_pei());
 
@@ -44,20 +47,15 @@ void physics_system::shutdown()
 {
 }
 
-void physics_system::simulation(physics_world* world)
+void physics_system::simulation(physics_world* world, bool immediately)
 {
-    m_worlds.push_back(world);
-}
+    if (world != nullptr && !immediately)
+    {
+        m_worlds.push_back(world);
+        return;
+    }
 
-pei_plugin* physics_system::get_pei() const noexcept
-{
-    return m_plugin->get_pei();
-}
-
-void physics_system::simulation()
-{
     view<transform, rigidbody> view(get_world());
-
     view.each(
         [](transform& transform, rigidbody& rigidbody)
         {
@@ -74,8 +72,18 @@ void physics_system::simulation()
         });
 
     float step = get_timer().get_frame_delta();
-    for (physics_world* world : m_worlds)
+
+    if (world == nullptr)
+    {
+        for (physics_world* world : m_worlds)
+            world->simulation(step);
+
+        m_worlds.clear();
+    }
+    else
+    {
         world->simulation(step);
+    }
 
     struct updated_object
     {
@@ -124,7 +132,10 @@ void physics_system::simulation()
             object.rigidbody->get_reflector()->reflect(world, object.transform->get_world_matrix());
         object.transform->set_world_matrix(world);
     }
+}
 
-    m_worlds.clear();
+pei_plugin* physics_system::get_pei() const noexcept
+{
+    return m_plugin->get_pei();
 }
 } // namespace violet

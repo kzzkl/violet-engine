@@ -76,8 +76,14 @@ public:
         material* material = layout->add_material("debug");
         m_geometry = std::make_unique<geometry>(rhi);
 
-        m_geometry->add_attribute("position", m_position, true);
-        m_geometry->add_attribute("color", m_color, true);
+        m_geometry->add_attribute(
+            "position",
+            m_position,
+            RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_HOST_VISIBLE);
+        m_geometry->add_attribute(
+            "color",
+            m_color,
+            RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_HOST_VISIBLE);
         m_position.clear();
         m_color.clear();
 
@@ -175,8 +181,7 @@ public:
             rigidbody_ptr->set_shape(m_collision_shape);
             rigidbody_ptr->set_mass(1.0f);
 
-            joint* joint = rigidbody_ptr->add_joint();
-            joint->set_target(m_cube1->get<rigidbody>());
+            joint* joint = rigidbody_ptr->add_joint(m_cube1->get<rigidbody>());
             joint->set_linear({-5.0f, -5.0f, -5.0f}, {5.0f, 5.0f, 5.0f});
             joint->set_spring_enable(0, true);
             joint->set_stiffness(0, 100.0f);
@@ -199,8 +204,7 @@ public:
             rigidbody_ptr->set_shape(m_collision_shape);
             rigidbody_ptr->set_mass(0.0f);
 
-            joint* joint = rigidbody_ptr->add_joint();
-            joint->set_target(m_cube2->get<rigidbody>());
+            joint* joint = rigidbody_ptr->add_joint(m_cube2->get<rigidbody>());
             joint->set_linear({-5.0f, -5.0f, -5.0f}, {5.0f, 5.0f, 5.0f});
             joint->set_spring_enable(0, true);
             joint->set_stiffness(0, 100.0f);
@@ -356,38 +360,6 @@ private:
 
         m_physics_debug->draw_line({0.0f, 0.0f, 0.0f}, {0.0f, 10.0f, 0.0f}, {1.0f, 0.0f, 0.0f});
         m_physics_debug->tick();
-        return;
-
-        auto& window = get_system<window_system>();
-        auto rect = window.get_extent();
-
-        if (rect.width == 0 || rect.height == 0)
-            return;
-
-        float4x4_simd p = matrix_simd::perspective(
-            to_radians(45.0f),
-            static_cast<float>(rect.width) / static_cast<float>(rect.height),
-            0.1f,
-            100.0f);
-
-        float4x4_simd m = matrix_simd::affine_transform(
-            simd::set(10.0, 10.0, 10.0, 0.0),
-            quaternion_simd::rotation_axis(simd::set(1.0f, 0.0f, 0.0f, 0.0f), m_rotate),
-            simd::set(0.0, 0.0, 0.0, 0.0));
-
-        float4x4_simd v = matrix_simd::affine_transform(
-            simd::set(1.0f, 1.0f, 1.0f, 0.0f),
-            simd::set(0.0f, 0.0f, 0.0f, 1.0f),
-            simd::set(0.0, 0.0, -30.0f, 0.0f));
-        v = matrix_simd::inverse_transform(v);
-
-        float4x4_simd mvp = matrix_simd::mul(matrix_simd::mul(m, v), p);
-
-        auto transform_ptr = m_cube1->get<transform>();
-        transform_ptr->set_rotation(
-            quaternion_simd::rotation_axis(simd::set(1.0f, 0.0f, 0.0f, 0.0f), m_rotate));
-
-        m_rotate += delta * 2.0f;
     }
 
     void resize(std::uint32_t width, std::uint32_t height)

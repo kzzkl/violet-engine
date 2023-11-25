@@ -49,6 +49,13 @@ enum pei_rigidbody_type
     PEI_RIGIDBODY_TYPE_KINEMATIC
 };
 
+enum pei_rigidbody_activation_state
+{
+    PEI_RIGIDBODY_ACTIVATION_STATE_ACTIVE,
+    PEI_RIGIDBODY_ACTIVATION_STATE_DISABLE_DEACTIVATION,
+    PEI_RIGIDBODY_ACTIVATION_STATE_DISABLE_SIMULATION,
+};
+
 struct pei_rigidbody_desc
 {
     pei_rigidbody_type type;
@@ -62,6 +69,8 @@ struct pei_rigidbody_desc
     float friction;
 
     float4x4 initial_transform;
+
+    pei_rigidbody_activation_state activation_state = PEI_RIGIDBODY_ACTIVATION_STATE_ACTIVE;
 };
 
 class pei_rigidbody
@@ -82,6 +91,8 @@ public:
     virtual void set_linear_velocity(const float3& velocity) = 0;
 
     virtual void clear_forces() = 0;
+
+    virtual void set_activation_state(pei_rigidbody_activation_state state) = 0;
 
     virtual void set_updated_flag(bool flag) = 0;
     virtual bool get_updated_flag() const = 0;

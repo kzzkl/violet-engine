@@ -5,6 +5,10 @@
         "height": 800
     },
     "mmd viewer": {
-        "model": "C:/Workspace/data/yanmiao/yanmiao.pmx"
+        "model": "C:/Workspace/data/yanmiao/yanmiao.pmx",
+        "motion": "C:/Workspace/data/test.vmd"
+    },
+    "physics": {
+        "tick": false
     }
 }

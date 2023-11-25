@@ -2,6 +2,7 @@
 #include "control/control_system.hpp"
 #include "core/engine.hpp"
 #include "graphics/graphics_system.hpp"
+#include "mmd_animation.hpp"
 #include "mmd_viewer.hpp"
 #include "physics/physics_system.hpp"
 #include "scene/scene_system.hpp"
@@ -19,6 +20,7 @@ int main()
     engine.install<graphics_system>();
     engine.install<physics_system>();
     engine.install<control_system>();
+    engine.install<sample::mmd_animation>();
     engine.install<sample::mmd_viewer>();
 
     engine.get_system<window_system>().on_destroy().then(

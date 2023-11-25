@@ -116,8 +116,8 @@ private:
 
     std::size_t allocate();
     void construct(std::size_t index);
+    void move_construct(std::size_t source, std::size_t target);
     void destruct(std::size_t index);
-    void swap(std::size_t a, std::size_t b);
 
     [[nodiscard]] std::size_t capacity() const noexcept
     {

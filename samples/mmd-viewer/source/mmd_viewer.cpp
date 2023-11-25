@@ -1,12 +1,13 @@
 #include "mmd_viewer.hpp"
 #include "components/camera.hpp"
 #include "components/mesh.hpp"
+#include "components/mmd_skeleton.hpp"
 #include "components/orbit_control.hpp"
 #include "components/rigidbody.hpp"
 #include "components/transform.hpp"
 #include "core/engine.hpp"
 #include "graphics/graphics_system.hpp"
-#include "mmd_skeleton.hpp"
+#include "mmd_animation.hpp"
 #include "physics/physics_system.hpp"
 #include "window/window_system.hpp"
 
@@ -127,13 +128,12 @@ bool mmd_viewer::initialize(const dictionary& config)
         graphics_context->get_rhi(),
         graphics_context->get_parameter_layout("mmd skeleton"),
         graphics_context->get_parameter_layout("mmd skinning"));
-    get_world().register_component<mmd_bone>();
 
     m_loader = std::make_unique<mmd_loader>(
         m_render_graph.get(),
         get_system<graphics_system>().get_context()->get_rhi(),
         get_system<physics_system>().get_pei());
-    m_model = m_loader->load(config["model"], get_world());
+    m_model = m_loader->load(config["model"], config["motion"], get_world());
 
     m_physics_debug = std::make_unique<physics_debug>(
         m_render_graph.get(),
@@ -141,14 +141,15 @@ bool mmd_viewer::initialize(const dictionary& config)
         get_world());
     m_physics_world = std::make_unique<physics_world>(
         float3{0.0f, -9.8f, 0.0f},
-        nullptr,//m_physics_debug.get(),
+        nullptr, // m_physics_debug.get(),
         get_system<physics_system>().get_pei());
+
+    get_system<mmd_animation>().evaluate(0);
+    get_system<mmd_animation>().update(false);
+    get_system<mmd_animation>().update(true);
 
     for (std::size_t i = 0; i < m_model->bones.size(); ++i)
     {
-        auto bone_transform = m_model->bones[i]->get<transform>();
-        auto world = bone_transform->get_world_matrix();
-
         auto bone_rigidbody = m_model->bones[i]->get<rigidbody>();
         if (bone_rigidbody)
             m_physics_world->add(m_model->bones[i].get());
@@ -176,43 +177,16 @@ void mmd_viewer::initialize_render()
 
 void mmd_viewer::tick(float delta)
 {
-    if (get_system<window_system>().get_keyboard().key(KEYBOARD_KEY_1).release())
-    {
-        // auto bone = m_model->bones[15]->get<transform>();
-        // bone->set_position(vector::add(bone->get_position(), float3{1.0f, 0.0f, 0.0f}));
-
-        get_system<physics_system>().simulation(m_physics_world.get());
-        m_physics_debug->tick();
-    }
-
     compute_pipeline* skinning_pipeline = m_render_graph->get_compute_pipeline("skinning pipeline");
     view<mmd_skeleton, mesh, transform> view(get_world());
-    /*view.each(
-        [this, skinning_pipeline](
-            mmd_skeleton& model_skeleton,
-            mesh& model_mesh,
-            transform& model_transform)
-        {
-            float4_simd scale;
-            float4_simd rotation;
-            float4_simd position;
-            for (std::size_t i = 0; i < model_skeleton.bones.size(); ++i)
-            {
-                auto bone_transform = model_skeleton.bones[i]->get<transform>();
-                matrix_simd::decompose(
-                    simd::load(model_skeleton.local_matrices[i]),
-                    scale,
-                    rotation,
-                    position);
-                bone_transform->set_scale(scale);
-                bone_transform->set_rotation(rotation);
-                bone_transform->set_position(position);
-            }
-        });*/
 
-    // physics
-    // animation
-    get_system<physics_system>().simulation(m_physics_world.get());
+    static float total_delta = 0.0f;
+    total_delta += delta;
+    get_system<mmd_animation>().evaluate(total_delta * 30.0f);
+    get_system<mmd_animation>().update(false);
+    get_system<physics_system>().simulation(m_physics_world.get(), true);
+    get_system<mmd_animation>().update(true);
+
     m_physics_debug->tick();
 
     view.each(
@@ -223,14 +197,13 @@ void mmd_viewer::tick(float delta)
 
             for (std::size_t i = 0; i < model_skeleton.bones.size(); ++i)
             {
-                auto bone_transform = model_skeleton.bones[i]->get<transform>();
+                auto bone_transform = model_skeleton.bones[i].transform;
                 model_skeleton.local_matrices[i] = bone_transform->get_local_matrix();
 
                 float4x4_simd final_transform = simd::load(bone_transform->get_world_matrix());
                 final_transform = matrix_simd::mul(final_transform, world_to_local);
 
-                float4x4_simd initial_inverse =
-                    simd::load(model_skeleton.bones[i]->get<mmd_bone>()->initial_inverse);
+                float4x4_simd initial_inverse = simd::load(model_skeleton.bones[i].initial_inverse);
                 final_transform = matrix_simd::mul(initial_inverse, final_transform);
 
                 mmd_skinning_bone data;

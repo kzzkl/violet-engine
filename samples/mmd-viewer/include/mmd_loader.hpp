@@ -22,14 +22,15 @@ struct mmd_model
     std::vector<pei_collision_shape*> collision_shapes;
 };
 
-class pmx_mesh;
+class pmx;
+class vmd;
 class mmd_loader
 {
 public:
     mmd_loader(render_graph* render_graph, rhi_renderer* rhi, pei_plugin* pei);
     ~mmd_loader();
 
-    mmd_model* load(std::string_view path, world& world);
+    mmd_model* load(std::string_view pmx_path, std::string_view vmd_path, world& world);
 
     mmd_model* get_model(std::string_view name) const noexcept
     {
@@ -37,8 +38,10 @@ public:
     }
 
 private:
-    void load_bones(mmd_model* model, const pmx_mesh& pmx, world& world);
-    void load_physics(mmd_model* model, const pmx_mesh& pmx, world& world);
+    void load_mesh(mmd_model* model, const pmx& pmx, world& world);
+    void load_bones(mmd_model* model, const pmx& pmx, world& world);
+    void load_physics(mmd_model* model, const pmx& pmx, world& world);
+    void load_animation(mmd_model* model, const vmd& vmd, world& world);
 
     std::map<std::string, std::unique_ptr<mmd_model>> m_models;
 

@@ -119,7 +119,7 @@ void bt3_world::remove(pei_joint* joint)
 
 void bt3_world::simulation(float time_step)
 {
-    m_world->stepSimulation(time_step);
+    m_world->stepSimulation(time_step, 10);
 
 #ifndef NDEBUG
     if (m_world->getDebugDrawer())

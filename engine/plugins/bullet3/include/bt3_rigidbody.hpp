@@ -13,8 +13,10 @@ public:
     virtual void getWorldTransform(btTransform& centerOfMassWorldTrans) const override;
     virtual void setWorldTransform(const btTransform& centerOfMassWorldTrans) override;
 
+    float4x4 transform;
+    bool updated_flag;
+
     bt3_rigidbody* rigidbody;
-    bt3_world* world;
 };
 
 class bt3_rigidbody : public pei_rigidbody
@@ -37,17 +39,18 @@ public:
 
     virtual void clear_forces() override;
 
-    virtual void set_updated_flag(bool flag) override { m_updated = flag; }
-    virtual bool get_updated_flag() const override { return m_updated; }
+    virtual void set_activation_state(pei_rigidbody_activation_state state) override;
+
+    virtual void set_updated_flag(bool flag) override { m_motion_state->updated_flag = flag; }
+    virtual bool get_updated_flag() const override { return m_motion_state->updated_flag; }
 
     btRigidBody* get_rigidbody() const noexcept { return m_rigidbody.get(); }
-    void set_world(bt3_world* world) { m_motion_state->world = world; }
+    void set_world(bt3_world* world) { m_world = world; }
 
 private:
     std::unique_ptr<bt3_motion_state> m_motion_state;
     std::unique_ptr<btRigidBody> m_rigidbody;
 
-    float4x4 m_transform;
-    bool m_updated;
+    bt3_world* m_world;
 };
 } // namespace violet::bt3

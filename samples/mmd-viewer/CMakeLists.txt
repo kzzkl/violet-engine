@@ -1,13 +1,17 @@
 project(mmd-viewer)
 
 add_executable(${PROJECT_NAME}
+    ./source/components/mmd_animator.cpp
+    ./source/components/mmd_skeleton.cpp
+    ./source/bezier.cpp
     ./source/encode.cpp
     ./source/main.cpp
+    ./source/mmd_animation.cpp
     ./source/mmd_loader.cpp
     ./source/mmd_render.cpp
-    ./source/mmd_skeleton.cpp
     ./source/mmd_viewer.cpp
-    ./source/pmx_loader.cpp)
+    ./source/pmx.cpp
+    ./source/vmd.cpp)
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE

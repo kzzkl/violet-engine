@@ -6,30 +6,62 @@
 
 namespace violet::sample
 {
-struct mmd_bone
-{
-    std::uint32_t index;
-    std::int32_t layer;
-
-    bool deform_after_physics;
-
-    bool inherit_local_flag;
-    bool is_inherit_rotation;
-    bool is_inherit_translation;
-
-    actor* inherit_node;
-    float inherit_weight;
-    float3 inherit_translation{0.0f, 0.0f, 0.0f};
-    float4 inherit_rotation{0.0f, 0.0f, 0.0f, 1.0f};
-
-    float3 initial_position{0.0f, 0.0f, 0.0f};
-    float4 initial_rotation{0.0f, 0.0f, 0.0f, 1.0f};
-    float3 initial_scale{1.0f, 1.0f, 1.0f};
-    float4x4 initial_inverse;
-};
-
 class mmd_skeleton
 {
+public:
+    struct bone_ik_solver
+    {
+        bool enable{true};
+        float limit;
+        std::size_t offset;
+        bool base_animation;
+        std::size_t target_index;
+        std::vector<std::size_t> links;
+        std::uint32_t iteration_count;
+    };
+
+    struct bone_ik_link
+    {
+        float4 rotate{0.0f, 0.0f, 0.0f, 1.0f};
+        bool enable_limit;
+        float3 limit_max;
+        float3 limit_min;
+        float3 prev_angle;
+        float4 save_rotate;
+        float plane_mode_angle;
+    };
+
+    struct bone
+    {
+        std::uint32_t index;
+        std::int32_t layer;
+
+        bool deform_after_physics;
+
+        bool inherit_local_flag;
+        bool is_inherit_rotation;
+        bool is_inherit_translation;
+
+        float3 position;
+        float4 rotation;
+        float3 scale;
+
+        std::size_t inherit_index;
+        float inherit_weight;
+        float3 inherit_translation{0.0f, 0.0f, 0.0f};
+        float4 inherit_rotation{0.0f, 0.0f, 0.0f, 1.0f};
+
+        float3 initial_position{0.0f, 0.0f, 0.0f};
+        float4 initial_rotation{0.0f, 0.0f, 0.0f, 1.0f};
+        float3 initial_scale{1.0f, 1.0f, 1.0f};
+        float4x4 initial_inverse;
+
+        std::unique_ptr<bone_ik_solver> ik_solver;
+        std::unique_ptr<bone_ik_link> ik_link;
+
+        component_ptr<transform> transform;
+    };
+
 public:
     mmd_skeleton(
         rhi_renderer* rhi,
@@ -77,8 +109,8 @@ public:
     mmd_skeleton& operator=(const mmd_skeleton&) = delete;
     mmd_skeleton& operator=(mmd_skeleton&& other) noexcept;
 
-    std::vector<actor*> bones;
-    std::vector<actor*> sorted_bones;
+    std::vector<bone> bones;
+    std::vector<std::size_t> sorted_bones;
 
     std::vector<float4x4> local_matrices;
     std::vector<float4x4> world_matrices;

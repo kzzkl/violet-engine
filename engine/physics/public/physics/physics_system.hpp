@@ -15,13 +15,11 @@ public:
     virtual bool initialize(const dictionary& config) override;
     virtual void shutdown() override;
 
-    void simulation(physics_world* world);
+    void simulation(physics_world* world = nullptr, bool immediately = false);
 
     pei_plugin* get_pei() const noexcept;
 
 private:
-    void simulation();
-
     std::vector<physics_world*> m_worlds;
     std::unique_ptr<physics_plugin> m_plugin;
 };

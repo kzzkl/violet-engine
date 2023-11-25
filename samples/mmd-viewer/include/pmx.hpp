@@ -128,7 +128,7 @@ struct pmx_bone
     std::int32_t external_parent_index;
 
     std::int32_t ik_target_index;
-    std::int32_t ik_loop_count;
+    std::int32_t ik_iteration_count;
     float ik_limit;
     std::vector<pmx_ik_link> ik_links;
 };
@@ -321,8 +321,14 @@ enum pmx_vertex_attribute
     PMX_VERTEX_ATTRIBUTE_NUM_TYPES
 };
 
-struct pmx_mesh
+class pmx
 {
+public:
+    pmx(std::string_view path);
+
+    bool is_load() const noexcept { return m_loaded; }
+
+public:
     struct submesh
     {
         std::size_t index_start;
@@ -349,6 +355,8 @@ struct pmx_mesh
         float _padding_2;
     };
 
+    pmx_header header;
+
     std::vector<float3> position;
     std::vector<float3> normal;
     std::vector<float2> uv;
@@ -370,16 +378,6 @@ struct pmx_mesh
 
     std::vector<pmx_rigidbody> rigidbodies;
     std::vector<pmx_joint> joints;
-};
-
-class pmx_loader
-{
-public:
-    pmx_loader();
-
-    bool load(std::string_view path);
-
-    const pmx_mesh& get_mesh() const noexcept { return m_mesh; }
 
 private:
     bool load_header(std::ifstream& fin);
@@ -393,7 +391,6 @@ private:
     std::int32_t read_index(std::ifstream& fin, std::uint8_t size);
     std::string read_text(std::ifstream& fin);
 
-    pmx_header m_header;
-    pmx_mesh m_mesh;
+    bool m_loaded;
 };
 } // namespace violet::sample
