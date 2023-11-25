@@ -1,8 +1,6 @@
 #include "test_common.hpp"
 #include <cmath>
 
-using namespace violet::math;
-
 namespace violet::test
 {
 TEST_CASE("sin_cos", "[misc]")

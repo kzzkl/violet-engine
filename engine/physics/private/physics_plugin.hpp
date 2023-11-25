@@ -1,21 +1,25 @@
 #pragma once
 
 #include "core/plugin.hpp"
-#include "physics_interface.hpp"
+#include "physics/physics_interface.hpp"
 
-namespace violet::physics
+namespace violet
 {
-class physics_plugin : public core::plugin
+class physics_plugin : public plugin
 {
 public:
     physics_plugin();
-    factory_interface& factory() { return *m_factory; }
+
+    pei_plugin* get_pei() { return m_pei; }
 
 protected:
     virtual bool on_load() override;
     virtual void on_unload() override;
 
 private:
-    std::unique_ptr<factory_interface> m_factory;
+    create_pei m_create_func;
+    destroy_pei m_destroy_func;
+
+    pei_plugin* m_pei;
 };
-} // namespace violet::physics
+} // namespace violet

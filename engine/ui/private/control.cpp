@@ -23,8 +23,8 @@ control::control(bool is_root)
 
 control::~control()
 {
-    VIOLET_ASSERT(m_children.empty());
-    VIOLET_ASSERT(m_parent == nullptr);
+    assert(m_children.empty());
+    assert(m_parent == nullptr);
 }
 
 void control::sync_extent()
@@ -46,7 +46,7 @@ void control::sync_extent()
 
 void control::add(control* child, std::size_t index)
 {
-    VIOLET_ASSERT(child && child->m_parent == nullptr);
+    assert(child && child->m_parent == nullptr);
 
     if (index == -1)
         index = m_children.size();
@@ -71,7 +71,7 @@ void control::add(control* child, std::size_t index)
 
 void control::remove(control* child)
 {
-    VIOLET_ASSERT(child->m_parent == this);
+    assert(child->m_parent == this);
 
     auto iter = m_children.begin() + child->m_link_index;
     iter = m_children.erase(iter);

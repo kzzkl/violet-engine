@@ -13,7 +13,7 @@ namespace violet::ui
 struct render_batch
 {
     control_mesh_type type;
-    graphics::resource_interface* texture;
+    graphics::rhi_resource* texture;
 
     node_rect scissor;
 
@@ -40,8 +40,8 @@ private:
         node_rect scissor;
 
         render_batch* block_batch;
-        std::unordered_map<graphics::resource_interface*, render_batch*> text_batch;
-        std::unordered_map<graphics::resource_interface*, render_batch*> image_batch;
+        std::unordered_map<graphics::rhi_resource*, render_batch*> text_batch;
+        std::unordered_map<graphics::rhi_resource*, render_batch*> image_batch;
     };
 
     void draw(batch_map& batch_map, const control_mesh& mesh, float x, float y, float depth);
@@ -51,7 +51,7 @@ private:
     render_batch* allocate_batch(
         control_mesh_type type,
         const node_rect& scissor,
-        graphics::resource_interface* texture);
+        graphics::rhi_resource* texture);
 
     material_pipeline_parameter* allocate_material_parameter();
 
@@ -64,8 +64,8 @@ private:
 
     std::unique_ptr<ui_pipeline> m_pipeline;
 
-    std::vector<std::unique_ptr<graphics::resource_interface>> m_vertex_buffers;
-    std::unique_ptr<graphics::resource_interface> m_index_buffer;
+    std::vector<std::unique_ptr<graphics::rhi_resource>> m_vertex_buffers;
+    std::unique_ptr<graphics::rhi_resource> m_index_buffer;
 
     std::size_t m_material_parameter_counter;
     std::vector<std::unique_ptr<material_pipeline_parameter>> m_material_parameter_pool;

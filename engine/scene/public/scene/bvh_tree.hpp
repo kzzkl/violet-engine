@@ -5,7 +5,7 @@
 #include <queue>
 #include <stack>
 
-namespace violet::scene
+namespace violet
 {
 class bvh_tree
 {
@@ -20,7 +20,7 @@ public:
     std::size_t update(std::size_t proxy_id, const bounding_volume_aabb& aabb);
 
     bool visible(std::size_t proxy_id) const noexcept { return m_nodes[proxy_id].visible; }
-    void frustum_culling(const std::array<math::float4, 6>& frustum);
+    void frustum_culling(const std::array<float4, 6>& frustum);
 
     template <typename T>
     void print(T&& functor)
@@ -69,11 +69,11 @@ private:
     bounding_volume_aabb union_box(const bounding_volume_aabb& a, const bounding_volume_aabb& b);
 
     std::size_t allocate_node();
-    void deallocate_node(std::size_t index);
+    void free_node(std::size_t index);
 
     std::size_t m_root_index;
 
     std::deque<bvh_node> m_nodes;
     std::queue<std::size_t> m_free_nodes;
 };
-} // namespace violet::scene
+} // namespace violet

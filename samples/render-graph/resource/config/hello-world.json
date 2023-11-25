@@ -1,0 +1,10 @@
+{
+    "window": {
+        "title": "你好",
+        "width": 1300,
+        "height": 800
+    },
+    "hello_world": {
+        "text": "hello world"
+    }
+}

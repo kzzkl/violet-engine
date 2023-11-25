@@ -6,7 +6,7 @@
 #include "type.hpp"
 #include "vector.hpp"
 
-namespace violet::math
+namespace violet
 {
 class matrix
 {
@@ -860,4 +860,4 @@ private:
         return _mm_sub_ps(t1, t2);
     }
 };
-} // namespace violet::math
+} // namespace violet

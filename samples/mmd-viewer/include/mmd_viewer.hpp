@@ -1,35 +1,37 @@
 #pragma once
 
-#include "core/context.hpp"
-#include "mmd_component.hpp"
-#include "mmd_pipeline.hpp"
+#include "core/engine_system.hpp"
+#include "mmd_loader.hpp"
+#include "mmd_render.hpp"
+#include "physics/physics_world.hpp"
 
-namespace violet::sample::mmd
+namespace violet::sample
 {
-class mmd_loader;
-class mmd_viewer : public violet::core::system_base
+class physics_debug;
+class mmd_viewer : public engine_system
 {
 public:
     mmd_viewer();
     virtual ~mmd_viewer();
 
     virtual bool initialize(const dictionary& config) override;
-
-    violet::ecs::entity load_mmd(
-        std::string_view name,
-        std::string_view pmx,
-        std::string_view vmd = "");
-    bool load_pmx(std::string_view pmx);
-    bool load_vmd(std::string_view vmd);
-
-    void update();
-
-    void reset(ecs::entity entity);
+    virtual void shutdown() override;
 
 private:
-    std::unique_ptr<mmd_loader> m_loader;
+    void initialize_render();
 
-    std::unique_ptr<mmd_render_pipeline> m_render_pipeline;
-    std::unique_ptr<mmd_skinning_pipeline> m_skinning_pipeline;
+    void tick(float delta);
+    void resize(std::uint32_t width, std::uint32_t height);
+
+    std::unique_ptr<mmd_render_graph> m_render_graph;
+    rhi_resource* m_depth_stencil;
+
+    std::unique_ptr<actor> m_camera;
+
+    std::unique_ptr<physics_world> m_physics_world;
+    std::unique_ptr<physics_debug> m_physics_debug;
+
+    std::unique_ptr<mmd_loader> m_loader;
+    mmd_model* m_model;
 };
-} // namespace violet::sample::mmd
+} // namespace violet::sample

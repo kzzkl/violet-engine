@@ -2,15 +2,15 @@
 #include "ecs/entity.hpp"
 #include <functional>
 
-namespace violet::scene
+namespace violet
 {
 struct event_enter_scene
 {
-    using dispatcher = core::sequence_dispatcher<std::function<void(ecs::entity)>>;
+    using dispatcher = sequence_dispatcher<std::function<void(ecs::entity)>>;
 };
 
 struct event_exit_scene
 {
-    using dispatcher = core::sequence_dispatcher<std::function<void(ecs::entity)>>;
+    using dispatcher = sequence_dispatcher<std::function<void(ecs::entity)>>;
 };
-} // namespace violet::scene
+} // namespace violet

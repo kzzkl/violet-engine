@@ -2,7 +2,7 @@
 #include "control_tree.hpp"
 #include "graphics/graphics_task.hpp"
 #include "graphics/mesh_render.hpp"
-#include "graphics/rhi.hpp"
+#include "graphics/render_interface.hpp"
 #include "render/renderer.hpp"
 #include "render/ui_pipeline.hpp"
 #include "task/task_manager.hpp"
@@ -22,7 +22,7 @@ bool ui::initialize(const dictionary& config)
 {
     m_renderer = std::make_unique<renderer>();
 
-    auto& event = system<core::event>();
+    auto& event = system<event>();
 
     load_font("remixicon", "engine/font/remixicon.ttf", 24);
     load_font("NotoSans-Regular", "engine/font/NotoSans-Regular.ttf", 13);
@@ -31,14 +31,27 @@ bool ui::initialize(const dictionary& config)
 
     event.subscribe<window::event_window_resize>(
         "ui",
-        [this](std::uint32_t width, std::uint32_t height) { resize(width, height); });
-    event.subscribe<window::event_keyboard_char>("ui", [this](char c) { m_tree->input(c); });
+        [this](std::uint32_t width, std::uint32_t height)
+        {
+            resize(width, height);
+        });
+    event.subscribe<window::event_keyboard_char>(
+        "ui",
+        [this](char c)
+        {
+            m_tree->input(c);
+        });
 
     auto window_extent = system<window::window>().extent();
     resize(window_extent.width, window_extent.height);
 
     auto& task = system<task::task_manager>();
-    auto ui_tick_task = task.schedule(TASK_UI_TICK, [this]() { tick(); });
+    auto ui_tick_task = task.schedule(
+        TASK_UI_TICK,
+        [this]()
+        {
+            tick();
+        });
     ui_tick_task->add_dependency(*task.find(task::TASK_GAME_LOGIC_END));
 
     auto render_task = task.find(graphics::TASK_GRAPHICS_RENDER);

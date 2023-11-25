@@ -1,10 +1,10 @@
 #pragma once
 
+#include "math/rect.hpp"
 #include "window/input.hpp"
-#include "window/window_extent.hpp"
 #include <string_view>
 
-namespace violet::window
+namespace violet
 {
 struct window_message
 {
@@ -16,7 +16,8 @@ struct window_message
         KEYBOARD_KEY,
         KEYBOARD_CHAR,
         WINDOW_MOVE,
-        WINDOW_RESIZE
+        WINDOW_RESIZE,
+        WINDOW_DESTROY
     } type;
 
     union {
@@ -73,20 +74,20 @@ public:
     virtual void tick() = 0;
     virtual void show() = 0;
 
-    virtual void* handle() const = 0;
-    virtual window_extent extent() const = 0;
+    virtual void* get_handle() const = 0;
+    virtual rect<std::uint32_t> get_extent() const = 0;
 
-    virtual void title(std::string_view title) = 0;
+    virtual void set_title(std::string_view title) = 0;
 
-    virtual void mouse_mode(mouse_mode_type mode) = 0;
-    virtual void mouse_cursor(mouse_cursor_type cursor) = 0;
+    virtual void set_mouse_mode(mouse_mode_type mode) = 0;
+    virtual mouse_mode_type get_mouse_mode() const noexcept = 0;
 
-    virtual mouse_mode_type mouse_mode() const noexcept = 0;
+    virtual void set_mouse_cursor(mouse_cursor_type cursor) = 0;
 
     void reset() noexcept { m_messages.clear(); }
-    const std::vector<window_message>& messages() const noexcept { return m_messages; }
+    const std::vector<window_message>& get_messages() const noexcept { return m_messages; }
 
 protected:
     std::vector<window_message> m_messages;
 };
-} // namespace violet::window
+} // namespace violet

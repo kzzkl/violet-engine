@@ -18,11 +18,7 @@ set(VIOLET_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(VIOLET_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/thirdparty)
 
-set(VIOLET_CORE_INTERFACE_DIR ${PROJECT_SOURCE_DIR}/engine/core/interface)
-set(VIOLET_GRAPHICS_INTERFACE_DIR ${PROJECT_SOURCE_DIR}/engine/graphics/interface)
-set(VIOLET_PHYSICS_INTERFACE_DIR ${PROJECT_SOURCE_DIR}/engine/physics/interface)
-
-set(VIOLET_SHADER_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/engine/shader/hlsl/include)
+set(VIOLET_SHADER_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/engine/graphics/shaders/hlsl/include)
 
 option(VIOLET_BUILD_THIRDPARTY "Build thirdparty" ON)
 

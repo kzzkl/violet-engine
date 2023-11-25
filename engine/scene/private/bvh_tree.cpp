@@ -2,7 +2,7 @@
 #include "common/log.hpp"
 #include <stack>
 
-namespace violet::scene
+namespace violet
 {
 bvh_tree::bvh_tree() : m_root_index(INVALID_NODE_INDEX)
 {
@@ -24,7 +24,7 @@ std::size_t bvh_tree::add(const bounding_volume_aabb& aabb)
     std::size_t best_sibling_index = m_root_index;
     std::queue<std::pair<std::size_t, float>> bfs;
     bfs.push({m_root_index, 0.0f});
-    float min_cost = std::numeric_limits<float>::lowest();
+    float min_cost = std::numeric_limits<float>::max();
     while (!bfs.empty())
     {
         auto [sibling_index, inherited_cost] = bfs.front();
@@ -108,10 +108,10 @@ void bvh_tree::remove(std::size_t proxy_id)
             m_root_index = sibling_index;
         }
 
-        deallocate_node(parent_index);
+        free_node(parent_index);
     }
 
-    deallocate_node(proxy_id);
+    free_node(proxy_id);
 }
 
 void bvh_tree::clear()
@@ -124,7 +124,7 @@ std::size_t bvh_tree::update(std::size_t proxy_id, const bounding_volume_aabb& a
     return add(aabb);
 }
 
-void bvh_tree::frustum_culling(const std::array<math::float4, 6>& frustum)
+void bvh_tree::frustum_culling(const std::array<float4, 6>& frustum)
 {
     if (m_root_index == -1)
         return;
@@ -146,8 +146,8 @@ void bvh_tree::frustum_culling(const std::array<math::float4, 6>& frustum)
         bool inside = true;
         for (std::size_t i = 0; i < 6; ++i)
         {
-            math::float4_align max_vertex = {};
-            math::float4_align min_vertex = {};
+            float4_align max_vertex = {};
+            float4_align min_vertex = {};
 
             min_vertex[0] = frustum[i][0] < 0.0f ? aabb.max[0] : aabb.min[0];
             max_vertex[0] = frustum[i][0] < 0.0f ? aabb.min[0] : aabb.max[0];
@@ -156,17 +156,17 @@ void bvh_tree::frustum_culling(const std::array<math::float4, 6>& frustum)
             min_vertex[2] = frustum[i][2] < 0.0f ? aabb.max[2] : aabb.min[2];
             max_vertex[2] = frustum[i][2] < 0.0f ? aabb.min[2] : aabb.max[2];
 
-            math::float4_simd max = math::simd::load(max_vertex);
-            math::float4_simd normal = math::simd::load(frustum[i]);
-            if (math::vector_simd::dot(max, normal) + frustum[i][3] < 0.0f)
+            float4_simd max = simd::load(max_vertex);
+            float4_simd normal = simd::load(frustum[i]);
+            if (vector_simd::dot(max, normal) + frustum[i][3] < 0.0f)
             {
                 cull = true;
                 break;
             }
             else if (inside)
             {
-                math::float4_simd min = math::simd::load(min_vertex);
-                if (math::vector_simd::dot(min, normal) + frustum[i][3] < 0.0f)
+                float4_simd min = simd::load(min_vertex);
+                if (vector_simd::dot(min, normal) + frustum[i][3] < 0.0f)
                     inside = false;
             }
         }
@@ -312,7 +312,7 @@ std::size_t bvh_tree::rotate(std::size_t index)
 float bvh_tree::calculate_cost(const bounding_volume_aabb& aabb)
 {
     // SAH.
-    math::float3 d = math::vector::sub(aabb.max, aabb.min);
+    float3 d = vector::sub(aabb.max, aabb.min);
     return d[0] * d[1] + d[1] * d[2] + d[2] * d[0];
 }
 
@@ -320,12 +320,12 @@ bounding_volume_aabb bvh_tree::union_box(
     const bounding_volume_aabb& a,
     const bounding_volume_aabb& b)
 {
-    math::float4_simd min = math::simd::min(math::simd::load(a.min), math::simd::load(b.min));
-    math::float4_simd max = math::simd::max(math::simd::load(a.max), math::simd::load(b.max));
+    float4_simd min = simd::min(simd::load(a.min), simd::load(b.min));
+    float4_simd max = simd::max(simd::load(a.max), simd::load(b.max));
 
     bounding_volume_aabb result;
-    math::simd::store(min, result.min);
-    math::simd::store(max, result.max);
+    simd::store(min, result.min);
+    simd::store(max, result.max);
     return result;
 }
 
@@ -355,8 +355,8 @@ std::size_t bvh_tree::allocate_node()
     return result;
 }
 
-void bvh_tree::deallocate_node(std::size_t index)
+void bvh_tree::free_node(std::size_t index)
 {
     m_free_nodes.push(index);
 }
-} // namespace violet::scene
+} // namespace violet

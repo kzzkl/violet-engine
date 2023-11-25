@@ -1,662 +1,525 @@
 #include "mmd_loader.hpp"
-#include "core/relation.hpp"
-#include "graphics/rhi.hpp"
-#include "mmd_component.hpp"
-#include "physics/physics.hpp"
-#include "scene/scene.hpp"
+#include "components/mesh.hpp"
+#include "components/mmd_animator.hpp"
+#include "components/mmd_skeleton.hpp"
+#include "components/rigidbody.hpp"
+#include "components/transform.hpp"
+#include "mmd_render.hpp"
+#include "pmx.hpp"
+#include "vmd.hpp"
 
-namespace violet::sample::mmd
+namespace violet::sample
 {
-class mmd_merge_rigidbody_transform_reflection : public physics::rigidbody_transform_reflection
+class rigidbody_merge_reflector : public rigidbody_reflector
 {
 public:
-    virtual void reflect(
-        const math::float4x4& rigidbody_transform,
-        const physics::rigidbody& rigidbody,
-        scene::transform& transform) const noexcept override
+    virtual float4x4 reflect(const float4x4& rigidbody_world, const float4x4& transform_world)
+        override
     {
-        math::float4x4_simd to_world = math::simd::load(rigidbody_transform);
-        math::float4x4_simd offset_inverse = math::simd::load(rigidbody.offset_inverse());
-        to_world = math::matrix_simd::mul(offset_inverse, to_world);
-        to_world[3] = math::simd::load(transform.to_world()[3]);
-        transform.to_world(to_world);
+        float4x4 result = rigidbody_world;
+        result[3] = transform_world[3];
+        return result;
     }
 };
 
-mmd_loader::mmd_loader()
+mmd_loader::mmd_loader(render_graph* render_graph, rhi_renderer* rhi, pei_plugin* pei)
+    : m_render_graph(render_graph),
+      m_rhi(rhi),
+      m_pei(pei)
 {
+    std::vector<std::string> internal_toon_paths = {
+        "mmd-viewer/mmd/toon01.dds",
+        "mmd-viewer/mmd/toon02.dds",
+        "mmd-viewer/mmd/toon03.dds",
+        "mmd-viewer/mmd/toon04.dds",
+        "mmd-viewer/mmd/toon05.dds",
+        "mmd-viewer/mmd/toon06.dds",
+        "mmd-viewer/mmd/toon07.dds",
+        "mmd-viewer/mmd/toon08.dds",
+        "mmd-viewer/mmd/toon09.dds",
+        "mmd-viewer/mmd/toon10.dds"};
+    for (const std::string& toon : internal_toon_paths)
+        m_internal_toons.push_back(rhi->create_texture(toon.c_str()));
+
+    rhi_sampler_desc sampler_desc = {};
+    sampler_desc.min_filter = RHI_FILTER_LINEAR;
+    sampler_desc.mag_filter = RHI_FILTER_LINEAR;
+    sampler_desc.address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
+    sampler_desc.address_mode_v = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
+    sampler_desc.address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
+    m_sampler = rhi->create_sampler(sampler_desc);
 }
 
-void mmd_loader::initialize()
+mmd_loader::~mmd_loader()
 {
-    static const std::vector<std::string> internal_toon_path = {
-        "toon01.dds",
-        "toon02.dds",
-        "toon03.dds",
-        "toon04.dds",
-        "toon05.dds",
-        "toon06.dds",
-        "toon07.dds",
-        "toon08.dds",
-        "toon09.dds",
-        "toon10.dds",
-    };
-
-    for (auto& path : internal_toon_path)
-        m_internal_toon.push_back(graphics::rhi::make_texture("mmd-viewer/mmd/" + path));
-}
-
-bool mmd_loader::load(
-    ecs::entity entity,
-    std::string_view pmx,
-    std::string_view vmd,
-    graphics::render_pipeline* render_pipeline,
-    graphics::skinning_pipeline* skinning_pipeline)
-{
-    auto& world = system<ecs::world>();
-    bool static_model = vmd.empty();
-
-    if (static_model)
-        world.add<core::link, scene::transform, graphics::mesh_render, mmd_skeleton>(entity);
-    else
-        world.add<
-            core::link,
-            scene::transform,
-            graphics::mesh_render,
-            graphics::skinned_mesh,
-            mmd_skeleton>(entity);
-
-    auto& mesh_render = world.component<graphics::mesh_render>(entity);
-    mesh_render.object_parameter = std::make_unique<graphics::object_pipeline_parameter>();
-
-    pmx_loader& pmx_loader = m_pmx[pmx.data()];
-    load_hierarchy(entity, pmx_loader);
-    load_mesh(entity, pmx_loader, static_model ? nullptr : skinning_pipeline);
-    load_material(entity, pmx_loader, render_pipeline);
-    load_physics(entity, pmx_loader);
-    load_ik(entity, pmx_loader);
-
-    if (!static_model)
+    for (auto& [name, model] : m_models)
     {
-        vmd_loader& vmd_loader = m_vmd[vmd.data()];
-        load_morph(entity, pmx_loader, vmd_loader);
-        load_animation(entity, pmx_loader, vmd_loader);
+        for (rhi_resource* texture : model->textures)
+            m_rhi->destroy_texture(texture);
     }
 
-    return true;
+    m_models.clear();
+
+    for (rhi_resource* toon : m_internal_toons)
+        m_rhi->destroy_texture(toon);
+
+    m_rhi->destroy_sampler(m_sampler);
 }
 
-bool mmd_loader::load_pmx(std::string_view pmx)
+mmd_model* mmd_loader::load(std::string_view pmx_path, std::string_view vmd_path, world& world)
 {
-    pmx_loader& pmx_loader = m_pmx[pmx.data()];
+    if (m_models.find(pmx_path.data()) != m_models.end())
+        return nullptr;
 
-    std::vector<graphics::resource_interface*> internal_toon;
-    for (auto& toon : m_internal_toon)
-        internal_toon.push_back(toon.get());
-    return pmx_loader.load(pmx, internal_toon);
+    auto model = std::make_unique<mmd_model>();
+
+    pmx pmx(pmx_path);
+    if (!pmx.is_load())
+        return nullptr;
+
+    load_mesh(model.get(), pmx, world);
+    load_bones(model.get(), pmx, world);
+    load_physics(model.get(), pmx, world);
+
+    vmd vmd(vmd_path);
+    if (vmd.is_load())
+        load_animation(model.get(), vmd, world);
+
+    m_models[pmx_path.data()] = std::move(model);
+    return m_models[pmx_path.data()].get();
 }
 
-bool mmd_loader::load_vmd(std::string_view vmd)
+void mmd_loader::load_mesh(mmd_model* model, const pmx& pmx, world& world)
 {
-    vmd_loader& vmd_loader = m_vmd[vmd.data()];
-    return vmd_loader.load(vmd);
-}
+    model->geometry = std::make_unique<geometry>(m_rhi);
+    model->geometry->add_attribute(
+        "position",
+        pmx.position,
+        RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_STORAGE);
+    model->geometry->add_attribute(
+        "normal",
+        pmx.normal,
+        RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_STORAGE);
+    model->geometry->add_attribute("uv", pmx.uv, RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_STORAGE);
+    model->geometry->add_attribute(
+        "skinned position",
+        pmx.position,
+        RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_STORAGE);
+    model->geometry->add_attribute(
+        "skinned normal",
+        pmx.normal,
+        RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_STORAGE);
+    model->geometry->add_attribute(
+        "skinned uv",
+        pmx.uv,
+        RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_STORAGE);
+    model->geometry->add_attribute("skinning type", pmx.skin, RHI_BUFFER_FLAG_STORAGE);
+    model->geometry->set_indices(pmx.indices);
 
-void mmd_loader::load_hierarchy(ecs::entity entity, const pmx_loader& loader)
-{
-    auto& world = system<ecs::world>();
-    auto& relation = system<core::relation>();
-    auto& scene = system<scene::scene>();
-
-    auto& skeleton = world.component<mmd_skeleton>(entity);
-    skeleton.nodes.reserve(loader.bones().size());
-    for (auto& pmx_bone : loader.bones())
+    for (const std::string& texture : pmx.textures)
+        model->textures.push_back(m_rhi->create_texture(texture.c_str()));
+    for (const pmx_material& pmx_material : pmx.materials)
     {
-        ecs::entity node_entity = world.create("node");
-        world.add<core::link, scene::transform, mmd_node, mmd_node_animation>(node_entity);
+        material* material = m_render_graph->add_material(pmx_material.name_jp, "mmd material");
 
-        auto& bone = world.component<mmd_node>(node_entity);
-        bone.name = pmx_bone.name_jp;
-        bone.index = static_cast<std::uint32_t>(skeleton.nodes.size());
+        material->set(
+            "mmd material",
+            mmd_material{
+                .diffuse = pmx_material.diffuse,
+                .specular = pmx_material.specular,
+                .specular_strength = pmx_material.specular_strength,
+                .edge_color = pmx_material.edge_color,
+                .ambient = pmx_material.ambient,
+                .edge_size = pmx_material.edge_size,
+                .toon_mode = pmx_material.toon_mode,
+                .spa_mode = pmx_material.sphere_mode});
 
-        skeleton.nodes.push_back(node_entity);
+        material->set("mmd tex", model->textures[pmx_material.texture_index], m_sampler);
+        if (pmx_material.toon_mode == PMX_TOON_MODE_TEXTURE)
+            material->set("mmd toon", model->textures[pmx_material.toon_index], m_sampler);
+        else
+            material->set("mmd toon", m_internal_toons[pmx_material.toon_index], m_sampler);
+
+        if (pmx_material.sphere_mode != PMX_SPHERE_MODE_DISABLED)
+            material->set("mmd spa", model->textures[pmx_material.sphere_index], m_sampler);
+        else
+            material->set("mmd spa", m_internal_toons[0], m_sampler);
+
+        model->materials.push_back(material);
     }
 
-    for (std::size_t i = 0; i < loader.bones().size(); ++i)
-    {
-        auto& pmx_bone = loader.bones()[i];
-        auto& node_entity = skeleton.nodes[i];
+    model->model = std::make_unique<actor>("mmd", world);
+    auto [transform_ptr, mesh_ptr, skeleton_ptr] =
+        model->model->add<transform, mesh, mmd_skeleton>();
+    mesh_ptr->set_geometry(model->geometry.get());
 
-        auto& node_transform = world.component<scene::transform>(node_entity);
+    for (auto& submesh : pmx.submeshes)
+    {
+        mesh_ptr->add_submesh(
+            0,
+            pmx.position.size(),
+            submesh.index_start,
+            submesh.index_count,
+            model->materials[submesh.material_index]);
+    }
+}
+
+void mmd_loader::load_bones(mmd_model* model, const pmx& pmx, world& world)
+{
+    auto model_skeleton = model->model->get<mmd_skeleton>();
+    model_skeleton->bones.resize(pmx.bones.size());
+
+    model->bones.reserve(pmx.bones.size());
+    for (std::size_t i = 0; i < pmx.bones.size(); ++i)
+    {
+        auto bone = std::make_unique<actor>(pmx.bones[i].name_jp, world);
+        auto [bone_transform] = bone->add<transform>();
+
+        model->bones.push_back(std::move(bone));
+        model_skeleton->bones[i].transform = bone_transform;
+        model_skeleton->bones[i].index = static_cast<std::uint32_t>(i);
+    }
+
+    for (std::size_t i = 0; i < pmx.bones.size(); ++i)
+    {
+        auto& pmx_bone = pmx.bones[i];
+        auto bone_transform = model->bones[i]->get<transform>();
 
         if (pmx_bone.parent_index != -1)
         {
-            auto& pmx_parent_bone = loader.bones()[pmx_bone.parent_index];
-            auto& parent_node = skeleton.nodes[pmx_bone.parent_index];
-
-            node_transform.position(math::vector::sub(pmx_bone.position, pmx_parent_bone.position));
-
-            relation.link(node_entity, parent_node);
+            bone_transform->set_position(
+                vector::sub(pmx_bone.position, pmx.bones[pmx_bone.parent_index].position));
+            auto& parent_bone = model->bones[pmx_bone.parent_index];
+            parent_bone->get<transform>()->add_child(bone_transform);
         }
         else
         {
-            node_transform.position(pmx_bone.position);
-            relation.link(node_entity, entity);
+            bone_transform->set_position(pmx_bone.position);
+            model->model->get<transform>()->add_child(bone_transform);
         }
     }
 
-    scene.sync_local(entity);
-    for (std::size_t i = 0; i < loader.bones().size(); ++i)
+    for (std::size_t i = 0; i < pmx.bones.size(); ++i)
     {
-        auto& pmx_bone = loader.bones()[i];
-        auto& bone = world.component<mmd_node>(skeleton.nodes[i]);
-        auto& node_transform = world.component<scene::transform>(skeleton.nodes[i]);
+        auto& pmx_bone = pmx.bones[i];
+        auto& bone_info = model_skeleton->bones[i];
+        auto bone_transform = model->bones[i]->get<transform>();
 
-        math::float4x4_simd initial = math::simd::load(node_transform.to_world());
-        math::float4x4_simd inverse = math::matrix_simd::inverse_transform_no_scale(initial);
-        math::simd::store(inverse, bone.initial_inverse);
+        float4x4_simd initial = simd::load(bone_transform->get_world_matrix());
+        float4x4_simd inverse = matrix_simd::inverse_transform_no_scale(initial);
+        simd::store(inverse, bone_info.initial_inverse);
 
-        bone.layer = pmx_bone.layer;
-        bone.deform_after_physics = pmx_bone.flags & pmx_bone_flag::PHYSICS_AFTER_DEFORM;
-        bone.is_inherit_rotation = pmx_bone.flags & pmx_bone_flag::INHERIT_ROTATION;
-        bone.is_inherit_translation = pmx_bone.flags & pmx_bone_flag::INHERIT_TRANSLATION;
+        bone_info.layer = pmx_bone.layer;
+        bone_info.deform_after_physics = pmx_bone.flags & PMX_BONE_FLAG_PHYSICS_AFTER_DEFORM;
+        bone_info.is_inherit_rotation = pmx_bone.flags & PMX_BONE_FLAG_INHERIT_ROTATION;
+        bone_info.is_inherit_translation = pmx_bone.flags & PMX_BONE_FLAG_INHERIT_TRANSLATION;
+        bone_info.inherit_index = pmx_bone.inherit_index;
 
-        if ((bone.is_inherit_rotation || bone.is_inherit_translation) &&
+        if ((bone_info.is_inherit_rotation || bone_info.is_inherit_translation) &&
             pmx_bone.inherit_index != -1)
         {
-            bone.inherit_local_flag = pmx_bone.flags & pmx_bone_flag::INHERIT_LOCAL;
-            bone.inherit_node = skeleton.nodes[pmx_bone.inherit_index];
-            bone.inherit_weight = pmx_bone.inherit_weight;
+            bone_info.inherit_local_flag = pmx_bone.flags & PMX_BONE_FLAG_INHERIT_LOCAL;
+            bone_info.inherit_weight = pmx_bone.inherit_weight;
         }
 
-        bone.initial_position = node_transform.position();
-        bone.initial_rotation = {0.0f, 0.0f, 0.0f, 1.0f};
-        bone.initial_scale = {1.0f, 1.0f, 1.0f};
+        bone_info.initial_position = bone_transform->get_position();
+        bone_info.initial_rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+        bone_info.initial_scale = {1.0f, 1.0f, 1.0f};
     }
 
-    skeleton.local.resize(skeleton.nodes.size());
-    skeleton.world.resize(skeleton.nodes.size());
-
-    skeleton.sorted_nodes = skeleton.nodes;
-    std::stable_sort(
-        skeleton.sorted_nodes.begin(),
-        skeleton.sorted_nodes.end(),
-        [&](ecs::entity a, ecs::entity b) -> bool {
-            return world.component<mmd_node>(a).layer < world.component<mmd_node>(b).layer;
-        });
-}
-
-void mmd_loader::load_mesh(
-    ecs::entity entity,
-    const pmx_loader& loader,
-    graphics::skinning_pipeline* skinning_pipeline)
-{
-    auto& world = system<ecs::world>();
-
-    auto& mesh_render = world.component<graphics::mesh_render>(entity);
-    mesh_render.vertex_buffers = {
-        loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_POSITION),
-        loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_NORMAL),
-        loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_UV),
-        loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_EDGE)};
-    mesh_render.index_buffer = loader.index_buffer();
-
-    if (skinning_pipeline != nullptr)
+    for (std::size_t i = 0; i < pmx.bones.size(); ++i)
     {
-        auto& skinned_mesh = world.component<graphics::skinned_mesh>(entity);
-        skinned_mesh.pipeline = skinning_pipeline;
-        skinned_mesh.skinned_vertex_buffers.resize(mesh_render.vertex_buffers.size());
-        skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_POSITION] =
-            graphics::rhi::make_vertex_buffer<math::float3>(
-                nullptr,
-                loader.vertex_count(),
-                graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT);
-        skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_NORMAL] =
-            graphics::rhi::make_vertex_buffer<math::float3>(
-                nullptr,
-                loader.vertex_count(),
-                graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT);
-        skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_UV] =
-            graphics::rhi::make_vertex_buffer<math::float2>(
-                nullptr,
-                loader.vertex_count(),
-                graphics::VERTEX_BUFFER_FLAG_COMPUTE_OUT);
-        skinned_mesh.vertex_count = loader.vertex_count();
-
-        auto skin_parameter = std::make_unique<skinning_pipeline_parameter>();
-        skin_parameter->input_position(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_POSITION));
-        skin_parameter->input_normal(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_NORMAL));
-        skin_parameter->input_uv(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_UV));
-
-        skin_parameter->skin(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_SKIN));
-        skin_parameter->bdef_bone(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_BDEF_BONE));
-        skin_parameter->sdef_bone(loader.vertex_buffers(PMX_VERTEX_ATTRIBUTE_SDEF_BONE));
-
-        skin_parameter->output_position(
-            skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_POSITION].get());
-        skin_parameter->output_normal(
-            skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_NORMAL].get());
-        skin_parameter->output_uv(
-            skinned_mesh.skinned_vertex_buffers[PMX_VERTEX_ATTRIBUTE_UV].get());
-        skinned_mesh.parameter = std::move(skin_parameter);
-    }
-}
-
-void mmd_loader::load_material(
-    ecs::entity entity,
-    const pmx_loader& loader,
-    graphics::render_pipeline* render_pipeline)
-{
-    auto& world = system<ecs::world>();
-    auto& mesh_render = world.component<graphics::mesh_render>(entity);
-
-    auto& submesh = loader.submesh();
-    for (std::size_t i = 0; i < submesh.size(); ++i)
-    {
-        graphics::submesh mesh = {};
-        mesh.index_start = submesh[i].first;
-        mesh.index_end = submesh[i].second;
-        mesh_render.submeshes.push_back(mesh);
-
-        graphics::material material;
-        material.pipeline = render_pipeline;
-        material.parameter = loader.materials(i)->interface();
-        mesh_render.materials.push_back(material);
-    }
-}
-
-void mmd_loader::load_ik(ecs::entity entity, const pmx_loader& loader)
-{
-    auto& world = system<ecs::world>();
-    auto& skeleton = world.component<mmd_skeleton>(entity);
-
-    for (std::size_t i = 0; i < loader.bones().size(); ++i)
-    {
-        auto& pmx_bone = loader.bones()[i];
-        if (pmx_bone.flags & pmx_bone_flag::IK)
+        auto& pmx_bone = pmx.bones[i];
+        if (pmx_bone.flags & PMX_BONE_FLAG_IK)
         {
-            auto& ik_entity = skeleton.nodes[i];
-
-            world.add<mmd_ik_solver>(ik_entity);
-            auto& solver = world.component<mmd_ik_solver>(ik_entity);
-            solver.loop_count = pmx_bone.ik_loop_count;
-            solver.limit_angle = pmx_bone.ik_limit;
-            solver.ik_target = skeleton.nodes[pmx_bone.ik_target_index];
+            auto& bone_info = model_skeleton->bones[i];
+            bone_info.ik_solver = std::make_unique<mmd_skeleton::bone_ik_solver>();
+            bone_info.ik_solver->enable = true;
+            bone_info.ik_solver->iteration_count = pmx_bone.ik_iteration_count;
+            bone_info.ik_solver->limit = pmx_bone.ik_limit;
+            bone_info.ik_solver->target_index = pmx_bone.ik_target_index;
 
             for (auto& pmx_ik_link : pmx_bone.ik_links)
             {
-                auto& link_entity = skeleton.nodes[pmx_ik_link.bone_index];
-
-                world.add<mmd_ik_link>(link_entity);
-                auto& link = world.component<mmd_ik_link>(link_entity);
-
+                auto& link_bone = model_skeleton->bones[pmx_ik_link.bone_index];
+                link_bone.ik_link = std::make_unique<mmd_skeleton::bone_ik_link>();
                 if (pmx_ik_link.enable_limit)
                 {
-                    link.enable_limit = true;
-                    link.limit_min = pmx_ik_link.limit_min;
-                    link.limit_max = pmx_ik_link.limit_max;
-                    link.save_ik_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
+                    link_bone.ik_link->enable_limit = true;
+                    link_bone.ik_link->limit_min = pmx_ik_link.limit_min;
+                    link_bone.ik_link->limit_max = pmx_ik_link.limit_max;
+                    link_bone.ik_link->save_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
                 }
                 else
                 {
-                    link.enable_limit = false;
-                    link.save_ik_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
+                    link_bone.ik_link->enable_limit = false;
+                    link_bone.ik_link->save_rotate = {0.0f, 0.0f, 0.0f, 1.0f};
                 }
 
-                solver.links.push_back(link_entity);
+                bone_info.ik_solver->links.push_back(pmx_ik_link.bone_index);
             }
         }
     }
+
+    model_skeleton->sorted_bones.resize(model_skeleton->bones.size());
+    for (std::size_t i = 0; i < model_skeleton->sorted_bones.size(); ++i)
+        model_skeleton->sorted_bones[i] = i;
+    std::stable_sort(
+        model_skeleton->sorted_bones.begin(),
+        model_skeleton->sorted_bones.end(),
+        [&](std::size_t a, std::size_t b) -> bool
+        {
+            return model_skeleton->bones[a].layer < model_skeleton->bones[b].layer;
+        });
+
+    model_skeleton->local_matrices.resize(model->bones.size());
+    model_skeleton->world_matrices.resize(model->bones.size());
+
+    model_skeleton->set_skinning_data(pmx.bdef, pmx.sdef);
+    model_skeleton->set_skinning_input(
+        model->geometry->get_vertex_buffer("position"),
+        model->geometry->get_vertex_buffer("normal"),
+        model->geometry->get_vertex_buffer("uv"),
+        model->geometry->get_vertex_buffer("skinning type"));
+    model_skeleton->set_skinning_output(
+        model->geometry->get_vertex_buffer("skinned position"),
+        model->geometry->get_vertex_buffer("skinned normal"),
+        model->geometry->get_vertex_buffer("skinned uv"));
 }
 
-void mmd_loader::load_physics(ecs::entity entity, const pmx_loader& loader)
+void mmd_loader::load_physics(mmd_model* model, const pmx& pmx, world& world)
 {
-    auto& world = system<ecs::world>();
-    auto& scene = system<scene::scene>();
-    auto& relation = system<core::relation>();
-    auto& physics = system<physics::physics>();
-
-    auto& skeleton = world.component<mmd_skeleton>(entity);
-
-    std::vector<std::size_t> rigidbody_count(loader.bones().size());
-    std::vector<math::float4x4> rigidbody_transform;
-    rigidbody_transform.reserve(loader.rigidbodies().size());
-    for (auto& pmx_rigidbody : loader.rigidbodies())
+    std::vector<std::size_t> rigidbody_count(pmx.bones.size());
+    std::vector<float4x4> rigidbody_transform;
+    rigidbody_transform.reserve(pmx.rigidbodies.size());
+    for (auto& pmx_rigidbody : pmx.rigidbodies)
     {
-        rigidbody_transform.push_back(math::matrix::affine_transform(
-            math::float3{1.0f, 1.0f, 1.0f},
+        rigidbody_transform.push_back(matrix::affine_transform(
+            float3{1.0f, 1.0f, 1.0f},
             pmx_rigidbody.rotate,
             pmx_rigidbody.translate));
         ++rigidbody_count[pmx_rigidbody.bone_index];
     }
 
-    std::vector<ecs::entity> rigidbody_nodes;
-    rigidbody_nodes.reserve(loader.rigidbodies().size());
-    for (std::size_t i = 0; i < loader.rigidbodies().size(); ++i)
+    std::vector<actor*> rigidbody_bones;
+    rigidbody_bones.reserve(pmx.rigidbodies.size());
+    for (std::size_t i = 0; i < pmx.rigidbodies.size(); ++i)
     {
-        auto& pmx_rigidbody = loader.rigidbodies()[i];
+        auto& pmx_rigidbody = pmx.rigidbodies[i];
 
-        ecs::entity node = skeleton.nodes[pmx_rigidbody.bone_index];
+        actor* bone = model->bones[pmx_rigidbody.bone_index].get();
         if (rigidbody_count[pmx_rigidbody.bone_index] == 1)
         {
-            world.add<physics::rigidbody>(node);
+            bone->add<rigidbody>();
         }
         else
         {
             // Workaround multiple rigid bodies are attached to a node.
-            ecs::entity workaround_node = world.create("rigidbody");
-            world.add<core::link, physics::rigidbody, scene::transform>(workaround_node);
-            relation.link(workaround_node, node);
-            scene.sync_local(workaround_node);
+            auto workaround_actor = std::make_unique<actor>("rigidbody", world);
+            workaround_actor->add<rigidbody, transform>();
+            bone->get<transform>()->add_child(workaround_actor->get<transform>());
+            auto matrix = workaround_actor->get<transform>()->get_world_matrix();
+            bone = workaround_actor.get();
 
-            node = workaround_node;
+            model->bones.push_back(std::move(workaround_actor));
         }
-        rigidbody_nodes.push_back(node);
+        rigidbody_bones.push_back(bone);
 
-        auto& rigidbody = world.component<physics::rigidbody>(node);
-        rigidbody.shape(loader.collision_shape(i));
+        pei_collision_shape_desc shape_desc = {};
+        switch (pmx_rigidbody.shape)
+        {
+        case PMX_RIGIDBODY_SHAPE_TYPE_SPHERE:
+            shape_desc.type = PEI_COLLISION_SHAPE_TYPE_SPHERE;
+            shape_desc.sphere.radius = pmx_rigidbody.size[0];
+            break;
+        case PMX_RIGIDBODY_SHAPE_TYPE_BOX:
+            shape_desc.type = PEI_COLLISION_SHAPE_TYPE_BOX;
+            shape_desc.box.length = pmx_rigidbody.size[0] * 2.0f;
+            shape_desc.box.height = pmx_rigidbody.size[1] * 2.0f;
+            shape_desc.box.width = pmx_rigidbody.size[2] * 2.0f;
+            break;
+        case PMX_RIGIDBODY_SHAPE_TYPE_CAPSULE:
+            shape_desc.type = PEI_COLLISION_SHAPE_TYPE_CAPSULE;
+            shape_desc.capsule.radius = pmx_rigidbody.size[0];
+            shape_desc.capsule.height = pmx_rigidbody.size[1];
+            break;
+        default:
+            break;
+        };
+        model->collision_shapes.push_back(m_pei->create_collision_shape(shape_desc));
+
+        auto bone_rigidbody = bone->get<rigidbody>();
+        bone_rigidbody->set_activation_state(PEI_RIGIDBODY_ACTIVATION_STATE_DISABLE_DEACTIVATION);
+        bone_rigidbody->set_shape(model->collision_shapes[i]);
 
         switch (pmx_rigidbody.mode)
         {
-        case pmx_rigidbody_mode::STATIC:
-            rigidbody.type(physics::rigidbody_type::KINEMATIC);
+        case PMX_RIGIDBODY_MODE_STATIC:
+            bone_rigidbody->set_type(PEI_RIGIDBODY_TYPE_KINEMATIC);
             break;
-        case pmx_rigidbody_mode::DYNAMIC:
-            rigidbody.type(physics::rigidbody_type::DYNAMIC);
+        case PMX_RIGIDBODY_MODE_DYNAMIC:
+            bone_rigidbody->set_type(PEI_RIGIDBODY_TYPE_DYNAMIC);
             break;
-        case pmx_rigidbody_mode::MERGE:
-            rigidbody.type(physics::rigidbody_type::DYNAMIC);
-            rigidbody.reflection<mmd_merge_rigidbody_transform_reflection>();
+        case PMX_RIGIDBODY_MODE_MERGE:
+            bone_rigidbody->set_type(PEI_RIGIDBODY_TYPE_DYNAMIC);
+            bone_rigidbody->set_reflector<rigidbody_merge_reflector>();
             break;
         default:
             break;
         }
 
-        rigidbody.mass(
-            pmx_rigidbody.mode == pmx_rigidbody_mode::STATIC ? 0.0f : pmx_rigidbody.mass);
-        rigidbody.linear_damping(pmx_rigidbody.linear_damping);
-        rigidbody.angular_damping(pmx_rigidbody.angular_damping);
-        rigidbody.restitution(pmx_rigidbody.repulsion);
-        rigidbody.friction(pmx_rigidbody.friction);
-        rigidbody.collision_group(1 << pmx_rigidbody.group);
-        rigidbody.collision_mask(pmx_rigidbody.collision_group);
-        rigidbody.offset(math::matrix::mul(
+        bone_rigidbody->set_mass(
+            pmx_rigidbody.mode == PMX_RIGIDBODY_MODE_STATIC ? 0.0f : pmx_rigidbody.mass);
+        bone_rigidbody->set_damping(pmx_rigidbody.linear_damping, pmx_rigidbody.angular_damping);
+        bone_rigidbody->set_restitution(pmx_rigidbody.repulsion);
+        bone_rigidbody->set_friction(pmx_rigidbody.friction);
+        bone_rigidbody->set_collision_group(1 << pmx_rigidbody.group);
+        bone_rigidbody->set_collision_mask(pmx_rigidbody.collision_group);
+        bone_rigidbody->set_offset(matrix::mul(
             rigidbody_transform[i],
-            math::matrix::inverse(world.component<scene::transform>(node).to_world())));
+            matrix::inverse(bone->get<transform>()->get_world_matrix())));
+        bone_rigidbody->set_transform(rigidbody_transform[i]);
     }
 
-    ecs::entity joint_group = world.create("joints");
-    world.add<core::link>(joint_group);
-    for (auto& pmx_joint : loader.joints())
+    for (auto& pmx_joint : pmx.joints)
     {
-        ecs::entity joint_entity = world.create("joint");
-        world.add<core::link, physics::joint>(joint_entity);
-        auto& joint = world.component<physics::joint>(joint_entity);
+        auto rigidbody_a = rigidbody_bones[pmx_joint.rigidbody_a_index]->get<rigidbody>();
+        auto rigidbody_b = rigidbody_bones[pmx_joint.rigidbody_b_index]->get<rigidbody>();
 
-        joint.min_linear(pmx_joint.translate_min);
-        joint.max_linear(pmx_joint.translate_max);
-        joint.min_angular(pmx_joint.rotate_min);
-        joint.max_angular(pmx_joint.rotate_max);
+        float4x4_simd joint_world = matrix_simd::affine_transform(
+            simd::set(1.0f, 1.0f, 1.0f, 0.0f),
+            simd::load(pmx_joint.rotate),
+            simd::load(pmx_joint.translate));
 
-        joint.stiffness(0, pmx_joint.spring_translate_factor[0]);
-        joint.stiffness(1, pmx_joint.spring_translate_factor[1]);
-        joint.stiffness(2, pmx_joint.spring_translate_factor[2]);
-        joint.stiffness(3, pmx_joint.spring_rotate_factor[0]);
-        joint.stiffness(4, pmx_joint.spring_rotate_factor[1]);
-        joint.stiffness(5, pmx_joint.spring_rotate_factor[2]);
+        float4x4_simd inverse_a = matrix_simd::inverse_transform_no_scale(
+            simd::load(rigidbody_transform[pmx_joint.rigidbody_a_index]));
+        float4x4_simd offset_a = matrix_simd::mul(joint_world, inverse_a);
 
-        joint.spring_enable(0, pmx_joint.spring_translate_factor[0] != 0.0f);
-        joint.spring_enable(1, pmx_joint.spring_translate_factor[1] != 0.0f);
-        joint.spring_enable(2, pmx_joint.spring_translate_factor[2] != 0.0f);
-        joint.spring_enable(3, pmx_joint.spring_rotate_factor[0] != 0.0f);
-        joint.spring_enable(4, pmx_joint.spring_rotate_factor[1] != 0.0f);
-        joint.spring_enable(5, pmx_joint.spring_rotate_factor[2] != 0.0f);
+        float4_simd scale_a, position_a, rotation_a;
+        matrix_simd::decompose(offset_a, scale_a, rotation_a, position_a);
+        float3 relative_position_a;
+        float4 relative_rotation_a;
+        simd::store(position_a, relative_position_a);
+        simd::store(rotation_a, relative_rotation_a);
 
-        math::float4x4_simd joint_world = math::matrix_simd::affine_transform(
-            math::simd::set(1.0f, 1.0f, 1.0f, 0.0f),
-            math::simd::load(pmx_joint.rotate),
-            math::simd::load(pmx_joint.translate));
+        float4x4_simd inverse_b = matrix_simd::inverse_transform_no_scale(
+            simd::load(rigidbody_transform[pmx_joint.rigidbody_b_index]));
+        float4x4_simd offset_b = matrix_simd::mul(joint_world, inverse_b);
 
-        math::float4x4_simd inverse_a = math::matrix_simd::inverse_transform_no_scale(
-            math::simd::load(rigidbody_transform[pmx_joint.rigidbody_a_index]));
-        math::float4x4_simd offset_a = math::matrix_simd::mul(joint_world, inverse_a);
+        float4_simd scale_b, position_b, rotation_b;
+        matrix_simd::decompose(offset_b, scale_b, rotation_b, position_b);
+        float3 relative_position_b;
+        float4 relative_rotation_b;
+        simd::store(position_b, relative_position_b);
+        simd::store(rotation_b, relative_rotation_b);
 
-        math::float4x4_simd inverse_b = math::matrix_simd::inverse_transform_no_scale(
-            math::simd::load(rigidbody_transform[pmx_joint.rigidbody_b_index]));
-        math::float4x4_simd offset_b = math::matrix_simd::mul(joint_world, inverse_b);
-
-        math::float4_simd scale_a, position_a, rotation_a;
-        math::matrix_simd::decompose(offset_a, scale_a, rotation_a, position_a);
-        math::float3 relative_position_a;
-        math::float4 relative_rotation_a;
-        math::simd::store(position_a, relative_position_a);
-        math::simd::store(rotation_a, relative_rotation_a);
-
-        math::float4_simd scale_b, position_b, rotation_b;
-        math::matrix_simd::decompose(offset_b, scale_b, rotation_b, position_b);
-        math::float3 relative_position_b;
-        math::float4 relative_rotation_b;
-        math::simd::store(position_b, relative_position_b);
-        math::simd::store(rotation_b, relative_rotation_b);
-
-        joint.relative_rigidbody(
-            rigidbody_nodes[pmx_joint.rigidbody_a_index],
+        joint* joint = rigidbody_a->add_joint(
+            rigidbody_b,
             relative_position_a,
             relative_rotation_a,
-            rigidbody_nodes[pmx_joint.rigidbody_b_index],
             relative_position_b,
             relative_rotation_b);
-
-        relation.link(joint_entity, joint_group);
+        joint->set_linear(pmx_joint.translate_min, pmx_joint.translate_max);
+        joint->set_angular(pmx_joint.rotate_min, pmx_joint.rotate_max);
+        joint->set_stiffness(0, pmx_joint.spring_translate_factor[0]);
+        joint->set_stiffness(1, pmx_joint.spring_translate_factor[1]);
+        joint->set_stiffness(2, pmx_joint.spring_translate_factor[2]);
+        joint->set_stiffness(3, pmx_joint.spring_rotate_factor[0]);
+        joint->set_stiffness(4, pmx_joint.spring_rotate_factor[1]);
+        joint->set_stiffness(5, pmx_joint.spring_rotate_factor[2]);
+        joint->set_spring_enable(0, pmx_joint.spring_translate_factor[0] != 0.0f);
+        joint->set_spring_enable(1, pmx_joint.spring_translate_factor[1] != 0.0f);
+        joint->set_spring_enable(2, pmx_joint.spring_translate_factor[2] != 0.0f);
+        joint->set_spring_enable(3, pmx_joint.spring_rotate_factor[0] != 0.0f);
+        joint->set_spring_enable(4, pmx_joint.spring_rotate_factor[1] != 0.0f);
+        joint->set_spring_enable(5, pmx_joint.spring_rotate_factor[2] != 0.0f);
     }
-    relation.link(joint_group, entity);
 }
 
-void mmd_loader::load_morph(
-    ecs::entity entity,
-    const pmx_loader& pmx_loader,
-    const vmd_loader& vmd_loader)
+void mmd_loader::load_animation(mmd_model* model, const vmd& vmd, world& world)
 {
-    if (pmx_loader.morph().empty() || vmd_loader.morphs().empty())
-        return;
+    auto model_skeleton = model->model->get<mmd_skeleton>();
+    auto [model_animator] = model->model->add<mmd_animator>();
+    model_animator->motions.resize(model_skeleton->bones.size());
 
-    auto& world = system<ecs::world>();
-    world.add<mmd_morph_controler>(entity);
-
-    auto& morph_controler = world.component<mmd_morph_controler>(entity);
-    std::map<std::string, std::size_t> morph_map;
-    for (auto& pmx_morph : pmx_loader.morph())
+    std::map<std::string, std::size_t> motion_map;
+    for (std::size_t i = 0; i < model_skeleton->bones.size(); ++i)
     {
-        switch (pmx_morph.type)
-        {
-        case pmx_morph_type::GROUP: {
-            auto morph = std::make_unique<mmd_morph_controler::group_morph>();
-            for (auto& pmx_group_morph : pmx_morph.group_morphs)
-                morph->data.push_back({pmx_group_morph.index, pmx_group_morph.weight});
-
-            morph_map[pmx_morph.name_jp] = morph_controler.morphs.size();
-            morph_controler.morphs.push_back(std::move(morph));
-            break;
-        }
-        case pmx_morph_type::VERTEX: {
-            auto morph = std::make_unique<mmd_morph_controler::vertex_morph>();
-            for (auto& pmx_vertex_morph : pmx_morph.vertex_morphs)
-                morph->data.push_back({pmx_vertex_morph.index, pmx_vertex_morph.translation});
-
-            morph_map[pmx_morph.name_jp] = morph_controler.morphs.size();
-            morph_controler.morphs.push_back(std::move(morph));
-            break;
-        }
-        case pmx_morph_type::BONE: {
-            auto morph = std::make_unique<mmd_morph_controler::bone_morph>();
-            for (auto& pmx_bone_morph : pmx_morph.bone_morphs)
-            {
-                morph->data.push_back(
-                    {pmx_bone_morph.index, pmx_bone_morph.translation, pmx_bone_morph.rotation});
-            }
-
-            morph_map[pmx_morph.name_jp] = morph_controler.morphs.size();
-            morph_controler.morphs.push_back(std::move(morph));
-            break;
-        }
-        case pmx_morph_type::UV:
-        case pmx_morph_type::UV_EXT_1:
-        case pmx_morph_type::UV_EXT_2:
-        case pmx_morph_type::UV_EXT_3:
-        case pmx_morph_type::UV_EXT_4: {
-            auto morph = std::make_unique<mmd_morph_controler::uv_morph>();
-            morph_map[pmx_morph.name_jp] = morph_controler.morphs.size();
-            morph_controler.morphs.push_back(std::move(morph));
-            break;
-        }
-        case pmx_morph_type::MATERIAL: {
-            auto morph = std::make_unique<mmd_morph_controler::material_morph>();
-            morph_map[pmx_morph.name_jp] = morph_controler.morphs.size();
-            morph_controler.morphs.push_back(std::move(morph));
-            break;
-        }
-        case pmx_morph_type::FLIP: {
-            auto morph = std::make_unique<mmd_morph_controler::flip_morph>();
-            morph_map[pmx_morph.name_jp] = morph_controler.morphs.size();
-            morph_controler.morphs.push_back(std::move(morph));
-            break;
-        }
-        case pmx_morph_type::IMPULSE: {
-            auto morph = std::make_unique<mmd_morph_controler::impulse_morph>();
-            morph_map[pmx_morph.name_jp] = morph_controler.morphs.size();
-            morph_controler.morphs.push_back(std::move(morph));
-            break;
-        }
-        default:
-            break;
-        }
+        std::string name = model_skeleton->bones[i].transform.get_owner()->get_name();
+        motion_map[name] = i;
     }
 
-    for (auto& vmd_morph : vmd_loader.morphs())
+    auto set_bezier = [](bezier& bezier, const unsigned char* cp)
     {
-        auto iter = morph_map.find(vmd_morph.morph_name);
-        if (iter == morph_map.end())
-            continue;
-
-        mmd_morph_controler::key key = {};
-        key.frame = vmd_morph.frame;
-        key.weight = vmd_morph.weight;
-        morph_controler.morphs[iter->second]->keys.push_back(key);
-    }
-
-    for (auto& morph : morph_controler.morphs)
-    {
-        std::sort(morph->keys.begin(), morph->keys.end(), [](const auto& a, const auto& b) {
-            return a.frame < b.frame;
-        });
-    }
-
-    morph_controler.vertex_morph_result = graphics::rhi::make_vertex_buffer<math::float3>(
-        nullptr,
-        pmx_loader.vertex_count(),
-        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN,
-        true,
-        true);
-    morph_controler.uv_morph_result = graphics::rhi::make_vertex_buffer<math::float2>(
-        nullptr,
-        pmx_loader.vertex_count(),
-        graphics::VERTEX_BUFFER_FLAG_COMPUTE_IN,
-        true,
-        true);
-
-    auto& skinned_mesh = world.component<graphics::skinned_mesh>(entity);
-    auto skin_parameter = static_cast<skinning_pipeline_parameter*>(skinned_mesh.parameter.get());
-    skin_parameter->vertex_morph(morph_controler.vertex_morph_result.get());
-    skin_parameter->uv_morph(morph_controler.uv_morph_result.get());
-}
-
-void mmd_loader::load_animation(
-    ecs::entity entity,
-    const pmx_loader& pmx_loader,
-    const vmd_loader& vmd_loader)
-{
-    auto& world = system<ecs::world>();
-    auto& skeletion = world.component<mmd_skeleton>(entity);
-
-    // Node.
-    std::map<std::string, mmd_node_animation*> node_map;
-    for (auto& node_entity : skeletion.nodes)
-    {
-        auto& animation = world.component<mmd_node_animation>(node_entity);
-
-        auto& bone = world.component<mmd_node>(node_entity);
-        node_map[bone.name] = &animation;
-    }
-
-    auto set_bezier = [](mmd_bezier& bezier, const unsigned char* cp) {
         int x0 = cp[0];
         int y0 = cp[4];
         int x1 = cp[8];
         int y1 = cp[12];
 
         bezier.set(
-            {(float)x0 / 127.0f, (float)y0 / 127.0f},
-            {(float)x1 / 127.0f, (float)y1 / 127.0f});
+            {static_cast<float>(x0) / 127.0f, static_cast<float>(y0) / 127.0f},
+            {static_cast<float>(x1) / 127.0f, static_cast<float>(y1) / 127.0f});
     };
 
-    for (auto& pmx_motion : vmd_loader.motions())
+    for (auto& vmd_motion : vmd.motions)
     {
-        auto iter = node_map.find(pmx_motion.bone_name);
-        if (iter != node_map.end())
+        auto iter = motion_map.find(vmd_motion.bone_name);
+        if (iter != motion_map.end())
         {
-            mmd_node_animation::key key;
-            key.frame = pmx_motion.frame_index;
-            key.translate = pmx_motion.translate;
-            key.rotate = pmx_motion.rotate;
+            mmd_animator::animation_key key;
+            key.frame = vmd_motion.frame_index;
+            key.translate = vmd_motion.translate;
+            key.rotate = vmd_motion.rotate;
 
-            set_bezier(key.tx_bezier, &pmx_motion.interpolation[0]);
-            set_bezier(key.ty_bezier, &pmx_motion.interpolation[1]);
-            set_bezier(key.tz_bezier, &pmx_motion.interpolation[2]);
-            set_bezier(key.r_bezier, &pmx_motion.interpolation[3]);
+            set_bezier(key.tx_bezier, &vmd_motion.interpolation[0]);
+            set_bezier(key.ty_bezier, &vmd_motion.interpolation[1]);
+            set_bezier(key.tz_bezier, &vmd_motion.interpolation[2]);
+            set_bezier(key.r_bezier, &vmd_motion.interpolation[3]);
 
-            iter->second->keys.push_back(key);
+            model_animator->motions[iter->second].animation_keys.push_back(key);
         }
     }
 
-    for (auto [key, value] : node_map)
+    for (auto& motion : model_animator->motions)
     {
-        std::sort(value->keys.begin(), value->keys.end(), [](const auto& a, const auto& b) {
-            return a.frame < b.frame;
-        });
+        std::sort(
+            motion.animation_keys.begin(),
+            motion.animation_keys.end(),
+            [](const mmd_animator::animation_key& a, const mmd_animator::animation_key& b)
+            {
+                return a.frame < b.frame;
+            });
     }
 
-    // IK.
-    std::map<std::string, mmd_ik_solver*> ik_map;
-    for (auto& node_entity : skeletion.nodes)
-    {
-        if (world.has_component<mmd_ik_solver>(node_entity))
-        {
-            auto& bone = world.component<mmd_node>(node_entity);
-            auto& ik_solver = world.component<mmd_ik_solver>(node_entity);
-            ik_map[bone.name] = &ik_solver;
-        }
-    }
+    std::map<std::string, std::size_t> ik_map;
+    for (std::size_t i = 0; i < model_skeleton->bones.size(); ++i)
+        ik_map[model->bones[i]->get_name()] = i;
 
-    for (auto& ik : vmd_loader.iks())
+    for (auto& ik : vmd.iks)
     {
         for (auto& info : ik.infos)
         {
             auto iter = ik_map.find(info.name);
             if (iter != ik_map.end())
             {
-                mmd_ik_solver::key key = {};
+                mmd_animator::ik_key key = {};
                 key.frame = ik.frame;
                 key.enable = info.enable;
-                iter->second->keys.push_back(key);
+                model_animator->motions[iter->second].ik_keys.push_back(key);
             }
         }
     }
 
-    for (auto [key, value] : ik_map)
+    for (auto iter : ik_map)
     {
-        std::sort(value->keys.begin(), value->keys.end(), [](const auto& a, const auto& b) {
-            return a.frame < b.frame;
-        });
+        auto& keys = model_animator->motions[iter.second].ik_keys;
+        std::sort(
+            keys.begin(),
+            keys.end(),
+            [](const auto& a, const auto& b)
+            {
+                return a.frame < b.frame;
+            });
     }
 }
-} // namespace violet::sample::mmd
+} // namespace violet::sample

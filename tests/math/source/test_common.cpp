@@ -2,8 +2,6 @@
 
 #define VALUE_WITH_MARGIN(v) Catch::Approx(v).margin(0.00000005)
 
-using namespace violet::math;
-
 namespace violet::test
 {
 bool equal(float a, float b)
@@ -11,7 +9,7 @@ bool equal(float a, float b)
     return VALUE_WITH_MARGIN(a) == b;
 }
 
-bool equal(const violet::math::float2& a, const violet::math::float2& b)
+bool equal(const violet::float2& a, const violet::float2& b)
 {
     for (std::size_t i = 0; i < 2; ++i)
     {
@@ -21,7 +19,7 @@ bool equal(const violet::math::float2& a, const violet::math::float2& b)
     return true;
 }
 
-bool equal(const violet::math::float3& a, const violet::math::float3& b)
+bool equal(const violet::float3& a, const violet::float3& b)
 {
     for (std::size_t i = 0; i < 3; ++i)
     {
@@ -31,7 +29,7 @@ bool equal(const violet::math::float3& a, const violet::math::float3& b)
     return true;
 }
 
-bool equal(const violet::math::float4& a, const violet::math::float4& b)
+bool equal(const violet::float4& a, const violet::float4& b)
 {
     for (std::size_t i = 0; i < 4; ++i)
     {
@@ -41,7 +39,7 @@ bool equal(const violet::math::float4& a, const violet::math::float4& b)
     return true;
 }
 
-bool equal(const violet::math::float4_simd& a, const violet::math::float4_simd& b)
+bool equal(const violet::float4_simd& a, const violet::float4_simd& b)
 {
     float4 va, vb;
     simd::store(a, va);
@@ -50,7 +48,7 @@ bool equal(const violet::math::float4_simd& a, const violet::math::float4_simd& 
     return equal(va, vb);
 }
 
-bool equal(const violet::math::float4x4& a, const violet::math::float4x4& b)
+bool equal(const violet::float4x4& a, const violet::float4x4& b)
 {
     for (std::size_t i = 0; i < 4; ++i)
     {
@@ -63,7 +61,7 @@ bool equal(const violet::math::float4x4& a, const violet::math::float4x4& b)
     return true;
 }
 
-bool equal(const violet::math::float4x4_simd& a, const violet::math::float4x4_simd& b)
+bool equal(const violet::float4x4_simd& a, const violet::float4x4_simd& b)
 {
     float4x4 ma, mb;
     simd::store(a, ma);

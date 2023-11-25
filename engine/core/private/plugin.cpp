@@ -2,7 +2,7 @@
 #include "common/log.hpp"
 #include <Windows.h>
 
-namespace violet::core
+namespace violet
 {
 class dynamic_library_win32 : public dynamic_library
 {
@@ -39,7 +39,7 @@ bool dynamic_library_win32::load(std::string_view path)
     }
     else
     {
-        log::error("Failed to load dynamic lib: paht[{}] error[{}]", path, GetLastError());
+        log::error("Failed to load dynamic lib: path[{}] error[{}]", path, GetLastError());
         return false;
     }
 }
@@ -117,4 +117,4 @@ void* plugin::find_symbol(std::string_view name)
 {
     return m_library->find_symbol(name);
 }
-} // namespace violet::core
+} // namespace violet

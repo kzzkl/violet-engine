@@ -3,7 +3,7 @@
 #include "misc.hpp"
 #include "vector.hpp"
 
-namespace violet::math
+namespace violet
 {
 class quaternion
 {
@@ -88,6 +88,25 @@ public:
             a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
             a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
             a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]};
+    }
+
+    [[nodiscard]] static inline float3 mul_vec(const float4& q, const float3& v)
+    {
+        float xxd = 2.0f * q[0] * q[0];
+        float xyd = 2.0f * q[0] * q[1];
+        float xzd = 2.0f * q[0] * q[2];
+        float xwd = 2.0f * q[0] * q[3];
+        float yyd = 2.0f * q[1] * q[1];
+        float yzd = 2.0f * q[1] * q[2];
+        float ywd = 2.0f * q[1] * q[3];
+        float zzd = 2.0f * q[2] * q[2];
+        float zwd = 2.0f * q[2] * q[3];
+        float wwd = 2.0f * q[3] * q[3];
+
+        return float3{
+            v[0] * (xxd + wwd - 1.0f) + v[1] * (xyd - zwd) + v[2] * (xzd + ywd),
+            v[0] * (xyd + zwd) + v[1] * (yyd + wwd - 1.0f) + v[2] * (yzd - xwd),
+            v[0] * (xzd - ywd) + v[1] * (yzd + xwd) + v[2] * (zzd + wwd - 1.0f)};
     }
 
     [[nodiscard]] static inline float4 mul_vec(const float4& q, const float4& v)
@@ -277,4 +296,4 @@ public:
         return _mm_add_ps(t1, t2);
     }
 };
-} // namespace violet::math
+} // namespace violet

@@ -8,7 +8,7 @@ namespace violet::ui
 class theme_manager
 {
 private:
-    struct theme_index : public index_generator<theme_index, std::size_t>
+    struct theme_index : public type_index<theme_index, std::size_t>
     {
     };
 

@@ -1,13 +1,13 @@
 #pragma once
 
-#include "common/index_generator.hpp"
+#include "common/type_index.hpp"
 #include "resource_registry.hpp"
 #include <memory>
 #include <vector>
 
 namespace violet::resource
 {
-struct resource_index : public index_generator<resource_index, std::size_t>
+struct resource_index : public type_index<resource_index, std::size_t>
 {
 };
 

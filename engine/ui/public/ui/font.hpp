@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics_interface.hpp"
+#include "rhi.hpp"
 #include <memory>
 #include <string_view>
 #include <unordered_map>
@@ -23,13 +23,13 @@ class font
 public:
     font(std::string_view font, std::size_t size);
 
-    graphics::resource_interface* texture() const noexcept { return m_texture.get(); }
+    graphics::rhi_resource* texture() const noexcept { return m_texture.get(); }
     const glyph_data& glyph(std::uint32_t character) const;
 
     std::uint32_t heigth() const noexcept { return m_heigth; }
 
 private:
-    std::unique_ptr<graphics::resource_interface> m_texture;
+    std::unique_ptr<graphics::rhi_resource> m_texture;
     std::unordered_map<std::uint32_t, glyph_data> m_glyph;
 
     std::uint32_t m_heigth;

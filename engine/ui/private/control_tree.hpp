@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics_interface.hpp"
+#include "rhi.hpp"
 #include "ui/controls/view.hpp"
 #include <queue>
 #include <vector>

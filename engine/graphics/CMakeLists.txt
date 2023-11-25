@@ -1,26 +1,29 @@
 project(violet-graphics)
 
 add_library(${PROJECT_NAME} STATIC
-    ./private/blinn_phong_pipeline.cpp
-    ./private/camera.cpp
+    ./private/components/camera.cpp
+    ./private/components/mesh.cpp
+    # ./private/material/basic_material.cpp
+    ./private/pipeline/basic_pipeline.cpp
+    ./private/pipeline/debug_pipeline.cpp
+    ./private/render_graph/compute_pass.cpp
+    ./private/render_graph/compute_pipeline.cpp
+    ./private/render_graph/material.cpp
+    ./private/render_graph/render_graph.cpp
+    ./private/render_graph/render_node.cpp
+    ./private/render_graph/render_pass.cpp
+    ./private/render_graph/render_pipeline.cpp
     ./private/geometry.cpp
-    ./private/graphics_debug.cpp
-    ./private/graphics.cpp
-    ./private/light.cpp
-    ./private/mesh_render.cpp
-    ./private/pipeline.cpp
-    ./private/render_pipeline.cpp
-    ./private/rhi.cpp
-    ./private/shadow_map.cpp
-    ./private/shadow_pipeline.cpp
-    ./private/skinning_pipeline.cpp
-    ./private/sky_pipeline.cpp)
+    ./private/graphics_context.cpp
+    ./private/graphics_system.cpp
+    ./private/rhi_plugin.cpp)
 add_library(violet::graphics ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-    ./interface
-    ./public)
+    ./public
+    PRIVATE
+    ./private)
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
@@ -33,3 +36,13 @@ install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)
+
+include(${VIOLET_ROOT_DIR}/cmake/compile_shader.cmake)
+compile_shader_dxc(
+    TARGET ${PROJECT_NAME}
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/hlsl/debug.hlsl"
+    STAGES "vert" "frag"
+    INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
+
+file(GLOB SHADER_FILES "${CMAKE_BINARY_DIR}/shaders/${PROJECT_NAME}/*.spv")
+install(FILES ${SHADER_FILES} DESTINATION bin/engine/shaders)

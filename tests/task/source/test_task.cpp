@@ -1,32 +1,33 @@
-#include "task.hpp"
+#include "core/task/task.hpp"
+#include "core/task/task_executor.hpp"
 #include "test_common.hpp"
-
-using namespace violet::task;
+#include <queue>
 
 namespace violet::test
 {
-class test_task : public task
-{
-public:
-    using task::task;
-
-    virtual void execute() override {}
-};
-
 TEST_CASE("dependencies between tasks", "[task]")
 {
-    test_task task1("task 1");
-    CHECK(task1.get_reachable_tasks_size() == 1);
+    int num = 0;
 
-    test_task task2("task 2");
-    task2.add_dependency(task1);
-    CHECK(task1.get_reachable_tasks_size() == 2);
+    task_graph<int, int> graph;
+    task<int&>& t1 = graph.get_root().then(
+        [&num](int a, int b)
+        {
+            num = a + b;
+            return std::make_tuple(std::ref(num));
+        });
 
-    test_task task3("task 3");
-    task2.add_dependency(task3);
-    CHECK(task1.get_reachable_tasks_size() == 1);
+    task<>& t2 = t1.then([](int& num) { num += 2; });
+    task<>& t3 = t2.then([&num]() { num /= 2; });
 
-    task3.add_dependency(task1);
-    CHECK(task1.get_reachable_tasks_size() == 3);
+    task_executor executor;
+    executor.run();
+
+    auto future = executor.execute(graph, 4, 6);
+    future.get();
+
+    executor.stop();
+
+    CHECK(num == 6);
 }
 } // namespace violet::test

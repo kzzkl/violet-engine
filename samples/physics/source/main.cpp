@@ -1,304 +1,428 @@
-#include "core/application.hpp"
-#include "core/relation.hpp"
-#include "geometry.hpp"
-#include "graphics/graphics.hpp"
 #include "common/log.hpp"
-#include "physics.hpp"
-#include "scene/scene.hpp"
-#include "window/window.hpp"
+#include "components/camera.hpp"
+#include "components/mesh.hpp"
+#include "components/orbit_control.hpp"
+#include "components/rigidbody.hpp"
+#include "components/transform.hpp"
+#include "control/control_system.hpp"
+#include "core/ecs/actor.hpp"
+#include "core/engine.hpp"
+#include "graphics/graphics_system.hpp"
+#include "graphics/pipeline/debug_pipeline.hpp"
+#include "physics/physics_system.hpp"
+#include "physics/physics_world.hpp"
+#include "scene/scene_system.hpp"
+#include "window/window_system.hpp"
 
-using namespace violet::core;
-using namespace violet::graphics;
-using namespace violet::window;
-using namespace violet::ecs;
-using namespace violet::scene;
-using namespace violet::physics;
-
-namespace violet::sample::physics
+namespace violet::sample
 {
-class test_module : public system_base
+class color_pipeline : public render_pipeline
 {
 public:
-    test_module(application* app) : system_base("test_module") {}
-
-    virtual bool initialize(const violet::dictionary& config) override
+    color_pipeline(std::string_view name, graphics_context* context)
+        : render_pipeline(name, context)
     {
-        auto& world = system<violet::ecs::world>();
-        auto& graphics = system<violet::graphics::graphics>();
-        auto& scene = system<violet::scene::scene>();
-        auto& relation = system<violet::core::relation>();
+        set_shader("physics/shaders/basic.vert.spv", "physics/shaders/basic.frag.spv");
+        set_vertex_attributes({
+            {"position", RHI_RESOURCE_FORMAT_R32G32B32_FLOAT},
+            {"color",    RHI_RESOURCE_FORMAT_R32G32B32_FLOAT}
+        });
+        set_cull_mode(RHI_CULL_MODE_NONE);
 
-        // Create rigidbody shape.
-        collision_shape_desc desc;
-        desc.type = collision_shape_type::BOX;
-        desc.box.length = 1.0f;
-        desc.box.height = 1.0f;
-        desc.box.width = 1.0f;
-        m_cube_shape = system<violet::physics::physics>().make_shape(desc);
+        rhi_parameter_layout* material_layout = context->add_parameter_layout(
+            "color pipeline",
+            {
+                {RHI_PARAMETER_TYPE_TEXTURE, 1}
+        });
 
-        desc.type = collision_shape_type::BOX;
-        desc.box.length = 10.0f;
-        desc.box.height = 0.05f;
-        desc.box.width = 10.0f;
-        m_plane_shape = system<violet::physics::physics>().make_shape(desc);
+        set_parameter_layouts({
+            {context->get_parameter_layout("violet mesh"),   RENDER_PIPELINE_PARAMETER_TYPE_MESH    },
+            {material_layout,                                RENDER_PIPELINE_PARAMETER_TYPE_MATERIAL},
+            {context->get_parameter_layout("violet camera"),
+             RENDER_PIPELINE_PARAMETER_TYPE_CAMERA                                                  }
+        });
+    }
 
-        geometry_data cube_data = geometry::box(1.0f, 1.0f, 1.0f);
-        m_cube_vertex_buffer =
-            graphics.make_vertex_buffer(cube_data.vertices.data(), cube_data.vertices.size());
-        m_cube_index_buffer =
-            graphics.make_index_buffer(cube_data.indices.data(), cube_data.indices.size());
-        m_cube_material = graphics.make_render_parameter("geometry_material");
-        m_cube_material->set(0, math::float4{1.0f, 1.0f, 1.0f, 1.0f});
-        m_pipeline = graphics.make_render_pipeline<render_pipeline>("geometry");
-
-        // Create cube.
+private:
+    void render(rhi_render_command* command, render_data& data)
+    {
+        command->set_render_parameter(2, data.camera_parameter);
+        for (render_mesh& mesh : data.meshes)
         {
-            m_cube_1 = world.create();
-            world.add<link, rigidbody, transform, mesh_render>(m_cube_1);
+            command->set_vertex_buffers(mesh.vertex_buffers.data(), mesh.vertex_buffers.size());
+            command->set_index_buffer(mesh.index_buffer);
+            command->set_render_parameter(0, mesh.transform);
+            command->set_render_parameter(1, mesh.material);
+            command->draw_indexed(0, 36, 0);
+        }
+    }
+};
 
-            auto& t = world.component<transform>(m_cube_1);
-            t.position = {1.0f, 0.0f, 0.0f};
-            t.rotation = math::quaternion::rotation_euler(1.0f, 1.0f, 0.5f);
+class physics_debug : public pei_debug_draw
+{
+public:
+    physics_debug(
+        render_graph* render_graph,
+        render_subpass* debug_subpass,
+        rhi_renderer* rhi,
+        world& world)
+        : m_position(2048),
+          m_color(2048)
+    {
+        render_pipeline* pipeline = debug_subpass->add_pipeline<debug_pipeline>("debug");
+        material_layout* layout = render_graph->add_material_layout("debug");
+        layout->add_pipeline(pipeline);
 
-            auto& r = world.component<rigidbody>(m_cube_1);
-            r.shape = m_cube_shape.get();
-            r.mass = 1.0f;
-            r.type = rigidbody_type::KINEMATIC;
-            r.relation = m_cube_1;
+        material* material = layout->add_material("debug");
+        m_geometry = std::make_unique<geometry>(rhi);
 
-            auto& v = world.component<mesh_render>(m_cube_1);
-            m_cube_object.emplace_back(graphics.make_render_parameter("violet_object"));
-            v.object = m_cube_object.back().get();
+        m_geometry->add_attribute(
+            "position",
+            m_position,
+            RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_HOST_VISIBLE);
+        m_geometry->add_attribute(
+            "color",
+            m_color,
+            RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_HOST_VISIBLE);
+        m_position.clear();
+        m_color.clear();
 
-            render_unit submesh;
-            submesh.vertex_buffer = m_cube_vertex_buffer.get();
-            submesh.index_buffer = m_cube_index_buffer.get();
-            submesh.index_start = 0;
-            submesh.index_end = cube_data.indices.size();
-            submesh.pipeline = m_pipeline.get();
-            submesh.parameters = {v.object, m_cube_material.get()};
-            v.submesh.push_back(submesh);
+        m_object = std::make_unique<actor>("physics debug", world);
+        auto [transform_ptr, mesh_ptr] = m_object->add<transform, mesh>();
 
-            relation.link(m_cube_1, scene.root());
+        mesh_ptr->set_geometry(m_geometry.get());
+        mesh_ptr->add_submesh(0, 0, 0, 0, material);
+    }
+
+    void tick()
+    {
+        component_ptr<mesh> mesh_ptr = m_object->get<mesh>();
+        std::memcpy(
+            mesh_ptr->get_geometry()->get_vertex_buffer("position")->get_buffer(),
+            m_position.data(),
+            m_position.size() * sizeof(float3));
+        std::memcpy(
+            mesh_ptr->get_geometry()->get_vertex_buffer("color")->get_buffer(),
+            m_color.data(),
+            m_color.size() * sizeof(float3));
+        mesh_ptr->set_submesh(0, 0, m_position.size(), 0, 0);
+
+        m_position.clear();
+        m_color.clear();
+    }
+
+    virtual void draw_line(const float3& start, const float3& end, const float3& color) override
+    {
+        m_position.push_back(start);
+        m_position.push_back(end);
+        m_color.push_back(color);
+        m_color.push_back(color);
+    }
+
+private:
+    std::unique_ptr<geometry> m_geometry;
+
+    std::unique_ptr<actor> m_object;
+
+    std::vector<float3> m_position;
+    std::vector<float3> m_color;
+};
+
+class physics_demo : public engine_system
+{
+public:
+    physics_demo() : engine_system("physics_demo"), m_depth_stencil(nullptr) {}
+
+    virtual bool initialize(const dictionary& config)
+    {
+        auto& window = get_system<window_system>();
+        window.on_resize().then(
+            [this](std::uint32_t width, std::uint32_t height)
+            {
+                log::info("Window resize: {} {}", width, height);
+                resize(width, height);
+            });
+
+        on_tick().then(
+            [this](float delta)
+            {
+                tick(delta);
+                get_system<graphics_system>().render(m_render_graph.get());
+            });
+
+        initialize_render();
+        intiialize_physics();
+
+        {
+            m_cube1 = std::make_unique<actor>("cube 1", get_world());
+            auto [mesh_ptr, transform_ptr, rigidbody_ptr] =
+                m_cube1->add<mesh, transform, rigidbody>();
+            mesh_ptr->set_geometry(m_geometry.get());
+            mesh_ptr->add_submesh(0, 0, 0, 12, m_material);
+
+            rigidbody_ptr->set_transform(transform_ptr->get_world_matrix());
+            rigidbody_ptr->set_type(PEI_RIGIDBODY_TYPE_DYNAMIC);
+            rigidbody_ptr->set_shape(m_collision_shape);
+            rigidbody_ptr->set_mass(1.0f);
+            m_physics_world->add(m_cube1.get());
         }
 
-        // Cube 2.
         {
-            m_cube_2 = world.create();
-            world.add<link, rigidbody, transform, mesh_render>(m_cube_2);
+            m_cube2 = std::make_unique<actor>("cube 2", get_world());
+            auto [mesh_ptr, transform_ptr, rigidbody_ptr] =
+                m_cube2->add<mesh, transform, rigidbody>();
+            mesh_ptr->set_geometry(m_geometry.get());
+            mesh_ptr->add_submesh(0, 0, 0, 12, m_material);
 
-            auto& t = world.component<transform>(m_cube_2);
-            t.position = {-1.0f, 0.0f, 0.0f};
-            t.rotation = math::quaternion::rotation_euler(1.0f, 1.0f, 0.5f);
+            transform_ptr->set_position(float3{2.0f, 0.0f, 0.0f});
 
-            auto& r = world.component<rigidbody>(m_cube_2);
-            r.shape = m_cube_shape.get();
-            r.mass = 1.0f;
-            r.relation = m_cube_2;
+            rigidbody_ptr->set_transform(transform_ptr->get_world_matrix());
+            rigidbody_ptr->set_type(PEI_RIGIDBODY_TYPE_DYNAMIC);
+            rigidbody_ptr->set_shape(m_collision_shape);
+            rigidbody_ptr->set_mass(1.0f);
 
-            auto& v = world.component<mesh_render>(m_cube_2);
-            m_cube_object.emplace_back(graphics.make_render_parameter("violet_object"));
-            v.object = m_cube_object.back().get();
+            joint* joint = rigidbody_ptr->add_joint(m_cube1->get<rigidbody>());
+            joint->set_linear({-5.0f, -5.0f, -5.0f}, {5.0f, 5.0f, 5.0f});
+            joint->set_spring_enable(0, true);
+            joint->set_stiffness(0, 100.0f);
+            joint->set_damping(0, 5.0f);
 
-            render_unit submesh;
-            submesh.vertex_buffer = m_cube_vertex_buffer.get();
-            submesh.index_buffer = m_cube_index_buffer.get();
-            submesh.index_start = 0;
-            submesh.index_end = cube_data.indices.size();
-            submesh.pipeline = m_pipeline.get();
-            submesh.parameters = {v.object, m_cube_material.get()};
-            v.submesh.push_back(submesh);
-
-            relation.link(m_cube_2, m_cube_1);
+            m_physics_world->add(m_cube2.get());
         }
 
-        // Create plane.
         {
-            m_plane = world.create();
-            world.add<link, rigidbody, transform>(m_plane);
+            m_plane = std::make_unique<actor>("plane", get_world());
+            auto [mesh_ptr, transform_ptr, rigidbody_ptr] =
+                m_plane->add<mesh, transform, rigidbody>();
+            mesh_ptr->set_geometry(m_geometry.get());
+            mesh_ptr->add_submesh(0, 0, 0, 12, m_material);
 
-            auto& pt = world.component<transform>(m_plane);
-            pt.position = {0.0f, -3.0f, 0.0f};
+            transform_ptr->set_position(0.0f, -3.0f, 0.0f);
 
-            auto& pr = world.component<rigidbody>(m_plane);
-            pr.shape = m_plane_shape.get();
-            pr.mass = 0.0f;
-            pr.relation = m_plane;
+            rigidbody_ptr->set_transform(transform_ptr->get_world_matrix());
+            rigidbody_ptr->set_type(PEI_RIGIDBODY_TYPE_KINEMATIC);
+            rigidbody_ptr->set_shape(m_collision_shape);
+            rigidbody_ptr->set_mass(0.0f);
 
-            relation.link(m_plane, scene.root());
+            joint* joint = rigidbody_ptr->add_joint(m_cube2->get<rigidbody>());
+            joint->set_linear({-5.0f, -5.0f, -5.0f}, {5.0f, 5.0f, 5.0f});
+            joint->set_spring_enable(0, true);
+            joint->set_stiffness(0, 100.0f);
+            joint->set_damping(0, 5.0f);
+
+            m_physics_world->add(m_plane.get());
         }
-
-        initialize_task();
-        initialize_camera();
 
         return true;
     }
 
+    virtual void shutdown()
+    {
+        m_cube1 = nullptr;
+        m_cube2 = nullptr;
+        m_plane = nullptr;
+        m_camera = nullptr;
+
+        m_render_graph = nullptr;
+        m_geometry = nullptr;
+
+        rhi_renderer* rhi = get_system<graphics_system>().get_context()->get_rhi();
+        rhi->destroy_depth_stencil_buffer(m_depth_stencil);
+
+        pei_plugin* pei = get_system<physics_system>().get_pei();
+        pei->destroy_collision_shape(m_collision_shape);
+    }
+
 private:
-    void initialize_task()
+    void initialize_render()
     {
-        auto& task = system<violet::task::task_manager>();
+        auto& graphics = get_system<graphics_system>();
+        auto& window = get_system<window_system>();
+        auto extent = window.get_extent();
 
-        auto window_task = task.schedule(
-            "window tick",
-            [this]() { system<window::window>().tick(); },
-            task::task_type::MAIN_THREAD);
+        rhi_renderer* rhi = graphics.get_context()->get_rhi();
 
-        auto update_task = task.schedule("test update", [this]() {
-            update();
-            system<graphics::graphics>().begin_frame();
-            system<graphics::graphics>().render(m_camera);
-            system<graphics::graphics>().end_frame();
-        });
-        window_task->add_dependency(*task.find("root"));
-        update_task->add_dependency(*window_task);
+        m_render_graph = std::make_unique<render_graph>(graphics.get_context());
+
+        render_pass* main = m_render_graph->add_render_pass("main");
+
+        render_attachment* output_attachment = main->add_attachment("output");
+        output_attachment->set_format(rhi->get_back_buffer()->get_format());
+        output_attachment->set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
+        output_attachment->set_final_state(RHI_RESOURCE_STATE_PRESENT);
+        output_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
+        output_attachment->set_store_op(RHI_ATTACHMENT_STORE_OP_STORE);
+
+        render_attachment* depth_stencil_attachment = main->add_attachment("depth stencil");
+        depth_stencil_attachment->set_format(RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT);
+        depth_stencil_attachment->set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
+        depth_stencil_attachment->set_final_state(RHI_RESOURCE_STATE_DEPTH_STENCIL);
+        depth_stencil_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
+        depth_stencil_attachment->set_store_op(RHI_ATTACHMENT_STORE_OP_DONT_CARE);
+        depth_stencil_attachment->set_stencil_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
+        depth_stencil_attachment->set_stencil_store_op(RHI_ATTACHMENT_STORE_OP_DONT_CARE);
+
+        render_subpass* color_pass = main->add_subpass("color");
+        color_pass->add_reference(
+            output_attachment,
+            RHI_ATTACHMENT_REFERENCE_TYPE_COLOR,
+            RHI_RESOURCE_STATE_RENDER_TARGET);
+        color_pass->add_reference(
+            depth_stencil_attachment,
+            RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL,
+            RHI_RESOURCE_STATE_DEPTH_STENCIL);
+
+        render_pipeline* pipeline = color_pass->add_pipeline<color_pipeline>("color");
+
+        main->add_dependency(
+            nullptr,
+            RHI_PIPELINE_STAGE_FLAG_COLOR_OUTPUT | RHI_PIPELINE_STAGE_FLAG_EARLY_DEPTH_STENCIL,
+            0,
+            color_pass,
+            RHI_PIPELINE_STAGE_FLAG_COLOR_OUTPUT | RHI_PIPELINE_STAGE_FLAG_EARLY_DEPTH_STENCIL,
+            RHI_ACCESS_FLAG_COLOR_WRITE | RHI_ACCESS_FLAG_DEPTH_STENCIL_WRITE);
+
+        m_physics_debug =
+            std::make_unique<physics_debug>(m_render_graph.get(), color_pass, rhi, get_world());
+
+        m_render_graph->compile();
+
+        m_geometry = std::make_unique<geometry>(rhi);
+        std::vector<float3> position = {
+            {-0.5f, -0.5f, 0.5f },
+            {0.5f,  -0.5f, 0.5f },
+            {0.5f,  0.5f,  0.5f },
+            {-0.5f, 0.5f,  0.5f },
+            {-0.5f, -0.5f, -0.5f},
+            {0.5f,  -0.5f, -0.5f},
+            {0.5f,  0.5f,  -0.5f},
+            {-0.5f, 0.5f,  -0.5 }
+        };
+        m_geometry->add_attribute("position", position);
+        std::vector<float3> color = {
+            {1.0f, 0.0f, 0.0f},
+            {0.0f, 1.0f, 0.0f},
+            {0.0f, 1.0f, 1.0f},
+            {0.0f, 0.0f, 1.0f},
+            {1.0f, 0.0f, 0.0f},
+            {0.0f, 1.0f, 0.0f},
+            {0.0f, 1.0f, 1.0f},
+            {0.0f, 0.0f, 1.0f}
+        };
+        m_geometry->add_attribute("color", color);
+        std::vector<std::uint32_t> indices = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4, 7, 3, 0, 0, 4, 7,
+                                              1, 5, 6, 6, 2, 1, 3, 2, 6, 6, 7, 3, 0, 1, 5, 5, 4, 0};
+        m_geometry->set_indices(indices);
+
+        material_layout* material_layout = m_render_graph->add_material_layout("text material");
+        material_layout->add_pipeline(pipeline);
+        material_layout->add_field(
+            "texture",
+            {.pipeline_index = 0, .field_index = 0, .size = 1, .offset = 0});
+
+        m_material = material_layout->add_material("test");
+
+        m_camera = std::make_unique<actor>("main camera", get_world());
+        auto [camera_ptr, transform_ptr, orbit_control_ptr] =
+            m_camera->add<camera, transform, orbit_control>();
+        camera_ptr->set_render_pass(main);
+        camera_ptr->set_attachment(0, rhi->get_back_buffer(), true);
+        camera_ptr->resize(extent.width, extent.height);
+
+        transform_ptr->set_position(0.0f, 0.0f, -10.0f);
+
+        orbit_control_ptr->r = 10.0f;
+
+        resize(extent.width, extent.height);
     }
 
-    void initialize_camera()
+    void intiialize_physics()
     {
-        auto& world = system<violet::ecs::world>();
-        auto& scene = system<violet::scene::scene>();
-        auto& relation = system<violet::core::relation>();
-        auto& graphics = system<violet::graphics::graphics>();
+        auto& physics = get_system<physics_system>();
 
-        m_camera = world.create();
-        world.add<link, main_camera, camera, transform>(m_camera);
-        auto& c_camera = world.component<camera>(m_camera);
-        c_camera.set(math::to_radians(30.0f), 1300.0f / 800.0f, 0.01f, 1000.0f);
-        c_camera.parameter = graphics.make_render_parameter("violet_camera");
+        m_physics_world = std::make_unique<physics_world>(
+            float3{0.0f, -9.8f, 0.0f},
+            m_physics_debug.get(),
+            physics.get_pei());
 
-        auto& c_transform = world.component<transform>(m_camera);
-        c_transform.position = {0.0f, 0.0f, -38.0f};
-        c_transform.world_matrix = math::matrix::affine_transform(
-            c_transform.scaling,
-            c_transform.rotation,
-            c_transform.position);
-
-        relation.link(m_camera, scene.root());
+        pei_collision_shape_desc shape_desc = {};
+        shape_desc.type = PEI_COLLISION_SHAPE_TYPE_BOX;
+        shape_desc.box.height = 1.0f;
+        shape_desc.box.width = 1.0f;
+        shape_desc.box.length = 1.0f;
+        m_collision_shape = physics.get_pei()->create_collision_shape(shape_desc);
     }
 
-    void update()
+    void tick(float delta)
     {
-        auto& scene = system<scene::scene>();
-        scene.reset_sync_counter();
+        auto& physics = get_system<physics_system>();
+        physics.simulation(m_physics_world.get());
 
-        float delta = system<violet::core::timer>().frame_delta();
-        update_camera(delta);
-        update_actor(delta);
-
-        system<violet::physics::physics>().simulation();
+        m_physics_debug->draw_line({0.0f, 0.0f, 0.0f}, {0.0f, 10.0f, 0.0f}, {1.0f, 0.0f, 0.0f});
+        m_physics_debug->tick();
     }
 
-    void update_actor(float delta)
+    void resize(std::uint32_t width, std::uint32_t height)
     {
-        auto& world = system<violet::ecs::world>();
-        auto& keyboard = system<violet::window::window>().keyboard();
+        rhi_renderer* rhi = get_system<graphics_system>().get_context()->get_rhi();
+        rhi->destroy_depth_stencil_buffer(m_depth_stencil);
 
-        float move = 0.0f;
-        if (keyboard.key(keyboard_key::KEY_E).down())
-            move += 1.0f;
-        if (keyboard.key(keyboard_key::KEY_Q).down())
-            move -= 1.0f;
+        rhi_depth_stencil_buffer_desc depth_stencil_buffer_desc = {};
+        depth_stencil_buffer_desc.width = width;
+        depth_stencil_buffer_desc.height = height;
+        depth_stencil_buffer_desc.samples = RHI_SAMPLE_COUNT_1;
+        depth_stencil_buffer_desc.format = RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT;
+        m_depth_stencil = rhi->create_depth_stencil_buffer(depth_stencil_buffer_desc);
 
-        if (move != 0.0f)
+        if (m_camera)
         {
-            auto& actor_transform = world.component<transform>(m_cube_1);
-            actor_transform.position[0] += move * m_move_speed * delta;
-            actor_transform.dirty = true;
+            auto camera_ptr = m_camera->get<camera>();
+            camera_ptr->resize(width, height);
+            camera_ptr->set_attachment(1, m_depth_stencil);
         }
     }
 
-    void update_camera(float delta)
-    {
-        auto& world = system<violet::ecs::world>();
-        auto& keyboard = system<violet::window::window>().keyboard();
-        auto& mouse = system<violet::window::window>().mouse();
+    std::unique_ptr<actor> m_camera;
+    std::unique_ptr<actor> m_cube1;
+    std::unique_ptr<actor> m_cube2;
+    std::unique_ptr<actor> m_plane;
 
-        if (keyboard.key(keyboard_key::KEY_1).release())
-        {
-            if (mouse.mode() == mouse_mode::CURSOR_RELATIVE)
-                mouse.mode(mouse_mode::CURSOR_ABSOLUTE);
-            else
-                mouse.mode(mouse_mode::CURSOR_RELATIVE);
-        }
+    std::unique_ptr<geometry> m_geometry;
+    material* m_material;
 
-        if (keyboard.key(keyboard_key::KEY_3).release())
-        {
-            static std::size_t index = 0;
-            static std::vector<math::float4> colors = {
-                math::float4{1.0f, 0.0f, 0.0f, 1.0f},
-                math::float4{0.0f, 1.0f, 0.0f, 1.0f},
-                math::float4{0.0f, 0.0f, 1.0f, 1.0f}
-            };
+    std::unique_ptr<render_graph> m_render_graph;
+    rhi_resource* m_depth_stencil;
 
-            m_cube_material->set(0, colors[index]);
-            index = (index + 1) % colors.size();
-        }
+    std::unique_ptr<physics_world> m_physics_world;
+    pei_collision_shape* m_collision_shape;
+    std::unique_ptr<physics_debug> m_physics_debug;
 
-        auto& camera_transform = world.component<transform>(m_camera);
-        if (mouse.mode() == mouse_mode::CURSOR_RELATIVE)
-        {
-            m_heading += mouse.x() * m_rotate_speed * delta;
-            m_pitch += mouse.y() * m_rotate_speed * delta;
-            m_pitch = std::clamp(m_pitch, -math::PI_PIDIV2, math::PI_PIDIV2);
-            camera_transform.rotation = math::quaternion::rotation_euler(m_heading, m_pitch, 0.0f);
-        }
-
-        float x = 0, z = 0;
-        if (keyboard.key(keyboard_key::KEY_W).down())
-            z += 1.0f;
-        if (keyboard.key(keyboard_key::KEY_S).down())
-            z -= 1.0f;
-        if (keyboard.key(keyboard_key::KEY_D).down())
-            x += 1.0f;
-        if (keyboard.key(keyboard_key::KEY_A).down())
-            x -= 1.0f;
-
-        math::float4_simd s = math::simd::load(camera_transform.scaling);
-        math::float4_simd r = math::simd::load(camera_transform.rotation);
-        math::float4_simd t = math::simd::load(camera_transform.position);
-
-        math::float4x4_simd affine = math::matrix_simd::affine_transform(s, r, t);
-        math::float4_simd forward =
-            math::simd::set(x * m_move_speed * delta, 0.0f, z * m_move_speed * delta, 0.0f);
-        forward = math::matrix_simd::mul(forward, affine);
-
-        math::simd::store(math::vector_simd::add(forward, t), camera_transform.position);
-        camera_transform.dirty = true;
-    }
-
-    std::unique_ptr<collision_shape_interface> m_cube_shape;
-    std::unique_ptr<collision_shape_interface> m_plane_shape;
-
-    std::unique_ptr<render_pipeline> m_pipeline;
-
-    std::unique_ptr<graphics::resource> m_cube_vertex_buffer;
-    std::unique_ptr<graphics::resource> m_cube_index_buffer;
-    std::unique_ptr<graphics::render_parameter> m_cube_material;
-    std::vector<std::unique_ptr<graphics::render_parameter>> m_cube_object;
-
-    entity m_cube_1, m_cube_2;
-    entity m_plane;
-    entity m_camera;
-
-    float m_heading = 0.0f, m_pitch = 0.0f;
-
-    float m_rotate_speed = 0.2f;
-    float m_move_speed = 7.0f;
+    float m_rotate = 0.0f;
 };
-} // namespace violet::sample::physics
+} // namespace violet::sample
 
 int main()
 {
-    application app;
-    app.install<window>();
-    app.install<violet::core::relation>();
-    app.install<scene>();
-    app.install<graphics>();
-    app.install<physics>();
-    app.install<violet::sample::physics::test_module>(&app);
+    using namespace violet;
 
-    app.run();
+    engine engine;
+
+    engine.initialize("physics/config");
+    engine.install<window_system>();
+    engine.install<scene_system>();
+    engine.install<graphics_system>();
+    engine.install<physics_system>();
+    engine.install<control_system>();
+    engine.install<sample::physics_demo>();
+
+    engine.get_system<window_system>().on_destroy().then(
+        [&engine]()
+        {
+            log::info("Close window");
+            engine.exit();
+        });
+
+    engine.run();
 
     return 0;
 }

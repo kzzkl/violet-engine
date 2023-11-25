@@ -23,7 +23,8 @@ add_library(stb INTERFACE)
 target_include_directories(stb INTERFACE ./stb)
 
 # freetype
-add_subdirectory(freetype)
+set(SKIP_INSTALL_ALL ON)
+# add_subdirectory(freetype)
 
 # yoga
-add_subdirectory(yoga)
+# add_subdirectory(yoga)

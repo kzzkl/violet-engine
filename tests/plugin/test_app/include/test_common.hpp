@@ -5,7 +5,7 @@
 
 namespace violet::test
 {
-class hello_plugin : public violet::core::plugin
+class hello_plugin : public violet::plugin
 {
 public:
     hello_plugin();

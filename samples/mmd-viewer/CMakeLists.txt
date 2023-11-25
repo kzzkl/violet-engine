@@ -1,16 +1,17 @@
 project(mmd-viewer)
 
 add_executable(${PROJECT_NAME}
+    ./source/components/mmd_animator.cpp
+    ./source/components/mmd_skeleton.cpp
+    ./source/bezier.cpp
     ./source/encode.cpp
     ./source/main.cpp
     ./source/mmd_animation.cpp
-    ./source/mmd_bezier.cpp
-    ./source/mmd_component.cpp
     ./source/mmd_loader.cpp
-    ./source/mmd_pipeline.cpp
+    ./source/mmd_render.cpp
     ./source/mmd_viewer.cpp
-    ./source/pmx_loader.cpp
-    ./source/vmd_loader.cpp)
+    ./source/pmx.cpp
+    ./source/vmd.cpp)
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
@@ -18,38 +19,27 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-    violet::ecs
-    violet::core
-    violet::window
     violet::graphics
-    violet::math
-    violet::scene
     violet::physics
-    violet::editor)
+    violet::control)
 
-include(${VIOLET_ROOT_DIR}/cmake/shader_compile.cmake)
-target_shader_compile(
-    "${PROJECT_NAME}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/color.hlsl"
-    "vert;frag"
-    "${VIOLET_SHADER_INCLUDE_DIR}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated")
-target_shader_compile(
-    "${PROJECT_NAME}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/edge.hlsl"
-    "vert;frag"
-    "${VIOLET_SHADER_INCLUDE_DIR}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated")
-target_shader_compile(
-    "${PROJECT_NAME}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/skin.hlsl"
-    "comp"
-    ""
-    "${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated")
+include(${VIOLET_ROOT_DIR}/cmake/compile_shader.cmake)
+compile_shader_dxc(
+    TARGET ${PROJECT_NAME}
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/color.hlsl"
+    STAGES "vert" "frag"
+    INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
+    
+include(${VIOLET_ROOT_DIR}/cmake/compile_shader.cmake)
+compile_shader_dxc(
+    TARGET ${PROJECT_NAME}
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/skinning.hlsl"
+    STAGES "comp"
+    INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/config DESTINATION bin/mmd-viewer)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/mmd DESTINATION bin/mmd-viewer)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resource/shader/generated/ DESTINATION bin/mmd-viewer/shader)
+file(GLOB SHADER_FILES "${CMAKE_BINARY_DIR}/shaders/${PROJECT_NAME}/*.spv")
+install(FILES ${SHADER_FILES} DESTINATION bin/${PROJECT_NAME}/shaders)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION bin/${PROJECT_NAME})
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

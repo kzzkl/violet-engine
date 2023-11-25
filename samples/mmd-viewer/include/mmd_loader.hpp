@@ -1,51 +1,56 @@
 #pragma once
 
-#include "ecs/entity.hpp"
-#include "mmd_pipeline.hpp"
-#include "physics_interface.hpp"
-#include "pmx_loader.hpp"
-#include "vmd_loader.hpp"
+#include "core/ecs/actor.hpp"
+#include "graphics/geometry.hpp"
+#include "graphics/render_graph/render_graph.hpp"
+#include "physics/physics_interface.hpp"
 #include <map>
+#include <memory>
 
-namespace violet::sample::mmd
+namespace violet::sample
 {
+struct mmd_model
+{
+    std::vector<rhi_resource*> textures;
+    std::vector<material*> materials;
+
+    std::unique_ptr<geometry> geometry;
+    std::unique_ptr<actor> model;
+
+    std::vector<std::unique_ptr<actor>> bones;
+
+    std::vector<pei_collision_shape*> collision_shapes;
+};
+
+class pmx;
+class vmd;
 class mmd_loader
 {
 public:
-    mmd_loader();
+    mmd_loader(render_graph* render_graph, rhi_renderer* rhi, pei_plugin* pei);
+    ~mmd_loader();
 
-    void initialize();
-    bool load(
-        ecs::entity entity,
-        std::string_view pmx,
-        std::string_view vmd,
-        graphics::render_pipeline* render_pipeline,
-        graphics::skinning_pipeline* skinning_pipeline);
+    mmd_model* load(std::string_view pmx_path, std::string_view vmd_path, world& world);
 
-    bool load_pmx(std::string_view pmx);
-    bool load_vmd(std::string_view vmd);
+    mmd_model* get_model(std::string_view name) const noexcept
+    {
+        return m_models.at(name.data()).get();
+    }
 
 private:
-    void load_hierarchy(ecs::entity entity, const pmx_loader& loader);
-    void load_mesh(
-        ecs::entity entity,
-        const pmx_loader& loader,
-        graphics::skinning_pipeline* skinning_pipeline);
-    void load_material(
-        ecs::entity entity,
-        const pmx_loader& loader,
-        graphics::render_pipeline* render_pipeline);
-    void load_physics(ecs::entity entity, const pmx_loader& loader);
-    void load_ik(ecs::entity entity, const pmx_loader& loader);
-    void load_morph(ecs::entity entity, const pmx_loader& pmx_loader, const vmd_loader& vmd_loader);
-    void load_animation(
-        ecs::entity entity,
-        const pmx_loader& pmx_loader,
-        const vmd_loader& vmd_loader);
+    void load_mesh(mmd_model* model, const pmx& pmx, world& world);
+    void load_bones(mmd_model* model, const pmx& pmx, world& world);
+    void load_physics(mmd_model* model, const pmx& pmx, world& world);
+    void load_animation(mmd_model* model, const vmd& vmd, world& world);
 
-    std::vector<std::unique_ptr<graphics::resource_interface>> m_internal_toon;
+    std::map<std::string, std::unique_ptr<mmd_model>> m_models;
 
-    std::map<std::string, pmx_loader> m_pmx;
-    std::map<std::string, vmd_loader> m_vmd;
+    std::vector<rhi_resource*> m_internal_toons;
+
+    render_graph* m_render_graph;
+    rhi_renderer* m_rhi;
+    rhi_sampler* m_sampler;
+
+    pei_plugin* m_pei;
 };
-} // namespace violet::sample::mmd
+} // namespace violet::sample

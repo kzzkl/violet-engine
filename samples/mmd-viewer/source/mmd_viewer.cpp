@@ -1,16 +1,105 @@
 #include "mmd_viewer.hpp"
-#include "core/timer.hpp"
-#include "graphics/rhi.hpp"
+#include "components/camera.hpp"
+#include "components/mesh.hpp"
+#include "components/mmd_skeleton.hpp"
+#include "components/orbit_control.hpp"
+#include "components/rigidbody.hpp"
+#include "components/transform.hpp"
+#include "core/engine.hpp"
+#include "graphics/graphics_system.hpp"
 #include "mmd_animation.hpp"
-#include "mmd_loader.hpp"
-#include "physics/physics.hpp"
-#include "scene/scene.hpp"
-#include "scene/transform.hpp"
-#include "window/window_event.hpp"
+#include "physics/physics_system.hpp"
+#include "window/window_system.hpp"
 
-namespace violet::sample::mmd
+namespace violet::sample
 {
-mmd_viewer::mmd_viewer() : system_base("mmd_viewer")
+class physics_debug : public pei_debug_draw
+{
+public:
+    physics_debug(render_graph* render_graph, rhi_renderer* rhi, world& world)
+        : m_position(1024 * 64),
+          m_color(1024 * 64)
+    {
+        material* material = render_graph->add_material("debug", "debug material");
+        m_geometry = std::make_unique<geometry>(rhi);
+
+        m_geometry->add_attribute(
+            "position",
+            m_position,
+            RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_HOST_VISIBLE);
+        m_geometry->add_attribute(
+            "color",
+            m_color,
+            RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_HOST_VISIBLE);
+        m_position.clear();
+        m_color.clear();
+
+        m_object = std::make_unique<actor>("physics debug", world);
+        auto [debug_transform, debug_mesh] = m_object->add<transform, mesh>();
+
+        debug_mesh->set_geometry(m_geometry.get());
+        debug_mesh->add_submesh(0, 0, 0, 0, material);
+    }
+
+    void tick()
+    {
+        mesh* debug_mesh = m_object->get<mesh>().get();
+        std::memcpy(
+            debug_mesh->get_geometry()->get_vertex_buffer("position")->get_buffer(),
+            m_position.data(),
+            m_position.size() * sizeof(float3));
+        std::memcpy(
+            debug_mesh->get_geometry()->get_vertex_buffer("color")->get_buffer(),
+            m_color.data(),
+            m_color.size() * sizeof(float3));
+        debug_mesh->set_submesh(0, 0, m_position.size(), 0, 0);
+
+        m_position.clear();
+        m_color.clear();
+    }
+
+    virtual void draw_line(const float3& start, const float3& end, const float3& color) override
+    {
+        m_position.push_back(start);
+        m_position.push_back(end);
+        m_color.push_back(color);
+        m_color.push_back(color);
+    }
+
+private:
+    std::unique_ptr<geometry> m_geometry;
+
+    std::unique_ptr<actor> m_object;
+
+    std::vector<float3> m_position;
+    std::vector<float3> m_color;
+};
+
+class mmd_skeleton_info : public component_info_default<mmd_skeleton>
+{
+public:
+    mmd_skeleton_info(
+        rhi_renderer* rhi,
+        rhi_parameter_layout* skeleton_layout,
+        rhi_parameter_layout* skinning_layout)
+        : m_rhi(rhi),
+          m_skeleton_layout(skeleton_layout),
+          m_skinning_layout(skinning_layout)
+    {
+    }
+
+    virtual void construct(actor* owner, void* target) override
+    {
+        new (target) mmd_skeleton(m_rhi, m_skeleton_layout, m_skinning_layout);
+    }
+
+private:
+    rhi_renderer* m_rhi;
+    rhi_parameter_layout* m_skeleton_layout;
+    rhi_parameter_layout* m_skinning_layout;
+};
+
+mmd_viewer::mmd_viewer() : engine_system("mmd viewer"), m_depth_stencil(nullptr)
 {
 }
 
@@ -20,138 +109,157 @@ mmd_viewer::~mmd_viewer()
 
 bool mmd_viewer::initialize(const dictionary& config)
 {
-    auto& world = system<violet::ecs::world>();
-    world.register_component<mmd_node>();
-    world.register_component<mmd_skeleton>();
-    world.register_component<mmd_morph_controler>();
+    on_tick().then(
+        [this](float delta)
+        {
+            tick(delta);
+        });
 
-    m_loader = std::make_unique<mmd_loader>();
-    m_loader->initialize();
+    get_system<window_system>().on_resize().then(
+        [this](std::uint32_t width, std::uint32_t height)
+        {
+            resize(width, height);
+        });
 
-    m_render_pipeline = std::make_unique<mmd_render_pipeline>();
-    m_skinning_pipeline = std::make_unique<mmd_skinning_pipeline>();
+    initialize_render();
+
+    graphics_context* graphics_context = get_system<graphics_system>().get_context();
+    get_world().register_component<mmd_skeleton, mmd_skeleton_info>(
+        graphics_context->get_rhi(),
+        graphics_context->get_parameter_layout("mmd skeleton"),
+        graphics_context->get_parameter_layout("mmd skinning"));
+
+    m_loader = std::make_unique<mmd_loader>(
+        m_render_graph.get(),
+        get_system<graphics_system>().get_context()->get_rhi(),
+        get_system<physics_system>().get_pei());
+    m_model = m_loader->load(config["model"], config["motion"], get_world());
+
+    m_physics_debug = std::make_unique<physics_debug>(
+        m_render_graph.get(),
+        get_system<graphics_system>().get_context()->get_rhi(),
+        get_world());
+    m_physics_world = std::make_unique<physics_world>(
+        float3{0.0f, -9.8f, 0.0f},
+        nullptr, // m_physics_debug.get(),
+        get_system<physics_system>().get_pei());
+
+    get_system<mmd_animation>().evaluate(0);
+    get_system<mmd_animation>().update(false);
+    get_system<mmd_animation>().update(true);
+
+    for (std::size_t i = 0; i < m_model->bones.size(); ++i)
+    {
+        auto bone_rigidbody = m_model->bones[i]->get<rigidbody>();
+        if (bone_rigidbody)
+            m_physics_world->add(m_model->bones[i].get());
+    }
 
     return true;
 }
 
-violet::ecs::entity mmd_viewer::load_mmd(
-    std::string_view name,
-    std::string_view pmx,
-    std::string_view vmd)
+void mmd_viewer::shutdown()
 {
-    ecs::entity entity = system<ecs::world>().create(name);
-    if (m_loader->load(entity, pmx, vmd, m_render_pipeline.get(), m_skinning_pipeline.get()))
+    m_loader = nullptr;
+}
+
+void mmd_viewer::initialize_render()
+{
+    auto& graphics = get_system<graphics_system>();
+    rhi_renderer* rhi = graphics.get_context()->get_rhi();
+
+    m_render_graph = std::make_unique<mmd_render_graph>(graphics.get_context());
+    m_render_graph->compile();
+
+    auto extent = get_system<window_system>().get_extent();
+    resize(extent.width, extent.height);
+}
+
+void mmd_viewer::tick(float delta)
+{
+    compute_pipeline* skinning_pipeline = m_render_graph->get_compute_pipeline("skinning pipeline");
+    view<mmd_skeleton, mesh, transform> view(get_world());
+
+    static float total_delta = 0.0f;
+    total_delta += delta;
+    get_system<mmd_animation>().evaluate(total_delta * 30.0f);
+    get_system<mmd_animation>().update(false);
+    get_system<physics_system>().simulation(m_physics_world.get(), true);
+    get_system<mmd_animation>().update(true);
+
+    m_physics_debug->tick();
+
+    view.each(
+        [&](mmd_skeleton& model_skeleton, mesh& model_mesh, transform& model_transform)
+        {
+            float4x4_simd world_to_local =
+                matrix_simd::inverse_transform(simd::load(model_transform.get_world_matrix()));
+
+            for (std::size_t i = 0; i < model_skeleton.bones.size(); ++i)
+            {
+                auto bone_transform = model_skeleton.bones[i].transform;
+                model_skeleton.local_matrices[i] = bone_transform->get_local_matrix();
+
+                float4x4_simd final_transform = simd::load(bone_transform->get_world_matrix());
+                final_transform = matrix_simd::mul(final_transform, world_to_local);
+
+                float4x4_simd initial_inverse = simd::load(model_skeleton.bones[i].initial_inverse);
+                final_transform = matrix_simd::mul(initial_inverse, final_transform);
+
+                mmd_skinning_bone data;
+                simd::store(matrix_simd::transpose(final_transform), data.offset);
+                simd::store(quaternion_simd::rotation_matrix(final_transform), data.quaternion);
+
+                model_skeleton.get_skeleton_parameter()->set_uniform(
+                    0,
+                    &data,
+                    sizeof(mmd_skinning_bone),
+                    i * sizeof(mmd_skinning_bone));
+            }
+
+            skinning_pipeline->add_dispatch(
+                (model_mesh.get_geometry()->get_vertex_count() + 255) / 256,
+                1,
+                1,
+                {model_skeleton.get_skeleton_parameter(), model_skeleton.get_skinning_parameter()});
+        });
+
+    get_system<graphics_system>().render(m_render_graph.get());
+
+    // m_camera->get_component<orbit_control>()->phi += delta;
+    // m_camera->get_component<orbit_control>()->dirty = true;
+}
+
+void mmd_viewer::resize(std::uint32_t width, std::uint32_t height)
+{
+    rhi_renderer* rhi = get_system<graphics_system>().get_context()->get_rhi();
+    rhi->destroy_depth_stencil_buffer(m_depth_stencil);
+
+    rhi_depth_stencil_buffer_desc depth_stencil_buffer_desc = {};
+    depth_stencil_buffer_desc.width = width;
+    depth_stencil_buffer_desc.height = height;
+    depth_stencil_buffer_desc.samples = RHI_SAMPLE_COUNT_1;
+    depth_stencil_buffer_desc.format = RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT;
+    m_depth_stencil = rhi->create_depth_stencil_buffer(depth_stencil_buffer_desc);
+
+    if (m_camera)
     {
-        return entity;
+        auto main_camera = m_camera->get<camera>();
+        main_camera->resize(width, height);
+        main_camera->set_attachment(1, m_depth_stencil);
     }
     else
     {
-        system<ecs::world>().release(entity);
-        return ecs::INVALID_ENTITY;
+        m_camera = std::make_unique<actor>("main camera", get_world());
+        auto [main_camera, main_camera_transform, main_camera_controller] =
+            m_camera->add<camera, transform, orbit_control>();
+        main_camera->set_render_pass(m_render_graph->get_render_pass("main"));
+        main_camera->set_attachment(0, rhi->get_back_buffer(), true);
+        main_camera->set_attachment(1, m_depth_stencil);
+        main_camera->resize(width, height);
+        main_camera_transform->set_position(0.0f, 2.0f, -5.0f);
+        main_camera_controller->r = 50.0f;
+        main_camera_controller->target = {0.0f, 15.0f, 0.0f};
     }
 }
-
-bool mmd_viewer::load_pmx(std::string_view pmx)
-{
-    return m_loader->load_pmx(pmx);
-}
-
-bool mmd_viewer::load_vmd(std::string_view vmd)
-{
-    return m_loader->load_vmd(vmd);
-}
-
-void mmd_viewer::update()
-{
-    auto& world = system<ecs::world>();
-    auto& scene = system<scene::scene>();
-    auto& animation = system<mmd_animation>();
-
-    world.view<mmd_skeleton, graphics::skinned_mesh>().each(
-        [&](ecs::entity entity, mmd_skeleton& skeleton, graphics::skinned_mesh&) {
-            reset(entity);
-        });
-
-    static float delta = 0.0f;
-    delta += system<core::timer>().frame_delta();
-    animation.evaluate(delta * 30.0f);
-    animation.update(false);
-    world.view<mmd_skeleton>().each([&](mmd_skeleton& skeleton) {
-        math::float4_simd scale;
-        math::float4_simd rotation;
-        math::float4_simd position;
-        for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
-        {
-            auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
-            math::matrix_simd::decompose(
-                math::simd::load(skeleton.local[i]),
-                scale,
-                rotation,
-                position);
-            transform.scale(scale);
-            transform.rotation(rotation);
-            transform.position(position);
-        }
-    });
-
-    system<physics::physics>().simulation();
-
-    world.view<mmd_skeleton, scene::transform>().each(
-        [&](mmd_skeleton& skeleton, scene::transform& transform) {
-            math::float4x4_simd root_to_local = math::simd::load(transform.to_world());
-            root_to_local = math::matrix_simd::inverse_transform(root_to_local);
-
-            for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
-            {
-                auto& transform = world.component<scene::transform>(skeleton.nodes[i]);
-                skeleton.local[i] = transform.to_parent();
-
-                math::float4x4_simd to_world = math::simd::load(transform.to_world());
-                to_world = math::matrix_simd::mul(to_world, root_to_local);
-                math::simd::store(to_world, skeleton.world[i]);
-            }
-        });
-
-    animation.update(true);
-
-    world.view<mmd_skeleton, graphics::skinned_mesh>().each(
-        [&](mmd_skeleton& skeleton, graphics::skinned_mesh& skinned_mesh) {
-            math::float4x4_simd to_world;
-            math::float4x4_simd initial_inverse;
-            math::float4x4_simd final_transform;
-            for (std::size_t i = 0; i < skeleton.nodes.size(); ++i)
-            {
-                auto& node = world.component<mmd_node>(skeleton.nodes[i]);
-
-                to_world = math::simd::load(skeleton.world[i]);
-                initial_inverse = math::simd::load(node.initial_inverse);
-                final_transform = math::matrix_simd::mul(initial_inverse, to_world);
-                math::simd::store(final_transform, skeleton.world[i]);
-            }
-
-            auto parameter =
-                dynamic_cast<skinning_pipeline_parameter*>(skinned_mesh.parameter.get());
-            VIOLET_ASSERT(parameter);
-            parameter->bone_transform(skeleton.world);
-        });
-}
-
-void mmd_viewer::reset(ecs::entity entity)
-{
-    auto& world = system<ecs::world>();
-    auto& scene = system<scene::scene>();
-    auto& skeleton = world.component<mmd_skeleton>(entity);
-
-    for (auto& node_entity : skeleton.nodes)
-    {
-        auto& node = world.component<mmd_node>(node_entity);
-        auto& node_transform = world.component<scene::transform>(node_entity);
-        node_transform.position(node.initial_position);
-        node_transform.rotation(node.initial_rotation);
-        node_transform.scale(node.initial_scale);
-
-        node.inherit_translation = {0.0f, 0.0f, 0.0f};
-        node.inherit_rotation = {0.0f, 0.0f, 0.0f, 1.0f};
-    }
-}
-} // namespace violet::sample::mmd
+} // namespace violet::sample

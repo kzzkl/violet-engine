@@ -22,3 +22,7 @@ AllowAllParametersOfDeclarationOnNextLine: false
 AllowAllConstructorInitializersOnNextLine: false
 AlignArrayOfStructures: Left
 AllowShortIfStatementsOnASingleLine: Never
+LambdaBreakBeforeCall: true
+AllowShortLambdasOnASingleLine: false
+BraceWrapping:
+  BeforeLambdaBody: true

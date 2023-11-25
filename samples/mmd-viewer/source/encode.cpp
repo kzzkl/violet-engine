@@ -1,9 +1,7 @@
 #include "encode.hpp"
 #include <array>
 
-using namespace std;
-
-namespace violet::sample::mmd
+namespace violet::sample
 {
 namespace
 {
@@ -1802,9 +1800,7 @@ bool ConvChU16ToU8(const std::array<char16_t, 2>& u16Ch, std::array<char, 4>& u8
 }
 
 template <>
-bool convert<encode_type::UTF8, encode_type::UTF16>(
-    const std::string& input,
-    std::u16string& output)
+bool convert<ENCODE_TYPE_UTF8, ENCODE_TYPE_UTF16>(const std::string& input, std::u16string& output)
 {
     for (auto u8It = input.begin(); u8It != input.end(); ++u8It)
     {
@@ -1842,9 +1838,7 @@ bool convert<encode_type::UTF8, encode_type::UTF16>(
 }
 
 template <>
-bool convert<encode_type::UTF16, encode_type::UTF8>(
-    const std::u16string& input,
-    std::string& output)
+bool convert<ENCODE_TYPE_UTF16, ENCODE_TYPE_UTF8>(const std::u16string& input, std::string& output)
 {
     for (auto u16It = input.begin(); u16It != input.end(); ++u16It)
     {
@@ -1891,9 +1885,7 @@ bool convert<encode_type::UTF16, encode_type::UTF8>(
 }
 
 template <>
-bool convert<encode_type::SHIFT_JIS, encode_type::UTF8>(
-    const std::string& input,
-    std::string& output)
+bool convert<ENCODE_TYPE_SHIFT_JIS, ENCODE_TYPE_UTF8>(const std::string& input, std::string& output)
 {
     // ShiftJis won't give 4byte UTF8, so max. 3 byte per input char are needed
     output = std::string(3 * input.length(), ' ');
@@ -1950,4 +1942,4 @@ bool convert<encode_type::SHIFT_JIS, encode_type::UTF8>(
 
     return true;
 }
-} // namespace violet::sample::mmd
+} // namespace violet::sample

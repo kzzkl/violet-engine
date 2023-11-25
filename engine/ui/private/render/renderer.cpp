@@ -288,7 +288,7 @@ void renderer::end_draw(graphics::mesh_render& mesh)
 render_batch* renderer::allocate_batch(
     control_mesh_type type,
     const node_rect& scissor,
-    graphics::resource_interface* texture)
+    graphics::rhi_resource* texture)
 {
     if (m_batch_pool_index >= m_batch_pool.size())
         m_batch_pool.push_back(std::make_unique<render_batch>());

@@ -1,17 +1,17 @@
 #pragma once
 
-#include "core/context.hpp"
-#include "ecs/world.hpp"
+#include "components/mmd_animator.hpp"
+#include "components/mmd_skeleton.hpp"
+#include "components/transform.hpp"
+#include "core/engine_system.hpp"
 #include "math/math.hpp"
-#include "mmd_component.hpp"
-#include "scene/transform.hpp"
 
-namespace violet::sample::mmd
+namespace violet::sample
 {
-class mmd_animation : public violet::core::system_base
+class mmd_animation : public engine_system
 {
 public:
-    mmd_animation() : system_base("mmd_animation") {}
+    mmd_animation();
 
     virtual bool initialize(const dictionary& config) override;
 
@@ -19,32 +19,32 @@ public:
     void update(bool after_physics);
 
 private:
-    void evaluate_node(mmd_node& node, mmd_node_animation& animation, float t, float weight);
-    void evaluate_ik(mmd_node& node, mmd_ik_solver& ik, float t, float weight);
-    void evaluate_morph(ecs::entity entity, mmd_morph_controler& morph_controler, float t);
-
-    void update_local(mmd_skeleton& skeleton, bool after_physics);
-    void update_world(mmd_skeleton& skeleton, bool after_physics);
-
-    void update_local(mmd_skeleton& skeleton, ecs::entity entity);
-    void update_world(mmd_skeleton& skeleton, ecs::entity entity);
-
-    void update_inherit(mmd_node& node);
-    void update_ik(mmd_skeleton& skeleton, mmd_node& node, mmd_ik_solver& ik);
-
+    void evaluate_motion(mmd_skeleton& skeleton, mmd_animator& animator, float t, float weight);
+    void evaluate_ik(mmd_skeleton& skeleton, mmd_animator& animator, float t, float weight);
+    void update_inherit(
+        mmd_skeleton::bone& bone,
+        mmd_animator::motion& motion,
+        mmd_skeleton::bone& inherit_bone,
+        mmd_animator::motion& inherit_motion);
+    void update_ik(
+        mmd_skeleton& skeleton,
+        mmd_animator& animator,
+        mmd_skeleton::bone& bone,
+        mmd_animator::motion& motion);
     void ik_solve_core(
         mmd_skeleton& skeleton,
-        mmd_node& node,
-        mmd_ik_solver& ik,
+        mmd_animator& animator,
+        mmd_skeleton::bone& bone,
         std::size_t iteration);
-    // axis: 0: x, 1: y, 2: z
     void ik_solve_plane(
         mmd_skeleton& skeleton,
-        mmd_node& node,
-        mmd_ik_solver& ik,
-        std::size_t iteration,
-        std::size_t link_index,
-        uint8_t axis);
+        mmd_animator& animator,
+        mmd_skeleton::bone& bone,
+        mmd_skeleton::bone& ik_link,
+        std::uint8_t axis,
+        std::size_t iteration);
+
+    void update_local(mmd_skeleton::bone& bone, mmd_animator::motion& motion);
 
     template <typename Key>
     auto bound_key(const std::vector<Key>& keys, std::int32_t t, std::size_t start)
@@ -52,9 +52,14 @@ private:
         if (keys.empty() || keys.size() < start)
             return keys.end();
 
-        return std::upper_bound(keys.begin(), keys.end(), t, [](std::int32_t lhs, const Key& rhs) {
-            return lhs < rhs.frame;
-        });
+        return std::upper_bound(
+            keys.begin(),
+            keys.end(),
+            t,
+            [](std::int32_t lhs, const Key& rhs)
+            {
+                return lhs < rhs.frame;
+            });
     }
 };
-} // namespace violet::sample::mmd
+} // namespace violet::sample

@@ -1,0 +1,13 @@
+{
+    "window": {
+        "title": "Hello World",
+        "width": 1300,
+        "height": 800
+    },
+    "hello_world": {
+        "text": "hello world"
+    },
+    "graphics": {
+        "frame_resource_count": 2
+    }
+}

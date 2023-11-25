@@ -1,15 +1,16 @@
 #pragma once
 
-#include "common/assert.hpp"
 #include <array>
+#include <cassert>
 #include <memory>
 #include <vector>
 
-namespace violet::window
+namespace violet
 {
 class key_state
 {
 public:
+    key_state() : m_state(0) {}
     explicit key_state(unsigned char state) noexcept : m_state(state) {}
 
     inline bool down() const noexcept { return m_state & 0x1; }
@@ -33,7 +34,7 @@ public:
     inline key_state key(KeyType key) const noexcept
     {
         std::size_t index = static_cast<std::uint32_t>(key);
-        VIOLET_ASSERT(index < KeyCount);
+        assert(index < KeyCount);
 
         return key_state(m_key_state[index]);
     }
@@ -41,7 +42,7 @@ public:
     void key_down(KeyType key) noexcept
     {
         std::size_t index = static_cast<std::uint32_t>(key);
-        VIOLET_ASSERT(index < KeyCount);
+        assert(index < KeyCount);
 
         m_key_state[index] = ((m_key_state[index] << 1) & 0x2) | 0x1;
         m_update_key.push_back(key);
@@ -50,7 +51,7 @@ public:
     void key_up(KeyType key) noexcept
     {
         std::size_t index = static_cast<std::uint32_t>(key);
-        VIOLET_ASSERT(index < KeyCount);
+        assert(index < KeyCount);
 
         m_key_state[index] = (m_key_state[index] << 1) & 0x2;
         m_update_key.push_back(key);
@@ -110,19 +111,18 @@ public:
     mouse(window_impl* impl) noexcept;
     virtual ~mouse() = default;
 
-    void mode(mouse_mode mode);
-    void cursor(mouse_cursor cursor);
+    void set_mode(mouse_mode mode);
+    mouse_mode get_mode() const noexcept;
+    void set_cursor(mouse_cursor cursor);
 
-    mouse_mode mode() const noexcept;
-
-    inline int x() const noexcept { return m_x; }
-    inline int y() const noexcept { return m_y; }
-    inline int whell() const noexcept { return m_whell; }
+    inline int get_x() const noexcept { return m_x; }
+    inline int get_y() const noexcept { return m_y; }
+    inline int get_whell() const noexcept { return m_whell; }
 
     virtual void tick() override;
 
 protected:
-    friend class window;
+    friend class window_system;
     int m_x;
     int m_y;
     int m_whell;
@@ -243,4 +243,4 @@ class keyboard : public key_device<keyboard_key, KEYBOARD_KEY_COUNT>
 public:
     keyboard() noexcept;
 };
-} // namespace violet::window
+} // namespace violet

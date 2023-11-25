@@ -7,9 +7,9 @@ namespace violet::ui
 class image : public control
 {
 public:
-    image(graphics::resource_interface* texture = nullptr);
+    image(graphics::rhi_resource* texture = nullptr);
 
-    void texture(graphics::resource_interface* texture, bool resize = false);
+    void texture(graphics::rhi_resource* texture, bool resize = false);
 
     virtual const control_mesh* mesh() const noexcept override { return &m_mesh; }
 

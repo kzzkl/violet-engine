@@ -1,6 +1,6 @@
 #include "ui/controls/label.hpp"
-#include "common/assert.hpp"
 #include "ui/font.hpp"
+#include <cassert>
 
 namespace violet::ui
 {
@@ -21,7 +21,7 @@ label::label(std::string_view content, const label_theme& theme)
 
 void label::text(std::string_view content)
 {
-    VIOLET_ASSERT(!content.empty());
+    assert(!content.empty());
 
     m_position.clear();
     m_uv.clear();
