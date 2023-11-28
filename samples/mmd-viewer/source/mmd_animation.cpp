@@ -10,22 +10,28 @@ mmd_animation::mmd_animation() : engine_system("mmd animation")
 bool mmd_animation::initialize(const dictionary& config)
 {
     get_world().register_component<mmd_animator>();
+    get_world().register_component<mmd_morph>();
 
     return true;
 }
 
 void mmd_animation::evaluate(float t, float weight)
 {
-    view<mmd_skeleton, mmd_animator> view(get_world());
+    view<mmd_skeleton, mmd_animator, mmd_morph> view(get_world());
     view.each(
-        [=, this](mmd_skeleton& skeleton, mmd_animator& animator)
+        [=, this](mmd_skeleton& skeleton, mmd_animator& animator, mmd_morph& morph)
         {
             evaluate_motion(skeleton, animator, t, weight);
         });
     view.each(
-        [=, this](mmd_skeleton& skeleton, mmd_animator& animator)
+        [=, this](mmd_skeleton& skeleton, mmd_animator& animator, mmd_morph& morph)
         {
             evaluate_ik(skeleton, animator, t, weight);
+        });
+    view.each(
+        [=, this](mmd_skeleton& skeleton, mmd_animator& animator, mmd_morph& morph)
+        {
+            evaluate_morph(morph, animator, t);
         });
 }
 
@@ -195,6 +201,50 @@ void mmd_animation::evaluate_ik(
             else
                 bone.ik_solver->enable = enable;
         }
+    }
+}
+
+void mmd_animation::evaluate_morph(mmd_morph& morph, mmd_animator& animator, float t)
+{
+    std::memset(
+        morph.vertex_morph_result->get_buffer(),
+        0,
+        morph.vertex_morph_result->get_buffer_size());
+
+    for (std::size_t i = 0; i < morph.morphs.size(); ++i)
+    {
+        auto& animator_morph = animator.morphs[i];
+
+        if (animator_morph.morph_keys.empty())
+            continue;
+
+        auto bound = bound_key(
+            animator_morph.morph_keys,
+            static_cast<std::int32_t>(t),
+            animator_morph.offset);
+
+        float weight = 0.0f;
+        if (bound == animator_morph.morph_keys.end())
+        {
+            weight = animator_morph.morph_keys.back().weight;
+        }
+        else if (bound == animator_morph.morph_keys.begin())
+        {
+            weight = bound->weight;
+        }
+        else
+        {
+            const auto& key0 = *(bound - 1);
+            const auto& key1 = *bound;
+
+            float offset = (t - key0.frame) / (key1.frame - key0.frame);
+            weight = key0.weight + (key1.weight - key0.weight) * offset;
+
+            animator_morph.offset = std::distance(animator_morph.morph_keys.cbegin(), bound);
+        }
+
+        if (weight != 0.0f)
+            morph.evaluate(i, weight);
     }
 }
 

@@ -38,6 +38,19 @@ public:
         float4 base_rotation{0.0f, 0.0f, 0.0f, 1.0f};
     };
 
+    struct morph_key
+    {
+        std::int32_t frame;
+        float weight;
+    };
+
+    struct morph
+    {
+        std::size_t offset;
+        std::vector<morph_key> morph_keys;
+    };
+
     std::vector<motion> motions;
+    std::vector<morph> morphs;
 };
 } // namespace violet::sample

@@ -134,6 +134,8 @@ bool mmd_viewer::initialize(const dictionary& config)
         get_system<graphics_system>().get_context()->get_rhi(),
         get_system<physics_system>().get_pei());
     m_model = m_loader->load(config["model"], config["motion"], get_world());
+    if (!m_model)
+        return false;
 
     m_physics_debug = std::make_unique<physics_debug>(
         m_render_graph.get(),
@@ -225,9 +227,6 @@ void mmd_viewer::tick(float delta)
         });
 
     get_system<graphics_system>().render(m_render_graph.get());
-
-    // m_camera->get_component<orbit_control>()->phi += delta;
-    // m_camera->get_component<orbit_control>()->dirty = true;
 }
 
 void mmd_viewer::resize(std::uint32_t width, std::uint32_t height)

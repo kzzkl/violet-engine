@@ -22,7 +22,7 @@ public:
     virtual bool initialize(const dictionary& config) { return true; }
     virtual void shutdown() {}
 
-    inline std::string_view get_name() const noexcept { return m_name; }
+    inline const std::string& get_name() const noexcept { return m_name; }
 
 protected:
     template <typename T>

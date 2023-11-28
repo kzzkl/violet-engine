@@ -5,20 +5,39 @@
 
 namespace violet::bt3
 {
-void bt3_motion_state::getWorldTransform(btTransform& centerOfMassWorldTrans) const
+class bt3_motion_state : public btMotionState
 {
-    centerOfMassWorldTrans.setFromOpenGLMatrix(&transform[0][0]);
-}
+public:
+    virtual void getWorldTransform(btTransform& centerOfMassWorldTrans) const override
+    {
+        centerOfMassWorldTrans.setFromOpenGLMatrix(&transform[0][0]);
+    }
 
-void bt3_motion_state::setWorldTransform(const btTransform& centerOfMassWorldTrans)
+    virtual void setWorldTransform(const btTransform& centerOfMassWorldTrans) override
+    {
+        centerOfMassWorldTrans.getOpenGLMatrix(&transform[0][0]);
+        updated_flag = true;
+    }
+
+    float4x4 transform;
+    bool updated_flag;
+
+    bt3_rigidbody* rigidbody;
+};
+
+class bt3_kinematic_motion_state : public bt3_motion_state
 {
-    centerOfMassWorldTrans.getOpenGLMatrix(&transform[0][0]);
-    updated_flag = true;
-}
+public:
+    virtual void setWorldTransform(const btTransform& centerOfMassWorldTrans) override {}
+};
 
 bt3_rigidbody::bt3_rigidbody(const pei_rigidbody_desc& desc)
 {
-    m_motion_state = std::make_unique<bt3_motion_state>();
+    if (desc.type == PEI_RIGIDBODY_TYPE_KINEMATIC)
+        m_motion_state = std::make_unique<bt3_kinematic_motion_state>();
+    else
+        m_motion_state = std::make_unique<bt3_motion_state>();
+
     m_motion_state->transform = desc.initial_transform;
     m_motion_state->rigidbody = this;
 
@@ -96,8 +115,8 @@ void bt3_rigidbody::set_transform(const float4x4& world)
 {
     btTransform transform;
     transform.setFromOpenGLMatrix(&world[0][0]);
-    m_motion_state->setWorldTransform(transform);
     m_rigidbody->setCenterOfMassTransform(transform);
+    m_motion_state->transform = world;
 }
 
 void bt3_rigidbody::set_angular_velocity(const float3& velocity)
@@ -131,5 +150,15 @@ void bt3_rigidbody::set_activation_state(pei_rigidbody_activation_state state)
     default:
         break;
     }
+}
+
+void bt3_rigidbody::set_updated_flag(bool flag)
+{
+    m_motion_state->updated_flag = flag;
+}
+
+bool bt3_rigidbody::get_updated_flag() const
+{
+    return m_motion_state->updated_flag;
 }
 } // namespace violet::bt3

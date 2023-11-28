@@ -39,6 +39,7 @@ struct sdef_data
 StructuredBuffer<sdef_data> sdef : register(t7, space1);
 
 StructuredBuffer<uint2> skin : register(t8, space1);
+StructuredBuffer<float> vertex_morph : register(t9, space1);
 
 float4 quaternion_slerp(float4 a, float4 b, float t)
 {
@@ -96,7 +97,10 @@ float3x3 quaternion_to_matrix(float4 q)
 void cs_main(int3 dtid : SV_DispatchThreadID)
 {
     int index = dtid.x * 3;
-    float3 position = float3(position_in[index + 0], position_in[index + 1], position_in[index + 2]);
+    float3 position = float3(
+        position_in[index + 0] + vertex_morph[index + 0],
+        position_in[index + 1] + vertex_morph[index + 1],
+        position_in[index + 2] + vertex_morph[index + 2]);
     float3 normal = float3(normal_in[index + 0], normal_in[index + 1], normal_in[index + 2]);
 
     uint skin_type = skin[dtid.x].x;

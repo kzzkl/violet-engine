@@ -120,7 +120,9 @@ void engine::exit()
 void engine::install(std::size_t index, std::unique_ptr<engine_system>&& system)
 {
     system->m_context = m_context.get();
-    system->initialize(m_config[system->get_name().data()]);
+    if (!system->initialize(m_config[system->get_name().data()]))
+        throw std::runtime_error(system->get_name() + " initialize failed");
+
     m_context->set_system(index, system.get());
     log::info("System installed successfully: {}.", system->get_name());
     m_systems.push_back(std::move(system));

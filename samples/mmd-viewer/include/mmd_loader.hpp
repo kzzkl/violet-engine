@@ -40,6 +40,7 @@ public:
 private:
     void load_mesh(mmd_model* model, const pmx& pmx, world& world);
     void load_bones(mmd_model* model, const pmx& pmx, world& world);
+    void load_morph(mmd_model* model, const pmx& pmx);
     void load_physics(mmd_model* model, const pmx& pmx, world& world);
     void load_animation(mmd_model* model, const vmd& vmd, world& world);
 

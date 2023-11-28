@@ -2,6 +2,7 @@
 #include "vk_render_pass.hpp"
 #include "vk_resource.hpp"
 #include "vk_util.hpp"
+#include <cassert>
 #include <fstream>
 
 namespace violet::vk

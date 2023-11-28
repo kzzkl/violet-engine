@@ -1,6 +1,7 @@
 #include "mmd_loader.hpp"
 #include "components/mesh.hpp"
 #include "components/mmd_animator.hpp"
+#include "components/mmd_morph.hpp"
 #include "components/mmd_skeleton.hpp"
 #include "components/rigidbody.hpp"
 #include "components/transform.hpp"
@@ -77,8 +78,12 @@ mmd_model* mmd_loader::load(std::string_view pmx_path, std::string_view vmd_path
     if (!pmx.is_load())
         return nullptr;
 
+    model->model = std::make_unique<actor>("mmd", world);
+    model->model->add<transform, mesh, mmd_skeleton, mmd_morph>();
+
     load_mesh(model.get(), pmx, world);
     load_bones(model.get(), pmx, world);
+    load_morph(model.get(), pmx);
     load_physics(model.get(), pmx, world);
 
     vmd vmd(vmd_path);
@@ -114,10 +119,24 @@ void mmd_loader::load_mesh(mmd_model* model, const pmx& pmx, world& world)
         pmx.uv,
         RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_STORAGE);
     model->geometry->add_attribute("skinning type", pmx.skin, RHI_BUFFER_FLAG_STORAGE);
+    model->geometry->add_attribute<float3>(
+        "vertex morph",
+        pmx.position.size(),
+        RHI_BUFFER_FLAG_HOST_VISIBLE | RHI_BUFFER_FLAG_STORAGE);
     model->geometry->set_indices(pmx.indices);
 
     for (const std::string& texture : pmx.textures)
-        model->textures.push_back(m_rhi->create_texture(texture.c_str()));
+    {
+        try
+        {
+            rhi_resource* t = m_rhi->create_texture(texture.c_str());
+            model->textures.push_back(t);
+        }
+        catch (...)
+        {
+            model->textures.push_back(nullptr);
+        }
+    }
     for (const pmx_material& pmx_material : pmx.materials)
     {
         material* material = m_render_graph->add_material(pmx_material.name_jp, "mmd material");
@@ -135,10 +154,17 @@ void mmd_loader::load_mesh(mmd_model* model, const pmx& pmx, world& world)
                 .spa_mode = pmx_material.sphere_mode});
 
         material->set("mmd tex", model->textures[pmx_material.texture_index], m_sampler);
-        if (pmx_material.toon_mode == PMX_TOON_MODE_TEXTURE)
-            material->set("mmd toon", model->textures[pmx_material.toon_index], m_sampler);
+        if (pmx_material.toon_index != -1)
+        {
+            if (pmx_material.toon_mode == PMX_TOON_MODE_TEXTURE)
+                material->set("mmd toon", model->textures[pmx_material.toon_index], m_sampler);
+            else
+                material->set("mmd toon", m_internal_toons[pmx_material.toon_index], m_sampler);
+        }
         else
-            material->set("mmd toon", m_internal_toons[pmx_material.toon_index], m_sampler);
+        {
+            material->set("mmd toon", m_internal_toons[0], m_sampler);
+        }
 
         if (pmx_material.sphere_mode != PMX_SPHERE_MODE_DISABLED)
             material->set("mmd spa", model->textures[pmx_material.sphere_index], m_sampler);
@@ -148,14 +174,11 @@ void mmd_loader::load_mesh(mmd_model* model, const pmx& pmx, world& world)
         model->materials.push_back(material);
     }
 
-    model->model = std::make_unique<actor>("mmd", world);
-    auto [transform_ptr, mesh_ptr, skeleton_ptr] =
-        model->model->add<transform, mesh, mmd_skeleton>();
-    mesh_ptr->set_geometry(model->geometry.get());
-
+    auto model_mesh = model->model->get<mesh>();
+    model_mesh->set_geometry(model->geometry.get());
     for (auto& submesh : pmx.submeshes)
     {
-        mesh_ptr->add_submesh(
+        model_mesh->add_submesh(
             0,
             pmx.position.size(),
             submesh.index_start,
@@ -280,11 +303,53 @@ void mmd_loader::load_bones(mmd_model* model, const pmx& pmx, world& world)
         model->geometry->get_vertex_buffer("position"),
         model->geometry->get_vertex_buffer("normal"),
         model->geometry->get_vertex_buffer("uv"),
-        model->geometry->get_vertex_buffer("skinning type"));
+        model->geometry->get_vertex_buffer("skinning type"),
+        model->geometry->get_vertex_buffer("vertex morph"));
     model_skeleton->set_skinning_output(
         model->geometry->get_vertex_buffer("skinned position"),
         model->geometry->get_vertex_buffer("skinned normal"),
         model->geometry->get_vertex_buffer("skinned uv"));
+}
+
+void mmd_loader::load_morph(mmd_model* model, const pmx& pmx)
+{
+    auto model_morph = model->model->get<mmd_morph>();
+    model_morph->vertex_morph_result = model->geometry->get_vertex_buffer("vertex morph");
+
+    for (auto& pmx_morph : pmx.morphs)
+    {
+        switch (pmx_morph.type)
+        {
+        case PMX_MORPH_TYPE_GROUP:
+            model_morph->morphs.push_back(std::make_unique<mmd_morph::morph>());
+            break;
+        case PMX_MORPH_TYPE_VERTEX: {
+            auto vertex_morph = std::make_unique<mmd_morph::vertex_morph>();
+            for (auto& pmx_vertex_morph : pmx_morph.vertex_morphs)
+            {
+                vertex_morph->data.push_back(
+                    {pmx_vertex_morph.index, pmx_vertex_morph.translation});
+            }
+            model_morph->morphs.push_back(std::move(vertex_morph));
+            break;
+        }
+        case PMX_MORPH_TYPE_BONE:
+        case PMX_MORPH_TYPE_UV:
+        case PMX_MORPH_TYPE_UV_EXT_1:
+        case PMX_MORPH_TYPE_UV_EXT_2:
+        case PMX_MORPH_TYPE_UV_EXT_3:
+        case PMX_MORPH_TYPE_UV_EXT_4:
+        case PMX_MORPH_TYPE_MATERIAL:
+        case PMX_MORPH_TYPE_FLIP:
+        case PMX_MORPH_TYPE_IMPULSE:
+            model_morph->morphs.push_back(std::make_unique<mmd_morph::morph>());
+            break;
+        default:
+            break;
+        }
+
+        model_morph->morphs.back()->name = pmx_morph.name_jp;
+    }
 }
 
 void mmd_loader::load_physics(mmd_model* model, const pmx& pmx, world& world)
@@ -373,7 +438,7 @@ void mmd_loader::load_physics(mmd_model* model, const pmx& pmx, world& world)
         bone_rigidbody->set_damping(pmx_rigidbody.linear_damping, pmx_rigidbody.angular_damping);
         bone_rigidbody->set_restitution(pmx_rigidbody.repulsion);
         bone_rigidbody->set_friction(pmx_rigidbody.friction);
-        bone_rigidbody->set_collision_group(1 << pmx_rigidbody.group);
+        bone_rigidbody->set_collision_group(static_cast<std::size_t>(1) << pmx_rigidbody.group);
         bone_rigidbody->set_collision_mask(pmx_rigidbody.collision_group);
         bone_rigidbody->set_offset(matrix::mul(
             rigidbody_transform[i],
@@ -510,12 +575,41 @@ void mmd_loader::load_animation(mmd_model* model, const vmd& vmd, world& world)
         }
     }
 
-    for (auto iter : ik_map)
+    for (auto& motion : model_animator->motions)
     {
-        auto& keys = model_animator->motions[iter.second].ik_keys;
         std::sort(
-            keys.begin(),
-            keys.end(),
+            motion.ik_keys.begin(),
+            motion.ik_keys.end(),
+            [](const auto& a, const auto& b)
+            {
+                return a.frame < b.frame;
+            });
+    }
+
+    auto model_morph = model->model->get<mmd_morph>();
+    model_animator->morphs.resize(model_morph->morphs.size());
+
+    std::map<std::string, std::size_t> morph_map;
+    for (std::size_t i = 0; i < model_morph->morphs.size(); ++i)
+        morph_map[model_morph->morphs[i]->name] = i;
+
+    for (auto& morph : vmd.morphs)
+    {
+        auto iter = morph_map.find(morph.morph_name);
+        if (iter != morph_map.end())
+        {
+            mmd_animator::morph_key key = {};
+            key.frame = morph.frame;
+            key.weight = morph.weight;
+            model_animator->morphs[iter->second].morph_keys.push_back(key);
+        }
+    }
+
+    for (auto& morph : model_animator->morphs)
+    {
+        std::sort(
+            morph.morph_keys.begin(),
+            morph.morph_keys.end(),
             [](const auto& a, const auto& b)
             {
                 return a.frame < b.frame;

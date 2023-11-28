@@ -2,6 +2,7 @@ project(mmd-viewer)
 
 add_executable(${PROJECT_NAME}
     ./source/components/mmd_animator.cpp
+    ./source/components/mmd_morph.cpp
     ./source/components/mmd_skeleton.cpp
     ./source/bezier.cpp
     ./source/encode.cpp

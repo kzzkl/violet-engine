@@ -81,6 +81,7 @@ public:
                 {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // bedf bone
                 {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // sedf bone
                 {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // skin
+                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // vertex morph
         });
 
         set_parameter_layouts({skeleton_layout, skinning_layout});

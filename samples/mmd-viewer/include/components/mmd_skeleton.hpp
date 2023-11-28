@@ -79,27 +79,44 @@ public:
         if (m_sdef)
             m_rhi->destroy_buffer(m_sdef);
 
-        rhi_buffer_desc bdef_desc = {};
-        bdef_desc.data = bdef.data();
-        bdef_desc.size = bdef.size() * sizeof(BDEF);
-        bdef_desc.flags = RHI_BUFFER_FLAG_STORAGE;
-        m_bdef = m_rhi->create_buffer(bdef_desc);
+        if (!bdef.empty())
+        {
+            rhi_buffer_desc bdef_desc = {};
+            bdef_desc.data = bdef.data();
+            bdef_desc.size = bdef.size() * sizeof(BDEF);
+            bdef_desc.flags = RHI_BUFFER_FLAG_STORAGE;
+            m_bdef = m_rhi->create_buffer(bdef_desc);
+            m_skinning_parameter->set_storage(6, m_bdef);
+        }
 
-        rhi_buffer_desc sdef_desc = {};
-        sdef_desc.data = sdef.data();
-        sdef_desc.size = sdef.size() * sizeof(SDEF);
-        sdef_desc.flags = RHI_BUFFER_FLAG_STORAGE;
-        m_sdef = m_rhi->create_buffer(sdef_desc);
+        if (!sdef.empty())
+        {
+            rhi_buffer_desc sdef_desc = {};
+            sdef_desc.data = sdef.data();
+            sdef_desc.size = sdef.size() * sizeof(SDEF);
+            sdef_desc.flags = RHI_BUFFER_FLAG_STORAGE;
+            m_sdef = m_rhi->create_buffer(sdef_desc);
+            m_skinning_parameter->set_storage(7, m_sdef);
+        }
+        else
+        {
+            SDEF error = {};
 
-        m_skinning_parameter->set_storage(6, m_bdef);
-        m_skinning_parameter->set_storage(7, m_sdef);
+            rhi_buffer_desc sdef_desc = {};
+            sdef_desc.data = &error;
+            sdef_desc.size = sizeof(SDEF);
+            sdef_desc.flags = RHI_BUFFER_FLAG_STORAGE;
+            m_sdef = m_rhi->create_buffer(sdef_desc);
+            m_skinning_parameter->set_storage(7, m_sdef);
+        }
     }
 
     void set_skinning_input(
         rhi_resource* positon,
         rhi_resource* normal,
         rhi_resource* uv,
-        rhi_resource* skin);
+        rhi_resource* skin,
+        rhi_resource* vertex_morph);
 
     void set_skinning_output(rhi_resource* positon, rhi_resource* normal, rhi_resource* uv);
 

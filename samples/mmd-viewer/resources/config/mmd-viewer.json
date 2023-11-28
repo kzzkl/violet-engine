@@ -5,10 +5,15 @@
         "height": 800
     },
     "mmd viewer": {
-        "model": "C:/Workspace/data/yanmiao/yanmiao.pmx",
+        "model2": "C:/Workspace/data/yanmiao/yanmiao.pmx",
+        "model": "C:/Workspace/data/Molinia/Molinia.pmx",
+        "model1": "C:/Workspace/data/Fenrir/Fenrir.pmx",
         "motion": "C:/Workspace/data/test.vmd"
     },
     "physics": {
         "tick": false
+    },
+    "graphics": {
+        "frame_resource_count": 1
     }
 }

@@ -23,6 +23,16 @@ public:
     }
 
     template <typename T>
+    void add_attribute(
+        std::string_view name,
+        std::size_t size,
+        rhi_buffer_flags flags = RHI_BUFFER_FLAG_VERTEX)
+    {
+        add_attribute(name, nullptr, size * sizeof(T), flags);
+        m_vertex_count = size;
+    }
+
+    template <typename T>
     void set_indices(const std::vector<T>& indices, rhi_buffer_flags flags = RHI_BUFFER_FLAG_INDEX)
     {
         set_indices(indices.data(), indices.size() * sizeof(T), sizeof(T), flags);

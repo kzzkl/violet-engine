@@ -2,6 +2,7 @@
 #include "vk_command.hpp"
 #include "vk_image_loader.hpp"
 #include "vk_util.hpp"
+#include <cassert>
 
 namespace violet::vk
 {

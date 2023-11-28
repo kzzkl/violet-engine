@@ -1,6 +1,7 @@
 #pragma once
 
 #include "components/mmd_animator.hpp"
+#include "components/mmd_morph.hpp"
 #include "components/mmd_skeleton.hpp"
 #include "components/transform.hpp"
 #include "core/engine_system.hpp"
@@ -21,6 +22,7 @@ public:
 private:
     void evaluate_motion(mmd_skeleton& skeleton, mmd_animator& animator, float t, float weight);
     void evaluate_ik(mmd_skeleton& skeleton, mmd_animator& animator, float t, float weight);
+    void evaluate_morph(mmd_morph& morph, mmd_animator& animator, float t);
     void update_inherit(
         mmd_skeleton::bone& bone,
         mmd_animator::motion& motion,
