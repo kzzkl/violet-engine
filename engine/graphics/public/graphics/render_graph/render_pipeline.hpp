@@ -22,7 +22,8 @@ struct render_mesh
 
 struct render_data
 {
-    rhi_parameter* camera_parameter;
+    rhi_parameter* camera;
+    rhi_parameter* light;
     std::vector<render_mesh> meshes;
 };
 
@@ -42,7 +43,7 @@ public:
     using parameter_layouts = std::vector<std::pair<rhi_parameter_layout*, render_parameter_type>>;
 
 public:
-    render_pipeline(std::string_view name, graphics_context* context);
+    render_pipeline(std::string_view name, renderer* renderer);
     virtual ~render_pipeline();
 
     void set_shader(std::string_view vertex, std::string_view fragment);
@@ -61,10 +62,9 @@ public:
     void set_primitive_topology(rhi_primitive_topology primitive_topology) noexcept;
 
     bool compile(rhi_render_pass* render_pass, std::size_t subpass_index);
-    void execute(rhi_render_command* command);
+    void execute(rhi_render_command* command, rhi_parameter* camera, rhi_parameter* light);
 
     void add_mesh(const render_mesh& mesh);
-    void set_camera_parameter(rhi_parameter* parameter) noexcept;
 
 private:
     virtual void render(rhi_render_command* command, render_data& data) = 0;
@@ -76,7 +76,7 @@ private:
 
     rhi_render_pipeline_desc m_desc;
 
-    rhi_render_pipeline* m_interface;
+    rhi_ptr<rhi_render_pipeline> m_interface;
 
     render_data m_render_data;
 };

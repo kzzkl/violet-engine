@@ -8,12 +8,15 @@ namespace violet
 class rigidbody_component_info : public component_info_default<rigidbody>
 {
 public:
-    rigidbody_component_info(pei_plugin* pei) : m_pei(pei) {}
+    rigidbody_component_info(physics_context* context) : m_context(context) {}
 
-    virtual void construct(actor* owner, void* target) override { new (target) rigidbody(m_pei); }
+    virtual void construct(actor* owner, void* target) override
+    {
+        new (target) rigidbody(m_context);
+    }
 
 private:
-    pei_plugin* m_pei;
+    physics_context* m_context;
 };
 
 physics_system::physics_system() : engine_system("physics")
@@ -28,6 +31,7 @@ bool physics_system::initialize(const dictionary& config)
 {
     m_plugin = std::make_unique<physics_plugin>();
     m_plugin->load(config["plugin"]);
+    m_context = std::make_unique<physics_context>(m_plugin->get_pei());
 
     if (config["tick"])
     {
@@ -38,7 +42,7 @@ bool physics_system::initialize(const dictionary& config)
             });
     }
 
-    get_world().register_component<rigidbody, rigidbody_component_info>(m_plugin->get_pei());
+    get_world().register_component<rigidbody, rigidbody_component_info>(m_context.get());
 
     return true;
 }
@@ -132,10 +136,5 @@ void physics_system::simulation(physics_world* world, bool immediately)
             object.rigidbody->get_reflector()->reflect(world, object.transform->get_world_matrix());
         object.transform->set_world_matrix(world);
     }
-}
-
-pei_plugin* physics_system::get_pei() const noexcept
-{
-    return m_plugin->get_pei();
 }
 } // namespace violet

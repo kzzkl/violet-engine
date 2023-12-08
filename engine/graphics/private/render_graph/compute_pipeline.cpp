@@ -2,17 +2,14 @@
 
 namespace violet
 {
-compute_pipeline::compute_pipeline(std::string_view name, graphics_context* context)
-    : render_node(name, context),
+compute_pipeline::compute_pipeline(std::string_view name, renderer* renderer)
+    : render_node(name, renderer),
       m_interface(nullptr)
 {
 }
 
 compute_pipeline::~compute_pipeline()
 {
-    rhi_renderer* rhi = get_context()->get_rhi();
-    if (m_interface)
-        rhi->destroy_compute_pipeline(m_interface);
 }
 
 void compute_pipeline::set_shader(std::string_view compute)
@@ -43,13 +40,13 @@ bool compute_pipeline::compile()
     desc.parameter_count = parameter_layouts.size();
     desc.compute_shader = m_compute_shader.c_str();
 
-    m_interface = get_context()->get_rhi()->create_compute_pipeline(desc);
+    m_interface = get_renderer()->create_compute_pipeline(desc);
     return m_interface != nullptr;
 }
 
 void compute_pipeline::execute(rhi_render_command* command)
 {
-    command->set_compute_pipeline(m_interface);
+    command->set_compute_pipeline(m_interface.get());
     compute(command, m_compute_data);
     m_compute_data.clear();
 }

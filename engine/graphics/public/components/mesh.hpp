@@ -10,9 +10,9 @@ namespace violet
 class mesh
 {
 public:
-    mesh(rhi_renderer* rhi, rhi_parameter_layout* mesh_parameter_layout);
+    mesh(renderer* renderer);
     mesh(const mesh&) = delete;
-    mesh(mesh&& other) noexcept;
+    mesh(mesh&& other) = default;
     ~mesh();
 
     void set_geometry(geometry* geometry);
@@ -34,7 +34,7 @@ public:
 
     void set_model_matrix(const float4x4& m);
 
-    rhi_parameter* get_parameter() const noexcept { return m_parameter; }
+    rhi_parameter* get_parameter() const noexcept { return m_parameter.get(); }
 
     template <typename Functor>
     void each_submesh(Functor functor) const
@@ -47,7 +47,7 @@ public:
     }
 
     mesh& operator=(const mesh&) = delete;
-    mesh& operator=(mesh&& other) noexcept;
+    mesh& operator=(mesh&& other) = default;
 
 private:
     struct submesh
@@ -57,11 +57,11 @@ private:
         std::vector<render_pipeline*> render_pipelines;
     };
 
-    rhi_parameter* m_parameter;
+    rhi_ptr<rhi_parameter> m_parameter;
 
     geometry* m_geometry;
     std::vector<submesh> m_submeshes;
 
-    rhi_renderer* m_rhi;
+    renderer* m_renderer;
 };
 } // namespace violet

@@ -3,22 +3,13 @@
 
 namespace violet
 {
-mesh::mesh(rhi_renderer* rhi, rhi_parameter_layout* mesh_parameter_layout)
-    : m_geometry(nullptr),
-      m_rhi(rhi)
+mesh::mesh(renderer* renderer) : m_geometry(nullptr), m_renderer(renderer)
 {
-    m_parameter = m_rhi->create_parameter(mesh_parameter_layout);
-}
-
-mesh::mesh(mesh&& other) noexcept
-{
-    *this = std::move(other);
+    m_parameter = m_renderer->create_parameter(m_renderer->get_parameter_layout("violet mesh"));
 }
 
 mesh::~mesh()
 {
-    if (m_parameter)
-        m_rhi->destroy_parameter(m_parameter);
 }
 
 void mesh::set_geometry(geometry* geometry)
@@ -47,7 +38,7 @@ void mesh::add_submesh(
             render_mesh.vertex_count = vertex_count;
             render_mesh.index_start = index_start;
             render_mesh.index_count = index_count;
-            render_mesh.transform = m_parameter;
+            render_mesh.transform = m_parameter.get();
             render_mesh.material = parameter;
             render_mesh.index_buffer = m_geometry->get_index_buffer();
 
@@ -78,18 +69,5 @@ void mesh::set_submesh(
 void mesh::set_model_matrix(const float4x4& m)
 {
     m_parameter->set_uniform(0, &m, sizeof(float4x4), 0);
-}
-
-mesh& mesh::operator=(mesh&& other) noexcept
-{
-    m_parameter = other.m_parameter;
-    m_geometry = other.m_geometry;
-    m_submeshes = std::move(other.m_submeshes);
-    m_rhi = other.m_rhi;
-
-    other.m_parameter = nullptr;
-    other.m_rhi = nullptr;
-
-    return *this;
 }
 } // namespace violet

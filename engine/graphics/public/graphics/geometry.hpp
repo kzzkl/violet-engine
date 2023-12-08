@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/render_interface.hpp"
+#include "graphics/renderer.hpp"
 #include <string>
 #include <unordered_map>
 
@@ -9,7 +9,7 @@ namespace violet
 class geometry
 {
 public:
-    geometry(rhi_renderer* rhi);
+    geometry(renderer* renderer);
     virtual ~geometry();
 
     template <typename T>
@@ -40,7 +40,7 @@ public:
     }
 
     rhi_resource* get_vertex_buffer(std::string_view name);
-    rhi_resource* get_index_buffer() const noexcept { return m_index_buffer; }
+    rhi_resource* get_index_buffer() const noexcept { return m_index_buffer.get(); }
 
     std::size_t get_vertex_count() const noexcept { return m_vertex_count; }
     std::size_t get_index_count() const noexcept { return m_index_count; }
@@ -57,12 +57,12 @@ private:
         std::size_t index_size,
         rhi_buffer_flags flags);
 
-    std::unordered_map<std::string, rhi_resource*> m_vertex_buffers;
-    rhi_resource* m_index_buffer;
+    std::unordered_map<std::string, rhi_ptr<rhi_resource>> m_vertex_buffers;
+    rhi_ptr<rhi_resource> m_index_buffer;
 
     std::size_t m_vertex_count;
     std::size_t m_index_count;
 
-    rhi_renderer* m_rhi;
+    renderer* m_renderer;
 };
 } // namespace violet

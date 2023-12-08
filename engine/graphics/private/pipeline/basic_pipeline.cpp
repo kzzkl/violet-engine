@@ -3,8 +3,8 @@
 
 namespace violet
 {
-basic_pipeline::basic_pipeline(std::string_view name, graphics_context* context)
-    : render_pipeline(name, context)
+basic_pipeline::basic_pipeline(std::string_view name, renderer* renderer)
+    : render_pipeline(name, renderer)
 {
 }
 

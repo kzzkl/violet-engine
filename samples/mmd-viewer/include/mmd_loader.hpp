@@ -3,7 +3,7 @@
 #include "core/ecs/actor.hpp"
 #include "graphics/geometry.hpp"
 #include "graphics/render_graph/render_graph.hpp"
-#include "physics/physics_interface.hpp"
+#include "physics/physics_context.hpp"
 #include <map>
 #include <memory>
 
@@ -11,7 +11,7 @@ namespace violet::sample
 {
 struct mmd_model
 {
-    std::vector<rhi_resource*> textures;
+    std::vector<rhi_ptr<rhi_resource>> textures;
     std::vector<material*> materials;
 
     std::unique_ptr<geometry> geometry;
@@ -19,7 +19,7 @@ struct mmd_model
 
     std::vector<std::unique_ptr<actor>> bones;
 
-    std::vector<pei_collision_shape*> collision_shapes;
+    std::vector<pei_ptr<pei_collision_shape>> collision_shapes;
 };
 
 class pmx;
@@ -27,7 +27,7 @@ class vmd;
 class mmd_loader
 {
 public:
-    mmd_loader(render_graph* render_graph, rhi_renderer* rhi, pei_plugin* pei);
+    mmd_loader(render_graph* render_graph, renderer* renderer, physics_context* physics_context);
     ~mmd_loader();
 
     mmd_model* load(std::string_view pmx_path, std::string_view vmd_path, world& world);
@@ -46,12 +46,12 @@ private:
 
     std::map<std::string, std::unique_ptr<mmd_model>> m_models;
 
-    std::vector<rhi_resource*> m_internal_toons;
+    std::vector<rhi_ptr<rhi_resource>> m_internal_toons;
 
     render_graph* m_render_graph;
-    rhi_renderer* m_rhi;
-    rhi_sampler* m_sampler;
+    renderer* m_renderer;
+    rhi_ptr<rhi_sampler> m_sampler;
 
-    pei_plugin* m_pei;
+    physics_context* m_physics_context;
 };
 } // namespace violet::sample

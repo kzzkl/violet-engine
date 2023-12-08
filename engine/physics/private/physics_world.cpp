@@ -4,18 +4,16 @@
 
 namespace violet
 {
-physics_world::physics_world(const float3& gravity, pei_debug_draw* debug, pei_plugin* pei)
-    : m_pei(pei)
+physics_world::physics_world(const float3& gravity, pei_debug_draw* debug, physics_context* context)
 {
     pei_world_desc desc = {};
     desc.gravity = gravity;
     desc.debug_draw = debug;
-    m_world = pei->create_world(desc);
+    m_world = context->create_world(desc);
 }
 
 physics_world::~physics_world()
 {
-    m_pei->destroy_world(m_world);
 }
 
 void physics_world::add(actor* actor)
@@ -24,7 +22,7 @@ void physics_world::add(actor* actor)
     auto added_transform = actor->get<transform>();
     added_rigidbody->set_transform(
         matrix::mul(added_rigidbody->get_offset(), added_transform->get_world_matrix()));
-    added_rigidbody->set_world(m_world);
+    added_rigidbody->set_world(m_world.get());
 
     m_world->add(
         added_rigidbody->get_rigidbody(),

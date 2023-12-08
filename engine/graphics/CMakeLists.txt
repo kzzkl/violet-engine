@@ -14,8 +14,8 @@ add_library(${PROJECT_NAME} STATIC
     ./private/render_graph/render_pass.cpp
     ./private/render_graph/render_pipeline.cpp
     ./private/geometry.cpp
-    ./private/graphics_context.cpp
     ./private/graphics_system.cpp
+    ./private/renderer.cpp
     ./private/rhi_plugin.cpp)
 add_library(violet::graphics ALIAS ${PROJECT_NAME})
 

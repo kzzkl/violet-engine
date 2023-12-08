@@ -23,10 +23,13 @@ public:
     }
 };
 
-mmd_loader::mmd_loader(render_graph* render_graph, rhi_renderer* rhi, pei_plugin* pei)
+mmd_loader::mmd_loader(
+    render_graph* render_graph,
+    renderer* renderer,
+    physics_context* physics_context)
     : m_render_graph(render_graph),
-      m_rhi(rhi),
-      m_pei(pei)
+      m_renderer(renderer),
+      m_physics_context(physics_context)
 {
     std::vector<std::string> internal_toon_paths = {
         "mmd-viewer/mmd/toon01.dds",
@@ -40,7 +43,7 @@ mmd_loader::mmd_loader(render_graph* render_graph, rhi_renderer* rhi, pei_plugin
         "mmd-viewer/mmd/toon09.dds",
         "mmd-viewer/mmd/toon10.dds"};
     for (const std::string& toon : internal_toon_paths)
-        m_internal_toons.push_back(rhi->create_texture(toon.c_str()));
+        m_internal_toons.push_back(renderer->create_texture(toon.c_str()));
 
     rhi_sampler_desc sampler_desc = {};
     sampler_desc.min_filter = RHI_FILTER_LINEAR;
@@ -48,23 +51,11 @@ mmd_loader::mmd_loader(render_graph* render_graph, rhi_renderer* rhi, pei_plugin
     sampler_desc.address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
     sampler_desc.address_mode_v = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
     sampler_desc.address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-    m_sampler = rhi->create_sampler(sampler_desc);
+    m_sampler = renderer->create_sampler(sampler_desc);
 }
 
 mmd_loader::~mmd_loader()
 {
-    for (auto& [name, model] : m_models)
-    {
-        for (rhi_resource* texture : model->textures)
-            m_rhi->destroy_texture(texture);
-    }
-
-    m_models.clear();
-
-    for (rhi_resource* toon : m_internal_toons)
-        m_rhi->destroy_texture(toon);
-
-    m_rhi->destroy_sampler(m_sampler);
 }
 
 mmd_model* mmd_loader::load(std::string_view pmx_path, std::string_view vmd_path, world& world)
@@ -86,9 +77,12 @@ mmd_model* mmd_loader::load(std::string_view pmx_path, std::string_view vmd_path
     load_morph(model.get(), pmx);
     load_physics(model.get(), pmx, world);
 
-    vmd vmd(vmd_path);
-    if (vmd.is_load())
-        load_animation(model.get(), vmd, world);
+    if (!vmd_path.empty())
+    {
+        vmd vmd(vmd_path);
+        if (vmd.is_load())
+            load_animation(model.get(), vmd, world);
+    }
 
     m_models[pmx_path.data()] = std::move(model);
     return m_models[pmx_path.data()].get();
@@ -96,7 +90,7 @@ mmd_model* mmd_loader::load(std::string_view pmx_path, std::string_view vmd_path
 
 void mmd_loader::load_mesh(mmd_model* model, const pmx& pmx, world& world)
 {
-    model->geometry = std::make_unique<geometry>(m_rhi);
+    model->geometry = std::make_unique<geometry>(m_renderer);
     model->geometry->add_attribute(
         "position",
         pmx.position,
@@ -129,8 +123,7 @@ void mmd_loader::load_mesh(mmd_model* model, const pmx& pmx, world& world)
     {
         try
         {
-            rhi_resource* t = m_rhi->create_texture(texture.c_str());
-            model->textures.push_back(t);
+            model->textures.push_back(m_renderer->create_texture(texture.c_str()));
         }
         catch (...)
         {
@@ -153,23 +146,35 @@ void mmd_loader::load_mesh(mmd_model* model, const pmx& pmx, world& world)
                 .toon_mode = pmx_material.toon_mode,
                 .spa_mode = pmx_material.sphere_mode});
 
-        material->set("mmd tex", model->textures[pmx_material.texture_index], m_sampler);
+        material->set(
+            "mmd tex",
+            model->textures[pmx_material.texture_index].get(),
+            m_sampler.get());
         if (pmx_material.toon_index != -1)
         {
             if (pmx_material.toon_mode == PMX_TOON_MODE_TEXTURE)
-                material->set("mmd toon", model->textures[pmx_material.toon_index], m_sampler);
+                material->set(
+                    "mmd toon",
+                    model->textures[pmx_material.toon_index].get(),
+                    m_sampler.get());
             else
-                material->set("mmd toon", m_internal_toons[pmx_material.toon_index], m_sampler);
+                material->set(
+                    "mmd toon",
+                    m_internal_toons[pmx_material.toon_index].get(),
+                    m_sampler.get());
         }
         else
         {
-            material->set("mmd toon", m_internal_toons[0], m_sampler);
+            material->set("mmd toon", m_internal_toons[0].get(), m_sampler.get());
         }
 
         if (pmx_material.sphere_mode != PMX_SPHERE_MODE_DISABLED)
-            material->set("mmd spa", model->textures[pmx_material.sphere_index], m_sampler);
+            material->set(
+                "mmd spa",
+                model->textures[pmx_material.sphere_index].get(),
+                m_sampler.get());
         else
-            material->set("mmd spa", m_internal_toons[0], m_sampler);
+            material->set("mmd spa", m_internal_toons[0].get(), m_sampler.get());
 
         model->materials.push_back(material);
     }
@@ -411,11 +416,11 @@ void mmd_loader::load_physics(mmd_model* model, const pmx& pmx, world& world)
         default:
             break;
         };
-        model->collision_shapes.push_back(m_pei->create_collision_shape(shape_desc));
+        model->collision_shapes.push_back(m_physics_context->create_collision_shape(shape_desc));
 
         auto bone_rigidbody = bone->get<rigidbody>();
         bone_rigidbody->set_activation_state(PEI_RIGIDBODY_ACTIVATION_STATE_DISABLE_DEACTIVATION);
-        bone_rigidbody->set_shape(model->collision_shapes[i]);
+        bone_rigidbody->set_shape(model->collision_shapes[i].get());
 
         switch (pmx_rigidbody.mode)
         {

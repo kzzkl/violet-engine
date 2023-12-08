@@ -9,13 +9,13 @@ namespace violet
 class compute_pass : public render_node
 {
 public:
-    compute_pass(std::string_view name, graphics_context* context);
+    compute_pass(std::string_view name, renderer* renderer);
     virtual ~compute_pass();
 
     template <typename T, typename... Args>
     T* add_pipeline(std::string_view name, Args&&... args)
     {
-        auto pipeline = std::make_unique<T>(name, get_context(), std::forward<Args>(args)...);
+        auto pipeline = std::make_unique<T>(name, get_renderer(), std::forward<Args>(args)...);
         T* result = pipeline.get();
 
         m_pipelines.push_back(std::move(pipeline));

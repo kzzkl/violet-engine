@@ -18,16 +18,18 @@ public:
 
     void render(render_graph* graph);
 
-    graphics_context* get_context() const noexcept { return m_context.get(); }
+    renderer* get_renderer() const noexcept { return m_renderer.get(); }
 
 private:
     void begin_frame();
     void end_frame();
     void render();
 
+    void update_light();
+
     std::vector<render_graph*> m_render_graphs;
 
-    std::unique_ptr<graphics_context> m_context;
+    std::unique_ptr<renderer> m_renderer;
     std::unique_ptr<rhi_plugin> m_plugin;
 
     bool m_idle;

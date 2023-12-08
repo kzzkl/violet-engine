@@ -6,8 +6,7 @@ namespace violet::sample
 class color_pipeline : public render_pipeline
 {
 public:
-    color_pipeline(std::string_view name, graphics_context* context)
-        : render_pipeline(name, context)
+    color_pipeline(std::string_view name, renderer* context) : render_pipeline(name, context)
     {
         set_shader("mmd-viewer/shaders/color.vert.spv", "mmd-viewer/shaders/color.frag.spv");
         set_vertex_attributes({
@@ -31,21 +30,24 @@ public:
         set_parameter_layouts({
             {context->get_parameter_layout("violet mesh"),   RENDER_PIPELINE_PARAMETER_TYPE_MESH    },
             {material_layout,                                RENDER_PIPELINE_PARAMETER_TYPE_MATERIAL},
-            {context->get_parameter_layout("violet camera"),
-             RENDER_PIPELINE_PARAMETER_TYPE_CAMERA                                                  }
+            {context->get_parameter_layout("violet camera"), RENDER_PIPELINE_PARAMETER_TYPE_CAMERA  },
+            {context->get_parameter_layout("violet light"),
+             RENDER_PIPELINE_PARAMETER_TYPE_NORMAL                                                  }
         });
     }
 
 private:
     void render(rhi_render_command* command, render_data& data) override
     {
+        command->set_render_parameter(2, data.camera);
+        command->set_render_parameter(3, data.light);
+
         for (render_mesh& mesh : data.meshes)
         {
             command->set_vertex_buffers(mesh.vertex_buffers.data(), mesh.vertex_buffers.size());
             command->set_index_buffer(mesh.index_buffer);
             command->set_render_parameter(0, mesh.transform);
             command->set_render_parameter(1, mesh.material);
-            command->set_render_parameter(2, data.camera_parameter);
             command->draw_indexed(mesh.index_start, mesh.index_count, mesh.vertex_start);
         }
     }
@@ -54,12 +56,11 @@ private:
 class skinning_pipeline : public compute_pipeline
 {
 public:
-    skinning_pipeline(std::string_view name, graphics_context* context)
-        : compute_pipeline(name, context)
+    skinning_pipeline(std::string_view name, renderer* context) : compute_pipeline(name, context)
     {
         set_shader("mmd-viewer/shaders/skinning.comp.spv");
 
-        rhi_parameter_layout* skeleton_layout = get_context()->add_parameter_layout(
+        rhi_parameter_layout* skeleton_layout = get_renderer()->add_parameter_layout(
             "mmd skeleton",
             {
                 {RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
@@ -67,7 +68,7 @@ public:
                  RHI_PARAMETER_FLAG_COMPUTE}
         });
 
-        rhi_parameter_layout* skinning_layout = get_context()->add_parameter_layout(
+        rhi_parameter_layout* skinning_layout = get_renderer()->add_parameter_layout(
             "mmd skinning",
             {
                 {RHI_PARAMETER_TYPE_STORAGE_BUFFER,
@@ -99,12 +100,12 @@ private:
     }
 };
 
-mmd_render_graph::mmd_render_graph(graphics_context* context) : render_graph(context)
+mmd_render_graph::mmd_render_graph(renderer* renderer) : render_graph(renderer)
 {
     render_pass* main_pass = add_render_pass("main");
 
     render_attachment* output_attachment = main_pass->add_attachment("output");
-    output_attachment->set_format(context->get_rhi()->get_back_buffer()->get_format());
+    output_attachment->set_format(renderer->get_back_buffer()->get_format());
     output_attachment->set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
     output_attachment->set_final_state(RHI_RESOURCE_STATE_PRESENT);
     output_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);

@@ -2,8 +2,8 @@
 
 namespace violet
 {
-compute_pass::compute_pass(std::string_view name, graphics_context* context)
-    : render_node(name, context)
+compute_pass::compute_pass(std::string_view name, renderer* renderer)
+    : render_node(name, renderer)
 {
 }
 

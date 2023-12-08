@@ -32,7 +32,7 @@ private:
 class render_subpass : public render_node
 {
 public:
-    render_subpass(std::string_view name, graphics_context* context);
+    render_subpass(std::string_view name, renderer* renderer);
 
     void add_reference(
         render_attachment* attachment,
@@ -47,7 +47,7 @@ public:
     template <typename T, typename... Args>
     T* add_pipeline(std::string_view name, Args&&... args)
     {
-        auto pipeline = std::make_unique<T>(name, get_context(), std::forward<Args>(args)...);
+        auto pipeline = std::make_unique<T>(name, get_renderer(), std::forward<Args>(args)...);
         T* result = pipeline.get();
 
         m_pipelines.push_back(std::move(pipeline));
@@ -56,7 +56,7 @@ public:
     render_pipeline* get_pipeline(std::string_view name) const;
 
     bool compile(rhi_render_pass* render_pass, std::size_t index);
-    void execute(rhi_render_command* command, rhi_parameter* camera_parameter);
+    void execute(rhi_render_command* command, rhi_parameter* camera, rhi_parameter* light);
 
     rhi_render_subpass_desc get_desc() const noexcept { return m_desc; }
     std::size_t get_index() const noexcept { return m_index; }
@@ -73,7 +73,7 @@ private:
 class render_pass : public render_node
 {
 public:
-    render_pass(std::string_view name, graphics_context* context);
+    render_pass(std::string_view name, renderer* renderer);
     virtual ~render_pass();
 
     render_attachment* add_attachment(std::string_view name);
@@ -96,9 +96,9 @@ public:
         rhi_framebuffer* framebuffer);
 
     bool compile();
-    void execute(rhi_render_command* command);
+    void execute(rhi_render_command* command, rhi_parameter* light);
 
-    rhi_render_pass* get_interface() const noexcept { return m_interface; }
+    rhi_render_pass* get_interface() const noexcept { return m_interface.get(); }
     std::size_t get_attachment_count() const noexcept { return m_attachments.size(); }
 
 private:
@@ -116,6 +116,6 @@ private:
 
     std::vector<render_camera> m_cameras;
 
-    rhi_render_pass* m_interface;
+    rhi_ptr<rhi_render_pass> m_interface;
 };
 } // namespace violet

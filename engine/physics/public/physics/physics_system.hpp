@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/engine_system.hpp"
+#include "physics/physics_context.hpp"
 #include "physics/physics_world.hpp"
 
 namespace violet
@@ -17,10 +18,11 @@ public:
 
     void simulation(physics_world* world = nullptr, bool immediately = false);
 
-    pei_plugin* get_pei() const noexcept;
+    physics_context* get_context() const noexcept { return m_context.get(); }
 
 private:
     std::vector<physics_world*> m_worlds;
     std::unique_ptr<physics_plugin> m_plugin;
+    std::unique_ptr<physics_context> m_context;
 };
 } // namespace violet

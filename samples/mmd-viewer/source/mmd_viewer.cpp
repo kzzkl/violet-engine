@@ -1,5 +1,6 @@
 #include "mmd_viewer.hpp"
 #include "components/camera.hpp"
+#include "components/light.hpp"
 #include "components/mesh.hpp"
 #include "components/mmd_skeleton.hpp"
 #include "components/orbit_control.hpp"
@@ -16,12 +17,12 @@ namespace violet::sample
 class physics_debug : public pei_debug_draw
 {
 public:
-    physics_debug(render_graph* render_graph, rhi_renderer* rhi, world& world)
+    physics_debug(render_graph* render_graph, renderer* renderer, world& world)
         : m_position(1024 * 64),
           m_color(1024 * 64)
     {
         material* material = render_graph->add_material("debug", "debug material");
-        m_geometry = std::make_unique<geometry>(rhi);
+        m_geometry = std::make_unique<geometry>(renderer);
 
         m_geometry->add_attribute(
             "position",
@@ -78,25 +79,15 @@ private:
 class mmd_skeleton_info : public component_info_default<mmd_skeleton>
 {
 public:
-    mmd_skeleton_info(
-        rhi_renderer* rhi,
-        rhi_parameter_layout* skeleton_layout,
-        rhi_parameter_layout* skinning_layout)
-        : m_rhi(rhi),
-          m_skeleton_layout(skeleton_layout),
-          m_skinning_layout(skinning_layout)
-    {
-    }
+    mmd_skeleton_info(renderer* renderer) : m_renderer(renderer) {}
 
     virtual void construct(actor* owner, void* target) override
     {
-        new (target) mmd_skeleton(m_rhi, m_skeleton_layout, m_skinning_layout);
+        new (target) mmd_skeleton(m_renderer);
     }
 
 private:
-    rhi_renderer* m_rhi;
-    rhi_parameter_layout* m_skeleton_layout;
-    rhi_parameter_layout* m_skinning_layout;
+    renderer* m_renderer;
 };
 
 mmd_viewer::mmd_viewer() : engine_system("mmd viewer"), m_depth_stencil(nullptr)
@@ -123,28 +114,22 @@ bool mmd_viewer::initialize(const dictionary& config)
 
     initialize_render();
 
-    graphics_context* graphics_context = get_system<graphics_system>().get_context();
-    get_world().register_component<mmd_skeleton, mmd_skeleton_info>(
-        graphics_context->get_rhi(),
-        graphics_context->get_parameter_layout("mmd skeleton"),
-        graphics_context->get_parameter_layout("mmd skinning"));
+    renderer* renderer = get_system<graphics_system>().get_renderer();
+    get_world().register_component<mmd_skeleton, mmd_skeleton_info>(renderer);
 
     m_loader = std::make_unique<mmd_loader>(
         m_render_graph.get(),
-        get_system<graphics_system>().get_context()->get_rhi(),
-        get_system<physics_system>().get_pei());
+        renderer,
+        get_system<physics_system>().get_context());
     m_model = m_loader->load(config["model"], config["motion"], get_world());
     if (!m_model)
         return false;
 
-    m_physics_debug = std::make_unique<physics_debug>(
-        m_render_graph.get(),
-        get_system<graphics_system>().get_context()->get_rhi(),
-        get_world());
+    m_physics_debug = std::make_unique<physics_debug>(m_render_graph.get(), renderer, get_world());
     m_physics_world = std::make_unique<physics_world>(
         float3{0.0f, -9.8f, 0.0f},
         nullptr, // m_physics_debug.get(),
-        get_system<physics_system>().get_pei());
+        get_system<physics_system>().get_context());
 
     get_system<mmd_animation>().evaluate(0);
     get_system<mmd_animation>().update(false);
@@ -157,6 +142,10 @@ bool mmd_viewer::initialize(const dictionary& config)
             m_physics_world->add(m_model->bones[i].get());
     }
 
+    m_light = std::make_unique<actor>("main light", get_world());
+    auto [light_transform, main_light] = m_light->add<transform, light>();
+    main_light->color = {1.0f, 1.0f, 1.0f};
+
     return true;
 }
 
@@ -168,9 +157,8 @@ void mmd_viewer::shutdown()
 void mmd_viewer::initialize_render()
 {
     auto& graphics = get_system<graphics_system>();
-    rhi_renderer* rhi = graphics.get_context()->get_rhi();
 
-    m_render_graph = std::make_unique<mmd_render_graph>(graphics.get_context());
+    m_render_graph = std::make_unique<mmd_render_graph>(graphics.get_renderer());
     m_render_graph->compile();
 
     auto extent = get_system<window_system>().get_extent();
@@ -231,21 +219,20 @@ void mmd_viewer::tick(float delta)
 
 void mmd_viewer::resize(std::uint32_t width, std::uint32_t height)
 {
-    rhi_renderer* rhi = get_system<graphics_system>().get_context()->get_rhi();
-    rhi->destroy_depth_stencil_buffer(m_depth_stencil);
+    renderer* renderer = get_system<graphics_system>().get_renderer();
 
     rhi_depth_stencil_buffer_desc depth_stencil_buffer_desc = {};
     depth_stencil_buffer_desc.width = width;
     depth_stencil_buffer_desc.height = height;
     depth_stencil_buffer_desc.samples = RHI_SAMPLE_COUNT_1;
     depth_stencil_buffer_desc.format = RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT;
-    m_depth_stencil = rhi->create_depth_stencil_buffer(depth_stencil_buffer_desc);
+    m_depth_stencil = renderer->create_depth_stencil_buffer(depth_stencil_buffer_desc);
 
     if (m_camera)
     {
         auto main_camera = m_camera->get<camera>();
         main_camera->resize(width, height);
-        main_camera->set_attachment(1, m_depth_stencil);
+        main_camera->set_attachment(1, m_depth_stencil.get());
     }
     else
     {
@@ -253,8 +240,8 @@ void mmd_viewer::resize(std::uint32_t width, std::uint32_t height)
         auto [main_camera, main_camera_transform, main_camera_controller] =
             m_camera->add<camera, transform, orbit_control>();
         main_camera->set_render_pass(m_render_graph->get_render_pass("main"));
-        main_camera->set_attachment(0, rhi->get_back_buffer(), true);
-        main_camera->set_attachment(1, m_depth_stencil);
+        main_camera->set_attachment(0, renderer->get_back_buffer(), true);
+        main_camera->set_attachment(1, m_depth_stencil.get());
         main_camera->resize(width, height);
         main_camera_transform->set_position(0.0f, 2.0f, -5.0f);
         main_camera_controller->r = 50.0f;

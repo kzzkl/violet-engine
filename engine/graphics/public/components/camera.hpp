@@ -8,10 +8,6 @@ namespace violet
 {
 struct camera_parameter
 {
-    static constexpr rhi_parameter_layout_desc layout = {
-        .parameters = {{RHI_PARAMETER_TYPE_UNIFORM_BUFFER, sizeof(float4x4) * 3}},
-        .parameter_count = 1};
-
     float4x4 view;
     float4x4 projection;
     float4x4 view_projection;
@@ -20,9 +16,9 @@ struct camera_parameter
 class camera
 {
 public:
-    camera();
+    camera(renderer* renderer);
     camera(const camera&) = delete;
-    camera(camera&& other) noexcept;
+    camera(camera&&) = default;
     ~camera();
 
     void set_perspective(float fov, float near_z, float far_z);
@@ -39,12 +35,12 @@ public:
 
     rhi_framebuffer* get_framebuffer();
 
-    rhi_parameter* get_parameter() const noexcept { return m_parameter; }
+    rhi_parameter* get_parameter() const noexcept { return m_parameter.get(); }
 
     void resize(std::uint32_t width, std::uint32_t height);
 
     camera& operator=(const camera&) = delete;
-    camera& operator=(camera&& other) noexcept;
+    camera& operator=(camera&&) = default;
 
 private:
     struct perspective_data
@@ -60,7 +56,7 @@ private:
     perspective_data m_perspective;
 
     camera_parameter m_parameter_data;
-    rhi_parameter* m_parameter;
+    rhi_ptr<rhi_parameter> m_parameter;
     render_pass* m_render_pass;
 
     rhi_scissor_rect m_scissor;
@@ -71,6 +67,8 @@ private:
 
     bool m_framebuffer_dirty;
     rhi_framebuffer* m_framebuffer;
-    std::unordered_map<std::size_t, rhi_framebuffer*> m_framebuffer_cache;
+    std::unordered_map<std::size_t, rhi_ptr<rhi_framebuffer>> m_framebuffer_cache;
+
+    renderer* m_renderer;
 };
 } // namespace violet

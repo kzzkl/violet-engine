@@ -10,12 +10,12 @@ float4x4 rigidbody_reflector::reflect(
     return rigidbody_world;
 }
 
-rigidbody::rigidbody(pei_plugin* pei) noexcept
+rigidbody::rigidbody(physics_context* context) noexcept
     : m_collision_group(1),
       m_collision_mask(0xFFFFFFFF),
       m_rigidbody(nullptr),
       m_world(nullptr),
-      m_pei(pei)
+      m_context(context)
 {
     m_offset = m_offset_inverse = matrix::identity();
 
@@ -40,16 +40,15 @@ rigidbody::rigidbody(rigidbody&& other) noexcept
     m_offset_inverse = other.m_offset_inverse;
 
     m_desc = other.m_desc;
-    m_rigidbody = other.m_rigidbody;
+    m_rigidbody = std::move(other.m_rigidbody);
     m_joints = std::move(other.m_joints);
     m_slave_joints = other.m_slave_joints;
     m_world = other.m_world;
-    m_pei = other.m_pei;
+    m_context = other.m_context;
     m_reflector = std::move(other.m_reflector);
 
-    other.m_rigidbody = nullptr;
     other.m_world = nullptr;
-    other.m_pei = nullptr;
+    other.m_context = nullptr;
     other.m_joints.clear();
     other.m_slave_joints.clear();
 
@@ -71,10 +70,7 @@ rigidbody::~rigidbody()
         joint->m_source->remove_joint(joint);
 
     if (m_world)
-        m_world->remove(m_rigidbody);
-
-    if (m_rigidbody)
-        m_pei->destroy_rigidbody(m_rigidbody);
+        m_world->remove(m_rigidbody.get());
 }
 
 void rigidbody::set_type(pei_rigidbody_type type)
@@ -165,7 +161,7 @@ joint* rigidbody::add_joint(
         source_rotation,
         target_position,
         target_rotation,
-        m_pei));
+        m_context));
 
     joint* result = m_joints.back().get();
     target->m_slave_joints.push_back(result);
@@ -209,9 +205,9 @@ bool rigidbody::get_updated_flag() const
 pei_rigidbody* rigidbody::get_rigidbody()
 {
     if (m_rigidbody == nullptr)
-        m_rigidbody = m_pei->create_rigidbody(m_desc);
+        m_rigidbody = m_context->create_rigidbody(m_desc);
 
-    return m_rigidbody;
+    return m_rigidbody.get();
 }
 
 std::vector<pei_joint*> rigidbody::get_joints()
@@ -233,9 +229,6 @@ rigidbody& rigidbody::operator=(rigidbody&& other) noexcept
     if (this == &other)
         return *this;
 
-    if (m_rigidbody)
-        m_pei->destroy_rigidbody(m_rigidbody);
-
     m_collision_group = other.m_collision_group;
     m_collision_mask = other.m_collision_mask;
 
@@ -243,16 +236,16 @@ rigidbody& rigidbody::operator=(rigidbody&& other) noexcept
     m_offset_inverse = other.m_offset_inverse;
 
     m_desc = other.m_desc;
-    m_rigidbody = other.m_rigidbody;
+    m_rigidbody = std::move(other.m_rigidbody);
     m_joints = std::move(other.m_joints);
     m_slave_joints = other.m_slave_joints;
     m_world = other.m_world;
-    m_pei = other.m_pei;
+    m_context = other.m_context;
     m_reflector = std::move(other.m_reflector);
 
     other.m_rigidbody = nullptr;
     other.m_world = nullptr;
-    other.m_pei = nullptr;
+    other.m_context = nullptr;
     other.m_joints.clear();
     other.m_slave_joints.clear();
 
@@ -269,9 +262,7 @@ joint::joint(
     const float4& source_rotation,
     const float3& target_position,
     const float4& target_rotation,
-    pei_plugin* pei)
-    : m_joint(nullptr),
-      m_pei(pei)
+    physics_context* context)
 {
     m_source = source;
     m_target = target;
@@ -284,13 +275,11 @@ joint::joint(
     desc.target_position = target_position;
     desc.target_rotation = target_rotation;
 
-    m_joint = m_pei->create_joint(desc);
+    m_joint = context->create_joint(desc);
 }
 
 joint::~joint()
 {
-    if (m_joint)
-        m_pei->destroy_joint(m_joint);
 }
 
 void joint::set_linear(const float3& min, const float3& max)

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "graphics/graphics_context.hpp"
 #include "graphics/render_graph/compute_pass.hpp"
 #include "graphics/render_graph/material.hpp"
 #include "graphics/render_graph/render_pass.hpp"
+#include "graphics/renderer.hpp"
 #include <memory>
 
 namespace violet
@@ -11,7 +11,7 @@ namespace violet
 class render_graph
 {
 public:
-    render_graph(graphics_context* context);
+    render_graph(renderer* renderer);
     render_graph(const render_graph&) = delete;
     virtual ~render_graph();
 
@@ -31,14 +31,14 @@ public:
     compute_pipeline* get_compute_pipeline(std::string_view name) const;
 
     bool compile();
-    void execute();
+    void execute(rhi_parameter* light);
 
     rhi_semaphore* get_render_finished_semaphore() const;
 
     render_graph& operator=(const render_graph&) = delete;
 
 private:
-    std::vector<rhi_semaphore*> m_render_finished_semaphores;
+    std::vector<rhi_ptr<rhi_semaphore>> m_render_finished_semaphores;
 
     std::vector<std::unique_ptr<render_pass>> m_render_passes;
     std::vector<std::unique_ptr<render_pipeline>> m_render_pipelines;
@@ -46,6 +46,6 @@ private:
 
     std::vector<std::unique_ptr<compute_pass>> m_compute_passes;
 
-    graphics_context* m_context;
+    renderer* m_renderer;
 };
 } // namespace violet

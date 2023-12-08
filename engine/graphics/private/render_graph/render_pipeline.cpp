@@ -3,8 +3,8 @@
 
 namespace violet
 {
-render_pipeline::render_pipeline(std::string_view name, graphics_context* context)
-    : render_node(name, context)
+render_pipeline::render_pipeline(std::string_view name, renderer* renderer)
+    : render_node(name, renderer)
 {
     m_desc.blend.enable = false;
     m_desc.samples = RHI_SAMPLE_COUNT_1;
@@ -13,9 +13,6 @@ render_pipeline::render_pipeline(std::string_view name, graphics_context* contex
 
 render_pipeline::~render_pipeline()
 {
-    rhi_renderer* rhi = get_context()->get_rhi();
-    if (m_interface != nullptr)
-        rhi->destroy_render_pipeline(m_interface);
 }
 
 void render_pipeline::set_shader(std::string_view vertex, std::string_view fragment)
@@ -96,14 +93,19 @@ bool render_pipeline::compile(rhi_render_pass* render_pass, std::size_t subpass_
     m_desc.parameters = parameter_layouts.data();
     m_desc.parameter_count = parameter_layouts.size();
 
-    m_interface = get_context()->get_rhi()->create_render_pipeline(m_desc);
+    m_interface = get_renderer()->create_render_pipeline(m_desc);
 
     return m_interface != nullptr;
 }
 
-void render_pipeline::execute(rhi_render_command* command)
+void render_pipeline::execute(
+    rhi_render_command* command,
+    rhi_parameter* camera,
+    rhi_parameter* light)
 {
-    command->set_render_pipeline(m_interface);
+    command->set_render_pipeline(m_interface.get());
+    m_render_data.camera = camera;
+    m_render_data.light = light;
     render(command, m_render_data);
     m_render_data.meshes.clear();
 }
@@ -111,10 +113,5 @@ void render_pipeline::execute(rhi_render_command* command)
 void render_pipeline::add_mesh(const render_mesh& mesh)
 {
     m_render_data.meshes.push_back(mesh);
-}
-
-void render_pipeline::set_camera_parameter(rhi_parameter* parameter) noexcept
-{
-    m_render_data.camera_parameter = parameter;
 }
 } // namespace violet

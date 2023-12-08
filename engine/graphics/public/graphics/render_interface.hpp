@@ -595,11 +595,10 @@ public:
     virtual rhi_framebuffer* create_framebuffer(const rhi_framebuffer_desc& desc) = 0;
     virtual void destroy_framebuffer(rhi_framebuffer* framebuffer) = 0;
 
-    virtual rhi_resource* create_buffer(const rhi_buffer_desc& desc) = 0;
-    virtual void destroy_buffer(rhi_resource* buffer) = 0;
-
     virtual rhi_sampler* create_sampler(const rhi_sampler_desc& desc) = 0;
     virtual void destroy_sampler(rhi_sampler* sampler) = 0;
+
+    virtual rhi_resource* create_buffer(const rhi_buffer_desc& desc) = 0;
 
     virtual rhi_resource* create_texture(
         const std::uint8_t* data,
@@ -607,7 +606,6 @@ public:
         std::uint32_t height,
         rhi_resource_format format = RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM) = 0;
     virtual rhi_resource* create_texture(const char* file) = 0;
-    virtual void destroy_texture(rhi_resource* texture) = 0;
 
     virtual rhi_resource* create_texture_cube(
         const char* left,
@@ -620,7 +618,8 @@ public:
     virtual rhi_resource* create_render_target(const rhi_render_target_desc& desc) = 0;
     virtual rhi_resource* create_depth_stencil_buffer(
         const rhi_depth_stencil_buffer_desc& desc) = 0;
-    virtual void destroy_depth_stencil_buffer(rhi_resource* depth_stencil_buffer) = 0;
+
+    virtual void destroy_resource(rhi_resource* resource) = 0;
 
     virtual rhi_fence* create_fence(bool signaled) = 0;
     virtual void destroy_fence(rhi_fence* fence) = 0;

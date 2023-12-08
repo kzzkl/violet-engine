@@ -84,11 +84,10 @@ public:
     virtual rhi_framebuffer* create_framebuffer(const rhi_framebuffer_desc& desc) override;
     virtual void destroy_framebuffer(rhi_framebuffer* framebuffer) override;
 
-    virtual rhi_resource* create_buffer(const rhi_buffer_desc& desc) override;
-    virtual void destroy_buffer(rhi_resource* buffer) override;
-
     virtual rhi_sampler* create_sampler(const rhi_sampler_desc& desc) override;
     virtual void destroy_sampler(rhi_sampler* sampler) override;
+
+    virtual rhi_resource* create_buffer(const rhi_buffer_desc& desc) override;
 
     virtual rhi_resource* create_texture(
         const std::uint8_t* data,
@@ -96,7 +95,6 @@ public:
         std::uint32_t height,
         rhi_resource_format format) override;
     virtual rhi_resource* create_texture(const char* file) override;
-    virtual void destroy_texture(rhi_resource* texture) override;
 
     virtual rhi_resource* create_texture_cube(
         const char* left,
@@ -110,7 +108,8 @@ public:
 
     virtual rhi_resource* create_depth_stencil_buffer(
         const rhi_depth_stencil_buffer_desc& desc) override;
-    virtual void destroy_depth_stencil_buffer(rhi_resource* depth_stencil_buffer) override;
+
+    virtual void destroy_resource(rhi_resource* resource) override;
 
     virtual rhi_fence* create_fence(bool signaled) override;
     virtual void destroy_fence(rhi_fence* fence) override;

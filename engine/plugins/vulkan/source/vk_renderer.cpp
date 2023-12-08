@@ -180,6 +180,16 @@ void vk_renderer::destroy_framebuffer(rhi_framebuffer* framebuffer)
     delay_delete(framebuffer);
 }
 
+rhi_sampler* vk_renderer::create_sampler(const rhi_sampler_desc& desc)
+{
+    return new vk_sampler(desc, m_context.get());
+}
+
+void vk_renderer::destroy_sampler(rhi_sampler* sampler)
+{
+    delay_delete(sampler);
+}
+
 rhi_resource* vk_renderer::create_buffer(const rhi_buffer_desc& desc)
 {
     if (desc.flags & RHI_BUFFER_FLAG_VERTEX)
@@ -190,21 +200,6 @@ rhi_resource* vk_renderer::create_buffer(const rhi_buffer_desc& desc)
         return new vk_storage_buffer(desc, m_context.get());
     else
         return nullptr;
-}
-
-void vk_renderer::destroy_buffer(rhi_resource* buffer)
-{
-    delay_delete(buffer);
-}
-
-rhi_sampler* vk_renderer::create_sampler(const rhi_sampler_desc& desc)
-{
-    return new vk_sampler(desc, m_context.get());
-}
-
-void vk_renderer::destroy_sampler(rhi_sampler* sampler)
-{
-    delay_delete(sampler);
 }
 
 rhi_resource* vk_renderer::create_texture(
@@ -219,11 +214,6 @@ rhi_resource* vk_renderer::create_texture(
 rhi_resource* vk_renderer::create_texture(const char* file)
 {
     return new vk_texture(file, m_context.get());
-}
-
-void vk_renderer::destroy_texture(rhi_resource* texture)
-{
-    delay_delete(texture);
 }
 
 rhi_resource* vk_renderer::create_texture_cube(
@@ -247,9 +237,9 @@ rhi_resource* vk_renderer::create_depth_stencil_buffer(const rhi_depth_stencil_b
     return new vk_depth_stencil(desc, m_context.get());
 }
 
-void vk_renderer::destroy_depth_stencil_buffer(rhi_resource* depth_stencil_buffer)
+void vk_renderer::destroy_resource(rhi_resource* resource)
 {
-    delay_delete(depth_stencil_buffer);
+    delay_delete(resource);
 }
 
 rhi_fence* vk_renderer::create_fence(bool signaled)

@@ -17,7 +17,7 @@ class material;
 class material_layout : public render_node
 {
 public:
-    material_layout(std::string_view name, graphics_context* context);
+    material_layout(std::string_view name, renderer* renderer);
 
     void add_pipeline(render_pipeline* pipeline);
 
@@ -47,7 +47,7 @@ private:
 class material
 {
 public:
-    material(material_layout* layout);
+    material(material_layout* layout, renderer* renderer);
     material(const material&) = delete;
     virtual ~material();
 
@@ -67,7 +67,7 @@ public:
     {
         auto& pipelines = m_layout->m_pipelines;
         for (std::size_t i = 0; i < pipelines.size(); ++i)
-            functor(pipelines[i], m_parameters[i]);
+            functor(pipelines[i], m_parameters[i].get());
     }
 
     material& operator=(const material&) = delete;
@@ -75,6 +75,6 @@ public:
 private:
     material_layout* m_layout;
 
-    std::vector<rhi_parameter*> m_parameters;
+    std::vector<rhi_ptr<rhi_parameter>> m_parameters;
 };
 } // namespace violet

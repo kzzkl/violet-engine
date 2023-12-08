@@ -17,7 +17,7 @@ using compute_data = std::vector<dispatch_data>;
 class compute_pipeline : public render_node
 {
 public:
-    compute_pipeline(std::string_view name, graphics_context* context);
+    compute_pipeline(std::string_view name, renderer* renderer);
     virtual ~compute_pipeline();
 
     void set_shader(std::string_view compute);
@@ -42,6 +42,6 @@ private:
 
     compute_data m_compute_data;
 
-    rhi_compute_pipeline* m_interface;
+    rhi_ptr<rhi_compute_pipeline> m_interface;
 };
 } // namespace violet

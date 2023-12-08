@@ -44,8 +44,8 @@ void render_attachment::set_final_state(rhi_resource_state state) noexcept
     m_desc.final_state = state;
 }
 
-render_subpass::render_subpass(std::string_view name, graphics_context* context)
-    : render_node(name, context),
+render_subpass::render_subpass(std::string_view name, renderer* renderer)
+    : render_node(name, renderer),
       m_desc{},
       m_index(0)
 {
@@ -102,26 +102,23 @@ bool render_subpass::compile(rhi_render_pass* render_pass, std::size_t index)
     return true;
 }
 
-void render_subpass::execute(rhi_render_command* command, rhi_parameter* camera_parameter)
+void render_subpass::execute(
+    rhi_render_command* command,
+    rhi_parameter* camera,
+    rhi_parameter* light)
 {
     for (auto& pipeline : m_pipelines)
-    {
-        pipeline->set_camera_parameter(camera_parameter);
-        pipeline->execute(command);
-    }
+        pipeline->execute(command, camera, light);
 }
 
-render_pass::render_pass(std::string_view name, graphics_context* context)
-    : render_node(name, context),
+render_pass::render_pass(std::string_view name, renderer* renderer)
+    : render_node(name, renderer),
       m_interface(nullptr)
 {
 }
 
 render_pass::~render_pass()
 {
-    rhi_renderer* rhi = get_context()->get_rhi();
-    if (m_interface != nullptr)
-        rhi->destroy_render_pass(m_interface);
 }
 
 render_attachment* render_pass::add_attachment(std::string_view name)
@@ -133,7 +130,7 @@ render_attachment* render_pass::add_attachment(std::string_view name)
 
 render_subpass* render_pass::add_subpass(std::string_view name)
 {
-    m_subpasses.push_back(std::make_unique<render_subpass>(name, get_context()));
+    m_subpasses.push_back(std::make_unique<render_subpass>(name, get_renderer()));
     return m_subpasses.back().get();
 }
 
@@ -191,33 +188,33 @@ bool render_pass::compile()
         desc.dependencies[i] = m_dependencies[i];
     desc.dependency_count = m_dependencies.size();
 
-    m_interface = get_context()->get_rhi()->create_render_pass(desc);
+    m_interface = get_renderer()->create_render_pass(desc);
 
     if (m_interface == nullptr)
         return false;
 
     for (std::size_t i = 0; i < m_subpasses.size(); ++i)
     {
-        if (!m_subpasses[i]->compile(m_interface, i))
+        if (!m_subpasses[i]->compile(m_interface.get(), i))
             return false;
     }
 
     return true;
 }
 
-void render_pass::execute(rhi_render_command* command)
+void render_pass::execute(rhi_render_command* command, rhi_parameter* light)
 {
     assert(!m_attachments.empty());
 
     for (auto& camera : m_cameras)
     {
-        command->begin(m_interface, camera.framebuffer);
+        command->begin(m_interface.get(), camera.framebuffer);
         command->set_scissor(&camera.scissor, 1);
         command->set_viewport(camera.viewport);
 
         for (std::size_t i = 0; i < m_subpasses.size(); ++i)
         {
-            m_subpasses[i]->execute(command, camera.parameter);
+            m_subpasses[i]->execute(command, camera.parameter, light);
             if (i != m_subpasses.size() - 1)
                 command->next();
         }

@@ -25,7 +25,7 @@ struct mmd_skinning_bone
 class mmd_render_graph : public render_graph
 {
 public:
-    mmd_render_graph(graphics_context* context);
+    mmd_render_graph(renderer* renderer);
 
 private:
 };
