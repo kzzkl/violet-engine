@@ -94,11 +94,7 @@ protected:
     void set_hash(std::size_t hash) noexcept { m_hash = hash; }
 
     void create_image(
-        std::uint32_t width,
-        std::uint32_t height,
-        VkFormat format,
-        VkSampleCountFlagBits samples,
-        VkImageUsageFlags usage,
+        const VkImageCreateInfo& image_info,
         VkMemoryPropertyFlags properties,
         VkImage& image,
         VkDeviceMemory& memory);
@@ -107,6 +103,7 @@ protected:
     void create_image_view(
         VkImage image,
         VkFormat format,
+        VkImageViewType view_type,
         VkImageAspectFlags aspect_mask,
         VkImageView& image_view);
     void destroy_image_view(VkImageView image_view);
@@ -116,8 +113,16 @@ protected:
         VkImage image,
         std::uint32_t width,
         std::uint32_t height);
+    void copy_buffer_to_image(
+        VkBuffer buffer,
+        VkImage image,
+        const std::vector<VkBufferImageCopy>& regions);
 
-    void transition_image_layout(VkImage image, VkImageLayout old_layout, VkImageLayout new_layout);
+    void transition_image_layout(
+        VkImage image,
+        VkImageLayout old_layout,
+        VkImageLayout new_layout,
+        std::uint32_t layer_count = 1);
 
 private:
     VkImage m_image;
@@ -145,6 +150,20 @@ class vk_texture : public vk_image
 public:
     vk_texture(const char* file, vk_context* context);
     virtual ~vk_texture();
+};
+
+class vk_texture_cube : public vk_image
+{
+public:
+    vk_texture_cube(
+        const char* right,
+        const char* left,
+        const char* top,
+        const char* bottom,
+        const char* front,
+        const char* back,
+        vk_context* context);
+    ~vk_texture_cube();
 };
 
 class vk_sampler : public rhi_sampler

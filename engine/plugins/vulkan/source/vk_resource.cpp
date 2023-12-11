@@ -155,32 +155,12 @@ rhi_resource_format vk_image::get_format() const noexcept
 }
 
 void vk_image::create_image(
-    std::uint32_t width,
-    std::uint32_t height,
-    VkFormat format,
-    VkSampleCountFlagBits samples,
-    VkImageUsageFlags usage,
+    const VkImageCreateInfo& image_info,
     VkMemoryPropertyFlags properties,
     VkImage& image,
     VkDeviceMemory& memory)
 {
     auto device = get_context()->get_device();
-
-    VkImageCreateInfo image_info = {};
-    image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    image_info.imageType = VK_IMAGE_TYPE_2D;
-    image_info.extent.width = width;
-    image_info.extent.height = height;
-    image_info.extent.depth = 1;
-    image_info.mipLevels = 1;
-    image_info.arrayLayers = 1;
-    image_info.format = format;
-    image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-    image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    image_info.usage = usage;
-    image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    image_info.samples = samples;
-    image_info.flags = 0; // Optional
 
     vk_check(vkCreateImage(device, &image_info, nullptr, &image));
 
@@ -209,13 +189,14 @@ void vk_image::destroy_image(VkImage image, VkDeviceMemory memory)
 void vk_image::create_image_view(
     VkImage image,
     VkFormat format,
+    VkImageViewType view_type,
     VkImageAspectFlags aspect_mask,
     VkImageView& image_view)
 {
     VkImageViewCreateInfo image_view_info = {};
     image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     image_view_info.image = image;
-    image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    image_view_info.viewType = view_type;
     image_view_info.format = format;
     image_view_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
     image_view_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -225,7 +206,7 @@ void vk_image::create_image_view(
     image_view_info.subresourceRange.baseMipLevel = 0;
     image_view_info.subresourceRange.levelCount = 1;
     image_view_info.subresourceRange.baseArrayLayer = 0;
-    image_view_info.subresourceRange.layerCount = 1;
+    image_view_info.subresourceRange.layerCount = view_type == VK_IMAGE_VIEW_TYPE_CUBE ? 6 : 1;
     vkCreateImageView(get_context()->get_device(), &image_view_info, nullptr, &image_view);
 }
 
@@ -240,9 +221,6 @@ void vk_image::copy_buffer_to_image(
     std::uint32_t width,
     std::uint32_t height)
 {
-    vk_graphics_queue* graphics_queue = get_context()->get_graphics_queue();
-    vk_command* command = graphics_queue->allocate_command();
-
     VkBufferImageCopy region = {};
     region.bufferOffset = 0;
     region.bufferRowLength = 0;
@@ -254,13 +232,24 @@ void vk_image::copy_buffer_to_image(
     region.imageOffset = {0, 0, 0};
     region.imageExtent = {width, height, 1};
 
+    copy_buffer_to_image(buffer, image, {region});
+}
+
+void vk_image::copy_buffer_to_image(
+    VkBuffer buffer,
+    VkImage image,
+    const std::vector<VkBufferImageCopy>& regions)
+{
+    vk_graphics_queue* graphics_queue = get_context()->get_graphics_queue();
+    vk_command* command = graphics_queue->allocate_command();
+
     vkCmdCopyBufferToImage(
         command->get_command_buffer(),
         buffer,
         image,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        1,
-        &region);
+        static_cast<std::uint32_t>(regions.size()),
+        regions.data());
 
     graphics_queue->execute_sync(command);
 }
@@ -268,7 +257,8 @@ void vk_image::copy_buffer_to_image(
 void vk_image::transition_image_layout(
     VkImage image,
     VkImageLayout old_layout,
-    VkImageLayout new_layout)
+    VkImageLayout new_layout,
+    std::uint32_t layer_count)
 {
     vk_graphics_queue* graphics_queue = get_context()->get_graphics_queue();
     vk_command* command = graphics_queue->allocate_command();
@@ -283,7 +273,7 @@ void vk_image::transition_image_layout(
     barrier.subresourceRange.baseMipLevel = 0;
     barrier.subresourceRange.levelCount = 1;
     barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
+    barrier.subresourceRange.layerCount = layer_count;
 
     if (new_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
         barrier.subresourceRange.aspectMask =
@@ -361,20 +351,46 @@ vk_depth_stencil::vk_depth_stencil(const rhi_depth_stencil_buffer_desc& desc, vk
     VkDeviceMemory memory;
 
     VkFormat format = vk_util::map_format(desc.format);
-    create_image(
-        desc.width,
-        desc.height,
-        format,
-        vk_util::map_sample_count(desc.samples),
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+
+    auto device = get_context()->get_device();
+
+    VkImageCreateInfo image_info = {};
+    image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    image_info.imageType = VK_IMAGE_TYPE_2D;
+    image_info.extent.width = desc.width;
+    image_info.extent.height = desc.height;
+    image_info.extent.depth = 1;
+    image_info.mipLevels = 1;
+    image_info.arrayLayers = 1;
+    image_info.format = format;
+    image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+    image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    image_info.samples = vk_util::map_sample_count(desc.samples);
+    image_info.flags = 0;
+
+    vk_check(vkCreateImage(device, &image_info, nullptr, &image));
+
+    VkMemoryRequirements requirements;
+    vkGetImageMemoryRequirements(device, image, &requirements);
+
+    VkMemoryAllocateInfo allocate_info = {};
+    allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocate_info.allocationSize = requirements.size;
+    allocate_info.memoryTypeIndex = find_memory_type(
+        requirements.memoryTypeBits,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        image,
-        memory);
+        get_context()->get_physical_device());
+
+    vk_check(vkAllocateMemory(device, &allocate_info, nullptr, &memory));
+    vk_check(vkBindImageMemory(device, image, memory, 0));
 
     VkImageView image_view;
     create_image_view(
         image,
         format,
+        VK_IMAGE_VIEW_TYPE_2D,
         VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
         image_view);
 
@@ -410,17 +426,25 @@ vk_texture::vk_texture(const char* file, vk_context* context) : vk_image(context
         staging_buffer,
         staging_memory);
 
+    VkImageCreateInfo image_info = {};
+    image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    image_info.imageType = VK_IMAGE_TYPE_2D;
+    image_info.extent.width = data.width;
+    image_info.extent.height = data.height;
+    image_info.extent.depth = 1;
+    image_info.mipLevels = 1;
+    image_info.arrayLayers = 1;
+    image_info.format = data.format;
+    image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+    image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    image_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+    image_info.flags = 0;
+
     VkImage image;
     VkDeviceMemory memory;
-    create_image(
-        data.width,
-        data.height,
-        data.format,
-        VK_SAMPLE_COUNT_1_BIT,
-        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        image,
-        memory);
+    create_image(image_info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, memory);
 
     transition_image_layout(image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     copy_buffer_to_image(staging_buffer, image, data.width, data.height);
@@ -432,7 +456,12 @@ vk_texture::vk_texture(const char* file, vk_context* context) : vk_image(context
     destroy_buffer(staging_buffer, staging_memory);
 
     VkImageView image_view;
-    create_image_view(image, data.format, VK_IMAGE_ASPECT_COLOR_BIT, image_view);
+    create_image_view(
+        image,
+        data.format,
+        VK_IMAGE_VIEW_TYPE_2D,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        image_view);
 
     std::hash<void*> hasher;
     std::size_t hash = vk_util::hash_combine(hasher(image), hasher(image_view));
@@ -446,6 +475,125 @@ vk_texture::vk_texture(const char* file, vk_context* context) : vk_image(context
 }
 
 vk_texture::~vk_texture()
+{
+}
+
+vk_texture_cube::vk_texture_cube(
+    const char* right,
+    const char* left,
+    const char* top,
+    const char* bottom,
+    const char* front,
+    const char* back,
+    vk_context* context)
+    : vk_image(context)
+{
+    std::vector<vk_image_loader> loaders(6);
+    if (!loaders[0].load(right) || !loaders[1].load(left) || !loaders[2].load(top) ||
+        !loaders[3].load(bottom) || !loaders[4].load(front) || !loaders[5].load(back))
+        throw vk_exception("Failed to load image.");
+
+    std::vector<std::size_t> data_offset(6);
+    std::size_t data_size = 0;
+    for (std::size_t i = 0; i < 6; ++i)
+    {
+        if (i > 0)
+            data_offset[i] = data_offset[i - 1] + loaders[i - 1].get_mipmap(0).pixels.size();
+
+        data_size += loaders[i].get_mipmap(0).pixels.size();
+    }
+
+    std::vector<char> data(data_size);
+    for (std::size_t i = 0; i < 6; ++i)
+    {
+        std::memcpy(
+            data.data() + data_offset[i],
+            loaders[i].get_mipmap(0).pixels.data(),
+            loaders[i].get_mipmap(0).pixels.size());
+    }
+
+    VkBuffer staging_buffer;
+    VkDeviceMemory staging_memory;
+    create_host_visible_buffer(
+        data.data(),
+        data.size(),
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        staging_buffer,
+        staging_memory);
+
+    VkImageCreateInfo image_info = {};
+    image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    image_info.imageType = VK_IMAGE_TYPE_2D;
+    image_info.extent.width = loaders[0].get_mipmap(0).width;
+    image_info.extent.height = loaders[0].get_mipmap(0).height;
+    image_info.extent.depth = 1;
+    image_info.mipLevels = 1;
+    image_info.arrayLayers = 6;
+    image_info.format = loaders[0].get_mipmap(0).format;
+    image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+    image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    image_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+    image_info.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+
+    VkImage image;
+    VkDeviceMemory memory;
+    create_image(image_info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, memory);
+
+    transition_image_layout(
+        image,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        6);
+
+    std::vector<VkBufferImageCopy> regions;
+    for (std::uint32_t i = 0; i < 6; ++i)
+    {
+        VkBufferImageCopy region = {};
+        region.bufferOffset = data_offset[i];
+        region.bufferRowLength = 0;
+        region.bufferImageHeight = 0;
+        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.mipLevel = 0;
+        region.imageSubresource.baseArrayLayer = i;
+        region.imageSubresource.layerCount = 1;
+        region.imageOffset = {0, 0, 0};
+        region.imageExtent = {image_info.extent.width, image_info.extent.height, 1};
+
+        regions.push_back(region);
+    }
+
+    copy_buffer_to_image(staging_buffer, image, regions);
+
+    transition_image_layout(
+        image,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        6);
+
+    destroy_buffer(staging_buffer, staging_memory);
+
+    VkImageView image_view;
+    create_image_view(
+        image,
+        image_info.format,
+        VK_IMAGE_VIEW_TYPE_CUBE,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        image_view);
+
+    std::hash<void*> hasher;
+    std::size_t hash = vk_util::hash_combine(hasher(image), hasher(image_view));
+
+    set_image(image, memory);
+    set_image_view(image_view);
+    set_image_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    set_format(image_info.format);
+    set_extent(VkExtent2D{image_info.extent.width, image_info.extent.height});
+    set_hash(hash);
+}
+
+vk_texture_cube::~vk_texture_cube()
 {
 }
 

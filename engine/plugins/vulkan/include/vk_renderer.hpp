@@ -97,8 +97,8 @@ public:
     virtual rhi_resource* create_texture(const char* file) override;
 
     virtual rhi_resource* create_texture_cube(
-        const char* left,
         const char* right,
+        const char* left,
         const char* top,
         const char* bottom,
         const char* front,

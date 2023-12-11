@@ -74,9 +74,11 @@ renderer::renderer(rhi_renderer* rhi) : m_rhi(rhi), m_rhi_deleter(rhi)
         "violet camera",
         {
             {RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-             sizeof(float4x4) * 3,
-             RHI_PARAMETER_FLAG_VERTEX | RHI_PARAMETER_FLAG_FRAGMENT}
+             sizeof(float4x4) * 3 + sizeof(float4),
+             RHI_PARAMETER_FLAG_VERTEX | RHI_PARAMETER_FLAG_FRAGMENT           },
+            {RHI_PARAMETER_TYPE_TEXTURE,        1,  RHI_PARAMETER_FLAG_FRAGMENT}
     });
+
     rhi_parameter_layout* light_layout = add_parameter_layout(
         "violet light",
         {
@@ -233,8 +235,8 @@ rhi_ptr<rhi_resource> renderer::create_texture(const char* file)
 }
 
 rhi_ptr<rhi_resource> renderer::create_texture_cube(
-    std::string_view left,
     std::string_view right,
+    std::string_view left,
     std::string_view top,
     std::string_view bottom,
     std::string_view front,
@@ -242,8 +244,8 @@ rhi_ptr<rhi_resource> renderer::create_texture_cube(
 {
     return rhi_ptr<rhi_resource>(
         m_rhi->create_texture_cube(
-            left.data(),
             right.data(),
+            left.data(),
             top.data(),
             bottom.data(),
             front.data(),

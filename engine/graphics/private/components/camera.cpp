@@ -37,10 +37,26 @@ void camera::set_perspective(float fov, float near_z, float far_z)
     update_projection();
 }
 
+void camera::set_position(const float3& position)
+{
+    m_parameter_data.positon = position;
+    update_parameter();
+}
+
 void camera::set_view(const float4x4& view)
 {
     m_parameter_data.view = view;
+
+    float4x4_simd v = simd::load(m_parameter_data.view);
+    float4x4_simd p = simd::load(m_parameter_data.projection);
+    simd::store(matrix_simd::mul(v, p), m_parameter_data.view_projection);
+
     update_parameter();
+}
+
+void camera::set_skybox(rhi_resource* texture, rhi_sampler* sampler)
+{
+    m_parameter->set_texture(1, texture, sampler);
 }
 
 void camera::set_render_pass(render_pass* render_pass)
@@ -123,15 +139,15 @@ void camera::update_projection()
         m_perspective.near_z,
         m_perspective.far_z);
 
+    float4x4_simd v = simd::load(m_parameter_data.view);
+    float4x4_simd p = simd::load(m_parameter_data.projection);
+    simd::store(matrix_simd::mul(v, p), m_parameter_data.view_projection);
+
     update_parameter();
 }
 
 void camera::update_parameter()
 {
-    float4x4_simd v = simd::load(m_parameter_data.view);
-    float4x4_simd p = simd::load(m_parameter_data.projection);
-    simd::store(matrix_simd::mul(v, p), m_parameter_data.view_projection);
-
     m_parameter->set_uniform(0, &m_parameter_data, sizeof(camera_parameter), 0);
 }
 } // namespace violet

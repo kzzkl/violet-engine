@@ -44,6 +44,12 @@ const float3& transform::get_position() const noexcept
     return m_position;
 }
 
+float3 transform::get_world_position() const noexcept
+{
+    auto& world = get_world_matrix();
+    return float3{world[3][0], world[3][1], world[3][2]};
+}
+
 void transform::set_rotation(const float4& quaternion) noexcept
 {
     m_rotation = quaternion;

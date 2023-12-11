@@ -4,10 +4,10 @@
 
 namespace violet
 {
-class debug_pipeline : public render_pipeline
+class skybox_pipeline : public render_pipeline
 {
 public:
-    debug_pipeline(std::string_view name, renderer* renderer);
+    skybox_pipeline(std::string_view name, renderer* renderer);
 
 private:
     virtual void render(rhi_render_command* command, render_data& data) override;

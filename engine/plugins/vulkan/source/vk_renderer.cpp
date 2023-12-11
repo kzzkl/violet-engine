@@ -217,14 +217,14 @@ rhi_resource* vk_renderer::create_texture(const char* file)
 }
 
 rhi_resource* vk_renderer::create_texture_cube(
-    const char* left,
     const char* right,
+    const char* left,
     const char* top,
     const char* bottom,
     const char* front,
     const char* back)
 {
-    return nullptr;
+    return new vk_texture_cube(right, left, top, bottom, front, back, m_context.get());
 }
 
 rhi_resource* vk_renderer::create_render_target(const rhi_render_target_desc& desc)

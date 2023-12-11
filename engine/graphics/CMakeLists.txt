@@ -6,6 +6,7 @@ add_library(${PROJECT_NAME} STATIC
     # ./private/material/basic_material.cpp
     ./private/pipeline/basic_pipeline.cpp
     ./private/pipeline/debug_pipeline.cpp
+    ./private/pipeline/skybox_pipeline.cpp
     ./private/render_graph/compute_pass.cpp
     ./private/render_graph/compute_pipeline.cpp
     ./private/render_graph/material.cpp
@@ -41,6 +42,12 @@ include(${VIOLET_ROOT_DIR}/cmake/compile_shader.cmake)
 compile_shader_dxc(
     TARGET ${PROJECT_NAME}
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/hlsl/debug.hlsl"
+    STAGES "vert" "frag"
+    INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
+
+compile_shader_dxc(
+    TARGET ${PROJECT_NAME}
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/hlsl/skybox.hlsl"
     STAGES "vert" "frag"
     INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
 

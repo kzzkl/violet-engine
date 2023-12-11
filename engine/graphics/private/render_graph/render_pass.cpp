@@ -174,6 +174,8 @@ void render_pass::add_camera(
 
 bool render_pass::compile()
 {
+    assert(!m_subpasses.empty());
+
     rhi_render_pass_desc desc = {};
 
     for (std::size_t i = 0; i < m_attachments.size(); ++i)

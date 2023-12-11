@@ -2,6 +2,7 @@
 #include "components/camera.hpp"
 #include "components/light.hpp"
 #include "components/mesh.hpp"
+#include "components/skybox.hpp"
 #include "components/transform.hpp"
 #include "rhi_plugin.hpp"
 #include "window/window_system.hpp"
@@ -77,6 +78,7 @@ bool graphics_system::initialize(const dictionary& config)
     get_world().register_component<mesh, mesh_component_info>(m_renderer.get());
     get_world().register_component<camera, camera_component_info>(m_renderer.get());
     get_world().register_component<light>();
+    get_world().register_component<skybox>();
 
     return true;
 }
@@ -113,6 +115,7 @@ void graphics_system::render()
     camera_view.each(
         [this](camera& camera, transform& transform)
         {
+            camera.set_position(transform.get_world_position());
             camera.set_view(matrix::inverse(transform.get_world_matrix()));
             camera.set_back_buffer(m_renderer->get_back_buffer());
 

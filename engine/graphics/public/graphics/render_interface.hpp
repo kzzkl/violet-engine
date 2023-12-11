@@ -210,13 +210,13 @@ struct rhi_render_subpass_dependency_desc
 
 struct rhi_render_pass_desc
 {
-    rhi_attachment_desc attachments[32];
+    rhi_attachment_desc attachments[16];
     std::size_t attachment_count = 0;
 
-    rhi_render_subpass_desc subpasses[32];
+    rhi_render_subpass_desc subpasses[16];
     std::size_t subpass_count = 0;
 
-    rhi_render_subpass_dependency_desc dependencies[32];
+    rhi_render_subpass_dependency_desc dependencies[16];
     std::size_t dependency_count;
 };
 
@@ -608,8 +608,8 @@ public:
     virtual rhi_resource* create_texture(const char* file) = 0;
 
     virtual rhi_resource* create_texture_cube(
-        const char* left,
         const char* right,
+        const char* left,
         const char* top,
         const char* bottom,
         const char* front,

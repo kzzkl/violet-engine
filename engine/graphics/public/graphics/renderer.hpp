@@ -84,8 +84,8 @@ public:
         rhi_resource_format format = RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM);
     rhi_ptr<rhi_resource> create_texture(const char* file);
     rhi_ptr<rhi_resource> create_texture_cube(
-        std::string_view left,
         std::string_view right,
+        std::string_view left,
         std::string_view top,
         std::string_view bottom,
         std::string_view front,

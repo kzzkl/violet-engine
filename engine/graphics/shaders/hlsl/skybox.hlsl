@@ -1,9 +1,9 @@
-#include "violet_mvp.hlsl"
+#include "violet_camera.hlsl"
 
 ConstantBuffer<violet_camera> camera : register(b0, space0);
 
-TextureCube sky_texture : register(t0, space1);
-SamplerState sky_sampler : register(s2);
+TextureCube sky_texture : register(t1, space0);
+SamplerState sky_sampler : register(s1, space0);
 
 struct vs_in
 {
@@ -16,7 +16,7 @@ struct vs_out
     float3 uvw : UVW;
 };
 
-vs_out vs_main(vs_in vin)
+vs_out vs_main(vs_in input)
 {
     const float3 vertices[8] = {
         float3(1.0, 1.0, 1.0),
@@ -42,15 +42,17 @@ vs_out vs_main(vs_in vin)
         1, 5, 6,
         6, 2, 1}; // x+, y+, x-, y-, z+, z-*/
 
-    float3 position = camera.position + vertices[indices[vin.vertex_id]];
+    float3 position = camera.position + vertices[indices[input.vertex_id]];
 
     vs_out result;
-    result.position = mul(float4(position, 1.0f), camera.transform_vp).xyww;
-    result.uvw = vertices[indices[vin.vertex_id]];
+    result.position = mul(camera.view_projection, float4(position, 1.0f));
+    result.position.z = result.position.w * 0.99999;
+    result.uvw = normalize(vertices[indices[input.vertex_id]]);
+
     return result;
 }
 
-float4 ps_main(vs_out pin) : SV_TARGET
+float4 ps_main(vs_out input) : SV_TARGET
 {
-    return sky_texture.Sample(sky_sampler, pin.uvw);
+    return sky_texture.Sample(sky_sampler, input.uvw);
 }

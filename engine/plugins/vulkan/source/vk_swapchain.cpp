@@ -12,7 +12,7 @@ vk_swapchain_image::vk_swapchain_image(
     : vk_image(context)
 {
     VkImageView image_view;
-    create_image_view(image, format, VK_IMAGE_ASPECT_COLOR_BIT, image_view);
+    create_image_view(image, format, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT, image_view);
 
     std::hash<void*> hasher;
     std::size_t hash = vk_util::hash_combine(hasher(image), hasher(image_view));
@@ -176,8 +176,7 @@ void vk_swapchain::resize(std::uint32_t width, std::uint32_t height)
     swapchain_info.clipped = VK_TRUE;
     swapchain_info.oldSwapchain = VK_NULL_HANDLE;
 
-    vk_check(
-        vkCreateSwapchainKHR(m_context->get_device(), &swapchain_info, nullptr, &m_swapchain));
+    vk_check(vkCreateSwapchainKHR(m_context->get_device(), &swapchain_info, nullptr, &m_swapchain));
 
     std::uint32_t swapchain_image_count = 0;
     vkGetSwapchainImagesKHR(m_context->get_device(), m_swapchain, &swapchain_image_count, nullptr);

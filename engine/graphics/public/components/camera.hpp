@@ -11,6 +11,8 @@ struct camera_parameter
     float4x4 view;
     float4x4 projection;
     float4x4 view_projection;
+    float3 positon;
+    std::uint32_t padding;
 };
 
 class camera
@@ -22,7 +24,9 @@ public:
     ~camera();
 
     void set_perspective(float fov, float near_z, float far_z);
+    void set_position(const float3& position);
     void set_view(const float4x4& view);
+    void set_skybox(rhi_resource* texture, rhi_sampler* sampler);
 
     rhi_scissor_rect get_scissor() const noexcept { return m_scissor; }
     rhi_viewport get_viewport() const noexcept { return m_viewport; }
