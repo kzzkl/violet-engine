@@ -3,8 +3,7 @@
 
 namespace violet
 {
-render_pipeline::render_pipeline(std::string_view name, renderer* renderer)
-    : render_node(name, renderer)
+render_pipeline::render_pipeline() : m_desc{}
 {
     m_desc.blend.enable = false;
     m_desc.samples = RHI_SAMPLE_COUNT_1;
@@ -75,7 +74,13 @@ void render_pipeline::set_primitive_topology(rhi_primitive_topology primitive_to
     m_desc.primitive_topology = primitive_topology;
 }
 
-bool render_pipeline::compile(rhi_render_pass* render_pass, std::size_t subpass_index)
+void render_pipeline::set_render_pass(rhi_render_pass* render_pass, std::size_t subpass) noexcept
+{
+    m_desc.render_pass = render_pass;
+    m_desc.render_subpass_index = subpass;
+}
+
+bool render_pipeline::compile(compile_context& context)
 {
     std::vector<rhi_vertex_attribute> vertex_attributes;
     for (auto& attribute : m_vertex_attributes)
@@ -83,8 +88,6 @@ bool render_pipeline::compile(rhi_render_pass* render_pass, std::size_t subpass_
 
     m_desc.vertex_attributes = vertex_attributes.data();
     m_desc.vertex_attribute_count = vertex_attributes.size();
-    m_desc.render_pass = render_pass;
-    m_desc.render_subpass_index = subpass_index;
 
     std::vector<rhi_parameter_layout*> parameter_layouts;
     for (auto& parameter : m_parameter_layouts)
@@ -93,25 +96,20 @@ bool render_pipeline::compile(rhi_render_pass* render_pass, std::size_t subpass_
     m_desc.parameters = parameter_layouts.data();
     m_desc.parameter_count = parameter_layouts.size();
 
-    m_interface = get_renderer()->create_render_pipeline(m_desc);
+    m_interface = context.renderer->create_render_pipeline(m_desc);
 
     return m_interface != nullptr;
 }
 
-void render_pipeline::execute(
-    rhi_render_command* command,
-    rhi_parameter* camera,
-    rhi_parameter* light)
+void render_pipeline::execute(execute_context& context)
 {
-    command->set_render_pipeline(m_interface.get());
-    m_render_data.camera = camera;
-    m_render_data.light = light;
-    render(command, m_render_data);
-    m_render_data.meshes.clear();
+    context.command->set_render_pipeline(m_interface.get());
+    render(m_meshes, context);
+    m_meshes.clear();
 }
 
 void render_pipeline::add_mesh(const render_mesh& mesh)
 {
-    m_render_data.meshes.push_back(mesh);
+    m_meshes.push_back(mesh);
 }
 } // namespace violet

@@ -20,13 +20,6 @@ struct render_mesh
     rhi_parameter* material;
 };
 
-struct render_data
-{
-    rhi_parameter* camera;
-    rhi_parameter* light;
-    std::vector<render_mesh> meshes;
-};
-
 enum render_parameter_type
 {
     RENDER_PIPELINE_PARAMETER_TYPE_NORMAL,
@@ -43,7 +36,7 @@ public:
     using parameter_layouts = std::vector<std::pair<rhi_parameter_layout*, render_parameter_type>>;
 
 public:
-    render_pipeline(std::string_view name, renderer* renderer);
+    render_pipeline();
     virtual ~render_pipeline();
 
     void set_shader(std::string_view vertex, std::string_view fragment);
@@ -61,13 +54,15 @@ public:
     void set_samples(rhi_sample_count samples) noexcept;
     void set_primitive_topology(rhi_primitive_topology primitive_topology) noexcept;
 
-    bool compile(rhi_render_pass* render_pass, std::size_t subpass_index);
-    void execute(rhi_render_command* command, rhi_parameter* camera, rhi_parameter* light);
+    void set_render_pass(rhi_render_pass* render_pass, std::size_t subpass) noexcept;
+
+    virtual bool compile(compile_context& context) override;
+    virtual void execute(execute_context& context) override;
 
     void add_mesh(const render_mesh& mesh);
 
 private:
-    virtual void render(rhi_render_command* command, render_data& data) = 0;
+    virtual void render(std::vector<render_mesh>& meshes, const execute_context& context) = 0;
 
     std::string m_vertex_shader;
     std::string m_fragment_shader;
@@ -78,6 +73,6 @@ private:
 
     rhi_ptr<rhi_render_pipeline> m_interface;
 
-    render_data m_render_data;
+    std::vector<render_mesh> m_meshes;
 };
 } // namespace violet

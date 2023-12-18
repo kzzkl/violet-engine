@@ -41,6 +41,14 @@ public:
 
     virtual void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) override;
 
+    virtual void set_pipeline_barrier(
+        rhi_pipeline_stage_flags src_state,
+        rhi_pipeline_stage_flags dst_state,
+        const rhi_buffer_barrier* const buffer_barriers,
+        std::size_t buffer_barrier_count,
+        const rhi_texture_barrier* const texture_barriers,
+        std::size_t texture_barrier_count) override;
+
     virtual void clear_render_target(rhi_resource* render_target, const float4& color) override;
     virtual void clear_depth_stencil(
         rhi_resource* depth_stencil,

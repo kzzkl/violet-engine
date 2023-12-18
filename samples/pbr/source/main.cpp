@@ -1,8 +1,14 @@
+#include "common/log.hpp"
 #include "components/camera.hpp"
+#include "components/light.hpp"
+#include "components/mesh.hpp"
 #include "components/orbit_control.hpp"
 #include "components/transform.hpp"
 #include "control/control_system.hpp"
 #include "core/engine.hpp"
+#include "graphics/geometries/box_geometry.hpp"
+#include "graphics/geometries/sphere_geometry.hpp"
+#include "graphics/geometry.hpp"
 #include "graphics/graphics_system.hpp"
 #include "pbr_render.hpp"
 #include "scene/scene_system.hpp"
@@ -13,7 +19,7 @@ namespace violet::sample
 class pbr_sample : public engine_system
 {
 public:
-    pbr_sample() : engine_system("pbr sample") {}
+    pbr_sample() : engine_system("pbr sample"), m_material(nullptr) {}
 
     bool initialize(const dictionary& config) override
     {
@@ -59,11 +65,54 @@ public:
 
         main_camera->set_skybox(m_skybox.get(), m_skybox_sampler.get());
 
+        m_geometry = std::make_unique<sphere_geometry>(renderer);
+
+        m_cube = std::make_unique<actor>("cube", get_world());
+        auto [cube_transform, cube_mesh] = m_cube->add<transform, mesh>();
+        cube_mesh->set_geometry(m_geometry.get());
+
+        m_material = m_render_graph->add_material("test pbr", "pbr");
+        m_material->set("albedo", float3{0.5f, 0.5f, 0.5f});
+        m_material->set("metalness", 0.2f);
+        m_material->set("roughness", m_roughness);
+        cube_mesh->add_submesh(0, 0, 0, m_geometry->get_index_count(), m_material);
+
+        m_light = std::make_unique<actor>("light", get_world());
+        auto [light_transform, main_light] = m_light->add<transform, light>();
+        light_transform->set_position(1.0f, 1.0f, 1.0f);
+        light_transform->lookat(float3{0.0f, 0.0f, 0.0f}, float3{0.0f, 1.0f, 0.0f});
+
+        main_light->color = {1.0f, 1.0f, 1.0f};
+        main_light->type = LIGHT_TYPE_DIRECTIONAL;
+
+        // m_irradiance_map = renderer->create_texture_cube();
+
+        // m_pre_process_graph = std::make_unique<pre_process_graph>(renderer);
+        // m_pre_process_graph->set_parameter(m_skybox.get(), m_skybox_sampler.get(), nullptr);
+        // get_system<graphics_system>().render(m_pre_process_graph.get());
+
         return true;
     }
 
 private:
-    void tick(float delta) { get_system<graphics_system>().render(m_render_graph.get()); }
+    void tick(float delta)
+    {
+        auto& window = get_system<window_system>();
+        if (window.get_keyboard().key(KEYBOARD_KEY_ADD).press())
+        {
+            m_roughness = std::min(1.0f, m_roughness + delta * 10.0f);
+            m_material->set("roughness", m_roughness);
+            log::debug("{}", m_roughness);
+        }
+        if (window.get_keyboard().key(KEYBOARD_KEY_SUBTRACT).press())
+        {
+            m_roughness = std::max(0.0f, m_roughness - delta * 10.0f);
+            m_material->set("roughness", m_roughness);
+            log::debug("{}", m_roughness);
+        }
+
+        get_system<graphics_system>().render(m_render_graph.get());
+    }
 
     void resize(std::uint32_t width, std::uint32_t height)
     {
@@ -81,11 +130,23 @@ private:
         main_camera->set_attachment(1, m_depth_stencil.get());
     }
 
+    std::unique_ptr<pre_process_graph> m_pre_process_graph;
+
     std::unique_ptr<pbr_render_graph> m_render_graph;
     rhi_ptr<rhi_resource> m_depth_stencil;
 
     rhi_ptr<rhi_resource> m_skybox;
     rhi_ptr<rhi_sampler> m_skybox_sampler;
+
+    rhi_ptr<rhi_resource> m_irradiance_map;
+
+    material* m_material;
+    float m_roughness = 0.3f;
+
+    std::unique_ptr<geometry> m_geometry;
+    std::unique_ptr<actor> m_cube;
+
+    std::unique_ptr<actor> m_light;
 
     std::unique_ptr<actor> m_camera;
 };

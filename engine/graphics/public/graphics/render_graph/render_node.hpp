@@ -1,24 +1,34 @@
 #pragma once
 
-#include "graphics/renderer.hpp"
 #include "graphics/render_interface.hpp"
+#include "graphics/renderer.hpp"
 
 namespace violet
 {
+struct compile_context
+{
+    renderer* renderer;
+};
+
+struct execute_context
+{
+    renderer* renderer;
+    rhi_render_command* command;
+
+    rhi_parameter* camera;
+    rhi_parameter* light;
+};
+
 class render_node
 {
 public:
-    render_node(std::string_view name, renderer* renderer);
+    render_node();
     render_node(const render_node&) = delete;
     virtual ~render_node();
 
     render_node& operator=(const renderer&) = delete;
 
-    const std::string& get_name() const noexcept { return m_name; }
-    renderer* get_renderer() const noexcept { return m_renderer; }
-
-private:
-    std::string m_name;
-    renderer* m_renderer;
+    virtual bool compile(compile_context& context) = 0;
+    virtual void execute(execute_context& context) = 0;
 };
 } // namespace violet

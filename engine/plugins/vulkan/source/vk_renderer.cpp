@@ -206,7 +206,8 @@ rhi_resource* vk_renderer::create_texture(
     const std::uint8_t* data,
     std::uint32_t width,
     std::uint32_t height,
-    rhi_resource_format format)
+    rhi_resource_format format,
+    rhi_texture_flags flags)
 {
     return nullptr;
 }
@@ -222,9 +223,20 @@ rhi_resource* vk_renderer::create_texture_cube(
     const char* top,
     const char* bottom,
     const char* front,
-    const char* back)
+    const char* back,
+    rhi_texture_flags flags)
 {
-    return new vk_texture_cube(right, left, top, bottom, front, back, m_context.get());
+    return new vk_texture_cube(right, left, top, bottom, front, back, flags, m_context.get());
+}
+
+rhi_resource* vk_renderer::create_texture_cube(
+    const std::uint32_t* data,
+    std::uint32_t width,
+    std::uint32_t height,
+    rhi_resource_format format,
+    rhi_texture_flags flags)
+{
+    return nullptr;
 }
 
 rhi_resource* vk_renderer::create_render_target(const rhi_render_target_desc& desc)

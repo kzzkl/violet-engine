@@ -3,10 +3,13 @@ project(violet-graphics)
 add_library(${PROJECT_NAME} STATIC
     ./private/components/camera.cpp
     ./private/components/mesh.cpp
+    ./private/geometries/box_geometry.cpp
+    ./private/geometries/sphere_geometry.cpp
     # ./private/material/basic_material.cpp
     ./private/pipeline/basic_pipeline.cpp
     ./private/pipeline/debug_pipeline.cpp
     ./private/pipeline/skybox_pipeline.cpp
+    ./private/render_graph/barrier.cpp
     ./private/render_graph/compute_pass.cpp
     ./private/render_graph/compute_pipeline.cpp
     ./private/render_graph/material.cpp

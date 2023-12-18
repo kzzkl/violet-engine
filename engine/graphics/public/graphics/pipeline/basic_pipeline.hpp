@@ -7,9 +7,9 @@ namespace violet
 class basic_pipeline : public render_pipeline
 {
 public:
-    basic_pipeline(std::string_view name, renderer* renderer);
+    basic_pipeline();
 
 private:
-    virtual void render(rhi_render_command* command, render_data& data);
+    virtual void render(std::vector<render_mesh>& meshes, const execute_context& context) override;
 };
 } // namespace violet

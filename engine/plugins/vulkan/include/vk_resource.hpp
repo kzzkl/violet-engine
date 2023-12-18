@@ -60,6 +60,7 @@ public:
     vk_image(vk_context* context);
     virtual ~vk_image();
 
+    VkImage get_image() const noexcept { return m_image; }
     VkImageView get_image_view() const noexcept { return m_image_view; }
     VkImageLayout get_image_layout() const noexcept { return m_image_layout; }
     VkClearValue get_clear_value() const noexcept { return m_clear_value; }
@@ -162,6 +163,14 @@ public:
         const char* bottom,
         const char* front,
         const char* back,
+        rhi_texture_flags flags,
+        vk_context* context);
+    vk_texture_cube(
+        const std::uint32_t* data,
+        std::uint32_t width,
+        std::uint32_t height,
+        rhi_resource_format format,
+        rhi_texture_flags flags,
         vk_context* context);
     ~vk_texture_cube();
 };

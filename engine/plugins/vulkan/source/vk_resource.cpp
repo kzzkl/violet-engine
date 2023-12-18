@@ -485,6 +485,7 @@ vk_texture_cube::vk_texture_cube(
     const char* bottom,
     const char* front,
     const char* back,
+    rhi_texture_flags flags,
     vk_context* context)
     : vk_image(context)
 {
@@ -533,6 +534,8 @@ vk_texture_cube::vk_texture_cube(
     image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
     image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     image_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    if (flags & RHI_TEXTURE_FLAG_STORAGE)
+        image_info.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
     image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     image_info.samples = VK_SAMPLE_COUNT_1_BIT;
     image_info.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
@@ -591,6 +594,46 @@ vk_texture_cube::vk_texture_cube(
     set_format(image_info.format);
     set_extent(VkExtent2D{image_info.extent.width, image_info.extent.height});
     set_hash(hash);
+}
+
+vk_texture_cube::vk_texture_cube(
+    const std::uint32_t* data,
+    std::uint32_t width,
+    std::uint32_t height,
+    rhi_resource_format format,
+    rhi_texture_flags flags,
+    vk_context* context)
+    : vk_image(context)
+{
+    VkImageCreateInfo image_info = {};
+    image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    image_info.imageType = VK_IMAGE_TYPE_2D;
+    image_info.extent.width = width;
+    image_info.extent.height = height;
+    image_info.extent.depth = 1;
+    image_info.mipLevels = 1;
+    image_info.arrayLayers = 6;
+    image_info.format = vk_util::map_format(format);
+    image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+    image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    image_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    if (flags & RHI_TEXTURE_FLAG_STORAGE)
+        image_info.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+    image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+    image_info.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+
+    VkImage image;
+    VkDeviceMemory memory;
+    create_image(image_info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, memory);
+
+    VkImageView image_view;
+    create_image_view(
+        image,
+        image_info.format,
+        VK_IMAGE_VIEW_TYPE_CUBE,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        image_view);
 }
 
 vk_texture_cube::~vk_texture_cube()

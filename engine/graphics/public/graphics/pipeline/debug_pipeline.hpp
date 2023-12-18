@@ -7,9 +7,11 @@ namespace violet
 class debug_pipeline : public render_pipeline
 {
 public:
-    debug_pipeline(std::string_view name, renderer* renderer);
+    debug_pipeline();
+
+    virtual bool compile(compile_context& context) override;
 
 private:
-    virtual void render(rhi_render_command* command, render_data& data) override;
+    virtual void render(std::vector<render_mesh>& meshes, const execute_context& context) override;
 };
 } // namespace violet

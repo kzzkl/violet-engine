@@ -2,7 +2,6 @@
 #include "components/camera.hpp"
 #include "components/light.hpp"
 #include "components/mesh.hpp"
-#include "components/skybox.hpp"
 #include "components/transform.hpp"
 #include "rhi_plugin.hpp"
 #include "window/window_system.hpp"
@@ -78,7 +77,6 @@ bool graphics_system::initialize(const dictionary& config)
     get_world().register_component<mesh, mesh_component_info>(m_renderer.get());
     get_world().register_component<camera, camera_component_info>(m_renderer.get());
     get_world().register_component<light>();
-    get_world().register_component<skybox>();
 
     return true;
 }
@@ -181,7 +179,7 @@ void graphics_system::update_light()
         {
             if (light.type == LIGHT_TYPE_DIRECTIONAL)
             {
-                float4_simd direction = simd::set(1.0f, 0.0f, 0.0f, 0.0f);
+                float4_simd direction = simd::set(0.0f, 0.0f, 1.0f, 0.0f);
                 float4x4_simd world_matrix = simd::load(transform.get_world_matrix());
                 direction = matrix_simd::mul(direction, world_matrix);
 

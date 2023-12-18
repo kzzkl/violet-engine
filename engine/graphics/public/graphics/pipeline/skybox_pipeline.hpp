@@ -7,9 +7,11 @@ namespace violet
 class skybox_pipeline : public render_pipeline
 {
 public:
-    skybox_pipeline(std::string_view name, renderer* renderer);
+    skybox_pipeline();
+
+    virtual bool compile(compile_context& context) override;
 
 private:
-    virtual void render(rhi_render_command* command, render_data& data) override;
+    virtual void render(std::vector<render_mesh>& meshes, const execute_context& context) override;
 };
 } // namespace violet

@@ -50,10 +50,13 @@ enum rhi_resource_format
 enum rhi_resource_state
 {
     RHI_RESOURCE_STATE_UNDEFINED,
+    RHI_RESOURCE_STATE_GENERAL,
     RHI_RESOURCE_STATE_SHADER_RESOURCE,
     RHI_RESOURCE_STATE_RENDER_TARGET,
     RHI_RESOURCE_STATE_DEPTH_STENCIL,
-    RHI_RESOURCE_STATE_PRESENT
+    RHI_RESOURCE_STATE_PRESENT,
+    RHI_RESOURCE_STATE_TRANSFER_SRC,
+    RHI_RESOURCE_STATE_TRANSFER_DST
 };
 
 struct rhi_resource_extent
@@ -191,7 +194,9 @@ enum rhi_access_flag
     RHI_ACCESS_FLAG_COLOR_READ = 1 << 0,
     RHI_ACCESS_FLAG_COLOR_WRITE = 1 << 1,
     RHI_ACCESS_FLAG_DEPTH_STENCIL_READ = 1 << 2,
-    RHI_ACCESS_FLAG_DEPTH_STENCIL_WRITE = 1 << 3
+    RHI_ACCESS_FLAG_DEPTH_STENCIL_WRITE = 1 << 3,
+    RHI_ACCESS_FLAG_SHADER_READ = 1 << 0,
+    RHI_ACCESS_FLAG_SHADER_WRITE = 1 << 1
 };
 using rhi_access_flags = std::uint32_t;
 
@@ -199,13 +204,13 @@ using rhi_access_flags = std::uint32_t;
 
 struct rhi_render_subpass_dependency_desc
 {
-    std::size_t source;
-    rhi_pipeline_stage_flags source_stage;
-    rhi_access_flags source_access;
+    std::size_t src;
+    rhi_pipeline_stage_flags src_stage;
+    rhi_access_flags src_access;
 
-    std::size_t target;
-    rhi_pipeline_stage_flags target_stage;
-    rhi_access_flags target_access;
+    std::size_t dst;
+    rhi_pipeline_stage_flags dst_stage;
+    rhi_access_flags dst_access;
 };
 
 struct rhi_render_pass_desc
@@ -304,12 +309,12 @@ struct rhi_blend_desc
 {
     bool enable = false;
 
-    rhi_blend_factor source_factor;
-    rhi_blend_factor target_factor;
+    rhi_blend_factor src_factor;
+    rhi_blend_factor dst_factor;
     rhi_blend_op op;
 
-    rhi_blend_factor source_alpha_factor;
-    rhi_blend_factor target_alpha_factor;
+    rhi_blend_factor src_alpha_factor;
+    rhi_blend_factor dst_alpha_factor;
     rhi_blend_op alpha_op;
 };
 
@@ -440,6 +445,27 @@ struct rhi_scissor_rect
     std::uint32_t max_y;
 };
 
+struct rhi_buffer_barrier
+{
+};
+
+struct rhi_texture_barrier
+{
+    rhi_resource* texture;
+
+    rhi_access_flags src_access;
+    rhi_access_flags dst_access;
+
+    rhi_resource_state src_state;
+    rhi_resource_state dst_state;
+};
+
+struct rhi_pipeline_barrier
+{
+    rhi_pipeline_stage_flags src_state;
+    rhi_pipeline_stage_flags dst_state;
+};
+
 class rhi_render_command
 {
 public:
@@ -469,6 +495,14 @@ public:
         std::size_t vertex_base) = 0;
 
     virtual void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) = 0;
+
+    virtual void set_pipeline_barrier(
+        rhi_pipeline_stage_flags src_state,
+        rhi_pipeline_stage_flags dst_state,
+        const rhi_buffer_barrier* const buffer_barriers,
+        std::size_t buffer_barrier_count,
+        const rhi_texture_barrier* const texture_barriers,
+        std::size_t texture_barrier_count) = 0;
 
     virtual void clear_render_target(rhi_resource* render_target, const float4& color) = 0;
     virtual void clear_depth_stencil(
@@ -530,6 +564,12 @@ struct rhi_buffer_desc
         std::size_t size;
     } index;
 };
+
+enum rhi_texture_flag
+{
+    RHI_TEXTURE_FLAG_STORAGE = 1 << 0
+};
+using rhi_texture_flags = std::uint32_t;
 
 struct rhi_desc
 {
@@ -604,7 +644,8 @@ public:
         const std::uint8_t* data,
         std::uint32_t width,
         std::uint32_t height,
-        rhi_resource_format format = RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM) = 0;
+        rhi_resource_format format = RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM,
+        rhi_texture_flags flags = 0) = 0;
     virtual rhi_resource* create_texture(const char* file) = 0;
 
     virtual rhi_resource* create_texture_cube(
@@ -613,7 +654,14 @@ public:
         const char* top,
         const char* bottom,
         const char* front,
-        const char* back) = 0;
+        const char* back,
+        rhi_texture_flags flags = 0) = 0;
+    virtual rhi_resource* create_texture_cube(
+        const std::uint32_t* data,
+        std::uint32_t width,
+        std::uint32_t height,
+        rhi_resource_format format = RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM,
+        rhi_texture_flags flags = 0) = 0;
 
     virtual rhi_resource* create_render_target(const rhi_render_target_desc& desc) = 0;
     virtual rhi_resource* create_depth_stencil_buffer(

@@ -93,7 +93,8 @@ public:
         const std::uint8_t* data,
         std::uint32_t width,
         std::uint32_t height,
-        rhi_resource_format format) override;
+        rhi_resource_format format,
+        rhi_texture_flags flags) override;
     virtual rhi_resource* create_texture(const char* file) override;
 
     virtual rhi_resource* create_texture_cube(
@@ -102,7 +103,14 @@ public:
         const char* top,
         const char* bottom,
         const char* front,
-        const char* back) override;
+        const char* back,
+        rhi_texture_flags flags) override;
+    virtual rhi_resource* create_texture_cube(
+        const std::uint32_t* data,
+        std::uint32_t width,
+        std::uint32_t height,
+        rhi_resource_format format,
+        rhi_texture_flags flags) override;
 
     virtual rhi_resource* create_render_target(const rhi_render_target_desc& desc) override;
 

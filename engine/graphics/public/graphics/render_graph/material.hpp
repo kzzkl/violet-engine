@@ -14,10 +14,10 @@ struct material_field
 };
 
 class material;
-class material_layout : public render_node
+class material_layout
 {
 public:
-    material_layout(std::string_view name, renderer* renderer);
+    material_layout();
 
     void add_pipeline(render_pipeline* pipeline);
 
@@ -32,7 +32,7 @@ public:
         return iter->second;
     }
 
-    material* add_material(std::string_view name);
+    material* add_material(std::string_view name, renderer* renderer);
     material* get_material(std::string_view name) const;
 
 private:

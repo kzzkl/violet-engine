@@ -18,12 +18,12 @@ install(TARGETS ${PROJECT_NAME}
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)
 
-# include(${VIOLET_ROOT_DIR}/cmake/compile_shader.cmake)
-# compile_shader_dxc(
-#     TARGET ${PROJECT_NAME}
-#     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/base.hlsl"
-#     STAGES "vert" "frag"
-#     INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
+include(${VIOLET_ROOT_DIR}/cmake/compile_shader.cmake)
+compile_shader_dxc(
+    TARGET ${PROJECT_NAME}
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/pbr.hlsl"
+    STAGES "vert" "frag"
+    INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
 
 file(GLOB SHADER_FILES "${CMAKE_BINARY_DIR}/shaders/${PROJECT_NAME}/*.spv")
 install(FILES ${SHADER_FILES} DESTINATION bin/${PROJECT_NAME}/shaders)

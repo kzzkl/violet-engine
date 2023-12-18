@@ -264,6 +264,8 @@ VkAccessFlags vk_util::map_access_flags(rhi_access_flags flags)
     result |= (flags & RHI_ACCESS_FLAG_DEPTH_STENCIL_WRITE)
                   ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
                   : 0;
+    result |= (flags & RHI_ACCESS_FLAG_SHADER_READ) ? VK_ACCESS_SHADER_READ_BIT : 0;
+    result |= (flags & RHI_ACCESS_FLAG_SHADER_WRITE) ? VK_ACCESS_SHADER_WRITE_BIT : 0;
 
     return result;
 }

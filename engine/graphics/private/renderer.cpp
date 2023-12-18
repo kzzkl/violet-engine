@@ -1,5 +1,4 @@
 #include "graphics/renderer.hpp"
-#include <cassert>
 
 namespace violet
 {
@@ -162,14 +161,16 @@ rhi_parameter_layout* renderer::add_parameter_layout(
     std::string_view name,
     const std::vector<rhi_parameter_layout_pair>& layout)
 {
-    assert(m_parameter_layouts.find(name.data()) == m_parameter_layouts.end());
+    if (m_parameter_layouts.find(name.data()) == m_parameter_layouts.end())
+    {
+        rhi_parameter_layout_desc desc = {};
+        for (std::size_t i = 0; i < layout.size(); ++i)
+            desc.parameters[i] = layout[i];
+        desc.parameter_count = layout.size();
 
-    rhi_parameter_layout_desc desc = {};
-    for (std::size_t i = 0; i < layout.size(); ++i)
-        desc.parameters[i] = layout[i];
-    desc.parameter_count = layout.size();
+        m_parameter_layouts[name.data()] = create_parameter_layout(desc);
+    }
 
-    m_parameter_layouts[name.data()] = create_parameter_layout(desc);
     return m_parameter_layouts[name.data()].get();
 }
 

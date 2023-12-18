@@ -3,6 +3,7 @@
 #include "vk_pipeline.hpp"
 #include "vk_render_pass.hpp"
 #include "vk_resource.hpp"
+#include "vk_util.hpp"
 
 namespace violet::vk
 {
@@ -177,6 +178,51 @@ void vk_command::draw_indexed(
 void vk_command::dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z)
 {
     vkCmdDispatch(m_command_buffer, x, y, z);
+}
+
+void vk_command::set_pipeline_barrier(
+    rhi_pipeline_stage_flags src_state,
+    rhi_pipeline_stage_flags dst_state,
+    const rhi_buffer_barrier* const buffer_barriers,
+    std::size_t buffer_barrier_count,
+    const rhi_texture_barrier* const texture_barriers,
+    std::size_t texture_barrier_count)
+{
+    std::vector<VkBufferMemoryBarrier> vk_buffer_barriers(buffer_barrier_count);
+    for (std::size_t i = 0; i < buffer_barrier_count; ++i)
+    {
+        VkBufferMemoryBarrier& barrier = vk_buffer_barriers[i];
+        barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    }
+
+    std::vector<VkImageMemoryBarrier> vk_image_barriers(texture_barrier_count);
+    for (std::size_t i = 0; i < texture_barrier_count; ++i)
+    {
+        VkImageMemoryBarrier& barrier = vk_image_barriers[i];
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.srcAccessMask = vk_util::map_access_flags(texture_barriers[i].src_access);
+        barrier.dstAccessMask = vk_util::map_access_flags(texture_barriers[i].dst_access);
+        barrier.oldLayout = vk_util::map_state(texture_barriers[i].src_state);
+        barrier.newLayout = vk_util::map_state(texture_barriers[i].dst_state);
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = static_cast<vk_image*>(texture_barriers[i].texture)->get_image();
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+        barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+    }
+
+    vkCmdPipelineBarrier(
+        m_command_buffer,
+        vk_util::map_pipeline_stage_flags(src_state),
+        vk_util::map_pipeline_stage_flags(dst_state),
+        0,
+        0,
+        nullptr,
+        vk_buffer_barriers.size(),
+        vk_buffer_barriers.data(),
+        vk_image_barriers.size(),
+        vk_image_barriers.data());
 }
 
 void vk_command::clear_render_target(rhi_resource* render_target, const float4& color)

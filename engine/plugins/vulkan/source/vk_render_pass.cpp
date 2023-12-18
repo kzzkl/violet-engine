@@ -109,21 +109,19 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
     std::vector<VkSubpassDependency> dependencies(desc.dependency_count);
     for (std::size_t i = 0; i < desc.dependency_count; ++i)
     {
-        dependencies[i].srcSubpass = desc.dependencies[i].source == RHI_RENDER_SUBPASS_EXTERNAL
+        dependencies[i].srcSubpass = desc.dependencies[i].src == RHI_RENDER_SUBPASS_EXTERNAL
                                          ? VK_SUBPASS_EXTERNAL
-                                         : static_cast<std::uint32_t>(desc.dependencies[i].source);
+                                         : static_cast<std::uint32_t>(desc.dependencies[i].src);
         dependencies[i].srcStageMask =
-            vk_util::map_pipeline_stage_flags(desc.dependencies[i].source_stage);
-        dependencies[i].srcAccessMask =
-            vk_util::map_access_flags(desc.dependencies[i].source_access);
+            vk_util::map_pipeline_stage_flags(desc.dependencies[i].src_stage);
+        dependencies[i].srcAccessMask = vk_util::map_access_flags(desc.dependencies[i].src_access);
 
-        dependencies[i].dstSubpass = desc.dependencies[i].target == RHI_RENDER_SUBPASS_EXTERNAL
+        dependencies[i].dstSubpass = desc.dependencies[i].dst == RHI_RENDER_SUBPASS_EXTERNAL
                                          ? VK_SUBPASS_EXTERNAL
-                                         : static_cast<std::uint32_t>(desc.dependencies[i].target);
+                                         : static_cast<std::uint32_t>(desc.dependencies[i].dst);
         dependencies[i].dstStageMask =
-            vk_util::map_pipeline_stage_flags(desc.dependencies[i].target_stage);
-        dependencies[i].dstAccessMask =
-            vk_util::map_access_flags(desc.dependencies[i].target_access);
+            vk_util::map_pipeline_stage_flags(desc.dependencies[i].dst_stage);
+        dependencies[i].dstAccessMask = vk_util::map_access_flags(desc.dependencies[i].dst_access);
     }
 
     VkRenderPassCreateInfo render_pass_info = {};

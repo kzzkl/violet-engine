@@ -6,7 +6,9 @@ namespace violet::sample
 class color_pipeline : public render_pipeline
 {
 public:
-    color_pipeline(std::string_view name, renderer* context) : render_pipeline(name, context)
+    color_pipeline() {}
+
+    virtual bool compile(compile_context& context) override
     {
         set_shader("mmd-viewer/shaders/color.vert.spv", "mmd-viewer/shaders/color.frag.spv");
         set_vertex_attributes({
@@ -16,7 +18,7 @@ public:
         });
         set_cull_mode(RHI_CULL_MODE_NONE);
 
-        rhi_parameter_layout* material_layout = context->add_parameter_layout(
+        rhi_parameter_layout* material_layout = context.renderer->add_parameter_layout(
             "mmd material",
             {
                 {RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
@@ -28,27 +30,33 @@ public:
         });
 
         set_parameter_layouts({
-            {context->get_parameter_layout("violet mesh"),   RENDER_PIPELINE_PARAMETER_TYPE_MESH    },
-            {material_layout,                                RENDER_PIPELINE_PARAMETER_TYPE_MATERIAL},
-            {context->get_parameter_layout("violet camera"), RENDER_PIPELINE_PARAMETER_TYPE_CAMERA  },
-            {context->get_parameter_layout("violet light"),
-             RENDER_PIPELINE_PARAMETER_TYPE_NORMAL                                                  }
+            {context.renderer->get_parameter_layout("violet mesh"),
+             RENDER_PIPELINE_PARAMETER_TYPE_MESH                                                             },
+            {material_layout,                                         RENDER_PIPELINE_PARAMETER_TYPE_MATERIAL},
+            {context.renderer->get_parameter_layout("violet camera"),
+             RENDER_PIPELINE_PARAMETER_TYPE_CAMERA                                                           },
+            {context.renderer->get_parameter_layout("violet light"),
+             RENDER_PIPELINE_PARAMETER_TYPE_NORMAL                                                           }
         });
+
+        return render_pipeline::compile(context);
     }
 
 private:
-    void render(rhi_render_command* command, render_data& data) override
+    void render(std::vector<render_mesh>& meshes, const execute_context& context) override
     {
-        command->set_render_parameter(2, data.camera);
-        command->set_render_parameter(3, data.light);
+        context.command->set_render_parameter(2, context.camera);
+        context.command->set_render_parameter(3, context.light);
 
-        for (render_mesh& mesh : data.meshes)
+        for (render_mesh& mesh : meshes)
         {
-            command->set_vertex_buffers(mesh.vertex_buffers.data(), mesh.vertex_buffers.size());
-            command->set_index_buffer(mesh.index_buffer);
-            command->set_render_parameter(0, mesh.transform);
-            command->set_render_parameter(1, mesh.material);
-            command->draw_indexed(mesh.index_start, mesh.index_count, mesh.vertex_start);
+            context.command->set_vertex_buffers(
+                mesh.vertex_buffers.data(),
+                mesh.vertex_buffers.size());
+            context.command->set_index_buffer(mesh.index_buffer);
+            context.command->set_render_parameter(0, mesh.transform);
+            context.command->set_render_parameter(1, mesh.material);
+            context.command->draw_indexed(mesh.index_start, mesh.index_count, mesh.vertex_start);
         }
     }
 };
@@ -56,11 +64,13 @@ private:
 class skinning_pipeline : public compute_pipeline
 {
 public:
-    skinning_pipeline(std::string_view name, renderer* context) : compute_pipeline(name, context)
+    skinning_pipeline() {}
+
+    virtual bool compile(compile_context& context) override
     {
         set_shader("mmd-viewer/shaders/skinning.comp.spv");
 
-        rhi_parameter_layout* skeleton_layout = get_renderer()->add_parameter_layout(
+        rhi_parameter_layout* skeleton_layout = context.renderer->add_parameter_layout(
             "mmd skeleton",
             {
                 {RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
@@ -68,7 +78,7 @@ public:
                  RHI_PARAMETER_FLAG_COMPUTE}
         });
 
-        rhi_parameter_layout* skinning_layout = get_renderer()->add_parameter_layout(
+        rhi_parameter_layout* skinning_layout = context.renderer->add_parameter_layout(
             "mmd skinning",
             {
                 {RHI_PARAMETER_TYPE_STORAGE_BUFFER,
@@ -86,6 +96,8 @@ public:
         });
 
         set_parameter_layouts({skeleton_layout, skinning_layout});
+
+        return compute_pipeline::compile(context);
     }
 
 private:
