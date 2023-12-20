@@ -26,5 +26,11 @@ target_include_directories(stb INTERFACE ./stb)
 set(SKIP_INSTALL_ALL ON)
 # add_subdirectory(freetype)
 
+# volk
+if (WIN32)
+   set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
+endif()
+add_subdirectory(volk)
+
 # yoga
 # add_subdirectory(yoga)

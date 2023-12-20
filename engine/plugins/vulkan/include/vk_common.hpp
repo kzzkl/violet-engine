@@ -3,10 +3,7 @@
 #include "graphics/render_interface.hpp"
 #include <stdexcept>
 
-#ifdef _WIN32
-#    define VK_USE_PLATFORM_WIN32_KHR
-#endif
-#include <vulkan/vulkan.h>
+#include "volk.h"
 
 #ifndef NDEBUG
 #    include <cassert>

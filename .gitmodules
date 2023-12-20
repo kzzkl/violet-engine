@@ -19,3 +19,6 @@
 [submodule "thirdparty/yoga"]
 	path = thirdparty/yoga
 	url = https://github.com/facebook/yoga.git
+[submodule "thirdparty/volk"]
+	path = thirdparty/volk
+	url = https://github.com/zeux/volk.git

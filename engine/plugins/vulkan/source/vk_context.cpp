@@ -3,6 +3,10 @@
 #include <iostream>
 #include <set>
 
+#ifdef _WIN32
+#    include <Windows.h>
+#endif
+
 namespace violet::vk
 {
 namespace
@@ -79,6 +83,8 @@ vk_context::~vk_context()
 
 bool vk_context::initialize(const rhi_desc& desc)
 {
+    vk_check(volkInitialize());
+
     m_frame_resource_count = desc.frame_resource_count;
 
     std::vector<const char*> instance_desired_layers;
@@ -153,8 +159,7 @@ bool vk_context::initialize_instance(
     std::uint32_t available_layer_count = 0;
     vk_check(vkEnumerateInstanceLayerProperties(&available_layer_count, nullptr));
     std::vector<VkLayerProperties> available_layers(available_layer_count);
-    vk_check(
-        vkEnumerateInstanceLayerProperties(&available_layer_count, available_layers.data()));
+    vk_check(vkEnumerateInstanceLayerProperties(&available_layer_count, available_layers.data()));
 
     for (const char* layer : desired_layers)
     {
@@ -174,8 +179,7 @@ bool vk_context::initialize_instance(
     }
 
     std::uint32_t available_extension_count = 0;
-    vk_check(
-        vkEnumerateInstanceExtensionProperties(nullptr, &available_extension_count, nullptr));
+    vk_check(vkEnumerateInstanceExtensionProperties(nullptr, &available_extension_count, nullptr));
     std::vector<VkExtensionProperties> available_extensions(available_extension_count);
     vk_check(vkEnumerateInstanceExtensionProperties(
         nullptr,
@@ -209,8 +213,7 @@ bool vk_context::initialize_instance(
     debug_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    debug_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                             VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+    debug_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                              VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
     debug_info.pfnUserCallback = debug_callback;
@@ -223,12 +226,13 @@ bool vk_context::initialize_instance(
     if (m_instance == VK_NULL_HANDLE)
         return false;
 
+    volkLoadInstance(m_instance);
+
 #ifndef NDEBUG
     auto vkCreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
         vkGetInstanceProcAddr(m_instance, "vkCreateDebugUtilsMessengerEXT"));
 
-    vk_check(
-        vkCreateDebugUtilsMessengerEXT(m_instance, &debug_info, nullptr, &m_debug_messenger));
+    vk_check(vkCreateDebugUtilsMessengerEXT(m_instance, &debug_info, nullptr, &m_debug_messenger));
 #endif
 
     return true;
@@ -239,8 +243,7 @@ bool vk_context::initialize_physical_device(const std::vector<const char*>& desi
     std::uint32_t devices_count = 0;
     vk_check(vkEnumeratePhysicalDevices(m_instance, &devices_count, nullptr));
     std::vector<VkPhysicalDevice> available_devices(devices_count);
-    vk_check(
-        vkEnumeratePhysicalDevices(m_instance, &devices_count, available_devices.data()));
+    vk_check(vkEnumeratePhysicalDevices(m_instance, &devices_count, available_devices.data()));
 
     std::uint32_t physical_device_score = 0;
     for (VkPhysicalDevice device : available_devices)
@@ -345,6 +348,7 @@ void vk_context::initialize_logic_device(const std::vector<const char*>& enabled
     device_info.pEnabledFeatures = &enabled_features;
 
     vk_check(vkCreateDevice(m_physical_device, &device_info, nullptr, &m_device));
+    volkLoadDevice(m_device);
 
     m_graphics_queue = std::make_unique<vk_graphics_queue>(graphics_queue_family_index, this);
     m_present_queue = std::make_unique<vk_present_queue>(present_queue_family_index, this);
