@@ -40,8 +40,8 @@ pre_process_graph::pre_process_graph(renderer* renderer) : render_graph(renderer
     rhi_parameter_layout* parameter_layout = renderer->add_parameter_layout(
         "pbr pre-process",
         {
-            {RHI_PARAMETER_TYPE_TEXTURE,        1, RHI_PARAMETER_FLAG_COMPUTE},
-            {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}
+            {RHI_PARAMETER_TYPE_TEXTURE,        1, RHI_PARAMETER_STAGE_FLAG_COMPUTE},
+            {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}
     });
     m_parameter = renderer->create_parameter(parameter_layout);
 
@@ -116,8 +116,8 @@ pbr_render_graph::pbr_render_graph(renderer* renderer) : render_graph(renderer)
     renderer->add_parameter_layout(
         "pbr material",
         {
-            {RHI_PARAMETER_TYPE_UNIFORM_BUFFER, 32, RHI_PARAMETER_FLAG_FRAGMENT},
-            {RHI_PARAMETER_TYPE_TEXTURE,        1,  RHI_PARAMETER_FLAG_FRAGMENT}
+            {RHI_PARAMETER_TYPE_UNIFORM_BUFFER, 32, RHI_PARAMETER_STAGE_FLAG_FRAGMENT},
+            {RHI_PARAMETER_TYPE_TEXTURE,        1,  RHI_PARAMETER_STAGE_FLAG_FRAGMENT}
     });
 
     render_pass* main = add_render_pass("main");

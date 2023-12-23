@@ -238,19 +238,19 @@ enum rhi_parameter_type
     RHI_PARAMETER_TYPE_TEXTURE
 };
 
-enum rhi_parameter_flag
+enum rhi_parameter_stage_flag
 {
-    RHI_PARAMETER_FLAG_VERTEX = 1 << 0,
-    RHI_PARAMETER_FLAG_FRAGMENT = 1 << 1,
-    RHI_PARAMETER_FLAG_COMPUTE = 1 << 2
+    RHI_PARAMETER_STAGE_FLAG_VERTEX = 1 << 0,
+    RHI_PARAMETER_STAGE_FLAG_FRAGMENT = 1 << 1,
+    RHI_PARAMETER_STAGE_FLAG_COMPUTE = 1 << 2
 };
-using rhi_parameter_flags = std::uint32_t;
+using rhi_parameter_stage_flags = std::uint32_t;
 
 struct rhi_parameter_layout_pair
 {
     rhi_parameter_type type;
     std::size_t size = 0;
-    rhi_parameter_flags flags;
+    rhi_parameter_stage_flags stage;
 };
 
 struct rhi_parameter_layout_desc
@@ -462,8 +462,8 @@ struct rhi_texture_barrier
 
 struct rhi_pipeline_barrier
 {
-    rhi_pipeline_stage_flags src_state;
-    rhi_pipeline_stage_flags dst_state;
+    rhi_pipeline_stage_flags src_stage;
+    rhi_pipeline_stage_flags dst_stage;
 };
 
 class rhi_render_command
@@ -497,8 +497,8 @@ public:
     virtual void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) = 0;
 
     virtual void set_pipeline_barrier(
-        rhi_pipeline_stage_flags src_state,
-        rhi_pipeline_stage_flags dst_state,
+        rhi_pipeline_stage_flags src_stage,
+        rhi_pipeline_stage_flags dst_stage,
         const rhi_buffer_barrier* const buffer_barriers,
         std::size_t buffer_barrier_count,
         const rhi_texture_barrier* const texture_barriers,
@@ -567,7 +567,8 @@ struct rhi_buffer_desc
 
 enum rhi_texture_flag
 {
-    RHI_TEXTURE_FLAG_STORAGE = 1 << 0
+    RHI_TEXTURE_FLAG_STORAGE = 1 << 0,
+    RHI_TEXTURE_FLAG_MIPMAP = 1 << 1
 };
 using rhi_texture_flags = std::uint32_t;
 
@@ -644,9 +645,9 @@ public:
         const std::uint8_t* data,
         std::uint32_t width,
         std::uint32_t height,
-        rhi_resource_format format = RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM,
-        rhi_texture_flags flags = 0) = 0;
-    virtual rhi_resource* create_texture(const char* file) = 0;
+        rhi_resource_format format,
+        rhi_texture_flags flags) = 0;
+    virtual rhi_resource* create_texture(const char* file, rhi_texture_flags flags) = 0;
 
     virtual rhi_resource* create_texture_cube(
         const char* right,
@@ -655,13 +656,13 @@ public:
         const char* bottom,
         const char* front,
         const char* back,
-        rhi_texture_flags flags = 0) = 0;
+        rhi_texture_flags flags) = 0;
     virtual rhi_resource* create_texture_cube(
         const std::uint32_t* data,
         std::uint32_t width,
         std::uint32_t height,
-        rhi_resource_format format = RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM,
-        rhi_texture_flags flags = 0) = 0;
+        rhi_resource_format format,
+        rhi_texture_flags flags) = 0;
 
     virtual rhi_resource* create_render_target(const rhi_render_target_desc& desc) = 0;
     virtual rhi_resource* create_depth_stencil_buffer(

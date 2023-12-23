@@ -23,10 +23,10 @@ public:
             {
                 {RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
                  sizeof(mmd_material),
-                 RHI_PARAMETER_FLAG_FRAGMENT                                      }, // Uniform
-                {RHI_PARAMETER_TYPE_TEXTURE,        1, RHI_PARAMETER_FLAG_FRAGMENT}, // Tex
-                {RHI_PARAMETER_TYPE_TEXTURE,        1, RHI_PARAMETER_FLAG_FRAGMENT}, // Toon
-                {RHI_PARAMETER_TYPE_TEXTURE,        1, RHI_PARAMETER_FLAG_FRAGMENT}  // Spa
+                 RHI_PARAMETER_STAGE_FLAG_FRAGMENT                                      }, // Uniform
+                {RHI_PARAMETER_TYPE_TEXTURE,        1, RHI_PARAMETER_STAGE_FLAG_FRAGMENT}, // Tex
+                {RHI_PARAMETER_TYPE_TEXTURE,        1, RHI_PARAMETER_STAGE_FLAG_FRAGMENT}, // Toon
+                {RHI_PARAMETER_TYPE_TEXTURE,        1, RHI_PARAMETER_STAGE_FLAG_FRAGMENT}  // Spa
         });
 
         set_parameter_layouts({
@@ -75,24 +75,24 @@ public:
             {
                 {RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
                  sizeof(mmd_skinning_bone) * 1024,
-                 RHI_PARAMETER_FLAG_COMPUTE}
+                 RHI_PARAMETER_STAGE_FLAG_COMPUTE}
         });
 
         rhi_parameter_layout* skinning_layout = context.renderer->add_parameter_layout(
             "mmd skinning",
             {
                 {RHI_PARAMETER_TYPE_STORAGE_BUFFER,
-                 1,                                    RHI_PARAMETER_FLAG_COMPUTE}, // position input
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // normal input
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // uv input
+                 1,                                    RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // position input
+                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // normal input
+                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // uv input
                 {RHI_PARAMETER_TYPE_STORAGE_BUFFER,
-                 1,                                    RHI_PARAMETER_FLAG_COMPUTE}, // output position
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // output normal
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // output uv
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // bedf bone
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // sedf bone
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // skin
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // vertex morph
+                 1,                                    RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // output position
+                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // output normal
+                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // output uv
+                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // bedf bone
+                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // sedf bone
+                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // skin
+                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // vertex morph
         });
 
         set_parameter_layouts({skeleton_layout, skinning_layout});

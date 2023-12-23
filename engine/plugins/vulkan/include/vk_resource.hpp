@@ -24,13 +24,6 @@ public:
     vk_resource& operator=(const vk_resource&) = delete;
 
 protected:
-    void create_device_local_buffer(
-        const void* data,
-        VkDeviceSize size,
-        VkBufferUsageFlags usage,
-        VkBuffer& buffer,
-        VkDeviceMemory& memory);
-
     void create_host_visible_buffer(
         const void* data,
         VkDeviceSize size,
@@ -46,7 +39,12 @@ protected:
         VkDeviceMemory& memory);
     void destroy_buffer(VkBuffer buffer, VkDeviceMemory memory);
 
-    void copy_buffer(VkBuffer source, VkBuffer target, VkDeviceSize size);
+    void create_image(
+        const VkImageCreateInfo& image_info,
+        VkMemoryPropertyFlags properties,
+        VkImage& image,
+        VkDeviceMemory& memory);
+    void destroy_image(VkImage image, VkDeviceMemory memory);
 
     vk_context* get_context() const noexcept { return m_context; }
 
@@ -94,37 +92,6 @@ protected:
 
     void set_hash(std::size_t hash) noexcept { m_hash = hash; }
 
-    void create_image(
-        const VkImageCreateInfo& image_info,
-        VkMemoryPropertyFlags properties,
-        VkImage& image,
-        VkDeviceMemory& memory);
-    void destroy_image(VkImage image, VkDeviceMemory memory);
-
-    void create_image_view(
-        VkImage image,
-        VkFormat format,
-        VkImageViewType view_type,
-        VkImageAspectFlags aspect_mask,
-        VkImageView& image_view);
-    void destroy_image_view(VkImageView image_view);
-
-    void copy_buffer_to_image(
-        VkBuffer buffer,
-        VkImage image,
-        std::uint32_t width,
-        std::uint32_t height);
-    void copy_buffer_to_image(
-        VkBuffer buffer,
-        VkImage image,
-        const std::vector<VkBufferImageCopy>& regions);
-
-    void transition_image_layout(
-        VkImage image,
-        VkImageLayout old_layout,
-        VkImageLayout new_layout,
-        std::uint32_t layer_count = 1);
-
 private:
     VkImage m_image;
     VkDeviceMemory m_memory;
@@ -149,7 +116,7 @@ public:
 class vk_texture : public vk_image
 {
 public:
-    vk_texture(const char* file, vk_context* context);
+    vk_texture(const char* file, rhi_texture_flags flags, vk_context* context);
     virtual ~vk_texture();
 };
 

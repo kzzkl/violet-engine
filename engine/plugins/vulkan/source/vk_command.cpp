@@ -181,8 +181,8 @@ void vk_command::dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z)
 }
 
 void vk_command::set_pipeline_barrier(
-    rhi_pipeline_stage_flags src_state,
-    rhi_pipeline_stage_flags dst_state,
+    rhi_pipeline_stage_flags src_stage,
+    rhi_pipeline_stage_flags dst_stage,
     const rhi_buffer_barrier* const buffer_barriers,
     std::size_t buffer_barrier_count,
     const rhi_texture_barrier* const texture_barriers,
@@ -214,8 +214,8 @@ void vk_command::set_pipeline_barrier(
 
     vkCmdPipelineBarrier(
         m_command_buffer,
-        vk_util::map_pipeline_stage_flags(src_state),
-        vk_util::map_pipeline_stage_flags(dst_state),
+        vk_util::map_pipeline_stage_flags(src_stage),
+        vk_util::map_pipeline_stage_flags(dst_stage),
         0,
         0,
         nullptr,

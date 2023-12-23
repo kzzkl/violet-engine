@@ -81,15 +81,17 @@ public:
         const std::uint8_t* data,
         std::uint32_t width,
         std::uint32_t height,
-        rhi_resource_format format = RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM);
-    rhi_ptr<rhi_resource> create_texture(const char* file);
+        rhi_resource_format format = RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM,
+        rhi_texture_flags flags = 0);
+    rhi_ptr<rhi_resource> create_texture(const char* file, rhi_texture_flags flags = 0);
     rhi_ptr<rhi_resource> create_texture_cube(
         std::string_view right,
         std::string_view left,
         std::string_view top,
         std::string_view bottom,
         std::string_view front,
-        std::string_view back);
+        std::string_view back,
+        rhi_texture_flags flags = 0);
 
     rhi_ptr<rhi_resource> create_render_target(const rhi_render_target_desc& desc);
     rhi_ptr<rhi_resource> create_depth_stencil_buffer(const rhi_depth_stencil_buffer_desc& desc);

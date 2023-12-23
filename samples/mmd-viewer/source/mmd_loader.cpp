@@ -123,7 +123,8 @@ void mmd_loader::load_mesh(mmd_model* model, const pmx& pmx, world& world)
     {
         try
         {
-            model->textures.push_back(m_renderer->create_texture(texture.c_str()));
+            model->textures.push_back(
+                m_renderer->create_texture(texture.c_str(), RHI_TEXTURE_FLAG_MIPMAP));
         }
         catch (...)
         {

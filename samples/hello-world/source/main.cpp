@@ -30,7 +30,7 @@ public:
         rhi_parameter_layout* material_layout = context->add_parameter_layout(
             "color pipeline",
             {
-                {RHI_PARAMETER_TYPE_TEXTURE, 1, RHI_PARAMETER_FLAG_FRAGMENT}
+                {RHI_PARAMETER_TYPE_TEXTURE, 1, RHI_PARAMETER_STAGE_FLAG_FRAGMENT}
         });
 
         set_parameter_layouts({

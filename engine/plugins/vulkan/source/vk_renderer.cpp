@@ -212,9 +212,9 @@ rhi_resource* vk_renderer::create_texture(
     return nullptr;
 }
 
-rhi_resource* vk_renderer::create_texture(const char* file)
+rhi_resource* vk_renderer::create_texture(const char* file, rhi_texture_flags flags)
 {
-    return new vk_texture(file, m_context.get());
+    return new vk_texture(file, flags, m_context.get());
 }
 
 rhi_resource* vk_renderer::create_texture_cube(

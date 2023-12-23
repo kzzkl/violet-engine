@@ -94,11 +94,11 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_layout_desc& desc, 
     {
         VkDescriptorSetLayoutBinding binding = {};
         binding.binding = static_cast<std::uint32_t>(i);
-        if (desc.parameters[i].flags & RHI_PARAMETER_FLAG_VERTEX)
+        if (desc.parameters[i].stage & RHI_PARAMETER_STAGE_FLAG_VERTEX)
             binding.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
-        if (desc.parameters[i].flags & RHI_PARAMETER_FLAG_FRAGMENT)
+        if (desc.parameters[i].stage & RHI_PARAMETER_STAGE_FLAG_FRAGMENT)
             binding.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
-        if (desc.parameters[i].flags & RHI_PARAMETER_FLAG_COMPUTE)
+        if (desc.parameters[i].stage & RHI_PARAMETER_STAGE_FLAG_COMPUTE)
             binding.stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
 
         switch (desc.parameters[i].type)

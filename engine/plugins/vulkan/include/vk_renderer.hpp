@@ -95,7 +95,7 @@ public:
         std::uint32_t height,
         rhi_resource_format format,
         rhi_texture_flags flags) override;
-    virtual rhi_resource* create_texture(const char* file) override;
+    virtual rhi_resource* create_texture(const char* file, rhi_texture_flags flags) override;
 
     virtual rhi_resource* create_texture_cube(
         const char* right,
