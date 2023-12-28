@@ -98,7 +98,7 @@ float4 ps_main(vs_out input) : SV_TARGET
         float G = geometry_schlick_ggx(Lo_cos, Li_cos, material.roughness);
 
         float3 kd = lerp(float3(1, 1, 1) - F, float3(0, 0, 0), material.metalness);
-        float3 diffuse_brdf = kd * material.albedo;
+        float3 diffuse_brdf = kd * material.albedo / PI;
         float3 specular_brdf = (D * F * G) / max(Epsilon, 4.0 * Li_cos * Lo_cos);
 
         direct_light += (diffuse_brdf + specular_brdf) * radiance * Li_cos;

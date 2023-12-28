@@ -30,14 +30,10 @@ vk_swapchain_image::vk_swapchain_image(
     VkImageView image_view;
     vkCreateImageView(get_context()->get_device(), &image_view_info, nullptr, &image_view);
 
-    std::hash<void*> hasher;
-    std::size_t hash = vk_util::hash_combine(hasher(image), hasher(image_view));
-    hash = vk_util::hash_combine(hash, get_context()->get_frame_count());
-
     set_image_view(image_view);
     set_format(format);
     set_extent(extent);
-    set_hash(hash);
+    set_hash(vk_util::hash(image, image_view, get_context()->get_frame_count()));
     set_clear_value(VkClearColorValue{0.0f, 0.0f, 0.0f, 1.0f});
 }
 

@@ -70,9 +70,9 @@ vk_context::~vk_context()
 
     vkDestroyDescriptorPool(m_device, m_descriptor_pool, nullptr);
 
+    vmaDestroyAllocator(m_vma_allocator);
+
 #ifndef NDEBUG
-    auto vkDestroyDebugUtilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)
-        vkGetInstanceProcAddr(m_instance, "vkDestroyDebugUtilsMessengerEXT");
     vkDestroyDebugUtilsMessengerEXT(m_instance, m_debug_messenger, nullptr);
 #endif
 
@@ -114,14 +114,13 @@ bool vk_context::initialize(const rhi_desc& desc)
     surface_info.hwnd = static_cast<HWND>(desc.window_handle);
     surface_info.hinstance = GetModuleHandle(nullptr);
 
-    auto vkCreateWin32SurfaceKHR = reinterpret_cast<PFN_vkCreateWin32SurfaceKHR>(
-        vkGetInstanceProcAddr(m_instance, "vkCreateWin32SurfaceKHR"));
     vk_check(vkCreateWin32SurfaceKHR(m_instance, &surface_info, nullptr, &m_surface));
 #else
     throw vk_exception("Unsupported platform");
 #endif
 
     initialize_logic_device(device_desired_extensions);
+    initialize_vma();
     initialize_descriptor_pool();
 
     return true;
@@ -229,9 +228,6 @@ bool vk_context::initialize_instance(
     volkLoadInstance(m_instance);
 
 #ifndef NDEBUG
-    auto vkCreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
-        vkGetInstanceProcAddr(m_instance, "vkCreateDebugUtilsMessengerEXT"));
-
     vk_check(vkCreateDebugUtilsMessengerEXT(m_instance, &debug_info, nullptr, &m_debug_messenger));
 #endif
 
@@ -352,6 +348,39 @@ void vk_context::initialize_logic_device(const std::vector<const char*>& enabled
 
     m_graphics_queue = std::make_unique<vk_graphics_queue>(graphics_queue_family_index, this);
     m_present_queue = std::make_unique<vk_present_queue>(present_queue_family_index, this);
+}
+
+void vk_context::initialize_vma()
+{
+    VmaVulkanFunctions vulkan_functions = {};
+    vulkan_functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+    vulkan_functions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+    vulkan_functions.vkGetPhysicalDeviceProperties = vkGetPhysicalDeviceProperties;
+    vulkan_functions.vkGetPhysicalDeviceMemoryProperties = vkGetPhysicalDeviceMemoryProperties;
+    vulkan_functions.vkAllocateMemory = vkAllocateMemory;
+    vulkan_functions.vkFreeMemory = vkFreeMemory;
+    vulkan_functions.vkMapMemory = vkMapMemory;
+    vulkan_functions.vkUnmapMemory = vkUnmapMemory;
+    vulkan_functions.vkFlushMappedMemoryRanges = vkFlushMappedMemoryRanges;
+    vulkan_functions.vkInvalidateMappedMemoryRanges = vkInvalidateMappedMemoryRanges;
+    vulkan_functions.vkBindBufferMemory = vkBindBufferMemory;
+    vulkan_functions.vkBindImageMemory = vkBindImageMemory;
+    vulkan_functions.vkGetBufferMemoryRequirements = vkGetBufferMemoryRequirements;
+    vulkan_functions.vkGetImageMemoryRequirements = vkGetImageMemoryRequirements;
+    vulkan_functions.vkCreateBuffer = vkCreateBuffer;
+    vulkan_functions.vkDestroyBuffer = vkDestroyBuffer;
+    vulkan_functions.vkCreateImage = vkCreateImage;
+    vulkan_functions.vkDestroyImage = vkDestroyImage;
+    vulkan_functions.vkCmdCopyBuffer = vkCmdCopyBuffer;
+
+    VmaAllocatorCreateInfo allocator_info = {};
+    allocator_info.vulkanApiVersion = VK_API_VERSION_1_0;
+    allocator_info.physicalDevice = m_physical_device;
+    allocator_info.device = m_device;
+    allocator_info.instance = m_instance;
+    allocator_info.pVulkanFunctions = &vulkan_functions;
+
+    vk_check(vmaCreateAllocator(&allocator_info, &m_vma_allocator));
 }
 
 void vk_context::initialize_descriptor_pool()

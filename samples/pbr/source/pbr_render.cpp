@@ -4,17 +4,20 @@
 namespace violet::sample
 {
 // Compute diffuse irradiance cubemap
-class irradiance_map_pipeline : public compute_pipeline
+class irradiance_map_pipeline : public render_pipeline
 {
 public:
     irradiance_map_pipeline() {}
 
     virtual bool compile(compile_context& context) override
     {
-        set_shader("pbr/shaders/irradiance_map.comp.spv");
-        set_parameter_layouts({context.renderer->get_parameter_layout("pbr pre-process")});
+        set_shader("pbr/shaders/irradiance_map.comp.spv", "");
+        set_parameter_layouts({
+            {context.renderer->get_parameter_layout("pbr pre-process"),
+             RENDER_PIPELINE_PARAMETER_TYPE_NORMAL}
+        });
 
-        return compute_pipeline::compile(context);
+        return render_pipeline::compile(context);
     }
 
     void set_parameter(
@@ -25,13 +28,8 @@ public:
     }
 
 private:
-    virtual void compute(rhi_render_command* command, const compute_data& data) override
+    virtual void render(std::vector<render_mesh>& meshes, const execute_context& context) override
     {
-        for (auto& dispatch : data)
-        {
-            command->set_compute_parameter(0, dispatch.parameters[0]);
-            command->dispatch(dispatch.x, dispatch.y, dispatch.z);
-        }
     }
 };
 
@@ -40,13 +38,21 @@ pre_process_graph::pre_process_graph(renderer* renderer) : render_graph(renderer
     rhi_parameter_layout* parameter_layout = renderer->add_parameter_layout(
         "pbr pre-process",
         {
-            {RHI_PARAMETER_TYPE_TEXTURE,        1, RHI_PARAMETER_STAGE_FLAG_COMPUTE},
-            {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}
+            {RHI_PARAMETER_TYPE_TEXTURE,        1, RHI_PARAMETER_STAGE_FLAG_FRAGMENT},
+            {RHI_PARAMETER_TYPE_UNIFORM_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_VERTEX  }
     });
     m_parameter = renderer->create_parameter(parameter_layout);
 
-    compute_pass* pre_process = add_compute_pass("pre process");
-    pre_process->add_pipeline<irradiance_map_pipeline>("irradiance process");
+    render_pass* pre_process = add_render_pass("pre process");
+    render_attachment* output_attachment = pre_process->add_attachment("output");
+
+    render_subpass* irradiance_map_pass = pre_process->add_subpass("irradiance map");
+    irradiance_map_pass->add_reference(
+        output_attachment,
+        RHI_ATTACHMENT_REFERENCE_TYPE_COLOR,
+        RHI_RESOURCE_STATE_RENDER_TARGET);
+
+    irradiance_map_pass->add_pipeline<irradiance_map_pipeline>("irradiance process");
 
     compile();
 }

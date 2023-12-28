@@ -4,6 +4,7 @@
 #include "vk_render_pass.hpp"
 #include "vk_resource.hpp"
 #include "vk_util.hpp"
+#include <cassert>
 
 namespace violet::vk
 {
@@ -21,7 +22,7 @@ vk_command::~vk_command()
 
 void vk_command::begin(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer)
 {
-    VIOLET_VK_ASSERT(m_current_render_pass == nullptr);
+    assert(m_current_render_pass == nullptr);
 
     m_current_render_pass = static_cast<vk_render_pass*>(render_pass)->get_render_pass();
 
@@ -44,7 +45,7 @@ void vk_command::begin(rhi_render_pass* render_pass, rhi_framebuffer* framebuffe
 void vk_command::end()
 {
     vkCmdEndRenderPass(m_command_buffer);
-    m_current_render_pass = nullptr;
+    m_current_render_pass = VK_NULL_HANDLE;
 }
 
 void vk_command::next()
@@ -164,7 +165,12 @@ void vk_command::set_index_buffer(rhi_resource* index_buffer)
 
 void vk_command::draw(std::size_t vertex_start, std::size_t vertex_count)
 {
-    vkCmdDraw(m_command_buffer, vertex_count, 1, vertex_start, 0);
+    vkCmdDraw(
+        m_command_buffer,
+        static_cast<std::uint32_t>(vertex_count),
+        1,
+        static_cast<std::uint32_t>(vertex_start),
+        0);
 }
 
 void vk_command::draw_indexed(
@@ -172,7 +178,13 @@ void vk_command::draw_indexed(
     std::size_t index_count,
     std::size_t vertex_base)
 {
-    vkCmdDrawIndexed(m_command_buffer, index_count, 1, index_start, vertex_base, 0);
+    vkCmdDrawIndexed(
+        m_command_buffer,
+        static_cast<std::uint32_t>(index_count),
+        1,
+        static_cast<std::uint32_t>(index_start),
+        static_cast<std::uint32_t>(vertex_base),
+        0);
 }
 
 void vk_command::dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z)
@@ -223,6 +235,38 @@ void vk_command::set_pipeline_barrier(
         vk_buffer_barriers.data(),
         vk_image_barriers.size(),
         vk_image_barriers.data());
+}
+
+void vk_command::copy_image(
+    rhi_resource* src,
+    const rhi_resource_region& src_region,
+    rhi_resource* dst,
+    const rhi_resource_region& dst_region)
+{
+    VkImageCopy image_copy = {};
+    image_copy.extent = {src->get_extent().width, src->get_extent().height, 1};
+
+    image_copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_copy.srcSubresource.mipLevel = src_region.mip_level;
+    image_copy.srcSubresource.baseArrayLayer = src_region.layer_start;
+    image_copy.srcSubresource.layerCount = src_region.layer_count;
+
+    image_copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_copy.dstSubresource.mipLevel = dst_region.mip_level;
+    image_copy.dstSubresource.baseArrayLayer = dst_region.layer_start;
+    image_copy.dstSubresource.layerCount = dst_region.layer_count;
+
+    vk_image* src_image = static_cast<vk_image*>(src);
+    vk_image* dst_image = static_cast<vk_image*>(dst);
+
+    vkCmdCopyImage(
+        m_command_buffer,
+        src_image->get_image(),
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        src_image->get_image(),
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &image_copy);
 }
 
 void vk_command::clear_render_target(rhi_resource* render_target, const float4& color)

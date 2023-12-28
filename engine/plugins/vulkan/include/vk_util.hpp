@@ -20,9 +20,25 @@ public:
     static VkPipelineStageFlags map_pipeline_stage_flags(rhi_pipeline_stage_flags flags);
     static VkAccessFlags map_access_flags(rhi_access_flags flags);
 
-    static inline std::size_t hash_combine(std::size_t seed, std::size_t value)
+    template <typename... Args>
+    static std::size_t hash(Args&&... args)
     {
-        return seed ^ (value + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+        std::size_t result = 0;
+        (hash_combine(result, hash_impl(args)), ...);
+        return result;
+    }
+
+private:
+    template <typename T>
+    static inline std::size_t hash_impl(const T& value)
+    {
+        std::hash<T> hasher;
+        return hasher(value);
+    }
+
+    static inline void hash_combine(std::size_t& seed, std::size_t value)
+    {
+        seed = seed ^ (value + 0x9e3779b9 + (seed << 6) + (seed >> 2));
     }
 };
 } // namespace violet::vk

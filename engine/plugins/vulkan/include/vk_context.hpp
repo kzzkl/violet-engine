@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vk_common.hpp"
+#include "vk_mem_alloc.h"
 #include <memory>
 #include <vector>
 
@@ -40,6 +41,8 @@ public:
     std::size_t get_frame_resource_count() const noexcept { return m_frame_resource_count; }
     std::size_t get_frame_resource_index() const noexcept { return m_frame_resource_index; }
 
+    VmaAllocator get_vma_allocator() const noexcept { return m_vma_allocator; }
+
     vk_context& operator=(const vk_context&) = delete;
 
 private:
@@ -48,6 +51,7 @@ private:
         const std::vector<const char*>& desired_extensions);
     bool initialize_physical_device(const std::vector<const char*>& desired_extensions);
     void initialize_logic_device(const std::vector<const char*>& enabled_extensions);
+    void initialize_vma();
     void initialize_descriptor_pool();
 
     VkInstance m_instance;
@@ -61,6 +65,8 @@ private:
     std::unique_ptr<vk_present_queue> m_present_queue;
 
     VkDescriptorPool m_descriptor_pool;
+
+    VmaAllocator m_vma_allocator;
 
     std::size_t m_frame_count;
     std::size_t m_frame_resource_count;

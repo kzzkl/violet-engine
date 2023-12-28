@@ -114,6 +114,9 @@ struct rhi_sampler_desc
     rhi_sampler_address_mode address_mode_u;
     rhi_sampler_address_mode address_mode_v;
     rhi_sampler_address_mode address_mode_w;
+
+    float min_mip_level;
+    float max_mip_level;
 };
 
 class rhi_sampler
@@ -156,11 +159,6 @@ enum rhi_attachment_reference_type
     RHI_ATTACHMENT_REFERENCE_TYPE_COLOR,
     RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL,
     RHI_ATTACHMENT_REFERENCE_TYPE_RESOLVE
-};
-
-enum rhi_attachment_layout
-{
-    RHI_ATTACHMENT_LAYOUT_OPTIMAL
 };
 
 struct rhi_attachment_reference
@@ -466,6 +464,14 @@ struct rhi_pipeline_barrier
     rhi_pipeline_stage_flags dst_stage;
 };
 
+struct rhi_resource_region
+{
+    std::uint32_t mip_level;
+
+    std::uint32_t layer_start;
+    std::uint32_t layer_count;
+};
+
 class rhi_render_command
 {
 public:
@@ -503,6 +509,12 @@ public:
         std::size_t buffer_barrier_count,
         const rhi_texture_barrier* const texture_barriers,
         std::size_t texture_barrier_count) = 0;
+
+    virtual void copy_image(
+        rhi_resource* src,
+        const rhi_resource_region& src_region,
+        rhi_resource* dst,
+        const rhi_resource_region& dst_region) = 0;
 
     virtual void clear_render_target(rhi_resource* render_target, const float4& color) = 0;
     virtual void clear_depth_stencil(

@@ -9,7 +9,7 @@ skybox_pipeline::skybox_pipeline()
 bool skybox_pipeline::compile(compile_context& context)
 {
     set_shader("engine/shaders/skybox.vert.spv", "engine/shaders/skybox.frag.spv");
-    set_cull_mode(RHI_CULL_MODE_NONE);
+    set_cull_mode(RHI_CULL_MODE_BACK);
 
     set_parameter_layouts({
         {context.renderer->get_parameter_layout("violet camera"),

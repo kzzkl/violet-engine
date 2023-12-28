@@ -5,13 +5,6 @@
 
 #include "volk.h"
 
-#ifndef NDEBUG
-#    include <cassert>
-#    define VIOLET_VK_ASSERT(condition, ...) assert(condition)
-#else
-#    define VIOLET_VK_ASSERT(condition, ...)
-#endif
-
 namespace violet::vk
 {
 class vk_exception : public std::runtime_error
@@ -26,10 +19,10 @@ public:
     VkResult error() const { return m_result; }
 
 private:
-    std::string result_to_string(VkResult result)
+    static std::string result_to_string(VkResult result)
     {
         char s_str[64] = {};
-        sprintf_s(s_str, "RESULT of 0x%08X", m_result);
+        sprintf_s(s_str, "RESULT of 0x%08X", result);
         return std::string(s_str);
     }
 

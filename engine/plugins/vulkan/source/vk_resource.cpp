@@ -36,99 +36,80 @@ vk_resource::vk_resource(vk_context* context) : m_context(context)
 void vk_resource::create_host_visible_buffer(
     const void* data,
     VkDeviceSize size,
-    VkBufferUsageFlags usage,
+    VkBufferUsageFlags buffer_usage,
     VkBuffer& buffer,
-    VkDeviceMemory& memory)
+    VmaAllocation& allocation)
 {
-    create_buffer(
-        size,
-        usage,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        buffer,
-        memory);
+    create_buffer(size, buffer_usage, VMA_MEMORY_USAGE_CPU_TO_GPU, buffer, allocation);
 
     if (data != nullptr)
     {
         void* mapping_pointer = nullptr;
-        vkMapMemory(m_context->get_device(), memory, 0, size, 0, &mapping_pointer);
+        vmaMapMemory(m_context->get_vma_allocator(), allocation, &mapping_pointer);
         std::memcpy(mapping_pointer, data, size);
-        vkUnmapMemory(m_context->get_device(), memory);
+        vmaUnmapMemory(m_context->get_vma_allocator(), allocation);
     }
 }
 
 void vk_resource::create_buffer(
     VkDeviceSize size,
-    VkBufferUsageFlags usage,
-    VkMemoryPropertyFlags properties,
+    VkBufferUsageFlags buffer_usage,
+    VmaMemoryUsage memory_usage,
     VkBuffer& buffer,
-    VkDeviceMemory& memory)
+    VmaAllocation& allocation)
 {
     VkDevice device = m_context->get_device();
 
     VkBufferCreateInfo buffer_info = {};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffer_info.size = size;
-    buffer_info.usage = usage;
+    buffer_info.usage = buffer_usage;
     buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    vk_check(vkCreateBuffer(device, &buffer_info, nullptr, &buffer));
+    VmaAllocationCreateInfo allocation_info = {};
+    allocation_info.usage = memory_usage;
 
-    VkMemoryRequirements requirements;
-    vkGetBufferMemoryRequirements(device, buffer, &requirements);
-
-    VkMemoryAllocateInfo allocate_info = {};
-    allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocate_info.allocationSize = requirements.size;
-    allocate_info.memoryTypeIndex =
-        find_memory_type(requirements.memoryTypeBits, properties, m_context->get_physical_device());
-
-    vk_check(vkAllocateMemory(device, &allocate_info, nullptr, &memory));
-    vk_check(vkBindBufferMemory(device, buffer, memory, 0));
+    vk_check(vmaCreateBuffer(
+        m_context->get_vma_allocator(),
+        &buffer_info,
+        &allocation_info,
+        &buffer,
+        &allocation,
+        nullptr));
 }
 
-void vk_resource::destroy_buffer(VkBuffer buffer, VkDeviceMemory memory)
+void vk_resource::destroy_buffer(VkBuffer buffer, VmaAllocation allocation)
 {
-    VkDevice device = m_context->get_device();
-    vkDestroyBuffer(device, buffer, nullptr);
-    vkFreeMemory(device, memory, nullptr);
+    vmaDestroyBuffer(m_context->get_vma_allocator(), buffer, allocation);
 }
 
 void vk_resource::create_image(
     const VkImageCreateInfo& image_info,
-    VkMemoryPropertyFlags properties,
+    VmaMemoryUsage memory_usage,
     VkImage& image,
-    VkDeviceMemory& memory)
+    VmaAllocation& allocation)
 {
-    auto device = get_context()->get_device();
+    VmaAllocationCreateInfo allocation_info = {};
+    allocation_info.usage = memory_usage;
 
-    vk_check(vkCreateImage(device, &image_info, nullptr, &image));
-
-    VkMemoryRequirements requirements;
-    vkGetImageMemoryRequirements(device, image, &requirements);
-
-    VkMemoryAllocateInfo allocate_info = {};
-    allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocate_info.allocationSize = requirements.size;
-    allocate_info.memoryTypeIndex = find_memory_type(
-        requirements.memoryTypeBits,
-        properties,
-        get_context()->get_physical_device());
-
-    vk_check(vkAllocateMemory(device, &allocate_info, nullptr, &memory));
-    vk_check(vkBindImageMemory(device, image, memory, 0));
+    vk_check(vmaCreateImage(
+        m_context->get_vma_allocator(),
+        &image_info,
+        &allocation_info,
+        &image,
+        &allocation,
+        nullptr));
 }
 
-void vk_resource::destroy_image(VkImage image, VkDeviceMemory memory)
+void vk_resource::destroy_image(VkImage image, VmaAllocation allocation)
 {
-    VkDevice device = get_context()->get_device();
-    vkDestroyImage(device, image, nullptr);
-    vkFreeMemory(device, memory, nullptr);
+    vmaDestroyImage(m_context->get_vma_allocator(), image, allocation);
 }
 
 vk_image::vk_image(vk_context* context)
     : vk_resource(context),
       m_image(VK_NULL_HANDLE),
-      m_memory(VK_NULL_HANDLE),
+      m_allocation(VK_NULL_HANDLE),
       m_image_view(VK_NULL_HANDLE),
       m_format(VK_FORMAT_UNDEFINED),
       m_extent{0, 0}
@@ -138,13 +119,21 @@ vk_image::vk_image(vk_context* context)
 
 vk_image::~vk_image()
 {
-    destroy_image(m_image, m_memory);
+    destroy_image(m_image, m_allocation);
     vkDestroyImageView(get_context()->get_device(), m_image_view, nullptr);
 }
 
 rhi_resource_format vk_image::get_format() const noexcept
 {
     return vk_util::map_format(m_format);
+}
+
+void vk_image::set_image(VkImage image, VmaAllocation allocation) noexcept
+{
+    m_image = image;
+    m_allocation = allocation;
+
+    m_hash = vk_util::hash(m_image);
 }
 
 vk_depth_stencil::vk_depth_stencil(const rhi_depth_stencil_buffer_desc& desc, vk_context* context)
@@ -171,8 +160,8 @@ vk_depth_stencil::vk_depth_stencil(const rhi_depth_stencil_buffer_desc& desc, vk
     image_info.flags = 0;
 
     VkImage image;
-    VkDeviceMemory memory;
-    create_image(image_info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, memory);
+    VmaAllocation allocation;
+    create_image(image_info, VMA_MEMORY_USAGE_GPU_ONLY, image, allocation);
 
     VkImageViewCreateInfo image_view_info = {};
     image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -193,15 +182,11 @@ vk_depth_stencil::vk_depth_stencil(const rhi_depth_stencil_buffer_desc& desc, vk
     VkImageView image_view;
     vkCreateImageView(get_context()->get_device(), &image_view_info, nullptr, &image_view);
 
-    std::hash<void*> hasher;
-    std::size_t hash = vk_util::hash_combine(hasher(image), hasher(image_view));
-
-    set_image(image, memory);
+    set_image(image, allocation);
     set_image_view(image_view);
     set_format(format);
     set_extent(VkExtent2D{desc.width, desc.height});
     set_clear_value(VkClearDepthStencilValue{1.0, 0});
-    set_hash(hash);
 }
 
 vk_depth_stencil::~vk_depth_stencil()
@@ -220,18 +205,18 @@ vk_texture::vk_texture(const char* file, rhi_texture_flags flags, vk_context* co
     if (mip_levels == 1 && flags & RHI_TEXTURE_FLAG_MIPMAP)
     {
         mip_levels =
-            static_cast<std::uint32_t>(std::floor(std::log2(std::max(data.width, data.height)))) +
+            static_cast<std::uint32_t>(std::floor(std::log2((std::max)(data.width, data.height)))) +
             1;
     }
 
     VkBuffer staging_buffer;
-    VkDeviceMemory staging_memory;
+    VmaAllocation staging_allocation;
     create_host_visible_buffer(
         data.pixels.data(),
         data.pixels.size(),
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         staging_buffer,
-        staging_memory);
+        staging_allocation);
 
     VkImageCreateInfo image_info = {};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -252,8 +237,8 @@ vk_texture::vk_texture(const char* file, rhi_texture_flags flags, vk_context* co
     image_info.flags = 0;
 
     VkImage image;
-    VkDeviceMemory memory;
-    create_image(image_info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, memory);
+    VmaAllocation allocation;
+    create_image(image_info, VMA_MEMORY_USAGE_GPU_ONLY, image, allocation);
 
     vk_command* command = get_context()->get_graphics_queue()->allocate_command();
 
@@ -419,7 +404,7 @@ vk_texture::vk_texture(const char* file, rhi_texture_flags flags, vk_context* co
 
     get_context()->get_graphics_queue()->execute_sync(command);
 
-    destroy_buffer(staging_buffer, staging_memory);
+    destroy_buffer(staging_buffer, staging_allocation);
 
     VkImageViewCreateInfo image_view_info = {};
     image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -439,15 +424,11 @@ vk_texture::vk_texture(const char* file, rhi_texture_flags flags, vk_context* co
     VkImageView image_view;
     vkCreateImageView(get_context()->get_device(), &image_view_info, nullptr, &image_view);
 
-    std::hash<void*> hasher;
-    std::size_t hash = vk_util::hash_combine(hasher(image), hasher(image_view));
-
-    set_image(image, memory);
+    set_image(image, allocation);
     set_image_view(image_view);
     set_image_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     set_format(data.format);
     set_extent(VkExtent2D{data.width, data.height});
-    set_hash(hash);
 }
 
 vk_texture::~vk_texture()
@@ -490,13 +471,13 @@ vk_texture_cube::vk_texture_cube(
     }
 
     VkBuffer staging_buffer;
-    VkDeviceMemory staging_memory;
+    VmaAllocation staging_allocation;
     create_host_visible_buffer(
         data.data(),
         data.size(),
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         staging_buffer,
-        staging_memory);
+        staging_allocation);
 
     VkImageCreateInfo image_info = {};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -517,8 +498,8 @@ vk_texture_cube::vk_texture_cube(
     image_info.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
     VkImage image;
-    VkDeviceMemory memory;
-    create_image(image_info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, memory);
+    VmaAllocation allocation;
+    create_image(image_info, VMA_MEMORY_USAGE_GPU_ONLY, image, allocation);
 
     vk_command* command = get_context()->get_graphics_queue()->allocate_command();
 
@@ -593,7 +574,7 @@ vk_texture_cube::vk_texture_cube(
 
     get_context()->get_graphics_queue()->execute_sync(command);
 
-    destroy_buffer(staging_buffer, staging_memory);
+    destroy_buffer(staging_buffer, staging_allocation);
 
     VkImageViewCreateInfo image_view_info = {};
     image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -608,20 +589,16 @@ vk_texture_cube::vk_texture_cube(
     image_view_info.subresourceRange.baseMipLevel = 0;
     image_view_info.subresourceRange.levelCount = 1;
     image_view_info.subresourceRange.baseArrayLayer = 0;
-    image_view_info.subresourceRange.layerCount = 1;
+    image_view_info.subresourceRange.layerCount = 6;
 
     VkImageView image_view;
     vkCreateImageView(get_context()->get_device(), &image_view_info, nullptr, &image_view);
 
-    std::hash<void*> hasher;
-    std::size_t hash = vk_util::hash_combine(hasher(image), hasher(image_view));
-
-    set_image(image, memory);
+    set_image(image, allocation);
     set_image_view(image_view);
     set_image_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     set_format(image_info.format);
     set_extent(VkExtent2D{image_info.extent.width, image_info.extent.height});
-    set_hash(hash);
 }
 
 vk_texture_cube::vk_texture_cube(
@@ -652,8 +629,8 @@ vk_texture_cube::vk_texture_cube(
     image_info.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
     VkImage image;
-    VkDeviceMemory memory;
-    create_image(image_info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, memory);
+    VmaAllocation allocation;
+    create_image(image_info, VMA_MEMORY_USAGE_GPU_ONLY, image, allocation);
 
     VkImageViewCreateInfo image_view_info = {};
     image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -695,6 +672,8 @@ vk_sampler::vk_sampler(const rhi_sampler_desc& desc, vk_context* context) : m_co
     sampler_info.compareEnable = VK_FALSE;
     sampler_info.compareOp = VK_COMPARE_OP_ALWAYS;
     sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    sampler_info.minLod = desc.min_mip_level;
+    sampler_info.maxLod = desc.max_mip_level;
 
     vk_check(vkCreateSampler(m_context->get_device(), &sampler_info, nullptr, &m_sampler));
 }
@@ -704,17 +683,35 @@ vk_sampler::~vk_sampler()
     vkDestroySampler(m_context->get_device(), m_sampler, nullptr);
 }
 
-vk_buffer::vk_buffer(vk_context* context) : vk_resource(context)
+vk_buffer::vk_buffer(vk_context* context)
+    : vk_resource(context),
+      m_buffer(VK_NULL_HANDLE),
+      m_allocation(VK_NULL_HANDLE),
+      m_buffer_size(0),
+      m_mapping_pointer(nullptr)
 {
 }
 
+vk_buffer::~vk_buffer()
+{
+    if (m_mapping_pointer)
+        vmaUnmapMemory(get_context()->get_vma_allocator(), m_allocation);
+
+    destroy_buffer(m_buffer, m_allocation);
+}
+
+std::size_t vk_buffer::get_hash() const noexcept
+{
+    return vk_util::hash(m_buffer);
+}
+
 vk_vertex_buffer::vk_vertex_buffer(const rhi_buffer_desc& desc, vk_context* context)
-    : vk_buffer(context),
-      m_mapping_pointer(nullptr)
+    : vk_buffer(context)
 {
     assert(desc.flags & RHI_BUFFER_FLAG_VERTEX);
 
-    m_buffer_size = desc.size;
+    VkBuffer buffer;
+    VmaAllocation allocation;
 
     VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     if (desc.flags & RHI_BUFFER_FLAG_STORAGE)
@@ -722,51 +719,48 @@ vk_vertex_buffer::vk_vertex_buffer(const rhi_buffer_desc& desc, vk_context* cont
 
     if (desc.flags & RHI_BUFFER_FLAG_HOST_VISIBLE)
     {
-        create_host_visible_buffer(desc.data, m_buffer_size, usage_flags, m_buffer, m_memory);
-        vkMapMemory(get_context()->get_device(), m_memory, 0, m_buffer_size, 0, &m_mapping_pointer);
+        create_host_visible_buffer(desc.data, desc.size, usage_flags, buffer, allocation);
+
+        void* mapping_pointer = nullptr;
+        vmaMapMemory(get_context()->get_vma_allocator(), allocation, &mapping_pointer);
+        set_mapping_pointer(mapping_pointer);
     }
     else
     {
         VkBuffer staging_buffer;
-        VkDeviceMemory staging_memory;
+        VmaAllocation staging_allocation;
         create_host_visible_buffer(
             desc.data,
-            m_buffer_size,
+            desc.size,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             staging_buffer,
-            staging_memory);
+            staging_allocation);
 
         create_buffer(
-            m_buffer_size,
+            desc.size,
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | usage_flags,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            m_buffer,
-            m_memory);
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            buffer,
+            allocation);
 
         vk_command* command = get_context()->get_graphics_queue()->allocate_command();
-        VkBufferCopy copy_region = {0, 0, m_buffer_size};
-        vkCmdCopyBuffer(command->get_command_buffer(), staging_buffer, m_buffer, 1, &copy_region);
+        VkBufferCopy copy_region = {0, 0, desc.size};
+        vkCmdCopyBuffer(command->get_command_buffer(), staging_buffer, buffer, 1, &copy_region);
         get_context()->get_graphics_queue()->execute_sync(command);
 
-        destroy_buffer(staging_buffer, staging_memory);
+        destroy_buffer(staging_buffer, staging_allocation);
     }
-}
 
-vk_vertex_buffer::~vk_vertex_buffer()
-{
-    if (m_mapping_pointer)
-        vkUnmapMemory(get_context()->get_device(), m_memory);
-
-    destroy_buffer(m_buffer, m_memory);
+    set_buffer(buffer, allocation, desc.size);
 }
 
 vk_index_buffer::vk_index_buffer(const rhi_buffer_desc& desc, vk_context* context)
-    : vk_buffer(context),
-      m_mapping_pointer(nullptr)
+    : vk_buffer(context)
 {
     assert(desc.flags & RHI_BUFFER_FLAG_INDEX);
 
-    m_buffer_size = desc.size;
+    VkBuffer buffer;
+    VmaAllocation allocation;
 
     VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     if (desc.flags & RHI_BUFFER_FLAG_STORAGE)
@@ -781,115 +775,101 @@ vk_index_buffer::vk_index_buffer(const rhi_buffer_desc& desc, vk_context* contex
 
     if (desc.flags & RHI_BUFFER_FLAG_HOST_VISIBLE)
     {
-        create_host_visible_buffer(desc.data, m_buffer_size, usage_flags, m_buffer, m_memory);
-        vkMapMemory(get_context()->get_device(), m_memory, 0, m_buffer_size, 0, &m_mapping_pointer);
+        create_host_visible_buffer(desc.data, desc.size, usage_flags, buffer, allocation);
+
+        void* mapping_pointer = nullptr;
+        vmaMapMemory(get_context()->get_vma_allocator(), allocation, &mapping_pointer);
+        set_mapping_pointer(mapping_pointer);
     }
     else
     {
         VkBuffer staging_buffer;
-        VkDeviceMemory staging_memory;
+        VmaAllocation staging_allocation;
         create_host_visible_buffer(
             desc.data,
-            m_buffer_size,
+            desc.size,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             staging_buffer,
-            staging_memory);
+            staging_allocation);
 
         create_buffer(
-            m_buffer_size,
+            desc.size,
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | usage_flags,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            m_buffer,
-            m_memory);
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            buffer,
+            allocation);
 
         vk_command* command = get_context()->get_graphics_queue()->allocate_command();
-        VkBufferCopy copy_region = {0, 0, m_buffer_size};
-        vkCmdCopyBuffer(command->get_command_buffer(), staging_buffer, m_buffer, 1, &copy_region);
+        VkBufferCopy copy_region = {0, 0, desc.size};
+        vkCmdCopyBuffer(command->get_command_buffer(), staging_buffer, buffer, 1, &copy_region);
         get_context()->get_graphics_queue()->execute_sync(command);
 
-        destroy_buffer(staging_buffer, staging_memory);
+        destroy_buffer(staging_buffer, staging_allocation);
     }
-}
 
-vk_index_buffer::~vk_index_buffer()
-{
-    if (m_mapping_pointer)
-        vkUnmapMemory(get_context()->get_device(), m_memory);
-
-    destroy_buffer(m_buffer, m_memory);
+    set_buffer(buffer, allocation, desc.size);
 }
 
 vk_uniform_buffer::vk_uniform_buffer(void* data, std::size_t size, vk_context* context)
-    : vk_buffer(context),
-      m_mapping_pointer(nullptr)
+    : vk_buffer(context)
 {
-    m_buffer_size = size;
+    VkBuffer buffer;
+    VmaAllocation allocation;
 
-    create_host_visible_buffer(
-        data,
-        m_buffer_size,
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        m_buffer,
-        m_memory);
-    vkMapMemory(get_context()->get_device(), m_memory, 0, m_buffer_size, 0, &m_mapping_pointer);
-}
+    create_host_visible_buffer(data, size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, buffer, allocation);
 
-vk_uniform_buffer::~vk_uniform_buffer()
-{
-    if (m_mapping_pointer)
-        vkUnmapMemory(get_context()->get_device(), m_memory);
+    void* mapping_pointer = nullptr;
+    vmaMapMemory(get_context()->get_vma_allocator(), allocation, &mapping_pointer);
 
-    destroy_buffer(m_buffer, m_memory);
+    set_buffer(buffer, allocation, size);
+    set_mapping_pointer(mapping_pointer);
 }
 
 vk_storage_buffer::vk_storage_buffer(const rhi_buffer_desc& desc, vk_context* context)
-    : vk_buffer(context),
-      m_mapping_pointer(nullptr)
+    : vk_buffer(context)
 {
-    m_buffer_size = desc.size;
+    VkBuffer buffer;
+    VmaAllocation allocation;
 
     if (desc.flags & RHI_BUFFER_FLAG_HOST_VISIBLE)
     {
         create_host_visible_buffer(
             desc.data,
-            m_buffer_size,
+            desc.size,
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-            m_buffer,
-            m_memory);
-        vkMapMemory(get_context()->get_device(), m_memory, 0, m_buffer_size, 0, &m_mapping_pointer);
+            buffer,
+            allocation);
+
+        void* mapping_pointer = nullptr;
+        vmaMapMemory(get_context()->get_vma_allocator(), allocation, &mapping_pointer);
+        set_mapping_pointer(mapping_pointer);
     }
     else
     {
         VkBuffer staging_buffer;
-        VkDeviceMemory staging_memory;
+        VmaAllocation staging_memory;
         create_host_visible_buffer(
             desc.data,
-            m_buffer_size,
+            desc.size,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             staging_buffer,
             staging_memory);
 
         create_buffer(
-            m_buffer_size,
+            desc.size,
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            m_buffer,
-            m_memory);
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            buffer,
+            allocation);
 
         vk_command* command = get_context()->get_graphics_queue()->allocate_command();
-        VkBufferCopy copy_region = {0, 0, m_buffer_size};
-        vkCmdCopyBuffer(command->get_command_buffer(), staging_buffer, m_buffer, 1, &copy_region);
+        VkBufferCopy copy_region = {0, 0, desc.size};
+        vkCmdCopyBuffer(command->get_command_buffer(), staging_buffer, buffer, 1, &copy_region);
         get_context()->get_graphics_queue()->execute_sync(command);
 
         destroy_buffer(staging_buffer, staging_memory);
     }
-}
 
-vk_storage_buffer::~vk_storage_buffer()
-{
-    if (m_mapping_pointer)
-        vkUnmapMemory(get_context()->get_device(), m_memory);
-
-    destroy_buffer(m_buffer, m_memory);
+    set_buffer(buffer, allocation, desc.size);
 }
 } // namespace violet::vk

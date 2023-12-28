@@ -49,6 +49,12 @@ public:
         const rhi_texture_barrier* const texture_barriers,
         std::size_t texture_barrier_count) override;
 
+    virtual void copy_image(
+        rhi_resource* src,
+        const rhi_resource_region& src_region,
+        rhi_resource* dst,
+        const rhi_resource_region& dst_region) override;
+
     virtual void clear_render_target(rhi_resource* render_target, const float4& color) override;
     virtual void clear_depth_stencil(
         rhi_resource* depth_stencil,

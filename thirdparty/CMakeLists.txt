@@ -32,5 +32,10 @@ if (WIN32)
 endif()
 add_subdirectory(volk)
 
+# vma
+set(VMA_STATIC_VULKAN_FUNCTIONS OFF)
+set(VMA_DYNAMIC_VULKAN_FUNCTIONS OFF)
+add_subdirectory(VulkanMemoryAllocator)
+
 # yoga
 # add_subdirectory(yoga)

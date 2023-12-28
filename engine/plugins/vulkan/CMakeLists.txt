@@ -38,13 +38,14 @@ target_include_directories(${PROJECT_NAME}
     PRIVATE
     ./include
     ${VIOLET_ROOT_DIR}/engine/core/public
-    ${VIOLET_ROOT_DIR}/engine/graphics/public
-    ${VIOLET_THIRD_PARTY_DIR}/stb)
+    ${VIOLET_ROOT_DIR}/engine/graphics/public)
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
     violet::math
-    volk)
+    stb
+    volk
+    VulkanMemoryAllocator)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin
