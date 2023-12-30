@@ -40,13 +40,13 @@ material::~material()
 {
 }
 
-void material::set(std::string_view name, rhi_resource* storage_buffer)
+void material::set(std::string_view name, rhi_buffer* storage_buffer)
 {
     auto& field = m_layout->get_field(name);
     m_parameters[field.pipeline_index]->set_storage(field.field_index, storage_buffer);
 }
 
-void material::set(std::string_view name, rhi_resource* texture, rhi_sampler* sampler)
+void material::set(std::string_view name, rhi_image* texture, rhi_sampler* sampler)
 {
     auto& field = m_layout->get_field(name);
     m_parameters[field.pipeline_index]->set_texture(field.field_index, texture, sampler);

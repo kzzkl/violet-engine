@@ -47,16 +47,16 @@ enum rhi_resource_format
     RHI_RESOURCE_FORMAT_D32_FLOAT
 };
 
-enum rhi_resource_state
+enum rhi_image_layout
 {
-    RHI_RESOURCE_STATE_UNDEFINED,
-    RHI_RESOURCE_STATE_GENERAL,
-    RHI_RESOURCE_STATE_SHADER_RESOURCE,
-    RHI_RESOURCE_STATE_RENDER_TARGET,
-    RHI_RESOURCE_STATE_DEPTH_STENCIL,
-    RHI_RESOURCE_STATE_PRESENT,
-    RHI_RESOURCE_STATE_TRANSFER_SRC,
-    RHI_RESOURCE_STATE_TRANSFER_DST
+    RHI_IMAGE_LAYOUT_UNDEFINED,
+    RHI_IMAGE_LAYOUT_GENERAL,
+    RHI_IMAGE_LAYOUT_SHADER_RESOURCE,
+    RHI_IMAGE_LAYOUT_RENDER_TARGET,
+    RHI_IMAGE_LAYOUT_DEPTH_STENCIL,
+    RHI_IMAGE_LAYOUT_PRESENT,
+    RHI_IMAGE_LAYOUT_TRANSFER_SRC,
+    RHI_IMAGE_LAYOUT_TRANSFER_DST
 };
 
 struct rhi_resource_extent
@@ -75,16 +75,22 @@ enum rhi_sample_count
     RHI_SAMPLE_COUNT_32,
 };
 
-class rhi_resource
+class rhi_image
 {
 public:
-    virtual ~rhi_resource() = default;
+    virtual ~rhi_image() = default;
 
-    // For texture.
     virtual rhi_resource_format get_format() const noexcept = 0;
     virtual rhi_resource_extent get_extent() const noexcept = 0;
 
-    // For buffer.
+    virtual std::size_t get_hash() const noexcept = 0;
+};
+
+class rhi_buffer
+{
+public:
+    virtual ~rhi_buffer() = default;
+
     virtual void* get_buffer() { return nullptr; }
     virtual std::size_t get_buffer_size() const noexcept = 0;
 
@@ -147,8 +153,8 @@ struct rhi_attachment_desc
     rhi_attachment_load_op stencil_load_op;
     rhi_attachment_store_op stencil_store_op;
 
-    rhi_resource_state initial_state;
-    rhi_resource_state final_state;
+    rhi_image_layout initial_layout;
+    rhi_image_layout final_layout;
 
     rhi_sample_count samples;
 };
@@ -164,7 +170,7 @@ enum rhi_attachment_reference_type
 struct rhi_attachment_reference
 {
     rhi_attachment_reference_type type;
-    rhi_resource_state state;
+    rhi_image_layout layout;
     std::size_t index;
     std::size_t resolve_index;
 };
@@ -273,8 +279,8 @@ public:
         const void* data,
         std::size_t size,
         std::size_t offset) = 0;
-    virtual void set_texture(std::size_t index, rhi_resource* texture, rhi_sampler* sampler) = 0;
-    virtual void set_storage(std::size_t index, rhi_resource* storage_buffer) = 0;
+    virtual void set_texture(std::size_t index, rhi_image* texture, rhi_sampler* sampler) = 0;
+    virtual void set_storage(std::size_t index, rhi_buffer* storage_buffer) = 0;
 };
 
 struct rhi_vertex_attribute
@@ -415,7 +421,7 @@ public:
 struct rhi_framebuffer_desc
 {
     rhi_render_pass* render_pass;
-    const rhi_resource* attachments[32];
+    const rhi_image* attachments[32];
     std::size_t attachment_count;
 };
 
@@ -447,15 +453,15 @@ struct rhi_buffer_barrier
 {
 };
 
-struct rhi_texture_barrier
+struct rhi_image_barrier
 {
-    rhi_resource* texture;
+    rhi_image* image;
 
     rhi_access_flags src_access;
     rhi_access_flags dst_access;
 
-    rhi_resource_state src_state;
-    rhi_resource_state dst_state;
+    rhi_image_layout src_layout;
+    rhi_image_layout dst_layout;
 };
 
 struct rhi_pipeline_barrier
@@ -490,9 +496,9 @@ public:
     virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) = 0;
 
     virtual void set_vertex_buffers(
-        rhi_resource* const* vertex_buffers,
+        rhi_buffer* const* vertex_buffers,
         std::size_t vertex_buffer_count) = 0;
-    virtual void set_index_buffer(rhi_resource* index_buffer) = 0;
+    virtual void set_index_buffer(rhi_buffer* index_buffer) = 0;
 
     virtual void draw(std::size_t vertex_start, std::size_t vertex_count) = 0;
     virtual void draw_indexed(
@@ -507,22 +513,14 @@ public:
         rhi_pipeline_stage_flags dst_stage,
         const rhi_buffer_barrier* const buffer_barriers,
         std::size_t buffer_barrier_count,
-        const rhi_texture_barrier* const texture_barriers,
-        std::size_t texture_barrier_count) = 0;
+        const rhi_image_barrier* const image_barriers,
+        std::size_t image_barrier_count) = 0;
 
     virtual void copy_image(
-        rhi_resource* src,
+        rhi_image* src,
         const rhi_resource_region& src_region,
-        rhi_resource* dst,
+        rhi_image* dst,
         const rhi_resource_region& dst_region) = 0;
-
-    virtual void clear_render_target(rhi_resource* render_target, const float4& color) = 0;
-    virtual void clear_depth_stencil(
-        rhi_resource* depth_stencil,
-        bool clear_depth = true,
-        float depth = 1.0f,
-        bool clear_stencil = true,
-        std::uint8_t stencil = 0) = 0;
 };
 
 class rhi_fence
@@ -620,7 +618,7 @@ public:
 
     virtual void resize(std::uint32_t width, std::uint32_t height) = 0;
 
-    virtual rhi_resource* get_back_buffer() = 0;
+    virtual rhi_image* get_back_buffer() = 0;
     virtual rhi_fence* get_in_flight_fence() = 0;
     virtual rhi_semaphore* get_image_available_semaphore() = 0;
 
@@ -651,17 +649,18 @@ public:
     virtual rhi_sampler* create_sampler(const rhi_sampler_desc& desc) = 0;
     virtual void destroy_sampler(rhi_sampler* sampler) = 0;
 
-    virtual rhi_resource* create_buffer(const rhi_buffer_desc& desc) = 0;
+    virtual rhi_buffer* create_buffer(const rhi_buffer_desc& desc) = 0;
+    virtual void destroy_buffer(rhi_buffer* buffer) = 0;
 
-    virtual rhi_resource* create_texture(
+    virtual rhi_image* create_texture(
         const std::uint8_t* data,
         std::uint32_t width,
         std::uint32_t height,
         rhi_resource_format format,
         rhi_texture_flags flags) = 0;
-    virtual rhi_resource* create_texture(const char* file, rhi_texture_flags flags) = 0;
+    virtual rhi_image* create_texture(const char* file, rhi_texture_flags flags) = 0;
 
-    virtual rhi_resource* create_texture_cube(
+    virtual rhi_image* create_texture_cube(
         const char* right,
         const char* left,
         const char* top,
@@ -669,18 +668,16 @@ public:
         const char* front,
         const char* back,
         rhi_texture_flags flags) = 0;
-    virtual rhi_resource* create_texture_cube(
+    virtual rhi_image* create_texture_cube(
         const std::uint32_t* data,
         std::uint32_t width,
         std::uint32_t height,
         rhi_resource_format format,
         rhi_texture_flags flags) = 0;
 
-    virtual rhi_resource* create_render_target(const rhi_render_target_desc& desc) = 0;
-    virtual rhi_resource* create_depth_stencil_buffer(
-        const rhi_depth_stencil_buffer_desc& desc) = 0;
+    virtual rhi_image* create_depth_stencil_buffer(const rhi_depth_stencil_buffer_desc& desc) = 0;
 
-    virtual void destroy_resource(rhi_resource* resource) = 0;
+    virtual void destroy_image(rhi_image* image) = 0;
 
     virtual rhi_fence* create_fence(bool signaled) = 0;
     virtual void destroy_fence(rhi_fence* fence) = 0;

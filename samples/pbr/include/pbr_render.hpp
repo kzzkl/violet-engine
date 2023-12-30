@@ -10,9 +10,9 @@ public:
     pre_process_graph(renderer* renderer);
 
     void set_parameter(
-        rhi_resource* ambient_map,
+        rhi_image* ambient_map,
         rhi_sampler* ambient_sampler,
-        rhi_resource* irradiance_map);
+        rhi_image* irradiance_map);
 
 private:
     rhi_ptr<rhi_parameter> m_parameter;

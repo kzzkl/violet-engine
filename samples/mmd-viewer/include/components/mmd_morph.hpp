@@ -39,6 +39,6 @@ public:
 
     std::vector<std::unique_ptr<morph>> morphs;
 
-    rhi_resource* vertex_morph_result;
+    rhi_buffer* vertex_morph_result;
 };
 } // namespace violet::sample

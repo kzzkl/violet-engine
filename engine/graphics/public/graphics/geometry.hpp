@@ -39,8 +39,8 @@ public:
         m_index_count = indices.size();
     }
 
-    rhi_resource* get_vertex_buffer(std::string_view name);
-    rhi_resource* get_index_buffer() const noexcept { return m_index_buffer.get(); }
+    rhi_buffer* get_vertex_buffer(std::string_view name);
+    rhi_buffer* get_index_buffer() const noexcept { return m_index_buffer.get(); }
 
     std::size_t get_vertex_count() const noexcept { return m_vertex_count; }
     std::size_t get_index_count() const noexcept { return m_index_count; }
@@ -57,8 +57,8 @@ private:
         std::size_t index_size,
         rhi_buffer_flags flags);
 
-    std::unordered_map<std::string, rhi_ptr<rhi_resource>> m_vertex_buffers;
-    rhi_ptr<rhi_resource> m_index_buffer;
+    std::unordered_map<std::string, rhi_ptr<rhi_buffer>> m_vertex_buffers;
+    rhi_ptr<rhi_buffer> m_index_buffer;
 
     std::size_t m_vertex_count;
     std::size_t m_index_count;

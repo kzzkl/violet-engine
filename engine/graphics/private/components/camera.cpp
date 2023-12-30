@@ -54,7 +54,7 @@ void camera::set_view(const float4x4& view)
     update_parameter();
 }
 
-void camera::set_skybox(rhi_resource* texture, rhi_sampler* sampler)
+void camera::set_skybox(rhi_image* texture, rhi_sampler* sampler)
 {
     m_parameter->set_texture(1, texture, sampler);
 }
@@ -65,7 +65,7 @@ void camera::set_render_pass(render_pass* render_pass)
     m_attachments.resize(render_pass->get_attachment_count());
 }
 
-void camera::set_attachment(std::size_t index, rhi_resource* attachment, bool back_buffer)
+void camera::set_attachment(std::size_t index, rhi_image* attachment, bool back_buffer)
 {
     m_attachments[index] = attachment;
     m_framebuffer_dirty = true;
@@ -76,7 +76,7 @@ void camera::set_attachment(std::size_t index, rhi_resource* attachment, bool ba
         m_back_buffer_index = -1;
 }
 
-void camera::set_back_buffer(rhi_resource* back_buffer)
+void camera::set_back_buffer(rhi_image* back_buffer)
 {
     if (m_back_buffer_index != -1)
     {
@@ -91,7 +91,7 @@ rhi_framebuffer* camera::get_framebuffer()
         return m_framebuffer;
 
     std::size_t hash = 0;
-    for (rhi_resource* attachment : m_attachments)
+    for (rhi_image* attachment : m_attachments)
         hash = hash_combine(hash, attachment->get_hash());
 
     auto iter = m_framebuffer_cache.find(hash);

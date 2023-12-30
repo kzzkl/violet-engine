@@ -135,7 +135,7 @@ void vk_command::set_scissor(const rhi_scissor_rect* rects, std::size_t size)
 }
 
 void vk_command::set_vertex_buffers(
-    rhi_resource* const* vertex_buffers,
+    rhi_buffer* const* vertex_buffers,
     std::size_t vertex_buffer_count)
 {
     std::vector<VkBuffer> buffers(vertex_buffer_count);
@@ -153,7 +153,7 @@ void vk_command::set_vertex_buffers(
         offsets.data());
 }
 
-void vk_command::set_index_buffer(rhi_resource* index_buffer)
+void vk_command::set_index_buffer(rhi_buffer* index_buffer)
 {
     vk_index_buffer* buffer = static_cast<vk_index_buffer*>(index_buffer);
     vkCmdBindIndexBuffer(
@@ -197,8 +197,8 @@ void vk_command::set_pipeline_barrier(
     rhi_pipeline_stage_flags dst_stage,
     const rhi_buffer_barrier* const buffer_barriers,
     std::size_t buffer_barrier_count,
-    const rhi_texture_barrier* const texture_barriers,
-    std::size_t texture_barrier_count)
+    const rhi_image_barrier* const image_barriers,
+    std::size_t image_barrier_count)
 {
     std::vector<VkBufferMemoryBarrier> vk_buffer_barriers(buffer_barrier_count);
     for (std::size_t i = 0; i < buffer_barrier_count; ++i)
@@ -207,18 +207,18 @@ void vk_command::set_pipeline_barrier(
         barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
     }
 
-    std::vector<VkImageMemoryBarrier> vk_image_barriers(texture_barrier_count);
-    for (std::size_t i = 0; i < texture_barrier_count; ++i)
+    std::vector<VkImageMemoryBarrier> vk_image_barriers(image_barrier_count);
+    for (std::size_t i = 0; i < image_barrier_count; ++i)
     {
         VkImageMemoryBarrier& barrier = vk_image_barriers[i];
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        barrier.srcAccessMask = vk_util::map_access_flags(texture_barriers[i].src_access);
-        barrier.dstAccessMask = vk_util::map_access_flags(texture_barriers[i].dst_access);
-        barrier.oldLayout = vk_util::map_state(texture_barriers[i].src_state);
-        barrier.newLayout = vk_util::map_state(texture_barriers[i].dst_state);
+        barrier.srcAccessMask = vk_util::map_access_flags(image_barriers[i].src_access);
+        barrier.dstAccessMask = vk_util::map_access_flags(image_barriers[i].dst_access);
+        barrier.oldLayout = vk_util::map_layout(image_barriers[i].src_layout);
+        barrier.newLayout = vk_util::map_layout(image_barriers[i].dst_layout);
         barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.image = static_cast<vk_image*>(texture_barriers[i].texture)->get_image();
+        barrier.image = static_cast<vk_image*>(image_barriers[i].image)->get_image();
         barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
         barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
@@ -238,9 +238,9 @@ void vk_command::set_pipeline_barrier(
 }
 
 void vk_command::copy_image(
-    rhi_resource* src,
+    rhi_image* src,
     const rhi_resource_region& src_region,
-    rhi_resource* dst,
+    rhi_image* dst,
     const rhi_resource_region& dst_region)
 {
     VkImageCopy image_copy = {};
@@ -267,19 +267,6 @@ void vk_command::copy_image(
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1,
         &image_copy);
-}
-
-void vk_command::clear_render_target(rhi_resource* render_target, const float4& color)
-{
-}
-
-void vk_command::clear_depth_stencil(
-    rhi_resource* depth_stencil,
-    bool clear_depth,
-    float depth,
-    bool clear_stencil,
-    std::uint8_t stencil)
-{
 }
 
 void vk_command::reset()

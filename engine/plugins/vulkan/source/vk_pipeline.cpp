@@ -261,7 +261,7 @@ void vk_parameter::set_uniform(
     mark_dirty(index);
 }
 
-void vk_parameter::set_texture(std::size_t index, rhi_resource* texture, rhi_sampler* sampler)
+void vk_parameter::set_texture(std::size_t index, rhi_image* texture, rhi_sampler* sampler)
 {
     sync();
 
@@ -288,7 +288,7 @@ void vk_parameter::set_texture(std::size_t index, rhi_resource* texture, rhi_sam
     mark_dirty(index);
 }
 
-void vk_parameter::set_storage(std::size_t index, rhi_resource* storage_buffer)
+void vk_parameter::set_storage(std::size_t index, rhi_buffer* storage_buffer)
 {
     sync();
 

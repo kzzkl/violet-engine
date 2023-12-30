@@ -5,54 +5,7 @@
 
 namespace violet::vk
 {
-class vk_resource : public rhi_resource
-{
-public:
-    vk_resource(vk_context* context);
-    vk_resource(const vk_resource&) = delete;
-    virtual ~vk_resource() = default;
-
-    virtual rhi_resource_format get_format() const noexcept override
-    {
-        return RHI_RESOURCE_FORMAT_UNDEFINED;
-    }
-    virtual rhi_resource_extent get_extent() const noexcept override { return {0, 0}; }
-
-    virtual void* get_buffer() { return nullptr; }
-    virtual std::size_t get_buffer_size() const noexcept override { return 0; }
-
-    vk_resource& operator=(const vk_resource&) = delete;
-
-protected:
-    void create_host_visible_buffer(
-        const void* data,
-        VkDeviceSize size,
-        VkBufferUsageFlags buffer_usage,
-        VkBuffer& buffer,
-        VmaAllocation& allocation);
-
-    void create_buffer(
-        VkDeviceSize size,
-        VkBufferUsageFlags buffer_usage,
-        VmaMemoryUsage memory_usage,
-        VkBuffer& buffer,
-        VmaAllocation& allocation);
-    void destroy_buffer(VkBuffer buffer, VmaAllocation allocation);
-
-    void create_image(
-        const VkImageCreateInfo& image_info,
-        VmaMemoryUsage memory_usage,
-        VkImage& image,
-        VmaAllocation& allocation);
-    void destroy_image(VkImage image, VmaAllocation allocation);
-
-    vk_context* get_context() const noexcept { return m_context; }
-
-private:
-    vk_context* m_context;
-};
-
-class vk_image : public vk_resource
+class vk_image : public rhi_image
 {
 public:
     vk_image(vk_context* context);
@@ -88,6 +41,8 @@ protected:
 
     void set_hash(std::size_t hash) noexcept { m_hash = hash; }
 
+    vk_context* get_context() const noexcept { return m_context; }
+
 private:
     VkImage m_image;
     VmaAllocation m_allocation;
@@ -100,6 +55,8 @@ private:
     VkClearValue m_clear_value;
 
     std::size_t m_hash;
+
+    vk_context* m_context;
 };
 
 class vk_depth_stencil : public vk_image
@@ -154,7 +111,7 @@ private:
     vk_context* m_context;
 };
 
-class vk_buffer : public vk_resource
+class vk_buffer : public rhi_buffer
 {
 public:
     vk_buffer(vk_context* context);
@@ -180,12 +137,16 @@ protected:
         m_mapping_pointer = mapping_pointer;
     }
 
+    vk_context* get_context() const noexcept { return m_context; }
+
 private:
     VkBuffer m_buffer;
     VmaAllocation m_allocation;
     std::size_t m_buffer_size;
 
     void* m_mapping_pointer;
+
+    vk_context* m_context;
 };
 
 class vk_vertex_buffer : public vk_buffer

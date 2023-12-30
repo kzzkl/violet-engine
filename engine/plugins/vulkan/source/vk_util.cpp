@@ -183,17 +183,17 @@ VkSampleCountFlagBits vk_util::map_sample_count(rhi_sample_count samples)
     }
 }
 
-VkImageLayout vk_util::map_state(rhi_resource_state state)
+VkImageLayout vk_util::map_layout(rhi_image_layout layout)
 {
-    switch (state)
+    switch (layout)
     {
-    case RHI_RESOURCE_STATE_SHADER_RESOURCE:
+    case RHI_IMAGE_LAYOUT_SHADER_RESOURCE:
         return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    case RHI_RESOURCE_STATE_RENDER_TARGET:
+    case RHI_IMAGE_LAYOUT_RENDER_TARGET:
         return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    case RHI_RESOURCE_STATE_DEPTH_STENCIL:
+    case RHI_IMAGE_LAYOUT_DEPTH_STENCIL:
         return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    case RHI_RESOURCE_STATE_PRESENT:
+    case RHI_IMAGE_LAYOUT_PRESENT:
         return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     default:
         return VK_IMAGE_LAYOUT_UNDEFINED;

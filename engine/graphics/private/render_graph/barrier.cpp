@@ -17,9 +17,9 @@ void barrier::add_buffer_barrier(const rhi_buffer_barrier& barrier)
     m_buffer_barriers.push_back(barrier);
 }
 
-void barrier::add_texture_barrier(const rhi_texture_barrier& barrier)
+void barrier::add_image_barrier(const rhi_image_barrier& barrier)
 {
-    m_texture_barriers.push_back(barrier);
+    m_image_barriers.push_back(barrier);
 }
 
 bool barrier::compile(compile_context& context)
@@ -34,7 +34,7 @@ void barrier::execute(execute_context& context)
         m_dst_state,
         m_buffer_barriers.data(),
         m_buffer_barriers.size(),
-        m_texture_barriers.data(),
-        m_texture_barriers.size());
+        m_image_barriers.data(),
+        m_image_barriers.size());
 }
 } // namespace violet

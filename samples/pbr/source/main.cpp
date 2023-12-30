@@ -133,12 +133,12 @@ private:
     std::unique_ptr<pre_process_graph> m_pre_process_graph;
 
     std::unique_ptr<pbr_render_graph> m_render_graph;
-    rhi_ptr<rhi_resource> m_depth_stencil;
+    rhi_ptr<rhi_image> m_depth_stencil;
 
-    rhi_ptr<rhi_resource> m_skybox;
+    rhi_ptr<rhi_image> m_skybox;
     rhi_ptr<rhi_sampler> m_skybox_sampler;
 
-    rhi_ptr<rhi_resource> m_irradiance_map;
+    rhi_ptr<rhi_image> m_irradiance_map;
 
     material* m_material;
     float m_roughness = 0.3f;

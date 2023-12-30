@@ -10,7 +10,7 @@ geometry::~geometry()
 {
 }
 
-rhi_resource* geometry::get_vertex_buffer(std::string_view name)
+rhi_buffer* geometry::get_vertex_buffer(std::string_view name)
 {
     auto iter = m_vertex_buffers.find(name.data());
     if (iter != m_vertex_buffers.end())

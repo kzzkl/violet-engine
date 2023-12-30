@@ -8,8 +8,8 @@ namespace violet
 {
 struct render_mesh
 {
-    std::vector<rhi_resource*> vertex_buffers;
-    rhi_resource* index_buffer;
+    std::vector<rhi_buffer*> vertex_buffers;
+    rhi_buffer* index_buffer;
 
     std::size_t vertex_start;
     std::size_t vertex_count;

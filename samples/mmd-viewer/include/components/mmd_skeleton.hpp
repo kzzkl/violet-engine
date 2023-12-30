@@ -107,13 +107,13 @@ public:
     }
 
     void set_skinning_input(
-        rhi_resource* positon,
-        rhi_resource* normal,
-        rhi_resource* uv,
-        rhi_resource* skin,
-        rhi_resource* vertex_morph);
+        rhi_buffer* positon,
+        rhi_buffer* normal,
+        rhi_buffer* uv,
+        rhi_buffer* skin,
+        rhi_buffer* vertex_morph);
 
-    void set_skinning_output(rhi_resource* positon, rhi_resource* normal, rhi_resource* uv);
+    void set_skinning_output(rhi_buffer* positon, rhi_buffer* normal, rhi_buffer* uv);
 
     rhi_parameter* get_skeleton_parameter() const noexcept { return m_skeleton_parameter.get(); }
     rhi_parameter* get_skinning_parameter() const noexcept { return m_skinning_parameter.get(); }
@@ -131,8 +131,8 @@ private:
     rhi_ptr<rhi_parameter> m_skeleton_parameter;
     rhi_ptr<rhi_parameter> m_skinning_parameter;
 
-    rhi_ptr<rhi_resource> m_bdef;
-    rhi_ptr<rhi_resource> m_sdef;
+    rhi_ptr<rhi_buffer> m_bdef;
+    rhi_ptr<rhi_buffer> m_sdef;
 
     renderer* m_renderer;
 };

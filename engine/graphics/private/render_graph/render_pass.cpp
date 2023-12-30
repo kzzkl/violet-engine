@@ -34,14 +34,14 @@ void render_attachment::set_stencil_store_op(rhi_attachment_store_op op) noexcep
     m_desc.stencil_store_op = op;
 }
 
-void render_attachment::set_initial_state(rhi_resource_state state) noexcept
+void render_attachment::set_initial_layout(rhi_image_layout layout) noexcept
 {
-    m_desc.initial_state = state;
+    m_desc.initial_layout = layout;
 }
 
-void render_attachment::set_final_state(rhi_resource_state state) noexcept
+void render_attachment::set_final_layout(rhi_image_layout layout) noexcept
 {
-    m_desc.final_state = state;
+    m_desc.final_layout = layout;
 }
 
 render_subpass::render_subpass(render_pass* render_pass, std::size_t index)
@@ -54,11 +54,11 @@ render_subpass::render_subpass(render_pass* render_pass, std::size_t index)
 void render_subpass::add_reference(
     render_attachment* attachment,
     rhi_attachment_reference_type type,
-    rhi_resource_state state)
+    rhi_image_layout layout)
 {
     auto& desc = m_desc.references[m_desc.reference_count];
     desc.type = type;
-    desc.state = state;
+    desc.layout = layout;
     desc.index = attachment->get_index();
     desc.resolve_index = 0;
 
@@ -68,12 +68,12 @@ void render_subpass::add_reference(
 void render_subpass::add_reference(
     render_attachment* attachment,
     rhi_attachment_reference_type type,
-    rhi_resource_state state,
+    rhi_image_layout layout,
     render_attachment* resolve)
 {
     auto& desc = m_desc.references[m_desc.reference_count];
     desc.type = type;
-    desc.state = state;
+    desc.layout = layout;
     desc.index = attachment->get_index();
     desc.resolve_index = resolve->get_index();
 

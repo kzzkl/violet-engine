@@ -21,11 +21,11 @@ mmd_skeleton::~mmd_skeleton()
 }
 
 void mmd_skeleton::set_skinning_input(
-    rhi_resource* positon,
-    rhi_resource* normal,
-    rhi_resource* uv,
-    rhi_resource* skin,
-    rhi_resource* vertex_morph)
+    rhi_buffer* positon,
+    rhi_buffer* normal,
+    rhi_buffer* uv,
+    rhi_buffer* skin,
+    rhi_buffer* vertex_morph)
 {
     m_skinning_parameter->set_storage(0, positon);
     m_skinning_parameter->set_storage(1, normal);
@@ -34,10 +34,7 @@ void mmd_skeleton::set_skinning_input(
     m_skinning_parameter->set_storage(9, vertex_morph);
 }
 
-void mmd_skeleton::set_skinning_output(
-    rhi_resource* positon,
-    rhi_resource* normal,
-    rhi_resource* uv)
+void mmd_skeleton::set_skinning_output(rhi_buffer* positon, rhi_buffer* normal, rhi_buffer* uv)
 {
     m_skinning_parameter->set_storage(3, positon);
     m_skinning_parameter->set_storage(4, normal);

@@ -29,9 +29,9 @@ public:
     virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) override;
 
     virtual void set_vertex_buffers(
-        rhi_resource* const* vertex_buffers,
+        rhi_buffer* const* vertex_buffers,
         std::size_t vertex_buffer_count) override;
-    virtual void set_index_buffer(rhi_resource* index_buffer) override;
+    virtual void set_index_buffer(rhi_buffer* index_buffer) override;
 
     virtual void draw(std::size_t vertex_start, std::size_t vertex_count) override;
     virtual void draw_indexed(
@@ -46,22 +46,14 @@ public:
         rhi_pipeline_stage_flags dst_stage,
         const rhi_buffer_barrier* const buffer_barriers,
         std::size_t buffer_barrier_count,
-        const rhi_texture_barrier* const texture_barriers,
-        std::size_t texture_barrier_count) override;
+        const rhi_image_barrier* const image_barriers,
+        std::size_t image_barrier_count) override;
 
     virtual void copy_image(
-        rhi_resource* src,
+        rhi_image* src,
         const rhi_resource_region& src_region,
-        rhi_resource* dst,
+        rhi_image* dst,
         const rhi_resource_region& dst_region) override;
-
-    virtual void clear_render_target(rhi_resource* render_target, const float4& color) override;
-    virtual void clear_depth_stencil(
-        rhi_resource* depth_stencil,
-        bool clear_depth,
-        float depth,
-        bool clear_stencil,
-        std::uint8_t stencil) override;
 
     void reset();
 

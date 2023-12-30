@@ -21,9 +21,9 @@ public:
     }
 
     void set_parameter(
-        rhi_resource* ambient_map,
+        rhi_image* ambient_map,
         rhi_sampler* ambient_sampler,
-        rhi_resource* irradiance_map)
+        rhi_image* irradiance_map)
     {
     }
 
@@ -50,7 +50,7 @@ pre_process_graph::pre_process_graph(renderer* renderer) : render_graph(renderer
     irradiance_map_pass->add_reference(
         output_attachment,
         RHI_ATTACHMENT_REFERENCE_TYPE_COLOR,
-        RHI_RESOURCE_STATE_RENDER_TARGET);
+        RHI_IMAGE_LAYOUT_RENDER_TARGET);
 
     irradiance_map_pass->add_pipeline<irradiance_map_pipeline>("irradiance process");
 
@@ -58,12 +58,12 @@ pre_process_graph::pre_process_graph(renderer* renderer) : render_graph(renderer
 }
 
 void pre_process_graph::set_parameter(
-    rhi_resource* ambient_map,
+    rhi_image* ambient_map,
     rhi_sampler* ambient_sampler,
-    rhi_resource* irradiance_map)
+    rhi_image* irradiance_map)
 {
     m_parameter->set_texture(0, ambient_map, ambient_sampler);
-    m_parameter->set_storage(1, irradiance_map);
+    // m_parameter->set_storage(1, irradiance_map);
 
     compute_pipeline* pipeline = get_compute_pipeline("irradiance process");
     rhi_resource_extent extent = ambient_map->get_extent();
@@ -130,15 +130,15 @@ pbr_render_graph::pbr_render_graph(renderer* renderer) : render_graph(renderer)
 
     render_attachment* output_attachment = main->add_attachment("output");
     output_attachment->set_format(renderer->get_back_buffer()->get_format());
-    output_attachment->set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
-    output_attachment->set_final_state(RHI_RESOURCE_STATE_PRESENT);
+    output_attachment->set_initial_layout(RHI_IMAGE_LAYOUT_UNDEFINED);
+    output_attachment->set_final_layout(RHI_IMAGE_LAYOUT_PRESENT);
     output_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
     output_attachment->set_store_op(RHI_ATTACHMENT_STORE_OP_STORE);
 
     render_attachment* depth_stencil_attachment = main->add_attachment("depth stencil");
     depth_stencil_attachment->set_format(RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT);
-    depth_stencil_attachment->set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
-    depth_stencil_attachment->set_final_state(RHI_RESOURCE_STATE_DEPTH_STENCIL);
+    depth_stencil_attachment->set_initial_layout(RHI_IMAGE_LAYOUT_UNDEFINED);
+    depth_stencil_attachment->set_final_layout(RHI_IMAGE_LAYOUT_DEPTH_STENCIL);
     depth_stencil_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
     depth_stencil_attachment->set_store_op(RHI_ATTACHMENT_STORE_OP_DONT_CARE);
     depth_stencil_attachment->set_stencil_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
@@ -148,11 +148,11 @@ pbr_render_graph::pbr_render_graph(renderer* renderer) : render_graph(renderer)
     color_pass->add_reference(
         output_attachment,
         RHI_ATTACHMENT_REFERENCE_TYPE_COLOR,
-        RHI_RESOURCE_STATE_RENDER_TARGET);
+        RHI_IMAGE_LAYOUT_RENDER_TARGET);
     color_pass->add_reference(
         depth_stencil_attachment,
         RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL,
-        RHI_RESOURCE_STATE_DEPTH_STENCIL);
+        RHI_IMAGE_LAYOUT_DEPTH_STENCIL);
 
     color_pass->add_pipeline<skybox_pipeline>("skybox");
     color_pass->add_pipeline<pbr_pipeline>("pbr");

@@ -26,7 +26,7 @@ public:
     void set_perspective(float fov, float near_z, float far_z);
     void set_position(const float3& position);
     void set_view(const float4x4& view);
-    void set_skybox(rhi_resource* texture, rhi_sampler* sampler);
+    void set_skybox(rhi_image* texture, rhi_sampler* sampler);
 
     rhi_scissor_rect get_scissor() const noexcept { return m_scissor; }
     rhi_viewport get_viewport() const noexcept { return m_viewport; }
@@ -34,8 +34,8 @@ public:
     void set_render_pass(render_pass* render_pass);
     render_pass* get_render_pass() const noexcept { return m_render_pass; }
 
-    void set_attachment(std::size_t index, rhi_resource* attachment, bool back_buffer = false);
-    void set_back_buffer(rhi_resource* back_buffer);
+    void set_attachment(std::size_t index, rhi_image* attachment, bool back_buffer = false);
+    void set_back_buffer(rhi_image* back_buffer);
 
     rhi_framebuffer* get_framebuffer();
 
@@ -66,7 +66,7 @@ private:
     rhi_scissor_rect m_scissor;
     rhi_viewport m_viewport;
 
-    std::vector<rhi_resource*> m_attachments;
+    std::vector<rhi_image*> m_attachments;
     std::size_t m_back_buffer_index;
 
     bool m_framebuffer_dirty;

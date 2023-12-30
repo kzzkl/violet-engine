@@ -45,9 +45,14 @@ void rhi_deleter::operator()(rhi_sampler* sampler)
     m_rhi->destroy_sampler(sampler);
 }
 
-void rhi_deleter::operator()(rhi_resource* resource)
+void rhi_deleter::operator()(rhi_buffer* buffer)
 {
-    m_rhi->destroy_resource(resource);
+    m_rhi->destroy_buffer(buffer);
+}
+
+void rhi_deleter::operator()(rhi_image* image)
+{
+    m_rhi->destroy_image(image);
 }
 
 void rhi_deleter::operator()(rhi_fence* fence)
@@ -132,7 +137,7 @@ void renderer::resize(std::uint32_t width, std::uint32_t height)
     m_rhi->resize(width, height);
 }
 
-rhi_resource* renderer::get_back_buffer()
+rhi_image* renderer::get_back_buffer()
 {
     return m_rhi->get_back_buffer();
 }
@@ -211,9 +216,9 @@ rhi_ptr<rhi_framebuffer> renderer::create_framebuffer(const rhi_framebuffer_desc
     return rhi_ptr<rhi_framebuffer>(m_rhi->create_framebuffer(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_resource> renderer::create_buffer(const rhi_buffer_desc& desc)
+rhi_ptr<rhi_buffer> renderer::create_buffer(const rhi_buffer_desc& desc)
 {
-    return rhi_ptr<rhi_resource>(m_rhi->create_buffer(desc), m_rhi_deleter);
+    return rhi_ptr<rhi_buffer>(m_rhi->create_buffer(desc), m_rhi_deleter);
 }
 
 rhi_ptr<rhi_sampler> renderer::create_sampler(const rhi_sampler_desc& desc)
@@ -221,24 +226,24 @@ rhi_ptr<rhi_sampler> renderer::create_sampler(const rhi_sampler_desc& desc)
     return rhi_ptr<rhi_sampler>(m_rhi->create_sampler(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_resource> renderer::create_texture(
+rhi_ptr<rhi_image> renderer::create_texture(
     const std::uint8_t* data,
     std::uint32_t width,
     std::uint32_t height,
     rhi_resource_format format,
     rhi_texture_flags flags)
 {
-    return rhi_ptr<rhi_resource>(
+    return rhi_ptr<rhi_image>(
         m_rhi->create_texture(data, width, height, format, flags),
         m_rhi_deleter);
 }
 
-rhi_ptr<rhi_resource> renderer::create_texture(const char* file, rhi_texture_flags flags)
+rhi_ptr<rhi_image> renderer::create_texture(const char* file, rhi_texture_flags flags)
 {
-    return rhi_ptr<rhi_resource>(m_rhi->create_texture(file, flags), m_rhi_deleter);
+    return rhi_ptr<rhi_image>(m_rhi->create_texture(file, flags), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_resource> renderer::create_texture_cube(
+rhi_ptr<rhi_image> renderer::create_texture_cube(
     std::string_view right,
     std::string_view left,
     std::string_view top,
@@ -247,7 +252,7 @@ rhi_ptr<rhi_resource> renderer::create_texture_cube(
     std::string_view back,
     rhi_texture_flags flags)
 {
-    return rhi_ptr<rhi_resource>(
+    return rhi_ptr<rhi_image>(
         m_rhi->create_texture_cube(
             right.data(),
             left.data(),
@@ -259,15 +264,9 @@ rhi_ptr<rhi_resource> renderer::create_texture_cube(
         m_rhi_deleter);
 }
 
-rhi_ptr<rhi_resource> renderer::create_render_target(const rhi_render_target_desc& desc)
+rhi_ptr<rhi_image> renderer::create_depth_stencil_buffer(const rhi_depth_stencil_buffer_desc& desc)
 {
-    return rhi_ptr<rhi_resource>(m_rhi->create_render_target(desc), m_rhi_deleter);
-}
-
-rhi_ptr<rhi_resource> renderer::create_depth_stencil_buffer(
-    const rhi_depth_stencil_buffer_desc& desc)
-{
-    return rhi_ptr<rhi_resource>(m_rhi->create_depth_stencil_buffer(desc), m_rhi_deleter);
+    return rhi_ptr<rhi_image>(m_rhi->create_depth_stencil_buffer(desc), m_rhi_deleter);
 }
 
 rhi_ptr<rhi_fence> renderer::create_fence(bool signaled)

@@ -59,8 +59,8 @@ public:
             ->set_uniform(field.field_index, &value, field.size, field.offset);
     }
 
-    void set(std::string_view name, rhi_resource* storage_buffer);
-    void set(std::string_view name, rhi_resource* texture, rhi_sampler* sampler);
+    void set(std::string_view name, rhi_buffer* storage_buffer);
+    void set(std::string_view name, rhi_image* texture, rhi_sampler* sampler);
 
     template <typename Functor>
     void each_pipeline(Functor functor)

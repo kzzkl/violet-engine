@@ -19,8 +19,8 @@ public:
     void set_stencil_load_op(rhi_attachment_load_op op) noexcept;
     void set_stencil_store_op(rhi_attachment_store_op op) noexcept;
 
-    void set_initial_state(rhi_resource_state state) noexcept;
-    void set_final_state(rhi_resource_state state) noexcept;
+    void set_initial_layout(rhi_image_layout layout) noexcept;
+    void set_final_layout(rhi_image_layout layout) noexcept;
 
     rhi_attachment_desc get_desc() const noexcept { return m_desc; }
     std::size_t get_index() const noexcept { return m_index; }
@@ -39,11 +39,11 @@ public:
     void add_reference(
         render_attachment* attachment,
         rhi_attachment_reference_type type,
-        rhi_resource_state state);
+        rhi_image_layout layout);
     void add_reference(
         render_attachment* attachment,
         rhi_attachment_reference_type type,
-        rhi_resource_state state,
+        rhi_image_layout layout,
         render_attachment* resolve);
 
     template <typename T, typename... Args>

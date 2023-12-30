@@ -24,7 +24,7 @@ private:
     void resize(std::uint32_t width, std::uint32_t height);
 
     std::unique_ptr<mmd_render_graph> m_render_graph;
-    rhi_ptr<rhi_resource> m_depth_stencil;
+    rhi_ptr<rhi_image> m_depth_stencil;
 
     std::unique_ptr<actor> m_camera;
     std::unique_ptr<actor> m_light;

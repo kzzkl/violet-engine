@@ -46,8 +46,8 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
         attachment.storeOp = map_store_op(desc.attachments[i].store_op);
         attachment.stencilLoadOp = map_load_op(desc.attachments[i].stencil_load_op);
         attachment.stencilStoreOp = map_store_op(desc.attachments[i].stencil_store_op);
-        attachment.initialLayout = vk_util::map_state(desc.attachments[i].initial_state);
-        attachment.finalLayout = vk_util::map_state(desc.attachments[i].final_state);
+        attachment.initialLayout = vk_util::map_layout(desc.attachments[i].initial_layout);
+        attachment.finalLayout = vk_util::map_layout(desc.attachments[i].final_layout);
 
         attachments.push_back(attachment);
     }
@@ -64,7 +64,7 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
         {
             VkAttachmentReference ref = {};
             ref.attachment = desc.subpasses[i].references[j].index;
-            ref.layout = vk_util::map_state(desc.subpasses[i].references[j].state);
+            ref.layout = vk_util::map_layout(desc.subpasses[i].references[j].layout);
             switch (desc.subpasses[i].references[j].type)
             {
             case RHI_ATTACHMENT_REFERENCE_TYPE_INPUT: {

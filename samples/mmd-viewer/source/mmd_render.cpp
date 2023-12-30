@@ -83,16 +83,23 @@ public:
             {
                 {RHI_PARAMETER_TYPE_STORAGE_BUFFER,
                  1,                                    RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // position input
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // normal input
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // uv input
+                {RHI_PARAMETER_TYPE_STORAGE_BUFFER,
+                 1,                                    RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // normal input
+                {RHI_PARAMETER_TYPE_STORAGE_BUFFER,
+                 1,                                    RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // uv input
                 {RHI_PARAMETER_TYPE_STORAGE_BUFFER,
                  1,                                    RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // output position
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // output normal
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // output uv
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // bedf bone
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // sedf bone
+                {RHI_PARAMETER_TYPE_STORAGE_BUFFER,
+                 1,                                    RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // output normal
+                {RHI_PARAMETER_TYPE_STORAGE_BUFFER,
+                 1,                                    RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // output uv
+                {RHI_PARAMETER_TYPE_STORAGE_BUFFER,
+                 1,                                    RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // bedf bone
+                {RHI_PARAMETER_TYPE_STORAGE_BUFFER,
+                 1,                                    RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // sedf bone
                 {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // skin
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // vertex morph
+                {RHI_PARAMETER_TYPE_STORAGE_BUFFER,
+                 1,                                    RHI_PARAMETER_STAGE_FLAG_COMPUTE}, // vertex morph
         });
 
         set_parameter_layouts({skeleton_layout, skinning_layout});
@@ -118,15 +125,15 @@ mmd_render_graph::mmd_render_graph(renderer* renderer) : render_graph(renderer)
 
     render_attachment* output_attachment = main_pass->add_attachment("output");
     output_attachment->set_format(renderer->get_back_buffer()->get_format());
-    output_attachment->set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
-    output_attachment->set_final_state(RHI_RESOURCE_STATE_PRESENT);
+    output_attachment->set_initial_layout(RHI_IMAGE_LAYOUT_UNDEFINED);
+    output_attachment->set_final_layout(RHI_IMAGE_LAYOUT_PRESENT);
     output_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
     output_attachment->set_store_op(RHI_ATTACHMENT_STORE_OP_STORE);
 
     render_attachment* depth_attachment = main_pass->add_attachment("depth");
     depth_attachment->set_format(RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT);
-    depth_attachment->set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
-    depth_attachment->set_final_state(RHI_RESOURCE_STATE_DEPTH_STENCIL);
+    depth_attachment->set_initial_layout(RHI_IMAGE_LAYOUT_UNDEFINED);
+    depth_attachment->set_final_layout(RHI_IMAGE_LAYOUT_DEPTH_STENCIL);
     depth_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
     depth_attachment->set_store_op(RHI_ATTACHMENT_STORE_OP_DONT_CARE);
     depth_attachment->set_stencil_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
@@ -136,11 +143,11 @@ mmd_render_graph::mmd_render_graph(renderer* renderer) : render_graph(renderer)
     color_pass->add_reference(
         output_attachment,
         RHI_ATTACHMENT_REFERENCE_TYPE_COLOR,
-        RHI_RESOURCE_STATE_RENDER_TARGET);
+        RHI_IMAGE_LAYOUT_RENDER_TARGET);
     color_pass->add_reference(
         depth_attachment,
         RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL,
-        RHI_RESOURCE_STATE_DEPTH_STENCIL);
+        RHI_IMAGE_LAYOUT_DEPTH_STENCIL);
 
     render_pipeline* mmd_pipeline = color_pass->add_pipeline<color_pipeline>("color pipeline");
     material_layout* mmd_material_layout = add_material_layout("mmd material");

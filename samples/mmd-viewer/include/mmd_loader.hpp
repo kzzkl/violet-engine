@@ -11,7 +11,7 @@ namespace violet::sample
 {
 struct mmd_model
 {
-    std::vector<rhi_ptr<rhi_resource>> textures;
+    std::vector<rhi_ptr<rhi_image>> textures;
     std::vector<material*> materials;
 
     std::unique_ptr<geometry> geometry;
@@ -46,7 +46,7 @@ private:
 
     std::map<std::string, std::unique_ptr<mmd_model>> m_models;
 
-    std::vector<rhi_ptr<rhi_resource>> m_internal_toons;
+    std::vector<rhi_ptr<rhi_image>> m_internal_toons;
 
     render_graph* m_render_graph;
     renderer* m_renderer;

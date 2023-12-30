@@ -34,7 +34,7 @@ public:
 
     virtual void resize(std::uint32_t width, std::uint32_t height) override;
 
-    virtual rhi_resource* get_back_buffer() override;
+    virtual rhi_image* get_back_buffer() override;
 
     virtual rhi_fence* get_in_flight_fence() override;
     virtual rhi_semaphore* get_image_available_semaphore() override;
@@ -87,17 +87,18 @@ public:
     virtual rhi_sampler* create_sampler(const rhi_sampler_desc& desc) override;
     virtual void destroy_sampler(rhi_sampler* sampler) override;
 
-    virtual rhi_resource* create_buffer(const rhi_buffer_desc& desc) override;
+    virtual rhi_buffer* create_buffer(const rhi_buffer_desc& desc) override;
+    virtual void destroy_buffer(rhi_buffer* buffer) override;
 
-    virtual rhi_resource* create_texture(
+    virtual rhi_image* create_texture(
         const std::uint8_t* data,
         std::uint32_t width,
         std::uint32_t height,
         rhi_resource_format format,
         rhi_texture_flags flags) override;
-    virtual rhi_resource* create_texture(const char* file, rhi_texture_flags flags) override;
+    virtual rhi_image* create_texture(const char* file, rhi_texture_flags flags) override;
 
-    virtual rhi_resource* create_texture_cube(
+    virtual rhi_image* create_texture_cube(
         const char* right,
         const char* left,
         const char* top,
@@ -105,19 +106,17 @@ public:
         const char* front,
         const char* back,
         rhi_texture_flags flags) override;
-    virtual rhi_resource* create_texture_cube(
+    virtual rhi_image* create_texture_cube(
         const std::uint32_t* data,
         std::uint32_t width,
         std::uint32_t height,
         rhi_resource_format format,
         rhi_texture_flags flags) override;
 
-    virtual rhi_resource* create_render_target(const rhi_render_target_desc& desc) override;
-
-    virtual rhi_resource* create_depth_stencil_buffer(
+    virtual rhi_image* create_depth_stencil_buffer(
         const rhi_depth_stencil_buffer_desc& desc) override;
 
-    virtual void destroy_resource(rhi_resource* resource) override;
+    virtual void destroy_image(rhi_image* image) override;
 
     virtual rhi_fence* create_fence(bool signaled) override;
     virtual void destroy_fence(rhi_fence* fence) override;
