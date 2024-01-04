@@ -5,11 +5,6 @@
 namespace violet
 {
 camera::camera(renderer* renderer)
-    : m_render_pass(nullptr),
-      m_back_buffer_index(-1),
-      m_framebuffer_dirty(false),
-      m_framebuffer(nullptr),
-      m_renderer(renderer)
 {
     m_perspective.fov = 45.0f;
     m_perspective.near_z = 0.1f;
@@ -22,7 +17,7 @@ camera::camera(renderer* renderer)
         m_perspective.near_z,
         m_perspective.far_z);
 
-    m_parameter = m_renderer->create_parameter(m_renderer->get_parameter_layout("violet camera"));
+    m_parameter = renderer->create_parameter(renderer->get_parameter_layout("violet camera"));
 }
 
 camera::~camera()
@@ -59,63 +54,6 @@ void camera::set_skybox(rhi_image* texture, rhi_sampler* sampler)
     m_parameter->set_texture(1, texture, sampler);
 }
 
-void camera::set_render_pass(render_pass* render_pass)
-{
-    m_render_pass = render_pass;
-    m_attachments.resize(render_pass->get_attachment_count());
-}
-
-void camera::set_attachment(std::size_t index, rhi_image* attachment, bool back_buffer)
-{
-    m_attachments[index] = attachment;
-    m_framebuffer_dirty = true;
-
-    if (back_buffer)
-        m_back_buffer_index = index;
-    else if (m_back_buffer_index == index)
-        m_back_buffer_index = -1;
-}
-
-void camera::set_back_buffer(rhi_image* back_buffer)
-{
-    if (m_back_buffer_index != -1)
-    {
-        m_attachments[m_back_buffer_index] = back_buffer;
-        m_framebuffer_dirty = true;
-    }
-}
-
-rhi_framebuffer* camera::get_framebuffer()
-{
-    if (!m_framebuffer_dirty)
-        return m_framebuffer;
-
-    std::size_t hash = 0;
-    for (rhi_image* attachment : m_attachments)
-        hash = hash_combine(hash, attachment->get_hash());
-
-    auto iter = m_framebuffer_cache.find(hash);
-    if (iter == m_framebuffer_cache.end())
-    {
-        rhi_framebuffer_desc desc = {};
-        desc.render_pass = m_render_pass->get_interface();
-
-        for (std::size_t i = 0; i < m_attachments.size(); ++i)
-            desc.attachments[i] = m_attachments[i];
-        desc.attachment_count = m_attachments.size();
-
-        m_framebuffer_cache[hash] = m_renderer->create_framebuffer(desc);
-        m_framebuffer = m_framebuffer_cache[hash].get();
-    }
-    else
-    {
-        m_framebuffer = iter->second.get();
-    }
-
-    m_framebuffer_dirty = false;
-    return m_framebuffer;
-}
-
 void camera::resize(std::uint32_t width, std::uint32_t height)
 {
     m_scissor.max_x = m_scissor.min_x + width;
@@ -127,8 +65,6 @@ void camera::resize(std::uint32_t width, std::uint32_t height)
     m_viewport.max_depth = 1.0f;
 
     update_projection();
-
-    m_framebuffer_cache.clear();
 }
 
 void camera::update_projection()

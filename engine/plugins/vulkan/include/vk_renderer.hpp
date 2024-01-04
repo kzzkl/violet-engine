@@ -90,31 +90,18 @@ public:
     virtual rhi_buffer* create_buffer(const rhi_buffer_desc& desc) override;
     virtual void destroy_buffer(rhi_buffer* buffer) override;
 
-    virtual rhi_image* create_texture(
-        const std::uint8_t* data,
-        std::uint32_t width,
-        std::uint32_t height,
-        rhi_resource_format format,
-        rhi_texture_flags flags) override;
-    virtual rhi_image* create_texture(const char* file, rhi_texture_flags flags) override;
+    virtual rhi_image* create_image(const rhi_image_desc& desc) override;
+    virtual rhi_image* create_image(const char* file, const rhi_image_desc& desc) override;
 
-    virtual rhi_image* create_texture_cube(
+    virtual rhi_image* create_image_cube(const rhi_image_desc& desc) override;
+    virtual rhi_image* create_image_cube(
         const char* right,
         const char* left,
         const char* top,
         const char* bottom,
         const char* front,
         const char* back,
-        rhi_texture_flags flags) override;
-    virtual rhi_image* create_texture_cube(
-        const std::uint32_t* data,
-        std::uint32_t width,
-        std::uint32_t height,
-        rhi_resource_format format,
-        rhi_texture_flags flags) override;
-
-    virtual rhi_image* create_depth_stencil_buffer(
-        const rhi_depth_stencil_buffer_desc& desc) override;
+        const rhi_image_desc& desc) override;
 
     virtual void destroy_image(rhi_image* image) override;
 

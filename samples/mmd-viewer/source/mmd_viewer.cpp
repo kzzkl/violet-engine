@@ -221,12 +221,13 @@ void mmd_viewer::resize(std::uint32_t width, std::uint32_t height)
 {
     renderer* renderer = get_system<graphics_system>().get_renderer();
 
-    rhi_depth_stencil_buffer_desc depth_stencil_buffer_desc = {};
-    depth_stencil_buffer_desc.width = width;
-    depth_stencil_buffer_desc.height = height;
-    depth_stencil_buffer_desc.samples = RHI_SAMPLE_COUNT_1;
-    depth_stencil_buffer_desc.format = RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT;
-    m_depth_stencil = renderer->create_depth_stencil_buffer(depth_stencil_buffer_desc);
+    rhi_image_desc depth_stencil_desc = {};
+    depth_stencil_desc.width = width;
+    depth_stencil_desc.height = height;
+    depth_stencil_desc.samples = RHI_SAMPLE_COUNT_1;
+    depth_stencil_desc.format = RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT;
+    depth_stencil_desc.flags = RHI_IMAGE_FLAG_DEPTH_STENCIL;
+    m_depth_stencil = renderer->create_image(depth_stencil_desc);
 
     if (m_camera)
     {

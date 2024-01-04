@@ -36,6 +36,7 @@ graphics_system::graphics_system() : engine_system("graphics"), m_idle(false)
 
 graphics_system::~graphics_system()
 {
+    m_light = nullptr;
     m_renderer = nullptr;
     m_plugin->unload();
 }
@@ -78,6 +79,8 @@ bool graphics_system::initialize(const dictionary& config)
     get_world().register_component<camera, camera_component_info>(m_renderer.get());
     get_world().register_component<light>();
 
+    m_light = m_renderer->create_parameter(m_renderer->get_parameter_layout("violet light"));
+
     return true;
 }
 
@@ -115,14 +118,14 @@ void graphics_system::render()
         {
             camera.set_position(transform.get_world_position());
             camera.set_view(matrix::inverse(transform.get_world_matrix()));
-            camera.set_back_buffer(m_renderer->get_back_buffer());
+            // camera.set_back_buffer(m_renderer->get_back_buffer());
 
-            render_pass* render_pass = camera.get_render_pass();
-            render_pass->add_camera(
-                camera.get_scissor(),
-                camera.get_viewport(),
-                camera.get_parameter(),
-                camera.get_framebuffer());
+            // render_pass* render_pass = camera.get_render_pass();
+            // render_pass->add_camera(
+            //     camera.get_scissor(),
+            //     camera.get_viewport(),
+            //     camera.get_parameter(),
+            //     camera.get_framebuffer());
         });
 
     view<mesh, transform> mesh_view(get_world());
@@ -131,18 +134,19 @@ void graphics_system::render()
         {
             // if (transform.get_update_count() != 0)
             mesh.set_model_matrix(transform.get_world_matrix());
-            mesh.each_submesh(
-                [](const render_mesh& submesh, render_pipeline* pipeline)
-                {
-                    pipeline->add_mesh(submesh);
-                });
+            for (auto& submesh : mesh.get_submeshes())
+            {
+                for (std::size_t i = 0; i < submesh.material->get_pipeline_count(); ++i)
+                    submesh.material->get_pipeline(i)->add_mesh(submesh.render_meshes[i]);
+            }
         });
 
     std::vector<rhi_semaphore*> render_finished_semaphores;
     render_finished_semaphores.reserve(m_render_graphs.size());
     for (render_graph* render_graph : m_render_graphs)
     {
-        render_graph->execute(m_renderer->get_light_parameter());
+        render_graph->set_light(m_light.get());
+        render_graph->execute();
         render_finished_semaphores.push_back(render_graph->get_render_finished_semaphore());
     }
     m_render_graphs.clear();
@@ -171,8 +175,6 @@ void graphics_system::update_light()
 
     light_data data = {};
 
-    rhi_parameter* light_parameter = m_renderer->get_light_parameter();
-
     view<light, transform> light_view(get_world());
     light_view.each(
         [&, this](light& light, transform& transform)
@@ -191,7 +193,6 @@ void graphics_system::update_light()
                 ++data.directional_light_count;
             }
         });
-
-    m_renderer->get_light_parameter()->set_uniform(0, &data, sizeof(light_data), 0);
+    m_light->set_uniform(0, &data, sizeof(light_data), 0);
 }
 } // namespace violet

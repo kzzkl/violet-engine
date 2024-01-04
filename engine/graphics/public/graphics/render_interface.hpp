@@ -147,16 +147,15 @@ enum rhi_attachment_store_op
 struct rhi_attachment_desc
 {
     rhi_resource_format format;
+    rhi_sample_count samples;
+
+    rhi_image_layout initial_layout;
+    rhi_image_layout final_layout;
 
     rhi_attachment_load_op load_op;
     rhi_attachment_store_op store_op;
     rhi_attachment_load_op stencil_load_op;
     rhi_attachment_store_op stencil_store_op;
-
-    rhi_image_layout initial_layout;
-    rhi_image_layout final_layout;
-
-    rhi_sample_count samples;
 };
 
 enum rhi_attachment_reference_type
@@ -537,22 +536,6 @@ public:
     virtual ~rhi_semaphore() = default;
 };
 
-struct rhi_render_target_desc
-{
-    std::uint32_t width;
-    std::uint32_t height;
-    rhi_sample_count samples;
-    rhi_resource_format format;
-};
-
-struct rhi_depth_stencil_buffer_desc
-{
-    std::uint32_t width;
-    std::uint32_t height;
-    rhi_sample_count samples;
-    rhi_resource_format format;
-};
-
 enum rhi_buffer_flag
 {
     RHI_BUFFER_FLAG_VERTEX = 1 << 0,
@@ -575,12 +558,27 @@ struct rhi_buffer_desc
     } index;
 };
 
-enum rhi_texture_flag
+enum rhi_image_flag
 {
-    RHI_TEXTURE_FLAG_STORAGE = 1 << 0,
-    RHI_TEXTURE_FLAG_MIPMAP = 1 << 1
+    RHI_IMAGE_FLAG_STORAGE = 1 << 0,
+    RHI_IMAGE_FLAG_MIPMAP = 1 << 1,
+    RHI_IMAGE_FLAG_RENDER_TARGET = 1 << 2,
+    RHI_IMAGE_FLAG_DEPTH_STENCIL = 1 << 3,
+    RHI_IMAGE_FLAG_TRANSFER_SRC = 1 << 4,
+    RHI_IMAGE_FLAG_TRANSFER_DST = 1 << 5
 };
-using rhi_texture_flags = std::uint32_t;
+using rhi_image_flags = std::uint32_t;
+
+struct rhi_image_desc
+{
+    std::uint32_t width;
+    std::uint32_t height;
+
+    rhi_resource_format format;
+    rhi_sample_count samples;
+
+    rhi_image_flags flags;
+};
 
 struct rhi_desc
 {
@@ -652,30 +650,18 @@ public:
     virtual rhi_buffer* create_buffer(const rhi_buffer_desc& desc) = 0;
     virtual void destroy_buffer(rhi_buffer* buffer) = 0;
 
-    virtual rhi_image* create_texture(
-        const std::uint8_t* data,
-        std::uint32_t width,
-        std::uint32_t height,
-        rhi_resource_format format,
-        rhi_texture_flags flags) = 0;
-    virtual rhi_image* create_texture(const char* file, rhi_texture_flags flags) = 0;
+    virtual rhi_image* create_image(const rhi_image_desc& desc) = 0;
+    virtual rhi_image* create_image(const char* file, const rhi_image_desc& desc) = 0;
 
-    virtual rhi_image* create_texture_cube(
+    virtual rhi_image* create_image_cube(const rhi_image_desc& desc) = 0;
+    virtual rhi_image* create_image_cube(
         const char* right,
         const char* left,
         const char* top,
         const char* bottom,
         const char* front,
         const char* back,
-        rhi_texture_flags flags) = 0;
-    virtual rhi_image* create_texture_cube(
-        const std::uint32_t* data,
-        std::uint32_t width,
-        std::uint32_t height,
-        rhi_resource_format format,
-        rhi_texture_flags flags) = 0;
-
-    virtual rhi_image* create_depth_stencil_buffer(const rhi_depth_stencil_buffer_desc& desc) = 0;
+        const rhi_image_desc& desc) = 0;
 
     virtual void destroy_image(rhi_image* image) = 0;
 

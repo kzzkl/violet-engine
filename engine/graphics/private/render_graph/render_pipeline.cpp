@@ -3,11 +3,14 @@
 
 namespace violet
 {
-render_pipeline::render_pipeline() : m_desc{}
+render_pipeline::render_pipeline(render_pass* render_pass, std::size_t subpass)
+    : m_desc{},
+      m_render_pass(render_pass)
 {
     m_desc.blend.enable = false;
     m_desc.samples = RHI_SAMPLE_COUNT_1;
     m_desc.primitive_topology = RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    m_desc.render_subpass_index = subpass;
 }
 
 render_pipeline::~render_pipeline()
@@ -33,20 +36,10 @@ const render_pipeline::vertex_attributes& render_pipeline::get_vertex_attributes
     return m_vertex_attributes;
 }
 
-void render_pipeline::set_parameter_layouts(const parameter_layouts& parameter_layouts)
+void render_pipeline::set_parameter_layouts(
+    const std::vector<rhi_parameter_layout*>& parameter_layouts)
 {
     m_parameter_layouts = parameter_layouts;
-}
-
-rhi_parameter_layout* render_pipeline::get_parameter_layout(
-    render_parameter_type type) const noexcept
-{
-    for (auto& parameter : m_parameter_layouts)
-    {
-        if (parameter.second == type)
-            return parameter.first;
-    }
-    return nullptr;
 }
 
 void render_pipeline::set_blend(const rhi_blend_desc& blend) noexcept
@@ -74,13 +67,7 @@ void render_pipeline::set_primitive_topology(rhi_primitive_topology primitive_to
     m_desc.primitive_topology = primitive_topology;
 }
 
-void render_pipeline::set_render_pass(rhi_render_pass* render_pass, std::size_t subpass) noexcept
-{
-    m_desc.render_pass = render_pass;
-    m_desc.render_subpass_index = subpass;
-}
-
-bool render_pipeline::compile(compile_context& context)
+bool render_pipeline::compile(renderer* renderer)
 {
     std::vector<rhi_vertex_attribute> vertex_attributes;
     for (auto& attribute : m_vertex_attributes)
@@ -88,28 +75,27 @@ bool render_pipeline::compile(compile_context& context)
 
     m_desc.vertex_attributes = vertex_attributes.data();
     m_desc.vertex_attribute_count = vertex_attributes.size();
+    m_desc.parameters = m_parameter_layouts.data();
+    m_desc.parameter_count = m_parameter_layouts.size();
+    m_desc.render_pass = m_render_pass->get_interface();
 
-    std::vector<rhi_parameter_layout*> parameter_layouts;
-    for (auto& parameter : m_parameter_layouts)
-        parameter_layouts.push_back(parameter.first);
-
-    m_desc.parameters = parameter_layouts.data();
-    m_desc.parameter_count = parameter_layouts.size();
-
-    m_interface = context.renderer->create_render_pipeline(m_desc);
+    m_interface = renderer->create_render_pipeline(m_desc);
 
     return m_interface != nullptr;
-}
-
-void render_pipeline::execute(execute_context& context)
-{
-    context.command->set_render_pipeline(m_interface.get());
-    render(m_meshes, context);
-    m_meshes.clear();
 }
 
 void render_pipeline::add_mesh(const render_mesh& mesh)
 {
     m_meshes.push_back(mesh);
+}
+
+const std::vector<render_mesh>& render_pipeline::get_meshes() const noexcept
+{
+    return m_meshes;
+}
+
+void render_pipeline::clear_mesh()
+{
+    m_meshes.clear();
 }
 } // namespace violet

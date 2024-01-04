@@ -1,53 +1,21 @@
 #include "graphics/render_graph/render_pass.hpp"
-#include "common/log.hpp"
-#include "graphics/render_graph/render_pipeline.hpp"
+#include "common/hash.hpp"
 #include <cassert>
 
 namespace violet
 {
-render_attachment::render_attachment(std::size_t index) noexcept : m_desc{}, m_index(index)
+render_attachment::render_attachment(render_resource* resource, std::size_t index)
+    : m_index(index),
+      m_desc{}
 {
-}
-
-void render_attachment::set_format(rhi_resource_format format) noexcept
-{
-    m_desc.format = format;
-}
-
-void render_attachment::set_load_op(rhi_attachment_load_op op) noexcept
-{
-    m_desc.load_op = op;
-}
-
-void render_attachment::set_store_op(rhi_attachment_store_op op) noexcept
-{
-    m_desc.store_op = op;
-}
-
-void render_attachment::set_stencil_load_op(rhi_attachment_load_op op) noexcept
-{
-    m_desc.stencil_load_op = op;
-}
-
-void render_attachment::set_stencil_store_op(rhi_attachment_store_op op) noexcept
-{
-    m_desc.stencil_store_op = op;
-}
-
-void render_attachment::set_initial_layout(rhi_image_layout layout) noexcept
-{
-    m_desc.initial_layout = layout;
-}
-
-void render_attachment::set_final_layout(rhi_image_layout layout) noexcept
-{
-    m_desc.final_layout = layout;
+    m_desc.format = resource->get_format();
+    m_desc.samples = resource->get_samples();
 }
 
 render_subpass::render_subpass(render_pass* render_pass, std::size_t index)
-    : m_desc{},
-      m_render_pass(render_pass),
-      m_index(index)
+    : m_render_pass(render_pass),
+      m_index(index),
+      m_desc{}
 {
 }
 
@@ -80,34 +48,10 @@ void render_subpass::add_reference(
     ++m_desc.reference_count;
 }
 
-render_pipeline* render_subpass::get_pipeline(std::string_view name) const
-{
-    auto iter = m_pipeline_map.find(name.data());
-    if (iter != m_pipeline_map.end())
-        return iter->second;
-    else
-        return nullptr;
-}
-
-bool render_subpass::compile(compile_context& context)
-{
-    for (auto& pipeline : m_pipelines)
-    {
-        pipeline->set_render_pass(m_render_pass->get_interface(), m_index);
-        if (!pipeline->compile(context))
-            return false;
-    }
-
-    return true;
-}
-
-void render_subpass::execute(execute_context& context)
-{
-    for (auto& pipeline : m_pipelines)
-        pipeline->execute(context);
-}
-
-render_pass::render_pass() : m_interface(nullptr)
+render_pass::render_pass(renderer* renderer, setup_context& context)
+    : pass(renderer, context),
+      m_interface(nullptr),
+      m_renderer(renderer)
 {
 }
 
@@ -115,28 +59,22 @@ render_pass::~render_pass()
 {
 }
 
-render_attachment* render_pass::add_attachment(std::string_view name)
+render_attachment* render_pass::add_attachment(render_resource* resource)
 {
-    auto attachment = std::make_unique<render_attachment>(m_attachments.size());
-    m_attachments.push_back(std::move(attachment));
+    m_attachments.push_back(std::make_unique<render_attachment>(resource, m_attachments.size()));
     return m_attachments.back().get();
 }
 
-render_subpass* render_pass::add_subpass(std::string_view name)
+render_subpass* render_pass::add_subpass()
 {
     m_subpasses.push_back(std::make_unique<render_subpass>(this, m_subpasses.size()));
     return m_subpasses.back().get();
 }
 
-render_pipeline* render_pass::get_pipeline(std::string_view name) const
+render_pipeline* render_pass::add_pipeline(render_subpass* subpass)
 {
-    for (auto& subpass : m_subpasses)
-    {
-        render_pipeline* pipeline = subpass->get_pipeline(name);
-        if (pipeline)
-            return pipeline;
-    }
-    return nullptr;
+    m_pipelines.push_back(std::make_unique<render_pipeline>(this, subpass->get_index()));
+    return m_pipelines.back().get();
 }
 
 void render_pass::add_dependency(
@@ -155,15 +93,6 @@ void render_pass::add_dependency(
     dependency.dst_stage = dst_stage;
     dependency.dst_access = dst_access;
     m_dependencies.push_back(dependency);
-}
-
-void render_pass::add_camera(
-    rhi_scissor_rect scissor,
-    rhi_viewport viewport,
-    rhi_parameter* parameter,
-    rhi_framebuffer* framebuffer)
-{
-    return m_cameras.push_back({scissor, viewport, parameter, framebuffer});
 }
 
 bool render_pass::compile(compile_context& context)
@@ -189,9 +118,9 @@ bool render_pass::compile(compile_context& context)
     if (m_interface == nullptr)
         return false;
 
-    for (std::size_t i = 0; i < m_subpasses.size(); ++i)
+    for (auto& pipeline : m_pipelines)
     {
-        if (!m_subpasses[i]->compile(context))
+        if (!pipeline->compile(context.renderer))
             return false;
     }
 
@@ -200,25 +129,48 @@ bool render_pass::compile(compile_context& context)
 
 void render_pass::execute(execute_context& context)
 {
-    assert(!m_attachments.empty());
+}
 
-    for (auto& camera : m_cameras)
+rhi_framebuffer* render_pass::get_framebuffer(const std::vector<render_resource*>& attachments)
+{
+    bool cache = true;
+
+    std::size_t hash = 0;
+    for (render_resource* attachment : attachments)
     {
-        context.command->begin(m_interface.get(), camera.framebuffer);
-        context.command->set_scissor(&camera.scissor, 1);
-        context.command->set_viewport(camera.viewport);
-        context.camera = camera.parameter;
-
-        for (std::size_t i = 0; i < m_subpasses.size(); ++i)
+        if (!attachment->is_framebuffer_cache())
         {
-            m_subpasses[i]->execute(context);
-            if (i != m_subpasses.size() - 1)
-                context.command->next();
+            cache = false;
+            break;
         }
 
-        context.command->end();
+        hash = hash_combine(hash, attachment->get_image()->get_hash());
     }
 
-    m_cameras.clear();
+    if (cache)
+    {
+        auto iter = m_framebuffer_cache.find(hash);
+        if (iter != m_framebuffer_cache.end())
+            return iter->second.get();
+    }
+
+    rhi_framebuffer_desc desc = {};
+    desc.render_pass = m_interface.get();
+    for (render_resource* attachment : attachments)
+    {
+        desc.attachments[desc.attachment_count] = attachment->get_image();
+        ++desc.attachment_count;
+    }
+
+    if (cache)
+    {
+        m_framebuffer_cache[hash] = m_renderer->create_framebuffer(desc);
+        return m_framebuffer_cache[hash].get();
+    }
+    else
+    {
+        m_temporary_framebuffer = m_renderer->create_framebuffer(desc);
+        return m_temporary_framebuffer.get();
+    }
 }
 } // namespace violet

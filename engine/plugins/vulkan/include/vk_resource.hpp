@@ -62,14 +62,14 @@ private:
 class vk_depth_stencil : public vk_image
 {
 public:
-    vk_depth_stencil(const rhi_depth_stencil_buffer_desc& desc, vk_context* context);
+    vk_depth_stencil(const rhi_image_desc& desc, vk_context* context);
     virtual ~vk_depth_stencil();
 };
 
 class vk_texture : public vk_image
 {
 public:
-    vk_texture(const char* file, rhi_texture_flags flags, vk_context* context);
+    vk_texture(const char* file, const rhi_image_desc& desc, vk_context* context);
     virtual ~vk_texture();
 };
 
@@ -83,15 +83,9 @@ public:
         const char* bottom,
         const char* front,
         const char* back,
-        rhi_texture_flags flags,
+        const rhi_image_desc& desc,
         vk_context* context);
-    vk_texture_cube(
-        const std::uint32_t* data,
-        std::uint32_t width,
-        std::uint32_t height,
-        rhi_resource_format format,
-        rhi_texture_flags flags,
-        vk_context* context);
+    vk_texture_cube(const rhi_image_desc& desc, vk_context* context);
     ~vk_texture_cube();
 };
 

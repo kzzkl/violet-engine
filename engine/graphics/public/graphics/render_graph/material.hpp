@@ -1,80 +1,30 @@
 #pragma once
 
-#include "graphics/render_graph/render_pipeline.hpp"
+#include "graphics/render_graph/render_pass.hpp"
 #include <unordered_map>
 
 namespace violet
 {
-struct material_field
-{
-    std::size_t pipeline_index = 0;
-    std::size_t field_index = 0;
-    std::size_t size = 1;
-    std::size_t offset = 0;
-};
-
-class material;
-class material_layout
-{
-public:
-    material_layout();
-
-    void add_pipeline(render_pipeline* pipeline);
-
-    void add_field(std::string_view name, const material_field& field)
-    {
-        m_fields[name.data()] = field;
-    }
-
-    const material_field& get_field(std::string_view name) const
-    {
-        auto iter = m_fields.find(name.data());
-        return iter->second;
-    }
-
-    material* add_material(std::string_view name, renderer* renderer);
-    material* get_material(std::string_view name) const;
-
-private:
-    friend class material;
-
-    std::vector<render_pipeline*> m_pipelines;
-    std::unordered_map<std::string, material_field> m_fields;
-
-    std::unordered_map<std::string, std::unique_ptr<material>> m_materials;
-};
-
 class material
 {
 public:
-    material(material_layout* layout, renderer* renderer);
+    material();
     material(const material&) = delete;
     virtual ~material();
 
-    template <typename T>
-    void set(std::string_view name, const T& value)
-    {
-        auto& field = m_layout->get_field(name);
-        m_parameters[field.pipeline_index]
-            ->set_uniform(field.field_index, &value, field.size, field.offset);
-    }
+    virtual std::vector<std::string> get_layout() const = 0;
 
-    void set(std::string_view name, rhi_buffer* storage_buffer);
-    void set(std::string_view name, rhi_image* texture, rhi_sampler* sampler);
+    render_pipeline* get_pipeline(std::size_t index) const { return m_pipelines[index]; }
+    rhi_parameter* get_parameter(std::size_t index) const { return m_parameters[index].get(); }
 
-    template <typename Functor>
-    void each_pipeline(Functor functor)
-    {
-        auto& pipelines = m_layout->m_pipelines;
-        for (std::size_t i = 0; i < pipelines.size(); ++i)
-            functor(pipelines[i], m_parameters[i].get());
-    }
+    std::size_t get_pipeline_count() const noexcept { return m_pipelines.size(); }
 
     material& operator=(const material&) = delete;
 
 private:
-    material_layout* m_layout;
+    friend class render_graph;
 
+    std::vector<render_pipeline*> m_pipelines;
     std::vector<rhi_ptr<rhi_parameter>> m_parameters;
 };
 } // namespace violet

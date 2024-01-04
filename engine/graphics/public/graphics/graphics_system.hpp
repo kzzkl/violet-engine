@@ -32,6 +32,8 @@ private:
     std::unique_ptr<renderer> m_renderer;
     std::unique_ptr<rhi_plugin> m_plugin;
 
+    rhi_ptr<rhi_parameter> m_light;
+
     bool m_idle;
 };
 } // namespace violet

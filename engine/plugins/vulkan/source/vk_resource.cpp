@@ -93,7 +93,7 @@ void vk_image::set_image(VkImage image, VmaAllocation allocation) noexcept
     m_hash = vk_util::hash(m_image);
 }
 
-vk_depth_stencil::vk_depth_stencil(const rhi_depth_stencil_buffer_desc& desc, vk_context* context)
+vk_depth_stencil::vk_depth_stencil(const rhi_image_desc& desc, vk_context* context)
     : vk_image(context)
 {
     VkFormat format = vk_util::map_format(desc.format);
@@ -154,7 +154,7 @@ vk_depth_stencil::~vk_depth_stencil()
 {
 }
 
-vk_texture::vk_texture(const char* file, rhi_texture_flags flags, vk_context* context)
+vk_texture::vk_texture(const char* file, const rhi_image_desc& desc, vk_context* context)
     : vk_image(context)
 {
     vk_image_loader loader;
@@ -163,7 +163,7 @@ vk_texture::vk_texture(const char* file, rhi_texture_flags flags, vk_context* co
 
     const vk_image_data& data = loader.get_mipmap(0);
     std::uint32_t mip_levels = loader.get_mipmap_count();
-    if (mip_levels == 1 && flags & RHI_TEXTURE_FLAG_MIPMAP)
+    if (mip_levels == 1 && desc.flags & RHI_IMAGE_FLAG_MIPMAP)
     {
         mip_levels =
             static_cast<std::uint32_t>(std::floor(std::log2((std::max)(data.width, data.height)))) +
@@ -409,7 +409,7 @@ vk_texture_cube::vk_texture_cube(
     const char* bottom,
     const char* front,
     const char* back,
-    rhi_texture_flags flags,
+    const rhi_image_desc& desc,
     vk_context* context)
     : vk_image(context)
 {
@@ -459,7 +459,7 @@ vk_texture_cube::vk_texture_cube(
     image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
     image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     image_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    if (flags & RHI_TEXTURE_FLAG_STORAGE)
+    if (desc.flags & RHI_IMAGE_FLAG_STORAGE)
         image_info.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
     image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     image_info.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -574,13 +574,7 @@ vk_texture_cube::vk_texture_cube(
     set_extent(VkExtent2D{image_info.extent.width, image_info.extent.height});
 }
 
-vk_texture_cube::vk_texture_cube(
-    const std::uint32_t* data,
-    std::uint32_t width,
-    std::uint32_t height,
-    rhi_resource_format format,
-    rhi_texture_flags flags,
-    vk_context* context)
+vk_texture_cube::vk_texture_cube(const rhi_image_desc& desc, vk_context* context)
     : vk_image(context)
 {
     VkImage image;
@@ -589,16 +583,16 @@ vk_texture_cube::vk_texture_cube(
     VkImageCreateInfo image_info = {};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     image_info.imageType = VK_IMAGE_TYPE_2D;
-    image_info.extent.width = width;
-    image_info.extent.height = height;
+    image_info.extent.width = desc.width;
+    image_info.extent.height = desc.height;
     image_info.extent.depth = 1;
     image_info.mipLevels = 1;
     image_info.arrayLayers = 6;
-    image_info.format = vk_util::map_format(format);
+    image_info.format = vk_util::map_format(desc.format);
     image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
     image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     image_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    if (flags & RHI_TEXTURE_FLAG_STORAGE)
+    if (desc.flags & RHI_IMAGE_FLAG_STORAGE)
         image_info.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
     image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     image_info.samples = VK_SAMPLE_COUNT_1_BIT;

@@ -42,12 +42,13 @@ public:
         m_camera = std::make_unique<actor>("main camera", get_world());
         auto [camera_transform, main_camera, camera_control] =
             m_camera->add<transform, camera, orbit_control>();
-        main_camera->set_render_pass(m_render_graph->get_render_pass("main"));
+
+        m_render_graph->set_camera("main camera", main_camera->get_parameter());
 
         auto extent = window.get_extent();
         resize(extent.width, extent.height);
 
-        m_skybox = renderer->create_texture_cube(
+        m_skybox = renderer->create_image_cube(
             "pbr/skybox/icebergs/right.jpg",
             "pbr/skybox/icebergs/left.jpg",
             "pbr/skybox/icebergs/top.jpg",
@@ -71,10 +72,10 @@ public:
         auto [cube_transform, cube_mesh] = m_cube->add<transform, mesh>();
         cube_mesh->set_geometry(m_geometry.get());
 
-        m_material = m_render_graph->add_material("test pbr", "pbr");
-        m_material->set("albedo", float3{0.5f, 0.5f, 0.5f});
-        m_material->set("metalness", 0.2f);
-        m_material->set("roughness", m_roughness);
+        m_material = m_render_graph->add_material<pbr_material>("test pbr");
+        m_material->set_albedo(float3{0.5f, 0.5f, 0.5f});
+        m_material->set_metalness(0.2f);
+        m_material->set_roughness(m_roughness);
         cube_mesh->add_submesh(0, 0, 0, m_geometry->get_index_count(), m_material);
 
         m_light = std::make_unique<actor>("light", get_world());
@@ -101,13 +102,13 @@ private:
         if (window.get_keyboard().key(KEYBOARD_KEY_ADD).press())
         {
             m_roughness = std::min(1.0f, m_roughness + delta * 10.0f);
-            m_material->set("roughness", m_roughness);
+            m_material->set_roughness(m_roughness);
             log::debug("{}", m_roughness);
         }
         if (window.get_keyboard().key(KEYBOARD_KEY_SUBTRACT).press())
         {
             m_roughness = std::max(0.0f, m_roughness - delta * 10.0f);
-            m_material->set("roughness", m_roughness);
+            m_material->set_roughness(m_roughness);
             log::debug("{}", m_roughness);
         }
 
@@ -116,18 +117,22 @@ private:
 
     void resize(std::uint32_t width, std::uint32_t height)
     {
-        rhi_depth_stencil_buffer_desc depth_stencil_buffer_desc = {};
-        depth_stencil_buffer_desc.width = width;
-        depth_stencil_buffer_desc.height = height;
-        depth_stencil_buffer_desc.samples = RHI_SAMPLE_COUNT_1;
-        depth_stencil_buffer_desc.format = RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT;
-        m_depth_stencil = get_system<graphics_system>().get_renderer()->create_depth_stencil_buffer(
-            depth_stencil_buffer_desc);
+        rhi_image_desc depth_stencil_desc = {};
+        depth_stencil_desc.width = width;
+        depth_stencil_desc.height = height;
+        depth_stencil_desc.samples = RHI_SAMPLE_COUNT_1;
+        depth_stencil_desc.format = RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT;
+        depth_stencil_desc.flags = RHI_IMAGE_FLAG_DEPTH_STENCIL;
+        m_depth_stencil =
+            get_system<graphics_system>().get_renderer()->create_image(depth_stencil_desc);
 
         auto main_camera = m_camera->get<camera>();
         main_camera->resize(width, height);
-        main_camera->set_attachment(0, nullptr, true);
-        main_camera->set_attachment(1, m_depth_stencil.get());
+        // main_camera->set_attachment(0, nullptr, true);
+        // main_camera->set_attachment(1, m_depth_stencil.get());
+
+        m_render_graph->get_resource("depth buffer")->set_image(m_depth_stencil.get());
+        // m_render_graph->get_camera("main camera")->set_parameter(main_camera->get_parameter());
     }
 
     std::unique_ptr<pre_process_graph> m_pre_process_graph;
@@ -140,7 +145,7 @@ private:
 
     rhi_ptr<rhi_image> m_irradiance_map;
 
-    material* m_material;
+    pbr_material* m_material;
     float m_roughness = 0.3f;
 
     std::unique_ptr<geometry> m_geometry;

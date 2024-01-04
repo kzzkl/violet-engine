@@ -64,8 +64,6 @@ public:
         const std::vector<rhi_parameter_layout_pair>& layout);
     rhi_parameter_layout* get_parameter_layout(std::string_view name) const;
 
-    rhi_parameter* get_light_parameter() const noexcept { return m_light_parameter.get(); }
-
 public:
     rhi_ptr<rhi_render_pass> create_render_pass(const rhi_render_pass_desc& desc);
 
@@ -78,23 +76,16 @@ public:
 
     rhi_ptr<rhi_buffer> create_buffer(const rhi_buffer_desc& desc);
     rhi_ptr<rhi_sampler> create_sampler(const rhi_sampler_desc& desc);
-    rhi_ptr<rhi_image> create_texture(
-        const std::uint8_t* data,
-        std::uint32_t width,
-        std::uint32_t height,
-        rhi_resource_format format = RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM,
-        rhi_texture_flags flags = 0);
-    rhi_ptr<rhi_image> create_texture(const char* file, rhi_texture_flags flags = 0);
-    rhi_ptr<rhi_image> create_texture_cube(
+    rhi_ptr<rhi_image> create_image(const rhi_image_desc& desc);
+    rhi_ptr<rhi_image> create_image(const char* file, const rhi_image_desc& desc = {});
+    rhi_ptr<rhi_image> create_image_cube(
         std::string_view right,
         std::string_view left,
         std::string_view top,
         std::string_view bottom,
         std::string_view front,
         std::string_view back,
-        rhi_texture_flags flags = 0);
-
-    rhi_ptr<rhi_image> create_depth_stencil_buffer(const rhi_depth_stencil_buffer_desc& desc);
+        const rhi_image_desc& desc = {});
 
     rhi_ptr<rhi_fence> create_fence(bool signaled);
     rhi_ptr<rhi_semaphore> create_semaphore();
@@ -106,7 +97,5 @@ private:
     rhi_deleter m_rhi_deleter;
 
     std::map<std::string, rhi_ptr<rhi_parameter_layout>> m_parameter_layouts;
-
-    rhi_ptr<rhi_parameter> m_light_parameter;
 };
 } // namespace violet

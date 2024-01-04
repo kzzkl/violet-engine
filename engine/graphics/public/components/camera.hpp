@@ -31,14 +31,6 @@ public:
     rhi_scissor_rect get_scissor() const noexcept { return m_scissor; }
     rhi_viewport get_viewport() const noexcept { return m_viewport; }
 
-    void set_render_pass(render_pass* render_pass);
-    render_pass* get_render_pass() const noexcept { return m_render_pass; }
-
-    void set_attachment(std::size_t index, rhi_image* attachment, bool back_buffer = false);
-    void set_back_buffer(rhi_image* back_buffer);
-
-    rhi_framebuffer* get_framebuffer();
-
     rhi_parameter* get_parameter() const noexcept { return m_parameter.get(); }
 
     void resize(std::uint32_t width, std::uint32_t height);
@@ -61,18 +53,8 @@ private:
 
     camera_parameter m_parameter_data;
     rhi_ptr<rhi_parameter> m_parameter;
-    render_pass* m_render_pass;
 
     rhi_scissor_rect m_scissor;
     rhi_viewport m_viewport;
-
-    std::vector<rhi_image*> m_attachments;
-    std::size_t m_back_buffer_index;
-
-    bool m_framebuffer_dirty;
-    rhi_framebuffer* m_framebuffer;
-    std::unordered_map<std::size_t, rhi_ptr<rhi_framebuffer>> m_framebuffer_cache;
-
-    renderer* m_renderer;
 };
 } // namespace violet

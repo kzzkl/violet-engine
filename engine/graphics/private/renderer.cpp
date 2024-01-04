@@ -82,14 +82,11 @@ renderer::renderer(rhi_renderer* rhi) : m_rhi(rhi), m_rhi_deleter(rhi)
              RHI_PARAMETER_STAGE_FLAG_VERTEX | RHI_PARAMETER_STAGE_FLAG_FRAGMENT     },
             {RHI_PARAMETER_TYPE_TEXTURE,        1,  RHI_PARAMETER_STAGE_FLAG_FRAGMENT}
     });
-
-    rhi_parameter_layout* light_layout = add_parameter_layout(
+    add_parameter_layout(
         "violet light",
         {
             {RHI_PARAMETER_TYPE_UNIFORM_BUFFER, 528, RHI_PARAMETER_STAGE_FLAG_FRAGMENT}
     });
-
-    m_light_parameter = create_parameter(light_layout);
 }
 
 renderer::~renderer()
@@ -226,47 +223,35 @@ rhi_ptr<rhi_sampler> renderer::create_sampler(const rhi_sampler_desc& desc)
     return rhi_ptr<rhi_sampler>(m_rhi->create_sampler(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_image> renderer::create_texture(
-    const std::uint8_t* data,
-    std::uint32_t width,
-    std::uint32_t height,
-    rhi_resource_format format,
-    rhi_texture_flags flags)
+rhi_ptr<rhi_image> renderer::create_image(const rhi_image_desc& desc)
 {
-    return rhi_ptr<rhi_image>(
-        m_rhi->create_texture(data, width, height, format, flags),
-        m_rhi_deleter);
+    return rhi_ptr<rhi_image>(m_rhi->create_image(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_image> renderer::create_texture(const char* file, rhi_texture_flags flags)
+rhi_ptr<rhi_image> renderer::create_image(const char* file, const rhi_image_desc& desc)
 {
-    return rhi_ptr<rhi_image>(m_rhi->create_texture(file, flags), m_rhi_deleter);
+    return rhi_ptr<rhi_image>(m_rhi->create_image(file, desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_image> renderer::create_texture_cube(
+rhi_ptr<rhi_image> renderer::create_image_cube(
     std::string_view right,
     std::string_view left,
     std::string_view top,
     std::string_view bottom,
     std::string_view front,
     std::string_view back,
-    rhi_texture_flags flags)
+    const rhi_image_desc& desc)
 {
     return rhi_ptr<rhi_image>(
-        m_rhi->create_texture_cube(
+        m_rhi->create_image_cube(
             right.data(),
             left.data(),
             top.data(),
             bottom.data(),
             front.data(),
             back.data(),
-            flags),
+            desc),
         m_rhi_deleter);
-}
-
-rhi_ptr<rhi_image> renderer::create_depth_stencil_buffer(const rhi_depth_stencil_buffer_desc& desc)
-{
-    return rhi_ptr<rhi_image>(m_rhi->create_depth_stencil_buffer(desc), m_rhi_deleter);
 }
 
 rhi_ptr<rhi_fence> renderer::create_fence(bool signaled)

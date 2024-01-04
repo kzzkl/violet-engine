@@ -207,46 +207,34 @@ void vk_renderer::destroy_buffer(rhi_buffer* buffer)
     delay_delete(buffer);
 }
 
-rhi_image* vk_renderer::create_texture(
-    const std::uint8_t* data,
-    std::uint32_t width,
-    std::uint32_t height,
-    rhi_resource_format format,
-    rhi_texture_flags flags)
+rhi_image* vk_renderer::create_image(const rhi_image_desc& desc)
+{
+    if (desc.flags & RHI_IMAGE_FLAG_DEPTH_STENCIL)
+        return new vk_depth_stencil(desc, m_context.get());
+    else
+        return nullptr;
+}
+
+rhi_image* vk_renderer::create_image(const char* file, const rhi_image_desc& desc)
+{
+    return new vk_texture(file, desc, m_context.get());
+}
+
+rhi_image* vk_renderer::create_image_cube(const rhi_image_desc& desc)
 {
     return nullptr;
 }
 
-rhi_image* vk_renderer::create_texture(const char* file, rhi_texture_flags flags)
-{
-    return new vk_texture(file, flags, m_context.get());
-}
-
-rhi_image* vk_renderer::create_texture_cube(
+rhi_image* vk_renderer::create_image_cube(
     const char* right,
     const char* left,
     const char* top,
     const char* bottom,
     const char* front,
     const char* back,
-    rhi_texture_flags flags)
+    const rhi_image_desc& desc)
 {
-    return new vk_texture_cube(right, left, top, bottom, front, back, flags, m_context.get());
-}
-
-rhi_image* vk_renderer::create_texture_cube(
-    const std::uint32_t* data,
-    std::uint32_t width,
-    std::uint32_t height,
-    rhi_resource_format format,
-    rhi_texture_flags flags)
-{
-    return nullptr;
-}
-
-rhi_image* vk_renderer::create_depth_stencil_buffer(const rhi_depth_stencil_buffer_desc& desc)
-{
-    return new vk_depth_stencil(desc, m_context.get());
+    return new vk_texture_cube(right, left, top, bottom, front, back, desc, m_context.get());
 }
 
 void vk_renderer::destroy_image(rhi_image* image)

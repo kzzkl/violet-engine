@@ -43,7 +43,7 @@ mmd_loader::mmd_loader(
         "mmd-viewer/mmd/toon09.dds",
         "mmd-viewer/mmd/toon10.dds"};
     for (const std::string& toon : internal_toon_paths)
-        m_internal_toons.push_back(renderer->create_texture(toon.c_str()));
+        m_internal_toons.push_back(renderer->create_image(toon.c_str()));
 
     rhi_sampler_desc sampler_desc = {};
     sampler_desc.min_filter = RHI_FILTER_LINEAR;
@@ -123,8 +123,9 @@ void mmd_loader::load_mesh(mmd_model* model, const pmx& pmx, world& world)
     {
         try
         {
-            model->textures.push_back(
-                m_renderer->create_texture(texture.c_str(), RHI_TEXTURE_FLAG_MIPMAP));
+            rhi_image_desc desc = {};
+            desc.flags = RHI_IMAGE_FLAG_MIPMAP;
+            model->textures.push_back(m_renderer->create_image(texture.c_str(), desc));
         }
         catch (...)
         {
