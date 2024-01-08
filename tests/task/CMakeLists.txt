@@ -10,7 +10,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-    violet::core
+    violet::task
     Catch2::Catch2)
 
 install(TARGETS ${PROJECT_NAME}

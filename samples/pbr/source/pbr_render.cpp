@@ -15,30 +15,18 @@ public:
                 {RHI_PARAMETER_TYPE_TEXTURE,        1,  RHI_PARAMETER_STAGE_FLAG_FRAGMENT}
         });
 
-        m_render_target = context.write("back buffer");
-        m_depth_buffer = context.write("depth buffer");
-
-        render_attachment* render_target_attachment = add_attachment(m_render_target);
-        render_target_attachment->set_initial_layout(RHI_IMAGE_LAYOUT_UNDEFINED);
-        render_target_attachment->set_final_layout(RHI_IMAGE_LAYOUT_RENDER_TARGET);
-        render_target_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
-        render_target_attachment->set_store_op(RHI_ATTACHMENT_STORE_OP_STORE);
-
-        render_attachment* depth_buffer_attachment = add_attachment(m_depth_buffer);
-        depth_buffer_attachment->set_initial_layout(RHI_IMAGE_LAYOUT_UNDEFINED);
-        depth_buffer_attachment->set_final_layout(RHI_IMAGE_LAYOUT_DEPTH_STENCIL);
-        depth_buffer_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
-        depth_buffer_attachment->set_store_op(RHI_ATTACHMENT_STORE_OP_STORE);
-        depth_buffer_attachment->set_stencil_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
-        depth_buffer_attachment->set_stencil_store_op(RHI_ATTACHMENT_STORE_OP_STORE);
+        pass_slot* render_target =
+            add_slot("render target", RENDER_RESOURCE_TYPE_INPUT_OUTPUT, true);
+        pass_slot* depth_buffer = add_slot("depth buffer", RENDER_RESOURCE_TYPE_INPUT_OUTPUT, true);
+        depth_buffer->set_format(RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT);
 
         render_subpass* subpass = add_subpass();
         subpass->add_reference(
-            render_target_attachment,
+            render_target,
             RHI_ATTACHMENT_REFERENCE_TYPE_COLOR,
             RHI_IMAGE_LAYOUT_RENDER_TARGET);
         subpass->add_reference(
-            depth_buffer_attachment,
+            depth_buffer,
             RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL,
             RHI_IMAGE_LAYOUT_DEPTH_STENCIL);
 
@@ -66,7 +54,7 @@ public:
     {
         rhi_render_command* command = context.get_command();
 
-        rhi_resource_extent extent = m_render_target->get_image()->get_extent();
+        rhi_resource_extent extent = get_extent();
 
         rhi_scissor_rect scissor;
         scissor.min_x = 0;
@@ -84,7 +72,7 @@ public:
         viewport.max_depth = 1.0f;
         command->set_viewport(viewport);
 
-        command->begin(get_interface(), get_framebuffer({m_render_target, m_depth_buffer}));
+        command->begin(get_interface(), get_framebuffer());
 
         command->set_render_pipeline(m_pipeline->get_interface());
         command->set_render_parameter(2, context.get_camera("main camera"));
@@ -103,8 +91,6 @@ public:
     }
 
 private:
-    render_resource* m_render_target;
-    render_resource* m_depth_buffer;
     render_pipeline* m_pipeline;
 };
 
@@ -130,12 +116,20 @@ std::vector<std::string> pbr_material::get_layout() const
 
 pbr_render_graph::pbr_render_graph(renderer* renderer) : render_graph(renderer)
 {
-    render_resource* depth_buffer = add_resource("depth buffer");
+    pass_slot* depth_buffer = add_slot("depth buffer", RENDER_RESOURCE_TYPE_INPUT_OUTPUT);
     depth_buffer->set_format(RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT);
     depth_buffer->set_samples(RHI_SAMPLE_COUNT_1);
 
-    add_pass<pbr_pass>("pbr");
-    add_pass<skybox_pass>("skybox");
+    pass* pbr = add_pass<pbr_pass>("pbr");
+    pass* skybox = add_pass<skybox_pass>("skybox");
+
+    pbr->get_slot("render target")->connect(get_slot("back buffer input"));
+    pbr->get_slot("depth buffer")->connect(depth_buffer);
+
+    skybox->get_slot("render target")->connect(pbr->get_slot("render target"));
+    skybox->get_slot("depth buffer")->connect(pbr->get_slot("depth buffer"));
+
+    get_slot("back buffer output")->connect(skybox->get_slot("render target"));
 
     compile();
 }

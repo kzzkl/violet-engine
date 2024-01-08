@@ -1,11 +1,10 @@
-#include "core/task/task.hpp"
+#include "task/task.hpp"
 #include <queue>
 
 namespace violet
 {
-task_base::task_base(task_option option, task_graph_base* graph) noexcept
+task_base::task_base(task_graph_base* graph) noexcept
     : m_uncompleted_dependency_count(0),
-      m_option(option),
       m_graph(graph)
 {
 }
@@ -103,17 +102,8 @@ void task_graph_base::on_task_complete()
         m_promise.set_value();
 }
 
-std::size_t task_graph_base::get_task_count(int option) const noexcept
+std::size_t task_graph_base::get_task_count() const noexcept
 {
-    if (option == TASK_OPTION_NONE)
-        return m_accessible_tasks.size();
-
-    std::size_t result = 0;
-    for (task_base* task : m_accessible_tasks)
-    {
-        if ((task->get_option() & option) == option)
-            ++result;
-    }
-    return result;
+    return m_accessible_tasks.size();
 }
 } // namespace violet

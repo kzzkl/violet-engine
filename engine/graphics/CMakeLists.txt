@@ -15,7 +15,6 @@ add_library(${PROJECT_NAME} STATIC
     ./private/render_graph/render_graph.cpp
     ./private/render_graph/render_pass.cpp
     ./private/render_graph/render_pipeline.cpp
-    ./private/render_graph/render_resource.cpp
     ./private/geometry.cpp
     ./private/graphics_system.cpp
     ./private/renderer.cpp
@@ -30,7 +29,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-    violet::core
+    violet::task
     violet::window
     violet::math
     violet::scene)

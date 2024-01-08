@@ -1,6 +1,6 @@
-#include "core/task/task_executor.hpp"
+#include "task/task_executor.hpp"
 #include "common/log.hpp"
-#include "task/task_queue.hpp"
+#include "task_queue.hpp"
 
 namespace violet
 {
@@ -33,7 +33,6 @@ private:
 task_executor::task_executor() : m_stop(true)
 {
     m_queue = std::make_unique<task_queue_thread_safe>();
-    m_main_thread_queue = std::make_unique<task_queue_thread_safe>();
 }
 
 task_executor::~task_executor()
@@ -75,31 +74,12 @@ void task_executor::stop()
     m_stop = true;
 
     m_queue->close();
-    m_main_thread_queue->close();
     m_thread_pool->join();
     m_thread_pool = nullptr;
 }
 
 void task_executor::execute_task(task_base* task)
 {
-    if ((task->get_option() & TASK_OPTION_MAIN_THREAD) == TASK_OPTION_MAIN_THREAD)
-        m_main_thread_queue->push(task);
-    else
-        m_queue->push(task);
-}
-
-void task_executor::execute_main_thread_task(std::size_t task_count)
-{
-    while (task_count > 0)
-    {
-        task_base* current = m_main_thread_queue->pop();
-        if (!current)
-            break;
-
-        for (task_base* successor : current->execute())
-            execute_task(successor);
-
-        --task_count;
-    }
+    m_queue->push(task);
 }
 } // namespace violet

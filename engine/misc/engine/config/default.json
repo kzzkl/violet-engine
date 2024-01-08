@@ -4,7 +4,6 @@
     },
     "graphics": {
         "plugin": "violet-graphics-vulkan.dll",
-        "render_concurrency": 4,
         "frame_resource_count": 2,
         "samples": 4
     },

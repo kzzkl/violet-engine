@@ -13,14 +13,9 @@ set(ECS_SOURCE
     ./private/ecs/view.cpp
     ./private/ecs/world.cpp)
 
-set(TASK_SOURCE
-    ./private/task/task_executor.cpp
-    ./private/task/task.cpp)
-
 add_library(${PROJECT_NAME} STATIC
     ${CORE_SOURCE}
-    ${ECS_SOURCE}
-    ${TASK_SOURCE})
+    ${ECS_SOURCE})
 add_library(violet::core ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}

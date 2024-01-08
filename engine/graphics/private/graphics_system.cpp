@@ -4,6 +4,7 @@
 #include "components/mesh.hpp"
 #include "components/transform.hpp"
 #include "rhi_plugin.hpp"
+#include "task/task_system.hpp"
 #include "window/window_system.hpp"
 
 namespace violet
@@ -50,7 +51,6 @@ bool graphics_system::initialize(const dictionary& config)
     rhi_desc.width = extent.width;
     rhi_desc.height = extent.height;
     rhi_desc.window_handle = window.get_handle();
-    rhi_desc.render_concurrency = config["render_concurrency"];
     rhi_desc.frame_resource_count = config["frame_resource_count"];
 
     m_plugin = std::make_unique<rhi_plugin>();
@@ -59,20 +59,21 @@ bool graphics_system::initialize(const dictionary& config)
 
     m_renderer = std::make_unique<renderer>(m_plugin->get_rhi());
 
-    window.on_tick().then(
+    auto& task = get_system<task_system>();
+    task.on_frame_begin().then(
         [this]()
         {
             begin_frame();
+        });
+    task.on_frame_end().then(
+        [this]()
+        {
+            end_frame();
         });
     window.on_resize().then(
         [this](std::uint32_t width, std::uint32_t height)
         {
             m_renderer->resize(width, height);
-        });
-    on_frame_end().then(
-        [this]()
-        {
-            end_frame();
         });
 
     get_world().register_component<mesh, mesh_component_info>(m_renderer.get());

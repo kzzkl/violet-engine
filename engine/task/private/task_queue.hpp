@@ -1,8 +1,8 @@
 #pragma once
 
-#include "core/task/task.hpp"
-#include "task/lock_free_queue.hpp"
-#include "task/thread_safe_queue.hpp"
+#include "lock_free_queue.hpp"
+#include "task/task.hpp"
+#include "thread_safe_queue.hpp"
 
 namespace violet
 {
@@ -32,7 +32,12 @@ public:
     virtual task_base* pop() override
     {
         std::unique_lock<std::mutex> lock(m_mutex);
-        m_cv.wait(lock, [this] { return !m_queue.empty() || m_close; });
+        m_cv.wait(
+            lock,
+            [this]
+            {
+                return !m_queue.empty() || m_close;
+            });
 
         if (!m_queue.empty())
         {

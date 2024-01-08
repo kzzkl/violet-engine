@@ -1,5 +1,5 @@
-#include "core/task/task.hpp"
-#include "core/task/task_executor.hpp"
+#include "task/task.hpp"
+#include "task/task_executor.hpp"
 #include "test_common.hpp"
 #include <queue>
 
@@ -17,8 +17,16 @@ TEST_CASE("dependencies between tasks", "[task]")
             return std::make_tuple(std::ref(num));
         });
 
-    task<>& t2 = t1.then([](int& num) { num += 2; });
-    task<>& t3 = t2.then([&num]() { num /= 2; });
+    task<>& t2 = t1.then(
+        [](int& num)
+        {
+            num += 2;
+        });
+    task<>& t3 = t2.then(
+        [&num]()
+        {
+            num /= 2;
+        });
 
     task_executor executor;
     executor.run();

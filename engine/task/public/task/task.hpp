@@ -46,25 +46,17 @@ struct functor_traits<R (C::*)(Args...)>
     using function_type = std::function<R(Args...)>;
 };
 
-enum task_option : std::uint32_t
-{
-    TASK_OPTION_NONE = 0,
-    TASK_OPTION_MAIN_THREAD = 1
-};
-
 class task_graph_base;
 class task_base
 {
 public:
-    task_base(task_option option, task_graph_base* graph = nullptr) noexcept;
+    task_base(task_graph_base* graph = nullptr) noexcept;
     virtual ~task_base();
 
     std::vector<task_base*> execute();
     std::vector<task_base*> visit();
 
     bool is_ready() const noexcept { return m_uncompleted_dependency_count == 0; }
-
-    std::size_t get_option() const noexcept { return m_option; }
 
 protected:
     void add_successor(task_base* successor);
@@ -81,7 +73,6 @@ private:
 
     std::atomic<std::uint32_t> m_uncompleted_dependency_count;
 
-    task_option m_option;
     task_graph_base* m_graph;
 };
 
@@ -108,7 +99,7 @@ public:
     std::future<void> reset(task_base* root) noexcept;
     void on_task_complete();
 
-    std::size_t get_task_count(int option) const noexcept;
+    std::size_t get_task_count() const noexcept;
 
 protected:
     bool is_dirty() const noexcept { return m_dirty; }
@@ -157,11 +148,11 @@ public:
     using task_base::task_base;
 
     template <typename Functor>
-    auto& then(Functor functor, task_option option = TASK_OPTION_NONE)
+    auto& then(Functor functor)
     {
         using next_type = typename next_task<Functor>::type;
 
-        auto& task = get_graph()->add_task<next_type>(functor, this, option);
+        auto& task = get_graph()->add_task<next_type>(functor, this);
         add_successor(&task);
         return task;
     }
@@ -188,11 +179,11 @@ public:
     using task_base::task_base;
 
     template <typename Functor>
-    auto& then(Functor functor, task_option option = TASK_OPTION_NONE)
+    auto& then(Functor functor)
     {
         using next_type = typename next_task<Functor>::type;
 
-        auto& task = get_graph()->add_task<next_type>(functor, this, option);
+        auto& task = get_graph()->add_task<next_type>(functor, this);
         add_successor(&task);
         return task;
     }
@@ -226,9 +217,8 @@ public:
 
 public:
     template <typename Functor>
-    task_node(Functor functor, prev_task_type* prev_task, task_option option = TASK_OPTION_NONE)
-        : base_type(option),
-          m_callable(functor),
+    task_node(Functor functor, prev_task_type* prev_task)
+        : m_callable(functor),
           m_prev_task(prev_task)
     {
     }
@@ -266,7 +256,7 @@ public:
         using base_type = task<Args...>;
 
     public:
-        task_root(task_graph* graph) : task<Args...>(TASK_OPTION_NONE, graph) {}
+        task_root(task_graph* graph) : task<Args...>(graph) {}
 
         template <typename... Ts>
         void set_argument(Ts&&... args)

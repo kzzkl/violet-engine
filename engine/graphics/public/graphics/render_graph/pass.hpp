@@ -1,7 +1,6 @@
 #pragma once
 
 #include "graphics/render_graph/render_pipeline.hpp"
-#include "graphics/render_graph/render_resource.hpp"
 #include "graphics/renderer.hpp"
 #include <unordered_map>
 
@@ -18,13 +17,8 @@ public:
     };
 
 public:
-    setup_context(
-        const std::map<std::string, std::unique_ptr<render_resource>>& resources,
-        std::map<std::string, std::pair<render_pipeline*, rhi_parameter_layout*>>&
-            material_pipelines);
-
-    render_resource* read(std::string_view name);
-    render_resource* write(std::string_view name);
+    setup_context(std::map<std::string, std::pair<render_pipeline*, rhi_parameter_layout*>>&
+                      material_pipelines);
 
     void register_material_pipeline(
         std::string_view name,
@@ -33,7 +27,6 @@ public:
 
 private:
     std::map<std::string, std::pair<render_pipeline*, rhi_parameter_layout*>>& m_material_pipelines;
-    const std::map<std::string, std::unique_ptr<render_resource>>& m_resources;
 };
 
 class compile_context
@@ -60,6 +53,66 @@ private:
     const std::unordered_map<std::string, rhi_parameter*>& m_cameras;
 };
 
+enum pass_slot_type
+{
+    RENDER_RESOURCE_TYPE_INPUT,
+    RENDER_RESOURCE_TYPE_OUTPUT,
+    RENDER_RESOURCE_TYPE_INPUT_OUTPUT
+};
+
+class pass_slot
+{
+public:
+    pass_slot(
+        std::string_view name,
+        std::size_t index,
+        pass_slot_type type,
+        bool clear = false) noexcept;
+
+    void set_format(rhi_resource_format format) noexcept { m_format = format; }
+    rhi_resource_format get_format() const noexcept { return m_format; }
+
+    void set_samples(rhi_sample_count samples) noexcept { m_samples = samples; }
+    rhi_sample_count get_samples() const noexcept { return m_samples; }
+
+    void set_input_layout(rhi_image_layout layout) noexcept { m_input_layout = layout; }
+    rhi_image_layout get_input_layout() const noexcept { return m_input_layout; }
+    rhi_image_layout get_output_layout() const noexcept
+    {
+        return m_connections.empty() ? m_input_layout : m_connections[0]->get_input_layout();
+    }
+
+    bool is_clear() const noexcept { return m_clear; }
+
+    const std::string& get_name() const noexcept { return m_name; }
+    std::size_t get_index() const noexcept { return m_index; }
+
+    bool connect(pass_slot* slot);
+
+    void set_image(rhi_image* image, bool framebuffer_cache = true);
+    rhi_image* get_image() const noexcept { return m_image; }
+
+    bool is_framebuffer_cache() const noexcept { return m_framebuffer_cache; }
+
+private:
+    std::string m_name;
+    std::size_t m_index;
+
+    pass_slot_type m_type;
+
+    rhi_resource_format m_format;
+    rhi_sample_count m_samples;
+
+    rhi_image_layout m_input_layout;
+
+    bool m_clear;
+
+    std::vector<pass_slot*> m_connections;
+
+    rhi_image* m_image;
+    bool m_framebuffer_cache;
+};
+
 class pass
 {
 public:
@@ -67,9 +120,16 @@ public:
     pass(const pass&) = delete;
     virtual ~pass();
 
-    pass& operator=(const renderer&) = delete;
+    pass_slot* add_slot(std::string_view name, pass_slot_type type, bool clear = false);
+    pass_slot* get_slot(std::string_view name) const;
+    const std::vector<std::unique_ptr<pass_slot>>& get_slots() const noexcept { return m_slots; }
 
     virtual bool compile(compile_context& context) = 0;
     virtual void execute(execute_context& context) = 0;
+
+    pass& operator=(const renderer&) = delete;
+
+private:
+    std::vector<std::unique_ptr<pass_slot>> m_slots;
 };
 } // namespace violet

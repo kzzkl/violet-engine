@@ -5,25 +5,28 @@ namespace violet
 {
 render_graph::render_graph(renderer* renderer) : m_renderer(renderer)
 {
-    m_back_buffer = add_resource("back buffer");
+    m_back_buffer = add_slot("back buffer input", RENDER_RESOURCE_TYPE_OUTPUT);
     m_back_buffer->set_format(renderer->get_back_buffer()->get_format());
+
+    pass_slot* back_buffer_output = add_slot("back buffer output", RENDER_RESOURCE_TYPE_INPUT);
+    back_buffer_output->set_input_layout(RHI_IMAGE_LAYOUT_PRESENT);
 }
 
 render_graph::~render_graph()
 {
 }
 
-render_resource* render_graph::add_resource(std::string_view name)
+pass_slot* render_graph::add_slot(std::string_view name, pass_slot_type type)
 {
-    assert(m_resources.find(name.data()) == m_resources.end());
+    assert(m_slots.find(name.data()) == m_slots.end());
 
-    m_resources[name.data()] = std::make_unique<render_resource>();
-    return m_resources[name.data()].get();
+    m_slots[name.data()] = std::make_unique<pass_slot>(name, m_slots.size(), type);
+    return m_slots[name.data()].get();
 }
 
-render_resource* render_graph::get_resource(std::string_view name) const
+pass_slot* render_graph::get_slot(std::string_view name) const
 {
-    return m_resources.at(name.data()).get();
+    return m_slots.at(name.data()).get();
 }
 
 bool render_graph::compile()

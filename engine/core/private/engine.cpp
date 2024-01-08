@@ -81,9 +81,6 @@ void engine::run()
     else
         m_exit = false;
 
-    task_executor& executor = m_context->get_task_executor();
-    executor.run();
-
     frame_rater<30> frame_rater;
     timer& time = m_context->get_timer();
     time.tick(timer::point::FRAME_START);
@@ -93,15 +90,16 @@ void engine::run()
     {
         time.tick(timer::point::FRAME_START);
 
-        executor.execute_sync(m_context->get_frame_begin_task());
-        executor.execute_sync(m_context->get_tick_task(), time.get_frame_delta());
-        executor.execute_sync(m_context->get_frame_end_task());
+        for (auto& system : m_systems)
+            system->update(time.get_frame_delta());
+
+        for (auto& system : m_systems)
+            system->late_update(time.get_frame_delta());
 
         time.tick(timer::point::FRAME_END);
 
         // frame_rater.sleep();
     }
-    executor.stop();
 
     // shutdown
     for (auto iter = m_systems.rbegin(); iter != m_systems.rend(); ++iter)

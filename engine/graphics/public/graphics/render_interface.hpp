@@ -588,7 +588,6 @@ struct rhi_desc
     void* window_handle;
 
     std::size_t frame_resource_count;
-    std::size_t render_concurrency;
 };
 
 class rhi_renderer

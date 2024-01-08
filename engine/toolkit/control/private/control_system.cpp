@@ -1,4 +1,5 @@
 #include "control/control_system.hpp"
+#include "task/task_system.hpp"
 #include "window/window_system.hpp"
 
 namespace violet
@@ -12,7 +13,7 @@ control_system::control_system()
 
 bool control_system::initialize(const dictionary& config)
 {
-    on_tick().then(
+    get_system<task_system>().on_tick().then(
         [this](float delta)
         {
             tick(delta);
@@ -29,8 +30,6 @@ void control_system::shutdown()
 
 void control_system::tick(float delta)
 {
-    m_delta = delta;
-
     auto& window = get_system<window_system>();
 
     bool mouse_hold = false;
@@ -58,7 +57,7 @@ void control_system::tick(float delta)
         {
             if (orbit_control.dirty || mouse_hold || mouse_whell != 0)
             {
-                update_orbit_control(orbit_control, transform, m_mouse_position_delta, mouse_whell);
+                update_orbit_control(orbit_control, transform, mouse_whell);
                 orbit_control.dirty = false;
             }
         });
@@ -67,15 +66,17 @@ void control_system::tick(float delta)
 void control_system::update_orbit_control(
     orbit_control& orbit_control,
     transform& transform,
-    const int2& mouse_delta,
     int mouse_whell)
 {
     static const float EPS = 0.00001f;
 
-    orbit_control.theta += -mouse_delta[1] * m_delta * orbit_control.speed;
+    auto window_rect = get_system<window_system>().get_extent();
+
+    orbit_control.theta +=
+        -m_mouse_position_delta[1] * orbit_control.theta_speed / window_rect.height;
     orbit_control.theta = std::clamp(orbit_control.theta, EPS, PI - EPS);
-    orbit_control.phi += mouse_delta[0] * m_delta * orbit_control.speed;
-    orbit_control.r += -mouse_whell * m_delta * orbit_control.speed * 200.0f;
+    orbit_control.phi += m_mouse_position_delta[0] * orbit_control.phi_speed / window_rect.width;
+    orbit_control.r += -mouse_whell * orbit_control.r_speed;
     orbit_control.r = std::max(1.0f, orbit_control.r);
 
     auto [theta_sin, theta_cos] = sin_cos(orbit_control.theta);

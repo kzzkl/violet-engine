@@ -1,21 +1,20 @@
-project(violet-window)
+project(violet-task)
 
 add_library(${PROJECT_NAME} STATIC
-    ./private/input.cpp
-    ./private/window_impl_win32.cpp
-    ./private/window_system.cpp)
-add_library(violet::window ALIAS ${PROJECT_NAME})
+    ./private/task_executor.cpp
+    ./private/task_system.cpp
+    ./private/task.cpp)
+add_library(violet::task ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-    ./public
+        ./public
     PRIVATE
-    ./private)
+        ./private)
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-    violet::math
-    violet::task)
+        violet::core)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

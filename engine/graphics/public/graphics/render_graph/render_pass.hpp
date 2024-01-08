@@ -12,7 +12,7 @@ namespace violet
 class render_attachment
 {
 public:
-    render_attachment(render_resource* resource, std::size_t index);
+    render_attachment(pass_slot* slot, std::size_t index);
 
     void set_initial_layout(rhi_image_layout layout) noexcept { m_desc.initial_layout = layout; }
     void set_final_layout(rhi_image_layout layout) noexcept { m_desc.final_layout = layout; }
@@ -37,14 +37,9 @@ public:
     render_subpass(render_pass* render_pass, std::size_t index);
 
     void add_reference(
-        render_attachment* attachment,
+        pass_slot* slot,
         rhi_attachment_reference_type type,
         rhi_image_layout layout);
-    void add_reference(
-        render_attachment* attachment,
-        rhi_attachment_reference_type type,
-        rhi_image_layout layout,
-        render_attachment* resolve);
 
     std::size_t get_index() const noexcept { return m_index; }
     const rhi_render_subpass_desc& get_desc() const noexcept { return m_desc; }
@@ -62,8 +57,6 @@ public:
     render_pass(renderer* renderer, setup_context& context);
     virtual ~render_pass();
 
-    render_attachment* add_attachment(render_resource* resource);
-
     render_subpass* add_subpass();
 
     render_pipeline* add_pipeline(render_subpass* subpass);
@@ -80,13 +73,13 @@ public:
     virtual void execute(execute_context& context) override;
 
     rhi_render_pass* get_interface() const noexcept { return m_interface.get(); }
-    std::size_t get_attachment_count() const noexcept { return m_attachments.size(); }
 
 protected:
-    rhi_framebuffer* get_framebuffer(const std::vector<render_resource*>& attachments);
+    rhi_framebuffer* get_framebuffer();
+
+    rhi_resource_extent get_extent() const;
 
 private:
-    std::vector<std::unique_ptr<render_attachment>> m_attachments;
     std::vector<rhi_render_subpass_dependency_desc> m_dependencies;
 
     std::vector<std::unique_ptr<render_subpass>> m_subpasses;

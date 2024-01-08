@@ -5,30 +5,20 @@ namespace violet
 skybox_pass::skybox_pass(renderer* renderer, setup_context& context)
     : render_pass(renderer, context)
 {
-    m_render_target = context.write("back buffer");
-    m_depth_buffer = context.write("depth buffer");
+    pass_slot* render_target = add_slot("render target", RENDER_RESOURCE_TYPE_INPUT_OUTPUT);
+    render_target->set_input_layout(RHI_IMAGE_LAYOUT_RENDER_TARGET);
 
-    render_attachment* render_target_attachment = add_attachment(m_render_target);
-    render_target_attachment->set_initial_layout(RHI_IMAGE_LAYOUT_RENDER_TARGET);
-    render_target_attachment->set_final_layout(RHI_IMAGE_LAYOUT_PRESENT);
-    render_target_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_LOAD);
-    render_target_attachment->set_store_op(RHI_ATTACHMENT_STORE_OP_STORE);
-
-    render_attachment* depth_buffer_attachment = add_attachment(m_depth_buffer);
-    depth_buffer_attachment->set_initial_layout(RHI_IMAGE_LAYOUT_DEPTH_STENCIL);
-    depth_buffer_attachment->set_final_layout(RHI_IMAGE_LAYOUT_DEPTH_STENCIL);
-    depth_buffer_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_LOAD);
-    depth_buffer_attachment->set_store_op(RHI_ATTACHMENT_STORE_OP_DONT_CARE);
-    depth_buffer_attachment->set_stencil_load_op(RHI_ATTACHMENT_LOAD_OP_LOAD);
-    depth_buffer_attachment->set_stencil_store_op(RHI_ATTACHMENT_STORE_OP_DONT_CARE);
+    pass_slot* depth_buffer = add_slot("depth buffer", RENDER_RESOURCE_TYPE_INPUT_OUTPUT);
+    depth_buffer->set_format(RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT);
+    depth_buffer->set_input_layout(RHI_IMAGE_LAYOUT_DEPTH_STENCIL);
 
     render_subpass* subpass = add_subpass();
     subpass->add_reference(
-        render_target_attachment,
+        render_target,
         RHI_ATTACHMENT_REFERENCE_TYPE_COLOR,
         RHI_IMAGE_LAYOUT_RENDER_TARGET);
     subpass->add_reference(
-        depth_buffer_attachment,
+        depth_buffer,
         RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL,
         RHI_IMAGE_LAYOUT_DEPTH_STENCIL);
 
@@ -42,7 +32,7 @@ void skybox_pass::execute(execute_context& context)
 {
     rhi_render_command* command = context.get_command();
 
-    command->begin(get_interface(), get_framebuffer({m_render_target, m_depth_buffer}));
+    command->begin(get_interface(), get_framebuffer());
 
     command->set_render_pipeline(m_pipeline->get_interface());
     command->set_render_parameter(0, context.get_camera("main camera"));

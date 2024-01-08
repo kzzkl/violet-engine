@@ -8,7 +8,6 @@ engine_context::engine_context() : m_exit(true)
 {
     m_timer = std::make_unique<timer>();
     m_world = std::make_unique<world>();
-    m_task_executor = std::make_unique<task_executor>();
 }
 
 engine_context::~engine_context()

@@ -3,7 +3,6 @@
 #include "graphics/render_graph/compute_pass.hpp"
 #include "graphics/render_graph/material.hpp"
 #include "graphics/render_graph/render_pass.hpp"
-#include "graphics/render_graph/render_resource.hpp"
 #include "graphics/renderer.hpp"
 #include <memory>
 
@@ -16,15 +15,15 @@ public:
     render_graph(const render_graph&) = delete;
     virtual ~render_graph();
 
-    render_resource* add_resource(std::string_view name);
-    render_resource* get_resource(std::string_view name) const;
+    pass_slot* add_slot(std::string_view name, pass_slot_type type);
+    pass_slot* get_slot(std::string_view name) const;
 
     template <typename T, typename... Args>
     T* add_pass(std::string_view name, Args&&... args)
     {
         assert(m_passes.find(name.data()) == m_passes.end());
 
-        setup_context setup_context(m_resources, m_material_pipelines);
+        setup_context setup_context(m_material_pipelines);
         auto pass = std::make_unique<T>(m_renderer, setup_context, std::forward<Args>(args)...);
 
         T* result = pass.get();
@@ -72,7 +71,7 @@ public:
     render_graph& operator=(const render_graph&) = delete;
 
 private:
-    std::map<std::string, std::unique_ptr<render_resource>> m_resources;
+    std::map<std::string, std::unique_ptr<pass_slot>> m_slots;
     std::map<std::string, std::unique_ptr<pass>> m_passes;
 
     std::vector<pass*> m_execute_list;
@@ -83,7 +82,7 @@ private:
     std::unordered_map<std::string, rhi_parameter*> m_cameras;
     rhi_parameter* m_light;
 
-    render_resource* m_back_buffer;
+    pass_slot* m_back_buffer;
 
     std::vector<rhi_ptr<rhi_semaphore>> m_render_finished_semaphores;
     renderer* m_renderer;

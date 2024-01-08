@@ -12,8 +12,6 @@ public:
     virtual void execute(execute_context& context) override;
 
 private:
-    render_resource* m_render_target;
-    render_resource* m_depth_buffer;
     render_pipeline* m_pipeline;
 };
 } // namespace violet

@@ -4,12 +4,10 @@
 
 namespace violet
 {
-render_attachment::render_attachment(render_resource* resource, std::size_t index)
-    : m_index(index),
-      m_desc{}
+render_attachment::render_attachment(pass_slot* slot, std::size_t index) : m_index(index), m_desc{}
 {
-    m_desc.format = resource->get_format();
-    m_desc.samples = resource->get_samples();
+    m_desc.format = slot->get_format();
+    m_desc.samples = slot->get_samples();
 }
 
 render_subpass::render_subpass(render_pass* render_pass, std::size_t index)
@@ -20,30 +18,15 @@ render_subpass::render_subpass(render_pass* render_pass, std::size_t index)
 }
 
 void render_subpass::add_reference(
-    render_attachment* attachment,
+    pass_slot* slot,
     rhi_attachment_reference_type type,
     rhi_image_layout layout)
 {
     auto& desc = m_desc.references[m_desc.reference_count];
     desc.type = type;
     desc.layout = layout;
-    desc.index = attachment->get_index();
+    desc.index = slot->get_index();
     desc.resolve_index = 0;
-
-    ++m_desc.reference_count;
-}
-
-void render_subpass::add_reference(
-    render_attachment* attachment,
-    rhi_attachment_reference_type type,
-    rhi_image_layout layout,
-    render_attachment* resolve)
-{
-    auto& desc = m_desc.references[m_desc.reference_count];
-    desc.type = type;
-    desc.layout = layout;
-    desc.index = attachment->get_index();
-    desc.resolve_index = resolve->get_index();
 
     ++m_desc.reference_count;
 }
@@ -57,12 +40,6 @@ render_pass::render_pass(renderer* renderer, setup_context& context)
 
 render_pass::~render_pass()
 {
-}
-
-render_attachment* render_pass::add_attachment(render_resource* resource)
-{
-    m_attachments.push_back(std::make_unique<render_attachment>(resource, m_attachments.size()));
-    return m_attachments.back().get();
 }
 
 render_subpass* render_pass::add_subpass()
@@ -101,12 +78,43 @@ bool render_pass::compile(compile_context& context)
 
     rhi_render_pass_desc desc = {};
 
-    for (std::size_t i = 0; i < m_attachments.size(); ++i)
-        desc.attachments[i] = m_attachments[i]->get_desc();
-    desc.attachment_count = m_attachments.size();
+    for (auto& slot : get_slots())
+    {
+        auto& attachment = desc.attachments[slot->get_index()];
+        attachment.format = slot->get_format() == RHI_RESOURCE_FORMAT_UNDEFINED
+                                ? context.renderer->get_back_buffer()->get_format()
+                                : slot->get_format();
+        attachment.samples = slot->get_samples();
+        attachment.initial_layout = slot->get_input_layout();
+        attachment.final_layout = slot->get_output_layout();
+
+        if (slot->is_clear())
+        {
+            attachment.load_op = RHI_ATTACHMENT_LOAD_OP_CLEAR;
+            attachment.stencil_load_op = RHI_ATTACHMENT_LOAD_OP_CLEAR;
+        }
+        else
+        {
+            attachment.load_op = RHI_ATTACHMENT_LOAD_OP_LOAD;
+            attachment.stencil_load_op = RHI_ATTACHMENT_LOAD_OP_LOAD;
+        }
+
+        attachment.store_op = RHI_ATTACHMENT_STORE_OP_STORE;
+        attachment.stencil_store_op = RHI_ATTACHMENT_STORE_OP_STORE;
+    }
+    desc.attachment_count = get_slots().size();
 
     for (std::size_t i = 0; i < m_subpasses.size(); ++i)
+    {
         desc.subpasses[i] = m_subpasses[i]->get_desc();
+
+        for (std::size_t j = 0; j < desc.subpasses[i].reference_count; ++j)
+        {
+            auto& reference = desc.attachments[desc.subpasses[i].references[j].index];
+            if (reference.final_layout == RHI_IMAGE_LAYOUT_UNDEFINED)
+                reference.final_layout = desc.subpasses[i].references[j].layout;
+        }
+    }
     desc.subpass_count = m_subpasses.size();
 
     for (std::size_t i = 0; i < m_dependencies.size(); ++i)
@@ -131,20 +139,20 @@ void render_pass::execute(execute_context& context)
 {
 }
 
-rhi_framebuffer* render_pass::get_framebuffer(const std::vector<render_resource*>& attachments)
+rhi_framebuffer* render_pass::get_framebuffer()
 {
     bool cache = true;
 
     std::size_t hash = 0;
-    for (render_resource* attachment : attachments)
+    for (auto& slot : get_slots())
     {
-        if (!attachment->is_framebuffer_cache())
+        if (!slot->is_framebuffer_cache())
         {
             cache = false;
             break;
         }
 
-        hash = hash_combine(hash, attachment->get_image()->get_hash());
+        hash = hash_combine(hash, slot->get_image()->get_hash());
     }
 
     if (cache)
@@ -156,9 +164,9 @@ rhi_framebuffer* render_pass::get_framebuffer(const std::vector<render_resource*
 
     rhi_framebuffer_desc desc = {};
     desc.render_pass = m_interface.get();
-    for (render_resource* attachment : attachments)
+    for (auto& slot : get_slots())
     {
-        desc.attachments[desc.attachment_count] = attachment->get_image();
+        desc.attachments[desc.attachment_count] = slot->get_image();
         ++desc.attachment_count;
     }
 
@@ -172,5 +180,10 @@ rhi_framebuffer* render_pass::get_framebuffer(const std::vector<render_resource*
         m_temporary_framebuffer = m_renderer->create_framebuffer(desc);
         return m_temporary_framebuffer.get();
     }
+}
+
+rhi_resource_extent render_pass::get_extent() const
+{
+    return get_slots()[0]->get_image()->get_extent();
 }
 } // namespace violet

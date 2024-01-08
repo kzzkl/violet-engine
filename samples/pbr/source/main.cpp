@@ -12,6 +12,7 @@
 #include "graphics/graphics_system.hpp"
 #include "pbr_render.hpp"
 #include "scene/scene_system.hpp"
+#include "task/task_system.hpp"
 #include "window/window_system.hpp"
 
 namespace violet::sample
@@ -23,7 +24,7 @@ public:
 
     bool initialize(const dictionary& config) override
     {
-        on_tick().then(
+        get_system<task_system>().on_tick().then(
             [this](float delta)
             {
                 tick(delta);
@@ -131,7 +132,7 @@ private:
         // main_camera->set_attachment(0, nullptr, true);
         // main_camera->set_attachment(1, m_depth_stencil.get());
 
-        m_render_graph->get_resource("depth buffer")->set_image(m_depth_stencil.get());
+        m_render_graph->get_slot("depth buffer")->set_image(m_depth_stencil.get());
         // m_render_graph->get_camera("main camera")->set_parameter(main_camera->get_parameter());
     }
 
@@ -163,6 +164,7 @@ int main()
 
     engine engine;
     engine.initialize("");
+    engine.install<task_system>();
     engine.install<scene_system>();
     engine.install<window_system>();
     engine.install<graphics_system>();
