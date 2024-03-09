@@ -1,26 +1,19 @@
 #pragma once
 
 #include "graphics/render_graph/render_graph.hpp"
+#include <array>
 
 namespace violet::sample
 {
-class pre_process_graph : public render_graph
+class preprocess_graph : public render_graph
 {
 public:
-    pre_process_graph(renderer* renderer);
+    preprocess_graph(renderer* renderer);
 
-    void set_parameter(
-        rhi_image* ambient_map,
-        rhi_sampler* ambient_sampler,
-        rhi_image* irradiance_map);
+    void set_target(rhi_image* environment_map, rhi_image* irradiance_map);
 
 private:
-    rhi_ptr<rhi_parameter> m_parameter;
-
-    rhi_ptr<rhi_image> m_render_target;
-    rhi_ptr<rhi_framebuffer> m_framebuffer;
-
-    renderer* m_renderer;
+    std::array<rhi_ptr<rhi_image>, 6> m_irradiance_targets;
 };
 
 class pbr_material : public material

@@ -4,33 +4,6 @@
 
 namespace violet
 {
-render_attachment::render_attachment(pass_slot* slot, std::size_t index) : m_index(index), m_desc{}
-{
-    m_desc.format = slot->get_format();
-    m_desc.samples = slot->get_samples();
-}
-
-render_subpass::render_subpass(render_pass* render_pass, std::size_t index)
-    : m_render_pass(render_pass),
-      m_index(index),
-      m_desc{}
-{
-}
-
-void render_subpass::add_reference(
-    pass_slot* slot,
-    rhi_attachment_reference_type type,
-    rhi_image_layout layout)
-{
-    auto& desc = m_desc.references[m_desc.reference_count];
-    desc.type = type;
-    desc.layout = layout;
-    desc.index = slot->get_index();
-    desc.resolve_index = 0;
-
-    ++m_desc.reference_count;
-}
-
 render_pass::render_pass(renderer* renderer, setup_context& context)
     : pass(renderer, context),
       m_interface(nullptr),
@@ -42,31 +15,63 @@ render_pass::~render_pass()
 {
 }
 
-render_subpass* render_pass::add_subpass()
+std::size_t render_pass::add_subpass(const std::vector<render_subpass_reference>& references)
 {
-    m_subpasses.push_back(std::make_unique<render_subpass>(this, m_subpasses.size()));
-    return m_subpasses.back().get();
+    rhi_render_subpass_desc desc = {};
+    for (auto& reference : references)
+    {
+        auto& reference_desc = desc.references[desc.reference_count];
+        reference_desc.type = reference.type;
+        reference_desc.layout = reference.layout;
+
+        auto iter =
+            std::find(m_framebuffer_slots.begin(), m_framebuffer_slots.end(), reference.slot);
+        if (iter != m_framebuffer_slots.end())
+        {
+            reference_desc.index = iter - m_framebuffer_slots.begin();
+        }
+        else
+        {
+            m_framebuffer_slots.push_back(reference.slot);
+            reference_desc.index = m_framebuffer_slots.size() - 1;
+        }
+
+        reference_desc.resolve_index = 0;
+
+        ++desc.reference_count;
+    }
+    m_subpasses.push_back(desc);
+
+    return m_subpasses.size() - 1;
 }
 
-render_pipeline* render_pass::add_pipeline(render_subpass* subpass)
+render_pipeline* render_pass::add_pipeline(std::size_t subpass_index)
 {
-    m_pipelines.push_back(std::make_unique<render_pipeline>(this, subpass->get_index()));
+    std::size_t color_attachment_count = 0;
+
+    for (std::size_t i = 0; i < m_subpasses[subpass_index].reference_count; ++i)
+    {
+        if (m_subpasses[subpass_index].references[i].type == RHI_ATTACHMENT_REFERENCE_TYPE_COLOR)
+            ++color_attachment_count;
+    }
+    m_pipelines.push_back(
+        std::make_unique<render_pipeline>(this, subpass_index, color_attachment_count));
     return m_pipelines.back().get();
 }
 
 void render_pass::add_dependency(
-    render_subpass* src,
+    std::size_t src_subpass,
     rhi_pipeline_stage_flags src_stage,
     rhi_access_flags src_access,
-    render_subpass* dst,
+    std::size_t dst_subpass,
     rhi_pipeline_stage_flags dst_stage,
     rhi_access_flags dst_access)
 {
     rhi_render_subpass_dependency_desc dependency = {};
-    dependency.src = src == nullptr ? RHI_RENDER_SUBPASS_EXTERNAL : src->get_index();
+    dependency.src = src_subpass;
     dependency.src_stage = src_stage;
     dependency.src_access = src_access;
-    dependency.dst = dst == nullptr ? RHI_RENDER_SUBPASS_EXTERNAL : dst->get_index();
+    dependency.dst = dst_subpass;
     dependency.dst_stage = dst_stage;
     dependency.dst_access = dst_access;
     m_dependencies.push_back(dependency);
@@ -78,9 +83,9 @@ bool render_pass::compile(compile_context& context)
 
     rhi_render_pass_desc desc = {};
 
-    for (auto& slot : get_slots())
+    for (pass_slot* slot : m_framebuffer_slots)
     {
-        auto& attachment = desc.attachments[slot->get_index()];
+        auto& attachment = desc.attachments[desc.attachment_count];
         attachment.format = slot->get_format() == RHI_RESOURCE_FORMAT_UNDEFINED
                                 ? context.renderer->get_back_buffer()->get_format()
                                 : slot->get_format();
@@ -93,6 +98,11 @@ bool render_pass::compile(compile_context& context)
             attachment.load_op = RHI_ATTACHMENT_LOAD_OP_CLEAR;
             attachment.stencil_load_op = RHI_ATTACHMENT_LOAD_OP_CLEAR;
         }
+        else if (slot->get_input_layout() == RHI_IMAGE_LAYOUT_UNDEFINED)
+        {
+            attachment.load_op = RHI_ATTACHMENT_LOAD_OP_DONT_CARE;
+            attachment.stencil_load_op = RHI_ATTACHMENT_LOAD_OP_DONT_CARE;
+        }
         else
         {
             attachment.load_op = RHI_ATTACHMENT_LOAD_OP_LOAD;
@@ -101,12 +111,13 @@ bool render_pass::compile(compile_context& context)
 
         attachment.store_op = RHI_ATTACHMENT_STORE_OP_STORE;
         attachment.stencil_store_op = RHI_ATTACHMENT_STORE_OP_STORE;
+
+        ++desc.attachment_count;
     }
-    desc.attachment_count = get_slots().size();
 
     for (std::size_t i = 0; i < m_subpasses.size(); ++i)
     {
-        desc.subpasses[i] = m_subpasses[i]->get_desc();
+        desc.subpasses[i] = m_subpasses[i];
 
         for (std::size_t j = 0; j < desc.subpasses[i].reference_count; ++j)
         {
@@ -144,7 +155,7 @@ rhi_framebuffer* render_pass::get_framebuffer()
     bool cache = true;
 
     std::size_t hash = 0;
-    for (auto& slot : get_slots())
+    for (pass_slot* slot : m_framebuffer_slots)
     {
         if (!slot->is_framebuffer_cache())
         {
@@ -164,7 +175,7 @@ rhi_framebuffer* render_pass::get_framebuffer()
 
     rhi_framebuffer_desc desc = {};
     desc.render_pass = m_interface.get();
-    for (auto& slot : get_slots())
+    for (pass_slot* slot : m_framebuffer_slots)
     {
         desc.attachments[desc.attachment_count] = slot->get_image();
         ++desc.attachment_count;
@@ -184,6 +195,6 @@ rhi_framebuffer* render_pass::get_framebuffer()
 
 rhi_resource_extent render_pass::get_extent() const
 {
-    return get_slots()[0]->get_image()->get_extent();
+    return m_framebuffer_slots[0]->get_image()->get_extent();
 }
 } // namespace violet

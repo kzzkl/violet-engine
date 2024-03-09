@@ -31,11 +31,9 @@ execute_context::execute_context(
 pass_slot::pass_slot(
     std::string_view name,
     std::size_t index,
-    pass_slot_type type,
     bool clear) noexcept
     : m_name(name),
       m_index(index),
-      m_type(type),
       m_format(RHI_RESOURCE_FORMAT_UNDEFINED),
       m_samples(RHI_SAMPLE_COUNT_1),
       m_input_layout(RHI_IMAGE_LAYOUT_UNDEFINED),
@@ -67,15 +65,11 @@ pass::pass(renderer* renderer, setup_context& context)
 {
 }
 
-pass::~pass()
-{
-}
-
-pass_slot* pass::add_slot(std::string_view name, pass_slot_type type, bool clear)
+pass_slot* pass::add_slot(std::string_view name, bool clear)
 {
     assert(get_slot(name) == nullptr);
 
-    m_slots.push_back(std::make_unique<pass_slot>(name, m_slots.size(), type, clear));
+    m_slots.push_back(std::make_unique<pass_slot>(name, m_slots.size(), clear));
     return m_slots.back().get();
 }
 

@@ -3,14 +3,18 @@
 
 namespace violet
 {
-render_pipeline::render_pipeline(render_pass* render_pass, std::size_t subpass)
+render_pipeline::render_pipeline(
+    render_pass* render_pass,
+    std::size_t subpass_index,
+    std::size_t color_attachment_count)
     : m_desc{},
       m_render_pass(render_pass)
 {
-    m_desc.blend.enable = false;
+    m_desc.blend.attachment_count = color_attachment_count;
+    m_desc.rasterizer.cull_mode = RHI_CULL_MODE_BACK;
     m_desc.samples = RHI_SAMPLE_COUNT_1;
     m_desc.primitive_topology = RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    m_desc.render_subpass_index = subpass;
+    m_desc.render_subpass_index = subpass_index;
 }
 
 render_pipeline::~render_pipeline()
@@ -42,9 +46,11 @@ void render_pipeline::set_parameter_layouts(
     m_parameter_layouts = parameter_layouts;
 }
 
-void render_pipeline::set_blend(const rhi_blend_desc& blend) noexcept
+void render_pipeline::set_blend(
+    std::size_t attachment_index,
+    const rhi_attachment_blend_desc& attachment_blend) noexcept
 {
-    m_desc.blend = blend;
+    m_desc.blend.attachments[attachment_index] = attachment_blend;
 }
 
 void render_pipeline::set_depth_stencil(const rhi_depth_stencil_desc& depth_stencil) noexcept

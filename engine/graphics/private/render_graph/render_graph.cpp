@@ -5,10 +5,10 @@ namespace violet
 {
 render_graph::render_graph(renderer* renderer) : m_renderer(renderer)
 {
-    m_back_buffer = add_slot("back buffer input", RENDER_RESOURCE_TYPE_OUTPUT);
+    m_back_buffer = add_slot("back buffer input");
     m_back_buffer->set_format(renderer->get_back_buffer()->get_format());
 
-    pass_slot* back_buffer_output = add_slot("back buffer output", RENDER_RESOURCE_TYPE_INPUT);
+    pass_slot* back_buffer_output = add_slot("back buffer output");
     back_buffer_output->set_input_layout(RHI_IMAGE_LAYOUT_PRESENT);
 }
 
@@ -16,11 +16,11 @@ render_graph::~render_graph()
 {
 }
 
-pass_slot* render_graph::add_slot(std::string_view name, pass_slot_type type)
+pass_slot* render_graph::add_slot(std::string_view name)
 {
     assert(m_slots.find(name.data()) == m_slots.end());
 
-    m_slots[name.data()] = std::make_unique<pass_slot>(name, m_slots.size(), type);
+    m_slots[name.data()] = std::make_unique<pass_slot>(name, m_slots.size());
     return m_slots[name.data()].get();
 }
 
@@ -34,7 +34,7 @@ bool render_graph::compile()
     compile_context context = {};
     context.renderer = m_renderer;
 
-    for (auto& [name, pass] : m_passes)
+    for (auto& pass : m_passes)
     {
         if (!pass->compile(context))
             return false;
@@ -48,20 +48,14 @@ bool render_graph::compile()
     return true;
 }
 
-void render_graph::execute()
+void render_graph::execute(rhi_render_command* command)
 {
     m_back_buffer->set_image(m_renderer->get_back_buffer());
 
-    execute_context execute_context(m_renderer->allocate_command(), m_light, m_cameras);
+    execute_context execute_context(command, m_light, m_cameras);
 
     for (pass* pass : m_execute_list)
         pass->execute(execute_context);
-
-    m_renderer->execute(
-        {execute_context.get_command()},
-        {get_render_finished_semaphore()},
-        {m_renderer->get_image_available_semaphore()},
-        m_renderer->get_in_flight_fence());
 
     for (auto& [name, pipeline] : m_material_pipelines)
         pipeline.first->clear_mesh();

@@ -142,17 +142,29 @@ void graphics_system::render()
             }
         });
 
-    std::vector<rhi_semaphore*> render_finished_semaphores;
-    render_finished_semaphores.reserve(m_render_graphs.size());
+    std::vector<rhi_render_command*> commands;
+    std::vector<rhi_semaphore*> finished_semaphores;
+    finished_semaphores.reserve(m_render_graphs.size());
     for (render_graph* render_graph : m_render_graphs)
     {
+        rhi_render_command* command = m_renderer->allocate_command();
+
         render_graph->set_light(m_light.get());
-        render_graph->execute();
-        render_finished_semaphores.push_back(render_graph->get_render_finished_semaphore());
+        render_graph->execute(command);
+
+        finished_semaphores.push_back(render_graph->get_render_finished_semaphore());
+        commands.push_back(command);
     }
+
+    m_renderer->execute(
+        commands,
+        finished_semaphores,
+        {m_renderer->get_image_available_semaphore()},
+        m_renderer->get_in_flight_fence());
+
     m_render_graphs.clear();
 
-    m_renderer->present(render_finished_semaphores);
+    m_renderer->present(finished_semaphores);
     m_renderer->end_frame();
 }
 

@@ -28,7 +28,7 @@ compile_shader_dxc(
 compile_shader_dxc(
     TARGET ${PROJECT_NAME}
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/irradiance_map.hlsl"
-    STAGES "comp"
+    STAGES "vert" "frag"
     INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
 
 file(GLOB SHADER_FILES "${CMAKE_BINARY_DIR}/shaders/${PROJECT_NAME}/*.spv")

@@ -28,7 +28,10 @@ public:
     using vertex_attributes = std::vector<std::pair<std::string, rhi_resource_format>>;
 
 public:
-    render_pipeline(render_pass* render_pass, std::size_t subpass);
+    render_pipeline(
+        render_pass* render_pass,
+        std::size_t subpass_index,
+        std::size_t color_attachment_count);
     ~render_pipeline();
 
     void set_shader(std::string_view vertex, std::string_view fragment);
@@ -47,7 +50,9 @@ public:
         return m_material_layout;
     }
 
-    void set_blend(const rhi_blend_desc& blend) noexcept;
+    void set_blend(
+        std::size_t attachment_index,
+        const rhi_attachment_blend_desc& attachment_blend) noexcept;
     void set_depth_stencil(const rhi_depth_stencil_desc& depth_stencil) noexcept;
     void set_cull_mode(rhi_cull_mode cull_mode) noexcept;
 

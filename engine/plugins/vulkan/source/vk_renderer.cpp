@@ -209,10 +209,7 @@ void vk_renderer::destroy_buffer(rhi_buffer* buffer)
 
 rhi_image* vk_renderer::create_image(const rhi_image_desc& desc)
 {
-    if (desc.flags & RHI_IMAGE_FLAG_DEPTH_STENCIL)
-        return new vk_depth_stencil(desc, m_context.get());
-    else
-        return nullptr;
+    return new vk_image(desc, m_context.get());
 }
 
 rhi_image* vk_renderer::create_image(const char* file, const rhi_image_desc& desc)

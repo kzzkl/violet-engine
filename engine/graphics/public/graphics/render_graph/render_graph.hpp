@@ -15,19 +15,17 @@ public:
     render_graph(const render_graph&) = delete;
     virtual ~render_graph();
 
-    pass_slot* add_slot(std::string_view name, pass_slot_type type);
+    pass_slot* add_slot(std::string_view name);
     pass_slot* get_slot(std::string_view name) const;
 
     template <typename T, typename... Args>
-    T* add_pass(std::string_view name, Args&&... args)
+    T* add_pass(Args&&... args)
     {
-        assert(m_passes.find(name.data()) == m_passes.end());
-
         setup_context setup_context(m_material_pipelines);
-        auto pass = std::make_unique<T>(m_renderer, setup_context, std::forward<Args>(args)...);
 
+        auto pass = std::make_unique<T>(m_renderer, setup_context, std::forward<Args>(args)...);
         T* result = pass.get();
-        m_passes[name.data()] = std::move(pass);
+        m_passes.push_back(std::move(pass));
         return result;
     }
 
@@ -64,15 +62,18 @@ public:
     }
 
     bool compile();
-    void execute();
+    void execute(rhi_render_command* command);
 
     rhi_semaphore* get_render_finished_semaphore() const;
 
     render_graph& operator=(const render_graph&) = delete;
 
+protected:
+    renderer* get_renderer() const noexcept { return m_renderer; }
+
 private:
     std::map<std::string, std::unique_ptr<pass_slot>> m_slots;
-    std::map<std::string, std::unique_ptr<pass>> m_passes;
+    std::vector<std::unique_ptr<pass>> m_passes;
 
     std::vector<pass*> m_execute_list;
 

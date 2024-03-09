@@ -9,46 +9,11 @@
 
 namespace violet
 {
-class render_attachment
+struct render_subpass_reference
 {
-public:
-    render_attachment(pass_slot* slot, std::size_t index);
-
-    void set_initial_layout(rhi_image_layout layout) noexcept { m_desc.initial_layout = layout; }
-    void set_final_layout(rhi_image_layout layout) noexcept { m_desc.final_layout = layout; }
-
-    void set_load_op(rhi_attachment_load_op op) noexcept { m_desc.load_op = op; }
-    void set_store_op(rhi_attachment_store_op op) noexcept { m_desc.store_op = op; }
-    void set_stencil_load_op(rhi_attachment_load_op op) noexcept { m_desc.stencil_load_op = op; }
-    void set_stencil_store_op(rhi_attachment_store_op op) noexcept { m_desc.stencil_store_op = op; }
-
-    std::size_t get_index() const noexcept { return m_index; }
-    const rhi_attachment_desc& get_desc() const noexcept { return m_desc; }
-
-private:
-    std::size_t m_index;
-    rhi_attachment_desc m_desc;
-};
-
-class render_pass;
-class render_subpass
-{
-public:
-    render_subpass(render_pass* render_pass, std::size_t index);
-
-    void add_reference(
-        pass_slot* slot,
-        rhi_attachment_reference_type type,
-        rhi_image_layout layout);
-
-    std::size_t get_index() const noexcept { return m_index; }
-    const rhi_render_subpass_desc& get_desc() const noexcept { return m_desc; }
-
-private:
-    render_pass* m_render_pass;
-
-    std::size_t m_index;
-    rhi_render_subpass_desc m_desc;
+    pass_slot* slot;
+    rhi_attachment_reference_type type;
+    rhi_image_layout layout;
 };
 
 class render_pass : public pass
@@ -57,15 +22,15 @@ public:
     render_pass(renderer* renderer, setup_context& context);
     virtual ~render_pass();
 
-    render_subpass* add_subpass();
+    std::size_t add_subpass(const std::vector<render_subpass_reference>& references);
 
-    render_pipeline* add_pipeline(render_subpass* subpass);
+    render_pipeline* add_pipeline(std::size_t subpass_index);
 
     void add_dependency(
-        render_subpass* src,
+        std::size_t src_subpass,
         rhi_pipeline_stage_flags src_stage,
         rhi_access_flags src_access,
-        render_subpass* dst,
+        std::size_t dst_subpass,
         rhi_pipeline_stage_flags dst_stage,
         rhi_access_flags dst_access);
 
@@ -82,7 +47,9 @@ protected:
 private:
     std::vector<rhi_render_subpass_dependency_desc> m_dependencies;
 
-    std::vector<std::unique_ptr<render_subpass>> m_subpasses;
+    std::vector<pass_slot*> m_framebuffer_slots;
+
+    std::vector<rhi_render_subpass_desc> m_subpasses;
     std::vector<std::unique_ptr<render_pipeline>> m_pipelines;
 
     rhi_ptr<rhi_framebuffer> m_temporary_framebuffer;

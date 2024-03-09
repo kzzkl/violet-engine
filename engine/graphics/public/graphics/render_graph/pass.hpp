@@ -53,21 +53,10 @@ private:
     const std::unordered_map<std::string, rhi_parameter*>& m_cameras;
 };
 
-enum pass_slot_type
-{
-    RENDER_RESOURCE_TYPE_INPUT,
-    RENDER_RESOURCE_TYPE_OUTPUT,
-    RENDER_RESOURCE_TYPE_INPUT_OUTPUT
-};
-
 class pass_slot
 {
 public:
-    pass_slot(
-        std::string_view name,
-        std::size_t index,
-        pass_slot_type type,
-        bool clear = false) noexcept;
+    pass_slot(std::string_view name, std::size_t index, bool clear = false) noexcept;
 
     void set_format(rhi_resource_format format) noexcept { m_format = format; }
     rhi_resource_format get_format() const noexcept { return m_format; }
@@ -98,8 +87,6 @@ private:
     std::string m_name;
     std::size_t m_index;
 
-    pass_slot_type m_type;
-
     rhi_resource_format m_format;
     rhi_sample_count m_samples;
 
@@ -117,17 +104,13 @@ class pass
 {
 public:
     pass(renderer* renderer, setup_context& context);
-    pass(const pass&) = delete;
-    virtual ~pass();
 
-    pass_slot* add_slot(std::string_view name, pass_slot_type type, bool clear = false);
+    pass_slot* add_slot(std::string_view name, bool clear = false);
     pass_slot* get_slot(std::string_view name) const;
     const std::vector<std::unique_ptr<pass_slot>>& get_slots() const noexcept { return m_slots; }
 
-    virtual bool compile(compile_context& context) = 0;
+    virtual bool compile(compile_context& context) { return true; }
     virtual void execute(execute_context& context) = 0;
-
-    pass& operator=(const renderer&) = delete;
 
 private:
     std::vector<std::unique_ptr<pass_slot>> m_slots;

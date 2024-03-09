@@ -308,7 +308,7 @@ enum rhi_blend_op
     RHI_BLEND_OP_MAX
 };
 
-struct rhi_blend_desc
+struct rhi_attachment_blend_desc
 {
     bool enable = false;
 
@@ -319,6 +319,12 @@ struct rhi_blend_desc
     rhi_blend_factor src_alpha_factor;
     rhi_blend_factor dst_alpha_factor;
     rhi_blend_op alpha_op;
+};
+
+struct rhi_blend_desc
+{
+    rhi_attachment_blend_desc attachments[32];
+    std::size_t attachment_count;
 };
 
 enum rhi_depth_stencil_functor

@@ -9,6 +9,7 @@ class vk_image : public rhi_image
 {
 public:
     vk_image(vk_context* context);
+    vk_image(const rhi_image_desc& desc, vk_context* context);
     virtual ~vk_image();
 
     VkImage get_image() const noexcept { return m_image; }
@@ -57,13 +58,6 @@ private:
     std::size_t m_hash;
 
     vk_context* m_context;
-};
-
-class vk_depth_stencil : public vk_image
-{
-public:
-    vk_depth_stencil(const rhi_image_desc& desc, vk_context* context);
-    virtual ~vk_depth_stencil();
 };
 
 class vk_texture : public vk_image

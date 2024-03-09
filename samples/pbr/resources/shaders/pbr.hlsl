@@ -4,8 +4,8 @@
 
 struct vs_in
 {
-    [[vk::location(0)]] float3 position: POSITION;
-    [[vk::location(1)]] float3 normal: NORMAL;
+    float3 position: POSITION;
+    float3 normal: NORMAL;
 };
 
 struct vs_out
