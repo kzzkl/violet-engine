@@ -24,8 +24,12 @@ public:
     VkDescriptorSet allocate_descriptor_set(VkDescriptorSetLayout layout);
     void free_descriptor_set(VkDescriptorSet descriptor_set);
 
+    void setup_present_queue(VkSurfaceKHR surface);
+
     vk_graphics_queue* get_graphics_queue() const noexcept { return m_graphics_queue.get(); }
     vk_present_queue* get_present_queue() const noexcept { return m_present_queue.get(); }
+
+    VkInstance get_instance() const noexcept { return m_instance; }
 
     VkDevice get_device() const noexcept { return m_device; }
 
@@ -34,8 +38,6 @@ public:
     {
         return m_physical_device_properties;
     }
-
-    VkSurfaceKHR get_surface() const noexcept { return m_surface; }
 
     std::size_t get_frame_count() const noexcept { return m_frame_count; }
     std::size_t get_frame_resource_count() const noexcept { return m_frame_resource_count; }
@@ -58,8 +60,6 @@ private:
     VkPhysicalDevice m_physical_device;
     VkPhysicalDeviceProperties m_physical_device_properties;
     VkDevice m_device;
-
-    VkSurfaceKHR m_surface;
 
     std::unique_ptr<vk_graphics_queue> m_graphics_queue;
     std::unique_ptr<vk_present_queue> m_present_queue;

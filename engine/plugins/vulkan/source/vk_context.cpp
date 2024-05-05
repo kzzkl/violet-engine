@@ -49,7 +49,6 @@ vk_context::vk_context() noexcept
     : m_instance(VK_NULL_HANDLE),
       m_physical_device(VK_NULL_HANDLE),
       m_device(VK_NULL_HANDLE),
-      m_surface(VK_NULL_HANDLE),
       m_graphics_queue(nullptr),
       m_present_queue(nullptr),
       m_frame_count(0),
@@ -77,7 +76,6 @@ vk_context::~vk_context()
 #endif
 
     vkDestroyDevice(m_device, nullptr);
-    vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
     vkDestroyInstance(m_instance, nullptr);
 }
 
@@ -107,17 +105,6 @@ bool vk_context::initialize(const rhi_desc& desc)
         VK_KHR_MAINTENANCE1_EXTENSION_NAME};
     if (!initialize_physical_device(device_desired_extensions))
         return false;
-
-#ifdef _WIN32
-    VkWin32SurfaceCreateInfoKHR surface_info = {};
-    surface_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-    surface_info.hwnd = static_cast<HWND>(desc.window_handle);
-    surface_info.hinstance = GetModuleHandle(nullptr);
-
-    vk_check(vkCreateWin32SurfaceKHR(m_instance, &surface_info, nullptr, &m_surface));
-#else
-    throw vk_exception("Unsupported platform");
-#endif
 
     initialize_logic_device(device_desired_extensions);
     initialize_vma();
@@ -149,6 +136,25 @@ VkDescriptorSet vk_context::allocate_descriptor_set(VkDescriptorSetLayout layout
 void vk_context::free_descriptor_set(VkDescriptorSet descriptor_set)
 {
     vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &descriptor_set);
+}
+
+void vk_context::setup_present_queue(VkSurfaceKHR surface)
+{
+    if (m_present_queue)
+        return;
+
+    VkBool32 present_support = false;
+    vkGetPhysicalDeviceSurfaceSupportKHR(
+        m_physical_device,
+        m_graphics_queue->get_family_index(),
+        surface,
+        &present_support);
+
+    if (!present_support)
+        throw std::runtime_error("There is no queue that supports presentation.");
+
+    m_present_queue =
+        std::make_unique<vk_present_queue>(m_graphics_queue->get_family_index(), this);
 }
 
 bool vk_context::initialize_instance(
@@ -299,7 +305,6 @@ void vk_context::initialize_logic_device(const std::vector<const char*>& enabled
         queue_families.data());
 
     std::uint32_t graphics_queue_family_index = -1;
-    std::uint32_t present_queue_family_index = -1;
     for (std::uint32_t i = 0; i < queue_families.size(); ++i)
     {
         if (queue_families[i].queueCount == 0)
@@ -307,19 +312,9 @@ void vk_context::initialize_logic_device(const std::vector<const char*>& enabled
 
         if (queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
             graphics_queue_family_index = i;
-
-        VkBool32 present_support = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(m_physical_device, i, m_surface, &present_support);
-        if (present_support)
-            present_queue_family_index = i;
-
-        if (graphics_queue_family_index != -1 && present_queue_family_index != -1)
-            break;
     }
 
-    std::set<std::uint32_t> queue_indices = {
-        graphics_queue_family_index,
-        present_queue_family_index};
+    std::set<std::uint32_t> queue_indices = {graphics_queue_family_index};
     std::vector<VkDeviceQueueCreateInfo> queue_infos = {};
     float queue_priority = 1.0;
     for (std::uint32_t index : queue_indices)
@@ -347,7 +342,6 @@ void vk_context::initialize_logic_device(const std::vector<const char*>& enabled
     volkLoadDevice(m_device);
 
     m_graphics_queue = std::make_unique<vk_graphics_queue>(graphics_queue_family_index, this);
-    m_present_queue = std::make_unique<vk_present_queue>(present_queue_family_index, this);
 }
 
 void vk_context::initialize_vma()

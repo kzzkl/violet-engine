@@ -34,6 +34,10 @@ private:
 
     rhi_ptr<rhi_parameter> m_light;
 
+    std::vector<std::vector<rhi_semaphore*>> m_used_semaphores;
+    std::vector<rhi_semaphore*> m_free_semaphores;
+    std::vector<rhi_ptr<rhi_semaphore>> m_semaphores;
+
     bool m_idle;
 };
 } // namespace violet

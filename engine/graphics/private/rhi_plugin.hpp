@@ -11,7 +11,7 @@ public:
     rhi_plugin();
     virtual ~rhi_plugin();
 
-    rhi_renderer* get_rhi() const noexcept { return m_rhi; }
+    rhi* get_rhi() const noexcept { return m_rhi; }
 
 protected:
     virtual bool on_load() override;
@@ -21,6 +21,6 @@ private:
     create_rhi m_create_func;
     destroy_rhi m_destroy_func;
 
-    rhi_renderer* m_rhi;
+    rhi* m_rhi;
 };
 } // namespace violet

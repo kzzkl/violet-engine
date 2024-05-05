@@ -28,16 +28,17 @@ vs_out vs_main(vs_in input)
 {
     vs_out output;
 
-    output.position = mul(camera.view_projection, mul(mesh.model, float4(input.position, 1.0)));
-    output.color = input.color;
-    output.uv = input.uv;
+    // output.position = mul(camera.view_projection, mul(mesh.model, float4(input.position, 1.0)));
+    // output.color = input.color;
+    // output.uv = input.uv;
 
     return output;
 }
 
 float4 ps_main(vs_out input) : SV_TARGET
 {
-    float4 color = float4(input.color, 1.0);
-    color *= texture.Sample(texture_sampler, input.uv);
-    return color;
+    // float4 color = float4(input.color, 1.0);
+    // color *= texture.Sample(texture_sampler, input.uv);
+    // return color;
+    return  float4(1.0, 0.0, 0.0, 1.0);
 }

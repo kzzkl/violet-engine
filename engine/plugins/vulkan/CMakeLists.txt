@@ -9,8 +9,8 @@ set(HPP_FILES
     ./include/vk_image_loader.hpp
     ./include/vk_pipeline.hpp
     ./include/vk_render_pass.hpp
-    ./include/vk_renderer.hpp
     ./include/vk_resource.hpp
+    ./include/vk_rhi.hpp
     ./include/vk_swapchain.hpp
     ./include/vk_sync.hpp
     ./include/vk_util.hpp)
@@ -23,7 +23,7 @@ set(CPP_FILES
     ./source/vk_image_loader.cpp
     ./source/vk_pipeline.cpp
     ./source/vk_render_pass.cpp
-    ./source/vk_renderer.cpp
+    ./source/vk_rhi.cpp
     ./source/vk_resource.cpp
     ./source/vk_swapchain.cpp
     ./source/vk_sync.cpp

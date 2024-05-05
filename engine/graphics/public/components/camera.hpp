@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/render_graph/render_pass.hpp"
+#include "graphics/renderer.hpp"
 #include "math/math.hpp"
 #include <unordered_map>
 
@@ -26,7 +26,7 @@ public:
     void set_perspective(float fov, float near_z, float far_z);
     void set_position(const float3& position);
     void set_view(const float4x4& view);
-    void set_skybox(rhi_image* texture, rhi_sampler* sampler);
+    void set_skybox(rhi_texture* texture, rhi_sampler* sampler);
 
     rhi_scissor_rect get_scissor() const noexcept { return m_scissor; }
     rhi_viewport get_viewport() const noexcept { return m_viewport; }

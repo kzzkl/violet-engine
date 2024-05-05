@@ -8,12 +8,12 @@
 
 namespace violet::vk
 {
-class vk_renderer : public rhi_renderer
+class vk_rhi : public rhi
 {
 public:
-    vk_renderer() noexcept;
-    vk_renderer(const vk_renderer&) = delete;
-    virtual ~vk_renderer();
+    vk_rhi() noexcept;
+    vk_rhi(const vk_rhi&) = delete;
+    virtual ~vk_rhi();
 
     virtual bool initialize(const rhi_desc& desc) override;
 
@@ -29,15 +29,8 @@ public:
 
     virtual void begin_frame() override;
     virtual void end_frame() override;
-    virtual void present(rhi_semaphore* const* wait_semaphores, std::size_t wait_semaphore_count)
-        override;
-
-    virtual void resize(std::uint32_t width, std::uint32_t height) override;
-
-    virtual rhi_image* get_back_buffer() override;
 
     virtual rhi_fence* get_in_flight_fence() override;
-    virtual rhi_semaphore* get_image_available_semaphore() override;
 
     virtual std::size_t get_frame_resource_count() const noexcept override
     {
@@ -60,7 +53,7 @@ public:
             });
     }
 
-    vk_renderer& operator=(const vk_renderer&) = delete;
+    vk_rhi& operator=(const vk_rhi&) = delete;
 
 public:
     virtual rhi_render_pass* create_render_pass(const rhi_render_pass_desc& desc) override;
@@ -90,20 +83,23 @@ public:
     virtual rhi_buffer* create_buffer(const rhi_buffer_desc& desc) override;
     virtual void destroy_buffer(rhi_buffer* buffer) override;
 
-    virtual rhi_image* create_image(const rhi_image_desc& desc) override;
-    virtual rhi_image* create_image(const char* file, const rhi_image_desc& desc) override;
+    virtual rhi_texture* create_texture(const rhi_texture_desc& desc) override;
+    virtual rhi_texture* create_texture(const char* file, const rhi_texture_desc& desc) override;
 
-    virtual rhi_image* create_image_cube(const rhi_image_desc& desc) override;
-    virtual rhi_image* create_image_cube(
+    virtual rhi_texture* create_texture_cube(const rhi_texture_desc& desc) override;
+    virtual rhi_texture* create_texture_cube(
         const char* right,
         const char* left,
         const char* top,
         const char* bottom,
         const char* front,
         const char* back,
-        const rhi_image_desc& desc) override;
+        const rhi_texture_desc& desc) override;
 
-    virtual void destroy_image(rhi_image* image) override;
+    virtual void destroy_texture(rhi_texture* texture) override;
+
+    virtual rhi_swapchain* create_swapchain(const rhi_swapchain_desc& desc) override;
+    virtual void destroy_swapchain(rhi_swapchain* swapchain) override;
 
     virtual rhi_fence* create_fence(bool signaled) override;
     virtual void destroy_fence(rhi_fence* fence) override;
@@ -121,7 +117,6 @@ private:
             delay_tasks.clear();
         }
 
-        std::unique_ptr<vk_semaphore> image_available_semaphore;
         std::unique_ptr<vk_fence> in_flight_fence;
 
         std::vector<std::function<void()>> delay_tasks;
@@ -133,8 +128,6 @@ private:
     }
 
     std::unique_ptr<vk_context> m_context;
-
-    std::unique_ptr<vk_swapchain> m_swapchain;
     std::vector<frame_resource> m_frame_resources;
 };
 } // namespace violet::vk

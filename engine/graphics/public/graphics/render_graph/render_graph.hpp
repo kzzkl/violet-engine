@@ -1,91 +1,120 @@
 #pragma once
 
-#include "graphics/render_graph/compute_pass.hpp"
-#include "graphics/render_graph/material.hpp"
-#include "graphics/render_graph/render_pass.hpp"
+#include "graphics/render_graph/edge.hpp"
+#include "graphics/render_graph/pass.hpp"
+#include "graphics/render_graph/resource.hpp"
 #include "graphics/renderer.hpp"
+#include <map>
 #include <memory>
 
 namespace violet
 {
+template <typename T>
+concept resource_type =
+    std::is_same_v<T, texture> || std::is_same_v<T, buffer> || std::is_same_v<T, swapchain>;
+
+template <typename T>
+concept pass_type = std::is_base_of_v<pass, T>;
+
+class pass_batch;
 class render_graph
 {
 public:
-    render_graph(renderer* renderer);
+    render_graph(renderer* renderer) noexcept;
     render_graph(const render_graph&) = delete;
-    virtual ~render_graph();
+    ~render_graph();
 
-    pass_slot* add_slot(std::string_view name);
-    pass_slot* get_slot(std::string_view name) const;
-
-    template <typename T, typename... Args>
-    T* add_pass(Args&&... args)
+    template <resource_type T, typename... Args>
+    T* add_resource(Args&&... args)
     {
-        setup_context setup_context(m_material_pipelines);
+        auto resource = std::make_unique<T>(std::forward<Args>(args)...);
+        T* result = resource.get();
 
-        auto pass = std::make_unique<T>(m_renderer, setup_context, std::forward<Args>(args)...);
+        if constexpr (std::is_same_v<texture, T>)
+            m_textures.push_back(std::move(resource));
+        if constexpr (std::is_same_v<buffer, T>)
+            m_buffers.push_back(std::move(resource));
+        if constexpr (std::is_same_v<swapchain, T>)
+            m_swapchains.push_back(std::move(resource));
+
+        return result;
+    }
+
+    template <resource_type T>
+    T* get_resource(std::string_view name)
+    {
+        if constexpr (std::is_same_v<texture, T>)
+            return find_resource(name, m_textures);
+        if constexpr (std::is_same_v<buffer, T>)
+            return find_resource(name, m_buffers);
+        if constexpr (std::is_same_v<swapchain, T>)
+            return find_resource(name, m_swapchains);
+
+        return nullptr;
+    }
+
+    template <pass_type T, typename... Args>
+    T* add_pass(std::string_view name, Args&&... args)
+    {
+        auto pass = std::make_unique<T>(std::forward<Args>(args)...);
+        pass->m_name = name;
+
+        if constexpr (std::is_base_of_v<mesh_pass, T>)
+            pass->m_flags |= PASS_FLAG_MESH;
+        if constexpr (std::is_base_of_v<render_pass, T>)
+            pass->m_flags |= PASS_FLAG_RENDER;
+
         T* result = pass.get();
+
         m_passes.push_back(std::move(pass));
         return result;
     }
 
-    template <typename T, typename... Args>
-    T* add_material(std::string_view name, Args&&... args)
-    {
-        assert(m_materials.find(name.data()) == m_materials.end());
+    void add_edge(
+        resource* resource,
+        pass* pass,
+        std::string_view reference_name,
+        edge_operate operate = EDGE_OPERATE_DONT_CARE);
+    void add_edge(
+        pass* src,
+        std::string_view src_reference_name,
+        pass* dst,
+        std::string_view dst_reference_name,
+        edge_operate operate = EDGE_OPERATE_DONT_CARE);
 
-        auto material = std::make_unique<T>(std::forward<Args>(args)...);
-        auto layout = material->get_layout();
-
-        for (auto& pipeline_name : layout)
-        {
-            auto [pipeline, parameter_layout] = m_material_pipelines.at(pipeline_name);
-            material->m_pipelines.push_back(pipeline);
-            material->m_parameters.push_back(m_renderer->create_parameter(parameter_layout));
-        }
-
-        T* result = material.get();
-        m_materials[name.data()] = std::move(material);
-        return result;
-    }
-
-    template <typename T>
-    material* get_material(std::string_view name) const
-    {
-        return static_cast<T*>(m_materials.at(name.data()));
-    }
-
-    void set_light(rhi_parameter* light) noexcept { m_light = light; }
-    void set_camera(std::string_view name, rhi_parameter* parameter)
-    {
-        m_cameras[name.data()] = parameter;
-    }
-
-    bool compile();
+    void compile();
     void execute(rhi_render_command* command);
-
-    rhi_semaphore* get_render_finished_semaphore() const;
 
     render_graph& operator=(const render_graph&) = delete;
 
-protected:
-    renderer* get_renderer() const noexcept { return m_renderer; }
-
 private:
-    std::map<std::string, std::unique_ptr<pass_slot>> m_slots;
+    void bind_resource();
+    void dead_stripping();
+    std::vector<std::vector<pass*>> merge_pass();
+
+    template <typename T>
+    T* find_resource(std::string_view name, const std::vector<std::unique_ptr<T>>& resources) const
+    {
+        auto iter = std::find_if(
+            resources.cbegin(),
+            resources.cend(),
+            [name](const auto& resource)
+            {
+                return resource->get_name() == name;
+            });
+
+        return iter == resources.cend() ? nullptr : iter->get();
+    }
+
+    std::vector<std::unique_ptr<texture>> m_textures;
+    std::vector<std::unique_ptr<buffer>> m_buffers;
+    std::vector<std::unique_ptr<swapchain>> m_swapchains;
+
     std::vector<std::unique_ptr<pass>> m_passes;
+    std::vector<std::unique_ptr<edge>> m_edges;
 
-    std::vector<pass*> m_execute_list;
+    std::vector<std::unique_ptr<pass_batch>> m_batchs;
 
-    std::map<std::string, std::unique_ptr<material>> m_materials;
-    std::map<std::string, std::pair<render_pipeline*, rhi_parameter_layout*>> m_material_pipelines;
-
-    std::unordered_map<std::string, rhi_parameter*> m_cameras;
-    rhi_parameter* m_light;
-
-    pass_slot* m_back_buffer;
-
-    std::vector<rhi_ptr<rhi_semaphore>> m_render_finished_semaphores;
     renderer* m_renderer;
 };
 } // namespace violet

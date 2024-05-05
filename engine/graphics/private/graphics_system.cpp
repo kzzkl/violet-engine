@@ -38,6 +38,8 @@ graphics_system::graphics_system() : engine_system("graphics"), m_idle(false)
 graphics_system::~graphics_system()
 {
     m_light = nullptr;
+    m_semaphores.clear();
+
     m_renderer = nullptr;
     m_plugin->unload();
 }
@@ -48,9 +50,6 @@ bool graphics_system::initialize(const dictionary& config)
     rect<std::uint32_t> extent = window.get_extent();
 
     rhi_desc rhi_desc = {};
-    rhi_desc.width = extent.width;
-    rhi_desc.height = extent.height;
-    rhi_desc.window_handle = window.get_handle();
     rhi_desc.frame_resource_count = config["frame_resource_count"];
 
     m_plugin = std::make_unique<rhi_plugin>();
@@ -70,17 +69,14 @@ bool graphics_system::initialize(const dictionary& config)
         {
             end_frame();
         });
-    window.on_resize().then(
-        [this](std::uint32_t width, std::uint32_t height)
-        {
-            m_renderer->resize(width, height);
-        });
 
     get_world().register_component<mesh, mesh_component_info>(m_renderer.get());
     get_world().register_component<camera, camera_component_info>(m_renderer.get());
     get_world().register_component<light>();
 
     m_light = m_renderer->create_parameter(m_renderer->get_parameter_layout("violet light"));
+
+    m_used_semaphores.resize(m_renderer->get_frame_resource_count());
 
     return true;
 }
@@ -137,34 +133,40 @@ void graphics_system::render()
             mesh.set_model_matrix(transform.get_world_matrix());
             for (auto& submesh : mesh.get_submeshes())
             {
-                for (std::size_t i = 0; i < submesh.material->get_pipeline_count(); ++i)
-                    submesh.material->get_pipeline(i)->add_mesh(submesh.render_meshes[i]);
+                // for (std::size_t i = 0; i < submesh.material->get_pass_count(); ++i)
+                //     submesh.material->get_pass(i)->render(submesh.render_meshes[i]);
             }
         });
 
-    std::vector<rhi_render_command*> commands;
-    std::vector<rhi_semaphore*> finished_semaphores;
-    finished_semaphores.reserve(m_render_graphs.size());
+    auto& finish_semaphores = m_used_semaphores[m_renderer->get_frame_resource_index()];
+    for (rhi_semaphore* samphore : finish_semaphores)
+        m_free_semaphores.push_back(samphore);
+    finish_semaphores.clear();
+
     for (render_graph* render_graph : m_render_graphs)
     {
         rhi_render_command* command = m_renderer->allocate_command();
 
-        render_graph->set_light(m_light.get());
         render_graph->execute(command);
 
-        finished_semaphores.push_back(render_graph->get_render_finished_semaphore());
-        commands.push_back(command);
+        if (m_free_semaphores.empty())
+        {
+            m_semaphores.emplace_back(m_renderer->create_semaphore());
+            m_free_semaphores.push_back(m_semaphores.back().get());
+        }
+
+        rhi_semaphore* semaphore = m_free_semaphores.back();
+        m_renderer->execute({command}, {semaphore}, {}, nullptr);
+
+        finish_semaphores.push_back(semaphore);
+        m_free_semaphores.pop_back();
     }
 
-    m_renderer->execute(
-        commands,
-        finished_semaphores,
-        {m_renderer->get_image_available_semaphore()},
-        m_renderer->get_in_flight_fence());
+    rhi_render_command* command = m_renderer->allocate_command();
+    m_renderer->execute({command}, {}, finish_semaphores, m_renderer->get_in_flight_fence());
 
     m_render_graphs.clear();
 
-    m_renderer->present(finished_semaphores);
     m_renderer->end_frame();
 }
 

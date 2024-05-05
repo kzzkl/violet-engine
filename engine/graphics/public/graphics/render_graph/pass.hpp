@@ -1,118 +1,145 @@
 #pragma once
 
-#include "graphics/render_graph/render_pipeline.hpp"
+#include "graphics/render_graph/render_context.hpp"
+#include "graphics/render_graph/resource.hpp"
 #include "graphics/renderer.hpp"
-#include <unordered_map>
+#include <functional>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace violet
 {
-class setup_context
+enum pass_access_flag : std::uint32_t
 {
-public:
-    struct material_pipeline
+    PASS_ACCESS_FLAG_READ = 1 << 0,
+    PASS_ACCESS_FLAG_WRITE = 1 << 1
+};
+using pass_access_flags = std::uint32_t;
+
+enum pass_reference_type
+{
+    PASS_REFERENCE_TYPE_ATTACHMENT,
+    PASS_REFERENCE_TYPE_TEXTURE,
+    PASS_REFERENCE_TYPE_BUFFER
+};
+
+struct pass_reference
+{
+    pass_reference_type type;
+    pass_access_flags access;
+
+    struct
     {
-        std::string name;
-        render_pipeline* pipeline;
-        rhi_parameter_layout* layout;
-    };
+        rhi_texture_layout layout;
+        rhi_attachment_load_op load_op;
+        rhi_attachment_store_op store_op;
+        rhi_attachment_reference_type type;
+    } attachment;
 
-public:
-    setup_context(std::map<std::string, std::pair<render_pipeline*, rhi_parameter_layout*>>&
-                      material_pipelines);
-
-    void register_material_pipeline(
-        std::string_view name,
-        render_pipeline* pipeline,
-        rhi_parameter_layout* layout);
-
-private:
-    std::map<std::string, std::pair<render_pipeline*, rhi_parameter_layout*>>& m_material_pipelines;
+    std::string name;
+    resource* resource;
 };
 
-class compile_context
+enum pass_flag : std::uint32_t
 {
-public:
-    renderer* renderer;
+    PASS_FLAG_NONE = 0,
+    PASS_FLAG_RENDER = 1 << 0,
+    PASS_FLAG_MESH = 1 << 1,
+    PASS_FLAG_COMPUTE = 1 << 2
 };
-
-class execute_context
-{
-public:
-    execute_context(
-        rhi_render_command* command,
-        rhi_parameter* light,
-        const std::unordered_map<std::string, rhi_parameter*>& cameras);
-
-    rhi_render_command* get_command() const noexcept { return m_command; }
-    rhi_parameter* get_light() const noexcept { return m_light; }
-    rhi_parameter* get_camera(std::string_view name) const { return m_cameras.at(name.data()); }
-
-private:
-    rhi_render_command* m_command;
-    rhi_parameter* m_light;
-    const std::unordered_map<std::string, rhi_parameter*>& m_cameras;
-};
-
-class pass_slot
-{
-public:
-    pass_slot(std::string_view name, std::size_t index, bool clear = false) noexcept;
-
-    void set_format(rhi_resource_format format) noexcept { m_format = format; }
-    rhi_resource_format get_format() const noexcept { return m_format; }
-
-    void set_samples(rhi_sample_count samples) noexcept { m_samples = samples; }
-    rhi_sample_count get_samples() const noexcept { return m_samples; }
-
-    void set_input_layout(rhi_image_layout layout) noexcept { m_input_layout = layout; }
-    rhi_image_layout get_input_layout() const noexcept { return m_input_layout; }
-    rhi_image_layout get_output_layout() const noexcept
-    {
-        return m_connections.empty() ? m_input_layout : m_connections[0]->get_input_layout();
-    }
-
-    bool is_clear() const noexcept { return m_clear; }
-
-    const std::string& get_name() const noexcept { return m_name; }
-    std::size_t get_index() const noexcept { return m_index; }
-
-    bool connect(pass_slot* slot);
-
-    void set_image(rhi_image* image, bool framebuffer_cache = true);
-    rhi_image* get_image() const noexcept { return m_image; }
-
-    bool is_framebuffer_cache() const noexcept { return m_framebuffer_cache; }
-
-private:
-    std::string m_name;
-    std::size_t m_index;
-
-    rhi_resource_format m_format;
-    rhi_sample_count m_samples;
-
-    rhi_image_layout m_input_layout;
-
-    bool m_clear;
-
-    std::vector<pass_slot*> m_connections;
-
-    rhi_image* m_image;
-    bool m_framebuffer_cache;
-};
+using pass_flags = std::uint32_t;
 
 class pass
 {
 public:
-    pass(renderer* renderer, setup_context& context);
+    pass();
+    virtual ~pass();
 
-    pass_slot* add_slot(std::string_view name, bool clear = false);
-    pass_slot* get_slot(std::string_view name) const;
-    const std::vector<std::unique_ptr<pass_slot>>& get_slots() const noexcept { return m_slots; }
+    void add_texture(std::string_view name, pass_access_flags access);
+    void add_buffer(std::string_view name, pass_access_flags access);
+    pass_reference* get_reference(std::string_view name);
 
-    virtual bool compile(compile_context& context) { return true; }
-    virtual void execute(execute_context& context) = 0;
+    std::vector<pass_reference*> get_references(pass_access_flags access) const;
+    std::vector<pass_reference*> get_references(pass_reference_type type) const;
+
+    const std::string& get_name() const noexcept { return m_name; }
+    pass_flags get_flags() const noexcept { return m_flags; }
+
+    virtual void compile(renderer* renderer){};
+    virtual void execute(rhi_render_command* command, render_context* context) = 0;
+
+protected:
+    void add_reference(const pass_reference& reference);
 
 private:
-    std::vector<std::unique_ptr<pass_slot>> m_slots;
+    friend class render_graph;
+    std::string m_name;
+    pass_flags m_flags;
+
+    std::vector<std::unique_ptr<pass_reference>> m_references;
+};
+
+class render_pass : public pass
+{
+public:
+    render_pass();
+
+    void add_input(std::string_view name, rhi_texture_layout layout);
+    void add_color(
+        std::string_view name,
+        rhi_texture_layout layout,
+        const rhi_attachment_blend_desc& blend = {});
+    void add_depth_stencil(std::string_view name, rhi_texture_layout layout);
+
+    void set_vertex_shader(std::string_view shader) { m_vertex_shader = shader; }
+    const std::string& get_vertex_shader() const noexcept { return m_vertex_shader; }
+
+    void set_fragment_shader(std::string_view shader) { m_fragment_shader = shader; }
+    const std::string& get_fragment_shader() const noexcept { return m_fragment_shader; }
+
+    void set_render_pass(rhi_render_pass* render_pass, std::uint32_t subpass_index) noexcept
+    {
+        m_render_pass = render_pass;
+        m_subpass_index = subpass_index;
+    }
+
+    virtual void compile(renderer* renderer) override;
+    virtual void execute(rhi_render_command* command, render_context* context) = 0;
+
+private:
+    std::string m_vertex_shader;
+    std::string m_fragment_shader;
+
+    std::vector<rhi_attachment_blend_desc> m_blend;
+
+    rhi_render_pass* m_render_pass;
+    std::uint32_t m_subpass_index;
+
+    rhi_ptr<rhi_render_pipeline> m_pipeline;
+};
+
+struct render_mesh
+{
+    rhi_parameter* material;
+    rhi_parameter* transform;
+};
+
+class mesh_pass : public render_pass
+{
+public:
+    mesh_pass();
+
+    void set_material_parameter(rhi_parameter_layout* layout);
+    rhi_parameter_layout* get_material_parameter();
+
+    void add_mesh(const render_mesh& mesh) { m_meshes.push_back(mesh); }
+    void clear_mesh() noexcept { m_meshes.clear(); }
+
+protected:
+    const std::vector<render_mesh>& get_meshes() const noexcept { return m_meshes; }
+
+private:
+    std::vector<render_mesh> m_meshes;
 };
 } // namespace violet

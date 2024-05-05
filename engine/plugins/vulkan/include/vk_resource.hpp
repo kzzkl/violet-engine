@@ -5,11 +5,11 @@
 
 namespace violet::vk
 {
-class vk_image : public rhi_image
+class vk_image : public rhi_texture
 {
 public:
     vk_image(vk_context* context);
-    vk_image(const rhi_image_desc& desc, vk_context* context);
+    vk_image(const rhi_texture_desc& desc, vk_context* context);
     virtual ~vk_image();
 
     VkImage get_image() const noexcept { return m_image; }
@@ -17,8 +17,8 @@ public:
     VkImageLayout get_image_layout() const noexcept { return m_image_layout; }
     VkClearValue get_clear_value() const noexcept { return m_clear_value; }
 
-    virtual rhi_resource_format get_format() const noexcept override;
-    virtual rhi_resource_extent get_extent() const noexcept override
+    virtual rhi_format get_format() const noexcept override;
+    virtual rhi_texture_extent get_extent() const noexcept override
     {
         return {m_extent.width, m_extent.height};
     }
@@ -63,7 +63,7 @@ private:
 class vk_texture : public vk_image
 {
 public:
-    vk_texture(const char* file, const rhi_image_desc& desc, vk_context* context);
+    vk_texture(const char* file, const rhi_texture_desc& desc, vk_context* context);
     virtual ~vk_texture();
 };
 
@@ -77,9 +77,9 @@ public:
         const char* bottom,
         const char* front,
         const char* back,
-        const rhi_image_desc& desc,
+        const rhi_texture_desc& desc,
         vk_context* context);
-    vk_texture_cube(const rhi_image_desc& desc, vk_context* context);
+    vk_texture_cube(const rhi_texture_desc& desc, vk_context* context);
     ~vk_texture_cube();
 };
 

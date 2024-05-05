@@ -1,4 +1,5 @@
 #include "graphics/renderer.hpp"
+#include "math/math.hpp"
 
 namespace violet
 {
@@ -6,7 +7,7 @@ rhi_deleter::rhi_deleter() : m_rhi(nullptr)
 {
 }
 
-rhi_deleter::rhi_deleter(rhi_renderer* rhi) : m_rhi(rhi)
+rhi_deleter::rhi_deleter(rhi* rhi) : m_rhi(rhi)
 {
 }
 
@@ -50,9 +51,14 @@ void rhi_deleter::operator()(rhi_buffer* buffer)
     m_rhi->destroy_buffer(buffer);
 }
 
-void rhi_deleter::operator()(rhi_image* image)
+void rhi_deleter::operator()(rhi_texture* texture)
 {
-    m_rhi->destroy_image(image);
+    m_rhi->destroy_texture(texture);
+}
+
+void rhi_deleter::operator()(rhi_swapchain* swapchain)
+{
+    m_rhi->destroy_swapchain(swapchain);
 }
 
 void rhi_deleter::operator()(rhi_fence* fence)
@@ -65,7 +71,7 @@ void rhi_deleter::operator()(rhi_semaphore* semaphore)
     m_rhi->destroy_semaphore(semaphore);
 }
 
-renderer::renderer(rhi_renderer* rhi) : m_rhi(rhi), m_rhi_deleter(rhi)
+renderer::renderer(rhi* rhi) : m_rhi(rhi), m_rhi_deleter(rhi)
 {
     add_parameter_layout(
         "violet mesh",
@@ -124,29 +130,9 @@ void renderer::end_frame()
     m_rhi->end_frame();
 }
 
-void renderer::present(const std::vector<rhi_semaphore*>& wait_semaphores)
-{
-    m_rhi->present(wait_semaphores.data(), wait_semaphores.size());
-}
-
-void renderer::resize(std::uint32_t width, std::uint32_t height)
-{
-    m_rhi->resize(width, height);
-}
-
-rhi_image* renderer::get_back_buffer()
-{
-    return m_rhi->get_back_buffer();
-}
-
 rhi_fence* renderer::get_in_flight_fence()
 {
     return m_rhi->get_in_flight_fence();
-}
-
-rhi_semaphore* renderer::get_image_available_semaphore()
-{
-    return m_rhi->get_image_available_semaphore();
 }
 
 std::size_t renderer::get_frame_resource_count() const noexcept
@@ -223,27 +209,27 @@ rhi_ptr<rhi_sampler> renderer::create_sampler(const rhi_sampler_desc& desc)
     return rhi_ptr<rhi_sampler>(m_rhi->create_sampler(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_image> renderer::create_image(const rhi_image_desc& desc)
+rhi_ptr<rhi_texture> renderer::create_texture(const rhi_texture_desc& desc)
 {
-    return rhi_ptr<rhi_image>(m_rhi->create_image(desc), m_rhi_deleter);
+    return rhi_ptr<rhi_texture>(m_rhi->create_texture(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_image> renderer::create_image(const char* file, const rhi_image_desc& desc)
+rhi_ptr<rhi_texture> renderer::create_texture(const char* file, const rhi_texture_desc& desc)
 {
-    return rhi_ptr<rhi_image>(m_rhi->create_image(file, desc), m_rhi_deleter);
+    return rhi_ptr<rhi_texture>(m_rhi->create_texture(file, desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_image> renderer::create_image_cube(
+rhi_ptr<rhi_texture> renderer::create_texture_cube(
     std::string_view right,
     std::string_view left,
     std::string_view top,
     std::string_view bottom,
     std::string_view front,
     std::string_view back,
-    const rhi_image_desc& desc)
+    const rhi_texture_desc& desc)
 {
-    return rhi_ptr<rhi_image>(
-        m_rhi->create_image_cube(
+    return rhi_ptr<rhi_texture>(
+        m_rhi->create_texture_cube(
             right.data(),
             left.data(),
             top.data(),
@@ -252,6 +238,11 @@ rhi_ptr<rhi_image> renderer::create_image_cube(
             back.data(),
             desc),
         m_rhi_deleter);
+}
+
+rhi_ptr<rhi_swapchain> renderer::create_swapchain(const rhi_swapchain_desc& desc)
+{
+    return rhi_ptr<rhi_swapchain>(m_rhi->create_swapchain(desc), m_rhi_deleter);
 }
 
 rhi_ptr<rhi_fence> renderer::create_fence(bool signaled)

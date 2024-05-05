@@ -9,45 +9,45 @@ namespace violet::vk
 {
 namespace
 {
-std::uint32_t get_vertex_attribute_stride(rhi_resource_format format) noexcept
+std::uint32_t get_vertex_attribute_stride(rhi_format format) noexcept
 {
     switch (format)
     {
-    case RHI_RESOURCE_FORMAT_R8_UNORM:
-    case RHI_RESOURCE_FORMAT_R8_SNORM:
-    case RHI_RESOURCE_FORMAT_R8_UINT:
-    case RHI_RESOURCE_FORMAT_R8_SINT:
+    case RHI_FORMAT_R8_UNORM:
+    case RHI_FORMAT_R8_SNORM:
+    case RHI_FORMAT_R8_UINT:
+    case RHI_FORMAT_R8_SINT:
         return 1;
-    case RHI_RESOURCE_FORMAT_R8G8_UNORM:
-    case RHI_RESOURCE_FORMAT_R8G8_SNORM:
-    case RHI_RESOURCE_FORMAT_R8G8_UINT:
-    case RHI_RESOURCE_FORMAT_R8G8_SINT:
+    case RHI_FORMAT_R8G8_UNORM:
+    case RHI_FORMAT_R8G8_SNORM:
+    case RHI_FORMAT_R8G8_UINT:
+    case RHI_FORMAT_R8G8_SINT:
         return 2;
-    case RHI_RESOURCE_FORMAT_R8G8B8_UNORM:
-    case RHI_RESOURCE_FORMAT_R8G8B8_SNORM:
-    case RHI_RESOURCE_FORMAT_R8G8B8_UINT:
-    case RHI_RESOURCE_FORMAT_R8G8B8_SINT:
+    case RHI_FORMAT_R8G8B8_UNORM:
+    case RHI_FORMAT_R8G8B8_SNORM:
+    case RHI_FORMAT_R8G8B8_UINT:
+    case RHI_FORMAT_R8G8B8_SINT:
         return 3;
-    case RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM:
-    case RHI_RESOURCE_FORMAT_R8G8B8A8_SNORM:
-    case RHI_RESOURCE_FORMAT_R8G8B8A8_UINT:
-    case RHI_RESOURCE_FORMAT_R8G8B8A8_SINT:
+    case RHI_FORMAT_R8G8B8A8_UNORM:
+    case RHI_FORMAT_R8G8B8A8_SNORM:
+    case RHI_FORMAT_R8G8B8A8_UINT:
+    case RHI_FORMAT_R8G8B8A8_SINT:
         return 4;
-    case RHI_RESOURCE_FORMAT_R32_UINT:
-    case RHI_RESOURCE_FORMAT_R32_SINT:
-    case RHI_RESOURCE_FORMAT_R32_FLOAT:
+    case RHI_FORMAT_R32_UINT:
+    case RHI_FORMAT_R32_SINT:
+    case RHI_FORMAT_R32_FLOAT:
         return 4;
-    case RHI_RESOURCE_FORMAT_R32G32_UINT:
-    case RHI_RESOURCE_FORMAT_R32G32_SINT:
-    case RHI_RESOURCE_FORMAT_R32G32_FLOAT:
+    case RHI_FORMAT_R32G32_UINT:
+    case RHI_FORMAT_R32G32_SINT:
+    case RHI_FORMAT_R32G32_FLOAT:
         return 8;
-    case RHI_RESOURCE_FORMAT_R32G32B32_UINT:
-    case RHI_RESOURCE_FORMAT_R32G32B32_SINT:
-    case RHI_RESOURCE_FORMAT_R32G32B32_FLOAT:
+    case RHI_FORMAT_R32G32B32_UINT:
+    case RHI_FORMAT_R32G32B32_SINT:
+    case RHI_FORMAT_R32G32B32_FLOAT:
         return 12;
-    case RHI_RESOURCE_FORMAT_R32G32B32A32_UINT:
-    case RHI_RESOURCE_FORMAT_R32G32B32A32_SINT:
-    case RHI_RESOURCE_FORMAT_R32G32B32A32_FLOAT:
+    case RHI_FORMAT_R32G32B32A32_UINT:
+    case RHI_FORMAT_R32G32B32A32_SINT:
+    case RHI_FORMAT_R32G32B32A32_FLOAT:
         return 16;
     default:
         return 0;
@@ -261,7 +261,7 @@ void vk_parameter::set_uniform(
     mark_dirty(index);
 }
 
-void vk_parameter::set_texture(std::size_t index, rhi_image* texture, rhi_sampler* sampler)
+void vk_parameter::set_texture(std::size_t index, rhi_texture* texture, rhi_sampler* sampler)
 {
     sync();
 

@@ -1,65 +1,64 @@
 #pragma once
 
 #include "core/plugin_interface.hpp"
-#include "math/math.hpp"
 #include <cstddef>
 #include <cstdint>
 
 namespace violet
 {
-enum rhi_resource_format
+enum rhi_format
 {
-    RHI_RESOURCE_FORMAT_UNDEFINED,
-    RHI_RESOURCE_FORMAT_R8_UNORM,
-    RHI_RESOURCE_FORMAT_R8_SNORM,
-    RHI_RESOURCE_FORMAT_R8_UINT,
-    RHI_RESOURCE_FORMAT_R8_SINT,
-    RHI_RESOURCE_FORMAT_R8G8_UNORM,
-    RHI_RESOURCE_FORMAT_R8G8_SNORM,
-    RHI_RESOURCE_FORMAT_R8G8_UINT,
-    RHI_RESOURCE_FORMAT_R8G8_SINT,
-    RHI_RESOURCE_FORMAT_R8G8B8_UNORM,
-    RHI_RESOURCE_FORMAT_R8G8B8_SNORM,
-    RHI_RESOURCE_FORMAT_R8G8B8_UINT,
-    RHI_RESOURCE_FORMAT_R8G8B8_SINT,
-    RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM,
-    RHI_RESOURCE_FORMAT_R8G8B8A8_SNORM,
-    RHI_RESOURCE_FORMAT_R8G8B8A8_UINT,
-    RHI_RESOURCE_FORMAT_R8G8B8A8_SINT,
-    RHI_RESOURCE_FORMAT_B8G8R8A8_UNORM,
-    RHI_RESOURCE_FORMAT_B8G8R8A8_SNORM,
-    RHI_RESOURCE_FORMAT_B8G8R8A8_UINT,
-    RHI_RESOURCE_FORMAT_B8G8R8A8_SINT,
-    RHI_RESOURCE_FORMAT_B8G8R8A8_SRGB,
-    RHI_RESOURCE_FORMAT_R32_UINT,
-    RHI_RESOURCE_FORMAT_R32_SINT,
-    RHI_RESOURCE_FORMAT_R32_FLOAT,
-    RHI_RESOURCE_FORMAT_R32G32_UINT,
-    RHI_RESOURCE_FORMAT_R32G32_SINT,
-    RHI_RESOURCE_FORMAT_R32G32_FLOAT,
-    RHI_RESOURCE_FORMAT_R32G32B32_UINT,
-    RHI_RESOURCE_FORMAT_R32G32B32_SINT,
-    RHI_RESOURCE_FORMAT_R32G32B32_FLOAT,
-    RHI_RESOURCE_FORMAT_R32G32B32A32_UINT,
-    RHI_RESOURCE_FORMAT_R32G32B32A32_SINT,
-    RHI_RESOURCE_FORMAT_R32G32B32A32_FLOAT,
-    RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT,
-    RHI_RESOURCE_FORMAT_D32_FLOAT
+    RHI_FORMAT_UNDEFINED,
+    RHI_FORMAT_R8_UNORM,
+    RHI_FORMAT_R8_SNORM,
+    RHI_FORMAT_R8_UINT,
+    RHI_FORMAT_R8_SINT,
+    RHI_FORMAT_R8G8_UNORM,
+    RHI_FORMAT_R8G8_SNORM,
+    RHI_FORMAT_R8G8_UINT,
+    RHI_FORMAT_R8G8_SINT,
+    RHI_FORMAT_R8G8B8_UNORM,
+    RHI_FORMAT_R8G8B8_SNORM,
+    RHI_FORMAT_R8G8B8_UINT,
+    RHI_FORMAT_R8G8B8_SINT,
+    RHI_FORMAT_R8G8B8A8_UNORM,
+    RHI_FORMAT_R8G8B8A8_SNORM,
+    RHI_FORMAT_R8G8B8A8_UINT,
+    RHI_FORMAT_R8G8B8A8_SINT,
+    RHI_FORMAT_B8G8R8A8_UNORM,
+    RHI_FORMAT_B8G8R8A8_SNORM,
+    RHI_FORMAT_B8G8R8A8_UINT,
+    RHI_FORMAT_B8G8R8A8_SINT,
+    RHI_FORMAT_B8G8R8A8_SRGB,
+    RHI_FORMAT_R32_UINT,
+    RHI_FORMAT_R32_SINT,
+    RHI_FORMAT_R32_FLOAT,
+    RHI_FORMAT_R32G32_UINT,
+    RHI_FORMAT_R32G32_SINT,
+    RHI_FORMAT_R32G32_FLOAT,
+    RHI_FORMAT_R32G32B32_UINT,
+    RHI_FORMAT_R32G32B32_SINT,
+    RHI_FORMAT_R32G32B32_FLOAT,
+    RHI_FORMAT_R32G32B32A32_UINT,
+    RHI_FORMAT_R32G32B32A32_SINT,
+    RHI_FORMAT_R32G32B32A32_FLOAT,
+    RHI_FORMAT_D24_UNORM_S8_UINT,
+    RHI_FORMAT_D32_FLOAT
 };
 
-enum rhi_image_layout
+enum rhi_texture_layout
 {
-    RHI_IMAGE_LAYOUT_UNDEFINED,
-    RHI_IMAGE_LAYOUT_GENERAL,
-    RHI_IMAGE_LAYOUT_SHADER_RESOURCE,
-    RHI_IMAGE_LAYOUT_RENDER_TARGET,
-    RHI_IMAGE_LAYOUT_DEPTH_STENCIL,
-    RHI_IMAGE_LAYOUT_PRESENT,
-    RHI_IMAGE_LAYOUT_TRANSFER_SRC,
-    RHI_IMAGE_LAYOUT_TRANSFER_DST
+    RHI_TEXTURE_LAYOUT_UNDEFINED,
+    RHI_TEXTURE_LAYOUT_GENERAL,
+    RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+    RHI_TEXTURE_LAYOUT_RENDER_TARGET,
+    RHI_TEXTURE_LAYOUT_DEPTH_STENCIL,
+    RHI_TEXTURE_LAYOUT_PRESENT,
+    RHI_TEXTURE_LAYOUT_TRANSFER_SRC,
+    RHI_TEXTURE_LAYOUT_TRANSFER_DST
 };
 
-struct rhi_resource_extent
+struct rhi_texture_extent
 {
     std::uint32_t width;
     std::uint32_t height;
@@ -75,13 +74,13 @@ enum rhi_sample_count
     RHI_SAMPLE_COUNT_32,
 };
 
-class rhi_image
+class rhi_texture
 {
 public:
-    virtual ~rhi_image() = default;
+    virtual ~rhi_texture() = default;
 
-    virtual rhi_resource_format get_format() const noexcept = 0;
-    virtual rhi_resource_extent get_extent() const noexcept = 0;
+    virtual rhi_format get_format() const noexcept = 0;
+    virtual rhi_texture_extent get_extent() const noexcept = 0;
 
     virtual std::size_t get_hash() const noexcept = 0;
 };
@@ -146,11 +145,11 @@ enum rhi_attachment_store_op
 
 struct rhi_attachment_desc
 {
-    rhi_resource_format format;
+    rhi_format format;
     rhi_sample_count samples;
 
-    rhi_image_layout initial_layout;
-    rhi_image_layout final_layout;
+    rhi_texture_layout initial_layout;
+    rhi_texture_layout final_layout;
 
     rhi_attachment_load_op load_op;
     rhi_attachment_store_op store_op;
@@ -169,7 +168,7 @@ enum rhi_attachment_reference_type
 struct rhi_attachment_reference
 {
     rhi_attachment_reference_type type;
-    rhi_image_layout layout;
+    rhi_texture_layout layout;
     std::size_t index;
     std::size_t resolve_index;
 };
@@ -278,14 +277,14 @@ public:
         const void* data,
         std::size_t size,
         std::size_t offset) = 0;
-    virtual void set_texture(std::size_t index, rhi_image* texture, rhi_sampler* sampler) = 0;
+    virtual void set_texture(std::size_t index, rhi_texture* texture, rhi_sampler* sampler) = 0;
     virtual void set_storage(std::size_t index, rhi_buffer* storage_buffer) = 0;
 };
 
 struct rhi_vertex_attribute
 {
     const char* name;
-    rhi_resource_format format;
+    rhi_format format;
 };
 
 enum rhi_blend_factor
@@ -426,7 +425,7 @@ public:
 struct rhi_framebuffer_desc
 {
     rhi_render_pass* render_pass;
-    const rhi_image* attachments[32];
+    const rhi_texture* attachments[32];
     std::size_t attachment_count;
 };
 
@@ -458,15 +457,15 @@ struct rhi_buffer_barrier
 {
 };
 
-struct rhi_image_barrier
+struct rhi_texture_barrier
 {
-    rhi_image* image;
+    rhi_texture* texture;
 
     rhi_access_flags src_access;
     rhi_access_flags dst_access;
 
-    rhi_image_layout src_layout;
-    rhi_image_layout dst_layout;
+    rhi_texture_layout src_layout;
+    rhi_texture_layout dst_layout;
 };
 
 struct rhi_pipeline_barrier
@@ -518,13 +517,13 @@ public:
         rhi_pipeline_stage_flags dst_stage,
         const rhi_buffer_barrier* const buffer_barriers,
         std::size_t buffer_barrier_count,
-        const rhi_image_barrier* const image_barriers,
-        std::size_t image_barrier_count) = 0;
+        const rhi_texture_barrier* const texture_barriers,
+        std::size_t texture_barrier_count) = 0;
 
-    virtual void copy_image(
-        rhi_image* src,
+    virtual void copy_texture(
+        rhi_texture* src,
         const rhi_resource_region& src_region,
-        rhi_image* dst,
+        rhi_texture* dst,
         const rhi_resource_region& dst_region) = 0;
 };
 
@@ -564,42 +563,61 @@ struct rhi_buffer_desc
     } index;
 };
 
-enum rhi_image_flag
+enum rhi_texture_flag
 {
-    RHI_IMAGE_FLAG_STORAGE = 1 << 0,
-    RHI_IMAGE_FLAG_MIPMAP = 1 << 1,
-    RHI_IMAGE_FLAG_RENDER_TARGET = 1 << 2,
-    RHI_IMAGE_FLAG_DEPTH_STENCIL = 1 << 3,
-    RHI_IMAGE_FLAG_TRANSFER_SRC = 1 << 4,
-    RHI_IMAGE_FLAG_TRANSFER_DST = 1 << 5
+    RHI_TEXTURE_FLAG_STORAGE = 1 << 0,
+    RHI_TEXTURE_FLAG_MIPMAP = 1 << 1,
+    RHI_TEXTURE_FLAG_RENDER_TARGET = 1 << 2,
+    RHI_TEXTURE_FLAG_DEPTH_STENCIL = 1 << 3,
+    RHI_TEXTURE_FLAG_TRANSFER_SRC = 1 << 4,
+    RHI_TEXTURE_FLAG_TRANSFER_DST = 1 << 5
 };
-using rhi_image_flags = std::uint32_t;
+using rhi_texture_flags = std::uint32_t;
 
-struct rhi_image_desc
+struct rhi_texture_desc
 {
     std::uint32_t width;
     std::uint32_t height;
 
-    rhi_resource_format format;
+    rhi_format format;
     rhi_sample_count samples;
 
-    rhi_image_flags flags;
+    rhi_texture_flags flags;
 };
 
-struct rhi_desc
+struct rhi_swapchain_desc
 {
     std::uint32_t width;
     std::uint32_t height;
 
     void* window_handle;
+};
 
+class rhi_swapchain
+{
+public:
+    virtual ~rhi_swapchain() = default;
+
+    virtual rhi_semaphore* acquire_texture() = 0;
+
+    virtual void present(
+        rhi_semaphore* const* wait_semaphores,
+        std::size_t wait_semaphore_count) = 0;
+
+    virtual void resize(std::uint32_t width, std::uint32_t height) = 0;
+
+    virtual rhi_texture* get_texture() = 0;
+};
+
+struct rhi_desc
+{
     std::size_t frame_resource_count;
 };
 
-class rhi_renderer
+class rhi
 {
 public:
-    virtual ~rhi_renderer() = default;
+    virtual ~rhi() = default;
 
     virtual bool initialize(const rhi_desc& desc) = 0;
 
@@ -615,15 +633,8 @@ public:
 
     virtual void begin_frame() = 0;
     virtual void end_frame() = 0;
-    virtual void present(
-        rhi_semaphore* const* wait_semaphores,
-        std::size_t wait_semaphore_count) = 0;
 
-    virtual void resize(std::uint32_t width, std::uint32_t height) = 0;
-
-    virtual rhi_image* get_back_buffer() = 0;
     virtual rhi_fence* get_in_flight_fence() = 0;
-    virtual rhi_semaphore* get_image_available_semaphore() = 0;
 
     virtual std::size_t get_frame_resource_count() const noexcept = 0;
     virtual std::size_t get_frame_resource_index() const noexcept = 0;
@@ -655,20 +666,23 @@ public:
     virtual rhi_buffer* create_buffer(const rhi_buffer_desc& desc) = 0;
     virtual void destroy_buffer(rhi_buffer* buffer) = 0;
 
-    virtual rhi_image* create_image(const rhi_image_desc& desc) = 0;
-    virtual rhi_image* create_image(const char* file, const rhi_image_desc& desc) = 0;
+    virtual rhi_texture* create_texture(const rhi_texture_desc& desc) = 0;
+    virtual rhi_texture* create_texture(const char* file, const rhi_texture_desc& desc) = 0;
 
-    virtual rhi_image* create_image_cube(const rhi_image_desc& desc) = 0;
-    virtual rhi_image* create_image_cube(
+    virtual rhi_texture* create_texture_cube(const rhi_texture_desc& desc) = 0;
+    virtual rhi_texture* create_texture_cube(
         const char* right,
         const char* left,
         const char* top,
         const char* bottom,
         const char* front,
         const char* back,
-        const rhi_image_desc& desc) = 0;
+        const rhi_texture_desc& desc) = 0;
 
-    virtual void destroy_image(rhi_image* image) = 0;
+    virtual void destroy_texture(rhi_texture* texture) = 0;
+
+    virtual rhi_swapchain* create_swapchain(const rhi_swapchain_desc& desc) = 0;
+    virtual void destroy_swapchain(rhi_swapchain* swapchain) = 0;
 
     virtual rhi_fence* create_fence(bool signaled) = 0;
     virtual void destroy_fence(rhi_fence* fence) = 0;
@@ -676,6 +690,6 @@ public:
     virtual rhi_semaphore* create_semaphore() = 0;
     virtual void destroy_semaphore(rhi_semaphore* semaphore) = 0;
 };
-using create_rhi = rhi_renderer* (*)();
-using destroy_rhi = void (*)(rhi_renderer*);
+using create_rhi = rhi* (*)();
+using destroy_rhi = void (*)(rhi*);
 } // namespace violet

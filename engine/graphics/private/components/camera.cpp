@@ -1,6 +1,5 @@
 #include "components/camera.hpp"
 #include "common/hash.hpp"
-#include "graphics/render_graph/render_graph.hpp"
 
 namespace violet
 {
@@ -49,7 +48,7 @@ void camera::set_view(const float4x4& view)
     update_parameter();
 }
 
-void camera::set_skybox(rhi_image* texture, rhi_sampler* sampler)
+void camera::set_skybox(rhi_texture* texture, rhi_sampler* sampler)
 {
     m_parameter->set_texture(1, texture, sampler);
 }

@@ -3,6 +3,7 @@
 #include "vk_image_loader.hpp"
 #include "vk_util.hpp"
 #include <cassert>
+#include <cmath>
 
 namespace violet::vk
 {
@@ -74,7 +75,7 @@ vk_image::vk_image(vk_context* context)
     m_clear_value.color = {0.0f, 0.0f, 0.0f, 1.0f};
 }
 
-vk_image::vk_image(const rhi_image_desc& desc, vk_context* context) : vk_image(context)
+vk_image::vk_image(const rhi_texture_desc& desc, vk_context* context) : vk_image(context)
 {
     VkFormat format = vk_util::map_format(desc.format);
 
@@ -96,13 +97,13 @@ vk_image::vk_image(const rhi_image_desc& desc, vk_context* context) : vk_image(c
     image_info.samples = vk_util::map_sample_count(desc.samples);
     image_info.flags = 0;
 
-    if (desc.flags & RHI_IMAGE_FLAG_RENDER_TARGET)
+    if (desc.flags & RHI_TEXTURE_FLAG_RENDER_TARGET)
         image_info.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    if (desc.flags & RHI_IMAGE_FLAG_DEPTH_STENCIL)
+    if (desc.flags & RHI_TEXTURE_FLAG_DEPTH_STENCIL)
         image_info.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    if (desc.flags & RHI_IMAGE_FLAG_TRANSFER_SRC)
+    if (desc.flags & RHI_TEXTURE_FLAG_TRANSFER_SRC)
         image_info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-    if (desc.flags & RHI_IMAGE_FLAG_TRANSFER_DST)
+    if (desc.flags & RHI_TEXTURE_FLAG_TRANSFER_DST)
         image_info.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
     create_image(
@@ -126,7 +127,7 @@ vk_image::vk_image(const rhi_image_desc& desc, vk_context* context) : vk_image(c
     image_view_info.subresourceRange.baseArrayLayer = 0;
     image_view_info.subresourceRange.layerCount = 1;
 
-    if (desc.flags & RHI_IMAGE_FLAG_DEPTH_STENCIL)
+    if (desc.flags & RHI_TEXTURE_FLAG_DEPTH_STENCIL)
         image_view_info.subresourceRange.aspectMask =
             VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
     else
@@ -140,7 +141,7 @@ vk_image::vk_image(const rhi_image_desc& desc, vk_context* context) : vk_image(c
     set_format(format);
     set_extent(VkExtent2D{desc.width, desc.height});
 
-    if (desc.flags & RHI_IMAGE_FLAG_DEPTH_STENCIL)
+    if (desc.flags & RHI_TEXTURE_FLAG_DEPTH_STENCIL)
         set_clear_value(VkClearDepthStencilValue{1.0, 0});
     else
         set_clear_value(VkClearColorValue{0.0f, 0.0f, 0.0f, 1.0f});
@@ -152,7 +153,7 @@ vk_image::~vk_image()
     vkDestroyImageView(m_context->get_device(), m_image_view, nullptr);
 }
 
-rhi_resource_format vk_image::get_format() const noexcept
+rhi_format vk_image::get_format() const noexcept
 {
     return vk_util::map_format(m_format);
 }
@@ -165,7 +166,7 @@ void vk_image::set_image(VkImage image, VmaAllocation allocation) noexcept
     m_hash = vk_util::hash(m_image);
 }
 
-vk_texture::vk_texture(const char* file, const rhi_image_desc& desc, vk_context* context)
+vk_texture::vk_texture(const char* file, const rhi_texture_desc& desc, vk_context* context)
     : vk_image(context)
 {
     vk_image_loader loader;
@@ -174,7 +175,7 @@ vk_texture::vk_texture(const char* file, const rhi_image_desc& desc, vk_context*
 
     const vk_image_data& data = loader.get_mipmap(0);
     std::uint32_t mip_levels = loader.get_mipmap_count();
-    if (mip_levels == 1 && desc.flags & RHI_IMAGE_FLAG_MIPMAP)
+    if (mip_levels == 1 && desc.flags & RHI_TEXTURE_FLAG_MIPMAP)
     {
         mip_levels =
             static_cast<std::uint32_t>(std::floor(std::log2((std::max)(data.width, data.height)))) +
@@ -420,7 +421,7 @@ vk_texture_cube::vk_texture_cube(
     const char* bottom,
     const char* front,
     const char* back,
-    const rhi_image_desc& desc,
+    const rhi_texture_desc& desc,
     vk_context* context)
     : vk_image(context)
 {
@@ -470,7 +471,7 @@ vk_texture_cube::vk_texture_cube(
     image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
     image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     image_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    if (desc.flags & RHI_IMAGE_FLAG_STORAGE)
+    if (desc.flags & RHI_TEXTURE_FLAG_STORAGE)
         image_info.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
     image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     image_info.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -585,7 +586,7 @@ vk_texture_cube::vk_texture_cube(
     set_extent(VkExtent2D{image_info.extent.width, image_info.extent.height});
 }
 
-vk_texture_cube::vk_texture_cube(const rhi_image_desc& desc, vk_context* context)
+vk_texture_cube::vk_texture_cube(const rhi_texture_desc& desc, vk_context* context)
     : vk_image(context)
 {
     VkImage image;
@@ -603,7 +604,7 @@ vk_texture_cube::vk_texture_cube(const rhi_image_desc& desc, vk_context* context
     image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
     image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     image_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    if (desc.flags & RHI_IMAGE_FLAG_STORAGE)
+    if (desc.flags & RHI_TEXTURE_FLAG_STORAGE)
         image_info.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
     image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     image_info.samples = VK_SAMPLE_COUNT_1_BIT;

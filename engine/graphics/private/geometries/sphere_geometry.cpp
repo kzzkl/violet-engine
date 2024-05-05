@@ -1,4 +1,5 @@
 #include "graphics/geometries/sphere_geometry.hpp"
+#include "math/math.hpp"
 
 namespace violet
 {

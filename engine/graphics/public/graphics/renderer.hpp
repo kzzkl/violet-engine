@@ -12,7 +12,7 @@ class rhi_deleter
 {
 public:
     rhi_deleter();
-    rhi_deleter(rhi_renderer* rhi);
+    rhi_deleter(rhi* rhi);
 
     void operator()(rhi_render_pass* render_pass);
     void operator()(rhi_render_pipeline* render_pipeline);
@@ -22,12 +22,13 @@ public:
     void operator()(rhi_framebuffer* framebuffer);
     void operator()(rhi_sampler* sampler);
     void operator()(rhi_buffer* buffer);
-    void operator()(rhi_image* image);
+    void operator()(rhi_texture* texture);
+    void operator()(rhi_swapchain* swapchain);
     void operator()(rhi_fence* fence);
     void operator()(rhi_semaphore* semaphore);
 
 private:
-    rhi_renderer* m_rhi;
+    rhi* m_rhi;
 };
 
 template <typename T>
@@ -36,7 +37,7 @@ using rhi_ptr = std::unique_ptr<T, rhi_deleter>;
 class renderer
 {
 public:
-    renderer(rhi_renderer* rhi);
+    renderer(rhi* rhi);
     ~renderer();
 
     rhi_render_command* allocate_command();
@@ -48,13 +49,8 @@ public:
 
     void begin_frame();
     void end_frame();
-    void present(const std::vector<rhi_semaphore*>& wait_semaphores);
 
-    void resize(std::uint32_t width, std::uint32_t height);
-
-    rhi_image* get_back_buffer();
     rhi_fence* get_in_flight_fence();
-    rhi_semaphore* get_image_available_semaphore();
 
     std::size_t get_frame_resource_count() const noexcept;
     std::size_t get_frame_resource_index() const noexcept;
@@ -76,16 +72,18 @@ public:
 
     rhi_ptr<rhi_buffer> create_buffer(const rhi_buffer_desc& desc);
     rhi_ptr<rhi_sampler> create_sampler(const rhi_sampler_desc& desc);
-    rhi_ptr<rhi_image> create_image(const rhi_image_desc& desc);
-    rhi_ptr<rhi_image> create_image(const char* file, const rhi_image_desc& desc = {});
-    rhi_ptr<rhi_image> create_image_cube(
+    rhi_ptr<rhi_texture> create_texture(const rhi_texture_desc& desc);
+    rhi_ptr<rhi_texture> create_texture(const char* file, const rhi_texture_desc& desc = {});
+    rhi_ptr<rhi_texture> create_texture_cube(
         std::string_view right,
         std::string_view left,
         std::string_view top,
         std::string_view bottom,
         std::string_view front,
         std::string_view back,
-        const rhi_image_desc& desc = {});
+        const rhi_texture_desc& desc = {});
+
+    rhi_ptr<rhi_swapchain> create_swapchain(const rhi_swapchain_desc& desc);
 
     rhi_ptr<rhi_fence> create_fence(bool signaled);
     rhi_ptr<rhi_semaphore> create_semaphore();
@@ -93,7 +91,7 @@ public:
     rhi_deleter& get_deleter() noexcept { return m_rhi_deleter; }
 
 private:
-    rhi_renderer* m_rhi;
+    rhi* m_rhi;
     rhi_deleter m_rhi_deleter;
 
     std::map<std::string, rhi_ptr<rhi_parameter_layout>> m_parameter_layouts;

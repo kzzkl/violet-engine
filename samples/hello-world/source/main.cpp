@@ -7,6 +7,7 @@
 #include "core/engine.hpp"
 #include "graphics/graphics_system.hpp"
 #include "scene/scene_system.hpp"
+#include "task/task_system.hpp"
 #include "window/window_system.hpp"
 #include <filesystem>
 #include <fstream>
@@ -14,58 +15,39 @@
 
 namespace violet::sample
 {
-class color_pipeline : public render_pipeline
+class sample_pass : public mesh_pass
 {
 public:
-    color_pipeline(std::string_view name, renderer* context) : render_pipeline(name, context)
+    sample_pass()
     {
-        set_shader("hello-world/shaders/base.vert.spv", "hello-world/shaders/base.frag.spv");
-        set_vertex_attributes({
-            {"position", RHI_RESOURCE_FORMAT_R32G32B32_FLOAT},
-            {"color",    RHI_RESOURCE_FORMAT_R32G32B32_FLOAT},
-            {"uv",       RHI_RESOURCE_FORMAT_R32G32_FLOAT   }
-        });
-        set_cull_mode(RHI_CULL_MODE_NONE);
+        add_color("color", RHI_TEXTURE_LAYOUT_RENDER_TARGET);
+        add_depth_stencil("depth", RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
 
-        rhi_parameter_layout* material_layout = context->add_parameter_layout(
-            "color pipeline",
-            {
-                {RHI_PARAMETER_TYPE_TEXTURE, 1, RHI_PARAMETER_STAGE_FLAG_FRAGMENT}
-        });
+        set_vertex_shader("./hello-world/shaders/sample.vert.spv");
+        set_fragment_shader("./hello-world/shaders/sample.frag.spv");
+    }
 
-        set_parameter_layouts({
-            {context->get_parameter_layout("violet mesh"),   RENDER_PIPELINE_PARAMETER_TYPE_MESH    },
-            {material_layout,                                RENDER_PIPELINE_PARAMETER_TYPE_MATERIAL},
-            {context->get_parameter_layout("violet camera"),
-             RENDER_PIPELINE_PARAMETER_TYPE_CAMERA                                                  }
-        });
+    virtual void execute(rhi_render_command* command, render_context* context) override
+    {
+        command->set_render_pipeline(m_pipeline.get());
     }
 
 private:
-    void render(rhi_render_command* command, render_data& data)
-    {
-        for (render_mesh& mesh : data.meshes)
-        {
-            command->set_vertex_buffers(mesh.vertex_buffers.data(), mesh.vertex_buffers.size());
-            command->set_index_buffer(mesh.index_buffer);
-            command->set_render_parameter(0, mesh.transform);
-            command->set_render_parameter(1, mesh.material);
-            command->set_render_parameter(2, data.camera);
-            command->draw_indexed(0, 12, 0);
-        }
-    }
+    rhi_ptr<rhi_render_pipeline> m_pipeline;
+};
+
+class present_pass : public pass
+{
+public:
+    present_pass() { add_texture("target", PASS_ACCESS_FLAG_WRITE); }
+
+    virtual void execute(rhi_render_command* command, render_context* context) override {}
 };
 
 class hello_world : public engine_system
 {
 public:
-    hello_world()
-        : engine_system("hello_world"),
-          m_texture(nullptr),
-          m_sampler(nullptr),
-          m_depth_stencil(nullptr)
-    {
-    }
+    hello_world() : engine_system("hello_world") {}
 
     virtual bool initialize(const dictionary& config)
     {
@@ -79,13 +61,6 @@ public:
                 resize(width, height);
             });
 
-        on_tick().then(
-            [this](float delta)
-            {
-                tick(delta);
-                get_system<graphics_system>().render(m_render_graph.get());
-            });
-
         initialize_render();
 
         m_object = std::make_unique<actor>("test", get_world());
@@ -96,124 +71,42 @@ public:
         return true;
     }
 
+    virtual void update(float delta)
+    {
+        tick(delta);
+        get_system<graphics_system>().render(m_render_graph.get());
+    }
+
     virtual void shutdown() {}
 
 private:
     void initialize_render()
     {
-        auto extent = get_system<window_system>().get_extent();
-        renderer* renderer = get_system<graphics_system>().get_renderer();
+        auto& window = get_system<window_system>();
+        auto& graphics = get_system<graphics_system>();
 
-        m_render_graph = std::make_unique<render_graph>(renderer);
-        render_pass* main = m_render_graph->add_render_pass("main");
+        auto window_extent = window.get_extent();
+        m_swapchain = graphics.get_renderer()->create_swapchain(
+            rhi_swapchain_desc{window_extent.width, window_extent.height, window.get_handle()});
 
-        render_attachment* output_attachment = main->add_attachment("output");
-        output_attachment->set_format(renderer->get_back_buffer()->get_format());
-        output_attachment->set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
-        output_attachment->set_final_state(RHI_RESOURCE_STATE_PRESENT);
-        output_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
-        output_attachment->set_store_op(RHI_ATTACHMENT_STORE_OP_STORE);
+        m_render_graph = std::make_unique<render_graph>(graphics.get_renderer());
 
-        render_attachment* depth_stencil_attachment = main->add_attachment("depth stencil");
-        depth_stencil_attachment->set_format(RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT);
-        depth_stencil_attachment->set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
-        depth_stencil_attachment->set_final_state(RHI_RESOURCE_STATE_DEPTH_STENCIL);
-        depth_stencil_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
-        depth_stencil_attachment->set_store_op(RHI_ATTACHMENT_STORE_OP_DONT_CARE);
-        depth_stencil_attachment->set_stencil_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
-        depth_stencil_attachment->set_stencil_store_op(RHI_ATTACHMENT_STORE_OP_DONT_CARE);
+        swapchain* render_target = m_render_graph->add_resource<swapchain>("render target");
+        render_target->set_format(m_swapchain->get_texture()->get_format());
 
-        render_subpass* color_pass = main->add_subpass("color");
-        color_pass->add_reference(
-            output_attachment,
-            RHI_ATTACHMENT_REFERENCE_TYPE_COLOR,
-            RHI_RESOURCE_STATE_RENDER_TARGET);
-        color_pass->add_reference(
-            depth_stencil_attachment,
-            RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL,
-            RHI_RESOURCE_STATE_DEPTH_STENCIL);
+        texture* depth_buffer = m_render_graph->add_resource<texture>("depth buffer");
+        depth_buffer->set_format(RHI_FORMAT_D24_UNORM_S8_UINT);
 
-        render_pipeline* pipeline = color_pass->add_pipeline<color_pipeline>("color");
+        sample_pass* mesh_pass = m_render_graph->add_pass<sample_pass>("mesh pass");
+        present_pass* present = m_render_graph->add_pass<present_pass>("present pass");
 
-        main->add_dependency(
-            nullptr,
-            RHI_PIPELINE_STAGE_FLAG_COLOR_OUTPUT | RHI_PIPELINE_STAGE_FLAG_EARLY_DEPTH_STENCIL,
-            0,
-            color_pass,
-            RHI_PIPELINE_STAGE_FLAG_COLOR_OUTPUT | RHI_PIPELINE_STAGE_FLAG_EARLY_DEPTH_STENCIL,
-            RHI_ACCESS_FLAG_COLOR_WRITE | RHI_ACCESS_FLAG_DEPTH_STENCIL_WRITE);
+        m_render_graph->add_edge(render_target, mesh_pass, "color", EDGE_OPERATE_CLEAR);
+        m_render_graph->add_edge(depth_buffer, mesh_pass, "depth", EDGE_OPERATE_CLEAR);
+        m_render_graph->add_edge(mesh_pass, "color", present, "target");
 
         m_render_graph->compile();
 
-        m_texture = renderer->create_texture("hello-world/test.jpg");
-
-        rhi_sampler_desc sampler_desc = {};
-        sampler_desc.min_filter = RHI_FILTER_LINEAR;
-        sampler_desc.mag_filter = RHI_FILTER_LINEAR;
-        sampler_desc.address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-        sampler_desc.address_mode_v = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-        sampler_desc.address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-        m_sampler = renderer->create_sampler(sampler_desc);
-
-        m_geometry = std::make_unique<geometry>(renderer);
-        std::vector<float3> position = {
-            {-0.5f, -0.5f, -0.2f},
-            {0.5f,  -0.5f, -0.2f},
-            {0.5f,  0.5f,  -0.2f},
-            {-0.5f, 0.5f,  -0.2f},
-            {-0.5f, -0.5f, 0.2f },
-            {0.5f,  -0.5f, 0.2f },
-            {0.5f,  0.5f,  0.2f },
-            {-0.5f, 0.5f,  0.2f }
-        };
-        m_geometry->add_attribute("position", position);
-        std::vector<float3> color = {
-            {1.0f, 0.0f, 0.0f},
-            {0.0f, 1.0f, 0.0f},
-            {0.0f, 1.0f, 1.0f},
-            {0.0f, 0.0f, 1.0f},
-            {1.0f, 0.0f, 0.0f},
-            {0.0f, 1.0f, 0.0f},
-            {0.0f, 1.0f, 1.0f},
-            {0.0f, 0.0f, 1.0f}
-        };
-        m_geometry->add_attribute("color", color);
-        std::vector<float2> uv = {
-            {0.0f, 1.0f},
-            {1.0f, 1.0f},
-            {1.0f, 0.0f},
-            {0.0f, 0.0f},
-            {0.0f, 1.0f},
-            {1.0f, 1.0f},
-            {1.0f, 0.0f},
-            {0.0f, 0.0f}
-        };
-        m_geometry->add_attribute("uv", uv);
-        std::vector<std::uint32_t> indices = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
-        m_geometry->set_indices(indices);
-
-        material_layout* material_layout = m_render_graph->add_material_layout("text material");
-        material_layout->add_pipeline(pipeline);
-        material_layout->add_field(
-            "texture",
-            {.pipeline_index = 0, .field_index = 0, .size = 1, .offset = 0});
-
-        m_material = material_layout->add_material("test");
-        m_material->set("texture", m_texture.get(), m_sampler.get());
-
-        m_camera = std::make_unique<actor>("main camera", get_world());
-        auto [camera_ptr, transform_ptr, orbit_control_ptr] =
-            m_camera->add<camera, transform, orbit_control>();
-        camera_ptr->set_render_pass(main);
-        camera_ptr->set_attachment(0, renderer->get_back_buffer(), true);
-        camera_ptr->resize(extent.width, extent.height);
-
-        transform_ptr->set_position(0.0f, 2.0f, -5.0f);
-        // transform_ptr->lookat(float3{0.0f, 0.0f, 0.0f}, float3{0.0f, 1.0f, 0.0f});
-
-        orbit_control_ptr->r = 5.0f;
-
-        resize(extent.width, extent.height);
+        m_render_graph->get_resource<swapchain>("render target")->set(m_swapchain.get());
     }
 
     void tick(float delta)
@@ -251,35 +144,15 @@ private:
         m_rotate += delta * 2.0f;
     }
 
-    void resize(std::uint32_t width, std::uint32_t height)
-    {
-        rhi_depth_stencil_buffer_desc depth_stencil_buffer_desc = {};
-        depth_stencil_buffer_desc.width = width;
-        depth_stencil_buffer_desc.height = height;
-        depth_stencil_buffer_desc.samples = RHI_SAMPLE_COUNT_1;
-        depth_stencil_buffer_desc.format = RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT;
-        m_depth_stencil = get_system<graphics_system>().get_renderer()->create_depth_stencil_buffer(
-            depth_stencil_buffer_desc);
-
-        if (m_camera)
-        {
-            auto main_camera = m_camera->get<camera>();
-            main_camera->resize(width, height);
-            main_camera->set_attachment(1, m_depth_stencil.get());
-        }
-    }
+    void resize(std::uint32_t width, std::uint32_t height) {}
 
     std::unique_ptr<actor> m_camera;
     std::unique_ptr<actor> m_object;
     std::unique_ptr<geometry> m_geometry;
     material* m_material;
 
+    rhi_ptr<rhi_swapchain> m_swapchain;
     std::unique_ptr<render_graph> m_render_graph;
-
-    rhi_ptr<rhi_resource> m_texture;
-    rhi_ptr<rhi_sampler> m_sampler;
-
-    rhi_ptr<rhi_resource> m_depth_stencil;
 
     float m_rotate = 0.0f;
 };
@@ -291,6 +164,7 @@ int main()
 
     engine engine;
     engine.initialize("hello-world/config");
+    engine.install<task_system>();
     engine.install<window_system>();
     engine.install<scene_system>();
     engine.install<graphics_system>();

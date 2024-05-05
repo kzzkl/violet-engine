@@ -46,13 +46,13 @@ public:
         rhi_pipeline_stage_flags dst_stage,
         const rhi_buffer_barrier* const buffer_barriers,
         std::size_t buffer_barrier_count,
-        const rhi_image_barrier* const image_barriers,
-        std::size_t image_barrier_count) override;
+        const rhi_texture_barrier* const texture_barriers,
+        std::size_t texture_barrier_count) override;
 
-    virtual void copy_image(
-        rhi_image* src,
+    virtual void copy_texture(
+        rhi_texture* src,
         const rhi_resource_region& src_region,
-        rhi_image* dst,
+        rhi_texture* dst,
         const rhi_resource_region& dst_region) override;
 
     void reset();
