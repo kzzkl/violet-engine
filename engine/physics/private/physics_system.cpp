@@ -2,7 +2,6 @@
 #include "components/rigidbody.hpp"
 #include "components/transform.hpp"
 #include "physics_plugin.hpp"
-#include "task/task_system.hpp"
 
 namespace violet
 {
@@ -36,7 +35,7 @@ bool physics_system::initialize(const dictionary& config)
 
     if (config["tick"])
     {
-        get_system<task_system>().on_frame_begin().then(
+        on_frame_begin().then(
             [this]()
             {
                 simulation();

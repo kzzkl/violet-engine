@@ -83,7 +83,7 @@ public:
         edge_operate operate = EDGE_OPERATE_DONT_CARE);
 
     void compile();
-    void execute(rhi_render_command* command);
+    rhi_semaphore* execute();
 
     render_graph& operator=(const render_graph&) = delete;
 
@@ -106,6 +106,9 @@ private:
         return iter == resources.cend() ? nullptr : iter->get();
     }
 
+    void switch_frame_resource();
+    rhi_semaphore* allocate_semaphore();
+
     std::vector<std::unique_ptr<texture>> m_textures;
     std::vector<std::unique_ptr<buffer>> m_buffers;
     std::vector<std::unique_ptr<swapchain>> m_swapchains;
@@ -114,6 +117,10 @@ private:
     std::vector<std::unique_ptr<edge>> m_edges;
 
     std::vector<std::unique_ptr<pass_batch>> m_batchs;
+
+    std::vector<std::vector<rhi_semaphore*>> m_used_semaphores;
+    std::vector<rhi_semaphore*> m_free_semaphores;
+    std::vector<rhi_ptr<rhi_semaphore>> m_semaphores;
 
     renderer* m_renderer;
 };

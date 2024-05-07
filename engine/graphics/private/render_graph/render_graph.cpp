@@ -82,20 +82,34 @@ void render_graph::add_edge(
     auto src_reference = src->get_reference(src_reference_name);
     auto dst_reference = dst->get_reference(dst_reference_name);
 
-    if (operate == EDGE_OPERATE_DONT_CARE)
+    if (src_reference->type == PASS_REFERENCE_TYPE_ATTACHMENT)
     {
-        src_reference->attachment.store_op = RHI_ATTACHMENT_STORE_OP_DONT_CARE;
-        dst_reference->attachment.load_op = RHI_ATTACHMENT_LOAD_OP_DONT_CARE;
+        if (operate == EDGE_OPERATE_DONT_CARE || operate == EDGE_OPERATE_CLEAR)
+            src_reference->attachment.store_op = RHI_ATTACHMENT_STORE_OP_DONT_CARE;
+        else if (operate == EDGE_OPERATE_STORE)
+            src_reference->attachment.store_op = RHI_ATTACHMENT_STORE_OP_STORE;
     }
-    else if (operate == EDGE_OPERATE_CLEAR)
+
+    if (dst_reference->type == PASS_REFERENCE_TYPE_ATTACHMENT)
     {
-        src_reference->attachment.store_op = RHI_ATTACHMENT_STORE_OP_DONT_CARE;
-        dst_reference->attachment.load_op = RHI_ATTACHMENT_LOAD_OP_CLEAR;
+        if (operate == EDGE_OPERATE_DONT_CARE)
+            dst_reference->attachment.load_op = RHI_ATTACHMENT_LOAD_OP_DONT_CARE;
+        else if (operate == EDGE_OPERATE_CLEAR)
+            dst_reference->attachment.load_op = RHI_ATTACHMENT_LOAD_OP_CLEAR;
+        else if (operate == EDGE_OPERATE_STORE)
+            dst_reference->attachment.load_op = RHI_ATTACHMENT_LOAD_OP_LOAD;
     }
-    else if (operate == EDGE_OPERATE_STORE)
+
+    if (src_reference->type != PASS_REFERENCE_TYPE_BUFFER &&
+        dst_reference->type != PASS_REFERENCE_TYPE_BUFFER)
     {
-        src_reference->attachment.store_op = RHI_ATTACHMENT_STORE_OP_STORE;
-        dst_reference->attachment.load_op = RHI_ATTACHMENT_LOAD_OP_LOAD;
+        auto& next_layout = src_reference->type == PASS_REFERENCE_TYPE_TEXTURE
+                                ? src_reference->texture.next_layout
+                                : src_reference->attachment.next_layout;
+
+        next_layout = dst_reference->type == PASS_REFERENCE_TYPE_TEXTURE
+                          ? dst_reference->texture.layout
+                          : dst_reference->attachment.layout;
     }
 
     m_edges.emplace_back(std::make_unique<edge>(src, src_reference, dst, dst_reference));
@@ -113,12 +127,36 @@ void render_graph::compile()
         if (passes[i][0]->get_flags() & PASS_FLAG_RENDER)
             m_batchs.push_back(std::make_unique<render_pass_batch>(passes[i], m_renderer));
     }
+
+    m_used_semaphores.resize(m_renderer->get_frame_resource_count());
 }
 
-void render_graph::execute(rhi_render_command* command)
+rhi_semaphore* render_graph::execute()
 {
+    switch_frame_resource();
+
+    std::vector<rhi_semaphore*> wait_semaphores;
+    wait_semaphores.reserve(m_swapchains.size());
+    std::vector<rhi_semaphore*> signal_semaphores;
+    signal_semaphores.reserve(m_swapchains.size() + 1);
+    for (std::size_t i = 0; i < m_swapchains.size(); ++i)
+    {
+        signal_semaphores.push_back(allocate_semaphore());
+        wait_semaphores.push_back(m_swapchains[i]->acquire_texture());
+    }
+    signal_semaphores.push_back(allocate_semaphore());
+
+    rhi_render_command* command = m_renderer->allocate_command();
+
     for (auto& batch : m_batchs)
         batch->execute(command, nullptr);
+
+    m_renderer->execute({command}, signal_semaphores, wait_semaphores, nullptr);
+
+    for (std::size_t i = 0; i < m_swapchains.size(); ++i)
+        m_swapchains[i]->present(signal_semaphores[i]);
+
+    return signal_semaphores.back();
 }
 
 void render_graph::bind_resource()
@@ -254,5 +292,29 @@ std::vector<std::vector<pass*>> render_graph::merge_pass()
         result.push_back(batchs[root]);
 
     return result;
+}
+
+void render_graph::switch_frame_resource()
+{
+    auto& finish_semaphores = m_used_semaphores[m_renderer->get_frame_resource_index()];
+    for (rhi_semaphore* samphore : finish_semaphores)
+        m_free_semaphores.push_back(samphore);
+    finish_semaphores.clear();
+}
+
+rhi_semaphore* render_graph::allocate_semaphore()
+{
+    if (m_free_semaphores.empty())
+    {
+        m_semaphores.emplace_back(m_renderer->create_semaphore());
+        m_free_semaphores.push_back(m_semaphores.back().get());
+    }
+
+    rhi_semaphore* semaphore = m_free_semaphores.back();
+    m_used_semaphores[m_renderer->get_frame_resource_index()].push_back(semaphore);
+
+    m_free_semaphores.pop_back();
+
+    return semaphore;
 }
 } // namespace violet

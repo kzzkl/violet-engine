@@ -4,7 +4,6 @@
 #include "components/mesh.hpp"
 #include "components/transform.hpp"
 #include "rhi_plugin.hpp"
-#include "task/task_system.hpp"
 #include "window/window_system.hpp"
 
 namespace violet
@@ -38,7 +37,6 @@ graphics_system::graphics_system() : engine_system("graphics"), m_idle(false)
 graphics_system::~graphics_system()
 {
     m_light = nullptr;
-    m_semaphores.clear();
 
     m_renderer = nullptr;
     m_plugin->unload();
@@ -58,13 +56,12 @@ bool graphics_system::initialize(const dictionary& config)
 
     m_renderer = std::make_unique<renderer>(m_plugin->get_rhi());
 
-    auto& task = get_system<task_system>();
-    task.on_frame_begin().then(
+    on_frame_begin().then(
         [this]()
         {
             begin_frame();
         });
-    task.on_frame_end().then(
+    on_frame_end().then(
         [this]()
         {
             end_frame();
@@ -75,8 +72,6 @@ bool graphics_system::initialize(const dictionary& config)
     get_world().register_component<light>();
 
     m_light = m_renderer->create_parameter(m_renderer->get_parameter_layout("violet light"));
-
-    m_used_semaphores.resize(m_renderer->get_frame_resource_count());
 
     return true;
 }
@@ -138,29 +133,10 @@ void graphics_system::render()
             }
         });
 
-    auto& finish_semaphores = m_used_semaphores[m_renderer->get_frame_resource_index()];
-    for (rhi_semaphore* samphore : finish_semaphores)
-        m_free_semaphores.push_back(samphore);
-    finish_semaphores.clear();
-
+    std::vector<rhi_semaphore*> finish_semaphores;
+    finish_semaphores.reserve(m_render_graphs.size());
     for (render_graph* render_graph : m_render_graphs)
-    {
-        rhi_render_command* command = m_renderer->allocate_command();
-
-        render_graph->execute(command);
-
-        if (m_free_semaphores.empty())
-        {
-            m_semaphores.emplace_back(m_renderer->create_semaphore());
-            m_free_semaphores.push_back(m_semaphores.back().get());
-        }
-
-        rhi_semaphore* semaphore = m_free_semaphores.back();
-        m_renderer->execute({command}, {semaphore}, {}, nullptr);
-
-        finish_semaphores.push_back(semaphore);
-        m_free_semaphores.pop_back();
-    }
+        finish_semaphores.push_back(render_graph->execute());
 
     rhi_render_command* command = m_renderer->allocate_command();
     m_renderer->execute({command}, {}, finish_semaphores, m_renderer->get_in_flight_fence());

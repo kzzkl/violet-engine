@@ -5,6 +5,7 @@ namespace violet
 {
 task_base::task_base(task_graph_base* graph) noexcept
     : m_uncompleted_dependency_count(0),
+      m_type(TASK_TYPE_NORMAL),
       m_graph(graph)
 {
 }
@@ -83,6 +84,11 @@ std::future<void> task_graph_base::reset(task_base* root) noexcept
     if (m_dirty)
     {
         m_accessible_tasks = root->visit();
+        m_task_count.fill(0);
+
+        for (task_base* task : m_accessible_tasks)
+            ++m_task_count[task->get_type()];
+
         m_dirty = false;
     }
     m_incomplete_count = m_accessible_tasks.size();
@@ -105,5 +111,10 @@ void task_graph_base::on_task_complete()
 std::size_t task_graph_base::get_task_count() const noexcept
 {
     return m_accessible_tasks.size();
+}
+
+std::size_t task_graph_base::get_task_count(task_type type) const noexcept
+{
+    return m_task_count[type];
 }
 } // namespace violet

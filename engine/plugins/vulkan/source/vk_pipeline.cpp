@@ -487,7 +487,7 @@ vk_render_pipeline::vk_render_pipeline(
     rasterization_state_info.rasterizerDiscardEnable = VK_FALSE;
     rasterization_state_info.polygonMode = VK_POLYGON_MODE_FILL;
     rasterization_state_info.lineWidth = 1.0f;
-    rasterization_state_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterization_state_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterization_state_info.depthBiasEnable = VK_FALSE;
     rasterization_state_info.depthBiasConstantFactor = 0.0f;
     rasterization_state_info.depthBiasClamp = 0.0f;

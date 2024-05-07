@@ -19,6 +19,7 @@ public:
         {
             graph.set_argument(std::forward<Args>(args)...);
             execute_task(&graph.get_root());
+            execute_main_thread_task(graph.get_task_count(TASK_TYPE_MAIN_THREAD));
         }
 
         return future;
@@ -32,6 +33,7 @@ public:
         {
             graph.set_argument(std::forward<Args>(args)...);
             execute_task(&graph.get_root());
+            execute_main_thread_task(graph.get_task_count(TASK_TYPE_MAIN_THREAD));
             future.get();
         }
     }
@@ -43,8 +45,10 @@ private:
     class thread_pool;
 
     void execute_task(task_base* task);
+    void execute_main_thread_task(std::size_t task_count);
 
-    std::unique_ptr<task_queue> m_queue;
+    std::array<std::unique_ptr<task_queue>, 2> m_queues;
+
     std::unique_ptr<thread_pool> m_thread_pool;
 
     std::atomic<bool> m_stop;

@@ -19,8 +19,6 @@ public:
     virtual ~window_system();
 
     virtual bool initialize(const dictionary& config) override;
-    virtual void update(float delta) override;
-    virtual void late_update(float delta) override;
     virtual void shutdown() override;
 
     mouse_type& get_mouse() { return m_mouse; }
@@ -35,6 +33,8 @@ public:
     task<>& on_destroy() { return m_on_destroy.get_root(); }
 
 private:
+    void tick();
+
     std::unique_ptr<window_impl> m_impl;
 
     mouse_type m_mouse;

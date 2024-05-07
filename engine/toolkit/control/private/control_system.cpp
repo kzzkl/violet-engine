@@ -1,5 +1,4 @@
 #include "control/control_system.hpp"
-#include "task/task_system.hpp"
 #include "window/window_system.hpp"
 
 namespace violet
@@ -13,7 +12,7 @@ control_system::control_system()
 
 bool control_system::initialize(const dictionary& config)
 {
-    get_system<task_system>().on_tick().then(
+    on_tick().then(
         [this](float delta)
         {
             tick(delta);

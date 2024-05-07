@@ -2,7 +2,6 @@ project(violet-task)
 
 add_library(${PROJECT_NAME} STATIC
     ./private/task_executor.cpp
-    ./private/task_system.cpp
     ./private/task.cpp)
 add_library(violet::task ALIAS ${PROJECT_NAME})
 

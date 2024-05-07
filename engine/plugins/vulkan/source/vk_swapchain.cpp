@@ -76,13 +76,18 @@ rhi_semaphore* vk_swapchain::acquire_texture()
 {
     auto& semaphore = m_available_semaphores[m_context->get_frame_resource_index()];
 
-    vk_check(vkAcquireNextImageKHR(
+    VkResult result = vkAcquireNextImageKHR(
         m_context->get_device(),
         m_swapchain,
         UINT64_MAX,
         semaphore->get_semaphore(),
         VK_NULL_HANDLE,
-        &m_swapchain_image_index));
+        &m_swapchain_image_index);
+
+    if (result != VK_ERROR_OUT_OF_DATE_KHR)
+        vk_check(result);
+    else
+        return nullptr;
 
     return semaphore.get();
 }
@@ -229,6 +234,6 @@ void vk_swapchain::resize(std::uint32_t width, std::uint32_t height)
 
 rhi_texture* vk_swapchain::get_texture()
 {
-    return m_swapchain_images[m_context->get_frame_resource_index()].get();
+    return m_swapchain_images[m_swapchain_image_index].get();
 }
 } // namespace violet::vk

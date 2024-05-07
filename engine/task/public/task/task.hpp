@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <functional>
 #include <future>
 #include <memory>
@@ -46,6 +47,12 @@ struct functor_traits<R (C::*)(Args...)>
     using function_type = std::function<R(Args...)>;
 };
 
+enum task_type
+{
+    TASK_TYPE_NORMAL,
+    TASK_TYPE_MAIN_THREAD
+};
+
 class task_graph_base;
 class task_base
 {
@@ -57,6 +64,8 @@ public:
     std::vector<task_base*> visit();
 
     bool is_ready() const noexcept { return m_uncompleted_dependency_count == 0; }
+
+    task_type get_type() const noexcept { return m_type; }
 
 protected:
     void add_successor(task_base* successor);
@@ -73,6 +82,7 @@ private:
 
     std::atomic<std::uint32_t> m_uncompleted_dependency_count;
 
+    task_type m_type;
     task_graph_base* m_graph;
 };
 
@@ -83,10 +93,11 @@ public:
     virtual ~task_graph_base() = default;
 
     template <typename T, typename... Args>
-    T& add_task(Args&&... args)
+    T& add_task(task_type type, Args&&... args)
     {
         auto pointer = std::make_unique<T>(std::forward<Args>(args)...);
         pointer->m_graph = this;
+        pointer->m_type = type;
 
         auto& result = *pointer;
 
@@ -100,6 +111,7 @@ public:
     void on_task_complete();
 
     std::size_t get_task_count() const noexcept;
+    std::size_t get_task_count(task_type type) const noexcept;
 
 protected:
     bool is_dirty() const noexcept { return m_dirty; }
@@ -110,6 +122,8 @@ private:
 
     std::vector<task_base*> m_accessible_tasks;
     std::atomic<std::uint32_t> m_incomplete_count;
+
+    std::array<std::size_t, 2> m_task_count;
 
     std::promise<void> m_promise;
 
@@ -148,11 +162,11 @@ public:
     using task_base::task_base;
 
     template <typename Functor>
-    auto& then(Functor functor)
+    auto& then(Functor functor, task_type type = TASK_TYPE_NORMAL)
     {
         using next_type = typename next_task<Functor>::type;
 
-        auto& task = get_graph()->add_task<next_type>(functor, this);
+        auto& task = get_graph()->add_task<next_type>(type, functor, this);
         add_successor(&task);
         return task;
     }
@@ -179,11 +193,11 @@ public:
     using task_base::task_base;
 
     template <typename Functor>
-    auto& then(Functor functor)
+    auto& then(Functor functor, task_type type = TASK_TYPE_NORMAL)
     {
         using next_type = typename next_task<Functor>::type;
 
-        auto& task = get_graph()->add_task<next_type>(functor, this);
+        auto& task = get_graph()->add_task<next_type>(type, functor, this);
         add_successor(&task);
         return task;
     }

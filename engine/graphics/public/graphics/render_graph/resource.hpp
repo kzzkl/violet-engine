@@ -55,6 +55,9 @@ public:
     void set_samples(rhi_sample_count samples) noexcept { m_samples = samples; }
     rhi_sample_count get_samples() const noexcept { return m_samples; }
 
+    rhi_semaphore* acquire_texture() { return m_swapchain->acquire_texture(); }
+    void present(rhi_semaphore* wait_semaphore) { m_swapchain->present(&wait_semaphore, 1); }
+
     void set(rhi_swapchain* swapchain) noexcept { m_swapchain = swapchain; }
 
     virtual rhi_texture* get_texture() { return m_swapchain->get_texture(); }

@@ -27,4 +27,11 @@ engine_system* engine_context::get_system(std::size_t index)
 {
     return m_systems[index];
 }
+
+void engine_context::tick(float delta)
+{
+    m_executor.execute_sync(m_frame_begin);
+    m_executor.execute_sync(m_tick, delta);
+    m_executor.execute_sync(m_frame_end);
+}
 } // namespace violet

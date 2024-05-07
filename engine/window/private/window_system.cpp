@@ -1,5 +1,4 @@
 #include "window/window_system.hpp"
-#include "task/task_system.hpp"
 #include "window_impl.hpp"
 #include "window_impl_win32.hpp"
 
@@ -23,18 +22,43 @@ bool window_system::initialize(const dictionary& config)
 
     m_title = config["title"];
 
+    on_frame_begin().then(
+        [this]()
+        {
+            tick();
+        },
+        TASK_TYPE_MAIN_THREAD);
+
     return true;
 }
 
-void window_system::update(float delta)
+void window_system::shutdown()
+{
+    m_impl->shutdown();
+}
+
+void* window_system::get_handle() const
+{
+    return m_impl->get_handle();
+}
+
+rect<std::uint32_t> window_system::get_extent() const
+{
+    return m_impl->get_extent();
+}
+
+void window_system::set_title(std::string_view title)
+{
+    m_title = title;
+    m_impl->set_title(title);
+}
+
+void window_system::tick()
 {
     m_impl->reset();
     m_impl->tick();
-}
 
-void window_system::late_update(float delta)
-{
-    auto& executor = get_system<task_system>().get_executor();
+    auto& executor = get_executor();
 
     m_mouse.tick();
     m_keyboard.tick();
@@ -86,26 +110,5 @@ void window_system::late_update(float delta)
             break;
         }
     }
-}
-
-void window_system::shutdown()
-{
-    m_impl->shutdown();
-}
-
-void* window_system::get_handle() const
-{
-    return m_impl->get_handle();
-}
-
-rect<std::uint32_t> window_system::get_extent() const
-{
-    return m_impl->get_extent();
-}
-
-void window_system::set_title(std::string_view title)
-{
-    m_title = title;
-    m_impl->set_title(title);
 }
 } // namespace violet

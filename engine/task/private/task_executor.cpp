@@ -32,7 +32,8 @@ private:
 
 task_executor::task_executor() : m_stop(true)
 {
-    m_queue = std::make_unique<task_queue_thread_safe>();
+    m_queues[TASK_TYPE_NORMAL] = std::make_unique<task_queue_thread_safe>();
+    m_queues[TASK_TYPE_MAIN_THREAD] = std::make_unique<task_queue_thread_safe>();
 }
 
 task_executor::~task_executor()
@@ -56,7 +57,7 @@ void task_executor::run(std::size_t thread_count)
         {
             while (true)
             {
-                task_base* current = m_queue->pop();
+                task_base* current = m_queues[TASK_TYPE_NORMAL]->pop();
                 if (!current)
                     break;
 
@@ -73,13 +74,30 @@ void task_executor::stop()
 
     m_stop = true;
 
-    m_queue->close();
+    for (auto& queue : m_queues)
+        queue->close();
+
     m_thread_pool->join();
     m_thread_pool = nullptr;
 }
 
 void task_executor::execute_task(task_base* task)
 {
-    m_queue->push(task);
+    m_queues[task->get_type()]->push(task);
+}
+
+void task_executor::execute_main_thread_task(std::size_t task_count)
+{
+    while (task_count > 0)
+    {
+        task_base* current = m_queues[TASK_TYPE_MAIN_THREAD]->pop();
+        if (!current)
+            break;
+
+        for (task_base* successor : current->execute())
+            execute_task(successor);
+
+        --task_count;
+    }
 }
 } // namespace violet

@@ -4,6 +4,7 @@
 #include "common/type_index.hpp"
 #include "core/ecs/world.hpp"
 #include "core/timer.hpp"
+#include "task/task_executor.hpp"
 
 namespace violet
 {
@@ -19,8 +20,6 @@ public:
     virtual ~engine_system() = default;
 
     virtual bool initialize(const dictionary& config) { return true; }
-    virtual void update(float delta) {}
-    virtual void late_update(float delta) {}
     virtual void shutdown() {}
 
     inline const std::string& get_name() const noexcept { return m_name; }
@@ -34,6 +33,12 @@ protected:
 
     timer& get_timer();
     world& get_world();
+
+    task<>& on_frame_begin() noexcept;
+    task<>& on_frame_end() noexcept;
+    task<float>& on_tick() noexcept;
+
+    task_executor& get_executor() noexcept;
 
 private:
     friend class engine;

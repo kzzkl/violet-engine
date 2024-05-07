@@ -7,7 +7,6 @@
 #include "core/engine.hpp"
 #include "graphics/graphics_system.hpp"
 #include "scene/scene_system.hpp"
-#include "task/task_system.hpp"
 #include "window/window_system.hpp"
 #include <filesystem>
 #include <fstream>
@@ -25,23 +24,43 @@ public:
 
         set_vertex_shader("./hello-world/shaders/sample.vert.spv");
         set_fragment_shader("./hello-world/shaders/sample.frag.spv");
+
+        set_primitive_topology(RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
     }
 
     virtual void execute(rhi_render_command* command, render_context* context) override
     {
-        command->set_render_pipeline(m_pipeline.get());
+        rhi_texture_extent extent = get_reference("color")->resource->get_texture()->get_extent();
+
+        rhi_viewport viewport = {};
+        viewport.width = extent.width;
+        viewport.height = extent.height;
+        viewport.min_depth = 0.0f;
+        viewport.max_depth = 1.0f;
+        command->set_viewport(viewport);
+
+        rhi_scissor_rect scissor = {};
+        scissor.max_x = extent.width;
+        scissor.max_y = extent.height;
+        command->set_scissor(&scissor, 1);
+
+        command->set_render_pipeline(get_pipeline());
+        command->draw(0, 6);
     }
 
 private:
-    rhi_ptr<rhi_render_pipeline> m_pipeline;
 };
 
 class present_pass : public pass
 {
 public:
-    present_pass() { add_texture("target", PASS_ACCESS_FLAG_WRITE); }
-
-    virtual void execute(rhi_render_command* command, render_context* context) override {}
+    present_pass()
+    {
+        add_texture(
+            "target",
+            RHI_ACCESS_FLAG_SHADER_READ | RHI_ACCESS_FLAG_SHADER_WRITE,
+            RHI_TEXTURE_LAYOUT_PRESENT);
+    }
 };
 
 class hello_world : public engine_system
@@ -49,7 +68,7 @@ class hello_world : public engine_system
 public:
     hello_world() : engine_system("hello_world") {}
 
-    virtual bool initialize(const dictionary& config)
+    virtual bool initialize(const dictionary& config) override
     {
         log::info(config["text"]);
 
@@ -57,7 +76,6 @@ public:
         window.on_resize().then(
             [this](std::uint32_t width, std::uint32_t height)
             {
-                log::info("Window resize: {} {}", width, height);
                 resize(width, height);
             });
 
@@ -68,16 +86,17 @@ public:
         mesh_ptr->set_geometry(m_geometry.get());
         mesh_ptr->add_submesh(0, 0, 0, 12, m_material);
 
+        on_tick().then(
+            [this](float delta)
+            {
+                tick(delta);
+                get_system<graphics_system>().render(m_render_graph.get());
+            });
+
         return true;
     }
 
-    virtual void update(float delta)
-    {
-        tick(delta);
-        get_system<graphics_system>().render(m_render_graph.get());
-    }
-
-    virtual void shutdown() {}
+    virtual void shutdown() override {}
 
 private:
     void initialize_render()
@@ -102,11 +121,11 @@ private:
 
         m_render_graph->add_edge(render_target, mesh_pass, "color", EDGE_OPERATE_CLEAR);
         m_render_graph->add_edge(depth_buffer, mesh_pass, "depth", EDGE_OPERATE_CLEAR);
-        m_render_graph->add_edge(mesh_pass, "color", present, "target");
+        m_render_graph->add_edge(mesh_pass, "color", present, "target", EDGE_OPERATE_STORE);
 
         m_render_graph->compile();
 
-        m_render_graph->get_resource<swapchain>("render target")->set(m_swapchain.get());
+        resize(window_extent.width, window_extent.height);
     }
 
     void tick(float delta)
@@ -144,7 +163,23 @@ private:
         m_rotate += delta * 2.0f;
     }
 
-    void resize(std::uint32_t width, std::uint32_t height) {}
+    void resize(std::uint32_t width, std::uint32_t height)
+    {
+        auto& graphics = get_system<graphics_system>();
+
+        m_swapchain->resize(width, height);
+
+        rhi_texture_desc depth_desc = {};
+        depth_desc.width = width;
+        depth_desc.height = height;
+        depth_desc.format = RHI_FORMAT_D24_UNORM_S8_UINT;
+        depth_desc.samples = RHI_SAMPLE_COUNT_1;
+        depth_desc.flags = RHI_TEXTURE_FLAG_DEPTH_STENCIL;
+        m_depth = graphics.get_renderer()->create_texture(depth_desc);
+
+        m_render_graph->get_resource<swapchain>("render target")->set(m_swapchain.get());
+        m_render_graph->get_resource<texture>("depth buffer")->set(m_depth.get());
+    }
 
     std::unique_ptr<actor> m_camera;
     std::unique_ptr<actor> m_object;
@@ -152,6 +187,7 @@ private:
     material* m_material;
 
     rhi_ptr<rhi_swapchain> m_swapchain;
+    rhi_ptr<rhi_texture> m_depth;
     std::unique_ptr<render_graph> m_render_graph;
 
     float m_rotate = 0.0f;
@@ -164,7 +200,6 @@ int main()
 
     engine engine;
     engine.initialize("hello-world/config");
-    engine.install<task_system>();
     engine.install<window_system>();
     engine.install<scene_system>();
     engine.install<graphics_system>();

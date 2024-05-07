@@ -1,10 +1,13 @@
 #include "render_graph/pass_batch.hpp"
-#include <cassert>
+#include "common/hash.hpp"
 #include <algorithm>
+#include <cassert>
 
 namespace violet
 {
 render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* renderer)
+    : m_renderer(renderer),
+      m_execute_count(0)
 {
     std::vector<render_pass*> render_passes;
     for (pass* pass : passes)
@@ -36,8 +39,8 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
                 auto& prev_reference = prev_references[j];
                 auto& next_reference = next_references[j];
 
-                if (prev_reference->attachment.layout != next_reference->attachment.layout ||
-                    prev_reference->resource != next_reference->resource)
+                if (prev_reference->resource != next_reference->resource ||
+                    prev_reference->attachment.layout != next_reference->attachment.layout)
                 {
                     same = false;
                     break;
@@ -52,25 +55,26 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
         }
     }
 
-    std::vector<resource*> attachments;
     for (render_pass* pass : render_passes)
     {
         for (pass_reference* reference : pass->get_references(PASS_REFERENCE_TYPE_ATTACHMENT))
-            attachments.push_back(reference->resource);
+            m_attachments.push_back(reference->resource);
     }
-    std::sort(attachments.begin(), attachments.end());
-    attachments.erase(std::unique(attachments.begin(), attachments.end()), attachments.end());
+    std::sort(m_attachments.begin(), m_attachments.end());
+    m_attachments.erase(
+        std::unique(m_attachments.begin(), m_attachments.end()),
+        m_attachments.end());
 
     rhi_render_pass_desc desc = {};
 
-    std::vector<std::uint8_t> attachment_visited(attachments.size());
+    std::vector<std::uint8_t> attachment_visited(m_attachments.size());
     for (render_pass* pass : render_passes)
     {
         for (pass_reference* reference : pass->get_references(PASS_REFERENCE_TYPE_ATTACHMENT))
         {
             std::size_t index =
-                std::find(attachments.begin(), attachments.end(), reference->resource) -
-                attachments.begin();
+                std::find(m_attachments.begin(), m_attachments.end(), reference->resource) -
+                m_attachments.begin();
 
             if (attachment_visited[index] == 0)
             {
@@ -78,7 +82,7 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
                     static_cast<texture*>(reference->resource)->get_format();
                 desc.attachments[index].samples =
                     static_cast<texture*>(reference->resource)->get_samples();
-                desc.attachments[index].initial_layout = reference->attachment.layout;
+                desc.attachments[index].initial_layout = RHI_TEXTURE_LAYOUT_UNDEFINED;
 
                 desc.attachments[index].load_op = reference->attachment.load_op;
                 desc.attachments[index].stencil_load_op = reference->attachment.load_op;
@@ -88,10 +92,10 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
 
             desc.attachments[index].store_op = reference->attachment.store_op;
             desc.attachments[index].stencil_store_op = reference->attachment.store_op;
-            desc.attachments[index].final_layout = reference->attachment.layout;
+            desc.attachments[index].final_layout = reference->attachment.next_layout;
         }
     }
-    desc.attachment_count = attachments.size();
+    desc.attachment_count = m_attachments.size();
 
     for (auto& [begin, end] : subpass_ranges)
     {
@@ -104,8 +108,8 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
             subpass_reference.type = reference->attachment.type;
             subpass_reference.layout = reference->attachment.layout;
             subpass_reference.index =
-                std::find(attachments.begin(), attachments.end(), reference->resource) -
-                attachments.begin();
+                std::find(m_attachments.begin(), m_attachments.end(), reference->resource) -
+                m_attachments.begin();
             subpass_reference.resolve_index = 0;
 
             ++subpass.reference_count;
@@ -130,14 +134,62 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
 
 void render_pass_batch::execute(rhi_render_command* command, render_context* context)
 {
-    command->begin(m_render_pass.get(), nullptr);
-    for (auto& subpass : m_passes)
+    std::hash<rhi_texture*> hasher;
+
+    std::size_t hash = 0;
+    for (auto attachment : m_attachments)
+        hash = hash_combine(hash, hasher(attachment->get_texture()));
+
+    rhi_framebuffer* framebuffer = nullptr;
+
+    auto iter = m_framebuffer_cache.find(hash);
+    if (iter == m_framebuffer_cache.end())
     {
-        for (auto& pass : subpass)
+        rhi_framebuffer_desc desc = {};
+        for (std::size_t i = 0; i < m_attachments.size(); ++i)
+            desc.attachments[i] = m_attachments[i]->get_texture();
+        desc.attachment_count = m_attachments.size();
+        desc.render_pass = m_render_pass.get();
+
+        m_framebuffer_cache[hash].framebuffer = m_renderer->create_framebuffer(desc);
+        m_framebuffer_cache[hash].is_used = true;
+        framebuffer = m_framebuffer_cache[hash].framebuffer.get();
+    }
+    else
+    {
+        framebuffer = iter->second.framebuffer.get();
+        iter->second.is_used = true;
+    }
+
+    command->begin(m_render_pass.get(), framebuffer);
+    for (std::size_t i = 0; i < m_passes.size(); ++i)
+    {
+        for (auto& pass : m_passes[i])
             pass->execute(command, context);
 
-        command->next();
+        if (i < m_passes.size() - 1)
+            command->next();
     }
     command->end();
+
+    ++m_execute_count;
+    if (m_execute_count % FRAMEBUFFER_CLEANUP_INTERVAL == 0)
+        cleanup_framebuffer();
+}
+
+void render_pass_batch::cleanup_framebuffer()
+{
+    for (auto iter = m_framebuffer_cache.begin(); iter != m_framebuffer_cache.end();)
+    {
+        if (!iter->second.is_used)
+        {
+            iter = m_framebuffer_cache.erase(iter);
+        }
+        else
+        {
+            iter->second.is_used = false;
+            ++iter;
+        }
+    }
 }
 } // namespace violet

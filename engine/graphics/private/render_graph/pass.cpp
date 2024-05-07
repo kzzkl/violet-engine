@@ -10,22 +10,27 @@ pass::~pass()
 {
 }
 
-void pass::add_texture(std::string_view name, pass_access_flags access)
+pass_reference* pass::add_texture(
+    std::string_view name,
+    pass_access_flags access,
+    rhi_texture_layout layout)
 {
-    pass_reference reference = {};
-    reference.name = name;
-    reference.access = access;
-    reference.type = PASS_REFERENCE_TYPE_TEXTURE;
-    add_reference(reference);
+    pass_reference* reference = add_reference();
+    reference->name = name;
+    reference->access = access;
+    reference->type = PASS_REFERENCE_TYPE_TEXTURE;
+    reference->texture.layout = layout;
+    reference->texture.next_layout = layout;
+    return reference;
 }
 
-void pass::add_buffer(std::string_view name, pass_access_flags access)
+pass_reference* pass::add_buffer(std::string_view name, pass_access_flags access)
 {
-    pass_reference reference = {};
-    reference.name = name;
-    reference.access = access;
-    reference.type = PASS_REFERENCE_TYPE_BUFFER;
-    add_reference(reference);
+    pass_reference* reference = add_reference();
+    reference->name = name;
+    reference->access = access;
+    reference->type = PASS_REFERENCE_TYPE_BUFFER;
+    return reference;
 }
 
 pass_reference* pass::get_reference(std::string_view name)
@@ -63,54 +68,58 @@ std::vector<pass_reference*> pass::get_references(pass_reference_type type) cons
     return result;
 }
 
-void pass::add_reference(const pass_reference& reference)
+pass_reference* pass::add_reference()
 {
-    m_references.push_back(std::make_unique<pass_reference>(reference));
+    m_references.push_back(std::make_unique<pass_reference>());
+    return m_references.back().get();
 }
 
 render_pass::render_pass()
 {
 }
 
-void render_pass::add_input(std::string_view name, rhi_texture_layout layout)
+pass_reference* render_pass::add_input(std::string_view name, rhi_texture_layout layout)
 {
-    pass_reference reference = {};
-    reference.name = name;
-    reference.access = PASS_ACCESS_FLAG_READ;
-    reference.type = PASS_REFERENCE_TYPE_ATTACHMENT;
-    reference.attachment.layout = layout;
-    reference.attachment.type = RHI_ATTACHMENT_REFERENCE_TYPE_INPUT;
+    pass_reference* reference = add_reference();
+    reference->name = name;
+    reference->access = PASS_ACCESS_FLAG_READ;
+    reference->type = PASS_REFERENCE_TYPE_ATTACHMENT;
+    reference->attachment.layout = layout;
+    reference->attachment.next_layout = layout;
+    reference->attachment.type = RHI_ATTACHMENT_REFERENCE_TYPE_INPUT;
 
-    add_reference(reference);
+    return reference;
 }
 
-void render_pass::add_color(
+pass_reference* render_pass::add_color(
     std::string_view name,
     rhi_texture_layout layout,
     const rhi_attachment_blend_desc& blend)
 {
-    pass_reference reference = {};
-    reference.name = name;
-    reference.access = PASS_ACCESS_FLAG_READ;
-    reference.type = PASS_REFERENCE_TYPE_ATTACHMENT;
-    reference.attachment.layout = layout;
-    reference.attachment.type = RHI_ATTACHMENT_REFERENCE_TYPE_COLOR;
-
-    add_reference(reference);
+    pass_reference* reference = add_reference();
+    reference->name = name;
+    reference->access = PASS_ACCESS_FLAG_WRITE;
+    reference->type = PASS_REFERENCE_TYPE_ATTACHMENT;
+    reference->attachment.layout = layout;
+    reference->attachment.next_layout = layout;
+    reference->attachment.type = RHI_ATTACHMENT_REFERENCE_TYPE_COLOR;
 
     m_blend.push_back(blend);
+
+    return reference;
 }
 
-void render_pass::add_depth_stencil(std::string_view name, rhi_texture_layout layout)
+pass_reference* render_pass::add_depth_stencil(std::string_view name, rhi_texture_layout layout)
 {
-    pass_reference reference = {};
-    reference.name = name;
-    reference.access = PASS_ACCESS_FLAG_READ;
-    reference.type = PASS_REFERENCE_TYPE_ATTACHMENT;
-    reference.attachment.layout = layout;
-    reference.attachment.type = RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL;
+    pass_reference* reference = add_reference();
+    reference->name = name;
+    reference->access = PASS_ACCESS_FLAG_READ | PASS_ACCESS_FLAG_WRITE;
+    reference->type = PASS_REFERENCE_TYPE_ATTACHMENT;
+    reference->attachment.layout = layout;
+    reference->attachment.next_layout = layout;
+    reference->attachment.type = RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL;
 
-    add_reference(reference);
+    return reference;
 }
 
 void render_pass::compile(renderer* renderer)
@@ -122,6 +131,8 @@ void render_pass::compile(renderer* renderer)
     for (std::size_t i = 0; i < m_blend.size(); ++i)
         desc.blend.attachments[i] = m_blend[i];
     desc.blend.attachment_count = m_blend.size();
+
+    desc.primitive_topology = m_topology;
 
     desc.render_pass = m_render_pass;
     desc.render_subpass_index = m_subpass_index;

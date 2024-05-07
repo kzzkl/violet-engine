@@ -19,26 +19,35 @@ using pass_access_flags = std::uint32_t;
 
 enum pass_reference_type
 {
-    PASS_REFERENCE_TYPE_ATTACHMENT,
     PASS_REFERENCE_TYPE_TEXTURE,
-    PASS_REFERENCE_TYPE_BUFFER
+    PASS_REFERENCE_TYPE_BUFFER,
+    PASS_REFERENCE_TYPE_ATTACHMENT
 };
 
 struct pass_reference
 {
+    std::string name;
+    resource* resource;
+
     pass_reference_type type;
     pass_access_flags access;
 
-    struct
-    {
-        rhi_texture_layout layout;
-        rhi_attachment_load_op load_op;
-        rhi_attachment_store_op store_op;
-        rhi_attachment_reference_type type;
-    } attachment;
+    union {
+        struct
+        {
+            rhi_texture_layout layout;
+            rhi_texture_layout next_layout;
+            rhi_attachment_load_op load_op;
+            rhi_attachment_store_op store_op;
+            rhi_attachment_reference_type type;
+        } attachment;
 
-    std::string name;
-    resource* resource;
+        struct
+        {
+            rhi_texture_layout layout;
+            rhi_texture_layout next_layout;
+        } texture;
+    };
 };
 
 enum pass_flag : std::uint32_t
@@ -56,8 +65,11 @@ public:
     pass();
     virtual ~pass();
 
-    void add_texture(std::string_view name, pass_access_flags access);
-    void add_buffer(std::string_view name, pass_access_flags access);
+    pass_reference* add_texture(
+        std::string_view name,
+        pass_access_flags access,
+        rhi_texture_layout layout);
+    pass_reference* add_buffer(std::string_view name, pass_access_flags access);
     pass_reference* get_reference(std::string_view name);
 
     std::vector<pass_reference*> get_references(pass_access_flags access) const;
@@ -66,11 +78,11 @@ public:
     const std::string& get_name() const noexcept { return m_name; }
     pass_flags get_flags() const noexcept { return m_flags; }
 
-    virtual void compile(renderer* renderer){};
-    virtual void execute(rhi_render_command* command, render_context* context) = 0;
+    virtual void compile(renderer* renderer) {}
+    virtual void execute(rhi_render_command* command, render_context* context) {}
 
 protected:
-    void add_reference(const pass_reference& reference);
+    pass_reference* add_reference();
 
 private:
     friend class render_graph;
@@ -85,18 +97,20 @@ class render_pass : public pass
 public:
     render_pass();
 
-    void add_input(std::string_view name, rhi_texture_layout layout);
-    void add_color(
+    pass_reference* add_input(std::string_view name, rhi_texture_layout layout);
+    pass_reference* add_color(
         std::string_view name,
         rhi_texture_layout layout,
         const rhi_attachment_blend_desc& blend = {});
-    void add_depth_stencil(std::string_view name, rhi_texture_layout layout);
+    pass_reference* add_depth_stencil(std::string_view name, rhi_texture_layout layout);
 
     void set_vertex_shader(std::string_view shader) { m_vertex_shader = shader; }
     const std::string& get_vertex_shader() const noexcept { return m_vertex_shader; }
 
     void set_fragment_shader(std::string_view shader) { m_fragment_shader = shader; }
     const std::string& get_fragment_shader() const noexcept { return m_fragment_shader; }
+
+    void set_primitive_topology(rhi_primitive_topology topology) noexcept { m_topology = topology; }
 
     void set_render_pass(rhi_render_pass* render_pass, std::uint32_t subpass_index) noexcept
     {
@@ -105,13 +119,18 @@ public:
     }
 
     virtual void compile(renderer* renderer) override;
-    virtual void execute(rhi_render_command* command, render_context* context) = 0;
+    virtual void execute(rhi_render_command* command, render_context* context) {}
+
+protected:
+    rhi_render_pipeline* get_pipeline() const noexcept { return m_pipeline.get(); }
 
 private:
     std::string m_vertex_shader;
     std::string m_fragment_shader;
 
     std::vector<rhi_attachment_blend_desc> m_blend;
+
+    rhi_primitive_topology m_topology;
 
     rhi_render_pass* m_render_pass;
     std::uint32_t m_subpass_index;

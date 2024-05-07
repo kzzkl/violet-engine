@@ -11,11 +11,11 @@ struct vs_out
 vs_out vs_main(vs_in input)
 {
     const float2 vertices[6] = {
-        float2(1.0, 1.0),
-        float2(1.0, 1.0),
         float2(1.0, -1.0),
-        float2(1.0, -1.0),
-        float2(-1.0, 1.0),
+        float2(1.0, 1.0),
+        float2(-1.0, -1.0),
+        float2(-1.0, -1.0),
+        float2(1.0, 1.0),
         float2(-1.0, 1.0)};
 
     vs_out output;
