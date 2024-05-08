@@ -1,14 +1,13 @@
 #pragma once
 
 #include "graphics/geometry.hpp"
-#include "graphics/render_graph/render_graph.hpp"
+#include "graphics/render_graph/material.hpp"
 #include "math/math.hpp"
 #include <memory>
 #include <vector>
 
 namespace violet
 {
-class material;
 class mesh
 {
 public:

@@ -5,6 +5,7 @@
 #include "components/transform.hpp"
 #include "control/control_system.hpp"
 #include "core/engine.hpp"
+#include "graphics/geometries/box_geometry.hpp"
 #include "graphics/graphics_system.hpp"
 #include "scene/scene_system.hpp"
 #include "window/window_system.hpp"
@@ -80,11 +81,7 @@ public:
             });
 
         initialize_render();
-
-        m_object = std::make_unique<actor>("test", get_world());
-        auto [mesh_ptr, transform_ptr] = m_object->add<mesh, transform>();
-        mesh_ptr->set_geometry(m_geometry.get());
-        mesh_ptr->add_submesh(0, 0, 0, 12, m_material);
+        initialize_scene();
 
         on_tick().then(
             [this](float delta)
@@ -125,7 +122,23 @@ private:
 
         m_render_graph->compile();
 
+        m_render_graph->add_material_layout("test material", {mesh_pass});
+        m_material = m_render_graph->add_material("test material", "test material");
+
         resize(window_extent.width, window_extent.height);
+    }
+
+    void initialize_scene()
+    {
+        m_geometry = std::make_unique<box_geometry>(get_system<graphics_system>().get_renderer());
+
+        m_cube = std::make_unique<actor>("cube", get_world());
+        auto [cube_transform, cube_mesh] = m_cube->add<transform, mesh>();
+        cube_mesh->set_geometry(m_geometry.get());
+        cube_mesh->add_submesh(0, 0, 0, m_geometry->get_index_count(), m_material);
+
+        m_main_camera = std::make_unique<actor>("camera", get_world());
+        auto [camera_transform, main_camera] = m_main_camera->add<transform, camera>();
     }
 
     void tick(float delta)
@@ -156,8 +169,8 @@ private:
 
         float4x4_simd mvp = matrix_simd::mul(matrix_simd::mul(m, v), p);
 
-        auto [transform_ptr] = m_object->add<transform>();
-        transform_ptr->set_rotation(
+        auto cube_transform = m_cube->get<transform>();
+        cube_transform->set_rotation(
             quaternion_simd::rotation_axis(simd::set(1.0f, 0.0f, 0.0f, 0.0f), m_rotate));
 
         m_rotate += delta * 2.0f;
@@ -181,14 +194,14 @@ private:
         m_render_graph->get_resource<texture>("depth buffer")->set(m_depth.get());
     }
 
-    std::unique_ptr<actor> m_camera;
-    std::unique_ptr<actor> m_object;
-    std::unique_ptr<geometry> m_geometry;
-    material* m_material;
-
     rhi_ptr<rhi_swapchain> m_swapchain;
     rhi_ptr<rhi_texture> m_depth;
     std::unique_ptr<render_graph> m_render_graph;
+
+    std::unique_ptr<geometry> m_geometry;
+    material* m_material;
+    std::unique_ptr<actor> m_cube;
+    std::unique_ptr<actor> m_main_camera;
 
     float m_rotate = 0.0f;
 };

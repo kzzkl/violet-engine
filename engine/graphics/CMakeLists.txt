@@ -12,6 +12,7 @@ add_library(${PROJECT_NAME} STATIC
     # ./private/render_graph/compute_pass.cpp
     # ./private/render_graph/material.cpp
     ./private/render_graph/edge.cpp
+    ./private/render_graph/material.cpp
     ./private/render_graph/pass_batch.cpp
     ./private/render_graph/pass.cpp
     ./private/render_graph/render_context.cpp
@@ -44,17 +45,18 @@ install(TARGETS ${PROJECT_NAME}
     ARCHIVE DESTINATION lib)
 
 include(${VIOLET_ROOT_DIR}/cmake/compile_shader.cmake)
+set(SHADER_FILES "")
 compile_shader_dxc(
+    SHADER_FILES
     TARGET ${PROJECT_NAME}
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/hlsl/debug.hlsl"
     STAGES "vert" "frag"
     INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
-
 compile_shader_dxc(
+    SHADER_FILES
     TARGET ${PROJECT_NAME}
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/hlsl/skybox.hlsl"
     STAGES "vert" "frag"
     INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
 
-file(GLOB SHADER_FILES "${CMAKE_BINARY_DIR}/shaders/${PROJECT_NAME}/*.spv")
 install(FILES ${SHADER_FILES} DESTINATION bin/engine/shaders)

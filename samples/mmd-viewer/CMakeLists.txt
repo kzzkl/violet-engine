@@ -25,20 +25,20 @@ target_link_libraries(${PROJECT_NAME}
     violet::control)
 
 include(${VIOLET_ROOT_DIR}/cmake/compile_shader.cmake)
+set(SHADER_FILES "")
 compile_shader_dxc(
+    SHADER_FILES
     TARGET ${PROJECT_NAME}
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/color.hlsl"
     STAGES "vert" "frag"
     INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
-    
-include(${VIOLET_ROOT_DIR}/cmake/compile_shader.cmake)
 compile_shader_dxc(
+    SHADER_FILES
     TARGET ${PROJECT_NAME}
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/skinning.hlsl"
     STAGES "comp"
     INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
 
-file(GLOB SHADER_FILES "${CMAKE_BINARY_DIR}/shaders/${PROJECT_NAME}/*.spv")
 install(FILES ${SHADER_FILES} DESTINATION bin/${PROJECT_NAME}/shaders)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION bin/${PROJECT_NAME})
 

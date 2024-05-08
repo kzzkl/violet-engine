@@ -1,9 +1,9 @@
 #pragma once
 
 #include "graphics/render_graph/edge.hpp"
+#include "graphics/render_graph/material.hpp"
 #include "graphics/render_graph/pass.hpp"
 #include "graphics/render_graph/resource.hpp"
-#include "graphics/renderer.hpp"
 #include <map>
 #include <memory>
 
@@ -82,6 +82,11 @@ public:
         std::string_view dst_reference_name,
         edge_operate operate = EDGE_OPERATE_DONT_CARE);
 
+    void add_material_layout(std::string_view name, const std::vector<mesh_pass*>& passes);
+    material* add_material(std::string_view name, std::string_view layout_name);
+    material* get_material(std::string_view name) const;
+    void remove_material(std::string_view name);
+
     void compile();
     rhi_semaphore* execute();
 
@@ -121,6 +126,9 @@ private:
     std::vector<std::vector<rhi_semaphore*>> m_used_semaphores;
     std::vector<rhi_semaphore*> m_free_semaphores;
     std::vector<rhi_ptr<rhi_semaphore>> m_semaphores;
+
+    std::unordered_map<std::string, std::unique_ptr<material_layout>> m_material_layouts;
+    std::unordered_map<std::string, std::unique_ptr<material>> m_materials;
 
     renderer* m_renderer;
 };

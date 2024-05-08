@@ -1,5 +1,6 @@
 #include "graphics/render_graph/render_graph.hpp"
 #include "render_graph/pass_batch.hpp"
+#include <cassert>
 #include <queue>
 #include <set>
 #include <stack>
@@ -113,6 +114,34 @@ void render_graph::add_edge(
     }
 
     m_edges.emplace_back(std::make_unique<edge>(src, src_reference, dst, dst_reference));
+}
+
+void render_graph::add_material_layout(std::string_view name, const std::vector<mesh_pass*>& passes)
+{
+    auto [iter, result] =
+        m_material_layouts.insert(std::make_pair(name, std::make_unique<material_layout>(passes)));
+
+    assert(result);
+}
+
+material* render_graph::add_material(std::string_view name, std::string_view layout_name)
+{
+    material_layout* layout = m_material_layouts[layout_name.data()].get();
+    auto [iter, result] =
+        m_materials.insert(std::make_pair(name, std::make_unique<material>(layout)));
+
+    assert(result);
+    return iter->second.get();
+}
+
+material* render_graph::get_material(std::string_view name) const
+{
+    return m_materials.at(name.data()).get();
+}
+
+void render_graph::remove_material(std::string_view name)
+{
+    m_materials.erase(name.data());
 }
 
 void render_graph::compile()

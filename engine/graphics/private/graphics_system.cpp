@@ -128,8 +128,9 @@ void graphics_system::render()
             mesh.set_model_matrix(transform.get_world_matrix());
             for (auto& submesh : mesh.get_submeshes())
             {
-                // for (std::size_t i = 0; i < submesh.material->get_pass_count(); ++i)
-                //     submesh.material->get_pass(i)->render(submesh.render_meshes[i]);
+                auto& passes = submesh.material->get_passes();
+                for (std::size_t i = 0; i < passes.size(); ++i)
+                    passes[i]->add_mesh(submesh.render_meshes[i]);
             }
         });
 
