@@ -15,9 +15,9 @@ public:
     rhi_deleter(rhi* rhi);
 
     void operator()(rhi_render_pass* render_pass);
+    void operator()(rhi_shader* shader);
     void operator()(rhi_render_pipeline* render_pipeline);
     void operator()(rhi_compute_pipeline* compute_pipeline);
-    void operator()(rhi_parameter_layout* parameter_layout);
     void operator()(rhi_parameter* parameter);
     void operator()(rhi_framebuffer* framebuffer);
     void operator()(rhi_sampler* sampler);
@@ -55,19 +55,15 @@ public:
     std::size_t get_frame_resource_count() const noexcept;
     std::size_t get_frame_resource_index() const noexcept;
 
-    rhi_parameter_layout* add_parameter_layout(
-        std::string_view name,
-        const std::vector<rhi_parameter_layout_pair>& layout);
-    rhi_parameter_layout* get_parameter_layout(std::string_view name) const;
-
 public:
     rhi_ptr<rhi_render_pass> create_render_pass(const rhi_render_pass_desc& desc);
+
+    rhi_ptr<rhi_shader> create_shader(const char* file);
 
     rhi_ptr<rhi_render_pipeline> create_render_pipeline(const rhi_render_pipeline_desc& desc);
     rhi_ptr<rhi_compute_pipeline> create_compute_pipeline(const rhi_compute_pipeline_desc& desc);
 
-    rhi_ptr<rhi_parameter_layout> create_parameter_layout(const rhi_parameter_layout_desc& desc);
-    rhi_ptr<rhi_parameter> create_parameter(rhi_parameter_layout* layout);
+    rhi_ptr<rhi_parameter> create_parameter(const rhi_parameter_desc& desc);
     rhi_ptr<rhi_framebuffer> create_framebuffer(const rhi_framebuffer_desc& desc);
 
     rhi_ptr<rhi_buffer> create_buffer(const rhi_buffer_desc& desc);
@@ -93,7 +89,39 @@ public:
 private:
     rhi* m_rhi;
     rhi_deleter m_rhi_deleter;
+};
 
-    std::map<std::string, rhi_ptr<rhi_parameter_layout>> m_parameter_layouts;
+struct parameter_layout
+{
+private:
+    static constexpr rhi_parameter_binding mesh_mvp = {
+        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
+        .stage = RHI_PARAMETER_STAGE_FLAG_VERTEX | RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
+        .size = 64};
+
+    static constexpr rhi_parameter_binding camera_matrix = {
+        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
+        .stage = RHI_PARAMETER_STAGE_FLAG_VERTEX | RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
+        .size = 208};
+
+    static constexpr rhi_parameter_binding camera_skybox = {
+        .type = RHI_PARAMETER_TYPE_TEXTURE,
+        .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
+        .size = 1};
+
+    static constexpr rhi_parameter_binding light_data = {
+        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
+        .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
+        .size = 528};
+
+public:
+    static constexpr rhi_parameter_desc mesh = {.bindings = {mesh_mvp}, .binding_count = 1};
+
+    static constexpr rhi_parameter_desc camera = {
+        .bindings = {camera_matrix, camera_skybox},
+        .binding_count = 2
+    };
+
+    static constexpr rhi_parameter_desc light = {.bindings = {light_data}, .binding_count = 1};
 };
 } // namespace violet

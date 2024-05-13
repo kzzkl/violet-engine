@@ -16,7 +16,7 @@ camera::camera(renderer* renderer)
         m_perspective.near_z,
         m_perspective.far_z);
 
-    m_parameter = renderer->create_parameter(renderer->get_parameter_layout("violet camera"));
+    m_parameter = renderer->create_parameter(parameter_layout::camera);
 }
 
 camera::~camera()

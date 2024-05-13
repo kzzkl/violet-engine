@@ -59,6 +59,9 @@ public:
     virtual rhi_render_pass* create_render_pass(const rhi_render_pass_desc& desc) override;
     virtual void destroy_render_pass(rhi_render_pass* render_pass) override;
 
+    virtual rhi_shader* create_shader(const char* file) override;
+    virtual void destroy_shader(rhi_shader* shader) override;
+
     virtual rhi_render_pipeline* create_render_pipeline(
         const rhi_render_pipeline_desc& desc) override;
     virtual void destroy_render_pipeline(rhi_render_pipeline* render_pipeline) override;
@@ -67,11 +70,7 @@ public:
         const rhi_compute_pipeline_desc& desc) override;
     virtual void destroy_compute_pipeline(rhi_compute_pipeline* compute_pipeline) override;
 
-    virtual rhi_parameter_layout* create_parameter_layout(
-        const rhi_parameter_layout_desc& desc) override;
-    virtual void destroy_parameter_layout(rhi_parameter_layout* parameter_layout) override;
-
-    virtual rhi_parameter* create_parameter(rhi_parameter_layout* layout) override;
+    virtual rhi_parameter* create_parameter(const rhi_parameter_desc& desc) override;
     virtual void destroy_parameter(rhi_parameter* parameter) override;
 
     virtual rhi_framebuffer* create_framebuffer(const rhi_framebuffer_desc& desc) override;

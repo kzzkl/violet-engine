@@ -5,7 +5,7 @@ namespace violet
 {
 mesh::mesh(renderer* renderer) : m_geometry(nullptr), m_renderer(renderer)
 {
-    m_parameter = m_renderer->create_parameter(m_renderer->get_parameter_layout("violet mesh"));
+    m_parameter = m_renderer->create_parameter(parameter_layout::mesh);
 }
 
 mesh::~mesh()
@@ -24,14 +24,15 @@ void mesh::add_submesh(
     std::size_t index_count,
     material* material)
 {
-    /*assert(m_geometry != nullptr);
+    assert(m_geometry != nullptr);
 
     submesh submesh = {};
     submesh.material = material;
 
     m_submeshes.push_back(submesh);
 
-    for (std::size_t i = 0; i < material->get_pass_count(); ++i)
+    auto& passes = material->get_passes();
+    for (std::size_t i = 0; i < passes.size(); ++i)
     {
         render_mesh render_mesh = {};
         render_mesh.vertex_start = vertex_start;
@@ -42,11 +43,11 @@ void mesh::add_submesh(
         render_mesh.material = material->get_parameter(i);
         render_mesh.index_buffer = m_geometry->get_index_buffer();
 
-        for (auto& name : material->get_pass(i)->get_vertex_attribute_layout())
+        for (auto& name : passes[i]->get_vertex_attribute_layout())
             render_mesh.vertex_buffers.push_back(m_geometry->get_vertex_buffer(name));
 
         m_submeshes.back().render_meshes.push_back(render_mesh);
-    }*/
+    }
 }
 
 void mesh::set_submesh(
@@ -56,13 +57,13 @@ void mesh::set_submesh(
     std::size_t index_start,
     std::size_t index_count)
 {
-    /*for (render_mesh& mesh : m_submeshes[index].render_meshes)
+    for (render_mesh& mesh : m_submeshes[index].render_meshes)
     {
         mesh.vertex_start = vertex_start;
         mesh.vertex_count = vertex_count;
         mesh.index_start = index_start;
         mesh.index_count = index_count;
-    }*/
+    }
 }
 
 void mesh::set_model_matrix(const float4x4& m)

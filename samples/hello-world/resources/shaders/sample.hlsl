@@ -1,33 +1,29 @@
+#include "violet_mesh.hlsl"
+#include "violet_camera.hlsl"
+
 struct vs_in
 {
-    uint vertex_id : SV_VertexID;
+    [[vk::location(0)]] float3 position: POSITION;
 };
 
 struct vs_out
 {
     float4 position : SV_POSITION;
+    float3 color : COLOR;
+    float2 uv: UV;
 };
+
+ConstantBuffer<violet_mesh> mesh : register(b0, space0);
+// ConstantBuffer<violet_camera> camera : register(b0, space1);
 
 vs_out vs_main(vs_in input)
 {
-    const float2 vertices[6] = {
-        float2(1.0, -1.0),
-        float2(1.0, 1.0),
-        float2(-1.0, -1.0),
-        float2(-1.0, -1.0),
-        float2(1.0, 1.0),
-        float2(-1.0, 1.0)};
-
     vs_out output;
-    output.position = float4(vertices[input.vertex_id], 0.0, 1.0);
-
+    output.position = mul(mesh.model, float4(input.position, 1.0));
     return output;
 }
 
 float4 ps_main(vs_out input) : SV_TARGET
 {
-    // float4 color = float4(input.color, 1.0);
-    // color *= texture.Sample(texture_sampler, input.uv);
-    // return color;
-    return  float4(1.0, 0.0, 0.0, 1.0);
+    return float4(1.0, 0.0, 0.0, 1.0);
 }

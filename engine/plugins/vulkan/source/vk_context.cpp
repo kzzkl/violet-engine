@@ -1,5 +1,6 @@
 #include "vk_context.hpp"
 #include "vk_command.hpp"
+#include "vk_pipeline.hpp"
 #include <iostream>
 #include <set>
 
@@ -109,6 +110,8 @@ bool vk_context::initialize(const rhi_desc& desc)
     initialize_logic_device(device_desired_extensions);
     initialize_vma();
     initialize_descriptor_pool();
+
+    m_layout_manager = std::make_unique<vk_layout_manager>(this);
 
     return true;
 }

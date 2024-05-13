@@ -128,7 +128,7 @@ material* render_graph::add_material(std::string_view name, std::string_view lay
 {
     material_layout* layout = m_material_layouts[layout_name.data()].get();
     auto [iter, result] =
-        m_materials.insert(std::make_pair(name, std::make_unique<material>(layout)));
+        m_materials.insert(std::make_pair(name, std::make_unique<material>(m_renderer, layout)));
 
     assert(result);
     return iter->second.get();
@@ -153,7 +153,7 @@ void render_graph::compile()
 
     for (std::size_t i = 0; i < passes.size(); ++i)
     {
-        if (passes[i][0]->get_flags() & PASS_FLAG_RENDER)
+        if (passes[i][0]->get_type() == PASS_TYPE_RENDER)
             m_batchs.push_back(std::make_unique<render_pass_batch>(passes[i], m_renderer));
     }
 

@@ -71,7 +71,7 @@ bool graphics_system::initialize(const dictionary& config)
     get_world().register_component<camera, camera_component_info>(m_renderer.get());
     get_world().register_component<light>();
 
-    m_light = m_renderer->create_parameter(m_renderer->get_parameter_layout("violet light"));
+    m_light = m_renderer->create_parameter(parameter_layout::light);
 
     return true;
 }
@@ -130,7 +130,7 @@ void graphics_system::render()
             {
                 auto& passes = submesh.material->get_passes();
                 for (std::size_t i = 0; i < passes.size(); ++i)
-                    passes[i]->add_mesh(submesh.render_meshes[i]);
+                    passes[i]->add_mesh(&submesh.render_meshes[i]);
             }
         });
 

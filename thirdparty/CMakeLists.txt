@@ -40,6 +40,11 @@ add_subdirectory(VulkanMemoryAllocator)
 # yoga
 # add_subdirectory(yoga)
 
+# SPIRV-Reflect
+set(SPIRV_REFLECT_EXECUTABLE OFF)
+set(SPIRV_REFLECT_STATIC_LIB ON)
+add_subdirectory(SPIRV-Reflect)
+
 function(set_thirdparty_folder DIR)
     get_property(TARGETS DIRECTORY "${DIR}" PROPERTY BUILDSYSTEM_TARGETS)
     foreach(TARGET IN LISTS TARGETS)

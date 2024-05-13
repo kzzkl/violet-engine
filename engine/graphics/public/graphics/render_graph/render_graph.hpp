@@ -59,11 +59,6 @@ public:
         auto pass = std::make_unique<T>(std::forward<Args>(args)...);
         pass->m_name = name;
 
-        if constexpr (std::is_base_of_v<mesh_pass, T>)
-            pass->m_flags |= PASS_FLAG_MESH;
-        if constexpr (std::is_base_of_v<render_pass, T>)
-            pass->m_flags |= PASS_FLAG_RENDER;
-
         T* result = pass.get();
 
         m_passes.push_back(std::move(pass));

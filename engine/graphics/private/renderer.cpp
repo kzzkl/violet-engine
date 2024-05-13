@@ -16,6 +16,11 @@ void rhi_deleter::operator()(rhi_render_pass* render_pass)
     m_rhi->destroy_render_pass(render_pass);
 }
 
+void rhi_deleter::operator()(rhi_shader* shader)
+{
+    m_rhi->destroy_shader(shader);
+}
+
 void rhi_deleter::operator()(rhi_render_pipeline* render_pipeline)
 {
     m_rhi->destroy_render_pipeline(render_pipeline);
@@ -24,11 +29,6 @@ void rhi_deleter::operator()(rhi_render_pipeline* render_pipeline)
 void rhi_deleter::operator()(rhi_compute_pipeline* compute_pipeline)
 {
     m_rhi->destroy_compute_pipeline(compute_pipeline);
-}
-
-void rhi_deleter::operator()(rhi_parameter_layout* parameter_layout)
-{
-    m_rhi->destroy_parameter_layout(parameter_layout);
 }
 
 void rhi_deleter::operator()(rhi_parameter* parameter)
@@ -73,7 +73,7 @@ void rhi_deleter::operator()(rhi_semaphore* semaphore)
 
 renderer::renderer(rhi* rhi) : m_rhi(rhi), m_rhi_deleter(rhi)
 {
-    add_parameter_layout(
+    /*add_parameter_layout(
         "violet mesh",
         {
             {RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
@@ -92,7 +92,7 @@ renderer::renderer(rhi* rhi) : m_rhi(rhi), m_rhi_deleter(rhi)
         "violet light",
         {
             {RHI_PARAMETER_TYPE_UNIFORM_BUFFER, 528, RHI_PARAMETER_STAGE_FLAG_FRAGMENT}
-    });
+    });*/
 }
 
 renderer::~renderer()
@@ -145,31 +145,14 @@ std::size_t renderer::get_frame_resource_index() const noexcept
     return m_rhi->get_frame_resource_index();
 }
 
-rhi_parameter_layout* renderer::add_parameter_layout(
-    std::string_view name,
-    const std::vector<rhi_parameter_layout_pair>& layout)
-{
-    if (m_parameter_layouts.find(name.data()) == m_parameter_layouts.end())
-    {
-        rhi_parameter_layout_desc desc = {};
-        for (std::size_t i = 0; i < layout.size(); ++i)
-            desc.parameters[i] = layout[i];
-        desc.parameter_count = layout.size();
-
-        m_parameter_layouts[name.data()] = create_parameter_layout(desc);
-    }
-
-    return m_parameter_layouts[name.data()].get();
-}
-
-rhi_parameter_layout* renderer::get_parameter_layout(std::string_view name) const
-{
-    return m_parameter_layouts.at(name.data()).get();
-}
-
 rhi_ptr<rhi_render_pass> renderer::create_render_pass(const rhi_render_pass_desc& desc)
 {
     return rhi_ptr<rhi_render_pass>(m_rhi->create_render_pass(desc), m_rhi_deleter);
+}
+
+rhi_ptr<rhi_shader> renderer::create_shader(const char* file)
+{
+    return rhi_ptr<rhi_shader>(m_rhi->create_shader(file), m_rhi_deleter);
 }
 
 rhi_ptr<rhi_render_pipeline> renderer::create_render_pipeline(const rhi_render_pipeline_desc& desc)
@@ -183,15 +166,9 @@ rhi_ptr<rhi_compute_pipeline> renderer::create_compute_pipeline(
     return rhi_ptr<rhi_compute_pipeline>(m_rhi->create_compute_pipeline(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_parameter_layout> renderer::create_parameter_layout(
-    const rhi_parameter_layout_desc& desc)
+rhi_ptr<rhi_parameter> renderer::create_parameter(const rhi_parameter_desc& desc)
 {
-    return rhi_ptr<rhi_parameter_layout>(m_rhi->create_parameter_layout(desc), m_rhi_deleter);
-}
-
-rhi_ptr<rhi_parameter> renderer::create_parameter(rhi_parameter_layout* layout)
-{
-    return rhi_ptr<rhi_parameter>(m_rhi->create_parameter(layout), m_rhi_deleter);
+    return rhi_ptr<rhi_parameter>(m_rhi->create_parameter(desc), m_rhi_deleter);
 }
 
 rhi_ptr<rhi_framebuffer> renderer::create_framebuffer(const rhi_framebuffer_desc& desc)

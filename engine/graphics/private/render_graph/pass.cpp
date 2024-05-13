@@ -1,8 +1,9 @@
 #include "graphics/render_graph/pass.hpp"
+#include <algorithm>
 
 namespace violet
 {
-pass::pass() : m_flags(PASS_FLAG_NONE)
+pass::pass()
 {
 }
 
@@ -76,6 +77,7 @@ pass_reference* pass::add_reference()
 
 render_pass::render_pass()
 {
+    m_desc = std::make_unique<rhi_render_pipeline_desc>();
 }
 
 pass_reference* render_pass::add_input(std::string_view name, rhi_texture_layout layout)
@@ -104,7 +106,8 @@ pass_reference* render_pass::add_color(
     reference->attachment.next_layout = layout;
     reference->attachment.type = RHI_ATTACHMENT_REFERENCE_TYPE_COLOR;
 
-    m_blend.push_back(blend);
+    m_desc->blend.attachments[m_desc->blend.attachment_count] = blend;
+    ++m_desc->blend.attachment_count;
 
     return reference;
 }
@@ -122,22 +125,42 @@ pass_reference* render_pass::add_depth_stencil(std::string_view name, rhi_textur
     return reference;
 }
 
+void render_pass::set_primitive_topology(rhi_primitive_topology topology) noexcept
+{
+    m_desc->primitive_topology = topology;
+}
+
+const std::vector<std::string>& render_pass::get_vertex_attribute_layout() const noexcept
+{
+    return m_attributes;
+}
+
+void render_pass::set_render_pass(
+    rhi_render_pass* render_pass,
+    std::uint32_t subpass_index) noexcept
+{
+    m_desc->render_pass = render_pass;
+    m_desc->render_subpass_index = subpass_index;
+}
+
 void render_pass::compile(renderer* renderer)
 {
-    rhi_render_pipeline_desc desc = {};
-    desc.vertex_shader = m_vertex_shader.c_str();
-    desc.fragment_shader = m_fragment_shader.c_str();
+    rhi_ptr<rhi_shader> vertex_shader = renderer->create_shader(m_vertex_shader.c_str());
+    rhi_ptr<rhi_shader> fragment_shader = renderer->create_shader(m_fragment_shader.c_str());
 
-    for (std::size_t i = 0; i < m_blend.size(); ++i)
-        desc.blend.attachments[i] = m_blend[i];
-    desc.blend.attachment_count = m_blend.size();
+    m_desc->vertex_shader = vertex_shader.get();
+    m_desc->fragment_shader = fragment_shader.get();
 
-    desc.primitive_topology = m_topology;
+    std::vector<rhi_parameter_desc> parameters = get_parameter_layout();
+    m_desc->parameters = parameters.data();
+    m_desc->parameter_count = parameters.size();
 
-    desc.render_pass = m_render_pass;
-    desc.render_subpass_index = m_subpass_index;
+    m_pipeline = renderer->create_render_pipeline(*m_desc);
+    m_desc = nullptr;
 
-    m_pipeline = renderer->create_render_pipeline(desc);
+    std::size_t attribute_count = vertex_shader->get_input_count();
+    for (std::size_t i = 0; i < attribute_count; ++i)
+        m_attributes.push_back(vertex_shader->get_input_name(i));
 }
 
 mesh_pass::mesh_pass()

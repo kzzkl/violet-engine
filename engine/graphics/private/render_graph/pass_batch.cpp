@@ -12,7 +12,7 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
     std::vector<render_pass*> render_passes;
     for (pass* pass : passes)
     {
-        assert(pass->get_flags() & PASS_FLAG_RENDER);
+        assert(pass->get_type() == PASS_TYPE_RENDER);
         render_passes.push_back(static_cast<render_pass*>(pass));
     }
 
@@ -67,6 +67,7 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
 
     rhi_render_pass_desc desc = {};
 
+    std::vector<rhi_attachment_desc> attachments(m_attachments.size());
     std::vector<std::uint8_t> attachment_visited(m_attachments.size());
     for (render_pass* pass : render_passes)
     {
@@ -78,28 +79,30 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
 
             if (attachment_visited[index] == 0)
             {
-                desc.attachments[index].format =
+                attachments[index].format =
                     static_cast<texture*>(reference->resource)->get_format();
-                desc.attachments[index].samples =
+                attachments[index].samples =
                     static_cast<texture*>(reference->resource)->get_samples();
-                desc.attachments[index].initial_layout = RHI_TEXTURE_LAYOUT_UNDEFINED;
+                attachments[index].initial_layout = RHI_TEXTURE_LAYOUT_UNDEFINED;
 
-                desc.attachments[index].load_op = reference->attachment.load_op;
-                desc.attachments[index].stencil_load_op = reference->attachment.load_op;
+                attachments[index].load_op = reference->attachment.load_op;
+                attachments[index].stencil_load_op = reference->attachment.load_op;
 
                 attachment_visited[index] = 1;
             }
 
-            desc.attachments[index].store_op = reference->attachment.store_op;
-            desc.attachments[index].stencil_store_op = reference->attachment.store_op;
-            desc.attachments[index].final_layout = reference->attachment.next_layout;
+            attachments[index].store_op = reference->attachment.store_op;
+            attachments[index].stencil_store_op = reference->attachment.store_op;
+            attachments[index].final_layout = reference->attachment.next_layout;
         }
     }
-    desc.attachment_count = m_attachments.size();
+    desc.attachments = attachments.data();
+    desc.attachment_count = attachments.size();
 
+    std::vector<rhi_render_subpass_desc> subpasses;
     for (auto& [begin, end] : subpass_ranges)
     {
-        auto& subpass = desc.subpasses[desc.subpass_count];
+        rhi_render_subpass_desc subpass = {};
 
         render_pass* first_pass = render_passes[begin];
         for (pass_reference* reference : first_pass->get_references(PASS_REFERENCE_TYPE_ATTACHMENT))
@@ -114,9 +117,10 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
 
             ++subpass.reference_count;
         }
-
-        ++desc.subpass_count;
+        subpasses.push_back(subpass);
     }
+    desc.subpasses = subpasses.data();
+    desc.subpass_count = subpasses.size();
 
     m_render_pass = renderer->create_render_pass(desc);
 
@@ -134,21 +138,22 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
 
 void render_pass_batch::execute(rhi_render_command* command, render_context* context)
 {
-    std::hash<rhi_texture*> hasher;
-
     std::size_t hash = 0;
     for (auto attachment : m_attachments)
-        hash = hash_combine(hash, hasher(attachment->get_texture()));
+        hash = hash_combine(hash, attachment->get_texture()->get_hash());
 
     rhi_framebuffer* framebuffer = nullptr;
 
     auto iter = m_framebuffer_cache.find(hash);
     if (iter == m_framebuffer_cache.end())
     {
-        rhi_framebuffer_desc desc = {};
+        std::vector<rhi_texture*> attachments;
         for (std::size_t i = 0; i < m_attachments.size(); ++i)
-            desc.attachments[i] = m_attachments[i]->get_texture();
-        desc.attachment_count = m_attachments.size();
+            attachments.push_back(m_attachments[i]->get_texture());
+
+        rhi_framebuffer_desc desc = {};
+        desc.attachments = attachments.data();
+        desc.attachment_count = attachments.size();
         desc.render_pass = m_render_pass.get();
 
         m_framebuffer_cache[hash].framebuffer = m_renderer->create_framebuffer(desc);

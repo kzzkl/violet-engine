@@ -217,13 +217,13 @@ struct rhi_render_subpass_dependency_desc
 
 struct rhi_render_pass_desc
 {
-    rhi_attachment_desc attachments[16];
+    rhi_attachment_desc* attachments;
     std::size_t attachment_count = 0;
 
-    rhi_render_subpass_desc subpasses[16];
+    rhi_render_subpass_desc* subpasses;
     std::size_t subpass_count = 0;
 
-    rhi_render_subpass_dependency_desc dependencies[16];
+    rhi_render_subpass_dependency_desc* dependencies;
     std::size_t dependency_count;
 };
 
@@ -248,23 +248,17 @@ enum rhi_parameter_stage_flag
 };
 using rhi_parameter_stage_flags = std::uint32_t;
 
-struct rhi_parameter_layout_pair
+struct rhi_parameter_binding
 {
     rhi_parameter_type type;
-    std::size_t size = 0;
     rhi_parameter_stage_flags stage;
+    std::size_t size = 0;
 };
 
-struct rhi_parameter_layout_desc
+struct rhi_parameter_desc
 {
-    rhi_parameter_layout_pair parameters[32];
-    std::size_t parameter_count = 0;
-};
-
-class rhi_parameter_layout
-{
-public:
-    virtual ~rhi_parameter_layout() = default;
+    rhi_parameter_binding bindings[32];
+    std::size_t binding_count = 0;
 };
 
 class rhi_parameter
@@ -379,16 +373,24 @@ enum rhi_primitive_topology
     RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
 };
 
+class rhi_shader
+{
+public:
+    virtual ~rhi_shader() = default;
+
+    virtual const char* get_input_name(std::size_t index) = 0;
+    virtual std::size_t get_input_location(std::size_t index) = 0;
+    virtual rhi_format get_input_format(std::size_t index) = 0;
+    virtual std::size_t get_input_count() const = 0;
+};
+
 struct rhi_render_pipeline_desc
 {
-    const char* vertex_shader = nullptr;
-    const char* fragment_shader = nullptr;
+    rhi_shader* vertex_shader;
+    rhi_shader* fragment_shader;
 
-    rhi_vertex_attribute* vertex_attributes;
-    std::size_t vertex_attribute_count = 0;
-
-    rhi_parameter_layout** parameters;
-    std::size_t parameter_count = 0;
+    rhi_parameter_desc* parameters;
+    std::size_t parameter_count;
 
     rhi_blend_desc blend;
     rhi_depth_stencil_desc depth_stencil;
@@ -410,10 +412,7 @@ public:
 
 struct rhi_compute_pipeline_desc
 {
-    const char* compute_shader = nullptr;
-
-    rhi_parameter_layout** parameters;
-    std::size_t parameter_count = 0;
+    rhi_shader* compute_shader;
 };
 
 class rhi_compute_pipeline
@@ -425,7 +424,7 @@ public:
 struct rhi_framebuffer_desc
 {
     rhi_render_pass* render_pass;
-    const rhi_texture* attachments[32];
+    rhi_texture* const* attachments;
     std::size_t attachment_count;
 };
 
@@ -643,6 +642,9 @@ public:
     virtual rhi_render_pass* create_render_pass(const rhi_render_pass_desc& desc) = 0;
     virtual void destroy_render_pass(rhi_render_pass* render_pass) = 0;
 
+    virtual rhi_shader* create_shader(const char* file) = 0;
+    virtual void destroy_shader(rhi_shader* shader) = 0;
+
     virtual rhi_render_pipeline* create_render_pipeline(const rhi_render_pipeline_desc& desc) = 0;
     virtual void destroy_render_pipeline(rhi_render_pipeline* render_pipeline) = 0;
 
@@ -650,11 +652,7 @@ public:
         const rhi_compute_pipeline_desc& desc) = 0;
     virtual void destroy_compute_pipeline(rhi_compute_pipeline* compute_pipeline) = 0;
 
-    virtual rhi_parameter_layout* create_parameter_layout(
-        const rhi_parameter_layout_desc& desc) = 0;
-    virtual void destroy_parameter_layout(rhi_parameter_layout* parameter_layout) = 0;
-
-    virtual rhi_parameter* create_parameter(rhi_parameter_layout* layout) = 0;
+    virtual rhi_parameter* create_parameter(const rhi_parameter_desc& desc) = 0;
     virtual void destroy_parameter(rhi_parameter* parameter) = 0;
 
     virtual rhi_framebuffer* create_framebuffer(const rhi_framebuffer_desc& desc) = 0;

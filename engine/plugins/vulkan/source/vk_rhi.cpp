@@ -89,6 +89,16 @@ void vk_rhi::destroy_render_pass(rhi_render_pass* render_pass)
     delay_delete(render_pass);
 }
 
+rhi_shader* vk_rhi::create_shader(const char* file)
+{
+    return new vk_shader(file, m_context->get_device());
+}
+
+void vk_rhi::destroy_shader(rhi_shader* shader)
+{
+    delete shader;
+}
+
 rhi_render_pipeline* vk_rhi::create_render_pipeline(const rhi_render_pipeline_desc& desc)
 {
     return new vk_render_pipeline(desc, VkExtent2D{128, 128}, m_context.get());
@@ -109,19 +119,9 @@ void vk_rhi::destroy_compute_pipeline(rhi_compute_pipeline* compute_pipeline)
     delay_delete(compute_pipeline);
 }
 
-rhi_parameter_layout* vk_rhi::create_parameter_layout(const rhi_parameter_layout_desc& desc)
+rhi_parameter* vk_rhi::create_parameter(const rhi_parameter_desc& desc)
 {
-    return new vk_parameter_layout(desc, m_context.get());
-}
-
-void vk_rhi::destroy_parameter_layout(rhi_parameter_layout* parameter_layout)
-{
-    delete parameter_layout;
-}
-
-rhi_parameter* vk_rhi::create_parameter(rhi_parameter_layout* layout)
-{
-    return new vk_parameter(static_cast<vk_parameter_layout*>(layout), m_context.get());
+    return new vk_parameter(desc, m_context.get());
 }
 
 void vk_rhi::destroy_parameter(rhi_parameter* parameter)

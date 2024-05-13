@@ -50,14 +50,12 @@ struct pass_reference
     };
 };
 
-enum pass_flag : std::uint32_t
+enum pass_type
 {
-    PASS_FLAG_NONE = 0,
-    PASS_FLAG_RENDER = 1 << 0,
-    PASS_FLAG_MESH = 1 << 1,
-    PASS_FLAG_COMPUTE = 1 << 2
+    PASS_TYPE_RENDER,
+    PASS_TYPE_COMPUTE,
+    PASS_TYPE_OTHER
 };
-using pass_flags = std::uint32_t;
 
 class pass
 {
@@ -75,8 +73,10 @@ public:
     std::vector<pass_reference*> get_references(pass_access_flags access) const;
     std::vector<pass_reference*> get_references(pass_reference_type type) const;
 
+    virtual std::vector<rhi_parameter_desc> get_parameter_layout() const { return {}; };
+
     const std::string& get_name() const noexcept { return m_name; }
-    pass_flags get_flags() const noexcept { return m_flags; }
+    virtual pass_type get_type() const noexcept { return PASS_TYPE_OTHER; }
 
     virtual void compile(renderer* renderer) {}
     virtual void execute(rhi_render_command* command, render_context* context) {}
@@ -87,7 +87,6 @@ protected:
 private:
     friend class render_graph;
     std::string m_name;
-    pass_flags m_flags;
 
     std::vector<std::unique_ptr<pass_reference>> m_references;
 };
@@ -110,13 +109,13 @@ public:
     void set_fragment_shader(std::string_view shader) { m_fragment_shader = shader; }
     const std::string& get_fragment_shader() const noexcept { return m_fragment_shader; }
 
-    void set_primitive_topology(rhi_primitive_topology topology) noexcept { m_topology = topology; }
+    void set_primitive_topology(rhi_primitive_topology topology) noexcept;
 
-    void set_render_pass(rhi_render_pass* render_pass, std::uint32_t subpass_index) noexcept
-    {
-        m_render_pass = render_pass;
-        m_subpass_index = subpass_index;
-    }
+    const std::vector<std::string>& get_vertex_attribute_layout() const noexcept;
+
+    void set_render_pass(rhi_render_pass* render_pass, std::uint32_t subpass_index) noexcept;
+
+    virtual pass_type get_type() const noexcept final { return PASS_TYPE_RENDER; }
 
     virtual void compile(renderer* renderer) override;
     virtual void execute(rhi_render_command* command, render_context* context) {}
@@ -127,13 +126,9 @@ protected:
 private:
     std::string m_vertex_shader;
     std::string m_fragment_shader;
+    std::unique_ptr<rhi_render_pipeline_desc> m_desc;
 
-    std::vector<rhi_attachment_blend_desc> m_blend;
-
-    rhi_primitive_topology m_topology;
-
-    rhi_render_pass* m_render_pass;
-    std::uint32_t m_subpass_index;
+    std::vector<std::string> m_attributes;
 
     rhi_ptr<rhi_render_pipeline> m_pipeline;
 };
@@ -142,6 +137,14 @@ struct render_mesh
 {
     rhi_parameter* material;
     rhi_parameter* transform;
+
+    std::size_t vertex_start;
+    std::size_t vertex_count;
+    std::size_t index_start;
+    std::size_t index_count;
+
+    std::vector<rhi_buffer*> vertex_buffers;
+    rhi_buffer* index_buffer;
 };
 
 class mesh_pass : public render_pass
@@ -149,16 +152,15 @@ class mesh_pass : public render_pass
 public:
     mesh_pass();
 
-    void set_material_parameter(rhi_parameter_layout* layout);
-    rhi_parameter_layout* get_material_parameter();
+    virtual rhi_parameter_desc get_material_parameter_desc() const noexcept { return {}; }
 
-    void add_mesh(const render_mesh& mesh) { m_meshes.push_back(mesh); }
+    void add_mesh(const render_mesh* mesh) { m_meshes.push_back(mesh); }
     void clear_mesh() noexcept { m_meshes.clear(); }
 
 protected:
-    const std::vector<render_mesh>& get_meshes() const noexcept { return m_meshes; }
+    const std::vector<const render_mesh*>& get_meshes() const noexcept { return m_meshes; }
 
 private:
-    std::vector<render_mesh> m_meshes;
+    std::vector<const render_mesh*> m_meshes;
 };
 } // namespace violet

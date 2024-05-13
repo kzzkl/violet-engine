@@ -9,6 +9,7 @@ namespace violet::vk
 {
 class vk_graphics_queue;
 class vk_present_queue;
+class vk_layout_manager;
 
 class vk_context
 {
@@ -28,6 +29,8 @@ public:
 
     vk_graphics_queue* get_graphics_queue() const noexcept { return m_graphics_queue.get(); }
     vk_present_queue* get_present_queue() const noexcept { return m_present_queue.get(); }
+
+    vk_layout_manager* get_layout_manager() const noexcept { return m_layout_manager.get(); }
 
     VkInstance get_instance() const noexcept { return m_instance; }
 
@@ -63,6 +66,7 @@ private:
 
     std::unique_ptr<vk_graphics_queue> m_graphics_queue;
     std::unique_ptr<vk_present_queue> m_present_queue;
+    std::unique_ptr<vk_layout_manager> m_layout_manager;
 
     VkDescriptorPool m_descriptor_pool;
 

@@ -19,9 +19,13 @@ private:
 class material
 {
 public:
-    material(material_layout* layout);
+    material(renderer* renderer, material_layout* layout);
 
     const std::vector<mesh_pass*>& get_passes() const noexcept { return m_layout->get_passes(); }
+    rhi_parameter* get_parameter(std::size_t pass_index) const
+    {
+        return m_parameters[pass_index].get();
+    }
 
 private:
     std::vector<rhi_ptr<rhi_parameter>> m_parameters;

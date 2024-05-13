@@ -29,6 +29,11 @@ public:
         set_primitive_topology(RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
     }
 
+    virtual std::vector<rhi_parameter_desc> get_parameter_layout() const override
+    {
+        return {parameter_layout::mesh, parameter_layout::camera};
+    };
+
     virtual void execute(rhi_render_command* command, render_context* context) override
     {
         rhi_texture_extent extent = get_reference("color")->resource->get_texture()->get_extent();
@@ -46,7 +51,16 @@ public:
         command->set_scissor(&scissor, 1);
 
         command->set_render_pipeline(get_pipeline());
-        command->draw(0, 6);
+
+        for (const render_mesh* mesh : get_meshes())
+        {
+            command->set_render_parameter(0, mesh->transform);
+            command->set_vertex_buffers(mesh->vertex_buffers.data(), mesh->vertex_buffers.size());
+            command->set_index_buffer(mesh->index_buffer);
+            command->draw_indexed(mesh->index_start, mesh->index_count, mesh->vertex_start);
+        }
+
+        clear_mesh();
     }
 
 private:
@@ -143,6 +157,11 @@ private:
 
     void tick(float delta)
     {
+        static float time = 0;
+        float scale = std::abs(std::sin(time));
+        time += delta;
+        m_cube->get<transform>()->set_scale(float3{scale, 1.0f, 1.0f});
+
         return;
         auto& window = get_system<window_system>();
         auto rect = window.get_extent();
