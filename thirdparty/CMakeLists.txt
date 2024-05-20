@@ -44,17 +44,3 @@ add_subdirectory(VulkanMemoryAllocator)
 set(SPIRV_REFLECT_EXECUTABLE OFF)
 set(SPIRV_REFLECT_STATIC_LIB ON)
 add_subdirectory(SPIRV-Reflect)
-
-function(set_thirdparty_folder DIR)
-    get_property(TARGETS DIRECTORY "${DIR}" PROPERTY BUILDSYSTEM_TARGETS)
-    foreach(TARGET IN LISTS TARGETS)
-        set_target_properties(${TARGET} PROPERTIES FOLDER "thirdparty")
-    endforeach()
-
-    get_property(SUBDIRS DIRECTORY "${DIR}" PROPERTY SUBDIRECTORIES)
-    foreach(SUBDIR IN LISTS SUBDIRS)
-        set_thirdparty_folder("${SUBDIR}")
-    endforeach()
-endfunction()
-
-set_thirdparty_folder(.)

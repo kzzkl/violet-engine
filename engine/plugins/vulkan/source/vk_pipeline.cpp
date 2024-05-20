@@ -438,6 +438,9 @@ vk_shader::vk_shader(const char* path, VkDevice device) : m_module(VK_NULL_HANDL
 
     for (auto input_variable : input_variables)
     {
+        if (input_variable->decoration_flags & SPV_REFLECT_DECORATION_BUILT_IN)
+            continue;
+
         input input;
         input.name = input_variable->name;
         input.name = input.name.substr(input.name.find_last_of('.') + 1);
@@ -703,17 +706,18 @@ vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, 
     shader_stage_info.module = static_cast<vk_shader*>(desc.compute_shader)->get_module();
     shader_stage_info.pName = "cs_main";
 
-    // std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
-    // for (std::size_t i = 0; i < desc.parameter_count; ++i)
-    // {
-    //     descriptor_set_layouts.push_back(
-    //         static_cast<vk_parameter_layout*>(desc.parameters[i])->get_layout());
-    // }
+    vk_layout_manager* layout_manager = m_context->get_layout_manager();
+    std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
+    for (std::size_t i = 0; i < desc.parameter_count; ++i)
+    {
+        vk_parameter_layout* layout = layout_manager->get_parameter_layout(desc.parameters[i]);
+        descriptor_set_layouts.push_back(layout->get_layout());
+    }
 
     VkPipelineLayoutCreateInfo layout_info = {};
     layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    // layout_info.pSetLayouts = descriptor_set_layouts.data();
-    // layout_info.setLayoutCount = static_cast<std::uint32_t>(descriptor_set_layouts.size());
+    layout_info.pSetLayouts = descriptor_set_layouts.data();
+    layout_info.setLayoutCount = static_cast<std::uint32_t>(descriptor_set_layouts.size());
     vk_check(
         vkCreatePipelineLayout(m_context->get_device(), &layout_info, nullptr, &m_pipeline_layout));
 

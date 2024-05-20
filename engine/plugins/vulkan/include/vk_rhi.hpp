@@ -17,9 +17,9 @@ public:
 
     virtual bool initialize(const rhi_desc& desc) override;
 
-    virtual rhi_render_command* allocate_command() override;
+    virtual rhi_command* allocate_command() override;
     virtual void execute(
-        rhi_render_command* const* commands,
+        rhi_command* const* commands,
         std::size_t command_count,
         rhi_semaphore* const* signal_semaphores,
         std::size_t signal_semaphore_count,

@@ -2,7 +2,8 @@
 
 #include "core/ecs/actor.hpp"
 #include "graphics/geometry.hpp"
-#include "graphics/render_graph/render_graph.hpp"
+#include "graphics/material.hpp"
+#include "mmd_render.hpp"
 #include "physics/physics_context.hpp"
 #include <map>
 #include <memory>
@@ -11,8 +12,8 @@ namespace violet::sample
 {
 struct mmd_model
 {
-    std::vector<rhi_ptr<rhi_image>> textures;
-    std::vector<material*> materials;
+    std::vector<rhi_ptr<rhi_texture>> textures;
+    std::vector<std::unique_ptr<material>> materials;
 
     std::unique_ptr<geometry> geometry;
     std::unique_ptr<actor> model;
@@ -27,7 +28,7 @@ class vmd;
 class mmd_loader
 {
 public:
-    mmd_loader(render_graph* render_graph, renderer* renderer, physics_context* physics_context);
+    mmd_loader(mmd_render_graph* render_graph, render_device* device, physics_context* physics_context);
     ~mmd_loader();
 
     mmd_model* load(std::string_view pmx_path, std::string_view vmd_path, world& world);
@@ -46,10 +47,10 @@ private:
 
     std::map<std::string, std::unique_ptr<mmd_model>> m_models;
 
-    std::vector<rhi_ptr<rhi_image>> m_internal_toons;
+    std::vector<rhi_ptr<rhi_texture>> m_internal_toons;
 
-    render_graph* m_render_graph;
-    renderer* m_renderer;
+    mmd_render_graph* m_render_graph;
+    render_device* m_device;
     rhi_ptr<rhi_sampler> m_sampler;
 
     physics_context* m_physics_context;

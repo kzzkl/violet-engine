@@ -1,17 +1,17 @@
 #pragma once
 
-#include "graphics/render_graph/render_pass.hpp"
+#include "graphics/render_graph/rdg_pass.hpp"
 
 namespace violet
 {
-class skybox_pass : public render_pass
+class skybox_pass : public rdg_render_pass
 {
 public:
-    skybox_pass(renderer* renderer, setup_context& context);
+    skybox_pass();
 
-    virtual void execute(execute_context& context) override;
+    virtual void execute(rhi_command* command, rdg_context* context) override;
 
 private:
-    render_pipeline* m_pipeline;
+    rdg_pass_reference* m_color;
 };
 } // namespace violet

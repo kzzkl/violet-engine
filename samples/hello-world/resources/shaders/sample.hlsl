@@ -14,12 +14,13 @@ struct vs_out
 };
 
 ConstantBuffer<violet_mesh> mesh : register(b0, space0);
-// ConstantBuffer<violet_camera> camera : register(b0, space1);
+ConstantBuffer<violet_camera> camera : register(b0, space1);
 
 vs_out vs_main(vs_in input)
 {
     vs_out output;
     output.position = mul(mesh.model, float4(input.position, 1.0));
+    output.position = mul(camera.view_projection, output.position);
     return output;
 }
 

@@ -2,38 +2,34 @@
 
 namespace violet
 {
-skybox_pass::skybox_pass(renderer* renderer, setup_context& context)
-    : render_pass(renderer, context)
+skybox_pass::skybox_pass()
 {
-    pass_slot* render_target = add_slot("render target");
-    render_target->set_input_layout(RHI_IMAGE_LAYOUT_RENDER_TARGET);
+    m_color = add_color("color", RHI_TEXTURE_LAYOUT_RENDER_TARGET);
+    add_depth_stencil("depth", RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
 
-    pass_slot* depth_buffer = add_slot("depth buffer");
-    depth_buffer->set_format(RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT);
-    depth_buffer->set_input_layout(RHI_IMAGE_LAYOUT_DEPTH_STENCIL);
-
-    std::size_t subpass = add_subpass({
-        {render_target, RHI_ATTACHMENT_REFERENCE_TYPE_COLOR, RHI_IMAGE_LAYOUT_RENDER_TARGET},
-        {depth_buffer,
-         RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL,        RHI_IMAGE_LAYOUT_DEPTH_STENCIL}
-    });
-
-    m_pipeline = add_pipeline(subpass);
-    m_pipeline->set_shader("engine/shaders/skybox.vert.spv", "engine/shaders/skybox.frag.spv");
-    m_pipeline->set_cull_mode(RHI_CULL_MODE_BACK);
-    m_pipeline->set_parameter_layouts({renderer->get_parameter_layout("violet camera")});
+    set_shader("engine/shaders/skybox.vert.spv", "engine/shaders/skybox.frag.spv");
+    set_parameter_layout({engine_parameter_layout::camera});
 }
 
-void skybox_pass::execute(execute_context& context)
+void skybox_pass::execute(rhi_command* command, rdg_context* context)
 {
-    rhi_render_command* command = context.get_command();
+    rhi_texture_extent extent = context->get_texture(m_color->resource->get_index())->get_extent();
 
-    command->begin(get_interface(), get_framebuffer());
+    rhi_viewport viewport = {};
+    viewport.width = extent.width;
+    viewport.height = extent.height;
+    viewport.min_depth = 0.0f;
+    viewport.max_depth = 1.0f;
+    command->set_viewport(viewport);
 
-    command->set_render_pipeline(m_pipeline->get_interface());
-    command->set_render_parameter(0, context.get_camera("main camera"));
+    rhi_scissor_rect scissor = {};
+    scissor.max_x = extent.width;
+    scissor.max_y = extent.height;
+    command->set_scissor(&scissor, 1);
+
+    command->set_render_pipeline(get_pipeline());
+
+    command->set_render_parameter(0, context->get_camera());
     command->draw(0, 36);
-
-    command->end();
 }
 } // namespace violet

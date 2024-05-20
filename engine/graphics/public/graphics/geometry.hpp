@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/renderer.hpp"
+#include "graphics/render_device.hpp"
 #include <string>
 #include <unordered_map>
 
@@ -9,7 +9,7 @@ namespace violet
 class geometry
 {
 public:
-    geometry(renderer* renderer);
+    geometry(render_device* device);
     virtual ~geometry();
 
     template <typename T>
@@ -63,6 +63,6 @@ private:
     std::size_t m_vertex_count;
     std::size_t m_index_count;
 
-    renderer* m_renderer;
+    render_device* m_device;
 };
 } // namespace violet

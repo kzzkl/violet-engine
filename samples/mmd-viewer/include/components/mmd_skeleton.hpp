@@ -2,7 +2,9 @@
 
 #include "components/transform.hpp"
 #include "core/ecs/actor.hpp"
-#include "graphics/renderer.hpp"
+#include "graphics/geometry.hpp"
+#include "graphics/render_device.hpp"
+#include "mmd_render.hpp"
 
 namespace violet::sample
 {
@@ -63,7 +65,7 @@ public:
     };
 
 public:
-    mmd_skeleton(renderer* renderer);
+    mmd_skeleton(render_device* device);
     mmd_skeleton(const mmd_skeleton&) = delete;
     mmd_skeleton(mmd_skeleton&& other) = default;
     ~mmd_skeleton();
@@ -80,8 +82,8 @@ public:
             bdef_desc.data = bdef.data();
             bdef_desc.size = bdef.size() * sizeof(BDEF);
             bdef_desc.flags = RHI_BUFFER_FLAG_STORAGE;
-            m_bdef = m_renderer->create_buffer(bdef_desc);
-            m_skinning_parameter->set_storage(6, m_bdef.get());
+            m_bdef = m_device->create_buffer(bdef_desc);
+            m_parameter->set_storage(5, m_bdef.get());
         }
 
         if (!sdef.empty())
@@ -90,8 +92,8 @@ public:
             sdef_desc.data = sdef.data();
             sdef_desc.size = sdef.size() * sizeof(SDEF);
             sdef_desc.flags = RHI_BUFFER_FLAG_STORAGE;
-            m_sdef = m_renderer->create_buffer(sdef_desc);
-            m_skinning_parameter->set_storage(7, m_sdef.get());
+            m_sdef = m_device->create_buffer(sdef_desc);
+            m_parameter->set_storage(6, m_sdef.get());
         }
         else
         {
@@ -101,22 +103,19 @@ public:
             sdef_desc.data = &error;
             sdef_desc.size = sizeof(SDEF);
             sdef_desc.flags = RHI_BUFFER_FLAG_STORAGE;
-            m_sdef = m_renderer->create_buffer(sdef_desc);
-            m_skinning_parameter->set_storage(7, m_sdef.get());
+            m_sdef = m_device->create_buffer(sdef_desc);
+            m_parameter->set_storage(6, m_sdef.get());
         }
     }
 
-    void set_skinning_input(
-        rhi_buffer* positon,
-        rhi_buffer* normal,
-        rhi_buffer* uv,
-        rhi_buffer* skin,
-        rhi_buffer* vertex_morph);
+    void set_geometry(geometry* geometry);
+    void set_bone(std::size_t index, const mmd_skinning_bone& bone);
 
-    void set_skinning_output(rhi_buffer* positon, rhi_buffer* normal, rhi_buffer* uv);
+    rhi_buffer* get_position_buffer() const noexcept { return m_skinned_position.get(); }
+    rhi_buffer* get_normal_buffer() const noexcept { return m_skinned_normal.get(); }
+    rhi_buffer* get_morph_buffer() const noexcept { return m_morph.get(); }
 
-    rhi_parameter* get_skeleton_parameter() const noexcept { return m_skeleton_parameter.get(); }
-    rhi_parameter* get_skinning_parameter() const noexcept { return m_skinning_parameter.get(); }
+    rhi_parameter* get_parameter() const noexcept { return m_parameter.get(); }
 
     mmd_skeleton& operator=(const mmd_skeleton&) = delete;
     mmd_skeleton& operator=(mmd_skeleton&& other) = default;
@@ -124,17 +123,15 @@ public:
     std::vector<bone> bones;
     std::vector<std::size_t> sorted_bones;
 
-    std::vector<float4x4> local_matrices;
-    std::vector<float4x4> world_matrices;
-
 private:
-    rhi_ptr<rhi_parameter> m_skeleton_parameter;
-    rhi_ptr<rhi_parameter> m_skinning_parameter;
+    rhi_ptr<rhi_parameter> m_parameter;
 
     rhi_ptr<rhi_buffer> m_bdef;
     rhi_ptr<rhi_buffer> m_sdef;
+    rhi_ptr<rhi_buffer> m_skinned_position;
+    rhi_ptr<rhi_buffer> m_skinned_normal;
+    rhi_ptr<rhi_buffer> m_morph;
 
-    renderer* m_renderer;
+    render_device* m_device;
 };
-using mmd_skeleton_t = mmd_skeleton;
 } // namespace violet::sample

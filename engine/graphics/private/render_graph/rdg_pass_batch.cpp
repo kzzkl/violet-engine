@@ -1,19 +1,21 @@
-#include "render_graph/pass_batch.hpp"
+#include "render_graph/rdg_pass_batch.hpp"
 #include "common/hash.hpp"
 #include <algorithm>
 #include <cassert>
 
 namespace violet
 {
-render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* renderer)
-    : m_renderer(renderer),
+rdg_render_pass_batch::rdg_render_pass_batch(
+    const std::vector<rdg_pass*> passes,
+    render_device* device)
+    : m_device(device),
       m_execute_count(0)
 {
-    std::vector<render_pass*> render_passes;
-    for (pass* pass : passes)
+    std::vector<rdg_render_pass*> render_passes;
+    for (rdg_pass* pass : passes)
     {
-        assert(pass->get_type() == PASS_TYPE_RENDER);
-        render_passes.push_back(static_cast<render_pass*>(pass));
+        assert(pass->get_type() == RDG_PASS_TYPE_RENDER);
+        render_passes.push_back(static_cast<rdg_render_pass*>(pass));
     }
 
     std::vector<std::pair<std::size_t, std::size_t>> subpass_ranges;
@@ -21,11 +23,11 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
 
     for (std::size_t i = 1; i < render_passes.size(); ++i)
     {
-        render_pass* prev_pass = render_passes[i - 1];
-        render_pass* next_pass = render_passes[i];
+        rdg_render_pass* prev_pass = render_passes[i - 1];
+        rdg_render_pass* next_pass = render_passes[i];
 
-        auto prev_references = prev_pass->get_references(PASS_REFERENCE_TYPE_ATTACHMENT);
-        auto next_references = next_pass->get_references(PASS_REFERENCE_TYPE_ATTACHMENT);
+        auto prev_references = prev_pass->get_references(RDG_PASS_REFERENCE_TYPE_ATTACHMENT);
+        auto next_references = next_pass->get_references(RDG_PASS_REFERENCE_TYPE_ATTACHMENT);
 
         bool same = true;
         if (prev_references.size() != next_references.size())
@@ -48,16 +50,21 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
             }
         }
 
-        if (!same)
+        if (same)
+        {
+            ++subpass_ranges.back().second;
+        }
+        else
         {
             subpass_ranges.back().second = i;
             subpass_ranges.push_back({i, i + 1});
         }
     }
 
-    for (render_pass* pass : render_passes)
+    for (rdg_render_pass* pass : render_passes)
     {
-        for (pass_reference* reference : pass->get_references(PASS_REFERENCE_TYPE_ATTACHMENT))
+        for (rdg_pass_reference* reference :
+             pass->get_references(RDG_PASS_REFERENCE_TYPE_ATTACHMENT))
             m_attachments.push_back(reference->resource);
     }
     std::sort(m_attachments.begin(), m_attachments.end());
@@ -69,9 +76,10 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
 
     std::vector<rhi_attachment_desc> attachments(m_attachments.size());
     std::vector<std::uint8_t> attachment_visited(m_attachments.size());
-    for (render_pass* pass : render_passes)
+    for (rdg_render_pass* pass : render_passes)
     {
-        for (pass_reference* reference : pass->get_references(PASS_REFERENCE_TYPE_ATTACHMENT))
+        for (rdg_pass_reference* reference :
+             pass->get_references(RDG_PASS_REFERENCE_TYPE_ATTACHMENT))
         {
             std::size_t index =
                 std::find(m_attachments.begin(), m_attachments.end(), reference->resource) -
@@ -80,9 +88,9 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
             if (attachment_visited[index] == 0)
             {
                 attachments[index].format =
-                    static_cast<texture*>(reference->resource)->get_format();
+                    static_cast<rdg_texture*>(reference->resource)->get_format();
                 attachments[index].samples =
-                    static_cast<texture*>(reference->resource)->get_samples();
+                    static_cast<rdg_texture*>(reference->resource)->get_samples();
                 attachments[index].initial_layout = RHI_TEXTURE_LAYOUT_UNDEFINED;
 
                 attachments[index].load_op = reference->attachment.load_op;
@@ -104,8 +112,9 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
     {
         rhi_render_subpass_desc subpass = {};
 
-        render_pass* first_pass = render_passes[begin];
-        for (pass_reference* reference : first_pass->get_references(PASS_REFERENCE_TYPE_ATTACHMENT))
+        rdg_render_pass* first_pass = render_passes[begin];
+        for (rdg_pass_reference* reference :
+             first_pass->get_references(RDG_PASS_REFERENCE_TYPE_ATTACHMENT))
         {
             auto& subpass_reference = subpass.references[subpass.reference_count];
             subpass_reference.type = reference->attachment.type;
@@ -122,7 +131,7 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
     desc.subpasses = subpasses.data();
     desc.subpass_count = subpasses.size();
 
-    m_render_pass = renderer->create_render_pass(desc);
+    m_render_pass = device->create_render_pass(desc);
 
     for (auto& [begin, end] : subpass_ranges)
     {
@@ -130,17 +139,17 @@ render_pass_batch::render_pass_batch(const std::vector<pass*> passes, renderer* 
         for (std::size_t i = begin; i < end; ++i)
         {
             render_passes[i]->set_render_pass(m_render_pass.get(), m_passes.size() - 1);
-            render_passes[i]->compile(renderer);
+            render_passes[i]->compile(device);
             m_passes.back().push_back(render_passes[i]);
         }
     }
 }
 
-void render_pass_batch::execute(rhi_render_command* command, render_context* context)
+void rdg_render_pass_batch::execute(rhi_command* command, rdg_context* context)
 {
     std::size_t hash = 0;
     for (auto attachment : m_attachments)
-        hash = hash_combine(hash, attachment->get_texture()->get_hash());
+        hash = hash_combine(hash, context->get_texture(attachment->get_index())->get_hash());
 
     rhi_framebuffer* framebuffer = nullptr;
 
@@ -149,14 +158,14 @@ void render_pass_batch::execute(rhi_render_command* command, render_context* con
     {
         std::vector<rhi_texture*> attachments;
         for (std::size_t i = 0; i < m_attachments.size(); ++i)
-            attachments.push_back(m_attachments[i]->get_texture());
+            attachments.push_back(context->get_texture(m_attachments[i]->get_index()));
 
         rhi_framebuffer_desc desc = {};
         desc.attachments = attachments.data();
         desc.attachment_count = attachments.size();
         desc.render_pass = m_render_pass.get();
 
-        m_framebuffer_cache[hash].framebuffer = m_renderer->create_framebuffer(desc);
+        m_framebuffer_cache[hash].framebuffer = m_device->create_framebuffer(desc);
         m_framebuffer_cache[hash].is_used = true;
         framebuffer = m_framebuffer_cache[hash].framebuffer.get();
     }
@@ -182,7 +191,7 @@ void render_pass_batch::execute(rhi_render_command* command, render_context* con
         cleanup_framebuffer();
 }
 
-void render_pass_batch::cleanup_framebuffer()
+void rdg_render_pass_batch::cleanup_framebuffer()
 {
     for (auto iter = m_framebuffer_cache.begin(); iter != m_framebuffer_cache.end();)
     {
@@ -196,5 +205,35 @@ void render_pass_batch::cleanup_framebuffer()
             ++iter;
         }
     }
+}
+
+rdg_compute_pass_batch::rdg_compute_pass_batch(
+    const std::vector<rdg_pass*> passes,
+    render_device* device)
+    : m_passes(passes)
+{
+    for (rdg_pass* pass : m_passes)
+        pass->compile(device);
+}
+
+void rdg_compute_pass_batch::execute(rhi_command* command, rdg_context* context)
+{
+    for (rdg_pass* pass : m_passes)
+        pass->execute(command, context);
+}
+
+rdg_other_pass_batch::rdg_other_pass_batch(
+    const std::vector<rdg_pass*> passes,
+    render_device* device)
+    : m_passes(passes)
+{
+    for (rdg_pass* pass : m_passes)
+        pass->compile(device);
+}
+
+void rdg_other_pass_batch::execute(rhi_command* command, rdg_context* context)
+{
+    for (rdg_pass* pass : m_passes)
+        pass->execute(command, context);
 }
 } // namespace violet

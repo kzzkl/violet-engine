@@ -1,4 +1,4 @@
-#include "graphics/renderer.hpp"
+#include "graphics/render_device.hpp"
 #include "math/math.hpp"
 
 namespace violet
@@ -71,41 +71,21 @@ void rhi_deleter::operator()(rhi_semaphore* semaphore)
     m_rhi->destroy_semaphore(semaphore);
 }
 
-renderer::renderer(rhi* rhi) : m_rhi(rhi), m_rhi_deleter(rhi)
-{
-    /*add_parameter_layout(
-        "violet mesh",
-        {
-            {RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-             sizeof(float4x4),
-             RHI_PARAMETER_STAGE_FLAG_VERTEX | RHI_PARAMETER_STAGE_FLAG_FRAGMENT}
-    });
-    add_parameter_layout(
-        "violet camera",
-        {
-            {RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-             sizeof(float4x4) * 3 + sizeof(float4),
-             RHI_PARAMETER_STAGE_FLAG_VERTEX | RHI_PARAMETER_STAGE_FLAG_FRAGMENT     },
-            {RHI_PARAMETER_TYPE_TEXTURE,        1,  RHI_PARAMETER_STAGE_FLAG_FRAGMENT}
-    });
-    add_parameter_layout(
-        "violet light",
-        {
-            {RHI_PARAMETER_TYPE_UNIFORM_BUFFER, 528, RHI_PARAMETER_STAGE_FLAG_FRAGMENT}
-    });*/
-}
-
-renderer::~renderer()
+render_device::render_device(rhi* rhi) : m_rhi(rhi), m_rhi_deleter(rhi)
 {
 }
 
-rhi_render_command* renderer::allocate_command()
+render_device::~render_device()
+{
+}
+
+rhi_command* render_device::allocate_command()
 {
     return m_rhi->allocate_command();
 }
 
-void renderer::execute(
-    const std::vector<rhi_render_command*>& commands,
+void render_device::execute(
+    const std::vector<rhi_command*>& commands,
     const std::vector<rhi_semaphore*>& signal_semaphores,
     const std::vector<rhi_semaphore*>& wait_semaphores,
     rhi_fence* fence)
@@ -120,83 +100,84 @@ void renderer::execute(
         fence);
 }
 
-void renderer::begin_frame()
+void render_device::begin_frame()
 {
     m_rhi->begin_frame();
 }
 
-void renderer::end_frame()
+void render_device::end_frame()
 {
     m_rhi->end_frame();
 }
 
-rhi_fence* renderer::get_in_flight_fence()
+rhi_fence* render_device::get_in_flight_fence()
 {
     return m_rhi->get_in_flight_fence();
 }
 
-std::size_t renderer::get_frame_resource_count() const noexcept
+std::size_t render_device::get_frame_resource_count() const noexcept
 {
     return m_rhi->get_frame_resource_count();
 }
 
-std::size_t renderer::get_frame_resource_index() const noexcept
+std::size_t render_device::get_frame_resource_index() const noexcept
 {
     return m_rhi->get_frame_resource_index();
 }
 
-rhi_ptr<rhi_render_pass> renderer::create_render_pass(const rhi_render_pass_desc& desc)
+rhi_ptr<rhi_render_pass> render_device::create_render_pass(const rhi_render_pass_desc& desc)
 {
     return rhi_ptr<rhi_render_pass>(m_rhi->create_render_pass(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_shader> renderer::create_shader(const char* file)
+rhi_ptr<rhi_shader> render_device::create_shader(const char* file)
 {
     return rhi_ptr<rhi_shader>(m_rhi->create_shader(file), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_render_pipeline> renderer::create_render_pipeline(const rhi_render_pipeline_desc& desc)
+rhi_ptr<rhi_render_pipeline> render_device::create_render_pipeline(
+    const rhi_render_pipeline_desc& desc)
 {
     return rhi_ptr<rhi_render_pipeline>(m_rhi->create_render_pipeline(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_compute_pipeline> renderer::create_compute_pipeline(
+rhi_ptr<rhi_compute_pipeline> render_device::create_compute_pipeline(
     const rhi_compute_pipeline_desc& desc)
 {
     return rhi_ptr<rhi_compute_pipeline>(m_rhi->create_compute_pipeline(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_parameter> renderer::create_parameter(const rhi_parameter_desc& desc)
+rhi_ptr<rhi_parameter> render_device::create_parameter(const rhi_parameter_desc& desc)
 {
     return rhi_ptr<rhi_parameter>(m_rhi->create_parameter(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_framebuffer> renderer::create_framebuffer(const rhi_framebuffer_desc& desc)
+rhi_ptr<rhi_framebuffer> render_device::create_framebuffer(const rhi_framebuffer_desc& desc)
 {
     return rhi_ptr<rhi_framebuffer>(m_rhi->create_framebuffer(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_buffer> renderer::create_buffer(const rhi_buffer_desc& desc)
+rhi_ptr<rhi_buffer> render_device::create_buffer(const rhi_buffer_desc& desc)
 {
     return rhi_ptr<rhi_buffer>(m_rhi->create_buffer(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_sampler> renderer::create_sampler(const rhi_sampler_desc& desc)
+rhi_ptr<rhi_sampler> render_device::create_sampler(const rhi_sampler_desc& desc)
 {
     return rhi_ptr<rhi_sampler>(m_rhi->create_sampler(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_texture> renderer::create_texture(const rhi_texture_desc& desc)
+rhi_ptr<rhi_texture> render_device::create_texture(const rhi_texture_desc& desc)
 {
     return rhi_ptr<rhi_texture>(m_rhi->create_texture(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_texture> renderer::create_texture(const char* file, const rhi_texture_desc& desc)
+rhi_ptr<rhi_texture> render_device::create_texture(const char* file, const rhi_texture_desc& desc)
 {
     return rhi_ptr<rhi_texture>(m_rhi->create_texture(file, desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_texture> renderer::create_texture_cube(
+rhi_ptr<rhi_texture> render_device::create_texture_cube(
     std::string_view right,
     std::string_view left,
     std::string_view top,
@@ -217,17 +198,17 @@ rhi_ptr<rhi_texture> renderer::create_texture_cube(
         m_rhi_deleter);
 }
 
-rhi_ptr<rhi_swapchain> renderer::create_swapchain(const rhi_swapchain_desc& desc)
+rhi_ptr<rhi_swapchain> render_device::create_swapchain(const rhi_swapchain_desc& desc)
 {
     return rhi_ptr<rhi_swapchain>(m_rhi->create_swapchain(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_fence> renderer::create_fence(bool signaled)
+rhi_ptr<rhi_fence> render_device::create_fence(bool signaled)
 {
     return rhi_ptr<rhi_fence>(m_rhi->create_fence(signaled), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_semaphore> renderer::create_semaphore()
+rhi_ptr<rhi_semaphore> render_device::create_semaphore()
 {
     return rhi_ptr<rhi_semaphore>(m_rhi->create_semaphore(), m_rhi_deleter);
 }

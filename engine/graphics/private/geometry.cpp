@@ -2,7 +2,7 @@
 
 namespace violet
 {
-geometry::geometry(renderer* renderer) : m_index_buffer(nullptr), m_renderer(renderer)
+geometry::geometry(render_device* device) : m_index_buffer(nullptr), m_device(device)
 {
 }
 
@@ -32,7 +32,7 @@ void geometry::add_attribute(
     desc.data = data;
     desc.size = size;
     desc.flags = flags;
-    m_vertex_buffers[name.data()] = m_renderer->create_buffer(desc);
+    m_vertex_buffers[name.data()] = m_device->create_buffer(desc);
 }
 
 void geometry::set_indices(
@@ -49,6 +49,6 @@ void geometry::set_indices(
     desc.size = size;
     desc.index.size = index_size;
     desc.flags = flags;
-    m_index_buffer = m_renderer->create_buffer(desc);
+    m_index_buffer = m_device->create_buffer(desc);
 }
 } // namespace violet

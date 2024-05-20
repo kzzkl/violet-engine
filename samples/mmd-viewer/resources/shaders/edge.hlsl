@@ -1,20 +1,15 @@
-#include "violet_mvp.hlsl"
+#include "violet_mesh.hlsl"
+#include "violet_camera.hlsl"
 
-ConstantBuffer<violet_object> object : register(b0, space0);
+ConstantBuffer<violet_mesh> mesh : register(b0, space0);
 
-cbuffer mmd_material : register(b0, space1)
+struct mmd_material
 {
-    float4 diffuse;
-    float3 specular;
-    float specular_strength;
     float4 edge_color;
-    float3 ambient;
     float edge_size;
-    uint toon_mode;
-    uint spa_mode;
 };
 
-
+ConstantBuffer<mmd_material> material : register(b0, space1);
 ConstantBuffer<violet_camera> camera : register(b0, space2);
 
 struct vs_in
@@ -29,20 +24,20 @@ struct vs_out
     float4 position : SV_POSITION;
 };
 
-vs_out vs_main(vs_in vin)
+vs_out vs_main(vs_in input)
 {
-    float4 position = mul(mul(float4(vin.position, 1.0f), object.transform_m), camera.transform_vp);
-    float3 normal = mul(mul(vin.normal, (float3x3)object.transform_m), (float3x3)camera.transform_v);
+    float4 position = mul(camera.view_projection, mul(mesh.model, float4(input.position, 1.0)));
+    float3 normal = mul((float3x3)camera.view, mul((float3x3)mesh.model, input.normal));
     float2 screen_normal = normalize(normal.xy);
 
-    position.xy += screen_normal * 0.003f * edge_size * vin.edge * position.w;
+    position.xy += screen_normal * 0.003f * material.edge_size * input.edge * position.w;
 
-    vs_out result;
-    result.position = position;
-    return result;
+    vs_out output;
+    output.position = position;
+    return output;
 }
 
-float4 ps_main(vs_out pin) : SV_TARGET
+float4 ps_main(vs_out input) : SV_TARGET
 {
-    return edge_color;
+    return material.edge_color;
 }

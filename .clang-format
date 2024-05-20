@@ -7,6 +7,7 @@ UseTab: Never
 
 AlignAfterOpenBracket: AlwaysBreak
 AlwaysBreakTemplateDeclarations: Yes
+BracedInitializerIndentWidth: 4
 PointerAlignment: Left
 AllowShortFunctionsOnASingleLine: InlineOnly
 IndentPPDirectives: AfterHash
@@ -26,3 +27,4 @@ LambdaBreakBeforeCall: true
 AllowShortLambdasOnASingleLine: false
 BraceWrapping:
   BeforeLambdaBody: true
+ContinuationIndentWidth: 4

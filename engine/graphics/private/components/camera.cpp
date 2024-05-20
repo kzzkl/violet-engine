@@ -1,9 +1,14 @@
 #include "components/camera.hpp"
 #include "common/hash.hpp"
+#include "graphics/render_device.hpp"
+#include <cassert>
 
 namespace violet
 {
-camera::camera(renderer* renderer)
+camera::camera(render_device* device)
+    : m_state(CAMERA_STATE_ENABLE),
+      m_priority(0.0f),
+      m_render_graph(nullptr)
 {
     m_perspective.fov = 45.0f;
     m_perspective.near_z = 0.1f;
@@ -16,7 +21,7 @@ camera::camera(renderer* renderer)
         m_perspective.near_z,
         m_perspective.far_z);
 
-    m_parameter = renderer->create_parameter(parameter_layout::camera);
+    m_parameter = device->create_parameter(engine_parameter_layout::camera);
 }
 
 camera::~camera()
@@ -66,6 +71,38 @@ void camera::resize(std::uint32_t width, std::uint32_t height)
     update_projection();
 }
 
+void camera::set_render_graph(render_graph* render_graph) noexcept
+{
+    m_render_graph = render_graph;
+    m_render_context = render_graph->create_context();
+    m_render_context->set_camera(m_parameter.get());
+}
+
+void camera::set_render_texture(std::string_view name, rhi_texture* texture)
+{
+    std::size_t index = m_render_graph->get_resource_index(name);
+    assert(m_render_graph->get_resource_type(index) == RDG_RESOURCE_TYPE_TEXTURE);
+    m_render_context->set_texture(index, texture);
+}
+
+void camera::set_render_texture(std::string_view name, rhi_swapchain* swapchain)
+{
+    std::size_t index = m_render_graph->get_resource_index(name);
+    assert(m_render_graph->get_resource_type(index) == RDG_RESOURCE_TYPE_TEXTURE);
+
+    auto iter = std::find_if(
+        m_swapchains.begin(),
+        m_swapchains.end(),
+        [index](auto& pair)
+        {
+            return pair.second == index;
+        });
+    if (iter != m_swapchains.end())
+        iter->first = swapchain;
+    else
+        m_swapchains.push_back({swapchain, index});
+}
+
 void camera::update_projection()
 {
     m_parameter_data.projection = matrix::perspective(
@@ -83,6 +120,6 @@ void camera::update_projection()
 
 void camera::update_parameter()
 {
-    m_parameter->set_uniform(0, &m_parameter_data, sizeof(camera_parameter), 0);
+    m_parameter->set_uniform(0, &m_parameter_data, sizeof(parameter_data), 0);
 }
 } // namespace violet

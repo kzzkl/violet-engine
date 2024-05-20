@@ -1,16 +1,16 @@
-#include "control/control_system.hpp"
-#include "window/window_system.hpp"
+#include "control/control_module.hpp"
+#include "window/window_module.hpp"
 
 namespace violet
 {
-control_system::control_system()
-    : engine_system("control"),
+control_module::control_module()
+    : engine_module("control"),
       m_mouse_position{},
       m_mouse_position_delta{}
 {
 }
 
-bool control_system::initialize(const dictionary& config)
+bool control_module::initialize(const dictionary& config)
 {
     on_tick().then(
         [this](float delta)
@@ -23,13 +23,13 @@ bool control_system::initialize(const dictionary& config)
     return true;
 }
 
-void control_system::shutdown()
+void control_module::shutdown()
 {
 }
 
-void control_system::tick(float delta)
+void control_module::tick(float delta)
 {
-    auto& window = get_system<window_system>();
+    auto& window = get_module<window_module>();
 
     bool mouse_hold = false;
     int mouse_whell = window.get_mouse().get_whell();
@@ -62,14 +62,14 @@ void control_system::tick(float delta)
         });
 }
 
-void control_system::update_orbit_control(
+void control_module::update_orbit_control(
     orbit_control& orbit_control,
     transform& transform,
     int mouse_whell)
 {
     static const float EPS = 0.00001f;
 
-    auto window_rect = get_system<window_system>().get_extent();
+    auto window_rect = get_module<window_module>().get_extent();
 
     orbit_control.theta +=
         -m_mouse_position_delta[1] * orbit_control.theta_speed / window_rect.height;

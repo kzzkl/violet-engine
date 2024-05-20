@@ -24,9 +24,7 @@ struct mmd_material
     float4 diffuse;
     float3 specular;
     float specular_strength;
-    float4 edge_color;
     float3 ambient;
-    float edge_size;
     uint toon_mode;
     uint spa_mode;
 };

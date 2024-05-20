@@ -8,52 +8,23 @@ namespace
 static const std::string sides[] = {"right", "left", "top", "bottom", "front", "back"};
 }
 
-class irradiance_pass : public render_pass
+class irradiance_pass : public rdg_render_pass
 {
 public:
-    irradiance_pass(renderer* renderer, setup_context& context) : render_pass(renderer, context)
+    irradiance_pass()
     {
-        m_environment_map = add_slot("environment map");
-        m_irradiance_map = add_slot("irradiance map");
+        m_irradiance_map = add_color("irradiance map", RHI_TEXTURE_LAYOUT_RENDER_TARGET);
 
-        rhi_parameter_layout* layout = renderer->add_parameter_layout(
-            "irradiance pass",
-            {
-                {RHI_PARAMETER_TYPE_UNIFORM_BUFFER, 8, RHI_PARAMETER_STAGE_FLAG_FRAGMENT},
-                {RHI_PARAMETER_TYPE_TEXTURE,        1, RHI_PARAMETER_STAGE_FLAG_FRAGMENT}
-        });
-        m_parameter = renderer->create_parameter(layout);
-
-        rhi_sampler_desc sampler_desc = {};
-        sampler_desc.min_filter = RHI_FILTER_LINEAR;
-        sampler_desc.mag_filter = RHI_FILTER_LINEAR;
-        sampler_desc.address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-        sampler_desc.address_mode_v = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-        sampler_desc.address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-        m_sampler = renderer->create_sampler(sampler_desc);
-
-        std::vector<render_subpass_reference> references;
-        for (const std::string& side : sides)
-        {
-            pass_slot* slot = add_slot(side, true);
-            slot->set_format(RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM);
-            slot->set_input_layout(RHI_IMAGE_LAYOUT_RENDER_TARGET);
-            references.push_back(
-                {slot, RHI_ATTACHMENT_REFERENCE_TYPE_COLOR, RHI_IMAGE_LAYOUT_RENDER_TARGET});
-        }
-        std::size_t subpass = add_subpass(references);
-
-        m_pipeline = add_pipeline(subpass);
-        m_pipeline->set_shader(
-            "pbr/shaders/irradiance_map.vert.spv",
-            "pbr/shaders/irradiance_map.frag.spv");
-        m_pipeline->set_parameter_layouts({layout});
-        m_pipeline->set_cull_mode(RHI_CULL_MODE_FRONT);
+        set_shader("pbr/shaders/irradiance_map.vert.spv", "pbr/shaders/irradiance_map.frag.spv");
+        set_cull_mode(RHI_CULL_MODE_FRONT);
+        
+        set_parameter_layout({parameter_layout::camera});
     }
 
-    virtual void execute(execute_context& context) override
+    virtual void execute(rhi_command* command, rdg_context* context) override
     {
-        rhi_resource_extent extent = get_extent();
+        rhi_texture_extent extent =
+            context->get_texture(m_irradiance_map->resource->get_index())->get_extent();
 
         struct irradiance_data
         {
@@ -62,9 +33,10 @@ public:
         };
         irradiance_data data = {extent.width, extent.height};
         m_parameter->set_uniform(0, &data, sizeof(irradiance_data), 0);
-        m_parameter->set_texture(1, m_environment_map->get_image(), m_sampler.get());
-
-        rhi_render_command* command = context.get_command();
+        m_parameter->set_texture(
+            1,
+            context->get_texture(m_environment_map->resource->get_index()),
+            m_sampler.get());
 
         rhi_scissor_rect scissor;
         scissor.min_x = 0;
@@ -82,24 +54,16 @@ public:
         viewport.max_depth = 1.0f;
         command->set_viewport(viewport);
 
-        command->begin(get_interface(), get_framebuffer());
-        command->set_render_pipeline(m_pipeline->get_interface());
+        command->set_render_pipeline(get_pipeline());
         command->set_render_parameter(0, m_parameter.get());
         command->draw(0, 6);
-        command->end();
     }
 
 private:
-    pass_slot* m_environment_map;
-    pass_slot* m_irradiance_map;
-
-    rhi_ptr<rhi_parameter> m_parameter;
-    rhi_ptr<rhi_sampler> m_sampler;
-
-    render_pipeline* m_pipeline;
+    rdg_pass_reference* m_irradiance_map;
 };
 
-preprocess_graph::preprocess_graph(renderer* renderer) : render_graph(renderer)
+preprocess_graph::preprocess_graph()
 {
     pass* irradiance = add_pass<irradiance_pass>();
 
@@ -117,18 +81,18 @@ preprocess_graph::preprocess_graph(renderer* renderer) : render_graph(renderer)
     compile();
 }
 
-void preprocess_graph::set_target(rhi_image* environment_map, rhi_image* irradiance_map)
+void preprocess_graph::set_target(rhi_texture* environment_map, rhi_texture* irradiance_map)
 {
     get_slot("environment map")->set_image(environment_map, false);
     get_slot("irradiance map")->set_image(irradiance_map, false);
 
     rhi_resource_extent extent = irradiance_map->get_extent();
-    rhi_image_desc irradiance_target_desc = {
+    rhi_texture_desc irradiance_target_desc = {
         extent.width,
         extent.height,
         RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM,
         RHI_SAMPLE_COUNT_1,
-        RHI_IMAGE_FLAG_RENDER_TARGET | RHI_IMAGE_FLAG_TRANSFER_SRC};
+        rhi_texture_FLAG_RENDER_TARGET | rhi_texture_FLAG_TRANSFER_SRC};
     for (std::size_t i = 0; i < 6; ++i)
     {
         m_irradiance_targets[i] = get_renderer()->create_image(irradiance_target_desc);
@@ -153,9 +117,9 @@ public:
         depth_buffer->set_format(RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT);
 
         std::size_t subpass = add_subpass({
-            {render_target, RHI_ATTACHMENT_REFERENCE_TYPE_COLOR, RHI_IMAGE_LAYOUT_RENDER_TARGET},
+            {render_target, RHI_ATTACHMENT_REFERENCE_TYPE_COLOR, rhi_texture_LAYOUT_RENDER_TARGET},
             {depth_buffer,
-             RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL,        RHI_IMAGE_LAYOUT_DEPTH_STENCIL}
+             RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL,        rhi_texture_LAYOUT_DEPTH_STENCIL}
         });
 
         m_pipeline = add_pipeline(subpass);

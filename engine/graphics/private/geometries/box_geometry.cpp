@@ -3,8 +3,8 @@
 
 namespace violet
 {
-box_geometry::box_geometry(renderer* renderer, float width, float height, float depth)
-    : geometry(renderer)
+box_geometry::box_geometry(render_device* device, float width, float height, float depth)
+    : geometry(device)
 {
 
     float half_width = width * 0.5f;

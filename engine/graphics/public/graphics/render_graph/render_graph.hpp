@@ -1,130 +1,89 @@
 #pragma once
 
-#include "graphics/render_graph/edge.hpp"
-#include "graphics/render_graph/material.hpp"
-#include "graphics/render_graph/pass.hpp"
-#include "graphics/render_graph/resource.hpp"
+#include "graphics/render_graph/rdg_edge.hpp"
+#include "graphics/render_graph/rdg_pass.hpp"
+#include "graphics/render_graph/rdg_resource.hpp"
 #include <map>
 #include <memory>
 
 namespace violet
 {
 template <typename T>
-concept resource_type =
-    std::is_same_v<T, texture> || std::is_same_v<T, buffer> || std::is_same_v<T, swapchain>;
+concept RDGResource = std::is_same_v<T, rdg_texture> || std::is_same_v<T, rdg_buffer>;
 
 template <typename T>
-concept pass_type = std::is_base_of_v<pass, T>;
+concept RDGPass = std::is_base_of_v<rdg_pass, T>;
 
-class pass_batch;
+class rdg_pass_batch;
 class render_graph
 {
 public:
-    render_graph(renderer* renderer) noexcept;
+    render_graph() noexcept;
     render_graph(const render_graph&) = delete;
     ~render_graph();
 
-    template <resource_type T, typename... Args>
-    T* add_resource(Args&&... args)
+    template <RDGResource T, typename... Args>
+    T* add_resource(std::string_view name, bool external, Args&&... args)
     {
         auto resource = std::make_unique<T>(std::forward<Args>(args)...);
+        resource->m_name = name;
+        resource->m_external = external;
+
         T* result = resource.get();
-
-        if constexpr (std::is_same_v<texture, T>)
-            m_textures.push_back(std::move(resource));
-        if constexpr (std::is_same_v<buffer, T>)
-            m_buffers.push_back(std::move(resource));
-        if constexpr (std::is_same_v<swapchain, T>)
-            m_swapchains.push_back(std::move(resource));
-
+        m_resources.push_back(std::move(resource));
         return result;
     }
 
-    template <resource_type T>
-    T* get_resource(std::string_view name)
-    {
-        if constexpr (std::is_same_v<texture, T>)
-            return find_resource(name, m_textures);
-        if constexpr (std::is_same_v<buffer, T>)
-            return find_resource(name, m_buffers);
-        if constexpr (std::is_same_v<swapchain, T>)
-            return find_resource(name, m_swapchains);
-
-        return nullptr;
-    }
-
-    template <pass_type T, typename... Args>
+    template <RDGPass T, typename... Args>
     T* add_pass(std::string_view name, Args&&... args)
     {
         auto pass = std::make_unique<T>(std::forward<Args>(args)...);
         pass->m_name = name;
 
         T* result = pass.get();
-
         m_passes.push_back(std::move(pass));
         return result;
     }
 
+    void add_edge(rdg_pass* src, rdg_pass* dst);
     void add_edge(
-        resource* resource,
-        pass* pass,
+        rdg_resource* resource,
+        rdg_pass* pass,
         std::string_view reference_name,
-        edge_operate operate = EDGE_OPERATE_DONT_CARE);
+        rdg_edge_operate operate = RDG_EDGE_OPERATE_DONT_CARE);
     void add_edge(
-        pass* src,
+        rdg_pass* src,
         std::string_view src_reference_name,
-        pass* dst,
+        rdg_pass* dst,
         std::string_view dst_reference_name,
-        edge_operate operate = EDGE_OPERATE_DONT_CARE);
+        rdg_edge_operate operate = RDG_EDGE_OPERATE_DONT_CARE);
 
-    void add_material_layout(std::string_view name, const std::vector<mesh_pass*>& passes);
-    material* add_material(std::string_view name, std::string_view layout_name);
-    material* get_material(std::string_view name) const;
-    void remove_material(std::string_view name);
+    void compile(render_device* device);
+    void execute(rhi_command* command, rdg_context* context);
 
-    void compile();
-    rhi_semaphore* execute();
+    std::unique_ptr<rdg_context> create_context();
+
+    std::size_t get_resource_index(std::string_view name) const;
+    rdg_resource_type get_resource_type(std::size_t index) const;
+
+    std::size_t get_pass_index(std::string_view name) const;
 
     render_graph& operator=(const render_graph&) = delete;
 
 private:
     void bind_resource();
     void dead_stripping();
-    std::vector<std::vector<pass*>> merge_pass();
+    std::vector<std::vector<rdg_pass*>> merge_pass();
 
-    template <typename T>
-    T* find_resource(std::string_view name, const std::vector<std::unique_ptr<T>>& resources) const
-    {
-        auto iter = std::find_if(
-            resources.cbegin(),
-            resources.cend(),
-            [name](const auto& resource)
-            {
-                return resource->get_name() == name;
-            });
+    std::vector<std::unique_ptr<rdg_resource>> m_resources;
+    std::vector<std::unique_ptr<rdg_pass>> m_passes;
+    std::vector<std::unique_ptr<rdg_edge>> m_edges;
 
-        return iter == resources.cend() ? nullptr : iter->get();
-    }
+    std::unordered_map<std::string, std::size_t> m_resource_indices;
+    std::unordered_map<std::string, std::size_t> m_pass_indices;
 
-    void switch_frame_resource();
-    rhi_semaphore* allocate_semaphore();
+    std::vector<std::unique_ptr<rdg_pass_batch>> m_batchs;
 
-    std::vector<std::unique_ptr<texture>> m_textures;
-    std::vector<std::unique_ptr<buffer>> m_buffers;
-    std::vector<std::unique_ptr<swapchain>> m_swapchains;
-
-    std::vector<std::unique_ptr<pass>> m_passes;
-    std::vector<std::unique_ptr<edge>> m_edges;
-
-    std::vector<std::unique_ptr<pass_batch>> m_batchs;
-
-    std::vector<std::vector<rhi_semaphore*>> m_used_semaphores;
-    std::vector<rhi_semaphore*> m_free_semaphores;
-    std::vector<rhi_ptr<rhi_semaphore>> m_semaphores;
-
-    std::unordered_map<std::string, std::unique_ptr<material_layout>> m_material_layouts;
-    std::unordered_map<std::string, std::unique_ptr<material>> m_materials;
-
-    renderer* m_renderer;
+    std::vector<std::vector<rhi_ptr<rhi_semaphore>>> m_semaphores;
 };
 } // namespace violet

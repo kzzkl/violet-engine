@@ -122,7 +122,7 @@ public:
     virtual void tick() override;
 
 protected:
-    friend class window_system;
+    friend class window_module;
     int m_x;
     int m_y;
     int m_whell;

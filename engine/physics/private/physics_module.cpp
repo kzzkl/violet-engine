@@ -1,4 +1,4 @@
-#include "physics/physics_system.hpp"
+#include "physics/physics_module.hpp"
 #include "components/rigidbody.hpp"
 #include "components/transform.hpp"
 #include "physics_plugin.hpp"
@@ -19,15 +19,15 @@ private:
     physics_context* m_context;
 };
 
-physics_system::physics_system() : engine_system("physics")
+physics_module::physics_module() : engine_module("physics")
 {
 }
 
-physics_system::~physics_system()
+physics_module::~physics_module()
 {
 }
 
-bool physics_system::initialize(const dictionary& config)
+bool physics_module::initialize(const dictionary& config)
 {
     m_plugin = std::make_unique<physics_plugin>();
     m_plugin->load(config["plugin"]);
@@ -47,11 +47,11 @@ bool physics_system::initialize(const dictionary& config)
     return true;
 }
 
-void physics_system::shutdown()
+void physics_module::shutdown()
 {
 }
 
-void physics_system::simulation(physics_world* world, bool immediately)
+void physics_module::simulation(physics_world* world, bool immediately)
 {
     if (world != nullptr && !immediately)
     {

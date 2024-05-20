@@ -369,8 +369,8 @@ struct rhi_rasterizer_desc
 
 enum rhi_primitive_topology
 {
-    RHI_PRIMITIVE_TOPOLOGY_LINE_LIST,
-    RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+    RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+    RHI_PRIMITIVE_TOPOLOGY_LINE_LIST
 };
 
 class rhi_shader
@@ -413,6 +413,9 @@ public:
 struct rhi_compute_pipeline_desc
 {
     rhi_shader* compute_shader;
+
+    rhi_parameter_desc* parameters;
+    std::size_t parameter_count;
 };
 
 class rhi_compute_pipeline
@@ -481,10 +484,10 @@ struct rhi_resource_region
     std::uint32_t layer_count;
 };
 
-class rhi_render_command
+class rhi_command
 {
 public:
-    virtual ~rhi_render_command() = default;
+    virtual ~rhi_command() = default;
 
     virtual void begin(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer) = 0;
     virtual void end() = 0;
@@ -620,9 +623,9 @@ public:
 
     virtual bool initialize(const rhi_desc& desc) = 0;
 
-    virtual rhi_render_command* allocate_command() = 0;
+    virtual rhi_command* allocate_command() = 0;
     virtual void execute(
-        rhi_render_command* const* commands,
+        rhi_command* const* commands,
         std::size_t command_count,
         rhi_semaphore* const* signal_semaphores,
         std::size_t signal_semaphore_count,

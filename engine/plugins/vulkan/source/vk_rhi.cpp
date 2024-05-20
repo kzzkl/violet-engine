@@ -35,13 +35,13 @@ bool vk_rhi::initialize(const rhi_desc& desc)
     return true;
 }
 
-rhi_render_command* vk_rhi::allocate_command()
+rhi_command* vk_rhi::allocate_command()
 {
     return m_context->get_graphics_queue()->allocate_command();
 }
 
 void vk_rhi::execute(
-    rhi_render_command* const* commands,
+    rhi_command* const* commands,
     std::size_t command_count,
     rhi_semaphore* const* signal_semaphores,
     std::size_t signal_semaphore_count,

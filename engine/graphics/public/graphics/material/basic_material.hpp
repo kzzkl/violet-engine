@@ -32,7 +32,7 @@ class basic_pipeline : public render_pipeline
 protected:
     basic_pipeline();
 
-    virtual void on_render(rhi_render_command* command) override;
+    virtual void on_render(rhi_command* command) override;
 
 private:
     std::unique_ptr<rhi_render_pipeline> m_interface;

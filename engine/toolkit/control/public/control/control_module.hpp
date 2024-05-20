@@ -2,14 +2,14 @@
 
 #include "components/orbit_control.hpp"
 #include "components/transform.hpp"
-#include "core/engine_system.hpp"
+#include "core/engine_module.hpp"
 
 namespace violet
 {
-class control_system : public engine_system
+class control_module : public engine_module
 {
 public:
-    control_system();
+    control_module();
 
     virtual bool initialize(const dictionary& config);
     virtual void shutdown();

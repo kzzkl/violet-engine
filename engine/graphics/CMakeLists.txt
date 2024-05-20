@@ -8,21 +8,21 @@ add_library(${PROJECT_NAME} STATIC
     # ./private/material/basic_material.cpp
     # ./private/pipeline/basic_pipeline.cpp
     # ./private/pipeline/debug_pipeline.cpp
-    # ./private/passes/skybox_pass.cpp
+    ./private/passes/skybox_pass.cpp
     # ./private/render_graph/compute_pass.cpp
     # ./private/render_graph/material.cpp
-    ./private/render_graph/edge.cpp
-    ./private/render_graph/material.cpp
-    ./private/render_graph/pass_batch.cpp
-    ./private/render_graph/pass.cpp
-    ./private/render_graph/render_context.cpp
+    ./private/render_graph/rdg_context.cpp
+    ./private/render_graph/rdg_edge.cpp
+    ./private/render_graph/rdg_pass_batch.cpp
+    ./private/render_graph/rdg_pass.cpp
+    ./private/render_graph/rdg_resource.cpp
     ./private/render_graph/render_graph.cpp
-    ./private/render_graph/resource.cpp
     # ./private/render_graph/render_pass.cpp
     # ./private/render_graph/render_pipeline.cpp
     ./private/geometry.cpp
-    ./private/graphics_system.cpp
-    ./private/renderer.cpp
+    ./private/graphics_module.cpp
+    ./private/material.cpp
+    ./private/render_device.cpp
     ./private/rhi_plugin.cpp)
 add_library(violet::graphics ALIAS ${PROJECT_NAME})
 

@@ -35,6 +35,12 @@ compile_shader_dxc(
 compile_shader_dxc(
     SHADER_FILES
     TARGET ${PROJECT_NAME}
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/edge.hlsl"
+    STAGES "vert" "frag"
+    INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
+compile_shader_dxc(
+    SHADER_FILES
+    TARGET ${PROJECT_NAME}
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/skinning.hlsl"
     STAGES "comp"
     INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")

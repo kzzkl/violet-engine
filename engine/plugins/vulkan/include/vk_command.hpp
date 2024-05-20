@@ -7,7 +7,7 @@
 
 namespace violet::vk
 {
-class vk_command : public rhi_render_command
+class vk_command : public rhi_command
 {
 public:
     vk_command(VkCommandBuffer command_buffer, vk_context* context) noexcept;
@@ -75,14 +75,14 @@ public:
     vk_command* allocate_command();
 
     void execute(
-        rhi_render_command* const* commands,
+        rhi_command* const* commands,
         std::size_t command_count,
         rhi_semaphore* const* signal_semaphores,
         std::size_t signal_semaphore_count,
         rhi_semaphore* const* wait_semaphores,
         std::size_t wait_semaphore_count,
         rhi_fence* fence);
-    void execute_sync(rhi_render_command* command);
+    void execute_sync(rhi_command* command);
 
     void begin_frame();
 

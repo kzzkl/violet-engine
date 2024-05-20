@@ -1,17 +1,17 @@
 #pragma once
 
-#include "core/engine_system.hpp"
+#include "core/engine_module.hpp"
 #include "physics/physics_context.hpp"
 #include "physics/physics_world.hpp"
 
 namespace violet
 {
 class physics_plugin;
-class physics_system : public engine_system
+class physics_module : public engine_module
 {
 public:
-    physics_system();
-    virtual ~physics_system();
+    physics_module();
+    virtual ~physics_module();
 
     virtual bool initialize(const dictionary& config) override;
     virtual void shutdown() override;

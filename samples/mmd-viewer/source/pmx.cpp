@@ -56,8 +56,7 @@ bool pmx::load_mesh(std::ifstream& fin)
     normal.resize(vertex_count);
     uv.resize(vertex_count);
     skin.resize(vertex_count);
-
-    std::vector<float> edge(vertex_count);
+    edge.resize(vertex_count);
 
     std::vector<std::vector<float4>> add_uv(vertex_count);
     for (auto& v : add_uv)

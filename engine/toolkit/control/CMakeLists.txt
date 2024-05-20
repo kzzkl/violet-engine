@@ -2,7 +2,7 @@ project(violet-control)
 
 add_library(${PROJECT_NAME} STATIC
     ./private/components/orbit_control.cpp
-    ./private/control_system.cpp)
+    ./private/control_module.cpp)
 add_library(violet::control ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}

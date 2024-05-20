@@ -338,7 +338,7 @@ vk_command* vk_graphics_queue::allocate_command()
 }
 
 void vk_graphics_queue::execute(
-    rhi_render_command* const* commands,
+    rhi_command* const* commands,
     std::size_t command_count,
     rhi_semaphore* const* signal_semaphores,
     std::size_t signal_semaphore_count,
@@ -380,7 +380,7 @@ void vk_graphics_queue::execute(
         fence == nullptr ? VK_NULL_HANDLE : static_cast<vk_fence*>(fence)->get_fence()));
 }
 
-void vk_graphics_queue::execute_sync(rhi_render_command* command)
+void vk_graphics_queue::execute_sync(rhi_command* command)
 {
     execute(&command, 1, nullptr, 0, nullptr, 0, m_fence.get());
     m_fence->wait();

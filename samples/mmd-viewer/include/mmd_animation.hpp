@@ -4,12 +4,13 @@
 #include "components/mmd_morph.hpp"
 #include "components/mmd_skeleton.hpp"
 #include "components/transform.hpp"
-#include "core/engine_system.hpp"
+#include "core/engine_module.hpp"
 #include "math/math.hpp"
+#include "mmd_render.hpp"
 
 namespace violet::sample
 {
-class mmd_animation : public engine_system
+class mmd_animation : public engine_module
 {
 public:
     mmd_animation();
@@ -18,6 +19,8 @@ public:
 
     void evaluate(float t, float weight = 1.0f);
     void update(bool after_physics);
+
+    void skinning();
 
 private:
     void evaluate_motion(mmd_skeleton& skeleton, mmd_animator& animator, float t, float weight);
@@ -63,5 +66,9 @@ private:
                 return lhs < rhs.frame;
             });
     }
+
+    rdg_pass* m_skin_pass;
+    std::unique_ptr<render_graph> m_skin_graph;
+    std::unique_ptr<rdg_context> m_skin_context;
 };
 } // namespace violet::sample

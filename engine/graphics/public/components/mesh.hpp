@@ -1,7 +1,7 @@
 #pragma once
 
 #include "graphics/geometry.hpp"
-#include "graphics/render_graph/material.hpp"
+#include "graphics/material.hpp"
 #include "math/math.hpp"
 #include <memory>
 #include <vector>
@@ -14,13 +14,20 @@ public:
     struct submesh
     {
         material* material;
-        std::vector<render_mesh> render_meshes;
+
+        std::size_t vertex_start;
+        std::size_t vertex_count;
+        std::size_t index_start;
+        std::size_t index_count;
+
+        std::vector<rhi_buffer**> vertex_buffers;
+        rhi_buffer* index_buffer;
     };
 
 public:
-    mesh(renderer* renderer);
+    mesh(render_device* device);
     mesh(const mesh&) = delete;
-    mesh(mesh&& other) = default;
+    mesh(mesh&&) = default;
     ~mesh();
 
     void set_geometry(geometry* geometry);
@@ -42,17 +49,24 @@ public:
 
     const std::vector<submesh>& get_submeshes() const noexcept { return m_submeshes; }
 
+    void set_skinned_vertex_buffer(std::string_view name, rhi_buffer* vertex_buffer);
+
     void set_model_matrix(const float4x4& m);
 
+    rhi_parameter* get_mesh_parameter() const noexcept { return m_parameter.get(); }
+
     mesh& operator=(const mesh&) = delete;
-    mesh& operator=(mesh&& other) = default;
+    mesh& operator=(mesh&&) = default;
 
 private:
+    rhi_buffer* get_vertex_buffer(std::string_view name);
+
     rhi_ptr<rhi_parameter> m_parameter;
 
     geometry* m_geometry;
     std::vector<submesh> m_submeshes;
 
-    renderer* m_renderer;
+    std::map<std::string, rhi_buffer*> m_skinned_vertex_buffer;
+    std::map<std::size_t, std::vector<rhi_buffer*>> m_sorted_vertex_buffer;
 };
 } // namespace violet

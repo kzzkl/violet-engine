@@ -34,15 +34,15 @@ private:
 template <typename T>
 using rhi_ptr = std::unique_ptr<T, rhi_deleter>;
 
-class renderer
+class render_device
 {
 public:
-    renderer(rhi* rhi);
-    ~renderer();
+    render_device(rhi* rhi);
+    ~render_device();
 
-    rhi_render_command* allocate_command();
+    rhi_command* allocate_command();
     void execute(
-        const std::vector<rhi_render_command*>& commands,
+        const std::vector<rhi_command*>& commands,
         const std::vector<rhi_semaphore*>& signal_semaphores,
         const std::vector<rhi_semaphore*>& wait_semaphores,
         rhi_fence* fence);
@@ -91,7 +91,50 @@ private:
     rhi_deleter m_rhi_deleter;
 };
 
-struct parameter_layout
+namespace detail
+{
+constexpr rhi_parameter_desc get_mesh_parameter_layout()
+{
+    rhi_parameter_desc desc = {};
+    desc.bindings[0] = {
+        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
+        .stage = RHI_PARAMETER_STAGE_FLAG_VERTEX | RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
+        .size = 64}; // model matrix
+    desc.binding_count = 1;
+
+    return desc;
+}
+
+constexpr rhi_parameter_desc get_camera_parameter_layout()
+{
+    rhi_parameter_desc desc = {};
+    desc.bindings[0] = {
+        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
+        .stage = RHI_PARAMETER_STAGE_FLAG_VERTEX | RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
+        .size = 208}; // matrix
+    desc.bindings[1] = {
+        .type = RHI_PARAMETER_TYPE_TEXTURE,
+        .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
+        .size = 1}; // skybox
+    desc.binding_count = 2;
+
+    return desc;
+}
+
+constexpr rhi_parameter_desc get_light_parameter_layout()
+{
+    rhi_parameter_desc desc = {};
+    desc.bindings[0] = {
+        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
+        .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
+        .size = 528}; // light data
+    desc.binding_count = 1;
+
+    return desc;
+}
+} // namespace detail
+
+struct engine_parameter_layout
 {
 private:
     static constexpr rhi_parameter_binding mesh_mvp = {
@@ -99,29 +142,14 @@ private:
         .stage = RHI_PARAMETER_STAGE_FLAG_VERTEX | RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
         .size = 64};
 
-    static constexpr rhi_parameter_binding camera_matrix = {
-        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-        .stage = RHI_PARAMETER_STAGE_FLAG_VERTEX | RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 208};
-
-    static constexpr rhi_parameter_binding camera_skybox = {
-        .type = RHI_PARAMETER_TYPE_TEXTURE,
-        .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 1};
-
     static constexpr rhi_parameter_binding light_data = {
         .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
         .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
         .size = 528};
 
 public:
-    static constexpr rhi_parameter_desc mesh = {.bindings = {mesh_mvp}, .binding_count = 1};
-
-    static constexpr rhi_parameter_desc camera = {
-        .bindings = {camera_matrix, camera_skybox},
-        .binding_count = 2
-    };
-
-    static constexpr rhi_parameter_desc light = {.bindings = {light_data}, .binding_count = 1};
+    static constexpr rhi_parameter_desc mesh = detail::get_mesh_parameter_layout();
+    static constexpr rhi_parameter_desc camera = detail::get_camera_parameter_layout();
+    static constexpr rhi_parameter_desc light = detail::get_light_parameter_layout();
 };
 } // namespace violet

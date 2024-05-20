@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/ecs/world.hpp"
-#include "core/engine_system.hpp"
+#include "core/engine_module.hpp"
 #include "core/timer.hpp"
 #include "task/task_executor.hpp"
 
@@ -14,8 +14,8 @@ public:
     engine_context(const engine_context&) = delete;
     ~engine_context();
 
-    void set_system(std::size_t index, engine_system* system);
-    engine_system* get_system(std::size_t index);
+    void set_module(std::size_t index, engine_module* module);
+    engine_module* get_module(std::size_t index);
 
     timer& get_timer() { return *m_timer; }
     world& get_world() { return *m_world; }
@@ -31,7 +31,7 @@ public:
     engine_context& operator=(const engine_context&) = delete;
 
 private:
-    std::vector<engine_system*> m_systems;
+    std::vector<engine_module*> m_modules;
 
     std::unique_ptr<timer> m_timer;
     std::unique_ptr<world> m_world;

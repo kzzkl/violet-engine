@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/engine_system.hpp"
+#include "core/engine_module.hpp"
 #include "math/rect.hpp"
 #include "task/task.hpp"
 #include "window/input.hpp"
@@ -8,15 +8,15 @@
 namespace violet
 {
 class window_impl;
-class window_system : public engine_system
+class window_module : public engine_module
 {
 public:
     using mouse_type = mouse;
     using keyboard_type = keyboard;
 
 public:
-    window_system();
-    virtual ~window_system();
+    window_module();
+    virtual ~window_module();
 
     virtual bool initialize(const dictionary& config) override;
     virtual void shutdown() override;

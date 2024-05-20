@@ -8,7 +8,7 @@ class sphere_geometry : public geometry
 {
 public:
     sphere_geometry(
-        renderer* renderer,
+        render_device* device,
         float radius = 0.5f,
         std::size_t slice = 30,
         std::size_t stack = 30);
