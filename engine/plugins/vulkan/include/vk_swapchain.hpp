@@ -3,6 +3,7 @@
 #include "vk_common.hpp"
 #include "vk_context.hpp"
 #include "vk_resource.hpp"
+#include "vk_sync.hpp"
 #include <memory>
 #include <vector>
 
@@ -19,20 +20,21 @@ public:
     virtual ~vk_swapchain_image();
 };
 
-class vk_swapchain
+class vk_swapchain : public rhi_swapchain
 {
 public:
-    vk_swapchain(
-        std::uint32_t width,
-        std::uint32_t height,
-        const std::vector<std::uint32_t>& queue_family_indices,
-        vk_context* context);
+    vk_swapchain(const rhi_swapchain_desc& desc, vk_context* context);
     vk_swapchain(const vk_swapchain&) = delete;
     ~vk_swapchain();
 
-    std::uint32_t acquire_next_image(VkSemaphore signal_semaphore);
+    virtual rhi_semaphore* acquire_texture() override;
 
-    void resize(std::uint32_t width, std::uint32_t height);
+    virtual void present(rhi_semaphore* const* wait_semaphores, std::size_t wait_semaphore_count)
+        override;
+
+    virtual void resize(std::uint32_t width, std::uint32_t height) override;
+
+    virtual rhi_texture* get_texture() override;
 
     vk_swapchain_image* get_current_image() const
     {
@@ -45,11 +47,13 @@ public:
 
 private:
     VkSwapchainKHR m_swapchain;
+    VkSurfaceKHR m_surface;
 
     std::vector<std::unique_ptr<vk_swapchain_image>> m_swapchain_images;
     std::uint32_t m_swapchain_image_index;
 
+    std::vector<std::unique_ptr<vk_semaphore>> m_available_semaphores;
+
     vk_context* m_context;
-    std::vector<std::uint32_t> m_queue_family_indices;
 };
 } // namespace violet::vk

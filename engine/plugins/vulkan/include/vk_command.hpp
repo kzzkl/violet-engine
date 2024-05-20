@@ -7,7 +7,7 @@
 
 namespace violet::vk
 {
-class vk_command : public rhi_render_command
+class vk_command : public rhi_command
 {
 public:
     vk_command(VkCommandBuffer command_buffer, vk_context* context) noexcept;
@@ -29,9 +29,9 @@ public:
     virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) override;
 
     virtual void set_vertex_buffers(
-        rhi_resource* const* vertex_buffers,
+        rhi_buffer* const* vertex_buffers,
         std::size_t vertex_buffer_count) override;
-    virtual void set_index_buffer(rhi_resource* index_buffer) override;
+    virtual void set_index_buffer(rhi_buffer* index_buffer) override;
 
     virtual void draw(std::size_t vertex_start, std::size_t vertex_count) override;
     virtual void draw_indexed(
@@ -41,13 +41,19 @@ public:
 
     virtual void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) override;
 
-    virtual void clear_render_target(rhi_resource* render_target, const float4& color) override;
-    virtual void clear_depth_stencil(
-        rhi_resource* depth_stencil,
-        bool clear_depth,
-        float depth,
-        bool clear_stencil,
-        std::uint8_t stencil) override;
+    virtual void set_pipeline_barrier(
+        rhi_pipeline_stage_flags src_stage,
+        rhi_pipeline_stage_flags dst_stage,
+        const rhi_buffer_barrier* const buffer_barriers,
+        std::size_t buffer_barrier_count,
+        const rhi_texture_barrier* const texture_barriers,
+        std::size_t texture_barrier_count) override;
+
+    virtual void copy_texture(
+        rhi_texture* src,
+        const rhi_resource_region& src_region,
+        rhi_texture* dst,
+        const rhi_resource_region& dst_region) override;
 
     void reset();
 
@@ -69,14 +75,14 @@ public:
     vk_command* allocate_command();
 
     void execute(
-        rhi_render_command* const* commands,
+        rhi_command* const* commands,
         std::size_t command_count,
         rhi_semaphore* const* signal_semaphores,
         std::size_t signal_semaphore_count,
         rhi_semaphore* const* wait_semaphores,
         std::size_t wait_semaphore_count,
         rhi_fence* fence);
-    void execute_sync(rhi_render_command* command);
+    void execute_sync(rhi_command* command);
 
     void begin_frame();
 

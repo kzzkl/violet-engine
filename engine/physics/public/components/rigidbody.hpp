@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/ecs/actor.hpp"
-#include "physics/physics_interface.hpp"
+#include "physics/physics_context.hpp"
 
 namespace violet
 {
@@ -17,7 +17,7 @@ class joint;
 class rigidbody
 {
 public:
-    rigidbody(pei_plugin* pei) noexcept;
+    rigidbody(physics_context* context) noexcept;
     rigidbody(const rigidbody&) = delete;
     rigidbody(rigidbody&& other) noexcept;
     ~rigidbody();
@@ -84,7 +84,7 @@ private:
     float4x4 m_offset_inverse;
 
     pei_rigidbody_desc m_desc;
-    pei_rigidbody* m_rigidbody;
+    pei_ptr<pei_rigidbody> m_rigidbody;
 
     std::vector<std::unique_ptr<joint>> m_joints;
     std::vector<joint*> m_slave_joints;
@@ -92,7 +92,7 @@ private:
     std::unique_ptr<rigidbody_reflector> m_reflector;
 
     pei_world* m_world;
-    pei_plugin* m_pei;
+    physics_context* m_context;
 };
 
 class joint
@@ -105,7 +105,7 @@ public:
         const float4& source_rotation,
         const float3& target_position,
         const float4& target_rotation,
-        pei_plugin* pei);
+        physics_context* context);
     joint(const joint&) = delete;
     ~joint();
 
@@ -116,7 +116,7 @@ public:
     void set_stiffness(std::size_t index, float stiffness);
     void set_damping(std::size_t index, float damping);
 
-    pei_joint* get_joint() const noexcept { return m_joint; }
+    pei_joint* get_joint() const noexcept { return m_joint.get(); }
 
     joint& operator=(const joint&) = delete;
 
@@ -125,7 +125,6 @@ private:
 
     rigidbody* m_source;
     component_ptr<rigidbody> m_target;
-    pei_joint* m_joint;
-    pei_plugin* m_pei;
+    pei_ptr<pei_joint> m_joint;
 };
 } // namespace violet

@@ -1,146 +1,198 @@
 #include "mmd_render.hpp"
-#include "graphics/pipeline/debug_pipeline.hpp"
+#include "graphics/passes/present_pass.hpp"
+// #include "graphics/pipeline/debug_pipeline.hpp"
 
 namespace violet::sample
 {
-class color_pipeline : public render_pipeline
+mmd_material::mmd_material(render_device* device, material_layout* layout)
+    : material(device, layout)
+{
+}
+
+void mmd_material::set_diffuse(const float4& diffuse)
+{
+    get_parameter(0)->set_uniform(0, &diffuse, sizeof(float4), 0);
+}
+
+void mmd_material::set_specular(float3 specular, float specular_strength)
+{
+    get_parameter(0)->set_uniform(0, &specular, sizeof(float3), 16);
+    get_parameter(0)->set_uniform(0, &specular_strength, sizeof(float), 28);
+}
+
+void mmd_material::set_ambient(const float3& ambient)
+{
+    get_parameter(0)->set_uniform(0, &ambient, sizeof(float3), 32);
+}
+
+void mmd_material::set_toon_mode(std::uint32_t toon_mode)
+{
+    get_parameter(0)->set_uniform(0, &toon_mode, sizeof(std::uint32_t), 44);
+}
+
+void mmd_material::set_spa_mode(std::uint32_t spa_mode)
+{
+    get_parameter(0)->set_uniform(0, &spa_mode, sizeof(std::uint32_t), 48);
+}
+
+void mmd_material::set_tex(rhi_texture* texture, rhi_sampler* sampler)
+{
+    get_parameter(0)->set_texture(1, texture, sampler);
+}
+
+void mmd_material::set_toon(rhi_texture* texture, rhi_sampler* sampler)
+{
+    get_parameter(0)->set_texture(2, texture, sampler);
+}
+
+void mmd_material::set_spa(rhi_texture* texture, rhi_sampler* sampler)
+{
+    get_parameter(0)->set_texture(3, texture, sampler);
+}
+
+void mmd_material::set_edge(const float4& edge_color, float edge_size)
+{
+    get_parameter(1)->set_uniform(0, &edge_color, sizeof(float4), 0);
+    get_parameter(1)->set_uniform(0, &edge_size, sizeof(float), 16);
+}
+
+mmd_edge_material::mmd_edge_material(render_device* device, material_layout* layout)
+    : material(device, layout)
+{
+}
+
+void mmd_edge_material::set_edge(const float4& edge_color, float edge_size)
+{
+    get_parameter(0)->set_uniform(0, &edge_color, sizeof(float4), 0);
+    get_parameter(0)->set_uniform(0, &edge_size, sizeof(float), 16);
+}
+
+class color_pass : public rdg_render_pass
 {
 public:
-    color_pipeline(std::string_view name, graphics_context* context)
-        : render_pipeline(name, context)
+    color_pass()
     {
+        m_color = add_color("color", RHI_TEXTURE_LAYOUT_RENDER_TARGET);
+        add_depth_stencil("depth", RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
+
         set_shader("mmd-viewer/shaders/color.vert.spv", "mmd-viewer/shaders/color.frag.spv");
-        set_vertex_attributes({
-            {"skinned position", RHI_RESOURCE_FORMAT_R32G32B32_FLOAT},
-            {"skinned normal",   RHI_RESOURCE_FORMAT_R32G32B32_FLOAT},
-            {"skinned uv",       RHI_RESOURCE_FORMAT_R32G32_FLOAT   }
-        });
         set_cull_mode(RHI_CULL_MODE_NONE);
 
-        rhi_parameter_layout* material_layout = context->add_parameter_layout(
-            "mmd material",
-            {
-                {RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-                 sizeof(mmd_material),
-                 RHI_PARAMETER_FLAG_FRAGMENT                                      }, // Uniform
-                {RHI_PARAMETER_TYPE_TEXTURE,        1, RHI_PARAMETER_FLAG_FRAGMENT}, // Tex
-                {RHI_PARAMETER_TYPE_TEXTURE,        1, RHI_PARAMETER_FLAG_FRAGMENT}, // Toon
-                {RHI_PARAMETER_TYPE_TEXTURE,        1, RHI_PARAMETER_FLAG_FRAGMENT}  // Spa
-        });
-
-        set_parameter_layouts({
-            {context->get_parameter_layout("violet mesh"),   RENDER_PIPELINE_PARAMETER_TYPE_MESH    },
-            {material_layout,                                RENDER_PIPELINE_PARAMETER_TYPE_MATERIAL},
-            {context->get_parameter_layout("violet camera"),
-             RENDER_PIPELINE_PARAMETER_TYPE_CAMERA                                                  }
-        });
+        set_parameter_layout(
+            {engine_parameter_layout::mesh,
+             mmd_parameter_layout::material,
+             engine_parameter_layout::camera,
+             engine_parameter_layout::light},
+            1);
     }
 
-private:
-    void render(rhi_render_command* command, render_data& data) override
+    virtual void execute(rhi_command* command, rdg_context* context) override
     {
-        for (render_mesh& mesh : data.meshes)
+        rhi_texture_extent extent =
+            context->get_texture(m_color->resource->get_index())->get_extent();
+
+        rhi_viewport viewport = {};
+        viewport.width = extent.width;
+        viewport.height = extent.height;
+        viewport.min_depth = 0.0f;
+        viewport.max_depth = 1.0f;
+        command->set_viewport(viewport);
+
+        rhi_scissor_rect scissor = {};
+        scissor.max_x = extent.width;
+        scissor.max_y = extent.height;
+        command->set_scissor(&scissor, 1);
+
+        command->set_render_pipeline(get_pipeline());
+
+        command->set_render_parameter(2, context->get_camera());
+        command->set_render_parameter(3, context->get_light());
+
+        for (const rdg_mesh& mesh : context->get_meshes(this))
         {
-            command->set_vertex_buffers(mesh.vertex_buffers.data(), mesh.vertex_buffers.size());
+            command->set_vertex_buffers(mesh.vertex_buffers, get_input_layout().size());
             command->set_index_buffer(mesh.index_buffer);
             command->set_render_parameter(0, mesh.transform);
             command->set_render_parameter(1, mesh.material);
-            command->set_render_parameter(2, data.camera_parameter);
             command->draw_indexed(mesh.index_start, mesh.index_count, mesh.vertex_start);
         }
     }
+
+private:
+    rdg_pass_reference* m_color;
 };
 
-class skinning_pipeline : public compute_pipeline
+class edge_pass : public rdg_render_pass
 {
 public:
-    skinning_pipeline(std::string_view name, graphics_context* context)
-        : compute_pipeline(name, context)
+    edge_pass()
     {
-        set_shader("mmd-viewer/shaders/skinning.comp.spv");
+        m_color = add_color("color", RHI_TEXTURE_LAYOUT_RENDER_TARGET);
+        add_depth_stencil("depth", RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
 
-        rhi_parameter_layout* skeleton_layout = get_context()->add_parameter_layout(
-            "mmd skeleton",
-            {
-                {RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-                 sizeof(mmd_skinning_bone) * 1024,
-                 RHI_PARAMETER_FLAG_COMPUTE}
-        });
+        set_shader("mmd-viewer/shaders/edge.vert.spv", "mmd-viewer/shaders/edge.frag.spv");
+        set_cull_mode(RHI_CULL_MODE_BACK);
 
-        rhi_parameter_layout* skinning_layout = get_context()->add_parameter_layout(
-            "mmd skinning",
-            {
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER,
-                 1,                                    RHI_PARAMETER_FLAG_COMPUTE}, // position input
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // normal input
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // uv input
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER,
-                 1,                                    RHI_PARAMETER_FLAG_COMPUTE}, // output position
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // output normal
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // output uv
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // bedf bone
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // sedf bone
-                {RHI_PARAMETER_TYPE_STORAGE_BUFFER, 1, RHI_PARAMETER_FLAG_COMPUTE}, // skin
-        });
+        set_parameter_layout(
+            {engine_parameter_layout::mesh,
+             mmd_parameter_layout::edge_material,
+             engine_parameter_layout::camera},
+            1);
+    }
 
-        set_parameter_layouts({skeleton_layout, skinning_layout});
+    virtual void execute(rhi_command* command, rdg_context* context) override
+    {
+        rhi_texture_extent extent =
+            context->get_texture(m_color->resource->get_index())->get_extent();
+
+        rhi_viewport viewport = {};
+        viewport.width = extent.width;
+        viewport.height = extent.height;
+        viewport.min_depth = 0.0f;
+        viewport.max_depth = 1.0f;
+        command->set_viewport(viewport);
+
+        rhi_scissor_rect scissor = {};
+        scissor.max_x = extent.width;
+        scissor.max_y = extent.height;
+        command->set_scissor(&scissor, 1);
+
+        command->set_render_pipeline(get_pipeline());
+
+        command->set_render_parameter(2, context->get_camera());
+        for (const rdg_mesh& mesh : context->get_meshes(this))
+        {
+            command->set_vertex_buffers(mesh.vertex_buffers, get_input_layout().size());
+            command->set_index_buffer(mesh.index_buffer);
+            command->set_render_parameter(0, mesh.transform);
+            command->set_render_parameter(1, mesh.material);
+            command->draw_indexed(mesh.index_start, mesh.index_count, mesh.vertex_start);
+        }
     }
 
 private:
-    void compute(rhi_render_command* command, const compute_data& data) override
-    {
-        for (auto& dispatch : data)
-        {
-            command->set_compute_parameter(0, dispatch.parameters[0]);
-            command->set_compute_parameter(1, dispatch.parameters[1]);
-            command->dispatch(dispatch.x, dispatch.y, dispatch.z);
-        }
-    }
+    rdg_pass_reference* m_color;
 };
 
-mmd_render_graph::mmd_render_graph(graphics_context* context) : render_graph(context)
+mmd_render_graph::mmd_render_graph(rhi_format render_target_format)
 {
-    render_pass* main_pass = add_render_pass("main");
+    rdg_texture* render_target = add_resource<rdg_texture>("render target", true);
+    render_target->set_format(render_target_format);
 
-    render_attachment* output_attachment = main_pass->add_attachment("output");
-    output_attachment->set_format(context->get_rhi()->get_back_buffer()->get_format());
-    output_attachment->set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
-    output_attachment->set_final_state(RHI_RESOURCE_STATE_PRESENT);
-    output_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
-    output_attachment->set_store_op(RHI_ATTACHMENT_STORE_OP_STORE);
+    rdg_texture* depth_buffer = add_resource<rdg_texture>("depth buffer", true);
+    depth_buffer->set_format(RHI_FORMAT_D24_UNORM_S8_UINT);
 
-    render_attachment* depth_attachment = main_pass->add_attachment("depth");
-    depth_attachment->set_format(RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT);
-    depth_attachment->set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
-    depth_attachment->set_final_state(RHI_RESOURCE_STATE_DEPTH_STENCIL);
-    depth_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
-    depth_attachment->set_store_op(RHI_ATTACHMENT_STORE_OP_DONT_CARE);
-    depth_attachment->set_stencil_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
-    depth_attachment->set_stencil_store_op(RHI_ATTACHMENT_STORE_OP_DONT_CARE);
+    color_pass* color = add_pass<color_pass>("color pass");
+    edge_pass* edge = add_pass<edge_pass>("edge pass");
+    present_pass* present = add_pass<present_pass>("present pass");
 
-    render_subpass* color_pass = main_pass->add_subpass("color");
-    color_pass->add_reference(
-        output_attachment,
-        RHI_ATTACHMENT_REFERENCE_TYPE_COLOR,
-        RHI_RESOURCE_STATE_RENDER_TARGET);
-    color_pass->add_reference(
-        depth_attachment,
-        RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL,
-        RHI_RESOURCE_STATE_DEPTH_STENCIL);
+    add_edge(render_target, color, "color", RDG_EDGE_OPERATE_CLEAR);
+    add_edge(depth_buffer, color, "depth", RDG_EDGE_OPERATE_CLEAR);
+    add_edge(color, "color", edge, "color", RDG_EDGE_OPERATE_STORE);
+    add_edge(color, "depth", edge, "depth", RDG_EDGE_OPERATE_STORE);
+    add_edge(edge, "color", present, "target", RDG_EDGE_OPERATE_STORE);
 
-    render_pipeline* mmd_pipeline = color_pass->add_pipeline<color_pipeline>("color pipeline");
-    material_layout* mmd_material_layout = add_material_layout("mmd material");
-    mmd_material_layout->add_pipeline(mmd_pipeline);
-    mmd_material_layout->add_field("mmd material", {0, 0, sizeof(mmd_material), 0});
-    mmd_material_layout->add_field("mmd tex", {0, 1, 1, 0});
-    mmd_material_layout->add_field("mmd toon", {0, 2, 1, 0});
-    mmd_material_layout->add_field("mmd spa", {0, 3, 1, 0});
-
-    render_pipeline* debug = color_pass->add_pipeline<debug_pipeline>("debug pipeline");
-    material_layout* debug_material_layout = add_material_layout("debug material");
-    debug_material_layout->add_pipeline(debug);
-
-    compute_pass* skinning_pass = add_compute_pass("skinning");
-    skinning_pass->add_pipeline<skinning_pipeline>("skinning pipeline");
+    m_material_layout =
+        std::make_unique<material_layout>(this, std::vector<rdg_pass*>{color, edge});
 }
 } // namespace violet::sample

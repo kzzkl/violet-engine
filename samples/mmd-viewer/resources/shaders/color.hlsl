@@ -1,5 +1,6 @@
 #include "violet_mesh.hlsl"
 #include "violet_camera.hlsl"
+#include "violet_light.hlsl"
 
 struct vs_in
 {
@@ -23,9 +24,7 @@ struct mmd_material
     float4 diffuse;
     float3 specular;
     float specular_strength;
-    float4 edge_color;
     float3 ambient;
-    float edge_size;
     uint toon_mode;
     uint spa_mode;
 };
@@ -48,6 +47,7 @@ Texture2D<float4> spa : register(t3, space1);
 SamplerState spa_sampler : register(s3, space1);
 
 ConstantBuffer<violet_camera> camera : register(b0, space2);
+ConstantBuffer<violet_light> light : register(b0, space3);
 
 vs_out vs_main(vs_in input)
 {
@@ -65,7 +65,8 @@ float4 ps_main(vs_out input) : SV_TARGET
     float4 color = tex.Sample(tex_sampler, input. uv);
     float3 world_normal = normalize(input.world_normal);
     float3 screen_normal = normalize(input.screen_normal);
-    color = color * material.diffuse;
+    float4 light_color = float4(light.directional_lights[0].color, 1.0);
+    color = color * material.diffuse * light_color;
 
     if (material.spa_mode != 0)
     {
@@ -76,18 +77,18 @@ float4 ps_main(vs_out input) : SV_TARGET
             color *= float4(spa_color.rgb, 1.0);
         }
         else if (material.spa_mode == 2)
-            color += float4(spa_color.rgb, 0.0f);
+            color += float4(spa_color.rgb, 0.0);
     }
 
-    float3 light_direction = normalize(float3(1.0, -1.0, 1.0));
+    float3 light_direction = normalize(light.directional_lights[0].direction);
     if (material.toon_mode != 0)
     {
-        float c = 0.0f;
-        c = max(0.0f, dot(world_normal, -light_direction));
+        float c = 0.0;
+        c = max(0.0, dot(world_normal, -light_direction));
         // c *= shadow_factor(i, pin.camera_depth, pin.shadow_position[i]);
-        c = 1.0f - c;
+        c = 1.0 - c;
 
-        color *= toon.Sample(toon_sampler, float2(0.0f, c));
+        color *= toon.Sample(toon_sampler, float2(0.0, c));
     }
 
     return color;

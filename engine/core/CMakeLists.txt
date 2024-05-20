@@ -2,7 +2,7 @@ project(violet-core)
 
 set(CORE_SOURCE
     ./private/engine_context.cpp
-    ./private/engine_system.cpp
+    ./private/engine_module.cpp
     ./private/engine.cpp
     ./private/plugin.cpp)
 
@@ -13,14 +13,9 @@ set(ECS_SOURCE
     ./private/ecs/view.cpp
     ./private/ecs/world.cpp)
 
-set(TASK_SOURCE
-    ./private/task/task_executor.cpp
-    ./private/task/task.cpp)
-
 add_library(${PROJECT_NAME} STATIC
     ${CORE_SOURCE}
-    ${ECS_SOURCE}
-    ${TASK_SOURCE})
+    ${ECS_SOURCE})
 add_library(violet::core ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
@@ -31,7 +26,8 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        violet::common)
+        violet::common
+        violet::task)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

@@ -4,8 +4,9 @@ option(VIOLET_PHYSICS_DEBUG_DRAW "Whether to show rigid body wireframe" OFF)
 
 add_library(${PROJECT_NAME} STATIC
     ./private/components/rigidbody.cpp
+    ./private/physics_context.cpp
+    ./private/physics_module.cpp
     ./private/physics_plugin.cpp
-    ./private/physics_system.cpp
     ./private/physics_world.cpp)
 add_library(violet::physics ALIAS ${PROJECT_NAME})
 
@@ -18,7 +19,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-    violet::core
+    violet::task
     violet::math
     violet::scene)
 

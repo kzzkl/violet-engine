@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/engine_system.hpp"
+#include "core/engine_module.hpp"
 #include <cassert>
 #include <memory>
 #include <type_traits>
@@ -9,7 +9,7 @@
 namespace violet
 {
 template <typename T>
-concept derived_from_system = std::is_base_of<engine_system, T>::value;
+concept derived_from_module = std::is_base_of<engine_module, T>::value;
 
 class engine
 {
@@ -21,37 +21,37 @@ public:
 
     void initialize(std::string_view config_path);
 
-    template <derived_from_system T, typename... Args>
+    template <derived_from_module T, typename... Args>
     void install(Args&&... args)
     {
-        install(engine_system_index::value<T>(), std::make_unique<T>(std::forward<Args>(args)...));
+        install(engine_module_index::value<T>(), std::make_unique<T>(std::forward<Args>(args)...));
     }
 
-    template <derived_from_system T>
+    template <derived_from_module T>
     void uninstall()
     {
-        uninstall(engine_system_index::value<T>());
+        uninstall(engine_module_index::value<T>());
     }
 
     void run();
     void exit();
 
     template <typename T>
-    T& get_system()
+    T& get_module()
     {
-        return *static_cast<T*>(get_system(engine_system_index::value<T>()));
+        return *static_cast<T*>(get_module(engine_module_index::value<T>()));
     }
 
     engine& operator=(const engine&) = delete;
 
 private:
-    void install(std::size_t index, std::unique_ptr<engine_system>&& system);
+    void install(std::size_t index, std::unique_ptr<engine_module>&& module);
     void uninstall(std::size_t index);
-    engine_system* get_system(std::size_t index);
+    engine_module* get_module(std::size_t index);
 
     std::map<std::string, dictionary> m_config;
 
-    std::vector<std::unique_ptr<engine_system>> m_systems;
+    std::vector<std::unique_ptr<engine_module>> m_modules;
 
     std::atomic<bool> m_exit;
 

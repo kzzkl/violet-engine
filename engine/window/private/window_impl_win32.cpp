@@ -266,8 +266,7 @@ window_impl_win32::window_impl_win32() noexcept
       m_window_height(0),
       m_window_resize(false),
       m_window_destroy(false),
-      m_hwnd(nullptr),
-      m_track_mouse_event_flag(false)
+      m_hwnd(nullptr)
 {
 }
 
@@ -300,7 +299,7 @@ bool window_impl_win32::initialize(
     RECT windowRect = {0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
     AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, false);
 
-    assert(title.size() < 128, "The title is too long");
+    assert(title.size() < 128);
     std::wstring wtitle = string_to_wstring(title);
 
     m_hwnd = CreateWindow(
@@ -326,16 +325,6 @@ bool window_impl_win32::initialize(
                  (windowRect.bottom - windowRect.top) * window_dpi / system_dpi) /
                 2;
     SetWindowPos(m_hwnd, 0, pos_x, pos_y, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
-
-    RAWINPUTDEVICE rid;
-    rid.usUsagePage = 0x1;
-    rid.usUsage = 0x2;
-    rid.dwFlags = RIDEV_INPUTSINK;
-    rid.hwndTarget = m_hwnd;
-    if (!RegisterRawInputDevices(&rid, 1, sizeof(RAWINPUTDEVICE)))
-    {
-        log::error("RegisterRawInputDevices failed");
-    }
 
     m_mouse_cursor_handles = {
         LoadCursor(NULL, IDC_ARROW),
@@ -384,18 +373,7 @@ void window_impl_win32::tick()
     m_window_width = m_window_height = 0;
     m_window_resize = false;
 
-    if (!m_track_mouse_event_flag)
-    {
-        TRACKMOUSEEVENT tme = {};
-        tme.cbSize = sizeof(TRACKMOUSEEVENT);
-        tme.hwndTrack = m_hwnd;
-        tme.dwFlags = TME_LEAVE;
-        TrackMouseEvent(&tme);
-
-        m_track_mouse_event_flag = true;
-    }
-
-    MSG msg;
+    MSG msg = {};
     while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
     {
         TranslateMessage(&msg);
@@ -507,7 +485,6 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
     case WM_MOUSEMOVE: {
         if (m_mouse_mode == MOUSE_MODE_ABSOLUTE)
             on_mouse_move(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
-        m_track_mouse_event_flag = false;
         break;
     }
     case WM_SETCURSOR: {
@@ -520,22 +497,6 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
     }
     case WM_SIZE: {
         on_window_resize(LOWORD(lparam), HIWORD(lparam));
-        break;
-    }
-    case WM_INPUT: {
-        if (m_mouse_mode == MOUSE_MODE_RELATIVE)
-        {
-            RAWINPUT raw;
-            UINT raw_size = sizeof(raw);
-            GetRawInputData(
-                reinterpret_cast<HRAWINPUT>(lparam),
-                RID_INPUT,
-                &raw,
-                &raw_size,
-                sizeof(RAWINPUTHEADER));
-            if (raw.header.dwType == RIM_TYPEMOUSE)
-                on_mouse_move(raw.data.mouse.lLastX, raw.data.mouse.lLastY);
-        }
         break;
     }
     case WM_LBUTTONDOWN: {

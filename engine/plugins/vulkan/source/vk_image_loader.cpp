@@ -214,6 +214,9 @@ bool vk_image_loader::load_other(std::string_view file)
     int width, height, channels;
 
     stbi_uc* pixels = stbi_load(file.data(), &width, &height, &channels, STBI_rgb_alpha);
+    if (pixels == nullptr)
+        return false;
+
     std::size_t image_size = width * height * 4;
 
     vk_image_data texture;

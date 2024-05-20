@@ -1,119 +1,98 @@
 #include "vk_pipeline.hpp"
+#include "spirv_reflect.h"
 #include "vk_render_pass.hpp"
 #include "vk_resource.hpp"
 #include "vk_util.hpp"
+#include <algorithm>
+#include <cassert>
 #include <fstream>
 
 namespace violet::vk
 {
 namespace
 {
-std::uint32_t get_vertex_attribute_stride(rhi_resource_format format) noexcept
+std::uint32_t get_vertex_attribute_stride(VkFormat format) noexcept
 {
     switch (format)
     {
-    case RHI_RESOURCE_FORMAT_R8_UNORM:
-    case RHI_RESOURCE_FORMAT_R8_SNORM:
-    case RHI_RESOURCE_FORMAT_R8_UINT:
-    case RHI_RESOURCE_FORMAT_R8_SINT:
+    case VK_FORMAT_R8_UNORM:
+    case VK_FORMAT_R8_SNORM:
+    case VK_FORMAT_R8_UINT:
+    case VK_FORMAT_R8_SINT:
         return 1;
-    case RHI_RESOURCE_FORMAT_R8G8_UNORM:
-    case RHI_RESOURCE_FORMAT_R8G8_SNORM:
-    case RHI_RESOURCE_FORMAT_R8G8_UINT:
-    case RHI_RESOURCE_FORMAT_R8G8_SINT:
+    case VK_FORMAT_R8G8_UNORM:
+    case VK_FORMAT_R8G8_SNORM:
+    case VK_FORMAT_R8G8_UINT:
+    case VK_FORMAT_R8G8_SINT:
         return 2;
-    case RHI_RESOURCE_FORMAT_R8G8B8_UNORM:
-    case RHI_RESOURCE_FORMAT_R8G8B8_SNORM:
-    case RHI_RESOURCE_FORMAT_R8G8B8_UINT:
-    case RHI_RESOURCE_FORMAT_R8G8B8_SINT:
+    case VK_FORMAT_R8G8B8_UNORM:
+    case VK_FORMAT_R8G8B8_SNORM:
+    case VK_FORMAT_R8G8B8_UINT:
+    case VK_FORMAT_R8G8B8_SINT:
         return 3;
-    case RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM:
-    case RHI_RESOURCE_FORMAT_R8G8B8A8_SNORM:
-    case RHI_RESOURCE_FORMAT_R8G8B8A8_UINT:
-    case RHI_RESOURCE_FORMAT_R8G8B8A8_SINT:
+    case VK_FORMAT_R8G8B8A8_UNORM:
+    case VK_FORMAT_R8G8B8A8_SNORM:
+    case VK_FORMAT_R8G8B8A8_UINT:
+    case VK_FORMAT_R8G8B8A8_SINT:
         return 4;
-    case RHI_RESOURCE_FORMAT_R32_UINT:
-    case RHI_RESOURCE_FORMAT_R32_SINT:
-    case RHI_RESOURCE_FORMAT_R32_FLOAT:
+    case VK_FORMAT_R32_UINT:
+    case VK_FORMAT_R32_SINT:
+    case VK_FORMAT_R32_SFLOAT:
         return 4;
-    case RHI_RESOURCE_FORMAT_R32G32_UINT:
-    case RHI_RESOURCE_FORMAT_R32G32_SINT:
-    case RHI_RESOURCE_FORMAT_R32G32_FLOAT:
+    case VK_FORMAT_R32G32_UINT:
+    case VK_FORMAT_R32G32_SINT:
+    case VK_FORMAT_R32G32_SFLOAT:
         return 8;
-    case RHI_RESOURCE_FORMAT_R32G32B32_UINT:
-    case RHI_RESOURCE_FORMAT_R32G32B32_SINT:
-    case RHI_RESOURCE_FORMAT_R32G32B32_FLOAT:
+    case VK_FORMAT_R32G32B32_UINT:
+    case VK_FORMAT_R32G32B32_SINT:
+    case VK_FORMAT_R32G32B32_SFLOAT:
         return 12;
-    case RHI_RESOURCE_FORMAT_R32G32B32A32_UINT:
-    case RHI_RESOURCE_FORMAT_R32G32B32A32_SINT:
-    case RHI_RESOURCE_FORMAT_R32G32B32A32_FLOAT:
+    case VK_FORMAT_R32G32B32A32_UINT:
+    case VK_FORMAT_R32G32B32A32_SINT:
+    case VK_FORMAT_R32G32B32A32_SFLOAT:
         return 16;
     default:
         return 0;
     }
 }
-
-VkShaderModule load_shader(std::string_view path, VkDevice device)
-{
-    std::ifstream fin(path.data(), std::ios::binary);
-    if (!fin.is_open())
-        throw vk_exception("Failed to open file!");
-
-    fin.seekg(0, std::ios::end);
-    std::size_t buffer_size = fin.tellg();
-
-    std::vector<char> buffer(buffer_size);
-    fin.seekg(0);
-    fin.read(buffer.data(), buffer_size);
-    fin.close();
-
-    VkShaderModuleCreateInfo shader_module_info = {};
-    shader_module_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    shader_module_info.pCode = reinterpret_cast<std::uint32_t*>(buffer.data());
-    shader_module_info.codeSize = buffer.size();
-
-    VkShaderModule result = VK_NULL_HANDLE;
-    vk_check(vkCreateShaderModule(device, &shader_module_info, nullptr, &result));
-    return result;
-}
 } // namespace
 
-vk_parameter_layout::vk_parameter_layout(const rhi_parameter_layout_desc& desc, vk_context* context)
+vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_context* context)
     : m_layout(VK_NULL_HANDLE),
       m_context(context)
 {
     std::vector<VkDescriptorSetLayoutBinding> bindings;
 
-    m_parameter_infos.resize(desc.parameter_count);
+    m_parameter_bindings.resize(desc.binding_count);
     std::size_t uniform_buffer_count = 0;
     std::size_t storage_buffer_count = 0;
     std::size_t image_count = 0;
 
-    for (std::size_t i = 0; i < desc.parameter_count; ++i)
+    for (std::size_t i = 0; i < desc.binding_count; ++i)
     {
         VkDescriptorSetLayoutBinding binding = {};
         binding.binding = static_cast<std::uint32_t>(i);
-        if (desc.parameters[i].flags & RHI_PARAMETER_FLAG_VERTEX)
+        if (desc.bindings[i].stage & RHI_PARAMETER_STAGE_FLAG_VERTEX)
             binding.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
-        if (desc.parameters[i].flags & RHI_PARAMETER_FLAG_FRAGMENT)
+        if (desc.bindings[i].stage & RHI_PARAMETER_STAGE_FLAG_FRAGMENT)
             binding.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
-        if (desc.parameters[i].flags & RHI_PARAMETER_FLAG_COMPUTE)
+        if (desc.bindings[i].stage & RHI_PARAMETER_STAGE_FLAG_COMPUTE)
             binding.stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
 
-        switch (desc.parameters[i].type)
+        switch (desc.bindings[i].type)
         {
         case RHI_PARAMETER_TYPE_UNIFORM_BUFFER: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             binding.descriptorCount = 1;
             binding.pImmutableSamplers = nullptr;
 
-            m_parameter_infos[i].index = uniform_buffer_count;
-            m_parameter_infos[i].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            m_parameter_bindings[i].index = uniform_buffer_count;
+            m_parameter_bindings[i].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
             VkDeviceSize uniform_alignment =
                 m_context->get_physical_device_properties().limits.minUniformBufferOffsetAlignment;
-            m_parameter_infos[i].uniform_buffer.size =
-                (desc.parameters[i].size + uniform_alignment - 1) / uniform_alignment *
+            m_parameter_bindings[i].uniform_buffer.size =
+                (desc.bindings[i].size + uniform_alignment - 1) / uniform_alignment *
                 uniform_alignment;
 
             ++uniform_buffer_count;
@@ -124,8 +103,8 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_layout_desc& desc, 
             binding.descriptorCount = 1;
             binding.pImmutableSamplers = nullptr;
 
-            m_parameter_infos[i].index = storage_buffer_count;
-            m_parameter_infos[i].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            m_parameter_bindings[i].index = storage_buffer_count;
+            m_parameter_bindings[i].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
             ++storage_buffer_count;
             break;
@@ -135,8 +114,8 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_layout_desc& desc, 
             binding.descriptorCount = 1;
             binding.pImmutableSamplers = nullptr;
 
-            m_parameter_infos[i].index = image_count;
-            m_parameter_infos[i].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            m_parameter_bindings[i].index = image_count;
+            m_parameter_bindings[i].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
             ++image_count;
             break;
@@ -165,18 +144,50 @@ vk_parameter_layout::~vk_parameter_layout()
     vkDestroyDescriptorSetLayout(m_context->get_device(), m_layout, nullptr);
 }
 
-vk_parameter::vk_parameter(vk_parameter_layout* layout, vk_context* context)
-    : m_layout(layout),
-      m_context(context)
+vk_layout_manager::vk_layout_manager(vk_context* context) : m_context(context)
 {
-    auto& parameter_infos = m_layout->get_parameter_infos();
-    for (auto& parameter_info : parameter_infos)
+}
+
+vk_parameter_layout* vk_layout_manager::get_parameter_layout(const rhi_parameter_desc& desc)
+{
+    std::size_t hash = get_hash(desc);
+    auto iter = m_parameter_layouts.find(hash);
+    if (iter != m_parameter_layouts.end())
+        return iter->second.get();
+
+    auto layout = std::make_unique<vk_parameter_layout>(desc, m_context);
+    vk_parameter_layout* result = layout.get();
+    m_parameter_layouts[hash] = std::move(layout);
+    return result;
+}
+
+vk_pipeline_layout* vk_layout_manager::get_pipeline_layout(
+    const std::vector<rhi_parameter_desc>& desc)
+{
+    return nullptr;
+}
+
+std::size_t vk_layout_manager::get_hash(const rhi_parameter_desc& desc)
+{
+    std::size_t hash = 0;
+    for (std::size_t i = 0; i < desc.binding_count; ++i)
+        vk_util::hash_combine(hash, vk_util::hash(desc.bindings[i].type, desc.bindings[i].stage));
+
+    return hash;
+}
+
+vk_parameter::vk_parameter(const rhi_parameter_desc& desc, vk_context* context) : m_context(context)
+{
+    m_layout = m_context->get_layout_manager()->get_parameter_layout(desc);
+
+    auto& parameter_bindings = m_layout->get_parameter_bindings();
+    for (auto& parameter_binding : parameter_bindings)
     {
-        if (parameter_info.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+        if (parameter_binding.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
         {
             auto uniform_buffer = std::make_unique<vk_uniform_buffer>(
                 nullptr,
-                parameter_info.uniform_buffer.size * m_context->get_frame_resource_count(),
+                parameter_binding.uniform_buffer.size * m_context->get_frame_resource_count(),
                 m_context);
 
             m_uniform_buffers.push_back(std::move(uniform_buffer));
@@ -184,25 +195,25 @@ vk_parameter::vk_parameter(vk_parameter_layout* layout, vk_context* context)
     }
     m_frame_resources.resize(m_context->get_frame_resource_count());
     for (auto& frame_resource : m_frame_resources)
-        frame_resource.descriptor_update_count.resize(parameter_infos.size());
+        frame_resource.descriptor_update_count.resize(parameter_bindings.size());
 
     for (std::size_t i = 0; i < m_frame_resources.size(); ++i)
     {
         m_frame_resources[i].descriptor_set =
-            m_context->allocate_descriptor_set(layout->get_layout());
+            m_context->allocate_descriptor_set(m_layout->get_layout());
 
         std::vector<VkWriteDescriptorSet> descriptor_write;
         std::vector<VkDescriptorBufferInfo> buffer_infos;
-        buffer_infos.reserve(parameter_infos.size());
+        buffer_infos.reserve(parameter_bindings.size());
 
-        for (std::size_t j = 0; j < parameter_infos.size(); ++j)
+        for (std::size_t j = 0; j < parameter_bindings.size(); ++j)
         {
-            if (parameter_infos[j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+            if (parameter_bindings[j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
             {
                 VkDescriptorBufferInfo info = {};
-                info.buffer = m_uniform_buffers[parameter_infos[j].index]->get_buffer_handle();
-                info.offset = parameter_infos[j].uniform_buffer.size * i;
-                info.range = parameter_infos[j].uniform_buffer.size;
+                info.buffer = m_uniform_buffers[parameter_bindings[j].index]->get_buffer_handle();
+                info.offset = parameter_bindings[j].uniform_buffer.size * i;
+                info.range = parameter_bindings[j].uniform_buffer.size;
                 buffer_infos.push_back(info);
 
                 VkWriteDescriptorSet write = {};
@@ -248,19 +259,19 @@ void vk_parameter::set_uniform(
 
     std::size_t current_index = m_context->get_frame_resource_index();
 
-    auto& parameter_info = m_layout->get_parameter_infos()[index];
-    assert(parameter_info.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    auto& parameter_binding = m_layout->get_parameter_bindings()[index];
+    assert(parameter_binding.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-    void* buffer = m_uniform_buffers[parameter_info.index]->get_buffer();
+    void* buffer = m_uniform_buffers[parameter_binding.index]->get_buffer();
     void* target = static_cast<std::uint8_t*>(buffer) + offset +
-                   parameter_info.uniform_buffer.size * current_index;
+                   parameter_binding.uniform_buffer.size * current_index;
 
     std::memcpy(target, data, size);
 
     mark_dirty(index);
 }
 
-void vk_parameter::set_texture(std::size_t index, rhi_resource* texture, rhi_sampler* sampler)
+void vk_parameter::set_texture(std::size_t index, rhi_texture* texture, rhi_sampler* sampler)
 {
     sync();
 
@@ -287,7 +298,7 @@ void vk_parameter::set_texture(std::size_t index, rhi_resource* texture, rhi_sam
     mark_dirty(index);
 }
 
-void vk_parameter::set_storage(std::size_t index, rhi_resource* storage_buffer)
+void vk_parameter::set_storage(std::size_t index, rhi_buffer* storage_buffer)
 {
     sync();
 
@@ -343,11 +354,11 @@ void vk_parameter::sync()
         current_frame_resource.descriptor_update_count[i] =
             previous_frame_resource.descriptor_update_count[i];
 
-        auto& parameter_info = m_layout->get_parameter_infos()[i];
-        if (parameter_info.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+        auto& parameter_binding = m_layout->get_parameter_bindings()[i];
+        if (parameter_binding.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
         {
-            void* buffer = m_uniform_buffers[parameter_info.index]->get_buffer();
-            std::size_t size = parameter_info.uniform_buffer.size;
+            void* buffer = m_uniform_buffers[parameter_binding.index]->get_buffer();
+            std::size_t size = parameter_binding.uniform_buffer.size;
 
             void* source = static_cast<std::uint8_t*>(buffer) + previous_index * size;
             void* target = static_cast<std::uint8_t*>(buffer) + current_index * size;
@@ -355,8 +366,8 @@ void vk_parameter::sync()
             std::memcpy(target, source, size);
         }
         else if (
-            parameter_info.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
-            parameter_info.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+            parameter_binding.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
+            parameter_binding.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
         {
             VkCopyDescriptorSet copy = {};
             copy.sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
@@ -396,6 +407,83 @@ void vk_parameter::mark_dirty(std::size_t descriptor_index)
     current_frame_resource.update_count = previous_frame_resource.update_count + 1;
 }
 
+vk_shader::vk_shader(const char* path, VkDevice device) : m_module(VK_NULL_HANDLE), m_device(device)
+{
+    std::ifstream fin(path, std::ios::binary);
+    if (!fin.is_open())
+        throw vk_exception("Failed to open file!");
+
+    fin.seekg(0, std::ios::end);
+    std::size_t spirv_size = fin.tellg();
+
+    std::vector<char> spirv(spirv_size);
+    fin.seekg(0);
+    fin.read(spirv.data(), spirv_size);
+    fin.close();
+
+    VkShaderModuleCreateInfo shader_module_info = {};
+    shader_module_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    shader_module_info.pCode = reinterpret_cast<std::uint32_t*>(spirv.data());
+    shader_module_info.codeSize = spirv.size();
+
+    vk_check(vkCreateShaderModule(device, &shader_module_info, nullptr, &m_module));
+
+    spv_reflect::ShaderModule module(spirv.size(), spirv.data());
+    assert(module.GetResult() == SPV_REFLECT_RESULT_SUCCESS);
+
+    std::uint32_t input_variable_count = 0;
+    module.EnumerateInputVariables(&input_variable_count, nullptr);
+    std::vector<SpvReflectInterfaceVariable*> input_variables(input_variable_count);
+    module.EnumerateInputVariables(&input_variable_count, input_variables.data());
+
+    for (auto input_variable : input_variables)
+    {
+        if (input_variable->decoration_flags & SPV_REFLECT_DECORATION_BUILT_IN)
+            continue;
+
+        input input;
+        input.name = input_variable->name;
+        input.name = input.name.substr(input.name.find_last_of('.') + 1);
+        std::transform(
+            input.name.begin(),
+            input.name.end(),
+            input.name.begin(),
+            [](unsigned char c)
+            {
+                return std::tolower(c);
+            });
+
+        input.location = input_variable->location;
+        input.format = static_cast<VkFormat>(input_variable->format);
+        m_inputs.push_back(input);
+    }
+}
+
+vk_shader::~vk_shader()
+{
+    vkDestroyShaderModule(m_device, m_module, nullptr);
+}
+
+const char* vk_shader::get_input_name(std::size_t index)
+{
+    return m_inputs[index].name.c_str();
+}
+
+std::size_t vk_shader::get_input_location(std::size_t index)
+{
+    return m_inputs[index].location;
+}
+
+rhi_format vk_shader::get_input_format(std::size_t index)
+{
+    return vk_util::map_format(m_inputs[index].format);
+}
+
+std::size_t vk_shader::get_input_count() const
+{
+    return m_inputs.size();
+}
+
 vk_render_pipeline::vk_render_pipeline(
     const rhi_render_pipeline_desc& desc,
     VkExtent2D extent,
@@ -404,16 +492,19 @@ vk_render_pipeline::vk_render_pipeline(
       m_pipeline_layout(VK_NULL_HANDLE),
       m_context(context)
 {
+    vk_shader* vertex_shader = static_cast<vk_shader*>(desc.vertex_shader);
+    vk_shader* fragment_shader = static_cast<vk_shader*>(desc.fragment_shader);
+
     VkPipelineShaderStageCreateInfo vert_shader_stage_info = {};
     vert_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vert_shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vert_shader_stage_info.module = load_shader(desc.vertex_shader, m_context->get_device());
+    vert_shader_stage_info.module = vertex_shader->get_module();
     vert_shader_stage_info.pName = "vs_main";
 
     VkPipelineShaderStageCreateInfo frag_shader_stage_info = {};
     frag_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     frag_shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    frag_shader_stage_info.module = load_shader(desc.fragment_shader, m_context->get_device());
+    frag_shader_stage_info.module = fragment_shader->get_module();
     frag_shader_stage_info.pName = "ps_main";
 
     VkPipelineShaderStageCreateInfo shader_stage_infos[] = {
@@ -422,18 +513,19 @@ vk_render_pipeline::vk_render_pipeline(
 
     std::vector<VkVertexInputBindingDescription> binding_descriptions;
     std::vector<VkVertexInputAttributeDescription> attribute_descriptions;
-    for (std::size_t i = 0; i < desc.vertex_attribute_count; ++i)
+    auto& vertex_attributes = vertex_shader->get_inputs();
+    for (std::size_t i = 0; i < vertex_attributes.size(); ++i)
     {
         VkVertexInputBindingDescription binding = {};
         binding.binding = static_cast<std::uint32_t>(i);
-        binding.stride = get_vertex_attribute_stride(desc.vertex_attributes[i].format);
+        binding.stride = get_vertex_attribute_stride(vertex_attributes[i].format);
         binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         binding_descriptions.push_back(binding);
 
         VkVertexInputAttributeDescription attribute = {};
         attribute.binding = binding.binding;
-        attribute.format = vk_util::map_format(desc.vertex_attributes[i].format);
-        attribute.location = static_cast<std::uint32_t>(i);
+        attribute.format = vertex_attributes[i].format;
+        attribute.location = vertex_attributes[i].location;
         attribute_descriptions.push_back(attribute);
     }
 
@@ -486,7 +578,7 @@ vk_render_pipeline::vk_render_pipeline(
     rasterization_state_info.rasterizerDiscardEnable = VK_FALSE;
     rasterization_state_info.polygonMode = VK_POLYGON_MODE_FILL;
     rasterization_state_info.lineWidth = 1.0f;
-    rasterization_state_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterization_state_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterization_state_info.depthBiasEnable = VK_FALSE;
     rasterization_state_info.depthBiasConstantFactor = 0.0f;
     rasterization_state_info.depthBiasClamp = 0.0f;
@@ -524,27 +616,33 @@ vk_render_pipeline::vk_render_pipeline(
     depth_stencil_state_info.front = {};
     depth_stencil_state_info.back = {};
 
-    VkPipelineColorBlendAttachmentState color_blend_attachment = {};
-    color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                                            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    color_blend_attachment.blendEnable = VK_FALSE;
+    std::vector<VkPipelineColorBlendAttachmentState> color_blend_attachments(
+        desc.blend.attachment_count);
+    for (std::size_t i = 0; i < desc.blend.attachment_count; ++i)
+    {
+        color_blend_attachments[i].colorWriteMask =
+            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+            VK_COLOR_COMPONENT_A_BIT;
+        color_blend_attachments[i].blendEnable = desc.blend.attachments[i].enable;
+    }
 
     VkPipelineColorBlendStateCreateInfo color_blend_info = {};
     color_blend_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     color_blend_info.logicOpEnable = VK_FALSE;
     color_blend_info.logicOp = VK_LOGIC_OP_COPY;
-    color_blend_info.attachmentCount = 1;
-    color_blend_info.pAttachments = &color_blend_attachment;
+    color_blend_info.pAttachments = color_blend_attachments.data();
+    color_blend_info.attachmentCount = static_cast<std::uint32_t>(color_blend_attachments.size());
     color_blend_info.blendConstants[0] = 0.0f;
     color_blend_info.blendConstants[1] = 0.0f;
     color_blend_info.blendConstants[2] = 0.0f;
     color_blend_info.blendConstants[3] = 0.0f;
 
+    vk_layout_manager* layout_manager = m_context->get_layout_manager();
     std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
     for (std::size_t i = 0; i < desc.parameter_count; ++i)
     {
-        descriptor_set_layouts.push_back(
-            static_cast<vk_parameter_layout*>(desc.parameters[i])->get_layout());
+        vk_parameter_layout* layout = layout_manager->get_parameter_layout(desc.parameters[i]);
+        descriptor_set_layouts.push_back(layout->get_layout());
     }
 
     VkPipelineLayoutCreateInfo layout_info = {};
@@ -589,9 +687,6 @@ vk_render_pipeline::vk_render_pipeline(
         &pipeline_info,
         nullptr,
         &m_pipeline));
-
-    vkDestroyShaderModule(m_context->get_device(), vert_shader_stage_info.module, nullptr);
-    vkDestroyShaderModule(m_context->get_device(), frag_shader_stage_info.module, nullptr);
 }
 
 vk_render_pipeline::~vk_render_pipeline()
@@ -608,14 +703,15 @@ vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, 
     VkPipelineShaderStageCreateInfo shader_stage_info = {};
     shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     shader_stage_info.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-    shader_stage_info.module = load_shader(desc.compute_shader, m_context->get_device());
+    shader_stage_info.module = static_cast<vk_shader*>(desc.compute_shader)->get_module();
     shader_stage_info.pName = "cs_main";
 
+    vk_layout_manager* layout_manager = m_context->get_layout_manager();
     std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
     for (std::size_t i = 0; i < desc.parameter_count; ++i)
     {
-        descriptor_set_layouts.push_back(
-            static_cast<vk_parameter_layout*>(desc.parameters[i])->get_layout());
+        vk_parameter_layout* layout = layout_manager->get_parameter_layout(desc.parameters[i]);
+        descriptor_set_layouts.push_back(layout->get_layout());
     }
 
     VkPipelineLayoutCreateInfo layout_info = {};
@@ -639,8 +735,6 @@ vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, 
         &pipeline_info,
         nullptr,
         &m_pipeline));
-
-    vkDestroyShaderModule(m_context->get_device(), shader_stage_info.module, nullptr);
 }
 
 vk_compute_pipeline::~vk_compute_pipeline()

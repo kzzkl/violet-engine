@@ -7,17 +7,7 @@ namespace violet::bt3
 {
 class bt3_world;
 class bt3_rigidbody;
-class bt3_motion_state : public btMotionState
-{
-public:
-    virtual void getWorldTransform(btTransform& centerOfMassWorldTrans) const override;
-    virtual void setWorldTransform(const btTransform& centerOfMassWorldTrans) override;
-
-    float4x4 transform;
-    bool updated_flag;
-
-    bt3_rigidbody* rigidbody;
-};
+class bt3_motion_state;
 
 class bt3_rigidbody : public pei_rigidbody
 {
@@ -41,8 +31,8 @@ public:
 
     virtual void set_activation_state(pei_rigidbody_activation_state state) override;
 
-    virtual void set_updated_flag(bool flag) override { m_motion_state->updated_flag = flag; }
-    virtual bool get_updated_flag() const override { return m_motion_state->updated_flag; }
+    virtual void set_updated_flag(bool flag) override;
+    virtual bool get_updated_flag() const override;
 
     btRigidBody* get_rigidbody() const noexcept { return m_rigidbody.get(); }
     void set_world(bt3_world* world) { m_world = world; }

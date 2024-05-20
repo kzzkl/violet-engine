@@ -65,7 +65,5 @@ private:
 
     HINSTANCE m_instance;
     HWND m_hwnd;
-
-    bool m_track_mouse_event_flag;
 };
 } // namespace violet

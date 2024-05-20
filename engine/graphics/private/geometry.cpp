@@ -2,22 +2,19 @@
 
 namespace violet
 {
-geometry::geometry(rhi_renderer* rhi) : m_index_buffer(nullptr), m_rhi(rhi)
+geometry::geometry(render_device* device) : m_index_buffer(nullptr), m_device(device)
 {
 }
 
 geometry::~geometry()
 {
-    for (auto [key, value] : m_vertex_buffers)
-        m_rhi->destroy_buffer(value);
-    m_rhi->destroy_buffer(m_index_buffer);
 }
 
-rhi_resource* geometry::get_vertex_buffer(std::string_view name)
+rhi_buffer* geometry::get_vertex_buffer(std::string_view name)
 {
     auto iter = m_vertex_buffers.find(name.data());
     if (iter != m_vertex_buffers.end())
-        return iter->second;
+        return iter->second.get();
     else
         return nullptr;
 }
@@ -35,7 +32,7 @@ void geometry::add_attribute(
     desc.data = data;
     desc.size = size;
     desc.flags = flags;
-    m_vertex_buffers[name.data()] = m_rhi->create_buffer(desc);
+    m_vertex_buffers[name.data()] = m_device->create_buffer(desc);
 }
 
 void geometry::set_indices(
@@ -52,6 +49,6 @@ void geometry::set_indices(
     desc.size = size;
     desc.index.size = index_size;
     desc.flags = flags;
-    m_index_buffer = m_rhi->create_buffer(desc);
+    m_index_buffer = m_device->create_buffer(desc);
 }
 } // namespace violet

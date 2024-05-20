@@ -9,21 +9,18 @@ struct mmd_skeleton
     mmd_bone bones[1024];
 };
 
-ConstantBuffer<mmd_skeleton> skeleton: register(b0, space0);
-
-StructuredBuffer<float> position_in : register(t0, space1);
-StructuredBuffer<float> normal_in : register(t1, space1);
-StructuredBuffer<float2> uv_in : register(t2, space1);
-RWStructuredBuffer<float> position_out : register(u3, space1);
-RWStructuredBuffer<float> normal_out : register(u4, space1);
-RWStructuredBuffer<float2> uv_out : register(u5, space1);
+StructuredBuffer<float> position_in : register(t0, space0);
+StructuredBuffer<float> normal_in : register(t1, space0);
+RWStructuredBuffer<float> position_out : register(u2, space0);
+RWStructuredBuffer<float> normal_out : register(u3, space0);
+ConstantBuffer<mmd_skeleton> skeleton: register(b4, space0);
 
 struct bdef_data
 {
     uint4 index;
     float4 weight;
 };
-StructuredBuffer<bdef_data> bdef : register(t6, space1);
+StructuredBuffer<bdef_data> bdef : register(t5, space0);
 
 struct sdef_data
 {
@@ -36,9 +33,10 @@ struct sdef_data
     float3 r1;
     float _padding_2;
 };
-StructuredBuffer<sdef_data> sdef : register(t7, space1);
+StructuredBuffer<sdef_data> sdef : register(t6, space0);
 
-StructuredBuffer<uint2> skin : register(t8, space1);
+StructuredBuffer<uint2> skin : register(t7, space0);
+StructuredBuffer<float> morph : register(t8, space0);
 
 float4 quaternion_slerp(float4 a, float4 b, float t)
 {
@@ -96,7 +94,10 @@ float3x3 quaternion_to_matrix(float4 q)
 void cs_main(int3 dtid : SV_DispatchThreadID)
 {
     int index = dtid.x * 3;
-    float3 position = float3(position_in[index + 0], position_in[index + 1], position_in[index + 2]);
+    float3 position = float3(
+        position_in[index + 0] + morph[index + 0],
+        position_in[index + 1] + morph[index + 1],
+        position_in[index + 2] + morph[index + 2]);
     float3 normal = float3(normal_in[index + 0], normal_in[index + 1], normal_in[index + 2]);
 
     uint skin_type = skin[dtid.x].x;
@@ -141,6 +142,4 @@ void cs_main(int3 dtid : SV_DispatchThreadID)
     normal_out[index + 0] = normal.x;
     normal_out[index + 1] = normal.y;
     normal_out[index + 2] = normal.z;
-
-    uv_out[dtid.x] = uv_in[dtid.x];
 }

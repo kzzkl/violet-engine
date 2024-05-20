@@ -1,31 +1,82 @@
 #include "mmd_animation.hpp"
 #include "common/log.hpp"
+#include "components/mesh.hpp"
+#include "graphics/graphics_module.hpp"
 
 namespace violet::sample
 {
-mmd_animation::mmd_animation() : engine_system("mmd animation")
+class mmd_skeleton_info : public component_info_default<mmd_skeleton>
+{
+public:
+    mmd_skeleton_info(render_device* device) : m_device(device) {}
+
+    virtual void construct(actor* owner, void* target) override
+    {
+        new (target) mmd_skeleton(m_device);
+    }
+
+private:
+    render_device* m_device;
+};
+
+class skin_pass : public rdg_compute_pass
+{
+public:
+    skin_pass()
+    {
+        set_shader("mmd-viewer/shaders/skinning.comp.spv");
+        set_parameter_layout({mmd_parameter_layout::skeleton});
+    }
+
+    void execute(rhi_command* command, rdg_context* context) override
+    {
+        command->set_compute_pipeline(get_pipeline());
+        for (auto& dispatch : context->get_dispatches(this))
+        {
+            command->set_compute_parameter(0, dispatch.parameter);
+            command->dispatch(dispatch.x, dispatch.y, dispatch.z);
+        }
+    }
+};
+
+mmd_animation::mmd_animation() : engine_module("mmd animation"), m_skin_pass(nullptr)
 {
 }
 
 bool mmd_animation::initialize(const dictionary& config)
 {
+    render_device* device = get_module<graphics_module>().get_device();
+
     get_world().register_component<mmd_animator>();
+    get_world().register_component<mmd_morph>();
+    get_world().register_component<mmd_skeleton, mmd_skeleton_info>(device);
+
+    m_skin_graph = std::make_unique<render_graph>();
+    m_skin_pass = m_skin_graph->add_pass<skin_pass>("skin pass");
+    m_skin_graph->compile(device);
+
+    m_skin_context = m_skin_graph->create_context();
 
     return true;
 }
 
 void mmd_animation::evaluate(float t, float weight)
 {
-    view<mmd_skeleton, mmd_animator> view(get_world());
+    view<mmd_skeleton, mmd_animator, mmd_morph> view(get_world());
     view.each(
-        [=, this](mmd_skeleton& skeleton, mmd_animator& animator)
+        [=, this](mmd_skeleton& skeleton, mmd_animator& animator, mmd_morph& morph)
         {
             evaluate_motion(skeleton, animator, t, weight);
         });
     view.each(
-        [=, this](mmd_skeleton& skeleton, mmd_animator& animator)
+        [=, this](mmd_skeleton& skeleton, mmd_animator& animator, mmd_morph& morph)
         {
             evaluate_ik(skeleton, animator, t, weight);
+        });
+    view.each(
+        [=, this](mmd_skeleton& skeleton, mmd_animator& animator, mmd_morph& morph)
+        {
+            evaluate_morph(morph, animator, t);
         });
 }
 
@@ -65,6 +116,48 @@ void mmd_animation::update(bool after_physics)
                     update_ik(skeleton, animator, bone, motion);
             }
         });
+}
+
+void mmd_animation::skinning()
+{
+    view<mmd_skeleton, mesh, transform> view(get_world());
+    view.each(
+        [&](mmd_skeleton& model_skeleton, mesh& model_mesh, transform& model_transform)
+        {
+            float4x4_simd world_to_local =
+                matrix_simd::inverse_transform(simd::load(model_transform.get_world_matrix()));
+
+            for (std::size_t i = 0; i < model_skeleton.bones.size(); ++i)
+            {
+                auto bone_transform = model_skeleton.bones[i].transform;
+
+                float4x4_simd final_transform = simd::load(bone_transform->get_world_matrix());
+                final_transform = matrix_simd::mul(final_transform, world_to_local);
+
+                float4x4_simd initial_inverse = simd::load(model_skeleton.bones[i].initial_inverse);
+                final_transform = matrix_simd::mul(initial_inverse, final_transform);
+
+                mmd_skinning_bone data;
+                simd::store(matrix_simd::transpose(final_transform), data.offset);
+                simd::store(quaternion_simd::rotation_matrix(final_transform), data.quaternion);
+
+                model_skeleton.set_bone(i, data);
+            }
+
+            rdg_dispatch dispatch = {};
+            dispatch.parameter = model_skeleton.get_parameter();
+            dispatch.x = (model_mesh.get_geometry()->get_vertex_count() + 255) / 256;
+            dispatch.y = 1;
+            dispatch.z = 1;
+            m_skin_context->add_dispatch(m_skin_pass, dispatch);
+        });
+
+    render_device* device = get_module<graphics_module>().get_device();
+    rhi_command* command = device->allocate_command();
+    m_skin_graph->execute(command, m_skin_context.get());
+    device->execute({command}, {}, {}, nullptr);
+
+    m_skin_context->reset();
 }
 
 void mmd_animation::evaluate_motion(
@@ -195,6 +288,50 @@ void mmd_animation::evaluate_ik(
             else
                 bone.ik_solver->enable = enable;
         }
+    }
+}
+
+void mmd_animation::evaluate_morph(mmd_morph& morph, mmd_animator& animator, float t)
+{
+    std::memset(
+        morph.vertex_morph_result->get_buffer(),
+        0,
+        morph.vertex_morph_result->get_buffer_size());
+
+    for (std::size_t i = 0; i < morph.morphs.size(); ++i)
+    {
+        auto& animator_morph = animator.morphs[i];
+
+        if (animator_morph.morph_keys.empty())
+            continue;
+
+        auto bound = bound_key(
+            animator_morph.morph_keys,
+            static_cast<std::int32_t>(t),
+            animator_morph.offset);
+
+        float weight = 0.0f;
+        if (bound == animator_morph.morph_keys.end())
+        {
+            weight = animator_morph.morph_keys.back().weight;
+        }
+        else if (bound == animator_morph.morph_keys.begin())
+        {
+            weight = bound->weight;
+        }
+        else
+        {
+            const auto& key0 = *(bound - 1);
+            const auto& key1 = *bound;
+
+            float offset = (t - key0.frame) / (key1.frame - key0.frame);
+            weight = key0.weight + (key1.weight - key0.weight) * offset;
+
+            animator_morph.offset = std::distance(animator_morph.morph_keys.cbegin(), bound);
+        }
+
+        if (weight != 0.0f)
+            morph.evaluate(i, weight);
     }
 }
 

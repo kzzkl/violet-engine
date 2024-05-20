@@ -81,32 +81,30 @@ void engine::run()
     else
         m_exit = false;
 
-    task_executor& executor = m_context->get_task_executor();
-    executor.run();
-
     frame_rater<30> frame_rater;
     timer& time = m_context->get_timer();
     time.tick(timer::point::FRAME_START);
     time.tick(timer::point::FRAME_END);
 
+    task_executor& executor = m_context->get_executor();
+
+    executor.run();
+
     while (!m_exit)
     {
         time.tick(timer::point::FRAME_START);
-
-        executor.execute_sync(m_context->get_frame_begin_task());
-        executor.execute_sync(m_context->get_tick_task(), time.get_frame_delta());
-        executor.execute_sync(m_context->get_frame_end_task());
-
+        m_context->tick(time.get_frame_delta());
         time.tick(timer::point::FRAME_END);
 
         // frame_rater.sleep();
     }
+
     executor.stop();
 
     // shutdown
-    for (auto iter = m_systems.rbegin(); iter != m_systems.rend(); ++iter)
+    for (auto iter = m_modules.rbegin(); iter != m_modules.rend(); ++iter)
     {
-        log::info("System shutdown: {}.", (*iter)->get_name());
+        log::info("Module shutdown: {}.", (*iter)->get_name());
         (*iter)->shutdown();
         (*iter) = nullptr;
     }
@@ -117,42 +115,44 @@ void engine::exit()
     m_exit = true;
 }
 
-void engine::install(std::size_t index, std::unique_ptr<engine_system>&& system)
+void engine::install(std::size_t index, std::unique_ptr<engine_module>&& module)
 {
-    system->m_context = m_context.get();
-    system->initialize(m_config[system->get_name().data()]);
-    m_context->set_system(index, system.get());
-    log::info("System installed successfully: {}.", system->get_name());
-    m_systems.push_back(std::move(system));
+    module->m_context = m_context.get();
+    if (!module->initialize(m_config[module->get_name().data()]))
+        throw std::runtime_error(module->get_name() + " initialize failed");
+
+    m_context->set_module(index, module.get());
+    log::info("Module installed successfully: {}.", module->get_name());
+    m_modules.push_back(std::move(module));
 }
 
 void engine::uninstall(std::size_t index)
 {
-    engine_system* system = m_context->get_system(index);
-    if (system)
+    engine_module* module = m_context->get_module(index);
+    if (module)
     {
-        system->shutdown();
-        m_context->set_system(index, nullptr);
+        module->shutdown();
+        m_context->set_module(index, nullptr);
 
-        for (auto iter = m_systems.begin(); iter != m_systems.end(); ++iter)
+        for (auto iter = m_modules.begin(); iter != m_modules.end(); ++iter)
         {
-            if ((*iter).get() == system)
+            if ((*iter).get() == module)
             {
-                m_systems.erase(iter);
+                m_modules.erase(iter);
                 break;
             }
         }
 
-        log::info("System uninstalled successfully: {}.", system->get_name());
+        log::info("System uninstalled successfully: {}.", module->get_name());
     }
     else
     {
-        log::warn("The system is not installed.");
+        log::warn("The module is not installed.");
     }
 }
 
-engine_system* engine::get_system(std::size_t index)
+engine_module* engine::get_module(std::size_t index)
 {
-    return m_context->get_system(index);
+    return m_context->get_module(index);
 }
 } // namespace violet

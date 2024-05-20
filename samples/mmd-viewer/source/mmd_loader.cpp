@@ -1,6 +1,7 @@
 #include "mmd_loader.hpp"
 #include "components/mesh.hpp"
 #include "components/mmd_animator.hpp"
+#include "components/mmd_morph.hpp"
 #include "components/mmd_skeleton.hpp"
 #include "components/rigidbody.hpp"
 #include "components/transform.hpp"
@@ -22,10 +23,13 @@ public:
     }
 };
 
-mmd_loader::mmd_loader(render_graph* render_graph, rhi_renderer* rhi, pei_plugin* pei)
+mmd_loader::mmd_loader(
+    mmd_render_graph* render_graph,
+    render_device* device,
+    physics_context* physics_context)
     : m_render_graph(render_graph),
-      m_rhi(rhi),
-      m_pei(pei)
+      m_device(device),
+      m_physics_context(physics_context)
 {
     std::vector<std::string> internal_toon_paths = {
         "mmd-viewer/mmd/toon01.dds",
@@ -39,7 +43,7 @@ mmd_loader::mmd_loader(render_graph* render_graph, rhi_renderer* rhi, pei_plugin
         "mmd-viewer/mmd/toon09.dds",
         "mmd-viewer/mmd/toon10.dds"};
     for (const std::string& toon : internal_toon_paths)
-        m_internal_toons.push_back(rhi->create_texture(toon.c_str()));
+        m_internal_toons.push_back(m_device->create_texture(toon.c_str()));
 
     rhi_sampler_desc sampler_desc = {};
     sampler_desc.min_filter = RHI_FILTER_LINEAR;
@@ -47,23 +51,11 @@ mmd_loader::mmd_loader(render_graph* render_graph, rhi_renderer* rhi, pei_plugin
     sampler_desc.address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
     sampler_desc.address_mode_v = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
     sampler_desc.address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-    m_sampler = rhi->create_sampler(sampler_desc);
+    m_sampler = m_device->create_sampler(sampler_desc);
 }
 
 mmd_loader::~mmd_loader()
 {
-    for (auto& [name, model] : m_models)
-    {
-        for (rhi_resource* texture : model->textures)
-            m_rhi->destroy_texture(texture);
-    }
-
-    m_models.clear();
-
-    for (rhi_resource* toon : m_internal_toons)
-        m_rhi->destroy_texture(toon);
-
-    m_rhi->destroy_sampler(m_sampler);
 }
 
 mmd_model* mmd_loader::load(std::string_view pmx_path, std::string_view vmd_path, world& world)
@@ -77,13 +69,20 @@ mmd_model* mmd_loader::load(std::string_view pmx_path, std::string_view vmd_path
     if (!pmx.is_load())
         return nullptr;
 
+    model->model = std::make_unique<actor>("mmd", world);
+    model->model->add<transform, mesh, mmd_skeleton, mmd_morph>();
+
     load_mesh(model.get(), pmx, world);
     load_bones(model.get(), pmx, world);
+    load_morph(model.get(), pmx);
     load_physics(model.get(), pmx, world);
 
-    vmd vmd(vmd_path);
-    if (vmd.is_load())
-        load_animation(model.get(), vmd, world);
+    if (!vmd_path.empty())
+    {
+        vmd vmd(vmd_path);
+        if (vmd.is_load())
+            load_animation(model.get(), vmd, world);
+    }
 
     m_models[pmx_path.data()] = std::move(model);
     return m_models[pmx_path.data()].get();
@@ -91,7 +90,7 @@ mmd_model* mmd_loader::load(std::string_view pmx_path, std::string_view vmd_path
 
 void mmd_loader::load_mesh(mmd_model* model, const pmx& pmx, world& world)
 {
-    model->geometry = std::make_unique<geometry>(m_rhi);
+    model->geometry = std::make_unique<geometry>(m_device);
     model->geometry->add_attribute(
         "position",
         pmx.position,
@@ -101,66 +100,72 @@ void mmd_loader::load_mesh(mmd_model* model, const pmx& pmx, world& world)
         pmx.normal,
         RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_STORAGE);
     model->geometry->add_attribute("uv", pmx.uv, RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_STORAGE);
-    model->geometry->add_attribute(
-        "skinned position",
-        pmx.position,
-        RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_STORAGE);
-    model->geometry->add_attribute(
-        "skinned normal",
-        pmx.normal,
-        RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_STORAGE);
-    model->geometry->add_attribute(
-        "skinned uv",
-        pmx.uv,
-        RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_STORAGE);
+    model->geometry->add_attribute("edge", pmx.edge, RHI_BUFFER_FLAG_VERTEX);
     model->geometry->add_attribute("skinning type", pmx.skin, RHI_BUFFER_FLAG_STORAGE);
+    model->geometry->add_attribute<float3>(
+        "morph",
+        pmx.position.size(),
+        RHI_BUFFER_FLAG_HOST_VISIBLE | RHI_BUFFER_FLAG_STORAGE);
     model->geometry->set_indices(pmx.indices);
 
     for (const std::string& texture : pmx.textures)
-        model->textures.push_back(m_rhi->create_texture(texture.c_str()));
+    {
+        try
+        {
+            rhi_texture_desc desc = {};
+            desc.flags = RHI_TEXTURE_FLAG_MIPMAP;
+            model->textures.push_back(m_device->create_texture(texture.c_str(), desc));
+        }
+        catch (...)
+        {
+            model->textures.push_back(nullptr);
+        }
+    }
     for (const pmx_material& pmx_material : pmx.materials)
     {
-        material* material = m_render_graph->add_material(pmx_material.name_jp, "mmd material");
+        auto material =
+            std::make_unique<mmd_material>(m_device, m_render_graph->get_material_layout());
 
-        material->set(
-            "mmd material",
-            mmd_material{
-                .diffuse = pmx_material.diffuse,
-                .specular = pmx_material.specular,
-                .specular_strength = pmx_material.specular_strength,
-                .edge_color = pmx_material.edge_color,
-                .ambient = pmx_material.ambient,
-                .edge_size = pmx_material.edge_size,
-                .toon_mode = pmx_material.toon_mode,
-                .spa_mode = pmx_material.sphere_mode});
+        material->set_diffuse(pmx_material.diffuse);
+        material->set_specular(pmx_material.specular, pmx_material.specular_strength);
+        material->set_edge(pmx_material.edge_color, pmx_material.edge_size);
+        material->set_ambient(pmx_material.ambient);
+        material->set_toon_mode(pmx_material.toon_mode);
+        material->set_spa_mode(pmx_material.sphere_mode);
 
-        material->set("mmd tex", model->textures[pmx_material.texture_index], m_sampler);
-        if (pmx_material.toon_mode == PMX_TOON_MODE_TEXTURE)
-            material->set("mmd toon", model->textures[pmx_material.toon_index], m_sampler);
+        material->set_tex(model->textures[pmx_material.texture_index].get(), m_sampler.get());
+        if (pmx_material.toon_index != -1)
+        {
+            if (pmx_material.toon_mode == PMX_TOON_MODE_TEXTURE)
+                material->set_toon(model->textures[pmx_material.toon_index].get(), m_sampler.get());
+            else
+                material->set_toon(
+                    m_internal_toons[pmx_material.toon_index].get(),
+                    m_sampler.get());
+        }
         else
-            material->set("mmd toon", m_internal_toons[pmx_material.toon_index], m_sampler);
+        {
+            material->set_toon(m_internal_toons[0].get(), m_sampler.get());
+        }
 
         if (pmx_material.sphere_mode != PMX_SPHERE_MODE_DISABLED)
-            material->set("mmd spa", model->textures[pmx_material.sphere_index], m_sampler);
+            material->set_spa(model->textures[pmx_material.sphere_index].get(), m_sampler.get());
         else
-            material->set("mmd spa", m_internal_toons[0], m_sampler);
+            material->set_spa(m_internal_toons[0].get(), m_sampler.get());
 
-        model->materials.push_back(material);
+        model->materials.push_back(std::move(material));
     }
 
-    model->model = std::make_unique<actor>("mmd", world);
-    auto [transform_ptr, mesh_ptr, skeleton_ptr] =
-        model->model->add<transform, mesh, mmd_skeleton>();
-    mesh_ptr->set_geometry(model->geometry.get());
-
+    auto model_mesh = model->model->get<mesh>();
+    model_mesh->set_geometry(model->geometry.get());
     for (auto& submesh : pmx.submeshes)
     {
-        mesh_ptr->add_submesh(
+        model_mesh->add_submesh(
             0,
             pmx.position.size(),
             submesh.index_start,
             submesh.index_count,
-            model->materials[submesh.material_index]);
+            model->materials[submesh.material_index].get());
     }
 }
 
@@ -272,19 +277,55 @@ void mmd_loader::load_bones(mmd_model* model, const pmx& pmx, world& world)
             return model_skeleton->bones[a].layer < model_skeleton->bones[b].layer;
         });
 
-    model_skeleton->local_matrices.resize(model->bones.size());
-    model_skeleton->world_matrices.resize(model->bones.size());
-
     model_skeleton->set_skinning_data(pmx.bdef, pmx.sdef);
-    model_skeleton->set_skinning_input(
-        model->geometry->get_vertex_buffer("position"),
-        model->geometry->get_vertex_buffer("normal"),
-        model->geometry->get_vertex_buffer("uv"),
-        model->geometry->get_vertex_buffer("skinning type"));
-    model_skeleton->set_skinning_output(
-        model->geometry->get_vertex_buffer("skinned position"),
-        model->geometry->get_vertex_buffer("skinned normal"),
-        model->geometry->get_vertex_buffer("skinned uv"));
+    model_skeleton->set_geometry(model->geometry.get());
+
+    auto model_mesh = model->model->get<mesh>();
+    model_mesh->set_skinned_vertex_buffer("position", model_skeleton->get_position_buffer());
+    model_mesh->set_skinned_vertex_buffer("normal", model_skeleton->get_normal_buffer());
+}
+
+void mmd_loader::load_morph(mmd_model* model, const pmx& pmx)
+{
+    auto model_morph = model->model->get<mmd_morph>();
+    auto model_skeleton = model->model->get<mmd_skeleton>();
+
+    model_morph->vertex_morph_result = model_skeleton->get_morph_buffer();
+
+    for (auto& pmx_morph : pmx.morphs)
+    {
+        switch (pmx_morph.type)
+        {
+        case PMX_MORPH_TYPE_GROUP:
+            model_morph->morphs.push_back(std::make_unique<mmd_morph::morph>());
+            break;
+        case PMX_MORPH_TYPE_VERTEX: {
+            auto vertex_morph = std::make_unique<mmd_morph::vertex_morph>();
+            for (auto& pmx_vertex_morph : pmx_morph.vertex_morphs)
+            {
+                vertex_morph->data.push_back(
+                    {pmx_vertex_morph.index, pmx_vertex_morph.translation});
+            }
+            model_morph->morphs.push_back(std::move(vertex_morph));
+            break;
+        }
+        case PMX_MORPH_TYPE_BONE:
+        case PMX_MORPH_TYPE_UV:
+        case PMX_MORPH_TYPE_UV_EXT_1:
+        case PMX_MORPH_TYPE_UV_EXT_2:
+        case PMX_MORPH_TYPE_UV_EXT_3:
+        case PMX_MORPH_TYPE_UV_EXT_4:
+        case PMX_MORPH_TYPE_MATERIAL:
+        case PMX_MORPH_TYPE_FLIP:
+        case PMX_MORPH_TYPE_IMPULSE:
+            model_morph->morphs.push_back(std::make_unique<mmd_morph::morph>());
+            break;
+        default:
+            break;
+        }
+
+        model_morph->morphs.back()->name = pmx_morph.name_jp;
+    }
 }
 
 void mmd_loader::load_physics(mmd_model* model, const pmx& pmx, world& world)
@@ -346,11 +387,11 @@ void mmd_loader::load_physics(mmd_model* model, const pmx& pmx, world& world)
         default:
             break;
         };
-        model->collision_shapes.push_back(m_pei->create_collision_shape(shape_desc));
+        model->collision_shapes.push_back(m_physics_context->create_collision_shape(shape_desc));
 
         auto bone_rigidbody = bone->get<rigidbody>();
         bone_rigidbody->set_activation_state(PEI_RIGIDBODY_ACTIVATION_STATE_DISABLE_DEACTIVATION);
-        bone_rigidbody->set_shape(model->collision_shapes[i]);
+        bone_rigidbody->set_shape(model->collision_shapes[i].get());
 
         switch (pmx_rigidbody.mode)
         {
@@ -373,7 +414,7 @@ void mmd_loader::load_physics(mmd_model* model, const pmx& pmx, world& world)
         bone_rigidbody->set_damping(pmx_rigidbody.linear_damping, pmx_rigidbody.angular_damping);
         bone_rigidbody->set_restitution(pmx_rigidbody.repulsion);
         bone_rigidbody->set_friction(pmx_rigidbody.friction);
-        bone_rigidbody->set_collision_group(1 << pmx_rigidbody.group);
+        bone_rigidbody->set_collision_group(static_cast<std::size_t>(1) << pmx_rigidbody.group);
         bone_rigidbody->set_collision_mask(pmx_rigidbody.collision_group);
         bone_rigidbody->set_offset(matrix::mul(
             rigidbody_transform[i],
@@ -510,12 +551,41 @@ void mmd_loader::load_animation(mmd_model* model, const vmd& vmd, world& world)
         }
     }
 
-    for (auto iter : ik_map)
+    for (auto& motion : model_animator->motions)
     {
-        auto& keys = model_animator->motions[iter.second].ik_keys;
         std::sort(
-            keys.begin(),
-            keys.end(),
+            motion.ik_keys.begin(),
+            motion.ik_keys.end(),
+            [](const auto& a, const auto& b)
+            {
+                return a.frame < b.frame;
+            });
+    }
+
+    auto model_morph = model->model->get<mmd_morph>();
+    model_animator->morphs.resize(model_morph->morphs.size());
+
+    std::map<std::string, std::size_t> morph_map;
+    for (std::size_t i = 0; i < model_morph->morphs.size(); ++i)
+        morph_map[model_morph->morphs[i]->name] = i;
+
+    for (auto& morph : vmd.morphs)
+    {
+        auto iter = morph_map.find(morph.morph_name);
+        if (iter != morph_map.end())
+        {
+            mmd_animator::morph_key key = {};
+            key.frame = morph.frame;
+            key.weight = morph.weight;
+            model_animator->morphs[iter->second].morph_keys.push_back(key);
+        }
+    }
+
+    for (auto& morph : model_animator->morphs)
+    {
+        std::sort(
+            morph.morph_keys.begin(),
+            morph.morph_keys.end(),
             [](const auto& a, const auto& b)
             {
                 return a.frame < b.frame;

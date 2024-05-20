@@ -44,6 +44,12 @@ const float3& transform::get_position() const noexcept
     return m_position;
 }
 
+float3 transform::get_world_position() const noexcept
+{
+    auto& world = get_world_matrix();
+    return float3{world[3][0], world[3][1], world[3][2]};
+}
+
 void transform::set_rotation(const float4& quaternion) noexcept
 {
     m_rotation = quaternion;
@@ -116,14 +122,13 @@ void transform::lookat(const float3& target, const float3& up) noexcept
     float3 y_axis = vector::cross(z_axis, x_axis);
 
     float4x4 rotation = {
-        float4{x_axis[0], y_axis[0], z_axis[0], 0.0f},
-        float4{x_axis[1], y_axis[1], z_axis[1], 0.0f},
-        float4{x_axis[2], y_axis[2], z_axis[2], 0.0f},
+        float4{x_axis[0], x_axis[1], x_axis[2], 0.0f},
+        float4{y_axis[0], y_axis[1], y_axis[2], 0.0f},
+        float4{z_axis[0], z_axis[1], z_axis[2], 0.0f},
         float4{0.0f,      0.0f,      0.0f,      1.0f}
     };
 
     m_rotation = quaternion::rotation_matrix(rotation);
-    m_rotation = quaternion::inverse(m_rotation);
 
     update_local();
     mark_dirty();

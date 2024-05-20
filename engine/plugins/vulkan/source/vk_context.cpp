@@ -1,7 +1,12 @@
 #include "vk_context.hpp"
 #include "vk_command.hpp"
+#include "vk_pipeline.hpp"
 #include <iostream>
 #include <set>
+
+#ifdef _WIN32
+#    include <Windows.h>
+#endif
 
 namespace violet::vk
 {
@@ -45,7 +50,6 @@ vk_context::vk_context() noexcept
     : m_instance(VK_NULL_HANDLE),
       m_physical_device(VK_NULL_HANDLE),
       m_device(VK_NULL_HANDLE),
-      m_surface(VK_NULL_HANDLE),
       m_graphics_queue(nullptr),
       m_present_queue(nullptr),
       m_frame_count(0),
@@ -66,19 +70,20 @@ vk_context::~vk_context()
 
     vkDestroyDescriptorPool(m_device, m_descriptor_pool, nullptr);
 
+    vmaDestroyAllocator(m_vma_allocator);
+
 #ifndef NDEBUG
-    auto vkDestroyDebugUtilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)
-        vkGetInstanceProcAddr(m_instance, "vkDestroyDebugUtilsMessengerEXT");
     vkDestroyDebugUtilsMessengerEXT(m_instance, m_debug_messenger, nullptr);
 #endif
 
     vkDestroyDevice(m_device, nullptr);
-    vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
     vkDestroyInstance(m_instance, nullptr);
 }
 
 bool vk_context::initialize(const rhi_desc& desc)
 {
+    vk_check(volkInitialize());
+
     m_frame_resource_count = desc.frame_resource_count;
 
     std::vector<const char*> instance_desired_layers;
@@ -102,21 +107,11 @@ bool vk_context::initialize(const rhi_desc& desc)
     if (!initialize_physical_device(device_desired_extensions))
         return false;
 
-#ifdef _WIN32
-    VkWin32SurfaceCreateInfoKHR surface_info = {};
-    surface_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-    surface_info.hwnd = static_cast<HWND>(desc.window_handle);
-    surface_info.hinstance = GetModuleHandle(nullptr);
-
-    auto vkCreateWin32SurfaceKHR = reinterpret_cast<PFN_vkCreateWin32SurfaceKHR>(
-        vkGetInstanceProcAddr(m_instance, "vkCreateWin32SurfaceKHR"));
-    vk_check(vkCreateWin32SurfaceKHR(m_instance, &surface_info, nullptr, &m_surface));
-#else
-    throw vk_exception("Unsupported platform");
-#endif
-
     initialize_logic_device(device_desired_extensions);
+    initialize_vma();
     initialize_descriptor_pool();
+
+    m_layout_manager = std::make_unique<vk_layout_manager>(this);
 
     return true;
 }
@@ -146,6 +141,25 @@ void vk_context::free_descriptor_set(VkDescriptorSet descriptor_set)
     vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &descriptor_set);
 }
 
+void vk_context::setup_present_queue(VkSurfaceKHR surface)
+{
+    if (m_present_queue)
+        return;
+
+    VkBool32 present_support = false;
+    vkGetPhysicalDeviceSurfaceSupportKHR(
+        m_physical_device,
+        m_graphics_queue->get_family_index(),
+        surface,
+        &present_support);
+
+    if (!present_support)
+        throw std::runtime_error("There is no queue that supports presentation.");
+
+    m_present_queue =
+        std::make_unique<vk_present_queue>(m_graphics_queue->get_family_index(), this);
+}
+
 bool vk_context::initialize_instance(
     const std::vector<const char*>& desired_layers,
     const std::vector<const char*>& desired_extensions)
@@ -153,8 +167,7 @@ bool vk_context::initialize_instance(
     std::uint32_t available_layer_count = 0;
     vk_check(vkEnumerateInstanceLayerProperties(&available_layer_count, nullptr));
     std::vector<VkLayerProperties> available_layers(available_layer_count);
-    vk_check(
-        vkEnumerateInstanceLayerProperties(&available_layer_count, available_layers.data()));
+    vk_check(vkEnumerateInstanceLayerProperties(&available_layer_count, available_layers.data()));
 
     for (const char* layer : desired_layers)
     {
@@ -174,8 +187,7 @@ bool vk_context::initialize_instance(
     }
 
     std::uint32_t available_extension_count = 0;
-    vk_check(
-        vkEnumerateInstanceExtensionProperties(nullptr, &available_extension_count, nullptr));
+    vk_check(vkEnumerateInstanceExtensionProperties(nullptr, &available_extension_count, nullptr));
     std::vector<VkExtensionProperties> available_extensions(available_extension_count);
     vk_check(vkEnumerateInstanceExtensionProperties(
         nullptr,
@@ -209,8 +221,7 @@ bool vk_context::initialize_instance(
     debug_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    debug_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                             VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+    debug_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                              VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
     debug_info.pfnUserCallback = debug_callback;
@@ -223,12 +234,10 @@ bool vk_context::initialize_instance(
     if (m_instance == VK_NULL_HANDLE)
         return false;
 
-#ifndef NDEBUG
-    auto vkCreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
-        vkGetInstanceProcAddr(m_instance, "vkCreateDebugUtilsMessengerEXT"));
+    volkLoadInstance(m_instance);
 
-    vk_check(
-        vkCreateDebugUtilsMessengerEXT(m_instance, &debug_info, nullptr, &m_debug_messenger));
+#ifndef NDEBUG
+    vk_check(vkCreateDebugUtilsMessengerEXT(m_instance, &debug_info, nullptr, &m_debug_messenger));
 #endif
 
     return true;
@@ -239,8 +248,7 @@ bool vk_context::initialize_physical_device(const std::vector<const char*>& desi
     std::uint32_t devices_count = 0;
     vk_check(vkEnumeratePhysicalDevices(m_instance, &devices_count, nullptr));
     std::vector<VkPhysicalDevice> available_devices(devices_count);
-    vk_check(
-        vkEnumeratePhysicalDevices(m_instance, &devices_count, available_devices.data()));
+    vk_check(vkEnumeratePhysicalDevices(m_instance, &devices_count, available_devices.data()));
 
     std::uint32_t physical_device_score = 0;
     for (VkPhysicalDevice device : available_devices)
@@ -300,7 +308,6 @@ void vk_context::initialize_logic_device(const std::vector<const char*>& enabled
         queue_families.data());
 
     std::uint32_t graphics_queue_family_index = -1;
-    std::uint32_t present_queue_family_index = -1;
     for (std::uint32_t i = 0; i < queue_families.size(); ++i)
     {
         if (queue_families[i].queueCount == 0)
@@ -308,19 +315,9 @@ void vk_context::initialize_logic_device(const std::vector<const char*>& enabled
 
         if (queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
             graphics_queue_family_index = i;
-
-        VkBool32 present_support = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(m_physical_device, i, m_surface, &present_support);
-        if (present_support)
-            present_queue_family_index = i;
-
-        if (graphics_queue_family_index != -1 && present_queue_family_index != -1)
-            break;
     }
 
-    std::set<std::uint32_t> queue_indices = {
-        graphics_queue_family_index,
-        present_queue_family_index};
+    std::set<std::uint32_t> queue_indices = {graphics_queue_family_index};
     std::vector<VkDeviceQueueCreateInfo> queue_infos = {};
     float queue_priority = 1.0;
     for (std::uint32_t index : queue_indices)
@@ -345,9 +342,42 @@ void vk_context::initialize_logic_device(const std::vector<const char*>& enabled
     device_info.pEnabledFeatures = &enabled_features;
 
     vk_check(vkCreateDevice(m_physical_device, &device_info, nullptr, &m_device));
+    volkLoadDevice(m_device);
 
     m_graphics_queue = std::make_unique<vk_graphics_queue>(graphics_queue_family_index, this);
-    m_present_queue = std::make_unique<vk_present_queue>(present_queue_family_index, this);
+}
+
+void vk_context::initialize_vma()
+{
+    VmaVulkanFunctions vulkan_functions = {};
+    vulkan_functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+    vulkan_functions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+    vulkan_functions.vkGetPhysicalDeviceProperties = vkGetPhysicalDeviceProperties;
+    vulkan_functions.vkGetPhysicalDeviceMemoryProperties = vkGetPhysicalDeviceMemoryProperties;
+    vulkan_functions.vkAllocateMemory = vkAllocateMemory;
+    vulkan_functions.vkFreeMemory = vkFreeMemory;
+    vulkan_functions.vkMapMemory = vkMapMemory;
+    vulkan_functions.vkUnmapMemory = vkUnmapMemory;
+    vulkan_functions.vkFlushMappedMemoryRanges = vkFlushMappedMemoryRanges;
+    vulkan_functions.vkInvalidateMappedMemoryRanges = vkInvalidateMappedMemoryRanges;
+    vulkan_functions.vkBindBufferMemory = vkBindBufferMemory;
+    vulkan_functions.vkBindImageMemory = vkBindImageMemory;
+    vulkan_functions.vkGetBufferMemoryRequirements = vkGetBufferMemoryRequirements;
+    vulkan_functions.vkGetImageMemoryRequirements = vkGetImageMemoryRequirements;
+    vulkan_functions.vkCreateBuffer = vkCreateBuffer;
+    vulkan_functions.vkDestroyBuffer = vkDestroyBuffer;
+    vulkan_functions.vkCreateImage = vkCreateImage;
+    vulkan_functions.vkDestroyImage = vkDestroyImage;
+    vulkan_functions.vkCmdCopyBuffer = vkCmdCopyBuffer;
+
+    VmaAllocatorCreateInfo allocator_info = {};
+    allocator_info.vulkanApiVersion = VK_API_VERSION_1_0;
+    allocator_info.physicalDevice = m_physical_device;
+    allocator_info.device = m_device;
+    allocator_info.instance = m_instance;
+    allocator_info.pVulkanFunctions = &vulkan_functions;
+
+    vk_check(vmaCreateAllocator(&allocator_info, &m_vma_allocator));
 }
 
 void vk_context::initialize_descriptor_pool()

@@ -3,7 +3,7 @@ project(violet-window)
 add_library(${PROJECT_NAME} STATIC
     ./private/input.cpp
     ./private/window_impl_win32.cpp
-    ./private/window_system.cpp)
+    ./private/window_module.cpp)
 add_library(violet::window ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
@@ -15,7 +15,7 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
     violet::math
-    violet::core)
+    violet::task)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

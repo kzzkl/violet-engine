@@ -12,7 +12,9 @@ struct orbit_control
     float theta = PI_PIDIV2;
     float phi = PI_PIDIV2;
 
-    float speed = 3.0f;
+    float r_speed = 1.0f;
+    float theta_speed = PI;
+    float phi_speed = 2.0f * PI;
 
     bool dirty = true;
 };

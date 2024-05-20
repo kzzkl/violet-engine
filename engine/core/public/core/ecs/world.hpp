@@ -58,8 +58,6 @@ public:
     template <typename... Components>
     void add_component(entity entity)
     {
-        (assert(is_component_register<Components>()), ...);
-
         entity_info& info = m_entity_infos[entity.index];
 
         archetype* old_archetype = info.archetype;

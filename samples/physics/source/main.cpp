@@ -19,8 +19,7 @@ namespace violet::sample
 class color_pipeline : public render_pipeline
 {
 public:
-    color_pipeline(std::string_view name, graphics_context* context)
-        : render_pipeline(name, context)
+    color_pipeline(std::string_view name, renderer* context) : render_pipeline(name, context)
     {
         set_shader("physics/shaders/basic.vert.spv", "physics/shaders/basic.frag.spv");
         set_vertex_attributes({
@@ -46,7 +45,7 @@ public:
 private:
     void render(rhi_render_command* command, render_data& data)
     {
-        command->set_render_parameter(2, data.camera_parameter);
+        command->set_render_parameter(2, data.camera);
         for (render_mesh& mesh : data.meshes)
         {
             command->set_vertex_buffers(mesh.vertex_buffers.data(), mesh.vertex_buffers.size());
@@ -64,7 +63,7 @@ public:
     physics_debug(
         render_graph* render_graph,
         render_subpass* debug_subpass,
-        rhi_renderer* rhi,
+        renderer* renderer,
         world& world)
         : m_position(2048),
           m_color(2048)
@@ -74,7 +73,7 @@ public:
         layout->add_pipeline(pipeline);
 
         material* material = layout->add_material("debug");
-        m_geometry = std::make_unique<geometry>(rhi);
+        m_geometry = std::make_unique<geometry>(renderer);
 
         m_geometry->add_attribute(
             "position",
@@ -162,7 +161,7 @@ public:
 
             rigidbody_ptr->set_transform(transform_ptr->get_world_matrix());
             rigidbody_ptr->set_type(PEI_RIGIDBODY_TYPE_DYNAMIC);
-            rigidbody_ptr->set_shape(m_collision_shape);
+            rigidbody_ptr->set_shape(m_collision_shape.get());
             rigidbody_ptr->set_mass(1.0f);
             m_physics_world->add(m_cube1.get());
         }
@@ -178,7 +177,7 @@ public:
 
             rigidbody_ptr->set_transform(transform_ptr->get_world_matrix());
             rigidbody_ptr->set_type(PEI_RIGIDBODY_TYPE_DYNAMIC);
-            rigidbody_ptr->set_shape(m_collision_shape);
+            rigidbody_ptr->set_shape(m_collision_shape.get());
             rigidbody_ptr->set_mass(1.0f);
 
             joint* joint = rigidbody_ptr->add_joint(m_cube1->get<rigidbody>());
@@ -201,7 +200,7 @@ public:
 
             rigidbody_ptr->set_transform(transform_ptr->get_world_matrix());
             rigidbody_ptr->set_type(PEI_RIGIDBODY_TYPE_KINEMATIC);
-            rigidbody_ptr->set_shape(m_collision_shape);
+            rigidbody_ptr->set_shape(m_collision_shape.get());
             rigidbody_ptr->set_mass(0.0f);
 
             joint* joint = rigidbody_ptr->add_joint(m_cube2->get<rigidbody>());
@@ -225,29 +224,18 @@ public:
 
         m_render_graph = nullptr;
         m_geometry = nullptr;
-
-        rhi_renderer* rhi = get_system<graphics_system>().get_context()->get_rhi();
-        rhi->destroy_depth_stencil_buffer(m_depth_stencil);
-
-        pei_plugin* pei = get_system<physics_system>().get_pei();
-        pei->destroy_collision_shape(m_collision_shape);
     }
 
 private:
     void initialize_render()
     {
-        auto& graphics = get_system<graphics_system>();
-        auto& window = get_system<window_system>();
-        auto extent = window.get_extent();
-
-        rhi_renderer* rhi = graphics.get_context()->get_rhi();
-
-        m_render_graph = std::make_unique<render_graph>(graphics.get_context());
+        renderer* renderer = get_system<graphics_system>().get_renderer();
+        m_render_graph = std::make_unique<render_graph>(renderer);
 
         render_pass* main = m_render_graph->add_render_pass("main");
 
         render_attachment* output_attachment = main->add_attachment("output");
-        output_attachment->set_format(rhi->get_back_buffer()->get_format());
+        output_attachment->set_format(renderer->get_back_buffer()->get_format());
         output_attachment->set_initial_state(RHI_RESOURCE_STATE_UNDEFINED);
         output_attachment->set_final_state(RHI_RESOURCE_STATE_PRESENT);
         output_attachment->set_load_op(RHI_ATTACHMENT_LOAD_OP_CLEAR);
@@ -282,12 +270,15 @@ private:
             RHI_PIPELINE_STAGE_FLAG_COLOR_OUTPUT | RHI_PIPELINE_STAGE_FLAG_EARLY_DEPTH_STENCIL,
             RHI_ACCESS_FLAG_COLOR_WRITE | RHI_ACCESS_FLAG_DEPTH_STENCIL_WRITE);
 
-        m_physics_debug =
-            std::make_unique<physics_debug>(m_render_graph.get(), color_pass, rhi, get_world());
+        m_physics_debug = std::make_unique<physics_debug>(
+            m_render_graph.get(),
+            color_pass,
+            renderer,
+            get_world());
 
         m_render_graph->compile();
 
-        m_geometry = std::make_unique<geometry>(rhi);
+        m_geometry = std::make_unique<geometry>(renderer);
         std::vector<float3> position = {
             {-0.5f, -0.5f, 0.5f },
             {0.5f,  -0.5f, 0.5f },
@@ -322,11 +313,13 @@ private:
 
         m_material = material_layout->add_material("test");
 
+        auto extent = get_system<window_system>().get_extent();
+
         m_camera = std::make_unique<actor>("main camera", get_world());
         auto [camera_ptr, transform_ptr, orbit_control_ptr] =
             m_camera->add<camera, transform, orbit_control>();
         camera_ptr->set_render_pass(main);
-        camera_ptr->set_attachment(0, rhi->get_back_buffer(), true);
+        camera_ptr->set_attachment(0, renderer->get_back_buffer(), true);
         camera_ptr->resize(extent.width, extent.height);
 
         transform_ptr->set_position(0.0f, 0.0f, -10.0f);
@@ -343,14 +336,14 @@ private:
         m_physics_world = std::make_unique<physics_world>(
             float3{0.0f, -9.8f, 0.0f},
             m_physics_debug.get(),
-            physics.get_pei());
+            physics.get_context());
 
         pei_collision_shape_desc shape_desc = {};
         shape_desc.type = PEI_COLLISION_SHAPE_TYPE_BOX;
         shape_desc.box.height = 1.0f;
         shape_desc.box.width = 1.0f;
         shape_desc.box.length = 1.0f;
-        m_collision_shape = physics.get_pei()->create_collision_shape(shape_desc);
+        m_collision_shape = physics.get_context()->create_collision_shape(shape_desc);
     }
 
     void tick(float delta)
@@ -364,21 +357,20 @@ private:
 
     void resize(std::uint32_t width, std::uint32_t height)
     {
-        rhi_renderer* rhi = get_system<graphics_system>().get_context()->get_rhi();
-        rhi->destroy_depth_stencil_buffer(m_depth_stencil);
+        renderer* renderer = get_system<graphics_system>().get_renderer();
 
         rhi_depth_stencil_buffer_desc depth_stencil_buffer_desc = {};
         depth_stencil_buffer_desc.width = width;
         depth_stencil_buffer_desc.height = height;
         depth_stencil_buffer_desc.samples = RHI_SAMPLE_COUNT_1;
         depth_stencil_buffer_desc.format = RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT;
-        m_depth_stencil = rhi->create_depth_stencil_buffer(depth_stencil_buffer_desc);
+        m_depth_stencil = renderer->create_depth_stencil_buffer(depth_stencil_buffer_desc);
 
         if (m_camera)
         {
             auto camera_ptr = m_camera->get<camera>();
             camera_ptr->resize(width, height);
-            camera_ptr->set_attachment(1, m_depth_stencil);
+            camera_ptr->set_attachment(1, m_depth_stencil.get());
         }
     }
 
@@ -391,10 +383,10 @@ private:
     material* m_material;
 
     std::unique_ptr<render_graph> m_render_graph;
-    rhi_resource* m_depth_stencil;
+    rhi_ptr<rhi_resource> m_depth_stencil;
 
     std::unique_ptr<physics_world> m_physics_world;
-    pei_collision_shape* m_collision_shape;
+    pei_ptr<pei_collision_shape> m_collision_shape;
     std::unique_ptr<physics_debug> m_physics_debug;
 
     float m_rotate = 0.0f;

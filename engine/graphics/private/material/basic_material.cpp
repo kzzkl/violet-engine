@@ -74,7 +74,7 @@ basic_pipeline::basic_pipeline() : render_pipeline({"position", "normal"})
     m_interface.reset(engine_graphics.get_rhi()->create_render_pipeline(desc));
 }
 
-void basic_pipeline::on_render(const std::vector<mesh*>& meshes, rhi_render_command* command)
+void basic_pipeline::on_render(const std::vector<mesh*>& meshes, rhi_command* command)
 {
 }
 } // namespace violet

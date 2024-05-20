@@ -4,7 +4,7 @@
 
 namespace violet
 {
-mouse::mouse(window_impl* impl) noexcept : m_x(0), m_y(0), m_impl(impl)
+mouse::mouse(window_impl* impl) noexcept : m_x(0), m_y(0), m_whell(0), m_impl(impl)
 {
 }
 

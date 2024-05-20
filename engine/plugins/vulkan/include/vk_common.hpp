@@ -3,17 +3,7 @@
 #include "graphics/render_interface.hpp"
 #include <stdexcept>
 
-#ifdef _WIN32
-#    define VK_USE_PLATFORM_WIN32_KHR
-#endif
-#include <vulkan/vulkan.h>
-
-#ifndef NDEBUG
-#    include <cassert>
-#    define VIOLET_VK_ASSERT(condition, ...) assert(condition)
-#else
-#    define VIOLET_VK_ASSERT(condition, ...)
-#endif
+#include "volk.h"
 
 namespace violet::vk
 {
@@ -29,10 +19,10 @@ public:
     VkResult error() const { return m_result; }
 
 private:
-    std::string result_to_string(VkResult result)
+    static std::string result_to_string(VkResult result)
     {
         char s_str[64] = {};
-        sprintf_s(s_str, "RESULT of 0x%08X", m_result);
+        sprintf_s(s_str, "RESULT of 0x%08X", result);
         return std::string(s_str);
     }
 

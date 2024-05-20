@@ -15,6 +15,7 @@ public:
     void set_position(const float3& position) noexcept;
     void set_position(float4_simd position) noexcept;
     const float3& get_position() const noexcept;
+    float3 get_world_position() const noexcept;
 
     void set_rotation(const float4& quaternion) noexcept;
     void set_rotation(float4_simd quaternion) noexcept;

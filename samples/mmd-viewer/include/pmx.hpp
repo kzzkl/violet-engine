@@ -360,6 +360,7 @@ public:
     std::vector<float3> position;
     std::vector<float3> normal;
     std::vector<float2> uv;
+    std::vector<float> edge;
 
     std::vector<uint2> skin; // first: skin type(0: BDEF, 1: SDEF), second: skin data index
     std::vector<bdef_data> bdef;

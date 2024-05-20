@@ -26,5 +26,21 @@ target_include_directories(stb INTERFACE ./stb)
 set(SKIP_INSTALL_ALL ON)
 # add_subdirectory(freetype)
 
+# volk
+if (WIN32)
+   set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
+endif()
+add_subdirectory(volk)
+
+# vma
+set(VMA_STATIC_VULKAN_FUNCTIONS OFF)
+set(VMA_DYNAMIC_VULKAN_FUNCTIONS OFF)
+add_subdirectory(VulkanMemoryAllocator)
+
 # yoga
 # add_subdirectory(yoga)
+
+# SPIRV-Reflect
+set(SPIRV_REFLECT_EXECUTABLE OFF)
+set(SPIRV_REFLECT_STATIC_LIB ON)
+add_subdirectory(SPIRV-Reflect)

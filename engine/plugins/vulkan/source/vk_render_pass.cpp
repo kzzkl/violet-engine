@@ -46,8 +46,8 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
         attachment.storeOp = map_store_op(desc.attachments[i].store_op);
         attachment.stencilLoadOp = map_load_op(desc.attachments[i].stencil_load_op);
         attachment.stencilStoreOp = map_store_op(desc.attachments[i].stencil_store_op);
-        attachment.initialLayout = vk_util::map_state(desc.attachments[i].initial_state);
-        attachment.finalLayout = vk_util::map_state(desc.attachments[i].final_state);
+        attachment.initialLayout = vk_util::map_layout(desc.attachments[i].initial_layout);
+        attachment.finalLayout = vk_util::map_layout(desc.attachments[i].final_layout);
 
         attachments.push_back(attachment);
     }
@@ -60,11 +60,12 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
     for (std::size_t i = 0; i < desc.subpass_count; ++i)
     {
         bool has_resolve_attachment = false;
+        bool has_depth_stencil_attachment = false;
         for (std::size_t j = 0; j < desc.subpasses[i].reference_count; ++j)
         {
             VkAttachmentReference ref = {};
             ref.attachment = desc.subpasses[i].references[j].index;
-            ref.layout = vk_util::map_state(desc.subpasses[i].references[j].state);
+            ref.layout = vk_util::map_layout(desc.subpasses[i].references[j].layout);
             switch (desc.subpasses[i].references[j].type)
             {
             case RHI_ATTACHMENT_REFERENCE_TYPE_INPUT: {
@@ -77,6 +78,7 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
             }
             case RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL: {
                 depth_stencil[i] = ref;
+                has_depth_stencil_attachment = true;
                 break;
             }
             case RHI_ATTACHMENT_REFERENCE_TYPE_RESOLVE: {
@@ -103,27 +105,26 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
         subpasses[i].inputAttachmentCount = static_cast<std::uint32_t>(input[i].size());
         subpasses[i].pColorAttachments = color[i].data();
         subpasses[i].colorAttachmentCount = static_cast<std::uint32_t>(color[i].size());
-        subpasses[i].pDepthStencilAttachment = &depth_stencil[i];
+        if (has_depth_stencil_attachment)
+            subpasses[i].pDepthStencilAttachment = &depth_stencil[i];
     }
 
     std::vector<VkSubpassDependency> dependencies(desc.dependency_count);
     for (std::size_t i = 0; i < desc.dependency_count; ++i)
     {
-        dependencies[i].srcSubpass = desc.dependencies[i].source == RHI_RENDER_SUBPASS_EXTERNAL
+        dependencies[i].srcSubpass = desc.dependencies[i].src == RHI_RENDER_SUBPASS_EXTERNAL
                                          ? VK_SUBPASS_EXTERNAL
-                                         : static_cast<std::uint32_t>(desc.dependencies[i].source);
+                                         : static_cast<std::uint32_t>(desc.dependencies[i].src);
         dependencies[i].srcStageMask =
-            vk_util::map_pipeline_stage_flags(desc.dependencies[i].source_stage);
-        dependencies[i].srcAccessMask =
-            vk_util::map_access_flags(desc.dependencies[i].source_access);
+            vk_util::map_pipeline_stage_flags(desc.dependencies[i].src_stage);
+        dependencies[i].srcAccessMask = vk_util::map_access_flags(desc.dependencies[i].src_access);
 
-        dependencies[i].dstSubpass = desc.dependencies[i].target == RHI_RENDER_SUBPASS_EXTERNAL
+        dependencies[i].dstSubpass = desc.dependencies[i].dst == RHI_RENDER_SUBPASS_EXTERNAL
                                          ? VK_SUBPASS_EXTERNAL
-                                         : static_cast<std::uint32_t>(desc.dependencies[i].target);
+                                         : static_cast<std::uint32_t>(desc.dependencies[i].dst);
         dependencies[i].dstStageMask =
-            vk_util::map_pipeline_stage_flags(desc.dependencies[i].target_stage);
-        dependencies[i].dstAccessMask =
-            vk_util::map_access_flags(desc.dependencies[i].target_access);
+            vk_util::map_pipeline_stage_flags(desc.dependencies[i].dst_stage);
+        dependencies[i].dstAccessMask = vk_util::map_access_flags(desc.dependencies[i].dst_access);
     }
 
     VkRenderPassCreateInfo render_pass_info = {};
