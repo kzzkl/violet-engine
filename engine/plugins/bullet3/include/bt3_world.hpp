@@ -6,20 +6,20 @@
 
 namespace violet::bt3
 {
-class bt3_world : public pei_world
+class bt3_world : public phy_world
 {
 public:
-    bt3_world(const pei_world_desc& desc);
+    bt3_world(const phy_world_desc& desc);
     virtual ~bt3_world();
 
     virtual void add(
-        pei_rigidbody* rigidbody,
+        phy_rigidbody* rigidbody,
         std::uint32_t collision_group,
         std::uint32_t collision_mask) override;
-    virtual void add(pei_joint* joint) override;
+    virtual void add(phy_joint* joint) override;
 
-    virtual void remove(pei_rigidbody* rigidbody) override;
-    virtual void remove(pei_joint* joint) override;
+    virtual void remove(phy_rigidbody* rigidbody) override;
+    virtual void remove(phy_joint* joint) override;
 
     virtual void simulation(float time_step) override;
 

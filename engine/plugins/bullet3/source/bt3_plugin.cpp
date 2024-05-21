@@ -4,48 +4,48 @@
 
 namespace violet::bt3
 {
-class bt3_plugin : public pei_plugin
+class bt3_plugin : public phy_plugin
 {
 public:
-    virtual pei_world* create_world(const pei_world_desc& desc) override
+    virtual phy_world* create_world(const phy_world_desc& desc) override
     {
         return new bt3_world(desc);
     }
 
-    virtual void destroy_world(pei_world* world) override { delete world; }
+    virtual void destroy_world(phy_world* world) override { delete world; }
 
-    virtual pei_collision_shape* create_collision_shape(
-        const pei_collision_shape_desc& desc) override
+    virtual phy_collision_shape* create_collision_shape(
+        const phy_collision_shape_desc& desc) override
     {
         return new bt3_shape(desc);
     }
 
-    virtual pei_collision_shape* create_collision_shape(
-        const pei_collision_shape* const* child,
+    virtual phy_collision_shape* create_collision_shape(
+        const phy_collision_shape* const* child,
         const float4x4* offset,
         std::size_t size) override
     {
         return new bt3_shape(child, offset, size);
     }
 
-    virtual void destroy_collision_shape(pei_collision_shape* collision_shape) override
+    virtual void destroy_collision_shape(phy_collision_shape* collision_shape) override
     {
         delete collision_shape;
     }
 
-    virtual pei_rigidbody* create_rigidbody(const pei_rigidbody_desc& desc) override
+    virtual phy_rigidbody* create_rigidbody(const phy_rigidbody_desc& desc) override
     {
         return new bt3_rigidbody(desc);
     }
 
-    virtual void destroy_rigidbody(pei_rigidbody* rigidbody) override { delete rigidbody; }
+    virtual void destroy_rigidbody(phy_rigidbody* rigidbody) override { delete rigidbody; }
 
-    virtual pei_joint* create_joint(const pei_joint_desc& desc) override
+    virtual phy_joint* create_joint(const phy_joint_desc& desc) override
     {
         return new bt3_joint(desc);
     }
 
-    virtual void destroy_joint(pei_joint* joint) override { delete joint; }
+    virtual void destroy_joint(phy_joint* joint) override { delete joint; }
 };
 } // namespace violet::bt3
 
@@ -64,13 +64,13 @@ extern "C"
         return info;
     }
 
-    PLUGIN_API violet::pei_plugin* create_pei()
+    PLUGIN_API violet::phy_plugin* phy_create_plugin()
     {
         return new violet::bt3::bt3_plugin();
     }
 
-    PLUGIN_API void destroy_pei(violet::pei_plugin* pei)
+    PLUGIN_API void phy_destroy_plugin(violet::phy_plugin* plugin)
     {
-        return delete pei;
+        return delete plugin;
     }
 }

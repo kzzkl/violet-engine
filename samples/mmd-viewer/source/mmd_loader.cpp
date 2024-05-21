@@ -366,21 +366,21 @@ void mmd_loader::load_physics(mmd_model* model, const pmx& pmx, world& world)
         }
         rigidbody_bones.push_back(bone);
 
-        pei_collision_shape_desc shape_desc = {};
+        phy_collision_shape_desc shape_desc = {};
         switch (pmx_rigidbody.shape)
         {
         case PMX_RIGIDBODY_SHAPE_TYPE_SPHERE:
-            shape_desc.type = PEI_COLLISION_SHAPE_TYPE_SPHERE;
+            shape_desc.type = PHY_COLLISION_SHAPE_TYPE_SPHERE;
             shape_desc.sphere.radius = pmx_rigidbody.size[0];
             break;
         case PMX_RIGIDBODY_SHAPE_TYPE_BOX:
-            shape_desc.type = PEI_COLLISION_SHAPE_TYPE_BOX;
+            shape_desc.type = PHY_COLLISION_SHAPE_TYPE_BOX;
             shape_desc.box.length = pmx_rigidbody.size[0] * 2.0f;
             shape_desc.box.height = pmx_rigidbody.size[1] * 2.0f;
             shape_desc.box.width = pmx_rigidbody.size[2] * 2.0f;
             break;
         case PMX_RIGIDBODY_SHAPE_TYPE_CAPSULE:
-            shape_desc.type = PEI_COLLISION_SHAPE_TYPE_CAPSULE;
+            shape_desc.type = PHY_COLLISION_SHAPE_TYPE_CAPSULE;
             shape_desc.capsule.radius = pmx_rigidbody.size[0];
             shape_desc.capsule.height = pmx_rigidbody.size[1];
             break;
@@ -390,19 +390,19 @@ void mmd_loader::load_physics(mmd_model* model, const pmx& pmx, world& world)
         model->collision_shapes.push_back(m_physics_context->create_collision_shape(shape_desc));
 
         auto bone_rigidbody = bone->get<rigidbody>();
-        bone_rigidbody->set_activation_state(PEI_RIGIDBODY_ACTIVATION_STATE_DISABLE_DEACTIVATION);
+        bone_rigidbody->set_activation_state(PHY_RIGIDBODY_ACTIVATION_STATE_DISABLE_DEACTIVATION);
         bone_rigidbody->set_shape(model->collision_shapes[i].get());
 
         switch (pmx_rigidbody.mode)
         {
         case PMX_RIGIDBODY_MODE_STATIC:
-            bone_rigidbody->set_type(PEI_RIGIDBODY_TYPE_KINEMATIC);
+            bone_rigidbody->set_type(PHY_RIGIDBODY_TYPE_KINEMATIC);
             break;
         case PMX_RIGIDBODY_MODE_DYNAMIC:
-            bone_rigidbody->set_type(PEI_RIGIDBODY_TYPE_DYNAMIC);
+            bone_rigidbody->set_type(PHY_RIGIDBODY_TYPE_DYNAMIC);
             break;
         case PMX_RIGIDBODY_MODE_MERGE:
-            bone_rigidbody->set_type(PEI_RIGIDBODY_TYPE_DYNAMIC);
+            bone_rigidbody->set_type(PHY_RIGIDBODY_TYPE_DYNAMIC);
             bone_rigidbody->set_reflector<rigidbody_merge_reflector>();
             break;
         default:

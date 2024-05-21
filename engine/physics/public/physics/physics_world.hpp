@@ -8,7 +8,7 @@ namespace violet
 class physics_world
 {
 public:
-    physics_world(const float3& gravity, pei_debug_draw* debug, physics_context* context);
+    physics_world(const float3& gravity, phy_debug_draw* debug, physics_context* context);
     physics_world(const physics_world&) = delete;
     ~physics_world();
 
@@ -19,6 +19,6 @@ public:
     physics_world& operator=(const physics_world&) = delete;
 
 private:
-    pei_ptr<pei_world> m_world;
+    phy_ptr<phy_world> m_world;
 };
 } // namespace violet

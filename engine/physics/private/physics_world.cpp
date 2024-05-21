@@ -4,9 +4,9 @@
 
 namespace violet
 {
-physics_world::physics_world(const float3& gravity, pei_debug_draw* debug, physics_context* context)
+physics_world::physics_world(const float3& gravity, phy_debug_draw* debug, physics_context* context)
 {
-    pei_world_desc desc = {};
+    phy_world_desc desc = {};
     desc.gravity = gravity;
     desc.debug_draw = debug;
     m_world = context->create_world(desc);
@@ -29,7 +29,7 @@ void physics_world::add(actor* actor)
         added_rigidbody->get_collision_group(),
         added_rigidbody->get_collision_mask());
 
-    for (pei_joint* joint : added_rigidbody->get_joints())
+    for (phy_joint* joint : added_rigidbody->get_joints())
         m_world->add(joint);
 }
 

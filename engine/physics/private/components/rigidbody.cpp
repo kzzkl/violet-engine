@@ -19,7 +19,7 @@ rigidbody::rigidbody(physics_context* context) noexcept
 {
     m_offset = m_offset_inverse = matrix::identity();
 
-    m_desc.type = PEI_RIGIDBODY_TYPE_DYNAMIC;
+    m_desc.type = PHY_RIGIDBODY_TYPE_DYNAMIC;
     m_desc.shape = nullptr;
     m_desc.mass = 0.0f;
     m_desc.linear_damping = 0.0f;
@@ -73,12 +73,12 @@ rigidbody::~rigidbody()
         m_world->remove(m_rigidbody.get());
 }
 
-void rigidbody::set_type(pei_rigidbody_type type)
+void rigidbody::set_type(phy_rigidbody_type type)
 {
     m_desc.type = type;
 }
 
-void rigidbody::set_shape(pei_collision_shape* shape)
+void rigidbody::set_shape(phy_collision_shape* shape)
 {
     m_desc.shape = shape;
     if (m_rigidbody)
@@ -133,7 +133,7 @@ void rigidbody::set_offset(const float4x4& offset) noexcept
     m_offset_inverse = matrix::inverse(offset);
 }
 
-void rigidbody::set_activation_state(pei_rigidbody_activation_state activation_state)
+void rigidbody::set_activation_state(phy_rigidbody_activation_state activation_state)
 {
     if (m_rigidbody)
         m_rigidbody->set_activation_state(activation_state);
@@ -202,7 +202,7 @@ bool rigidbody::get_updated_flag() const
     return m_rigidbody->get_updated_flag();
 }
 
-pei_rigidbody* rigidbody::get_rigidbody()
+phy_rigidbody* rigidbody::get_rigidbody()
 {
     if (m_rigidbody == nullptr)
         m_rigidbody = m_context->create_rigidbody(m_desc);
@@ -210,16 +210,16 @@ pei_rigidbody* rigidbody::get_rigidbody()
     return m_rigidbody.get();
 }
 
-std::vector<pei_joint*> rigidbody::get_joints()
+std::vector<phy_joint*> rigidbody::get_joints()
 {
-    std::vector<pei_joint*> joints;
+    std::vector<phy_joint*> joints;
     for (auto& joint : m_joints)
         joints.push_back(joint->get_joint());
 
     return joints;
 }
 
-void rigidbody::set_world(pei_world* world)
+void rigidbody::set_world(phy_world* world)
 {
     m_world = world;
 }
@@ -267,7 +267,7 @@ joint::joint(
     m_source = source;
     m_target = target;
 
-    pei_joint_desc desc = {};
+    phy_joint_desc desc = {};
     desc.source = source->get_rigidbody();
     desc.source_position = source_position;
     desc.source_rotation = source_rotation;

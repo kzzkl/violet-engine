@@ -31,7 +31,7 @@ bool physics_module::initialize(const dictionary& config)
 {
     m_plugin = std::make_unique<physics_plugin>();
     m_plugin->load(config["plugin"]);
-    m_context = std::make_unique<physics_context>(m_plugin->get_pei());
+    m_context = std::make_unique<physics_context>(m_plugin->get_plugin());
 
     if (config["tick"])
     {
@@ -63,7 +63,7 @@ void physics_module::simulation(physics_world* world, bool immediately)
     view.each(
         [](transform& transform, rigidbody& rigidbody)
         {
-            if (rigidbody.get_type() == PEI_RIGIDBODY_TYPE_KINEMATIC)
+            if (rigidbody.get_type() == PHY_RIGIDBODY_TYPE_KINEMATIC)
             {
                 float4x4_simd world_matrix = simd::load(transform.get_world_matrix());
                 float4x4_simd offset_matrix = simd::load(rigidbody.get_offset());

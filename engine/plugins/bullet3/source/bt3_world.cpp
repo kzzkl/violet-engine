@@ -8,12 +8,12 @@ namespace violet::bt3
 class bt3_world::debug_draw : public btIDebugDraw
 {
 public:
-    debug_draw(pei_debug_draw* debug = nullptr) : m_debug(debug)
+    debug_draw(phy_debug_draw* debug = nullptr) : m_debug(debug)
     {
         m_mode |= DebugDrawModes::DBG_DrawWireframe;
     }
 
-    void debug(pei_debug_draw* debug) { m_debug = debug; }
+    void debug(phy_debug_draw* debug) { m_debug = debug; }
 
     virtual void drawLine(const btVector3& from, const btVector3& to, const btVector3& color)
         override
@@ -36,11 +36,11 @@ public:
 
 private:
     int m_mode;
-    pei_debug_draw* m_debug;
+    phy_debug_draw* m_debug;
 };
 #endif
 
-bt3_world::bt3_world(const pei_world_desc& desc)
+bt3_world::bt3_world(const phy_world_desc& desc)
 {
     m_collision = std::make_unique<btDefaultCollisionConfiguration>();
     m_dispatcher = std::make_unique<btCollisionDispatcher>(m_collision.get());
@@ -89,7 +89,7 @@ bt3_world::~bt3_world()
 }
 
 void bt3_world::add(
-    pei_rigidbody* rigidbody,
+    phy_rigidbody* rigidbody,
     std::uint32_t collision_group,
     std::uint32_t collision_mask)
 {
@@ -102,17 +102,17 @@ void bt3_world::add(
     r->set_world(this);
 }
 
-void bt3_world::add(pei_joint* joint)
+void bt3_world::add(phy_joint* joint)
 {
     m_world->addConstraint(static_cast<bt3_joint*>(joint)->get_constraint());
 }
 
-void bt3_world::remove(pei_rigidbody* rigidbody)
+void bt3_world::remove(phy_rigidbody* rigidbody)
 {
     m_world->removeCollisionObject(static_cast<bt3_rigidbody*>(rigidbody)->get_rigidbody());
 }
 
-void bt3_world::remove(pei_joint* joint)
+void bt3_world::remove(phy_joint* joint)
 {
     m_world->removeConstraint(static_cast<bt3_joint*>(joint)->get_constraint());
 }

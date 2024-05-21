@@ -22,10 +22,10 @@ public:
     rigidbody(rigidbody&& other) noexcept;
     ~rigidbody();
 
-    void set_type(pei_rigidbody_type type);
-    pei_rigidbody_type get_type() const noexcept { return m_desc.type; }
+    void set_type(phy_rigidbody_type type);
+    phy_rigidbody_type get_type() const noexcept { return m_desc.type; }
 
-    void set_shape(pei_collision_shape* shape);
+    void set_shape(phy_collision_shape* shape);
     void set_mass(float mass) noexcept;
     void set_damping(float linear_damping, float angular_damping);
     void set_restitution(float restitution);
@@ -44,7 +44,7 @@ public:
     const float4x4& get_offset() const noexcept { return m_offset; }
     const float4x4& get_offset_inverse() const noexcept { return m_offset_inverse; }
 
-    void set_activation_state(pei_rigidbody_activation_state activation_state);
+    void set_activation_state(phy_rigidbody_activation_state activation_state);
 
     void clear_forces();
 
@@ -66,10 +66,10 @@ public:
     }
     rigidbody_reflector* get_reflector() const noexcept { return m_reflector.get(); }
 
-    pei_rigidbody* get_rigidbody();
-    std::vector<pei_joint*> get_joints();
+    phy_rigidbody* get_rigidbody();
+    std::vector<phy_joint*> get_joints();
 
-    void set_world(pei_world* world);
+    void set_world(phy_world* world);
 
     rigidbody& operator=(const rigidbody&) = delete;
     rigidbody& operator=(rigidbody&& other) noexcept;
@@ -83,15 +83,15 @@ private:
     float4x4 m_offset;
     float4x4 m_offset_inverse;
 
-    pei_rigidbody_desc m_desc;
-    pei_ptr<pei_rigidbody> m_rigidbody;
+    phy_rigidbody_desc m_desc;
+    phy_ptr<phy_rigidbody> m_rigidbody;
 
     std::vector<std::unique_ptr<joint>> m_joints;
     std::vector<joint*> m_slave_joints;
 
     std::unique_ptr<rigidbody_reflector> m_reflector;
 
-    pei_world* m_world;
+    phy_world* m_world;
     physics_context* m_context;
 };
 
@@ -116,7 +116,7 @@ public:
     void set_stiffness(std::size_t index, float stiffness);
     void set_damping(std::size_t index, float damping);
 
-    pei_joint* get_joint() const noexcept { return m_joint.get(); }
+    phy_joint* get_joint() const noexcept { return m_joint.get(); }
 
     joint& operator=(const joint&) = delete;
 
@@ -125,6 +125,6 @@ private:
 
     rigidbody* m_source;
     component_ptr<rigidbody> m_target;
-    pei_ptr<pei_joint> m_joint;
+    phy_ptr<phy_joint> m_joint;
 };
 } // namespace violet

@@ -31,9 +31,9 @@ public:
     virtual void setWorldTransform(const btTransform& centerOfMassWorldTrans) override {}
 };
 
-bt3_rigidbody::bt3_rigidbody(const pei_rigidbody_desc& desc)
+bt3_rigidbody::bt3_rigidbody(const phy_rigidbody_desc& desc)
 {
-    if (desc.type == PEI_RIGIDBODY_TYPE_KINEMATIC)
+    if (desc.type == PHY_RIGIDBODY_TYPE_KINEMATIC)
         m_motion_state = std::make_unique<bt3_kinematic_motion_state>();
     else
         m_motion_state = std::make_unique<bt3_motion_state>();
@@ -61,7 +61,7 @@ bt3_rigidbody::bt3_rigidbody(const pei_rigidbody_desc& desc)
 
     m_rigidbody = std::make_unique<btRigidBody>(info);
 
-    if (desc.type == PEI_RIGIDBODY_TYPE_KINEMATIC)
+    if (desc.type == PHY_RIGIDBODY_TYPE_KINEMATIC)
     {
         m_rigidbody->setCollisionFlags(
             m_rigidbody->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
@@ -101,7 +101,7 @@ void bt3_rigidbody::set_friction(float friction)
     m_rigidbody->setFriction(friction);
 }
 
-void bt3_rigidbody::set_shape(pei_collision_shape* shape)
+void bt3_rigidbody::set_shape(phy_collision_shape* shape)
 {
     m_rigidbody->setCollisionShape(static_cast<bt3_shape*>(shape)->shape());
 }
@@ -134,17 +134,17 @@ void bt3_rigidbody::clear_forces()
     m_rigidbody->clearForces();
 }
 
-void bt3_rigidbody::set_activation_state(pei_rigidbody_activation_state state)
+void bt3_rigidbody::set_activation_state(phy_rigidbody_activation_state state)
 {
     switch (state)
     {
-    case PEI_RIGIDBODY_ACTIVATION_STATE_ACTIVE:
+    case PHY_RIGIDBODY_ACTIVATION_STATE_ACTIVE:
         m_rigidbody->setActivationState(ACTIVE_TAG);
         break;
-    case PEI_RIGIDBODY_ACTIVATION_STATE_DISABLE_DEACTIVATION:
+    case PHY_RIGIDBODY_ACTIVATION_STATE_DISABLE_DEACTIVATION:
         m_rigidbody->setActivationState(DISABLE_DEACTIVATION);
         break;
-    case PEI_RIGIDBODY_ACTIVATION_STATE_DISABLE_SIMULATION:
+    case PHY_RIGIDBODY_ACTIVATION_STATE_DISABLE_SIMULATION:
         m_rigidbody->setActivationState(DISABLE_SIMULATION);
         break;
     default:

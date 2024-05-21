@@ -14,7 +14,7 @@
 
 namespace violet::sample
 {
-class physics_debug : public pei_debug_draw
+class physics_debug : public phy_debug_draw
 {
 public:
     physics_debug(render_graph* render_graph, render_device* device, world& world)

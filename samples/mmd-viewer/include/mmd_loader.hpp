@@ -20,7 +20,7 @@ struct mmd_model
 
     std::vector<std::unique_ptr<actor>> bones;
 
-    std::vector<pei_ptr<pei_collision_shape>> collision_shapes;
+    std::vector<phy_ptr<phy_collision_shape>> collision_shapes;
 };
 
 class pmx;

@@ -3,7 +3,7 @@
 
 namespace violet::bt3
 {
-bt3_joint::bt3_joint(const pei_joint_desc& desc)
+bt3_joint::bt3_joint(const phy_joint_desc& desc)
 {
     btMatrix3x3 rotate_a;
     rotate_a.setRotation(convert_quaternion(desc.source_rotation));

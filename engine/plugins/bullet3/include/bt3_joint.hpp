@@ -5,10 +5,10 @@
 
 namespace violet::bt3
 {
-class bt3_joint : public pei_joint
+class bt3_joint : public phy_joint
 {
 public:
-    bt3_joint(const pei_joint_desc& desc);
+    bt3_joint(const phy_joint_desc& desc);
     virtual ~bt3_joint() = default;
 
     virtual void set_linear(const float3& min, const float3& max) override;
