@@ -1,15 +1,7 @@
 project(ui)
 
 add_executable(${PROJECT_NAME}
-    ./source/button_page.cpp
-    ./source/docking_page.cpp
-    ./source/gallery.cpp
-    ./source/image_page.cpp
-    ./source/input_page.cpp
-    ./source/main.cpp
-    ./source/page.cpp
-    ./source/scroll_page.cpp
-    ./source/tree_page.cpp)
+    ./source/main.cpp)
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE

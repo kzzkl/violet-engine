@@ -1,7 +1,7 @@
 #include "layout/layout_node_yoga.hpp"
 #include <cassert>
 
-namespace violet::ui
+namespace violet
 {
 namespace
 {
@@ -355,13 +355,24 @@ void layout_node_yoga::calculate_absolute_position(float parent_x, float parent_
     m_absolute_y = parent_y + YGNodeLayoutGetTop(m_node);
 }
 
-node_rect layout_node_yoga::get_rect() const
+std::uint32_t layout_node_yoga::get_x() const
 {
-    return node_rect{
-        .x = m_absolute_x,
-        .y = m_absolute_y,
-        .width = YGNodeLayoutGetWidth(m_node),
-        .height = YGNodeLayoutGetHeight(m_node)};
+    return static_cast<std::uint32_t>(m_absolute_x);
+}
+
+std::uint32_t layout_node_yoga::get_y() const
+{
+    return static_cast<std::uint32_t>(m_absolute_y);
+}
+
+std::uint32_t layout_node_yoga::get_width() const
+{
+    return static_cast<std::uint32_t>(YGNodeLayoutGetWidth(m_node));
+}
+
+std::uint32_t layout_node_yoga::get_height() const
+{
+    return static_cast<std::uint32_t>(YGNodeLayoutGetHeight(m_node));
 }
 
 bool layout_node_yoga::dirty() const
@@ -392,4 +403,4 @@ void layout_root_yoga::calculate(float width, float height)
 {
     YGNodeCalculateLayout(m_node, width, height, YGDirectionLTR);
 }
-} // namespace violet::ui
+} // namespace violet

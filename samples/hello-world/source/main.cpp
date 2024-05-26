@@ -30,6 +30,10 @@ public:
 
         set_primitive_topology(RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
+        set_input_layout({
+            {"position", RHI_FORMAT_R32G32B32_FLOAT}
+        });
+
         set_parameter_layout({engine_parameter_layout::mesh, engine_parameter_layout::camera});
     }
 

@@ -2,7 +2,7 @@
 #include "layout/layout_node_yoga.hpp"
 #include <queue>
 
-namespace violet::ui
+namespace violet
 {
 control::control(bool is_root)
     : m_layer(1),
@@ -148,4 +148,4 @@ void control::update_depth(float parent_depth) noexcept
         }
     }
 }
-} // namespace violet::ui
+} // namespace violet

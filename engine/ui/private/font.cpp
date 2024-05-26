@@ -6,7 +6,7 @@
 
 #include <fstream>
 
-namespace violet::ui
+namespace violet
 {
 font::font(std::string_view font, std::size_t size)
 {
@@ -104,16 +104,17 @@ font::font(std::string_view font, std::size_t size)
 
     FT_Done_Face(face);
     FT_Done_FreeType(library);
-
-    m_texture = graphics::rhi::make_texture(
-        pixels.data(),
-        tex_width,
-        tex_height,
-        graphics::RESOURCE_FORMAT_R8_UNORM);
+    /*
+        m_texture = graphics::rhi::make_texture(
+            pixels.data(),
+            tex_width,
+            tex_height,
+            graphics::RESOURCE_FORMAT_R8_UNORM);
+            */
 }
 
 const glyph_data& font::glyph(std::uint32_t character) const
 {
     return m_glyph.at(character);
 }
-} // namespace violet::ui
+} // namespace violet

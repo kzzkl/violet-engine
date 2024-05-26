@@ -3,7 +3,7 @@
 
 struct vs_in
 {
-    [[vk::location(0)]] float3 position: POSITION;
+    float3 position: POSITION;
 };
 
 struct vs_out

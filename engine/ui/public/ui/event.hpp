@@ -3,7 +3,7 @@
 #include "window/input.hpp"
 #include <functional>
 
-namespace violet::ui
+namespace violet
 {
 template <typename T>
 class control_event
@@ -103,7 +103,7 @@ struct event
 
         struct
         {
-            window::mouse_key key;
+            mouse_key key;
             int x;
             int y;
         } key;
@@ -137,8 +137,8 @@ public:
     using on_mouse_over_event = control_event<void()>;
     using on_mouse_move_event = control_event<void(int, int)>;
 
-    using on_mouse_press_event = control_event<bool(window::mouse_key, int, int)>;
-    using on_mouse_release_event = control_event<bool(window::mouse_key, int, int)>;
+    using on_mouse_press_event = control_event<bool(mouse_key, int, int)>;
+    using on_mouse_release_event = control_event<bool(mouse_key, int, int)>;
     using on_mouse_wheel_event = control_event<bool(int)>;
 
     using on_mouse_drag_event = control_event<void(int, int)>;
@@ -179,4 +179,4 @@ public:
 
     on_resize_event::handle on_resize;
 };
-} // namespace violet::ui
+} // namespace violet

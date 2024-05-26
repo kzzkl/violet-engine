@@ -377,17 +377,21 @@ class rhi_shader
 {
 public:
     virtual ~rhi_shader() = default;
+};
 
-    virtual const char* get_input_name(std::size_t index) = 0;
-    virtual std::size_t get_input_location(std::size_t index) = 0;
-    virtual rhi_format get_input_format(std::size_t index) = 0;
-    virtual std::size_t get_input_count() const = 0;
+struct rhi_input_desc
+{
+    const char* name;
+    rhi_format format;
 };
 
 struct rhi_render_pipeline_desc
 {
     rhi_shader* vertex_shader;
     rhi_shader* fragment_shader;
+
+    rhi_input_desc* inputs;
+    std::size_t input_count;
 
     rhi_parameter_desc* parameters;
     std::size_t parameter_count;

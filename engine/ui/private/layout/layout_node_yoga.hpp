@@ -1,9 +1,9 @@
 #pragma once
 
-#include "ui/layout.hpp"
+#include "ui/layout/layout.hpp"
 #include "yoga/Yoga.h"
 
-namespace violet::ui
+namespace violet
 {
 class layout_node_yoga : public layout_node
 {
@@ -54,7 +54,11 @@ public:
     virtual void calculate(float width, float height) override;
     virtual void calculate_absolute_position(float parent_x, float parent_y) override;
 
-    virtual node_rect get_rect() const override;
+    virtual std::uint32_t get_x() const override;
+    virtual std::uint32_t get_y() const override;
+    virtual std::uint32_t get_width() const override;
+    virtual std::uint32_t get_height() const override;
+
     virtual bool dirty() const override;
 
     virtual void add_child(layout_node* child, std::size_t index) override;
@@ -77,4 +81,4 @@ public:
 private:
     YGConfigRef m_config;
 };
-} // namespace violet::ui
+} // namespace violet

@@ -2,11 +2,11 @@
 
 #include "ui/control_mesh.hpp"
 #include "ui/event.hpp"
-#include "ui/layout.hpp"
+#include "ui/layout/layout.hpp"
 #include <memory>
 #include <string>
 
-namespace violet::ui
+namespace violet
 {
 class control
 {
@@ -14,7 +14,6 @@ public:
     control(bool is_root = false);
     virtual ~control();
 
-    const node_rect& extent() const noexcept { return m_extent; }
     void sync_extent();
 
     bool control_dirty() const noexcept { return m_dirty; }
@@ -58,8 +57,6 @@ private:
     bool m_dirty;
     bool m_display;
 
-    node_rect m_extent;
-
     std::size_t m_link_index;
 
     control* m_parent;
@@ -68,4 +65,4 @@ private:
     std::unique_ptr<layout_node> m_layout;
     std::unique_ptr<event_node> m_event;
 };
-} // namespace violet::ui
+} // namespace violet

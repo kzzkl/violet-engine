@@ -1,13 +1,11 @@
 #pragma once
 
-#include "rhi.hpp"
-#include "ui/controls/view.hpp"
 #include <queue>
 #include <vector>
 
-namespace violet::ui
+namespace violet
 {
-class control_tree : public view
+class control_tree
 {
 public:
     control_tree();
@@ -20,7 +18,7 @@ public:
 private:
     void update_input();
     void update_layout(float width, float height);
-
+/*
     void bubble_mouse_event(control* hot_node, control* focused_node, control* drag_node);
 
     virtual void on_remove_child(control* child) override;
@@ -49,9 +47,9 @@ private:
     control* m_drag_node;
 
     std::vector<control*> m_mouse_over_nodes;
-
+*/
     std::queue<char> m_input_chars;
 
     bool m_tree_dirty;
 };
-} // namespace violet::ui
+} // namespace violet

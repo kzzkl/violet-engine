@@ -45,8 +45,7 @@ target_link_libraries(${PROJECT_NAME}
     violet::math
     stb
     volk
-    VulkanMemoryAllocator
-    spirv-reflect-static)
+    VulkanMemoryAllocator)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

@@ -40,14 +40,14 @@ void mesh::add_submesh(
     {
         std::hash<std::string> hasher;
         std::size_t hash = 0;
-        for (auto& name : passes[i]->get_input_layout())
+        for (auto& [name, format] : passes[i]->get_input_layout())
             hash = hash_combine(hash, hasher(name));
 
         auto iter = m_sorted_vertex_buffer.find(hash);
         if (iter == m_sorted_vertex_buffer.end())
         {
             std::vector<rhi_buffer*>& sorted_vertex_buffer = m_sorted_vertex_buffer[hash];
-            for (auto& name : passes[i]->get_input_layout())
+            for (auto& [name, format] : passes[i]->get_input_layout())
                 sorted_vertex_buffer.push_back(get_vertex_buffer(name));
             submesh.vertex_buffers.push_back(sorted_vertex_buffer.data());
         }

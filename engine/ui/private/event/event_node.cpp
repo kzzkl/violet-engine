@@ -2,9 +2,9 @@
 
 #include "ui/event.hpp"
 
-namespace violet::ui
+namespace violet
 {
 event_node::event_node() : mouse_over(false)
 {
 }
-} // namespace violet::ui
+} // namespace violet

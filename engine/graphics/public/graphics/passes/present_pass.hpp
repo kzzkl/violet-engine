@@ -14,5 +14,7 @@ public:
             RHI_ACCESS_FLAG_SHADER_READ | RHI_ACCESS_FLAG_SHADER_WRITE,
             RHI_TEXTURE_LAYOUT_PRESENT);
     }
+
+    virtual void execute(rhi_command* command, rdg_context* context) override {}
 };
 } // namespace violet

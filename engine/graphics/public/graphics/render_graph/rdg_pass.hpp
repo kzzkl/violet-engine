@@ -79,11 +79,17 @@ public:
     virtual rdg_pass_type get_type() const noexcept { return RDG_PASS_TYPE_OTHER; }
 
     virtual void compile(render_device* device) {}
-    virtual void execute(rhi_command* command, rdg_context* context) {}
+    virtual void execute(rhi_command* command, rdg_context* context) = 0;
 
-    void set_input_layout(const std::vector<std::string>& layout) { m_input_layout = layout; }
+    void set_input_layout(const std::vector<std::pair<std::string, rhi_format>>& layout)
+    {
+        m_input_layout = layout;
+    }
 
-    const std::vector<std::string>& get_input_layout() const noexcept { return m_input_layout; }
+    const std::vector<std::pair<std::string, rhi_format>>& get_input_layout() const noexcept
+    {
+        return m_input_layout;
+    }
 
     void set_parameter_layout(
         const std::vector<rhi_parameter_desc>& layout,
@@ -110,7 +116,7 @@ private:
 
     std::vector<std::unique_ptr<rdg_pass_reference>> m_references;
 
-    std::vector<std::string> m_input_layout;
+    std::vector<std::pair<std::string, rhi_format>> m_input_layout;
     std::vector<rhi_parameter_desc> m_parameter_layout;
     std::size_t m_material_parameter_index;
 };
@@ -141,7 +147,6 @@ public:
     virtual rdg_pass_type get_type() const noexcept final { return RDG_PASS_TYPE_RENDER; }
 
     virtual void compile(render_device* device) override;
-    virtual void execute(rhi_command* command, rdg_context* context) {}
 
 protected:
     rhi_render_pipeline* get_pipeline() const noexcept { return m_pipeline.get(); }
@@ -164,7 +169,6 @@ public:
     virtual rdg_pass_type get_type() const noexcept final { return RDG_PASS_TYPE_COMPUTE; }
 
     virtual void compile(render_device* device) override;
-    virtual void execute(rhi_command* command, rdg_context* context) {}
 
 protected:
     rhi_compute_pipeline* get_pipeline() const noexcept { return m_pipeline.get(); }

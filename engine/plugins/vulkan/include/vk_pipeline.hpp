@@ -103,35 +103,12 @@ private:
 class vk_shader : public rhi_shader
 {
 public:
-    struct input
-    {
-        std::string name;
-        std::uint32_t location;
-        VkFormat format;
-    };
-
-    struct parameter
-    {
-        std::string name;
-        std::uint32_t index;
-    };
-
-public:
     vk_shader(const char* path, VkDevice device);
     ~vk_shader();
-
-    virtual const char* get_input_name(std::size_t index) override;
-    virtual std::size_t get_input_location(std::size_t index) override;
-    virtual rhi_format get_input_format(std::size_t index) override;
-    virtual std::size_t get_input_count() const override;
-
-    const std::vector<input>& get_inputs() const noexcept { return m_inputs; }
 
     VkShaderModule get_module() const noexcept { return m_module; }
 
 private:
-    std::vector<input> m_inputs;
-
     VkShaderModule m_module;
     VkDevice m_device;
 };

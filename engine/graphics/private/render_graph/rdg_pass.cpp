@@ -157,17 +157,18 @@ void rdg_render_pass::compile(render_device* device)
     m_desc->vertex_shader = vertex_shader.get();
     m_desc->fragment_shader = fragment_shader.get();
 
+    std::vector<rhi_input_desc> inputs;
+    for (auto& [name, format] : get_input_layout())
+        inputs.push_back({.name = name.c_str(), .format = format});
+    m_desc->inputs = inputs.data();
+    m_desc->input_count = inputs.size();
+
     std::vector<rhi_parameter_desc> parameters = get_parameter_layout();
     m_desc->parameters = parameters.data();
     m_desc->parameter_count = parameters.size();
 
     m_pipeline = device->create_render_pipeline(*m_desc);
     m_desc = nullptr;
-
-    std::vector<std::string> input_layout(vertex_shader->get_input_count());
-    for (std::size_t i = 0; i < input_layout.size(); ++i)
-        input_layout[i] = vertex_shader->get_input_name(i);
-    set_input_layout(input_layout);
 }
 
 rdg_compute_pass::rdg_compute_pass()

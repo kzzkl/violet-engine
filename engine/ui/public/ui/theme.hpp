@@ -1,9 +1,10 @@
 #pragma once
 
+#include "common/type_index.hpp"
 #include <map>
 #include <string>
 
-namespace violet::ui
+namespace violet
 {
 class theme_manager
 {
@@ -48,13 +49,10 @@ public:
         auto map = static_cast<theme_map<T>*>(m_theme_maps[index].get());
 
         auto iter = map->themes.find(name.data());
-        if (iter != map->themes.end())
-            return iter->second;
-        else
-            throw std::out_of_range("Theme not found.");
+        return iter->second;
     }
 
 private:
     std::vector<std::unique_ptr<theme_map_base>> m_theme_maps;
 };
-} // namespace violet::ui
+} // namespace violet

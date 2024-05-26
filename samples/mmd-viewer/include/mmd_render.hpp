@@ -37,6 +37,66 @@ public:
     void set_edge(const float4& edge_color, float edge_size);
 };
 
+class mmd_color_pass : public rdg_render_pass
+{
+public:
+    constexpr static rhi_parameter_desc get_material_parameter_layout()
+    {
+        rhi_parameter_desc desc = {};
+        desc.bindings[0] = {
+            .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
+            .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
+            .size = 72}; // data
+        desc.bindings[1] = {
+            .type = RHI_PARAMETER_TYPE_TEXTURE,
+            .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
+            .size = 1}; // tex
+        desc.bindings[2] = {
+            .type = RHI_PARAMETER_TYPE_TEXTURE,
+            .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
+            .size = 1}; // toon
+        desc.bindings[3] = {
+            .type = RHI_PARAMETER_TYPE_TEXTURE,
+            .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
+            .size = 1}; // spa
+        desc.binding_count = 4;
+
+        return desc;
+    }
+
+public:
+    mmd_color_pass();
+
+    virtual void execute(rhi_command* command, rdg_context* context) override;
+
+private:
+    rdg_pass_reference* m_color;
+};
+
+class mmd_edge_pass : public rdg_render_pass
+{
+public:
+    constexpr static rhi_parameter_desc get_material_parameter_layout()
+    {
+        rhi_parameter_desc desc = {};
+        desc.bindings[0] = {
+            .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
+            .stage = RHI_PARAMETER_STAGE_FLAG_VERTEX | RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
+            .size = 20}; // data
+        desc.binding_count = 1;
+
+        return desc;
+    }
+
+public:
+    mmd_edge_pass();
+
+    virtual void execute(rhi_command* command, rdg_context* context) override;
+
+private:
+    rdg_pass_reference* m_color;
+};
+
 class mmd_render_graph : public render_graph
 {
 public:
@@ -50,42 +110,6 @@ private:
 
 namespace detail
 {
-constexpr rhi_parameter_desc get_material_parameter_layout()
-{
-    rhi_parameter_desc desc = {};
-    desc.bindings[0] = {
-        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-        .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 72}; // data
-    desc.bindings[1] = {
-        .type = RHI_PARAMETER_TYPE_TEXTURE,
-        .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 1}; // tex
-    desc.bindings[2] = {
-        .type = RHI_PARAMETER_TYPE_TEXTURE,
-        .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 1}; // toon
-    desc.bindings[3] = {
-        .type = RHI_PARAMETER_TYPE_TEXTURE,
-        .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 1}; // spa
-    desc.binding_count = 4;
-
-    return desc;
-}
-
-constexpr rhi_parameter_desc get_edge_material_parameter_layout()
-{
-    rhi_parameter_desc desc = {};
-    desc.bindings[0] = {
-        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-        .stage = RHI_PARAMETER_STAGE_FLAG_VERTEX | RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 20}; // data
-    desc.binding_count = 1;
-
-    return desc;
-}
-
 constexpr rhi_parameter_desc get_skeleton_parameter_layout()
 {
     rhi_parameter_desc desc = {};
@@ -133,9 +157,6 @@ constexpr rhi_parameter_desc get_skeleton_parameter_layout()
 
 struct mmd_parameter_layout
 {
-    static constexpr rhi_parameter_desc material = detail::get_material_parameter_layout();
-    static constexpr rhi_parameter_desc edge_material =
-        detail::get_edge_material_parameter_layout();
     static constexpr rhi_parameter_desc skeleton = detail::get_skeleton_parameter_layout();
 };
 } // namespace violet::sample

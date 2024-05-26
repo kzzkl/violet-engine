@@ -1,29 +1,29 @@
 #include "control_tree.hpp"
-#include "core/context.hpp"
-#include "window/window.hpp"
 
-namespace violet::ui
+namespace violet
 {
 namespace
 {
+/*
 inline bool in_extent(int x, int y, const node_rect& extent)
 {
     return extent.x <= x && extent.x + extent.width >= x && extent.y <= y &&
            extent.y + extent.height >= y;
 }
+*/
 } // namespace
 
 control_tree::control_tree()
-    : m_hot_node(nullptr),
+    : /*m_hot_node(nullptr),
       m_focused_node(nullptr),
-      m_drag_node(nullptr),
+      m_drag_node(nullptr),*/
       m_tree_dirty(true)
 {
-    layout()->set_flex_direction(LAYOUT_FLEX_DIRECTION_ROW);
+    // layout()->set_flex_direction(LAYOUT_FLEX_DIRECTION_ROW);
 }
 
 void control_tree::tick(float width, float height)
-{
+{/*
     update_input();
 
     bool layout_dirty = false;
@@ -33,24 +33,26 @@ void control_tree::tick(float width, float height)
     {
         bool layout_update_flag = false;
 
-        bfs(this, [&](control* node) -> bool {
-            if (!node->display())
-                return false;
-
-            if (node->layout()->dirty())
+        bfs(this,
+            [&](control* node) -> bool
             {
-                layout_dirty = true;
-                layout_update_flag = true;
-            }
+                if (!node->display())
+                    return false;
 
-            if (node->control_dirty())
-            {
-                control_dirty = true;
-                node->reset_control_dirty();
-            }
+                if (node->layout()->dirty())
+                {
+                    layout_dirty = true;
+                    layout_update_flag = true;
+                }
 
-            return true;
-        });
+                if (node->control_dirty())
+                {
+                    control_dirty = true;
+                    node->reset_control_dirty();
+                }
+
+                return true;
+            });
 
         if (layout_update_flag)
             update_layout(width, height);
@@ -61,17 +63,17 @@ void control_tree::tick(float width, float height)
     if (layout_dirty || control_dirty)
         m_tree_dirty = true;
     else
-        m_tree_dirty = false;
+        m_tree_dirty = false;*/
 }
 
 void control_tree::update_input()
 {
-    auto& mouse = system<window::window>().mouse();
-    if (mouse.mode() == window::MOUSE_MODE_RELATIVE)
+    /*
+    auto& mouse = system<window>().mouse();
+    if (mouse.mode() == MOUSE_MODE_RELATIVE)
         return;
-
-    int mouse_x = mouse.x();
-    int mouse_y = mouse.y();
+    int mouse_x = 0;
+    int mouse_y = 0;
 
     for (control* node : m_mouse_over_nodes)
     {
@@ -93,48 +95,50 @@ void control_tree::update_input()
     control* drag_node = nullptr;
     float drag_node_depth = 1.0f;
 
-    bfs(this, [&](control* node) -> bool {
-        if (!node->display())
-            return false;
-
-        auto extent = node->extent();
-        if (in_extent(mouse_x, mouse_y, node->extent()))
+    bfs(this,
+        [&](control* node) -> bool
         {
-            if (!node->event()->mouse_over)
-            {
-                node->event()->mouse_over = true;
-                if (node->event()->on_mouse_over)
-                    node->event()->on_mouse_over();
-            }
-            m_mouse_over_nodes.push_back(node);
+            if (!node->display())
+                return false;
 
-            if (hot_node_depth > node->depth())
+            auto extent = node->extent();
+            if (in_extent(mouse_x, mouse_y, node->extent()))
             {
-                hot_node = node;
-                hot_node_depth = node->depth();
-            }
+                if (!node->event()->mouse_over)
+                {
+                    node->event()->mouse_over = true;
+                    if (node->event()->on_mouse_over)
+                        node->event()->on_mouse_over();
+                }
+                m_mouse_over_nodes.push_back(node);
 
-            if (focused_node_depth > node->depth() && node->event()->on_focus)
+                if (hot_node_depth > node->depth())
+                {
+                    hot_node = node;
+                    hot_node_depth = node->depth();
+                }
+
+                if (focused_node_depth > node->depth() && node->event()->on_focus)
+                {
+                    focused_node = node;
+                    focused_node_depth = node->depth();
+                }
+
+                if (drag_node_depth > node->depth() &&
+                    (node->event()->on_mouse_drag_begin || node->event()->on_mouse_drag ||
+                     node->event()->on_mouse_drag_end))
+                {
+                    drag_node = node;
+                    drag_node_depth = node->depth();
+                }
+
+                return true;
+            }
+            else
             {
-                focused_node = node;
-                focused_node_depth = node->depth();
+                return false;
             }
-
-            if (drag_node_depth > node->depth() &&
-                (node->event()->on_mouse_drag_begin || node->event()->on_mouse_drag ||
-                 node->event()->on_mouse_drag_end))
-            {
-                drag_node = node;
-                drag_node_depth = node->depth();
-            }
-
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    });
+        });
 
     for (auto node : m_mouse_over_nodes)
     {
@@ -143,40 +147,40 @@ void control_tree::update_input()
     }
 
     bubble_mouse_event(hot_node, focused_node, drag_node);
+    */
 }
 
 void control_tree::update_layout(float width, float height)
-{
-    log::debug("calculate ui.");
+{/*
     layout()->calculate(width, height);
 
-    bfs(this, [&, this](control* node) -> bool {
-        if (!node->display())
-            return false;
-
-        if (node->parent() != nullptr)
+    bfs(this,
+        [&, this](control* node) -> bool
         {
-            // The node coordinates stored in yoga are the relative coordinates of the parent node,
-            // which are converted to absolute coordinates here.
-            node_rect extent = node->parent()->extent();
-            node->layout()->calculate_absolute_position(extent.x, extent.y);
-        }
-        node->sync_extent();
+            if (!node->display())
+                return false;
 
-        return true;
-    });
+            if (node->parent() != nullptr)
+            {
+                // The node coordinates stored in yoga are the relative coordinates of the parent
+                // node, which are converted to absolute coordinates here.
+                node_rect extent = node->parent()->extent();
+                node->layout()->calculate_absolute_position(extent.x, extent.y);
+            }
+            node->sync_extent();
+
+            return true;
+        });*/
 }
 
-void control_tree::bubble_mouse_event(control* hot_node, control* focused_node, control* drag_node)
+/* void control_tree::bubble_mouse_event(control* hot_node, control* focused_node, control* drag_node)
 {
-    auto& mouse = system<window::window>().mouse();
+    
+    auto& mouse = system<window>().mouse();
     int mouse_x = mouse.x();
     int mouse_y = mouse.y();
 
-    static const std::vector<window::mouse_key> keys = {
-        window::MOUSE_KEY_LEFT,
-        window::MOUSE_KEY_RIGHT,
-        window::MOUSE_KEY_MIDDLE};
+    static const std::vector<mouse_key> keys = {MOUSE_KEY_LEFT, MOUSE_KEY_RIGHT, MOUSE_KEY_MIDDLE};
 
     bool key_down = false;
     for (auto key : keys)
@@ -218,7 +222,7 @@ void control_tree::bubble_mouse_event(control* hot_node, control* focused_node, 
         }
     }
 
-    if (mouse.key(window::MOUSE_KEY_LEFT).down())
+    if (mouse.key(MOUSE_KEY_LEFT).down())
     {
         if (m_drag_node == nullptr)
         {
@@ -281,7 +285,8 @@ void control_tree::bubble_mouse_event(control* hot_node, control* focused_node, 
             m_input_chars.pop();
     }
 }
-
+*/
+/*
 void control_tree::on_remove_child(control* child)
 {
     if (m_hot_node == child)
@@ -299,5 +304,5 @@ void control_tree::on_remove_child(control* child)
             break;
         }
     }
-}
-} // namespace violet::ui
+}*/
+} // namespace violet

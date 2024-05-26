@@ -176,6 +176,21 @@ void rdg_render_pass_batch::execute(rhi_command* command, rdg_context* context)
     }
 
     command->begin(m_render_pass.get(), framebuffer);
+
+    rhi_texture_extent extent = context->get_texture(m_attachments[0]->get_index())->get_extent();
+
+    rhi_viewport viewport = {};
+    viewport.width = extent.width;
+    viewport.height = extent.height;
+    viewport.min_depth = 0.0f;
+    viewport.max_depth = 1.0f;
+    command->set_viewport(viewport);
+
+    rhi_scissor_rect scissor = {};
+    scissor.max_x = extent.width;
+    scissor.max_y = extent.height;
+    command->set_scissor(&scissor, 1);
+
     for (std::size_t i = 0; i < m_passes.size(); ++i)
     {
         for (auto& pass : m_passes[i])

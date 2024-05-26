@@ -1,8 +1,9 @@
 #pragma once
 
-#include "rhi.hpp"
+#include "graphics/render_interface.hpp"
+#include "math/math.hpp"
 
-namespace violet::ui
+namespace violet
 {
 enum control_mesh_type
 {
@@ -15,8 +16,8 @@ struct control_mesh
 {
     control_mesh_type type;
 
-    const math::float2* position;
-    const math::float2* uv;
+    const float2* position;
+    const float2* uv;
     const std::uint32_t* color;
     std::size_t vertex_count;
 
@@ -24,6 +25,6 @@ struct control_mesh
     std::size_t index_count;
 
     bool scissor;
-    graphics::rhi_resource* texture;
+    rhi_texture* texture;
 };
-} // namespace violet::ui
+} // namespace violet

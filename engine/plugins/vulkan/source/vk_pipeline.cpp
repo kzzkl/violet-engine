@@ -1,5 +1,4 @@
 #include "vk_pipeline.hpp"
-#include "spirv_reflect.h"
 #include "vk_render_pass.hpp"
 #include "vk_resource.hpp"
 #include "vk_util.hpp"
@@ -427,61 +426,11 @@ vk_shader::vk_shader(const char* path, VkDevice device) : m_module(VK_NULL_HANDL
     shader_module_info.codeSize = spirv.size();
 
     vk_check(vkCreateShaderModule(device, &shader_module_info, nullptr, &m_module));
-
-    spv_reflect::ShaderModule module(spirv.size(), spirv.data());
-    assert(module.GetResult() == SPV_REFLECT_RESULT_SUCCESS);
-
-    std::uint32_t input_variable_count = 0;
-    module.EnumerateInputVariables(&input_variable_count, nullptr);
-    std::vector<SpvReflectInterfaceVariable*> input_variables(input_variable_count);
-    module.EnumerateInputVariables(&input_variable_count, input_variables.data());
-
-    for (auto input_variable : input_variables)
-    {
-        if (input_variable->decoration_flags & SPV_REFLECT_DECORATION_BUILT_IN)
-            continue;
-
-        input input;
-        input.name = input_variable->name;
-        input.name = input.name.substr(input.name.find_last_of('.') + 1);
-        std::transform(
-            input.name.begin(),
-            input.name.end(),
-            input.name.begin(),
-            [](unsigned char c)
-            {
-                return std::tolower(c);
-            });
-
-        input.location = input_variable->location;
-        input.format = static_cast<VkFormat>(input_variable->format);
-        m_inputs.push_back(input);
-    }
 }
 
 vk_shader::~vk_shader()
 {
     vkDestroyShaderModule(m_device, m_module, nullptr);
-}
-
-const char* vk_shader::get_input_name(std::size_t index)
-{
-    return m_inputs[index].name.c_str();
-}
-
-std::size_t vk_shader::get_input_location(std::size_t index)
-{
-    return m_inputs[index].location;
-}
-
-rhi_format vk_shader::get_input_format(std::size_t index)
-{
-    return vk_util::map_format(m_inputs[index].format);
-}
-
-std::size_t vk_shader::get_input_count() const
-{
-    return m_inputs.size();
 }
 
 vk_render_pipeline::vk_render_pipeline(
@@ -513,19 +462,20 @@ vk_render_pipeline::vk_render_pipeline(
 
     std::vector<VkVertexInputBindingDescription> binding_descriptions;
     std::vector<VkVertexInputAttributeDescription> attribute_descriptions;
-    auto& vertex_attributes = vertex_shader->get_inputs();
-    for (std::size_t i = 0; i < vertex_attributes.size(); ++i)
+    for (std::size_t i = 0; i < desc.input_count; ++i)
     {
+        VkFormat format = vk_util::map_format(desc.inputs[i].format);
+
         VkVertexInputBindingDescription binding = {};
         binding.binding = static_cast<std::uint32_t>(i);
-        binding.stride = get_vertex_attribute_stride(vertex_attributes[i].format);
+        binding.stride = get_vertex_attribute_stride(format);
         binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         binding_descriptions.push_back(binding);
 
         VkVertexInputAttributeDescription attribute = {};
         attribute.binding = binding.binding;
-        attribute.format = vertex_attributes[i].format;
-        attribute.location = vertex_attributes[i].location;
+        attribute.format = format;
+        attribute.location = i;
         attribute_descriptions.push_back(attribute);
     }
 
