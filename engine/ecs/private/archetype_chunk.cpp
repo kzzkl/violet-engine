@@ -1,4 +1,4 @@
-#include "ecs/archetype_chunk.hpp"
+#include "archetype_chunk.hpp"
 #include <cassert>
 
 namespace violet

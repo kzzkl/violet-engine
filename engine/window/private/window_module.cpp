@@ -79,7 +79,7 @@ void window_module::tick()
             break;
         }
         case window_message::message_type::MOUSE_WHELL: {
-            m_mouse.m_whell = message.mouse_whell;
+            m_mouse.m_wheel = message.mouse_wheel;
             break;
         }
         case window_message::message_type::KEYBOARD_KEY: {

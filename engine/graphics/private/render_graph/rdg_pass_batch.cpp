@@ -180,8 +180,8 @@ void rdg_render_pass_batch::execute(rhi_command* command, rdg_context* context)
     rhi_texture_extent extent = context->get_texture(m_attachments[0]->get_index())->get_extent();
 
     rhi_viewport viewport = {};
-    viewport.width = extent.width;
-    viewport.height = extent.height;
+    viewport.width = static_cast<float>(extent.width);
+    viewport.height = static_cast<float>(extent.height);
     viewport.min_depth = 0.0f;
     viewport.max_depth = 1.0f;
     command->set_viewport(viewport);

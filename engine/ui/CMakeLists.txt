@@ -17,15 +17,15 @@ add_library(${PROJECT_NAME} STATIC
     # ./private/widgets/font_icon.cpp
     # ./private/widgets/image.cpp
     # ./private/widgets/input.cpp
-    # ./private/widgets/label.cpp
-    # ./private/widgets/panel.cpp
+    ./private/widgets/label.cpp
+    ./private/widgets/node_editor.cpp
+    ./private/widgets/panel.cpp
     # ./private/widgets/scroll_view.cpp
     # ./private/widgets/tree.cpp
-    ./private/event/event_node.cpp
-    ./private/layout/layout_node_yoga.cpp
-    ./private/rendering/ui_draw_list.cpp
+    ./private/event/event.cpp
+    ./private/layout/layout_yoga.cpp
+    ./private/rendering/ui_painter.cpp
     ./private/rendering/ui_pass.cpp
-    ./private/rendering/ui_render_graph.cpp
     ./private/rendering/ui_renderer.cpp
     # ./private/control.cpp
     # ./private/control_tree.cpp

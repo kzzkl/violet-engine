@@ -136,6 +136,11 @@ void rdg_render_pass::set_primitive_topology(rhi_primitive_topology topology) no
     m_desc->primitive_topology = topology;
 }
 
+void rdg_render_pass::set_depth_stencil(const rhi_depth_stencil_desc& depth_stencil) noexcept
+{
+    m_desc->depth_stencil = depth_stencil;
+}
+
 void rdg_render_pass::set_cull_mode(rhi_cull_mode mode) noexcept
 {
     m_desc->rasterizer.cull_mode = mode;

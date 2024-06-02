@@ -93,7 +93,7 @@ enum mouse_cursor
     MOUSE_CURSOR_SIZE_ALL
 };
 
-enum mouse_key
+enum mouse_key : uint8_t
 {
     MOUSE_KEY_LEFT,
     MOUSE_KEY_RIGHT,
@@ -117,7 +117,7 @@ public:
 
     inline int get_x() const noexcept { return m_x; }
     inline int get_y() const noexcept { return m_y; }
-    inline int get_whell() const noexcept { return m_whell; }
+    inline int get_wheel() const noexcept { return m_wheel; }
 
     virtual void tick() override;
 
@@ -125,7 +125,7 @@ protected:
     friend class window_module;
     int m_x;
     int m_y;
-    int m_whell;
+    int m_wheel;
 
     window_impl* m_impl;
 };

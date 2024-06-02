@@ -36,7 +36,7 @@ private:
 
     void on_mouse_move(int x, int y);
     void on_mouse_key(mouse_key key, bool down);
-    void on_mouse_whell(int value);
+    void on_mouse_wheel(int value);
     void on_keyboard_key(keyboard_key key, bool down);
     void on_keyboard_char(char c);
     void on_window_move(int x, int y);
@@ -55,8 +55,8 @@ private:
     int m_mouse_y;
     bool m_mouse_move;
 
-    int m_mouse_whell;
-    bool m_mouse_whell_move;
+    int m_mouse_wheel;
+    bool m_mouse_wheel_move;
 
     std::uint32_t m_window_width;
     std::uint32_t m_window_height;

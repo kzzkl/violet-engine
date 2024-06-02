@@ -16,7 +16,7 @@ public:
 
 private:
     void tick(float delta);
-    void update_orbit_control(orbit_control& orbit_control, transform& transform, int mouse_whell);
+    void update_orbit_control(orbit_control& orbit_control, transform& transform, int mouse_wheel);
 
     int2 m_mouse_position;
     int2 m_mouse_position_delta;

@@ -260,8 +260,8 @@ window_impl_win32::window_impl_win32() noexcept
       m_mouse_x(0),
       m_mouse_y(0),
       m_mouse_move(false),
-      m_mouse_whell(0),
-      m_mouse_whell_move(false),
+      m_mouse_wheel(0),
+      m_mouse_wheel_move(false),
       m_window_width(0),
       m_window_height(0),
       m_window_resize(false),
@@ -367,8 +367,8 @@ void window_impl_win32::tick()
 
     m_mouse_x = m_mouse_y = 0;
     m_mouse_move = false;
-    m_mouse_whell = 0;
-    m_mouse_whell_move = false;
+    m_mouse_wheel = 0;
+    m_mouse_wheel_move = false;
 
     m_window_width = m_window_height = 0;
     m_window_resize = false;
@@ -389,11 +389,11 @@ void window_impl_win32::tick()
         m_messages.push_back(message);
     }
 
-    if (m_mouse_whell_move)
+    if (m_mouse_wheel_move)
     {
         window_message message;
         message.type = window_message::message_type::MOUSE_WHELL;
-        message.mouse_whell = m_mouse_whell;
+        message.mouse_wheel = m_mouse_wheel;
         m_messages.push_back(message);
     }
 
@@ -524,7 +524,7 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
         break;
     }
     case WM_MOUSEWHEEL: {
-        on_mouse_whell(static_cast<short>(HIWORD(wparam)) / 120);
+        on_mouse_wheel(static_cast<short>(HIWORD(wparam)) / 120);
         break;
     }
     case WM_MOUSELEAVE: {
@@ -584,10 +584,10 @@ void window_impl_win32::on_mouse_key(mouse_key key, bool down)
     m_messages.push_back(message);
 }
 
-void window_impl_win32::on_mouse_whell(int value)
+void window_impl_win32::on_mouse_wheel(int value)
 {
-    m_mouse_whell += value;
-    m_mouse_whell_move = true;
+    m_mouse_wheel += value;
+    m_mouse_wheel_move = true;
 }
 
 void window_impl_win32::on_keyboard_key(keyboard_key key, bool down)

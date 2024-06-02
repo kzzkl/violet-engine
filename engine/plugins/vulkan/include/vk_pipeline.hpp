@@ -1,7 +1,7 @@
 #pragma once
 
 #include "vk_common.hpp"
-#include "vk_context.hpp"
+#include "vk_resource.hpp"
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -26,7 +26,7 @@ public:
 
 public:
     vk_parameter_layout(const rhi_parameter_desc& desc, vk_context* context);
-    virtual ~vk_parameter_layout();
+    ~vk_parameter_layout();
 
     const std::vector<parameter_binding>& get_parameter_bindings() const noexcept
     {
@@ -44,25 +44,40 @@ private:
 
 class vk_pipeline_layout
 {
+public:
+    vk_pipeline_layout(
+        const rhi_parameter_desc* parameters,
+        std::size_t parameter_count,
+        vk_context* context);
+    ~vk_pipeline_layout();
+
+    VkPipelineLayout get_layout() const noexcept { return m_layout; }
+
+private:
+    VkPipelineLayout m_layout;
+    vk_context* m_context;
 };
 
 class vk_layout_manager
 {
 public:
     vk_layout_manager(vk_context* context);
+    ~vk_layout_manager();
 
     vk_parameter_layout* get_parameter_layout(const rhi_parameter_desc& desc);
-    vk_pipeline_layout* get_pipeline_layout(const std::vector<rhi_parameter_desc>& desc);
+    vk_pipeline_layout* get_pipeline_layout(
+        const rhi_parameter_desc* parameters,
+        std::size_t parameter_count);
 
 private:
     std::size_t get_hash(const rhi_parameter_desc& desc);
 
     std::unordered_map<std::size_t, std::unique_ptr<vk_parameter_layout>> m_parameter_layouts;
+    std::unordered_map<std::size_t, std::unique_ptr<vk_pipeline_layout>> m_pipeline_layouts;
 
     vk_context* m_context;
 };
 
-class vk_uniform_buffer;
 class vk_parameter : public rhi_parameter
 {
 public:
@@ -94,7 +109,7 @@ private:
     void mark_dirty(std::size_t descriptor_index);
 
     vk_parameter_layout* m_layout;
-    std::vector<std::unique_ptr<vk_uniform_buffer>> m_uniform_buffers;
+    std::vector<std::unique_ptr<vk_buffer>> m_uniform_buffers;
     std::vector<frame_resource> m_frame_resources;
 
     vk_context* m_context;
@@ -124,13 +139,16 @@ public:
     virtual ~vk_render_pipeline();
 
     VkPipeline get_pipeline() const noexcept { return m_pipeline; }
-    VkPipelineLayout get_pipeline_layout() const noexcept { return m_pipeline_layout; }
+    VkPipelineLayout get_pipeline_layout() const noexcept
+    {
+        return m_pipeline_layout->get_layout();
+    }
 
     vk_render_pipeline& operator=(const vk_render_pipeline&) = delete;
 
 private:
     VkPipeline m_pipeline;
-    VkPipelineLayout m_pipeline_layout;
+    vk_pipeline_layout* m_pipeline_layout;
 
     vk_context* m_context;
 };
@@ -143,13 +161,16 @@ public:
     virtual ~vk_compute_pipeline();
 
     VkPipeline get_pipeline() const noexcept { return m_pipeline; }
-    VkPipelineLayout get_pipeline_layout() const noexcept { return m_pipeline_layout; }
+    VkPipelineLayout get_pipeline_layout() const noexcept
+    {
+        return m_pipeline_layout->get_layout();
+    }
 
     vk_render_pipeline& operator=(const vk_render_pipeline&) = delete;
 
 private:
     VkPipeline m_pipeline;
-    VkPipelineLayout m_pipeline_layout;
+    vk_pipeline_layout* m_pipeline_layout;
 
     vk_context* m_context;
 };

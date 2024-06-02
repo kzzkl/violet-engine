@@ -1,7 +1,7 @@
 #pragma once
 
 #include "components/transform.hpp"
-#include "core/ecs/actor.hpp"
+#include "ecs/actor.hpp"
 #include "graphics/geometry.hpp"
 #include "graphics/render_device.hpp"
 #include "mmd_render.hpp"

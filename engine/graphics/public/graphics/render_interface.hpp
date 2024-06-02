@@ -305,9 +305,9 @@ struct rhi_attachment_blend_desc
 {
     bool enable = false;
 
-    rhi_blend_factor src_factor;
-    rhi_blend_factor dst_factor;
-    rhi_blend_op op;
+    rhi_blend_factor src_color_factor;
+    rhi_blend_factor dst_color_factor;
+    rhi_blend_op color_op;
 
     rhi_blend_factor src_alpha_factor;
     rhi_blend_factor dst_alpha_factor;
@@ -551,8 +551,9 @@ enum rhi_buffer_flag
 {
     RHI_BUFFER_FLAG_VERTEX = 1 << 0,
     RHI_BUFFER_FLAG_INDEX = 1 << 1,
-    RHI_BUFFER_FLAG_STORAGE = 1 << 2,
-    RHI_BUFFER_FLAG_HOST_VISIBLE = 1 << 3
+    RHI_BUFFER_FLAG_UNIFORM = 1 << 2,
+    RHI_BUFFER_FLAG_STORAGE = 1 << 3,
+    RHI_BUFFER_FLAG_HOST_VISIBLE = 1 << 4
 };
 using rhi_buffer_flags = std::uint32_t;
 
@@ -673,6 +674,10 @@ public:
 
     virtual rhi_texture* create_texture(const rhi_texture_desc& desc) = 0;
     virtual rhi_texture* create_texture(const char* file, const rhi_texture_desc& desc) = 0;
+    virtual rhi_texture* create_texture(
+        const void* data,
+        std::size_t size,
+        const rhi_texture_desc& desc) = 0;
 
     virtual rhi_texture* create_texture_cube(const rhi_texture_desc& desc) = 0;
     virtual rhi_texture* create_texture_cube(

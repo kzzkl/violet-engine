@@ -68,8 +68,14 @@ public:
 
     rhi_ptr<rhi_buffer> create_buffer(const rhi_buffer_desc& desc);
     rhi_ptr<rhi_sampler> create_sampler(const rhi_sampler_desc& desc);
+
     rhi_ptr<rhi_texture> create_texture(const rhi_texture_desc& desc);
     rhi_ptr<rhi_texture> create_texture(const char* file, const rhi_texture_desc& desc = {});
+    rhi_ptr<rhi_texture> create_texture(
+        const void* data,
+        std::size_t size,
+        const rhi_texture_desc& desc);
+
     rhi_ptr<rhi_texture> create_texture_cube(
         std::string_view right,
         std::string_view left,

@@ -1,6 +1,7 @@
 project(ui)
 
 add_executable(${PROJECT_NAME}
+    ./source/gallery.cpp
     ./source/main.cpp)
 
 target_include_directories(${PROJECT_NAME}

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/ecs/actor.hpp"
+#include "ecs/actor.hpp"
 #include "math/math.hpp"
 #include <vector>
 

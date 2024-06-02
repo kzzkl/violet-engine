@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/ecs/world.hpp"
+#include "ecs/world.hpp"
 #include <string_view>
 
 namespace violet

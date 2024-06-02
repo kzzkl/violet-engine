@@ -1,56 +1,79 @@
 #include "ui/widget.hpp"
-#include "layout/layout_node_yoga.hpp"
+#include "layout/layout_yoga.hpp"
 
 namespace violet
 {
-widget::widget() : m_visible(true), m_index(0), m_layer(0)
+widget::widget() : m_state(0), m_visible(true), m_layer(0), m_parent(nullptr)
 {
-    m_layout = std::make_unique<layout_node_yoga>();
+    m_layout = std::make_unique<widget_layout_yoga>();
 }
 
 widget::~widget()
 {
 }
 
-void widget::add(std::shared_ptr<widget> child, std::size_t index)
-{
-    if (index == -1)
-        index = m_children.size();
-
-    m_layout->add_child(child->get_layout(), index);
-    child->m_index = index;
-
-    auto iter = m_children.insert(m_children.begin() + index, child);
-    while (++iter != m_children.end())
-        ++(*iter)->m_index;
-
-    child->m_layer = m_layer + 1;
-}
-
-void widget::remove(std::shared_ptr<widget> child)
-{
-    auto iter = m_children.begin() + child->m_index;
-    iter = m_children.erase(iter);
-
-    for (; iter != m_children.end(); ++iter)
-        --(*iter)->m_index;
-
-    m_layout->remove_child(child->get_layout());
-    child->m_index = -1;
-    child->m_layer = 0;
-}
-
 widget_extent widget::get_extent() const
 {
     return widget_extent{
-        .x = m_layout->get_x(),
-        .y = m_layout->get_y(),
+        .x = m_layout->get_absolute_x(),
+        .y = m_layout->get_absolute_y(),
         .width = m_layout->get_width(),
         .height = m_layout->get_height()};
 }
 
-void widget::paint(ui_draw_list* draw_list)
+bool widget::receive_event(const widget_event& event)
 {
-    on_paint(draw_list);
+    switch (event.type)
+    {
+    case WIDGET_EVENT_TYPE_PAINT:
+        on_paint(event.data.paint.painter);
+        return true;
+    case WIDGET_EVENT_TYPE_PAINT_END:
+        on_paint_end(event.data.paint.painter);
+        return true;
+    case WIDGET_EVENT_TYPE_LAYOUT_UPDATE:
+        on_layout_update();
+        return false;
+    case WIDGET_EVENT_TYPE_MOUSE_MOVE:
+        return on_mouse_move(event.data.mouse_state.x, event.data.mouse_state.y);
+    case WIDGET_EVENT_TYPE_MOUSE_ENTER:
+        return on_mouse_enter();
+    case WIDGET_EVENT_TYPE_MOUSE_LEAVE:
+        return on_mouse_leave();
+    case WIDGET_EVENT_TYPE_MOUSE_PRESS:
+        return on_mouse_press(
+            event.data.mouse_state.key,
+            event.data.mouse_state.x,
+            event.data.mouse_state.y);
+    case WIDGET_EVENT_TYPE_MOUSE_RELEASE:
+        return on_mouse_release(
+            event.data.mouse_state.key,
+            event.data.mouse_state.x,
+            event.data.mouse_state.y);
+    case WIDGET_EVENT_TYPE_MOUSE_WHEEL:
+        return on_mouse_wheel(event.data.mouse_state.wheel);
+    case WIDGET_EVENT_TYPE_MOUSE_CLICK:
+        return on_mouse_click(
+            event.data.mouse_state.key,
+            event.data.mouse_state.x,
+            event.data.mouse_state.y);
+    case WIDGET_EVENT_TYPE_DRAG_START:
+        return on_drag_start(
+            event.data.mouse_state.key,
+            event.data.mouse_state.x,
+            event.data.mouse_state.y);
+    case WIDGET_EVENT_TYPE_DRAG:
+        return on_drag(
+            event.data.mouse_state.key,
+            event.data.mouse_state.x,
+            event.data.mouse_state.y);
+    case WIDGET_EVENT_TYPE_DRAG_END:
+        return on_drag_end(
+            event.data.mouse_state.key,
+            event.data.mouse_state.x,
+            event.data.mouse_state.y);
+    default:
+        return true;
+    }
 }
 } // namespace violet

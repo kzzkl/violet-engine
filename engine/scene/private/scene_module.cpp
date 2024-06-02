@@ -1,6 +1,6 @@
 #include "scene/scene_module.hpp"
 #include "components/transform.hpp"
-#include "core/ecs/actor.hpp"
+#include "ecs/actor.hpp"
 
 namespace violet
 {

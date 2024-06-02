@@ -140,6 +140,7 @@ public:
     }
     void set_primitive_topology(rhi_primitive_topology topology) noexcept;
 
+    void set_depth_stencil(const rhi_depth_stencil_desc& depth_stencil) noexcept;
     void set_cull_mode(rhi_cull_mode mode) noexcept;
 
     void set_render_pass(rhi_render_pass* render_pass, std::uint32_t subpass_index) noexcept;

@@ -146,11 +146,11 @@ scroll_view::scroll_view(const scroll_view_theme& theme) : panel(theme.backgroun
     };
     add(m_container.get());
 
-    event()->on_mouse_wheel = [scroll_speed = theme.scroll_speed, this](int whell) -> bool {
+    event()->on_mouse_wheel = [scroll_speed = theme.scroll_speed, this](int wheel) -> bool {
         if (m_vertical_bar->display())
         {
             float new_value =
-                m_vertical_bar->value() - scroll_speed / m_container->extent().height * whell;
+                m_vertical_bar->value() - scroll_speed / m_container->extent().height * wheel;
             new_value = clamp(new_value, 0.0f, 1.0f);
             m_vertical_bar->value(new_value);
             update_container_vertical_position(new_value);

@@ -64,6 +64,11 @@ class vk_texture : public vk_image
 {
 public:
     vk_texture(const char* file, const rhi_texture_desc& desc, vk_context* context);
+    vk_texture(
+        const void* data,
+        std::size_t size,
+        const rhi_texture_desc& desc,
+        vk_context* context);
     virtual ~vk_texture();
 };
 
@@ -102,7 +107,7 @@ private:
 class vk_buffer : public rhi_buffer
 {
 public:
-    vk_buffer(vk_context* context);
+    vk_buffer(const rhi_buffer_desc& desc, vk_context* context);
     virtual ~vk_buffer();
 
     void* get_buffer() override { return m_mapping_pointer; }
@@ -111,21 +116,6 @@ public:
     std::size_t get_hash() const noexcept override;
 
     VkBuffer get_buffer_handle() const noexcept { return m_buffer; }
-
-protected:
-    void set_buffer(VkBuffer buffer, VmaAllocation allocation, std::size_t buffer_size) noexcept
-    {
-        m_buffer = buffer;
-        m_allocation = allocation;
-        m_buffer_size = buffer_size;
-    }
-
-    void set_mapping_pointer(void* mapping_pointer) noexcept
-    {
-        m_mapping_pointer = mapping_pointer;
-    }
-
-    vk_context* get_context() const noexcept { return m_context; }
 
 private:
     VkBuffer m_buffer;
@@ -137,12 +127,6 @@ private:
     vk_context* m_context;
 };
 
-class vk_vertex_buffer : public vk_buffer
-{
-public:
-    vk_vertex_buffer(const rhi_buffer_desc& desc, vk_context* context);
-};
-
 class vk_index_buffer : public vk_buffer
 {
 public:
@@ -152,17 +136,5 @@ public:
 
 private:
     VkIndexType m_index_type;
-};
-
-class vk_uniform_buffer : public vk_buffer
-{
-public:
-    vk_uniform_buffer(void* data, std::size_t size, vk_context* context);
-};
-
-class vk_storage_buffer : public vk_buffer
-{
-public:
-    vk_storage_buffer(const rhi_buffer_desc& desc, vk_context* context);
 };
 } // namespace violet::vk

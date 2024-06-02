@@ -1,7 +1,6 @@
 #pragma once
 
-#include "rendering/ui_render_graph.hpp"
-#include "ui/rendering/ui_draw_list.hpp"
+#include "ui/rendering/ui_painter.hpp"
 #include "ui/rendering/ui_pass.hpp"
 #include "ui/widget.hpp"
 #include <memory>
@@ -18,17 +17,17 @@ public:
     void render(widget* root, ui_pass* pass);
     void reset();
 
+    void set_default_font(font* font);
+
 private:
-    void render_widget(widget* widget, ui_draw_list* draw_list, widget_extent visible_area);
+    void render_widget(widget* widget, ui_painter* painter, widget_extent visible_area);
 
-    ui_draw_list* allocate_list();
+    ui_painter* allocate_painter();
 
-    std::vector<float4> m_offset; // x, y, depth
+    std::size_t m_painter_index;
+    std::vector<std::unique_ptr<ui_painter>> m_painter_pool;
 
-    std::size_t m_draw_list_index;
-    std::vector<std::unique_ptr<ui_draw_list>> m_draw_list_pool;
-
-    std::size_t m_material_parameter_counter;
+    font* m_default_font;
 
     render_device* m_device;
 };

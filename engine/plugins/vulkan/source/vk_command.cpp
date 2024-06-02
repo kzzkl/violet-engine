@@ -22,7 +22,7 @@ vk_command::~vk_command()
 
 void vk_command::begin(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer)
 {
-    assert(m_current_render_pass == nullptr);
+    assert(m_current_render_pass == VK_NULL_HANDLE);
 
     m_current_render_pass = static_cast<vk_render_pass*>(render_pass)->get_render_pass();
 
@@ -142,7 +142,7 @@ void vk_command::set_vertex_buffers(
     std::vector<VkDeviceSize> offsets(vertex_buffer_count);
     for (std::size_t i = 0; i < vertex_buffer_count; ++i)
     {
-        buffers[i] = static_cast<vk_vertex_buffer*>(vertex_buffers[i])->get_buffer_handle();
+        buffers[i] = static_cast<vk_buffer*>(vertex_buffers[i])->get_buffer_handle();
         offsets[i] = 0;
     }
     vkCmdBindVertexBuffers(

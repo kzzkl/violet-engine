@@ -151,14 +151,10 @@ void vk_rhi::destroy_sampler(rhi_sampler* sampler)
 
 rhi_buffer* vk_rhi::create_buffer(const rhi_buffer_desc& desc)
 {
-    if (desc.flags & RHI_BUFFER_FLAG_VERTEX)
-        return new vk_vertex_buffer(desc, m_context.get());
-    else if (desc.flags & RHI_BUFFER_FLAG_INDEX)
+    if (desc.flags & RHI_BUFFER_FLAG_INDEX)
         return new vk_index_buffer(desc, m_context.get());
-    else if (desc.flags & RHI_BUFFER_FLAG_STORAGE)
-        return new vk_storage_buffer(desc, m_context.get());
     else
-        return nullptr;
+        return new vk_buffer(desc, m_context.get());
 }
 
 void vk_rhi::destroy_buffer(rhi_buffer* buffer)
@@ -174,6 +170,11 @@ rhi_texture* vk_rhi::create_texture(const rhi_texture_desc& desc)
 rhi_texture* vk_rhi::create_texture(const char* file, const rhi_texture_desc& desc)
 {
     return new vk_texture(file, desc, m_context.get());
+}
+
+rhi_texture* vk_rhi::create_texture(const void* data, std::size_t size, const rhi_texture_desc& desc)
+{
+    return new vk_texture(data, size, desc, m_context.get());
 }
 
 rhi_texture* vk_rhi::create_texture_cube(const rhi_texture_desc& desc)

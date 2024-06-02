@@ -1,11 +1,12 @@
-project(violet-core)
+project(violet-ecs)
 
 add_library(${PROJECT_NAME} STATIC
-    ./private/engine_context.cpp
-    ./private/engine_module.cpp
-    ./private/engine.cpp
-    ./private/plugin.cpp)
-add_library(violet::core ALIAS ${PROJECT_NAME})
+    ./private/actor.cpp
+    ./private/archetype_chunk.cpp
+    ./private/archetype.cpp
+    ./private/view.cpp
+    ./private/world.cpp)
+add_library(violet::ecs ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
@@ -15,8 +16,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        violet::ecs
-        violet::task)
+        violet::common)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/ecs/archetype.hpp"
+#include "ecs/archetype.hpp"
 
 namespace violet
 {

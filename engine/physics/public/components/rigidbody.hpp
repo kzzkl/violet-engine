@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/ecs/actor.hpp"
+#include "ecs/actor.hpp"
 #include "physics/physics_context.hpp"
 
 namespace violet

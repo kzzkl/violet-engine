@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/ecs/actor.hpp"
+#include "ecs/actor.hpp"
 #include "graphics/geometry.hpp"
 #include "graphics/material.hpp"
 #include "mmd_render.hpp"
@@ -28,7 +28,10 @@ class vmd;
 class mmd_loader
 {
 public:
-    mmd_loader(mmd_render_graph* render_graph, render_device* device, physics_context* physics_context);
+    mmd_loader(
+        mmd_render_graph* render_graph,
+        render_device* device,
+        physics_context* physics_context);
     ~mmd_loader();
 
     mmd_model* load(std::string_view pmx_path, std::string_view vmd_path, world& world);

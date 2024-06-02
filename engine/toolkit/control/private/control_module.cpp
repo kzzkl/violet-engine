@@ -32,7 +32,7 @@ void control_module::tick(float delta)
     auto& window = get_module<window_module>();
 
     bool mouse_hold = false;
-    int mouse_whell = window.get_mouse().get_whell();
+    int mouse_wheel = window.get_mouse().get_wheel();
     if (window.get_mouse().key(MOUSE_KEY_LEFT).press())
     {
         m_mouse_position_delta[0] = 0.0f;
@@ -52,11 +52,11 @@ void control_module::tick(float delta)
 
     view<orbit_control, transform> view(get_world());
     view.each(
-        [this, mouse_hold, mouse_whell](orbit_control& orbit_control, transform& transform)
+        [this, mouse_hold, mouse_wheel](orbit_control& orbit_control, transform& transform)
         {
-            if (orbit_control.dirty || mouse_hold || mouse_whell != 0)
+            if (orbit_control.dirty || mouse_hold || mouse_wheel != 0)
             {
-                update_orbit_control(orbit_control, transform, mouse_whell);
+                update_orbit_control(orbit_control, transform, mouse_wheel);
                 orbit_control.dirty = false;
             }
         });
@@ -65,7 +65,7 @@ void control_module::tick(float delta)
 void control_module::update_orbit_control(
     orbit_control& orbit_control,
     transform& transform,
-    int mouse_whell)
+    int mouse_wheel)
 {
     static const float EPS = 0.00001f;
 
@@ -75,7 +75,7 @@ void control_module::update_orbit_control(
         -m_mouse_position_delta[1] * orbit_control.theta_speed / window_rect.height;
     orbit_control.theta = std::clamp(orbit_control.theta, EPS, PI - EPS);
     orbit_control.phi += m_mouse_position_delta[0] * orbit_control.phi_speed / window_rect.width;
-    orbit_control.r += -mouse_whell * orbit_control.r_speed;
+    orbit_control.r += -mouse_wheel * orbit_control.r_speed;
     orbit_control.r = std::max(1.0f, orbit_control.r);
 
     auto [theta_sin, theta_cos] = sin_cos(orbit_control.theta);

@@ -20,6 +20,9 @@ public:
     static VkPipelineStageFlags map_pipeline_stage_flags(rhi_pipeline_stage_flags flags);
     static VkAccessFlags map_access_flags(rhi_access_flags flags);
 
+    static VkBlendFactor map_blend_factor(rhi_blend_factor factor);
+    static VkBlendOp map_blend_op(rhi_blend_op op);
+
     static inline void hash_combine(std::size_t& seed, std::size_t value)
     {
         seed = seed ^ (value + 0x9e3779b9 + (seed << 6) + (seed >> 2));

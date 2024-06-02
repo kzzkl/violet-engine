@@ -1,5 +1,5 @@
-#include "core/ecs/archetype.hpp"
-#include "ecs/archetype_chunk.hpp"
+#include "ecs/archetype.hpp"
+#include "archetype_chunk.hpp"
 
 namespace violet
 {

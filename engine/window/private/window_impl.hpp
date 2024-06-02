@@ -33,7 +33,7 @@ struct window_message
             bool down;
         } mouse_key;
 
-        int mouse_whell;
+        int mouse_wheel;
 
         struct
         {

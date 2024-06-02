@@ -1,11 +1,11 @@
 #include "graphics/render_graph/render_graph.hpp"
 #include "render_graph/rdg_pass_batch.hpp"
 #include <cassert>
+#include <iostream>
 #include <queue>
 #include <set>
 #include <stack>
 #include <unordered_map>
-#include <iostream>
 
 namespace violet
 {
@@ -144,7 +144,7 @@ void render_graph::compile(render_device* device)
             m_batchs.push_back(std::make_unique<rdg_render_pass_batch>(passes[i], device));
         else if (passes[i][0]->get_type() == RDG_PASS_TYPE_COMPUTE)
             m_batchs.push_back(std::make_unique<rdg_compute_pass_batch>(passes[i], device));
-        else if (passes[i][0]->get_type() == RDG_PASS_TYPE_RENDER)
+        else if (passes[i][0]->get_type() == RDG_PASS_TYPE_OTHER)
             m_batchs.push_back(std::make_unique<rdg_other_pass_batch>(passes[i], device));
     }
 

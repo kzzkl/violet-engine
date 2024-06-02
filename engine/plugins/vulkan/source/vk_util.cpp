@@ -269,4 +269,46 @@ VkAccessFlags vk_util::map_access_flags(rhi_access_flags flags)
 
     return result;
 }
+
+VkBlendFactor vk_util::map_blend_factor(rhi_blend_factor factor)
+{
+    switch (factor)
+    {
+    case RHI_BLEND_FACTOR_ZERO:
+        return VK_BLEND_FACTOR_ZERO;
+    case RHI_BLEND_FACTOR_ONE:
+        return VK_BLEND_FACTOR_ONE;
+    case RHI_BLEND_FACTOR_SOURCE_COLOR:
+        return VK_BLEND_FACTOR_SRC_COLOR;
+    case RHI_BLEND_FACTOR_SOURCE_ALPHA:
+        return VK_BLEND_FACTOR_SRC_ALPHA;
+    case RHI_BLEND_FACTOR_SOURCE_INV_ALPHA:
+        return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    case RHI_BLEND_FACTOR_TARGET_COLOR:
+        return VK_BLEND_FACTOR_DST_COLOR;
+    case RHI_BLEND_FACTOR_TARGET_ALPHA:
+        return VK_BLEND_FACTOR_DST_ALPHA;
+    case RHI_BLEND_FACTOR_TARGET_INV_ALPHA:
+        return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+    default:
+        throw vk_exception("Invalid blend factor.");
+    }
+}
+
+VkBlendOp vk_util::map_blend_op(rhi_blend_op op)
+{
+    switch (op)
+    {
+    case RHI_BLEND_OP_ADD:
+        return VK_BLEND_OP_ADD;
+    case RHI_BLEND_OP_SUBTRACT:
+        return VK_BLEND_OP_SUBTRACT;
+    case RHI_BLEND_OP_MIN:
+        return VK_BLEND_OP_MIN;
+    case RHI_BLEND_OP_MAX:
+        return VK_BLEND_OP_MAX;
+    default:
+        throw vk_exception("Invalid blend op.");
+    }
+}
 } // namespace violet::vk

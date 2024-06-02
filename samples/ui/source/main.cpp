@@ -2,13 +2,15 @@
 #include "components/camera.hpp"
 #include "components/transform.hpp"
 #include "components/ui_root.hpp"
-#include "core/ecs/actor.hpp"
 #include "core/engine.hpp"
+#include "ecs/actor.hpp"
+#include "gallery.hpp"
 #include "graphics/graphics_module.hpp"
 #include "graphics/passes/present_pass.hpp"
 #include "scene/scene_module.hpp"
 #include "ui/ui_module.hpp"
 #include "ui/widgets/button.hpp"
+#include "ui/widgets/label.hpp"
 #include "window/window_module.hpp"
 
 namespace violet::sample
@@ -71,10 +73,7 @@ private:
         main_camera->set_render_texture("render target", m_swapchain.get());
 
         main_ui->set_pass(ui);
-
-        auto btn = std::make_shared<button>();
-        btn->get_layout()->set_flex_grow(1.0f);
-        main_ui->get_container()->add(btn);
+        main_ui->get_container()->add<gallery>();
 
         resize(window_extent.width, window_extent.height);
     }

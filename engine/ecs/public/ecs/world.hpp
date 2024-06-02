@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/ecs/entity.hpp"
-#include "core/ecs/view.hpp"
+#include "ecs/entity.hpp"
+#include "ecs/view.hpp"
 #include <functional>
 #include <queue>
 #include <unordered_map>

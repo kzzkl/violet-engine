@@ -84,6 +84,10 @@ public:
 
     virtual rhi_texture* create_texture(const rhi_texture_desc& desc) override;
     virtual rhi_texture* create_texture(const char* file, const rhi_texture_desc& desc) override;
+    virtual rhi_texture* create_texture(
+        const void* data,
+        std::size_t size,
+        const rhi_texture_desc& desc) override;
 
     virtual rhi_texture* create_texture_cube(const rhi_texture_desc& desc) override;
     virtual rhi_texture* create_texture_cube(

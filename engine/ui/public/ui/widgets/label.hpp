@@ -1,40 +1,28 @@
 #pragma once
 
 #include "ui/color.hpp"
-#include "ui/control.hpp"
+#include "ui/widget.hpp"
 
 namespace violet
 {
 class font;
-
-struct label_theme
-{
-    const font* text_font;
-    std::uint32_t text_color;
-};
-
-class label : public control
+class label : public widget
 {
 public:
     label();
-    label(std::string_view content, const label_theme& theme);
 
-    void text(std::string_view content);
-    void text_color(std::uint32_t color);
+    void set_text(std::string_view text) { m_text = text; }
+    std::string get_text() const noexcept { return m_text; }
 
-    std::string text() const noexcept { return m_text; }
-
-    virtual const control_mesh* mesh() const noexcept override { return &m_mesh; }
+    void set_font(font* font) noexcept { m_font = font; }
+    void set_color(std::uint32_t color) noexcept { m_color = color; }
 
 private:
+    virtual void on_paint(ui_painter* painter) override;
+    virtual void on_layout_update() override;
+
     std::string m_text;
-    const font* m_font;
-
-    std::vector<float2> m_position;
-    std::vector<float2> m_uv;
-    std::vector<std::uint32_t> m_color;
-    std::vector<std::uint32_t> m_indices;
-
-    control_mesh m_mesh;
+    font* m_font;
+    std::uint32_t m_color;
 };
 } // namespace violet

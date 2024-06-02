@@ -1,4 +1,4 @@
-#include "core/ecs/actor.hpp"
+#include "ecs/actor.hpp"
 
 namespace violet
 {

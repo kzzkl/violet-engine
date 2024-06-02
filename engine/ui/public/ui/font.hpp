@@ -2,7 +2,6 @@
 
 #include "graphics/render_device.hpp"
 #include "math/math.hpp"
-#include <memory>
 #include <string_view>
 #include <unordered_map>
 
@@ -22,12 +21,13 @@ struct glyph_data
 class font
 {
 public:
-    font(std::string_view font, std::size_t size);
+    font(std::string_view font, std::size_t size, render_device* device);
 
-    rhi_texture* texture() const noexcept { return m_texture.get(); }
-    const glyph_data& glyph(std::uint32_t character) const;
+    rhi_texture* get_texture() const noexcept { return m_texture.get(); }
+    const glyph_data& get_glyph(std::uint32_t character) const;
 
-    std::uint32_t heigth() const noexcept { return m_heigth; }
+    std::uint32_t get_heigth() const noexcept { return m_heigth; }
+    std::uint32_t get_width(std::string_view text) const;
 
 private:
     rhi_ptr<rhi_texture> m_texture;

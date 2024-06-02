@@ -1,28 +1,20 @@
 #pragma once
 
 #include "ui/color.hpp"
-#include "ui/control.hpp"
+#include "ui/widget.hpp"
 
 namespace violet
 {
-class panel : public control
+class panel : public widget
 {
 public:
-    panel(std::uint32_t color = COLOR_WHITE, bool scissor = false);
+    panel() noexcept;
 
-    void color(std::uint32_t color) noexcept;
-
-    virtual const control_mesh* mesh() const noexcept override { return &m_mesh; }
-
-protected:
-    virtual void on_extent_change(float width, float height) override;
+    void set_color(std::uint32_t color) noexcept { m_color = color; }
 
 private:
-    std::array<float2, 4> m_position;
-    std::array<float2, 4> m_uv;
-    std::array<std::uint32_t, 4> m_color;
-    std::array<std::uint32_t, 6> m_indices;
+    virtual void on_paint(ui_painter* painter) override;
 
-    control_mesh m_mesh;
+    std::uint32_t m_color;
 };
 } // namespace violet

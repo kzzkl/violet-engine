@@ -143,7 +143,38 @@ vk_parameter_layout::~vk_parameter_layout()
     vkDestroyDescriptorSetLayout(m_context->get_device(), m_layout, nullptr);
 }
 
+vk_pipeline_layout::vk_pipeline_layout(
+    const rhi_parameter_desc* parameters,
+    std::size_t parameter_count,
+    vk_context* context)
+    : m_layout(VK_NULL_HANDLE),
+      m_context(context)
+{
+    std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
+    for (std::size_t i = 0; i < parameter_count; ++i)
+    {
+        vk_parameter_layout* layout =
+            context->get_layout_manager()->get_parameter_layout(parameters[i]);
+        descriptor_set_layouts.push_back(layout->get_layout());
+    }
+
+    VkPipelineLayoutCreateInfo layout_info = {};
+    layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    layout_info.pSetLayouts = descriptor_set_layouts.data();
+    layout_info.setLayoutCount = static_cast<std::uint32_t>(descriptor_set_layouts.size());
+    vk_check(vkCreatePipelineLayout(m_context->get_device(), &layout_info, nullptr, &m_layout));
+}
+
+vk_pipeline_layout::~vk_pipeline_layout()
+{
+    vkDestroyPipelineLayout(m_context->get_device(), m_layout, nullptr);
+}
+
 vk_layout_manager::vk_layout_manager(vk_context* context) : m_context(context)
+{
+}
+
+vk_layout_manager::~vk_layout_manager()
 {
 }
 
@@ -161,9 +192,21 @@ vk_parameter_layout* vk_layout_manager::get_parameter_layout(const rhi_parameter
 }
 
 vk_pipeline_layout* vk_layout_manager::get_pipeline_layout(
-    const std::vector<rhi_parameter_desc>& desc)
+    const rhi_parameter_desc* parameters,
+    std::size_t parameter_count)
 {
-    return nullptr;
+    std::size_t hash = 0;
+    for (std::size_t i = 0; i < parameter_count; ++i)
+        vk_util::hash_combine(hash, get_hash(parameters[i]));
+
+    auto iter = m_pipeline_layouts.find(hash);
+    if (iter != m_pipeline_layouts.end())
+        return iter->second.get();
+
+    auto layout = std::make_unique<vk_pipeline_layout>(parameters, parameter_count, m_context);
+    vk_pipeline_layout* result = layout.get();
+    m_pipeline_layouts[hash] = std::move(layout);
+    return result;
 }
 
 std::size_t vk_layout_manager::get_hash(const rhi_parameter_desc& desc)
@@ -184,12 +227,13 @@ vk_parameter::vk_parameter(const rhi_parameter_desc& desc, vk_context* context) 
     {
         if (parameter_binding.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
         {
-            auto uniform_buffer = std::make_unique<vk_uniform_buffer>(
-                nullptr,
-                parameter_binding.uniform_buffer.size * m_context->get_frame_resource_count(),
-                m_context);
+            rhi_buffer_desc uniform_buffer_desc = {};
+            uniform_buffer_desc.size =
+                parameter_binding.uniform_buffer.size * m_context->get_frame_resource_count();
+            uniform_buffer_desc.flags = RHI_BUFFER_FLAG_UNIFORM | RHI_BUFFER_FLAG_HOST_VISIBLE;
 
-            m_uniform_buffers.push_back(std::move(uniform_buffer));
+            m_uniform_buffers.push_back(
+                std::make_unique<vk_buffer>(uniform_buffer_desc, m_context));
         }
     }
     m_frame_resources.resize(m_context->get_frame_resource_count());
@@ -559,9 +603,35 @@ vk_render_pipeline::vk_render_pipeline(
 
     VkPipelineDepthStencilStateCreateInfo depth_stencil_state_info = {};
     depth_stencil_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depth_stencil_state_info.depthTestEnable = VK_TRUE;
+    depth_stencil_state_info.depthTestEnable = desc.depth_stencil.depth_enable;
     depth_stencil_state_info.depthWriteEnable = VK_TRUE;
-    depth_stencil_state_info.depthCompareOp = VK_COMPARE_OP_LESS;
+    switch (desc.depth_stencil.depth_functor)
+    {
+    case RHI_DEPTH_STENCIL_FUNCTOR_NEVER:
+        depth_stencil_state_info.depthCompareOp = VK_COMPARE_OP_NEVER;
+        break;
+    case RHI_DEPTH_STENCIL_FUNCTOR_LESS:
+        depth_stencil_state_info.depthCompareOp = VK_COMPARE_OP_LESS;
+        break;
+    case RHI_DEPTH_STENCIL_FUNCTOR_EQUAL:
+        depth_stencil_state_info.depthCompareOp = VK_COMPARE_OP_EQUAL;
+        break;
+    case RHI_DEPTH_STENCIL_FUNCTOR_LESS_EQUAL:
+        depth_stencil_state_info.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+        break;
+    case RHI_DEPTH_STENCIL_FUNCTOR_GREATER:
+        depth_stencil_state_info.depthCompareOp = VK_COMPARE_OP_GREATER;
+        break;
+    case RHI_DEPTH_STENCIL_FUNCTOR_NOT_EQUAL:
+        depth_stencil_state_info.depthCompareOp = VK_COMPARE_OP_NOT_EQUAL;
+        break;
+    case RHI_DEPTH_STENCIL_FUNCTOR_GREATER_EQUAL:
+        depth_stencil_state_info.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
+        break;
+    case RHI_DEPTH_STENCIL_FUNCTOR_ALWAYS:
+        depth_stencil_state_info.depthCompareOp = VK_COMPARE_OP_ALWAYS;
+        break;
+    }
     depth_stencil_state_info.stencilTestEnable = VK_FALSE;
     depth_stencil_state_info.front = {};
     depth_stencil_state_info.back = {};
@@ -574,6 +644,20 @@ vk_render_pipeline::vk_render_pipeline(
             VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
             VK_COLOR_COMPONENT_A_BIT;
         color_blend_attachments[i].blendEnable = desc.blend.attachments[i].enable;
+
+        color_blend_attachments[i].srcColorBlendFactor =
+            vk_util::map_blend_factor(desc.blend.attachments[i].src_color_factor);
+        color_blend_attachments[i].dstColorBlendFactor =
+            vk_util::map_blend_factor(desc.blend.attachments[i].dst_color_factor);
+        color_blend_attachments[i].colorBlendOp =
+            vk_util::map_blend_op(desc.blend.attachments[i].color_op);
+
+        color_blend_attachments[i].srcAlphaBlendFactor =
+            vk_util::map_blend_factor(desc.blend.attachments[i].src_alpha_factor);
+        color_blend_attachments[i].dstAlphaBlendFactor =
+            vk_util::map_blend_factor(desc.blend.attachments[i].dst_alpha_factor);
+        color_blend_attachments[i].alphaBlendOp =
+            vk_util::map_blend_op(desc.blend.attachments[i].alpha_op);
     }
 
     VkPipelineColorBlendStateCreateInfo color_blend_info = {};
@@ -595,12 +679,7 @@ vk_render_pipeline::vk_render_pipeline(
         descriptor_set_layouts.push_back(layout->get_layout());
     }
 
-    VkPipelineLayoutCreateInfo layout_info = {};
-    layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layout_info.pSetLayouts = descriptor_set_layouts.data();
-    layout_info.setLayoutCount = static_cast<std::uint32_t>(descriptor_set_layouts.size());
-    vk_check(
-        vkCreatePipelineLayout(m_context->get_device(), &layout_info, nullptr, &m_pipeline_layout));
+    m_pipeline_layout = layout_manager->get_pipeline_layout(desc.parameters, desc.parameter_count);
 
     std::vector<VkDynamicState> dynamic_state = {
         VK_DYNAMIC_STATE_VIEWPORT,
@@ -624,7 +703,7 @@ vk_render_pipeline::vk_render_pipeline(
     pipeline_info.pMultisampleState = &multisample_state_info;
     pipeline_info.pColorBlendState = &color_blend_info;
     pipeline_info.pDynamicState = &dynamic_state_info;
-    pipeline_info.layout = m_pipeline_layout;
+    pipeline_info.layout = m_pipeline_layout->get_layout();
     pipeline_info.renderPass = static_cast<vk_render_pass*>(desc.render_pass)->get_render_pass();
     pipeline_info.subpass = static_cast<std::uint32_t>(desc.render_subpass_index);
     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
@@ -642,7 +721,6 @@ vk_render_pipeline::vk_render_pipeline(
 vk_render_pipeline::~vk_render_pipeline()
 {
     vkDestroyPipeline(m_context->get_device(), m_pipeline, nullptr);
-    vkDestroyPipelineLayout(m_context->get_device(), m_pipeline_layout, nullptr);
 }
 
 vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, vk_context* context)
@@ -664,19 +742,14 @@ vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, 
         descriptor_set_layouts.push_back(layout->get_layout());
     }
 
-    VkPipelineLayoutCreateInfo layout_info = {};
-    layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layout_info.pSetLayouts = descriptor_set_layouts.data();
-    layout_info.setLayoutCount = static_cast<std::uint32_t>(descriptor_set_layouts.size());
-    vk_check(
-        vkCreatePipelineLayout(m_context->get_device(), &layout_info, nullptr, &m_pipeline_layout));
+    m_pipeline_layout = layout_manager->get_pipeline_layout(desc.parameters, desc.parameter_count);
 
     VkComputePipelineCreateInfo pipeline_info = {};
     pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
     pipeline_info.basePipelineIndex = -1;
     pipeline_info.stage = shader_stage_info;
-    pipeline_info.layout = m_pipeline_layout;
+    pipeline_info.layout = m_pipeline_layout->get_layout();
 
     vk_check(vkCreateComputePipelines(
         m_context->get_device(),
@@ -690,6 +763,5 @@ vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, 
 vk_compute_pipeline::~vk_compute_pipeline()
 {
     vkDestroyPipeline(m_context->get_device(), m_pipeline, nullptr);
-    vkDestroyPipelineLayout(m_context->get_device(), m_pipeline_layout, nullptr);
 }
 } // namespace violet::vk

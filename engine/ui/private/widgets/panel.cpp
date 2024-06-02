@@ -2,48 +2,15 @@
 
 namespace violet
 {
-panel::panel(std::uint32_t color, bool scissor)
+panel::panel() noexcept : m_color(COLOR_WHITE)
 {
-    m_position = {
-        float2{0.0f, 0.0f},
-        float2{0.0f, 0.0f},
-        float2{0.0f, 0.0f},
-        float2{0.0f, 0.0f}
-    };
-    m_uv = {
-        float2{0.0f, 0.0f},
-        float2{1.0f, 0.0f},
-        float2{1.0f, 1.0f},
-        float2{0.0f, 1.0f}
-    };
-    m_color = {color, color, color, color};
-    m_indices = {0, 1, 2, 0, 2, 3};
-
-    m_mesh = {
-        .type = ELEMENT_MESH_TYPE_BLOCK,
-        .position = m_position.data(),
-        .uv = m_uv.data(),
-        .color = m_color.data(),
-        .vertex_count = 4,
-        .indices = m_indices.data(),
-        .index_count = 6,
-        .scissor = scissor,
-        .texture = nullptr};
 }
 
-void panel::color(std::uint32_t color) noexcept
+void panel::on_paint(ui_painter* painter)
 {
-    if (m_color[0] != color)
-    {
-        m_color = {color, color, color, color};
-        mark_dirty();
-    }
-}
-
-void panel::on_extent_change(float width, float height)
-{
-    m_position[1] = {width, 0.0f};
-    m_position[2] = {width, height};
-    m_position[3] = {0.0f, height};
+    widget_extent extent = get_extent();
+    painter->set_position(extent.x, extent.y);
+    painter->set_color(m_color);
+    painter->draw_rect(extent.width, extent.height);
 }
 } // namespace violet

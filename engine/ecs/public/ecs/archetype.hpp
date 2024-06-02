@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/ecs/component.hpp"
+#include "ecs/component.hpp"
 #include <algorithm>
 #include <array>
 #include <cassert>

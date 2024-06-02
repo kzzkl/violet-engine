@@ -177,6 +177,14 @@ rhi_ptr<rhi_texture> render_device::create_texture(const char* file, const rhi_t
     return rhi_ptr<rhi_texture>(m_rhi->create_texture(file, desc), m_rhi_deleter);
 }
 
+rhi_ptr<rhi_texture> render_device::create_texture(
+    const void* data,
+    std::size_t size,
+    const rhi_texture_desc& desc)
+{
+    return rhi_ptr<rhi_texture>(m_rhi->create_texture(data, size, desc), m_rhi_deleter);
+}
+
 rhi_ptr<rhi_texture> render_device::create_texture_cube(
     std::string_view right,
     std::string_view left,
