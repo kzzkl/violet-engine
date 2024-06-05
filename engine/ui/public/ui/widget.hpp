@@ -9,7 +9,7 @@
 
 namespace violet
 {
-using widget_extent = rect<std::uint32_t>;
+using widget_extent = rect<float>;
 
 enum widget_state_flag : std::uint32_t
 {

@@ -18,10 +18,10 @@ void ui_renderer::render(widget* root, ui_pass* pass)
 {
     auto calculate_overlap_area = [](const widget_extent& a, const widget_extent& b)
     {
-        std::uint32_t x1 = std::max(a.x, b.x);
-        std::uint32_t x2 = std::min(a.x + a.width, b.x + b.width);
-        std::uint32_t y1 = std::max(a.y, b.y);
-        std::uint32_t y2 = std::min(a.y + a.height, b.y + b.height);
+        float x1 = std::max(a.x, b.x);
+        float x2 = std::min(a.x + a.width, b.x + b.width);
+        float y1 = std::max(a.y, b.y);
+        float y2 = std::min(a.y + a.height, b.y + b.height);
         return widget_extent{.x = x1, .y = y1, .width = x2 - x1, .height = y2 - y1};
     };
 

@@ -19,10 +19,14 @@ namespace violet::sample
 class sample_pass : public rdg_render_pass
 {
 public:
+    static constexpr std::size_t reference_render_target{0};
+    static constexpr std::size_t reference_depth{1};
+
+public:
     sample_pass()
     {
-        m_color = add_color("color", RHI_TEXTURE_LAYOUT_RENDER_TARGET);
-        add_depth_stencil("depth", RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
+        add_color(reference_render_target, RHI_TEXTURE_LAYOUT_RENDER_TARGET);
+        add_depth_stencil(reference_depth, RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
 
         set_shader(
             "./hello-world/shaders/sample.vert.spv",
@@ -34,13 +38,16 @@ public:
             {"position", RHI_FORMAT_R32G32B32_FLOAT}
         });
 
-        set_parameter_layout({engine_parameter_layout::mesh, engine_parameter_layout::camera});
+        set_parameter_layout({
+            {engine_parameter_layout::mesh,   RDG_PASS_PARAMETER_FLAG_NONE},
+            {engine_parameter_layout::camera, RDG_PASS_PARAMETER_FLAG_NONE}
+        });
     }
 
     virtual void execute(rhi_command* command, rdg_context* context) override
     {
         rhi_texture_extent extent =
-            context->get_texture(m_color->resource->get_index())->get_extent();
+            context->get_texture(this, reference_render_target)->get_extent();
 
         rhi_viewport viewport = {};
         viewport.width = extent.width;
@@ -124,11 +131,34 @@ private:
         skybox_pass* skybox = m_render_graph->add_pass<skybox_pass>("skybox pass");
         present_pass* present = m_render_graph->add_pass<present_pass>("present pass");
 
-        m_render_graph->add_edge(render_target, mesh_pass, "color", RDG_EDGE_OPERATE_CLEAR);
-        m_render_graph->add_edge(depth_buffer, mesh_pass, "depth", RDG_EDGE_OPERATE_CLEAR);
-        m_render_graph->add_edge(mesh_pass, "color", skybox, "color", RDG_EDGE_OPERATE_STORE);
-        m_render_graph->add_edge(mesh_pass, "depth", skybox, "depth", RDG_EDGE_OPERATE_STORE);
-        m_render_graph->add_edge(skybox, "color", present, "target", RDG_EDGE_OPERATE_STORE);
+        m_render_graph->add_edge(
+            render_target,
+            mesh_pass,
+            sample_pass::reference_render_target,
+            RDG_EDGE_OPERATE_CLEAR);
+        m_render_graph->add_edge(
+            depth_buffer,
+            mesh_pass,
+            sample_pass::reference_depth,
+            RDG_EDGE_OPERATE_CLEAR);
+        m_render_graph->add_edge(
+            mesh_pass,
+            sample_pass::reference_render_target,
+            skybox,
+            skybox_pass::reference_render_target,
+            RDG_EDGE_OPERATE_STORE);
+        m_render_graph->add_edge(
+            mesh_pass,
+            sample_pass::reference_depth,
+            skybox,
+            skybox_pass::reference_depth,
+            RDG_EDGE_OPERATE_STORE);
+        m_render_graph->add_edge(
+            skybox,
+            skybox_pass::reference_render_target,
+            present,
+            present_pass::reference_present_target,
+            RDG_EDGE_OPERATE_STORE);
 
         m_render_graph->compile(device);
 

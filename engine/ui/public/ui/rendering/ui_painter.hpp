@@ -73,7 +73,7 @@ public:
     void push_group(bool scissor = false, const rhi_scissor_rect& scissor_rect = {});
     void pop_group();
 
-    void set_color(std::uint32_t color) noexcept { m_pen_color = color; }
+    void set_color(ui_color color) noexcept { m_pen_color = color; }
     void set_position(float x, float y) noexcept
     {
         m_pen_position[0] = x;
@@ -83,7 +83,10 @@ public:
     void draw_rect(float width, float height);
     void draw_text(std::string_view text, font* font = nullptr);
 
-    void draw(
+    void draw_line(const float2& start, const float2& end, float thickness);
+    void draw_path(const std::vector<float2>& points, float thickness);
+
+    void draw_mesh(
         const std::vector<float2>& position,
         const std::vector<std::uint32_t>& color,
         const std::vector<float2>& uv,
@@ -120,7 +123,7 @@ private:
     ui_draw_batch* allocate_batch();
     rhi_parameter* allocate_parameter();
 
-    std::uint32_t m_pen_color{COLOR_WHITE};
+    ui_color m_pen_color{ui_color::WHITE};
     float2 m_pen_position{};
 
     font* m_default_font;

@@ -110,6 +110,7 @@ private:
 
     vk_parameter_layout* m_layout;
     std::vector<std::unique_ptr<vk_buffer>> m_uniform_buffers;
+    std::vector<std::pair<VkImageView, VkSampler>> m_images;
     std::vector<frame_resource> m_frame_resources;
 
     vk_context* m_context;

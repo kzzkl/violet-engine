@@ -154,7 +154,7 @@ void ui_module::update_input()
         {
             bubble_event(hot_widget, widget_event::mouse_release(key, mouse_x, mouse_y));
 
-            if (mouse_x == m_mouse_press_x && mouse_y == m_mouse_press_y)
+            if (std::abs(mouse_x - m_mouse_press_x) < 5 && std::abs(mouse_y - m_mouse_press_y) < 5)
             {
                 m_mouse_press_x = m_mouse_press_y = -1;
                 bubble_event(hot_widget, widget_event::mouse_click(key, mouse_x, mouse_y));
@@ -264,8 +264,8 @@ void ui_module::update_layout(widget* root, std::uint32_t width, std::uint32_t h
             layout->reset_updated_flag();
         }
 
-        std::uint32_t x = layout->get_x();
-        std::uint32_t y = layout->get_y();
+        float x = layout->get_x();
+        float y = layout->get_y();
 
         for (auto& child : node->get_children())
         {

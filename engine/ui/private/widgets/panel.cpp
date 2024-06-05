@@ -2,7 +2,7 @@
 
 namespace violet
 {
-panel::panel() noexcept : m_color(COLOR_WHITE)
+panel::panel() noexcept
 {
 }
 

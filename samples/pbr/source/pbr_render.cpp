@@ -45,8 +45,7 @@ public:
 
     virtual void execute(rhi_command* command, rdg_context* context) override
     {
-        rhi_texture_extent extent =
-            context->get_texture(m_irradiance_maps[0]->resource->get_index())->get_extent();
+        rhi_texture_extent extent = get_texture(context, m_irradiance_maps[0])->get_extent();
 
         struct irradiance_data
         {
@@ -55,10 +54,7 @@ public:
         };
         irradiance_data data = {extent.width, extent.height};
         m_parameter->set_uniform(0, &data, sizeof(irradiance_data), 0);
-        m_parameter->set_texture(
-            1,
-            context->get_texture(m_environment_map->resource->get_index()),
-            m_sampler.get());
+        m_parameter->set_texture(1, get_texture(context, m_environment_map), m_sampler.get());
 
         rhi_scissor_rect scissor;
         scissor.min_x = 0;
@@ -119,8 +115,7 @@ pbr_pass::pbr_pass()
 
 void pbr_pass::execute(rhi_command* command, rdg_context* context)
 {
-    rhi_texture_extent extent =
-        context->get_texture(m_render_target->resource->get_index())->get_extent();
+    rhi_texture_extent extent = get_texture(context, m_render_target)->get_extent();
 
     rhi_scissor_rect scissor;
     scissor.min_x = 0;

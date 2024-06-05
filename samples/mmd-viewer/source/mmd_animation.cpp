@@ -25,7 +25,9 @@ public:
     skin_pass()
     {
         set_shader("mmd-viewer/shaders/skinning.comp.spv");
-        set_parameter_layout({mmd_parameter_layout::skeleton});
+        set_parameter_layout({
+            {mmd_parameter_layout::skeleton, RDG_PASS_PARAMETER_FLAG_NONE}
+        });
     }
 
     void execute(rhi_command* command, rdg_context* context) override

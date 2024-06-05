@@ -8,6 +8,9 @@ class ui_painter;
 class ui_pass : public rdg_render_pass
 {
 public:
+    static constexpr std::size_t reference_render_target{0};
+
+public:
     ui_pass();
 
     void add_painter(ui_painter* painter) { m_painters.push_back(painter); }

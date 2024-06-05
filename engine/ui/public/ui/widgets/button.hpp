@@ -11,8 +11,8 @@ public:
 
     void set_font(font* font);
     void set_text(std::string_view text);
-    void set_text_color(std::uint32_t color) noexcept { m_text_color = color; }
-    void set_background_color(std::uint32_t color) noexcept { m_background_color = color; }
+    void set_text_color(ui_color color) noexcept { m_text_color = color; }
+    void set_background_color(ui_color color) noexcept { m_background_color = color; }
 
 private:
     virtual void on_paint(ui_painter* painter) override;
@@ -23,7 +23,7 @@ private:
     font* m_font;
 
     std::string m_text;
-    std::uint32_t m_text_color;
-    std::uint32_t m_background_color;
+    ui_color m_text_color{ui_color::BLACK};
+    ui_color m_background_color{ui_color::WHITE};
 };
 } // namespace violet

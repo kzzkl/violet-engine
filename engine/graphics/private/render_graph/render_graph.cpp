@@ -58,20 +58,13 @@ render_graph::~render_graph()
 {
 }
 
-void render_graph::add_edge(rdg_pass* src, rdg_pass* dst)
-{
-    auto src_reference = src->get_reference("self");
-    auto dst_reference = dst->get_reference("self");
-    m_edges.emplace_back(std::make_unique<rdg_edge>(src, src_reference, dst, dst_reference));
-}
-
 void render_graph::add_edge(
     rdg_resource* resource,
     rdg_pass* pass,
-    std::string_view pass_reference_name,
+    std::size_t reference_index,
     rdg_edge_operate operate)
 {
-    auto reference = pass->get_reference(pass_reference_name);
+    auto reference = pass->get_reference(reference_index);
 
     reference->resource = resource;
     if (operate == RDG_EDGE_OPERATE_DONT_CARE)
@@ -84,13 +77,13 @@ void render_graph::add_edge(
 
 void render_graph::add_edge(
     rdg_pass* src,
-    std::string_view src_reference_name,
+    std::size_t src_reference_index,
     rdg_pass* dst,
-    std::string_view dst_reference_name,
+    std::size_t dst_reference_index,
     rdg_edge_operate operate)
 {
-    auto src_reference = src->get_reference(src_reference_name);
-    auto dst_reference = dst->get_reference(dst_reference_name);
+    auto src_reference = src->get_reference(src_reference_index);
+    auto dst_reference = dst->get_reference(dst_reference_index);
 
     if (src_reference->type == RDG_PASS_REFERENCE_TYPE_ATTACHMENT)
     {
@@ -154,6 +147,8 @@ void render_graph::compile(render_device* device)
         m_pass_indices[pass->get_name()] = pass->get_index();
 
     m_semaphores.resize(device->get_frame_resource_count());
+
+    m_device = device;
 }
 
 void render_graph::execute(rhi_command* command, rdg_context* context)
@@ -164,7 +159,11 @@ void render_graph::execute(rhi_command* command, rdg_context* context)
 
 std::unique_ptr<rdg_context> render_graph::create_context()
 {
-    return std::make_unique<rdg_context>(m_resources.size(), m_passes.size());
+    std::vector<rdg_pass*> passes;
+    for (auto& pass : m_passes)
+        passes.push_back(pass.get());
+
+    return std::make_unique<rdg_context>(m_resources.size(), passes, m_device);
 }
 
 std::size_t render_graph::get_resource_index(std::string_view name) const

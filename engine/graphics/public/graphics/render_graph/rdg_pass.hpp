@@ -27,7 +27,6 @@ enum rdg_pass_reference_type
 
 struct rdg_pass_reference
 {
-    std::string name;
     rdg_resource* resource;
 
     rdg_pass_reference_type type;
@@ -58,6 +57,14 @@ enum rdg_pass_type
     RDG_PASS_TYPE_OTHER
 };
 
+enum rdg_pass_parameter_flag
+{
+    RDG_PASS_PARAMETER_FLAG_NONE,
+    RDG_PASS_PARAMETER_FLAG_MATERIAL,
+    RDG_PASS_PARAMETER_FLAG_PASS
+};
+using rdg_pass_parameter_flags = std::uint32_t;
+
 class rdg_pass
 {
 public:
@@ -65,11 +72,11 @@ public:
     virtual ~rdg_pass();
 
     rdg_pass_reference* add_texture(
-        std::string_view name,
+        std::size_t index,
         rdg_pass_access_flags access,
         rhi_texture_layout layout);
-    rdg_pass_reference* add_buffer(std::string_view name, rdg_pass_access_flags access);
-    rdg_pass_reference* get_reference(std::string_view name);
+    rdg_pass_reference* add_buffer(std::size_t index, rdg_pass_access_flags access);
+    rdg_pass_reference* get_reference(std::size_t index);
 
     std::vector<rdg_pass_reference*> get_references(rdg_pass_access_flags access) const;
     std::vector<rdg_pass_reference*> get_references(rdg_pass_reference_type type) const;
@@ -92,22 +99,16 @@ public:
     }
 
     void set_parameter_layout(
-        const std::vector<rhi_parameter_desc>& layout,
-        std::size_t material_parameter_index = -1)
+        const std::vector<std::pair<rhi_parameter_desc, rdg_pass_parameter_flags>>& layout)
     {
         m_parameter_layout = layout;
-        m_material_parameter_index = material_parameter_index;
     }
 
-    const std::vector<rhi_parameter_desc>& get_parameter_layout() const
-    {
-        return m_parameter_layout;
-    }
-
-    std::size_t get_material_parameter_index() const noexcept { return m_material_parameter_index; }
+    std::vector<rhi_parameter_desc> get_parameter_layout(
+        rdg_pass_parameter_flags flags = RDG_PASS_PARAMETER_FLAG_NONE) const;
 
 protected:
-    rdg_pass_reference* add_reference();
+    rdg_pass_reference* add_reference(std::size_t index);
 
 private:
     friend class render_graph;
@@ -117,8 +118,7 @@ private:
     std::vector<std::unique_ptr<rdg_pass_reference>> m_references;
 
     std::vector<std::pair<std::string, rhi_format>> m_input_layout;
-    std::vector<rhi_parameter_desc> m_parameter_layout;
-    std::size_t m_material_parameter_index;
+    std::vector<std::pair<rhi_parameter_desc, rdg_pass_parameter_flags>> m_parameter_layout;
 };
 
 class rdg_render_pass : public rdg_pass
@@ -126,12 +126,12 @@ class rdg_render_pass : public rdg_pass
 public:
     rdg_render_pass();
 
-    rdg_pass_reference* add_input(std::string_view name, rhi_texture_layout layout);
+    rdg_pass_reference* add_input(std::size_t index, rhi_texture_layout layout);
     rdg_pass_reference* add_color(
-        std::string_view name,
+        std::size_t index,
         rhi_texture_layout layout,
         const rhi_attachment_blend_desc& blend = {});
-    rdg_pass_reference* add_depth_stencil(std::string_view name, rhi_texture_layout layout);
+    rdg_pass_reference* add_depth_stencil(std::size_t index, rhi_texture_layout layout);
 
     void set_shader(std::string_view vertex_shader, std::string_view fragment_shader)
     {

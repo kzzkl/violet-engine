@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/render_interface.hpp"
+#include "graphics/render_device.hpp"
 #include <vector>
 
 namespace violet
@@ -32,10 +32,14 @@ class rdg_pass;
 class rdg_context
 {
 public:
-    rdg_context(std::size_t resource_count, std::size_t pass_count);
+    rdg_context(
+        std::size_t resource_count,
+        const std::vector<rdg_pass*>& passes,
+        render_device* device);
 
     void set_texture(std::size_t index, rhi_texture* texture);
     rhi_texture* get_texture(std::size_t index);
+    rhi_texture* get_texture(rdg_pass* pass, std::size_t reference_index);
 
     void set_buffer(std::size_t index, rhi_buffer* buffer);
     rhi_buffer* get_buffer(std::size_t index);
@@ -45,6 +49,8 @@ public:
 
     void set_light(rhi_parameter* light) noexcept { m_light = light; }
     rhi_parameter* get_light() const noexcept { return m_light; }
+
+    void get_parameters(rdg_pass* pass);
 
     void add_mesh(rdg_pass* pass, const rdg_mesh& mesh);
     const std::vector<rdg_mesh>& get_meshes(rdg_pass* pass) const;
@@ -61,11 +67,17 @@ private:
         rhi_buffer* buffer;
     };
 
+    struct pass_slot
+    {
+        std::vector<rdg_mesh> meshes;
+        std::vector<rdg_dispatch> dispatches;
+        std::vector<rhi_ptr<rhi_parameter>> parameters;
+    };
+
     std::vector<resource_slot> m_resource_slots;
+    std::vector<pass_slot> m_pass_slots;
 
     rhi_parameter* m_camera;
     rhi_parameter* m_light;
-    std::vector<std::vector<rdg_mesh>> m_mesh_queues;
-    std::vector<std::vector<rdg_dispatch>> m_dispatch_queues;
 };
 } // namespace violet

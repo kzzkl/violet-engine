@@ -137,12 +137,12 @@ public:
     virtual bool has_updated_flag() = 0;
     virtual void reset_updated_flag() = 0;
 
-    virtual std::uint32_t get_x() const = 0;
-    virtual std::uint32_t get_y() const = 0;
-    virtual std::uint32_t get_absolute_x() const = 0;
-    virtual std::uint32_t get_absolute_y() const = 0;
-    virtual std::uint32_t get_width() const = 0;
-    virtual std::uint32_t get_height() const = 0;
+    virtual float get_x() const = 0;
+    virtual float get_y() const = 0;
+    virtual float get_absolute_x() const = 0;
+    virtual float get_absolute_y() const = 0;
+    virtual float get_width() const = 0;
+    virtual float get_height() const = 0;
 
     virtual bool dirty() const = 0;
 

@@ -45,17 +45,16 @@ public:
         return result;
     }
 
-    void add_edge(rdg_pass* src, rdg_pass* dst);
     void add_edge(
         rdg_resource* resource,
         rdg_pass* pass,
-        std::string_view reference_name,
+        std::size_t reference_index,
         rdg_edge_operate operate = RDG_EDGE_OPERATE_DONT_CARE);
     void add_edge(
         rdg_pass* src,
-        std::string_view src_reference_name,
+        std::size_t src_reference_index,
         rdg_pass* dst,
-        std::string_view dst_reference_name,
+        std::size_t dst_reference_index,
         rdg_edge_operate operate = RDG_EDGE_OPERATE_DONT_CARE);
 
     void compile(render_device* device);
@@ -85,5 +84,7 @@ private:
     std::vector<std::unique_ptr<rdg_pass_batch>> m_batchs;
 
     std::vector<std::vector<rhi_ptr<rhi_semaphore>>> m_semaphores;
+
+    render_device* m_device;
 };
 } // namespace violet

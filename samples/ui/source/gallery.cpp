@@ -10,13 +10,13 @@ gallery::gallery()
     layout->set_flex_direction(LAYOUT_FLEX_DIRECTION_ROW);
     layout->set_flex_grow(1.0f);
 
-    panel* navi_panel = add<panel>();
-    navi_panel->get_layout()->set_width(300.0f);
-    navi_panel->set_color(COLOR_BISQUE);
+    // panel* navi_panel = add<panel>();
+    // navi_panel->get_layout()->set_width(300.0f);
+    // navi_panel->set_color(ui_color::BISQUE);
 
     panel* main_panel = add<panel>();
     main_panel->get_layout()->set_flex_grow(1.0f);
-    main_panel->set_color(COLOR_BEIGE);
+    main_panel->set_color(ui_color::BEIGE);
 
     main_panel->add<node_editor>();
 }

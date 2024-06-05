@@ -4,16 +4,18 @@ namespace violet
 {
 skybox_pass::skybox_pass()
 {
-    m_color = add_color("color", RHI_TEXTURE_LAYOUT_RENDER_TARGET);
-    add_depth_stencil("depth", RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
+    add_color(reference_render_target, RHI_TEXTURE_LAYOUT_RENDER_TARGET);
+    add_depth_stencil(reference_depth, RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
 
     set_shader("engine/shaders/skybox.vert.spv", "engine/shaders/skybox.frag.spv");
-    set_parameter_layout({engine_parameter_layout::camera});
+    set_parameter_layout({
+        {engine_parameter_layout::camera, RDG_PASS_PARAMETER_FLAG_NONE}
+    });
 }
 
 void skybox_pass::execute(rhi_command* command, rdg_context* context)
 {
-    rhi_texture_extent extent = context->get_texture(m_color->resource->get_index())->get_extent();
+    rhi_texture_extent extent = context->get_texture(this, reference_render_target)->get_extent();
 
     rhi_viewport viewport = {};
     viewport.width = extent.width;

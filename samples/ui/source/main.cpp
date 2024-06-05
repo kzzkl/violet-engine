@@ -60,8 +60,14 @@ private:
         ui_pass* ui = m_render_graph->add_pass<ui_pass>("ui pass");
         present_pass* present = m_render_graph->add_pass<present_pass>("present pass");
 
-        m_render_graph->add_edge(render_target, ui, "render target", RDG_EDGE_OPERATE_CLEAR);
-        m_render_graph->add_edge(ui, "render target", present, "target", RDG_EDGE_OPERATE_STORE);
+        m_render_graph
+            ->add_edge(render_target, ui, ui_pass::reference_render_target, RDG_EDGE_OPERATE_CLEAR);
+        m_render_graph->add_edge(
+            ui,
+            ui_pass::reference_render_target,
+            present,
+            present_pass::reference_present_target,
+            RDG_EDGE_OPERATE_STORE);
 
         m_render_graph->compile(device);
 

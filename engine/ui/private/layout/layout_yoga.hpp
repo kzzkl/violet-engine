@@ -72,18 +72,12 @@ public:
     virtual bool has_updated_flag() override;
     virtual void reset_updated_flag() override;
 
-    virtual std::uint32_t get_x() const override;
-    virtual std::uint32_t get_y() const override;
-    virtual std::uint32_t get_absolute_x() const override
-    {
-        return static_cast<std::uint32_t>(m_absolute_x);
-    }
-    virtual std::uint32_t get_absolute_y() const override
-    {
-        return static_cast<std::uint32_t>(m_absolute_y);
-    }
-    virtual std::uint32_t get_width() const override;
-    virtual std::uint32_t get_height() const override;
+    virtual float get_x() const override;
+    virtual float get_y() const override;
+    virtual float get_absolute_x() const override { return m_absolute_x; }
+    virtual float get_absolute_y() const override { return m_absolute_y; }
+    virtual float get_width() const override;
+    virtual float get_height() const override;
 
     virtual bool dirty() const override;
 

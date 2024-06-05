@@ -69,8 +69,8 @@ void mmd_edge_material::set_edge(const float4& edge_color, float edge_size)
 
 mmd_color_pass::mmd_color_pass()
 {
-    m_color = add_color("color", RHI_TEXTURE_LAYOUT_RENDER_TARGET);
-    add_depth_stencil("depth", RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
+    add_color(reference_render_target, RHI_TEXTURE_LAYOUT_RENDER_TARGET);
+    add_depth_stencil(reference_depth, RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
 
     set_shader("mmd-viewer/shaders/color.vert.spv", "mmd-viewer/shaders/color.frag.spv");
     set_cull_mode(RHI_CULL_MODE_NONE);
@@ -81,17 +81,17 @@ mmd_color_pass::mmd_color_pass()
         {"uv",       RHI_FORMAT_R32G32_FLOAT   }
     });
 
-    set_parameter_layout(
-        {engine_parameter_layout::mesh,
-         get_material_parameter_layout(),
-         engine_parameter_layout::camera,
-         engine_parameter_layout::light},
-        1);
+    set_parameter_layout({
+        {engine_parameter_layout::mesh,   RDG_PASS_PARAMETER_FLAG_NONE    },
+        {get_material_parameter_layout(), RDG_PASS_PARAMETER_FLAG_MATERIAL},
+        {engine_parameter_layout::camera, RDG_PASS_PARAMETER_FLAG_NONE    },
+        {engine_parameter_layout::light,  RDG_PASS_PARAMETER_FLAG_NONE    }
+    });
 }
 
 void mmd_color_pass::execute(rhi_command* command, rdg_context* context)
 {
-    rhi_texture_extent extent = context->get_texture(m_color->resource->get_index())->get_extent();
+    rhi_texture_extent extent = context->get_texture(this, reference_render_target)->get_extent();
 
     rhi_viewport viewport = {};
     viewport.width = extent.width;
@@ -122,8 +122,8 @@ void mmd_color_pass::execute(rhi_command* command, rdg_context* context)
 
 mmd_edge_pass::mmd_edge_pass()
 {
-    m_color = add_color("color", RHI_TEXTURE_LAYOUT_RENDER_TARGET);
-    add_depth_stencil("depth", RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
+    add_color(reference_render_target, RHI_TEXTURE_LAYOUT_RENDER_TARGET);
+    add_depth_stencil(reference_depth, RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
 
     set_shader("mmd-viewer/shaders/edge.vert.spv", "mmd-viewer/shaders/edge.frag.spv");
     set_cull_mode(RHI_CULL_MODE_BACK);
@@ -134,16 +134,16 @@ mmd_edge_pass::mmd_edge_pass()
         {"edge",     RHI_FORMAT_R32_FLOAT      }
     });
 
-    set_parameter_layout(
-        {engine_parameter_layout::mesh,
-         get_material_parameter_layout(),
-         engine_parameter_layout::camera},
-        1);
+    set_parameter_layout({
+        {engine_parameter_layout::mesh,   RDG_PASS_PARAMETER_FLAG_NONE    },
+        {get_material_parameter_layout(), RDG_PASS_PARAMETER_FLAG_MATERIAL},
+        {engine_parameter_layout::camera, RDG_PASS_PARAMETER_FLAG_NONE    }
+    });
 }
 
 void mmd_edge_pass::execute(rhi_command* command, rdg_context* context)
 {
-    rhi_texture_extent extent = context->get_texture(m_color->resource->get_index())->get_extent();
+    rhi_texture_extent extent = context->get_texture(this, reference_render_target)->get_extent();
 
     rhi_viewport viewport = {};
     viewport.width = extent.width;
@@ -182,11 +182,30 @@ mmd_render_graph::mmd_render_graph(rhi_format render_target_format)
     mmd_edge_pass* edge_pass = add_pass<mmd_edge_pass>("edge pass");
     present_pass* present = add_pass<present_pass>("present pass");
 
-    add_edge(render_target, color_pass, "color", RDG_EDGE_OPERATE_CLEAR);
-    add_edge(depth_buffer, color_pass, "depth", RDG_EDGE_OPERATE_CLEAR);
-    add_edge(color_pass, "color", edge_pass, "color", RDG_EDGE_OPERATE_STORE);
-    add_edge(color_pass, "depth", edge_pass, "depth", RDG_EDGE_OPERATE_STORE);
-    add_edge(edge_pass, "color", present, "target", RDG_EDGE_OPERATE_STORE);
+    add_edge(
+        render_target,
+        color_pass,
+        mmd_color_pass::reference_render_target,
+        RDG_EDGE_OPERATE_CLEAR);
+    add_edge(depth_buffer, color_pass, mmd_color_pass::reference_depth, RDG_EDGE_OPERATE_CLEAR);
+    add_edge(
+        color_pass,
+        mmd_color_pass::reference_render_target,
+        edge_pass,
+        mmd_edge_pass::reference_render_target,
+        RDG_EDGE_OPERATE_STORE);
+    add_edge(
+        color_pass,
+        mmd_color_pass::reference_depth,
+        edge_pass,
+        mmd_edge_pass::reference_depth,
+        RDG_EDGE_OPERATE_STORE);
+    add_edge(
+        edge_pass,
+        mmd_edge_pass::reference_render_target,
+        present,
+        present_pass::reference_present_target,
+        RDG_EDGE_OPERATE_STORE);
 
     m_material_layout =
         std::make_unique<material_layout>(this, std::vector<rdg_pass*>{color_pass, edge_pass});

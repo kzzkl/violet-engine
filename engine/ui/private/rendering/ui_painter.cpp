@@ -65,7 +65,7 @@ void ui_painter::draw_rect(float width, float height)
     std::vector<float2> uv(4);
     std::vector<std::uint32_t> color(4, m_pen_color);
 
-    draw(position, color, uv, {0, 2, 1, 0, 3, 2});
+    draw_mesh(position, color, uv, {0, 2, 1, 0, 3, 2});
 }
 
 void ui_painter::draw_text(std::string_view text, font* font)
@@ -112,10 +112,67 @@ void ui_painter::draw_text(std::string_view text, font* font)
 
     colors.resize(position.size(), m_pen_color);
 
-    draw(position, colors, uv, indices, font->get_texture());
+    draw_mesh(position, colors, uv, indices, font->get_texture());
 }
 
-void ui_painter::draw(
+void ui_painter::draw_line(const float2& start, const float2& end, float thickness)
+{
+    draw_path({start, end}, thickness);
+}
+
+void ui_painter::draw_path(const std::vector<float2>& points, float thickness)
+{
+    if (points.size() < 2)
+        return;
+
+    auto calculate_normal = [](const float2& start, const float2& end) -> float2
+    {
+        return vector::normalize(float2{start[1] - end[1], end[0] - start[0]});
+    };
+
+    float half_thickness = thickness * 0.5f;
+
+    std::vector<float2> position(points.size() * 2);
+    std::vector<std::uint32_t> colors(position.size(), m_pen_color);
+    std::vector<float2> uv(position.size());
+    std::vector<std::uint32_t> indices((points.size() - 1) * 6);
+
+    std::vector<float2> normals(points.size());
+    for (std::size_t i = 0; i < points.size() - 1; ++i)
+        normals[i] = calculate_normal(points[i], points[i + 1]);
+    normals[normals.size() - 1] = normals[normals.size() - 2];
+
+    for (std::size_t i = 0; i < points.size(); ++i)
+    {
+        std::size_t prev = i == 0 ? 0 : i - 1;
+        float2 normal = vector::add(normals[prev], normals[i]);
+        normal = vector::mul(normal, 0.5);
+        float d2 = vector::dot(normal, normal);
+        if (d2 > 0.000001f)
+        {
+            float inv_len2 = std::min(1.0f / d2, 100.0f);
+            normal = vector::mul(normal, inv_len2);
+        }
+        normal = vector::mul(normal, half_thickness);
+
+        position[i * 2] = vector::add(points[i], normal);
+        position[i * 2 + 1] = vector::sub(points[i], normal);
+    }
+
+    for (std::size_t i = 0; i < points.size() - 1; ++i)
+    {
+        indices[i * 6 + 0] = 0 + i * 2;
+        indices[i * 6 + 1] = 3 + i * 2;
+        indices[i * 6 + 2] = 2 + i * 2;
+        indices[i * 6 + 3] = 0 + i * 2;
+        indices[i * 6 + 4] = 1 + i * 2;
+        indices[i * 6 + 5] = 3 + i * 2;
+    }
+
+    draw_mesh(position, colors, uv, indices);
+}
+
+void ui_painter::draw_mesh(
     const std::vector<float2>& position,
     const std::vector<std::uint32_t>& color,
     const std::vector<float2>& uv,

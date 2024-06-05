@@ -13,7 +13,7 @@ ui_pass::ui_pass()
     blend.src_alpha_factor = RHI_BLEND_FACTOR_ONE;
     blend.dst_alpha_factor = RHI_BLEND_FACTOR_ZERO;
     blend.alpha_op = RHI_BLEND_OP_ADD;
-    add_color("render target", RHI_TEXTURE_LAYOUT_RENDER_TARGET, blend);
+    add_color(reference_render_target, RHI_TEXTURE_LAYOUT_RENDER_TARGET, blend);
 
     set_shader("engine/shaders/ui.vert.spv", "engine/shaders/ui.frag.spv");
 
@@ -28,8 +28,10 @@ ui_pass::ui_pass()
     set_depth_stencil(depth_stencil_desc);
     set_cull_mode(RHI_CULL_MODE_NONE);
 
-    set_parameter_layout(
-        {ui_painter::get_mvp_parameter_layout(), ui_painter::get_material_parameter_layout()});
+    set_parameter_layout({
+        {ui_painter::get_mvp_parameter_layout(),      RDG_PASS_PARAMETER_FLAG_NONE},
+        {ui_painter::get_material_parameter_layout(), RDG_PASS_PARAMETER_FLAG_NONE}
+    });
 }
 
 void ui_pass::execute(rhi_command* command, rdg_context* context)

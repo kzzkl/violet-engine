@@ -5,7 +5,7 @@
 
 namespace violet
 {
-label::label() : m_font(nullptr), m_color(COLOR_WHITE)
+label::label() : m_font(nullptr)
 {
 }
 

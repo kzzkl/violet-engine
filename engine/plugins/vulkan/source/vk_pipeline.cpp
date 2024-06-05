@@ -235,6 +235,10 @@ vk_parameter::vk_parameter(const rhi_parameter_desc& desc, vk_context* context) 
             m_uniform_buffers.push_back(
                 std::make_unique<vk_buffer>(uniform_buffer_desc, m_context));
         }
+        else if (parameter_binding.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+        {
+            m_images.push_back({});
+        }
     }
     m_frame_resources.resize(m_context->get_frame_resource_count());
     for (auto& frame_resource : m_frame_resources)
@@ -324,6 +328,19 @@ void vk_parameter::set_texture(std::size_t index, rhi_texture* texture, rhi_samp
     info.imageView = image->get_image_view();
     info.imageLayout = image->get_image_layout();
     info.sampler = static_cast<vk_sampler*>(sampler)->get_sampler();
+
+    auto& binding = m_layout->get_parameter_bindings()[index];
+    assert(binding.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    if (m_images[binding.index].first == info.imageView &&
+        m_images[binding.index].second == info.sampler)
+    {
+        return;
+    }
+    else
+    {
+        m_images[binding.index].first = info.imageView;
+        m_images[binding.index].second = info.sampler;
+    }
 
     VkWriteDescriptorSet write = {};
     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

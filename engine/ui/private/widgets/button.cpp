@@ -3,7 +3,7 @@
 
 namespace violet
 {
-button::button() : m_font(nullptr), m_text_color(COLOR_WHITE), m_background_color(COLOR_BLACK)
+button::button() : m_font(nullptr)
 {
 }
 

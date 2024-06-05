@@ -131,6 +131,20 @@ rdg_render_pass_batch::rdg_render_pass_batch(
     desc.subpasses = subpasses.data();
     desc.subpass_count = subpasses.size();
 
+    std::vector<rhi_render_subpass_dependency_desc> dependencies;
+    for (std::size_t i = 1; i < desc.subpass_count; ++i)
+    {
+        dependencies.push_back(rhi_render_subpass_dependency_desc{
+            .src = i - 1,
+            .src_stage = RHI_PIPELINE_STAGE_FLAG_COLOR_OUTPUT,
+            .src_access = RHI_ACCESS_FLAG_COLOR_WRITE,
+            .dst = i,
+            .dst_stage = RHI_PIPELINE_STAGE_FLAG_FRAGMENT,
+            .dst_access = RHI_ACCESS_FLAG_COLOR_READ});
+    }
+    desc.dependencies = dependencies.data();
+    desc.dependency_count = dependencies.size();
+
     m_render_pass = device->create_render_pass(desc);
 
     for (auto& [begin, end] : subpass_ranges)

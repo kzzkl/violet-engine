@@ -365,24 +365,24 @@ void widget_layout_yoga::reset_updated_flag()
     YGNodeSetHasNewLayout(m_node, false);
 }
 
-std::uint32_t widget_layout_yoga::get_x() const
+float widget_layout_yoga::get_x() const
 {
-    return static_cast<std::uint32_t>(YGNodeLayoutGetLeft(m_node));
+    return YGNodeLayoutGetLeft(m_node);
 }
 
-std::uint32_t widget_layout_yoga::get_y() const
+float widget_layout_yoga::get_y() const
 {
-    return static_cast<std::uint32_t>(YGNodeLayoutGetTop(m_node));
+    return YGNodeLayoutGetTop(m_node);
 }
 
-std::uint32_t widget_layout_yoga::get_width() const
+float widget_layout_yoga::get_width() const
 {
-    return static_cast<std::uint32_t>(YGNodeLayoutGetWidth(m_node));
+    return YGNodeLayoutGetWidth(m_node);
 }
 
-std::uint32_t widget_layout_yoga::get_height() const
+float widget_layout_yoga::get_height() const
 {
-    return static_cast<std::uint32_t>(YGNodeLayoutGetHeight(m_node));
+    return YGNodeLayoutGetHeight(m_node);
 }
 
 bool widget_layout_yoga::dirty() const

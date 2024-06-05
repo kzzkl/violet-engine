@@ -806,6 +806,7 @@ vk_sampler::~vk_sampler()
 
 vk_buffer::vk_buffer(const rhi_buffer_desc& desc, vk_context* context)
     : m_context(context),
+      m_buffer_size(desc.size),
       m_mapping_pointer(nullptr)
 {
     VkBufferUsageFlags usage_flags = 0;

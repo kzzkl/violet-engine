@@ -12,11 +12,9 @@ material::material(render_device* device, material_layout* layout) : m_layout(la
 {
     for (rdg_pass* pass : layout->get_passes())
     {
-        auto& parameter_layout = pass->get_parameter_layout();
-        std::size_t material_parameter_index = pass->get_material_parameter_index();
-        if (material_parameter_index != -1)
-            m_parameters.push_back(
-                device->create_parameter(parameter_layout[material_parameter_index]));
+        auto parameter_layout = pass->get_parameter_layout(RDG_PASS_PARAMETER_FLAG_MATERIAL);
+        if (!parameter_layout.empty())
+            m_parameters.push_back(device->create_parameter(parameter_layout[0]));
         else
             m_parameters.push_back(nullptr);
     }
