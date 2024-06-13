@@ -192,8 +192,9 @@ void mmd_loader::load_bones(mmd_model* model, const pmx& pmx, world& world)
 
         if (pmx_bone.parent_index != -1)
         {
-            bone_transform->set_position(
-                vector::sub(pmx_bone.position, pmx.bones[pmx_bone.parent_index].position));
+            bone_transform->set_position(vector::store<float3>(vector::sub(
+                vector::load(pmx_bone.position),
+                vector::load(pmx.bones[pmx_bone.parent_index].position))));
             auto& parent_bone = model->bones[pmx_bone.parent_index];
             parent_bone->get<transform>()->add_child(bone_transform);
         }
@@ -210,9 +211,9 @@ void mmd_loader::load_bones(mmd_model* model, const pmx& pmx, world& world)
         auto& bone_info = model_skeleton->bones[i];
         auto bone_transform = model->bones[i]->get<transform>();
 
-        float4x4_simd initial = simd::load(bone_transform->get_world_matrix());
-        float4x4_simd inverse = matrix_simd::inverse_transform_no_scale(initial);
-        simd::store(inverse, bone_info.initial_inverse);
+        matrix4 initial = matrix::load(bone_transform->get_world_matrix());
+        matrix4 inverse = matrix::inverse_transform_no_scale(initial);
+        matrix::store(inverse, bone_info.initial_inverse);
 
         bone_info.layer = pmx_bone.layer;
         bone_info.deform_after_physics = pmx_bone.flags & PMX_BONE_FLAG_PHYSICS_AFTER_DEFORM;
@@ -335,10 +336,10 @@ void mmd_loader::load_physics(mmd_model* model, const pmx& pmx, world& world)
     rigidbody_transform.reserve(pmx.rigidbodies.size());
     for (auto& pmx_rigidbody : pmx.rigidbodies)
     {
-        rigidbody_transform.push_back(matrix::affine_transform(
-            float3{1.0f, 1.0f, 1.0f},
-            pmx_rigidbody.rotate,
-            pmx_rigidbody.translate));
+        rigidbody_transform.push_back(matrix::store<float4x4>(matrix::affine_transform(
+            vector::set(1.0f, 1.0f, 1.0f, 0.0f),
+            vector::load(pmx_rigidbody.rotate),
+            vector::load(pmx_rigidbody.translate))));
         ++rigidbody_count[pmx_rigidbody.bone_index];
     }
 
@@ -416,9 +417,9 @@ void mmd_loader::load_physics(mmd_model* model, const pmx& pmx, world& world)
         bone_rigidbody->set_friction(pmx_rigidbody.friction);
         bone_rigidbody->set_collision_group(static_cast<std::size_t>(1) << pmx_rigidbody.group);
         bone_rigidbody->set_collision_mask(pmx_rigidbody.collision_group);
-        bone_rigidbody->set_offset(matrix::mul(
-            rigidbody_transform[i],
-            matrix::inverse(bone->get<transform>()->get_world_matrix())));
+        bone_rigidbody->set_offset(matrix::store<float4x4>(matrix::mul(
+            matrix::load(rigidbody_transform[i]),
+            matrix::inverse(matrix::load(bone->get<transform>()->get_world_matrix())))));
         bone_rigidbody->set_transform(rigidbody_transform[i]);
     }
 
@@ -427,32 +428,28 @@ void mmd_loader::load_physics(mmd_model* model, const pmx& pmx, world& world)
         auto rigidbody_a = rigidbody_bones[pmx_joint.rigidbody_a_index]->get<rigidbody>();
         auto rigidbody_b = rigidbody_bones[pmx_joint.rigidbody_b_index]->get<rigidbody>();
 
-        float4x4_simd joint_world = matrix_simd::affine_transform(
-            simd::set(1.0f, 1.0f, 1.0f, 0.0f),
-            simd::load(pmx_joint.rotate),
-            simd::load(pmx_joint.translate));
+        matrix4 joint_world = matrix::affine_transform(
+            vector::set(1.0f, 1.0f, 1.0f, 0.0f),
+            vector::load(pmx_joint.rotate),
+            vector::load(pmx_joint.translate));
 
-        float4x4_simd inverse_a = matrix_simd::inverse_transform_no_scale(
-            simd::load(rigidbody_transform[pmx_joint.rigidbody_a_index]));
-        float4x4_simd offset_a = matrix_simd::mul(joint_world, inverse_a);
+        matrix4 inverse_a = matrix::inverse_transform_no_scale(
+            matrix::load(rigidbody_transform[pmx_joint.rigidbody_a_index]));
+        matrix4 offset_a = matrix::mul(joint_world, inverse_a);
 
-        float4_simd scale_a, position_a, rotation_a;
-        matrix_simd::decompose(offset_a, scale_a, rotation_a, position_a);
-        float3 relative_position_a;
-        float4 relative_rotation_a;
-        simd::store(position_a, relative_position_a);
-        simd::store(rotation_a, relative_rotation_a);
+        vector4 scale_a, position_a, rotation_a;
+        matrix::decompose(offset_a, scale_a, rotation_a, position_a);
+        float3 relative_position_a = vector::store<float3>(position_a);
+        float4 relative_rotation_a = vector::store<float4>(rotation_a);
 
-        float4x4_simd inverse_b = matrix_simd::inverse_transform_no_scale(
-            simd::load(rigidbody_transform[pmx_joint.rigidbody_b_index]));
-        float4x4_simd offset_b = matrix_simd::mul(joint_world, inverse_b);
+        matrix4 inverse_b = matrix::inverse_transform_no_scale(
+            matrix::load(rigidbody_transform[pmx_joint.rigidbody_b_index]));
+        matrix4 offset_b = matrix::mul(joint_world, inverse_b);
 
-        float4_simd scale_b, position_b, rotation_b;
-        matrix_simd::decompose(offset_b, scale_b, rotation_b, position_b);
-        float3 relative_position_b;
-        float4 relative_rotation_b;
-        simd::store(position_b, relative_position_b);
-        simd::store(rotation_b, relative_rotation_b);
+        vector4 scale_b, position_b, rotation_b;
+        matrix::decompose(offset_b, scale_b, rotation_b, position_b);
+        float3 relative_position_b = vector::store<float3>(position_b);
+        float4 relative_rotation_b = vector::store<float4>(rotation_b);
 
         joint* joint = rigidbody_a->add_joint(
             rigidbody_b,

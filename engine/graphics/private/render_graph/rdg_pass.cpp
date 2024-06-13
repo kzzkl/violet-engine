@@ -14,7 +14,7 @@ rdg_pass::~rdg_pass()
 
 rdg_pass_reference* rdg_pass::add_texture(
     std::size_t index,
-    rdg_pass_access_flags access,
+    rhi_access_flags access,
     rhi_texture_layout layout)
 {
     rdg_pass_reference* reference = add_reference(index);
@@ -25,7 +25,7 @@ rdg_pass_reference* rdg_pass::add_texture(
     return reference;
 }
 
-rdg_pass_reference* rdg_pass::add_buffer(std::size_t index, rdg_pass_access_flags access)
+rdg_pass_reference* rdg_pass::add_buffer(std::size_t index, rhi_access_flags access)
 {
     rdg_pass_reference* reference = add_reference(index);
     reference->access = access;
@@ -38,7 +38,7 @@ rdg_pass_reference* rdg_pass::get_reference(std::size_t index)
     return m_references[index].get();
 }
 
-std::vector<rdg_pass_reference*> rdg_pass::get_references(rdg_pass_access_flags access) const
+std::vector<rdg_pass_reference*> rdg_pass::get_references(rhi_access_flags access) const
 {
     std::vector<rdg_pass_reference*> result;
     for (auto& reference : m_references)
@@ -58,6 +58,15 @@ std::vector<rdg_pass_reference*> rdg_pass::get_references(rdg_pass_reference_typ
         if (reference->type == type)
             result.push_back(reference.get());
     }
+
+    return result;
+}
+
+std::vector<rdg_pass_reference*> rdg_pass::get_references() const
+{
+    std::vector<rdg_pass_reference*> result;
+    for (auto& reference : m_references)
+        result.push_back(reference.get());
 
     return result;
 }
@@ -92,7 +101,7 @@ rdg_render_pass::rdg_render_pass()
 rdg_pass_reference* rdg_render_pass::add_input(std::size_t index, rhi_texture_layout layout)
 {
     rdg_pass_reference* reference = add_reference(index);
-    reference->access = RDG_PASS_ACCESS_FLAG_READ;
+    reference->access = RHI_ACCESS_FLAG_COLOR_READ;
     reference->type = RDG_PASS_REFERENCE_TYPE_ATTACHMENT;
     reference->attachment.layout = layout;
     reference->attachment.next_layout = layout;
@@ -107,7 +116,7 @@ rdg_pass_reference* rdg_render_pass::add_color(
     const rhi_attachment_blend_desc& blend)
 {
     rdg_pass_reference* reference = add_reference(index);
-    reference->access = RDG_PASS_ACCESS_FLAG_WRITE;
+    reference->access = RHI_ACCESS_FLAG_COLOR_WRITE;
     reference->type = RDG_PASS_REFERENCE_TYPE_ATTACHMENT;
     reference->attachment.layout = layout;
     reference->attachment.next_layout = layout;
@@ -122,7 +131,7 @@ rdg_pass_reference* rdg_render_pass::add_color(
 rdg_pass_reference* rdg_render_pass::add_depth_stencil(std::size_t index, rhi_texture_layout layout)
 {
     rdg_pass_reference* reference = add_reference(index);
-    reference->access = RDG_PASS_ACCESS_FLAG_READ | RDG_PASS_ACCESS_FLAG_WRITE;
+    reference->access = RHI_ACCESS_FLAG_DEPTH_STENCIL_WRITE;
     reference->type = RDG_PASS_REFERENCE_TYPE_ATTACHMENT;
     reference->attachment.layout = layout;
     reference->attachment.next_layout = layout;

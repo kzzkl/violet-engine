@@ -27,6 +27,7 @@ public:
     {
         auto resource = std::make_unique<T>(std::forward<Args>(args)...);
         resource->m_name = name;
+        resource->m_index = m_resources.size();
         resource->m_external = external;
 
         T* result = resource.get();

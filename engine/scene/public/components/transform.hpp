@@ -13,18 +13,15 @@ public:
 
     void set_position(float x, float y, float z) noexcept;
     void set_position(const float3& position) noexcept;
-    void set_position(float4_simd position) noexcept;
     const float3& get_position() const noexcept;
     float3 get_world_position() const noexcept;
 
     void set_rotation(const float4& quaternion) noexcept;
-    void set_rotation(float4_simd quaternion) noexcept;
     void set_rotation_euler(const float3& euler) noexcept;
     const float4& get_rotation() const noexcept;
 
     void set_scale(float x, float y, float z) noexcept;
     void set_scale(const float3& value) noexcept;
-    void set_scale(float4_simd value) noexcept;
     const float3& get_scale() const noexcept;
 
     float3 get_up() const noexcept;
@@ -32,7 +29,6 @@ public:
     void lookat(const float3& target, const float3& up) noexcept;
 
     void set_world_matrix(const float4x4& matrix);
-    void set_world_matrix(const float4x4_simd& matrix);
 
     const float4x4& get_local_matrix() const noexcept;
     const float4x4& get_world_matrix() const noexcept;

@@ -20,8 +20,13 @@ void physics_world::add(actor* actor)
 {
     auto added_rigidbody = actor->get<rigidbody>();
     auto added_transform = actor->get<transform>();
-    added_rigidbody->set_transform(
-        matrix::mul(added_rigidbody->get_offset(), added_transform->get_world_matrix()));
+
+    matrix4 added_offset = matrix::load(added_rigidbody->get_offset());
+    matrix4 added_world_matrix = matrix::load(added_transform->get_world_matrix());
+    float4x4 rigidbody_transform;
+    matrix::store(matrix::mul(added_offset, added_world_matrix), rigidbody_transform);
+
+    added_rigidbody->set_transform(rigidbody_transform);
     added_rigidbody->set_world(m_world.get());
 
     m_world->add(

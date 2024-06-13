@@ -1,47 +1,39 @@
 #pragma once
 
+#include "math/constant.hpp"
 #include <utility>
 
 namespace violet
 {
-static constexpr float PI = 3.141592654f;
-static constexpr float PI_2PI = 2.0f * PI;
-static constexpr float PI_1DIVPI = 1.0f / PI;
-static constexpr float PI_1DIV2PI = 1.0f / PI_2PI;
-static constexpr float PI_PIDIV2 = PI / 2.0f;
-static constexpr float PI_PIDIV4 = PI / 4.0f;
-static constexpr float PI_PIDIV180 = PI / 180.0f;
-static constexpr float PI_180DIVPI = 180.0f / PI;
-
 [[nodiscard]] inline float to_radians(float degrees)
 {
-    return degrees * PI_PIDIV180;
+    return degrees * math::PI_PIDIV180;
 }
 
 [[nodiscard]] inline float to_degrees(float radians)
 {
-    return radians * PI_180DIVPI;
+    return radians * math::PI_180DIVPI;
 }
 
 [[nodiscard]] inline std::pair<float, float> sin_cos(float radians)
 {
-    float temp = radians * PI_1DIV2PI;
+    float temp = radians * math::PI_1DIV2PI;
     if (temp > 0.0f)
         temp = static_cast<float>(static_cast<int>(temp + 0.5f));
     else
         temp = static_cast<float>(static_cast<int>(temp - 0.5f));
 
-    float x = radians - PI_2PI * temp;
+    float x = radians - math::PI_2PI * temp;
 
     float sign = 1.0f;
-    if (x > PI_PIDIV2)
+    if (x > math::PI_PIDIV2)
     {
-        x = PI - x;
+        x = math::PI - x;
         sign = -1.0f;
     }
-    else if (x < -PI_PIDIV2)
+    else if (x < -math::PI_PIDIV2)
     {
-        x = -PI - x;
+        x = -math::PI - x;
         sign = -1.0f;
     }
 

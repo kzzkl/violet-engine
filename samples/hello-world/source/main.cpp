@@ -219,24 +219,24 @@ private:
         if (rect.width == 0 || rect.height == 0)
             return;
 
-        float4x4_simd p = matrix_simd::perspective(
+        matrix4 p = matrix_simd::perspective(
             to_radians(45.0f),
             static_cast<float>(rect.width) / static_cast<float>(rect.height),
             0.1f,
             100.0f);
 
-        float4x4_simd m = matrix_simd::affine_transform(
+        matrix4 m = matrix_simd::affine_transform(
             simd::set(10.0, 10.0, 10.0, 0.0),
             quaternion_simd::rotation_axis(simd::set(1.0f, 0.0f, 0.0f, 0.0f), m_rotate),
             simd::set(0.0, 0.0, 0.0, 0.0));
 
-        float4x4_simd v = matrix_simd::affine_transform(
+        matrix4 v = matrix_simd::affine_transform(
             simd::set(1.0f, 1.0f, 1.0f, 0.0f),
             simd::set(0.0f, 0.0f, 0.0f, 1.0f),
             simd::set(0.0, 0.0, -30.0f, 0.0f));
         v = matrix_simd::inverse_transform(v);
 
-        float4x4_simd mvp = matrix_simd::mul(matrix_simd::mul(m, v), p);
+        matrix4 mvp = matrix_simd::mul(matrix_simd::mul(m, v), p);
 
         auto cube_transform = m_cube->get<transform>();
         cube_transform->set_rotation(

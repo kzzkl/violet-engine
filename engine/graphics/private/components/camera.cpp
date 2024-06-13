@@ -14,12 +14,14 @@ camera::camera(render_device* device)
     m_perspective.near_z = 0.1f;
     m_perspective.far_z = 1000.0f;
 
-    m_parameter_data.view = matrix::identity();
-    m_parameter_data.projection = matrix::perspective(
-        m_perspective.fov,
-        static_cast<float>(m_viewport.width) / static_cast<float>(m_viewport.height),
-        m_perspective.near_z,
-        m_perspective.far_z);
+    m_parameter_data.view = matrix::identity<float4x4>();
+    matrix::store(
+        matrix::perspective(
+            m_perspective.fov,
+            static_cast<float>(m_viewport.width) / static_cast<float>(m_viewport.height),
+            m_perspective.near_z,
+            m_perspective.far_z),
+        m_parameter_data.projection);
 
     m_parameter = device->create_parameter(engine_parameter_layout::camera);
 }
@@ -46,9 +48,9 @@ void camera::set_view(const float4x4& view)
 {
     m_parameter_data.view = view;
 
-    float4x4_simd v = simd::load(m_parameter_data.view);
-    float4x4_simd p = simd::load(m_parameter_data.projection);
-    simd::store(matrix_simd::mul(v, p), m_parameter_data.view_projection);
+    matrix4 v = matrix::load(m_parameter_data.view);
+    matrix4 p = matrix::load(m_parameter_data.projection);
+    matrix::store(matrix::mul(v, p), m_parameter_data.view_projection);
 
     update_parameter();
 }
@@ -105,15 +107,17 @@ void camera::set_render_texture(std::string_view name, rhi_swapchain* swapchain)
 
 void camera::update_projection()
 {
-    m_parameter_data.projection = matrix::perspective(
-        m_perspective.fov,
-        static_cast<float>(m_viewport.width) / static_cast<float>(m_viewport.height),
-        m_perspective.near_z,
-        m_perspective.far_z);
+    matrix::store(
+        matrix::perspective(
+            m_perspective.fov,
+            static_cast<float>(m_viewport.width) / static_cast<float>(m_viewport.height),
+            m_perspective.near_z,
+            m_perspective.far_z),
+        m_parameter_data.projection);
 
-    float4x4_simd v = simd::load(m_parameter_data.view);
-    float4x4_simd p = simd::load(m_parameter_data.projection);
-    simd::store(matrix_simd::mul(v, p), m_parameter_data.view_projection);
+    matrix4 v = matrix::load(m_parameter_data.view);
+    matrix4 p = matrix::load(m_parameter_data.projection);
+    matrix::store(matrix::mul(v, p), m_parameter_data.view_projection);
 
     update_parameter();
 }

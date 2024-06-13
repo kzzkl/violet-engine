@@ -126,22 +126,22 @@ void mmd_animation::skinning()
     view.each(
         [&](mmd_skeleton& model_skeleton, mesh& model_mesh, transform& model_transform)
         {
-            float4x4_simd world_to_local =
-                matrix_simd::inverse_transform(simd::load(model_transform.get_world_matrix()));
+            matrix4 world_to_local =
+                matrix::inverse_transform(matrix::load(model_transform.get_world_matrix()));
 
             for (std::size_t i = 0; i < model_skeleton.bones.size(); ++i)
             {
                 auto bone_transform = model_skeleton.bones[i].transform;
 
-                float4x4_simd final_transform = simd::load(bone_transform->get_world_matrix());
-                final_transform = matrix_simd::mul(final_transform, world_to_local);
+                matrix4 final_transform = matrix::load(bone_transform->get_world_matrix());
+                final_transform = matrix::mul(final_transform, world_to_local);
 
-                float4x4_simd initial_inverse = simd::load(model_skeleton.bones[i].initial_inverse);
-                final_transform = matrix_simd::mul(initial_inverse, final_transform);
+                matrix4 initial_inverse = matrix::load(model_skeleton.bones[i].initial_inverse);
+                final_transform = matrix::mul(initial_inverse, final_transform);
 
                 mmd_skinning_bone data;
-                simd::store(matrix_simd::transpose(final_transform), data.offset);
-                simd::store(quaternion_simd::rotation_matrix(final_transform), data.quaternion);
+                matrix::store(matrix::transpose(final_transform), data.offset);
+                vector::store(quaternion::from_matrix(final_transform), data.quaternion);
 
                 model_skeleton.set_bone(i, data);
             }
@@ -192,18 +192,18 @@ void mmd_animation::evaluate_motion(
 
         auto bound = bound_key(motion.animation_keys, static_cast<std::int32_t>(t), motion.offset);
 
-        float4_simd translate;
-        float4_simd rotate;
+        vector4 translate;
+        vector4 rotate;
 
         if (bound == motion.animation_keys.end())
         {
-            translate = simd::load(motion.animation_keys.back().translate);
-            rotate = simd::load(motion.animation_keys.back().rotate);
+            translate = vector::load(motion.animation_keys.back().translate);
+            rotate = vector::load(motion.animation_keys.back().rotate);
         }
         else if (bound == motion.animation_keys.begin())
         {
-            translate = simd::load(bound->translate);
-            rotate = simd::load(bound->rotate);
+            translate = vector::load(bound->translate);
+            rotate = vector::load(bound->rotate);
         }
         else
         {
@@ -212,18 +212,18 @@ void mmd_animation::evaluate_motion(
 
             float time = (t - key0.frame) / static_cast<float>(key1.frame - key0.frame);
 
-            translate = vector_simd::lerp(
-                simd::load(key0.translate),
-                simd::load(key1.translate),
-                simd::set(
+            translate = vector::lerp(
+                vector::load(key0.translate),
+                vector::load(key1.translate),
+                vector::set(
                     key1.tx_bezier.evaluate(time),
                     key1.ty_bezier.evaluate(time),
                     key1.tz_bezier.evaluate(time),
                     0.0f));
 
-            rotate = quaternion_simd::slerp(
-                simd::load(key0.rotate),
-                simd::load(key1.rotate),
+            rotate = quaternion::slerp(
+                vector::load(key0.rotate),
+                vector::load(key1.rotate),
                 key1.r_bezier.evaluate(time));
 
             motion.offset = std::distance(motion.animation_keys.cbegin(), bound);
@@ -231,12 +231,12 @@ void mmd_animation::evaluate_motion(
 
         if (weight != 1.0f)
         {
-            rotate = quaternion_simd::slerp(simd::load(motion.base_rotation), rotate, weight);
-            translate = vector_simd::lerp(simd::load(motion.base_translation), translate, weight);
+            rotate = quaternion::slerp(vector::load(motion.base_rotation), rotate, weight);
+            translate = vector::lerp(vector::load(motion.base_translation), translate, weight);
         }
 
-        simd::store(translate, motion.translation);
-        simd::store(rotate, motion.rotation);
+        vector::store(translate, motion.translation);
+        vector::store(rotate, motion.rotation);
     }
 }
 
@@ -345,34 +345,34 @@ void mmd_animation::update_inherit(
 {
     if (bone.is_inherit_rotation)
     {
-        float4_simd rotate;
+        vector4 rotate;
         if (!bone.inherit_local_flag && inherit_bone.inherit_index != -1)
-            rotate = simd::load(inherit_bone.inherit_rotation);
+            rotate = vector::load(inherit_bone.inherit_rotation);
         else
-            rotate = simd::load(inherit_motion.rotation);
+            rotate = vector::load(inherit_motion.rotation);
 
         if (inherit_bone.ik_link)
-            rotate = quaternion_simd::mul(simd::load(inherit_bone.ik_link->rotate), rotate);
+            rotate = quaternion::mul(vector::load(inherit_bone.ik_link->rotate), rotate);
 
-        rotate = quaternion_simd::slerp(quaternion_simd::identity(), rotate, bone.inherit_weight);
-        simd::store(rotate, bone.inherit_rotation);
+        rotate = quaternion::slerp(quaternion::identity<vector4>(), rotate, bone.inherit_weight);
+        vector::store(rotate, bone.inherit_rotation);
     }
 
     if (bone.is_inherit_translation)
     {
-        float4_simd translate;
+        vector4 translate;
         if (!bone.inherit_local_flag && inherit_bone.inherit_index != -1)
         {
-            translate = simd::load(inherit_bone.inherit_translation);
+            translate = vector::load(inherit_bone.inherit_translation);
         }
         else
         {
-            translate = vector_simd::sub(
-                simd::load(inherit_bone.position),
-                simd::load(inherit_bone.initial_position));
+            translate = vector::sub(
+                vector::load(inherit_bone.position),
+                vector::load(inherit_bone.initial_position));
         }
-        translate = vector_simd::mul(translate, bone.inherit_weight);
-        simd::store(translate, bone.inherit_translation);
+        translate = vector::mul(translate, bone.inherit_weight);
+        vector::store(translate, bone.inherit_translation);
     }
 
     update_local(bone, motion);
@@ -400,10 +400,10 @@ void mmd_animation::update_ik(
     {
         ik_solve_core(skeleton, animator, bone, i);
 
-        float4_simd target_position = simd::load(
+        vector4 target_position = vector::load(
             skeleton.bones[bone.ik_solver->target_index].transform->get_world_matrix()[3]);
-        float4_simd ik_position = simd::load(bone.transform->get_world_matrix()[3]);
-        float dist = vector_simd::length(vector_simd::sub(target_position, ik_position));
+        vector4 ik_position = vector::load(bone.transform->get_world_matrix()[3]);
+        float dist = vector::length(vector::sub(target_position, ik_position));
         if (dist < max_dist)
         {
             max_dist = dist;
@@ -428,7 +428,7 @@ void mmd_animation::ik_solve_core(
     mmd_skeleton::bone& bone,
     std::size_t iteration)
 {
-    float4_simd ik_position = simd::load(bone.transform->get_world_matrix()[3]);
+    vector4 ik_position = vector::load(bone.transform->get_world_matrix()[3]);
     for (std::size_t i = 0; i < bone.ik_solver->links.size(); ++i)
     {
         if (bone.ik_solver->links[i] == bone.ik_solver->target_index)
@@ -470,19 +470,19 @@ void mmd_animation::ik_solve_core(
                 continue;
             }
         }
-        float4_simd target_position = simd::load(
+        vector4 target_position = vector::load(
             skeleton.bones[bone.ik_solver->target_index].transform->get_world_matrix()[3]);
 
-        float4x4_simd link_inverse = matrix_simd::inverse_transform_no_scale(
-            simd::load(link_bone.transform->get_world_matrix()));
+        matrix4 link_inverse = matrix::inverse_transform_no_scale(
+            matrix::load(link_bone.transform->get_world_matrix()));
 
-        float4_simd link_ik_position = matrix_simd::mul(ik_position, link_inverse);
-        float4_simd link_target_position = matrix_simd::mul(target_position, link_inverse);
+        vector4 link_ik_position = matrix::mul(ik_position, link_inverse);
+        vector4 link_target_position = matrix::mul(target_position, link_inverse);
 
-        float4_simd link_ik_vec = vector_simd::normalize_vec3(link_ik_position);
-        float4_simd link_target_vec = vector_simd::normalize_vec3(link_target_position);
+        vector4 link_ik_vec = vector::normalize(link_ik_position);
+        vector4 link_target_vec = vector::normalize(link_target_position);
 
-        float dot = vector_simd::dot(link_ik_vec, link_target_vec);
+        float dot = vector::dot(link_ik_vec, link_target_vec);
         dot = clamp(dot, -1.0f, 1.0f);
 
         float angle = std::acos(dot);
@@ -491,23 +491,22 @@ void mmd_animation::ik_solve_core(
             continue;
 
         angle = clamp(angle, -bone.ik_solver->limit, bone.ik_solver->limit);
-        float4_simd cross =
-            vector_simd::normalize_vec3(vector_simd::cross(link_target_vec, link_ik_vec));
-        float4_simd rotate = quaternion_simd::rotation_axis(cross, angle);
+        vector4 cross = vector::normalize(vector::cross(link_target_vec, link_ik_vec));
+        vector4 rotate = quaternion::from_axis_angle(cross, angle);
 
         if (link_bone.ik_link->enable_limit)
         {
         }
 
-        float4_simd rotation = quaternion_simd::mul(
-            simd::load(animator.motions[bone.ik_solver->links[i]].rotation),
-            simd::load(link_bone.rotation));
+        vector4 rotation = quaternion::mul(
+            vector::load(animator.motions[bone.ik_solver->links[i]].rotation),
+            vector::load(link_bone.rotation));
 
-        float4_simd link_rotate = simd::load(link_bone.ik_link->rotate);
-        link_rotate = quaternion_simd::mul(link_rotate, rotation);
-        link_rotate = quaternion_simd::mul(link_rotate, rotate);
-        link_rotate = quaternion_simd::mul(link_rotate, quaternion_simd::inverse(rotation));
-        simd::store(link_rotate, link_bone.ik_link->rotate);
+        vector4 link_rotate = vector::load(link_bone.ik_link->rotate);
+        link_rotate = quaternion::mul(link_rotate, rotation);
+        link_rotate = quaternion::mul(link_rotate, rotate);
+        link_rotate = quaternion::mul(link_rotate, quaternion::inverse(rotation));
+        vector::store(link_rotate, link_bone.ik_link->rotate);
 
         update_local(link_bone, animator.motions[bone.ik_solver->links[i]]);
     }
@@ -521,47 +520,47 @@ void mmd_animation::ik_solve_plane(
     std::uint8_t axis,
     std::size_t iteration)
 {
-    float4_simd rotate_axis;
+    vector4 rotate_axis;
     switch (axis)
     {
     case 0: // x axis
-        rotate_axis = simd::identity_row_v<0>;
+        rotate_axis = math::identity_row_0;
         break;
     case 1: // y axis
-        rotate_axis = simd::identity_row_v<1>;
+        rotate_axis = math::identity_row_1;
         break;
     case 2: // z axis
-        rotate_axis = simd::identity_row_v<2>;
+        rotate_axis = math::identity_row_2;
         break;
     default:
         return;
     }
 
-    float4_simd ik_position = simd::load(bone.transform->get_world_matrix()[3]);
-    float4_simd target_position =
-        simd::load(skeleton.bones[bone.ik_solver->target_index].transform->get_world_matrix()[3]);
-    float4x4_simd link_inverse =
-        matrix_simd::inverse_transform_no_scale(simd::load(ik_link.transform->get_world_matrix()));
+    vector4 ik_position = vector::load(bone.transform->get_world_matrix()[3]);
+    vector4 target_position =
+        vector::load(skeleton.bones[bone.ik_solver->target_index].transform->get_world_matrix()[3]);
+    matrix4 link_inverse =
+        matrix::inverse_transform_no_scale(matrix::load(ik_link.transform->get_world_matrix()));
 
-    float4_simd link_ik_vec = matrix_simd::mul(ik_position, link_inverse);
-    link_ik_vec = vector_simd::normalize_vec3(link_ik_vec);
+    vector4 link_ik_vec = matrix::mul(ik_position, link_inverse);
+    link_ik_vec = vector::normalize(link_ik_vec);
 
-    float4_simd link_target_vec = matrix_simd::mul(target_position, link_inverse);
-    link_target_vec = vector_simd::normalize_vec3(link_target_vec);
+    vector4 link_target_vec = matrix::mul(target_position, link_inverse);
+    link_target_vec = vector::normalize(link_target_vec);
 
-    float dot = vector_simd::dot(link_ik_vec, link_target_vec);
+    float dot = vector::dot(link_ik_vec, link_target_vec);
     dot = clamp(dot, -1.0f, 1.0f);
 
     float angle = std::acos(dot);
     angle = clamp(angle, -bone.ik_solver->limit, bone.ik_solver->limit);
 
-    float4_simd rotate1 = quaternion_simd::rotation_axis(rotate_axis, angle);
-    float4_simd target_vec1 = quaternion_simd::mul_vec(rotate1, link_target_vec);
-    float dot1 = vector_simd::dot(target_vec1, link_ik_vec);
+    vector4 rotate1 = quaternion::from_axis_angle(rotate_axis, angle);
+    vector4 target_vec1 = quaternion::mul_vec(rotate1, link_target_vec);
+    float dot1 = vector::dot(target_vec1, link_ik_vec);
 
-    float4_simd rotate2 = quaternion_simd::rotation_axis(rotate_axis, -angle);
-    float4_simd target_vec2 = quaternion_simd::mul_vec(rotate2, link_target_vec);
-    float dot2 = vector_simd::dot(target_vec2, link_ik_vec);
+    vector4 rotate2 = quaternion::from_axis_angle(rotate_axis, -angle);
+    vector4 target_vec2 = quaternion::mul_vec(rotate2, link_target_vec);
+    float dot2 = vector::dot(target_vec2, link_ik_vec);
 
     float new_angle = ik_link.ik_link->plane_mode_angle;
     if (dot1 > dot2)
@@ -593,33 +592,37 @@ void mmd_animation::ik_solve_plane(
         clamp(new_angle, ik_link.ik_link->limit_min[axis], ik_link.ik_link->limit_max[axis]);
     ik_link.ik_link->plane_mode_angle = new_angle;
 
-    float4_simd rotation = quaternion_simd::mul(
-        simd::load(animator.motions[ik_link.index].rotation),
-        simd::load(skeleton.bones[ik_link.index].rotation));
-    float4_simd link_rotate = quaternion_simd::rotation_axis(rotate_axis, new_angle);
-    link_rotate = quaternion_simd::mul(link_rotate, quaternion_simd::inverse(rotation));
+    vector4 rotation = quaternion::mul(
+        vector::load(animator.motions[ik_link.index].rotation),
+        vector::load(skeleton.bones[ik_link.index].rotation));
+    vector4 link_rotate = quaternion::from_axis_angle(rotate_axis, new_angle);
+    link_rotate = quaternion::mul(link_rotate, quaternion::inverse(rotation));
 
-    simd::store(link_rotate, ik_link.ik_link->rotate);
+    vector::store(link_rotate, ik_link.ik_link->rotate);
 
     update_local(skeleton.bones[ik_link.index], animator.motions[ik_link.index]);
 }
 
 void mmd_animation::update_local(mmd_skeleton::bone& bone, mmd_animator::motion& motion)
 {
-    float4_simd translate =
-        vector_simd::add(simd::load(motion.translation), simd::load(bone.position));
+    vector4 translate = vector::add(vector::load(motion.translation), vector::load(bone.position));
     if (bone.is_inherit_translation)
-        translate = vector_simd::add(translate, simd::load(bone.inherit_translation));
+        translate = vector::add(translate, vector::load(bone.inherit_translation));
 
-    float4_simd rotation =
-        quaternion_simd::mul(simd::load(motion.rotation), simd::load(bone.rotation));
+    vector4 rotation = quaternion::mul(vector::load(motion.rotation), vector::load(bone.rotation));
     if (bone.ik_link)
-        rotation = quaternion_simd::mul(simd::load(bone.ik_link->rotate), rotation);
+        rotation = quaternion::mul(vector::load(bone.ik_link->rotate), rotation);
     if (bone.is_inherit_rotation)
-        rotation = quaternion_simd::mul(rotation, simd::load(bone.inherit_rotation));
+        rotation = quaternion::mul(rotation, vector::load(bone.inherit_rotation));
 
-    bone.transform->set_position(translate);
-    bone.transform->set_rotation(rotation);
+    float3 t;
+    vector::store(translate, t);
+    bone.transform->set_position(t);
+
+    float4 r;
+    vector::store(rotation, r);
+    bone.transform->set_rotation(r);
+
     bone.transform->set_scale(bone.scale);
 }
 } // namespace violet::sample

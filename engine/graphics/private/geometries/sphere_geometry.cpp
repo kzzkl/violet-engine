@@ -20,19 +20,19 @@ sphere_geometry::sphere_geometry(
 
     for (std::size_t i = 1; i < stack; ++i)
     {
-        float phi = PI * static_cast<float>(i) / static_cast<float>(stack);
+        float phi = math::PI * static_cast<float>(i) / static_cast<float>(stack);
         auto [phi_sin, phi_cos] = sin_cos(phi);
         for (std::size_t j = 0; j < slice; ++j)
         {
-            float theta = 2.0f * PI * static_cast<float>(j) / static_cast<float>(slice);
+            float theta = 2.0f * math::PI * static_cast<float>(j) / static_cast<float>(slice);
             auto [theta_sin, theta_cos] = sin_cos(theta);
 
-            float3 p = {
+            vector4 p = vector::set(
                 phi_sin * theta_cos * radius,
                 phi_cos * radius,
-                phi_sin * theta_sin * radius};
-            position.push_back(p);
-            normal.push_back(vector::normalize(p));
+                phi_sin * theta_sin * radius);
+            position.push_back(vector::store<float3>(p));
+            normal.push_back(vector::store<float3>(vector::normalize(p)));
         }
     }
 

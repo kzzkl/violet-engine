@@ -65,12 +65,11 @@ void physics_module::simulation(physics_world* world, bool immediately)
         {
             if (rigidbody.get_type() == PHY_RIGIDBODY_TYPE_KINEMATIC)
             {
-                float4x4_simd world_matrix = simd::load(transform.get_world_matrix());
-                float4x4_simd offset_matrix = simd::load(rigidbody.get_offset());
-                world_matrix = matrix_simd::mul(offset_matrix, world_matrix);
+                matrix4 world_matrix = matrix::load(transform.get_world_matrix());
+                matrix4 offset_matrix = matrix::load(rigidbody.get_offset());
+                world_matrix = matrix::mul(offset_matrix, world_matrix);
 
-                float4x4 world;
-                simd::store(world_matrix, world);
+                float4x4 world = matrix::store<float4x4>(world_matrix);
                 rigidbody.get_rigidbody()->set_transform(world);
             }
         });
@@ -126,12 +125,11 @@ void physics_module::simulation(physics_world* world, bool immediately)
 
     for (updated_object& object : updated_objects)
     {
-        float4x4_simd world_matrix = simd::load(object.rigidbody->get_transform());
-        float4x4_simd offset_matrix = simd::load(object.rigidbody->get_offset_inverse());
-        world_matrix = matrix_simd::mul(offset_matrix, world_matrix);
+        matrix4 world_matrix = matrix::load(object.rigidbody->get_transform());
+        matrix4 offset_matrix = matrix::load(object.rigidbody->get_offset_inverse());
+        world_matrix = matrix::mul(offset_matrix, world_matrix);
 
-        float4x4 world;
-        simd::store(world_matrix, world);
+        float4x4 world = matrix::store<float4x4>(world_matrix);
         world =
             object.rigidbody->get_reflector()->reflect(world, object.transform->get_world_matrix());
         object.transform->set_world_matrix(world);

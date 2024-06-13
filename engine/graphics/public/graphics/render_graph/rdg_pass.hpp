@@ -10,13 +10,6 @@
 
 namespace violet
 {
-enum rdg_pass_access_flag : std::uint32_t
-{
-    RDG_PASS_ACCESS_FLAG_READ = 1 << 0,
-    RDG_PASS_ACCESS_FLAG_WRITE = 1 << 1
-};
-using rdg_pass_access_flags = std::uint32_t;
-
 enum rdg_pass_reference_type
 {
     RDG_PASS_REFERENCE_TYPE_NONE,
@@ -30,7 +23,7 @@ struct rdg_pass_reference
     rdg_resource* resource;
 
     rdg_pass_reference_type type;
-    rdg_pass_access_flags access;
+    rhi_access_flags access;
 
     union {
         struct
@@ -73,13 +66,14 @@ public:
 
     rdg_pass_reference* add_texture(
         std::size_t index,
-        rdg_pass_access_flags access,
+        rhi_access_flags access,
         rhi_texture_layout layout);
-    rdg_pass_reference* add_buffer(std::size_t index, rdg_pass_access_flags access);
+    rdg_pass_reference* add_buffer(std::size_t index, rhi_access_flags access);
     rdg_pass_reference* get_reference(std::size_t index);
 
-    std::vector<rdg_pass_reference*> get_references(rdg_pass_access_flags access) const;
+    std::vector<rdg_pass_reference*> get_references(rhi_access_flags access) const;
     std::vector<rdg_pass_reference*> get_references(rdg_pass_reference_type type) const;
+    std::vector<rdg_pass_reference*> get_references() const;
 
     const std::string& get_name() const noexcept { return m_name; }
     std::size_t get_index() const noexcept { return m_index; }

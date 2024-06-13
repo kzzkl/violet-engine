@@ -1,214 +1,134 @@
 #pragma once
 
-#include "misc.hpp"
-#include "vector.hpp"
+#include "math/misc.hpp"
+#include "math/vector.hpp"
 
 namespace violet
 {
 class quaternion
 {
 public:
-    static constexpr inline float4 identity() { return {0.0f, 0.0f, 0.0f, 1.0f}; }
+    template <typename T>
+    [[nodiscard]] static inline T identity();
 
-    [[nodiscard]] static inline float4 rotation_axis(const float3& axis, float radians)
+    template <>
+    [[nodiscard]] static inline float4 identity<float4>()
     {
-        auto [sin, cos] = sin_cos(radians * 0.5f);
-        return {axis[0] * sin, axis[1] * sin, axis[2] * sin, cos};
+        return {0.0f, 0.0f, 0.0f, 1.0f};
     }
 
-    [[nodiscard]] static inline float4 rotation_axis(const float4& axis, float radians)
+#ifdef VIOLET_USE_SIMD
+    template <>
+    [[nodiscard]] static inline vector4 identity<vector4>()
     {
+        static constexpr vector4 identity = {0.0f, 0.0f, 0.0f, 1.0f};
+        return identity;
+    }
+#endif
+
+    [[nodiscard]] static inline vector4 from_axis_angle(vector4 axis, float radians)
+    {
+#ifdef VIOLET_USE_SIMD
+        // TODO
+        float4 a;
+        vector::store(axis, a);
+        auto [sin, cos] = sin_cos(radians * 0.5f);
+        return vector::set(a[0] * sin, a[1] * sin, a[2] * sin, cos);
+#else
         auto [sin, cos] = sin_cos(radians * 0.5f);
         return {axis[0] * sin, axis[1] * sin, axis[2] * sin, cos};
+#endif
     }
 
-    [[nodiscard]] static inline float4 rotation_euler(float pitch, float heading, float bank)
+    [[nodiscard]] static inline vector4 from_euler(float pitch, float heading, float bank)
     {
+#ifdef VIOLET_USE_SIMD
+        // TODO
         auto [p_sin, p_cos] = sin_cos(pitch * 0.5f);
         auto [h_sin, h_cos] = sin_cos(heading * 0.5f);
         auto [b_sin, b_cos] = sin_cos(bank * 0.5f);
 
-        return float4{
+        return vector::set(
+            h_cos * p_sin * b_cos + h_sin * p_cos * b_sin,
+            h_sin * p_cos * b_cos - h_cos * p_sin * b_sin,
+            h_cos * p_cos * b_sin - h_sin * p_sin * b_cos,
+            h_cos * p_cos * b_cos + h_sin * p_sin * b_sin);
+#else
+        auto [p_sin, p_cos] = sin_cos(pitch * 0.5f);
+        auto [h_sin, h_cos] = sin_cos(heading * 0.5f);
+        auto [b_sin, b_cos] = sin_cos(bank * 0.5f);
+
+        return {
             h_cos * p_sin * b_cos + h_sin * p_cos * b_sin,
             h_sin * p_cos * b_cos - h_cos * p_sin * b_sin,
             h_cos * p_cos * b_sin - h_sin * p_sin * b_cos,
             h_cos * p_cos * b_cos + h_sin * p_sin * b_sin};
+#endif
     }
 
-    [[nodiscard]] static inline float4 rotation_euler(const float3& euler)
+    [[nodiscard]] static inline vector4 from_matrix(matrix4 m)
     {
-        return rotation_euler(euler[0], euler[1], euler[2]);
-    }
+        // TODO
+        float4x4 matrix;
+        vector::store(m[0], matrix[0]);
+        vector::store(m[1], matrix[1]);
+        vector::store(m[2], matrix[2]);
+        vector::store(m[3], matrix[3]);
 
-    [[nodiscard]] static inline float4 rotation_euler(const float4& euler)
-    {
-        return rotation_euler(euler[0], euler[1], euler[2]);
-    }
-
-    [[nodiscard]] static inline float4 rotation_matrix(const float4x4& m)
-    {
-        float4 result;
+        vector4 v;
         float t;
 
-        if (m[2][2] < 0.0f) // x^2 + y ^2 > z^2 + w^2
+        if (matrix[2][2] < 0.0f) // x^2 + y ^2 > z^2 + w^2
         {
-            if (m[0][0] > m[1][1]) // x > y
+            if (matrix[0][0] > matrix[1][1]) // x > y
             {
-                t = 1.0f + m[0][0] - m[1][1] - m[2][2];
-                result = {t, m[0][1] + m[1][0], m[2][0] + m[0][2], m[1][2] - m[2][1]};
+                t = 1.0f + matrix[0][0] - matrix[1][1] - matrix[2][2];
+                v = vector::set(
+                    t,
+                    matrix[0][1] + matrix[1][0],
+                    matrix[2][0] + matrix[0][2],
+                    matrix[1][2] - matrix[2][1]);
             }
             else
             {
-                t = 1.0f - m[0][0] + m[1][1] - m[2][2];
-                result = {m[0][1] + m[1][0], t, m[1][2] + m[2][1], m[2][0] - m[0][2]};
+                t = 1.0f - matrix[0][0] + matrix[1][1] - matrix[2][2];
+                v = vector::set(
+                    matrix[0][1] + matrix[1][0],
+                    t,
+                    matrix[1][2] + matrix[2][1],
+                    matrix[2][0] - matrix[0][2]);
             }
         }
         else
         {
-            if (m[0][0] < -m[1][1]) // z > w
+            if (matrix[0][0] < -matrix[1][1]) // z > w
             {
-                t = 1.0f - m[0][0] - m[1][1] + m[2][2];
-                result = {m[2][0] + m[0][2], m[1][2] + m[2][1], t, m[0][1] - m[1][0]};
+                t = 1.0f - matrix[0][0] - matrix[1][1] + matrix[2][2];
+                v = vector::set(
+                    matrix[2][0] + matrix[0][2],
+                    matrix[1][2] + matrix[2][1],
+                    t,
+                    matrix[0][1] - matrix[1][0]);
             }
             else
             {
-                t = 1.0f + m[0][0] + m[1][1] + m[2][2];
-                result = {m[1][2] - m[2][1], m[2][0] - m[0][2], m[0][1] - m[1][0], t};
+                t = 1.0f + matrix[0][0] + matrix[1][1] + matrix[2][2];
+                v = vector::set(
+                    matrix[1][2] - matrix[2][1],
+                    matrix[2][0] - matrix[0][2],
+                    matrix[0][1] - matrix[1][0],
+                    t);
             }
         }
 
-        result = vector::mul(result, 0.5f / sqrtf(t));
-        return result;
+        return vector::mul(v, 0.5f / sqrtf(t));
     }
 
-    [[nodiscard]] static inline float4 mul(const float4& a, const float4& b)
+    [[nodiscard]] static inline vector4 mul(vector4 a, const vector4 b)
     {
-        return float4{
-            a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
-            a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
-            a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
-            a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]};
-    }
-
-    [[nodiscard]] static inline float3 mul_vec(const float4& q, const float3& v)
-    {
-        float xxd = 2.0f * q[0] * q[0];
-        float xyd = 2.0f * q[0] * q[1];
-        float xzd = 2.0f * q[0] * q[2];
-        float xwd = 2.0f * q[0] * q[3];
-        float yyd = 2.0f * q[1] * q[1];
-        float yzd = 2.0f * q[1] * q[2];
-        float ywd = 2.0f * q[1] * q[3];
-        float zzd = 2.0f * q[2] * q[2];
-        float zwd = 2.0f * q[2] * q[3];
-        float wwd = 2.0f * q[3] * q[3];
-
-        return float3{
-            v[0] * (xxd + wwd - 1.0f) + v[1] * (xyd - zwd) + v[2] * (xzd + ywd),
-            v[0] * (xyd + zwd) + v[1] * (yyd + wwd - 1.0f) + v[2] * (yzd - xwd),
-            v[0] * (xzd - ywd) + v[1] * (yzd + xwd) + v[2] * (zzd + wwd - 1.0f)};
-    }
-
-    [[nodiscard]] static inline float4 mul_vec(const float4& q, const float4& v)
-    {
-        float xxd = 2.0f * q[0] * q[0];
-        float xyd = 2.0f * q[0] * q[1];
-        float xzd = 2.0f * q[0] * q[2];
-        float xwd = 2.0f * q[0] * q[3];
-        float yyd = 2.0f * q[1] * q[1];
-        float yzd = 2.0f * q[1] * q[2];
-        float ywd = 2.0f * q[1] * q[3];
-        float zzd = 2.0f * q[2] * q[2];
-        float zwd = 2.0f * q[2] * q[3];
-        float wwd = 2.0f * q[3] * q[3];
-
-        return float4{
-            v[0] * (xxd + wwd - 1.0f) + v[1] * (xyd - zwd) + v[2] * (xzd + ywd),
-            v[0] * (xyd + zwd) + v[1] * (yyd + wwd - 1.0f) + v[2] * (yzd - xwd),
-            v[0] * (xzd - ywd) + v[1] * (yzd + xwd) + v[2] * (zzd + wwd - 1.0f),
-            0.0f};
-    }
-
-    [[nodiscard]] static inline float4 conjugate(const float4& q)
-    {
-        return float4{-q[0], -q[1], -q[2], q[3]};
-    }
-
-    [[nodiscard]] static inline float4 inverse(const float4& q)
-    {
-        return vector::mul(conjugate(q), 1.0f / vector::dot(q, q));
-    }
-
-    [[nodiscard]] static inline float4 slerp(const float4& a, const float4& b, float t)
-    {
-        float cos_omega = vector::dot(a, b);
-
-        float4 c = b;
-        if (cos_omega < 0.0f)
-        {
-            c = vector::mul(b, -1.0f);
-            cos_omega = -cos_omega;
-        }
-
-        float k0, k1;
-        if (cos_omega > 0.9999f)
-        {
-            k0 = 1.0f - t;
-            k1 = t;
-        }
-        else
-        {
-            float sin_omega = sqrtf(1.0f - cos_omega * cos_omega);
-            float omega = atan2f(sin_omega, cos_omega);
-            float div = 1.0f / sin_omega;
-            k0 = sinf((1.0f - t) * omega) * div;
-            k1 = sinf(t * omega) * div;
-        }
-
-        return {
-            a[0] * k0 + c[0] * k1,
-            a[1] * k0 + c[1] * k1,
-            a[2] * k0 + c[2] * k1,
-            a[3] * k0 + c[3] * k1};
-    }
-};
-
-struct quaternion_simd
-{
-public:
-    [[nodiscard]] static inline float4_simd identity() { return simd::identity_row_v<3>; }
-
-    [[nodiscard]] static inline float4_simd rotation_axis(float4_simd axis, float radians)
-    {
-        // TODO
-        float4 a;
-        simd::store(axis, a);
-        float4 result = quaternion::rotation_axis(a, radians);
-        return simd::load(result);
-    }
-
-    [[nodiscard]] static inline float4_simd rotation_euler(float4_simd euler)
-    {
-        // TODO
-        float4 e;
-        simd::store(euler, e);
-        float4 result = quaternion::rotation_euler(e);
-        return simd::load(result);
-    }
-
-    [[nodiscard]] static inline float4_simd rotation_matrix(const float4x4_simd& m)
-    {
-        // TODO
-        float4x4 temp;
-        simd::store(m, temp);
-        float4 q = quaternion::rotation_matrix(temp);
-        return simd::load(q);
-    }
-
-    [[nodiscard]] static inline float4_simd mul(float4_simd a, float4_simd b)
-    {
-        static const __m128 c1 = simd::set(1.0f, 1.0f, 1.0f, -1.0f);
-        static const __m128 c2 = simd::set(-1.0f, -1.0f, -1.0f, -1.0f);
+#ifdef VIOLET_USE_SIMD
+        static const __m128 c1 = vector::set(1.0f, 1.0f, 1.0f, -1.0f);
+        static const __m128 c2 = vector::set(-1.0f, -1.0f, -1.0f, -1.0f);
 
         __m128 result, t1, t2;
         result = simd::replicate<3>(a); // [aw, aw, aw, aw]
@@ -242,36 +162,71 @@ public:
                                            //  aw * bw - ax * bx - ay * by - az * bz]
 
         return result;
+#else
+        return {
+            a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+            a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+            a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+            a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]};
+#endif
     }
 
-    [[nodiscard]] static inline float4_simd mul_vec(float4_simd q, float4_simd v)
+    [[nodiscard]] static inline vector4 mul_vec(vector4 q, vector4 v)
     {
+#ifdef VIOLET_USE_SIMD
         __m128 t1 = _mm_and_ps(v, simd::mask_v<1, 1, 1, 0>);
         __m128 t2 = conjugate(q);
         t2 = mul(t1, t2);
         return mul(q, t2);
+#else
+        float xxd = 2.0f * q[0] * q[0];
+        float xyd = 2.0f * q[0] * q[1];
+        float xzd = 2.0f * q[0] * q[2];
+        float xwd = 2.0f * q[0] * q[3];
+        float yyd = 2.0f * q[1] * q[1];
+        float yzd = 2.0f * q[1] * q[2];
+        float ywd = 2.0f * q[1] * q[3];
+        float zzd = 2.0f * q[2] * q[2];
+        float zwd = 2.0f * q[2] * q[3];
+        float wwd = 2.0f * q[3] * q[3];
+
+        return {
+            v[0] * (xxd + wwd - 1.0f) + v[1] * (xyd - zwd) + v[2] * (xzd + ywd),
+            v[0] * (xyd + zwd) + v[1] * (yyd + wwd - 1.0f) + v[2] * (yzd - xwd),
+            v[0] * (xzd - ywd) + v[1] * (yzd + xwd) + v[2] * (zzd + wwd - 1.0f),
+            0.0f};
+#endif
     }
 
-    [[nodiscard]] static inline float4_simd conjugate(float4_simd q)
+    [[nodiscard]] static inline vector4 conjugate(vector4 q)
     {
-        __m128 t1 = simd::set(-1.0f, -1.0f, -1.0f, 1.0f);
+#ifdef VIOLET_USE_SIMD
+        __m128 t1 = vector::set(-1.0f, -1.0f, -1.0f, 1.0f);
         return _mm_mul_ps(q, t1);
+#else
+        return {-q[0], -q[1], -q[2], q[3]};
+#endif
     }
 
-    [[nodiscard]] static inline float4_simd inverse(float4_simd q)
+    [[nodiscard]] static inline vector4 inverse(vector4 q)
     {
+#ifdef VIOLET_USE_SIMD
         __m128 t1 = conjugate(q);
-        __m128 t2 = vector_simd::dot_v(q, q);
-        return vector_simd::div(t1, t2);
+        __m128 t2 = vector::dot_v(q, q);
+        return vector::div(t1, t2);
+#else
+        return vector::mul(conjugate(q), 1.0f / vector::dot(q, q));
+#endif
     }
 
-    [[nodiscard]] static inline float4_simd slerp(float4_simd a, float4_simd b, float t)
+    [[nodiscard]] static inline vector4 slerp(vector4 a, vector4 b, float t)
     {
-        float cos_omega = vector_simd::dot(a, b);
+#ifdef VIOLET_USE_SIMD
+        float cos_omega = vector::dot(a, b);
 
         if (cos_omega < 0.0f)
         {
-            b = vector_simd::mul(b, -1.0f);
+            b = vector::mul(b, -1.0f);
             cos_omega = -cos_omega;
         }
 
@@ -290,10 +245,41 @@ public:
             k1 = sinf(t * omega) * div;
         }
 
-        __m128 t1 = vector_simd::mul(a, k0);
-        __m128 t2 = vector_simd::mul(b, k1);
+        __m128 t1 = vector::mul(a, k0);
+        __m128 t2 = vector::mul(b, k1);
 
         return _mm_add_ps(t1, t2);
+#else
+        float cos_omega = vector::dot(a, b);
+
+        float4 c = b;
+        if (cos_omega < 0.0f)
+        {
+            c = vector::mul(b, -1.0f);
+            cos_omega = -cos_omega;
+        }
+
+        float k0, k1;
+        if (cos_omega > 0.9999f)
+        {
+            k0 = 1.0f - t;
+            k1 = t;
+        }
+        else
+        {
+            float sin_omega = sqrtf(1.0f - cos_omega * cos_omega);
+            float omega = atan2f(sin_omega, cos_omega);
+            float div = 1.0f / sin_omega;
+            k0 = sinf((1.0f - t) * omega) * div;
+            k1 = sinf(t * omega) * div;
+        }
+
+        return {
+            a[0] * k0 + c[0] * k1,
+            a[1] * k0 + c[1] * k1,
+            a[2] * k0 + c[2] * k1,
+            a[3] * k0 + c[3] * k1};
+#endif
     }
 };
 } // namespace violet

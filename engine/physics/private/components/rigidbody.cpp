@@ -17,7 +17,7 @@ rigidbody::rigidbody(physics_context* context) noexcept
       m_world(nullptr),
       m_context(context)
 {
-    m_offset = m_offset_inverse = matrix::identity();
+    m_offset = m_offset_inverse = matrix::identity<float4x4>();
 
     m_desc.type = PHY_RIGIDBODY_TYPE_DYNAMIC;
     m_desc.shape = nullptr;
@@ -26,7 +26,7 @@ rigidbody::rigidbody(physics_context* context) noexcept
     m_desc.angular_damping = 0.0f;
     m_desc.restitution = 0.0f;
     m_desc.friction = 0.0f;
-    m_desc.initial_transform = matrix::identity();
+    m_desc.initial_transform = matrix::identity<float4x4>();
 
     m_reflector = std::make_unique<rigidbody_reflector>();
 }
@@ -130,7 +130,9 @@ const float4x4& rigidbody::get_transform() const
 void rigidbody::set_offset(const float4x4& offset) noexcept
 {
     m_offset = offset;
-    m_offset_inverse = matrix::inverse(offset);
+
+    matrix4 inverse = matrix::inverse(matrix::load(offset));
+    matrix::store(inverse, m_offset_inverse);
 }
 
 void rigidbody::set_activation_state(phy_rigidbody_activation_state activation_state)

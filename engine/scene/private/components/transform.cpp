@@ -6,8 +6,8 @@ transform::transform(actor* owner) noexcept
     : m_position{0.0f, 0.0f, 0.0f},
       m_rotation{0.0f, 0.0f, 0.0f, 1.0f},
       m_scale{1.0f, 1.0f, 1.0f},
-      m_local_matrix(matrix::identity()),
-      m_world_matrix(matrix::identity()),
+      m_local_matrix(matrix::identity<float4x4>()),
+      m_world_matrix(matrix::identity<float4x4>()),
       m_world_dirty(false),
       m_owner(owner)
 {
@@ -26,14 +26,6 @@ void transform::set_position(float x, float y, float z) noexcept
 void transform::set_position(const float3& position) noexcept
 {
     m_position = position;
-
-    update_local();
-    mark_dirty();
-}
-
-void transform::set_position(float4_simd position) noexcept
-{
-    simd::store(position, m_position);
 
     update_local();
     mark_dirty();
@@ -58,17 +50,9 @@ void transform::set_rotation(const float4& quaternion) noexcept
     mark_dirty();
 }
 
-void transform::set_rotation(float4_simd quaternion) noexcept
-{
-    simd::store(quaternion, m_rotation);
-
-    update_local();
-    mark_dirty();
-}
-
 void transform::set_rotation_euler(const float3& euler) noexcept
 {
-    m_rotation = quaternion::rotation_euler(euler);
+    vector::store(quaternion::from_euler(euler[0], euler[1], euler[2]), m_rotation);
 
     update_local();
     mark_dirty();
@@ -97,14 +81,6 @@ void transform::set_scale(const float3& value) noexcept
     mark_dirty();
 }
 
-void transform::set_scale(float4_simd value) noexcept
-{
-    simd::store(value, m_scale);
-
-    update_local();
-    mark_dirty();
-}
-
 const float3& transform::get_scale() const noexcept
 {
     return m_scale;
@@ -112,23 +88,25 @@ const float3& transform::get_scale() const noexcept
 
 float3 transform::get_up() const noexcept
 {
-    return quaternion::mul_vec(m_rotation, float3{0.0f, 1.0f, 0.0f});
+    vector4 up = vector::set(0.0f, 1.0f, 0.0f, 0.0f);
+    up = quaternion::mul_vec(vector::load(m_rotation), up);
+    float3 result;
+    vector::store(up, result);
+    return result;
 }
 
 void transform::lookat(const float3& target, const float3& up) noexcept
 {
-    float3 z_axis = vector::normalize(vector::sub(target, m_position));
-    float3 x_axis = vector::normalize(vector::cross(up, z_axis));
-    float3 y_axis = vector::cross(z_axis, x_axis);
+    vector4 t = vector::load(target);
+    vector4 p = vector::load(m_position);
+    vector4 u = vector::load(up);
 
-    float4x4 rotation = {
-        float4{x_axis[0], x_axis[1], x_axis[2], 0.0f},
-        float4{y_axis[0], y_axis[1], y_axis[2], 0.0f},
-        float4{z_axis[0], z_axis[1], z_axis[2], 0.0f},
-        float4{0.0f,      0.0f,      0.0f,      1.0f}
-    };
+    vector4 z_axis = vector::normalize(vector::sub(t, p));
+    vector4 x_axis = vector::normalize(vector::cross(u, z_axis));
+    vector4 y_axis = vector::cross(z_axis, x_axis);
 
-    m_rotation = quaternion::rotation_matrix(rotation);
+    matrix4 rotation = {x_axis, y_axis, z_axis, math::identity_row_3};
+    vector::store(quaternion::from_matrix(rotation), m_rotation);
 
     update_local();
     mark_dirty();
@@ -138,35 +116,31 @@ void transform::set_world_matrix(const float4x4& matrix)
 {
     if (m_parent)
     {
-        m_local_matrix =
-            matrix::mul(matrix, matrix::inverse_transform(m_parent->get_world_matrix()));
+        matrix4 parent_to_world = matrix::load(m_parent->get_world_matrix());
+        matrix4 local_matrix =
+            matrix::mul(matrix::load(matrix), matrix::inverse_transform(parent_to_world));
+
+        vector4 s, r, t;
+        matrix::decompose(local_matrix, s, r, t);
+
+        matrix::store(local_matrix, m_local_matrix);
+        vector::store(s, m_scale);
+        vector::store(r, m_rotation);
+        vector::store(t, m_position);
     }
     else
     {
         m_local_matrix = matrix;
         m_world_matrix = matrix;
+
+        matrix4 local_matrix = matrix::load(m_local_matrix);
+        vector4 s, r, t;
+        matrix::decompose(local_matrix, s, r, t);
+        vector::store(s, m_scale);
+        vector::store(r, m_rotation);
+        vector::store(t, m_position);
     }
 
-    matrix::decompose(m_local_matrix, m_scale, m_rotation, m_position);
-    mark_dirty();
-}
-
-void transform::set_world_matrix(const float4x4_simd& matrix)
-{
-    if (m_parent)
-    {
-        float4x4_simd parent_to_world = simd::load(m_parent->get_world_matrix());
-        simd::store(
-            matrix_simd::mul(matrix, matrix_simd::inverse_transform(parent_to_world)),
-            m_local_matrix);
-    }
-    else
-    {
-        simd::store(matrix, m_local_matrix);
-        simd::store(matrix, m_world_matrix);
-    }
-
-    matrix::decompose(m_local_matrix, m_scale, m_rotation, m_position);
     mark_dirty();
 }
 
@@ -189,10 +163,10 @@ const float4x4& transform::get_world_matrix() const noexcept
 
         for (auto iter = path.rbegin(); iter != path.rend(); ++iter)
         {
-            simd::store(
-                matrix_simd::mul(
-                    simd::load((*iter)->m_local_matrix),
-                    simd::load((*iter)->m_parent->m_world_matrix)),
+            matrix::store(
+                matrix::mul(
+                    matrix::load((*iter)->m_local_matrix),
+                    matrix::load((*iter)->m_parent->m_world_matrix)),
                 (*iter)->m_world_matrix);
 
             (*iter)->m_world_dirty = false;
@@ -227,14 +201,14 @@ void transform::remove_child(const component_ptr<transform>& child)
 
 void transform::update_local() noexcept
 {
-    float4x4_simd local_matrix = matrix_simd::affine_transform(
-        simd::load(m_scale),
-        simd::load(m_rotation),
-        simd::load(m_position));
-    simd::store(local_matrix, m_local_matrix);
+    matrix4 local_matrix = matrix::affine_transform(
+        vector::load(m_scale),
+        vector::load(m_rotation),
+        vector::load(m_position));
+    matrix::store(local_matrix, m_local_matrix);
 
     if (!m_parent)
-        simd::store(local_matrix, m_world_matrix);
+        matrix::store(local_matrix, m_world_matrix);
 }
 
 void transform::mark_dirty()

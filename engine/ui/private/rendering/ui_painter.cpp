@@ -125,11 +125,6 @@ void ui_painter::draw_path(const std::vector<float2>& points, float thickness)
     if (points.size() < 2)
         return;
 
-    auto calculate_normal = [](const float2& start, const float2& end) -> float2
-    {
-        return vector::normalize(float2{start[1] - end[1], end[0] - start[0]});
-    };
-
     float half_thickness = thickness * 0.5f;
 
     std::vector<float2> position(points.size() * 2);
@@ -139,15 +134,25 @@ void ui_painter::draw_path(const std::vector<float2>& points, float thickness)
 
     std::vector<float2> normals(points.size());
     for (std::size_t i = 0; i < points.size() - 1; ++i)
-        normals[i] = calculate_normal(points[i], points[i + 1]);
+    {
+        vector4 n = vector::normalize(
+            vector::set(points[i].y - points[i + 1].y, points[i + 1].x - points[i].x));
+
+        vector::store(n, normals[i]);
+    }
     normals[normals.size() - 1] = normals[normals.size() - 2];
 
     for (std::size_t i = 0; i < points.size(); ++i)
     {
         std::size_t prev = i == 0 ? 0 : i - 1;
-        float2 normal = vector::add(normals[prev], normals[i]);
-        normal = vector::mul(normal, 0.5);
+
+        vector4 prev_normal = vector::load(normals[prev]);
+        vector4 normal = vector::load(normals[i]);
+
+        normal = vector::add(prev_normal, normal);
+        normal = vector::mul(normal, 0.5f);
         float d2 = vector::dot(normal, normal);
+
         if (d2 > 0.000001f)
         {
             float inv_len2 = std::min(1.0f / d2, 100.0f);
@@ -155,8 +160,10 @@ void ui_painter::draw_path(const std::vector<float2>& points, float thickness)
         }
         normal = vector::mul(normal, half_thickness);
 
-        position[i * 2] = vector::add(points[i], normal);
-        position[i * 2 + 1] = vector::sub(points[i], normal);
+        vector4 point = vector::load(points[i]);
+
+        vector::store(vector::add(point, normal), position[i * 2]);
+        vector::store(vector::sub(point, normal), position[i * 2 + 1]);
     }
 
     for (std::size_t i = 0; i < points.size() - 1; ++i)
@@ -211,13 +218,13 @@ void ui_painter::draw_mesh(
 
 void ui_painter::set_extent(std::uint32_t width, std::uint32_t height)
 {
-    float4x4 orthographic = matrix::orthographic(
+    float4x4 orthographic = matrix::store<float4x4>(matrix::orthographic(
         0.0f,
         static_cast<float>(width),
         static_cast<float>(height),
         0.0f,
         0.0f,
-        1.0f);
+        1.0f));
 
     m_mvp_parameter->set_uniform(0, &orthographic, sizeof(float4x4), 0);
 }

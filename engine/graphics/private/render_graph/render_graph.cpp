@@ -65,7 +65,6 @@ void render_graph::add_edge(
     rdg_edge_operate operate)
 {
     auto reference = pass->get_reference(reference_index);
-
     reference->resource = resource;
     if (operate == RDG_EDGE_OPERATE_DONT_CARE)
         reference->attachment.load_op = RHI_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -196,7 +195,6 @@ void render_graph::bind_resource()
 
             rdg_pass_reference* src_reference = edge->get_src_reference();
             rdg_pass_reference* dst_reference = edge->get_dst_reference();
-
             dst_reference->resource = src_reference->resource;
         }
     }
@@ -204,12 +202,16 @@ void render_graph::bind_resource()
 
 void render_graph::dead_stripping()
 {
+    const rhi_access_flags write_flags = RHI_ACCESS_FLAG_COLOR_WRITE |
+                                         RHI_ACCESS_FLAG_DEPTH_STENCIL_WRITE |
+                                         RHI_ACCESS_FLAG_SHADER_WRITE;
+
     std::queue<rdg_pass*> queue;
     for (auto& pass : m_passes)
     {
-        for (rdg_pass_reference* reference : pass->get_references(RDG_PASS_ACCESS_FLAG_WRITE))
+        for (rdg_pass_reference* reference : pass->get_references(write_flags))
         {
-            if (reference->resource && reference->resource->is_external())
+            if (reference->resource->is_external())
                 queue.push(pass.get());
         }
     }
@@ -244,10 +246,31 @@ void render_graph::dead_stripping()
         m_edges.end(),
         [&useful_pass](auto& edge)
         {
-            return useful_pass.find(edge->get_src()) == useful_pass.end() ||
-                   useful_pass.find(edge->get_dst()) == useful_pass.end();
+            return useful_pass.find(edge->get_dst()) == useful_pass.end();
         });
     m_edges.erase(edge_iter, m_edges.end());
+
+    auto resource_iter = std::remove_if(
+        m_resources.begin(),
+        m_resources.end(),
+        [&useful_pass](auto& resource)
+        {
+            for (rdg_pass* pass : useful_pass)
+            {
+                auto references = pass->get_references();
+                auto iter = std::find_if(
+                    references.begin(),
+                    references.end(),
+                    [&resource](auto& reference)
+                    {
+                        return reference->resource == resource.get();
+                    });
+                if (iter != references.end())
+                    return false;
+            }
+            return true;
+        });
+    m_resources.erase(resource_iter, m_resources.end());
 }
 
 std::vector<std::vector<rdg_pass*>> render_graph::merge_pass()

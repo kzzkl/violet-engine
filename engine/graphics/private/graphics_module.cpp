@@ -110,7 +110,9 @@ void graphics_module::render()
                 camera.set_state(CAMERA_STATE_DISABLE);
 
             camera.set_position(transform.get_world_position());
-            camera.set_view(matrix::inverse(transform.get_world_matrix()));
+
+            matrix4 view = matrix::inverse(matrix::load(transform.get_world_matrix()));
+            camera.set_view(matrix::store<float4x4>(view));
             render_queue.push_back(&camera);
         });
 
@@ -171,11 +173,11 @@ void graphics_module::update_light()
         {
             if (light.type == LIGHT_TYPE_DIRECTIONAL)
             {
-                float4_simd direction = simd::set(0.0f, 0.0f, 1.0f, 0.0f);
-                float4x4_simd world_matrix = simd::load(transform.get_world_matrix());
-                direction = matrix_simd::mul(direction, world_matrix);
+                vector4 direction = vector::set(0.0f, 0.0f, 1.0f, 0.0f);
+                matrix4 world_matrix = matrix::load(transform.get_world_matrix());
+                direction = matrix::mul(direction, world_matrix);
 
-                simd::store(
+                vector::store(
                     direction,
                     data.directional_lights[data.directional_light_count].direction);
                 data.directional_lights[data.directional_light_count].color = light.color;
