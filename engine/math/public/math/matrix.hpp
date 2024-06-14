@@ -1,9 +1,7 @@
 #pragma once
 
-#include "math/constant.hpp"
-#include "math/misc.hpp"
 #include "math/quaternion.hpp"
-#include "math/type.hpp"
+#include "math/utility.hpp"
 #include "math/vector.hpp"
 
 namespace violet
@@ -11,70 +9,6 @@ namespace violet
 class matrix
 {
 public:
-    [[nodiscard]] static inline matrix4 load(const float4x4& m)
-    {
-#ifdef VIOLET_USE_SIMD
-        return {
-            _mm_loadu_ps(&m[0][0]),
-            _mm_loadu_ps(&m[1][0]),
-            _mm_loadu_ps(&m[2][0]),
-            _mm_loadu_ps(&m[3][0])};
-#else
-        return {m[0], m[1], m[2], m[3]};
-#endif
-    }
-
-    [[nodiscard]] static inline matrix4 load(const float4x4_align& m)
-    {
-#ifdef VIOLET_USE_SIMD
-        return {
-            _mm_load_ps(&m[0][0]),
-            _mm_load_ps(&m[1][0]),
-            _mm_load_ps(&m[2][0]),
-            _mm_load_ps(&m[3][0])};
-#else
-        return {m[0], m[1], m[2], m[3]};
-#endif
-    }
-
-    static inline void store(const matrix4& src, float4x3& dst)
-    {
-        vector::store(src[0], dst[0]);
-        vector::store(src[1], dst[1]);
-        vector::store(src[2], dst[2]);
-    }
-
-    static inline void store(const matrix4& src, float4x3_align& dst)
-    {
-        vector::store(src[0], dst[0]);
-        vector::store(src[1], dst[1]);
-        vector::store(src[2], dst[2]);
-    }
-
-    static inline void store(const matrix4& src, float4x4& dst)
-    {
-        vector::store(src[0], dst[0]);
-        vector::store(src[1], dst[1]);
-        vector::store(src[2], dst[2]);
-        vector::store(src[3], dst[3]);
-    }
-
-    static inline void store(const matrix4& src, float4x4_align& dst)
-    {
-        vector::store(src[0], dst[0]);
-        vector::store(src[1], dst[1]);
-        vector::store(src[2], dst[2]);
-        vector::store(src[3], dst[3]);
-    }
-
-    template <typename T>
-    [[nodiscard]] static inline T store(matrix4 m)
-    {
-        T result;
-        store(m, result);
-        return result;
-    }
-
     [[nodiscard]] static inline matrix4 set(
         float m00,
         float m01,
@@ -105,7 +39,6 @@ public:
         return {r0, r1, r2, r3};
     }
 
-public:
     template <typename T>
     [[nodiscard]] static inline T identity();
 
@@ -125,10 +58,10 @@ public:
     [[nodiscard]] static inline matrix4 identity<matrix4>()
     {
         return {
-            math::identity_row_0,
-            math::identity_row_1,
-            math::identity_row_2,
-            math::identity_row_3};
+            math::IDENTITY_ROW_0,
+            math::IDENTITY_ROW_1,
+            math::IDENTITY_ROW_2,
+            math::IDENTITY_ROW_3};
     }
 #endif
 
@@ -397,7 +330,7 @@ public:
         t2 = _mm_mul_ps(result[0], result[0]);
         t2 = _mm_add_ps(t2, _mm_mul_ps(result[1], result[1]));
         t2 = _mm_add_ps(t2, _mm_mul_ps(result[2], result[2]));
-        t2 = _mm_add_ps(math::identity_row_3, t2);
+        t2 = _mm_add_ps(math::IDENTITY_ROW_3, t2);
         t2 = _mm_div_ps(simd::one, t2);
 
         result[0] = _mm_mul_ps(result[0], t2);
@@ -496,7 +429,7 @@ public:
             _mm_setr_ps(x, 0.0f, 0.0f, 0.0f),
             _mm_setr_ps(0.0f, y, 0.0f, 0.0f),
             _mm_setr_ps(0.0f, 0.0f, z, 0.0f),
-            math::identity_row_3};
+            math::IDENTITY_ROW_3};
 #else
         return {
             float4{x,    0.0f, 0.0f, 0.0f},
@@ -514,7 +447,7 @@ public:
             _mm_and_ps(v, simd::mask_v<1, 0, 0, 0>),
             _mm_and_ps(v, simd::mask_v<0, 1, 0, 0>),
             _mm_and_ps(v, simd::mask_v<0, 0, 1, 0>),
-            math::identity_row_3};
+            math::IDENTITY_ROW_3};
 #else
         return scale(v[0], v[1], v[2]);
 #endif
@@ -632,7 +565,7 @@ public:
         q1 = simd::shuffle<0, 3, 0, 1>(r0, v0);
         q1 = simd::shuffle<0, 2, 3, 1>(q1);
 
-        matrix4 result = {q1, math::identity_row_1, math::identity_row_2, math::identity_row_3};
+        matrix4 result = {q1, math::IDENTITY_ROW_1, math::IDENTITY_ROW_2, math::IDENTITY_ROW_3};
 
         q1 = simd::shuffle<1, 3, 2, 3>(r0, v0);
         q1 = simd::shuffle<2, 0, 3, 1>(q1);
@@ -680,7 +613,7 @@ public:
         result[0] = _mm_mul_ps(s1, r[0]);
         result[1] = _mm_mul_ps(s2, r[1]);
         result[2] = _mm_mul_ps(s3, r[2]);
-        result[3] = _mm_add_ps(math::identity_row_3, t);
+        result[3] = _mm_add_ps(math::IDENTITY_ROW_3, t);
 
         return result;
 #else
@@ -714,7 +647,7 @@ public:
             _mm_div_ps(m[0], s0),
             _mm_div_ps(m[1], s1),
             _mm_div_ps(m[2], s2),
-            math::identity_row_3};
+            math::IDENTITY_ROW_3};
         rotation = quaternion::from_matrix(r);
 
         translation = m[3];
@@ -754,7 +687,7 @@ public:
         result[2] = _mm_and_ps(t1, simd::mask_v<0, 0, 1, 0>);
 
         // [d, near_z * -d, 0.0, 1.0]
-        t1 = simd::shuffle<2, 3, 2, 3>(t1, math::identity_row_3);
+        t1 = simd::shuffle<2, 3, 2, 3>(t1, math::IDENTITY_ROW_3);
 
         // [0.0, 0.0, d, near_z * -d]
         result[3] = simd::shuffle<0, 1, 1, 3>(t2, t1);

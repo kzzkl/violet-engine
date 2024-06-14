@@ -5,47 +5,47 @@
 
 namespace violet::test
 {
-TEST_CASE("vector::load", "[vector]")
+TEST_CASE("math::load", "[vector]")
 {
     float2 r2 = {1.0f, 2.0f};
-    CHECK(equal(vector::load(r2), vector::set(1.0f, 2.0f)));
+    CHECK(equal(math::load(r2), vector::set(1.0f, 2.0f)));
 
     float3 r3 = {1.0f, 2.0f, 3.0f};
-    CHECK(equal(vector::load(r3), vector::set(1.0f, 2.0f, 3.0f, 0.0f)));
-    CHECK(equal(vector::load(r3, 4.0f), vector::set(1.0f, 2.0f, 3.0f, 4.0f)));
+    CHECK(equal(math::load(r3), vector::set(1.0f, 2.0f, 3.0f, 0.0f)));
+    CHECK(equal(math::load(r3, 4.0f), vector::set(1.0f, 2.0f, 3.0f, 4.0f)));
 
     float4 r4 = {1.0f, 2.0f, 3.0f, 4.0f};
-    CHECK(equal(vector::load(r4), vector::set(1.0f, 2.0f, 3.0f, 4.0f)));
+    CHECK(equal(math::load(r4), vector::set(1.0f, 2.0f, 3.0f, 4.0f)));
 
     float4_align r4a = {1.0f, 2.0f, 3.0f, 4.0f};
-    CHECK(equal(vector::load(r4a), vector::set(1.0f, 2.0f, 3.0f, 4.0f)));
+    CHECK(equal(math::load(r4a), vector::set(1.0f, 2.0f, 3.0f, 4.0f)));
 }
 
-TEST_CASE("vector::store", "[vector]")
+TEST_CASE("math::store", "[vector]")
 {
     vector4 v = vector::set(1.0f, 2.0f, 3.0f, 4.0f);
 
     float2 r2;
-    vector::store(v, r2);
+    math::store(v, r2);
     CHECK(equal(r2, float2{1.0f, 2.0f}));
 
     float3 r3;
-    vector::store(v, r3);
+    math::store(v, r3);
     CHECK(equal(r3, float3{1.0f, 2.0f, 3.0f}));
 
     float4 r4;
-    vector::store(v, r4);
+    math::store(v, r4);
     CHECK(equal(r4, float4{1.0f, 2.0f, 3.0f, 4.0f}));
 
     float4_align r4a;
-    vector::store(v, r4a);
+    math::store(v, r4a);
     CHECK(equal(r4a, float4{1.0f, 2.0f, 3.0f, 4.0f}));
 }
 
 TEST_CASE("vector::add", "[vector]")
 {
-    vector4 a = vector::load(test_data::vec4_a);
-    vector4 b = vector::load(test_data::vec4_b);
+    vector4 a = math::load(test_data::vec4_a);
+    vector4 b = math::load(test_data::vec4_b);
 
     CHECK(equal(vector::add(a, b), vector::set(2.0f, 5.0f, 8.0f, 11.0f)));
 }

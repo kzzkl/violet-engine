@@ -41,7 +41,7 @@ TEST_CASE("matrix::mul", "[matrix]")
         5.4f,
         6.5f);
 
-    float4x4 result = matrix::store<float4x4>(matrix::mul(a, b));
+    float4x4 result = math::store<float4x4>(matrix::mul(a, b));
 
     CHECK(equal(
         result,
@@ -53,7 +53,7 @@ TEST_CASE("matrix::mul", "[matrix]")
     }));
 
     vector4 v = vector::set(1.0f, 2.0f, 3.0f, 0.0f);
-    float4 result_v = vector::store<float4>(matrix::mul(v, a));
+    float4 result_v = math::store<float4>(matrix::mul(v, a));
 
     CHECK(equal(result_v, float4{38.0f, 44.0f, 50.0f, 56.0f}));
 }
@@ -78,7 +78,7 @@ TEST_CASE("matrix::scale", "[matrix]")
         15.0f,
         16.0f);
 
-    float4x4 result = matrix::store<float4x4>(matrix::mul(a, 0.5f));
+    float4x4 result = math::store<float4x4>(matrix::mul(a, 0.5f));
 
     CHECK(equal(
         result,
@@ -110,7 +110,7 @@ TEST_CASE("matrix::transpose", "[matrix]")
         15.0f,
         16.0f);
 
-    float4x4 result = matrix::store<float4x4>(matrix::transpose(a));
+    float4x4 result = math::store<float4x4>(matrix::transpose(a));
 
     CHECK(equal(
         result,
@@ -145,7 +145,7 @@ TEST_CASE("matrix::inverse", "[matrix]")
         1.0f,
         599.5f);
 
-    matrix::store(matrix::inverse(m), result);
+    math::store(matrix::inverse(m), result);
     CHECK(equal(
         result,
         float4x4{
@@ -174,7 +174,7 @@ TEST_CASE("matrix::inverse", "[matrix]")
         -5.0f,
         1.0f);
 
-    matrix::store(matrix::inverse_transform(transform_matrix), result);
+    math::store(matrix::inverse_transform(transform_matrix), result);
     CHECK(equal(
         result,
         float4x4{
@@ -203,7 +203,7 @@ TEST_CASE("matrix::inverse", "[matrix]")
         -5.0f,
         1.0f);
 
-    matrix::store(matrix::inverse_transform_no_scale(transform_matrix_no_scale), result);
+    math::store(matrix::inverse_transform_no_scale(transform_matrix_no_scale), result);
     CHECK(equal(
         result,
         float4x4{
@@ -218,7 +218,7 @@ TEST_CASE("matrix::identity", "[matrix]")
 {
     matrix4 a = matrix::identity<matrix4>();
 
-    float4x4 result = matrix::store<float4x4>(matrix::transpose(a));
+    float4x4 result = math::store<float4x4>(matrix::transpose(a));
 
     CHECK(equal(
         result,
@@ -235,7 +235,7 @@ TEST_CASE("matrix::rotation_quaternion", "[matrix]")
     vector4 quat = vector::set(0.0661214888f, 0.132242978f, 0.198364466f, 0.968912423f);
     matrix4 m = matrix::rotation_quaternion(quat);
 
-    float4x4 result = matrix::store<float4x4>(matrix::rotation_quaternion(quat));
+    float4x4 result = math::store<float4x4>(matrix::rotation_quaternion(quat));
 
     CHECK(equal(
         result,
@@ -254,7 +254,7 @@ TEST_CASE("matrix::affine_transform", "[matrix]")
     vector4 translation = vector::set(6.0f, 5.0f, 4.5f, 0.0f);
 
     float4x4 result =
-        matrix::store<float4x4>(matrix::affine_transform(scale, rotation, translation));
+        math::store<float4x4>(matrix::affine_transform(scale, rotation, translation));
 
     CHECK(equal(
         result,
@@ -296,7 +296,7 @@ TEST_CASE("matrix::decompose", "[matrix]")
 TEST_CASE("matrix::orthographic", "[matrix]")
 {
     // Center.
-    float4x4 result = matrix::store<float4x4>(matrix::orthographic(20.0f, 10.0f, -10.0f, 20.0f));
+    float4x4 result = math::store<float4x4>(matrix::orthographic(20.0f, 10.0f, -10.0f, 20.0f));
     CHECK(equal(
         result,
         float4x4{
@@ -307,7 +307,7 @@ TEST_CASE("matrix::orthographic", "[matrix]")
     }));
 
     // Off center.
-    matrix::store(matrix::orthographic(-5.0f, 4.0f, -1.0f, 8.0f, -3.0f, 6.0f), result);
+    math::store(matrix::orthographic(-5.0f, 4.0f, -1.0f, 8.0f, -3.0f, 6.0f), result);
     CHECK(equal(
         result,
         float4x4{

@@ -31,8 +31,8 @@ float bezier::evaluate(float x, float precision) const noexcept
 float2 bezier::sample(float t) const noexcept
 {
     vector4 p0 = vector::set(0.0f, 0.0f, 0.0f, 0.0f);
-    vector4 p1 = vector::load(m_p1);
-    vector4 p2 = vector::load(m_p2);
+    vector4 p1 = math::load(m_p1);
+    vector4 p2 = math::load(m_p2);
     vector4 p3 = vector::set(1.0f, 1.0f, 0.0f, 0.0f);
 
     vector4 p01 = vector::lerp(p0, p1, t);
@@ -42,7 +42,7 @@ float2 bezier::sample(float t) const noexcept
     vector4 p012 = vector::lerp(p01, p12, t);
     vector4 p123 = vector::lerp(p12, p23, t);
 
-    return vector::store<float2>(vector::lerp(p012, p123, t));
+    return math::store<float2>(vector::lerp(p012, p123, t));
 }
 
 float bezier::sample_x(float t) const noexcept

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math/misc.hpp"
+#include "math/utility.hpp"
 #include "math/vector.hpp"
 
 namespace violet
@@ -30,9 +30,8 @@ public:
     {
 #ifdef VIOLET_USE_SIMD
         // TODO
-        float4 a;
-        vector::store(axis, a);
-        auto [sin, cos] = sin_cos(radians * 0.5f);
+        float4 a = math::store<float4>(axis);
+        auto [sin, cos] = math::sin_cos(radians * 0.5f);
         return vector::set(a[0] * sin, a[1] * sin, a[2] * sin, cos);
 #else
         auto [sin, cos] = sin_cos(radians * 0.5f);
@@ -44,9 +43,9 @@ public:
     {
 #ifdef VIOLET_USE_SIMD
         // TODO
-        auto [p_sin, p_cos] = sin_cos(pitch * 0.5f);
-        auto [h_sin, h_cos] = sin_cos(heading * 0.5f);
-        auto [b_sin, b_cos] = sin_cos(bank * 0.5f);
+        auto [p_sin, p_cos] = math::sin_cos(pitch * 0.5f);
+        auto [h_sin, h_cos] = math::sin_cos(heading * 0.5f);
+        auto [b_sin, b_cos] = math::sin_cos(bank * 0.5f);
 
         return vector::set(
             h_cos * p_sin * b_cos + h_sin * p_cos * b_sin,
@@ -69,11 +68,7 @@ public:
     [[nodiscard]] static inline vector4 from_matrix(matrix4 m)
     {
         // TODO
-        float4x4 matrix;
-        vector::store(m[0], matrix[0]);
-        vector::store(m[1], matrix[1]);
-        vector::store(m[2], matrix[2]);
-        vector::store(m[3], matrix[3]);
+        float4x4 matrix = math::store<float4x4>(m);
 
         vector4 v;
         float t;

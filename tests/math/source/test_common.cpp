@@ -55,16 +55,16 @@ bool equal(const violet::float4x4& a, const violet::float4x4& b)
 #ifdef VIOLET_USE_SIMD
 bool equal(const violet::vector4& a, const violet::vector4& b)
 {
-    float4 va = vector::store<float4>(a);
-    float4 vb = vector::store<float4>(b);
+    float4 va = math::store<float4>(a);
+    float4 vb = math::store<float4>(b);
 
     return equal(va, vb);
 }
 
 bool equal(const violet::matrix4& a, const violet::matrix4& b)
 {
-    float4x4 ma = matrix::store<float4x4>(a);
-    float4x4 mb = matrix::store<float4x4>(b);
+    float4x4 ma = math::store<float4x4>(a);
+    float4x4 mb = math::store<float4x4>(b);
 
     return equal(ma, mb);
 }

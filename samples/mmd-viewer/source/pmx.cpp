@@ -125,9 +125,9 @@ bool pmx::load_mesh(std::ifstream& fin)
             read<float3>(fin, data.r0);
             read<float3>(fin, data.r1);
 
-            vector4 center = vector::load(data.center);
-            vector4 r0 = vector::load(data.r0);
-            vector4 r1 = vector::load(data.r1);
+            vector4 center = math::load(data.center);
+            vector4 r0 = math::load(data.r0);
+            vector4 r1 = math::load(data.r1);
             vector4 rw =
                 vector::add(vector::mul(r0, data.weight[0]), vector::mul(r1, data.weight[1]));
             r0 = vector::add(center, r0);
@@ -139,8 +139,8 @@ bool pmx::load_mesh(std::ifstream& fin)
             r1 = vector::add(center, r1);
             r1 = vector::mul(r1, 0.5f);
 
-            vector::store(r0, data.r0);
-            vector::store(r1, data.r1);
+            math::store(r0, data.r0);
+            math::store(r1, data.r1);
 
             skin[i][0] = 1;
             skin[i][1] = sdef.size();
@@ -481,7 +481,7 @@ bool pmx::load_physics(std::ifstream& fin)
         float3 rotate;
         read<float3>(fin, rotate);
         rigidbody.rotate =
-            vector::store<float4>(quaternion::from_euler(rotate.x, rotate.y, rotate.z));
+            math::store<float4>(quaternion::from_euler(rotate.x, rotate.y, rotate.z));
 
         read<float>(fin, rigidbody.mass);
         read<float>(fin, rigidbody.linear_damping);
@@ -508,7 +508,7 @@ bool pmx::load_physics(std::ifstream& fin)
         float3 rotate;
         read<float3>(fin, rotate);
         joint.rotate =
-            vector::store<float4>(quaternion::from_euler(rotate[1], rotate[0], rotate[2]));
+            math::store<float4>(quaternion::from_euler(rotate[1], rotate[0], rotate[2]));
 
         read<float3>(fin, joint.translate_min);
         read<float3>(fin, joint.translate_max);

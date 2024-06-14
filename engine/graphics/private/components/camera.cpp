@@ -15,7 +15,7 @@ camera::camera(render_device* device)
     m_perspective.far_z = 1000.0f;
 
     m_parameter_data.view = matrix::identity<float4x4>();
-    matrix::store(
+    math::store(
         matrix::perspective(
             m_perspective.fov,
             static_cast<float>(m_viewport.width) / static_cast<float>(m_viewport.height),
@@ -48,9 +48,9 @@ void camera::set_view(const float4x4& view)
 {
     m_parameter_data.view = view;
 
-    matrix4 v = matrix::load(m_parameter_data.view);
-    matrix4 p = matrix::load(m_parameter_data.projection);
-    matrix::store(matrix::mul(v, p), m_parameter_data.view_projection);
+    matrix4 v = math::load(m_parameter_data.view);
+    matrix4 p = math::load(m_parameter_data.projection);
+    math::store(matrix::mul(v, p), m_parameter_data.view_projection);
 
     update_parameter();
 }
@@ -107,7 +107,7 @@ void camera::set_render_texture(std::string_view name, rhi_swapchain* swapchain)
 
 void camera::update_projection()
 {
-    matrix::store(
+    math::store(
         matrix::perspective(
             m_perspective.fov,
             static_cast<float>(m_viewport.width) / static_cast<float>(m_viewport.height),
@@ -115,9 +115,9 @@ void camera::update_projection()
             m_perspective.far_z),
         m_parameter_data.projection);
 
-    matrix4 v = matrix::load(m_parameter_data.view);
-    matrix4 p = matrix::load(m_parameter_data.projection);
-    matrix::store(matrix::mul(v, p), m_parameter_data.view_projection);
+    matrix4 v = math::load(m_parameter_data.view);
+    matrix4 p = math::load(m_parameter_data.projection);
+    math::store(matrix::mul(v, p), m_parameter_data.view_projection);
 
     update_parameter();
 }

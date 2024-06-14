@@ -1,6 +1,6 @@
 #pragma once
 
-#include "type.hpp"
+#include "math/type.hpp"
 #include <cmath>
 
 namespace violet
@@ -8,119 +8,6 @@ namespace violet
 class vector
 {
 public:
-    [[nodiscard]] static inline vector4f load(const float2& v) noexcept
-    {
-#ifdef VIOLET_USE_SIMD
-        return _mm_castpd_ps(_mm_load_sd(reinterpret_cast<const double*>(&v[0])));
-#else
-        return {v.x, v.y, 0.0f, 0.0f};
-#endif
-    }
-
-    [[nodiscard]] static inline vector4f load(const float3& v) noexcept
-    {
-#ifdef VIOLET_USE_SIMD
-        __m128 x = _mm_load_ss(&v[0]);
-        __m128 y = _mm_load_ss(&v[1]);
-        __m128 z = _mm_load_ss(&v[2]);
-        __m128 xy = _mm_unpacklo_ps(x, y);
-        return _mm_movelh_ps(xy, z);
-#else
-        return {v.x, v.y, v.z, 0.0f};
-#endif
-    }
-
-    [[nodiscard]] static inline vector4f load(const float3& v, float w) noexcept
-    {
-#ifdef VIOLET_USE_SIMD
-        __m128 t1 = _mm_load_ss(&v[0]);
-        __m128 t2 = _mm_load_ss(&v[1]);
-        __m128 t3 = _mm_load_ss(&v[2]);
-        __m128 t4 = _mm_load_ss(&w);
-        t1 = _mm_unpacklo_ps(t1, t2);
-        t3 = _mm_unpacklo_ps(t3, t4);
-        return _mm_movelh_ps(t1, t3);
-#else
-        return {v.x, v.y, v.z, w};
-#endif
-    }
-
-    [[nodiscard]] static inline vector4f load(const float4& v) noexcept
-    {
-#ifdef VIOLET_USE_SIMD
-        return _mm_loadu_ps(&v[0]);
-#else
-        return {v.x, v.y, v.z, v.w};
-#endif
-    }
-
-    [[nodiscard]] static inline vector4f load(const float4_align& v) noexcept
-    {
-#ifdef VIOLET_USE_SIMD
-        return _mm_load_ps(&v[0]);
-#else
-        return {v.x, v.y, v.z, v.w};
-#endif
-    }
-
-    static inline void store(vector4f src, float2& dst) noexcept
-    {
-#ifdef VIOLET_USE_SIMD
-        _mm_store_sd(reinterpret_cast<double*>(&dst[0]), _mm_castps_pd(src));
-#else
-        dst.x = src.x;
-        dst.y = src.y;
-#endif
-    }
-
-    static inline void store(vector4f src, float3& dst) noexcept
-    {
-#ifdef VIOLET_USE_SIMD
-        __m128 y = simd::replicate<1>(src);
-        __m128 z = simd::replicate<2>(src);
-
-        _mm_store_ss(&dst.x, src);
-        _mm_store_ss(&dst.y, y);
-        _mm_store_ss(&dst.z, z);
-#else
-        dst.x = src.x;
-        dst.y = src.y;
-        dst.z = src.z;
-#endif
-    }
-
-    static inline void store(vector4f src, float4& dst) noexcept
-    {
-#ifdef VIOLET_USE_SIMD
-        _mm_storeu_ps(&dst[0], src);
-#else
-        dst.x = src.x;
-        dst.y = src.y;
-        dst.z = src.z;
-        dst.w = src.w;
-#endif
-    }
-
-    static inline void store(vector4f src, float4_align& dst) noexcept
-    {
-#ifdef VIOLET_USE_SIMD
-        _mm_store_ps(&dst[0], src);
-#else
-        dst.x = src.x;
-        dst.y = src.y;
-        dst.z = src.z;
-        dst.w = src.w;
-#endif
-    }
-
-    template <typename T>
-    [[nodiscard]] static inline T store(vector4f v) noexcept
-    {
-        T result;
-        store(v, result);
-        return result;
-    }
-
     [[nodiscard]] static inline vector4f replicate(float v) noexcept
     {
 #ifdef VIOLET_USE_SIMD

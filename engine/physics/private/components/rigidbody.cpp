@@ -131,8 +131,8 @@ void rigidbody::set_offset(const float4x4& offset) noexcept
 {
     m_offset = offset;
 
-    matrix4 inverse = matrix::inverse(matrix::load(offset));
-    matrix::store(inverse, m_offset_inverse);
+    matrix4 inverse = matrix::inverse(math::load(offset));
+    math::store(inverse, m_offset_inverse);
 }
 
 void rigidbody::set_activation_state(phy_rigidbody_activation_state activation_state)

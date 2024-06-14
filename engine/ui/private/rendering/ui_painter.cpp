@@ -138,7 +138,7 @@ void ui_painter::draw_path(const std::vector<float2>& points, float thickness)
         vector4 n = vector::normalize(
             vector::set(points[i].y - points[i + 1].y, points[i + 1].x - points[i].x));
 
-        vector::store(n, normals[i]);
+        math::store(n, normals[i]);
     }
     normals[normals.size() - 1] = normals[normals.size() - 2];
 
@@ -146,8 +146,8 @@ void ui_painter::draw_path(const std::vector<float2>& points, float thickness)
     {
         std::size_t prev = i == 0 ? 0 : i - 1;
 
-        vector4 prev_normal = vector::load(normals[prev]);
-        vector4 normal = vector::load(normals[i]);
+        vector4 prev_normal = math::load(normals[prev]);
+        vector4 normal = math::load(normals[i]);
 
         normal = vector::add(prev_normal, normal);
         normal = vector::mul(normal, 0.5f);
@@ -160,10 +160,10 @@ void ui_painter::draw_path(const std::vector<float2>& points, float thickness)
         }
         normal = vector::mul(normal, half_thickness);
 
-        vector4 point = vector::load(points[i]);
+        vector4 point = math::load(points[i]);
 
-        vector::store(vector::add(point, normal), position[i * 2]);
-        vector::store(vector::sub(point, normal), position[i * 2 + 1]);
+        math::store(vector::add(point, normal), position[i * 2]);
+        math::store(vector::sub(point, normal), position[i * 2 + 1]);
     }
 
     for (std::size_t i = 0; i < points.size() - 1; ++i)
@@ -218,7 +218,7 @@ void ui_painter::draw_mesh(
 
 void ui_painter::set_extent(std::uint32_t width, std::uint32_t height)
 {
-    float4x4 orthographic = matrix::store<float4x4>(matrix::orthographic(
+    float4x4 orthographic = math::store<float4x4>(matrix::orthographic(
         0.0f,
         static_cast<float>(width),
         static_cast<float>(height),

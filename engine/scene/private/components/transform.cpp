@@ -52,7 +52,7 @@ void transform::set_rotation(const float4& quaternion) noexcept
 
 void transform::set_rotation_euler(const float3& euler) noexcept
 {
-    vector::store(quaternion::from_euler(euler[0], euler[1], euler[2]), m_rotation);
+    math::store(quaternion::from_euler(euler[0], euler[1], euler[2]), m_rotation);
 
     update_local();
     mark_dirty();
@@ -89,24 +89,24 @@ const float3& transform::get_scale() const noexcept
 float3 transform::get_up() const noexcept
 {
     vector4 up = vector::set(0.0f, 1.0f, 0.0f, 0.0f);
-    up = quaternion::mul_vec(vector::load(m_rotation), up);
+    up = quaternion::mul_vec(math::load(m_rotation), up);
     float3 result;
-    vector::store(up, result);
+    math::store(up, result);
     return result;
 }
 
 void transform::lookat(const float3& target, const float3& up) noexcept
 {
-    vector4 t = vector::load(target);
-    vector4 p = vector::load(m_position);
-    vector4 u = vector::load(up);
+    vector4 t = math::load(target);
+    vector4 p = math::load(m_position);
+    vector4 u = math::load(up);
 
     vector4 z_axis = vector::normalize(vector::sub(t, p));
     vector4 x_axis = vector::normalize(vector::cross(u, z_axis));
     vector4 y_axis = vector::cross(z_axis, x_axis);
 
-    matrix4 rotation = {x_axis, y_axis, z_axis, math::identity_row_3};
-    vector::store(quaternion::from_matrix(rotation), m_rotation);
+    matrix4 rotation = {x_axis, y_axis, z_axis, math::IDENTITY_ROW_3};
+    math::store(quaternion::from_matrix(rotation), m_rotation);
 
     update_local();
     mark_dirty();
@@ -116,29 +116,29 @@ void transform::set_world_matrix(const float4x4& matrix)
 {
     if (m_parent)
     {
-        matrix4 parent_to_world = matrix::load(m_parent->get_world_matrix());
+        matrix4 parent_to_world = math::load(m_parent->get_world_matrix());
         matrix4 local_matrix =
-            matrix::mul(matrix::load(matrix), matrix::inverse_transform(parent_to_world));
+            matrix::mul(math::load(matrix), matrix::inverse_transform(parent_to_world));
 
         vector4 s, r, t;
         matrix::decompose(local_matrix, s, r, t);
 
-        matrix::store(local_matrix, m_local_matrix);
-        vector::store(s, m_scale);
-        vector::store(r, m_rotation);
-        vector::store(t, m_position);
+        math::store(local_matrix, m_local_matrix);
+        math::store(s, m_scale);
+        math::store(r, m_rotation);
+        math::store(t, m_position);
     }
     else
     {
         m_local_matrix = matrix;
         m_world_matrix = matrix;
 
-        matrix4 local_matrix = matrix::load(m_local_matrix);
+        matrix4 local_matrix = math::load(m_local_matrix);
         vector4 s, r, t;
         matrix::decompose(local_matrix, s, r, t);
-        vector::store(s, m_scale);
-        vector::store(r, m_rotation);
-        vector::store(t, m_position);
+        math::store(s, m_scale);
+        math::store(r, m_rotation);
+        math::store(t, m_position);
     }
 
     mark_dirty();
@@ -163,10 +163,10 @@ const float4x4& transform::get_world_matrix() const noexcept
 
         for (auto iter = path.rbegin(); iter != path.rend(); ++iter)
         {
-            matrix::store(
+            math::store(
                 matrix::mul(
-                    matrix::load((*iter)->m_local_matrix),
-                    matrix::load((*iter)->m_parent->m_world_matrix)),
+                    math::load((*iter)->m_local_matrix),
+                    math::load((*iter)->m_parent->m_world_matrix)),
                 (*iter)->m_world_matrix);
 
             (*iter)->m_world_dirty = false;
@@ -202,13 +202,13 @@ void transform::remove_child(const component_ptr<transform>& child)
 void transform::update_local() noexcept
 {
     matrix4 local_matrix = matrix::affine_transform(
-        vector::load(m_scale),
-        vector::load(m_rotation),
-        vector::load(m_position));
-    matrix::store(local_matrix, m_local_matrix);
+        math::load(m_scale),
+        math::load(m_rotation),
+        math::load(m_position));
+    math::store(local_matrix, m_local_matrix);
 
     if (!m_parent)
-        matrix::store(local_matrix, m_world_matrix);
+        math::store(local_matrix, m_world_matrix);
 }
 
 void transform::mark_dirty()

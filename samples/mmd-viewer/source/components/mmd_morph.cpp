@@ -8,11 +8,11 @@ void mmd_morph::vertex_morph::evaluate(float weight, mmd_morph* morph)
     {
         float3& target = *(static_cast<float3*>(morph->vertex_morph_result->get_buffer()) + index);
 
-        vector4 t1 = vector::load(translate);
+        vector4 t1 = math::load(translate);
         t1 = vector::mul(t1, weight);
-        vector4 t2 = vector::load(target);
+        vector4 t2 = math::load(target);
         t2 = vector::add(t1, t2);
-        vector::store(t2, target);
+        math::store(t2, target);
     }
 }
 

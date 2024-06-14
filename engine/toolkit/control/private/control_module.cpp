@@ -78,15 +78,15 @@ void control_module::update_orbit_control(
     orbit_control.r += -mouse_wheel * orbit_control.r_speed;
     orbit_control.r = std::max(1.0f, orbit_control.r);
 
-    auto [theta_sin, theta_cos] = sin_cos(orbit_control.theta);
-    auto [phi_sin, phi_cos] = sin_cos(orbit_control.phi);
+    auto [theta_sin, theta_cos] = math::sin_cos(orbit_control.theta);
+    auto [phi_sin, phi_cos] = math::sin_cos(orbit_control.phi);
 
     vector4 p = vector::set(
         orbit_control.r * theta_sin * phi_cos,
         orbit_control.r * theta_cos,
         -orbit_control.r * theta_sin * phi_sin);
-    vector4 t = vector::load(orbit_control.target);
-    float3 position = vector::store<float3>(vector::add(p, t));
+    vector4 t = math::load(orbit_control.target);
+    float3 position = math::store<float3>(vector::add(p, t));
 
     transform.set_position(position);
     transform.lookat(orbit_control.target, float3{0.0f, 1.0f, 0.0f});
