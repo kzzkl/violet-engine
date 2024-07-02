@@ -54,14 +54,3 @@ install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)
-
-include(${VIOLET_ROOT_DIR}/cmake/compile_shader.cmake)
-set(SHADER_FILES "")
-compile_shader_dxc(
-    SHADER_FILES
-    TARGET ${PROJECT_NAME}
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/ui.hlsl"
-    STAGES "vert" "frag"
-    INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
-
-install(FILES ${SHADER_FILES} DESTINATION bin/engine/shaders)

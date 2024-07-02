@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math/type.hpp"
+#include "math/types.hpp"
 #include <immintrin.h>
 
 namespace violet

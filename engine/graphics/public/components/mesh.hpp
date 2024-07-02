@@ -3,6 +3,7 @@
 #include "graphics/geometry.hpp"
 #include "graphics/material.hpp"
 #include "math/math.hpp"
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -14,18 +15,14 @@ public:
     struct submesh
     {
         material* material;
-
-        std::size_t vertex_start;
-        std::size_t vertex_count;
-        std::size_t index_start;
-        std::size_t index_count;
-
-        std::vector<rhi_buffer**> vertex_buffers;
-        rhi_buffer* index_buffer;
+        std::uint32_t vertex_start;
+        std::uint32_t vertex_count;
+        std::uint32_t index_start;
+        std::uint32_t index_count;
     };
 
 public:
-    mesh(render_device* device);
+    mesh();
     mesh(const mesh&) = delete;
     mesh(mesh&&) = default;
     ~mesh();
@@ -34,18 +31,18 @@ public:
     geometry* get_geometry() const noexcept { return m_geometry; }
 
     void add_submesh(
-        std::size_t vertex_start,
-        std::size_t vertex_count,
-        std::size_t index_start,
-        std::size_t index_count,
+        std::uint32_t vertex_start,
+        std::uint32_t vertex_count,
+        std::uint32_t index_start,
+        std::uint32_t index_count,
         material* material);
 
     void set_submesh(
         std::size_t index,
-        std::size_t vertex_start,
-        std::size_t vertex_count,
-        std::size_t index_start,
-        std::size_t index_count);
+        std::uint32_t vertex_start,
+        std::uint32_t vertex_count,
+        std::uint32_t index_start,
+        std::uint32_t index_count);
 
     const std::vector<submesh>& get_submeshes() const noexcept { return m_submeshes; }
 

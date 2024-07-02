@@ -164,7 +164,15 @@ void vk_rhi::destroy_buffer(rhi_buffer* buffer)
 
 rhi_texture* vk_rhi::create_texture(const rhi_texture_desc& desc)
 {
-    return new vk_image(desc, m_context.get());
+    return new vk_texture(desc, m_context.get());
+}
+
+rhi_texture* vk_rhi::create_texture(
+    const void* data,
+    std::size_t size,
+    const rhi_texture_desc& desc)
+{
+    return new vk_texture(data, size, desc, m_context.get());
 }
 
 rhi_texture* vk_rhi::create_texture(const char* file, const rhi_texture_desc& desc)
@@ -172,17 +180,7 @@ rhi_texture* vk_rhi::create_texture(const char* file, const rhi_texture_desc& de
     return new vk_texture(file, desc, m_context.get());
 }
 
-rhi_texture* vk_rhi::create_texture(const void* data, std::size_t size, const rhi_texture_desc& desc)
-{
-    return new vk_texture(data, size, desc, m_context.get());
-}
-
-rhi_texture* vk_rhi::create_texture_cube(const rhi_texture_desc& desc)
-{
-    return nullptr;
-}
-
-rhi_texture* vk_rhi::create_texture_cube(
+rhi_texture* vk_rhi::create_texture(
     const char* right,
     const char* left,
     const char* top,
@@ -191,7 +189,7 @@ rhi_texture* vk_rhi::create_texture_cube(
     const char* back,
     const rhi_texture_desc& desc)
 {
-    return new vk_texture_cube(right, left, top, bottom, front, back, desc, m_context.get());
+    return new vk_texture(right, left, top, bottom, front, back, desc, m_context.get());
 }
 
 void vk_rhi::destroy_texture(rhi_texture* texture)

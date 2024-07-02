@@ -39,35 +39,6 @@ struct ui_draw_group
 class ui_painter
 {
 public:
-    constexpr static rhi_parameter_desc get_mvp_parameter_layout()
-    {
-        rhi_parameter_desc desc = {};
-        desc.bindings[0] = {
-            .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-            .stage = RHI_PARAMETER_STAGE_FLAG_VERTEX,
-            .size = sizeof(float4x4)};
-        desc.binding_count = 1;
-
-        return desc;
-    }
-
-    constexpr static rhi_parameter_desc get_material_parameter_layout()
-    {
-        rhi_parameter_desc desc = {};
-        desc.bindings[0] = {
-            .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-            .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-            .size = sizeof(std::uint32_t)};
-        desc.bindings[1] = {
-            .type = RHI_PARAMETER_TYPE_TEXTURE,
-            .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-            .size = 1};
-        desc.binding_count = 2;
-
-        return desc;
-    }
-
-public:
     ui_painter(font* default_font, render_device* device);
 
     void push_group(bool scissor = false, const rhi_scissor_rect& scissor_rect = {});
@@ -148,4 +119,15 @@ private:
 
     render_device* m_device;
 };
+
+namespace pipeline_parameter
+{
+static constexpr shader_parameter ui_mvp = {
+    {RHI_PARAMETER_TYPE_UNIFORM, sizeof(float4x4), RHI_SHADER_STAGE_FLAG_VERTEX}
+};
+static constexpr shader_parameter ui_material = {
+    {RHI_PARAMETER_TYPE_UNIFORM, sizeof(std::uint32_t), RHI_SHADER_STAGE_FLAG_FRAGMENT},
+    {RHI_PARAMETER_TYPE_TEXTURE, 1,                     RHI_SHADER_STAGE_FLAG_FRAGMENT}
+};
+} // namespace pipeline_parameter
 } // namespace violet

@@ -16,14 +16,14 @@ public:
     VkCommandBuffer get_command_buffer() const noexcept { return m_command_buffer; }
 
 public:
-    virtual void begin(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer) override;
-    virtual void end() override;
-    virtual void next() override;
+    virtual void begin_render_pass(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer)
+        override;
+    virtual void end_render_pass() override;
+    virtual void next_subpass() override;
 
-    virtual void set_render_pipeline(rhi_render_pipeline* render_pipeline) override;
-    virtual void set_render_parameter(std::size_t index, rhi_parameter* parameter) override;
-    virtual void set_compute_pipeline(rhi_compute_pipeline* compute_pipeline) override;
-    virtual void set_compute_parameter(std::size_t index, rhi_parameter* parameter) override;
+    virtual void set_pipeline(rhi_render_pipeline* render_pipeline) override;
+    virtual void set_pipeline(rhi_compute_pipeline* compute_pipeline) override;
+    virtual void set_parameter(std::size_t index, rhi_parameter* parameter) override;
 
     virtual void set_viewport(const rhi_viewport& viewport) override;
     virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) override;
@@ -62,6 +62,7 @@ private:
 
     VkRenderPass m_current_render_pass;
     VkPipelineLayout m_current_pipeline_layout;
+    VkPipelineBindPoint m_current_bind_point;
 
     vk_context* m_context;
 };

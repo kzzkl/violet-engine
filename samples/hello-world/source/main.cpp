@@ -135,30 +135,30 @@ private:
             render_target,
             mesh_pass,
             sample_pass::reference_render_target,
-            RDG_EDGE_OPERATE_CLEAR);
+            RDG_EDGE_ACTION_CLEAR);
         m_render_graph->add_edge(
             depth_buffer,
             mesh_pass,
             sample_pass::reference_depth,
-            RDG_EDGE_OPERATE_CLEAR);
+            RDG_EDGE_ACTION_CLEAR);
         m_render_graph->add_edge(
             mesh_pass,
             sample_pass::reference_render_target,
             skybox,
             skybox_pass::reference_render_target,
-            RDG_EDGE_OPERATE_STORE);
+            RDG_EDGE_ACTION_LOAD);
         m_render_graph->add_edge(
             mesh_pass,
             sample_pass::reference_depth,
             skybox,
             skybox_pass::reference_depth,
-            RDG_EDGE_OPERATE_STORE);
+            RDG_EDGE_ACTION_LOAD);
         m_render_graph->add_edge(
             skybox,
             skybox_pass::reference_render_target,
             present,
             present_pass::reference_present_target,
-            RDG_EDGE_OPERATE_STORE);
+            RDG_EDGE_ACTION_LOAD);
 
         m_render_graph->compile(device);
 

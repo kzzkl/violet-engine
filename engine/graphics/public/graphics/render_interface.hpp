@@ -6,6 +6,15 @@
 
 namespace violet
 {
+struct rhi_constants
+{
+    static constexpr std::size_t MAX_ATTACHMENT_COUNT = 8;
+    static constexpr std::size_t MAX_SUBPASS_COUNT = 8;
+    static constexpr std::size_t MAX_PARAMETER_BINDING_COUNT = 8;
+    static constexpr std::size_t MAX_PARAMETER_COUNT = 16;
+    static constexpr std::size_t MAX_VERTEX_ATTRIBUTE_COUNT = 8;
+};
+
 enum rhi_format
 {
     RHI_FORMAT_UNDEFINED,
@@ -80,6 +89,7 @@ public:
     virtual ~rhi_texture() = default;
 
     virtual rhi_format get_format() const noexcept = 0;
+    virtual rhi_sample_count get_samples() const noexcept = 0;
     virtual rhi_texture_extent get_extent() const noexcept = 0;
 
     virtual std::size_t get_hash() const noexcept = 0;
@@ -202,7 +212,7 @@ enum rhi_access_flag
 };
 using rhi_access_flags = std::uint32_t;
 
-#define RHI_RENDER_SUBPASS_EXTERNAL (~0U)
+static constexpr std::size_t RHI_RENDER_SUBPASS_EXTERNAL = ~0U;
 
 struct rhi_render_subpass_dependency_desc
 {
@@ -217,13 +227,13 @@ struct rhi_render_subpass_dependency_desc
 
 struct rhi_render_pass_desc
 {
-    rhi_attachment_desc* attachments;
+    rhi_attachment_desc attachments[rhi_constants::MAX_ATTACHMENT_COUNT];
     std::size_t attachment_count = 0;
 
-    rhi_render_subpass_desc* subpasses;
+    rhi_render_subpass_desc subpasses[rhi_constants::MAX_SUBPASS_COUNT];
     std::size_t subpass_count = 0;
 
-    rhi_render_subpass_dependency_desc* dependencies;
+    rhi_render_subpass_dependency_desc dependencies[rhi_constants::MAX_SUBPASS_COUNT];
     std::size_t dependency_count;
 };
 
@@ -235,29 +245,29 @@ public:
 
 enum rhi_parameter_type
 {
-    RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-    RHI_PARAMETER_TYPE_STORAGE_BUFFER,
+    RHI_PARAMETER_TYPE_UNIFORM,
+    RHI_PARAMETER_TYPE_STORAGE,
     RHI_PARAMETER_TYPE_TEXTURE
 };
 
-enum rhi_parameter_stage_flag
+enum rhi_shader_stage_flag
 {
-    RHI_PARAMETER_STAGE_FLAG_VERTEX = 1 << 0,
-    RHI_PARAMETER_STAGE_FLAG_FRAGMENT = 1 << 1,
-    RHI_PARAMETER_STAGE_FLAG_COMPUTE = 1 << 2
+    RHI_SHADER_STAGE_FLAG_VERTEX = 1 << 0,
+    RHI_SHADER_STAGE_FLAG_FRAGMENT = 1 << 1,
+    RHI_SHADER_STAGE_FLAG_COMPUTE = 1 << 2
 };
-using rhi_parameter_stage_flags = std::uint32_t;
+using rhi_shader_stage_flags = std::uint32_t;
 
 struct rhi_parameter_binding
 {
     rhi_parameter_type type;
-    rhi_parameter_stage_flags stage;
     std::size_t size = 0;
+    rhi_shader_stage_flags stage;
 };
 
 struct rhi_parameter_desc
 {
-    rhi_parameter_binding bindings[32];
+    rhi_parameter_binding bindings[rhi_constants::MAX_PARAMETER_BINDING_COUNT];
     std::size_t binding_count = 0;
 };
 
@@ -275,10 +285,28 @@ public:
     virtual void set_storage(std::size_t index, rhi_buffer* storage_buffer) = 0;
 };
 
+enum rhi_primitive_topology
+{
+    RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+    RHI_PRIMITIVE_TOPOLOGY_LINE_LIST
+};
+
+class rhi_shader
+{
+public:
+    virtual ~rhi_shader() = default;
+};
+
 struct rhi_vertex_attribute
 {
     const char* name;
     rhi_format format;
+};
+
+struct rhi_input_state
+{
+    rhi_vertex_attribute vertex_attributes[rhi_constants::MAX_ATTACHMENT_COUNT];
+    std::size_t vertex_attribute_count;
 };
 
 enum rhi_blend_factor
@@ -301,7 +329,7 @@ enum rhi_blend_op
     RHI_BLEND_OP_MAX
 };
 
-struct rhi_attachment_blend_desc
+struct rhi_attachment_blend
 {
     bool enable = false;
 
@@ -314,9 +342,9 @@ struct rhi_attachment_blend_desc
     rhi_blend_op alpha_op;
 };
 
-struct rhi_blend_desc
+struct rhi_blend_state
 {
-    rhi_attachment_blend_desc attachments[32];
+    rhi_attachment_blend attachments[rhi_constants::MAX_ATTACHMENT_COUNT];
     std::size_t attachment_count;
 };
 
@@ -344,7 +372,7 @@ enum rhi_stencil_op
     RHI_STENCIL_OP_DECR
 };
 
-struct rhi_depth_stencil_desc
+struct rhi_depth_stencil_state
 {
     bool depth_enable = true;
     rhi_depth_stencil_functor depth_functor = RHI_DEPTH_STENCIL_FUNCTOR_LESS;
@@ -362,27 +390,9 @@ enum rhi_cull_mode
     RHI_CULL_MODE_BACK
 };
 
-struct rhi_rasterizer_desc
+struct rhi_rasterizer_state
 {
     rhi_cull_mode cull_mode = RHI_CULL_MODE_BACK;
-};
-
-enum rhi_primitive_topology
-{
-    RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-    RHI_PRIMITIVE_TOPOLOGY_LINE_LIST
-};
-
-class rhi_shader
-{
-public:
-    virtual ~rhi_shader() = default;
-};
-
-struct rhi_input_desc
-{
-    const char* name;
-    rhi_format format;
 };
 
 struct rhi_render_pipeline_desc
@@ -390,19 +400,16 @@ struct rhi_render_pipeline_desc
     rhi_shader* vertex_shader;
     rhi_shader* fragment_shader;
 
-    rhi_input_desc* inputs;
-    std::size_t input_count;
-
-    rhi_parameter_desc* parameters;
-    std::size_t parameter_count;
-
-    rhi_blend_desc blend;
-    rhi_depth_stencil_desc depth_stencil;
-    rhi_rasterizer_desc rasterizer;
+    rhi_input_state input;
+    rhi_blend_state blend;
+    rhi_depth_stencil_state depth_stencil;
+    rhi_rasterizer_state rasterizer;
 
     rhi_sample_count samples;
-
     rhi_primitive_topology primitive_topology;
+
+    rhi_parameter_desc parameters[rhi_constants::MAX_PARAMETER_COUNT];
+    std::size_t parameter_count;
 
     rhi_render_pass* render_pass;
     std::size_t render_subpass_index;
@@ -418,7 +425,7 @@ struct rhi_compute_pipeline_desc
 {
     rhi_shader* compute_shader;
 
-    rhi_parameter_desc* parameters;
+    rhi_parameter_desc parameters[rhi_constants::MAX_PARAMETER_COUNT];
     std::size_t parameter_count;
 };
 
@@ -431,7 +438,7 @@ public:
 struct rhi_framebuffer_desc
 {
     rhi_render_pass* render_pass;
-    rhi_texture* const* attachments;
+    rhi_texture* attachments[rhi_constants::MAX_ATTACHMENT_COUNT];
     std::size_t attachment_count;
 };
 
@@ -493,14 +500,13 @@ class rhi_command
 public:
     virtual ~rhi_command() = default;
 
-    virtual void begin(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer) = 0;
-    virtual void end() = 0;
-    virtual void next() = 0;
+    virtual void begin_render_pass(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer) = 0;
+    virtual void end_render_pass() = 0;
+    virtual void next_subpass() = 0;
 
-    virtual void set_render_pipeline(rhi_render_pipeline* render_pipeline) = 0;
-    virtual void set_render_parameter(std::size_t index, rhi_parameter* parameter) = 0;
-    virtual void set_compute_pipeline(rhi_compute_pipeline* compute_pipeline) = 0;
-    virtual void set_compute_parameter(std::size_t index, rhi_parameter* parameter) = 0;
+    virtual void set_pipeline(rhi_render_pipeline* render_pipeline) = 0;
+    virtual void set_pipeline(rhi_compute_pipeline* compute_pipeline) = 0;
+    virtual void set_parameter(std::size_t index, rhi_parameter* parameter) = 0;
 
     virtual void set_viewport(const rhi_viewport& viewport) = 0;
     virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) = 0;
@@ -572,19 +578,20 @@ struct rhi_buffer_desc
 
 enum rhi_texture_flag
 {
-    RHI_TEXTURE_FLAG_STORAGE = 1 << 0,
-    RHI_TEXTURE_FLAG_MIPMAP = 1 << 1,
-    RHI_TEXTURE_FLAG_RENDER_TARGET = 1 << 2,
-    RHI_TEXTURE_FLAG_DEPTH_STENCIL = 1 << 3,
-    RHI_TEXTURE_FLAG_TRANSFER_SRC = 1 << 4,
-    RHI_TEXTURE_FLAG_TRANSFER_DST = 1 << 5
+    RHI_TEXTURE_FLAG_SHADER_RESOURCE = 1 << 0,
+    RHI_TEXTURE_FLAG_STORAGE = 1 << 1,
+    RHI_TEXTURE_FLAG_MIPMAP = 1 << 2,
+    RHI_TEXTURE_FLAG_RENDER_TARGET = 1 << 3,
+    RHI_TEXTURE_FLAG_DEPTH_STENCIL = 1 << 4,
+    RHI_TEXTURE_FLAG_TRANSFER_SRC = 1 << 5,
+    RHI_TEXTURE_FLAG_TRANSFER_DST = 1 << 6,
+    RHI_TEXTURE_FLAG_CUBE = 1 << 7
 };
 using rhi_texture_flags = std::uint32_t;
 
 struct rhi_texture_desc
 {
-    std::uint32_t width;
-    std::uint32_t height;
+    rhi_texture_extent extent;
 
     rhi_format format;
     rhi_sample_count samples;
@@ -673,14 +680,12 @@ public:
     virtual void destroy_buffer(rhi_buffer* buffer) = 0;
 
     virtual rhi_texture* create_texture(const rhi_texture_desc& desc) = 0;
-    virtual rhi_texture* create_texture(const char* file, const rhi_texture_desc& desc) = 0;
     virtual rhi_texture* create_texture(
         const void* data,
         std::size_t size,
         const rhi_texture_desc& desc) = 0;
-
-    virtual rhi_texture* create_texture_cube(const rhi_texture_desc& desc) = 0;
-    virtual rhi_texture* create_texture_cube(
+    virtual rhi_texture* create_texture(const char* file, const rhi_texture_desc& desc) = 0;
+    virtual rhi_texture* create_texture(
         const char* right,
         const char* left,
         const char* top,

@@ -11,7 +11,7 @@ vk_framebuffer::vk_framebuffer(const rhi_framebuffer_desc& desc, vk_context* con
     std::vector<VkImageView> image_views(desc.attachment_count);
     for (std::size_t i = 0; i < desc.attachment_count; ++i)
     {
-        const vk_image* image = static_cast<const vk_image*>(desc.attachments[i]);
+        const vk_texture* image = static_cast<const vk_texture*>(desc.attachments[i]);
         image_views[i] = image->get_image_view();
         m_clear_values.push_back(image->get_clear_value());
     }

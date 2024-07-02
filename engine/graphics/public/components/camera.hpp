@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/render_graph/render_graph.hpp"
+#include "graphics/renderer.hpp"
 #include "math/math.hpp"
 #include <unordered_map>
 
@@ -17,7 +17,7 @@ class render_device;
 class camera
 {
 public:
-    camera(render_device* device);
+    camera();
     camera(const camera&) = delete;
     camera(camera&&) = default;
     ~camera();
@@ -36,35 +36,23 @@ public:
     rhi_scissor_rect get_scissor() const noexcept { return m_scissor; }
     rhi_viewport get_viewport() const noexcept { return m_viewport; }
 
-    rhi_parameter* get_parameter() const noexcept { return m_parameter.get(); }
-
     void resize(std::uint32_t width, std::uint32_t height);
 
-    void set_render_graph(render_graph* render_graph) noexcept;
-    render_graph* get_render_graph() const noexcept { return m_render_graph; }
-    rdg_context* get_render_context() const noexcept { return m_render_context.get(); }
+    void set_renderer(renderer* renderer) noexcept;
+    renderer* get_renderer() const noexcept { return m_renderer; }
 
-    void set_render_texture(std::string_view name, rhi_texture* texture);
-    void set_render_texture(std::string_view name, rhi_swapchain* swapchain);
+    void set_render_target(std::size_t index, rhi_texture* texture);
+    void set_render_target(std::size_t index, rhi_swapchain* swapchain);
 
-    const std::vector<std::pair<rhi_swapchain*, std::size_t>>& get_swapchains() const noexcept
-    {
-        return m_swapchains;
-    }
+    std::vector<rhi_texture*> get_render_targets() const;
+    std::vector<rhi_swapchain*> get_swapchains() const;
+
+    rhi_parameter* get_parameter() const noexcept { return m_parameter.get(); }
 
     camera& operator=(const camera&) = delete;
     camera& operator=(camera&&) = default;
 
 private:
-    struct parameter_data
-    {
-        float4x4 view;
-        float4x4 projection;
-        float4x4 view_projection;
-        float3 positon;
-        std::uint32_t padding;
-    };
-
     struct perspective_data
     {
         float fov;
@@ -72,23 +60,32 @@ private:
         float far_z;
     };
 
+    struct render_target
+    {
+        bool is_swapchain;
+        union {
+            rhi_swapchain* swapchain;
+            rhi_texture* texture;
+        };
+    };
+
     void update_projection();
-    void update_parameter();
 
     camera_state m_state;
     float m_priority;
 
     perspective_data m_perspective;
 
-    parameter_data m_parameter_data;
+    float4x4 m_view;
+    float4x4 m_projection;
+
     rhi_ptr<rhi_parameter> m_parameter;
 
     rhi_scissor_rect m_scissor;
     rhi_viewport m_viewport;
 
-    render_graph* m_render_graph;
-    std::unique_ptr<rdg_context> m_render_context;
+    renderer* m_renderer;
 
-    std::vector<std::pair<rhi_swapchain*, std::size_t>> m_swapchains;
+    std::vector<render_target> m_render_targets;
 };
 } // namespace violet

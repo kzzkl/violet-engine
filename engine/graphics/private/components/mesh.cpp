@@ -1,12 +1,13 @@
 #include "components/mesh.hpp"
 #include "common/hash.hpp"
+#include "graphics/pipeline_parameter.hpp"
 #include <cassert>
 
 namespace violet
 {
-mesh::mesh(render_device* device) : m_geometry(nullptr)
+mesh::mesh() : m_geometry(nullptr)
 {
-    m_parameter = device->create_parameter(engine_parameter_layout::mesh);
+    m_parameter = render_device::instance().create_parameter(pipeline_parameter_mesh);
 }
 
 mesh::~mesh()
@@ -19,53 +20,28 @@ void mesh::set_geometry(geometry* geometry)
 }
 
 void mesh::add_submesh(
-    std::size_t vertex_start,
-    std::size_t vertex_count,
-    std::size_t index_start,
-    std::size_t index_count,
+    std::uint32_t vertex_start,
+    std::uint32_t vertex_count,
+    std::uint32_t index_start,
+    std::uint32_t index_count,
     material* material)
 {
-    assert(m_geometry != nullptr);
-
     submesh submesh = {};
     submesh.material = material;
     submesh.vertex_start = vertex_start;
     submesh.vertex_count = vertex_count;
     submesh.index_start = index_start;
     submesh.index_count = index_count;
-    submesh.index_buffer = m_geometry->get_index_buffer();
-
-    auto& passes = material->get_layout()->get_passes();
-    for (std::size_t i = 0; i < passes.size(); ++i)
-    {
-        std::hash<std::string> hasher;
-        std::size_t hash = 0;
-        for (auto& [name, format] : passes[i]->get_input_layout())
-            hash = hash_combine(hash, hasher(name));
-
-        auto iter = m_sorted_vertex_buffer.find(hash);
-        if (iter == m_sorted_vertex_buffer.end())
-        {
-            std::vector<rhi_buffer*>& sorted_vertex_buffer = m_sorted_vertex_buffer[hash];
-            for (auto& [name, format] : passes[i]->get_input_layout())
-                sorted_vertex_buffer.push_back(get_vertex_buffer(name));
-            submesh.vertex_buffers.push_back(sorted_vertex_buffer.data());
-        }
-        else
-        {
-            submesh.vertex_buffers.push_back(iter->second.data());
-        }
-    }
 
     m_submeshes.push_back(submesh);
 }
 
 void mesh::set_submesh(
     std::size_t index,
-    std::size_t vertex_start,
-    std::size_t vertex_count,
-    std::size_t index_start,
-    std::size_t index_count)
+    std::uint32_t vertex_start,
+    std::uint32_t vertex_count,
+    std::uint32_t index_start,
+    std::uint32_t index_count)
 {
     m_submeshes[index].vertex_start = vertex_start;
     m_submeshes[index].vertex_count = vertex_count;

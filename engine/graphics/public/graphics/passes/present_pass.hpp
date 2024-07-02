@@ -7,13 +7,16 @@ namespace violet
 class present_pass : public rdg_pass
 {
 public:
-    static constexpr std::size_t reference_present_target{0};
+    enum reference
+    {
+        REFERENCE_PRESENT
+    };
 
 public:
     present_pass()
     {
         add_texture(
-            reference_present_target,
+            REFERENCE_PRESENT,
             RHI_ACCESS_FLAG_SHADER_READ | RHI_ACCESS_FLAG_SHADER_WRITE,
             RHI_TEXTURE_LAYOUT_PRESENT);
     }

@@ -9,7 +9,7 @@
 
 namespace violet::vk
 {
-class vk_swapchain_image : public vk_image
+class vk_swapchain_image : public vk_texture
 {
 public:
     vk_swapchain_image(

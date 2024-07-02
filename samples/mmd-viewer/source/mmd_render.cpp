@@ -186,26 +186,26 @@ mmd_render_graph::mmd_render_graph(rhi_format render_target_format)
         render_target,
         color_pass,
         mmd_color_pass::reference_render_target,
-        RDG_EDGE_OPERATE_CLEAR);
-    add_edge(depth_buffer, color_pass, mmd_color_pass::reference_depth, RDG_EDGE_OPERATE_CLEAR);
+        RDG_EDGE_ACTION_CLEAR);
+    add_edge(depth_buffer, color_pass, mmd_color_pass::reference_depth, RDG_EDGE_ACTION_CLEAR);
     add_edge(
         color_pass,
         mmd_color_pass::reference_render_target,
         edge_pass,
         mmd_edge_pass::reference_render_target,
-        RDG_EDGE_OPERATE_STORE);
+        RDG_EDGE_ACTION_LOAD);
     add_edge(
         color_pass,
         mmd_color_pass::reference_depth,
         edge_pass,
         mmd_edge_pass::reference_depth,
-        RDG_EDGE_OPERATE_STORE);
+        RDG_EDGE_ACTION_LOAD);
     add_edge(
         edge_pass,
         mmd_edge_pass::reference_render_target,
         present,
-        present_pass::reference_present_target,
-        RDG_EDGE_OPERATE_STORE);
+        present_pass::REFERENCE_PRESENT,
+        RDG_EDGE_ACTION_LOAD);
 
     m_material_layout =
         std::make_unique<material_layout>(this, std::vector<rdg_pass*>{color_pass, edge_pass});

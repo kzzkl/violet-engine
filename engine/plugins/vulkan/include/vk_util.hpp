@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/hash.hpp"
 #include "vk_common.hpp"
 
 namespace violet::vk
@@ -22,26 +23,5 @@ public:
 
     static VkBlendFactor map_blend_factor(rhi_blend_factor factor);
     static VkBlendOp map_blend_op(rhi_blend_op op);
-
-    static inline void hash_combine(std::size_t& seed, std::size_t value)
-    {
-        seed = seed ^ (value + 0x9e3779b9 + (seed << 6) + (seed >> 2));
-    }
-
-    template <typename... Args>
-    static std::size_t hash(Args&&... args)
-    {
-        std::size_t result = 0;
-        (hash_combine(result, hash_impl(args)), ...);
-        return result;
-    }
-
-private:
-    template <typename T>
-    static inline std::size_t hash_impl(const T& value)
-    {
-        std::hash<T> hasher;
-        return hasher(value);
-    }
 };
 } // namespace violet::vk

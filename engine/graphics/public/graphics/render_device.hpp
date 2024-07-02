@@ -1,9 +1,10 @@
 #pragma once
 
+#include "common/hash.hpp"
 #include "graphics/render_interface.hpp"
-#include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace violet
@@ -37,8 +38,12 @@ using rhi_ptr = std::unique_ptr<T, rhi_deleter>;
 class render_device
 {
 public:
-    render_device(rhi* rhi);
+    render_device();
     ~render_device();
+
+    static render_device& instance();
+
+    void initialize(rhi* rhi);
 
     rhi_command* allocate_command();
     void execute(
@@ -55,13 +60,15 @@ public:
     std::size_t get_frame_resource_count() const noexcept;
     std::size_t get_frame_resource_index() const noexcept;
 
+    rhi_shader* get_shader(std::string_view path);
+
 public:
     rhi_ptr<rhi_render_pass> create_render_pass(const rhi_render_pass_desc& desc);
 
-    rhi_ptr<rhi_shader> create_shader(const char* file);
+    rhi_ptr<rhi_shader> create_shader(std::string_view file);
 
-    rhi_ptr<rhi_render_pipeline> create_render_pipeline(const rhi_render_pipeline_desc& desc);
-    rhi_ptr<rhi_compute_pipeline> create_compute_pipeline(const rhi_compute_pipeline_desc& desc);
+    rhi_ptr<rhi_render_pipeline> create_pipeline(const rhi_render_pipeline_desc& desc);
+    rhi_ptr<rhi_compute_pipeline> create_pipeline(const rhi_compute_pipeline_desc& desc);
 
     rhi_ptr<rhi_parameter> create_parameter(const rhi_parameter_desc& desc);
     rhi_ptr<rhi_framebuffer> create_framebuffer(const rhi_framebuffer_desc& desc);
@@ -70,13 +77,12 @@ public:
     rhi_ptr<rhi_sampler> create_sampler(const rhi_sampler_desc& desc);
 
     rhi_ptr<rhi_texture> create_texture(const rhi_texture_desc& desc);
-    rhi_ptr<rhi_texture> create_texture(const char* file, const rhi_texture_desc& desc = {});
     rhi_ptr<rhi_texture> create_texture(
         const void* data,
         std::size_t size,
         const rhi_texture_desc& desc);
-
-    rhi_ptr<rhi_texture> create_texture_cube(
+    rhi_ptr<rhi_texture> create_texture(std::string_view file, const rhi_texture_desc& desc = {});
+    rhi_ptr<rhi_texture> create_texture(
         std::string_view right,
         std::string_view left,
         std::string_view top,
@@ -93,69 +99,9 @@ public:
     rhi_deleter& get_deleter() noexcept { return m_rhi_deleter; }
 
 private:
-    rhi* m_rhi;
+    std::unordered_map<std::string, rhi_ptr<rhi_shader>> m_shader_cache;
+
+    rhi* m_rhi{nullptr};
     rhi_deleter m_rhi_deleter;
-};
-
-namespace detail
-{
-constexpr rhi_parameter_desc get_mesh_parameter_layout()
-{
-    rhi_parameter_desc desc = {};
-    desc.bindings[0] = {
-        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-        .stage = RHI_PARAMETER_STAGE_FLAG_VERTEX | RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 64}; // model matrix
-    desc.binding_count = 1;
-
-    return desc;
-}
-
-constexpr rhi_parameter_desc get_camera_parameter_layout()
-{
-    rhi_parameter_desc desc = {};
-    desc.bindings[0] = {
-        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-        .stage = RHI_PARAMETER_STAGE_FLAG_VERTEX | RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 208}; // matrix
-    desc.bindings[1] = {
-        .type = RHI_PARAMETER_TYPE_TEXTURE,
-        .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 1}; // skybox
-    desc.binding_count = 2;
-
-    return desc;
-}
-
-constexpr rhi_parameter_desc get_light_parameter_layout()
-{
-    rhi_parameter_desc desc = {};
-    desc.bindings[0] = {
-        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-        .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 528}; // light data
-    desc.binding_count = 1;
-
-    return desc;
-}
-} // namespace detail
-
-struct engine_parameter_layout
-{
-private:
-    static constexpr rhi_parameter_binding mesh_mvp = {
-        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-        .stage = RHI_PARAMETER_STAGE_FLAG_VERTEX | RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 64};
-
-    static constexpr rhi_parameter_binding light_data = {
-        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-        .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 528};
-
-public:
-    static constexpr rhi_parameter_desc mesh = detail::get_mesh_parameter_layout();
-    static constexpr rhi_parameter_desc camera = detail::get_camera_parameter_layout();
-    static constexpr rhi_parameter_desc light = detail::get_light_parameter_layout();
 };
 } // namespace violet

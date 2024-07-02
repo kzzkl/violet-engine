@@ -5,7 +5,7 @@ namespace violet
 {
 ui_pass::ui_pass()
 {
-    rhi_attachment_blend_desc blend = {};
+    rhi_attachment_blend blend = {};
     blend.enable = true;
     blend.src_color_factor = RHI_BLEND_FACTOR_SOURCE_ALPHA;
     blend.dst_color_factor = RHI_BLEND_FACTOR_SOURCE_INV_ALPHA;
@@ -13,9 +13,9 @@ ui_pass::ui_pass()
     blend.src_alpha_factor = RHI_BLEND_FACTOR_ONE;
     blend.dst_alpha_factor = RHI_BLEND_FACTOR_ZERO;
     blend.alpha_op = RHI_BLEND_OP_ADD;
-    add_color(reference_render_target, RHI_TEXTURE_LAYOUT_RENDER_TARGET, blend);
+    // add_color(reference_render_target, RHI_TEXTURE_LAYOUT_RENDER_TARGET, blend);
 
-    set_shader("engine/shaders/ui.vert.spv", "engine/shaders/ui.frag.spv");
+    // set_shader("engine/shaders/ui.vert.spv", "engine/shaders/ui.frag.spv");
 
     set_input_layout({
         {"position", RHI_FORMAT_R32G32_FLOAT  },
@@ -23,20 +23,20 @@ ui_pass::ui_pass()
         {"uv",       RHI_FORMAT_R32G32_FLOAT  }
     });
 
-    rhi_depth_stencil_desc depth_stencil_desc = {};
+    rhi_depth_stencil_state depth_stencil_desc = {};
     depth_stencil_desc.depth_enable = false;
-    set_depth_stencil(depth_stencil_desc);
-    set_cull_mode(RHI_CULL_MODE_NONE);
+    // set_depth_stencil(depth_stencil_desc);
+    // set_cull_mode(RHI_CULL_MODE_NONE);
 
-    set_parameter_layout({
-        {ui_painter::get_mvp_parameter_layout(),      RDG_PASS_PARAMETER_FLAG_NONE},
-        {ui_painter::get_material_parameter_layout(), RDG_PASS_PARAMETER_FLAG_NONE}
-    });
+    // set_parameter_layout({
+    //     {ui_painter::get_mvp_parameter_layout(),      RDG_PASS_PARAMETER_FLAG_NONE},
+    //     {ui_painter::get_material_parameter_layout(), RDG_PASS_PARAMETER_FLAG_NONE}
+    // });
 }
 
 void ui_pass::execute(rhi_command* command, rdg_context* context)
 {
-    command->set_render_pipeline(get_pipeline());
+    // command->set_render_pipeline(get_pipeline());
 
     for (ui_painter* painter : m_painters)
     {

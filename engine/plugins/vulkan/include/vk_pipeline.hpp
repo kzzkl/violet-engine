@@ -70,10 +70,8 @@ public:
         std::size_t parameter_count);
 
 private:
-    std::size_t get_hash(const rhi_parameter_desc& desc);
-
-    std::unordered_map<std::size_t, std::unique_ptr<vk_parameter_layout>> m_parameter_layouts;
-    std::unordered_map<std::size_t, std::unique_ptr<vk_pipeline_layout>> m_pipeline_layouts;
+    std::unordered_map<std::uint64_t, std::unique_ptr<vk_parameter_layout>> m_parameter_layouts;
+    std::unordered_map<std::uint64_t, std::unique_ptr<vk_pipeline_layout>> m_pipeline_layouts;
 
     vk_context* m_context;
 };

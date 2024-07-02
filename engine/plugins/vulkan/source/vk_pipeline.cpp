@@ -71,16 +71,16 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
     {
         VkDescriptorSetLayoutBinding binding = {};
         binding.binding = static_cast<std::uint32_t>(i);
-        if (desc.bindings[i].stage & RHI_PARAMETER_STAGE_FLAG_VERTEX)
+        if (desc.bindings[i].stage & RHI_SHADER_STAGE_FLAG_VERTEX)
             binding.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
-        if (desc.bindings[i].stage & RHI_PARAMETER_STAGE_FLAG_FRAGMENT)
+        if (desc.bindings[i].stage & RHI_SHADER_STAGE_FLAG_FRAGMENT)
             binding.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
-        if (desc.bindings[i].stage & RHI_PARAMETER_STAGE_FLAG_COMPUTE)
+        if (desc.bindings[i].stage & RHI_SHADER_STAGE_FLAG_COMPUTE)
             binding.stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
 
         switch (desc.bindings[i].type)
         {
-        case RHI_PARAMETER_TYPE_UNIFORM_BUFFER: {
+        case RHI_PARAMETER_TYPE_UNIFORM: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             binding.descriptorCount = 1;
             binding.pImmutableSamplers = nullptr;
@@ -97,7 +97,7 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
             ++uniform_buffer_count;
             break;
         }
-        case RHI_PARAMETER_TYPE_STORAGE_BUFFER: {
+        case RHI_PARAMETER_TYPE_STORAGE: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             binding.descriptorCount = 1;
             binding.pImmutableSamplers = nullptr;
@@ -180,7 +180,7 @@ vk_layout_manager::~vk_layout_manager()
 
 vk_parameter_layout* vk_layout_manager::get_parameter_layout(const rhi_parameter_desc& desc)
 {
-    std::size_t hash = get_hash(desc);
+    std::uint64_t hash = hash::city_hash_64(&desc, sizeof(rhi_parameter_desc));
     auto iter = m_parameter_layouts.find(hash);
     if (iter != m_parameter_layouts.end())
         return iter->second.get();
@@ -195,9 +195,9 @@ vk_pipeline_layout* vk_layout_manager::get_pipeline_layout(
     const rhi_parameter_desc* parameters,
     std::size_t parameter_count)
 {
-    std::size_t hash = 0;
+    std::uint64_t hash = 0;
     for (std::size_t i = 0; i < parameter_count; ++i)
-        vk_util::hash_combine(hash, get_hash(parameters[i]));
+        hash::combine(hash, hash::city_hash_64(&parameters[i], sizeof(rhi_parameter_desc)));
 
     auto iter = m_pipeline_layouts.find(hash);
     if (iter != m_pipeline_layouts.end())
@@ -207,15 +207,6 @@ vk_pipeline_layout* vk_layout_manager::get_pipeline_layout(
     vk_pipeline_layout* result = layout.get();
     m_pipeline_layouts[hash] = std::move(layout);
     return result;
-}
-
-std::size_t vk_layout_manager::get_hash(const rhi_parameter_desc& desc)
-{
-    std::size_t hash = 0;
-    for (std::size_t i = 0; i < desc.binding_count; ++i)
-        vk_util::hash_combine(hash, vk_util::hash(desc.bindings[i].type, desc.bindings[i].stage));
-
-    return hash;
 }
 
 vk_parameter::vk_parameter(const rhi_parameter_desc& desc, vk_context* context) : m_context(context)
@@ -322,11 +313,11 @@ void vk_parameter::set_texture(std::size_t index, rhi_texture* texture, rhi_samp
 {
     sync();
 
-    vk_image* image = static_cast<vk_image*>(texture);
+    vk_texture* image = static_cast<vk_texture*>(texture);
 
     VkDescriptorImageInfo info = {};
     info.imageView = image->get_image_view();
-    info.imageLayout = image->get_image_layout();
+    info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     info.sampler = static_cast<vk_sampler*>(sampler)->get_sampler();
 
     auto& binding = m_layout->get_parameter_bindings()[index];
@@ -523,9 +514,9 @@ vk_render_pipeline::vk_render_pipeline(
 
     std::vector<VkVertexInputBindingDescription> binding_descriptions;
     std::vector<VkVertexInputAttributeDescription> attribute_descriptions;
-    for (std::size_t i = 0; i < desc.input_count; ++i)
+    for (std::size_t i = 0; i < desc.input.vertex_attribute_count; ++i)
     {
-        VkFormat format = vk_util::map_format(desc.inputs[i].format);
+        VkFormat format = vk_util::map_format(desc.input.vertex_attributes[i].format);
 
         VkVertexInputBindingDescription binding = {};
         binding.binding = static_cast<std::uint32_t>(i);

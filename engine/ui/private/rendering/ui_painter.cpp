@@ -11,7 +11,7 @@ ui_painter::ui_painter(font* default_font, render_device* device)
     : m_default_font(default_font),
       m_device(device)
 {
-    m_mvp_parameter = device->create_parameter(get_mvp_parameter_layout());
+    m_mvp_parameter = device->create_parameter(pipeline_parameter::ui_mvp);
     m_sampler = device->create_sampler({});
 
     rhi_buffer_desc vertex_buffer_desc = {};
@@ -344,7 +344,7 @@ rhi_parameter* ui_painter::allocate_parameter()
 {
     ++m_parameter_count;
     if (m_parameter_pool.size() < m_parameter_count)
-        m_parameter_pool.push_back(m_device->create_parameter(get_material_parameter_layout()));
+        m_parameter_pool.push_back(m_device->create_parameter(pipeline_parameter::ui_material));
 
     return m_parameter_pool[m_parameter_count - 1].get();
 }

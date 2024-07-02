@@ -5,77 +5,18 @@
 
 namespace violet::vk
 {
-class vk_image : public rhi_texture
+class vk_texture : public rhi_texture
 {
 public:
-    vk_image(vk_context* context);
-    vk_image(const rhi_texture_desc& desc, vk_context* context);
-    virtual ~vk_image();
-
-    VkImage get_image() const noexcept { return m_image; }
-    VkImageView get_image_view() const noexcept { return m_image_view; }
-    VkImageLayout get_image_layout() const noexcept { return m_image_layout; }
-    VkClearValue get_clear_value() const noexcept { return m_clear_value; }
-
-    virtual rhi_format get_format() const noexcept override;
-    virtual rhi_texture_extent get_extent() const noexcept override
-    {
-        return {m_extent.width, m_extent.height};
-    }
-    virtual std::size_t get_hash() const noexcept override { return m_hash; }
-
-protected:
-    void set_image(VkImage image, VmaAllocation allocation) noexcept;
-    void set_image_view(VkImageView image_view) noexcept { m_image_view = image_view; }
-    void set_image_layout(VkImageLayout image_layout) noexcept { m_image_layout = image_layout; }
-    void set_format(VkFormat format) noexcept { m_format = format; }
-    void set_extent(VkExtent2D extent) noexcept { m_extent = extent; }
-
-    void set_clear_value(VkClearColorValue clear_value) noexcept
-    {
-        m_clear_value.color = clear_value;
-    }
-    void set_clear_value(VkClearDepthStencilValue clear_value) noexcept
-    {
-        m_clear_value.depthStencil = clear_value;
-    }
-
-    void set_hash(std::size_t hash) noexcept { m_hash = hash; }
-
-    vk_context* get_context() const noexcept { return m_context; }
-
-private:
-    VkImage m_image;
-    VmaAllocation m_allocation;
-    VkImageView m_image_view;
-    VkImageLayout m_image_layout;
-
-    VkFormat m_format;
-    VkExtent2D m_extent;
-
-    VkClearValue m_clear_value;
-
-    std::size_t m_hash;
-
-    vk_context* m_context;
-};
-
-class vk_texture : public vk_image
-{
-public:
+    vk_texture() = default;
+    vk_texture(const rhi_texture_desc& desc, vk_context* context);
     vk_texture(const char* file, const rhi_texture_desc& desc, vk_context* context);
     vk_texture(
         const void* data,
         std::size_t size,
         const rhi_texture_desc& desc,
         vk_context* context);
-    virtual ~vk_texture();
-};
-
-class vk_texture_cube : public vk_image
-{
-public:
-    vk_texture_cube(
+    vk_texture(
         const char* right,
         const char* left,
         const char* top,
@@ -84,8 +25,30 @@ public:
         const char* back,
         const rhi_texture_desc& desc,
         vk_context* context);
-    vk_texture_cube(const rhi_texture_desc& desc, vk_context* context);
-    ~vk_texture_cube();
+    virtual ~vk_texture();
+
+    VkImage get_image() const noexcept { return m_image; }
+    VkImageView get_image_view() const noexcept { return m_image_view; }
+    VkClearValue get_clear_value() const noexcept { return m_clear_value; }
+
+    virtual rhi_format get_format() const noexcept override { return m_format; }
+    virtual rhi_sample_count get_samples() const noexcept override { return m_samples; }
+    virtual rhi_texture_extent get_extent() const noexcept override { return m_extent; }
+    virtual std::uint64_t get_hash() const noexcept override { return m_hash; }
+
+protected:
+    VkImage m_image{VK_NULL_HANDLE};
+    VkImageView m_image_view{VK_NULL_HANDLE};
+    VmaAllocation m_allocation{VK_NULL_HANDLE};
+
+    rhi_format m_format;
+    rhi_sample_count m_samples;
+    rhi_texture_extent m_extent;
+
+    VkClearValue m_clear_value;
+    std::uint64_t m_hash{0};
+
+    vk_context* m_context{nullptr};
 };
 
 class vk_sampler : public rhi_sampler
@@ -113,7 +76,7 @@ public:
     void* get_buffer() override { return m_mapping_pointer; }
     std::size_t get_buffer_size() const noexcept override { return m_buffer_size; }
 
-    std::size_t get_hash() const noexcept override;
+    std::uint64_t get_hash() const noexcept override;
 
     VkBuffer get_buffer_handle() const noexcept { return m_buffer; }
 

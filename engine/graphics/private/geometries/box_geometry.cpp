@@ -3,10 +3,8 @@
 
 namespace violet
 {
-box_geometry::box_geometry(render_device* device, float width, float height, float depth)
-    : geometry(device)
+box_geometry::box_geometry(float width, float height, float depth)
 {
-
     float half_width = width * 0.5f;
     float half_height = height * 0.5f;
     float half_depth = depth * 0.5f;
@@ -43,27 +41,22 @@ box_geometry::box_geometry(render_device* device, float width, float height, flo
         {0.0f,  1.0f,  0.0f },
         {0.0f,  1.0f,  0.0f },
         {0.0f,  1.0f,  0.0f },
-
         {0.0f,  -1.0f, 0.0f }, // bottom
         {0.0f,  -1.0f, 0.0f },
         {0.0f,  -1.0f, 0.0f },
         {0.0f,  -1.0f, 0.0f },
-
         {-1.0f, 0.0f,  0.0f }, // left
         {-1.0f, 0.0f,  0.0f },
         {-1.0f, 0.0f,  0.0f },
         {-1.0f, 0.0f,  0.0f },
-
         {1.0f,  0.0f,  0.0f }, // right
         {1.0f,  0.0f,  0.0f },
         {1.0f,  0.0f,  0.0f },
         {1.0f,  0.0f,  0.0f },
-
         {0.0f,  0.0f,  -1.0f}, // forward
         {0.0f,  0.0f,  -1.0f},
         {0.0f,  0.0f,  -1.0f},
         {0.0f,  0.0f,  -1.0f},
-
         {0.0f,  0.0f,  1.0f }, // back
         {0.0f,  0.0f,  1.0f },
         {0.0f,  0.0f,  1.0f },

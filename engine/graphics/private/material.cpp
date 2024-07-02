@@ -1,22 +1,23 @@
 #include "graphics/material.hpp"
+#include "graphics/pipeline_parameter.hpp"
 
 namespace violet
 {
-material_layout::material_layout(render_graph* render_graph, const std::vector<rdg_pass*>& passes)
-    : m_render_graph(render_graph),
-      m_passes(passes)
+material::material()
 {
 }
 
-material::material(render_device* device, material_layout* layout) : m_layout(layout)
+void material::add_pass(const rdg_render_pipeline& pipeline, const rhi_parameter_desc& parameter)
 {
-    for (rdg_pass* pass : layout->get_passes())
-    {
-        auto parameter_layout = pass->get_parameter_layout(RDG_PASS_PARAMETER_FLAG_MATERIAL);
-        if (!parameter_layout.empty())
-            m_parameters.push_back(device->create_parameter(parameter_layout[0]));
-        else
-            m_parameters.push_back(nullptr);
-    }
+    m_passes.push_back(pipeline);
+
+    rhi_parameter_desc* parameters = m_passes.back().parameters;
+    parameters[0] = pipeline_parameter_mesh;
+    parameters[1] = parameter;
+    parameters[2] = pipeline_parameter_camera;
+    parameters[3] = pipeline_parameter_light;
+    m_passes.back().parameter_count = 4;
+
+    m_parameters.push_back(render_device::instance().create_parameter(parameter));
 }
 } // namespace violet

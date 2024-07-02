@@ -1,7 +1,7 @@
 struct vs_out
 {
     float4 position: SV_POSITION;
-    [[vk::location(0)]] float3 color: COLOR;
+    float3 color: COLOR;
 };
 
 vs_out vs_main(uint index: SV_VertexID)

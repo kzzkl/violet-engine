@@ -20,7 +20,7 @@ vk_command::~vk_command()
 {
 }
 
-void vk_command::begin(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer)
+void vk_command::begin_render_pass(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer)
 {
     assert(m_current_render_pass == VK_NULL_HANDLE);
 
@@ -42,51 +42,36 @@ void vk_command::begin(rhi_render_pass* render_pass, rhi_framebuffer* framebuffe
     vkCmdBeginRenderPass(m_command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-void vk_command::end()
+void vk_command::end_render_pass()
 {
     vkCmdEndRenderPass(m_command_buffer);
     m_current_render_pass = VK_NULL_HANDLE;
 }
 
-void vk_command::next()
+void vk_command::next_subpass()
 {
     vkCmdNextSubpass(m_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-void vk_command::set_render_pipeline(rhi_render_pipeline* render_pipeline)
+void vk_command::set_pipeline(rhi_render_pipeline* render_pipeline)
 {
     vk_render_pipeline* pipeline = static_cast<vk_render_pipeline*>(render_pipeline);
     vkCmdBindPipeline(m_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->get_pipeline());
 
     m_current_pipeline_layout = pipeline->get_pipeline_layout();
+    m_current_bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS;
 }
 
-void vk_command::set_render_parameter(std::size_t index, rhi_parameter* parameter)
-{
-    vk_parameter* p = static_cast<vk_parameter*>(parameter);
-    p->sync();
-
-    VkDescriptorSet descriptor_sets[] = {p->get_descriptor_set()};
-    vkCmdBindDescriptorSets(
-        m_command_buffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        m_current_pipeline_layout,
-        static_cast<std::uint32_t>(index),
-        1,
-        descriptor_sets,
-        0,
-        nullptr);
-}
-
-void vk_command::set_compute_pipeline(rhi_compute_pipeline* compute_pipeline)
+void vk_command::set_pipeline(rhi_compute_pipeline* compute_pipeline)
 {
     vk_compute_pipeline* pipeline = static_cast<vk_compute_pipeline*>(compute_pipeline);
     vkCmdBindPipeline(m_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->get_pipeline());
 
     m_current_pipeline_layout = pipeline->get_pipeline_layout();
+    m_current_bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
 }
 
-void vk_command::set_compute_parameter(std::size_t index, rhi_parameter* parameter)
+void vk_command::set_parameter(std::size_t index, rhi_parameter* parameter)
 {
     vk_parameter* p = static_cast<vk_parameter*>(parameter);
     p->sync();
@@ -94,7 +79,7 @@ void vk_command::set_compute_parameter(std::size_t index, rhi_parameter* paramet
     VkDescriptorSet descriptor_sets[] = {p->get_descriptor_set()};
     vkCmdBindDescriptorSets(
         m_command_buffer,
-        VK_PIPELINE_BIND_POINT_COMPUTE,
+        m_current_bind_point,
         m_current_pipeline_layout,
         static_cast<std::uint32_t>(index),
         1,
@@ -218,7 +203,7 @@ void vk_command::set_pipeline_barrier(
         barrier.newLayout = vk_util::map_layout(texture_barriers[i].dst_layout);
         barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.image = static_cast<vk_image*>(texture_barriers[i].texture)->get_image();
+        barrier.image = static_cast<vk_texture*>(texture_barriers[i].texture)->get_image();
         barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
         barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
@@ -256,8 +241,8 @@ void vk_command::copy_texture(
     image_copy.dstSubresource.baseArrayLayer = dst_region.layer_start;
     image_copy.dstSubresource.layerCount = dst_region.layer_count;
 
-    vk_image* src_image = static_cast<vk_image*>(src);
-    vk_image* dst_image = static_cast<vk_image*>(dst);
+    vk_texture* src_image = static_cast<vk_texture*>(src);
+    vk_texture* dst_image = static_cast<vk_texture*>(dst);
 
     vkCmdCopyImage(
         m_command_buffer,

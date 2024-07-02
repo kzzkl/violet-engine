@@ -3,12 +3,7 @@
 
 namespace violet
 {
-sphere_geometry::sphere_geometry(
-    render_device* device,
-    float radius,
-    std::size_t slice,
-    std::size_t stack)
-    : geometry(device)
+sphere_geometry::sphere_geometry(float radius, std::size_t slice, std::size_t stack)
 {
     std::vector<float3> position;
     std::vector<float3> normal;

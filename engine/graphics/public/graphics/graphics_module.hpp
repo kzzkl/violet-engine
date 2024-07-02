@@ -17,26 +17,24 @@ public:
     virtual bool initialize(const dictionary& config) override;
     virtual void shutdown() override;
 
-    render_device* get_device() const noexcept { return m_device.get(); }
-
 private:
     void begin_frame();
     void end_frame();
     void render();
 
     void update_light();
-    void render_camera(camera* camera, rhi_semaphore* finish_semaphore);
+    rhi_semaphore* render(camera* camera);
 
     void switch_frame_resource();
     rhi_semaphore* allocate_semaphore();
 
-    std::unique_ptr<render_device> m_device;
     std::unique_ptr<rhi_plugin> m_plugin;
-
-    rhi_ptr<rhi_parameter> m_light;
 
     std::vector<std::vector<rhi_semaphore*>> m_used_semaphores;
     std::vector<rhi_semaphore*> m_free_semaphores;
     std::vector<rhi_ptr<rhi_semaphore>> m_semaphores;
+
+    std::unique_ptr<rdg_allocator> m_allocator;
+    std::unique_ptr<render_context> m_context;
 };
 } // namespace violet

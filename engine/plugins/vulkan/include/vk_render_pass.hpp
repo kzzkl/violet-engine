@@ -16,7 +16,6 @@ public:
     vk_render_pass& operator=(const vk_render_pass&) = delete;
 
 private:
-    VkExtent2D m_extent;
     VkRenderPass m_render_pass;
 
     vk_context* m_context;

@@ -25,7 +25,7 @@ endif()
 
 set(VIOLET_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(VIOLET_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/thirdparty)
-set(VIOLET_SHADER_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/engine/graphics/shaders/hlsl/include)
+set(VIOLET_SHADER_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/engine/shaders/include)
 if(VIOLET_USE_SIMD)
     add_definitions(-DVIOLET_USE_SIMD)
 endif()

@@ -5,8 +5,7 @@
 namespace violet::vk
 {
 vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* context)
-    : m_extent{512, 512},
-      m_context(context)
+    : m_context(context)
 {
     auto map_load_op = [](rhi_attachment_load_op op)
     {

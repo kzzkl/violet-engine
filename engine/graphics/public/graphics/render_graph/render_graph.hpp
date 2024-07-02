@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/render_graph/rdg_edge.hpp"
+#include "graphics/render_graph/rdg_allocator.hpp"
 #include "graphics/render_graph/rdg_pass.hpp"
 #include "graphics/render_graph/rdg_resource.hpp"
 #include <map>
@@ -14,21 +14,18 @@ concept RDGResource = std::is_same_v<T, rdg_texture> || std::is_same_v<T, rdg_bu
 template <typename T>
 concept RDGPass = std::is_base_of_v<rdg_pass, T>;
 
-class rdg_pass_batch;
 class render_graph
 {
 public:
-    render_graph() noexcept;
+    render_graph(rdg_allocator* allocator) noexcept;
     render_graph(const render_graph&) = delete;
     ~render_graph();
 
     template <RDGResource T, typename... Args>
-    T* add_resource(std::string_view name, bool external, Args&&... args)
+    T* add_resource(std::string_view name, Args&&... args)
     {
         auto resource = std::make_unique<T>(std::forward<Args>(args)...);
         resource->m_name = name;
-        resource->m_index = m_resources.size();
-        resource->m_external = external;
 
         T* result = resource.get();
         m_resources.push_back(std::move(resource));
@@ -46,46 +43,42 @@ public:
         return result;
     }
 
-    void add_edge(
-        rdg_resource* resource,
-        rdg_pass* pass,
-        std::size_t reference_index,
-        rdg_edge_operate operate = RDG_EDGE_OPERATE_DONT_CARE);
-    void add_edge(
-        rdg_pass* src,
-        std::size_t src_reference_index,
-        rdg_pass* dst,
-        std::size_t dst_reference_index,
-        rdg_edge_operate operate = RDG_EDGE_OPERATE_DONT_CARE);
-
-    void compile(render_device* device);
-    void execute(rhi_command* command, rdg_context* context);
-
-    std::unique_ptr<rdg_context> create_context();
-
-    std::size_t get_resource_index(std::string_view name) const;
-    rdg_resource_type get_resource_type(std::size_t index) const;
-
-    std::size_t get_pass_index(std::string_view name) const;
+    void compile();
+    void execute(rhi_command* command);
 
     render_graph& operator=(const render_graph&) = delete;
 
+public:
+    template <typename T>
+    T& allocate_data()
+    {
+        return m_allocator->allocate_data<T>();
+    }
+
 private:
-    void bind_resource();
     void dead_stripping();
-    std::vector<std::vector<rdg_pass*>> merge_pass();
+    void merge_pass();
+    void build_barriers();
 
     std::vector<std::unique_ptr<rdg_resource>> m_resources;
     std::vector<std::unique_ptr<rdg_pass>> m_passes;
-    std::vector<std::unique_ptr<rdg_edge>> m_edges;
-
-    std::unordered_map<std::string, std::size_t> m_resource_indices;
-    std::unordered_map<std::string, std::size_t> m_pass_indices;
-
-    std::vector<std::unique_ptr<rdg_pass_batch>> m_batchs;
 
     std::vector<std::vector<rhi_ptr<rhi_semaphore>>> m_semaphores;
 
-    render_device* m_device;
+    struct render_pass
+    {
+        rdg_pass* begin_pass;
+        rdg_pass* end_pass;
+        rhi_render_pass* render_pass;
+        rhi_framebuffer* framebuffer;
+    };
+    std::vector<render_pass> m_render_passes;
+
+    struct barrier
+    {
+    };
+    std::vector<barrier> m_barriers;
+
+    rdg_allocator* m_allocator{nullptr};
 };
 } // namespace violet

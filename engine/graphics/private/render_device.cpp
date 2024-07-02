@@ -71,12 +71,24 @@ void rhi_deleter::operator()(rhi_semaphore* semaphore)
     m_rhi->destroy_semaphore(semaphore);
 }
 
-render_device::render_device(rhi* rhi) : m_rhi(rhi), m_rhi_deleter(rhi)
+render_device::render_device()
 {
 }
 
 render_device::~render_device()
 {
+}
+
+render_device& render_device::instance()
+{
+    static render_device instance;
+    return instance;
+}
+
+void render_device::initialize(rhi* rhi)
+{
+    m_rhi = rhi;
+    m_rhi_deleter = rhi_deleter(rhi);
 }
 
 rhi_command* render_device::allocate_command()
@@ -125,24 +137,36 @@ std::size_t render_device::get_frame_resource_index() const noexcept
     return m_rhi->get_frame_resource_index();
 }
 
+rhi_shader* render_device::get_shader(std::string_view path)
+{
+    auto iter = m_shader_cache.find(path.data());
+    if (iter == m_shader_cache.end())
+    {
+        m_shader_cache[path.data()] = render_device::instance().create_shader(path);
+        return m_shader_cache[path.data()].get();
+    }
+    else
+    {
+        return iter->second.get();
+    }
+}
+
 rhi_ptr<rhi_render_pass> render_device::create_render_pass(const rhi_render_pass_desc& desc)
 {
     return rhi_ptr<rhi_render_pass>(m_rhi->create_render_pass(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_shader> render_device::create_shader(const char* file)
+rhi_ptr<rhi_shader> render_device::create_shader(std::string_view file)
 {
-    return rhi_ptr<rhi_shader>(m_rhi->create_shader(file), m_rhi_deleter);
+    return rhi_ptr<rhi_shader>(m_rhi->create_shader(file.data()), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_render_pipeline> render_device::create_render_pipeline(
-    const rhi_render_pipeline_desc& desc)
+rhi_ptr<rhi_render_pipeline> render_device::create_pipeline(const rhi_render_pipeline_desc& desc)
 {
     return rhi_ptr<rhi_render_pipeline>(m_rhi->create_render_pipeline(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_compute_pipeline> render_device::create_compute_pipeline(
-    const rhi_compute_pipeline_desc& desc)
+rhi_ptr<rhi_compute_pipeline> render_device::create_pipeline(const rhi_compute_pipeline_desc& desc)
 {
     return rhi_ptr<rhi_compute_pipeline>(m_rhi->create_compute_pipeline(desc), m_rhi_deleter);
 }
@@ -172,11 +196,6 @@ rhi_ptr<rhi_texture> render_device::create_texture(const rhi_texture_desc& desc)
     return rhi_ptr<rhi_texture>(m_rhi->create_texture(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_texture> render_device::create_texture(const char* file, const rhi_texture_desc& desc)
-{
-    return rhi_ptr<rhi_texture>(m_rhi->create_texture(file, desc), m_rhi_deleter);
-}
-
 rhi_ptr<rhi_texture> render_device::create_texture(
     const void* data,
     std::size_t size,
@@ -185,7 +204,14 @@ rhi_ptr<rhi_texture> render_device::create_texture(
     return rhi_ptr<rhi_texture>(m_rhi->create_texture(data, size, desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_texture> render_device::create_texture_cube(
+rhi_ptr<rhi_texture> render_device::create_texture(
+    std::string_view file,
+    const rhi_texture_desc& desc)
+{
+    return rhi_ptr<rhi_texture>(m_rhi->create_texture(file.data(), desc), m_rhi_deleter);
+}
+
+rhi_ptr<rhi_texture> render_device::create_texture(
     std::string_view right,
     std::string_view left,
     std::string_view top,
@@ -195,7 +221,7 @@ rhi_ptr<rhi_texture> render_device::create_texture_cube(
     const rhi_texture_desc& desc)
 {
     return rhi_ptr<rhi_texture>(
-        m_rhi->create_texture_cube(
+        m_rhi->create_texture(
             right.data(),
             left.data(),
             top.data(),

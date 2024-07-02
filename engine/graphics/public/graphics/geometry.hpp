@@ -9,7 +9,7 @@ namespace violet
 class geometry
 {
 public:
-    geometry(render_device* device);
+    geometry();
     virtual ~geometry();
 
     template <typename T>
@@ -62,7 +62,5 @@ private:
 
     std::size_t m_vertex_count;
     std::size_t m_index_count;
-
-    render_device* m_device;
 };
 } // namespace violet

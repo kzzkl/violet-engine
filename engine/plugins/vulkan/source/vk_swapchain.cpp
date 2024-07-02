@@ -10,8 +10,8 @@ vk_swapchain_image::vk_swapchain_image(
     VkFormat format,
     const VkExtent2D& extent,
     vk_context* context)
-    : vk_image(context)
 {
+    m_context = context;
 
     VkImageViewCreateInfo image_view_info = {};
     image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -28,14 +28,20 @@ vk_swapchain_image::vk_swapchain_image(
     image_view_info.subresourceRange.baseArrayLayer = 0;
     image_view_info.subresourceRange.layerCount = 1;
 
-    VkImageView image_view;
-    vkCreateImageView(get_context()->get_device(), &image_view_info, nullptr, &image_view);
+    vkCreateImageView(m_context->get_device(), &image_view_info, nullptr, &m_image_view);
 
-    set_image_view(image_view);
-    set_format(format);
-    set_extent(extent);
-    set_hash(vk_util::hash(image, image_view, get_context()->get_frame_count()));
-    set_clear_value(VkClearColorValue{0.0f, 0.0f, 0.0f, 1.0f});
+    m_format = vk_util::map_format(format);
+    m_extent = {extent.width, extent.height};
+    m_clear_value.color = VkClearColorValue{0.0f, 0.0f, 0.0f, 1.0f};
+
+    struct swapchain_key
+    {
+        VkImage image;
+        VkImageView image_view;
+        std::size_t frame_count;
+    };
+    swapchain_key key = {image, m_image_view, m_context->get_frame_count()};
+    m_hash = hash::city_hash_64(&key, sizeof(swapchain_key));
 }
 
 vk_swapchain_image::~vk_swapchain_image()

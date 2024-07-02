@@ -92,11 +92,11 @@ preprocess_graph::preprocess_graph()
     for (const std::string& side : sides)
     {
         rdg_texture* texture = add_resource<rdg_texture>(side, true);
-        add_edge(texture, irradiance, side, RDG_EDGE_OPERATE_CLEAR);
+        add_edge(texture, irradiance, side, RDG_EDGE_ACTION_CLEAR);
     }
 
     rdg_texture* environment_map = add_resource<rdg_texture>("environment map", true);
-    add_edge(environment_map, irradiance, "", RDG_EDGE_OPERATE_STORE);
+    add_edge(environment_map, irradiance, "", RDG_EDGE_ACTION_LOAD);
 }
 
 pbr_pass::pbr_pass()
