@@ -1,6 +1,5 @@
 #include "components/camera.hpp"
 #include "common/hash.hpp"
-#include "graphics/pipeline_parameter.hpp"
 #include "graphics/render_device.hpp"
 #include <cassert>
 
@@ -21,7 +20,7 @@ camera::camera() : m_state(CAMERA_STATE_ENABLE), m_priority(0.0f), m_renderer(nu
             m_perspective.far_z),
         m_projection);
 
-    m_parameter = render_device::instance().create_parameter(pipeline_parameter_camera);
+    m_parameter = render_device::instance().create_parameter(shader::camera);
 }
 
 camera::~camera()
@@ -38,11 +37,7 @@ void camera::set_perspective(float fov, float near_z, float far_z)
 
 void camera::set_position(const float3& position)
 {
-    m_parameter->set_uniform(
-        0,
-        &position,
-        sizeof(float3),
-        offsetof(pipeline_parameter_camera_data, position));
+    m_parameter->set_uniform(0, &position, sizeof(float3), offsetof(shader::camera_data, position));
 }
 
 void camera::set_view(const float4x4& view)
@@ -55,14 +50,13 @@ void camera::set_view(const float4x4& view)
     float4x4 view_projection;
     math::store(matrix::mul(v, p), view_projection);
 
-    m_parameter
-        ->set_uniform(0, &m_view, sizeof(float4x4), offsetof(pipeline_parameter_camera_data, view));
+    m_parameter->set_uniform(0, &m_view, sizeof(float4x4), offsetof(shader::camera_data, view));
 
     m_parameter->set_uniform(
         0,
         &view_projection,
         sizeof(float4x4),
-        offsetof(pipeline_parameter_camera_data, view_projection));
+        offsetof(shader::camera_data, view_projection));
 }
 
 void camera::set_skybox(rhi_texture* texture, rhi_sampler* sampler)
@@ -153,12 +147,12 @@ void camera::update_projection()
         0,
         &m_projection,
         sizeof(float4x4),
-        offsetof(pipeline_parameter_camera_data, projection));
+        offsetof(shader::camera_data, projection));
 
     m_parameter->set_uniform(
         0,
         &view_projection,
         sizeof(float4x4),
-        offsetof(pipeline_parameter_camera_data, view_projection));
+        offsetof(shader::camera_data, view_projection));
 }
 } // namespace violet

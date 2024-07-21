@@ -5,10 +5,8 @@
         "height": 800
     },
     "mmd viewer": {
-        "model2": "C:/Workspace/data/yanmiao/yanmiao.pmx",
-        "model": "C:/Workspace/data/Molinia/Molinia.pmx",
-        "model1": "C:/Workspace/data/Fenrir/Fenrir.pmx",
-        "motion": "C:/Workspace/data/test.vmd"
+        "model": "violet-assets/models/mmd/Molinia/Molinia.pmx",
+        "motion": "violet-assets/models/mmd/test.vmd"
     },
     "physics": {
         "tick": false

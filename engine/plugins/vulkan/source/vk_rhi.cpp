@@ -89,9 +89,16 @@ void vk_rhi::destroy_render_pass(rhi_render_pass* render_pass)
     delay_delete(render_pass);
 }
 
-rhi_shader* vk_rhi::create_shader(const char* file)
+rhi_shader* vk_rhi::create_shader(const rhi_shader_desc& desc)
 {
-    return new vk_shader(file, m_context->get_device());
+    if (desc.stage == RHI_SHADER_STAGE_VERTEX)
+        return new vk_vertex_shader(desc, m_context.get());
+    else if (desc.stage == RHI_SHADER_STAGE_FRAGMENT)
+        return new vk_fragment_shader(desc, m_context.get());
+    else if (desc.stage == RHI_SHADER_STAGE_COMPUTE)
+        return new vk_compute_shader(desc, m_context.get());
+    else
+        throw vk_exception("Invalid shader stage.");
 }
 
 void vk_rhi::destroy_shader(rhi_shader* shader)
@@ -101,7 +108,7 @@ void vk_rhi::destroy_shader(rhi_shader* shader)
 
 rhi_render_pipeline* vk_rhi::create_render_pipeline(const rhi_render_pipeline_desc& desc)
 {
-    return new vk_render_pipeline(desc, VkExtent2D{128, 128}, m_context.get());
+    return new vk_render_pipeline(desc, m_context.get());
 }
 
 void vk_rhi::destroy_render_pipeline(rhi_render_pipeline* render_pipeline)
@@ -151,7 +158,7 @@ void vk_rhi::destroy_sampler(rhi_sampler* sampler)
 
 rhi_buffer* vk_rhi::create_buffer(const rhi_buffer_desc& desc)
 {
-    if (desc.flags & RHI_BUFFER_FLAG_INDEX)
+    if (desc.flags & RHI_BUFFER_INDEX)
         return new vk_index_buffer(desc, m_context.get());
     else
         return new vk_buffer(desc, m_context.get());
@@ -167,29 +174,9 @@ rhi_texture* vk_rhi::create_texture(const rhi_texture_desc& desc)
     return new vk_texture(desc, m_context.get());
 }
 
-rhi_texture* vk_rhi::create_texture(
-    const void* data,
-    std::size_t size,
-    const rhi_texture_desc& desc)
+rhi_texture* vk_rhi::create_texture_view(const rhi_texture_view_desc& desc)
 {
-    return new vk_texture(data, size, desc, m_context.get());
-}
-
-rhi_texture* vk_rhi::create_texture(const char* file, const rhi_texture_desc& desc)
-{
-    return new vk_texture(file, desc, m_context.get());
-}
-
-rhi_texture* vk_rhi::create_texture(
-    const char* right,
-    const char* left,
-    const char* top,
-    const char* bottom,
-    const char* front,
-    const char* back,
-    const rhi_texture_desc& desc)
-{
-    return new vk_texture(right, left, top, bottom, front, back, desc, m_context.get());
+    return new vk_texture_view(desc, m_context.get());
 }
 
 void vk_rhi::destroy_texture(rhi_texture* texture)

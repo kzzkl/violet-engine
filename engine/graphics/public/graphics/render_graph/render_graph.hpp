@@ -21,16 +21,35 @@ public:
     render_graph(const render_graph&) = delete;
     ~render_graph();
 
-    template <RDGResource T, typename... Args>
-    T* add_resource(std::string_view name, Args&&... args)
-    {
-        auto resource = std::make_unique<T>(std::forward<Args>(args)...);
-        resource->m_name = name;
+    rdg_texture* add_texture(
+        std::string_view name,
+        rhi_texture* texture,
+        rhi_texture_layout initial_layout,
+        rhi_texture_layout final_layout);
 
-        T* result = resource.get();
-        m_resources.push_back(std::move(resource));
-        return result;
-    }
+    rdg_texture* add_texture(
+        std::string_view name,
+        const rhi_texture_desc& desc,
+        rhi_texture_layout initial_layout,
+        rhi_texture_layout final_layout);
+
+    rdg_texture* add_texture(
+        std::string_view name,
+        rhi_texture* texture,
+        std::uint32_t level,
+        std::uint32_t layer,
+        rhi_texture_layout initial_layout,
+        rhi_texture_layout final_layout);
+
+    rdg_texture* add_texture(
+        std::string_view name,
+        rdg_texture* texture,
+        std::uint32_t level,
+        std::uint32_t layer,
+        rhi_texture_layout initial_layout,
+        rhi_texture_layout final_layout);
+
+    rdg_buffer* add_buffer(std::string_view name, rhi_buffer* buffer);
 
     template <RDGPass T, typename... Args>
     T* add_pass(std::string_view name, Args&&... args)
@@ -55,6 +74,16 @@ public:
         return m_allocator->allocate_data<T>();
     }
 
+    rhi_parameter* allocate_parameter(const rhi_parameter_desc& desc)
+    {
+        return m_allocator->allocate_parameter(desc);
+    }
+
+    rhi_sampler* allocate_sampler(const rhi_sampler_desc& desc)
+    {
+        return m_allocator->get_sampler(desc);
+    }
+
 private:
     void dead_stripping();
     void merge_pass();
@@ -71,11 +100,18 @@ private:
         rdg_pass* end_pass;
         rhi_render_pass* render_pass;
         rhi_framebuffer* framebuffer;
+
+        std::size_t render_target_count;
     };
     std::vector<render_pass> m_render_passes;
 
     struct barrier
     {
+        rhi_pipeline_stage_flags src_stages;
+        rhi_pipeline_stage_flags dst_stages;
+
+        std::vector<rhi_texture_barrier> texture_barriers;
+        std::vector<rhi_buffer_barrier> buffer_barriers;
     };
     std::vector<barrier> m_barriers;
 

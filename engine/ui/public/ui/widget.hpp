@@ -13,7 +13,7 @@ using widget_extent = rect<float>;
 
 enum widget_state_flag : std::uint32_t
 {
-    WIDGET_STATE_FLAG_MOUSE_OVER = 1 << 0
+    WIDGET_STATE_MOUSE_OVER = 1 << 0
 };
 using widget_state_flags = std::uint32_t;
 

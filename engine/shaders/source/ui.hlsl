@@ -1,31 +1,23 @@
-struct violet_ui_material
-{
-    uint type;
-};
-ConstantBuffer<violet_ui_material> material : register(b0, space0);
-Texture2D ui_texture : register(t0, space0);
-
-struct violet_ui_offset
-{
-    float4 offset[1024];
-};
-ConstantBuffer<violet_ui_offset> offset : register(b0, space1);
-
 struct violet_ui_mvp
 {
     float4x4 mvp;
 };
-ConstantBuffer<violet_ui_mvp> mvp : register(b0, space2);
+ConstantBuffer<violet_ui_mvp> mvp : register(b0, space0);
 
-SamplerState image_sampler : register(s0);
-SamplerState text_sampler : register(s7);
+struct violet_ui_material
+{
+    uint type;
+};
+ConstantBuffer<violet_ui_material> material : register(b0, space1);
+Texture2D<float4> material_texture : register(t1, space1);
+SamplerState material_texture_sampler : register(s1, space1);
 
 struct vs_in
 {
     float2 position : POSITION;
-    float2 uv : UV;
     float4 color : COLOR;
-    uint offset_index : OFFSET_INDEX;
+    float2 uv : UV;
+    // uint offset_index : OFFSET_INDEX;
 };
 
 struct vs_out
@@ -35,40 +27,35 @@ struct vs_out
     float4 color : COLOR;
 };
 
-vs_out vs_main(vs_in vin)
+vs_out vs_main(vs_in input)
 {
-    float4 position = offset.offset[vin.offset_index];
-    position.xy += vin.position;
+    // float4 position = offset.offset[input.offset_index];
+    // position.xy += input.position;
 
-    vs_out result;
-    result.position = mul(position, mvp.mvp);
-    result.uv = vin.uv;
-    result.color = vin.color;
+    float4 position = float4(input.position, 0.0, 1.0);
 
-    return result;
+    vs_out output;
+    output.position = mul(mvp.mvp, position);
+    output.uv = input.uv;
+    output.color = input.color;
+
+    return output;
 }
 
-float4 ps_main(vs_out pin) : SV_TARGET
+float4 fs_main(vs_out input) : SV_TARGET
 {
-    if (material.type == 0)
+    if (material.type == 2)
     {
-        return pin.color;
+        float4 texture_color = material_texture.Sample(material_texture_sampler, input.uv);
+        return input.color * texture_color;
     }
-    else if (material.type == 1) // text
+    else if (material.type == 1)
     {
-        float4 color = ui_texture.Sample(text_sampler, pin.uv);
-
-        // Gamma correct
-        color = pow(color, 1.0f / 2.2f);
-        return float4(pin.color.rgb, color.r * pin.color.a);
-    }
-    else if (material.type == 2) // image 
-    {
-        float4 color = ui_texture.Sample(image_sampler, pin.uv);
-        return float4(color.rgb, 1.0f);
+        float alpha = material_texture.Sample(material_texture_sampler, input.uv).r;
+        return float4(input.color.rgb, alpha);
     }
     else
     {
-        return float4(0.0f, 0.0f, 0.0f, 0.0f);
+        return input.color;
     }
 }

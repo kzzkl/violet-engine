@@ -178,8 +178,8 @@ void vk_command::dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z)
 }
 
 void vk_command::set_pipeline_barrier(
-    rhi_pipeline_stage_flags src_stage,
-    rhi_pipeline_stage_flags dst_stage,
+    rhi_pipeline_stage_flags src_stages,
+    rhi_pipeline_stage_flags dst_stages,
     const rhi_buffer_barrier* const buffer_barriers,
     std::size_t buffer_barrier_count,
     const rhi_texture_barrier* const texture_barriers,
@@ -211,8 +211,8 @@ void vk_command::set_pipeline_barrier(
 
     vkCmdPipelineBarrier(
         m_command_buffer,
-        vk_util::map_pipeline_stage_flags(src_stage),
-        vk_util::map_pipeline_stage_flags(dst_stage),
+        vk_util::map_pipeline_stage_flags(src_stages),
+        vk_util::map_pipeline_stage_flags(dst_stages),
         0,
         0,
         nullptr,
@@ -224,21 +224,25 @@ void vk_command::set_pipeline_barrier(
 
 void vk_command::copy_texture(
     rhi_texture* src,
-    const rhi_resource_region& src_region,
+    const rhi_texture_region& src_region,
     rhi_texture* dst,
-    const rhi_resource_region& dst_region)
+    const rhi_texture_region& dst_region)
 {
+    assert(
+        src_region.extent.width == dst_region.extent.width &&
+        src_region.extent.height == dst_region.extent.height);
+
     VkImageCopy image_copy = {};
-    image_copy.extent = {src->get_extent().width, src->get_extent().height, 1};
+    image_copy.extent = {src_region.extent.width, src_region.extent.height, 1};
 
     image_copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_copy.srcSubresource.mipLevel = src_region.mip_level;
-    image_copy.srcSubresource.baseArrayLayer = src_region.layer_start;
+    image_copy.srcSubresource.mipLevel = src_region.level;
+    image_copy.srcSubresource.baseArrayLayer = src_region.layer;
     image_copy.srcSubresource.layerCount = src_region.layer_count;
 
     image_copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_copy.dstSubresource.mipLevel = dst_region.mip_level;
-    image_copy.dstSubresource.baseArrayLayer = dst_region.layer_start;
+    image_copy.dstSubresource.mipLevel = dst_region.level;
+    image_copy.dstSubresource.baseArrayLayer = dst_region.layer;
     image_copy.dstSubresource.layerCount = dst_region.layer_count;
 
     vk_texture* src_image = static_cast<vk_texture*>(src);
@@ -248,7 +252,7 @@ void vk_command::copy_texture(
         m_command_buffer,
         src_image->get_image(),
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        src_image->get_image(),
+        dst_image->get_image(),
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1,
         &image_copy);

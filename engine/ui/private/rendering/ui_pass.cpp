@@ -15,7 +15,7 @@ ui_pass::ui_pass()
     blend.alpha_op = RHI_BLEND_OP_ADD;
     // add_color(reference_render_target, RHI_TEXTURE_LAYOUT_RENDER_TARGET, blend);
 
-    // set_shader("engine/shaders/ui.vert.spv", "engine/shaders/ui.frag.spv");
+    // set_shader("engine/shaders/ui.vs", "engine/shaders/ui.fs");
 
     set_input_layout({
         {"position", RHI_FORMAT_R32G32_FLOAT  },
@@ -29,8 +29,8 @@ ui_pass::ui_pass()
     // set_cull_mode(RHI_CULL_MODE_NONE);
 
     // set_parameter_layout({
-    //     {ui_painter::get_mvp_parameter_layout(),      RDG_PASS_PARAMETER_FLAG_NONE},
-    //     {ui_painter::get_material_parameter_layout(), RDG_PASS_PARAMETER_FLAG_NONE}
+    //     {ui_painter::get_mvp_parameter_layout(),      RDG_PASS_PARAMETER_NONE},
+    //     {ui_painter::get_material_parameter_layout(), RDG_PASS_PARAMETER_NONE}
     // });
 }
 

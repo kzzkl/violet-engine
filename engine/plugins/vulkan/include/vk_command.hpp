@@ -42,8 +42,8 @@ public:
     virtual void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) override;
 
     virtual void set_pipeline_barrier(
-        rhi_pipeline_stage_flags src_stage,
-        rhi_pipeline_stage_flags dst_stage,
+        rhi_pipeline_stage_flags src_stages,
+        rhi_pipeline_stage_flags dst_stages,
         const rhi_buffer_barrier* const buffer_barriers,
         std::size_t buffer_barrier_count,
         const rhi_texture_barrier* const texture_barriers,
@@ -51,9 +51,9 @@ public:
 
     virtual void copy_texture(
         rhi_texture* src,
-        const rhi_resource_region& src_region,
+        const rhi_texture_region& src_region,
         rhi_texture* dst,
-        const rhi_resource_region& dst_region) override;
+        const rhi_texture_region& dst_region) override;
 
     void reset();
 

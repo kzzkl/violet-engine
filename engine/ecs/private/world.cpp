@@ -90,7 +90,7 @@ void world::on_entity_move(
     ++m_entity_infos[entity_index].component_version;
 }
 
-archetype* world::make_archetype(const std::vector<component_id>& components)
+archetype* world::make_archetype(std::span<const component_id> components)
 {
     auto result = std::make_unique<archetype>(
         components,

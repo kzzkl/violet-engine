@@ -8,13 +8,13 @@ class math
 {
 public:
     static constexpr float PI = 3.141592654f;
-    static constexpr float PI_2PI = 2.0f * PI;
-    static constexpr float PI_1DIVPI = 1.0f / PI;
-    static constexpr float PI_1DIV2PI = 1.0f / PI_2PI;
-    static constexpr float PI_PIDIV2 = PI / 2.0f;
-    static constexpr float PI_PIDIV4 = PI / 4.0f;
-    static constexpr float PI_PIDIV180 = PI / 180.0f;
-    static constexpr float PI_180DIVPI = 180.0f / PI;
+    static constexpr float TWO_PI = 2.0f * PI;
+    static constexpr float INV_PI = 1.0f / PI;
+    static constexpr float INV_TWO_PI = 1.0f / TWO_PI;
+    static constexpr float HALF_PI = PI / 2.0f;
+    static constexpr float QUARTER_PI = PI / 4.0f;
+    static constexpr float DEG_TO_RAD = PI / 180.0f;
+    static constexpr float RAD_TO_DEG = 180.0f / PI;
 
 #ifdef VIOLET_USE_SIMD
     static constexpr simd::convert<float> IDENTITY_ROW_0 = {1.0f, 0.0f, 0.0f, 0.0f};
@@ -209,31 +209,31 @@ public:
 public:
     [[nodiscard]] static inline float to_radians(float degrees)
     {
-        return degrees * math::PI_PIDIV180;
+        return degrees * math::DEG_TO_RAD;
     }
 
     [[nodiscard]] static inline float to_degrees(float radians)
     {
-        return radians * math::PI_180DIVPI;
+        return radians * math::RAD_TO_DEG;
     }
 
     [[nodiscard]] static inline std::pair<float, float> sin_cos(float radians)
     {
-        float temp = radians * math::PI_1DIV2PI;
+        float temp = radians * math::INV_TWO_PI;
         if (temp > 0.0f)
             temp = static_cast<float>(static_cast<int>(temp + 0.5f));
         else
             temp = static_cast<float>(static_cast<int>(temp - 0.5f));
 
-        float x = radians - math::PI_2PI * temp;
+        float x = radians - math::TWO_PI * temp;
 
         float sign = 1.0f;
-        if (x > math::PI_PIDIV2)
+        if (x > math::HALF_PI)
         {
             x = math::PI - x;
             sign = -1.0f;
         }
-        else if (x < -math::PI_PIDIV2)
+        else if (x < -math::HALF_PI)
         {
             x = -math::PI - x;
             sign = -1.0f;

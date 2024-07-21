@@ -36,9 +36,7 @@ public:
     template <typename Functor>
     void each(Functor&& functor)
     {
-        const std::vector<archetype*>& archetypes = sync_archetype_list();
-
-        for (archetype* archetype : archetypes)
+        for (auto archetype : sync_archetype_list())
         {
             std::tuple<Components*...> components;
             for (std::size_t i = 0; i < archetype->size(); ++i)
@@ -50,7 +48,8 @@ public:
                 }
 
                 std::apply(
-                    [&](auto&&... args) {
+                    [&](auto&&... args)
+                    {
                         functor(*args...);
                         (++args, ...);
                     },

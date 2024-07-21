@@ -16,5 +16,12 @@ public:
         render_graph& graph,
         const render_context& context,
         const render_camera& camera) = 0;
+
+protected:
+    template <typename T, typename... Args>
+    void add_pass(Args&&... args)
+    {
+        T::render(std::forward<Args>(args)...);
+    }
 };
 } // namespace violet

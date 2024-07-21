@@ -16,7 +16,7 @@ ui_painter::ui_painter(font* default_font, render_device* device)
 
     rhi_buffer_desc vertex_buffer_desc = {};
     vertex_buffer_desc.data = nullptr;
-    vertex_buffer_desc.flags = RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_HOST_VISIBLE;
+    vertex_buffer_desc.flags = RHI_BUFFER_VERTEX | RHI_BUFFER_HOST_VISIBLE;
 
     // position
     vertex_buffer_desc.size = MAX_UI_VERTEX_COUNT * sizeof(float2);
@@ -33,7 +33,7 @@ ui_painter::ui_painter(font* default_font, render_device* device)
     // index
     rhi_buffer_desc index_buffer_desc = {};
     index_buffer_desc.data = nullptr;
-    index_buffer_desc.flags = RHI_BUFFER_FLAG_INDEX | RHI_BUFFER_FLAG_HOST_VISIBLE;
+    index_buffer_desc.flags = RHI_BUFFER_INDEX | RHI_BUFFER_HOST_VISIBLE;
     index_buffer_desc.size = MAX_UI_INDEX_COUNT * sizeof(std::uint32_t);
     index_buffer_desc.index.size = sizeof(std::uint32_t);
 
@@ -120,7 +120,7 @@ void ui_painter::draw_line(const float2& start, const float2& end, float thickne
     draw_path({start, end}, thickness);
 }
 
-void ui_painter::draw_path(const std::vector<float2>& points, float thickness)
+void ui_painter::draw_path(std::span<const float2> points, float thickness)
 {
     if (points.size() < 2)
         return;
@@ -180,10 +180,10 @@ void ui_painter::draw_path(const std::vector<float2>& points, float thickness)
 }
 
 void ui_painter::draw_mesh(
-    const std::vector<float2>& position,
-    const std::vector<std::uint32_t>& color,
-    const std::vector<float2>& uv,
-    const std::vector<std::uint32_t>& indices,
+    std::span<const float2> position,
+    std::span<const std::uint32_t> color,
+    std::span<const float2> uv,
+    std::span<const std::uint32_t> indices,
     rhi_texture* texture)
 {
     ui_draw_group& group = *m_group_stack.top();

@@ -60,7 +60,7 @@ vs_out vs_main(vs_in input)
     return output;
 }
 
-float4 ps_main(vs_out input) : SV_TARGET
+float4 fs_main(vs_out input) : SV_TARGET
 {
     float4 color = tex.Sample(tex_sampler, input. uv);
     float3 world_normal = normalize(input.world_normal);

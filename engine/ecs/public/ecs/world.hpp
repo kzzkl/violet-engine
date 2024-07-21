@@ -223,7 +223,7 @@ private:
         return make_archetype(components);
     }
 
-    archetype* make_archetype(const std::vector<component_id>& components);
+    archetype* make_archetype(std::span<const component_id> components);
 
     std::queue<std::uint32_t> m_free_entity;
 

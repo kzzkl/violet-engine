@@ -6,8 +6,8 @@ namespace violet
 {
 enum light_type
 {
-    LIGHT_TYPE_DIRECTIONAL,
-    LIGHT_TYPE_POINT,
+    LIGHT_DIRECTIONAL,
+    LIGHT_POINT,
 };
 
 struct light

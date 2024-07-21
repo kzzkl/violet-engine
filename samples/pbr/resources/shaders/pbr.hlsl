@@ -1,6 +1,7 @@
 #include "violet_mesh.hlsl"
 #include "violet_camera.hlsl"
 #include "violet_light.hlsl"
+#include "violet_define.hlsl"
 
 struct vs_in
 {
@@ -43,7 +44,6 @@ vs_out vs_main(vs_in input)
     return output;
 }
 
-static const float PI = 3.141592;
 static const float Epsilon = 0.00001;
 
 float ndf_ggx(float Lh_cos, float roughness)
@@ -72,7 +72,7 @@ float geometry_schlick_ggx(float Lo_cos, float Li_cos, float roughness)
     return Gi * Go;
 }
 
-float4 ps_main(vs_out input) : SV_TARGET
+float4 fs_main(vs_out input) : SV_TARGET
 {
     float3 Lo = normalize(camera.position - input.world_position);
     float3 N = normalize(input.world_normal);

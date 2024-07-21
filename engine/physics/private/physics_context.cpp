@@ -46,8 +46,8 @@ phy_ptr<phy_collision_shape> physics_context::create_collision_shape(
 }
 
 phy_ptr<phy_collision_shape> physics_context::create_collision_shape(
-    const std::vector<phy_collision_shape*>& shapes,
-    const std::vector<float4x4>& offset)
+    std::span<phy_collision_shape*> shapes,
+    std::span<float4x4> offset)
 {
     return phy_ptr<phy_collision_shape>(
         m_plugin->create_collision_shape(shapes.data(), offset.data(), shapes.size()),

@@ -14,7 +14,6 @@ struct vk_image_data
     std::uint32_t height;
 
     std::uint32_t channels;
-    VkFormat format;
 
     std::vector<char> pixels;
 };
@@ -24,13 +23,17 @@ class vk_image_loader
 public:
     bool load(std::string_view file);
 
-    const vk_image_data& get_mipmap(std::size_t level) const { return m_mipmap[level]; }
-    std::size_t get_mipmap_count() const noexcept { return m_mipmap.size(); }
+    const vk_image_data& get_mipmap(std::size_t level) const { return m_mipmaps[level]; }
+    std::size_t get_mipmap_count() const noexcept { return m_mipmaps.size(); }
+
+    VkFormat get_format() const noexcept { return m_format; }
 
 private:
     bool load_dds(std::string_view file);
+    bool load_hdr(std::string_view file);
     bool load_other(std::string_view file);
 
-    std::vector<vk_image_data> m_mipmap;
+    std::vector<vk_image_data> m_mipmaps;
+    VkFormat m_format{VK_FORMAT_UNDEFINED};
 };
 } // namespace violet::vk

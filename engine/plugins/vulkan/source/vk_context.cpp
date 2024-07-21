@@ -23,8 +23,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
 }
 
 bool check_extension_support(
-    const std::vector<const char*>& desired_extensions,
-    const std::vector<VkExtensionProperties>& available_extensions)
+    std::span<const char*> desired_extensions,
+    std::span<VkExtensionProperties> available_extensions)
 {
     for (const char* extension : desired_extensions)
     {
@@ -161,8 +161,8 @@ void vk_context::setup_present_queue(VkSurfaceKHR surface)
 }
 
 bool vk_context::initialize_instance(
-    const std::vector<const char*>& desired_layers,
-    const std::vector<const char*>& desired_extensions)
+    std::span<const char*> desired_layers,
+    std::span<const char*> desired_extensions)
 {
     std::uint32_t available_layer_count = 0;
     vk_check(vkEnumerateInstanceLayerProperties(&available_layer_count, nullptr));
@@ -243,7 +243,7 @@ bool vk_context::initialize_instance(
     return true;
 }
 
-bool vk_context::initialize_physical_device(const std::vector<const char*>& desired_extensions)
+bool vk_context::initialize_physical_device(std::span<const char*> desired_extensions)
 {
     std::uint32_t devices_count = 0;
     vk_check(vkEnumeratePhysicalDevices(m_instance, &devices_count, nullptr));
@@ -297,7 +297,7 @@ bool vk_context::initialize_physical_device(const std::vector<const char*>& desi
     return true;
 }
 
-void vk_context::initialize_logic_device(const std::vector<const char*>& enabled_extensions)
+void vk_context::initialize_logic_device(std::span<const char*> enabled_extensions)
 {
     std::uint32_t queue_family_count = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(m_physical_device, &queue_family_count, nullptr);

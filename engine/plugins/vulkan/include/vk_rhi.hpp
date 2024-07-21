@@ -32,6 +32,11 @@ public:
 
     virtual rhi_fence* get_in_flight_fence() override;
 
+    virtual std::size_t get_frame_count() const noexcept override
+    {
+        return m_context->get_frame_count();
+    }
+
     virtual std::size_t get_frame_resource_count() const noexcept override
     {
         return m_context->get_frame_resource_count();
@@ -59,7 +64,7 @@ public:
     virtual rhi_render_pass* create_render_pass(const rhi_render_pass_desc& desc) override;
     virtual void destroy_render_pass(rhi_render_pass* render_pass) override;
 
-    virtual rhi_shader* create_shader(const char* file) override;
+    virtual rhi_shader* create_shader(const rhi_shader_desc& desc) override;
     virtual void destroy_shader(rhi_shader* shader) override;
 
     virtual rhi_render_pipeline* create_render_pipeline(
@@ -83,20 +88,7 @@ public:
     virtual void destroy_buffer(rhi_buffer* buffer) override;
 
     virtual rhi_texture* create_texture(const rhi_texture_desc& desc) override;
-    virtual rhi_texture* create_texture(
-        const void* data,
-        std::size_t size,
-        const rhi_texture_desc& desc) override;
-    virtual rhi_texture* create_texture(const char* file, const rhi_texture_desc& desc) override;
-    virtual rhi_texture* create_texture(
-        const char* right,
-        const char* left,
-        const char* top,
-        const char* bottom,
-        const char* front,
-        const char* back,
-        const rhi_texture_desc& desc) override;
-
+    virtual rhi_texture* create_texture_view(const rhi_texture_view_desc& desc) override;
     virtual void destroy_texture(rhi_texture* texture) override;
 
     virtual rhi_swapchain* create_swapchain(const rhi_swapchain_desc& desc) override;

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cassert>
 #include <fstream>
+#include <span>
 
 namespace violet::vk
 {
@@ -58,29 +59,29 @@ std::uint32_t get_vertex_attribute_stride(VkFormat format) noexcept
 
 vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_context* context)
     : m_layout(VK_NULL_HANDLE),
-      m_context(context)
+      m_context(context),
+      m_parameter_bindings(desc.binding_count)
 {
     std::vector<VkDescriptorSetLayoutBinding> bindings;
 
-    m_parameter_bindings.resize(desc.binding_count);
     std::size_t uniform_buffer_count = 0;
     std::size_t storage_buffer_count = 0;
     std::size_t image_count = 0;
 
-    for (std::size_t i = 0; i < desc.binding_count; ++i)
+    for (std::size_t i = 0; i < m_parameter_bindings.size(); ++i)
     {
         VkDescriptorSetLayoutBinding binding = {};
         binding.binding = static_cast<std::uint32_t>(i);
-        if (desc.bindings[i].stage & RHI_SHADER_STAGE_FLAG_VERTEX)
+        if (desc.bindings[i].stages & RHI_SHADER_STAGE_VERTEX)
             binding.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
-        if (desc.bindings[i].stage & RHI_SHADER_STAGE_FLAG_FRAGMENT)
+        if (desc.bindings[i].stages & RHI_SHADER_STAGE_FRAGMENT)
             binding.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
-        if (desc.bindings[i].stage & RHI_SHADER_STAGE_FLAG_COMPUTE)
+        if (desc.bindings[i].stages & RHI_SHADER_STAGE_COMPUTE)
             binding.stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
 
         switch (desc.bindings[i].type)
         {
-        case RHI_PARAMETER_TYPE_UNIFORM: {
+        case RHI_PARAMETER_UNIFORM: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             binding.descriptorCount = 1;
             binding.pImmutableSamplers = nullptr;
@@ -97,7 +98,7 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
             ++uniform_buffer_count;
             break;
         }
-        case RHI_PARAMETER_TYPE_STORAGE: {
+        case RHI_PARAMETER_STORAGE: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             binding.descriptorCount = 1;
             binding.pImmutableSamplers = nullptr;
@@ -108,7 +109,7 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
             ++storage_buffer_count;
             break;
         }
-        case RHI_PARAMETER_TYPE_TEXTURE: {
+        case RHI_PARAMETER_TEXTURE: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             binding.descriptorCount = 1;
             binding.pImmutableSamplers = nullptr;
@@ -144,19 +145,20 @@ vk_parameter_layout::~vk_parameter_layout()
 }
 
 vk_pipeline_layout::vk_pipeline_layout(
-    const rhi_parameter_desc* parameters,
-    std::size_t parameter_count,
+    std::span<vk_parameter_layout*> parameter_layouts,
     vk_context* context)
     : m_layout(VK_NULL_HANDLE),
       m_context(context)
 {
-    std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
-    for (std::size_t i = 0; i < parameter_count; ++i)
-    {
-        vk_parameter_layout* layout =
-            context->get_layout_manager()->get_parameter_layout(parameters[i]);
-        descriptor_set_layouts.push_back(layout->get_layout());
-    }
+    std::vector<VkDescriptorSetLayout> descriptor_set_layouts(parameter_layouts.size());
+    std::transform(
+        parameter_layouts.begin(),
+        parameter_layouts.end(),
+        descriptor_set_layouts.begin(),
+        [](vk_parameter_layout* parameter_layout)
+        {
+            return parameter_layout->get_layout();
+        });
 
     VkPipelineLayoutCreateInfo layout_info = {};
     layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -192,18 +194,21 @@ vk_parameter_layout* vk_layout_manager::get_parameter_layout(const rhi_parameter
 }
 
 vk_pipeline_layout* vk_layout_manager::get_pipeline_layout(
-    const rhi_parameter_desc* parameters,
-    std::size_t parameter_count)
+    std::span<vk_parameter_layout*> parameter_layouts)
 {
     std::uint64_t hash = 0;
-    for (std::size_t i = 0; i < parameter_count; ++i)
-        hash::combine(hash, hash::city_hash_64(&parameters[i], sizeof(rhi_parameter_desc)));
+    for (auto& parameter_layout : parameter_layouts)
+    {
+        hash = hash::combine(
+            hash,
+            hash::city_hash_64(&parameter_layout, sizeof(vk_parameter_layout*)));
+    }
 
     auto iter = m_pipeline_layouts.find(hash);
     if (iter != m_pipeline_layouts.end())
         return iter->second.get();
 
-    auto layout = std::make_unique<vk_pipeline_layout>(parameters, parameter_count, m_context);
+    auto layout = std::make_unique<vk_pipeline_layout>(parameter_layouts, m_context);
     vk_pipeline_layout* result = layout.get();
     m_pipeline_layouts[hash] = std::move(layout);
     return result;
@@ -221,7 +226,7 @@ vk_parameter::vk_parameter(const rhi_parameter_desc& desc, vk_context* context) 
             rhi_buffer_desc uniform_buffer_desc = {};
             uniform_buffer_desc.size =
                 parameter_binding.uniform_buffer.size * m_context->get_frame_resource_count();
-            uniform_buffer_desc.flags = RHI_BUFFER_FLAG_UNIFORM | RHI_BUFFER_FLAG_HOST_VISIBLE;
+            uniform_buffer_desc.flags = RHI_BUFFER_UNIFORM | RHI_BUFFER_HOST_VISIBLE;
 
             m_uniform_buffers.push_back(
                 std::make_unique<vk_buffer>(uniform_buffer_desc, m_context));
@@ -458,9 +463,11 @@ void vk_parameter::mark_dirty(std::size_t descriptor_index)
     current_frame_resource.update_count = previous_frame_resource.update_count + 1;
 }
 
-vk_shader::vk_shader(const char* path, VkDevice device) : m_module(VK_NULL_HANDLE), m_device(device)
+vk_shader::vk_shader(const rhi_shader_desc& desc, vk_context* context)
+    : m_module(VK_NULL_HANDLE),
+      m_context(context)
 {
-    std::ifstream fin(path, std::ios::binary);
+    std::ifstream fin(desc.path, std::ios::binary);
     if (!fin.is_open())
         throw vk_exception("Failed to open file!");
 
@@ -477,49 +484,74 @@ vk_shader::vk_shader(const char* path, VkDevice device) : m_module(VK_NULL_HANDL
     shader_module_info.pCode = reinterpret_cast<std::uint32_t*>(spirv.data());
     shader_module_info.codeSize = spirv.size();
 
-    vk_check(vkCreateShaderModule(device, &shader_module_info, nullptr, &m_module));
+    vk_check(
+        vkCreateShaderModule(m_context->get_device(), &shader_module_info, nullptr, &m_module));
+
+    vk_layout_manager* layout_manager = m_context->get_layout_manager();
+    for (std::size_t i = 0; i < desc.parameter_count; ++i)
+    {
+        parameter parameter;
+        parameter.space = desc.parameters[i].space;
+        parameter.layout = layout_manager->get_parameter_layout(desc.parameters[i].desc);
+        m_parameters.push_back(parameter);
+    }
 }
 
 vk_shader::~vk_shader()
 {
-    vkDestroyShaderModule(m_device, m_module, nullptr);
+    vkDestroyShaderModule(m_context->get_device(), m_module, nullptr);
 }
 
-vk_render_pipeline::vk_render_pipeline(
-    const rhi_render_pipeline_desc& desc,
-    VkExtent2D extent,
-    vk_context* context)
+vk_vertex_shader::vk_vertex_shader(const rhi_shader_desc& desc, vk_context* context)
+    : vk_shader(desc, context)
+{
+    m_vertex_attributes.reserve(desc.vertex.vertex_attribute_count);
+    for (std::size_t i = 0; i < desc.vertex.vertex_attribute_count; ++i)
+    {
+        vertex_attribute attribute;
+        attribute.name = desc.vertex.vertex_attributes[i].name;
+        attribute.format = desc.vertex.vertex_attributes[i].format;
+        m_vertex_attributes.push_back(attribute);
+    }
+}
+
+vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_context* context)
     : m_pipeline(VK_NULL_HANDLE),
       m_pipeline_layout(VK_NULL_HANDLE),
       m_context(context)
 {
-    vk_shader* vertex_shader = static_cast<vk_shader*>(desc.vertex_shader);
-    vk_shader* fragment_shader = static_cast<vk_shader*>(desc.fragment_shader);
+    vk_vertex_shader* vertex_shader = static_cast<vk_vertex_shader*>(desc.vertex_shader);
+    vk_fragment_shader* fragment_shader = static_cast<vk_fragment_shader*>(desc.fragment_shader);
 
-    VkPipelineShaderStageCreateInfo vert_shader_stage_info = {};
-    vert_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vert_shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vert_shader_stage_info.module = vertex_shader->get_module();
-    vert_shader_stage_info.pName = "vs_main";
+    std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
 
-    VkPipelineShaderStageCreateInfo frag_shader_stage_info = {};
-    frag_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    frag_shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    frag_shader_stage_info.module = fragment_shader->get_module();
-    frag_shader_stage_info.pName = "ps_main";
+    VkPipelineShaderStageCreateInfo vertex_shader_stage_info = {};
+    vertex_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertex_shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertex_shader_stage_info.module = vertex_shader->get_module();
+    vertex_shader_stage_info.pName = "vs_main";
+    shader_stages.push_back(vertex_shader_stage_info);
 
-    VkPipelineShaderStageCreateInfo shader_stage_infos[] = {
-        vert_shader_stage_info,
-        frag_shader_stage_info};
+    if (fragment_shader != nullptr)
+    {
+        VkPipelineShaderStageCreateInfo fragment_shader_stage_info = {};
+        fragment_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        fragment_shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        fragment_shader_stage_info.module = fragment_shader->get_module();
+        fragment_shader_stage_info.pName = "fs_main";
+        shader_stages.push_back(fragment_shader_stage_info);
+    }
 
     std::vector<VkVertexInputBindingDescription> binding_descriptions;
     std::vector<VkVertexInputAttributeDescription> attribute_descriptions;
-    for (std::size_t i = 0; i < desc.input.vertex_attribute_count; ++i)
+
+    auto& vertex_attributes = vertex_shader->get_vertex_attributes();
+    for (std::uint32_t i = 0; i < vertex_attributes.size(); ++i)
     {
-        VkFormat format = vk_util::map_format(desc.input.vertex_attributes[i].format);
+        VkFormat format = vk_util::map_format(vertex_attributes[i].format);
 
         VkVertexInputBindingDescription binding = {};
-        binding.binding = static_cast<std::uint32_t>(i);
+        binding.binding = i;
         binding.stride = get_vertex_attribute_stride(format);
         binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         binding_descriptions.push_back(binding);
@@ -557,15 +589,13 @@ vk_render_pipeline::vk_render_pipeline(
 
     VkViewport viewport = {};
     viewport.x = 0.0f;
-    viewport.y = extent.height;
-    viewport.width = extent.width;
-    viewport.height = -extent.height;
+    viewport.y = 0.0f;
+    viewport.width = 0.0f;
+    viewport.height = 0.0f;
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
     VkRect2D scissor = {};
-    scissor.offset = {0, 0};
-    scissor.extent = extent;
 
     VkPipelineViewportStateCreateInfo viewport_info = {};
     viewport_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -644,9 +674,12 @@ vk_render_pipeline::vk_render_pipeline(
     depth_stencil_state_info.front = {};
     depth_stencil_state_info.back = {};
 
-    std::vector<VkPipelineColorBlendAttachmentState> color_blend_attachments(
-        desc.blend.attachment_count);
-    for (std::size_t i = 0; i < desc.blend.attachment_count; ++i)
+    vk_render_pass* render_pass = static_cast<vk_render_pass*>(desc.render_pass);
+
+    std::size_t blend_count =
+        render_pass->get_subpass_info(desc.render_subpass_index).render_target_count;
+    std::vector<VkPipelineColorBlendAttachmentState> color_blend_attachments(blend_count);
+    for (std::size_t i = 0; i < blend_count; ++i)
     {
         color_blend_attachments[i].colorWriteMask =
             VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
@@ -679,15 +712,24 @@ vk_render_pipeline::vk_render_pipeline(
     color_blend_info.blendConstants[2] = 0.0f;
     color_blend_info.blendConstants[3] = 0.0f;
 
-    vk_layout_manager* layout_manager = m_context->get_layout_manager();
-    std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
-    for (std::size_t i = 0; i < desc.parameter_count; ++i)
+    std::vector<vk_parameter_layout*> parameter_layouts;
+    for (auto& parameter : vertex_shader->get_parameters())
     {
-        vk_parameter_layout* layout = layout_manager->get_parameter_layout(desc.parameters[i]);
-        descriptor_set_layouts.push_back(layout->get_layout());
+        if (parameter_layouts.size() <= parameter.space)
+            parameter_layouts.resize(parameter.space + 1);
+        parameter_layouts[parameter.space] = parameter.layout;
     }
 
-    m_pipeline_layout = layout_manager->get_pipeline_layout(desc.parameters, desc.parameter_count);
+    if (fragment_shader != nullptr)
+    {
+        for (auto& parameter : fragment_shader->get_parameters())
+        {
+            if (parameter_layouts.size() <= parameter.space)
+                parameter_layouts.resize(parameter.space + 1);
+            parameter_layouts[parameter.space] = parameter.layout;
+        }
+    }
+    m_pipeline_layout = m_context->get_layout_manager()->get_pipeline_layout(parameter_layouts);
 
     std::vector<VkDynamicState> dynamic_state = {
         VK_DYNAMIC_STATE_VIEWPORT,
@@ -702,8 +744,8 @@ vk_render_pipeline::vk_render_pipeline(
 
     VkGraphicsPipelineCreateInfo pipeline_info = {};
     pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipeline_info.stageCount = 2;
-    pipeline_info.pStages = shader_stage_infos;
+    pipeline_info.pStages = shader_stages.data();
+    pipeline_info.stageCount = static_cast<std::uint32_t>(shader_stages.size());
     pipeline_info.pVertexInputState = &vertex_input_state_info;
     pipeline_info.pInputAssemblyState = &input_assembly_state_info;
     pipeline_info.pViewportState = &viewport_info;
@@ -712,7 +754,7 @@ vk_render_pipeline::vk_render_pipeline(
     pipeline_info.pColorBlendState = &color_blend_info;
     pipeline_info.pDynamicState = &dynamic_state_info;
     pipeline_info.layout = m_pipeline_layout->get_layout();
-    pipeline_info.renderPass = static_cast<vk_render_pass*>(desc.render_pass)->get_render_pass();
+    pipeline_info.renderPass = render_pass->get_render_pass();
     pipeline_info.subpass = static_cast<std::uint32_t>(desc.render_subpass_index);
     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
     pipeline_info.pDepthStencilState = &depth_stencil_state_info;
@@ -736,27 +778,28 @@ vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, 
       m_pipeline_layout(VK_NULL_HANDLE),
       m_context(context)
 {
-    VkPipelineShaderStageCreateInfo shader_stage_info = {};
-    shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    shader_stage_info.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-    shader_stage_info.module = static_cast<vk_shader*>(desc.compute_shader)->get_module();
-    shader_stage_info.pName = "cs_main";
+    vk_compute_shader* compute_shader = static_cast<vk_compute_shader*>(desc.compute_shader);
 
-    vk_layout_manager* layout_manager = m_context->get_layout_manager();
-    std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
-    for (std::size_t i = 0; i < desc.parameter_count; ++i)
+    VkPipelineShaderStageCreateInfo compute_shader_stage_info = {};
+    compute_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    compute_shader_stage_info.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    compute_shader_stage_info.module = static_cast<vk_shader*>(desc.compute_shader)->get_module();
+    compute_shader_stage_info.pName = "cs_main";
+
+    std::vector<vk_parameter_layout*> parameter_layouts;
+    for (auto& parameter : compute_shader->get_parameters())
     {
-        vk_parameter_layout* layout = layout_manager->get_parameter_layout(desc.parameters[i]);
-        descriptor_set_layouts.push_back(layout->get_layout());
+        if (parameter_layouts.size() <= parameter.space)
+            parameter_layouts.resize(parameter.space + 1);
+        parameter_layouts[parameter.space] = parameter.layout;
     }
-
-    m_pipeline_layout = layout_manager->get_pipeline_layout(desc.parameters, desc.parameter_count);
+    m_pipeline_layout = m_context->get_layout_manager()->get_pipeline_layout(parameter_layouts);
 
     VkComputePipelineCreateInfo pipeline_info = {};
     pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
     pipeline_info.basePipelineIndex = -1;
-    pipeline_info.stage = shader_stage_info;
+    pipeline_info.stage = compute_shader_stage_info;
     pipeline_info.layout = m_pipeline_layout->get_layout();
 
     vk_check(vkCreateComputePipelines(

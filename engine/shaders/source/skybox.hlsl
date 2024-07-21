@@ -1,4 +1,4 @@
-#include "violet_camera.hlsl"
+#include "violet_common.hlsli"
 
 ConstantBuffer<violet_camera> camera : register(b0, space0);
 
@@ -13,7 +13,7 @@ struct vs_in
 struct vs_out
 {
     float4 position : SV_POSITION;
-    float3 uvw : UVW;
+    float3 uvw : TEXCOORD;
 };
 
 vs_out vs_main(vs_in input)
@@ -52,7 +52,7 @@ vs_out vs_main(vs_in input)
     return result;
 }
 
-float4 ps_main(vs_out input) : SV_TARGET
+float4 fs_main(vs_out input) : SV_TARGET
 {
     return sky_texture.Sample(sky_sampler, input.uvw);
 }

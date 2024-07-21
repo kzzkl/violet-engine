@@ -1,12 +1,11 @@
 #include "graphics/render_context.hpp"
 #include "components/mesh.hpp"
-#include "graphics/pipeline_parameter.hpp"
 
 namespace violet
 {
 render_context::render_context()
 {
-    m_light = render_device::instance().create_parameter(pipeline_parameter_light);
+    m_light = render_device::instance().create_parameter(shader::light);
 }
 
 render_list render_context::get_render_list(const render_camera& camera) const

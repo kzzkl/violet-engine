@@ -72,7 +72,7 @@ mmd_color_pass::mmd_color_pass()
     add_color(reference_render_target, RHI_TEXTURE_LAYOUT_RENDER_TARGET);
     add_depth_stencil(reference_depth, RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
 
-    set_shader("mmd-viewer/shaders/color.vert.spv", "mmd-viewer/shaders/color.frag.spv");
+    set_shader("mmd-viewer/shaders/color.vs", "mmd-viewer/shaders/color.fs");
     set_cull_mode(RHI_CULL_MODE_NONE);
 
     set_input_layout({
@@ -125,7 +125,7 @@ mmd_edge_pass::mmd_edge_pass()
     add_color(reference_render_target, RHI_TEXTURE_LAYOUT_RENDER_TARGET);
     add_depth_stencil(reference_depth, RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
 
-    set_shader("mmd-viewer/shaders/edge.vert.spv", "mmd-viewer/shaders/edge.frag.spv");
+    set_shader("mmd-viewer/shaders/edge.vs", "mmd-viewer/shaders/edge.fs");
     set_cull_mode(RHI_CULL_MODE_BACK);
 
     set_input_layout({

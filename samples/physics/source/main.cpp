@@ -21,7 +21,7 @@ class color_pipeline : public render_pipeline
 public:
     color_pipeline(std::string_view name, renderer* context) : render_pipeline(name, context)
     {
-        set_shader("physics/shaders/basic.vert.spv", "physics/shaders/basic.frag.spv");
+        set_shader("physics/shaders/basic.vs", "physics/shaders/basic.fs");
         set_vertex_attributes({
             {"position", RHI_RESOURCE_FORMAT_R32G32B32_FLOAT},
             {"color",    RHI_RESOURCE_FORMAT_R32G32B32_FLOAT}

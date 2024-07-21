@@ -9,8 +9,8 @@ struct orbit_control
     float3 target = {};
 
     float r = 1.0f;
-    float theta = math::PI_PIDIV2;
-    float phi = math::PI_PIDIV2;
+    float theta = math::HALF_PI;
+    float phi = math::HALF_PI;
 
     float r_speed = 1.0f;
     float theta_speed = math::PI;

@@ -11,10 +11,6 @@ class rdg_command
 public:
     rdg_command(rhi_command* command, rdg_allocator* allocator);
 
-    void begin_render_pass(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer);
-    void end_render_pass();
-    void next_subpass();
-
     void set_pipeline(const rdg_render_pipeline& pipeline);
     void set_pipeline(rhi_compute_pipeline* compute_pipeline)
     {
@@ -26,12 +22,12 @@ public:
     }
 
     void set_viewport(const rhi_viewport& viewport) { m_command->set_viewport(viewport); }
-    void set_scissor(const std::vector<rhi_scissor_rect>& rects)
+    void set_scissor(std::span<const rhi_scissor_rect> rects)
     {
         m_command->set_scissor(rects.data(), rects.size());
     }
 
-    void set_vertex_buffers(const std::vector<rhi_buffer*>& vertex_buffers)
+    void set_vertex_buffers(std::span<rhi_buffer*> vertex_buffers)
     {
         m_command->set_vertex_buffers(vertex_buffers.data(), vertex_buffers.size());
     }
@@ -53,8 +49,8 @@ public:
     void set_pipeline_barrier(
         rhi_pipeline_stage_flags src_stage,
         rhi_pipeline_stage_flags dst_stage,
-        const std::vector<rhi_buffer_barrier>& buffer_barriers,
-        const std::vector<rhi_texture_barrier>& texture_barriers)
+        std::span<rhi_buffer_barrier> buffer_barriers,
+        std::span<rhi_texture_barrier> texture_barriers)
     {
         m_command->set_pipeline_barrier(
             src_stage,
@@ -67,9 +63,9 @@ public:
 
     void copy_texture(
         rhi_texture* src,
-        const rhi_resource_region& src_region,
+        const rhi_texture_region& src_region,
         rhi_texture* dst,
-        const rhi_resource_region& dst_region)
+        const rhi_texture_region& dst_region)
     {
         m_command->copy_texture(src, src_region, dst, dst_region);
     }
@@ -80,5 +76,7 @@ private:
 
     rhi_command* m_command;
     rdg_allocator* m_allocator;
+
+    friend class render_graph;
 };
 } // namespace violet

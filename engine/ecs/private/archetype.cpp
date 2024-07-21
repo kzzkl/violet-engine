@@ -4,14 +4,15 @@
 namespace violet
 {
 archetype::archetype(
-    const std::vector<component_id>& components,
+    std::span<const component_id> components,
     const component_table& component_table,
     archetype_chunk_allocator* allocator) noexcept
-    : m_components(components),
-      m_component_table(component_table),
+    : m_component_table(component_table),
       m_chunk_allocator(allocator),
       m_size(0)
 {
+    m_components.insert(m_components.end(), components.begin(), components.end());
+
     for (component_id id : components)
         m_mask.set(id);
     initialize_layout(components);
@@ -111,7 +112,7 @@ void archetype::clear() noexcept
     m_size = 0;
 }
 
-void archetype::initialize_layout(const std::vector<component_id>& components)
+void archetype::initialize_layout(std::span<const component_id> components)
 {
     m_entity_per_chunk = 0;
 
@@ -124,8 +125,8 @@ void archetype::initialize_layout(const std::vector<component_id>& components)
 
     std::vector<layout_info> list(components.size());
     std::transform(
-        components.cbegin(),
-        components.cend(),
+        components.begin(),
+        components.end(),
         list.begin(),
         [this](component_id id)
         {

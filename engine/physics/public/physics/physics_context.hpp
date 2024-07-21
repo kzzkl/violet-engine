@@ -2,7 +2,7 @@
 
 #include "physics/physics_interface.hpp"
 #include <memory>
-#include <vector>
+#include <span>
 
 namespace violet
 {
@@ -33,8 +33,8 @@ public:
 
     phy_ptr<phy_collision_shape> create_collision_shape(const phy_collision_shape_desc& desc);
     phy_ptr<phy_collision_shape> create_collision_shape(
-        const std::vector<phy_collision_shape*>& shapes,
-        const std::vector<float4x4>& offset);
+        std::span<phy_collision_shape*> shapes,
+        std::span<float4x4> offset);
 
     phy_ptr<phy_rigidbody> create_rigidbody(const phy_rigidbody_desc& desc);
 

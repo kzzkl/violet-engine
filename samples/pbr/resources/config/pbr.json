@@ -3,5 +3,8 @@
         "title": "Physically Based Rendering",
         "width": 1300,
         "height": 800
+    },
+    "pbr sample": {
+        "skybox": "violet-assets/textures/skybox/pbr_skybox.hdr"
     }
 }

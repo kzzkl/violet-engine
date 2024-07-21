@@ -28,10 +28,7 @@ public:
         add_color(reference_render_target, RHI_TEXTURE_LAYOUT_RENDER_TARGET);
         add_depth_stencil(reference_depth, RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
 
-        set_shader(
-            "./hello-world/shaders/sample.vert.spv",
-            "./hello-world/shaders/sample.frag.spv");
-
+        set_shader("./hello-world/shaders/sample.vs", "./hello-world/shaders/sample.fs");
         set_primitive_topology(RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
         set_input_layout({

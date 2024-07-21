@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <span>
 #include <vector>
 
 namespace violet
@@ -83,7 +84,7 @@ public:
 
 public:
     archetype(
-        const std::vector<component_id>& components,
+        std::span<const component_id> components,
         const component_table& component_table,
         archetype_chunk_allocator* allocator) noexcept;
 
@@ -112,7 +113,7 @@ public:
 private:
     friend class iterator;
 
-    void initialize_layout(const std::vector<component_id>& components);
+    void initialize_layout(std::span<const component_id> components);
 
     std::size_t allocate();
     void construct(std::size_t index);

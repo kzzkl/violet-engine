@@ -14,21 +14,27 @@ rdg_pass::~rdg_pass()
 
 rdg_reference* rdg_pass::add_texture(
     rdg_texture* texture,
-    rhi_access_flags access,
-    rhi_texture_layout layout)
+    rhi_texture_layout layout,
+    rhi_pipeline_stage_flags stages,
+    rhi_access_flags access)
 {
     rdg_reference* reference = add_reference(texture);
+    reference->stages = stages;
     reference->access = access;
-    reference->type = RDG_REFERENCE_TYPE_TEXTURE;
+    reference->type = RDG_REFERENCE_TEXTURE;
     reference->texture.layout = layout;
     return reference;
 }
 
-rdg_reference* rdg_pass::add_buffer(rdg_buffer* buffer, rhi_access_flags access)
+rdg_reference* rdg_pass::add_buffer(
+    rdg_buffer* buffer,
+    rhi_pipeline_stage_flags stages,
+    rhi_access_flags access)
 {
     rdg_reference* reference = add_reference(buffer);
+    reference->stages = stages;
     reference->access = access;
-    reference->type = RDG_REFERENCE_TYPE_BUFFER;
+    reference->type = RDG_REFERENCE_BUFFER;
     return reference;
 }
 
@@ -80,13 +86,14 @@ rdg_render_pass::rdg_render_pass()
 void rdg_render_pass::add_render_target(
     rdg_texture* render_target,
     rhi_attachment_load_op load_op,
-    rhi_attachment_store_op store_op,
-    const rhi_attachment_blend& blend)
+    rhi_attachment_store_op store_op)
 {
     rdg_reference* reference = add_reference(render_target);
-    reference->type = RDG_REFERENCE_TYPE_ATTACHMENT;
-    reference->access = RHI_ACCESS_FLAG_SHADER_WRITE;
-    reference->attachment.type = RHI_ATTACHMENT_REFERENCE_TYPE_COLOR;
+    reference->type = RDG_REFERENCE_ATTACHMENT;
+    reference->stages = RHI_PIPELINE_STAGE_COLOR_OUTPUT;
+    reference->access = RHI_ACCESS_SHADER_WRITE;
+    reference->attachment.layout = RHI_TEXTURE_LAYOUT_RENDER_TARGET;
+    reference->attachment.type = RHI_ATTACHMENT_REFERENCE_COLOR;
     reference->attachment.load_op = load_op;
     reference->attachment.store_op = store_op;
 
@@ -99,9 +106,12 @@ void rdg_render_pass::set_depth_stencil(
     rhi_attachment_store_op store_op)
 {
     rdg_reference* reference = add_reference(depth_stencil);
-    reference->type = RDG_REFERENCE_TYPE_ATTACHMENT;
-    reference->access = RHI_ACCESS_FLAG_DEPTH_STENCIL_READ | RHI_ACCESS_FLAG_DEPTH_STENCIL_WRITE;
-    reference->attachment.type = RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL;
+    reference->type = RDG_REFERENCE_ATTACHMENT;
+    reference->stages =
+        RHI_PIPELINE_STAGE_EARLY_DEPTH_STENCIL | RHI_PIPELINE_STAGE_LATE_DEPTH_STENCIL;
+    reference->access = RHI_ACCESS_DEPTH_STENCIL_READ | RHI_ACCESS_DEPTH_STENCIL_WRITE;
+    reference->attachment.layout = RHI_TEXTURE_LAYOUT_DEPTH_STENCIL;
+    reference->attachment.type = RHI_ATTACHMENT_REFERENCE_DEPTH_STENCIL;
     reference->attachment.load_op = load_op;
     reference->attachment.store_op = store_op;
 

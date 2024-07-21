@@ -1,10 +1,10 @@
 #include "ui/ui_module.hpp"
+#include "common/log.hpp"
 #include "components/camera.hpp"
 #include "components/ui_root.hpp"
 #include "graphics/graphics_module.hpp"
 #include "rendering/ui_renderer.hpp"
 #include "window/window_module.hpp"
-#include "common/log.hpp"
 
 namespace violet
 {
@@ -94,7 +94,7 @@ void ui_module::update_input()
     {
         if (!in_extent(mouse_x, mouse_y, widget->get_extent()))
         {
-            widget->set_state(widget->get_state() & (~WIDGET_STATE_FLAG_MOUSE_OVER));
+            widget->set_state(widget->get_state() & (~WIDGET_STATE_MOUSE_OVER));
             widget->receive_event(widget_event::mouse_leave());
         }
     }
@@ -122,9 +122,9 @@ void ui_module::update_input()
         if (!in_extent(mouse_x, mouse_y, node->get_extent()))
             continue;
 
-        if (!(node->get_state() & WIDGET_STATE_FLAG_MOUSE_OVER))
+        if (!(node->get_state() & WIDGET_STATE_MOUSE_OVER))
         {
-            node->set_state(node->get_state() | WIDGET_STATE_FLAG_MOUSE_OVER);
+            node->set_state(node->get_state() | WIDGET_STATE_MOUSE_OVER);
             node->receive_event(widget_event::mouse_enter());
         }
         m_mouse_over_widgets.push_back(node);

@@ -12,13 +12,17 @@ public:
     geometry();
     virtual ~geometry();
 
-    template <typename T>
+    template <std::ranges::contiguous_range R>
     void add_attribute(
         std::string_view name,
-        const std::vector<T>& attribute,
-        rhi_buffer_flags flags = RHI_BUFFER_FLAG_VERTEX)
+        R&& attribute,
+        rhi_buffer_flags flags = RHI_BUFFER_VERTEX)
     {
-        add_attribute(name, attribute.data(), attribute.size() * sizeof(T), flags);
+        add_attribute(
+            name,
+            attribute.data(),
+            attribute.size() * sizeof(decltype(*attribute.data())),
+            flags);
         m_vertex_count = attribute.size();
     }
 
@@ -26,16 +30,17 @@ public:
     void add_attribute(
         std::string_view name,
         std::size_t size,
-        rhi_buffer_flags flags = RHI_BUFFER_FLAG_VERTEX)
+        rhi_buffer_flags flags = RHI_BUFFER_VERTEX)
     {
         add_attribute(name, nullptr, size * sizeof(T), flags);
         m_vertex_count = size;
     }
 
-    template <typename T>
-    void set_indices(const std::vector<T>& indices, rhi_buffer_flags flags = RHI_BUFFER_FLAG_INDEX)
+    template <std::ranges::contiguous_range R>
+    void set_indices(R&& indices, rhi_buffer_flags flags = RHI_BUFFER_INDEX)
     {
-        set_indices(indices.data(), indices.size() * sizeof(T), sizeof(T), flags);
+        static constexpr std::size_t index_size = sizeof(decltype(*indices.data()));
+        set_indices(indices.data(), indices.size() * index_size, index_size, flags);
         m_index_count = indices.size();
     }
 

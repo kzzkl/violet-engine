@@ -67,20 +67,20 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
             ref.layout = vk_util::map_layout(desc.subpasses[i].references[j].layout);
             switch (desc.subpasses[i].references[j].type)
             {
-            case RHI_ATTACHMENT_REFERENCE_TYPE_INPUT: {
+            case RHI_ATTACHMENT_REFERENCE_INPUT: {
                 input[i].push_back(ref);
                 break;
             }
-            case RHI_ATTACHMENT_REFERENCE_TYPE_COLOR: {
+            case RHI_ATTACHMENT_REFERENCE_COLOR: {
                 color[i].push_back(ref);
                 break;
             }
-            case RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL: {
+            case RHI_ATTACHMENT_REFERENCE_DEPTH_STENCIL: {
                 depth_stencil[i] = ref;
                 has_depth_stencil_attachment = true;
                 break;
             }
-            case RHI_ATTACHMENT_REFERENCE_TYPE_RESOLVE: {
+            case RHI_ATTACHMENT_REFERENCE_RESOLVE: {
                 has_resolve_attachment = true;
                 break;
             }
@@ -106,6 +106,8 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
         subpasses[i].colorAttachmentCount = static_cast<std::uint32_t>(color[i].size());
         if (has_depth_stencil_attachment)
             subpasses[i].pDepthStencilAttachment = &depth_stencil[i];
+
+        m_subpass_infos.push_back({color[i].size()});
     }
 
     std::vector<VkSubpassDependency> dependencies(desc.dependency_count);

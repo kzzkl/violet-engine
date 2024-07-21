@@ -24,7 +24,7 @@ compile_shader_dxc(
     SHADER_FILES
     TARGET ${PROJECT_NAME}
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/basic.hlsl"
-    STAGES "vert" "frag")
+    STAGES "vs" "fs")
 
 install(FILES ${SHADER_FILES} DESTINATION bin/${PROJECT_NAME}/shaders)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION bin/${PROJECT_NAME})

@@ -40,6 +40,8 @@ VkFormat vk_util::map_format(rhi_format format)
         return VK_FORMAT_R8G8B8A8_UINT;
     case RHI_FORMAT_R8G8B8A8_SINT:
         return VK_FORMAT_R8G8B8A8_SINT;
+    case RHI_FORMAT_R8G8B8A8_SRGB:
+        return VK_FORMAT_R8G8B8A8_SRGB;
     case RHI_FORMAT_B8G8R8A8_UNORM:
         return VK_FORMAT_B8G8R8A8_UNORM;
     case RHI_FORMAT_B8G8R8A8_SNORM:
@@ -79,7 +81,7 @@ VkFormat vk_util::map_format(rhi_format format)
     case RHI_FORMAT_D32_FLOAT:
         return VK_FORMAT_D32_SFLOAT;
     default:
-        return VK_FORMAT_UNDEFINED;
+        throw vk_exception("Invalid format.");
     }
 }
 
@@ -117,6 +119,8 @@ rhi_format vk_util::map_format(VkFormat format)
         return RHI_FORMAT_R8G8B8A8_SNORM;
     case VK_FORMAT_R8G8B8A8_UINT:
         return RHI_FORMAT_R8G8B8A8_UINT;
+    case VK_FORMAT_R8G8B8A8_SRGB:
+        return RHI_FORMAT_R8G8B8A8_SRGB;
     case VK_FORMAT_R8G8B8A8_SINT:
         return RHI_FORMAT_R8G8B8A8_SINT;
     case VK_FORMAT_B8G8R8A8_UNORM:
@@ -158,7 +162,7 @@ rhi_format vk_util::map_format(VkFormat format)
     case VK_FORMAT_D32_SFLOAT:
         return RHI_FORMAT_D32_FLOAT;
     default:
-        return RHI_FORMAT_UNDEFINED;
+        throw vk_exception("Invalid format.");
     }
 }
 
@@ -179,7 +183,7 @@ VkSampleCountFlagBits vk_util::map_sample_count(rhi_sample_count samples)
     case RHI_SAMPLE_COUNT_32:
         return VK_SAMPLE_COUNT_32_BIT;
     default:
-        return VK_SAMPLE_COUNT_1_BIT;
+        throw vk_exception("Invalid sample count.");
     }
 }
 
@@ -187,6 +191,10 @@ VkImageLayout vk_util::map_layout(rhi_texture_layout layout)
 {
     switch (layout)
     {
+    case RHI_TEXTURE_LAYOUT_UNDEFINED:
+        return VK_IMAGE_LAYOUT_UNDEFINED;
+    case RHI_TEXTURE_LAYOUT_GENERAL:
+        return VK_IMAGE_LAYOUT_GENERAL;
     case RHI_TEXTURE_LAYOUT_SHADER_RESOURCE:
         return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     case RHI_TEXTURE_LAYOUT_RENDER_TARGET:
@@ -195,8 +203,12 @@ VkImageLayout vk_util::map_layout(rhi_texture_layout layout)
         return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     case RHI_TEXTURE_LAYOUT_PRESENT:
         return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    case RHI_TEXTURE_LAYOUT_TRANSFER_SRC:
+        return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    case RHI_TEXTURE_LAYOUT_TRANSFER_DST:
+        return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     default:
-        return VK_IMAGE_LAYOUT_UNDEFINED;
+        throw vk_exception("Invalid layout.");
     }
 }
 
@@ -235,20 +247,20 @@ VkSamplerAddressMode vk_util::map_sampler_address_mode(rhi_sampler_address_mode 
 VkPipelineStageFlags vk_util::map_pipeline_stage_flags(rhi_pipeline_stage_flags flags)
 {
     VkPipelineStageFlags result = 0;
-    result |= (flags & RHI_PIPELINE_STAGE_FLAG_BEGIN) ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT : 0;
-    result |= (flags & RHI_PIPELINE_STAGE_FLAG_VERTEX) ? VK_PIPELINE_STAGE_VERTEX_SHADER_BIT : 0;
-    result |= (flags & RHI_PIPELINE_STAGE_FLAG_EARLY_DEPTH_STENCIL)
+    result |= (flags & RHI_PIPELINE_STAGE_BEGIN) ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_VERTEX) ? VK_PIPELINE_STAGE_VERTEX_SHADER_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_EARLY_DEPTH_STENCIL)
                   ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
                   : 0;
-    result |=
-        (flags & RHI_PIPELINE_STAGE_FLAG_FRAGMENT) ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT : 0;
-    result |= (flags & RHI_PIPELINE_STAGE_FLAG_LATE_DEPTH_STENCIL)
+    result |= (flags & RHI_PIPELINE_STAGE_FRAGMENT) ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_LATE_DEPTH_STENCIL)
                   ? VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
                   : 0;
-    result |= (flags & RHI_PIPELINE_STAGE_FLAG_COLOR_OUTPUT)
+    result |= (flags & RHI_PIPELINE_STAGE_COLOR_OUTPUT)
                   ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
                   : 0;
-    result |= (flags & RHI_PIPELINE_STAGE_FLAG_END) ? VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_TRANSFER) ? VK_PIPELINE_STAGE_TRANSFER_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_END) ? VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT : 0;
 
     return result;
 }
@@ -256,16 +268,16 @@ VkPipelineStageFlags vk_util::map_pipeline_stage_flags(rhi_pipeline_stage_flags 
 VkAccessFlags vk_util::map_access_flags(rhi_access_flags flags)
 {
     VkAccessFlags result = 0;
-    result |= (flags & RHI_ACCESS_FLAG_COLOR_READ) ? VK_ACCESS_COLOR_ATTACHMENT_READ_BIT : 0;
-    result |= (flags & RHI_ACCESS_FLAG_COLOR_WRITE) ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : 0;
-    result |= (flags & RHI_ACCESS_FLAG_DEPTH_STENCIL_READ)
-                  ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
-                  : 0;
-    result |= (flags & RHI_ACCESS_FLAG_DEPTH_STENCIL_WRITE)
-                  ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-                  : 0;
-    result |= (flags & RHI_ACCESS_FLAG_SHADER_READ) ? VK_ACCESS_SHADER_READ_BIT : 0;
-    result |= (flags & RHI_ACCESS_FLAG_SHADER_WRITE) ? VK_ACCESS_SHADER_WRITE_BIT : 0;
+    result |= (flags & RHI_ACCESS_COLOR_READ) ? VK_ACCESS_COLOR_ATTACHMENT_READ_BIT : 0;
+    result |= (flags & RHI_ACCESS_COLOR_WRITE) ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : 0;
+    result |=
+        (flags & RHI_ACCESS_DEPTH_STENCIL_READ) ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT : 0;
+    result |=
+        (flags & RHI_ACCESS_DEPTH_STENCIL_WRITE) ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : 0;
+    result |= (flags & RHI_ACCESS_SHADER_READ) ? VK_ACCESS_SHADER_READ_BIT : 0;
+    result |= (flags & RHI_ACCESS_SHADER_WRITE) ? VK_ACCESS_SHADER_WRITE_BIT : 0;
+    result |= (flags & RHI_ACCESS_TRANSFER_READ) ? VK_ACCESS_TRANSFER_READ_BIT : 0;
+    result |= (flags & RHI_ACCESS_TRANSFER_WRITE) ? VK_ACCESS_TRANSFER_WRITE_BIT : 0;
 
     return result;
 }

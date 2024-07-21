@@ -26,7 +26,7 @@ vs_out vs_main(uint index: SV_VertexID)
     return output;
 }
 
-float4 ps_main(vs_out input) : SV_TARGET
+float4 fs_main(vs_out input) : SV_TARGET
 {
     return float4(input.color, 1.0);
 }

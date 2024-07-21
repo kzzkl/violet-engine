@@ -91,15 +91,22 @@ void render_device::initialize(rhi* rhi)
     m_rhi_deleter = rhi_deleter(rhi);
 }
 
+void render_device::reset()
+{
+    m_shader_cache.clear();
+    m_rhi_deleter = {};
+    m_rhi = nullptr;
+}
+
 rhi_command* render_device::allocate_command()
 {
     return m_rhi->allocate_command();
 }
 
 void render_device::execute(
-    const std::vector<rhi_command*>& commands,
-    const std::vector<rhi_semaphore*>& signal_semaphores,
-    const std::vector<rhi_semaphore*>& wait_semaphores,
+    std::span<rhi_command*> commands,
+    std::span<rhi_semaphore*> signal_semaphores,
+    std::span<rhi_semaphore*> wait_semaphores,
     rhi_fence* fence)
 {
     m_rhi->execute(
@@ -127,6 +134,11 @@ rhi_fence* render_device::get_in_flight_fence()
     return m_rhi->get_in_flight_fence();
 }
 
+std::size_t render_device::get_frame_count() const noexcept
+{
+    return m_rhi->get_frame_count();
+}
+
 std::size_t render_device::get_frame_resource_count() const noexcept
 {
     return m_rhi->get_frame_resource_count();
@@ -137,28 +149,9 @@ std::size_t render_device::get_frame_resource_index() const noexcept
     return m_rhi->get_frame_resource_index();
 }
 
-rhi_shader* render_device::get_shader(std::string_view path)
-{
-    auto iter = m_shader_cache.find(path.data());
-    if (iter == m_shader_cache.end())
-    {
-        m_shader_cache[path.data()] = render_device::instance().create_shader(path);
-        return m_shader_cache[path.data()].get();
-    }
-    else
-    {
-        return iter->second.get();
-    }
-}
-
 rhi_ptr<rhi_render_pass> render_device::create_render_pass(const rhi_render_pass_desc& desc)
 {
     return rhi_ptr<rhi_render_pass>(m_rhi->create_render_pass(desc), m_rhi_deleter);
-}
-
-rhi_ptr<rhi_shader> render_device::create_shader(std::string_view file)
-{
-    return rhi_ptr<rhi_shader>(m_rhi->create_shader(file.data()), m_rhi_deleter);
 }
 
 rhi_ptr<rhi_render_pipeline> render_device::create_pipeline(const rhi_render_pipeline_desc& desc)
@@ -196,40 +189,9 @@ rhi_ptr<rhi_texture> render_device::create_texture(const rhi_texture_desc& desc)
     return rhi_ptr<rhi_texture>(m_rhi->create_texture(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_texture> render_device::create_texture(
-    const void* data,
-    std::size_t size,
-    const rhi_texture_desc& desc)
+rhi_ptr<rhi_texture> render_device::create_texture_view(const rhi_texture_view_desc& desc)
 {
-    return rhi_ptr<rhi_texture>(m_rhi->create_texture(data, size, desc), m_rhi_deleter);
-}
-
-rhi_ptr<rhi_texture> render_device::create_texture(
-    std::string_view file,
-    const rhi_texture_desc& desc)
-{
-    return rhi_ptr<rhi_texture>(m_rhi->create_texture(file.data(), desc), m_rhi_deleter);
-}
-
-rhi_ptr<rhi_texture> render_device::create_texture(
-    std::string_view right,
-    std::string_view left,
-    std::string_view top,
-    std::string_view bottom,
-    std::string_view front,
-    std::string_view back,
-    const rhi_texture_desc& desc)
-{
-    return rhi_ptr<rhi_texture>(
-        m_rhi->create_texture(
-            right.data(),
-            left.data(),
-            top.data(),
-            bottom.data(),
-            front.data(),
-            back.data(),
-            desc),
-        m_rhi_deleter);
+    return rhi_ptr<rhi_texture>(m_rhi->create_texture_view(desc), m_rhi_deleter);
 }
 
 rhi_ptr<rhi_swapchain> render_device::create_swapchain(const rhi_swapchain_desc& desc)
@@ -245,5 +207,29 @@ rhi_ptr<rhi_fence> render_device::create_fence(bool signaled)
 rhi_ptr<rhi_semaphore> render_device::create_semaphore()
 {
     return rhi_ptr<rhi_semaphore>(m_rhi->create_semaphore(), m_rhi_deleter);
+}
+
+rhi_shader* render_device::get_shader(const rhi_shader_desc& desc)
+{
+    auto iter = m_shader_cache.find(desc.path);
+    if (iter == m_shader_cache.end())
+    {
+        rhi_ptr<rhi_shader> shader(m_rhi->create_shader(desc), m_rhi_deleter);
+        if (desc.stage == RHI_SHADER_STAGE_VERTEX)
+        {
+            shader_info info = {};
+            for (std::size_t i = 0; i < desc.vertex.vertex_attribute_count; ++i)
+                info.vertex_attribute.push_back(desc.vertex.vertex_attributes[i].name);
+
+            m_shader_infos[shader.get()] = info;
+        }
+
+        m_shader_cache[desc.path] = std::move(shader);
+        return m_shader_cache[desc.path].get();
+    }
+    else
+    {
+        return iter->second.get();
+    }
 }
 } // namespace violet

@@ -23,13 +23,13 @@ compile_shader_dxc(
     SHADER_FILES
     TARGET ${PROJECT_NAME}
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/base.hlsl"
-    STAGES "vert" "frag"
+    STAGES "vs" "fs"
     INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
 compile_shader_dxc(
     SHADER_FILES
     TARGET ${PROJECT_NAME}
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/sample.hlsl"
-    STAGES "vert" "frag"
+    STAGES "vs" "fs"
     INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
 
 install(FILES ${SHADER_FILES} DESTINATION bin/${PROJECT_NAME}/shaders)

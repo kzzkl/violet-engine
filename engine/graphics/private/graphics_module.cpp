@@ -15,7 +15,9 @@ graphics_module::graphics_module() : engine_module("graphics")
 graphics_module::~graphics_module()
 {
     m_semaphores.clear();
-
+    m_allocator = nullptr;
+    m_context = nullptr;
+    render_device::instance().reset();
     m_plugin->unload();
 }
 
@@ -124,7 +126,11 @@ void graphics_module::render()
     auto& device = render_device::instance();
 
     rhi_command* command = device.allocate_command();
-    device.execute({command}, {}, finish_semaphores, device.get_in_flight_fence());
+    device.execute(
+        std::span<rhi_command*>(&command, 1),
+        std::span<rhi_semaphore*>(),
+        finish_semaphores,
+        device.get_in_flight_fence());
     device.end_frame();
 }
 
@@ -152,7 +158,7 @@ void graphics_module::update_light()
     light_view.each(
         [&, this](light& light, transform& transform)
         {
-            if (light.type == LIGHT_TYPE_DIRECTIONAL)
+            if (light.type == LIGHT_DIRECTIONAL)
             {
                 vector4 direction = vector::set(0.0f, 0.0f, 1.0f, 0.0f);
                 matrix4 world_matrix = math::load(transform.get_world_matrix());
@@ -200,7 +206,8 @@ rhi_semaphore* graphics_module::render(camera* camera)
     graph.compile();
     graph.execute(command);
 
-    device.execute({command}, signal_semaphores, wait_semaphores, nullptr);
+    device
+        .execute(std::span<rhi_command*>(&command, 1), signal_semaphores, wait_semaphores, nullptr);
 
     for (std::size_t i = 0; i < signal_semaphores.size() - 1; ++i)
         swapchains[i]->present(&signal_semaphores[i], 1);

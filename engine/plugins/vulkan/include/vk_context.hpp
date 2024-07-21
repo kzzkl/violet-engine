@@ -3,7 +3,7 @@
 #include "vk_common.hpp"
 #include "vk_mem_alloc.h"
 #include <memory>
-#include <vector>
+#include <span>
 
 namespace violet::vk
 {
@@ -52,10 +52,10 @@ public:
 
 private:
     bool initialize_instance(
-        const std::vector<const char*>& desired_layers,
-        const std::vector<const char*>& desired_extensions);
-    bool initialize_physical_device(const std::vector<const char*>& desired_extensions);
-    void initialize_logic_device(const std::vector<const char*>& enabled_extensions);
+        std::span<const char*> desired_layers,
+        std::span<const char*> desired_extensions);
+    bool initialize_physical_device(std::span<const char*> desired_extensions);
+    void initialize_logic_device(std::span<const char*> enabled_extensions);
     void initialize_vma();
     void initialize_descriptor_pool();
 

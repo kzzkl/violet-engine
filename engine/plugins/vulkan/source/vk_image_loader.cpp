@@ -83,8 +83,12 @@ enum class vk_dds_format
 
 bool vk_image_loader::load(std::string_view file)
 {
+    m_mipmaps.clear();
+
     if (file.ends_with(".dds"))
         return load_dds(file);
+    else if (file.ends_with(".hdr"))
+        return load_hdr(file);
     else
         return load_other(file);
 }
@@ -103,7 +107,6 @@ bool vk_image_loader::load_dds(std::string_view file)
     DDS_HEADER header = {};
     fin.read(reinterpret_cast<char*>(&header), sizeof(DDS_HEADER));
 
-    VkFormat vk_format;
     vk_dds_format dds_format;
     std::uint32_t channels;
     if (header.ddspf.dwFlags & DDPF_FOURCC)
@@ -111,17 +114,17 @@ bool vk_image_loader::load_dds(std::string_view file)
         switch (header.ddspf.dwFourCC)
         {
         case FOURCC_DXT1:
-            vk_format = VK_FORMAT_R8G8B8A8_UNORM;
+            m_format = VK_FORMAT_R8G8B8A8_UNORM;
             dds_format = vk_dds_format::RGBA_EXT1;
             channels = 3;
             break;
         case FOURCC_DXT3:
-            vk_format = VK_FORMAT_R8G8B8A8_UNORM;
+            m_format = VK_FORMAT_R8G8B8A8_UNORM;
             dds_format = vk_dds_format::RGBA_EXT3;
             channels = 4;
             break;
         case FOURCC_DXT5:
-            vk_format = VK_FORMAT_R8G8B8A8_UNORM;
+            m_format = VK_FORMAT_R8G8B8A8_UNORM;
             dds_format = vk_dds_format::RGBA_EXT5;
             channels = 4;
             break;
@@ -134,7 +137,7 @@ bool vk_image_loader::load_dds(std::string_view file)
         header.ddspf.dwGBitMask == 0x0000FF00 && header.ddspf.dwBBitMask == 0x000000FF &&
         header.ddspf.dwABitMask == 0xFF000000)
     {
-        vk_format = VK_FORMAT_B8G8R8A8_UNORM;
+        m_format = VK_FORMAT_B8G8R8A8_UNORM;
         dds_format = vk_dds_format::BGRA;
         channels = 4;
     }
@@ -143,7 +146,7 @@ bool vk_image_loader::load_dds(std::string_view file)
         header.ddspf.dwGBitMask == 0x0000FF00 && header.ddspf.dwBBitMask == 0x00FF0000 &&
         header.ddspf.dwABitMask == 0xFF000000)
     {
-        vk_format = VK_FORMAT_R8G8B8A8_UNORM;
+        m_format = VK_FORMAT_R8G8B8A8_UNORM;
         dds_format = vk_dds_format::RGBA;
         channels = 4;
     }
@@ -151,7 +154,7 @@ bool vk_image_loader::load_dds(std::string_view file)
         header.ddspf.dwRGBBitCount == 24 && header.ddspf.dwRBitMask == 0x000000FF &&
         header.ddspf.dwGBitMask == 0x0000FF00 && header.ddspf.dwBBitMask == 0x00FF0000)
     {
-        vk_format = VK_FORMAT_R8G8B8_UNORM;
+        m_format = VK_FORMAT_R8G8B8_UNORM;
         dds_format = vk_dds_format::RGB;
         channels = 3;
     }
@@ -159,7 +162,7 @@ bool vk_image_loader::load_dds(std::string_view file)
         header.ddspf.dwRGBBitCount == 24 && header.ddspf.dwRBitMask == 0x00FF0000 &&
         header.ddspf.dwGBitMask == 0x0000FF00 && header.ddspf.dwBBitMask == 0x000000FF)
     {
-        vk_format = VK_FORMAT_B8G8R8_UNORM;
+        m_format = VK_FORMAT_B8G8R8_UNORM;
         dds_format = vk_dds_format::BGR;
         channels = 3;
     }
@@ -192,7 +195,6 @@ bool vk_image_loader::load_dds(std::string_view file)
         texture.width = mip_width;
         texture.height = mip_height;
         texture.channels = channels;
-        texture.format = vk_format;
 
         std::size_t size = calculate_texture_size(mip_width, mip_height, channels, dds_format);
         texture.pixels.resize(size);
@@ -201,10 +203,45 @@ bool vk_image_loader::load_dds(std::string_view file)
         mip_width = mip_width >> 1;
         mip_height = mip_height >> 1;
 
-        m_mipmap.push_back(std::move(texture));
+        m_mipmaps.push_back(std::move(texture));
     }
 
     fin.close();
+
+    return true;
+}
+
+bool vk_image_loader::load_hdr(std::string_view file)
+{
+    int width, height, channels;
+
+    float* pixels = stbi_loadf(file.data(), &width, &height, &channels, STBI_default);
+    if (pixels == nullptr)
+        return false;
+
+    std::size_t image_size = width * height * 3 * sizeof(float);
+
+    vk_image_data texture;
+    texture.width = static_cast<std::uint32_t>(width);
+    texture.height = static_cast<std::uint32_t>(height);
+    texture.channels = static_cast<std::uint32_t>(channels);
+    texture.pixels.resize(width * height * sizeof(float) * 4);
+
+    float* target = reinterpret_cast<float*>(texture.pixels.data());
+
+    std::size_t pixel_count = width * height;
+    for (std::size_t i = 0; i < pixel_count; ++i)
+    {
+        target[i * 4 + 0] = pixels[i * 3 + 0];
+        target[i * 4 + 1] = pixels[i * 3 + 1];
+        target[i * 4 + 2] = pixels[i * 3 + 2];
+        target[i * 4 + 3] = 1.0f;
+    }
+
+    stbi_image_free(pixels);
+
+    m_mipmaps.push_back(std::move(texture));
+    m_format = VK_FORMAT_R32G32B32A32_SFLOAT;
 
     return true;
 }
@@ -223,14 +260,14 @@ bool vk_image_loader::load_other(std::string_view file)
     texture.width = static_cast<std::uint32_t>(width);
     texture.height = static_cast<std::uint32_t>(height);
     texture.channels = static_cast<std::uint32_t>(channels);
-    texture.format = VK_FORMAT_R8G8B8A8_SRGB;
     texture.pixels.resize(image_size);
 
     std::memcpy(texture.pixels.data(), pixels, image_size);
 
     stbi_image_free(pixels);
 
-    m_mipmap.push_back(std::move(texture));
+    m_mipmaps.push_back(std::move(texture));
+    m_format = VK_FORMAT_R8G8B8A8_SRGB;
 
     return true;
 }

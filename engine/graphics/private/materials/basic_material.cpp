@@ -2,24 +2,44 @@
 
 namespace violet
 {
+struct basic_material_vs : public vertex_shader<basic_material_vs>
+{
+    static constexpr std::string_view path = "engine/shaders/basic.vs";
+
+    static constexpr parameter_slot parameters[] = {
+        {0, camera},
+        {2, mesh  }
+    };
+
+    static constexpr input inputs[] = {
+        {"position", RHI_FORMAT_R32G32B32_FLOAT}
+    };
+};
+
+struct basic_material_fs : public fragment_shader<basic_material_fs>
+{
+    static constexpr std::string_view path = "engine/shaders/basic.fs";
+
+    static constexpr parameter material = {
+        {RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, sizeof(basic_material::data)}
+    };
+
+    static constexpr parameter_slot parameters[] = {
+        {0, camera  },
+        {1, light   },
+        {2, mesh    },
+        {3, material}
+    };
+};
+
 basic_material::basic_material(const float3& color)
 {
     rdg_render_pipeline pipeline = {};
-    pipeline.vertex_shader = render_device::instance().get_shader("engine/shaders/basic.vert.spv");
-    pipeline.fragment_shader =
-        render_device::instance().get_shader("engine/shaders/basic.frag.spv");
-    pipeline.input.vertex_attributes[0] = {
-        .name = "position",
-        .format = RHI_FORMAT_R32G32B32_FLOAT};
-    pipeline.input.vertex_attribute_count = 1;
-    pipeline.blend.attachment_count = 1;
+    pipeline.vertex_shader = basic_material_vs::get_rhi();
+    pipeline.fragment_shader = basic_material_fs::get_rhi();
 
     rhi_parameter_desc parameter = {};
-    parameter.bindings[0] = {
-        RHI_PARAMETER_TYPE_UNIFORM,
-        sizeof(data),
-        RHI_SHADER_STAGE_FLAG_FRAGMENT};
-    parameter.binding_count = 1;
+    parameter.bindings[0] = {RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, sizeof(data)};
     add_pass(pipeline, parameter);
 
     set_color(color);

@@ -55,13 +55,13 @@ public:
     void draw_text(std::string_view text, font* font = nullptr);
 
     void draw_line(const float2& start, const float2& end, float thickness);
-    void draw_path(const std::vector<float2>& points, float thickness);
+    void draw_path(std::span<const float2> points, float thickness);
 
     void draw_mesh(
-        const std::vector<float2>& position,
-        const std::vector<std::uint32_t>& color,
-        const std::vector<float2>& uv,
-        const std::vector<std::uint32_t>& indices,
+        std::span<const float2> position,
+        std::span<const std::uint32_t> color,
+        std::span<const float2> uv,
+        std::span<const std::uint32_t> indices,
         rhi_texture* texture = nullptr);
 
     void set_extent(std::uint32_t width, std::uint32_t height);
@@ -123,11 +123,11 @@ private:
 namespace pipeline_parameter
 {
 static constexpr shader_parameter ui_mvp = {
-    {RHI_PARAMETER_TYPE_UNIFORM, sizeof(float4x4), RHI_SHADER_STAGE_FLAG_VERTEX}
+    {RHI_PARAMETER_TYPE_UNIFORM, sizeof(float4x4), RHI_SHADER_STAGE_VERTEX}
 };
 static constexpr shader_parameter ui_material = {
-    {RHI_PARAMETER_TYPE_UNIFORM, sizeof(std::uint32_t), RHI_SHADER_STAGE_FLAG_FRAGMENT},
-    {RHI_PARAMETER_TYPE_TEXTURE, 1,                     RHI_SHADER_STAGE_FLAG_FRAGMENT}
+    {RHI_PARAMETER_TYPE_UNIFORM, sizeof(std::uint32_t), RHI_SHADER_STAGE_FRAGMENT},
+    {RHI_PARAMETER_TYPE_TEXTURE, 1,                     RHI_SHADER_STAGE_FRAGMENT}
 };
 } // namespace pipeline_parameter
 } // namespace violet

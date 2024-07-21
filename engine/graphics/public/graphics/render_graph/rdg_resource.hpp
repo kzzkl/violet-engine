@@ -10,10 +10,10 @@ namespace violet
 
 enum rdg_reference_type
 {
-    RDG_REFERENCE_TYPE_NONE,
-    RDG_REFERENCE_TYPE_TEXTURE,
-    RDG_REFERENCE_TYPE_BUFFER,
-    RDG_REFERENCE_TYPE_ATTACHMENT
+    RDG_REFERENCE_NONE,
+    RDG_REFERENCE_TEXTURE,
+    RDG_REFERENCE_BUFFER,
+    RDG_REFERENCE_ATTACHMENT
 };
 
 class rdg_pass;
@@ -24,7 +24,10 @@ struct rdg_reference
     rdg_resource* resource;
 
     rdg_reference_type type;
+    rhi_pipeline_stage_flags stages;
     rhi_access_flags access;
+
+    std::size_t index;
 
     union {
         struct
@@ -45,9 +48,9 @@ struct rdg_reference
     {
         switch (type)
         {
-        case RDG_REFERENCE_TYPE_TEXTURE:
+        case RDG_REFERENCE_TEXTURE:
             return texture.layout;
-        case RDG_REFERENCE_TYPE_ATTACHMENT:
+        case RDG_REFERENCE_ATTACHMENT:
             return attachment.layout;
         default:
             return RHI_TEXTURE_LAYOUT_UNDEFINED;
@@ -57,33 +60,27 @@ struct rdg_reference
 
 enum rdg_resource_type
 {
-    RDG_RESOURCE_TYPE_TEXTURE,
-    RDG_RESOURCE_TYPE_BUFFER
+    RDG_RESOURCE_TEXTURE,
+    RDG_RESOURCE_BUFFER
 };
 
 class rdg_resource : public rdg_node
 {
 public:
-    rdg_resource(bool external);
+    rdg_resource();
     virtual ~rdg_resource();
 
     virtual rdg_resource_type get_type() const noexcept = 0;
+    virtual bool is_external() const noexcept = 0;
 
-    void add_reference(rdg_reference* reference) { m_references.push_back(reference); }
+    void add_reference(rdg_reference* reference)
+    {
+        reference->index = m_references.size();
+        m_references.push_back(reference);
+    }
     const std::vector<rdg_reference*>& get_references() const noexcept { return m_references; }
 
-    bool is_first_pass(rdg_pass* pass)
-    {
-        return !m_references.empty() && m_references[0]->pass == pass;
-    }
-    bool is_last_pass(rdg_pass* pass)
-    {
-        return !m_references.empty() && m_references.back()->pass == pass;
-    }
-    bool is_external() const noexcept { return m_external; }
-
 private:
-    bool m_external;
     std::vector<rdg_reference*> m_references;
 };
 
@@ -94,18 +91,17 @@ public:
         rhi_texture* texture,
         rhi_texture_layout initial_layout,
         rhi_texture_layout final_layout);
-    rdg_texture(
-        const rhi_texture_desc& desc,
-        rhi_texture_layout initial_layout,
-        rhi_texture_layout final_layout);
 
     virtual rdg_resource_type get_type() const noexcept override final
     {
-        return RDG_RESOURCE_TYPE_TEXTURE;
+        return RDG_RESOURCE_TEXTURE;
     }
 
-    rhi_format get_format() const noexcept { return m_desc.format; }
-    rhi_sample_count get_samples() const noexcept { return m_desc.samples; }
+    virtual bool is_external() const noexcept { return true; }
+    virtual bool is_texture_view() const noexcept { return false; }
+
+    rhi_format get_format() const noexcept { return m_texture->get_format(); }
+    rhi_sample_count get_samples() const noexcept { return m_texture->get_samples(); }
 
     rhi_texture* get_rhi() const noexcept { return m_texture; }
 
@@ -113,11 +109,59 @@ public:
     rhi_texture_layout get_final_layout() const noexcept { return m_final_layout; }
 
 private:
-    rhi_texture_desc m_desc;
     rhi_texture* m_texture{nullptr};
 
     rhi_texture_layout m_initial_layout;
     rhi_texture_layout m_final_layout;
+
+    friend class render_graph;
+};
+
+class rdg_inter_texture : public rdg_texture
+{
+public:
+    rdg_inter_texture(
+        const rhi_texture_desc& desc,
+        rhi_texture_layout initial_layout,
+        rhi_texture_layout final_layout);
+
+    virtual bool is_external() const noexcept { return false; }
+
+    const rhi_texture_desc& get_desc() const noexcept { return m_desc; }
+
+private:
+    rhi_texture_desc m_desc;
+};
+
+class rdg_texture_view : public rdg_texture
+{
+public:
+    rdg_texture_view(
+        rhi_texture* texture,
+        std::uint32_t level,
+        std::uint32_t layer,
+        rhi_texture_layout initial_layout,
+        rhi_texture_layout final_layout);
+
+    rdg_texture_view(
+        rdg_texture* texture,
+        std::uint32_t level,
+        std::uint32_t layer,
+        rhi_texture_layout initial_layout,
+        rhi_texture_layout final_layout);
+
+    virtual bool is_external() const noexcept
+    {
+        return m_rhi_texture ? true : m_rdg_texture->is_external();
+    }
+    virtual bool is_texture_view() const noexcept { return true; }
+
+private:
+    rhi_texture* m_rhi_texture{nullptr};
+    rdg_texture* m_rdg_texture{nullptr};
+
+    std::uint32_t m_level{0};
+    std::uint32_t m_layer{0};
 
     friend class render_graph;
 };
@@ -129,8 +173,10 @@ public:
 
     virtual rdg_resource_type get_type() const noexcept override final
     {
-        return RDG_RESOURCE_TYPE_TEXTURE;
+        return RDG_RESOURCE_TEXTURE;
     }
+
+    virtual bool is_external() const noexcept { return true; }
 
 private:
     rhi_buffer* m_buffer;

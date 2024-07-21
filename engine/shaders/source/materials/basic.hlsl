@@ -1,16 +1,14 @@
-#include "violet_mesh.hlsl"
-#include "violet_camera.hlsl"
-#include "violet_light.hlsl"
+#include "violet_common.hlsli"
+
+ConstantBuffer<violet_camera> camera : register(b0, space0);
+ConstantBuffer<violet_light> light : register(b0, space1);
+ConstantBuffer<violet_mesh> mesh : register(b0, space2);
 
 struct basic_material
 {
     float3 color;
 };
-
-ConstantBuffer<violet_mesh> mesh : register(b0, space0);
-ConstantBuffer<basic_material> material : register(b0, space1);
-ConstantBuffer<violet_camera> camera : register(b0, space2);
-ConstantBuffer<violet_light> light : register(b0, space3);
+ConstantBuffer<basic_material> material : register(b0, space3);
 
 struct vs_in
 {
@@ -30,7 +28,7 @@ vs_out vs_main(vs_in input)
     return output;
 }
 
-float4 ps_main(vs_out input) : SV_TARGET
+float4 fs_main(vs_out input) : SV_TARGET
 {
-    return float4(1.0, 0.0, 0.0, 1.0);
+    return float4(material.color, 1.0);
 }

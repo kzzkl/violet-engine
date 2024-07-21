@@ -1,13 +1,12 @@
 #include "components/mesh.hpp"
 #include "common/hash.hpp"
-#include "graphics/pipeline_parameter.hpp"
 #include <cassert>
 
 namespace violet
 {
 mesh::mesh() : m_geometry(nullptr)
 {
-    m_parameter = render_device::instance().create_parameter(pipeline_parameter_mesh);
+    m_parameter = render_device::instance().create_parameter(shader::mesh);
 }
 
 mesh::~mesh()

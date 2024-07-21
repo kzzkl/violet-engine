@@ -1,5 +1,4 @@
-#include "violet_mvp.hlsl"
-#include "violet_light.hlsl"
+#include "violet_common.hlsli"
 
 ConstantBuffer<violet_object> object : register(b0, space0);
 
@@ -99,7 +98,7 @@ float3 blinn_phong(vs_out pin)
     return color;
 }
 
-float4 ps_main(vs_out pin) : SV_TARGET
+float4 fs_main(vs_out pin) : SV_TARGET
 {
     float4 cascade_color;
     if (pin.camera_depth < light.cascade_depths[0])

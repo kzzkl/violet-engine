@@ -19,6 +19,9 @@ private:
         render_graph& graph,
         const render_context& context,
         const render_camera& camera);
+    void add_skybox_pass(
+        render_graph& graph,
+        const render_camera& camera);
 
     rdg_texture* m_render_target;
     rdg_texture* m_depth_buffer;

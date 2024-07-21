@@ -53,6 +53,25 @@ private:
         swapchain_desc.window_handle = get_module<window_module>().get_handle();
         m_swapchain = render_device::instance().create_swapchain(swapchain_desc);
         m_renderer = std::make_unique<deferred_renderer>();
+
+        rhi_texture_desc skybox_desc = {};
+        skybox_desc.create_type = RHI_TEXTURE_CREATE_FROM_FILE;
+        skybox_desc.file.paths[0] = "pbr/textures/skybox/icebergs/right.jpg";
+        skybox_desc.file.paths[1] = "pbr/textures/skybox/icebergs/left.jpg";
+        skybox_desc.file.paths[2] = "pbr/textures/skybox/icebergs/top.jpg";
+        skybox_desc.file.paths[3] = "pbr/textures/skybox/icebergs/bottom.jpg";
+        skybox_desc.file.paths[4] = "pbr/textures/skybox/icebergs/front.jpg";
+        skybox_desc.file.paths[5] = "pbr/textures/skybox/icebergs/back.jpg";
+        skybox_desc.flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE | RHI_TEXTURE_MIPMAP;
+        m_skybox = render_device::instance().create_texture(skybox_desc);
+
+        rhi_sampler_desc sampler_desc = {};
+        sampler_desc.min_filter = RHI_FILTER_LINEAR;
+        sampler_desc.mag_filter = RHI_FILTER_LINEAR;
+        sampler_desc.address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
+        sampler_desc.address_mode_v = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
+        sampler_desc.address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
+        m_skybox_sampler = render_device::instance().create_sampler(sampler_desc);
     }
 
     void initialize_scene()
@@ -71,6 +90,7 @@ private:
         camera_transform->set_position(float3{0.0f, 0.0f, -10.0f});
 
         main_camera->set_renderer(m_renderer.get());
+        main_camera->set_skybox(m_skybox.get(), m_skybox_sampler.get());
     }
 
     void resize(std::uint32_t width, std::uint32_t height)
@@ -80,19 +100,21 @@ private:
         m_swapchain->resize(width, height);
 
         rhi_texture_desc depth_buffer_desc = {};
-        depth_buffer_desc.extent.width = width;
-        depth_buffer_desc.extent.height = height;
-        depth_buffer_desc.format = RHI_FORMAT_D24_UNORM_S8_UINT;
+        depth_buffer_desc.create_type = RHI_TEXTURE_CREATE_FROM_INFO;
+        depth_buffer_desc.info.extent.width = width;
+        depth_buffer_desc.info.extent.height = height;
+        depth_buffer_desc.info.format = RHI_FORMAT_D24_UNORM_S8_UINT;
         depth_buffer_desc.samples = RHI_SAMPLE_COUNT_1;
-        depth_buffer_desc.flags = RHI_TEXTURE_FLAG_DEPTH_STENCIL;
+        depth_buffer_desc.flags = RHI_TEXTURE_DEPTH_STENCIL;
         m_depth_buffer = device.create_texture(depth_buffer_desc);
 
         rhi_texture_desc light_buffer_desc = {};
-        light_buffer_desc.extent.width = width;
-        light_buffer_desc.extent.height = height;
-        light_buffer_desc.format = RHI_FORMAT_R8G8B8A8_UNORM;
+        light_buffer_desc.create_type = RHI_TEXTURE_CREATE_FROM_INFO;
+        light_buffer_desc.info.extent.width = width;
+        light_buffer_desc.info.extent.height = height;
+        light_buffer_desc.info.format = RHI_FORMAT_R8G8B8A8_UNORM;
         light_buffer_desc.samples = RHI_SAMPLE_COUNT_1;
-        light_buffer_desc.flags = RHI_TEXTURE_FLAG_RENDER_TARGET | RHI_TEXTURE_FLAG_SHADER_RESOURCE;
+        light_buffer_desc.flags = RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE;
         m_light_buffer = device.create_texture(light_buffer_desc);
 
         auto main_camera = m_main_camera->get<camera>();
@@ -106,6 +128,9 @@ private:
     rhi_ptr<rhi_swapchain> m_swapchain;
     rhi_ptr<rhi_texture> m_depth_buffer;
     rhi_ptr<rhi_texture> m_light_buffer;
+
+    rhi_ptr<rhi_texture> m_skybox;
+    rhi_ptr<rhi_sampler> m_skybox_sampler;
 
     std::unique_ptr<material> m_material;
 
