@@ -30,6 +30,7 @@ struct violet_light
 struct violet_mesh
 {
 	float4x4 model;
+	float4x4 normal;
 };
 
 #endif

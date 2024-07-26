@@ -4,14 +4,17 @@
 
 namespace violet
 {
-class mesh_pass
+class mesh_pass : public rdg_render_pass
 {
 public:
-    static void render(
-        render_graph& graph,
-        const render_context& context,
-        const render_camera& camera,
-        rdg_texture* render_target,
-        rdg_texture* depth_buffer);
+    struct data : public rdg_data
+    {
+        render_list render_list;
+        rdg_texture* render_target;
+        rdg_texture* depth_buffer;
+    };
+
+public:
+    mesh_pass(const data& data);
 };
 } // namespace violet

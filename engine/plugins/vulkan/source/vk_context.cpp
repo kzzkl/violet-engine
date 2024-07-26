@@ -103,7 +103,8 @@ bool vk_context::initialize(const rhi_desc& desc)
 
     std::vector<const char*> device_desired_extensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        VK_KHR_MAINTENANCE1_EXTENSION_NAME};
+        VK_KHR_MAINTENANCE1_EXTENSION_NAME,
+        VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME};
     if (!initialize_physical_device(device_desired_extensions))
         return false;
 

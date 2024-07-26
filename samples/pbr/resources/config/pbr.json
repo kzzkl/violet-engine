@@ -5,6 +5,11 @@
         "height": 800
     },
     "pbr sample": {
-        "skybox": "violet-assets/textures/skybox/pbr_skybox.hdr"
+        "skybox": "violet-assets/textures/skybox/814-hdri-skies-com.hdr",
+        "model": "violet-assets/models/fbx/Cerberus_by_Andrew_Maximov/Cerberus_LP.fbx",
+        "albedo_tex": "violet-assets/models/fbx/Cerberus_by_Andrew_Maximov/Textures/Cerberus_A.tga",
+        "normal_tex": "violet-assets/models/fbx/Cerberus_by_Andrew_Maximov/Textures/Cerberus_N.tga",
+        "metallic_tex": "violet-assets/models/fbx/Cerberus_by_Andrew_Maximov/Textures/Cerberus_M.tga",
+        "roughness_tex": "violet-assets/models/fbx/Cerberus_by_Andrew_Maximov/Textures/Cerberus_R.tga"
     }
 }

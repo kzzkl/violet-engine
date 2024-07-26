@@ -6,7 +6,6 @@ set(HPP_FILES
     ./include/vk_command.hpp
     ./include/vk_common.hpp
     ./include/vk_framebuffer.hpp
-    ./include/vk_image_loader.hpp
     ./include/vk_pipeline.hpp
     ./include/vk_render_pass.hpp
     ./include/vk_resource.hpp
@@ -20,7 +19,6 @@ set(CPP_FILES
     ./source/vk_command.cpp
     ./source/vk_context.cpp
     ./source/vk_framebuffer.cpp
-    ./source/vk_image_loader.cpp
     ./source/vk_pipeline.cpp
     ./source/vk_render_pass.cpp
     ./source/vk_rhi.cpp
@@ -43,7 +41,6 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
     violet::common
-    stb
     volk
     VulkanMemoryAllocator)
 

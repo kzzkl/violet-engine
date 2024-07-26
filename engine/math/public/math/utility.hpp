@@ -29,6 +29,15 @@ public:
 #endif
 
 public:
+    [[nodiscard]] static inline vector4f load(float v) noexcept
+    {
+#ifdef VIOLET_USE_SIMD
+        return _mm_set_ps1(v);
+#else
+        return {v, v, v, v};
+#endif
+    }
+
     [[nodiscard]] static inline vector4f load(const float2& v) noexcept
     {
 #ifdef VIOLET_USE_SIMD

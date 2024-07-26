@@ -42,6 +42,10 @@ VkFormat vk_util::map_format(rhi_format format)
         return VK_FORMAT_R8G8B8A8_SINT;
     case RHI_FORMAT_R8G8B8A8_SRGB:
         return VK_FORMAT_R8G8B8A8_SRGB;
+    case RHI_FORMAT_B8G8R8_UNORM:
+        return VK_FORMAT_B8G8R8_UNORM;
+    case RHI_FORMAT_B8G8R8_SNORM:
+        return VK_FORMAT_B8G8R8_SNORM;
     case RHI_FORMAT_B8G8R8A8_UNORM:
         return VK_FORMAT_B8G8R8A8_UNORM;
     case RHI_FORMAT_B8G8R8A8_SNORM:
@@ -123,6 +127,10 @@ rhi_format vk_util::map_format(VkFormat format)
         return RHI_FORMAT_R8G8B8A8_SRGB;
     case VK_FORMAT_R8G8B8A8_SINT:
         return RHI_FORMAT_R8G8B8A8_SINT;
+    case VK_FORMAT_B8G8R8_UNORM:
+        return RHI_FORMAT_B8G8R8_UNORM;
+    case VK_FORMAT_B8G8R8_SNORM:
+        return RHI_FORMAT_B8G8R8_SNORM;
     case VK_FORMAT_B8G8R8A8_UNORM:
         return RHI_FORMAT_B8G8R8A8_UNORM;
     case VK_FORMAT_B8G8R8A8_SNORM:
@@ -260,7 +268,9 @@ VkPipelineStageFlags vk_util::map_pipeline_stage_flags(rhi_pipeline_stage_flags 
                   ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
                   : 0;
     result |= (flags & RHI_PIPELINE_STAGE_TRANSFER) ? VK_PIPELINE_STAGE_TRANSFER_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_COMPUTE) ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : 0;
     result |= (flags & RHI_PIPELINE_STAGE_END) ? VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_HOST) ? VK_PIPELINE_STAGE_HOST_BIT : 0;
 
     return result;
 }
@@ -278,6 +288,8 @@ VkAccessFlags vk_util::map_access_flags(rhi_access_flags flags)
     result |= (flags & RHI_ACCESS_SHADER_WRITE) ? VK_ACCESS_SHADER_WRITE_BIT : 0;
     result |= (flags & RHI_ACCESS_TRANSFER_READ) ? VK_ACCESS_TRANSFER_READ_BIT : 0;
     result |= (flags & RHI_ACCESS_TRANSFER_WRITE) ? VK_ACCESS_TRANSFER_WRITE_BIT : 0;
+    result |= (flags & RHI_ACCESS_HOST_READ) ? VK_ACCESS_HOST_READ_BIT : 0;
+    result |= (flags & RHI_ACCESS_HOST_WRITE) ? VK_ACCESS_HOST_WRITE_BIT : 0;
 
     return result;
 }

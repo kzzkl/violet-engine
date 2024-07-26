@@ -190,6 +190,11 @@ void vk_command::set_pipeline_barrier(
     {
         VkBufferMemoryBarrier& barrier = vk_buffer_barriers[i];
         barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        barrier.srcAccessMask = vk_util::map_access_flags(buffer_barriers[i].src_access);
+        barrier.dstAccessMask = vk_util::map_access_flags(buffer_barriers[i].dst_access);
+        barrier.buffer = static_cast<vk_buffer*>(buffer_barriers[i].buffer)->get_buffer_handle();
+        barrier.offset = buffer_barriers[i].offset;
+        barrier.size = buffer_barriers[i].size;
     }
 
     std::vector<VkImageMemoryBarrier> vk_image_barriers(texture_barrier_count);
@@ -205,8 +210,10 @@ void vk_command::set_pipeline_barrier(
         barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.image = static_cast<vk_texture*>(texture_barriers[i].texture)->get_image();
         barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-        barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+        barrier.subresourceRange.baseMipLevel = texture_barriers[i].level;
+        barrier.subresourceRange.levelCount = texture_barriers[i].level_count;
+        barrier.subresourceRange.baseArrayLayer = texture_barriers[i].layer;
+        barrier.subresourceRange.layerCount = texture_barriers[i].layer_count;
     }
 
     vkCmdPipelineBarrier(
@@ -235,11 +242,13 @@ void vk_command::copy_texture(
     VkImageCopy image_copy = {};
     image_copy.extent = {src_region.extent.width, src_region.extent.height, 1};
 
+    image_copy.srcOffset = {src_region.offset_x, src_region.offset_y, 0};
     image_copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     image_copy.srcSubresource.mipLevel = src_region.level;
     image_copy.srcSubresource.baseArrayLayer = src_region.layer;
     image_copy.srcSubresource.layerCount = src_region.layer_count;
 
+    image_copy.dstOffset = {dst_region.offset_x, dst_region.offset_y, 0};
     image_copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     image_copy.dstSubresource.mipLevel = dst_region.level;
     image_copy.dstSubresource.baseArrayLayer = dst_region.layer;
@@ -256,6 +265,113 @@ void vk_command::copy_texture(
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1,
         &image_copy);
+}
+
+void vk_command::blit_texture(
+    rhi_texture* src,
+    const rhi_texture_region& src_region,
+    rhi_texture* dst,
+    const rhi_texture_region& dst_region)
+{
+    VkImageBlit image_blit = {};
+
+    image_blit.srcOffsets[0] = {src_region.offset_x, src_region.offset_y, 0};
+    image_blit.srcOffsets[1] = {
+        static_cast<std::int32_t>(src_region.extent.width),
+        static_cast<std::int32_t>(src_region.extent.height),
+        1};
+    image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_blit.srcSubresource.mipLevel = src_region.level;
+    image_blit.srcSubresource.baseArrayLayer = src_region.layer;
+    image_blit.srcSubresource.layerCount = src_region.layer_count;
+
+    image_blit.dstOffsets[0] = {dst_region.offset_x, dst_region.offset_y, 0};
+    image_blit.dstOffsets[1] = {
+        static_cast<std::int32_t>(dst_region.extent.width),
+        static_cast<std::int32_t>(dst_region.extent.height),
+        1};
+    image_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_blit.dstSubresource.mipLevel = dst_region.level;
+    image_blit.dstSubresource.baseArrayLayer = dst_region.layer;
+    image_blit.dstSubresource.layerCount = dst_region.layer_count;
+
+    vk_texture* src_image = static_cast<vk_texture*>(src);
+    vk_texture* dst_image = static_cast<vk_texture*>(dst);
+
+    vkCmdBlitImage(
+        m_command_buffer,
+        src_image->get_image(),
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        dst_image->get_image(),
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &image_blit,
+        VK_FILTER_LINEAR);
+}
+
+void vk_command::copy_buffer_to_texture(
+    rhi_buffer* buffer,
+    const rhi_buffer_region& buffer_region,
+    rhi_texture* texture,
+    const rhi_texture_region& texture_region)
+{
+    VkBuffer src_buffer = static_cast<vk_buffer*>(buffer)->get_buffer_handle();
+    VkImage dst_image = static_cast<vk_image*>(texture)->get_image();
+
+    VkBufferMemoryBarrier buffer_barrier = {};
+    buffer_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    buffer_barrier.srcAccessMask = VK_ACCESS_NONE;
+    buffer_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    buffer_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    buffer_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    buffer_barrier.buffer = src_buffer;
+    buffer_barrier.offset = buffer_region.offset;
+    buffer_barrier.size = buffer_region.size;
+
+    VkImageMemoryBarrier texture_barrier = {};
+    texture_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    texture_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    texture_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    texture_barrier.image = dst_image;
+    texture_barrier.subresourceRange.baseMipLevel = texture_region.level;
+    texture_barrier.subresourceRange.levelCount = 1;
+    texture_barrier.subresourceRange.baseArrayLayer = texture_region.layer;
+    texture_barrier.subresourceRange.layerCount = texture_region.layer_count;
+    texture_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    texture_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    texture_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    texture_barrier.srcAccessMask = 0;
+    texture_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    vkCmdPipelineBarrier(
+        m_command_buffer,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0,
+        0,
+        nullptr,
+        1,
+        &buffer_barrier,
+        1,
+        &texture_barrier);
+
+    VkBufferImageCopy region = {};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = texture_region.level;
+    region.imageSubresource.baseArrayLayer = texture_region.layer;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = {0, 0, 0};
+    region.imageExtent = {texture_region.extent.width, texture_region.extent.height, 1};
+
+    vkCmdCopyBufferToImage(
+        m_command_buffer,
+        src_buffer,
+        dst_image,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &region);
 }
 
 void vk_command::reset()

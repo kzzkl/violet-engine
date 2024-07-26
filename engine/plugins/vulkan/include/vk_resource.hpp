@@ -45,10 +45,6 @@ public:
     bool is_depth() const noexcept { return m_flags & RHI_TEXTURE_DEPTH_STENCIL; }
 
 protected:
-    void create_from_info(const rhi_texture_desc& desc);
-    void create_from_file(const rhi_texture_desc& desc);
-    static VkImageUsageFlags get_usage_flags(rhi_texture_flags flags);
-
     VkImage m_image{VK_NULL_HANDLE};
     VkImageView m_image_view{VK_NULL_HANDLE};
     VmaAllocation m_allocation{VK_NULL_HANDLE};

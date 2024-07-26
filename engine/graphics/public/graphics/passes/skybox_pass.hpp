@@ -4,13 +4,17 @@
 
 namespace violet
 {
-class skybox_pass
+class skybox_pass : public rdg_render_pass
 {
 public:
-    static void render(
-        render_graph& graph,
-        const render_camera& camera,
-        rdg_texture* render_target,
-        rdg_texture* depth_buffer);
+    struct data : public rdg_data
+    {
+        rhi_parameter* camera;
+        rdg_texture* render_target;
+        rdg_texture* depth_buffer;
+    };
+
+public:
+    skybox_pass(const data& data);
 };
 } // namespace violet

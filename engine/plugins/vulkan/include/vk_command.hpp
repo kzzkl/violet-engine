@@ -55,6 +55,18 @@ public:
         rhi_texture* dst,
         const rhi_texture_region& dst_region) override;
 
+    virtual void blit_texture(
+        rhi_texture* src,
+        const rhi_texture_region& src_region,
+        rhi_texture* dst,
+        const rhi_texture_region& dst_region) override;
+
+    virtual void copy_buffer_to_texture(
+        rhi_buffer* buffer,
+        const rhi_buffer_region& buffer_region,
+        rhi_texture* texture,
+        const rhi_texture_region& texture_region) override;
+
     void reset();
 
 private:

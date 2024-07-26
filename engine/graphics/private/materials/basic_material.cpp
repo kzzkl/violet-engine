@@ -25,9 +25,6 @@ struct basic_material_fs : public fragment_shader<basic_material_fs>
     };
 
     static constexpr parameter_slot parameters[] = {
-        {0, camera  },
-        {1, light   },
-        {2, mesh    },
         {3, material}
     };
 };
@@ -38,9 +35,7 @@ basic_material::basic_material(const float3& color)
     pipeline.vertex_shader = basic_material_vs::get_rhi();
     pipeline.fragment_shader = basic_material_fs::get_rhi();
 
-    rhi_parameter_desc parameter = {};
-    parameter.bindings[0] = {RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, sizeof(data)};
-    add_pass(pipeline, parameter);
+    add_pass(pipeline, basic_material_fs::material);
 
     set_color(color);
 }

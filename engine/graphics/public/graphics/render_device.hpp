@@ -167,8 +167,16 @@ struct shader
     using parameter = shader_parameter;
     using parameter_slot = rhi_shader_desc::parameter_slot;
 
+    struct mesh_data
+    {
+        float4x4 model;
+        float4x4 normal;
+    };
+
     static constexpr shader_parameter mesh = {
-        {RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_VERTEX, 64}
+        {RHI_PARAMETER_UNIFORM,
+         RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT,
+         sizeof(mesh_data)}
     };
 
     struct camera_data

@@ -1,7 +1,7 @@
 # dxc
 function(compile_shader_dxc OUTPUT_FILES)
     set(DXC_PATH "dxc.exe")
-    set(DXC_WORKING_DIRECTORY "${VIOLET_THIRD_PARTY_DIR}/dxc")
+    set(DXC_WORKING_DIRECTORY "${VIOLET_THIRD_PARTY_DIR}/dxc/x64")
 
     set(oneValueArgs SOURCE)
     set(multiValueArgs STAGES INCLUDES)
@@ -26,7 +26,16 @@ function(compile_shader_dxc OUTPUT_FILES)
             set(ENTRY_POINT "cs_main")
         endif()
 
-        set(COMMAND_LINE ${DXC_PATH} -spirv ${ARG_SOURCE} -T ${PROFILE} -E ${ENTRY_POINT} -Fo ${OUTPUT_NAME} -Wno-ignored-attributes -all-resources-bound $<$<CONFIG:Debug>:-Zi>)
+        set(COMMAND_LINE
+            ${DXC_PATH} -spirv ${ARG_SOURCE}
+            -T ${PROFILE}
+            -E ${ENTRY_POINT}
+            -Fo ${OUTPUT_NAME}
+            -Wno-ignored-attributes
+            -all-resources-bound
+            $<$<CONFIG:Debug>:-Zi>
+            $<$<CONFIG:Debug>:-fspv-extension=SPV_KHR_non_semantic_info>
+            $<$<CONFIG:Debug>:-fspv-debug=vulkan-with-source>)
 
         foreach(INCLUDE ${ARG_INCLUDES})
             set(COMMAND_LINE ${COMMAND_LINE} -I ${INCLUDE})

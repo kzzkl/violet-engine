@@ -69,7 +69,8 @@ void mesh::set_skinned_vertex_buffer(std::string_view name, rhi_buffer* vertex_b
 
 void mesh::set_model_matrix(const float4x4& m)
 {
-    m_parameter->set_uniform(0, &m, sizeof(float4x4), 0);
+    m_parameter->set_uniform(0, &m, sizeof(float4x4), offsetof(shader::mesh_data, model));
+    m_parameter->set_uniform(0, &m, sizeof(float4x4), offsetof(shader::mesh_data, normal));
 }
 
 rhi_buffer* mesh::get_vertex_buffer(std::string_view name)

@@ -245,5 +245,31 @@ public:
         return {1.0f / sqrtf(v[0]), 1.0f / sqrtf(v[1]), 1.0f / sqrtf(v[2]), 1.0f / sqrtf(v[3])};
 #endif
     }
+
+    [[nodiscard]] static inline vector4f min(const vector4f& a, const vector4f& b) noexcept
+    {
+#ifdef VIOLET_USE_SIMD
+        return _mm_min_ps(a, b);
+#else
+        return {
+            std::min(a[0], b[0]),
+            std::min(a[1], b[1]),
+            std::min(a[2], b[2]),
+            std::min(a[3], b[3])};
+#endif
+    }
+
+    [[nodiscard]] static inline vector4f max(const vector4f& a, const vector4f& b) noexcept
+    {
+#ifdef VIOLET_USE_SIMD
+        return _mm_max_ps(a, b);
+#else
+        return {
+            std::max(a[0], b[0]),
+            std::max(a[1], b[1]),
+            std::max(a[2], b[2]),
+            std::max(a[3], b[3])};
+#endif
+    }
 };
 } // namespace violet

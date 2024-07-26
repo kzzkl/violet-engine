@@ -6,6 +6,7 @@ add_library(${PROJECT_NAME} STATIC
     ./private/geometries/box_geometry.cpp
     ./private/geometries/sphere_geometry.cpp
     ./private/materials/basic_material.cpp
+    ./private/materials/physical_material.cpp
     ./private/passes/mesh_pass.cpp
     ./private/passes/skybox_pass.cpp
     ./private/render_graph/rdg_allocator.cpp
@@ -15,6 +16,7 @@ add_library(${PROJECT_NAME} STATIC
     ./private/render_graph/render_graph.cpp
     ./private/renderers/default_renderer.cpp
     ./private/tools/ibl_tool.cpp
+    ./private/tools/texture_loader.cpp
     ./private/geometry.cpp
     ./private/graphics_module.cpp
     ./private/material.cpp
@@ -32,6 +34,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
+    stb
     violet::task
     violet::window
     violet::math

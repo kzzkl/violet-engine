@@ -35,6 +35,8 @@ enum rhi_format
     RHI_FORMAT_R8G8B8A8_UINT,
     RHI_FORMAT_R8G8B8A8_SINT,
     RHI_FORMAT_R8G8B8A8_SRGB,
+    RHI_FORMAT_B8G8R8_UNORM,
+    RHI_FORMAT_B8G8R8_SNORM,
     RHI_FORMAT_B8G8R8A8_UNORM,
     RHI_FORMAT_B8G8R8A8_SNORM,
     RHI_FORMAT_B8G8R8A8_UINT,
@@ -202,7 +204,9 @@ enum rhi_pipeline_stage_flag
     RHI_PIPELINE_STAGE_LATE_DEPTH_STENCIL = 1 << 4,
     RHI_PIPELINE_STAGE_COLOR_OUTPUT = 1 << 5,
     RHI_PIPELINE_STAGE_TRANSFER = 1 << 6,
-    RHI_PIPELINE_STAGE_END = 1 << 7
+    RHI_PIPELINE_STAGE_COMPUTE = 1 << 7,
+    RHI_PIPELINE_STAGE_END = 1 << 8,
+    RHI_PIPELINE_STAGE_HOST = 1 << 9
 };
 using rhi_pipeline_stage_flags = std::uint32_t;
 
@@ -215,7 +219,9 @@ enum rhi_access_flag
     RHI_ACCESS_SHADER_READ = 1 << 4,
     RHI_ACCESS_SHADER_WRITE = 1 << 5,
     RHI_ACCESS_TRANSFER_READ = 1 << 6,
-    RHI_ACCESS_TRANSFER_WRITE = 1 << 7
+    RHI_ACCESS_TRANSFER_WRITE = 1 << 7,
+    RHI_ACCESS_HOST_READ = 1 << 8,
+    RHI_ACCESS_HOST_WRITE = 1 << 9
 };
 using rhi_access_flags = std::uint32_t;
 
@@ -482,6 +488,13 @@ struct rhi_scissor_rect
 
 struct rhi_buffer_barrier
 {
+    rhi_buffer* buffer;
+
+    rhi_access_flags src_access;
+    rhi_access_flags dst_access;
+
+    std::size_t offset;
+    std::size_t size;
 };
 
 struct rhi_texture_barrier
@@ -493,6 +506,12 @@ struct rhi_texture_barrier
 
     rhi_texture_layout src_layout;
     rhi_texture_layout dst_layout;
+
+    std::uint32_t level;
+    std::uint32_t level_count;
+
+    std::uint32_t layer;
+    std::uint32_t layer_count;
 };
 
 struct rhi_texture_region
@@ -502,7 +521,15 @@ struct rhi_texture_region
     std::uint32_t layer;
     std::uint32_t layer_count;
 
+    std::int32_t offset_x;
+    std::int32_t offset_y;
     rhi_texture_extent extent;
+};
+
+struct rhi_buffer_region
+{
+    std::size_t offset;
+    std::size_t size;
 };
 
 class rhi_command
@@ -547,6 +574,18 @@ public:
         const rhi_texture_region& src_region,
         rhi_texture* dst,
         const rhi_texture_region& dst_region) = 0;
+
+    virtual void blit_texture(
+        rhi_texture* src,
+        const rhi_texture_region& src_region,
+        rhi_texture* dst,
+        const rhi_texture_region& dst_region) = 0;
+
+    virtual void copy_buffer_to_texture(
+        rhi_buffer* buffer,
+        const rhi_buffer_region& buffer_region,
+        rhi_texture* texture,
+        const rhi_texture_region& texture_region) = 0;
 };
 
 class rhi_fence
@@ -569,7 +608,9 @@ enum rhi_buffer_flag
     RHI_BUFFER_INDEX = 1 << 1,
     RHI_BUFFER_UNIFORM = 1 << 2,
     RHI_BUFFER_STORAGE = 1 << 3,
-    RHI_BUFFER_HOST_VISIBLE = 1 << 4
+    RHI_BUFFER_TRANSFER_SRC = 1 << 4,
+    RHI_BUFFER_TRANSFER_DST = 1 << 5,
+    RHI_BUFFER_HOST_VISIBLE = 1 << 6
 };
 using rhi_buffer_flags = std::uint32_t;
 
@@ -590,12 +631,11 @@ enum rhi_texture_flag
 {
     RHI_TEXTURE_SHADER_RESOURCE = 1 << 0,
     RHI_TEXTURE_STORAGE = 1 << 1,
-    RHI_TEXTURE_MIPMAP = 1 << 2,
-    RHI_TEXTURE_RENDER_TARGET = 1 << 3,
-    RHI_TEXTURE_DEPTH_STENCIL = 1 << 4,
-    RHI_TEXTURE_TRANSFER_SRC = 1 << 5,
-    RHI_TEXTURE_TRANSFER_DST = 1 << 6,
-    RHI_TEXTURE_CUBE = 1 << 7
+    RHI_TEXTURE_RENDER_TARGET = 1 << 2,
+    RHI_TEXTURE_DEPTH_STENCIL = 1 << 3,
+    RHI_TEXTURE_TRANSFER_SRC = 1 << 4,
+    RHI_TEXTURE_TRANSFER_DST = 1 << 5,
+    RHI_TEXTURE_CUBE = 1 << 6
 };
 using rhi_texture_flags = std::uint32_t;
 
@@ -608,29 +648,13 @@ enum rhi_texture_create_type
 
 struct rhi_texture_desc
 {
-    rhi_texture_create_type create_type;
-    union {
-        struct
-        {
-            rhi_texture_extent extent;
-            rhi_format format;
-        } info;
+    rhi_texture_extent extent;
+    rhi_format format;
 
-        struct
-        {
-            const char* paths[6];
-        } file;
+    std::uint32_t level_count = 1;
+    std::uint32_t layer_count = 1;
 
-        struct
-        {
-            rhi_texture_extent extent;
-            rhi_format format;
-            void* data;
-            std::size_t size;
-        } data;
-    };
-
-    rhi_sample_count samples;
+    rhi_sample_count samples = RHI_SAMPLE_COUNT_1;
     rhi_texture_flags flags;
 };
 

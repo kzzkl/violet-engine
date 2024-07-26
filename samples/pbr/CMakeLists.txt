@@ -1,6 +1,7 @@
 project(pbr)
 
 add_executable(${PROJECT_NAME}
+    ./source/fbx_loader.cpp
     ./source/main.cpp)
 
 target_include_directories(${PROJECT_NAME}
@@ -10,7 +11,8 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
     violet::graphics
-    violet::control)
+    violet::control
+    assimp::assimp)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

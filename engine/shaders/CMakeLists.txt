@@ -6,6 +6,7 @@ set(SHADER_FILES "")
 set(VS_SHADER_LIST
     "${CMAKE_CURRENT_SOURCE_DIR}/source/ibl/cube_sample.hlsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/source/materials/basic.hlsl"
+    "${CMAKE_CURRENT_SOURCE_DIR}/source/materials/physical_tex.hlsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/source/materials/physical.hlsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/source/debug.hlsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/source/full_screen.hlsl"
@@ -18,6 +19,7 @@ set(FS_SHADER_LIST
     "${CMAKE_CURRENT_SOURCE_DIR}/source/ibl/irradiance.hlsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/source/ibl/prefilter.hlsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/source/materials/basic.hlsl"
+    "${CMAKE_CURRENT_SOURCE_DIR}/source/materials/physical_tex.hlsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/source/materials/physical.hlsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/source/debug.hlsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/source/skybox.hlsl"

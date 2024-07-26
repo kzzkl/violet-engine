@@ -2,27 +2,11 @@
 
 namespace violet
 {
-void mesh_pass::render(
-    render_graph& graph,
-    const render_context& context,
-    const render_camera& camera,
-    rdg_texture* render_target,
-    rdg_texture* depth_buffer)
+mesh_pass::mesh_pass(const data& data)
 {
-    struct pass_data : public rdg_data
-    {
-        render_list render_list;
-        rdg_texture* render_target;
-    };
-
-    pass_data& data = graph.allocate_data<pass_data>();
-    data.render_list = context.get_render_list(camera);
-    data.render_target = render_target;
-
-    auto pass = graph.add_pass<rdg_render_pass>("Mesh Pass");
-    pass->add_render_target(render_target, RHI_ATTACHMENT_LOAD_OP_CLEAR);
-    pass->set_depth_stencil(depth_buffer, RHI_ATTACHMENT_LOAD_OP_CLEAR);
-    pass->set_execute(
+    add_render_target(data.render_target, RHI_ATTACHMENT_LOAD_OP_CLEAR);
+    set_depth_stencil(data.depth_buffer, RHI_ATTACHMENT_LOAD_OP_CLEAR);
+    set_execute(
         [&data](rdg_command* command)
         {
             rhi_texture_extent extent = data.render_target->get_rhi()->get_extent();

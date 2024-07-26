@@ -18,26 +18,11 @@ struct skybox_fs : public fragment_shader<skybox_fs>
     };
 };
 
-void skybox_pass::render(
-    render_graph& graph,
-    const render_camera& camera,
-    rdg_texture* render_target,
-    rdg_texture* depth_buffer)
+skybox_pass::skybox_pass(const data& data)
 {
-    struct pass_data : public rdg_data
-    {
-        rdg_texture* render_target;
-        rhi_parameter* camera;
-    };
-
-    pass_data& data = graph.allocate_data<pass_data>();
-    data.render_target = render_target;
-    data.camera = camera.parameter;
-
-    auto pass = graph.add_pass<rdg_render_pass>("Skybox Pass");
-    pass->add_render_target(render_target);
-    pass->set_depth_stencil(depth_buffer);
-    pass->set_execute(
+    add_render_target(data.render_target);
+    set_depth_stencil(data.depth_buffer);
+    set_execute(
         [&data](rdg_command* command)
         {
             rhi_texture_extent extent = data.render_target->get_rhi()->get_extent();

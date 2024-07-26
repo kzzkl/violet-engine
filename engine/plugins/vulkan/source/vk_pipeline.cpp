@@ -325,7 +325,7 @@ void vk_parameter::set_texture(std::size_t index, rhi_texture* texture, rhi_samp
     info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     info.sampler = static_cast<vk_sampler*>(sampler)->get_sampler();
 
-    auto& binding = m_layout->get_parameter_bindings()[index];
+     auto& binding = m_layout->get_parameter_bindings()[index];
     assert(binding.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     if (m_images[binding.index].first == info.imageView &&
         m_images[binding.index].second == info.sampler)
