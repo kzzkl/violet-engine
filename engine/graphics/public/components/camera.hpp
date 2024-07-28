@@ -33,7 +33,6 @@ public:
     void set_view(const float4x4& view);
     void set_skybox(rhi_texture* texture, rhi_sampler* sampler);
 
-    rhi_scissor_rect get_scissor() const noexcept { return m_scissor; }
     rhi_viewport get_viewport() const noexcept { return m_viewport; }
 
     void resize(std::uint32_t width, std::uint32_t height);
@@ -81,7 +80,6 @@ private:
 
     rhi_ptr<rhi_parameter> m_parameter;
 
-    rhi_scissor_rect m_scissor;
     rhi_viewport m_viewport;
 
     renderer* m_renderer;

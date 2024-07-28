@@ -11,6 +11,8 @@ struct render_camera
 {
     rhi_parameter* parameter;
     std::vector<rhi_texture*> render_targets;
+
+    rhi_viewport viewport;
 };
 
 struct render_list

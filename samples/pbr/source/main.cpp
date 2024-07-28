@@ -21,50 +21,6 @@
 
 namespace violet::sample
 {
-class test_material : public material
-{
-public:
-    struct test_vs : public vertex_shader<test_vs>
-    {
-        static constexpr std::string_view path = "pbr/shaders/test.vs";
-
-        static constexpr input inputs[] = {
-            {"position", RHI_FORMAT_R32G32B32_FLOAT}
-        };
-        static constexpr parameter_slot parameters[] = {
-            {0, shader::camera},
-            {1, shader::light },
-            {2, shader::mesh  }
-        };
-    };
-
-    struct test_fs : public fragment_shader<test_fs>
-    {
-        static constexpr parameter material = {
-            {RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1}
-        };
-
-        static constexpr std::string_view path = "pbr/shaders/test.fs";
-        static constexpr parameter_slot parameters[] = {
-            {3, material}
-        };
-    };
-
-public:
-    test_material()
-    {
-        rdg_render_pipeline pipeline = {};
-        pipeline.vertex_shader = test_vs::get_rhi();
-        pipeline.fragment_shader = test_fs::get_rhi();
-        add_pass(pipeline, test_fs::material);
-    }
-
-    void set_texture(rhi_texture* texture, rhi_sampler* sampler)
-    {
-        get_parameter(0)->set_texture(0, texture, sampler);
-    }
-};
-
 class pbr_sample : public engine_module
 {
 public:

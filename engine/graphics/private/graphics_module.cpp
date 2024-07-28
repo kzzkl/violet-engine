@@ -197,6 +197,7 @@ rhi_semaphore* graphics_module::render(camera* camera)
     render_camera camera_data = {};
     camera_data.parameter = camera->get_parameter();
     camera_data.render_targets = camera->get_render_targets();
+    camera_data.viewport = camera->get_viewport();
 
     auto& device = render_device::instance();
 

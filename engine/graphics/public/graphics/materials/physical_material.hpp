@@ -18,7 +18,7 @@ public:
     };
 
 public:
-    physical_material(bool texture = false);
+    physical_material(bool use_texture = false);
 
     // No texture version.
     void set_albedo(const float3& albedo);
@@ -36,6 +36,6 @@ public:
     void set_brdf_lut(rhi_texture* brdf_lut, rhi_sampler* sampler);
 
 private:
-    bool m_texture;
+    bool m_use_texture;
 };
 } // namespace violet

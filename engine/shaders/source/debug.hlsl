@@ -4,8 +4,8 @@ ConstantBuffer<violet_camera> camera : register(b0, space0);
 
 struct vs_in
 {
-    [[vk::location(0)]] float3 position : POSITION;
-    [[vk::location(1)]] float3 color : COLOR;
+    float3 position : POSITION;
+    float3 color : COLOR;
 };
 
 struct vs_out

@@ -21,7 +21,7 @@ target_include_directories(${PROJECT_NAME}
     ./include
     ${VIOLET_ROOT_DIR}/engine/core/public
     ${VIOLET_ROOT_DIR}/engine/physics/public
-    ${VIOLET_THIRD_PARTY_DIR}/bullet3/src)
+    ${VIOLET_THIRDPARTY_DIR}/bullet3/src)
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE

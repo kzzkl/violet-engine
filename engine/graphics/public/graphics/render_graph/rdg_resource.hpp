@@ -169,7 +169,7 @@ private:
 class rdg_buffer : public rdg_resource
 {
 public:
-    rdg_buffer(rhi_buffer* buffer = nullptr);
+    explicit rdg_buffer(rhi_buffer* buffer = nullptr);
 
     virtual rdg_resource_type get_type() const noexcept override final
     {

@@ -1,7 +1,7 @@
 # dxc
 function(compile_shader_dxc OUTPUT_FILES)
     set(DXC_PATH "dxc.exe")
-    set(DXC_WORKING_DIRECTORY "${VIOLET_THIRD_PARTY_DIR}/dxc/x64")
+    set(DXC_WORKING_DIRECTORY "${VIOLET_THIRDPARTY_DIR}/dxc/x64")
 
     set(oneValueArgs SOURCE)
     set(multiValueArgs STAGES INCLUDES)

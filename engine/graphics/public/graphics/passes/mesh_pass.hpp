@@ -10,8 +10,10 @@ public:
     struct data : public rdg_data
     {
         render_list render_list;
-        rdg_texture* render_target;
-        rdg_texture* depth_buffer;
+        rhi_viewport viewport;
+
+        rdg_attachment render_target;
+        rdg_attachment depth_buffer;
     };
 
 public:

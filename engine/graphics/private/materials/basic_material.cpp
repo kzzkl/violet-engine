@@ -2,38 +2,48 @@
 
 namespace violet
 {
-struct basic_material_vs : public vertex_shader<basic_material_vs>
+struct basic_material_vs : public vertex_shader
 {
-    static constexpr std::string_view path = "engine/shaders/basic.vs";
+    static std::string_view get_path() { return "engine/shaders/basic.vs"; }
 
-    static constexpr parameter_slot parameters[] = {
-        {0, camera},
-        {2, mesh  }
+    static parameter_slots get_parameters()
+    {
+        return {
+            {0, camera},
+            {1, light },
+            {2, mesh  }
+        };
     };
 
-    static constexpr input inputs[] = {
-        {"position", RHI_FORMAT_R32G32B32_FLOAT}
+    static input_slots get_inputs()
+    {
+        return {
+            {"position", RHI_FORMAT_R32G32B32_FLOAT}
+        };
     };
 };
 
-struct basic_material_fs : public fragment_shader<basic_material_fs>
+struct basic_material_fs : public fragment_shader
 {
-    static constexpr std::string_view path = "engine/shaders/basic.fs";
+    static std::string_view get_path() { return "engine/shaders/basic.fs"; }
 
     static constexpr parameter material = {
         {RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, sizeof(basic_material::data)}
     };
 
-    static constexpr parameter_slot parameters[] = {
-        {3, material}
+    static parameter_slots get_parameters()
+    {
+        return {
+            {3, material}
+        };
     };
 };
 
 basic_material::basic_material(const float3& color)
 {
     rdg_render_pipeline pipeline = {};
-    pipeline.vertex_shader = basic_material_vs::get_rhi();
-    pipeline.fragment_shader = basic_material_fs::get_rhi();
+    pipeline.vertex_shader = render_device::instance().get_shader<basic_material_vs>();
+    pipeline.fragment_shader = render_device::instance().get_shader<basic_material_fs>();
 
     add_pass(pipeline, basic_material_fs::material);
 

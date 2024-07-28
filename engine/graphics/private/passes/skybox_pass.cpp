@@ -2,19 +2,27 @@
 
 namespace violet
 {
-struct skybox_vs : public vertex_shader<skybox_vs>
+struct skybox_vs : public vertex_shader
 {
-    static constexpr std::string_view path = "engine/shaders/skybox.vs";
-    static constexpr parameter_slot parameters[] = {
-        {0, shader::camera}
+    static std::string_view get_path() { return "engine/shaders/skybox.vs"; }
+
+    static constexpr parameter_slots get_parameters()
+    {
+        return {
+            {0, shader::camera}
+        };
     };
 };
 
-struct skybox_fs : public fragment_shader<skybox_fs>
+struct skybox_fs : public fragment_shader
 {
-    static constexpr std::string_view path = "engine/shaders/skybox.fs";
-    static constexpr parameter_slot parameters[] = {
-        {0, shader::camera}
+    static std::string_view get_path() { return "engine/shaders/skybox.fs"; }
+
+    static constexpr parameter_slots get_parameters()
+    {
+        return {
+            {0, shader::camera}
+        };
     };
 };
 
@@ -25,23 +33,18 @@ skybox_pass::skybox_pass(const data& data)
     set_execute(
         [&data](rdg_command* command)
         {
-            rhi_texture_extent extent = data.render_target->get_rhi()->get_extent();
-            rhi_viewport viewport = {
-                .x = 0,
-                .y = 0,
-                .width = static_cast<float>(extent.width),
-                .height = static_cast<float>(extent.height),
-                .min_depth = 0.0f,
-                .max_depth = 1.0f};
-            command->set_viewport(viewport);
+            command->set_viewport(data.viewport);
 
-            rhi_scissor_rect scissor =
-                {.min_x = 0, .min_y = 0, .max_x = extent.width, .max_y = extent.height};
+            rhi_scissor_rect scissor = {
+                .min_x = 0,
+                .min_y = 0,
+                .max_x = static_cast<std::uint32_t>(data.viewport.width),
+                .max_y = static_cast<std::uint32_t>(data.viewport.height)};
             command->set_scissor(std::span<rhi_scissor_rect>(&scissor, 1));
 
             rdg_render_pipeline pipeline = {};
-            pipeline.vertex_shader = skybox_vs::get_rhi();
-            pipeline.fragment_shader = skybox_fs::get_rhi();
+            pipeline.vertex_shader = render_device::instance().get_shader<skybox_vs>();
+            pipeline.fragment_shader = render_device::instance().get_shader<skybox_fs>();
 
             command->set_pipeline(pipeline);
             command->set_parameter(0, data.camera);

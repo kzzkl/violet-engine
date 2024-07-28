@@ -10,8 +10,10 @@ public:
     struct data : public rdg_data
     {
         rhi_parameter* camera;
-        rdg_texture* render_target;
-        rdg_texture* depth_buffer;
+        rhi_viewport viewport;
+
+        rdg_attachment render_target;
+        rdg_attachment depth_buffer;
     };
 
 public:

@@ -275,12 +275,12 @@ struct rhi_parameter_binding
 {
     rhi_parameter_type type;
     rhi_shader_stage_flags stages;
-    std::size_t size = 0;
+    std::size_t size;
 };
 
 struct rhi_parameter_desc
 {
-    rhi_parameter_binding bindings[rhi_constants::MAX_PARAMETER_BINDING_COUNT];
+    const rhi_parameter_binding* bindings;
     std::size_t binding_count;
 };
 
@@ -313,6 +313,9 @@ struct rhi_vertex_attribute
 struct rhi_shader_desc
 {
     const char* path;
+
+    const char* entry_point;
+    const char* defines;
 
     rhi_shader_stage_flag stage;
 

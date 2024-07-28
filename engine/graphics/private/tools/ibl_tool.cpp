@@ -4,55 +4,67 @@
 
 namespace violet
 {
-struct cube_sample_vs : public vertex_shader<cube_sample_vs>
+struct cube_sample_vs : public vertex_shader
 {
-    static constexpr std::string_view path = "engine/shaders/cube_sample.vs";
+    static constexpr std::string_view get_path() { return "engine/shaders/cube_sample.vs"; }
 };
 
-struct convert_fs : public fragment_shader<convert_fs>
+struct convert_fs : public fragment_shader
 {
-    static constexpr std::string_view path = "engine/shaders/equirectangular_to_cubemap.fs";
+    static constexpr std::string_view get_path()
+    {
+        return "engine/shaders/equirectangular_to_cubemap.fs";
+    }
 
     static constexpr parameter convert = {
         {RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1}
     };
 
-    static constexpr parameter_slot parameters[] = {
-        {0, convert}
+    static constexpr parameter_slots get_parameters()
+    {
+        return {
+            {0, convert}
+        };
     };
 };
 
-struct irradiance_fs : public fragment_shader<irradiance_fs>
+struct irradiance_fs : public fragment_shader
 {
-    static constexpr std::string_view path = "engine/shaders/irradiance.fs";
+    static constexpr std::string_view get_path() { return "engine/shaders/irradiance.fs"; }
 
     static constexpr parameter irradiance = {
         {RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, sizeof(rhi_texture_extent)},
         {RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1                         }
     };
 
-    static constexpr parameter_slot parameters[] = {
-        {0, irradiance}
+    static constexpr parameter_slots get_parameters()
+    {
+        return {
+            {0, irradiance}
+        };
     };
 };
 
-struct prefilter_fs : public fragment_shader<prefilter_fs>
+struct prefilter_fs : public fragment_shader
 {
-    static constexpr std::string_view path = "engine/shaders/prefilter.fs";
+    static constexpr std::string_view get_path() { return "engine/shaders/prefilter.fs"; }
 
     static constexpr parameter prefilter = {
         {RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, sizeof(float)}, // roughness
         {RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1            }
     };
 
-    static constexpr parameter_slot parameters[] = {
-        {0, prefilter}
+    static constexpr parameter_slots get_parameters()
+    {
+        return {
+            {0, prefilter}
+        };
     };
 };
 
-struct brdf_lut_fs : public fragment_shader<brdf_lut_fs>
+struct brdf_lut_fs : public fragment_shader
 {
-    static constexpr std::string_view path = "engine/shaders/brdf_lut.fs";
+    static constexpr std::string_view get_path() { return "engine/shaders/brdf_lut.fs"; }
 };
 
 class ibl_renderer
@@ -101,21 +113,23 @@ private:
         rdg_render_pass* convert_pass = graph.add_pass<rdg_render_pass>("Convert Pass");
         for (std::size_t i = 0; i < 6; ++i)
         {
-            rdg_texture* render_target = graph.add_texture(
-                "Cube Map " + m_sides[i],
-                cube_map,
-                0,
-                i,
-                RHI_TEXTURE_LAYOUT_UNDEFINED,
-                RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
-            convert_pass->add_render_target(render_target, RHI_ATTACHMENT_LOAD_OP_DONT_CARE);
+            rdg_attachment render_target(
+                graph.add_texture(
+                    "Cube Map " + m_sides[i],
+                    cube_map,
+                    0,
+                    i,
+                    RHI_TEXTURE_LAYOUT_UNDEFINED,
+                    RHI_TEXTURE_LAYOUT_SHADER_RESOURCE),
+                RHI_ATTACHMENT_LOAD_OP_DONT_CARE);
+            convert_pass->add_render_target(render_target);
         }
         convert_pass->set_execute(
             [&data](rdg_command* command)
             {
                 rdg_render_pipeline pipeline = {};
-                pipeline.vertex_shader = cube_sample_vs::get_rhi();
-                pipeline.fragment_shader = convert_fs::get_rhi();
+                pipeline.vertex_shader = render_device::instance().get_shader<cube_sample_vs>();
+                pipeline.fragment_shader = render_device::instance().get_shader<convert_fs>();
 
                 command->set_viewport(data.viewport);
                 command->set_scissor(std::span(&data.scissor, 1));
@@ -155,21 +169,23 @@ private:
         rdg_render_pass* irradiance_pass = graph.add_pass<rdg_render_pass>("Irradiance Pass");
         for (std::size_t i = 0; i < 6; ++i)
         {
-            rdg_texture* render_target = graph.add_texture(
-                "Irradiance Map " + m_sides[i],
-                irradiance_map,
-                0,
-                i,
-                RHI_TEXTURE_LAYOUT_UNDEFINED,
-                RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
-            irradiance_pass->add_render_target(render_target, RHI_ATTACHMENT_LOAD_OP_DONT_CARE);
+            rdg_attachment render_target(
+                graph.add_texture(
+                    "Irradiance Map " + m_sides[i],
+                    irradiance_map,
+                    0,
+                    i,
+                    RHI_TEXTURE_LAYOUT_UNDEFINED,
+                    RHI_TEXTURE_LAYOUT_SHADER_RESOURCE),
+                RHI_ATTACHMENT_LOAD_OP_DONT_CARE);
+            irradiance_pass->add_render_target(render_target);
         }
         irradiance_pass->set_execute(
             [&data](rdg_command* command)
             {
                 rdg_render_pipeline pipeline = {};
-                pipeline.vertex_shader = cube_sample_vs::get_rhi();
-                pipeline.fragment_shader = irradiance_fs::get_rhi();
+                pipeline.vertex_shader = render_device::instance().get_shader<cube_sample_vs>();
+                pipeline.fragment_shader = render_device::instance().get_shader<irradiance_fs>();
 
                 command->set_viewport(data.viewport);
                 command->set_scissor(std::span(&data.scissor, 1));
@@ -213,21 +229,23 @@ private:
             rdg_render_pass* prefilter_pass = graph.add_pass<rdg_render_pass>("Prefilter Pass");
             for (std::size_t i = 0; i < 6; ++i)
             {
-                rdg_texture* render_target = graph.add_texture(
-                    "Prefilter Map " + m_sides[i] + " Mip " + std::to_string(level),
-                    prefilter_map,
-                    level,
-                    i,
-                    RHI_TEXTURE_LAYOUT_UNDEFINED,
-                    RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
-                prefilter_pass->add_render_target(render_target, RHI_ATTACHMENT_LOAD_OP_DONT_CARE);
+                rdg_attachment render_target(
+                    graph.add_texture(
+                        "Prefilter Map " + m_sides[i] + " Mip " + std::to_string(level),
+                        prefilter_map,
+                        level,
+                        i,
+                        RHI_TEXTURE_LAYOUT_UNDEFINED,
+                        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE),
+                    RHI_ATTACHMENT_LOAD_OP_DONT_CARE);
+                prefilter_pass->add_render_target(render_target);
             }
             prefilter_pass->set_execute(
                 [&data](rdg_command* command)
                 {
                     rdg_render_pipeline pipeline = {};
-                    pipeline.vertex_shader = cube_sample_vs::get_rhi();
-                    pipeline.fragment_shader = prefilter_fs::get_rhi();
+                    pipeline.vertex_shader = render_device::instance().get_shader<cube_sample_vs>();
+                    pipeline.fragment_shader = render_device::instance().get_shader<prefilter_fs>();
 
                     command->set_viewport(data.viewport);
                     command->set_scissor(std::span(&data.scissor, 1));
@@ -240,14 +258,16 @@ private:
 
     void add_brdf_pass(render_graph& graph, rhi_texture* brdf_map)
     {
-        rdg_texture* render_target = graph.add_texture(
-            "BRDF LUT",
-            brdf_map,
-            RHI_TEXTURE_LAYOUT_UNDEFINED,
-            RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+        rdg_attachment render_target(
+            graph.add_texture(
+                "BRDF LUT",
+                brdf_map,
+                RHI_TEXTURE_LAYOUT_UNDEFINED,
+                RHI_TEXTURE_LAYOUT_SHADER_RESOURCE),
+            RHI_ATTACHMENT_LOAD_OP_DONT_CARE);
 
         rdg_render_pass* brdf_pass = graph.add_pass<rdg_render_pass>("BRDF Pass");
-        brdf_pass->add_render_target(render_target, RHI_ATTACHMENT_LOAD_OP_DONT_CARE);
+        brdf_pass->add_render_target(render_target);
         brdf_pass->set_execute(
             [brdf_map](rdg_command* command)
             {
@@ -264,8 +284,8 @@ private:
                     {.min_x = 0, .min_y = 0, .max_x = extent.width, .max_y = extent.height};
 
                 rdg_render_pipeline pipeline = {};
-                pipeline.vertex_shader = full_screen_vs::get_rhi();
-                pipeline.fragment_shader = brdf_lut_fs::get_rhi();
+                pipeline.vertex_shader = render_device::instance().get_shader<full_screen_vs>();
+                pipeline.fragment_shader = render_device::instance().get_shader<brdf_lut_fs>();
                 command->set_viewport(viewport);
                 command->set_scissor(std::span(&scissor, 1));
                 command->set_pipeline(pipeline);

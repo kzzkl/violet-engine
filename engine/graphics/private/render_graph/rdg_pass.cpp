@@ -83,37 +83,31 @@ rdg_render_pass::rdg_render_pass()
 {
 }
 
-void rdg_render_pass::add_render_target(
-    rdg_texture* render_target,
-    rhi_attachment_load_op load_op,
-    rhi_attachment_store_op store_op)
+void rdg_render_pass::add_render_target(const rdg_attachment& render_target)
 {
-    rdg_reference* reference = add_reference(render_target);
+    rdg_reference* reference = add_reference(render_target.get_texture());
     reference->type = RDG_REFERENCE_ATTACHMENT;
     reference->stages = RHI_PIPELINE_STAGE_COLOR_OUTPUT;
     reference->access = RHI_ACCESS_SHADER_WRITE;
     reference->attachment.layout = RHI_TEXTURE_LAYOUT_RENDER_TARGET;
     reference->attachment.type = RHI_ATTACHMENT_REFERENCE_COLOR;
-    reference->attachment.load_op = load_op;
-    reference->attachment.store_op = store_op;
+    reference->attachment.load_op = render_target.get_load_op();
+    reference->attachment.store_op = render_target.get_store_op();
 
     m_attachments.push_back(reference);
 }
 
-void rdg_render_pass::set_depth_stencil(
-    rdg_texture* depth_stencil,
-    rhi_attachment_load_op load_op,
-    rhi_attachment_store_op store_op)
+void rdg_render_pass::set_depth_stencil(const rdg_attachment& depth_stencil)
 {
-    rdg_reference* reference = add_reference(depth_stencil);
+    rdg_reference* reference = add_reference(depth_stencil.get_texture());
     reference->type = RDG_REFERENCE_ATTACHMENT;
     reference->stages =
         RHI_PIPELINE_STAGE_EARLY_DEPTH_STENCIL | RHI_PIPELINE_STAGE_LATE_DEPTH_STENCIL;
     reference->access = RHI_ACCESS_DEPTH_STENCIL_READ | RHI_ACCESS_DEPTH_STENCIL_WRITE;
     reference->attachment.layout = RHI_TEXTURE_LAYOUT_DEPTH_STENCIL;
     reference->attachment.type = RHI_ATTACHMENT_REFERENCE_DEPTH_STENCIL;
-    reference->attachment.load_op = load_op;
-    reference->attachment.store_op = store_op;
+    reference->attachment.load_op = depth_stencil.get_load_op();
+    reference->attachment.store_op = depth_stencil.get_store_op();
 
     m_attachments.push_back(reference);
 }

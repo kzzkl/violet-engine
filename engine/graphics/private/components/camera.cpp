@@ -66,9 +66,6 @@ void camera::set_skybox(rhi_texture* texture, rhi_sampler* sampler)
 
 void camera::resize(std::uint32_t width, std::uint32_t height)
 {
-    m_scissor.max_x = m_scissor.min_x + width;
-    m_scissor.max_y = m_scissor.min_y + height;
-
     m_viewport.width = width;
     m_viewport.height = height;
     m_viewport.min_depth = 0.0f;
