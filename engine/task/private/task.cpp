@@ -3,62 +3,53 @@
 
 namespace violet
 {
-task_base::task_base(task_graph_base* graph) noexcept
-    : m_uncompleted_dependency_count(0),
-      m_type(TASK_TYPE_NORMAL),
-      m_graph(graph)
-{
-}
+task::task() noexcept {}
 
-task_base::~task_base()
-{
-}
+task::~task() {}
 
-std::vector<task_base*> task_base::execute()
+std::vector<task*> task::execute()
 {
-    execute_impl();
+    m_function();
 
-    std::vector<task_base*> result;
-    for (task_base* successor : m_successors)
+    std::vector<task*> result;
+    for (task* successor : m_successors)
     {
         successor->m_uncompleted_dependency_count.fetch_sub(1);
 
         std::uint32_t expected = 0;
         if (successor->m_uncompleted_dependency_count.compare_exchange_strong(
-                expected,
-                static_cast<std::uint32_t>(successor->m_dependents.size())))
+                expected, static_cast<std::uint32_t>(successor->m_dependents.size())))
         {
             result.push_back(successor);
         }
     }
 
-    m_graph->on_task_complete();
+    m_taskflow->on_task_complete();
 
     return result;
 }
 
-std::vector<task_base*> task_base::visit()
+std::vector<task*> task::visit()
 {
-    std::queue<task_base*> bfs;
+    std::queue<task*> bfs;
     bfs.push(this);
 
-    std::vector<task_base*> result;
+    std::vector<task*> result;
 
     while (!bfs.empty())
     {
-        task_base* temp = bfs.front();
+        task* temp = bfs.front();
         bfs.pop();
 
         result.push_back(temp);
 
-        for (task_base* successor : temp->m_successors)
+        for (task* successor : temp->m_successors)
         {
             --successor->m_uncompleted_dependency_count;
 
             std::uint32_t expected = 0;
             if (successor->m_uncompleted_dependency_count.compare_exchange_strong(
-                    expected,
-                    static_cast<std::uint32_t>(successor->m_dependents.size())))
+                    expected, static_cast<std::uint32_t>(successor->m_dependents.size())))
             {
                 bfs.push(successor);
             }
@@ -68,26 +59,48 @@ std::vector<task_base*> task_base::visit()
     return result;
 }
 
-void task_base::add_successor(task_base* successor)
+void task::add_predecessor_impl(task& predecessor)
 {
-    m_successors.push_back(successor);
-    successor->m_dependents.push_back(this);
-    ++successor->m_uncompleted_dependency_count;
+    predecessor.add_successor_impl(*this);
 }
 
-task_graph_base::task_graph_base() noexcept : m_dirty(false), m_incomplete_count(0)
+void task::add_predecessor_impl(std::string_view predecessor_name)
 {
+    add_predecessor_impl(m_taskflow->get_task(predecessor_name));
 }
 
-std::future<void> task_graph_base::reset(task_base* root) noexcept
+void task::add_successor_impl(task& successor)
+{
+    m_successors.push_back(&successor);
+    successor.m_dependents.push_back(this);
+    ++successor.m_uncompleted_dependency_count;
+}
+
+void task::add_successor_impl(std::string_view successor_name)
+{
+    add_successor_impl(m_taskflow->get_task(successor_name));
+}
+
+taskflow::taskflow() noexcept
+    : m_dirty(false),
+      m_incomplete_count(0)
+{
+    add_task([]() {}).set_name("root");
+}
+
+std::future<void> taskflow::reset() noexcept
 {
     if (m_dirty)
     {
-        m_accessible_tasks = root->visit();
-        m_task_count.fill(0);
+        m_accessible_tasks = m_tasks[0]->visit();
 
-        for (task_base* task : m_accessible_tasks)
-            ++m_task_count[task->get_type()];
+        for (task* task : m_accessible_tasks)
+        {
+            if (task->get_options() & TASK_OPTION_MAIN_THREAD)
+            {
+                ++m_main_thread_task_count;
+            }
+        }
 
         m_dirty = false;
     }
@@ -97,24 +110,20 @@ std::future<void> task_graph_base::reset(task_base* root) noexcept
     return m_promise.get_future();
 }
 
-void task_graph_base::on_task_complete()
+void taskflow::on_task_complete()
 {
     m_incomplete_count.fetch_sub(1);
 
     std::uint32_t expected = 0;
     if (m_incomplete_count.compare_exchange_strong(
-            expected,
-            static_cast<std::uint32_t>(m_accessible_tasks.size())))
+            expected, static_cast<std::uint32_t>(m_accessible_tasks.size())))
+    {
         m_promise.set_value();
+    }
 }
 
-std::size_t task_graph_base::get_task_count() const noexcept
+std::size_t taskflow::get_task_count() const noexcept
 {
     return m_accessible_tasks.size();
-}
-
-std::size_t task_graph_base::get_task_count(task_type type) const noexcept
-{
-    return m_task_count[type];
 }
 } // namespace violet

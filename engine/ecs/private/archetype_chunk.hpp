@@ -10,6 +10,13 @@ struct alignas(64) archetype_chunk
 {
     static constexpr std::size_t CHUNK_SIZE = 1024 * 16;
     std::array<std::uint8_t, CHUNK_SIZE> data;
+
+    std::vector<std::uint32_t> component_versions;
+
+    void set_version(std::size_t component_index, std::uint32_t version)
+    {
+        component_versions[component_index] = version;
+    }
 };
 
 class archetype_chunk_allocator

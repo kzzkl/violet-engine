@@ -2,7 +2,6 @@ project(violet-graphics)
 
 add_library(${PROJECT_NAME} STATIC
     ./private/components/camera.cpp
-    ./private/components/mesh.cpp
     ./private/geometries/box_geometry.cpp
     ./private/geometries/sphere_geometry.cpp
     ./private/materials/basic_material.cpp

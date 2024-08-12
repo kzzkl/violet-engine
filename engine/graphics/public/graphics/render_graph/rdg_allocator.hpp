@@ -110,7 +110,7 @@ private:
         std::unordered_map<std::uint64_t, wrapper> m_objects;
     };
 
-    template <typename T, template <typename> typename Ptr>
+    template <typename T, template <typename...> typename Ptr>
     struct pool
     {
         std::size_t count;

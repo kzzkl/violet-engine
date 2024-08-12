@@ -1,5 +1,6 @@
 #include "core/engine.hpp"
 #include "common/log.hpp"
+#include "core/engine_stats.hpp"
 #include "engine_context.hpp"
 #include <filesystem>
 #include <fstream>
@@ -34,9 +35,20 @@ engine::~engine()
 {
 }
 
+engine& engine::instance()
+{
+    static engine instance;
+    return instance;
+}
+
 void engine::initialize(std::string_view config_path)
 {
-    for (auto iter : std::filesystem::directory_iterator("engine/config"))
+    auto& config = instance().m_config;
+
+    std::ofstream fff("a.txt");
+
+
+    for (auto iter : std::filesystem::directory_iterator("assets/config"))
     {
         if (iter.is_regular_file() && iter.path().extension() == ".json")
         {
@@ -44,11 +56,11 @@ void engine::initialize(std::string_view config_path)
             if (!fin.is_open())
                 continue;
 
-            dictionary config;
-            fin >> config;
+            dictionary json;
+            fin >> json;
 
-            for (auto& [key, value] : config.items())
-                m_config[key].update(value, true);
+            for (auto& [key, value] : json.items())
+                config[key].update(value, true);
         }
     }
 
@@ -62,39 +74,49 @@ void engine::initialize(std::string_view config_path)
                 if (!fin.is_open())
                     continue;
 
-                dictionary config;
-                fin >> config;
+                dictionary json;
+                fin >> json;
 
-                for (auto& [key, value] : config.items())
-                    m_config[key].update(value, true);
+                for (auto& [key, value] : json.items())
+                    config[key].update(value, true);
             }
         }
     }
 
-    m_context = std::make_unique<engine_context>();
+    instance().m_context = std::make_unique<engine_context>();
 }
 
 void engine::run()
 {
-    if (!m_exit)
+    auto& engine = instance();
+
+    if (!engine.m_exit)
+    {
         return;
-    else
-        m_exit = false;
+    }
+
+    engine.m_exit = false;
 
     frame_rater<30> frame_rater;
-    timer& time = m_context->get_timer();
+    timer& time = engine.m_context->get_timer();
     time.tick(timer::point::FRAME_START);
     time.tick(timer::point::FRAME_END);
 
-    task_executor& executor = m_context->get_executor();
+    task_executor& executor = engine.m_context->get_executor();
 
     executor.run();
 
-    while (!m_exit)
+    engine_stats stats = {};
+
+    while (!engine.m_exit)
     {
         time.tick(timer::point::FRAME_START);
-        m_context->tick(time.get_frame_delta());
+
+        stats.delta = time.get_frame_delta();
+        engine.m_context->tick(stats);
         time.tick(timer::point::FRAME_END);
+
+        ++stats.loop_count;
 
         // frame_rater.sleep();
     }
@@ -102,57 +124,55 @@ void engine::run()
     executor.stop();
 
     // shutdown
-    for (auto iter = m_modules.rbegin(); iter != m_modules.rend(); ++iter)
-    {
-        log::info("Module shutdown: {}.", (*iter)->get_name());
-        (*iter)->shutdown();
-        (*iter) = nullptr;
-    }
+    std::for_each(
+        engine.m_systems.rbegin(),
+        engine.m_systems.rend(),
+        [](auto& system)
+        {
+            log::info("System shutdown: {}.", system->get_name());
+            system->shutdown();
+            system = nullptr;
+        });
 }
 
 void engine::exit()
 {
-    m_exit = true;
+    instance().m_exit = true;
 }
 
-void engine::install(std::size_t index, std::unique_ptr<engine_module>&& module)
+void engine::install(std::size_t index, std::unique_ptr<engine_system>&& system)
 {
-    module->m_context = m_context.get();
-    if (!module->initialize(m_config[module->get_name().data()]))
-        throw std::runtime_error(module->get_name() + " initialize failed");
+    system->m_context = m_context.get();
+    if (!system->initialize(m_config[system->get_name().data()]))
+        throw std::runtime_error(system->get_name() + " initialize failed");
 
-    m_context->set_module(index, module.get());
-    log::info("Module installed successfully: {}.", module->get_name());
-    m_modules.push_back(std::move(module));
+    m_context->set_system(index, system.get());
+    log::info("System installed successfully: {}.", system->get_name());
+    m_systems.push_back(std::move(system));
 }
 
 void engine::uninstall(std::size_t index)
 {
-    engine_module* module = m_context->get_module(index);
-    if (module)
+    engine_system* system = m_context->get_system(index);
+    if (system)
     {
-        module->shutdown();
-        m_context->set_module(index, nullptr);
+        system->shutdown();
+        m_context->set_system(index, nullptr);
 
-        for (auto iter = m_modules.begin(); iter != m_modules.end(); ++iter)
+        for (auto iter = m_systems.begin(); iter != m_systems.end(); ++iter)
         {
-            if ((*iter).get() == module)
+            if ((*iter).get() == system)
             {
-                m_modules.erase(iter);
+                m_systems.erase(iter);
                 break;
             }
         }
 
-        log::info("System uninstalled successfully: {}.", module->get_name());
+        log::info("System uninstalled successfully: {}.", system->get_name());
     }
     else
     {
-        log::warn("The module is not installed.");
+        log::warn("The system is not installed.");
     }
-}
-
-engine_module* engine::get_module(std::size_t index)
-{
-    return m_context->get_module(index);
 }
 } // namespace violet

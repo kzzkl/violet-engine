@@ -76,8 +76,8 @@ struct shader
 
     struct mesh_data
     {
-        float4x4 model;
-        float4x4 normal;
+        float4x4 model_matrix;
+        float4x4 normal_matrix;
     };
 
     static constexpr parameter mesh = {

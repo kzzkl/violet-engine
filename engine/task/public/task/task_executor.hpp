@@ -11,29 +11,25 @@ public:
     task_executor();
     ~task_executor();
 
-    template <typename G, typename... Args>
-    std::future<void> execute(G& graph, Args&&... args)
+    std::future<void> execute(taskflow& taskflow)
     {
-        std::future<void> future = graph.reset();
-        if (graph.get_task_count() > 1)
+        std::future<void> future = taskflow.reset();
+        if (taskflow.get_task_count() > 1)
         {
-            graph.set_argument(std::forward<Args>(args)...);
-            execute_task(&graph.get_root());
-            execute_main_thread_task(graph.get_task_count(TASK_TYPE_MAIN_THREAD));
+            execute_task(&taskflow.get_root());
+            execute_main_thread_task(taskflow.get_main_thread_task_count());
         }
 
         return future;
     }
 
-    template <typename G, typename... Args>
-    void execute_sync(G& graph, Args&&... args)
+    void execute_sync(taskflow& taskflow)
     {
-        std::future<void> future = graph.reset();
-        if (graph.get_task_count() > 1)
+        std::future<void> future = taskflow.reset();
+        if (taskflow.get_task_count() > 1)
         {
-            graph.set_argument(std::forward<Args>(args)...);
-            execute_task(&graph.get_root());
-            execute_main_thread_task(graph.get_task_count(TASK_TYPE_MAIN_THREAD));
+            execute_task(&taskflow.get_root());
+            execute_main_thread_task(taskflow.get_main_thread_task_count());
             future.get();
         }
     }
@@ -44,10 +40,11 @@ public:
 private:
     class thread_pool;
 
-    void execute_task(task_base* task);
+    void execute_task(task* task);
     void execute_main_thread_task(std::size_t task_count);
 
-    std::array<std::unique_ptr<task_queue>, 2> m_queues;
+    std::unique_ptr<task_queue> m_normal_queue;
+    std::unique_ptr<task_queue> m_main_thread_queue;
 
     std::unique_ptr<thread_pool> m_thread_pool;
 

@@ -216,7 +216,7 @@ TEST_CASE("matrix::inverse", "[matrix]")
 
 TEST_CASE("matrix::identity", "[matrix]")
 {
-    matrix4 a = matrix::identity<matrix4>();
+    matrix4 a = matrix::identity();
 
     float4x4 result = math::store<float4x4>(matrix::transpose(a));
 
@@ -233,7 +233,6 @@ TEST_CASE("matrix::identity", "[matrix]")
 TEST_CASE("matrix::rotation_quaternion", "[matrix]")
 {
     vector4 quat = vector::set(0.0661214888f, 0.132242978f, 0.198364466f, 0.968912423f);
-    matrix4 m = matrix::rotation_quaternion(quat);
 
     float4x4 result = math::store<float4x4>(matrix::rotation_quaternion(quat));
 
@@ -253,8 +252,7 @@ TEST_CASE("matrix::affine_transform", "[matrix]")
     vector4 rotation = vector::set(0.0661214888f, 0.132242978f, 0.198364466f, 0.968912423f);
     vector4 translation = vector::set(6.0f, 5.0f, 4.5f, 0.0f);
 
-    float4x4 result =
-        math::store<float4x4>(matrix::affine_transform(scale, rotation, translation));
+    float4x4 result = math::store<float4x4>(matrix::affine_transform(scale, rotation, translation));
 
     CHECK(equal(
         result,

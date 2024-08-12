@@ -98,7 +98,7 @@ rdg_buffer* render_graph::add_buffer(std::string_view name, rhi_buffer* buffer)
 
 void render_graph::compile()
 {
-    dead_stripping();
+    cull();
 
     for (std::size_t i = 0; i < m_resources.size(); ++i)
     {
@@ -188,7 +188,7 @@ void render_graph::execute(rhi_command* command)
     }
 }
 
-void render_graph::dead_stripping()
+void render_graph::cull()
 {
 }
 

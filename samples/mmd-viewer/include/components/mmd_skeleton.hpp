@@ -4,10 +4,15 @@
 #include "ecs/actor.hpp"
 #include "graphics/geometry.hpp"
 #include "graphics/render_device.hpp"
-#include "mmd_render.hpp"
 
 namespace violet::sample
 {
+struct mmd_bone
+{
+    float4x3 offset;
+    float4 quaternion;
+};
+
 class mmd_skeleton
 {
 public:
@@ -65,7 +70,7 @@ public:
     };
 
 public:
-    mmd_skeleton(render_device* device);
+    mmd_skeleton();
     mmd_skeleton(const mmd_skeleton&) = delete;
     mmd_skeleton(mmd_skeleton&& other) = default;
     ~mmd_skeleton();
@@ -73,6 +78,8 @@ public:
     template <typename BDEF, typename SDEF>
     void set_skinning_data(const std::vector<BDEF>& bdef, const std::vector<SDEF>& sdef)
     {
+        auto& device = render_device::instance();
+
         m_bdef = nullptr;
         m_sdef = nullptr;
 
@@ -81,8 +88,8 @@ public:
             rhi_buffer_desc bdef_desc = {};
             bdef_desc.data = bdef.data();
             bdef_desc.size = bdef.size() * sizeof(BDEF);
-            bdef_desc.flags = RHI_BUFFER_FLAG_STORAGE;
-            m_bdef = m_device->create_buffer(bdef_desc);
+            bdef_desc.flags = RHI_BUFFER_STORAGE;
+            m_bdef = device.create_buffer(bdef_desc);
             m_parameter->set_storage(5, m_bdef.get());
         }
 
@@ -91,8 +98,8 @@ public:
             rhi_buffer_desc sdef_desc = {};
             sdef_desc.data = sdef.data();
             sdef_desc.size = sdef.size() * sizeof(SDEF);
-            sdef_desc.flags = RHI_BUFFER_FLAG_STORAGE;
-            m_sdef = m_device->create_buffer(sdef_desc);
+            sdef_desc.flags = RHI_BUFFER_STORAGE;
+            m_sdef = device.create_buffer(sdef_desc);
             m_parameter->set_storage(6, m_sdef.get());
         }
         else
@@ -102,14 +109,14 @@ public:
             rhi_buffer_desc sdef_desc = {};
             sdef_desc.data = &error;
             sdef_desc.size = sizeof(SDEF);
-            sdef_desc.flags = RHI_BUFFER_FLAG_STORAGE;
-            m_sdef = m_device->create_buffer(sdef_desc);
+            sdef_desc.flags = RHI_BUFFER_STORAGE;
+            m_sdef = device.create_buffer(sdef_desc);
             m_parameter->set_storage(6, m_sdef.get());
         }
     }
 
     void set_geometry(geometry* geometry);
-    void set_bone(std::size_t index, const mmd_skinning_bone& bone);
+    void set_bone(std::size_t index, const mmd_bone& bone);
 
     rhi_buffer* get_position_buffer() const noexcept { return m_skinned_position.get(); }
     rhi_buffer* get_normal_buffer() const noexcept { return m_skinned_normal.get(); }
@@ -131,7 +138,5 @@ private:
     rhi_ptr<rhi_buffer> m_skinned_position;
     rhi_ptr<rhi_buffer> m_skinned_normal;
     rhi_ptr<rhi_buffer> m_morph;
-
-    render_device* m_device;
 };
 } // namespace violet::sample

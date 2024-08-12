@@ -22,6 +22,7 @@ archetype_chunk* archetype_chunk_allocator::allocate()
 void archetype_chunk_allocator::free(archetype_chunk* chunk)
 {
     assert(chunk != nullptr);
+    chunk->component_versions.clear();
     m_free.push_back(chunk);
 }
 } // namespace violet

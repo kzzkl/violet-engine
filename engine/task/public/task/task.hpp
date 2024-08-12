@@ -5,6 +5,7 @@
 #include <future>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <tuple>
 #include <vector>
 
@@ -47,256 +48,145 @@ struct functor_traits<R (C::*)(Args...)>
     using function_type = std::function<R(Args...)>;
 };
 
-enum task_type
+enum task_option
 {
-    TASK_TYPE_NORMAL,
-    TASK_TYPE_MAIN_THREAD
+    TASK_OPTION_NONE = 0,
+    TASK_OPTION_MAIN_THREAD = 1 << 0,
 };
+using task_options = std::uint32_t;
 
-class task_graph_base;
-class task_base
+class taskflow;
+class task
 {
 public:
-    task_base(task_graph_base* graph = nullptr) noexcept;
-    virtual ~task_base();
+    task() noexcept;
+    virtual ~task();
 
-    std::vector<task_base*> execute();
-    std::vector<task_base*> visit();
+    task& set_name(std::string_view name)
+    {
+        m_name = name;
+        return *this;
+    }
 
-    bool is_ready() const noexcept { return m_uncompleted_dependency_count == 0; }
+    task& set_options(task_options options) noexcept
+    {
+        m_options = options;
+        return *this;
+    }
 
-    task_type get_type() const noexcept { return m_type; }
+    task_options get_options() const noexcept
+    {
+        return m_options;
+    }
 
-protected:
-    void add_successor(task_base* successor);
+    template <typename... Args>
+    task& add_predecessor(Args&... predecessor)
+    {
+        (add_predecessor_impl(predecessor), ...);
+        return *this;
+    }
 
-    task_graph_base* get_graph() const noexcept { return m_graph; }
+    template <typename... Args>
+    task& add_successor(Args&... successor)
+    {
+        (add_successor_impl(successor), ...);
+        return *this;
+    }
+
+    std::vector<task*> execute();
+    std::vector<task*> visit();
+
+    bool is_ready() const noexcept
+    {
+        return m_uncompleted_dependency_count == 0;
+    }
 
 private:
-    friend class task_graph_base;
+    void add_predecessor_impl(task& successor);
+    void add_predecessor_impl(std::string_view predecessor_name);
+    void add_successor_impl(task& successor);
+    void add_successor_impl(std::string_view successor_name);
 
-    virtual void execute_impl() {}
+    std::function<void()> m_function;
 
-    std::vector<task_base*> m_dependents;
-    std::vector<task_base*> m_successors;
+    std::vector<task*> m_dependents;
+    std::vector<task*> m_successors;
 
-    std::atomic<std::uint32_t> m_uncompleted_dependency_count;
+    std::atomic<std::uint32_t> m_uncompleted_dependency_count{0};
 
-    task_type m_type;
-    task_graph_base* m_graph;
+    std::string m_name;
+    task_options m_options{0};
+    taskflow* m_taskflow{nullptr};
+
+    friend class taskflow;
 };
 
-class task_graph_base
+class taskflow
 {
 public:
-    task_graph_base() noexcept;
-    virtual ~task_graph_base() = default;
+    taskflow() noexcept;
+    virtual ~taskflow() = default;
 
-    template <typename T, typename... Args>
-    T& add_task(task_type type, Args&&... args)
+    template <typename Functor, typename... Args>
+    task& add_task(Functor functor)
     {
-        auto pointer = std::make_unique<T>(std::forward<Args>(args)...);
-        pointer->m_graph = this;
-        pointer->m_type = type;
-
-        auto& result = *pointer;
+        auto pointer = std::make_unique<task>();
+        pointer->m_taskflow = this;
+        pointer->m_function = functor;
 
         std::lock_guard<std::mutex> lg(m_lock);
         m_tasks.push_back(std::move(pointer));
         m_dirty = true;
-        return result;
+
+        if (m_tasks.size() != 1)
+            m_tasks[0]->add_successor(*m_tasks.back());
+
+        return *m_tasks.back();
     }
 
-    std::future<void> reset(task_base* root) noexcept;
+    std::future<void> reset() noexcept;
     void on_task_complete();
 
+    task& get_root() const noexcept
+    {
+        return *m_tasks[0];
+    }
+
+    task& get_task(std::string_view name) const
+    {
+        for (auto& task : m_tasks)
+        {
+            if (task->m_name == name)
+            {
+                return *task;
+            }
+        }
+
+        throw std::runtime_error("Task not found");
+    }
+
     std::size_t get_task_count() const noexcept;
-    std::size_t get_task_count(task_type type) const noexcept;
+    std::size_t get_main_thread_task_count() const noexcept
+    {
+        return m_main_thread_task_count;
+    }
 
 protected:
-    bool is_dirty() const noexcept { return m_dirty; }
+    bool is_dirty() const noexcept
+    {
+        return m_dirty;
+    }
 
 private:
-    std::vector<std::unique_ptr<task_base>> m_tasks;
+    std::vector<std::unique_ptr<task>> m_tasks;
     bool m_dirty;
 
-    std::vector<task_base*> m_accessible_tasks;
+    std::vector<task*> m_accessible_tasks;
     std::atomic<std::uint32_t> m_incomplete_count;
-
-    std::array<std::size_t, 2> m_task_count;
+    std::size_t m_main_thread_task_count{0};
 
     std::promise<void> m_promise;
 
     std::mutex m_lock;
-};
-
-template <typename T>
-class task_node;
-
-template <typename... Args>
-struct next_task
-{
-};
-
-template <typename R, typename... Args>
-struct next_task<R, std::tuple<Args...>>
-{
-    using type = task_node<R(Args...)>;
-};
-
-template <typename F>
-struct next_task<F>
-{
-    using type = typename next_task<
-        typename functor_traits<F>::return_type,
-        typename functor_traits<F>::argument_type>::type;
-};
-
-template <typename... Args>
-class task : public task_base
-{
-public:
-    using result_type = std::tuple<Args...>;
-
-public:
-    using task_base::task_base;
-
-    template <typename Functor>
-    auto& then(Functor functor, task_type type = TASK_TYPE_NORMAL)
-    {
-        using next_type = typename next_task<Functor>::type;
-
-        auto& task = get_graph()->add_task<next_type>(type, functor, this);
-        add_successor(&task);
-        return task;
-    }
-
-    result_type& get_result() { return *m_result; }
-
-protected:
-    void set_result(result_type&& result)
-    {
-        if (m_result)
-            *m_result = result;
-        else
-            m_result = std::make_unique<result_type>(result);
-    }
-
-private:
-    std::unique_ptr<result_type> m_result;
-};
-
-template <>
-class task<> : public task_base
-{
-public:
-    using task_base::task_base;
-
-    template <typename Functor>
-    auto& then(Functor functor, task_type type = TASK_TYPE_NORMAL)
-    {
-        using next_type = typename next_task<Functor>::type;
-
-        auto& task = get_graph()->add_task<next_type>(type, functor, this);
-        add_successor(&task);
-        return task;
-    }
-};
-
-template <typename T>
-struct task_impl_traits
-{
-};
-
-template <typename... Args>
-struct task_impl_traits<std::tuple<Args...>>
-{
-    using type = task<Args...>;
-    static constexpr bool has_result = sizeof...(Args) != 0;
-};
-
-template <>
-struct task_impl_traits<void>
-{
-    using type = task<>;
-    static constexpr bool has_result = false;
-};
-
-template <typename R, typename... Args>
-class task_node<R(Args...)> : public task_impl_traits<R>::type
-{
-public:
-    using prev_task_type = task<Args...>;
-    using base_type = typename task_impl_traits<R>::type;
-
-public:
-    template <typename Functor>
-    task_node(Functor functor, prev_task_type* prev_task)
-        : m_callable(functor),
-          m_prev_task(prev_task)
-    {
-    }
-
-private:
-    virtual void execute_impl() override
-    {
-        if constexpr (task_impl_traits<R>::has_result)
-        {
-            if constexpr (sizeof...(Args) != 0)
-                base_type::set_result(std::apply(m_callable, m_prev_task->get_result()));
-            else
-                base_type::set_result(m_callable());
-        }
-        else
-        {
-            if constexpr (sizeof...(Args) != 0)
-                std::apply(m_callable, m_prev_task->get_result());
-            else
-                m_callable();
-        }
-    }
-
-    std::function<R(Args...)> m_callable;
-    prev_task_type* m_prev_task;
-};
-
-template <typename... Args>
-class task_graph : public task_graph_base
-{
-public:
-    class task_root : public task<Args...>
-    {
-    public:
-        using base_type = task<Args...>;
-
-    public:
-        task_root(task_graph* graph) : task<Args...>(graph) {}
-
-        template <typename... Ts>
-        void set_argument(Ts&&... args)
-        {
-            if constexpr (sizeof...(Ts) != 0)
-                base_type::set_result(std::make_tuple(std::forward<Ts>(args)...));
-        }
-
-    private:
-        virtual void execute_impl() override {}
-    };
-
-public:
-    task_graph() : m_root(this) {}
-
-    template <typename... Ts>
-    void set_argument(Ts&&... args)
-    {
-        m_root.set_argument(std::forward<Ts>(args)...);
-    }
-
-    task<Args...>& get_root() noexcept { return m_root; }
-
-    std::future<void> reset() noexcept { return task_graph_base::reset(&m_root); }
-
-private:
-    task_root m_root;
 };
 } // namespace violet

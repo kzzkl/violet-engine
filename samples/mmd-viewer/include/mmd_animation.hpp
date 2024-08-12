@@ -6,7 +6,6 @@
 #include "components/transform.hpp"
 #include "core/engine_module.hpp"
 #include "math/math.hpp"
-#include "mmd_render.hpp"
 
 namespace violet::sample
 {
@@ -49,7 +48,7 @@ private:
         std::uint8_t axis,
         std::size_t iteration);
 
-    void update_local(mmd_skeleton::bone& bone, mmd_animator::motion& motion);
+    static void update_local(mmd_skeleton::bone& bone, mmd_animator::motion& motion);
 
     template <typename Key>
     auto bound_key(const std::vector<Key>& keys, std::int32_t t, std::size_t start)
@@ -66,9 +65,5 @@ private:
                 return lhs < rhs.frame;
             });
     }
-
-    rdg_pass* m_skin_pass;
-    std::unique_ptr<render_graph> m_skin_graph;
-    std::unique_ptr<rdg_context> m_skin_context;
 };
 } // namespace violet::sample

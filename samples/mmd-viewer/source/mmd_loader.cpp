@@ -5,7 +5,8 @@
 #include "components/mmd_skeleton.hpp"
 #include "components/rigidbody.hpp"
 #include "components/transform.hpp"
-#include "mmd_render.hpp"
+#include "graphics/tools/texture_loader.hpp"
+#include "mmd_renderer.hpp"
 #include "pmx.hpp"
 #include "vmd.hpp"
 
@@ -23,13 +24,7 @@ public:
     }
 };
 
-mmd_loader::mmd_loader(
-    mmd_render_graph* render_graph,
-    render_device* device,
-    physics_context* physics_context)
-    : m_render_graph(render_graph),
-      m_device(device),
-      m_physics_context(physics_context)
+mmd_loader::mmd_loader(physics_context* physics_context) : m_physics_context(physics_context)
 {
     std::vector<std::string> internal_toon_paths = {
         "mmd-viewer/mmd/toon01.dds",
@@ -43,7 +38,7 @@ mmd_loader::mmd_loader(
         "mmd-viewer/mmd/toon09.dds",
         "mmd-viewer/mmd/toon10.dds"};
     for (const std::string& toon : internal_toon_paths)
-        m_internal_toons.push_back(m_device->create_texture(toon.c_str()));
+        m_internal_toons.push_back(texture_loader::load(toon.c_str()));
 
     rhi_sampler_desc sampler_desc = {};
     sampler_desc.min_filter = RHI_FILTER_LINEAR;
@@ -51,7 +46,7 @@ mmd_loader::mmd_loader(
     sampler_desc.address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
     sampler_desc.address_mode_v = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
     sampler_desc.address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-    m_sampler = m_device->create_sampler(sampler_desc);
+    m_sampler = render_device::instance().create_sampler(sampler_desc);
 }
 
 mmd_loader::~mmd_loader()
@@ -90,31 +85,27 @@ mmd_model* mmd_loader::load(std::string_view pmx_path, std::string_view vmd_path
 
 void mmd_loader::load_mesh(mmd_model* model, const pmx& pmx, world& world)
 {
-    model->geometry = std::make_unique<geometry>(m_device);
+    model->geometry = std::make_unique<geometry>();
     model->geometry->add_attribute(
         "position",
         pmx.position,
-        RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_STORAGE);
-    model->geometry->add_attribute(
-        "normal",
-        pmx.normal,
-        RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_STORAGE);
-    model->geometry->add_attribute("uv", pmx.uv, RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_STORAGE);
-    model->geometry->add_attribute("edge", pmx.edge, RHI_BUFFER_FLAG_VERTEX);
-    model->geometry->add_attribute("skinning type", pmx.skin, RHI_BUFFER_FLAG_STORAGE);
+        RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
+    model->geometry->add_attribute("normal", pmx.normal, RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
+    model->geometry->add_attribute("uv", pmx.uv, RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
+    model->geometry->add_attribute("edge", pmx.edge, RHI_BUFFER_VERTEX);
+    model->geometry->add_attribute("skinning type", pmx.skin, RHI_BUFFER_STORAGE);
     model->geometry->add_attribute<float3>(
         "morph",
         pmx.position.size(),
-        RHI_BUFFER_FLAG_HOST_VISIBLE | RHI_BUFFER_FLAG_STORAGE);
+        RHI_BUFFER_HOST_VISIBLE | RHI_BUFFER_STORAGE);
     model->geometry->set_indices(pmx.indices);
 
     for (const std::string& texture : pmx.textures)
     {
         try
         {
-            rhi_texture_desc desc = {};
-            desc.flags = RHI_TEXTURE_FLAG_MIPMAP;
-            model->textures.push_back(m_device->create_texture(texture.c_str(), desc));
+            model->textures.push_back(
+                texture_loader::load(texture.c_str(), TEXTURE_LOAD_OPTION_GENERATE_MIPMAPS));
         }
         catch (...)
         {
@@ -123,8 +114,7 @@ void mmd_loader::load_mesh(mmd_model* model, const pmx& pmx, world& world)
     }
     for (const pmx_material& pmx_material : pmx.materials)
     {
-        auto material =
-            std::make_unique<mmd_material>(m_device, m_render_graph->get_material_layout());
+        auto material = std::make_unique<mmd_material>();
 
         material->set_diffuse(pmx_material.diffuse);
         material->set_specular(pmx_material.specular, pmx_material.specular_strength);
@@ -162,7 +152,6 @@ void mmd_loader::load_mesh(mmd_model* model, const pmx& pmx, world& world)
     {
         model_mesh->add_submesh(
             0,
-            pmx.position.size(),
             submesh.index_start,
             submesh.index_count,
             model->materials[submesh.material_index].get());
@@ -282,8 +271,8 @@ void mmd_loader::load_bones(mmd_model* model, const pmx& pmx, world& world)
     model_skeleton->set_geometry(model->geometry.get());
 
     auto model_mesh = model->model->get<mesh>();
-    model_mesh->set_skinned_vertex_buffer("position", model_skeleton->get_position_buffer());
-    model_mesh->set_skinned_vertex_buffer("normal", model_skeleton->get_normal_buffer());
+    // model_mesh->set_skinned_vertex_buffer("position", model_skeleton->get_position_buffer());
+    // model_mesh->set_skinned_vertex_buffer("normal", model_skeleton->get_normal_buffer());
 }
 
 void mmd_loader::load_morph(mmd_model* model, const pmx& pmx)

@@ -11,7 +11,7 @@ camera::camera() : m_state(CAMERA_STATE_ENABLE), m_priority(0.0f), m_renderer(nu
     m_perspective.near_z = 0.1f;
     m_perspective.far_z = 1000.0f;
 
-    m_view = matrix::identity<float4x4>();
+    math::store(matrix::identity(), m_view);
     math::store(
         matrix::perspective(
             m_perspective.fov,

@@ -29,12 +29,12 @@
 *.out
 *.app
 
-# vscode
+# IDE
+.vs
 .vscode
 
-# build
-build
-install
+# Build
+out
 
-# generate
+# Generate
 generated

@@ -25,9 +25,9 @@ render_list render_context::get_render_list(const render_camera& camera) const
     for (auto mesh : m_meshes)
     {
         std::size_t mesh_index = list.meshes.size();
-        list.meshes.push_back({mesh->get_mesh_parameter(), mesh->get_geometry()});
+        list.meshes.push_back({mesh->parameter.get(), mesh->geometry});
 
-        for (auto& submesh : mesh->get_submeshes())
+        for (auto& submesh : mesh->submeshes)
         {
             auto info = material_infos[submesh.material];
             if (info.pipelines.empty())

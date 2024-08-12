@@ -23,28 +23,18 @@ if(WIN32)
     add_definitions(-D_UNICODE)
 endif()
 
-set(VIOLET_ROOT_DIR ${PROJECT_SOURCE_DIR})
-set(VIOLET_THIRDPARTY_DIR ${PROJECT_SOURCE_DIR}/thirdparty)
-set(VIOLET_SHADER_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/engine/shaders/include)
+set(VIOLET_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(VIOLET_THIRDPARTY_DIR ${VIOLET_ROOT_DIR}/thirdparty)
+set(VIOLET_SHADER_INCLUDE_DIR ${VIOLET_ROOT_DIR}/engine/assets/shaders/include)
+
+set(VIOLET_BINARY_ROOT_DIR ${CMAKE_INSTALL_PREFIX}/bin)
+
 if(VIOLET_USE_SIMD)
     add_definitions(-DVIOLET_USE_SIMD)
 endif()
 
-function(set_folder DIR FOLDER_NAME)
-    get_property(TARGETS DIRECTORY "${DIR}" PROPERTY BUILDSYSTEM_TARGETS)
-    foreach(TARGET IN LISTS TARGETS)
-        set_target_properties(${TARGET} PROPERTIES FOLDER "${FOLDER_NAME}")
-    endforeach()
-
-    get_property(SUBDIRS DIRECTORY "${DIR}" PROPERTY SUBDIRECTORIES)
-    foreach(SUBDIR IN LISTS SUBDIRS)
-        set_folder("${SUBDIR}" "${FOLDER_NAME}")
-    endforeach()
-endfunction()
-
 if(VIOLET_BUILD_THIRDPARTY)
     add_subdirectory(thirdparty)
-    set_folder("${VIOLET_THIRDPARTY_DIR}" "thirdparty")
 endif()
 
 if(VIOLET_BUILD_ENGINE)
@@ -57,10 +47,8 @@ endif()
 
 if(VIOLET_BUILD_TESTING)
     add_subdirectory(tests)
-    set_folder("tests" "tests")
 endif()
 
 if(VIOLET_BUILD_EXAMPLES)
     add_subdirectory(samples)
-    set_folder("samples" "samples")
 endif()

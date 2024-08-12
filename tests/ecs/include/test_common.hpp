@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/node/node.hpp"
+#include "ecs/world.hpp"
 #include <catch2/catch_test_macros.hpp>
 
 namespace violet::test
@@ -30,7 +30,7 @@ class life_counter
 public:
     life_counter() { ++m_construct; }
     life_counter(const life_counter& other) { ++m_copy_construct; }
-    life_counter(life_counter&& other) { ++m_move_construct; }
+    life_counter(life_counter&& other) noexcept { ++m_move_construct; }
     ~life_counter() { ++m_destruct; }
 
     life_counter& operator=(const life_counter& other)

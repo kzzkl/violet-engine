@@ -17,9 +17,7 @@ namespace violet::sample
 class physics_debug : public phy_debug_draw
 {
 public:
-    physics_debug(render_graph* render_graph, render_device* device, world& world)
-        : m_position(1024 * 64),
-          m_color(1024 * 64)
+    physics_debug(world& world) : m_position(1024 * 64), m_color(1024 * 64)
     {
         /*material* material = render_graph->add_material("debug", "debug material");
         m_geometry = std::make_unique<geometry>(renderer);
@@ -54,7 +52,7 @@ public:
             debug_mesh->get_geometry()->get_vertex_buffer("color")->get_buffer(),
             m_color.data(),
             m_color.size() * sizeof(float3));
-        debug_mesh->set_submesh(0, 0, m_position.size(), 0, 0);
+        debug_mesh->set_submesh(0, m_position.size(), 0, 0);
 
         m_position.clear();
         m_color.clear();
@@ -102,17 +100,14 @@ bool mmd_viewer::initialize(const dictionary& config)
 
     initialize_render();
 
-    render_device* device = get_module<graphics_module>().get_device();
+    auto& device = render_device::instance();
 
-    m_loader = std::make_unique<mmd_loader>(
-        m_render_graph.get(),
-        device,
-        get_module<physics_module>().get_context());
+    m_loader = std::make_unique<mmd_loader>(get_module<physics_module>().get_context());
     m_model = m_loader->load(config["model"], config["motion"], get_world());
     if (!m_model)
         return false;
 
-    m_physics_debug = std::make_unique<physics_debug>(m_render_graph.get(), device, get_world());
+    m_physics_debug = std::make_unique<physics_debug>(get_world());
     m_physics_world = std::make_unique<physics_world>(
         float3{0.0f, -9.8f, 0.0f},
         nullptr, // m_physics_debug.get(),
@@ -147,11 +142,8 @@ void mmd_viewer::initialize_render()
     auto& graphics = get_module<graphics_module>();
 
     auto window_extent = window.get_extent();
-    m_swapchain = graphics.get_device()->create_swapchain(
+    m_swapchain = render_device::instance().create_swapchain(
         rhi_swapchain_desc{window_extent.width, window_extent.height, window.get_handle()});
-
-    m_render_graph = std::make_unique<mmd_render_graph>(m_swapchain->get_texture()->get_format());
-    m_render_graph->compile(graphics.get_device());
 
     auto extent = get_module<window_module>().get_extent();
     resize(extent.width, extent.height);
@@ -177,18 +169,18 @@ void mmd_viewer::resize(std::uint32_t width, std::uint32_t height)
     m_swapchain->resize(width, height);
 
     rhi_texture_desc depth_stencil_desc = {};
-    depth_stencil_desc.width = width;
-    depth_stencil_desc.height = height;
+    depth_stencil_desc.extent.width = width;
+    depth_stencil_desc.extent.height = height;
     depth_stencil_desc.samples = RHI_SAMPLE_COUNT_1;
     depth_stencil_desc.format = RHI_FORMAT_D24_UNORM_S8_UINT;
-    depth_stencil_desc.flags = RHI_TEXTURE_FLAG_DEPTH_STENCIL;
-    m_depth_stencil = graphics.get_device()->create_texture(depth_stencil_desc);
+    depth_stencil_desc.flags = RHI_TEXTURE_DEPTH_STENCIL;
+    m_depth_stencil = render_device::instance().create_texture(depth_stencil_desc);
 
     if (m_camera)
     {
         auto main_camera = m_camera->get<camera>();
         main_camera->resize(width, height);
-        main_camera->set_render_texture("depth buffer", m_depth_stencil.get());
+        main_camera->set_render_target(1, m_depth_stencil.get());
     }
     else
     {
@@ -196,9 +188,9 @@ void mmd_viewer::resize(std::uint32_t width, std::uint32_t height)
         auto [main_camera, main_camera_transform, main_camera_controller] =
             m_camera->add<camera, transform, orbit_control>();
 
-        main_camera->set_render_graph(m_render_graph.get());
-        main_camera->set_render_texture("render target", m_swapchain.get());
-        main_camera->set_render_texture("depth buffer", m_depth_stencil.get());
+        main_camera->set_renderer(m_renderer.get());
+        main_camera->set_render_target(0, m_swapchain.get());
+        main_camera->set_render_target(1, m_depth_stencil.get());
         main_camera->resize(width, height);
         main_camera_transform->set_position(0.0f, 2.0f, -5.0f);
         main_camera_controller->r = 50.0f;

@@ -97,7 +97,7 @@ public:
         return RDG_RESOURCE_TEXTURE;
     }
 
-    virtual bool is_external() const noexcept { return true; }
+    virtual bool is_external() const noexcept override { return true; }
     virtual bool is_texture_view() const noexcept { return false; }
 
     rhi_format get_format() const noexcept { return m_texture->get_format(); }
@@ -176,7 +176,7 @@ public:
         return RDG_RESOURCE_TEXTURE;
     }
 
-    virtual bool is_external() const noexcept { return true; }
+    virtual bool is_external() const noexcept override { return true; }
 
 private:
     rhi_buffer* m_buffer;

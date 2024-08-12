@@ -7,30 +7,36 @@
 #include "physics/physics_module.hpp"
 #include "scene/scene_module.hpp"
 #include "window/window_module.hpp"
+#include <exception>
 
 int main()
 {
-    using namespace violet;
+    try
+    {
+        violet::engine engine;
 
-    engine engine;
+        engine.initialize("mmd-viewer/config");
+        engine.install<violet::window_module>();
+        engine.install<violet::scene_module>();
+        engine.install<violet::graphics_module>();
+        engine.install<violet::physics_module>();
+        engine.install<violet::control_module>();
+        engine.install<violet::sample::mmd_animation>();
+        engine.install<violet::sample::mmd_viewer>();
 
-    engine.initialize("mmd-viewer/config");
-    engine.install<window_module>();
-    engine.install<scene_module>();
-    engine.install<graphics_module>();
-    engine.install<physics_module>();
-    engine.install<control_module>();
-    engine.install<sample::mmd_animation>();
-    engine.install<sample::mmd_viewer>();
+        engine.get_module<violet::window_module>().on_destroy().then(
+            [&engine]()
+            {
+                violet::log::info("Close window");
+                engine.exit();
+            });
 
-    engine.get_module<window_module>().on_destroy().then(
-        [&engine]()
-        {
-            log::info("Close window");
-            engine.exit();
-        });
-
-    engine.run();
+        engine.run();
+    }
+    catch (const std::exception& e)
+    {
+        return -1;
+    }
 
     return 0;
 }

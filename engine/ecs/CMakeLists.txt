@@ -1,7 +1,6 @@
 project(violet-ecs)
 
 add_library(${PROJECT_NAME} STATIC
-    ./private/actor.cpp
     ./private/archetype_chunk.cpp
     ./private/archetype.cpp
     ./private/view.cpp

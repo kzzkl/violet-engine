@@ -2,7 +2,7 @@
 
 #include "core/engine_module.hpp"
 #include "mmd_loader.hpp"
-#include "mmd_render.hpp"
+#include "mmd_renderer.hpp"
 #include "physics/physics_world.hpp"
 
 namespace violet::sample
@@ -23,7 +23,7 @@ private:
     void tick(float delta);
     void resize(std::uint32_t width, std::uint32_t height);
 
-    std::unique_ptr<mmd_render_graph> m_render_graph;
+    std::unique_ptr<mmd_renderer> m_renderer;
     rhi_ptr<rhi_texture> m_depth_stencil;
     rhi_ptr<rhi_swapchain> m_swapchain;
 

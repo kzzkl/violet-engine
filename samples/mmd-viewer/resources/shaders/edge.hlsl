@@ -1,5 +1,4 @@
-#include "violet_mesh.hlsl"
-#include "violet_camera.hlsl"
+#include "violet_common.hlsli"
 
 ConstantBuffer<violet_mesh> mesh : register(b0, space0);
 

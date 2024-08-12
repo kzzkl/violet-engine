@@ -79,6 +79,18 @@ template <typename T, std::size_t S>
 struct mat
 {
     using row_type = T;
+    using value_type = row_type::value_type;
+
+    constexpr mat() : row{}
+    {
+        for (std::size_t i = 0; i < S; ++i)
+            row[i][i] = value_type(1);
+    }
+
+    constexpr mat(const row_type& r0, const row_type& r1, const row_type& r2, const row_type& r3)
+        : row{r0, r1, r2, r3}
+    {
+    }
 
     inline row_type& operator[](std::size_t index) { return this->row[index]; }
     inline const row_type& operator[](std::size_t index) const { return this->row[index]; }

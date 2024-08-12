@@ -7,10 +7,17 @@ namespace violet
 class task_executor::thread_pool
 {
 public:
-    thread_pool(std::size_t thread_count) : m_threads(thread_count) {}
-    ~thread_pool() { join(); }
+    thread_pool(std::size_t thread_count)
+        : m_threads(thread_count)
+    {
+    }
 
-    template <typename F>
+    ~thread_pool()
+    {
+        join();
+    }
+
+    template<typename F>
     void run(F&& functor)
     {
         for (auto& thread : m_threads)
@@ -30,10 +37,11 @@ private:
     std::vector<std::thread> m_threads;
 };
 
-task_executor::task_executor() : m_stop(true)
+task_executor::task_executor()
+    : m_stop(true)
 {
-    m_queues[TASK_TYPE_NORMAL] = std::make_unique<task_queue_thread_safe>();
-    m_queues[TASK_TYPE_MAIN_THREAD] = std::make_unique<task_queue_thread_safe>();
+    m_normal_queue = std::make_unique<task_queue_thread_safe>();
+    m_main_thread_queue = std::make_unique<task_queue_thread_safe>();
 }
 
 task_executor::~task_executor()
@@ -57,11 +65,11 @@ void task_executor::run(std::size_t thread_count)
         {
             while (true)
             {
-                task_base* current = m_queues[TASK_TYPE_NORMAL]->pop();
+                task* current = m_normal_queue->pop();
                 if (!current)
                     break;
 
-                for (task_base* successor : current->execute())
+                for (task* successor : current->execute())
                     execute_task(successor);
             }
         });
@@ -74,27 +82,34 @@ void task_executor::stop()
 
     m_stop = true;
 
-    for (auto& queue : m_queues)
-        queue->close();
+    m_normal_queue->close();
+    m_main_thread_queue->close();
 
     m_thread_pool->join();
     m_thread_pool = nullptr;
 }
 
-void task_executor::execute_task(task_base* task)
+void task_executor::execute_task(task* task)
 {
-    m_queues[task->get_type()]->push(task);
+    if (task->get_options() & TASK_OPTION_MAIN_THREAD)
+    {
+        m_main_thread_queue->push(task);
+    }
+    else
+    {
+        m_normal_queue->push(task);
+    }
 }
 
 void task_executor::execute_main_thread_task(std::size_t task_count)
 {
     while (task_count > 0)
     {
-        task_base* current = m_queues[TASK_TYPE_MAIN_THREAD]->pop();
+        task* current = m_main_thread_queue->pop();
         if (!current)
             break;
 
-        for (task_base* successor : current->execute())
+        for (task* successor : current->execute())
             execute_task(successor);
 
         --task_count;

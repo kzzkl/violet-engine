@@ -1,63 +1,18 @@
 #include "mmd_animation.hpp"
-#include "common/log.hpp"
 #include "components/mesh.hpp"
 #include "graphics/graphics_module.hpp"
 
 namespace violet::sample
 {
-class mmd_skeleton_info : public component_info_default<mmd_skeleton>
-{
-public:
-    mmd_skeleton_info(render_device* device) : m_device(device) {}
-
-    virtual void construct(actor* owner, void* target) override
-    {
-        new (target) mmd_skeleton(m_device);
-    }
-
-private:
-    render_device* m_device;
-};
-
-class skin_pass : public rdg_compute_pass
-{
-public:
-    skin_pass()
-    {
-        set_shader("mmd-viewer/shaders/skinning.comp.spv");
-        set_parameter_layout({
-            {mmd_parameter_layout::skeleton, RDG_PASS_PARAMETER_FLAG_NONE}
-        });
-    }
-
-    void execute(rhi_command* command, rdg_context* context) override
-    {
-        command->set_compute_pipeline(get_pipeline());
-        for (auto& dispatch : context->get_dispatches(this))
-        {
-            command->set_compute_parameter(0, dispatch.parameter);
-            command->dispatch(dispatch.x, dispatch.y, dispatch.z);
-        }
-    }
-};
-
-mmd_animation::mmd_animation() : engine_module("mmd animation"), m_skin_pass(nullptr)
+mmd_animation::mmd_animation() : engine_module("mmd animation")
 {
 }
 
 bool mmd_animation::initialize(const dictionary& config)
 {
-    render_device* device = get_module<graphics_module>().get_device();
-
     get_world().register_component<mmd_animator>();
     get_world().register_component<mmd_morph>();
-    get_world().register_component<mmd_skeleton, mmd_skeleton_info>(device);
-
-    m_skin_graph = std::make_unique<render_graph>();
-    m_skin_pass = m_skin_graph->add_pass<skin_pass>("skin pass");
-    m_skin_graph->compile(device);
-
-    m_skin_context = m_skin_graph->create_context();
+    get_world().register_component<mmd_skeleton>();
 
     return true;
 }
@@ -66,17 +21,17 @@ void mmd_animation::evaluate(float t, float weight)
 {
     view<mmd_skeleton, mmd_animator, mmd_morph> view(get_world());
     view.each(
-        [=, this](mmd_skeleton& skeleton, mmd_animator& animator, mmd_morph& morph)
+        [=, this](mmd_skeleton& skeleton, mmd_animator& animator, mmd_morph&)
         {
             evaluate_motion(skeleton, animator, t, weight);
         });
     view.each(
-        [=, this](mmd_skeleton& skeleton, mmd_animator& animator, mmd_morph& morph)
+        [=, this](mmd_skeleton& skeleton, mmd_animator& animator, mmd_morph&)
         {
             evaluate_ik(skeleton, animator, t, weight);
         });
     view.each(
-        [=, this](mmd_skeleton& skeleton, mmd_animator& animator, mmd_morph& morph)
+        [=, this](mmd_skeleton&, mmd_animator& animator, mmd_morph& morph)
         {
             evaluate_morph(morph, animator, t);
         });
@@ -93,7 +48,9 @@ void mmd_animation::update(bool after_physics)
                 auto& bone = skeleton.bones[skeleton.sorted_bones[i]];
                 auto& motion = animator.motions[skeleton.sorted_bones[i]];
                 if (bone.deform_after_physics != after_physics)
+                {
                     continue;
+                }
 
                 update_local(bone, motion);
             }
@@ -103,7 +60,9 @@ void mmd_animation::update(bool after_physics)
                 auto& bone = skeleton.bones[skeleton.sorted_bones[i]];
                 auto& motion = animator.motions[skeleton.sorted_bones[i]];
                 if (bone.deform_after_physics != after_physics)
+                {
                     continue;
+                }
 
                 if (bone.inherit_index != -1)
                 {
@@ -115,7 +74,9 @@ void mmd_animation::update(bool after_physics)
                 }
 
                 if (bone.ik_solver)
+                {
                     update_ik(skeleton, animator, bone, motion);
+                }
             }
         });
 }
@@ -139,27 +100,20 @@ void mmd_animation::skinning()
                 matrix4 initial_inverse = math::load(model_skeleton.bones[i].initial_inverse);
                 final_transform = matrix::mul(initial_inverse, final_transform);
 
-                mmd_skinning_bone data;
+                mmd_bone data;
                 math::store(matrix::transpose(final_transform), data.offset);
                 math::store(quaternion::from_matrix(final_transform), data.quaternion);
 
                 model_skeleton.set_bone(i, data);
             }
 
-            rdg_dispatch dispatch = {};
-            dispatch.parameter = model_skeleton.get_parameter();
-            dispatch.x = (model_mesh.get_geometry()->get_vertex_count() + 255) / 256;
-            dispatch.y = 1;
-            dispatch.z = 1;
-            m_skin_context->add_dispatch(m_skin_pass, dispatch);
+            // rdg_dispatch dispatch = {};
+            // dispatch.parameter = model_skeleton.get_parameter();
+            // dispatch.x = (model_mesh.get_geometry()->get_vertex_count() + 255) / 256;
+            // dispatch.y = 1;
+            // dispatch.z = 1;
+            // m_skin_context->add_dispatch(m_skin_pass, dispatch);
         });
-
-    render_device* device = get_module<graphics_module>().get_device();
-    rhi_command* command = device->allocate_command();
-    m_skin_graph->execute(command, m_skin_context.get());
-    device->execute({command}, {}, {}, nullptr);
-
-    m_skin_context->reset();
 }
 
 void mmd_animation::evaluate_motion(
@@ -176,7 +130,9 @@ void mmd_animation::evaluate_motion(
         bone.inherit_translation = {0.0f, 0.0f, 0.0f};
         bone.inherit_rotation = {0.0f, 0.0f, 0.0f, 1.0f};
         if (bone.ik_link)
+        {
             bone.ik_link->rotate = {0.0f, 0.0f, 0.0f, 1.0f};
+        }
     }
 
     for (std::size_t i = 0; i < skeleton.bones.size(); ++i)
@@ -210,7 +166,8 @@ void mmd_animation::evaluate_motion(
             const auto& key0 = *(bound - 1);
             const auto& key1 = *bound;
 
-            float time = (t - key0.frame) / static_cast<float>(key1.frame - key0.frame);
+            float time =
+                (t - static_cast<float>(key0.frame)) / static_cast<float>(key1.frame - key0.frame);
 
             translate = vector::lerp(
                 math::load(key0.translate),
@@ -249,7 +206,9 @@ void mmd_animation::evaluate_ik(
     for (std::size_t i = 0; i < skeleton.bones.size(); ++i)
     {
         if (skeleton.bones[i].ik_solver == nullptr)
+        {
             continue;
+        }
 
         auto& bone = skeleton.bones[i];
         auto& motion = animator.motions[i];
@@ -286,9 +245,13 @@ void mmd_animation::evaluate_ik(
         else
         {
             if (weight < 1.0f)
+            {
                 bone.ik_solver->enable = bone.ik_solver->base_animation;
+            }
             else
+            {
                 bone.ik_solver->enable = enable;
+            }
         }
     }
 }
@@ -305,7 +268,9 @@ void mmd_animation::evaluate_morph(mmd_morph& morph, mmd_animator& animator, flo
         auto& animator_morph = animator.morphs[i];
 
         if (animator_morph.morph_keys.empty())
+        {
             continue;
+        }
 
         auto bound = bound_key(
             animator_morph.morph_keys,
@@ -326,14 +291,17 @@ void mmd_animation::evaluate_morph(mmd_morph& morph, mmd_animator& animator, flo
             const auto& key0 = *(bound - 1);
             const auto& key1 = *bound;
 
-            float offset = (t - key0.frame) / (key1.frame - key0.frame);
+            float offset =
+                (t - static_cast<float>(key0.frame)) / static_cast<float>(key1.frame - key0.frame);
             weight = key0.weight + (key1.weight - key0.weight) * offset;
 
             animator_morph.offset = std::distance(animator_morph.morph_keys.cbegin(), bound);
         }
 
         if (weight != 0.0f)
+        {
             morph.evaluate(i, weight);
+        }
     }
 }
 
@@ -347,14 +315,20 @@ void mmd_animation::update_inherit(
     {
         vector4 rotate;
         if (!bone.inherit_local_flag && inherit_bone.inherit_index != -1)
+        {
             rotate = math::load(inherit_bone.inherit_rotation);
+        }
         else
+        {
             rotate = math::load(inherit_motion.rotation);
+        }
 
         if (inherit_bone.ik_link)
+        {
             rotate = quaternion::mul(math::load(inherit_bone.ik_link->rotate), rotate);
+        }
 
-        rotate = quaternion::slerp(quaternion::identity<vector4>(), rotate, bone.inherit_weight);
+        rotate = quaternion::slerp(quaternion::identity(), rotate, bone.inherit_weight);
         math::store(rotate, bone.inherit_rotation);
     }
 
@@ -385,7 +359,9 @@ void mmd_animation::update_ik(
     mmd_animator::motion& motion)
 {
     if (bone.ik_solver->target_index == -1 || !bone.ik_solver->enable)
+    {
         return;
+    }
 
     for (std::size_t link : bone.ik_solver->links)
     {
@@ -408,7 +384,9 @@ void mmd_animation::update_ik(
         {
             max_dist = dist;
             for (std::size_t link : bone.ik_solver->links)
+            {
                 skeleton.bones[link].ik_link->save_rotate = skeleton.bones[link].ik_link->rotate;
+            }
         }
         else
         {
@@ -432,7 +410,9 @@ void mmd_animation::ik_solve_core(
     for (std::size_t i = 0; i < bone.ik_solver->links.size(); ++i)
     {
         if (bone.ik_solver->links[i] == bone.ik_solver->target_index)
+        {
             continue;
+        }
 
         auto& link_bone = skeleton.bones[bone.ik_solver->links[i]];
         if (link_bone.ik_link->enable_limit)
@@ -447,8 +427,8 @@ void mmd_animation::ik_solve_core(
                 ik_solve_plane(skeleton, animator, bone, link_bone, 0, iteration);
                 continue;
             }
-            else if (
-                (link_bone.ik_link->limit_min[0] == 0.0f ||
+
+            if ((link_bone.ik_link->limit_min[0] == 0.0f ||
                  link_bone.ik_link->limit_max[0] == 0.0f) &&
                 (link_bone.ik_link->limit_min[1] != 0.0f ||
                  link_bone.ik_link->limit_max[1] != 0.0f) &&
@@ -458,8 +438,8 @@ void mmd_animation::ik_solve_core(
                 ik_solve_plane(skeleton, animator, bone, link_bone, 1, iteration);
                 continue;
             }
-            else if (
-                (link_bone.ik_link->limit_min[0] == 0.0f ||
+
+            if ((link_bone.ik_link->limit_min[0] == 0.0f ||
                  link_bone.ik_link->limit_max[0] == 0.0f) &&
                 (link_bone.ik_link->limit_min[1] == 0.0f ||
                  link_bone.ik_link->limit_max[1] == 0.0f) &&
@@ -486,9 +466,10 @@ void mmd_animation::ik_solve_core(
         dot = math::clamp(dot, -1.0f, 1.0f);
 
         float angle = std::acos(dot);
-        float angle_deg = math::to_degrees(angle);
-        if (angle_deg < 1.0e-3f)
+        if (math::to_degrees(angle) < 1.0e-3f)
+        {
             continue;
+        }
 
         angle = math::clamp(angle, -bone.ik_solver->limit, bone.ik_solver->limit);
         vector4 cross = vector::normalize(vector::cross(link_target_vec, link_ik_vec));
@@ -564,9 +545,13 @@ void mmd_animation::ik_solve_plane(
 
     float new_angle = ik_link.ik_link->plane_mode_angle;
     if (dot1 > dot2)
+    {
         new_angle += angle;
+    }
     else
+    {
         new_angle -= angle;
+    }
 
     if (iteration == 0)
     {
@@ -580,10 +565,12 @@ void mmd_animation::ik_solve_plane(
             }
             else
             {
-                auto halfRad =
+                auto half_rad =
                     (ik_link.ik_link->limit_min[axis] + ik_link.ik_link->limit_max[axis]) * 0.5f;
-                if (std::abs(halfRad - new_angle) > std::abs(halfRad + new_angle))
+                if (std::abs(half_rad - new_angle) > std::abs(half_rad + new_angle))
+                {
                     new_angle *= -1.0f;
+                }
             }
         }
     }
@@ -607,13 +594,19 @@ void mmd_animation::update_local(mmd_skeleton::bone& bone, mmd_animator::motion&
 {
     vector4 translate = vector::add(math::load(motion.translation), math::load(bone.position));
     if (bone.is_inherit_translation)
+    {
         translate = vector::add(translate, math::load(bone.inherit_translation));
+    }
 
     vector4 rotation = quaternion::mul(math::load(motion.rotation), math::load(bone.rotation));
     if (bone.ik_link)
+    {
         rotation = quaternion::mul(math::load(bone.ik_link->rotate), rotation);
+    }
     if (bone.is_inherit_rotation)
+    {
         rotation = quaternion::mul(rotation, math::load(bone.inherit_rotation));
+    }
 
     float3 t;
     math::store(translate, t);

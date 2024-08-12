@@ -1,15 +1,16 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 
 namespace violet
 {
-static constexpr std::uint32_t INVALID_ENTITY_INDEX = -1;
+using entity_id = std::uint32_t;
+static constexpr entity_id entity_null = std::numeric_limits<entity_id>::max();
 
 struct entity
 {
-    std::uint32_t index = INVALID_ENTITY_INDEX;
-    std::uint16_t entity_version = 0;
-    std::uint16_t component_version = 0;
+    entity_id id{entity_null};
+    std::uint32_t version{0};
 };
 } // namespace violet

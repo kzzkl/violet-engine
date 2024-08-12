@@ -8,6 +8,17 @@
 
 namespace violet
 {
+class mesh_component_info : public component_info_default<mesh>
+{
+public:
+    void construct(actor* owner, void* target) override
+    {
+        component_info_default<mesh>::construct(owner, target);
+        static_cast<mesh*>(target)->parameter =
+            render_device::instance().create_parameter(shader::mesh);
+    }
+};
+
 graphics_module::graphics_module() : engine_module("graphics")
 {
 }
@@ -46,7 +57,7 @@ bool graphics_module::initialize(const dictionary& config)
             end_frame();
         });
 
-    get_world().register_component<mesh>();
+    get_world().register_component<mesh, mesh_component_info>();
     get_world().register_component<camera>();
     get_world().register_component<light>();
 
@@ -101,8 +112,29 @@ void graphics_module::render()
     mesh_view.each(
         [&](mesh& mesh, transform& transform)
         {
-            // if (transform.get_update_count() != 0)
-            mesh.set_model_matrix(transform.get_world_matrix());
+            if (mesh.version != transform.get_version()) // need update
+            {
+                const float4x4& model_matrix = transform.get_world_matrix();
+                mesh.parameter->set_uniform(
+                    0,
+                    &model_matrix,
+                    sizeof(float4x4),
+                    offsetof(shader::mesh_data, model_matrix));
+
+                matrix4 normal_temp = math::load(model_matrix);
+                normal_temp = matrix::inverse(normal_temp);
+                normal_temp = matrix::transpose(normal_temp);
+
+                float4x4 normal_matrix = math::store<float4x4>(normal_temp);
+                mesh.parameter->set_uniform(
+                    0,
+                    &normal_matrix,
+                    sizeof(float4x4),
+                    offsetof(shader::mesh_data, normal_matrix));
+
+                mesh.version = transform.get_version();
+            }
+
             m_context->m_meshes.push_back(&mesh);
         });
 

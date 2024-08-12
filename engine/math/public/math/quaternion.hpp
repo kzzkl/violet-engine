@@ -8,23 +8,15 @@ namespace violet
 class quaternion
 {
 public:
-    template <typename T>
-    [[nodiscard]] static inline T identity();
-
-    template <>
-    [[nodiscard]] static inline float4 identity<float4>()
+    [[nodiscard]] static inline vector4 identity()
     {
-        return {0.0f, 0.0f, 0.0f, 1.0f};
-    }
-
 #ifdef VIOLET_USE_SIMD
-    template <>
-    [[nodiscard]] static inline vector4 identity<vector4>()
-    {
         static constexpr vector4 identity = {0.0f, 0.0f, 0.0f, 1.0f};
         return identity;
-    }
+#else
+        return {0.0f, 0.0f, 0.0f, 1.0f};
 #endif
+    }
 
     [[nodiscard]] static inline vector4 from_axis_angle(vector4 axis, float radians)
     {

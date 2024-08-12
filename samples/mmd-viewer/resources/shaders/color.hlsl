@@ -1,6 +1,4 @@
-#include "violet_mesh.hlsl"
-#include "violet_camera.hlsl"
-#include "violet_light.hlsl"
+#include "violet_common.hlsli"
 
 struct vs_in
 {

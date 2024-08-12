@@ -3,6 +3,7 @@
 #include "math/quaternion.hpp"
 #include "math/utility.hpp"
 #include "math/vector.hpp"
+#include <stdexcept>
 
 namespace violet
 {
@@ -39,31 +40,23 @@ public:
         return {r0, r1, r2, r3};
     }
 
-    template <typename T>
-    [[nodiscard]] static inline T identity();
-
-    template <>
-    [[nodiscard]] static inline float4x4 identity<float4x4>()
+    [[nodiscard]] static inline matrix4 identity()
     {
+#ifdef VIOLET_USE_SIMD
+        return {
+            math::IDENTITY_ROW_0,
+            math::IDENTITY_ROW_1,
+            math::IDENTITY_ROW_2,
+            math::IDENTITY_ROW_3};
+#else
         return {
             float4{1.0f, 0.0f, 0.0f, 0.0f},
             float4{0.0f, 1.0f, 0.0f, 0.0f},
             float4{0.0f, 0.0f, 1.0f, 0.0f},
             float4{0.0f, 0.0f, 0.0f, 1.0f}
         };
-    }
-
-#ifdef VIOLET_USE_SIMD
-    template <>
-    [[nodiscard]] static inline matrix4 identity<matrix4>()
-    {
-        return {
-            math::IDENTITY_ROW_0,
-            math::IDENTITY_ROW_1,
-            math::IDENTITY_ROW_2,
-            math::IDENTITY_ROW_3};
-    }
 #endif
+    }
 
     [[nodiscard]] static inline matrix4 mul(const matrix4& m1, const matrix4& m2)
     {
@@ -195,6 +188,7 @@ public:
     [[nodiscard]] static inline float determinant(const matrix4& m)
     {
 #ifdef VIOLET_USE_SIMD
+        throw std::runtime_error("Not implemented");
 #else
         float det11 = m[0][0] * (m[1][1] * (m[2][2] * m[3][3] - m[2][3] * m[3][2]) -
                                  m[1][2] * (m[2][1] * m[3][3] - m[2][3] * m[3][1]) +
@@ -456,6 +450,7 @@ public:
     [[nodiscard]] static inline matrix4 rotation_axis(vector4f axis, float radians)
     {
 #ifdef VIOLET_USE_SIMD
+        throw std::runtime_error("Not implemented");
 #else
         auto [sin, cos] = sin_cos(radians);
 
@@ -486,6 +481,7 @@ public:
     [[nodiscard]] static inline matrix4 rotation_x_axis(float radians)
     {
 #ifdef VIOLET_USE_SIMD
+        throw std::runtime_error("Not implemented");
 #else
         auto [sin, cos] = sin_cos(radians);
 
@@ -502,6 +498,7 @@ public:
     [[nodiscard]] static inline matrix4 rotation_y_axis(float radians)
     {
 #ifdef VIOLET_USE_SIMD
+        throw std::runtime_error("Not implemented");
 #else
         auto [sin, cos] = sin_cos(radians);
 
@@ -518,6 +515,7 @@ public:
     [[nodiscard]] static inline matrix4 rotation_z_axis(float radians)
     {
 #ifdef VIOLET_USE_SIMD
+        throw std::runtime_error("Not implemented");
 #else
         auto [sin, cos] = sin_cos(radians);
 
@@ -628,7 +626,7 @@ public:
 #endif
     }
 
-    [[nodiscard]] static inline void decompose(
+    static inline void decompose(
         matrix4 m,
         vector4f& scale,
         vector4f& rotation,

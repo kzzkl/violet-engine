@@ -47,6 +47,11 @@ public:
             {
                 resize(width, height);
             });
+        window.on_destroy().then(
+            []()
+            {
+                engine::exit();
+            });
 
         initialize_render();
         initialize_scene();
@@ -161,13 +166,8 @@ private:
 
         m_cube = std::make_unique<actor>("cube", get_world());
         auto [cube_mesh, cube_transform] = m_cube->add<mesh, transform>();
-        cube_mesh->set_geometry(m_geometry.get());
-        cube_mesh->add_submesh(
-            0,
-            m_geometry->get_vertex_count(),
-            0,
-            m_geometry->get_index_count(),
-            m_material.get());
+        cube_mesh->geometry = m_geometry.get();
+        cube_mesh->submeshes.emplace_back(0, 0, 0, m_geometry->get_index_count(), m_material.get());
         cube_transform->set_position({-model_center.x, -model_center.y, -model_center.z});
 
         m_camera = std::make_unique<actor>("main camera", get_world());
@@ -245,21 +245,14 @@ int main()
 {
     using namespace violet;
 
-    engine engine;
-    engine.initialize("pbr/config");
-    engine.install<scene_module>();
-    engine.install<window_module>();
-    engine.install<graphics_module>();
-    engine.install<control_module>();
-    engine.install<sample::pbr_sample>();
+    engine::initialize("pbr/config");
+    engine::install<scene_module>();
+    engine::install<window_module>();
+    engine::install<graphics_module>();
+    engine::install<control_module>();
+    engine::install<sample::pbr_sample>();
 
-    engine.get_module<window_module>().on_destroy().then(
-        [&engine]()
-        {
-            engine.exit();
-        });
-
-    engine.run();
+    engine::run();
 
     return 0;
 }

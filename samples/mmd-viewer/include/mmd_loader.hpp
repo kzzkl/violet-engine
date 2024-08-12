@@ -3,7 +3,6 @@
 #include "ecs/actor.hpp"
 #include "graphics/geometry.hpp"
 #include "graphics/material.hpp"
-#include "mmd_render.hpp"
 #include "physics/physics_context.hpp"
 #include <map>
 #include <memory>
@@ -28,10 +27,7 @@ class vmd;
 class mmd_loader
 {
 public:
-    mmd_loader(
-        mmd_render_graph* render_graph,
-        render_device* device,
-        physics_context* physics_context);
+    mmd_loader(physics_context* physics_context);
     ~mmd_loader();
 
     mmd_model* load(std::string_view pmx_path, std::string_view vmd_path, world& world);
@@ -52,8 +48,6 @@ private:
 
     std::vector<rhi_ptr<rhi_texture>> m_internal_toons;
 
-    mmd_render_graph* m_render_graph;
-    render_device* m_device;
     rhi_ptr<rhi_sampler> m_sampler;
 
     physics_context* m_physics_context;

@@ -4,34 +4,35 @@
 
 namespace violet
 {
-engine_context::engine_context() : m_exit(true)
+engine_context::engine_context()
+    : m_exit(true)
 {
     m_timer = std::make_unique<timer>();
     m_world = std::make_unique<world>();
+
+    task& frame_begin = m_taskflow.add_task([]() {}).set_name("Frame Begin");
+    task& update = m_taskflow.add_task([]() {}).set_name("Update").add_predecessor(frame_begin);
+    task& frame_end = m_taskflow.add_task([]() {}).set_name("Frame End").add_predecessor(update);
 }
 
-engine_context::~engine_context()
+engine_context::~engine_context() {}
+
+void engine_context::set_system(std::size_t index, engine_system* system)
 {
+    if (index >= m_systems.size())
+        m_systems.resize(index + 1);
+
+    assert(m_systems[index] == nullptr);
+    m_systems[index] = system;
 }
 
-void engine_context::set_module(std::size_t index, engine_module* module)
+engine_system* engine_context::get_system(std::size_t index)
 {
-    if (index >= m_modules.size())
-        m_modules.resize(index + 1);
-
-    assert(m_modules[index] == nullptr);
-    m_modules[index] = module;
+    return m_systems[index];
 }
 
-engine_module* engine_context::get_module(std::size_t index)
+void engine_context::tick(const engine_stats& stats)
 {
-    return m_modules[index];
-}
-
-void engine_context::tick(float delta)
-{
-    m_executor.execute_sync(m_frame_begin);
-    m_executor.execute_sync(m_tick, delta);
-    m_executor.execute_sync(m_frame_end);
+    m_executor.execute_sync(m_taskflow);
 }
 } // namespace violet

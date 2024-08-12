@@ -23,7 +23,7 @@ public:
             attribute.data(),
             attribute.size() * sizeof(decltype(*attribute.data())),
             flags);
-        m_vertex_count = attribute.size();
+        m_vertex_count = static_cast<std::uint32_t>(attribute.size());
     }
 
     template <typename T>
@@ -33,7 +33,7 @@ public:
         rhi_buffer_flags flags = RHI_BUFFER_VERTEX)
     {
         add_attribute(name, nullptr, size * sizeof(T), flags);
-        m_vertex_count = size;
+        m_vertex_count = static_cast<std::uint32_t>(size);
     }
 
     template <std::ranges::contiguous_range R>
@@ -41,14 +41,14 @@ public:
     {
         static constexpr std::size_t index_size = sizeof(decltype(*indices.data()));
         set_indices(indices.data(), indices.size() * index_size, index_size, flags);
-        m_index_count = indices.size();
+        m_index_count = static_cast<std::uint32_t>(indices.size());
     }
 
     rhi_buffer* get_vertex_buffer(std::string_view name);
     rhi_buffer* get_index_buffer() const noexcept { return m_index_buffer.get(); }
 
-    std::size_t get_vertex_count() const noexcept { return m_vertex_count; }
-    std::size_t get_index_count() const noexcept { return m_index_count; }
+    std::uint32_t get_vertex_count() const noexcept { return m_vertex_count; }
+    std::uint32_t get_index_count() const noexcept { return m_index_count; }
 
 private:
     void add_attribute(
@@ -65,7 +65,7 @@ private:
     std::unordered_map<std::string, rhi_ptr<rhi_buffer>> m_vertex_buffers;
     rhi_ptr<rhi_buffer> m_index_buffer;
 
-    std::size_t m_vertex_count;
-    std::size_t m_index_count;
+    std::uint32_t m_vertex_count{0};
+    std::uint32_t m_index_count{0};
 };
 } // namespace violet

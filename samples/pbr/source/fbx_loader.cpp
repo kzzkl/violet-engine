@@ -15,7 +15,9 @@ std::unique_ptr<geometry> fbx_loader::load(std::string_view path, float3* center
             aiProcess_FlipUVs);
     if (scene == nullptr || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
         scene->mRootNode == nullptr || scene->mNumMeshes == 0)
+    {
         return nullptr;
+    }
 
     std::vector<float3> positions;
     std::vector<float3> normals;

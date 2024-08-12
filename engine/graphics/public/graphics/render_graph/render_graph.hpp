@@ -85,7 +85,7 @@ public:
     }
 
 private:
-    void dead_stripping();
+    void cull();
     void merge_pass();
     void build_barriers();
 

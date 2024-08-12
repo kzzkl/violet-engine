@@ -1,16 +1,18 @@
 #include "components/transform.hpp"
+#include "core/engine_stats.hpp"
 
 namespace violet
 {
-transform::transform(actor* owner) noexcept
+/*transform::transform(actor* owner) noexcept
     : m_position{0.0f, 0.0f, 0.0f},
       m_rotation{0.0f, 0.0f, 0.0f, 1.0f},
       m_scale{1.0f, 1.0f, 1.0f},
-      m_local_matrix(matrix::identity<float4x4>()),
-      m_world_matrix(matrix::identity<float4x4>()),
       m_world_dirty(false),
       m_owner(owner)
 {
+    matrix4 identity = matrix::identity();
+    math::store(identity, m_local_matrix);
+    math::store(identity, m_world_matrix);
 }
 
 void transform::set_position(float x, float y, float z) noexcept
@@ -216,6 +218,8 @@ void transform::mark_dirty()
     bfs(
         [](transform& node) -> bool
         {
+            node.m_version = engine_stats::instance().get_frame_count();
+
             if (node.m_world_dirty)
             {
                 return false;
@@ -229,5 +233,5 @@ void transform::mark_dirty()
 
     if (!m_parent)
         m_world_dirty = false;
-}
+}*/
 } // namespace violet
