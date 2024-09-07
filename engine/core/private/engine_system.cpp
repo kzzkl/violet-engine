@@ -24,9 +24,9 @@ world& engine_system::get_world()
     return m_context->get_world();
 }
 
-taskflow& engine_system::get_taskflow() noexcept
+task_graph& engine_system::get_task_graph() noexcept
 {
-    return m_context->get_taskflow();
+    return m_context->get_task_graph();
 }
 
 task_executor& engine_system::get_executor() noexcept

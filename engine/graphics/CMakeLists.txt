@@ -1,7 +1,6 @@
 project(violet-graphics)
 
 add_library(${PROJECT_NAME} STATIC
-    ./private/components/camera.cpp
     ./private/geometries/box_geometry.cpp
     ./private/geometries/sphere_geometry.cpp
     ./private/materials/basic_material.cpp
@@ -16,9 +15,11 @@ add_library(${PROJECT_NAME} STATIC
     ./private/renderers/default_renderer.cpp
     ./private/tools/ibl_tool.cpp
     ./private/tools/texture_loader.cpp
+    ./private/camera_system.cpp
     ./private/geometry.cpp
-    ./private/graphics_module.cpp
+    ./private/graphics_system.cpp
     ./private/material.cpp
+    ./private/mesh_system.cpp
     ./private/render_context.cpp
     ./private/render_device.cpp
     ./private/renderer.cpp

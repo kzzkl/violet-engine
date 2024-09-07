@@ -1,59 +1,63 @@
-#include "window/window_module.hpp"
+#include "window/window_system.hpp"
 #include "window_impl.hpp"
 #include "window_impl_win32.hpp"
 
 namespace violet
 {
-window_module::window_module()
-    : engine_module("window"),
+window_system::window_system()
+    : engine_system("Window"),
       m_impl(std::make_unique<window_impl_win32>()),
       m_mouse(m_impl.get())
 {
 }
 
-window_module::~window_module()
-{
-}
+window_system::~window_system() {}
 
-bool window_module::initialize(const dictionary& config)
+bool window_system::initialize(const dictionary& config)
 {
     if (!m_impl->initialize(config["width"], config["height"], config["title"]))
         return false;
 
     m_title = config["title"];
 
-    on_frame_begin().then(
-        [this]()
-        {
-            tick();
-        },
-        TASK_TYPE_MAIN_THREAD);
+    task_graph& task_graph = get_task_graph();
+    task_group& pre_update = task_graph.get_group("PreUpdate Group");
+
+    task_graph.add_task()
+        .set_name("Update Window")
+        .set_group(pre_update)
+        .set_options(TASK_OPTION_MAIN_THREAD)
+        .set_execute(
+            [this]()
+            {
+                tick();
+            });
 
     return true;
 }
 
-void window_module::shutdown()
+void window_system::shutdown()
 {
     m_impl->shutdown();
 }
 
-void* window_module::get_handle() const
+void* window_system::get_handle() const
 {
     return m_impl->get_handle();
 }
 
-rect<std::uint32_t> window_module::get_extent() const
+rect<std::uint32_t> window_system::get_extent() const
 {
     return m_impl->get_extent();
 }
 
-void window_module::set_title(std::string_view title)
+void window_system::set_title(std::string_view title)
 {
     m_title = title;
     m_impl->set_title(title);
 }
 
-void window_module::tick()
+void window_system::tick()
 {
     m_impl->reset();
     m_impl->tick();
@@ -96,14 +100,11 @@ void window_module::tick()
             break;
         }
         case window_message::message_type::WINDOW_RESIZE: {
-            executor.execute_sync(
-                m_on_resize,
-                message.window_resize.width,
-                message.window_resize.height);
+            get_executor().execute_sync(m_on_resize);
             break;
         }
         case window_message::message_type::WINDOW_DESTROY: {
-            executor.execute_sync(m_on_destroy);
+            get_executor().execute_sync(m_on_destroy);
             break;
         }
         default:

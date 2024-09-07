@@ -19,5 +19,10 @@ struct transform_local
 struct transform_world
 {
     float4x4 matrix;
+
+    float3 get_position() const
+    {
+        return float3{matrix[3][0], matrix[3][1], matrix[3][2]};
+    }
 };
 } // namespace violet

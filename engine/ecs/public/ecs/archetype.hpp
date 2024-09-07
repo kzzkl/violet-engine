@@ -18,7 +18,7 @@ class archetype
 public:
     archetype(
         std::span<const component_id> components,
-        const component_table& component_table,
+        const component_builder_list& component_builder_list,
         archetype_chunk_allocator* allocator) noexcept;
 
     virtual ~archetype();
@@ -30,8 +30,11 @@ public:
 
     template <typename... Components>
     [[nodiscard]] std::tuple<Components*...> get_components(
-        std::size_t chunk_index, std::size_t offset, std::uint32_t world_version) noexcept
+        std::size_t index, std::uint32_t world_version) noexcept
     {
+        auto [chunk_index, chunk_offset] = std::div(
+            static_cast<const long>(index), static_cast<const long>(get_chunk_entity_count()));
+
         static constexpr bool read_only = (std::is_const_v<Components> && ...);
 
         if constexpr (!read_only)
@@ -43,9 +46,23 @@ public:
             (static_cast<Components*>(get_data_pointer(
                  chunk_index,
                  m_component_infos[component_index::value<Components>()].chunk_offset)) +
-             offset)...,
+             chunk_offset)...,
         };
         return components;
+    }
+
+    [[nodiscard]] void* get_component_pointer(
+        component_id component_id, std::size_t index, std::uint32_t world_version)
+    {
+        auto [chunk_index, chunk_offset] = std::div(
+            static_cast<const long>(index), static_cast<const long>(get_chunk_entity_count()));
+
+        set_version(chunk_index, world_version, component_id);
+
+        void* pointer = get_data_pointer(chunk_index, m_component_infos[component_id].chunk_offset);
+        std::size_t component_size = m_component_infos[component_id].builder->get_size();
+
+        return static_cast<std::uint8_t*>(pointer) + component_size * chunk_offset;
     }
 
     template <typename... Components>
@@ -68,8 +85,8 @@ public:
 
     [[nodiscard]] inline std::size_t get_entity_count(std::size_t chunk_index) const noexcept
     {
-        return chunk_index == m_chunks.size() - 1 ? m_size % m_entity_per_chunk :
-                                                    m_entity_per_chunk;
+        return chunk_index == m_chunks.size() - 1 ? m_size % m_chunk_entity_count :
+                                                    m_chunk_entity_count;
     }
 
     [[nodiscard]] inline std::size_t get_entity_count() const noexcept
@@ -77,9 +94,9 @@ public:
         return m_size;
     }
 
-    [[nodiscard]] inline std::size_t entity_per_chunk() const noexcept
+    [[nodiscard]] inline std::size_t get_chunk_entity_count() const noexcept
     {
-        return m_entity_per_chunk;
+        return m_chunk_entity_count;
     }
 
     [[nodiscard]] inline const component_mask& get_mask() const noexcept
@@ -91,10 +108,11 @@ private:
     std::size_t allocate();
     void move_construct(std::size_t source, std::size_t target);
     void destruct(std::size_t index);
+    void move_assignment(std::size_t source, std::size_t target);
 
     [[nodiscard]] std::size_t capacity() const noexcept
     {
-        return m_entity_per_chunk * m_chunks.size();
+        return m_chunk_entity_count * m_chunks.size();
     }
 
     void* get_data_pointer(std::size_t chunk_index, std::size_t offset);
@@ -122,21 +140,21 @@ private:
         std::size_t chunk_offset;
         std::size_t index;
 
-        component_constructor_base* constructor;
+        component_builder_base* builder;
 
         std::size_t get_offset(std::size_t entity_index) const noexcept
         {
-            return chunk_offset + entity_index * constructor->get_size();
+            return chunk_offset + entity_index * builder->get_size();
         }
     };
     std::array<component_info, MAX_COMPONENT> m_component_infos;
 
     component_mask m_mask;
 
-    std::size_t m_size;
+    std::size_t m_size{0};
 
-    std::size_t m_entity_per_chunk;
-    archetype_chunk_allocator* m_chunk_allocator;
+    std::size_t m_chunk_entity_count{0};
+    archetype_chunk_allocator* m_chunk_allocator{nullptr};
     std::vector<archetype_chunk*> m_chunks;
 };
 } // namespace violet

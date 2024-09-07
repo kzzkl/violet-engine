@@ -1,35 +1,30 @@
 #pragma once
 
-#include "lock_free_queue.hpp"
-#include "task/task.hpp"
-#include "thread_safe_queue.hpp"
+#include "task/lock_free_queue.hpp"
+#include <queue>
 
 namespace violet
 {
-class task_queue
+template <typename T>
+class task_queue_thread_safe
 {
 public:
-    virtual ~task_queue() = default;
+    using task_type = T;
 
-    virtual task* pop() = 0;
-    virtual void push(task* task) = 0;
-
-    virtual void close() = 0;
-};
-
-class task_queue_thread_safe : public task_queue
-{
 public:
-    task_queue_thread_safe() : m_close(false) {}
+    task_queue_thread_safe()
+        : m_close(false)
+    {
+    }
 
-    virtual void push(task* task) override
+    void push(task_type* task)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_queue.push(task);
         m_cv.notify_one();
     }
 
-    virtual task* pop() override
+    task_type* pop()
     {
         std::unique_lock<std::mutex> lock(m_mutex);
         m_cv.wait(
@@ -41,7 +36,7 @@ public:
 
         if (!m_queue.empty())
         {
-            task* task = m_queue.front();
+            task_type* task = m_queue.front();
             m_queue.pop();
             return task;
         }
@@ -51,14 +46,14 @@ public:
         }
     }
 
-    virtual void close() override
+    void close()
     {
         m_close = true;
         m_cv.notify_all();
     }
 
 private:
-    std::queue<task*> m_queue;
+    std::queue<task_type*> m_queue;
 
     std::condition_variable m_cv;
     std::mutex m_mutex;
@@ -66,16 +61,26 @@ private:
     std::atomic<bool> m_close;
 };
 
-class task_queue_lock_free : public task_queue
+template <typename T>
+class task_queue_lock_free
 {
 public:
-    task_queue_lock_free() : m_close(false) {}
+    using task_type = T;
 
-    virtual void push(task* task) override { m_queue.push(task); }
-
-    virtual task* pop() override
+public:
+    task_queue_lock_free()
+        : m_close(false)
     {
-        task* task = nullptr;
+    }
+
+    void push(task_type* task)
+    {
+        m_queue.push(task);
+    }
+
+    task_type* pop()
+    {
+        task_type* task = nullptr;
         while (!m_queue.pop(task))
         {
             std::this_thread::yield();
@@ -87,10 +92,13 @@ public:
         return task;
     }
 
-    virtual void close() override { m_close = true; }
+    void close()
+    {
+        m_close = true;
+    }
 
 private:
-    lock_free_queue<task*> m_queue;
+    lock_free_queue<task_type*> m_queue;
     std::atomic<bool> m_close;
 };
 } // namespace violet

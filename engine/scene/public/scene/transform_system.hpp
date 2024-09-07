@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/engine_system.hpp"
+#include "math/math.hpp"
 
 namespace violet
 {
@@ -15,6 +16,8 @@ private:
     void update_local();
     void update_world();
 
-    std::uint32_t m_system_version;
+    void update_world_recursive(entity e, const float4x4& parent_world, bool need_update);
+
+    std::uint32_t m_system_version{0};
 };
 } // namespace violet

@@ -1,10 +1,8 @@
-project(violet-window)
+project(violet-ecs-command)
 
 add_library(${PROJECT_NAME} STATIC
-    ./private/input.cpp
-    ./private/window_impl_win32.cpp
-    ./private/window_system.cpp)
-add_library(violet::window ALIAS ${PROJECT_NAME})
+    ./private/ecs_command_system.cpp)
+add_library(violet::ecs-command ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
@@ -14,8 +12,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-    violet::core
-    violet::math)
+    violet::core)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

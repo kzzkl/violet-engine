@@ -5,6 +5,11 @@
 
 namespace violet
 {
+struct hierarchy_previous_parent
+{
+    entity parent;
+};
+
 struct hierarchy_parent
 {
     entity parent;

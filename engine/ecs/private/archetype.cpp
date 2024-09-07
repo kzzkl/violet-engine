@@ -5,11 +5,9 @@ namespace violet
 {
 archetype::archetype(
     std::span<const component_id> components,
-    const component_table& component_table,
+    const component_builder_list& component_builder_list,
     archetype_chunk_allocator* allocator) noexcept
-    : m_chunk_allocator(allocator),
-      m_size(0),
-      m_entity_per_chunk(0)
+    : m_chunk_allocator(allocator)
 {
     m_components.insert(m_components.end(), components.begin(), components.end());
 
@@ -28,19 +26,21 @@ archetype::archetype(
         components.begin(),
         components.end(),
         list.begin(),
-        [this, &component_table](component_id id)
+        [this, &component_builder_list](component_id id)
         {
             return layout_info{
                 .id = id,
-                .size = component_table[id]->get_size(),
-                .align = component_table[id]->get_align()};
+                .size = component_builder_list[id]->get_size(),
+                .align = component_builder_list[id]->get_align()};
         });
 
     std::sort(
         list.begin(),
         list.end(),
         [](const auto& a, const auto& b)
-        { return a.align == b.align ? a.id < b.id : a.align > b.align; });
+        {
+            return a.align == b.align ? a.id < b.id : a.align > b.align;
+        });
 
     std::size_t entity_size = 0;
     for (const auto& info : list)
@@ -48,16 +48,16 @@ archetype::archetype(
         entity_size += info.size;
     }
 
-    m_entity_per_chunk = archetype_chunk::CHUNK_SIZE / entity_size;
+    m_chunk_entity_count = archetype_chunk::size / entity_size;
 
     std::size_t offset = 0;
     for (std::size_t i = 0; i < list.size(); ++i)
     {
         component_id id = list[i].id;
         m_component_infos[id] = {
-            .chunk_offset = offset, .index = i, .constructor = component_table[id].get()};
+            .chunk_offset = offset, .index = i, .builder = component_builder_list[id].get()};
 
-        offset += list[i].size * m_entity_per_chunk;
+        offset += list[i].size * m_chunk_entity_count;
     }
 }
 
@@ -71,14 +71,14 @@ std::size_t archetype::add(std::uint32_t world_version)
     std::size_t index = allocate();
 
     auto [chunk_index, entity_index] =
-        std::div(static_cast<const long>(index), static_cast<const long>(m_entity_per_chunk));
+        std::div(static_cast<const long>(index), static_cast<const long>(m_chunk_entity_count));
 
     for (component_id id : m_components)
     {
         auto& info = m_component_infos[id];
 
         std::size_t offset = info.get_offset(entity_index);
-        info.constructor->construct(get_data_pointer(chunk_index, offset));
+        info.builder->construct(get_data_pointer(chunk_index, offset));
 
         set_version(chunk_index, world_version, id);
     }
@@ -93,11 +93,12 @@ std::size_t archetype::move(std::size_t index, archetype& target, std::uint32_t 
     auto& source = *this;
 
     auto [source_chunk_index, source_entity_index] =
-        std::div(static_cast<const long>(index), static_cast<const long>(m_entity_per_chunk));
+        std::div(static_cast<const long>(index), static_cast<const long>(m_chunk_entity_count));
 
     std::size_t target_index = target.allocate();
     auto [target_chunk_index, target_entity_index] = std::div(
-        static_cast<const long>(target_index), static_cast<const long>(target.m_entity_per_chunk));
+        static_cast<const long>(target_index),
+        static_cast<const long>(target.m_chunk_entity_count));
 
     for (component_id id : m_components)
     {
@@ -108,7 +109,7 @@ std::size_t archetype::move(std::size_t index, archetype& target, std::uint32_t 
 
             std::size_t source_offset = source_info.get_offset(source_entity_index);
             std::size_t target_offset = target_info.get_offset(target_entity_index);
-            source_info.constructor->move_construct(
+            source_info.builder->move_construct(
                 source.get_data_pointer(source_chunk_index, source_offset),
                 target.get_data_pointer(target_chunk_index, target_offset));
 
@@ -126,7 +127,7 @@ std::size_t archetype::move(std::size_t index, archetype& target, std::uint32_t 
             auto& target_info = target.m_component_infos[id];
 
             std::size_t offset = target_info.get_offset(target_entity_index);
-            target_info.constructor->construct(target.get_data_pointer(target_chunk_index, offset));
+            target_info.builder->construct(target.get_data_pointer(target_chunk_index, offset));
 
             target.set_version(target_chunk_index, world_version, id);
         }
@@ -148,13 +149,12 @@ void archetype::remove(std::size_t index)
     }
     else
     {
-        destruct(index);
-        move_construct(back_index, index);
+        move_assignment(back_index, index);
         destruct(back_index);
         --m_size;
     }
 
-    if (m_size % m_entity_per_chunk == 0)
+    if (m_size % m_chunk_entity_count == 0)
     {
         m_chunk_allocator->free(m_chunks.back());
         m_chunks.pop_back();
@@ -189,10 +189,10 @@ std::size_t archetype::allocate()
 void archetype::move_construct(std::size_t source, std::size_t target)
 {
     auto [source_chunk_index, source_entity_index] =
-        std::div(static_cast<const long>(source), static_cast<const long>(m_entity_per_chunk));
+        std::div(static_cast<const long>(source), static_cast<const long>(m_chunk_entity_count));
 
     auto [target_chunk_index, target_entity_index] =
-        std::div(static_cast<const long>(target), static_cast<const long>(m_entity_per_chunk));
+        std::div(static_cast<const long>(target), static_cast<const long>(m_chunk_entity_count));
 
     for (component_id id : m_components)
     {
@@ -201,7 +201,7 @@ void archetype::move_construct(std::size_t source, std::size_t target)
         std::size_t source_offset = info.get_offset(source_entity_index);
         std::size_t target_offset = info.get_offset(target_entity_index);
 
-        info.constructor->move_construct(
+        info.builder->move_construct(
             get_data_pointer(source_chunk_index, source_offset),
             get_data_pointer(target_chunk_index, target_offset));
     }
@@ -210,14 +210,35 @@ void archetype::move_construct(std::size_t source, std::size_t target)
 void archetype::destruct(std::size_t index)
 {
     auto [chunk_index, entity_index] =
-        std::div(static_cast<const long>(index), static_cast<const long>(m_entity_per_chunk));
+        std::div(static_cast<const long>(index), static_cast<const long>(m_chunk_entity_count));
 
     for (component_id id : m_components)
     {
         auto& info = m_component_infos[id];
 
         std::size_t offset = info.get_offset(entity_index);
-        info.constructor->destruct(get_data_pointer(chunk_index, offset));
+        info.builder->destruct(get_data_pointer(chunk_index, offset));
+    }
+}
+
+void archetype::move_assignment(std::size_t source, std::size_t target)
+{
+    auto [source_chunk_index, source_entity_index] =
+        std::div(static_cast<const long>(source), static_cast<const long>(m_chunk_entity_count));
+
+    auto [target_chunk_index, target_entity_index] =
+        std::div(static_cast<const long>(target), static_cast<const long>(m_chunk_entity_count));
+
+    for (component_id id : m_components)
+    {
+        auto& info = m_component_infos[id];
+
+        std::size_t source_offset = info.get_offset(source_entity_index);
+        std::size_t target_offset = info.get_offset(target_entity_index);
+
+        info.builder->move_assignment(
+            get_data_pointer(source_chunk_index, source_offset),
+            get_data_pointer(target_chunk_index, target_offset));
     }
 }
 

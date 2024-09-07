@@ -1,20 +1,20 @@
 #pragma once
 
-#include "core/engine_module.hpp"
+#include "core/engine_system.hpp"
 #include "graphics/render_graph/render_graph.hpp"
 
 namespace violet
 {
 class camera;
 class rhi_plugin;
-class graphics_module : public engine_module
+class graphics_system : public engine_system
 {
 public:
-    graphics_module();
-    virtual ~graphics_module();
+    graphics_system();
+    virtual ~graphics_system();
 
-    virtual bool initialize(const dictionary& config) override;
-    virtual void shutdown() override;
+    bool initialize(const dictionary& config) override;
+    void shutdown() override;
 
 private:
     void begin_frame();
@@ -35,5 +35,7 @@ private:
 
     std::unique_ptr<rdg_allocator> m_allocator;
     std::unique_ptr<render_context> m_context;
+
+    std::uint32_t m_system_version{0};
 };
 } // namespace violet

@@ -61,6 +61,6 @@ private:
 
     rhi_ptr<rhi_parameter> m_light;
 
-    friend class graphics_module;
+    friend class graphics_system;
 };
 } // namespace violet

@@ -45,9 +45,6 @@ void engine::initialize(std::string_view config_path)
 {
     auto& config = instance().m_config;
 
-    std::ofstream fff("a.txt");
-
-
     for (auto iter : std::filesystem::directory_iterator("assets/config"))
     {
         if (iter.is_regular_file() && iter.path().extension() == ".json")

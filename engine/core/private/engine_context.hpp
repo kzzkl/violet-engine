@@ -27,9 +27,9 @@ public:
         return *m_world;
     }
 
-    taskflow& get_taskflow() noexcept
+    task_graph& get_task_graph() noexcept
     {
-        return m_taskflow;
+        return m_task_graph;
     }
 
     task_executor& get_executor() noexcept
@@ -47,7 +47,7 @@ private:
     std::unique_ptr<timer> m_timer;
     std::unique_ptr<world> m_world;
 
-    taskflow m_taskflow;
+    task_graph m_task_graph;
     task_executor m_executor;
 
     std::atomic<bool> m_exit;

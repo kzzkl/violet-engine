@@ -45,7 +45,10 @@ struct shader_parameter
         binding_count = list.size();
     }
 
-    consteval operator rhi_parameter_desc() const { return {bindings, binding_count}; }
+    consteval operator rhi_parameter_desc() const
+    {
+        return {bindings, binding_count};
+    }
 
     rhi_parameter_binding bindings[rhi_constants::MAX_PARAMETER_BINDING_COUNT];
     std::size_t binding_count;
@@ -83,8 +86,7 @@ struct shader
     static constexpr parameter mesh = {
         {RHI_PARAMETER_UNIFORM,
          RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT,
-         sizeof(mesh_data)}
-    };
+         sizeof(mesh_data)}};
 
     struct camera_data
     {
@@ -98,13 +100,10 @@ struct shader
     static constexpr parameter camera = {
         {RHI_PARAMETER_UNIFORM,
          RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT,
-         sizeof(camera_data)                                   },
-        {RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT,    1}
-    };
+         sizeof(camera_data)},
+        {RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1}};
 
-    static constexpr parameter light = {
-        {RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, 528}
-    };
+    static constexpr parameter light = {{RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, 528}};
 };
 
 template <typename T>
@@ -285,7 +284,10 @@ public:
     rhi_ptr<rhi_fence> create_fence(bool signaled);
     rhi_ptr<rhi_semaphore> create_semaphore();
 
-    rhi_deleter& get_deleter() noexcept { return m_rhi_deleter; }
+    rhi_deleter& get_deleter() noexcept
+    {
+        return m_rhi_deleter;
+    }
 
 private:
     rhi_shader* get_shader(const rhi_shader_desc& desc);
@@ -303,6 +305,9 @@ private:
 
 struct full_screen_vs : public vertex_shader
 {
-    static constexpr std::string_view get_path() { return "engine/shaders/full_screen.vs"; }
+    static constexpr std::string_view get_path()
+    {
+        return "engine/shaders/full_screen.vs";
+    }
 };
 } // namespace violet

@@ -1,6 +1,6 @@
 #include "task/task_executor.hpp"
 #include "common/log.hpp"
-#include "task_queue.hpp"
+#include "task/task_queue.hpp"
 
 namespace violet
 {
@@ -17,11 +17,13 @@ public:
         join();
     }
 
-    template<typename F>
-    void run(F&& functor)
+    template <typename Functor>
+    void run(Functor functor)
     {
         for (auto& thread : m_threads)
+        {
             thread = std::thread(functor);
+        }
     }
 
     void join()
@@ -40,8 +42,6 @@ private:
 task_executor::task_executor()
     : m_stop(true)
 {
-    m_normal_queue = std::make_unique<task_queue_thread_safe>();
-    m_main_thread_queue = std::make_unique<task_queue_thread_safe>();
 }
 
 task_executor::~task_executor()
@@ -65,12 +65,19 @@ void task_executor::run(std::size_t thread_count)
         {
             while (true)
             {
-                task* current = m_normal_queue->pop();
+                task_wrapper* current = m_worker_thread_queue.pop();
                 if (!current)
+                {
                     break;
+                }
 
-                for (task* successor : current->execute())
+                current->execute();
+                current->get_graph()->notify_task_complete();
+
+                for (task_wrapper* successor : current->successors)
+                {
                     execute_task(successor);
+                }
             }
         });
 }
@@ -82,22 +89,32 @@ void task_executor::stop()
 
     m_stop = true;
 
-    m_normal_queue->close();
-    m_main_thread_queue->close();
+    m_main_thread_queue.close();
+    m_worker_thread_queue.close();
 
     m_thread_pool->join();
     m_thread_pool = nullptr;
 }
 
-void task_executor::execute_task(task* task)
+void task_executor::execute_task(task_wrapper* task)
 {
+    if (task->is_empty())
+    {
+        for (task_wrapper* successor : task->successors)
+        {
+            execute_task(successor);
+        }
+
+        return;
+    }
+
     if (task->get_options() & TASK_OPTION_MAIN_THREAD)
     {
-        m_main_thread_queue->push(task);
+        m_main_thread_queue.push(task);
     }
     else
     {
-        m_normal_queue->push(task);
+        m_worker_thread_queue.push(task);
     }
 }
 
@@ -105,12 +122,19 @@ void task_executor::execute_main_thread_task(std::size_t task_count)
 {
     while (task_count > 0)
     {
-        task* current = m_main_thread_queue->pop();
+        task_wrapper* current = m_main_thread_queue.pop();
         if (!current)
+        {
             break;
+        }
 
-        for (task* successor : current->execute())
+        current->execute();
+        current->get_graph()->notify_task_complete();
+
+        for (task_wrapper* successor : current->successors)
+        {
             execute_task(successor);
+        }
 
         --task_count;
     }

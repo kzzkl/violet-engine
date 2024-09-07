@@ -1,53 +1,11 @@
 #pragma once
 
-#include <array>
 #include <functional>
-#include <future>
-#include <memory>
-#include <mutex>
-#include <optional>
-#include <tuple>
+#include <string>
 #include <vector>
 
 namespace violet
 {
-template <typename T>
-struct functor_traits : public functor_traits<decltype(&T::operator())>
-{
-};
-
-template <typename R, typename... Args>
-struct functor_traits<R(Args...)>
-{
-    using argument_type = std::tuple<Args...>;
-    using return_type = R;
-    using function_type = std::function<R(Args...)>;
-};
-
-template <typename R, typename... Args>
-struct functor_traits<R (*)(Args...)>
-{
-    using argument_type = std::tuple<Args...>;
-    using return_type = R;
-    using function_type = std::function<R(Args...)>;
-};
-
-template <typename R, typename C, typename... Args>
-struct functor_traits<R (C::*)(Args...) const>
-{
-    using argument_type = std::tuple<Args...>;
-    using return_type = R;
-    using function_type = std::function<R(Args...)>;
-};
-
-template <typename R, typename C, typename... Args>
-struct functor_traits<R (C::*)(Args...)>
-{
-    using argument_type = std::tuple<Args...>;
-    using return_type = R;
-    using function_type = std::function<R(Args...)>;
-};
-
 enum task_option
 {
     TASK_OPTION_NONE = 0,
@@ -55,17 +13,28 @@ enum task_option
 };
 using task_options = std::uint32_t;
 
-class taskflow;
+class task;
+class task_group;
+
+template <typename T>
+concept task_node = std::is_same_v<T, task> || std::is_same_v<T, task_group>;
+
+class task_graph;
 class task
 {
 public:
-    task() noexcept;
+    task(task_graph* graph) noexcept;
     virtual ~task();
 
     task& set_name(std::string_view name)
     {
         m_name = name;
         return *this;
+    }
+
+    std::string_view get_name() const noexcept
+    {
+        return m_name;
     }
 
     task& set_options(task_options options) noexcept
@@ -79,114 +48,62 @@ public:
         return m_options;
     }
 
-    template <typename... Args>
-    task& add_predecessor(Args&... predecessor)
+    task& set_group(task_group& group);
+
+    template <typename Functor>
+    task& set_execute(Functor functor)
     {
-        (add_predecessor_impl(predecessor), ...);
+        m_function = functor;
         return *this;
     }
 
-    template <typename... Args>
-    task& add_successor(Args&... successor)
+    template <task_node... Args>
+    task& add_dependency(Args&... predecessor)
     {
-        (add_successor_impl(successor), ...);
+        (add_dependency_impl(predecessor), ...);
         return *this;
     }
 
-    std::vector<task*> execute();
-    std::vector<task*> visit();
-
-    bool is_ready() const noexcept
+    const std::vector<task*>& get_dependents() const noexcept
     {
-        return m_uncompleted_dependency_count == 0;
+        return m_dependents;
+    }
+
+    const std::vector<task*>& get_successors() const noexcept
+    {
+        return m_successors;
+    }
+
+    void execute()
+    {
+        if (!is_empty())
+        {
+            m_function();
+        }
+    }
+
+    task_graph* get_graph() const noexcept
+    {
+        return m_graph;
+    }
+
+    bool is_empty() const noexcept
+    {
+        return !m_function;
     }
 
 private:
-    void add_predecessor_impl(task& successor);
-    void add_predecessor_impl(std::string_view predecessor_name);
-    void add_successor_impl(task& successor);
-    void add_successor_impl(std::string_view successor_name);
+    void add_dependency_impl(task& dependency);
+    void add_dependency_impl(task_group& dependency);
+
+    std::string m_name;
+    task_options m_options{0};
+    task_graph* m_graph{nullptr};
+    task_group* m_group{nullptr};
 
     std::function<void()> m_function;
 
     std::vector<task*> m_dependents;
     std::vector<task*> m_successors;
-
-    std::atomic<std::uint32_t> m_uncompleted_dependency_count{0};
-
-    std::string m_name;
-    task_options m_options{0};
-    taskflow* m_taskflow{nullptr};
-
-    friend class taskflow;
-};
-
-class taskflow
-{
-public:
-    taskflow() noexcept;
-    virtual ~taskflow() = default;
-
-    template <typename Functor, typename... Args>
-    task& add_task(Functor functor)
-    {
-        auto pointer = std::make_unique<task>();
-        pointer->m_taskflow = this;
-        pointer->m_function = functor;
-
-        std::lock_guard<std::mutex> lg(m_lock);
-        m_tasks.push_back(std::move(pointer));
-        m_dirty = true;
-
-        if (m_tasks.size() != 1)
-            m_tasks[0]->add_successor(*m_tasks.back());
-
-        return *m_tasks.back();
-    }
-
-    std::future<void> reset() noexcept;
-    void on_task_complete();
-
-    task& get_root() const noexcept
-    {
-        return *m_tasks[0];
-    }
-
-    task& get_task(std::string_view name) const
-    {
-        for (auto& task : m_tasks)
-        {
-            if (task->m_name == name)
-            {
-                return *task;
-            }
-        }
-
-        throw std::runtime_error("Task not found");
-    }
-
-    std::size_t get_task_count() const noexcept;
-    std::size_t get_main_thread_task_count() const noexcept
-    {
-        return m_main_thread_task_count;
-    }
-
-protected:
-    bool is_dirty() const noexcept
-    {
-        return m_dirty;
-    }
-
-private:
-    std::vector<std::unique_ptr<task>> m_tasks;
-    bool m_dirty;
-
-    std::vector<task*> m_accessible_tasks;
-    std::atomic<std::uint32_t> m_incomplete_count;
-    std::size_t m_main_thread_task_count{0};
-
-    std::promise<void> m_promise;
-
-    std::mutex m_lock;
 };
 } // namespace violet

@@ -1,10 +1,10 @@
 #pragma once
 
 #include "common/type_index.hpp"
+#include <array>
 #include <bitset>
 #include <cstdint>
 #include <memory>
-#include <array>
 
 namespace violet
 {
@@ -14,21 +14,21 @@ struct component_index : public type_index<component_index, component_id>
 {
 };
 
-class component_constructor_base
+class component_builder_base
 {
 public:
-    component_constructor_base(std::size_t size, std::size_t align, component_id id) noexcept
+    component_builder_base(std::size_t size, std::size_t align, component_id id) noexcept
         : m_size(size),
           m_align(align),
           m_id(id)
     {
     }
-    virtual ~component_constructor_base() = default;
+    virtual ~component_builder_base() = default;
 
     virtual void construct(void* target) = 0;
     virtual void move_construct(void* source, void* target) = 0;
     virtual void destruct(void* target) = 0;
-    virtual void move_assign(void* source, void* target) = 0;
+    virtual void move_assignment(void* source, void* target) = 0;
 
     std::size_t get_size() const noexcept
     {
@@ -52,11 +52,11 @@ private:
 };
 
 template <typename Component>
-class component_constructor : public component_constructor_base
+class component_builder : public component_builder_base
 {
 public:
-    component_constructor()
-        : component_constructor_base(
+    component_builder()
+        : component_builder_base(
               sizeof(Component), alignof(Component), component_index::value<Component>())
     {
     }
@@ -79,7 +79,7 @@ public:
         static_cast<Component*>(target)->~Component();
     }
 
-    void move_assign(void* source, void* target) override
+    void move_assignment(void* source, void* target) override
     {
         *static_cast<Component*>(target) = std::move(*static_cast<Component*>(source));
     }
@@ -88,5 +88,5 @@ public:
 static constexpr std::size_t MAX_COMPONENT = 512;
 using component_mask = std::bitset<MAX_COMPONENT>;
 
-using component_table = std::array<std::unique_ptr<component_constructor_base>, MAX_COMPONENT>;
+using component_builder_list = std::array<std::unique_ptr<component_builder_base>, MAX_COMPONENT>;
 } // namespace violet

@@ -1,4 +1,4 @@
-add_subdirectory(ecs)
+# add_subdirectory(ecs)
 # add_subdirectory(plugin)
 add_subdirectory(task)
 # add_subdirectory(math)

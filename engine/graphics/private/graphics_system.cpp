@@ -1,29 +1,20 @@
-#include "graphics/graphics_module.hpp"
+#include "graphics/graphics_system.hpp"
 #include "components/camera.hpp"
+#include "components/camera_parameter.hpp"
 #include "components/light.hpp"
 #include "components/mesh.hpp"
 #include "components/transform.hpp"
 #include "rhi_plugin.hpp"
-#include "window/window_module.hpp"
+#include "window/window_system.hpp"
 
 namespace violet
 {
-class mesh_component_info : public component_info_default<mesh>
-{
-public:
-    void construct(actor* owner, void* target) override
-    {
-        component_info_default<mesh>::construct(owner, target);
-        static_cast<mesh*>(target)->parameter =
-            render_device::instance().create_parameter(shader::mesh);
-    }
-};
-
-graphics_module::graphics_module() : engine_module("graphics")
+graphics_system::graphics_system()
+    : engine_system("Graphics")
 {
 }
 
-graphics_module::~graphics_module()
+graphics_system::~graphics_system()
 {
     m_semaphores.clear();
     m_allocator = nullptr;
@@ -32,11 +23,8 @@ graphics_module::~graphics_module()
     m_plugin->unload();
 }
 
-bool graphics_module::initialize(const dictionary& config)
+bool graphics_system::initialize(const dictionary& config)
 {
-    auto& window = get_module<window_module>();
-    rect<std::uint32_t> extent = window.get_extent();
-
     rhi_desc rhi_desc = {};
     rhi_desc.frame_resource_count = config["frame_resource_count"];
 
@@ -46,18 +34,25 @@ bool graphics_module::initialize(const dictionary& config)
 
     render_device::instance().initialize(m_plugin->get_rhi());
 
-    on_frame_begin().then(
-        [this]()
-        {
-            begin_frame();
-        });
-    on_frame_end().then(
-        [this]()
-        {
-            end_frame();
-        });
+    get_taskflow()
+        .add_task(
+            [this]()
+            {
+                begin_frame();
+            })
+        .set_name("Graphics Frame Begin")
+        .add_predecessor("Update Window");
 
-    get_world().register_component<mesh, mesh_component_info>();
+    get_taskflow()
+        .add_task(
+            [this]()
+            {
+                end_frame();
+            })
+        .set_name("Graphics Frame End")
+        .add_predecessor("Update Camera");
+
+    get_world().register_component<mesh>();
     get_world().register_component<camera>();
     get_world().register_component<light>();
 
@@ -69,42 +64,41 @@ bool graphics_module::initialize(const dictionary& config)
     return true;
 }
 
-void graphics_module::shutdown()
-{
-}
+void graphics_system::shutdown() {}
 
-void graphics_module::begin_frame()
+void graphics_system::begin_frame()
 {
     render_device::instance().begin_frame();
     switch_frame_resource();
     m_allocator->reset();
 }
 
-void graphics_module::end_frame()
+void graphics_system::end_frame()
 {
+    update_light();
     render();
 }
 
-void graphics_module::render()
+void graphics_system::render()
 {
-    update_light();
+    world& world = get_world();
 
-    std::vector<camera*> render_queue;
+    std::vector<entity> render_queue;
 
-    view<camera, transform> camera_view(get_world());
-    camera_view.each(
-        [this, &render_queue](camera& camera, transform& transform)
+    world.get_view().read<entity>().read<camera>().read<camera_parameter>().each(
+        [&render_queue](
+            const entity& e, const camera& camera, const camera_parameter& camera_parameter)
         {
-            if (camera.get_state() == CAMERA_STATE_DISABLE)
-                return;
-            if (camera.get_state() == CAMERA_STATE_RENDER_ONCE)
-                camera.set_state(CAMERA_STATE_DISABLE);
+            render_queue.push_back(e);
+        });
 
-            camera.set_position(transform.get_world_position());
-
-            matrix4 view = matrix::inverse(math::load(transform.get_world_matrix()));
-            camera.set_view(math::store<float4x4>(view));
-            render_queue.push_back(&camera);
+    std::sort(
+        render_queue.begin(),
+        render_queue.end(),
+        [&world](entity a, entity b)
+        {
+            return world.get_component<const camera>(a).priority >
+                   world.get_component<const camera>(b).priority;
         });
 
     m_context->m_meshes.clear();
@@ -116,10 +110,7 @@ void graphics_module::render()
             {
                 const float4x4& model_matrix = transform.get_world_matrix();
                 mesh.parameter->set_uniform(
-                    0,
-                    &model_matrix,
-                    sizeof(float4x4),
-                    offsetof(shader::mesh_data, model_matrix));
+                    0, &model_matrix, sizeof(float4x4), offsetof(shader::mesh_data, model_matrix));
 
                 matrix4 normal_temp = math::load(model_matrix);
                 normal_temp = matrix::inverse(normal_temp);
@@ -136,14 +127,6 @@ void graphics_module::render()
             }
 
             m_context->m_meshes.push_back(&mesh);
-        });
-
-    std::sort(
-        render_queue.begin(),
-        render_queue.end(),
-        [](camera* a, camera* b)
-        {
-            return a->get_priority() > b->get_priority();
         });
 
     std::vector<rhi_semaphore*> finish_semaphores;
@@ -166,7 +149,7 @@ void graphics_module::render()
     device.end_frame();
 }
 
-void graphics_module::update_light()
+void graphics_system::update_light()
 {
     struct directional_light
     {
@@ -197,8 +180,7 @@ void graphics_module::update_light()
                 direction = matrix::mul(direction, world_matrix);
 
                 math::store(
-                    direction,
-                    data.directional_lights[data.directional_light_count].direction);
+                    direction, data.directional_lights[data.directional_light_count].direction);
                 data.directional_lights[data.directional_light_count].color = light.color;
 
                 ++data.directional_light_count;
@@ -207,7 +189,7 @@ void graphics_module::update_light()
     m_context->m_light->set_uniform(0, &data, sizeof(light_data), 0);
 }
 
-rhi_semaphore* graphics_module::render(camera* camera)
+rhi_semaphore* graphics_system::render(camera* camera)
 {
     std::vector<rhi_swapchain*> swapchains = camera->get_swapchains();
 
@@ -239,8 +221,8 @@ rhi_semaphore* graphics_module::render(camera* camera)
     graph.compile();
     graph.execute(command);
 
-    device
-        .execute(std::span<rhi_command*>(&command, 1), signal_semaphores, wait_semaphores, nullptr);
+    device.execute(
+        std::span<rhi_command*>(&command, 1), signal_semaphores, wait_semaphores, nullptr);
 
     for (std::size_t i = 0; i < signal_semaphores.size() - 1; ++i)
         swapchains[i]->present(&signal_semaphores[i], 1);
@@ -248,7 +230,7 @@ rhi_semaphore* graphics_module::render(camera* camera)
     return signal_semaphores.back();
 }
 
-void graphics_module::switch_frame_resource()
+void graphics_system::switch_frame_resource()
 {
     auto& device = render_device::instance();
     auto& finish_semaphores = m_used_semaphores[device.get_frame_resource_index()];
@@ -257,7 +239,7 @@ void graphics_module::switch_frame_resource()
     finish_semaphores.clear();
 }
 
-rhi_semaphore* graphics_module::allocate_semaphore()
+rhi_semaphore* graphics_system::allocate_semaphore()
 {
     auto& device = render_device::instance();
 

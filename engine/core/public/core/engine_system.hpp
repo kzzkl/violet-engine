@@ -32,7 +32,7 @@ public:
     }
 
 protected:
-    template<typename T>
+    template <typename T>
     T& get_system()
     {
         return *static_cast<T*>(get_system(engine_system_index::value<T>()));
@@ -41,7 +41,7 @@ protected:
     timer& get_timer();
     world& get_world();
 
-    taskflow& get_taskflow() noexcept;
+    task_graph& get_task_graph() noexcept;
 
     task_executor& get_executor() noexcept;
 

@@ -26,6 +26,13 @@ private:
     std::vector<archetype*> m_archetypes;
 };
 
+template <typename Component, bool is_updated>
+struct component_wrapper
+{
+    using type = Component;
+    static const bool updated = is_updated;
+};
+
 template <typename... Components>
 struct component_list
 {
@@ -48,7 +55,8 @@ struct component_list
     static std::tuple<Components*...> get_components(
         archetype* archetype, std::size_t chunk_index, std::uint32_t world_version)
     {
-        return archetype->get_components<Components...>(chunk_index, 0, world_version);
+        return archetype->get_components<Components...>(
+            chunk_index * archetype->get_chunk_entity_count(), world_version);
     }
 
     static bool is_updated(
@@ -63,21 +71,12 @@ concept view_callback = requires(Functor functor, T& tuple) {
     { std::apply(functor, tuple) } -> std::same_as<void>;
 };
 
-enum view_filter
-{
-    VIEW_FILTER_NONE = 0,
-    VIEW_FILTER_UPDATED = 1 << 0
-};
-using view_filters = std::uint32_t;
-
 template <typename include_list = component_list<>, typename exclude_list = component_list<>>
 class view : public view_base
 {
 public:
-    view(world* world, std::uint32_t system_version, view_filters filters = VIEW_FILTER_NONE)
-        : view_base(world),
-          m_system_version(system_version),
-          m_filters(filters)
+    view(world* world)
+        : view_base(world)
     {
     }
 
@@ -85,40 +84,64 @@ public:
     auto read()
     {
         using result_view = view<typename include_list::template append<const T>, exclude_list>;
-        return result_view(get_world(), m_system_version, m_filters);
+        return result_view(get_world());
     }
 
     template <typename T>
     auto write()
+        requires !std::is_same_v<T, entity>
     {
         using result_view = view<typename include_list::template append<T>, exclude_list>;
-        return result_view(get_world(), m_system_version, m_filters);
+        return result_view(get_world());
     }
 
     template <typename T>
     auto without()
     {
         using result_view = view<include_list, typename exclude_list::template append<T>>;
-        return result_view(get_world(), m_system_version, m_filters);
-    }
-
-    auto set_filters(view_filters filters) noexcept
-    {
-        m_filters = filters;
-        return *this;
+        return result_view(get_world());
     }
 
     template <typename Functor>
         requires view_callback<Functor, typename include_list::tuple>
-    void each(Functor&& functor)
+    void each(Functor functor)
     {
         for (auto archetype : get_archetypes(include_list::get_mask(), exclude_list::get_mask()))
         {
             std::size_t chunk_count = archetype->get_chunk_count();
             for (std::size_t i = 0; i < chunk_count; ++i)
             {
-                if ((m_filters & VIEW_FILTER_UPDATED) &&
-                    !include_list::is_updated(archetype, i, m_system_version))
+                auto components =
+                    include_list::get_components(archetype, i, get_world()->get_version());
+
+                std::size_t entity_count = archetype->get_entity_count(i);
+                for (std::size_t j = 0; j < entity_count; ++j)
+                {
+                    std::apply(
+                        [&](auto&... args)
+                        {
+                            functor(*(args + j)...);
+                        },
+                        components);
+                }
+            }
+        }
+    }
+
+    template <typename Functor, typename Filter>
+        requires view_callback<Functor, typename include_list::tuple>
+    void each(Functor functor, Filter filter)
+    {
+        for (auto archetype : get_archetypes(include_list::get_mask(), exclude_list::get_mask()))
+        {
+            m_archetype = archetype;
+
+            std::size_t chunk_count = archetype->get_chunk_count();
+            for (std::size_t i = 0; i < chunk_count; ++i)
+            {
+                m_chunk_index = i;
+
+                if (!filter(*this))
                 {
                     continue;
                 }
@@ -129,14 +152,25 @@ public:
                 std::size_t entity_count = archetype->get_entity_count(i);
                 for (std::size_t j = 0; j < entity_count; ++j)
                 {
-                    std::apply([&](auto&... args) { functor(*(args + j)...); }, components);
+                    std::apply(
+                        [&](auto&... args)
+                        {
+                            functor(*(args + j)...);
+                        },
+                        components);
                 }
             }
         }
     }
 
+    template <typename T>
+    [[nodiscard]] bool is_updated(std::uint32_t system_version) const
+    {
+        return m_archetype->is_updated<T>(m_chunk_index, system_version);
+    }
+
 private:
-    std::uint32_t m_system_version{0};
-    view_filters m_filters{VIEW_FILTER_NONE};
+    archetype* m_archetype{nullptr};
+    std::size_t m_chunk_index{0};
 };
 } // namespace violet
