@@ -14,7 +14,8 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
     violet::core
-    violet::math)
+    violet::math
+    violet::ecs-command)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

@@ -12,9 +12,9 @@ public:
     bool initialize(const dictionary& config) override;
 
 private:
-    void add_previous_parent();
-    void add_child();
-    void update_child();
+    void process_add_parent();
+    void process_set_parent();
+    void process_remove_parent();
 
     std::uint32_t m_system_version{0};
 };

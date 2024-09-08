@@ -5,6 +5,8 @@ namespace violet
 {
 world::world()
 {
+    m_main_thread_id = std::this_thread::get_id();
+
     m_archetype_chunk_allocator = std::make_unique<archetype_chunk_allocator>();
     m_entity_infos.resize(1);
 
@@ -22,6 +24,7 @@ world::~world()
 entity world::create()
 {
     entity result;
+    result.type = ENTITY_NORMAL;
 
     if (m_free_entity.empty())
     {
@@ -42,6 +45,7 @@ entity world::create()
 
 void world::destroy(entity e)
 {
+    assert(is_main_thread());
     assert(is_valid(e));
     destroy_entity(e.id);
 }
@@ -56,6 +60,8 @@ bool world::is_valid(entity e) const
 
 void world::execute(std::span<world_command*> commands)
 {
+    assert(is_main_thread());
+
     struct entity_state
     {
         bool destroyed{false};
@@ -77,10 +83,15 @@ void world::execute(std::span<world_command*> commands)
             auto iter = normal_entity_states.find(e.id);
             if (iter == normal_entity_states.end())
             {
-                normal_entity_states[e.id] = entity_state{
-                    .destroyed = false,
-                    .mask = m_entity_infos[e.id].archetype->get_mask(),
-                    .components = m_entity_infos[e.id].archetype->get_component_ids()};
+                archetype* archetype = m_entity_infos[e.id].archetype;
+
+                entity_state state = {};
+                state.destroyed = false;
+                state.mask = archetype->get_mask();
+                state.components = archetype->get_component_ids();
+                state.component_data.resize(state.components.size());
+
+                normal_entity_states[e.id] = state;
 
                 return normal_entity_states[e.id];
             }
@@ -131,7 +142,7 @@ void world::execute(std::span<world_command*> commands)
 
         for (std::size_t i = 0; i < state.components.size(); ++i)
         {
-            if (state.component_data[i] != nullptr)
+            if (state.mask.test(state.components[i]) && state.component_data[i] != nullptr)
             {
                 void* source = state.component_data[i];
                 void* target = new_archetype->get_component_pointer(

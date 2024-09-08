@@ -26,21 +26,25 @@ public:
     };
 
 public:
+    world_command(const world* world);
+
     entity create()
     {
         command cmd = {};
-        cmd.type = COMMAND_ADD_COMPONENT;
+        cmd.type = COMMAND_CREATE;
         cmd.e.id = m_temp_entity_count;
         cmd.e.type = ENTITY_TEMPORARY;
         m_commands.push_back(cmd);
 
         ++m_temp_entity_count;
+
+        return cmd.e;
     }
 
     void destroy(entity e)
     {
         command cmd = {};
-        cmd.type = COMMAND_ADD_COMPONENT;
+        cmd.type = COMMAND_DESTROY;
         cmd.e = e;
         m_commands.push_back(cmd);
     }
@@ -56,13 +60,24 @@ public:
     }
 
     template <typename Component>
+    void add_component(entity e, const Component& component)
+    {
+        command cmd = {};
+        cmd.type = COMMAND_ADD_COMPONENT;
+        cmd.e = e;
+        cmd.component = component_index::value<Component>();
+        cmd.component_data = copy_component(cmd.component, &component);
+        m_commands.push_back(cmd);
+    }
+
+    template <typename Component>
     void add_component(entity e, Component&& component)
     {
         command cmd = {};
         cmd.type = COMMAND_ADD_COMPONENT;
         cmd.e = e;
         cmd.component = component_index::value<Component>();
-        cmd.component_data = record_component(cmd.component, &component);
+        cmd.component_data = move_component(cmd.component, &component);
         m_commands.push_back(cmd);
     }
 
@@ -70,7 +85,7 @@ public:
     void remove_component(entity e)
     {
         command cmd = {};
-        cmd.type = COMMAND_ADD_COMPONENT;
+        cmd.type = COMMAND_REMOVE_COMPONENT;
         cmd.e = e;
         cmd.component = component_index::value<Component>();
         m_commands.push_back(cmd);
@@ -100,15 +115,16 @@ private:
         }
     };
 
-    void* record_component(component_id component, void* component_data);
+    void* copy_component(component_id component, const void* component_data);
+    void* move_component(component_id component, void* component_data);
     void* allocate(std::size_t size, std::size_t align);
 
     std::vector<command> m_commands;
     std::uint32_t m_temp_entity_count{0};
 
     std::vector<std::unique_ptr<data_chunk>> m_chunks;
-    std::size_t m_chunk_offset;
+    std::size_t m_chunk_offset{0};
 
-    world* m_world;
+    const world* m_world;
 };
 } // namespace violet

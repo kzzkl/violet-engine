@@ -22,18 +22,18 @@ TEST_CASE("world::create", "[world]")
 {
     world world;
     entity e1 = world.create();
-    CHECK(e1.id == 0);
     CHECK(e1.version == 0);
+    CHECK(e1.type == ENTITY_NORMAL);
 
     entity e2 = world.create();
-    CHECK(e2.id == 1);
     CHECK(e2.version == 0);
+    CHECK(e2.type == ENTITY_NORMAL);
 
     world.destroy(e2);
 
     entity e3 = world.create();
-    CHECK(e3.id == 1);
     CHECK(e3.version == 1);
+    CHECK(e3.type == ENTITY_NORMAL);
 }
 
 TEST_CASE("world::add & world::remove", "[world]")
@@ -49,7 +49,6 @@ TEST_CASE("world::add & world::remove", "[world]")
 
     world.add_component<life_counter<0>>(e1);
     CHECK(life_counter<0>::check(1, 0, 0, 0, 0, 0));
-    CHECK(e1.id == 0);
 
     world.add_component<life_counter<1>>(e1);
     CHECK(life_counter<0>::check(1, 0, 1, 0, 0, 1));
@@ -124,7 +123,11 @@ TEST_CASE("view", "[world]")
 
     auto view = world.get_view().write<int>();
 
-    view.each([](int& value) { value += 10; });
+    view.each(
+        [](int& value)
+        {
+            value += 10;
+        });
 
     CHECK(world.get_component<int>(e1) == 11);
     CHECK(world.get_component<int>(e2) == 12);
@@ -144,13 +147,21 @@ TEST_CASE("Verify the traversal of a View", "[view]")
     world.add_component<std::string>(e2);
 
     auto v1 = world.get_view().write<int>();
-    v1.each([](int& value) { value = 100; });
+    v1.each(
+        [](int& value)
+        {
+            value = 100;
+        });
 
     CHECK(world.get_component<int>(e1) == 100);
     CHECK(world.get_component<int>(e2) == 100);
 
     auto v2 = world.get_view().write<int>().read<std::string>();
-    v2.each([](int& value, const std::string& string) { value = 200; });
+    v2.each(
+        [](int& value, const std::string& string)
+        {
+            value = 200;
+        });
 
     CHECK(world.get_component<int>(e1) == 100);
     CHECK(world.get_component<int>(e2) == 200);
@@ -174,17 +185,29 @@ TEST_CASE("Include & Exclude", "[view]")
     std::size_t count = 0;
 
     auto v1 = world.get_view().read<int>();
-    v1.each([&count](const int& value) { ++count; });
+    v1.each(
+        [&count](const int& value)
+        {
+            ++count;
+        });
     CHECK(count == 3);
 
     auto v2 = world.get_view().read<int>().without<std::string>();
     count = 0;
-    v2.each([&count](const int& value) { ++count; });
+    v2.each(
+        [&count](const int& value)
+        {
+            ++count;
+        });
     CHECK(count == 2);
 
     auto v3 = world.get_view().without<int>();
     count = 0;
-    v3.each([&count]() { ++count; });
+    v3.each(
+        [&count]()
+        {
+            ++count;
+        });
     CHECK(count == 0);
 }
 
@@ -215,8 +238,14 @@ TEST_CASE("Chunk version", "[world]")
      */
     auto v1 = world.get_view().read<int>();
     v1.each(
-        [&count](const int& value) { ++count; },
-        [](auto& view) { return view.is_updated<int>(0); });
+        [&count](const int& value)
+        {
+            ++count;
+        },
+        [](auto& view)
+        {
+            return view.is_updated<int>(0);
+        });
     CHECK(count == 3);
 
     world.add_version();
@@ -228,7 +257,11 @@ TEST_CASE("Chunk version", "[world]")
      * e3: int: 1, std::string: 1
      */
     auto v2 = world.get_view().write<int>().read<std::string>();
-    v2.each([](int& value, const std::string& str) { value = 100; });
+    v2.each(
+        [](int& value, const std::string& str)
+        {
+            value = 100;
+        });
 
     /**
      * world version: 3
@@ -239,8 +272,14 @@ TEST_CASE("Chunk version", "[world]")
     auto v3 = world.get_view().read<std::string>();
     count = 0;
     v3.each(
-        [&count](const std::string& str) { ++count; },
-        [](auto& view) { return view.is_updated<std::string>(2); });
+        [&count](const std::string& str)
+        {
+            ++count;
+        },
+        [](auto& view)
+        {
+            return view.is_updated<std::string>(2);
+        });
     CHECK(count == 0);
 
     /**
@@ -252,8 +291,14 @@ TEST_CASE("Chunk version", "[world]")
     auto v4 = world.get_view().read<int>().read<std::string>();
     count = 0;
     v4.each(
-        [&count](const int& value, const std::string& str) { ++count; },
-        [](auto& view) { return view.is_updated<int>(2); });
+        [&count](const int& value, const std::string& str)
+        {
+            ++count;
+        },
+        [](auto& view)
+        {
+            return view.is_updated<int>(2);
+        });
     CHECK(count == 1);
 
     /**
@@ -265,8 +310,14 @@ TEST_CASE("Chunk version", "[world]")
     auto v5 = world.get_view().read<int>();
     count = 0;
     v5.each(
-        [&count](const int& value) { ++count; },
-        [](auto& view) { return view.is_updated<int>(3); });
+        [&count](const int& value)
+        {
+            ++count;
+        },
+        [](auto& view)
+        {
+            return view.is_updated<int>(3);
+        });
     CHECK(count == 0);
 
     /**
@@ -278,8 +329,14 @@ TEST_CASE("Chunk version", "[world]")
     auto v6 = world.get_view().read<int>();
     count = 0;
     v6.each(
-        [&count](const int& value) { ++count; },
-        [](auto& view) { return view.is_updated<int>(1); });
+        [&count](const int& value)
+        {
+            ++count;
+        },
+        [](auto& view)
+        {
+            return view.is_updated<int>(1);
+        });
     CHECK(count == 1);
 
     world.add_version();
@@ -294,8 +351,14 @@ TEST_CASE("Chunk version", "[world]")
     auto v7 = world.get_view().read<int>();
     count = 0;
     v7.each(
-        [&count](const int& value) { ++count; },
-        [](auto& view) { return view.is_updated<int>(3); });
+        [&count](const int& value)
+        {
+            ++count;
+        },
+        [](auto& view)
+        {
+            return view.is_updated<int>(3);
+        });
     CHECK(count == 2);
 
     /**
@@ -307,8 +370,61 @@ TEST_CASE("Chunk version", "[world]")
     auto v8 = world.get_view().read<int>().read<std::string>();
     count = 0;
     v8.each(
-        [&count](const int& value, const std::string& str) { ++count; },
-        [](auto& view) { return view.is_updated<int>(2) && !view.is_updated<std::string>(2); });
+        [&count](const int& value, const std::string& str)
+        {
+            ++count;
+        },
+        [](auto& view)
+        {
+            return view.is_updated<int>(2) && !view.is_updated<std::string>(2);
+        });
+    CHECK(count == 1);
+}
+
+TEST_CASE("World command", "[world]")
+{
+    world world;
+    world.register_component<int>();
+    world.register_component<std::string>();
+
+    world_command command(&world);
+
+    entity e1 = command.create();
+    entity e2 = command.create();
+
+    CHECK(e1.type == ENTITY_TEMPORARY);
+    CHECK(e2.type == ENTITY_TEMPORARY);
+
+    command.add_component<int>(e1, 1);
+    command.add_component<std::string>(e1, "hello e1");
+    command.add_component<int>(e2, 2);
+    command.add_component<std::string>(e2, "hello e2");
+    command.remove_component<std::string>(e2);
+
+    world_command* commands[] = {&command};
+    world.execute(commands);
+
+    std::size_t count = 0;
+
+    auto v1 = world.get_view().read<int>().read<std::string>();
+    v1.each(
+        [&count](const int& value, const std::string& str)
+        {
+            ++count;
+            CHECK(value == 1);
+            CHECK(str == "hello e1");
+        });
+    CHECK(count == 1);
+
+    count = 0;
+
+    auto v2 = world.get_view().read<int>().without<std::string>();
+    v2.each(
+        [&count](const int& value)
+        {
+            ++count;
+            CHECK(value == 2);
+        });
     CHECK(count == 1);
 }
 } // namespace violet::test

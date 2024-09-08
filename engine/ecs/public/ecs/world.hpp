@@ -3,8 +3,8 @@
 #include "ecs/entity.hpp"
 #include "ecs/view.hpp"
 #include "ecs/world_command.hpp"
-#include <functional>
 #include <queue>
+#include <thread>
 #include <unordered_map>
 
 namespace violet
@@ -34,6 +34,8 @@ public:
         typename... Args>
     void register_component(Args&&... args)
     {
+        assert(is_main_thread());
+
         component_id id = component_index::value<Component>();
         assert(m_component_builder_list[id] == nullptr);
         m_component_builder_list[id] =
@@ -47,7 +49,7 @@ public:
         return m_component_builder_list[id] != nullptr;
     }
 
-    component_builder_base* get_component_builder(component_id id)
+    component_builder_base* get_component_builder(component_id id) const
     {
         return m_component_builder_list[id].get();
     }
@@ -55,6 +57,7 @@ public:
     template <typename... Components>
     void add_component(entity e)
     {
+        assert(is_main_thread());
         assert(is_valid(e) && "The entity is outdated.");
         (assert(is_component_register<Components>() && "Component is not registered."), ...);
 
@@ -103,6 +106,7 @@ public:
     template <typename... Components>
     void remove_component(entity e)
     {
+        assert(is_main_thread());
         assert(is_valid(e) && "The entity is outdated.");
         (assert(is_component_register<Components>() && "Component is not registered."), ...);
 
@@ -227,6 +231,11 @@ public:
     }
 
 private:
+    bool is_main_thread() const
+    {
+        return m_main_thread_id == std::this_thread::get_id();
+    }
+
     void destroy_entity(entity_id id);
     void move_entity(entity_id id, archetype* new_archetype, std::size_t new_archetype_index);
 
@@ -250,6 +259,8 @@ private:
 
     component_builder_list m_component_builder_list;
     std::vector<entity_info> m_entity_infos;
+
+    std::thread::id m_main_thread_id;
 
     friend class view_base;
 };

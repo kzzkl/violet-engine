@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/engine_system.hpp"
+#include <mutex>
 
 namespace violet
 {
@@ -14,12 +15,14 @@ public:
 
     world_command* allocate_command();
 
-    void execute(world_command* command, bool sync = false);
-
 private:
+    void execute_commands();
+
     std::vector<std::unique_ptr<world_command>> m_commands;
 
     std::vector<world_command*> m_free_commands;
     std::vector<world_command*> m_pending_commands;
+
+    std::mutex m_mutex;
 };
 } // namespace violet

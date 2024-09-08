@@ -9,6 +9,8 @@ task_group::task_group(task_graph* graph)
 {
     m_begin = &graph->add_task();
     m_finish = &graph->add_task();
+
+    m_finish->add_dependency(*m_begin);
 }
 
 task_group& task_group::set_group(task_group& group)

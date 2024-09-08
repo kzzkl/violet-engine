@@ -26,6 +26,7 @@ public:
     virtual ~component_builder_base() = default;
 
     virtual void construct(void* target) = 0;
+    virtual void copy_construct(const void* source, void* target) = 0;
     virtual void move_construct(void* source, void* target) = 0;
     virtual void destruct(void* target) = 0;
     virtual void move_assignment(void* source, void* target) = 0;
@@ -67,6 +68,11 @@ public:
             new (target) Component();
         else
             throw std::exception("");
+    }
+
+    void copy_construct(const void* source, void* target) override
+    {
+        new (target) Component(*static_cast<const Component*>(source));
     }
 
     void move_construct(void* source, void* target) override

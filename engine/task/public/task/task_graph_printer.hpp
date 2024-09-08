@@ -61,6 +61,14 @@ public:
                 stack.push(successor);
             }
         }
+
+        for (auto& [task, id] : node_id)
+        {
+            if (task->get_options() & TASK_OPTION_MAIN_THREAD)
+            {
+                std::cout << "style " << id << " fill:#668" << '\n';
+            }
+        }
     }
 };
 } // namespace violet

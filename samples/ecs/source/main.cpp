@@ -2,9 +2,11 @@
 #include "components/hierarchy.hpp"
 #include "components/transform.hpp"
 #include "core/engine.hpp"
+#include "ecs_command/ecs_command_system.hpp"
 #include "scene/hierarchy_system.hpp"
 #include "scene/scene_system.hpp"
 #include "scene/transform_system.hpp"
+#include "task/task_graph_printer.hpp"
 #include "window/window_system.hpp"
 
 namespace violet::sample
@@ -39,10 +41,12 @@ public:
         world.get_component<hierarchy_parent>(m_child).parent = m_parent;
 
         task_graph& task_graph = get_task_graph();
+        task_group& post_update_group = task_graph.get_group("Post Update Group");
         task& update_transform = task_graph.get_task("Update Transform");
 
         task_graph.add_task()
             .set_name("ECS Test")
+            .set_group(post_update_group)
             .add_dependency(update_transform)
             .set_execute(
                 [this]()
@@ -64,6 +68,12 @@ public:
 private:
     void update()
     {
+        if (get_system<window_system>().get_keyboard().key(KEYBOARD_KEY_SPACE).release())
+        {
+            task_graph_printer::print(get_task_graph());
+        }
+        return;
+
         world& world = get_world();
 
         auto view = world.get_view().read<std::string>().read<transform_world>();
@@ -81,6 +91,16 @@ private:
             {
                 return true || view.is_updated<transform_world>(m_system_version);
             });
+
+        bool aa = world.has_component<hierarchy_previous_parent>(m_child);
+        bool bb = world.has_component<hierarchy_child>(m_parent);
+
+        auto p = world.get_component<const hierarchy_parent>(m_child);
+        auto pp = world.get_component<const hierarchy_previous_parent>(m_child);
+
+        auto c = world.get_component<const hierarchy_child>(m_parent);
+
+        log::info("{} {}", aa, bb);
     }
 
     entity m_parent;
@@ -93,6 +113,7 @@ private:
 int main()
 {
     violet::engine::initialize("");
+    violet::engine::install<violet::ecs_command_system>();
     violet::engine::install<violet::hierarchy_system>();
     violet::engine::install<violet::transform_system>();
     violet::engine::install<violet::window_system>();

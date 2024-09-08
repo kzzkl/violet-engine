@@ -16,10 +16,12 @@ bool transform_system::initialize(const dictionary& config)
     get_world().register_component<transform_world>();
 
     task_graph& task_graph = get_task_graph();
+    task_group& post_update_group = task_graph.get_group("Post Update Group");
     task& update_hierarchy = task_graph.get_task("Update Hierarchy");
 
     task_graph.add_task()
         .set_name("Update Transform")
+        .set_group(post_update_group)
         .add_dependency(update_hierarchy)
         .set_execute(
             [this]()
@@ -101,7 +103,8 @@ void transform_system::update_world_recursive(
 {
     auto& world = get_world();
 
-    need_update = need_update || world.is_updated<transform_local>(e, m_system_version);
+    need_update = need_update || world.is_updated<transform_local>(e, m_system_version) ||
+                  world.is_updated<hierarchy_parent>(e, m_system_version);
 
     if (need_update)
     {
