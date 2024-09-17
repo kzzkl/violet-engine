@@ -11,7 +11,7 @@ set(VS_SHADER_LIST
     "${SHADER_SOURCE_DIR}/materials/physical_tex.hlsl"
     "${SHADER_SOURCE_DIR}/materials/physical.hlsl"
     "${SHADER_SOURCE_DIR}/debug.hlsl"
-    "${SHADER_SOURCE_DIR}/full_screen.hlsl"
+    "${SHADER_SOURCE_DIR}/fullscreen.hlsl"
     "${SHADER_SOURCE_DIR}/skybox.hlsl"
     "${SHADER_SOURCE_DIR}/ui.hlsl")
 

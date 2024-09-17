@@ -56,6 +56,8 @@ private:
     void execute_task(task_wrapper* task);
     void execute_main_thread_task(std::size_t task_count);
 
+    void on_task_completed(task_wrapper* task);
+
     task_queue m_main_thread_queue;
     task_queue m_worker_thread_queue;
 

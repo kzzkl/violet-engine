@@ -22,10 +22,10 @@ render_list render_context::get_render_list(const render_camera& camera) const
     std::unordered_map<material*, material_info> material_infos;
     std::unordered_map<std::uint64_t, std::size_t> pipeline_map;
 
-    for (auto mesh : m_meshes)
+    for (auto& [mesh, parameter] : m_meshes)
     {
         std::size_t mesh_index = list.meshes.size();
-        list.meshes.push_back({mesh->parameter.get(), mesh->geometry});
+        list.meshes.push_back({parameter, mesh->geometry});
 
         for (auto& submesh : mesh->submeshes)
         {

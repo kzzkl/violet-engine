@@ -1,14 +1,33 @@
 #include "graphics/render_graph/rdg_resource.hpp"
+#include <cassert>
 
 namespace violet
 {
-rdg_resource::rdg_resource()
+bool rdg_reference::is_first_reference() const noexcept
 {
+    return resource->get_references().front() == this;
 }
 
-rdg_resource::~rdg_resource()
+bool rdg_reference::is_last_reference() const noexcept
 {
+    return resource->get_references().back() == this;
 }
+
+rdg_reference* rdg_reference::get_prev_reference() const
+{
+    assert(!is_first_reference());
+    return resource->get_references()[index - 1];
+}
+
+rdg_reference* rdg_reference::get_next_reference() const
+{
+    assert(!is_last_reference());
+    return resource->get_references()[index + 1];
+}
+
+rdg_resource::rdg_resource() {}
+
+rdg_resource::~rdg_resource() {}
 
 rdg_texture::rdg_texture(
     rhi_texture* texture,
@@ -55,7 +74,8 @@ rdg_texture_view::rdg_texture_view(
 {
 }
 
-rdg_buffer::rdg_buffer(rhi_buffer* buffer) : m_buffer(buffer)
+rdg_buffer::rdg_buffer(rhi_buffer* buffer)
+    : m_buffer(buffer)
 {
 }
 } // namespace violet

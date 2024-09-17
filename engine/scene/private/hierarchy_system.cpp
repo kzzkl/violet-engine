@@ -35,7 +35,7 @@ bool hierarchy_system::initialize(const dictionary& config)
 
 void hierarchy_system::process_add_parent()
 {
-    world& world = get_world();
+    auto& world = get_world();
 
     std::vector<std::pair<entity, entity>> add_parent_entities;
     std::vector<std::pair<entity, entity>> add_child_entities;
@@ -75,7 +75,7 @@ void hierarchy_system::process_add_parent()
 
 void hierarchy_system::process_set_parent()
 {
-    world& world = get_world();
+    auto& world = get_world();
 
     std::vector<entity> remove_child_entities;
     std::vector<entity> remove_parent_entities;
@@ -147,7 +147,7 @@ void hierarchy_system::process_set_parent()
 
 void hierarchy_system::process_remove_parent()
 {
-    world& world = get_world();
+    auto& world = get_world();
 
     std::vector<entity> remove_child_entities;
     std::vector<entity> remove_previous_parent_entities;

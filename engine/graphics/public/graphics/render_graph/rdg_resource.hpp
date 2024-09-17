@@ -7,7 +7,6 @@
 
 namespace violet
 {
-
 enum rdg_reference_type
 {
     RDG_REFERENCE_NONE,
@@ -29,7 +28,8 @@ struct rdg_reference
 
     std::size_t index;
 
-    union {
+    union
+    {
         struct
         {
             rhi_texture_layout layout;
@@ -43,6 +43,14 @@ struct rdg_reference
             rhi_texture_layout layout;
         } texture;
     };
+
+    bool is_first_reference() const noexcept;
+
+    bool is_last_reference() const noexcept;
+
+    rdg_reference* get_prev_reference() const;
+
+    rdg_reference* get_next_reference() const;
 
     rhi_texture_layout get_texture_layout() const noexcept
     {
@@ -78,7 +86,10 @@ public:
         reference->index = m_references.size();
         m_references.push_back(reference);
     }
-    const std::vector<rdg_reference*>& get_references() const noexcept { return m_references; }
+    const std::vector<rdg_reference*>& get_references() const noexcept
+    {
+        return m_references;
+    }
 
 private:
     std::vector<rdg_reference*> m_references;
@@ -92,21 +103,50 @@ public:
         rhi_texture_layout initial_layout,
         rhi_texture_layout final_layout);
 
-    virtual rdg_resource_type get_type() const noexcept override final
+    rdg_resource_type get_type() const noexcept final
     {
         return RDG_RESOURCE_TEXTURE;
     }
 
-    virtual bool is_external() const noexcept override { return true; }
-    virtual bool is_texture_view() const noexcept { return false; }
+    bool is_external() const noexcept override
+    {
+        return true;
+    }
 
-    rhi_format get_format() const noexcept { return m_texture->get_format(); }
-    rhi_sample_count get_samples() const noexcept { return m_texture->get_samples(); }
+    virtual bool is_texture_view() const noexcept
+    {
+        return false;
+    }
 
-    rhi_texture* get_rhi() const noexcept { return m_texture; }
+    virtual rhi_texture_extent get_extent() const noexcept
+    {
+        return m_texture->get_extent();
+    }
 
-    rhi_texture_layout get_initial_layout() const noexcept { return m_initial_layout; }
-    rhi_texture_layout get_final_layout() const noexcept { return m_final_layout; }
+    virtual rhi_format get_format() const noexcept
+    {
+        return m_texture->get_format();
+    }
+
+    virtual rhi_sample_count get_samples() const noexcept
+    {
+        return m_texture->get_samples();
+    }
+
+    rhi_texture* get_rhi() const noexcept
+    {
+        return m_texture;
+    }
+
+    rhi_texture_layout get_initial_layout() const noexcept
+    {
+        return m_initial_layout;
+    }
+
+    rhi_texture_layout get_final_layout() const noexcept
+    {
+        return m_final_layout;
+    }
 
 private:
     rhi_texture* m_texture{nullptr};
@@ -125,9 +165,30 @@ public:
         rhi_texture_layout initial_layout,
         rhi_texture_layout final_layout);
 
-    virtual bool is_external() const noexcept { return false; }
+    virtual bool is_external() const noexcept
+    {
+        return false;
+    }
 
-    const rhi_texture_desc& get_desc() const noexcept { return m_desc; }
+    rhi_texture_extent get_extent() const noexcept override
+    {
+        return m_desc.extent;
+    }
+
+    rhi_format get_format() const noexcept override
+    {
+        return m_desc.format;
+    }
+
+    rhi_sample_count get_samples() const noexcept override
+    {
+        return m_desc.samples;
+    }
+
+    const rhi_texture_desc& get_desc() const noexcept
+    {
+        return m_desc;
+    }
 
 private:
     rhi_texture_desc m_desc;
@@ -150,11 +211,30 @@ public:
         rhi_texture_layout initial_layout,
         rhi_texture_layout final_layout);
 
-    virtual bool is_external() const noexcept
+    bool is_external() const noexcept override
     {
         return m_rhi_texture ? true : m_rdg_texture->is_external();
     }
-    virtual bool is_texture_view() const noexcept { return true; }
+
+    bool is_texture_view() const noexcept final
+    {
+        return true;
+    }
+
+    rhi_texture_extent get_extent() const noexcept override
+    {
+        return m_rhi_texture ? m_rhi_texture->get_extent() : m_rdg_texture->get_extent();
+    }
+
+    rhi_format get_format() const noexcept override
+    {
+        return m_rhi_texture ? m_rhi_texture->get_format() : m_rdg_texture->get_format();
+    }
+
+    rhi_sample_count get_samples() const noexcept override
+    {
+        return m_rhi_texture ? m_rhi_texture->get_samples() : m_rdg_texture->get_samples();
+    }
 
 private:
     rhi_texture* m_rhi_texture{nullptr};
@@ -176,7 +256,10 @@ public:
         return RDG_RESOURCE_TEXTURE;
     }
 
-    virtual bool is_external() const noexcept override { return true; }
+    virtual bool is_external() const noexcept override
+    {
+        return true;
+    }
 
 private:
     rhi_buffer* m_buffer;

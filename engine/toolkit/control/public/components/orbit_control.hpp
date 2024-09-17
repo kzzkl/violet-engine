@@ -15,7 +15,5 @@ struct orbit_control
     float r_speed = 1.0f;
     float theta_speed = math::PI;
     float phi_speed = 2.0f * math::PI;
-
-    bool dirty = true;
 };
 } // namespace violet

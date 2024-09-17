@@ -1,35 +1,39 @@
-#include "control/control_module.hpp"
-#include "window/window_module.hpp"
+#include "control/control_system.hpp"
+#include "window/window_system.hpp"
 
 namespace violet
 {
-control_module::control_module()
-    : engine_module("control"),
+control_system::control_system()
+    : engine_system("control"),
       m_mouse_position{},
       m_mouse_position_delta{}
 {
 }
 
-bool control_module::initialize(const dictionary& config)
+bool control_system::initialize(const dictionary& config)
 {
-    on_tick().then(
-        [this](float delta)
-        {
-            tick(delta);
-        });
+    task_graph& task_graph = get_task_graph();
+    task_group& update = task_graph.get_group("Update Group");
+
+    task_graph.add_task()
+        .set_name("Update Control")
+        .set_group(update)
+        .set_execute(
+            [this]()
+            {
+                tick();
+            });
 
     get_world().register_component<orbit_control>();
 
     return true;
 }
 
-void control_module::shutdown()
-{
-}
+void control_system::shutdown() {}
 
-void control_module::tick(float delta)
+void control_system::tick()
 {
-    auto& window = get_module<window_module>();
+    auto& window = get_system<window_system>();
 
     bool mouse_hold = false;
     int mouse_wheel = window.get_mouse().get_wheel();
@@ -50,26 +54,24 @@ void control_module::tick(float delta)
         mouse_hold = true;
     }
 
-    view<orbit_control, transform> view(get_world());
-    view.each(
-        [this, mouse_hold, mouse_wheel](orbit_control& orbit_control, transform& transform)
-        {
-            if (orbit_control.dirty || mouse_hold || mouse_wheel != 0)
+    if (mouse_hold || mouse_wheel != 0)
+    {
+        get_world().get_view().write<orbit_control>().write<transform>().each(
+            [this, mouse_hold, mouse_wheel](orbit_control& orbit_control, transform& transform)
             {
                 update_orbit_control(orbit_control, transform, mouse_wheel);
-                orbit_control.dirty = false;
-            }
-        });
+            });
+    }
 }
 
-void control_module::update_orbit_control(
+void control_system::update_orbit_control(
     orbit_control& orbit_control,
     transform& transform,
     int mouse_wheel)
 {
     static const float EPS = 0.00001f;
 
-    auto window_rect = get_module<window_module>().get_extent();
+    auto window_rect = get_system<window_system>().get_extent();
 
     orbit_control.theta +=
         -m_mouse_position_delta[1] * orbit_control.theta_speed / window_rect.height;
@@ -88,7 +90,7 @@ void control_module::update_orbit_control(
     vector4 t = math::load(orbit_control.target);
     float3 position = math::store<float3>(vector::add(p, t));
 
-    transform.set_position(position);
+    transform.position = position;
     transform.lookat(orbit_control.target, float3{0.0f, 1.0f, 0.0f});
 }
 } // namespace violet

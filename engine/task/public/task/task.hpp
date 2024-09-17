@@ -76,6 +76,7 @@ public:
 
     void execute()
     {
+        if (m_function)
         m_function();
     }
 

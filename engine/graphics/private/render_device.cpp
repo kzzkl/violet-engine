@@ -3,11 +3,13 @@
 
 namespace violet
 {
-rhi_deleter::rhi_deleter() : m_rhi(nullptr)
+rhi_deleter::rhi_deleter()
+    : m_rhi(nullptr)
 {
 }
 
-rhi_deleter::rhi_deleter(rhi* rhi) : m_rhi(rhi)
+rhi_deleter::rhi_deleter(rhi* rhi)
+    : m_rhi(rhi)
 {
 }
 
@@ -71,13 +73,9 @@ void rhi_deleter::operator()(rhi_semaphore* semaphore)
     m_rhi->destroy_semaphore(semaphore);
 }
 
-render_device::render_device()
-{
-}
+render_device::render_device() {}
 
-render_device::~render_device()
-{
-}
+render_device::~render_device() {}
 
 render_device& render_device::instance()
 {

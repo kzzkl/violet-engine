@@ -265,6 +265,13 @@ public:
     }
 
 public:
+    template <typename T>
+    void set_name(T* object, std::string_view name) const
+    {
+        m_rhi->set_name(object, name.data());
+    }
+
+public:
     rhi_ptr<rhi_render_pass> create_render_pass(const rhi_render_pass_desc& desc);
 
     rhi_ptr<rhi_render_pipeline> create_pipeline(const rhi_render_pipeline_desc& desc);
@@ -303,11 +310,11 @@ private:
     rhi_deleter m_rhi_deleter;
 };
 
-struct full_screen_vs : public vertex_shader
+struct fullscreen_vs : public vertex_shader
 {
     static constexpr std::string_view get_path()
     {
-        return "engine/shaders/full_screen.vs";
+        return "assets/shaders/fullscreen.vs";
     }
 };
 } // namespace violet

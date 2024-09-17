@@ -15,9 +15,9 @@ struct physical_material_vs : public vertex_shader
     static std::string_view get_path(const options& options)
     {
         if (options.get<physical_use_texture>() == PHYSICAL_USE_TEXTURE_OFF)
-            return "engine/shaders/physical.vs";
+            return "assets/shaders/physical.vs";
         else
-            return "engine/shaders/physical_tex.vs";
+            return "assets/shaders/physical_tex.vs";
     }
 
     static parameter_slots get_parameters(const options& options)
@@ -56,9 +56,9 @@ struct physical_material_fs : public fragment_shader
     static std::string_view get_path(const options& options)
     {
         if (options.get<physical_use_texture>() == PHYSICAL_USE_TEXTURE_OFF)
-            return "engine/shaders/physical.fs";
+            return "assets/shaders/physical.fs";
         else
-            return "engine/shaders/physical_tex.fs";
+            return "assets/shaders/physical_tex.fs";
     }
 
     static constexpr parameter material = {

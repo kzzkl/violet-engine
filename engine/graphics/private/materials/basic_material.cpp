@@ -4,7 +4,7 @@ namespace violet
 {
 struct basic_material_vs : public vertex_shader
 {
-    static std::string_view get_path() { return "engine/shaders/basic.vs"; }
+    static std::string_view get_path() { return "assets/shaders/basic.vs"; }
 
     static parameter_slots get_parameters()
     {
@@ -25,7 +25,7 @@ struct basic_material_vs : public vertex_shader
 
 struct basic_material_fs : public fragment_shader
 {
-    static std::string_view get_path() { return "engine/shaders/basic.fs"; }
+    static std::string_view get_path() { return "assets/shaders/basic.fs"; }
 
     static constexpr parameter material = {
         {RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, sizeof(basic_material::data)}

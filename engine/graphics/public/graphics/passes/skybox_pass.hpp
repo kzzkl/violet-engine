@@ -12,8 +12,10 @@ public:
         rhi_parameter* camera;
         rhi_viewport viewport;
 
-        rdg_attachment render_target;
-        rdg_attachment depth_buffer;
+        rdg_texture* render_target;
+        rdg_texture* depth_buffer;
+
+        bool clear;
     };
 
 public:

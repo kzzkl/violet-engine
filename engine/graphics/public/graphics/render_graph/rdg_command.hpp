@@ -12,16 +12,22 @@ public:
     rdg_command(rhi_command* command, rdg_allocator* allocator);
 
     void set_pipeline(const rdg_render_pipeline& pipeline);
+
     void set_pipeline(rhi_compute_pipeline* compute_pipeline)
     {
         m_command->set_pipeline(compute_pipeline);
     }
+
     void set_parameter(std::size_t index, rhi_parameter* parameter)
     {
         m_command->set_parameter(index, parameter);
     }
 
-    void set_viewport(const rhi_viewport& viewport) { m_command->set_viewport(viewport); }
+    void set_viewport(const rhi_viewport& viewport)
+    {
+        m_command->set_viewport(viewport);
+    }
+
     void set_scissor(std::span<const rhi_scissor_rect> rects)
     {
         m_command->set_scissor(rects.data(), rects.size());
@@ -31,7 +37,11 @@ public:
     {
         m_command->set_vertex_buffers(vertex_buffers.data(), vertex_buffers.size());
     }
-    void set_index_buffer(rhi_buffer* index_buffer) { m_command->set_index_buffer(index_buffer); }
+
+    void set_index_buffer(rhi_buffer* index_buffer)
+    {
+        m_command->set_index_buffer(index_buffer);
+    }
 
     void draw(std::size_t vertex_start, std::size_t vertex_count)
     {
@@ -43,6 +53,11 @@ public:
     }
 
     void draw_render_list(const render_list& render_list);
+
+    void draw_fullscreen()
+    {
+        draw(0, 3);
+    }
 
     void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) {}
 

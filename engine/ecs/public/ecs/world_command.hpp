@@ -59,7 +59,7 @@ public:
         m_commands.push_back(cmd);
     }
 
-    template <typename Component>
+    /*template <typename Component>
     void add_component(entity e, const Component& component)
     {
         command cmd = {};
@@ -68,7 +68,7 @@ public:
         cmd.component = component_index::value<Component>();
         cmd.component_data = copy_component(cmd.component, &component);
         m_commands.push_back(cmd);
-    }
+    }*/
 
     template <typename Component>
     void add_component(entity e, Component&& component)

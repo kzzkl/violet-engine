@@ -11,7 +11,11 @@ template <std::uint32_t FPS>
 class frame_rater
 {
 public:
-    frame_rater() : m_time_between_frames(1), m_time_point(std::chrono::steady_clock::now()) {}
+    frame_rater()
+        : m_time_between_frames(1),
+          m_time_point(std::chrono::steady_clock::now())
+    {
+    }
 
     void sleep()
     {
@@ -27,13 +31,12 @@ private:
     sleep_time_point m_time_point;
 };
 
-engine::engine() : m_exit(true)
+engine::engine()
+    : m_exit(true)
 {
 }
 
-engine::~engine()
-{
-}
+engine::~engine() {}
 
 engine& engine::instance()
 {
@@ -119,6 +122,8 @@ void engine::run()
     }
 
     executor.stop();
+
+    engine.m_context->get_world().clear();
 
     // shutdown
     std::for_each(

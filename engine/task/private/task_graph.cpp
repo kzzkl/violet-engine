@@ -34,7 +34,8 @@ void task_graph::notify_task_complete()
 
     std::uint32_t expected = 0;
     if (m_incomplete_count.compare_exchange_strong(
-            expected, static_cast<std::uint32_t>(m_tasks.size())))
+            expected,
+            static_cast<std::uint32_t>(m_tasks.size())))
     {
         m_promise.set_value();
     }
@@ -54,7 +55,7 @@ void task_graph::compile()
             {
                 ++m_main_thread_task_count;
             }
-            else
+            else // if (!task->is_empty())
             {
                 ++m_worker_thread_task_count;
             }
@@ -70,6 +71,11 @@ void task_graph::compile()
     }
 
     transitive_reduction();
+
+    for (auto& task : m_tasks)
+    {
+        task->uncompleted_dependency_count = static_cast<std::uint32_t>(task->dependents.size());
+    }
 }
 
 void task_graph::transitive_reduction()

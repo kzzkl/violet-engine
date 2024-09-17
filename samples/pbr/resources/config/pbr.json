@@ -1,10 +1,10 @@
 {
-    "window": {
+    "Window": {
         "title": "Physically Based Rendering",
         "width": 1300,
         "height": 800
     },
-    "pbr sample": {
+    "PBR Sample": {
         "skybox": "violet-assets/textures/skybox/814-hdri-skies-com.hdr",
         "model": "violet-assets/models/fbx/Cerberus_by_Andrew_Maximov/Cerberus_LP.fbx",
         "albedo_tex": "violet-assets/models/fbx/Cerberus_by_Andrew_Maximov/Textures/Cerberus_A.tga",

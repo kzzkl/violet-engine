@@ -5,7 +5,7 @@
 #include <set>
 
 #ifdef _WIN32
-#    include <Windows.h>
+#include <Windows.h>
 #endif
 
 namespace violet::vk
@@ -99,14 +99,19 @@ bool vk_context::initialize(const rhi_desc& desc)
 #endif
 
     if (!initialize_instance(instance_desired_layers, instance_desired_extensions))
+    {
         return false;
+    }
 
     std::vector<const char*> device_desired_extensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_KHR_MAINTENANCE1_EXTENSION_NAME,
         VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME};
+
     if (!initialize_physical_device(device_desired_extensions))
+    {
         return false;
+    }
 
     initialize_logic_device(device_desired_extensions);
     initialize_vma();
@@ -145,7 +150,9 @@ void vk_context::free_descriptor_set(VkDescriptorSet descriptor_set)
 void vk_context::setup_present_queue(VkSurfaceKHR surface)
 {
     if (m_present_queue)
+    {
         return;
+    }
 
     VkBool32 present_support = false;
     vkGetPhysicalDeviceSurfaceSupportKHR(
@@ -184,7 +191,9 @@ bool vk_context::initialize_instance(
         }
 
         if (!found)
+        {
             return false;
+        }
     }
 
     std::uint32_t available_extension_count = 0;
@@ -204,7 +213,7 @@ bool vk_context::initialize_instance(
         VK_MAKE_VERSION(1, 0, 0),
         "violet engine",
         VK_MAKE_VERSION(1, 0, 0),
-        VK_API_VERSION_1_0};
+        VK_API_VERSION_1_2};
 
     VkInstanceCreateInfo instance_info = {
         VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -370,9 +379,14 @@ void vk_context::initialize_vma()
     vulkan_functions.vkCreateImage = vkCreateImage;
     vulkan_functions.vkDestroyImage = vkDestroyImage;
     vulkan_functions.vkCmdCopyBuffer = vkCmdCopyBuffer;
+    vulkan_functions.vkGetBufferMemoryRequirements2KHR = vkGetBufferMemoryRequirements2;
+    vulkan_functions.vkGetImageMemoryRequirements2KHR = vkGetImageMemoryRequirements2;
+    vulkan_functions.vkBindBufferMemory2KHR = vkBindBufferMemory2;
+    vulkan_functions.vkBindImageMemory2KHR = vkBindImageMemory2;
+    vulkan_functions.vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2;
 
     VmaAllocatorCreateInfo allocator_info = {};
-    allocator_info.vulkanApiVersion = VK_API_VERSION_1_0;
+    allocator_info.vulkanApiVersion = VK_API_VERSION_1_2;
     allocator_info.physicalDevice = m_physical_device;
     allocator_info.device = m_device;
     allocator_info.instance = m_instance;
@@ -384,9 +398,8 @@ void vk_context::initialize_vma()
 void vk_context::initialize_descriptor_pool()
 {
     std::vector<VkDescriptorPoolSize> pool_size = {
-        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1024},
-        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1024}
-    };
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1024},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1024}};
 
     VkDescriptorPoolCreateInfo pool_info = {};
     pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

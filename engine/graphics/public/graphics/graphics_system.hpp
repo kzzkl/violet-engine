@@ -21,8 +21,12 @@ private:
     void end_frame();
     void render();
 
+    void add_parameter();
+    void remove_parameter();
+    void update_parameter();
+
     void update_light();
-    rhi_semaphore* render(camera* camera);
+    rhi_semaphore* render(const camera* camera, rhi_parameter* camera_parameter);
 
     void switch_frame_resource();
     rhi_semaphore* allocate_semaphore();

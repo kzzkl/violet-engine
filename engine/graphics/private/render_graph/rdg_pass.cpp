@@ -4,19 +4,15 @@
 
 namespace violet
 {
-rdg_pass::rdg_pass()
-{
-}
+rdg_pass::rdg_pass() {}
 
-rdg_pass::~rdg_pass()
-{
-}
+rdg_pass::~rdg_pass() {}
 
 rdg_reference* rdg_pass::add_texture(
     rdg_texture* texture,
-    rhi_texture_layout layout,
     rhi_pipeline_stage_flags stages,
-    rhi_access_flags access)
+    rhi_access_flags access,
+    rhi_texture_layout layout)
 {
     rdg_reference* reference = add_reference(texture);
     reference->stages = stages;
@@ -62,15 +58,6 @@ std::vector<rdg_reference*> rdg_pass::get_references(rdg_reference_type type) co
     return result;
 }
 
-std::vector<rdg_reference*> rdg_pass::get_references() const
-{
-    std::vector<rdg_reference*> result;
-    for (auto& reference : m_references)
-        result.push_back(reference.get());
-
-    return result;
-}
-
 rdg_reference* rdg_pass::add_reference(rdg_resource* resource)
 {
     m_references.push_back(std::make_unique<rdg_reference>());
@@ -79,40 +66,43 @@ rdg_reference* rdg_pass::add_reference(rdg_resource* resource)
     return m_references.back().get();
 }
 
-rdg_render_pass::rdg_render_pass()
-{
-}
+rdg_render_pass::rdg_render_pass() {}
 
-void rdg_render_pass::add_render_target(const rdg_attachment& render_target)
+void rdg_render_pass::add_render_target(
+    rdg_texture* texture,
+    rhi_attachment_load_op load_op,
+    rhi_attachment_store_op store_op)
 {
-    rdg_reference* reference = add_reference(render_target.get_texture());
+    rdg_reference* reference = add_reference(texture);
     reference->type = RDG_REFERENCE_ATTACHMENT;
     reference->stages = RHI_PIPELINE_STAGE_COLOR_OUTPUT;
-    reference->access = RHI_ACCESS_SHADER_WRITE;
+    reference->access = RHI_ACCESS_COLOR_WRITE |
+                        (load_op == RHI_ATTACHMENT_LOAD_OP_LOAD ? RHI_ACCESS_COLOR_READ : 0);
     reference->attachment.layout = RHI_TEXTURE_LAYOUT_RENDER_TARGET;
     reference->attachment.type = RHI_ATTACHMENT_REFERENCE_COLOR;
-    reference->attachment.load_op = render_target.get_load_op();
-    reference->attachment.store_op = render_target.get_store_op();
+    reference->attachment.load_op = load_op;
+    reference->attachment.store_op = store_op;
 
     m_attachments.push_back(reference);
 }
 
-void rdg_render_pass::set_depth_stencil(const rdg_attachment& depth_stencil)
+void rdg_render_pass::set_depth_stencil(
+    rdg_texture* texture,
+    rhi_attachment_load_op load_op,
+    rhi_attachment_store_op store_op)
 {
-    rdg_reference* reference = add_reference(depth_stencil.get_texture());
+    rdg_reference* reference = add_reference(texture);
     reference->type = RDG_REFERENCE_ATTACHMENT;
     reference->stages =
         RHI_PIPELINE_STAGE_EARLY_DEPTH_STENCIL | RHI_PIPELINE_STAGE_LATE_DEPTH_STENCIL;
     reference->access = RHI_ACCESS_DEPTH_STENCIL_READ | RHI_ACCESS_DEPTH_STENCIL_WRITE;
     reference->attachment.layout = RHI_TEXTURE_LAYOUT_DEPTH_STENCIL;
     reference->attachment.type = RHI_ATTACHMENT_REFERENCE_DEPTH_STENCIL;
-    reference->attachment.load_op = depth_stencil.get_load_op();
-    reference->attachment.store_op = depth_stencil.get_store_op();
+    reference->attachment.load_op = load_op;
+    reference->attachment.store_op = store_op;
 
     m_attachments.push_back(reference);
 }
 
-rdg_compute_pass::rdg_compute_pass()
-{
-}
+rdg_compute_pass::rdg_compute_pass() {}
 } // namespace violet

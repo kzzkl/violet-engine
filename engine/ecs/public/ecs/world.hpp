@@ -210,7 +210,8 @@ public:
     void execute(std::span<world_command*> commands);
 
     [[nodiscard]] std::vector<archetype*> get_archetypes(
-        const component_mask& include_mask, const component_mask& exclude_mask) const
+        const component_mask& include_mask,
+        const component_mask& exclude_mask) const
     {
         std::vector<archetype*> result;
 
@@ -228,6 +229,12 @@ public:
         }
 
         return result;
+    }
+
+    void clear()
+    {
+        m_archetypes.clear();
+        m_entity_infos.clear();
     }
 
 private:

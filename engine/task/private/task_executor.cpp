@@ -59,6 +59,8 @@ void task_executor::run(std::size_t thread_count)
     if (thread_count == 0)
         thread_count = std::thread::hardware_concurrency();
 
+    thread_count = 2;
+
     m_thread_pool = std::make_unique<thread_pool>(thread_count);
     m_thread_pool->run(
         [this]()
@@ -74,10 +76,7 @@ void task_executor::run(std::size_t thread_count)
                 current->execute();
                 current->get_graph()->notify_task_complete();
 
-                for (task_wrapper* successor : current->successors)
-                {
-                    execute_task(successor);
-                }
+                on_task_completed(current);
             }
         });
 }
@@ -100,11 +99,7 @@ void task_executor::execute_task(task_wrapper* task)
 {
     if (task->is_empty())
     {
-        for (task_wrapper* successor : task->successors)
-        {
-            execute_task(successor);
-        }
-
+        on_task_completed(task);
         return;
     }
 
@@ -137,6 +132,22 @@ void task_executor::execute_main_thread_task(std::size_t task_count)
         }
 
         --task_count;
+    }
+}
+
+void task_executor::on_task_completed(task_wrapper* task)
+{
+    for (task_wrapper* successor : task->successors)
+    {
+        successor->uncompleted_dependency_count.fetch_sub(1);
+        std::uint32_t expected = 0;
+
+        if (successor->uncompleted_dependency_count.compare_exchange_strong(
+                expected,
+                static_cast<std::uint32_t>(successor->dependents.size())))
+        {
+            execute_task(successor);
+        }
     }
 }
 } // namespace violet

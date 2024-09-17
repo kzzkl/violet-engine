@@ -13,35 +13,34 @@ public:
     vk_command(VkCommandBuffer command_buffer, vk_context* context) noexcept;
     virtual ~vk_command();
 
-    VkCommandBuffer get_command_buffer() const noexcept { return m_command_buffer; }
+    VkCommandBuffer get_command_buffer() const noexcept
+    {
+        return m_command_buffer;
+    }
 
 public:
-    virtual void begin_render_pass(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer)
+    void begin_render_pass(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer) override;
+    void end_render_pass() override;
+    void next_subpass() override;
+
+    void set_pipeline(rhi_render_pipeline* render_pipeline) override;
+    void set_pipeline(rhi_compute_pipeline* compute_pipeline) override;
+    void set_parameter(std::size_t index, rhi_parameter* parameter) override;
+
+    void set_viewport(const rhi_viewport& viewport) override;
+    void set_scissor(const rhi_scissor_rect* rects, std::size_t size) override;
+
+    void set_vertex_buffers(rhi_buffer* const* vertex_buffers, std::size_t vertex_buffer_count)
         override;
-    virtual void end_render_pass() override;
-    virtual void next_subpass() override;
+    void set_index_buffer(rhi_buffer* index_buffer) override;
 
-    virtual void set_pipeline(rhi_render_pipeline* render_pipeline) override;
-    virtual void set_pipeline(rhi_compute_pipeline* compute_pipeline) override;
-    virtual void set_parameter(std::size_t index, rhi_parameter* parameter) override;
+    void draw(std::size_t vertex_start, std::size_t vertex_count) override;
+    void draw_indexed(std::size_t index_start, std::size_t index_count, std::size_t vertex_base)
+        override;
 
-    virtual void set_viewport(const rhi_viewport& viewport) override;
-    virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) override;
+    void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) override;
 
-    virtual void set_vertex_buffers(
-        rhi_buffer* const* vertex_buffers,
-        std::size_t vertex_buffer_count) override;
-    virtual void set_index_buffer(rhi_buffer* index_buffer) override;
-
-    virtual void draw(std::size_t vertex_start, std::size_t vertex_count) override;
-    virtual void draw_indexed(
-        std::size_t index_start,
-        std::size_t index_count,
-        std::size_t vertex_base) override;
-
-    virtual void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) override;
-
-    virtual void set_pipeline_barrier(
+    void set_pipeline_barrier(
         rhi_pipeline_stage_flags src_stages,
         rhi_pipeline_stage_flags dst_stages,
         const rhi_buffer_barrier* const buffer_barriers,
@@ -49,23 +48,39 @@ public:
         const rhi_texture_barrier* const texture_barriers,
         std::size_t texture_barrier_count) override;
 
-    virtual void copy_texture(
+    void copy_texture(
         rhi_texture* src,
         const rhi_texture_region& src_region,
         rhi_texture* dst,
         const rhi_texture_region& dst_region) override;
 
-    virtual void blit_texture(
+    void blit_texture(
         rhi_texture* src,
         const rhi_texture_region& src_region,
         rhi_texture* dst,
         const rhi_texture_region& dst_region) override;
 
-    virtual void copy_buffer_to_texture(
+    void copy_buffer_to_texture(
         rhi_buffer* buffer,
         const rhi_buffer_region& buffer_region,
         rhi_texture* texture,
         const rhi_texture_region& texture_region) override;
+
+    void begin_label(const char* label) const override
+    {
+        VkDebugUtilsLabelEXT info = {
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+            .pNext = nullptr,
+            .pLabelName = label,
+            .color = {1.0f, 1.0f, 1.0f, 1.0f}};
+
+        vkCmdBeginDebugUtilsLabelEXT(m_command_buffer, &info);
+    }
+
+    void end_label() const override
+    {
+        vkCmdEndDebugUtilsLabelEXT(m_command_buffer);
+    }
 
     void reset();
 
@@ -99,8 +114,14 @@ public:
 
     void begin_frame();
 
-    VkQueue get_queue() const noexcept { return m_queue; }
-    std::uint32_t get_family_index() const noexcept { return m_family_index; }
+    VkQueue get_queue() const noexcept
+    {
+        return m_queue;
+    }
+    std::uint32_t get_family_index() const noexcept
+    {
+        return m_family_index;
+    }
 
 private:
     VkQueue m_queue;
@@ -127,8 +148,14 @@ public:
         rhi_semaphore* const* wait_semaphores,
         std::size_t wait_semaphore_count);
 
-    VkQueue get_queue() const noexcept { return m_queue; }
-    std::uint32_t get_family_index() const noexcept { return m_family_index; }
+    VkQueue get_queue() const noexcept
+    {
+        return m_queue;
+    }
+    std::uint32_t get_family_index() const noexcept
+    {
+        return m_family_index;
+    }
 
 private:
     VkQueue m_queue;

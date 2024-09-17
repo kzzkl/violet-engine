@@ -55,7 +55,9 @@ archetype::archetype(
     {
         component_id id = list[i].id;
         m_component_infos[id] = {
-            .chunk_offset = offset, .index = i, .builder = component_builder_list[id].get()};
+            .chunk_offset = offset,
+            .index = i,
+            .builder = component_builder_list[id].get()};
 
         offset += list[i].size * m_chunk_entity_count;
     }
@@ -164,10 +166,15 @@ void archetype::remove(std::size_t index)
 void archetype::clear() noexcept
 {
     for (std::size_t i = 0; i < m_size; ++i)
+    {
         destruct(i);
+    }
 
     for (archetype_chunk* chunk : m_chunks)
+    {
         m_chunk_allocator->free(chunk);
+    }
+
     m_chunks.clear();
 
     m_size = 0;
@@ -248,7 +255,9 @@ void* archetype::get_data_pointer(std::size_t chunk_index, std::size_t offset)
 }
 
 void archetype::set_version(
-    std::size_t chunk_index, std::uint32_t world_version, component_id component_id)
+    std::size_t chunk_index,
+    std::uint32_t world_version,
+    component_id component_id)
 {
     std::size_t index = m_component_infos[component_id].index;
     m_chunks[chunk_index]->component_versions[index] = world_version;
@@ -261,7 +270,9 @@ std::uint32_t archetype::get_version(std::size_t chunk_index, component_id compo
 }
 
 bool archetype::check_updated(
-    std::size_t chunk_index, std::uint32_t system_version, component_id component_id)
+    std::size_t chunk_index,
+    std::uint32_t system_version,
+    component_id component_id)
 {
     std::size_t index = m_component_infos[component_id].index;
     return system_version == 0 || m_chunks[chunk_index]->component_versions[index] > system_version;

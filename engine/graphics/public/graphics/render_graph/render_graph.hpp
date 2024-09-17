@@ -59,8 +59,14 @@ public:
 
         T* result = pass.get();
         m_passes.push_back(std::move(pass));
+
+        m_groups.push_back({});
+
         return result;
     }
+
+    void begin_group(std::string_view group_name);
+    void end_group();
 
     void compile();
     void execute(rhi_command* command);
@@ -92,18 +98,7 @@ private:
     std::vector<std::unique_ptr<rdg_resource>> m_resources;
     std::vector<std::unique_ptr<rdg_pass>> m_passes;
 
-    std::vector<std::vector<rhi_ptr<rhi_semaphore>>> m_semaphores;
-
-    struct render_pass
-    {
-        rdg_pass* begin_pass;
-        rdg_pass* end_pass;
-        rhi_render_pass* render_pass;
-        rhi_framebuffer* framebuffer;
-
-        std::size_t render_target_count;
-    };
-    std::vector<render_pass> m_render_passes;
+    std::vector<std::vector<std::string>> m_groups;
 
     struct barrier
     {
@@ -115,6 +110,34 @@ private:
     };
     std::vector<barrier> m_barriers;
 
+    struct render_batch
+    {
+        std::vector<rdg_pass*> passes;
+
+        rhi_render_pass* render_pass;
+        rhi_framebuffer* framebuffer;
+    };
+    std::vector<render_batch> m_batches;
+
     rdg_allocator* m_allocator{nullptr};
 };
+
+class rdg_scope
+{
+public:
+    rdg_scope(render_graph& graph, std::string_view name)
+        : m_graph(graph)
+    {
+        m_graph.begin_group(name);
+    }
+
+    ~rdg_scope()
+    {
+        m_graph.end_group();
+    }
+
+private:
+    render_graph& m_graph;
+};
+
 } // namespace violet

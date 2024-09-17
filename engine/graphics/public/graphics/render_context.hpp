@@ -57,7 +57,7 @@ public:
     render_list get_render_list(const render_camera& camera) const;
 
 private:
-    std::vector<mesh*> m_meshes;
+    std::vector<std::pair<const mesh*, rhi_parameter*>> m_meshes;
 
     rhi_ptr<rhi_parameter> m_light;
 

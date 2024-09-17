@@ -25,7 +25,7 @@ void world_command::reset()
     m_chunk_offset = 0;
 }
 
-void* world_command::copy_component(component_id component, const void* component_data)
+/*void* world_command::copy_component(component_id component, const void* component_data)
 {
     auto builder = m_world->get_component_builder(component);
 
@@ -33,7 +33,7 @@ void* world_command::copy_component(component_id component, const void* componen
     builder->copy_construct(component_data, pointer);
 
     return pointer;
-}
+}*/
 
 void* world_command::move_component(component_id component, void* component_data)
 {

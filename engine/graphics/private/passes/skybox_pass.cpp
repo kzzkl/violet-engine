@@ -4,7 +4,7 @@ namespace violet
 {
 struct skybox_vs : public vertex_shader
 {
-    static std::string_view get_path() { return "engine/shaders/skybox.vs"; }
+    static std::string_view get_path() { return "assets/shaders/skybox.vs"; }
 
     static constexpr parameter_slots get_parameters()
     {
@@ -16,7 +16,7 @@ struct skybox_vs : public vertex_shader
 
 struct skybox_fs : public fragment_shader
 {
-    static std::string_view get_path() { return "engine/shaders/skybox.fs"; }
+    static std::string_view get_path() { return "assets/shaders/skybox.fs"; }
 
     static constexpr parameter_slots get_parameters()
     {
@@ -28,8 +28,8 @@ struct skybox_fs : public fragment_shader
 
 skybox_pass::skybox_pass(const data& data)
 {
-    add_render_target(data.render_target);
-    set_depth_stencil(data.depth_buffer);
+    add_render_target(data.render_target, data.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
+    set_depth_stencil(data.depth_buffer, data.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
     set_execute(
         [&data](rdg_command* command)
         {

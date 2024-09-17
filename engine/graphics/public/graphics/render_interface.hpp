@@ -106,7 +106,10 @@ class rhi_buffer
 public:
     virtual ~rhi_buffer() = default;
 
-    virtual void* get_buffer() { return nullptr; }
+    virtual void* get_buffer()
+    {
+        return nullptr;
+    }
     virtual std::size_t get_buffer_size() const noexcept = 0;
 
     virtual std::size_t get_hash() const noexcept = 0;
@@ -230,11 +233,11 @@ static constexpr std::size_t RHI_RENDER_SUBPASS_EXTERNAL = ~0U;
 struct rhi_render_subpass_dependency_desc
 {
     std::size_t src;
-    rhi_pipeline_stage_flags src_stage;
+    rhi_pipeline_stage_flags src_stages;
     rhi_access_flags src_access;
 
     std::size_t dst;
-    rhi_pipeline_stage_flags dst_stage;
+    rhi_pipeline_stage_flags dst_stages;
     rhi_access_flags dst_access;
 };
 
@@ -293,7 +296,7 @@ public:
         std::size_t index,
         const void* data,
         std::size_t size,
-        std::size_t offset) = 0;
+        std::size_t offset = 0) = 0;
     virtual void set_texture(std::size_t index, rhi_texture* texture, rhi_sampler* sampler) = 0;
     virtual void set_storage(std::size_t index, rhi_buffer* storage_buffer) = 0;
 };
@@ -589,6 +592,9 @@ public:
         const rhi_buffer_region& buffer_region,
         rhi_texture* texture,
         const rhi_texture_region& texture_region) = 0;
+
+    virtual void begin_label(const char* label) const = 0;
+    virtual void end_label() const = 0;
 };
 
 class rhi_fence
@@ -724,6 +730,10 @@ public:
     virtual std::size_t get_frame_count() const noexcept = 0;
     virtual std::size_t get_frame_resource_count() const noexcept = 0;
     virtual std::size_t get_frame_resource_index() const noexcept = 0;
+
+public:
+    virtual void set_name(rhi_texture* object, const char* name) const = 0;
+    virtual void set_name(rhi_buffer* object, const char* name) const = 0;
 
 public:
     virtual rhi_render_pass* create_render_pass(const rhi_render_pass_desc& desc) = 0;

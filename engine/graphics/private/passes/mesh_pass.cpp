@@ -4,8 +4,8 @@ namespace violet
 {
 mesh_pass::mesh_pass(const data& data)
 {
-    add_render_target(data.render_target);
-    set_depth_stencil(data.depth_buffer);
+    add_render_target(data.render_target, data.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
+    set_depth_stencil(data.depth_buffer, data.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
     set_execute(
         [&data](rdg_command* command)
         {
