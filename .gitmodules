@@ -28,3 +28,6 @@
 [submodule "thirdparty/assimp"]
 	path = thirdparty/assimp
 	url = https://github.com/assimp/assimp.git
+[submodule "thirdparty/OffsetAllocator"]
+	path = thirdparty/OffsetAllocator
+	url = https://github.com/sebbbi/OffsetAllocator.git

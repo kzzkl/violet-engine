@@ -27,21 +27,27 @@ public:
     vk_swapchain(const vk_swapchain&) = delete;
     ~vk_swapchain();
 
-    virtual rhi_semaphore* acquire_texture() override;
+    rhi_semaphore* acquire_texture() override;
+    rhi_semaphore* get_present_semaphore() const override;
 
-    virtual void present(rhi_semaphore* const* wait_semaphores, std::size_t wait_semaphore_count)
-        override;
+    void present() override;
 
-    virtual void resize(std::uint32_t width, std::uint32_t height) override;
+    void resize(std::uint32_t width, std::uint32_t height) override;
 
-    virtual rhi_texture* get_texture() override;
+    rhi_texture* get_texture() override;
 
     vk_swapchain_image* get_current_image() const
     {
         return m_swapchain_images[m_swapchain_image_index].get();
     }
-    std::uint32_t get_image_index() const noexcept { return m_swapchain_image_index; }
-    VkSwapchainKHR get_swapchain() const noexcept { return m_swapchain; }
+    std::uint32_t get_image_index() const noexcept
+    {
+        return m_swapchain_image_index;
+    }
+    VkSwapchainKHR get_swapchain() const noexcept
+    {
+        return m_swapchain;
+    }
 
     vk_swapchain& operator=(const vk_swapchain&) = delete;
 
@@ -53,6 +59,7 @@ private:
     std::uint32_t m_swapchain_image_index;
 
     std::vector<std::unique_ptr<vk_semaphore>> m_available_semaphores;
+    std::vector<std::unique_ptr<vk_semaphore>> m_present_semaphores;
 
     vk_context* m_context;
 };

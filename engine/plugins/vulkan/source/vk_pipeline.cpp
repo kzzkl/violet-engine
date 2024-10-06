@@ -4,7 +4,6 @@
 #include "vk_util.hpp"
 #include <algorithm>
 #include <cassert>
-#include <fstream>
 #include <span>
 
 namespace violet::vk
@@ -175,13 +174,12 @@ vk_pipeline_layout::~vk_pipeline_layout()
     vkDestroyPipelineLayout(m_context->get_device(), m_layout, nullptr);
 }
 
-vk_layout_manager::vk_layout_manager(vk_context* context) : m_context(context)
+vk_layout_manager::vk_layout_manager(vk_context* context)
+    : m_context(context)
 {
 }
 
-vk_layout_manager::~vk_layout_manager()
-{
-}
+vk_layout_manager::~vk_layout_manager() {}
 
 vk_parameter_layout* vk_layout_manager::get_parameter_layout(const rhi_parameter_desc& desc)
 {
@@ -217,7 +215,8 @@ vk_pipeline_layout* vk_layout_manager::get_pipeline_layout(
     return result;
 }
 
-vk_parameter::vk_parameter(const rhi_parameter_desc& desc, vk_context* context) : m_context(context)
+vk_parameter::vk_parameter(const rhi_parameter_desc& desc, vk_context* context)
+    : m_context(context)
 {
     m_layout = m_context->get_layout_manager()->get_parameter_layout(desc);
 
@@ -470,22 +469,10 @@ vk_shader::vk_shader(const rhi_shader_desc& desc, vk_context* context)
     : m_module(VK_NULL_HANDLE),
       m_context(context)
 {
-    std::ifstream fin(desc.path, std::ios::binary);
-    if (!fin.is_open())
-        throw vk_exception("Failed to open file!");
-
-    fin.seekg(0, std::ios::end);
-    std::size_t spirv_size = fin.tellg();
-
-    std::vector<char> spirv(spirv_size);
-    fin.seekg(0);
-    fin.read(spirv.data(), spirv_size);
-    fin.close();
-
     VkShaderModuleCreateInfo shader_module_info = {};
     shader_module_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    shader_module_info.pCode = reinterpret_cast<std::uint32_t*>(spirv.data());
-    shader_module_info.codeSize = spirv.size();
+    shader_module_info.pCode = reinterpret_cast<std::uint32_t*>(desc.code);
+    shader_module_info.codeSize = desc.code_size;
 
     vk_check(
         vkCreateShaderModule(m_context->get_device(), &shader_module_info, nullptr, &m_module));
@@ -508,12 +495,12 @@ vk_shader::~vk_shader()
 vk_vertex_shader::vk_vertex_shader(const rhi_shader_desc& desc, vk_context* context)
     : vk_shader(desc, context)
 {
-    m_vertex_attributes.reserve(desc.vertex.vertex_attribute_count);
-    for (std::size_t i = 0; i < desc.vertex.vertex_attribute_count; ++i)
+    m_vertex_attributes.reserve(desc.vertex.attribute_count);
+    for (std::size_t i = 0; i < desc.vertex.attribute_count; ++i)
     {
         vertex_attribute attribute;
-        attribute.name = desc.vertex.vertex_attributes[i].name;
-        attribute.format = desc.vertex.vertex_attributes[i].format;
+        attribute.name = desc.vertex.attributes[i].name;
+        attribute.format = desc.vertex.attributes[i].format;
         m_vertex_attributes.push_back(attribute);
     }
 }
@@ -587,7 +574,7 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
         input_assembly_state_info.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
         break;
     default:
-        throw vk_exception("Invalid primitive topology.");
+        throw std::runtime_error("Invalid primitive topology.");
     }
 
     VkViewport viewport = {};
@@ -630,7 +617,7 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
         rasterization_state_info.cullMode = VK_CULL_MODE_BACK_BIT;
         break;
     default:
-        throw vk_exception("Invalid cull mode.");
+        throw std::runtime_error("Invalid cull mode.");
     }
 
     VkPipelineMultisampleStateCreateInfo multisample_state_info = {};

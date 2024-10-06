@@ -60,6 +60,12 @@ public:
         rhi_texture* dst,
         const rhi_texture_region& dst_region) override;
 
+    void copy_buffer(
+        rhi_buffer* src,
+        const rhi_buffer_region& src_region,
+        rhi_buffer* dst,
+        const rhi_buffer_region& dst_region) override;
+
     void copy_buffer_to_texture(
         rhi_buffer* buffer,
         const rhi_buffer_region& buffer_region,
@@ -142,11 +148,7 @@ public:
     vk_present_queue(std::uint32_t queue_family_index, vk_context* context);
     ~vk_present_queue();
 
-    void present(
-        VkSwapchainKHR swapchain,
-        std::uint32_t image_index,
-        rhi_semaphore* const* wait_semaphores,
-        std::size_t wait_semaphore_count);
+    void present(VkSwapchainKHR swapchain, std::uint32_t image_index, VkSemaphore wait_semaphore);
 
     VkQueue get_queue() const noexcept
     {

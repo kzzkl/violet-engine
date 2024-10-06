@@ -176,7 +176,7 @@ private:
         m_metallic = texture_loader::load(m_metallic_path);
         m_roughness = texture_loader::load(m_roughness_path);
 
-        m_material = std::make_unique<physical_material>(true);
+        m_material = std::make_unique<physical_material>();
         m_material->set_normal(m_normal.get(), m_sampler.get());
         m_material->set_albedo(m_albedo.get(), m_sampler.get());
         m_material->set_metallic(m_metallic.get(), m_sampler.get());

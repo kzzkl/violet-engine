@@ -20,19 +20,20 @@ void default_renderer::render(
         RHI_TEXTURE_LAYOUT_UNDEFINED,
         RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
 
-    auto& mesh_pass_data = graph.allocate_data<mesh_pass::data>();
-    mesh_pass_data.render_list = context.get_render_list(camera);
-    mesh_pass_data.viewport = camera.viewport;
-    mesh_pass_data.render_target = m_render_target;
-    mesh_pass_data.depth_buffer = m_depth_buffer;
-    mesh_pass_data.clear = true;
-    graph.add_pass<mesh_pass>("Mesh Pass", mesh_pass_data);
+    mesh_pass::add(
+        graph,
+        {.render_list = context.get_render_list(camera),
+         .viewport = camera.viewport,
+         .render_target = m_render_target,
+         .depth_buffer = m_depth_buffer,
+         .clear = true});
 
-    auto& skybox_pass_data = graph.allocate_data<skybox_pass::data>();
-    skybox_pass_data.camera = camera.parameter;
-    skybox_pass_data.viewport = camera.viewport;
-    skybox_pass_data.render_target = m_render_target;
-    skybox_pass_data.depth_buffer = m_depth_buffer;
-    graph.add_pass<skybox_pass>("Skybox Pass", skybox_pass_data);
+    skybox_pass::add(
+        graph,
+        {.camera = camera.parameter,
+         .viewport = camera.viewport,
+         .render_target = m_render_target,
+         .depth_buffer = m_depth_buffer,
+         .clear = false});
 }
 } // namespace violet

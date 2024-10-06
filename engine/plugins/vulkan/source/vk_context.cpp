@@ -39,7 +39,9 @@ bool check_extension_support(
         }
 
         if (!found)
+        {
             return false;
+        }
     }
 
     return true;

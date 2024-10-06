@@ -315,10 +315,8 @@ struct rhi_vertex_attribute
 
 struct rhi_shader_desc
 {
-    const char* path;
-
-    const char* entry_point;
-    const char* defines;
+    std::uint8_t* code;
+    std::size_t code_size;
 
     rhi_shader_stage_flag stage;
 
@@ -333,8 +331,8 @@ struct rhi_shader_desc
 
     struct
     {
-        const rhi_vertex_attribute* vertex_attributes;
-        std::size_t vertex_attribute_count;
+        const rhi_vertex_attribute* attributes;
+        std::size_t attribute_count;
     } vertex;
 };
 
@@ -587,6 +585,12 @@ public:
         rhi_texture* dst,
         const rhi_texture_region& dst_region) = 0;
 
+    virtual void copy_buffer(
+        rhi_buffer* src,
+        const rhi_buffer_region& src_region,
+        rhi_buffer* dst,
+        const rhi_buffer_region& dst_region) = 0;
+
     virtual void copy_buffer_to_texture(
         rhi_buffer* buffer,
         const rhi_buffer_region& buffer_region,
@@ -690,14 +694,18 @@ public:
     virtual ~rhi_swapchain() = default;
 
     virtual rhi_semaphore* acquire_texture() = 0;
+    virtual rhi_semaphore* get_present_semaphore() const = 0;
 
-    virtual void present(
-        rhi_semaphore* const* wait_semaphores,
-        std::size_t wait_semaphore_count) = 0;
+    virtual void present() = 0;
 
     virtual void resize(std::uint32_t width, std::uint32_t height) = 0;
 
     virtual rhi_texture* get_texture() = 0;
+};
+
+enum rhi_backend
+{
+    RHI_BACKEND_VULKAN
 };
 
 struct rhi_desc
@@ -730,6 +738,8 @@ public:
     virtual std::size_t get_frame_count() const noexcept = 0;
     virtual std::size_t get_frame_resource_count() const noexcept = 0;
     virtual std::size_t get_frame_resource_index() const noexcept = 0;
+
+    virtual rhi_backend get_backend() const noexcept = 0;
 
 public:
     virtual void set_name(rhi_texture* object, const char* name) const = 0;

@@ -21,7 +21,8 @@ add_library(${PROJECT_NAME} STATIC
     ./private/render_context.cpp
     ./private/render_device.cpp
     ./private/renderer.cpp
-    ./private/rhi_plugin.cpp)
+    ./private/rhi_plugin.cpp
+    ./private/shader_compiler.cpp)
 add_library(violet::graphics ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
@@ -32,11 +33,13 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-    stb
     violet::task
     violet::window
     violet::math
-    violet::scene)
+    violet::scene
+    PRIVATE
+    stb
+    dxcompiler)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

@@ -1,5 +1,7 @@
 #include "graphics/render_device.hpp"
 #include "math/math.hpp"
+#include "shader_compiler.hpp"
+#include <fstream>
 
 namespace violet
 {
@@ -87,6 +89,8 @@ void render_device::initialize(rhi* rhi)
 {
     m_rhi = rhi;
     m_rhi_deleter = rhi_deleter(rhi);
+
+    m_shader_compiler = std::make_unique<shader_compiler>();
 }
 
 void render_device::reset()
@@ -207,27 +211,23 @@ rhi_ptr<rhi_semaphore> render_device::create_semaphore()
     return rhi_ptr<rhi_semaphore>(m_rhi->create_semaphore(), m_rhi_deleter);
 }
 
-rhi_shader* render_device::get_shader(const rhi_shader_desc& desc)
+std::vector<std::uint8_t> render_device::compile_shader(
+    std::string_view path,
+    std::span<const wchar_t*> arguments)
 {
-    auto iter = m_shader_cache.find(desc.path);
-    if (iter == m_shader_cache.end())
+    std::ifstream fin(path.data(), std::ios::binary);
+    if (!fin.is_open())
     {
-        rhi_ptr<rhi_shader> shader(m_rhi->create_shader(desc), m_rhi_deleter);
-        if (desc.stage == RHI_SHADER_STAGE_VERTEX)
-        {
-            shader_info info = {};
-            for (std::size_t i = 0; i < desc.vertex.vertex_attribute_count; ++i)
-                info.vertex_attribute.push_back(desc.vertex.vertex_attributes[i].name);
-
-            m_shader_infos[shader.get()] = info;
-        }
-
-        m_shader_cache[desc.path] = std::move(shader);
-        return m_shader_cache[desc.path].get();
+        throw std::runtime_error("Failed to open file!");
     }
-    else
-    {
-        return iter->second.get();
-    }
+
+    fin.seekg(0, std::ios::end);
+
+    std::vector<char> source(fin.tellg());
+    fin.seekg(0);
+    fin.read(source.data(), source.size());
+    fin.close();
+
+    return m_shader_compiler->compile(source, arguments);
 }
 } // namespace violet

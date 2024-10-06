@@ -1,160 +1,16 @@
 #pragma once
 
 #include "common/hash.hpp"
-#include "graphics/render_interface.hpp"
-#include "math/math.hpp"
-#include <cassert>
+#include "common/type_index.hpp"
+#include "graphics/shader.hpp"
+#include <format>
 #include <memory>
 #include <span>
-#include <string>
-#include <tuple>
 #include <unordered_map>
+#include <vector>
 
 namespace violet
 {
-template <typename... T>
-class shader_options
-{
-public:
-    template <typename U>
-    void set(U value)
-    {
-        std::get<U>(m_options) = value;
-    }
-
-    template <typename U>
-    U get() const
-    {
-        return std::get<U>(m_options);
-    }
-
-private:
-    std::tuple<T...> m_options;
-};
-
-struct shader_parameter
-{
-    consteval shader_parameter(std::initializer_list<rhi_parameter_binding> list)
-        : bindings{},
-          binding_count(0)
-    {
-        assert(list.size() <= rhi_constants::MAX_PARAMETER_BINDING_COUNT);
-
-        for (std::size_t i = 0; i < list.size(); ++i)
-            bindings[i] = *(list.begin() + i);
-        binding_count = list.size();
-    }
-
-    consteval operator rhi_parameter_desc() const
-    {
-        return {bindings, binding_count};
-    }
-
-    rhi_parameter_binding bindings[rhi_constants::MAX_PARAMETER_BINDING_COUNT];
-    std::size_t binding_count;
-};
-
-struct shader
-{
-    template <typename... T>
-    using options = shader_options<T...>;
-    using parameter = shader_parameter;
-
-    struct parameter_slots
-    {
-        consteval parameter_slots(std::initializer_list<rhi_shader_desc::parameter_slot> list)
-            : parameters{},
-              parameter_count(0)
-        {
-            assert(list.size() <= rhi_constants::MAX_PARAMETER_COUNT);
-
-            for (std::size_t i = 0; i < list.size(); ++i)
-                parameters[i] = *(list.begin() + i);
-            parameter_count = list.size();
-        }
-
-        rhi_shader_desc::parameter_slot parameters[rhi_constants::MAX_PARAMETER_COUNT];
-        std::size_t parameter_count;
-    };
-
-    struct mesh_data
-    {
-        float4x4 model_matrix;
-        float4x4 normal_matrix;
-    };
-
-    static constexpr parameter mesh = {
-        {RHI_PARAMETER_UNIFORM,
-         RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT,
-         sizeof(mesh_data)}};
-
-    struct camera_data
-    {
-        float4x4 view;
-        float4x4 projection;
-        float4x4 view_projection;
-        float3 position;
-        std::uint32_t padding0;
-    };
-
-    static constexpr parameter camera = {
-        {RHI_PARAMETER_UNIFORM,
-         RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT,
-         sizeof(camera_data)},
-        {RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1}};
-
-    static constexpr parameter light = {{RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, 528}};
-};
-
-template <typename T>
-concept has_options = requires { typename T::options; };
-
-struct shader_empty_option
-{
-};
-
-template <typename T>
-concept has_parameter = (has_options<T> && requires(T t) {
-                            {
-                                T::get_parameters(T::options())
-                            } -> std::same_as<shader::parameter_slots>;
-                        }) || (!has_options<T> && requires(T t) {
-                            { T::get_parameters() } -> std::same_as<shader::parameter_slots>;
-                        });
-
-struct vertex_shader : public shader
-{
-    struct input_slots
-    {
-        consteval input_slots(std::initializer_list<rhi_vertex_attribute> list)
-            : vertex_attributes{}
-        {
-            assert(list.size() <= rhi_constants::MAX_VERTEX_ATTRIBUTE_COUNT);
-
-            for (std::size_t i = 0; i < list.size(); ++i)
-                vertex_attributes[i] = *(list.begin() + i);
-            vertex_attribute_count = list.size();
-        }
-
-        rhi_vertex_attribute vertex_attributes[rhi_constants::MAX_VERTEX_ATTRIBUTE_COUNT];
-        std::size_t vertex_attribute_count;
-    };
-
-    static constexpr rhi_shader_stage_flag stage = RHI_SHADER_STAGE_VERTEX;
-};
-
-template <typename T>
-concept has_input = (has_options<T> && requires(T t) {
-                        { T::get_inputs(T::options()) } -> std::same_as<vertex_shader::input_slots>;
-                    }) || (!has_options<T> && requires(T t) {
-                        { T::get_inputs() } -> std::same_as<vertex_shader::input_slots>;
-                    });
-
-struct fragment_shader : public shader
-{
-    static constexpr rhi_shader_stage_flag stage = RHI_SHADER_STAGE_FRAGMENT;
-};
-
 class rhi_deleter
 {
 public:
@@ -181,8 +37,14 @@ private:
 template <typename T>
 using rhi_ptr = std::unique_ptr<T, rhi_deleter>;
 
+class shader_compiler;
 class render_device
 {
+private:
+    struct shader_index : public type_index<shader_index, std::size_t>
+    {
+    };
+
 public:
     render_device();
     ~render_device();
@@ -208,72 +70,126 @@ public:
     std::size_t get_frame_resource_count() const noexcept;
     std::size_t get_frame_resource_index() const noexcept;
 
-    template <typename T, typename Option = shader_empty_option>
-    rhi_shader* get_shader(const Option& options = {})
+    template <typename T>
+    rhi_shader* get_shader(std::span<std::wstring> defines = {})
     {
-        static std::unordered_map<std::uint64_t, rhi_shader*> shader_maps;
-
-        std::uint64_t hash = hash::city_hash_64(&options, sizeof(Option));
-        auto iter = shader_maps.find(hash);
-        if (iter != shader_maps.end())
+        if (m_shader_groups.size() <= shader_index::value<T>())
         {
-            return iter->second;
+            m_shader_groups.resize(shader_index::value<T>() + 1);
+        }
+
+        std::uint64_t hash = 0;
+        for (auto& macro : defines)
+        {
+            hash ^= hash::city_hash_64(macro.data(), macro.size());
+        }
+
+        shader_group& group = m_shader_groups[shader_index::value<T>()];
+        auto iter = group.variants.find(hash);
+        if (iter == group.variants.end())
+        {
+            std::vector<const wchar_t*> arguments = {
+                L"-I",
+                L"assets/shaders/include",
+                L"-Wno-ignored-attributes",
+                L"-all-resources-bound",
+#ifndef NDEBUG
+                L"-Zi"
+#endif
+            };
+
+            if (m_rhi->get_backend() == RHI_BACKEND_VULKAN)
+            {
+                arguments.push_back(L"-spirv");
+#ifndef NDEBUG
+                arguments.push_back(L"-fspv-extension=SPV_KHR_non_semantic_info");
+                arguments.push_back(L"-fspv-debug=vulkan-with-source");
+#endif
+            }
+
+            if constexpr (T::stage == RHI_SHADER_STAGE_VERTEX)
+            {
+                arguments.push_back(L"-T");
+                arguments.push_back(L"vs_6_0");
+                arguments.push_back(L"-E");
+                arguments.push_back(L"vs_main");
+            }
+            else if constexpr (T::stage == RHI_SHADER_STAGE_FRAGMENT)
+            {
+                arguments.push_back(L"-T");
+                arguments.push_back(L"ps_6_0");
+                arguments.push_back(L"-E");
+                arguments.push_back(L"fs_main");
+            }
+            else if constexpr (T::stage == RHI_SHADER_STAGE_COMPUTE)
+            {
+                arguments.push_back(L"-T");
+                arguments.push_back(L"cs_6_0");
+                arguments.push_back(L"-E");
+                arguments.push_back(L"cs_main");
+            }
+
+            for (auto& macro : defines)
+            {
+                arguments.push_back(macro.data());
+            }
+
+            auto code = compile_shader(T::path, arguments);
+
+            rhi_shader_desc desc = {};
+            desc.code = code.data();
+            desc.code_size = code.size();
+            desc.stage = T::stage;
+
+            if constexpr (has_inputs<T>)
+            {
+                desc.vertex.attributes = T::inputs.attributes;
+                desc.vertex.attribute_count = T::inputs.attribute_count;
+            }
+
+            if constexpr (has_parameters<T>)
+            {
+                desc.parameters = T::parameters.parameters;
+                desc.parameter_count = T::parameters.parameter_count;
+            }
+
+            m_shader_cache.emplace_back(m_rhi->create_shader(desc), m_rhi_deleter);
+            rhi_shader* result = m_shader_cache.back().get();
+
+            if constexpr (has_inputs<T>)
+            {
+                for (std::size_t i = 0; i < T::inputs.attribute_count; ++i)
+                {
+                    m_shader_info[result].vertex_attributes.push_back(T::inputs.attributes[i].name);
+                }
+            }
+
+            group.variants[hash] = result;
+            return result;
         }
         else
         {
-            rhi_shader_desc desc = {};
-            desc.stage = T::stage;
-
-            if constexpr (has_options<T>)
-                desc.path = T::get_path(options).data();
-            else
-                desc.path = T::get_path().data();
-
-            shader::parameter_slots parameters = {};
-            vertex_shader::input_slots inputs = {};
-
-            if constexpr (has_parameter<T>)
-            {
-                if constexpr (has_options<T>)
-                    parameters = T::get_parameters(options);
-                else
-                    parameters = T::get_parameters();
-                desc.parameters = parameters.parameters;
-                desc.parameter_count = parameters.parameter_count;
-            }
-
-            if constexpr (T::stage == RHI_SHADER_STAGE_VERTEX && has_input<T>)
-            {
-                if constexpr (has_options<T>)
-                    inputs = T::get_inputs(options);
-                else
-                    inputs = T::get_inputs();
-
-                desc.vertex.vertex_attributes = inputs.vertex_attributes;
-                desc.vertex.vertex_attribute_count = inputs.vertex_attribute_count;
-            }
-
-            rhi_shader* shader = get_shader(desc);
-            shader_maps[hash] = shader;
-            return shader;
+            return iter->second;
         }
     }
 
     const std::vector<std::string>& get_vertex_attributes(rhi_shader* shader) const
     {
-        return m_shader_infos.at(shader).vertex_attribute;
+        return m_shader_info.at(shader).vertex_attributes;
     }
 
 public:
     template <typename T>
     void set_name(T* object, std::string_view name) const
     {
+#ifndef NDEBUG
         m_rhi->set_name(object, name.data());
+#endif
     }
 
 public:
     rhi_ptr<rhi_render_pass> create_render_pass(const rhi_render_pass_desc& desc);
-
+    
     rhi_ptr<rhi_render_pipeline> create_pipeline(const rhi_render_pipeline_desc& desc);
     rhi_ptr<rhi_compute_pipeline> create_pipeline(const rhi_compute_pipeline_desc& desc);
 
@@ -297,24 +213,27 @@ public:
     }
 
 private:
-    rhi_shader* get_shader(const rhi_shader_desc& desc);
+    rhi* m_rhi{nullptr};
+    rhi_deleter m_rhi_deleter;
+
+    std::vector<std::uint8_t> compile_shader(
+        std::string_view path,
+        std::span<const wchar_t*> arguments);
 
     struct shader_info
     {
-        std::vector<std::string> vertex_attribute;
+        std::vector<std::string> vertex_attributes;
     };
-    std::unordered_map<rhi_shader*, shader_info> m_shader_infos;
-    std::unordered_map<std::string, rhi_ptr<rhi_shader>> m_shader_cache;
 
-    rhi* m_rhi{nullptr};
-    rhi_deleter m_rhi_deleter;
-};
-
-struct fullscreen_vs : public vertex_shader
-{
-    static constexpr std::string_view get_path()
+    struct shader_group
     {
-        return "assets/shaders/fullscreen.vs";
-    }
+        std::unordered_map<std::uint64_t, rhi_shader*> variants;
+    };
+
+    std::unordered_map<rhi_shader*, shader_info> m_shader_info;
+    std::vector<shader_group> m_shader_groups;
+    std::vector<rhi_ptr<rhi_shader>> m_shader_cache;
+
+    std::unique_ptr<shader_compiler> m_shader_compiler;
 };
 } // namespace violet

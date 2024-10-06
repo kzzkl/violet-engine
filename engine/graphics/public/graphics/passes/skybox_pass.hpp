@@ -7,7 +7,7 @@ namespace violet
 class skybox_pass : public rdg_render_pass
 {
 public:
-    struct data : public rdg_data
+    struct parameter
     {
         rhi_parameter* camera;
         rhi_viewport viewport;
@@ -19,6 +19,6 @@ public:
     };
 
 public:
-    skybox_pass(const data& data);
+    static void add(render_graph& graph, const parameter& parameter);
 };
 } // namespace violet

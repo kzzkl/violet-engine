@@ -85,7 +85,7 @@ VkFormat vk_util::map_format(rhi_format format)
     case RHI_FORMAT_D32_FLOAT:
         return VK_FORMAT_D32_SFLOAT;
     default:
-        throw vk_exception("Invalid format.");
+        throw std::runtime_error("Invalid format.");
     }
 }
 
@@ -170,7 +170,7 @@ rhi_format vk_util::map_format(VkFormat format)
     case VK_FORMAT_D32_SFLOAT:
         return RHI_FORMAT_D32_FLOAT;
     default:
-        throw vk_exception("Invalid format.");
+        throw std::runtime_error("Invalid format.");
     }
 }
 
@@ -191,7 +191,7 @@ VkSampleCountFlagBits vk_util::map_sample_count(rhi_sample_count samples)
     case RHI_SAMPLE_COUNT_32:
         return VK_SAMPLE_COUNT_32_BIT;
     default:
-        throw vk_exception("Invalid sample count.");
+        throw std::runtime_error("Invalid sample count.");
     }
 }
 
@@ -216,7 +216,7 @@ VkImageLayout vk_util::map_layout(rhi_texture_layout layout)
     case RHI_TEXTURE_LAYOUT_TRANSFER_DST:
         return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     default:
-        throw vk_exception("Invalid layout.");
+        throw std::runtime_error("Invalid layout.");
     }
 }
 
@@ -229,7 +229,7 @@ VkFilter vk_util::map_filter(rhi_filter filter)
     case RHI_FILTER_LINEAR:
         return VK_FILTER_LINEAR;
     default:
-        throw vk_exception("Invalid filter type.");
+        throw std::runtime_error("Invalid filter type.");
     }
 }
 
@@ -248,7 +248,7 @@ VkSamplerAddressMode vk_util::map_sampler_address_mode(rhi_sampler_address_mode 
     case RHI_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:
         return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
     default:
-        throw vk_exception("Invalid sampler address mode.");
+        throw std::runtime_error("Invalid sampler address mode.");
     }
 }
 
@@ -257,16 +257,16 @@ VkPipelineStageFlags vk_util::map_pipeline_stage_flags(rhi_pipeline_stage_flags 
     VkPipelineStageFlags result = 0;
     result |= (flags & RHI_PIPELINE_STAGE_BEGIN) ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT : 0;
     result |= (flags & RHI_PIPELINE_STAGE_VERTEX) ? VK_PIPELINE_STAGE_VERTEX_SHADER_BIT : 0;
-    result |= (flags & RHI_PIPELINE_STAGE_EARLY_DEPTH_STENCIL)
-                  ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                  : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_EARLY_DEPTH_STENCIL) ?
+                  VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT :
+                  0;
     result |= (flags & RHI_PIPELINE_STAGE_FRAGMENT) ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT : 0;
-    result |= (flags & RHI_PIPELINE_STAGE_LATE_DEPTH_STENCIL)
-                  ? VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
-                  : 0;
-    result |= (flags & RHI_PIPELINE_STAGE_COLOR_OUTPUT)
-                  ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-                  : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_LATE_DEPTH_STENCIL) ?
+                  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT :
+                  0;
+    result |= (flags & RHI_PIPELINE_STAGE_COLOR_OUTPUT) ?
+                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT :
+                  0;
     result |= (flags & RHI_PIPELINE_STAGE_TRANSFER) ? VK_PIPELINE_STAGE_TRANSFER_BIT : 0;
     result |= (flags & RHI_PIPELINE_STAGE_COMPUTE) ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : 0;
     result |= (flags & RHI_PIPELINE_STAGE_END) ? VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT : 0;
@@ -315,7 +315,7 @@ VkBlendFactor vk_util::map_blend_factor(rhi_blend_factor factor)
     case RHI_BLEND_FACTOR_TARGET_INV_ALPHA:
         return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
     default:
-        throw vk_exception("Invalid blend factor.");
+        throw std::runtime_error("Invalid blend factor.");
     }
 }
 
@@ -332,7 +332,7 @@ VkBlendOp vk_util::map_blend_op(rhi_blend_op op)
     case RHI_BLEND_OP_MAX:
         return VK_BLEND_OP_MAX;
     default:
-        throw vk_exception("Invalid blend op.");
+        throw std::runtime_error("Invalid blend op.");
     }
 }
 } // namespace violet::vk

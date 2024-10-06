@@ -18,13 +18,4 @@ install(TARGETS ${PROJECT_NAME}
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)
 
-include(${VIOLET_ROOT_DIR}/cmake/compile_shader.cmake)
-set(SHADER_FILES "")
-compile_shader_dxc(
-    SHADER_FILES
-    TARGET ${PROJECT_NAME}
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/basic.hlsl"
-    STAGES "vs" "fs")
-
-install(FILES ${SHADER_FILES} DESTINATION bin/${PROJECT_NAME}/shaders)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION bin/${PROJECT_NAME})

@@ -2,41 +2,23 @@
 
 namespace violet
 {
-struct basic_material_vs : public vertex_shader
+struct basic_material_vs : public shader_vs
 {
-    static std::string_view get_path() { return "assets/shaders/basic.vs"; }
+    static constexpr std::string_view path = "assets/shaders/source/materials/basic.hlsl";
 
-    static parameter_slots get_parameters()
-    {
-        return {
-            {0, camera},
-            {1, light },
-            {2, mesh  }
-        };
-    };
+    static constexpr parameter_layout parameters = {{0, camera}, {1, light}, {2, mesh}};
 
-    static input_slots get_inputs()
-    {
-        return {
-            {"position", RHI_FORMAT_R32G32B32_FLOAT}
-        };
-    };
+    static constexpr input_layout inputs = {{"position", RHI_FORMAT_R32G32B32_FLOAT}};
 };
 
-struct basic_material_fs : public fragment_shader
+struct basic_material_fs : public shader_fs
 {
-    static std::string_view get_path() { return "assets/shaders/basic.fs"; }
+    static constexpr std::string_view path = "assets/shaders/source/materials/basic.hlsl";
 
     static constexpr parameter material = {
-        {RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, sizeof(basic_material::data)}
-    };
+        {RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, sizeof(basic_material::data)}};
 
-    static parameter_slots get_parameters()
-    {
-        return {
-            {3, material}
-        };
-    };
+    static constexpr parameter_layout parameters = {{3, material}};
 };
 
 basic_material::basic_material(const float3& color)
@@ -52,7 +34,7 @@ basic_material::basic_material(const float3& color)
 
 void basic_material::set_color(const float3& color)
 {
-    get_parameter(0)->set_uniform(0, &color, sizeof(float3), 0);
+    get_passes()[0].parameter->set_uniform(0, &color, sizeof(float3));
     m_data.color = color;
 }
 

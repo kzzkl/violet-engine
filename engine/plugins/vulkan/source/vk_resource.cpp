@@ -8,58 +8,47 @@ namespace violet::vk
 {
 namespace
 {
-void create_buffer(
-    VkDeviceSize size,
-    VkBufferUsageFlags buffer_usage,
-    VmaMemoryUsage memory_usage,
-    VkBuffer& buffer,
-    VmaAllocation& allocation,
-    VmaAllocator allocator)
+std::pair<VkBuffer, VmaAllocation> create_buffer(
+    const VkBufferCreateInfo& buffer_info,
+    VmaAllocationCreateFlags flags,
+    VmaAllocator allocator,
+    VmaAllocationInfo* allocation_info = nullptr)
 {
-    VkBufferCreateInfo buffer_info = {};
-    buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buffer_info.size = size;
-    buffer_info.usage = buffer_usage;
-    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    VkBuffer buffer;
+    VmaAllocation allocation;
 
-    VmaAllocationCreateInfo allocation_info = {};
-    allocation_info.usage = memory_usage;
+    VmaAllocationCreateInfo create_info = {};
+    create_info.usage = VMA_MEMORY_USAGE_AUTO;
+    create_info.flags = flags;
 
-    vk_check(
-        vmaCreateBuffer(allocator, &buffer_info, &allocation_info, &buffer, &allocation, nullptr));
+    vk_check(vmaCreateBuffer(
+        allocator,
+        &buffer_info,
+        &create_info,
+        &buffer,
+        &allocation,
+        allocation_info));
+
+    return {buffer, allocation};
 }
 
-void create_host_visible_buffer(
-    const void* data,
-    VkDeviceSize size,
-    VkBufferUsageFlags buffer_usage,
-    VkBuffer& buffer,
-    VmaAllocation& allocation,
-    VmaAllocator allocator)
-{
-    create_buffer(size, buffer_usage, VMA_MEMORY_USAGE_CPU_TO_GPU, buffer, allocation, allocator);
-
-    if (data != nullptr)
-    {
-        void* mapping_pointer = nullptr;
-        vmaMapMemory(allocator, allocation, &mapping_pointer);
-        std::memcpy(mapping_pointer, data, size);
-        vmaUnmapMemory(allocator, allocation);
-    }
-}
-
-void create_image(
+std::pair<VkImage, VmaAllocation> create_image(
     const VkImageCreateInfo& image_info,
-    VmaMemoryUsage memory_usage,
-    VkImage& image,
-    VmaAllocation& allocation,
-    VmaAllocator allocator)
+    VmaAllocationCreateFlags flags,
+    VmaAllocator allocator,
+    VmaAllocationInfo* allocation_info = nullptr)
 {
-    VmaAllocationCreateInfo allocation_info = {};
-    allocation_info.usage = memory_usage;
+    VkImage image;
+    VmaAllocation allocation;
+
+    VmaAllocationCreateInfo create_info = {};
+    create_info.usage = VMA_MEMORY_USAGE_AUTO;
+    create_info.flags = flags;
 
     vk_check(
-        vmaCreateImage(allocator, &image_info, &allocation_info, &image, &allocation, nullptr));
+        vmaCreateImage(allocator, &image_info, &create_info, &image, &allocation, allocation_info));
+
+    return {image, allocation};
 }
 
 void copy_buffer_to_image(
@@ -151,17 +140,19 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
     image_info.mipLevels = m_level_count;
     image_info.samples = vk_util::map_sample_count(desc.samples);
     image_info.usage |= (desc.flags & RHI_TEXTURE_SHADER_RESOURCE) ? VK_IMAGE_USAGE_SAMPLED_BIT : 0;
-    image_info.usage |= (desc.flags & RHI_TEXTURE_RENDER_TARGET) ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : 0;
-    image_info.usage |= (desc.flags & RHI_TEXTURE_DEPTH_STENCIL) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
-    image_info.usage |= (desc.flags & RHI_TEXTURE_TRANSFER_SRC) ? VK_IMAGE_USAGE_TRANSFER_SRC_BIT : 0;
-    image_info.usage |= (desc.flags & RHI_TEXTURE_TRANSFER_DST) ? VK_IMAGE_USAGE_TRANSFER_DST_BIT : 0;
+    image_info.usage |=
+        (desc.flags & RHI_TEXTURE_RENDER_TARGET) ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : 0;
+    image_info.usage |=
+        (desc.flags & RHI_TEXTURE_DEPTH_STENCIL) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
+    image_info.usage |=
+        (desc.flags & RHI_TEXTURE_TRANSFER_SRC) ? VK_IMAGE_USAGE_TRANSFER_SRC_BIT : 0;
+    image_info.usage |=
+        (desc.flags & RHI_TEXTURE_TRANSFER_DST) ? VK_IMAGE_USAGE_TRANSFER_DST_BIT : 0;
     image_info.flags = is_cube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
 
-    create_image(
+    std::tie(m_image, m_allocation) = create_image(
         image_info,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        m_image,
-        m_allocation,
+        VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
         m_context->get_vma_allocator());
 
     m_format = vk_util::map_format(image_info.format);
@@ -240,7 +231,8 @@ vk_texture_view::~vk_texture_view()
     vkDestroyImageView(m_context->get_device(), m_image_view, nullptr);
 }
 
-vk_sampler::vk_sampler(const rhi_sampler_desc& desc, vk_context* context) : m_context(context)
+vk_sampler::vk_sampler(const rhi_sampler_desc& desc, vk_context* context)
+    : m_context(context)
 {
     VkSamplerCreateInfo sampler_info = {};
     sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -273,70 +265,86 @@ vk_buffer::vk_buffer(const rhi_buffer_desc& desc, vk_context* context)
       m_buffer_size(desc.size),
       m_mapping_pointer(nullptr)
 {
-    VkBufferUsageFlags usage_flags = 0;
-    usage_flags |= (desc.flags & RHI_BUFFER_VERTEX) ? VK_BUFFER_USAGE_VERTEX_BUFFER_BIT : 0;
-    usage_flags |= (desc.flags & RHI_BUFFER_INDEX) ? VK_BUFFER_USAGE_INDEX_BUFFER_BIT : 0;
-    usage_flags |= (desc.flags & RHI_BUFFER_UNIFORM) ? VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT : 0;
-    usage_flags |= (desc.flags & RHI_BUFFER_STORAGE) ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : 0;
-    usage_flags |= (desc.flags & RHI_BUFFER_TRANSFER_SRC) ? VK_BUFFER_USAGE_TRANSFER_SRC_BIT : 0;
-    usage_flags |= (desc.flags & RHI_BUFFER_TRANSFER_DST) ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : 0;
+    VkBufferCreateInfo buffer_info = {};
+    buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffer_info.size = m_buffer_size;
+    buffer_info.usage |= (desc.flags & RHI_BUFFER_VERTEX) ? VK_BUFFER_USAGE_VERTEX_BUFFER_BIT : 0;
+    buffer_info.usage |= (desc.flags & RHI_BUFFER_INDEX) ? VK_BUFFER_USAGE_INDEX_BUFFER_BIT : 0;
+    buffer_info.usage |= (desc.flags & RHI_BUFFER_UNIFORM) ? VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT : 0;
+    buffer_info.usage |= (desc.flags & RHI_BUFFER_STORAGE) ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : 0;
+    buffer_info.usage |=
+        (desc.flags & RHI_BUFFER_TRANSFER_SRC) ? VK_BUFFER_USAGE_TRANSFER_SRC_BIT : 0;
+    buffer_info.usage |=
+        (desc.flags & RHI_BUFFER_TRANSFER_DST) ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : 0;
 
     if (desc.flags & RHI_BUFFER_HOST_VISIBLE)
     {
-        create_host_visible_buffer(
-            desc.data,
-            desc.size,
-            usage_flags,
-            m_buffer,
-            m_allocation,
-            m_context->get_vma_allocator());
+        VmaAllocationInfo allocation_info = {};
 
-        vmaMapMemory(m_context->get_vma_allocator(), m_allocation, &m_mapping_pointer);
-    }
-    else if (desc.data != nullptr)
-    {
-        VkBuffer staging_buffer;
-        VmaAllocation staging_allocation;
-        create_host_visible_buffer(
-            desc.data,
-            desc.size,
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            staging_buffer,
-            staging_allocation,
-            m_context->get_vma_allocator());
+        std::tie(m_buffer, m_allocation) = create_buffer(
+            buffer_info,
+            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+            m_context->get_vma_allocator(),
+            &allocation_info);
 
-        create_buffer(
-            desc.size,
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT | usage_flags,
-            VMA_MEMORY_USAGE_GPU_ONLY,
-            m_buffer,
-            m_allocation,
-            m_context->get_vma_allocator());
+        assert(allocation_info.pMappedData);
 
-        vk_command* command = m_context->get_graphics_queue()->allocate_command();
-        VkBufferCopy copy_region = {0, 0, desc.size};
-        vkCmdCopyBuffer(command->get_command_buffer(), staging_buffer, m_buffer, 1, &copy_region);
-        m_context->get_graphics_queue()->execute_sync(command);
+        if (desc.data != nullptr)
+        {
+            std::memcpy(allocation_info.pMappedData, desc.data, m_buffer_size);
+        }
 
-        vmaDestroyBuffer(m_context->get_vma_allocator(), staging_buffer, staging_allocation);
+        m_mapping_pointer = allocation_info.pMappedData;
     }
     else
     {
-        create_buffer(
-            desc.size,
-            usage_flags,
-            VMA_MEMORY_USAGE_GPU_ONLY,
-            m_buffer,
-            m_allocation,
-            m_context->get_vma_allocator());
+        if (desc.data != nullptr)
+        {
+            VkBufferCreateInfo staging_buffer_info = {};
+            staging_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            staging_buffer_info.size = m_buffer_size;
+            staging_buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+            VmaAllocationInfo staging_allocation_info = {};
+            auto [staging_buffer, staging_allocation] = create_buffer(
+                staging_buffer_info,
+                VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                    VMA_ALLOCATION_CREATE_MAPPED_BIT,
+                m_context->get_vma_allocator(),
+                &staging_allocation_info);
+
+            std::memcpy(staging_allocation_info.pMappedData, desc.data, m_buffer_size);
+
+            buffer_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+            std::tie(m_buffer, m_allocation) = create_buffer(
+                buffer_info,
+                VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
+                m_context->get_vma_allocator());
+
+            vk_command* command = m_context->get_graphics_queue()->allocate_command();
+            VkBufferCopy copy_region = {0, 0, desc.size};
+            vkCmdCopyBuffer(
+                command->get_command_buffer(),
+                staging_buffer,
+                m_buffer,
+                1,
+                &copy_region);
+            m_context->get_graphics_queue()->execute_sync(command);
+
+            vmaDestroyBuffer(m_context->get_vma_allocator(), staging_buffer, staging_allocation);
+        }
+        else
+        {
+            std::tie(m_buffer, m_allocation) = create_buffer(
+                buffer_info,
+                VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
+                m_context->get_vma_allocator());
+        }
     }
 }
 
 vk_buffer::~vk_buffer()
 {
-    if (m_mapping_pointer)
-        vmaUnmapMemory(m_context->get_vma_allocator(), m_allocation);
-
     vmaDestroyBuffer(m_context->get_vma_allocator(), m_buffer, m_allocation);
 }
 
@@ -353,6 +361,6 @@ vk_index_buffer::vk_index_buffer(const rhi_buffer_desc& desc, vk_context* contex
     else if (desc.index.size == 4)
         m_index_type = VK_INDEX_TYPE_UINT32;
     else
-        throw vk_exception("Invalid index size.");
+        throw std::runtime_error("Invalid index size.");
 }
 } // namespace violet::vk

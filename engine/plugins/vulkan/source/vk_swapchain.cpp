@@ -44,9 +44,7 @@ vk_swapchain_image::vk_swapchain_image(
     m_hash = hash::city_hash_64(&key, sizeof(swapchain_key));
 }
 
-vk_swapchain_image::~vk_swapchain_image()
-{
-}
+vk_swapchain_image::~vk_swapchain_image() {}
 
 vk_swapchain::vk_swapchain(const rhi_swapchain_desc& desc, vk_context* context)
     : m_swapchain(VK_NULL_HANDLE),
@@ -62,11 +60,14 @@ vk_swapchain::vk_swapchain(const rhi_swapchain_desc& desc, vk_context* context)
     vk_check(
         vkCreateWin32SurfaceKHR(m_context->get_instance(), &surface_info, nullptr, &m_surface));
 #else
-    throw vk_exception("Unsupported platform");
+    throw std::runtime_error("Unsupported platform");
 #endif
 
     for (std::size_t i = 0; i < m_context->get_frame_resource_count(); ++i)
+    {
         m_available_semaphores.emplace_back(std::make_unique<vk_semaphore>(m_context));
+        m_present_semaphores.emplace_back(std::make_unique<vk_semaphore>(m_context));
+    }
 
     resize(desc.width, desc.height);
 }
@@ -98,10 +99,18 @@ rhi_semaphore* vk_swapchain::acquire_texture()
     return semaphore.get();
 }
 
-void vk_swapchain::present(rhi_semaphore* const* wait_semaphores, std::size_t wait_semaphore_count)
+rhi_semaphore* vk_swapchain::get_present_semaphore() const
+{
+    return m_present_semaphores[m_context->get_frame_resource_index()].get();
+}
+
+void vk_swapchain::present()
 {
     auto queue = m_context->get_present_queue();
-    queue->present(m_swapchain, m_swapchain_image_index, wait_semaphores, wait_semaphore_count);
+    queue->present(
+        m_swapchain,
+        m_swapchain_image_index,
+        m_present_semaphores[m_context->get_frame_resource_index()]->get_semaphore());
 }
 
 void vk_swapchain::resize(std::uint32_t width, std::uint32_t height)

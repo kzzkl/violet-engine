@@ -8,21 +8,29 @@ namespace violet
 class material
 {
 public:
+    struct pass_info
+    {
+        rdg_render_pipeline pipeline;
+        rhi_ptr<rhi_parameter> parameter;
+    };
+
+public:
     material();
     virtual ~material() = default;
 
-    const std::vector<rdg_render_pipeline>& get_passes() const noexcept { return m_passes; }
-
-    rhi_parameter* get_parameter(std::size_t pass_index) const
+    const std::vector<pass_info>& get_passes() const noexcept
     {
-        return m_parameters[pass_index].get();
+        return m_passes;
     }
 
 protected:
     void add_pass(const rdg_render_pipeline& pipeline, const rhi_parameter_desc& parameter);
+    pass_info& get_pass(std::size_t pass_index)
+    {
+        return m_passes[pass_index];
+    }
 
 private:
-    std::vector<rdg_render_pipeline> m_passes;
-    std::vector<rhi_ptr<rhi_parameter>> m_parameters;
+    std::vector<pass_info> m_passes;
 };
 } // namespace violet

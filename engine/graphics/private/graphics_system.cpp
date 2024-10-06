@@ -105,6 +105,7 @@ void graphics_system::begin_frame()
 
 void graphics_system::end_frame()
 {
+    m_context->update_resource();
     update_light();
     render();
 }
@@ -293,23 +294,7 @@ void graphics_system::update_parameter()
 
 void graphics_system::update_light()
 {
-    struct directional_light
-    {
-        float3 direction;
-        bool shadow;
-        float3 color;
-        std::uint32_t padding;
-    };
-
-    struct light_data
-    {
-        directional_light directional_lights[16];
-        std::uint32_t directional_light_count;
-
-        uint3 padding;
-    };
-
-    light_data data = {};
+    shader::light_data data = {};
 
     get_world().get_view().write<light>().read<transform_world>().each(
         [&data](light& light, const transform_world& transform)
@@ -329,7 +314,7 @@ void graphics_system::update_light()
             }
         });
 
-    m_context->m_light->set_uniform(0, &data, sizeof(light_data), 0);
+    m_context->m_light->set_uniform(0, &data, sizeof(shader::light_data));
 }
 
 rhi_semaphore* graphics_system::render(const camera* camera, rhi_parameter* camera_parameter)
@@ -374,22 +359,27 @@ rhi_semaphore* graphics_system::render(const camera* camera, rhi_parameter* came
         }
     }
 
-    std::vector<rhi_semaphore*> signal_semaphores(swapchains.size() + 1);
-    for (std::size_t i = 0; i < signal_semaphores.size(); ++i)
+    std::vector<rhi_semaphore*> signal_semaphores;
+    signal_semaphores.reserve(swapchains.size() + 1);
+    for (std::size_t i = 0; i < swapchains.size(); ++i)
     {
-        signal_semaphores[i] = allocate_semaphore();
+        signal_semaphores.push_back(swapchains[i]->get_present_semaphore());
     }
+    signal_semaphores.push_back(allocate_semaphore());
 
     render_graph graph(m_allocator.get());
-    render_camera camera_data = {};
-    camera_data.parameter = camera_parameter;
-    camera_data.render_targets = render_targets;
-    camera_data.viewport = camera->viewport;
 
     auto& device = render_device::instance();
 
     rhi_command* command = device.allocate_command();
-    camera->renderer->render(graph, *m_context, camera_data);
+    camera->renderer->render(
+        graph,
+        *m_context,
+        {
+            .parameter = camera_parameter,
+            .render_targets = render_targets,
+            .viewport = camera->viewport,
+        });
 
     graph.compile();
     graph.execute(command);
@@ -399,7 +389,7 @@ rhi_semaphore* graphics_system::render(const camera* camera, rhi_parameter* came
 
     for (std::size_t i = 0; i < signal_semaphores.size() - 1; ++i)
     {
-        swapchains[i]->present(&signal_semaphores[i], 1);
+        swapchains[i]->present();
     }
 
     return signal_semaphores.back();

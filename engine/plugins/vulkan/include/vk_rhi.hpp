@@ -47,6 +47,11 @@ public:
         return m_context->get_frame_resource_index();
     }
 
+    rhi_backend get_backend() const noexcept final
+    {
+        return RHI_BACKEND_VULKAN;
+    }
+
     template <typename T>
     void delay_delete(T* object)
     {
@@ -64,7 +69,10 @@ public:
     void set_name(rhi_texture* object, const char* name) const override
     {
         set_name(static_cast<vk_texture*>(object)->get_image(), VK_OBJECT_TYPE_IMAGE, name);
-        set_name(static_cast<vk_texture*>(object)->get_image_view(), VK_OBJECT_TYPE_IMAGE_VIEW, name);
+        set_name(
+            static_cast<vk_texture*>(object)->get_image_view(),
+            VK_OBJECT_TYPE_IMAGE_VIEW,
+            name);
     }
 
     void set_name(rhi_buffer* object, const char* name) const override

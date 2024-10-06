@@ -46,7 +46,7 @@ public:
         m_executor = functor;
     }
 
-    void execute(rdg_command* command)
+    void execute(rdg_command& command)
     {
         m_executor(command);
     }
@@ -61,7 +61,7 @@ protected:
 
 private:
     std::vector<std::unique_ptr<rdg_reference>> m_references;
-    std::function<void(rdg_command*)> m_executor;
+    std::function<void(rdg_command&)> m_executor;
 };
 
 class rdg_render_pass : public rdg_pass

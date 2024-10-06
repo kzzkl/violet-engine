@@ -2,7 +2,7 @@
 
 #include "core/plugin_interface.hpp"
 #include <memory>
-#include <string_view>
+#include <string>
 
 namespace violet
 {

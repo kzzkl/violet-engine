@@ -4,69 +4,45 @@
 
 namespace violet
 {
-struct cube_sample_vs : public vertex_shader
+struct cube_sample_vs : public shader_vs
 {
-    static constexpr std::string_view get_path()
-    {
-        return "assets/shaders/cube_sample.vs";
-    }
+    static constexpr std::string_view path = "assets/shaders/source/ibl/cube_sample.hlsl";
 };
 
-struct convert_fs : public fragment_shader
+struct convert_fs : public shader_fs
 {
-    static constexpr std::string_view get_path()
-    {
-        return "assets/shaders/equirectangular_to_cubemap.fs";
-    }
+    static constexpr std::string_view path = "assets/shaders/source/ibl/equirectangular_to_cubemap.hlsl";
 
     static constexpr parameter convert = {{RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1}};
 
-    static constexpr parameter_slots get_parameters()
-    {
-        return {{0, convert}};
-    };
+    static constexpr parameter_layout parameters = {{0, convert}};
 };
 
-struct irradiance_fs : public fragment_shader
+struct irradiance_fs : public shader_fs
 {
-    static constexpr std::string_view get_path()
-    {
-        return "assets/shaders/irradiance.fs";
-    }
+    static constexpr std::string_view path = "assets/shaders/source/ibl/irradiance.hlsl";
 
     static constexpr parameter irradiance = {
         {RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, sizeof(rhi_texture_extent)},
         {RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1}};
 
-    static constexpr parameter_slots get_parameters()
-    {
-        return {{0, irradiance}};
-    };
+    static constexpr parameter_layout parameters = {{0, irradiance}};
 };
 
-struct prefilter_fs : public fragment_shader
+struct prefilter_fs : public shader_fs
 {
-    static constexpr std::string_view get_path()
-    {
-        return "assets/shaders/prefilter.fs";
-    }
+    static constexpr std::string_view path = "assets/shaders/source/ibl/prefilter.hlsl";
 
     static constexpr parameter prefilter = {
         {RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, sizeof(float)}, // roughness
         {RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1}};
 
-    static constexpr parameter_slots get_parameters()
-    {
-        return {{0, prefilter}};
-    };
+    static constexpr parameter_layout parameters = {{0, prefilter}};
 };
 
-struct brdf_lut_fs : public fragment_shader
+struct brdf_lut_fs : public shader_fs
 {
-    static constexpr std::string_view get_path()
-    {
-        return "assets/shaders/brdf_lut.fs";
-    }
+    static constexpr std::string_view path = "assets/shaders/source/ibl/brdf_lut.hlsl";
 };
 
 class ibl_renderer
@@ -125,7 +101,7 @@ private:
             convert_pass->add_render_target(m_cube_map_sides[i], RHI_ATTACHMENT_LOAD_OP_DONT_CARE);
         }
         convert_pass->set_execute(
-            [&data](rdg_command* command)
+            [&data](rdg_command& command)
             {
                 rdg_render_pipeline pipeline = {};
                 pipeline.vertex_shader = render_device::instance().get_shader<cube_sample_vs>();
@@ -144,11 +120,11 @@ private:
                     .max_x = data.extent.width,
                     .max_y = data.extent.height};
 
-                command->set_viewport(viewport);
-                command->set_scissor(std::span(&scissor, 1));
-                command->set_pipeline(pipeline);
-                command->set_parameter(0, data.parameter);
-                command->draw(0, 6);
+                command.set_viewport(viewport);
+                command.set_scissor(std::span(&scissor, 1));
+                command.set_pipeline(pipeline);
+                command.set_parameter(0, data.parameter);
+                command.draw(0, 6);
             });
     }
 
@@ -195,17 +171,17 @@ private:
                 RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
         }
         irradiance_pass->set_execute(
-            [&data](rdg_command* command)
+            [&data](rdg_command& command)
             {
                 rdg_render_pipeline pipeline = {};
                 pipeline.vertex_shader = render_device::instance().get_shader<cube_sample_vs>();
                 pipeline.fragment_shader = render_device::instance().get_shader<irradiance_fs>();
 
-                command->set_viewport(data.viewport);
-                command->set_scissor(std::span(&data.scissor, 1));
-                command->set_pipeline(pipeline);
-                command->set_parameter(0, data.parameter);
-                command->draw(0, 6);
+                command.set_viewport(data.viewport);
+                command.set_scissor(std::span(&data.scissor, 1));
+                command.set_pipeline(pipeline);
+                command.set_parameter(0, data.parameter);
+                command.draw(0, 6);
             });
     }
 
@@ -262,17 +238,17 @@ private:
                     RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
             }
             prefilter_pass->set_execute(
-                [&data](rdg_command* command)
+                [&data](rdg_command& command)
                 {
                     rdg_render_pipeline pipeline = {};
                     pipeline.vertex_shader = render_device::instance().get_shader<cube_sample_vs>();
                     pipeline.fragment_shader = render_device::instance().get_shader<prefilter_fs>();
 
-                    command->set_viewport(data.viewport);
-                    command->set_scissor(std::span(&data.scissor, 1));
-                    command->set_pipeline(pipeline);
-                    command->set_parameter(0, data.parameter);
-                    command->draw(0, 6);
+                    command.set_viewport(data.viewport);
+                    command.set_scissor(std::span(&data.scissor, 1));
+                    command.set_pipeline(pipeline);
+                    command.set_parameter(0, data.parameter);
+                    command.draw(0, 6);
                 });
         }
     }
@@ -288,7 +264,7 @@ private:
         rdg_render_pass* brdf_pass = graph.add_pass<rdg_render_pass>("BRDF Pass");
         brdf_pass->add_render_target(render_target, RHI_ATTACHMENT_LOAD_OP_DONT_CARE);
         brdf_pass->set_execute(
-            [brdf_map](rdg_command* command)
+            [brdf_map](rdg_command& command)
             {
                 rhi_texture_extent extent = brdf_map->get_extent();
 
@@ -305,10 +281,10 @@ private:
                 rdg_render_pipeline pipeline = {};
                 pipeline.vertex_shader = render_device::instance().get_shader<fullscreen_vs>();
                 pipeline.fragment_shader = render_device::instance().get_shader<brdf_lut_fs>();
-                command->set_viewport(viewport);
-                command->set_scissor(std::span(&scissor, 1));
-                command->set_pipeline(pipeline);
-                command->draw(0, 6);
+                command.set_viewport(viewport);
+                command.set_scissor(std::span(&scissor, 1));
+                command.set_pipeline(pipeline);
+                command.draw(0, 6);
             });
     }
 

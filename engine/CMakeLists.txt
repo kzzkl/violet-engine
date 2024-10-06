@@ -1,4 +1,3 @@
-add_subdirectory(assets)
 add_subdirectory(common)
 add_subdirectory(core)
 add_subdirectory(ecs)
@@ -12,3 +11,5 @@ add_subdirectory(task)
 add_subdirectory(toolkit)
 # add_subdirectory(ui)
 add_subdirectory(window)
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets/ DESTINATION bin/assets)

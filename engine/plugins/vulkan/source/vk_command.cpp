@@ -16,9 +16,7 @@ vk_command::vk_command(VkCommandBuffer command_buffer, vk_context* context) noex
 {
 }
 
-vk_command::~vk_command()
-{
-}
+vk_command::~vk_command() {}
 
 void vk_command::begin_render_pass(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer)
 {
@@ -309,6 +307,25 @@ void vk_command::blit_texture(
         VK_FILTER_LINEAR);
 }
 
+void vk_command::copy_buffer(
+    rhi_buffer* src,
+    const rhi_buffer_region& src_region,
+    rhi_buffer* dst,
+    const rhi_buffer_region& dst_region)
+{
+    assert(src_region.size == dst_region.size);
+
+    VkBuffer src_buffer = static_cast<vk_buffer*>(src)->get_buffer_handle();
+    VkBuffer dst_buffer = static_cast<vk_buffer*>(dst)->get_buffer_handle();
+
+    VkBufferCopy buffer_copy = {};
+    buffer_copy.srcOffset = src_region.offset;
+    buffer_copy.dstOffset = dst_region.offset;
+    buffer_copy.size = src_region.size;
+
+    vkCmdCopyBuffer(m_command_buffer, src_buffer, dst_buffer, 1, &buffer_copy);
+}
+
 void vk_command::copy_buffer_to_texture(
     rhi_buffer* buffer,
     const rhi_buffer_region& buffer_region,
@@ -508,30 +525,20 @@ vk_present_queue::vk_present_queue(std::uint32_t queue_family_index, vk_context*
     vkGetDeviceQueue(context->get_device(), queue_family_index, 0, &m_queue);
 }
 
-vk_present_queue::~vk_present_queue()
-{
-}
+vk_present_queue::~vk_present_queue() {}
 
 void vk_present_queue::present(
     VkSwapchainKHR swapchain,
     std::uint32_t image_index,
-    rhi_semaphore* const* wait_semaphores,
-    std::size_t wait_semaphore_count)
+    VkSemaphore wait_semaphore)
 {
-    VkSwapchainKHR swapchains[] = {swapchain};
-    std::uint32_t image_indices[] = {image_index};
-
-    std::vector<VkSemaphore> semaphores(wait_semaphore_count);
-    for (std::size_t i = 0; i < wait_semaphore_count; ++i)
-        semaphores[i] = static_cast<vk_semaphore*>(wait_semaphores[i])->get_semaphore();
-
     VkPresentInfoKHR present_info{};
     present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    present_info.pWaitSemaphores = semaphores.data();
-    present_info.waitSemaphoreCount = static_cast<std::uint32_t>(semaphores.size());
+    present_info.pWaitSemaphores = &wait_semaphore;
+    present_info.waitSemaphoreCount = 1;
     present_info.swapchainCount = 1;
-    present_info.pSwapchains = swapchains;
-    present_info.pImageIndices = image_indices;
+    present_info.pSwapchains = &swapchain;
+    present_info.pImageIndices = &image_index;
 
     VkResult result = vkQueuePresentKHR(m_queue, &present_info);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)

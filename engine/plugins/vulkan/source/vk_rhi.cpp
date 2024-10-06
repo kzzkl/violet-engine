@@ -98,7 +98,7 @@ rhi_shader* vk_rhi::create_shader(const rhi_shader_desc& desc)
     else if (desc.stage == RHI_SHADER_STAGE_COMPUTE)
         return new vk_compute_shader(desc, m_context.get());
     else
-        throw vk_exception("Invalid shader stage.");
+        throw std::runtime_error("Invalid shader stage.");
 }
 
 void vk_rhi::destroy_shader(rhi_shader* shader)

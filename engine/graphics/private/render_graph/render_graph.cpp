@@ -160,6 +160,7 @@ void render_graph::execute(rhi_command* command)
     {
         for (rdg_pass* pass : batch.passes)
         {
+#ifndef NDEBUG
             for (auto& group : m_groups[pass->get_index()])
             {
                 if (group.empty())
@@ -173,6 +174,7 @@ void render_graph::execute(rhi_command* command)
             }
 
             command->begin_label(pass->get_name().c_str());
+#endif
 
             barrier& barrier = m_barriers[pass->get_index()];
             if (!barrier.texture_barriers.empty() || !barrier.buffer_barriers.empty())
@@ -193,7 +195,7 @@ void render_graph::execute(rhi_command* command)
                 cmd.m_subpass_index = 0;
             }
 
-            pass->execute(&cmd);
+            pass->execute(cmd);
 
             if (batch.passes.back() == pass && batch.render_pass != nullptr)
             {
@@ -202,10 +204,13 @@ void render_graph::execute(rhi_command* command)
                 cmd.m_subpass_index = 0;
             }
 
+#ifndef NDEBUG
             command->end_label();
+#endif
         }
     }
 
+#ifndef NDEBUG
     for (auto& group : m_groups.back())
     {
         if (group.empty())
@@ -217,6 +222,7 @@ void render_graph::execute(rhi_command* command)
             command->begin_label(group.data());
         }
     }
+#endif
 }
 
 void render_graph::cull() {}
