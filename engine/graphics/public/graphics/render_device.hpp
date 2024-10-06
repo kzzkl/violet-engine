@@ -28,7 +28,6 @@ public:
     void operator()(rhi_texture* texture);
     void operator()(rhi_swapchain* swapchain);
     void operator()(rhi_fence* fence);
-    void operator()(rhi_semaphore* semaphore);
 
 private:
     rhi* m_rhi;
@@ -55,16 +54,10 @@ public:
     void reset();
 
     rhi_command* allocate_command();
-    void execute(
-        std::span<rhi_command*> commands,
-        std::span<rhi_semaphore*> signal_semaphores,
-        std::span<rhi_semaphore*> wait_semaphores,
-        rhi_fence* fence);
+    void execute(rhi_command* command);
 
     void begin_frame();
     void end_frame();
-
-    rhi_fence* get_in_flight_fence();
 
     std::size_t get_frame_count() const noexcept;
     std::size_t get_frame_resource_count() const noexcept;
@@ -189,7 +182,7 @@ public:
 
 public:
     rhi_ptr<rhi_render_pass> create_render_pass(const rhi_render_pass_desc& desc);
-    
+
     rhi_ptr<rhi_render_pipeline> create_pipeline(const rhi_render_pipeline_desc& desc);
     rhi_ptr<rhi_compute_pipeline> create_pipeline(const rhi_compute_pipeline_desc& desc);
 
@@ -204,8 +197,7 @@ public:
 
     rhi_ptr<rhi_swapchain> create_swapchain(const rhi_swapchain_desc& desc);
 
-    rhi_ptr<rhi_fence> create_fence(bool signaled);
-    rhi_ptr<rhi_semaphore> create_semaphore();
+    rhi_ptr<rhi_fence> create_fence();
 
     rhi_deleter& get_deleter() noexcept
     {

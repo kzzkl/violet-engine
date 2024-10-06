@@ -65,8 +65,8 @@ vk_swapchain::vk_swapchain(const rhi_swapchain_desc& desc, vk_context* context)
 
     for (std::size_t i = 0; i < m_context->get_frame_resource_count(); ++i)
     {
-        m_available_semaphores.emplace_back(std::make_unique<vk_semaphore>(m_context));
-        m_present_semaphores.emplace_back(std::make_unique<vk_semaphore>(m_context));
+        m_available_semaphores.emplace_back(std::make_unique<vk_fence>(false, m_context));
+        m_present_semaphores.emplace_back(std::make_unique<vk_fence>(false, m_context));
     }
 
     resize(desc.width, desc.height);
@@ -79,7 +79,7 @@ vk_swapchain::~vk_swapchain()
     vkDestroySurfaceKHR(m_context->get_instance(), m_surface, nullptr);
 }
 
-rhi_semaphore* vk_swapchain::acquire_texture()
+rhi_fence* vk_swapchain::acquire_texture()
 {
     auto& semaphore = m_available_semaphores[m_context->get_frame_resource_index()];
 
@@ -99,7 +99,7 @@ rhi_semaphore* vk_swapchain::acquire_texture()
     return semaphore.get();
 }
 
-rhi_semaphore* vk_swapchain::get_present_semaphore() const
+rhi_fence* vk_swapchain::get_present_fence() const
 {
     return m_present_semaphores[m_context->get_frame_resource_index()].get();
 }

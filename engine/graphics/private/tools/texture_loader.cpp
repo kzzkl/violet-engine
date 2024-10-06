@@ -131,7 +131,7 @@ rhi_ptr<rhi_texture> texture_loader::load(
         }
     }
 
-    render_device::instance().execute(std::span(&command, 1), {}, {}, nullptr);
+    render_device::instance().execute(command);
 
     return texture;
 }

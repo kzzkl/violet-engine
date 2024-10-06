@@ -88,7 +88,35 @@ public:
         vkCmdEndDebugUtilsLabelEXT(m_command_buffer);
     }
 
+    void signal(rhi_fence* fence, std::uint64_t value) override;
+    void wait(rhi_fence* fence, std::uint64_t value, rhi_pipeline_stage_flags stages) override;
+
     void reset();
+
+    const std::vector<VkSemaphore>& get_signal_fences() const noexcept
+    {
+        return m_signal_fences;
+    }
+
+    const std::vector<std::uint64_t>& get_signal_values() const noexcept
+    {
+        return m_signal_values;
+    }
+
+    const std::vector<VkSemaphore>& get_wait_fences() const noexcept
+    {
+        return m_wait_fences;
+    }
+
+    const std::vector<std::uint64_t>& get_wait_values() const noexcept
+    {
+        return m_wait_values;
+    }
+
+    const std::vector<VkPipelineStageFlags>& get_wait_stages() const noexcept
+    {
+        return m_wait_stages;
+    }
 
 private:
     VkCommandBuffer m_command_buffer;
@@ -96,6 +124,13 @@ private:
     VkRenderPass m_current_render_pass;
     VkPipelineLayout m_current_pipeline_layout;
     VkPipelineBindPoint m_current_bind_point;
+
+    std::vector<VkSemaphore> m_signal_fences;
+    std::vector<std::uint64_t> m_signal_values;
+
+    std::vector<VkSemaphore> m_wait_fences;
+    std::vector<std::uint64_t> m_wait_values;
+    std::vector<VkPipelineStageFlags> m_wait_stages;
 
     vk_context* m_context;
 };
@@ -108,14 +143,7 @@ public:
 
     vk_command* allocate_command();
 
-    void execute(
-        rhi_command* const* commands,
-        std::size_t command_count,
-        rhi_semaphore* const* signal_semaphores,
-        std::size_t signal_semaphore_count,
-        rhi_semaphore* const* wait_semaphores,
-        std::size_t wait_semaphore_count,
-        rhi_fence* fence);
+    void execute(rhi_command* command);
     void execute_sync(rhi_command* command);
 
     void begin_frame();
@@ -139,6 +167,8 @@ private:
     std::vector<std::unique_ptr<vk_command>> m_commands;
 
     std::unique_ptr<vk_fence> m_fence;
+    std::uint64_t m_fence_value{0};
+
     vk_context* m_context;
 };
 

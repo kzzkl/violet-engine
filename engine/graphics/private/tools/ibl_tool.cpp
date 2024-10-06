@@ -11,7 +11,8 @@ struct cube_sample_vs : public shader_vs
 
 struct convert_fs : public shader_fs
 {
-    static constexpr std::string_view path = "assets/shaders/source/ibl/equirectangular_to_cubemap.hlsl";
+    static constexpr std::string_view path =
+        "assets/shaders/source/ibl/equirectangular_to_cubemap.hlsl";
 
     static constexpr parameter convert = {{RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1}};
 
@@ -311,12 +312,9 @@ void ibl_tool::generate(
     graph.compile();
     graph.execute(command);
 
-    auto fence = render_device::instance().create_fence(false);
-    render_device::instance().execute(
-        std::span<rhi_command*>(&command, 1),
-        std::span<rhi_semaphore*>(),
-        std::span<rhi_semaphore*>(),
-        fence.get());
-    fence->wait();
+    auto fence = render_device::instance().create_fence();
+    command->signal(fence.get(), 1);
+    render_device::instance().execute(command);
+    fence->wait(1);
 }
 } // namespace violet

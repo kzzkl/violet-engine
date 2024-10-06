@@ -27,8 +27,8 @@ public:
     vk_swapchain(const vk_swapchain&) = delete;
     ~vk_swapchain();
 
-    rhi_semaphore* acquire_texture() override;
-    rhi_semaphore* get_present_semaphore() const override;
+    rhi_fence* acquire_texture() override;
+    rhi_fence* get_present_fence() const override;
 
     void present() override;
 
@@ -58,8 +58,8 @@ private:
     std::vector<std::unique_ptr<vk_swapchain_image>> m_swapchain_images;
     std::uint32_t m_swapchain_image_index;
 
-    std::vector<std::unique_ptr<vk_semaphore>> m_available_semaphores;
-    std::vector<std::unique_ptr<vk_semaphore>> m_present_semaphores;
+    std::vector<std::unique_ptr<vk_fence>> m_available_semaphores;
+    std::vector<std::unique_ptr<vk_fence>> m_present_semaphores;
 
     vk_context* m_context;
 };

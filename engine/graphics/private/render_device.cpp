@@ -70,11 +70,6 @@ void rhi_deleter::operator()(rhi_fence* fence)
     m_rhi->destroy_fence(fence);
 }
 
-void rhi_deleter::operator()(rhi_semaphore* semaphore)
-{
-    m_rhi->destroy_semaphore(semaphore);
-}
-
 render_device::render_device() {}
 
 render_device::~render_device() {}
@@ -105,20 +100,9 @@ rhi_command* render_device::allocate_command()
     return m_rhi->allocate_command();
 }
 
-void render_device::execute(
-    std::span<rhi_command*> commands,
-    std::span<rhi_semaphore*> signal_semaphores,
-    std::span<rhi_semaphore*> wait_semaphores,
-    rhi_fence* fence)
+void render_device::execute(rhi_command* command)
 {
-    m_rhi->execute(
-        commands.data(),
-        commands.size(),
-        signal_semaphores.data(),
-        signal_semaphores.size(),
-        wait_semaphores.data(),
-        wait_semaphores.size(),
-        fence);
+    m_rhi->execute(command);
 }
 
 void render_device::begin_frame()
@@ -129,11 +113,6 @@ void render_device::begin_frame()
 void render_device::end_frame()
 {
     m_rhi->end_frame();
-}
-
-rhi_fence* render_device::get_in_flight_fence()
-{
-    return m_rhi->get_in_flight_fence();
 }
 
 std::size_t render_device::get_frame_count() const noexcept
@@ -201,14 +180,9 @@ rhi_ptr<rhi_swapchain> render_device::create_swapchain(const rhi_swapchain_desc&
     return rhi_ptr<rhi_swapchain>(m_rhi->create_swapchain(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_fence> render_device::create_fence(bool signaled)
+rhi_ptr<rhi_fence> render_device::create_fence()
 {
-    return rhi_ptr<rhi_fence>(m_rhi->create_fence(signaled), m_rhi_deleter);
-}
-
-rhi_ptr<rhi_semaphore> render_device::create_semaphore()
-{
-    return rhi_ptr<rhi_semaphore>(m_rhi->create_semaphore(), m_rhi_deleter);
+    return rhi_ptr<rhi_fence>(m_rhi->create_fence(), m_rhi_deleter);
 }
 
 std::vector<std::uint8_t> render_device::compile_shader(

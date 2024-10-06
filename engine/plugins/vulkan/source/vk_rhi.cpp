@@ -29,8 +29,6 @@ bool vk_rhi::initialize(const rhi_desc& desc)
         return false;
 
     m_frame_resources.resize(m_context->get_frame_resource_count());
-    for (frame_resource& frame_resource : m_frame_resources)
-        frame_resource.in_flight_fence = std::make_unique<vk_fence>(true, m_context.get());
 
     return true;
 }
@@ -40,30 +38,14 @@ rhi_command* vk_rhi::allocate_command()
     return m_context->get_graphics_queue()->allocate_command();
 }
 
-void vk_rhi::execute(
-    rhi_command* const* commands,
-    std::size_t command_count,
-    rhi_semaphore* const* signal_semaphores,
-    std::size_t signal_semaphore_count,
-    rhi_semaphore* const* wait_semaphores,
-    std::size_t wait_semaphore_count,
-    rhi_fence* fence)
+void vk_rhi::execute(rhi_command* command)
 {
-    m_context->get_graphics_queue()->execute(
-        commands,
-        command_count,
-        signal_semaphores,
-        signal_semaphore_count,
-        wait_semaphores,
-        wait_semaphore_count,
-        fence);
+    m_context->get_graphics_queue()->execute(command);
 }
 
 void vk_rhi::begin_frame()
 {
     frame_resource& frame_resource = get_current_frame_resource();
-    frame_resource.in_flight_fence->wait();
-
     frame_resource.execute_delay_tasks();
 
     m_context->get_graphics_queue()->begin_frame();
@@ -72,11 +54,6 @@ void vk_rhi::begin_frame()
 void vk_rhi::end_frame()
 {
     m_context->next_frame();
-}
-
-rhi_fence* vk_rhi::get_in_flight_fence()
-{
-    return m_frame_resources[m_context->get_frame_resource_index()].in_flight_fence.get();
 }
 
 rhi_render_pass* vk_rhi::create_render_pass(const rhi_render_pass_desc& desc)
@@ -194,24 +171,14 @@ void vk_rhi::destroy_swapchain(rhi_swapchain* swapchain)
     delay_delete(swapchain);
 }
 
-rhi_fence* vk_rhi::create_fence(bool signaled)
+rhi_fence* vk_rhi::create_fence()
 {
-    return new vk_fence(signaled, m_context.get());
+    return new vk_fence(true, m_context.get());
 }
 
 void vk_rhi::destroy_fence(rhi_fence* fence)
 {
     delay_delete(fence);
-}
-
-rhi_semaphore* vk_rhi::create_semaphore()
-{
-    return new vk_semaphore(m_context.get());
-}
-
-void vk_rhi::destroy_semaphore(rhi_semaphore* semaphore)
-{
-    delay_delete(semaphore);
 }
 } // namespace violet::vk
 

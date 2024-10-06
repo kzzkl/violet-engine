@@ -18,7 +18,8 @@ graphics_system::graphics_system()
 
 graphics_system::~graphics_system()
 {
-    m_semaphores.clear();
+    m_fences.clear();
+    m_frame_fence = nullptr;
     m_allocator = nullptr;
     m_context = nullptr;
     render_device::instance().reset();
@@ -89,7 +90,11 @@ bool graphics_system::initialize(const dictionary& config)
     m_allocator = std::make_unique<rdg_allocator>();
     m_context = std::make_unique<render_context>();
 
-    m_used_semaphores.resize(render_device::instance().get_frame_resource_count());
+    auto& device = render_device::instance();
+    m_used_fences.resize(device.get_frame_resource_count());
+    m_frame_fence_values.resize(device.get_frame_resource_count());
+
+    m_frame_fence = device.create_fence();
 
     return true;
 }
@@ -98,7 +103,13 @@ void graphics_system::shutdown() {}
 
 void graphics_system::begin_frame()
 {
-    render_device::instance().begin_frame();
+    auto& device = render_device::instance();
+
+    ++m_frame_fence_value;
+
+    m_frame_fence->wait(m_frame_fence_values[device.get_frame_resource_index()]);
+
+    device.begin_frame();
     switch_frame_resource();
     m_allocator->reset();
 }
@@ -108,6 +119,9 @@ void graphics_system::end_frame()
     m_context->update_resource();
     update_light();
     render();
+
+    auto& device = render_device::instance();
+    device.end_frame();
 }
 
 void graphics_system::render()
@@ -138,24 +152,23 @@ void graphics_system::render()
             m_context->m_meshes.push_back({&mesh, parameter.parameter.get()});
         });
 
-    std::vector<rhi_semaphore*> finish_semaphores;
-    finish_semaphores.reserve(render_queue.size());
+    auto& device = render_device::instance();
+    rhi_command* command = device.allocate_command();
+
     for (auto& [camera, parameter] : render_queue)
     {
-        rhi_semaphore* finish_semaphore = render(camera, parameter);
-        if (finish_semaphore)
-            finish_semaphores.push_back(finish_semaphore);
+        rhi_fence* finish_fence = render(camera, parameter);
+        if (finish_fence)
+        {
+            command->wait(finish_fence, m_frame_fence_value);
+        }
     }
 
-    auto& device = render_device::instance();
+    m_frame_fence_values[device.get_frame_resource_index()] = m_frame_fence_value;
 
-    rhi_command* command = device.allocate_command();
-    device.execute(
-        std::span<rhi_command*>(&command, 1),
-        std::span<rhi_semaphore*>(),
-        finish_semaphores,
-        device.get_in_flight_fence());
-    device.end_frame();
+    command->signal(m_frame_fence.get(), m_frame_fence_value);
+
+    device.execute(command);
 }
 
 void graphics_system::add_parameter()
@@ -317,12 +330,13 @@ void graphics_system::update_light()
     m_context->m_light->set_uniform(0, &data, sizeof(shader::light_data));
 }
 
-rhi_semaphore* graphics_system::render(const camera* camera, rhi_parameter* camera_parameter)
+rhi_fence* graphics_system::render(const camera* camera, rhi_parameter* camera_parameter)
 {
     std::vector<rhi_swapchain*> swapchains;
     std::vector<rhi_texture*> render_targets;
 
-    std::vector<rhi_semaphore*> wait_semaphores;
+    auto& device = render_device::instance();
+    rhi_command* command = device.allocate_command();
 
     for (auto& render_target : camera->render_targets)
     {
@@ -334,14 +348,14 @@ rhi_semaphore* graphics_system::render(const camera* camera, rhi_parameter* came
                 using T = std::decay_t<decltype(arg)>;
                 if constexpr (std::is_same_v<T, rhi_swapchain*>)
                 {
-                    rhi_semaphore* semaphore = arg->acquire_texture();
-                    if (semaphore == nullptr)
+                    rhi_fence* fence = arg->acquire_texture();
+                    if (fence == nullptr)
                     {
                         skip = true;
                         return;
                     }
 
-                    wait_semaphores.push_back(semaphore);
+                    command->wait(fence, 0, RHI_PIPELINE_STAGE_COLOR_OUTPUT);
 
                     swapchains.push_back(arg);
                     render_targets.push_back(arg->get_texture());
@@ -359,19 +373,15 @@ rhi_semaphore* graphics_system::render(const camera* camera, rhi_parameter* came
         }
     }
 
-    std::vector<rhi_semaphore*> signal_semaphores;
-    signal_semaphores.reserve(swapchains.size() + 1);
     for (std::size_t i = 0; i < swapchains.size(); ++i)
     {
-        signal_semaphores.push_back(swapchains[i]->get_present_semaphore());
+        command->signal(swapchains[i]->get_present_fence(), m_frame_fence_value);
     }
-    signal_semaphores.push_back(allocate_semaphore());
+    rhi_fence* finish_fence = allocate_fence();
+    command->signal(finish_fence, m_frame_fence_value);
 
     render_graph graph(m_allocator.get());
 
-    auto& device = render_device::instance();
-
-    rhi_command* command = device.allocate_command();
     camera->renderer->render(
         graph,
         *m_context,
@@ -384,41 +394,40 @@ rhi_semaphore* graphics_system::render(const camera* camera, rhi_parameter* came
     graph.compile();
     graph.execute(command);
 
-    device
-        .execute(std::span<rhi_command*>(&command, 1), signal_semaphores, wait_semaphores, nullptr);
+    device.execute(command);
 
-    for (std::size_t i = 0; i < signal_semaphores.size() - 1; ++i)
+    for (std::size_t i = 0; i < swapchains.size(); ++i)
     {
         swapchains[i]->present();
     }
 
-    return signal_semaphores.back();
+    return finish_fence;
 }
 
 void graphics_system::switch_frame_resource()
 {
     auto& device = render_device::instance();
-    auto& finish_semaphores = m_used_semaphores[device.get_frame_resource_index()];
-    for (rhi_semaphore* samphore : finish_semaphores)
-        m_free_semaphores.push_back(samphore);
-    finish_semaphores.clear();
+    auto& finish_fences = m_used_fences[device.get_frame_resource_index()];
+    for (rhi_fence* samphore : finish_fences)
+        m_free_fences.push_back(samphore);
+    finish_fences.clear();
 }
 
-rhi_semaphore* graphics_system::allocate_semaphore()
+rhi_fence* graphics_system::allocate_fence()
 {
     auto& device = render_device::instance();
 
-    if (m_free_semaphores.empty())
+    if (m_free_fences.empty())
     {
-        m_semaphores.emplace_back(device.create_semaphore());
-        m_free_semaphores.push_back(m_semaphores.back().get());
+        m_fences.emplace_back(device.create_fence());
+        m_free_fences.push_back(m_fences.back().get());
     }
 
-    rhi_semaphore* semaphore = m_free_semaphores.back();
-    m_used_semaphores[device.get_frame_resource_index()].push_back(semaphore);
+    rhi_fence* fence = m_free_fences.back();
+    m_used_fences[device.get_frame_resource_index()].push_back(fence);
 
-    m_free_semaphores.pop_back();
+    m_free_fences.pop_back();
 
-    return semaphore;
+    return fence;
 }
 } // namespace violet

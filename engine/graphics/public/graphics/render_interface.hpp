@@ -536,6 +536,14 @@ struct rhi_buffer_region
     std::size_t size;
 };
 
+class rhi_fence
+{
+public:
+    virtual ~rhi_fence() = default;
+
+    virtual void wait(std::uint64_t value) = 0;
+};
+
 class rhi_command
 {
 public:
@@ -599,20 +607,12 @@ public:
 
     virtual void begin_label(const char* label) const = 0;
     virtual void end_label() const = 0;
-};
 
-class rhi_fence
-{
-public:
-    virtual ~rhi_fence() = default;
-
-    virtual void wait() = 0;
-};
-
-class rhi_semaphore
-{
-public:
-    virtual ~rhi_semaphore() = default;
+    virtual void signal(rhi_fence* fence, std::uint64_t value) = 0;
+    virtual void wait(
+        rhi_fence* fence,
+        std::uint64_t value,
+        rhi_pipeline_stage_flags stages = RHI_PIPELINE_STAGE_BEGIN) = 0;
 };
 
 enum rhi_buffer_flag
@@ -693,8 +693,8 @@ class rhi_swapchain
 public:
     virtual ~rhi_swapchain() = default;
 
-    virtual rhi_semaphore* acquire_texture() = 0;
-    virtual rhi_semaphore* get_present_semaphore() const = 0;
+    virtual rhi_fence* acquire_texture() = 0;
+    virtual rhi_fence* get_present_fence() const = 0;
 
     virtual void present() = 0;
 
@@ -721,19 +721,10 @@ public:
     virtual bool initialize(const rhi_desc& desc) = 0;
 
     virtual rhi_command* allocate_command() = 0;
-    virtual void execute(
-        rhi_command* const* commands,
-        std::size_t command_count,
-        rhi_semaphore* const* signal_semaphores,
-        std::size_t signal_semaphore_count,
-        rhi_semaphore* const* wait_semaphores,
-        std::size_t wait_semaphore_count,
-        rhi_fence* fence) = 0;
+    virtual void execute(rhi_command* commands) = 0;
 
     virtual void begin_frame() = 0;
     virtual void end_frame() = 0;
-
-    virtual rhi_fence* get_in_flight_fence() = 0;
 
     virtual std::size_t get_frame_count() const noexcept = 0;
     virtual std::size_t get_frame_resource_count() const noexcept = 0;
@@ -778,11 +769,8 @@ public:
     virtual rhi_swapchain* create_swapchain(const rhi_swapchain_desc& desc) = 0;
     virtual void destroy_swapchain(rhi_swapchain* swapchain) = 0;
 
-    virtual rhi_fence* create_fence(bool signaled) = 0;
+    virtual rhi_fence* create_fence() = 0;
     virtual void destroy_fence(rhi_fence* fence) = 0;
-
-    virtual rhi_semaphore* create_semaphore() = 0;
-    virtual void destroy_semaphore(rhi_semaphore* semaphore) = 0;
 };
 using create_rhi = rhi* (*)();
 using destroy_rhi = void (*)(rhi*);

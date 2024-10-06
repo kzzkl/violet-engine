@@ -18,19 +18,10 @@ public:
     bool initialize(const rhi_desc& desc) override;
 
     rhi_command* allocate_command() override;
-    void execute(
-        rhi_command* const* commands,
-        std::size_t command_count,
-        rhi_semaphore* const* signal_semaphores,
-        std::size_t signal_semaphore_count,
-        rhi_semaphore* const* wait_semaphores,
-        std::size_t wait_semaphore_count,
-        rhi_fence* fence) override;
+    void execute(rhi_command* command) override;
 
     void begin_frame() override;
     void end_frame() override;
-
-    rhi_fence* get_in_flight_fence() override;
 
     std::size_t get_frame_count() const noexcept override
     {
@@ -112,11 +103,8 @@ public:
     rhi_swapchain* create_swapchain(const rhi_swapchain_desc& desc) override;
     void destroy_swapchain(rhi_swapchain* swapchain) override;
 
-    rhi_fence* create_fence(bool signaled) override;
+    rhi_fence* create_fence() override;
     void destroy_fence(rhi_fence* fence) override;
-
-    rhi_semaphore* create_semaphore() override;
-    void destroy_semaphore(rhi_semaphore* semaphore) override;
 
 private:
     struct frame_resource
@@ -127,8 +115,6 @@ private:
                 task();
             delay_tasks.clear();
         }
-
-        std::unique_ptr<vk_fence> in_flight_fence;
 
         std::vector<std::function<void()>> delay_tasks;
     };

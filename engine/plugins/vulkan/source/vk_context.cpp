@@ -345,8 +345,13 @@ void vk_context::initialize_logic_device(std::span<const char*> enabled_extensio
     VkPhysicalDeviceFeatures enabled_features = {};
     enabled_features.samplerAnisotropy = VK_TRUE;
 
+    VkPhysicalDeviceVulkan12Features vulkan12 = {};
+    vulkan12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    vulkan12.timelineSemaphore = VK_TRUE;
+
     VkDeviceCreateInfo device_info = {};
     device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    device_info.pNext = &vulkan12;
     device_info.pQueueCreateInfos = queue_infos.data();
     device_info.queueCreateInfoCount = static_cast<std::uint32_t>(queue_infos.size());
     device_info.ppEnabledExtensionNames = enabled_extensions.data();

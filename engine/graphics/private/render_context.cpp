@@ -17,7 +17,7 @@ render_context::render_context()
     rhi_buffer_desc staging_buffer_desc = {
         .data = nullptr,
         .size = STAGING_BUFFER_SIZE,
-        .flags = RHI_BUFFER_HOST_VISIBLE};
+        .flags = RHI_BUFFER_TRANSFER_SRC | RHI_BUFFER_HOST_VISIBLE};
     for (std::size_t i = 0; i < device.get_frame_resource_count(); ++i)
     {
         m_staging_buffers.push_back(device.create_buffer(staging_buffer_desc));
