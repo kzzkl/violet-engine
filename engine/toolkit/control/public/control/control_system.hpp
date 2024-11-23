@@ -18,7 +18,7 @@ private:
     void tick();
     void update_orbit_control(orbit_control& orbit_control, transform& transform, int mouse_wheel);
 
-    int2 m_mouse_position;
-    int2 m_mouse_position_delta;
+    vec2i m_mouse_position;
+    vec2i m_mouse_position_delta;
 };
 } // namespace violet

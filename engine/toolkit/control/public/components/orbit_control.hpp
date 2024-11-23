@@ -6,7 +6,7 @@ namespace violet
 {
 struct orbit_control
 {
-    float3 target = {};
+    vec3f target = {};
 
     float r = 1.0f;
     float theta = math::HALF_PI;

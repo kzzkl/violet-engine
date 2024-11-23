@@ -12,8 +12,8 @@ namespace violet
 {
 struct ui_draw_mesh
 {
-    std::size_t vertex_start;
-    std::size_t index_start;
+    std::size_t vertex_offset;
+    std::size_t index_offset;
     std::size_t index_count;
 
     rhi_parameter* parameter;
@@ -61,7 +61,7 @@ public:
         std::span<const float2> position,
         std::span<const std::uint32_t> color,
         std::span<const float2> uv,
-        std::span<const std::uint32_t> indices,
+        std::span<const std::uint32_t> indexes,
         rhi_texture* texture = nullptr);
 
     void set_extent(std::uint32_t width, std::uint32_t height);

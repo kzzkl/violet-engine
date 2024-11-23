@@ -28,7 +28,7 @@ vs_out vs_main(vs_in input)
         float3(-1.0, -1.0, -1.0),
         float3(-1.0, -1.0, 1.0)};
 
-    const int indices[36] = {
+    const int indexes[36] = {
         0, 2, 1,
         2, 0, 3,
         4, 1, 5,
@@ -42,12 +42,12 @@ vs_out vs_main(vs_in input)
         1, 6, 5,
         6, 1, 2}; // x+, y+, x-, y-, z+, z-*/
 
-    float3 position = camera.position + vertices[indices[input.vertex_id]];
+    float3 position = camera.position + vertices[indexes[input.vertex_id]];
 
     vs_out result;
     result.position = mul(camera.view_projection, float4(position, 1.0f));
     result.position.z = result.position.w * 0.99999;
-    result.uvw = normalize(vertices[indices[input.vertex_id]]);
+    result.uvw = normalize(vertices[indexes[input.vertex_id]]);
 
     return result;
 }

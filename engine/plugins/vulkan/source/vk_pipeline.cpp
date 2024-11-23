@@ -64,7 +64,6 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
     std::vector<VkDescriptorSetLayoutBinding> bindings;
 
     std::size_t uniform_buffer_count = 0;
-    std::size_t storage_buffer_count = 0;
     std::size_t image_count = 0;
 
     for (std::size_t i = 0; i < m_parameter_bindings.size(); ++i)
@@ -78,43 +77,44 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
         if (desc.bindings[i].stages & RHI_SHADER_STAGE_COMPUTE)
             binding.stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
 
+        binding.descriptorCount = 1;
+        binding.pImmutableSamplers = nullptr;
+
         switch (desc.bindings[i].type)
         {
         case RHI_PARAMETER_UNIFORM: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            binding.descriptorCount = 1;
-            binding.pImmutableSamplers = nullptr;
 
-            m_parameter_bindings[i].index = uniform_buffer_count;
             m_parameter_bindings[i].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            m_parameter_bindings[i].uniform.index = uniform_buffer_count;
 
             VkDeviceSize uniform_alignment =
                 m_context->get_physical_device_properties().limits.minUniformBufferOffsetAlignment;
-            m_parameter_bindings[i].uniform_buffer.size =
-                (desc.bindings[i].size + uniform_alignment - 1) / uniform_alignment *
-                uniform_alignment;
+            m_parameter_bindings[i].uniform.size = (desc.bindings[i].size + uniform_alignment - 1) /
+                                                   uniform_alignment * uniform_alignment;
 
             ++uniform_buffer_count;
             break;
         }
+        case RHI_PARAMETER_UNIFORM_TEXEL: {
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+            m_parameter_bindings[i].type = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+            break;
+        }
         case RHI_PARAMETER_STORAGE: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            binding.descriptorCount = 1;
-            binding.pImmutableSamplers = nullptr;
-
-            m_parameter_bindings[i].index = storage_buffer_count;
             m_parameter_bindings[i].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-
-            ++storage_buffer_count;
+            break;
+        }
+        case RHI_PARAMETER_STORAGE_TEXEL: {
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+            m_parameter_bindings[i].type = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
             break;
         }
         case RHI_PARAMETER_TEXTURE: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            binding.descriptorCount = 1;
-            binding.pImmutableSamplers = nullptr;
-
-            m_parameter_bindings[i].index = image_count;
             m_parameter_bindings[i].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            m_parameter_bindings[i].texture.index = image_count;
 
             ++image_count;
             break;
@@ -227,7 +227,7 @@ vk_parameter::vk_parameter(const rhi_parameter_desc& desc, vk_context* context)
         {
             rhi_buffer_desc uniform_buffer_desc = {};
             uniform_buffer_desc.size =
-                parameter_binding.uniform_buffer.size * m_context->get_frame_resource_count();
+                parameter_binding.uniform.size * m_context->get_frame_resource_count();
             uniform_buffer_desc.flags = RHI_BUFFER_UNIFORM | RHI_BUFFER_HOST_VISIBLE;
 
             m_uniform_buffers.push_back(
@@ -255,10 +255,12 @@ vk_parameter::vk_parameter(const rhi_parameter_desc& desc, vk_context* context)
         {
             if (parameter_bindings[j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
             {
+                auto& uniform = parameter_bindings[j].uniform;
+
                 VkDescriptorBufferInfo info = {};
-                info.buffer = m_uniform_buffers[parameter_bindings[j].index]->get_buffer_handle();
-                info.offset = parameter_bindings[j].uniform_buffer.size * i;
-                info.range = parameter_bindings[j].uniform_buffer.size;
+                info.buffer = m_uniform_buffers[uniform.index]->get_buffer_handle();
+                info.offset = uniform.size * i;
+                info.range = uniform.size;
                 buffer_infos.push_back(info);
 
                 VkWriteDescriptorSet write = {};
@@ -307,17 +309,54 @@ void vk_parameter::set_uniform(
     auto& parameter_binding = m_layout->get_parameter_bindings()[index];
     assert(parameter_binding.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-    void* buffer = m_uniform_buffers[parameter_binding.index]->get_buffer();
+    void* buffer = m_uniform_buffers[parameter_binding.uniform.index]->get_buffer();
     void* target = static_cast<std::uint8_t*>(buffer) + offset +
-                   parameter_binding.uniform_buffer.size * current_index;
+                   parameter_binding.uniform.size * current_index;
 
     std::memcpy(target, data, size);
 
     mark_dirty(index);
 }
 
+void vk_parameter::set_uniform(std::size_t index, rhi_buffer* uniform_buffer)
+{
+    VkDescriptorType descriptor_type = m_layout->get_parameter_bindings()[index].type;
+
+    assert(descriptor_type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
+
+    sync();
+
+    vk_buffer* buffer = static_cast<vk_buffer*>(uniform_buffer);
+
+    VkDescriptorBufferInfo info = {};
+    info.buffer = buffer->get_buffer_handle();
+    info.offset = 0;
+    info.range = buffer->get_buffer_size();
+
+    VkWriteDescriptorSet write = {};
+    write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write.dstSet = m_frame_resources[m_context->get_frame_resource_index()].descriptor_set;
+    write.dstBinding = static_cast<std::uint32_t>(index);
+    write.dstArrayElement = 0;
+    write.descriptorCount = 1;
+    write.pBufferInfo = &info;
+    write.pImageInfo = nullptr;
+    write.descriptorType = descriptor_type;
+
+    VkBufferView buffer_view = static_cast<vk_texel_buffer*>(buffer)->get_buffer_view();
+    write.pTexelBufferView = &buffer_view;
+
+    vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
+
+    mark_dirty(index);
+}
+
 void vk_parameter::set_texture(std::size_t index, rhi_texture* texture, rhi_sampler* sampler)
 {
+    assert(
+        m_layout->get_parameter_bindings()[index].type ==
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
     sync();
 
     vk_texture* image = static_cast<vk_texture*>(texture);
@@ -329,15 +368,15 @@ void vk_parameter::set_texture(std::size_t index, rhi_texture* texture, rhi_samp
 
     auto& binding = m_layout->get_parameter_bindings()[index];
     assert(binding.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    if (m_images[binding.index].first == info.imageView &&
-        m_images[binding.index].second == info.sampler)
+    if (m_images[binding.texture.index].first == info.imageView &&
+        m_images[binding.texture.index].second == info.sampler)
     {
         return;
     }
     else
     {
-        m_images[binding.index].first = info.imageView;
-        m_images[binding.index].second = info.sampler;
+        m_images[binding.texture.index].first = info.imageView;
+        m_images[binding.texture.index].second = info.sampler;
     }
 
     VkWriteDescriptorSet write = {};
@@ -358,6 +397,12 @@ void vk_parameter::set_texture(std::size_t index, rhi_texture* texture, rhi_samp
 
 void vk_parameter::set_storage(std::size_t index, rhi_buffer* storage_buffer)
 {
+    VkDescriptorType descriptor_type = m_layout->get_parameter_bindings()[index].type;
+
+    assert(
+        descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
+        descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
+
     sync();
 
     vk_buffer* buffer = static_cast<vk_buffer*>(storage_buffer);
@@ -372,11 +417,17 @@ void vk_parameter::set_storage(std::size_t index, rhi_buffer* storage_buffer)
     write.dstSet = m_frame_resources[m_context->get_frame_resource_index()].descriptor_set;
     write.dstBinding = static_cast<std::uint32_t>(index);
     write.dstArrayElement = 0;
-    write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     write.descriptorCount = 1;
     write.pBufferInfo = &info;
     write.pImageInfo = nullptr;
-    write.pTexelBufferView = nullptr;
+    write.descriptorType = descriptor_type;
+
+    VkBufferView buffer_view;
+    if (descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)
+    {
+        buffer_view = static_cast<vk_texel_buffer*>(buffer)->get_buffer_view();
+        write.pTexelBufferView = &buffer_view;
+    }
 
     vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
 
@@ -415,8 +466,8 @@ void vk_parameter::sync()
         auto& parameter_binding = m_layout->get_parameter_bindings()[i];
         if (parameter_binding.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
         {
-            void* buffer = m_uniform_buffers[parameter_binding.index]->get_buffer();
-            std::size_t size = parameter_binding.uniform_buffer.size;
+            void* buffer = m_uniform_buffers[parameter_binding.uniform.index]->get_buffer();
+            std::size_t size = parameter_binding.uniform.size;
 
             void* source = static_cast<std::uint8_t*>(buffer) + previous_index * size;
             void* target = static_cast<std::uint8_t*>(buffer) + current_index * size;
@@ -632,42 +683,32 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
     VkPipelineDepthStencilStateCreateInfo depth_stencil_state_info = {};
     depth_stencil_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depth_stencil_state_info.depthTestEnable = desc.depth_stencil.depth_enable;
-    depth_stencil_state_info.depthWriteEnable = VK_TRUE;
-    switch (desc.depth_stencil.depth_functor)
-    {
-    case RHI_DEPTH_STENCIL_FUNCTOR_NEVER:
-        depth_stencil_state_info.depthCompareOp = VK_COMPARE_OP_NEVER;
-        break;
-    case RHI_DEPTH_STENCIL_FUNCTOR_LESS:
-        depth_stencil_state_info.depthCompareOp = VK_COMPARE_OP_LESS;
-        break;
-    case RHI_DEPTH_STENCIL_FUNCTOR_EQUAL:
-        depth_stencil_state_info.depthCompareOp = VK_COMPARE_OP_EQUAL;
-        break;
-    case RHI_DEPTH_STENCIL_FUNCTOR_LESS_EQUAL:
-        depth_stencil_state_info.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-        break;
-    case RHI_DEPTH_STENCIL_FUNCTOR_GREATER:
-        depth_stencil_state_info.depthCompareOp = VK_COMPARE_OP_GREATER;
-        break;
-    case RHI_DEPTH_STENCIL_FUNCTOR_NOT_EQUAL:
-        depth_stencil_state_info.depthCompareOp = VK_COMPARE_OP_NOT_EQUAL;
-        break;
-    case RHI_DEPTH_STENCIL_FUNCTOR_GREATER_EQUAL:
-        depth_stencil_state_info.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
-        break;
-    case RHI_DEPTH_STENCIL_FUNCTOR_ALWAYS:
-        depth_stencil_state_info.depthCompareOp = VK_COMPARE_OP_ALWAYS;
-        break;
-    }
-    depth_stencil_state_info.stencilTestEnable = VK_FALSE;
-    depth_stencil_state_info.front = {};
-    depth_stencil_state_info.back = {};
+    depth_stencil_state_info.depthWriteEnable = desc.depth_stencil.depth_write_enable;
+    depth_stencil_state_info.depthCompareOp =
+        vk_util::map_compare_op(desc.depth_stencil.depth_compare_op);
+    depth_stencil_state_info.stencilTestEnable = desc.depth_stencil.stencil_enable;
+    depth_stencil_state_info.front = {
+        .failOp = vk_util::map_stencil_op(desc.depth_stencil.stencil_front.fail_op),
+        .passOp = vk_util::map_stencil_op(desc.depth_stencil.stencil_front.pass_op),
+        .depthFailOp = vk_util::map_stencil_op(desc.depth_stencil.stencil_front.depth_fail_op),
+        .compareOp = vk_util::map_compare_op(desc.depth_stencil.stencil_front.compare_op),
+        .compareMask = 0xff,
+        .writeMask = 0xff,
+        .reference = desc.depth_stencil.stencil_front.reference,
+    };
+    depth_stencil_state_info.back = {
+        .failOp = vk_util::map_stencil_op(desc.depth_stencil.stencil_back.fail_op),
+        .passOp = vk_util::map_stencil_op(desc.depth_stencil.stencil_back.pass_op),
+        .depthFailOp = vk_util::map_stencil_op(desc.depth_stencil.stencil_back.depth_fail_op),
+        .compareOp = vk_util::map_compare_op(desc.depth_stencil.stencil_back.compare_op),
+        .compareMask = 0xff,
+        .writeMask = 0xff,
+        .reference = desc.depth_stencil.stencil_back.reference,
+    };
 
     vk_render_pass* render_pass = static_cast<vk_render_pass*>(desc.render_pass);
 
-    std::size_t blend_count =
-        render_pass->get_subpass_info(desc.render_subpass_index).render_target_count;
+    std::size_t blend_count = render_pass->get_subpass_info(desc.subpass_index).render_target_count;
     std::vector<VkPipelineColorBlendAttachmentState> color_blend_attachments(blend_count);
     for (std::size_t i = 0; i < blend_count; ++i)
     {
@@ -724,7 +765,6 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
     std::vector<VkDynamicState> dynamic_state = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR,
-        VK_DYNAMIC_STATE_STENCIL_REFERENCE,
         VK_DYNAMIC_STATE_DEPTH_BOUNDS};
 
     VkPipelineDynamicStateCreateInfo dynamic_state_info = {};
@@ -745,7 +785,7 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
     pipeline_info.pDynamicState = &dynamic_state_info;
     pipeline_info.layout = m_pipeline_layout->get_layout();
     pipeline_info.renderPass = render_pass->get_render_pass();
-    pipeline_info.subpass = static_cast<std::uint32_t>(desc.render_subpass_index);
+    pipeline_info.subpass = static_cast<std::uint32_t>(desc.subpass_index);
     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
     pipeline_info.pDepthStencilState = &depth_stencil_state_info;
 

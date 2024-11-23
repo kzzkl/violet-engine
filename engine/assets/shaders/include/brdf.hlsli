@@ -1,7 +1,7 @@
-#ifndef VIOLET_BRDF_INCLUDE
-#define VIOLET_BRDF_INCLUDE
+#ifndef BRDF_HLSLI
+#define BRDF_HLSLI
 
-#include "violet_define.hlsli"
+#include "common.hlsli"
 
 float radical_inverse_vdc(uint bits) 
 {

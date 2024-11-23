@@ -1,4 +1,4 @@
-#include "violet_define.hlsli"
+#include "common.hlsli"
 
 struct irradiance_data
 {

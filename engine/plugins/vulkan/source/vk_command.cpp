@@ -146,18 +146,18 @@ void vk_command::set_index_buffer(rhi_buffer* index_buffer)
         buffer->get_index_type());
 }
 
-void vk_command::draw(std::size_t vertex_start, std::size_t vertex_count)
+void vk_command::draw(std::size_t vertex_offset, std::size_t vertex_count)
 {
     vkCmdDraw(
         m_command_buffer,
         static_cast<std::uint32_t>(vertex_count),
         1,
-        static_cast<std::uint32_t>(vertex_start),
+        static_cast<std::uint32_t>(vertex_offset),
         0);
 }
 
 void vk_command::draw_indexed(
-    std::size_t index_start,
+    std::size_t index_offset,
     std::size_t index_count,
     std::size_t vertex_base)
 {
@@ -165,9 +165,26 @@ void vk_command::draw_indexed(
         m_command_buffer,
         static_cast<std::uint32_t>(index_count),
         1,
-        static_cast<std::uint32_t>(index_start),
+        static_cast<std::uint32_t>(index_offset),
         static_cast<std::uint32_t>(vertex_base),
         0);
+}
+
+void vk_command::draw_indexed_indirect(
+    rhi_buffer* command_buffer,
+    std::size_t command_buffer_offset,
+    rhi_buffer* count_buffer,
+    std::size_t count_buffer_offset,
+    std::size_t max_draw_count)
+{
+    vkCmdDrawIndexedIndirectCount(
+        m_command_buffer,
+        static_cast<vk_buffer*>(command_buffer)->get_buffer_handle(),
+        command_buffer_offset,
+        static_cast<vk_buffer*>(count_buffer)->get_buffer_handle(),
+        count_buffer_offset,
+        max_draw_count,
+        sizeof(VkDrawIndexedIndirectCommand));
 }
 
 void vk_command::dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z)
@@ -198,6 +215,8 @@ void vk_command::set_pipeline_barrier(
     std::vector<VkImageMemoryBarrier> vk_image_barriers(texture_barrier_count);
     for (std::size_t i = 0; i < texture_barrier_count; ++i)
     {
+        vk_image* image = static_cast<vk_image*>(texture_barriers[i].texture);
+
         VkImageMemoryBarrier& barrier = vk_image_barriers[i];
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         barrier.srcAccessMask = vk_util::map_access_flags(texture_barriers[i].src_access);
@@ -206,8 +225,8 @@ void vk_command::set_pipeline_barrier(
         barrier.newLayout = vk_util::map_layout(texture_barriers[i].dst_layout);
         barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.image = static_cast<vk_texture*>(texture_barriers[i].texture)->get_image();
-        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.image = image->get_image();
+        barrier.subresourceRange.aspectMask = image->get_aspect_mask();
         barrier.subresourceRange.baseMipLevel = texture_barriers[i].level;
         barrier.subresourceRange.levelCount = texture_barriers[i].level_count;
         barrier.subresourceRange.baseArrayLayer = texture_barriers[i].layer;
@@ -237,23 +256,23 @@ void vk_command::copy_texture(
         src_region.extent.width == dst_region.extent.width &&
         src_region.extent.height == dst_region.extent.height);
 
+    vk_image* src_image = static_cast<vk_image*>(src);
+    vk_image* dst_image = static_cast<vk_image*>(dst);
+
     VkImageCopy image_copy = {};
     image_copy.extent = {src_region.extent.width, src_region.extent.height, 1};
 
     image_copy.srcOffset = {src_region.offset_x, src_region.offset_y, 0};
-    image_copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_copy.srcSubresource.aspectMask = src_image->get_aspect_mask();
     image_copy.srcSubresource.mipLevel = src_region.level;
     image_copy.srcSubresource.baseArrayLayer = src_region.layer;
     image_copy.srcSubresource.layerCount = src_region.layer_count;
 
     image_copy.dstOffset = {dst_region.offset_x, dst_region.offset_y, 0};
-    image_copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_copy.dstSubresource.aspectMask = dst_image->get_aspect_mask();
     image_copy.dstSubresource.mipLevel = dst_region.level;
     image_copy.dstSubresource.baseArrayLayer = dst_region.layer;
     image_copy.dstSubresource.layerCount = dst_region.layer_count;
-
-    vk_texture* src_image = static_cast<vk_texture*>(src);
-    vk_texture* dst_image = static_cast<vk_texture*>(dst);
 
     vkCmdCopyImage(
         m_command_buffer,
@@ -271,6 +290,9 @@ void vk_command::blit_texture(
     rhi_texture* dst,
     const rhi_texture_region& dst_region)
 {
+    vk_image* src_image = static_cast<vk_image*>(src);
+    vk_image* dst_image = static_cast<vk_image*>(dst);
+
     VkImageBlit image_blit = {};
 
     image_blit.srcOffsets[0] = {src_region.offset_x, src_region.offset_y, 0};
@@ -278,7 +300,7 @@ void vk_command::blit_texture(
         static_cast<std::int32_t>(src_region.extent.width),
         static_cast<std::int32_t>(src_region.extent.height),
         1};
-    image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_blit.srcSubresource.aspectMask = src_image->get_aspect_mask();
     image_blit.srcSubresource.mipLevel = src_region.level;
     image_blit.srcSubresource.baseArrayLayer = src_region.layer;
     image_blit.srcSubresource.layerCount = src_region.layer_count;
@@ -288,13 +310,10 @@ void vk_command::blit_texture(
         static_cast<std::int32_t>(dst_region.extent.width),
         static_cast<std::int32_t>(dst_region.extent.height),
         1};
-    image_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_blit.dstSubresource.aspectMask = dst_image->get_aspect_mask();
     image_blit.dstSubresource.mipLevel = dst_region.level;
     image_blit.dstSubresource.baseArrayLayer = dst_region.layer;
     image_blit.dstSubresource.layerCount = dst_region.layer_count;
-
-    vk_texture* src_image = static_cast<vk_texture*>(src);
-    vk_texture* dst_image = static_cast<vk_texture*>(dst);
 
     vkCmdBlitImage(
         m_command_buffer,
@@ -305,6 +324,21 @@ void vk_command::blit_texture(
         1,
         &image_blit,
         VK_FILTER_LINEAR);
+}
+
+void vk_command::fill_buffer(
+    rhi_buffer* buffer,
+    const rhi_buffer_region& region,
+    std::uint32_t value)
+{
+    assert(region.size > 0 && region.size % 4 == 0);
+
+    vkCmdFillBuffer(
+        m_command_buffer,
+        static_cast<vk_buffer*>(buffer)->get_buffer_handle(),
+        region.offset,
+        region.size,
+        value);
 }
 
 void vk_command::copy_buffer(
@@ -332,8 +366,8 @@ void vk_command::copy_buffer_to_texture(
     rhi_texture* texture,
     const rhi_texture_region& texture_region)
 {
-    VkBuffer src_buffer = static_cast<vk_buffer*>(buffer)->get_buffer_handle();
-    VkImage dst_image = static_cast<vk_image*>(texture)->get_image();
+    vk_buffer* src_buffer = static_cast<vk_buffer*>(buffer);
+    vk_image* dst_image = static_cast<vk_image*>(texture);
 
     VkBufferMemoryBarrier buffer_barrier = {};
     buffer_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -341,7 +375,7 @@ void vk_command::copy_buffer_to_texture(
     buffer_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
     buffer_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     buffer_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    buffer_barrier.buffer = src_buffer;
+    buffer_barrier.buffer = src_buffer->get_buffer_handle();
     buffer_barrier.offset = buffer_region.offset;
     buffer_barrier.size = buffer_region.size;
 
@@ -349,12 +383,12 @@ void vk_command::copy_buffer_to_texture(
     texture_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     texture_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     texture_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    texture_barrier.image = dst_image;
+    texture_barrier.image = dst_image->get_image();
     texture_barrier.subresourceRange.baseMipLevel = texture_region.level;
     texture_barrier.subresourceRange.levelCount = 1;
     texture_barrier.subresourceRange.baseArrayLayer = texture_region.layer;
     texture_barrier.subresourceRange.layerCount = texture_region.layer_count;
-    texture_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    texture_barrier.subresourceRange.aspectMask = dst_image->get_aspect_mask();
     texture_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     texture_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     texture_barrier.srcAccessMask = 0;
@@ -375,7 +409,7 @@ void vk_command::copy_buffer_to_texture(
     region.bufferOffset = 0;
     region.bufferRowLength = 0;
     region.bufferImageHeight = 0;
-    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.aspectMask = dst_image->get_aspect_mask();
     region.imageSubresource.mipLevel = texture_region.level;
     region.imageSubresource.baseArrayLayer = texture_region.layer;
     region.imageSubresource.layerCount = 1;
@@ -384,8 +418,8 @@ void vk_command::copy_buffer_to_texture(
 
     vkCmdCopyBufferToImage(
         m_command_buffer,
-        src_buffer,
-        dst_image,
+        src_buffer->get_buffer_handle(),
+        dst_image->get_image(),
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1,
         &region);
@@ -545,7 +579,7 @@ void vk_present_queue::present(
     std::uint32_t image_index,
     VkSemaphore wait_semaphore)
 {
-    VkPresentInfoKHR present_info{};
+    VkPresentInfoKHR present_info = {};
     present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     present_info.pWaitSemaphores = &wait_semaphore;
     present_info.waitSemaphoreCount = 1;
@@ -554,9 +588,9 @@ void vk_present_queue::present(
     present_info.pImageIndices = &image_index;
 
     VkResult result = vkQueuePresentKHR(m_queue, &present_info);
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
-        return;
-    else
+    if (result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR)
+    {
         vk_check(result);
+    }
 }
 } // namespace violet::vk

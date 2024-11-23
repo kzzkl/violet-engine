@@ -8,7 +8,7 @@ class task_group
 {
 public:
     static constexpr std::string_view group_begin_suffix = " - Begin";
-    static constexpr std::string_view group_finish_suffix = " - Finish";
+    static constexpr std::string_view group_end_suffix = " - End";
 
 public:
     task_group(task_graph* graph);
@@ -18,7 +18,7 @@ public:
         m_name = name;
 
         m_begin->set_name(m_name + group_begin_suffix.data());
-        m_finish->set_name(m_name + group_finish_suffix.data());
+        m_end->set_name(m_name + group_end_suffix.data());
 
         return *this;
     }
@@ -35,9 +35,9 @@ public:
         return *m_begin;
     }
 
-    task& get_finish_task()
+    task& get_end_task()
     {
-        return *m_finish;
+        return *m_end;
     }
 
     template <typename... Args>
@@ -56,6 +56,6 @@ private:
     task_group* m_group{nullptr};
 
     task* m_begin{nullptr};
-    task* m_finish{nullptr};
+    task* m_end{nullptr};
 };
 } // namespace violet

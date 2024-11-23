@@ -19,7 +19,7 @@ public:
         updated_flag = true;
     }
 
-    float4x4 transform;
+    mat4f transform;
     bool updated_flag;
 
     bt3_rigidbody* rigidbody;
@@ -106,12 +106,12 @@ void bt3_rigidbody::set_shape(phy_collision_shape* shape)
     m_rigidbody->setCollisionShape(static_cast<bt3_shape*>(shape)->shape());
 }
 
-const float4x4& bt3_rigidbody::get_transform() const
+const mat4f& bt3_rigidbody::get_transform() const
 {
     return m_motion_state->transform;
 }
 
-void bt3_rigidbody::set_transform(const float4x4& world)
+void bt3_rigidbody::set_transform(const mat4f& world)
 {
     btTransform transform;
     transform.setFromOpenGLMatrix(&world[0][0]);
@@ -119,12 +119,12 @@ void bt3_rigidbody::set_transform(const float4x4& world)
     m_motion_state->transform = world;
 }
 
-void bt3_rigidbody::set_angular_velocity(const float3& velocity)
+void bt3_rigidbody::set_angular_velocity(const vec3f& velocity)
 {
     m_rigidbody->setAngularVelocity(convert_vector(velocity));
 }
 
-void bt3_rigidbody::set_linear_velocity(const float3& velocity)
+void bt3_rigidbody::set_linear_velocity(const vec3f& velocity)
 {
     m_rigidbody->setLinearVelocity(convert_vector(velocity));
 }

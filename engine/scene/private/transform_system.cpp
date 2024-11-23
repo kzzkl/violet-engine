@@ -5,7 +5,7 @@
 namespace violet
 {
 transform_system::transform_system()
-    : engine_system("Transform")
+    : engine_system("transform")
 {
 }
 
@@ -41,7 +41,7 @@ void transform_system::update_local()
     view.each(
         [](const transform& transform, transform_local& local)
         {
-            matrix4 local_matrix = matrix::affine_transform(
+            mat4f_simd local_matrix = matrix::affine_transform(
                 math::load(transform.scale),
                 math::load(transform.rotation),
                 math::load(transform.position));
@@ -80,7 +80,9 @@ void transform_system::update_world()
         .without<hierarchy_parent>()
         .each(
             [&root_entities](
-                const entity& e, const transform_world& world, const hierarchy_child& child)
+                const entity& e,
+                const transform_world& world,
+                const hierarchy_child& child)
             {
                 root_entities.push_back(e);
             });
@@ -89,7 +91,7 @@ void transform_system::update_world()
     {
         if (world.has_component<hierarchy_child>(root))
         {
-            float4x4 root_matrix = world.get_component<const transform_world>(root).matrix;
+            mat4f root_matrix = world.get_component<const transform_world>(root).matrix;
             for (auto& child : world.get_component<const hierarchy_child>(root).children)
             {
                 update_world_recursive(child, root_matrix, false);
@@ -98,8 +100,7 @@ void transform_system::update_world()
     }
 }
 
-void transform_system::update_world_recursive(
-    entity e, const float4x4& parent_world, bool need_update)
+void transform_system::update_world_recursive(entity e, const mat4f& parent_world, bool need_update)
 {
     auto& world = get_world();
 
@@ -108,8 +109,8 @@ void transform_system::update_world_recursive(
 
     if (need_update)
     {
-        matrix4 local_matrix = math::load(world.get_component<const transform_local>(e).matrix);
-        matrix4 parent_matrix = math::load(parent_world);
+        mat4f_simd local_matrix = math::load(world.get_component<const transform_local>(e).matrix);
+        mat4f_simd parent_matrix = math::load(parent_world);
 
         auto& world_transform = world.get_component<transform_world>(e);
         math::store(matrix::mul(local_matrix, parent_matrix), world_transform.matrix);

@@ -11,26 +11,20 @@ struct vs_out
 
 vs_out vs_main(vs_in input)
 {
-    const float2 ndc[4] = {
+    const float2 ndc[3] = {
         float2(-1.0, 1.0),
-        float2(1.0, 1.0),
-        float2(1.0, -1.0),
-        float2(-1.0, -1.0),
+        float2(-1.0, -3.0),
+        float2(3.0, 1.0),
     };
 
-    const float2 uv[4] = {
+    const float2 uv[3] = {
         float2(0.0, 0.0),
-        float2(1.0, 0.0),
-        float2(1.0, 1.0),
-        float2(0.0, 1.0),
+        float2(0.0, 2.0),
+        float2(2.0, 0.0),
     };
-    
-    const uint indices[6] = {0, 2, 1, 0, 3, 2};
-
-    uint index = indices[input.vertex_id];
 
     vs_out output;
-    output.position = float4(ndc[index], 0.0, 1.0);
-    output.uv = uv[index];
+    output.position = float4(ndc[input.vertex_id], 0.0, 1.0);
+    output.uv = uv[input.vertex_id];
     return output;
 }

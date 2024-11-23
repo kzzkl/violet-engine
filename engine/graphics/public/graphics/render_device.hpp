@@ -3,7 +3,6 @@
 #include "common/hash.hpp"
 #include "common/type_index.hpp"
 #include "graphics/shader.hpp"
-#include <format>
 #include <memory>
 #include <span>
 #include <unordered_map>
@@ -11,6 +10,9 @@
 
 namespace violet
 {
+using render_id = std::uint64_t;
+static constexpr render_id INVALID_RENDER_ID = std::numeric_limits<render_id>::max();
+
 class rhi_deleter
 {
 public:
@@ -39,11 +41,6 @@ using rhi_ptr = std::unique_ptr<T, rhi_deleter>;
 class shader_compiler;
 class render_device
 {
-private:
-    struct shader_index : public type_index<shader_index, std::size_t>
-    {
-    };
-
 public:
     render_device();
     ~render_device();
@@ -55,6 +52,7 @@ public:
 
     rhi_command* allocate_command();
     void execute(rhi_command* command);
+    void execute_sync(rhi_command* command);
 
     void begin_frame();
     void end_frame();
@@ -66,20 +64,15 @@ public:
     template <typename T>
     rhi_shader* get_shader(std::span<std::wstring> defines = {})
     {
-        if (m_shader_groups.size() <= shader_index::value<T>())
-        {
-            m_shader_groups.resize(shader_index::value<T>() + 1);
-        }
-
-        std::uint64_t hash = 0;
+        std::uint64_t hash =
+            hash::combine(hash::city_hash_64(T::path.data(), T::path.size()), T::stage);
         for (auto& macro : defines)
         {
             hash ^= hash::city_hash_64(macro.data(), macro.size());
         }
 
-        shader_group& group = m_shader_groups[shader_index::value<T>()];
-        auto iter = group.variants.find(hash);
-        if (iter == group.variants.end())
+        auto iter = m_shaders.find(hash);
+        if (iter == m_shaders.end())
         {
             std::vector<const wchar_t*> arguments = {
                 L"-I",
@@ -146,29 +139,31 @@ public:
                 desc.parameter_count = T::parameters.parameter_count;
             }
 
-            m_shader_cache.emplace_back(m_rhi->create_shader(desc), m_rhi_deleter);
-            rhi_shader* result = m_shader_cache.back().get();
+            auto shader = rhi_ptr<rhi_shader>(m_rhi->create_shader(desc), m_rhi_deleter);
 
             if constexpr (has_inputs<T>)
             {
+                auto& vertex_attributes = m_vertex_attributes[shader.get()];
                 for (std::size_t i = 0; i < T::inputs.attribute_count; ++i)
                 {
-                    m_shader_info[result].vertex_attributes.push_back(T::inputs.attributes[i].name);
+                    vertex_attributes.push_back(T::inputs.attributes[i].name);
                 }
             }
 
-            group.variants[hash] = result;
+            rhi_shader* result = shader.get();
+            m_shaders[hash] = std::move(shader);
+
             return result;
         }
         else
         {
-            return iter->second;
+            return iter->second.get();
         }
     }
 
     const std::vector<std::string>& get_vertex_attributes(rhi_shader* shader) const
     {
-        return m_shader_info.at(shader).vertex_attributes;
+        return m_vertex_attributes.at(shader);
     }
 
 public:
@@ -212,20 +207,12 @@ private:
         std::string_view path,
         std::span<const wchar_t*> arguments);
 
-    struct shader_info
-    {
-        std::vector<std::string> vertex_attributes;
-    };
-
-    struct shader_group
-    {
-        std::unordered_map<std::uint64_t, rhi_shader*> variants;
-    };
-
-    std::unordered_map<rhi_shader*, shader_info> m_shader_info;
-    std::vector<shader_group> m_shader_groups;
-    std::vector<rhi_ptr<rhi_shader>> m_shader_cache;
+    std::unordered_map<std::uint64_t, rhi_ptr<rhi_shader>> m_shaders;
+    std::unordered_map<rhi_shader*, std::vector<std::string>> m_vertex_attributes;
 
     std::unique_ptr<shader_compiler> m_shader_compiler;
+
+    rhi_ptr<rhi_fence> m_fence;
+    std::uint64_t m_fence_value{0};
 };
 } // namespace violet

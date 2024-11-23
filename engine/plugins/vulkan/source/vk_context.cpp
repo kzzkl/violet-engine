@@ -48,20 +48,7 @@ bool check_extension_support(
 }
 } // namespace
 
-vk_context::vk_context() noexcept
-    : m_instance(VK_NULL_HANDLE),
-      m_physical_device(VK_NULL_HANDLE),
-      m_device(VK_NULL_HANDLE),
-      m_graphics_queue(nullptr),
-      m_present_queue(nullptr),
-      m_frame_count(0),
-      m_frame_resource_count(0),
-      m_frame_resource_index(0)
-{
-#ifndef NDEUBG
-    m_debug_messenger = VK_NULL_HANDLE;
-#endif
-}
+vk_context::vk_context() noexcept {}
 
 vk_context::~vk_context()
 {
@@ -329,10 +316,10 @@ void vk_context::initialize_logic_device(std::span<const char*> enabled_extensio
             graphics_queue_family_index = i;
     }
 
-    std::set<std::uint32_t> queue_indices = {graphics_queue_family_index};
+    std::set<std::uint32_t> queue_indexes = {graphics_queue_family_index};
     std::vector<VkDeviceQueueCreateInfo> queue_infos = {};
     float queue_priority = 1.0;
-    for (std::uint32_t index : queue_indices)
+    for (std::uint32_t index : queue_indexes)
     {
         VkDeviceQueueCreateInfo queue_info = {};
         queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -348,6 +335,7 @@ void vk_context::initialize_logic_device(std::span<const char*> enabled_extensio
     VkPhysicalDeviceVulkan12Features vulkan12 = {};
     vulkan12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
     vulkan12.timelineSemaphore = VK_TRUE;
+    vulkan12.drawIndirectCount = VK_TRUE;
 
     VkDeviceCreateInfo device_info = {};
     device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;

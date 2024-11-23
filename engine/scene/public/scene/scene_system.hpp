@@ -2,6 +2,7 @@
 
 #include "core/engine_system.hpp"
 #include "math/math.hpp"
+#include "scene/scene.hpp"
 
 namespace violet
 {
@@ -12,10 +13,9 @@ public:
 
     virtual bool initialize(const dictionary& config) override;
 
-    void update_bounding_box();
-
-    void frustum_culling(const std::array<float4, 6>& frustum);
+    scene* create_scene(const std::string& name);
 
 private:
+    std::vector<std::unique_ptr<scene>> m_scenes;
 };
 } // namespace violet

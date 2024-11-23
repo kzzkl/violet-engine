@@ -18,25 +18,25 @@ struct skybox_fs : public shader_fs
 
 void skybox_pass::add(render_graph& graph, const parameter& parameter)
 {
-    struct pass_data : public rdg_data
+    struct pass_data
     {
         rhi_parameter* camera;
         rhi_viewport viewport;
     };
 
-    pass_data& data = graph.allocate_data<pass_data>();
-    data.viewport = parameter.viewport;
-    data.camera = parameter.camera;
+    pass_data data = {
+        .camera = parameter.camera.camera_parameter,
+        .viewport = parameter.camera.viewport};
 
-    rdg_render_pass* pass = graph.add_pass<rdg_render_pass>("Skybox Pass");
+    auto& pass = graph.add_pass<rdg_render_pass>("Skybox Pass");
 
-    pass->add_render_target(
+    pass.add_render_target(
         parameter.render_target,
         parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
-    pass->set_depth_stencil(
+    pass.set_depth_stencil(
         parameter.depth_buffer,
         parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
-    pass->set_execute(
+    pass.set_execute(
         [data](rdg_command& command)
         {
             command.set_viewport(data.viewport);

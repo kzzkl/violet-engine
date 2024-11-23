@@ -24,35 +24,33 @@ public:
     rdg_texture* add_texture(
         std::string_view name,
         rhi_texture* texture,
-        rhi_texture_layout initial_layout,
-        rhi_texture_layout final_layout);
+        rhi_texture_layout initial_layout = RHI_TEXTURE_LAYOUT_UNDEFINED,
+        rhi_texture_layout final_layout = RHI_TEXTURE_LAYOUT_UNDEFINED);
 
-    rdg_texture* add_texture(
-        std::string_view name,
-        const rhi_texture_desc& desc,
-        rhi_texture_layout initial_layout,
-        rhi_texture_layout final_layout);
+    rdg_texture* add_texture(std::string_view name, const rhi_texture_desc& desc);
 
     rdg_texture* add_texture(
         std::string_view name,
         rhi_texture* texture,
         std::uint32_t level,
         std::uint32_t layer,
-        rhi_texture_layout initial_layout,
-        rhi_texture_layout final_layout);
+        rhi_texture_layout initial_layout = RHI_TEXTURE_LAYOUT_UNDEFINED,
+        rhi_texture_layout final_layout = RHI_TEXTURE_LAYOUT_UNDEFINED);
 
     rdg_texture* add_texture(
         std::string_view name,
         rdg_texture* texture,
         std::uint32_t level,
         std::uint32_t layer,
-        rhi_texture_layout initial_layout,
-        rhi_texture_layout final_layout);
+        rhi_texture_layout initial_layout = RHI_TEXTURE_LAYOUT_UNDEFINED,
+        rhi_texture_layout final_layout = RHI_TEXTURE_LAYOUT_UNDEFINED);
 
     rdg_buffer* add_buffer(std::string_view name, rhi_buffer* buffer);
 
+    rdg_buffer* add_buffer(std::string_view name, const rhi_buffer_desc& desc);
+
     template <RDGPass T, typename... Args>
-    T* add_pass(std::string_view name, Args&&... args)
+    T& add_pass(std::string_view name, Args&&... args)
     {
         auto pass = std::make_unique<T>(std::forward<Args>(args)...);
         pass->m_name = name;
@@ -62,24 +60,18 @@ public:
 
         m_groups.push_back({});
 
-        return result;
+        return *result;
     }
 
     void begin_group(std::string_view group_name);
     void end_group();
 
     void compile();
-    void execute(rhi_command* command);
+    void record(rhi_command* command);
 
     render_graph& operator=(const render_graph&) = delete;
 
 public:
-    template <typename T>
-    T& allocate_data()
-    {
-        return m_allocator->allocate_data<T>();
-    }
-
     rhi_parameter* allocate_parameter(const rhi_parameter_desc& desc)
     {
         return m_allocator->allocate_parameter(desc);
@@ -108,7 +100,6 @@ private:
         std::vector<rhi_texture_barrier> texture_barriers;
         std::vector<rhi_buffer_barrier> buffer_barriers;
     };
-    std::vector<barrier> m_barriers;
 
     struct render_batch
     {
@@ -116,6 +107,8 @@ private:
 
         rhi_render_pass* render_pass;
         rhi_framebuffer* framebuffer;
+
+        barrier barrier;
     };
     std::vector<render_batch> m_batches;
 

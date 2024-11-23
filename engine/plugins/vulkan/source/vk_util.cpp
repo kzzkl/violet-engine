@@ -84,6 +84,8 @@ VkFormat vk_util::map_format(rhi_format format)
         return VK_FORMAT_D24_UNORM_S8_UINT;
     case RHI_FORMAT_D32_FLOAT:
         return VK_FORMAT_D32_SFLOAT;
+    case RHI_FORMAT_D32_FLOAT_S8_UINT:
+        return VK_FORMAT_D32_SFLOAT_S8_UINT;
     default:
         throw std::runtime_error("Invalid format.");
     }
@@ -169,6 +171,8 @@ rhi_format vk_util::map_format(VkFormat format)
         return RHI_FORMAT_D24_UNORM_S8_UINT;
     case VK_FORMAT_D32_SFLOAT:
         return RHI_FORMAT_D32_FLOAT;
+    case VK_FORMAT_D32_SFLOAT_S8_UINT:
+        return RHI_FORMAT_D32_FLOAT_S8_UINT;
     default:
         throw std::runtime_error("Invalid format.");
     }
@@ -252,6 +256,36 @@ VkSamplerAddressMode vk_util::map_sampler_address_mode(rhi_sampler_address_mode 
     }
 }
 
+VkImageUsageFlags vk_util::map_image_usage_flags(rhi_texture_flags flags)
+{
+    VkImageUsageFlags usages = 0;
+
+    usages |= (flags & RHI_TEXTURE_SHADER_RESOURCE) ? VK_IMAGE_USAGE_SAMPLED_BIT : 0;
+    usages |= (flags & RHI_TEXTURE_RENDER_TARGET) ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : 0;
+    usages |= (flags & RHI_TEXTURE_DEPTH_STENCIL) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
+    usages |= (flags & RHI_TEXTURE_TRANSFER_SRC) ? VK_IMAGE_USAGE_TRANSFER_SRC_BIT : 0;
+    usages |= (flags & RHI_TEXTURE_TRANSFER_DST) ? VK_IMAGE_USAGE_TRANSFER_DST_BIT : 0;
+
+    return usages;
+}
+
+VkBufferUsageFlags vk_util::map_buffer_usage_flags(rhi_buffer_flags flags)
+{
+    VkBufferUsageFlags usages = 0;
+
+    usages |= (flags & RHI_BUFFER_VERTEX) ? VK_BUFFER_USAGE_VERTEX_BUFFER_BIT : 0;
+    usages |= (flags & RHI_BUFFER_INDEX) ? VK_BUFFER_USAGE_INDEX_BUFFER_BIT : 0;
+    usages |= (flags & RHI_BUFFER_UNIFORM) ? VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT : 0;
+    usages |= (flags & RHI_BUFFER_UNIFORM_TEXEL) ? VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT : 0;
+    usages |= (flags & RHI_BUFFER_STORAGE) ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : 0;
+    usages |= (flags & RHI_BUFFER_STORAGE_TEXEL) ? VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT : 0;
+    usages |= (flags & RHI_BUFFER_TRANSFER_SRC) ? VK_BUFFER_USAGE_TRANSFER_SRC_BIT : 0;
+    usages |= (flags & RHI_BUFFER_TRANSFER_DST) ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : 0;
+    usages |= (flags & RHI_BUFFER_INDIRECT) ? VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT : 0;
+
+    return usages;
+}
+
 VkPipelineStageFlags vk_util::map_pipeline_stage_flags(rhi_pipeline_stage_flags flags)
 {
     VkPipelineStageFlags result = 0;
@@ -271,6 +305,7 @@ VkPipelineStageFlags vk_util::map_pipeline_stage_flags(rhi_pipeline_stage_flags 
     result |= (flags & RHI_PIPELINE_STAGE_COMPUTE) ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : 0;
     result |= (flags & RHI_PIPELINE_STAGE_END) ? VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT : 0;
     result |= (flags & RHI_PIPELINE_STAGE_HOST) ? VK_PIPELINE_STAGE_HOST_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_DRAW_INDIRECT) ? VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT : 0;
 
     return result;
 }
@@ -290,6 +325,7 @@ VkAccessFlags vk_util::map_access_flags(rhi_access_flags flags)
     result |= (flags & RHI_ACCESS_TRANSFER_WRITE) ? VK_ACCESS_TRANSFER_WRITE_BIT : 0;
     result |= (flags & RHI_ACCESS_HOST_READ) ? VK_ACCESS_HOST_READ_BIT : 0;
     result |= (flags & RHI_ACCESS_HOST_WRITE) ? VK_ACCESS_HOST_WRITE_BIT : 0;
+    result |= (flags & RHI_ACCESS_INDIRECT_COMMAND_READ) ? VK_ACCESS_INDIRECT_COMMAND_READ_BIT : 0;
 
     return result;
 }
@@ -333,6 +369,56 @@ VkBlendOp vk_util::map_blend_op(rhi_blend_op op)
         return VK_BLEND_OP_MAX;
     default:
         throw std::runtime_error("Invalid blend op.");
+    }
+}
+
+VkCompareOp vk_util::map_compare_op(rhi_compare_op op)
+{
+    switch (op)
+    {
+    case RHI_COMPARE_OP_NEVER:
+        return VK_COMPARE_OP_NEVER;
+    case RHI_COMPARE_OP_LESS:
+        return VK_COMPARE_OP_LESS;
+    case RHI_COMPARE_OP_EQUAL:
+        return VK_COMPARE_OP_EQUAL;
+    case RHI_COMPARE_OP_LESS_EQUAL:
+        return VK_COMPARE_OP_LESS_OR_EQUAL;
+    case RHI_COMPARE_OP_GREATER:
+        return VK_COMPARE_OP_GREATER;
+    case RHI_COMPARE_OP_NOT_EQUAL:
+        return VK_COMPARE_OP_NOT_EQUAL;
+    case RHI_COMPARE_OP_GREATER_EQUAL:
+        return VK_COMPARE_OP_GREATER_OR_EQUAL;
+    case RHI_COMPARE_OP_ALWAYS:
+        return VK_COMPARE_OP_ALWAYS;
+    default:
+        throw std::runtime_error("Invalid compare op.");
+    }
+}
+
+VkStencilOp vk_util::map_stencil_op(rhi_stencil_op op)
+{
+    switch (op)
+    {
+    case RHI_STENCIL_OP_KEEP:
+        return VK_STENCIL_OP_KEEP;
+    case RHI_STENCIL_OP_ZERO:
+        return VK_STENCIL_OP_ZERO;
+    case RHI_STENCIL_OP_REPLACE:
+        return VK_STENCIL_OP_REPLACE;
+    case RHI_STENCIL_OP_INCR:
+        return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+    case RHI_STENCIL_OP_DECR:
+        return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+    case RHI_STENCIL_OP_INCR_CLAMP:
+        return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+    case RHI_STENCIL_OP_DECR_CLAMP:
+        return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+    case RHI_STENCIL_OP_INVERT:
+        return VK_STENCIL_OP_INVERT;
+    default:
+        throw std::runtime_error("Invalid stencil op.");
     }
 }
 } // namespace violet::vk

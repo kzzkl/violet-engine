@@ -17,38 +17,46 @@ void rdg_command::set_pipeline(const rdg_render_pipeline& pipeline)
     m_command->set_pipeline(m_allocator->get_pipeline(pipeline, m_render_pass, m_subpass_index));
 }
 
-void rdg_command::draw_render_list(const render_list& render_list)
+void rdg_command::set_pipeline(const rdg_compute_pipeline& pipeline)
 {
-    for (auto& batch : render_list.batches)
+    m_command->set_pipeline(m_allocator->get_pipeline(pipeline));
+}
+
+void rdg_command::draw_instances(
+    const render_scene& scene,
+    const render_camera& camera,
+    rhi_buffer* command_buffer,
+    rhi_buffer* count_buffer,
+    material_type type)
+{
+    auto& device = render_device::instance();
+
+    for (auto& batch : scene.get_batches())
     {
-        geometry* geometry = nullptr;
+        if (batch.material_type != type || batch.groups.empty())
+        {
+            continue;
+        }
 
         set_pipeline(batch.pipeline);
-        set_parameter(0, render_list.camera);
-        set_parameter(1, render_list.light);
 
-        for (auto& item : batch.items)
+        set_parameter(0, scene.get_global_parameter());
+        set_parameter(1, scene.get_scene_parameter());
+        set_parameter(2, camera.camera_parameter);
+
+        for (render_id group_id : batch.groups)
         {
-            set_parameter(2, render_list.meshes[item.mesh_index].transform);
+            auto& group = scene.get_group(group_id);
 
-            if (batch.parameters[item.parameter_index] != nullptr)
-                set_parameter(3, batch.parameters[item.parameter_index]);
+            set_vertex_buffers(group.vertex_buffers);
+            set_index_buffer(group.index_buffer);
 
-            if (geometry != render_list.meshes[item.mesh_index].geometry)
-            {
-                geometry = render_list.meshes[item.mesh_index].geometry;
-
-                auto& attributes =
-                    render_device::instance().get_vertex_attributes(batch.pipeline.vertex_shader);
-                std::vector<rhi_buffer*> vertex_buffers(attributes.size());
-                for (std::size_t i = 0; i < attributes.size(); ++i)
-                    vertex_buffers[i] = geometry->get_vertex_buffer(attributes[i]);
-
-                set_vertex_buffers(vertex_buffers);
-                set_index_buffer(geometry->get_index_buffer());
-            }
-
-            draw_indexed(item.index_start, item.index_count, item.vertex_start);
+            m_command->draw_indexed_indirect(
+                command_buffer,
+                group.instance_offset * sizeof(shader::draw_command),
+                count_buffer,
+                group.id * sizeof(std::uint32_t),
+                group.instance_count);
         }
     }
 }

@@ -55,7 +55,8 @@ enum rhi_format
     RHI_FORMAT_R32G32B32A32_SINT,
     RHI_FORMAT_R32G32B32A32_FLOAT,
     RHI_FORMAT_D24_UNORM_S8_UINT,
-    RHI_FORMAT_D32_FLOAT
+    RHI_FORMAT_D32_FLOAT,
+    RHI_FORMAT_D32_FLOAT_S8_UINT
 };
 
 enum rhi_texture_layout
@@ -209,7 +210,8 @@ enum rhi_pipeline_stage_flag
     RHI_PIPELINE_STAGE_TRANSFER = 1 << 6,
     RHI_PIPELINE_STAGE_COMPUTE = 1 << 7,
     RHI_PIPELINE_STAGE_END = 1 << 8,
-    RHI_PIPELINE_STAGE_HOST = 1 << 9
+    RHI_PIPELINE_STAGE_HOST = 1 << 9,
+    RHI_PIPELINE_STAGE_DRAW_INDIRECT,
 };
 using rhi_pipeline_stage_flags = std::uint32_t;
 
@@ -224,7 +226,8 @@ enum rhi_access_flag
     RHI_ACCESS_TRANSFER_READ = 1 << 6,
     RHI_ACCESS_TRANSFER_WRITE = 1 << 7,
     RHI_ACCESS_HOST_READ = 1 << 8,
-    RHI_ACCESS_HOST_WRITE = 1 << 9
+    RHI_ACCESS_HOST_WRITE = 1 << 9,
+    RHI_ACCESS_INDIRECT_COMMAND_READ = 1 << 10,
 };
 using rhi_access_flags = std::uint32_t;
 
@@ -261,8 +264,11 @@ public:
 
 enum rhi_parameter_type
 {
+    RHI_PARAMETER_PUSH_CONSTANT,
     RHI_PARAMETER_UNIFORM,
+    RHI_PARAMETER_UNIFORM_TEXEL,
     RHI_PARAMETER_STORAGE,
+    RHI_PARAMETER_STORAGE_TEXEL,
     RHI_PARAMETER_TEXTURE
 };
 
@@ -297,6 +303,7 @@ public:
         const void* data,
         std::size_t size,
         std::size_t offset = 0) = 0;
+    virtual void set_uniform(std::size_t index, rhi_buffer* uniform_buffer) = 0;
     virtual void set_texture(std::size_t index, rhi_texture* texture, rhi_sampler* sampler) = 0;
     virtual void set_storage(std::size_t index, rhi_buffer* storage_buffer) = 0;
 };
@@ -364,7 +371,7 @@ enum rhi_blend_op
 
 struct rhi_attachment_blend
 {
-    bool enable = false;
+    bool enable;
 
     rhi_blend_factor src_color_factor;
     rhi_blend_factor dst_color_factor;
@@ -380,16 +387,16 @@ struct rhi_blend_state
     rhi_attachment_blend attachments[rhi_constants::MAX_ATTACHMENT_COUNT];
 };
 
-enum rhi_depth_stencil_functor
+enum rhi_compare_op
 {
-    RHI_DEPTH_STENCIL_FUNCTOR_NEVER,
-    RHI_DEPTH_STENCIL_FUNCTOR_LESS,
-    RHI_DEPTH_STENCIL_FUNCTOR_EQUAL,
-    RHI_DEPTH_STENCIL_FUNCTOR_LESS_EQUAL,
-    RHI_DEPTH_STENCIL_FUNCTOR_GREATER,
-    RHI_DEPTH_STENCIL_FUNCTOR_NOT_EQUAL,
-    RHI_DEPTH_STENCIL_FUNCTOR_GREATER_EQUAL,
-    RHI_DEPTH_STENCIL_FUNCTOR_ALWAYS
+    RHI_COMPARE_OP_NEVER,
+    RHI_COMPARE_OP_LESS,
+    RHI_COMPARE_OP_EQUAL,
+    RHI_COMPARE_OP_LESS_EQUAL,
+    RHI_COMPARE_OP_GREATER,
+    RHI_COMPARE_OP_NOT_EQUAL,
+    RHI_COMPARE_OP_GREATER_EQUAL,
+    RHI_COMPARE_OP_ALWAYS,
 };
 
 enum rhi_stencil_op
@@ -397,22 +404,32 @@ enum rhi_stencil_op
     RHI_STENCIL_OP_KEEP,
     RHI_STENCIL_OP_ZERO,
     RHI_STENCIL_OP_REPLACE,
-    RHI_STENCIL_OP_INCR_SAT,
-    RHI_STENCIL_OP_DECR_SAT,
-    RHI_STENCIL_OP_INVERT,
     RHI_STENCIL_OP_INCR,
-    RHI_STENCIL_OP_DECR
+    RHI_STENCIL_OP_DECR,
+    RHI_STENCIL_OP_INCR_CLAMP,
+    RHI_STENCIL_OP_DECR_CLAMP,
+    RHI_STENCIL_OP_INVERT,
+};
+
+struct rhi_stencil_state
+{
+    rhi_compare_op compare_op;
+    rhi_stencil_op pass_op;
+    rhi_stencil_op fail_op;
+    rhi_stencil_op depth_fail_op;
+
+    std::uint32_t reference;
 };
 
 struct rhi_depth_stencil_state
 {
-    bool depth_enable = true;
-    rhi_depth_stencil_functor depth_functor = RHI_DEPTH_STENCIL_FUNCTOR_LESS;
+    bool depth_enable;
+    bool depth_write_enable;
+    rhi_compare_op depth_compare_op;
 
-    bool stencil_enable = false;
-    rhi_depth_stencil_functor stencil_functor = RHI_DEPTH_STENCIL_FUNCTOR_ALWAYS;
-    rhi_stencil_op stencil_pass_op = RHI_STENCIL_OP_KEEP;
-    rhi_stencil_op stencil_fail_op = RHI_STENCIL_OP_KEEP;
+    bool stencil_enable;
+    rhi_stencil_state stencil_front;
+    rhi_stencil_state stencil_back;
 };
 
 enum rhi_cull_mode
@@ -424,7 +441,7 @@ enum rhi_cull_mode
 
 struct rhi_rasterizer_state
 {
-    rhi_cull_mode cull_mode = RHI_CULL_MODE_BACK;
+    rhi_cull_mode cull_mode;
 };
 
 struct rhi_render_pipeline_desc
@@ -440,7 +457,7 @@ struct rhi_render_pipeline_desc
     rhi_primitive_topology primitive_topology;
 
     rhi_render_pass* render_pass;
-    std::size_t render_subpass_index;
+    std::size_t subpass_index;
 };
 
 class rhi_render_pipeline
@@ -520,14 +537,14 @@ struct rhi_texture_barrier
 
 struct rhi_texture_region
 {
+    std::int32_t offset_x;
+    std::int32_t offset_y;
+    rhi_texture_extent extent;
+
     std::uint32_t level;
 
     std::uint32_t layer;
     std::uint32_t layer_count;
-
-    std::int32_t offset_x;
-    std::int32_t offset_y;
-    rhi_texture_extent extent;
 };
 
 struct rhi_buffer_region
@@ -565,11 +582,17 @@ public:
         std::size_t vertex_buffer_count) = 0;
     virtual void set_index_buffer(rhi_buffer* index_buffer) = 0;
 
-    virtual void draw(std::size_t vertex_start, std::size_t vertex_count) = 0;
+    virtual void draw(std::size_t vertex_offset, std::size_t vertex_count) = 0;
     virtual void draw_indexed(
-        std::size_t index_start,
+        std::size_t index_offset,
         std::size_t index_count,
         std::size_t vertex_base) = 0;
+    virtual void draw_indexed_indirect(
+        rhi_buffer* command_buffer,
+        std::size_t command_buffer_offset,
+        rhi_buffer* count_buffer,
+        std::size_t count_buffer_offset,
+        std::size_t max_draw_count) = 0;
 
     virtual void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) = 0;
 
@@ -592,6 +615,11 @@ public:
         const rhi_texture_region& src_region,
         rhi_texture* dst,
         const rhi_texture_region& dst_region) = 0;
+
+    virtual void fill_buffer(
+        rhi_buffer* buffer,
+        const rhi_buffer_region& region,
+        std::uint32_t value) = 0;
 
     virtual void copy_buffer(
         rhi_buffer* src,
@@ -620,10 +648,13 @@ enum rhi_buffer_flag
     RHI_BUFFER_VERTEX = 1 << 0,
     RHI_BUFFER_INDEX = 1 << 1,
     RHI_BUFFER_UNIFORM = 1 << 2,
-    RHI_BUFFER_STORAGE = 1 << 3,
-    RHI_BUFFER_TRANSFER_SRC = 1 << 4,
-    RHI_BUFFER_TRANSFER_DST = 1 << 5,
-    RHI_BUFFER_HOST_VISIBLE = 1 << 6
+    RHI_BUFFER_UNIFORM_TEXEL = 1 << 3,
+    RHI_BUFFER_STORAGE = 1 << 4,
+    RHI_BUFFER_STORAGE_TEXEL = 1 << 5,
+    RHI_BUFFER_TRANSFER_SRC = 1 << 6,
+    RHI_BUFFER_TRANSFER_DST = 1 << 7,
+    RHI_BUFFER_HOST_VISIBLE = 1 << 8,
+    RHI_BUFFER_INDIRECT = 1 << 9,
 };
 using rhi_buffer_flags = std::uint32_t;
 
@@ -638,6 +669,11 @@ struct rhi_buffer_desc
     {
         std::size_t size;
     } index;
+
+    struct
+    {
+        rhi_format format;
+    } texel;
 };
 
 enum rhi_texture_flag
@@ -663,12 +699,12 @@ struct rhi_texture_desc
 {
     rhi_texture_extent extent;
     rhi_format format;
-
-    std::uint32_t level_count = 1;
-    std::uint32_t layer_count = 1;
-
-    rhi_sample_count samples = RHI_SAMPLE_COUNT_1;
     rhi_texture_flags flags;
+
+    std::uint32_t level_count{1};
+    std::uint32_t layer_count{1};
+
+    rhi_sample_count samples{RHI_SAMPLE_COUNT_1};
 };
 
 struct rhi_texture_view_desc
@@ -682,9 +718,9 @@ struct rhi_texture_view_desc
 
 struct rhi_swapchain_desc
 {
-    std::uint32_t width;
-    std::uint32_t height;
+    rhi_texture_extent extent;
 
+    rhi_texture_flags flags;
     void* window_handle;
 };
 
@@ -721,7 +757,7 @@ public:
     virtual bool initialize(const rhi_desc& desc) = 0;
 
     virtual rhi_command* allocate_command() = 0;
-    virtual void execute(rhi_command* commands) = 0;
+    virtual void execute(rhi_command* command) = 0;
 
     virtual void begin_frame() = 0;
     virtual void end_frame() = 0;

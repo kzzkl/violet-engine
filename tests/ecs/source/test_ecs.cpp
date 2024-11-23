@@ -1,5 +1,14 @@
 #include "test_common.hpp"
 
+namespace violet
+{
+template <>
+struct component_trait<char>
+{
+    using main_component = int;
+};
+} // namespace violet
+
 namespace violet::test
 {
 TEST_CASE("Get Type ID", "[component_index]")
@@ -426,5 +435,23 @@ TEST_CASE("World command", "[world]")
             CHECK(value == 2);
         });
     CHECK(count == 1);
+}
+
+TEST_CASE("Companion Components", "[world]")
+{
+    world world;
+    world.register_component<int>();
+    world.register_component<char>();
+
+    entity e = world.create();
+    world.add_component<int>(e);
+
+    CHECK(world.has_component<int>(e));
+    CHECK(world.has_component<char>(e));
+
+    world.remove_component<int>(e);
+
+    CHECK(!world.has_component<int>(e));
+    CHECK(!world.has_component<char>(e));
 }
 } // namespace violet::test

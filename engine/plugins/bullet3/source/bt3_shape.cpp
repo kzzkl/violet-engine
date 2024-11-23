@@ -26,7 +26,7 @@ bt3_shape::bt3_shape(const phy_collision_shape_desc& desc)
 
 bt3_shape::bt3_shape(
     const phy_collision_shape* const* child,
-    const float4x4* offset,
+    const mat4f* offset,
     std::size_t size)
 {
     auto shape = std::make_unique<btCompoundShape>();

@@ -15,7 +15,8 @@ enum phy_collision_shape_type
 struct phy_collision_shape_desc
 {
     phy_collision_shape_type type;
-    union {
+    union
+    {
         struct
         {
             float length;
@@ -68,7 +69,7 @@ struct phy_rigidbody_desc
     float restitution;
     float friction;
 
-    float4x4 initial_transform;
+    mat4f initial_transform;
 
     phy_rigidbody_activation_state activation_state = PHY_RIGIDBODY_ACTIVATION_STATE_ACTIVE;
 };
@@ -84,11 +85,11 @@ public:
     virtual void set_friction(float friction) = 0;
     virtual void set_shape(phy_collision_shape* shape) = 0;
 
-    virtual void set_transform(const float4x4& world) = 0;
-    virtual const float4x4& get_transform() const = 0;
+    virtual void set_transform(const mat4f& world) = 0;
+    virtual const mat4f& get_transform() const = 0;
 
-    virtual void set_angular_velocity(const float3& velocity) = 0;
-    virtual void set_linear_velocity(const float3& velocity) = 0;
+    virtual void set_angular_velocity(const vec3f& velocity) = 0;
+    virtual void set_linear_velocity(const vec3f& velocity) = 0;
 
     virtual void clear_forces() = 0;
 
@@ -101,18 +102,18 @@ public:
 struct phy_joint_desc
 {
     phy_rigidbody* source;
-    float3 source_position;
-    float4 source_rotation;
+    vec3f source_position;
+    vec4f source_rotation;
 
     phy_rigidbody* target;
-    float3 target_position;
-    float4 target_rotation;
+    vec3f target_position;
+    vec4f target_rotation;
 
-    float3 min_linear;
-    float3 max_linear;
+    vec3f min_linear;
+    vec3f max_linear;
 
-    float3 min_angular;
-    float3 max_angular;
+    vec3f min_angular;
+    vec3f max_angular;
 
     bool spring_enable[6];
     float stiffness[6];
@@ -124,8 +125,8 @@ class phy_joint
 public:
     virtual ~phy_joint() = default;
 
-    virtual void set_linear(const float3& min, const float3& max) = 0;
-    virtual void set_angular(const float3& min, const float3& max) = 0;
+    virtual void set_linear(const vec3f& min, const vec3f& max) = 0;
+    virtual void set_angular(const vec3f& min, const vec3f& max) = 0;
 
     virtual void set_spring_enable(std::size_t index, bool enable) = 0;
     virtual void set_stiffness(std::size_t index, float stiffness) = 0;
@@ -137,12 +138,12 @@ class phy_debug_draw
 public:
     virtual ~phy_debug_draw() = default;
 
-    virtual void draw_line(const float3& start, const float3& end, const float3& color) = 0;
+    virtual void draw_line(const vec3f& start, const vec3f& end, const vec3f& color) = 0;
 };
 
 struct phy_world_desc
 {
-    float3 gravity;
+    vec3f gravity;
     phy_debug_draw* debug_draw;
 };
 
@@ -176,7 +177,7 @@ public:
     virtual phy_collision_shape* create_collision_shape(const phy_collision_shape_desc& desc) = 0;
     virtual phy_collision_shape* create_collision_shape(
         const phy_collision_shape* const* child,
-        const float4x4* offset,
+        const mat4f* offset,
         std::size_t size) = 0;
     virtual void destroy_collision_shape(phy_collision_shape* collision_shape) = 0;
 

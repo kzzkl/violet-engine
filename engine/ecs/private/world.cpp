@@ -8,7 +8,7 @@ world::world()
     m_main_thread_id = std::this_thread::get_id();
 
     m_archetype_chunk_allocator = std::make_unique<archetype_chunk_allocator>();
-    m_entity_infos.resize(1);
+    m_entities.resize(1);
 
     register_component<entity>();
 }
@@ -28,14 +28,14 @@ entity world::create()
 
     if (m_free_entity.empty())
     {
-        result.id = m_entity_infos.size();
-        m_entity_infos.emplace_back();
+        result.id = m_entities.size();
+        m_entities.emplace_back();
     }
     else
     {
         result.id = m_free_entity.front();
         m_free_entity.pop();
-        result.version = m_entity_infos[result.id].version;
+        result.version = m_entities[result.id].version;
     }
 
     add_component<entity>(result);
@@ -52,8 +52,8 @@ void world::destroy(entity e)
 
 bool world::is_valid(entity e) const
 {
-    if (e.id < m_entity_infos.size())
-        return m_entity_infos[e.id].version == e.version;
+    if (e.id < m_entities.size() && e.type != ENTITY_NULL)
+        return m_entities[e.id].version == e.version;
     else
         return false;
 }
@@ -83,7 +83,7 @@ void world::execute(std::span<world_command*> commands)
             auto iter = normal_entity_states.find(e.id);
             if (iter == normal_entity_states.end())
             {
-                archetype* archetype = m_entity_infos[e.id].archetype;
+                archetype* archetype = m_entities[e.id].archetype;
 
                 entity_state state = {};
                 state.destroyed = false;
@@ -125,7 +125,7 @@ void world::execute(std::span<world_command*> commands)
             new_archetype = iter->second.get();
         }
 
-        auto& info = m_entity_infos[id];
+        auto& info = m_entities[id];
 
         archetype* old_archetype = info.archetype;
         if (new_archetype == old_archetype)
@@ -144,11 +144,13 @@ void world::execute(std::span<world_command*> commands)
         {
             if (state.mask.test(state.components[i]) && state.component_data[i] != nullptr)
             {
-                void* source = state.component_data[i];
-                void* target = new_archetype->get_component_pointer(
-                    state.components[i], info.archetype_index, m_world_version);
+                void* src = state.component_data[i];
+                void* dst = new_archetype->get_component_pointer(
+                    state.components[i],
+                    info.archetype_index,
+                    m_world_version);
 
-                m_component_builder_list[state.components[i]]->move_assignment(source, target);
+                m_components[state.components[i]].builder->move_assignment(src, dst);
             }
         }
     };
@@ -229,7 +231,7 @@ void world::execute(std::span<world_command*> commands)
 
 void world::destroy_entity(entity_id id)
 {
-    entity_info& info = m_entity_infos[id];
+    entity_info& info = m_entities[id];
     if (info.archetype != nullptr)
     {
         info.archetype->remove(info.archetype_index);
@@ -245,23 +247,30 @@ void world::destroy_entity(entity_id id)
 
 void world::move_entity(entity_id id, archetype* new_archetype, std::size_t new_archetype_index)
 {
-    entity_info& info = m_entity_infos[id];
+    entity_info& info = m_entities[id];
     if (info.archetype != nullptr && info.archetype->get_entity_count() > info.archetype_index)
     {
         auto [e] =
             info.archetype->get_components<const entity>(info.archetype_index, m_world_version);
 
-        m_entity_infos[e->id].archetype_index = info.archetype_index;
+        m_entities[e->id].archetype_index = info.archetype_index;
     }
 
-    m_entity_infos[id].archetype = new_archetype;
-    m_entity_infos[id].archetype_index = new_archetype_index;
+    m_entities[id].archetype = new_archetype;
+    m_entities[id].archetype_index = new_archetype_index;
 }
 
 archetype* world::create_archetype(std::span<const component_id> components)
 {
-    auto result = std::make_unique<archetype>(
-        components, m_component_builder_list, m_archetype_chunk_allocator.get());
+    archetype_layout layout;
+    layout.reserve(components.size());
+
+    for (component_id component_id : components)
+    {
+        layout.push_back({component_id, m_components[component_id].builder.get()});
+    }
+
+    auto result = std::make_unique<archetype>(layout, m_archetype_chunk_allocator.get());
     return (m_archetypes[result->get_mask()] = std::move(result)).get();
 }
 } // namespace violet

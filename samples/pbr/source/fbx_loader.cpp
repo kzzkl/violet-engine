@@ -5,7 +5,7 @@
 
 namespace violet::sample
 {
-std::unique_ptr<geometry> fbx_loader::load(std::string_view path, float3* center)
+std::unique_ptr<geometry> fbx_loader::load(std::string_view path, vec3f* center)
 {
     Assimp::Importer importer;
 
@@ -19,14 +19,13 @@ std::unique_ptr<geometry> fbx_loader::load(std::string_view path, float3* center
         return nullptr;
     }
 
-    std::vector<float3> positions;
-    std::vector<float3> normals;
-    std::vector<float3> tangents;
-    std::vector<float2> uvs;
+    std::vector<vec3f> positions;
+    std::vector<vec3f> normals;
+    std::vector<vec3f> tangents;
+    std::vector<vec2f> uvs;
     std::vector<std::uint32_t> indices;
 
-    vector4f bounding_box_min = vector::replicate(std::numeric_limits<float>::max());
-    vector4f bounding_box_max = vector::replicate(std::numeric_limits<float>::min());
+    box3f bounding_box;
 
     for (std::size_t i = 0; i < scene->mNumMeshes; ++i)
     {
@@ -49,11 +48,9 @@ std::unique_ptr<geometry> fbx_loader::load(std::string_view path, float3* center
         for (std::size_t j = 0; j < mesh->mNumVertices; ++j)
         {
             aiVector3f& vertex = mesh->mVertices[j];
-            positions.push_back(float3{vertex.x, vertex.y, vertex.z});
+            positions.push_back(vec3f{vertex.x, vertex.y, vertex.z});
 
-            vector4f position = math::load(positions.back());
-            bounding_box_min = vector::min(bounding_box_min, position);
-            bounding_box_max = vector::max(bounding_box_min, position);
+            box::expand(bounding_box, positions.back());
         }
 
         if (mesh->mNormals != nullptr)
@@ -62,7 +59,7 @@ std::unique_ptr<geometry> fbx_loader::load(std::string_view path, float3* center
             for (std::size_t j = 0; j < mesh->mNumVertices; ++j)
             {
                 aiVector3f& normal = mesh->mNormals[j];
-                normals.push_back(float3{normal.x, normal.y, normal.z});
+                normals.push_back(vec3f{normal.x, normal.y, normal.z});
             }
         }
 
@@ -72,7 +69,7 @@ std::unique_ptr<geometry> fbx_loader::load(std::string_view path, float3* center
             for (std::size_t j = 0; j < mesh->mNumVertices; ++j)
             {
                 aiVector3f& tangent = mesh->mTangents[j];
-                tangents.push_back(float3{tangent.x, tangent.y, tangent.z});
+                tangents.push_back(vec3f{tangent.x, tangent.y, tangent.z});
             }
         }
 
@@ -82,15 +79,15 @@ std::unique_ptr<geometry> fbx_loader::load(std::string_view path, float3* center
             for (std::size_t j = 0; j < mesh->mNumVertices; ++j)
             {
                 aiVector3f& uv = mesh->mTextureCoords[0][j];
-                uvs.push_back(float2{uv.x, uv.y});
+                uvs.push_back(vec2f{uv.x, uv.y});
             }
         }
     }
 
-    vector4f bounding_box_center =
-        vector::mul(vector::add(bounding_box_min, bounding_box_max), 0.5f);
     if (center != nullptr)
-        math::store(bounding_box_center, *center);
+    {
+        *center = box::get_center(bounding_box);
+    }
 
     importer.FreeScene();
 
@@ -104,7 +101,7 @@ std::unique_ptr<geometry> fbx_loader::load(std::string_view path, float3* center
     if (!uvs.empty())
         result->add_attribute("uv", uvs);
 
-    result->set_indices(indices);
+    result->set_indexes(indices);
 
     return result;
 }

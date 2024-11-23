@@ -12,7 +12,7 @@ image::image(rhi_texture* texture)
         float2{0.0f, 1.0f}
     };
     m_color = {0, 0, 0, 0};
-    m_indices = {0, 1, 2, 0, 2, 3};
+    m_indexes = {0, 1, 2, 0, 2, 3};
 
     m_mesh = {
         .type = ELEMENT_MESH_TYPE_IMAGE,
@@ -20,7 +20,7 @@ image::image(rhi_texture* texture)
         .uv = m_uv.data(),
         .color = m_color.data(),
         .vertex_count = 4,
-        .indices = m_indices.data(),
+        .indexes = m_indexes.data(),
         .index_count = 6,
         .scissor = false,
         .texture = texture};

@@ -13,7 +13,8 @@ public:
 
 protected:
     const std::vector<archetype*>& get_archetypes(
-        const component_mask& include_mask, const component_mask& exclude_mask);
+        const component_mask& include_mask,
+        const component_mask& exclude_mask);
 
     world* get_world() const noexcept
     {
@@ -53,14 +54,19 @@ struct component_list
     }
 
     static std::tuple<Components*...> get_components(
-        archetype* archetype, std::size_t chunk_index, std::uint32_t world_version)
+        archetype* archetype,
+        std::size_t chunk_index,
+        std::uint32_t world_version)
     {
         return archetype->get_components<Components...>(
-            chunk_index * archetype->get_chunk_entity_count(), world_version);
+            chunk_index * archetype->get_chunk_capacity(),
+            world_version);
     }
 
     static bool is_updated(
-        archetype* archetype, std::size_t chunk_index, std::uint32_t system_version)
+        archetype* archetype,
+        std::size_t chunk_index,
+        std::uint32_t system_version)
     {
         return archetype->is_updated<Components...>(chunk_index, system_version);
     }
@@ -71,7 +77,10 @@ concept view_callback = requires(Functor functor, T& tuple) {
     { std::apply(functor, tuple) } -> std::same_as<void>;
 };
 
-template <typename include_list = component_list<>, typename exclude_list = component_list<>>
+template <
+    typename parameter_list = component_list<>,
+    typename include_list = component_list<>,
+    typename exclude_list = component_list<>>
 class view : public view_base
 {
 public:
@@ -83,7 +92,9 @@ public:
     template <typename T>
     auto read()
     {
-        using result_view = view<typename include_list::template append<const T>, exclude_list>;
+        using new_parameter_list = typename parameter_list::template append<const T>;
+        using new_include_list = typename include_list::template append<T>;
+        using result_view = view<new_parameter_list, new_include_list, exclude_list>;
         return result_view(get_world());
     }
 
@@ -91,19 +102,30 @@ public:
     auto write()
         requires !std::is_same_v<T, entity>
     {
-        using result_view = view<typename include_list::template append<T>, exclude_list>;
+        using new_parameter_list = typename parameter_list::template append<T>;
+        using new_include_list = typename include_list::template append<T>;
+        using result_view = view<new_parameter_list, new_include_list, exclude_list>;
+        return result_view(get_world());
+    }
+
+    template <typename T>
+    auto with()
+    {
+        using new_include_list = typename include_list::template append<T>;
+        using result_view = view<parameter_list, new_include_list, exclude_list>;
         return result_view(get_world());
     }
 
     template <typename T>
     auto without()
     {
-        using result_view = view<include_list, typename exclude_list::template append<T>>;
+        using new_exclude_list = typename exclude_list::template append<T>;
+        using result_view = view<parameter_list, include_list, new_exclude_list>;
         return result_view(get_world());
     }
 
     template <typename Functor>
-        requires view_callback<Functor, typename include_list::tuple>
+        requires view_callback<Functor, typename parameter_list::tuple>
     void each(Functor functor)
     {
         for (auto archetype : get_archetypes(include_list::get_mask(), exclude_list::get_mask()))
@@ -112,7 +134,7 @@ public:
             for (std::size_t i = 0; i < chunk_count; ++i)
             {
                 auto components =
-                    include_list::get_components(archetype, i, get_world()->get_version());
+                    parameter_list::get_components(archetype, i, get_world()->get_version());
 
                 std::size_t entity_count = archetype->get_entity_count(i);
                 for (std::size_t j = 0; j < entity_count; ++j)
@@ -129,7 +151,7 @@ public:
     }
 
     template <typename Functor, typename Filter>
-        requires view_callback<Functor, typename include_list::tuple>
+        requires view_callback<Functor, typename parameter_list::tuple>
     void each(Functor functor, Filter filter)
     {
         for (auto archetype : get_archetypes(include_list::get_mask(), exclude_list::get_mask()))
@@ -147,7 +169,7 @@ public:
                 }
 
                 auto components =
-                    include_list::get_components(archetype, i, get_world()->get_version());
+                    parameter_list::get_components(archetype, i, get_world()->get_version());
 
                 std::size_t entity_count = archetype->get_entity_count(i);
                 for (std::size_t j = 0; j < entity_count; ++j)

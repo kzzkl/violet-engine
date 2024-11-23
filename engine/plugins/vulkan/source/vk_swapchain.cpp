@@ -10,9 +10,9 @@ vk_swapchain_image::vk_swapchain_image(
     VkFormat format,
     const VkExtent2D& extent,
     vk_context* context)
+    : vk_image(0),
+      m_context(context)
 {
-    m_context = context;
-
     VkImageViewCreateInfo image_view_info = {};
     image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     image_view_info.image = image;
@@ -30,25 +30,20 @@ vk_swapchain_image::vk_swapchain_image(
 
     vkCreateImageView(m_context->get_device(), &image_view_info, nullptr, &m_image_view);
 
+    m_image = image;
     m_format = vk_util::map_format(format);
     m_extent = {extent.width, extent.height};
-    m_clear_value.color = VkClearColorValue{0.0f, 0.0f, 0.0f, 1.0f};
-
-    struct swapchain_key
-    {
-        VkImage image;
-        VkImageView image_view;
-        std::size_t frame_count;
-    };
-    swapchain_key key = {image, m_image_view, m_context->get_frame_count()};
-    m_hash = hash::city_hash_64(&key, sizeof(swapchain_key));
 }
 
-vk_swapchain_image::~vk_swapchain_image() {}
+vk_swapchain_image::~vk_swapchain_image()
+{
+    vkDestroyImageView(m_context->get_device(), m_image_view, nullptr);
+}
 
 vk_swapchain::vk_swapchain(const rhi_swapchain_desc& desc, vk_context* context)
     : m_swapchain(VK_NULL_HANDLE),
       m_swapchain_image_index(0),
+      m_flags(desc.flags),
       m_context(context)
 {
 #ifdef _WIN32
@@ -69,7 +64,7 @@ vk_swapchain::vk_swapchain(const rhi_swapchain_desc& desc, vk_context* context)
         m_present_semaphores.emplace_back(std::make_unique<vk_fence>(false, m_context));
     }
 
-    resize(desc.width, desc.height);
+    resize(desc.extent.width, desc.extent.height);
 }
 
 vk_swapchain::~vk_swapchain()
@@ -159,7 +154,7 @@ void vk_swapchain::resize(std::uint32_t width, std::uint32_t height)
     swapchain_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     swapchain_info.surface = m_surface;
     swapchain_info.imageArrayLayers = 1;
-    swapchain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    swapchain_info.imageUsage = vk_util::map_image_usage_flags(m_flags);
 
     swapchain_info.minImageCount = capabilities.minImageCount + 1;
     if (capabilities.maxImageCount > 0 && swapchain_info.minImageCount > capabilities.maxImageCount)
@@ -206,10 +201,10 @@ void vk_swapchain::resize(std::uint32_t width, std::uint32_t height)
 
     m_context->setup_present_queue(m_surface);
 
-    std::vector<std::uint32_t> queue_family_indices{
+    std::vector<std::uint32_t> queue_family_indexes{
         m_context->get_graphics_queue()->get_family_index(),
         m_context->get_present_queue()->get_family_index()};
-    if (queue_family_indices[0] == queue_family_indices[1])
+    if (queue_family_indexes[0] == queue_family_indexes[1])
     {
         swapchain_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     }
@@ -217,8 +212,8 @@ void vk_swapchain::resize(std::uint32_t width, std::uint32_t height)
     {
         swapchain_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         swapchain_info.queueFamilyIndexCount =
-            static_cast<std::uint32_t>(queue_family_indices.size());
-        swapchain_info.pQueueFamilyIndices = queue_family_indices.data();
+            static_cast<std::uint32_t>(queue_family_indexes.size());
+        swapchain_info.pQueueFamilyIndices = queue_family_indexes.data();
     }
 
     swapchain_info.preTransform = capabilities.currentTransform;

@@ -54,7 +54,7 @@ void ui_pass::execute(rhi_command* command, rdg_context* context)
                 for (auto& mesh : group->meshes)
                 {
                     command->set_render_parameter(1, mesh.parameter);
-                    command->draw_indexed(mesh.index_start, mesh.index_count, mesh.vertex_start);
+                    command->draw_indexed(mesh.index_offset, mesh.index_count, mesh.vertex_offset);
                 }
             });
     }

@@ -136,9 +136,17 @@ void vk_rhi::destroy_sampler(rhi_sampler* sampler)
 rhi_buffer* vk_rhi::create_buffer(const rhi_buffer_desc& desc)
 {
     if (desc.flags & RHI_BUFFER_INDEX)
+    {
         return new vk_index_buffer(desc, m_context.get());
+    }
+    else if ((desc.flags & RHI_BUFFER_UNIFORM_TEXEL) || (desc.flags & RHI_BUFFER_STORAGE_TEXEL))
+    {
+        return new vk_texel_buffer(desc, m_context.get());
+    }
     else
+    {
         return new vk_buffer(desc, m_context.get());
+    }
 }
 
 void vk_rhi::destroy_buffer(rhi_buffer* buffer)

@@ -76,7 +76,7 @@ void ui_painter::draw_text(std::string_view text, font* font)
     std::vector<float2> position;
     std::vector<float2> uv;
     std::vector<std::uint32_t> colors;
-    std::vector<std::uint32_t> indices;
+    std::vector<std::uint32_t> indexes;
 
     float pen_x = m_pen_position[0];
     float pen_y = m_pen_position[1] + static_cast<std::uint32_t>(font->get_heigth() * 0.75f);
@@ -99,12 +99,12 @@ void ui_painter::draw_text(std::string_view text, font* font)
         uv.push_back(glyph.uv2);
         uv.push_back({glyph.uv1[0], glyph.uv2[1]});
 
-        indices.push_back(vertex_base);
-        indices.push_back(vertex_base + 1);
-        indices.push_back(vertex_base + 2);
-        indices.push_back(vertex_base);
-        indices.push_back(vertex_base + 2);
-        indices.push_back(vertex_base + 3);
+        indexes.push_back(vertex_base);
+        indexes.push_back(vertex_base + 1);
+        indexes.push_back(vertex_base + 2);
+        indexes.push_back(vertex_base);
+        indexes.push_back(vertex_base + 2);
+        indexes.push_back(vertex_base + 3);
 
         vertex_base += 4;
         pen_x += glyph.advance;
@@ -112,7 +112,7 @@ void ui_painter::draw_text(std::string_view text, font* font)
 
     colors.resize(position.size(), m_pen_color);
 
-    draw_mesh(position, colors, uv, indices, font->get_texture());
+    draw_mesh(position, colors, uv, indexes, font->get_texture());
 }
 
 void ui_painter::draw_line(const float2& start, const float2& end, float thickness)
@@ -130,7 +130,7 @@ void ui_painter::draw_path(std::span<const float2> points, float thickness)
     std::vector<float2> position(points.size() * 2);
     std::vector<std::uint32_t> colors(position.size(), m_pen_color);
     std::vector<float2> uv(position.size());
-    std::vector<std::uint32_t> indices((points.size() - 1) * 6);
+    std::vector<std::uint32_t> indexes((points.size() - 1) * 6);
 
     std::vector<float2> normals(points.size());
     for (std::size_t i = 0; i < points.size() - 1; ++i)
@@ -168,22 +168,22 @@ void ui_painter::draw_path(std::span<const float2> points, float thickness)
 
     for (std::size_t i = 0; i < points.size() - 1; ++i)
     {
-        indices[i * 6 + 0] = 0 + i * 2;
-        indices[i * 6 + 1] = 3 + i * 2;
-        indices[i * 6 + 2] = 2 + i * 2;
-        indices[i * 6 + 3] = 0 + i * 2;
-        indices[i * 6 + 4] = 1 + i * 2;
-        indices[i * 6 + 5] = 3 + i * 2;
+        indexes[i * 6 + 0] = 0 + i * 2;
+        indexes[i * 6 + 1] = 3 + i * 2;
+        indexes[i * 6 + 2] = 2 + i * 2;
+        indexes[i * 6 + 3] = 0 + i * 2;
+        indexes[i * 6 + 4] = 1 + i * 2;
+        indexes[i * 6 + 5] = 3 + i * 2;
     }
 
-    draw_mesh(position, colors, uv, indices);
+    draw_mesh(position, colors, uv, indexes);
 }
 
 void ui_painter::draw_mesh(
     std::span<const float2> position,
     std::span<const std::uint32_t> color,
     std::span<const float2> uv,
-    std::span<const std::uint32_t> indices,
+    std::span<const std::uint32_t> indexes,
     rhi_texture* texture)
 {
     ui_draw_group& group = *m_group_stack.top();
@@ -201,10 +201,10 @@ void ui_painter::draw_mesh(
 
     std::uint32_t vertex_base = batch->position.size();
     std::uint32_t index_base = batch->index.size();
-    batch->index.resize(batch->index.size() + indices.size());
+    batch->index.resize(batch->index.size() + indexes.size());
     std::transform(
-        indices.begin(),
-        indices.end(),
+        indexes.begin(),
+        indexes.end(),
         batch->index.begin() + index_base,
         [vertex_base](std::uint32_t index)
         {
@@ -288,8 +288,8 @@ void ui_painter::compile()
             }
 
             m_group_pool[i]->meshes.push_back(
-                {.vertex_start = vertex_offset,
-                 .index_start = index_offset,
+                {.vertex_offset = vertex_offset,
+                 .index_offset = index_offset,
                  .index_count = batch->index.size(),
                  .parameter = parameter});
 

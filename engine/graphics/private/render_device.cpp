@@ -86,11 +86,12 @@ void render_device::initialize(rhi* rhi)
     m_rhi_deleter = rhi_deleter(rhi);
 
     m_shader_compiler = std::make_unique<shader_compiler>();
+    m_fence = create_fence();
 }
 
 void render_device::reset()
 {
-    m_shader_cache.clear();
+    m_shaders.clear();
     m_rhi_deleter = {};
     m_rhi = nullptr;
 }
@@ -103,6 +104,15 @@ rhi_command* render_device::allocate_command()
 void render_device::execute(rhi_command* command)
 {
     m_rhi->execute(command);
+}
+
+void render_device::execute_sync(rhi_command* command)
+{
+    ++m_fence_value;
+
+    command->signal(m_fence.get(), m_fence_value);
+    m_rhi->execute(command);
+    m_fence->wait(m_fence_value);
 }
 
 void render_device::begin_frame()

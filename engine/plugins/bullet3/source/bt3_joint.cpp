@@ -44,13 +44,13 @@ bt3_joint::bt3_joint(const phy_joint_desc& desc)
     }
 }
 
-void bt3_joint::set_linear(const float3& min, const float3& max)
+void bt3_joint::set_linear(const vec3f& min, const vec3f& max)
 {
     m_constraint->setLinearLowerLimit(convert_vector(min));
     m_constraint->setLinearUpperLimit(convert_vector(max));
 }
 
-void bt3_joint::set_angular(const float3& min, const float3& max)
+void bt3_joint::set_angular(const vec3f& min, const vec3f& max)
 {
     m_constraint->setAngularLowerLimit(convert_vector(min));
     m_constraint->setAngularUpperLimit(convert_vector(max));

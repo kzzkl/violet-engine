@@ -8,9 +8,9 @@ task_group::task_group(task_graph* graph)
     : m_graph(graph)
 {
     m_begin = &graph->add_task();
-    m_finish = &graph->add_task();
+    m_end = &graph->add_task();
 
-    m_finish->add_dependency(*m_begin);
+    m_end->add_dependency(*m_begin);
 }
 
 task_group& task_group::set_group(task_group& group)
@@ -20,7 +20,7 @@ task_group& task_group::set_group(task_group& group)
     m_group = &group;
 
     add_dependency(group.get_begin_task());
-    group.get_finish_task().add_dependency(get_finish_task());
+    group.get_end_task().add_dependency(get_end_task());
 
     return *this;
 }
@@ -32,6 +32,6 @@ void task_group::add_dependency_impl(task& dependency)
 
 void task_group::add_dependency_impl(task_group& dependency)
 {
-    m_begin->add_dependency(dependency.get_finish_task());
+    m_begin->add_dependency(dependency.get_end_task());
 }
 } // namespace violet

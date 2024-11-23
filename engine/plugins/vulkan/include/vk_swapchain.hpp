@@ -9,7 +9,7 @@
 
 namespace violet::vk
 {
-class vk_swapchain_image : public vk_texture
+class vk_swapchain_image : public vk_image
 {
 public:
     vk_swapchain_image(
@@ -18,6 +18,60 @@ public:
         const VkExtent2D& extent,
         vk_context* context);
     virtual ~vk_swapchain_image();
+
+    rhi_format get_format() const noexcept override
+    {
+        return m_format;
+    }
+
+    rhi_sample_count get_samples() const noexcept override
+    {
+        return RHI_SAMPLE_COUNT_1;
+    }
+
+    rhi_texture_extent get_extent() const noexcept override
+    {
+        return m_extent;
+    }
+
+    std::uint32_t get_level_count() const noexcept override
+    {
+        return 1;
+    }
+
+    std::uint32_t get_layer_count() const noexcept override
+    {
+        return 1;
+    }
+
+    VkImage get_image() const noexcept override
+    {
+        return m_image;
+    }
+
+    VkImageView get_image_view() const noexcept override
+    {
+        return m_image_view;
+    }
+
+    VkClearValue get_clear_value() const noexcept override
+    {
+        return {0.0f, 0.0f, 0.0f, 0.0f};
+    }
+
+    bool is_texture_view() const noexcept override
+    {
+        return false;
+    };
+
+private:
+    VkImage m_image{VK_NULL_HANDLE};
+    VkImageView m_image_view{VK_NULL_HANDLE};
+
+    rhi_format m_format{RHI_FORMAT_UNDEFINED};
+    rhi_texture_extent m_extent;
+
+    vk_context* m_context{nullptr};
 };
 
 class vk_swapchain : public rhi_swapchain
@@ -61,6 +115,8 @@ private:
     std::vector<std::unique_ptr<vk_fence>> m_available_semaphores;
     std::vector<std::unique_ptr<vk_fence>> m_present_semaphores;
 
-    vk_context* m_context;
+    rhi_texture_flags m_flags{0};
+
+    vk_context* m_context{nullptr};
 };
 } // namespace violet::vk

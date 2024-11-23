@@ -12,7 +12,10 @@ public:
         return new bt3_world(desc);
     }
 
-    virtual void destroy_world(phy_world* world) override { delete world; }
+    virtual void destroy_world(phy_world* world) override
+    {
+        delete world;
+    }
 
     virtual phy_collision_shape* create_collision_shape(
         const phy_collision_shape_desc& desc) override
@@ -22,7 +25,7 @@ public:
 
     virtual phy_collision_shape* create_collision_shape(
         const phy_collision_shape* const* child,
-        const float4x4* offset,
+        const mat4f* offset,
         std::size_t size) override
     {
         return new bt3_shape(child, offset, size);
@@ -38,14 +41,20 @@ public:
         return new bt3_rigidbody(desc);
     }
 
-    virtual void destroy_rigidbody(phy_rigidbody* rigidbody) override { delete rigidbody; }
+    virtual void destroy_rigidbody(phy_rigidbody* rigidbody) override
+    {
+        delete rigidbody;
+    }
 
     virtual phy_joint* create_joint(const phy_joint_desc& desc) override
     {
         return new bt3_joint(desc);
     }
 
-    virtual void destroy_joint(phy_joint* joint) override { delete joint; }
+    virtual void destroy_joint(phy_joint* joint) override
+    {
+        delete joint;
+    }
 };
 } // namespace violet::bt3
 

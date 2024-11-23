@@ -17,4 +17,9 @@ struct rdg_render_pipeline
     rhi_sample_count samples;
     rhi_primitive_topology primitive_topology;
 };
+
+struct rdg_compute_pipeline
+{
+    rhi_shader* compute_shader;
+};
 } // namespace violet

@@ -148,13 +148,11 @@ public:
         return m_final_layout;
     }
 
-private:
+protected:
     rhi_texture* m_texture{nullptr};
 
     rhi_texture_layout m_initial_layout;
     rhi_texture_layout m_final_layout;
-
-    friend class render_graph;
 };
 
 class rdg_inter_texture : public rdg_texture
@@ -183,6 +181,11 @@ public:
     rhi_sample_count get_samples() const noexcept override
     {
         return m_desc.samples;
+    }
+
+    void set_rhi(rhi_texture* texture) noexcept
+    {
+        m_texture = texture;
     }
 
     const rhi_texture_desc& get_desc() const noexcept
@@ -236,14 +239,32 @@ public:
         return m_rhi_texture ? m_rhi_texture->get_samples() : m_rdg_texture->get_samples();
     }
 
+    std::uint32_t get_level() const noexcept
+    {
+        return m_level;
+    }
+
+    std::uint32_t get_layer() const noexcept
+    {
+        return m_layer;
+    }
+
+    rhi_texture* get_source() const noexcept
+    {
+        return m_rhi_texture ? m_rhi_texture : m_rdg_texture->get_rhi();
+    }
+
+    void set_rhi(rhi_texture* texture) noexcept
+    {
+        m_texture = texture;
+    }
+
 private:
     rhi_texture* m_rhi_texture{nullptr};
     rdg_texture* m_rdg_texture{nullptr};
 
     std::uint32_t m_level{0};
     std::uint32_t m_layer{0};
-
-    friend class render_graph;
 };
 
 class rdg_buffer : public rdg_resource
@@ -251,19 +272,56 @@ class rdg_buffer : public rdg_resource
 public:
     explicit rdg_buffer(rhi_buffer* buffer = nullptr);
 
-    virtual rdg_resource_type get_type() const noexcept override final
+    rdg_resource_type get_type() const noexcept override final
     {
-        return RDG_RESOURCE_TEXTURE;
+        return RDG_RESOURCE_BUFFER;
     }
 
-    virtual bool is_external() const noexcept override
+    bool is_external() const noexcept override
     {
         return true;
     }
 
-private:
-    rhi_buffer* m_buffer;
+    std::size_t get_buffer_size() const
+    {
+        return m_buffer->get_buffer_size();
+    }
 
-    friend class render_graph;
+    rhi_buffer* get_rhi() const noexcept
+    {
+        return m_buffer;
+    }
+
+protected:
+    rhi_buffer* m_buffer{nullptr};
+};
+
+class rdg_inter_buffer : public rdg_buffer
+{
+public:
+    rdg_inter_buffer(const rhi_buffer_desc& desc);
+
+    bool is_external() const noexcept override
+    {
+        return false;
+    }
+
+    std::size_t get_buffer_size() const
+    {
+        return m_desc.size;
+    }
+
+    void set_rhi(rhi_buffer* buffer) noexcept
+    {
+        m_buffer = buffer;
+    }
+
+    const rhi_buffer_desc& get_desc() const noexcept
+    {
+        return m_desc;
+    }
+
+private:
+    rhi_buffer_desc m_desc;
 };
 } // namespace violet

@@ -60,9 +60,10 @@ std::vector<rdg_reference*> rdg_pass::get_references(rdg_reference_type type) co
 
 rdg_reference* rdg_pass::add_reference(rdg_resource* resource)
 {
-    m_references.push_back(std::make_unique<rdg_reference>());
-    m_references.back()->pass = this;
-    m_references.back()->resource = resource;
+    auto reference = std::make_unique<rdg_reference>();
+    reference->pass = this;
+    reference->resource = resource;
+    m_references.push_back(std::move(reference));
     return m_references.back().get();
 }
 

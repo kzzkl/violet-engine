@@ -7,11 +7,6 @@
 
 namespace violet
 {
-struct rdg_data
-{
-    virtual ~rdg_data() = default;
-};
-
 class rdg_allocator
 {
 private:
@@ -22,24 +17,17 @@ private:
 public:
     rdg_allocator();
 
-    template <typename T>
-    T& allocate_data()
-    {
-        if (m_data_pools.size() <= data_index::value<T>())
-            m_data_pools.resize(data_index::value<T>() + 1);
-
-        auto& pool = m_data_pools[data_index::value<T>()];
-        if (pool.count == pool.data.size())
-            pool.data.push_back(std::make_unique<T>());
-
-        return *static_cast<T*>(pool.data[pool.count++].get());
-    }
-
     rhi_parameter* allocate_parameter(const rhi_parameter_desc& desc);
+
     rhi_texture* allocate_texture(const rhi_texture_desc& desc);
     rhi_texture* allocate_texture(const rhi_texture_view_desc& desc);
 
-    rhi_command* allocate_command() { return render_device::instance().allocate_command(); }
+    rhi_buffer* allocate_buffer(const rhi_buffer_desc& desc);
+
+    rhi_command* allocate_command()
+    {
+        return render_device::instance().allocate_command();
+    }
 
     rhi_render_pass* get_render_pass(const rhi_render_pass_desc& desc);
     rhi_framebuffer* get_framebuffer(const rhi_framebuffer_desc& desc);
@@ -48,6 +36,7 @@ public:
         const rdg_render_pipeline& pipeline,
         rhi_render_pass* render_pass,
         std::uint32_t subpass_index);
+    rhi_compute_pipeline* get_pipeline(const rdg_compute_pipeline& pipeline);
 
     rhi_sampler* get_sampler(const rhi_sampler_desc& desc);
 
@@ -131,8 +120,8 @@ private:
     rhi_cache<rhi_compute_pipeline> m_compute_pipeline_cache;
     rhi_cache<rhi_sampler> m_sampler_cache;
 
-    std::vector<data_pool<rdg_data>> m_data_pools;
     std::unordered_map<std::uint64_t, rhi_pool<rhi_parameter>> m_parameter_pools;
     std::unordered_map<std::uint64_t, rhi_pool<rhi_texture>> m_texture_pools;
+    std::unordered_map<std::uint64_t, rhi_pool<rhi_buffer>> m_buffer_pools;
 };
 } // namespace violet

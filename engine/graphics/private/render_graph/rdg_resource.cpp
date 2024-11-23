@@ -78,4 +78,9 @@ rdg_buffer::rdg_buffer(rhi_buffer* buffer)
     : m_buffer(buffer)
 {
 }
+
+rdg_inter_buffer::rdg_inter_buffer(const rhi_buffer_desc& desc)
+    : m_desc(desc)
+{
+}
 } // namespace violet

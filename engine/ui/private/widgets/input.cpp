@@ -34,7 +34,7 @@ private:
     std::vector<float2> m_position;
     std::vector<float2> m_uv;
     std::vector<std::uint32_t> m_color;
-    std::vector<std::uint32_t> m_indices;
+    std::vector<std::uint32_t> m_indexes;
 
     control_mesh m_mesh;
 
@@ -85,7 +85,7 @@ void text_input::text(std::string_view content)
 {
     m_position.clear();
     m_uv.clear();
-    m_indices.clear();
+    m_indexes.clear();
 
     float pen_x = 0.0f;
     float pen_y = m_font->heigth() * 0.75f;
@@ -114,8 +114,8 @@ void text_input::text(std::string_view content)
                 glyph.uv2,
                 {glyph.uv1[0], glyph.uv2[1]}
         });
-        m_indices.insert(
-            m_indices.end(),
+        m_indexes.insert(
+            m_indexes.end(),
             {vertex_base,
              vertex_base + 1,
              vertex_base + 2,
@@ -140,8 +140,8 @@ void text_input::text(std::string_view content)
     m_mesh.uv = m_uv.data();
     m_mesh.color = m_color.data();
     m_mesh.vertex_count = m_position.size();
-    m_mesh.indices = m_indices.data();
-    m_mesh.index_count = m_indices.size();
+    m_mesh.indexes = m_indexes.data();
+    m_mesh.index_count = m_indexes.size();
     m_mesh.texture = m_font->texture();
 
     layout()->set_width(pen_x);

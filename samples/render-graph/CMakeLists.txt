@@ -1,7 +1,6 @@
 project(render-graph)
 
 add_executable(${PROJECT_NAME}
-    ./source/deferred_renderer.cpp
     ./source/main.cpp)
 
 target_include_directories(${PROJECT_NAME}

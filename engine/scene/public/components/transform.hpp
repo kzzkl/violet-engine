@@ -6,37 +6,37 @@ namespace violet
 {
 struct transform
 {
-    float3 position{0.0f, 0.0f, 0.0f};
-    float4 rotation{0.0f, 0.0f, 0.0f, 1.0f};
-    float3 scale{1.0f, 1.0f, 1.0f};
+    vec3f position{0.0f, 0.0f, 0.0f};
+    vec4f rotation{0.0f, 0.0f, 0.0f, 1.0f};
+    vec3f scale{1.0f, 1.0f, 1.0f};
 
-    void lookat(const float3& target, const float3& up)
+    void lookat(const vec3f& target, const vec3f& up)
     {
-        vector4 t = math::load(target);
-        vector4 p = math::load(position);
-        vector4 u = math::load(up);
+        vec4f_simd t = math::load(target);
+        vec4f_simd p = math::load(position);
+        vec4f_simd u = math::load(up);
 
-        vector4 z_axis = vector::normalize(vector::sub(t, p));
-        vector4 x_axis = vector::normalize(vector::cross(u, z_axis));
-        vector4 y_axis = vector::cross(z_axis, x_axis);
+        vec4f_simd z_axis = vector::normalize(vector::sub(t, p));
+        vec4f_simd x_axis = vector::normalize(vector::cross(u, z_axis));
+        vec4f_simd y_axis = vector::cross(z_axis, x_axis);
 
-        matrix4 rotation_matrix = {x_axis, y_axis, z_axis, math::IDENTITY_ROW_3};
+        mat4f_simd rotation_matrix = {x_axis, y_axis, z_axis, vector::set(0.0f, 0.0f, 0.0f, 1.0f)};
         math::store(quaternion::from_matrix(rotation_matrix), rotation);
     }
 };
 
 struct transform_local
 {
-    float4x4 matrix;
+    mat4f matrix;
 };
 
 struct transform_world
 {
-    float4x4 matrix;
+    mat4f matrix;
 
-    float3 get_position() const
+    vec3f get_position() const
     {
-        return float3{matrix[3][0], matrix[3][1], matrix[3][2]};
+        return vec3f{matrix[3][0], matrix[3][1], matrix[3][2]};
     }
 };
 } // namespace violet

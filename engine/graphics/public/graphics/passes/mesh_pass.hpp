@@ -9,10 +9,13 @@ class mesh_pass : public rdg_render_pass
 public:
     struct parameter
     {
-        render_list render_list;
-        rhi_viewport viewport;
+        const render_scene& scene;
+        const render_camera& camera;
 
-        rdg_texture* render_target;
+        rdg_buffer* command_buffer;
+        rdg_buffer* count_buffer;
+
+        rdg_texture* gbuffer_albedo;
         rdg_texture* depth_buffer;
 
         bool clear;

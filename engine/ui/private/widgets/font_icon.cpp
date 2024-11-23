@@ -8,7 +8,7 @@ font_icon::font_icon(std::uint32_t index, const font_icon_theme& theme)
 {
     m_font = theme.icon_font;
 
-    m_indices = {0, 1, 2, 0, 2, 3};
+    m_indexes = {0, 1, 2, 0, 2, 3};
 
     icon(index);
     icon_color(theme.icon_color);
@@ -21,7 +21,7 @@ font_icon::font_icon(std::uint32_t index, const font_icon_theme& theme)
         .uv = m_uv.data(),
         .color = m_color.data(),
         .vertex_count = 4,
-        .indices = m_indices.data(),
+        .indexes = m_indexes.data(),
         .index_count = 6,
         .scissor = false,
         .texture = m_font->texture()};

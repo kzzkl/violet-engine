@@ -18,7 +18,7 @@ task& task::set_group(task_group& group)
     m_group = &group;
 
     add_dependency(group.get_begin_task());
-    group.get_finish_task().add_dependency(*this);
+    group.get_end_task().add_dependency(*this);
     return *this;
 }
 
@@ -32,6 +32,6 @@ void task::add_dependency_impl(task& dependency)
 
 void task::add_dependency_impl(task_group& dependency)
 {
-    add_dependency(dependency.get_finish_task());
+    add_dependency(dependency.get_end_task());
 }
 } // namespace violet

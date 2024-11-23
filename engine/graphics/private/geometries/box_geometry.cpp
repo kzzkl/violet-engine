@@ -9,7 +9,7 @@ box_geometry::box_geometry(float width, float height, float depth)
     float half_height = height * 0.5f;
     float half_depth = depth * 0.5f;
 
-    std::vector<float3> position = {
+    std::vector<vec3f> position = {
         {-half_width, half_height,  half_depth }, // up
         {half_width,  half_height,  half_depth },
         {half_width,  half_height,  -half_depth},
@@ -36,7 +36,7 @@ box_geometry::box_geometry(float width, float height, float depth)
         {-half_width, -half_height, half_depth }
     };
 
-    std::vector<float3> normal = {
+    std::vector<vec3f> normal = {
         {0.0f,  1.0f,  0.0f }, // up
         {0.0f,  1.0f,  0.0f },
         {0.0f,  1.0f,  0.0f },
@@ -63,7 +63,7 @@ box_geometry::box_geometry(float width, float height, float depth)
         {0.0f,  0.0f,  1.0f }
     };
 
-    std::vector<std::uint32_t> indices = {
+    std::vector<std::uint32_t> indexes = {
         0,  2,  1,  0,  3,  2,  // up
         4,  5,  6,  4,  6,  7,  // down
         8,  10, 9,  8,  11, 10, // left
@@ -74,6 +74,6 @@ box_geometry::box_geometry(float width, float height, float depth)
 
     add_attribute("position", std::span(position.data(), position.size()));
     add_attribute("normal", normal);
-    set_indices(indices);
+    set_indexes(indexes);
 }
 } // namespace violet

@@ -1,90 +1,53 @@
 #pragma once
 
-#include "common/allocator.hpp"
-#include "graphics/geometry.hpp"
-#include "graphics/material.hpp"
 #include "graphics/render_device.hpp"
-#include <vector>
+#include "graphics/render_scene.hpp"
 
 namespace violet
 {
-struct render_camera
-{
-    rhi_parameter* parameter;
-    std::vector<rhi_texture*> render_targets;
+class material_manager;
+class geometry_manager;
 
-    rhi_viewport viewport;
-};
-
-struct render_list
-{
-    struct mesh
-    {
-        rhi_parameter* transform;
-        geometry* geometry;
-    };
-
-    struct draw_item
-    {
-        std::size_t mesh_index;
-        std::size_t parameter_index;
-
-        std::uint32_t vertex_start;
-        std::uint32_t index_start;
-        std::uint32_t index_count;
-    };
-
-    struct batch
-    {
-        rdg_render_pipeline pipeline;
-        std::vector<rhi_parameter*> parameters;
-
-        std::vector<draw_item> items;
-    };
-
-    std::vector<mesh> meshes;
-    std::vector<batch> batches;
-
-    rhi_parameter* light;
-    rhi_parameter* camera;
-};
-
-class mesh;
 class render_context
 {
 public:
-    render_context();
+    ~render_context();
 
-    render_list get_render_list(const render_camera& camera) const;
+    static render_context& instance();
 
-    allocation allocate_constant(std::size_t size);
-    void free_constant(allocation allocation);
+    render_scene* get_scene(std::uint32_t scene_id);
 
-    void update_constant(std::uint32_t offset, const void* data, std::size_t size);
+    bool update();
+    void record(rhi_command* command);
 
-    void update_resource();
+    material_manager* get_material_manager() const noexcept
+    {
+        return m_material_manager.get();
+    }
+
+    geometry_manager* get_geometry_manager() const noexcept
+    {
+        return m_geometry_manager.get();
+    }
+
+    rhi_parameter* get_global_parameter() const noexcept
+    {
+        return m_global_parameter.get();
+    }
+
+    void reset();
 
 private:
-    std::vector<std::pair<const mesh*, rhi_parameter*>> m_meshes;
+    render_context();
+    render_context(const render_context&) = delete;
 
-    rhi_ptr<rhi_parameter> m_light;
+    render_context& operator=(const render_context&) = delete;
 
-    allocator m_constant_allocator;
-    rhi_ptr<rhi_buffer> m_constant_buffer;
+    std::unique_ptr<material_manager> m_material_manager;
+    std::unique_ptr<geometry_manager> m_geometry_manager;
 
-    allocator m_staging_allocator;
-    std::vector<rhi_ptr<rhi_buffer>> m_staging_buffers;
+    std::vector<std::unique_ptr<render_scene>> m_scenes;
 
-    struct update_buffer_command
-    {
-        rhi_buffer* src;
-        rhi_buffer* dst;
-        std::uint32_t src_offset;
-        std::uint32_t dst_offset;
-        std::size_t size;
-    };
-    std::vector<update_buffer_command> m_update_buffer_commands;
-
-    friend class graphics_system;
+    rhi_ptr<rhi_parameter> m_global_parameter;
 };
 } // namespace violet

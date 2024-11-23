@@ -3,63 +3,50 @@
 
 namespace violet
 {
-archetype::archetype(
-    std::span<const component_id> components,
-    const component_builder_list& component_builder_list,
-    archetype_chunk_allocator* allocator) noexcept
+archetype::archetype(const archetype_layout& layout, archetype_chunk_allocator* allocator) noexcept
     : m_chunk_allocator(allocator)
 {
-    m_components.insert(m_components.end(), components.begin(), components.end());
+    assert(layout.size() < std::numeric_limits<std::uint8_t>::max());
 
-    for (component_id id : components)
-        m_mask.set(id);
-
-    struct layout_info
+    m_components.reserve(layout.size());
+    for (auto& [id, builder] : layout)
     {
-        component_id id;
-        std::size_t size;
-        std::size_t align;
-    };
-
-    std::vector<layout_info> list(components.size());
-    std::transform(
-        components.begin(),
-        components.end(),
-        list.begin(),
-        [this, &component_builder_list](component_id id)
-        {
-            return layout_info{
-                .id = id,
-                .size = component_builder_list[id]->get_size(),
-                .align = component_builder_list[id]->get_align()};
+        m_components.push_back({
+            .id = id,
+            .builder = builder,
         });
 
+        m_mask.set(id);
+    }
+
     std::sort(
-        list.begin(),
-        list.end(),
-        [](const auto& a, const auto& b)
+        m_components.begin(),
+        m_components.end(),
+        [](const component_info& a, const component_info& b)
         {
-            return a.align == b.align ? a.id < b.id : a.align > b.align;
+            std::size_t a_align = a.builder->get_align();
+            std::size_t b_align = b.builder->get_align();
+            return a_align == b_align ? a.id < b.id : a_align > b_align;
         });
 
     std::size_t entity_size = 0;
-    for (const auto& info : list)
+    for (const auto& component : m_components)
     {
-        entity_size += info.size;
+        entity_size += component.builder->get_size();
     }
 
-    m_chunk_entity_count = archetype_chunk::size / entity_size;
+    m_chunk_capacity = archetype_chunk::size / entity_size;
 
-    std::size_t offset = 0;
-    for (std::size_t i = 0; i < list.size(); ++i)
+    std::size_t chunk_offset = 0;
+    for (auto& component : m_components)
     {
-        component_id id = list[i].id;
-        m_component_infos[id] = {
-            .chunk_offset = offset,
-            .index = i,
-            .builder = component_builder_list[id].get()};
+        component.chunk_offset = chunk_offset;
+        chunk_offset += component.builder->get_size() * m_chunk_capacity;
+    }
 
-        offset += list[i].size * m_chunk_entity_count;
+    for (std::size_t i = 0; i < m_components.size(); ++i)
+    {
+        m_component_id_to_index[m_components[i].id] = static_cast<std::uint8_t>(i);
     }
 }
 
@@ -73,90 +60,90 @@ std::size_t archetype::add(std::uint32_t world_version)
     std::size_t index = allocate();
 
     auto [chunk_index, entity_index] =
-        std::div(static_cast<const long>(index), static_cast<const long>(m_chunk_entity_count));
+        std::div(static_cast<const long>(index), static_cast<const long>(m_chunk_capacity));
 
-    for (component_id id : m_components)
+    for (auto& component : m_components)
     {
-        auto& info = m_component_infos[id];
+        component.builder->construct(
+            get_data_pointer(chunk_index, component.get_offset(entity_index)));
 
-        std::size_t offset = info.get_offset(entity_index);
-        info.builder->construct(get_data_pointer(chunk_index, offset));
-
-        set_version(chunk_index, world_version, id);
+        set_version(chunk_index, world_version, component.id);
     }
 
     return index;
 }
 
-std::size_t archetype::move(std::size_t index, archetype& target, std::uint32_t world_version)
+std::size_t archetype::move(std::size_t index, archetype& dst, std::uint32_t world_version)
 {
-    assert(this != &target);
+    assert(this != &dst);
 
-    auto& source = *this;
+    auto& src = *this;
 
-    auto [source_chunk_index, source_entity_index] =
-        std::div(static_cast<const long>(index), static_cast<const long>(m_chunk_entity_count));
+    auto [src_chunk_index, src_entity_index] =
+        std::div(static_cast<const long>(index), static_cast<const long>(m_chunk_capacity));
 
-    std::size_t target_index = target.allocate();
-    auto [target_chunk_index, target_entity_index] = std::div(
-        static_cast<const long>(target_index),
-        static_cast<const long>(target.m_chunk_entity_count));
+    std::size_t dst_index = dst.allocate();
+    auto [dst_chunk_index, dst_entity_index] =
+        std::div(static_cast<const long>(dst_index), static_cast<const long>(dst.m_chunk_capacity));
 
-    for (component_id id : m_components)
+    for (auto& src_info : m_components)
     {
-        if (target.m_mask.test(id))
+        component_id id = src_info.id;
+
+        if (dst.m_mask.test(id))
         {
-            auto& source_info = source.m_component_infos[id];
-            auto& target_info = target.m_component_infos[id];
+            auto& dst_info = dst.get_component_info(id);
 
-            std::size_t source_offset = source_info.get_offset(source_entity_index);
-            std::size_t target_offset = target_info.get_offset(target_entity_index);
-            source_info.builder->move_construct(
-                source.get_data_pointer(source_chunk_index, source_offset),
-                target.get_data_pointer(target_chunk_index, target_offset));
+            std::size_t src_offset = src_info.get_offset(src_entity_index);
+            std::size_t dst_offset = dst_info.get_offset(dst_entity_index);
+            src_info.builder->move_construct(
+                src.get_data_pointer(src_chunk_index, src_offset),
+                dst.get_data_pointer(dst_chunk_index, dst_offset));
 
-            std::uint32_t source_version = source.get_version(source_chunk_index, id);
-            std::uint32_t target_version = target.get_version(target_chunk_index, id);
-            if (source_version > target_version)
-                target.set_version(target_chunk_index, source_version, id);
+            std::uint32_t src_version = src.get_version(src_chunk_index, id);
+            std::uint32_t dst_version = dst.get_version(dst_chunk_index, id);
+            if (src_version > dst_version)
+            {
+                dst.set_version(dst_chunk_index, src_version, id);
+            }
         }
     }
 
-    for (component_id id : target.m_components)
+    for (auto& dst_info : dst.m_components)
     {
+        component_id id = dst_info.id;
+
         if (!m_mask.test(id))
         {
-            auto& target_info = target.m_component_infos[id];
+            std::size_t offset = dst_info.get_offset(dst_entity_index);
+            dst_info.builder->construct(dst.get_data_pointer(dst_chunk_index, offset));
 
-            std::size_t offset = target_info.get_offset(target_entity_index);
-            target_info.builder->construct(target.get_data_pointer(target_chunk_index, offset));
-
-            target.set_version(target_chunk_index, world_version, id);
+            dst.set_version(dst_chunk_index, world_version, id);
         }
     }
 
     remove(index);
-    return target_index;
+    return dst_index;
 }
 
 void archetype::remove(std::size_t index)
 {
-    assert(index < m_size);
+    assert(index < m_entity_count);
 
-    std::size_t back_index = m_size - 1;
+    std::size_t back_index = m_entity_count - 1;
     if (back_index == index)
     {
         destruct(index);
-        --m_size;
+        --m_entity_count;
     }
     else
     {
         move_assignment(back_index, index);
         destruct(back_index);
-        --m_size;
+        --m_entity_count;
     }
 
-    if (m_size % m_chunk_entity_count == 0)
+    if (m_entity_count % m_chunk_capacity == 0)
     {
         m_chunk_allocator->free(m_chunks.back());
         m_chunks.pop_back();
@@ -165,7 +152,7 @@ void archetype::remove(std::size_t index)
 
 void archetype::clear() noexcept
 {
-    for (std::size_t i = 0; i < m_size; ++i)
+    for (std::size_t i = 0; i < m_entity_count; ++i)
     {
         destruct(i);
     }
@@ -177,75 +164,69 @@ void archetype::clear() noexcept
 
     m_chunks.clear();
 
-    m_size = 0;
+    m_entity_count = 0;
 }
 
 std::size_t archetype::allocate()
 {
-    std::size_t index = m_size;
-    if (index >= capacity())
+    std::size_t index = m_entity_count;
+    if (index >= get_capacity())
     {
         m_chunks.push_back(m_chunk_allocator->allocate());
         m_chunks.back()->component_versions.resize(m_components.size());
     }
 
-    ++m_size;
+    ++m_entity_count;
     return index;
 }
 
-void archetype::move_construct(std::size_t source, std::size_t target)
+void archetype::move_construct(std::size_t src, std::size_t dst)
 {
-    auto [source_chunk_index, source_entity_index] =
-        std::div(static_cast<const long>(source), static_cast<const long>(m_chunk_entity_count));
+    auto [src_chunk_index, src_entity_index] =
+        std::div(static_cast<const long>(src), static_cast<const long>(m_chunk_capacity));
 
-    auto [target_chunk_index, target_entity_index] =
-        std::div(static_cast<const long>(target), static_cast<const long>(m_chunk_entity_count));
+    auto [dst_chunk_index, dst_entity_index] =
+        std::div(static_cast<const long>(dst), static_cast<const long>(m_chunk_capacity));
 
-    for (component_id id : m_components)
+    for (auto& component : m_components)
     {
-        auto& info = m_component_infos[id];
+        std::size_t src_offset = component.get_offset(src_entity_index);
+        std::size_t dst_offset = component.get_offset(dst_entity_index);
 
-        std::size_t source_offset = info.get_offset(source_entity_index);
-        std::size_t target_offset = info.get_offset(target_entity_index);
-
-        info.builder->move_construct(
-            get_data_pointer(source_chunk_index, source_offset),
-            get_data_pointer(target_chunk_index, target_offset));
+        component.builder->move_construct(
+            get_data_pointer(src_chunk_index, src_offset),
+            get_data_pointer(dst_chunk_index, dst_offset));
     }
 }
 
 void archetype::destruct(std::size_t index)
 {
     auto [chunk_index, entity_index] =
-        std::div(static_cast<const long>(index), static_cast<const long>(m_chunk_entity_count));
+        std::div(static_cast<const long>(index), static_cast<const long>(m_chunk_capacity));
 
-    for (component_id id : m_components)
+    for (auto& component : m_components)
     {
-        auto& info = m_component_infos[id];
-
-        std::size_t offset = info.get_offset(entity_index);
-        info.builder->destruct(get_data_pointer(chunk_index, offset));
+        std::size_t offset = component.get_offset(entity_index);
+        component.builder->destruct(get_data_pointer(chunk_index, offset));
     }
 }
 
-void archetype::move_assignment(std::size_t source, std::size_t target)
+void archetype::move_assignment(std::size_t src, std::size_t dst)
 {
-    auto [source_chunk_index, source_entity_index] =
-        std::div(static_cast<const long>(source), static_cast<const long>(m_chunk_entity_count));
+    auto [src_chunk_index, src_entity_index] =
+        std::div(static_cast<const long>(src), static_cast<const long>(m_chunk_capacity));
 
-    auto [target_chunk_index, target_entity_index] =
-        std::div(static_cast<const long>(target), static_cast<const long>(m_chunk_entity_count));
+    auto [dst_chunk_index, dst_entity_index] =
+        std::div(static_cast<const long>(dst), static_cast<const long>(m_chunk_capacity));
 
-    for (component_id id : m_components)
+    for (auto& component : m_components)
     {
-        auto& info = m_component_infos[id];
+        std::size_t src_offset = component.get_offset(src_entity_index);
+        std::size_t dst_offset = component.get_offset(dst_entity_index);
 
-        std::size_t source_offset = info.get_offset(source_entity_index);
-        std::size_t target_offset = info.get_offset(target_entity_index);
-
-        info.builder->move_assignment(
-            get_data_pointer(source_chunk_index, source_offset),
-            get_data_pointer(target_chunk_index, target_offset));
+        component.builder->move_assignment(
+            get_data_pointer(src_chunk_index, src_offset),
+            get_data_pointer(dst_chunk_index, dst_offset));
     }
 }
 
@@ -259,13 +240,13 @@ void archetype::set_version(
     std::uint32_t world_version,
     component_id component_id)
 {
-    std::size_t index = m_component_infos[component_id].index;
+    std::size_t index = m_component_id_to_index[component_id];
     m_chunks[chunk_index]->component_versions[index] = world_version;
 }
 
 std::uint32_t archetype::get_version(std::size_t chunk_index, component_id component_id)
 {
-    std::size_t index = m_component_infos[component_id].index;
+    std::size_t index = m_component_id_to_index[component_id];
     return m_chunks[chunk_index]->component_versions[index];
 }
 
@@ -274,7 +255,7 @@ bool archetype::check_updated(
     std::uint32_t system_version,
     component_id component_id)
 {
-    std::size_t index = m_component_infos[component_id].index;
+    std::size_t index = m_component_id_to_index[component_id];
     return system_version == 0 || m_chunks[chunk_index]->component_versions[index] > system_version;
 }
 } // namespace violet

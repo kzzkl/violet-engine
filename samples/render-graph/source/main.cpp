@@ -2,40 +2,53 @@
 #include "components/camera.hpp"
 #include "components/mesh.hpp"
 #include "components/orbit_control.hpp"
+#include "components/scene_layer.hpp"
 #include "components/transform.hpp"
-#include "control/control_module.hpp"
+#include "control/control_system.hpp"
 #include "core/engine.hpp"
-#include "deferred_renderer.hpp"
-#include "ecs/actor.hpp"
+#include "ecs_command/ecs_command_system.hpp"
+#include "graphics/camera_system.hpp"
 #include "graphics/geometries/box_geometry.hpp"
-#include "graphics/graphics_module.hpp"
-#include "graphics/materials/basic_material.hpp"
-#include "scene/scene_module.hpp"
-#include "window/window_module.hpp"
+#include "graphics/graphics_system.hpp"
+#include "graphics/materials/unlit_material.hpp"
+#include "graphics/mesh_system.hpp"
+#include "graphics/renderers/deferred_renderer.hpp"
+#include "scene/hierarchy_system.hpp"
+#include "scene/scene_system.hpp"
+#include "scene/transform_system.hpp"
+#include "task/task_graph_printer.hpp"
+#include "window/window_system.hpp"
 #include <filesystem>
 #include <fstream>
 #include <thread>
 
 namespace violet::sample
 {
-class hello_world : public engine_module
+class hello_world : public engine_system
 {
 public:
-    hello_world() : engine_module("hello_world") {}
+    hello_world()
+        : engine_system("hello_world")
+    {
+    }
 
     virtual bool initialize(const dictionary& config)
     {
-        get_module<window_module>().on_resize().then(
-            [this](std::uint32_t width, std::uint32_t height)
+        auto& window = get_system<window_system>();
+        window.on_resize().add_task().set_execute(
+            [this]()
             {
-                resize(width, height);
+                resize();
             });
 
         initialize_render();
         initialize_scene();
 
-        auto window_extent = get_module<window_module>().get_extent();
-        resize(window_extent.width, window_extent.height);
+        resize();
+
+        task_graph& task_graph = get_task_graph();
+        task_graph.reset();
+        task_graph_printer::print(task_graph);
 
         return true;
     }
@@ -45,121 +58,101 @@ public:
 private:
     void initialize_render()
     {
-        auto window_extent = get_module<window_module>().get_extent();
+        auto window_extent = get_system<window_system>().get_extent();
 
-        rhi_swapchain_desc swapchain_desc = {};
-        swapchain_desc.width = window_extent.width;
-        swapchain_desc.height = window_extent.height;
-        swapchain_desc.window_handle = get_module<window_module>().get_handle();
-        m_swapchain = render_device::instance().create_swapchain(swapchain_desc);
+        m_swapchain = render_device::instance().create_swapchain({
+            .extent =
+                {
+                    .width = window_extent.width,
+                    .height = window_extent.height,
+                },
+            .flags = RHI_TEXTURE_TRANSFER_DST | RHI_TEXTURE_RENDER_TARGET,
+            .window_handle = get_system<window_system>().get_handle(),
+        });
         m_renderer = std::make_unique<deferred_renderer>();
-
-        rhi_texture_desc skybox_desc = {};
-        skybox_desc.create_type = RHI_TEXTURE_CREATE_FROM_FILE;
-        skybox_desc.file.paths[0] = "pbr/textures/skybox/icebergs/right.jpg";
-        skybox_desc.file.paths[1] = "pbr/textures/skybox/icebergs/left.jpg";
-        skybox_desc.file.paths[2] = "pbr/textures/skybox/icebergs/top.jpg";
-        skybox_desc.file.paths[3] = "pbr/textures/skybox/icebergs/bottom.jpg";
-        skybox_desc.file.paths[4] = "pbr/textures/skybox/icebergs/front.jpg";
-        skybox_desc.file.paths[5] = "pbr/textures/skybox/icebergs/back.jpg";
-        skybox_desc.flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE | RHI_TEXTURE_MIPMAP;
-        m_skybox = render_device::instance().create_texture(skybox_desc);
-
-        rhi_sampler_desc sampler_desc = {};
-        sampler_desc.min_filter = RHI_FILTER_LINEAR;
-        sampler_desc.mag_filter = RHI_FILTER_LINEAR;
-        sampler_desc.address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-        sampler_desc.address_mode_v = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-        sampler_desc.address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-        m_skybox_sampler = render_device::instance().create_sampler(sampler_desc);
     }
 
     void initialize_scene()
     {
+        m_scene = get_system<scene_system>().create_scene("Main Scene");
+
         m_geometry = std::make_unique<box_geometry>();
-        m_material = std::make_unique<basic_material>(float3{1.0f, 0.5f, 0.0f});
+        m_material = std::make_unique<unlit_material>();
 
-        m_cube = std::make_unique<actor>("cube", get_world());
-        auto [cube_transform, cube_mesh] = m_cube->add<transform, mesh>();
-        cube_mesh->set_geometry(m_geometry.get());
-        cube_mesh->add_submesh(0, 0, 0, m_geometry->get_index_count(), m_material.get());
+        auto& world = get_world();
 
-        m_main_camera = std::make_unique<actor>("camera", get_world());
-        auto [camera_transform, main_camera, camera_control] =
-            m_main_camera->add<transform, camera, orbit_control>();
-        camera_transform->set_position(float3{0.0f, 0.0f, -10.0f});
+        m_cube = world.create();
+        world.add_component<transform, transform_local, transform_world, mesh, scene_layer>(m_cube);
 
-        main_camera->set_renderer(m_renderer.get());
-        main_camera->set_skybox(m_skybox.get(), m_skybox_sampler.get());
+        auto& cube_mesh = world.get_component<mesh>(m_cube);
+        cube_mesh.geometry = m_geometry.get();
+        cube_mesh.submeshes.push_back({
+            .vertex_offset = 0,
+            .index_offset = 0,
+            .index_count = m_geometry->get_index_count(),
+            .material = m_material.get(),
+        });
+
+        auto& cube_scene = world.get_component<scene_layer>(m_cube);
+        cube_scene.scene = m_scene;
+
+        m_camera = world.create();
+        world.add_component<
+            transform,
+            transform_local,
+            transform_world,
+            camera,
+            orbit_control,
+            scene_layer>(m_camera);
+
+        auto& camera_transform = world.get_component<transform>(m_camera);
+        camera_transform.position = {0.0f, 0.0f, -10.0f};
+
+        auto& camera_scene = world.get_component<scene_layer>(m_camera);
+        camera_scene.scene = m_scene;
+
+        auto& main_camera = world.get_component<camera>(m_camera);
+        main_camera.near = 1.0f;
+        main_camera.far = 1000.0f;
+        main_camera.fov = 45.0f;
+        main_camera.render_targets = {m_swapchain.get()};
+        main_camera.renderer = m_renderer.get();
     }
 
-    void resize(std::uint32_t width, std::uint32_t height)
+    void resize()
     {
-        render_device& device = render_device::instance();
-
-        m_swapchain->resize(width, height);
-
-        rhi_texture_desc depth_buffer_desc = {};
-        depth_buffer_desc.create_type = RHI_TEXTURE_CREATE_FROM_INFO;
-        depth_buffer_desc.info.extent.width = width;
-        depth_buffer_desc.info.extent.height = height;
-        depth_buffer_desc.info.format = RHI_FORMAT_D24_UNORM_S8_UINT;
-        depth_buffer_desc.samples = RHI_SAMPLE_COUNT_1;
-        depth_buffer_desc.flags = RHI_TEXTURE_DEPTH_STENCIL;
-        m_depth_buffer = device.create_texture(depth_buffer_desc);
-
-        rhi_texture_desc light_buffer_desc = {};
-        light_buffer_desc.create_type = RHI_TEXTURE_CREATE_FROM_INFO;
-        light_buffer_desc.info.extent.width = width;
-        light_buffer_desc.info.extent.height = height;
-        light_buffer_desc.info.format = RHI_FORMAT_R8G8B8A8_UNORM;
-        light_buffer_desc.samples = RHI_SAMPLE_COUNT_1;
-        light_buffer_desc.flags = RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE;
-        m_light_buffer = device.create_texture(light_buffer_desc);
-
-        auto main_camera = m_main_camera->get<camera>();
-        main_camera->resize(width, height);
-        main_camera->set_render_target(0, m_swapchain.get());
-        main_camera->set_render_target(1, m_depth_buffer.get());
-        main_camera->set_render_target(2, m_light_buffer.get());
+        auto extent = get_system<window_system>().get_extent();
+        m_swapchain->resize(extent.width, extent.height);
     }
 
     std::unique_ptr<deferred_renderer> m_renderer;
     rhi_ptr<rhi_swapchain> m_swapchain;
-    rhi_ptr<rhi_texture> m_depth_buffer;
-    rhi_ptr<rhi_texture> m_light_buffer;
 
-    rhi_ptr<rhi_texture> m_skybox;
-    rhi_ptr<rhi_sampler> m_skybox_sampler;
-
-    std::unique_ptr<material> m_material;
+    scene* m_scene;
 
     std::unique_ptr<geometry> m_geometry;
-    std::unique_ptr<actor> m_cube;
-    std::unique_ptr<actor> m_main_camera;
+    std::unique_ptr<material> m_material;
+
+    entity m_cube;
+    entity m_camera;
 };
 } // namespace violet::sample
 
 int main()
 {
-    using namespace violet;
+    violet::engine::initialize("render-graph/config");
+    violet::engine::install<violet::ecs_command_system>();
+    violet::engine::install<violet::hierarchy_system>();
+    violet::engine::install<violet::transform_system>();
+    violet::engine::install<violet::scene_system>();
+    violet::engine::install<violet::window_system>();
+    violet::engine::install<violet::mesh_system>();
+    violet::engine::install<violet::camera_system>();
+    violet::engine::install<violet::graphics_system>();
+    violet::engine::install<violet::control_system>();
+    violet::engine::install<violet::sample::hello_world>();
 
-    engine engine;
-    engine.initialize("render-graph/config");
-    engine.install<window_module>();
-    engine.install<scene_module>();
-    engine.install<graphics_module>();
-    engine.install<control_module>();
-    engine.install<sample::hello_world>();
-
-    engine.get_module<window_module>().on_destroy().then(
-        [&engine]()
-        {
-            log::info("Close window");
-            engine.exit();
-        });
-
-    engine.run();
+    violet::engine::run();
 
     return 0;
 }

@@ -20,7 +20,7 @@ private:
     std::array<float2, 4> m_position;
     std::array<float2, 4> m_uv;
     std::array<std::uint32_t, 4> m_color;
-    std::array<std::uint32_t, 6> m_indices;
+    std::array<std::uint32_t, 6> m_indexes;
 
     control_mesh m_mesh;
 };

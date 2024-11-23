@@ -9,8 +9,7 @@ class skybox_pass : public rdg_render_pass
 public:
     struct parameter
     {
-        rhi_parameter* camera;
-        rhi_viewport viewport;
+        const render_camera& camera;
 
         rdg_texture* render_target;
         rdg_texture* depth_buffer;

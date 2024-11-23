@@ -2,9 +2,7 @@
 
 namespace violet
 {
-rdg_allocator::rdg_allocator()
-{
-}
+rdg_allocator::rdg_allocator() {}
 
 rhi_parameter* rdg_allocator::allocate_parameter(const rhi_parameter_desc& desc)
 {
@@ -12,7 +10,9 @@ rhi_parameter* rdg_allocator::allocate_parameter(const rhi_parameter_desc& desc)
 
     auto& pool = m_parameter_pools[hash];
     if (pool.count == pool.data.size())
+    {
         pool.data.push_back(render_device::instance().create_parameter(desc));
+    }
 
     return pool.data[pool.count++].get();
 }
@@ -23,7 +23,9 @@ rhi_texture* rdg_allocator::allocate_texture(const rhi_texture_desc& desc)
 
     auto& pool = m_texture_pools[hash];
     if (pool.count == pool.data.size())
+    {
         pool.data.push_back(render_device::instance().create_texture(desc));
+    }
 
     return pool.data[pool.count++].get();
 }
@@ -34,7 +36,22 @@ rhi_texture* rdg_allocator::allocate_texture(const rhi_texture_view_desc& desc)
 
     auto& pool = m_texture_pools[hash];
     if (pool.count == pool.data.size())
+    {
         pool.data.push_back(render_device::instance().create_texture_view(desc));
+    }
+
+    return pool.data[pool.count++].get();
+}
+
+rhi_buffer* rdg_allocator::allocate_buffer(const rhi_buffer_desc& desc)
+{
+    std::uint64_t hash = hash::city_hash_64(&desc, sizeof(rhi_buffer_desc));
+
+    auto& pool = m_buffer_pools[hash];
+    if (pool.count == pool.data.size())
+    {
+        pool.data.push_back(render_device::instance().create_buffer(desc));
+    }
 
     return pool.data[pool.count++].get();
 }
@@ -45,9 +62,13 @@ rhi_render_pass* rdg_allocator::get_render_pass(const rhi_render_pass_desc& desc
 
     rhi_render_pass* render_pass = m_render_pass_cache.get(hash);
     if (render_pass == nullptr)
+    {
         return m_render_pass_cache.add(hash, render_device::instance().create_render_pass(desc));
+    }
     else
+    {
         return render_pass;
+    }
 }
 
 rhi_framebuffer* rdg_allocator::get_framebuffer(const rhi_framebuffer_desc& desc)
@@ -56,9 +77,13 @@ rhi_framebuffer* rdg_allocator::get_framebuffer(const rhi_framebuffer_desc& desc
 
     rhi_framebuffer* framebuffer = m_framebuffer_cache.get(hash);
     if (framebuffer == nullptr)
+    {
         return m_framebuffer_cache.add(hash, render_device::instance().create_framebuffer(desc));
+    }
     else
+    {
         return framebuffer;
+    }
 }
 
 rhi_render_pipeline* rdg_allocator::get_pipeline(
@@ -73,22 +98,38 @@ rhi_render_pipeline* rdg_allocator::get_pipeline(
     rhi_render_pipeline* render_pipeline = m_render_pipeline_cache.get(hash);
     if (render_pipeline == nullptr)
     {
-        rhi_render_pipeline_desc desc = {};
-        desc.vertex_shader = pipeline.vertex_shader;
-        desc.fragment_shader = pipeline.fragment_shader;
-        desc.blend = pipeline.blend;
-        desc.depth_stencil = pipeline.depth_stencil;
-        desc.rasterizer = pipeline.rasterizer;
-        desc.samples = pipeline.samples;
-        desc.primitive_topology = pipeline.primitive_topology;
-        desc.render_pass = render_pass;
-        desc.render_subpass_index = subpass_index;
+        rhi_render_pipeline_desc desc = {
+            .vertex_shader = pipeline.vertex_shader,
+            .fragment_shader = pipeline.fragment_shader,
+            .blend = pipeline.blend,
+            .depth_stencil = pipeline.depth_stencil,
+            .rasterizer = pipeline.rasterizer,
+            .samples = pipeline.samples,
+            .primitive_topology = pipeline.primitive_topology,
+            .render_pass = render_pass,
+            .subpass_index = subpass_index};
 
         return m_render_pipeline_cache.add(hash, render_device::instance().create_pipeline(desc));
     }
     else
     {
         return render_pipeline;
+    }
+}
+
+rhi_compute_pipeline* rdg_allocator::get_pipeline(const rdg_compute_pipeline& pipeline)
+{
+    std::uint64_t hash = hash::city_hash_64(&pipeline, sizeof(rdg_compute_pipeline));
+
+    rhi_compute_pipeline* compute_pipeline = m_compute_pipeline_cache.get(hash);
+    if (compute_pipeline == nullptr)
+    {
+        rhi_compute_pipeline_desc desc = {.compute_shader = pipeline.compute_shader};
+        return m_compute_pipeline_cache.add(hash, render_device::instance().create_pipeline(desc));
+    }
+    else
+    {
+        return compute_pipeline;
     }
 }
 
@@ -105,14 +146,20 @@ rhi_sampler* rdg_allocator::get_sampler(const rhi_sampler_desc& desc)
 
 void rdg_allocator::reset()
 {
-    for (auto& pool : m_data_pools)
-        pool.count = 0;
-
     for (auto& [hash, pool] : m_parameter_pools)
+    {
         pool.count = 0;
+    }
 
     for (auto& [hash, pool] : m_texture_pools)
+    {
         pool.count = 0;
+    }
+
+    for (auto& [hash, pool] : m_buffer_pools)
+    {
+        pool.count = 0;
+    }
 
     gc();
 }

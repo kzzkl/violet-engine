@@ -22,6 +22,7 @@ BinPackArguments: false
 BinPackParameters: false
 BreakAfterReturnType: Automatic
 PenaltyReturnTypeOnItsOwnLine: 1000
+BreakBeforeBraces: Custom
 BraceWrapping:
     AfterClass: true
     AfterControlStatement: true
@@ -39,7 +40,6 @@ BraceWrapping:
     SplitEmptyRecord: true
     SplitEmptyNamespace: true
 BreakBeforeBinaryOperators: None
-BreakBeforeBraces: Custom
 BreakBeforeConceptDeclarations: Always
 BreakBeforeTernaryOperators: false
 BreakConstructorInitializers: BeforeColon

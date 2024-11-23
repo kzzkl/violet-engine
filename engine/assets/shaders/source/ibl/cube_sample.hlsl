@@ -33,7 +33,7 @@ vs_out vs_main(vs_in input)
         float3(1.0, 1.0, -1.0),  float3(-1.0, 1.0, -1.0), float3(-1.0, -1.0, -1.0), float3(1.0, -1.0, -1.0)     // back
     };
 
-    const int indices[36] = {
+    const int indexes[36] = {
         0,  2,  1,  0,  3,  2,  // right
         4,  6,  5,  4,  7,  6,  // left
         8,  10, 9,  8,  11, 10, // up
@@ -43,14 +43,14 @@ vs_out vs_main(vs_in input)
     };
 
     vs_out output;
-    output.position = float4(ndc[indices[input.vertex_id]], 0.0, 1.0);
+    output.position = float4(ndc[indexes[input.vertex_id]], 0.0, 1.0);
 
-    output.right = normalize(vertices[indices[input.vertex_id + 0]]);
-    output.left = normalize(vertices[indices[input.vertex_id + 6]]);
-    output.top = normalize(vertices[indices[input.vertex_id + 12]]);
-    output.bottom = normalize(vertices[indices[input.vertex_id + 18]]);
-    output.front = normalize(vertices[indices[input.vertex_id + 24]]);
-    output.back = normalize(vertices[indices[input.vertex_id + 30]]);
+    output.right = normalize(vertices[indexes[input.vertex_id + 0]]);
+    output.left = normalize(vertices[indexes[input.vertex_id + 6]]);
+    output.top = normalize(vertices[indexes[input.vertex_id + 12]]);
+    output.bottom = normalize(vertices[indexes[input.vertex_id + 18]]);
+    output.front = normalize(vertices[indexes[input.vertex_id + 24]]);
+    output.back = normalize(vertices[indexes[input.vertex_id + 30]]);
 
     return output;
 }

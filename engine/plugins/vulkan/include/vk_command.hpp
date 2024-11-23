@@ -34,9 +34,15 @@ public:
         override;
     void set_index_buffer(rhi_buffer* index_buffer) override;
 
-    void draw(std::size_t vertex_start, std::size_t vertex_count) override;
-    void draw_indexed(std::size_t index_start, std::size_t index_count, std::size_t vertex_base)
+    void draw(std::size_t vertex_offset, std::size_t vertex_count) override;
+    void draw_indexed(std::size_t index_offset, std::size_t index_count, std::size_t vertex_base)
         override;
+    void draw_indexed_indirect(
+        rhi_buffer* command_buffer,
+        std::size_t command_buffer_offset,
+        rhi_buffer* count_buffer,
+        std::size_t count_buffer_offset,
+        std::size_t max_draw_count) override;
 
     void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) override;
 
@@ -59,6 +65,9 @@ public:
         const rhi_texture_region& src_region,
         rhi_texture* dst,
         const rhi_texture_region& dst_region) override;
+
+    void fill_buffer(rhi_buffer* buffer, const rhi_buffer_region& region, std::uint32_t value)
+        override;
 
     void copy_buffer(
         rhi_buffer* src,

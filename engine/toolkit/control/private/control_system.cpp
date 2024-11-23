@@ -83,14 +83,11 @@ void control_system::update_orbit_control(
     auto [theta_sin, theta_cos] = math::sin_cos(orbit_control.theta);
     auto [phi_sin, phi_cos] = math::sin_cos(orbit_control.phi);
 
-    vector4 p = vector::set(
+    vec3f p = {
         orbit_control.r * theta_sin * phi_cos,
         orbit_control.r * theta_cos,
-        -orbit_control.r * theta_sin * phi_sin);
-    vector4 t = math::load(orbit_control.target);
-    float3 position = math::store<float3>(vector::add(p, t));
-
-    transform.position = position;
-    transform.lookat(orbit_control.target, float3{0.0f, 1.0f, 0.0f});
+        -orbit_control.r * theta_sin * phi_sin};
+    transform.position = vector::add(p, orbit_control.target);
+    transform.lookat(orbit_control.target, vec3f{0.0f, 1.0f, 0.0f});
 }
 } // namespace violet

@@ -1,7 +1,6 @@
 #include "common/log.hpp"
 #include "components/hierarchy.hpp"
 #include "components/transform.hpp"
-#include "core/engine.hpp"
 #include "ecs_command/ecs_command_system.hpp"
 #include "scene/hierarchy_system.hpp"
 #include "scene/scene_system.hpp"

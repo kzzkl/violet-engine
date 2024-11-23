@@ -13,14 +13,20 @@ class vk_parameter_layout
 public:
     struct parameter_binding
     {
-        std::size_t index;
         VkDescriptorType type;
 
-        union {
+        union
+        {
             struct
             {
+                std::size_t index;
                 std::size_t size;
-            } uniform_buffer;
+            } uniform;
+
+            struct
+            {
+                std::size_t index;
+            } texture;
         };
     };
 
@@ -33,7 +39,10 @@ public:
         return m_parameter_bindings;
     }
 
-    VkDescriptorSetLayout get_layout() const noexcept { return m_layout; }
+    VkDescriptorSetLayout get_layout() const noexcept
+    {
+        return m_layout;
+    }
 
 private:
     VkDescriptorSetLayout m_layout;
@@ -48,7 +57,10 @@ public:
     vk_pipeline_layout(std::span<vk_parameter_layout*> parameter_layouts, vk_context* context);
     ~vk_pipeline_layout();
 
-    VkPipelineLayout get_layout() const noexcept { return m_layout; }
+    VkPipelineLayout get_layout() const noexcept
+    {
+        return m_layout;
+    }
 
 private:
     VkPipelineLayout m_layout;
@@ -77,14 +89,11 @@ public:
     vk_parameter(const rhi_parameter_desc& desc, vk_context* context);
     virtual ~vk_parameter();
 
-    virtual void set_uniform(
-        std::size_t index,
-        const void* data,
-        std::size_t size,
-        std::size_t offset) override;
-    virtual void set_texture(std::size_t index, rhi_texture* texture, rhi_sampler* sampler)
+    void set_uniform(std::size_t index, const void* data, std::size_t size, std::size_t offset)
         override;
-    virtual void set_storage(std::size_t index, rhi_buffer* storage_buffer) override;
+    void set_uniform(std::size_t index, rhi_buffer* uniform_buffer) override;
+    void set_texture(std::size_t index, rhi_texture* texture, rhi_sampler* sampler) override;
+    void set_storage(std::size_t index, rhi_buffer* storage_buffer) override;
 
     VkDescriptorSet get_descriptor_set() const noexcept;
 
@@ -122,9 +131,15 @@ public:
     vk_shader(const rhi_shader_desc& desc, vk_context* context);
     virtual ~vk_shader();
 
-    VkShaderModule get_module() const noexcept { return m_module; }
+    VkShaderModule get_module() const noexcept
+    {
+        return m_module;
+    }
 
-    const std::vector<parameter>& get_parameters() const noexcept { return m_parameters; }
+    const std::vector<parameter>& get_parameters() const noexcept
+    {
+        return m_parameters;
+    }
 
 private:
     VkShaderModule m_module;
@@ -173,7 +188,10 @@ public:
     vk_render_pipeline(const vk_render_pipeline&) = delete;
     virtual ~vk_render_pipeline();
 
-    VkPipeline get_pipeline() const noexcept { return m_pipeline; }
+    VkPipeline get_pipeline() const noexcept
+    {
+        return m_pipeline;
+    }
     VkPipelineLayout get_pipeline_layout() const noexcept
     {
         return m_pipeline_layout->get_layout();
@@ -195,7 +213,10 @@ public:
     vk_compute_pipeline(const vk_render_pipeline&) = delete;
     virtual ~vk_compute_pipeline();
 
-    VkPipeline get_pipeline() const noexcept { return m_pipeline; }
+    VkPipeline get_pipeline() const noexcept
+    {
+        return m_pipeline;
+    }
     VkPipelineLayout get_pipeline_layout() const noexcept
     {
         return m_pipeline_layout->get_layout();

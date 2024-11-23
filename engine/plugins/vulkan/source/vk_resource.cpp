@@ -123,10 +123,23 @@ void copy_buffer_to_image(
 }
 } // namespace
 
+vk_image::vk_image(rhi_texture_flags flags)
+    : m_flags(flags)
+{
+}
+
+std::uint64_t vk_image::get_hash() const noexcept
+{
+    VkImage image = get_image();
+    return hash::city_hash_64(&image, sizeof(VkImage));
+}
+
 vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
-    : m_flags(desc.flags),
+    : vk_image(desc.flags),
       m_context(context)
 {
+    assert(desc.level_count > 0 && desc.layer_count > 0);
+
     bool is_cube = desc.flags & RHI_TEXTURE_CUBE;
     m_level_count = desc.level_count;
     m_layer_count = desc.layer_count;
@@ -139,15 +152,7 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
     image_info.format = vk_util::map_format(desc.format);
     image_info.mipLevels = m_level_count;
     image_info.samples = vk_util::map_sample_count(desc.samples);
-    image_info.usage |= (desc.flags & RHI_TEXTURE_SHADER_RESOURCE) ? VK_IMAGE_USAGE_SAMPLED_BIT : 0;
-    image_info.usage |=
-        (desc.flags & RHI_TEXTURE_RENDER_TARGET) ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : 0;
-    image_info.usage |=
-        (desc.flags & RHI_TEXTURE_DEPTH_STENCIL) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
-    image_info.usage |=
-        (desc.flags & RHI_TEXTURE_TRANSFER_SRC) ? VK_IMAGE_USAGE_TRANSFER_SRC_BIT : 0;
-    image_info.usage |=
-        (desc.flags & RHI_TEXTURE_TRANSFER_DST) ? VK_IMAGE_USAGE_TRANSFER_DST_BIT : 0;
+    image_info.usage = vk_util::map_image_usage_flags(desc.flags);
     image_info.flags = is_cube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
 
     std::tie(m_image, m_allocation) = create_image(
@@ -158,7 +163,6 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
     m_format = vk_util::map_format(image_info.format);
     m_samples = desc.samples;
     m_extent = {image_info.extent.width, image_info.extent.height};
-    m_hash = hash::city_hash_64(&m_image, sizeof(VkImage));
 
     VkImageViewCreateInfo image_view_info = {};
     image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -176,17 +180,24 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
     image_view_info.subresourceRange.layerCount = m_layer_count;
 
     if (desc.flags & RHI_TEXTURE_DEPTH_STENCIL)
-        image_view_info.subresourceRange.aspectMask =
-            VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+    {
+        image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    }
     else
+    {
         image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    }
 
     vkCreateImageView(m_context->get_device(), &image_view_info, nullptr, &m_image_view);
 
     if (desc.flags & RHI_TEXTURE_DEPTH_STENCIL)
-        m_clear_value.depthStencil = VkClearDepthStencilValue{1.0, 0};
+    {
+        m_clear_value.depthStencil = VkClearDepthStencilValue{0.0, 0};
+    }
     else
+    {
         m_clear_value.color = VkClearColorValue{0.0f, 0.0f, 0.0f, 1.0f};
+    }
 }
 
 vk_texture::~vk_texture()
@@ -196,7 +207,8 @@ vk_texture::~vk_texture()
 }
 
 vk_texture_view::vk_texture_view(const rhi_texture_view_desc& desc, vk_context* context)
-    : m_context(context)
+    : vk_image(static_cast<vk_image*>(desc.texture)->get_flags()),
+      m_context(context)
 {
     assert(static_cast<vk_image*>(desc.texture)->is_texture_view() == false);
 
@@ -217,11 +229,15 @@ vk_texture_view::vk_texture_view(const rhi_texture_view_desc& desc, vk_context* 
     image_view_info.subresourceRange.baseArrayLayer = desc.layer;
     image_view_info.subresourceRange.layerCount = desc.layer_count;
 
-    if (m_texture->is_depth())
+    if (m_texture->get_flags() & RHI_TEXTURE_DEPTH_STENCIL)
+    {
         image_view_info.subresourceRange.aspectMask =
             VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+    }
     else
+    {
         image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    }
 
     vkCreateImageView(m_context->get_device(), &image_view_info, nullptr, &m_image_view);
 }
@@ -263,19 +279,13 @@ vk_sampler::~vk_sampler()
 vk_buffer::vk_buffer(const rhi_buffer_desc& desc, vk_context* context)
     : m_context(context),
       m_buffer_size(desc.size),
+      m_flags(desc.flags),
       m_mapping_pointer(nullptr)
 {
     VkBufferCreateInfo buffer_info = {};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffer_info.size = m_buffer_size;
-    buffer_info.usage |= (desc.flags & RHI_BUFFER_VERTEX) ? VK_BUFFER_USAGE_VERTEX_BUFFER_BIT : 0;
-    buffer_info.usage |= (desc.flags & RHI_BUFFER_INDEX) ? VK_BUFFER_USAGE_INDEX_BUFFER_BIT : 0;
-    buffer_info.usage |= (desc.flags & RHI_BUFFER_UNIFORM) ? VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT : 0;
-    buffer_info.usage |= (desc.flags & RHI_BUFFER_STORAGE) ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : 0;
-    buffer_info.usage |=
-        (desc.flags & RHI_BUFFER_TRANSFER_SRC) ? VK_BUFFER_USAGE_TRANSFER_SRC_BIT : 0;
-    buffer_info.usage |=
-        (desc.flags & RHI_BUFFER_TRANSFER_DST) ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : 0;
+    buffer_info.usage = vk_util::map_buffer_usage_flags(desc.flags);
 
     if (desc.flags & RHI_BUFFER_HOST_VISIBLE)
     {
@@ -283,7 +293,8 @@ vk_buffer::vk_buffer(const rhi_buffer_desc& desc, vk_context* context)
 
         std::tie(m_buffer, m_allocation) = create_buffer(
             buffer_info,
-            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                VMA_ALLOCATION_CREATE_MAPPED_BIT,
             m_context->get_vma_allocator(),
             &allocation_info);
 
@@ -362,5 +373,25 @@ vk_index_buffer::vk_index_buffer(const rhi_buffer_desc& desc, vk_context* contex
         m_index_type = VK_INDEX_TYPE_UINT32;
     else
         throw std::runtime_error("Invalid index size.");
+}
+
+vk_texel_buffer::vk_texel_buffer(const rhi_buffer_desc& desc, vk_context* context)
+    : vk_buffer(desc, context)
+{
+    VkBufferViewCreateInfo buffer_view_info = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .buffer = get_buffer_handle(),
+        .format = vk_util::map_format(desc.texel.format),
+        .offset = 0,
+        .range = desc.size};
+
+    vkCreateBufferView(get_context()->get_device(), &buffer_view_info, nullptr, &m_buffer_view);
+}
+
+vk_texel_buffer::~vk_texel_buffer()
+{
+    vkDestroyBufferView(get_context()->get_device(), m_buffer_view, nullptr);
 }
 } // namespace violet::vk

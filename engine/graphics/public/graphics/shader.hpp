@@ -50,49 +50,93 @@ struct shader
         std::size_t parameter_count;
     };
 
-    struct mesh_data
+    struct draw_command
     {
-        float4x4 model_matrix;
-        float4x4 normal_matrix;
+        std::uint32_t index_count;
+        std::uint32_t instance_count;
+        std::uint32_t index_offset;
+        std::int32_t vertex_offset;
+        std::uint32_t instance;
     };
 
-    static constexpr parameter mesh = {
+    static constexpr parameter global = {
+        {RHI_PARAMETER_STORAGE,
+         RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
+         1},
+    };
+
+    struct mesh_data
+    {
+        mat4f model_matrix;
+        vec3f aabb_min;
+        std::uint32_t flags;
+        vec3f aabb_max;
+        std::uint32_t padding1;
+    };
+
+    struct instance_data
+    {
+        std::uint32_t mesh_index;
+        std::uint32_t vertex_offset;
+        std::uint32_t index_offset;
+        std::uint32_t index_count;
+
+        std::uint32_t group_index;
+        std::uint32_t material_address;
+        std::uint32_t flags;
+        std::uint32_t padding0;
+    };
+
+    struct light_data
+    {
+        vec3f position;
+        std::uint32_t type;
+        vec3f direction;
+        std::uint32_t shadow;
+        vec3f color;
+        std::uint32_t padding0;
+    };
+
+    struct scene_data
+    {
+        light_data lights[32];
+        std::uint32_t light_count;
+        std::uint32_t mesh_count;
+        std::uint32_t instance_count;
+        std::uint32_t padding0;
+    };
+
+    static constexpr parameter scene = {
         {RHI_PARAMETER_UNIFORM,
-         RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT,
-         sizeof(mesh_data)}};
+         RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
+         sizeof(scene_data)},
+        {RHI_PARAMETER_STORAGE,
+         RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
+         1}, // Mesh Buffer
+        {RHI_PARAMETER_STORAGE,
+         RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
+         1}, // Instance Buffer
+    };
 
     struct camera_data
     {
-        float4x4 view;
-        float4x4 projection;
-        float4x4 view_projection;
-        float3 position;
+        mat4f view;
+        mat4f projection;
+        mat4f view_projection;
+        vec3f position;
         std::uint32_t padding0;
     };
 
     static constexpr parameter camera = {
         {RHI_PARAMETER_UNIFORM,
-         RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT,
+         RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
          sizeof(camera_data)},
-        {RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1}};
-
-    struct directional_light
-    {
-        float3 direction;
-        bool shadow;
-        float3 color;
-        std::uint32_t padding;
     };
 
-    struct light_data
-    {
-        directional_light directional_lights[16];
-        std::uint32_t directional_light_count;
-
-        uint3 padding;
+    static constexpr parameter gbuffer = {
+        {RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1}, // Albedo
+        {RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1}, // Depth Buffer
     };
-
-    static constexpr parameter light = {{RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, 528}};
 };
 
 struct shader_empty_option
@@ -132,8 +176,26 @@ struct shader_fs : public shader
     static constexpr rhi_shader_stage_flag stage = RHI_SHADER_STAGE_FRAGMENT;
 };
 
+struct shader_cs : public shader
+{
+    static constexpr rhi_shader_stage_flag stage = RHI_SHADER_STAGE_COMPUTE;
+};
+
 struct fullscreen_vs : public shader_vs
 {
     static constexpr std::string_view path = "assets/shaders/source/fullscreen.hlsl";
+};
+
+struct mesh_vs : public shader_vs
+{
+    static constexpr parameter_layout parameters = {
+        {0, global},
+        {1, scene},
+        {2, camera},
+    };
+};
+
+struct mesh_fs : public shader_fs
+{
 };
 } // namespace violet

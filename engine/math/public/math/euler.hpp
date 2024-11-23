@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math/types.hpp"
+#include "math/vector.hpp"
 #include <cmath>
 
 namespace violet
@@ -8,7 +8,7 @@ namespace violet
 class euler
 {
 public:
-    [[nodiscard]] static inline float3 from_quaternion(const float4& q)
+    [[nodiscard]] static inline vec3f from_quaternion(const vec4f& q)
     {
         float sp = -2.0f * (q[1] * q[2] - q[3] * q[0]);
         if (std::fabs(sp) > 0.9999f)

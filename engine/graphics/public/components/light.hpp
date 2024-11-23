@@ -13,6 +13,6 @@ enum light_type
 struct light
 {
     light_type type;
-    float3 color;
+    vec3f color;
 };
 } // namespace violet

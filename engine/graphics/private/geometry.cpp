@@ -35,7 +35,7 @@ void geometry::add_attribute(
     m_vertex_buffers[name.data()] = render_device::instance().create_buffer(desc);
 }
 
-void geometry::set_indices(
+void geometry::set_indexes(
     const void* data,
     std::size_t size,
     std::size_t index_size,

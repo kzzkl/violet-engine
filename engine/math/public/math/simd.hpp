@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math/types.hpp"
+#include <cstdint>
 #include <immintrin.h>
 
 namespace violet
@@ -14,23 +14,31 @@ public:
     template <>
     struct alignas(16) convert<float>
     {
-        union {
+        union
+        {
             float t[4];
             __m128 v;
         };
 
-        inline operator __m128() const { return v; }
+        inline operator __m128() const
+        {
+            return v;
+        }
     };
 
     template <>
-    struct alignas(16) convert<uint32_t>
+    struct alignas(16) convert<std::uint32_t>
     {
-        union {
-            uint32_t t[4];
+        union
+        {
+            std::uint32_t t[4];
             __m128 v;
         };
 
-        inline operator __m128() const { return v; }
+        inline operator __m128() const
+        {
+            return v;
+        }
     };
 
     template <std::uint32_t C1, std::uint32_t C2, std::uint32_t C3, std::uint32_t C4>
@@ -85,8 +93,14 @@ public:
 #pragma push_macro("max")
 #undef min
 #undef max
-    [[nodiscard]] static inline __m128 min(__m128 a, __m128 b) { return _mm_min_ps(a, b); }
-    [[nodiscard]] static inline __m128 max(__m128 a, __m128 b) { return _mm_max_ps(a, b); }
+    [[nodiscard]] static inline __m128 min(__m128 a, __m128 b)
+    {
+        return _mm_min_ps(a, b);
+    }
+    [[nodiscard]] static inline __m128 max(__m128 a, __m128 b)
+    {
+        return _mm_max_ps(a, b);
+    }
 #pragma pop_macro("min")
 #pragma pop_macro("max")
 };

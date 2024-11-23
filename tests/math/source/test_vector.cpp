@@ -1,113 +1,101 @@
 #include "test_common.hpp"
-#include "test_data.hpp"
 #include <chrono>
 #include <iostream>
 
 namespace violet::test
 {
-TEST_CASE("math::load", "[vector]")
+struct test_data
 {
-    float2 r2 = {1.0f, 2.0f};
-    CHECK(equal(math::load(r2), vector::set(1.0f, 2.0f)));
-
-    float3 r3 = {1.0f, 2.0f, 3.0f};
-    CHECK(equal(math::load(r3), vector::set(1.0f, 2.0f, 3.0f, 0.0f)));
-    CHECK(equal(math::load(r3, 4.0f), vector::set(1.0f, 2.0f, 3.0f, 4.0f)));
-
-    float4 r4 = {1.0f, 2.0f, 3.0f, 4.0f};
-    CHECK(equal(math::load(r4), vector::set(1.0f, 2.0f, 3.0f, 4.0f)));
-
-    float4_align r4a = {1.0f, 2.0f, 3.0f, 4.0f};
-    CHECK(equal(math::load(r4a), vector::set(1.0f, 2.0f, 3.0f, 4.0f)));
-}
-
-TEST_CASE("math::store", "[vector]")
-{
-    vector4 v = vector::set(1.0f, 2.0f, 3.0f, 4.0f);
-
-    float2 r2;
-    math::store(v, r2);
-    CHECK(equal(r2, float2{1.0f, 2.0f}));
-
-    float3 r3;
-    math::store(v, r3);
-    CHECK(equal(r3, float3{1.0f, 2.0f, 3.0f}));
-
-    float4 r4;
-    math::store(v, r4);
-    CHECK(equal(r4, float4{1.0f, 2.0f, 3.0f, 4.0f}));
-
-    float4_align r4a;
-    math::store(v, r4a);
-    CHECK(equal(r4a, float4{1.0f, 2.0f, 3.0f, 4.0f}));
-}
+    static constexpr vec4f vec4_a = {1.0f, 2.0f, 3.0f, 4.0f};
+    static constexpr vec4f vec4_b = {1.0f, 3.0f, 5.0f, 7.0f};
+};
 
 TEST_CASE("vector::add", "[vector]")
 {
-    vector4 a = math::load(test_data::vec4_a);
-    vector4 b = math::load(test_data::vec4_b);
+    vec4f result = {2.0f, 5.0f, 8.0f, 11.0f};
 
-    CHECK(equal(vector::add(a, b), vector::set(2.0f, 5.0f, 8.0f, 11.0f)));
+    CHECK(equal(vector::add(test_data::vec4_a, test_data::vec4_b), result));
+    CHECK(equal(vector::add(math::load(test_data::vec4_a), math::load(test_data::vec4_b)), result));
 }
 
 TEST_CASE("vector::sub", "[vector]")
 {
-    vector4 a = vector::set(1.0f, 2.0f, 3.0f, 4.0f);
-    vector4 b = vector::set(1.0f, 3.0f, 5.0f, 7.0f);
+    vec4f result = {0.0f, -1.0f, -2.0f, -3.0f};
 
-    CHECK(equal(vector::sub(a, b), vector::set(0.0f, -1.0f, -2.0f, -3.0f)));
+    CHECK(equal(vector::sub(test_data::vec4_a, test_data::vec4_b), result));
+    CHECK(equal(vector::sub(math::load(test_data::vec4_a), math::load(test_data::vec4_b)), result));
 }
 
 TEST_CASE("vector::mul", "[vector]")
 {
-    vector4 a = vector::set(1.0f, 2.0f, 3.0f, 4.0f);
-    CHECK(equal(vector::mul(a, 2.0f), vector::set(2.0f, 4.0f, 6.0f, 8.0f)));
+    vec4f result = {2.0f, 4.0f, 6.0f, 8.0f};
+
+    CHECK(equal(vector::mul(test_data::vec4_a, 2.0f), result));
+    CHECK(equal(vector::mul(math::load(test_data::vec4_a), 2.0f), result));
 }
 
 TEST_CASE("vector::dot", "[vector]")
 {
-    vector4 a = vector::set(1.0f, 2.0f, 3.0f, 4.0f);
-    vector4 b = vector::set(1.0f, 3.0f, 5.0f, 7.0f);
+    float result = 50.0f;
 
-    CHECK(equal(vector::dot(a, b), 50.0f));
+    CHECK(equal(vector::dot(test_data::vec4_a, test_data::vec4_b), result));
+    CHECK(equal(vector::dot(math::load(test_data::vec4_a), math::load(test_data::vec4_b)), result));
 }
 
 TEST_CASE("vector::cross", "[vector]")
 {
-    vector4 a = vector::set(1.0f, 2.0f, 3.0f, 0.0f);
-    vector4 b = vector::set(3.0f, 4.0f, 5.0f, 0.0f);
-    CHECK(equal(vector::cross(a, b), vector::set(-2.0f, 4.0f, -2.0f, 0.0f)));
+    vec3f a = {1.0f, 2.0f, 3.0f};
+    vec3f b = {3.0f, 4.0f, 5.0f};
+    vec3f result = {-2.0f, 4.0f, -2.0f};
+
+    CHECK(equal(vector::cross(a, b), result));
+    CHECK(equal(vector::cross(math::load(a), math::load(b)), result));
 }
 
 TEST_CASE("vector::lerp", "[vector]")
 {
-    vector4 a = vector::set(1.0f, 2.0f, 3.0f, 0.0f);
-    vector4 b = vector::set(3.0f, 4.0f, 5.0f, 0.0f);
-    CHECK(equal(vector::lerp(a, b, 0.5f), vector::set(2.0f, 3.0f, 4.0f, 0.0f)));
+    vec4f a = {1.0f, 2.0f, 3.0f, 0.0f};
+    vec4f b = {3.0f, 4.0f, 5.0f, 0.0f};
+    vec4f result = {2.0f, 3.0f, 4.0f, 0.0f};
+
+    CHECK(equal(vector::lerp(a, b, 0.5f), result));
+    CHECK(equal(vector::lerp(math::load(a), math::load(b), 0.5f), result));
 }
 
 TEST_CASE("vector::length", "[vector]")
 {
-    vector4 a = vector::set(1.0f, 2.0f, 3.0f, 0.0f);
-    CHECK(equal(vector::length(a), 3.7416573f)); // sqrt(1^2 + 2^2 + 3^2) = 3.7416573;
+    vec4f a = {1.0f, 2.0f, 3.0f, 0.0f};
+    float result = 3.7416573f;
+
+    CHECK(equal(vector::length(a), 3.7416573f));
+    CHECK(equal(vector::length(math::load(a)), 3.7416573f));
 }
 
 TEST_CASE("vector::normalize", "[vector]")
 {
-    vector4 a = vector::set(1.0f, 2.0f, 3.0f, 0.0f);
-    CHECK(equal(vector::normalize(a), vector::set(0.267261237f, 0.534522474f, 0.801783681f, 0.0f)));
+    vec4f a = {1.0f, 2.0f, 3.0f, 0.0f};
+    vec4f result = {0.267261237f, 0.534522474f, 0.801783681f, 0.0f};
+
+    CHECK(equal(vector::normalize(a), result));
+    CHECK(equal(vector::normalize(math::load(a)), result));
 }
 
 TEST_CASE("vector::sqrt", "[vector]")
 {
-    vector4 a = vector::set(1.0f, 2.0f, 3.0f, 0.0f);
-    CHECK(equal(vector::sqrt(a), vector::set(1.0f, 1.414213562f, 1.732050807f, 0.0f)));
+    vec4f a = {1.0f, 2.0f, 3.0f, 0.0f};
+    vec4f result = {1.0f, 1.414213562f, 1.732050807f, 0.0f};
+
+    CHECK(equal(vector::sqrt(a), result));
+    CHECK(equal(vector::sqrt(math::load(a)), result));
 }
 
 TEST_CASE("vector::reciprocal_sqrt", "[vector]")
 {
-    vector4 a = vector::set(1.0f, 2.0f, 3.0f, 4.0f);
-    CHECK(equal(vector::reciprocal_sqrt(a), vector::set(1.0f, 0.707106781f, 0.577350269f, 0.5f)));
+    vec4f a = {1.0f, 2.0f, 3.0f, 4.0f};
+    vec4f result = {1.0f, 0.707106781f, 0.577350269f, 0.5f};
+
+    CHECK(equal(vector::reciprocal_sqrt(a), result));
+    CHECK(equal(vector::reciprocal_sqrt(math::load(a)), result));
 }
 
 /*TEST_CASE("vector::benchmark", "[vector]")

@@ -5,7 +5,7 @@
 namespace violet
 {
 window_system::window_system()
-    : engine_system("Window"),
+    : engine_system("window"),
       m_impl(std::make_unique<window_impl_win32>()),
       m_mouse(m_impl.get())
 {

@@ -32,13 +32,12 @@ rdg_texture* render_graph::add_texture(
     return result;
 }
 
-rdg_texture* render_graph::add_texture(
-    std::string_view name,
-    const rhi_texture_desc& desc,
-    rhi_texture_layout initial_layout,
-    rhi_texture_layout final_layout)
+rdg_texture* render_graph::add_texture(std::string_view name, const rhi_texture_desc& desc)
 {
-    auto resource = std::make_unique<rdg_inter_texture>(desc, initial_layout, final_layout);
+    auto resource = std::make_unique<rdg_inter_texture>(
+        desc,
+        RHI_TEXTURE_LAYOUT_UNDEFINED,
+        RHI_TEXTURE_LAYOUT_UNDEFINED);
     resource->m_name = name;
 
     rdg_texture* result = resource.get();
@@ -96,6 +95,18 @@ rdg_buffer* render_graph::add_buffer(std::string_view name, rhi_buffer* buffer)
     return result;
 }
 
+rdg_buffer* render_graph::add_buffer(std::string_view name, const rhi_buffer_desc& desc)
+{
+    assert(desc.size > 0);
+
+    auto resource = std::make_unique<rdg_inter_buffer>(desc);
+    resource->m_name = name;
+
+    rdg_buffer* result = resource.get();
+    m_resources.push_back(std::move(resource));
+    return result;
+}
+
 void render_graph::begin_group(std::string_view group_name)
 {
     m_groups[m_passes.size()].push_back(group_name.data());
@@ -120,44 +131,56 @@ void render_graph::compile()
             {
                 rdg_texture_view* texture_view = static_cast<rdg_texture_view*>(texture);
                 rhi_texture_view_desc desc = {
-                    .texture = texture_view->m_rhi_texture ? texture_view->m_rhi_texture :
-                                                             texture_view->m_rdg_texture->m_texture,
-                    .level = texture_view->m_level,
+                    .texture = texture_view->get_source(),
+                    .level = texture_view->get_level(),
                     .level_count = 1,
-                    .layer = texture_view->m_layer,
+                    .layer = texture_view->get_layer(),
                     .layer_count = 1};
-                texture->m_texture = m_allocator->allocate_texture(desc);
+                texture_view->set_rhi(m_allocator->allocate_texture(desc));
             }
             else if (!m_resources[i]->is_external())
             {
-                texture->m_texture = m_allocator->allocate_texture(
-                    static_cast<rdg_inter_texture*>(texture)->get_desc());
+                rdg_inter_texture* inter_texture = static_cast<rdg_inter_texture*>(texture);
+
+                rhi_texture* rhi = m_allocator->allocate_texture(inter_texture->get_desc());
+                inter_texture->set_rhi(rhi);
+            }
+        }
+        else if (m_resources[i]->get_type() == RDG_RESOURCE_BUFFER)
+        {
+            if (!m_resources[i]->is_external())
+            {
+                rdg_inter_buffer* inter_buffer =
+                    static_cast<rdg_inter_buffer*>(m_resources[i].get());
+
+                rhi_buffer* rhi = m_allocator->allocate_buffer(inter_buffer->get_desc());
+                inter_buffer->set_rhi(rhi);
             }
         }
     }
-
-    for (std::size_t i = 0; i < m_passes.size(); ++i)
-    {
-        for (auto& reference : m_passes[i]->get_references())
-        {
-            reference->resource->add_reference(reference.get());
-        }
-
-        m_passes[i]->m_index = i;
-    }
-
-    m_barriers.resize(m_passes.size() + 1);
 
     merge_pass();
     build_barriers();
 }
 
-void render_graph::execute(rhi_command* command)
+void render_graph::record(rhi_command* command)
 {
     rdg_command cmd(command, m_allocator);
 
     for (auto& batch : m_batches)
     {
+        barrier& barrier = batch.barrier;
+        if (!barrier.texture_barriers.empty() || !barrier.buffer_barriers.empty())
+        {
+            command->set_pipeline_barrier(
+                barrier.src_stages,
+                barrier.dst_stages,
+                barrier.buffer_barriers.data(),
+                barrier.buffer_barriers.size(),
+                barrier.texture_barriers.data(),
+                barrier.texture_barriers.size());
+        }
+
         for (rdg_pass* pass : batch.passes)
         {
 #ifndef NDEBUG
@@ -175,18 +198,6 @@ void render_graph::execute(rhi_command* command)
 
             command->begin_label(pass->get_name().c_str());
 #endif
-
-            barrier& barrier = m_barriers[pass->get_index()];
-            if (!barrier.texture_barriers.empty() || !barrier.buffer_barriers.empty())
-            {
-                command->set_pipeline_barrier(
-                    barrier.src_stages,
-                    barrier.dst_stages,
-                    barrier.buffer_barriers.data(),
-                    barrier.buffer_barriers.size(),
-                    barrier.texture_barriers.data(),
-                    barrier.texture_barriers.size());
-            }
 
             if (batch.passes.front() == pass && batch.render_pass != nullptr)
             {
@@ -225,16 +236,39 @@ void render_graph::execute(rhi_command* command)
 #endif
 }
 
-void render_graph::cull() {}
+void render_graph::cull()
+{
+    /*auto iter = std::remove_if(
+        m_resources.begin(),
+        m_resources.end(),
+        [](const std::unique_ptr<rdg_resource>& resource)
+        {
+            return !resource->is_external() && resource->get_references().empty();
+        });
+
+    m_resources.erase(iter, m_resources.end());*/
+
+    for (std::size_t i = 0; i < m_passes.size(); ++i)
+    {
+        for (auto& reference : m_passes[i]->get_references())
+        {
+            reference->resource->add_reference(reference.get());
+        }
+
+        m_passes[i]->m_index = i;
+    }
+}
 
 void render_graph::merge_pass()
 {
     std::vector<rdg_pass*> passes;
 
-    auto merge_batch = [&, this]()
+    auto merge_render_pass = [&, this]()
     {
         if (passes.empty())
+        {
             return;
+        }
 
         render_batch batch = {};
         batch.passes = passes;
@@ -282,7 +316,9 @@ void render_graph::merge_pass()
 
             if (last_pass_attachemets[i]->is_last_reference())
             {
-                final_layout = texture->get_final_layout();
+                final_layout = texture->get_final_layout() == RHI_TEXTURE_LAYOUT_UNDEFINED ?
+                                   reference->get_texture_layout() :
+                                   texture->get_final_layout();
 
                 end_dependency.dst_stages |= RHI_PIPELINE_STAGE_BEGIN;
             }
@@ -356,31 +392,36 @@ void render_graph::merge_pass()
 
     for (auto& pass : m_passes)
     {
-        if (pass->get_type() != RDG_PASS_RENDER)
+        if (pass->get_type() == RDG_PASS_RENDER)
         {
-            merge_batch();
-            continue;
-        }
-
-        if (passes.empty())
-        {
-            passes.push_back(pass.get());
-            continue;
-        }
-
-        if (check_merge(passes[0], pass.get()))
-        {
-            passes.push_back(pass.get());
-            continue;
+            if (passes.empty() || check_merge(passes[0], pass.get()))
+            {
+                passes.push_back(pass.get());
+            }
+            else
+            {
+                merge_render_pass();
+                passes.push_back(pass.get());
+            }
         }
         else
         {
-            merge_batch();
-            passes.push_back(pass.get());
+            merge_render_pass();
+            render_batch batch = {};
+            batch.passes.push_back(pass.get());
+            m_batches.push_back(batch);
         }
     }
 
-    merge_batch();
+    merge_render_pass();
+
+    for (std::size_t i = 0; i < m_batches.size(); ++i)
+    {
+        for (rdg_pass* pass : m_batches[i].passes)
+        {
+            pass->m_batch = i;
+        }
+    }
 }
 
 void render_graph::build_barriers()
@@ -393,7 +434,7 @@ void render_graph::build_barriers()
         for (std::size_t i = 0; i < references.size(); ++i)
         {
             rdg_reference* curr_reference = references[i];
-            std::size_t pass_index = curr_reference->pass->get_index();
+            auto& batch_barrier = m_batches[curr_reference->pass->get_index()].barrier;
 
             if (resource->get_type() == RDG_RESOURCE_TEXTURE)
             {
@@ -401,6 +442,7 @@ void render_graph::build_barriers()
 
                 if (curr_reference->type == RDG_REFERENCE_ATTACHMENT)
                 {
+                    prev_reference = curr_reference;
                     continue;
                 }
 
@@ -415,10 +457,11 @@ void render_graph::build_barriers()
                         .level = 0,
                         .level_count = 1,
                         .layer = 0,
-                        .layer_count = 1};
-                    m_barriers[pass_index].texture_barriers.push_back(barrier);
-                    m_barriers[pass_index].src_stages |= RHI_PIPELINE_STAGE_BEGIN;
-                    m_barriers[pass_index].dst_stages |= curr_reference->stages;
+                        .layer_count = 1,
+                    };
+                    batch_barrier.texture_barriers.push_back(barrier);
+                    batch_barrier.src_stages |= RHI_PIPELINE_STAGE_BEGIN;
+                    batch_barrier.dst_stages |= curr_reference->stages;
                 }
                 else if (prev_reference->type != RDG_REFERENCE_ATTACHMENT)
                 {
@@ -431,43 +474,91 @@ void render_graph::build_barriers()
                         .level = 0,
                         .level_count = 1,
                         .layer = 0,
-                        .layer_count = 1};
-                    m_barriers[pass_index].texture_barriers.push_back(barrier);
-                    m_barriers[pass_index].src_stages |= prev_reference->stages;
-                    m_barriers[pass_index].dst_stages |= curr_reference->stages;
+                        .layer_count = 1,
+                    };
+                    batch_barrier.texture_barriers.push_back(barrier);
+                    batch_barrier.src_stages |= prev_reference->stages;
+                    batch_barrier.dst_stages |= curr_reference->stages;
                 }
             }
             else
             {
+                rdg_buffer* buffer = static_cast<rdg_buffer*>(resource.get());
+
+                if (prev_reference != nullptr)
+                {
+                    rhi_buffer_barrier barrier = {
+                        .buffer = buffer->get_rhi(),
+                        .src_access = prev_reference->access,
+                        .dst_access = curr_reference->access,
+                        .offset = 0,
+                        .size = buffer->get_buffer_size(),
+                    };
+
+                    batch_barrier.buffer_barriers.push_back(barrier);
+                    batch_barrier.src_stages |= prev_reference->stages;
+                    batch_barrier.dst_stages |= curr_reference->stages;
+                }
             }
 
             prev_reference = curr_reference;
         }
     }
 
+    m_batches.push_back({});
+
+    auto& last_barrier = m_batches.back().barrier;
     for (auto& resource : m_resources)
     {
         if (resource->get_type() == RDG_RESOURCE_TEXTURE)
         {
             rdg_texture* texture = static_cast<rdg_texture*>(resource.get());
-            rdg_reference* last_reference = resource->get_references().back();
-            std::size_t pass_index = last_reference->pass->get_index() + 1;
-            if (last_reference->type != RDG_REFERENCE_ATTACHMENT &&
-                last_reference->texture.layout != texture->get_final_layout())
+
+            rhi_access_flags src_access = 0;
+            rhi_access_flags dst_access = 0;
+
+            rhi_texture_layout src_layout = RHI_TEXTURE_LAYOUT_UNDEFINED;
+            rhi_texture_layout dst_layout = RHI_TEXTURE_LAYOUT_UNDEFINED;
+
+            rhi_pipeline_stage_flags src_stages = 0;
+            rhi_pipeline_stage_flags dst_stages = 0;
+
+            if (texture->get_references().empty())
+            {
+                src_layout = texture->get_initial_layout();
+                dst_layout = texture->get_final_layout();
+                src_stages |= RHI_PIPELINE_STAGE_BEGIN;
+                dst_stages |= RHI_PIPELINE_STAGE_END;
+            }
+            else
+            {
+                rdg_reference* last_reference = resource->get_references().back();
+                if (last_reference->type != RDG_REFERENCE_ATTACHMENT)
+                {
+                    src_access = last_reference->access;
+                    src_layout = last_reference->texture.layout;
+                    dst_layout = texture->get_final_layout();
+                    src_stages |= last_reference->stages;
+                    dst_stages |= RHI_PIPELINE_STAGE_END;
+                }
+            }
+
+            if (src_layout != dst_layout && dst_layout != RHI_TEXTURE_LAYOUT_UNDEFINED)
             {
                 rhi_texture_barrier barrier = {
                     .texture = texture->get_rhi(),
-                    .src_access = last_reference->access,
-                    .dst_access = 0,
-                    .src_layout = last_reference->texture.layout,
-                    .dst_layout = texture->get_final_layout(),
+                    .src_access = src_access,
+                    .dst_access = dst_access,
+                    .src_layout = src_layout,
+                    .dst_layout = dst_layout,
                     .level = 0,
                     .level_count = 1,
                     .layer = 0,
-                    .layer_count = 1};
-                m_barriers[pass_index].texture_barriers.push_back(barrier);
-                m_barriers[pass_index].src_stages |= last_reference->stages;
-                m_barriers[pass_index].dst_stages |= RHI_PIPELINE_STAGE_END;
+                    .layer_count = 1,
+                };
+                last_barrier.texture_barriers.push_back(barrier);
+                last_barrier.src_stages |= src_stages;
+                last_barrier.dst_stages |= dst_stages;
             }
         }
         else

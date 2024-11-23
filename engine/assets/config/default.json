@@ -1,18 +1,18 @@
 {
-    "Engine": {
+    "engine": {
         "task_thread_count": 0
     },
-    "Graphics": {
-        "plugin": "violet-graphics-vulkan.dll",
+    "graphics": {
+        "rhi": "violet-graphics-vulkan.dll",
         "frame_resource_count": 2,
         "samples": 4
     },
-    "Window": {
+    "window": {
         "title": "violet app",
         "width": 700,
         "height": 400
     },
-    "Physics": {
+    "physics": {
         "plugin": "violet-physics-bullet3.dll",
         "gravity": [
             0.0,
