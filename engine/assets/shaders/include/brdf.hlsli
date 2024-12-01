@@ -41,23 +41,23 @@ float3 importance_sample_ggx(float2 xi, float3 n, float roughness)
     return normalize(sample_vec);
 }
 
-float geometry_schlick_ggx(float n_dot_v, float roughness)
+float geometry_schlick_ggx(float NdotV, float roughness)
 {
     float a = roughness;
     float k = (a * a) / 2.0;
 
-    float nom   = n_dot_v;
-    float denom = n_dot_v * (1.0 - k) + k + 0.00001;
+    float nom   = NdotV;
+    float denom = NdotV * (1.0 - k) + k + 0.00001;
 
     return nom / denom;
 }
 
 float geometry_smith(float3 n, float3 v, float3 l, float roughness)
 {
-    float n_dot_v = max(dot(n, v), 0.0);
-    float n_dot_l = max(dot(n, l), 0.0);
-    float ggx2 = geometry_schlick_ggx(n_dot_v, roughness);
-    float ggx1 = geometry_schlick_ggx(n_dot_l, roughness);
+    float NdotV = max(dot(n, v), 0.0);
+    float NdotL = max(dot(n, l), 0.0);
+    float ggx2 = geometry_schlick_ggx(NdotV, roughness);
+    float ggx1 = geometry_schlick_ggx(NdotL, roughness);
 
     return ggx1 * ggx2;
 }  
@@ -66,11 +66,11 @@ float distribution_ggx(float3 n, float3 h, float roughness)
 {
     float a = roughness * roughness;
     float a2 = a * a;
-    float n_dot_h = max(dot(n, h), 0.0);
-    float n_dot_h2 = n_dot_h * n_dot_h;
+    float NdotH = max(dot(n, h), 0.0);
+    float NdotH2 = NdotH * NdotH;
 
     float nom = a2;
-    float denom = (n_dot_h2 * (a2 - 1.0) + 1.0);
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
     denom = PI * denom * denom;
 
     return nom / denom;

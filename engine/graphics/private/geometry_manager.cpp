@@ -1,4 +1,4 @@
-#include "geometry_manager.hpp"
+#include "graphics/geometry_manager.hpp"
 
 namespace violet
 {
@@ -16,9 +16,8 @@ render_id geometry_manager::register_geometry(geometry* geometry)
     return geometry_id;
 }
 
-void geometry_manager::unregister_geometry(geometry* geometry)
+void geometry_manager::unregister_geometry(render_id geometry_id)
 {
-    render_id geometry_id = geometry->get_id();
     m_geometries[geometry_id] = {};
     m_geometry_allocator.free(geometry_id);
 }

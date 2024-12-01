@@ -16,7 +16,9 @@ struct shader_parameter
         assert(list.size() <= rhi_constants::MAX_PARAMETER_BINDING_COUNT);
 
         for (std::size_t i = 0; i < list.size(); ++i)
+        {
             bindings[i] = *(list.begin() + i);
+        }
         binding_count = list.size();
     }
 
@@ -59,12 +61,6 @@ struct shader
         std::uint32_t instance;
     };
 
-    static constexpr parameter global = {
-        {RHI_PARAMETER_STORAGE,
-         RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
-         1},
-    };
-
     struct mesh_data
     {
         mat4f model_matrix;
@@ -99,23 +95,31 @@ struct shader
 
     struct scene_data
     {
-        light_data lights[32];
-        std::uint32_t light_count;
+        std::uint32_t mesh_buffer;
         std::uint32_t mesh_count;
+        std::uint32_t instance_buffer;
         std::uint32_t instance_count;
+        std::uint32_t group_buffer;
+        std::uint32_t light_buffer;
+        std::uint32_t light_count;
+        std::uint32_t skybox;
+        std::uint32_t irradiance;
+        std::uint32_t prefilter;
+        std::uint32_t brdf_lut;
+        std::uint32_t material_buffer;
+        std::uint32_t point_sampler;
+        std::uint32_t linear_sampler;
         std::uint32_t padding0;
+        std::uint32_t padding1;
     };
 
     static constexpr parameter scene = {
-        {RHI_PARAMETER_UNIFORM,
-         RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
-         sizeof(scene_data)},
-        {RHI_PARAMETER_STORAGE,
-         RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
-         1}, // Mesh Buffer
-        {RHI_PARAMETER_STORAGE,
-         RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
-         1}, // Instance Buffer
+        {
+            .type = RHI_PARAMETER_BINDING_CONSTANT,
+            .stages =
+                RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
+            .size = sizeof(scene_data),
+        },
     };
 
     struct camera_data
@@ -128,19 +132,26 @@ struct shader
     };
 
     static constexpr parameter camera = {
-        {RHI_PARAMETER_UNIFORM,
-         RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
-         sizeof(camera_data)},
+        {
+            .type = RHI_PARAMETER_BINDING_CONSTANT,
+            .stages =
+                RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
+            .size = sizeof(camera_data),
+        },
     };
 
-    static constexpr parameter gbuffer = {
-        {RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1}, // Albedo
-        {RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1}, // Depth Buffer
+    static constexpr parameter bindless = {
+        {
+            .type = RHI_PARAMETER_BINDING_MUTABLE,
+            .stages = RHI_SHADER_STAGE_ALL,
+            .size = 0,
+        },
+        {
+            .type = RHI_PARAMETER_BINDING_SAMPLER,
+            .stages = RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
+            .size = 128,
+        },
     };
-};
-
-struct shader_empty_option
-{
 };
 
 template <typename T>
@@ -189,7 +200,7 @@ struct fullscreen_vs : public shader_vs
 struct mesh_vs : public shader_vs
 {
     static constexpr parameter_layout parameters = {
-        {0, global},
+        {0, bindless},
         {1, scene},
         {2, camera},
     };

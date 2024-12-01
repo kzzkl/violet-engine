@@ -2,9 +2,10 @@
 
 #include "vk_common.hpp"
 #include "vk_context.hpp"
-#include "vk_swapchain.hpp"
-#include "vk_sync.hpp"
+#include "vk_parameter.hpp"
+#include "vk_resource.hpp"
 #include <functional>
+#include <mutex>
 
 namespace violet::vk
 {
@@ -38,20 +39,32 @@ public:
         return m_context->get_frame_resource_index();
     }
 
+    rhi_parameter* get_bindless_parameter() const noexcept override
+    {
+        return m_bindless_parameter.get();
+    }
+
     rhi_backend get_backend() const noexcept final
     {
         return RHI_BACKEND_VULKAN;
     }
 
     template <typename T>
-    void delay_delete(T* object)
+    void add_delay_delete(T* object)
     {
-        frame_resource& frame_resource = get_current_frame_resource();
-        frame_resource.delay_tasks.push_back(
+        add_delay_task(
             [object]()
             {
                 delete object;
             });
+    }
+
+    void add_delay_task(std::function<void()> task)
+    {
+        std::lock_guard lock(m_mutex);
+
+        frame_resource& frame_resource = get_current_frame_resource();
+        frame_resource.delay_tasks.push_back(task);
     }
 
     vk_rhi& operator=(const vk_rhi&) = delete;
@@ -68,7 +81,7 @@ public:
 
     void set_name(rhi_buffer* object, const char* name) const override
     {
-        set_name(static_cast<vk_buffer*>(object)->get_buffer_handle(), VK_OBJECT_TYPE_BUFFER, name);
+        set_name(static_cast<vk_buffer*>(object)->get_buffer(), VK_OBJECT_TYPE_BUFFER, name);
     }
 
 public:
@@ -84,7 +97,7 @@ public:
     rhi_compute_pipeline* create_compute_pipeline(const rhi_compute_pipeline_desc& desc) override;
     void destroy_compute_pipeline(rhi_compute_pipeline* compute_pipeline) override;
 
-    rhi_parameter* create_parameter(const rhi_parameter_desc& desc) override;
+    rhi_parameter* create_parameter(const rhi_parameter_desc& desc, bool auto_sync) override;
     void destroy_parameter(rhi_parameter* parameter) override;
 
     rhi_framebuffer* create_framebuffer(const rhi_framebuffer_desc& desc) override;
@@ -97,7 +110,7 @@ public:
     void destroy_buffer(rhi_buffer* buffer) override;
 
     rhi_texture* create_texture(const rhi_texture_desc& desc) override;
-    rhi_texture* create_texture_view(const rhi_texture_view_desc& desc) override;
+    rhi_texture* create_texture(const rhi_texture_view_desc& desc) override;
     void destroy_texture(rhi_texture* texture) override;
 
     rhi_swapchain* create_swapchain(const rhi_swapchain_desc& desc) override;
@@ -137,5 +150,14 @@ private:
 
     std::unique_ptr<vk_context> m_context;
     std::vector<frame_resource> m_frame_resources;
+
+    index_allocator<rhi_resource_handle> m_resource_allocator;
+    index_allocator<rhi_resource_handle> m_sampler_allocator;
+    std::mutex m_resource_allocator_mutex;
+    std::mutex m_sampler_allocator_mutex;
+
+    std::unique_ptr<vk_parameter> m_bindless_parameter;
+
+    std::mutex m_mutex;
 };
 } // namespace violet::vk

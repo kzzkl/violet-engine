@@ -74,6 +74,8 @@ public:
     void remove_instance(render_id instance_id);
     void update_instance(render_id instance_id, const render_instance& instance);
 
+    void set_skybox(rhi_texture* skybox, rhi_texture* irradiance, rhi_texture* prefilter);
+
     bool update();
     void record(rhi_command* command);
 
@@ -102,21 +104,6 @@ public:
         return 4 * 1024;
     }
 
-    rhi_buffer* get_mesh_buffer() const noexcept
-    {
-        return m_mesh_buffer.get();
-    }
-
-    rhi_buffer* get_instance_buffer() const noexcept
-    {
-        return m_instance_buffer.get();
-    }
-
-    rhi_buffer* get_group_buffer() const noexcept
-    {
-        return m_group_buffer.get();
-    }
-
     std::size_t get_mesh_capacity() const noexcept
     {
         return m_mesh_buffer->get_buffer_size() / sizeof(shader::mesh_data);
@@ -132,7 +119,10 @@ public:
         return 4 * 1024;
     }
 
-    rhi_parameter* get_global_parameter() const noexcept;
+    rhi_parameter* get_bindless_parameter() const noexcept
+    {
+        return render_device::instance().get_bindless_parameter();
+    }
 
     rhi_parameter* get_scene_parameter() const noexcept
     {
@@ -145,14 +135,14 @@ private:
         RENDER_MESH_STAGE_VALID = 1 << 0,
         RENDER_MESH_STAGE_DIRTY = 1 << 1,
     };
-    using render_mesh_stages = std::uint32_t;
+    using render_mesh_states = std::uint32_t;
 
     struct render_mesh_info
     {
         render_mesh data;
         std::vector<render_id> instances;
 
-        render_mesh_stages states;
+        render_mesh_states states;
 
         bool is_valid() const noexcept
         {
@@ -165,7 +155,7 @@ private:
         RENDER_INSTANCE_STAGE_VALID = 1 << 0,
         RENDER_INSTANCE_STAGE_DIRTY = 1 << 1,
     };
-    using render_instance_stages = std::uint32_t;
+    using render_instance_states = std::uint32_t;
 
     struct render_instance_info
     {
@@ -174,7 +164,7 @@ private:
         render_id mesh_id;
         render_id group_id;
 
-        render_instance_stages states;
+        render_instance_states states;
 
         bool is_valid() const noexcept
         {
@@ -184,7 +174,8 @@ private:
 
     enum render_scene_state
     {
-        RENDER_SCENE_STAGE_DIRTY = 1 << 0,
+        RENDER_SCENE_STAGE_DATA_DIRTY = 1 << 0,
+        RENDER_SCENE_STAGE_GROUP_DIRTY = 1 << 1,
     };
     using render_scene_states = std::uint32_t;
 
@@ -241,8 +232,8 @@ private:
     void add_instance_to_group(render_id instance_id, geometry* geometry, material* material);
     void remove_instance_from_group(render_id instance_id);
 
-    void set_mesh_state(render_id mesh_id, render_mesh_stages states);
-    void set_instance_state(render_id instance_id, render_instance_stages states);
+    void set_mesh_state(render_id mesh_id, render_mesh_states states);
+    void set_instance_state(render_id instance_id, render_instance_states states);
 
     void update_mesh_buffer();
     void update_instance_buffer();

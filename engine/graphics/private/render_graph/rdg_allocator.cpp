@@ -11,7 +11,9 @@ rhi_parameter* rdg_allocator::allocate_parameter(const rhi_parameter_desc& desc)
     auto& pool = m_parameter_pools[hash];
     if (pool.count == pool.data.size())
     {
-        pool.data.push_back(render_device::instance().create_parameter(desc));
+        rhi_parameter_desc copy = desc;
+        copy.flags = RHI_PARAMETER_DISABLE_SYNC;
+        pool.data.push_back(render_device::instance().create_parameter(copy));
     }
 
     return pool.data[pool.count++].get();
@@ -25,19 +27,6 @@ rhi_texture* rdg_allocator::allocate_texture(const rhi_texture_desc& desc)
     if (pool.count == pool.data.size())
     {
         pool.data.push_back(render_device::instance().create_texture(desc));
-    }
-
-    return pool.data[pool.count++].get();
-}
-
-rhi_texture* rdg_allocator::allocate_texture(const rhi_texture_view_desc& desc)
-{
-    std::uint64_t hash = hash::city_hash_64(&desc, sizeof(rhi_texture_view_desc));
-
-    auto& pool = m_texture_pools[hash];
-    if (pool.count == pool.data.size())
-    {
-        pool.data.push_back(render_device::instance().create_texture_view(desc));
     }
 
     return pool.data[pool.count++].get();
@@ -107,7 +96,8 @@ rhi_render_pipeline* rdg_allocator::get_pipeline(
             .samples = pipeline.samples,
             .primitive_topology = pipeline.primitive_topology,
             .render_pass = render_pass,
-            .subpass_index = subpass_index};
+            .subpass_index = subpass_index,
+        };
 
         return m_render_pipeline_cache.add(hash, render_device::instance().create_pipeline(desc));
     }
@@ -135,7 +125,7 @@ rhi_compute_pipeline* rdg_allocator::get_pipeline(const rdg_compute_pipeline& pi
 
 rhi_sampler* rdg_allocator::get_sampler(const rhi_sampler_desc& desc)
 {
-    std::uint64_t hash = hash::city_hash_64(&desc, sizeof(rhi_parameter_desc));
+    std::uint64_t hash = hash::city_hash_64(&desc, sizeof(rhi_sampler_desc));
 
     rhi_sampler* sampler = m_sampler_cache.get(hash);
     if (sampler == nullptr)

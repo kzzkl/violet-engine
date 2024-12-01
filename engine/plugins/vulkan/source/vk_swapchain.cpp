@@ -10,8 +10,7 @@ vk_swapchain_image::vk_swapchain_image(
     VkFormat format,
     const VkExtent2D& extent,
     vk_context* context)
-    : vk_image(0),
-      m_context(context)
+    : m_context(context)
 {
     VkImageViewCreateInfo image_view_info = {};
     image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;

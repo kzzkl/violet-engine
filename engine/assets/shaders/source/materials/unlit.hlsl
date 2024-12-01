@@ -1,11 +1,7 @@
 #include "common.hlsli"
-#include "global.hlsli"
 #include "gbuffer.hlsli" 
 
 ConstantBuffer<scene_data> scene : register(b0, space1);
-StructuredBuffer<mesh_data> meshes : register(t1, space1);
-StructuredBuffer<instance_data> instances : register(t2, space1);
-
 ConstantBuffer<camera_data> camera : register(b0, space2);
 
 struct vs_in
@@ -21,6 +17,9 @@ struct vs_out
 
 vs_out vs_main(vs_in input, uint instance_index : SV_InstanceID)
 {
+    StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
+    StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
+
     instance_data instance = instances[instance_index];
     mesh_data mesh = meshes[instance.mesh_index];
 
@@ -36,8 +35,11 @@ struct unlit_material
     float3 albedo;
 };
 
-gbuffer_data fs_main(vs_out input)
+gbuffer_packed fs_main(vs_out input)
 {
-    unlit_material material = load_constant<unlit_material>(input.material_address);
+    unlit_material material = load_material<unlit_material>(scene.material_buffer, input.material_address);
+
+    // float3 albedo = load_texture(1, float2(0.5, 0.5)).rgb;
+
     return gbuffer_encode(material.albedo);
 }

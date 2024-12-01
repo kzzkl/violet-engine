@@ -1,18 +1,18 @@
 #include "common/log.hpp"
-#include "components/camera.hpp"
-#include "components/mesh.hpp"
-#include "components/orbit_control.hpp"
-#include "components/scene_layer.hpp"
-#include "components/transform.hpp"
+#include "components/camera_component.hpp"
+#include "components/mesh_component.hpp"
+#include "components/orbit_control_component.hpp"
+#include "components/scene_component.hpp"
+#include "components/transform_component.hpp"
 #include "control/control_system.hpp"
 #include "core/engine.hpp"
 #include "ecs_command/ecs_command_system.hpp"
-#include "graphics/camera_system.hpp"
 #include "graphics/geometries/box_geometry.hpp"
 #include "graphics/graphics_system.hpp"
 #include "graphics/materials/unlit_material.hpp"
-#include "graphics/mesh_system.hpp"
 #include "graphics/renderers/deferred_renderer.hpp"
+#include "graphics/tools/ibl_tool.hpp"
+#include "graphics/tools/texture_loader.hpp"
 #include "scene/hierarchy_system.hpp"
 #include "scene/scene_system.hpp"
 #include "scene/transform_system.hpp"
@@ -42,6 +42,7 @@ public:
             });
 
         initialize_render();
+        initialize_skybox();
         initialize_scene();
 
         resize();
@@ -72,19 +73,44 @@ private:
         m_renderer = std::make_unique<deferred_renderer>();
     }
 
+    void initialize_skybox()
+    {
+        m_skybox_texture = render_device::instance().create_texture({
+            .extent = {512, 512},
+            .format = RHI_FORMAT_R8G8B8A8_UNORM,
+            .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
+            .layer_count = 6,
+        });
+
+        m_skybox_irradiance = render_device::instance().create_texture({
+            .extent = {32, 32},
+            .format = RHI_FORMAT_R8G8B8A8_UNORM,
+            .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
+            .layer_count = 6,
+        });
+
+        rhi_ptr<rhi_texture> env_map =
+            texture_loader::load("violet-assets/textures/skybox/dry_orchard_meadow_4k.hdr");
+        ibl_tool::generate_cube_map(env_map.get(), m_skybox_texture.get());
+        ibl_tool::generate_ibl(m_skybox_texture.get(), m_skybox_irradiance.get(), nullptr);
+    }
+
     void initialize_scene()
     {
-        m_scene = get_system<scene_system>().create_scene("Main Scene");
-
         m_geometry = std::make_unique<box_geometry>();
         m_material = std::make_unique<unlit_material>();
 
         auto& world = get_world();
 
         m_cube = world.create();
-        world.add_component<transform, transform_local, transform_world, mesh, scene_layer>(m_cube);
+        world.add_component<
+            transform_component,
+            transform_local_component,
+            transform_world_component,
+            mesh_component,
+            scene_component>(m_cube);
 
-        auto& cube_mesh = world.get_component<mesh>(m_cube);
+        auto& cube_mesh = world.get_component<mesh_component>(m_cube);
         cube_mesh.geometry = m_geometry.get();
         cube_mesh.submeshes.push_back({
             .vertex_offset = 0,
@@ -93,25 +119,19 @@ private:
             .material = m_material.get(),
         });
 
-        auto& cube_scene = world.get_component<scene_layer>(m_cube);
-        cube_scene.scene = m_scene;
-
         m_camera = world.create();
         world.add_component<
-            transform,
-            transform_local,
-            transform_world,
-            camera,
-            orbit_control,
-            scene_layer>(m_camera);
+            transform_component,
+            transform_local_component,
+            transform_world_component,
+            camera_component,
+            orbit_control_component,
+            scene_component>(m_camera);
 
-        auto& camera_transform = world.get_component<transform>(m_camera);
+        auto& camera_transform = world.get_component<transform_component>(m_camera);
         camera_transform.position = {0.0f, 0.0f, -10.0f};
 
-        auto& camera_scene = world.get_component<scene_layer>(m_camera);
-        camera_scene.scene = m_scene;
-
-        auto& main_camera = world.get_component<camera>(m_camera);
+        auto& main_camera = world.get_component<camera_component>(m_camera);
         main_camera.near = 1.0f;
         main_camera.far = 1000.0f;
         main_camera.fov = 45.0f;
@@ -128,13 +148,17 @@ private:
     std::unique_ptr<deferred_renderer> m_renderer;
     rhi_ptr<rhi_swapchain> m_swapchain;
 
-    scene* m_scene;
-
     std::unique_ptr<geometry> m_geometry;
     std::unique_ptr<material> m_material;
 
     entity m_cube;
     entity m_camera;
+
+    entity m_skybox;
+
+    rhi_ptr<rhi_texture> m_skybox_texture;
+    rhi_ptr<rhi_texture> m_skybox_irradiance;
+    rhi_ptr<rhi_texture> m_skybox_prefiltered;
 };
 } // namespace violet::sample
 
@@ -146,8 +170,6 @@ int main()
     violet::engine::install<violet::transform_system>();
     violet::engine::install<violet::scene_system>();
     violet::engine::install<violet::window_system>();
-    violet::engine::install<violet::mesh_system>();
-    violet::engine::install<violet::camera_system>();
     violet::engine::install<violet::graphics_system>();
     violet::engine::install<violet::control_system>();
     violet::engine::install<violet::sample::hello_world>();

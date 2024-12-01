@@ -123,11 +123,11 @@ private:
 namespace pipeline_parameter
 {
 static constexpr shader_parameter ui_mvp = {
-    {RHI_PARAMETER_TYPE_UNIFORM, sizeof(float4x4), RHI_SHADER_STAGE_VERTEX}
+    {RHI_PARAMETER_BINDING_TYPE_UNIFORM, sizeof(float4x4), RHI_SHADER_STAGE_VERTEX}
 };
 static constexpr shader_parameter ui_material = {
-    {RHI_PARAMETER_TYPE_UNIFORM, sizeof(std::uint32_t), RHI_SHADER_STAGE_FRAGMENT},
-    {RHI_PARAMETER_TYPE_TEXTURE, 1,                     RHI_SHADER_STAGE_FRAGMENT}
+    {RHI_PARAMETER_BINDING_TYPE_UNIFORM, sizeof(std::uint32_t), RHI_SHADER_STAGE_FRAGMENT},
+    {RHI_PARAMETER_BINDING_TYPE_TEXTURE, 1,                     RHI_SHADER_STAGE_FRAGMENT}
 };
 } // namespace pipeline_parameter
 } // namespace violet

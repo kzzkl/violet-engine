@@ -71,17 +71,14 @@ void vk_command::set_pipeline(rhi_compute_pipeline* compute_pipeline)
 
 void vk_command::set_parameter(std::size_t index, rhi_parameter* parameter)
 {
-    vk_parameter* p = static_cast<vk_parameter*>(parameter);
-    p->sync();
-
-    VkDescriptorSet descriptor_sets[] = {p->get_descriptor_set()};
+    VkDescriptorSet descriptor_set = static_cast<vk_parameter*>(parameter)->get_descriptor_set();
     vkCmdBindDescriptorSets(
         m_command_buffer,
         m_current_bind_point,
         m_current_pipeline_layout,
         static_cast<std::uint32_t>(index),
         1,
-        descriptor_sets,
+        &descriptor_set,
         0,
         nullptr);
 }
@@ -125,7 +122,7 @@ void vk_command::set_vertex_buffers(
     std::vector<VkDeviceSize> offsets(vertex_buffer_count);
     for (std::size_t i = 0; i < vertex_buffer_count; ++i)
     {
-        buffers[i] = static_cast<vk_buffer*>(vertex_buffers[i])->get_buffer_handle();
+        buffers[i] = static_cast<vk_buffer*>(vertex_buffers[i])->get_buffer();
         offsets[i] = 0;
     }
     vkCmdBindVertexBuffers(
@@ -139,11 +136,7 @@ void vk_command::set_vertex_buffers(
 void vk_command::set_index_buffer(rhi_buffer* index_buffer)
 {
     vk_index_buffer* buffer = static_cast<vk_index_buffer*>(index_buffer);
-    vkCmdBindIndexBuffer(
-        m_command_buffer,
-        buffer->get_buffer_handle(),
-        0,
-        buffer->get_index_type());
+    vkCmdBindIndexBuffer(m_command_buffer, buffer->get_buffer(), 0, buffer->get_index_type());
 }
 
 void vk_command::draw(std::size_t vertex_offset, std::size_t vertex_count)
@@ -179,9 +172,9 @@ void vk_command::draw_indexed_indirect(
 {
     vkCmdDrawIndexedIndirectCount(
         m_command_buffer,
-        static_cast<vk_buffer*>(command_buffer)->get_buffer_handle(),
+        static_cast<vk_buffer*>(command_buffer)->get_buffer(),
         command_buffer_offset,
-        static_cast<vk_buffer*>(count_buffer)->get_buffer_handle(),
+        static_cast<vk_buffer*>(count_buffer)->get_buffer(),
         count_buffer_offset,
         max_draw_count,
         sizeof(VkDrawIndexedIndirectCommand));
@@ -207,7 +200,7 @@ void vk_command::set_pipeline_barrier(
         barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
         barrier.srcAccessMask = vk_util::map_access_flags(buffer_barriers[i].src_access);
         barrier.dstAccessMask = vk_util::map_access_flags(buffer_barriers[i].dst_access);
-        barrier.buffer = static_cast<vk_buffer*>(buffer_barriers[i].buffer)->get_buffer_handle();
+        barrier.buffer = static_cast<vk_buffer*>(buffer_barriers[i].buffer)->get_buffer();
         barrier.offset = buffer_barriers[i].offset;
         barrier.size = buffer_barriers[i].size;
     }
@@ -335,7 +328,7 @@ void vk_command::fill_buffer(
 
     vkCmdFillBuffer(
         m_command_buffer,
-        static_cast<vk_buffer*>(buffer)->get_buffer_handle(),
+        static_cast<vk_buffer*>(buffer)->get_buffer(),
         region.offset,
         region.size,
         value);
@@ -349,8 +342,8 @@ void vk_command::copy_buffer(
 {
     assert(src_region.size == dst_region.size);
 
-    VkBuffer src_buffer = static_cast<vk_buffer*>(src)->get_buffer_handle();
-    VkBuffer dst_buffer = static_cast<vk_buffer*>(dst)->get_buffer_handle();
+    VkBuffer src_buffer = static_cast<vk_buffer*>(src)->get_buffer();
+    VkBuffer dst_buffer = static_cast<vk_buffer*>(dst)->get_buffer();
 
     VkBufferCopy buffer_copy = {};
     buffer_copy.srcOffset = src_region.offset;
@@ -375,7 +368,7 @@ void vk_command::copy_buffer_to_texture(
     buffer_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
     buffer_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     buffer_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    buffer_barrier.buffer = src_buffer->get_buffer_handle();
+    buffer_barrier.buffer = src_buffer->get_buffer();
     buffer_barrier.offset = buffer_region.offset;
     buffer_barrier.size = buffer_region.size;
 
@@ -418,7 +411,7 @@ void vk_command::copy_buffer_to_texture(
 
     vkCmdCopyBufferToImage(
         m_command_buffer,
-        src_buffer->get_buffer_handle(),
+        src_buffer->get_buffer(),
         dst_image->get_image(),
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1,

@@ -59,10 +59,10 @@ public:
         return {0.0f, 0.0f, 0.0f, 0.0f};
     }
 
-    bool is_texture_view() const noexcept override
+    VkImageAspectFlags get_aspect_mask() const noexcept override
     {
-        return false;
-    };
+        return VK_IMAGE_ASPECT_COLOR_BIT;
+    }
 
 private:
     VkImage m_image{VK_NULL_HANDLE};

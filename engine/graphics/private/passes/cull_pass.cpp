@@ -6,14 +6,27 @@ struct cull_cs : public shader_cs
 {
     static constexpr std::string_view path = "assets/shaders/source/cull.hlsl";
 
-    static constexpr parameter parameter = {
-        {RHI_PARAMETER_STORAGE, RHI_SHADER_STAGE_COMPUTE, 1}, // Cull Result
+    struct cull_data
+    {
+        std::uint32_t cull_result;
+        std::uint32_t padding0;
+        std::uint32_t padding1;
+        std::uint32_t padding2;
+    };
+
+    static constexpr parameter cull = {
+        {
+            .type = RHI_PARAMETER_BINDING_CONSTANT,
+            .stages = RHI_SHADER_STAGE_COMPUTE,
+            .size = sizeof(cull_data),
+        },
     };
 
     static constexpr parameter_layout parameters = {
-        {0, parameter},
+        {0, bindless},
         {1, scene},
         {2, camera},
+        {3, cull},
     };
 };
 
@@ -21,16 +34,26 @@ struct draw_command_filler_cs : public shader_cs
 {
     static constexpr std::string_view path = "assets/shaders/source/draw_command_filler.hlsl";
 
-    static constexpr parameter parameter = {
-        {RHI_PARAMETER_STORAGE, RHI_SHADER_STAGE_COMPUTE, 1},       // Group Buffer
-        {RHI_PARAMETER_STORAGE, RHI_SHADER_STAGE_COMPUTE, 1},       // Cull Result
-        {RHI_PARAMETER_STORAGE, RHI_SHADER_STAGE_COMPUTE, 1},       // Command Buffer
-        {RHI_PARAMETER_STORAGE_TEXEL, RHI_SHADER_STAGE_COMPUTE, 1}, // Count Buffer
+    struct fill_data
+    {
+        std::uint32_t cull_result;
+        std::uint32_t command_buffer;
+        std::uint32_t count_buffer;
+        std::uint32_t padding0;
+    };
+
+    static constexpr parameter fill = {
+        {
+            .type = RHI_PARAMETER_BINDING_CONSTANT,
+            .stages = RHI_SHADER_STAGE_COMPUTE,
+            .size = sizeof(fill_data),
+        },
     };
 
     static constexpr parameter_layout parameters = {
-        {0, parameter},
+        {0, bindless},
         {1, scene},
+        {2, fill},
     };
 };
 
@@ -67,32 +90,39 @@ void cull_pass::add_cull_pass(
 {
     struct pass_data
     {
-        rhi_parameter* cull_parameter;
+        rhi_parameter* bindless_parameter;
         rhi_parameter* scene_parameter;
         rhi_parameter* camera_parameter;
+        rhi_parameter* cull_parameter;
 
         std::uint32_t mesh_count;
     };
 
     pass_data data = {
-        .cull_parameter = graph.allocate_parameter(cull_cs::parameter),
+        .bindless_parameter = parameter.scene.get_bindless_parameter(),
         .scene_parameter = parameter.scene.get_scene_parameter(),
         .camera_parameter = parameter.camera.camera_parameter,
-        .mesh_count = static_cast<std::uint32_t>(parameter.scene.get_mesh_count())};
+        .cull_parameter = graph.allocate_parameter(cull_cs::cull),
+        .mesh_count = static_cast<std::uint32_t>(parameter.scene.get_mesh_count()),
+    };
 
     auto& cull_pass = graph.add_pass<rdg_compute_pass>("Cull Pass");
     cull_pass.add_buffer(cull_result, RHI_PIPELINE_STAGE_COMPUTE, RHI_ACCESS_SHADER_WRITE);
     cull_pass.set_execute(
         [data, cull_result](rdg_command& command)
         {
-            data.cull_parameter->set_storage(0, cull_result->get_rhi());
+            cull_cs::cull_data cull_data = {
+                .cull_result = cull_result->get_handle(),
+            };
+            data.cull_parameter->set_constant(0, &cull_data, sizeof(cull_cs::cull_data));
 
             command.set_pipeline({
                 .compute_shader = render_device::instance().get_shader<cull_cs>(),
             });
-            command.set_parameter(0, data.cull_parameter);
+            command.set_parameter(0, data.bindless_parameter);
             command.set_parameter(1, data.scene_parameter);
             command.set_parameter(2, data.camera_parameter);
+            command.set_parameter(3, data.cull_parameter);
 
             command.dispatch_1d(data.mesh_count);
         });
@@ -105,24 +135,24 @@ void cull_pass::add_fill_pass(
 {
     struct pass_data
     {
+        rhi_parameter* bindless_parameter;
+        rhi_parameter* scene_parameter;
+        rhi_parameter* fill_parameter;
+
         rdg_buffer* command_buffer;
         rdg_buffer* count_buffer;
-
-        rhi_parameter* fill_parameter;
-        rhi_parameter* scene_parameter;
 
         std::uint32_t instance_count;
     };
 
     pass_data data = {
+        .bindless_parameter = parameter.scene.get_bindless_parameter(),
+        .scene_parameter = parameter.scene.get_scene_parameter(),
+        .fill_parameter = graph.allocate_parameter(draw_command_filler_cs::fill),
         .command_buffer = parameter.command_buffer,
         .count_buffer = parameter.count_buffer,
-        .fill_parameter = graph.allocate_parameter(draw_command_filler_cs::parameter),
-        .scene_parameter = parameter.scene.get_scene_parameter(),
         .instance_count = static_cast<std::uint32_t>(parameter.scene.get_instance_count()),
     };
-
-    data.fill_parameter->set_storage(0, parameter.scene.get_group_buffer());
 
     auto& fill_pass = graph.add_pass<rdg_compute_pass>("Fill Command Buffer");
     fill_pass.add_buffer(cull_result, RHI_PIPELINE_STAGE_COMPUTE, RHI_ACCESS_SHADER_READ);
@@ -131,15 +161,22 @@ void cull_pass::add_fill_pass(
     fill_pass.set_execute(
         [data, cull_result](rdg_command& command)
         {
-            data.fill_parameter->set_storage(1, cull_result->get_rhi());
-            data.fill_parameter->set_storage(2, data.command_buffer->get_rhi());
-            data.fill_parameter->set_storage(3, data.count_buffer->get_rhi());
+            draw_command_filler_cs::fill_data fill_data = {
+                .cull_result = cull_result->get_handle(),
+                .command_buffer = data.command_buffer->get_handle(),
+                .count_buffer = data.count_buffer->get_handle(),
+            };
+            data.fill_parameter->set_constant(
+                0,
+                &fill_data,
+                sizeof(draw_command_filler_cs::fill_data));
 
             command.set_pipeline({
                 .compute_shader = render_device::instance().get_shader<draw_command_filler_cs>(),
             });
-            command.set_parameter(0, data.fill_parameter);
+            command.set_parameter(0, data.bindless_parameter);
             command.set_parameter(1, data.scene_parameter);
+            command.set_parameter(2, data.fill_parameter);
             command.dispatch_1d(data.instance_count);
         });
 }

@@ -1,7 +1,6 @@
 project(violet-scene)
 
 add_library(${PROJECT_NAME} STATIC
-    ./private/components/transform.cpp
     ./private/hierarchy_system.cpp
     ./private/scene_system.cpp
     ./private/transform_system.cpp)

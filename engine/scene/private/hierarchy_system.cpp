@@ -1,5 +1,5 @@
 #include "scene/hierarchy_system.hpp"
-#include "components/hierarchy.hpp"
+#include "components/hierarchy_component.hpp"
 
 namespace violet
 {
@@ -10,9 +10,9 @@ hierarchy_system::hierarchy_system()
 
 bool hierarchy_system::initialize(const dictionary& config)
 {
-    get_world().register_component<hierarchy_parent>();
-    get_world().register_component<hierarchy_previous_parent>();
-    get_world().register_component<hierarchy_child>();
+    get_world().register_component<parent_component>();
+    get_world().register_component<previous_parent_component>();
+    get_world().register_component<child_component>();
 
     task_graph& task_graph = get_task_graph();
     task_group& post_update_group = task_graph.get_group("Post Update Group");
@@ -42,34 +42,35 @@ void hierarchy_system::process_add_parent()
 
     world.get_view()
         .read<entity>()
-        .read<hierarchy_parent>()
-        .without<hierarchy_previous_parent>()
+        .read<parent_component>()
+        .without<previous_parent_component>()
         .each(
-            [&world, &add_parent_entities, &add_child_entities](
-                const entity& e, const hierarchy_parent& parent)
+            [&world,
+             &add_parent_entities,
+             &add_child_entities](const entity& e, const parent_component& parent)
             {
                 add_parent_entities.push_back({e, parent.parent});
 
-                if (!world.has_component<hierarchy_child>(parent.parent))
+                if (!world.has_component<child_component>(parent.parent))
                 {
                     add_child_entities.push_back({parent.parent, e});
                 }
                 else
                 {
-                    world.get_component<hierarchy_child>(parent.parent).children.push_back(e);
+                    world.get_component<child_component>(parent.parent).children.push_back(e);
                 }
             });
 
     for (auto& [e, parent] : add_parent_entities)
     {
-        world.add_component<hierarchy_previous_parent>(e);
-        world.get_component<hierarchy_previous_parent>(e).parent = parent;
+        world.add_component<previous_parent_component>(e);
+        world.get_component<previous_parent_component>(e).parent = parent;
     }
 
     for (auto& [e, child] : add_child_entities)
     {
-        world.add_component<hierarchy_child>(e);
-        world.get_component<hierarchy_child>(e).children.push_back(child);
+        world.add_component<child_component>(e);
+        world.get_component<child_component>(e).children.push_back(child);
     }
 }
 
@@ -81,19 +82,19 @@ void hierarchy_system::process_set_parent()
     std::vector<entity> remove_parent_entities;
     std::vector<std::pair<entity, entity>> add_child_entities;
 
-    world.get_view().read<entity>().read<hierarchy_parent>().read<hierarchy_previous_parent>().each(
+    world.get_view().read<entity>().read<parent_component>().read<previous_parent_component>().each(
         [&world, &remove_child_entities, &remove_parent_entities, &add_child_entities](
             const entity& e,
-            const hierarchy_parent& parent,
-            const hierarchy_previous_parent& previous_parent)
+            const parent_component& parent,
+            const previous_parent_component& previous_parent)
         {
             if (parent.parent == previous_parent.parent)
             {
                 return;
             }
 
-            hierarchy_child& previous_parent_children =
-                world.get_component<hierarchy_child>(previous_parent.parent);
+            child_component& previous_parent_children =
+                world.get_component<child_component>(previous_parent.parent);
 
             auto iter = std::find(
                 previous_parent_children.children.begin(),
@@ -113,35 +114,35 @@ void hierarchy_system::process_set_parent()
             }
             else
             {
-                if (!world.has_component<hierarchy_child>(parent.parent))
+                if (!world.has_component<child_component>(parent.parent))
                 {
                     add_child_entities.push_back({parent.parent, e});
                 }
                 else
                 {
-                    world.get_component<hierarchy_child>(parent.parent).children.push_back(e);
+                    world.get_component<child_component>(parent.parent).children.push_back(e);
                 }
             }
         },
         [this](auto& view)
         {
-            return view.is_updated<hierarchy_parent>(m_system_version);
+            return view.is_updated<parent_component>(m_system_version);
         });
 
     for (auto& e : remove_child_entities)
     {
-        world.remove_component<hierarchy_child>(e);
+        world.remove_component<child_component>(e);
     }
 
     for (auto& e : remove_parent_entities)
     {
-        world.remove_component<hierarchy_parent>(e);
+        world.remove_component<parent_component>(e);
     }
 
     for (auto& [e, child] : add_child_entities)
     {
-        world.add_component<hierarchy_child>(e);
-        world.get_component<hierarchy_child>(e).children.push_back(child);
+        world.add_component<child_component>(e);
+        world.get_component<child_component>(e).children.push_back(child);
     }
 }
 
@@ -154,14 +155,15 @@ void hierarchy_system::process_remove_parent()
 
     world.get_view()
         .read<entity>()
-        .read<hierarchy_previous_parent>()
-        .without<hierarchy_parent>()
+        .read<previous_parent_component>()
+        .without<parent_component>()
         .each(
             [&world, &remove_child_entities, &remove_previous_parent_entities](
-                const entity& e, const hierarchy_previous_parent& previous_parent)
+                const entity& e,
+                const previous_parent_component& previous_parent)
             {
-                hierarchy_child& previous_parent_children =
-                    world.get_component<hierarchy_child>(previous_parent.parent);
+                child_component& previous_parent_children =
+                    world.get_component<child_component>(previous_parent.parent);
 
                 auto iter = std::find(
                     previous_parent_children.children.begin(),
@@ -180,12 +182,12 @@ void hierarchy_system::process_remove_parent()
 
     for (auto& e : remove_child_entities)
     {
-        world.remove_component<hierarchy_child>(e);
+        world.remove_component<child_component>(e);
     }
 
     for (auto& e : remove_previous_parent_entities)
     {
-        world.remove_component<hierarchy_previous_parent>(e);
+        world.remove_component<previous_parent_component>(e);
     }
 }
 } // namespace violet

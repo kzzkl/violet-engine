@@ -1,8 +1,10 @@
 #pragma once
 
+#include "common/allocator.hpp"
 #include "vk_common.hpp"
 #include "vk_mem_alloc.h"
 #include <memory>
+#include <mutex>
 #include <span>
 
 namespace violet::vk
@@ -10,6 +12,8 @@ namespace violet::vk
 class vk_graphics_queue;
 class vk_present_queue;
 class vk_layout_manager;
+class vk_parameter_manager;
+class vk_parameter;
 
 class vk_context
 {
@@ -31,6 +35,7 @@ public:
     {
         return m_graphics_queue.get();
     }
+
     vk_present_queue* get_present_queue() const noexcept
     {
         return m_present_queue.get();
@@ -39,6 +44,11 @@ public:
     vk_layout_manager* get_layout_manager() const noexcept
     {
         return m_layout_manager.get();
+    }
+
+    vk_parameter_manager* get_parameter_manager() const noexcept
+    {
+        return m_parameter_manager.get();
     }
 
     VkInstance get_instance() const noexcept
@@ -55,6 +65,7 @@ public:
     {
         return m_physical_device;
     }
+
     VkPhysicalDeviceProperties get_physical_device_properties() const noexcept
     {
         return m_physical_device_properties;
@@ -64,10 +75,12 @@ public:
     {
         return m_frame_count;
     }
+
     std::size_t get_frame_resource_count() const noexcept
     {
         return m_frame_resource_count;
     }
+
     std::size_t get_frame_resource_index() const noexcept
     {
         return m_frame_resource_index;
@@ -84,10 +97,14 @@ private:
     bool initialize_instance(
         std::span<const char*> desired_layers,
         std::span<const char*> desired_extensions);
-    bool initialize_physical_device(std::span<const char*> desired_extensions);
-    void initialize_logic_device(std::span<const char*> enabled_extensions);
+    bool initialize_physical_device(
+        rhi_features desired_features,
+        std::span<const char*> desired_extensions);
+    void initialize_logic_device(
+        rhi_features desired_features,
+        std::span<const char*> enabled_extensions);
     void initialize_vma();
-    void initialize_descriptor_pool();
+    void initialize_descriptor_pool(bool bindless);
 
     VkInstance m_instance{VK_NULL_HANDLE};
     VkPhysicalDevice m_physical_device{VK_NULL_HANDLE};
@@ -96,7 +113,9 @@ private:
 
     std::unique_ptr<vk_graphics_queue> m_graphics_queue;
     std::unique_ptr<vk_present_queue> m_present_queue;
+
     std::unique_ptr<vk_layout_manager> m_layout_manager;
+    std::unique_ptr<vk_parameter_manager> m_parameter_manager;
 
     VkDescriptorPool m_descriptor_pool{VK_NULL_HANDLE};
 

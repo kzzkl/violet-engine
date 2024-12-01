@@ -1,5 +1,4 @@
-#include "material_manager.hpp"
-#include "graphics/render_context.hpp"
+#include "graphics/material_manager.hpp"
 
 namespace violet
 {
@@ -17,7 +16,7 @@ material_manager::material_manager(std::size_t material_buffer_size)
 
 render_id material_manager::register_material(material* material, std::uint32_t& constant_address)
 {
-    std::lock_guard lg(m_lock);
+    std::lock_guard lock(m_mutex);
 
     render_id material_id = m_material_allocator.allocate();
     if (m_materials.size() <= material_id)
@@ -41,13 +40,11 @@ render_id material_manager::register_material(material* material, std::uint32_t&
     return material_id;
 }
 
-void material_manager::unregister_material(material* material)
+void material_manager::unregister_material(render_id material_id)
 {
-    std::lock_guard lg(m_lock);
+    std::lock_guard lock(m_mutex);
 
-    render_id material_id = material->get_id();
-
-    if (material->get_constant_size() != 0)
+    if (m_materials[material_id].material->get_constant_size() != 0)
     {
         m_material_buffer_allocator.free(m_materials[material_id].constant_allocation);
     }
@@ -117,7 +114,7 @@ void material_manager::record(rhi_command* command)
 
 void material_manager::mark_dirty(material* material)
 {
-    std::lock_guard lg(m_lock);
+    std::lock_guard lock(m_mutex);
     m_dirty_materials.push_back(material->get_id());
 }
 } // namespace violet

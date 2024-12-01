@@ -45,44 +45,6 @@ rdg_texture* render_graph::add_texture(std::string_view name, const rhi_texture_
     return result;
 }
 
-rdg_texture* render_graph::add_texture(
-    std::string_view name,
-    rhi_texture* texture,
-    std::uint32_t level,
-    std::uint32_t layer,
-    rhi_texture_layout initial_layout,
-    rhi_texture_layout final_layout)
-{
-    assert(texture != nullptr);
-
-    auto resource =
-        std::make_unique<rdg_texture_view>(texture, level, layer, initial_layout, final_layout);
-    resource->m_name = name;
-
-    rdg_texture* result = resource.get();
-    m_resources.push_back(std::move(resource));
-    return result;
-}
-
-rdg_texture* render_graph::add_texture(
-    std::string_view name,
-    rdg_texture* texture,
-    std::uint32_t level,
-    std::uint32_t layer,
-    rhi_texture_layout initial_layout,
-    rhi_texture_layout final_layout)
-{
-    assert(texture != nullptr);
-
-    auto resource =
-        std::make_unique<rdg_texture_view>(texture, level, layer, initial_layout, final_layout);
-    resource->m_name = name;
-
-    rdg_texture* result = resource.get();
-    m_resources.push_back(std::move(resource));
-    return result;
-}
-
 rdg_buffer* render_graph::add_buffer(std::string_view name, rhi_buffer* buffer)
 {
     assert(buffer != nullptr);
@@ -127,18 +89,7 @@ void render_graph::compile()
         if (m_resources[i]->get_type() == RDG_RESOURCE_TEXTURE)
         {
             rdg_texture* texture = static_cast<rdg_texture*>(m_resources[i].get());
-            if (texture->is_texture_view())
-            {
-                rdg_texture_view* texture_view = static_cast<rdg_texture_view*>(texture);
-                rhi_texture_view_desc desc = {
-                    .texture = texture_view->get_source(),
-                    .level = texture_view->get_level(),
-                    .level_count = 1,
-                    .layer = texture_view->get_layer(),
-                    .layer_count = 1};
-                texture_view->set_rhi(m_allocator->allocate_texture(desc));
-            }
-            else if (!m_resources[i]->is_external())
+            if (!m_resources[i]->is_external())
             {
                 rdg_inter_texture* inter_texture = static_cast<rdg_inter_texture*>(texture);
 
@@ -455,9 +406,9 @@ void render_graph::build_barriers()
                         .src_layout = texture->get_initial_layout(),
                         .dst_layout = curr_reference->texture.layout,
                         .level = 0,
-                        .level_count = 1,
+                        .level_count = texture->get_level_count(),
                         .layer = 0,
-                        .layer_count = 1,
+                        .layer_count = texture->get_layer_count(),
                     };
                     batch_barrier.texture_barriers.push_back(barrier);
                     batch_barrier.src_stages |= RHI_PIPELINE_STAGE_BEGIN;
@@ -472,9 +423,9 @@ void render_graph::build_barriers()
                         .src_layout = prev_reference->texture.layout,
                         .dst_layout = curr_reference->texture.layout,
                         .level = 0,
-                        .level_count = 1,
+                        .level_count = texture->get_level_count(),
                         .layer = 0,
-                        .layer_count = 1,
+                        .layer_count = texture->get_layer_count(),
                     };
                     batch_barrier.texture_barriers.push_back(barrier);
                     batch_barrier.src_stages |= prev_reference->stages;
@@ -552,9 +503,9 @@ void render_graph::build_barriers()
                     .src_layout = src_layout,
                     .dst_layout = dst_layout,
                     .level = 0,
-                    .level_count = 1,
+                    .level_count = texture->get_level_count(),
                     .layer = 0,
-                    .layer_count = 1,
+                    .layer_count = texture->get_layer_count(),
                 };
                 last_barrier.texture_barriers.push_back(barrier);
                 last_barrier.src_stages |= src_stages;

@@ -25,6 +25,8 @@ void deferred_renderer::add_cull_pass(
     const render_scene& scene,
     const render_camera& camera)
 {
+    rdg_scope scope(graph, "Cull");
+
     m_command_buffer = graph.add_buffer(
         "Command Buffer",
         {
@@ -60,6 +62,8 @@ void deferred_renderer::add_mesh_pass(
     const render_scene& scene,
     const render_camera& camera)
 {
+    rdg_scope scope(graph, "Mesh");
+
     m_gbuffer_albedo = graph.add_texture(
         "GBuffer Albedo",
         {
@@ -104,10 +108,26 @@ void deferred_renderer::add_lighting_pass(render_graph& graph, const render_scen
     unlit_pass::add(
         graph,
         {
+            .scene = scene,
             .gbuffer_albedo = m_gbuffer_albedo,
             .gbuffer_depth = m_depth_buffer,
             .render_target = m_render_target,
             .clear = true,
+        });
+}
+
+void deferred_renderer::add_skybox_pass(
+    render_graph& graph,
+    const render_scene& scene,
+    const render_camera& camera)
+{
+    skybox_pass::add(
+        graph,
+        {
+            .camera = camera,
+            .render_target = m_render_target,
+            .depth_buffer = m_depth_buffer,
+            .clear = false,
         });
 }
 

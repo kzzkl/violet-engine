@@ -44,12 +44,22 @@ struct light
 
 struct scene_data
 {
-    light lights[32];
-    uint light_count;
-
+    uint mesh_buffer;
     uint mesh_count;
+    uint instance_buffer;
     uint instance_count;
+    uint group_buffer;
+    uint light_buffer;
+    uint light_count;
+    uint skybox;
+    uint irradiance;
+    uint prefilter;
+    uint brdf_lut;
+    uint material_buffer;
+    uint point_sampler;
+    uint linear_sampler;
     uint padding0;
+    uint padding1;
 };
 
 struct camera_data
@@ -60,5 +70,12 @@ struct camera_data
     float3 position;
     uint padding;
 };
+
+template <typename T>
+T load_material(uint material_buffer, uint material_address)
+{
+    ByteAddressBuffer buffer = ResourceDescriptorHeap[material_buffer];
+    return buffer.Load<T>(material_address);
+}
 
 #endif

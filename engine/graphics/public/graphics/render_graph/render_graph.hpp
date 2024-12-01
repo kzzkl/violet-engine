@@ -26,27 +26,9 @@ public:
         rhi_texture* texture,
         rhi_texture_layout initial_layout = RHI_TEXTURE_LAYOUT_UNDEFINED,
         rhi_texture_layout final_layout = RHI_TEXTURE_LAYOUT_UNDEFINED);
-
     rdg_texture* add_texture(std::string_view name, const rhi_texture_desc& desc);
 
-    rdg_texture* add_texture(
-        std::string_view name,
-        rhi_texture* texture,
-        std::uint32_t level,
-        std::uint32_t layer,
-        rhi_texture_layout initial_layout = RHI_TEXTURE_LAYOUT_UNDEFINED,
-        rhi_texture_layout final_layout = RHI_TEXTURE_LAYOUT_UNDEFINED);
-
-    rdg_texture* add_texture(
-        std::string_view name,
-        rdg_texture* texture,
-        std::uint32_t level,
-        std::uint32_t layer,
-        rhi_texture_layout initial_layout = RHI_TEXTURE_LAYOUT_UNDEFINED,
-        rhi_texture_layout final_layout = RHI_TEXTURE_LAYOUT_UNDEFINED);
-
     rdg_buffer* add_buffer(std::string_view name, rhi_buffer* buffer);
-
     rdg_buffer* add_buffer(std::string_view name, const rhi_buffer_desc& desc);
 
     template <RDGPass T, typename... Args>

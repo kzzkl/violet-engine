@@ -9,6 +9,8 @@ class unlit_pass
 public:
     struct parameter
     {
+        const render_scene& scene;
+
         rdg_texture* gbuffer_albedo;
         rdg_texture* gbuffer_depth;
 

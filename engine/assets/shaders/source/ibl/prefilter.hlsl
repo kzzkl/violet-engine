@@ -43,11 +43,11 @@ float4 prefilter(float3 normal)
         float3 half_vec = importance_sample_ggx(xi, normal, data.roughness);
         float3 light = normalize(2.0 * dot(view, half_vec) * half_vec - view);
 
-        float n_dot_l = max(dot(normal, light), 0.0);
-        if(n_dot_l > 0.0)
+        float NdotL = max(dot(normal, light), 0.0);
+        if(NdotL > 0.0)
         {
-            result += env_texture.Sample(env_sampler, light).rgb * n_dot_l;
-            weight += n_dot_l;
+            result += env_texture.Sample(env_sampler, light).rgb * NdotL;
+            weight += NdotL;
         }
     }
     result = result / weight;

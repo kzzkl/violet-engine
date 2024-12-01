@@ -14,6 +14,10 @@ private:
     void add_cull_pass(render_graph& graph, const render_scene& scene, const render_camera& camera);
     void add_mesh_pass(render_graph& graph, const render_scene& scene, const render_camera& camera);
     void add_lighting_pass(render_graph& graph, const render_scene& scene);
+    void add_skybox_pass(
+        render_graph& graph,
+        const render_scene& scene,
+        const render_camera& camera);
     void add_present_pass(render_graph& graph, const render_camera& camera);
 
     rdg_texture* m_render_target{nullptr};

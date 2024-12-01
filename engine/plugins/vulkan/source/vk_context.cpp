@@ -1,5 +1,6 @@
 #include "vk_context.hpp"
 #include "vk_command.hpp"
+#include "vk_layout.hpp"
 #include "vk_pipeline.hpp"
 #include <iostream>
 #include <set>
@@ -22,6 +23,13 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
     return VK_FALSE;
 }
 
+template <typename T>
+void enable_feature(VkPhysicalDeviceFeatures2& device_features, T& feature)
+{
+    feature.pNext = device_features.pNext;
+    device_features.pNext = &feature;
+};
+
 bool check_extension_support(
     std::span<const char*> desired_extensions,
     std::span<VkExtensionProperties> available_extensions)
@@ -39,6 +47,54 @@ bool check_extension_support(
         }
 
         if (!found)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool check_feature_support(rhi_features desired_features, VkPhysicalDevice device)
+{
+    VkPhysicalDeviceFeatures2 device_features = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+    };
+
+    VkPhysicalDeviceVulkan12Features vulkan12_features = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+    };
+    enable_feature(device_features, vulkan12_features);
+
+    VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_descriptor_type_features = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
+    };
+    if (desired_features & RHI_FEATURE_BINDLESS)
+    {
+        enable_feature(device_features, mutable_descriptor_type_features);
+    }
+
+    vkGetPhysicalDeviceFeatures2(device, &device_features);
+
+    if (!device_features.features.samplerAnisotropy || !vulkan12_features.timelineSemaphore)
+    {
+        return false;
+    }
+
+    if (desired_features & RHI_FEATURE_BINDLESS)
+    {
+        if (!vulkan12_features.runtimeDescriptorArray ||
+            !vulkan12_features.shaderSampledImageArrayNonUniformIndexing ||
+            !vulkan12_features.descriptorBindingSampledImageUpdateAfterBind ||
+            !vulkan12_features.shaderUniformBufferArrayNonUniformIndexing ||
+            !vulkan12_features.descriptorBindingUniformBufferUpdateAfterBind ||
+            !vulkan12_features.shaderStorageBufferArrayNonUniformIndexing ||
+            !vulkan12_features.descriptorBindingStorageBufferUpdateAfterBind)
+        {
+            return false;
+        }
+
+        if (!mutable_descriptor_type_features.mutableDescriptorType)
         {
             return false;
         }
@@ -76,7 +132,9 @@ bool vk_context::initialize(const rhi_desc& desc)
     m_frame_resource_count = desc.frame_resource_count;
 
     std::vector<const char*> instance_desired_layers;
-    std::vector<const char*> instance_desired_extensions = {VK_KHR_SURFACE_EXTENSION_NAME};
+    std::vector<const char*> instance_desired_extensions = {
+        VK_KHR_SURFACE_EXTENSION_NAME,
+    };
 
 #ifdef _WIN32
     instance_desired_extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
@@ -95,18 +153,25 @@ bool vk_context::initialize(const rhi_desc& desc)
     std::vector<const char*> device_desired_extensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_KHR_MAINTENANCE1_EXTENSION_NAME,
-        VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME};
+        VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME,
+    };
 
-    if (!initialize_physical_device(device_desired_extensions))
+    if (desc.features & RHI_FEATURE_BINDLESS)
+    {
+        device_desired_extensions.push_back(VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME);
+    }
+
+    if (!initialize_physical_device(desc.features, device_desired_extensions))
     {
         return false;
     }
 
-    initialize_logic_device(device_desired_extensions);
+    initialize_logic_device(desc.features, device_desired_extensions);
     initialize_vma();
-    initialize_descriptor_pool();
+    initialize_descriptor_pool(desc.features & RHI_FEATURE_BINDLESS);
 
     m_layout_manager = std::make_unique<vk_layout_manager>(this);
+    m_parameter_manager = std::make_unique<vk_parameter_manager>(this);
 
     return true;
 }
@@ -115,6 +180,8 @@ void vk_context::next_frame() noexcept
 {
     ++m_frame_count;
     m_frame_resource_index = m_frame_count % m_frame_resource_count;
+
+    m_parameter_manager->sync_parameter();
 }
 
 VkDescriptorSet vk_context::allocate_descriptor_set(VkDescriptorSetLayout layout)
@@ -151,7 +218,9 @@ void vk_context::setup_present_queue(VkSurfaceKHR surface)
         &present_support);
 
     if (!present_support)
+    {
         throw std::runtime_error("There is no queue that supports presentation.");
+    }
 
     m_present_queue =
         std::make_unique<vk_present_queue>(m_graphics_queue->get_family_index(), this);
@@ -202,7 +271,7 @@ bool vk_context::initialize_instance(
         VK_MAKE_VERSION(1, 0, 0),
         "violet engine",
         VK_MAKE_VERSION(1, 0, 0),
-        VK_API_VERSION_1_2};
+        VK_API_VERSION_1_3};
 
     VkInstanceCreateInfo instance_info = {
         VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -242,7 +311,9 @@ bool vk_context::initialize_instance(
     return true;
 }
 
-bool vk_context::initialize_physical_device(std::span<const char*> desired_extensions)
+bool vk_context::initialize_physical_device(
+    rhi_features desired_features,
+    std::span<const char*> desired_extensions)
 {
     std::uint32_t devices_count = 0;
     vk_check(vkEnumeratePhysicalDevices(m_instance, &devices_count, nullptr));
@@ -264,8 +335,12 @@ bool vk_context::initialize_physical_device(std::span<const char*> desired_exten
             nullptr,
             &available_extension_count,
             available_extensions.data()));
-        if (!check_extension_support(desired_extensions, available_extensions))
+
+        if (!check_extension_support(desired_extensions, available_extensions) ||
+            !check_feature_support(desired_features, device))
+        {
             continue;
+        }
 
         std::uint32_t score = 0;
 
@@ -273,14 +348,11 @@ bool vk_context::initialize_physical_device(std::span<const char*> desired_exten
         vkGetPhysicalDeviceProperties(device, &properties);
 
         if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+        {
             score += 1000;
+        }
 
         score += properties.limits.maxImageDimension2D;
-
-        VkPhysicalDeviceFeatures features = {};
-        vkGetPhysicalDeviceFeatures(device, &features);
-        if (features.samplerAnisotropy == VK_FALSE)
-            continue;
 
         if (physical_device_score < score)
         {
@@ -296,7 +368,9 @@ bool vk_context::initialize_physical_device(std::span<const char*> desired_exten
     return true;
 }
 
-void vk_context::initialize_logic_device(std::span<const char*> enabled_extensions)
+void vk_context::initialize_logic_device(
+    rhi_features desired_features,
+    std::span<const char*> enabled_extensions)
 {
     std::uint32_t queue_family_count = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(m_physical_device, &queue_family_count, nullptr);
@@ -309,11 +383,11 @@ void vk_context::initialize_logic_device(std::span<const char*> enabled_extensio
     std::uint32_t graphics_queue_family_index = -1;
     for (std::uint32_t i = 0; i < queue_families.size(); ++i)
     {
-        if (queue_families[i].queueCount == 0)
-            continue;
-
-        if (queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        if (queue_families[i].queueCount != 0 &&
+            queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        {
             graphics_queue_family_index = i;
+        }
     }
 
     std::set<std::uint32_t> queue_indexes = {graphics_queue_family_index};
@@ -329,22 +403,57 @@ void vk_context::initialize_logic_device(std::span<const char*> enabled_extensio
 
         queue_infos.push_back(queue_info);
     }
-    VkPhysicalDeviceFeatures enabled_features = {};
-    enabled_features.samplerAnisotropy = VK_TRUE;
 
-    VkPhysicalDeviceVulkan12Features vulkan12 = {};
-    vulkan12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-    vulkan12.timelineSemaphore = VK_TRUE;
-    vulkan12.drawIndirectCount = VK_TRUE;
+    VkPhysicalDeviceFeatures2 device_features = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+        .features =
+            {
+                .samplerAnisotropy = VK_TRUE,
+            },
+    };
 
-    VkDeviceCreateInfo device_info = {};
-    device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    device_info.pNext = &vulkan12;
-    device_info.pQueueCreateInfos = queue_infos.data();
-    device_info.queueCreateInfoCount = static_cast<std::uint32_t>(queue_infos.size());
-    device_info.ppEnabledExtensionNames = enabled_extensions.data();
-    device_info.enabledExtensionCount = static_cast<std::uint32_t>(enabled_extensions.size());
-    device_info.pEnabledFeatures = &enabled_features;
+    VkPhysicalDeviceVulkan12Features vulkan12_features = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+        .timelineSemaphore = VK_TRUE,
+    };
+
+    VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_descriptor_type_features = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
+    };
+
+    if (desired_features & RHI_FEATURE_INDIRECT_DRAW || desired_features & RHI_FEATURE_BINDLESS)
+    {
+        if (desired_features & RHI_FEATURE_INDIRECT_DRAW)
+        {
+            vulkan12_features.drawIndirectCount = VK_TRUE;
+        }
+
+        if (desired_features & RHI_FEATURE_BINDLESS)
+        {
+            vulkan12_features.runtimeDescriptorArray = VK_TRUE;
+            vulkan12_features.shaderUniformBufferArrayNonUniformIndexing = VK_TRUE;
+            vulkan12_features.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+            vulkan12_features.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE;
+            vulkan12_features.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
+            vulkan12_features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+            vulkan12_features.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
+            vulkan12_features.descriptorBindingPartiallyBound = VK_TRUE;
+
+            mutable_descriptor_type_features.mutableDescriptorType = VK_TRUE;
+        }
+
+        enable_feature(device_features, vulkan12_features);
+        enable_feature(device_features, mutable_descriptor_type_features);
+    }
+
+    VkDeviceCreateInfo device_info = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .pNext = &device_features,
+        .queueCreateInfoCount = static_cast<std::uint32_t>(queue_infos.size()),
+        .pQueueCreateInfos = queue_infos.data(),
+        .enabledExtensionCount = static_cast<std::uint32_t>(enabled_extensions.size()),
+        .ppEnabledExtensionNames = enabled_extensions.data(),
+    };
 
     vk_check(vkCreateDevice(m_physical_device, &device_info, nullptr, &m_device));
     volkLoadDevice(m_device);
@@ -379,9 +488,11 @@ void vk_context::initialize_vma()
     vulkan_functions.vkBindBufferMemory2KHR = vkBindBufferMemory2;
     vulkan_functions.vkBindImageMemory2KHR = vkBindImageMemory2;
     vulkan_functions.vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2;
+    vulkan_functions.vkGetDeviceBufferMemoryRequirements = vkGetDeviceBufferMemoryRequirements;
+    vulkan_functions.vkGetDeviceImageMemoryRequirements = vkGetDeviceImageMemoryRequirements;
 
     VmaAllocatorCreateInfo allocator_info = {};
-    allocator_info.vulkanApiVersion = VK_API_VERSION_1_2;
+    allocator_info.vulkanApiVersion = VK_API_VERSION_1_3;
     allocator_info.physicalDevice = m_physical_device;
     allocator_info.device = m_device;
     allocator_info.instance = m_instance;
@@ -390,18 +501,24 @@ void vk_context::initialize_vma()
     vk_check(vmaCreateAllocator(&allocator_info, &m_vma_allocator));
 }
 
-void vk_context::initialize_descriptor_pool()
+void vk_context::initialize_descriptor_pool(bool bindless)
 {
     std::vector<VkDescriptorPoolSize> pool_size = {
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1024},
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1024}};
 
-    VkDescriptorPoolCreateInfo pool_info = {};
-    pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-    pool_info.maxSets = 512;
-    pool_info.pPoolSizes = pool_size.data();
-    pool_info.poolSizeCount = static_cast<std::uint32_t>(pool_size.size());
+    VkDescriptorPoolCreateInfo pool_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+        .maxSets = 512,
+        .poolSizeCount = static_cast<std::uint32_t>(pool_size.size()),
+        .pPoolSizes = pool_size.data(),
+    };
+
+    if (bindless)
+    {
+        pool_info.flags |= VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+    }
 
     vk_check(vkCreateDescriptorPool(m_device, &pool_info, nullptr, &m_descriptor_pool));
 }

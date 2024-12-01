@@ -1,41 +1,25 @@
 #pragma once
 
-#include "vk_context.hpp"
+#include "vk_common.hpp"
 #include <vector>
 
 namespace violet::vk
 {
+class vk_context;
+
 class vk_image : public rhi_texture
 {
 public:
-    vk_image(rhi_texture_flags flags);
+    vk_image();
     vk_image(const vk_image&) = delete;
     virtual ~vk_image() = default;
 
     vk_image& operator=(const vk_image&) = delete;
 
-    std::uint64_t get_hash() const noexcept override;
-
     virtual VkImage get_image() const noexcept = 0;
     virtual VkImageView get_image_view() const noexcept = 0;
     virtual VkClearValue get_clear_value() const noexcept = 0;
-
-    VkImageAspectFlags get_aspect_mask() const noexcept
-    {
-        return m_flags & RHI_TEXTURE_DEPTH_STENCIL ?
-                   VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
-                   VK_IMAGE_ASPECT_COLOR_BIT;
-    }
-
-    virtual bool is_texture_view() const noexcept = 0;
-
-    rhi_texture_flags get_flags() const noexcept
-    {
-        return m_flags;
-    }
-
-private:
-    rhi_texture_flags m_flags{0};
+    virtual VkImageAspectFlags get_aspect_mask() const noexcept = 0;
 };
 
 class vk_texture : public vk_image
@@ -45,19 +29,14 @@ public:
     vk_texture(const rhi_texture_desc& desc, vk_context* context);
     virtual ~vk_texture();
 
-    VkImage get_image() const noexcept override
+    void set_handle(rhi_resource_handle handle) noexcept
     {
-        return m_image;
+        m_handle = handle;
     }
 
-    VkImageView get_image_view() const noexcept override
+    rhi_resource_handle get_handle() const noexcept override
     {
-        return m_image_view;
-    }
-
-    VkClearValue get_clear_value() const noexcept override
-    {
-        return m_clear_value;
+        return m_handle;
     }
 
     rhi_format get_format() const noexcept override
@@ -85,9 +64,24 @@ public:
         return m_layer_count;
     }
 
-    bool is_texture_view() const noexcept final
+    VkImage get_image() const noexcept override
     {
-        return false;
+        return m_image;
+    }
+
+    VkImageView get_image_view() const noexcept override
+    {
+        return m_image_view;
+    }
+
+    VkClearValue get_clear_value() const noexcept override
+    {
+        return m_clear_value;
+    }
+
+    VkImageAspectFlags get_aspect_mask() const noexcept override
+    {
+        return m_aspect_mask;
     }
 
 protected:
@@ -102,6 +96,9 @@ protected:
     std::uint32_t m_layer_count{0};
 
     VkClearValue m_clear_value;
+    VkImageAspectFlags m_aspect_mask;
+
+    rhi_resource_handle m_handle{RHI_INVALID_RESOURCE_HANDLE};
 
     vk_context* m_context{nullptr};
 };
@@ -111,6 +108,16 @@ class vk_texture_view : public vk_image
 public:
     vk_texture_view(const rhi_texture_view_desc& desc, vk_context* context);
     virtual ~vk_texture_view();
+
+    void set_handle(rhi_resource_handle handle) noexcept
+    {
+        m_handle = handle;
+    }
+
+    rhi_resource_handle get_handle() const noexcept override
+    {
+        return m_handle;
+    }
 
     VkImage get_image() const noexcept override
     {
@@ -125,6 +132,11 @@ public:
     VkClearValue get_clear_value() const noexcept override
     {
         return m_texture->get_clear_value();
+    }
+
+    VkImageAspectFlags get_aspect_mask() const noexcept override
+    {
+        return m_texture->get_aspect_mask();
     }
 
     rhi_format get_format() const noexcept override
@@ -147,23 +159,24 @@ public:
 
     std::uint32_t get_level_count() const noexcept override
     {
-        return m_texture->get_level_count();
+        return m_level_count;
     }
 
     std::uint32_t get_layer_count() const noexcept override
     {
-        return m_texture->get_layer_count();
-    }
-
-    bool is_texture_view() const noexcept final
-    {
-        return true;
+        return m_layer_count;
     }
 
 private:
     vk_texture* m_texture{nullptr};
     VkImageView m_image_view{VK_NULL_HANDLE};
+
     std::uint32_t m_level{0};
+    std::uint32_t m_level_count{0};
+    std::uint32_t m_layer{0};
+    std::uint32_t m_layer_count{0};
+
+    rhi_resource_handle m_handle{RHI_INVALID_RESOURCE_HANDLE};
 
     vk_context* m_context{nullptr};
 };
@@ -175,6 +188,16 @@ public:
     vk_sampler(const vk_sampler&) = delete;
     virtual ~vk_sampler();
 
+    void set_handle(rhi_resource_handle handle) noexcept
+    {
+        m_handle = handle;
+    }
+
+    rhi_resource_handle get_handle() const noexcept override
+    {
+        return m_handle;
+    }
+
     VkSampler get_sampler() const noexcept
     {
         return m_sampler;
@@ -184,6 +207,9 @@ public:
 
 private:
     VkSampler m_sampler;
+
+    rhi_resource_handle m_handle{RHI_INVALID_RESOURCE_HANDLE};
+
     vk_context* m_context;
 };
 
@@ -193,7 +219,7 @@ public:
     vk_buffer(const rhi_buffer_desc& desc, vk_context* context);
     virtual ~vk_buffer();
 
-    void* get_buffer() override
+    void* get_buffer_pointer() const noexcept override
     {
         return m_mapping_pointer;
     }
@@ -203,9 +229,17 @@ public:
         return m_buffer_size;
     }
 
-    std::uint64_t get_hash() const noexcept override;
+    void set_handle(rhi_resource_handle handle) noexcept
+    {
+        m_handle = handle;
+    }
 
-    VkBuffer get_buffer_handle() const noexcept
+    rhi_resource_handle get_handle() const noexcept override
+    {
+        return m_handle;
+    }
+
+    VkBuffer get_buffer() const noexcept
     {
         return m_buffer;
     }
@@ -229,6 +263,8 @@ private:
     rhi_buffer_flags m_flags{0};
 
     void* m_mapping_pointer;
+
+    rhi_resource_handle m_handle{RHI_INVALID_RESOURCE_HANDLE};
 
     vk_context* m_context;
 };

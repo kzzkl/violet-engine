@@ -9,25 +9,57 @@ struct cube_sample_vs : public shader_vs
     static constexpr std::string_view path = "assets/shaders/source/ibl/cube_sample.hlsl";
 };
 
-struct convert_fs : public shader_fs
+struct convert_cs : public shader_cs
 {
     static constexpr std::string_view path =
         "assets/shaders/source/ibl/equirectangular_to_cubemap.hlsl";
 
-    static constexpr parameter convert = {{RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1}};
+    struct convert_data
+    {
+        std::uint32_t width;
+        std::uint32_t height;
+        std::uint32_t env_map;
+        std::uint32_t cube_map;
+    };
 
-    static constexpr parameter_layout parameters = {{0, convert}};
+    static constexpr parameter convert = {
+        {
+            .type = RHI_PARAMETER_BINDING_CONSTANT,
+            .stages = RHI_SHADER_STAGE_COMPUTE,
+            .size = sizeof(convert_data),
+        },
+    };
+
+    static constexpr parameter_layout parameters = {
+        {0, bindless},
+        {1, convert},
+    };
 };
 
-struct irradiance_fs : public shader_fs
+struct irradiance_cs : public shader_cs
 {
     static constexpr std::string_view path = "assets/shaders/source/ibl/irradiance.hlsl";
 
-    static constexpr parameter irradiance = {
-        {RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, sizeof(rhi_texture_extent)},
-        {RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1}};
+    struct irradiance_data
+    {
+        std::uint32_t width;
+        std::uint32_t height;
+        std::uint32_t cube_map;
+        std::uint32_t irradiance_map;
+    };
 
-    static constexpr parameter_layout parameters = {{0, irradiance}};
+    static constexpr parameter irradiance = {
+        {
+            .type = RHI_PARAMETER_BINDING_CONSTANT,
+            .stages = RHI_SHADER_STAGE_COMPUTE,
+            .size = sizeof(irradiance_data),
+        },
+    };
+
+    static constexpr parameter_layout parameters = {
+        {0, bindless},
+        {1, irradiance},
+    };
 };
 
 struct prefilter_fs : public shader_fs
@@ -35,8 +67,8 @@ struct prefilter_fs : public shader_fs
     static constexpr std::string_view path = "assets/shaders/source/ibl/prefilter.hlsl";
 
     static constexpr parameter prefilter = {
-        {RHI_PARAMETER_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, sizeof(float)}, // roughness
-        {RHI_PARAMETER_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1}};
+        {RHI_PARAMETER_BINDING_UNIFORM, RHI_SHADER_STAGE_FRAGMENT, sizeof(float)}, // roughness
+        {RHI_PARAMETER_BINDING_TEXTURE, RHI_SHADER_STAGE_FRAGMENT, 1}};
 
     static constexpr parameter_layout parameters = {{0, prefilter}};
 };
@@ -49,143 +81,175 @@ struct brdf_lut_fs : public shader_fs
 class ibl_renderer
 {
 public:
-    void render(
-        render_graph& graph,
-        rhi_texture* env_map,
-        rhi_texture* cube_map,
-        rhi_texture* irradiance_map,
-        rhi_texture* prefilter_map,
-        rhi_texture* brdf_map)
+    void render_cube_map(render_graph& graph, rhi_texture* env_map, rhi_texture* cube_map)
     {
         rdg_scope scope(graph, "IBL Generate");
 
-        m_cube_map = cube_map;
+        rhi_ptr<rhi_texture> cube_map_view = render_device::instance().create_texture({
+            .type = RHI_TEXTURE_VIEW_2D_ARRAY,
+            .texture = cube_map,
+            .level = 0,
+            .level_count = 1,
+            .layer = 0,
+            .layer_count = 6,
+        });
 
-        for (std::size_t i = 0; i < 6; ++i)
-        {
-            m_cube_map_sides.push_back(graph.add_texture(
-                "Cube Map " + m_sides[i],
-                cube_map,
-                0,
-                i,
-                RHI_TEXTURE_LAYOUT_UNDEFINED,
-                RHI_TEXTURE_LAYOUT_SHADER_RESOURCE));
-        }
+        rdg_texture* env = graph.add_texture(
+            "Environment Map",
+            env_map,
+            RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+            RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+        rdg_texture* cube = graph.add_texture(
+            "Cube Map",
+            cube_map_view.get(),
+            RHI_TEXTURE_LAYOUT_UNDEFINED,
+            RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
 
-        if (env_map != nullptr)
-        {
-            add_convert_pass(graph, env_map);
-        }
+        add_convert_pass(graph, env, cube);
+    }
 
-        add_irradiance_pass(graph, irradiance_map);
-        add_prefilter_pass(graph, prefilter_map);
-        add_brdf_pass(graph, brdf_map);
+    void render_ibl(
+        render_graph& graph,
+        rhi_texture* cube_map,
+        rhi_texture* irradiance_map,
+        rhi_texture* prefilter_map)
+    {
+        rdg_scope scope(graph, "IBL Generate");
+
+        rhi_ptr<rhi_texture> irradiance_map_view = render_device::instance().create_texture({
+            .type = RHI_TEXTURE_VIEW_2D_ARRAY,
+            .texture = irradiance_map,
+            .level = 0,
+            .level_count = 1,
+            .layer = 0,
+            .layer_count = 6,
+        });
+
+        rdg_texture* cube = graph.add_texture(
+            "Cube Map",
+            cube_map,
+            RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+            RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+
+        rdg_texture* irradiance = graph.add_texture(
+            "Irradiance Map",
+            irradiance_map_view.get(),
+            RHI_TEXTURE_LAYOUT_UNDEFINED,
+            RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+
+        add_irradiance_pass(graph, cube, irradiance);
+        // add_prefilter_pass(graph, prefilter_map);
+    }
+
+    void render_brdf_lut(render_graph& graph, rhi_texture* brdf_lut)
+    {
+        add_brdf_pass(graph, brdf_lut);
     }
 
 private:
-    void add_convert_pass(render_graph& graph, rhi_texture* env_map)
+    void add_convert_pass(render_graph& graph, rdg_texture* env_map, rdg_texture* cube_map)
     {
         struct pass_data
         {
             rhi_texture_extent extent;
+            rdg_texture* env_map;
+            rdg_texture* cube_map;
             rhi_parameter* parameter;
         };
 
         pass_data data = {
-            .extent = m_cube_map_sides[0]->get_extent(),
-            .parameter = graph.allocate_parameter(convert_fs::convert)};
-        data.parameter->set_texture(0, env_map, graph.allocate_sampler({}));
-
-        auto& convert_pass = graph.add_pass<rdg_render_pass>("Convert Pass");
-        for (std::size_t i = 0; i < 6; ++i)
-        {
-            convert_pass.add_render_target(m_cube_map_sides[i], RHI_ATTACHMENT_LOAD_OP_DONT_CARE);
-        }
-        convert_pass.set_execute(
+            .extent = cube_map->get_extent(),
+            .env_map = env_map,
+            .cube_map = cube_map,
+            .parameter = graph.allocate_parameter(convert_cs::convert),
+        };
+        auto& pass = graph.add_pass<rdg_compute_pass>("Convert Pass");
+        pass.add_texture(
+            env_map,
+            RHI_PIPELINE_STAGE_COMPUTE,
+            RHI_ACCESS_SHADER_READ,
+            RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+        pass.add_texture(
+            cube_map,
+            RHI_PIPELINE_STAGE_COMPUTE,
+            RHI_ACCESS_SHADER_WRITE,
+            RHI_TEXTURE_LAYOUT_GENERAL);
+        pass.set_execute(
             [data](rdg_command& command)
             {
-                rdg_render_pipeline pipeline = {};
-                pipeline.vertex_shader = render_device::instance().get_shader<cube_sample_vs>();
-                pipeline.fragment_shader = render_device::instance().get_shader<convert_fs>();
+                convert_cs::convert_data convert_constant = {
+                    .width = data.extent.width,
+                    .height = data.extent.height,
+                    .env_map = data.env_map->get_handle(),
+                    .cube_map = data.cube_map->get_handle(),
+                };
+                data.parameter->set_constant(0, &convert_constant, sizeof(convert_constant));
 
-                rhi_viewport viewport = {
-                    .x = 0.0f,
-                    .y = 0.0f,
-                    .width = static_cast<float>(data.extent.width),
-                    .height = static_cast<float>(data.extent.height),
-                    .min_depth = 0.0f,
-                    .max_depth = 1.0f};
-                rhi_scissor_rect scissor = {
-                    .min_x = 0,
-                    .min_y = 0,
-                    .max_x = data.extent.width,
-                    .max_y = data.extent.height};
+                rdg_compute_pipeline pipeline = {
+                    .compute_shader = render_device::instance().get_shader<convert_cs>(),
+                };
 
-                command.set_viewport(viewport);
-                command.set_scissor(std::span(&scissor, 1));
                 command.set_pipeline(pipeline);
-                command.set_parameter(0, data.parameter);
-                command.draw(0, 6);
+                command.set_parameter(0, render_device::instance().get_bindless_parameter());
+                command.set_parameter(1, data.parameter);
+                command.dispatch_3d(data.extent.width, data.extent.height, 6, 8, 8, 1);
             });
     }
 
-    void add_irradiance_pass(render_graph& graph, rhi_texture* irradiance_map)
+    void add_irradiance_pass(
+        render_graph& graph,
+        rdg_texture* cube_map,
+        rdg_texture* irradiance_map)
     {
         struct pass_data
         {
-            rhi_viewport viewport;
-            rhi_scissor_rect scissor;
+            rhi_texture_extent extent;
+            rdg_texture* cube_map;
+            rdg_texture* irradiance_map;
             rhi_parameter* parameter;
         };
 
-        rhi_texture_extent extent = irradiance_map->get_extent();
+        pass_data data = {
+            .extent = cube_map->get_extent(),
+            .cube_map = cube_map,
+            .irradiance_map = irradiance_map,
+            .parameter = graph.allocate_parameter(irradiance_cs::irradiance),
+        };
 
-        pass_data data = {};
-        data.viewport = {
-            .x = 0.0f,
-            .y = 0.0f,
-            .width = static_cast<float>(extent.width),
-            .height = static_cast<float>(extent.height),
-            .min_depth = 0.0f,
-            .max_depth = 1.0f};
-        data.scissor = {.min_x = 0, .min_y = 0, .max_x = extent.width, .max_y = extent.height};
-        data.parameter = graph.allocate_parameter(irradiance_fs::irradiance);
-        data.parameter->set_uniform(0, &extent, sizeof(rhi_texture_extent), 0);
-        data.parameter->set_texture(1, m_cube_map, graph.allocate_sampler({}));
-
-        auto& irradiance_pass = graph.add_pass<rdg_render_pass>("Irradiance Pass");
-        for (std::size_t i = 0; i < 6; ++i)
-        {
-            rdg_texture* render_target = graph.add_texture(
-                "Irradiance Map " + m_sides[i],
-                irradiance_map,
-                0,
-                i,
-                RHI_TEXTURE_LAYOUT_UNDEFINED,
-                RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
-            irradiance_pass.add_render_target(render_target, RHI_ATTACHMENT_LOAD_OP_CLEAR);
-
-            irradiance_pass.add_texture(
-                m_cube_map_sides[i],
-                RHI_PIPELINE_STAGE_FRAGMENT,
-                RHI_ACCESS_SHADER_READ,
-                RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
-        }
-        irradiance_pass.set_execute(
+        auto& pass = graph.add_pass<rdg_compute_pass>("Irradiance Pass");
+        pass.add_texture(
+            cube_map,
+            RHI_PIPELINE_STAGE_COMPUTE,
+            RHI_ACCESS_SHADER_READ,
+            RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+        pass.add_texture(
+            irradiance_map,
+            RHI_PIPELINE_STAGE_COMPUTE,
+            RHI_ACCESS_SHADER_WRITE,
+            RHI_TEXTURE_LAYOUT_GENERAL);
+        pass.set_execute(
             [data](rdg_command& command)
             {
-                rdg_render_pipeline pipeline = {};
-                pipeline.vertex_shader = render_device::instance().get_shader<cube_sample_vs>();
-                pipeline.fragment_shader = render_device::instance().get_shader<irradiance_fs>();
+                irradiance_cs::irradiance_data irradiance_constant = {
+                    .width = data.extent.width,
+                    .height = data.extent.height,
+                    .cube_map = data.cube_map->get_handle(),
+                    .irradiance_map = data.irradiance_map->get_handle(),
+                };
+                data.parameter->set_constant(0, &irradiance_constant, sizeof(irradiance_constant));
 
-                command.set_viewport(data.viewport);
-                command.set_scissor(std::span(&data.scissor, 1));
+                rdg_compute_pipeline pipeline = {
+                    .compute_shader = render_device::instance().get_shader<irradiance_cs>(),
+                };
+
                 command.set_pipeline(pipeline);
-                command.set_parameter(0, data.parameter);
-                command.draw(0, 6);
+                command.set_parameter(0, render_device::instance().get_bindless_parameter());
+                command.set_parameter(1, data.parameter);
+                command.dispatch_3d(data.extent.width, data.extent.height, 6, 8, 8, 1);
             });
     }
 
+    /*
     void add_prefilter_pass(render_graph& graph, rhi_texture* prefilter_map)
     {
         rdg_scope scope(graph, "Prefilter Pass");
@@ -217,7 +281,7 @@ private:
             data.scissor = {.min_x = 0, .min_y = 0, .max_x = width, .max_y = height};
             data.parameter = graph.allocate_parameter(prefilter_fs::prefilter);
             data.parameter->set_uniform(0, &roughness, sizeof(float), 0);
-            data.parameter->set_texture(1, m_cube_map, graph.allocate_sampler({}));
+            data.parameter->set_texture(1, m_cube_map);
 
             auto& prefilter_pass =
                 graph.add_pass<rdg_render_pass>("Prefilter Pass Mip " + std::to_string(level));
@@ -253,7 +317,7 @@ private:
                 });
         }
     }
-
+*/
     void add_brdf_pass(render_graph& graph, rhi_texture* brdf_map)
     {
         rdg_texture* render_target = graph.add_texture(
@@ -285,28 +349,57 @@ private:
                 command.set_viewport(viewport);
                 command.set_scissor(std::span(&scissor, 1));
                 command.set_pipeline(pipeline);
-                command.draw(0, 6);
+                command.draw_fullscreen();
             });
     }
 
     const std::vector<std::string> m_sides = {"Right", "Left", "Up", "Bottom", "Front", "Back"};
-
-    rhi_texture* m_cube_map{nullptr};
-    std::vector<rdg_texture*> m_cube_map_sides;
 };
 
-void ibl_tool::generate(
-    rhi_texture* env_map,
-    rhi_texture* cube_map,
-    rhi_texture* irradiance_map,
-    rhi_texture* prefilter_map,
-    rhi_texture* brdf_map)
+void ibl_tool::generate_cube_map(rhi_texture* env_map, rhi_texture* cube_map)
 {
     rdg_allocator allocator;
     render_graph graph(&allocator);
 
     ibl_renderer renderer;
-    renderer.render(graph, env_map, cube_map, irradiance_map, prefilter_map, brdf_map);
+    renderer.render_cube_map(graph, env_map, cube_map);
+
+    auto& device = render_device::instance();
+
+    rhi_command* command = device.allocate_command();
+    graph.compile();
+    graph.record(command);
+
+    device.execute_sync(command);
+}
+
+void ibl_tool::generate_ibl(
+    rhi_texture* cube_map,
+    rhi_texture* irradiance_map,
+    rhi_texture* prefilter_map)
+{
+    rdg_allocator allocator;
+    render_graph graph(&allocator);
+
+    ibl_renderer renderer;
+    renderer.render_ibl(graph, cube_map, irradiance_map, prefilter_map);
+
+    auto& device = render_device::instance();
+
+    rhi_command* command = device.allocate_command();
+    graph.compile();
+    graph.record(command);
+
+    device.execute_sync(command);
+}
+
+void ibl_tool::generate_brdf_lut(rhi_texture* brdf_lut)
+{
+    rdg_allocator allocator;
+    render_graph graph(&allocator);
+
+    ibl_renderer renderer;
+    renderer.render_brdf_lut(graph, brdf_lut);
 
     auto& device = render_device::instance();
 

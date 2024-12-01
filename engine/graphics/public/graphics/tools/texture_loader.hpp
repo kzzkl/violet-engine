@@ -15,6 +15,19 @@ enum texture_load_option
 class texture_loader
 {
 public:
+    struct mipmap_data
+    {
+        rhi_texture_extent extent;
+        std::vector<char> pixels;
+    };
+
+    struct texture_data
+    {
+        std::vector<mipmap_data> mipmaps;
+        rhi_format format;
+    };
+
+public:
     static rhi_ptr<rhi_texture> load(
         std::string_view path,
         texture_load_option options = TEXTURE_LOAD_OPTION_NONE);
@@ -26,22 +39,11 @@ public:
         std::string_view front,
         std::string_view back,
         texture_load_option options = TEXTURE_LOAD_OPTION_NONE);
+    static rhi_ptr<rhi_texture> load(
+        const texture_data& data,
+        texture_load_option options = TEXTURE_LOAD_OPTION_NONE);
 
 private:
-    struct mipmap_data
-    {
-        rhi_texture_extent extent;
-        std::uint32_t channels;
-
-        std::vector<char> pixels;
-    };
-
-    struct texture_data
-    {
-        std::vector<mipmap_data> mipmaps;
-        rhi_format format;
-    };
-
     static rhi_ptr<rhi_texture> load(
         std::span<std::string_view> paths,
         texture_load_option options,

@@ -20,7 +20,6 @@ public:
     rhi_parameter* allocate_parameter(const rhi_parameter_desc& desc);
 
     rhi_texture* allocate_texture(const rhi_texture_desc& desc);
-    rhi_texture* allocate_texture(const rhi_texture_view_desc& desc);
 
     rhi_buffer* allocate_buffer(const rhi_buffer_desc& desc);
 
@@ -99,18 +98,12 @@ private:
         std::unordered_map<std::uint64_t, wrapper> m_objects;
     };
 
-    template <typename T, template <typename...> typename Ptr>
-    struct pool
+    template <typename T>
+    struct resource_pool
     {
         std::size_t count;
-        std::vector<Ptr<T>> data;
+        std::vector<rhi_ptr<T>> data;
     };
-
-    template <typename T>
-    using data_pool = pool<T, std::unique_ptr>;
-
-    template <typename T>
-    using rhi_pool = pool<T, rhi_ptr>;
 
     void gc();
 
@@ -120,8 +113,8 @@ private:
     rhi_cache<rhi_compute_pipeline> m_compute_pipeline_cache;
     rhi_cache<rhi_sampler> m_sampler_cache;
 
-    std::unordered_map<std::uint64_t, rhi_pool<rhi_parameter>> m_parameter_pools;
-    std::unordered_map<std::uint64_t, rhi_pool<rhi_texture>> m_texture_pools;
-    std::unordered_map<std::uint64_t, rhi_pool<rhi_buffer>> m_buffer_pools;
+    std::unordered_map<std::uint64_t, resource_pool<rhi_parameter>> m_parameter_pools;
+    std::unordered_map<std::uint64_t, resource_pool<rhi_texture>> m_texture_pools;
+    std::unordered_map<std::uint64_t, resource_pool<rhi_buffer>> m_buffer_pools;
 };
 } // namespace violet

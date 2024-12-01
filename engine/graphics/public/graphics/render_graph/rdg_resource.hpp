@@ -86,6 +86,7 @@ public:
         reference->index = m_references.size();
         m_references.push_back(reference);
     }
+
     const std::vector<rdg_reference*>& get_references() const noexcept
     {
         return m_references;
@@ -113,11 +114,6 @@ public:
         return true;
     }
 
-    virtual bool is_texture_view() const noexcept
-    {
-        return false;
-    }
-
     virtual rhi_texture_extent get_extent() const noexcept
     {
         return m_texture->get_extent();
@@ -133,9 +129,24 @@ public:
         return m_texture->get_samples();
     }
 
+    virtual std::uint32_t get_level_count() const noexcept
+    {
+        return m_texture->get_level_count();
+    }
+
+    virtual std::uint32_t get_layer_count() const noexcept
+    {
+        return m_texture->get_layer_count();
+    }
+
     rhi_texture* get_rhi() const noexcept
     {
         return m_texture;
+    }
+
+    rhi_resource_handle get_handle() const noexcept
+    {
+        return m_texture->get_handle();
     }
 
     rhi_texture_layout get_initial_layout() const noexcept
@@ -183,6 +194,16 @@ public:
         return m_desc.samples;
     }
 
+    std::uint32_t get_level_count() const noexcept override
+    {
+        return m_desc.level_count;
+    }
+
+    std::uint32_t get_layer_count() const noexcept override
+    {
+        return m_desc.layer_count;
+    }
+
     void set_rhi(rhi_texture* texture) noexcept
     {
         m_texture = texture;
@@ -195,76 +216,6 @@ public:
 
 private:
     rhi_texture_desc m_desc;
-};
-
-class rdg_texture_view : public rdg_texture
-{
-public:
-    rdg_texture_view(
-        rhi_texture* texture,
-        std::uint32_t level,
-        std::uint32_t layer,
-        rhi_texture_layout initial_layout,
-        rhi_texture_layout final_layout);
-
-    rdg_texture_view(
-        rdg_texture* texture,
-        std::uint32_t level,
-        std::uint32_t layer,
-        rhi_texture_layout initial_layout,
-        rhi_texture_layout final_layout);
-
-    bool is_external() const noexcept override
-    {
-        return m_rhi_texture ? true : m_rdg_texture->is_external();
-    }
-
-    bool is_texture_view() const noexcept final
-    {
-        return true;
-    }
-
-    rhi_texture_extent get_extent() const noexcept override
-    {
-        return m_rhi_texture ? m_rhi_texture->get_extent() : m_rdg_texture->get_extent();
-    }
-
-    rhi_format get_format() const noexcept override
-    {
-        return m_rhi_texture ? m_rhi_texture->get_format() : m_rdg_texture->get_format();
-    }
-
-    rhi_sample_count get_samples() const noexcept override
-    {
-        return m_rhi_texture ? m_rhi_texture->get_samples() : m_rdg_texture->get_samples();
-    }
-
-    std::uint32_t get_level() const noexcept
-    {
-        return m_level;
-    }
-
-    std::uint32_t get_layer() const noexcept
-    {
-        return m_layer;
-    }
-
-    rhi_texture* get_source() const noexcept
-    {
-        return m_rhi_texture ? m_rhi_texture : m_rdg_texture->get_rhi();
-    }
-
-    void set_rhi(rhi_texture* texture) noexcept
-    {
-        m_texture = texture;
-    }
-
-private:
-    rhi_texture* m_rhi_texture{nullptr};
-    rdg_texture* m_rdg_texture{nullptr};
-
-    std::uint32_t m_level{0};
-    std::uint32_t m_layer{0};
 };
 
 class rdg_buffer : public rdg_resource
@@ -290,6 +241,11 @@ public:
     rhi_buffer* get_rhi() const noexcept
     {
         return m_buffer;
+    }
+
+    rhi_resource_handle get_handle() const noexcept
+    {
+        return m_buffer->get_handle();
     }
 
 protected:

@@ -1,4 +1,4 @@
-#include "violet_brdf.hlsli"
+#include "brdf.hlsli"
 
 struct vs_out
 {
@@ -8,10 +8,10 @@ struct vs_out
 
 float2 fs_main(vs_out input) : SV_Target
 {
-    float n_dot_v = input.uv.x;
+    float NdotV = input.uv.x;
     float roughness = input.uv.y;
 
-    float3 view = float3(sqrt(1.0 - n_dot_v * n_dot_v), 0.0, n_dot_v);
+    float3 view = float3(sqrt(1.0 - NdotV * NdotV), 0.0, NdotV);
 
     float a = 0.0;
     float b = 0.0;
@@ -25,15 +25,15 @@ float2 fs_main(vs_out input) : SV_Target
         float3 half_vec = importance_sample_ggx(xi, normal, roughness);
         float3 light  = normalize(2.0 * dot(view, half_vec) * half_vec - view);
 
-        float n_dot_l = max(light.z, 0.0);
-        float n_dot_h = max(half_vec.z, 0.0);
-        float v_dot_h = max(dot(view, half_vec), 0.0);
+        float NdotL = max(light.z, 0.0);
+        float NdotH = max(half_vec.z, 0.0);
+        float VdotH = max(dot(view, half_vec), 0.0);
 
-        if(n_dot_l > 0.0)
+        if(NdotL > 0.0)
         {
             float g = geometry_smith(normal, view, light, roughness);
-            float g_vis = (g * v_dot_h) / (n_dot_h * n_dot_v);
-            float fc = pow(1.0 - v_dot_h, 5.0);
+            float g_vis = (g * VdotH) / (NdotH * NdotV);
+            float fc = pow(1.0 - VdotH, 5.0);
 
             a += (1.0 - fc) * g_vis;
             b += fc * g_vis;

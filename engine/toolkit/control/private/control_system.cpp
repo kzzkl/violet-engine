@@ -24,7 +24,7 @@ bool control_system::initialize(const dictionary& config)
                 tick();
             });
 
-    get_world().register_component<orbit_control>();
+    get_world().register_component<orbit_control_component>();
 
     return true;
 }
@@ -56,8 +56,10 @@ void control_system::tick()
 
     if (mouse_hold || mouse_wheel != 0)
     {
-        get_world().get_view().write<orbit_control>().write<transform>().each(
-            [this, mouse_hold, mouse_wheel](orbit_control& orbit_control, transform& transform)
+        get_world().get_view().write<orbit_control_component>().write<transform_component>().each(
+            [this,
+             mouse_hold,
+             mouse_wheel](orbit_control_component& orbit_control, transform_component& transform)
             {
                 update_orbit_control(orbit_control, transform, mouse_wheel);
             });
@@ -65,8 +67,8 @@ void control_system::tick()
 }
 
 void control_system::update_orbit_control(
-    orbit_control& orbit_control,
-    transform& transform,
+    orbit_control_component& orbit_control,
+    transform_component& transform,
     int mouse_wheel)
 {
     static const float EPS = 0.00001f;

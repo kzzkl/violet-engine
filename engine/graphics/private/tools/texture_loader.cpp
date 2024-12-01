@@ -136,6 +136,81 @@ rhi_ptr<rhi_texture> texture_loader::load(
     return texture;
 }
 
+rhi_ptr<rhi_texture> texture_loader::load(const texture_data& data, texture_load_option options)
+{
+    std::uint32_t level_count = static_cast<std::uint32_t>(data.mipmaps.size());
+    rhi_texture_extent extent = data.mipmaps[0].extent;
+
+    bool need_generate_mipmaps =
+        data.mipmaps.size() == 1 && (options & TEXTURE_LOAD_OPTION_GENERATE_MIPMAPS);
+    if (need_generate_mipmaps)
+    {
+        std::uint32_t max_size = std::max(extent.width, extent.height);
+        level_count = static_cast<std::uint32_t>(std::floor(std::log2(max_size))) + 1;
+    }
+
+    rhi_texture_desc texture_desc = {};
+    texture_desc.extent = extent;
+    texture_desc.format = data.format;
+    texture_desc.level_count = level_count;
+    texture_desc.layer_count = 1;
+    texture_desc.samples = RHI_SAMPLE_COUNT_1;
+    texture_desc.flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_TRANSFER_DST;
+    texture_desc.flags |= need_generate_mipmaps ? RHI_TEXTURE_TRANSFER_SRC : 0;
+    rhi_ptr<rhi_texture> texture = render_device::instance().create_texture(texture_desc);
+
+    rhi_command* command = render_device::instance().allocate_command();
+
+    upload(command, data, texture.get());
+
+    if (need_generate_mipmaps)
+    {
+        generate_mipmaps(command, texture.get(), level_count, 0);
+
+        rhi_texture_barrier texture_barrier = {};
+        texture_barrier.texture = texture.get();
+        texture_barrier.src_access = RHI_ACCESS_TRANSFER_READ;
+        texture_barrier.dst_access = RHI_ACCESS_SHADER_READ;
+        texture_barrier.src_layout = RHI_TEXTURE_LAYOUT_TRANSFER_SRC;
+        texture_barrier.dst_layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE;
+        texture_barrier.level = 0;
+        texture_barrier.level_count = level_count;
+        texture_barrier.layer = 0;
+        texture_barrier.layer_count = 1;
+        command->set_pipeline_barrier(
+            RHI_PIPELINE_STAGE_TRANSFER,
+            RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_FRAGMENT | RHI_PIPELINE_STAGE_COMPUTE,
+            nullptr,
+            0,
+            &texture_barrier,
+            1);
+    }
+    else
+    {
+        rhi_texture_barrier texture_barrier = {};
+        texture_barrier.texture = texture.get();
+        texture_barrier.src_access = RHI_ACCESS_TRANSFER_WRITE;
+        texture_barrier.dst_access = RHI_ACCESS_SHADER_READ;
+        texture_barrier.src_layout = RHI_TEXTURE_LAYOUT_TRANSFER_DST;
+        texture_barrier.dst_layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE;
+        texture_barrier.level = 0;
+        texture_barrier.level_count = 1;
+        texture_barrier.layer = 0;
+        texture_barrier.layer_count = 1;
+        command->set_pipeline_barrier(
+            RHI_PIPELINE_STAGE_TRANSFER,
+            RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_FRAGMENT | RHI_PIPELINE_STAGE_COMPUTE,
+            nullptr,
+            0,
+            &texture_barrier,
+            1);
+    }
+
+    render_device::instance().execute(command);
+
+    return texture;
+}
+
 std::optional<texture_loader::texture_data> texture_loader::load_dds(
     std::string_view path,
     texture_load_option options)
@@ -294,7 +369,6 @@ std::optional<texture_loader::texture_data> texture_loader::load_dds(
         mipmap_data mipmap;
         mipmap.extent.width = mip_width;
         mipmap.extent.height = mip_height;
-        mipmap.channels = channels;
 
         std::size_t size = calculate_texture_size(mip_width, mip_height, channels, format);
         mipmap.pixels.resize(size);
@@ -326,7 +400,6 @@ std::optional<texture_loader::texture_data> texture_loader::load_hdr(
     mipmap_data mipmap;
     mipmap.extent.width = static_cast<std::uint32_t>(width);
     mipmap.extent.height = static_cast<std::uint32_t>(height);
-    mipmap.channels = static_cast<std::uint32_t>(channels);
     mipmap.pixels.resize(width * height * sizeof(float) * 4);
 
     float* target = reinterpret_cast<float*>(mipmap.pixels.data());
@@ -364,7 +437,6 @@ std::optional<texture_loader::texture_data> texture_loader::load_other(
     mipmap_data mipmap;
     mipmap.extent.width = static_cast<std::uint32_t>(width);
     mipmap.extent.height = static_cast<std::uint32_t>(height);
-    mipmap.channels = static_cast<std::uint32_t>(channels);
     mipmap.pixels.resize(image_size);
 
     std::memcpy(mipmap.pixels.data(), pixels, image_size);
@@ -392,7 +464,7 @@ void texture_loader::upload(
     rhi_ptr<rhi_buffer> staging_buffer =
         render_device::instance().create_buffer(staging_buffer_desc);
 
-    std::uint8_t* buffer = static_cast<std::uint8_t*>(staging_buffer->get_buffer());
+    std::uint8_t* buffer = static_cast<std::uint8_t*>(staging_buffer->get_buffer_pointer());
     for (auto& mipmap : data.mipmaps)
     {
         std::memcpy(buffer, mipmap.pixels.data(), mipmap.pixels.size());

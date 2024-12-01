@@ -304,7 +304,7 @@ d3d12_dynamic_command d3d12_command_queue::allocate_dynamic_command()
     static int command_counter = 0;
     auto device = d3d12_context::device();
 
-    std::lock_guard<std::mutex> lg(m_dynamic_lock);
+    std::lock_guard lock(m_dynamic_lock);
 
     d3d12_ptr<D3D12CommandAllocator> allocator;
     if (!m_dynamic_allocator_pool.empty() &&
@@ -352,7 +352,7 @@ d3d12_dynamic_command d3d12_command_queue::allocate_dynamic_command()
 
 void d3d12_command_queue::execute_command(d3d12_dynamic_command command)
 {
-    std::lock_guard<std::mutex> lg(m_dynamic_lock);
+    std::lock_guard lock(m_dynamic_lock);
 
     command.close();
     m_dynamic_command_batch.push_back(command.m_command_list);

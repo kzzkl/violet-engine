@@ -1,4 +1,8 @@
 #include "graphics/render_device.hpp"
+#include "graphics/geometry_manager.hpp"
+#include "graphics/material_manager.hpp"
+#include "graphics/tools/ibl_tool.hpp"
+#include "graphics/tools/texture_loader.hpp"
 #include "math/math.hpp"
 #include "shader_compiler.hpp"
 #include <fstream>
@@ -87,6 +91,12 @@ void render_device::initialize(rhi* rhi)
 
     m_shader_compiler = std::make_unique<shader_compiler>();
     m_fence = create_fence();
+
+    m_material_manager = std::make_unique<material_manager>();
+    m_geometry_manager = std::make_unique<geometry_manager>();
+
+    create_buildin_resources();
+    create_buildin_samplers();
 }
 
 void render_device::reset()
@@ -125,6 +135,14 @@ void render_device::end_frame()
     m_rhi->end_frame();
 }
 
+void render_device::fill_scene_data(shader::scene_data& scene)
+{
+    scene.material_buffer = m_material_manager->get_material_buffer()->get_handle();
+    scene.brdf_lut = m_brdf_lut->get_handle();
+    scene.point_sampler = m_point_sampler->get_handle();
+    scene.linear_sampler = m_linear_sampler->get_handle();
+}
+
 std::size_t render_device::get_frame_count() const noexcept
 {
     return m_rhi->get_frame_count();
@@ -138,6 +156,11 @@ std::size_t render_device::get_frame_resource_count() const noexcept
 std::size_t render_device::get_frame_resource_index() const noexcept
 {
     return m_rhi->get_frame_resource_index();
+}
+
+rhi_parameter* render_device::get_bindless_parameter() const noexcept
+{
+    return m_rhi->get_bindless_parameter();
 }
 
 rhi_ptr<rhi_render_pass> render_device::create_render_pass(const rhi_render_pass_desc& desc)
@@ -180,9 +203,9 @@ rhi_ptr<rhi_texture> render_device::create_texture(const rhi_texture_desc& desc)
     return rhi_ptr<rhi_texture>(m_rhi->create_texture(desc), m_rhi_deleter);
 }
 
-rhi_ptr<rhi_texture> render_device::create_texture_view(const rhi_texture_view_desc& desc)
+rhi_ptr<rhi_texture> render_device::create_texture(const rhi_texture_view_desc& desc)
 {
-    return rhi_ptr<rhi_texture>(m_rhi->create_texture_view(desc), m_rhi_deleter);
+    return rhi_ptr<rhi_texture>(m_rhi->create_texture(desc), m_rhi_deleter);
 }
 
 rhi_ptr<rhi_swapchain> render_device::create_swapchain(const rhi_swapchain_desc& desc)
@@ -193,6 +216,49 @@ rhi_ptr<rhi_swapchain> render_device::create_swapchain(const rhi_swapchain_desc&
 rhi_ptr<rhi_fence> render_device::create_fence()
 {
     return rhi_ptr<rhi_fence>(m_rhi->create_fence(), m_rhi_deleter);
+}
+
+void render_device::create_buildin_resources()
+{
+    // Create empty texture.
+    texture_loader::mipmap_data empty_mipmap_data;
+    empty_mipmap_data.extent.width = 1;
+    empty_mipmap_data.extent.height = 1;
+    empty_mipmap_data.pixels.resize(32);
+    *reinterpret_cast<std::uint32_t*>(empty_mipmap_data.pixels.data()) = 0xFFFFFFFF;
+
+    texture_loader::texture_data empty_texture_data;
+    empty_texture_data.format = RHI_FORMAT_R8G8B8A8_UNORM;
+    empty_texture_data.mipmaps.push_back(empty_mipmap_data);
+
+    m_empty_texture = texture_loader::load(empty_texture_data);
+
+    // Create brdf lut texture.
+    m_brdf_lut = create_texture({
+        .extent = {512, 512},
+        .format = RHI_FORMAT_R32G32_FLOAT,
+        .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_RENDER_TARGET,
+        .level_count = 1,
+        .layer_count = 1,
+        .samples = RHI_SAMPLE_COUNT_1,
+    });
+
+    ibl_tool::generate_brdf_lut(m_brdf_lut.get());
+}
+
+void render_device::create_buildin_samplers()
+{
+    rhi_sampler_desc point_sampler_desc = {
+        .mag_filter = RHI_FILTER_POINT,
+        .min_filter = RHI_FILTER_POINT,
+    };
+    m_point_sampler = create_sampler(point_sampler_desc);
+
+    rhi_sampler_desc linear_sampler_desc = {
+        .mag_filter = RHI_FILTER_LINEAR,
+        .min_filter = RHI_FILTER_LINEAR,
+    };
+    m_linear_sampler = create_sampler(linear_sampler_desc);
 }
 
 std::vector<std::uint8_t> render_device::compile_shader(

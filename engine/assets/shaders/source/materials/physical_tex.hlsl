@@ -96,9 +96,9 @@ float4 fs_main(vs_out input) : SV_TARGET
         float3 kd = 1.0 - ks;
         kd *= 1.0 - metallic;
 
-        float n_dot_l = max(dot(n, l), 0.0);
+        float NdotL = max(dot(n, l), 0.0);
 
-        light_out += (kd * albedo / PI + specular) * radiance * n_dot_l;
+        light_out += (kd * albedo / PI + specular) * radiance * NdotL;
     }
 
     // ambient lighting

@@ -228,7 +228,7 @@ VkFilter vk_util::map_filter(rhi_filter filter)
 {
     switch (filter)
     {
-    case RHI_FILTER_NEAREST:
+    case RHI_FILTER_POINT:
         return VK_FILTER_NEAREST;
     case RHI_FILTER_LINEAR:
         return VK_FILTER_LINEAR;

@@ -1,6 +1,5 @@
 #include "graphics/render_scene.hpp"
-#include "gpu_buffer_uploader.hpp"
-#include "graphics/render_context.hpp"
+#include "graphics/gpu_buffer_uploader.hpp"
 #include <ranges>
 
 namespace violet
@@ -11,12 +10,12 @@ render_scene::render_scene()
 
     m_gpu_buffer_uploader = std::make_unique<gpu_buffer_uploader>(64 * 1024);
 
-    m_mesh_buffer = render_device::instance().create_buffer({
+    m_mesh_buffer = device.create_buffer({
         .size = 64 * sizeof(shader::mesh_data),
         .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST,
     });
 
-    m_instance_buffer = render_device::instance().create_buffer({
+    m_instance_buffer = device.create_buffer({
         .size = 64 * sizeof(shader::instance_data),
         .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST,
     });
@@ -27,8 +26,13 @@ render_scene::render_scene()
     });
 
     m_scene_parameter = device.create_parameter(shader::scene);
-    m_scene_parameter->set_storage(1, m_mesh_buffer.get());
-    m_scene_parameter->set_storage(2, m_instance_buffer.get());
+
+    render_device::instance().fill_scene_data(m_scene_data);
+    m_scene_data.mesh_buffer = m_mesh_buffer->get_handle();
+    m_scene_data.instance_buffer = m_instance_buffer->get_handle();
+    m_scene_data.group_buffer = m_group_buffer->get_handle();
+
+    m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
 }
 
 render_scene::~render_scene() {}
@@ -51,6 +55,9 @@ render_id render_scene::add_mesh(const render_mesh& mesh)
 
     set_mesh_state(mesh_id, RENDER_MESH_STAGE_VALID | RENDER_MESH_STAGE_DIRTY);
 
+    m_scene_data.mesh_count = get_mesh_count();
+    m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
+
     return mesh_id;
 }
 
@@ -71,6 +78,9 @@ void render_scene::remove_mesh(render_id mesh_id)
 
     mesh_info = {};
     m_mesh_allocator.free(mesh_id);
+
+    m_scene_data.mesh_count = get_mesh_count();
+    m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
 }
 
 void render_scene::update_mesh_model_matrix(render_id mesh_id, const mat4f& model_matrix)
@@ -106,8 +116,6 @@ render_id render_scene::add_instance(render_id mesh_id, const render_instance& i
         m_instances.resize(instance_id + 1);
     }
 
-    auto material_manager = render_context::instance().get_material_manager();
-
     m_instances[instance_id] = {
         .data = instance,
         .mesh_id = mesh_id,
@@ -124,6 +132,9 @@ render_id render_scene::add_instance(render_id mesh_id, const render_instance& i
 
     set_instance_state(instance_id, RENDER_INSTANCE_STAGE_VALID | RENDER_INSTANCE_STAGE_DIRTY);
 
+    m_scene_data.instance_count = get_instance_count();
+    m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
+
     return instance_id;
 }
 
@@ -135,6 +146,9 @@ void render_scene::remove_instance(render_id instance_id)
 
     m_instances[instance_id] = {};
     m_instance_allocator.free(instance_id);
+
+    m_scene_data.instance_count = get_instance_count();
+    m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
 }
 
 void render_scene::update_instance(render_id instance_id, const render_instance& instance)
@@ -163,16 +177,38 @@ void render_scene::update_instance(render_id instance_id, const render_instance&
     }
 }
 
+void render_scene::set_skybox(rhi_texture* skybox, rhi_texture* irradiance, rhi_texture* prefilter)
+{
+    m_scene_data.skybox = skybox->get_handle();
+    m_scene_data.irradiance = irradiance->get_handle();
+    m_scene_data.prefilter = prefilter->get_handle();
+
+    m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
+}
+
 bool render_scene::update()
 {
-    update_mesh_buffer();
-    update_instance_buffer();
-    update_group_buffer();
+    if (!m_dirty_meshes.empty())
+    {
+        update_mesh_buffer();
+    }
 
-    m_scene_data.mesh_count = get_mesh_count();
-    m_scene_data.instance_count = get_instance_count();
+    if (!m_dirty_instances.empty())
+    {
+        update_instance_buffer();
+    }
 
-    m_scene_parameter->set_uniform(0, &m_scene_data, sizeof(shader::scene_data));
+    if (m_scene_states & RENDER_SCENE_STAGE_GROUP_DIRTY)
+    {
+        update_group_buffer();
+    }
+
+    if (m_scene_states & RENDER_SCENE_STAGE_DATA_DIRTY)
+    {
+        m_scene_parameter->set_constant(0, &m_scene_data, sizeof(shader::scene_data));
+    }
+
+    m_scene_states = 0;
 
     return !m_gpu_buffer_uploader->empty();
 }
@@ -223,11 +259,6 @@ void render_scene::record(rhi_command* command)
         barriers.size(),
         nullptr,
         0);
-}
-
-rhi_parameter* render_scene::get_global_parameter() const noexcept
-{
-    return render_context::instance().get_global_parameter();
 }
 
 void render_scene::add_instance_to_group(
@@ -324,7 +355,7 @@ void render_scene::remove_instance_from_group(render_id instance_id)
     }
 }
 
-void render_scene::set_mesh_state(render_id mesh_id, render_mesh_stages states)
+void render_scene::set_mesh_state(render_id mesh_id, render_mesh_states states)
 {
     auto& mesh_info = m_meshes[mesh_id];
 
@@ -337,7 +368,7 @@ void render_scene::set_mesh_state(render_id mesh_id, render_mesh_stages states)
     mesh_info.states |= states;
 }
 
-void render_scene::set_instance_state(render_id instance_id, render_instance_stages states)
+void render_scene::set_instance_state(render_id instance_id, render_instance_states states)
 {
     auto& instance_info = m_instances[instance_id];
 
@@ -352,11 +383,6 @@ void render_scene::set_instance_state(render_id instance_id, render_instance_sta
 
 void render_scene::update_mesh_buffer()
 {
-    if (m_dirty_meshes.empty())
-    {
-        return;
-    }
-
     auto upload_mesh = [&](render_id mesh_id)
     {
         auto& mesh_info = m_meshes[mesh_id];
@@ -403,11 +429,6 @@ void render_scene::update_mesh_buffer()
 
 void render_scene::update_instance_buffer()
 {
-    if (m_dirty_instances.empty())
-    {
-        return;
-    }
-
     auto upload_instance = [&](render_id instance_id)
     {
         auto& instance_info = m_instances[instance_id];
@@ -459,11 +480,6 @@ void render_scene::update_instance_buffer()
 
 void render_scene::update_group_buffer()
 {
-    if ((m_scene_states & RENDER_SCENE_STAGE_DIRTY) == 0)
-    {
-        return;
-    }
-
     assert(m_groups.size() * sizeof(std::uint32_t) <= m_group_buffer->get_buffer_size());
 
     std::uint32_t instance_offset = 0;
@@ -480,8 +496,6 @@ void render_scene::update_group_buffer()
         group_offsets.data(),
         sizeof(std::uint32_t) * group_offsets.size(),
         0);
-
-    m_scene_states &= ~RENDER_SCENE_STAGE_DIRTY;
 }
 
 void render_scene::reserve_mesh_buffer(std::size_t mesh_count)
@@ -505,7 +519,7 @@ void render_scene::reserve_mesh_buffer(std::size_t mesh_count)
         .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST,
     });
 
-    m_scene_parameter->set_storage(1, m_mesh_buffer.get());
+    m_scene_data.mesh_buffer = m_mesh_buffer->get_handle();
 }
 
 void render_scene::reserve_instance_buffer(std::size_t instance_count)
@@ -529,6 +543,6 @@ void render_scene::reserve_instance_buffer(std::size_t instance_count)
         .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST,
     });
 
-    m_scene_parameter->set_storage(2, m_instance_buffer.get());
+    m_scene_data.instance_buffer = m_instance_buffer->get_handle();
 }
 } // namespace violet

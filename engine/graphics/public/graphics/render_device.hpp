@@ -38,7 +38,10 @@ private:
 template <typename T>
 using rhi_ptr = std::unique_ptr<T, rhi_deleter>;
 
+class material_manager;
+class geometry_manager;
 class shader_compiler;
+
 class render_device
 {
 public:
@@ -57,9 +60,13 @@ public:
     void begin_frame();
     void end_frame();
 
+    void fill_scene_data(shader::scene_data& scene);
+
     std::size_t get_frame_count() const noexcept;
     std::size_t get_frame_resource_count() const noexcept;
     std::size_t get_frame_resource_index() const noexcept;
+
+    rhi_parameter* get_bindless_parameter() const noexcept;
 
     template <typename T>
     rhi_shader* get_shader(std::span<std::wstring> defines = {})
@@ -80,37 +87,47 @@ public:
                 L"-Wno-ignored-attributes",
                 L"-all-resources-bound",
 #ifndef NDEBUG
-                L"-Zi"
+                L"-Zi",
+                L"-Qembed_debug",
 #endif
             };
 
             if (m_rhi->get_backend() == RHI_BACKEND_VULKAN)
             {
                 arguments.push_back(L"-spirv");
+                arguments.push_back(L"-fspv-target-env=vulkan1.3");
+                arguments.push_back(L"-fvk-use-dx-layout");
+                arguments.push_back(L"-fspv-extension=SPV_EXT_descriptor_indexing");
+                arguments.push_back(L"-fvk-bind-resource-heap");
+                arguments.push_back(L"0");
+                arguments.push_back(L"0");
+                arguments.push_back(L"-fvk-bind-sampler-heap");
+                arguments.push_back(L"1");
+                arguments.push_back(L"0");
 #ifndef NDEBUG
-                arguments.push_back(L"-fspv-extension=SPV_KHR_non_semantic_info");
-                arguments.push_back(L"-fspv-debug=vulkan-with-source");
+                // arguments.push_back(L"-fspv-extension=SPV_KHR_non_semantic_info");
+                // arguments.push_back(L"-fspv-debug=vulkan-with-source");
 #endif
             }
 
             if constexpr (T::stage == RHI_SHADER_STAGE_VERTEX)
             {
                 arguments.push_back(L"-T");
-                arguments.push_back(L"vs_6_0");
+                arguments.push_back(L"vs_6_6");
                 arguments.push_back(L"-E");
                 arguments.push_back(L"vs_main");
             }
             else if constexpr (T::stage == RHI_SHADER_STAGE_FRAGMENT)
             {
                 arguments.push_back(L"-T");
-                arguments.push_back(L"ps_6_0");
+                arguments.push_back(L"ps_6_6");
                 arguments.push_back(L"-E");
                 arguments.push_back(L"fs_main");
             }
             else if constexpr (T::stage == RHI_SHADER_STAGE_COMPUTE)
             {
                 arguments.push_back(L"-T");
-                arguments.push_back(L"cs_6_0");
+                arguments.push_back(L"cs_6_6");
                 arguments.push_back(L"-E");
                 arguments.push_back(L"cs_main");
             }
@@ -166,6 +183,16 @@ public:
         return m_vertex_attributes.at(shader);
     }
 
+    material_manager* get_material_manager() const noexcept
+    {
+        return m_material_manager.get();
+    }
+
+    geometry_manager* get_geometry_manager() const noexcept
+    {
+        return m_geometry_manager.get();
+    }
+
 public:
     template <typename T>
     void set_name(T* object, std::string_view name) const
@@ -188,7 +215,7 @@ public:
     rhi_ptr<rhi_sampler> create_sampler(const rhi_sampler_desc& desc);
 
     rhi_ptr<rhi_texture> create_texture(const rhi_texture_desc& desc);
-    rhi_ptr<rhi_texture> create_texture_view(const rhi_texture_view_desc& desc);
+    rhi_ptr<rhi_texture> create_texture(const rhi_texture_view_desc& desc);
 
     rhi_ptr<rhi_swapchain> create_swapchain(const rhi_swapchain_desc& desc);
 
@@ -200,12 +227,15 @@ public:
     }
 
 private:
-    rhi* m_rhi{nullptr};
-    rhi_deleter m_rhi_deleter;
+    void create_buildin_resources();
+    void create_buildin_samplers();
 
     std::vector<std::uint8_t> compile_shader(
         std::string_view path,
         std::span<const wchar_t*> arguments);
+
+    rhi* m_rhi{nullptr};
+    rhi_deleter m_rhi_deleter;
 
     std::unordered_map<std::uint64_t, rhi_ptr<rhi_shader>> m_shaders;
     std::unordered_map<rhi_shader*, std::vector<std::string>> m_vertex_attributes;
@@ -214,5 +244,14 @@ private:
 
     rhi_ptr<rhi_fence> m_fence;
     std::uint64_t m_fence_value{0};
+
+    std::unique_ptr<material_manager> m_material_manager;
+    std::unique_ptr<geometry_manager> m_geometry_manager;
+
+    rhi_ptr<rhi_texture> m_empty_texture;
+    rhi_ptr<rhi_texture> m_brdf_lut;
+
+    rhi_ptr<rhi_sampler> m_point_sampler;
+    rhi_ptr<rhi_sampler> m_linear_sampler;
 };
 } // namespace violet

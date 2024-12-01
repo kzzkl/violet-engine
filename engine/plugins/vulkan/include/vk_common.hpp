@@ -2,6 +2,8 @@
 
 #include "graphics/render_interface.hpp"
 #include "volk.h"
+
+#include "vk_mem_alloc.h"
 #include <stdexcept>
 
 namespace violet::vk

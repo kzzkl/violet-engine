@@ -18,15 +18,12 @@ add_library(${PROJECT_NAME} STATIC
     ./private/renderers/deferred_renderer.cpp
     ./private/tools/ibl_tool.cpp
     ./private/tools/texture_loader.cpp
-    ./private/camera_system.cpp
     ./private/geometry_manager.cpp
     ./private/geometry.cpp
     ./private/gpu_buffer_uploader.cpp
     ./private/graphics_system.cpp
     ./private/material_manager.cpp
     ./private/material.cpp
-    ./private/mesh_system.cpp
-    ./private/render_context.cpp
     ./private/render_device.cpp
     ./private/render_scene.cpp
     ./private/renderer.cpp

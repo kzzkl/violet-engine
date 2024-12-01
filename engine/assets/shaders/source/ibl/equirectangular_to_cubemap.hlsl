@@ -1,47 +1,55 @@
-Texture2D env_texture : register(t0, space0);
-SamplerState env_sampler : register(s0, space0);
-
-struct vs_out
+struct convert_data
 {
-    float4 position : SV_POSITION;
-    
-    float3 right : NORMAL0;
-    float3 left : NORMAL1;
-    float3 top : NORMAL2;
-    float3 bottom : NORMAL3;
-    float3 front : NORMAL4;
-    float3 back : NORMAL5;
+    uint width;
+    uint height;
+    uint env_map;
+    uint cube_map;
+};
+ConstantBuffer<convert_data> convert : register(b0, space1);
+
+static const float3 forward_dir[6] = {
+    float3(1.0f, 0.0f, 0.0f),
+    float3(-1.0f, 0.0f, 0.0f),
+    float3(0.0f, 1.0f, 0.0f),
+    float3(0.0f, -1.0f, 0.0f),
+    float3(0.0f, 0.0f, 1.0f),
+    float3(0.0f, 0.0f, -1.0f),
 };
 
-struct fs_out
-{
-    float4 right : SV_TARGET0;
-    float4 left : SV_TARGET1;
-    float4 top : SV_TARGET2;
-    float4 bottom : SV_TARGET3;
-    float4 front : SV_TARGET4;
-    float4 back : SV_TARGET5;
+static const float3 up_dir[6] = {
+    float3(0.0f, 1.0f, 0.0f),
+    float3(0.0f, 1.0f, 0.0f),
+    float3(0.0f, 0.0f, -1.0f),
+    float3(0.0f, 0.0f, 1.0f),
+    float3(0.0f, 1.0f, 0.0f),
+    float3(0.0f, 1.0f, 0.0f),
 };
 
-float4 sample_spherical_map(float3 normal)
+static const float3 right_dir[6] = {
+    float3(0.0f, 0.0f, -1.0f),
+    float3(0.0f, 0.0f, 1.0f),
+    float3(1.0f, 0.0f, 0.0f),
+    float3(1.0f, 0.0f, 0.0f),
+    float3(1.0f, 0.0f, 0.0f),
+    float3(-1.0f, 0.0f, 0.0f),
+};
+
+[numthreads(8, 8, 1)]
+void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
+    float2 offset = float2(dtid.xy) / float2(convert.width, convert.height) * 2.0 - 1.0;
+    offset.y = 1.0 - offset.y;
+
+    float3 N = normalize(forward_dir[dtid.z] + offset.x * right_dir[dtid.z] + offset.y * up_dir[dtid.z]);
+
     const float2 inv_atan = {0.1591, -0.3183};
-    float2 uv = float2(atan2(normal.z, normal.x), asin(normal.y));
+    float2 uv = float2(atan2(N.z, N.x), asin(N.y));
     uv *= inv_atan;
     uv += 0.5;
 
-    return env_texture.Sample(env_sampler, uv);
-}
+    Texture2D<float4> env_map = ResourceDescriptorHeap[convert.env_map];
+    SamplerState linear_sampler = SamplerDescriptorHeap[1];
 
-fs_out fs_main(vs_out input)
-{
-    fs_out output;
-    output.right = sample_spherical_map(normalize(input.right));
-    output.left = sample_spherical_map(normalize(input.left));
-    output.top = sample_spherical_map(normalize(input.top));
-    output.bottom = sample_spherical_map(normalize(input.bottom));
-    output.front = sample_spherical_map(normalize(input.front));
-    output.back = sample_spherical_map(normalize(input.back));
-
-    return output;
+    RWTexture2DArray<float4> cube_map = ResourceDescriptorHeap[convert.cube_map];
+    cube_map[dtid] = env_map.SampleLevel(linear_sampler, uv, 0);
 }

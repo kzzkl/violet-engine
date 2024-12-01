@@ -40,7 +40,7 @@ void rdg_command::draw_instances(
 
         set_pipeline(batch.pipeline);
 
-        set_parameter(0, scene.get_global_parameter());
+        set_parameter(0, scene.get_bindless_parameter());
         set_parameter(1, scene.get_scene_parameter());
         set_parameter(2, camera.camera_parameter);
 

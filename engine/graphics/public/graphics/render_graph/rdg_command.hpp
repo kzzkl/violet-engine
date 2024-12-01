@@ -1,8 +1,8 @@
 #pragma once
 
-#include "graphics/render_context.hpp"
 #include "graphics/render_graph/rdg_allocator.hpp"
 #include "graphics/render_graph/rdg_pipeline.hpp"
+#include "graphics/render_scene.hpp"
 
 namespace violet
 {
@@ -81,6 +81,20 @@ public:
             (x + thread_group_x - 1) / thread_group_x,
             (y + thread_group_y - 1) / thread_group_y,
             1);
+    }
+
+    void dispatch_3d(
+        std::uint32_t x,
+        std::uint32_t y,
+        std::uint32_t z,
+        std::uint32_t thread_group_x = 4,
+        std::uint32_t thread_group_y = 4,
+        std::uint32_t thread_group_z = 4)
+    {
+        dispatch(
+            (x + thread_group_x - 1) / thread_group_x,
+            (y + thread_group_y - 1) / thread_group_y,
+            (z + thread_group_z - 1) / thread_group_z);
     }
 
     void set_pipeline_barrier(

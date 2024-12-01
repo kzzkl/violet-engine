@@ -6,8 +6,26 @@ struct unlit_fs : public shader_fs
 {
     static constexpr std::string_view path = "assets/shaders/source/lighting/unlit.hlsl";
 
+    struct gbuffer_data
+    {
+        std::uint32_t albedo;
+        std::uint32_t depth;
+        std::uint32_t padding0;
+        std::uint32_t padding1;
+    };
+
+    static constexpr parameter gbuffer = {
+        {
+            .type = RHI_PARAMETER_BINDING_CONSTANT,
+            .stages = RHI_SHADER_STAGE_FRAGMENT,
+            .size = sizeof(gbuffer_data),
+        },
+    };
+
     static constexpr parameter_layout parameters = {
-        {0, gbuffer},
+        {0, bindless},
+        {1, scene},
+        {2, gbuffer},
     };
 };
 
@@ -15,18 +33,20 @@ void unlit_pass::add(render_graph& graph, const parameter& parameter)
 {
     struct pass_data
     {
+        rhi_parameter* bindless_parameter;
+        rhi_parameter* scene_parameter;
+        rhi_parameter* gbuffer_parameter;
+
         rdg_texture* gbuffer_albedo;
         rdg_texture* gbuffer_depth;
-
-        rhi_parameter* gbuffer_parameter;
-        rhi_sampler* gbuffer_sampler;
     };
 
     pass_data data = {
+        .bindless_parameter = parameter.scene.get_bindless_parameter(),
+        .scene_parameter = parameter.scene.get_scene_parameter(),
+        .gbuffer_parameter = graph.allocate_parameter(unlit_fs::gbuffer),
         .gbuffer_albedo = parameter.gbuffer_albedo,
         .gbuffer_depth = parameter.gbuffer_depth,
-        .gbuffer_parameter = graph.allocate_parameter(shader::gbuffer),
-        .gbuffer_sampler = graph.allocate_sampler({}),
     };
 
     auto& pass = graph.add_pass<rdg_render_pass>("Unlit Pass");
@@ -41,14 +61,11 @@ void unlit_pass::add(render_graph& graph, const parameter& parameter)
     pass.set_execute(
         [data](rdg_command& command)
         {
-            data.gbuffer_parameter->set_texture(
-                0,
-                data.gbuffer_albedo->get_rhi(),
-                data.gbuffer_sampler);
-            data.gbuffer_parameter->set_texture(
-                1,
-                data.gbuffer_depth->get_rhi(),
-                data.gbuffer_sampler);
+            unlit_fs::gbuffer_data gbuffer_data = {
+                .albedo = data.gbuffer_albedo->get_handle(),
+                .depth = data.gbuffer_depth->get_handle(),
+            };
+            data.gbuffer_parameter->set_constant(0, &gbuffer_data, sizeof(unlit_fs::gbuffer_data));
 
             rdg_render_pipeline pipeline = {};
             pipeline.vertex_shader = render_device::instance().get_shader<fullscreen_vs>();
@@ -61,7 +78,9 @@ void unlit_pass::add(render_graph& graph, const parameter& parameter)
             pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
 
             command.set_pipeline(pipeline);
-            command.set_parameter(0, data.gbuffer_parameter);
+            command.set_parameter(0, data.bindless_parameter);
+            command.set_parameter(1, data.scene_parameter);
+            command.set_parameter(2, data.gbuffer_parameter);
             command.draw_fullscreen();
         });
 }

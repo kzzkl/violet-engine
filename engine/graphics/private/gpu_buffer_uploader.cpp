@@ -1,4 +1,4 @@
-#include "gpu_buffer_uploader.hpp"
+#include "graphics/gpu_buffer_uploader.hpp"
 #include "graphics/render_device.hpp"
 
 namespace violet
@@ -44,7 +44,8 @@ void gpu_buffer_uploader::upload(
         }
 
         std::memcpy(
-            static_cast<std::uint8_t*>(staging_buffer->get_buffer()) + m_staging_buffer_offset,
+            static_cast<std::uint8_t*>(staging_buffer->get_buffer_pointer()) +
+                m_staging_buffer_offset,
             static_cast<const std::uint8_t*>(data) + (size - pending_size),
             upload_size);
 
@@ -79,5 +80,7 @@ void gpu_buffer_uploader::record(rhi_command* command)
     }
 
     m_staging_buffer_offset = 0;
+
+    m_upload_commands.clear();
 }
 } // namespace violet
