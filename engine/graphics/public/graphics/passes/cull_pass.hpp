@@ -19,7 +19,6 @@ public:
         bool occlusion_culling;
     };
 
-public:
     static void add(render_graph& graph, const parameter& parameter);
 
 private:

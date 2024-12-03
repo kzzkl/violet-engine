@@ -108,7 +108,7 @@ void hierarchy_system::process_set_parent()
                 remove_child_entities.push_back(previous_parent.parent);
             }
 
-            if (parent.parent == entity_null)
+            if (parent.parent == INVALID_ENTITY)
             {
                 remove_parent_entities.push_back(e);
             }
@@ -126,7 +126,7 @@ void hierarchy_system::process_set_parent()
         },
         [this](auto& view)
         {
-            return view.is_updated<parent_component>(m_system_version);
+            return view.template is_updated<parent_component>(m_system_version);
         });
 
     for (auto& e : remove_child_entities)

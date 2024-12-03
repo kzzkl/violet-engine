@@ -4,6 +4,7 @@
 #include "ecs/view.hpp"
 #include "ecs/world_command.hpp"
 #include <queue>
+#include <span>
 #include <thread>
 #include <unordered_map>
 
@@ -231,7 +232,7 @@ public:
     {
         std::vector<archetype*> result;
 
-        for (auto& [mask, archetype] : m_archetypes)
+        for (const auto& [mask, archetype] : m_archetypes)
         {
             if ((mask & exclude_mask).any())
             {
@@ -304,7 +305,7 @@ private:
     }
 
     template <typename... Components>
-    [[nodiscard]] void get_ids(std::vector<component_id>& result) const
+    void get_ids(std::vector<component_id>& result) const
     {
         (get_id<Components>(result), ...);
     }

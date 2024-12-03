@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math/math.hpp"
+#include "math/types.hpp"
 #include <catch2/catch_all.hpp>
 
 namespace violet::test

@@ -14,12 +14,11 @@ public:
     using mouse_type = mouse;
     using keyboard_type = keyboard;
 
-public:
     window_system();
     virtual ~window_system();
 
-    virtual bool initialize(const dictionary& config) override;
-    virtual void shutdown() override;
+    bool initialize(const dictionary& config) override;
+    void shutdown() override;
 
     mouse_type& get_mouse()
     {

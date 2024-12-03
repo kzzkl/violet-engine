@@ -38,7 +38,7 @@ static const float3 right_dir[6] = {
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
     float2 offset = float2(dtid.xy) / float2(convert.width, convert.height) * 2.0 - 1.0;
-    offset.y = 1.0 - offset.y;
+    offset.y = -offset.y;
 
     float3 N = normalize(forward_dir[dtid.z] + offset.x * right_dir[dtid.z] + offset.y * up_dir[dtid.z]);
 
@@ -50,6 +50,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     Texture2D<float4> env_map = ResourceDescriptorHeap[convert.env_map];
     SamplerState linear_sampler = SamplerDescriptorHeap[1];
 
-    RWTexture2DArray<float4> cube_map = ResourceDescriptorHeap[convert.cube_map];
-    cube_map[dtid] = env_map.SampleLevel(linear_sampler, uv, 0);
+    RWTexture2DArray<float3> cube_map = ResourceDescriptorHeap[convert.cube_map];
+    cube_map[dtid] = env_map.SampleLevel(linear_sampler, uv, 0).rgb;
 }

@@ -2,6 +2,7 @@
 #include "common/hash.hpp"
 #include "vk_context.hpp"
 #include <algorithm>
+#include <cassert>
 
 namespace violet::vk
 {
@@ -169,9 +170,11 @@ vk_pipeline_layout::vk_pipeline_layout(
         [](vk_parameter_layout* parameter_layout) -> VkDescriptorSetLayout
         {
             if (parameter_layout != nullptr)
+            {
                 return parameter_layout->get_layout();
-            else
-                return VK_NULL_HANDLE;
+            }
+
+            return VK_NULL_HANDLE;
         });
 
     VkPipelineLayoutCreateInfo layout_info = {};

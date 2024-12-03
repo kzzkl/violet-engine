@@ -1,10 +1,10 @@
 #pragma once
 
 #include "common/hash.hpp"
-#include "common/type_index.hpp"
 #include "graphics/shader.hpp"
 #include <memory>
 #include <span>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -79,103 +79,101 @@ public:
         }
 
         auto iter = m_shaders.find(hash);
-        if (iter == m_shaders.end())
-        {
-            std::vector<const wchar_t*> arguments = {
-                L"-I",
-                L"assets/shaders/include",
-                L"-Wno-ignored-attributes",
-                L"-all-resources-bound",
-#ifndef NDEBUG
-                L"-Zi",
-                L"-Qembed_debug",
-#endif
-            };
-
-            if (m_rhi->get_backend() == RHI_BACKEND_VULKAN)
-            {
-                arguments.push_back(L"-spirv");
-                arguments.push_back(L"-fspv-target-env=vulkan1.3");
-                arguments.push_back(L"-fvk-use-dx-layout");
-                arguments.push_back(L"-fspv-extension=SPV_EXT_descriptor_indexing");
-                arguments.push_back(L"-fvk-bind-resource-heap");
-                arguments.push_back(L"0");
-                arguments.push_back(L"0");
-                arguments.push_back(L"-fvk-bind-sampler-heap");
-                arguments.push_back(L"1");
-                arguments.push_back(L"0");
-#ifndef NDEBUG
-                // arguments.push_back(L"-fspv-extension=SPV_KHR_non_semantic_info");
-                // arguments.push_back(L"-fspv-debug=vulkan-with-source");
-#endif
-            }
-
-            if constexpr (T::stage == RHI_SHADER_STAGE_VERTEX)
-            {
-                arguments.push_back(L"-T");
-                arguments.push_back(L"vs_6_6");
-                arguments.push_back(L"-E");
-                arguments.push_back(L"vs_main");
-            }
-            else if constexpr (T::stage == RHI_SHADER_STAGE_FRAGMENT)
-            {
-                arguments.push_back(L"-T");
-                arguments.push_back(L"ps_6_6");
-                arguments.push_back(L"-E");
-                arguments.push_back(L"fs_main");
-            }
-            else if constexpr (T::stage == RHI_SHADER_STAGE_COMPUTE)
-            {
-                arguments.push_back(L"-T");
-                arguments.push_back(L"cs_6_6");
-                arguments.push_back(L"-E");
-                arguments.push_back(L"cs_main");
-            }
-
-            for (auto& macro : defines)
-            {
-                arguments.push_back(macro.data());
-            }
-
-            auto code = compile_shader(T::path, arguments);
-
-            rhi_shader_desc desc = {};
-            desc.code = code.data();
-            desc.code_size = code.size();
-            desc.stage = T::stage;
-
-            if constexpr (has_inputs<T>)
-            {
-                desc.vertex.attributes = T::inputs.attributes;
-                desc.vertex.attribute_count = T::inputs.attribute_count;
-            }
-
-            if constexpr (has_parameters<T>)
-            {
-                desc.parameters = T::parameters.parameters;
-                desc.parameter_count = T::parameters.parameter_count;
-            }
-
-            auto shader = rhi_ptr<rhi_shader>(m_rhi->create_shader(desc), m_rhi_deleter);
-
-            if constexpr (has_inputs<T>)
-            {
-                auto& vertex_attributes = m_vertex_attributes[shader.get()];
-                for (std::size_t i = 0; i < T::inputs.attribute_count; ++i)
-                {
-                    vertex_attributes.push_back(T::inputs.attributes[i].name);
-                }
-            }
-
-            rhi_shader* result = shader.get();
-            m_shaders[hash] = std::move(shader);
-
-            return result;
-        }
-        else
+        if (iter != m_shaders.end())
         {
             return iter->second.get();
         }
+
+        std::vector<const wchar_t*> arguments = {
+            L"-I",
+            L"assets/shaders",
+            L"-Wno-ignored-attributes",
+            L"-all-resources-bound",
+#ifndef NDEBUG
+            L"-Zi",
+            L"-Qembed_debug",
+#endif
+        };
+
+        if (m_rhi->get_backend() == RHI_BACKEND_VULKAN)
+        {
+            arguments.push_back(L"-spirv");
+            arguments.push_back(L"-fspv-target-env=vulkan1.3");
+            arguments.push_back(L"-fvk-use-dx-layout");
+            arguments.push_back(L"-fspv-extension=SPV_EXT_descriptor_indexing");
+            arguments.push_back(L"-fvk-bind-resource-heap");
+            arguments.push_back(L"0");
+            arguments.push_back(L"0");
+            arguments.push_back(L"-fvk-bind-sampler-heap");
+            arguments.push_back(L"1");
+            arguments.push_back(L"0");
+#ifndef NDEBUG
+            // arguments.push_back(L"-fspv-extension=SPV_KHR_non_semantic_info");
+            // arguments.push_back(L"-fspv-debug=vulkan-with-source");
+#endif
+        }
+
+        if constexpr (T::stage == RHI_SHADER_STAGE_VERTEX)
+        {
+            arguments.push_back(L"-T");
+            arguments.push_back(L"vs_6_6");
+            arguments.push_back(L"-E");
+            arguments.push_back(L"vs_main");
+        }
+        else if constexpr (T::stage == RHI_SHADER_STAGE_FRAGMENT)
+        {
+            arguments.push_back(L"-T");
+            arguments.push_back(L"ps_6_6");
+            arguments.push_back(L"-E");
+            arguments.push_back(L"fs_main");
+        }
+        else if constexpr (T::stage == RHI_SHADER_STAGE_COMPUTE)
+        {
+            arguments.push_back(L"-T");
+            arguments.push_back(L"cs_6_6");
+            arguments.push_back(L"-E");
+            arguments.push_back(L"cs_main");
+        }
+
+        for (auto& macro : defines)
+        {
+            arguments.push_back(macro.data());
+        }
+
+        auto code = compile_shader(T::path, arguments);
+
+        rhi_shader_desc desc = {};
+        desc.code = code.data();
+        desc.code_size = code.size();
+        desc.stage = T::stage;
+
+        if constexpr (has_inputs<T>)
+        {
+            desc.vertex.attributes = T::inputs.attributes;
+            desc.vertex.attribute_count = T::inputs.attribute_count;
+        }
+
+        if constexpr (has_parameters<T>)
+        {
+            desc.parameters = T::parameters.parameters;
+            desc.parameter_count = T::parameters.parameter_count;
+        }
+
+        auto shader = rhi_ptr<rhi_shader>(m_rhi->create_shader(desc), m_rhi_deleter);
+
+        if constexpr (has_inputs<T>)
+        {
+            auto& vertex_attributes = m_vertex_attributes[shader.get()];
+            for (std::size_t i = 0; i < T::inputs.attribute_count; ++i)
+            {
+                vertex_attributes.push_back(T::inputs.attributes[i].name);
+            }
+        }
+
+        rhi_shader* result = shader.get();
+        m_shaders[hash] = std::move(shader);
+
+        return result;
     }
 
     const std::vector<std::string>& get_vertex_attributes(rhi_shader* shader) const
@@ -193,7 +191,6 @@ public:
         return m_geometry_manager.get();
     }
 
-public:
     template <typename T>
     void set_name(T* object, std::string_view name) const
     {
@@ -202,7 +199,6 @@ public:
 #endif
     }
 
-public:
     rhi_ptr<rhi_render_pass> create_render_pass(const rhi_render_pass_desc& desc);
 
     rhi_ptr<rhi_render_pipeline> create_pipeline(const rhi_render_pipeline_desc& desc);

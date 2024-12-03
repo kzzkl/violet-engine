@@ -1,6 +1,5 @@
 #pragma once
 
-#include "common/allocator.hpp"
 #include "graphics/render_device.hpp"
 
 namespace violet
@@ -8,7 +7,7 @@ namespace violet
 class gpu_buffer_uploader
 {
 public:
-    gpu_buffer_uploader(std::size_t staging_buffer_size = 64 * 1024);
+    gpu_buffer_uploader(std::size_t staging_buffer_size = 64ull * 1024);
 
     void upload(rhi_buffer* buffer, const void* data, std::size_t size, std::uint32_t offset);
     void record(rhi_command* command);

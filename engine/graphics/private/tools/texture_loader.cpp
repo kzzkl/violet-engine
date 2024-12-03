@@ -1,5 +1,6 @@
 #include "graphics/tools/texture_loader.hpp"
 #include <array>
+#include <cstddef>
 #include <fstream>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -35,19 +36,26 @@ rhi_ptr<rhi_texture> texture_loader::load(
     auto load_file = [options](std::string_view path) -> std::optional<texture_data>
     {
         if (path.ends_with(".dds"))
+        {
             return load_dds(path, options);
-        else if (path.ends_with(".hdr"))
+        }
+
+        if (path.ends_with(".hdr"))
+        {
             return load_hdr(path, options);
-        else
-            return load_other(path, options);
+        }
+
+        return load_other(path, options);
     };
 
     std::optional<texture_data> data = load_file(paths[0]);
     if (!data.has_value() || data->mipmaps.empty())
+    {
         return nullptr;
+    }
 
-    std::uint32_t layer_count = static_cast<std::uint32_t>(paths.size());
-    std::uint32_t level_count = static_cast<std::uint32_t>(data->mipmaps.size());
+    auto layer_count = static_cast<std::uint32_t>(paths.size());
+    auto level_count = static_cast<std::uint32_t>(data->mipmaps.size());
     rhi_texture_extent extent = data->mipmaps[0].extent;
 
     bool need_generate_mipmaps =
@@ -76,7 +84,9 @@ rhi_ptr<rhi_texture> texture_loader::load(
         {
             data = load_file(paths[layer]);
             if (!data.has_value() || data->mipmaps.empty())
+            {
                 return nullptr;
+            }
         }
 
         assert(
@@ -270,12 +280,16 @@ std::optional<texture_loader::texture_data> texture_loader::load_dds(
 
     std::ifstream fin(path.data(), std::ios::binary);
     if (!fin.is_open())
+    {
         return std::nullopt;
+    }
 
     char magic[4] = {};
     fin.read(magic, 4);
     if (std::strncmp(magic, "DDS ", 4) != 0)
+    {
         return std::nullopt;
+    }
 
     dds_header header = {};
     fin.read(reinterpret_cast<char*>(&header), sizeof(dds_header));
@@ -356,10 +370,12 @@ std::optional<texture_loader::texture_data> texture_loader::load_dds(
     {
         if (format == dds_format::RGBA_EXT1 || format == dds_format::RGBA_EXT3 ||
             format == dds_format::RGBA_EXT5)
+        {
             return ((width + 3) / 4) * ((height + 3) / 4) *
                    (format == dds_format::RGBA_EXT1 ? 8 : 16);
-        else
-            return width * height * channels;
+        }
+
+        return width * height * channels;
     };
 
     std::uint32_t mip_width = header.dwWidth;
@@ -372,7 +388,7 @@ std::optional<texture_loader::texture_data> texture_loader::load_dds(
 
         std::size_t size = calculate_texture_size(mip_width, mip_height, channels, format);
         mipmap.pixels.resize(size);
-        fin.read(mipmap.pixels.data(), size);
+        fin.read(mipmap.pixels.data(), static_cast<long long>(size));
 
         mip_width = mip_width >> 1;
         mip_height = mip_height >> 1;
@@ -389,22 +405,25 @@ std::optional<texture_loader::texture_data> texture_loader::load_hdr(
     std::string_view path,
     texture_load_option options)
 {
-    int width, height, channels;
+    int width;
+    int height;
+    int channels;
 
     float* pixels = stbi_loadf(path.data(), &width, &height, &channels, STBI_default);
     if (pixels == nullptr)
+    {
         return std::nullopt;
+    }
 
-    std::size_t image_size = width * height * 3 * sizeof(float);
+    std::size_t pixel_count = static_cast<std::size_t>(width) * height;
 
     mipmap_data mipmap;
     mipmap.extent.width = static_cast<std::uint32_t>(width);
     mipmap.extent.height = static_cast<std::uint32_t>(height);
-    mipmap.pixels.resize(width * height * sizeof(float) * 4);
+    mipmap.pixels.resize(pixel_count * sizeof(float) * 4);
 
-    float* target = reinterpret_cast<float*>(mipmap.pixels.data());
+    auto* target = reinterpret_cast<float*>(mipmap.pixels.data());
 
-    std::size_t pixel_count = width * height;
     for (std::size_t i = 0; i < pixel_count; ++i)
     {
         target[i * 4 + 0] = pixels[i * 3 + 0];
@@ -426,13 +445,17 @@ std::optional<texture_loader::texture_data> texture_loader::load_other(
     std::string_view path,
     texture_load_option options)
 {
-    int width, height, channels;
+    int width;
+    int height;
+    int channels;
 
     stbi_uc* pixels = stbi_load(path.data(), &width, &height, &channels, STBI_rgb_alpha);
     if (pixels == nullptr)
+    {
         return std::nullopt;
+    }
 
-    std::size_t image_size = width * height * 4;
+    std::size_t image_size = static_cast<std::size_t>(width * height) * 4;
 
     mipmap_data mipmap;
     mipmap.extent.width = static_cast<std::uint32_t>(width);
@@ -459,13 +482,15 @@ void texture_loader::upload(
 {
     rhi_buffer_desc staging_buffer_desc = {};
     staging_buffer_desc.flags = RHI_BUFFER_TRANSFER_SRC | RHI_BUFFER_HOST_VISIBLE;
-    for (auto& mipmap : data.mipmaps)
+    for (const auto& mipmap : data.mipmaps)
+    {
         staging_buffer_desc.size += mipmap.pixels.size();
+    }
     rhi_ptr<rhi_buffer> staging_buffer =
         render_device::instance().create_buffer(staging_buffer_desc);
 
-    std::uint8_t* buffer = static_cast<std::uint8_t*>(staging_buffer->get_buffer_pointer());
-    for (auto& mipmap : data.mipmaps)
+    auto* buffer = static_cast<std::uint8_t*>(staging_buffer->get_buffer_pointer());
+    for (const auto& mipmap : data.mipmaps)
     {
         std::memcpy(buffer, mipmap.pixels.data(), mipmap.pixels.size());
         buffer += mipmap.pixels.size();
@@ -488,7 +513,7 @@ void texture_loader::upload(
 
     for (std::uint32_t level = 0; level < data.mipmaps.size(); ++level)
     {
-        auto& mipmap = data.mipmaps[level];
+        const auto& mipmap = data.mipmaps[level];
 
         buffer_barrier.size = mipmap.pixels.size();
         texture_barrier.level = level;

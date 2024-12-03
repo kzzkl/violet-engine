@@ -1,6 +1,7 @@
 #include "bt3_joint.hpp"
 #include "bt3_shape.hpp"
 #include "bt3_world.hpp"
+#include "core/plugin_interface.hpp"
 
 namespace violet::bt3
 {

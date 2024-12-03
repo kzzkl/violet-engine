@@ -25,7 +25,6 @@ public:
         void* component_data{nullptr};
     };
 
-public:
     world_command(const world* world);
 
     entity create()
@@ -106,7 +105,7 @@ public:
 private:
     struct alignas(64) data_chunk
     {
-        static constexpr std::size_t size = 1024 * 16;
+        static constexpr std::size_t size = 1024ull * 16;
         std::array<std::uint8_t, size> data;
 
         void* get_data(std::size_t offset)

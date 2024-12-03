@@ -16,7 +16,9 @@ window_system::~window_system() {}
 bool window_system::initialize(const dictionary& config)
 {
     if (!m_impl->initialize(config["width"], config["height"], config["title"]))
+    {
         return false;
+    }
 
     m_title = config["title"];
 
@@ -66,7 +68,7 @@ void window_system::tick()
 
     m_mouse.tick();
     m_keyboard.tick();
-    for (auto& message : m_impl->get_messages())
+    for (const auto& message : m_impl->get_messages())
     {
         switch (message.type)
         {
@@ -77,9 +79,13 @@ void window_system::tick()
         }
         case window_message::message_type::MOUSE_KEY: {
             if (message.mouse_key.down)
+            {
                 m_mouse.key_down(message.mouse_key.key);
+            }
             else
+            {
                 m_mouse.key_up(message.mouse_key.key);
+            }
             break;
         }
         case window_message::message_type::MOUSE_WHELL: {
@@ -88,9 +94,13 @@ void window_system::tick()
         }
         case window_message::message_type::KEYBOARD_KEY: {
             if (message.keyboard_key.down)
+            {
                 m_keyboard.key_down(message.keyboard_key.key);
+            }
             else
+            {
                 m_keyboard.key_up(message.keyboard_key.key);
+            }
             break;
         }
         case window_message::message_type::KEYBOARD_CHAR: {

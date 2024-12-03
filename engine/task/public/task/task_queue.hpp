@@ -1,6 +1,7 @@
 #pragma once
 
 #include "task/lock_free_queue.hpp"
+#include <mutex>
 #include <queue>
 
 namespace violet
@@ -11,7 +12,6 @@ class task_queue_thread_safe
 public:
     using task_type = T;
 
-public:
     task_queue_thread_safe()
         : m_close(false)
     {
@@ -40,10 +40,8 @@ public:
             m_queue.pop();
             return task;
         }
-        else
-        {
-            return nullptr;
-        }
+
+        return nullptr;
     }
 
     void close()
@@ -67,7 +65,6 @@ class task_queue_lock_free
 public:
     using task_type = T;
 
-public:
     task_queue_lock_free()
         : m_close(false)
     {
@@ -86,7 +83,9 @@ public:
             std::this_thread::yield();
 
             if (m_close)
+            {
                 return nullptr;
+            }
         }
 
         return task;

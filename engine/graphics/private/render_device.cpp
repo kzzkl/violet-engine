@@ -3,7 +3,6 @@
 #include "graphics/material_manager.hpp"
 #include "graphics/tools/ibl_tool.hpp"
 #include "graphics/tools/texture_loader.hpp"
-#include "math/math.hpp"
 #include "shader_compiler.hpp"
 #include <fstream>
 
@@ -275,7 +274,7 @@ std::vector<std::uint8_t> render_device::compile_shader(
 
     std::vector<char> source(fin.tellg());
     fin.seekg(0);
-    fin.read(source.data(), source.size());
+    fin.read(source.data(), static_cast<std::streamsize>(source.size()));
     fin.close();
 
     return m_shader_compiler->compile(source, arguments);

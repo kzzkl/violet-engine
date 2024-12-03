@@ -24,7 +24,6 @@ public:
         } constant;
     };
 
-public:
     vk_parameter_layout(const rhi_parameter_desc& desc, vk_context* context);
     ~vk_parameter_layout();
 

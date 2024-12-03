@@ -25,8 +25,6 @@ rdg_reference* rdg_reference::get_next_reference() const
     return resource->get_references()[index + 1];
 }
 
-rdg_resource::rdg_resource() {}
-
 rdg_resource::~rdg_resource() {}
 
 rdg_texture::rdg_texture(

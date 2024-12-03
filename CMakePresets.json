@@ -10,8 +10,8 @@
             "name": "windows-base",
             "hidden": true,
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/out/${presetName}/build",
-            "installDir": "${sourceDir}/out/${presetName}/install",
+            "binaryDir": "${sourceDir}/build",
+            "installDir": "${sourceDir}/build/install",
             "condition": {
                 "type": "equals",
                 "lhs": "${hostSystemName}",

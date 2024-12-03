@@ -1,5 +1,5 @@
+#include "math/quaternion.hpp"
 #include "test_common.hpp"
-#include <cmath>
 
 namespace violet::test
 {

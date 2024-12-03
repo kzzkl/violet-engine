@@ -1,3 +1,4 @@
+#include "math/matrix.hpp"
 #include "test_common.hpp"
 
 namespace violet::test

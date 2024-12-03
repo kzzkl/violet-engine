@@ -1,5 +1,6 @@
 #include "ecs/archetype.hpp"
 #include "archetype_chunk.hpp"
+#include <algorithm>
 
 namespace violet
 {
@@ -9,7 +10,7 @@ archetype::archetype(const archetype_layout& layout, archetype_chunk_allocator* 
     assert(layout.size() < std::numeric_limits<std::uint8_t>::max());
 
     m_components.reserve(layout.size());
-    for (auto& [id, builder] : layout)
+    for (const auto& [id, builder] : layout)
     {
         m_components.push_back({
             .id = id,
@@ -92,7 +93,7 @@ std::size_t archetype::move(std::size_t index, archetype& dst, std::uint32_t wor
 
         if (dst.m_mask.test(id))
         {
-            auto& dst_info = dst.get_component_info(id);
+            const auto& dst_info = dst.get_component_info(id);
 
             std::size_t src_offset = src_info.get_offset(src_entity_index);
             std::size_t dst_offset = dst_info.get_offset(dst_entity_index);

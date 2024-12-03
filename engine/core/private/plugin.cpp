@@ -7,41 +7,38 @@ namespace violet
 class dynamic_library_win32 : public dynamic_library
 {
 public:
-    dynamic_library_win32();
+    dynamic_library_win32() = default;
     virtual ~dynamic_library_win32();
 
-    virtual bool load(std::string_view path) override;
-    virtual void unload() override;
+    bool load(std::string_view path) override;
+    void unload() override;
 
-    virtual void* find_symbol(std::string_view name) override;
+    void* find_symbol(std::string_view name) override;
 
 private:
-    HINSTANCE m_lib;
+    HINSTANCE m_lib{};
 };
-
-dynamic_library_win32::dynamic_library_win32() : m_lib(nullptr)
-{
-}
 
 dynamic_library_win32::~dynamic_library_win32()
 {
     if (m_lib)
+    {
         unload();
+    }
 }
 
 bool dynamic_library_win32::load(std::string_view path)
 {
     m_lib = LoadLibraryExA(path.data(), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
-    if (m_lib)
-    {
-        log::debug("The dynamic library was loaded successfully: {}", path);
-        return true;
-    }
-    else
+    if (!m_lib)
     {
         log::error("Failed to load dynamic lib: path[{}] error[{}]", path, GetLastError());
         return false;
     }
+
+    log::debug("The dynamic library was loaded successfully: {}", path);
+
+    return true;
 }
 
 void dynamic_library_win32::unload()
@@ -51,7 +48,7 @@ void dynamic_library_win32::unload()
 
 void* dynamic_library_win32::find_symbol(std::string_view name)
 {
-    return GetProcAddress(m_lib, name.data());
+    return reinterpret_cast<void*>(GetProcAddress(m_lib, name.data()));
 }
 
 plugin::plugin()
@@ -61,9 +58,7 @@ plugin::plugin()
 {
 }
 
-plugin::~plugin()
-{
-}
+plugin::~plugin() {}
 
 bool plugin::load(std::string_view path)
 {
@@ -79,22 +74,19 @@ bool plugin::load(std::string_view path)
         return false;
     }
 
-    get_plugin_info get_info =
-        static_cast<get_plugin_info>(m_library->find_symbol("get_plugin_info"));
+    auto get_info = reinterpret_cast<get_plugin_info>(m_library->find_symbol("get_plugin_info"));
     if (!get_info)
     {
         log::error("Symbol not found in dynamic library: get_plugin_info");
         m_library->unload();
         return false;
     }
-    else
-    {
-        plugin_info info = get_info();
-        m_name = info.name;
-        m_version = info.version;
-    }
 
-    if (on_load() == false)
+    plugin_info info = get_info();
+    m_name = info.name;
+    m_version = info.version;
+
+    if (!on_load())
     {
         m_library->unload();
         return false;

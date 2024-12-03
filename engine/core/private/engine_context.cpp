@@ -1,6 +1,4 @@
 #include "engine_context.hpp"
-#include "common/log.hpp"
-#include <fstream>
 
 namespace violet
 {
@@ -22,7 +20,9 @@ engine_context::~engine_context() {}
 void engine_context::set_system(std::size_t index, engine_system* system)
 {
     if (index >= m_systems.size())
+    {
         m_systems.resize(index + 1);
+    }
 
     assert(m_systems[index] == nullptr);
     m_systems[index] = system;
@@ -33,7 +33,7 @@ engine_system* engine_context::get_system(std::size_t index)
     return m_systems[index];
 }
 
-void engine_context::tick(const engine_stats& stats)
+void engine_context::tick()
 {
     m_executor.execute_sync(m_task_graph);
     m_world->add_version();

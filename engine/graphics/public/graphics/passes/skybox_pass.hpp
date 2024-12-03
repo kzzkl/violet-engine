@@ -17,7 +17,6 @@ public:
         bool clear;
     };
 
-public:
     static void add(render_graph& graph, const parameter& parameter);
 };
 } // namespace violet

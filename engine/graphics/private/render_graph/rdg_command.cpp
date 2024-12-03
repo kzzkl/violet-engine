@@ -1,5 +1,4 @@
 #include "graphics/render_graph/rdg_command.hpp"
-#include <algorithm>
 #include <cassert>
 #include <span>
 
@@ -31,7 +30,7 @@ void rdg_command::draw_instances(
 {
     auto& device = render_device::instance();
 
-    for (auto& batch : scene.get_batches())
+    for (const auto& batch : scene.get_batches())
     {
         if (batch.material_type != type || batch.groups.empty())
         {
@@ -46,7 +45,7 @@ void rdg_command::draw_instances(
 
         for (render_id group_id : batch.groups)
         {
-            auto& group = scene.get_group(group_id);
+            const auto& group = scene.get_group(group_id);
 
             set_vertex_buffers(group.vertex_buffers);
             set_index_buffer(group.index_buffer);

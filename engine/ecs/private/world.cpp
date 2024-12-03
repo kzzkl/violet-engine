@@ -52,10 +52,8 @@ void world::destroy(entity e)
 
 bool world::is_valid(entity e) const
 {
-    if (e.id < m_entities.size() && e.type != ENTITY_NULL)
-        return m_entities[e.id].version == e.version;
-    else
-        return false;
+    return e.id < m_entities.size() && e.type != ENTITY_NULL &&
+           m_entities[e.id].version == e.version;
 }
 
 void world::execute(std::span<world_command*> commands)
@@ -78,28 +76,24 @@ void world::execute(std::span<world_command*> commands)
         {
             return temp_entity_states[e.id];
         }
-        else
+
+        auto iter = normal_entity_states.find(e.id);
+        if (iter == normal_entity_states.end())
         {
-            auto iter = normal_entity_states.find(e.id);
-            if (iter == normal_entity_states.end())
-            {
-                archetype* archetype = m_entities[e.id].archetype;
+            archetype* archetype = m_entities[e.id].archetype;
 
-                entity_state state = {};
-                state.destroyed = false;
-                state.mask = archetype->get_mask();
-                state.components = archetype->get_component_ids();
-                state.component_data.resize(state.components.size());
+            entity_state state = {};
+            state.destroyed = false;
+            state.mask = archetype->get_mask();
+            state.components = archetype->get_component_ids();
+            state.component_data.resize(state.components.size());
 
-                normal_entity_states[e.id] = state;
+            normal_entity_states[e.id] = state;
 
-                return normal_entity_states[e.id];
-            }
-            else
-            {
-                return iter->second;
-            }
+            return normal_entity_states[e.id];
         }
+
+        return iter->second;
     };
 
     auto change_entity_archetype = [&, this](entity_id id, const entity_state& state)
@@ -164,7 +158,7 @@ void world::execute(std::span<world_command*> commands)
 
         temp_entity_states.resize(command->get_temp_entity_count());
 
-        for (auto& cmd : command->get_commands())
+        for (const auto& cmd : command->get_commands())
         {
             switch (cmd.type)
             {

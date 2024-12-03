@@ -1,14 +1,15 @@
-#include "common/log.hpp"
 #include "components/camera_component.hpp"
 #include "components/mesh_component.hpp"
 #include "components/orbit_control_component.hpp"
 #include "components/scene_component.hpp"
+#include "components/skybox_component.hpp"
 #include "components/transform_component.hpp"
 #include "control/control_system.hpp"
 #include "core/engine.hpp"
 #include "ecs_command/ecs_command_system.hpp"
 #include "graphics/geometries/box_geometry.hpp"
 #include "graphics/graphics_system.hpp"
+#include "graphics/materials/pbr_material.hpp"
 #include "graphics/materials/unlit_material.hpp"
 #include "graphics/renderers/deferred_renderer.hpp"
 #include "graphics/tools/ibl_tool.hpp"
@@ -18,9 +19,6 @@
 #include "scene/transform_system.hpp"
 #include "task/task_graph_printer.hpp"
 #include "window/window_system.hpp"
-#include <filesystem>
-#include <fstream>
-#include <thread>
 
 namespace violet::sample
 {
@@ -32,7 +30,7 @@ public:
     {
     }
 
-    virtual bool initialize(const dictionary& config)
+    bool initialize(const dictionary& config) override
     {
         auto& window = get_system<window_system>();
         window.on_resize().add_task().set_execute(
@@ -54,7 +52,7 @@ public:
         return true;
     }
 
-    virtual void shutdown() {}
+    void shutdown() override {}
 
 private:
     void initialize_render()
@@ -77,30 +75,53 @@ private:
     {
         m_skybox_texture = render_device::instance().create_texture({
             .extent = {512, 512},
-            .format = RHI_FORMAT_R8G8B8A8_UNORM,
+            .format = RHI_FORMAT_R11G11B10_FLOAT,
             .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
             .layer_count = 6,
         });
 
         m_skybox_irradiance = render_device::instance().create_texture({
             .extent = {32, 32},
-            .format = RHI_FORMAT_R8G8B8A8_UNORM,
+            .format = RHI_FORMAT_R11G11B10_FLOAT,
             .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
             .layer_count = 6,
         });
 
-        rhi_ptr<rhi_texture> env_map =
-            texture_loader::load("violet-assets/textures/skybox/dry_orchard_meadow_4k.hdr");
+        m_skybox_prefilter = render_device::instance().create_texture({
+            .extent = {128, 128},
+            .format = RHI_FORMAT_R11G11B10_FLOAT,
+            .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
+            .level_count = 8,
+            .layer_count = 6,
+        });
+
+        rhi_ptr<rhi_texture> env_map = texture_loader::load(
+            "C://Workspace/violet-assets/textures/skybox/dry_orchard_meadow_4k.hdr");
         ibl_tool::generate_cube_map(env_map.get(), m_skybox_texture.get());
-        ibl_tool::generate_ibl(m_skybox_texture.get(), m_skybox_irradiance.get(), nullptr);
+        ibl_tool::generate_ibl(
+            m_skybox_texture.get(),
+            m_skybox_irradiance.get(),
+            m_skybox_prefilter.get());
     }
 
     void initialize_scene()
     {
         m_geometry = std::make_unique<box_geometry>();
-        m_material = std::make_unique<unlit_material>();
+        m_material = std::make_unique<pbr_material>();
 
         auto& world = get_world();
+
+        m_skybox = world.create();
+        world.add_component<
+            transform_component,
+            transform_local_component,
+            transform_world_component,
+            skybox_component,
+            scene_component>(m_skybox);
+        auto& skybox = world.get_component<skybox_component>(m_skybox);
+        skybox.texture = m_skybox_texture.get();
+        skybox.irradiance = m_skybox_irradiance.get();
+        skybox.prefilter = m_skybox_prefilter.get();
 
         m_cube = world.create();
         world.add_component<
@@ -153,12 +174,11 @@ private:
 
     entity m_cube;
     entity m_camera;
-
     entity m_skybox;
 
     rhi_ptr<rhi_texture> m_skybox_texture;
     rhi_ptr<rhi_texture> m_skybox_irradiance;
-    rhi_ptr<rhi_texture> m_skybox_prefiltered;
+    rhi_ptr<rhi_texture> m_skybox_prefilter;
 };
 } // namespace violet::sample
 

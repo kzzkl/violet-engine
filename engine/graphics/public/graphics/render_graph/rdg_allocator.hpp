@@ -23,7 +23,7 @@ public:
 
     rhi_buffer* allocate_buffer(const rhi_buffer_desc& desc);
 
-    rhi_command* allocate_command()
+    static rhi_command* allocate_command()
     {
         return render_device::instance().allocate_command();
     }
@@ -48,7 +48,6 @@ private:
     public:
         using object_type = T;
 
-    public:
         object_type* add(std::uint64_t hash, rhi_ptr<object_type>&& object)
         {
             assert(m_objects.find(hash) == m_objects.end());
@@ -71,10 +70,8 @@ private:
                 iter->second.last_used_frame = render_device::instance().get_frame_count();
                 return iter->second.object.get();
             }
-            else
-            {
-                return nullptr;
-            }
+
+            return nullptr;
         }
 
         void gc(std::size_t frame)
@@ -82,9 +79,13 @@ private:
             for (auto iter = m_objects.begin(); iter != m_objects.end();)
             {
                 if (iter->second.last_used_frame < frame)
+                {
                     iter = m_objects.erase(iter);
+                }
                 else
+                {
                     ++iter;
+                }
             }
         }
 

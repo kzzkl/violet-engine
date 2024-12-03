@@ -1,10 +1,13 @@
 #include "window/input.hpp"
-#include "common/log.hpp"
 #include "window_impl.hpp"
 
 namespace violet
 {
-mouse::mouse(window_impl* impl) noexcept : m_x(0), m_y(0), m_wheel(0), m_impl(impl)
+mouse::mouse(window_impl* impl) noexcept
+    : m_x(0),
+      m_y(0),
+      m_wheel(0),
+      m_impl(impl)
 {
 }
 
@@ -28,12 +31,12 @@ void mouse::tick()
 {
     device_type::tick();
     if (m_impl->get_mouse_mode() == MOUSE_MODE_RELATIVE)
+    {
         m_x = m_y = 0;
+    }
 
     m_wheel = 0;
 }
 
-keyboard::keyboard() noexcept
-{
-}
+keyboard::keyboard() noexcept {}
 } // namespace violet

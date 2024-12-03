@@ -1,4 +1,5 @@
 #include "vk_sync.hpp"
+#include "vk_context.hpp"
 
 namespace violet::vk
 {

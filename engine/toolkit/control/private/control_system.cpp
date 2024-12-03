@@ -71,15 +71,17 @@ void control_system::update_orbit_control(
     transform_component& transform,
     int mouse_wheel)
 {
-    static const float EPS = 0.00001f;
+    static const float eps = 0.00001f;
 
     auto window_rect = get_system<window_system>().get_extent();
 
-    orbit_control.theta +=
-        -m_mouse_position_delta[1] * orbit_control.theta_speed / window_rect.height;
-    orbit_control.theta = std::clamp(orbit_control.theta, EPS, math::PI - EPS);
-    orbit_control.phi += m_mouse_position_delta[0] * orbit_control.phi_speed / window_rect.width;
-    orbit_control.r += -mouse_wheel * orbit_control.r_speed;
+    orbit_control.theta += orbit_control.theta_speed *
+                           static_cast<float>(-m_mouse_position_delta[1]) /
+                           static_cast<float>(window_rect.height);
+    orbit_control.theta = std::clamp(orbit_control.theta, eps, math::PI - eps);
+    orbit_control.phi += orbit_control.phi_speed * static_cast<float>(m_mouse_position_delta[0]) /
+                         static_cast<float>(window_rect.width);
+    orbit_control.r += static_cast<float>(-mouse_wheel) * orbit_control.r_speed;
     orbit_control.r = std::max(1.0f, orbit_control.r);
 
     auto [theta_sin, theta_cos] = math::sin_cos(orbit_control.theta);

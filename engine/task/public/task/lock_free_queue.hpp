@@ -15,45 +15,64 @@ public:
     using tag_type = std::uint16_t;
     using address_type = std::uint64_t;
 
-public:
-    tagged_pointer_compression() : m_address(0) {}
-    tagged_pointer_compression(value_type* p) { m_address = reinterpret_cast<address_type>(p); }
+    tagged_pointer_compression()
+        : m_address(0)
+    {
+    }
+    tagged_pointer_compression(value_type* p)
+    {
+        m_address = reinterpret_cast<address_type>(p);
+    }
     tagged_pointer_compression(value_type* p, tag_type tag)
     {
         m_address = reinterpret_cast<address_type>(p);
-        m_tag[TAG_INDEX] = tag;
+        m_tag[tag_index] = tag;
     }
 
     tag_type next_tag() const
     {
-        tag_type next = (m_tag[TAG_INDEX] + 1) & std::numeric_limits<tag_type>::max();
+        tag_type next = (m_tag[tag_index] + 1) & std::numeric_limits<tag_type>::max();
         return next;
     }
-    tag_type tag() const { return m_tag[TAG_INDEX]; }
+    tag_type tag() const
+    {
+        return m_tag[tag_index];
+    }
 
     void pointer(value_type* p)
     {
-        tag_type tag = m_tag[TAG_INDEX];
+        tag_type tag = m_tag[tag_index];
         m_address = reinterpret_cast<address_type>(p);
-        m_tag[TAG_INDEX] = tag;
+        m_tag[tag_index] = tag;
     }
 
     value_type* pointer() const
     {
-        address_type address = m_address & ADDRESS_MASK;
+        address_type address = m_address & address_mask;
         return reinterpret_cast<value_type*>(address);
     }
 
-    value_type* operator->() { return pointer(); }
+    value_type* operator->()
+    {
+        return pointer();
+    }
 
-    bool operator==(const tagged_pointer_compression& p) const { return m_address == p.m_address; }
-    bool operator!=(const tagged_pointer_compression& p) const { return !operator==(p); }
+    bool operator==(const tagged_pointer_compression& p) const
+    {
+        return m_address == p.m_address;
+    }
+
+    bool operator!=(const tagged_pointer_compression& p) const
+    {
+        return !operator==(p);
+    }
 
 private:
-    static constexpr address_type ADDRESS_MASK = 0xFFFFFFFFFFFFUL;
-    static constexpr int TAG_INDEX = 3;
+    static constexpr address_type address_mask = 0xFFFFFFFFFFFFUL;
+    static constexpr int tag_index = 3;
 
-    union {
+    union
+    {
         tag_type m_tag[4];
         address_type m_address;
     };
@@ -87,7 +106,10 @@ public:
 
     struct node_type
     {
-        node_type() : next(nullptr) {}
+        node_type()
+            : next(nullptr)
+        {
+        }
         virtual ~node_type() = default;
 
         tagged_pointer<node_type> next;
@@ -97,8 +119,14 @@ private:
     using node_pointer = tagged_pointer<node_type>;
 
 public:
-    lock_free_node_pool() : m_free(nullptr) {}
-    ~lock_free_node_pool() { clear(); }
+    lock_free_node_pool()
+        : m_free(nullptr)
+    {
+    }
+    ~lock_free_node_pool()
+    {
+        clear();
+    }
 
     /**
      * @brief Take out the node from the pool. When there is no node in the pool, a new node will be
@@ -112,7 +140,9 @@ public:
         while (true)
         {
             if (!old_head.pointer())
+            {
                 return new value_type();
+            }
 
             node_type* new_head_ptr = old_head->next.pointer();
             node_pointer new_head(new_head_ptr, old_head.next_tag());
@@ -140,7 +170,9 @@ public:
             new_head->next.pointer(old_head.pointer());
 
             if (m_free.compare_exchange_weak(old_head, new_head))
+            {
                 return;
+            }
         }
     }
 
@@ -182,7 +214,11 @@ public:
 private:
     struct node_type : public lock_free_node_pool<node_type>::node_type
     {
-        node_type() : data{}, next(nullptr) {}
+        node_type()
+            : data{},
+              next(nullptr)
+        {
+        }
 
         value_type data;
         std::atomic<typename lock_free_node_pool<node_type>::node_handle> next;
@@ -192,7 +228,10 @@ private:
     using node_handle = typename pool_type::node_handle;
 
 public:
-    lock_free_queue() { m_head = m_tail = m_pool.allocate(); }
+    lock_free_queue()
+    {
+        m_head = m_tail = m_pool.allocate();
+    }
     ~lock_free_queue()
     {
         value_type temp;
@@ -242,16 +281,16 @@ public:
                     {
                         return false;
                     }
-                    else
-                    {
-                        node_handle new_tail(old_head_next.pointer(), old_tail.next_tag());
-                        m_tail.compare_exchange_strong(old_tail, new_tail);
-                    }
+
+                    node_handle new_tail(old_head_next.pointer(), old_tail.next_tag());
+                    m_tail.compare_exchange_strong(old_tail, new_tail);
                 }
                 else
                 {
                     if (old_head_next.pointer() == nullptr)
+                    {
                         continue;
+                    }
 
                     value = old_head_next->data;
 

@@ -1,6 +1,5 @@
+#include "math/vector.hpp"
 #include "test_common.hpp"
-#include <chrono>
-#include <iostream>
 
 namespace violet::test
 {

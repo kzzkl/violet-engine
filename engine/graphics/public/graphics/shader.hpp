@@ -1,9 +1,11 @@
 #pragma once
 
 #include "graphics/render_interface.hpp"
-#include "math/math.hpp"
+#include "math/types.hpp"
 #include <cassert>
-#include <string>
+#include <initializer_list>
+#include <string_view>
+#include <type_traits>
 
 namespace violet
 {
@@ -13,7 +15,7 @@ struct shader_parameter
         : bindings{},
           binding_count(0)
     {
-        assert(list.size() <= rhi_constants::MAX_PARAMETER_BINDING_COUNT);
+        assert(list.size() <= rhi_constants::max_parameter_binding_count);
 
         for (std::size_t i = 0; i < list.size(); ++i)
         {
@@ -27,7 +29,7 @@ struct shader_parameter
         return {bindings, binding_count};
     }
 
-    rhi_parameter_binding bindings[rhi_constants::MAX_PARAMETER_BINDING_COUNT];
+    rhi_parameter_binding bindings[rhi_constants::max_parameter_binding_count];
     std::size_t binding_count;
 };
 
@@ -41,14 +43,16 @@ struct shader
             : parameters{},
               parameter_count(0)
         {
-            assert(list.size() <= rhi_constants::MAX_PARAMETER_COUNT);
+            assert(list.size() <= rhi_constants::max_parameter_count);
 
             for (std::size_t i = 0; i < list.size(); ++i)
+            {
                 parameters[i] = *(list.begin() + i);
+            }
             parameter_count = list.size();
         }
 
-        rhi_shader_desc::parameter_slot parameters[rhi_constants::MAX_PARAMETER_COUNT];
+        rhi_shader_desc::parameter_slot parameters[rhi_constants::max_parameter_count];
         std::size_t parameter_count;
     };
 
@@ -165,14 +169,16 @@ struct shader_vs : public shader
         consteval input_layout(std::initializer_list<rhi_vertex_attribute> list)
             : attributes{}
         {
-            assert(list.size() <= rhi_constants::MAX_VERTEX_ATTRIBUTE_COUNT);
+            assert(list.size() <= rhi_constants::max_vertex_attribute_count);
 
             for (std::size_t i = 0; i < list.size(); ++i)
+            {
                 attributes[i] = *(list.begin() + i);
+            }
             attribute_count = list.size();
         }
 
-        rhi_vertex_attribute attributes[rhi_constants::MAX_VERTEX_ATTRIBUTE_COUNT];
+        rhi_vertex_attribute attributes[rhi_constants::max_vertex_attribute_count];
         std::size_t attribute_count;
     };
 
@@ -194,7 +200,7 @@ struct shader_cs : public shader
 
 struct fullscreen_vs : public shader_vs
 {
-    static constexpr std::string_view path = "assets/shaders/source/fullscreen.hlsl";
+    static constexpr std::string_view path = "assets/shaders/fullscreen.hlsl";
 };
 
 struct mesh_vs : public shader_vs

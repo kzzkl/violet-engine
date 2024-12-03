@@ -1,10 +1,5 @@
 #include "graphics/render_graph/render_graph.hpp"
 #include <cassert>
-#include <iostream>
-#include <queue>
-#include <set>
-#include <stack>
-#include <unordered_map>
 
 namespace violet
 {
@@ -201,7 +196,7 @@ void render_graph::cull()
 
     for (std::size_t i = 0; i < m_passes.size(); ++i)
     {
-        for (auto& reference : m_passes[i]->get_references())
+        for (const auto& reference : m_passes[i]->get_references())
         {
             reference->resource->add_reference(reference.get());
         }
@@ -237,15 +232,15 @@ void render_graph::merge_pass()
 
         render_pass_desc.dependency_count = 2;
 
-        auto& first_pass_attachemets =
+        const auto& first_pass_attachemets =
             static_cast<rdg_render_pass*>(passes.front())->get_attachments();
-        auto& last_pass_attachemets =
+        const auto& last_pass_attachemets =
             static_cast<rdg_render_pass*>(passes.back())->get_attachments();
         for (std::size_t i = 0; i < first_pass_attachemets.size(); ++i)
         {
             rdg_reference* reference = first_pass_attachemets[i];
 
-            rdg_texture* texture = static_cast<rdg_texture*>(reference->resource);
+            auto* texture = static_cast<rdg_texture*>(reference->resource);
 
             rhi_texture_layout initial_layout = RHI_TEXTURE_LAYOUT_UNDEFINED;
             rhi_texture_layout final_layout = RHI_TEXTURE_LAYOUT_UNDEFINED;
@@ -320,8 +315,8 @@ void render_graph::merge_pass()
 
     auto check_merge = [](rdg_pass* a, rdg_pass* b) -> bool
     {
-        auto& a_attachments = static_cast<rdg_render_pass*>(a)->get_attachments();
-        auto& b_attachments = static_cast<rdg_render_pass*>(b)->get_attachments();
+        const auto& a_attachments = static_cast<rdg_render_pass*>(a)->get_attachments();
+        const auto& b_attachments = static_cast<rdg_render_pass*>(b)->get_attachments();
 
         if (a_attachments.size() != b_attachments.size())
         {
@@ -331,11 +326,19 @@ void render_graph::merge_pass()
         for (std::size_t i = 0; i < a_attachments.size(); ++i)
         {
             if (a_attachments[i]->resource != b_attachments[i]->resource)
+            {
                 return false;
+            }
+
             if (a_attachments[i]->attachment.type != b_attachments[i]->attachment.type)
+            {
                 return false;
+            }
+
             if (b_attachments[i]->attachment.load_op == RHI_ATTACHMENT_LOAD_OP_CLEAR)
+            {
                 return false;
+            }
         }
 
         return true;
@@ -379,17 +382,16 @@ void render_graph::build_barriers()
 {
     for (auto& resource : m_resources)
     {
-        auto& references = resource->get_references();
+        const auto& references = resource->get_references();
 
         rdg_reference* prev_reference = nullptr;
-        for (std::size_t i = 0; i < references.size(); ++i)
+        for (auto* curr_reference : references)
         {
-            rdg_reference* curr_reference = references[i];
             auto& batch_barrier = m_batches[curr_reference->pass->get_index()].barrier;
 
             if (resource->get_type() == RDG_RESOURCE_TEXTURE)
             {
-                rdg_texture* texture = static_cast<rdg_texture*>(resource.get());
+                auto* texture = static_cast<rdg_texture*>(resource.get());
 
                 if (curr_reference->type == RDG_REFERENCE_ATTACHMENT)
                 {
@@ -405,9 +407,9 @@ void render_graph::build_barriers()
                         .dst_access = curr_reference->access,
                         .src_layout = texture->get_initial_layout(),
                         .dst_layout = curr_reference->texture.layout,
-                        .level = 0,
+                        .level = texture->get_level(),
                         .level_count = texture->get_level_count(),
-                        .layer = 0,
+                        .layer = texture->get_layer(),
                         .layer_count = texture->get_layer_count(),
                     };
                     batch_barrier.texture_barriers.push_back(barrier);
@@ -422,9 +424,9 @@ void render_graph::build_barriers()
                         .dst_access = curr_reference->access,
                         .src_layout = prev_reference->texture.layout,
                         .dst_layout = curr_reference->texture.layout,
-                        .level = 0,
+                        .level = texture->get_level(),
                         .level_count = texture->get_level_count(),
-                        .layer = 0,
+                        .layer = texture->get_layer(),
                         .layer_count = texture->get_layer_count(),
                     };
                     batch_barrier.texture_barriers.push_back(barrier);
@@ -434,7 +436,7 @@ void render_graph::build_barriers()
             }
             else
             {
-                rdg_buffer* buffer = static_cast<rdg_buffer*>(resource.get());
+                auto* buffer = static_cast<rdg_buffer*>(resource.get());
 
                 if (prev_reference != nullptr)
                 {
@@ -502,9 +504,9 @@ void render_graph::build_barriers()
                     .dst_access = dst_access,
                     .src_layout = src_layout,
                     .dst_layout = dst_layout,
-                    .level = 0,
+                    .level = texture->get_level(),
                     .level_count = texture->get_level_count(),
-                    .layer = 0,
+                    .layer = texture->get_layer(),
                     .layer_count = texture->get_layer_count(),
                 };
                 last_barrier.texture_barriers.push_back(barrier);

@@ -10,8 +10,8 @@ vk_parameter::vk_parameter(const rhi_parameter_desc& desc, vk_context* context)
       m_flags(desc.flags),
       m_context(context)
 {
-    auto layout_manager = m_context->get_layout_manager();
-    auto parameter_manager = m_context->get_parameter_manager();
+    auto* layout_manager = m_context->get_layout_manager();
+    auto* parameter_manager = m_context->get_parameter_manager();
 
     std::size_t copy_count =
         desc.flags & RHI_PARAMETER_SIMPLE ? 1 : m_context->get_frame_resource_count();
@@ -29,10 +29,10 @@ vk_parameter::vk_parameter(const rhi_parameter_desc& desc, vk_context* context)
         copy copy = {};
         copy.descriptor_set = m_context->allocate_descriptor_set(m_layout->get_layout());
 
-        auto& bindings = m_layout->get_bindings();
+        const auto& bindings = m_layout->get_bindings();
         for (std::size_t j = 0; j < bindings.size(); ++j)
         {
-            auto& binding = bindings[j];
+            const auto& binding = bindings[j];
 
             if (binding.type == RHI_PARAMETER_BINDING_CONSTANT)
             {
@@ -94,10 +94,10 @@ void vk_parameter::set_constant(
     std::size_t size,
     std::size_t offset)
 {
-    auto& binding = m_layout->get_bindings()[index];
+    const auto& binding = m_layout->get_bindings()[index];
     assert(binding.type == RHI_PARAMETER_BINDING_CONSTANT);
 
-    auto& constants = get_constans();
+    const auto& constants = get_constans();
 
     void* buffer =
         m_context->get_parameter_manager()->get_constant_pointer(constants[index].offset + offset);
@@ -109,7 +109,7 @@ void vk_parameter::set_constant(
 
 void vk_parameter::set_uniform(std::size_t index, rhi_buffer* uniform, std::size_t offset)
 {
-    auto& binding = m_layout->get_bindings()[index];
+    const auto& binding = m_layout->get_bindings()[index];
     assert(
         binding.type == RHI_PARAMETER_BINDING_UNIFORM ||
         binding.type == RHI_PARAMETER_BINDING_UNIFORM_TEXEL ||
@@ -160,7 +160,7 @@ void vk_parameter::set_uniform(std::size_t index, rhi_buffer* uniform, std::size
 
 void vk_parameter::set_storage(std::size_t index, rhi_buffer* storage, std::size_t offset)
 {
-    auto& binding = m_layout->get_bindings()[index];
+    const auto& binding = m_layout->get_bindings()[index];
     assert(
         binding.type == RHI_PARAMETER_BINDING_STORAGE ||
         binding.type == RHI_PARAMETER_BINDING_STORAGE_TEXEL ||
@@ -211,7 +211,7 @@ void vk_parameter::set_storage(std::size_t index, rhi_buffer* storage, std::size
 
 void vk_parameter::set_texture(std::size_t index, rhi_texture* texture, std::size_t offset)
 {
-    auto& binding = m_layout->get_bindings()[index];
+    const auto& binding = m_layout->get_bindings()[index];
     assert(
         binding.type == RHI_PARAMETER_BINDING_TEXTURE ||
         binding.type == RHI_PARAMETER_BINDING_MUTABLE);
@@ -238,7 +238,7 @@ void vk_parameter::set_texture(std::size_t index, rhi_texture* texture, std::siz
 
 void vk_parameter::set_sampler(std::size_t index, rhi_sampler* sampler, std::size_t offset)
 {
-    auto& binding = m_layout->get_bindings()[index];
+    const auto& binding = m_layout->get_bindings()[index];
     assert(binding.type == RHI_PARAMETER_BINDING_SAMPLER);
 
     VkDescriptorImageInfo info = {
@@ -273,10 +273,10 @@ bool vk_parameter::sync()
 
     std::uint32_t remaining_update_count = 0;
 
-    auto& bindings = m_layout->get_bindings();
+    const auto& bindings = m_layout->get_bindings();
     for (std::size_t i = 0; i < bindings.size(); ++i)
     {
-        auto& binding = bindings[i];
+        const auto& binding = bindings[i];
 
         if (m_update_counts[i] == 0)
         {
@@ -331,10 +331,8 @@ VkDescriptorSet vk_parameter::get_descriptor_set() const noexcept
     {
         return m_copies[0].descriptor_set;
     }
-    else
-    {
-        return m_copies[m_context->get_frame_resource_index()].descriptor_set;
-    }
+
+    return m_copies[m_context->get_frame_resource_index()].descriptor_set;
 }
 
 const std::vector<buffer_allocation>& vk_parameter::get_constans() const noexcept
@@ -343,10 +341,8 @@ const std::vector<buffer_allocation>& vk_parameter::get_constans() const noexcep
     {
         return m_copies[0].constants;
     }
-    else
-    {
-        return m_copies[m_context->get_frame_resource_index()].constants;
-    }
+
+    return m_copies[m_context->get_frame_resource_index()].constants;
 }
 
 void vk_parameter::mark_dirty(std::size_t index)

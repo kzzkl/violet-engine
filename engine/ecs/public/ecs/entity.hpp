@@ -1,9 +1,6 @@
 #pragma once
 
-#include "common/hash.hpp"
 #include <cstdint>
-#include <limits>
-#include <string>
 
 namespace violet
 {
@@ -29,17 +26,9 @@ struct entity
     }
 };
 
-static constexpr entity entity_null = {0, 0, ENTITY_NULL};
-} // namespace violet
-
-namespace std
-{
-template <>
-struct hash<violet::entity>
-{
-    std::size_t operator()(const violet::entity& entity) const noexcept
-    {
-        return violet::hash::city_hash_64(&entity, sizeof(violet::entity));
-    }
+static constexpr entity INVALID_ENTITY = {
+    .id = 0,
+    .version = 0,
+    .type = ENTITY_NULL,
 };
-} // namespace std
+} // namespace violet

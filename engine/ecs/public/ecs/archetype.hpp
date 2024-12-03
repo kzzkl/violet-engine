@@ -1,11 +1,7 @@
 #pragma once
 
 #include "ecs/component.hpp"
-#include "ecs/entity.hpp"
-#include <algorithm>
 #include <cassert>
-#include <span>
-#include <unordered_map>
 #include <vector>
 
 namespace violet

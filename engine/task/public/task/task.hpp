@@ -77,7 +77,9 @@ public:
     void execute()
     {
         if (m_function)
-        m_function();
+        {
+            m_function();
+        }
     }
 
     task_graph* get_graph() const noexcept

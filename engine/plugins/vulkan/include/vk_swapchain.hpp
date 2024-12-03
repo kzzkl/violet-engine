@@ -34,9 +34,19 @@ public:
         return m_extent;
     }
 
+    std::uint32_t get_level() const noexcept override
+    {
+        return 0;
+    }
+
     std::uint32_t get_level_count() const noexcept override
     {
         return 1;
+    }
+
+    std::uint32_t get_layer() const noexcept override
+    {
+        return 0;
     }
 
     std::uint32_t get_layer_count() const noexcept override

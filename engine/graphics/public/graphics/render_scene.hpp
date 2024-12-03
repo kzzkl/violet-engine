@@ -3,6 +3,7 @@
 #include "common/allocator.hpp"
 #include "graphics/geometry.hpp"
 #include "graphics/material.hpp"
+#include "math/box.hpp"
 
 namespace violet
 {
@@ -99,9 +100,9 @@ public:
         return m_instance_index_map.size();
     }
 
-    constexpr std::size_t get_group_count() const noexcept
+    static constexpr std::size_t get_group_count() noexcept
     {
-        return 4 * 1024;
+        return 4ull * 1024;
     }
 
     std::size_t get_mesh_capacity() const noexcept
@@ -114,12 +115,12 @@ public:
         return m_instance_buffer->get_buffer_size() / sizeof(shader::instance_data);
     }
 
-    constexpr std::size_t get_group_capacity() const noexcept
+    static constexpr std::size_t get_group_capacity() noexcept
     {
-        return 4 * 1024;
+        return 4ull * 1024;
     }
 
-    rhi_parameter* get_bindless_parameter() const noexcept
+    static rhi_parameter* get_bindless_parameter() noexcept
     {
         return render_device::instance().get_bindless_parameter();
     }

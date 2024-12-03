@@ -1,7 +1,8 @@
 #pragma once
 
-#include "math/common.hpp"
 #include "math/simd.hpp"
+#include <cstddef>
+#include <initializer_list>
 
 namespace violet
 {

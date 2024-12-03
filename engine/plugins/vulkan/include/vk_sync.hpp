@@ -1,9 +1,11 @@
 #pragma once
 
-#include "vk_context.hpp"
+#include "vk_common.hpp"
 
 namespace violet::vk
 {
+class vk_context;
+
 class vk_fence : public rhi_fence
 {
 public:

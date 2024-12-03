@@ -37,7 +37,7 @@ public:
         return m_executor;
     }
 
-    void tick(const engine_stats& stats);
+    void tick();
 
     engine_context& operator=(const engine_context&) = delete;
 

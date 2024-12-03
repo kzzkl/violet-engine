@@ -1,6 +1,5 @@
 #include "graphics/render_scene.hpp"
 #include "graphics/gpu_buffer_uploader.hpp"
-#include <ranges>
 
 namespace violet
 {
@@ -21,7 +20,7 @@ render_scene::render_scene()
     });
 
     m_group_buffer = device.create_buffer({
-        .size = 4 * 1024 * sizeof(std::uint32_t),
+        .size = sizeof(std::uint32_t) * 4 * 1024,
         .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST,
     });
 
@@ -311,7 +310,7 @@ void render_scene::add_instance_to_group(
         auto& group = m_groups[group_id];
 
         auto& device = render_device::instance();
-        for (auto& vertex_attribute :
+        for (const auto& vertex_attribute :
              device.get_vertex_attributes(material->get_pipeline().vertex_shader))
         {
             group.vertex_buffers.push_back(geometry->get_vertex_buffer(vertex_attribute));

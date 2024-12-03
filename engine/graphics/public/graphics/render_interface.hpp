@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core/plugin_interface.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -9,11 +8,11 @@ namespace violet
 {
 struct rhi_constants
 {
-    static constexpr std::size_t MAX_ATTACHMENT_COUNT = 8;
-    static constexpr std::size_t MAX_SUBPASS_COUNT = 4;
-    static constexpr std::size_t MAX_PARAMETER_BINDING_COUNT = 8;
-    static constexpr std::size_t MAX_PARAMETER_COUNT = 16;
-    static constexpr std::size_t MAX_VERTEX_ATTRIBUTE_COUNT = 8;
+    static constexpr std::size_t max_attachment_count = 8;
+    static constexpr std::size_t max_subpass_count = 4;
+    static constexpr std::size_t max_parameter_binding_count = 8;
+    static constexpr std::size_t max_parameter_count = 16;
+    static constexpr std::size_t max_vertex_attribute_count = 8;
 };
 
 using rhi_resource_handle = std::uint32_t;
@@ -69,9 +68,10 @@ enum rhi_format
     RHI_FORMAT_R32G32B32A32_UINT,
     RHI_FORMAT_R32G32B32A32_SINT,
     RHI_FORMAT_R32G32B32A32_FLOAT,
+    RHI_FORMAT_R11G11B10_FLOAT,
     RHI_FORMAT_D24_UNORM_S8_UINT,
     RHI_FORMAT_D32_FLOAT,
-    RHI_FORMAT_D32_FLOAT_S8_UINT
+    RHI_FORMAT_D32_FLOAT_S8_UINT,
 };
 
 enum rhi_texture_layout
@@ -140,7 +140,9 @@ public:
     virtual rhi_sample_count get_samples() const noexcept = 0;
     virtual rhi_texture_extent get_extent() const noexcept = 0;
 
+    virtual std::uint32_t get_level() const noexcept = 0;
     virtual std::uint32_t get_level_count() const noexcept = 0;
+    virtual std::uint32_t get_layer() const noexcept = 0;
     virtual std::uint32_t get_layer_count() const noexcept = 0;
 };
 
@@ -279,7 +281,7 @@ struct rhi_attachment_reference
 
 struct rhi_render_subpass_desc
 {
-    rhi_attachment_reference references[rhi_constants::MAX_ATTACHMENT_COUNT];
+    rhi_attachment_reference references[rhi_constants::max_attachment_count];
     std::size_t reference_count;
 };
 
@@ -330,13 +332,13 @@ struct rhi_render_subpass_dependency_desc
 
 struct rhi_render_pass_desc
 {
-    rhi_attachment_desc attachments[rhi_constants::MAX_ATTACHMENT_COUNT];
+    rhi_attachment_desc attachments[rhi_constants::max_attachment_count];
     std::size_t attachment_count;
 
-    rhi_render_subpass_desc subpasses[rhi_constants::MAX_SUBPASS_COUNT];
+    rhi_render_subpass_desc subpasses[rhi_constants::max_subpass_count];
     std::size_t subpass_count;
 
-    rhi_render_subpass_dependency_desc dependencies[rhi_constants::MAX_SUBPASS_COUNT];
+    rhi_render_subpass_dependency_desc dependencies[rhi_constants::max_subpass_count];
     std::size_t dependency_count;
 };
 
@@ -481,7 +483,7 @@ struct rhi_attachment_blend
 
 struct rhi_blend_state
 {
-    rhi_attachment_blend attachments[rhi_constants::MAX_ATTACHMENT_COUNT];
+    rhi_attachment_blend attachments[rhi_constants::max_attachment_count];
 };
 
 enum rhi_compare_op
@@ -577,7 +579,7 @@ public:
 struct rhi_framebuffer_desc
 {
     rhi_render_pass* render_pass;
-    rhi_texture* attachments[rhi_constants::MAX_ATTACHMENT_COUNT];
+    rhi_texture* attachments[rhi_constants::max_attachment_count];
 };
 
 class rhi_framebuffer
@@ -696,9 +698,9 @@ public:
     virtual void set_pipeline_barrier(
         rhi_pipeline_stage_flags src_stages,
         rhi_pipeline_stage_flags dst_stages,
-        const rhi_buffer_barrier* const buffer_barriers,
+        const rhi_buffer_barrier* buffer_barriers,
         std::size_t buffer_barrier_count,
-        const rhi_texture_barrier* const texture_barriers,
+        const rhi_texture_barrier* texture_barriers,
         std::size_t texture_barrier_count) = 0;
 
     virtual void copy_texture(
@@ -802,11 +804,9 @@ public:
 
     virtual rhi_backend get_backend() const noexcept = 0;
 
-public:
     virtual void set_name(rhi_texture* object, const char* name) const = 0;
     virtual void set_name(rhi_buffer* object, const char* name) const = 0;
 
-public:
     virtual rhi_render_pass* create_render_pass(const rhi_render_pass_desc& desc) = 0;
     virtual void destroy_render_pass(rhi_render_pass* render_pass) = 0;
 

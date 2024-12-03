@@ -12,10 +12,12 @@ vk_framebuffer::vk_framebuffer(const rhi_framebuffer_desc& desc, vk_context* con
     std::vector<VkImageView> image_views;
 
     std::uint32_t attachment_count = 0;
-    for (auto attachment : std::span(desc.attachments))
+    for (auto* attachment : std::span(desc.attachments))
     {
         if (attachment == nullptr)
+        {
             break;
+        }
 
         const vk_texture* image = static_cast<const vk_texture*>(attachment);
         image_views.push_back(image->get_image_view());
@@ -42,6 +44,8 @@ vk_framebuffer::vk_framebuffer(const rhi_framebuffer_desc& desc, vk_context* con
 vk_framebuffer::~vk_framebuffer()
 {
     if (m_framebuffer)
+    {
         vkDestroyFramebuffer(m_context->get_device(), m_framebuffer, nullptr);
+    }
 }
 } // namespace violet::vk

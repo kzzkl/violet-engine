@@ -2,21 +2,19 @@
 
 namespace violet
 {
-geometry::geometry()
-{
-}
+geometry::geometry() {}
 
-geometry::~geometry()
-{
-}
+geometry::~geometry() {}
 
 rhi_buffer* geometry::get_vertex_buffer(std::string_view name)
 {
     auto iter = m_vertex_buffers.find(name.data());
     if (iter != m_vertex_buffers.end())
+    {
         return iter->second.get();
-    else
-        return nullptr;
+    }
+
+    return nullptr;
 }
 
 void geometry::add_attribute(
@@ -25,8 +23,7 @@ void geometry::add_attribute(
     std::size_t size,
     rhi_buffer_flags flags)
 {
-    if (m_vertex_buffers.find(name.data()) != m_vertex_buffers.end())
-        return;
+    assert(m_vertex_buffers.find(name.data()) == m_vertex_buffers.end());
 
     rhi_buffer_desc desc = {};
     desc.data = data;
@@ -41,8 +38,7 @@ void geometry::set_indexes(
     std::size_t index_size,
     rhi_buffer_flags flags)
 {
-    if (m_index_buffer != nullptr)
-        return;
+    assert(m_index_buffer == nullptr);
 
     rhi_buffer_desc desc = {};
     desc.data = data;

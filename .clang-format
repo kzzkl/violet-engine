@@ -20,7 +20,6 @@ AlwaysBreakBeforeMultilineStrings: false
 AlwaysBreakTemplateDeclarations: Yes
 BinPackArguments: false
 BinPackParameters: false
-BreakAfterReturnType: Automatic
 PenaltyReturnTypeOnItsOwnLine: 1000
 BreakBeforeBraces: Custom
 BraceWrapping:

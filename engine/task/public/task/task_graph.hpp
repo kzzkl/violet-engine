@@ -53,7 +53,7 @@ public:
 
     task& get_task(std::string_view name) const
     {
-        for (auto& t : m_tasks)
+        for (const auto& t : m_tasks)
         {
             if (t->get_name() == name)
             {
@@ -66,7 +66,7 @@ public:
 
     task_group& get_group(std::string_view name) const
     {
-        for (auto& t : m_groups)
+        for (const auto& t : m_groups)
         {
             if (t->get_name() == name)
             {

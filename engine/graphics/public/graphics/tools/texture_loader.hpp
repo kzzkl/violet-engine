@@ -27,7 +27,6 @@ public:
         rhi_format format;
     };
 
-public:
     static rhi_ptr<rhi_texture> load(
         std::string_view path,
         texture_load_option options = TEXTURE_LOAD_OPTION_NONE);

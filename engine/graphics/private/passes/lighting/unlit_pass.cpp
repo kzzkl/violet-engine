@@ -4,7 +4,7 @@ namespace violet
 {
 struct unlit_fs : public shader_fs
 {
-    static constexpr std::string_view path = "assets/shaders/source/lighting/unlit.hlsl";
+    static constexpr std::string_view path = "assets/shaders/lighting/unlit.hlsl";
 
     struct gbuffer_data
     {

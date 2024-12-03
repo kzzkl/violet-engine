@@ -2,7 +2,6 @@
 
 #include "common/dictionary.hpp"
 #include "common/type_index.hpp"
-#include "core/engine_stats.hpp"
 #include "core/timer.hpp"
 #include "ecs/world.hpp"
 #include "task/task_executor.hpp"

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "common/allocator.hpp"
 #include "graphics/render_device.hpp"
 #include "graphics/render_graph/rdg_pipeline.hpp"
 
@@ -28,7 +27,6 @@ public:
         rhi_ptr<rhi_parameter> parameter;
     };
 
-public:
     material(material_type type, std::size_t constant_size = 0) noexcept;
     material(const material& other) = delete;
 
@@ -97,7 +95,6 @@ class mesh_material : public material
 public:
     using constant_type = T;
 
-public:
     mesh_material(material_type type)
         : material(type, sizeof(constant_type))
     {

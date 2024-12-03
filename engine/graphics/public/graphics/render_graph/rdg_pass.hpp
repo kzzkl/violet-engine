@@ -1,11 +1,9 @@
 #pragma once
 
-#include "graphics/render_device.hpp"
 #include "graphics/render_graph/rdg_command.hpp"
 #include "graphics/render_graph/rdg_resource.hpp"
 #include <functional>
 #include <memory>
-#include <string>
 #include <vector>
 
 namespace violet
@@ -67,7 +65,7 @@ private:
 class rdg_render_pass : public rdg_pass
 {
 public:
-    rdg_render_pass();
+    rdg_render_pass() = default;
 
     void add_render_target(
         rdg_texture* texture,

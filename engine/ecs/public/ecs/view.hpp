@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ecs/archetype.hpp"
+#include "ecs/entity.hpp"
 
 namespace violet
 {
@@ -100,7 +101,7 @@ public:
 
     template <typename T>
     auto write()
-        requires !std::is_same_v<T, entity>
+        requires(!std::is_same_v<T, entity>)
     {
         using new_parameter_list = typename parameter_list::template append<T>;
         using new_include_list = typename include_list::template append<T>;

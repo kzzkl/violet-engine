@@ -2,7 +2,6 @@
 
 #include "graphics/render_graph/rdg_node.hpp"
 #include "graphics/render_interface.hpp"
-#include <string>
 #include <vector>
 
 namespace violet
@@ -75,7 +74,7 @@ enum rdg_resource_type
 class rdg_resource : public rdg_node
 {
 public:
-    rdg_resource();
+    rdg_resource() = default;
     virtual ~rdg_resource();
 
     virtual rdg_resource_type get_type() const noexcept = 0;
@@ -129,9 +128,19 @@ public:
         return m_texture->get_samples();
     }
 
+    virtual std::uint32_t get_level() const noexcept
+    {
+        return m_texture->get_level();
+    }
+
     virtual std::uint32_t get_level_count() const noexcept
     {
         return m_texture->get_level_count();
+    }
+
+    virtual std::uint32_t get_layer() const noexcept
+    {
+        return m_texture->get_layer();
     }
 
     virtual std::uint32_t get_layer_count() const noexcept
@@ -174,7 +183,7 @@ public:
         rhi_texture_layout initial_layout,
         rhi_texture_layout final_layout);
 
-    virtual bool is_external() const noexcept
+    bool is_external() const noexcept override
     {
         return false;
     }

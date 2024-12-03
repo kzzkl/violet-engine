@@ -1,6 +1,7 @@
 #include "scene/transform_system.hpp"
 #include "components/hierarchy_component.hpp"
 #include "components/transform_component.hpp"
+#include "math/matrix.hpp"
 
 namespace violet
 {
@@ -50,7 +51,7 @@ void transform_system::update_local()
         },
         [this](auto& view)
         {
-            return view.is_updated<transform_component>(m_system_version);
+            return view.template is_updated<transform_component>(m_system_version);
         });
 }
 
@@ -69,7 +70,7 @@ void transform_system::update_world()
             },
             [this](auto& view)
             {
-                return view.is_updated<transform_local_component>(m_system_version);
+                return view.template is_updated<transform_local_component>(m_system_version);
             });
 
     std::vector<entity> root_entities;
@@ -93,7 +94,7 @@ void transform_system::update_world()
         if (world.has_component<child_component>(root))
         {
             mat4f root_matrix = world.get_component<const transform_world_component>(root).matrix;
-            for (auto& child : world.get_component<const child_component>(root).children)
+            for (const auto& child : world.get_component<const child_component>(root).children)
             {
                 update_world_recursive(child, root_matrix, false);
             }
@@ -119,7 +120,7 @@ void transform_system::update_world_recursive(entity e, const mat4f& parent_worl
 
         if (world.has_component<child_component>(e))
         {
-            for (auto& child : world.get_component<const child_component>(e).children)
+            for (const auto& child : world.get_component<const child_component>(e).children)
             {
                 update_world_recursive(child, world_transform.matrix, need_update);
             }
@@ -129,8 +130,8 @@ void transform_system::update_world_recursive(entity e, const mat4f& parent_worl
     {
         if (world.has_component<child_component>(e))
         {
-            auto& world_transform = world.get_component<const transform_world_component>(e);
-            for (auto& child : world.get_component<const child_component>(e).children)
+            const auto& world_transform = world.get_component<const transform_world_component>(e);
+            for (const auto& child : world.get_component<const child_component>(e).children)
             {
                 update_world_recursive(child, world_transform.matrix, need_update);
             }

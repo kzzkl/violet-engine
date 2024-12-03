@@ -15,7 +15,7 @@ void world_command::reset()
     {
         if (command.component_data != nullptr)
         {
-            auto builder = m_world->get_component_builder(command.component);
+            component_builder* builder = m_world->get_component_builder(command.component);
             builder->destruct(command.component_data);
         }
     }
@@ -25,19 +25,9 @@ void world_command::reset()
     m_chunk_offset = 0;
 }
 
-/*void* world_command::copy_component(component_id component, const void* component_data)
-{
-    auto builder = m_world->get_component_builder(component);
-
-    void* pointer = allocate(builder->get_size(), builder->get_align());
-    builder->copy_construct(component_data, pointer);
-
-    return pointer;
-}*/
-
 void* world_command::move_component(component_id component, void* component_data)
 {
-    auto builder = m_world->get_component_builder(component);
+    component_builder* builder = m_world->get_component_builder(component);
 
     void* pointer = allocate(builder->get_size(), builder->get_align());
     builder->move_construct(component_data, pointer);
@@ -58,13 +48,10 @@ void* world_command::allocate(std::size_t size, std::size_t align)
     if (offset + size > data_chunk::size)
     {
         m_chunks.emplace_back(std::make_unique<data_chunk>());
-        m_chunk_offset = size;
-        return m_chunks.back()->get_data(0);
+        offset = 0;
     }
-    else
-    {
-        m_chunk_offset = offset + size;
-        return m_chunks.back()->get_data(offset);
-    }
+
+    m_chunk_offset = offset + size;
+    return m_chunks.back()->get_data(offset);
 }
 } // namespace violet

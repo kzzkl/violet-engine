@@ -1,6 +1,6 @@
 #include "window_impl_win32.hpp"
-#include "common/log.hpp"
 #include <cassert>
+#include <string>
 
 namespace violet
 {
@@ -270,9 +270,7 @@ window_impl_win32::window_impl_win32() noexcept
 {
 }
 
-window_impl_win32::~window_impl_win32()
-{
-}
+window_impl_win32::~window_impl_win32() {}
 
 bool window_impl_win32::initialize(
     std::uint32_t width,
@@ -281,48 +279,53 @@ bool window_impl_win32::initialize(
 {
     m_instance = GetModuleHandle(0);
 
-    WNDCLASSEX wndClassEx;
-    memset(&wndClassEx, 0, sizeof(wndClassEx));
-    wndClassEx.cbSize = sizeof(WNDCLASSEX);
-    wndClassEx.hbrBackground = (HBRUSH)GetStockObject(NULL_BRUSH);
-    wndClassEx.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wndClassEx.hIcon = LoadIcon(m_instance, IDI_APPLICATION);
-    wndClassEx.hInstance = m_instance;
-    wndClassEx.lpfnWndProc = wnd_create_proc;
-    wndClassEx.lpszClassName = m_class_name;
-    wndClassEx.lpszMenuName = NULL;
-    wndClassEx.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-    RegisterClassEx(&wndClassEx);
+    WNDCLASSEX wnd_class_ex;
+    memset(&wnd_class_ex, 0, sizeof(wnd_class_ex));
+    wnd_class_ex.cbSize = sizeof(WNDCLASSEX);
+    wnd_class_ex.hbrBackground = (HBRUSH)GetStockObject(NULL_BRUSH);
+    wnd_class_ex.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wnd_class_ex.hIcon = LoadIcon(m_instance, IDI_APPLICATION);
+    wnd_class_ex.hInstance = m_instance;
+    wnd_class_ex.lpfnWndProc = wnd_create_proc;
+    wnd_class_ex.lpszClassName = m_class_name;
+    wnd_class_ex.lpszMenuName = NULL;
+    wnd_class_ex.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+    RegisterClassEx(&wnd_class_ex);
 
     SetProcessDPIAware();
 
-    RECT windowRect = {0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
-    AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, false);
+    RECT window_rect = {
+        .left = 0,
+        .top = 0,
+        .right = static_cast<LONG>(width),
+        .bottom = static_cast<LONG>(height),
+    };
+    AdjustWindowRect(&window_rect, WS_OVERLAPPEDWINDOW, false);
 
     assert(title.size() < 128);
     std::wstring wtitle = string_to_wstring(title);
 
     m_hwnd = CreateWindow(
-        wndClassEx.lpszClassName,
+        wnd_class_ex.lpszClassName,
         wtitle.c_str(),
         WS_OVERLAPPEDWINDOW,
         0,
         0,
-        windowRect.right - windowRect.left,
-        windowRect.bottom - windowRect.top,
+        window_rect.right - window_rect.left,
+        window_rect.bottom - window_rect.top,
         nullptr,
         nullptr,
         m_instance,
         this);
 
     // Center window.
-    int system_dpi = GetDpiForSystem();
-    int window_dpi = GetDpiForWindow(m_hwnd);
+    int system_dpi = static_cast<int>(GetDpiForSystem());
+    int window_dpi = static_cast<int>(GetDpiForWindow(m_hwnd));
     int pos_x = (GetSystemMetrics(SM_CXSCREEN) -
-                 (windowRect.right - windowRect.left) * window_dpi / system_dpi) /
+                 (window_rect.right - window_rect.left) * window_dpi / system_dpi) /
                 2;
     int pos_y = (GetSystemMetrics(SM_CYSCREEN) -
-                 (windowRect.bottom - windowRect.top) * window_dpi / system_dpi) /
+                 (window_rect.bottom - window_rect.top) * window_dpi / system_dpi) /
                 2;
     SetWindowPos(m_hwnd, 0, pos_x, pos_y, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
 
@@ -342,7 +345,9 @@ bool window_impl_win32::initialize(
 void window_impl_win32::shutdown()
 {
     if (!m_window_destroy)
+    {
         PostMessage(m_hwnd, WM_CLOSE, 0, 0);
+    }
 }
 
 void window_impl_win32::tick()
@@ -455,9 +460,8 @@ window_impl_win32::wnd_create_proc(HWND hwnd, UINT message, WPARAM wparam, LPARA
 {
     if (message == WM_NCCREATE)
     {
-        CREATESTRUCT* create_struct = reinterpret_cast<CREATESTRUCT*>(lparam);
-        window_impl_win32* impl =
-            reinterpret_cast<window_impl_win32*>(create_struct->lpCreateParams);
+        auto* create_struct = reinterpret_cast<CREATESTRUCT*>(lparam);
+        auto* impl = reinterpret_cast<window_impl_win32*>(create_struct->lpCreateParams);
         SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(impl));
         SetWindowLongPtr(
             hwnd,
@@ -465,16 +469,13 @@ window_impl_win32::wnd_create_proc(HWND hwnd, UINT message, WPARAM wparam, LPARA
             reinterpret_cast<LONG_PTR>(&window_impl_win32::wnd_proc));
         return impl->handle_message(hwnd, message, wparam, lparam);
     }
-    else
-    {
-        return DefWindowProc(hwnd, message, wparam, lparam);
-    }
+
+    return DefWindowProc(hwnd, message, wparam, lparam);
 }
 
 LRESULT CALLBACK window_impl_win32::wnd_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
-    window_impl_win32* const impl =
-        reinterpret_cast<window_impl_win32*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    auto* impl = reinterpret_cast<window_impl_win32*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
     return impl->handle_message(hwnd, message, wparam, lparam);
 }
 
@@ -484,7 +485,9 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
     {
     case WM_MOUSEMOVE: {
         if (m_mouse_mode == MOUSE_MODE_ABSOLUTE)
+        {
             on_mouse_move(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
+        }
         break;
     }
     case WM_SETCURSOR: {
@@ -536,13 +539,17 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
     case WM_KEYDOWN: {
         keyboard_key key = convert_key(wparam);
         if (key != KEYBOARD_KEY_COUNT)
+        {
             on_keyboard_key(key, true);
+        }
         break;
     }
     case WM_KEYUP: {
         keyboard_key key = convert_key(wparam);
         if (key != KEYBOARD_KEY_COUNT)
+        {
             on_keyboard_key(key, false);
+        }
         break;
     }
     case WM_CHAR: {
@@ -619,7 +626,9 @@ void window_impl_win32::on_window_move(int x, int y)
 void window_impl_win32::on_window_resize(std::uint32_t width, std::uint32_t height)
 {
     if (width == 0 || height == 0)
+    {
         return;
+    }
 
     m_window_width = width;
     m_window_height = height;

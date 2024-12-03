@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math/math.hpp"
+#include "math/quaternion.hpp"
 
 namespace violet
 {

@@ -11,7 +11,7 @@ struct mesh_meta_component
     mesh_meta_component() = default;
 
     mesh_meta_component(const mesh_meta_component&) = delete;
-    mesh_meta_component(mesh_meta_component&& other)
+    mesh_meta_component(mesh_meta_component&& other) noexcept
         : scene(other.scene),
           mesh(other.mesh)
     {
@@ -35,7 +35,7 @@ struct mesh_meta_component
     }
 
     mesh_meta_component& operator=(const mesh_meta_component&) = delete;
-    mesh_meta_component& operator=(mesh_meta_component&& other)
+    mesh_meta_component& operator=(mesh_meta_component&& other) noexcept
     {
         scene = other.scene;
         mesh = other.mesh;

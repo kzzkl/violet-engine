@@ -7,8 +7,8 @@
 #include "components/scene_component.hpp"
 #include "components/skybox_component.hpp"
 #include "components/transform_component.hpp"
-#include "graphics/geometry_manager.hpp"
 #include "graphics/material_manager.hpp"
+#include "math/matrix.hpp"
 #include "rhi_plugin.hpp"
 
 namespace violet
@@ -67,6 +67,7 @@ bool graphics_system::initialize(const dictionary& config)
             [this]()
             {
                 update_mesh();
+                update_environment();
             });
 
     task& update_camera_task = task_graph.add_task();
@@ -159,8 +160,8 @@ void graphics_system::udpate_camera()
             },
             [this](auto& view)
             {
-                return view.is_updated<camera_component>(m_system_version) ||
-                       view.is_updated<transform_world_component>(m_system_version);
+                return view.template is_updated<camera_component>(m_system_version) ||
+                       view.template is_updated<transform_world_component>(m_system_version);
             });
 }
 
@@ -203,7 +204,7 @@ void graphics_system::update_mesh()
                     .geometry = mesh.geometry,
                 });
 
-                for (auto& submesh : mesh.submeshes)
+                for (const auto& submesh : mesh.submeshes)
                 {
                     render_id instance = render_scene->add_instance(
                         mesh_meta.mesh,
@@ -220,7 +221,7 @@ void graphics_system::update_mesh()
             },
             [this](auto& view)
             {
-                return view.is_updated<scene_component>(m_system_version);
+                return view.template is_updated<scene_component>(m_system_version);
             });
 
     world.get_view().read<mesh_component>().write<mesh_meta_component>().each(
@@ -267,7 +268,7 @@ void graphics_system::update_mesh()
         },
         [this](auto& view)
         {
-            return view.is_updated<mesh_component>(m_system_version);
+            return view.template is_updated<mesh_component>(m_system_version);
         });
 
     world.get_view().read<transform_world_component>().write<mesh_meta_component>().each(
@@ -280,7 +281,7 @@ void graphics_system::update_mesh()
         },
         [this](auto& view)
         {
-            return view.is_updated<transform_world_component>(m_system_version);
+            return view.template is_updated<transform_world_component>(m_system_version);
         });
 }
 
@@ -292,17 +293,11 @@ void graphics_system::update_environment()
         [this](const skybox_component& skybox, const scene_component& scene)
         {
             render_scene* render_scene = get_scene(scene.layer);
-            // render_scene->set_skybox(
-            //     skybox.texture,
-            //     m_skybox_sampler.get(),
-            //     skybox.irradiance,
-            //     m_skybox_sampler.get(),
-            //     skybox.prefilter,
-            //     m_prefilter_sampler.get());
+            render_scene->set_skybox(skybox.texture, skybox.irradiance, skybox.prefilter);
         },
         [this](auto& view)
         {
-            return view.is_updated<skybox_component>(m_system_version);
+            return view.template is_updated<skybox_component>(m_system_version);
         });
 }
 
@@ -410,7 +405,7 @@ rhi_fence* graphics_system::render(
 
     command->wait(m_update_fence.get(), m_update_fence_value);
 
-    for (auto& render_target : camera->render_targets)
+    for (const auto& render_target : camera->render_targets)
     {
         bool skip = false;
 

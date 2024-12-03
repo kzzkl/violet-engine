@@ -15,7 +15,6 @@ public:
         rhi_texture_region dst_region;
     };
 
-public:
     static void add(render_graph& graph, const parameter& parameter);
 };
 } // namespace violet

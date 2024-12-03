@@ -1,7 +1,6 @@
 #pragma once
 
 #include "vk_common.hpp"
-#include <vector>
 
 namespace violet::vk
 {
@@ -54,9 +53,19 @@ public:
         return m_extent;
     }
 
+    std::uint32_t get_level() const noexcept override
+    {
+        return 0;
+    }
+
     std::uint32_t get_level_count() const noexcept override
     {
         return m_level_count;
+    }
+
+    std::uint32_t get_layer() const noexcept override
+    {
+        return 0;
     }
 
     std::uint32_t get_layer_count() const noexcept override
@@ -157,9 +166,19 @@ public:
         return {width, height};
     }
 
+    std::uint32_t get_level() const noexcept override
+    {
+        return m_level;
+    }
+
     std::uint32_t get_level_count() const noexcept override
     {
         return m_level_count;
+    }
+
+    std::uint32_t get_layer() const noexcept override
+    {
+        return m_layer;
     }
 
     std::uint32_t get_layer_count() const noexcept override

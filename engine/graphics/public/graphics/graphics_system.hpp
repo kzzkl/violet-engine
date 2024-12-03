@@ -1,7 +1,8 @@
 #pragma once
 
 #include "core/engine_system.hpp"
-#include "graphics/render_graph/render_graph.hpp"
+#include "graphics/render_scene.hpp"
+#include "render_graph/rdg_allocator.hpp"
 
 namespace violet
 {

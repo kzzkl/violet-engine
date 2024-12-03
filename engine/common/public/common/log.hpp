@@ -1,9 +1,7 @@
 #pragma once
 
-#include "spdlog/fmt/ostr.h"
 #include "spdlog/logger.h"
 #include <memory>
-#include <string_view>
 
 namespace violet
 {

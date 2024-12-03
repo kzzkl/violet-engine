@@ -4,14 +4,14 @@ namespace violet
 {
 struct skybox_vs : public shader_vs
 {
-    static constexpr std::string_view path = "assets/shaders/source/skybox.hlsl";
+    static constexpr std::string_view path = "assets/shaders/skybox.hlsl";
 
     static constexpr parameter_layout parameters = {{0, shader::camera}};
 };
 
 struct skybox_fs : public shader_fs
 {
-    static constexpr std::string_view path = "assets/shaders/source/skybox.hlsl";
+    static constexpr std::string_view path = "assets/shaders/skybox.hlsl";
 
     static constexpr parameter_layout parameters = {{0, shader::camera}};
 };

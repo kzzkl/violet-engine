@@ -2,7 +2,6 @@
 
 #include "offsetAllocator.hpp"
 #include <cassert>
-#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -45,7 +44,6 @@ class index_allocator
 public:
     using index_type = T;
 
-public:
     index_allocator(index_type max_count = 0xffffffff)
         : m_max_count(max_count)
     {
@@ -59,14 +57,8 @@ public:
             m_free.pop_back();
             return index;
         }
-        else if (m_index_count < m_max_count)
-        {
-            return m_index_count++;
-        }
-        else
-        {
-            return 0xffffffff;
-        }
+
+        return m_index_count < m_max_count ? m_index_count++ : 0xffffffff;
     }
 
     void free(index_type index)

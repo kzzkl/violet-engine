@@ -1,6 +1,5 @@
 #include "core/engine.hpp"
 #include "common/log.hpp"
-#include "core/engine_stats.hpp"
 #include "engine_context.hpp"
 #include <filesystem>
 #include <fstream>
@@ -48,37 +47,45 @@ void engine::initialize(std::string_view config_path)
 {
     auto& config = instance().m_config;
 
-    for (auto iter : std::filesystem::directory_iterator("assets/config"))
+    for (const auto& iter : std::filesystem::directory_iterator("assets/config"))
     {
         if (iter.is_regular_file() && iter.path().extension() == ".json")
         {
             std::ifstream fin(iter.path());
             if (!fin.is_open())
+            {
                 continue;
+            }
 
             dictionary json;
             fin >> json;
 
-            for (auto& [key, value] : json.items())
+            for (const auto& [key, value] : json.items())
+            {
                 config[key].update(value, true);
+            }
         }
     }
 
     if (config_path != "")
     {
-        for (auto iter : std::filesystem::directory_iterator(config_path))
+        for (const auto& iter : std::filesystem::directory_iterator(config_path))
         {
             if (iter.is_regular_file() && iter.path().extension() == ".json")
             {
                 std::ifstream fin(iter.path());
                 if (!fin.is_open())
+                {
                     continue;
+                }
 
                 dictionary json;
                 fin >> json;
 
-                for (auto& [key, value] : json.items())
+                for (const auto& [key, value] : json.items())
+                {
                     config[key].update(value, true);
+                }
             }
         }
     }
@@ -106,17 +113,12 @@ void engine::run()
 
     executor.run();
 
-    engine_stats stats = {};
-
     while (!engine.m_exit)
     {
         time.tick(timer::point::FRAME_START);
 
-        stats.delta = time.get_frame_delta();
-        engine.m_context->tick(stats);
+        engine.m_context->tick();
         time.tick(timer::point::FRAME_END);
-
-        ++stats.loop_count;
 
         // frame_rater.sleep();
     }

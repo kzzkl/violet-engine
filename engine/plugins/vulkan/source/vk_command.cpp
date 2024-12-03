@@ -122,7 +122,7 @@ void vk_command::set_vertex_buffers(
     std::vector<VkDeviceSize> offsets(vertex_buffer_count);
     for (std::size_t i = 0; i < vertex_buffer_count; ++i)
     {
-        buffers[i] = static_cast<vk_buffer*>(vertex_buffers[i])->get_buffer();
+        buffers[i] = vertex_buffers[i] ? static_cast<vk_buffer*>(vertex_buffers[i])->get_buffer() : VK_NULL_HANDLE;
         offsets[i] = 0;
     }
     vkCmdBindVertexBuffers(

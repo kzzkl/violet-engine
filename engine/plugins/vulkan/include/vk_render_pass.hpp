@@ -13,7 +13,6 @@ public:
         std::size_t render_target_count;
     };
 
-public:
     vk_render_pass(const rhi_render_pass_desc& desc, vk_context* context);
     vk_render_pass(const vk_render_pass&) = delete;
     virtual ~vk_render_pass();

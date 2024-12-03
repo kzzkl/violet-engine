@@ -1,5 +1,4 @@
 #include "graphics/render_graph/rdg_pass.hpp"
-#include <algorithm>
 #include <cassert>
 
 namespace violet
@@ -37,10 +36,12 @@ rdg_reference* rdg_pass::add_buffer(
 std::vector<rdg_reference*> rdg_pass::get_references(rhi_access_flags access) const
 {
     std::vector<rdg_reference*> result;
-    for (auto& reference : m_references)
+    for (const auto& reference : m_references)
     {
         if (reference->access & access)
+        {
             result.push_back(reference.get());
+        }
     }
 
     return result;
@@ -49,10 +50,12 @@ std::vector<rdg_reference*> rdg_pass::get_references(rhi_access_flags access) co
 std::vector<rdg_reference*> rdg_pass::get_references(rdg_reference_type type) const
 {
     std::vector<rdg_reference*> result;
-    for (auto& reference : m_references)
+    for (const auto& reference : m_references)
     {
         if (reference->type == type)
+        {
             result.push_back(reference.get());
+        }
     }
 
     return result;
@@ -66,8 +69,6 @@ rdg_reference* rdg_pass::add_reference(rdg_resource* resource)
     m_references.push_back(std::move(reference));
     return m_references.back().get();
 }
-
-rdg_render_pass::rdg_render_pass() {}
 
 void rdg_render_pass::add_render_target(
     rdg_texture* texture,

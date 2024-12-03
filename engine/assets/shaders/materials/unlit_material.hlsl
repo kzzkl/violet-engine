@@ -38,8 +38,5 @@ struct unlit_material
 gbuffer_packed fs_main(vs_out input)
 {
     unlit_material material = load_material<unlit_material>(scene.material_buffer, input.material_address);
-
-    // float3 albedo = load_texture(1, float2(0.5, 0.5)).rgb;
-
     return gbuffer_encode(material.albedo);
 }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "vk_context.hpp"
 #include "vk_sync.hpp"
 #include <memory>
 #include <vector>
@@ -18,7 +17,6 @@ public:
         return m_command_buffer;
     }
 
-public:
     void begin_render_pass(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer) override;
     void end_render_pass() override;
     void next_subpass() override;
@@ -49,9 +47,9 @@ public:
     void set_pipeline_barrier(
         rhi_pipeline_stage_flags src_stages,
         rhi_pipeline_stage_flags dst_stages,
-        const rhi_buffer_barrier* const buffer_barriers,
+        const rhi_buffer_barrier* buffer_barriers,
         std::size_t buffer_barrier_count,
-        const rhi_texture_barrier* const texture_barriers,
+        const rhi_texture_barrier* texture_barriers,
         std::size_t texture_barrier_count) override;
 
     void copy_texture(

@@ -1,6 +1,4 @@
 #include "task/task_executor.hpp"
-#include "common/log.hpp"
-#include "task/task_queue.hpp"
 
 namespace violet
 {
@@ -31,7 +29,9 @@ public:
         for (auto& thread : m_threads)
         {
             if (thread.joinable())
+            {
                 thread.join();
+            }
         }
     }
 
@@ -52,12 +52,16 @@ task_executor::~task_executor()
 void task_executor::run(std::size_t thread_count)
 {
     if (!m_stop)
+    {
         return;
+    }
 
     m_stop = false;
 
     if (thread_count == 0)
+    {
         thread_count = std::thread::hardware_concurrency();
+    }
 
     thread_count = 2;
 
@@ -84,7 +88,9 @@ void task_executor::run(std::size_t thread_count)
 void task_executor::stop()
 {
     if (m_stop)
+    {
         return;
+    }
 
     m_stop = true;
 

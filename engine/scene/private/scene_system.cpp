@@ -1,5 +1,4 @@
 #include "scene/scene_system.hpp"
-#include "components/hierarchy_component.hpp"
 #include "components/scene_component.hpp"
 
 namespace violet

@@ -78,7 +78,7 @@ public:
     }
 
 private:
-    static constexpr std::size_t constant_buffer_size = 8 * 1024 * 1024;
+    static constexpr std::size_t constant_buffer_size = 8ull * 1024 * 1024;
 
     std::array<std::vector<vk_parameter*>, 2> m_update_queues;
 

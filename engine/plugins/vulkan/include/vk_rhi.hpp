@@ -59,7 +59,7 @@ public:
             });
     }
 
-    void add_delay_task(std::function<void()> task)
+    void add_delay_task(const std::function<void()>& task)
     {
         std::lock_guard lock(m_mutex);
 
@@ -69,7 +69,6 @@ public:
 
     vk_rhi& operator=(const vk_rhi&) = delete;
 
-public:
     void set_name(rhi_texture* object, const char* name) const override
     {
         set_name(static_cast<vk_texture*>(object)->get_image(), VK_OBJECT_TYPE_IMAGE, name);
@@ -84,7 +83,6 @@ public:
         set_name(static_cast<vk_buffer*>(object)->get_buffer(), VK_OBJECT_TYPE_BUFFER, name);
     }
 
-public:
     rhi_render_pass* create_render_pass(const rhi_render_pass_desc& desc) override;
     void destroy_render_pass(rhi_render_pass* render_pass) override;
 
@@ -125,7 +123,9 @@ private:
         void execute_delay_tasks()
         {
             for (auto& task : delay_tasks)
+            {
                 task();
+            }
             delay_tasks.clear();
         }
 

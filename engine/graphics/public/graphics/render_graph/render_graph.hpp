@@ -3,7 +3,6 @@
 #include "graphics/render_graph/rdg_allocator.hpp"
 #include "graphics/render_graph/rdg_pass.hpp"
 #include "graphics/render_graph/rdg_resource.hpp"
-#include <map>
 #include <memory>
 
 namespace violet
@@ -53,7 +52,6 @@ public:
 
     render_graph& operator=(const render_graph&) = delete;
 
-public:
     rhi_parameter* allocate_parameter(const rhi_parameter_desc& desc)
     {
         return m_allocator->allocate_parameter(desc);

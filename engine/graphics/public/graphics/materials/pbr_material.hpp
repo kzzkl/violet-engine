@@ -4,7 +4,7 @@
 
 namespace violet
 {
-struct physical_material_constant
+struct pbr_material_constant
 {
     vec3f albedo;
     float roughness;
@@ -14,21 +14,21 @@ struct physical_material_constant
     float padding2;
 };
 
-class physical_material : public mesh_material<physical_material_constant>
+class pbr_material : public mesh_material<pbr_material_constant>
 {
 public:
-    physical_material();
+    pbr_material();
 
     void set_albedo(const vec3f& albedo);
-    void set_albedo(rhi_texture* albedo, rhi_sampler* sampler);
+    void set_albedo(rhi_texture* albedo);
 
     void set_roughness(float roughness);
-    void set_roughness(rhi_texture* roughness, rhi_sampler* sampler);
+    void set_roughness(rhi_texture* roughness);
 
     void set_metallic(float metallic);
-    void set_metallic(rhi_texture* metallic, rhi_sampler* sampler);
+    void set_metallic(rhi_texture* metallic);
 
-    void set_normal(rhi_texture* normal, rhi_sampler* sampler);
+    void set_normal(rhi_texture* normal);
 
 private:
     rhi_texture* m_abledo_texture{nullptr};

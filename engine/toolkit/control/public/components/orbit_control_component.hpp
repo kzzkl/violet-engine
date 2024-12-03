@@ -1,6 +1,7 @@
 #pragma once
 
 #include "math/math.hpp"
+#include "math/types.hpp"
 
 namespace violet
 {

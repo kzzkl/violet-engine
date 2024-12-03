@@ -54,10 +54,8 @@ rhi_render_pass* rdg_allocator::get_render_pass(const rhi_render_pass_desc& desc
     {
         return m_render_pass_cache.add(hash, render_device::instance().create_render_pass(desc));
     }
-    else
-    {
-        return render_pass;
-    }
+
+    return render_pass;
 }
 
 rhi_framebuffer* rdg_allocator::get_framebuffer(const rhi_framebuffer_desc& desc)
@@ -69,10 +67,8 @@ rhi_framebuffer* rdg_allocator::get_framebuffer(const rhi_framebuffer_desc& desc
     {
         return m_framebuffer_cache.add(hash, render_device::instance().create_framebuffer(desc));
     }
-    else
-    {
-        return framebuffer;
-    }
+
+    return framebuffer;
 }
 
 rhi_render_pipeline* rdg_allocator::get_pipeline(
@@ -101,10 +97,8 @@ rhi_render_pipeline* rdg_allocator::get_pipeline(
 
         return m_render_pipeline_cache.add(hash, render_device::instance().create_pipeline(desc));
     }
-    else
-    {
-        return render_pipeline;
-    }
+
+    return render_pipeline;
 }
 
 rhi_compute_pipeline* rdg_allocator::get_pipeline(const rdg_compute_pipeline& pipeline)
@@ -114,13 +108,13 @@ rhi_compute_pipeline* rdg_allocator::get_pipeline(const rdg_compute_pipeline& pi
     rhi_compute_pipeline* compute_pipeline = m_compute_pipeline_cache.get(hash);
     if (compute_pipeline == nullptr)
     {
-        rhi_compute_pipeline_desc desc = {.compute_shader = pipeline.compute_shader};
+        rhi_compute_pipeline_desc desc = {
+            .compute_shader = pipeline.compute_shader,
+        };
         return m_compute_pipeline_cache.add(hash, render_device::instance().create_pipeline(desc));
     }
-    else
-    {
-        return compute_pipeline;
-    }
+
+    return compute_pipeline;
 }
 
 rhi_sampler* rdg_allocator::get_sampler(const rhi_sampler_desc& desc)
@@ -129,9 +123,11 @@ rhi_sampler* rdg_allocator::get_sampler(const rhi_sampler_desc& desc)
 
     rhi_sampler* sampler = m_sampler_cache.get(hash);
     if (sampler == nullptr)
+    {
         return m_sampler_cache.add(hash, render_device::instance().create_sampler(desc));
-    else
-        return sampler;
+    }
+
+    return sampler;
 }
 
 void rdg_allocator::reset()
@@ -158,7 +154,9 @@ void rdg_allocator::gc()
 {
     std::size_t frame = render_device::instance().get_frame_count();
     if (frame < 1000 || frame % 1000 != 0)
+    {
         return;
+    }
 
     std::size_t gc_frame = frame - 1000;
 

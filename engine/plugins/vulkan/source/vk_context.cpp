@@ -1,7 +1,7 @@
 #include "vk_context.hpp"
 #include "vk_command.hpp"
 #include "vk_layout.hpp"
-#include "vk_pipeline.hpp"
+#include "vk_parameter.hpp"
 #include <iostream>
 #include <set>
 
@@ -13,7 +13,7 @@ namespace violet::vk
 {
 namespace
 {
-static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
+VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
     VkDebugUtilsMessageSeverityFlagBitsEXT severity,
     VkDebugUtilsMessageTypeFlagsEXT type,
     const VkDebugUtilsMessengerCallbackDataEXT* data,
@@ -262,7 +262,9 @@ bool vk_context::initialize_instance(
         &available_extension_count,
         available_extensions.data()));
     if (!check_extension_support(desired_extensions, available_extensions))
+    {
         return false;
+    }
 
     VkApplicationInfo app_info = {
         VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -300,7 +302,9 @@ bool vk_context::initialize_instance(
 
     vk_check(vkCreateInstance(&instance_info, nullptr, &m_instance));
     if (m_instance == VK_NULL_HANDLE)
+    {
         return false;
+    }
 
     volkLoadInstance(m_instance);
 
@@ -362,10 +366,7 @@ bool vk_context::initialize_physical_device(
         }
     }
 
-    if (m_physical_device == VK_NULL_HANDLE)
-        return false;
-
-    return true;
+    return m_physical_device != VK_NULL_HANDLE;
 }
 
 void vk_context::initialize_logic_device(

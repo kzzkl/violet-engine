@@ -1,6 +1,5 @@
 #pragma once
 
-#include "common/type_index.hpp"
 #include "graphics/render_graph/render_graph.hpp"
 
 namespace violet
@@ -8,8 +7,8 @@ namespace violet
 class renderer
 {
 public:
-    renderer();
-    virtual ~renderer();
+    renderer() = default;
+    virtual ~renderer() = default;
 
     virtual void render(
         render_graph& graph,

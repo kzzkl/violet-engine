@@ -3,7 +3,7 @@ project(violet-graphics)
 add_library(${PROJECT_NAME} STATIC
     ./private/geometries/box_geometry.cpp
     ./private/geometries/sphere_geometry.cpp
-    ./private/materials/physical_material.cpp
+    ./private/materials/pbr_material.cpp
     ./private/materials/unlit_material.cpp
     ./private/passes/lighting/unlit_pass.cpp
     ./private/passes/blit_pass.cpp
@@ -26,7 +26,6 @@ add_library(${PROJECT_NAME} STATIC
     ./private/material.cpp
     ./private/render_device.cpp
     ./private/render_scene.cpp
-    ./private/renderer.cpp
     ./private/rhi_plugin.cpp
     ./private/shader_compiler.cpp)
 add_library(violet::graphics ALIAS ${PROJECT_NAME})

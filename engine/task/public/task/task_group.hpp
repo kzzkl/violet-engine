@@ -10,7 +10,6 @@ public:
     static constexpr std::string_view group_begin_suffix = " - Begin";
     static constexpr std::string_view group_end_suffix = " - End";
 
-public:
     task_group(task_graph* graph);
 
     task_group& set_name(std::string_view name)

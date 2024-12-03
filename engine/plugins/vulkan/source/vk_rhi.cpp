@@ -1,11 +1,11 @@
 #include "vk_rhi.hpp"
+#include "core/plugin_interface.hpp"
 #include "vk_command.hpp"
 #include "vk_framebuffer.hpp"
 #include "vk_pipeline.hpp"
 #include "vk_render_pass.hpp"
 #include "vk_swapchain.hpp"
 #include "vk_sync.hpp"
-#include <algorithm>
 
 namespace violet::vk
 {
@@ -19,7 +19,9 @@ vk_rhi::~vk_rhi()
     vkDeviceWaitIdle(m_context->get_device());
 
     for (frame_resource& frame_resource : m_frame_resources)
+    {
         frame_resource.execute_delay_tasks();
+    }
     m_frame_resources.clear();
 }
 

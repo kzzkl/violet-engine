@@ -1,7 +1,6 @@
 #pragma once
 
 #include "vk_parameter.hpp"
-#include <unordered_map>
 
 namespace violet::vk
 {
@@ -14,7 +13,6 @@ public:
         vk_parameter_layout* layout;
     };
 
-public:
     vk_shader(const rhi_shader_desc& desc, vk_context* context);
     virtual ~vk_shader();
 
@@ -44,7 +42,6 @@ public:
         rhi_format format;
     };
 
-public:
     vk_vertex_shader(const rhi_shader_desc& desc, vk_context* context);
 
     const std::vector<vertex_attribute>& get_vertex_attributes() const noexcept

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/allocator.hpp"
 #include "graphics/gpu_buffer_uploader.hpp"
 #include "graphics/material.hpp"
 #include <mutex>
@@ -9,7 +10,7 @@ namespace violet
 class material_manager
 {
 public:
-    material_manager(std::size_t material_buffer_size = 8 * 1024 * 1024);
+    material_manager(std::size_t material_buffer_size = 8ull * 1024 * 1024);
 
     render_id register_material(material* material, std::uint32_t& constant_address);
     void unregister_material(render_id material_id);

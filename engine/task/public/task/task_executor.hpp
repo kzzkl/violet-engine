@@ -10,7 +10,6 @@ class task_executor
 public:
     using task_queue = task_queue_thread_safe<task_wrapper>;
 
-public:
     task_executor();
     ~task_executor();
 
@@ -18,7 +17,7 @@ public:
     {
         std::future<void> future = task_graph.reset();
 
-        auto& root_tasks = task_graph.get_root_tasks();
+        const auto& root_tasks = task_graph.get_root_tasks();
         if (!root_tasks.empty())
         {
             for (task_wrapper* task : root_tasks)
@@ -35,7 +34,7 @@ public:
     {
         std::future<void> future = task_graph.reset();
 
-        auto& root_tasks = task_graph.get_root_tasks();
+        const auto& root_tasks = task_graph.get_root_tasks();
         if (!root_tasks.empty())
         {
             for (task_wrapper* task : root_tasks)

@@ -15,7 +15,7 @@ public:
     {
         std::cout << "flowchart LR\n";
 
-        auto& roots = graph.get_root_tasks();
+        const auto& roots = graph.get_root_tasks();
 
         std::stack<task_wrapper*> stack;
 
@@ -38,50 +38,48 @@ public:
         auto get_task_info = [&](task_wrapper* task) -> task_info
         {
             auto iter = task_infos.find(task);
-            if (iter == task_infos.end())
-            {
-                task_info info = {};
-
-                if (task->get_name().ends_with(task_group::group_begin_suffix))
-                {
-                    std::string_view group_name = task->get_name().substr(
-                        0,
-                        task->get_name().size() - task_group::group_begin_suffix.size());
-
-                    info.id = ++id;
-                    info.name = std::string(group_name.data(), group_name.size());
-                    info.is_group_begin = true;
-                }
-                else if (task->get_name().ends_with(task_group::group_end_suffix))
-                {
-                    std::string_view group_name = task->get_name().substr(
-                        0,
-                        task->get_name().size() - task_group::group_end_suffix.size());
-
-                    for (auto& [t, i] : task_infos)
-                    {
-                        if (i.is_group_begin && i.name == group_name)
-                        {
-                            info.id = i.id;
-                            info.name = i.name;
-                            info.is_group_end = true;
-                            break;
-                        }
-                    }
-                }
-                else
-                {
-                    info.id = ++id;
-                    info.name = task->get_name();
-                }
-
-                task_infos[task] = info;
-                return info;
-            }
-            else
+            if (iter != task_infos.end())
             {
                 return iter->second;
             }
+
+            task_info info = {};
+
+            if (task->get_name().ends_with(task_group::group_begin_suffix))
+            {
+                std::string_view group_name = task->get_name().substr(
+                    0,
+                    task->get_name().size() - task_group::group_begin_suffix.size());
+
+                info.id = ++id;
+                info.name = std::string(group_name.data(), group_name.size());
+                info.is_group_begin = true;
+            }
+            else if (task->get_name().ends_with(task_group::group_end_suffix))
+            {
+                std::string_view group_name = task->get_name().substr(
+                    0,
+                    task->get_name().size() - task_group::group_end_suffix.size());
+
+                for (auto& [t, i] : task_infos)
+                {
+                    if (i.is_group_begin && i.name == group_name)
+                    {
+                        info.id = i.id;
+                        info.name = i.name;
+                        info.is_group_end = true;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                info.id = ++id;
+                info.name = task->get_name();
+            }
+
+            task_infos[task] = info;
+            return info;
         };
 
         for (task_wrapper* root : roots)

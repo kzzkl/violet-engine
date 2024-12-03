@@ -1,6 +1,4 @@
-# IDE
 .vs
 .vscode
-
-# Build
-out
+.cache
+build
