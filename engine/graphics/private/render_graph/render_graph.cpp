@@ -6,7 +6,7 @@ namespace violet
 render_graph::render_graph(rdg_allocator* allocator) noexcept
     : m_allocator(allocator)
 {
-    m_groups.push_back({});
+    m_groups.emplace_back();
 }
 
 render_graph::~render_graph() {}
@@ -66,12 +66,12 @@ rdg_buffer* render_graph::add_buffer(std::string_view name, const rhi_buffer_des
 
 void render_graph::begin_group(std::string_view group_name)
 {
-    m_groups[m_passes.size()].push_back(group_name.data());
+    m_groups[m_passes.size()].emplace_back(group_name.data());
 }
 
 void render_graph::end_group()
 {
-    m_groups[m_passes.size()].push_back("");
+    m_groups[m_passes.size()].emplace_back("");
 }
 
 void render_graph::compile()
@@ -387,7 +387,7 @@ void render_graph::build_barriers()
         rdg_reference* prev_reference = nullptr;
         for (auto* curr_reference : references)
         {
-            auto& batch_barrier = m_batches[curr_reference->pass->get_index()].barrier;
+            auto& batch_barrier = m_batches[curr_reference->pass->get_batch()].barrier;
 
             if (resource->get_type() == RDG_RESOURCE_TEXTURE)
             {

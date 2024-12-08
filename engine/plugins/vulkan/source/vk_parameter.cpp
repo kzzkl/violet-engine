@@ -111,7 +111,7 @@ void vk_parameter::set_uniform(std::size_t index, rhi_buffer* uniform, std::size
 {
     const auto& binding = m_layout->get_bindings()[index];
     assert(
-        binding.type == RHI_PARAMETER_BINDING_UNIFORM ||
+        binding.type == RHI_PARAMETER_BINDING_UNIFORM_BUFFER ||
         binding.type == RHI_PARAMETER_BINDING_UNIFORM_TEXEL ||
         binding.type == RHI_PARAMETER_BINDING_MUTABLE);
 
@@ -162,11 +162,11 @@ void vk_parameter::set_storage(std::size_t index, rhi_buffer* storage, std::size
 {
     const auto& binding = m_layout->get_bindings()[index];
     assert(
-        binding.type == RHI_PARAMETER_BINDING_STORAGE ||
+        binding.type == RHI_PARAMETER_BINDING_STORAGE_BUFFER ||
         binding.type == RHI_PARAMETER_BINDING_STORAGE_TEXEL ||
         binding.type == RHI_PARAMETER_BINDING_MUTABLE);
 
-    vk_buffer* buffer = static_cast<vk_buffer*>(storage);
+    auto* buffer = static_cast<vk_buffer*>(storage);
 
     VkDescriptorBufferInfo info = {
         .buffer = buffer->get_buffer(),
@@ -205,6 +205,33 @@ void vk_parameter::set_storage(std::size_t index, rhi_buffer* storage, std::size
 
         vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
     }
+
+    mark_dirty(index);
+}
+
+void vk_parameter::set_storage(std::size_t index, rhi_texture* texture, std::size_t offset)
+{
+    const auto& binding = m_layout->get_bindings()[index];
+    assert(
+        binding.type == RHI_PARAMETER_BINDING_STORAGE_TEXTURE ||
+        binding.type == RHI_PARAMETER_BINDING_MUTABLE);
+
+    VkDescriptorImageInfo info = {
+        .imageView = static_cast<vk_texture*>(texture)->get_image_view(),
+        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    };
+
+    VkWriteDescriptorSet write = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = get_descriptor_set(),
+        .dstBinding = static_cast<std::uint32_t>(index),
+        .dstArrayElement = static_cast<std::uint32_t>(offset),
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        .pImageInfo = &info,
+    };
+
+    vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
 
     mark_dirty(index);
 }

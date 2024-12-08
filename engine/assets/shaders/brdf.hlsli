@@ -41,49 +41,44 @@ float3 importance_sample_ggx(float2 xi, float3 n, float roughness)
     return normalize(sample_vec);
 }
 
-float geometry_schlick_ggx(float NdotV, float roughness)
+float g_smith(float3 n, float3 v, float3 l, float roughness)
 {
-    float a = roughness;
-    float k = (a * a) / 2.0;
+    float k = (roughness * roughness) / 2.0;
 
-    float nom   = NdotV;
-    float denom = NdotV * (1.0 - k) + k + 0.00001;
-
-    return nom / denom;
-}
-
-float geometry_smith(float3 n, float3 v, float3 l, float roughness)
-{
-    float NdotV = max(dot(n, v), 0.0);
-    float NdotL = max(dot(n, l), 0.0);
-    float ggx2 = geometry_schlick_ggx(NdotV, roughness);
-    float ggx1 = geometry_schlick_ggx(NdotL, roughness);
+    float NdotV = saturate(dot(n, v));
+    float NdotL = saturate(dot(n, l));
+    float ggx1 = NdotV / (NdotV * (1.0 - k) + k + EPSILON);
+    float ggx2 = NdotL / (NdotL * (1.0 - k) + k + EPSILON);
 
     return ggx1 * ggx2;
-}  
+}
 
-float distribution_ggx(float3 n, float3 h, float roughness)
+float v_smith_joint_approx(float NdotV, float NdotL, float roughness)
+{
+    float a = roughness * roughness;
+    float smith_v = NdotL * (NdotV * (1.0 - a) + a);
+    float smith_l = NdotV * (NdotL * (1.0 - a) + a);
+    return 0.5 * rcp(smith_v + smith_l + EPSILON);
+}
+
+float d_ggx(float NdotH, float roughness)
 {
     float a = roughness * roughness;
     float a2 = a * a;
-    float NdotH = max(dot(n, h), 0.0);
-    float NdotH2 = NdotH * NdotH;
 
-    float nom = a2;
-    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    float denom = (NdotH * NdotH * (a2 - 1.0) + 1.0);
     denom = PI * denom * denom;
 
-    return nom / denom;
+    return a2 / denom;
 }
 
-float3 fresnel_schlick(float cos_theta, float3 f0)
+float3 f_schlick(float VdotH, float3 F0)
 {
-    return f0 + (1.0 - f0) * pow(clamp(1.0 - cos_theta, 0.0, 1.0), 5.0);
+    return F0 + (1.0 - F0) * pow(1.0 - VdotH, 5.0);
 }
 
-float3 fresnel_schlick_roughness(float cos_theta, float3 f0, float roughness)
+float3 f_schlick_roughness(float VdotH, float3 F0, float roughness)
 {
-    return f0 + (max((1.0 - roughness).xxx, f0) - f0) * pow(clamp(1.0 - cos_theta, 0.0, 1.0), 5.0);
-} 
-
+    return F0 + (max((1.0 - roughness).xxx, F0) - F0) * pow(1.0 - VdotH, 5.0);
+}
 #endif

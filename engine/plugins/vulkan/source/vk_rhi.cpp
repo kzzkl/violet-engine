@@ -152,7 +152,7 @@ void vk_rhi::destroy_framebuffer(rhi_framebuffer* framebuffer)
 
 rhi_sampler* vk_rhi::create_sampler(const rhi_sampler_desc& desc)
 {
-    vk_sampler* sampler = new vk_sampler(desc, m_context.get());
+    auto* sampler = new vk_sampler(desc, m_context.get());
 
     std::lock_guard lock(m_sampler_allocator_mutex);
 
@@ -232,7 +232,7 @@ void vk_rhi::destroy_buffer(rhi_buffer* buffer)
 
 rhi_texture* vk_rhi::create_texture(const rhi_texture_desc& desc)
 {
-    vk_texture* texture = new vk_texture(desc, m_context.get());
+    auto* texture = new vk_texture(desc, m_context.get());
 
     if (desc.flags & RHI_TEXTURE_SHADER_RESOURCE)
     {
@@ -243,13 +243,22 @@ rhi_texture* vk_rhi::create_texture(const rhi_texture_desc& desc)
 
         texture->set_handle(handle);
     }
+    else if (desc.flags & RHI_TEXTURE_STORAGE)
+    {
+        std::lock_guard lock(m_resource_allocator_mutex);
+
+        rhi_resource_handle handle = m_resource_allocator.allocate();
+        m_bindless_parameter->set_storage(0, texture, handle);
+
+        texture->set_handle(handle);
+    }
 
     return texture;
 }
 
 rhi_texture* vk_rhi::create_texture(const rhi_texture_view_desc& desc)
 {
-    vk_texture_view* texture = new vk_texture_view(desc, m_context.get());
+    auto* texture = new vk_texture_view(desc, m_context.get());
 
     if (desc.texture->get_handle() != RHI_INVALID_RESOURCE_HANDLE)
     {

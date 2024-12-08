@@ -53,7 +53,7 @@ std::pair<VkImage, VmaAllocation> create_image(
 }
 } // namespace
 
-vk_image::vk_image() {}
+vk_image::vk_image() = default;
 
 vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
     : m_context(context)
@@ -80,7 +80,7 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
         VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
         m_context->get_vma_allocator());
 
-    m_format = vk_util::map_format(image_info.format);
+    m_format = desc.format;
     m_samples = desc.samples;
     m_extent = {image_info.extent.width, image_info.extent.height};
 
@@ -101,7 +101,15 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
     if (desc.flags & RHI_TEXTURE_DEPTH_STENCIL)
     {
         image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-        m_aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+
+        if (m_format == RHI_FORMAT_D24_UNORM_S8_UINT || m_format == RHI_FORMAT_D32_FLOAT_S8_UINT)
+        {
+            m_aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+        }
+        else
+        {
+            m_aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        }
     }
     else
     {
@@ -179,23 +187,20 @@ vk_texture_view::~vk_texture_view()
 vk_sampler::vk_sampler(const rhi_sampler_desc& desc, vk_context* context)
     : m_context(context)
 {
-    VkSamplerCreateInfo sampler_info = {};
-    sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    sampler_info.magFilter = vk_util::map_filter(desc.mag_filter);
-    sampler_info.minFilter = vk_util::map_filter(desc.min_filter);
-    sampler_info.addressModeU = vk_util::map_sampler_address_mode(desc.address_mode_u);
-    sampler_info.addressModeV = vk_util::map_sampler_address_mode(desc.address_mode_v);
-    sampler_info.addressModeW = vk_util::map_sampler_address_mode(desc.address_mode_w);
-    sampler_info.anisotropyEnable = VK_TRUE;
-    sampler_info.maxAnisotropy =
-        m_context->get_physical_device_properties().limits.maxSamplerAnisotropy;
-    sampler_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-    sampler_info.unnormalizedCoordinates = VK_FALSE;
-    sampler_info.compareEnable = VK_FALSE;
-    sampler_info.compareOp = VK_COMPARE_OP_ALWAYS;
-    sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    sampler_info.minLod = desc.min_level;
-    sampler_info.maxLod = desc.max_level;
+    VkSamplerCreateInfo sampler_info = {
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .magFilter = vk_util::map_filter(desc.mag_filter),
+        .minFilter = vk_util::map_filter(desc.min_filter),
+        .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+        .addressModeU = vk_util::map_sampler_address_mode(desc.address_mode_u),
+        .addressModeV = vk_util::map_sampler_address_mode(desc.address_mode_v),
+        .addressModeW = vk_util::map_sampler_address_mode(desc.address_mode_w),
+        .anisotropyEnable = VK_TRUE,
+        .maxAnisotropy = m_context->get_physical_device_properties().limits.maxSamplerAnisotropy,
+        .compareEnable = VK_FALSE,
+        .minLod = desc.min_level,
+        .maxLod = desc.max_level,
+    };
 
     vk_check(vkCreateSampler(m_context->get_device(), &sampler_info, nullptr, &m_sampler));
 }

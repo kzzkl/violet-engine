@@ -43,13 +43,13 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     float3 N = normalize(forward_dir[dtid.z] + offset.x * right_dir[dtid.z] + offset.y * up_dir[dtid.z]);
 
     const float2 inv_atan = {0.1591, -0.3183};
-    float2 uv = float2(atan2(N.z, N.x), asin(N.y));
-    uv *= inv_atan;
-    uv += 0.5;
+    float2 texcoord = float2(atan2(N.z, N.x), asin(N.y));
+    texcoord *= inv_atan;
+    texcoord += 0.5;
 
     Texture2D<float4> env_map = ResourceDescriptorHeap[convert.env_map];
-    SamplerState linear_sampler = SamplerDescriptorHeap[1];
+    SamplerState linear_repeat_sampler = SamplerDescriptorHeap[2];
 
     RWTexture2DArray<float3> cube_map = ResourceDescriptorHeap[convert.cube_map];
-    cube_map[dtid] = env_map.SampleLevel(linear_sampler, uv, 0).rgb;
+    cube_map[dtid] = env_map.SampleLevel(linear_repeat_sampler, texcoord, 0).rgb;
 }

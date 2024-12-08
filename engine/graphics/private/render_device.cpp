@@ -73,7 +73,7 @@ void rhi_deleter::operator()(rhi_fence* fence)
     m_rhi->destroy_fence(fence);
 }
 
-render_device::render_device() {}
+render_device::render_device() = default;
 
 render_device::~render_device() {}
 
@@ -138,8 +138,10 @@ void render_device::fill_scene_data(shader::scene_data& scene)
 {
     scene.material_buffer = m_material_manager->get_material_buffer()->get_handle();
     scene.brdf_lut = m_brdf_lut->get_handle();
-    scene.point_sampler = m_point_sampler->get_handle();
-    scene.linear_sampler = m_linear_sampler->get_handle();
+    scene.point_repeat_sampler = m_point_repeat_sampler->get_handle();
+    scene.point_clamp_sampler = m_point_clamp_sampler->get_handle();
+    scene.linear_repeat_sampler = m_linear_repeat_sampler->get_handle();
+    scene.linear_clamp_sampler = m_linear_clamp_sampler->get_handle();
 }
 
 std::size_t render_device::get_frame_count() const noexcept
@@ -247,17 +249,41 @@ void render_device::create_buildin_resources()
 
 void render_device::create_buildin_samplers()
 {
-    rhi_sampler_desc point_sampler_desc = {
+    m_point_repeat_sampler = create_sampler({
         .mag_filter = RHI_FILTER_POINT,
         .min_filter = RHI_FILTER_POINT,
-    };
-    m_point_sampler = create_sampler(point_sampler_desc);
+        .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
+        .address_mode_v = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
+        .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
+    });
 
-    rhi_sampler_desc linear_sampler_desc = {
+    m_point_clamp_sampler = create_sampler({
+        .mag_filter = RHI_FILTER_POINT,
+        .min_filter = RHI_FILTER_POINT,
+        .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .address_mode_v = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+    });
+
+    m_linear_repeat_sampler = create_sampler({
         .mag_filter = RHI_FILTER_LINEAR,
         .min_filter = RHI_FILTER_LINEAR,
-    };
-    m_linear_sampler = create_sampler(linear_sampler_desc);
+        .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
+        .address_mode_v = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
+        .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
+        .min_level = 0.0,
+        .max_level = 10.0,
+    });
+
+    m_linear_clamp_sampler = create_sampler({
+        .mag_filter = RHI_FILTER_LINEAR,
+        .min_filter = RHI_FILTER_LINEAR,
+        .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .address_mode_v = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .min_level = 0.0,
+        .max_level = 10.0,
+    });
 }
 
 std::vector<std::uint8_t> render_device::compile_shader(

@@ -32,6 +32,15 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
     pass.add_render_target(
         parameter.gbuffer_albedo,
         parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
+    pass.add_render_target(
+        parameter.gbuffer_material,
+        parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
+    pass.add_render_target(
+        parameter.gbuffer_normal,
+        parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
+    pass.add_render_target(
+        parameter.gbuffer_emissive,
+        parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
     pass.set_depth_stencil(
         parameter.depth_buffer,
         parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);

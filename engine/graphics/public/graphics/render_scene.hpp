@@ -55,6 +55,10 @@ struct render_batch
     std::vector<render_id> groups;
 };
 
+struct render_light
+{
+};
+
 class gpu_buffer_uploader;
 class render_scene
 {
@@ -75,7 +79,15 @@ public:
     void remove_instance(render_id instance_id);
     void update_instance(render_id instance_id, const render_instance& instance);
 
+    render_id add_light(const render_light& light);
+    void remove_light(render_id light_id);
+    void update_light(render_id light_id, const render_light& light);
+
     void set_skybox(rhi_texture* skybox, rhi_texture* irradiance, rhi_texture* prefilter);
+    bool has_skybox() const noexcept
+    {
+        return m_scene_data.skybox != 0;
+    }
 
     bool update();
     void record(rhi_command* command);
@@ -92,12 +104,12 @@ public:
 
     std::size_t get_mesh_count() const noexcept
     {
-        return m_mesh_index_map.size();
+        return m_mesh_index_map.get_size();
     }
 
     std::size_t get_instance_count() const noexcept
     {
-        return m_instance_index_map.size();
+        return m_instance_index_map.get_size();
     }
 
     static constexpr std::size_t get_group_count() noexcept
@@ -115,12 +127,12 @@ public:
         return m_instance_buffer->get_buffer_size() / sizeof(shader::instance_data);
     }
 
-    static constexpr std::size_t get_group_capacity() noexcept
+    std::size_t get_group_capacity() const noexcept
     {
         return 4ull * 1024;
     }
 
-    static rhi_parameter* get_bindless_parameter() noexcept
+    rhi_parameter* get_bindless_parameter() const noexcept
     {
         return render_device::instance().get_bindless_parameter();
     }
@@ -173,6 +185,25 @@ private:
         }
     };
 
+    enum render_light_state
+    {
+        RENDER_LIGHT_STAGE_VALID = 1 << 0,
+        RENDER_LIGHT_STAGE_DIRTY = 1 << 1,
+    };
+    using render_light_states = std::uint32_t;
+
+    struct render_light_info
+    {
+        render_light data;
+
+        render_light_states states;
+
+        bool is_valid() const noexcept
+        {
+            return states & RENDER_LIGHT_STAGE_VALID;
+        }
+    };
+
     enum render_scene_state
     {
         RENDER_SCENE_STAGE_DATA_DIRTY = 1 << 0,
@@ -220,7 +251,7 @@ private:
             return m_id_to_index[id];
         }
 
-        std::size_t size() const noexcept
+        std::size_t get_size() const noexcept
         {
             return m_index_to_id.size();
         }
@@ -235,6 +266,7 @@ private:
 
     void set_mesh_state(render_id mesh_id, render_mesh_states states);
     void set_instance_state(render_id instance_id, render_instance_states states);
+    void set_light_state(render_id light_id, render_light_states states);
 
     void update_mesh_buffer();
     void update_instance_buffer();
@@ -242,6 +274,7 @@ private:
 
     void reserve_mesh_buffer(std::size_t mesh_count);
     void reserve_instance_buffer(std::size_t instance_count);
+    void reserve_light_buffer(std::size_t light_count);
 
     std::vector<render_mesh_info> m_meshes;
     index_allocator<render_id> m_mesh_allocator;
@@ -260,13 +293,19 @@ private:
     std::vector<render_group> m_groups;
     index_allocator<render_id> m_group_allocator;
 
+    std::vector<render_light_info> m_lights;
+    index_allocator<render_id> m_light_allocator;
+    bimap m_light_index_map;
+    std::vector<render_id> m_dirty_lights;
+
     rhi_ptr<rhi_buffer> m_mesh_buffer;
     rhi_ptr<rhi_buffer> m_instance_buffer;
     rhi_ptr<rhi_buffer> m_group_buffer;
+    rhi_ptr<rhi_buffer> m_light_buffer;
 
-    render_scene_states m_scene_states;
+    render_scene_states m_scene_states{0};
 
-    shader::scene_data m_scene_data;
+    shader::scene_data m_scene_data{};
     rhi_ptr<rhi_parameter> m_scene_parameter;
 
     std::unique_ptr<gpu_buffer_uploader> m_gpu_buffer_uploader;

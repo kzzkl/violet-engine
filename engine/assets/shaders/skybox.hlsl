@@ -1,9 +1,7 @@
-#include "violet_common.hlsli"
+#include "common.hlsli"
 
-ConstantBuffer<violet_camera> camera : register(b0, space0);
-
-TextureCube sky_texture : register(t1, space0);
-SamplerState sky_sampler : register(s1, space0);
+ConstantBuffer<scene_data> scene : register(b0, space1);
+ConstantBuffer<camera_data> camera : register(b0, space2);
 
 struct vs_in
 {
@@ -13,7 +11,7 @@ struct vs_in
 struct vs_out
 {
     float4 position : SV_POSITION;
-    float3 uvw : TEXCOORD;
+    float3 texcoord : TEXCOORD;
 };
 
 vs_out vs_main(vs_in input)
@@ -46,13 +44,16 @@ vs_out vs_main(vs_in input)
 
     vs_out result;
     result.position = mul(camera.view_projection, float4(position, 1.0f));
-    result.position.z = result.position.w * 0.99999;
-    result.uvw = normalize(vertices[indexes[input.vertex_id]]);
+    result.position.z = result.position.w * 0.00001;
+    result.texcoord = normalize(vertices[indexes[input.vertex_id]]);
 
     return result;
 }
 
 float4 fs_main(vs_out input) : SV_TARGET
 {
-    return sky_texture.Sample(sky_sampler, input.uvw);
+    TextureCube<float4> sky_texture = ResourceDescriptorHeap[scene.skybox];
+    SamplerState linear_repeat_sampler = SamplerDescriptorHeap[scene.linear_repeat_sampler];
+
+    return sky_texture.Sample(linear_repeat_sampler, input.texcoord);
 }

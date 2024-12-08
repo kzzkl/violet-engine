@@ -3,13 +3,16 @@ project(violet-graphics)
 add_library(${PROJECT_NAME} STATIC
     ./private/geometries/box_geometry.cpp
     ./private/geometries/sphere_geometry.cpp
-    ./private/materials/pbr_material.cpp
+    ./private/materials/physical_material.cpp
     ./private/materials/unlit_material.cpp
+    ./private/passes/lighting/physical_pass.cpp
     ./private/passes/lighting/unlit_pass.cpp
     ./private/passes/blit_pass.cpp
+    ./private/passes/copy_depth_pass.cpp
     ./private/passes/cull_pass.cpp
     ./private/passes/mesh_pass.cpp
     ./private/passes/skybox_pass.cpp
+    ./private/passes/tone_mapping_pass.cpp
     ./private/render_graph/rdg_allocator.cpp
     ./private/render_graph/rdg_command.cpp
     ./private/render_graph/rdg_pass.cpp

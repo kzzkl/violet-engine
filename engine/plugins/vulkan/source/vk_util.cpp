@@ -56,6 +56,12 @@ VkFormat vk_util::map_format(rhi_format format)
         return VK_FORMAT_B8G8R8A8_SINT;
     case RHI_FORMAT_B8G8R8A8_SRGB:
         return VK_FORMAT_B8G8R8A8_SRGB;
+    case RHI_FORMAT_R16G16_UNORM:
+        return VK_FORMAT_R16G16_UNORM;
+    case RHI_FORMAT_R16G16B16A16_UNORM:
+        return VK_FORMAT_R16G16B16A16_UNORM;
+    case RHI_FORMAT_R16G16B16A16_FLOAT:
+        return VK_FORMAT_R16G16B16A16_SFLOAT;
     case RHI_FORMAT_R32_UINT:
         return VK_FORMAT_R32_UINT;
     case RHI_FORMAT_R32_SINT:
@@ -145,6 +151,12 @@ rhi_format vk_util::map_format(VkFormat format)
         return RHI_FORMAT_B8G8R8A8_SINT;
     case VK_FORMAT_B8G8R8A8_SRGB:
         return RHI_FORMAT_B8G8R8A8_SRGB;
+    case VK_FORMAT_R16G16_UNORM:
+        return RHI_FORMAT_R16G16_UNORM;
+    case VK_FORMAT_R16G16B16A16_UNORM:
+        return RHI_FORMAT_R16G16B16A16_UNORM;
+    case VK_FORMAT_R16G16B16A16_SFLOAT:
+        return RHI_FORMAT_R16G16B16A16_FLOAT;
     case VK_FORMAT_R32_UINT:
         return RHI_FORMAT_R32_UINT;
     case VK_FORMAT_R32_SINT:
@@ -269,6 +281,7 @@ VkImageUsageFlags vk_util::map_image_usage_flags(rhi_texture_flags flags)
     usages |= (flags & RHI_TEXTURE_DEPTH_STENCIL) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
     usages |= (flags & RHI_TEXTURE_TRANSFER_SRC) ? VK_IMAGE_USAGE_TRANSFER_SRC_BIT : 0;
     usages |= (flags & RHI_TEXTURE_TRANSFER_DST) ? VK_IMAGE_USAGE_TRANSFER_DST_BIT : 0;
+    usages |= (flags & RHI_TEXTURE_STORAGE) ? VK_IMAGE_USAGE_STORAGE_BIT : 0;
 
     return usages;
 }

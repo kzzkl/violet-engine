@@ -143,10 +143,12 @@ void graphics_system::udpate_camera()
                     camera.far);
                 mat4f_simd view = matrix::inverse(math::load(transform.matrix));
                 mat4f_simd view_projection = matrix::mul(view, projection);
+                mat4f_simd view_projection_inv = matrix::inverse(view_projection);
 
                 math::store(projection, data.projection);
                 math::store(view, data.view);
                 math::store(view_projection, data.view_projection);
+                math::store(view_projection_inv, data.view_projection_inv);
 
                 data.position = transform.get_position();
 
@@ -361,7 +363,7 @@ void graphics_system::render()
                 const camera_meta_component& camera_meta,
                 const scene_component& scene)
             {
-                render_queue.push_back({&camera, camera_meta.parameter.get(), scene.layer});
+                render_queue.emplace_back(&camera, camera_meta.parameter.get(), scene.layer);
             });
 
     std::sort(
@@ -440,9 +442,9 @@ rhi_fence* graphics_system::render(
         }
     }
 
-    for (std::size_t i = 0; i < swapchains.size(); ++i)
+    for (auto& swapchain : swapchains)
     {
-        command->signal(swapchains[i]->get_present_fence(), m_frame_fence_value);
+        command->signal(swapchain->get_present_fence(), m_frame_fence_value);
     }
     rhi_fence* finish_fence = allocate_fence();
     command->signal(finish_fence, m_frame_fence_value);
@@ -475,13 +477,17 @@ rhi_fence* graphics_system::render(
         });
 
     graph.compile();
-    graph.record(command);
 
+    command->begin_label("Camera");
+
+    graph.record(command);
     device.execute(command);
 
-    for (std::size_t i = 0; i < swapchains.size(); ++i)
+    command->end_label();
+
+    for (auto& swapchain : swapchains)
     {
-        swapchains[i]->present();
+        swapchain->present();
     }
 
     return finish_fence;

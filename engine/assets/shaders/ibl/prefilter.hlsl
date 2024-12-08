@@ -50,11 +50,11 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     RWTexture2DArray<float3> prefilter_map = ResourceDescriptorHeap[prefilter.prefilter_map];
     TextureCube<float3> cube_map = ResourceDescriptorHeap[prefilter.cube_map];
-    SamplerState linear_sampler = SamplerDescriptorHeap[1];
+    SamplerState linear_repeat_sampler = SamplerDescriptorHeap[2];
 
     if (prefilter.level == 0)
     {
-        prefilter_map[dtid] = cube_map.SampleLevel(linear_sampler, N, 0);
+        prefilter_map[dtid] = cube_map.SampleLevel(linear_repeat_sampler, N, 0);
     }
     else
     {
@@ -72,7 +72,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
             float NdotL = max(dot(N, L), 0.0);
             if (NdotL > 0.0)
             {
-                result += cube_map.SampleLevel(linear_sampler, L, 0) * NdotL;
+                result += cube_map.SampleLevel(linear_repeat_sampler, L, 0) * NdotL;
                 weight += NdotL;
             }
         }

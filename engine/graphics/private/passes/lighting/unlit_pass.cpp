@@ -9,9 +9,9 @@ struct unlit_fs : public shader_fs
     struct gbuffer_data
     {
         std::uint32_t albedo;
-        std::uint32_t depth;
         std::uint32_t padding0;
         std::uint32_t padding1;
+        std::uint32_t padding2;
     };
 
     static constexpr parameter gbuffer = {
@@ -38,7 +38,6 @@ void unlit_pass::add(render_graph& graph, const parameter& parameter)
         rhi_parameter* gbuffer_parameter;
 
         rdg_texture* gbuffer_albedo;
-        rdg_texture* gbuffer_depth;
     };
 
     pass_data data = {
@@ -46,7 +45,6 @@ void unlit_pass::add(render_graph& graph, const parameter& parameter)
         .scene_parameter = parameter.scene.get_scene_parameter(),
         .gbuffer_parameter = graph.allocate_parameter(unlit_fs::gbuffer),
         .gbuffer_albedo = parameter.gbuffer_albedo,
-        .gbuffer_depth = parameter.gbuffer_depth,
     };
 
     auto& pass = graph.add_pass<rdg_render_pass>("Unlit Pass");
@@ -58,12 +56,12 @@ void unlit_pass::add(render_graph& graph, const parameter& parameter)
     pass.add_render_target(
         parameter.render_target,
         parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
+    pass.set_depth_stencil(parameter.depth_buffer, RHI_ATTACHMENT_LOAD_OP_LOAD);
     pass.set_execute(
         [data](rdg_command& command)
         {
             unlit_fs::gbuffer_data gbuffer_data = {
                 .albedo = data.gbuffer_albedo->get_handle(),
-                .depth = data.gbuffer_depth->get_handle(),
             };
             data.gbuffer_parameter->set_constant(0, &gbuffer_data, sizeof(unlit_fs::gbuffer_data));
 

@@ -16,14 +16,14 @@ struct vs_in
 {
     float2 position : POSITION;
     float4 color : COLOR;
-    float2 uv : UV;
+    float2 texcoord : TEXCOORD;
     // uint offset_index : OFFSET_INDEX;
 };
 
 struct vs_out
 {
     float4 position : SV_POSITION;
-    float2 uv : UV;
+    float2 texcoord : TEXCOORD;
     float4 color : COLOR;
 };
 
@@ -36,7 +36,7 @@ vs_out vs_main(vs_in input)
 
     vs_out output;
     output.position = mul(mvp.mvp, position);
-    output.uv = input.uv;
+    output.texcoord = input.texcoord;
     output.color = input.color;
 
     return output;
@@ -46,12 +46,12 @@ float4 fs_main(vs_out input) : SV_TARGET
 {
     if (material.type == 2)
     {
-        float4 texture_color = material_texture.Sample(material_texture_sampler, input.uv);
+        float4 texture_color = material_texture.Sample(material_texture_sampler, input.texcoord);
         return input.color * texture_color;
     }
     else if (material.type == 1)
     {
-        float alpha = material_texture.Sample(material_texture_sampler, input.uv).r;
+        float alpha = material_texture.Sample(material_texture_sampler, input.texcoord).r;
         return float4(input.color.rgb, alpha);
     }
     else

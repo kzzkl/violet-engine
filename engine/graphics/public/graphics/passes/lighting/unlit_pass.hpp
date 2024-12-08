@@ -12,8 +12,8 @@ public:
         const render_scene& scene;
 
         rdg_texture* gbuffer_albedo;
-        rdg_texture* gbuffer_depth;
 
+        rdg_texture* depth_buffer;
         rdg_texture* render_target;
 
         bool clear;

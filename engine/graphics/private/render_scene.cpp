@@ -176,6 +176,49 @@ void render_scene::update_instance(render_id instance_id, const render_instance&
     }
 }
 
+render_id render_scene::add_light(const render_light& light)
+{
+    render_id light_id = m_light_allocator.allocate();
+
+    if (light_id >= m_lights.size())
+    {
+        m_lights.resize(light_id + 1);
+    }
+
+    m_lights[light_id] = {
+        .data = light,
+    };
+
+    m_light_index_map.add(light_id);
+
+    set_light_state(light_id, RENDER_LIGHT_STAGE_VALID | RENDER_LIGHT_STAGE_DIRTY);
+
+    m_scene_data.light_count = m_light_index_map.get_size();
+    m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
+
+    return light_id;
+}
+
+void render_scene::remove_light(render_id light_id)
+{
+    render_id last_light_id = m_light_index_map.remove(light_id);
+    if (last_light_id != light_id)
+    {
+        set_light_state(last_light_id, RENDER_LIGHT_STAGE_DIRTY);
+    }
+
+    m_light_allocator.free(light_id);
+
+    m_scene_data.light_count = m_light_index_map.get_size();
+    m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
+}
+
+void render_scene::update_light(render_id light_id, const render_light& light)
+{
+    m_lights[light_id].data = light;
+    set_light_state(light_id, RENDER_LIGHT_STAGE_DIRTY);
+}
+
 void render_scene::set_skybox(rhi_texture* skybox, rhi_texture* irradiance, rhi_texture* prefilter)
 {
     m_scene_data.skybox = skybox->get_handle();
@@ -378,6 +421,19 @@ void render_scene::set_instance_state(render_id instance_id, render_instance_sta
     }
 
     instance_info.states |= states;
+}
+
+void render_scene::set_light_state(render_id light_id, render_light_states states)
+{
+    auto& light_info = m_lights[light_id];
+
+    if ((light_info.states & RENDER_LIGHT_STAGE_DIRTY) == 0 &&
+        (states & RENDER_LIGHT_STAGE_DIRTY) != 0)
+    {
+        m_dirty_lights.push_back(light_id);
+    }
+
+    light_info.states |= states;
 }
 
 void render_scene::update_mesh_buffer()

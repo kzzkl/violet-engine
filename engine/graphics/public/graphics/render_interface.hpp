@@ -56,6 +56,9 @@ enum rhi_format
     RHI_FORMAT_B8G8R8A8_UINT,
     RHI_FORMAT_B8G8R8A8_SINT,
     RHI_FORMAT_B8G8R8A8_SRGB,
+    RHI_FORMAT_R16G16_UNORM,
+    RHI_FORMAT_R16G16B16A16_UNORM,
+    RHI_FORMAT_R16G16B16A16_FLOAT,
     RHI_FORMAT_R32_UINT,
     RHI_FORMAT_R32_SINT,
     RHI_FORMAT_R32_FLOAT,
@@ -110,7 +113,7 @@ enum rhi_texture_flag
     RHI_TEXTURE_DEPTH_STENCIL = 1 << 3,
     RHI_TEXTURE_TRANSFER_SRC = 1 << 4,
     RHI_TEXTURE_TRANSFER_DST = 1 << 5,
-    RHI_TEXTURE_CUBE = 1 << 6
+    RHI_TEXTURE_CUBE = 1 << 6,
 };
 using rhi_texture_flags = std::uint32_t;
 
@@ -360,10 +363,11 @@ using rhi_shader_stage_flags = std::uint32_t;
 enum rhi_parameter_binding_type
 {
     RHI_PARAMETER_BINDING_CONSTANT,
-    RHI_PARAMETER_BINDING_UNIFORM,
+    RHI_PARAMETER_BINDING_UNIFORM_BUFFER,
     RHI_PARAMETER_BINDING_UNIFORM_TEXEL,
-    RHI_PARAMETER_BINDING_STORAGE,
+    RHI_PARAMETER_BINDING_STORAGE_BUFFER,
     RHI_PARAMETER_BINDING_STORAGE_TEXEL,
+    RHI_PARAMETER_BINDING_STORAGE_TEXTURE,
     RHI_PARAMETER_BINDING_TEXTURE,
     RHI_PARAMETER_BINDING_SAMPLER,
     RHI_PARAMETER_BINDING_MUTABLE,
@@ -403,6 +407,7 @@ public:
         std::size_t offset = 0) = 0;
     virtual void set_uniform(std::size_t index, rhi_buffer* uniform, std::size_t offset = 0) = 0;
     virtual void set_storage(std::size_t index, rhi_buffer* storage, std::size_t offset = 0) = 0;
+    virtual void set_storage(std::size_t index, rhi_texture* texture, std::size_t offset = 0) = 0;
     virtual void set_texture(std::size_t index, rhi_texture* texture, std::size_t offset = 0) = 0;
     virtual void set_sampler(std::size_t index, rhi_sampler* sampler, std::size_t offset = 0) = 0;
 };

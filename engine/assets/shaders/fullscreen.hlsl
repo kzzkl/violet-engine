@@ -1,7 +1,7 @@
 struct vs_out
 {
     float4 position : SV_POSITION;
-    float2 uv : TEXCOORD;
+    float2 texcoord : TEXCOORD;
 };
 
 vs_out vs_main(uint vertex_id : SV_VertexID)
@@ -12,7 +12,7 @@ vs_out vs_main(uint vertex_id : SV_VertexID)
         float2(3.0, 1.0),
     };
 
-    const float2 uv[3] = {
+    const float2 texcoord[3] = {
         float2(0.0, 0.0),
         float2(0.0, 2.0),
         float2(2.0, 0.0),
@@ -20,6 +20,6 @@ vs_out vs_main(uint vertex_id : SV_VertexID)
 
     vs_out output;
     output.position = float4(ndc[vertex_id], 0.0, 1.0);
-    output.uv = uv[vertex_id];
+    output.texcoord = texcoord[vertex_id];
     return output;
 }

@@ -66,7 +66,7 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
             ++constant_count;
             break;
         }
-        case RHI_PARAMETER_BINDING_UNIFORM: {
+        case RHI_PARAMETER_BINDING_UNIFORM_BUFFER: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             break;
         }
@@ -74,12 +74,16 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
             binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
             break;
         }
-        case RHI_PARAMETER_BINDING_STORAGE: {
+        case RHI_PARAMETER_BINDING_STORAGE_BUFFER: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             break;
         }
         case RHI_PARAMETER_BINDING_STORAGE_TEXEL: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+            break;
+        }
+        case RHI_PARAMETER_BINDING_STORAGE_TEXTURE: {
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
             break;
         }
         case RHI_PARAMETER_BINDING_TEXTURE: {

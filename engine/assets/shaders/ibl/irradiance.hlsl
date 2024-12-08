@@ -45,24 +45,23 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     float3 N = normalize(forward_dir[dtid.z] + offset.x * right_dir[dtid.z] + offset.y * up_dir[dtid.z]);
 
     TextureCube<float3> cube_map = ResourceDescriptorHeap[irradiance.cube_map];
-    SamplerState linear_sampler = SamplerDescriptorHeap[1];
+    SamplerState linear_repeat_sampler = SamplerDescriptorHeap[2];
 
     float3 up = float3(0.0, 1.0, 0.0);
     float3 right = normalize(cross(up, N));
     up = cross(N, right);
 
-    float delta_phi = TWO_PI / irradiance.width;
-    float delta_theta = HALF_PI / irradiance.height;
-
-    float3 color = float3(0.0, 0.0, 0.0);
+    float3 color = 0.0;
+    
+    float sample_delta = 0.0025;
     uint sample_count = 0;
-    for (float phi = 0.0; phi < TWO_PI; phi += delta_phi)
+    for (float phi = 0.0; phi < TWO_PI; phi += sample_delta)
     {
-        for (float theta = 0.0; theta < HALF_PI; theta += delta_theta)
+        for (float theta = 0.0; theta < HALF_PI; theta += sample_delta)
         {
-            float3 temp = cos(phi) * right + sin(phi) * up;
-            float3 uvw = cos(theta) * N + sin(theta) * temp;
-            color += cube_map.SampleLevel(linear_sampler, uvw, 0) * cos(theta) * sin(theta);
+            float3 tangent = float3(sin(theta) * cos(phi),  sin(theta) * sin(phi), cos(theta));
+            float3 texcoord = normalize(tangent.x * right + tangent.y * up + tangent.z * N);
+            color += cube_map.SampleLevel(linear_repeat_sampler, texcoord, 0.0) * cos(theta) * sin(theta);
             ++sample_count;
         }
     }

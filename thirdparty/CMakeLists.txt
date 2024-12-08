@@ -28,6 +28,16 @@ add_subdirectory(spdlog)
 # nlohmann/json
 add_subdirectory(json)
 
+# MikkTSpace
+add_library(MikkTSpace STATIC
+    ./MikkTSpace/mikktspace.c)
+target_include_directories(MikkTSpace PUBLIC ./MikkTSpace)
+
+# OffsetAllocator
+add_library(OffsetAllocator STATIC
+    ./OffsetAllocator/offsetAllocator.cpp)
+target_include_directories(OffsetAllocator PUBLIC ./OffsetAllocator)
+
 # bullet3
 set(BUILD_EXTRAS OFF CACHE BOOL "" FORCE)
 set(BUILD_PYBULLET OFF CACHE BOOL "" FORCE)

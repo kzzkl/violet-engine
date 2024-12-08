@@ -63,6 +63,8 @@ std::vector<rdg_reference*> rdg_pass::get_references(rdg_reference_type type) co
 
 rdg_reference* rdg_pass::add_reference(rdg_resource* resource)
 {
+    assert(resource != nullptr);
+
     auto reference = std::make_unique<rdg_reference>();
     reference->pass = this;
     reference->resource = resource;

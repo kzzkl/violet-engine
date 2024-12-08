@@ -92,6 +92,7 @@ public:
 #ifndef NDEBUG
             L"-Zi",
             L"-Qembed_debug",
+            L"-O0",
 #endif
         };
 
@@ -247,7 +248,9 @@ private:
     rhi_ptr<rhi_texture> m_empty_texture;
     rhi_ptr<rhi_texture> m_brdf_lut;
 
-    rhi_ptr<rhi_sampler> m_point_sampler;
-    rhi_ptr<rhi_sampler> m_linear_sampler;
+    rhi_ptr<rhi_sampler> m_point_repeat_sampler;
+    rhi_ptr<rhi_sampler> m_point_clamp_sampler;
+    rhi_ptr<rhi_sampler> m_linear_repeat_sampler;
+    rhi_ptr<rhi_sampler> m_linear_clamp_sampler;
 };
 } // namespace violet

@@ -2,27 +2,24 @@
 #include "gbuffer.hlsli"
 
 ConstantBuffer<scene_data> scene : register(b0, space1);
-
 struct gbuffer_data
 {
     uint albedo;
-    uint depth;
     uint padding0;
     uint padding1;
+    uint padding2;
 };
-ConstantBuffer<gbuffer_data> gbuffer : register(b0, space2);
+ConstantBuffer<gbuffer_data> constant : register(b0, space2);
 
-float4 fs_main(float2 uv : TEXCOORD) : SV_TARGET
+float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
 {
-    SamplerState gbuffer_sampler = SamplerDescriptorHeap[scene.point_sampler];
+    Texture2D<float4> gbuffer_albbedo = ResourceDescriptorHeap[constant.albedo];
+    SamplerState point_repeat_sampler = SamplerDescriptorHeap[scene.point_repeat_sampler];
 
-    Texture2D<float4> gbuffer_albbedo = ResourceDescriptorHeap[gbuffer.albedo];
+    gbuffer::packed gbuffer_packed;
+    gbuffer_packed.albedo = gbuffer_albbedo.Sample(point_repeat_sampler, texcoord);
 
-    gbuffer_packed data;
-    data.albedo = gbuffer_albbedo.Sample(gbuffer_sampler, uv);
+    gbuffer::data gbuffer = gbuffer::unpack(gbuffer_packed);
 
-    float3 albedo;
-    gbuffer_decode(data, albedo);
-
-    return float4(albedo, 1.0);
+    return float4(gbuffer.albedo, 1.0);
 }

@@ -35,8 +35,12 @@ struct unlit_material
     float3 albedo;
 };
 
-gbuffer_packed fs_main(vs_out input)
+gbuffer::packed fs_main(vs_out input)
 {
     unlit_material material = load_material<unlit_material>(scene.material_buffer, input.material_address);
-    return gbuffer_encode(material.albedo);
+
+    gbuffer::data gbuffer;
+    gbuffer.albedo = material.albedo;
+
+    return gbuffer::pack(gbuffer);
 }

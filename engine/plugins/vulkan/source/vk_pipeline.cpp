@@ -125,7 +125,7 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
     std::vector<VkVertexInputBindingDescription> binding_descriptions;
     std::vector<VkVertexInputAttributeDescription> attribute_descriptions;
 
-    auto& vertex_attributes = vertex_shader->get_vertex_attributes();
+    const auto& vertex_attributes = vertex_shader->get_vertex_attributes();
     for (std::uint32_t i = 0; i < vertex_attributes.size(); ++i)
     {
         VkFormat format = vk_util::map_format(vertex_attributes[i].format);
@@ -245,7 +245,7 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
         .reference = desc.depth_stencil.stencil_back.reference,
     };
 
-    vk_render_pass* render_pass = static_cast<vk_render_pass*>(desc.render_pass);
+    auto* render_pass = static_cast<vk_render_pass*>(desc.render_pass);
 
     std::size_t blend_count = render_pass->get_subpass_info(desc.subpass_index).render_target_count;
     std::vector<VkPipelineColorBlendAttachmentState> color_blend_attachments(blend_count);
@@ -283,19 +283,23 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
     color_blend_info.blendConstants[3] = 0.0f;
 
     std::vector<vk_parameter_layout*> parameter_layouts;
-    for (auto& parameter : vertex_shader->get_parameters())
+    for (const auto& parameter : vertex_shader->get_parameters())
     {
         if (parameter_layouts.size() <= parameter.space)
+        {
             parameter_layouts.resize(parameter.space + 1);
+        }
         parameter_layouts[parameter.space] = parameter.layout;
     }
 
     if (fragment_shader != nullptr)
     {
-        for (auto& parameter : fragment_shader->get_parameters())
+        for (const auto& parameter : fragment_shader->get_parameters())
         {
             if (parameter_layouts.size() <= parameter.space)
+            {
                 parameter_layouts.resize(parameter.space + 1);
+            }
             parameter_layouts[parameter.space] = parameter.layout;
         }
     }
@@ -348,7 +352,7 @@ vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, 
       m_pipeline_layout(VK_NULL_HANDLE),
       m_context(context)
 {
-    vk_compute_shader* compute_shader = static_cast<vk_compute_shader*>(desc.compute_shader);
+    auto* compute_shader = static_cast<vk_compute_shader*>(desc.compute_shader);
 
     VkPipelineShaderStageCreateInfo compute_shader_stage_info = {};
     compute_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -357,10 +361,12 @@ vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, 
     compute_shader_stage_info.pName = "cs_main";
 
     std::vector<vk_parameter_layout*> parameter_layouts;
-    for (auto& parameter : compute_shader->get_parameters())
+    for (const auto& parameter : compute_shader->get_parameters())
     {
         if (parameter_layouts.size() <= parameter.space)
+        {
             parameter_layouts.resize(parameter.space + 1);
+        }
         parameter_layouts[parameter.space] = parameter.layout;
     }
     m_pipeline_layout =

@@ -111,10 +111,10 @@ struct shader
         std::uint32_t prefilter;
         std::uint32_t brdf_lut;
         std::uint32_t material_buffer;
-        std::uint32_t point_sampler;
-        std::uint32_t linear_sampler;
-        std::uint32_t padding0;
-        std::uint32_t padding1;
+        std::uint32_t point_repeat_sampler;
+        std::uint32_t point_clamp_sampler;
+        std::uint32_t linear_repeat_sampler;
+        std::uint32_t linear_clamp_sampler;
     };
 
     static constexpr parameter scene = {
@@ -131,6 +131,7 @@ struct shader
         mat4f view;
         mat4f projection;
         mat4f view_projection;
+        mat4f view_projection_inv;
         vec3f position;
         std::uint32_t padding0;
     };

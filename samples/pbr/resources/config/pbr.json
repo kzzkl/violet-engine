@@ -5,11 +5,7 @@
         "height": 800
     },
     "PBR Sample": {
-        "skybox": "violet-assets/textures/skybox/814-hdri-skies-com.hdr",
-        "model": "violet-assets/models/fbx/Cerberus_by_Andrew_Maximov/Cerberus_LP.fbx",
-        "albedo_tex": "violet-assets/models/fbx/Cerberus_by_Andrew_Maximov/Textures/Cerberus_A.tga",
-        "normal_tex": "violet-assets/models/fbx/Cerberus_by_Andrew_Maximov/Textures/Cerberus_N.tga",
-        "metallic_tex": "violet-assets/models/fbx/Cerberus_by_Andrew_Maximov/Textures/Cerberus_M.tga",
-        "roughness_tex": "violet-assets/models/fbx/Cerberus_by_Andrew_Maximov/Textures/Cerberus_R.tga"
+        "skybox": "C://Workspace/assets/textures/skybox/dry_orchard_meadow_4k.hdr",
+        "model": "C://Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf"
     }
 }
