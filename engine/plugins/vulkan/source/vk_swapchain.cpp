@@ -86,9 +86,13 @@ rhi_fence* vk_swapchain::acquire_texture()
         &m_swapchain_image_index);
 
     if (result != VK_ERROR_OUT_OF_DATE_KHR)
+    {
         vk_check(result);
+    }
     else
+    {
         return nullptr;
+    }
 
     return semaphore.get();
 }
@@ -100,7 +104,7 @@ rhi_fence* vk_swapchain::get_present_fence() const
 
 void vk_swapchain::present()
 {
-    auto queue = m_context->get_present_queue();
+    auto* queue = m_context->get_present_queue();
     queue->present(
         m_swapchain,
         m_swapchain_image_index,
@@ -157,7 +161,9 @@ void vk_swapchain::resize(std::uint32_t width, std::uint32_t height)
 
     swapchain_info.minImageCount = capabilities.minImageCount + 1;
     if (capabilities.maxImageCount > 0 && swapchain_info.minImageCount > capabilities.maxImageCount)
+    {
         swapchain_info.minImageCount = capabilities.maxImageCount;
+    }
 
     swapchain_info.imageFormat = formats[0].format;
     swapchain_info.imageColorSpace = formats[0].colorSpace;

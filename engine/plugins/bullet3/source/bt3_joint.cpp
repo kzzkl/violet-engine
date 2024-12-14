@@ -58,16 +58,16 @@ void bt3_joint::set_angular(const vec3f& min, const vec3f& max)
 
 void bt3_joint::set_spring_enable(std::size_t index, bool enable)
 {
-    m_constraint->enableSpring(index, enable);
+    m_constraint->enableSpring(static_cast<int>(index), enable);
 }
 
 void bt3_joint::set_stiffness(std::size_t index, float stiffness)
 {
-    m_constraint->setStiffness(index, stiffness);
+    m_constraint->setStiffness(static_cast<int>(index), stiffness);
 }
 
 void bt3_joint::set_damping(std::size_t index, float damping)
 {
-    m_constraint->setDamping(index, damping);
+    m_constraint->setDamping(static_cast<int>(index), damping);
 }
 } // namespace violet::bt3

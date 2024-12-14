@@ -10,9 +10,9 @@ ecs_command_system::ecs_command_system()
 bool ecs_command_system::initialize(const dictionary& config)
 {
     task_graph& task_graph = get_task_graph();
-    task_group& pre_update = task_graph.get_group("PreUpdate Group");
-    task_group& update = task_graph.get_group("Update Group");
-    task_group& post_update = task_graph.get_group("Post Update Group");
+    task_group& pre_update = task_graph.get_group("PreUpdate");
+    task_group& update = task_graph.get_group("Update");
+    task_group& post_update = task_graph.get_group("PostUpdate");
 
     task& pre_update_sync = task_graph.add_task()
                                 .set_name("ECS Sync Point - PreUpdate")
@@ -37,7 +37,7 @@ bool ecs_command_system::initialize(const dictionary& config)
     post_update.add_dependency(update_sync);
 
     task& post_update_sync = task_graph.add_task()
-                                 .set_name("ECS Sync Point - Post Update")
+                                 .set_name("ECS Sync Point - PostUpdate")
                                  .add_dependency(post_update)
                                  .set_options(TASK_OPTION_MAIN_THREAD)
                                  .set_execute(

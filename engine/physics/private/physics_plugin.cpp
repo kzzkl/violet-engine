@@ -3,22 +3,21 @@
 
 namespace violet
 {
-physics_plugin::physics_plugin() : m_plugin(nullptr)
+physics_plugin::physics_plugin()
+    : m_plugin(nullptr)
 {
 }
 
 bool physics_plugin::on_load()
 {
-    phy_create_plugin m_create_func =
-        static_cast<phy_create_plugin>(find_symbol("phy_create_plugin"));
+    auto m_create_func = reinterpret_cast<phy_create_plugin>(find_symbol("phy_create_plugin"));
     if (m_create_func == nullptr)
     {
         log::error("Symbol not found in plugin: create_plugin.");
         return false;
     }
 
-    phy_destroy_plugin m_destroy_func =
-        static_cast<phy_destroy_plugin>(find_symbol("phy_destroy_plugin"));
+    auto m_destroy_func = reinterpret_cast<phy_destroy_plugin>(find_symbol("phy_destroy_plugin"));
     if (m_create_func == nullptr)
     {
         log::error("Symbol not found in plugin: destroy_plugin.");

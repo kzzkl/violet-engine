@@ -5,7 +5,6 @@
 #include "components/mmd_skeleton.hpp"
 #include "components/transform.hpp"
 #include "core/engine_module.hpp"
-#include "math/math.hpp"
 
 namespace violet::sample
 {

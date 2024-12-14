@@ -24,9 +24,9 @@ void vk_command::begin_render_pass(rhi_render_pass* render_pass, rhi_framebuffer
 
     m_current_render_pass = static_cast<vk_render_pass*>(render_pass)->get_render_pass();
 
-    vk_framebuffer* casted_framebuffer = static_cast<vk_framebuffer*>(framebuffer);
+    auto* casted_framebuffer = static_cast<vk_framebuffer*>(framebuffer);
     rhi_texture_extent extent = casted_framebuffer->get_extent();
-    auto& clear_values = casted_framebuffer->get_clear_values();
+    const auto& clear_values = casted_framebuffer->get_clear_values();
 
     VkRenderPassBeginInfo render_pass_begin_info = {};
     render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -53,7 +53,7 @@ void vk_command::next_subpass()
 
 void vk_command::set_pipeline(rhi_render_pipeline* render_pipeline)
 {
-    vk_render_pipeline* pipeline = static_cast<vk_render_pipeline*>(render_pipeline);
+    auto* pipeline = static_cast<vk_render_pipeline*>(render_pipeline);
     vkCmdBindPipeline(m_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->get_pipeline());
 
     m_current_pipeline_layout = pipeline->get_pipeline_layout();
@@ -100,11 +100,16 @@ void vk_command::set_scissor(const rhi_scissor_rect* rects, std::size_t size)
     std::vector<VkRect2D> scissors;
     for (std::size_t i = 0; i < size; ++i)
     {
-        VkRect2D rect = {};
-        rect.offset.x = rects[i].min_x;
-        rect.offset.y = rects[i].min_y;
-        rect.extent.width = rects[i].max_x - rects[i].min_x;
-        rect.extent.height = rects[i].max_y - rects[i].min_y;
+        VkRect2D rect = {
+            .offset =
+                {
+                    .x = static_cast<std::int32_t>(rects[i].min_x),
+                    .y = static_cast<std::int32_t>(rects[i].min_y),
+                },
+            .extent = {
+                .width = rects[i].max_x - rects[i].min_x,
+                .height = rects[i].max_y - rects[i].min_y,
+            }};
         scissors.push_back(rect);
     }
     vkCmdSetScissor(
@@ -122,7 +127,8 @@ void vk_command::set_vertex_buffers(
     std::vector<VkDeviceSize> offsets(vertex_buffer_count);
     for (std::size_t i = 0; i < vertex_buffer_count; ++i)
     {
-        buffers[i] = vertex_buffers[i] ? static_cast<vk_buffer*>(vertex_buffers[i])->get_buffer() : VK_NULL_HANDLE;
+        buffers[i] = vertex_buffers[i] ? static_cast<vk_buffer*>(vertex_buffers[i])->get_buffer() :
+                                         VK_NULL_HANDLE;
         offsets[i] = 0;
     }
     vkCmdBindVertexBuffers(
@@ -159,7 +165,7 @@ void vk_command::draw_indexed(
         static_cast<std::uint32_t>(index_count),
         1,
         static_cast<std::uint32_t>(index_offset),
-        static_cast<std::uint32_t>(vertex_base),
+        static_cast<std::int32_t>(vertex_base),
         0);
 }
 
@@ -512,31 +518,32 @@ void vk_graphics_queue::execute(rhi_command* command)
     VkCommandBuffer buffer = cast_command->get_command_buffer();
     vk_check(vkEndCommandBuffer(buffer));
 
-    auto& signal_semaphores = cast_command->get_signal_fences();
-    auto& signal_values = cast_command->get_signal_values();
+    const auto& signal_semaphores = cast_command->get_signal_fences();
+    const auto& signal_values = cast_command->get_signal_values();
 
-    auto& wait_semaphores = cast_command->get_wait_fences();
-    auto& wait_values = cast_command->get_wait_values();
-    auto& wait_stages = cast_command->get_wait_stages();
+    const auto& wait_semaphores = cast_command->get_wait_fences();
+    const auto& wait_values = cast_command->get_wait_values();
+    const auto& wait_stages = cast_command->get_wait_stages();
 
-    VkTimelineSemaphoreSubmitInfo timeline_info;
-    timeline_info.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
-    timeline_info.pNext = NULL;
-    timeline_info.signalSemaphoreValueCount = static_cast<std::uint32_t>(signal_values.size());
-    timeline_info.pSignalSemaphoreValues = signal_values.data();
-    timeline_info.waitSemaphoreValueCount = static_cast<std::uint32_t>(wait_values.size());
-    timeline_info.pWaitSemaphoreValues = wait_values.data();
+    VkTimelineSemaphoreSubmitInfo timeline_info = {
+        .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
+        .waitSemaphoreValueCount = static_cast<std::uint32_t>(wait_values.size()),
+        .pWaitSemaphoreValues = wait_values.data(),
+        .signalSemaphoreValueCount = static_cast<std::uint32_t>(signal_values.size()),
+        .pSignalSemaphoreValues = signal_values.data(),
+    };
 
-    VkSubmitInfo submit_info = {};
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.pNext = &timeline_info;
-    submit_info.pSignalSemaphores = signal_semaphores.data();
-    submit_info.signalSemaphoreCount = static_cast<std::uint32_t>(signal_semaphores.size());
-    submit_info.pWaitSemaphores = wait_semaphores.data();
-    submit_info.waitSemaphoreCount = static_cast<std::uint32_t>(wait_semaphores.size());
-    submit_info.pWaitDstStageMask = wait_stages.data();
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &buffer;
+    VkSubmitInfo submit_info = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext = &timeline_info,
+        .waitSemaphoreCount = static_cast<std::uint32_t>(wait_semaphores.size()),
+        .pWaitSemaphores = wait_semaphores.data(),
+        .pWaitDstStageMask = wait_stages.data(),
+        .commandBufferCount = 1,
+        .pCommandBuffers = &buffer,
+        .signalSemaphoreCount = static_cast<std::uint32_t>(signal_semaphores.size()),
+        .pSignalSemaphores = signal_semaphores.data(),
+    };
 
     vk_check(vkQueueSubmit(m_queue, 1, &submit_info, VK_NULL_HANDLE));
 }
@@ -572,13 +579,14 @@ void vk_present_queue::present(
     std::uint32_t image_index,
     VkSemaphore wait_semaphore)
 {
-    VkPresentInfoKHR present_info = {};
-    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    present_info.pWaitSemaphores = &wait_semaphore;
-    present_info.waitSemaphoreCount = 1;
-    present_info.swapchainCount = 1;
-    present_info.pSwapchains = &swapchain;
-    present_info.pImageIndices = &image_index;
+    VkPresentInfoKHR present_info = {
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &wait_semaphore,
+        .swapchainCount = 1,
+        .pSwapchains = &swapchain,
+        .pImageIndices = &image_index,
+    };
 
     VkResult result = vkQueuePresentKHR(m_queue, &present_info);
     if (result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR)

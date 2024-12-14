@@ -1,11 +1,12 @@
-#include "components/rigidbody.hpp"
-#include "physics/physics_world.hpp"
+#include "components/rigidbody_component.hpp"
+#include "physics/physics_scene.hpp"
 
 namespace violet
 {
-float4x4 rigidbody_reflector::reflect(
-    const float4x4& rigidbody_world,
-    const float4x4& transform_world)
+    /*
+mat4f rigidbody_reflector::reflect(
+    const mat4f& rigidbody_world,
+    const mat4f& transform_world)
 {
     return rigidbody_world;
 }
@@ -116,7 +117,7 @@ void rigidbody::set_friction(float friction)
         m_rigidbody->set_restitution(friction);
 }
 
-void rigidbody::set_transform(const float4x4& transform)
+void rigidbody::set_transform(const mat4f& transform)
 {
     if (m_rigidbody)
         m_rigidbody->set_transform(transform);
@@ -124,12 +125,12 @@ void rigidbody::set_transform(const float4x4& transform)
         m_desc.initial_transform = transform;
 }
 
-const float4x4& rigidbody::get_transform() const
+const mat4f& rigidbody::get_transform() const
 {
     return m_rigidbody->get_transform();
 }
 
-void rigidbody::set_offset(const float4x4& offset) noexcept
+void rigidbody::set_offset(const mat4f& offset) noexcept
 {
     m_offset = offset;
 
@@ -153,10 +154,10 @@ void rigidbody::clear_forces()
 
 joint* rigidbody::add_joint(
     component_ptr<rigidbody> target,
-    const float3& source_position,
-    const float4& source_rotation,
-    const float3& target_position,
-    const float4& target_rotation)
+    const vec3f& source_position,
+    const vec4f& source_rotation,
+    const vec3f& target_position,
+    const vec4f& target_rotation)
 {
     m_joints.push_back(std::make_unique<joint>(
         this,
@@ -262,10 +263,10 @@ rigidbody& rigidbody::operator=(rigidbody&& other) noexcept
 joint::joint(
     rigidbody* source,
     component_ptr<rigidbody> target,
-    const float3& source_position,
-    const float4& source_rotation,
-    const float3& target_position,
-    const float4& target_rotation,
+    const vec3f& source_position,
+    const vec4f& source_rotation,
+    const vec3f& target_position,
+    const vec4f& target_rotation,
     physics_context* context)
 {
     m_source = source;
@@ -282,17 +283,15 @@ joint::joint(
     m_joint = context->create_joint(desc);
 }
 
-joint::~joint()
-{
-}
+joint::~joint() {}
 
-void joint::set_linear(const float3& min, const float3& max)
+void joint::set_linear(const vec3f& min, const vec3f& max)
 {
     if (m_joint)
         m_joint->set_linear(min, max);
 }
 
-void joint::set_angular(const float3& min, const float3& max)
+void joint::set_angular(const vec3f& min, const vec3f& max)
 {
     if (m_joint)
         m_joint->set_angular(min, max);
@@ -315,4 +314,5 @@ void joint::set_damping(std::size_t index, float damping)
     if (m_joint)
         m_joint->set_damping(index, damping);
 }
+*/
 } // namespace violet

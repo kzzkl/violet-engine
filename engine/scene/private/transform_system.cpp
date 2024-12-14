@@ -17,13 +17,13 @@ bool transform_system::initialize(const dictionary& config)
     get_world().register_component<transform_world_component>();
 
     task_graph& task_graph = get_task_graph();
-    task_group& post_update_group = task_graph.get_group("Post Update Group");
-    task& update_hierarchy = task_graph.get_task("Update Hierarchy");
+    task_group& transform_group = task_graph.get_group("Transform");
+    task& update_hierarchy_task = task_graph.get_task("Update Hierarchy");
 
     task_graph.add_task()
         .set_name("Update Transform")
-        .set_group(post_update_group)
-        .add_dependency(update_hierarchy)
+        .set_group(transform_group)
+        .add_dependency(update_hierarchy_task)
         .set_execute(
             [this]()
             {
@@ -75,19 +75,11 @@ void transform_system::update_world()
 
     std::vector<entity> root_entities;
 
-    world.get_view()
-        .read<entity>()
-        .read<transform_world_component>()
-        .read<child_component>()
-        .without<parent_component>()
-        .each(
-            [&root_entities](
-                const entity& e,
-                const transform_world_component& world,
-                const child_component& child)
-            {
-                root_entities.push_back(e);
-            });
+    world.get_view().read<entity>().with<transform_component>().without<parent_component>().each(
+        [&root_entities](const entity& e)
+        {
+            root_entities.push_back(e);
+        });
 
     for (auto& root : root_entities)
     {
@@ -102,12 +94,16 @@ void transform_system::update_world()
     }
 }
 
-void transform_system::update_world_recursive(entity e, const mat4f& parent_world, bool need_update)
+void transform_system::update_world_recursive(
+    entity e,
+    const mat4f& parent_world,
+    bool parent_dirty)
 {
     auto& world = get_world();
 
-    need_update = need_update || world.is_updated<transform_local_component>(e, m_system_version) ||
-                  world.is_updated<parent_component>(e, m_system_version);
+    bool need_update = parent_dirty ||
+                       world.is_updated<transform_local_component>(e, m_system_version) ||
+                       world.is_updated<parent_component>(e, m_system_version);
 
     if (need_update)
     {
@@ -122,7 +118,7 @@ void transform_system::update_world_recursive(entity e, const mat4f& parent_worl
         {
             for (const auto& child : world.get_component<const child_component>(e).children)
             {
-                update_world_recursive(child, world_transform.matrix, need_update);
+                update_world_recursive(child, world_transform.matrix, true);
             }
         }
     }
@@ -133,7 +129,7 @@ void transform_system::update_world_recursive(entity e, const mat4f& parent_worl
             const auto& world_transform = world.get_component<const transform_world_component>(e);
             for (const auto& child : world.get_component<const child_component>(e).children)
             {
-                update_world_recursive(child, world_transform.matrix, need_update);
+                update_world_recursive(child, world_transform.matrix, false);
             }
         }
     }

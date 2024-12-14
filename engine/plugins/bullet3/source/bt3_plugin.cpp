@@ -8,23 +8,22 @@ namespace violet::bt3
 class bt3_plugin : public phy_plugin
 {
 public:
-    virtual phy_world* create_world(const phy_world_desc& desc) override
+    phy_world* create_world(const phy_world_desc& desc) override
     {
         return new bt3_world(desc);
     }
 
-    virtual void destroy_world(phy_world* world) override
+    void destroy_world(phy_world* world) override
     {
         delete world;
     }
 
-    virtual phy_collision_shape* create_collision_shape(
-        const phy_collision_shape_desc& desc) override
+    phy_collision_shape* create_collision_shape(const phy_collision_shape_desc& desc) override
     {
         return new bt3_shape(desc);
     }
 
-    virtual phy_collision_shape* create_collision_shape(
+    phy_collision_shape* create_collision_shape(
         const phy_collision_shape* const* child,
         const mat4f* offset,
         std::size_t size) override
@@ -32,27 +31,27 @@ public:
         return new bt3_shape(child, offset, size);
     }
 
-    virtual void destroy_collision_shape(phy_collision_shape* collision_shape) override
+    void destroy_collision_shape(phy_collision_shape* collision_shape) override
     {
         delete collision_shape;
     }
 
-    virtual phy_rigidbody* create_rigidbody(const phy_rigidbody_desc& desc) override
+    phy_rigidbody* create_rigidbody(const phy_rigidbody_desc& desc) override
     {
         return new bt3_rigidbody(desc);
     }
 
-    virtual void destroy_rigidbody(phy_rigidbody* rigidbody) override
+    void destroy_rigidbody(phy_rigidbody* rigidbody) override
     {
         delete rigidbody;
     }
 
-    virtual phy_joint* create_joint(const phy_joint_desc& desc) override
+    phy_joint* create_joint(const phy_joint_desc& desc) override
     {
         return new bt3_joint(desc);
     }
 
-    virtual void destroy_joint(phy_joint* joint) override
+    void destroy_joint(phy_joint* joint) override
     {
         delete joint;
     }

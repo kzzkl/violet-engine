@@ -1,7 +1,7 @@
 struct mmd_bone
 {
-    float4x3 offset;
-    float4 quaternion;
+    vec4fx3 offset;
+    vec4f quaternion;
 };
 
 struct mmd_skeleton
@@ -18,19 +18,19 @@ ConstantBuffer<mmd_skeleton> skeleton: register(b4, space0);
 struct bdef_data
 {
     uint4 index;
-    float4 weight;
+    vec4f weight;
 };
 StructuredBuffer<bdef_data> bdef : register(t5, space0);
 
 struct sdef_data
 {
     uint2 index;
-    float2 weight;
-    float3 center;
+    vec2f weight;
+    vec3f center;
     float _padding_0;
-    float3 r0;
+    vec3f r0;
     float _padding_1;
-    float3 r1;
+    vec3f r1;
     float _padding_2;
 };
 StructuredBuffer<sdef_data> sdef : register(t6, space0);
@@ -38,11 +38,11 @@ StructuredBuffer<sdef_data> sdef : register(t6, space0);
 StructuredBuffer<uint2> skin : register(t7, space0);
 StructuredBuffer<float> morph : register(t8, space0);
 
-float4 quaternion_slerp(float4 a, float4 b, float t)
+vec4f quaternion_slerp(vec4f a, vec4f b, float t)
 {
     float cos_omega = dot(a, b);
 
-    float4 c = b;
+    vec4f c = b;
     if (cos_omega < 0.0f)
     {
         c = -b;
@@ -64,14 +64,14 @@ float4 quaternion_slerp(float4 a, float4 b, float t)
         k1 = sin(t * omega) * div;
     }
 
-    return float4(
+    return vec4f(
         a[0] * k0 + c[0] * k1,
         a[1] * k0 + c[1] * k1,
         a[2] * k0 + c[2] * k1,
         a[3] * k0 + c[3] * k1);
 }
 
-float3x3 quaternion_to_matrix(float4 q)
+vec3fx3 quaternion_to_matrix(vec4f q)
 {
     float xxd = 2.0f * q[0] * q[0];
     float xyd = 2.0f * q[0] * q[1];
@@ -84,7 +84,7 @@ float3x3 quaternion_to_matrix(float4 q)
     float zwd = 2.0f * q[2] * q[3];
     float wwd = 2.0f * q[3] * q[3];
 
-    return float3x3(
+    return vec3fx3(
         1.0f - yyd - zzd, xyd + zwd,        xzd - ywd,
         xyd - zwd,        1.0f - xxd - zzd, yzd + xwd,
         xzd + ywd,        yzd - xwd,        1.0f - xxd - yyd);
@@ -94,43 +94,43 @@ float3x3 quaternion_to_matrix(float4 q)
 void cs_main(int3 dtid : SV_DispatchThreadID)
 {
     int index = dtid.x * 3;
-    float3 position = float3(
+    vec3f position = vec3f(
         position_in[index + 0] + morph[index + 0],
         position_in[index + 1] + morph[index + 1],
         position_in[index + 2] + morph[index + 2]);
-    float3 normal = float3(normal_in[index + 0], normal_in[index + 1], normal_in[index + 2]);
+    vec3f normal = vec3f(normal_in[index + 0], normal_in[index + 1], normal_in[index + 2]);
 
     uint skin_type = skin[dtid.x].x;
     uint skin_index = skin[dtid.x].y;
 
     if (skin_type == 0)
     {
-        float4x3 m = float4x3(
+        vec4fx3 m = vec4fx3(
             0.0f, 0.0f, 0.0f, 0.0f,
             0.0f, 0.0f, 0.0f, 0.0f,
             0.0f, 0.0f, 0.0f, 0.0f);
         for (int i = 0; i < 4; ++i)
             m += bdef[skin_index].weight[i] * skeleton.bones[bdef[skin_index].index[i]].offset;
 
-        position = mul(float4(position, 1.0f), m).xyz;
-        normal = mul(normal, (float3x3)m);
+        position = mul(vec4f(position, 1.0f), m).xyz;
+        normal = mul(normal, (vec3fx3)m);
     }
     else
     {
-        float4 q0 = skeleton.bones[sdef[skin_index].index[0]].quaternion;
-        float4 q1 = skeleton.bones[sdef[skin_index].index[1]].quaternion;
-        float4x3 m0 = skeleton.bones[sdef[skin_index].index[0]].offset;
-        float4x3 m1 = skeleton.bones[sdef[skin_index].index[1]].offset;
+        vec4f q0 = skeleton.bones[sdef[skin_index].index[0]].quaternion;
+        vec4f q1 = skeleton.bones[sdef[skin_index].index[1]].quaternion;
+        vec4fx3 m0 = skeleton.bones[sdef[skin_index].index[0]].offset;
+        vec4fx3 m1 = skeleton.bones[sdef[skin_index].index[1]].offset;
 
         float w0 = sdef[skin_index].weight[0];
         float w1 = sdef[skin_index].weight[1];
-        float3 center = sdef[skin_index].center;
+        vec3f center = sdef[skin_index].center;
 
-        float3x3 rotate_m = quaternion_to_matrix(quaternion_slerp(q0, q1, w1));
+        vec3fx3 rotate_m = quaternion_to_matrix(quaternion_slerp(q0, q1, w1));
 
         position = mul(position - center, rotate_m);
-        position += (mul(float4(sdef[skin_index].r0, 1.0f), m0) * w0).xyz;
-        position += (mul(float4(sdef[skin_index].r1, 1.0f), m1) * w1).xyz;
+        position += (mul(vec4f(sdef[skin_index].r0, 1.0f), m0) * w0).xyz;
+        position += (mul(vec4f(sdef[skin_index].r1, 1.0f), m1) * w1).xyz;
 
         normal = mul(normal, rotate_m);
     }

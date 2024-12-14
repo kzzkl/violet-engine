@@ -147,6 +147,7 @@ void rdg_allocator::reset()
         pool.count = 0;
     }
 
+return;
     gc();
 }
 

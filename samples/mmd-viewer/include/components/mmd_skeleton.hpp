@@ -9,8 +9,8 @@ namespace violet::sample
 {
 struct mmd_bone
 {
-    float4x3 offset;
-    float4 quaternion;
+    vec4fx3 offset;
+    vec4f quaternion;
 };
 
 class mmd_skeleton
@@ -29,12 +29,12 @@ public:
 
     struct bone_ik_link
     {
-        float4 rotate{0.0f, 0.0f, 0.0f, 1.0f};
+        vec4f rotate{0.0f, 0.0f, 0.0f, 1.0f};
         bool enable_limit;
-        float3 limit_max;
-        float3 limit_min;
-        float3 prev_angle;
-        float4 save_rotate;
+        vec3f limit_max;
+        vec3f limit_min;
+        vec3f prev_angle;
+        vec4f save_rotate;
         float plane_mode_angle;
     };
 
@@ -49,19 +49,19 @@ public:
         bool is_inherit_rotation;
         bool is_inherit_translation;
 
-        float3 position;
-        float4 rotation;
-        float3 scale;
+        vec3f position;
+        vec4f rotation;
+        vec3f scale;
 
         std::size_t inherit_index;
         float inherit_weight;
-        float3 inherit_translation{0.0f, 0.0f, 0.0f};
-        float4 inherit_rotation{0.0f, 0.0f, 0.0f, 1.0f};
+        vec3f inherit_translation{0.0f, 0.0f, 0.0f};
+        vec4f inherit_rotation{0.0f, 0.0f, 0.0f, 1.0f};
 
-        float3 initial_position{0.0f, 0.0f, 0.0f};
-        float4 initial_rotation{0.0f, 0.0f, 0.0f, 1.0f};
-        float3 initial_scale{1.0f, 1.0f, 1.0f};
-        float4x4 initial_inverse;
+        vec3f initial_position{0.0f, 0.0f, 0.0f};
+        vec4f initial_rotation{0.0f, 0.0f, 0.0f, 1.0f};
+        vec3f initial_scale{1.0f, 1.0f, 1.0f};
+        vec4fx4 initial_inverse;
 
         std::unique_ptr<bone_ik_solver> ik_solver;
         std::unique_ptr<bone_ik_link> ik_link;

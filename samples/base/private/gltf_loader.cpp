@@ -132,11 +132,14 @@ bool generate_tangents(
 }
 } // namespace
 
-gltf_loader::gltf_loader() = default;
+gltf_loader::gltf_loader(std::string_view path)
+    : m_path(path)
+{
+}
 
 gltf_loader::~gltf_loader() = default;
 
-std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
+std::optional<mesh_loader::scene_data> gltf_loader::load()
 {
     tinygltf::TinyGLTF loader;
     tinygltf::Model model;
@@ -144,7 +147,7 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
     std::string error;
     std::string warn;
 
-    bool result = loader.LoadASCIIFromFile(&model, &error, &warn, path.data());
+    bool result = loader.LoadASCIIFromFile(&model, &error, &warn, m_path);
 
     if (!warn.empty())
     {
@@ -161,7 +164,7 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
         return std::nullopt;
     }
 
-    std::filesystem::path model_path(path);
+    std::filesystem::path model_path(m_path);
     std::filesystem::path dir_path = model_path.parent_path();
 
     mesh_loader::scene_data scene_data;

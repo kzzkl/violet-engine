@@ -9,25 +9,42 @@ static void read(std::istream& fin, T& dest)
     fin.read(reinterpret_cast<char*>(&dest), sizeof(T));
 }
 
-vmd::vmd(std::string_view path) : m_loaded(false)
+vmd::vmd(std::string_view path)
+    : m_loaded(false)
 {
     std::ifstream fin(path.data(), std::ios::binary);
     if (!fin.is_open())
+    {
         return;
+    }
 
     load_header(fin);
     load_motion(fin);
 
     if (!fin.eof())
+    {
         load_morph(fin);
+    }
+
     if (!fin.eof())
+    {
         load_camera(fin);
+    }
+
     if (!fin.eof())
+    {
         load_light(fin);
+    }
+
     if (!fin.eof())
+    {
         load_shadow(fin);
+    }
+
     if (!fin.eof())
+    {
         load_ik(fin);
+    }
 
     m_loaded = true;
 }

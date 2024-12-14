@@ -15,19 +15,20 @@ bt3_shape::bt3_shape(const phy_collision_shape_desc& desc)
         break;
     case PHY_COLLISION_SHAPE_TYPE_CAPSULE:
         if (desc.capsule.height < 0.000001f)
+        {
             m_shape = std::make_unique<btSphereShape>(desc.capsule.radius);
+        }
         else
+        {
             m_shape = std::make_unique<btCapsuleShape>(desc.capsule.radius, desc.capsule.height);
+        }
         break;
     default:
         break;
     }
 }
 
-bt3_shape::bt3_shape(
-    const phy_collision_shape* const* child,
-    const mat4f* offset,
-    std::size_t size)
+bt3_shape::bt3_shape(const phy_collision_shape* const* child, const mat4f* offset, std::size_t size)
 {
     auto shape = std::make_unique<btCompoundShape>();
 

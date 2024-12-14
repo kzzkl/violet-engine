@@ -1,42 +1,30 @@
-#include "common/log.hpp"
-#include "control/control_module.hpp"
+#include "control/control_system.hpp"
 #include "core/engine.hpp"
-#include "graphics/graphics_module.hpp"
-#include "mmd_animation.hpp"
+#include "graphics/graphics_system.hpp"
+// #include "mmd_animation.hpp"
+#include "ecs_command/ecs_command_system.hpp"
 #include "mmd_viewer.hpp"
-#include "physics/physics_module.hpp"
-#include "scene/scene_module.hpp"
-#include "window/window_module.hpp"
-#include <exception>
+#include "physics/physics_system.hpp"
+#include "scene/hierarchy_system.hpp"
+#include "scene/scene_system.hpp"
+#include "scene/transform_system.hpp"
+#include "window/window_system.hpp"
 
 int main()
 {
-    try
-    {
-        violet::engine engine;
+    violet::engine::initialize("mmd-viewer/config");
+    violet::engine::install<violet::ecs_command_system>();
+    violet::engine::install<violet::hierarchy_system>();
+    violet::engine::install<violet::transform_system>();
+    violet::engine::install<violet::scene_system>();
+    violet::engine::install<violet::window_system>();
+    violet::engine::install<violet::graphics_system>();
+    // violet::engine::install<violet::physics_system>();
+    violet::engine::install<violet::control_system>();
+    // violet::engine::install<violet::sample::mmd_animation>();
+    violet::engine::install<violet::sample::mmd_viewer>();
 
-        engine.initialize("mmd-viewer/config");
-        engine.install<violet::window_module>();
-        engine.install<violet::scene_module>();
-        engine.install<violet::graphics_module>();
-        engine.install<violet::physics_module>();
-        engine.install<violet::control_module>();
-        engine.install<violet::sample::mmd_animation>();
-        engine.install<violet::sample::mmd_viewer>();
-
-        engine.get_module<violet::window_module>().on_destroy().then(
-            [&engine]()
-            {
-                violet::log::info("Close window");
-                engine.exit();
-            });
-
-        engine.run();
-    }
-    catch (const std::exception& e)
-    {
-        return -1;
-    }
+    violet::engine::run();
 
     return 0;
 }

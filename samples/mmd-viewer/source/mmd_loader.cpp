@@ -1,59 +1,137 @@
 #include "mmd_loader.hpp"
-#include "components/mesh.hpp"
+#include "components/mesh_component.hpp"
 #include "components/mmd_animator.hpp"
 #include "components/mmd_morph.hpp"
-#include "components/mmd_skeleton.hpp"
-#include "components/rigidbody.hpp"
-#include "components/transform.hpp"
+#include "components/rigidbody_component.hpp"
+#include "components/transform_component.hpp"
 #include "graphics/tools/texture_loader.hpp"
+#include "mmd_material.hpp"
 #include "mmd_renderer.hpp"
 #include "pmx.hpp"
 #include "vmd.hpp"
 
 namespace violet::sample
 {
-class rigidbody_merge_reflector : public rigidbody_reflector
+/*class rigidbody_merge_reflector : public rigidbody_reflector
 {
 public:
-    virtual float4x4 reflect(const float4x4& rigidbody_world, const float4x4& transform_world)
-        override
+    virtual mat4f reflect(const mat4f& rigidbody_world, const mat4f& transform_world) override
     {
-        float4x4 result = rigidbody_world;
+        mat4f result = rigidbody_world;
         result[3] = transform_world[3];
         return result;
     }
 };
+*/
 
-mmd_loader::mmd_loader(physics_context* physics_context) : m_physics_context(physics_context)
-{
-    std::vector<std::string> internal_toon_paths = {
-        "mmd-viewer/mmd/toon01.dds",
-        "mmd-viewer/mmd/toon02.dds",
-        "mmd-viewer/mmd/toon03.dds",
-        "mmd-viewer/mmd/toon04.dds",
-        "mmd-viewer/mmd/toon05.dds",
-        "mmd-viewer/mmd/toon06.dds",
-        "mmd-viewer/mmd/toon07.dds",
-        "mmd-viewer/mmd/toon08.dds",
-        "mmd-viewer/mmd/toon09.dds",
-        "mmd-viewer/mmd/toon10.dds"};
-    for (const std::string& toon : internal_toon_paths)
-        m_internal_toons.push_back(texture_loader::load(toon.c_str()));
-
-    rhi_sampler_desc sampler_desc = {};
-    sampler_desc.min_filter = RHI_FILTER_LINEAR;
-    sampler_desc.mag_filter = RHI_FILTER_LINEAR;
-    sampler_desc.address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-    sampler_desc.address_mode_v = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-    sampler_desc.address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-    m_sampler = render_device::instance().create_sampler(sampler_desc);
-}
-
-mmd_loader::~mmd_loader()
+mmd_loader::mmd_loader(std::string_view pmx, std::string_view vmd)
+    : m_pmx_path(pmx),
+      m_vmd_path(vmd)
 {
 }
 
-mmd_model* mmd_loader::load(std::string_view pmx_path, std::string_view vmd_path, world& world)
+mmd_loader::~mmd_loader() {}
+
+std::optional<mesh_loader::scene_data> mmd_loader::load()
+{
+    pmx pmx(m_pmx_path);
+    if (!pmx.is_load())
+    {
+        return std::nullopt;
+    }
+
+    scene_data scene_data;
+
+    load_mesh(scene_data, pmx);
+
+    return scene_data;
+}
+
+void mmd_loader::load_mesh(scene_data& scene, const pmx& pmx)
+{
+    auto mesh_geometry = std::make_unique<geometry>();
+
+    mesh_geometry = std::make_unique<geometry>();
+    mesh_geometry->add_attribute("position", pmx.position, RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
+    mesh_geometry->add_attribute("normal", pmx.normal, RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
+    mesh_geometry->add_attribute("uv", pmx.uv, RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
+    mesh_geometry->add_attribute("edge", pmx.edge, RHI_BUFFER_VERTEX);
+    mesh_geometry->add_attribute("skinning type", pmx.skin, RHI_BUFFER_STORAGE);
+    mesh_geometry->add_attribute<vec3f>(
+        "morph",
+        pmx.position.size(),
+        RHI_BUFFER_HOST_VISIBLE | RHI_BUFFER_STORAGE);
+    mesh_geometry->set_indexes(pmx.indexes);
+
+    scene.geometries.push_back(std::move(mesh_geometry));
+
+    for (const auto& texture : pmx.textures)
+    {
+        scene.textures.push_back(
+            texture_loader::load(texture, TEXTURE_LOAD_OPTION_GENERATE_MIPMAPS));
+    }
+
+    for (const auto& pmx_material : pmx.materials)
+    {
+        auto material = std::make_unique<mmd_material>();
+
+        material->set_diffuse(pmx_material.diffuse);
+        material->set_specular(pmx_material.specular, pmx_material.specular_strength);
+        material->set_edge(pmx_material.edge_color, pmx_material.edge_size);
+        material->set_ambient(pmx_material.ambient);
+        material->set_toon_mode(pmx_material.toon_mode);
+        material->set_spa_mode(pmx_material.sphere_mode);
+
+        material->set_albedo(scene.textures[pmx_material.texture_index].get());
+        if (pmx_material.toon_index != -1)
+        {
+            if (pmx_material.toon_mode == PMX_TOON_MODE_TEXTURE)
+            {
+                material->set_toon(scene.textures[pmx_material.toon_index].get());
+            }
+            else
+            {
+                // material->set_toon(m_internal_toons[pmx_material.toon_index].get());
+            }
+        }
+        else
+        {
+            // material->set_toon(m_internal_toons[0].get(), m_sampler.get());
+        }
+
+        if (pmx_material.sphere_mode != PMX_SPHERE_MODE_DISABLED)
+        {
+            material->set_spa(scene.textures[pmx_material.sphere_index].get());
+        }
+        else
+        {
+            // material->set_spa(m_internal_toons[0].get());
+        }
+
+        scene.materials.push_back(std::move(material));
+    }
+
+    mesh_data mesh_data = {
+        .geometry = 0,
+    };
+    for (const auto& submesh : pmx.submeshes)
+    {
+        mesh_data.submeshes.push_back(submesh_data{
+            .vertex_offset = 0,
+            .index_offset = static_cast<std::uint32_t>(submesh.index_start),
+            .index_count = static_cast<std::uint32_t>(submesh.index_count),
+            .material = static_cast<std::uint32_t>(submesh.material_index),
+        });
+    }
+    scene.meshes.push_back(mesh_data);
+
+    node_data node_data = {
+        .mesh = 0,
+    };
+    scene.nodes.push_back(node_data);
+}
+
+/*mmd_model* mmd_loader::load(std::string_view pmx_path, std::string_view vmd_path, world& world)
 {
     if (m_models.find(pmx_path.data()) != m_models.end())
         return nullptr;
@@ -94,11 +172,11 @@ void mmd_loader::load_mesh(mmd_model* model, const pmx& pmx, world& world)
     model->geometry->add_attribute("uv", pmx.uv, RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
     model->geometry->add_attribute("edge", pmx.edge, RHI_BUFFER_VERTEX);
     model->geometry->add_attribute("skinning type", pmx.skin, RHI_BUFFER_STORAGE);
-    model->geometry->add_attribute<float3>(
+    model->geometry->add_attribute<vec3f>(
         "morph",
         pmx.position.size(),
         RHI_BUFFER_HOST_VISIBLE | RHI_BUFFER_STORAGE);
-    model->geometry->set_indices(pmx.indices);
+    model->geometry->set_indexes(pmx.indexes);
 
     for (const std::string& texture : pmx.textures)
     {
@@ -181,7 +259,7 @@ void mmd_loader::load_bones(mmd_model* model, const pmx& pmx, world& world)
 
         if (pmx_bone.parent_index != -1)
         {
-            bone_transform->set_position(math::store<float3>(vector::sub(
+            bone_transform->set_position(math::store<vec3f>(vector::sub(
                 math::load(pmx_bone.position),
                 math::load(pmx.bones[pmx_bone.parent_index].position))));
             auto& parent_bone = model->bones[pmx_bone.parent_index];
@@ -321,11 +399,11 @@ void mmd_loader::load_morph(mmd_model* model, const pmx& pmx)
 void mmd_loader::load_physics(mmd_model* model, const pmx& pmx, world& world)
 {
     std::vector<std::size_t> rigidbody_count(pmx.bones.size());
-    std::vector<float4x4> rigidbody_transform;
+    std::vector<mat4f> rigidbody_transform;
     rigidbody_transform.reserve(pmx.rigidbodies.size());
     for (auto& pmx_rigidbody : pmx.rigidbodies)
     {
-        rigidbody_transform.push_back(math::store<float4x4>(matrix::affine_transform(
+        rigidbody_transform.push_back(math::store<mat4f>(matrix::affine_transform(
             vector::set(1.0f, 1.0f, 1.0f, 0.0f),
             math::load(pmx_rigidbody.rotate),
             math::load(pmx_rigidbody.translate))));
@@ -406,7 +484,7 @@ void mmd_loader::load_physics(mmd_model* model, const pmx& pmx, world& world)
         bone_rigidbody->set_friction(pmx_rigidbody.friction);
         bone_rigidbody->set_collision_group(static_cast<std::size_t>(1) << pmx_rigidbody.group);
         bone_rigidbody->set_collision_mask(pmx_rigidbody.collision_group);
-        bone_rigidbody->set_offset(math::store<float4x4>(matrix::mul(
+        bone_rigidbody->set_offset(math::store<mat4f>(matrix::mul(
             math::load(rigidbody_transform[i]),
             matrix::inverse(math::load(bone->get<transform>()->get_world_matrix())))));
         bone_rigidbody->set_transform(rigidbody_transform[i]);
@@ -428,8 +506,8 @@ void mmd_loader::load_physics(mmd_model* model, const pmx& pmx, world& world)
 
         vector4 scale_a, position_a, rotation_a;
         matrix::decompose(offset_a, scale_a, rotation_a, position_a);
-        float3 relative_position_a = math::store<float3>(position_a);
-        float4 relative_rotation_a = math::store<float4>(rotation_a);
+        vec3f relative_position_a = math::store<vec3f>(position_a);
+        vec4f relative_rotation_a = math::store<vec4f>(rotation_a);
 
         matrix4 inverse_b = matrix::inverse_transform_no_scale(
             math::load(rigidbody_transform[pmx_joint.rigidbody_b_index]));
@@ -437,8 +515,8 @@ void mmd_loader::load_physics(mmd_model* model, const pmx& pmx, world& world)
 
         vector4 scale_b, position_b, rotation_b;
         matrix::decompose(offset_b, scale_b, rotation_b, position_b);
-        float3 relative_position_b = math::store<float3>(position_b);
-        float4 relative_rotation_b = math::store<float4>(rotation_b);
+        vec3f relative_position_b = math::store<vec3f>(position_b);
+        vec4f relative_rotation_b = math::store<vec4f>(rotation_b);
 
         joint* joint = rigidbody_a->add_joint(
             rigidbody_b,
@@ -577,5 +655,5 @@ void mmd_loader::load_animation(mmd_model* model, const vmd& vmd, world& world)
                 return a.frame < b.frame;
             });
     }
-}
+}*/
 } // namespace violet::sample

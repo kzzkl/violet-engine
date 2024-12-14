@@ -1,200 +1,128 @@
 #include "mmd_viewer.hpp"
-#include "components/camera.hpp"
-#include "components/light.hpp"
-#include "components/mesh.hpp"
-#include "components/mmd_skeleton.hpp"
-#include "components/orbit_control.hpp"
-#include "components/rigidbody.hpp"
-#include "components/transform.hpp"
-#include "core/engine.hpp"
-#include "graphics/graphics_module.hpp"
-#include "mmd_animation.hpp"
-#include "physics/physics_module.hpp"
-#include "window/window_module.hpp"
+#include "components/camera_component.hpp"
+#include "components/mesh_component.hpp"
+// #include "components/mmd_skeleton_component.hpp"
+#include "components/orbit_control_component.hpp"
+#include "components/rigidbody_component.hpp"
+#include "components/scene_component.hpp"
+#include "components/transform_component.hpp"
+#include "graphics/materials/unlit_material.hpp"
+#include "graphics/renderers/deferred_renderer.hpp"
+#include "physics/physics_system.hpp"
+#include "window/window_system.hpp"
 
 namespace violet::sample
 {
-class physics_debug : public phy_debug_draw
-{
-public:
-    physics_debug(world& world) : m_position(1024 * 64), m_color(1024 * 64)
-    {
-        /*material* material = render_graph->add_material("debug", "debug material");
-        m_geometry = std::make_unique<geometry>(renderer);
-
-        m_geometry->add_attribute(
-            "position",
-            m_position,
-            RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_HOST_VISIBLE);
-        m_geometry->add_attribute(
-            "color",
-            m_color,
-            RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_HOST_VISIBLE);
-        m_position.clear();
-        m_color.clear();
-
-        m_object = std::make_unique<actor>("physics debug", world);
-        auto [debug_transform, debug_mesh] = m_object->add<transform, mesh>();
-
-        debug_mesh->set_geometry(m_geometry.get());
-        debug_mesh->add_submesh(0, 0, 0, 0, material);*/
-    }
-
-    void tick()
-    {
-        return;
-        mesh* debug_mesh = m_object->get<mesh>().get();
-        std::memcpy(
-            debug_mesh->get_geometry()->get_vertex_buffer("position")->get_buffer(),
-            m_position.data(),
-            m_position.size() * sizeof(float3));
-        std::memcpy(
-            debug_mesh->get_geometry()->get_vertex_buffer("color")->get_buffer(),
-            m_color.data(),
-            m_color.size() * sizeof(float3));
-        debug_mesh->set_submesh(0, m_position.size(), 0, 0);
-
-        m_position.clear();
-        m_color.clear();
-    }
-
-    virtual void draw_line(const float3& start, const float3& end, const float3& color) override
-    {
-        return;
-        m_position.push_back(start);
-        m_position.push_back(end);
-        m_color.push_back(color);
-        m_color.push_back(color);
-    }
-
-private:
-    std::unique_ptr<geometry> m_geometry;
-
-    std::unique_ptr<actor> m_object;
-
-    std::vector<float3> m_position;
-    std::vector<float3> m_color;
-};
-
-mmd_viewer::mmd_viewer() : engine_module("mmd viewer"), m_depth_stencil(nullptr)
+mmd_viewer::mmd_viewer()
+    : engine_system("mmd viewer")
 {
 }
 
-mmd_viewer::~mmd_viewer()
-{
-}
+mmd_viewer::~mmd_viewer() {}
 
 bool mmd_viewer::initialize(const dictionary& config)
 {
-    on_tick().then(
-        [this](float delta)
-        {
-            tick(delta);
-        });
+    m_pmx_path = config["pmx"];
+    m_vmd_path = config["vmd"];
 
-    get_module<window_module>().on_resize().then(
-        [this](std::uint32_t width, std::uint32_t height)
+    auto& window = get_system<window_system>();
+    window.on_resize().add_task().set_execute(
+        [this]()
         {
-            resize(width, height);
+            resize();
+        });
+    window.on_destroy().add_task().set_execute(
+        []()
+        {
+            // engine::exit();
         });
 
     initialize_render();
+    initialize_scene();
 
-    auto& device = render_device::instance();
-
-    m_loader = std::make_unique<mmd_loader>(get_module<physics_module>().get_context());
-    m_model = m_loader->load(config["model"], config["motion"], get_world());
-    if (!m_model)
-        return false;
-
-    m_physics_debug = std::make_unique<physics_debug>(get_world());
-    m_physics_world = std::make_unique<physics_world>(
-        float3{0.0f, -9.8f, 0.0f},
-        nullptr, // m_physics_debug.get(),
-        get_module<physics_module>().get_context());
-
-    get_module<mmd_animation>().evaluate(0);
-    get_module<mmd_animation>().update(false);
-    get_module<mmd_animation>().update(true);
-
-    for (std::size_t i = 0; i < m_model->bones.size(); ++i)
-    {
-        auto bone_rigidbody = m_model->bones[i]->get<rigidbody>();
-        if (bone_rigidbody)
-            m_physics_world->add(m_model->bones[i].get());
-    }
-
-    m_light = std::make_unique<actor>("main light", get_world());
-    auto [light_transform, main_light] = m_light->add<transform, light>();
-    main_light->color = {1.0f, 1.0f, 1.0f};
+    resize();
 
     return true;
 }
 
-void mmd_viewer::shutdown()
-{
-    m_loader = nullptr;
-}
-
 void mmd_viewer::initialize_render()
 {
-    auto& window = get_module<window_module>();
-    auto& graphics = get_module<graphics_module>();
+    auto window_extent = get_system<window_system>().get_extent();
 
-    auto window_extent = window.get_extent();
-    m_swapchain = render_device::instance().create_swapchain(
-        rhi_swapchain_desc{window_extent.width, window_extent.height, window.get_handle()});
+    m_swapchain = render_device::instance().create_swapchain({
+        .extent =
+            {
+                .width = window_extent.width,
+                .height = window_extent.height,
+            },
+        .flags = RHI_TEXTURE_TRANSFER_DST | RHI_TEXTURE_RENDER_TARGET,
+        .window_handle = get_system<window_system>().get_handle(),
+    });
+    m_renderer = std::make_unique<deferred_renderer>();
 
-    auto extent = get_module<window_module>().get_extent();
-    resize(extent.width, extent.height);
+    m_material = std::make_unique<unlit_material>();
 }
 
-void mmd_viewer::tick(float delta)
+void mmd_viewer::initialize_scene()
 {
-    static float total_delta = 0.0f;
-    total_delta += delta;
-    get_module<mmd_animation>().evaluate(total_delta * 30.0f);
-    get_module<mmd_animation>().update(false);
-    get_module<physics_module>().simulation(m_physics_world.get(), true);
-    get_module<mmd_animation>().update(true);
-    get_module<mmd_animation>().skinning();
+    auto& world = get_world();
 
-    m_physics_debug->tick();
+    m_camera = world.create();
+    world.add_component<
+        transform_component,
+        camera_component,
+        orbit_control_component,
+        scene_component>(m_camera);
+
+    auto& camera_transform = world.get_component<transform_component>(m_camera);
+    camera_transform.position = {0.0f, 0.0f, -10.0f};
+
+    auto& main_camera = world.get_component<camera_component>(m_camera);
+    main_camera.renderer = m_renderer.get();
+    main_camera.render_targets = {m_swapchain.get()};
+
+    mmd_loader loader(m_pmx_path, m_vmd_path);
+    if (auto result = loader.load())
+    {
+        m_model_data = std::move(*result);
+
+        std::vector<entity> entities;
+        for (auto& node : m_model_data.nodes)
+        {
+            entity entity = world.create();
+            world.add_component<transform_component, mesh_component, scene_component>(entity);
+
+            auto& mesh_data = m_model_data.meshes[node.mesh];
+
+            auto& entity_mesh = world.get_component<mesh_component>(entity);
+            entity_mesh.geometry = m_model_data.geometries[mesh_data.geometry].get();
+            for (auto& submesh_data : mesh_data.submeshes)
+            {
+                entity_mesh.submeshes.push_back({
+                    .vertex_offset = submesh_data.vertex_offset,
+                    .index_offset = submesh_data.index_offset,
+                    .index_count = submesh_data.index_count,
+                    .material = m_material.get(),
+                });
+            }
+
+            auto& entity_transform = world.get_component<transform_component>(entity);
+            entity_transform.position = node.position;
+            entity_transform.rotation = node.rotation;
+            entity_transform.scale = node.scale;
+        }
+    }
 }
 
-void mmd_viewer::resize(std::uint32_t width, std::uint32_t height)
+void mmd_viewer::tick(float delta) {}
+
+void mmd_viewer::resize()
 {
-    auto& graphics = get_module<graphics_module>();
+    auto extent = get_system<window_system>().get_extent();
 
-    m_swapchain->resize(width, height);
+    m_swapchain->resize(extent.width, extent.height);
 
-    rhi_texture_desc depth_stencil_desc = {};
-    depth_stencil_desc.extent.width = width;
-    depth_stencil_desc.extent.height = height;
-    depth_stencil_desc.samples = RHI_SAMPLE_COUNT_1;
-    depth_stencil_desc.format = RHI_FORMAT_D24_UNORM_S8_UINT;
-    depth_stencil_desc.flags = RHI_TEXTURE_DEPTH_STENCIL;
-    m_depth_stencil = render_device::instance().create_texture(depth_stencil_desc);
-
-    if (m_camera)
-    {
-        auto main_camera = m_camera->get<camera>();
-        main_camera->resize(width, height);
-        main_camera->set_render_target(1, m_depth_stencil.get());
-    }
-    else
-    {
-        m_camera = std::make_unique<actor>("main camera", get_world());
-        auto [main_camera, main_camera_transform, main_camera_controller] =
-            m_camera->add<camera, transform, orbit_control>();
-
-        main_camera->set_renderer(m_renderer.get());
-        main_camera->set_render_target(0, m_swapchain.get());
-        main_camera->set_render_target(1, m_depth_stencil.get());
-        main_camera->resize(width, height);
-        main_camera_transform->set_position(0.0f, 2.0f, -5.0f);
-        main_camera_controller->r = 50.0f;
-        main_camera_controller->target = {0.0f, 15.0f, 0.0f};
-    }
+    auto& main_camera = get_world().get_component<camera_component>(m_camera);
+    main_camera.render_targets[0] = m_swapchain.get();
 }
 } // namespace violet::sample

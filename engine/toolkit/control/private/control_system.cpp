@@ -13,7 +13,7 @@ control_system::control_system()
 bool control_system::initialize(const dictionary& config)
 {
     task_graph& task_graph = get_task_graph();
-    task_group& update = task_graph.get_group("Update Group");
+    task_group& update = task_graph.get_group("Update");
 
     task_graph.add_task()
         .set_name("Update Control")

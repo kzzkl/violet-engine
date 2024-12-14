@@ -104,7 +104,7 @@ void engine::run()
 
     engine.m_exit = false;
 
-    frame_rater<30> frame_rater;
+    frame_rater<120> frame_rater;
     timer& time = engine.m_context->get_timer();
     time.tick(timer::point::FRAME_START);
     time.tick(timer::point::FRAME_END);

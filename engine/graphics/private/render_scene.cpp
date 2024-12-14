@@ -139,11 +139,17 @@ render_id render_scene::add_instance(render_id mesh_id, const render_instance& i
 
 void render_scene::remove_instance(render_id instance_id)
 {
+    auto& instance_info = m_instances[instance_id];
+    auto& mesh_info = m_meshes[instance_info.mesh_id];
+
+    mesh_info.instances.erase(
+        std::find(mesh_info.instances.begin(), mesh_info.instances.end(), instance_id));
+
     remove_instance_from_group(instance_id);
 
     m_instance_index_map.remove(instance_id);
 
-    m_instances[instance_id] = {};
+    instance_info = {};
     m_instance_allocator.free(instance_id);
 
     m_scene_data.instance_count = get_instance_count();

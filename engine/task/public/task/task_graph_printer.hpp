@@ -92,13 +92,14 @@ public:
             }
         }
 
-        std::unordered_map<task_wrapper*, bool> visited;
+        std::unordered_map<task_wrapper*, std::size_t> visited;
         while (!stack.empty())
         {
             task_wrapper* node = stack.top();
             stack.pop();
 
-            if (visited[node])
+            ++visited[node];
+            if (!node->dependents.empty() && visited[node] != node->dependents.size())
             {
                 continue;
             }
@@ -126,8 +127,11 @@ public:
 
                 for (task_wrapper* successor : node->successors)
                 {
-                    std::cout << info.get_node_name() << "-->"
-                              << get_task_info(successor).get_node_name() << '\n';
+                    if (!get_task_info(successor).is_group_end)
+                    {
+                        std::cout << info.get_node_name() << "-->"
+                                  << get_task_info(successor).get_node_name() << '\n';
+                    }
                     stack.push(successor);
                 }
             }

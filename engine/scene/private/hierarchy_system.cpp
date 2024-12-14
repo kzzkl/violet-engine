@@ -15,11 +15,13 @@ bool hierarchy_system::initialize(const dictionary& config)
     get_world().register_component<child_component>();
 
     task_graph& task_graph = get_task_graph();
-    task_group& post_update_group = task_graph.get_group("Post Update Group");
+    task_group& post_update_group = task_graph.get_group("PostUpdate");
+    task_group& transform_group =
+        task_graph.add_group().set_name("Transform").set_group(post_update_group);
 
     task_graph.add_task()
         .set_name("Update Hierarchy")
-        .set_group(post_update_group)
+        .set_group(transform_group)
         .set_options(TASK_OPTION_MAIN_THREAD)
         .set_execute(
             [this]()
@@ -49,11 +51,11 @@ void hierarchy_system::process_add_parent()
              &add_parent_entities,
              &add_child_entities](const entity& e, const parent_component& parent)
             {
-                add_parent_entities.push_back({e, parent.parent});
+                add_parent_entities.emplace_back(e, parent.parent);
 
                 if (!world.has_component<child_component>(parent.parent))
                 {
-                    add_child_entities.push_back({parent.parent, e});
+                    add_child_entities.emplace_back(parent.parent, e);
                 }
                 else
                 {
@@ -93,7 +95,7 @@ void hierarchy_system::process_set_parent()
                 return;
             }
 
-            child_component& previous_parent_children =
+            auto& previous_parent_children =
                 world.get_component<child_component>(previous_parent.parent);
 
             auto iter = std::find(
@@ -162,7 +164,7 @@ void hierarchy_system::process_remove_parent()
                 const entity& e,
                 const previous_parent_component& previous_parent)
             {
-                child_component& previous_parent_children =
+                auto& previous_parent_children =
                     world.get_component<child_component>(previous_parent.parent);
 
                 auto iter = std::find(

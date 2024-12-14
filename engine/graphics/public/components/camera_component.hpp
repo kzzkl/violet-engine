@@ -16,6 +16,9 @@ struct camera_component
     renderer* renderer;
     std::vector<std::variant<rhi_texture*, rhi_swapchain*>> render_targets;
 
+    rhi_viewport viewport;
+    std::vector<rhi_scissor_rect> scissor_rects;
+
     rhi_texture_extent get_extent() const
     {
         rhi_texture_extent result = {};

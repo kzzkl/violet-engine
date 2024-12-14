@@ -16,7 +16,7 @@ private:
     void update_local();
     void update_world();
 
-    void update_world_recursive(entity e, const mat4f& parent_world, bool need_update);
+    void update_world_recursive(entity e, const mat4f& parent_world, bool parent_dirty);
 
     std::uint32_t m_system_version{0};
 };

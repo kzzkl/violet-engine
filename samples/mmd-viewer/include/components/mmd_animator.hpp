@@ -11,8 +11,8 @@ public:
     struct animation_key
     {
         std::int32_t frame;
-        float3 translate;
-        float4 rotate;
+        vec3f translate;
+        vec4f rotate;
 
         bezier tx_bezier;
         bezier ty_bezier;
@@ -32,10 +32,10 @@ public:
         std::vector<animation_key> animation_keys;
         std::vector<ik_key> ik_keys;
 
-        float3 translation{0.0f, 0.0f, 0.0f};
-        float4 rotation{0.0f, 0.0f, 0.0f, 1.0f};
-        float3 base_translation{0.0f, 0.0f, 0.0f};
-        float4 base_rotation{0.0f, 0.0f, 0.0f, 1.0f};
+        vec3f translation{0.0f, 0.0f, 0.0f};
+        vec4f rotation{0.0f, 0.0f, 0.0f, 1.0f};
+        vec3f base_translation{0.0f, 0.0f, 0.0f};
+        vec4f base_rotation{0.0f, 0.0f, 0.0f, 1.0f};
     };
 
     struct morph_key

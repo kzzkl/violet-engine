@@ -27,7 +27,7 @@ public:
         struct vertex_morph_data
         {
             std::int32_t index;
-            float3 translate;
+            vec3f translate;
         };
 
         virtual void evaluate(float weight, mmd_morph* morph) override;

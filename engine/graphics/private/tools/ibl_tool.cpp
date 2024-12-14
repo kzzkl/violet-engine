@@ -4,11 +4,6 @@
 
 namespace violet
 {
-struct cube_sample_vs : public shader_vs
-{
-    static constexpr std::string_view path = "assets/shaders/ibl/cube_sample.hlsl";
-};
-
 struct convert_cs : public shader_cs
 {
     static constexpr std::string_view path = "assets/shaders/ibl/hdri_to_cubemap.hlsl";

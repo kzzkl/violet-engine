@@ -8,11 +8,11 @@ engine_context::engine_context()
     m_timer = std::make_unique<timer>();
     m_world = std::make_unique<world>();
 
-    task_group& pre_update = m_task_graph.add_group().set_name("PreUpdate Group");
+    task_group& pre_update = m_task_graph.add_group().set_name("PreUpdate");
     task_group& update =
-        m_task_graph.add_group().set_name("Update Group").add_dependency(pre_update);
+        m_task_graph.add_group().set_name("Update").add_dependency(pre_update);
     task_group& post_update =
-        m_task_graph.add_group().set_name("Post Update Group").add_dependency(update);
+        m_task_graph.add_group().set_name("PostUpdate").add_dependency(update);
 }
 
 engine_context::~engine_context() {}

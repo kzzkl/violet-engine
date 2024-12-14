@@ -1,6 +1,5 @@
 #pragma once
 
-#include "vk_common.hpp"
 #include "vk_context.hpp"
 #include "vk_resource.hpp"
 #include "vk_sync.hpp"

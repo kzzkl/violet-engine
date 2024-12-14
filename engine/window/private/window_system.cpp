@@ -23,7 +23,7 @@ bool window_system::initialize(const dictionary& config)
     m_title = config["title"];
 
     task_graph& task_graph = get_task_graph();
-    task_group& pre_update = task_graph.get_group("PreUpdate Group");
+    task_group& pre_update = task_graph.get_group("PreUpdate");
 
     task_graph.add_task()
         .set_name("Update Window")

@@ -124,24 +124,14 @@ private:
         auto& world = get_world();
 
         m_skybox = world.create();
-        world.add_component<
-            transform_component,
-            transform_local_component,
-            transform_world_component,
-            skybox_component,
-            scene_component>(m_skybox);
+        world.add_component<transform_component, skybox_component, scene_component>(m_skybox);
         auto& skybox = world.get_component<skybox_component>(m_skybox);
         skybox.texture = m_skybox_texture.get();
         skybox.irradiance = m_skybox_irradiance.get();
         skybox.prefilter = m_skybox_prefilter.get();
 
         m_light = world.create();
-        world.add_component<
-            transform_component,
-            transform_local_component,
-            transform_world_component,
-            light_component,
-            scene_component>(m_light);
+        world.add_component<transform_component, light_component, scene_component>(m_light);
 
         auto& light_transform = world.get_component<transform_component>(m_light);
         light_transform.position = {10.0f, 10.0f, 10.0f};
@@ -154,8 +144,6 @@ private:
         m_camera = world.create();
         world.add_component<
             transform_component,
-            transform_local_component,
-            transform_world_component,
             camera_component,
             orbit_control_component,
             scene_component>(m_camera);
@@ -165,10 +153,10 @@ private:
 
         auto& main_camera = world.get_component<camera_component>(m_camera);
         main_camera.renderer = m_renderer.get();
-        main_camera.render_targets.resize(2);
+        main_camera.render_targets = {m_swapchain.get()};
 
-        gltf_loader loader;
-        if (auto result = loader.load(m_model_path))
+        gltf_loader loader(m_model_path);
+        if (auto result = loader.load())
         {
             m_model_data = std::move(*result);
 
@@ -176,12 +164,7 @@ private:
             for (auto& node : m_model_data.nodes)
             {
                 entity entity = world.create();
-                world.add_component<
-                    transform_component,
-                    transform_local_component,
-                    transform_world_component,
-                    mesh_component,
-                    scene_component>(entity);
+                world.add_component<transform_component, mesh_component, scene_component>(entity);
 
                 auto& mesh_data = m_model_data.meshes[node.mesh];
 
@@ -228,8 +211,6 @@ private:
             camera_transform.rotation.w);*/
     }
 
-    rhi_ptr<rhi_swapchain> m_swapchain;
-
     entity m_skybox;
     entity m_light;
     entity m_camera;
@@ -240,6 +221,7 @@ private:
 
     mesh_loader::scene_data m_model_data;
 
+    rhi_ptr<rhi_swapchain> m_swapchain;
     std::unique_ptr<renderer> m_renderer;
 
     std::string m_skybox_path;

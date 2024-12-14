@@ -34,7 +34,7 @@ public:
     phy_ptr<phy_collision_shape> create_collision_shape(const phy_collision_shape_desc& desc);
     phy_ptr<phy_collision_shape> create_collision_shape(
         std::span<phy_collision_shape*> shapes,
-        std::span<float4x4> offset);
+        std::span<mat4f> offset);
 
     phy_ptr<phy_rigidbody> create_rigidbody(const phy_rigidbody_desc& desc);
 

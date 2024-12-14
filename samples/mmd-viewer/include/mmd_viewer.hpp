@@ -1,39 +1,41 @@
 #pragma once
 
-#include "core/engine_module.hpp"
+#include "core/engine_system.hpp"
 #include "mmd_loader.hpp"
 #include "mmd_renderer.hpp"
-#include "physics/physics_world.hpp"
 
 namespace violet::sample
 {
 class physics_debug;
-class mmd_viewer : public engine_module
+class mmd_viewer : public engine_system
 {
 public:
     mmd_viewer();
     virtual ~mmd_viewer();
 
-    virtual bool initialize(const dictionary& config) override;
-    virtual void shutdown() override;
+    bool initialize(const dictionary& config) override;
 
 private:
     void initialize_render();
+    void initialize_scene();
 
     void tick(float delta);
-    void resize(std::uint32_t width, std::uint32_t height);
+    void resize();
 
-    std::unique_ptr<mmd_renderer> m_renderer;
-    rhi_ptr<rhi_texture> m_depth_stencil;
+    std::unique_ptr<renderer> m_renderer;
     rhi_ptr<rhi_swapchain> m_swapchain;
 
-    std::unique_ptr<actor> m_camera;
-    std::unique_ptr<actor> m_light;
+    entity m_camera;
+    entity m_light;
 
-    std::unique_ptr<physics_world> m_physics_world;
-    std::unique_ptr<physics_debug> m_physics_debug;
+    mesh_loader::scene_data m_model_data;
 
-    std::unique_ptr<mmd_loader> m_loader;
-    mmd_model* m_model;
+    std::string m_pmx_path;
+    std::string m_vmd_path;
+
+    std::unique_ptr<material> m_material;
+
+    // std::unique_ptr<physics_world> m_physics_world;
+    // std::unique_ptr<physics_debug> m_physics_debug;
 };
 } // namespace violet::sample

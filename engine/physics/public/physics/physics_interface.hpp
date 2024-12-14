@@ -4,6 +4,15 @@
 
 namespace violet
 {
+class phy_motion_state
+{
+public:
+    virtual ~phy_motion_state() = default;
+
+    virtual const mat4f& get_transform() const = 0;
+    virtual void set_transform(const mat4f& transform) = 0;
+};
+
 enum phy_collision_shape_type
 {
     PHY_COLLISION_SHAPE_TYPE_BOX,
@@ -18,9 +27,9 @@ struct phy_collision_shape_desc
     {
         struct
         {
-            float length;
-            float height;
             float width;
+            float height;
+            float length;
         } box;
 
         struct
@@ -49,11 +58,11 @@ enum phy_rigidbody_type
     PHY_RIGIDBODY_TYPE_KINEMATIC
 };
 
-enum phy_rigidbody_activation_state
+enum phy_activation_state
 {
-    PHY_RIGIDBODY_ACTIVATION_STATE_ACTIVE,
-    PHY_RIGIDBODY_ACTIVATION_STATE_DISABLE_DEACTIVATION,
-    PHY_RIGIDBODY_ACTIVATION_STATE_DISABLE_SIMULATION,
+    PHY_ACTIVATION_STATE_ACTIVE,
+    PHY_ACTIVATION_STATE_DISABLE_DEACTIVATION,
+    PHY_ACTIVATION_STATE_DISABLE_SIMULATION,
 };
 
 struct phy_rigidbody_desc
@@ -70,7 +79,10 @@ struct phy_rigidbody_desc
 
     mat4f initial_transform;
 
-    phy_rigidbody_activation_state activation_state = PHY_RIGIDBODY_ACTIVATION_STATE_ACTIVE;
+    phy_activation_state activation_state;
+
+    std::uint32_t collision_group;
+    std::uint32_t collision_mask;
 };
 
 class phy_rigidbody
@@ -84,18 +96,13 @@ public:
     virtual void set_friction(float friction) = 0;
     virtual void set_shape(phy_collision_shape* shape) = 0;
 
-    virtual void set_transform(const mat4f& world) = 0;
-    virtual const mat4f& get_transform() const = 0;
-
     virtual void set_angular_velocity(const vec3f& velocity) = 0;
     virtual void set_linear_velocity(const vec3f& velocity) = 0;
 
     virtual void clear_forces() = 0;
 
-    virtual void set_activation_state(phy_rigidbody_activation_state state) = 0;
-
-    virtual void set_updated_flag(bool flag) = 0;
-    virtual bool get_updated_flag() const = 0;
+    virtual void set_activation_state(phy_activation_state activation_state) = 0;
+    virtual void set_motion_state(phy_motion_state* motion_state) = 0;
 };
 
 struct phy_joint_desc
@@ -151,10 +158,7 @@ class phy_world
 public:
     virtual ~phy_world() = default;
 
-    virtual void add(
-        phy_rigidbody* rigidbody,
-        std::uint32_t collision_group,
-        std::uint32_t collision_mask) = 0;
+    virtual void add(phy_rigidbody* rigidbody) = 0;
     virtual void add(phy_joint* joint) = 0;
 
     virtual void remove(phy_rigidbody* rigidbody) = 0;

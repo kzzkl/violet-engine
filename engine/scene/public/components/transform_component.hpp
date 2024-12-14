@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ecs/component.hpp"
 #include "math/quaternion.hpp"
 
 namespace violet
@@ -30,6 +31,12 @@ struct transform_local_component
     mat4f matrix;
 };
 
+template <>
+struct component_trait<transform_local_component>
+{
+    using main_component = transform_component;
+};
+
 struct transform_world_component
 {
     mat4f matrix;
@@ -38,5 +45,11 @@ struct transform_world_component
     {
         return vec3f{matrix[3][0], matrix[3][1], matrix[3][2]};
     }
+};
+
+template <>
+struct component_trait<transform_world_component>
+{
+    using main_component = transform_component;
 };
 } // namespace violet

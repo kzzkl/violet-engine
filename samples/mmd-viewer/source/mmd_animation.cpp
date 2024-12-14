@@ -608,11 +608,11 @@ void mmd_animation::update_local(mmd_skeleton::bone& bone, mmd_animator::motion&
         rotation = quaternion::mul(rotation, math::load(bone.inherit_rotation));
     }
 
-    float3 t;
+    vec3f t;
     math::store(translate, t);
     bone.transform->set_position(t);
 
-    float4 r;
+    vec4f r;
     math::store(rotation, r);
     bone.transform->set_rotation(r);
 

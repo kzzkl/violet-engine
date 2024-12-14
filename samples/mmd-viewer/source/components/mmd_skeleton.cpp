@@ -17,19 +17,19 @@ void mmd_skeleton::set_geometry(geometry* geometry)
 
     rhi_buffer_desc skinned_position_desc = {};
     skinned_position_desc.data = nullptr;
-    skinned_position_desc.size = sizeof(float3) * geometry->get_vertex_count();
+    skinned_position_desc.size = sizeof(vec3f) * geometry->get_vertex_count();
     skinned_position_desc.flags = RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE;
     m_skinned_position = device.create_buffer(skinned_position_desc);
 
     rhi_buffer_desc skinned_normal_desc = {};
     skinned_normal_desc.data = nullptr;
-    skinned_normal_desc.size = sizeof(float3) * geometry->get_vertex_count();
+    skinned_normal_desc.size = sizeof(vec3f) * geometry->get_vertex_count();
     skinned_normal_desc.flags = RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE;
     m_skinned_normal = device.create_buffer(skinned_normal_desc);
 
     rhi_buffer_desc morph_desc = {};
     morph_desc.data = nullptr;
-    morph_desc.size = sizeof(float3) * geometry->get_vertex_count();
+    morph_desc.size = sizeof(vec3f) * geometry->get_vertex_count();
     morph_desc.flags = RHI_BUFFER_HOST_VISIBLE | RHI_BUFFER_STORAGE;
     m_morph = device.create_buffer(morph_desc);
 

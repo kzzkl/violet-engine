@@ -29,26 +29,19 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
         data.count_buffer,
         RHI_PIPELINE_STAGE_DRAW_INDIRECT,
         RHI_ACCESS_INDIRECT_COMMAND_READ);
-    pass.add_render_target(
-        parameter.gbuffer_albedo,
-        parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
-    pass.add_render_target(
-        parameter.gbuffer_material,
-        parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
-    pass.add_render_target(
-        parameter.gbuffer_normal,
-        parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
-    pass.add_render_target(
-        parameter.gbuffer_emissive,
-        parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
-    pass.set_depth_stencil(
-        parameter.depth_buffer,
-        parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
+
+    rhi_attachment_load_op load_op =
+        parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD;
+    pass.add_render_target(parameter.gbuffer_albedo, load_op);
+    pass.add_render_target(parameter.gbuffer_material, load_op);
+    pass.add_render_target(parameter.gbuffer_normal, load_op);
+    pass.add_render_target(parameter.gbuffer_emissive, load_op);
+    pass.set_depth_stencil(parameter.depth_buffer, load_op);
     pass.set_execute(
         [data](rdg_command& command)
         {
             command.set_viewport(data.camera.viewport);
-            command.set_scissor(std::span<const rhi_scissor_rect>(&data.camera.scissor_rect, 1));
+            command.set_scissor(data.camera.scissor_rects);
 
             command.draw_instances(
                 data.scene,

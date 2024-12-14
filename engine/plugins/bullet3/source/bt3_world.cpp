@@ -8,31 +8,44 @@ namespace violet::bt3
 class bt3_world::debug_draw : public btIDebugDraw
 {
 public:
-    debug_draw(phy_debug_draw* debug = nullptr) : m_debug(debug)
+    debug_draw(phy_debug_draw* debug = nullptr)
+        : m_debug(debug)
     {
         m_mode |= DebugDrawModes::DBG_DrawWireframe;
     }
 
-    void debug(phy_debug_draw* debug) { m_debug = debug; }
+    void debug(phy_debug_draw* debug)
+    {
+        m_debug = debug;
+    }
 
-    virtual void drawLine(const btVector3& from, const btVector3& to, const btVector3& color)
-        override
+    void drawLine(const btVector3& from, const btVector3& to, const btVector3& color) override
     {
         m_debug->draw_line(convert_vector(from), convert_vector(to), convert_vector(color));
     }
 
-    virtual void drawContactPoint(
-        const btVector3& PointOnB,
-        const btVector3& normalOnB,
+    void drawContactPoint(
+        const btVector3& point_on_b,
+        const btVector3& normal_on_b,
         btScalar distance,
-        int lifeTime,
+        int life_time,
         const btVector3& color) override
     {
     }
-    virtual void reportErrorWarning(const char* warningString) override {}
-    virtual void draw3dText(const btVector3& location, const char* textString) override {}
-    virtual void setDebugMode(int debugMode) override { m_mode = debugMode; }
-    virtual int getDebugMode() const override { return m_mode; }
+
+    void reportErrorWarning(const char* warning) override {}
+
+    void draw3dText(const btVector3& location, const char* text) override {}
+
+    void setDebugMode(int debug_mode) override
+    {
+        m_mode = debug_mode;
+    }
+
+    int getDebugMode() const override
+    {
+        return m_mode;
+    }
 
 private:
     int m_mode;
@@ -65,7 +78,7 @@ bt3_world::bt3_world(const phy_world_desc& desc)
 
 bt3_world::~bt3_world()
 {
-    for (std::size_t i = 0; i < m_world->getNumCollisionObjects(); ++i)
+    for (int i = 0; i < m_world->getNumCollisionObjects(); ++i)
     {
         btCollisionObject* object = m_world->getCollisionObjectArray()[i];
         btRigidBody* body = btRigidBody::upcast(object);
@@ -88,18 +101,13 @@ bt3_world::~bt3_world()
 #endif
 }
 
-void bt3_world::add(
-    phy_rigidbody* rigidbody,
-    std::uint32_t collision_group,
-    std::uint32_t collision_mask)
+void bt3_world::add(phy_rigidbody* rigidbody)
 {
-    auto r = static_cast<bt3_rigidbody*>(rigidbody);
+    auto* r = static_cast<bt3_rigidbody*>(rigidbody);
     m_world->addRigidBody(
         r->get_rigidbody(),
-        static_cast<int>(collision_group),
-        static_cast<int>(collision_mask));
-
-    r->set_world(this);
+        static_cast<int>(r->get_collision_group()),
+        static_cast<int>(r->get_collision_mask()));
 }
 
 void bt3_world::add(phy_joint* joint)
@@ -119,11 +127,13 @@ void bt3_world::remove(phy_joint* joint)
 
 void bt3_world::simulation(float time_step)
 {
-    m_world->stepSimulation(time_step, 10, 1.0f / 120.0f);
+    m_world->stepSimulation(time_step);
 
 #ifndef NDEBUG
     if (m_world->getDebugDrawer())
+    {
         m_world->debugDrawWorld();
+    }
 #endif
 }
 } // namespace violet::bt3

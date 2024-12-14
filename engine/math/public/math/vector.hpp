@@ -246,6 +246,14 @@ struct vector
         }
     }
 
+    [[nodiscard]] static inline vec4f_simd lerp(vec4f_simd a, vec4f_simd b, float t) noexcept
+    {
+        __m128 t1 = _mm_sub_ps(b, a);
+        t1 = _mm_mul_ps(t1, _mm_set_ps1(t));
+        t1 = _mm_add_ps(a, t1);
+        return t1;
+    }
+
     [[nodiscard]] static inline vec4f_simd lerp(vec4f_simd a, vec4f_simd b, vec4f_simd t) noexcept
     {
         __m128 t1 = _mm_sub_ps(b, a);

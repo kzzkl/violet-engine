@@ -13,7 +13,7 @@ struct render_camera
     std::vector<rhi_texture*> render_targets;
 
     rhi_viewport viewport;
-    rhi_scissor_rect scissor_rect;
+    std::vector<rhi_scissor_rect> scissor_rects;
 };
 
 struct render_mesh

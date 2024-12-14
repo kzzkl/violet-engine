@@ -97,21 +97,6 @@ public:
             (z + thread_group_z - 1) / thread_group_z);
     }
 
-    void set_pipeline_barrier(
-        rhi_pipeline_stage_flags src_stage,
-        rhi_pipeline_stage_flags dst_stage,
-        std::span<rhi_buffer_barrier> buffer_barriers,
-        std::span<rhi_texture_barrier> texture_barriers)
-    {
-        m_command->set_pipeline_barrier(
-            src_stage,
-            dst_stage,
-            buffer_barriers.data(),
-            buffer_barriers.size(),
-            texture_barriers.data(),
-            texture_barriers.size());
-    }
-
     void copy_texture(
         rhi_texture* src,
         const rhi_texture_region& src_region,

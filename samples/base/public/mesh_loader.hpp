@@ -24,9 +24,15 @@ public:
         std::vector<submesh_data> submeshes;
     };
 
+    struct skin_data
+    {
+        std::vector<std::uint32_t> bones; // index into nodes
+    };
+
     struct node_data
     {
         std::uint32_t mesh;
+        std::uint32_t skin;
 
         vec3f position{0.0f, 0.0f, 0.0f};
         vec4f rotation{0.0f, 0.0f, 0.0f, 1.0f};
@@ -47,6 +53,6 @@ public:
 
     virtual ~mesh_loader() = default;
 
-    virtual std::optional<scene_data> load(std::string_view path) = 0;
+    virtual std::optional<scene_data> load() = 0;
 };
 } // namespace violet
