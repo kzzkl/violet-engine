@@ -5,13 +5,7 @@
         "height": 800
     },
     "mmd viewer": {
-        "pmx": "C://Workspace/assets/models/mmd/Molinia/Molinia.pmx",
-        "vmd": "violet-assets/models/mmd/test.vmd"
-    },
-    "physics": {
-        "tick": false
-    },
-    "graphics": {
-        "frame_resource_count": 1
+        "pmx": "D:/Workspace/assets/models/mmd/Molinia/Molinia.pmx",
+        "vmd": "D:/Workspace/assets/models/mmd/test_a.vmd"
     }
 }

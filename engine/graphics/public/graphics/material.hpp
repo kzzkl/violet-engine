@@ -67,16 +67,16 @@ public:
     }
 
 protected:
-    void set_pipeline(const rdg_render_pipeline& pipeline) noexcept
+    rdg_render_pipeline& get_pipeline() noexcept
     {
-        m_pipeline = pipeline;
+        return m_pipeline;
     }
 
     void mark_dirty();
 
 private:
     material_type m_type;
-    rdg_render_pipeline m_pipeline;
+    rdg_render_pipeline m_pipeline{};
 
     render_id m_id{INVALID_RENDER_ID};
 
@@ -97,7 +97,7 @@ public:
     {
     }
 
-    virtual const void* get_constant_data() const noexcept
+    const void* get_constant_data() const noexcept override
     {
         return &m_constant;
     }

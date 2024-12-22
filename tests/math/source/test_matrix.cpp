@@ -177,12 +177,12 @@ TEST_CASE("matrix::inverse transform no scale", "[matrix]")
         {-19.7180519f, -10.4591875f, 5.17723942f, 1.0f}};
 
     {
-        mat4f r = matrix::inverse_transform_no_scale(m);
+        mat4f r = matrix::inverse_transform_without_scale(m);
         CHECK(equal(r, result));
     }
 
     {
-        mat4f_simd r = matrix::inverse_transform_no_scale(math::load(m));
+        mat4f_simd r = matrix::inverse_transform_without_scale(math::load(m));
         CHECK(equal(r, result));
     }
 }

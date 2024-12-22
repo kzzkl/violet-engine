@@ -6,37 +6,14 @@ namespace violet::bt3
 class bt3_motion_state : public btMotionState
 {
 public:
-    void getWorldTransform(btTransform& world_transform) const override
-    {
-        world_transform.setFromOpenGLMatrix(&transform[0][0]);
-    }
-
-    void setWorldTransform(const btTransform& world_transform) override
-    {
-        world_transform.getOpenGLMatrix(&transform[0][0]);
-    }
-
-    mat4f transform;
-};
-
-class bt3_motion_state_kinematic : public bt3_motion_state
-{
-public:
-    void setWorldTransform(const btTransform& world_transform) override {}
-};
-
-class bt3_motion_state_custom : public btMotionState
-{
-public:
-    bt3_motion_state_custom(phy_motion_state* motion_state)
+    bt3_motion_state(phy_motion_state* motion_state)
         : m_motion_state(motion_state)
     {
     }
 
     void getWorldTransform(btTransform& world_transform) const override
     {
-        const auto& transform = m_motion_state->get_transform();
-        world_transform.setFromOpenGLMatrix(&transform[0][0]);
+        world_transform.setFromOpenGLMatrix(&m_motion_state->get_transform()[0][0]);
     }
 
     void setWorldTransform(const btTransform& world_transform) override
@@ -54,18 +31,7 @@ bt3_rigidbody::bt3_rigidbody(const phy_rigidbody_desc& desc)
     : m_collision_group(desc.collision_group),
       m_collision_mask(desc.collision_mask)
 {
-    if (desc.type == PHY_RIGIDBODY_TYPE_KINEMATIC)
-    {
-        m_motion_state = std::make_unique<bt3_motion_state_kinematic>();
-    }
-    else
-    {
-        m_motion_state = std::make_unique<bt3_motion_state>();
-    }
-
-    btTransform initial_transform;
-    initial_transform.setFromOpenGLMatrix(&desc.initial_transform[0][0]);
-    m_motion_state->setWorldTransform(initial_transform);
+    m_motion_state = std::make_unique<bt3_motion_state>(desc.motion_state);
 
     btCollisionShape* shape = static_cast<bt3_shape*>(desc.shape)->shape();
 
@@ -165,10 +131,6 @@ void bt3_rigidbody::set_activation_state(phy_activation_state activation_state)
 
 void bt3_rigidbody::set_motion_state(phy_motion_state* motion_state)
 {
-    btTransform transform;
-    m_motion_state->getWorldTransform(transform);
-    m_motion_state = std::make_unique<bt3_motion_state_custom>(motion_state);
-    m_motion_state->setWorldTransform(transform);
     m_rigidbody->setMotionState(m_motion_state.get());
 }
 } // namespace violet::bt3

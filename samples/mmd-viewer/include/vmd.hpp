@@ -71,11 +71,9 @@ struct vmd_ik
 class vmd
 {
 public:
-    vmd(std::string_view path);
-    bool is_load() const noexcept
-    {
-        return m_loaded;
-    }
+    vmd();
+
+    bool load(std::string_view path);
 
     vmd_header header;
     std::vector<vmd_motion> motions;
@@ -93,7 +91,5 @@ private:
     void load_light(std::ifstream& fin);
     void load_shadow(std::ifstream& fin);
     void load_ik(std::ifstream& fin);
-
-    bool m_loaded;
 };
 } // namespace violet::sample

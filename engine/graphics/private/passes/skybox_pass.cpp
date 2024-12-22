@@ -28,14 +28,12 @@ void skybox_pass::add(render_graph& graph, const parameter& parameter)
 {
     struct pass_data
     {
-        rhi_parameter* bindless_parameter;
         rhi_parameter* scene_parameter;
         rhi_parameter* camera_parameter;
         rhi_viewport viewport;
     };
 
     pass_data data = {
-        .bindless_parameter = parameter.scene.get_bindless_parameter(),
         .scene_parameter = parameter.scene.get_scene_parameter(),
         .camera_parameter = parameter.camera.camera_parameter,
         .viewport = parameter.camera.viewport,
@@ -62,9 +60,11 @@ void skybox_pass::add(render_graph& graph, const parameter& parameter)
             };
             command.set_scissor(std::span<rhi_scissor_rect>(&scissor, 1));
 
+            auto& device = render_device::instance();
+
             rdg_render_pipeline pipeline = {
-                .vertex_shader = render_device::instance().get_shader<skybox_vs>(),
-                .fragment_shader = render_device::instance().get_shader<skybox_fs>(),
+                .vertex_shader = device.get_shader<skybox_vs>(),
+                .fragment_shader = device.get_shader<skybox_fs>(),
                 .depth_stencil =
                     {
                         .depth_enable = true,
@@ -73,7 +73,7 @@ void skybox_pass::add(render_graph& graph, const parameter& parameter)
             };
 
             command.set_pipeline(pipeline);
-            command.set_parameter(0, data.bindless_parameter);
+            command.set_parameter(0, device.get_bindless_parameter());
             command.set_parameter(1, data.scene_parameter);
             command.set_parameter(2, data.camera_parameter);
             command.draw(0, 36);

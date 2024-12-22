@@ -11,19 +11,23 @@ class rigidbody_motion_state : public phy_motion_state
 public:
     const mat4f& get_transform() const override
     {
-        return m_transform;
+        return transform;
     }
 
-    void set_transform(const mat4f& transform) override
+    void set_transform(const mat4f& m) override
     {
-        m_transform = transform;
+        transform = m;
         dirty = true;
     }
 
     bool dirty{false};
+    mat4f transform;
+};
 
-private:
-    mat4f m_transform;
+class rigidbody_motion_state_kinematic : public rigidbody_motion_state
+{
+public:
+    void set_transform(const mat4f& transform) override {}
 };
 
 struct rigidbody_meta_component

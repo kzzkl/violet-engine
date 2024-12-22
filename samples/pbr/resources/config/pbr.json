@@ -5,7 +5,7 @@
         "height": 800
     },
     "PBR Sample": {
-        "skybox": "C://Workspace/assets/textures/skybox/dry_orchard_meadow_4k.hdr",
-        "model": "C://Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf"
+        "skybox": "E:/assets/textures/skybox/dry_orchard_meadow_4k.hdr",
+        "model": "E:/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf"
     }
 }

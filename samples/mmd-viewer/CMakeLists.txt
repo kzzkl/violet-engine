@@ -7,7 +7,7 @@ add_executable(${PROJECT_NAME}
     ./source/bezier.cpp
     ./source/encode.cpp
     ./source/main.cpp
-    # ./source/mmd_animation.cpp
+    ./source/mmd_animation.cpp
     ./source/mmd_loader.cpp
     ./source/mmd_material.cpp
     ./source/mmd_renderer.cpp
@@ -23,6 +23,7 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
     violet::graphics
     violet::physics
+    violet::animation
     violet::control
     violet::sample-base)
 

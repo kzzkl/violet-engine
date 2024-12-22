@@ -38,6 +38,8 @@ render_scene::~render_scene() {}
 
 render_id render_scene::add_mesh(const render_mesh& mesh)
 {
+    assert(mesh.geometry != nullptr);
+
     render_id mesh_id = m_mesh_allocator.allocate();
 
     if (mesh_id >= m_meshes.size())
@@ -87,11 +89,7 @@ void render_scene::update_mesh_model_matrix(render_id mesh_id, const mat4f& mode
     auto& mesh_info = m_meshes[mesh_id];
     mesh_info.data.model_matrix = model_matrix;
 
-    if ((mesh_info.states & RENDER_MESH_STAGE_DIRTY) == 0)
-    {
-        m_dirty_meshes.push_back(mesh_id);
-        mesh_info.states |= RENDER_MESH_STAGE_DIRTY;
-    }
+    set_mesh_state(mesh_id, RENDER_MESH_STAGE_DIRTY);
 }
 
 void render_scene::update_mesh_aabb(render_id mesh_id, const box3f& aabb)
@@ -99,10 +97,32 @@ void render_scene::update_mesh_aabb(render_id mesh_id, const box3f& aabb)
     auto& mesh_info = m_meshes[mesh_id];
     mesh_info.data.aabb = aabb;
 
-    if ((mesh_info.states & RENDER_MESH_STAGE_DIRTY) == 0)
+    set_mesh_state(mesh_id, RENDER_MESH_STAGE_DIRTY);
+}
+
+void render_scene::update_mesh_geometry(render_id mesh_id, geometry* geometry)
+{
+    assert(geometry != nullptr);
+
+    auto& mesh_info = m_meshes[mesh_id];
+
+    if (mesh_info.data.geometry == geometry)
     {
-        m_dirty_meshes.push_back(mesh_id);
-        mesh_info.states |= RENDER_MESH_STAGE_DIRTY;
+        return;
+    }
+
+    mesh_info.data.geometry = geometry;
+    set_mesh_state(mesh_id, RENDER_MESH_STAGE_DIRTY);
+
+    for (render_id instance_id : mesh_info.instances)
+    {
+        remove_instance_from_group(instance_id);
+        add_instance_to_group(
+            instance_id,
+            mesh_info.data.geometry,
+            m_instances[instance_id].data.material);
+
+        set_instance_state(instance_id, RENDER_INSTANCE_STAGE_DIRTY);
     }
 }
 
@@ -180,6 +200,8 @@ void render_scene::update_instance(render_id instance_id, const render_instance&
 
         set_instance_state(instance_id, RENDER_INSTANCE_STAGE_DIRTY);
     }
+
+    instance_info.data = instance;
 }
 
 render_id render_scene::add_light(const render_light& light)
@@ -311,8 +333,8 @@ void render_scene::record(rhi_command* command)
 
 void render_scene::add_instance_to_group(
     render_id instance_id,
-    geometry* geometry,
-    material* material)
+    const geometry* geometry,
+    const material* material)
 {
     render_id batch_id = 0;
     render_id group_id = 0;
@@ -374,10 +396,13 @@ void render_scene::add_instance_to_group(
     }
     else
     {
-        ++m_groups[*group_iter].instance_count;
+        group_id = (*group_iter);
+        ++m_groups[group_id].instance_count;
     }
 
     m_instances[instance_id].group_id = group_id;
+
+    m_scene_states |= RENDER_SCENE_STAGE_GROUP_DIRTY;
 }
 
 void render_scene::remove_instance_from_group(render_id instance_id)
@@ -401,6 +426,8 @@ void render_scene::remove_instance_from_group(render_id instance_id)
 
         m_group_allocator.free(group_id);
     }
+
+    m_scene_states |= RENDER_SCENE_STAGE_GROUP_DIRTY;
 }
 
 void render_scene::set_mesh_state(render_id mesh_id, render_mesh_states states)

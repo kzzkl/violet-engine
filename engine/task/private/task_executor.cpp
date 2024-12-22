@@ -63,8 +63,6 @@ void task_executor::run(std::size_t thread_count)
         thread_count = std::thread::hardware_concurrency();
     }
 
-    thread_count = 2;
-
     m_thread_pool = std::make_unique<thread_pool>(thread_count);
     m_thread_pool->run(
         [this]()

@@ -70,6 +70,12 @@
             "configuration": "Release"
         },
         {
+            "name": "windows-ninja-msvc-relwithdebinfo",
+            "displayName": "RelWithDebInfo",
+            "configurePreset": "windows-ninja-msvc",
+            "configuration": "RelWithDebInfo"
+        },
+        {
             "name": "windows-ninja-msvc-debug",
             "displayName": "Debug",
             "configurePreset": "windows-ninja-msvc",

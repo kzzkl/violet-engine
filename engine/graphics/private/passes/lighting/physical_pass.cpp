@@ -35,7 +35,6 @@ void physical_pass::add(render_graph& graph, const parameter& parameter)
 {
     struct pass_data
     {
-        rhi_parameter* bindless_parameter;
         rhi_parameter* scene_parameter;
         rhi_parameter* camera_parameter;
         rhi_parameter* gbuffer_parameter;
@@ -48,7 +47,6 @@ void physical_pass::add(render_graph& graph, const parameter& parameter)
     };
 
     pass_data data = {
-        .bindless_parameter = parameter.scene.get_bindless_parameter(),
         .scene_parameter = parameter.scene.get_scene_parameter(),
         .camera_parameter = parameter.camera.camera_parameter,
         .gbuffer_parameter = graph.allocate_parameter(physical_fs::gbuffer),
@@ -99,9 +97,12 @@ void physical_pass::add(render_graph& graph, const parameter& parameter)
                 &gbuffer_data,
                 sizeof(physical_fs::gbuffer_data));
 
-            rdg_render_pipeline pipeline = {};
-            pipeline.vertex_shader = render_device::instance().get_shader<fullscreen_vs>();
-            pipeline.fragment_shader = render_device::instance().get_shader<physical_fs>();
+            auto& device = render_device::instance();
+
+            rdg_render_pipeline pipeline = {
+                .vertex_shader = device.get_shader<fullscreen_vs>(),
+                .fragment_shader = device.get_shader<physical_fs>(),
+            };
             pipeline.depth_stencil.stencil_enable = true;
             pipeline.depth_stencil.stencil_front = {
                 .compare_op = RHI_COMPARE_OP_EQUAL,
@@ -110,7 +111,7 @@ void physical_pass::add(render_graph& graph, const parameter& parameter)
             pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
 
             command.set_pipeline(pipeline);
-            command.set_parameter(0, data.bindless_parameter);
+            command.set_parameter(0, device.get_bindless_parameter());
             command.set_parameter(1, data.scene_parameter);
             command.set_parameter(2, data.camera_parameter);
             command.set_parameter(3, data.gbuffer_parameter);

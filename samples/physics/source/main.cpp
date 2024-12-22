@@ -220,7 +220,7 @@ private:
         });
 
         auto& cube1_transform = world.get_component<transform_component>(m_cube1);
-        cube1_transform.position = {0.0f, 0.0f, 0.0f};
+        cube1_transform.set_position({0.0f, 0.0f, 0.0f});
 
         auto& cube1_rigidbody = world.get_component<rigidbody_component>(m_cube1);
         cube1_rigidbody.type = PHY_RIGIDBODY_TYPE_STATIC;
@@ -258,7 +258,7 @@ private:
         });
 
         auto& cube2_transform = world.get_component<transform_component>(m_cube2);
-        cube2_transform.position = {2.0f, 5.0f, 0.0f};
+        cube2_transform.set_position({2.0f, 5.0f, 0.0f});
 
         auto& cube2_rigidbody = world.get_component<rigidbody_component>(m_cube2);
         cube2_rigidbody.type = PHY_RIGIDBODY_TYPE_DYNAMIC;
@@ -296,7 +296,7 @@ private:
             scene_component>(m_camera);
 
         auto& camera_transform = world.get_component<transform_component>(m_camera);
-        camera_transform.position = {0.0f, 0.0f, -10.0f};
+        camera_transform.set_position({0.0f, 0.0f, -10.0f});
 
         auto& main_camera = world.get_component<camera_component>(m_camera);
         main_camera.renderer = m_renderer.get();

@@ -77,6 +77,72 @@ enum rhi_format
     RHI_FORMAT_D32_FLOAT_S8_UINT,
 };
 
+inline std::size_t rhi_get_format_stride(rhi_format format)
+{
+    switch (format)
+    {
+    case RHI_FORMAT_R8_UNORM:
+    case RHI_FORMAT_R8_SNORM:
+    case RHI_FORMAT_R8_UINT:
+    case RHI_FORMAT_R8_SINT:
+        return 1;
+    case RHI_FORMAT_R8G8_UNORM:
+    case RHI_FORMAT_R8G8_SNORM:
+    case RHI_FORMAT_R8G8_UINT:
+    case RHI_FORMAT_R8G8_SINT:
+        return 2;
+    case RHI_FORMAT_R8G8B8_UNORM:
+    case RHI_FORMAT_R8G8B8_SNORM:
+    case RHI_FORMAT_R8G8B8_UINT:
+    case RHI_FORMAT_R8G8B8_SINT:
+        return 3;
+    case RHI_FORMAT_R8G8B8A8_UNORM:
+    case RHI_FORMAT_R8G8B8A8_SNORM:
+    case RHI_FORMAT_R8G8B8A8_UINT:
+    case RHI_FORMAT_R8G8B8A8_SINT:
+    case RHI_FORMAT_R8G8B8A8_SRGB:
+        return 4;
+    case RHI_FORMAT_B8G8R8_UNORM:
+    case RHI_FORMAT_B8G8R8_SNORM:
+        return 3;
+    case RHI_FORMAT_B8G8R8A8_UNORM:
+    case RHI_FORMAT_B8G8R8A8_SNORM:
+    case RHI_FORMAT_B8G8R8A8_UINT:
+    case RHI_FORMAT_B8G8R8A8_SINT:
+    case RHI_FORMAT_B8G8R8A8_SRGB:
+        return 4;
+    case RHI_FORMAT_R16G16_UNORM:
+        return 4;
+    case RHI_FORMAT_R16G16B16A16_UNORM:
+    case RHI_FORMAT_R16G16B16A16_FLOAT:
+        return 8;
+    case RHI_FORMAT_R32_UINT:
+    case RHI_FORMAT_R32_SINT:
+    case RHI_FORMAT_R32_FLOAT:
+        return 4;
+    case RHI_FORMAT_R32G32_UINT:
+    case RHI_FORMAT_R32G32_SINT:
+    case RHI_FORMAT_R32G32_FLOAT:
+        return 8;
+    case RHI_FORMAT_R32G32B32_UINT:
+    case RHI_FORMAT_R32G32B32_SINT:
+    case RHI_FORMAT_R32G32B32_FLOAT:
+        return 12;
+    case RHI_FORMAT_R32G32B32A32_UINT:
+    case RHI_FORMAT_R32G32B32A32_SINT:
+    case RHI_FORMAT_R32G32B32A32_FLOAT:
+        return 16;
+    case RHI_FORMAT_R11G11B10_FLOAT:
+    case RHI_FORMAT_D24_UNORM_S8_UINT:
+    case RHI_FORMAT_D32_FLOAT:
+        return 4;
+    case RHI_FORMAT_D32_FLOAT_S8_UINT:
+        return 5;
+    default:
+        return 0;
+    }
+}
+
 enum rhi_texture_layout
 {
     RHI_TEXTURE_LAYOUT_UNDEFINED,
@@ -291,16 +357,17 @@ struct rhi_render_subpass_desc
 enum rhi_pipeline_stage_flag
 {
     RHI_PIPELINE_STAGE_BEGIN = 1 << 0,
-    RHI_PIPELINE_STAGE_VERTEX = 1 << 1,
-    RHI_PIPELINE_STAGE_EARLY_DEPTH_STENCIL = 1 << 2,
-    RHI_PIPELINE_STAGE_FRAGMENT = 1 << 3,
-    RHI_PIPELINE_STAGE_LATE_DEPTH_STENCIL = 1 << 4,
-    RHI_PIPELINE_STAGE_COLOR_OUTPUT = 1 << 5,
-    RHI_PIPELINE_STAGE_TRANSFER = 1 << 6,
-    RHI_PIPELINE_STAGE_COMPUTE = 1 << 7,
-    RHI_PIPELINE_STAGE_END = 1 << 8,
-    RHI_PIPELINE_STAGE_HOST = 1 << 9,
-    RHI_PIPELINE_STAGE_DRAW_INDIRECT,
+    RHI_PIPELINE_STAGE_VERTEX_INPUT = 1 << 1,
+    RHI_PIPELINE_STAGE_VERTEX = 1 << 2,
+    RHI_PIPELINE_STAGE_EARLY_DEPTH_STENCIL = 1 << 3,
+    RHI_PIPELINE_STAGE_FRAGMENT = 1 << 4,
+    RHI_PIPELINE_STAGE_LATE_DEPTH_STENCIL = 1 << 5,
+    RHI_PIPELINE_STAGE_COLOR_OUTPUT = 1 << 6,
+    RHI_PIPELINE_STAGE_TRANSFER = 1 << 7,
+    RHI_PIPELINE_STAGE_COMPUTE = 1 << 8,
+    RHI_PIPELINE_STAGE_END = 1 << 9,
+    RHI_PIPELINE_STAGE_HOST = 1 << 10,
+    RHI_PIPELINE_STAGE_DRAW_INDIRECT = 1 << 11,
 };
 using rhi_pipeline_stage_flags = std::uint32_t;
 
@@ -317,6 +384,7 @@ enum rhi_access_flag
     RHI_ACCESS_HOST_READ = 1 << 8,
     RHI_ACCESS_HOST_WRITE = 1 << 9,
     RHI_ACCESS_INDIRECT_COMMAND_READ = 1 << 10,
+    RHI_ACCESS_VERTEX_ATTRIBUTE_READ = 1 << 11,
 };
 using rhi_access_flags = std::uint32_t;
 
@@ -737,14 +805,16 @@ public:
         rhi_texture* texture,
         const rhi_texture_region& texture_region) = 0;
 
-    virtual void begin_label(const char* label) const = 0;
-    virtual void end_label() const = 0;
-
     virtual void signal(rhi_fence* fence, std::uint64_t value) = 0;
     virtual void wait(
         rhi_fence* fence,
         std::uint64_t value,
         rhi_pipeline_stage_flags stages = RHI_PIPELINE_STAGE_BEGIN) = 0;
+
+#ifndef NDEBUG
+    virtual void begin_label(const char* label) const = 0;
+    virtual void end_label() const = 0;
+#endif
 };
 
 struct rhi_swapchain_desc

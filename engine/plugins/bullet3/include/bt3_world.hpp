@@ -28,9 +28,7 @@ private:
 
     std::unique_ptr<btDiscreteDynamicsWorld> m_world;
 
-#ifndef NDEBUG
     class debug_draw;
     std::unique_ptr<debug_draw> m_debug_draw;
-#endif
 };
 } // namespace violet::bt3

@@ -12,18 +12,23 @@ static void read(std::istream& fin, T& dest)
     fin.read(reinterpret_cast<char*>(&dest), sizeof(T));
 }
 
-pmx::pmx(std::string_view path)
-    : m_loaded(false)
+pmx::pmx() = default;
+
+bool pmx::load(std::string_view path)
 {
+    bool result = false;
+
     std::ifstream fin(path.data(), std::ios::binary);
     if (fin.is_open() && load_header(fin) && load_mesh(fin) &&
         load_material(fin, path.substr(0, path.find_last_of('/'))) && load_bone(fin) &&
         load_morph(fin) && load_display(fin) && load_physics(fin))
     {
-        m_loaded = true;
+        result = true;
     }
 
     fin.close();
+
+    return result;
 }
 
 bool pmx::load_header(std::ifstream& fin)
@@ -59,7 +64,7 @@ bool pmx::load_mesh(std::ifstream& fin)
 
     position.resize(vertex_count);
     normal.resize(vertex_count);
-    uv.resize(vertex_count);
+    texcoord.resize(vertex_count);
     skin.resize(vertex_count);
     edge.resize(vertex_count);
 
@@ -73,7 +78,7 @@ bool pmx::load_mesh(std::ifstream& fin)
     {
         read<vec3f>(fin, position[i]);
         read<vec3f>(fin, normal[i]);
-        read<vec2f>(fin, uv[i]);
+        read<vec2f>(fin, texcoord[i]);
 
         for (std::uint8_t j = 0; j < header.num_add_vec4; ++j)
         {
@@ -157,6 +162,7 @@ bool pmx::load_mesh(std::ifstream& fin)
             break;
         }
         case PMX_VERTEX_TYPE_QDEF: {
+            // TODO: implement
             read_index(fin, header.bone_index_size);
             read_index(fin, header.bone_index_size);
             read_index(fin, header.bone_index_size);
@@ -216,16 +222,16 @@ bool pmx::load_material(std::ifstream& fin, std::string_view root_path)
         read<vec4f>(fin, material.edge_color);
         read<float>(fin, material.edge_size);
         material.texture_index = read_index(fin, header.texture_index_size);
-        material.sphere_index = read_index(fin, header.texture_index_size);
+        material.environment_index = read_index(fin, header.texture_index_size);
 
-        read<pmx_sphere_mode>(fin, material.sphere_mode);
-        read<pmx_toon_mode>(fin, material.toon_mode);
+        read<pmx_environment_blend_mode>(fin, material.environment_blend_mode);
+        read<pmx_toon_reference>(fin, material.toon_reference);
 
-        if (material.toon_mode == PMX_TOON_MODE_TEXTURE)
+        if (material.toon_reference == PMX_TOON_REFERENCE_TEXTURE)
         {
             material.toon_index = read_index(fin, header.texture_index_size);
         }
-        else if (material.toon_mode == PMX_TOON_MODE_INTERNAL)
+        else if (material.toon_reference == PMX_TOON_REFERENCE_INTERNAL)
         {
             std::uint8_t toon_index;
             read<std::uint8_t>(fin, toon_index);
@@ -244,7 +250,7 @@ bool pmx::load_material(std::ifstream& fin, std::string_view root_path)
     submeshes.resize(materials.size());
     for (std::size_t i = 0; i < materials.size(); ++i)
     {
-        submeshes[i].index_start = offset;
+        submeshes[i].index_offset = offset;
         submeshes[i].index_count = materials[i].index_count;
         submeshes[i].material_index = i;
 

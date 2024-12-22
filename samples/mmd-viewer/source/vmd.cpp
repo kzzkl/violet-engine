@@ -9,13 +9,14 @@ static void read(std::istream& fin, T& dest)
     fin.read(reinterpret_cast<char*>(&dest), sizeof(T));
 }
 
-vmd::vmd(std::string_view path)
-    : m_loaded(false)
+vmd::vmd() = default;
+
+bool vmd::load(std::string_view path)
 {
     std::ifstream fin(path.data(), std::ios::binary);
     if (!fin.is_open())
     {
-        return;
+        return false;
     }
 
     load_header(fin);
@@ -46,7 +47,7 @@ vmd::vmd(std::string_view path)
         load_ik(fin);
     }
 
-    m_loaded = true;
+    return true;
 }
 
 void vmd::load_header(std::ifstream& fin)

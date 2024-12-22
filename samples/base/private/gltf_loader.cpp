@@ -350,6 +350,9 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
         mesh_geometry->add_attribute("tangent", tangents);
         mesh_geometry->add_attribute("texcoord", texcoords);
         mesh_geometry->set_indexes(indexes);
+        mesh_geometry->set_vertex_count(positions.size());
+        mesh_geometry->set_index_count(indexes.size());
+
         scene_data.geometries.push_back(std::move(mesh_geometry));
     }
 
@@ -359,7 +362,7 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
     {
         for (int child : model.nodes[i].children)
         {
-            scene_data.nodes[child].parent = static_cast<std::uint32_t>(i);
+            scene_data.nodes[child].parent = static_cast<std::int32_t>(i);
         }
 
         scene_data.nodes[i].mesh = model.nodes[i].mesh;

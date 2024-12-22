@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ecs/view.hpp"
+#include <memory>
 
 namespace violet
 {

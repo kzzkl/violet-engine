@@ -4,7 +4,6 @@
 
 namespace violet::bt3
 {
-#ifndef NDEBUG
 class bt3_world::debug_draw : public btIDebugDraw
 {
 public:
@@ -51,7 +50,6 @@ private:
     int m_mode;
     phy_debug_draw* m_debug;
 };
-#endif
 
 bt3_world::bt3_world(const phy_world_desc& desc)
 {
@@ -67,13 +65,11 @@ bt3_world::bt3_world(const phy_world_desc& desc)
         m_collision.get());
     m_world->setGravity(btVector3(desc.gravity[0], desc.gravity[1], desc.gravity[2]));
 
-#ifndef NDEBUG
     if (desc.debug_draw)
     {
         m_debug_draw = std::make_unique<debug_draw>(desc.debug_draw);
         m_world->setDebugDrawer(m_debug_draw.get());
     }
-#endif
 }
 
 bt3_world::~bt3_world()

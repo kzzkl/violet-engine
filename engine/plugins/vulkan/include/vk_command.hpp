@@ -79,6 +79,10 @@ public:
         rhi_texture* texture,
         const rhi_texture_region& texture_region) override;
 
+    void signal(rhi_fence* fence, std::uint64_t value) override;
+    void wait(rhi_fence* fence, std::uint64_t value, rhi_pipeline_stage_flags stages) override;
+
+#ifndef NDEBUG
     void begin_label(const char* label) const override
     {
         VkDebugUtilsLabelEXT info = {
@@ -94,9 +98,7 @@ public:
     {
         vkCmdEndDebugUtilsLabelEXT(m_command_buffer);
     }
-
-    void signal(rhi_fence* fence, std::uint64_t value) override;
-    void wait(rhi_fence* fence, std::uint64_t value, rhi_pipeline_stage_flags stages) override;
+#endif
 
     void reset();
 

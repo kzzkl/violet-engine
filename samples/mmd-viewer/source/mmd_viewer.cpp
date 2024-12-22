@@ -1,14 +1,10 @@
 #include "mmd_viewer.hpp"
 #include "components/camera_component.hpp"
-#include "components/mesh_component.hpp"
-// #include "components/mmd_skeleton_component.hpp"
 #include "components/orbit_control_component.hpp"
-#include "components/rigidbody_component.hpp"
 #include "components/scene_component.hpp"
 #include "components/transform_component.hpp"
-#include "graphics/materials/unlit_material.hpp"
 #include "graphics/renderers/deferred_renderer.hpp"
-#include "physics/physics_system.hpp"
+#include "graphics/tools/texture_loader.hpp"
 #include "window/window_system.hpp"
 
 namespace violet::sample
@@ -60,7 +56,16 @@ void mmd_viewer::initialize_render()
     });
     m_renderer = std::make_unique<deferred_renderer>();
 
-    m_material = std::make_unique<unlit_material>();
+    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon01.bmp"));
+    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon02.bmp"));
+    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon03.bmp"));
+    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon04.bmp"));
+    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon05.bmp"));
+    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon06.bmp"));
+    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon07.bmp"));
+    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon08.bmp"));
+    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon09.bmp"));
+    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon10.bmp"));
 }
 
 void mmd_viewer::initialize_scene()
@@ -75,42 +80,26 @@ void mmd_viewer::initialize_scene()
         scene_component>(m_camera);
 
     auto& camera_transform = world.get_component<transform_component>(m_camera);
-    camera_transform.position = {0.0f, 0.0f, -10.0f};
+    camera_transform.set_position({0.0f, 0.0f, -40.0f});
 
     auto& main_camera = world.get_component<camera_component>(m_camera);
     main_camera.renderer = m_renderer.get();
     main_camera.render_targets = {m_swapchain.get()};
 
-    mmd_loader loader(m_pmx_path, m_vmd_path);
-    if (auto result = loader.load())
+    std::vector<rhi_texture*> internal_toons(m_internal_toons.size());
+    std::transform(
+        m_internal_toons.begin(),
+        m_internal_toons.end(),
+        internal_toons.begin(),
+        [](auto& texture)
+        {
+            return texture.get();
+        });
+
+    mmd_loader loader(internal_toons);
+    if (auto result = loader.load(m_pmx_path, m_vmd_path, get_world()))
     {
         m_model_data = std::move(*result);
-
-        std::vector<entity> entities;
-        for (auto& node : m_model_data.nodes)
-        {
-            entity entity = world.create();
-            world.add_component<transform_component, mesh_component, scene_component>(entity);
-
-            auto& mesh_data = m_model_data.meshes[node.mesh];
-
-            auto& entity_mesh = world.get_component<mesh_component>(entity);
-            entity_mesh.geometry = m_model_data.geometries[mesh_data.geometry].get();
-            for (auto& submesh_data : mesh_data.submeshes)
-            {
-                entity_mesh.submeshes.push_back({
-                    .vertex_offset = submesh_data.vertex_offset,
-                    .index_offset = submesh_data.index_offset,
-                    .index_count = submesh_data.index_count,
-                    .material = m_material.get(),
-                });
-            }
-
-            auto& entity_transform = world.get_component<transform_component>(entity);
-            entity_transform.position = node.position;
-            entity_transform.rotation = node.rotation;
-            entity_transform.scale = node.scale;
-        }
     }
 }
 

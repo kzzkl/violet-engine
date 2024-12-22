@@ -219,13 +219,9 @@ vk_parameter_layout* vk_layout_manager::get_parameter_layout(const rhi_parameter
 vk_pipeline_layout* vk_layout_manager::get_pipeline_layout(
     std::span<vk_parameter_layout*> parameter_layouts)
 {
-    std::uint64_t hash = 0;
-    for (auto& parameter_layout : parameter_layouts)
-    {
-        hash = hash::combine(
-            hash,
-            hash::city_hash_64(&parameter_layout, sizeof(vk_parameter_layout*)));
-    }
+    std::uint64_t hash = hash::city_hash_64(
+        parameter_layouts.data(),
+        sizeof(vk_parameter_layout*) * parameter_layouts.size());
 
     auto iter = m_pipeline_layouts.find(hash);
     if (iter != m_pipeline_layouts.end())

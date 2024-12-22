@@ -33,7 +33,6 @@ void unlit_pass::add(render_graph& graph, const parameter& parameter)
 {
     struct pass_data
     {
-        rhi_parameter* bindless_parameter;
         rhi_parameter* scene_parameter;
         rhi_parameter* gbuffer_parameter;
 
@@ -41,7 +40,6 @@ void unlit_pass::add(render_graph& graph, const parameter& parameter)
     };
 
     pass_data data = {
-        .bindless_parameter = parameter.scene.get_bindless_parameter(),
         .scene_parameter = parameter.scene.get_scene_parameter(),
         .gbuffer_parameter = graph.allocate_parameter(unlit_fs::gbuffer),
         .gbuffer_albedo = parameter.gbuffer_albedo,
@@ -65,9 +63,11 @@ void unlit_pass::add(render_graph& graph, const parameter& parameter)
             };
             data.gbuffer_parameter->set_constant(0, &gbuffer_data, sizeof(unlit_fs::gbuffer_data));
 
+            auto& device = render_device::instance();
+
             rdg_render_pipeline pipeline = {};
-            pipeline.vertex_shader = render_device::instance().get_shader<fullscreen_vs>();
-            pipeline.fragment_shader = render_device::instance().get_shader<unlit_fs>();
+            pipeline.vertex_shader = device.get_shader<fullscreen_vs>();
+            pipeline.fragment_shader = device.get_shader<unlit_fs>();
             pipeline.depth_stencil.stencil_enable = true;
             pipeline.depth_stencil.stencil_front = {
                 .compare_op = RHI_COMPARE_OP_EQUAL,
@@ -76,7 +76,7 @@ void unlit_pass::add(render_graph& graph, const parameter& parameter)
             pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
 
             command.set_pipeline(pipeline);
-            command.set_parameter(0, data.bindless_parameter);
+            command.set_parameter(0, device.get_bindless_parameter());
             command.set_parameter(1, data.scene_parameter);
             command.set_parameter(2, data.gbuffer_parameter);
             command.draw_fullscreen();

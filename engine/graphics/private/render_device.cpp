@@ -225,7 +225,7 @@ void render_device::create_buildin_resources()
     texture_loader::mipmap_data empty_mipmap_data;
     empty_mipmap_data.extent.width = 1;
     empty_mipmap_data.extent.height = 1;
-    empty_mipmap_data.pixels.resize(32);
+    empty_mipmap_data.pixels.resize(4);
     *reinterpret_cast<std::uint32_t*>(empty_mipmap_data.pixels.data()) = 0xFFFFFFFF;
 
     texture_loader::texture_data empty_texture_data;

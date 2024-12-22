@@ -216,6 +216,8 @@ vk_buffer::vk_buffer(const rhi_buffer_desc& desc, vk_context* context)
       m_flags(desc.flags),
       m_mapping_pointer(nullptr)
 {
+    assert(m_buffer_size > 0);
+
     VkBufferCreateInfo buffer_info = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = m_buffer_size,

@@ -51,7 +51,7 @@ float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
     {
         float3 light = float3(1.0, 1.0, 1.0);
 
-        float3 L = normalize(float3(1.0, 1.0, 1.0));
+        float3 L = normalize(float3(1.0, 1.0, -1.0));
         float3 H = normalize(L + V);
 
         float NdotL = saturate(dot(N, L));

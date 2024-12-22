@@ -122,7 +122,9 @@ public:
             static const __m128 c1 = vector::set(1.0f, 1.0f, 1.0f, -1.0f);
             static const __m128 c2 = vector::set(-1.0f, -1.0f, -1.0f, -1.0f);
 
-            __m128 result, t1, t2;
+            __m128 result;
+            __m128 t1;
+            __m128 t2;
             result = simd::replicate<3>(a); // [aw, aw, aw, aw]
             result = _mm_mul_ps(result, b); // [aw * bx, aw * by, aw * bz, aw * bw]
 
@@ -231,70 +233,70 @@ public:
         const vec4<T>& b,
         vec4<T>::value_type t)
     {
-        if constexpr (std::is_same_v<T, simd>)
+        using value_type = vec4<T>::value_type;
+
+        value_type cos_omega = vector::dot(a, b);
+
+        vec4<T> c = b;
+        if (cos_omega < 0.0f)
         {
-            float cos_omega = vector::dot(a, b);
+            c = vector::mul(b, -1.0f);
+            cos_omega = -cos_omega;
+        }
 
-            if (cos_omega < 0.0f)
-            {
-                b = vector::mul(b, -1.0f);
-                cos_omega = -cos_omega;
-            }
-
-            float k0, k1;
-            if (cos_omega > 0.9999f)
-            {
-                k0 = 1.0f - t;
-                k1 = t;
-            }
-            else
-            {
-                float sin_omega = sqrtf(1.0f - cos_omega * cos_omega);
-                float omega = atan2f(sin_omega, cos_omega);
-                float div = 1.0f / sin_omega;
-                k0 = sinf((1.0f - t) * omega) * div;
-                k1 = sinf(t * omega) * div;
-            }
-
-            __m128 t1 = vector::mul(a, k0);
-            __m128 t2 = vector::mul(b, k1);
-
-            return _mm_add_ps(t1, t2);
+        value_type k0;
+        value_type k1;
+        if (cos_omega > 0.9999f)
+        {
+            k0 = 1.0f - t;
+            k1 = t;
         }
         else
         {
-            using value_type = vec4<T>::value_type;
-
-            value_type cos_omega = vector::dot(a, b);
-
-            vec4<T> c = b;
-            if (cos_omega < 0.0f)
-            {
-                c = vector::mul(b, -1.0f);
-                cos_omega = -cos_omega;
-            }
-
-            value_type k0, k1;
-            if (cos_omega > 0.9999f)
-            {
-                k0 = 1.0f - t;
-                k1 = t;
-            }
-            else
-            {
-                value_type sin_omega = sqrtf(1.0f - cos_omega * cos_omega);
-                value_type omega = atan2f(sin_omega, cos_omega);
-                value_type div = 1.0f / sin_omega;
-                k0 = sinf((1.0f - t) * omega) * div;
-                k1 = sinf(t * omega) * div;
-            }
-
-            return {
-                a[0] * k0 + c[0] * k1,
-                a[1] * k0 + c[1] * k1,
-                a[2] * k0 + c[2] * k1,
-                a[3] * k0 + c[3] * k1};
+            value_type sin_omega = sqrtf(1.0f - cos_omega * cos_omega);
+            value_type omega = atan2f(sin_omega, cos_omega);
+            value_type div = 1.0f / sin_omega;
+            k0 = sinf((1.0f - t) * omega) * div;
+            k1 = sinf(t * omega) * div;
         }
+
+        return {
+            a[0] * k0 + c[0] * k1,
+            a[1] * k0 + c[1] * k1,
+            a[2] * k0 + c[2] * k1,
+            a[3] * k0 + c[3] * k1};
+    }
+
+    [[nodiscard]] static inline vec4f_simd slerp(vec4f_simd a, vec4f_simd b, float t)
+    {
+        float cos_omega = vector::dot(a, b);
+
+        if (cos_omega < 0.0f)
+        {
+            b = vector::mul(b, -1.0f);
+            cos_omega = -cos_omega;
+        }
+
+        float k0;
+        float k1;
+        if (cos_omega > 0.9999f)
+        {
+            k0 = 1.0f - t;
+            k1 = t;
+        }
+        else
+        {
+            float sin_omega = sqrtf(1.0f - cos_omega * cos_omega);
+            float omega = atan2f(sin_omega, cos_omega);
+            float div = 1.0f / sin_omega;
+            k0 = sinf((1.0f - t) * omega) * div;
+            k1 = sinf(t * omega) * div;
+        }
+
+        __m128 t1 = vector::mul(a, k0);
+        __m128 t2 = vector::mul(b, k1);
+
+        return _mm_add_ps(t1, t2);
     }
 };
 } // namespace violet

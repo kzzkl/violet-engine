@@ -22,10 +22,9 @@ struct physical_material_fs : public mesh_fs
 physical_material::physical_material()
     : mesh_material(MATERIAL_OPAQUE)
 {
-    rdg_render_pipeline pipeline = {
-        .vertex_shader = render_device::instance().get_shader<physical_material_vs>(),
-        .fragment_shader = render_device::instance().get_shader<physical_material_fs>(),
-    };
+    auto& pipeline = get_pipeline();
+    pipeline.vertex_shader = render_device::instance().get_shader<physical_material_vs>();
+    pipeline.fragment_shader = render_device::instance().get_shader<physical_material_fs>();
     pipeline.depth_stencil.depth_enable = true;
     pipeline.depth_stencil.depth_write_enable = true;
     pipeline.depth_stencil.depth_compare_op = RHI_COMPARE_OP_GREATER;
@@ -37,7 +36,6 @@ physical_material::physical_material()
         .reference = LIGHTING_PHYSICAL,
     };
     pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
-    set_pipeline(pipeline);
 
     set_albedo({1.0f, 1.0f, 1.0f});
 }

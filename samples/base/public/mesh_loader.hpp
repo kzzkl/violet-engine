@@ -2,7 +2,6 @@
 
 #include "graphics/geometry.hpp"
 #include "graphics/material.hpp"
-#include <limits>
 #include <optional>
 
 namespace violet
@@ -24,21 +23,15 @@ public:
         std::vector<submesh_data> submeshes;
     };
 
-    struct skin_data
-    {
-        std::vector<std::uint32_t> bones; // index into nodes
-    };
-
     struct node_data
     {
-        std::uint32_t mesh;
-        std::uint32_t skin;
+        std::int32_t mesh;
 
         vec3f position{0.0f, 0.0f, 0.0f};
         vec4f rotation{0.0f, 0.0f, 0.0f, 1.0f};
         vec3f scale{1.0f, 1.0f, 1.0f};
 
-        std::uint32_t parent{std::numeric_limits<std::uint32_t>::max()};
+        std::int32_t parent{-1};
     };
 
     struct scene_data

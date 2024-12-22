@@ -9,6 +9,11 @@
 #include "components/transform_component.hpp"
 #include "math/matrix.hpp"
 #include "physics_plugin.hpp"
+#include "scene/transform_system.hpp"
+
+#ifdef VIOLET_PHYSICS_DEBUG_DRAW
+#include "physics_debug.hpp"
+#endif
 
 namespace violet
 {
@@ -25,13 +30,13 @@ bool physics_system::initialize(const dictionary& config)
     m_plugin->load(config["plugin"]);
     m_context = std::make_unique<physics_context>(m_plugin->get_plugin());
 
-    task_graph& task_graph = get_task_graph();
-    task_group& post_update_group = task_graph.get_group("PostUpdate");
-    task_group& transform_group = task_graph.get_group("Transform");
-    task_group& physics_group = task_graph.add_group()
-                                    .set_name("Physics")
-                                    .set_group(post_update_group)
-                                    .add_dependency(transform_group);
+    auto& task_graph = get_task_graph();
+    auto& post_update_group = task_graph.get_group("PostUpdate");
+    auto& transform_group = task_graph.get_group("Transform");
+    auto& physics_group = task_graph.add_group()
+                              .set_name("Physics")
+                              .set_group(post_update_group)
+                              .add_dependency(transform_group);
 
     task_graph.add_task()
         .set_name("Physics Simulation")
@@ -39,9 +44,13 @@ bool physics_system::initialize(const dictionary& config)
         .set_execute(
             [this]()
             {
+                get_system<transform_system>().update_transform();
+
                 update_rigidbody();
                 update_joint();
                 simulation();
+
+                get_system<transform_system>().update_transform();
 
                 m_system_version = get_world().get_version();
             });
@@ -54,6 +63,10 @@ bool physics_system::initialize(const dictionary& config)
     world.register_component<collider_component>();
     world.register_component<joint_component>();
 
+#ifdef VIOLET_PHYSICS_DEBUG_DRAW
+    m_debug = std::make_unique<physics_debug>(world);
+#endif
+
     return true;
 }
 
@@ -62,10 +75,7 @@ void physics_system::simulation()
     constexpr float time_step = 1.0f / 60.0f;
 
     m_time += get_timer().get_frame_delta();
-    if (m_time < time_step)
-    {
-        return;
-    }
+    m_time = std::min(m_time, 3.0f * time_step);
 
     while (m_time > time_step)
     {
@@ -73,6 +83,10 @@ void physics_system::simulation()
         {
             if (scene != nullptr)
             {
+#ifdef VIOLET_PHYSICS_DEBUG_DRAW
+                m_debug->reset();
+#endif
+
                 scene->simulation(time_step);
             }
         }
@@ -98,6 +112,29 @@ void physics_system::simulation()
     {
         update_transform(root, {}, false);
     }
+
+    // world.get_view().read<transform_world_component>().each(
+    //     [&](const transform_world_component& transform)
+    //     {
+    //         vec3f s = {0.0f, 0.0f, 0.0f};
+    //         vec3f e = {0.0f, 1.0f, 0.0f};
+
+    //         mat4f_simd world_matrix = math::load(transform.matrix);
+
+    //         vec4f_simd start = vector::set(s.x, s.y, s.z, 1.0f);
+    //         vec4f_simd end = vector::set(e.x, e.y, e.z, 1.0f);
+    //         start = matrix::mul(start, world_matrix);
+    //         end = matrix::mul(end, world_matrix);
+
+    //         math::store(start, s);
+    //         math::store(end, e);
+
+    //         m_debug->draw_line(s, e, {1.0f, 0.0f, 0.0f});
+    //     });
+
+#ifdef VIOLET_PHYSICS_DEBUG_DRAW
+    m_debug->tick();
+#endif
 }
 
 void physics_system::update_rigidbody()
@@ -105,12 +142,14 @@ void physics_system::update_rigidbody()
     auto& world = get_world();
 
     world.get_view()
+        .read<entity>()
         .read<rigidbody_component>()
         .read<collider_component>()
         .read<transform_world_component>()
         .write<rigidbody_meta_component>()
         .each(
             [this](
+                const entity& e,
                 const rigidbody_component& rigidbody,
                 const collider_component& collider,
                 const transform_world_component& transform,
@@ -120,6 +159,19 @@ void physics_system::update_rigidbody()
 
                 if (rigidbody_meta.rigidbody == nullptr)
                 {
+                    if (rigidbody.type == PHY_RIGIDBODY_TYPE_KINEMATIC)
+                    {
+                        rigidbody_meta.motion_state =
+                            std::make_unique<rigidbody_motion_state_kinematic>();
+                    }
+                    else
+                    {
+                        rigidbody_meta.motion_state = std::make_unique<rigidbody_motion_state>();
+                    }
+                    mat4f_simd initial_transform =
+                        matrix::mul(math::load(rigidbody.offset), math::load(transform.matrix));
+                    math::store(initial_transform, rigidbody_meta.motion_state->transform);
+
                     phy_rigidbody_desc desc = {
                         .type = rigidbody.type,
                         .shape = shape,
@@ -128,15 +180,13 @@ void physics_system::update_rigidbody()
                         .angular_damping = rigidbody.angular_damping,
                         .restitution = rigidbody.restitution,
                         .friction = rigidbody.friction,
-                        .initial_transform = transform.matrix,
                         .activation_state = rigidbody.activation_state,
                         .collision_group = rigidbody.collision_group,
                         .collision_mask = rigidbody.collision_mask,
+                        .motion_state = rigidbody_meta.motion_state.get(),
                     };
 
                     rigidbody_meta.rigidbody = m_context->create_rigidbody(desc);
-                    rigidbody_meta.motion_state = std::make_unique<rigidbody_motion_state>();
-                    rigidbody_meta.rigidbody->set_motion_state(rigidbody_meta.motion_state.get());
                 }
                 else
                 {
@@ -161,6 +211,7 @@ void physics_system::update_rigidbody()
         .read<rigidbody_component>()
         .write<rigidbody_meta_component>()
         .with<transform_world_component>()
+        .with<collider_component>()
         .each(
             [this](
                 const scene_component& scene,
@@ -190,6 +241,7 @@ void physics_system::update_rigidbody()
         .read<rigidbody_component>()
         .read<transform_world_component>()
         .write<rigidbody_meta_component>()
+        .with<collider_component>()
         .each(
             [this](
                 const rigidbody_component& rigidbody,
@@ -202,9 +254,9 @@ void physics_system::update_rigidbody()
                     mat4f_simd offset_matrix = math::load(rigidbody.offset);
 
                     mat4f world_transform;
-                    math::store(matrix::mul(offset_matrix, world_matrix), world_transform);
-
-                    rigidbody_meta.motion_state->set_transform(world_transform);
+                    math::store(
+                        matrix::mul(offset_matrix, world_matrix),
+                        rigidbody_meta.motion_state->transform);
                 }
             },
             [this](auto& view)
@@ -222,8 +274,8 @@ void physics_system::update_joint()
         {
             for (auto& joint : joint.joints)
             {
-                auto* target_rigidbody =
-                    world.get_component<rigidbody_meta_component>(joint.target).rigidbody.get();
+                auto& target_rigidbody =
+                    world.get_component<rigidbody_meta_component>(joint.target);
 
                 if (joint.meta.joint == nullptr)
                 {
@@ -231,7 +283,7 @@ void physics_system::update_joint()
                         .source = rigidbody_meta.rigidbody.get(),
                         .source_position = joint.source_position,
                         .source_rotation = joint.source_rotation,
-                        .target = target_rigidbody,
+                        .target = target_rigidbody.rigidbody.get(),
                         .target_position = joint.target_position,
                         .target_rotation = joint.target_rotation,
                         .min_linear = joint.min_linear,
@@ -296,38 +348,51 @@ void physics_system::update_transform(entity e, const mat4f& parent_world, bool 
 {
     auto& world = get_world();
 
-    bool dirty = parent_dirty;
+    bool dirty = parent_dirty || world.is_updated<transform_world_component>(e, m_system_version);
 
+    mat4f current_world_matrix;
     if (world.has_component<rigidbody_meta_component>(e))
     {
-        auto& rigidbody_meta = world.get_component<rigidbody_meta_component>(e);
+        const auto& rigidbody = world.get_component<const rigidbody_component>(e);
+        const auto& rigidbody_meta = world.get_component<const rigidbody_meta_component>(e);
         if (rigidbody_meta.motion_state->dirty || parent_dirty)
         {
-            mat4f_simd world_matrix = math::load(rigidbody_meta.motion_state->get_transform());
+            mat4f_simd rigidbody_matrix = math::load(rigidbody_meta.motion_state->transform);
+            mat4f_simd offset_matrix = math::load(rigidbody.offset);
+            mat4f_simd offset_matrix_inv = matrix::inverse(offset_matrix);
+            mat4f_simd world_matrix = matrix::mul(offset_matrix_inv, rigidbody_matrix);
+
+            auto& transform_world = world.get_component<transform_world_component>(e);
+            if (rigidbody.transform_reflector)
+            {
+                mat4f rigidbody_world;
+                math::store(world_matrix, rigidbody_world);
+
+                rigidbody_world =
+                    rigidbody.transform_reflector(rigidbody_world, transform_world.matrix);
+
+                world_matrix = math::load(rigidbody_world);
+            }
+
             mat4f_simd parent_matrix = math::load(parent_world);
             mat4f_simd local_matrix =
                 matrix::mul(world_matrix, matrix::inverse_transform(parent_matrix));
 
             vec4f_simd position;
             vec4f_simd rotation;
-            vec4f_simd scale;
+            vec4f_simd scale; // unused
             matrix::decompose(local_matrix, scale, rotation, position);
 
             auto& transform = world.get_component<transform_component>(e);
-            math::store(position, transform.position);
-            math::store(rotation, transform.rotation);
-            math::store(scale, transform.scale);
+            transform.set_position(position);
+            transform.set_rotation(rotation);
 
-            auto& transform_local = world.get_component<transform_local_component>(e);
-            math::store(local_matrix, transform_local.matrix);
-
-            auto& transform_world = world.get_component<transform_world_component>(e);
-            math::store(world_matrix, transform_world.matrix);
+            math::store(world_matrix, current_world_matrix);
 
             dirty = true;
-        }
 
-        rigidbody_meta.motion_state->dirty = false;
+            rigidbody_meta.motion_state->dirty = false;
+        }
     }
     else
     {
@@ -335,23 +400,21 @@ void physics_system::update_transform(entity e, const mat4f& parent_world, bool 
         {
             auto& transform = world.get_component<transform_component>(e);
             mat4f_simd local_matrix = matrix::affine_transform(
-                math::load(transform.scale),
-                math::load(transform.rotation),
-                math::load(transform.position));
+                math::load(transform.get_scale()),
+                math::load(transform.get_rotation()),
+                math::load(transform.get_position()));
             mat4f_simd parent_matrix = math::load(parent_world);
             mat4f_simd world_matrix = matrix::mul(local_matrix, parent_matrix);
 
-            auto& transform_world = world.get_component<transform_world_component>(e);
-            math::store(world_matrix, transform_world.matrix);
+            math::store(world_matrix, current_world_matrix);
         }
     }
 
     if (world.has_component<child_component>(e))
     {
-        auto& transform_world = world.get_component<transform_world_component>(e);
         for (const auto& child : world.get_component<const child_component>(e).children)
         {
-            update_transform(child, transform_world.matrix, dirty);
+            update_transform(child, current_world_matrix, dirty);
         }
     }
 }
@@ -367,8 +430,14 @@ physics_scene* physics_system::get_scene(std::uint32_t layer)
 
     if (m_scenes[layer] == nullptr)
     {
-        m_scenes[layer] =
-            std::make_unique<physics_scene>(vec3f{0.0f, -9.8f, 0.0f}, nullptr, m_context.get());
+        m_scenes[layer] = std::make_unique<physics_scene>(
+            vec3f{0.0f, -9.8f, 0.0f},
+#ifdef VIOLET_PHYSICS_DEBUG_DRAW
+            m_debug.get(),
+#else
+            nullptr,
+#endif
+            m_context.get());
     }
 
     return m_scenes[layer].get();

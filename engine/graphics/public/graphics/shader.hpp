@@ -12,8 +12,6 @@ namespace violet
 struct shader_parameter
 {
     consteval shader_parameter(std::initializer_list<rhi_parameter_binding> list)
-        : bindings{},
-          binding_count(0)
     {
         assert(list.size() <= rhi_constants::max_parameter_binding_count);
 
@@ -29,8 +27,8 @@ struct shader_parameter
         return {bindings, binding_count};
     }
 
-    rhi_parameter_binding bindings[rhi_constants::max_parameter_binding_count];
-    std::size_t binding_count;
+    rhi_parameter_binding bindings[rhi_constants::max_parameter_binding_count]{};
+    std::size_t binding_count{};
 };
 
 struct shader
@@ -40,8 +38,6 @@ struct shader
     struct parameter_layout
     {
         consteval parameter_layout(std::initializer_list<rhi_shader_desc::parameter_slot> list)
-            : parameters{},
-              parameter_count(0)
         {
             assert(list.size() <= rhi_constants::max_parameter_count);
 
@@ -52,8 +48,8 @@ struct shader
             parameter_count = list.size();
         }
 
-        rhi_shader_desc::parameter_slot parameters[rhi_constants::max_parameter_count];
-        std::size_t parameter_count;
+        rhi_shader_desc::parameter_slot parameters[rhi_constants::max_parameter_count]{};
+        std::size_t parameter_count{};
     };
 
     struct draw_command
@@ -168,7 +164,6 @@ struct shader_vs : public shader
     struct input_layout
     {
         consteval input_layout(std::initializer_list<rhi_vertex_attribute> list)
-            : attributes{}
         {
             assert(list.size() <= rhi_constants::max_vertex_attribute_count);
 
@@ -179,7 +174,7 @@ struct shader_vs : public shader
             attribute_count = list.size();
         }
 
-        rhi_vertex_attribute attributes[rhi_constants::max_vertex_attribute_count];
+        rhi_vertex_attribute attributes[rhi_constants::max_vertex_attribute_count]{};
         std::size_t attribute_count;
     };
 
@@ -215,5 +210,23 @@ struct mesh_vs : public shader_vs
 
 struct mesh_fs : public shader_fs
 {
+};
+
+struct skinning_cs : public shader_cs
+{
+    struct skinning_data
+    {
+        std::uint32_t skeleton;
+        std::uint32_t buffers[11];
+    };
+
+    static constexpr parameter skinning = {
+        {RHI_PARAMETER_BINDING_CONSTANT, RHI_SHADER_STAGE_COMPUTE, sizeof(skinning_data)},
+    };
+
+    static constexpr parameter_layout parameters = {
+        {0, bindless},
+        {1, skinning},
+    };
 };
 } // namespace violet

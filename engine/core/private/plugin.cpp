@@ -88,6 +88,7 @@ bool plugin::load(std::string_view path)
 
     if (!on_load())
     {
+        log::error("Plugin load failed");
         m_library->unload();
         return false;
     }

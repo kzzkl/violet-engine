@@ -91,7 +91,7 @@ void control_system::update_orbit_control(
         orbit_control.r * theta_sin * phi_cos,
         orbit_control.r * theta_cos,
         -orbit_control.r * theta_sin * phi_sin};
-    transform.position = vector::add(p, orbit_control.target);
+    transform.set_position(vector::add(p, orbit_control.target));
     transform.lookat(orbit_control.target, vec3f{0.0f, 1.0f, 0.0f});
 }
 } // namespace violet

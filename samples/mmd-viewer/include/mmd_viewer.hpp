@@ -1,12 +1,12 @@
 #pragma once
 
 #include "core/engine_system.hpp"
+#include "graphics/renderer.hpp"
 #include "mmd_loader.hpp"
-#include "mmd_renderer.hpp"
 
 namespace violet::sample
 {
-class physics_debug;
+class mmd_debug;
 class mmd_viewer : public engine_system
 {
 public:
@@ -28,14 +28,11 @@ private:
     entity m_camera;
     entity m_light;
 
-    mesh_loader::scene_data m_model_data;
+    mmd_loader::scene_data m_model_data;
 
     std::string m_pmx_path;
     std::string m_vmd_path;
 
-    std::unique_ptr<material> m_material;
-
-    // std::unique_ptr<physics_world> m_physics_world;
-    // std::unique_ptr<physics_debug> m_physics_debug;
+    std::vector<rhi_ptr<rhi_texture>> m_internal_toons;
 };
 } // namespace violet::sample

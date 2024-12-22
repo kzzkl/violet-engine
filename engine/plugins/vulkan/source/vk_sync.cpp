@@ -9,14 +9,13 @@ vk_fence::vk_fence(bool timeline, vk_context* context)
     VkSemaphoreCreateInfo semaphore_info = {};
     semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
+    VkSemaphoreTypeCreateInfo timeline_info = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+        .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+        .initialValue = 0,
+    };
     if (timeline)
     {
-        VkSemaphoreTypeCreateInfo timeline_info = {};
-        timeline_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
-        timeline_info.pNext = NULL;
-        timeline_info.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
-        timeline_info.initialValue = 0;
-
         semaphore_info.pNext = &timeline_info;
     }
 

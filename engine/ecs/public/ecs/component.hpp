@@ -1,10 +1,8 @@
 #pragma once
 
 #include "common/type_index.hpp"
-#include <array>
 #include <bitset>
 #include <cstdint>
-#include <memory>
 
 namespace violet
 {

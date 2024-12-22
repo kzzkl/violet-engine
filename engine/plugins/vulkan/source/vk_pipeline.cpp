@@ -6,54 +6,6 @@
 
 namespace violet::vk
 {
-namespace
-{
-std::uint32_t get_vertex_attribute_stride(VkFormat format) noexcept
-{
-    switch (format)
-    {
-    case VK_FORMAT_R8_UNORM:
-    case VK_FORMAT_R8_SNORM:
-    case VK_FORMAT_R8_UINT:
-    case VK_FORMAT_R8_SINT:
-        return 1;
-    case VK_FORMAT_R8G8_UNORM:
-    case VK_FORMAT_R8G8_SNORM:
-    case VK_FORMAT_R8G8_UINT:
-    case VK_FORMAT_R8G8_SINT:
-        return 2;
-    case VK_FORMAT_R8G8B8_UNORM:
-    case VK_FORMAT_R8G8B8_SNORM:
-    case VK_FORMAT_R8G8B8_UINT:
-    case VK_FORMAT_R8G8B8_SINT:
-        return 3;
-    case VK_FORMAT_R8G8B8A8_UNORM:
-    case VK_FORMAT_R8G8B8A8_SNORM:
-    case VK_FORMAT_R8G8B8A8_UINT:
-    case VK_FORMAT_R8G8B8A8_SINT:
-        return 4;
-    case VK_FORMAT_R32_UINT:
-    case VK_FORMAT_R32_SINT:
-    case VK_FORMAT_R32_SFLOAT:
-        return 4;
-    case VK_FORMAT_R32G32_UINT:
-    case VK_FORMAT_R32G32_SINT:
-    case VK_FORMAT_R32G32_SFLOAT:
-        return 8;
-    case VK_FORMAT_R32G32B32_UINT:
-    case VK_FORMAT_R32G32B32_SINT:
-    case VK_FORMAT_R32G32B32_SFLOAT:
-        return 12;
-    case VK_FORMAT_R32G32B32A32_UINT:
-    case VK_FORMAT_R32G32B32A32_SINT:
-    case VK_FORMAT_R32G32B32A32_SFLOAT:
-        return 16;
-    default:
-        return 0;
-    }
-}
-} // namespace
-
 vk_shader::vk_shader(const rhi_shader_desc& desc, vk_context* context)
     : m_module(VK_NULL_HANDLE),
       m_context(context)
@@ -100,8 +52,8 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
       m_pipeline_layout(VK_NULL_HANDLE),
       m_context(context)
 {
-    vk_vertex_shader* vertex_shader = static_cast<vk_vertex_shader*>(desc.vertex_shader);
-    vk_fragment_shader* fragment_shader = static_cast<vk_fragment_shader*>(desc.fragment_shader);
+    auto* vertex_shader = static_cast<vk_vertex_shader*>(desc.vertex_shader);
+    auto* fragment_shader = static_cast<vk_fragment_shader*>(desc.fragment_shader);
 
     std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
 
@@ -128,19 +80,18 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
     const auto& vertex_attributes = vertex_shader->get_vertex_attributes();
     for (std::uint32_t i = 0; i < vertex_attributes.size(); ++i)
     {
-        VkFormat format = vk_util::map_format(vertex_attributes[i].format);
+        binding_descriptions.push_back({
+            .binding = i,
+            .stride =
+                static_cast<std::uint32_t>(rhi_get_format_stride(vertex_attributes[i].format)),
+            .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+        });
 
-        VkVertexInputBindingDescription binding = {};
-        binding.binding = i;
-        binding.stride = get_vertex_attribute_stride(format);
-        binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        binding_descriptions.push_back(binding);
-
-        VkVertexInputAttributeDescription attribute = {};
-        attribute.binding = binding.binding;
-        attribute.format = format;
-        attribute.location = i;
-        attribute_descriptions.push_back(attribute);
+        attribute_descriptions.push_back({
+            .location = i,
+            .binding = i,
+            .format = vk_util::map_format(vertex_attributes[i].format),
+        });
     }
 
     VkPipelineVertexInputStateCreateInfo vertex_input_state_info = {};
@@ -167,34 +118,37 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
         throw std::runtime_error("Invalid primitive topology.");
     }
 
-    VkViewport viewport = {};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = 0.0f;
-    viewport.height = 0.0f;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
+    VkViewport viewport = {
+        .x = 0.0f,
+        .y = 0.0f,
+        .width = 0.0f,
+        .height = 0.0f,
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f,
+    };
 
     VkRect2D scissor = {};
 
-    VkPipelineViewportStateCreateInfo viewport_info = {};
-    viewport_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewport_info.viewportCount = 1;
-    viewport_info.pViewports = &viewport;
-    viewport_info.scissorCount = 1;
-    viewport_info.pScissors = &scissor;
+    VkPipelineViewportStateCreateInfo viewport_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .viewportCount = 1,
+        .pViewports = &viewport,
+        .scissorCount = 1,
+        .pScissors = &scissor,
+    };
 
-    VkPipelineRasterizationStateCreateInfo rasterization_state_info = {};
-    rasterization_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterization_state_info.depthClampEnable = VK_FALSE;
-    rasterization_state_info.rasterizerDiscardEnable = VK_FALSE;
-    rasterization_state_info.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterization_state_info.lineWidth = 1.0f;
-    rasterization_state_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rasterization_state_info.depthBiasEnable = VK_FALSE;
-    rasterization_state_info.depthBiasConstantFactor = 0.0f;
-    rasterization_state_info.depthBiasClamp = 0.0f;
-    rasterization_state_info.depthBiasSlopeFactor = 0.0f;
+    VkPipelineRasterizationStateCreateInfo rasterization_state_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .depthClampEnable = VK_FALSE,
+        .rasterizerDiscardEnable = VK_FALSE,
+        .polygonMode = VK_POLYGON_MODE_FILL,
+        .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+        .depthBiasEnable = VK_FALSE,
+        .depthBiasConstantFactor = 0.0f,
+        .depthBiasClamp = 0.0f,
+        .depthBiasSlopeFactor = 0.0f,
+        .lineWidth = 1.0f,
+    };
     switch (desc.rasterizer.cull_mode)
     {
     case RHI_CULL_MODE_NONE:
@@ -210,14 +164,15 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
         throw std::runtime_error("Invalid cull mode.");
     }
 
-    VkPipelineMultisampleStateCreateInfo multisample_state_info = {};
-    multisample_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisample_state_info.sampleShadingEnable = VK_FALSE;
-    multisample_state_info.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    multisample_state_info.minSampleShading = 1.0f;
-    multisample_state_info.pSampleMask = nullptr;
-    multisample_state_info.alphaToCoverageEnable = VK_FALSE;
-    multisample_state_info.alphaToOneEnable = VK_FALSE;
+    VkPipelineMultisampleStateCreateInfo multisample_state_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+        .sampleShadingEnable = VK_FALSE,
+        .minSampleShading = 1.0f,
+        .pSampleMask = nullptr,
+        .alphaToCoverageEnable = VK_FALSE,
+        .alphaToOneEnable = VK_FALSE,
+    };
 
     VkPipelineDepthStencilStateCreateInfo depth_stencil_state_info = {};
     depth_stencil_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -271,16 +226,14 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
             vk_util::map_blend_op(desc.blend.attachments[i].alpha_op);
     }
 
-    VkPipelineColorBlendStateCreateInfo color_blend_info = {};
-    color_blend_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    color_blend_info.logicOpEnable = VK_FALSE;
-    color_blend_info.logicOp = VK_LOGIC_OP_COPY;
-    color_blend_info.pAttachments = color_blend_attachments.data();
-    color_blend_info.attachmentCount = static_cast<std::uint32_t>(color_blend_attachments.size());
-    color_blend_info.blendConstants[0] = 0.0f;
-    color_blend_info.blendConstants[1] = 0.0f;
-    color_blend_info.blendConstants[2] = 0.0f;
-    color_blend_info.blendConstants[3] = 0.0f;
+    VkPipelineColorBlendStateCreateInfo color_blend_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .logicOpEnable = VK_FALSE,
+        .logicOp = VK_LOGIC_OP_COPY,
+        .attachmentCount = static_cast<std::uint32_t>(color_blend_attachments.size()),
+        .pAttachments = color_blend_attachments.data(),
+        .blendConstants = {0.0f, 0.0f, 0.0f, 0.0f},
+    };
 
     std::vector<vk_parameter_layout*> parameter_layouts;
     for (const auto& parameter : vertex_shader->get_parameters())
@@ -309,29 +262,32 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
     std::vector<VkDynamicState> dynamic_state = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR,
-        VK_DYNAMIC_STATE_DEPTH_BOUNDS};
+        VK_DYNAMIC_STATE_DEPTH_BOUNDS,
+    };
 
-    VkPipelineDynamicStateCreateInfo dynamic_state_info = {};
-    dynamic_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamic_state_info.pDynamicStates = dynamic_state.data();
-    dynamic_state_info.dynamicStateCount = static_cast<std::uint32_t>(dynamic_state.size());
+    VkPipelineDynamicStateCreateInfo dynamic_state_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = static_cast<std::uint32_t>(dynamic_state.size()),
+        .pDynamicStates = dynamic_state.data(),
+    };
 
-    VkGraphicsPipelineCreateInfo pipeline_info = {};
-    pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipeline_info.pStages = shader_stages.data();
-    pipeline_info.stageCount = static_cast<std::uint32_t>(shader_stages.size());
-    pipeline_info.pVertexInputState = &vertex_input_state_info;
-    pipeline_info.pInputAssemblyState = &input_assembly_state_info;
-    pipeline_info.pViewportState = &viewport_info;
-    pipeline_info.pRasterizationState = &rasterization_state_info;
-    pipeline_info.pMultisampleState = &multisample_state_info;
-    pipeline_info.pColorBlendState = &color_blend_info;
-    pipeline_info.pDynamicState = &dynamic_state_info;
-    pipeline_info.layout = m_pipeline_layout;
-    pipeline_info.renderPass = render_pass->get_render_pass();
-    pipeline_info.subpass = static_cast<std::uint32_t>(desc.subpass_index);
-    pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
-    pipeline_info.pDepthStencilState = &depth_stencil_state_info;
+    VkGraphicsPipelineCreateInfo pipeline_info = {
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .stageCount = static_cast<std::uint32_t>(shader_stages.size()),
+        .pStages = shader_stages.data(),
+        .pVertexInputState = &vertex_input_state_info,
+        .pInputAssemblyState = &input_assembly_state_info,
+        .pViewportState = &viewport_info,
+        .pRasterizationState = &rasterization_state_info,
+        .pMultisampleState = &multisample_state_info,
+        .pDepthStencilState = &depth_stencil_state_info,
+        .pColorBlendState = &color_blend_info,
+        .pDynamicState = &dynamic_state_info,
+        .layout = m_pipeline_layout,
+        .renderPass = render_pass->get_render_pass(),
+        .subpass = static_cast<std::uint32_t>(desc.subpass_index),
+        .basePipelineHandle = VK_NULL_HANDLE,
+    };
 
     vk_check(vkCreateGraphicsPipelines(
         m_context->get_device(),
@@ -354,11 +310,12 @@ vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, 
 {
     auto* compute_shader = static_cast<vk_compute_shader*>(desc.compute_shader);
 
-    VkPipelineShaderStageCreateInfo compute_shader_stage_info = {};
-    compute_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    compute_shader_stage_info.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-    compute_shader_stage_info.module = static_cast<vk_shader*>(desc.compute_shader)->get_module();
-    compute_shader_stage_info.pName = "cs_main";
+    VkPipelineShaderStageCreateInfo compute_shader_stage_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+        .module = compute_shader->get_module(),
+        .pName = "cs_main",
+    };
 
     std::vector<vk_parameter_layout*> parameter_layouts;
     for (const auto& parameter : compute_shader->get_parameters())
@@ -372,12 +329,13 @@ vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, 
     m_pipeline_layout =
         m_context->get_layout_manager()->get_pipeline_layout(parameter_layouts)->get_layout();
 
-    VkComputePipelineCreateInfo pipeline_info = {};
-    pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
-    pipeline_info.basePipelineIndex = -1;
-    pipeline_info.stage = compute_shader_stage_info;
-    pipeline_info.layout = m_pipeline_layout;
+    VkComputePipelineCreateInfo pipeline_info = {
+        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+        .stage = compute_shader_stage_info,
+        .layout = m_pipeline_layout,
+        .basePipelineHandle = VK_NULL_HANDLE,
+        .basePipelineIndex = -1,
+    };
 
     vk_check(vkCreateComputePipelines(
         m_context->get_device(),

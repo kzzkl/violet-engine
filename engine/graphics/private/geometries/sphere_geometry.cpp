@@ -67,5 +67,8 @@ sphere_geometry::sphere_geometry(float radius, std::size_t slice, std::size_t st
     add_attribute("position", position);
     add_attribute("normal", normal);
     set_indexes(indexes);
+
+    set_vertex_count(position.size());
+    set_index_count(indexes.size());
 }
 } // namespace violet

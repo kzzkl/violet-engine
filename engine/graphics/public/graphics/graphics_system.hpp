@@ -20,7 +20,10 @@ public:
 private:
     void udpate_camera();
     void update_mesh();
+    void update_skin();
+    void update_skeleton();
     void update_environment();
+    void skinning();
 
     void begin_frame();
     void end_frame();

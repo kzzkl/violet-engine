@@ -90,7 +90,6 @@ void cull_pass::add_cull_pass(
 {
     struct pass_data
     {
-        rhi_parameter* bindless_parameter;
         rhi_parameter* scene_parameter;
         rhi_parameter* camera_parameter;
         rhi_parameter* cull_parameter;
@@ -99,7 +98,6 @@ void cull_pass::add_cull_pass(
     };
 
     pass_data data = {
-        .bindless_parameter = parameter.scene.get_bindless_parameter(),
         .scene_parameter = parameter.scene.get_scene_parameter(),
         .camera_parameter = parameter.camera.camera_parameter,
         .cull_parameter = graph.allocate_parameter(cull_cs::cull),
@@ -116,10 +114,12 @@ void cull_pass::add_cull_pass(
             };
             data.cull_parameter->set_constant(0, &cull_data, sizeof(cull_cs::cull_data));
 
+            auto& device = render_device::instance();
+
             command.set_pipeline({
-                .compute_shader = render_device::instance().get_shader<cull_cs>(),
+                .compute_shader = device.get_shader<cull_cs>(),
             });
-            command.set_parameter(0, data.bindless_parameter);
+            command.set_parameter(0, device.get_bindless_parameter());
             command.set_parameter(1, data.scene_parameter);
             command.set_parameter(2, data.camera_parameter);
             command.set_parameter(3, data.cull_parameter);
@@ -135,7 +135,6 @@ void cull_pass::add_fill_pass(
 {
     struct pass_data
     {
-        rhi_parameter* bindless_parameter;
         rhi_parameter* scene_parameter;
         rhi_parameter* fill_parameter;
 
@@ -146,7 +145,6 @@ void cull_pass::add_fill_pass(
     };
 
     pass_data data = {
-        .bindless_parameter = parameter.scene.get_bindless_parameter(),
         .scene_parameter = parameter.scene.get_scene_parameter(),
         .fill_parameter = graph.allocate_parameter(draw_command_filler_cs::fill),
         .command_buffer = parameter.command_buffer,
@@ -171,10 +169,12 @@ void cull_pass::add_fill_pass(
                 &fill_data,
                 sizeof(draw_command_filler_cs::fill_data));
 
+            auto& device = render_device::instance();
+
             command.set_pipeline({
-                .compute_shader = render_device::instance().get_shader<draw_command_filler_cs>(),
+                .compute_shader = device.get_shader<draw_command_filler_cs>(),
             });
-            command.set_parameter(0, data.bindless_parameter);
+            command.set_parameter(0, device.get_bindless_parameter());
             command.set_parameter(1, data.scene_parameter);
             command.set_parameter(2, data.fill_parameter);
             command.dispatch_1d(data.instance_count);

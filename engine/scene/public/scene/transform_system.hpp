@@ -12,9 +12,14 @@ public:
 
     bool initialize(const dictionary& config) override;
 
+    void update_transform();
+
+    mat4f get_local_matrix(entity e);
+    mat4f get_world_matrix(entity e);
+
 private:
-    void update_local();
-    void update_world();
+    void update_local(bool force = false);
+    void update_world(bool force = false);
 
     void update_world_recursive(entity e, const mat4f& parent_world, bool parent_dirty);
 

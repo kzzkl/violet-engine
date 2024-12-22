@@ -307,6 +307,7 @@ VkPipelineStageFlags vk_util::map_pipeline_stage_flags(rhi_pipeline_stage_flags 
 {
     VkPipelineStageFlags result = 0;
     result |= (flags & RHI_PIPELINE_STAGE_BEGIN) ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_VERTEX_INPUT) ? VK_PIPELINE_STAGE_VERTEX_INPUT_BIT : 0;
     result |= (flags & RHI_PIPELINE_STAGE_VERTEX) ? VK_PIPELINE_STAGE_VERTEX_SHADER_BIT : 0;
     result |= (flags & RHI_PIPELINE_STAGE_EARLY_DEPTH_STENCIL) ?
                   VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT :
@@ -343,6 +344,7 @@ VkAccessFlags vk_util::map_access_flags(rhi_access_flags flags)
     result |= (flags & RHI_ACCESS_HOST_READ) ? VK_ACCESS_HOST_READ_BIT : 0;
     result |= (flags & RHI_ACCESS_HOST_WRITE) ? VK_ACCESS_HOST_WRITE_BIT : 0;
     result |= (flags & RHI_ACCESS_INDIRECT_COMMAND_READ) ? VK_ACCESS_INDIRECT_COMMAND_READ_BIT : 0;
+    result |= (flags & RHI_ACCESS_VERTEX_ATTRIBUTE_READ) ? VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT : 0;
 
     return result;
 }

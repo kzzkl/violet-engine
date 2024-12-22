@@ -231,7 +231,10 @@ private:
                     .env_map = data.env_map->get_handle(),
                     .cube_map = data.cube_map->get_handle(),
                 };
-                data.parameter->set_constant(0, &convert_constant, sizeof(convert_constant));
+                data.parameter->set_constant(
+                    0,
+                    &convert_constant,
+                    sizeof(convert_cs::convert_data));
 
                 rdg_compute_pipeline pipeline = {
                     .compute_shader = render_device::instance().get_shader<convert_cs>(),
@@ -284,7 +287,10 @@ private:
                     .cube_map = data.cube_map->get_handle(),
                     .irradiance_map = data.irradiance_map->get_handle(),
                 };
-                data.parameter->set_constant(0, &irradiance_constant, sizeof(irradiance_constant));
+                data.parameter->set_constant(
+                    0,
+                    &irradiance_constant,
+                    sizeof(irradiance_cs::irradiance_data));
 
                 rdg_compute_pipeline pipeline = {
                     .compute_shader = render_device::instance().get_shader<irradiance_cs>(),
@@ -341,7 +347,10 @@ private:
                     .roughness = roughness,
                     .level = level,
                 };
-                data.parameter->set_constant(0, &prefilter_constant, sizeof(prefilter_constant));
+                data.parameter->set_constant(
+                    0,
+                    &prefilter_constant,
+                    sizeof(prefilter_cs::prefilter_data));
 
                 rdg_compute_pipeline pipeline = {
                     .compute_shader = render_device::instance().get_shader<prefilter_cs>(),

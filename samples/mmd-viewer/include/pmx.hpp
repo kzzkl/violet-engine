@@ -47,18 +47,18 @@ enum pmx_draw_flag : std::uint8_t
     PMX_DRAW_FLAG_LINE_DRAWING = 0x80,
 };
 
-enum pmx_sphere_mode : std::uint8_t
+enum pmx_environment_blend_mode : std::uint8_t
 {
-    PMX_SPHERE_MODE_DISABLED = 0,
-    PMX_SPHERE_MODE_MULTIPLY = 1,
-    PMX_SPHERE_MODE_ADDITIVE = 2,
-    PMX_SPHERE_MODE_ADDITIONAL_VEC4 = 3
+    PMX_ENVIRONMENT_BLEND_MODE_DISABLED = 0,
+    PMX_ENVIRONMENT_BLEND_MODE_MULTIPLY = 1,
+    PMX_ENVIRONMENT_BLEND_MODE_ADDITIVE = 2,
+    PMX_ENVIRONMENT_BLEND_MODE_ADDITIONAL_VEC4 = 3
 };
 
-enum pmx_toon_mode : std::uint8_t
+enum pmx_toon_reference : std::uint8_t
 {
-    PMX_TOON_MODE_TEXTURE,
-    PMX_TOON_MODE_INTERNAL
+    PMX_TOON_REFERENCE_TEXTURE,
+    PMX_TOON_REFERENCE_INTERNAL
 };
 
 struct pmx_material
@@ -75,10 +75,10 @@ struct pmx_material
     float edge_size;
 
     std::int32_t texture_index;
+    std::int32_t environment_index;
+    pmx_environment_blend_mode environment_blend_mode;
+    pmx_toon_reference toon_reference;
     std::int32_t toon_index;
-    std::int32_t sphere_index;
-    pmx_sphere_mode sphere_mode;
-    pmx_toon_mode toon_mode;
 
     std::string meta_data;
     std::int32_t index_count;
@@ -253,7 +253,7 @@ enum pmx_rigidbody_mode : std::uint8_t
 {
     PMX_RIGIDBODY_MODE_STATIC,
     PMX_RIGIDBODY_MODE_DYNAMIC,
-    PMX_RIGIDBODY_MODE_MERGE
+    PMX_RIGIDBODY_MODE_MERGE,
 };
 
 struct pmx_rigidbody
@@ -324,16 +324,13 @@ enum pmx_vertex_attribute
 class pmx
 {
 public:
-    pmx(std::string_view path);
+    pmx();
 
-    bool is_load() const noexcept
-    {
-        return m_loaded;
-    }
+    bool load(std::string_view path);
 
     struct submesh
     {
-        std::size_t index_start;
+        std::size_t index_offset;
         std::size_t index_count;
 
         std::size_t material_index;
@@ -361,7 +358,7 @@ public:
 
     std::vector<vec3f> position;
     std::vector<vec3f> normal;
-    std::vector<vec2f> uv;
+    std::vector<vec2f> texcoord;
     std::vector<float> edge;
 
     std::vector<vec2u> skin; // first: skin type(0: BDEF, 1: SDEF), second: skin data index
@@ -393,7 +390,5 @@ private:
 
     std::int32_t read_index(std::ifstream& fin, std::uint8_t size) const;
     std::string read_text(std::ifstream& fin) const;
-
-    bool m_loaded;
 };
 } // namespace violet::sample

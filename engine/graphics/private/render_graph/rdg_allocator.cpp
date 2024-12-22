@@ -2,18 +2,21 @@
 
 namespace violet
 {
-rdg_allocator::rdg_allocator() {}
+rdg_allocator::rdg_allocator() = default;
 
 rhi_parameter* rdg_allocator::allocate_parameter(const rhi_parameter_desc& desc)
 {
-    std::uint64_t hash = hash::city_hash_64(&desc, sizeof(rhi_parameter_desc));
+    std::uint64_t hash =
+        hash::city_hash_64(desc.bindings, sizeof(rhi_parameter_binding) * desc.binding_count);
 
     auto& pool = m_parameter_pools[hash];
     if (pool.count == pool.data.size())
     {
-        rhi_parameter_desc copy = desc;
-        copy.flags = RHI_PARAMETER_DISABLE_SYNC;
-        pool.data.push_back(render_device::instance().create_parameter(copy));
+        pool.data.push_back(render_device::instance().create_parameter({
+            .bindings = desc.bindings,
+            .binding_count = desc.binding_count,
+            .flags = RHI_PARAMETER_DISABLE_SYNC,
+        }));
     }
 
     return pool.data[pool.count++].get();
@@ -147,7 +150,6 @@ void rdg_allocator::reset()
         pool.count = 0;
     }
 
-return;
     gc();
 }
 

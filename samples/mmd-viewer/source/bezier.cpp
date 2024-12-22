@@ -3,12 +3,6 @@
 
 namespace violet::sample
 {
-bezier::bezier(const vec2f& p1, const vec2f& p2) noexcept
-    : m_p1(p1),
-      m_p2(p2)
-{
-}
-
 float bezier::evaluate(float x, float precision) const noexcept
 {
     float begin = 0.0f;
@@ -37,20 +31,20 @@ float bezier::evaluate(float x, float precision) const noexcept
 
 vec2f bezier::sample(float t) const noexcept
 {
-    vec4f_simd p0 = math::load(vec4f{0.0f, 0.0f, 0.0f, 0.0f});
-    vec4f_simd p1 = math::load(m_p1);
-    vec4f_simd p2 = math::load(m_p2);
-    vec4f_simd p3 = math::load(vec4f{1.0f, 1.0f, 0.0f, 0.0f});
+    vec4f_simd t0 = math::load(vec4f{0.0f, 0.0f, 0.0f, 0.0f});
+    vec4f_simd t1 = math::load(p1);
+    vec4f_simd t2 = math::load(p2);
+    vec4f_simd t3 = math::load(vec4f{1.0f, 1.0f, 0.0f, 0.0f});
 
-    vec4f_simd p01 = vector::lerp(p0, p1, t);
-    vec4f_simd p12 = vector::lerp(p1, p2, t);
-    vec4f_simd p23 = vector::lerp(p2, p3, t);
+    vec4f_simd t01 = vector::lerp(t0, t1, t);
+    vec4f_simd t12 = vector::lerp(t1, t2, t);
+    vec4f_simd t23 = vector::lerp(t2, t3, t);
 
-    vec4f_simd p012 = vector::lerp(p01, p12, t);
-    vec4f_simd p123 = vector::lerp(p12, p23, t);
+    vec4f_simd t012 = vector::lerp(t01, t12, t);
+    vec4f_simd t123 = vector::lerp(t12, t23, t);
 
     vec2f result;
-    math::store(vector::lerp(p012, p123, t), result);
+    math::store(vector::lerp(t012, t123, t), result);
     return result;
 }
 
@@ -61,7 +55,7 @@ float bezier::sample_x(float t) const noexcept
     const float it = 1.0f - t;
     const float it2 = it * it;
 
-    return t3 + 3 * t2 * it * m_p2[0] + 3 * t * it2 * m_p1[0];
+    return t3 + 3 * t2 * it * p2[0] + 3 * t * it2 * p1[0];
 }
 
 float bezier::sample_y(float t) const noexcept
@@ -71,12 +65,6 @@ float bezier::sample_y(float t) const noexcept
     const float it = 1.0f - t;
     const float it2 = it * it;
 
-    return t3 + 3 * t2 * it * m_p2[1] + 3 * t * it2 * m_p1[1];
-}
-
-void bezier::set(const vec2f& p1, const vec2f& p2) noexcept
-{
-    m_p1 = p1;
-    m_p2 = p2;
+    return t3 + 3 * t2 * it * p2[1] + 3 * t * it2 * p1[1];
 }
 } // namespace violet::sample

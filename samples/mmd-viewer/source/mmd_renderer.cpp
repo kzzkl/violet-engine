@@ -1,5 +1,7 @@
 #include "mmd_renderer.hpp"
 #include "graphics/passes/blit_pass.hpp"
+#include "graphics/passes/cull_pass.hpp"
+#include "graphics/passes/tone_mapping_pass.hpp"
 
 namespace violet::sample
 {
@@ -27,10 +29,99 @@ void mmd_renderer::render(
             .flags = RHI_TEXTURE_DEPTH_STENCIL | RHI_TEXTURE_SHADER_RESOURCE,
         });
 
+    add_cull_pass(graph, scene, camera);
+    add_mesh_pass(graph, scene, camera);
+    add_tone_mapping_pass(graph);
     add_present_pass(graph, camera);
 }
 
-void mmd_renderer::add_skinning_pass(render_graph& graph) {}
+void mmd_renderer::add_cull_pass(
+    render_graph& graph,
+    const render_scene& scene,
+    const render_camera& camera)
+{
+    rdg_scope scope(graph, "Cull");
+
+    m_command_buffer = graph.add_buffer(
+        "Command Buffer",
+        {
+            .data = nullptr,
+            .size = scene.get_instance_capacity() * sizeof(shader::draw_command),
+            .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT,
+        });
+
+    m_count_buffer = graph.add_buffer(
+        "Count Buffer",
+        {
+            .data = nullptr,
+            .size = scene.get_group_capacity() * sizeof(std::uint32_t),
+            .flags = RHI_BUFFER_STORAGE_TEXEL | RHI_BUFFER_INDIRECT | RHI_BUFFER_TRANSFER_DST,
+            .texel =
+                {
+                    .format = RHI_FORMAT_R32_UINT,
+                },
+        });
+
+    cull_pass::add(
+        graph,
+        {
+            .scene = scene,
+            .camera = camera,
+            .command_buffer = m_command_buffer,
+            .count_buffer = m_count_buffer,
+        });
+}
+
+void mmd_renderer::add_mesh_pass(
+    render_graph& graph,
+    const render_scene& scene,
+    const render_camera& camera)
+{
+    auto& pass = graph.add_pass<rdg_render_pass>("Mesh Pass");
+    pass.add_buffer(
+        m_command_buffer,
+        RHI_PIPELINE_STAGE_DRAW_INDIRECT,
+        RHI_ACCESS_INDIRECT_COMMAND_READ);
+    pass.add_buffer(
+        m_count_buffer,
+        RHI_PIPELINE_STAGE_DRAW_INDIRECT,
+        RHI_ACCESS_INDIRECT_COMMAND_READ);
+    pass.add_render_target(m_render_target, RHI_ATTACHMENT_LOAD_OP_CLEAR);
+    pass.set_depth_stencil(m_depth_buffer, RHI_ATTACHMENT_LOAD_OP_CLEAR);
+    pass.set_execute(
+        [&](rdg_command& command)
+        {
+            command.set_viewport(camera.viewport);
+            command.set_scissor(camera.scissor_rects);
+
+            command.draw_instances(
+                scene,
+                camera,
+                m_command_buffer->get_rhi(),
+                m_count_buffer->get_rhi(),
+                MATERIAL_OPAQUE);
+        });
+}
+
+void mmd_renderer::add_tone_mapping_pass(render_graph& graph)
+{
+    rdg_texture* ldr_target = graph.add_texture(
+        "LDR Target",
+        {
+            .extent = m_render_extent,
+            .format = RHI_FORMAT_R8G8B8A8_UNORM,
+            .flags = RHI_TEXTURE_TRANSFER_SRC | RHI_TEXTURE_STORAGE,
+        });
+
+    tone_mapping_pass::add(
+        graph,
+        {
+            .hdr_texture = m_render_target,
+            .ldr_texture = ldr_target,
+        });
+
+    m_render_target = ldr_target;
+}
 
 void mmd_renderer::add_present_pass(render_graph& graph, const render_camera& camera)
 {

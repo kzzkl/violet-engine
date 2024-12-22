@@ -17,7 +17,7 @@ enum phy_collision_shape_type
 {
     PHY_COLLISION_SHAPE_TYPE_BOX,
     PHY_COLLISION_SHAPE_TYPE_SPHERE,
-    PHY_COLLISION_SHAPE_TYPE_CAPSULE
+    PHY_COLLISION_SHAPE_TYPE_CAPSULE,
 };
 
 struct phy_collision_shape_desc
@@ -77,12 +77,12 @@ struct phy_rigidbody_desc
     float restitution;
     float friction;
 
-    mat4f initial_transform;
-
     phy_activation_state activation_state;
 
     std::uint32_t collision_group;
     std::uint32_t collision_mask;
+
+    phy_motion_state* motion_state;
 };
 
 class phy_rigidbody

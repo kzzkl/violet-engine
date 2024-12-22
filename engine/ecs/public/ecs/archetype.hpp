@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ecs/component.hpp"
+#include <array>
 #include <cassert>
 #include <vector>
 
@@ -84,7 +85,7 @@ public:
 
     [[nodiscard]] inline std::size_t get_entity_count(std::size_t chunk_index) const noexcept
     {
-        return chunk_index == m_chunks.size() - 1 ? m_entity_count % m_chunk_capacity :
+        return chunk_index == m_chunks.size() - 1 ? (m_entity_count - 1) % m_chunk_capacity + 1 :
                                                     m_chunk_capacity;
     }
 

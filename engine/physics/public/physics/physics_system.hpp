@@ -7,6 +7,10 @@
 
 namespace violet
 {
+#ifdef VIOLET_PHYSICS_DEBUG_DRAW
+class physics_debug;
+#endif
+
 class physics_plugin;
 class physics_system : public engine_system
 {
@@ -41,5 +45,9 @@ private:
     std::uint32_t m_system_version{0};
 
     float m_time{0.0f};
+
+#ifdef VIOLET_PHYSICS_DEBUG_DRAW
+    std::unique_ptr<physics_debug> m_debug;
+#endif
 };
 } // namespace violet

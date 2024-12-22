@@ -16,4 +16,12 @@ public:
 
     void set_color(const vec3f& color);
 };
+
+class unlit_line_material : public mesh_material<unlit_material_constant>
+{
+public:
+    unlit_line_material();
+
+    void set_color(const vec3f& color);
+};
 } // namespace violet

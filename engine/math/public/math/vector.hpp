@@ -123,14 +123,12 @@ struct vector
     template <typename T>
     [[nodiscard]] static inline vec4<T> div(const vec4<T>& a, const vec4<T>& b) noexcept
     {
-        if constexpr (std::is_same_v<T, simd>)
-        {
-            return _mm_div_ps(a, b);
-        }
-        else
-        {
-            return {a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w};
-        }
+        return {a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w};
+    }
+
+    [[nodiscard]] static inline vec4f_simd div(vec4f_simd a, vec4f_simd b) noexcept
+    {
+        return _mm_div_ps(a, b);
     }
 
     template <typename T>
@@ -230,28 +228,18 @@ struct vector
 
     template <typename T>
     [[nodiscard]] static inline vec4<T> lerp(const vec4<T>& a, const vec4<T>& b, float t) noexcept
-        requires std::is_floating_point_v<T> || std::is_same_v<T, simd>
+        requires std::is_floating_point_v<T>
     {
-        if constexpr (std::is_same_v<T, simd>)
-        {
-            return lerp(a, b, _mm_set_ps1(t));
-        }
-        else
-        {
-            return {
-                math::lerp(a.x, b.x, t),
-                math::lerp(a.y, b.y, t),
-                math::lerp(a.z, b.z, t),
-                math::lerp(a.w, b.w, t)};
-        }
+        return {
+            math::lerp(a.x, b.x, t),
+            math::lerp(a.y, b.y, t),
+            math::lerp(a.z, b.z, t),
+            math::lerp(a.w, b.w, t)};
     }
 
     [[nodiscard]] static inline vec4f_simd lerp(vec4f_simd a, vec4f_simd b, float t) noexcept
     {
-        __m128 t1 = _mm_sub_ps(b, a);
-        t1 = _mm_mul_ps(t1, _mm_set_ps1(t));
-        t1 = _mm_add_ps(a, t1);
-        return t1;
+        return lerp(a, b, _mm_set_ps1(t));
     }
 
     [[nodiscard]] static inline vec4f_simd lerp(vec4f_simd a, vec4f_simd b, vec4f_simd t) noexcept
@@ -278,17 +266,15 @@ struct vector
 
     template <typename T>
     [[nodiscard]] static inline vec4<T>::value_type length(const vec4<T>& v) noexcept
-        requires std::is_floating_point_v<T> || std::is_same_v<T, simd>
+        requires std::is_floating_point_v<T>
     {
-        if constexpr (std::is_same_v<T, simd>)
-        {
-            __m128 t1 = length_v(v);
-            return _mm_cvtss_f32(t1);
-        }
-        else
-        {
-            return std::sqrt(length_sq(v));
-        }
+        return std::sqrt(length_sq(v));
+    }
+
+    [[nodiscard]] static inline float length(vec4f_simd v) noexcept
+    {
+        __m128 t1 = length_v(v);
+        return _mm_cvtss_f32(t1);
     }
 
     template <typename T>
@@ -331,23 +317,22 @@ struct vector
 
     template <typename T>
     [[nodiscard]] static inline vec4<T> normalize(const vec4<T>& v) noexcept
-        requires std::is_floating_point_v<T> || std::is_same_v<T, simd>
+        requires std::is_floating_point_v<T>
     {
-        if constexpr (std::is_same_v<T, simd>)
-        {
-            __m128 t1 = _mm_mul_ps(v, v);
-            __m128 t2 = simd::shuffle<1, 0, 3, 2>(t1);
-            t1 = _mm_add_ps(t1, t2);
-            t2 = simd::shuffle<2, 3, 0, 1>(t1);
-            t1 = _mm_add_ps(t1, t2);
+        return div(v, length(v));
+    }
 
-            t1 = _mm_sqrt_ps(t1);
-            return _mm_div_ps(v, t1);
-        }
-        else
-        {
-            return div(v, length(v));
-        }
+    [[nodiscard]] static inline vec4f_simd normalize(vec4f_simd v) noexcept
+    {
+        v = _mm_and_ps(v, simd::mask_v<1, 1, 1, 0>);
+        __m128 t1 = _mm_mul_ps(v, v);
+        __m128 t2 = simd::shuffle<1, 0, 3, 2>(t1);
+        t1 = _mm_add_ps(t1, t2);
+        t2 = simd::shuffle<2, 3, 0, 1>(t1);
+        t1 = _mm_add_ps(t1, t2);
+
+        t1 = _mm_sqrt_ps(t1);
+        return _mm_div_ps(v, t1);
     }
 
     template <typename T>

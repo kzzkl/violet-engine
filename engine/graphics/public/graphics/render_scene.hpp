@@ -38,7 +38,7 @@ struct render_group
     std::vector<rhi_buffer*> vertex_buffers;
     rhi_buffer* index_buffer;
 
-    geometry* geometry;
+    const geometry* geometry;
 
     std::size_t instance_offset;
     std::size_t instance_count;
@@ -74,6 +74,7 @@ public:
     void remove_mesh(render_id mesh_id);
     void update_mesh_model_matrix(render_id mesh_id, const mat4f& model_matrix);
     void update_mesh_aabb(render_id mesh_id, const box3f& aabb);
+    void update_mesh_geometry(render_id mesh_id, geometry* geometry);
 
     render_id add_instance(render_id mesh_id, const render_instance& instance);
     void remove_instance(render_id instance_id);
@@ -130,11 +131,6 @@ public:
     std::size_t get_group_capacity() const noexcept
     {
         return 4ull * 1024;
-    }
-
-    rhi_parameter* get_bindless_parameter() const noexcept
-    {
-        return render_device::instance().get_bindless_parameter();
     }
 
     rhi_parameter* get_scene_parameter() const noexcept
@@ -261,7 +257,7 @@ private:
         std::vector<render_id> m_index_to_id;
     };
 
-    void add_instance_to_group(render_id instance_id, geometry* geometry, material* material);
+    void add_instance_to_group(render_id instance_id, const geometry* geometry, const material* material);
     void remove_instance_from_group(render_id instance_id);
 
     void set_mesh_state(render_id mesh_id, render_mesh_states states);

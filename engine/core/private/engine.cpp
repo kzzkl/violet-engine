@@ -1,8 +1,10 @@
 #include "core/engine.hpp"
 #include "common/log.hpp"
 #include "engine_context.hpp"
+#include "task/task_graph_printer.hpp"
 #include <filesystem>
 #include <fstream>
+
 
 namespace violet
 {
@@ -110,6 +112,9 @@ void engine::run()
     time.tick(timer::point::FRAME_END);
 
     task_executor& executor = engine.m_context->get_executor();
+
+    engine.m_context->get_task_graph().reset();
+    task_graph_printer::print(engine.m_context->get_task_graph());
 
     executor.run();
 

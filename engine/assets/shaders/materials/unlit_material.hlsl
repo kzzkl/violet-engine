@@ -39,8 +39,8 @@ gbuffer::packed fs_main(vs_out input)
 {
     unlit_material material = load_material<unlit_material>(scene.material_buffer, input.material_address);
 
-    gbuffer::data gbuffer;
-    gbuffer.albedo = material.albedo;
+    gbuffer::data gbuffer_data;
+    gbuffer_data.albedo = material.albedo;
 
-    return gbuffer::pack(gbuffer);
+    return gbuffer::pack(gbuffer_data);
 }

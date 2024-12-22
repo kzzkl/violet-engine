@@ -8,7 +8,7 @@
 
 namespace violet
 {
-rhi_ptr<rhi_texture> texture_loader::load(std::string_view path, texture_load_option options)
+rhi_ptr<rhi_texture> texture_loader::load(std::string_view path, texture_load_options options)
 {
     return load(std::span(&path, 1), options, false);
 }
@@ -20,7 +20,7 @@ rhi_ptr<rhi_texture> texture_loader::load(
     std::string_view bottom,
     std::string_view front,
     std::string_view back,
-    texture_load_option options)
+    texture_load_options options)
 {
     std::array<std::string_view, 6> paths = {right, left, top, bottom, front, back};
     return load(paths, options, true);
@@ -28,7 +28,7 @@ rhi_ptr<rhi_texture> texture_loader::load(
 
 rhi_ptr<rhi_texture> texture_loader::load(
     std::span<std::string_view> paths,
-    texture_load_option options,
+    texture_load_options options,
     bool is_cube)
 {
     assert(!is_cube || paths.size() == 6);
@@ -146,7 +146,7 @@ rhi_ptr<rhi_texture> texture_loader::load(
     return texture;
 }
 
-rhi_ptr<rhi_texture> texture_loader::load(const texture_data& data, texture_load_option options)
+rhi_ptr<rhi_texture> texture_loader::load(const texture_data& data, texture_load_options options)
 {
     std::uint32_t level_count = static_cast<std::uint32_t>(data.mipmaps.size());
     rhi_texture_extent extent = data.mipmaps[0].extent;
@@ -223,7 +223,7 @@ rhi_ptr<rhi_texture> texture_loader::load(const texture_data& data, texture_load
 
 std::optional<texture_loader::texture_data> texture_loader::load_dds(
     std::string_view path,
-    texture_load_option options)
+    texture_load_options options)
 {
 #define DDPF_ALPHAPIXELS 0x1
 #define DDPF_ALPHA 0x2
@@ -403,7 +403,7 @@ std::optional<texture_loader::texture_data> texture_loader::load_dds(
 
 std::optional<texture_loader::texture_data> texture_loader::load_hdr(
     std::string_view path,
-    texture_load_option options)
+    texture_load_options options)
 {
     int width;
     int height;
@@ -443,7 +443,7 @@ std::optional<texture_loader::texture_data> texture_loader::load_hdr(
 
 std::optional<texture_loader::texture_data> texture_loader::load_other(
     std::string_view path,
-    texture_load_option options)
+    texture_load_options options)
 {
     int width;
     int height;

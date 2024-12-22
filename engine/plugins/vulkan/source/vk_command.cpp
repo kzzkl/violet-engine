@@ -513,7 +513,7 @@ vk_command* vk_graphics_queue::allocate_command()
 
 void vk_graphics_queue::execute(rhi_command* command)
 {
-    vk_command* cast_command = static_cast<vk_command*>(command);
+    auto* cast_command = static_cast<vk_command*>(command);
 
     VkCommandBuffer buffer = cast_command->get_command_buffer();
     vk_check(vkEndCommandBuffer(buffer));
