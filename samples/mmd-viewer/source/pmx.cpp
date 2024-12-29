@@ -1,4 +1,5 @@
 #include "pmx.hpp"
+#include "common/utility.hpp"
 #include "encode.hpp"
 #include "math/quaternion.hpp"
 #include "math/vector.hpp"
@@ -16,10 +17,17 @@ pmx::pmx() = default;
 
 bool pmx::load(std::string_view path)
 {
+    std::wstring path_wstring = string_to_wstring(path);
+
+    std::ifstream fin(path_wstring, std::ios::binary);
+    if (!fin.is_open())
+    {
+        return false;
+    }
+
     bool result = false;
 
-    std::ifstream fin(path.data(), std::ios::binary);
-    if (fin.is_open() && load_header(fin) && load_mesh(fin) &&
+    if (load_header(fin) && load_mesh(fin) &&
         load_material(fin, path.substr(0, path.find_last_of('/'))) && load_bone(fin) &&
         load_morph(fin) && load_display(fin) && load_physics(fin))
     {

@@ -615,8 +615,7 @@ void mmd_animation::update_ik(
             dot = math::clamp(dot, -1.0f, 1.0f);
 
             float angle = std::acos(dot);
-            float angle_deg = math::to_degrees(angle);
-            if (angle_deg < 1.0e-3f)
+            if (angle < 1.0e-3f)
             {
                 continue;
             }

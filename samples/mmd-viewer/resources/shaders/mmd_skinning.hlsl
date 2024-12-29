@@ -178,9 +178,9 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
         float3x3 rotate_m = quaternion_to_matrix(quaternion_slerp(q0, q1, w1));
 
-        position = mul(position - center, rotate_m);
-        position += (mul(float4(sdef[skin_index].r0, 1.0f), m0) * w0).xyz;
-        position += (mul(float4(sdef[skin_index].r1, 1.0f), m1) * w1).xyz;
+        position = mul(rotate_m, position - center);
+        position += (mul(m0, float4(sdef[skin_index].r0, 1.0f)) * w0).xyz;
+        position += (mul(m1, float4(sdef[skin_index].r1, 1.0f)) * w1).xyz;
 
         normal = mul(rotate_m, normal);
     }

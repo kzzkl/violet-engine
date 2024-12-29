@@ -1,4 +1,5 @@
 #include "graphics/tools/texture_loader.hpp"
+#include "common/utility.hpp"
 #include <array>
 #include <cstddef>
 #include <fstream>
@@ -8,6 +9,22 @@
 
 namespace violet
 {
+namespace
+{
+std::vector<std::uint8_t> read_file(std::string_view path)
+{
+    std::wstring path_wstring = string_to_wstring(path);
+
+    std::ifstream fin(path_wstring, std::ios_base::binary);
+    if (!fin.is_open())
+    {
+        return {};
+    }
+
+    return {std::istreambuf_iterator<char>(fin), std::istreambuf_iterator<char>()};
+}
+} // namespace
+
 rhi_ptr<rhi_texture> texture_loader::load(std::string_view path, texture_load_options options)
 {
     return load(std::span(&path, 1), options, false);
@@ -430,7 +447,14 @@ std::optional<texture_loader::texture_data> texture_loader::load_other(
     int height;
     int channels;
 
-    stbi_uc* pixels = stbi_load(path.data(), &width, &height, &channels, STBI_rgb_alpha);
+    std::vector<std::uint8_t> data = read_file(path);
+    stbi_uc* pixels = stbi_load_from_memory(
+        data.data(),
+        static_cast<int>(data.size()),
+        &width,
+        &height,
+        &channels,
+        STBI_rgb_alpha);
     if (pixels == nullptr)
     {
         return std::nullopt;

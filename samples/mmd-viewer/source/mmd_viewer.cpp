@@ -88,7 +88,7 @@ void mmd_viewer::initialize_scene()
     camera_transform.set_position({0.0f, 0.0f, -40.0f});
 
     auto& camera_control = world.get_component<orbit_control_component>(m_camera);
-    camera_control.target = {0.0f, 5.0f, 0.0f};
+    camera_control.target = {0.0f, 10.0f, 0.0f};
     camera_control.r = 40.0f;
 
     auto& main_camera = world.get_component<camera_component>(m_camera);
