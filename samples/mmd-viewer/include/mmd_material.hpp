@@ -14,8 +14,6 @@ struct mmd_material_constant
     std::uint32_t toon_texture;
     std::uint32_t environment_texture;
     std::uint32_t environment_blend_mode;
-    float edge_size;
-    vec4f edge_color;
 };
 
 class mmd_material : public mesh_material<mmd_material_constant>
@@ -31,7 +29,19 @@ public:
     void set_toon(rhi_texture* texture);
     void set_environment(rhi_texture* texture);
     void set_environment_blend(std::uint32_t mode);
+};
 
-    void set_edge(const vec4f& edge_color, float edge_size);
+struct mmd_outline_material_constant
+{
+    vec3f color;
+    float width;
+};
+
+class mmd_outline_material : public mesh_material<mmd_outline_material_constant>
+{
+public:
+    mmd_outline_material();
+
+    void set_outline(const vec4f& color, float width);
 };
 } // namespace violet

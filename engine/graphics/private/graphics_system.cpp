@@ -143,7 +143,10 @@ void graphics_system::udpate_camera()
                     return;
                 }
 
-                shader::camera_data data = {};
+                shader::camera_data data = {
+                    .position = transform.get_position(),
+                    .fov = camera.fov,
+                };
 
                 rhi_texture_extent extent = camera.get_extent();
                 float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
@@ -161,8 +164,6 @@ void graphics_system::udpate_camera()
                 math::store(view, data.view);
                 math::store(view_projection, data.view_projection);
                 math::store(view_projection_inv, data.view_projection_inv);
-
-                data.position = transform.get_position();
 
                 if (camera_meta.parameter == nullptr)
                 {

@@ -71,7 +71,7 @@ struct camera_data
     float4x4 view_projection;
     float4x4 view_projection_inv;
     float3 position;
-    uint padding;
+    float fov;
 };
 
 template <typename T>

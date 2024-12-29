@@ -132,6 +132,7 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
 
     for (const auto& pmx_material : m_pmx.materials)
     {
+        // Main material.
         auto material = std::make_unique<mmd_material>();
 
         material->set_diffuse(pmx_material.diffuse);
@@ -157,9 +158,12 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
         }
 
         material->set_environment_blend(pmx_material.environment_blend_mode);
-        material->set_edge(pmx_material.edge_color, pmx_material.edge_size);
-
         scene.materials.push_back(std::move(material));
+
+        // Outline material.
+        auto outline_material = std::make_unique<mmd_outline_material>();
+        outline_material->set_outline(pmx_material.outline_color, pmx_material.outline_width);
+        scene.materials.push_back(std::move(outline_material));
     }
 
     auto& root_mesh = world.get_component<mesh_component>(m_root);
@@ -170,7 +174,14 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
             .vertex_offset = 0,
             .index_offset = static_cast<std::uint32_t>(submesh.index_offset),
             .index_count = static_cast<std::uint32_t>(submesh.index_count),
-            .material = scene.materials[submesh.material_index].get(),
+            .material = scene.materials[submesh.material_index * 2 + 0].get(),
+        });
+
+        root_mesh.submeshes.push_back({
+            .vertex_offset = 0,
+            .index_offset = static_cast<std::uint32_t>(submesh.index_offset),
+            .index_count = static_cast<std::uint32_t>(submesh.index_count),
+            .material = scene.materials[submesh.material_index * 2 + 1].get(),
         });
     }
 

@@ -71,8 +71,8 @@ struct pmx_material
     float specular_strength;
     vec3f ambient;
     pmx_draw_flag flag;
-    vec4f edge_color;
-    float edge_size;
+    vec4f outline_color;
+    float outline_width;
 
     std::int32_t texture_index;
     std::int32_t environment_index;

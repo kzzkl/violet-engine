@@ -48,8 +48,6 @@ struct mmd_material
     uint toon_texture;
     uint environment_texture;
     uint environment_blend_mode;
-    float edge_size;
-    float4 edge_color;
 };
 
 gbuffer::packed fs_main(vs_out input)

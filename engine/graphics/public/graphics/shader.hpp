@@ -129,7 +129,7 @@ struct shader
         mat4f view_projection;
         mat4f view_projection_inv;
         vec3f position;
-        std::uint32_t padding0;
+        float fov;
     };
 
     static constexpr parameter camera = {

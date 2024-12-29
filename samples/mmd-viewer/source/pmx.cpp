@@ -199,6 +199,11 @@ bool pmx::load_mesh(std::ifstream& fin)
         indexes[i] = read_index(fin, header.vertex_index_size);
     }
 
+    for (std::size_t i = 0; i < indexes.size(); i += 3)
+    {
+        std::swap(indexes[i + 1], indexes[i + 2]);
+    }
+
     return true;
 }
 
@@ -227,8 +232,8 @@ bool pmx::load_material(std::ifstream& fin, std::string_view root_path)
         read<float>(fin, material.specular_strength);
         read<vec3f>(fin, material.ambient);
         read<pmx_draw_flag>(fin, material.flag);
-        read<vec4f>(fin, material.edge_color);
-        read<float>(fin, material.edge_size);
+        read<vec4f>(fin, material.outline_color);
+        read<float>(fin, material.outline_width);
         material.texture_index = read_index(fin, header.texture_index_size);
         material.environment_index = read_index(fin, header.texture_index_size);
 
