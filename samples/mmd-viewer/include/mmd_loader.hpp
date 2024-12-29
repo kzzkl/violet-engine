@@ -11,20 +11,6 @@
 
 namespace violet::sample
 {
-/*struct mmd_model
-{
-    std::vector<rhi_ptr<rhi_texture>> textures;
-    std::vector<std::unique_ptr<material>> materials;
-
-    std::unique_ptr<geometry> geometry;
-    entity model;
-
-    std::vector<entity> bones;
-
-    std::vector<phy_ptr<phy_collision_shape>> collision_shapes;
-};*/
-
-class vmd;
 class mmd_loader
 {
 public:
@@ -45,9 +31,9 @@ public:
 private:
     void load_mesh(scene_data& scene, world& world);
     void load_bone(world& world);
+    void load_morph(world& world);
     void load_physics(world& world);
     void load_animation(world& world);
-    // void load_morph(mmd_model* model, const pmx& pmx);
 
     pmx m_pmx;
     vmd m_vmd;

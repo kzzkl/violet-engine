@@ -12,6 +12,8 @@
 
 int main()
 {
+    // https://github.com/benikabocha/saba
+
     violet::engine::initialize("mmd-viewer/config");
     violet::engine::install<violet::ecs_command_system>();
     violet::engine::install<violet::hierarchy_system>();

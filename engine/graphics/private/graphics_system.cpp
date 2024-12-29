@@ -4,6 +4,7 @@
 #include "components/light_component.hpp"
 #include "components/mesh_component.hpp"
 #include "components/mesh_meta_component.hpp"
+#include "components/morph_component.hpp"
 #include "components/scene_component.hpp"
 #include "components/skeleton_component.hpp"
 #include "components/skinned_component.hpp"
@@ -23,8 +24,10 @@ graphics_system::graphics_system()
 
 graphics_system::~graphics_system()
 {
+    m_scenes.clear();
     m_fences.clear();
     m_frame_fence = nullptr;
+    m_update_fence = nullptr;
     m_allocator = nullptr;
     render_device::instance().reset();
     m_plugin->unload();
@@ -94,7 +97,6 @@ bool graphics_system::initialize(const dictionary& config)
         .set_execute(
             [this]()
             {
-                skinning();
                 end_frame();
                 m_system_version = get_world().get_version();
             });
@@ -109,6 +111,7 @@ bool graphics_system::initialize(const dictionary& config)
     world.register_component<skinned_component>();
     world.register_component<skinned_meta_component>();
     world.register_component<skeleton_component>();
+    world.register_component<morph_component>();
 
     m_allocator = std::make_unique<rdg_allocator>();
 
@@ -121,8 +124,6 @@ bool graphics_system::initialize(const dictionary& config)
 
     return true;
 }
-
-void graphics_system::shutdown() {}
 
 void graphics_system::udpate_camera()
 {
@@ -330,15 +331,32 @@ void graphics_system::update_skin()
                     {
                         skinned_meta.skinned_geometry->add_attribute(
                             name,
-                            nullptr,
-                            rhi_get_format_stride(format) * mesh.geometry->get_vertex_count(),
-                            RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
+                            {
+                                .size = rhi_get_format_stride(format) *
+                                        mesh.geometry->get_vertex_count(),
+                                .flags = RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE,
+                            });
 
                         auto iter = buffers.find(name);
                         if (iter != buffers.end())
                         {
                             buffers.erase(iter);
                         }
+                    }
+
+                    if (mesh.geometry->get_morph_target_count() != 0)
+                    {
+                        skinned_meta.skinned_geometry->add_attribute(
+                            "morph",
+                            {
+                                .size = sizeof(vec3f) * mesh.geometry->get_vertex_count(),
+                                .flags = RHI_BUFFER_TRANSFER_DST | RHI_BUFFER_STORAGE |
+                                         RHI_BUFFER_UNIFORM_TEXEL,
+                                .texel =
+                                    {
+                                        .format = RHI_FORMAT_R32_SINT,
+                                    },
+                            });
                     }
 
                     for (const auto& [name, buffer] : buffers)
@@ -436,6 +454,69 @@ void graphics_system::update_environment()
         });
 }
 
+void graphics_system::morphing()
+{
+    auto& world = get_world();
+    auto& device = render_device::instance();
+
+    struct morphing_data
+    {
+        morph_target_buffer* morph_target_buffer;
+        const float* weights;
+        std::size_t weight_count;
+
+        rhi_buffer* morph_vertex_buffer;
+    };
+    std::vector<morphing_data> morphing_queue;
+
+    world.get_view().write<skinned_meta_component>().read<morph_component>().each(
+        [&](skinned_meta_component& skinned_meta, const morph_component& morph)
+        {
+            morph_target_buffer* morph_target_buffer =
+                skinned_meta.original_geometry->get_morph_target_buffer();
+
+            if (morph_target_buffer == nullptr)
+            {
+                return;
+            }
+
+            morphing_data data = {
+                .morph_target_buffer = morph_target_buffer,
+                .weights = morph.weights.data(),
+                .weight_count = morph.weights.size(),
+                .morph_vertex_buffer = skinned_meta.skinned_geometry->get_vertex_buffer("morph"),
+            };
+            morphing_queue.push_back(data);
+        });
+
+    if (morphing_queue.empty())
+    {
+        return;
+    }
+
+    rhi_command* command = device.allocate_command();
+
+    command->begin_label("morphing");
+
+    command->set_pipeline(m_allocator->get_pipeline({
+        .compute_shader = device.get_shader<morphing_cs>(),
+    }));
+    command->set_parameter(0, device.get_bindless_parameter());
+
+    for (auto& morphing_data : morphing_queue)
+    {
+        morphing_data.morph_target_buffer->update_morph(
+            command,
+            m_allocator.get(),
+            morphing_data.morph_vertex_buffer,
+            std::span(morphing_data.weights, morphing_data.weight_count));
+    }
+
+    command->end_label();
+
+    device.execute(command);
+}
+
 void graphics_system::skinning()
 {
     auto& world = get_world();
@@ -469,7 +550,14 @@ void graphics_system::skinning()
             data.input.reserve(skinned.inputs.size());
             for (const auto& input : skinned.inputs)
             {
-                data.input.push_back(skinned_meta.original_geometry->get_vertex_buffer(input));
+                if (input == "morph")
+                {
+                    data.input.push_back(skinned_meta.skinned_geometry->get_vertex_buffer(input));
+                }
+                else
+                {
+                    data.input.push_back(skinned_meta.original_geometry->get_vertex_buffer(input));
+                }
             }
 
             data.output.reserve(skinned.outputs.size());
@@ -487,6 +575,8 @@ void graphics_system::skinning()
     }
 
     rhi_command* command = device.allocate_command();
+
+    command->begin_label("morphing");
 
     for (const auto& skinning_data : skinning_queue)
     {
@@ -521,7 +611,7 @@ void graphics_system::skinning()
         }));
         command->set_parameter(0, device.get_bindless_parameter());
         command->set_parameter(1, parameter);
-        command->dispatch(skinning_data.vertex_count / 64, 1, 1);
+        command->dispatch((skinning_data.vertex_count + 63) / 64, 1, 1);
 
         command->set_pipeline_barrier(
             RHI_PIPELINE_STAGE_COMPUTE,
@@ -531,6 +621,8 @@ void graphics_system::skinning()
             nullptr,
             0);
     }
+
+    command->end_label();
 
     device.execute(command);
 }
@@ -574,6 +666,8 @@ void graphics_system::end_frame()
         device.execute(update_command);
     }
 
+    morphing();
+    skinning();
     render();
 
     device.end_frame();
@@ -719,16 +813,12 @@ rhi_fence* graphics_system::render(
 
     graph.compile();
 
-#ifndef NDEBUG
     command->begin_label("Camera");
-#endif
 
     graph.record(command);
     device.execute(command);
 
-#ifndef NDEBUG
     command->end_label();
-#endif
 
     for (auto& swapchain : swapchains)
     {

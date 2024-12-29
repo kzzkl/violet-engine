@@ -811,10 +811,8 @@ public:
         std::uint64_t value,
         rhi_pipeline_stage_flags stages = RHI_PIPELINE_STAGE_BEGIN) = 0;
 
-#ifndef NDEBUG
     virtual void begin_label(const char* label) const = 0;
     virtual void end_label() const = 0;
-#endif
 };
 
 struct rhi_swapchain_desc

@@ -95,12 +95,18 @@ void render_device::initialize(rhi* rhi)
     m_geometry_manager = std::make_unique<geometry_manager>();
 
     create_buildin_resources();
-    create_buildin_samplers();
 }
 
 void render_device::reset()
 {
     m_shaders.clear();
+    m_fence = nullptr;
+
+    m_material_manager = nullptr;
+    m_geometry_manager = nullptr;
+
+    m_buildin_resources = {};
+
     m_rhi_deleter = {};
     m_rhi = nullptr;
 }
@@ -132,16 +138,6 @@ void render_device::begin_frame()
 void render_device::end_frame()
 {
     m_rhi->end_frame();
-}
-
-void render_device::fill_scene_data(shader::scene_data& scene)
-{
-    scene.material_buffer = m_material_manager->get_material_buffer()->get_handle();
-    scene.brdf_lut = m_brdf_lut->get_handle();
-    scene.point_repeat_sampler = m_point_repeat_sampler->get_handle();
-    scene.point_clamp_sampler = m_point_clamp_sampler->get_handle();
-    scene.linear_repeat_sampler = m_linear_repeat_sampler->get_handle();
-    scene.linear_clamp_sampler = m_linear_clamp_sampler->get_handle();
 }
 
 std::size_t render_device::get_frame_count() const noexcept
@@ -221,6 +217,8 @@ rhi_ptr<rhi_fence> render_device::create_fence()
 
 void render_device::create_buildin_resources()
 {
+    m_buildin_resources.material_buffer = m_material_manager->get_material_buffer();
+
     // Create empty texture.
     texture_loader::mipmap_data empty_mipmap_data;
     empty_mipmap_data.extent.width = 1;
@@ -232,10 +230,10 @@ void render_device::create_buildin_resources()
     empty_texture_data.format = RHI_FORMAT_R8G8B8A8_UNORM;
     empty_texture_data.mipmaps.push_back(empty_mipmap_data);
 
-    m_empty_texture = texture_loader::load(empty_texture_data);
+    m_buildin_resources.empty_texture = texture_loader::load(empty_texture_data);
 
     // Create brdf lut texture.
-    m_brdf_lut = create_texture({
+    m_buildin_resources.brdf_lut = create_texture({
         .extent = {512, 512},
         .format = RHI_FORMAT_R32G32_FLOAT,
         .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_RENDER_TARGET,
@@ -244,12 +242,9 @@ void render_device::create_buildin_resources()
         .samples = RHI_SAMPLE_COUNT_1,
     });
 
-    ibl_tool::generate_brdf_lut(m_brdf_lut.get());
-}
+    ibl_tool::generate_brdf_lut(m_buildin_resources.brdf_lut.get());
 
-void render_device::create_buildin_samplers()
-{
-    m_point_repeat_sampler = create_sampler({
+    m_buildin_resources.point_repeat_sampler = create_sampler({
         .mag_filter = RHI_FILTER_POINT,
         .min_filter = RHI_FILTER_POINT,
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
@@ -257,7 +252,7 @@ void render_device::create_buildin_samplers()
         .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
     });
 
-    m_point_clamp_sampler = create_sampler({
+    m_buildin_resources.point_clamp_sampler = create_sampler({
         .mag_filter = RHI_FILTER_POINT,
         .min_filter = RHI_FILTER_POINT,
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -265,7 +260,7 @@ void render_device::create_buildin_samplers()
         .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
     });
 
-    m_linear_repeat_sampler = create_sampler({
+    m_buildin_resources.linear_repeat_sampler = create_sampler({
         .mag_filter = RHI_FILTER_LINEAR,
         .min_filter = RHI_FILTER_LINEAR,
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
@@ -275,7 +270,7 @@ void render_device::create_buildin_samplers()
         .max_level = 10.0,
     });
 
-    m_linear_clamp_sampler = create_sampler({
+    m_buildin_resources.linear_clamp_sampler = create_sampler({
         .mag_filter = RHI_FILTER_LINEAR,
         .min_filter = RHI_FILTER_LINEAR,
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "graphics/morph_target.hpp"
 #include "graphics/render_device.hpp"
 #include <string>
 #include <unordered_map>
@@ -20,16 +21,14 @@ public:
     {
         add_attribute(
             name,
-            attribute.data(),
-            attribute.size() * sizeof(decltype(*attribute.data())),
-            flags);
+            {
+                .data = attribute.data(),
+                .size = attribute.size() * sizeof(decltype(*attribute.data())),
+                .flags = flags,
+            });
     }
 
-    void add_attribute(
-        std::string_view name,
-        const void* data,
-        std::size_t size,
-        rhi_buffer_flags flags = RHI_BUFFER_VERTEX);
+    void add_attribute(std::string_view name, const rhi_buffer_desc& desc);
 
     void add_attribute(std::string_view name, rhi_buffer* buffer);
 
@@ -81,6 +80,23 @@ public:
         return m_index_count;
     }
 
+    void add_morph_target(std::string_view name, const std::vector<morph_element>& elements);
+
+    std::size_t get_morph_target_count() const noexcept
+    {
+        return m_morph_target_buffer->get_morph_target_count();
+    }
+
+    std::size_t get_morph_index(std::string_view name) const
+    {
+        return m_morph_name_to_index.at(name.data());
+    }
+
+    morph_target_buffer* get_morph_target_buffer() const noexcept
+    {
+        return m_morph_target_buffer.get();
+    }
+
     render_id get_id() const noexcept
     {
         return m_id;
@@ -100,6 +116,9 @@ private:
 
     std::uint32_t m_vertex_count{0};
     std::uint32_t m_index_count{0};
+
+    std::unordered_map<std::string, std::size_t> m_morph_name_to_index;
+    std::unique_ptr<morph_target_buffer> m_morph_target_buffer;
 
     render_id m_id{INVALID_RENDER_ID};
 };

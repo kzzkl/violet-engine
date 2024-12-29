@@ -75,10 +75,7 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
     image_info.usage = vk_util::map_image_usage_flags(desc.flags);
     image_info.flags = is_cube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
 
-    std::tie(m_image, m_allocation) = create_image(
-        image_info,
-        VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
-        m_context->get_vma_allocator());
+    std::tie(m_image, m_allocation) = create_image(image_info, 0, m_context->get_vma_allocator());
 
     m_format = desc.format;
     m_samples = desc.samples;
@@ -264,10 +261,8 @@ vk_buffer::vk_buffer(const rhi_buffer_desc& desc, vk_context* context)
             std::memcpy(staging_allocation_info.pMappedData, desc.data, m_buffer_size);
 
             buffer_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-            std::tie(m_buffer, m_allocation) = create_buffer(
-                buffer_info,
-                VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
-                m_context->get_vma_allocator());
+            std::tie(m_buffer, m_allocation) =
+                create_buffer(buffer_info, 0, m_context->get_vma_allocator());
 
             vk_command* command = m_context->get_graphics_queue()->allocate_command();
             VkBufferCopy copy_region = {0, 0, desc.size};
@@ -283,10 +278,8 @@ vk_buffer::vk_buffer(const rhi_buffer_desc& desc, vk_context* context)
         }
         else
         {
-            std::tie(m_buffer, m_allocation) = create_buffer(
-                buffer_info,
-                VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
-                m_context->get_vma_allocator());
+            std::tie(m_buffer, m_allocation) =
+                create_buffer(buffer_info, 0, m_context->get_vma_allocator());
         }
     }
 }

@@ -27,6 +27,7 @@ add_library(${PROJECT_NAME} STATIC
     ./private/graphics_system.cpp
     ./private/material_manager.cpp
     ./private/material.cpp
+    ./private/morph_target.cpp
     ./private/render_device.cpp
     ./private/render_scene.cpp
     ./private/rhi_plugin.cpp

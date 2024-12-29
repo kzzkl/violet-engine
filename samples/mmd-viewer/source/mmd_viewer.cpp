@@ -1,8 +1,10 @@
 #include "mmd_viewer.hpp"
 #include "components/camera_component.hpp"
+#include "components/mmd_skeleton_component.hpp"
 #include "components/orbit_control_component.hpp"
 #include "components/scene_component.hpp"
 #include "components/transform_component.hpp"
+#include "core/engine.hpp"
 #include "graphics/renderers/deferred_renderer.hpp"
 #include "graphics/tools/texture_loader.hpp"
 #include "window/window_system.hpp"
@@ -21,6 +23,9 @@ bool mmd_viewer::initialize(const dictionary& config)
     m_pmx_path = config["pmx"];
     m_vmd_path = config["vmd"];
 
+    auto& world = get_world();
+    world.register_component<mmd_skeleton_component>();
+
     auto& window = get_system<window_system>();
     window.on_resize().add_task().set_execute(
         [this]()
@@ -30,7 +35,7 @@ bool mmd_viewer::initialize(const dictionary& config)
     window.on_destroy().add_task().set_execute(
         []()
         {
-            // engine::exit();
+            engine::exit();
         });
 
     initialize_render();
@@ -81,6 +86,10 @@ void mmd_viewer::initialize_scene()
 
     auto& camera_transform = world.get_component<transform_component>(m_camera);
     camera_transform.set_position({0.0f, 0.0f, -40.0f});
+
+    auto& camera_control = world.get_component<orbit_control_component>(m_camera);
+    camera_control.target = {0.0f, 5.0f, 0.0f};
+    camera_control.r = 40.0f;
 
     auto& main_camera = world.get_component<camera_component>(m_camera);
     main_camera.renderer = m_renderer.get();

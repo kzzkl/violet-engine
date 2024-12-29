@@ -12,8 +12,8 @@ enum material_type
     MATERIAL_OUTLINE,
 };
 
-static constexpr std::uint32_t LIGHTING_UNLIT = 1;
-static constexpr std::uint32_t LIGHTING_PHYSICAL = 2;
+static constexpr std::uint32_t SHADING_MODEL_UNLIT = 1;
+static constexpr std::uint32_t SHADING_MODEL_PHYSICAL = 2;
 
 class material
 {

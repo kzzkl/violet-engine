@@ -416,6 +416,18 @@ struct vector
         }
     }
 
+    template <typename T>
+    [[nodiscard]] static inline vec3<T> clamp(
+        const vec3<T>& value,
+        const vec3<T>& min,
+        const vec3<T>& max)
+    {
+        vec3<T> result;
+        result = vector::min(value, max);
+        result = vector::max(result, min);
+        return result;
+    }
+
     [[nodiscard]] static inline vec4f_simd replicate(float v) noexcept
     {
         return _mm_set_ps1(v);

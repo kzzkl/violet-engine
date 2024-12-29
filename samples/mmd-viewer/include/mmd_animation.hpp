@@ -2,7 +2,7 @@
 
 #include "components/mmd_animator_component.hpp"
 #include "components/mmd_skeleton_component.hpp"
-#include "components/skeleton_component.hpp"
+#include "components/morph_component.hpp"
 #include "core/engine_system.hpp"
 
 namespace violet::sample
@@ -28,7 +28,7 @@ private:
         mmd_animator_component& animator,
         float t,
         float weight);
-    void evaluate_morph(mmd_morph& morph, mmd_animator_component& animator, float t);
+    void evaluate_morph(morph_component& morph, mmd_animator_component& animator, float t);
     void update_inherit(
         mmd_bone& bone,
         mmd_motion& motion,
@@ -47,29 +47,6 @@ private:
         std::uint8_t axis,
         std::size_t iteration);
 
-    void cyclic_coordinate_descent(
-        mmd_skeleton_component& skeleton,
-        mmd_animator_component& animator,
-        mmd_bone& bone);
-
     void update_local(const mmd_bone& bone, const mmd_motion& motion);
-
-    template <typename Key>
-    auto bound_key(const std::vector<Key>& keys, std::int32_t t, std::size_t start)
-    {
-        if (keys.empty() || keys.size() < start)
-        {
-            return keys.end();
-        }
-
-        return std::upper_bound(
-            keys.begin(),
-            keys.end(),
-            t,
-            [](std::int32_t lhs, const Key& rhs)
-            {
-                return lhs < rhs.frame;
-            });
-    }
 };
 } // namespace violet::sample

@@ -42,6 +42,19 @@ class material_manager;
 class geometry_manager;
 class shader_compiler;
 
+struct render_buildin_resources
+{
+    rhi_buffer* material_buffer;
+
+    rhi_ptr<rhi_texture> empty_texture;
+    rhi_ptr<rhi_texture> brdf_lut;
+
+    rhi_ptr<rhi_sampler> point_repeat_sampler;
+    rhi_ptr<rhi_sampler> point_clamp_sampler;
+    rhi_ptr<rhi_sampler> linear_repeat_sampler;
+    rhi_ptr<rhi_sampler> linear_clamp_sampler;
+};
+
 class render_device
 {
 public:
@@ -60,7 +73,10 @@ public:
     void begin_frame();
     void end_frame();
 
-    void fill_scene_data(shader::scene_data& scene);
+    const render_buildin_resources& get_buildin_resources() const noexcept
+    {
+        return m_buildin_resources;
+    }
 
     std::size_t get_frame_count() const noexcept;
     std::size_t get_frame_resource_count() const noexcept;
@@ -225,7 +241,6 @@ public:
 
 private:
     void create_buildin_resources();
-    void create_buildin_samplers();
 
     std::vector<std::uint8_t> compile_shader(
         std::string_view path,
@@ -245,12 +260,6 @@ private:
     std::unique_ptr<material_manager> m_material_manager;
     std::unique_ptr<geometry_manager> m_geometry_manager;
 
-    rhi_ptr<rhi_texture> m_empty_texture;
-    rhi_ptr<rhi_texture> m_brdf_lut;
-
-    rhi_ptr<rhi_sampler> m_point_repeat_sampler;
-    rhi_ptr<rhi_sampler> m_point_clamp_sampler;
-    rhi_ptr<rhi_sampler> m_linear_repeat_sampler;
-    rhi_ptr<rhi_sampler> m_linear_clamp_sampler;
+    render_buildin_resources m_buildin_resources;
 };
 } // namespace violet

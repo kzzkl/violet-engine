@@ -15,7 +15,6 @@ public:
     virtual ~graphics_system();
 
     bool initialize(const dictionary& config) override;
-    void shutdown() override;
 
 private:
     void udpate_camera();
@@ -23,6 +22,8 @@ private:
     void update_skin();
     void update_skeleton();
     void update_environment();
+
+    void morphing();
     void skinning();
 
     void begin_frame();

@@ -106,7 +106,7 @@ void physical_pass::add(render_graph& graph, const parameter& parameter)
             pipeline.depth_stencil.stencil_enable = true;
             pipeline.depth_stencil.stencil_front = {
                 .compare_op = RHI_COMPARE_OP_EQUAL,
-                .reference = LIGHTING_PHYSICAL,
+                .reference = SHADING_MODEL_PHYSICAL,
             };
             pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
 

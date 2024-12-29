@@ -26,7 +26,13 @@ render_scene::render_scene()
 
     m_scene_parameter = device.create_parameter(shader::scene);
 
-    render_device::instance().fill_scene_data(m_scene_data);
+    const auto& buildin_resources = device.get_buildin_resources();
+    m_scene_data.material_buffer = buildin_resources.material_buffer->get_handle();
+    m_scene_data.brdf_lut = buildin_resources.brdf_lut->get_handle();
+    m_scene_data.point_repeat_sampler = buildin_resources.point_repeat_sampler->get_handle();
+    m_scene_data.point_clamp_sampler = buildin_resources.point_clamp_sampler->get_handle();
+    m_scene_data.linear_repeat_sampler = buildin_resources.linear_repeat_sampler->get_handle();
+    m_scene_data.linear_clamp_sampler = buildin_resources.linear_clamp_sampler->get_handle();
     m_scene_data.mesh_buffer = m_mesh_buffer->get_handle();
     m_scene_data.instance_buffer = m_instance_buffer->get_handle();
     m_scene_data.group_buffer = m_group_buffer->get_handle();
@@ -379,6 +385,7 @@ void render_scene::add_instance_to_group(
         }
 
         auto& group = m_groups[group_id];
+        group.vertex_buffers.clear();
 
         auto& device = render_device::instance();
         for (const auto& vertex_attribute :

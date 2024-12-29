@@ -81,4 +81,17 @@ T load_material(uint material_buffer, uint material_address)
     return buffer.Load<T>(material_address);
 }
 
+float3 get_morph_position(uint morph_vertex_buffer, uint vertex_index)
+{
+    Buffer<int> buffer = ResourceDescriptorHeap[morph_vertex_buffer];
+
+    float3 morph = float3(
+        buffer[vertex_index + 0],
+        buffer[vertex_index + 1],
+        buffer[vertex_index + 2]);
+    morph *= 0.0001; // morph precision
+
+    return morph;
+}
+
 #endif

@@ -6,19 +6,9 @@ geometry::geometry() = default;
 
 geometry::~geometry() {}
 
-void geometry::add_attribute(
-    std::string_view name,
-    const void* data,
-    std::size_t size,
-    rhi_buffer_flags flags)
+void geometry::add_attribute(std::string_view name, const rhi_buffer_desc& desc)
 {
     assert(m_vertex_buffer_map.find(name.data()) == m_vertex_buffer_map.end());
-
-    rhi_buffer_desc desc = {
-        .data = data,
-        .size = size,
-        .flags = flags,
-    };
 
     auto vertex_buffer = render_device::instance().create_buffer(desc);
     m_vertex_buffer_map[name.data()] = vertex_buffer.get();
@@ -70,5 +60,17 @@ void geometry::set_indexes(rhi_buffer* buffer)
     assert(m_index_buffer == nullptr);
 
     m_index_buffer = buffer;
+}
+
+void geometry::add_morph_target(std::string_view name, const std::vector<morph_element>& elements)
+{
+    if (m_morph_target_buffer == nullptr)
+    {
+        m_morph_target_buffer = std::make_unique<morph_target_buffer>();
+    }
+
+    m_morph_name_to_index[name.data()] = m_morph_target_buffer->get_morph_target_count();
+
+    m_morph_target_buffer->add_morph_target(elements);
 }
 } // namespace violet

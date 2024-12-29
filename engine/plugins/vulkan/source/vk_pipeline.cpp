@@ -10,10 +10,11 @@ vk_shader::vk_shader(const rhi_shader_desc& desc, vk_context* context)
     : m_module(VK_NULL_HANDLE),
       m_context(context)
 {
-    VkShaderModuleCreateInfo shader_module_info = {};
-    shader_module_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    shader_module_info.pCode = reinterpret_cast<std::uint32_t*>(desc.code);
-    shader_module_info.codeSize = desc.code_size;
+    VkShaderModuleCreateInfo shader_module_info = {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = desc.code_size,
+        .pCode = reinterpret_cast<std::uint32_t*>(desc.code),
+    };
 
     vk_check(
         vkCreateShaderModule(m_context->get_device(), &shader_module_info, nullptr, &m_module));
@@ -57,21 +58,21 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
 
     std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
 
-    VkPipelineShaderStageCreateInfo vertex_shader_stage_info = {};
-    vertex_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vertex_shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertex_shader_stage_info.module = vertex_shader->get_module();
-    vertex_shader_stage_info.pName = "vs_main";
-    shader_stages.push_back(vertex_shader_stage_info);
+    shader_stages.push_back({
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_VERTEX_BIT,
+        .module = vertex_shader->get_module(),
+        .pName = "vs_main",
+    });
 
     if (fragment_shader != nullptr)
     {
-        VkPipelineShaderStageCreateInfo fragment_shader_stage_info = {};
-        fragment_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        fragment_shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        fragment_shader_stage_info.module = fragment_shader->get_module();
-        fragment_shader_stage_info.pName = "fs_main";
-        shader_stages.push_back(fragment_shader_stage_info);
+        shader_stages.push_back({
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .module = fragment_shader->get_module(),
+            .pName = "fs_main",
+        });
     }
 
     std::vector<VkVertexInputBindingDescription> binding_descriptions;

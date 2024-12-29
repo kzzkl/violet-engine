@@ -62,7 +62,7 @@ void vk_command::set_pipeline(rhi_render_pipeline* render_pipeline)
 
 void vk_command::set_pipeline(rhi_compute_pipeline* compute_pipeline)
 {
-    vk_compute_pipeline* pipeline = static_cast<vk_compute_pipeline*>(compute_pipeline);
+    auto* pipeline = static_cast<vk_compute_pipeline*>(compute_pipeline);
     vkCmdBindPipeline(m_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->get_pipeline());
 
     m_current_pipeline_layout = pipeline->get_pipeline_layout();
@@ -141,7 +141,7 @@ void vk_command::set_vertex_buffers(
 
 void vk_command::set_index_buffer(rhi_buffer* index_buffer)
 {
-    vk_index_buffer* buffer = static_cast<vk_index_buffer*>(index_buffer);
+    auto* buffer = static_cast<vk_index_buffer*>(index_buffer);
     vkCmdBindIndexBuffer(m_command_buffer, buffer->get_buffer(), 0, buffer->get_index_type());
 }
 
@@ -214,7 +214,7 @@ void vk_command::set_pipeline_barrier(
     std::vector<VkImageMemoryBarrier> vk_image_barriers(texture_barrier_count);
     for (std::size_t i = 0; i < texture_barrier_count; ++i)
     {
-        vk_image* image = static_cast<vk_image*>(texture_barriers[i].texture);
+        auto* image = static_cast<vk_image*>(texture_barriers[i].texture);
 
         VkImageMemoryBarrier& barrier = vk_image_barriers[i];
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -255,8 +255,8 @@ void vk_command::copy_texture(
         src_region.extent.width == dst_region.extent.width &&
         src_region.extent.height == dst_region.extent.height);
 
-    vk_image* src_image = static_cast<vk_image*>(src);
-    vk_image* dst_image = static_cast<vk_image*>(dst);
+    auto* src_image = static_cast<vk_image*>(src);
+    auto* dst_image = static_cast<vk_image*>(dst);
 
     VkImageCopy image_copy = {};
     image_copy.extent = {src_region.extent.width, src_region.extent.height, 1};
@@ -351,10 +351,11 @@ void vk_command::copy_buffer(
     VkBuffer src_buffer = static_cast<vk_buffer*>(src)->get_buffer();
     VkBuffer dst_buffer = static_cast<vk_buffer*>(dst)->get_buffer();
 
-    VkBufferCopy buffer_copy = {};
-    buffer_copy.srcOffset = src_region.offset;
-    buffer_copy.dstOffset = dst_region.offset;
-    buffer_copy.size = src_region.size;
+    VkBufferCopy buffer_copy = {
+        .srcOffset = src_region.offset,
+        .dstOffset = dst_region.offset,
+        .size = src_region.size,
+    };
 
     vkCmdCopyBuffer(m_command_buffer, src_buffer, dst_buffer, 1, &buffer_copy);
 }
@@ -365,33 +366,38 @@ void vk_command::copy_buffer_to_texture(
     rhi_texture* texture,
     const rhi_texture_region& texture_region)
 {
-    vk_buffer* src_buffer = static_cast<vk_buffer*>(buffer);
-    vk_image* dst_image = static_cast<vk_image*>(texture);
+    auto* src_buffer = static_cast<vk_buffer*>(buffer);
+    auto* dst_image = static_cast<vk_image*>(texture);
 
-    VkBufferMemoryBarrier buffer_barrier = {};
-    buffer_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-    buffer_barrier.srcAccessMask = VK_ACCESS_NONE;
-    buffer_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-    buffer_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    buffer_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    buffer_barrier.buffer = src_buffer->get_buffer();
-    buffer_barrier.offset = buffer_region.offset;
-    buffer_barrier.size = buffer_region.size;
+    VkBufferMemoryBarrier buffer_barrier = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_NONE,
+        .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .buffer = src_buffer->get_buffer(),
+        .offset = buffer_region.offset,
+        .size = buffer_region.size,
+    };
 
-    VkImageMemoryBarrier texture_barrier = {};
-    texture_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    texture_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    texture_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    texture_barrier.image = dst_image->get_image();
-    texture_barrier.subresourceRange.baseMipLevel = texture_region.level;
-    texture_barrier.subresourceRange.levelCount = 1;
-    texture_barrier.subresourceRange.baseArrayLayer = texture_region.layer;
-    texture_barrier.subresourceRange.layerCount = texture_region.layer_count;
-    texture_barrier.subresourceRange.aspectMask = dst_image->get_aspect_mask();
-    texture_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    texture_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    texture_barrier.srcAccessMask = 0;
-    texture_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    VkImageMemoryBarrier texture_barrier = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = 0,
+        .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = dst_image->get_image(),
+        .subresourceRange =
+            {
+                .aspectMask = dst_image->get_aspect_mask(),
+                .baseMipLevel = texture_region.level,
+                .levelCount = 1,
+                .baseArrayLayer = texture_region.layer,
+                .layerCount = texture_region.layer_count,
+            },
+    };
     vkCmdPipelineBarrier(
         m_command_buffer,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -404,16 +410,20 @@ void vk_command::copy_buffer_to_texture(
         1,
         &texture_barrier);
 
-    VkBufferImageCopy region = {};
-    region.bufferOffset = 0;
-    region.bufferRowLength = 0;
-    region.bufferImageHeight = 0;
-    region.imageSubresource.aspectMask = dst_image->get_aspect_mask();
-    region.imageSubresource.mipLevel = texture_region.level;
-    region.imageSubresource.baseArrayLayer = texture_region.layer;
-    region.imageSubresource.layerCount = 1;
-    region.imageOffset = {0, 0, 0};
-    region.imageExtent = {texture_region.extent.width, texture_region.extent.height, 1};
+    VkBufferImageCopy region = {
+        .bufferOffset = 0,
+        .bufferRowLength = 0,
+        .bufferImageHeight = 0,
+        .imageSubresource =
+            {
+                .aspectMask = dst_image->get_aspect_mask(),
+                .mipLevel = texture_region.level,
+                .baseArrayLayer = texture_region.layer,
+                .layerCount = 1,
+            },
+        .imageOffset = {0, 0, 0},
+        .imageExtent = {texture_region.extent.width, texture_region.extent.height, 1},
+    };
 
     vkCmdCopyBufferToImage(
         m_command_buffer,
@@ -454,10 +464,11 @@ vk_graphics_queue::vk_graphics_queue(std::uint32_t queue_family_index, vk_contex
     : m_family_index(queue_family_index),
       m_context(context)
 {
-    VkCommandPoolCreateInfo command_pool_info = {};
-    command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    command_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    command_pool_info.queueFamilyIndex = queue_family_index;
+    VkCommandPoolCreateInfo command_pool_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = queue_family_index,
+    };
 
     vk_check(
         vkCreateCommandPool(m_context->get_device(), &command_pool_info, nullptr, &m_command_pool));
@@ -478,11 +489,12 @@ vk_command* vk_graphics_queue::allocate_command()
 {
     if (m_free_commands.empty())
     {
-        VkCommandBufferAllocateInfo command_buffer_allocate_info = {};
-        command_buffer_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        command_buffer_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        command_buffer_allocate_info.commandPool = m_command_pool;
-        command_buffer_allocate_info.commandBufferCount = 1;
+        VkCommandBufferAllocateInfo command_buffer_allocate_info = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = m_command_pool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
+        };
 
         std::vector<VkCommandBuffer> command_buffers(
             command_buffer_allocate_info.commandBufferCount);
@@ -504,8 +516,10 @@ vk_command* vk_graphics_queue::allocate_command()
     m_free_commands.pop_back();
     m_active_commands[m_context->get_frame_resource_index()].push_back(command);
 
-    VkCommandBufferBeginInfo command_buffer_begin_info = {};
-    command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    VkCommandBufferBeginInfo command_buffer_begin_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
     vk_check(vkBeginCommandBuffer(command->get_command_buffer(), &command_buffer_begin_info));
 
     return command;
@@ -537,12 +551,12 @@ void vk_graphics_queue::execute(rhi_command* command)
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext = &timeline_info,
         .waitSemaphoreCount = static_cast<std::uint32_t>(wait_semaphores.size()),
-        .pWaitSemaphores = wait_semaphores.data(),
+        .pWaitSemaphores = wait_semaphores.empty() ? nullptr : wait_semaphores.data(),
         .pWaitDstStageMask = wait_stages.data(),
         .commandBufferCount = 1,
         .pCommandBuffers = &buffer,
         .signalSemaphoreCount = static_cast<std::uint32_t>(signal_semaphores.size()),
-        .pSignalSemaphores = signal_semaphores.data(),
+        .pSignalSemaphores = signal_semaphores.empty() ? nullptr : signal_semaphores.data(),
     };
 
     vk_check(vkQueueSubmit(m_queue, 1, &submit_info, VK_NULL_HANDLE));

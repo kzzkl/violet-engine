@@ -29,6 +29,8 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
         binding.stageFlags |=
             desc.bindings[i].stages & RHI_SHADER_STAGE_COMPUTE ? VK_SHADER_STAGE_COMPUTE_BIT : 0;
 
+        assert(binding.stageFlags != 0);
+
         binding.pImmutableSamplers = nullptr;
 
         m_bindings[i].type = desc.bindings[i].type;

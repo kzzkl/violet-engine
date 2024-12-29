@@ -1,3 +1,5 @@
+#include "common.hlsli"
+
 struct skinning_data
 {
     uint skeleton;
@@ -6,12 +8,12 @@ struct skinning_data
     uint skin;
     uint bdef;
     uint sdef;
+    uint morph;
     uint position_output;
     uint normal_output;
     uint padding0;
     uint padding1;
     uint padding2;
-    uint padding3;
 };
 
 ConstantBuffer<skinning_data> skinning : register(b0, space1);
@@ -121,7 +123,7 @@ float4 matrix_to_quaternion(float4x4 m)
     return q * 0.5f / sqrt(t);
 }
 
-[numthreads(256, 1, 1)]
+[numthreads(64, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
     StructuredBuffer<float> position_input = ResourceDescriptorHeap[skinning.position_input];
@@ -132,17 +134,22 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     StructuredBuffer<uint2> skin = ResourceDescriptorHeap[skinning.skin];
     StructuredBuffer<bdef_data> bdef = ResourceDescriptorHeap[skinning.bdef];
     StructuredBuffer<sdef_data> sdef = ResourceDescriptorHeap[skinning.sdef];
+    Buffer<int> morph_vertex_buffer = ResourceDescriptorHeap[skinning.morph];
 
     StructuredBuffer<float4x4> skeleton = ResourceDescriptorHeap[skinning.skeleton];
 
+    uint vertex_index = dtid.x * 3;
+
     float3 position = float3(
-        position_input[dtid.x * 3 + 0],
-        position_input[dtid.x * 3 + 1],
-        position_input[dtid.x * 3 + 2]);
+        position_input[vertex_index + 0],
+        position_input[vertex_index + 1],
+        position_input[vertex_index + 2]);
     float3 normal = float3(
-        normal_input[dtid.x * 3 + 0],
-        normal_input[dtid.x * 3 + 1],
-        normal_input[dtid.x * 3 + 2]);
+        normal_input[vertex_index + 0],
+        normal_input[vertex_index + 1],
+        normal_input[vertex_index + 2]);
+
+    position += get_morph_position(skinning.morph, vertex_index);
 
     uint skin_type = skin[dtid.x].x;
     uint skin_index = skin[dtid.x].y;

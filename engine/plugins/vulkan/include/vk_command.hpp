@@ -82,9 +82,9 @@ public:
     void signal(rhi_fence* fence, std::uint64_t value) override;
     void wait(rhi_fence* fence, std::uint64_t value, rhi_pipeline_stage_flags stages) override;
 
-#ifndef NDEBUG
     void begin_label(const char* label) const override
     {
+#ifndef NDEBUG
         VkDebugUtilsLabelEXT info = {
             .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
             .pNext = nullptr,
@@ -92,13 +92,15 @@ public:
             .color = {1.0f, 1.0f, 1.0f, 1.0f}};
 
         vkCmdBeginDebugUtilsLabelEXT(m_command_buffer, &info);
+#endif
     }
 
     void end_label() const override
     {
+#ifndef NDEBUG
         vkCmdEndDebugUtilsLabelEXT(m_command_buffer);
-    }
 #endif
+    }
 
     void reset();
 

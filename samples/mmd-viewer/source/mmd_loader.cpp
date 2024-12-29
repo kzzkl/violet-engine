@@ -1,22 +1,21 @@
 #include "mmd_loader.hpp"
 #include "components/collider_component.hpp"
+#include "components/hierarchy_component.hpp"
 #include "components/joint_component.hpp"
 #include "components/mesh_component.hpp"
-#include "graphics/tools/texture_loader.hpp"
-#include "math/matrix.hpp"
-#include "math/vector.hpp"
-#include "mmd_material.hpp"
-#include "vmd.hpp"
-
-// #include "components/mmd_skeleton_component.hpp"
-#include "components/hierarchy_component.hpp"
 #include "components/mmd_animator_component.hpp"
 #include "components/mmd_skeleton_component.hpp"
+#include "components/morph_component.hpp"
 #include "components/rigidbody_component.hpp"
 #include "components/scene_component.hpp"
 #include "components/skeleton_component.hpp"
 #include "components/skinned_component.hpp"
 #include "components/transform_component.hpp"
+#include "graphics/tools/texture_loader.hpp"
+#include "math/matrix.hpp"
+#include "math/vector.hpp"
+#include "mmd_material.hpp"
+#include "vmd.hpp"
 #include <map>
 #include <numeric>
 
@@ -59,6 +58,7 @@ std::optional<mmd_loader::scene_data> mmd_loader::load(
             skinned_component,
             skeleton_component,
             mmd_skeleton_component,
+            morph_component,
             scene_component>(m_root);
     }
     else
@@ -69,6 +69,7 @@ std::optional<mmd_loader::scene_data> mmd_loader::load(
             skinned_component,
             skeleton_component,
             mmd_skeleton_component,
+            morph_component,
             mmd_animator_component,
             scene_component>(m_root);
     }
@@ -78,6 +79,7 @@ std::optional<mmd_loader::scene_data> mmd_loader::load(
 
     load_mesh(scene_data, world);
     load_bone(world);
+    load_morph(world);
     load_physics(world);
 
     if (!vmd.empty())
@@ -104,14 +106,10 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
         RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
     mesh_geometry->add_attribute("edge", m_pmx.edge, RHI_BUFFER_VERTEX);
     mesh_geometry->add_attribute("skin", m_pmx.skin, RHI_BUFFER_STORAGE);
-    mesh_geometry->add_attribute(
-        "morph",
-        nullptr,
-        rhi_get_format_stride(RHI_FORMAT_R32G32B32_FLOAT) * m_pmx.position.size(),
-        RHI_BUFFER_HOST_VISIBLE | RHI_BUFFER_STORAGE);
     mesh_geometry->add_attribute("bdef", m_pmx.bdef, RHI_BUFFER_STORAGE);
     if (m_pmx.sdef.empty())
     {
+        // Workaround for PMX files without sdef data.
         std::vector<pmx::sdef_data> empty(1);
         mesh_geometry->add_attribute("sdef", empty, RHI_BUFFER_STORAGE);
     }
@@ -177,7 +175,7 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
     }
 
     auto& root_skinned = world.get_component<skinned_component>(m_root);
-    root_skinned.inputs = {"position", "normal", "skin", "bdef", "sdef"};
+    root_skinned.inputs = {"position", "normal", "skin", "bdef", "sdef", "morph"};
     root_skinned.outputs = {
         {"position", RHI_FORMAT_R32G32B32_FLOAT},
         {"normal", RHI_FORMAT_R32G32B32_FLOAT},
@@ -287,6 +285,50 @@ void mmd_loader::load_bone(world& world)
         math::store(binding_pose_inv, bone.binding_pose_inv);
 
         skeleton.bones.push_back(bone);
+    }
+}
+
+void mmd_loader::load_morph(world& world)
+{
+    const auto& mmd_skeleton = world.get_component<const mmd_skeleton_component>(m_root);
+    const auto& mesh = world.get_component<const mesh_component>(m_root);
+
+    auto& morph = world.get_component<morph_component>(m_root);
+    morph.weights.resize(m_pmx.morphs.size());
+
+    for (const auto& pmx_morph : m_pmx.morphs)
+    {
+        std::vector<morph_element> morph_elements;
+        switch (pmx_morph.type)
+        {
+        case PMX_MORPH_TYPE_GROUP: {
+            break;
+        }
+        case PMX_MORPH_TYPE_VERTEX: {
+            for (const auto& pmx_vertex_morph : pmx_morph.vertex_morphs)
+            {
+                morph_elements.push_back({
+                    .position = pmx_vertex_morph.translation,
+                    .vertex_index = static_cast<std::uint32_t>(pmx_vertex_morph.index),
+                });
+            }
+            break;
+        }
+        case PMX_MORPH_TYPE_BONE:
+        case PMX_MORPH_TYPE_UV:
+        case PMX_MORPH_TYPE_UV_EXT_1:
+        case PMX_MORPH_TYPE_UV_EXT_2:
+        case PMX_MORPH_TYPE_UV_EXT_3:
+        case PMX_MORPH_TYPE_UV_EXT_4:
+        case PMX_MORPH_TYPE_MATERIAL:
+        case PMX_MORPH_TYPE_FLIP:
+        case PMX_MORPH_TYPE_IMPULSE:
+            break;
+        default:
+            break;
+        }
+
+        mesh.geometry->add_morph_target(pmx_morph.name_jp, morph_elements);
     }
 }
 
@@ -463,14 +505,14 @@ void mmd_loader::load_physics(world& world)
 
 void mmd_loader::load_animation(world& world)
 {
-    const auto& skeleton = world.get_component<const mmd_skeleton_component>(m_root);
+    const auto& mmd_skeleton = world.get_component<const mmd_skeleton_component>(m_root);
     auto& mmd_animator = world.get_component<mmd_animator_component>(m_root);
-    mmd_animator.motions.resize(skeleton.bones.size());
+    mmd_animator.motions.resize(mmd_skeleton.bones.size());
 
     std::map<std::string, std::size_t> name_to_index_map;
-    for (std::size_t i = 0; i < skeleton.bones.size(); ++i)
+    for (std::size_t i = 0; i < mmd_skeleton.bones.size(); ++i)
     {
-        name_to_index_map[skeleton.bones[i].name] = i;
+        name_to_index_map[mmd_skeleton.bones[i].name] = i;
     }
 
     auto get_bezier = [](const unsigned char* cp) -> bezier
@@ -495,10 +537,10 @@ void mmd_loader::load_animation(world& world)
                 .frame = static_cast<std::int32_t>(vmd_motion.frame_index),
                 .translate = vmd_motion.translate,
                 .rotate = vmd_motion.rotate,
-                .tx_bezier = get_bezier(&vmd_motion.interpolation[0]),
-                .ty_bezier = get_bezier(&vmd_motion.interpolation[1]),
-                .tz_bezier = get_bezier(&vmd_motion.interpolation[2]),
-                .r_bezier = get_bezier(&vmd_motion.interpolation[3]),
+                .tx_bezier = get_bezier(vmd_motion.interpolation.data() + 0),
+                .ty_bezier = get_bezier(vmd_motion.interpolation.data() + 1),
+                .tz_bezier = get_bezier(vmd_motion.interpolation.data() + 2),
+                .r_bezier = get_bezier(vmd_motion.interpolation.data() + 3),
             };
 
             mmd_animator.motions[iter->second].animation_keys.push_back(key);
@@ -543,26 +585,30 @@ void mmd_loader::load_animation(world& world)
             });
     }
 
-    /*auto model_morph = model->model->get<mmd_morph>();
-    model_animator->morphs.resize(model_morph->morphs.size());
+    const auto& mesh = world.get_component<const mesh_component>(m_root);
+    mmd_animator.morphs.resize(mesh.geometry->get_morph_target_count());
 
-    std::map<std::string, std::size_t> morph_map;
-    for (std::size_t i = 0; i < model_morph->morphs.size(); ++i)
-        morph_map[model_morph->morphs[i]->name] = i;
-
-    for (auto& morph : vmd.morphs)
+    for (auto& morph : m_vmd.morphs)
     {
-        auto iter = morph_map.find(morph.morph_name);
-        if (iter != morph_map.end())
+        auto iter = std::find_if(
+            m_pmx.morphs.begin(),
+            m_pmx.morphs.end(),
+            [&](const auto& m)
+            {
+                return m.name_jp == morph.morph_name;
+            });
+
+        if (iter != m_pmx.morphs.end())
         {
-            mmd_animator::morph_key key = {};
-            key.frame = morph.frame;
-            key.weight = morph.weight;
-            model_animator->morphs[iter->second].morph_keys.push_back(key);
+            std::size_t index = std::distance(m_pmx.morphs.begin(), iter);
+            mmd_animator.morphs[index].morph_keys.push_back({
+                .frame = static_cast<std::int32_t>(morph.frame),
+                .weight = morph.weight,
+            });
         }
     }
 
-    for (auto& morph : model_animator->morphs)
+    for (auto& morph : mmd_animator.morphs)
     {
         std::sort(
             morph.morph_keys.begin(),
@@ -571,81 +617,6 @@ void mmd_loader::load_animation(world& world)
             {
                 return a.frame < b.frame;
             });
-    }*/
-}
-
-/*void mmd_loader::load(scene_data& scene, const pmx& pmx)
-{
-    if (m_models.find(pmx_path.data()) != m_models.end())
-        return nullptr;
-
-    auto model = std::make_unique<mmd_model>();
-
-    pmx pmx(pmx_path);
-    if (!pmx.is_load())
-        return nullptr;
-
-    model->model = std::make_unique<actor>("mmd", world);
-    model->model->add<transform, mesh, mmd_skeleton, mmd_morph>();
-
-    load_mesh(model.get(), pmx, world);
-    load_bones(model.get(), pmx, world);
-    load_morph(model.get(), pmx);
-    load_physics(model.get(), pmx, world);
-
-    if (!vmd_path.empty())
-    {
-        vmd vmd(vmd_path);
-        if (vmd.is_load())
-            load_animation(model.get(), vmd, world);
-    }
-
-    m_models[pmx_path.data()] = std::move(model);
-    return m_models[pmx_path.data()].get();
-}
-
-void mmd_loader::load_morph(mmd_model* model, const pmx& pmx)
-{
-    auto model_morph = model->model->get<mmd_morph>();
-    auto model_skeleton = model->model->get<mmd_skeleton>();
-
-    model_morph->vertex_morph_result = model_skeleton->get_morph_buffer();
-
-    for (auto& pmx_morph : pmx.morphs)
-    {
-        switch (pmx_morph.type)
-        {
-        case PMX_MORPH_TYPE_GROUP:
-            model_morph->morphs.push_back(std::make_unique<mmd_morph::morph>());
-            break;
-        case PMX_MORPH_TYPE_VERTEX: {
-            auto vertex_morph = std::make_unique<mmd_morph::vertex_morph>();
-            for (auto& pmx_vertex_morph : pmx_morph.vertex_morphs)
-            {
-                vertex_morph->data.push_back(
-                    {pmx_vertex_morph.index, pmx_vertex_morph.translation});
-            }
-            model_morph->morphs.push_back(std::move(vertex_morph));
-            break;
-        }
-        case PMX_MORPH_TYPE_BONE:
-        case PMX_MORPH_TYPE_UV:
-        case PMX_MORPH_TYPE_UV_EXT_1:
-        case PMX_MORPH_TYPE_UV_EXT_2:
-        case PMX_MORPH_TYPE_UV_EXT_3:
-        case PMX_MORPH_TYPE_UV_EXT_4:
-        case PMX_MORPH_TYPE_MATERIAL:
-        case PMX_MORPH_TYPE_FLIP:
-        case PMX_MORPH_TYPE_IMPULSE:
-            model_morph->morphs.push_back(std::make_unique<mmd_morph::morph>());
-            break;
-        default:
-            break;
-        }
-
-        model_morph->morphs.back()->name = pmx_morph.name_jp;
     }
 }
-
-*/
 } // namespace violet::sample

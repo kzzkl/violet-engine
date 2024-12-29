@@ -380,6 +380,15 @@ void render_graph::merge_pass()
 
 void render_graph::build_barriers()
 {
+    auto is_read_access = [](rhi_access_flags access) -> bool
+    {
+        static constexpr rhi_access_flags write_access =
+            RHI_ACCESS_COLOR_WRITE | RHI_ACCESS_DEPTH_STENCIL_WRITE | RHI_ACCESS_SHADER_WRITE |
+            RHI_ACCESS_TRANSFER_WRITE | RHI_ACCESS_HOST_WRITE;
+
+        return (access & write_access) == 0;
+    };
+
     for (auto& resource : m_resources)
     {
         const auto& references = resource->get_references();
@@ -418,20 +427,25 @@ void render_graph::build_barriers()
                 }
                 else if (prev_reference->type != RDG_REFERENCE_ATTACHMENT)
                 {
-                    rhi_texture_barrier barrier = {
-                        .texture = texture->get_rhi(),
-                        .src_access = prev_reference->access,
-                        .dst_access = curr_reference->access,
-                        .src_layout = prev_reference->texture.layout,
-                        .dst_layout = curr_reference->texture.layout,
-                        .level = texture->get_level(),
-                        .level_count = texture->get_level_count(),
-                        .layer = texture->get_layer(),
-                        .layer_count = texture->get_layer_count(),
-                    };
-                    batch_barrier.texture_barriers.push_back(barrier);
-                    batch_barrier.src_stages |= prev_reference->stages;
-                    batch_barrier.dst_stages |= curr_reference->stages;
+                    if (!is_read_access(prev_reference->access) ||
+                        !is_read_access(curr_reference->access) ||
+                        prev_reference->texture.layout != curr_reference->texture.layout)
+                    {
+                        rhi_texture_barrier barrier = {
+                            .texture = texture->get_rhi(),
+                            .src_access = prev_reference->access,
+                            .dst_access = curr_reference->access,
+                            .src_layout = prev_reference->texture.layout,
+                            .dst_layout = curr_reference->texture.layout,
+                            .level = texture->get_level(),
+                            .level_count = texture->get_level_count(),
+                            .layer = texture->get_layer(),
+                            .layer_count = texture->get_layer_count(),
+                        };
+                        batch_barrier.texture_barriers.push_back(barrier);
+                        batch_barrier.src_stages |= prev_reference->stages;
+                        batch_barrier.dst_stages |= curr_reference->stages;
+                    }
                 }
             }
             else
@@ -440,17 +454,21 @@ void render_graph::build_barriers()
 
                 if (prev_reference != nullptr)
                 {
-                    rhi_buffer_barrier barrier = {
-                        .buffer = buffer->get_rhi(),
-                        .src_access = prev_reference->access,
-                        .dst_access = curr_reference->access,
-                        .offset = 0,
-                        .size = buffer->get_buffer_size(),
-                    };
+                    if (!is_read_access(prev_reference->access) ||
+                        !is_read_access(curr_reference->access))
+                    {
+                        rhi_buffer_barrier barrier = {
+                            .buffer = buffer->get_rhi(),
+                            .src_access = prev_reference->access,
+                            .dst_access = curr_reference->access,
+                            .offset = 0,
+                            .size = buffer->get_buffer_size(),
+                        };
 
-                    batch_barrier.buffer_barriers.push_back(barrier);
-                    batch_barrier.src_stages |= prev_reference->stages;
-                    batch_barrier.dst_stages |= curr_reference->stages;
+                        batch_barrier.buffer_barriers.push_back(barrier);
+                        batch_barrier.src_stages |= prev_reference->stages;
+                        batch_barrier.dst_stages |= curr_reference->stages;
+                    }
                 }
             }
 
@@ -465,7 +483,7 @@ void render_graph::build_barriers()
     {
         if (resource->get_type() == RDG_RESOURCE_TEXTURE)
         {
-            rdg_texture* texture = static_cast<rdg_texture*>(resource.get());
+            auto* texture = static_cast<rdg_texture*>(resource.get());
 
             rhi_access_flags src_access = 0;
             rhi_access_flags dst_access = 0;

@@ -43,7 +43,7 @@ public:
         window.on_destroy().add_task().set_execute(
             []()
             {
-                // engine::exit();
+                engine::exit();
             });
 
         task_graph& task_graph = get_task_graph();

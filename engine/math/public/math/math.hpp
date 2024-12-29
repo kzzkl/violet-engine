@@ -1,5 +1,6 @@
 #pragma once
 
+#include "math/types.hpp"
 #include <cmath>
 #include <utility>
 
@@ -87,5 +88,11 @@ static constexpr float RAD_TO_DEG = 180.0f / PI;
     }
 
     return value;
+}
+
+template <typename T = float>
+[[nodiscard]] static inline T round(float value)
+{
+    return static_cast<T>(std::round(value));
 }
 } // namespace violet::math

@@ -32,7 +32,7 @@ mmd_material::mmd_material()
         .compare_op = RHI_COMPARE_OP_ALWAYS,
         .pass_op = RHI_STENCIL_OP_REPLACE,
         .depth_fail_op = RHI_STENCIL_OP_KEEP,
-        .reference = LIGHTING_PHYSICAL,
+        .reference = SHADING_MODEL_UNLIT,
     };
     pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
 }

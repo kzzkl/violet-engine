@@ -98,25 +98,6 @@ rhi_ptr<rhi_texture> texture_loader::load(
         if (need_generate_mipmaps)
         {
             generate_mipmaps(command, texture.get(), level_count, layer);
-
-            rhi_texture_barrier texture_barrier = {};
-            texture_barrier.texture = texture.get();
-            texture_barrier.src_access = RHI_ACCESS_TRANSFER_READ;
-            texture_barrier.dst_access = RHI_ACCESS_SHADER_READ;
-            texture_barrier.src_layout = RHI_TEXTURE_LAYOUT_TRANSFER_SRC;
-            texture_barrier.dst_layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE;
-            texture_barrier.level = 0;
-            texture_barrier.level_count = level_count;
-            texture_barrier.layer = layer;
-            texture_barrier.layer_count = 1;
-            command->set_pipeline_barrier(
-                RHI_PIPELINE_STAGE_TRANSFER,
-                RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_FRAGMENT |
-                    RHI_PIPELINE_STAGE_COMPUTE,
-                nullptr,
-                0,
-                &texture_barrier,
-                1);
         }
         else
         {
