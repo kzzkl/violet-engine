@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace violet::sample
+namespace violet
 {
 enum pmx_vertex_type : std::uint8_t
 {
@@ -391,4 +391,4 @@ private:
     std::int32_t read_index(std::ifstream& fin, std::uint8_t size) const;
     std::string read_text(std::ifstream& fin) const;
 };
-} // namespace violet::sample
+} // namespace violet

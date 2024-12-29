@@ -162,57 +162,57 @@ rhi_parameter* render_device::get_bindless_parameter() const noexcept
 
 rhi_ptr<rhi_render_pass> render_device::create_render_pass(const rhi_render_pass_desc& desc)
 {
-    return rhi_ptr<rhi_render_pass>(m_rhi->create_render_pass(desc), m_rhi_deleter);
+    return {m_rhi->create_render_pass(desc), m_rhi_deleter};
 }
 
 rhi_ptr<rhi_render_pipeline> render_device::create_pipeline(const rhi_render_pipeline_desc& desc)
 {
-    return rhi_ptr<rhi_render_pipeline>(m_rhi->create_render_pipeline(desc), m_rhi_deleter);
+    return {m_rhi->create_render_pipeline(desc), m_rhi_deleter};
 }
 
 rhi_ptr<rhi_compute_pipeline> render_device::create_pipeline(const rhi_compute_pipeline_desc& desc)
 {
-    return rhi_ptr<rhi_compute_pipeline>(m_rhi->create_compute_pipeline(desc), m_rhi_deleter);
+    return {m_rhi->create_compute_pipeline(desc), m_rhi_deleter};
 }
 
 rhi_ptr<rhi_parameter> render_device::create_parameter(const rhi_parameter_desc& desc)
 {
-    return rhi_ptr<rhi_parameter>(m_rhi->create_parameter(desc), m_rhi_deleter);
+    return {m_rhi->create_parameter(desc), m_rhi_deleter};
 }
 
 rhi_ptr<rhi_framebuffer> render_device::create_framebuffer(const rhi_framebuffer_desc& desc)
 {
-    return rhi_ptr<rhi_framebuffer>(m_rhi->create_framebuffer(desc), m_rhi_deleter);
+    return {m_rhi->create_framebuffer(desc), m_rhi_deleter};
 }
 
 rhi_ptr<rhi_buffer> render_device::create_buffer(const rhi_buffer_desc& desc)
 {
-    return rhi_ptr<rhi_buffer>(m_rhi->create_buffer(desc), m_rhi_deleter);
+    return {m_rhi->create_buffer(desc), m_rhi_deleter};
 }
 
 rhi_ptr<rhi_sampler> render_device::create_sampler(const rhi_sampler_desc& desc)
 {
-    return rhi_ptr<rhi_sampler>(m_rhi->create_sampler(desc), m_rhi_deleter);
+    return {m_rhi->create_sampler(desc), m_rhi_deleter};
 }
 
 rhi_ptr<rhi_texture> render_device::create_texture(const rhi_texture_desc& desc)
 {
-    return rhi_ptr<rhi_texture>(m_rhi->create_texture(desc), m_rhi_deleter);
+    return {m_rhi->create_texture(desc), m_rhi_deleter};
 }
 
 rhi_ptr<rhi_texture> render_device::create_texture(const rhi_texture_view_desc& desc)
 {
-    return rhi_ptr<rhi_texture>(m_rhi->create_texture(desc), m_rhi_deleter);
+    return {m_rhi->create_texture(desc), m_rhi_deleter};
 }
 
 rhi_ptr<rhi_swapchain> render_device::create_swapchain(const rhi_swapchain_desc& desc)
 {
-    return rhi_ptr<rhi_swapchain>(m_rhi->create_swapchain(desc), m_rhi_deleter);
+    return {m_rhi->create_swapchain(desc), m_rhi_deleter};
 }
 
 rhi_ptr<rhi_fence> render_device::create_fence()
 {
-    return rhi_ptr<rhi_fence>(m_rhi->create_fence(), m_rhi_deleter);
+    return {m_rhi->create_fence(), m_rhi_deleter};
 }
 
 void render_device::create_buildin_resources()

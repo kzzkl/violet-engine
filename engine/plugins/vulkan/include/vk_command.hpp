@@ -32,9 +32,17 @@ public:
         override;
     void set_index_buffer(rhi_buffer* index_buffer) override;
 
-    void draw(std::size_t vertex_offset, std::size_t vertex_count) override;
-    void draw_indexed(std::size_t index_offset, std::size_t index_count, std::size_t vertex_base)
-        override;
+    void draw(
+        std::uint32_t vertex_offset,
+        std::uint32_t vertex_count,
+        std::uint32_t instance_offset,
+        std::uint32_t instance_count) override;
+    void draw_indexed(
+        std::uint32_t index_offset,
+        std::uint32_t index_count,
+        std::uint32_t vertex_offset,
+        std::uint32_t instance_offset,
+        std::uint32_t instance_count) override;
     void draw_indexed_indirect(
         rhi_buffer* command_buffer,
         std::size_t command_buffer_offset,

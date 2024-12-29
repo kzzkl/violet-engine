@@ -145,28 +145,29 @@ void vk_command::set_index_buffer(rhi_buffer* index_buffer)
     vkCmdBindIndexBuffer(m_command_buffer, buffer->get_buffer(), 0, buffer->get_index_type());
 }
 
-void vk_command::draw(std::size_t vertex_offset, std::size_t vertex_count)
+void vk_command::draw(
+    std::uint32_t vertex_offset,
+    std::uint32_t vertex_count,
+    std::uint32_t instance_offset,
+    std::uint32_t instance_count)
 {
-    vkCmdDraw(
-        m_command_buffer,
-        static_cast<std::uint32_t>(vertex_count),
-        1,
-        static_cast<std::uint32_t>(vertex_offset),
-        0);
+    vkCmdDraw(m_command_buffer, vertex_count, instance_count, vertex_offset, instance_offset);
 }
 
 void vk_command::draw_indexed(
-    std::size_t index_offset,
-    std::size_t index_count,
-    std::size_t vertex_base)
+    std::uint32_t index_offset,
+    std::uint32_t index_count,
+    std::uint32_t vertex_offset,
+    std::uint32_t instance_offset,
+    std::uint32_t instance_count)
 {
     vkCmdDrawIndexed(
         m_command_buffer,
-        static_cast<std::uint32_t>(index_count),
-        1,
-        static_cast<std::uint32_t>(index_offset),
-        static_cast<std::int32_t>(vertex_base),
-        0);
+        index_count,
+        instance_count,
+        index_offset,
+        static_cast<std::int32_t>(vertex_offset),
+        instance_offset);
 }
 
 void vk_command::draw_indexed_indirect(

@@ -5,7 +5,7 @@
 #include "components/morph_component.hpp"
 #include "core/engine_system.hpp"
 
-namespace violet::sample
+namespace violet
 {
 class mmd_animation : public engine_system
 {
@@ -49,4 +49,4 @@ private:
 
     void update_local(const mmd_bone& bone, const mmd_motion& motion);
 };
-} // namespace violet::sample
+} // namespace violet

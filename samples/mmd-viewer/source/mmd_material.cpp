@@ -1,10 +1,10 @@
 #include "mmd_material.hpp"
 
-namespace violet::sample
+namespace violet
 {
 struct mmd_material_vs : public mesh_vs
 {
-    static constexpr std::string_view path = "mmd-viewer/shaders/mmd_material.hlsl";
+    static constexpr std::string_view path = "assets/shaders/mmd_material.hlsl";
 
     static constexpr input_layout inputs = {
         {"position", RHI_FORMAT_R32G32B32_FLOAT},
@@ -15,7 +15,7 @@ struct mmd_material_vs : public mesh_vs
 
 struct mmd_material_fs : public mesh_fs
 {
-    static constexpr std::string_view path = "mmd-viewer/shaders/mmd_material.hlsl";
+    static constexpr std::string_view path = "assets/shaders/mmd_material.hlsl";
 };
 
 mmd_material::mmd_material()
@@ -80,4 +80,4 @@ void mmd_material::set_edge(const vec4f& edge_color, float edge_size)
     constant.edge_color = edge_color;
     constant.edge_size = edge_size;
 }
-} // namespace violet::sample
+} // namespace violet

@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace violet::sample
+namespace violet
 {
 struct vmd_header
 {
@@ -92,4 +92,4 @@ private:
     void load_shadow(std::ifstream& fin);
     void load_ik(std::ifstream& fin);
 };
-} // namespace violet::sample
+} // namespace violet

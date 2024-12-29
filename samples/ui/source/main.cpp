@@ -13,7 +13,7 @@
 #include "ui/widgets/label.hpp"
 #include "window/window_module.hpp"
 
-namespace violet::sample
+namespace violet
 {
 class sample_module : public engine_module
 {
@@ -96,7 +96,7 @@ private:
 
     std::unique_ptr<actor> m_main_camera;
 };
-} // namespace violet::sample
+} // namespace violet
 
 int main()
 {

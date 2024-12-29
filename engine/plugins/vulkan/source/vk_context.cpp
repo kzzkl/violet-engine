@@ -190,6 +190,8 @@ VkDescriptorSet vk_context::allocate_descriptor_set(VkDescriptorSetLayout layout
     allocate_info.descriptorSetCount = 1;
     allocate_info.pSetLayouts = &layout;
 
+    std::lock_guard lock(m_mutex);
+
     VkDescriptorSet result;
     vk_check(vkAllocateDescriptorSets(m_device, &allocate_info, &result));
 

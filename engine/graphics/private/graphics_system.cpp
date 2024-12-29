@@ -48,9 +48,9 @@ bool graphics_system::initialize(const dictionary& config)
 
     render_device::instance().initialize(m_plugin->get_rhi());
 
-    task_graph& task_graph = get_task_graph();
-    task_group& pre_update_group = task_graph.get_group("PreUpdate");
-    task& update_window_task = task_graph.get_task("Update Window");
+    auto& task_graph = get_task_graph();
+    auto& pre_update_group = task_graph.get_group("PreUpdate");
+    auto& update_window_task = task_graph.get_task("Update Window");
 
     task_graph.add_task()
         .set_name("Frame Begin")
@@ -62,14 +62,14 @@ bool graphics_system::initialize(const dictionary& config)
                 begin_frame();
             });
 
-    task_group& post_update_group = task_graph.get_group("PostUpdate");
-    task_group& transform_group = task_graph.get_group("Transform");
-    task_group& rendering_group = task_graph.add_group()
-                                      .set_name("Rendering")
-                                      .set_group(post_update_group)
-                                      .add_dependency(transform_group);
+    auto& post_update_group = task_graph.get_group("PostUpdate");
+    auto& transform_group = task_graph.get_group("Transform");
+    auto& rendering_group = task_graph.add_group()
+                                .set_name("Rendering")
+                                .set_group(post_update_group)
+                                .add_dependency(transform_group);
 
-    task& update_mesh_task = task_graph.add_task();
+    auto& update_mesh_task = task_graph.add_task();
     update_mesh_task.set_name("Update Mesh")
         .set_group(rendering_group)
         .set_execute(
@@ -81,7 +81,7 @@ bool graphics_system::initialize(const dictionary& config)
                 update_environment();
             });
 
-    task& update_camera_task = task_graph.add_task();
+    auto& update_camera_task = task_graph.add_task();
     update_camera_task.set_name("Update Camera")
         .set_group(rendering_group)
         .set_execute(

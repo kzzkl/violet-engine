@@ -10,6 +10,13 @@ public:
     void render(render_graph& graph, const render_scene& scene, const render_camera& camera)
         override;
 
+protected:
+    // For ImGUI.
+    rdg_texture* get_render_target() const noexcept
+    {
+        return m_render_target;
+    }
+
 private:
     void add_cull_pass(render_graph& graph, const render_scene& scene, const render_camera& camera);
     void add_mesh_pass(render_graph& graph, const render_scene& scene, const render_camera& camera);

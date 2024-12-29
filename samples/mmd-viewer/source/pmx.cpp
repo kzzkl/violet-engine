@@ -5,7 +5,7 @@
 #include "math/vector.hpp"
 #include <fstream>
 
-namespace violet::sample
+namespace violet
 {
 template <typename T>
 static void read(std::istream& fin, T& dest)
@@ -604,4 +604,4 @@ std::string pmx::read_text(std::ifstream& fin) const
 
     return "";
 }
-} // namespace violet::sample
+} // namespace violet

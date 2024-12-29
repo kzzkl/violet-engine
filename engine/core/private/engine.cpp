@@ -1,10 +1,10 @@
 #include "core/engine.hpp"
 #include "common/log.hpp"
+#include "common/utility.hpp"
 #include "engine_context.hpp"
 #include "task/task_graph_printer.hpp"
 #include <filesystem>
 #include <fstream>
-
 
 namespace violet
 {
@@ -49,47 +49,26 @@ void engine::initialize(std::string_view config_path)
 {
     auto& config = instance().m_config;
 
-    for (const auto& iter : std::filesystem::directory_iterator("assets/config"))
+    std::vector<std::wstring> config_files;
+    config_files.emplace_back(L"assets/config/default.json");
+    config_files.emplace_back(string_to_wstring(config_path));
+
+    for (const auto& file : config_files)
     {
-        if (iter.is_regular_file() && iter.path().extension() == ".json")
+        std::ifstream fin(file);
+        if (!fin.is_open())
         {
-            std::ifstream fin(iter.path());
-            if (!fin.is_open())
-            {
-                continue;
-            }
-
-            dictionary json;
-            fin >> json;
-
-            for (const auto& [key, value] : json.items())
-            {
-                config[key].update(value, true);
-            }
+            continue;
         }
-    }
 
-    if (config_path != "")
-    {
-        for (const auto& iter : std::filesystem::directory_iterator(config_path))
+        dictionary json;
+        fin >> json;
+
+        for (const auto& [key, value] : json.items())
         {
-            if (iter.is_regular_file() && iter.path().extension() == ".json")
-            {
-                std::ifstream fin(iter.path());
-                if (!fin.is_open())
-                {
-                    continue;
-                }
-
-                dictionary json;
-                fin >> json;
-
-                for (const auto& [key, value] : json.items())
-                {
-                    config[key].update(value, true);
-                }
-            }
+            config[key].update(value, true);
         }
+        fin.close();
     }
 
     instance().m_context = std::make_unique<engine_context>();

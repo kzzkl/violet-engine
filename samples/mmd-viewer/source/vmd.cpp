@@ -2,7 +2,7 @@
 #include "common/utility.hpp"
 #include "encode.hpp"
 
-namespace violet::sample
+namespace violet
 {
 template <typename T>
 static void read(std::istream& fin, T& dest)
@@ -187,4 +187,4 @@ void vmd::load_ik(std::ifstream& fin)
         iks.push_back(ik);
     }
 }
-} // namespace violet::sample
+} // namespace violet

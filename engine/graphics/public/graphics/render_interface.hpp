@@ -213,6 +213,8 @@ public:
     virtual std::uint32_t get_level_count() const noexcept = 0;
     virtual std::uint32_t get_layer() const noexcept = 0;
     virtual std::uint32_t get_layer_count() const noexcept = 0;
+
+    virtual std::uint64_t get_hash() const noexcept = 0;
 };
 
 struct rhi_texture_view_desc
@@ -754,11 +756,17 @@ public:
         std::size_t vertex_buffer_count) = 0;
     virtual void set_index_buffer(rhi_buffer* index_buffer) = 0;
 
-    virtual void draw(std::size_t vertex_offset, std::size_t vertex_count) = 0;
+    virtual void draw(
+        std::uint32_t vertex_offset,
+        std::uint32_t vertex_count,
+        std::uint32_t instance_offset = 0,
+        std::uint32_t instance_count = 1) = 0;
     virtual void draw_indexed(
-        std::size_t index_offset,
-        std::size_t index_count,
-        std::size_t vertex_base) = 0;
+        std::uint32_t index_offset,
+        std::uint32_t index_count,
+        std::uint32_t vertex_offset,
+        std::uint32_t instance_offset = 0,
+        std::uint32_t instance_count = 1) = 0;
     virtual void draw_indexed_indirect(
         rhi_buffer* command_buffer,
         std::size_t command_buffer_offset,

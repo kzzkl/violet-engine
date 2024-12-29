@@ -73,6 +73,11 @@ public:
         return m_layer_count;
     }
 
+    std::uint64_t get_hash() const noexcept override
+    {
+        return m_hash;
+    }
+
     VkImage get_image() const noexcept override
     {
         return m_image;
@@ -103,6 +108,7 @@ protected:
     rhi_texture_extent m_extent;
     std::uint32_t m_level_count{0};
     std::uint32_t m_layer_count{0};
+    std::uint64_t m_hash;
 
     VkClearValue m_clear_value;
     VkImageAspectFlags m_aspect_mask;
@@ -186,6 +192,11 @@ public:
         return m_layer_count;
     }
 
+    std::uint64_t get_hash() const noexcept override
+    {
+        return m_hash;
+    }
+
 private:
     vk_texture* m_texture{nullptr};
     VkImageView m_image_view{VK_NULL_HANDLE};
@@ -194,6 +205,7 @@ private:
     std::uint32_t m_level_count{0};
     std::uint32_t m_layer{0};
     std::uint32_t m_layer_count{0};
+    std::uint64_t m_hash;
 
     rhi_resource_handle m_handle{RHI_INVALID_RESOURCE_HANDLE};
 

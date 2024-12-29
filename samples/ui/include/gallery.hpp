@@ -2,7 +2,7 @@
 
 #include "ui/widget.hpp"
 
-namespace violet::sample
+namespace violet
 {
 class gallery : public widget
 {
@@ -11,4 +11,4 @@ public:
 
 private:
 };
-} // namespace violet::sample
+} // namespace violet

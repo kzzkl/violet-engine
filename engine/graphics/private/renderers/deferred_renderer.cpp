@@ -259,5 +259,7 @@ void deferred_renderer::add_present_pass(render_graph& graph, const render_camer
             .dst = camera_output,
             .dst_region = region,
         });
+
+    m_render_target = camera_output;
 }
 } // namespace violet

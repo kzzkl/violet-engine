@@ -115,6 +115,7 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
     }
 
     vkCreateImageView(m_context->get_device(), &image_view_info, nullptr, &m_image_view);
+    m_hash = hash::city_hash_64(&m_image_view, sizeof(VkImageView));
 
     if (desc.flags & RHI_TEXTURE_DEPTH_STENCIL)
     {
@@ -174,6 +175,7 @@ vk_texture_view::vk_texture_view(const rhi_texture_view_desc& desc, vk_context* 
     }
 
     vkCreateImageView(m_context->get_device(), &image_view_info, nullptr, &m_image_view);
+    m_hash = hash::city_hash_64(&m_image_view, sizeof(VkImageView));
 }
 
 vk_texture_view::~vk_texture_view()

@@ -63,7 +63,22 @@ rhi_render_pass* rdg_allocator::get_render_pass(const rhi_render_pass_desc& desc
 
 rhi_framebuffer* rdg_allocator::get_framebuffer(const rhi_framebuffer_desc& desc)
 {
-    std::uint64_t hash = hash::city_hash_64(&desc, sizeof(rhi_framebuffer_desc));
+    struct framebuffer_key
+    {
+        rhi_render_pass* render_pass;
+        std::uint64_t attachment_hash[rhi_constants::max_attachment_count];
+    };
+
+    framebuffer_key key = {
+        .render_pass = desc.render_pass,
+    };
+
+    for (std::size_t i = 0; desc.attachments[i] != nullptr; ++i)
+    {
+        key.attachment_hash[i] = desc.attachments[i]->get_hash();
+    }
+
+    std::uint64_t hash = hash::city_hash_64(&key, sizeof(framebuffer_key));
 
     rhi_framebuffer* framebuffer = m_framebuffer_cache.get(hash);
     if (framebuffer == nullptr)

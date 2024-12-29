@@ -2,7 +2,7 @@
 
 #include "math/types.hpp"
 
-namespace violet::sample
+namespace violet
 {
 struct bezier
 {
@@ -15,4 +15,4 @@ struct bezier
     vec2f p1;
     vec2f p2;
 };
-} // namespace violet::sample
+} // namespace violet

@@ -39,14 +39,28 @@ public:
         m_command->set_index_buffer(index_buffer);
     }
 
-    void draw(std::size_t vertex_offset, std::size_t vertex_count)
+    void draw(
+        std::uint32_t vertex_offset,
+        std::uint32_t vertex_count,
+        std::uint32_t instance_offset = 0,
+        std::uint32_t instance_count = 1)
     {
-        m_command->draw(vertex_offset, vertex_count);
+        m_command->draw(vertex_offset, vertex_count, instance_offset, instance_count);
     }
 
-    void draw_indexed(std::size_t index_offset, std::size_t index_count, std::size_t vertex_base)
+    void draw_indexed(
+        std::uint32_t index_offset,
+        std::uint32_t index_count,
+        std::uint32_t vertex_offset,
+        std::uint32_t instance_offset = 0,
+        std::uint32_t instance_count = 1)
     {
-        m_command->draw_indexed(index_offset, index_count, vertex_base);
+        m_command->draw_indexed(
+            index_offset,
+            index_count,
+            vertex_offset,
+            instance_offset,
+            instance_count);
     }
 
     void draw_instances(

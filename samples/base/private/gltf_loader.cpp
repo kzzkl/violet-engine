@@ -11,7 +11,7 @@
 #define TINYGLTF_NO_EXTERNAL_IMAGE
 #include "tiny_gltf.h"
 
-namespace violet::sample
+namespace violet
 {
 namespace
 {
@@ -392,4 +392,4 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
 
     return scene_data;
 }
-} // namespace violet::sample
+} // namespace violet

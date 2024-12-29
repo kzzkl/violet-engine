@@ -3,7 +3,7 @@
 #include "graphics/passes/cull_pass.hpp"
 #include "graphics/passes/tone_mapping_pass.hpp"
 
-namespace violet::sample
+namespace violet
 {
 void mmd_renderer::render(
     render_graph& graph,
@@ -149,4 +149,4 @@ void mmd_renderer::add_present_pass(render_graph& graph, const render_camera& ca
             .dst_region = region,
         });
 }
-} // namespace violet::sample
+} // namespace violet

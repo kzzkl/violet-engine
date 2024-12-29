@@ -19,7 +19,7 @@
 #include "task/task_graph_printer.hpp"
 #include "window/window_system.hpp"
 
-namespace violet::sample
+namespace violet
 {
 class pbr_sample : public engine_system
 {
@@ -200,16 +200,7 @@ private:
         main_camera.render_targets[0] = m_swapchain.get();
     }
 
-    void tick()
-    {
-        /*auto& camera_transform = get_world().get_component<const transform>(m_camera);
-        log::debug(
-            "{} {} {} {}",
-            camera_transform.rotation.x,
-            camera_transform.rotation.y,
-            camera_transform.rotation.z,
-            camera_transform.rotation.w);*/
-    }
+    void tick() {}
 
     entity m_skybox;
     entity m_light;
@@ -227,11 +218,11 @@ private:
     std::string m_skybox_path;
     std::string m_model_path;
 };
-} // namespace violet::sample
+} // namespace violet
 
 int main()
 {
-    violet::engine::initialize("pbr/config");
+    violet::engine::initialize("assets/config/pbr.json");
     violet::engine::install<violet::ecs_command_system>();
     violet::engine::install<violet::hierarchy_system>();
     violet::engine::install<violet::transform_system>();
@@ -239,7 +230,7 @@ int main()
     violet::engine::install<violet::window_system>();
     violet::engine::install<violet::graphics_system>();
     violet::engine::install<violet::control_system>();
-    violet::engine::install<violet::sample::pbr_sample>();
+    violet::engine::install<violet::pbr_sample>();
 
     violet::engine::run();
 

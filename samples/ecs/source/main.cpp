@@ -8,7 +8,7 @@
 #include "task/task_graph_printer.hpp"
 #include "window/window_system.hpp"
 
-namespace violet::sample
+namespace violet
 {
 class ecs_sample : public engine_system
 {
@@ -107,7 +107,7 @@ private:
 
     std::uint32_t m_system_version{0};
 };
-} // namespace violet::sample
+} // namespace violet
 
 int main()
 {

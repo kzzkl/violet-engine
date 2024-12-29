@@ -19,11 +19,11 @@
 #include <map>
 #include <numeric>
 
-namespace violet::sample
+namespace violet
 {
 struct mmd_skinning_cs : public skinning_cs
 {
-    static constexpr std::string_view path = "mmd-viewer/shaders/mmd_skinning.hlsl";
+    static constexpr std::string_view path = "assets/shaders/mmd_skinning.hlsl";
 };
 
 mmd_loader::mmd_loader(const std::vector<rhi_texture*>& internal_toons)
@@ -619,4 +619,4 @@ void mmd_loader::load_animation(world& world)
             });
     }
 }
-} // namespace violet::sample
+} // namespace violet

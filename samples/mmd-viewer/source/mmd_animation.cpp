@@ -6,7 +6,7 @@
 #include "math/vector.hpp"
 #include "scene/transform_system.hpp"
 
-namespace violet::sample
+namespace violet
 {
 namespace
 {
@@ -806,4 +806,4 @@ void mmd_animation::update_local(const mmd_bone& bone, const mmd_motion& motion)
     transform.set_position(translate);
     transform.set_rotation(rotation);
 }
-} // namespace violet::sample
+} // namespace violet

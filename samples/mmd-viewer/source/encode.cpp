@@ -1,7 +1,7 @@
 #include "encode.hpp"
 #include <array>
 
-namespace violet::sample
+namespace violet
 {
 namespace
 {
@@ -1955,4 +1955,4 @@ bool convert<ENCODE_TYPE_SHIFT_JIS, ENCODE_TYPE_UTF8>(const std::string& input, 
 
     return true;
 }
-} // namespace violet::sample
+} // namespace violet

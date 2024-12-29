@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace violet::sample
+namespace violet
 {
 struct mmd_ik_solver
 {
@@ -60,4 +60,4 @@ struct mmd_skeleton_component
     std::vector<mmd_bone> bones;
     std::vector<std::size_t> sorted_bones;
 };
-} // namespace violet::sample
+} // namespace violet

@@ -9,7 +9,7 @@
 #include <memory>
 #include <optional>
 
-namespace violet::sample
+namespace violet
 {
 class mmd_loader
 {
@@ -44,4 +44,4 @@ private:
 
     std::vector<rhi_texture*> m_internal_toons;
 };
-} // namespace violet::sample
+} // namespace violet

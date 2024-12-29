@@ -2,7 +2,7 @@
 
 #include "graphics/material.hpp"
 
-namespace violet::sample
+namespace violet
 {
 struct mmd_material_constant
 {
@@ -34,4 +34,4 @@ public:
 
     void set_edge(const vec4f& edge_color, float edge_size);
 };
-} // namespace violet::sample
+} // namespace violet

@@ -2,7 +2,7 @@
 
 #include "mesh_loader.hpp"
 
-namespace violet::sample
+namespace violet
 {
 class gltf_loader : public mesh_loader
 {
@@ -15,4 +15,4 @@ public:
 private:
     std::string m_path;
 };
-} // namespace violet::sample
+} // namespace violet

@@ -27,7 +27,7 @@ target_link_libraries(${PROJECT_NAME}
     violet::control
     violet::sample-base)
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION bin/${PROJECT_NAME})
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION bin/assets)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

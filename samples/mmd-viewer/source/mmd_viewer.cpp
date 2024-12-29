@@ -9,7 +9,7 @@
 #include "graphics/tools/texture_loader.hpp"
 #include "window/window_system.hpp"
 
-namespace violet::sample
+namespace violet
 {
 mmd_viewer::mmd_viewer()
     : engine_system("mmd viewer")
@@ -61,16 +61,16 @@ void mmd_viewer::initialize_render()
     });
     m_renderer = std::make_unique<deferred_renderer>();
 
-    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon01.bmp"));
-    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon02.bmp"));
-    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon03.bmp"));
-    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon04.bmp"));
-    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon05.bmp"));
-    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon06.bmp"));
-    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon07.bmp"));
-    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon08.bmp"));
-    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon09.bmp"));
-    m_internal_toons.push_back(texture_loader::load("mmd-viewer/mmd/toon10.bmp"));
+    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon01.bmp"));
+    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon02.bmp"));
+    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon03.bmp"));
+    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon04.bmp"));
+    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon05.bmp"));
+    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon06.bmp"));
+    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon07.bmp"));
+    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon08.bmp"));
+    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon09.bmp"));
+    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon10.bmp"));
 }
 
 void mmd_viewer::initialize_scene()
@@ -123,4 +123,4 @@ void mmd_viewer::resize()
     auto& main_camera = get_world().get_component<camera_component>(m_camera);
     main_camera.render_targets[0] = m_swapchain.get();
 }
-} // namespace violet::sample
+} // namespace violet

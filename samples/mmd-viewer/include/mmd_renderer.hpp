@@ -2,7 +2,7 @@
 
 #include "graphics/renderer.hpp"
 
-namespace violet::sample
+namespace violet
 {
 class mmd_renderer : public renderer
 {
@@ -23,4 +23,4 @@ private:
     rdg_buffer* m_command_buffer{nullptr};
     rdg_buffer* m_count_buffer{nullptr};
 };
-} // namespace violet::sample
+} // namespace violet

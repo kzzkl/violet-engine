@@ -2,6 +2,7 @@
 
 #include "vk_common.hpp"
 #include <memory>
+#include <mutex>
 #include <span>
 
 namespace violet::vk
@@ -121,6 +122,8 @@ private:
     std::size_t m_frame_count{0};
     std::size_t m_frame_resource_count{0};
     std::size_t m_frame_resource_index{0};
+
+    std::mutex m_mutex;
 
 #ifndef NDEUBG
     VkDebugUtilsMessengerEXT m_debug_messenger{VK_NULL_HANDLE};

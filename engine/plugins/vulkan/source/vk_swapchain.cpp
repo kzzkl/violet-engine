@@ -12,26 +12,27 @@ vk_swapchain_image::vk_swapchain_image(
     vk_context* context)
     : m_context(context)
 {
-    VkImageViewCreateInfo image_view_info = {};
-    image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    image_view_info.image = image;
-    image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    image_view_info.format = format;
-    image_view_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    image_view_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    image_view_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    image_view_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-    image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_view_info.subresourceRange.baseMipLevel = 0;
-    image_view_info.subresourceRange.levelCount = 1;
-    image_view_info.subresourceRange.baseArrayLayer = 0;
-    image_view_info.subresourceRange.layerCount = 1;
+    VkImageViewCreateInfo image_view_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = format,
+        .subresourceRange =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+    };
 
     vkCreateImageView(m_context->get_device(), &image_view_info, nullptr, &m_image_view);
 
     m_image = image;
     m_format = vk_util::map_format(format);
     m_extent = {extent.width, extent.height};
+    m_hash = hash::city_hash_64(&m_image_view, sizeof(VkImageView));
 }
 
 vk_swapchain_image::~vk_swapchain_image()
@@ -153,20 +154,24 @@ void vk_swapchain::resize(std::uint32_t width, std::uint32_t height)
         &present_mode_count,
         present_modes.data());
 
-    VkSwapchainCreateInfoKHR swapchain_info = {};
-    swapchain_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    swapchain_info.surface = m_surface;
-    swapchain_info.imageArrayLayers = 1;
-    swapchain_info.imageUsage = vk_util::map_image_usage_flags(m_flags);
+    VkSwapchainCreateInfoKHR swapchain_info = {
+        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .surface = m_surface,
+        .imageFormat = formats[0].format,
+        .imageColorSpace = formats[0].colorSpace,
+        .imageArrayLayers = 1,
+        .imageUsage = vk_util::map_image_usage_flags(m_flags),
+    };
 
-    swapchain_info.minImageCount = capabilities.minImageCount + 1;
     if (capabilities.maxImageCount > 0 && swapchain_info.minImageCount > capabilities.maxImageCount)
     {
         swapchain_info.minImageCount = capabilities.maxImageCount;
     }
+    else
+    {
+        swapchain_info.minImageCount = capabilities.minImageCount + 1;
+    }
 
-    swapchain_info.imageFormat = formats[0].format;
-    swapchain_info.imageColorSpace = formats[0].colorSpace;
     for (auto& format : formats)
     {
         if (format.format == VK_FORMAT_B8G8R8A8_SRGB &&

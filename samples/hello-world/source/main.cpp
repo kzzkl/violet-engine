@@ -14,7 +14,7 @@
 #include <fstream>
 #include <thread>
 
-namespace violet::sample
+namespace violet
 {
 class sample_pass : public rdg_render_pass
 {
@@ -277,7 +277,7 @@ private:
 
     float m_rotate = 0.0f;
 };
-} // namespace violet::sample
+} // namespace violet
 
 int main()
 {

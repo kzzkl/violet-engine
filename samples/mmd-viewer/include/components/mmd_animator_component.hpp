@@ -3,7 +3,7 @@
 #include "bezier.hpp"
 #include <vector>
 
-namespace violet::sample
+namespace violet
 {
 struct mmd_animation_key
 {
@@ -52,4 +52,4 @@ struct mmd_animator_component
     std::vector<mmd_motion> motions;
     std::vector<mmd_morph> morphs;
 };
-} // namespace violet::sample
+} // namespace violet

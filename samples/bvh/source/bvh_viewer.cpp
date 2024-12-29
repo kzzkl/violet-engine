@@ -14,7 +14,7 @@
 #include "window/window.hpp"
 #include <random>
 
-namespace violet::sample
+namespace violet
 
 {
 bvh_viewer::bvh_viewer() : core::system_base("bvh_viewer")
@@ -349,4 +349,4 @@ void bvh_viewer::remove_cube()
 
     m_cubes.pop_back();
 }
-} // namespace violet::sample
+} // namespace violet

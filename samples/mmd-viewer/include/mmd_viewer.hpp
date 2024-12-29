@@ -4,7 +4,7 @@
 #include "graphics/renderer.hpp"
 #include "mmd_loader.hpp"
 
-namespace violet::sample
+namespace violet
 {
 class mmd_debug;
 class mmd_viewer : public engine_system
@@ -35,4 +35,4 @@ private:
 
     std::vector<rhi_ptr<rhi_texture>> m_internal_toons;
 };
-} // namespace violet::sample
+} // namespace violet

@@ -20,119 +20,8 @@
 #include "task/task_graph_printer.hpp"
 #include "window/window_system.hpp"
 
-namespace violet::sample
+namespace violet
 {
-/*class color_pipeline : public render_pipeline
-{
-public:
-    color_pipeline(std::string_view name, renderer* context) : render_pipeline(name, context)
-    {
-        set_shader("physics/shaders/basic.vs", "physics/shaders/basic.fs");
-        set_vertex_attributes({
-            {"position", RHI_RESOURCE_FORMAT_R32G32B32_FLOAT},
-            {"color",    RHI_RESOURCE_FORMAT_R32G32B32_FLOAT}
-        });
-        set_cull_mode(RHI_CULL_MODE_NONE);
-
-        rhi_parameter_layout* material_layout = context->add_parameter_layout(
-            "color pipeline",
-            {
-                {RHI_PARAMETER_TYPE_TEXTURE, 1}
-        });
-
-        set_parameter_layouts({
-            {context->get_parameter_layout("violet mesh"),   RENDER_PIPELINE_PARAMETER_TYPE_MESH    },
-            {material_layout,                                RENDER_PIPELINE_PARAMETER_TYPE_MATERIAL},
-            {context->get_parameter_layout("violet camera"),
-             RENDER_PIPELINE_PARAMETER_TYPE_CAMERA                                                  }
-        });
-    }
-
-private:
-    void render(rhi_render_command* command, render_data& data)
-    {
-        command->set_render_parameter(2, data.camera);
-        for (render_mesh& mesh : data.meshes)
-        {
-            command->set_vertex_buffers(mesh.vertex_buffers.data(), mesh.vertex_buffers.size());
-            command->set_index_buffer(mesh.index_buffer);
-            command->set_render_parameter(0, mesh.transform);
-            command->set_render_parameter(1, mesh.material);
-            command->draw_indexed(0, 36, 0);
-        }
-    }
-};
-
-class physics_debug : public pei_debug_draw
-{
-public:
-    physics_debug(
-        render_graph* render_graph,
-        render_subpass* debug_subpass,
-        renderer* renderer,
-        world& world)
-        : m_position(2048),
-          m_color(2048)
-    {
-        render_pipeline* pipeline = debug_subpass->add_pipeline<debug_pipeline>("debug");
-        material_layout* layout = render_graph->add_material_layout("debug");
-        layout->add_pipeline(pipeline);
-
-        material* material = layout->add_material("debug");
-        m_geometry = std::make_unique<geometry>(renderer);
-
-        m_geometry->add_attribute(
-            "position",
-            m_position,
-            RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_HOST_VISIBLE);
-        m_geometry->add_attribute(
-            "color",
-            m_color,
-            RHI_BUFFER_FLAG_VERTEX | RHI_BUFFER_FLAG_HOST_VISIBLE);
-        m_position.clear();
-        m_color.clear();
-
-        m_object = std::make_unique<actor>("physics debug", world);
-        auto [transform_ptr, mesh_ptr] = m_object->add<transform, mesh>();
-
-        mesh_ptr->set_geometry(m_geometry.get());
-        mesh_ptr->add_submesh(0, 0, 0, 0, material);
-    }
-
-    void tick()
-    {
-        component_ptr<mesh> mesh_ptr = m_object->get<mesh>();
-        std::memcpy(
-            mesh_ptr->get_geometry()->get_vertex_buffer("position")->get_buffer(),
-            m_position.data(),
-            m_position.size() * sizeof(float3));
-        std::memcpy(
-            mesh_ptr->get_geometry()->get_vertex_buffer("color")->get_buffer(),
-            m_color.data(),
-            m_color.size() * sizeof(float3));
-        mesh_ptr->set_submesh(0, 0, m_position.size(), 0, 0);
-
-        m_position.clear();
-        m_color.clear();
-    }
-
-    virtual void draw_line(const float3& start, const float3& end, const float3& color) override
-    {
-        m_position.push_back(start);
-        m_position.push_back(end);
-        m_color.push_back(color);
-        m_color.push_back(color);
-    }
-
-private:
-    std::unique_ptr<geometry> m_geometry;
-
-    std::unique_ptr<actor> m_object;
-
-    std::vector<float3> m_position;
-    std::vector<float3> m_color;
-};*/
-
 class physics_demo : public engine_system
 {
 public:
@@ -337,11 +226,11 @@ private:
     rhi_ptr<rhi_swapchain> m_swapchain;
     std::unique_ptr<renderer> m_renderer;
 };
-} // namespace violet::sample
+} // namespace violet
 
 int main()
 {
-    violet::engine::initialize("physics/config");
+    violet::engine::initialize("assets/config/physics.json");
     violet::engine::install<violet::ecs_command_system>();
     violet::engine::install<violet::hierarchy_system>();
     violet::engine::install<violet::transform_system>();
@@ -350,7 +239,7 @@ int main()
     violet::engine::install<violet::graphics_system>();
     violet::engine::install<violet::physics_system>();
     violet::engine::install<violet::control_system>();
-    violet::engine::install<violet::sample::physics_demo>();
+    violet::engine::install<violet::physics_demo>();
 
     violet::engine::run();
 

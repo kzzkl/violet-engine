@@ -1,7 +1,7 @@
 #include "bezier.hpp"
 #include "math/vector.hpp"
 
-namespace violet::sample
+namespace violet
 {
 float bezier::evaluate(float x, float precision) const noexcept
 {
@@ -67,4 +67,4 @@ float bezier::sample_y(float t) const noexcept
 
     return t3 + 3 * t2 * it * p2[1] + 3 * t * it2 * p1[1];
 }
-} // namespace violet::sample
+} // namespace violet

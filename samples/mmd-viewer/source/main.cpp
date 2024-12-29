@@ -14,7 +14,7 @@ int main()
 {
     // https://github.com/benikabocha/saba
 
-    violet::engine::initialize("mmd-viewer/config");
+    violet::engine::initialize("assets/config/mmd-viewer.json");
     violet::engine::install<violet::ecs_command_system>();
     violet::engine::install<violet::hierarchy_system>();
     violet::engine::install<violet::transform_system>();
@@ -23,8 +23,8 @@ int main()
     violet::engine::install<violet::graphics_system>();
     violet::engine::install<violet::physics_system>();
     violet::engine::install<violet::control_system>();
-    violet::engine::install<violet::sample::mmd_animation>();
-    violet::engine::install<violet::sample::mmd_viewer>();
+    violet::engine::install<violet::mmd_animation>();
+    violet::engine::install<violet::mmd_viewer>();
 
     violet::engine::run();
 

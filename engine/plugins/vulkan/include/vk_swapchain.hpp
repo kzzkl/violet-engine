@@ -53,6 +53,11 @@ public:
         return 1;
     }
 
+    std::uint64_t get_hash() const noexcept override
+    {
+        return m_hash;
+    }
+
     VkImage get_image() const noexcept override
     {
         return m_image;
@@ -79,6 +84,7 @@ private:
 
     rhi_format m_format{RHI_FORMAT_UNDEFINED};
     rhi_texture_extent m_extent;
+    std::uint64_t m_hash;
 
     vk_context* m_context{nullptr};
 };
@@ -103,10 +109,12 @@ public:
     {
         return m_swapchain_images[m_swapchain_image_index].get();
     }
+
     std::uint32_t get_image_index() const noexcept
     {
         return m_swapchain_image_index;
     }
+
     VkSwapchainKHR get_swapchain() const noexcept
     {
         return m_swapchain;

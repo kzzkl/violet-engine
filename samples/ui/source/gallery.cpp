@@ -2,7 +2,7 @@
 #include "ui/widgets/node_editor.hpp"
 #include "ui/widgets/panel.hpp"
 
-namespace violet::sample
+namespace violet
 {
 gallery::gallery()
 {
@@ -20,4 +20,4 @@ gallery::gallery()
 
     main_panel->add<node_editor>();
 }
-} // namespace violet::sample
+} // namespace violet
