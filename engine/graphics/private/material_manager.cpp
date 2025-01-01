@@ -1,4 +1,5 @@
 #include "graphics/material_manager.hpp"
+#include "gpu_buffer_uploader.hpp"
 
 namespace violet
 {
@@ -12,7 +13,11 @@ material_manager::material_manager(std::size_t material_buffer_size)
         .size = material_buffer_size,
         .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST,
     });
+
+    m_gpu_buffer_uploader = std::make_unique<gpu_buffer_uploader>();
 }
+
+material_manager::~material_manager() {}
 
 render_id material_manager::register_material(material* material, std::uint32_t& constant_address)
 {
@@ -65,7 +70,7 @@ bool material_manager::update()
         auto& material_info = m_materials[material_id];
         if (material_info.material != nullptr)
         {
-            m_gpu_buffer_uploader.upload(
+            m_gpu_buffer_uploader->upload(
                 m_material_buffer.get(),
                 material_info.material->get_constant_data(),
                 material_info.material->get_constant_size(),
@@ -98,7 +103,7 @@ void material_manager::record(rhi_command* command)
         nullptr,
         0);
 
-    m_gpu_buffer_uploader.record(command);
+    m_gpu_buffer_uploader->record(command);
 
     barrier.src_access = RHI_ACCESS_TRANSFER_WRITE;
     barrier.dst_access = RHI_ACCESS_SHADER_READ;

@@ -129,11 +129,7 @@ void task_executor::execute_main_thread_task(std::size_t task_count)
 
         current->execute();
         current->get_graph()->notify_task_complete();
-
-        for (task_wrapper* successor : current->successors)
-        {
-            execute_task(successor);
-        }
+        on_task_completed(current);
 
         --task_count;
     }

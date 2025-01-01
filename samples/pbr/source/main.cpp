@@ -135,7 +135,7 @@ private:
 
         auto& light_transform = world.get_component<transform_component>(m_light);
         light_transform.set_position({10.0f, 10.0f, 10.0f});
-        light_transform.lookat({0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f});
+        light_transform.lookat({0.0f, 0.0f, 0.0f});
 
         auto& main_light = world.get_component<light_component>(m_light);
         main_light.type = LIGHT_DIRECTIONAL;

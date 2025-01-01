@@ -1,4 +1,4 @@
-#include "graphics/gpu_buffer_uploader.hpp"
+#include "gpu_buffer_uploader.hpp"
 #include "graphics/render_device.hpp"
 
 namespace violet

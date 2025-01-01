@@ -1,4 +1,4 @@
-#include "deferred_renderer_imgui.hpp"
+#include "imgui_pass.hpp"
 #include "imgui.h"
 
 namespace violet
@@ -43,26 +43,31 @@ imgui_pass::imgui_pass()
     static constexpr std::size_t max_index_count = 32ull * 1024;
 
     auto& device = render_device::instance();
-    m_position = device.create_buffer({
-        .size = sizeof(vec2f) * max_vertex_count,
-        .flags = RHI_BUFFER_VERTEX | RHI_BUFFER_HOST_VISIBLE,
-    });
-    m_texcoord = device.create_buffer({
-        .size = sizeof(vec2f) * max_vertex_count,
-        .flags = RHI_BUFFER_VERTEX | RHI_BUFFER_HOST_VISIBLE,
-    });
-    m_color = device.create_buffer({
-        .size = sizeof(std::uint32_t) * max_vertex_count,
-        .flags = RHI_BUFFER_VERTEX | RHI_BUFFER_HOST_VISIBLE,
-    });
-    m_index = device.create_buffer({
-        .size = sizeof(std::uint32_t) * max_index_count,
-        .flags = RHI_BUFFER_INDEX | RHI_BUFFER_HOST_VISIBLE,
-        .index =
-            {
-                .size = sizeof(std::uint32_t),
-            },
-    });
+    m_geometries.resize(device.get_frame_resource_count());
+
+    for (auto& geometry : m_geometries)
+    {
+        geometry.position = device.create_buffer({
+            .size = sizeof(vec2f) * max_vertex_count,
+            .flags = RHI_BUFFER_VERTEX | RHI_BUFFER_HOST_VISIBLE,
+        });
+        geometry.texcoord = device.create_buffer({
+            .size = sizeof(vec2f) * max_vertex_count,
+            .flags = RHI_BUFFER_VERTEX | RHI_BUFFER_HOST_VISIBLE,
+        });
+        geometry.color = device.create_buffer({
+            .size = sizeof(std::uint32_t) * max_vertex_count,
+            .flags = RHI_BUFFER_VERTEX | RHI_BUFFER_HOST_VISIBLE,
+        });
+        geometry.index = device.create_buffer({
+            .size = sizeof(std::uint32_t) * max_index_count,
+            .flags = RHI_BUFFER_INDEX | RHI_BUFFER_HOST_VISIBLE,
+            .index =
+                {
+                    .size = sizeof(std::uint32_t),
+                },
+        });
+    }
 }
 
 void imgui_pass::add(render_graph& graph, const parameter& parameter)
@@ -78,6 +83,7 @@ void imgui_pass::add(render_graph& graph, const parameter& parameter)
         [&, material_parameter](rdg_command& command)
         {
             auto& device = render_device::instance();
+            auto& geometry = m_geometries[device.get_frame_resource_index()];
 
             rdg_render_pipeline pipeline = {
                 .vertex_shader = device.get_shader<imgui_vs>(),
@@ -98,12 +104,12 @@ void imgui_pass::add(render_graph& graph, const parameter& parameter)
             command.set_parameter(1, material_parameter);
 
             std::vector<rhi_buffer*> vertex_buffers = {
-                m_position.get(),
-                m_texcoord.get(),
-                m_color.get(),
+                geometry.position.get(),
+                geometry.texcoord.get(),
+                geometry.color.get(),
             };
             command.set_vertex_buffers(vertex_buffers);
-            command.set_index_buffer(m_index.get());
+            command.set_index_buffer(geometry.index.get());
 
             for (std::size_t i = 0; i < m_draw_calls.size(); ++i)
             {
@@ -122,6 +128,9 @@ void imgui_pass::add(render_graph& graph, const parameter& parameter)
 
 void imgui_pass::update_vertex()
 {
+    auto& device = render_device::instance();
+    auto& geometry = m_geometries[device.get_frame_resource_index()];
+
     const auto* data = ImGui::GetDrawData();
 
     std::size_t vertex_counter = 0;
@@ -142,10 +151,10 @@ void imgui_pass::update_vertex()
 
     ImVec2 clip_off = data->DisplayPos;
 
-    auto* position = static_cast<vec2f*>(m_position->get_buffer_pointer());
-    auto* texcoord = static_cast<vec2f*>(m_texcoord->get_buffer_pointer());
-    auto* color = static_cast<std::uint32_t*>(m_color->get_buffer_pointer());
-    auto* index = static_cast<std::uint32_t*>(m_index->get_buffer_pointer());
+    auto* position = static_cast<vec2f*>(geometry.position->get_buffer_pointer());
+    auto* texcoord = static_cast<vec2f*>(geometry.texcoord->get_buffer_pointer());
+    auto* color = static_cast<std::uint32_t*>(geometry.color->get_buffer_pointer());
+    auto* index = static_cast<std::uint32_t*>(geometry.index->get_buffer_pointer());
 
     for (int i = 0; i < data->CmdListsCount; ++i)
     {
@@ -171,7 +180,7 @@ void imgui_pass::update_vertex()
 
         for (int j = 0; j < list->IdxBuffer.Size; ++j)
         {
-            *index = list->IdxBuffer[j] + vertex_counter;
+            *index = list->IdxBuffer[j];
             ++index;
         }
 

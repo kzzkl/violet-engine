@@ -11,7 +11,7 @@ namespace violet
 class task_graph_printer
 {
 public:
-    static void print(const task_graph& graph)
+    static void print(const task_graph& graph, bool print_group = true)
     {
         std::cout << "flowchart LR\n";
 
@@ -45,7 +45,7 @@ public:
 
             task_info info = {};
 
-            if (task->get_name().ends_with(task_group::group_begin_suffix))
+            if (print_group && task->get_name().ends_with(task_group::group_begin_suffix))
             {
                 std::string_view group_name = task->get_name().substr(
                     0,
@@ -55,7 +55,7 @@ public:
                 info.name = std::string(group_name.data(), group_name.size());
                 info.is_group_begin = true;
             }
-            else if (task->get_name().ends_with(task_group::group_end_suffix))
+            else if (print_group && task->get_name().ends_with(task_group::group_end_suffix))
             {
                 std::string_view group_name = task->get_name().substr(
                     0,

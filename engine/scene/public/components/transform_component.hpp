@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ecs/component.hpp"
+#include "math/matrix.hpp"
 #include "math/quaternion.hpp"
 
 namespace violet
@@ -59,7 +60,7 @@ public:
         return m_scale;
     }
 
-    void lookat(const vec3f& target, const vec3f& up)
+    void lookat(const vec3f& target, const vec3f& up = {0.0f, 1.0f, 0.0f})
     {
         vec4f_simd t = math::load(target);
         vec4f_simd p = math::load(m_position);
@@ -139,6 +140,17 @@ struct transform_world_component
     vec3f get_position() const
     {
         return vec3f{matrix[3][0], matrix[3][1], matrix[3][2]};
+    }
+
+    vec3f get_forward() const
+    {
+        vec4f_simd forward = vector::set(0.0f, 0.0f, 1.0f, 0.0f);
+        mat4f_simd m = math::load(matrix);
+        forward = matrix::mul(forward, m);
+
+        vec3f result;
+        math::store(forward, result);
+        return result;
     }
 };
 

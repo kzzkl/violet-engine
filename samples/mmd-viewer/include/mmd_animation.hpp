@@ -18,17 +18,18 @@ public:
     void update(bool after_physics);
 
 private:
-    void evaluate_motion(
+    static void evaluate_motion(
         mmd_skeleton_component& skeleton,
         mmd_animator_component& animator,
         float t,
         float weight);
-    void evaluate_ik(
+    static void evaluate_ik(
         mmd_skeleton_component& skeleton,
         mmd_animator_component& animator,
         float t,
         float weight);
-    void evaluate_morph(morph_component& morph, mmd_animator_component& animator, float t);
+    static void evaluate_morph(morph_component& morph, mmd_animator_component& animator, float t);
+
     void update_inherit(
         mmd_bone& bone,
         mmd_motion& motion,

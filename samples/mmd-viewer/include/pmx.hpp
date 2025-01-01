@@ -46,6 +46,7 @@ enum pmx_draw_flag : std::uint8_t
     PMX_DRAW_FLAG_POINT_DRAWING = 0x40,
     PMX_DRAW_FLAG_LINE_DRAWING = 0x80,
 };
+using pmx_draw_flags = std::uint8_t;
 
 enum pmx_environment_blend_mode : std::uint8_t
 {
@@ -70,7 +71,7 @@ struct pmx_material
     vec3f specular;
     float specular_strength;
     vec3f ambient;
-    pmx_draw_flag flag;
+    pmx_draw_flags flags;
     vec4f outline_color;
     float outline_width;
 
@@ -326,7 +327,7 @@ class pmx
 public:
     pmx();
 
-    bool load(std::string_view path);
+    bool load(std::string_view path, bool flip_winding = true);
 
     struct submesh
     {
@@ -388,7 +389,6 @@ private:
     bool load_display(std::ifstream& fin);
     bool load_physics(std::ifstream& fin);
 
-    std::int32_t read_index(std::ifstream& fin, std::uint8_t size) const;
-    std::string read_text(std::ifstream& fin) const;
+    bool m_flip_winding;
 };
 } // namespace violet

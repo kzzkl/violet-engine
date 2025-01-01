@@ -11,8 +11,8 @@ target_include_directories(imgui
     ${VIOLET_THIRDPARTY_DIR}/imgui)
 
 add_library(${PROJECT_NAME} STATIC
-    ./private/deferred_renderer_imgui.cpp
     ./private/gltf_loader.cpp
+    ./private/imgui_pass.cpp
     ./private/imgui_system.cpp)
 add_library(violet::sample-base ALIAS ${PROJECT_NAME})
 

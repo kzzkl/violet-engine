@@ -185,33 +185,33 @@ bool mmd_animation::initialize(const dictionary& config)
     auto& task_graph = get_task_graph();
 
     auto& transform_group = task_graph.get_group("Transform");
-    auto& animation_phase_1 = task_graph.add_task()
-                                  .set_name("MMD Animation Phase 1")
-                                  .add_dependency(transform_group)
-                                  .set_execute(
-                                      [this]()
-                                      {
-                                          static float total_time = 0.0f;
-                                          total_time += get_timer().get_frame_delta();
-                                          evaluate(total_time * 30.0f);
-                                          update(false);
+    auto& animation_phase_1 = task_graph.add_task();
+    animation_phase_1.set_name("MMD Animation Phase 1")
+        .add_dependency(transform_group)
+        .set_execute(
+            [this]()
+            {
+                static float total_time = 0.0f;
+                total_time += get_timer().get_frame_delta();
+                evaluate(total_time * 30.0f);
+                update(false);
 
-                                          get_system<transform_system>().update_transform();
-                                      });
+                get_system<transform_system>().update_transform();
+            });
 
     auto& physics_group = task_graph.get_group("Physics");
     physics_group.add_dependency(animation_phase_1);
 
-    auto& animation_phase_2 = task_graph.add_task()
-                                  .set_name("MMD Animation Phase 2")
-                                  .add_dependency(physics_group)
-                                  .set_execute(
-                                      [this]()
-                                      {
-                                          update(true);
+    auto& animation_phase_2 = task_graph.add_task();
+    animation_phase_2.set_name("MMD Animation Phase 2")
+        .add_dependency(physics_group)
+        .set_execute(
+            [this]()
+            {
+                update(true);
 
-                                          get_system<transform_system>().update_transform();
-                                      });
+                get_system<transform_system>().update_transform();
+            });
 
     auto& rendering_group = task_graph.get_group("Rendering");
     rendering_group.add_dependency(animation_phase_2);
@@ -302,8 +302,6 @@ void mmd_animation::evaluate_motion(
     float t,
     float weight)
 {
-    auto& world = get_world();
-
     for (auto& bone : skeleton.bones)
     {
         bone.position = bone.initial_position;

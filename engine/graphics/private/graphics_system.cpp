@@ -2,6 +2,7 @@
 #include "components/camera_component.hpp"
 #include "components/camera_meta_component.hpp"
 #include "components/light_component.hpp"
+#include "components/light_meta_component.hpp"
 #include "components/mesh_component.hpp"
 #include "components/mesh_meta_component.hpp"
 #include "components/morph_component.hpp"
@@ -64,13 +65,13 @@ bool graphics_system::initialize(const dictionary& config)
 
     auto& post_update_group = task_graph.get_group("PostUpdate");
     auto& transform_group = task_graph.get_group("Transform");
-    auto& rendering_group = task_graph.add_group()
-                                .set_name("Rendering")
-                                .set_group(post_update_group)
-                                .add_dependency(transform_group);
+    auto& rendering_group = task_graph.add_group();
+    rendering_group.set_name("Rendering")
+        .set_group(post_update_group)
+        .add_dependency(transform_group);
 
-    auto& update_mesh_task = task_graph.add_task();
-    update_mesh_task.set_name("Update Mesh")
+    auto& update_scene_task = task_graph.add_task();
+    update_scene_task.set_name("Update Scene")
         .set_group(rendering_group)
         .set_execute(
             [this]()
@@ -78,6 +79,7 @@ bool graphics_system::initialize(const dictionary& config)
                 update_mesh();
                 update_skin();
                 update_skeleton();
+                update_light();
                 update_environment();
             });
 
@@ -93,7 +95,7 @@ bool graphics_system::initialize(const dictionary& config)
     task_graph.add_task()
         .set_name("Frame End")
         .set_group(rendering_group)
-        .add_dependency(update_mesh_task, update_camera_task)
+        .add_dependency(update_scene_task, update_camera_task)
         .set_execute(
             [this]()
             {
@@ -107,6 +109,7 @@ bool graphics_system::initialize(const dictionary& config)
     world.register_component<camera_component>();
     world.register_component<camera_meta_component>();
     world.register_component<light_component>();
+    world.register_component<light_meta_component>();
     world.register_component<skybox_component>();
     world.register_component<skinned_component>();
     world.register_component<skinned_meta_component>();
@@ -197,44 +200,31 @@ void graphics_system::update_mesh()
                 mesh_meta_component& mesh_meta)
             {
                 render_scene* render_scene = get_scene(scene.layer);
-                if (mesh_meta.scene == render_scene)
+                if (mesh_meta.scene != render_scene)
                 {
-                    return;
-                }
-
-                if (mesh_meta.scene != nullptr)
-                {
-                    for (render_id instance : mesh_meta.instances)
+                    if (mesh_meta.scene != nullptr)
                     {
-                        mesh_meta.scene->remove_instance(instance);
+                        for (render_id instance : mesh_meta.instances)
+                        {
+                            mesh_meta.scene->remove_instance(instance);
+                        }
+
+                        mesh_meta.scene->remove_mesh(mesh_meta.mesh);
                     }
 
-                    mesh_meta.scene->remove_mesh(mesh_meta.mesh);
+                    mesh_meta.mesh = render_scene->add_mesh();
+                    render_scene->set_mesh_geometry(mesh_meta.mesh, mesh.geometry);
+
+                    mesh_meta.instances.clear();
+                    mesh_meta.scene = render_scene;
                 }
 
-                mesh_meta.mesh = render_scene->add_mesh({
-                    .model_matrix = transform.matrix,
-                    .geometry = mesh.geometry,
-                });
-
-                for (const auto& submesh : mesh.submeshes)
-                {
-                    render_id instance = render_scene->add_instance(
-                        mesh_meta.mesh,
-                        {
-                            .vertex_offset = submesh.vertex_offset,
-                            .index_offset = submesh.index_offset,
-                            .index_count = submesh.index_count,
-                            .material = submesh.material,
-                        });
-                    mesh_meta.instances.push_back(instance);
-                }
-
-                mesh_meta.scene = render_scene;
+                render_scene->set_mesh_model_matrix(mesh_meta.mesh, transform.matrix);
             },
             [this](auto& view)
             {
-                return view.template is_updated<scene_component>(m_system_version);
+                return view.template is_updated<scene_component>(m_system_version) ||
+                       view.template is_updated<transform_world_component>(m_system_version);
             });
 
     world.get_view().read<mesh_component>().write<mesh_meta_component>().each(
@@ -245,35 +235,36 @@ void graphics_system::update_mesh()
                 return;
             }
 
+            mesh_meta.scene->set_mesh_geometry(mesh_meta.mesh, mesh.geometry);
+
             std::size_t instance_count =
                 std::min(mesh.submeshes.size(), mesh_meta.instances.size());
 
             for (std::size_t i = 0; i < instance_count; ++i)
             {
-                mesh_meta.scene->update_instance(
+                mesh_meta.scene->set_instance_data(
                     mesh_meta.instances[i],
-                    {
-                        .vertex_offset = mesh.submeshes[i].vertex_offset,
-                        .index_offset = mesh.submeshes[i].index_offset,
-                        .index_count = mesh.submeshes[i].index_count,
-                        .material = mesh.submeshes[i].material,
-                    });
+                    mesh.submeshes[i].vertex_offset,
+                    mesh.submeshes[i].index_offset,
+                    mesh.submeshes[i].index_count);
+                mesh_meta.scene->set_instance_material(
+                    mesh_meta.instances[i],
+                    mesh.submeshes[i].material);
             }
 
             for (std::size_t i = instance_count; i < mesh.submeshes.size(); ++i)
             {
-                render_id instance_id = mesh_meta.scene->add_instance(
-                    mesh_meta.mesh,
-                    {
-                        .vertex_offset = mesh.submeshes[i].vertex_offset,
-                        .index_offset = mesh.submeshes[i].index_offset,
-                        .index_count = mesh.submeshes[i].index_count,
-                        .material = mesh.submeshes[i].material,
-                    });
-                mesh_meta.instances.push_back(instance_id);
+                render_id instance = mesh_meta.scene->add_instance(mesh_meta.mesh);
+                mesh_meta.scene->set_instance_data(
+                    instance,
+                    mesh.submeshes[i].vertex_offset,
+                    mesh.submeshes[i].index_offset,
+                    mesh.submeshes[i].index_count);
+                mesh_meta.scene->set_instance_material(instance, mesh.submeshes[i].material);
+                mesh_meta.instances.push_back(instance);
             }
 
-            while (mesh_meta.instances.size() > instance_count)
+            while (mesh_meta.instances.size() > mesh.submeshes.size())
             {
                 mesh_meta.scene->remove_instance(mesh_meta.instances.back());
                 mesh_meta.instances.pop_back();
@@ -282,19 +273,6 @@ void graphics_system::update_mesh()
         [this](auto& view)
         {
             return view.template is_updated<mesh_component>(m_system_version);
-        });
-
-    world.get_view().read<transform_world_component>().write<mesh_meta_component>().each(
-        [](const transform_world_component& transform, mesh_meta_component& mesh_meta)
-        {
-            if (mesh_meta.scene != nullptr)
-            {
-                mesh_meta.scene->update_mesh_model_matrix(mesh_meta.mesh, transform.matrix);
-            }
-        },
-        [this](auto& view)
-        {
-            return view.template is_updated<transform_world_component>(m_system_version);
         });
 }
 
@@ -377,7 +355,7 @@ void graphics_system::update_skin()
 
                 if (mesh_meta.scene != nullptr)
                 {
-                    mesh_meta.scene->update_mesh_geometry(
+                    mesh_meta.scene->set_mesh_geometry(
                         mesh_meta.mesh,
                         skinned_meta.skinned_geometry.get());
                 }
@@ -437,6 +415,50 @@ void graphics_system::update_skeleton()
                 ++buffer;
             }
         });
+}
+
+void graphics_system::update_light()
+{
+    auto& world = get_world();
+
+    world.get_view()
+        .read<scene_component>()
+        .read<light_component>()
+        .read<transform_world_component>()
+        .write<light_meta_component>()
+        .each(
+            [this](
+                const scene_component& scene,
+                const light_component& light,
+                const transform_world_component& transform,
+                light_meta_component& light_meta)
+            {
+                render_scene* render_scene = get_scene(scene.layer);
+
+                if (light_meta.scene != render_scene)
+                {
+                    if (light_meta.scene != nullptr)
+                    {
+                        render_scene->remove_light(light_meta.id);
+                    }
+
+                    light_meta.id = render_scene->add_light();
+                    light_meta.scene = render_scene;
+                }
+
+                render_scene->set_light_data(
+                    light_meta.id,
+                    light.type,
+                    light.color,
+                    transform.get_position(),
+                    transform.get_forward());
+            },
+            [this](auto& view)
+            {
+                return view.template is_updated<light_component>(m_system_version) ||
+                       view.template is_updated<scene_component>(m_system_version) ||
+                       view.template is_updated<transform_world_component>(m_system_version);
+            });
 }
 
 void graphics_system::update_environment()
@@ -577,7 +599,7 @@ void graphics_system::skinning()
 
     rhi_command* command = device.allocate_command();
 
-    command->begin_label("morphing");
+    command->begin_label("skinning");
 
     for (const auto& skinning_data : skinning_queue)
     {

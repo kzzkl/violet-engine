@@ -1,8 +1,8 @@
 #pragma once
 
 #include "core/engine_system.hpp"
-#include "graphics/renderer.hpp"
 #include "mmd_loader.hpp"
+#include "mmd_renderer.hpp"
 
 namespace violet
 {
@@ -19,10 +19,10 @@ private:
     void initialize_render();
     void initialize_scene();
 
-    void tick(float delta);
+    void tick();
     void resize();
 
-    std::unique_ptr<renderer> m_renderer;
+    std::unique_ptr<mmd_renderer> m_renderer;
     rhi_ptr<rhi_swapchain> m_swapchain;
 
     entity m_camera;

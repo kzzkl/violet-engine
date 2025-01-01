@@ -1,12 +1,15 @@
 #include "mmd_viewer.hpp"
 #include "components/camera_component.hpp"
+#include "components/light_component.hpp"
 #include "components/mmd_skeleton_component.hpp"
+#include "components/morph_component.hpp"
 #include "components/orbit_control_component.hpp"
 #include "components/scene_component.hpp"
 #include "components/transform_component.hpp"
 #include "core/engine.hpp"
-#include "graphics/renderers/deferred_renderer.hpp"
 #include "graphics/tools/texture_loader.hpp"
+#include "imgui.h"
+#include "task/task_graph_printer.hpp"
 #include "window/window_system.hpp"
 
 namespace violet
@@ -38,6 +41,22 @@ bool mmd_viewer::initialize(const dictionary& config)
             engine::exit();
         });
 
+    task_graph& task_graph = get_task_graph();
+    task_group& update = task_graph.get_group("Update");
+
+    task_graph.add_task()
+        .set_name("MMD Tick")
+        .set_group(update)
+        .set_options(TASK_OPTION_MAIN_THREAD)
+        .set_execute(
+            [this]()
+            {
+                tick();
+            });
+
+    task_graph.reset();
+    task_graph_printer::print(task_graph);
+
     initialize_render();
     initialize_scene();
 
@@ -59,7 +78,7 @@ void mmd_viewer::initialize_render()
         .flags = RHI_TEXTURE_TRANSFER_DST | RHI_TEXTURE_RENDER_TARGET,
         .window_handle = get_system<window_system>().get_handle(),
     });
-    m_renderer = std::make_unique<deferred_renderer>();
+    m_renderer = std::make_unique<mmd_renderer>();
 
     m_internal_toons.push_back(texture_loader::load("assets/mmd/toon01.bmp"));
     m_internal_toons.push_back(texture_loader::load("assets/mmd/toon02.bmp"));
@@ -91,9 +110,19 @@ void mmd_viewer::initialize_scene()
     camera_control.target = {0.0f, 10.0f, 0.0f};
     camera_control.r = 40.0f;
 
-    auto& main_camera = world.get_component<camera_component>(m_camera);
-    main_camera.renderer = m_renderer.get();
-    main_camera.render_targets = {m_swapchain.get()};
+    auto& camera = world.get_component<camera_component>(m_camera);
+    camera.renderer = m_renderer.get();
+    camera.render_targets = {m_swapchain.get()};
+
+    m_light = world.create();
+    world.add_component<light_component, transform_component, scene_component>(m_light);
+
+    auto& light_transform = world.get_component<transform_component>(m_light);
+    light_transform.lookat({-1.0f, -1.0f, 1.0f});
+
+    auto& light = world.get_component<light_component>(m_light);
+    light.type = LIGHT_DIRECTIONAL;
+    light.color = {1.0f, 1.0f, 1.0f};
 
     std::vector<rhi_texture*> internal_toons(m_internal_toons.size());
     std::transform(
@@ -112,7 +141,44 @@ void mmd_viewer::initialize_scene()
     }
 }
 
-void mmd_viewer::tick(float delta) {}
+void mmd_viewer::tick()
+{
+    auto& world = get_world();
+
+    if (ImGui::CollapsingHeader("Light"))
+    {
+        bool dirty = false;
+
+        static vec3f rotation;
+        dirty = ImGui::SliderFloat("Rotate X", &rotation.x, 0.0f, math::PI) || dirty;
+        dirty = ImGui::SliderFloat("Rotate Y", &rotation.y, 0.0f, math::TWO_PI) || dirty;
+
+        if (dirty)
+        {
+            auto& transform = world.get_component<transform_component>(m_light);
+
+            vec4f_simd q = quaternion::from_euler(math::load(rotation));
+            transform.set_rotation(q);
+        }
+
+        static vec3f color = {};
+        if (ImGui::ColorEdit3("Color", &color.r))
+        {
+            auto& light = world.get_component<light_component>(m_light);
+            light.color = color;
+        }
+    }
+
+    if (ImGui::CollapsingHeader("Morph"))
+    {
+        auto& morph = world.get_component<morph_component>(m_model_data.root);
+        for (std::size_t i = 0; i < morph.weights.size(); ++i)
+        {
+            std::string t = std::to_string(i);
+            ImGui::SliderFloat(t.c_str(), &morph.weights[i], 0.0f, 1.0f);
+        }
+    }
+}
 
 void mmd_viewer::resize()
 {

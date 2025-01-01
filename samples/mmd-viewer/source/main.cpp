@@ -2,6 +2,7 @@
 #include "core/engine.hpp"
 #include "ecs_command/ecs_command_system.hpp"
 #include "graphics/graphics_system.hpp"
+#include "imgui_system.hpp"
 #include "mmd_animation.hpp"
 #include "mmd_viewer.hpp"
 #include "physics/physics_system.hpp"
@@ -23,6 +24,7 @@ int main()
     violet::engine::install<violet::graphics_system>();
     violet::engine::install<violet::physics_system>();
     violet::engine::install<violet::control_system>();
+    violet::engine::install<violet::imgui_system>();
     violet::engine::install<violet::mmd_animation>();
     violet::engine::install<violet::mmd_viewer>();
 

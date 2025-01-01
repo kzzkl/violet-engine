@@ -47,11 +47,14 @@ float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
 
     float NdotV = saturate(dot(N, V));
 
-    float3 direct_lighting = 0.0;
-    {
-        float3 light = float3(1.0, 1.0, 1.0);
+    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
 
-        float3 L = normalize(float3(1.0, 1.0, -1.0));
+    float3 direct_lighting = 0.0;
+    for (int i = 0; i < scene.light_count; ++i)
+    {
+        light_data light = lights[i];
+
+        float3 L = -light.direction;
         float3 H = normalize(L + V);
 
         float NdotL = saturate(dot(N, L));
@@ -65,7 +68,7 @@ float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
         float3 specular = d * vis * f;
         float3 diffuse = data.albedo / PI * (1.0 - f);
 
-        direct_lighting += (specular + diffuse) * NdotL * light;
+        direct_lighting += (specular + diffuse) * NdotL * light.color;
     }
 
     float3 ambient_lighting = 0.0;

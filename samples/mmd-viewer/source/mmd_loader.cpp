@@ -130,6 +130,7 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
             TEXTURE_LOAD_OPTION_GENERATE_MIPMAPS | TEXTURE_LOAD_OPTION_SRGB));
     }
 
+    std::vector<std::pair<material*, material*>> materials;
     for (const auto& pmx_material : m_pmx.materials)
     {
         // Main material.
@@ -160,29 +161,41 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
         material->set_environment_blend(pmx_material.environment_blend_mode);
         scene.materials.push_back(std::move(material));
 
+        materials.emplace_back(scene.materials.back().get(), nullptr);
+
         // Outline material.
-        auto outline_material = std::make_unique<mmd_outline_material>();
-        outline_material->set_outline(pmx_material.outline_color, pmx_material.outline_width);
-        scene.materials.push_back(std::move(outline_material));
+        if (pmx_material.flags & PMX_DRAW_FLAG_HAS_EDGE)
+        {
+            auto outline_material = std::make_unique<mmd_outline_material>();
+            outline_material->set_outline(pmx_material.outline_color, pmx_material.outline_width);
+            scene.materials.push_back(std::move(outline_material));
+
+            materials.back().second = scene.materials.back().get();
+        }
     }
 
     auto& root_mesh = world.get_component<mesh_component>(m_root);
     root_mesh.geometry = scene.geometries[0].get();
     for (const auto& submesh : m_pmx.submeshes)
     {
-        root_mesh.submeshes.push_back({
-            .vertex_offset = 0,
-            .index_offset = static_cast<std::uint32_t>(submesh.index_offset),
-            .index_count = static_cast<std::uint32_t>(submesh.index_count),
-            .material = scene.materials[submesh.material_index * 2 + 0].get(),
-        });
+        auto [main_material, outline_material] = materials[submesh.material_index];
 
         root_mesh.submeshes.push_back({
             .vertex_offset = 0,
             .index_offset = static_cast<std::uint32_t>(submesh.index_offset),
             .index_count = static_cast<std::uint32_t>(submesh.index_count),
-            .material = scene.materials[submesh.material_index * 2 + 1].get(),
+            .material = main_material,
         });
+
+        if (outline_material != nullptr)
+        {
+            root_mesh.submeshes.push_back({
+                .vertex_offset = 0,
+                .index_offset = static_cast<std::uint32_t>(submesh.index_offset),
+                .index_count = static_cast<std::uint32_t>(submesh.index_count),
+                .material = outline_material,
+            });
+        }
     }
 
     auto& root_skinned = world.get_component<skinned_component>(m_root);

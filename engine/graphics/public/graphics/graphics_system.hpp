@@ -21,6 +21,7 @@ private:
     void update_mesh();
     void update_skin();
     void update_skeleton();
+    void update_light();
     void update_environment();
 
     void morphing();

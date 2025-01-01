@@ -7,16 +7,70 @@
 
 namespace violet
 {
+namespace
+{
 template <typename T>
-static void read(std::istream& fin, T& dest)
+void read(std::istream& fin, T& dest)
 {
     fin.read(reinterpret_cast<char*>(&dest), sizeof(T));
 }
 
+std::int32_t read_index(std::ifstream& fin, std::uint8_t size)
+{
+    switch (size)
+    {
+    case 1: {
+        std::uint8_t res;
+        read<std::uint8_t>(fin, res);
+        return res != 0xFF ? static_cast<std::int32_t>(res) : -1;
+    }
+    case 2: {
+        std::uint16_t res;
+        read<std::uint16_t>(fin, res);
+        return res != 0xFFFF ? static_cast<std::int32_t>(res) : -1;
+    }
+    case 4: {
+        std::int32_t res;
+        read<std::int32_t>(fin, res);
+        return res != 0xFFFFFFFF ? static_cast<std::int32_t>(res) : -1;
+    }
+    default:
+        return 0;
+    }
+}
+
+std::string read_text(std::ifstream& fin, std::uint8_t text_encoding)
+{
+    std::int32_t len;
+    read<std::int32_t>(fin, len);
+    if (len > 0)
+    {
+        std::string result;
+        if (text_encoding == 1)
+        {
+            result.resize(len);
+            fin.read(result.data(), len);
+        }
+        else if (text_encoding == 0)
+        {
+            std::u16string str;
+            str.resize(len);
+            fin.read(reinterpret_cast<char*>(str.data()), len);
+            convert<ENCODE_TYPE_UTF16, ENCODE_TYPE_UTF8>(str, result);
+        }
+        return result;
+    }
+
+    return "";
+}
+} // namespace
+
 pmx::pmx() = default;
 
-bool pmx::load(std::string_view path)
+bool pmx::load(std::string_view path, bool flip_winding)
 {
+    m_flip_winding = flip_winding;
+
     std::wstring path_wstring = string_to_wstring(path);
 
     std::ifstream fin(path_wstring, std::ios::binary);
@@ -57,10 +111,10 @@ bool pmx::load_header(std::ifstream& fin)
     read<std::uint8_t>(fin, header.morph_index_size);
     read<std::uint8_t>(fin, header.rigidbody_index_size);
 
-    header.name_jp = read_text(fin);
-    header.name_en = read_text(fin);
-    header.comments_jp = read_text(fin);
-    header.comments_en = read_text(fin);
+    header.name_jp = read_text(fin, header.text_encoding);
+    header.name_en = read_text(fin, header.text_encoding);
+    header.comments_jp = read_text(fin, header.text_encoding);
+    header.comments_en = read_text(fin, header.text_encoding);
 
     return true;
 }
@@ -199,9 +253,12 @@ bool pmx::load_mesh(std::ifstream& fin)
         indexes[i] = read_index(fin, header.vertex_index_size);
     }
 
-    for (std::size_t i = 0; i < indexes.size(); i += 3)
+    if (m_flip_winding)
     {
-        std::swap(indexes[i + 1], indexes[i + 2]);
+        for (std::size_t i = 0; i < indexes.size(); i += 3)
+        {
+            std::swap(indexes[i + 1], indexes[i + 2]);
+        }
     }
 
     return true;
@@ -215,7 +272,7 @@ bool pmx::load_material(std::ifstream& fin, std::string_view root_path)
 
     for (std::int32_t i = 0; i < texture_count; ++i)
     {
-        textures[i] = std::string(root_path) + "/" + read_text(fin);
+        textures[i] = std::string(root_path) + "/" + read_text(fin, header.text_encoding);
     }
 
     std::int32_t material_count;
@@ -224,14 +281,14 @@ bool pmx::load_material(std::ifstream& fin, std::string_view root_path)
 
     for (pmx_material& material : materials)
     {
-        material.name_jp = read_text(fin);
-        material.name_en = read_text(fin);
+        material.name_jp = read_text(fin, header.text_encoding);
+        material.name_en = read_text(fin, header.text_encoding);
 
         read<vec4f>(fin, material.diffuse);
         read<vec3f>(fin, material.specular);
         read<float>(fin, material.specular_strength);
         read<vec3f>(fin, material.ambient);
-        read<pmx_draw_flag>(fin, material.flag);
+        read<pmx_draw_flags>(fin, material.flags);
         read<vec4f>(fin, material.outline_color);
         read<float>(fin, material.outline_width);
         material.texture_index = read_index(fin, header.texture_index_size);
@@ -255,7 +312,7 @@ bool pmx::load_material(std::ifstream& fin, std::string_view root_path)
             return false;
         }
 
-        material.meta_data = read_text(fin);
+        material.meta_data = read_text(fin, header.text_encoding);
         read<std::int32_t>(fin, material.index_count);
     }
 
@@ -281,8 +338,8 @@ bool pmx::load_bone(std::ifstream& fin)
 
     for (pmx_bone& bone : bones)
     {
-        bone.name_jp = read_text(fin);
-        bone.name_en = read_text(fin);
+        bone.name_jp = read_text(fin, header.text_encoding);
+        bone.name_en = read_text(fin, header.text_encoding);
 
         read<vec3f>(fin, bone.position);
         bone.parent_index = read_index(fin, header.bone_index_size);
@@ -363,8 +420,8 @@ bool pmx::load_morph(std::ifstream& fin)
 
     for (pmx_morph& morph : morphs)
     {
-        morph.name_jp = read_text(fin);
-        morph.name_en = read_text(fin);
+        morph.name_jp = read_text(fin, header.text_encoding);
+        morph.name_en = read_text(fin, header.text_encoding);
 
         read<std::uint8_t>(fin, morph.control_panel);
         read<pmx_morph_type>(fin, morph.type);
@@ -469,8 +526,8 @@ bool pmx::load_display(std::ifstream& fin)
 
     for (pmx_display_data& display_frame : display)
     {
-        display_frame.name_jp = read_text(fin);
-        display_frame.name_en = read_text(fin);
+        display_frame.name_jp = read_text(fin, header.text_encoding);
+        display_frame.name_en = read_text(fin, header.text_encoding);
 
         read<std::uint8_t>(fin, display_frame.flag);
 
@@ -506,8 +563,8 @@ bool pmx::load_physics(std::ifstream& fin)
 
     for (pmx_rigidbody& rigidbody : rigidbodies)
     {
-        rigidbody.name_jp = read_text(fin);
-        rigidbody.name_en = read_text(fin);
+        rigidbody.name_jp = read_text(fin, header.text_encoding);
+        rigidbody.name_en = read_text(fin, header.text_encoding);
 
         rigidbody.bone_index = read_index(fin, header.bone_index_size);
         read<std::uint8_t>(fin, rigidbody.group);
@@ -536,8 +593,8 @@ bool pmx::load_physics(std::ifstream& fin)
 
     for (pmx_joint& joint : joints)
     {
-        joint.name_jp = read_text(fin);
-        joint.name_en = read_text(fin);
+        joint.name_jp = read_text(fin, header.text_encoding);
+        joint.name_en = read_text(fin, header.text_encoding);
 
         read<pmx_joint_type>(fin, joint.type);
         joint.rigidbody_a_index = read_index(fin, header.rigidbody_index_size);
@@ -559,54 +616,5 @@ bool pmx::load_physics(std::ifstream& fin)
     }
 
     return true;
-}
-
-std::int32_t pmx::read_index(std::ifstream& fin, std::uint8_t size) const
-{
-    switch (size)
-    {
-    case 1: {
-        std::uint8_t res;
-        read<std::uint8_t>(fin, res);
-        return res != 0xFF ? static_cast<std::int32_t>(res) : -1;
-    }
-    case 2: {
-        std::uint16_t res;
-        read<std::uint16_t>(fin, res);
-        return res != 0xFFFF ? static_cast<std::int32_t>(res) : -1;
-    }
-    case 4: {
-        std::int32_t res;
-        read<std::int32_t>(fin, res);
-        return res != 0xFFFFFFFF ? static_cast<std::int32_t>(res) : -1;
-    }
-    default:
-        return 0;
-    }
-}
-
-std::string pmx::read_text(std::ifstream& fin) const
-{
-    std::int32_t len;
-    read<std::int32_t>(fin, len);
-    if (len > 0)
-    {
-        std::string result;
-        if (header.text_encoding == 1)
-        {
-            result.resize(len);
-            fin.read(result.data(), len);
-        }
-        else if (header.text_encoding == 0)
-        {
-            std::u16string str;
-            str.resize(len);
-            fin.read(reinterpret_cast<char*>(str.data()), len);
-            convert<ENCODE_TYPE_UTF16, ENCODE_TYPE_UTF8>(str, result);
-        }
-        return result;
-    }
-
-    return "";
 }
 } // namespace violet

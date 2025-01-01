@@ -28,10 +28,10 @@ float3 octahedron_to_normal(float2 oct)
 float3 get_position(float depth, float2 texcoord, float4x4 view_projection_inv)
 {
     texcoord.y = 1.0 - texcoord.y;
-    float4 ndc = float4(texcoord * 2.0 - 1.0, depth, 1.0);
-    float4 world_position = mul(view_projection_inv, ndc);
+    float4 position_cs = float4(texcoord * 2.0 - 1.0, depth, 1.0);
+    float4 position_ws = mul(view_projection_inv, position_cs);
 
-    return world_position.xyz / world_position.w;
+    return position_ws.xyz / position_ws.w;
 }
 
 struct data

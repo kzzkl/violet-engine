@@ -33,14 +33,14 @@ bool imgui_system::initialize(const dictionary& config)
                 begin_frame();
             });
 
-    auto& end_task = task_graph.add_task()
-                         .set_name("ImGui End")
-                         .set_group(post_update_group)
-                         .set_execute(
-                             [this]()
-                             {
-                                 end_frame();
-                             });
+    auto& end_task = task_graph.add_task();
+    end_task.set_name("ImGui End")
+        .set_group(post_update_group)
+        .set_execute(
+            []()
+            {
+                ImGui::Render();
+            });
 
     rendering_group.add_dependency(end_task);
 

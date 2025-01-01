@@ -34,7 +34,7 @@ struct instance_data
 
 static const uint LIGHT_DIRECTIONAL = 0;
 
-struct light
+struct light_data
 {
     float3 position;
     uint type;
