@@ -1,24 +1,96 @@
 #include "pmx.hpp"
+#include "common/utility.hpp"
 #include "encode.hpp"
+#include "math/quaternion.hpp"
+#include "math/vector.hpp"
 #include <fstream>
 
-namespace violet::sample
+namespace violet
+{
+namespace
 {
 template <typename T>
-static void read(std::istream& fin, T& dest)
+void read(std::istream& fin, T& dest)
 {
     fin.read(reinterpret_cast<char*>(&dest), sizeof(T));
 }
 
-pmx::pmx(std::string_view path) : m_loaded(false)
+std::int32_t read_index(std::ifstream& fin, std::uint8_t size)
 {
-    std::ifstream fin(path.data(), std::ios::binary);
-    if (fin.is_open() && load_header(fin) && load_mesh(fin) &&
+    switch (size)
+    {
+    case 1: {
+        std::uint8_t res;
+        read<std::uint8_t>(fin, res);
+        return res != 0xFF ? static_cast<std::int32_t>(res) : -1;
+    }
+    case 2: {
+        std::uint16_t res;
+        read<std::uint16_t>(fin, res);
+        return res != 0xFFFF ? static_cast<std::int32_t>(res) : -1;
+    }
+    case 4: {
+        std::int32_t res;
+        read<std::int32_t>(fin, res);
+        return res != 0xFFFFFFFF ? static_cast<std::int32_t>(res) : -1;
+    }
+    default:
+        return 0;
+    }
+}
+
+std::string read_text(std::ifstream& fin, std::uint8_t text_encoding)
+{
+    std::int32_t len;
+    read<std::int32_t>(fin, len);
+    if (len > 0)
+    {
+        std::string result;
+        if (text_encoding == 1)
+        {
+            result.resize(len);
+            fin.read(result.data(), len);
+        }
+        else if (text_encoding == 0)
+        {
+            std::u16string str;
+            str.resize(len);
+            fin.read(reinterpret_cast<char*>(str.data()), len);
+            convert<ENCODE_TYPE_UTF16, ENCODE_TYPE_UTF8>(str, result);
+        }
+        return result;
+    }
+
+    return "";
+}
+} // namespace
+
+pmx::pmx() = default;
+
+bool pmx::load(std::string_view path, bool flip_winding)
+{
+    m_flip_winding = flip_winding;
+
+    std::wstring path_wstring = string_to_wstring(path);
+
+    std::ifstream fin(path_wstring, std::ios::binary);
+    if (!fin.is_open())
+    {
+        return false;
+    }
+
+    bool result = false;
+
+    if (load_header(fin) && load_mesh(fin) &&
         load_material(fin, path.substr(0, path.find_last_of('/'))) && load_bone(fin) &&
         load_morph(fin) && load_display(fin) && load_physics(fin))
-        m_loaded = true;
+    {
+        result = true;
+    }
 
     fin.close();
+
+    return result;
 }
 
 bool pmx::load_header(std::ifstream& fin)
@@ -39,10 +111,10 @@ bool pmx::load_header(std::ifstream& fin)
     read<std::uint8_t>(fin, header.morph_index_size);
     read<std::uint8_t>(fin, header.rigidbody_index_size);
 
-    header.name_jp = read_text(fin);
-    header.name_en = read_text(fin);
-    header.comments_jp = read_text(fin);
-    header.comments_en = read_text(fin);
+    header.name_jp = read_text(fin, header.text_encoding);
+    header.name_en = read_text(fin, header.text_encoding);
+    header.comments_jp = read_text(fin, header.text_encoding);
+    header.comments_en = read_text(fin, header.text_encoding);
 
     return true;
 }
@@ -54,22 +126,26 @@ bool pmx::load_mesh(std::ifstream& fin)
 
     position.resize(vertex_count);
     normal.resize(vertex_count);
-    uv.resize(vertex_count);
+    texcoord.resize(vertex_count);
     skin.resize(vertex_count);
     edge.resize(vertex_count);
 
-    std::vector<std::vector<float4>> add_uv(vertex_count);
+    std::vector<std::vector<vec4f>> add_uv(vertex_count);
     for (auto& v : add_uv)
+    {
         v.resize(header.num_add_vec4);
+    }
 
     for (std::size_t i = 0; i < vertex_count; ++i)
     {
-        read<float3>(fin, position[i]);
-        read<float3>(fin, normal[i]);
-        read<float2>(fin, uv[i]);
+        read<vec3f>(fin, position[i]);
+        read<vec3f>(fin, normal[i]);
+        read<vec2f>(fin, texcoord[i]);
 
         for (std::uint8_t j = 0; j < header.num_add_vec4; ++j)
-            read<float4>(fin, add_uv[i][j]);
+        {
+            read<vec4f>(fin, add_uv[i][j]);
+        }
 
         pmx_vertex_type weight_type;
         read<pmx_vertex_type>(fin, weight_type);
@@ -121,27 +197,26 @@ bool pmx::load_mesh(std::ifstream& fin)
             data.index[1] = read_index(fin, header.bone_index_size);
             read<float>(fin, data.weight[0]);
             data.weight[1] = 1.0f - data.weight[0];
-            read<float3>(fin, data.center);
-            read<float3>(fin, data.r0);
-            read<float3>(fin, data.r1);
+            read<vec3f>(fin, data.center);
+            read<vec3f>(fin, data.r0);
+            read<vec3f>(fin, data.r1);
 
-            float4_simd center = simd::load(data.center);
-            float4_simd r0 = simd::load(data.r0);
-            float4_simd r1 = simd::load(data.r1);
-            float4_simd rw = vector_simd::add(
-                vector_simd::mul(r0, data.weight[0]),
-                vector_simd::mul(r1, data.weight[1]));
-            r0 = vector_simd::add(center, r0);
-            r0 = vector_simd::sub(r0, rw);
-            r0 = vector_simd::add(center, r0);
-            r0 = vector_simd::mul(r0, 0.5f);
-            r1 = vector_simd::add(center, r1);
-            r1 = vector_simd::sub(r1, rw);
-            r1 = vector_simd::add(center, r1);
-            r1 = vector_simd::mul(r1, 0.5f);
+            vec4f_simd center = math::load(data.center);
+            vec4f_simd r0 = math::load(data.r0);
+            vec4f_simd r1 = math::load(data.r1);
+            vec4f_simd rw =
+                vector::add(vector::mul(r0, data.weight[0]), vector::mul(r1, data.weight[1]));
+            r0 = vector::add(center, r0);
+            r0 = vector::sub(r0, rw);
+            r0 = vector::add(center, r0);
+            r0 = vector::mul(r0, 0.5f);
+            r1 = vector::add(center, r1);
+            r1 = vector::sub(r1, rw);
+            r1 = vector::add(center, r1);
+            r1 = vector::mul(r1, 0.5f);
 
-            simd::store(r0, data.r0);
-            simd::store(r1, data.r1);
+            math::store(r0, data.r0);
+            math::store(r1, data.r1);
 
             skin[i][0] = 1;
             skin[i][1] = sdef.size();
@@ -149,6 +224,7 @@ bool pmx::load_mesh(std::ifstream& fin)
             break;
         }
         case PMX_VERTEX_TYPE_QDEF: {
+            // TODO: implement
             read_index(fin, header.bone_index_size);
             read_index(fin, header.bone_index_size);
             read_index(fin, header.bone_index_size);
@@ -170,10 +246,20 @@ bool pmx::load_mesh(std::ifstream& fin)
 
     std::int32_t index_count;
     read<std::int32_t>(fin, index_count);
-    indices.resize(index_count);
+    indexes.resize(index_count);
 
     for (std::int32_t i = 0; i < index_count; ++i)
-        indices[i] = read_index(fin, header.vertex_index_size);
+    {
+        indexes[i] = read_index(fin, header.vertex_index_size);
+    }
+
+    if (m_flip_winding)
+    {
+        for (std::size_t i = 0; i < indexes.size(); i += 3)
+        {
+            std::swap(indexes[i + 1], indexes[i + 2]);
+        }
+    }
 
     return true;
 }
@@ -185,7 +271,9 @@ bool pmx::load_material(std::ifstream& fin, std::string_view root_path)
     textures.resize(texture_count);
 
     for (std::int32_t i = 0; i < texture_count; ++i)
-        textures[i] = std::string(root_path) + "/" + read_text(fin);
+    {
+        textures[i] = std::string(root_path) + "/" + read_text(fin, header.text_encoding);
+    }
 
     std::int32_t material_count;
     read<std::int32_t>(fin, material_count);
@@ -193,27 +281,27 @@ bool pmx::load_material(std::ifstream& fin, std::string_view root_path)
 
     for (pmx_material& material : materials)
     {
-        material.name_jp = read_text(fin);
-        material.name_en = read_text(fin);
+        material.name_jp = read_text(fin, header.text_encoding);
+        material.name_en = read_text(fin, header.text_encoding);
 
-        read<float4>(fin, material.diffuse);
-        read<float3>(fin, material.specular);
+        read<vec4f>(fin, material.diffuse);
+        read<vec3f>(fin, material.specular);
         read<float>(fin, material.specular_strength);
-        read<float3>(fin, material.ambient);
-        read<pmx_draw_flag>(fin, material.flag);
-        read<float4>(fin, material.edge_color);
-        read<float>(fin, material.edge_size);
+        read<vec3f>(fin, material.ambient);
+        read<pmx_draw_flags>(fin, material.flags);
+        read<vec4f>(fin, material.outline_color);
+        read<float>(fin, material.outline_width);
         material.texture_index = read_index(fin, header.texture_index_size);
-        material.sphere_index = read_index(fin, header.texture_index_size);
+        material.environment_index = read_index(fin, header.texture_index_size);
 
-        read<pmx_sphere_mode>(fin, material.sphere_mode);
-        read<pmx_toon_mode>(fin, material.toon_mode);
+        read<pmx_environment_blend_mode>(fin, material.environment_blend_mode);
+        read<pmx_toon_reference>(fin, material.toon_reference);
 
-        if (material.toon_mode == PMX_TOON_MODE_TEXTURE)
+        if (material.toon_reference == PMX_TOON_REFERENCE_TEXTURE)
         {
             material.toon_index = read_index(fin, header.texture_index_size);
         }
-        else if (material.toon_mode == PMX_TOON_MODE_INTERNAL)
+        else if (material.toon_reference == PMX_TOON_REFERENCE_INTERNAL)
         {
             std::uint8_t toon_index;
             read<std::uint8_t>(fin, toon_index);
@@ -224,7 +312,7 @@ bool pmx::load_material(std::ifstream& fin, std::string_view root_path)
             return false;
         }
 
-        material.meta_data = read_text(fin);
+        material.meta_data = read_text(fin, header.text_encoding);
         read<std::int32_t>(fin, material.index_count);
     }
 
@@ -232,7 +320,7 @@ bool pmx::load_material(std::ifstream& fin, std::string_view root_path)
     submeshes.resize(materials.size());
     for (std::size_t i = 0; i < materials.size(); ++i)
     {
-        submeshes[i].index_start = offset;
+        submeshes[i].index_offset = offset;
         submeshes[i].index_count = materials[i].index_count;
         submeshes[i].material_index = i;
 
@@ -250,19 +338,23 @@ bool pmx::load_bone(std::ifstream& fin)
 
     for (pmx_bone& bone : bones)
     {
-        bone.name_jp = read_text(fin);
-        bone.name_en = read_text(fin);
+        bone.name_jp = read_text(fin, header.text_encoding);
+        bone.name_en = read_text(fin, header.text_encoding);
 
-        read<float3>(fin, bone.position);
+        read<vec3f>(fin, bone.position);
         bone.parent_index = read_index(fin, header.bone_index_size);
         read<std::int32_t>(fin, bone.layer);
 
         read<pmx_bone_flag>(fin, bone.flags);
 
         if (bone.flags & PMX_BONE_FLAG_INDEXED_TAIL_POSITION)
+        {
             bone.tail_index = read_index(fin, header.bone_index_size);
+        }
         else
-            read<float3>(fin, bone.tail_position);
+        {
+            read<vec3f>(fin, bone.tail_position);
+        }
 
         if (bone.flags & PMX_BONE_FLAG_INHERIT_ROTATION ||
             bone.flags & PMX_BONE_FLAG_INHERIT_TRANSLATION)
@@ -276,16 +368,20 @@ bool pmx::load_bone(std::ifstream& fin)
         }
 
         if (bone.flags & PMX_BONE_FLAG_FIXED_AXIS)
-            read<float3>(fin, bone.fixed_axis);
+        {
+            read<vec3f>(fin, bone.fixed_axis);
+        }
 
         if (bone.flags & PMX_BONE_FLAG_LOCAL_AXIS)
         {
-            read<float3>(fin, bone.local_x_axis);
-            read<float3>(fin, bone.local_z_axis);
+            read<vec3f>(fin, bone.local_x_axis);
+            read<vec3f>(fin, bone.local_z_axis);
         }
 
         if (bone.flags & PMX_BONE_FLAG_EXTERNAL_PARENT_DEFORM)
+        {
             bone.external_parent_index = read_index(fin, header.bone_index_size);
+        }
 
         if (bone.flags & PMX_BONE_FLAG_IK)
         {
@@ -301,14 +397,14 @@ bool pmx::load_bone(std::ifstream& fin)
             {
                 link.bone_index = read_index(fin, header.bone_index_size);
 
-                unsigned char hasLimit;
-                read<unsigned char>(fin, hasLimit);
-                link.enable_limit = hasLimit != 0;
+                unsigned char has_limit;
+                read<unsigned char>(fin, has_limit);
+                link.enable_limit = has_limit != 0;
 
                 if (link.enable_limit)
                 {
-                    read<float3>(fin, link.limit_min);
-                    read<float3>(fin, link.limit_max);
+                    read<vec3f>(fin, link.limit_min);
+                    read<vec3f>(fin, link.limit_max);
                 }
             }
         }
@@ -324,8 +420,8 @@ bool pmx::load_morph(std::ifstream& fin)
 
     for (pmx_morph& morph : morphs)
     {
-        morph.name_jp = read_text(fin);
-        morph.name_en = read_text(fin);
+        morph.name_jp = read_text(fin, header.text_encoding);
+        morph.name_en = read_text(fin, header.text_encoding);
 
         read<std::uint8_t>(fin, morph.control_panel);
         read<pmx_morph_type>(fin, morph.type);
@@ -349,7 +445,7 @@ bool pmx::load_morph(std::ifstream& fin)
             for (auto& vertex_morph : morph.vertex_morphs)
             {
                 vertex_morph.index = read_index(fin, header.vertex_index_size);
-                read<float3>(fin, vertex_morph.translation);
+                read<vec3f>(fin, vertex_morph.translation);
             }
             break;
         }
@@ -358,8 +454,8 @@ bool pmx::load_morph(std::ifstream& fin)
             for (auto& bone_morph : morph.bone_morphs)
             {
                 bone_morph.index = read_index(fin, header.bone_index_size);
-                read<float3>(fin, bone_morph.translation);
-                read<float4>(fin, bone_morph.rotation);
+                read<vec3f>(fin, bone_morph.translation);
+                read<vec4f>(fin, bone_morph.rotation);
             }
             break;
         }
@@ -372,7 +468,7 @@ bool pmx::load_morph(std::ifstream& fin)
             for (auto& uv_morph : morph.uv_morphs)
             {
                 uv_morph.index = read_index(fin, header.vertex_index_size);
-                read<float4>(fin, uv_morph.uv);
+                read<vec4f>(fin, uv_morph.uv);
             }
             break;
         }
@@ -382,15 +478,15 @@ bool pmx::load_morph(std::ifstream& fin)
             {
                 material_morph.index = read_index(fin, header.material_index_size);
                 read<std::uint8_t>(fin, material_morph.operate);
-                read<float4>(fin, material_morph.diffuse);
-                read<float3>(fin, material_morph.specular);
+                read<vec4f>(fin, material_morph.diffuse);
+                read<vec3f>(fin, material_morph.specular);
                 read<float>(fin, material_morph.specular_strength);
-                read<float3>(fin, material_morph.ambient);
-                read<float4>(fin, material_morph.edge_color);
+                read<vec3f>(fin, material_morph.ambient);
+                read<vec4f>(fin, material_morph.edge_color);
                 read<float>(fin, material_morph.edge_scale);
-                read<float4>(fin, material_morph.tex_tint);
-                read<float4>(fin, material_morph.spa_tint);
-                read<float4>(fin, material_morph.toon_tint);
+                read<vec4f>(fin, material_morph.tex_tint);
+                read<vec4f>(fin, material_morph.spa_tint);
+                read<vec4f>(fin, material_morph.toon_tint);
             }
             break;
         }
@@ -409,8 +505,8 @@ bool pmx::load_morph(std::ifstream& fin)
             {
                 impulse_morph.index = read_index(fin, header.rigidbody_index_size);
                 read<std::uint8_t>(fin, impulse_morph.local_flag);
-                read<float3>(fin, impulse_morph.translate_velocity);
-                read<float3>(fin, impulse_morph.rotate_torque);
+                read<vec3f>(fin, impulse_morph.translate_velocity);
+                read<vec3f>(fin, impulse_morph.rotate_torque);
             }
             break;
         }
@@ -430,14 +526,14 @@ bool pmx::load_display(std::ifstream& fin)
 
     for (pmx_display_data& display_frame : display)
     {
-        display_frame.name_jp = read_text(fin);
-        display_frame.name_en = read_text(fin);
+        display_frame.name_jp = read_text(fin, header.text_encoding);
+        display_frame.name_en = read_text(fin, header.text_encoding);
 
         read<std::uint8_t>(fin, display_frame.flag);
 
-        std::int32_t numFrames;
-        read<std::int32_t>(fin, numFrames);
-        display_frame.frames.resize(numFrames);
+        std::int32_t frame_count;
+        read<std::int32_t>(fin, frame_count);
+        display_frame.frames.resize(frame_count);
 
         for (pmx_display_frame& frame : display_frame.frames)
         {
@@ -467,21 +563,21 @@ bool pmx::load_physics(std::ifstream& fin)
 
     for (pmx_rigidbody& rigidbody : rigidbodies)
     {
-        rigidbody.name_jp = read_text(fin);
-        rigidbody.name_en = read_text(fin);
+        rigidbody.name_jp = read_text(fin, header.text_encoding);
+        rigidbody.name_en = read_text(fin, header.text_encoding);
 
         rigidbody.bone_index = read_index(fin, header.bone_index_size);
         read<std::uint8_t>(fin, rigidbody.group);
         read<std::uint16_t>(fin, rigidbody.collision_group);
 
         read<pmx_rigidbody_shape_type>(fin, rigidbody.shape);
-        read<float3>(fin, rigidbody.size);
+        read<vec3f>(fin, rigidbody.size);
 
-        read<float3>(fin, rigidbody.translate);
+        read<vec3f>(fin, rigidbody.translate);
 
-        float3 rotate;
-        read<float3>(fin, rotate);
-        rigidbody.rotate = quaternion::rotation_euler(rotate);
+        vec3f rotate;
+        read<vec3f>(fin, rotate);
+        rigidbody.rotate = quaternion::from_euler(rotate);
 
         read<float>(fin, rigidbody.mass);
         read<float>(fin, rigidbody.linear_damping);
@@ -497,87 +593,28 @@ bool pmx::load_physics(std::ifstream& fin)
 
     for (pmx_joint& joint : joints)
     {
-        joint.name_jp = read_text(fin);
-        joint.name_en = read_text(fin);
+        joint.name_jp = read_text(fin, header.text_encoding);
+        joint.name_en = read_text(fin, header.text_encoding);
 
         read<pmx_joint_type>(fin, joint.type);
         joint.rigidbody_a_index = read_index(fin, header.rigidbody_index_size);
         joint.rigidbody_b_index = read_index(fin, header.rigidbody_index_size);
 
-        read<float3>(fin, joint.translate);
-        float3 rotate;
-        read<float3>(fin, rotate);
-        joint.rotate = quaternion::rotation_euler(rotate[1], rotate[0], rotate[2]);
+        read<vec3f>(fin, joint.translate);
+        vec3f rotate;
+        read<vec3f>(fin, rotate);
+        // TODO: check if this is correct
+        joint.rotate = quaternion::from_euler(vec3f{rotate[1], rotate[0], rotate[2]});
 
-        read<float3>(fin, joint.translate_min);
-        read<float3>(fin, joint.translate_max);
-        read<float3>(fin, joint.rotate_min);
-        read<float3>(fin, joint.rotate_max);
+        read<vec3f>(fin, joint.translate_min);
+        read<vec3f>(fin, joint.translate_max);
+        read<vec3f>(fin, joint.rotate_min);
+        read<vec3f>(fin, joint.rotate_max);
 
-        read<float3>(fin, joint.spring_translate_factor);
-        read<float3>(fin, joint.spring_rotate_factor);
+        read<vec3f>(fin, joint.spring_translate_factor);
+        read<vec3f>(fin, joint.spring_rotate_factor);
     }
 
     return true;
 }
-
-std::int32_t pmx::read_index(std::ifstream& fin, std::uint8_t size)
-{
-    switch (size)
-    {
-    case 1: {
-        std::uint8_t res;
-        read<std::uint8_t>(fin, res);
-        if (res != 0xFF)
-            return static_cast<std::int32_t>(res);
-        else
-            return -1;
-    }
-    case 2: {
-        std::uint16_t res;
-        read<std::uint16_t>(fin, res);
-        if (res != 0xFFFF)
-            return static_cast<std::int32_t>(res);
-        else
-            return -1;
-    }
-    case 4: {
-        std::int32_t res;
-        read<std::int32_t>(fin, res);
-        if (res != 0xFFFFFFFF)
-            return static_cast<std::int32_t>(res);
-        else
-            return -1;
-    }
-    default:
-        return 0;
-    }
-}
-
-std::string pmx::read_text(std::ifstream& fin)
-{
-    std::int32_t len;
-    read<std::int32_t>(fin, len);
-    if (len > 0)
-    {
-        std::string result;
-        if (header.text_encoding == 1)
-        {
-            result.resize(len);
-            fin.read(result.data(), len);
-        }
-        else if (header.text_encoding == 0)
-        {
-            std::u16string str;
-            str.resize(len);
-            fin.read(reinterpret_cast<char*>(str.data()), len);
-            convert<ENCODE_TYPE_UTF16, ENCODE_TYPE_UTF8>(str, result);
-        }
-        return result;
-    }
-    else
-    {
-        return "";
-    }
-}
-} // namespace violet::sample
+} // namespace violet

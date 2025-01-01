@@ -17,23 +17,7 @@ install(TARGETS ${PROJECT_NAME}
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)
 
-include(${VIOLET_ROOT_DIR}/cmake/compile_shader.cmake)
-set(SHADER_FILES "")
-compile_shader_dxc(
-    SHADER_FILES
-    TARGET ${PROJECT_NAME}
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/base.hlsl"
-    STAGES "vert" "frag"
-    INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
-compile_shader_dxc(
-    SHADER_FILES
-    TARGET ${PROJECT_NAME}
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/sample.hlsl"
-    STAGES "vert" "frag"
-    INCLUDES "${VIOLET_SHADER_INCLUDE_DIR}")
-
-install(FILES ${SHADER_FILES} DESTINATION bin/${PROJECT_NAME}/shaders)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION bin/${PROJECT_NAME})
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION bin/assets)
 
 if(MSVC)
     set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/install/bin)

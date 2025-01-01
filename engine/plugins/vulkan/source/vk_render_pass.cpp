@@ -5,8 +5,7 @@
 namespace violet::vk
 {
 vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* context)
-    : m_extent{512, 512},
-      m_context(context)
+    : m_context(context)
 {
     auto map_load_op = [](rhi_attachment_load_op op)
     {
@@ -19,7 +18,7 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
         case RHI_ATTACHMENT_LOAD_OP_DONT_CARE:
             return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         default:
-            throw vk_exception("Invalid load op.");
+            throw std::runtime_error("Invalid load op.");
         }
     };
 
@@ -32,7 +31,7 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
         case RHI_ATTACHMENT_STORE_OP_DONT_CARE:
             return VK_ATTACHMENT_STORE_OP_DONT_CARE;
         default:
-            throw vk_exception("Invalid store op.");
+            throw std::runtime_error("Invalid store op.");
         }
     };
 
@@ -68,25 +67,25 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
             ref.layout = vk_util::map_layout(desc.subpasses[i].references[j].layout);
             switch (desc.subpasses[i].references[j].type)
             {
-            case RHI_ATTACHMENT_REFERENCE_TYPE_INPUT: {
+            case RHI_ATTACHMENT_REFERENCE_INPUT: {
                 input[i].push_back(ref);
                 break;
             }
-            case RHI_ATTACHMENT_REFERENCE_TYPE_COLOR: {
+            case RHI_ATTACHMENT_REFERENCE_COLOR: {
                 color[i].push_back(ref);
                 break;
             }
-            case RHI_ATTACHMENT_REFERENCE_TYPE_DEPTH_STENCIL: {
+            case RHI_ATTACHMENT_REFERENCE_DEPTH_STENCIL: {
                 depth_stencil[i] = ref;
                 has_depth_stencil_attachment = true;
                 break;
             }
-            case RHI_ATTACHMENT_REFERENCE_TYPE_RESOLVE: {
+            case RHI_ATTACHMENT_REFERENCE_RESOLVE: {
                 has_resolve_attachment = true;
                 break;
             }
             default:
-                throw vk_exception("Invalid attachment reference type.");
+                throw std::runtime_error("Invalid attachment reference type.");
             }
         }
 
@@ -107,23 +106,25 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
         subpasses[i].colorAttachmentCount = static_cast<std::uint32_t>(color[i].size());
         if (has_depth_stencil_attachment)
             subpasses[i].pDepthStencilAttachment = &depth_stencil[i];
+
+        m_subpass_infos.push_back({color[i].size()});
     }
 
     std::vector<VkSubpassDependency> dependencies(desc.dependency_count);
     for (std::size_t i = 0; i < desc.dependency_count; ++i)
     {
-        dependencies[i].srcSubpass = desc.dependencies[i].src == RHI_RENDER_SUBPASS_EXTERNAL
-                                         ? VK_SUBPASS_EXTERNAL
-                                         : static_cast<std::uint32_t>(desc.dependencies[i].src);
+        dependencies[i].srcSubpass = desc.dependencies[i].src == RHI_RENDER_SUBPASS_EXTERNAL ?
+                                         VK_SUBPASS_EXTERNAL :
+                                         static_cast<std::uint32_t>(desc.dependencies[i].src);
         dependencies[i].srcStageMask =
-            vk_util::map_pipeline_stage_flags(desc.dependencies[i].src_stage);
+            vk_util::map_pipeline_stage_flags(desc.dependencies[i].src_stages);
         dependencies[i].srcAccessMask = vk_util::map_access_flags(desc.dependencies[i].src_access);
 
-        dependencies[i].dstSubpass = desc.dependencies[i].dst == RHI_RENDER_SUBPASS_EXTERNAL
-                                         ? VK_SUBPASS_EXTERNAL
-                                         : static_cast<std::uint32_t>(desc.dependencies[i].dst);
+        dependencies[i].dstSubpass = desc.dependencies[i].dst == RHI_RENDER_SUBPASS_EXTERNAL ?
+                                         VK_SUBPASS_EXTERNAL :
+                                         static_cast<std::uint32_t>(desc.dependencies[i].dst);
         dependencies[i].dstStageMask =
-            vk_util::map_pipeline_stage_flags(desc.dependencies[i].dst_stage);
+            vk_util::map_pipeline_stage_flags(desc.dependencies[i].dst_stages);
         dependencies[i].dstAccessMask = vk_util::map_access_flags(desc.dependencies[i].dst_access);
     }
 

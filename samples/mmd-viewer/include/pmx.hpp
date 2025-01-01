@@ -1,10 +1,10 @@
 #pragma once
 
-#include "math/math.hpp"
+#include "math/types.hpp"
 #include <string>
 #include <vector>
 
-namespace violet::sample
+namespace violet
 {
 enum pmx_vertex_type : std::uint8_t
 {
@@ -46,19 +46,20 @@ enum pmx_draw_flag : std::uint8_t
     PMX_DRAW_FLAG_POINT_DRAWING = 0x40,
     PMX_DRAW_FLAG_LINE_DRAWING = 0x80,
 };
+using pmx_draw_flags = std::uint8_t;
 
-enum pmx_sphere_mode : std::uint8_t
+enum pmx_environment_blend_mode : std::uint8_t
 {
-    PMX_SPHERE_MODE_DISABLED = 0,
-    PMX_SPHERE_MODE_MULTIPLY = 1,
-    PMX_SPHERE_MODE_ADDITIVE = 2,
-    PMX_SPHERE_MODE_ADDITIONAL_VEC4 = 3
+    PMX_ENVIRONMENT_BLEND_MODE_DISABLED = 0,
+    PMX_ENVIRONMENT_BLEND_MODE_MULTIPLY = 1,
+    PMX_ENVIRONMENT_BLEND_MODE_ADDITIVE = 2,
+    PMX_ENVIRONMENT_BLEND_MODE_ADDITIONAL_VEC4 = 3
 };
 
-enum pmx_toon_mode : std::uint8_t
+enum pmx_toon_reference : std::uint8_t
 {
-    PMX_TOON_MODE_TEXTURE,
-    PMX_TOON_MODE_INTERNAL
+    PMX_TOON_REFERENCE_TEXTURE,
+    PMX_TOON_REFERENCE_INTERNAL
 };
 
 struct pmx_material
@@ -66,19 +67,19 @@ struct pmx_material
     std::string name_jp;
     std::string name_en;
 
-    float4 diffuse;
-    float3 specular;
+    vec4f diffuse;
+    vec3f specular;
     float specular_strength;
-    float3 ambient;
-    pmx_draw_flag flag;
-    float4 edge_color;
-    float edge_size;
+    vec3f ambient;
+    pmx_draw_flags flags;
+    vec4f outline_color;
+    float outline_width;
 
     std::int32_t texture_index;
+    std::int32_t environment_index;
+    pmx_environment_blend_mode environment_blend_mode;
+    pmx_toon_reference toon_reference;
     std::int32_t toon_index;
-    std::int32_t sphere_index;
-    pmx_sphere_mode sphere_mode;
-    pmx_toon_mode toon_mode;
 
     std::string meta_data;
     std::int32_t index_count;
@@ -105,8 +106,8 @@ struct pmx_ik_link
 {
     std::int32_t bone_index;
     bool enable_limit;
-    float3 limit_min;
-    float3 limit_max;
+    vec3f limit_min;
+    vec3f limit_max;
 };
 
 struct pmx_bone
@@ -114,17 +115,17 @@ struct pmx_bone
     std::string name_jp;
     std::string name_en;
 
-    float3 position;
+    vec3f position;
     std::int32_t parent_index;
     std::int32_t layer;
     pmx_bone_flag flags;
-    float3 tail_position;
+    vec3f tail_position;
     std::int32_t tail_index;
     std::int32_t inherit_index;
     float inherit_weight;
-    float3 fixed_axis;
-    float3 local_x_axis;
-    float3 local_z_axis;
+    vec3f fixed_axis;
+    vec3f local_x_axis;
+    vec3f local_z_axis;
     std::int32_t external_parent_index;
 
     std::int32_t ik_target_index;
@@ -157,36 +158,36 @@ struct pmx_group_morph
 struct pmx_vertex_morph
 {
     std::int32_t index;
-    float3 translation;
+    vec3f translation;
 };
 
 struct pmx_bone_morph
 {
     std::int32_t index;
-    float3 translation;
-    float4 rotation;
+    vec3f translation;
+    vec4f rotation;
 };
 
 struct pmx_uv_morph
 {
     std::int32_t index;
-    float4 uv;
+    vec4f uv;
 };
 
 struct pmx_material_morph
 {
     std::int32_t index;
     std::uint8_t operate; // 0: mul, 1: add
-    float4 diffuse;
-    float3 specular;
+    vec4f diffuse;
+    vec3f specular;
     float specular_strength;
-    float3 ambient;
-    float4 edge_color;
+    vec3f ambient;
+    vec4f edge_color;
     float edge_scale;
 
-    float4 tex_tint;
-    float4 spa_tint;
-    float4 toon_tint;
+    vec4f tex_tint;
+    vec4f spa_tint;
+    vec4f toon_tint;
 };
 
 struct pmx_flip_morph
@@ -199,8 +200,8 @@ struct pmx_impulse_morph
 {
     std::int32_t index;
     std::uint8_t local_flag; // 0: OFF, 1: ON
-    float3 translate_velocity;
-    float3 rotate_torque;
+    vec3f translate_velocity;
+    vec3f rotate_torque;
 };
 
 struct pmx_morph
@@ -253,7 +254,7 @@ enum pmx_rigidbody_mode : std::uint8_t
 {
     PMX_RIGIDBODY_MODE_STATIC,
     PMX_RIGIDBODY_MODE_DYNAMIC,
-    PMX_RIGIDBODY_MODE_MERGE
+    PMX_RIGIDBODY_MODE_MERGE,
 };
 
 struct pmx_rigidbody
@@ -266,9 +267,9 @@ struct pmx_rigidbody
     std::uint16_t collision_group;
 
     pmx_rigidbody_shape_type shape;
-    float3 size;
-    float3 translate;
-    float4 rotate;
+    vec3f size;
+    vec3f translate;
+    vec4f rotate;
     float mass;
     float linear_damping;
     float angular_damping;
@@ -297,16 +298,16 @@ struct pmx_joint
     std::int32_t rigidbody_a_index;
     std::int32_t rigidbody_b_index;
 
-    float3 translate;
-    float4 rotate;
+    vec3f translate;
+    vec4f rotate;
 
-    float3 translate_min;
-    float3 translate_max;
-    float3 rotate_min;
-    float3 rotate_max;
+    vec3f translate_min;
+    vec3f translate_max;
+    vec3f rotate_min;
+    vec3f rotate_max;
 
-    float3 spring_translate_factor;
-    float3 spring_rotate_factor;
+    vec3f spring_translate_factor;
+    vec3f spring_rotate_factor;
 };
 
 enum pmx_vertex_attribute
@@ -324,14 +325,13 @@ enum pmx_vertex_attribute
 class pmx
 {
 public:
-    pmx(std::string_view path);
+    pmx();
 
-    bool is_load() const noexcept { return m_loaded; }
+    bool load(std::string_view path, bool flip_winding = true);
 
-public:
     struct submesh
     {
-        std::size_t index_start;
+        std::size_t index_offset;
         std::size_t index_count;
 
         std::size_t material_index;
@@ -339,34 +339,34 @@ public:
 
     struct bdef_data
     {
-        uint4 index;
-        float4 weight;
+        vec4u index;
+        vec4f weight;
     };
 
     struct sdef_data
     {
-        uint2 index;
-        float2 weight;
-        float3 center;
+        vec2u index;
+        vec2f weight;
+        vec3f center;
         float _padding_0;
-        float3 r0;
+        vec3f r0;
         float _padding_1;
-        float3 r1;
+        vec3f r1;
         float _padding_2;
     };
 
     pmx_header header;
 
-    std::vector<float3> position;
-    std::vector<float3> normal;
-    std::vector<float2> uv;
+    std::vector<vec3f> position;
+    std::vector<vec3f> normal;
+    std::vector<vec2f> texcoord;
     std::vector<float> edge;
 
-    std::vector<uint2> skin; // first: skin type(0: BDEF, 1: SDEF), second: skin data index
+    std::vector<vec2u> skin; // first: skin type(0: BDEF, 1: SDEF), second: skin data index
     std::vector<bdef_data> bdef;
     std::vector<sdef_data> sdef;
 
-    std::vector<std::int32_t> indices;
+    std::vector<std::int32_t> indexes;
 
     std::vector<std::string> textures;
     std::vector<pmx_material> materials;
@@ -389,9 +389,6 @@ private:
     bool load_display(std::ifstream& fin);
     bool load_physics(std::ifstream& fin);
 
-    std::int32_t read_index(std::ifstream& fin, std::uint8_t size);
-    std::string read_text(std::ifstream& fin);
-
-    bool m_loaded;
+    bool m_flip_winding;
 };
-} // namespace violet::sample
+} // namespace violet

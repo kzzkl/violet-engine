@@ -3,33 +3,34 @@
 
 namespace violet
 {
-physics_plugin::physics_plugin() : m_pei(nullptr)
+physics_plugin::physics_plugin()
+    : m_plugin(nullptr)
 {
 }
 
 bool physics_plugin::on_load()
 {
-    create_pei m_create_func = static_cast<create_pei>(find_symbol("create_pei"));
+    auto m_create_func = reinterpret_cast<phy_create_plugin>(find_symbol("phy_create_plugin"));
     if (m_create_func == nullptr)
     {
-        log::error("Symbol not found in plugin: create_pei.");
+        log::error("Symbol not found in plugin: create_plugin.");
         return false;
     }
 
-    destroy_pei m_destroy_func = static_cast<destroy_pei>(find_symbol("destroy_pei"));
+    auto m_destroy_func = reinterpret_cast<phy_destroy_plugin>(find_symbol("phy_destroy_plugin"));
     if (m_create_func == nullptr)
     {
-        log::error("Symbol not found in plugin: destroy_pei.");
+        log::error("Symbol not found in plugin: destroy_plugin.");
         return false;
     }
 
-    m_pei = m_create_func();
+    m_plugin = m_create_func();
 
     return true;
 }
 
 void physics_plugin::on_unload()
 {
-    m_destroy_func(m_pei);
+    m_destroy_func(m_plugin);
 }
 } // namespace violet

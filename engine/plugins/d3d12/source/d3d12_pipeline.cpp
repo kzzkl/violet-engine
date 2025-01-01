@@ -627,13 +627,13 @@ d3d12_render_pass::d3d12_render_pass(const render_pipeline_desc& desc, std::size
         {
         case ATTACHMENT_REFERENCE_TYPE_INPUT:
         case ATTACHMENT_REFERENCE_TYPE_COLOR:
-            m_color_indices.push_back(i);
+            m_color_indexes.push_back(i);
             break;
         case ATTACHMENT_REFERENCE_TYPE_DEPTH:
             m_depth_index = i;
             break;
         case ATTACHMENT_REFERENCE_TYPE_RESOLVE:
-            m_resolve_indices.push_back({i, pass_desc.references[i].resolve_relation});
+            m_resolve_indexes.push_back({i, pass_desc.references[i].resolve_relation});
             break;
         default:
             break;
@@ -651,7 +651,7 @@ void d3d12_render_pass::begin(
     auto& attachments = frame_buffer->attachments();
 
     std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> render_targets;
-    for (std::size_t i : m_color_indices)
+    for (std::size_t i : m_color_indexes)
         render_targets.push_back(attachments[i].resource->get_rtv());
 
     D3D12_CPU_DESCRIPTOR_HANDLE depth_stencil = attachments[m_depth_index].resource->get_dsv();
@@ -667,13 +667,13 @@ void d3d12_render_pass::begin(
 
 void d3d12_render_pass::end(D3D12GraphicsCommandList* command_list, bool final)
 {
-    if (m_resolve_indices.empty())
+    if (m_resolve_indexes.empty())
         return;
 
     auto& attachments = m_current_frame_buffer->attachments();
 
     std::vector<D3D12_RESOURCE_BARRIER> barriers;
-    for (auto [target_index, source_index] : m_resolve_indices)
+    for (auto [target_index, source_index] : m_resolve_indexes)
     {
         auto target = attachments[target_index].resource;
         barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
@@ -693,7 +693,7 @@ void d3d12_render_pass::end(D3D12GraphicsCommandList* command_list, bool final)
     if (!barriers.empty())
         command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
 
-    for (auto [target_index, source_index] : m_resolve_indices)
+    for (auto [target_index, source_index] : m_resolve_indexes)
     {
         auto target = attachments[target_index].resource;
         auto source = attachments[source_index].resource;
@@ -709,7 +709,7 @@ void d3d12_render_pass::end(D3D12GraphicsCommandList* command_list, bool final)
     {
         barriers.clear();
 
-        for (auto [target_index, source_index] : m_resolve_indices)
+        for (auto [target_index, source_index] : m_resolve_indexes)
         {
             auto target = attachments[target_index].resource;
             barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(

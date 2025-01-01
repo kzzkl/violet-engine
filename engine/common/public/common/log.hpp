@@ -1,9 +1,7 @@
 #pragma once
 
-#include "spdlog/fmt/ostr.h"
 #include "spdlog/logger.h"
 #include <memory>
-#include <string_view>
 
 namespace violet
 {
@@ -11,27 +9,27 @@ class log
 {
 public:
     template <typename... Args>
-    static void error(std::string_view format, const Args&... args)
+    static void error(spdlog::format_string_t<Args...> fmt, Args&&... args)
     {
-        instance().m_logger->error(format, args...);
+        instance().m_logger->error(fmt, std::forward<Args>(args)...);
     }
 
     template <typename... Args>
-    static void warn(std::string_view format, const Args&... args)
+    static void warn(spdlog::format_string_t<Args...> fmt, Args&&... args)
     {
-        instance().m_logger->warn(format, args...);
+        instance().m_logger->warn(fmt, std::forward<Args>(args)...);
     }
 
     template <typename... Args>
-    static void info(std::string_view format, const Args&... args)
+    static void info(spdlog::format_string_t<Args...> fmt, Args&&... args)
     {
-        instance().m_logger->info(format, args...);
+        instance().m_logger->info(fmt, std::forward<Args>(args)...);
     }
 
     template <typename... Args>
-    static void debug(std::string_view format, const Args&... args)
+    static void debug(spdlog::format_string_t<Args...> fmt, Args&&... args)
     {
-        instance().m_logger->debug(format, args...);
+        instance().m_logger->debug(fmt, std::forward<Args>(args)...);
     }
 
 private:

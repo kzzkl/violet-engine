@@ -1,7 +1,7 @@
 #include "encode.hpp"
 #include <array>
 
-namespace violet::sample
+namespace violet
 {
 namespace
 {
@@ -1614,59 +1614,60 @@ int get_u8_byte_count(char ch)
     return 0;
 }
 
-bool ConvChU8ToU32(const std::array<char, 4>& u8Ch, char32_t& u32Ch)
+bool conv_ch_u8_to_u32(const std::array<char, 4>& u8_ch, char32_t& u32_ch)
 {
-    int numBytes = get_u8_byte_count(u8Ch[0]);
-    if (numBytes == 0)
+    int num_bytes = get_u8_byte_count(u8_ch[0]);
+    if (num_bytes == 0)
     {
         return false;
     }
-    switch (numBytes)
+    switch (num_bytes)
     {
     case 1:
-        u32Ch = char32_t(std::uint8_t(u8Ch[0]));
+        u32_ch = char32_t(std::uint8_t(u8_ch[0]));
         break;
     case 2:
-        if (!is_u8_later_byte(u8Ch[1]))
+        if (!is_u8_later_byte(u8_ch[1]))
         {
             return false;
         }
-        if ((std::uint8_t(u8Ch[0]) & 0x1E) == 0)
+        if ((std::uint8_t(u8_ch[0]) & 0x1E) == 0)
         {
             return false;
         }
 
-        u32Ch = char32_t(u8Ch[0] & 0x1F) << 6;
-        u32Ch |= char32_t(u8Ch[1] & 0x3F);
+        u32_ch = char32_t(u8_ch[0] & 0x1F) << 6;
+        u32_ch |= char32_t(u8_ch[1] & 0x3F);
         break;
     case 3:
-        if (!is_u8_later_byte(u8Ch[1]) || !is_u8_later_byte(u8Ch[2]))
+        if (!is_u8_later_byte(u8_ch[1]) || !is_u8_later_byte(u8_ch[2]))
         {
             return false;
         }
-        if ((std::uint8_t(u8Ch[0]) & 0x0F) == 0 && (std::uint8_t(u8Ch[1]) & 0x20) == 0)
+        if ((std::uint8_t(u8_ch[0]) & 0x0F) == 0 && (std::uint8_t(u8_ch[1]) & 0x20) == 0)
         {
             return false;
         }
 
-        u32Ch = char32_t(u8Ch[0] & 0x0F) << 12;
-        u32Ch |= char32_t(u8Ch[1] & 0x3F) << 6;
-        u32Ch |= char32_t(u8Ch[2] & 0x3F);
+        u32_ch = char32_t(u8_ch[0] & 0x0F) << 12;
+        u32_ch |= char32_t(u8_ch[1] & 0x3F) << 6;
+        u32_ch |= char32_t(u8_ch[2] & 0x3F);
         break;
     case 4:
-        if (!is_u8_later_byte(u8Ch[1]) || !is_u8_later_byte(u8Ch[2]) || !is_u8_later_byte(u8Ch[3]))
+        if (!is_u8_later_byte(u8_ch[1]) || !is_u8_later_byte(u8_ch[2]) ||
+            !is_u8_later_byte(u8_ch[3]))
         {
             return false;
         }
-        if ((std::uint8_t(u8Ch[0]) & 0x07) == 0 && (std::uint8_t(u8Ch[1]) & 0x30) == 0)
+        if ((std::uint8_t(u8_ch[0]) & 0x07) == 0 && (std::uint8_t(u8_ch[1]) & 0x30) == 0)
         {
             return false;
         }
 
-        u32Ch = char32_t(u8Ch[0] & 0x07) << 18;
-        u32Ch |= char32_t(u8Ch[1] & 0x3F) << 12;
-        u32Ch |= char32_t(u8Ch[2] & 0x3F) << 6;
-        u32Ch |= char32_t(u8Ch[3] & 0x3F);
+        u32_ch = char32_t(u8_ch[0] & 0x07) << 18;
+        u32_ch |= char32_t(u8_ch[1] & 0x3F) << 12;
+        u32_ch |= char32_t(u8_ch[2] & 0x3F) << 6;
+        u32_ch |= char32_t(u8_ch[3] & 0x3F);
         break;
     default:
         return false;
@@ -1675,124 +1676,125 @@ bool ConvChU8ToU32(const std::array<char, 4>& u8Ch, char32_t& u32Ch)
     return true;
 }
 
-bool ConvChU16ToU32(const std::array<char16_t, 2>& u16Ch, char32_t& u32Ch)
+bool conv_ch_u16_to_u32(const std::array<char16_t, 2>& u16_ch, char32_t& u32_ch)
 {
-    if (is_u16_high_surrogate(u16Ch[0]))
+    if (is_u16_high_surrogate(u16_ch[0]))
     {
-        if (is_u16_low_surrogate(u16Ch[1]))
+        if (is_u16_low_surrogate(u16_ch[1]))
         {
-            u32Ch = 0x10000 + (char32_t(u16Ch[0]) - 0xD800) * 0x400 + (char32_t(u16Ch[1]) - 0xDC00);
+            u32_ch =
+                0x10000 + (char32_t(u16_ch[0]) - 0xD800) * 0x400 + (char32_t(u16_ch[1]) - 0xDC00);
         }
-        else if (u16Ch[1] == 0)
+        else if (u16_ch[1] == 0)
         {
-            u32Ch = u16Ch[0];
-        }
-        else
-        {
-            return false;
-        }
-    }
-    else if (is_u16_low_surrogate(u16Ch[0]))
-    {
-        if (u16Ch[1] == 0)
-        {
-            u32Ch = u16Ch[0];
+            u32_ch = u16_ch[0];
         }
         else
         {
             return false;
         }
     }
-    else
+    else if (is_u16_low_surrogate(u16_ch[0]))
     {
-        u32Ch = u16Ch[0];
-    }
-
-    return true;
-}
-
-bool ConvChU32ToU8(const char32_t u32Ch, std::array<char, 4>& u8Ch)
-{
-    if (u32Ch > 0x10FFFF)
-    {
-        return false;
-    }
-
-    if (u32Ch < 128)
-    {
-        u8Ch[0] = char(u32Ch);
-        u8Ch[1] = 0;
-        u8Ch[2] = 0;
-        u8Ch[3] = 0;
-    }
-    else if (u32Ch < 2048)
-    {
-        u8Ch[0] = 0xC0 | char(u32Ch >> 6);
-        u8Ch[1] = 0x80 | (char(u32Ch) & 0x3F);
-        u8Ch[2] = 0;
-        u8Ch[3] = 0;
-    }
-    else if (u32Ch < 65536)
-    {
-        u8Ch[0] = 0xE0 | char(u32Ch >> 12);
-        u8Ch[1] = 0x80 | (char(u32Ch >> 6) & 0x3F);
-        u8Ch[2] = 0x80 | (char(u32Ch) & 0x3F);
-        u8Ch[3] = 0;
+        if (u16_ch[1] == 0)
+        {
+            u32_ch = u16_ch[0];
+        }
+        else
+        {
+            return false;
+        }
     }
     else
     {
-        u8Ch[0] = 0xF0 | char(u32Ch >> 18);
-        u8Ch[1] = 0x80 | (char(u32Ch >> 12) & 0x3F);
-        u8Ch[2] = 0x80 | (char(u32Ch >> 6) & 0x3F);
-        u8Ch[3] = 0x80 | (char(u32Ch) & 0x3F);
+        u32_ch = u16_ch[0];
     }
 
     return true;
 }
 
-bool ConvChU32ToU16(const char32_t u32Ch, std::array<char16_t, 2>& u16Ch)
+bool conv_ch_u32_to_u8(const char32_t u32_ch, std::array<char, 4>& u8_ch)
 {
-    if (u32Ch > 0x10FFFF)
+    if (u32_ch > 0x10FFFF)
     {
         return false;
     }
 
-    if (u32Ch < 0x10000)
+    if (u32_ch < 128)
     {
-        u16Ch[0] = char16_t(u32Ch);
-        u16Ch[1] = 0;
+        u8_ch[0] = char(u32_ch);
+        u8_ch[1] = 0;
+        u8_ch[2] = 0;
+        u8_ch[3] = 0;
+    }
+    else if (u32_ch < 2048)
+    {
+        u8_ch[0] = 0xC0 | char(u32_ch >> 6);
+        u8_ch[1] = 0x80 | (char(u32_ch) & 0x3F);
+        u8_ch[2] = 0;
+        u8_ch[3] = 0;
+    }
+    else if (u32_ch < 65536)
+    {
+        u8_ch[0] = 0xE0 | char(u32_ch >> 12);
+        u8_ch[1] = 0x80 | (char(u32_ch >> 6) & 0x3F);
+        u8_ch[2] = 0x80 | (char(u32_ch) & 0x3F);
+        u8_ch[3] = 0;
     }
     else
     {
-        u16Ch[0] = char16_t((u32Ch - 0x10000) / 0x400 + 0xD800);
-        u16Ch[1] = char16_t((u32Ch - 0x10000) % 0x400 + 0xDC00);
+        u8_ch[0] = 0xF0 | char(u32_ch >> 18);
+        u8_ch[1] = 0x80 | (char(u32_ch >> 12) & 0x3F);
+        u8_ch[2] = 0x80 | (char(u32_ch >> 6) & 0x3F);
+        u8_ch[3] = 0x80 | (char(u32_ch) & 0x3F);
     }
 
     return true;
 }
 
-bool ConvChU8ToU16(const std::array<char, 4>& u8Ch, std::array<char16_t, 2>& u16Ch)
+bool conv_ch_u32_to_u16(const char32_t u32_ch, std::array<char16_t, 2>& u16_ch)
 {
-    char32_t u32Ch;
-    if (!ConvChU8ToU32(u8Ch, u32Ch))
+    if (u32_ch > 0x10FFFF)
     {
         return false;
     }
-    if (!ConvChU32ToU16(u32Ch, u16Ch))
+
+    if (u32_ch < 0x10000)
+    {
+        u16_ch[0] = char16_t(u32_ch);
+        u16_ch[1] = 0;
+    }
+    else
+    {
+        u16_ch[0] = char16_t((u32_ch - 0x10000) / 0x400 + 0xD800);
+        u16_ch[1] = char16_t((u32_ch - 0x10000) % 0x400 + 0xDC00);
+    }
+
+    return true;
+}
+
+bool conv_ch_u8_to_u16(const std::array<char, 4>& u8_ch, std::array<char16_t, 2>& u16_ch)
+{
+    char32_t u32_ch;
+    if (!conv_ch_u8_to_u32(u8_ch, u32_ch))
+    {
+        return false;
+    }
+    if (!conv_ch_u32_to_u16(u32_ch, u16_ch))
     {
         return false;
     }
     return true;
 }
 
-bool ConvChU16ToU8(const std::array<char16_t, 2>& u16Ch, std::array<char, 4>& u8Ch)
+bool conv_ch_u16_to_u8(const std::array<char16_t, 2>& u16_ch, std::array<char, 4>& u8_ch)
 {
-    char32_t u32Ch;
-    if (!ConvChU16ToU32(u16Ch, u32Ch))
+    char32_t u32_ch;
+    if (!conv_ch_u16_to_u32(u16_ch, u32_ch))
     {
         return false;
     }
-    if (!ConvChU32ToU8(u32Ch, u8Ch))
+    if (!conv_ch_u32_to_u8(u32_ch, u8_ch))
     {
         return false;
     }
@@ -1802,36 +1804,36 @@ bool ConvChU16ToU8(const std::array<char16_t, 2>& u16Ch, std::array<char, 4>& u8
 template <>
 bool convert<ENCODE_TYPE_UTF8, ENCODE_TYPE_UTF16>(const std::string& input, std::u16string& output)
 {
-    for (auto u8It = input.begin(); u8It != input.end(); ++u8It)
+    for (auto u8_it = input.begin(); u8_it != input.end(); ++u8_it)
     {
-        auto numBytes = get_u8_byte_count((*u8It));
-        if (numBytes == 0)
+        auto num_bytes = get_u8_byte_count((*u8_it));
+        if (num_bytes == 0)
         {
             return false;
         }
 
-        std::array<char, 4> u8Ch;
-        u8Ch[0] = (*u8It);
-        for (int i = 1; i < numBytes; i++)
+        std::array<char, 4> u8_ch;
+        u8_ch[0] = (*u8_it);
+        for (int i = 1; i < num_bytes; i++)
         {
-            ++u8It;
-            if (u8It == input.end())
+            ++u8_it;
+            if (u8_it == input.end())
             {
                 return false;
             }
-            u8Ch[i] = (*u8It);
+            u8_ch[i] = (*u8_it);
         }
 
-        std::array<char16_t, 2> u16Ch;
-        if (!ConvChU8ToU16(u8Ch, u16Ch))
+        std::array<char16_t, 2> u16_ch;
+        if (!conv_ch_u8_to_u16(u8_ch, u16_ch))
         {
             return false;
         }
 
-        output.push_back(u16Ch[0]);
-        if (u16Ch[1] != 0)
+        output.push_back(u16_ch[0]);
+        if (u16_ch[1] != 0)
         {
-            output.push_back(u16Ch[1]);
+            output.push_back(u16_ch[1]);
         }
     }
     return true;
@@ -1840,45 +1842,45 @@ bool convert<ENCODE_TYPE_UTF8, ENCODE_TYPE_UTF16>(const std::string& input, std:
 template <>
 bool convert<ENCODE_TYPE_UTF16, ENCODE_TYPE_UTF8>(const std::u16string& input, std::string& output)
 {
-    for (auto u16It = input.begin(); u16It != input.end(); ++u16It)
+    for (auto u16_it = input.begin(); u16_it != input.end(); ++u16_it)
     {
-        std::array<char16_t, 2> u16Ch;
-        if (is_u16_high_surrogate((*u16It)))
+        std::array<char16_t, 2> u16_ch;
+        if (is_u16_high_surrogate((*u16_it)))
         {
-            u16Ch[0] = (*u16It);
-            ++u16It;
-            if (u16It == input.end())
+            u16_ch[0] = (*u16_it);
+            ++u16_it;
+            if (u16_it == input.end())
             {
                 return false;
             }
-            u16Ch[1] = (*u16It);
+            u16_ch[1] = (*u16_it);
         }
         else
         {
-            u16Ch[0] = (*u16It);
-            u16Ch[1] = 0;
+            u16_ch[0] = (*u16_it);
+            u16_ch[1] = 0;
         }
 
-        std::array<char, 4> u8Ch;
-        if (!ConvChU16ToU8(u16Ch, u8Ch))
+        std::array<char, 4> u8_ch;
+        if (!conv_ch_u16_to_u8(u16_ch, u8_ch))
         {
             return false;
         }
-        if (u8Ch[0] != 0)
+        if (u8_ch[0] != 0)
         {
-            output.push_back(u8Ch[0]);
+            output.push_back(u8_ch[0]);
         }
-        if (u8Ch[1] != 0)
+        if (u8_ch[1] != 0)
         {
-            output.push_back(u8Ch[1]);
+            output.push_back(u8_ch[1]);
         }
-        if (u8Ch[2] != 0)
+        if (u8_ch[2] != 0)
         {
-            output.push_back(u8Ch[2]);
+            output.push_back(u8_ch[2]);
         }
-        if (u8Ch[3] != 0)
+        if (u8_ch[3] != 0)
         {
-            output.push_back(u8Ch[3]);
+            output.push_back(u8_ch[3]);
         }
     }
     return true;
@@ -1889,57 +1891,68 @@ bool convert<ENCODE_TYPE_SHIFT_JIS, ENCODE_TYPE_UTF8>(const std::string& input, 
 {
     // ShiftJis won't give 4byte UTF8, so max. 3 byte per input char are needed
     output = std::string(3 * input.length(), ' ');
-    size_t indexInput = 0, indexOutput = 0;
+    size_t index_input = 0;
+    size_t index_output = 0;
 
-    while (indexInput < input.length())
+    while (index_input < input.length())
     {
-        char arraySection = ((uint8_t)input[indexInput]) >> 4;
+        char array_section = ((uint8_t)input[index_input]) >> 4;
 
-        size_t arrayOffset;
-        if (arraySection == 0x8)
-            arrayOffset = 0x100; // these are two-byte shiftjis
-        else if (arraySection == 0x9)
-            arrayOffset = 0x1100;
-        else if (arraySection == 0xE)
-            arrayOffset = 0x2100;
+        size_t array_offset;
+        if (array_section == 0x8)
+        {
+            array_offset = 0x100; // these are two-byte shiftjis
+        }
+        else if (array_section == 0x9)
+        {
+            array_offset = 0x1100;
+        }
+        else if (array_section == 0xE)
+        {
+            array_offset = 0x2100;
+        }
         else
-            arrayOffset = 0; // this is one byte shiftjis
+        {
+            array_offset = 0; // this is one byte shiftjis
+        }
 
         // determining real array offset
-        if (arrayOffset)
+        if (array_offset)
         {
-            arrayOffset += (((uint8_t)input[indexInput]) & 0xf) << 8;
-            indexInput++;
-            if (indexInput >= input.length())
+            array_offset += (((uint8_t)input[index_input]) & 0xf) << 8;
+            index_input++;
+            if (index_input >= input.length())
+            {
                 break;
+            }
         }
-        arrayOffset += (uint8_t)input[indexInput++];
-        arrayOffset <<= 1;
+        array_offset += (uint8_t)input[index_input++];
+        array_offset <<= 1;
 
         // unicode number is...
-        uint16_t unicodeValue =
-            (shiftJIS_convTable[arrayOffset] << 8) | shiftJIS_convTable[arrayOffset + 1];
+        uint16_t unicode_value =
+            (shiftJIS_convTable[array_offset] << 8) | shiftJIS_convTable[array_offset + 1];
 
         // converting to UTF8
-        if (unicodeValue < 0x80)
+        if (unicode_value < 0x80)
         {
-            output[indexOutput++] = static_cast<char>(unicodeValue);
+            output[index_output++] = static_cast<char>(unicode_value);
         }
-        else if (unicodeValue < 0x800)
+        else if (unicode_value < 0x800)
         {
-            output[indexOutput++] = 0xC0 | (unicodeValue >> 6);
-            output[indexOutput++] = 0x80 | (unicodeValue & 0x3f);
+            output[index_output++] = 0xC0 | (unicode_value >> 6);
+            output[index_output++] = 0x80 | (unicode_value & 0x3f);
         }
         else
         {
-            output[indexOutput++] = 0xE0 | (unicodeValue >> 12);
-            output[indexOutput++] = 0x80 | ((unicodeValue & 0xfff) >> 6);
-            output[indexOutput++] = 0x80 | (unicodeValue & 0x3f);
+            output[index_output++] = 0xE0 | (unicode_value >> 12);
+            output[index_output++] = 0x80 | ((unicode_value & 0xfff) >> 6);
+            output[index_output++] = 0x80 | (unicode_value & 0x3f);
         }
     }
 
-    output.resize(indexOutput); // remove the unnecessary bytes
+    output.resize(index_output); // remove the unnecessary bytes
 
     return true;
 }
-} // namespace violet::sample
+} // namespace violet

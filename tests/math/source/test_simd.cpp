@@ -1,40 +1,29 @@
+#include "math/vector.hpp"
 #include "test_common.hpp"
 
 namespace violet::test
 {
-TEST_CASE("simd::mask", "[simd]")
+TEST_CASE("simd::shuffle", "")
 {
-    auto v1 = simd::mask_v<1, 1, 0, 1>;
-    auto v2 = simd::set(0xFFFFFFFF, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF);
-
-    float4 f1;
-    simd::store(v1, f1);
-
-    float4 f2;
-    simd::store(v2, f2);
-}
-
-TEST_CASE("simd::shuffle", "[simd]")
-{
-    auto v = simd::set(1.0f, 2.0f, 3.0f, 4.0f);
+    auto v = vector::set(1.0f, 2.0f, 3.0f, 4.0f);
     auto v2 = simd::shuffle<1, 1, 2, 2>(v);
 
-    float4 result;
-    simd::store(v2, result);
+    vec4f result;
+    math::store(v2, result);
 
-    CHECK(equal(result, float4{2.0f, 2.0f, 3.0f, 3.0f}));
+    CHECK(equal(result, vec4f{2.0f, 2.0f, 3.0f, 3.0f}));
 }
 
-TEST_CASE("simd::store", "[simd]")
+TEST_CASE("simd::store", "")
 {
-    float4_simd v = simd::set(1.0f, 2.0f, 3.0f, 4.0f);
-    float4 r4;
-    simd::store(v, r4);
+    vec4f_simd v = vector::set(1.0f, 2.0f, 3.0f, 4.0f);
+    vec4f r4;
+    math::store(v, r4);
 
-    CHECK(equal(r4, float4{1.0f, 2.0f, 3.0f, 4.0f}));
+    CHECK(equal(r4, vec4f{1.0f, 2.0f, 3.0f, 4.0f}));
 
-    float3 r3;
-    simd::store(v, r3);
-    CHECK(equal(r3, float3{1.0f, 2.0f, 3.0f}));
+    vec3f r3;
+    math::store(v, r3);
+    CHECK(equal(r3, vec3f{1.0f, 2.0f, 3.0f}));
 }
 } // namespace violet::test

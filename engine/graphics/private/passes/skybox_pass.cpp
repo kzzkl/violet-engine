@@ -1,35 +1,82 @@
 #include "graphics/passes/skybox_pass.hpp"
+#include "graphics/render_interface.hpp"
+#include "graphics/shader.hpp"
 
 namespace violet
 {
-skybox_pass::skybox_pass()
+struct skybox_vs : public shader_vs
 {
-    m_color = add_color("color", RHI_TEXTURE_LAYOUT_RENDER_TARGET);
-    add_depth_stencil("depth", RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
+    static constexpr std::string_view path = "assets/shaders/skybox.hlsl";
 
-    set_shader("engine/shaders/skybox.vert.spv", "engine/shaders/skybox.frag.spv");
-    set_parameter_layout({engine_parameter_layout::camera});
-}
+    static constexpr parameter_layout parameters = {
+        {0, shader::bindless},
+        {2, shader::camera},
+    };
+};
 
-void skybox_pass::execute(rhi_command* command, rdg_context* context)
+struct skybox_fs : public shader_fs
 {
-    rhi_texture_extent extent = context->get_texture(m_color->resource->get_index())->get_extent();
+    static constexpr std::string_view path = "assets/shaders/skybox.hlsl";
 
-    rhi_viewport viewport = {};
-    viewport.width = extent.width;
-    viewport.height = extent.height;
-    viewport.min_depth = 0.0f;
-    viewport.max_depth = 1.0f;
-    command->set_viewport(viewport);
+    static constexpr parameter_layout parameters = {
+        {0, shader::bindless},
+        {1, shader::scene},
+    };
+};
 
-    rhi_scissor_rect scissor = {};
-    scissor.max_x = extent.width;
-    scissor.max_y = extent.height;
-    command->set_scissor(&scissor, 1);
+void skybox_pass::add(render_graph& graph, const parameter& parameter)
+{
+    struct pass_data
+    {
+        rhi_parameter* scene_parameter;
+        rhi_parameter* camera_parameter;
+        rhi_viewport viewport;
+    };
 
-    command->set_render_pipeline(get_pipeline());
+    pass_data data = {
+        .scene_parameter = parameter.scene.get_scene_parameter(),
+        .camera_parameter = parameter.camera.camera_parameter,
+        .viewport = parameter.camera.viewport,
+    };
 
-    command->set_render_parameter(0, context->get_camera());
-    command->draw(0, 36);
+    auto& pass = graph.add_pass<rdg_render_pass>("Skybox Pass");
+
+    pass.add_render_target(
+        parameter.render_target,
+        parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
+    pass.set_depth_stencil(
+        parameter.depth_buffer,
+        parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
+    pass.set_execute(
+        [data](rdg_command& command)
+        {
+            command.set_viewport(data.viewport);
+
+            rhi_scissor_rect scissor = {
+                .min_x = 0,
+                .min_y = 0,
+                .max_x = static_cast<std::uint32_t>(data.viewport.width),
+                .max_y = static_cast<std::uint32_t>(data.viewport.height),
+            };
+            command.set_scissor(std::span<rhi_scissor_rect>(&scissor, 1));
+
+            auto& device = render_device::instance();
+
+            rdg_render_pipeline pipeline = {
+                .vertex_shader = device.get_shader<skybox_vs>(),
+                .fragment_shader = device.get_shader<skybox_fs>(),
+                .depth_stencil =
+                    {
+                        .depth_enable = true,
+                        .depth_compare_op = RHI_COMPARE_OP_GREATER,
+                    },
+            };
+
+            command.set_pipeline(pipeline);
+            command.set_parameter(0, device.get_bindless_parameter());
+            command.set_parameter(1, data.scene_parameter);
+            command.set_parameter(2, data.camera_parameter);
+            command.draw(0, 36);
+        });
 }
 } // namespace violet

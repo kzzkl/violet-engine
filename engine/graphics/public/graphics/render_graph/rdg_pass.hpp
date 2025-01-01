@@ -1,157 +1,93 @@
 #pragma once
 
-#include "graphics/render_device.hpp"
-#include "graphics/render_graph/rdg_context.hpp"
+#include "graphics/render_graph/rdg_command.hpp"
 #include "graphics/render_graph/rdg_resource.hpp"
 #include <functional>
 #include <memory>
-#include <string>
 #include <vector>
 
 namespace violet
 {
-enum rdg_pass_access_flag : std::uint32_t
-{
-    RDG_PASS_ACCESS_FLAG_READ = 1 << 0,
-    RDG_PASS_ACCESS_FLAG_WRITE = 1 << 1
-};
-using rdg_pass_access_flags = std::uint32_t;
-
-enum rdg_pass_reference_type
-{
-    RDG_PASS_REFERENCE_TYPE_NONE,
-    RDG_PASS_REFERENCE_TYPE_TEXTURE,
-    RDG_PASS_REFERENCE_TYPE_BUFFER,
-    RDG_PASS_REFERENCE_TYPE_ATTACHMENT
-};
-
-struct rdg_pass_reference
-{
-    std::string name;
-    rdg_resource* resource;
-
-    rdg_pass_reference_type type;
-    rdg_pass_access_flags access;
-
-    union {
-        struct
-        {
-            rhi_texture_layout layout;
-            rhi_texture_layout next_layout;
-            rhi_attachment_load_op load_op;
-            rhi_attachment_store_op store_op;
-            rhi_attachment_reference_type type;
-        } attachment;
-
-        struct
-        {
-            rhi_texture_layout layout;
-            rhi_texture_layout next_layout;
-        } texture;
-    };
-};
-
 enum rdg_pass_type
 {
-    RDG_PASS_TYPE_RENDER,
-    RDG_PASS_TYPE_COMPUTE,
-    RDG_PASS_TYPE_OTHER
+    RDG_PASS_RENDER,
+    RDG_PASS_COMPUTE,
+    RDG_PASS_OTHER
 };
 
-class rdg_pass
+class rdg_pass : public rdg_node
 {
 public:
     rdg_pass();
     virtual ~rdg_pass();
 
-    rdg_pass_reference* add_texture(
-        std::string_view name,
-        rdg_pass_access_flags access,
+    rdg_reference* add_texture(
+        rdg_texture* texture,
+        rhi_pipeline_stage_flags stages,
+        rhi_access_flags access,
         rhi_texture_layout layout);
-    rdg_pass_reference* add_buffer(std::string_view name, rdg_pass_access_flags access);
-    rdg_pass_reference* get_reference(std::string_view name);
+    rdg_reference* add_buffer(
+        rdg_buffer* buffer,
+        rhi_pipeline_stage_flags stages,
+        rhi_access_flags access);
 
-    std::vector<rdg_pass_reference*> get_references(rdg_pass_access_flags access) const;
-    std::vector<rdg_pass_reference*> get_references(rdg_pass_reference_type type) const;
-
-    const std::string& get_name() const noexcept { return m_name; }
-    std::size_t get_index() const noexcept { return m_index; }
-    virtual rdg_pass_type get_type() const noexcept { return RDG_PASS_TYPE_OTHER; }
-
-    virtual void compile(render_device* device) {}
-    virtual void execute(rhi_command* command, rdg_context* context) {}
-
-    void set_input_layout(const std::vector<std::string>& layout) { m_input_layout = layout; }
-
-    const std::vector<std::string>& get_input_layout() const noexcept { return m_input_layout; }
-
-    void set_parameter_layout(
-        const std::vector<rhi_parameter_desc>& layout,
-        std::size_t material_parameter_index = -1)
+    std::vector<rdg_reference*> get_references(rhi_access_flags access) const;
+    std::vector<rdg_reference*> get_references(rdg_reference_type type) const;
+    const std::vector<std::unique_ptr<rdg_reference>>& get_references() const
     {
-        m_parameter_layout = layout;
-        m_material_parameter_index = material_parameter_index;
+        return m_references;
     }
 
-    const std::vector<rhi_parameter_desc>& get_parameter_layout() const
+    template <typename Functor>
+    void set_execute(Functor functor)
     {
-        return m_parameter_layout;
+        m_executor = functor;
     }
 
-    std::size_t get_material_parameter_index() const noexcept { return m_material_parameter_index; }
+    void execute(rdg_command& command)
+    {
+        m_executor(command);
+    }
+
+    virtual rdg_pass_type get_type() const noexcept
+    {
+        return RDG_PASS_OTHER;
+    }
 
 protected:
-    rdg_pass_reference* add_reference();
+    rdg_reference* add_reference(rdg_resource* resource);
 
 private:
-    friend class render_graph;
-    std::string m_name;
-    std::size_t m_index;
-
-    std::vector<std::unique_ptr<rdg_pass_reference>> m_references;
-
-    std::vector<std::string> m_input_layout;
-    std::vector<rhi_parameter_desc> m_parameter_layout;
-    std::size_t m_material_parameter_index;
+    std::vector<std::unique_ptr<rdg_reference>> m_references;
+    std::function<void(rdg_command&)> m_executor;
 };
 
 class rdg_render_pass : public rdg_pass
 {
 public:
-    rdg_render_pass();
+    rdg_render_pass() = default;
 
-    rdg_pass_reference* add_input(std::string_view name, rhi_texture_layout layout);
-    rdg_pass_reference* add_color(
-        std::string_view name,
-        rhi_texture_layout layout,
-        const rhi_attachment_blend_desc& blend = {});
-    rdg_pass_reference* add_depth_stencil(std::string_view name, rhi_texture_layout layout);
+    void add_render_target(
+        rdg_texture* texture,
+        rhi_attachment_load_op load_op = RHI_ATTACHMENT_LOAD_OP_LOAD,
+        rhi_attachment_store_op store_op = RHI_ATTACHMENT_STORE_OP_STORE);
+    void set_depth_stencil(
+        rdg_texture* texture,
+        rhi_attachment_load_op load_op = RHI_ATTACHMENT_LOAD_OP_LOAD,
+        rhi_attachment_store_op store_op = RHI_ATTACHMENT_STORE_OP_STORE);
 
-    void set_shader(std::string_view vertex_shader, std::string_view fragment_shader)
+    virtual rdg_pass_type get_type() const noexcept final
     {
-        m_vertex_shader = vertex_shader;
-        m_fragment_shader = fragment_shader;
+        return RDG_PASS_RENDER;
     }
-    void set_primitive_topology(rhi_primitive_topology topology) noexcept;
 
-    void set_cull_mode(rhi_cull_mode mode) noexcept;
-
-    void set_render_pass(rhi_render_pass* render_pass, std::uint32_t subpass_index) noexcept;
-
-    virtual rdg_pass_type get_type() const noexcept final { return RDG_PASS_TYPE_RENDER; }
-
-    virtual void compile(render_device* device) override;
-    virtual void execute(rhi_command* command, rdg_context* context) {}
-
-protected:
-    rhi_render_pipeline* get_pipeline() const noexcept { return m_pipeline.get(); }
+    const std::vector<rdg_reference*>& get_attachments() const noexcept
+    {
+        return m_attachments;
+    }
 
 private:
-    std::string m_vertex_shader;
-    std::string m_fragment_shader;
-    std::unique_ptr<rhi_render_pipeline_desc> m_desc;
-
-    rhi_ptr<rhi_render_pipeline> m_pipeline;
+    std::vector<rdg_reference*> m_attachments;
 };
 
 class rdg_compute_pass : public rdg_pass
@@ -159,20 +95,9 @@ class rdg_compute_pass : public rdg_pass
 public:
     rdg_compute_pass();
 
-    void set_shader(std::string_view compute_shader) { m_compute_shader = compute_shader; }
-
-    virtual rdg_pass_type get_type() const noexcept final { return RDG_PASS_TYPE_COMPUTE; }
-
-    virtual void compile(render_device* device) override;
-    virtual void execute(rhi_command* command, rdg_context* context) {}
-
-protected:
-    rhi_compute_pipeline* get_pipeline() const noexcept { return m_pipeline.get(); }
-
-private:
-    std::string m_compute_shader;
-    std::unique_ptr<rhi_compute_pipeline_desc> m_desc;
-
-    rhi_ptr<rhi_compute_pipeline> m_pipeline;
+    virtual rdg_pass_type get_type() const noexcept final
+    {
+        return RDG_PASS_COMPUTE;
+    }
 };
 } // namespace violet

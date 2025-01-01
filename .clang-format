@@ -1,30 +1,84 @@
 Language: Cpp
-BasedOnStyle: Microsoft
-AccessModifierOffset: -4
-Standard: Cpp11
-TabWidth: 4
-UseTab: Never
+Standard: Latest
 
+AccessModifierOffset: -4
 AlignAfterOpenBracket: AlwaysBreak
-AlwaysBreakTemplateDeclarations: Yes
-BracedInitializerIndentWidth: 4
-PointerAlignment: Left
-AllowShortFunctionsOnASingleLine: InlineOnly
-IndentPPDirectives: AfterHash
-SpacesBeforeTrailingComments: 1
-ColumnLimit: 100
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignEscapedNewlinesLeft: false
+AlignOperands: true
 AlignTrailingComments: true
-MaxEmptyLinesToKeep: 1
 AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortLambdasOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakBeforeMultilineStrings: false
+AlwaysBreakTemplateDeclarations: Yes
 BinPackArguments: false
 BinPackParameters: false
-ConstructorInitializerAllOnOneLineOrOnePerLine: true
-AllowAllParametersOfDeclarationOnNextLine: false
-AllowAllConstructorInitializersOnNextLine: false
-AlignArrayOfStructures: Left
-AllowShortIfStatementsOnASingleLine: Never
-LambdaBreakBeforeCall: true
-AllowShortLambdasOnASingleLine: false
+PenaltyReturnTypeOnItsOwnLine: 1000
+BreakBeforeBraces: Custom
 BraceWrapping:
-  BeforeLambdaBody: true
+    AfterClass: true
+    AfterControlStatement: true
+    AfterEnum : true
+    AfterFunction : true
+    AfterNamespace : true
+    AfterStruct : true
+    AfterUnion : true
+    AfterExternBlock: true
+    BeforeCatch : true
+    BeforeElse : true
+    BeforeLambdaBody: true
+    IndentBraces : false
+    SplitEmptyFunction: true
+    SplitEmptyRecord: true
+    SplitEmptyNamespace: true
+BreakBeforeBinaryOperators: None
+BreakBeforeConceptDeclarations: Always
+BreakBeforeTernaryOperators: false
+BreakConstructorInitializers: BeforeColon
+BreakInheritanceList: BeforeColon
+BreakStringLiterals: false
+ColumnLimit: 100
+CompactNamespaces: false
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerIndentWidth: 4
 ContinuationIndentWidth: 4
+Cpp11BracedListStyle: true
+DerivePointerAlignment: false
+DisableFormat: false
+ExperimentalAutoDetectBinPacking: false
+FixNamespaceComments: true
+IncludeBlocks: Preserve
+IndentCaseLabels: false
+IndentPPDirectives: None
+IndentWidth: 4
+IndentWrappedFunctionNames: false
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+PackConstructorInitializers: Never
+PointerAlignment: Left
+ReflowComments: false
+SortIncludes: true
+SortUsingDeclarations: false
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCpp11BracedList: false
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatements
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 1
+SpacesInAngles: false
+SpacesInCStyleCastParentheses: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+TabWidth: 4
+UseTab: Never

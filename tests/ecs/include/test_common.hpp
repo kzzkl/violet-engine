@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/node/node.hpp"
+#include "ecs/world.hpp"
 #include <catch2/catch_test_macros.hpp>
 
 namespace violet::test
@@ -24,14 +24,39 @@ struct rotation
     int angle;
 };
 
+class geometry;
+class material;
+
+struct mesh
+{
+    geometry* geometry;
+    std::uint32_t vertex_offset;
+    std::uint32_t vertex_count;
+    std::uint32_t index_offset;
+    std::uint32_t index_count;
+    std::vector<material*> materials;
+};
+
 template <std::size_t index>
 class life_counter
 {
 public:
-    life_counter() { ++m_construct; }
-    life_counter(const life_counter& other) { ++m_copy_construct; }
-    life_counter(life_counter&& other) { ++m_move_construct; }
-    ~life_counter() { ++m_destruct; }
+    life_counter()
+    {
+        ++m_construct;
+    }
+    life_counter(const life_counter& other)
+    {
+        ++m_copy_construct;
+    }
+    life_counter(life_counter&& other) noexcept
+    {
+        ++m_move_construct;
+    }
+    ~life_counter()
+    {
+        ++m_destruct;
+    }
 
     life_counter& operator=(const life_counter& other)
     {

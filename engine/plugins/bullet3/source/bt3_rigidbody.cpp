@@ -1,51 +1,45 @@
 #include "bt3_rigidbody.hpp"
 #include "bt3_shape.hpp"
-#include "bt3_world.hpp"
-#include <iostream>
 
 namespace violet::bt3
 {
 class bt3_motion_state : public btMotionState
 {
 public:
-    virtual void getWorldTransform(btTransform& centerOfMassWorldTrans) const override
+    bt3_motion_state(phy_motion_state* motion_state)
+        : m_motion_state(motion_state)
     {
-        centerOfMassWorldTrans.setFromOpenGLMatrix(&transform[0][0]);
     }
 
-    virtual void setWorldTransform(const btTransform& centerOfMassWorldTrans) override
+    void getWorldTransform(btTransform& world_transform) const override
     {
-        centerOfMassWorldTrans.getOpenGLMatrix(&transform[0][0]);
-        updated_flag = true;
+        world_transform.setFromOpenGLMatrix(&m_motion_state->get_transform()[0][0]);
     }
 
-    float4x4 transform;
-    bool updated_flag;
+    void setWorldTransform(const btTransform& world_transform) override
+    {
+        mat4f transform;
+        world_transform.getOpenGLMatrix(&transform[0][0]);
+        m_motion_state->set_transform(transform);
+    }
 
-    bt3_rigidbody* rigidbody;
+private:
+    phy_motion_state* m_motion_state;
 };
 
-class bt3_kinematic_motion_state : public bt3_motion_state
+bt3_rigidbody::bt3_rigidbody(const phy_rigidbody_desc& desc)
+    : m_collision_group(desc.collision_group),
+      m_collision_mask(desc.collision_mask)
 {
-public:
-    virtual void setWorldTransform(const btTransform& centerOfMassWorldTrans) override {}
-};
-
-bt3_rigidbody::bt3_rigidbody(const pei_rigidbody_desc& desc)
-{
-    if (desc.type == PEI_RIGIDBODY_TYPE_KINEMATIC)
-        m_motion_state = std::make_unique<bt3_kinematic_motion_state>();
-    else
-        m_motion_state = std::make_unique<bt3_motion_state>();
-
-    m_motion_state->transform = desc.initial_transform;
-    m_motion_state->rigidbody = this;
+    m_motion_state = std::make_unique<bt3_motion_state>(desc.motion_state);
 
     btCollisionShape* shape = static_cast<bt3_shape*>(desc.shape)->shape();
 
     btVector3 local_inertia(0, 0, 0);
     if (desc.mass != 0.0f)
+    {
         shape->calculateLocalInertia(desc.mass, local_inertia);
+    }
 
     btRigidBody::btRigidBodyConstructionInfo info(
         desc.mass,
@@ -61,7 +55,7 @@ bt3_rigidbody::bt3_rigidbody(const pei_rigidbody_desc& desc)
 
     m_rigidbody = std::make_unique<btRigidBody>(info);
 
-    if (desc.type == PEI_RIGIDBODY_TYPE_KINEMATIC)
+    if (desc.type == PHY_RIGIDBODY_TYPE_KINEMATIC)
     {
         m_rigidbody->setCollisionFlags(
             m_rigidbody->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
@@ -73,11 +67,7 @@ bt3_rigidbody::bt3_rigidbody(const pei_rigidbody_desc& desc)
     }
 }
 
-bt3_rigidbody::~bt3_rigidbody()
-{
-    if (m_world)
-        m_world->remove(this);
-}
+bt3_rigidbody::~bt3_rigidbody() {}
 
 void bt3_rigidbody::set_mass(float mass)
 {
@@ -101,30 +91,17 @@ void bt3_rigidbody::set_friction(float friction)
     m_rigidbody->setFriction(friction);
 }
 
-void bt3_rigidbody::set_shape(pei_collision_shape* shape)
+void bt3_rigidbody::set_shape(phy_collision_shape* shape)
 {
     m_rigidbody->setCollisionShape(static_cast<bt3_shape*>(shape)->shape());
 }
 
-const float4x4& bt3_rigidbody::get_transform() const
-{
-    return m_motion_state->transform;
-}
-
-void bt3_rigidbody::set_transform(const float4x4& world)
-{
-    btTransform transform;
-    transform.setFromOpenGLMatrix(&world[0][0]);
-    m_rigidbody->setCenterOfMassTransform(transform);
-    m_motion_state->transform = world;
-}
-
-void bt3_rigidbody::set_angular_velocity(const float3& velocity)
+void bt3_rigidbody::set_angular_velocity(const vec3f& velocity)
 {
     m_rigidbody->setAngularVelocity(convert_vector(velocity));
 }
 
-void bt3_rigidbody::set_linear_velocity(const float3& velocity)
+void bt3_rigidbody::set_linear_velocity(const vec3f& velocity)
 {
     m_rigidbody->setLinearVelocity(convert_vector(velocity));
 }
@@ -134,17 +111,17 @@ void bt3_rigidbody::clear_forces()
     m_rigidbody->clearForces();
 }
 
-void bt3_rigidbody::set_activation_state(pei_rigidbody_activation_state state)
+void bt3_rigidbody::set_activation_state(phy_activation_state activation_state)
 {
-    switch (state)
+    switch (activation_state)
     {
-    case PEI_RIGIDBODY_ACTIVATION_STATE_ACTIVE:
+    case PHY_ACTIVATION_STATE_ACTIVE:
         m_rigidbody->setActivationState(ACTIVE_TAG);
         break;
-    case PEI_RIGIDBODY_ACTIVATION_STATE_DISABLE_DEACTIVATION:
+    case PHY_ACTIVATION_STATE_DISABLE_DEACTIVATION:
         m_rigidbody->setActivationState(DISABLE_DEACTIVATION);
         break;
-    case PEI_RIGIDBODY_ACTIVATION_STATE_DISABLE_SIMULATION:
+    case PHY_ACTIVATION_STATE_DISABLE_SIMULATION:
         m_rigidbody->setActivationState(DISABLE_SIMULATION);
         break;
     default:
@@ -152,13 +129,8 @@ void bt3_rigidbody::set_activation_state(pei_rigidbody_activation_state state)
     }
 }
 
-void bt3_rigidbody::set_updated_flag(bool flag)
+void bt3_rigidbody::set_motion_state(phy_motion_state* motion_state)
 {
-    m_motion_state->updated_flag = flag;
-}
-
-bool bt3_rigidbody::get_updated_flag() const
-{
-    return m_motion_state->updated_flag;
+    m_rigidbody->setMotionState(m_motion_state.get());
 }
 } // namespace violet::bt3

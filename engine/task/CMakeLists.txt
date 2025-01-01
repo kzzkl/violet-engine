@@ -2,6 +2,8 @@ project(violet-task)
 
 add_library(${PROJECT_NAME} STATIC
     ./private/task_executor.cpp
+    ./private/task_graph.cpp
+    ./private/task_group.cpp
     ./private/task.cpp)
 add_library(violet::task ALIAS ${PROJECT_NAME})
 
@@ -13,7 +15,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        violet::core)
+        violet::common)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

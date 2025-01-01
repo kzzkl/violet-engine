@@ -763,7 +763,7 @@ d3d12_index_buffer_default::d3d12_index_buffer_default(
     : d3d12_index_buffer(desc.index_count)
 {
     m_buffer = std::make_unique<d3d12_default_buffer>(
-        desc.indices,
+        desc.indexes,
         desc.index_size * desc.index_count,
         command_list);
 
@@ -815,8 +815,8 @@ d3d12_index_buffer_dynamic::d3d12_index_buffer_dynamic(const index_buffer_desc& 
         view.BufferLocation += m_size;
     }
 
-    if (desc.indices != nullptr && m_size != 0)
-        m_buffer->upload(desc.indices, m_size, 0);
+    if (desc.indexes != nullptr && m_size != 0)
+        m_buffer->upload(desc.indexes, m_size, 0);
 }
 
 void d3d12_index_buffer_dynamic::upload(const void* data, std::size_t size, std::size_t offset)

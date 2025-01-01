@@ -1,7 +1,11 @@
 {
-    "window": {
+    "Window": {
         "title": "Physically Based Rendering",
         "width": 1300,
         "height": 800
+    },
+    "PBR Sample": {
+        "skybox": "D:/Workspace/assets/textures/skybox/dry_orchard_meadow_4k.hdr",
+        "model": "D:/Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf"
     }
 }

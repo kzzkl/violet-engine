@@ -1,0 +1,24 @@
+{
+    "engine": {
+        "task_thread_count": 0
+    },
+    "graphics": {
+        "rhi": "violet-graphics-vulkan.dll",
+        "frame_resource_count": 2,
+        "samples": 4
+    },
+    "window": {
+        "title": "violet app",
+        "width": 700,
+        "height": 400
+    },
+    "physics": {
+        "plugin": "violet-physics-bullet3.dll",
+        "gravity": [
+            0.0,
+            -9.8,
+            0.0
+        ],
+        "tick": true
+    }
+}

@@ -10,16 +10,19 @@ class physics_plugin : public plugin
 public:
     physics_plugin();
 
-    pei_plugin* get_pei() { return m_pei; }
+    phy_plugin* get_plugin()
+    {
+        return m_plugin;
+    }
 
 protected:
-    virtual bool on_load() override;
-    virtual void on_unload() override;
+    bool on_load() override;
+    void on_unload() override;
 
 private:
-    create_pei m_create_func;
-    destroy_pei m_destroy_func;
+    phy_create_plugin m_create_func;
+    phy_destroy_plugin m_destroy_func;
 
-    pei_plugin* m_pei;
+    phy_plugin* m_plugin;
 };
 } // namespace violet

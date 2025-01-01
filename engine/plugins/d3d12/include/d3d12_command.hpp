@@ -30,9 +30,9 @@ public:
         rhi_resource* index_buffer,
         primitive_topology primitive_topology) override;
 
-    virtual void draw(std::size_t vertex_start, std::size_t vertex_end) override;
+    virtual void draw(std::size_t vertex_offset, std::size_t vertex_end) override;
     virtual void draw_indexed(
-        std::size_t index_start,
+        std::size_t index_offset,
         std::size_t index_end,
         std::size_t vertex_base) override;
 

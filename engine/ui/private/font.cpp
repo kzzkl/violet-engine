@@ -1,14 +1,13 @@
 #include "ui/font.hpp"
-#include "graphics/render_interface.hpp"
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
 #include <fstream>
 
-namespace violet::ui
+namespace violet
 {
-font::font(std::string_view font, std::size_t size)
+font::font(std::string_view font, std::size_t size, render_device* device)
 {
     FT_Error error;
 
@@ -105,15 +104,24 @@ font::font(std::string_view font, std::size_t size)
     FT_Done_Face(face);
     FT_Done_FreeType(library);
 
-    m_texture = graphics::rhi::make_texture(
-        pixels.data(),
-        tex_width,
-        tex_height,
-        graphics::RESOURCE_FORMAT_R8_UNORM);
+    rhi_texture_desc desc = {};
+    desc.width = static_cast<std::uint32_t>(tex_width);
+    desc.height = static_cast<std::uint32_t>(tex_height);
+    desc.format = RHI_FORMAT_R8_UNORM;
+    m_texture = device->create_texture(pixels.data(), pixels.size(), desc);
 }
 
-const glyph_data& font::glyph(std::uint32_t character) const
+const glyph_data& font::get_glyph(std::uint32_t character) const
 {
     return m_glyph.at(character);
 }
-} // namespace violet::ui
+
+std::uint32_t font::get_width(std::string_view text) const
+{
+    std::uint32_t width = 0;
+    for (char c : text)
+        width += get_glyph(c).advance;
+
+    return width;
+}
+} // namespace violet

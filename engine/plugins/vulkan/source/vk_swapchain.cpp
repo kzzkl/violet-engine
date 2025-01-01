@@ -10,41 +10,40 @@ vk_swapchain_image::vk_swapchain_image(
     VkFormat format,
     const VkExtent2D& extent,
     vk_context* context)
-    : vk_image(context)
+    : m_context(context)
 {
+    VkImageViewCreateInfo image_view_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = format,
+        .subresourceRange =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+    };
 
-    VkImageViewCreateInfo image_view_info = {};
-    image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    image_view_info.image = image;
-    image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    image_view_info.format = format;
-    image_view_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    image_view_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    image_view_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    image_view_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-    image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_view_info.subresourceRange.baseMipLevel = 0;
-    image_view_info.subresourceRange.levelCount = 1;
-    image_view_info.subresourceRange.baseArrayLayer = 0;
-    image_view_info.subresourceRange.layerCount = 1;
+    vkCreateImageView(m_context->get_device(), &image_view_info, nullptr, &m_image_view);
 
-    VkImageView image_view;
-    vkCreateImageView(get_context()->get_device(), &image_view_info, nullptr, &image_view);
-
-    set_image_view(image_view);
-    set_format(format);
-    set_extent(extent);
-    set_hash(vk_util::hash(image, image_view, get_context()->get_frame_count()));
-    set_clear_value(VkClearColorValue{0.0f, 0.0f, 0.0f, 1.0f});
+    m_image = image;
+    m_format = vk_util::map_format(format);
+    m_extent = {extent.width, extent.height};
+    m_hash = hash::city_hash_64(&m_image_view, sizeof(VkImageView));
 }
 
 vk_swapchain_image::~vk_swapchain_image()
 {
+    vkDestroyImageView(m_context->get_device(), m_image_view, nullptr);
 }
 
 vk_swapchain::vk_swapchain(const rhi_swapchain_desc& desc, vk_context* context)
     : m_swapchain(VK_NULL_HANDLE),
       m_swapchain_image_index(0),
+      m_flags(desc.flags),
       m_context(context)
 {
 #ifdef _WIN32
@@ -56,13 +55,16 @@ vk_swapchain::vk_swapchain(const rhi_swapchain_desc& desc, vk_context* context)
     vk_check(
         vkCreateWin32SurfaceKHR(m_context->get_instance(), &surface_info, nullptr, &m_surface));
 #else
-    throw vk_exception("Unsupported platform");
+    throw std::runtime_error("Unsupported platform");
 #endif
 
     for (std::size_t i = 0; i < m_context->get_frame_resource_count(); ++i)
-        m_available_semaphores.emplace_back(std::make_unique<vk_semaphore>(m_context));
+    {
+        m_available_semaphores.emplace_back(std::make_unique<vk_fence>(false, m_context));
+        m_present_semaphores.emplace_back(std::make_unique<vk_fence>(false, m_context));
+    }
 
-    resize(desc.width, desc.height);
+    resize(desc.extent.width, desc.extent.height);
 }
 
 vk_swapchain::~vk_swapchain()
@@ -72,7 +74,7 @@ vk_swapchain::~vk_swapchain()
     vkDestroySurfaceKHR(m_context->get_instance(), m_surface, nullptr);
 }
 
-rhi_semaphore* vk_swapchain::acquire_texture()
+rhi_fence* vk_swapchain::acquire_texture()
 {
     auto& semaphore = m_available_semaphores[m_context->get_frame_resource_index()];
 
@@ -85,17 +87,29 @@ rhi_semaphore* vk_swapchain::acquire_texture()
         &m_swapchain_image_index);
 
     if (result != VK_ERROR_OUT_OF_DATE_KHR)
+    {
         vk_check(result);
+    }
     else
+    {
         return nullptr;
+    }
 
     return semaphore.get();
 }
 
-void vk_swapchain::present(rhi_semaphore* const* wait_semaphores, std::size_t wait_semaphore_count)
+rhi_fence* vk_swapchain::get_present_fence() const
 {
-    auto queue = m_context->get_present_queue();
-    queue->present(m_swapchain, m_swapchain_image_index, wait_semaphores, wait_semaphore_count);
+    return m_present_semaphores[m_context->get_frame_resource_index()].get();
+}
+
+void vk_swapchain::present()
+{
+    auto* queue = m_context->get_present_queue();
+    queue->present(
+        m_swapchain,
+        m_swapchain_image_index,
+        m_present_semaphores[m_context->get_frame_resource_index()]->get_semaphore());
 }
 
 void vk_swapchain::resize(std::uint32_t width, std::uint32_t height)
@@ -140,18 +154,24 @@ void vk_swapchain::resize(std::uint32_t width, std::uint32_t height)
         &present_mode_count,
         present_modes.data());
 
-    VkSwapchainCreateInfoKHR swapchain_info = {};
-    swapchain_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    swapchain_info.surface = m_surface;
-    swapchain_info.imageArrayLayers = 1;
-    swapchain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    VkSwapchainCreateInfoKHR swapchain_info = {
+        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .surface = m_surface,
+        .imageFormat = formats[0].format,
+        .imageColorSpace = formats[0].colorSpace,
+        .imageArrayLayers = 1,
+        .imageUsage = vk_util::map_image_usage_flags(m_flags),
+    };
 
-    swapchain_info.minImageCount = capabilities.minImageCount + 1;
     if (capabilities.maxImageCount > 0 && swapchain_info.minImageCount > capabilities.maxImageCount)
+    {
         swapchain_info.minImageCount = capabilities.maxImageCount;
+    }
+    else
+    {
+        swapchain_info.minImageCount = capabilities.minImageCount + 1;
+    }
 
-    swapchain_info.imageFormat = formats[0].format;
-    swapchain_info.imageColorSpace = formats[0].colorSpace;
     for (auto& format : formats)
     {
         if (format.format == VK_FORMAT_B8G8R8A8_SRGB &&
@@ -191,10 +211,10 @@ void vk_swapchain::resize(std::uint32_t width, std::uint32_t height)
 
     m_context->setup_present_queue(m_surface);
 
-    std::vector<std::uint32_t> queue_family_indices{
+    std::vector<std::uint32_t> queue_family_indexes{
         m_context->get_graphics_queue()->get_family_index(),
         m_context->get_present_queue()->get_family_index()};
-    if (queue_family_indices[0] == queue_family_indices[1])
+    if (queue_family_indexes[0] == queue_family_indexes[1])
     {
         swapchain_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     }
@@ -202,8 +222,8 @@ void vk_swapchain::resize(std::uint32_t width, std::uint32_t height)
     {
         swapchain_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         swapchain_info.queueFamilyIndexCount =
-            static_cast<std::uint32_t>(queue_family_indices.size());
-        swapchain_info.pQueueFamilyIndices = queue_family_indices.data();
+            static_cast<std::uint32_t>(queue_family_indexes.size());
+        swapchain_info.pQueueFamilyIndices = queue_family_indexes.data();
     }
 
     swapchain_info.preTransform = capabilities.currentTransform;

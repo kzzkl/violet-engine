@@ -11,7 +11,7 @@
 #include "ui/controls/button.hpp"
 #include "ui/controls/image.hpp"
 
-namespace violet::sample
+namespace violet
 {
 class bvh_viewer : public core::system_base
 {
@@ -66,4 +66,4 @@ private:
     std::unique_ptr<ui::button> m_remove_button;
     std::unique_ptr<ui::image> m_small_view;
 };
-} // namespace violet::sample
+} // namespace violet

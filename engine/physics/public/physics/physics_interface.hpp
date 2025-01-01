@@ -1,26 +1,35 @@
 #pragma once
 
-#include "core/plugin_interface.hpp"
-#include "math/math.hpp"
+#include "math/types.hpp"
 
 namespace violet
 {
-enum pei_collision_shape_type
+class phy_motion_state
 {
-    PEI_COLLISION_SHAPE_TYPE_BOX,
-    PEI_COLLISION_SHAPE_TYPE_SPHERE,
-    PEI_COLLISION_SHAPE_TYPE_CAPSULE
+public:
+    virtual ~phy_motion_state() = default;
+
+    virtual const mat4f& get_transform() const = 0;
+    virtual void set_transform(const mat4f& transform) = 0;
 };
 
-struct pei_collision_shape_desc
+enum phy_collision_shape_type
 {
-    pei_collision_shape_type type;
-    union {
+    PHY_COLLISION_SHAPE_TYPE_BOX,
+    PHY_COLLISION_SHAPE_TYPE_SPHERE,
+    PHY_COLLISION_SHAPE_TYPE_CAPSULE,
+};
+
+struct phy_collision_shape_desc
+{
+    phy_collision_shape_type type;
+    union
+    {
         struct
         {
-            float length;
-            float height;
             float width;
+            float height;
+            float length;
         } box;
 
         struct
@@ -36,31 +45,31 @@ struct pei_collision_shape_desc
     };
 };
 
-class pei_collision_shape
+class phy_collision_shape
 {
 public:
-    virtual ~pei_collision_shape() = default;
+    virtual ~phy_collision_shape() = default;
 };
 
-enum pei_rigidbody_type
+enum phy_rigidbody_type
 {
-    PEI_RIGIDBODY_TYPE_STATIC,
-    PEI_RIGIDBODY_TYPE_DYNAMIC,
-    PEI_RIGIDBODY_TYPE_KINEMATIC
+    PHY_RIGIDBODY_TYPE_STATIC,
+    PHY_RIGIDBODY_TYPE_DYNAMIC,
+    PHY_RIGIDBODY_TYPE_KINEMATIC
 };
 
-enum pei_rigidbody_activation_state
+enum phy_activation_state
 {
-    PEI_RIGIDBODY_ACTIVATION_STATE_ACTIVE,
-    PEI_RIGIDBODY_ACTIVATION_STATE_DISABLE_DEACTIVATION,
-    PEI_RIGIDBODY_ACTIVATION_STATE_DISABLE_SIMULATION,
+    PHY_ACTIVATION_STATE_ACTIVE,
+    PHY_ACTIVATION_STATE_DISABLE_DEACTIVATION,
+    PHY_ACTIVATION_STATE_DISABLE_SIMULATION,
 };
 
-struct pei_rigidbody_desc
+struct phy_rigidbody_desc
 {
-    pei_rigidbody_type type;
+    phy_rigidbody_type type;
 
-    pei_collision_shape* shape;
+    phy_collision_shape* shape;
     float mass;
 
     float linear_damping;
@@ -68,125 +77,120 @@ struct pei_rigidbody_desc
     float restitution;
     float friction;
 
-    float4x4 initial_transform;
+    phy_activation_state activation_state;
 
-    pei_rigidbody_activation_state activation_state = PEI_RIGIDBODY_ACTIVATION_STATE_ACTIVE;
+    std::uint32_t collision_group;
+    std::uint32_t collision_mask;
+
+    phy_motion_state* motion_state;
 };
 
-class pei_rigidbody
+class phy_rigidbody
 {
 public:
-    virtual ~pei_rigidbody() = default;
+    virtual ~phy_rigidbody() = default;
 
     virtual void set_mass(float mass) = 0;
     virtual void set_damping(float linear_damping, float angular_damping) = 0;
     virtual void set_restitution(float restitution) = 0;
     virtual void set_friction(float friction) = 0;
-    virtual void set_shape(pei_collision_shape* shape) = 0;
+    virtual void set_shape(phy_collision_shape* shape) = 0;
 
-    virtual void set_transform(const float4x4& world) = 0;
-    virtual const float4x4& get_transform() const = 0;
-
-    virtual void set_angular_velocity(const float3& velocity) = 0;
-    virtual void set_linear_velocity(const float3& velocity) = 0;
+    virtual void set_angular_velocity(const vec3f& velocity) = 0;
+    virtual void set_linear_velocity(const vec3f& velocity) = 0;
 
     virtual void clear_forces() = 0;
 
-    virtual void set_activation_state(pei_rigidbody_activation_state state) = 0;
-
-    virtual void set_updated_flag(bool flag) = 0;
-    virtual bool get_updated_flag() const = 0;
+    virtual void set_activation_state(phy_activation_state activation_state) = 0;
+    virtual void set_motion_state(phy_motion_state* motion_state) = 0;
 };
 
-struct pei_joint_desc
+struct phy_joint_desc
 {
-    pei_rigidbody* source;
-    float3 source_position;
-    float4 source_rotation;
+    phy_rigidbody* source;
+    vec3f source_position;
+    vec4f source_rotation;
 
-    pei_rigidbody* target;
-    float3 target_position;
-    float4 target_rotation;
+    phy_rigidbody* target;
+    vec3f target_position;
+    vec4f target_rotation;
 
-    float3 min_linear;
-    float3 max_linear;
+    vec3f min_linear;
+    vec3f max_linear;
 
-    float3 min_angular;
-    float3 max_angular;
+    vec3f min_angular;
+    vec3f max_angular;
 
     bool spring_enable[6];
     float stiffness[6];
     float damping[6];
 };
 
-class pei_joint
+class phy_joint
 {
 public:
-    virtual ~pei_joint() = default;
+    virtual ~phy_joint() = default;
 
-    virtual void set_linear(const float3& min, const float3& max) = 0;
-    virtual void set_angular(const float3& min, const float3& max) = 0;
+    virtual void set_linear(const vec3f& min, const vec3f& max) = 0;
+    virtual void set_angular(const vec3f& min, const vec3f& max) = 0;
 
     virtual void set_spring_enable(std::size_t index, bool enable) = 0;
     virtual void set_stiffness(std::size_t index, float stiffness) = 0;
     virtual void set_damping(std::size_t index, float damping) = 0;
 };
 
-class pei_debug_draw
+class phy_debug_draw
 {
 public:
-    virtual ~pei_debug_draw() = default;
+    virtual ~phy_debug_draw() = default;
 
-    virtual void draw_line(const float3& start, const float3& end, const float3& color) = 0;
+    virtual void draw_line(const vec3f& start, const vec3f& end, const vec3f& color) = 0;
 };
 
-struct pei_world_desc
+struct phy_world_desc
 {
-    float3 gravity;
-    pei_debug_draw* debug_draw;
+    vec3f gravity;
+    phy_debug_draw* debug_draw;
 };
 
-class pei_world
+class phy_world
 {
 public:
-    virtual ~pei_world() = default;
+    virtual ~phy_world() = default;
 
-    virtual void add(
-        pei_rigidbody* rigidbody,
-        std::uint32_t collision_group,
-        std::uint32_t collision_mask) = 0;
-    virtual void add(pei_joint* joint) = 0;
+    virtual void add(phy_rigidbody* rigidbody) = 0;
+    virtual void add(phy_joint* joint) = 0;
 
-    virtual void remove(pei_rigidbody* rigidbody) = 0;
-    virtual void remove(pei_joint* joint) = 0;
+    virtual void remove(phy_rigidbody* rigidbody) = 0;
+    virtual void remove(phy_joint* joint) = 0;
 
     virtual void simulation(float time_step) = 0;
 
     virtual void debug() = 0;
 };
 
-class pei_plugin
+class phy_plugin
 {
 public:
-    virtual ~pei_plugin() = default;
+    virtual ~phy_plugin() = default;
 
-    virtual pei_world* create_world(const pei_world_desc& desc) = 0;
-    virtual void destroy_world(pei_world* world) = 0;
+    virtual phy_world* create_world(const phy_world_desc& desc) = 0;
+    virtual void destroy_world(phy_world* world) = 0;
 
-    virtual pei_collision_shape* create_collision_shape(const pei_collision_shape_desc& desc) = 0;
-    virtual pei_collision_shape* create_collision_shape(
-        const pei_collision_shape* const* child,
-        const float4x4* offset,
+    virtual phy_collision_shape* create_collision_shape(const phy_collision_shape_desc& desc) = 0;
+    virtual phy_collision_shape* create_collision_shape(
+        const phy_collision_shape* const* child,
+        const mat4f* offset,
         std::size_t size) = 0;
-    virtual void destroy_collision_shape(pei_collision_shape* collision_shape) = 0;
+    virtual void destroy_collision_shape(phy_collision_shape* collision_shape) = 0;
 
-    virtual pei_rigidbody* create_rigidbody(const pei_rigidbody_desc& desc) = 0;
-    virtual void destroy_rigidbody(pei_rigidbody* rigidbody) = 0;
+    virtual phy_rigidbody* create_rigidbody(const phy_rigidbody_desc& desc) = 0;
+    virtual void destroy_rigidbody(phy_rigidbody* rigidbody) = 0;
 
-    virtual pei_joint* create_joint(const pei_joint_desc& desc) = 0;
-    virtual void destroy_joint(pei_joint* joint) = 0;
+    virtual phy_joint* create_joint(const phy_joint_desc& desc) = 0;
+    virtual void destroy_joint(phy_joint* joint) = 0;
 };
 
-using create_pei = pei_plugin* (*)();
-using destroy_pei = void (*)(pei_plugin*);
+using phy_create_plugin = phy_plugin* (*)();
+using phy_destroy_plugin = void (*)(phy_plugin*);
 } // namespace violet

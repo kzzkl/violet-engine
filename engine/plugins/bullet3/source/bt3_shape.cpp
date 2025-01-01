@@ -2,32 +2,33 @@
 
 namespace violet::bt3
 {
-bt3_shape::bt3_shape(const pei_collision_shape_desc& desc)
+bt3_shape::bt3_shape(const phy_collision_shape_desc& desc)
 {
     switch (desc.type)
     {
-    case PEI_COLLISION_SHAPE_TYPE_BOX:
+    case PHY_COLLISION_SHAPE_TYPE_BOX:
         m_shape = std::make_unique<btBoxShape>(
             btVector3(desc.box.length * 0.5f, desc.box.height * 0.5f, desc.box.width * 0.5f));
         break;
-    case PEI_COLLISION_SHAPE_TYPE_SPHERE:
+    case PHY_COLLISION_SHAPE_TYPE_SPHERE:
         m_shape = std::make_unique<btSphereShape>(desc.sphere.radius);
         break;
-    case PEI_COLLISION_SHAPE_TYPE_CAPSULE:
+    case PHY_COLLISION_SHAPE_TYPE_CAPSULE:
         if (desc.capsule.height < 0.000001f)
+        {
             m_shape = std::make_unique<btSphereShape>(desc.capsule.radius);
+        }
         else
+        {
             m_shape = std::make_unique<btCapsuleShape>(desc.capsule.radius, desc.capsule.height);
+        }
         break;
     default:
         break;
     }
 }
 
-bt3_shape::bt3_shape(
-    const pei_collision_shape* const* child,
-    const float4x4* offset,
-    std::size_t size)
+bt3_shape::bt3_shape(const phy_collision_shape* const* child, const mat4f* offset, std::size_t size)
 {
     auto shape = std::make_unique<btCompoundShape>();
 

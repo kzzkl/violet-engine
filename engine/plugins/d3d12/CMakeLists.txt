@@ -22,7 +22,7 @@ target_include_directories(${PROJECT_NAME}
     ./include
     ${VIOLET_ROOT_DIR}/engine/core/public
     ${VIOLET_ROOT_DIR}/engine/graphics/public
-    ${VIOLET_THIRD_PARTY_DIR}/stb)
+    ${VIOLET_THIRDPARTY_DIR}/stb)
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE

@@ -16,19 +16,17 @@ vk_command::vk_command(VkCommandBuffer command_buffer, vk_context* context) noex
 {
 }
 
-vk_command::~vk_command()
-{
-}
+vk_command::~vk_command() {}
 
-void vk_command::begin(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer)
+void vk_command::begin_render_pass(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer)
 {
-    assert(m_current_render_pass == nullptr);
+    assert(m_current_render_pass == VK_NULL_HANDLE);
 
     m_current_render_pass = static_cast<vk_render_pass*>(render_pass)->get_render_pass();
 
-    vk_framebuffer* casted_framebuffer = static_cast<vk_framebuffer*>(framebuffer);
+    auto* casted_framebuffer = static_cast<vk_framebuffer*>(framebuffer);
     rhi_texture_extent extent = casted_framebuffer->get_extent();
-    auto& clear_values = casted_framebuffer->get_clear_values();
+    const auto& clear_values = casted_framebuffer->get_clear_values();
 
     VkRenderPassBeginInfo render_pass_begin_info = {};
     render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -42,63 +40,45 @@ void vk_command::begin(rhi_render_pass* render_pass, rhi_framebuffer* framebuffe
     vkCmdBeginRenderPass(m_command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-void vk_command::end()
+void vk_command::end_render_pass()
 {
     vkCmdEndRenderPass(m_command_buffer);
     m_current_render_pass = VK_NULL_HANDLE;
 }
 
-void vk_command::next()
+void vk_command::next_subpass()
 {
     vkCmdNextSubpass(m_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-void vk_command::set_render_pipeline(rhi_render_pipeline* render_pipeline)
+void vk_command::set_pipeline(rhi_render_pipeline* render_pipeline)
 {
-    vk_render_pipeline* pipeline = static_cast<vk_render_pipeline*>(render_pipeline);
+    auto* pipeline = static_cast<vk_render_pipeline*>(render_pipeline);
     vkCmdBindPipeline(m_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->get_pipeline());
 
     m_current_pipeline_layout = pipeline->get_pipeline_layout();
+    m_current_bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS;
 }
 
-void vk_command::set_render_parameter(std::size_t index, rhi_parameter* parameter)
+void vk_command::set_pipeline(rhi_compute_pipeline* compute_pipeline)
 {
-    vk_parameter* p = static_cast<vk_parameter*>(parameter);
-    p->sync();
-
-    VkDescriptorSet descriptor_sets[] = {p->get_descriptor_set()};
-    vkCmdBindDescriptorSets(
-        m_command_buffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        m_current_pipeline_layout,
-        static_cast<std::uint32_t>(index),
-        1,
-        descriptor_sets,
-        0,
-        nullptr);
-}
-
-void vk_command::set_compute_pipeline(rhi_compute_pipeline* compute_pipeline)
-{
-    vk_compute_pipeline* pipeline = static_cast<vk_compute_pipeline*>(compute_pipeline);
+    auto* pipeline = static_cast<vk_compute_pipeline*>(compute_pipeline);
     vkCmdBindPipeline(m_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->get_pipeline());
 
     m_current_pipeline_layout = pipeline->get_pipeline_layout();
+    m_current_bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
 }
 
-void vk_command::set_compute_parameter(std::size_t index, rhi_parameter* parameter)
+void vk_command::set_parameter(std::size_t index, rhi_parameter* parameter)
 {
-    vk_parameter* p = static_cast<vk_parameter*>(parameter);
-    p->sync();
-
-    VkDescriptorSet descriptor_sets[] = {p->get_descriptor_set()};
+    VkDescriptorSet descriptor_set = static_cast<vk_parameter*>(parameter)->get_descriptor_set();
     vkCmdBindDescriptorSets(
         m_command_buffer,
-        VK_PIPELINE_BIND_POINT_COMPUTE,
+        m_current_bind_point,
         m_current_pipeline_layout,
         static_cast<std::uint32_t>(index),
         1,
-        descriptor_sets,
+        &descriptor_set,
         0,
         nullptr);
 }
@@ -120,11 +100,16 @@ void vk_command::set_scissor(const rhi_scissor_rect* rects, std::size_t size)
     std::vector<VkRect2D> scissors;
     for (std::size_t i = 0; i < size; ++i)
     {
-        VkRect2D rect = {};
-        rect.offset.x = rects[i].min_x;
-        rect.offset.y = rects[i].min_y;
-        rect.extent.width = rects[i].max_x - rects[i].min_x;
-        rect.extent.height = rects[i].max_y - rects[i].min_y;
+        VkRect2D rect = {
+            .offset =
+                {
+                    .x = static_cast<std::int32_t>(rects[i].min_x),
+                    .y = static_cast<std::int32_t>(rects[i].min_y),
+                },
+            .extent = {
+                .width = rects[i].max_x - rects[i].min_x,
+                .height = rects[i].max_y - rects[i].min_y,
+            }};
         scissors.push_back(rect);
     }
     vkCmdSetScissor(
@@ -142,7 +127,8 @@ void vk_command::set_vertex_buffers(
     std::vector<VkDeviceSize> offsets(vertex_buffer_count);
     for (std::size_t i = 0; i < vertex_buffer_count; ++i)
     {
-        buffers[i] = static_cast<vk_vertex_buffer*>(vertex_buffers[i])->get_buffer_handle();
+        buffers[i] = vertex_buffers[i] ? static_cast<vk_buffer*>(vertex_buffers[i])->get_buffer() :
+                                         VK_NULL_HANDLE;
         offsets[i] = 0;
     }
     vkCmdBindVertexBuffers(
@@ -155,36 +141,50 @@ void vk_command::set_vertex_buffers(
 
 void vk_command::set_index_buffer(rhi_buffer* index_buffer)
 {
-    vk_index_buffer* buffer = static_cast<vk_index_buffer*>(index_buffer);
-    vkCmdBindIndexBuffer(
-        m_command_buffer,
-        buffer->get_buffer_handle(),
-        0,
-        buffer->get_index_type());
+    auto* buffer = static_cast<vk_index_buffer*>(index_buffer);
+    vkCmdBindIndexBuffer(m_command_buffer, buffer->get_buffer(), 0, buffer->get_index_type());
 }
 
-void vk_command::draw(std::size_t vertex_start, std::size_t vertex_count)
+void vk_command::draw(
+    std::uint32_t vertex_offset,
+    std::uint32_t vertex_count,
+    std::uint32_t instance_offset,
+    std::uint32_t instance_count)
 {
-    vkCmdDraw(
-        m_command_buffer,
-        static_cast<std::uint32_t>(vertex_count),
-        1,
-        static_cast<std::uint32_t>(vertex_start),
-        0);
+    vkCmdDraw(m_command_buffer, vertex_count, instance_count, vertex_offset, instance_offset);
 }
 
 void vk_command::draw_indexed(
-    std::size_t index_start,
-    std::size_t index_count,
-    std::size_t vertex_base)
+    std::uint32_t index_offset,
+    std::uint32_t index_count,
+    std::uint32_t vertex_offset,
+    std::uint32_t instance_offset,
+    std::uint32_t instance_count)
 {
     vkCmdDrawIndexed(
         m_command_buffer,
-        static_cast<std::uint32_t>(index_count),
-        1,
-        static_cast<std::uint32_t>(index_start),
-        static_cast<std::uint32_t>(vertex_base),
-        0);
+        index_count,
+        instance_count,
+        index_offset,
+        static_cast<std::int32_t>(vertex_offset),
+        instance_offset);
+}
+
+void vk_command::draw_indexed_indirect(
+    rhi_buffer* command_buffer,
+    std::size_t command_buffer_offset,
+    rhi_buffer* count_buffer,
+    std::size_t count_buffer_offset,
+    std::size_t max_draw_count)
+{
+    vkCmdDrawIndexedIndirectCount(
+        m_command_buffer,
+        static_cast<vk_buffer*>(command_buffer)->get_buffer(),
+        command_buffer_offset,
+        static_cast<vk_buffer*>(count_buffer)->get_buffer(),
+        count_buffer_offset,
+        max_draw_count,
+        sizeof(VkDrawIndexedIndirectCommand));
 }
 
 void vk_command::dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z)
@@ -193,8 +193,8 @@ void vk_command::dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z)
 }
 
 void vk_command::set_pipeline_barrier(
-    rhi_pipeline_stage_flags src_stage,
-    rhi_pipeline_stage_flags dst_stage,
+    rhi_pipeline_stage_flags src_stages,
+    rhi_pipeline_stage_flags dst_stages,
     const rhi_buffer_barrier* const buffer_barriers,
     std::size_t buffer_barrier_count,
     const rhi_texture_barrier* const texture_barriers,
@@ -205,11 +205,18 @@ void vk_command::set_pipeline_barrier(
     {
         VkBufferMemoryBarrier& barrier = vk_buffer_barriers[i];
         barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        barrier.srcAccessMask = vk_util::map_access_flags(buffer_barriers[i].src_access);
+        barrier.dstAccessMask = vk_util::map_access_flags(buffer_barriers[i].dst_access);
+        barrier.buffer = static_cast<vk_buffer*>(buffer_barriers[i].buffer)->get_buffer();
+        barrier.offset = buffer_barriers[i].offset;
+        barrier.size = buffer_barriers[i].size;
     }
 
     std::vector<VkImageMemoryBarrier> vk_image_barriers(texture_barrier_count);
     for (std::size_t i = 0; i < texture_barrier_count; ++i)
     {
+        auto* image = static_cast<vk_image*>(texture_barriers[i].texture);
+
         VkImageMemoryBarrier& barrier = vk_image_barriers[i];
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         barrier.srcAccessMask = vk_util::map_access_flags(texture_barriers[i].src_access);
@@ -218,16 +225,18 @@ void vk_command::set_pipeline_barrier(
         barrier.newLayout = vk_util::map_layout(texture_barriers[i].dst_layout);
         barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.image = static_cast<vk_image*>(texture_barriers[i].texture)->get_image();
-        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-        barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+        barrier.image = image->get_image();
+        barrier.subresourceRange.aspectMask = image->get_aspect_mask();
+        barrier.subresourceRange.baseMipLevel = texture_barriers[i].level;
+        barrier.subresourceRange.levelCount = texture_barriers[i].level_count;
+        barrier.subresourceRange.baseArrayLayer = texture_barriers[i].layer;
+        barrier.subresourceRange.layerCount = texture_barriers[i].layer_count;
     }
 
     vkCmdPipelineBarrier(
         m_command_buffer,
-        vk_util::map_pipeline_stage_flags(src_stage),
-        vk_util::map_pipeline_stage_flags(dst_stage),
+        vk_util::map_pipeline_stage_flags(src_stages),
+        vk_util::map_pipeline_stage_flags(dst_stages),
         0,
         0,
         nullptr,
@@ -239,38 +248,214 @@ void vk_command::set_pipeline_barrier(
 
 void vk_command::copy_texture(
     rhi_texture* src,
-    const rhi_resource_region& src_region,
+    const rhi_texture_region& src_region,
     rhi_texture* dst,
-    const rhi_resource_region& dst_region)
+    const rhi_texture_region& dst_region)
 {
-    VkImageCopy image_copy = {};
-    image_copy.extent = {src->get_extent().width, src->get_extent().height, 1};
+    assert(
+        src_region.extent.width == dst_region.extent.width &&
+        src_region.extent.height == dst_region.extent.height);
 
-    image_copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_copy.srcSubresource.mipLevel = src_region.mip_level;
-    image_copy.srcSubresource.baseArrayLayer = src_region.layer_start;
+    auto* src_image = static_cast<vk_image*>(src);
+    auto* dst_image = static_cast<vk_image*>(dst);
+
+    VkImageCopy image_copy = {};
+    image_copy.extent = {src_region.extent.width, src_region.extent.height, 1};
+
+    image_copy.srcOffset = {src_region.offset_x, src_region.offset_y, 0};
+    image_copy.srcSubresource.aspectMask = src_image->get_aspect_mask();
+    image_copy.srcSubresource.mipLevel = src_region.level;
+    image_copy.srcSubresource.baseArrayLayer = src_region.layer;
     image_copy.srcSubresource.layerCount = src_region.layer_count;
 
-    image_copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_copy.dstSubresource.mipLevel = dst_region.mip_level;
-    image_copy.dstSubresource.baseArrayLayer = dst_region.layer_start;
+    image_copy.dstOffset = {dst_region.offset_x, dst_region.offset_y, 0};
+    image_copy.dstSubresource.aspectMask = dst_image->get_aspect_mask();
+    image_copy.dstSubresource.mipLevel = dst_region.level;
+    image_copy.dstSubresource.baseArrayLayer = dst_region.layer;
     image_copy.dstSubresource.layerCount = dst_region.layer_count;
-
-    vk_image* src_image = static_cast<vk_image*>(src);
-    vk_image* dst_image = static_cast<vk_image*>(dst);
 
     vkCmdCopyImage(
         m_command_buffer,
         src_image->get_image(),
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        src_image->get_image(),
+        dst_image->get_image(),
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1,
         &image_copy);
 }
 
+void vk_command::blit_texture(
+    rhi_texture* src,
+    const rhi_texture_region& src_region,
+    rhi_texture* dst,
+    const rhi_texture_region& dst_region)
+{
+    vk_image* src_image = static_cast<vk_image*>(src);
+    vk_image* dst_image = static_cast<vk_image*>(dst);
+
+    VkImageBlit image_blit = {};
+
+    image_blit.srcOffsets[0] = {src_region.offset_x, src_region.offset_y, 0};
+    image_blit.srcOffsets[1] = {
+        static_cast<std::int32_t>(src_region.extent.width),
+        static_cast<std::int32_t>(src_region.extent.height),
+        1};
+    image_blit.srcSubresource.aspectMask = src_image->get_aspect_mask();
+    image_blit.srcSubresource.mipLevel = src_region.level;
+    image_blit.srcSubresource.baseArrayLayer = src_region.layer;
+    image_blit.srcSubresource.layerCount = src_region.layer_count;
+
+    image_blit.dstOffsets[0] = {dst_region.offset_x, dst_region.offset_y, 0};
+    image_blit.dstOffsets[1] = {
+        static_cast<std::int32_t>(dst_region.extent.width),
+        static_cast<std::int32_t>(dst_region.extent.height),
+        1};
+    image_blit.dstSubresource.aspectMask = dst_image->get_aspect_mask();
+    image_blit.dstSubresource.mipLevel = dst_region.level;
+    image_blit.dstSubresource.baseArrayLayer = dst_region.layer;
+    image_blit.dstSubresource.layerCount = dst_region.layer_count;
+
+    vkCmdBlitImage(
+        m_command_buffer,
+        src_image->get_image(),
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        dst_image->get_image(),
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &image_blit,
+        VK_FILTER_LINEAR);
+}
+
+void vk_command::fill_buffer(
+    rhi_buffer* buffer,
+    const rhi_buffer_region& region,
+    std::uint32_t value)
+{
+    assert(region.size > 0 && region.size % 4 == 0);
+
+    vkCmdFillBuffer(
+        m_command_buffer,
+        static_cast<vk_buffer*>(buffer)->get_buffer(),
+        region.offset,
+        region.size,
+        value);
+}
+
+void vk_command::copy_buffer(
+    rhi_buffer* src,
+    const rhi_buffer_region& src_region,
+    rhi_buffer* dst,
+    const rhi_buffer_region& dst_region)
+{
+    assert(src_region.size == dst_region.size);
+
+    VkBuffer src_buffer = static_cast<vk_buffer*>(src)->get_buffer();
+    VkBuffer dst_buffer = static_cast<vk_buffer*>(dst)->get_buffer();
+
+    VkBufferCopy buffer_copy = {
+        .srcOffset = src_region.offset,
+        .dstOffset = dst_region.offset,
+        .size = src_region.size,
+    };
+
+    vkCmdCopyBuffer(m_command_buffer, src_buffer, dst_buffer, 1, &buffer_copy);
+}
+
+void vk_command::copy_buffer_to_texture(
+    rhi_buffer* buffer,
+    const rhi_buffer_region& buffer_region,
+    rhi_texture* texture,
+    const rhi_texture_region& texture_region)
+{
+    auto* src_buffer = static_cast<vk_buffer*>(buffer);
+    auto* dst_image = static_cast<vk_image*>(texture);
+
+    VkBufferMemoryBarrier buffer_barrier = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_NONE,
+        .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .buffer = src_buffer->get_buffer(),
+        .offset = buffer_region.offset,
+        .size = buffer_region.size,
+    };
+
+    VkImageMemoryBarrier texture_barrier = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = 0,
+        .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = dst_image->get_image(),
+        .subresourceRange =
+            {
+                .aspectMask = dst_image->get_aspect_mask(),
+                .baseMipLevel = texture_region.level,
+                .levelCount = 1,
+                .baseArrayLayer = texture_region.layer,
+                .layerCount = texture_region.layer_count,
+            },
+    };
+    vkCmdPipelineBarrier(
+        m_command_buffer,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0,
+        0,
+        nullptr,
+        1,
+        &buffer_barrier,
+        1,
+        &texture_barrier);
+
+    VkBufferImageCopy region = {
+        .bufferOffset = 0,
+        .bufferRowLength = 0,
+        .bufferImageHeight = 0,
+        .imageSubresource =
+            {
+                .aspectMask = dst_image->get_aspect_mask(),
+                .mipLevel = texture_region.level,
+                .baseArrayLayer = texture_region.layer,
+                .layerCount = 1,
+            },
+        .imageOffset = {0, 0, 0},
+        .imageExtent = {texture_region.extent.width, texture_region.extent.height, 1},
+    };
+
+    vkCmdCopyBufferToImage(
+        m_command_buffer,
+        src_buffer->get_buffer(),
+        dst_image->get_image(),
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &region);
+}
+
+void vk_command::signal(rhi_fence* fence, std::uint64_t value)
+{
+    m_signal_fences.push_back(static_cast<vk_fence*>(fence)->get_semaphore());
+    m_signal_values.push_back(value);
+}
+
+void vk_command::wait(rhi_fence* fence, std::uint64_t value, rhi_pipeline_stage_flags stages)
+{
+    m_wait_fences.push_back(static_cast<vk_fence*>(fence)->get_semaphore());
+    m_wait_values.push_back(value);
+    m_wait_stages.push_back(vk_util::map_pipeline_stage_flags(stages));
+}
+
 void vk_command::reset()
 {
+    m_signal_fences.clear();
+    m_signal_values.clear();
+    m_wait_fences.clear();
+    m_wait_values.clear();
+    m_wait_stages.clear();
+
     m_current_render_pass = VK_NULL_HANDLE;
     m_current_pipeline_layout = VK_NULL_HANDLE;
     vk_check(vkResetCommandBuffer(m_command_buffer, 0));
@@ -280,10 +465,11 @@ vk_graphics_queue::vk_graphics_queue(std::uint32_t queue_family_index, vk_contex
     : m_family_index(queue_family_index),
       m_context(context)
 {
-    VkCommandPoolCreateInfo command_pool_info = {};
-    command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    command_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    command_pool_info.queueFamilyIndex = queue_family_index;
+    VkCommandPoolCreateInfo command_pool_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = queue_family_index,
+    };
 
     vk_check(
         vkCreateCommandPool(m_context->get_device(), &command_pool_info, nullptr, &m_command_pool));
@@ -292,7 +478,7 @@ vk_graphics_queue::vk_graphics_queue(std::uint32_t queue_family_index, vk_contex
 
     vkGetDeviceQueue(m_context->get_device(), queue_family_index, 0, &m_queue);
 
-    m_fence = std::make_unique<vk_fence>(false, m_context);
+    m_fence = std::make_unique<vk_fence>(true, m_context);
 }
 
 vk_graphics_queue::~vk_graphics_queue()
@@ -304,11 +490,12 @@ vk_command* vk_graphics_queue::allocate_command()
 {
     if (m_free_commands.empty())
     {
-        VkCommandBufferAllocateInfo command_buffer_allocate_info = {};
-        command_buffer_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        command_buffer_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        command_buffer_allocate_info.commandPool = m_command_pool;
-        command_buffer_allocate_info.commandBufferCount = 1;
+        VkCommandBufferAllocateInfo command_buffer_allocate_info = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = m_command_pool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
+        };
 
         std::vector<VkCommandBuffer> command_buffers(
             command_buffer_allocate_info.commandBufferCount);
@@ -330,60 +517,57 @@ vk_command* vk_graphics_queue::allocate_command()
     m_free_commands.pop_back();
     m_active_commands[m_context->get_frame_resource_index()].push_back(command);
 
-    VkCommandBufferBeginInfo command_buffer_begin_info = {};
-    command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    VkCommandBufferBeginInfo command_buffer_begin_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
     vk_check(vkBeginCommandBuffer(command->get_command_buffer(), &command_buffer_begin_info));
 
     return command;
 }
 
-void vk_graphics_queue::execute(
-    rhi_command* const* commands,
-    std::size_t command_count,
-    rhi_semaphore* const* signal_semaphores,
-    std::size_t signal_semaphore_count,
-    rhi_semaphore* const* wait_semaphores,
-    std::size_t wait_semaphore_count,
-    rhi_fence* fence)
+void vk_graphics_queue::execute(rhi_command* command)
 {
-    std::vector<VkCommandBuffer> vk_commands(command_count);
-    for (std::size_t i = 0; i < command_count; ++i)
-    {
-        vk_commands[i] = static_cast<vk_command*>(commands[i])->get_command_buffer();
-        vk_check(vkEndCommandBuffer(vk_commands[i]));
-    }
+    auto* cast_command = static_cast<vk_command*>(command);
 
-    std::vector<VkSemaphore> vk_signal_semaphores(signal_semaphore_count);
-    for (std::size_t i = 0; i < signal_semaphore_count; ++i)
-        vk_signal_semaphores[i] = static_cast<vk_semaphore*>(signal_semaphores[i])->get_semaphore();
+    VkCommandBuffer buffer = cast_command->get_command_buffer();
+    vk_check(vkEndCommandBuffer(buffer));
 
-    std::vector<VkSemaphore> vk_wait_semaphores(wait_semaphore_count);
-    for (std::size_t i = 0; i < wait_semaphore_count; ++i)
-        vk_wait_semaphores[i] = static_cast<vk_semaphore*>(wait_semaphores[i])->get_semaphore();
+    const auto& signal_semaphores = cast_command->get_signal_fences();
+    const auto& signal_values = cast_command->get_signal_values();
 
-    VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT};
+    const auto& wait_semaphores = cast_command->get_wait_fences();
+    const auto& wait_values = cast_command->get_wait_values();
+    const auto& wait_stages = cast_command->get_wait_stages();
 
-    VkSubmitInfo submit_info = {};
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.pSignalSemaphores = vk_signal_semaphores.data();
-    submit_info.signalSemaphoreCount = static_cast<std::uint32_t>(vk_signal_semaphores.size());
-    submit_info.pWaitSemaphores = vk_wait_semaphores.data();
-    submit_info.waitSemaphoreCount = static_cast<std::uint32_t>(vk_wait_semaphores.size());
-    submit_info.pWaitDstStageMask = wait_stages;
-    submit_info.commandBufferCount = static_cast<std::uint32_t>(vk_commands.size());
-    submit_info.pCommandBuffers = vk_commands.data();
+    VkTimelineSemaphoreSubmitInfo timeline_info = {
+        .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
+        .waitSemaphoreValueCount = static_cast<std::uint32_t>(wait_values.size()),
+        .pWaitSemaphoreValues = wait_values.data(),
+        .signalSemaphoreValueCount = static_cast<std::uint32_t>(signal_values.size()),
+        .pSignalSemaphoreValues = signal_values.data(),
+    };
 
-    vk_check(vkQueueSubmit(
-        m_queue,
-        1,
-        &submit_info,
-        fence == nullptr ? VK_NULL_HANDLE : static_cast<vk_fence*>(fence)->get_fence()));
+    VkSubmitInfo submit_info = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext = &timeline_info,
+        .waitSemaphoreCount = static_cast<std::uint32_t>(wait_semaphores.size()),
+        .pWaitSemaphores = wait_semaphores.empty() ? nullptr : wait_semaphores.data(),
+        .pWaitDstStageMask = wait_stages.data(),
+        .commandBufferCount = 1,
+        .pCommandBuffers = &buffer,
+        .signalSemaphoreCount = static_cast<std::uint32_t>(signal_semaphores.size()),
+        .pSignalSemaphores = signal_semaphores.empty() ? nullptr : signal_semaphores.data(),
+    };
+
+    vk_check(vkQueueSubmit(m_queue, 1, &submit_info, VK_NULL_HANDLE));
 }
 
 void vk_graphics_queue::execute_sync(rhi_command* command)
 {
-    execute(&command, 1, nullptr, 0, nullptr, 0, m_fence.get());
-    m_fence->wait();
+    command->signal(m_fence.get(), ++m_fence_value);
+    execute(command);
+    m_fence->wait(m_fence_value);
 }
 
 void vk_graphics_queue::begin_frame()
@@ -403,35 +587,26 @@ vk_present_queue::vk_present_queue(std::uint32_t queue_family_index, vk_context*
     vkGetDeviceQueue(context->get_device(), queue_family_index, 0, &m_queue);
 }
 
-vk_present_queue::~vk_present_queue()
-{
-}
+vk_present_queue::~vk_present_queue() {}
 
 void vk_present_queue::present(
     VkSwapchainKHR swapchain,
     std::uint32_t image_index,
-    rhi_semaphore* const* wait_semaphores,
-    std::size_t wait_semaphore_count)
+    VkSemaphore wait_semaphore)
 {
-    VkSwapchainKHR swapchains[] = {swapchain};
-    std::uint32_t image_indices[] = {image_index};
-
-    std::vector<VkSemaphore> semaphores(wait_semaphore_count);
-    for (std::size_t i = 0; i < wait_semaphore_count; ++i)
-        semaphores[i] = static_cast<vk_semaphore*>(wait_semaphores[i])->get_semaphore();
-
-    VkPresentInfoKHR present_info{};
-    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    present_info.pWaitSemaphores = semaphores.data();
-    present_info.waitSemaphoreCount = static_cast<std::uint32_t>(semaphores.size());
-    present_info.swapchainCount = 1;
-    present_info.pSwapchains = swapchains;
-    present_info.pImageIndices = image_indices;
+    VkPresentInfoKHR present_info = {
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &wait_semaphore,
+        .swapchainCount = 1,
+        .pSwapchains = &swapchain,
+        .pImageIndices = &image_index,
+    };
 
     VkResult result = vkQueuePresentKHR(m_queue, &present_info);
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
-        return;
-    else
+    if (result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR)
+    {
         vk_check(result);
+    }
 }
 } // namespace violet::vk

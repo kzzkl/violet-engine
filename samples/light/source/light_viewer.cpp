@@ -12,7 +12,7 @@
 #include "task/task_manager.hpp"
 #include "window/window.hpp"
 
-namespace violet::sample
+namespace violet
 {
 light_viewer::light_viewer() : core::system_base("light_viewer")
 {
@@ -274,12 +274,12 @@ void light_viewer::update_camera()
     if (keyboard.key(window::KEYBOARD_KEY_A).down())
         x -= 1.0f;
 
-    math::float4_simd s = math::simd::load(camera_transform.scale());
-    math::float4_simd r = math::simd::load(camera_transform.rotation());
-    math::float4_simd t = math::simd::load(camera_transform.position());
+    math::vector4 s = math::simd::load(camera_transform.scale());
+    math::vector4 r = math::simd::load(camera_transform.rotation());
+    math::vector4 t = math::simd::load(camera_transform.position());
 
-    math::float4x4_simd affine = math::matrix_simd::affine_transform(s, r, t);
-    math::float4_simd forward =
+    math::matrix4 affine = math::matrix_simd::affine_transform(s, r, t);
+    math::vector4 forward =
         math::simd::set(x * m_move_speed * delta, 0.0f, z * m_move_speed * delta, 0.0f);
     forward = math::matrix_simd::mul(forward, affine);
 
@@ -334,10 +334,10 @@ void light_viewer::debug()
 
     auto& camera_transform = world.component<scene::transform>(m_camera);
     auto& camera = world.component<graphics::camera>(m_camera);
-    math::float4x4_simd camera_v =
+    math::matrix4 camera_v =
         math::matrix_simd::inverse_transform(math::simd::load(camera_transform.to_world()));
-    math::float4x4_simd camera_p = math::simd::load(camera.projection());
-    math::float4x4_simd camera_vp = math::matrix_simd::mul(camera_v, camera_p);
+    math::matrix4 camera_p = math::simd::load(camera.projection());
+    math::matrix4 camera_vp = math::matrix_simd::mul(camera_v, camera_p);
     math::float4x4 camera_view_projection;
     math::simd::store(camera_vp, camera_view_projection);
 
@@ -360,33 +360,33 @@ void light_viewer::debug()
     {
         for (std::size_t j = 0; j < 4; ++j)
         {
-            math::float4_simd n = math::simd::load(camera_frustum_vertices[j]);
-            math::float4_simd f = math::simd::load(camera_frustum_vertices[j + 4]);
+            math::vector4 n = math::simd::load(camera_frustum_vertices[j]);
+            math::vector4 f = math::simd::load(camera_frustum_vertices[j + 4]);
 
-            math::float4_simd m = math::vector_simd::lerp(n, f, shadow_cascade_splits[i - 1]);
+            math::vector4 m = math::vector_simd::lerp(n, f, shadow_cascade_splits[i - 1]);
             math::simd::store(m, frustum_cascade_vertices[i * 4 + j]);
         }
     }
 
     auto& light_transform = world.component<scene::transform>(m_light);
-    math::float4x4_simd light_to_world = math::simd::load(light_transform.to_world());
-    math::float4x4_simd light_v = math::matrix_simd::inverse_transform(light_to_world);
+    math::matrix4 light_to_world = math::simd::load(light_transform.to_world());
+    math::matrix4 light_v = math::matrix_simd::inverse_transform(light_to_world);
     for (std::size_t cascade = 0; cascade < shadow_cascade_count; ++cascade)
     {
         auto cascade_vertices = frustum_cascade_vertices.data() + cascade * 4;
         draw_frustum(cascade_vertices);
 
-        math::float4_simd aabb_min = math::simd::set(std::numeric_limits<float>::max());
-        math::float4_simd aabb_max = math::simd::set(std::numeric_limits<float>::lowest());
+        math::vector4 aabb_min = math::simd::set(std::numeric_limits<float>::max());
+        math::vector4 aabb_max = math::simd::set(std::numeric_limits<float>::lowest());
         for (std::size_t i = 0; i < 8; ++i)
         {
-            math::float4_simd v = math::simd::load(cascade_vertices[i], 1.0f);
+            math::vector4 v = math::simd::load(cascade_vertices[i], 1.0f);
             v = math::matrix_simd::mul(v, light_v);
             aabb_min = math::simd::min(aabb_min, v);
             aabb_max = math::simd::max(aabb_max, v);
         }
 
-        math::float4x4_simd light_vp = math::matrix_simd::orthographic(
+        math::matrix4 light_vp = math::matrix_simd::orthographic(
             math::simd::get<0>(aabb_min),
             math::simd::get<0>(aabb_max),
             math::simd::get<1>(aabb_min),
@@ -401,4 +401,4 @@ void light_viewer::debug()
         draw_frustum(light_frustum_vertices.data());
     }*/
 }
-} // namespace violet::sample
+} // namespace violet

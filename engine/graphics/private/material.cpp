@@ -1,24 +1,32 @@
 #include "graphics/material.hpp"
+#include "graphics/material_manager.hpp"
 
 namespace violet
 {
-material_layout::material_layout(render_graph* render_graph, const std::vector<rdg_pass*>& passes)
-    : m_render_graph(render_graph),
-      m_passes(passes)
+material::material(material_type type, std::size_t constant_size) noexcept
+    : m_type(type),
+      m_constant_size(constant_size)
 {
+    auto* material_manager = render_device::instance().get_material_manager();
+    m_id = material_manager->register_material(this, m_constant_address);
 }
 
-material::material(render_device* device, material_layout* layout) : m_layout(layout)
+material::~material()
 {
-    for (rdg_pass* pass : layout->get_passes())
+    auto* material_manager = render_device::instance().get_material_manager();
+    material_manager->unregister_material(m_id);
+}
+
+void material::mark_dirty()
+{
+    if (m_dirty)
     {
-        auto& parameter_layout = pass->get_parameter_layout();
-        std::size_t material_parameter_index = pass->get_material_parameter_index();
-        if (material_parameter_index != -1)
-            m_parameters.push_back(
-                device->create_parameter(parameter_layout[material_parameter_index]));
-        else
-            m_parameters.push_back(nullptr);
+        return;
     }
+
+    m_dirty = true;
+
+    auto* material_manager = render_device::instance().get_material_manager();
+    material_manager->mark_dirty(this);
 }
 } // namespace violet

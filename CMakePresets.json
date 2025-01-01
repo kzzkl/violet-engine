@@ -1,0 +1,85 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 25,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "windows-base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "installDir": "${sourceDir}/build/install",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
+            "name": "windows-vs2022",
+            "description": "Visual Studio 2022 configuration.",
+            "inherits": "windows-base",
+            "generator": "Visual Studio 17 2022",
+            "architecture": {
+                "value": "x64",
+                "strategy": "set"
+            },
+            "toolset": {
+                "value": "host=x86",
+                "strategy": "set"
+            }
+        },
+        {
+            "name": "windows-ninja-msvc",
+            "description": "Ninja configuration using MSVC.",
+            "inherits": "windows-base",
+            "generator": "Ninja Multi-Config",
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            },
+            "toolset": {
+                "value": "host=x86",
+                "strategy": "external"
+            },
+            "cacheVariables": {
+                "CMAKE_CXX_COMPILER": "cl"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "windows-msvc-release",
+            "displayName": "Release",
+            "configurePreset": "windows-vs2022",
+            "configuration": "Release"
+        },
+        {
+            "name": "windows-msvc-debug",
+            "displayName": "Debug",
+            "configurePreset": "windows-vs2022",
+            "configuration": "Debug"
+        },
+        {
+            "name": "windows-ninja-msvc-release",
+            "displayName": "Release",
+            "configurePreset": "windows-ninja-msvc",
+            "configuration": "Release"
+        },
+        {
+            "name": "windows-ninja-msvc-relwithdebinfo",
+            "displayName": "RelWithDebInfo",
+            "configurePreset": "windows-ninja-msvc",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "windows-ninja-msvc-debug",
+            "displayName": "Debug",
+            "configurePreset": "windows-ninja-msvc",
+            "configuration": "Debug"
+        }
+    ]
+}

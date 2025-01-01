@@ -1,132 +1,121 @@
-#include "common/assert.hpp"
-#include "core/application.hpp"
-#include "core/relation.hpp"
+#include "common/log.hpp"
+#include "components/camera.hpp"
+#include "components/transform.hpp"
+#include "components/ui_root.hpp"
+#include "core/engine.hpp"
+#include "ecs/actor.hpp"
 #include "gallery.hpp"
-#include "graphics/camera.hpp"
-#include "graphics/graphics.hpp"
-#include "graphics/graphics_event.hpp"
-#include "graphics/rhi.hpp"
-#include "scene/scene.hpp"
-#include "task/task_manager.hpp"
-#include "ui/ui.hpp"
-#include "window/window.hpp"
+#include "graphics/graphics_module.hpp"
+#include "graphics/passes/present_pass.hpp"
+#include "scene/scene_module.hpp"
+#include "ui/ui_module.hpp"
+#include "ui/widgets/button.hpp"
+#include "ui/widgets/label.hpp"
+#include "window/window_module.hpp"
 
-namespace violet::sample
+namespace violet
 {
-class test_system : public core::system_base
+class sample_module : public engine_module
 {
 public:
-    test_system() : core::system_base("test") {}
+    sample_module() : engine_module("sample") {}
 
     virtual bool initialize(const dictionary& config) override
     {
-        initialize_task();
-        initialize_ui();
-        initialize_camera();
+        auto& window = get_module<window_module>();
+        window.on_resize().then(
+            [this](std::uint32_t width, std::uint32_t height)
+            {
+                resize(width, height);
+            });
 
-        system<core::event>().subscribe<graphics::event_render_extent_change>(
-            "sample_module",
-            [this](std::uint32_t width, std::uint32_t height) { resize_camera(width, height); });
+        on_tick().then(
+            [this](float delta)
+            {
+            });
+
+        initialize_ui();
 
         return true;
     }
 
 private:
-    void initialize_task()
-    {
-        auto& task = system<task::task_manager>();
-
-        auto update_task = task.schedule("test update", [this]() { update(); });
-        update_task->add_dependency(*task.find(task::TASK_GAME_LOGIC_START));
-        task.find(task::TASK_GAME_LOGIC_END)->add_dependency(*update_task);
-    }
-
     void initialize_ui()
     {
-        m_gallery = std::make_unique<gallery>();
-        m_gallery->initialize();
+        auto& window = get_module<window_module>();
+        auto& graphics = get_module<graphics_module>();
+
+        render_device* device = graphics.get_device();
+
+        auto window_extent = window.get_extent();
+        m_swapchain = device->create_swapchain(
+            rhi_swapchain_desc{window_extent.width, window_extent.height, window.get_handle()});
+
+        m_render_graph = std::make_unique<render_graph>();
+
+        rdg_texture* render_target =
+            m_render_graph->add_resource<rdg_texture>("render target", true);
+        render_target->set_format(m_swapchain->get_texture()->get_format());
+
+        ui_pass* ui = m_render_graph->add_pass<ui_pass>("ui pass");
+        present_pass* present = m_render_graph->add_pass<present_pass>("present pass");
+
+        m_render_graph
+            ->add_edge(render_target, ui, ui_pass::reference_render_target, RDG_EDGE_ACTION_CLEAR);
+        m_render_graph->add_edge(
+            ui,
+            ui_pass::reference_render_target,
+            present,
+            present_pass::reference_present_target,
+            RDG_EDGE_ACTION_LOAD);
+
+        m_render_graph->compile(device);
+
+        m_main_camera = std::make_unique<actor>("main camera", get_world());
+        auto [main_camera, main_ui, camera_transform] =
+            m_main_camera->add<camera, ui_root, transform>();
+
+        main_camera->set_render_graph(m_render_graph.get());
+        main_camera->set_render_texture("render target", m_swapchain.get());
+
+        main_ui->set_pass(ui);
+        main_ui->get_container()->add<gallery>();
+
+        resize(window_extent.width, window_extent.height);
     }
 
-    void initialize_camera()
+    void resize(std::uint32_t width, std::uint32_t height)
     {
-        auto& world = system<ecs::world>();
-        auto& scene = system<scene::scene>();
-        auto& relation = system<core::relation>();
-        auto& graphics = system<graphics::graphics>();
-
-        m_camera = world.create();
-        world.add<core::link, graphics::camera, scene::transform>(m_camera);
-
-        auto& c_transform = world.component<scene::transform>(m_camera);
-        c_transform.position(math::float3{0.0f, 0.0f, -38.0f});
-
-        relation.link(m_camera, scene.root());
-
-        auto extent = graphics.render_extent();
-        resize_camera(extent.width, extent.height);
-
-        graphics.game_camera(m_camera);
+        m_main_camera->get<camera>()->resize(width, height);
+        m_swapchain->resize(width, height);
     }
 
-    void resize_camera(std::uint32_t width, std::uint32_t height)
-    {
-        auto& world = system<ecs::world>();
-        auto& graphics = system<graphics::graphics>();
+    rhi_ptr<rhi_swapchain> m_swapchain;
+    rhi_ptr<rhi_texture> m_depth;
+    std::unique_ptr<render_graph> m_render_graph;
 
-        auto& camera = world.component<graphics::camera>(m_camera);
-
-        graphics::render_target_desc render_target = {};
-        render_target.width = width;
-        render_target.height = height;
-        render_target.format = graphics::rhi::back_buffer_format();
-        render_target.samples = 4;
-        m_render_target = graphics::rhi::make_render_target(render_target);
-        camera.render_target(m_render_target.get());
-
-        graphics::depth_stencil_buffer_desc depth_stencil_buffer = {};
-        depth_stencil_buffer.width = width;
-        depth_stencil_buffer.height = height;
-        depth_stencil_buffer.format = graphics::RESOURCE_FORMAT_D24_UNORM_S8_UINT;
-        depth_stencil_buffer.samples = 4;
-        m_depth_stencil_buffer = graphics::rhi::make_depth_stencil_buffer(depth_stencil_buffer);
-        camera.depth_stencil_buffer(m_depth_stencil_buffer.get());
-    }
-
-    void update() {}
-
-    ecs::entity m_camera;
-    std::unique_ptr<graphics::resource_interface> m_render_target;
-    std::unique_ptr<graphics::resource_interface> m_depth_stencil_buffer;
-
-    std::unique_ptr<gallery> m_gallery;
+    std::unique_ptr<actor> m_main_camera;
 };
-
-class ui_app
-{
-public:
-    ui_app() : m_app("ui/config") {}
-
-    void initialize()
-    {
-        m_app.install<window::window>();
-        m_app.install<core::relation>();
-        m_app.install<scene::scene>();
-        m_app.install<graphics::graphics>();
-        m_app.install<ui::ui>();
-        m_app.install<test_system>();
-    }
-
-    void run() { m_app.run(); }
-
-private:
-    core::application m_app;
-};
-} // namespace violet::sample
+} // namespace violet
 
 int main()
 {
-    violet::sample::ui_app app;
-    app.initialize();
-    app.run();
-    return 0;
+    using namespace violet;
+
+    engine engine;
+    engine.initialize("hello-world/config");
+    engine.install<window_module>();
+    engine.install<scene_module>();
+    engine.install<graphics_module>();
+    engine.install<ui_module>();
+    engine.install<sample::sample_module>();
+
+    engine.get_module<window_module>().on_destroy().then(
+        [&engine]()
+        {
+            log::info("Close window");
+            engine.exit();
+        });
+
+    engine.run();
 }

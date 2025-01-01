@@ -1,7 +1,8 @@
 #include "vmd.hpp"
+#include "common/utility.hpp"
 #include "encode.hpp"
 
-namespace violet::sample
+namespace violet
 {
 template <typename T>
 static void read(std::istream& fin, T& dest)
@@ -9,27 +10,47 @@ static void read(std::istream& fin, T& dest)
     fin.read(reinterpret_cast<char*>(&dest), sizeof(T));
 }
 
-vmd::vmd(std::string_view path) : m_loaded(false)
+vmd::vmd() = default;
+
+bool vmd::load(std::string_view path)
 {
-    std::ifstream fin(path.data(), std::ios::binary);
+    std::wstring path_wstring = string_to_wstring(path);
+
+    std::ifstream fin(path_wstring.data(), std::ios::binary);
     if (!fin.is_open())
-        return;
+    {
+        return false;
+    }
 
     load_header(fin);
     load_motion(fin);
 
     if (!fin.eof())
+    {
         load_morph(fin);
-    if (!fin.eof())
-        load_camera(fin);
-    if (!fin.eof())
-        load_light(fin);
-    if (!fin.eof())
-        load_shadow(fin);
-    if (!fin.eof())
-        load_ik(fin);
+    }
 
-    m_loaded = true;
+    if (!fin.eof())
+    {
+        load_camera(fin);
+    }
+
+    if (!fin.eof())
+    {
+        load_light(fin);
+    }
+
+    if (!fin.eof())
+    {
+        load_shadow(fin);
+    }
+
+    if (!fin.eof())
+    {
+        load_ik(fin);
+    }
+
+    return true;
 }
 
 void vmd::load_header(std::ifstream& fin)
@@ -166,4 +187,4 @@ void vmd::load_ik(std::ifstream& fin)
         iks.push_back(ik);
     }
 }
-} // namespace violet::sample
+} // namespace violet

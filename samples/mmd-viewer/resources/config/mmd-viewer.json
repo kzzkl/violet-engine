@@ -5,15 +5,7 @@
         "height": 800
     },
     "mmd viewer": {
-        "model2": "C:/Workspace/data/yanmiao/yanmiao.pmx",
-        "model": "C:/Workspace/data/Molinia/Molinia.pmx",
-        "model1": "C:/Workspace/data/Fenrir/Fenrir.pmx",
-        "motion": "C:/Workspace/data/test.vmd"
-    },
-    "physics": {
-        "tick": false
-    },
-    "graphics": {
-        "frame_resource_count": 1
+        "pmx": "D:/Workspace/assets/models/mmd/Sour式空_Obsidian.ver_by_Sour暄_bd5feccf9f475a870d8d340c750aab9f/Sora.pmx",
+        "vmd": "D:/Workspace/assets/models/mmd/test_a.vmd"
     }
 }

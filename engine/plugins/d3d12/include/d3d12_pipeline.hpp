@@ -188,10 +188,10 @@ private:
 
     d3d12_frame_buffer* m_current_frame_buffer;
 
-    std::vector<std::size_t> m_color_indices;
+    std::vector<std::size_t> m_color_indexes;
     std::size_t m_depth_index;
     // first: resolve target, second: resolve source
-    std::vector<std::pair<std::size_t, std::size_t>> m_resolve_indices;
+    std::vector<std::pair<std::size_t, std::size_t>> m_resolve_indexes;
 };
 
 class d3d12_render_pipeline : public rhi_render_pipeline

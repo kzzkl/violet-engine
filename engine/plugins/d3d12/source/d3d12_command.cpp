@@ -115,24 +115,24 @@ void d3d12_render_command::set_input_assembly_state(
     m_command_list->IASetPrimitiveTopology(primitive_topology_map[primitive_topology]);
 }
 
-void d3d12_render_command::draw(std::size_t vertex_start, std::size_t vertex_end)
+void d3d12_render_command::draw(std::size_t vertex_offset, std::size_t vertex_end)
 {
     m_command_list->DrawInstanced(
-        static_cast<UINT>(vertex_end - vertex_start),
+        static_cast<UINT>(vertex_end - vertex_offset),
         1,
-        static_cast<UINT>(vertex_start),
+        static_cast<UINT>(vertex_offset),
         0);
 }
 
 void d3d12_render_command::draw_indexed(
-    std::size_t index_start,
+    std::size_t index_offset,
     std::size_t index_end,
     std::size_t vertex_base)
 {
     m_command_list->DrawIndexedInstanced(
-        static_cast<UINT>(index_end - index_start),
+        static_cast<UINT>(index_end - index_offset),
         1,
-        static_cast<UINT>(index_start),
+        static_cast<UINT>(index_offset),
         static_cast<UINT>(vertex_base),
         0);
 }
@@ -304,7 +304,7 @@ d3d12_dynamic_command d3d12_command_queue::allocate_dynamic_command()
     static int command_counter = 0;
     auto device = d3d12_context::device();
 
-    std::lock_guard<std::mutex> lg(m_dynamic_lock);
+    std::lock_guard lock(m_dynamic_lock);
 
     d3d12_ptr<D3D12CommandAllocator> allocator;
     if (!m_dynamic_allocator_pool.empty() &&
@@ -352,7 +352,7 @@ d3d12_dynamic_command d3d12_command_queue::allocate_dynamic_command()
 
 void d3d12_command_queue::execute_command(d3d12_dynamic_command command)
 {
-    std::lock_guard<std::mutex> lg(m_dynamic_lock);
+    std::lock_guard lock(m_dynamic_lock);
 
     command.close();
     m_dynamic_command_batch.push_back(command.m_command_list);

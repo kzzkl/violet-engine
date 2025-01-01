@@ -3,7 +3,7 @@
 
 namespace violet::bt3
 {
-bt3_joint::bt3_joint(const pei_joint_desc& desc)
+bt3_joint::bt3_joint(const phy_joint_desc& desc)
 {
     btMatrix3x3 rotate_a;
     rotate_a.setRotation(convert_quaternion(desc.source_rotation));
@@ -44,13 +44,13 @@ bt3_joint::bt3_joint(const pei_joint_desc& desc)
     }
 }
 
-void bt3_joint::set_linear(const float3& min, const float3& max)
+void bt3_joint::set_linear(const vec3f& min, const vec3f& max)
 {
     m_constraint->setLinearLowerLimit(convert_vector(min));
     m_constraint->setLinearUpperLimit(convert_vector(max));
 }
 
-void bt3_joint::set_angular(const float3& min, const float3& max)
+void bt3_joint::set_angular(const vec3f& min, const vec3f& max)
 {
     m_constraint->setAngularLowerLimit(convert_vector(min));
     m_constraint->setAngularUpperLimit(convert_vector(max));
@@ -58,16 +58,16 @@ void bt3_joint::set_angular(const float3& min, const float3& max)
 
 void bt3_joint::set_spring_enable(std::size_t index, bool enable)
 {
-    m_constraint->enableSpring(index, enable);
+    m_constraint->enableSpring(static_cast<int>(index), enable);
 }
 
 void bt3_joint::set_stiffness(std::size_t index, float stiffness)
 {
-    m_constraint->setStiffness(index, stiffness);
+    m_constraint->setStiffness(static_cast<int>(index), stiffness);
 }
 
 void bt3_joint::set_damping(std::size_t index, float damping)
 {
-    m_constraint->setDamping(index, damping);
+    m_constraint->setDamping(static_cast<int>(index), damping);
 }
 } // namespace violet::bt3

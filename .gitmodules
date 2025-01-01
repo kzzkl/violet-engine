@@ -25,6 +25,12 @@
 [submodule "thirdparty/VulkanMemoryAllocator"]
 	path = thirdparty/VulkanMemoryAllocator
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
-[submodule "thirdparty/SPIRV-Reflect"]
-	path = thirdparty/SPIRV-Reflect
-	url = https://github.com/KhronosGroup/SPIRV-Reflect.git
+[submodule "thirdparty/assimp"]
+	path = thirdparty/assimp
+	url = https://github.com/assimp/assimp.git
+[submodule "thirdparty/OffsetAllocator"]
+	path = thirdparty/OffsetAllocator
+	url = https://github.com/sebbbi/OffsetAllocator.git
+[submodule "thirdparty/imgui"]
+	path = thirdparty/imgui
+	url = https://github.com/ocornut/imgui.git

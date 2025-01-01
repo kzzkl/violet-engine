@@ -2,10 +2,8 @@ project(test-ecs)
 
 add_executable(${PROJECT_NAME}
     ./source/test_benchmark.cpp
-    ./source/test_component.cpp
-    ./source/test_main.cpp
-    ./source/test_node.cpp
-    ./source/test_world.cpp)
+    ./source/test_ecs.cpp
+    ./source/test_main.cpp)
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
@@ -13,7 +11,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-    violet::core
+    violet::ecs
     Catch2::Catch2)
 
 install(TARGETS ${PROJECT_NAME}

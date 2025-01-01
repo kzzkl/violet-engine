@@ -16,8 +16,7 @@ bounding_box::bounding_box()
 
 bool bounding_box::transform(const float4x4& transform)
 {
-    float4_simd axis =
-        simd::set(transform[0][0], transform[1][0], transform[2][0], 0.0f);
+    float4_simd axis = simd::set(transform[0][0], transform[1][0], transform[2][0], 0.0f);
     float4_simd xa = vector_simd::mul(axis, simd::set(m_mesh_aabb.min[0]));
     float4_simd xb = vector_simd::mul(axis, simd::set(m_mesh_aabb.max[0]));
 
@@ -64,7 +63,7 @@ bool bounding_box::transform(const float4x4& transform)
 }
 
 void bounding_box::aabb(
-    const std::vector<float3>& vertices,
+    std::span<const float3> vertices,
     const float4x4& transform,
     bool dynamic,
     float fatten)

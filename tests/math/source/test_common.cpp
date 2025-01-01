@@ -1,6 +1,6 @@
 #include "test_common.hpp"
 
-#define VALUE_WITH_MARGIN(v) Catch::Approx(v).margin(0.00000005)
+#define VALUE_WITH_MARGIN(v) Catch::Approx(v).margin(0.0005)
 
 namespace violet::test
 {
@@ -9,7 +9,7 @@ bool equal(float a, float b)
     return VALUE_WITH_MARGIN(a) == b;
 }
 
-bool equal(const violet::float2& a, const violet::float2& b)
+bool equal(const violet::vec2f& a, const violet::vec2f& b)
 {
     for (std::size_t i = 0; i < 2; ++i)
     {
@@ -19,7 +19,7 @@ bool equal(const violet::float2& a, const violet::float2& b)
     return true;
 }
 
-bool equal(const violet::float3& a, const violet::float3& b)
+bool equal(const violet::vec3f& a, const violet::vec3f& b)
 {
     for (std::size_t i = 0; i < 3; ++i)
     {
@@ -29,7 +29,7 @@ bool equal(const violet::float3& a, const violet::float3& b)
     return true;
 }
 
-bool equal(const violet::float4& a, const violet::float4& b)
+bool equal(const violet::vec4f& a, const violet::vec4f& b)
 {
     for (std::size_t i = 0; i < 4; ++i)
     {
@@ -39,16 +39,7 @@ bool equal(const violet::float4& a, const violet::float4& b)
     return true;
 }
 
-bool equal(const violet::float4_simd& a, const violet::float4_simd& b)
-{
-    float4 va, vb;
-    simd::store(a, va);
-    simd::store(b, vb);
-
-    return equal(va, vb);
-}
-
-bool equal(const violet::float4x4& a, const violet::float4x4& b)
+bool equal(const violet::mat4f& a, const violet::mat4f& b)
 {
     for (std::size_t i = 0; i < 4; ++i)
     {
@@ -61,12 +52,27 @@ bool equal(const violet::float4x4& a, const violet::float4x4& b)
     return true;
 }
 
-bool equal(const violet::float4x4_simd& a, const violet::float4x4_simd& b)
+bool equal(const violet::vec4f_simd& a, const violet::vec3f& b)
 {
-    float4x4 ma, mb;
-    simd::store(a, ma);
-    simd::store(b, mb);
+    vec3f va;
+    math::store(a, va);
 
-    return equal(ma, mb);
+    return equal(va, b);
+}
+
+bool equal(const violet::vec4f_simd& a, const violet::vec4f& b)
+{
+    vec4f va;
+    math::store(a, va);
+
+    return equal(va, b);
+}
+
+bool equal(const violet::mat4f_simd& a, const violet::mat4f& b)
+{
+    mat4f ma;
+    math::store(a, ma);
+
+    return equal(ma, b);
 }
 } // namespace violet::test

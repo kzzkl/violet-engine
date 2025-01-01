@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/hash.hpp"
 #include "vk_common.hpp"
 
 namespace violet::vk
@@ -17,28 +18,16 @@ public:
     static VkFilter map_filter(rhi_filter filter);
     static VkSamplerAddressMode map_sampler_address_mode(rhi_sampler_address_mode address_mode);
 
+    static VkImageUsageFlags map_image_usage_flags(rhi_texture_flags flags);
+    static VkBufferUsageFlags map_buffer_usage_flags(rhi_buffer_flags flags);
+
     static VkPipelineStageFlags map_pipeline_stage_flags(rhi_pipeline_stage_flags flags);
     static VkAccessFlags map_access_flags(rhi_access_flags flags);
 
-    static inline void hash_combine(std::size_t& seed, std::size_t value)
-    {
-        seed = seed ^ (value + 0x9e3779b9 + (seed << 6) + (seed >> 2));
-    }
+    static VkBlendFactor map_blend_factor(rhi_blend_factor factor);
+    static VkBlendOp map_blend_op(rhi_blend_op op);
 
-    template <typename... Args>
-    static std::size_t hash(Args&&... args)
-    {
-        std::size_t result = 0;
-        (hash_combine(result, hash_impl(args)), ...);
-        return result;
-    }
-
-private:
-    template <typename T>
-    static inline std::size_t hash_impl(const T& value)
-    {
-        std::hash<T> hasher;
-        return hasher(value);
-    }
+    static VkCompareOp map_compare_op(rhi_compare_op op);
+    static VkStencilOp map_stencil_op(rhi_stencil_op op);
 };
 } // namespace violet::vk

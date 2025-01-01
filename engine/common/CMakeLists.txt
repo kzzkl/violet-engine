@@ -1,7 +1,10 @@
 project(violet-common)
 
 add_library(${PROJECT_NAME} STATIC
-    ./private/log.cpp)
+    ./private/city_hash.cpp
+    ./private/hash.cpp
+    ./private/log.cpp
+    ./private/utility.cpp)
 add_library(violet::common ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
@@ -11,7 +14,8 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
     spdlog::spdlog
-    nlohmann_json::nlohmann_json)
+    nlohmann_json::nlohmann_json
+    OffsetAllocator)
 
 install(DIRECTORY ./public/ DESTINATION include/violet)
 

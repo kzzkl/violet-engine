@@ -1,86 +1,215 @@
 #pragma once
 
-#include "vk_context.hpp"
-#include <vector>
+#include "vk_common.hpp"
 
 namespace violet::vk
 {
+class vk_context;
+
 class vk_image : public rhi_texture
 {
 public:
-    vk_image(vk_context* context);
-    vk_image(const rhi_texture_desc& desc, vk_context* context);
-    virtual ~vk_image();
+    vk_image();
+    vk_image(const vk_image&) = delete;
+    virtual ~vk_image() = default;
 
-    VkImage get_image() const noexcept { return m_image; }
-    VkImageView get_image_view() const noexcept { return m_image_view; }
-    VkImageLayout get_image_layout() const noexcept { return m_image_layout; }
-    VkClearValue get_clear_value() const noexcept { return m_clear_value; }
+    vk_image& operator=(const vk_image&) = delete;
 
-    virtual rhi_format get_format() const noexcept override;
-    virtual rhi_texture_extent get_extent() const noexcept override
-    {
-        return {m_extent.width, m_extent.height};
-    }
-    virtual std::size_t get_hash() const noexcept override { return m_hash; }
-
-protected:
-    void set_image(VkImage image, VmaAllocation allocation) noexcept;
-    void set_image_view(VkImageView image_view) noexcept { m_image_view = image_view; }
-    void set_image_layout(VkImageLayout image_layout) noexcept { m_image_layout = image_layout; }
-    void set_format(VkFormat format) noexcept { m_format = format; }
-    void set_extent(VkExtent2D extent) noexcept { m_extent = extent; }
-
-    void set_clear_value(VkClearColorValue clear_value) noexcept
-    {
-        m_clear_value.color = clear_value;
-    }
-    void set_clear_value(VkClearDepthStencilValue clear_value) noexcept
-    {
-        m_clear_value.depthStencil = clear_value;
-    }
-
-    void set_hash(std::size_t hash) noexcept { m_hash = hash; }
-
-    vk_context* get_context() const noexcept { return m_context; }
-
-private:
-    VkImage m_image;
-    VmaAllocation m_allocation;
-    VkImageView m_image_view;
-    VkImageLayout m_image_layout;
-
-    VkFormat m_format;
-    VkExtent2D m_extent;
-
-    VkClearValue m_clear_value;
-
-    std::size_t m_hash;
-
-    vk_context* m_context;
+    virtual VkImage get_image() const noexcept = 0;
+    virtual VkImageView get_image_view() const noexcept = 0;
+    virtual VkClearValue get_clear_value() const noexcept = 0;
+    virtual VkImageAspectFlags get_aspect_mask() const noexcept = 0;
 };
 
 class vk_texture : public vk_image
 {
 public:
-    vk_texture(const char* file, const rhi_texture_desc& desc, vk_context* context);
+    vk_texture() = default;
+    vk_texture(const rhi_texture_desc& desc, vk_context* context);
     virtual ~vk_texture();
+
+    void set_handle(rhi_resource_handle handle) noexcept
+    {
+        m_handle = handle;
+    }
+
+    rhi_resource_handle get_handle() const noexcept override
+    {
+        return m_handle;
+    }
+
+    rhi_format get_format() const noexcept override
+    {
+        return m_format;
+    }
+
+    rhi_sample_count get_samples() const noexcept override
+    {
+        return m_samples;
+    }
+
+    rhi_texture_extent get_extent() const noexcept override
+    {
+        return m_extent;
+    }
+
+    std::uint32_t get_level() const noexcept override
+    {
+        return 0;
+    }
+
+    std::uint32_t get_level_count() const noexcept override
+    {
+        return m_level_count;
+    }
+
+    std::uint32_t get_layer() const noexcept override
+    {
+        return 0;
+    }
+
+    std::uint32_t get_layer_count() const noexcept override
+    {
+        return m_layer_count;
+    }
+
+    std::uint64_t get_hash() const noexcept override
+    {
+        return m_hash;
+    }
+
+    VkImage get_image() const noexcept override
+    {
+        return m_image;
+    }
+
+    VkImageView get_image_view() const noexcept override
+    {
+        return m_image_view;
+    }
+
+    VkClearValue get_clear_value() const noexcept override
+    {
+        return m_clear_value;
+    }
+
+    VkImageAspectFlags get_aspect_mask() const noexcept override
+    {
+        return m_aspect_mask;
+    }
+
+protected:
+    VkImage m_image{VK_NULL_HANDLE};
+    VkImageView m_image_view{VK_NULL_HANDLE};
+    VmaAllocation m_allocation{VK_NULL_HANDLE};
+
+    rhi_format m_format{RHI_FORMAT_UNDEFINED};
+    rhi_sample_count m_samples{RHI_SAMPLE_COUNT_1};
+    rhi_texture_extent m_extent;
+    std::uint32_t m_level_count{0};
+    std::uint32_t m_layer_count{0};
+    std::uint64_t m_hash;
+
+    VkClearValue m_clear_value;
+    VkImageAspectFlags m_aspect_mask;
+
+    rhi_resource_handle m_handle{RHI_INVALID_RESOURCE_HANDLE};
+
+    vk_context* m_context{nullptr};
 };
 
-class vk_texture_cube : public vk_image
+class vk_texture_view : public vk_image
 {
 public:
-    vk_texture_cube(
-        const char* right,
-        const char* left,
-        const char* top,
-        const char* bottom,
-        const char* front,
-        const char* back,
-        const rhi_texture_desc& desc,
-        vk_context* context);
-    vk_texture_cube(const rhi_texture_desc& desc, vk_context* context);
-    ~vk_texture_cube();
+    vk_texture_view(const rhi_texture_view_desc& desc, vk_context* context);
+    virtual ~vk_texture_view();
+
+    void set_handle(rhi_resource_handle handle) noexcept
+    {
+        m_handle = handle;
+    }
+
+    rhi_resource_handle get_handle() const noexcept override
+    {
+        return m_handle;
+    }
+
+    VkImage get_image() const noexcept override
+    {
+        return m_texture->get_image();
+    }
+
+    VkImageView get_image_view() const noexcept override
+    {
+        return m_image_view;
+    }
+
+    VkClearValue get_clear_value() const noexcept override
+    {
+        return m_texture->get_clear_value();
+    }
+
+    VkImageAspectFlags get_aspect_mask() const noexcept override
+    {
+        return m_texture->get_aspect_mask();
+    }
+
+    rhi_format get_format() const noexcept override
+    {
+        return m_texture->get_format();
+    }
+
+    rhi_sample_count get_samples() const noexcept override
+    {
+        return m_texture->get_samples();
+    }
+
+    rhi_texture_extent get_extent() const noexcept override
+    {
+        rhi_texture_extent extent = m_texture->get_extent();
+        std::uint32_t width = (std::max)(1u, extent.width >> m_level);
+        std::uint32_t height = (std::max)(1u, extent.height >> m_level);
+        return {width, height};
+    }
+
+    std::uint32_t get_level() const noexcept override
+    {
+        return m_level;
+    }
+
+    std::uint32_t get_level_count() const noexcept override
+    {
+        return m_level_count;
+    }
+
+    std::uint32_t get_layer() const noexcept override
+    {
+        return m_layer;
+    }
+
+    std::uint32_t get_layer_count() const noexcept override
+    {
+        return m_layer_count;
+    }
+
+    std::uint64_t get_hash() const noexcept override
+    {
+        return m_hash;
+    }
+
+private:
+    vk_texture* m_texture{nullptr};
+    VkImageView m_image_view{VK_NULL_HANDLE};
+
+    std::uint32_t m_level{0};
+    std::uint32_t m_level_count{0};
+    std::uint32_t m_layer{0};
+    std::uint32_t m_layer_count{0};
+    std::uint64_t m_hash;
+
+    rhi_resource_handle m_handle{RHI_INVALID_RESOURCE_HANDLE};
+
+    vk_context* m_context{nullptr};
 };
 
 class vk_sampler : public rhi_sampler
@@ -90,57 +219,85 @@ public:
     vk_sampler(const vk_sampler&) = delete;
     virtual ~vk_sampler();
 
-    VkSampler get_sampler() const noexcept { return m_sampler; }
+    void set_handle(rhi_resource_handle handle) noexcept
+    {
+        m_handle = handle;
+    }
+
+    rhi_resource_handle get_handle() const noexcept override
+    {
+        return m_handle;
+    }
+
+    VkSampler get_sampler() const noexcept
+    {
+        return m_sampler;
+    }
 
     vk_sampler& operator=(const vk_sampler&) = delete;
 
 private:
     VkSampler m_sampler;
+
+    rhi_resource_handle m_handle{RHI_INVALID_RESOURCE_HANDLE};
+
     vk_context* m_context;
 };
 
 class vk_buffer : public rhi_buffer
 {
 public:
-    vk_buffer(vk_context* context);
+    vk_buffer(const rhi_buffer_desc& desc, vk_context* context);
     virtual ~vk_buffer();
 
-    void* get_buffer() override { return m_mapping_pointer; }
-    std::size_t get_buffer_size() const noexcept override { return m_buffer_size; }
+    void* get_buffer_pointer() const noexcept override
+    {
+        return m_mapping_pointer;
+    }
 
-    std::size_t get_hash() const noexcept override;
+    std::size_t get_buffer_size() const noexcept override
+    {
+        return m_buffer_size;
+    }
 
-    VkBuffer get_buffer_handle() const noexcept { return m_buffer; }
+    void set_handle(rhi_resource_handle handle) noexcept
+    {
+        m_handle = handle;
+    }
+
+    rhi_resource_handle get_handle() const noexcept override
+    {
+        return m_handle;
+    }
+
+    VkBuffer get_buffer() const noexcept
+    {
+        return m_buffer;
+    }
+
+    rhi_buffer_flags get_flags() const noexcept
+    {
+        return m_flags;
+    }
 
 protected:
-    void set_buffer(VkBuffer buffer, VmaAllocation allocation, std::size_t buffer_size) noexcept
+    vk_context* get_context() const noexcept
     {
-        m_buffer = buffer;
-        m_allocation = allocation;
-        m_buffer_size = buffer_size;
+        return m_context;
     }
-
-    void set_mapping_pointer(void* mapping_pointer) noexcept
-    {
-        m_mapping_pointer = mapping_pointer;
-    }
-
-    vk_context* get_context() const noexcept { return m_context; }
 
 private:
     VkBuffer m_buffer;
     VmaAllocation m_allocation;
     std::size_t m_buffer_size;
 
+    rhi_buffer_flags m_flags{0};
+
     void* m_mapping_pointer;
 
-    vk_context* m_context;
-};
+    rhi_resource_handle m_handle{RHI_INVALID_RESOURCE_HANDLE};
 
-class vk_vertex_buffer : public vk_buffer
-{
-public:
-    vk_vertex_buffer(const rhi_buffer_desc& desc, vk_context* context);
+    vk_context* m_context;
 };
 
 class vk_index_buffer : public vk_buffer
@@ -148,21 +305,27 @@ class vk_index_buffer : public vk_buffer
 public:
     vk_index_buffer(const rhi_buffer_desc& desc, vk_context* context);
 
-    VkIndexType get_index_type() const noexcept { return m_index_type; }
+    VkIndexType get_index_type() const noexcept
+    {
+        return m_index_type;
+    }
 
 private:
     VkIndexType m_index_type;
 };
 
-class vk_uniform_buffer : public vk_buffer
+class vk_texel_buffer : public vk_buffer
 {
 public:
-    vk_uniform_buffer(void* data, std::size_t size, vk_context* context);
-};
+    vk_texel_buffer(const rhi_buffer_desc& desc, vk_context* context);
+    virtual ~vk_texel_buffer();
 
-class vk_storage_buffer : public vk_buffer
-{
-public:
-    vk_storage_buffer(const rhi_buffer_desc& desc, vk_context* context);
+    VkBufferView get_buffer_view() const noexcept
+    {
+        return m_buffer_view;
+    }
+
+private:
+    VkBufferView m_buffer_view{VK_NULL_HANDLE};
 };
 } // namespace violet::vk

@@ -1,16 +1,16 @@
 #pragma once
 
-#include "math/math.hpp"
+#include "math/types.hpp"
 #include <catch2/catch_all.hpp>
 
 namespace violet::test
 {
 bool equal(float a, float b);
-bool equal(const violet::float2& a, const violet::float2& b);
-bool equal(const violet::float3& a, const violet::float3& b);
-bool equal(const violet::float4& a, const violet::float4& b);
-bool equal(const violet::float4_simd& a, const violet::float4_simd& b);
-
-bool equal(const violet::float4x4& a, const violet::float4x4& b);
-bool equal(const violet::float4x4_simd& a, const violet::float4x4_simd& b);
+bool equal(const violet::vec2f& a, const violet::vec2f& b);
+bool equal(const violet::vec3f& a, const violet::vec3f& b);
+bool equal(const violet::vec4f& a, const violet::vec4f& b);
+bool equal(const violet::mat4f& a, const violet::mat4f& b);
+bool equal(const violet::vec4f_simd& a, const violet::vec3f& b);
+bool equal(const violet::vec4f_simd& a, const violet::vec4f& b);
+bool equal(const violet::mat4f_simd& a, const violet::mat4f& b);
 } // namespace violet::test

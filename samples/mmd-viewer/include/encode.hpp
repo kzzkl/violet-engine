@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace violet::sample
+namespace violet
 {
 enum encode_type
 {
@@ -48,4 +48,4 @@ template <>
 bool convert<ENCODE_TYPE_SHIFT_JIS, ENCODE_TYPE_UTF8>(
     const std::string& input,
     std::string& output);
-} // namespace violet::sample
+} // namespace violet

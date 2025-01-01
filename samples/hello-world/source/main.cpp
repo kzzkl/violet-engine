@@ -14,29 +14,37 @@
 #include <fstream>
 #include <thread>
 
-namespace violet::sample
+namespace violet
 {
 class sample_pass : public rdg_render_pass
 {
 public:
+    static constexpr std::size_t reference_render_target{0};
+    static constexpr std::size_t reference_depth{1};
+
+public:
     sample_pass()
     {
-        m_color = add_color("color", RHI_TEXTURE_LAYOUT_RENDER_TARGET);
-        add_depth_stencil("depth", RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
+        add_color(reference_render_target, RHI_TEXTURE_LAYOUT_RENDER_TARGET);
+        add_depth_stencil(reference_depth, RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
 
-        set_shader(
-            "./hello-world/shaders/sample.vert.spv",
-            "./hello-world/shaders/sample.frag.spv");
-
+        set_shader("./hello-world/shaders/sample.vs", "./hello-world/shaders/sample.fs");
         set_primitive_topology(RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
-        set_parameter_layout({engine_parameter_layout::mesh, engine_parameter_layout::camera});
+        set_input_layout({
+            {"position", RHI_FORMAT_R32G32B32_FLOAT}
+        });
+
+        set_parameter_layout({
+            {engine_parameter_layout::mesh,   RDG_PASS_PARAMETER_FLAG_NONE},
+            {engine_parameter_layout::camera, RDG_PASS_PARAMETER_FLAG_NONE}
+        });
     }
 
     virtual void execute(rhi_command* command, rdg_context* context) override
     {
         rhi_texture_extent extent =
-            context->get_texture(m_color->resource->get_index())->get_extent();
+            context->get_texture(this, reference_render_target)->get_extent();
 
         rhi_viewport viewport = {};
         viewport.width = extent.width;
@@ -120,11 +128,34 @@ private:
         skybox_pass* skybox = m_render_graph->add_pass<skybox_pass>("skybox pass");
         present_pass* present = m_render_graph->add_pass<present_pass>("present pass");
 
-        m_render_graph->add_edge(render_target, mesh_pass, "color", RDG_EDGE_OPERATE_CLEAR);
-        m_render_graph->add_edge(depth_buffer, mesh_pass, "depth", RDG_EDGE_OPERATE_CLEAR);
-        m_render_graph->add_edge(mesh_pass, "color", skybox, "color", RDG_EDGE_OPERATE_STORE);
-        m_render_graph->add_edge(mesh_pass, "depth", skybox, "depth", RDG_EDGE_OPERATE_STORE);
-        m_render_graph->add_edge(skybox, "color", present, "target", RDG_EDGE_OPERATE_STORE);
+        m_render_graph->add_edge(
+            render_target,
+            mesh_pass,
+            sample_pass::reference_render_target,
+            RDG_EDGE_ACTION_CLEAR);
+        m_render_graph->add_edge(
+            depth_buffer,
+            mesh_pass,
+            sample_pass::reference_depth,
+            RDG_EDGE_ACTION_CLEAR);
+        m_render_graph->add_edge(
+            mesh_pass,
+            sample_pass::reference_render_target,
+            skybox,
+            skybox_pass::reference_render_target,
+            RDG_EDGE_ACTION_LOAD);
+        m_render_graph->add_edge(
+            mesh_pass,
+            sample_pass::reference_depth,
+            skybox,
+            skybox_pass::reference_depth,
+            RDG_EDGE_ACTION_LOAD);
+        m_render_graph->add_edge(
+            skybox,
+            skybox_pass::reference_render_target,
+            present,
+            present_pass::reference_present_target,
+            RDG_EDGE_ACTION_LOAD);
 
         m_render_graph->compile(device);
 
@@ -185,24 +216,24 @@ private:
         if (rect.width == 0 || rect.height == 0)
             return;
 
-        float4x4_simd p = matrix_simd::perspective(
+        matrix4 p = matrix_simd::perspective(
             to_radians(45.0f),
             static_cast<float>(rect.width) / static_cast<float>(rect.height),
             0.1f,
             100.0f);
 
-        float4x4_simd m = matrix_simd::affine_transform(
+        matrix4 m = matrix_simd::affine_transform(
             simd::set(10.0, 10.0, 10.0, 0.0),
             quaternion_simd::rotation_axis(simd::set(1.0f, 0.0f, 0.0f, 0.0f), m_rotate),
             simd::set(0.0, 0.0, 0.0, 0.0));
 
-        float4x4_simd v = matrix_simd::affine_transform(
+        matrix4 v = matrix_simd::affine_transform(
             simd::set(1.0f, 1.0f, 1.0f, 0.0f),
             simd::set(0.0f, 0.0f, 0.0f, 1.0f),
             simd::set(0.0, 0.0, -30.0f, 0.0f));
         v = matrix_simd::inverse_transform(v);
 
-        float4x4_simd mvp = matrix_simd::mul(matrix_simd::mul(m, v), p);
+        matrix4 mvp = matrix_simd::mul(matrix_simd::mul(m, v), p);
 
         auto cube_transform = m_cube->get<transform>();
         cube_transform->set_rotation(
@@ -246,7 +277,7 @@ private:
 
     float m_rotate = 0.0f;
 };
-} // namespace violet::sample
+} // namespace violet
 
 int main()
 {

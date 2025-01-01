@@ -1,190 +1,238 @@
-#include "common/log.hpp"
-#include "components/camera.hpp"
-#include "components/light.hpp"
-#include "components/mesh.hpp"
-#include "components/orbit_control.hpp"
-#include "components/transform.hpp"
+#include "components/camera_component.hpp"
+#include "components/light_component.hpp"
+#include "components/mesh_component.hpp"
+#include "components/orbit_control_component.hpp"
+#include "components/scene_component.hpp"
+#include "components/skybox_component.hpp"
+#include "components/transform_component.hpp"
 #include "control/control_system.hpp"
 #include "core/engine.hpp"
-#include "graphics/geometries/box_geometry.hpp"
-#include "graphics/geometries/sphere_geometry.hpp"
-#include "graphics/geometry.hpp"
+#include "ecs_command/ecs_command_system.hpp"
+#include "gltf_loader.hpp"
 #include "graphics/graphics_system.hpp"
-#include "pbr_render.hpp"
+#include "graphics/renderers/deferred_renderer.hpp"
+#include "graphics/tools/ibl_tool.hpp"
+#include "graphics/tools/texture_loader.hpp"
+#include "scene/hierarchy_system.hpp"
 #include "scene/scene_system.hpp"
-#include "task/task_system.hpp"
+#include "scene/transform_system.hpp"
+#include "task/task_graph_printer.hpp"
 #include "window/window_system.hpp"
 
-namespace violet::sample
+namespace violet
 {
 class pbr_sample : public engine_system
 {
 public:
-    pbr_sample() : engine_system("pbr sample"), m_material(nullptr) {}
+    pbr_sample()
+        : engine_system("PBR Sample")
+    {
+    }
 
     bool initialize(const dictionary& config) override
     {
-        get_system<task_system>().on_tick().then(
-            [this](float delta)
-            {
-                tick(delta);
-            });
+        m_skybox_path = config["skybox"];
+        m_model_path = config["model"];
 
         auto& window = get_system<window_system>();
-        window.on_resize().then(
-            [this](std::uint32_t width, std::uint32_t height)
+        window.on_resize().add_task().set_execute(
+            [this]()
             {
-                resize(width, height);
+                resize();
+            });
+        window.on_destroy().add_task().set_execute(
+            []()
+            {
+                engine::exit();
             });
 
-        renderer* renderer = get_system<graphics_system>().get_renderer();
+        task_graph& task_graph = get_task_graph();
+        task_group& update = task_graph.get_group("Update");
 
-        m_camera = std::make_unique<actor>("main camera", get_world());
-        auto [camera_transform, main_camera, camera_control] =
-            m_camera->add<transform, camera, orbit_control>();
+        task_graph.add_task()
+            .set_name("PBR Tick")
+            .set_group(update)
+            .set_execute(
+                [this]()
+                {
+                    tick();
+                });
 
-        m_skybox = renderer->create_image_cube(
-            "pbr/skybox/icebergs/right.jpg",
-            "pbr/skybox/icebergs/left.jpg",
-            "pbr/skybox/icebergs/top.jpg",
-            "pbr/skybox/icebergs/bottom.jpg",
-            "pbr/skybox/icebergs/front.jpg",
-            "pbr/skybox/icebergs/back.jpg");
+        task_graph.reset();
+        task_graph_printer::print(task_graph);
 
-        rhi_sampler_desc sampler_desc = {};
-        sampler_desc.min_filter = RHI_FILTER_LINEAR;
-        sampler_desc.mag_filter = RHI_FILTER_LINEAR;
-        sampler_desc.address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-        sampler_desc.address_mode_v = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-        sampler_desc.address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-        m_skybox_sampler = renderer->create_sampler(sampler_desc);
+        initialize_render();
+        initialize_skybox();
+        initialize_scene();
 
-        main_camera->set_skybox(m_skybox.get(), m_skybox_sampler.get());
-
-        m_render_graph = std::make_unique<pbr_render_graph>(renderer);
-        m_render_graph->set_camera("main camera", main_camera->get_parameter());
-
-        /*m_irradiance_map = renderer->create_image(rhi_image_desc{
-            32,
-            32,
-            RHI_RESOURCE_FORMAT_R8G8B8A8_UNORM,
-            RHI_SAMPLE_COUNT_1,
-            RHI_IMAGE_FLAG_RENDER_TARGET | RHI_IMAGE_FLAG_TRANSFER_SRC});
-
-        m_preprocess_graph = std::make_unique<preprocess_graph>(renderer);
-        m_preprocess_graph->set_camera("main camera", main_camera->get_parameter());
-        m_preprocess_graph->set_target(m_skybox.get(), m_irradiance_map.get());
-        get_system<graphics_system>().render(m_preprocess_graph.get());*/
-
-        auto extent = window.get_extent();
-        resize(extent.width, extent.height);
-
-        m_geometry = std::make_unique<sphere_geometry>(renderer);
-
-        m_cube = std::make_unique<actor>("cube", get_world());
-        auto [cube_transform, cube_mesh] = m_cube->add<transform, mesh>();
-        cube_mesh->set_geometry(m_geometry.get());
-
-        m_material = m_render_graph->add_material<pbr_material>("test pbr");
-        m_material->set_albedo(float3{0.5f, 0.5f, 0.5f});
-        m_material->set_metalness(0.2f);
-        m_material->set_roughness(m_roughness);
-        cube_mesh->add_submesh(0, 0, 0, m_geometry->get_index_count(), m_material);
-
-        m_light = std::make_unique<actor>("light", get_world());
-        auto [light_transform, main_light] = m_light->add<transform, light>();
-        light_transform->set_position(1.0f, 1.0f, 1.0f);
-        light_transform->lookat(float3{0.0f, 0.0f, 0.0f}, float3{0.0f, 1.0f, 0.0f});
-
-        main_light->color = {1.0f, 1.0f, 1.0f};
-        main_light->type = LIGHT_TYPE_DIRECTIONAL;
+        resize();
 
         return true;
     }
 
 private:
-    void tick(float delta)
+    void initialize_render()
     {
-        auto& window = get_system<window_system>();
-        if (window.get_keyboard().key(KEYBOARD_KEY_ADD).press())
-        {
-            m_roughness = std::min(1.0f, m_roughness + delta * 10.0f);
-            m_material->set_roughness(m_roughness);
-            log::debug("{}", m_roughness);
+        auto window_extent = get_system<window_system>().get_extent();
 
-            m_camera->get<camera>()->set_skybox(m_irradiance_map.get(), m_skybox_sampler.get());
-        }
-        if (window.get_keyboard().key(KEYBOARD_KEY_SUBTRACT).press())
-        {
-            m_roughness = std::max(0.0f, m_roughness - delta * 10.0f);
-            m_material->set_roughness(m_roughness);
-            log::debug("{}", m_roughness);
-        }
-
-        get_system<graphics_system>().render(m_render_graph.get());
+        m_swapchain = render_device::instance().create_swapchain({
+            .extent =
+                {
+                    .width = window_extent.width,
+                    .height = window_extent.height,
+                },
+            .flags = RHI_TEXTURE_TRANSFER_DST | RHI_TEXTURE_RENDER_TARGET,
+            .window_handle = get_system<window_system>().get_handle(),
+        });
+        m_renderer = std::make_unique<deferred_renderer>();
     }
 
-    void resize(std::uint32_t width, std::uint32_t height)
+    void initialize_skybox()
     {
-        rhi_image_desc depth_stencil_desc = {};
-        depth_stencil_desc.width = width;
-        depth_stencil_desc.height = height;
-        depth_stencil_desc.samples = RHI_SAMPLE_COUNT_1;
-        depth_stencil_desc.format = RHI_RESOURCE_FORMAT_D24_UNORM_S8_UINT;
-        depth_stencil_desc.flags = RHI_IMAGE_FLAG_DEPTH_STENCIL;
-        m_depth_stencil =
-            get_system<graphics_system>().get_renderer()->create_image(depth_stencil_desc);
+        m_skybox_texture = render_device::instance().create_texture({
+            .extent = {512, 512},
+            .format = RHI_FORMAT_R11G11B10_FLOAT,
+            .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
+            .layer_count = 6,
+        });
 
-        auto main_camera = m_camera->get<camera>();
-        main_camera->resize(width, height);
-        // main_camera->set_attachment(0, nullptr, true);
-        // main_camera->set_attachment(1, m_depth_stencil.get());
+        m_skybox_irradiance = render_device::instance().create_texture({
+            .extent = {32, 32},
+            .format = RHI_FORMAT_R11G11B10_FLOAT,
+            .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
+            .layer_count = 6,
+        });
 
-        m_render_graph->get_slot("depth buffer")->set_image(m_depth_stencil.get());
-        // m_render_graph->get_camera("main camera")->set_parameter(main_camera->get_parameter());
+        m_skybox_prefilter = render_device::instance().create_texture({
+            .extent = {128, 128},
+            .format = RHI_FORMAT_R11G11B10_FLOAT,
+            .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
+            .level_count = 8,
+            .layer_count = 6,
+        });
+
+        rhi_ptr<rhi_texture> env_map = texture_loader::load(m_skybox_path);
+        ibl_tool::generate_cube_map(env_map.get(), m_skybox_texture.get());
+        ibl_tool::generate_ibl(
+            m_skybox_texture.get(),
+            m_skybox_irradiance.get(),
+            m_skybox_prefilter.get());
     }
 
-    std::unique_ptr<preprocess_graph> m_preprocess_graph;
-    rhi_ptr<rhi_image> m_irradiance_map;
+    void initialize_scene()
+    {
+        auto& world = get_world();
 
-    std::unique_ptr<pbr_render_graph> m_render_graph;
-    rhi_ptr<rhi_image> m_depth_stencil;
+        m_skybox = world.create();
+        world.add_component<transform_component, skybox_component, scene_component>(m_skybox);
+        auto& skybox = world.get_component<skybox_component>(m_skybox);
+        skybox.texture = m_skybox_texture.get();
+        skybox.irradiance = m_skybox_irradiance.get();
+        skybox.prefilter = m_skybox_prefilter.get();
 
-    rhi_ptr<rhi_image> m_skybox;
-    rhi_ptr<rhi_sampler> m_skybox_sampler;
+        m_light = world.create();
+        world.add_component<transform_component, light_component, scene_component>(m_light);
 
-    pbr_material* m_material;
-    float m_roughness = 0.3f;
+        auto& light_transform = world.get_component<transform_component>(m_light);
+        light_transform.set_position({10.0f, 10.0f, 10.0f});
+        light_transform.lookat({0.0f, 0.0f, 0.0f});
 
-    std::unique_ptr<geometry> m_geometry;
-    std::unique_ptr<actor> m_cube;
+        auto& main_light = world.get_component<light_component>(m_light);
+        main_light.type = LIGHT_DIRECTIONAL;
+        main_light.color = {1.0f, 1.0f, 1.0f};
 
-    std::unique_ptr<actor> m_light;
+        m_camera = world.create();
+        world.add_component<
+            transform_component,
+            camera_component,
+            orbit_control_component,
+            scene_component>(m_camera);
 
-    std::unique_ptr<actor> m_camera;
+        auto& camera_transform = world.get_component<transform_component>(m_camera);
+        camera_transform.set_position({0.0f, 0.0f, -10.0f});
+
+        auto& main_camera = world.get_component<camera_component>(m_camera);
+        main_camera.renderer = m_renderer.get();
+        main_camera.render_targets = {m_swapchain.get()};
+
+        gltf_loader loader(m_model_path);
+        if (auto result = loader.load())
+        {
+            m_model_data = std::move(*result);
+
+            std::vector<entity> entities;
+            for (auto& node : m_model_data.nodes)
+            {
+                entity entity = world.create();
+                world.add_component<transform_component, mesh_component, scene_component>(entity);
+
+                auto& mesh_data = m_model_data.meshes[node.mesh];
+
+                auto& entity_mesh = world.get_component<mesh_component>(entity);
+                entity_mesh.geometry = m_model_data.geometries[mesh_data.geometry].get();
+                for (auto& submesh_data : mesh_data.submeshes)
+                {
+                    entity_mesh.submeshes.push_back({
+                        .vertex_offset = submesh_data.vertex_offset,
+                        .index_offset = submesh_data.index_offset,
+                        .index_count = submesh_data.index_count,
+                        .material = m_model_data.materials[submesh_data.material].get(),
+                    });
+                }
+
+                auto& entity_transform = world.get_component<transform_component>(entity);
+                entity_transform.set_position(node.position);
+                entity_transform.set_rotation(node.rotation);
+                entity_transform.set_scale(node.scale);
+            }
+        }
+    }
+
+    void resize()
+    {
+        auto extent = get_system<window_system>().get_extent();
+
+        render_device& device = render_device::instance();
+
+        m_swapchain->resize(extent.width, extent.height);
+
+        auto& main_camera = get_world().get_component<camera_component>(m_camera);
+        main_camera.render_targets[0] = m_swapchain.get();
+    }
+
+    void tick() {}
+
+    entity m_skybox;
+    entity m_light;
+    entity m_camera;
+
+    rhi_ptr<rhi_texture> m_skybox_texture;
+    rhi_ptr<rhi_texture> m_skybox_irradiance;
+    rhi_ptr<rhi_texture> m_skybox_prefilter;
+
+    mesh_loader::scene_data m_model_data;
+
+    rhi_ptr<rhi_swapchain> m_swapchain;
+    std::unique_ptr<renderer> m_renderer;
+
+    std::string m_skybox_path;
+    std::string m_model_path;
 };
-} // namespace violet::sample
+} // namespace violet
 
 int main()
 {
-    using namespace violet;
+    violet::engine::initialize("assets/config/pbr.json");
+    violet::engine::install<violet::ecs_command_system>();
+    violet::engine::install<violet::hierarchy_system>();
+    violet::engine::install<violet::transform_system>();
+    violet::engine::install<violet::scene_system>();
+    violet::engine::install<violet::window_system>();
+    violet::engine::install<violet::graphics_system>();
+    violet::engine::install<violet::control_system>();
+    violet::engine::install<violet::pbr_sample>();
 
-    engine engine;
-    engine.initialize("");
-    engine.install<task_system>();
-    engine.install<scene_system>();
-    engine.install<window_system>();
-    engine.install<graphics_system>();
-    engine.install<control_system>();
-    engine.install<sample::pbr_sample>();
-
-    engine.get_system<window_system>().on_destroy().then(
-        [&engine]()
-        {
-            engine.exit();
-        });
-
-    engine.run();
+    violet::engine::run();
 
     return 0;
 }

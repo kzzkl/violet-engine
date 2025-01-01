@@ -1,0 +1,55 @@
+Checks: >
+    -*,
+    bugprone-*,
+    misc-*,
+    modernize-*,
+    performance-*,
+    portability-*,
+    readability-*,
+
+    -google-runtime-references,
+    -misc-non-private-member-variables-in-classes,
+    -modernize-avoid-c-arrays,
+
+    -bugprone-macro-parentheses,
+    -modernize-concat-nested-namespaces,
+    -modernize-use-nodiscard,
+    -modernize-use-trailing-return-type,
+    -readability-function-cognitive-complexity,
+    -readability-implicit-bool-conversion,
+    -readability-implicit-bool-cast,
+    -readability-magic-numbers,
+    -readability-identifier-length,
+    -readability-uppercase-literal-suffix,
+    -bugprone-branch-clone,
+    -misc-confusable-identifiers,
+    -misc-const-correctness,
+    -misc-include-cleaner,
+    -misc-static-assert,
+    -misc-unused-parameters,
+    -misc-no-recursion,
+    -bugprone-easily-swappable-parameters,
+    -portability-simd-intrinsics,
+
+CheckOptions:
+    - { key: readability-identifier-naming.NamespaceCase,          value: lower_case }
+    - { key: readability-identifier-naming.StructCase,             value: lower_case }
+    - { key: readability-identifier-naming.ClassCase,              value: lower_case }
+    - { key: readability-identifier-naming.ClassMethodCase,        value: lower_case }
+    - { key: readability-identifier-naming.ClassConstantCase,      value: lower_case }
+    - { key: readability-identifier-naming.ClassMemberCase,        value: lower_case }
+    - { key: readability-identifier-naming.ProtectedMemberPrefix,  value: m_         }
+    - { key: readability-identifier-naming.PrivateMemberPrefix,    value: m_         }
+
+    - { key: readability-identifier-naming.EnumCase,               value: lower_case }
+    - { key: readability-identifier-naming.ScopedEnumConstantCase, value: UPPER_CASE }
+    - { key: readability-identifier-naming.EnumConstantCase,       value: UPPER_CASE }
+
+    - { key: readability-identifier-naming.FunctionCase,           value: lower_case }
+    - { key: readability-identifier-naming.GlobalConstantCase,     value: UPPER_CASE }
+    - { key: readability-identifier-naming.LocalVariableCase,      value: lower_case }
+    - { key: readability-identifier-naming.MacroDefinitionCase,    value: UPPER_CASE }
+    - { key: readability-identifier-naming.ParameterCase,          value: lower_case }
+    - { key: readability-identifier-naming.LocalConstantCase,      value: lower_case }
+    - { key: readability-identifier-naming.StaticConstantCase,     value: lower_case }
+    - { key: readability-identifier-naming.VariableCase,           value: lower_case }

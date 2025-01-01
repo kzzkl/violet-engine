@@ -2,65 +2,69 @@
 
 namespace violet
 {
-pei_deleter::pei_deleter() : m_pei(nullptr)
+phy_deleter::phy_deleter()
+    : m_plugin(nullptr)
 {
 }
 
-pei_deleter::pei_deleter(pei_plugin* pei) : m_pei(pei)
+phy_deleter::phy_deleter(phy_plugin* plugin)
+    : m_plugin(plugin)
 {
 }
 
-void pei_deleter::operator()(pei_world* world)
+void phy_deleter::operator()(phy_world* world)
 {
-    m_pei->destroy_world(world);
+    m_plugin->destroy_world(world);
 }
 
-void pei_deleter::operator()(pei_collision_shape* collision_shape)
+void phy_deleter::operator()(phy_collision_shape* collision_shape)
 {
-    m_pei->destroy_collision_shape(collision_shape);
+    m_plugin->destroy_collision_shape(collision_shape);
 }
 
-void pei_deleter::operator()(pei_rigidbody* rigidbody)
+void phy_deleter::operator()(phy_rigidbody* rigidbody)
 {
-    m_pei->destroy_rigidbody(rigidbody);
+    m_plugin->destroy_rigidbody(rigidbody);
 }
 
-void pei_deleter::operator()(pei_joint* joint)
+void phy_deleter::operator()(phy_joint* joint)
 {
-    m_pei->destroy_joint(joint);
+    m_plugin->destroy_joint(joint);
 }
 
-physics_context::physics_context(pei_plugin* pei) : m_pei(pei), m_deleter(pei)
+physics_context::physics_context(phy_plugin* plugin)
+    : m_plugin(plugin),
+      m_deleter(plugin)
 {
 }
 
-pei_ptr<pei_world> physics_context::create_world(const pei_world_desc& desc)
+phy_ptr<phy_world> physics_context::create_world(const phy_world_desc& desc)
 {
-    return pei_ptr<pei_world>(m_pei->create_world(desc), m_deleter);
+    return {m_plugin->create_world(desc), m_deleter};
 }
 
-pei_ptr<pei_collision_shape> physics_context::create_collision_shape(
-    const pei_collision_shape_desc& desc)
+phy_ptr<phy_collision_shape> physics_context::create_collision_shape(
+    const phy_collision_shape_desc& desc)
 {
-    return pei_ptr<pei_collision_shape>(m_pei->create_collision_shape(desc), m_deleter);
+    return {m_plugin->create_collision_shape(desc), m_deleter};
 }
 
-pei_ptr<pei_collision_shape> physics_context::create_collision_shape(
-    const std::vector<pei_collision_shape*>& shapes,
-    const std::vector<float4x4>& offset)
+phy_ptr<phy_collision_shape> physics_context::create_collision_shape(
+    std::span<phy_collision_shape*> shapes,
+    std::span<mat4f> offset)
 {
-    return pei_ptr<pei_collision_shape>(
-        m_pei->create_collision_shape(shapes.data(), offset.data(), shapes.size()),
-        m_deleter);
+    return {
+        m_plugin->create_collision_shape(shapes.data(), offset.data(), shapes.size()),
+        m_deleter};
 }
 
-pei_ptr<pei_rigidbody> physics_context::create_rigidbody(const pei_rigidbody_desc& desc)
+phy_ptr<phy_rigidbody> physics_context::create_rigidbody(const phy_rigidbody_desc& desc)
 {
-    return pei_ptr<pei_rigidbody>(m_pei->create_rigidbody(desc), m_deleter);
+    return {m_plugin->create_rigidbody(desc), m_deleter};
 }
 
-pei_ptr<pei_joint> physics_context::create_joint(const pei_joint_desc& desc)
+phy_ptr<phy_joint> physics_context::create_joint(const phy_joint_desc& desc)
 {
-    return pei_ptr<pei_joint>(m_pei->create_joint(desc), m_deleter);
+    return {m_plugin->create_joint(desc), m_deleter};
 }
 } // namespace violet

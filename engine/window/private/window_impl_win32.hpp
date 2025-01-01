@@ -12,22 +12,24 @@ public:
     window_impl_win32() noexcept;
     virtual ~window_impl_win32();
 
-    virtual bool initialize(std::uint32_t width, std::uint32_t height, std::string_view title)
-        override;
-    virtual void shutdown() override;
+    bool initialize(std::uint32_t width, std::uint32_t height, std::string_view title) override;
+    void shutdown() override;
 
-    virtual void tick() override;
-    virtual void show() override;
+    void tick() override;
+    void show() override;
 
-    virtual void* get_handle() const override;
-    virtual rect<std::uint32_t> get_extent() const override;
+    void* get_handle() const override;
+    rect<std::uint32_t> get_extent() const override;
 
-    virtual void set_title(std::string_view title) override;
+    void set_title(std::string_view title) override;
 
-    virtual void set_mouse_mode(mouse_mode_type mode) override;
-    virtual mouse_mode_type get_mouse_mode() const noexcept override { return m_mouse_mode; }
+    void set_mouse_mode(mouse_mode_type mode) override;
+    mouse_mode_type get_mouse_mode() const noexcept override
+    {
+        return m_mouse_mode;
+    }
 
-    virtual void set_mouse_cursor(mouse_cursor_type cursor) override;
+    void set_mouse_cursor(mouse_cursor_type cursor) override;
 
 private:
     static LRESULT CALLBACK wnd_create_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
@@ -36,7 +38,7 @@ private:
 
     void on_mouse_move(int x, int y);
     void on_mouse_key(mouse_key key, bool down);
-    void on_mouse_whell(int value);
+    void on_mouse_wheel(int value);
     void on_keyboard_key(keyboard_key key, bool down);
     void on_keyboard_char(char c);
     void on_window_move(int x, int y);
@@ -55,8 +57,8 @@ private:
     int m_mouse_y;
     bool m_mouse_move;
 
-    int m_mouse_whell;
-    bool m_mouse_whell_move;
+    int m_mouse_wheel;
+    bool m_mouse_wheel_move;
 
     std::uint32_t m_window_width;
     std::uint32_t m_window_height;

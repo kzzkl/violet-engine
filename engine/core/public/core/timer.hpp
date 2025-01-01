@@ -2,7 +2,6 @@
 
 #include <array>
 #include <chrono>
-#include <thread>
 
 namespace violet
 {
@@ -19,9 +18,6 @@ public:
     };
 
     using steady_time_point = std::chrono::time_point<std::chrono::steady_clock>;
-
-public:
-    timer() {}
 
     template <typename Clock = std::chrono::steady_clock>
     static std::chrono::time_point<Clock> now()
@@ -40,7 +36,10 @@ public:
         m_time_point[point] = now<std::chrono::steady_clock>();
     }
 
-    inline steady_time_point time_point(point point) const noexcept { return m_time_point[point]; }
+    inline steady_time_point time_point(point point) const noexcept
+    {
+        return m_time_point[point];
+    }
 
     template <typename D = std::chrono::nanoseconds>
     inline D get_delta(point start, point end) const noexcept
@@ -50,7 +49,7 @@ public:
 
     inline float get_frame_delta() const noexcept
     {
-        return get_delta(PRE_FRAME_START, FRAME_START).count() * 0.000000001f;
+        return static_cast<float>(get_delta(PRE_FRAME_START, FRAME_START).count()) * 0.000000001f;
     }
 
 private:

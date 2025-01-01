@@ -1,13 +1,12 @@
 #pragma once
 
-#include "math/math.hpp"
+#include "math/types.hpp"
 #include <array>
-#include <cstddef>
 #include <fstream>
 #include <string>
 #include <vector>
 
-namespace violet::sample
+namespace violet
 {
 struct vmd_header
 {
@@ -19,8 +18,8 @@ struct vmd_motion
 {
     std::string bone_name;
     std::uint32_t frame_index;
-    float3 translate;
-    float4 rotate;
+    vec3f translate;
+    vec4f rotate;
     std::array<std::uint8_t, 64> interpolation;
 };
 
@@ -35,8 +34,8 @@ struct vmd_camera
 {
     std::uint32_t frame;
     float distance;
-    float3 interest;
-    float3 rotate;
+    vec3f interest;
+    vec3f rotate;
     std::array<std::uint8_t, 24> interpolation;
     std::uint32_t view_angle;
     std::uint8_t is_perspective;
@@ -45,8 +44,8 @@ struct vmd_camera
 struct vmd_light
 {
     std::uint32_t frame;
-    float3 color;
-    float3 position;
+    vec3f color;
+    vec3f position;
 };
 
 struct vmd_shadow
@@ -72,10 +71,10 @@ struct vmd_ik
 class vmd
 {
 public:
-    vmd(std::string_view path);
-    bool is_load() const noexcept { return m_loaded; }
+    vmd();
 
-public:
+    bool load(std::string_view path);
+
     vmd_header header;
     std::vector<vmd_motion> motions;
     std::vector<vmd_morph> morphs;
@@ -92,7 +91,5 @@ private:
     void load_light(std::ifstream& fin);
     void load_shadow(std::ifstream& fin);
     void load_ik(std::ifstream& fin);
-
-    bool m_loaded;
 };
-} // namespace violet::sample
+} // namespace violet

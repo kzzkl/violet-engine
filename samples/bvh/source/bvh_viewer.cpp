@@ -14,7 +14,7 @@
 #include "window/window.hpp"
 #include <random>
 
-namespace violet::sample
+namespace violet
 
 {
 bvh_viewer::bvh_viewer() : core::system_base("bvh_viewer")
@@ -245,12 +245,12 @@ void bvh_viewer::update_camera()
     if (keyboard.key(window::KEYBOARD_KEY_A).down())
         x -= 1.0f;
 
-    math::float4_simd s = math::simd::load(transform.scale());
-    math::float4_simd r = math::simd::load(transform.rotation());
-    math::float4_simd t = math::simd::load(transform.position());
+    math::vector4 s = math::simd::load(transform.scale());
+    math::vector4 r = math::simd::load(transform.rotation());
+    math::vector4 t = math::simd::load(transform.position());
 
-    math::float4x4_simd affine = math::matrix_simd::affine_transform(s, r, t);
-    math::float4_simd forward =
+    math::matrix4 affine = math::matrix_simd::affine_transform(s, r, t);
+    math::vector4 forward =
         math::simd::set(x * m_move_speed * delta, 0.0f, z * m_move_speed * delta, 0.0f);
     forward = math::matrix_simd::mul(forward, affine);
 
@@ -349,4 +349,4 @@ void bvh_viewer::remove_cube()
 
     m_cubes.pop_back();
 }
-} // namespace violet::sample
+} // namespace violet

@@ -1,13 +1,18 @@
 #pragma once
 
-#include "graphics/render_interface.hpp"
-#include <map>
+#include "common/hash.hpp"
+#include "graphics/shader.hpp"
 #include <memory>
+#include <span>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace violet
 {
+using render_id = std::uint64_t;
+static constexpr render_id INVALID_RENDER_ID = std::numeric_limits<render_id>::max();
+
 class rhi_deleter
 {
 public:
@@ -25,7 +30,6 @@ public:
     void operator()(rhi_texture* texture);
     void operator()(rhi_swapchain* swapchain);
     void operator()(rhi_fence* fence);
-    void operator()(rhi_semaphore* semaphore);
 
 private:
     rhi* m_rhi;
@@ -34,122 +38,228 @@ private:
 template <typename T>
 using rhi_ptr = std::unique_ptr<T, rhi_deleter>;
 
+class material_manager;
+class geometry_manager;
+class shader_compiler;
+
+struct render_buildin_resources
+{
+    rhi_buffer* material_buffer;
+
+    rhi_ptr<rhi_texture> empty_texture;
+    rhi_ptr<rhi_texture> brdf_lut;
+
+    rhi_ptr<rhi_sampler> point_repeat_sampler;
+    rhi_ptr<rhi_sampler> point_clamp_sampler;
+    rhi_ptr<rhi_sampler> linear_repeat_sampler;
+    rhi_ptr<rhi_sampler> linear_clamp_sampler;
+};
+
 class render_device
 {
 public:
-    render_device(rhi* rhi);
+    render_device();
     ~render_device();
 
+    static render_device& instance();
+
+    void initialize(rhi* rhi);
+    void reset();
+
     rhi_command* allocate_command();
-    void execute(
-        const std::vector<rhi_command*>& commands,
-        const std::vector<rhi_semaphore*>& signal_semaphores,
-        const std::vector<rhi_semaphore*>& wait_semaphores,
-        rhi_fence* fence);
+    void execute(rhi_command* command);
+    void execute_sync(rhi_command* command);
 
     void begin_frame();
     void end_frame();
 
-    rhi_fence* get_in_flight_fence();
+    const render_buildin_resources& get_buildin_resources() const noexcept
+    {
+        return m_buildin_resources;
+    }
 
+    std::size_t get_frame_count() const noexcept;
     std::size_t get_frame_resource_count() const noexcept;
     std::size_t get_frame_resource_index() const noexcept;
 
-public:
+    rhi_parameter* get_bindless_parameter() const noexcept;
+
+    template <typename T>
+    rhi_shader* get_shader(std::span<std::wstring> defines = {})
+    {
+        std::uint64_t hash =
+            hash::combine(hash::city_hash_64(T::path.data(), T::path.size()), T::stage);
+        for (auto& macro : defines)
+        {
+            hash ^= hash::city_hash_64(macro.data(), macro.size());
+        }
+
+        auto iter = m_shaders.find(hash);
+        if (iter != m_shaders.end())
+        {
+            return iter->second.get();
+        }
+
+        std::vector<const wchar_t*> arguments = {
+            L"-I",
+            L"assets/shaders",
+            L"-Wno-ignored-attributes",
+            L"-all-resources-bound",
+#ifndef NDEBUG
+            L"-Zi",
+            L"-Qembed_debug",
+            L"-O0",
+#endif
+        };
+
+        if (m_rhi->get_backend() == RHI_BACKEND_VULKAN)
+        {
+            arguments.push_back(L"-spirv");
+            arguments.push_back(L"-fspv-target-env=vulkan1.3");
+            arguments.push_back(L"-fvk-use-dx-layout");
+            arguments.push_back(L"-fspv-extension=SPV_EXT_descriptor_indexing");
+            arguments.push_back(L"-fvk-bind-resource-heap");
+            arguments.push_back(L"0");
+            arguments.push_back(L"0");
+            arguments.push_back(L"-fvk-bind-sampler-heap");
+            arguments.push_back(L"1");
+            arguments.push_back(L"0");
+#ifndef NDEBUG
+            // arguments.push_back(L"-fspv-extension=SPV_KHR_non_semantic_info");
+            // arguments.push_back(L"-fspv-debug=vulkan-with-source");
+#endif
+        }
+
+        if constexpr (T::stage == RHI_SHADER_STAGE_VERTEX)
+        {
+            arguments.push_back(L"-T");
+            arguments.push_back(L"vs_6_6");
+            arguments.push_back(L"-E");
+            arguments.push_back(L"vs_main");
+        }
+        else if constexpr (T::stage == RHI_SHADER_STAGE_FRAGMENT)
+        {
+            arguments.push_back(L"-T");
+            arguments.push_back(L"ps_6_6");
+            arguments.push_back(L"-E");
+            arguments.push_back(L"fs_main");
+        }
+        else if constexpr (T::stage == RHI_SHADER_STAGE_COMPUTE)
+        {
+            arguments.push_back(L"-T");
+            arguments.push_back(L"cs_6_6");
+            arguments.push_back(L"-E");
+            arguments.push_back(L"cs_main");
+        }
+
+        for (auto& macro : defines)
+        {
+            arguments.push_back(macro.data());
+        }
+
+        auto code = compile_shader(T::path, arguments);
+
+        rhi_shader_desc desc = {};
+        desc.code = code.data();
+        desc.code_size = code.size();
+        desc.stage = T::stage;
+
+        if constexpr (has_inputs<T>)
+        {
+            desc.vertex.attributes = T::inputs.attributes;
+            desc.vertex.attribute_count = T::inputs.attribute_count;
+        }
+
+        if constexpr (has_parameters<T>)
+        {
+            desc.parameters = T::parameters.parameters;
+            desc.parameter_count = T::parameters.parameter_count;
+        }
+
+        auto shader = rhi_ptr<rhi_shader>(m_rhi->create_shader(desc), m_rhi_deleter);
+
+        if constexpr (has_inputs<T>)
+        {
+            auto& vertex_attributes = m_vertex_attributes[shader.get()];
+            for (std::size_t i = 0; i < T::inputs.attribute_count; ++i)
+            {
+                vertex_attributes.push_back(T::inputs.attributes[i].name);
+            }
+        }
+
+        rhi_shader* result = shader.get();
+        m_shaders[hash] = std::move(shader);
+
+        return result;
+    }
+
+    const std::vector<std::string>& get_vertex_attributes(rhi_shader* shader) const
+    {
+        return m_vertex_attributes.at(shader);
+    }
+
+    material_manager* get_material_manager() const noexcept
+    {
+        return m_material_manager.get();
+    }
+
+    geometry_manager* get_geometry_manager() const noexcept
+    {
+        return m_geometry_manager.get();
+    }
+
+    template <typename T>
+    void set_name(T* object, std::string_view name) const
+    {
+#ifndef NDEBUG
+        m_rhi->set_name(object, name.data());
+#endif
+    }
+
     rhi_ptr<rhi_render_pass> create_render_pass(const rhi_render_pass_desc& desc);
 
-    rhi_ptr<rhi_shader> create_shader(const char* file);
-
-    rhi_ptr<rhi_render_pipeline> create_render_pipeline(const rhi_render_pipeline_desc& desc);
-    rhi_ptr<rhi_compute_pipeline> create_compute_pipeline(const rhi_compute_pipeline_desc& desc);
+    rhi_ptr<rhi_render_pipeline> create_pipeline(const rhi_render_pipeline_desc& desc);
+    rhi_ptr<rhi_compute_pipeline> create_pipeline(const rhi_compute_pipeline_desc& desc);
 
     rhi_ptr<rhi_parameter> create_parameter(const rhi_parameter_desc& desc);
     rhi_ptr<rhi_framebuffer> create_framebuffer(const rhi_framebuffer_desc& desc);
 
     rhi_ptr<rhi_buffer> create_buffer(const rhi_buffer_desc& desc);
     rhi_ptr<rhi_sampler> create_sampler(const rhi_sampler_desc& desc);
+
     rhi_ptr<rhi_texture> create_texture(const rhi_texture_desc& desc);
-    rhi_ptr<rhi_texture> create_texture(const char* file, const rhi_texture_desc& desc = {});
-    rhi_ptr<rhi_texture> create_texture_cube(
-        std::string_view right,
-        std::string_view left,
-        std::string_view top,
-        std::string_view bottom,
-        std::string_view front,
-        std::string_view back,
-        const rhi_texture_desc& desc = {});
+    rhi_ptr<rhi_texture> create_texture(const rhi_texture_view_desc& desc);
 
     rhi_ptr<rhi_swapchain> create_swapchain(const rhi_swapchain_desc& desc);
 
-    rhi_ptr<rhi_fence> create_fence(bool signaled);
-    rhi_ptr<rhi_semaphore> create_semaphore();
+    rhi_ptr<rhi_fence> create_fence();
 
-    rhi_deleter& get_deleter() noexcept { return m_rhi_deleter; }
+    rhi_deleter& get_deleter() noexcept
+    {
+        return m_rhi_deleter;
+    }
 
 private:
-    rhi* m_rhi;
+    void create_buildin_resources();
+
+    std::vector<std::uint8_t> compile_shader(
+        std::string_view path,
+        std::span<const wchar_t*> arguments);
+
+    rhi* m_rhi{nullptr};
     rhi_deleter m_rhi_deleter;
-};
 
-namespace detail
-{
-constexpr rhi_parameter_desc get_mesh_parameter_layout()
-{
-    rhi_parameter_desc desc = {};
-    desc.bindings[0] = {
-        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-        .stage = RHI_PARAMETER_STAGE_FLAG_VERTEX | RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 64}; // model matrix
-    desc.binding_count = 1;
+    std::unordered_map<std::uint64_t, rhi_ptr<rhi_shader>> m_shaders;
+    std::unordered_map<rhi_shader*, std::vector<std::string>> m_vertex_attributes;
 
-    return desc;
-}
+    std::unique_ptr<shader_compiler> m_shader_compiler;
 
-constexpr rhi_parameter_desc get_camera_parameter_layout()
-{
-    rhi_parameter_desc desc = {};
-    desc.bindings[0] = {
-        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-        .stage = RHI_PARAMETER_STAGE_FLAG_VERTEX | RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 208}; // matrix
-    desc.bindings[1] = {
-        .type = RHI_PARAMETER_TYPE_TEXTURE,
-        .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 1}; // skybox
-    desc.binding_count = 2;
+    rhi_ptr<rhi_fence> m_fence;
+    std::uint64_t m_fence_value{0};
 
-    return desc;
-}
+    std::unique_ptr<material_manager> m_material_manager;
+    std::unique_ptr<geometry_manager> m_geometry_manager;
 
-constexpr rhi_parameter_desc get_light_parameter_layout()
-{
-    rhi_parameter_desc desc = {};
-    desc.bindings[0] = {
-        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-        .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 528}; // light data
-    desc.binding_count = 1;
-
-    return desc;
-}
-} // namespace detail
-
-struct engine_parameter_layout
-{
-private:
-    static constexpr rhi_parameter_binding mesh_mvp = {
-        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-        .stage = RHI_PARAMETER_STAGE_FLAG_VERTEX | RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 64};
-
-    static constexpr rhi_parameter_binding light_data = {
-        .type = RHI_PARAMETER_TYPE_UNIFORM_BUFFER,
-        .stage = RHI_PARAMETER_STAGE_FLAG_FRAGMENT,
-        .size = 528};
-
-public:
-    static constexpr rhi_parameter_desc mesh = detail::get_mesh_parameter_layout();
-    static constexpr rhi_parameter_desc camera = detail::get_camera_parameter_layout();
-    static constexpr rhi_parameter_desc light = detail::get_light_parameter_layout();
+    render_buildin_resources m_buildin_resources;
 };
 } // namespace violet

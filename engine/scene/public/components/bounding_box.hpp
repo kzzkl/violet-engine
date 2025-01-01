@@ -1,7 +1,7 @@
 #pragma once
 
 #include "math/math.hpp"
-#include <vector>
+#include <span>
 
 namespace violet
 {
@@ -19,7 +19,7 @@ public:
     bool transform(const float4x4& transform);
 
     void aabb(
-        const std::vector<float3>& vertices,
+        std::span<const float3> vertices,
         const float4x4& transform,
         bool dynamic = false,
         float fatten = 1.0f);

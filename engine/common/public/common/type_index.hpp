@@ -1,5 +1,7 @@
 #pragma once
 
+#include <type_traits>
+
 namespace violet
 {
 template <typename T, typename Index, Index Initial = 0>
@@ -10,13 +12,19 @@ public:
     using self_type = type_index<T, Index, Initial>;
 
     template <typename R>
-    static const index_type value() noexcept
+    static index_type value() noexcept
+    {
+        return value_impl<std::remove_const_t<R>>();
+    }
+
+private:
+    template <typename R>
+    static index_type value_impl() noexcept
     {
         static const index_type index = self_type::next();
         return index;
     }
 
-private:
     static index_type next() noexcept
     {
         static index_type next = Initial;

@@ -1,8 +1,6 @@
 #pragma once
 
-#include <array>
 #include <cassert>
-#include <memory>
 #include <vector>
 
 namespace violet
@@ -10,15 +8,36 @@ namespace violet
 class key_state
 {
 public:
-    key_state() : m_state(0) {}
-    explicit key_state(unsigned char state) noexcept : m_state(state) {}
+    key_state()
+        : m_state(0)
+    {
+    }
+    explicit key_state(unsigned char state) noexcept
+        : m_state(state)
+    {
+    }
 
-    inline bool down() const noexcept { return m_state & 0x1; }
-    inline bool up() const noexcept { return !down(); }
+    inline bool down() const noexcept
+    {
+        return m_state & 0x1;
+    }
+    inline bool up() const noexcept
+    {
+        return !down();
+    }
 
-    inline bool press() const noexcept { return m_state == 0x1; }
-    inline bool release() const noexcept { return m_state == 0x2; }
-    inline bool hold() const noexcept { return m_state == 0x3; }
+    inline bool press() const noexcept
+    {
+        return m_state == 0x1;
+    }
+    inline bool release() const noexcept
+    {
+        return m_state == 0x2;
+    }
+    inline bool hold() const noexcept
+    {
+        return m_state == 0x3;
+    }
 
 private:
     unsigned char m_state;
@@ -28,7 +47,10 @@ template <typename KeyType, std::size_t KeyCount>
 class key_device
 {
 public:
-    key_device() noexcept { memset(m_key_state, 0, sizeof(m_key_state)); }
+    key_device() noexcept
+    {
+        memset(m_key_state, 0, sizeof(m_key_state));
+    }
     virtual ~key_device() {}
 
     inline key_state key(KeyType key) const noexcept
@@ -93,7 +115,7 @@ enum mouse_cursor
     MOUSE_CURSOR_SIZE_ALL
 };
 
-enum mouse_key
+enum mouse_key : uint8_t
 {
     MOUSE_KEY_LEFT,
     MOUSE_KEY_RIGHT,
@@ -107,7 +129,6 @@ class mouse : public key_device<mouse_key, MOUSE_KEY_COUNT>
 public:
     using device_type = key_device<mouse_key, MOUSE_KEY_COUNT>;
 
-public:
     mouse(window_impl* impl) noexcept;
     virtual ~mouse() = default;
 
@@ -115,17 +136,26 @@ public:
     mouse_mode get_mode() const noexcept;
     void set_cursor(mouse_cursor cursor);
 
-    inline int get_x() const noexcept { return m_x; }
-    inline int get_y() const noexcept { return m_y; }
-    inline int get_whell() const noexcept { return m_whell; }
+    inline int get_x() const noexcept
+    {
+        return m_x;
+    }
+    inline int get_y() const noexcept
+    {
+        return m_y;
+    }
+    inline int get_wheel() const noexcept
+    {
+        return m_wheel;
+    }
 
     virtual void tick() override;
 
 protected:
-    friend class window_module;
+    friend class window_system;
     int m_x;
     int m_y;
-    int m_whell;
+    int m_wheel;
 
     window_impl* m_impl;
 };

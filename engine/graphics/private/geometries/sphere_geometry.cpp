@@ -1,33 +1,28 @@
 #include "graphics/geometries/sphere_geometry.hpp"
-#include "math/math.hpp"
+#include "math/vector.hpp"
 
 namespace violet
 {
-sphere_geometry::sphere_geometry(
-    render_device* device,
-    float radius,
-    std::size_t slice,
-    std::size_t stack)
-    : geometry(device)
+sphere_geometry::sphere_geometry(float radius, std::size_t slice, std::size_t stack)
 {
-    std::vector<float3> position;
-    std::vector<float3> normal;
-    std::vector<std::uint32_t> indices;
+    std::vector<vec3f> position;
+    std::vector<vec3f> normal;
+    std::vector<std::uint32_t> indexes;
 
     // Top vertex.
-    position.push_back(float3{0.0f, radius, 0.0f});
-    normal.push_back(float3{0.0f, 1.0f, 0.0f});
+    position.push_back(vec3f{0.0f, radius, 0.0f});
+    normal.push_back(vec3f{0.0f, 1.0f, 0.0f});
 
     for (std::size_t i = 1; i < stack; ++i)
     {
-        float phi = PI * static_cast<float>(i) / static_cast<float>(stack);
-        auto [phi_sin, phi_cos] = sin_cos(phi);
+        float phi = math::PI * static_cast<float>(i) / static_cast<float>(stack);
+        auto [phi_sin, phi_cos] = math::sin_cos(phi);
         for (std::size_t j = 0; j < slice; ++j)
         {
-            float theta = 2.0f * PI * static_cast<float>(j) / static_cast<float>(slice);
-            auto [theta_sin, theta_cos] = sin_cos(theta);
+            float theta = 2.0f * math::PI * static_cast<float>(j) / static_cast<float>(slice);
+            auto [theta_sin, theta_cos] = math::sin_cos(theta);
 
-            float3 p = {
+            vec3f p = {
                 phi_sin * theta_cos * radius,
                 phi_cos * radius,
                 phi_sin * theta_sin * radius};
@@ -37,20 +32,20 @@ sphere_geometry::sphere_geometry(
     }
 
     // Bottom vertex.
-    position.push_back(float3{0.0f, -radius, 0.0f});
-    normal.push_back(float3{0.0f, -1.0f, 0.0f});
+    position.push_back(vec3f{0.0f, -radius, 0.0f});
+    normal.push_back(vec3f{0.0f, -1.0f, 0.0f});
 
     for (std::size_t i = 0; i < slice; ++i)
     {
         // Top triangles.
-        indices.push_back(0);
-        indices.push_back((i + 1) % slice + 1);
-        indices.push_back(i + 1);
+        indexes.push_back(0);
+        indexes.push_back((i + 1) % slice + 1);
+        indexes.push_back(i + 1);
 
         // Bottom triangles.
-        indices.push_back(position.size() - 1);
-        indices.push_back(i + slice * (stack - 2) + 1);
-        indices.push_back((i + 1) % slice + slice * (stack - 2) + 1);
+        indexes.push_back(position.size() - 1);
+        indexes.push_back(i + slice * (stack - 2) + 1);
+        indexes.push_back((i + 1) % slice + slice * (stack - 2) + 1);
     }
 
     for (std::size_t i = 0; i < stack - 2; ++i)
@@ -65,12 +60,15 @@ sphere_geometry::sphere_geometry(
             std::uint32_t v2 = i1 + (j + 1) % slice;
             std::uint32_t v3 = i1 + j;
 
-            indices.insert(indices.end(), {v0, v1, v3, v1, v2, v3});
+            indexes.insert(indexes.end(), {v0, v1, v3, v1, v2, v3});
         }
     }
 
     add_attribute("position", position);
     add_attribute("normal", normal);
-    set_indices(indices);
+    set_indexes(indexes);
+
+    set_vertex_count(position.size());
+    set_index_count(indexes.size());
 }
 } // namespace violet

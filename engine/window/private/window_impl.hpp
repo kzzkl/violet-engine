@@ -20,7 +20,8 @@ struct window_message
         WINDOW_DESTROY
     } type;
 
-    union {
+    union
+    {
         struct
         {
             int x;
@@ -33,7 +34,7 @@ struct window_message
             bool down;
         } mouse_key;
 
-        int mouse_whell;
+        int mouse_wheel;
 
         struct
         {
@@ -65,7 +66,6 @@ public:
     using mouse_cursor_type = mouse_cursor;
     using keyboard_type = keyboard;
 
-public:
     virtual ~window_impl() = default;
 
     virtual bool initialize(std::uint32_t width, std::uint32_t height, std::string_view title) = 0;
@@ -84,8 +84,15 @@ public:
 
     virtual void set_mouse_cursor(mouse_cursor_type cursor) = 0;
 
-    void reset() noexcept { m_messages.clear(); }
-    const std::vector<window_message>& get_messages() const noexcept { return m_messages; }
+    void reset() noexcept
+    {
+        m_messages.clear();
+    }
+
+    const std::vector<window_message>& get_messages() const noexcept
+    {
+        return m_messages;
+    }
 
 protected:
     std::vector<window_message> m_messages;
