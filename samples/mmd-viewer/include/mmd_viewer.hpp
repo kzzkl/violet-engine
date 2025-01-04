@@ -1,18 +1,19 @@
 #pragma once
 
-#include "core/engine_system.hpp"
+#include "core/engine.hpp"
 #include "mmd_loader.hpp"
 #include "mmd_renderer.hpp"
 
 namespace violet
 {
 class mmd_debug;
-class mmd_viewer : public engine_system
+class mmd_viewer : public system
 {
 public:
     mmd_viewer();
     virtual ~mmd_viewer();
 
+    void install(application& app) override;
     bool initialize(const dictionary& config) override;
 
 private:

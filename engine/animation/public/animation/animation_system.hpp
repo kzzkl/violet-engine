@@ -1,10 +1,10 @@
 #pragma once
 
-#include "core/engine_system.hpp"
+#include "core/engine.hpp"
 
 namespace violet
 {
-class animation_system : public engine_system
+class animation_system : public system
 {
 public:
     animation_system();

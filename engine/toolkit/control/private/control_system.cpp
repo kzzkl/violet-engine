@@ -1,13 +1,20 @@
 #include "control/control_system.hpp"
+#include "scene/scene_system.hpp"
 #include "window/window_system.hpp"
 
 namespace violet
 {
 control_system::control_system()
-    : engine_system("control"),
+    : system("control"),
       m_mouse_position{},
       m_mouse_position_delta{}
 {
+}
+
+void control_system::install(application& app)
+{
+    app.install<scene_system>();
+    app.install<window_system>();
 }
 
 bool control_system::initialize(const dictionary& config)
@@ -28,8 +35,6 @@ bool control_system::initialize(const dictionary& config)
 
     return true;
 }
-
-void control_system::shutdown() {}
 
 void control_system::tick()
 {

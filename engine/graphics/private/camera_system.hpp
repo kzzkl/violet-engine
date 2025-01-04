@@ -4,18 +4,16 @@
 
 namespace violet
 {
-class hierarchy_system : public system
+class camera_system : public system
 {
 public:
-    hierarchy_system();
+    camera_system();
 
     bool initialize(const dictionary& config) override;
 
-private:
-    void process_add_parent();
-    void process_set_parent();
-    void process_remove_parent();
+    void update();
 
+private:
     std::uint32_t m_system_version{0};
 };
 } // namespace violet

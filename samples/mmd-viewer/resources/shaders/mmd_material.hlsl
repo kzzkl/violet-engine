@@ -1,17 +1,16 @@
 #include "common.hlsli"
-#include "gbuffer.hlsli" 
 
 ConstantBuffer<scene_data> scene : register(b0, space1);
 ConstantBuffer<camera_data> camera : register(b0, space2);
 
-struct vs_in
+struct vs_input
 {
     float3 position : POSITION;
     float3 normal : NORMAL;
     float2 texcoord : TEXCOORD;
 };
 
-struct vs_out
+struct vs_output
 {
     float4 position : SV_POSITION;
     float3 normal_ws : NORMAL_WS;
@@ -20,7 +19,7 @@ struct vs_out
     uint material_address : MATERIAL_ADDRESS;
 };
 
-vs_out vs_main(vs_in input, uint instance_index : SV_InstanceID)
+vs_output vs_main(vs_input input, uint instance_index : SV_InstanceID)
 {
     StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
     StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
@@ -28,7 +27,7 @@ vs_out vs_main(vs_in input, uint instance_index : SV_InstanceID)
     instance_data instance = instances[instance_index];
     mesh_data mesh = meshes[instance.mesh_index];
 
-    vs_out output;
+    vs_output output;
     output.position = mul(camera.view_projection, mul(mesh.model_matrix, float4(input.position, 1.0)));
     output.normal_ws = mul((float3x3)mesh.model_matrix, input.normal);
     output.normal_vs = mul((float3x3)camera.view, output.normal_ws);
@@ -50,7 +49,14 @@ struct mmd_material
     uint environment_blend_mode;
 };
 
-gbuffer::packed fs_main(vs_out input)
+struct fs_output
+{
+    float4 color : SV_TARGET0;
+    float2 normal : SV_TARGET1;
+    float4 emissive : SV_TARGET2;
+};
+
+fs_output fs_main(vs_output input)
 {
     SamplerState linear_clamp_sampler = SamplerDescriptorHeap[scene.linear_clamp_sampler];
     
@@ -98,8 +104,10 @@ gbuffer::packed fs_main(vs_out input)
         }
     }
 
-    gbuffer::data gbuffer_data;
-    gbuffer_data.albedo = color.rgb;
+    fs_output output;
+    output.color = color;
+    output.normal = 0.0;
+    output.emissive = 0.0;
 
-    return gbuffer::pack(gbuffer_data);
+    return output;
 }

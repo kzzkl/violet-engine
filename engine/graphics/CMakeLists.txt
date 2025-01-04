@@ -21,17 +21,23 @@ add_library(${PROJECT_NAME} STATIC
     ./private/renderers/deferred_renderer.cpp
     ./private/tools/ibl_tool.cpp
     ./private/tools/texture_loader.cpp
+    ./private/camera_system.cpp
+    ./private/environment_system.cpp
     ./private/geometry_manager.cpp
     ./private/geometry.cpp
     ./private/gpu_buffer_uploader.cpp
     ./private/graphics_system.cpp
+    ./private/light_system.cpp
     ./private/material_manager.cpp
     ./private/material.cpp
+    ./private/mesh_system.cpp
     ./private/morph_target.cpp
     ./private/render_device.cpp
+    ./private/render_scene_manager.cpp
     ./private/render_scene.cpp
     ./private/rhi_plugin.cpp
-    ./private/shader_compiler.cpp)
+    ./private/shader_compiler.cpp
+    ./private/skinning_system.cpp)
 add_library(violet::graphics ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}

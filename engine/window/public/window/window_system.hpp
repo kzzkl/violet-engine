@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/engine_system.hpp"
+#include "core/engine.hpp"
 #include "math/rect.hpp"
 #include "task/task.hpp"
 #include "window/input.hpp"
@@ -8,7 +8,7 @@
 namespace violet
 {
 class window_impl;
-class window_system : public engine_system
+class window_system : public system
 {
 public:
     using mouse_type = mouse;

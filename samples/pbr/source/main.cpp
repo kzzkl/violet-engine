@@ -6,7 +6,6 @@
 #include "components/skybox_component.hpp"
 #include "components/transform_component.hpp"
 #include "control/control_system.hpp"
-#include "core/engine.hpp"
 #include "ecs_command/ecs_command_system.hpp"
 #include "gltf_loader.hpp"
 #include "graphics/graphics_system.hpp"
@@ -21,11 +20,11 @@
 
 namespace violet
 {
-class pbr_sample : public engine_system
+class pbr_sample : public system
 {
 public:
     pbr_sample()
-        : engine_system("PBR Sample")
+        : system("PBR Sample")
     {
     }
 
@@ -43,7 +42,7 @@ public:
         window.on_destroy().add_task().set_execute(
             []()
             {
-                engine::exit();
+                // engine::exit();
             });
 
         task_graph& task_graph = get_task_graph();
@@ -222,17 +221,17 @@ private:
 
 int main()
 {
-    violet::engine::initialize("assets/config/pbr.json");
-    violet::engine::install<violet::ecs_command_system>();
-    violet::engine::install<violet::hierarchy_system>();
-    violet::engine::install<violet::transform_system>();
-    violet::engine::install<violet::scene_system>();
-    violet::engine::install<violet::window_system>();
-    violet::engine::install<violet::graphics_system>();
-    violet::engine::install<violet::control_system>();
-    violet::engine::install<violet::pbr_sample>();
+    violet::application app("assets/config/pbr.json");
+    app.install<violet::ecs_command_system>();
+    app.install<violet::hierarchy_system>();
+    app.install<violet::transform_system>();
+    app.install<violet::scene_system>();
+    app.install<violet::window_system>();
+    app.install<violet::graphics_system>();
+    app.install<violet::control_system>();
+    app.install<violet::pbr_sample>();
 
-    violet::engine::run();
+    app.run();
 
     return 0;
 }

@@ -173,7 +173,7 @@ vec3f decompose(const mat4f& m, const vec3f& before)
 } // namespace
 
 mmd_animation::mmd_animation()
-    : engine_system("mmd animation")
+    : system("mmd animation")
 {
 }
 

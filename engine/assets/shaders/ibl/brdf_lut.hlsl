@@ -1,12 +1,12 @@
 #include "brdf.hlsli"
 
-struct vs_out
+struct vs_output
 {
     float4 position : SV_POSITION;
     float2 texcoord : TEXCOORD;
 };
 
-float2 fs_main(vs_out input) : SV_Target
+float2 fs_main(vs_output input) : SV_Target
 {
     float NdotV = input.texcoord.x;
     float roughness = input.texcoord.y;

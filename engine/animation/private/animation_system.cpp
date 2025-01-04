@@ -3,7 +3,7 @@
 namespace violet
 {
 animation_system::animation_system()
-    : engine_system("animation")
+    : system("animation")
 {
 }
 

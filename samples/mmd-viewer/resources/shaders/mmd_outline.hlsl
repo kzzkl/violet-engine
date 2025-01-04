@@ -1,5 +1,4 @@
 #include "common.hlsli"
-#include "gbuffer.hlsli" 
 
 ConstantBuffer<scene_data> scene : register(b0, space1);
 ConstantBuffer<camera_data> camera : register(b0, space2);
@@ -19,13 +18,13 @@ float3 outline_offset(float3 position_ws, float3 normal_ws, float outline_width)
     return position_ws.xyz + normal_ws * outline_expand;
 }
 
-struct vs_in
+struct vs_input
 {
     float3 position : POSITION;
     float3 normal : NORMAL;
 };
 
-struct vs_out
+struct vs_output
 {
     float4 position_cs : SV_POSITION;
     float3 color : COLOR;
@@ -37,7 +36,7 @@ struct mmd_outline
     float width;
 };
 
-vs_out vs_main(vs_in input, uint instance_index : SV_InstanceID)
+vs_output vs_main(vs_input input, uint instance_index : SV_InstanceID)
 {
     StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
     StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
@@ -59,20 +58,26 @@ vs_out vs_main(vs_in input, uint instance_index : SV_InstanceID)
 
     position_ws.xyz += normal_ws * material.width * camera_mul_fix;
 
-    vs_out output;
+    vs_output output;
     output.position_cs = mul(camera.view_projection, position_ws);
     output.color = material.color;
 
     return output;
 }
 
-gbuffer::packed fs_main(vs_out input)
+struct fs_output
 {
-    gbuffer::data gbuffer_data;
-    gbuffer_data.albedo = input.color;
-    gbuffer_data.roughness = 1.0;
-    gbuffer_data.metallic = 0.0;
-    gbuffer_data.emissive = 0.0;
+    float4 color : SV_TARGET0;
+    float2 normal : SV_TARGET1;
+    float4 emissive : SV_TARGET2;
+};
 
-    return gbuffer::pack(gbuffer_data);
+fs_output fs_main(vs_output input)
+{
+    fs_output output;
+    output.color = float4(input.color, 1.0);
+    output.normal = 0.0;
+    output.emissive = 0.0;
+
+    return output;
 }

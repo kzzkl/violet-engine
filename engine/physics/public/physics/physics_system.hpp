@@ -1,7 +1,7 @@
 #pragma once
 
 #include "components/collider_component.hpp"
-#include "core/engine_system.hpp"
+#include "core/engine.hpp"
 #include "physics/physics_context.hpp"
 #include "physics/physics_scene.hpp"
 
@@ -12,7 +12,7 @@ class physics_debug;
 #endif
 
 class physics_plugin;
-class physics_system : public engine_system
+class physics_system : public system
 {
 public:
     physics_system();

@@ -4,7 +4,7 @@
 ConstantBuffer<scene_data> scene : register(b0, space1);
 ConstantBuffer<camera_data> camera : register(b0, space2);
 
-struct vs_in
+struct vs_input
 {
     float3 position : POSITION;
     float3 normal : NORMAL;
@@ -12,7 +12,7 @@ struct vs_in
     float2 texcoord : TEXCOORD;
 };
 
-struct vs_out
+struct vs_output
 {
     float4 position : SV_POSITION;
     float3 position_ws : POSITION_WS;
@@ -22,7 +22,7 @@ struct vs_out
     uint material_address : MATERIAL_ADDRESS;
 };
 
-vs_out vs_main(vs_in input, uint instance_index : SV_InstanceID)
+vs_output vs_main(vs_input input, uint instance_index : SV_InstanceID)
 {
     StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
     StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
@@ -30,7 +30,7 @@ vs_out vs_main(vs_in input, uint instance_index : SV_InstanceID)
     instance_data instance = instances[instance_index];
     mesh_data mesh = meshes[instance.mesh_index];
 
-    vs_out output;
+    vs_output output;
     output.position_ws = mul(mesh.model_matrix, float4(input.position, 1.0)).xyz;
     output.normal_ws = mul((float3x3)mesh.model_matrix, input.normal);
     output.tangent_ws = mul((float3x3)mesh.model_matrix, input.tangent);
@@ -54,7 +54,7 @@ struct physical_material
     uint emissive_texture;
 };
 
-float3 get_normal(vs_out input, Texture2D<float3> normal_texture)
+float3 get_normal(vs_output input, Texture2D<float3> normal_texture)
 {
     SamplerState linear_repeat_sampler = SamplerDescriptorHeap[scene.linear_repeat_sampler];
     float3 tangent_normal = normalize(normal_texture.Sample(linear_repeat_sampler, input.texcoord) * 2.0 - 1.0);
@@ -67,7 +67,7 @@ float3 get_normal(vs_out input, Texture2D<float3> normal_texture)
     return normalize(mul(tbn, tangent_normal));
 }
 
-gbuffer::packed fs_main(vs_out input)
+gbuffer::packed fs_main(vs_output input)
 {
     SamplerState linear_repeat_sampler = SamplerDescriptorHeap[scene.linear_repeat_sampler];
 

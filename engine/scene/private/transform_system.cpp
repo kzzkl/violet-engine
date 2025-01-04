@@ -2,12 +2,18 @@
 #include "components/hierarchy_component.hpp"
 #include "components/transform_component.hpp"
 #include "math/matrix.hpp"
+#include "scene/hierarchy_system.hpp"
 
 namespace violet
 {
 transform_system::transform_system()
-    : engine_system("transform")
+    : system("transform")
 {
+}
+
+void transform_system::install(application& app)
+{
+    app.install<hierarchy_system>();
 }
 
 bool transform_system::initialize(const dictionary& config)

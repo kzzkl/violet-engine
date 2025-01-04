@@ -8,20 +8,20 @@ struct violet_shadow
 };
 ConstantBuffer<violet_shadow> shadow : register(b0, space1);
 
-struct vs_in
+struct vs_input
 {
     float3 position : POSITION;
 };
 
-struct vs_out
+struct vs_output
 {
     float4 position : SV_POSITION;
 };
 
-vs_out fs_main(vs_in vin)
+vs_output fs_main(vs_input input)
 {
-    vs_out result;
-    result.position = mul(mul(float4(vin.position, 1.0f), object.transform_m), shadow.light_vp);
+    vs_output result;
+    result.position = mul(mul(float4(input.position, 1.0f), object.transform_m), shadow.light_vp);
     // result.position = mul(float4(vin.position, 1.0f), shadow.light_vp);
     return result;
 }

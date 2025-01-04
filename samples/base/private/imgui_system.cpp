@@ -6,7 +6,7 @@
 namespace violet
 {
 imgui_system::imgui_system()
-    : engine_system("imgui")
+    : system("imgui")
 {
 }
 

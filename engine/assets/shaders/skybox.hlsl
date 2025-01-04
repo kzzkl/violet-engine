@@ -3,18 +3,18 @@
 ConstantBuffer<scene_data> scene : register(b0, space1);
 ConstantBuffer<camera_data> camera : register(b0, space2);
 
-struct vs_in
+struct vs_input
 {
     uint vertex_id : SV_VertexID;
 };
 
-struct vs_out
+struct vs_output
 {
     float4 position : SV_POSITION;
     float3 texcoord : TEXCOORD;
 };
 
-vs_out vs_main(vs_in input)
+vs_output vs_main(vs_input input)
 {
     const float3 vertices[8] = {
         float3(1.0, 1.0, 1.0),
@@ -42,7 +42,7 @@ vs_out vs_main(vs_in input)
 
     float3 position = camera.position + vertices[indexes[input.vertex_id]];
 
-    vs_out result;
+    vs_output result;
     result.position = mul(camera.view_projection, float4(position, 1.0f));
     result.position.z = result.position.w * 0.00001;
     result.texcoord = normalize(vertices[indexes[input.vertex_id]]);
@@ -50,7 +50,7 @@ vs_out vs_main(vs_in input)
     return result;
 }
 
-float4 fs_main(vs_out input) : SV_TARGET
+float4 fs_main(vs_output input) : SV_TARGET
 {
     TextureCube<float4> sky_texture = ResourceDescriptorHeap[scene.skybox];
     SamplerState linear_repeat_sampler = SamplerDescriptorHeap[scene.linear_repeat_sampler];

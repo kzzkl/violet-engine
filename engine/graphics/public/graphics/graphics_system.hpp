@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/engine_system.hpp"
+#include "core/engine.hpp"
 #include "graphics/render_scene.hpp"
 #include "render_graph/rdg_allocator.hpp"
 
@@ -8,25 +8,17 @@ namespace violet
 {
 class camera_component;
 class rhi_plugin;
-class graphics_system : public engine_system
+class render_scene_manager;
+class graphics_system : public system
 {
 public:
     graphics_system();
     virtual ~graphics_system();
 
+    void install(application& app) override;
     bool initialize(const dictionary& config) override;
 
 private:
-    void udpate_camera();
-    void update_mesh();
-    void update_skin();
-    void update_skeleton();
-    void update_light();
-    void update_environment();
-
-    void morphing();
-    void skinning();
-
     void begin_frame();
     void end_frame();
     void render();
@@ -39,11 +31,9 @@ private:
     void switch_frame_resource();
     rhi_fence* allocate_fence();
 
-    render_scene* get_scene(std::uint32_t layer);
-
-    std::vector<std::unique_ptr<render_scene>> m_scenes;
-
     std::unique_ptr<rhi_plugin> m_plugin;
+
+    std::unique_ptr<render_scene_manager> m_scene_manager;
 
     std::vector<std::vector<rhi_fence*>> m_used_fences;
     std::vector<rhi_fence*> m_free_fences;

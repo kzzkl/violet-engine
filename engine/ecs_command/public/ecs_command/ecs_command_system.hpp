@@ -1,11 +1,11 @@
 #pragma once
 
-#include "core/engine_system.hpp"
+#include "core/engine.hpp"
 #include <mutex>
 
 namespace violet
 {
-class ecs_command_system : public engine_system
+class ecs_command_system : public system
 {
 public:
     ecs_command_system();

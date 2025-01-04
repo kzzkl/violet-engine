@@ -18,7 +18,7 @@
 namespace violet
 {
 physics_system::physics_system()
-    : engine_system("physics")
+    : system("physics")
 {
 }
 

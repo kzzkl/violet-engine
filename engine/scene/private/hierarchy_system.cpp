@@ -4,7 +4,7 @@
 namespace violet
 {
 hierarchy_system::hierarchy_system()
-    : engine_system("hierarchy")
+    : system("hierarchy")
 {
 }
 

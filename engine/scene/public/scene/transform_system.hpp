@@ -1,15 +1,16 @@
 #pragma once
 
-#include "core/engine_system.hpp"
+#include "core/engine.hpp"
 #include "math/types.hpp"
 
 namespace violet
 {
-class transform_system : public engine_system
+class transform_system : public system
 {
 public:
     transform_system();
 
+    void install(application& app) override;
     bool initialize(const dictionary& config) override;
 
     void update_transform();

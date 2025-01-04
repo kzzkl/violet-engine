@@ -125,6 +125,13 @@ void deferred_renderer::add_mesh_pass(
             .flags = RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE,
         });
 
+    std::vector<rdg_texture*> render_targets = {
+        m_gbuffer_albedo,
+        m_gbuffer_material,
+        m_gbuffer_normal,
+        m_gbuffer_emissive,
+    };
+
     mesh_pass::add(
         graph,
         {
@@ -132,11 +139,9 @@ void deferred_renderer::add_mesh_pass(
             .camera = camera,
             .command_buffer = m_command_buffer,
             .count_buffer = m_count_buffer,
-            .gbuffer_albedo = m_gbuffer_albedo,
-            .gbuffer_material = m_gbuffer_material,
-            .gbuffer_normal = m_gbuffer_normal,
-            .gbuffer_emissive = m_gbuffer_emissive,
+            .render_targets = render_targets,
             .depth_buffer = m_depth_buffer,
+            .material_type = MATERIAL_OPAQUE,
             .clear = true,
         });
 }

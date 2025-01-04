@@ -11,6 +11,8 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
 
         rdg_buffer* command_buffer;
         rdg_buffer* count_buffer;
+
+        material_type material_type;
     };
 
     pass_data data = {
@@ -18,6 +20,7 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
         .camera = parameter.camera,
         .command_buffer = parameter.command_buffer,
         .count_buffer = parameter.count_buffer,
+        .material_type = parameter.material_type,
     };
 
     auto& pass = graph.add_pass<rdg_render_pass>("Mesh Pass");
@@ -32,11 +35,14 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
 
     rhi_attachment_load_op load_op =
         parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD;
-    pass.add_render_target(parameter.gbuffer_albedo, load_op);
-    pass.add_render_target(parameter.gbuffer_material, load_op);
-    pass.add_render_target(parameter.gbuffer_normal, load_op);
-    pass.add_render_target(parameter.gbuffer_emissive, load_op);
-    pass.set_depth_stencil(parameter.depth_buffer, load_op);
+    for (auto* render_target : parameter.render_targets)
+    {
+        pass.add_render_target(render_target, load_op);
+    }
+    if (parameter.depth_buffer != nullptr)
+    {
+        pass.set_depth_stencil(parameter.depth_buffer, load_op);
+    }
     pass.set_execute(
         [data](rdg_command& command)
         {
@@ -48,7 +54,7 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
                 data.camera,
                 data.command_buffer->get_rhi(),
                 data.count_buffer->get_rhi(),
-                MATERIAL_OPAQUE);
+                data.material_type);
         });
 }
 } // namespace violet

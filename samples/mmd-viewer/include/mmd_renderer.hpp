@@ -14,10 +14,6 @@ public:
 private:
     void add_cull_pass(render_graph& graph, const render_scene& scene, const render_camera& camera);
     void add_mesh_pass(render_graph& graph, const render_scene& scene, const render_camera& camera);
-    void add_lighting_pass(
-        render_graph& graph,
-        const render_scene& scene,
-        const render_camera& camera);
     void add_skybox_pass(
         render_graph& graph,
         const render_scene& scene,
@@ -30,8 +26,6 @@ private:
     rdg_texture* m_render_target{nullptr};
     rdg_texture* m_depth_buffer{nullptr};
 
-    rdg_texture* m_gbuffer_albedo;
-    rdg_texture* m_gbuffer_material;
     rdg_texture* m_gbuffer_normal;
     rdg_texture* m_gbuffer_emissive;
 

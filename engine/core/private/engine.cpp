@@ -3,7 +3,6 @@
 #include "common/utility.hpp"
 #include "engine_context.hpp"
 #include "task/task_graph_printer.hpp"
-#include <filesystem>
 #include <fstream>
 
 namespace violet
@@ -32,23 +31,39 @@ private:
     sleep_time_point m_time_point;
 };
 
-engine::engine()
-    : m_exit(true)
+system::system(std::string_view name) noexcept
+    : m_name(name),
+      m_context(nullptr)
 {
 }
 
-engine::~engine() {}
-
-engine& engine::instance()
+system* system::get_system(std::size_t index)
 {
-    static engine instance;
-    return instance;
+    return m_context->get_system(index);
 }
 
-void engine::initialize(std::string_view config_path)
+timer& system::get_timer()
 {
-    auto& config = instance().m_config;
+    return m_context->get_timer();
+}
 
+world& system::get_world()
+{
+    return m_context->get_world();
+}
+
+task_graph& system::get_task_graph() noexcept
+{
+    return m_context->get_task_graph();
+}
+
+task_executor& system::get_executor() noexcept
+{
+    return m_context->get_executor();
+}
+
+application::application(std::string_view config_path)
+{
     std::vector<std::wstring> config_files;
     config_files.emplace_back(L"assets/config/default.json");
     config_files.emplace_back(string_to_wstring(config_path));
@@ -66,55 +81,57 @@ void engine::initialize(std::string_view config_path)
 
         for (const auto& [key, value] : json.items())
         {
-            config[key].update(value, true);
+            m_config[key].update(value, true);
         }
         fin.close();
     }
 
-    instance().m_context = std::make_unique<engine_context>();
+    m_context = std::make_unique<engine_context>();
 }
 
-void engine::run()
-{
-    auto& engine = instance();
+application::~application() = default;
 
-    if (!engine.m_exit)
+void application::run()
+{
+    if (!m_exit)
     {
         return;
     }
 
-    engine.m_exit = false;
+    m_exit = false;
 
     frame_rater<120> frame_rater;
-    timer& time = engine.m_context->get_timer();
+    timer& time = m_context->get_timer();
     time.tick(timer::point::FRAME_START);
     time.tick(timer::point::FRAME_END);
 
-    task_executor& executor = engine.m_context->get_executor();
+    auto& executor = m_context->get_executor();
+    auto& world = m_context->get_world();
 
-    engine.m_context->get_task_graph().reset();
-    task_graph_printer::print(engine.m_context->get_task_graph());
+    m_context->get_task_graph().reset();
+    task_graph_printer::print(m_context->get_task_graph());
 
-    executor.run();
+    executor.run(m_config["engine"]["task_thread_count"]);
 
-    while (!engine.m_exit)
+    while (!m_exit)
     {
         time.tick(timer::point::FRAME_START);
 
-        engine.m_context->tick();
+        executor.execute_sync(m_context->get_task_graph());
+        world.add_version();
+
         time.tick(timer::point::FRAME_END);
 
         // frame_rater.sleep();
     }
 
     executor.stop();
-
-    engine.m_context->get_world().clear();
+    world.clear();
 
     // shutdown
     std::for_each(
-        engine.m_systems.rbegin(),
-        engine.m_systems.rend(),
+        m_systems.rbegin(),
+        m_systems.rend(),
         [](auto& system)
         {
             log::info("System shutdown: {}.", system->get_name());
@@ -123,14 +140,15 @@ void engine::run()
         });
 }
 
-void engine::exit()
+void application::exit()
 {
-    instance().m_exit = true;
+    m_exit = true;
 }
 
-void engine::install(std::size_t index, std::unique_ptr<engine_system>&& system)
+void application::install(std::size_t index, std::unique_ptr<system>&& system)
 {
     system->m_context = m_context.get();
+    system->install(*this);
     if (!system->initialize(m_config[system->get_name().data()]))
     {
         throw std::runtime_error(system->get_name() + " initialize failed");
@@ -141,9 +159,9 @@ void engine::install(std::size_t index, std::unique_ptr<engine_system>&& system)
     m_systems.push_back(std::move(system));
 }
 
-void engine::uninstall(std::size_t index)
+void application::uninstall(std::size_t index)
 {
-    engine_system* system = m_context->get_system(index);
+    auto* system = m_context->get_system(index);
     if (system)
     {
         system->shutdown();
@@ -164,5 +182,10 @@ void engine::uninstall(std::size_t index)
     {
         log::warn("The system is not installed.");
     }
+}
+
+bool application::has_system(std::size_t index) const noexcept
+{
+    return m_context->has_system(index);
 }
 } // namespace violet

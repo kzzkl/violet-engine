@@ -3,7 +3,7 @@
 namespace violet
 {
 ecs_command_system::ecs_command_system()
-    : engine_system("ecs command")
+    : system("ecs command")
 {
 }
 

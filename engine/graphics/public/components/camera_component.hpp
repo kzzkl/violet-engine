@@ -19,6 +19,8 @@ struct camera_component
     rhi_viewport viewport;
     std::vector<rhi_scissor_rect> scissor_rects;
 
+    bool jitter{false};
+
     rhi_texture_extent get_extent() const
     {
         rhi_texture_extent result = {};

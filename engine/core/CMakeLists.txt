@@ -2,7 +2,6 @@ project(violet-core)
 
 add_library(${PROJECT_NAME} STATIC
     ./private/engine_context.cpp
-    ./private/engine_system.cpp
     ./private/engine.cpp
     ./private/plugin.cpp)
 add_library(violet::core ALIAS ${PROJECT_NAME})

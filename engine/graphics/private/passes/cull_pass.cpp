@@ -4,7 +4,7 @@ namespace violet
 {
 struct cull_cs : public shader_cs
 {
-    static constexpr std::string_view path = "assets/shaders/cull.hlsl";
+    static constexpr std::string_view path = "assets/shaders/cull/cull.hlsl";
 
     struct cull_data
     {
@@ -32,7 +32,7 @@ struct cull_cs : public shader_cs
 
 struct draw_command_filler_cs : public shader_cs
 {
-    static constexpr std::string_view path = "assets/shaders/draw_command_filler.hlsl";
+    static constexpr std::string_view path = "assets/shaders/cull/draw_command_filler.hlsl";
 
     struct fill_data
     {

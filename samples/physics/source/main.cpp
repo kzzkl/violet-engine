@@ -7,7 +7,6 @@
 #include "components/scene_component.hpp"
 #include "components/transform_component.hpp"
 #include "control/control_system.hpp"
-#include "core/engine.hpp"
 #include "ecs_command/ecs_command_system.hpp"
 #include "graphics/geometries/box_geometry.hpp"
 #include "graphics/graphics_system.hpp"
@@ -22,11 +21,11 @@
 
 namespace violet
 {
-class physics_demo : public engine_system
+class physics_demo : public system
 {
 public:
     physics_demo()
-        : engine_system("physics_demo")
+        : system("physics_demo")
     {
     }
 
@@ -230,18 +229,18 @@ private:
 
 int main()
 {
-    violet::engine::initialize("assets/config/physics.json");
-    violet::engine::install<violet::ecs_command_system>();
-    violet::engine::install<violet::hierarchy_system>();
-    violet::engine::install<violet::transform_system>();
-    violet::engine::install<violet::scene_system>();
-    violet::engine::install<violet::window_system>();
-    violet::engine::install<violet::graphics_system>();
-    violet::engine::install<violet::physics_system>();
-    violet::engine::install<violet::control_system>();
-    violet::engine::install<violet::physics_demo>();
+    violet::application app("assets/config/physics.json");
+    app.install<violet::ecs_command_system>();
+    app.install<violet::hierarchy_system>();
+    app.install<violet::transform_system>();
+    app.install<violet::scene_system>();
+    app.install<violet::window_system>();
+    app.install<violet::graphics_system>();
+    app.install<violet::physics_system>();
+    app.install<violet::control_system>();
+    app.install<violet::physics_demo>();
 
-    violet::engine::run();
+    app.run();
 
     return 0;
 }

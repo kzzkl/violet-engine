@@ -6,20 +6,33 @@
 #include "components/orbit_control_component.hpp"
 #include "components/scene_component.hpp"
 #include "components/transform_component.hpp"
-#include "core/engine.hpp"
+#include "control/control_system.hpp"
+#include "graphics/graphics_system.hpp"
 #include "graphics/tools/texture_loader.hpp"
 #include "imgui.h"
-#include "task/task_graph_printer.hpp"
+#include "imgui_system.hpp"
+#include "mmd_animation.hpp"
+#include "physics/physics_system.hpp"
 #include "window/window_system.hpp"
 
 namespace violet
 {
 mmd_viewer::mmd_viewer()
-    : engine_system("mmd viewer")
+    : system("mmd viewer")
 {
 }
 
 mmd_viewer::~mmd_viewer() {}
+
+void mmd_viewer::install(application& app)
+{
+    app.install<window_system>();
+    app.install<graphics_system>();
+    app.install<physics_system>();
+    app.install<control_system>();
+    app.install<imgui_system>();
+    app.install<mmd_animation>();
+}
 
 bool mmd_viewer::initialize(const dictionary& config)
 {
@@ -38,7 +51,7 @@ bool mmd_viewer::initialize(const dictionary& config)
     window.on_destroy().add_task().set_execute(
         []()
         {
-            engine::exit();
+            // engine::exit();
         });
 
     task_graph& task_graph = get_task_graph();
@@ -55,7 +68,6 @@ bool mmd_viewer::initialize(const dictionary& config)
             });
 
     task_graph.reset();
-    task_graph_printer::print(task_graph);
 
     initialize_render();
     initialize_scene();
@@ -150,7 +162,7 @@ void mmd_viewer::tick()
         bool dirty = false;
 
         static vec3f rotation;
-        dirty = ImGui::SliderFloat("Rotate X", &rotation.x, 0.0f, math::PI) || dirty;
+        dirty = ImGui::SliderFloat("Rotate X", &rotation.x, -math::PI, math::PI) || dirty;
         dirty = ImGui::SliderFloat("Rotate Y", &rotation.y, 0.0f, math::TWO_PI) || dirty;
 
         if (dirty)

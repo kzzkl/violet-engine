@@ -16,11 +16,10 @@ public:
         rdg_buffer* command_buffer;
         rdg_buffer* count_buffer;
 
-        rdg_texture* gbuffer_albedo;
-        rdg_texture* gbuffer_material;
-        rdg_texture* gbuffer_normal;
-        rdg_texture* gbuffer_emissive;
+        std::span<rdg_texture*> render_targets;
         rdg_texture* depth_buffer;
+
+        material_type material_type;
 
         bool clear;
     };

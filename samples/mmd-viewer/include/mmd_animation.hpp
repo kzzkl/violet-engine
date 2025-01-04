@@ -3,11 +3,11 @@
 #include "components/mmd_animator_component.hpp"
 #include "components/mmd_skeleton_component.hpp"
 #include "components/morph_component.hpp"
-#include "core/engine_system.hpp"
+#include "core/engine.hpp"
 
 namespace violet
 {
-class mmd_animation : public engine_system
+class mmd_animation : public system
 {
 public:
     mmd_animation();

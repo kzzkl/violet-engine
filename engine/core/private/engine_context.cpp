@@ -8,16 +8,14 @@ engine_context::engine_context()
     m_timer = std::make_unique<timer>();
     m_world = std::make_unique<world>();
 
-    task_group& pre_update = m_task_graph.add_group().set_name("PreUpdate");
-    task_group& update =
-        m_task_graph.add_group().set_name("Update").add_dependency(pre_update);
-    task_group& post_update =
-        m_task_graph.add_group().set_name("PostUpdate").add_dependency(update);
+    auto& pre_update = m_task_graph.add_group().set_name("PreUpdate");
+    auto& update = m_task_graph.add_group().set_name("Update").add_dependency(pre_update);
+    auto& post_update = m_task_graph.add_group().set_name("PostUpdate").add_dependency(update);
 }
 
 engine_context::~engine_context() {}
 
-void engine_context::set_system(std::size_t index, engine_system* system)
+void engine_context::set_system(std::size_t index, system* system)
 {
     if (index >= m_systems.size())
     {
@@ -26,16 +24,5 @@ void engine_context::set_system(std::size_t index, engine_system* system)
 
     assert(m_systems[index] == nullptr);
     m_systems[index] = system;
-}
-
-engine_system* engine_context::get_system(std::size_t index)
-{
-    return m_systems[index];
-}
-
-void engine_context::tick()
-{
-    m_executor.execute_sync(m_task_graph);
-    m_world->add_version();
 }
 } // namespace violet

@@ -1,34 +1,13 @@
-#include "control/control_system.hpp"
-#include "core/engine.hpp"
-#include "ecs_command/ecs_command_system.hpp"
-#include "graphics/graphics_system.hpp"
-#include "imgui_system.hpp"
-#include "mmd_animation.hpp"
 #include "mmd_viewer.hpp"
-#include "physics/physics_system.hpp"
-#include "scene/hierarchy_system.hpp"
-#include "scene/scene_system.hpp"
-#include "scene/transform_system.hpp"
-#include "window/window_system.hpp"
 
 int main()
 {
     // https://github.com/benikabocha/saba
 
-    violet::engine::initialize("assets/config/mmd-viewer.json");
-    violet::engine::install<violet::ecs_command_system>();
-    violet::engine::install<violet::hierarchy_system>();
-    violet::engine::install<violet::transform_system>();
-    violet::engine::install<violet::scene_system>();
-    violet::engine::install<violet::window_system>();
-    violet::engine::install<violet::graphics_system>();
-    violet::engine::install<violet::physics_system>();
-    violet::engine::install<violet::control_system>();
-    violet::engine::install<violet::imgui_system>();
-    violet::engine::install<violet::mmd_animation>();
-    violet::engine::install<violet::mmd_viewer>();
+    violet::application app("assets/config/mmd-viewer.json");
+    app.install<violet::mmd_viewer>();
 
-    violet::engine::run();
+    app.run();
 
     return 0;
 }

@@ -1,11 +1,11 @@
 #pragma once
 
-#include "core/engine_system.hpp"
+#include "core/engine.hpp"
 #include "graphics/render_device.hpp"
 
 namespace violet
 {
-class imgui_system : public engine_system
+class imgui_system : public system
 {
 public:
     imgui_system();
