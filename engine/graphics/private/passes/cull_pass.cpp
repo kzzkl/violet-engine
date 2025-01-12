@@ -14,7 +14,7 @@ struct cull_cs : public shader_cs
         std::uint32_t padding2;
     };
 
-    static constexpr parameter cull = {
+    static constexpr parameter parameter = {
         {
             .type = RHI_PARAMETER_BINDING_CONSTANT,
             .stages = RHI_SHADER_STAGE_COMPUTE,
@@ -26,7 +26,7 @@ struct cull_cs : public shader_cs
         {0, bindless},
         {1, scene},
         {2, camera},
-        {3, cull},
+        {3, parameter},
     };
 };
 
@@ -42,7 +42,7 @@ struct draw_command_filler_cs : public shader_cs
         std::uint32_t padding0;
     };
 
-    static constexpr parameter fill = {
+    static constexpr parameter parameter = {
         {
             .type = RHI_PARAMETER_BINDING_CONSTANT,
             .stages = RHI_SHADER_STAGE_COMPUTE,
@@ -53,7 +53,7 @@ struct draw_command_filler_cs : public shader_cs
     static constexpr parameter_layout parameters = {
         {0, bindless},
         {1, scene},
-        {2, fill},
+        {2, parameter},
     };
 };
 
@@ -100,7 +100,7 @@ void cull_pass::add_cull_pass(
     pass_data data = {
         .scene_parameter = parameter.scene.get_scene_parameter(),
         .camera_parameter = parameter.camera.camera_parameter,
-        .cull_parameter = graph.allocate_parameter(cull_cs::cull),
+        .cull_parameter = graph.allocate_parameter(cull_cs::parameter),
         .mesh_count = static_cast<std::uint32_t>(parameter.scene.get_mesh_count()),
     };
 
@@ -146,7 +146,7 @@ void cull_pass::add_fill_pass(
 
     pass_data data = {
         .scene_parameter = parameter.scene.get_scene_parameter(),
-        .fill_parameter = graph.allocate_parameter(draw_command_filler_cs::fill),
+        .fill_parameter = graph.allocate_parameter(draw_command_filler_cs::parameter),
         .command_buffer = parameter.command_buffer,
         .count_buffer = parameter.count_buffer,
         .instance_count = static_cast<std::uint32_t>(parameter.scene.get_instance_count()),

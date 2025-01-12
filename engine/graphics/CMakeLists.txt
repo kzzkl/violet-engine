@@ -11,7 +11,9 @@ add_library(${PROJECT_NAME} STATIC
     ./private/passes/copy_depth_pass.cpp
     ./private/passes/cull_pass.cpp
     ./private/passes/mesh_pass.cpp
+    ./private/passes/motion_vector_pass.cpp
     ./private/passes/skybox_pass.cpp
+    ./private/passes/taa_pass.cpp
     ./private/passes/tone_mapping_pass.cpp
     ./private/render_graph/rdg_allocator.cpp
     ./private/render_graph/rdg_command.cpp

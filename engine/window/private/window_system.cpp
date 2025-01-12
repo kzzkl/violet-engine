@@ -64,7 +64,7 @@ void window_system::tick()
     m_impl->reset();
     m_impl->tick();
 
-    auto& executor = get_executor();
+    auto& executor = get_task_executor();
 
     m_mouse.tick();
     m_keyboard.tick();
@@ -110,11 +110,11 @@ void window_system::tick()
             break;
         }
         case window_message::message_type::WINDOW_RESIZE: {
-            get_executor().execute_sync(m_on_resize);
+            get_task_executor().execute_sync(m_on_resize);
             break;
         }
         case window_message::message_type::WINDOW_DESTROY: {
-            get_executor().execute_sync(m_on_destroy);
+            get_task_executor().execute_sync(m_on_destroy);
             break;
         }
         default:

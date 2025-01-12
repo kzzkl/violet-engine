@@ -29,6 +29,11 @@ public:
     {
     }
 
+    void install(application& app) override
+    {
+        m_app = &app;
+    }
+
     bool initialize(const dictionary& config) override
     {
         auto& window = get_system<window_system>();
@@ -38,9 +43,9 @@ public:
                 resize();
             });
         window.on_destroy().add_task().set_execute(
-            []()
+            [this]()
             {
-                // engine::exit();
+                m_app->exit();
             });
 
         task_graph& task_graph = get_task_graph();
@@ -69,14 +74,7 @@ public:
 private:
     void initialize_render()
     {
-        auto window_extent = get_system<window_system>().get_extent();
-
         m_swapchain = render_device::instance().create_swapchain({
-            .extent =
-                {
-                    .width = window_extent.width,
-                    .height = window_extent.height,
-                },
             .flags = RHI_TEXTURE_TRANSFER_DST | RHI_TEXTURE_RENDER_TARGET,
             .window_handle = get_system<window_system>().get_handle(),
         });
@@ -188,7 +186,11 @@ private:
 
         auto& main_camera = world.get_component<camera_component>(m_camera);
         main_camera.renderer = m_renderer.get();
-        main_camera.render_targets = {m_swapchain.get()};
+        main_camera.render_targets = {
+            m_swapchain.get(),
+            m_taa_history.get(),
+        };
+        main_camera.jitter = true;
     }
 
     void tick()
@@ -206,12 +208,21 @@ private:
 
     void resize()
     {
+        render_device& device = render_device::instance();
+
+        m_swapchain->resize();
+
         auto extent = get_system<window_system>().get_extent();
 
-        m_swapchain->resize(extent.width, extent.height);
+        m_taa_history = device.create_texture({
+            .extent = {extent.width, extent.height},
+            .format = RHI_FORMAT_R16G16B16A16_FLOAT,
+            .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_TRANSFER_DST,
+            .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+        });
 
         auto& main_camera = get_world().get_component<camera_component>(m_camera);
-        main_camera.render_targets[0] = m_swapchain.get();
+        main_camera.render_targets[1] = m_taa_history.get();
     }
 
     entity m_camera;
@@ -223,7 +234,10 @@ private:
     std::unique_ptr<material> m_material;
 
     rhi_ptr<rhi_swapchain> m_swapchain;
+    rhi_ptr<rhi_texture> m_taa_history;
     std::unique_ptr<renderer> m_renderer;
+
+    application* m_app{nullptr};
 };
 } // namespace violet
 

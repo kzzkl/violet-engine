@@ -19,10 +19,6 @@ render_scene::render_scene()
     const auto& buildin_resources = device.get_buildin_resources();
     m_scene_data.material_buffer = buildin_resources.material_buffer->get_handle();
     m_scene_data.brdf_lut = buildin_resources.brdf_lut->get_handle();
-    m_scene_data.point_repeat_sampler = buildin_resources.point_repeat_sampler->get_handle();
-    m_scene_data.point_clamp_sampler = buildin_resources.point_clamp_sampler->get_handle();
-    m_scene_data.linear_repeat_sampler = buildin_resources.linear_repeat_sampler->get_handle();
-    m_scene_data.linear_clamp_sampler = buildin_resources.linear_clamp_sampler->get_handle();
     m_scene_data.mesh_buffer = m_meshes.get_buffer()->get_handle();
     m_scene_data.instance_buffer = m_instances.get_buffer()->get_handle();
     m_scene_data.light_buffer = m_lights.get_buffer()->get_handle();

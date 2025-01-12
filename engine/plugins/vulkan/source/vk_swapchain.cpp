@@ -64,7 +64,7 @@ vk_swapchain::vk_swapchain(const rhi_swapchain_desc& desc, vk_context* context)
         m_present_semaphores.emplace_back(std::make_unique<vk_fence>(false, m_context));
     }
 
-    resize(desc.extent.width, desc.extent.height);
+    update();
 }
 
 vk_swapchain::~vk_swapchain()
@@ -78,6 +78,12 @@ rhi_fence* vk_swapchain::acquire_texture()
 {
     auto& semaphore = m_available_semaphores[m_context->get_frame_resource_index()];
 
+    if (m_resized)
+    {
+        update();
+        m_resized = false;
+    }
+
     VkResult result = vkAcquireNextImageKHR(
         m_context->get_device(),
         m_swapchain,
@@ -86,13 +92,28 @@ rhi_fence* vk_swapchain::acquire_texture()
         VK_NULL_HANDLE,
         &m_swapchain_image_index);
 
-    if (result != VK_ERROR_OUT_OF_DATE_KHR)
+    if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
+        update();
+
+        result = vkAcquireNextImageKHR(
+            m_context->get_device(),
+            m_swapchain,
+            UINT64_MAX,
+            semaphore->get_semaphore(),
+            VK_NULL_HANDLE,
+            &m_swapchain_image_index);
+
+        if (result == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            return nullptr;
+        }
+
         vk_check(result);
     }
     else
     {
-        return nullptr;
+        vk_check(result);
     }
 
     return semaphore.get();
@@ -112,21 +133,31 @@ void vk_swapchain::present()
         m_present_semaphores[m_context->get_frame_resource_index()]->get_semaphore());
 }
 
-void vk_swapchain::resize(std::uint32_t width, std::uint32_t height)
+rhi_texture* vk_swapchain::get_texture()
 {
-    vk_check(vkDeviceWaitIdle(m_context->get_device()));
+    return m_swapchain_images[m_swapchain_image_index].get();
+}
 
-    if (m_swapchain != VK_NULL_HANDLE)
-    {
-        m_swapchain_images.clear();
-        vkDestroySwapchainKHR(m_context->get_device(), m_swapchain, nullptr);
-    }
-
+void vk_swapchain::update()
+{
     VkSurfaceCapabilitiesKHR capabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
         m_context->get_physical_device(),
         m_surface,
         &capabilities);
+
+    if (m_swapchain != VK_NULL_HANDLE)
+    {
+        if (capabilities.currentExtent.width == 0 || capabilities.currentExtent.height == 0)
+        {
+            return;
+        }
+
+        vk_check(vkDeviceWaitIdle(m_context->get_device()));
+
+        m_swapchain_images.clear();
+        vkDestroySwapchainKHR(m_context->get_device(), m_swapchain, nullptr);
+    }
 
     std::uint32_t format_count = 0;
     vkGetPhysicalDeviceSurfaceFormatsKHR(
@@ -191,10 +222,12 @@ void vk_swapchain::resize(std::uint32_t width, std::uint32_t height)
     }
     else
     {
-        swapchain_info.imageExtent.width =
-            std::clamp(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+        swapchain_info.imageExtent.width = std::clamp(
+            capabilities.currentExtent.width,
+            capabilities.minImageExtent.width,
+            capabilities.maxImageExtent.width);
         swapchain_info.imageExtent.height = std::clamp(
-            height,
+            capabilities.currentExtent.height,
             capabilities.minImageExtent.height,
             capabilities.maxImageExtent.height);
     }
@@ -250,10 +283,5 @@ void vk_swapchain::resize(std::uint32_t width, std::uint32_t height)
             swapchain_info.imageExtent,
             m_context));
     }
-}
-
-rhi_texture* vk_swapchain::get_texture()
-{
-    return m_swapchain_images[m_swapchain_image_index].get();
 }
 } // namespace violet::vk

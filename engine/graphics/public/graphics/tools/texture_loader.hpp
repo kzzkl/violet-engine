@@ -49,6 +49,9 @@ private:
         texture_load_options options,
         bool is_cube);
 
+    static std::optional<texture_data> load_file(
+        std::string_view path,
+        texture_load_options options);
     static std::optional<texture_data> load_dds(
         std::string_view path,
         texture_load_options options);

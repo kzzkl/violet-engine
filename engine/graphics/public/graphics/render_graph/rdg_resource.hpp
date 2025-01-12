@@ -79,6 +79,7 @@ public:
 
     virtual rdg_resource_type get_type() const noexcept = 0;
     virtual bool is_external() const noexcept = 0;
+    virtual bool is_view() const noexcept = 0;
 
     void add_reference(rdg_reference* reference)
     {
@@ -111,6 +112,11 @@ public:
     bool is_external() const noexcept override
     {
         return true;
+    }
+
+    bool is_view() const noexcept override
+    {
+        return false;
     }
 
     virtual rhi_texture_extent get_extent() const noexcept
@@ -171,6 +177,7 @@ public:
 protected:
     rhi_texture* m_texture{nullptr};
 
+private:
     rhi_texture_layout m_initial_layout;
     rhi_texture_layout m_final_layout;
 };
@@ -227,6 +234,63 @@ private:
     rhi_texture_desc m_desc;
 };
 
+class rdg_texture_view : public rdg_texture
+{
+public:
+    rdg_texture_view(
+        const rhi_texture_view_desc& desc,
+        rhi_texture_layout initial_layout,
+        rhi_texture_layout final_layout);
+
+    bool is_external() const noexcept override
+    {
+        return false;
+    }
+
+    bool is_view() const noexcept override
+    {
+        return true;
+    }
+
+    rhi_texture_extent get_extent() const noexcept override
+    {
+        return m_desc.texture->get_extent();
+    }
+
+    rhi_format get_format() const noexcept override
+    {
+        return m_desc.texture->get_format();
+    }
+
+    rhi_sample_count get_samples() const noexcept override
+    {
+        return m_desc.texture->get_samples();
+    }
+
+    std::uint32_t get_level_count() const noexcept override
+    {
+        return m_desc.level_count;
+    }
+
+    std::uint32_t get_layer_count() const noexcept override
+    {
+        return m_desc.layer_count;
+    }
+
+    void set_rhi(rhi_texture* texture) noexcept
+    {
+        m_texture = texture;
+    }
+
+    const rhi_texture_view_desc& get_desc() const noexcept
+    {
+        return m_desc;
+    }
+
+private:
+    rhi_texture_view_desc m_desc;
+};
+
 class rdg_buffer : public rdg_resource
 {
 public:
@@ -240,6 +304,11 @@ public:
     bool is_external() const noexcept override
     {
         return true;
+    }
+
+    bool is_view() const noexcept override
+    {
+        return false;
     }
 
     std::size_t get_buffer_size() const

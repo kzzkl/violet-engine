@@ -101,7 +101,10 @@ public:
 
     void present() override;
 
-    void resize(std::uint32_t width, std::uint32_t height) override;
+    void resize() override
+    {
+        m_resized = true;
+    }
 
     rhi_texture* get_texture() override;
 
@@ -123,6 +126,8 @@ public:
     vk_swapchain& operator=(const vk_swapchain&) = delete;
 
 private:
+    void update();
+
     VkSwapchainKHR m_swapchain;
     VkSurfaceKHR m_surface;
 
@@ -133,6 +138,8 @@ private:
     std::vector<std::unique_ptr<vk_fence>> m_present_semaphores;
 
     rhi_texture_flags m_flags{0};
+
+    bool m_resized{false};
 
     vk_context* m_context{nullptr};
 };

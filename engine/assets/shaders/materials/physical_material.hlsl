@@ -1,5 +1,4 @@
 #include "common.hlsli"
-#include "gbuffer.hlsli" 
 
 ConstantBuffer<scene_data> scene : register(b0, space1);
 ConstantBuffer<camera_data> camera : register(b0, space2);
@@ -14,7 +13,8 @@ struct vs_input
 
 struct vs_output
 {
-    float4 position : SV_POSITION;
+    float4 position_cs : SV_POSITION;
+    float4 prev_position_cs : PREV_POSITION_WS;
     float3 position_ws : POSITION_WS;
     float3 normal_ws : NORMAL_WS;
     float3 tangent_ws : TANGENT_WS;
@@ -37,7 +37,8 @@ vs_output vs_main(vs_input input, uint instance_index : SV_InstanceID)
     output.texcoord = input.texcoord;
     output.material_address = instance.material_address;
 
-    output.position = mul(camera.view_projection, float4(output.position_ws, 1.0));
+    output.position_cs = mul(camera.view_projection, float4(output.position_ws, 1.0));
+    output.prev_position_cs = mul(camera.prev_view_projection, float4(output.position_ws, 1.0));
 
     return output;
 }
@@ -56,7 +57,7 @@ struct physical_material
 
 float3 get_normal(vs_output input, Texture2D<float3> normal_texture)
 {
-    SamplerState linear_repeat_sampler = SamplerDescriptorHeap[scene.linear_repeat_sampler];
+    SamplerState linear_repeat_sampler = get_linear_repeat_sampler();
     float3 tangent_normal = normalize(normal_texture.Sample(linear_repeat_sampler, input.texcoord) * 2.0 - 1.0);
 
     float3 n = normalize(input.normal_ws);
@@ -67,9 +68,17 @@ float3 get_normal(vs_output input, Texture2D<float3> normal_texture)
     return normalize(mul(tbn, tangent_normal));
 }
 
-gbuffer::packed fs_main(vs_output input)
+struct fs_output
 {
-    SamplerState linear_repeat_sampler = SamplerDescriptorHeap[scene.linear_repeat_sampler];
+    float4 albedo : SV_TARGET0;
+    float2 material : SV_TARGET1;
+    float2 normal : SV_TARGET2;
+    float4 emissive : SV_TARGET3;
+};
+
+fs_output fs_main(vs_output input)
+{
+    SamplerState linear_repeat_sampler = get_linear_repeat_sampler();
 
     physical_material material = load_material<physical_material>(scene.material_buffer, input.material_address);
 
@@ -87,13 +96,13 @@ gbuffer::packed fs_main(vs_output input)
         N = get_normal(input, normal_texture);
     }
 
-    gbuffer::data gbuffer_data;
+    fs_output output;
 
-    gbuffer_data.albedo = material.albedo * albedo_texture.Sample(linear_repeat_sampler, input.texcoord);
-    gbuffer_data.roughness = material.roughness * roughness_metallic.g;
-    gbuffer_data.metallic = material.metallic * roughness_metallic.b;
-    gbuffer_data.emissive = material.emissive * emissive;
-    gbuffer_data.normal = N;
+    output.albedo = float4(material.albedo * albedo_texture.Sample(linear_repeat_sampler, input.texcoord), 1.0);
+    output.material.x = material.roughness * roughness_metallic.g;
+    output.material.y = material.metallic * roughness_metallic.b;
+    output.emissive = float4(material.emissive * emissive, 1.0);
+    output.normal = normal_to_octahedron(N);
 
-    return gbuffer::pack(gbuffer_data);
+    return output;
 }

@@ -45,6 +45,14 @@ rdg_inter_texture::rdg_inter_texture(
       m_desc(desc)
 {
 }
+rdg_texture_view::rdg_texture_view(
+    const rhi_texture_view_desc& desc,
+    rhi_texture_layout initial_layout,
+    rhi_texture_layout final_layout)
+    : rdg_texture(nullptr, initial_layout, final_layout),
+      m_desc(desc)
+{
+}
 
 rdg_buffer::rdg_buffer(rhi_buffer* buffer)
     : m_buffer(buffer)

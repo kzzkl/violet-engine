@@ -35,5 +35,7 @@ private:
     std::string m_vmd_path;
 
     std::vector<rhi_ptr<rhi_texture>> m_internal_toons;
+
+    application* m_app{nullptr};
 };
 } // namespace violet

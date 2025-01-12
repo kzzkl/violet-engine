@@ -13,13 +13,13 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     float3 color = hdr[dtid.xy].rgb;
 
-    float a = 2.51f;
-    float b = 0.03f;
-    float c = 2.43f;
-    float d = 0.59f;
-    float e = 0.14f;
+    float a = 2.51;
+    float b = 0.03;
+    float c = 2.43;
+    float d = 0.59;
+    float e = 0.14;
 
     color = saturate((color * (a * color + b)) / (color * (c * color + d) + e));
 
-    ldr[dtid.xy] = float4(color, 1.0f);
+    ldr[dtid.xy] = float4(color, 1.0);
 }

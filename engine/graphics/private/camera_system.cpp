@@ -5,6 +5,65 @@
 
 namespace violet
 {
+namespace
+{
+shader::camera_data get_camera_data(
+    const camera_component& camera,
+    const transform_world_component& transform)
+{
+    static const std::array<vec2f, 8> halton_sequence = {
+        vec2f{0.500000f, 0.333333f},
+        vec2f{0.250000f, 0.666667f},
+        vec2f{0.750000f, 0.111111f},
+        vec2f{0.125000f, 0.444444f},
+        vec2f{0.625000f, 0.777778f},
+        vec2f{0.375000f, 0.222222f},
+        vec2f{0.875000f, 0.555556f},
+        vec2f{0.062500f, 0.888889f},
+    };
+
+    shader::camera_data result = {
+        .position = transform.get_position(),
+        .fov = camera.fov,
+    };
+
+    rhi_texture_extent extent = camera.get_extent();
+    float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
+
+    mat4f_simd projection =
+        matrix::perspective_reverse_z<simd>(camera.fov, aspect, camera.near, camera.far);
+    mat4f_simd view = matrix::inverse(math::load(transform.matrix));
+
+    mat4f_simd view_projection = matrix::mul(view, projection);
+    math::store(view_projection, result.view_projection_no_jitter);
+
+    if (camera.jitter)
+    {
+        std::size_t index = render_device::instance().get_frame_count() % halton_sequence.size();
+
+        vec2f jitter = halton_sequence[index] - vec2f{0.5f, 0.5f};
+        jitter.x /= static_cast<float>(extent.width);
+        jitter.y /= static_cast<float>(extent.height);
+
+        vec4f_simd offset = math::load(jitter);
+        projection[2] = vector::add(projection[2], offset);
+
+        view_projection = matrix::mul(view, projection);
+
+        result.jitter = jitter;
+    }
+
+    mat4f_simd view_projection_inv = matrix::inverse(view_projection);
+
+    math::store(projection, result.projection);
+    math::store(view, result.view);
+    math::store(view_projection, result.view_projection);
+    math::store(view_projection_inv, result.view_projection_inv);
+
+    return result;
+}
+} // namespace
+
 camera_system::camera_system()
     : system("camera")
 {
@@ -28,36 +87,21 @@ void camera_system::update()
         .read<transform_world_component>()
         .write<camera_meta_component>()
         .each(
-            [](const camera_component& camera,
-               const transform_world_component& transform,
-               camera_meta_component& camera_meta)
+            [this](
+                const camera_component& camera,
+                const transform_world_component& transform,
+                camera_meta_component& camera_meta)
             {
                 if (camera.render_targets.empty())
                 {
                     return;
                 }
 
-                shader::camera_data data = {
-                    .position = transform.get_position(),
-                    .fov = camera.fov,
-                };
-
-                rhi_texture_extent extent = camera.get_extent();
-                float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
-
-                mat4f_simd projection = matrix::perspective_reverse_z<simd>(
-                    camera.fov,
-                    aspect,
-                    camera.near,
-                    camera.far);
-                mat4f_simd view = matrix::inverse(math::load(transform.matrix));
-                mat4f_simd view_projection = matrix::mul(view, projection);
-                mat4f_simd view_projection_inv = matrix::inverse(view_projection);
-
-                math::store(projection, data.projection);
-                math::store(view, data.view);
-                math::store(view_projection, data.view_projection);
-                math::store(view_projection_inv, data.view_projection_inv);
+                shader::camera_data data = get_camera_data(camera, transform);
+                data.prev_view_projection = camera_meta.view_projection;
+                data.prev_view_projection_no_jitter = camera_meta.view_projection_no_jitter;
+                camera_meta.view_projection = data.view_projection;
+                camera_meta.view_projection_no_jitter = data.view_projection_no_jitter;
 
                 if (camera_meta.parameter == nullptr)
                 {
@@ -66,11 +110,8 @@ void camera_system::update()
                 }
 
                 camera_meta.parameter->set_constant(0, &data, sizeof(shader::camera_data));
-            },
-            [this](auto& view)
-            {
-                return view.template is_updated<camera_component>(m_system_version) ||
-                       view.template is_updated<transform_world_component>(m_system_version);
             });
+
+    m_system_version = world.get_version();
 }
 } // namespace violet

@@ -40,6 +40,22 @@ rdg_texture* render_graph::add_texture(std::string_view name, const rhi_texture_
     return result;
 }
 
+rdg_texture* render_graph::add_texture(
+    std::string_view name,
+    const rhi_texture_view_desc& desc,
+    rhi_texture_layout initial_layout,
+    rhi_texture_layout final_layout)
+{
+    assert(desc.texture != nullptr);
+
+    auto resource = std::make_unique<rdg_texture_view>(desc, initial_layout, final_layout);
+    resource->m_name = name;
+
+    rdg_texture* result = resource.get();
+    m_resources.push_back(std::move(resource));
+    return result;
+}
+
 rdg_buffer* render_graph::add_buffer(std::string_view name, rhi_buffer* buffer)
 {
     assert(buffer != nullptr);
@@ -83,21 +99,28 @@ void render_graph::compile()
         m_resources[i]->m_index = i;
         if (m_resources[i]->get_type() == RDG_RESOURCE_TEXTURE)
         {
-            rdg_texture* texture = static_cast<rdg_texture*>(m_resources[i].get());
+            auto* texture = static_cast<rdg_texture*>(m_resources[i].get());
             if (!m_resources[i]->is_external())
             {
-                rdg_inter_texture* inter_texture = static_cast<rdg_inter_texture*>(texture);
-
-                rhi_texture* rhi = m_allocator->allocate_texture(inter_texture->get_desc());
-                inter_texture->set_rhi(rhi);
+                if (m_resources[i]->is_view())
+                {
+                    auto* texture_view = static_cast<rdg_texture_view*>(texture);
+                    rhi_texture* rhi = m_allocator->allocate_texture(texture_view->get_desc());
+                    texture_view->set_rhi(rhi);
+                }
+                else
+                {
+                    auto* inter_texture = static_cast<rdg_inter_texture*>(texture);
+                    rhi_texture* rhi = m_allocator->allocate_texture(inter_texture->get_desc());
+                    inter_texture->set_rhi(rhi);
+                }
             }
         }
         else if (m_resources[i]->get_type() == RDG_RESOURCE_BUFFER)
         {
             if (!m_resources[i]->is_external())
             {
-                rdg_inter_buffer* inter_buffer =
-                    static_cast<rdg_inter_buffer*>(m_resources[i].get());
+                auto* inter_buffer = static_cast<rdg_inter_buffer*>(m_resources[i].get());
 
                 rhi_buffer* rhi = m_allocator->allocate_buffer(inter_buffer->get_desc());
                 inter_buffer->set_rhi(rhi);

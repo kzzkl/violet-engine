@@ -57,6 +57,7 @@ enum rhi_format
     RHI_FORMAT_B8G8R8A8_SINT,
     RHI_FORMAT_B8G8R8A8_SRGB,
     RHI_FORMAT_R16G16_UNORM,
+    RHI_FORMAT_R16G16_FLOAT,
     RHI_FORMAT_R16G16B16A16_UNORM,
     RHI_FORMAT_R16G16B16A16_FLOAT,
     RHI_FORMAT_R32_UINT,
@@ -192,14 +193,8 @@ struct rhi_texture_desc
     std::uint32_t level_count{1};
     std::uint32_t layer_count{1};
 
+    rhi_texture_layout layout;
     rhi_sample_count samples;
-};
-
-enum rhi_texture_view_type
-{
-    RHI_TEXTURE_VIEW_2D,
-    RHI_TEXTURE_VIEW_2D_ARRAY,
-    RHI_TEXTURE_VIEW_CUBE,
 };
 
 class rhi_texture : public rhi_resource
@@ -215,6 +210,13 @@ public:
     virtual std::uint32_t get_layer_count() const noexcept = 0;
 
     virtual std::uint64_t get_hash() const noexcept = 0;
+};
+
+enum rhi_texture_view_type
+{
+    RHI_TEXTURE_VIEW_2D,
+    RHI_TEXTURE_VIEW_2D_ARRAY,
+    RHI_TEXTURE_VIEW_CUBE,
 };
 
 struct rhi_texture_view_desc
@@ -825,8 +827,6 @@ public:
 
 struct rhi_swapchain_desc
 {
-    rhi_texture_extent extent;
-
     rhi_texture_flags flags;
     void* window_handle;
 };
@@ -841,7 +841,10 @@ public:
 
     virtual void present() = 0;
 
-    virtual void resize(std::uint32_t width, std::uint32_t height) = 0;
+    /**
+     * @brief Mark the swapchain out of date and will be resized.
+     */
+    virtual void resize() = 0;
 
     virtual rhi_texture* get_texture() = 0;
 };

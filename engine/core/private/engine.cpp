@@ -57,9 +57,9 @@ task_graph& system::get_task_graph() noexcept
     return m_context->get_task_graph();
 }
 
-task_executor& system::get_executor() noexcept
+task_executor& system::get_task_executor() noexcept
 {
-    return m_context->get_executor();
+    return m_context->get_task_executor();
 }
 
 application::application(std::string_view config_path)
@@ -100,12 +100,12 @@ void application::run()
 
     m_exit = false;
 
-    frame_rater<120> frame_rater;
+    frame_rater<30> frame_rater;
     timer& time = m_context->get_timer();
     time.tick(timer::point::FRAME_START);
     time.tick(timer::point::FRAME_END);
 
-    auto& executor = m_context->get_executor();
+    auto& executor = m_context->get_task_executor();
     auto& world = m_context->get_world();
 
     m_context->get_task_graph().reset();

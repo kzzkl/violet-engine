@@ -35,6 +35,19 @@ rhi_texture* rdg_allocator::allocate_texture(const rhi_texture_desc& desc)
     return pool.data[pool.count++].get();
 }
 
+rhi_texture* rdg_allocator::allocate_texture(const rhi_texture_view_desc& desc)
+{
+    std::uint64_t hash = hash::city_hash_64(&desc, sizeof(rhi_texture_view_desc));
+
+    auto& pool = m_texture_pools[hash];
+    if (pool.count == pool.data.size())
+    {
+        pool.data.push_back(render_device::instance().create_texture(desc));
+    }
+
+    return pool.data[pool.count++].get();
+}
+
 rhi_buffer* rdg_allocator::allocate_buffer(const rhi_buffer_desc& desc)
 {
     std::uint64_t hash = hash::city_hash_64(&desc, sizeof(rhi_buffer_desc));

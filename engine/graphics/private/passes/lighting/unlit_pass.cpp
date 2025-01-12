@@ -14,7 +14,7 @@ struct unlit_fs : public shader_fs
         std::uint32_t padding2;
     };
 
-    static constexpr parameter gbuffer = {
+    static constexpr parameter parameter = {
         {
             .type = RHI_PARAMETER_BINDING_CONSTANT,
             .stages = RHI_SHADER_STAGE_FRAGMENT,
@@ -25,7 +25,7 @@ struct unlit_fs : public shader_fs
     static constexpr parameter_layout parameters = {
         {0, bindless},
         {1, scene},
-        {2, gbuffer},
+        {2, parameter},
     };
 };
 
@@ -41,7 +41,7 @@ void unlit_pass::add(render_graph& graph, const parameter& parameter)
 
     pass_data data = {
         .scene_parameter = parameter.scene.get_scene_parameter(),
-        .gbuffer_parameter = graph.allocate_parameter(unlit_fs::gbuffer),
+        .gbuffer_parameter = graph.allocate_parameter(unlit_fs::parameter),
         .gbuffer_albedo = parameter.gbuffer_albedo,
     };
 
@@ -65,9 +65,10 @@ void unlit_pass::add(render_graph& graph, const parameter& parameter)
 
             auto& device = render_device::instance();
 
-            rdg_render_pipeline pipeline = {};
-            pipeline.vertex_shader = device.get_shader<fullscreen_vs>();
-            pipeline.fragment_shader = device.get_shader<unlit_fs>();
+            rdg_render_pipeline pipeline = {
+                .vertex_shader = device.get_shader<fullscreen_vs>(),
+                .fragment_shader = device.get_shader<unlit_fs>(),
+            };
             pipeline.depth_stencil.stencil_enable = true;
             pipeline.depth_stencil.stencil_front = {
                 .compare_op = RHI_COMPARE_OP_EQUAL,

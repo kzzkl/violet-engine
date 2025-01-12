@@ -43,7 +43,7 @@ public:
         return m_task_graph;
     }
 
-    task_executor& get_executor() noexcept
+    task_executor& get_task_executor() noexcept
     {
         return m_executor;
     }

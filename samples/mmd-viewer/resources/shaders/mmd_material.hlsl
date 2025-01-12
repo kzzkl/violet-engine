@@ -58,7 +58,7 @@ struct fs_output
 
 fs_output fs_main(vs_output input)
 {
-    SamplerState linear_clamp_sampler = SamplerDescriptorHeap[scene.linear_clamp_sampler];
+    SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
     
     mmd_material material = load_material<mmd_material>(scene.material_buffer, input.material_address);
 

@@ -1,6 +1,7 @@
 #include "common.hlsli"
-#include "gbuffer.hlsli"
 #include "brdf.hlsli"
+
+static const float MIN_ROUGHNESS = 0.03;
 
 ConstantBuffer<scene_data> scene : register(b0, space1);
 ConstantBuffer<camera_data> camera : register(b0, space2);
@@ -16,33 +17,27 @@ ConstantBuffer<gbuffer_data> constant : register(b0, space3);
 
 float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
 {
-    SamplerState point_repeat_sampler = SamplerDescriptorHeap[scene.point_repeat_sampler];
-    SamplerState linear_repeat_sampler = SamplerDescriptorHeap[scene.linear_repeat_sampler];
-    SamplerState linear_clamp_sampler = SamplerDescriptorHeap[scene.linear_clamp_sampler];
-
-    gbuffer::packed packed;
+    SamplerState point_clamp_sampler = get_point_clamp_sampler();
+    SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
     Texture2D<float4> gbuffer_albbedo = ResourceDescriptorHeap[constant.albedo];
-    packed.albedo = gbuffer_albbedo.Sample(point_repeat_sampler, texcoord);
+    float3 albedo = gbuffer_albbedo.Sample(point_clamp_sampler, texcoord).rgb;
 
     Texture2D<float2> gbuffer_material = ResourceDescriptorHeap[constant.material];
-    packed.material = gbuffer_material.Sample(point_repeat_sampler, texcoord);
+    float2 material = gbuffer_material.Sample(point_clamp_sampler, texcoord);
+    float roughness = max(material.x, MIN_ROUGHNESS);
+    float metallic = material.y;
 
     Texture2D<float2> gbuffer_normal = ResourceDescriptorHeap[constant.normal];
-    packed.normal = gbuffer_normal.Sample(point_repeat_sampler, texcoord);
+    float3 N = octahedron_to_normal(gbuffer_normal.Sample(point_clamp_sampler, texcoord));
 
     Texture2D<float4> gbuffer_emissive = ResourceDescriptorHeap[constant.emissive];
-    packed.emissive = gbuffer_emissive.Sample(point_repeat_sampler, texcoord);
+    float3 emissive = gbuffer_emissive.Sample(point_clamp_sampler, texcoord).rgb;
     
-    Texture2D<float> gbuffer_depth = ResourceDescriptorHeap[constant.depth];
-    float depth = gbuffer_depth.Sample(point_repeat_sampler, texcoord);
-    float3 position = gbuffer::get_position(depth, texcoord, camera.view_projection_inv);
+    float3 position = get_position_from_depth(constant.depth, texcoord, camera.view_projection_inv).xyz;
 
-    gbuffer::data data = gbuffer::unpack(packed);
+    float3 F0 = lerp(0.04, albedo, metallic);
 
-    float3 F0 = lerp(0.04, data.albedo, data.metallic);
-
-    float3 N = data.normal;
     float3 V = normalize(camera.position - position);
 
     float NdotV = saturate(dot(N, V));
@@ -61,12 +56,12 @@ float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
         float NdotH = saturate(dot(N, H));
         float VdotH = saturate(dot(V, H));
 
-        float d = d_ggx(NdotH, data.roughness);
-        float vis = v_smith_joint_approx(NdotV, NdotL, data.roughness);
+        float d = d_ggx(NdotH, roughness);
+        float vis = v_smith_joint_approx(NdotV, NdotL, roughness);
         float3 f = f_schlick(VdotH, F0);
 
         float3 specular = d * vis * f;
-        float3 diffuse = data.albedo / PI * (1.0 - f);
+        float3 diffuse = albedo / PI * (1.0 - f);
 
         direct_lighting += (specular + diffuse) * NdotL * light.color;
     }
@@ -74,24 +69,22 @@ float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
     float3 ambient_lighting = 0.0;
     {
         float3 R = reflect(-V, N);
-        float3 f = f_schlick_roughness(NdotV, F0, data.roughness);
-        float3 kd = lerp(1.0 - f, 0.0, data.metallic);
+        float3 f = f_schlick_roughness(NdotV, F0, roughness);
+        float3 kd = lerp(1.0 - f, 0.0, metallic);
 
         TextureCube<float3> prefilter_map = ResourceDescriptorHeap[scene.prefilter];
-        float3 prefilter = prefilter_map.SampleLevel(linear_repeat_sampler, R, data.roughness * 4.0);
+        float3 prefilter = prefilter_map.SampleLevel(linear_clamp_sampler, R, roughness * 4.0);
 
         Texture2D<float2> brdf_lut = ResourceDescriptorHeap[scene.brdf_lut];
-        float2 brdf = brdf_lut.Sample(linear_clamp_sampler, float2(NdotV, data.roughness));
+        float2 brdf = brdf_lut.Sample(linear_clamp_sampler, float2(NdotV, roughness));
         float3 specular = (F0 * brdf.x + brdf.y) * prefilter;
 
         TextureCube<float3> irradiance_map = ResourceDescriptorHeap[scene.irradiance];
-        float3 irradiance = irradiance_map.Sample(linear_repeat_sampler, N);
-        float3 diffuse = data.albedo * irradiance * kd / PI;
+        float3 irradiance = irradiance_map.Sample(linear_clamp_sampler, N);
+        float3 diffuse = albedo * irradiance * kd / PI;
 
         ambient_lighting = specular + diffuse;
     }
-
-    float3 emissive = data.emissive;
 
     return float4(direct_lighting + ambient_lighting + emissive, 1.0);
 }

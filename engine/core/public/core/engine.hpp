@@ -43,8 +43,7 @@ protected:
     world& get_world();
 
     task_graph& get_task_graph() noexcept;
-
-    task_executor& get_executor() noexcept;
+    task_executor& get_task_executor() noexcept;
 
 private:
     friend class application;

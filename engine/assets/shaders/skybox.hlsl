@@ -53,7 +53,7 @@ vs_output vs_main(vs_input input)
 float4 fs_main(vs_output input) : SV_TARGET
 {
     TextureCube<float4> sky_texture = ResourceDescriptorHeap[scene.skybox];
-    SamplerState linear_repeat_sampler = SamplerDescriptorHeap[scene.linear_repeat_sampler];
+    SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
-    return sky_texture.Sample(linear_repeat_sampler, input.texcoord);
+    return sky_texture.Sample(linear_clamp_sampler, input.texcoord);
 }

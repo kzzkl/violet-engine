@@ -98,15 +98,6 @@ public:
     {
         rdg_scope scope(graph, "IBL Generate");
 
-        rhi_ptr<rhi_texture> cube_map_view = render_device::instance().create_texture({
-            .type = RHI_TEXTURE_VIEW_2D_ARRAY,
-            .texture = cube_map,
-            .level = 0,
-            .level_count = 1,
-            .layer = 0,
-            .layer_count = 6,
-        });
-
         rdg_texture* env = graph.add_texture(
             "Environment Map",
             env_map,
@@ -114,7 +105,14 @@ public:
             RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
         rdg_texture* cube = graph.add_texture(
             "Cube Map",
-            cube_map_view.get(),
+            {
+                .type = RHI_TEXTURE_VIEW_2D_ARRAY,
+                .texture = cube_map,
+                .level = 0,
+                .level_count = 1,
+                .layer = 0,
+                .layer_count = 6,
+            },
             RHI_TEXTURE_LAYOUT_UNDEFINED,
             RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
 
@@ -138,18 +136,16 @@ public:
         {
             rdg_scope scope(graph, "Irradiance");
 
-            rhi_ptr<rhi_texture> irradiance_map_view = render_device::instance().create_texture({
-                .type = RHI_TEXTURE_VIEW_2D_ARRAY,
-                .texture = irradiance_map,
-                .level = 0,
-                .level_count = 1,
-                .layer = 0,
-                .layer_count = 6,
-            });
-
             rdg_texture* irradiance = graph.add_texture(
                 "Irradiance Map",
-                irradiance_map_view.get(),
+                {
+                    .type = RHI_TEXTURE_VIEW_2D_ARRAY,
+                    .texture = irradiance_map,
+                    .level = 0,
+                    .level_count = 1,
+                    .layer = 0,
+                    .layer_count = 6,
+                },
                 RHI_TEXTURE_LAYOUT_UNDEFINED,
                 RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
 
@@ -164,18 +160,16 @@ public:
             {
                 rdg_scope scope(graph, "Mip " + std::to_string(i));
 
-                rhi_ptr<rhi_texture> prefilter_map_view = render_device::instance().create_texture({
-                    .type = RHI_TEXTURE_VIEW_2D_ARRAY,
-                    .texture = prefilter_map,
-                    .level = i,
-                    .level_count = 1,
-                    .layer = 0,
-                    .layer_count = 6,
-                });
-
                 rdg_texture* prefilter = graph.add_texture(
                     "Prefilter Map Mip " + std::to_string(i),
-                    prefilter_map_view.get(),
+                    {
+                        .type = RHI_TEXTURE_VIEW_2D_ARRAY,
+                        .texture = prefilter_map,
+                        .level = i,
+                        .level_count = 1,
+                        .layer = 0,
+                        .layer_count = 6,
+                    },
                     RHI_TEXTURE_LAYOUT_UNDEFINED,
                     RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
 

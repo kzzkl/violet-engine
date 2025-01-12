@@ -20,6 +20,7 @@ public:
     rhi_parameter* allocate_parameter(const rhi_parameter_desc& desc);
 
     rhi_texture* allocate_texture(const rhi_texture_desc& desc);
+    rhi_texture* allocate_texture(const rhi_texture_view_desc& desc);
 
     rhi_buffer* allocate_buffer(const rhi_buffer_desc& desc);
 

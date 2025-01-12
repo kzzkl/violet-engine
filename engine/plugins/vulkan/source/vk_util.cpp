@@ -58,6 +58,8 @@ VkFormat vk_util::map_format(rhi_format format)
         return VK_FORMAT_B8G8R8A8_SRGB;
     case RHI_FORMAT_R16G16_UNORM:
         return VK_FORMAT_R16G16_UNORM;
+    case RHI_FORMAT_R16G16_FLOAT:
+        return VK_FORMAT_R16G16_SFLOAT;
     case RHI_FORMAT_R16G16B16A16_UNORM:
         return VK_FORMAT_R16G16B16A16_UNORM;
     case RHI_FORMAT_R16G16B16A16_FLOAT:
@@ -153,6 +155,8 @@ rhi_format vk_util::map_format(VkFormat format)
         return RHI_FORMAT_B8G8R8A8_SRGB;
     case VK_FORMAT_R16G16_UNORM:
         return RHI_FORMAT_R16G16_UNORM;
+    case VK_FORMAT_R16G16_SFLOAT:
+        return RHI_FORMAT_R16G16_FLOAT;
     case VK_FORMAT_R16G16B16A16_UNORM:
         return RHI_FORMAT_R16G16B16A16_UNORM;
     case VK_FORMAT_R16G16B16A16_SFLOAT:

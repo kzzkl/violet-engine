@@ -32,6 +32,8 @@ void mmd_viewer::install(application& app)
     app.install<control_system>();
     app.install<imgui_system>();
     app.install<mmd_animation>();
+
+    m_app = &app;
 }
 
 bool mmd_viewer::initialize(const dictionary& config)
@@ -49,13 +51,13 @@ bool mmd_viewer::initialize(const dictionary& config)
             resize();
         });
     window.on_destroy().add_task().set_execute(
-        []()
+        [this]()
         {
-            // engine::exit();
+            m_app->exit();
         });
 
-    task_graph& task_graph = get_task_graph();
-    task_group& update = task_graph.get_group("Update");
+    auto& task_graph = get_task_graph();
+    auto& update = task_graph.get_group("Update");
 
     task_graph.add_task()
         .set_name("MMD Tick")
@@ -67,8 +69,6 @@ bool mmd_viewer::initialize(const dictionary& config)
                 tick();
             });
 
-    task_graph.reset();
-
     initialize_render();
     initialize_scene();
 
@@ -79,14 +79,7 @@ bool mmd_viewer::initialize(const dictionary& config)
 
 void mmd_viewer::initialize_render()
 {
-    auto window_extent = get_system<window_system>().get_extent();
-
     m_swapchain = render_device::instance().create_swapchain({
-        .extent =
-            {
-                .width = window_extent.width,
-                .height = window_extent.height,
-            },
         .flags = RHI_TEXTURE_TRANSFER_DST | RHI_TEXTURE_RENDER_TARGET,
         .window_handle = get_system<window_system>().get_handle(),
     });
@@ -194,11 +187,6 @@ void mmd_viewer::tick()
 
 void mmd_viewer::resize()
 {
-    auto extent = get_system<window_system>().get_extent();
-
-    m_swapchain->resize(extent.width, extent.height);
-
-    auto& main_camera = get_world().get_component<camera_component>(m_camera);
-    main_camera.render_targets[0] = m_swapchain.get();
+    m_swapchain->resize();
 }
 } // namespace violet

@@ -6,16 +6,17 @@
 #include "components/skybox_component.hpp"
 #include "components/transform_component.hpp"
 #include "control/control_system.hpp"
+#include "deferred_renderer_imgui.hpp"
 #include "ecs_command/ecs_command_system.hpp"
 #include "gltf_loader.hpp"
 #include "graphics/graphics_system.hpp"
-#include "graphics/renderers/deferred_renderer.hpp"
 #include "graphics/tools/ibl_tool.hpp"
 #include "graphics/tools/texture_loader.hpp"
+#include "imgui.h"
+#include "imgui_system.hpp"
 #include "scene/hierarchy_system.hpp"
 #include "scene/scene_system.hpp"
 #include "scene/transform_system.hpp"
-#include "task/task_graph_printer.hpp"
 #include "window/window_system.hpp"
 
 namespace violet
@@ -26,6 +27,13 @@ public:
     pbr_sample()
         : system("PBR Sample")
     {
+    }
+
+    void install(application& app) override
+    {
+        app.install<imgui_system>();
+
+        m_app = &app;
     }
 
     bool initialize(const dictionary& config) override
@@ -40,9 +48,9 @@ public:
                 resize();
             });
         window.on_destroy().add_task().set_execute(
-            []()
+            [this]()
             {
-                // engine::exit();
+                m_app->exit();
             });
 
         task_graph& task_graph = get_task_graph();
@@ -57,9 +65,6 @@ public:
                     tick();
                 });
 
-        task_graph.reset();
-        task_graph_printer::print(task_graph);
-
         initialize_render();
         initialize_skybox();
         initialize_scene();
@@ -72,18 +77,11 @@ public:
 private:
     void initialize_render()
     {
-        auto window_extent = get_system<window_system>().get_extent();
-
         m_swapchain = render_device::instance().create_swapchain({
-            .extent =
-                {
-                    .width = window_extent.width,
-                    .height = window_extent.height,
-                },
             .flags = RHI_TEXTURE_TRANSFER_DST | RHI_TEXTURE_RENDER_TARGET,
             .window_handle = get_system<window_system>().get_handle(),
         });
-        m_renderer = std::make_unique<deferred_renderer>();
+        m_renderer = std::make_unique<deferred_renderer_imgui>();
     }
 
     void initialize_skybox()
@@ -152,7 +150,11 @@ private:
 
         auto& main_camera = world.get_component<camera_component>(m_camera);
         main_camera.renderer = m_renderer.get();
-        main_camera.render_targets = {m_swapchain.get()};
+        main_camera.render_targets = {
+            m_swapchain.get(),
+            m_taa_history.get(),
+        };
+        main_camera.jitter = true;
 
         gltf_loader loader(m_model_path);
         if (auto result = loader.load())
@@ -189,17 +191,34 @@ private:
 
     void resize()
     {
-        auto extent = get_system<window_system>().get_extent();
-
         render_device& device = render_device::instance();
 
-        m_swapchain->resize(extent.width, extent.height);
+        m_swapchain->resize();
+
+        auto extent = get_system<window_system>().get_extent();
+
+        m_taa_history = device.create_texture({
+            .extent = {extent.width, extent.height},
+            .format = RHI_FORMAT_R16G16B16A16_FLOAT,
+            .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_TRANSFER_DST,
+            .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+        });
 
         auto& main_camera = get_world().get_component<camera_component>(m_camera);
-        main_camera.render_targets[0] = m_swapchain.get();
+        main_camera.render_targets[1] = m_taa_history.get();
     }
 
-    void tick() {}
+    void tick()
+    {
+        static bool enable_taa = true;
+        if (ImGui::Checkbox("TAA", &enable_taa))
+        {
+            m_renderer->set_taa(enable_taa);
+
+            auto& main_camera = get_world().get_component<camera_component>(m_camera);
+            main_camera.jitter = enable_taa;
+        }
+    }
 
     entity m_skybox;
     entity m_light;
@@ -212,10 +231,13 @@ private:
     mesh_loader::scene_data m_model_data;
 
     rhi_ptr<rhi_swapchain> m_swapchain;
-    std::unique_ptr<renderer> m_renderer;
+    rhi_ptr<rhi_texture> m_taa_history;
+    std::unique_ptr<deferred_renderer_imgui> m_renderer;
 
     std::string m_skybox_path;
     std::string m_model_path;
+
+    application* m_app{nullptr};
 };
 } // namespace violet
 

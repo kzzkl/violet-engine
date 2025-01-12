@@ -15,7 +15,7 @@ struct physical_fs : public shader_fs
         std::uint32_t emissive;
     };
 
-    static constexpr parameter gbuffer = {
+    static constexpr parameter parameter = {
         {
             .type = RHI_PARAMETER_BINDING_CONSTANT,
             .stages = RHI_SHADER_STAGE_FRAGMENT,
@@ -27,7 +27,7 @@ struct physical_fs : public shader_fs
         {0, bindless},
         {1, scene},
         {2, camera},
-        {3, gbuffer},
+        {3, parameter},
     };
 };
 
@@ -49,7 +49,7 @@ void physical_pass::add(render_graph& graph, const parameter& parameter)
     pass_data data = {
         .scene_parameter = parameter.scene.get_scene_parameter(),
         .camera_parameter = parameter.camera.camera_parameter,
-        .gbuffer_parameter = graph.allocate_parameter(physical_fs::gbuffer),
+        .gbuffer_parameter = graph.allocate_parameter(physical_fs::parameter),
         .gbuffer_albedo = parameter.gbuffer_albedo,
         .gbuffer_material = parameter.gbuffer_material,
         .gbuffer_normal = parameter.gbuffer_normal,

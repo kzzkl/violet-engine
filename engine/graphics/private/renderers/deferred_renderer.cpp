@@ -5,7 +5,9 @@
 #include "graphics/passes/lighting/physical_pass.hpp"
 #include "graphics/passes/lighting/unlit_pass.hpp"
 #include "graphics/passes/mesh_pass.hpp"
+#include "graphics/passes/motion_vector_pass.hpp"
 #include "graphics/passes/skybox_pass.hpp"
+#include "graphics/passes/taa_pass.hpp"
 #include "graphics/passes/tone_mapping_pass.hpp"
 
 namespace violet
@@ -22,7 +24,8 @@ void deferred_renderer::render(
         {
             .extent = m_render_extent,
             .format = RHI_FORMAT_R16G16B16A16_FLOAT,
-            .flags = RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE,
+            .flags =
+                RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_TRANSFER_SRC,
         });
 
     m_depth_buffer = graph.add_texture(
@@ -43,6 +46,12 @@ void deferred_renderer::render(
     if (scene.has_skybox())
     {
         add_skybox_pass(graph, scene, camera);
+    }
+
+    if (m_enable_taa)
+    {
+        add_motion_vector_pass(graph, camera);
+        add_taa_pass(graph, camera);
     }
 
     add_tone_mapping_pass(graph);
@@ -216,6 +225,44 @@ void deferred_renderer::add_skybox_pass(
             .render_target = m_render_target,
             .depth_buffer = m_depth_buffer,
             .clear = scene.get_instance_count() == 0,
+        });
+}
+
+void deferred_renderer::add_motion_vector_pass(render_graph& graph, const render_camera& camera)
+{
+    m_motion_vectors = graph.add_texture(
+        "Motion Vectors",
+        {
+            .extent = m_render_extent,
+            .format = RHI_FORMAT_R16G16_FLOAT,
+            .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE,
+        });
+
+    motion_vector_pass::add(
+        graph,
+        {
+            .camera = camera,
+            .depth_buffer = m_depth_buffer,
+            .motion_vector = m_motion_vectors,
+        });
+}
+
+void deferred_renderer::add_taa_pass(render_graph& graph, const render_camera& camera)
+{
+    rdg_texture* history_render_target = graph.add_texture(
+        "TAA History",
+        camera.render_targets[1],
+        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+
+    taa_pass::add(
+        graph,
+        {
+            .render_target = m_render_target,
+            .history_render_target = history_render_target,
+            .depth_buffer = m_depth_buffer,
+            .motion_vector = m_motion_vectors,
+            .camera = camera,
         });
 }
 

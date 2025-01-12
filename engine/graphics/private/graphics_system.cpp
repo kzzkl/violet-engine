@@ -303,6 +303,11 @@ rhi_fence* graphics_system::render(
         render_camera.scissor_rects = camera->scissor_rects;
     }
 
+    rhi_texture_extent e1 = render_camera.render_targets[0]->get_extent();
+    rhi_texture_extent e2 = render_camera.render_targets[1]->get_extent();
+
+    // assert(e1.width == e2.width && e1.height == e2.height);
+
     camera->renderer->render(graph, scene, render_camera);
 
     graph.compile();

@@ -9,6 +9,9 @@ namespace violet
 {
 struct camera_meta_component
 {
+    mat4f view_projection;
+    mat4f view_projection_no_jitter;
+
     rhi_ptr<rhi_parameter> parameter;
 
     render_camera data;

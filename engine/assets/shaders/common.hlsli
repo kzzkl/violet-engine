@@ -58,10 +58,6 @@ struct scene_data
     uint prefilter;
     uint brdf_lut;
     uint material_buffer;
-    uint point_repeat_sampler;
-    uint point_clamp_sampler;
-    uint linear_repeat_sampler;
-    uint linear_clamp_sampler;
 };
 
 struct camera_data
@@ -70,9 +66,39 @@ struct camera_data
     float4x4 project;
     float4x4 view_projection;
     float4x4 view_projection_inv;
+    float4x4 view_projection_no_jitter;
+
+    float4x4 prev_view_projection;
+    float4x4 prev_view_projection_no_jitter;
+
     float3 position;
     float fov;
+
+    float2 jitter;
+
+    uint padding0;
+    uint padding1;
 };
+
+SamplerState get_point_repeat_sampler()
+{
+    return SamplerDescriptorHeap[0];
+}
+
+SamplerState get_point_clamp_sampler()
+{
+    return SamplerDescriptorHeap[1];
+}
+
+SamplerState get_linear_repeat_sampler()
+{
+    return SamplerDescriptorHeap[2];
+}
+
+SamplerState get_linear_clamp_sampler()
+{
+    return SamplerDescriptorHeap[3];
+}
 
 template <typename T>
 T load_material(uint material_buffer, uint material_address)
@@ -92,6 +118,55 @@ float3 get_morph_position(uint morph_vertex_buffer, uint vertex_index)
     morph *= 0.0001; // morph precision
 
     return morph;
+}
+
+float4 get_position_from_depth(uint depth_buffer, float2 texcoord, float4x4 view_projection_inv)
+{
+    Texture2D<float> buffer = ResourceDescriptorHeap[depth_buffer];
+
+    float depth = buffer.SampleLevel(get_point_clamp_sampler(), texcoord, 0.0);
+    texcoord.y = 1.0 - texcoord.y;
+    float4 position_cs = float4(texcoord * 2.0 - 1.0, depth, 1.0);
+    float4 position_ws = mul(view_projection_inv, position_cs);
+
+    return position_ws / position_ws.w;
+}
+
+float2 normal_to_octahedron(float3 N)
+{
+    N.xy /= dot(1, abs(N));
+    if (N.z <= 0)
+    {
+        N.xy = (1 - abs(N.yx)) * select(N.xy >= 0, float2(1, 1), float2(-1, -1));
+    }
+    N.xy = N.xy * 0.5 + 0.5;
+    return N.xy;
+}
+
+float3 octahedron_to_normal(float2 oct)
+{
+    oct = oct * 2.0 - 1.0;
+    float3 N = float3(oct, 1 - dot(1, abs(oct)));
+    if (N.z < 0)
+    {
+        N.xy = (1 - abs(N.yx)) * select(N.xy >= 0, float2(1, 1), float2(-1, -1));
+    }
+    return normalize(N);
+}
+
+float luminance(float3 color)
+{
+    return 0.25 * color.r + 0.5 * color.g + 0.25 * color.b;
+}
+
+float3 tonemap(float3 color)
+{
+    return color / (1 + luminance(color));
+}
+
+float3 tonemap_invert(float3 color)
+{
+    return color / (1 - luminance(color));
 }
 
 #endif

@@ -26,6 +26,11 @@ public:
         rhi_texture_layout initial_layout = RHI_TEXTURE_LAYOUT_UNDEFINED,
         rhi_texture_layout final_layout = RHI_TEXTURE_LAYOUT_UNDEFINED);
     rdg_texture* add_texture(std::string_view name, const rhi_texture_desc& desc);
+    rdg_texture* add_texture(
+        std::string_view name,
+        const rhi_texture_view_desc& desc,
+        rhi_texture_layout initial_layout = RHI_TEXTURE_LAYOUT_UNDEFINED,
+        rhi_texture_layout final_layout = RHI_TEXTURE_LAYOUT_UNDEFINED);
 
     rdg_buffer* add_buffer(std::string_view name, rhi_buffer* buffer);
     rdg_buffer* add_buffer(std::string_view name, const rhi_buffer_desc& desc);

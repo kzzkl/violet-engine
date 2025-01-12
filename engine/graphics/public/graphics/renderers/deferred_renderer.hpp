@@ -10,6 +10,11 @@ public:
     void render(render_graph& graph, const render_scene& scene, const render_camera& camera)
         override;
 
+    void set_taa(bool enable) noexcept
+    {
+        m_enable_taa = enable;
+    }
+
 protected:
     // For ImGUI.
     rdg_texture* get_render_target() const noexcept
@@ -28,6 +33,8 @@ private:
         render_graph& graph,
         const render_scene& scene,
         const render_camera& camera);
+    void add_motion_vector_pass(render_graph& graph, const render_camera& camera);
+    void add_taa_pass(render_graph& graph, const render_camera& camera);
     void add_tone_mapping_pass(render_graph& graph);
     void add_present_pass(render_graph& graph, const render_camera& camera);
 
@@ -40,8 +47,11 @@ private:
     rdg_texture* m_gbuffer_material; // roughness, metallic
     rdg_texture* m_gbuffer_normal;   // octahedron normal
     rdg_texture* m_gbuffer_emissive;
+    rdg_texture* m_motion_vectors;
 
     rdg_buffer* m_command_buffer{nullptr};
     rdg_buffer* m_count_buffer{nullptr};
+
+    bool m_enable_taa{true};
 };
 } // namespace violet

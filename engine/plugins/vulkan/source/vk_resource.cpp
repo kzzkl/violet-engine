@@ -64,16 +64,17 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
     m_level_count = desc.level_count;
     m_layer_count = desc.layer_count;
 
-    VkImageCreateInfo image_info = {};
-    image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    image_info.imageType = VK_IMAGE_TYPE_2D;
-    image_info.arrayLayers = m_layer_count;
-    image_info.extent = {desc.extent.width, desc.extent.height, 1};
-    image_info.format = vk_util::map_format(desc.format);
-    image_info.mipLevels = m_level_count;
-    image_info.samples = vk_util::map_sample_count(desc.samples);
-    image_info.usage = vk_util::map_image_usage_flags(desc.flags);
-    image_info.flags = is_cube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
+    VkImageCreateInfo image_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .flags = is_cube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0u,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = vk_util::map_format(desc.format),
+        .extent = {desc.extent.width, desc.extent.height, 1},
+        .mipLevels = m_level_count,
+        .arrayLayers = m_layer_count,
+        .samples = vk_util::map_sample_count(desc.samples),
+        .usage = vk_util::map_image_usage_flags(desc.flags),
+    };
 
     std::tie(m_image, m_allocation) = create_image(image_info, 0, m_context->get_vma_allocator());
 
@@ -81,19 +82,19 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
     m_samples = desc.samples;
     m_extent = {image_info.extent.width, image_info.extent.height};
 
-    VkImageViewCreateInfo image_view_info = {};
-    image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    image_view_info.image = m_image;
-    image_view_info.viewType = is_cube ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
-    image_view_info.format = vk_util::map_format(m_format);
-    image_view_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    image_view_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    image_view_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    image_view_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-    image_view_info.subresourceRange.baseMipLevel = 0;
-    image_view_info.subresourceRange.levelCount = m_level_count;
-    image_view_info.subresourceRange.baseArrayLayer = 0;
-    image_view_info.subresourceRange.layerCount = m_layer_count;
+    VkImageViewCreateInfo image_view_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = m_image,
+        .viewType = is_cube ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D,
+        .format = vk_util::map_format(m_format),
+        .subresourceRange =
+            {
+                .baseMipLevel = 0,
+                .levelCount = m_level_count,
+                .baseArrayLayer = 0,
+                .layerCount = m_layer_count,
+            },
+    };
 
     if (desc.flags & RHI_TEXTURE_DEPTH_STENCIL)
     {
@@ -124,6 +125,33 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
     else
     {
         m_clear_value.color = VkClearColorValue{0.0f, 0.0f, 0.0f, 1.0f};
+    }
+
+    if (desc.layout != RHI_TEXTURE_LAYOUT_UNDEFINED)
+    {
+        rhi_texture_barrier barrier = {
+            .texture = this,
+            .src_access = 0,
+            .dst_access = RHI_ACCESS_SHADER_READ,
+            .src_layout = RHI_TEXTURE_LAYOUT_UNDEFINED,
+            .dst_layout = desc.layout,
+            .level = 0,
+            .level_count = m_level_count,
+            .layer = 0,
+            .layer_count = m_layer_count,
+        };
+
+        auto* command = m_context->get_graphics_queue()->allocate_command();
+        command->set_pipeline_barrier(
+            RHI_PIPELINE_STAGE_BEGIN,
+            RHI_PIPELINE_STAGE_COMPUTE | RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_FRAGMENT,
+            nullptr,
+            0,
+            &barrier,
+            1);
+
+        // TODO: use async version?
+        m_context->get_graphics_queue()->execute_sync(command);
     }
 }
 
@@ -198,7 +226,7 @@ vk_sampler::vk_sampler(const rhi_sampler_desc& desc, vk_context* context)
         .maxAnisotropy = m_context->get_physical_device_properties().limits.maxSamplerAnisotropy,
         .compareEnable = VK_FALSE,
         .minLod = desc.min_level,
-        .maxLod = desc.max_level,
+        .maxLod = desc.max_level < 0.0f ? VK_LOD_CLAMP_NONE : desc.max_level,
     };
 
     vk_check(vkCreateSampler(m_context->get_device(), &sampler_info, nullptr, &m_sampler));

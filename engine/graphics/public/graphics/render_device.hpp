@@ -85,11 +85,11 @@ public:
     rhi_parameter* get_bindless_parameter() const noexcept;
 
     template <typename T>
-    rhi_shader* get_shader(std::span<std::wstring> defines = {})
+    rhi_shader* get_shader(std::span<const std::wstring> defines = {})
     {
         std::uint64_t hash =
             hash::combine(hash::city_hash_64(T::path.data(), T::path.size()), T::stage);
-        for (auto& macro : defines)
+        for (const auto& macro : defines)
         {
             hash ^= hash::city_hash_64(macro.data(), macro.size());
         }
@@ -152,7 +152,7 @@ public:
             arguments.push_back(L"cs_main");
         }
 
-        for (auto& macro : defines)
+        for (const auto& macro : defines)
         {
             arguments.push_back(macro.data());
         }

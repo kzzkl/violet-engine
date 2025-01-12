@@ -370,47 +370,6 @@ void vk_command::copy_buffer_to_texture(
     auto* src_buffer = static_cast<vk_buffer*>(buffer);
     auto* dst_image = static_cast<vk_image*>(texture);
 
-    VkBufferMemoryBarrier buffer_barrier = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-        .srcAccessMask = VK_ACCESS_NONE,
-        .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .buffer = src_buffer->get_buffer(),
-        .offset = buffer_region.offset,
-        .size = buffer_region.size,
-    };
-
-    VkImageMemoryBarrier texture_barrier = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .srcAccessMask = 0,
-        .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = dst_image->get_image(),
-        .subresourceRange =
-            {
-                .aspectMask = dst_image->get_aspect_mask(),
-                .baseMipLevel = texture_region.level,
-                .levelCount = 1,
-                .baseArrayLayer = texture_region.layer,
-                .layerCount = texture_region.layer_count,
-            },
-    };
-    vkCmdPipelineBarrier(
-        m_command_buffer,
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        0,
-        0,
-        nullptr,
-        1,
-        &buffer_barrier,
-        1,
-        &texture_barrier);
-
     VkBufferImageCopy region = {
         .bufferOffset = 0,
         .bufferRowLength = 0,
@@ -420,7 +379,7 @@ void vk_command::copy_buffer_to_texture(
                 .aspectMask = dst_image->get_aspect_mask(),
                 .mipLevel = texture_region.level,
                 .baseArrayLayer = texture_region.layer,
-                .layerCount = 1,
+                .layerCount = texture_region.layer_count,
             },
         .imageOffset = {0, 0, 0},
         .imageExtent = {texture_region.extent.width, texture_region.extent.height, 1},

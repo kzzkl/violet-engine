@@ -250,6 +250,8 @@ void render_device::create_buildin_resources()
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
         .address_mode_v = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
         .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
+        .min_level = 0.0f,
+        .max_level = -1.0f,
     });
 
     m_buildin_resources.point_clamp_sampler = create_sampler({
@@ -258,6 +260,8 @@ void render_device::create_buildin_resources()
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         .address_mode_v = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .min_level = 0.0f,
+        .max_level = -1.0f,
     });
 
     m_buildin_resources.linear_repeat_sampler = create_sampler({
@@ -266,8 +270,8 @@ void render_device::create_buildin_resources()
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
         .address_mode_v = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
         .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
-        .min_level = 0.0,
-        .max_level = 10.0,
+        .min_level = 0.0f,
+        .max_level = -1.0f,
     });
 
     m_buildin_resources.linear_clamp_sampler = create_sampler({
@@ -276,8 +280,8 @@ void render_device::create_buildin_resources()
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         .address_mode_v = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-        .min_level = 0.0,
-        .max_level = 10.0,
+        .min_level = 0.0f,
+        .max_level = -1.0f,
     });
 }
 

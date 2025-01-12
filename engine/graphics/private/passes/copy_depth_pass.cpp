@@ -12,7 +12,7 @@ struct copy_depth_cs : public shader_cs
         std::uint32_t dst;
     };
 
-    static constexpr parameter copy = {
+    static constexpr parameter parameter = {
         {
             .type = RHI_PARAMETER_BINDING_CONSTANT,
             .stages = RHI_SHADER_STAGE_COMPUTE,
@@ -22,7 +22,7 @@ struct copy_depth_cs : public shader_cs
 
     static constexpr parameter_layout parameters = {
         {0, bindless},
-        {1, copy},
+        {1, parameter},
     };
 };
 
@@ -43,7 +43,7 @@ void copy_depth_pass::add(render_graph& graph, const parameter& parameter)
     pass_data data = {
         .src = parameter.src,
         .dst = parameter.dst,
-        .copy_parameter = graph.allocate_parameter(copy_depth_cs::copy),
+        .copy_parameter = graph.allocate_parameter(copy_depth_cs::parameter),
     };
 
     auto& pass = graph.add_pass<rdg_pass>("Copy Depth Pass");
@@ -60,12 +60,12 @@ void copy_depth_pass::add(render_graph& graph, const parameter& parameter)
     pass.set_execute(
         [data](rdg_command& command)
         {
-            copy_depth_cs::copy_data copy_constant = {
+            copy_depth_cs::copy_data copy_data = {
                 .src = data.src->get_handle(),
                 .dst = data.dst->get_handle(),
             };
 
-            data.copy_parameter->set_constant(0, &copy_constant, sizeof(copy_depth_cs::copy_data));
+            data.copy_parameter->set_constant(0, &copy_data, sizeof(copy_depth_cs::copy_data));
 
             rdg_compute_pipeline pipeline = {
                 .compute_shader = render_device::instance().get_shader<copy_depth_cs>(),

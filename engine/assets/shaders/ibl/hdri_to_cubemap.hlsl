@@ -1,3 +1,5 @@
+#include "common.hlsli"
+
 struct convert_data
 {
     uint width;
@@ -48,8 +50,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     texcoord += 0.5;
 
     Texture2D<float4> env_map = ResourceDescriptorHeap[convert.env_map];
-    SamplerState linear_repeat_sampler = SamplerDescriptorHeap[2];
+    SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
     RWTexture2DArray<float3> cube_map = ResourceDescriptorHeap[convert.cube_map];
-    cube_map[dtid] = env_map.SampleLevel(linear_repeat_sampler, texcoord, 0).rgb;
+    cube_map[dtid] = env_map.SampleLevel(linear_clamp_sampler, texcoord, 0).rgb;
 }
