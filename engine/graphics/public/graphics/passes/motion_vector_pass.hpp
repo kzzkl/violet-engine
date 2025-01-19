@@ -9,12 +9,10 @@ class motion_vector_pass
 public:
     struct parameter
     {
-        const render_camera& camera;
-
         rdg_texture* depth_buffer;
         rdg_texture* motion_vector;
     };
 
-    static void add(render_graph& graph, const parameter& parameter);
+    static void add(render_graph& graph, const render_context& context, const parameter& parameter);
 };
 } // namespace violet

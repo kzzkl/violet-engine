@@ -1,51 +1,99 @@
 #include "vk_framebuffer.hpp"
+#include "vk_context.hpp"
 #include "vk_render_pass.hpp"
 #include "vk_resource.hpp"
-#include <span>
 #include <vector>
 
 namespace violet::vk
 {
-vk_framebuffer::vk_framebuffer(const rhi_framebuffer_desc& desc, vk_context* context)
+vk_framebuffer_manager::vk_framebuffer_manager(vk_context* context)
     : m_context(context)
 {
-    std::vector<VkImageView> image_views;
-
-    std::uint32_t attachment_count = 0;
-    for (auto* attachment : std::span(desc.attachments))
-    {
-        if (attachment == nullptr)
-        {
-            break;
-        }
-
-        const vk_texture* image = static_cast<const vk_texture*>(attachment);
-        image_views.push_back(image->get_image_view());
-        m_clear_values.push_back(image->get_clear_value());
-
-        ++attachment_count;
-    }
-
-    m_extent = desc.attachments[0]->get_extent();
-
-    VkFramebufferCreateInfo framebuffer_info = {};
-    framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    framebuffer_info.renderPass = static_cast<vk_render_pass*>(desc.render_pass)->get_render_pass();
-    framebuffer_info.pAttachments = image_views.data();
-    framebuffer_info.attachmentCount = attachment_count;
-    framebuffer_info.width = m_extent.width;
-    framebuffer_info.height = m_extent.height;
-    framebuffer_info.layers = 1;
-
-    vk_check(
-        vkCreateFramebuffer(context->get_device(), &framebuffer_info, nullptr, &m_framebuffer));
 }
 
-vk_framebuffer::~vk_framebuffer()
+vk_framebuffer_manager::~vk_framebuffer_manager()
 {
-    if (m_framebuffer)
+    for (auto& [key, framebuffer] : m_framebuffers)
     {
-        vkDestroyFramebuffer(m_context->get_device(), m_framebuffer, nullptr);
+        vkDestroyFramebuffer(m_context->get_device(), framebuffer, nullptr);
+    }
+}
+
+VkFramebuffer vk_framebuffer_manager::allocate_framebuffer(
+    VkRenderPass render_pass,
+    const std::vector<VkImageView>& image_views,
+    const VkExtent2D& extent)
+{
+    framebuffer_key key = {
+        .render_pass = render_pass,
+        .image_views = image_views,
+    };
+
+    auto iter = m_framebuffers.find(key);
+    if (iter != m_framebuffers.end())
+    {
+        return iter->second;
+    }
+
+    VkFramebufferCreateInfo framebuffer_info = {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .renderPass = render_pass,
+        .attachmentCount = static_cast<std::uint32_t>(image_views.size()),
+        .pAttachments = image_views.data(),
+        .width = extent.width,
+        .height = extent.height,
+        .layers = 1,
+    };
+
+    vk_check(vkCreateFramebuffer(
+        m_context->get_device(),
+        &framebuffer_info,
+        nullptr,
+        &m_framebuffers[key]));
+
+    return m_framebuffers[key];
+}
+
+void vk_framebuffer_manager::notify_texture_deleted(VkImageView image_view)
+{
+    for (auto iter = m_framebuffers.begin(); iter != m_framebuffers.end();)
+    {
+        bool erase = false;
+
+        for (VkImageView view : iter->first.image_views)
+        {
+            if (view == image_view)
+            {
+                erase = true;
+                break;
+            }
+        }
+
+        if (erase)
+        {
+            vkDestroyFramebuffer(m_context->get_device(), iter->second, nullptr);
+            iter = m_framebuffers.erase(iter);
+        }
+        else
+        {
+            ++iter;
+        }
+    }
+}
+
+void vk_framebuffer_manager::notify_render_pass_deleted(VkRenderPass render_pass)
+{
+    for (auto iter = m_framebuffers.begin(); iter != m_framebuffers.end();)
+    {
+        if (iter->first.render_pass == render_pass)
+        {
+            vkDestroyFramebuffer(m_context->get_device(), iter->second, nullptr);
+            iter = m_framebuffers.erase(iter);
+        }
+        else
+        {
+            ++iter;
+        }
     }
 }
 } // namespace violet::vk

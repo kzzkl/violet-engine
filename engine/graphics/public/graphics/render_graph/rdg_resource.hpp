@@ -6,85 +6,43 @@
 
 namespace violet
 {
-enum rdg_reference_type
-{
-    RDG_REFERENCE_NONE,
-    RDG_REFERENCE_TEXTURE,
-    RDG_REFERENCE_BUFFER,
-    RDG_REFERENCE_ATTACHMENT
-};
-
-class rdg_pass;
-class rdg_resource;
-struct rdg_reference
-{
-    rdg_pass* pass;
-    rdg_resource* resource;
-
-    rdg_reference_type type;
-    rhi_pipeline_stage_flags stages;
-    rhi_access_flags access;
-
-    std::size_t index;
-
-    union
-    {
-        struct
-        {
-            rhi_texture_layout layout;
-            rhi_attachment_reference_type type;
-            rhi_attachment_load_op load_op;
-            rhi_attachment_store_op store_op;
-        } attachment;
-
-        struct
-        {
-            rhi_texture_layout layout;
-        } texture;
-    };
-
-    bool is_first_reference() const noexcept;
-
-    bool is_last_reference() const noexcept;
-
-    rdg_reference* get_prev_reference() const;
-
-    rdg_reference* get_next_reference() const;
-
-    rhi_texture_layout get_texture_layout() const noexcept
-    {
-        switch (type)
-        {
-        case RDG_REFERENCE_TEXTURE:
-            return texture.layout;
-        case RDG_REFERENCE_ATTACHMENT:
-            return attachment.layout;
-        default:
-            return RHI_TEXTURE_LAYOUT_UNDEFINED;
-        }
-    }
-};
-
 enum rdg_resource_type
 {
     RDG_RESOURCE_TEXTURE,
     RDG_RESOURCE_BUFFER
 };
 
+class rdg_reference;
 class rdg_resource : public rdg_node
 {
 public:
-    rdg_resource() = default;
-    virtual ~rdg_resource();
+    virtual ~rdg_resource() = default;
+
+    void reset() noexcept override
+    {
+        m_references.clear();
+        m_external = false;
+
+        rdg_node::reset();
+    }
 
     virtual rdg_resource_type get_type() const noexcept = 0;
-    virtual bool is_external() const noexcept = 0;
-    virtual bool is_view() const noexcept = 0;
 
-    void add_reference(rdg_reference* reference)
+    void set_external(bool external) noexcept
     {
-        reference->index = m_references.size();
+        m_external = external;
+    }
+
+    bool is_external() const noexcept
+    {
+        return m_external;
+    }
+
+    std::size_t add_reference(rdg_reference* reference)
+    {
+        std::size_t index = m_references.size();
         m_references.push_back(reference);
+        return index;
     }
 
     const std::vector<rdg_reference*>& get_references() const noexcept
@@ -94,74 +52,80 @@ public:
 
 private:
     std::vector<rdg_reference*> m_references;
+    bool m_external;
 };
 
 class rdg_texture : public rdg_resource
 {
 public:
-    rdg_texture(
-        rhi_texture* texture,
-        rhi_texture_layout initial_layout,
-        rhi_texture_layout final_layout);
-
     rdg_resource_type get_type() const noexcept final
     {
         return RDG_RESOURCE_TEXTURE;
     }
 
-    bool is_external() const noexcept override
+    void set_extent(const rhi_texture_extent& extent) noexcept
     {
-        return true;
+        m_extent = extent;
     }
 
-    bool is_view() const noexcept override
+    rhi_texture_extent get_extent() const noexcept
     {
-        return false;
+        return m_extent;
     }
 
-    virtual rhi_texture_extent get_extent() const noexcept
+    void set_format(rhi_format format) noexcept
     {
-        return m_texture->get_extent();
+        m_format = format;
     }
 
-    virtual rhi_format get_format() const noexcept
+    rhi_format get_format() const noexcept
     {
-        return m_texture->get_format();
+        return m_format;
     }
 
-    virtual rhi_sample_count get_samples() const noexcept
+    void set_flags(rhi_texture_flags flags) noexcept
     {
-        return m_texture->get_samples();
+        m_flags = flags;
     }
 
-    virtual std::uint32_t get_level() const noexcept
+    rhi_texture_flags get_flags() const noexcept
     {
-        return m_texture->get_level();
+        return m_flags;
     }
 
-    virtual std::uint32_t get_level_count() const noexcept
+    void set_samples(rhi_sample_count samples) noexcept
     {
-        return m_texture->get_level_count();
+        m_samples = samples;
     }
 
-    virtual std::uint32_t get_layer() const noexcept
+    rhi_sample_count get_samples() const noexcept
     {
-        return m_texture->get_layer();
+        return m_samples;
     }
 
-    virtual std::uint32_t get_layer_count() const noexcept
+    void set_level_count(std::uint32_t level_count) noexcept
     {
-        return m_texture->get_layer_count();
+        m_level_count = level_count;
     }
 
-    rhi_texture* get_rhi() const noexcept
+    std::uint32_t get_level_count() const noexcept
     {
-        return m_texture;
+        return m_level_count;
     }
 
-    rhi_resource_handle get_handle() const noexcept
+    void set_layer_count(std::uint32_t layer_count) noexcept
     {
-        return m_texture->get_handle();
+        m_layer_count = layer_count;
+    }
+
+    std::uint32_t get_layer_count() const noexcept
+    {
+        return m_layer_count;
+    }
+
+    void set_initial_layout(rhi_texture_layout layout) noexcept
+    {
+        m_initial_layout = layout;
     }
 
     rhi_texture_layout get_initial_layout() const noexcept
@@ -169,180 +133,70 @@ public:
         return m_initial_layout;
     }
 
+    void set_final_layout(rhi_texture_layout layout) noexcept
+    {
+        m_final_layout = layout;
+    }
+
     rhi_texture_layout get_final_layout() const noexcept
     {
         return m_final_layout;
     }
 
-protected:
+    void set_rhi(rhi_texture* texture) noexcept
+    {
+        m_texture = texture;
+    }
+
+    rhi_texture* get_rhi() const noexcept
+    {
+        return m_texture;
+    }
+
+    void build_texture_barriers();
+
+private:
     rhi_texture* m_texture{nullptr};
 
-private:
-    rhi_texture_layout m_initial_layout;
-    rhi_texture_layout m_final_layout;
-};
+    rhi_texture_extent m_extent;
+    rhi_format m_format;
+    rhi_texture_flags m_flags;
 
-class rdg_inter_texture : public rdg_texture
-{
-public:
-    rdg_inter_texture(
-        const rhi_texture_desc& desc,
-        rhi_texture_layout initial_layout,
-        rhi_texture_layout final_layout);
+    std::uint32_t m_level_count{1};
+    std::uint32_t m_layer_count{1};
 
-    bool is_external() const noexcept override
-    {
-        return false;
-    }
+    rhi_sample_count m_samples;
 
-    rhi_texture_extent get_extent() const noexcept override
-    {
-        return m_desc.extent;
-    }
-
-    rhi_format get_format() const noexcept override
-    {
-        return m_desc.format;
-    }
-
-    rhi_sample_count get_samples() const noexcept override
-    {
-        return m_desc.samples;
-    }
-
-    std::uint32_t get_level_count() const noexcept override
-    {
-        return m_desc.level_count;
-    }
-
-    std::uint32_t get_layer_count() const noexcept override
-    {
-        return m_desc.layer_count;
-    }
-
-    void set_rhi(rhi_texture* texture) noexcept
-    {
-        m_texture = texture;
-    }
-
-    const rhi_texture_desc& get_desc() const noexcept
-    {
-        return m_desc;
-    }
-
-private:
-    rhi_texture_desc m_desc;
-};
-
-class rdg_texture_view : public rdg_texture
-{
-public:
-    rdg_texture_view(
-        const rhi_texture_view_desc& desc,
-        rhi_texture_layout initial_layout,
-        rhi_texture_layout final_layout);
-
-    bool is_external() const noexcept override
-    {
-        return false;
-    }
-
-    bool is_view() const noexcept override
-    {
-        return true;
-    }
-
-    rhi_texture_extent get_extent() const noexcept override
-    {
-        return m_desc.texture->get_extent();
-    }
-
-    rhi_format get_format() const noexcept override
-    {
-        return m_desc.texture->get_format();
-    }
-
-    rhi_sample_count get_samples() const noexcept override
-    {
-        return m_desc.texture->get_samples();
-    }
-
-    std::uint32_t get_level_count() const noexcept override
-    {
-        return m_desc.level_count;
-    }
-
-    std::uint32_t get_layer_count() const noexcept override
-    {
-        return m_desc.layer_count;
-    }
-
-    void set_rhi(rhi_texture* texture) noexcept
-    {
-        m_texture = texture;
-    }
-
-    const rhi_texture_view_desc& get_desc() const noexcept
-    {
-        return m_desc;
-    }
-
-private:
-    rhi_texture_view_desc m_desc;
+    rhi_texture_layout m_initial_layout{RHI_TEXTURE_LAYOUT_UNDEFINED};
+    rhi_texture_layout m_final_layout{RHI_TEXTURE_LAYOUT_UNDEFINED};
 };
 
 class rdg_buffer : public rdg_resource
 {
 public:
-    explicit rdg_buffer(rhi_buffer* buffer = nullptr);
-
-    rdg_resource_type get_type() const noexcept override final
+    rdg_resource_type get_type() const noexcept final
     {
         return RDG_RESOURCE_BUFFER;
     }
 
-    bool is_external() const noexcept override
+    void set_size(std::size_t size) noexcept
     {
-        return true;
+        m_size = size;
     }
 
-    bool is_view() const noexcept override
+    std::size_t get_size() const
     {
-        return false;
+        return m_size;
     }
 
-    std::size_t get_buffer_size() const
+    void set_flags(rhi_buffer_flags flags) noexcept
     {
-        return m_buffer->get_buffer_size();
+        m_flags = flags;
     }
 
-    rhi_buffer* get_rhi() const noexcept
+    rhi_buffer_flags get_flags() const noexcept
     {
-        return m_buffer;
-    }
-
-    rhi_resource_handle get_handle() const noexcept
-    {
-        return m_buffer->get_handle();
-    }
-
-protected:
-    rhi_buffer* m_buffer{nullptr};
-};
-
-class rdg_inter_buffer : public rdg_buffer
-{
-public:
-    rdg_inter_buffer(const rhi_buffer_desc& desc);
-
-    bool is_external() const noexcept override
-    {
-        return false;
-    }
-
-    std::size_t get_buffer_size() const
-    {
-        return m_desc.size;
+        return m_flags;
     }
 
     void set_rhi(rhi_buffer* buffer) noexcept
@@ -350,12 +204,15 @@ public:
         m_buffer = buffer;
     }
 
-    const rhi_buffer_desc& get_desc() const noexcept
+    rhi_buffer* get_rhi() const noexcept
     {
-        return m_desc;
+        return m_buffer;
     }
 
-private:
-    rhi_buffer_desc m_desc;
+protected:
+    rhi_buffer* m_buffer{nullptr};
+
+    std::size_t m_size{0};
+    rhi_buffer_flags m_flags{0};
 };
 } // namespace violet

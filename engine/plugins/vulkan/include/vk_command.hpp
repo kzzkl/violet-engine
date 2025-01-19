@@ -6,6 +6,7 @@
 
 namespace violet::vk
 {
+class vk_render_pass;
 class vk_command : public rhi_command
 {
 public:
@@ -17,9 +18,11 @@ public:
         return m_command_buffer;
     }
 
-    void begin_render_pass(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer) override;
+    void begin_render_pass(
+        rhi_render_pass* render_pass,
+        const rhi_attachment* attachments,
+        std::size_t attachment_count) override;
     void end_render_pass() override;
-    void next_subpass() override;
 
     void set_pipeline(rhi_render_pipeline* render_pipeline) override;
     void set_pipeline(rhi_compute_pipeline* compute_pipeline) override;
@@ -30,7 +33,7 @@ public:
 
     void set_vertex_buffers(rhi_buffer* const* vertex_buffers, std::size_t vertex_buffer_count)
         override;
-    void set_index_buffer(rhi_buffer* index_buffer) override;
+    void set_index_buffer(rhi_buffer* index_buffer, std::size_t index_size) override;
 
     void draw(
         std::uint32_t vertex_offset,
@@ -53,8 +56,6 @@ public:
     void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) override;
 
     void set_pipeline_barrier(
-        rhi_pipeline_stage_flags src_stages,
-        rhi_pipeline_stage_flags dst_stages,
         const rhi_buffer_barrier* buffer_barriers,
         std::size_t buffer_barrier_count,
         const rhi_texture_barrier* texture_barriers,
@@ -140,7 +141,7 @@ public:
 private:
     VkCommandBuffer m_command_buffer;
 
-    VkRenderPass m_current_render_pass;
+    vk_render_pass* m_current_render_pass;
     VkPipelineLayout m_current_pipeline_layout;
     VkPipelineBindPoint m_current_bind_point;
 

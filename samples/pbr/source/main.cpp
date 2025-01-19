@@ -10,8 +10,7 @@
 #include "ecs_command/ecs_command_system.hpp"
 #include "gltf_loader.hpp"
 #include "graphics/graphics_system.hpp"
-#include "graphics/tools/ibl_tool.hpp"
-#include "graphics/tools/texture_loader.hpp"
+#include "graphics/skybox.hpp"
 #include "imgui.h"
 #include "imgui_system.hpp"
 #include "scene/hierarchy_system.hpp"
@@ -66,7 +65,6 @@ public:
                 });
 
         initialize_render();
-        initialize_skybox();
         initialize_scene();
 
         resize();
@@ -82,50 +80,18 @@ private:
             .window_handle = get_system<window_system>().get_handle(),
         });
         m_renderer = std::make_unique<deferred_renderer_imgui>();
-    }
 
-    void initialize_skybox()
-    {
-        m_skybox_texture = render_device::instance().create_texture({
-            .extent = {512, 512},
-            .format = RHI_FORMAT_R11G11B10_FLOAT,
-            .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
-            .layer_count = 6,
-        });
-
-        m_skybox_irradiance = render_device::instance().create_texture({
-            .extent = {32, 32},
-            .format = RHI_FORMAT_R11G11B10_FLOAT,
-            .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
-            .layer_count = 6,
-        });
-
-        m_skybox_prefilter = render_device::instance().create_texture({
-            .extent = {128, 128},
-            .format = RHI_FORMAT_R11G11B10_FLOAT,
-            .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
-            .level_count = 8,
-            .layer_count = 6,
-        });
-
-        rhi_ptr<rhi_texture> env_map = texture_loader::load(m_skybox_path);
-        ibl_tool::generate_cube_map(env_map.get(), m_skybox_texture.get());
-        ibl_tool::generate_ibl(
-            m_skybox_texture.get(),
-            m_skybox_irradiance.get(),
-            m_skybox_prefilter.get());
+        m_skybox = std::make_unique<skybox>(m_skybox_path);
     }
 
     void initialize_scene()
     {
         auto& world = get_world();
 
-        m_skybox = world.create();
-        world.add_component<transform_component, skybox_component, scene_component>(m_skybox);
-        auto& skybox = world.get_component<skybox_component>(m_skybox);
-        skybox.texture = m_skybox_texture.get();
-        skybox.irradiance = m_skybox_irradiance.get();
-        skybox.prefilter = m_skybox_prefilter.get();
+        entity scene_skybox = world.create();
+        world.add_component<transform_component, skybox_component, scene_component>(scene_skybox);
+        auto& skybox = world.get_component<skybox_component>(scene_skybox);
+        skybox.skybox = m_skybox.get();
 
         m_light = world.create();
         world.add_component<transform_component, light_component, scene_component>(m_light);
@@ -152,7 +118,8 @@ private:
         main_camera.renderer = m_renderer.get();
         main_camera.render_targets = {
             m_swapchain.get(),
-            m_taa_history.get(),
+            m_taa_history[0].get(),
+            m_taa_history[1].get(),
         };
         main_camera.jitter = true;
 
@@ -197,15 +164,19 @@ private:
 
         auto extent = get_system<window_system>().get_extent();
 
-        m_taa_history = device.create_texture({
-            .extent = {extent.width, extent.height},
-            .format = RHI_FORMAT_R16G16B16A16_FLOAT,
-            .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_TRANSFER_DST,
-            .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
-        });
+        for (auto& target : m_taa_history)
+        {
+            target = device.create_texture({
+                .extent = {extent.width, extent.height},
+                .format = RHI_FORMAT_R16G16B16A16_FLOAT,
+                .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE,
+                .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+            });
+        }
 
         auto& main_camera = get_world().get_component<camera_component>(m_camera);
-        main_camera.render_targets[1] = m_taa_history.get();
+        main_camera.render_targets[1] = m_taa_history[0].get();
+        main_camera.render_targets[2] = m_taa_history[1].get();
     }
 
     void tick()
@@ -220,18 +191,15 @@ private:
         }
     }
 
-    entity m_skybox;
     entity m_light;
     entity m_camera;
 
-    rhi_ptr<rhi_texture> m_skybox_texture;
-    rhi_ptr<rhi_texture> m_skybox_irradiance;
-    rhi_ptr<rhi_texture> m_skybox_prefilter;
+    std::unique_ptr<skybox> m_skybox;
 
     mesh_loader::scene_data m_model_data;
 
     rhi_ptr<rhi_swapchain> m_swapchain;
-    rhi_ptr<rhi_texture> m_taa_history;
+    std::array<rhi_ptr<rhi_texture>, 2> m_taa_history;
     std::unique_ptr<deferred_renderer_imgui> m_renderer;
 
     std::string m_skybox_path;

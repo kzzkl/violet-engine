@@ -45,9 +45,9 @@ void physical_material::set_albedo(const vec3f& albedo)
     get_constant().albedo = albedo;
 }
 
-void physical_material::set_albedo(rhi_texture* albedo)
+void physical_material::set_albedo(texture_2d* albedo)
 {
-    get_constant().albedo_texture = albedo->get_handle();
+    get_constant().albedo_texture = albedo->get_srv()->get_bindless();
 }
 
 void physical_material::set_roughness(float roughness)
@@ -60,9 +60,9 @@ void physical_material::set_metallic(float metallic)
     get_constant().metallic = metallic;
 }
 
-void physical_material::set_roughness_metallic(rhi_texture* roughness_metallic)
+void physical_material::set_roughness_metallic(texture_2d* roughness_metallic)
 {
-    get_constant().roughness_metallic_texture = roughness_metallic->get_handle();
+    get_constant().roughness_metallic_texture = roughness_metallic->get_srv()->get_bindless();
 }
 
 void physical_material::set_emissive(const vec3f& emissive)
@@ -70,13 +70,13 @@ void physical_material::set_emissive(const vec3f& emissive)
     get_constant().emissive = emissive;
 }
 
-void physical_material::set_emissive(rhi_texture* emissive)
+void physical_material::set_emissive(texture_2d* emissive)
 {
-    get_constant().emissive_texture = emissive->get_handle();
+    get_constant().emissive_texture = emissive->get_srv()->get_bindless();
 }
 
-void physical_material::set_normal(rhi_texture* normal)
+void physical_material::set_normal(texture_2d* normal)
 {
-    get_constant().normal_texture = normal->get_handle();
+    get_constant().normal_texture = normal->get_srv()->get_bindless();
 }
 } // namespace violet

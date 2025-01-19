@@ -9,14 +9,13 @@ class taa_pass
 public:
     struct parameter
     {
-        rdg_texture* render_target;
+        rdg_texture* current_render_target;
         rdg_texture* history_render_target;
         rdg_texture* depth_buffer;
         rdg_texture* motion_vector;
-
-        const render_camera& camera;
+        rdg_texture* resolved_render_target;
     };
 
-    static void add(render_graph& graph, const parameter& parameter);
+    static void add(render_graph& graph, const render_context& context, const parameter& parameter);
 };
 } // namespace violet

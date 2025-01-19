@@ -36,6 +36,11 @@ struct vec2
     {
         return data[index];
     }
+
+    [[nodiscard]] inline bool operator==(const self_type& other) const noexcept
+    {
+        return x == other.x && y == other.y;
+    }
 };
 
 template <typename T>
@@ -68,6 +73,11 @@ struct vec3
     {
         return data[index];
     }
+
+    [[nodiscard]] inline bool operator==(const self_type& other) const noexcept
+    {
+        return x == other.x && y == other.y && z == other.z;
+    }
 };
 
 template <typename T>
@@ -99,6 +109,11 @@ struct vec4
     [[nodiscard]] inline const value_type& operator[](std::size_t index) const
     {
         return data[index];
+    }
+
+    [[nodiscard]] inline bool operator==(const self_type& other) const noexcept
+    {
+        return x == other.x && y == other.y && z == other.z && w == other.w;
     }
 };
 

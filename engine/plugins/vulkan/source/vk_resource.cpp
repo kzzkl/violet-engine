@@ -1,7 +1,9 @@
 #include "vk_resource.hpp"
+#include "vk_bindless.hpp"
 #include "vk_command.hpp"
 #include "vk_context.hpp"
-#include "vk_util.hpp"
+#include "vk_framebuffer.hpp"
+#include "vk_utils.hpp"
 #include <cassert>
 
 namespace violet::vk
@@ -53,87 +55,139 @@ std::pair<VkImage, VmaAllocation> create_image(
 }
 } // namespace
 
-vk_image::vk_image() = default;
+vk_texture_descriptor::vk_texture_descriptor(vk_texture* texture, VkImageView image_view)
+    : m_texture(texture),
+      m_image_view(image_view)
+{
+}
+
+vk_texture_srv::vk_texture_srv(vk_texture* texture, VkImageView image_view, vk_context* context)
+    : vk_texture_descriptor(texture, image_view),
+      m_context(context)
+{
+    m_bindless = context->get_bindless_manager()->allocate_resource(this);
+}
+
+vk_texture_srv::~vk_texture_srv()
+{
+    m_context->get_bindless_manager()->free_resource(m_bindless);
+}
+
+void vk_texture_srv::write(
+    VkDescriptorSet descriptor_set,
+    std::uint32_t binding,
+    std::uint32_t array_element) const
+{
+    VkDescriptorImageInfo info = {
+        .imageView = get_image_view(),
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    };
+
+    VkWriteDescriptorSet write = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptor_set,
+        .dstBinding = binding,
+        .dstArrayElement = array_element,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+        .pImageInfo = &info,
+    };
+
+    vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
+}
+
+vk_texture_uav::vk_texture_uav(vk_texture* texture, VkImageView image_view, vk_context* context)
+    : vk_texture_descriptor(texture, image_view),
+      m_context(context)
+{
+    m_bindless = m_context->get_bindless_manager()->allocate_resource(this);
+}
+
+vk_texture_uav::~vk_texture_uav()
+{
+    m_context->get_bindless_manager()->free_resource(m_bindless);
+}
+
+void vk_texture_uav::write(
+    VkDescriptorSet descriptor_set,
+    std::uint32_t binding,
+    std::uint32_t array_element) const
+{
+    VkDescriptorImageInfo info = {
+        .imageView = get_image_view(),
+        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    };
+
+    VkWriteDescriptorSet write = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptor_set,
+        .dstBinding = binding,
+        .dstArrayElement = array_element,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        .pImageInfo = &info,
+    };
+
+    vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
+}
+
+vk_texture_rtv::vk_texture_rtv(vk_texture* texture, VkImageView image_view, vk_context* context)
+    : vk_texture_descriptor(texture, image_view),
+      m_context(context)
+{
+}
+
+vk_texture_rtv::~vk_texture_rtv()
+{
+    m_context->get_framebuffer_manager()->notify_texture_deleted(get_image_view());
+}
+
+vk_texture_dsv::vk_texture_dsv(vk_texture* texture, VkImageView image_view, vk_context* context)
+    : vk_texture_descriptor(texture, image_view),
+      m_context(context)
+{
+}
+
+vk_texture_dsv::~vk_texture_dsv()
+{
+    m_context->get_framebuffer_manager()->notify_texture_deleted(get_image_view());
+}
 
 vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
-    : m_context(context)
+    : m_format(desc.format),
+      m_samples(desc.samples),
+      m_extent(desc.extent),
+      m_level_count(desc.level_count),
+      m_layer_count(desc.layer_count),
+      m_flags(desc.flags),
+      m_context(context)
 {
     assert(desc.level_count > 0 && desc.layer_count > 0);
 
-    bool is_cube = desc.flags & RHI_TEXTURE_CUBE;
-    m_level_count = desc.level_count;
-    m_layer_count = desc.layer_count;
-
     VkImageCreateInfo image_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .flags = is_cube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0u,
+        .flags = desc.flags & RHI_TEXTURE_CUBE ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0u,
         .imageType = VK_IMAGE_TYPE_2D,
-        .format = vk_util::map_format(desc.format),
+        .format = vk_utils::map_format(desc.format),
         .extent = {desc.extent.width, desc.extent.height, 1},
         .mipLevels = m_level_count,
         .arrayLayers = m_layer_count,
-        .samples = vk_util::map_sample_count(desc.samples),
-        .usage = vk_util::map_image_usage_flags(desc.flags),
+        .samples = vk_utils::map_sample_count(desc.samples),
+        .usage = vk_utils::map_image_usage_flags(desc.flags),
     };
 
     std::tie(m_image, m_allocation) = create_image(image_info, 0, m_context->get_vma_allocator());
-
-    m_format = desc.format;
-    m_samples = desc.samples;
-    m_extent = {image_info.extent.width, image_info.extent.height};
-
-    VkImageViewCreateInfo image_view_info = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = m_image,
-        .viewType = is_cube ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D,
-        .format = vk_util::map_format(m_format),
-        .subresourceRange =
-            {
-                .baseMipLevel = 0,
-                .levelCount = m_level_count,
-                .baseArrayLayer = 0,
-                .layerCount = m_layer_count,
-            },
-    };
-
-    if (desc.flags & RHI_TEXTURE_DEPTH_STENCIL)
-    {
-        image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-
-        if (m_format == RHI_FORMAT_D24_UNORM_S8_UINT || m_format == RHI_FORMAT_D32_FLOAT_S8_UINT)
-        {
-            m_aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-        }
-        else
-        {
-            m_aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
-        }
-    }
-    else
-    {
-        image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        m_aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
-    }
-
-    vkCreateImageView(m_context->get_device(), &image_view_info, nullptr, &m_image_view);
-    m_hash = hash::city_hash_64(&m_image_view, sizeof(VkImageView));
-
-    if (desc.flags & RHI_TEXTURE_DEPTH_STENCIL)
-    {
-        m_clear_value.depthStencil = VkClearDepthStencilValue{0.0, 0};
-    }
-    else
-    {
-        m_clear_value.color = VkClearColorValue{0.0f, 0.0f, 0.0f, 1.0f};
-    }
 
     if (desc.layout != RHI_TEXTURE_LAYOUT_UNDEFINED)
     {
         rhi_texture_barrier barrier = {
             .texture = this,
+            .src_stages = RHI_PIPELINE_STAGE_BEGIN,
             .src_access = 0,
-            .dst_access = RHI_ACCESS_SHADER_READ,
             .src_layout = RHI_TEXTURE_LAYOUT_UNDEFINED,
+            .dst_stages = RHI_PIPELINE_STAGE_COMPUTE | RHI_PIPELINE_STAGE_VERTEX |
+                          RHI_PIPELINE_STAGE_FRAGMENT,
+            .dst_access = RHI_ACCESS_SHADER_READ,
             .dst_layout = desc.layout,
             .level = 0,
             .level_count = m_level_count,
@@ -142,99 +196,331 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
         };
 
         auto* command = m_context->get_graphics_queue()->allocate_command();
-        command->set_pipeline_barrier(
-            RHI_PIPELINE_STAGE_BEGIN,
-            RHI_PIPELINE_STAGE_COMPUTE | RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_FRAGMENT,
-            nullptr,
-            0,
-            &barrier,
-            1);
+        command->set_pipeline_barrier(nullptr, 0, &barrier, 1);
 
         // TODO: use async version?
         m_context->get_graphics_queue()->execute_sync(command);
     }
 }
 
-vk_texture::~vk_texture()
-{
-    vmaDestroyImage(m_context->get_vma_allocator(), m_image, m_allocation);
-    vkDestroyImageView(m_context->get_device(), m_image_view, nullptr);
-}
-
-vk_texture_view::vk_texture_view(const rhi_texture_view_desc& desc, vk_context* context)
-    : m_level(desc.level),
-      m_level_count(desc.level_count),
-      m_layer(desc.layer),
-      m_layer_count(desc.layer_count),
+vk_texture::vk_texture(
+    VkImage image,
+    VkFormat format,
+    VkExtent2D extent,
+    rhi_texture_flags flags,
+    vk_context* context)
+    : m_image(image),
+      m_format(vk_utils::map_format(format)),
+      m_extent{extent.width, extent.height},
+      m_level_count(1),
+      m_layer_count(1),
+      m_flags(flags),
       m_context(context)
 {
-    m_texture = static_cast<vk_texture*>(desc.texture);
+}
+
+vk_texture::~vk_texture()
+{
+    for (auto& [key, view] : m_views)
+    {
+        view.srv = nullptr;
+        view.uav = nullptr;
+        view.rtv = nullptr;
+        view.dsv = nullptr;
+
+        vkDestroyImageView(m_context->get_device(), view.image_view, nullptr);
+    }
+
+    if (m_allocation != VK_NULL_HANDLE)
+    {
+        vmaDestroyImage(m_context->get_vma_allocator(), m_image, m_allocation);
+    }
+}
+
+rhi_texture_srv* vk_texture::get_srv(
+    rhi_texture_dimension dimension,
+    std::uint32_t level,
+    std::uint32_t level_count,
+    std::uint32_t layer,
+    std::uint32_t layer_count)
+{
+    auto& view = get_or_create_view(dimension, level, level_count, layer, layer_count);
+
+    if (view.srv == nullptr)
+    {
+        view.srv = std::make_unique<vk_texture_srv>(this, view.image_view, m_context);
+    }
+
+    return view.srv.get();
+}
+
+rhi_texture_uav* vk_texture::get_uav(
+    rhi_texture_dimension dimension,
+    std::uint32_t level,
+    std::uint32_t level_count,
+    std::uint32_t layer,
+    std::uint32_t layer_count)
+{
+    auto& view = get_or_create_view(dimension, level, level_count, layer, layer_count);
+
+    if (view.uav == nullptr)
+    {
+        view.uav = std::make_unique<vk_texture_uav>(this, view.image_view, m_context);
+    }
+
+    return view.uav.get();
+}
+
+rhi_texture_rtv* vk_texture::get_rtv(
+    rhi_texture_dimension dimension,
+    std::uint32_t level,
+    std::uint32_t level_count,
+    std::uint32_t layer,
+    std::uint32_t layer_count)
+{
+    auto& view = get_or_create_view(dimension, level, level_count, layer, layer_count);
+
+    if (view.rtv == nullptr)
+    {
+        view.rtv = std::make_unique<vk_texture_rtv>(this, view.image_view, m_context);
+    }
+
+    return view.rtv.get();
+}
+
+rhi_texture_dsv* vk_texture::get_dsv(
+    rhi_texture_dimension dimension,
+    std::uint32_t level,
+    std::uint32_t level_count,
+    std::uint32_t layer,
+    std::uint32_t layer_count)
+{
+    auto& view = get_or_create_view(dimension, level, level_count, layer, layer_count);
+
+    if (view.dsv == nullptr)
+    {
+        view.dsv = std::make_unique<vk_texture_dsv>(this, view.image_view, m_context);
+    }
+
+    return view.dsv.get();
+}
+
+vk_texture::view& vk_texture::get_or_create_view(
+    rhi_texture_dimension dimension,
+    std::uint32_t level,
+    std::uint32_t level_count,
+    std::uint32_t layer,
+    std::uint32_t layer_count)
+{
+    level_count = level_count == 0 ? m_level_count : level_count;
+    layer_count = layer_count == 0 ? m_layer_count : layer_count;
+
+    view_key key = {
+        .dimension = dimension,
+        .level = level,
+        .level_count = level_count,
+        .layer = layer,
+        .layer_count = layer_count,
+    };
+
+    auto iter = m_views.find(key);
+    if (iter != m_views.end())
+    {
+        return iter->second;
+    }
+
+    VkImageViewType view_type;
+    switch (dimension)
+    {
+    case RHI_TEXTURE_DIMENSION_2D:
+        view_type = VK_IMAGE_VIEW_TYPE_2D;
+        break;
+    case RHI_TEXTURE_DIMENSION_2D_ARRAY:
+        view_type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        break;
+    case RHI_TEXTURE_DIMENSION_CUBE:
+        view_type = VK_IMAGE_VIEW_TYPE_CUBE;
+        break;
+    default:
+        view_type = VK_IMAGE_VIEW_TYPE_2D;
+        break;
+    }
+
+    VkImageAspectFlags aspect =
+        m_flags & RHI_TEXTURE_DEPTH_STENCIL ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 
     VkImageViewCreateInfo image_view_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = m_texture->get_image(),
-        .format = vk_util::map_format(m_texture->get_format()),
+        .image = m_image,
+        .viewType = view_type,
+        .format = vk_utils::map_format(m_format),
         .subresourceRange =
             {
-                .aspectMask = m_texture->get_aspect_mask(),
-                .baseMipLevel = m_level,
-                .levelCount = m_level_count,
-                .baseArrayLayer = m_layer,
-                .layerCount = m_layer_count,
+                .aspectMask = aspect,
+                .baseMipLevel = level,
+                .levelCount = level_count,
+                .baseArrayLayer = layer,
+                .layerCount = layer_count,
             },
     };
 
-    switch (desc.type)
-    {
-    case RHI_TEXTURE_VIEW_2D: {
-        image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        break;
-    }
-    case RHI_TEXTURE_VIEW_2D_ARRAY: {
-        image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-        break;
-    }
-    case RHI_TEXTURE_VIEW_CUBE: {
-        image_view_info.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
-        break;
-    }
-    default:
-        break;
-    }
+    vk_check(vkCreateImageView(
+        m_context->get_device(),
+        &image_view_info,
+        nullptr,
+        &m_views[key].image_view));
 
-    vkCreateImageView(m_context->get_device(), &image_view_info, nullptr, &m_image_view);
-    m_hash = hash::city_hash_64(&m_image_view, sizeof(VkImageView));
+    return m_views[key];
 }
 
-vk_texture_view::~vk_texture_view()
+vk_buffer_descriptor::vk_buffer_descriptor(
+    vk_buffer* buffer,
+    std::size_t offset,
+    std::size_t size,
+    VkBufferView buffer_view)
+    : m_buffer(buffer),
+      m_offset(offset),
+      m_size(size == 0 ? m_buffer->get_buffer_size() : size),
+      m_buffer_view(buffer_view)
 {
-    vkDestroyImageView(m_context->get_device(), m_image_view, nullptr);
 }
 
-vk_sampler::vk_sampler(const rhi_sampler_desc& desc, vk_context* context)
-    : m_context(context)
+vk_buffer_srv::vk_buffer_srv(
+    vk_buffer* buffer,
+    std::size_t offset,
+    std::size_t size,
+    VkBufferView buffer_view,
+    vk_context* context)
+    : vk_buffer_descriptor(buffer, offset, size, buffer_view),
+      m_context(context)
 {
-    VkSamplerCreateInfo sampler_info = {
-        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-        .magFilter = vk_util::map_filter(desc.mag_filter),
-        .minFilter = vk_util::map_filter(desc.min_filter),
-        .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-        .addressModeU = vk_util::map_sampler_address_mode(desc.address_mode_u),
-        .addressModeV = vk_util::map_sampler_address_mode(desc.address_mode_v),
-        .addressModeW = vk_util::map_sampler_address_mode(desc.address_mode_w),
-        .anisotropyEnable = VK_TRUE,
-        .maxAnisotropy = m_context->get_physical_device_properties().limits.maxSamplerAnisotropy,
-        .compareEnable = VK_FALSE,
-        .minLod = desc.min_level,
-        .maxLod = desc.max_level < 0.0f ? VK_LOD_CLAMP_NONE : desc.max_level,
+    m_bindless = m_context->get_bindless_manager()->allocate_resource(this);
+}
+
+vk_buffer_srv::~vk_buffer_srv()
+{
+    m_context->get_bindless_manager()->free_resource(m_bindless);
+}
+
+void vk_buffer_srv::write(
+    VkDescriptorSet descriptor_set,
+    std::uint32_t binding,
+    std::uint32_t array_element) const
+{
+    auto* buffer = get_buffer();
+
+    VkDescriptorBufferInfo info = {
+        .buffer = buffer->get_buffer(),
+        .offset = get_offset(),
+        .range = get_size(),
     };
 
-    vk_check(vkCreateSampler(m_context->get_device(), &sampler_info, nullptr, &m_sampler));
+    rhi_buffer_flags flags = buffer->get_flags();
+
+    VkDescriptorType descriptor_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    if (flags & RHI_BUFFER_UNIFORM)
+    {
+        descriptor_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    }
+    else if (flags & RHI_BUFFER_UNIFORM_TEXEL)
+    {
+        descriptor_type = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    }
+    else if (flags & RHI_BUFFER_STORAGE)
+    {
+        descriptor_type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    }
+    else if (flags & RHI_BUFFER_STORAGE_TEXEL)
+    {
+        descriptor_type = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+    }
+    else
+    {
+        throw std::runtime_error("invalid buffer type.");
+    }
+
+    VkWriteDescriptorSet write = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptor_set,
+        .dstBinding = binding,
+        .dstArrayElement = array_element,
+        .descriptorCount = 1,
+        .descriptorType = descriptor_type,
+        .pBufferInfo = &info,
+    };
+
+    VkBufferView buffer_view = get_buffer_view();
+    if (flags & RHI_BUFFER_UNIFORM_TEXEL || flags & RHI_BUFFER_STORAGE_TEXEL)
+    {
+        write.pTexelBufferView = &buffer_view;
+    }
+
+    vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
 }
 
-vk_sampler::~vk_sampler()
+vk_buffer_uav::vk_buffer_uav(
+    vk_buffer* buffer,
+    std::size_t offset,
+    std::size_t size,
+    VkBufferView buffer_view,
+    vk_context* context)
+    : vk_buffer_descriptor(buffer, offset, size, buffer_view),
+      m_context(context)
 {
-    vkDestroySampler(m_context->get_device(), m_sampler, nullptr);
+    m_bindless = m_context->get_bindless_manager()->allocate_resource(this);
+}
+
+vk_buffer_uav::~vk_buffer_uav()
+{
+    m_context->get_bindless_manager()->free_resource(m_bindless);
+}
+
+void vk_buffer_uav::write(
+    VkDescriptorSet descriptor_set,
+    std::uint32_t binding,
+    std::uint32_t array_element) const
+{
+    auto* buffer = get_buffer();
+
+    VkDescriptorBufferInfo info = {
+        .buffer = buffer->get_buffer(),
+        .offset = 0,
+        .range = buffer->get_buffer_size(),
+    };
+
+    rhi_buffer_flags flags = buffer->get_flags();
+
+    VkDescriptorType descriptor_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    if (flags & RHI_BUFFER_STORAGE)
+    {
+        descriptor_type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    }
+    else if (flags & RHI_BUFFER_STORAGE_TEXEL)
+    {
+        descriptor_type = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+    }
+    else
+    {
+        throw std::runtime_error("invalid buffer type.");
+    }
+
+    VkWriteDescriptorSet write = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptor_set,
+        .dstBinding = binding,
+        .dstArrayElement = array_element,
+        .descriptorCount = 1,
+        .descriptorType = descriptor_type,
+        .pBufferInfo = &info,
+    };
+
+    VkBufferView buffer_view = get_buffer_view();
+    if (flags & RHI_BUFFER_STORAGE_TEXEL)
+    {
+        write.pTexelBufferView = &buffer_view;
+    }
+
+    vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
 }
 
 vk_buffer::vk_buffer(const rhi_buffer_desc& desc, vk_context* context)
@@ -248,7 +534,7 @@ vk_buffer::vk_buffer(const rhi_buffer_desc& desc, vk_context* context)
     VkBufferCreateInfo buffer_info = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = m_buffer_size,
-        .usage = vk_util::map_buffer_usage_flags(desc.flags),
+        .usage = vk_utils::map_buffer_usage_flags(desc.flags),
     };
 
     if (desc.flags & RHI_BUFFER_HOST_VISIBLE)
@@ -316,43 +602,131 @@ vk_buffer::vk_buffer(const rhi_buffer_desc& desc, vk_context* context)
 
 vk_buffer::~vk_buffer()
 {
+    for (auto& [key, view] : m_views)
+    {
+        if (view.buffer_view != VK_NULL_HANDLE)
+        {
+            vkDestroyBufferView(m_context->get_device(), view.buffer_view, nullptr);
+        }
+    }
+
     vmaDestroyBuffer(m_context->get_vma_allocator(), m_buffer, m_allocation);
 }
 
-vk_index_buffer::vk_index_buffer(const rhi_buffer_desc& desc, vk_context* context)
-    : vk_buffer(desc, context)
+rhi_buffer_srv* vk_buffer::get_srv(std::size_t offset, std::size_t size, rhi_format format)
 {
-    if (desc.index.size == 2)
+    auto& view = get_or_create_view(offset, size, format);
+
+    if (view.srv == nullptr)
     {
-        m_index_type = VK_INDEX_TYPE_UINT16;
+        view.srv = std::make_unique<vk_buffer_srv>(this, offset, size, view.buffer_view, m_context);
     }
-    else if (desc.index.size == 4)
-    {
-        m_index_type = VK_INDEX_TYPE_UINT32;
-    }
-    else
-    {
-        throw std::runtime_error("Invalid index size.");
-    }
+
+    return view.srv.get();
 }
 
-vk_texel_buffer::vk_texel_buffer(const rhi_buffer_desc& desc, vk_context* context)
-    : vk_buffer(desc, context)
+rhi_buffer_uav* vk_buffer::get_uav(std::size_t offset, std::size_t size, rhi_format format)
 {
-    VkBufferViewCreateInfo buffer_view_info = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
-        .flags = 0,
-        .buffer = get_buffer(),
-        .format = vk_util::map_format(desc.texel.format),
-        .offset = 0,
-        .range = desc.size,
+    assert(m_flags & RHI_BUFFER_STORAGE || m_flags & RHI_BUFFER_STORAGE_TEXEL);
+
+    auto& view = get_or_create_view(offset, size, format);
+
+    if (view.uav == nullptr)
+    {
+        view.uav = std::make_unique<vk_buffer_uav>(this, offset, size, view.buffer_view, m_context);
+    }
+
+    return view.uav.get();
+}
+
+vk_buffer::view& vk_buffer::get_or_create_view(
+    std::size_t offset,
+    std::size_t size,
+    rhi_format format)
+{
+    size = size == 0 ? m_buffer_size : size;
+
+    view_key key = {
+        .offset = offset,
+        .size = size,
     };
 
-    vkCreateBufferView(get_context()->get_device(), &buffer_view_info, nullptr, &m_buffer_view);
+    auto iter = m_views.find(key);
+    if (iter != m_views.end())
+    {
+        return iter->second;
+    }
+
+    if (m_flags & RHI_BUFFER_UNIFORM_TEXEL || m_flags & RHI_BUFFER_STORAGE_TEXEL)
+    {
+        VkBufferViewCreateInfo buffer_view_info = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
+            .flags = 0,
+            .buffer = get_buffer(),
+            .format = vk_utils::map_format(format),
+            .offset = offset,
+            .range = size,
+        };
+
+        vk_check(vkCreateBufferView(
+            m_context->get_device(),
+            &buffer_view_info,
+            nullptr,
+            &m_views[key].buffer_view));
+    }
+
+    return m_views[key];
 }
 
-vk_texel_buffer::~vk_texel_buffer()
+vk_sampler::vk_sampler(const rhi_sampler_desc& desc, vk_context* context)
+    : m_context(context)
 {
-    vkDestroyBufferView(get_context()->get_device(), m_buffer_view, nullptr);
+    VkSamplerCreateInfo sampler_info = {
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .magFilter = vk_utils::map_filter(desc.mag_filter),
+        .minFilter = vk_utils::map_filter(desc.min_filter),
+        .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+        .addressModeU = vk_utils::map_sampler_address_mode(desc.address_mode_u),
+        .addressModeV = vk_utils::map_sampler_address_mode(desc.address_mode_v),
+        .addressModeW = vk_utils::map_sampler_address_mode(desc.address_mode_w),
+        .anisotropyEnable = VK_TRUE,
+        .maxAnisotropy = m_context->get_physical_device_properties().limits.maxSamplerAnisotropy,
+        .compareEnable = VK_FALSE,
+        .minLod = desc.min_level,
+        .maxLod = desc.max_level < 0.0f ? VK_LOD_CLAMP_NONE : desc.max_level,
+    };
+
+    vk_check(vkCreateSampler(m_context->get_device(), &sampler_info, nullptr, &m_sampler));
+
+    m_bindless = m_context->get_bindless_manager()->allocate_sampler(this);
+}
+
+vk_sampler::~vk_sampler()
+{
+    m_context->get_bindless_manager()->free_sampler(m_bindless);
+
+    vkDestroySampler(m_context->get_device(), m_sampler, nullptr);
+}
+
+void vk_sampler::write(
+    VkDescriptorSet descriptor_set,
+    std::uint32_t binding,
+    std::uint32_t array_element) const
+{
+    VkDescriptorImageInfo info = {
+        .sampler = m_sampler,
+    };
+
+    VkWriteDescriptorSet write = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptor_set,
+        .dstBinding = binding,
+        .dstArrayElement = array_element,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+        .pImageInfo = &info,
+    };
+
+    vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
 }
 } // namespace violet::vk

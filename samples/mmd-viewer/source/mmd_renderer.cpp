@@ -7,42 +7,35 @@
 
 namespace violet
 {
-void mmd_renderer::render(
-    render_graph& graph,
-    const render_scene& scene,
-    const render_camera& camera)
+void mmd_renderer::render(render_graph& graph, const render_context& context)
 {
-    m_render_extent = camera.render_targets[0]->get_extent();
+    m_render_extent = context.get_render_target(0)->get_extent();
 
     m_render_target = graph.add_texture(
         "Render Target",
-        {
-            .extent = m_render_extent,
-            .format = RHI_FORMAT_R16G16B16A16_FLOAT,
-            .flags = RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE,
-        });
+        m_render_extent,
+        RHI_FORMAT_R16G16B16A16_FLOAT,
+        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE);
 
     m_depth_buffer = graph.add_texture(
         "Depth Buffer",
-        {
-            .extent = m_render_extent,
-            .format = RHI_FORMAT_D32_FLOAT_S8_UINT,
-            .flags = RHI_TEXTURE_DEPTH_STENCIL | RHI_TEXTURE_SHADER_RESOURCE,
-        });
+        m_render_extent,
+        RHI_FORMAT_D32_FLOAT_S8_UINT,
+        RHI_TEXTURE_DEPTH_STENCIL | RHI_TEXTURE_SHADER_RESOURCE);
 
-    if (scene.get_instance_count() != 0)
+    if (context.get_instance_count() != 0)
     {
-        add_cull_pass(graph, scene, camera);
-        add_mesh_pass(graph, scene, camera);
+        add_cull_pass(graph, context);
+        add_mesh_pass(graph, context);
     }
 
-    if (scene.has_skybox())
+    if (context.has_skybox())
     {
-        add_skybox_pass(graph, scene, camera);
+        add_skybox_pass(graph, context);
     }
 
     add_tone_mapping_pass(graph);
-    add_present_pass(graph, camera);
+    add_present_pass(graph, context);
 
     m_imgui_pass.add(
         graph,
@@ -51,73 +44,50 @@ void mmd_renderer::render(
         });
 }
 
-void mmd_renderer::add_cull_pass(
-    render_graph& graph,
-    const render_scene& scene,
-    const render_camera& camera)
+void mmd_renderer::add_cull_pass(render_graph& graph, const render_context& context)
 {
     rdg_scope scope(graph, "Cull");
 
     m_command_buffer = graph.add_buffer(
         "Command Buffer",
-        {
-            .data = nullptr,
-            .size = scene.get_instance_capacity() * sizeof(shader::draw_command),
-            .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT,
-        });
+        context.get_instance_capacity() * sizeof(shader::draw_command),
+        RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT);
 
     m_count_buffer = graph.add_buffer(
         "Count Buffer",
-        {
-            .data = nullptr,
-            .size = scene.get_group_capacity() * sizeof(std::uint32_t),
-            .flags = RHI_BUFFER_STORAGE_TEXEL | RHI_BUFFER_INDIRECT | RHI_BUFFER_TRANSFER_DST,
-            .texel =
-                {
-                    .format = RHI_FORMAT_R32_UINT,
-                },
-        });
+        context.get_group_capacity() * sizeof(std::uint32_t),
+        RHI_BUFFER_STORAGE_TEXEL | RHI_BUFFER_INDIRECT | RHI_BUFFER_TRANSFER_DST);
 
     cull_pass::add(
         graph,
+        context,
         {
-            .scene = scene,
-            .camera = camera,
             .command_buffer = m_command_buffer,
             .count_buffer = m_count_buffer,
         });
 }
 
-void mmd_renderer::add_mesh_pass(
-    render_graph& graph,
-    const render_scene& scene,
-    const render_camera& camera)
+void mmd_renderer::add_mesh_pass(render_graph& graph, const render_context& context)
 {
     rdg_scope scope(graph, "Mesh");
 
     m_render_target = graph.add_texture(
         "GBuffer Albedo",
-        {
-            .extent = m_render_extent,
-            .format = RHI_FORMAT_R8G8B8A8_UNORM,
-            .flags = RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE,
-        });
+        m_render_extent,
+        RHI_FORMAT_R8G8B8A8_UNORM,
+        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE);
 
     m_gbuffer_normal = graph.add_texture(
         "GBuffer Normal",
-        {
-            .extent = m_render_extent,
-            .format = RHI_FORMAT_R16G16_UNORM,
-            .flags = RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE,
-        });
+        m_render_extent,
+        RHI_FORMAT_R16G16_UNORM,
+        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE);
 
     m_gbuffer_emissive = graph.add_texture(
         "GBuffer Emissive",
-        {
-            .extent = m_render_extent,
-            .format = RHI_FORMAT_R8G8B8A8_UNORM,
-            .flags = RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE,
-        });
+        m_render_extent,
+        RHI_FORMAT_R8G8B8A8_UNORM,
+        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE);
 
     std::vector<rdg_texture*> render_targets = {
         m_render_target,
@@ -127,9 +97,8 @@ void mmd_renderer::add_mesh_pass(
 
     mesh_pass::add(
         graph,
+        context,
         {
-            .scene = scene,
-            .camera = camera,
             .command_buffer = m_command_buffer,
             .count_buffer = m_count_buffer,
             .render_targets = render_targets,
@@ -139,19 +108,15 @@ void mmd_renderer::add_mesh_pass(
         });
 }
 
-void mmd_renderer::add_skybox_pass(
-    render_graph& graph,
-    const render_scene& scene,
-    const render_camera& camera)
+void mmd_renderer::add_skybox_pass(render_graph& graph, const render_context& context)
 {
     skybox_pass::add(
         graph,
+        context,
         {
-            .scene = scene,
-            .camera = camera,
             .render_target = m_render_target,
             .depth_buffer = m_depth_buffer,
-            .clear = scene.get_instance_count() == 0,
+            .clear = context.get_instance_count() == 0,
         });
 }
 
@@ -159,11 +124,9 @@ void mmd_renderer::add_tone_mapping_pass(render_graph& graph)
 {
     rdg_texture* ldr_target = graph.add_texture(
         "LDR Target",
-        {
-            .extent = m_render_extent,
-            .format = RHI_FORMAT_R8G8B8A8_UNORM,
-            .flags = RHI_TEXTURE_TRANSFER_SRC | RHI_TEXTURE_STORAGE,
-        });
+        m_render_extent,
+        RHI_FORMAT_R8G8B8A8_UNORM,
+        RHI_TEXTURE_TRANSFER_SRC | RHI_TEXTURE_STORAGE);
 
     tone_mapping_pass::add(
         graph,
@@ -175,11 +138,11 @@ void mmd_renderer::add_tone_mapping_pass(render_graph& graph)
     m_render_target = ldr_target;
 }
 
-void mmd_renderer::add_present_pass(render_graph& graph, const render_camera& camera)
+void mmd_renderer::add_present_pass(render_graph& graph, const render_context& context)
 {
     rdg_texture* camera_output = graph.add_texture(
         "Camera Output",
-        camera.render_targets[0],
+        context.get_render_target(0),
         RHI_TEXTURE_LAYOUT_UNDEFINED,
         RHI_TEXTURE_LAYOUT_PRESENT);
 

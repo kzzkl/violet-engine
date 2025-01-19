@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/render_graph/rdg_allocator.hpp"
+#include "graphics/buffer.hpp"
 #include "math/types.hpp"
 #include <vector>
 
@@ -71,8 +71,7 @@ public:
 
     void update_morph(
         rhi_command* command,
-        rdg_allocator* allocator,
-        rhi_buffer* morph_vertex_buffer,
+        vertex_buffer* morph_vertex_buffer,
         std::span<const float> weights);
 
     std::size_t get_morph_target_count() const noexcept
@@ -109,8 +108,8 @@ private:
     float m_precision{0.0001};
     std::size_t m_max_element_count{0};
 
-    rhi_ptr<rhi_buffer> m_header_buffer;
-    rhi_ptr<rhi_buffer> m_element_buffer;
+    std::unique_ptr<structured_buffer> m_header_buffer;
+    std::unique_ptr<structured_buffer> m_element_buffer;
 
     bool m_dirty{false};
 };

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "graphics/material.hpp"
+#include "graphics/texture.hpp"
 
 namespace violet
 {
@@ -25,9 +26,9 @@ public:
     void set_specular(vec3f specular, float specular_strength);
     void set_ambient(const vec3f& ambient);
 
-    void set_diffuse(rhi_texture* texture);
-    void set_toon(rhi_texture* texture);
-    void set_environment(rhi_texture* texture);
+    void set_diffuse(const texture_2d* texture);
+    void set_toon(const texture_2d* texture);
+    void set_environment(const texture_2d* texture);
     void set_environment_blend(std::uint32_t mode);
 };
 

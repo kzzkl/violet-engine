@@ -99,7 +99,7 @@ public:
             stack.pop();
 
             ++visited[node];
-            if (!node->dependents.empty() && visited[node] != node->dependents.size())
+            if (!node->dependencies.empty() && visited[node] != node->dependencies.size())
             {
                 continue;
             }

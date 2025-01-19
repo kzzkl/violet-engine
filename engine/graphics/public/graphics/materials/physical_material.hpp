@@ -1,6 +1,7 @@
 #pragma once
 
 #include "graphics/material.hpp"
+#include "graphics/texture.hpp"
 
 namespace violet
 {
@@ -22,15 +23,15 @@ public:
     physical_material();
 
     void set_albedo(const vec3f& albedo);
-    void set_albedo(rhi_texture* albedo);
+    void set_albedo(texture_2d* albedo);
 
     void set_roughness(float roughness);
     void set_metallic(float metallic);
-    void set_roughness_metallic(rhi_texture* roughness_metallic);
+    void set_roughness_metallic(texture_2d* roughness_metallic);
 
     void set_emissive(const vec3f& emissive);
-    void set_emissive(rhi_texture* emissive);
+    void set_emissive(texture_2d* emissive);
 
-    void set_normal(rhi_texture* normal);
+    void set_normal(texture_2d* normal);
 };
 } // namespace violet

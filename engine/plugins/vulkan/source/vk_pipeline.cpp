@@ -1,7 +1,8 @@
 #include "vk_pipeline.hpp"
+#include "vk_context.hpp"
 #include "vk_layout.hpp"
 #include "vk_render_pass.hpp"
-#include "vk_util.hpp"
+#include "vk_utils.hpp"
 #include <cassert>
 
 namespace violet::vk
@@ -91,7 +92,7 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
         attribute_descriptions.push_back({
             .location = i,
             .binding = i,
-            .format = vk_util::map_format(vertex_attributes[i].format),
+            .format = vk_utils::map_format(vertex_attributes[i].format),
         });
     }
 
@@ -180,22 +181,22 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
     depth_stencil_state_info.depthTestEnable = desc.depth_stencil.depth_enable;
     depth_stencil_state_info.depthWriteEnable = desc.depth_stencil.depth_write_enable;
     depth_stencil_state_info.depthCompareOp =
-        vk_util::map_compare_op(desc.depth_stencil.depth_compare_op);
+        vk_utils::map_compare_op(desc.depth_stencil.depth_compare_op);
     depth_stencil_state_info.stencilTestEnable = desc.depth_stencil.stencil_enable;
     depth_stencil_state_info.front = {
-        .failOp = vk_util::map_stencil_op(desc.depth_stencil.stencil_front.fail_op),
-        .passOp = vk_util::map_stencil_op(desc.depth_stencil.stencil_front.pass_op),
-        .depthFailOp = vk_util::map_stencil_op(desc.depth_stencil.stencil_front.depth_fail_op),
-        .compareOp = vk_util::map_compare_op(desc.depth_stencil.stencil_front.compare_op),
+        .failOp = vk_utils::map_stencil_op(desc.depth_stencil.stencil_front.fail_op),
+        .passOp = vk_utils::map_stencil_op(desc.depth_stencil.stencil_front.pass_op),
+        .depthFailOp = vk_utils::map_stencil_op(desc.depth_stencil.stencil_front.depth_fail_op),
+        .compareOp = vk_utils::map_compare_op(desc.depth_stencil.stencil_front.compare_op),
         .compareMask = 0xff,
         .writeMask = 0xff,
         .reference = desc.depth_stencil.stencil_front.reference,
     };
     depth_stencil_state_info.back = {
-        .failOp = vk_util::map_stencil_op(desc.depth_stencil.stencil_back.fail_op),
-        .passOp = vk_util::map_stencil_op(desc.depth_stencil.stencil_back.pass_op),
-        .depthFailOp = vk_util::map_stencil_op(desc.depth_stencil.stencil_back.depth_fail_op),
-        .compareOp = vk_util::map_compare_op(desc.depth_stencil.stencil_back.compare_op),
+        .failOp = vk_utils::map_stencil_op(desc.depth_stencil.stencil_back.fail_op),
+        .passOp = vk_utils::map_stencil_op(desc.depth_stencil.stencil_back.pass_op),
+        .depthFailOp = vk_utils::map_stencil_op(desc.depth_stencil.stencil_back.depth_fail_op),
+        .compareOp = vk_utils::map_compare_op(desc.depth_stencil.stencil_back.compare_op),
         .compareMask = 0xff,
         .writeMask = 0xff,
         .reference = desc.depth_stencil.stencil_back.reference,
@@ -203,7 +204,7 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
 
     auto* render_pass = static_cast<vk_render_pass*>(desc.render_pass);
 
-    std::size_t blend_count = render_pass->get_subpass_info(desc.subpass_index).render_target_count;
+    std::size_t blend_count = render_pass->get_render_target_count();
     std::vector<VkPipelineColorBlendAttachmentState> color_blend_attachments(blend_count);
     for (std::size_t i = 0; i < blend_count; ++i)
     {
@@ -213,18 +214,18 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
         color_blend_attachments[i].blendEnable = desc.blend.attachments[i].enable;
 
         color_blend_attachments[i].srcColorBlendFactor =
-            vk_util::map_blend_factor(desc.blend.attachments[i].src_color_factor);
+            vk_utils::map_blend_factor(desc.blend.attachments[i].src_color_factor);
         color_blend_attachments[i].dstColorBlendFactor =
-            vk_util::map_blend_factor(desc.blend.attachments[i].dst_color_factor);
+            vk_utils::map_blend_factor(desc.blend.attachments[i].dst_color_factor);
         color_blend_attachments[i].colorBlendOp =
-            vk_util::map_blend_op(desc.blend.attachments[i].color_op);
+            vk_utils::map_blend_op(desc.blend.attachments[i].color_op);
 
         color_blend_attachments[i].srcAlphaBlendFactor =
-            vk_util::map_blend_factor(desc.blend.attachments[i].src_alpha_factor);
+            vk_utils::map_blend_factor(desc.blend.attachments[i].src_alpha_factor);
         color_blend_attachments[i].dstAlphaBlendFactor =
-            vk_util::map_blend_factor(desc.blend.attachments[i].dst_alpha_factor);
+            vk_utils::map_blend_factor(desc.blend.attachments[i].dst_alpha_factor);
         color_blend_attachments[i].alphaBlendOp =
-            vk_util::map_blend_op(desc.blend.attachments[i].alpha_op);
+            vk_utils::map_blend_op(desc.blend.attachments[i].alpha_op);
     }
 
     VkPipelineColorBlendStateCreateInfo color_blend_info = {
@@ -286,7 +287,7 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
         .pDynamicState = &dynamic_state_info,
         .layout = m_pipeline_layout,
         .renderPass = render_pass->get_render_pass(),
-        .subpass = static_cast<std::uint32_t>(desc.subpass_index),
+        .subpass = 0,
         .basePipelineHandle = VK_NULL_HANDLE,
     };
 

@@ -61,10 +61,10 @@ void task_graph::compile()
             }
         }
 
-        task->dependents.clear();
+        task->dependencies.clear();
         task->successors.clear();
 
-        if (task->get_dependents().empty())
+        if (task->get_dependencies().empty())
         {
             m_roots.push_back(task.get());
         }
@@ -74,7 +74,7 @@ void task_graph::compile()
 
     for (auto& task : m_tasks)
     {
-        task->uncompleted_dependency_count = static_cast<std::uint32_t>(task->dependents.size());
+        task->uncompleted_dependency_count = static_cast<std::uint32_t>(task->dependencies.size());
     }
 }
 
@@ -84,7 +84,7 @@ void task_graph::transitive_reduction()
     std::unordered_map<task*, std::size_t> in_edge;
     for (auto& task : m_tasks)
     {
-        in_edge[task.get()] = task->get_dependents().size();
+        in_edge[task.get()] = task->get_dependencies().size();
     }
 
     std::stack<task*> stack;
@@ -131,7 +131,7 @@ void task_graph::transitive_reduction()
                     std::find(prev_task_successors.begin(), prev_task_successors.end(), curr_task);
                 if (iter != prev_task_successors.end())
                 {
-                    curr_task->dependents.push_back(prev_task);
+                    curr_task->dependencies.push_back(prev_task);
                     prev_task->successors.push_back(curr_task);
                     task_flags[prev_task] = 1;
                 }
@@ -139,9 +139,9 @@ void task_graph::transitive_reduction()
 
             if (task_flags[prev_task] != 0)
             {
-                for (task* dependent : prev_task->get_dependents())
+                for (task* dependency : prev_task->get_dependencies())
                 {
-                    task_flags[dependent] = 1;
+                    task_flags[dependency] = 1;
                 }
             }
         }

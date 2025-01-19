@@ -24,39 +24,37 @@ struct skybox_fs : public shader_fs
     };
 };
 
-void skybox_pass::add(render_graph& graph, const parameter& parameter)
+void skybox_pass::add(
+    render_graph& graph,
+    const render_context& context,
+    const parameter& parameter)
 {
     struct pass_data
     {
-        rhi_parameter* scene_parameter;
-        rhi_parameter* camera_parameter;
-        rhi_viewport viewport;
     };
 
-    pass_data data = {
-        .scene_parameter = parameter.scene.get_scene_parameter(),
-        .camera_parameter = parameter.camera.camera_parameter,
-        .viewport = parameter.camera.viewport,
-    };
-
-    auto& pass = graph.add_pass<rdg_render_pass>("Skybox Pass");
-
-    pass.add_render_target(
-        parameter.render_target,
-        parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
-    pass.set_depth_stencil(
-        parameter.depth_buffer,
-        parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
-    pass.set_execute(
-        [data](rdg_command& command)
+    graph.add_pass<pass_data>(
+        "Skybox Pass",
+        RDG_PASS_RASTER,
+        [&](pass_data& data, rdg_pass& pass)
         {
-            command.set_viewport(data.viewport);
+            rhi_attachment_load_op load_op =
+                parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD;
+
+            pass.add_render_target(parameter.render_target, load_op);
+            pass.set_depth_stencil(parameter.depth_buffer, load_op);
+        },
+        [&](const pass_data& data, rdg_command& command)
+        {
+            const auto& viewport = context.get_viewport();
+
+            command.set_viewport(viewport);
 
             rhi_scissor_rect scissor = {
                 .min_x = 0,
                 .min_y = 0,
-                .max_x = static_cast<std::uint32_t>(data.viewport.width),
-                .max_y = static_cast<std::uint32_t>(data.viewport.height),
+                .max_x = static_cast<std::uint32_t>(viewport.width),
+                .max_y = static_cast<std::uint32_t>(viewport.height),
             };
             command.set_scissor(std::span<rhi_scissor_rect>(&scissor, 1));
 
@@ -74,8 +72,8 @@ void skybox_pass::add(render_graph& graph, const parameter& parameter)
 
             command.set_pipeline(pipeline);
             command.set_parameter(0, device.get_bindless_parameter());
-            command.set_parameter(1, data.scene_parameter);
-            command.set_parameter(2, data.camera_parameter);
+            command.set_parameter(1, context.get_scene_parameter());
+            command.set_parameter(2, context.get_camera_parameter());
             command.draw(0, 36);
         });
 }

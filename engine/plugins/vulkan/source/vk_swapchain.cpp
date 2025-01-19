@@ -1,45 +1,10 @@
 #include "vk_swapchain.hpp"
 #include "vk_command.hpp"
-#include "vk_util.hpp"
+#include "vk_utils.hpp"
 #include <algorithm>
 
 namespace violet::vk
 {
-vk_swapchain_image::vk_swapchain_image(
-    VkImage image,
-    VkFormat format,
-    const VkExtent2D& extent,
-    vk_context* context)
-    : m_context(context)
-{
-    VkImageViewCreateInfo image_view_info = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = format,
-        .subresourceRange =
-            {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-    };
-
-    vkCreateImageView(m_context->get_device(), &image_view_info, nullptr, &m_image_view);
-
-    m_image = image;
-    m_format = vk_util::map_format(format);
-    m_extent = {extent.width, extent.height};
-    m_hash = hash::city_hash_64(&m_image_view, sizeof(VkImageView));
-}
-
-vk_swapchain_image::~vk_swapchain_image()
-{
-    vkDestroyImageView(m_context->get_device(), m_image_view, nullptr);
-}
-
 vk_swapchain::vk_swapchain(const rhi_swapchain_desc& desc, vk_context* context)
     : m_swapchain(VK_NULL_HANDLE),
       m_swapchain_image_index(0),
@@ -133,11 +98,6 @@ void vk_swapchain::present()
         m_present_semaphores[m_context->get_frame_resource_index()]->get_semaphore());
 }
 
-rhi_texture* vk_swapchain::get_texture()
-{
-    return m_swapchain_images[m_swapchain_image_index].get();
-}
-
 void vk_swapchain::update()
 {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -191,7 +151,7 @@ void vk_swapchain::update()
         .imageFormat = formats[0].format,
         .imageColorSpace = formats[0].colorSpace,
         .imageArrayLayers = 1,
-        .imageUsage = vk_util::map_image_usage_flags(m_flags),
+        .imageUsage = vk_utils::map_image_usage_flags(m_flags),
     };
 
     if (capabilities.maxImageCount > 0 && swapchain_info.minImageCount > capabilities.maxImageCount)
@@ -277,10 +237,11 @@ void vk_swapchain::update()
 
     for (VkImage swapchain_image : swapchain_images)
     {
-        m_swapchain_images.push_back(std::make_unique<vk_swapchain_image>(
+        m_swapchain_images.push_back(std::make_unique<vk_texture>(
             swapchain_image,
             swapchain_info.imageFormat,
             swapchain_info.imageExtent,
+            m_flags,
             m_context));
     }
 }

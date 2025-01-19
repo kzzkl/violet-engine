@@ -24,13 +24,14 @@ void morph_target_buffer::add_morph_target(const std::vector<morph_element>& ele
 
 void morph_target_buffer::update_morph(
     rhi_command* command,
-    rdg_allocator* allocator,
-    rhi_buffer* morph_vertex_buffer,
+    vertex_buffer* morph_vertex_buffer,
     std::span<const float> weights)
 {
     update_morph_data();
 
-    rhi_buffer* weight_buffer = allocator->allocate_buffer({
+    auto& device = render_device::instance();
+
+    rhi_buffer* weight_buffer = device.allocate_buffer({
         .size = weights.size() * sizeof(float),
         .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_HOST_VISIBLE,
     });
@@ -41,49 +42,49 @@ void morph_target_buffer::update_morph(
         weights.size() * sizeof(float));
 
     rhi_buffer_barrier barrier = {
-        .buffer = morph_vertex_buffer,
+        .buffer = morph_vertex_buffer->get_rhi(),
+        .src_stages = RHI_PIPELINE_STAGE_COMPUTE,
         .src_access = RHI_ACCESS_SHADER_READ,
+        .dst_stages = RHI_PIPELINE_STAGE_TRANSFER,
         .dst_access = RHI_ACCESS_TRANSFER_WRITE,
-        .size = morph_vertex_buffer->get_buffer_size(),
+        .size = morph_vertex_buffer->get_size(),
     };
 
-    command->set_pipeline_barrier(
-        RHI_PIPELINE_STAGE_COMPUTE,
-        RHI_PIPELINE_STAGE_TRANSFER,
-        &barrier,
-        1,
-        nullptr,
-        0);
+    command->set_pipeline_barrier(&barrier, 1, nullptr, 0);
 
     rhi_buffer_region region = {
-        .size = morph_vertex_buffer->get_buffer_size(),
+        .size = morph_vertex_buffer->get_size(),
     };
-    command->fill_buffer(morph_vertex_buffer, region, 0);
+    command->fill_buffer(morph_vertex_buffer->get_rhi(), region, 0);
 
+    barrier.src_stages = RHI_PIPELINE_STAGE_TRANSFER;
     barrier.src_access = RHI_ACCESS_TRANSFER_WRITE;
+    barrier.dst_stages = RHI_PIPELINE_STAGE_COMPUTE;
     barrier.dst_access = RHI_ACCESS_SHADER_WRITE;
 
-    command->set_pipeline_barrier(
-        RHI_PIPELINE_STAGE_TRANSFER,
-        RHI_PIPELINE_STAGE_COMPUTE,
-        &barrier,
-        1,
-        nullptr,
-        0);
+    command->set_pipeline_barrier(&barrier, 1, nullptr, 0);
 
     morphing_cs::morphing_data data = {
         .morph_target_count = static_cast<std::uint32_t>(m_morph_targets.size()),
         .precision = m_precision,
-        .header_buffer = m_header_buffer->get_handle(),
-        .element_buffer = m_element_buffer->get_handle(),
-        .morph_vertex_buffer = morph_vertex_buffer->get_handle(),
-        .weight_buffer = weight_buffer->get_handle(),
+        .header_buffer = m_header_buffer->get_srv()->get_bindless(),
+        .element_buffer = m_element_buffer->get_srv()->get_bindless(),
+        .morph_vertex_buffer =
+            morph_vertex_buffer->get_uav(0, 0, RHI_FORMAT_R32_SINT)->get_bindless(),
+        .weight_buffer = weight_buffer->get_srv()->get_bindless(),
     };
-    rhi_parameter* parameter = allocator->allocate_parameter(morphing_cs::parameter);
+    rhi_parameter* parameter = device.allocate_parameter(morphing_cs::parameter);
     parameter->set_constant(0, &data, sizeof(morphing_cs::morphing_data));
     command->set_parameter(1, parameter);
 
     command->dispatch((m_morph_targets.size() + 7) / 8, (m_max_element_count + 7) / 8, 1);
+
+    barrier.src_stages = RHI_PIPELINE_STAGE_COMPUTE;
+    barrier.src_access = RHI_ACCESS_SHADER_WRITE;
+    barrier.dst_stages = RHI_PIPELINE_STAGE_COMPUTE;
+    barrier.dst_access = RHI_ACCESS_SHADER_READ;
+
+    command->set_pipeline_barrier(&barrier, 1, nullptr, 0);
 }
 
 void morph_target_buffer::update_morph_data()
@@ -157,17 +158,8 @@ void morph_target_buffer::update_morph_data()
 
     auto& device = render_device::instance();
 
-    m_header_buffer = device.create_buffer({
-        .data = morph_headers.data(),
-        .size = morph_headers.size() * sizeof(morph_target_header),
-        .flags = RHI_BUFFER_STORAGE,
-    });
-
-    m_element_buffer = device.create_buffer({
-        .data = morph_elements.data(),
-        .size = morph_elements.size() * sizeof(morph_element_encode),
-        .flags = RHI_BUFFER_STORAGE,
-    });
+    m_header_buffer = std::make_unique<structured_buffer>(morph_headers, RHI_BUFFER_STORAGE);
+    m_element_buffer = std::make_unique<structured_buffer>(morph_elements, RHI_BUFFER_STORAGE);
 
     m_dirty = false;
 }

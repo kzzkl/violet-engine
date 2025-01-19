@@ -36,7 +36,7 @@ public:
 
     struct scene_data
     {
-        std::vector<rhi_ptr<rhi_texture>> textures;
+        std::vector<std::unique_ptr<texture_2d>> textures;
         std::vector<std::unique_ptr<geometry>> geometries;
         std::vector<std::unique_ptr<material>> materials;
 

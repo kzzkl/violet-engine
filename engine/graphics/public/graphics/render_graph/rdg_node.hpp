@@ -4,7 +4,19 @@
 
 namespace violet
 {
-class rdg_node
+class rdg_object
+{
+public:
+    rdg_object() = default;
+    rdg_object(const rdg_object&) = delete;
+    virtual ~rdg_object() = default;
+
+    rdg_object& operator=(const rdg_object&) = delete;
+
+    virtual void reset() noexcept {}
+};
+
+class rdg_node : public rdg_object
 {
 public:
     rdg_node() = default;
@@ -13,26 +25,33 @@ public:
 
     rdg_node& operator=(const rdg_node&) = delete;
 
+    void set_name(std::string_view name)
+    {
+        m_name = name;
+    }
+
     const std::string& get_name() const noexcept
     {
         return m_name;
     }
 
-    std::size_t get_index() const noexcept
+    void cull() noexcept
     {
-        return m_index;
+        m_culled = true;
     }
 
-    std::size_t get_batch() const noexcept
+    bool is_culled() const noexcept
     {
-        return m_batch;
+        return m_culled;
+    }
+
+    void reset() noexcept override
+    {
+        m_culled = false;
     }
 
 private:
     std::string m_name;
-    std::size_t m_index;
-    std::size_t m_batch;
-
-    friend class render_graph;
+    bool m_culled{false};
 };
 } // namespace violet

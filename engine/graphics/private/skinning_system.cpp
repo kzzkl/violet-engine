@@ -29,11 +29,12 @@ void skinning_system::update()
 {
     update_skin();
     update_skeleton();
+    update_morph();
 
     m_system_version = get_world().get_version();
 }
 
-void skinning_system::morphing(rhi_command* command, rdg_allocator* allocator)
+void skinning_system::morphing(rhi_command* command)
 {
     if (m_morphing_queue.empty())
     {
@@ -44,7 +45,7 @@ void skinning_system::morphing(rhi_command* command, rdg_allocator* allocator)
 
     command->begin_label("morphing");
 
-    command->set_pipeline(allocator->get_pipeline({
+    command->set_pipeline(device.get_pipeline({
         .compute_shader = device.get_shader<morphing_cs>(),
     }));
     command->set_parameter(0, device.get_bindless_parameter());
@@ -53,7 +54,6 @@ void skinning_system::morphing(rhi_command* command, rdg_allocator* allocator)
     {
         morphing_data.morph_target_buffer->update_morph(
             command,
-            allocator,
             morphing_data.morph_vertex_buffer,
             std::span(morphing_data.weights, morphing_data.weight_count));
     }
@@ -61,7 +61,7 @@ void skinning_system::morphing(rhi_command* command, rdg_allocator* allocator)
     command->end_label();
 }
 
-void skinning_system::skinning(rhi_command* command, rdg_allocator* allocator)
+void skinning_system::skinning(rhi_command* command)
 {
     if (m_skinning_queue.empty())
     {
@@ -75,45 +75,41 @@ void skinning_system::skinning(rhi_command* command, rdg_allocator* allocator)
     for (const auto& skinning_data : m_skinning_queue)
     {
         skinning_cs::skinning_data skinning_constant = {
-            .skeleton = skinning_data.skeleton->get_handle(),
+            .skeleton = skinning_data.skeleton->get_uav()->get_bindless(),
         };
         std::size_t buffer_index = 0;
         for (auto* input : skinning_data.input)
         {
-            skinning_constant.buffers[buffer_index++] = input->get_handle();
+            skinning_constant.buffers[buffer_index++] = input->get_srv()->get_bindless();
         }
 
         std::vector<rhi_buffer_barrier> buffer_barriers;
         buffer_barriers.reserve(skinning_data.output.size());
         for (auto* output : skinning_data.output)
         {
-            skinning_constant.buffers[buffer_index++] = output->get_handle();
+            skinning_constant.buffers[buffer_index++] = output->get_uav()->get_bindless();
             buffer_barriers.push_back({
-                .buffer = output,
+                .buffer = output->get_rhi(),
+                .src_stages = RHI_PIPELINE_STAGE_COMPUTE,
                 .src_access = RHI_ACCESS_SHADER_WRITE,
+                .dst_stages = RHI_PIPELINE_STAGE_VERTEX_INPUT,
                 .dst_access = RHI_ACCESS_VERTEX_ATTRIBUTE_READ,
                 .offset = 0,
-                .size = output->get_buffer_size(),
+                .size = output->get_size(),
             });
         }
 
-        rhi_parameter* parameter = allocator->allocate_parameter(skinning_cs::skinning);
+        rhi_parameter* parameter = device.allocate_parameter(skinning_cs::skinning);
         parameter->set_constant(0, &skinning_constant, sizeof(skinning_cs::skinning_data));
 
-        command->set_pipeline(allocator->get_pipeline(rdg_compute_pipeline{
+        command->set_pipeline(device.get_pipeline({
             .compute_shader = skinning_data.shader,
         }));
         command->set_parameter(0, device.get_bindless_parameter());
         command->set_parameter(1, parameter);
         command->dispatch((skinning_data.vertex_count + 63) / 64, 1, 1);
 
-        command->set_pipeline_barrier(
-            RHI_PIPELINE_STAGE_COMPUTE,
-            RHI_PIPELINE_STAGE_VERTEX_INPUT,
-            buffer_barriers.data(),
-            buffer_barriers.size(),
-            nullptr,
-            0);
+        command->set_pipeline_barrier(buffer_barriers.data(), buffer_barriers.size(), nullptr, 0);
     }
 
     command->end_label();
@@ -143,7 +139,7 @@ void skinning_system::update_skin()
                 {
                     skinned_meta.original_geometry = mesh.geometry;
 
-                    std::map<std::string, rhi_buffer*> buffers;
+                    std::map<std::string, vertex_buffer*> buffers;
                     for (const auto& [name, buffer] : mesh.geometry->get_vertex_buffers())
                     {
                         buffers[name] = buffer;
@@ -172,12 +168,7 @@ void skinning_system::update_skin()
                             "morph",
                             {
                                 .size = sizeof(vec3f) * mesh.geometry->get_vertex_count(),
-                                .flags = RHI_BUFFER_TRANSFER_DST | RHI_BUFFER_STORAGE |
-                                         RHI_BUFFER_UNIFORM_TEXEL,
-                                .texel =
-                                    {
-                                        .format = RHI_FORMAT_R32_SINT,
-                                    },
+                                .flags = RHI_BUFFER_TRANSFER_DST | RHI_BUFFER_STORAGE_TEXEL,
                             });
                     }
 
@@ -270,7 +261,8 @@ void skinning_system::update_skeleton()
                         .size = sizeof(mat4f) * skeleton.bones.size(),
                         .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_HOST_VISIBLE,
                     };
-                    skinned_meta.bone_buffers.push_back(device.create_buffer(desc));
+                    skinned_meta.bone_buffers.emplace_back(
+                        std::make_unique<structured_buffer>(desc));
                 }
 
                 skinned_meta.current_index = 0;

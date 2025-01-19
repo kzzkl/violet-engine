@@ -1,9 +1,10 @@
 #include "graphics/render_device.hpp"
 #include "graphics/geometry_manager.hpp"
 #include "graphics/material_manager.hpp"
-#include "graphics/tools/ibl_tool.hpp"
-#include "graphics/tools/texture_loader.hpp"
+#include "graphics/texture.hpp"
 #include "shader_compiler.hpp"
+#include "tools/ibl_tool.hpp"
+#include "transient_allocator.hpp"
 #include <fstream>
 
 namespace violet
@@ -43,11 +44,6 @@ void rhi_deleter::operator()(rhi_parameter* parameter)
     m_rhi->destroy_parameter(parameter);
 }
 
-void rhi_deleter::operator()(rhi_framebuffer* framebuffer)
-{
-    m_rhi->destroy_framebuffer(framebuffer);
-}
-
 void rhi_deleter::operator()(rhi_sampler* sampler)
 {
     m_rhi->destroy_sampler(sampler);
@@ -55,16 +51,37 @@ void rhi_deleter::operator()(rhi_sampler* sampler)
 
 void rhi_deleter::operator()(rhi_buffer* buffer)
 {
+    auto* transient_allocator = render_device::instance().m_transient_allocator.get();
+    if (transient_allocator != nullptr)
+    {
+        transient_allocator->cleanup_dependents(buffer);
+    }
+
     m_rhi->destroy_buffer(buffer);
 }
 
 void rhi_deleter::operator()(rhi_texture* texture)
 {
+    auto* transient_allocator = render_device::instance().m_transient_allocator.get();
+    if (transient_allocator != nullptr)
+    {
+        transient_allocator->cleanup_dependents(texture);
+    }
+
     m_rhi->destroy_texture(texture);
 }
 
 void rhi_deleter::operator()(rhi_swapchain* swapchain)
 {
+    auto* transient_allocator = render_device::instance().m_transient_allocator.get();
+    if (transient_allocator != nullptr)
+    {
+        for (std::size_t i = 0; i < swapchain->get_texture_count(); ++i)
+        {
+            transient_allocator->cleanup_dependents(swapchain->get_texture(i));
+        }
+    }
+
     m_rhi->destroy_swapchain(swapchain);
 }
 
@@ -94,11 +111,15 @@ void render_device::initialize(rhi* rhi)
     m_material_manager = std::make_unique<material_manager>();
     m_geometry_manager = std::make_unique<geometry_manager>();
 
+    m_transient_allocator = std::make_unique<transient_allocator>();
+
     create_buildin_resources();
 }
 
 void render_device::reset()
 {
+    m_transient_allocator = nullptr;
+
     m_shaders.clear();
     m_fence = nullptr;
 
@@ -133,6 +154,7 @@ void render_device::execute_sync(rhi_command* command)
 void render_device::begin_frame()
 {
     m_rhi->begin_frame();
+    m_transient_allocator->tick();
 }
 
 void render_device::end_frame()
@@ -180,9 +202,9 @@ rhi_ptr<rhi_parameter> render_device::create_parameter(const rhi_parameter_desc&
     return {m_rhi->create_parameter(desc), m_rhi_deleter};
 }
 
-rhi_ptr<rhi_framebuffer> render_device::create_framebuffer(const rhi_framebuffer_desc& desc)
+rhi_ptr<rhi_sampler> render_device::create_sampler(const rhi_sampler_desc& desc)
 {
-    return {m_rhi->create_framebuffer(desc), m_rhi_deleter};
+    return {m_rhi->create_sampler(desc), m_rhi_deleter};
 }
 
 rhi_ptr<rhi_buffer> render_device::create_buffer(const rhi_buffer_desc& desc)
@@ -190,17 +212,7 @@ rhi_ptr<rhi_buffer> render_device::create_buffer(const rhi_buffer_desc& desc)
     return {m_rhi->create_buffer(desc), m_rhi_deleter};
 }
 
-rhi_ptr<rhi_sampler> render_device::create_sampler(const rhi_sampler_desc& desc)
-{
-    return {m_rhi->create_sampler(desc), m_rhi_deleter};
-}
-
 rhi_ptr<rhi_texture> render_device::create_texture(const rhi_texture_desc& desc)
-{
-    return {m_rhi->create_texture(desc), m_rhi_deleter};
-}
-
-rhi_ptr<rhi_texture> render_device::create_texture(const rhi_texture_view_desc& desc)
 {
     return {m_rhi->create_texture(desc), m_rhi_deleter};
 }
@@ -215,34 +227,65 @@ rhi_ptr<rhi_fence> render_device::create_fence()
     return {m_rhi->create_fence(), m_rhi_deleter};
 }
 
+rhi_parameter* render_device::allocate_parameter(const rhi_parameter_desc& desc)
+{
+    return m_transient_allocator->allocate_parameter(desc);
+}
+
+rhi_texture* render_device::allocate_texture(const rhi_texture_desc& desc)
+{
+    return m_transient_allocator->allocate_texture(desc);
+}
+
+rhi_buffer* render_device::allocate_buffer(const rhi_buffer_desc& desc)
+{
+    return m_transient_allocator->allocate_buffer(desc);
+}
+
+rhi_render_pass* render_device::get_render_pass(const rhi_render_pass_desc& desc)
+{
+    return m_transient_allocator->get_render_pass(desc);
+}
+
+rhi_render_pipeline* render_device::get_pipeline(const rhi_render_pipeline_desc& desc)
+{
+    return m_transient_allocator->get_pipeline(desc);
+}
+
+rhi_compute_pipeline* render_device::get_pipeline(const rhi_compute_pipeline_desc& desc)
+{
+    return m_transient_allocator->get_pipeline(desc);
+}
+
+rhi_sampler* render_device::get_sampler(const rhi_sampler_desc& desc)
+{
+    return m_transient_allocator->get_sampler(desc);
+}
+
 void render_device::create_buildin_resources()
 {
     m_buildin_resources.material_buffer = m_material_manager->get_material_buffer();
 
     // Create empty texture.
-    texture_loader::mipmap_data empty_mipmap_data;
+    texture_data::mipmap empty_mipmap_data;
     empty_mipmap_data.extent.width = 1;
     empty_mipmap_data.extent.height = 1;
     empty_mipmap_data.pixels.resize(4);
     *reinterpret_cast<std::uint32_t*>(empty_mipmap_data.pixels.data()) = 0xFFFFFFFF;
 
-    texture_loader::texture_data empty_texture_data;
+    texture_data empty_texture_data;
     empty_texture_data.format = RHI_FORMAT_R8G8B8A8_UNORM;
     empty_texture_data.mipmaps.push_back(empty_mipmap_data);
 
-    m_buildin_resources.empty_texture = texture_loader::load(empty_texture_data);
+    m_buildin_resources.empty_texture = std::make_unique<texture_2d>(empty_texture_data);
 
     // Create brdf lut texture.
-    m_buildin_resources.brdf_lut = create_texture({
-        .extent = {512, 512},
-        .format = RHI_FORMAT_R32G32_FLOAT,
-        .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_RENDER_TARGET,
-        .level_count = 1,
-        .layer_count = 1,
-        .samples = RHI_SAMPLE_COUNT_1,
-    });
+    m_buildin_resources.brdf_lut = std::make_unique<texture_2d>(
+        rhi_texture_extent{512, 512},
+        RHI_FORMAT_R32G32_FLOAT,
+        RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE);
 
-    ibl_tool::generate_brdf_lut(m_buildin_resources.brdf_lut.get());
+    ibl_tool::generate_brdf_lut(m_buildin_resources.brdf_lut->get_rhi());
 
     m_buildin_resources.point_repeat_sampler = create_sampler({
         .mag_filter = RHI_FILTER_POINT,

@@ -1,5 +1,7 @@
 #include "vk_context.hpp"
+#include "vk_bindless.hpp"
 #include "vk_command.hpp"
+#include "vk_framebuffer.hpp"
 #include "vk_layout.hpp"
 #include "vk_parameter.hpp"
 #include <iostream>
@@ -168,8 +170,12 @@ bool vk_context::initialize(const rhi_desc& desc)
     initialize_vma();
     initialize_descriptor_pool(desc.features & RHI_FEATURE_BINDLESS);
 
+    m_deletion_queue = std::make_unique<vk_deletion_queue>(this);
+
     m_layout_manager = std::make_unique<vk_layout_manager>(this);
     m_parameter_manager = std::make_unique<vk_parameter_manager>(this);
+    m_bindless_manager = std::make_unique<vk_bindless_manager>(this);
+    m_framebuffer_manager = std::make_unique<vk_framebuffer_manager>(this);
 
     return true;
 }
@@ -297,7 +303,19 @@ bool vk_context::initialize_instance(
     debug_info.pfnUserCallback = debug_callback;
     debug_info.pUserData = nullptr;
 
-    instance_info.pNext = &debug_info;
+    std::vector<VkValidationFeatureEnableEXT> validation_features = {
+        VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT,
+    };
+
+    VkValidationFeaturesEXT validation_features_info = {
+        .sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
+        .enabledValidationFeatureCount = static_cast<std::uint32_t>(validation_features.size()),
+        .pEnabledValidationFeatures = validation_features.data(),
+    };
+
+    validation_features_info.pNext = &debug_info;
+
+    instance_info.pNext = &validation_features_info;
 #endif
 
     vk_check(vkCreateInstance(&instance_info, nullptr, &m_instance));

@@ -132,7 +132,7 @@ void graphics_system::begin_frame()
 
     device.begin_frame();
     switch_frame_resource();
-    m_allocator->reset();
+    m_allocator->tick();
 }
 
 void graphics_system::end_frame()
@@ -157,8 +157,8 @@ void graphics_system::end_frame()
     if (skinning.need_record())
     {
         rhi_command* command = device.allocate_command();
-        skinning.morphing(command, m_allocator.get());
-        skinning.skinning(command, m_allocator.get());
+        skinning.morphing(command);
+        skinning.skinning(command);
         device.execute(command);
     }
 
@@ -219,8 +219,11 @@ rhi_fence* graphics_system::render(
     rhi_parameter* camera_parameter,
     const render_scene& scene)
 {
+    render_camera render_camera = {
+        .camera_parameter = camera_parameter,
+    };
+
     std::vector<rhi_swapchain*> swapchains;
-    std::vector<rhi_texture*> render_targets;
 
     auto& device = render_device::instance();
     rhi_command* command = device.allocate_command();
@@ -247,11 +250,11 @@ rhi_fence* graphics_system::render(
                     command->wait(fence, 0, RHI_PIPELINE_STAGE_BEGIN);
 
                     swapchains.push_back(arg);
-                    render_targets.push_back(arg->get_texture());
+                    render_camera.render_targets.push_back(arg->get_texture());
                 }
                 else if constexpr (std::is_same_v<T, rhi_texture*>)
                 {
-                    render_targets.push_back(arg);
+                    render_camera.render_targets.push_back(arg);
                 }
             },
             render_target);
@@ -269,12 +272,7 @@ rhi_fence* graphics_system::render(
     rhi_fence* finish_fence = allocate_fence();
     command->signal(finish_fence, m_frame_fence_value);
 
-    render_graph graph(m_allocator.get());
-
-    render_camera render_camera = {
-        .camera_parameter = camera_parameter,
-        .render_targets = render_targets,
-    };
+    render_graph graph("Camera", m_allocator.get());
 
     rhi_texture_extent extent = camera->get_extent();
     if (camera->viewport.width == 0.0f || camera->viewport.height == 0.0f)
@@ -303,21 +301,14 @@ rhi_fence* graphics_system::render(
         render_camera.scissor_rects = camera->scissor_rects;
     }
 
-    rhi_texture_extent e1 = render_camera.render_targets[0]->get_extent();
-    rhi_texture_extent e2 = render_camera.render_targets[1]->get_extent();
+    render_context context(scene, render_camera);
 
-    // assert(e1.width == e2.width && e1.height == e2.height);
-
-    camera->renderer->render(graph, scene, render_camera);
+    camera->renderer->render(graph, context);
 
     graph.compile();
 
-    command->begin_label("Camera");
-
     graph.record(command);
     device.execute(command);
-
-    command->end_label();
 
     for (auto& swapchain : swapchains)
     {

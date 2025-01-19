@@ -24,7 +24,6 @@ public:
     void operator()(rhi_render_pipeline* render_pipeline);
     void operator()(rhi_compute_pipeline* compute_pipeline);
     void operator()(rhi_parameter* parameter);
-    void operator()(rhi_framebuffer* framebuffer);
     void operator()(rhi_sampler* sampler);
     void operator()(rhi_buffer* buffer);
     void operator()(rhi_texture* texture);
@@ -42,12 +41,15 @@ class material_manager;
 class geometry_manager;
 class shader_compiler;
 
+class texture_2d;
+class raw_buffer;
+
 struct render_buildin_resources
 {
-    rhi_buffer* material_buffer;
+    raw_buffer* material_buffer;
 
-    rhi_ptr<rhi_texture> empty_texture;
-    rhi_ptr<rhi_texture> brdf_lut;
+    std::unique_ptr<texture_2d> empty_texture;
+    std::unique_ptr<texture_2d> brdf_lut;
 
     rhi_ptr<rhi_sampler> point_repeat_sampler;
     rhi_ptr<rhi_sampler> point_clamp_sampler;
@@ -55,6 +57,13 @@ struct render_buildin_resources
     rhi_ptr<rhi_sampler> linear_clamp_sampler;
 };
 
+template <typename T>
+concept rhi_resource = std::is_same_v<T, rhi_buffer> || std::is_same_v<T, rhi_texture> ||
+                       std::is_same_v<T, rhi_texture_srv> || std::is_same_v<T, rhi_texture_uav> ||
+                       std::is_same_v<T, rhi_texture_rtv> || std::is_same_v<T, rhi_texture_dsv> ||
+                       std::is_same_v<T, rhi_buffer_srv> || std::is_same_v<T, rhi_buffer_uav>;
+
+class transient_allocator;
 class render_device
 {
 public:
@@ -222,22 +231,27 @@ public:
     rhi_ptr<rhi_compute_pipeline> create_pipeline(const rhi_compute_pipeline_desc& desc);
 
     rhi_ptr<rhi_parameter> create_parameter(const rhi_parameter_desc& desc);
-    rhi_ptr<rhi_framebuffer> create_framebuffer(const rhi_framebuffer_desc& desc);
 
-    rhi_ptr<rhi_buffer> create_buffer(const rhi_buffer_desc& desc);
     rhi_ptr<rhi_sampler> create_sampler(const rhi_sampler_desc& desc);
-
+    rhi_ptr<rhi_buffer> create_buffer(const rhi_buffer_desc& desc);
     rhi_ptr<rhi_texture> create_texture(const rhi_texture_desc& desc);
-    rhi_ptr<rhi_texture> create_texture(const rhi_texture_view_desc& desc);
 
     rhi_ptr<rhi_swapchain> create_swapchain(const rhi_swapchain_desc& desc);
 
     rhi_ptr<rhi_fence> create_fence();
 
-    rhi_deleter& get_deleter() noexcept
-    {
-        return m_rhi_deleter;
-    }
+    // Transient resources.
+    rhi_parameter* allocate_parameter(const rhi_parameter_desc& desc);
+
+    rhi_texture* allocate_texture(const rhi_texture_desc& desc);
+    rhi_buffer* allocate_buffer(const rhi_buffer_desc& desc);
+
+    rhi_render_pass* get_render_pass(const rhi_render_pass_desc& desc);
+
+    rhi_render_pipeline* get_pipeline(const rhi_render_pipeline_desc& desc);
+    rhi_compute_pipeline* get_pipeline(const rhi_compute_pipeline_desc& desc);
+
+    rhi_sampler* get_sampler(const rhi_sampler_desc& desc);
 
 private:
     void create_buildin_resources();
@@ -261,5 +275,9 @@ private:
     std::unique_ptr<geometry_manager> m_geometry_manager;
 
     render_buildin_resources m_buildin_resources;
+
+    std::unique_ptr<transient_allocator> m_transient_allocator;
+
+    friend class rhi_deleter;
 };
 } // namespace violet

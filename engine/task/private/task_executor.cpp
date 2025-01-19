@@ -144,7 +144,7 @@ void task_executor::on_task_completed(task_wrapper* task)
 
         if (successor->uncompleted_dependency_count.compare_exchange_strong(
                 expected,
-                static_cast<std::uint32_t>(successor->dependents.size())))
+                static_cast<std::uint32_t>(successor->dependencies.size())))
         {
             execute_task(successor);
         }

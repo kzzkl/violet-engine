@@ -16,14 +16,14 @@ class mmd_loader
 public:
     struct scene_data
     {
-        std::vector<rhi_ptr<rhi_texture>> textures;
+        std::vector<std::unique_ptr<texture_2d>> textures;
         std::vector<std::unique_ptr<geometry>> geometries;
         std::vector<std::unique_ptr<material>> materials;
 
         entity root;
     };
 
-    mmd_loader(const std::vector<rhi_texture*>& internal_toons);
+    mmd_loader(const std::vector<texture_2d*>& internal_toons);
     ~mmd_loader();
 
     std::optional<scene_data> load(std::string_view pmx, std::string_view vmd, world& world);
@@ -42,6 +42,6 @@ private:
     std::vector<entity> m_bones;
     std::vector<mat4f> m_bone_initial_transforms;
 
-    std::vector<rhi_texture*> m_internal_toons;
+    std::vector<texture_2d*> m_internal_toons;
 };
 } // namespace violet

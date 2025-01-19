@@ -1,8 +1,8 @@
-#include "vk_util.hpp"
+#include "vk_utils.hpp"
 
 namespace violet::vk
 {
-VkFormat vk_util::map_format(rhi_format format)
+VkFormat vk_utils::map_format(rhi_format format)
 {
     switch (format)
     {
@@ -101,7 +101,7 @@ VkFormat vk_util::map_format(rhi_format format)
     }
 }
 
-rhi_format vk_util::map_format(VkFormat format)
+rhi_format vk_utils::map_format(VkFormat format)
 {
     switch (format)
     {
@@ -198,7 +198,7 @@ rhi_format vk_util::map_format(VkFormat format)
     }
 }
 
-VkSampleCountFlagBits vk_util::map_sample_count(rhi_sample_count samples)
+VkSampleCountFlagBits vk_utils::map_sample_count(rhi_sample_count samples)
 {
     switch (samples)
     {
@@ -219,7 +219,7 @@ VkSampleCountFlagBits vk_util::map_sample_count(rhi_sample_count samples)
     }
 }
 
-VkImageLayout vk_util::map_layout(rhi_texture_layout layout)
+VkImageLayout vk_utils::map_layout(rhi_texture_layout layout)
 {
     switch (layout)
     {
@@ -244,7 +244,7 @@ VkImageLayout vk_util::map_layout(rhi_texture_layout layout)
     }
 }
 
-VkFilter vk_util::map_filter(rhi_filter filter)
+VkFilter vk_utils::map_filter(rhi_filter filter)
 {
     switch (filter)
     {
@@ -257,7 +257,7 @@ VkFilter vk_util::map_filter(rhi_filter filter)
     }
 }
 
-VkSamplerAddressMode vk_util::map_sampler_address_mode(rhi_sampler_address_mode address_mode)
+VkSamplerAddressMode vk_utils::map_sampler_address_mode(rhi_sampler_address_mode address_mode)
 {
     switch (address_mode)
     {
@@ -276,7 +276,7 @@ VkSamplerAddressMode vk_util::map_sampler_address_mode(rhi_sampler_address_mode 
     }
 }
 
-VkImageUsageFlags vk_util::map_image_usage_flags(rhi_texture_flags flags)
+VkImageUsageFlags vk_utils::map_image_usage_flags(rhi_texture_flags flags)
 {
     VkImageUsageFlags usages = 0;
 
@@ -290,7 +290,7 @@ VkImageUsageFlags vk_util::map_image_usage_flags(rhi_texture_flags flags)
     return usages;
 }
 
-VkBufferUsageFlags vk_util::map_buffer_usage_flags(rhi_buffer_flags flags)
+VkBufferUsageFlags vk_utils::map_buffer_usage_flags(rhi_buffer_flags flags)
 {
     VkBufferUsageFlags usages = 0;
 
@@ -307,7 +307,7 @@ VkBufferUsageFlags vk_util::map_buffer_usage_flags(rhi_buffer_flags flags)
     return usages;
 }
 
-VkPipelineStageFlags vk_util::map_pipeline_stage_flags(rhi_pipeline_stage_flags flags)
+VkPipelineStageFlags vk_utils::map_pipeline_stage_flags(rhi_pipeline_stage_flags flags)
 {
     VkPipelineStageFlags result = 0;
     result |= (flags & RHI_PIPELINE_STAGE_BEGIN) ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT : 0;
@@ -332,7 +332,7 @@ VkPipelineStageFlags vk_util::map_pipeline_stage_flags(rhi_pipeline_stage_flags 
     return result;
 }
 
-VkAccessFlags vk_util::map_access_flags(rhi_access_flags flags)
+VkAccessFlags vk_utils::map_access_flags(rhi_access_flags flags)
 {
     VkAccessFlags result = 0;
     result |= (flags & RHI_ACCESS_COLOR_READ) ? VK_ACCESS_COLOR_ATTACHMENT_READ_BIT : 0;
@@ -353,7 +353,7 @@ VkAccessFlags vk_util::map_access_flags(rhi_access_flags flags)
     return result;
 }
 
-VkBlendFactor vk_util::map_blend_factor(rhi_blend_factor factor)
+VkBlendFactor vk_utils::map_blend_factor(rhi_blend_factor factor)
 {
     switch (factor)
     {
@@ -378,7 +378,7 @@ VkBlendFactor vk_util::map_blend_factor(rhi_blend_factor factor)
     }
 }
 
-VkBlendOp vk_util::map_blend_op(rhi_blend_op op)
+VkBlendOp vk_utils::map_blend_op(rhi_blend_op op)
 {
     switch (op)
     {
@@ -395,7 +395,7 @@ VkBlendOp vk_util::map_blend_op(rhi_blend_op op)
     }
 }
 
-VkCompareOp vk_util::map_compare_op(rhi_compare_op op)
+VkCompareOp vk_utils::map_compare_op(rhi_compare_op op)
 {
     switch (op)
     {
@@ -420,7 +420,7 @@ VkCompareOp vk_util::map_compare_op(rhi_compare_op op)
     }
 }
 
-VkStencilOp vk_util::map_stencil_op(rhi_stencil_op op)
+VkStencilOp vk_utils::map_stencil_op(rhi_stencil_op op)
 {
     switch (op)
     {

@@ -1,103 +1,167 @@
 #pragma once
 
 #include "graphics/render_graph/rdg_command.hpp"
-#include "graphics/render_graph/rdg_resource.hpp"
+#include "graphics/render_graph/rdg_reference.hpp"
 #include <functional>
-#include <memory>
-#include <vector>
 
 namespace violet
 {
 enum rdg_pass_type
 {
-    RDG_PASS_RENDER,
+    RDG_PASS_RASTER,
     RDG_PASS_COMPUTE,
-    RDG_PASS_OTHER
+    RDG_PASS_TRANSFER,
 };
 
 class rdg_pass : public rdg_node
 {
 public:
-    rdg_pass();
-    virtual ~rdg_pass();
+    rdg_pass(rdg_allocator* allocator) noexcept;
 
-    rdg_reference* add_texture(
+    rdg_texture_ref add_texture(
         rdg_texture* texture,
         rhi_pipeline_stage_flags stages,
         rhi_access_flags access,
-        rhi_texture_layout layout);
-    rdg_reference* add_buffer(
+        rhi_texture_layout layout,
+        std::uint32_t level = 0,
+        std::uint32_t level_count = 0,
+        std::uint32_t layer = 0,
+        std::uint32_t layer_count = 0);
+    rdg_texture_srv add_texture_srv(
+        rdg_texture* texture,
+        rhi_pipeline_stage_flags stages,
+        rhi_texture_dimension dimension = RHI_TEXTURE_DIMENSION_2D,
+        std::uint32_t level = 0,
+        std::uint32_t level_count = 0,
+        std::uint32_t layer = 0,
+        std::uint32_t layer_count = 0);
+    rdg_texture_uav add_texture_uav(
+        rdg_texture* texture,
+        rhi_pipeline_stage_flags stages,
+        rhi_texture_dimension dimension = RHI_TEXTURE_DIMENSION_2D,
+        std::uint32_t level = 0,
+        std::uint32_t level_count = 0,
+        std::uint32_t layer = 0,
+        std::uint32_t layer_count = 0);
+
+    rdg_buffer_ref add_buffer(
         rdg_buffer* buffer,
         rhi_pipeline_stage_flags stages,
-        rhi_access_flags access);
+        rhi_access_flags access,
+        std::uint64_t offset = 0,
+        std::uint64_t size = 0);
+    rdg_buffer_srv add_buffer_srv(
+        rdg_buffer* buffer,
+        rhi_pipeline_stage_flags stages,
+        std::uint64_t offset = 0,
+        std::uint64_t size = 0,
+        rhi_format texel_format = RHI_FORMAT_UNDEFINED);
+    rdg_buffer_uav add_buffer_uav(
+        rdg_buffer* buffer,
+        rhi_pipeline_stage_flags stages,
+        std::uint64_t offset = 0,
+        std::uint64_t size = 0,
+        rhi_format texel_format = RHI_FORMAT_UNDEFINED);
 
-    std::vector<rdg_reference*> get_references(rhi_access_flags access) const;
-    std::vector<rdg_reference*> get_references(rdg_reference_type type) const;
-    const std::vector<std::unique_ptr<rdg_reference>>& get_references() const
+    // Only for render pass.
+    rdg_texture_rtv add_render_target(
+        rdg_texture* texture,
+        rhi_attachment_load_op load_op = RHI_ATTACHMENT_LOAD_OP_LOAD,
+        rhi_attachment_store_op store_op = RHI_ATTACHMENT_STORE_OP_STORE,
+        std::uint32_t level = 0,
+        std::uint32_t layer = 0);
+    rdg_texture_dsv set_depth_stencil(
+        rdg_texture* texture,
+        rhi_attachment_load_op load_op = RHI_ATTACHMENT_LOAD_OP_LOAD,
+        rhi_attachment_store_op store_op = RHI_ATTACHMENT_STORE_OP_STORE,
+        std::uint32_t level = 0,
+        std::uint32_t layer = 0);
+
+    rhi_parameter* add_parameter(const rhi_parameter_desc& desc);
+
+    template <typename Functor>
+    void each_reference(Functor&& functor)
     {
-        return m_references;
+        for (auto& reference : m_references)
+        {
+            functor(reference);
+        }
+    }
+
+    void set_barriers(rdg_command& command);
+
+    void execute(rdg_command& command);
+
+    void set_pass_type(rdg_pass_type type) noexcept
+    {
+        m_type = type;
+    }
+
+    rdg_pass_type get_pass_type() const noexcept
+    {
+        return m_type;
+    }
+
+    void set_batch_index(std::size_t index) noexcept
+    {
+        m_batch_index = index;
+    }
+
+    std::size_t get_batch_index() const noexcept
+    {
+        return m_batch_index;
+    }
+
+    void reset() noexcept override
+    {
+        m_references.clear();
+        m_batch_index = 0;
+        rdg_node::reset();
+    }
+
+private:
+    virtual void on_execute(rdg_command& command) {}
+
+    rdg_pass_type m_type;
+
+    std::vector<rdg_reference*> m_references;
+
+    std::size_t m_batch_index;
+
+    rdg_allocator* m_allocator;
+};
+
+template <typename T>
+class rdg_lambda_pass : public rdg_pass
+{
+public:
+    using data_type = T;
+
+    rdg_lambda_pass(rdg_allocator* allocator) noexcept
+        : rdg_pass(allocator)
+    {
     }
 
     template <typename Functor>
-    void set_execute(Functor functor)
+    void setup(Functor&& functor) noexcept
     {
-        m_executor = functor;
+        functor(m_data, *this);
     }
 
-    void execute(rdg_command& command)
+    template <typename Functor>
+    void set_execute(Functor&& functor) noexcept
     {
-        m_executor(command);
-    }
-
-    virtual rdg_pass_type get_type() const noexcept
-    {
-        return RDG_PASS_OTHER;
-    }
-
-protected:
-    rdg_reference* add_reference(rdg_resource* resource);
-
-private:
-    std::vector<std::unique_ptr<rdg_reference>> m_references;
-    std::function<void(rdg_command&)> m_executor;
-};
-
-class rdg_render_pass : public rdg_pass
-{
-public:
-    rdg_render_pass() = default;
-
-    void add_render_target(
-        rdg_texture* texture,
-        rhi_attachment_load_op load_op = RHI_ATTACHMENT_LOAD_OP_LOAD,
-        rhi_attachment_store_op store_op = RHI_ATTACHMENT_STORE_OP_STORE);
-    void set_depth_stencil(
-        rdg_texture* texture,
-        rhi_attachment_load_op load_op = RHI_ATTACHMENT_LOAD_OP_LOAD,
-        rhi_attachment_store_op store_op = RHI_ATTACHMENT_STORE_OP_STORE);
-
-    virtual rdg_pass_type get_type() const noexcept final
-    {
-        return RDG_PASS_RENDER;
-    }
-
-    const std::vector<rdg_reference*>& get_attachments() const noexcept
-    {
-        return m_attachments;
+        m_execute = std::forward<Functor>(functor);
     }
 
 private:
-    std::vector<rdg_reference*> m_attachments;
-};
-
-class rdg_compute_pass : public rdg_pass
-{
-public:
-    rdg_compute_pass();
-
-    virtual rdg_pass_type get_type() const noexcept final
+    void on_execute(rdg_command& command) override
     {
-        return RDG_PASS_COMPUTE;
+        m_execute(m_data, command);
     }
+
+    data_type m_data;
+
+    std::function<void(const data_type&, rdg_command&)> m_execute;
 };
 } // namespace violet

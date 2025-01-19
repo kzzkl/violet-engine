@@ -1,11 +1,10 @@
 #pragma once
 
-#include "common/hash.hpp"
 #include "vk_common.hpp"
 
 namespace violet::vk
 {
-class vk_util
+class vk_utils
 {
 public:
     static VkFormat map_format(rhi_format format);

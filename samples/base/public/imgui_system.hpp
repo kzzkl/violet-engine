@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/engine.hpp"
-#include "graphics/render_device.hpp"
+#include "graphics/texture.hpp"
 
 namespace violet
 {
@@ -18,6 +18,6 @@ private:
     void begin_frame();
     void end_frame();
 
-    rhi_ptr<rhi_texture> m_font;
+    std::unique_ptr<texture_2d> m_font;
 };
 } // namespace violet

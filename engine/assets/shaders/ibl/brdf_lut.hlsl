@@ -1,15 +1,19 @@
 #include "brdf.hlsli"
 
-struct vs_output
+struct constant_data
 {
-    float4 position : SV_POSITION;
-    float2 texcoord : TEXCOORD;
+    uint brdf_lut;
+    uint width;
+    uint height;
+    uint padding0;
 };
+ConstantBuffer<constant_data> constant : register(b0, space1);
 
-float2 fs_main(vs_output input) : SV_Target
+[numthreads(8, 8, 1)]
+void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
-    float NdotV = input.texcoord.x;
-    float roughness = input.texcoord.y;
+    float NdotV = (float(dtid.x) + 0.5) / float(constant.width);
+    float roughness = (float(dtid.y) + 0.5) / float(constant.height);
 
     float3 V = float3(sqrt(1.0 - NdotV * NdotV), 0.0, NdotV);
 
@@ -42,5 +46,6 @@ float2 fs_main(vs_output input) : SV_Target
     a /= float(sample_count);
     b /= float(sample_count);
 
-    return float2(a, b);
+    RWTexture2D<float2> brdf_lut = ResourceDescriptorHeap[constant.brdf_lut];
+    brdf_lut[dtid.xy] = float2(a, b);
 }

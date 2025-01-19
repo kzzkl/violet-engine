@@ -29,37 +29,32 @@ struct unlit_fs : public shader_fs
     };
 };
 
-void unlit_pass::add(render_graph& graph, const parameter& parameter)
+void unlit_pass::add(render_graph& graph, const render_context& context, const parameter& parameter)
 {
     struct pass_data
     {
-        rhi_parameter* scene_parameter;
+        rdg_texture_srv gbuffer_albedo;
         rhi_parameter* gbuffer_parameter;
-
-        rdg_texture* gbuffer_albedo;
     };
 
-    pass_data data = {
-        .scene_parameter = parameter.scene.get_scene_parameter(),
-        .gbuffer_parameter = graph.allocate_parameter(unlit_fs::parameter),
-        .gbuffer_albedo = parameter.gbuffer_albedo,
-    };
+    graph.add_pass<pass_data>(
+        "Unlit Pass",
+        RDG_PASS_RASTER,
+        [&](pass_data& data, rdg_pass& pass)
+        {
+            pass.add_render_target(
+                parameter.render_target,
+                parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
+            pass.set_depth_stencil(parameter.depth_buffer, RHI_ATTACHMENT_LOAD_OP_LOAD);
 
-    auto& pass = graph.add_pass<rdg_render_pass>("Unlit Pass");
-    pass.add_texture(
-        parameter.gbuffer_albedo,
-        RHI_PIPELINE_STAGE_FRAGMENT,
-        RHI_ACCESS_SHADER_READ,
-        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
-    pass.add_render_target(
-        parameter.render_target,
-        parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD);
-    pass.set_depth_stencil(parameter.depth_buffer, RHI_ATTACHMENT_LOAD_OP_LOAD);
-    pass.set_execute(
-        [data](rdg_command& command)
+            data.gbuffer_parameter = pass.add_parameter(unlit_fs::parameter);
+            data.gbuffer_albedo =
+                pass.add_texture_srv(parameter.gbuffer_albedo, RHI_PIPELINE_STAGE_FRAGMENT);
+        },
+        [&](const pass_data& data, rdg_command& command)
         {
             unlit_fs::gbuffer_data gbuffer_data = {
-                .albedo = data.gbuffer_albedo->get_handle(),
+                .albedo = data.gbuffer_albedo.get_bindless(),
             };
             data.gbuffer_parameter->set_constant(0, &gbuffer_data, sizeof(unlit_fs::gbuffer_data));
 
@@ -78,7 +73,7 @@ void unlit_pass::add(render_graph& graph, const parameter& parameter)
 
             command.set_pipeline(pipeline);
             command.set_parameter(0, device.get_bindless_parameter());
-            command.set_parameter(1, data.scene_parameter);
+            command.set_parameter(1, context.get_scene_parameter());
             command.set_parameter(2, data.gbuffer_parameter);
             command.draw_fullscreen();
         });

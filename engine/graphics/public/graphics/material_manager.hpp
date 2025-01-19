@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/allocator.hpp"
+#include "graphics/buffer.hpp"
 #include "graphics/material.hpp"
 #include <mutex>
 
@@ -21,7 +22,7 @@ public:
 
     void mark_dirty(material* material);
 
-    rhi_buffer* get_material_buffer() const noexcept
+    raw_buffer* get_material_buffer() const noexcept
     {
         return m_material_buffer.get();
     }
@@ -38,7 +39,7 @@ private:
 
     std::vector<render_id> m_dirty_materials;
 
-    rhi_ptr<rhi_buffer> m_material_buffer;
+    std::unique_ptr<raw_buffer> m_material_buffer;
     buffer_allocator m_material_buffer_allocator;
 
     std::unique_ptr<gpu_buffer_uploader> m_gpu_buffer_uploader;

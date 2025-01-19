@@ -1,8 +1,9 @@
 #pragma once
 
+#include "graphics/material.hpp"
+#include "graphics/render_context.hpp"
 #include "graphics/render_graph/rdg_allocator.hpp"
 #include "graphics/render_graph/rdg_pipeline.hpp"
-#include "graphics/render_scene.hpp"
 
 namespace violet
 {
@@ -34,9 +35,9 @@ public:
         m_command->set_vertex_buffers(vertex_buffers.data(), vertex_buffers.size());
     }
 
-    void set_index_buffer(rhi_buffer* index_buffer)
+    void set_index_buffer(rhi_buffer* index_buffer, std::size_t index_size)
     {
-        m_command->set_index_buffer(index_buffer);
+        m_command->set_index_buffer(index_buffer, index_size);
     }
 
     void draw(
@@ -64,8 +65,7 @@ public:
     }
 
     void draw_instances(
-        const render_scene& scene,
-        const render_camera& camera,
+        const render_context& context,
         rhi_buffer* command_buffer,
         rhi_buffer* count_buffer,
         material_type type);
@@ -132,6 +132,11 @@ public:
     void fill_buffer(rhi_buffer* buffer, const rhi_buffer_region& region, std::uint32_t value)
     {
         m_command->fill_buffer(buffer, region, value);
+    }
+
+    rhi_command* get_rhi() const noexcept
+    {
+        return m_command;
     }
 
 private:

@@ -15,14 +15,13 @@ add_library(${PROJECT_NAME} STATIC
     ./private/passes/skybox_pass.cpp
     ./private/passes/taa_pass.cpp
     ./private/passes/tone_mapping_pass.cpp
-    ./private/render_graph/rdg_allocator.cpp
     ./private/render_graph/rdg_command.cpp
     ./private/render_graph/rdg_pass.cpp
-    ./private/render_graph/rdg_resource.cpp
     ./private/render_graph/render_graph.cpp
     ./private/renderers/deferred_renderer.cpp
     ./private/tools/ibl_tool.cpp
     ./private/tools/texture_loader.cpp
+    ./private/buffer.cpp
     ./private/camera_system.cpp
     ./private/environment_system.cpp
     ./private/geometry_manager.cpp
@@ -34,12 +33,16 @@ add_library(${PROJECT_NAME} STATIC
     ./private/material.cpp
     ./private/mesh_system.cpp
     ./private/morph_target.cpp
+    ./private/render_context.cpp
     ./private/render_device.cpp
     ./private/render_scene_manager.cpp
     ./private/render_scene.cpp
     ./private/rhi_plugin.cpp
     ./private/shader_compiler.cpp
-    ./private/skinning_system.cpp)
+    ./private/skinning_system.cpp
+    ./private/skybox.cpp
+    ./private/texture.cpp
+    ./private/transient_allocator.cpp)
 add_library(violet::graphics ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}

@@ -107,7 +107,19 @@ void vk_parameter::set_constant(
     mark_dirty(index);
 }
 
-void vk_parameter::set_uniform(std::size_t index, rhi_buffer* uniform, std::size_t offset)
+void vk_parameter::set_srv(std::size_t index, rhi_texture_srv* srv, std::size_t offset)
+{
+    const auto& binding = m_layout->get_bindings()[index];
+    assert(
+        binding.type == RHI_PARAMETER_BINDING_TEXTURE ||
+        binding.type == RHI_PARAMETER_BINDING_MUTABLE);
+
+    static_cast<vk_texture_srv*>(srv)->write(get_descriptor_set(), index, offset);
+
+    mark_dirty(index);
+}
+
+void vk_parameter::set_srv(std::size_t index, rhi_buffer_srv* srv, std::size_t offset)
 {
     const auto& binding = m_layout->get_bindings()[index];
     assert(
@@ -115,50 +127,24 @@ void vk_parameter::set_uniform(std::size_t index, rhi_buffer* uniform, std::size
         binding.type == RHI_PARAMETER_BINDING_UNIFORM_TEXEL ||
         binding.type == RHI_PARAMETER_BINDING_MUTABLE);
 
-    vk_buffer* buffer = static_cast<vk_buffer*>(uniform);
-
-    VkDescriptorBufferInfo info = {
-        .buffer = buffer->get_buffer(),
-        .offset = 0,
-        .range = buffer->get_buffer_size(),
-    };
-
-    if (buffer->get_flags() & RHI_BUFFER_UNIFORM_TEXEL)
-    {
-        VkBufferView buffer_view = static_cast<vk_texel_buffer*>(buffer)->get_buffer_view();
-
-        VkWriteDescriptorSet write = {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = get_descriptor_set(),
-            .dstBinding = static_cast<std::uint32_t>(index),
-            .dstArrayElement = static_cast<std::uint32_t>(offset),
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-            .pBufferInfo = &info,
-            .pTexelBufferView = &buffer_view,
-        };
-
-        vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
-    }
-    else
-    {
-        VkWriteDescriptorSet write = {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = get_descriptor_set(),
-            .dstBinding = static_cast<std::uint32_t>(index),
-            .dstArrayElement = static_cast<std::uint32_t>(offset),
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .pBufferInfo = &info,
-        };
-
-        vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
-    }
+    static_cast<vk_buffer_srv*>(srv)->write(get_descriptor_set(), index, offset);
 
     mark_dirty(index);
 }
 
-void vk_parameter::set_storage(std::size_t index, rhi_buffer* storage, std::size_t offset)
+void vk_parameter::set_uav(std::size_t index, rhi_texture_uav* uav, std::size_t offset)
+{
+    const auto& binding = m_layout->get_bindings()[index];
+    assert(
+        binding.type == RHI_PARAMETER_BINDING_STORAGE_TEXTURE ||
+        binding.type == RHI_PARAMETER_BINDING_MUTABLE);
+
+    static_cast<vk_texture_uav*>(uav)->write(get_descriptor_set(), index, offset);
+
+    mark_dirty(index);
+}
+
+void vk_parameter::set_uav(std::size_t index, rhi_buffer_uav* uav, std::size_t offset)
 {
     const auto& binding = m_layout->get_bindings()[index];
     assert(
@@ -166,99 +152,7 @@ void vk_parameter::set_storage(std::size_t index, rhi_buffer* storage, std::size
         binding.type == RHI_PARAMETER_BINDING_STORAGE_TEXEL ||
         binding.type == RHI_PARAMETER_BINDING_MUTABLE);
 
-    auto* buffer = static_cast<vk_buffer*>(storage);
-
-    VkDescriptorBufferInfo info = {
-        .buffer = buffer->get_buffer(),
-        .offset = 0,
-        .range = buffer->get_buffer_size(),
-    };
-
-    if (buffer->get_flags() & RHI_BUFFER_STORAGE_TEXEL)
-    {
-        VkBufferView buffer_view = static_cast<vk_texel_buffer*>(buffer)->get_buffer_view();
-
-        VkWriteDescriptorSet write = {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = get_descriptor_set(),
-            .dstBinding = static_cast<std::uint32_t>(index),
-            .dstArrayElement = static_cast<std::uint32_t>(offset),
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
-            .pBufferInfo = &info,
-            .pTexelBufferView = &buffer_view,
-        };
-
-        vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
-    }
-    else
-    {
-        VkWriteDescriptorSet write = {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = get_descriptor_set(),
-            .dstBinding = static_cast<std::uint32_t>(index),
-            .dstArrayElement = static_cast<std::uint32_t>(offset),
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            .pBufferInfo = &info,
-        };
-
-        vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
-    }
-
-    mark_dirty(index);
-}
-
-void vk_parameter::set_storage(std::size_t index, rhi_texture* texture, std::size_t offset)
-{
-    const auto& binding = m_layout->get_bindings()[index];
-    assert(
-        binding.type == RHI_PARAMETER_BINDING_STORAGE_TEXTURE ||
-        binding.type == RHI_PARAMETER_BINDING_MUTABLE);
-
-    VkDescriptorImageInfo info = {
-        .imageView = static_cast<vk_texture*>(texture)->get_image_view(),
-        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-    };
-
-    VkWriteDescriptorSet write = {
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet = get_descriptor_set(),
-        .dstBinding = static_cast<std::uint32_t>(index),
-        .dstArrayElement = static_cast<std::uint32_t>(offset),
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        .pImageInfo = &info,
-    };
-
-    vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
-
-    mark_dirty(index);
-}
-
-void vk_parameter::set_texture(std::size_t index, rhi_texture* texture, std::size_t offset)
-{
-    const auto& binding = m_layout->get_bindings()[index];
-    assert(
-        binding.type == RHI_PARAMETER_BINDING_TEXTURE ||
-        binding.type == RHI_PARAMETER_BINDING_MUTABLE);
-
-    VkDescriptorImageInfo info = {
-        .imageView = static_cast<vk_texture*>(texture)->get_image_view(),
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-    };
-
-    VkWriteDescriptorSet write = {
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet = get_descriptor_set(),
-        .dstBinding = static_cast<std::uint32_t>(index),
-        .dstArrayElement = static_cast<std::uint32_t>(offset),
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-        .pImageInfo = &info,
-    };
-
-    vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
+    static_cast<vk_buffer_uav*>(uav)->write(get_descriptor_set(), index, offset);
 
     mark_dirty(index);
 }
@@ -268,21 +162,7 @@ void vk_parameter::set_sampler(std::size_t index, rhi_sampler* sampler, std::siz
     const auto& binding = m_layout->get_bindings()[index];
     assert(binding.type == RHI_PARAMETER_BINDING_SAMPLER);
 
-    VkDescriptorImageInfo info = {
-        .sampler = static_cast<vk_sampler*>(sampler)->get_sampler(),
-    };
-
-    VkWriteDescriptorSet write = {
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet = get_descriptor_set(),
-        .dstBinding = static_cast<std::uint32_t>(index),
-        .dstArrayElement = static_cast<std::uint32_t>(offset),
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-        .pImageInfo = &info,
-    };
-
-    vkUpdateDescriptorSets(m_context->get_device(), 1, &write, 0, nullptr);
+    static_cast<vk_sampler*>(sampler)->write(get_descriptor_set(), index, offset);
 
     mark_dirty(index);
 }

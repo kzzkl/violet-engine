@@ -34,7 +34,7 @@ private:
     std::string m_pmx_path;
     std::string m_vmd_path;
 
-    std::vector<rhi_ptr<rhi_texture>> m_internal_toons;
+    std::vector<std::unique_ptr<texture_2d>> m_internal_toons;
 
     application* m_app{nullptr};
 };

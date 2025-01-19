@@ -1,5 +1,4 @@
 #include "imgui_system.hpp"
-#include "graphics/tools/texture_loader.hpp"
 #include "imgui.h"
 #include "window/window_system.hpp"
 
@@ -57,19 +56,19 @@ void imgui_system::initialize_font()
     int font_height;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &font_width, &font_height);
 
-    texture_loader::mipmap_data font_mipmap_data;
+    texture_data::mipmap font_mipmap_data;
     font_mipmap_data.extent.width = font_width;
     font_mipmap_data.extent.height = font_height;
     font_mipmap_data.pixels.resize(4ull * font_width * font_height);
     std::memcpy(font_mipmap_data.pixels.data(), pixels, font_mipmap_data.pixels.size());
 
-    texture_loader::texture_data font_texture_data;
+    texture_data font_texture_data;
     font_texture_data.format = RHI_FORMAT_R8G8B8A8_UNORM;
     font_texture_data.mipmaps.push_back(font_mipmap_data);
 
-    m_font = texture_loader::load(font_texture_data);
+    m_font = std::make_unique<texture_2d>(font_texture_data);
 
-    io.Fonts->SetTexID(m_font->get_handle());
+    io.Fonts->SetTexID(m_font->get_srv()->get_bindless());
 }
 
 void imgui_system::begin_frame()

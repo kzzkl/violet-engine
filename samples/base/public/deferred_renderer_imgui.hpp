@@ -8,10 +8,9 @@ namespace violet
 class deferred_renderer_imgui : public deferred_renderer
 {
 public:
-    void render(render_graph& graph, const render_scene& scene, const render_camera& camera)
-        override
+    void render(render_graph& graph, const render_context& context) override
     {
-        deferred_renderer::render(graph, scene, camera);
+        deferred_renderer::render(graph, context);
 
         m_imgui_pass.add(
             graph,

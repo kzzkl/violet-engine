@@ -53,7 +53,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     float3 color = 0.0;
     
-    float sample_delta = 0.025;
+    float sample_delta = 0.01;
     uint sample_count = 0;
     for (float phi = 0.0; phi < TWO_PI; phi += sample_delta)
     {

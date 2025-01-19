@@ -11,7 +11,6 @@
 #include "components/skeleton_component.hpp"
 #include "components/skinned_component.hpp"
 #include "components/transform_component.hpp"
-#include "graphics/tools/texture_loader.hpp"
 #include "math/matrix.hpp"
 #include "math/vector.hpp"
 #include "mmd_material.hpp"
@@ -26,7 +25,7 @@ struct mmd_skinning_cs : public skinning_cs
     static constexpr std::string_view path = "assets/shaders/mmd_skinning.hlsl";
 };
 
-mmd_loader::mmd_loader(const std::vector<rhi_texture*>& internal_toons)
+mmd_loader::mmd_loader(const std::vector<texture_2d*>& internal_toons)
     : m_internal_toons(internal_toons)
 {
 }
@@ -125,9 +124,9 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
 
     for (const auto& texture : m_pmx.textures)
     {
-        scene.textures.push_back(texture_loader::load(
+        scene.textures.push_back(std::make_unique<texture_2d>(
             texture,
-            TEXTURE_LOAD_OPTION_GENERATE_MIPMAPS | TEXTURE_LOAD_OPTION_SRGB));
+            TEXTURE_OPTION_GENERATE_MIPMAPS | TEXTURE_OPTION_SRGB));
     }
 
     std::vector<std::pair<material*, material*>> materials;

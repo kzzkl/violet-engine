@@ -1,6 +1,5 @@
 #include "gltf_loader.hpp"
 #include "graphics/materials/physical_material.hpp"
-#include "graphics/tools/texture_loader.hpp"
 #include "mikktspace.h"
 #include <filesystem>
 #include <iostream>
@@ -171,7 +170,7 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
     std::vector<std::vector<std::uint8_t>> buffers;
 
     // Load textures
-    auto get_texture = [&](int index, bool srgb = false) -> rhi_texture*
+    auto get_texture = [&](int index, bool srgb = false) -> texture_2d*
     {
         if (scene_data.textures.size() <= index)
         {
@@ -186,9 +185,9 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
         if (model.images[index].mimeType.empty())
         {
             std::filesystem::path texture_path = dir_path / model.images[index].uri;
-            scene_data.textures[index] = texture_loader::load(
+            scene_data.textures[index] = std::make_unique<texture_2d>(
                 texture_path.string(),
-                srgb ? TEXTURE_LOAD_OPTION_SRGB : TEXTURE_LOAD_OPTION_NONE);
+                srgb ? TEXTURE_OPTION_SRGB : TEXTURE_OPTION_NONE);
         }
         else
         {

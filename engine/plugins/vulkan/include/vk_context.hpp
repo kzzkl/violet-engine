@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vk_common.hpp"
+#include "vk_deletion_queue.hpp"
 #include <memory>
 #include <mutex>
 #include <span>
@@ -12,6 +13,9 @@ class vk_present_queue;
 class vk_layout_manager;
 class vk_parameter_manager;
 class vk_parameter;
+class vk_bindless_manager;
+class vk_framebuffer_manager;
+class vk_deletion_queue;
 
 class vk_context
 {
@@ -47,6 +51,21 @@ public:
     vk_parameter_manager* get_parameter_manager() const noexcept
     {
         return m_parameter_manager.get();
+    }
+
+    vk_bindless_manager* get_bindless_manager() const noexcept
+    {
+        return m_bindless_manager.get();
+    }
+
+    vk_framebuffer_manager* get_framebuffer_manager() const noexcept
+    {
+        return m_framebuffer_manager.get();
+    }
+
+    vk_deletion_queue* get_deletion_queue() noexcept
+    {
+        return m_deletion_queue.get();
     }
 
     VkInstance get_instance() const noexcept
@@ -114,6 +133,10 @@ private:
 
     std::unique_ptr<vk_layout_manager> m_layout_manager;
     std::unique_ptr<vk_parameter_manager> m_parameter_manager;
+    std::unique_ptr<vk_bindless_manager> m_bindless_manager;
+    std::unique_ptr<vk_framebuffer_manager> m_framebuffer_manager;
+
+    std::unique_ptr<vk_deletion_queue> m_deletion_queue;
 
     VkDescriptorPool m_descriptor_pool{VK_NULL_HANDLE};
 

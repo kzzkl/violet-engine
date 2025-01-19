@@ -1,12 +1,286 @@
 #include "graphics/render_graph/render_graph.hpp"
+#include <algorithm>
 #include <cassert>
 
 namespace violet
 {
-render_graph::render_graph(rdg_allocator* allocator) noexcept
-    : m_allocator(allocator)
+namespace
 {
-    m_groups.emplace_back();
+struct render_pass
+{
+    rdg_pass* pass;
+    std::vector<rdg_reference*> attachments;
+
+    bool is_mergeable(const render_pass& other) const noexcept
+    {
+        if (attachments.size() != other.attachments.size())
+        {
+            return false;
+        }
+
+        for (std::size_t i = 0; i < attachments.size(); ++i)
+        {
+            if (attachments[i]->resource != other.attachments[i]->resource ||
+                !is_slice_equal(attachments[i], other.attachments[i]))
+            {
+                return false;
+            }
+
+            if ((other.attachments[i]->type == RDG_REFERENCE_TEXTURE_RTV &&
+                 other.attachments[i]->texture.rtv.load_op == RHI_ATTACHMENT_LOAD_OP_CLEAR) ||
+                (other.attachments[i]->type == RDG_REFERENCE_TEXTURE_DSV &&
+                 other.attachments[i]->texture.dsv.load_op == RHI_ATTACHMENT_LOAD_OP_CLEAR))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    static bool is_slice_equal(const rdg_reference* a, const rdg_reference* b) noexcept
+    {
+        assert(
+            a->type == RDG_REFERENCE_TEXTURE || a->type == RDG_REFERENCE_TEXTURE_SRV ||
+            a->type == RDG_REFERENCE_TEXTURE_UAV || a->type == RDG_REFERENCE_TEXTURE_RTV ||
+            a->type == RDG_REFERENCE_TEXTURE_DSV);
+        assert(
+            b->type == RDG_REFERENCE_TEXTURE || b->type == RDG_REFERENCE_TEXTURE_SRV ||
+            b->type == RDG_REFERENCE_TEXTURE_UAV || b->type == RDG_REFERENCE_TEXTURE_RTV ||
+            b->type == RDG_REFERENCE_TEXTURE_DSV);
+
+        return a->texture.level == b->texture.level &&
+               a->texture.level_count == b->texture.level_count &&
+               a->texture.layer == b->texture.layer &&
+               a->texture.layer_count == b->texture.layer_count;
+    }
+};
+
+struct texture_slice
+{
+    vec2u a;
+    vec2u b;
+
+    const rdg_reference* reference;
+
+    std::uint32_t get_level() const noexcept
+    {
+        return a.y;
+    }
+
+    std::uint32_t get_level_count() const noexcept
+    {
+        return b.y - a.y;
+    }
+
+    std::uint32_t get_layer() const noexcept
+    {
+        return a.x;
+    }
+
+    std::uint32_t get_layer_count() const noexcept
+    {
+        return b.x - a.x;
+    }
+
+    std::uint32_t get_area() const
+    {
+        return (b.x - a.x) * (b.y - a.y);
+    }
+
+    std::uint32_t get_overlap_area(const texture_slice& other) const
+    {
+        vec2u p0 = {std::max(a.x, other.a.x), std::max(a.y, other.a.y)};
+        vec2u p1 = {std::min(b.x, other.b.x), std::min(b.y, other.b.y)};
+
+        return (p1.x - p0.x) * (p1.y - p0.y);
+    }
+
+    bool is_equal(const texture_slice& other) const noexcept
+    {
+        return a == other.a && b == other.b;
+    }
+
+    bool is_overlap(const texture_slice& other) const noexcept
+    {
+        if (b.x <= other.a.x || other.b.x <= a.x)
+        {
+            return false;
+        }
+
+        if (b.y <= other.a.y || other.b.y <= a.y)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    texture_slice subtract(const texture_slice& other, std::vector<texture_slice>& remaining_slices)
+        const
+    {
+        if (other.a.x > a.x)
+        {
+            texture_slice left_slice = {
+                .a = a,
+                .b = {other.a.x, b.y},
+                .reference = reference,
+            };
+            remaining_slices.push_back(left_slice);
+        }
+
+        if (other.b.x < b.x)
+        {
+            texture_slice right_slice = {
+                .a = {other.b.x, a.y},
+                .b = b,
+                .reference = reference,
+            };
+            remaining_slices.push_back(right_slice);
+        }
+
+        if (other.a.y > a.y)
+        {
+            texture_slice top_slice = {
+                .a = {std::max(other.a.x, a.x), a.y},
+                .b = {std::min(other.b.x, b.x), other.a.y},
+                .reference = reference,
+            };
+            remaining_slices.push_back(top_slice);
+        }
+
+        if (other.b.y < b.y)
+        {
+            texture_slice bottom_slice = {
+                .a = {std::max(other.a.x, a.x), other.b.y},
+                .b = {std::min(other.b.x, b.x), b.y},
+                .reference = reference,
+            };
+            remaining_slices.push_back(bottom_slice);
+        }
+
+        return {
+            .a = {std::max(a.x, other.a.x), std::max(a.y, other.a.y)},
+            .b = {std::min(b.x, other.b.x), std::min(b.y, other.b.y)},
+            .reference = reference,
+        };
+    }
+};
+
+bool is_first_reference(const rdg_reference* reference) noexcept
+{
+    return reference->resource->get_references().front() == reference;
+}
+
+bool is_last_reference(const rdg_reference* reference) noexcept
+{
+    return reference->resource->get_references().back() == reference;
+}
+
+rdg_reference* get_prev_reference(const rdg_reference* reference)
+{
+    assert(!is_first_reference(reference));
+    return reference->resource->get_references()[reference->index - 1];
+}
+
+rdg_reference* get_next_reference(const rdg_reference* reference)
+{
+    assert(!is_last_reference(reference));
+    return reference->resource->get_references()[reference->index + 1];
+}
+
+void add_attachment(
+    rhi_render_pass_desc& render_pass_desc,
+    const rdg_reference* first_reference,
+    const rdg_reference* last_reference)
+{
+    assert(first_reference->type == last_reference->type);
+    assert(
+        first_reference->type == RDG_REFERENCE_TEXTURE_RTV ||
+        first_reference->type == RDG_REFERENCE_TEXTURE_DSV);
+
+    const auto* texture = static_cast<const rdg_texture*>(first_reference->resource);
+
+    rhi_texture_layout initial_layout = RHI_TEXTURE_LAYOUT_UNDEFINED;
+    rhi_texture_layout final_layout = RHI_TEXTURE_LAYOUT_UNDEFINED;
+
+    auto& begin_dependency = render_pass_desc.begin_dependency;
+    auto& end_dependency = render_pass_desc.end_dependency;
+
+    if (is_first_reference(first_reference))
+    {
+        initial_layout = texture->get_initial_layout();
+        begin_dependency.src_stages |= RHI_PIPELINE_STAGE_END;
+    }
+    else
+    {
+        const auto* prev_reference = get_prev_reference(first_reference);
+        initial_layout = prev_reference->texture.layout;
+
+        begin_dependency.src_access |= prev_reference->access;
+        begin_dependency.src_stages |= prev_reference->stages;
+    }
+    begin_dependency.dst_access |= first_reference->access;
+    begin_dependency.dst_stages |= first_reference->stages;
+
+    if (is_last_reference(last_reference))
+    {
+        final_layout = texture->get_final_layout() == RHI_TEXTURE_LAYOUT_UNDEFINED ?
+                           last_reference->texture.layout :
+                           texture->get_final_layout();
+
+        end_dependency.dst_stages |= RHI_PIPELINE_STAGE_BEGIN;
+    }
+    else
+    {
+        const auto* next_reference = get_next_reference(last_reference);
+        final_layout = next_reference->texture.layout;
+
+        end_dependency.dst_access |= next_reference->access;
+        end_dependency.dst_stages |= next_reference->stages;
+    }
+    end_dependency.src_access |= first_reference->access;
+    end_dependency.src_stages |= first_reference->stages;
+
+    rhi_attachment_load_op load_op = first_reference->type == RDG_REFERENCE_TEXTURE_RTV ?
+                                         first_reference->texture.rtv.load_op :
+                                         first_reference->texture.dsv.load_op;
+    rhi_attachment_store_op store_op = last_reference->type == RDG_REFERENCE_TEXTURE_RTV ?
+                                           last_reference->texture.rtv.store_op :
+                                           last_reference->texture.dsv.store_op;
+
+    render_pass_desc.attachments[render_pass_desc.attachment_count] = {
+        .type = first_reference->type == RDG_REFERENCE_TEXTURE_DSV ? RHI_ATTACHMENT_DEPTH_STENCIL :
+                                                                     RHI_ATTACHMENT_RENDER_TARGET,
+        .format = texture->get_format(),
+        .samples = texture->get_samples(),
+        .layout = first_reference->texture.layout,
+        .initial_layout = initial_layout,
+        .final_layout = final_layout,
+        .load_op = load_op,
+        .store_op = store_op,
+        .stencil_load_op = load_op,
+        .stencil_store_op = store_op,
+    };
+    ++render_pass_desc.attachment_count;
+};
+
+bool is_read_access(rhi_access_flags access) noexcept
+{
+    static constexpr rhi_access_flags read_access =
+        RHI_ACCESS_COLOR_READ | RHI_ACCESS_DEPTH_STENCIL_READ | RHI_ACCESS_SHADER_READ |
+        RHI_ACCESS_TRANSFER_READ | RHI_ACCESS_HOST_READ | RHI_ACCESS_INDIRECT_COMMAND_READ |
+        RHI_ACCESS_VERTEX_ATTRIBUTE_READ;
+
+    return (access & read_access) == access;
+};
+} // namespace
+
+render_graph::render_graph(std::string_view name, rdg_allocator* allocator) noexcept
+    : m_final_pass(allocator),
+      m_allocator(allocator)
+{
+    begin_group(name);
 }
 
 render_graph::~render_graph() {}
@@ -19,116 +293,102 @@ rdg_texture* render_graph::add_texture(
 {
     assert(texture != nullptr);
 
-    auto resource = std::make_unique<rdg_texture>(texture, initial_layout, final_layout);
-    resource->m_name = name;
+    auto* resource = m_allocator->allocate_resource<rdg_texture>();
+    resource->set_name(name);
+    resource->set_external(true);
+    resource->set_extent(texture->get_extent());
+    resource->set_format(texture->get_format());
+    resource->set_flags(texture->get_flags());
+    resource->set_level_count(texture->get_level_count());
+    resource->set_layer_count(texture->get_layer_count());
+    resource->set_samples(texture->get_samples());
+    resource->set_initial_layout(initial_layout);
+    resource->set_final_layout(final_layout);
+    resource->set_rhi(texture);
 
-    rdg_texture* result = resource.get();
-    m_resources.push_back(std::move(resource));
-    return result;
-}
+    m_resources.push_back(resource);
 
-rdg_texture* render_graph::add_texture(std::string_view name, const rhi_texture_desc& desc)
-{
-    auto resource = std::make_unique<rdg_inter_texture>(
-        desc,
-        RHI_TEXTURE_LAYOUT_UNDEFINED,
-        RHI_TEXTURE_LAYOUT_UNDEFINED);
-    resource->m_name = name;
-
-    rdg_texture* result = resource.get();
-    m_resources.push_back(std::move(resource));
-    return result;
+    return resource;
 }
 
 rdg_texture* render_graph::add_texture(
     std::string_view name,
-    const rhi_texture_view_desc& desc,
-    rhi_texture_layout initial_layout,
-    rhi_texture_layout final_layout)
+    rhi_texture_extent extent,
+    rhi_format format,
+    rhi_texture_flags flags,
+    std::uint32_t level_count,
+    std::uint32_t layer_count,
+    rhi_sample_count samples)
 {
-    assert(desc.texture != nullptr);
+    auto* resource = m_allocator->allocate_resource<rdg_texture>();
+    resource->set_name(name);
+    resource->set_external(false);
+    resource->set_extent(extent);
+    resource->set_format(format);
+    resource->set_flags(flags);
+    resource->set_level_count(level_count);
+    resource->set_layer_count(layer_count);
+    resource->set_samples(samples);
+    resource->set_initial_layout(RHI_TEXTURE_LAYOUT_UNDEFINED);
+    resource->set_final_layout(RHI_TEXTURE_LAYOUT_UNDEFINED);
+    resource->set_rhi(nullptr);
 
-    auto resource = std::make_unique<rdg_texture_view>(desc, initial_layout, final_layout);
-    resource->m_name = name;
+    m_resources.push_back(resource);
 
-    rdg_texture* result = resource.get();
-    m_resources.push_back(std::move(resource));
-    return result;
+    return resource;
 }
 
 rdg_buffer* render_graph::add_buffer(std::string_view name, rhi_buffer* buffer)
 {
     assert(buffer != nullptr);
 
-    auto resource = std::make_unique<rdg_buffer>(buffer);
-    resource->m_name = name;
+    auto* resource = m_allocator->allocate_resource<rdg_buffer>();
+    resource->set_name(name);
+    resource->set_external(true);
+    resource->set_size(buffer->get_buffer_size());
+    resource->set_rhi(buffer);
 
-    rdg_buffer* result = resource.get();
-    m_resources.push_back(std::move(resource));
-    return result;
+    m_resources.push_back(resource);
+
+    return resource;
 }
 
-rdg_buffer* render_graph::add_buffer(std::string_view name, const rhi_buffer_desc& desc)
+rdg_buffer* render_graph::add_buffer(
+    std::string_view name,
+    std::size_t size,
+    rhi_buffer_flags flags)
 {
-    assert(desc.size > 0);
+    assert(size > 0);
 
-    auto resource = std::make_unique<rdg_inter_buffer>(desc);
-    resource->m_name = name;
+    auto* resource = m_allocator->allocate_resource<rdg_buffer>();
+    resource->set_name(name);
+    resource->set_external(false);
+    resource->set_size(size);
+    resource->set_flags(flags);
+    resource->set_rhi(nullptr);
 
-    rdg_buffer* result = resource.get();
-    m_resources.push_back(std::move(resource));
-    return result;
+    m_resources.push_back(resource);
+
+    return resource;
 }
 
 void render_graph::begin_group(std::string_view group_name)
 {
-    m_groups[m_passes.size()].emplace_back(group_name.data());
+    m_labels.emplace_back(group_name.data());
 }
 
 void render_graph::end_group()
 {
-    m_groups[m_passes.size()].emplace_back("");
+    m_labels.emplace_back("");
 }
 
 void render_graph::compile()
 {
+    end_group();
+
     cull();
-
-    for (std::size_t i = 0; i < m_resources.size(); ++i)
-    {
-        m_resources[i]->m_index = i;
-        if (m_resources[i]->get_type() == RDG_RESOURCE_TEXTURE)
-        {
-            auto* texture = static_cast<rdg_texture*>(m_resources[i].get());
-            if (!m_resources[i]->is_external())
-            {
-                if (m_resources[i]->is_view())
-                {
-                    auto* texture_view = static_cast<rdg_texture_view*>(texture);
-                    rhi_texture* rhi = m_allocator->allocate_texture(texture_view->get_desc());
-                    texture_view->set_rhi(rhi);
-                }
-                else
-                {
-                    auto* inter_texture = static_cast<rdg_inter_texture*>(texture);
-                    rhi_texture* rhi = m_allocator->allocate_texture(inter_texture->get_desc());
-                    inter_texture->set_rhi(rhi);
-                }
-            }
-        }
-        else if (m_resources[i]->get_type() == RDG_RESOURCE_BUFFER)
-        {
-            if (!m_resources[i]->is_external())
-            {
-                auto* inter_buffer = static_cast<rdg_inter_buffer*>(m_resources[i].get());
-
-                rhi_buffer* rhi = m_allocator->allocate_buffer(inter_buffer->get_desc());
-                inter_buffer->set_rhi(rhi);
-            }
-        }
-    }
-
-    merge_pass();
+    allocate_resources();
+    merge_passes();
     build_barriers();
 }
 
@@ -136,73 +396,78 @@ void render_graph::record(rhi_command* command)
 {
     rdg_command cmd(command, m_allocator);
 
-    for (auto& batch : m_batches)
+    std::size_t batch_index = 0;
+    std::size_t label_index = 0;
+
+    auto set_label = [&](std::size_t end)
     {
-        barrier& barrier = batch.barrier;
-        if (!barrier.texture_barriers.empty() || !barrier.buffer_barriers.empty())
+        for (std::size_t i = label_index; i < end; ++i)
         {
-            command->set_pipeline_barrier(
-                barrier.src_stages,
-                barrier.dst_stages,
-                barrier.buffer_barriers.data(),
-                barrier.buffer_barriers.size(),
-                barrier.texture_barriers.data(),
-                barrier.texture_barriers.size());
+            if (!m_labels[i].empty())
+            {
+                command->begin_label(m_labels[i].c_str());
+            }
+            else
+            {
+                command->end_label();
+            }
         }
 
-        for (rdg_pass* pass : batch.passes)
+        label_index = end;
+    };
+
+    for (std::size_t i = 0; i < m_passes.size(); ++i)
+    {
+        set_label(m_label_offset[i]);
+
+        rdg_pass* pass = m_passes[i];
+
+        if (pass->is_culled())
         {
-#ifndef NDEBUG
-            for (auto& group : m_groups[pass->get_index()])
+            continue;
+        }
+
+        command->begin_label(pass->get_name().c_str());
+
+        if (m_batches[batch_index].begin_pass == pass)
+        {
+            auto& batch = m_batches[batch_index];
+
+            if (!batch.texture_barriers.empty() || !batch.buffer_barriers.empty())
             {
-                if (group.empty())
-                {
-                    command->end_label();
-                }
-                else
-                {
-                    command->begin_label(group.data());
-                }
+                command->set_pipeline_barrier(
+                    batch.buffer_barriers.data(),
+                    batch.buffer_barriers.size(),
+                    batch.texture_barriers.data(),
+                    batch.texture_barriers.size());
             }
 
-            command->begin_label(pass->get_name().c_str());
-#endif
-
-            if (batch.passes.front() == pass && batch.render_pass != nullptr)
+            if (batch.render_pass != nullptr)
             {
-                command->begin_render_pass(batch.render_pass, batch.framebuffer);
+                command->begin_render_pass(
+                    batch.render_pass,
+                    batch.attachments.data(),
+                    batch.attachments.size());
                 cmd.m_render_pass = batch.render_pass;
-                cmd.m_subpass_index = 0;
             }
+        }
+        pass->execute(cmd);
 
-            pass->execute(cmd);
+        if (m_batches[batch_index].end_pass == pass)
+        {
+            auto& batch = m_batches[batch_index];
 
-            if (batch.passes.back() == pass && batch.render_pass != nullptr)
+            if (batch.render_pass != nullptr)
             {
                 command->end_render_pass();
                 cmd.m_render_pass = nullptr;
-                cmd.m_subpass_index = 0;
             }
 
-#ifndef NDEBUG
-            command->end_label();
-#endif
+            ++batch_index;
         }
-    }
 
-#ifndef NDEBUG
-    for (auto& group : m_groups.back())
-    {
-        if (group.empty())
-        {
-            command->end_label();
-        }
-        else
-        {
-            command->begin_label(group.data());
-        }
+        command->end_label();
     }
-#endif
 }
 
 void render_graph::cull()
@@ -217,188 +482,172 @@ void render_graph::cull()
 
     m_resources.erase(iter, m_resources.end());*/
 
-    for (std::size_t i = 0; i < m_passes.size(); ++i)
+    m_final_pass.set_name("Final");
+    m_passes.push_back(&m_final_pass);
+    m_label_offset.push_back(m_labels.size());
+
+    for (auto* resource : m_resources)
     {
-        for (const auto& reference : m_passes[i]->get_references())
+        if (resource->is_culled())
         {
-            reference->resource->add_reference(reference.get());
+            continue;
         }
 
-        m_passes[i]->m_index = i;
+        if (resource->get_type() == RDG_RESOURCE_TEXTURE)
+        {
+            auto* texture = static_cast<rdg_texture*>(resource);
+
+            if (texture->get_final_layout() != RHI_TEXTURE_LAYOUT_UNDEFINED)
+            {
+                m_final_pass
+                    .add_texture(texture, RHI_PIPELINE_STAGE_END, 0, texture->get_final_layout());
+            }
+        }
+    }
+
+    for (auto* pass : m_passes)
+    {
+        if (pass->is_culled())
+        {
+            continue;
+        }
+
+        pass->each_reference(
+            [](rdg_reference* reference)
+            {
+                reference->index = reference->resource->add_reference(reference);
+            });
     }
 }
 
-void render_graph::merge_pass()
+void render_graph::allocate_resources()
 {
-    std::vector<rdg_pass*> passes;
+    auto& device = render_device::instance();
 
-    auto merge_render_pass = [&, this]()
+    for (auto* resource : m_resources)
     {
-        if (passes.empty())
+        if (resource->is_culled())
+        {
+            continue;
+        }
+
+        if (resource->get_type() == RDG_RESOURCE_TEXTURE)
+        {
+            allocate_texture(static_cast<rdg_texture*>(resource));
+        }
+        else if (resource->get_type() == RDG_RESOURCE_BUFFER)
+        {
+            allocate_buffer(static_cast<rdg_buffer*>(resource));
+        }
+    }
+
+    for (auto* pass : m_passes)
+    {
+        if (pass->is_culled())
+        {
+            continue;
+        }
+    }
+}
+
+void render_graph::merge_passes()
+{
+    std::vector<render_pass> pending_merge_passes;
+
+    auto flush_merge_passes = [&]()
+    {
+        if (pending_merge_passes.empty())
         {
             return;
         }
 
-        render_batch batch = {};
-        batch.passes = passes;
+        batch batch = {
+            .begin_pass = pending_merge_passes.front().pass,
+            .end_pass = pending_merge_passes.back().pass,
+        };
 
         rhi_render_pass_desc render_pass_desc = {};
-        rhi_framebuffer_desc framebuffer_desc = {};
 
-        auto& begin_dependency = render_pass_desc.dependencies[0];
-        begin_dependency.src = RHI_RENDER_SUBPASS_EXTERNAL;
-        begin_dependency.dst = 0;
+        auto& begin_dependency = render_pass_desc.begin_dependency;
+        auto& end_dependency = render_pass_desc.end_dependency;
 
-        auto& end_dependency = render_pass_desc.dependencies[1];
-        end_dependency.src = 0;
-        end_dependency.dst = RHI_RENDER_SUBPASS_EXTERNAL;
-
-        render_pass_desc.dependency_count = 2;
-
-        const auto& first_pass_attachemets =
-            static_cast<rdg_render_pass*>(passes.front())->get_attachments();
-        const auto& last_pass_attachemets =
-            static_cast<rdg_render_pass*>(passes.back())->get_attachments();
-        for (std::size_t i = 0; i < first_pass_attachemets.size(); ++i)
+        auto& attachments = pending_merge_passes.front().attachments;
+        for (std::size_t i = 0; i < attachments.size(); ++i)
         {
-            rdg_reference* reference = first_pass_attachemets[i];
+            add_attachment(
+                render_pass_desc,
+                attachments[i],
+                pending_merge_passes.back().attachments[i]);
 
-            auto* texture = static_cast<rdg_texture*>(reference->resource);
-
-            rhi_texture_layout initial_layout = RHI_TEXTURE_LAYOUT_UNDEFINED;
-            rhi_texture_layout final_layout = RHI_TEXTURE_LAYOUT_UNDEFINED;
-
-            if (reference->is_first_reference())
+            if (attachments[i]->type == RDG_REFERENCE_TEXTURE_RTV)
             {
-                initial_layout = texture->get_initial_layout();
-
-                begin_dependency.src_stages |= RHI_PIPELINE_STAGE_END;
+                batch.attachments.push_back({
+                    .rtv = attachments[i]->texture.rtv.rhi,
+                    .clear_value = attachments[i]->texture.rtv.clear_value,
+                });
             }
             else
             {
-                rdg_reference* prev_reference = reference->get_prev_reference();
-                initial_layout = prev_reference->get_texture_layout();
-
-                begin_dependency.src_access |= prev_reference->access;
-                begin_dependency.src_stages |= prev_reference->stages;
+                batch.attachments.push_back({
+                    .dsv = attachments[i]->texture.dsv.rhi,
+                    .clear_value = attachments[i]->texture.dsv.clear_value,
+                });
             }
-
-            if (last_pass_attachemets[i]->is_last_reference())
-            {
-                final_layout = texture->get_final_layout() == RHI_TEXTURE_LAYOUT_UNDEFINED ?
-                                   reference->get_texture_layout() :
-                                   texture->get_final_layout();
-
-                end_dependency.dst_stages |= RHI_PIPELINE_STAGE_BEGIN;
-            }
-            else
-            {
-                rdg_reference* next_reference = last_pass_attachemets[i]->get_next_reference();
-                final_layout = next_reference->get_texture_layout();
-
-                end_dependency.dst_access |= next_reference->access;
-                end_dependency.dst_stages |= next_reference->stages;
-            }
-
-            begin_dependency.dst_access |= reference->access;
-            begin_dependency.dst_stages |= reference->stages;
-            end_dependency.src_access |= reference->access;
-            end_dependency.src_stages |= reference->stages;
-
-            render_pass_desc.attachments[render_pass_desc.attachment_count++] = {
-                .format = texture->get_format(),
-                .samples = RHI_SAMPLE_COUNT_1,
-                .initial_layout = initial_layout,
-                .final_layout = final_layout,
-                .load_op = reference->attachment.load_op,
-                .store_op = reference->attachment.store_op,
-                .stencil_load_op = reference->attachment.load_op,
-                .stencil_store_op = reference->attachment.store_op};
-
-            auto& subpass = render_pass_desc.subpasses[0];
-            subpass.references[subpass.reference_count] = {
-                .type = reference->attachment.type,
-                .layout = reference->get_texture_layout(),
-                .index = subpass.reference_count};
-            ++subpass.reference_count;
-
-            framebuffer_desc.attachments[i] = texture->get_rhi();
         }
-        render_pass_desc.subpass_count = 1;
 
-        batch.render_pass = m_allocator->get_render_pass(render_pass_desc);
-
-        framebuffer_desc.render_pass = batch.render_pass;
-        batch.framebuffer = m_allocator->get_framebuffer(framebuffer_desc);
+        batch.render_pass = render_device::instance().get_render_pass(render_pass_desc);
 
         m_batches.push_back(batch);
 
-        passes.clear();
+        pending_merge_passes.clear();
     };
 
-    auto check_merge = [](rdg_pass* a, rdg_pass* b) -> bool
+    for (auto* pass : m_passes)
     {
-        const auto& a_attachments = static_cast<rdg_render_pass*>(a)->get_attachments();
-        const auto& b_attachments = static_cast<rdg_render_pass*>(b)->get_attachments();
-
-        if (a_attachments.size() != b_attachments.size())
+        if (pass->is_culled())
         {
-            return false;
+            continue;
         }
 
-        for (std::size_t i = 0; i < a_attachments.size(); ++i)
+        pass->set_batch_index(m_batches.size());
+
+        if (pass->get_pass_type() == RDG_PASS_RASTER)
         {
-            if (a_attachments[i]->resource != b_attachments[i]->resource)
-            {
-                return false;
-            }
+            render_pass info = {
+                .pass = pass,
+            };
 
-            if (a_attachments[i]->attachment.type != b_attachments[i]->attachment.type)
-            {
-                return false;
-            }
+            pass->each_reference(
+                [&info](rdg_reference* reference)
+                {
+                    if (reference->type == RDG_REFERENCE_TEXTURE_RTV ||
+                        reference->type == RDG_REFERENCE_TEXTURE_DSV)
+                    {
+                        info.attachments.push_back(reference);
+                    }
+                });
 
-            if (b_attachments[i]->attachment.load_op == RHI_ATTACHMENT_LOAD_OP_CLEAR)
+            if (!pending_merge_passes.empty() && !pending_merge_passes.back().is_mergeable(info))
             {
-                return false;
-            }
-        }
-
-        return true;
-    };
-
-    for (auto& pass : m_passes)
-    {
-        if (pass->get_type() == RDG_PASS_RENDER)
-        {
-            if (passes.empty() || check_merge(passes[0], pass.get()))
-            {
-                passes.push_back(pass.get());
+                flush_merge_passes();
+                pending_merge_passes.push_back(info);
             }
             else
             {
-                merge_render_pass();
-                passes.push_back(pass.get());
+                pending_merge_passes.push_back(info);
             }
         }
         else
         {
-            merge_render_pass();
-            render_batch batch = {};
-            batch.passes.push_back(pass.get());
-            m_batches.push_back(batch);
+            flush_merge_passes();
+            m_batches.push_back({
+                .begin_pass = pass,
+                .end_pass = pass,
+            });
         }
     }
 
-    merge_render_pass();
-
-    for (std::size_t i = 0; i < m_batches.size(); ++i)
-    {
-        for (rdg_pass* pass : m_batches[i].passes)
-        {
-            pass->m_batch = i;
-        }
-    }
+    flush_merge_passes();
 }
 
 void render_graph::build_barriers()
@@ -414,150 +663,312 @@ void render_graph::build_barriers()
 
     for (auto& resource : m_resources)
     {
-        const auto& references = resource->get_references();
-
-        rdg_reference* prev_reference = nullptr;
-        for (auto* curr_reference : references)
-        {
-            auto& batch_barrier = m_batches[curr_reference->pass->get_batch()].barrier;
-
-            if (resource->get_type() == RDG_RESOURCE_TEXTURE)
-            {
-                auto* texture = static_cast<rdg_texture*>(resource.get());
-
-                if (curr_reference->type == RDG_REFERENCE_ATTACHMENT)
-                {
-                    prev_reference = curr_reference;
-                    continue;
-                }
-
-                if (prev_reference == nullptr)
-                {
-                    rhi_texture_barrier barrier = {
-                        .texture = texture->get_rhi(),
-                        .src_access = 0,
-                        .dst_access = curr_reference->access,
-                        .src_layout = texture->get_initial_layout(),
-                        .dst_layout = curr_reference->texture.layout,
-                        .level = texture->get_level(),
-                        .level_count = texture->get_level_count(),
-                        .layer = texture->get_layer(),
-                        .layer_count = texture->get_layer_count(),
-                    };
-                    batch_barrier.texture_barriers.push_back(barrier);
-                    batch_barrier.src_stages |= RHI_PIPELINE_STAGE_BEGIN;
-                    batch_barrier.dst_stages |= curr_reference->stages;
-                }
-                else if (prev_reference->type != RDG_REFERENCE_ATTACHMENT)
-                {
-                    if (!is_read_access(prev_reference->access) ||
-                        !is_read_access(curr_reference->access) ||
-                        prev_reference->texture.layout != curr_reference->texture.layout)
-                    {
-                        rhi_texture_barrier barrier = {
-                            .texture = texture->get_rhi(),
-                            .src_access = prev_reference->access,
-                            .dst_access = curr_reference->access,
-                            .src_layout = prev_reference->texture.layout,
-                            .dst_layout = curr_reference->texture.layout,
-                            .level = texture->get_level(),
-                            .level_count = texture->get_level_count(),
-                            .layer = texture->get_layer(),
-                            .layer_count = texture->get_layer_count(),
-                        };
-                        batch_barrier.texture_barriers.push_back(barrier);
-                        batch_barrier.src_stages |= prev_reference->stages;
-                        batch_barrier.dst_stages |= curr_reference->stages;
-                    }
-                }
-            }
-            else
-            {
-                auto* buffer = static_cast<rdg_buffer*>(resource.get());
-
-                if (prev_reference != nullptr)
-                {
-                    if (!is_read_access(prev_reference->access) ||
-                        !is_read_access(curr_reference->access))
-                    {
-                        rhi_buffer_barrier barrier = {
-                            .buffer = buffer->get_rhi(),
-                            .src_access = prev_reference->access,
-                            .dst_access = curr_reference->access,
-                            .offset = 0,
-                            .size = buffer->get_buffer_size(),
-                        };
-
-                        batch_barrier.buffer_barriers.push_back(barrier);
-                        batch_barrier.src_stages |= prev_reference->stages;
-                        batch_barrier.dst_stages |= curr_reference->stages;
-                    }
-                }
-            }
-
-            prev_reference = curr_reference;
-        }
-    }
-
-    m_batches.push_back({});
-
-    auto& last_barrier = m_batches.back().barrier;
-    for (auto& resource : m_resources)
-    {
         if (resource->get_type() == RDG_RESOURCE_TEXTURE)
         {
-            auto* texture = static_cast<rdg_texture*>(resource.get());
-
-            rhi_access_flags src_access = 0;
-            rhi_access_flags dst_access = 0;
-
-            rhi_texture_layout src_layout = RHI_TEXTURE_LAYOUT_UNDEFINED;
-            rhi_texture_layout dst_layout = RHI_TEXTURE_LAYOUT_UNDEFINED;
-
-            rhi_pipeline_stage_flags src_stages = 0;
-            rhi_pipeline_stage_flags dst_stages = 0;
-
-            if (texture->get_references().empty())
-            {
-                src_layout = texture->get_initial_layout();
-                dst_layout = texture->get_final_layout();
-                src_stages |= RHI_PIPELINE_STAGE_BEGIN;
-                dst_stages |= RHI_PIPELINE_STAGE_END;
-            }
-            else
-            {
-                rdg_reference* last_reference = resource->get_references().back();
-                if (last_reference->type != RDG_REFERENCE_ATTACHMENT)
-                {
-                    src_access = last_reference->access;
-                    src_layout = last_reference->texture.layout;
-                    dst_layout = texture->get_final_layout();
-                    src_stages |= last_reference->stages;
-                    dst_stages |= RHI_PIPELINE_STAGE_END;
-                }
-            }
-
-            if (src_layout != dst_layout && dst_layout != RHI_TEXTURE_LAYOUT_UNDEFINED)
-            {
-                rhi_texture_barrier barrier = {
-                    .texture = texture->get_rhi(),
-                    .src_access = src_access,
-                    .dst_access = dst_access,
-                    .src_layout = src_layout,
-                    .dst_layout = dst_layout,
-                    .level = texture->get_level(),
-                    .level_count = texture->get_level_count(),
-                    .layer = texture->get_layer(),
-                    .layer_count = texture->get_layer_count(),
-                };
-                last_barrier.texture_barriers.push_back(barrier);
-                last_barrier.src_stages |= src_stages;
-                last_barrier.dst_stages |= dst_stages;
-            }
+            build_texture_barriers(static_cast<rdg_texture*>(resource));
         }
         else
         {
+            build_buffer_barriers(static_cast<rdg_buffer*>(resource));
         }
+    }
+}
+
+void render_graph::allocate_texture(rdg_texture* texture)
+{
+    if (!texture->is_external())
+    {
+        texture->set_rhi(render_device::instance().allocate_texture({
+            .extent = texture->get_extent(),
+            .format = texture->get_format(),
+            .flags = texture->get_flags(),
+            .level_count = texture->get_level_count(),
+            .layer_count = texture->get_layer_count(),
+            .samples = texture->get_samples(),
+        }));
+    }
+
+    for (auto* reference : texture->get_references())
+    {
+        switch (reference->type)
+        {
+        case RDG_REFERENCE_TEXTURE_SRV: {
+            reference->texture.srv.rhi = texture->get_rhi()->get_srv(
+                reference->texture.srv.dimension,
+                reference->texture.level,
+                reference->texture.level_count,
+                reference->texture.layer,
+                reference->texture.layer_count);
+            break;
+        }
+        case RDG_REFERENCE_TEXTURE_UAV: {
+            reference->texture.uav.rhi = texture->get_rhi()->get_uav(
+                reference->texture.uav.dimension,
+                reference->texture.level,
+                reference->texture.level_count,
+                reference->texture.layer,
+                reference->texture.layer_count);
+            break;
+        }
+        case RDG_REFERENCE_TEXTURE_RTV: {
+            reference->texture.rtv.rhi = texture->get_rhi()->get_rtv(
+                RHI_TEXTURE_DIMENSION_2D,
+                reference->texture.level,
+                reference->texture.level_count,
+                reference->texture.layer,
+                reference->texture.layer_count);
+            break;
+        }
+        case RDG_REFERENCE_TEXTURE_DSV: {
+            reference->texture.dsv.rhi = texture->get_rhi()->get_dsv(
+                RHI_TEXTURE_DIMENSION_2D,
+                reference->texture.level,
+                reference->texture.level_count,
+                reference->texture.layer,
+                reference->texture.layer_count);
+            break;
+        }
+        default:
+            break;
+        }
+    }
+}
+
+void render_graph::allocate_buffer(rdg_buffer* buffer)
+{
+    if (!buffer->is_external())
+    {
+        buffer->set_rhi(render_device::instance().allocate_buffer({
+            .size = buffer->get_size(),
+            .flags = buffer->get_flags(),
+        }));
+    }
+
+    for (auto* reference : buffer->get_references())
+    {
+        switch (reference->type)
+        {
+        case RDG_REFERENCE_BUFFER_SRV: {
+            reference->buffer.srv.rhi = buffer->get_rhi()->get_srv(
+                reference->buffer.offset,
+                reference->buffer.size,
+                reference->buffer.srv.texel_format);
+            break;
+        }
+        case RDG_REFERENCE_BUFFER_UAV: {
+            reference->buffer.uav.rhi = buffer->get_rhi()->get_uav(
+                reference->buffer.offset,
+                reference->buffer.size,
+                reference->buffer.uav.texel_format);
+        }
+        default:
+            break;
+        }
+    }
+}
+
+void render_graph::build_texture_barriers(rdg_texture* texture)
+{
+    std::vector<texture_slice> texture_slices;
+
+    rdg_reference initial_reference = {
+        .type = RDG_REFERENCE_TEXTURE,
+        .stages = RHI_PIPELINE_STAGE_END,
+        .access = 0,
+        .texture =
+            {
+                .layout = texture->get_initial_layout(),
+                .level = 0,
+                .level_count = texture->get_level_count(),
+                .layer = 0,
+                .layer_count = texture->get_layer_count(),
+            },
+    };
+
+    if (texture->get_initial_layout() != RHI_TEXTURE_LAYOUT_UNDEFINED)
+    {
+        texture_slices.push_back({
+            .a = {0, 0},
+            .b = {texture->get_layer_count(), texture->get_level_count()},
+            .reference = &initial_reference,
+        });
+    }
+
+    for (const auto* reference : texture->get_references())
+    {
+        texture_slice curr_slice = {
+            .a = {reference->texture.layer, reference->texture.level},
+            .b =
+                {
+                    reference->texture.layer + reference->texture.layer_count,
+                    reference->texture.level + reference->texture.level_count,
+                },
+            .reference = reference,
+        };
+
+        const rdg_reference* curr_reference = reference;
+        const rdg_reference* equal_reference = nullptr;
+
+        std::vector<texture_slice> overlap_slices;
+        for (auto iter = texture_slices.begin(); iter != texture_slices.end();)
+        {
+            if (iter->is_equal(curr_slice))
+            {
+                equal_reference = iter->reference;
+                iter->reference = curr_reference;
+
+                break;
+            }
+
+            if (iter->is_overlap(curr_slice))
+            {
+                overlap_slices.push_back(*iter);
+                iter = texture_slices.erase(iter);
+            }
+            else
+            {
+                ++iter;
+            }
+        }
+
+        if (equal_reference != nullptr)
+        {
+            add_texture_barrier(
+                equal_reference,
+                curr_reference,
+                curr_slice.get_level(),
+                curr_slice.get_level_count(),
+                curr_slice.get_layer(),
+                curr_slice.get_layer_count());
+            continue;
+        }
+
+        texture_slices.push_back(curr_slice);
+
+        std::uint32_t overlap_area = 0;
+        for (auto& overlap_slice : overlap_slices)
+        {
+            overlap_area += overlap_slice.get_overlap_area(curr_slice);
+        }
+
+        if (overlap_area == curr_slice.get_area())
+        {
+            for (auto& overlap_slice : overlap_slices)
+            {
+                auto intersection_slice = overlap_slice.subtract(curr_slice, texture_slices);
+                add_texture_barrier(
+                    intersection_slice.reference,
+                    curr_reference,
+                    intersection_slice.get_level(),
+                    intersection_slice.get_level_count(),
+                    intersection_slice.get_layer(),
+                    intersection_slice.get_layer_count());
+            }
+
+            continue;
+        }
+
+        for (auto& overlap_slice : overlap_slices)
+        {
+            overlap_slice.subtract(curr_slice, texture_slices);
+        }
+
+        m_batches[curr_reference->pass->get_batch_index()].texture_barriers.push_back({
+            .texture = texture->get_rhi(),
+            .src_stages = RHI_PIPELINE_STAGE_END,
+            .src_access = 0,
+            .src_layout = RHI_TEXTURE_LAYOUT_UNDEFINED,
+            .dst_stages = curr_reference->stages,
+            .dst_access = curr_reference->access,
+            .dst_layout = curr_reference->texture.layout,
+            .level = curr_reference->texture.level,
+            .level_count = curr_reference->texture.level_count,
+            .layer = curr_reference->texture.layer,
+            .layer_count = curr_reference->texture.layer_count,
+        });
+    }
+}
+
+void render_graph::build_buffer_barriers(rdg_buffer* buffer)
+{
+    const rdg_reference* prev_reference = nullptr;
+    for (const auto* curr_reference : buffer->get_references())
+    {
+        if (prev_reference != nullptr)
+        {
+            add_buffer_barrier(
+                prev_reference,
+                curr_reference,
+                curr_reference->buffer.offset,
+                curr_reference->buffer.size);
+        }
+
+        prev_reference = curr_reference;
+    }
+}
+
+void render_graph::add_texture_barrier(
+    const rdg_reference* prev_reference,
+    const rdg_reference* curr_reference,
+    std::uint32_t level,
+    std::uint32_t level_count,
+    std::uint32_t layer,
+    std::uint32_t layer_count)
+{
+    auto skip_attachment = [](const rdg_reference* prev_reference,
+                              const rdg_reference* curr_reference) -> bool
+    {
+        return prev_reference->type == RDG_REFERENCE_TEXTURE_RTV ||
+               prev_reference->type == RDG_REFERENCE_TEXTURE_DSV ||
+               curr_reference->type == RDG_REFERENCE_TEXTURE_RTV ||
+               curr_reference->type == RDG_REFERENCE_TEXTURE_DSV;
+    };
+
+    auto skip_readonly = [](const rdg_reference* prev_reference,
+                            const rdg_reference* curr_reference) -> bool
+    {
+        return prev_reference->texture.layout == curr_reference->texture.layout &&
+               is_read_access(prev_reference->access) && is_read_access(curr_reference->access);
+    };
+
+    if (skip_attachment(prev_reference, curr_reference) ||
+        skip_readonly(prev_reference, curr_reference))
+    {
+        return;
+    }
+
+    m_batches[curr_reference->pass->get_batch_index()].texture_barriers.push_back({
+        .texture = static_cast<rdg_texture*>(curr_reference->resource)->get_rhi(),
+        .src_stages = prev_reference->stages,
+        .src_access = prev_reference->access,
+        .src_layout = prev_reference->texture.layout,
+        .dst_stages = curr_reference->stages,
+        .dst_access = curr_reference->access,
+        .dst_layout = curr_reference->texture.layout,
+        .level = level,
+        .level_count = level_count,
+        .layer = layer,
+        .layer_count = layer_count,
+    });
+}
+
+void render_graph::add_buffer_barrier(
+    const rdg_reference* prev_reference,
+    const rdg_reference* curr_reference,
+    std::size_t offset,
+    std::size_t size)
+{
+    if (!is_read_access(prev_reference->access) || !is_read_access(curr_reference->access))
+    {
+        m_batches[curr_reference->pass->get_batch_index()].buffer_barriers.push_back({
+            .buffer = static_cast<rdg_buffer*>(curr_reference->resource)->get_rhi(),
+            .src_stages = prev_reference->stages,
+            .src_access = prev_reference->access,
+            .dst_stages = curr_reference->stages,
+            .dst_access = curr_reference->access,
+            .offset = offset,
+            .size = size,
+        });
     }
 }
 } // namespace violet

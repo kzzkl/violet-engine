@@ -4,10 +4,11 @@ ConstantBuffer<camera_data> camera : register(b0, space1);
 
 struct constant_data
 {
-    uint render_target;
+    uint current_render_target;
     uint history_render_target;
     uint depth_buffer;
     uint motion_vector;
+    uint resolved_render_target;
     uint width;
     uint height;
 };
@@ -64,7 +65,7 @@ float3 YCoCgR_to_rgb(float3 color_YCoCgR)
 
 float3 clip_color(float3 history_color, uint2 st)
 {
-    RWTexture2D<float4> current = ResourceDescriptorHeap[constant.render_target];
+    Texture2D<float4> current = ResourceDescriptorHeap[constant.current_render_target];
 
     history_color = tonemap(history_color);
     history_color = rgb_to_YCoCgR(history_color);
@@ -129,7 +130,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     float2 texcoord = (float2(dtid.xy) + 0.5) / float2(constant.width, constant.height);
 
-
 #if defined(USE_MOTION_VECTOR)
     float2 motion_vector = get_motion_vector(dtid.xy);
     float2 history_texcoord = texcoord - motion_vector;
@@ -137,15 +137,21 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     float2 history_texcoord = texcoord;
 #endif
 
+    Texture2D<float4> current = ResourceDescriptorHeap[constant.current_render_target];
+    RWTexture2D<float4> resolved = ResourceDescriptorHeap[constant.resolved_render_target];
+
     if (!any(history_texcoord < 0.0) && !any(history_texcoord > 1.0))
     {
-        RWTexture2D<float4> current = ResourceDescriptorHeap[constant.render_target];
         float3 current_color = current[dtid.xy].rgb;
 
         Texture2D<float4> history = ResourceDescriptorHeap[constant.history_render_target];
         float3 history_color = history.SampleLevel(get_linear_clamp_sampler(), history_texcoord, 0.0).rgb;
         history_color = clip_color(history_color, dtid.xy);
 
-        current[dtid.xy] = float4(lerp(current_color, history_color, 0.9), 1.0);
+        resolved[dtid.xy] = float4(lerp(current_color, history_color, 0.9), 1.0);
+    }
+    else
+    {
+        resolved[dtid.xy] = current[dtid.xy];
     }
 }

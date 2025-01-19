@@ -1,5 +1,6 @@
 #pragma once
 
+#include "graphics/buffer.hpp"
 #include "graphics/morph_target.hpp"
 #include "graphics/render_device.hpp"
 #include <string>
@@ -19,43 +20,37 @@ public:
         R&& attribute,
         rhi_buffer_flags flags = RHI_BUFFER_VERTEX)
     {
-        add_attribute(
-            name,
-            {
-                .data = attribute.data(),
-                .size = attribute.size() * sizeof(decltype(*attribute.data())),
-                .flags = flags,
-            });
+        assert(m_vertex_buffer_map.find(name.data()) == m_vertex_buffer_map.end());
+
+        auto buffer = std::make_unique<vertex_buffer>(attribute, flags);
+        m_vertex_buffer_map[name.data()] = buffer.get();
+        m_buffers.emplace_back(std::move(buffer));
     }
 
     void add_attribute(std::string_view name, const rhi_buffer_desc& desc);
 
-    void add_attribute(std::string_view name, rhi_buffer* buffer);
+    void add_attribute(std::string_view name, vertex_buffer* buffer);
 
     template <std::ranges::contiguous_range R>
     void set_indexes(R&& indexes, rhi_buffer_flags flags = RHI_BUFFER_INDEX)
     {
-        static constexpr std::size_t index_size = sizeof(decltype(*indexes.data()));
-        set_indexes(indexes.data(), indexes.size() * index_size, index_size, flags);
+        assert(m_index_buffer == nullptr);
+
+        auto buffer = std::make_unique<index_buffer>(indexes, flags);
+        m_index_buffer = buffer.get();
+        m_buffers.emplace_back(std::move(buffer));
     }
 
-    template <typename T>
-    void set_indexes(const T* data, std::size_t count, rhi_buffer_flags flags = RHI_BUFFER_INDEX)
-    {
-        static constexpr std::size_t index_size = sizeof(T);
-        set_indexes(data, count * sizeof(T), sizeof(T), flags);
-    }
+    void set_indexes(index_buffer* buffer);
 
-    void set_indexes(rhi_buffer* buffer);
+    vertex_buffer* get_vertex_buffer(std::string_view name) const;
 
-    rhi_buffer* get_vertex_buffer(std::string_view name) const;
-
-    const std::unordered_map<std::string, rhi_buffer*>& get_vertex_buffers() const noexcept
+    const std::unordered_map<std::string, vertex_buffer*>& get_vertex_buffers() const noexcept
     {
         return m_vertex_buffer_map;
     }
 
-    rhi_buffer* get_index_buffer() const noexcept
+    index_buffer* get_index_buffer() const noexcept
     {
         return m_index_buffer;
     }
@@ -109,10 +104,10 @@ private:
         std::size_t index_size,
         rhi_buffer_flags flags);
 
-    std::unordered_map<std::string, rhi_buffer*> m_vertex_buffer_map;
-    rhi_buffer* m_index_buffer{nullptr};
+    std::unordered_map<std::string, vertex_buffer*> m_vertex_buffer_map;
+    index_buffer* m_index_buffer{nullptr};
 
-    std::vector<rhi_ptr<rhi_buffer>> m_buffers;
+    std::vector<std::unique_ptr<raw_buffer>> m_buffers;
 
     std::uint32_t m_vertex_count{0};
     std::uint32_t m_index_count{0};

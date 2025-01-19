@@ -1,8 +1,8 @@
 #pragma once
 
 #include "core/engine.hpp"
+#include "graphics/buffer.hpp"
 #include "graphics/morph_target.hpp"
-#include "graphics/render_graph/rdg_allocator.hpp"
 
 namespace violet
 {
@@ -20,8 +20,8 @@ public:
         return !m_morphing_queue.empty() || !m_skinning_queue.empty();
     }
 
-    void morphing(rhi_command* command, rdg_allocator* allocator);
-    void skinning(rhi_command* command, rdg_allocator* allocator);
+    void morphing(rhi_command* command);
+    void skinning(rhi_command* command);
 
 private:
     struct morphing_data
@@ -30,7 +30,7 @@ private:
         const float* weights;
         std::size_t weight_count;
 
-        rhi_buffer* morph_vertex_buffer;
+        vertex_buffer* morph_vertex_buffer;
     };
 
     struct skinning_data
@@ -38,9 +38,9 @@ private:
         rhi_shader* shader;
         std::size_t vertex_count;
 
-        rhi_buffer* skeleton;
-        std::vector<rhi_buffer*> input;
-        std::vector<rhi_buffer*> output;
+        structured_buffer* skeleton;
+        std::vector<vertex_buffer*> input;
+        std::vector<vertex_buffer*> output;
     };
 
     void update_skin();

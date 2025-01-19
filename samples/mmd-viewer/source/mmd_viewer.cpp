@@ -8,7 +8,6 @@
 #include "components/transform_component.hpp"
 #include "control/control_system.hpp"
 #include "graphics/graphics_system.hpp"
-#include "graphics/tools/texture_loader.hpp"
 #include "imgui.h"
 #include "imgui_system.hpp"
 #include "mmd_animation.hpp"
@@ -85,16 +84,16 @@ void mmd_viewer::initialize_render()
     });
     m_renderer = std::make_unique<mmd_renderer>();
 
-    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon01.bmp"));
-    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon02.bmp"));
-    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon03.bmp"));
-    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon04.bmp"));
-    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon05.bmp"));
-    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon06.bmp"));
-    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon07.bmp"));
-    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon08.bmp"));
-    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon09.bmp"));
-    m_internal_toons.push_back(texture_loader::load("assets/mmd/toon10.bmp"));
+    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon01.bmp"));
+    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon02.bmp"));
+    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon03.bmp"));
+    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon04.bmp"));
+    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon05.bmp"));
+    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon06.bmp"));
+    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon07.bmp"));
+    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon08.bmp"));
+    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon09.bmp"));
+    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon10.bmp"));
 }
 
 void mmd_viewer::initialize_scene()
@@ -129,7 +128,7 @@ void mmd_viewer::initialize_scene()
     light.type = LIGHT_DIRECTIONAL;
     light.color = {1.0f, 1.0f, 1.0f};
 
-    std::vector<rhi_texture*> internal_toons(m_internal_toons.size());
+    std::vector<texture_2d*> internal_toons(m_internal_toons.size());
     std::transform(
         m_internal_toons.begin(),
         m_internal_toons.end(),

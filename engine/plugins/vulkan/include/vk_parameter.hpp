@@ -19,10 +19,10 @@ public:
 
     void set_constant(std::size_t index, const void* data, std::size_t size, std::size_t offset)
         override;
-    void set_uniform(std::size_t index, rhi_buffer* uniform, std::size_t offset) override;
-    void set_storage(std::size_t index, rhi_buffer* storage, std::size_t offset) override;
-    void set_storage(std::size_t index, rhi_texture* texture, std::size_t offset) override;
-    void set_texture(std::size_t index, rhi_texture* texture, std::size_t offset) override;
+    void set_srv(std::size_t index, rhi_texture_srv* srv, std::size_t offset) override;
+    void set_srv(std::size_t index, rhi_buffer_srv* srv, std::size_t offset) override;
+    void set_uav(std::size_t index, rhi_texture_uav* uav, std::size_t offset) override;
+    void set_uav(std::size_t index, rhi_buffer_uav* uav, std::size_t offset) override;
     void set_sampler(std::size_t index, rhi_sampler* sampler, std::size_t offset) override;
 
     bool sync();

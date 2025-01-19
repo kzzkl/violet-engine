@@ -188,7 +188,8 @@ private:
         main_camera.renderer = m_renderer.get();
         main_camera.render_targets = {
             m_swapchain.get(),
-            m_taa_history.get(),
+            m_taa_history[0].get(),
+            m_taa_history[1].get(),
         };
         main_camera.jitter = true;
     }
@@ -214,15 +215,19 @@ private:
 
         auto extent = get_system<window_system>().get_extent();
 
-        m_taa_history = device.create_texture({
-            .extent = {extent.width, extent.height},
-            .format = RHI_FORMAT_R16G16B16A16_FLOAT,
-            .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_TRANSFER_DST,
-            .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
-        });
+        for (auto& target : m_taa_history)
+        {
+            target = device.create_texture({
+                .extent = {extent.width, extent.height},
+                .format = RHI_FORMAT_R16G16B16A16_FLOAT,
+                .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE,
+                .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+            });
+        }
 
         auto& main_camera = get_world().get_component<camera_component>(m_camera);
-        main_camera.render_targets[1] = m_taa_history.get();
+        main_camera.render_targets[1] = m_taa_history[0].get();
+        main_camera.render_targets[2] = m_taa_history[1].get();
     }
 
     entity m_camera;
@@ -234,7 +239,7 @@ private:
     std::unique_ptr<material> m_material;
 
     rhi_ptr<rhi_swapchain> m_swapchain;
-    rhi_ptr<rhi_texture> m_taa_history;
+    std::array<rhi_ptr<rhi_texture>, 2> m_taa_history;
     std::unique_ptr<renderer> m_renderer;
 
     application* m_app{nullptr};

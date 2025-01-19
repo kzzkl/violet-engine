@@ -34,47 +34,39 @@ void copy_depth_pass::add(render_graph& graph, const parameter& parameter)
 
     struct pass_data
     {
-        rdg_texture* src;
-        rdg_texture* dst;
-
+        rdg_texture_srv src;
+        rdg_texture_uav dst;
         rhi_parameter* copy_parameter;
     };
 
-    pass_data data = {
-        .src = parameter.src,
-        .dst = parameter.dst,
-        .copy_parameter = graph.allocate_parameter(copy_depth_cs::parameter),
-    };
-
-    auto& pass = graph.add_pass<rdg_pass>("Copy Depth Pass");
-    pass.add_texture(
-        parameter.src,
-        RHI_PIPELINE_STAGE_COMPUTE,
-        RHI_ACCESS_SHADER_READ,
-        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
-    pass.add_texture(
-        parameter.dst,
-        RHI_PIPELINE_STAGE_COMPUTE,
-        RHI_ACCESS_SHADER_WRITE,
-        RHI_TEXTURE_LAYOUT_GENERAL);
-    pass.set_execute(
-        [data](rdg_command& command)
+    graph.add_pass<pass_data>(
+        "Copy Depth Pass",
+        RDG_PASS_COMPUTE,
+        [&](pass_data& data, rdg_pass& pass)
         {
+            data.src = pass.add_texture_srv(parameter.src, RHI_PIPELINE_STAGE_COMPUTE);
+            data.dst = pass.add_texture_uav(parameter.dst, RHI_PIPELINE_STAGE_COMPUTE);
+            data.copy_parameter = pass.add_parameter(copy_depth_cs::parameter);
+        },
+        [](const pass_data& data, rdg_command& command)
+        {
+            auto& device = render_device::instance();
+
             copy_depth_cs::copy_data copy_data = {
-                .src = data.src->get_handle(),
-                .dst = data.dst->get_handle(),
+                .src = data.src.get_bindless(),
+                .dst = data.dst.get_bindless(),
             };
 
             data.copy_parameter->set_constant(0, &copy_data, sizeof(copy_depth_cs::copy_data));
 
             rdg_compute_pipeline pipeline = {
-                .compute_shader = render_device::instance().get_shader<copy_depth_cs>(),
+                .compute_shader = device.get_shader<copy_depth_cs>(),
             };
             command.set_pipeline(pipeline);
-            command.set_parameter(0, render_device::instance().get_bindless_parameter());
+            command.set_parameter(0, device.get_bindless_parameter());
             command.set_parameter(1, data.copy_parameter);
 
-            rhi_texture_extent extent = data.src->get_extent();
+            rhi_texture_extent extent = data.src.get_texture()->get_extent();
 
             command.dispatch_2d(extent.width, extent.height);
         });

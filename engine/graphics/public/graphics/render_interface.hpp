@@ -9,24 +9,9 @@ namespace violet
 struct rhi_constants
 {
     static constexpr std::size_t max_attachment_count = 8;
-    static constexpr std::size_t max_subpass_count = 4;
     static constexpr std::size_t max_parameter_binding_count = 8;
     static constexpr std::size_t max_parameter_count = 16;
     static constexpr std::size_t max_vertex_attribute_count = 8;
-};
-
-using rhi_resource_handle = std::uint32_t;
-static constexpr rhi_resource_handle RHI_INVALID_RESOURCE_HANDLE =
-    std::numeric_limits<rhi_resource_handle>::max();
-
-class rhi_resource
-{
-public:
-    virtual ~rhi_resource() = default;
-    virtual rhi_resource_handle get_handle() const noexcept
-    {
-        return RHI_INVALID_RESOURCE_HANDLE;
-    }
 };
 
 enum rhi_format
@@ -144,6 +129,43 @@ inline std::size_t rhi_get_format_stride(rhi_format format)
     }
 }
 
+static constexpr std::uint32_t RHI_INVALID_BINDLESS_HANDLE =
+    std::numeric_limits<std::uint32_t>::max();
+
+class rhi_descriptor
+{
+public:
+    virtual ~rhi_descriptor() = default;
+
+    virtual std::uint32_t get_bindless() const noexcept
+    {
+        return RHI_INVALID_BINDLESS_HANDLE;
+    }
+};
+
+enum rhi_texture_dimension
+{
+    RHI_TEXTURE_DIMENSION_2D,
+    RHI_TEXTURE_DIMENSION_2D_ARRAY,
+    RHI_TEXTURE_DIMENSION_CUBE,
+};
+
+class rhi_texture_srv : public rhi_descriptor
+{
+};
+
+class rhi_texture_uav : public rhi_descriptor
+{
+};
+
+class rhi_texture_rtv : public rhi_descriptor
+{
+};
+
+class rhi_texture_dsv : public rhi_descriptor
+{
+};
+
 enum rhi_texture_layout
 {
     RHI_TEXTURE_LAYOUT_UNDEFINED,
@@ -153,7 +175,7 @@ enum rhi_texture_layout
     RHI_TEXTURE_LAYOUT_DEPTH_STENCIL,
     RHI_TEXTURE_LAYOUT_PRESENT,
     RHI_TEXTURE_LAYOUT_TRANSFER_SRC,
-    RHI_TEXTURE_LAYOUT_TRANSFER_DST
+    RHI_TEXTURE_LAYOUT_TRANSFER_DST,
 };
 
 struct rhi_texture_extent
@@ -172,7 +194,7 @@ enum rhi_sample_count
     RHI_SAMPLE_COUNT_32,
 };
 
-enum rhi_texture_flag
+enum rhi_texture_flag : std::uint32_t
 {
     RHI_TEXTURE_SHADER_RESOURCE = 1 << 0,
     RHI_TEXTURE_STORAGE = 1 << 1,
@@ -193,45 +215,62 @@ struct rhi_texture_desc
     std::uint32_t level_count{1};
     std::uint32_t layer_count{1};
 
-    rhi_texture_layout layout;
     rhi_sample_count samples;
+    rhi_texture_layout layout;
 };
 
-class rhi_texture : public rhi_resource
+class rhi_texture
 {
 public:
+    virtual ~rhi_texture() = default;
+
     virtual rhi_format get_format() const noexcept = 0;
     virtual rhi_sample_count get_samples() const noexcept = 0;
     virtual rhi_texture_extent get_extent() const noexcept = 0;
 
-    virtual std::uint32_t get_level() const noexcept = 0;
     virtual std::uint32_t get_level_count() const noexcept = 0;
-    virtual std::uint32_t get_layer() const noexcept = 0;
     virtual std::uint32_t get_layer_count() const noexcept = 0;
 
-    virtual std::uint64_t get_hash() const noexcept = 0;
+    virtual rhi_texture_flags get_flags() const noexcept = 0;
+
+    virtual rhi_texture_srv* get_srv(
+        rhi_texture_dimension dimension = RHI_TEXTURE_DIMENSION_2D,
+        std::uint32_t level = 0,
+        std::uint32_t level_count = 0,
+        std::uint32_t layer = 0,
+        std::uint32_t layer_count = 0) = 0;
+
+    virtual rhi_texture_uav* get_uav(
+        rhi_texture_dimension dimension = RHI_TEXTURE_DIMENSION_2D,
+        std::uint32_t level = 0,
+        std::uint32_t level_count = 0,
+        std::uint32_t layer = 0,
+        std::uint32_t layer_count = 0) = 0;
+
+    virtual rhi_texture_rtv* get_rtv(
+        rhi_texture_dimension dimension = RHI_TEXTURE_DIMENSION_2D,
+        std::uint32_t level = 0,
+        std::uint32_t level_count = 0,
+        std::uint32_t layer = 0,
+        std::uint32_t layer_count = 0) = 0;
+
+    virtual rhi_texture_dsv* get_dsv(
+        rhi_texture_dimension dimension = RHI_TEXTURE_DIMENSION_2D,
+        std::uint32_t level = 0,
+        std::uint32_t level_count = 0,
+        std::uint32_t layer = 0,
+        std::uint32_t layer_count = 0) = 0;
 };
 
-enum rhi_texture_view_type
+class rhi_buffer_srv : public rhi_descriptor
 {
-    RHI_TEXTURE_VIEW_2D,
-    RHI_TEXTURE_VIEW_2D_ARRAY,
-    RHI_TEXTURE_VIEW_CUBE,
 };
 
-struct rhi_texture_view_desc
+class rhi_buffer_uav : public rhi_descriptor
 {
-    rhi_texture_view_type type;
-
-    rhi_texture* texture;
-
-    std::uint32_t level;
-    std::uint32_t level_count;
-    std::uint32_t layer;
-    std::uint32_t layer_count;
 };
 
-enum rhi_buffer_flag
+enum rhi_buffer_flag : std::uint32_t
 {
     RHI_BUFFER_VERTEX = 1 << 0,
     RHI_BUFFER_INDEX = 1 << 1,
@@ -252,27 +291,28 @@ struct rhi_buffer_desc
     std::size_t size;
 
     rhi_buffer_flags flags;
-
-    struct
-    {
-        std::size_t size;
-    } index;
-
-    struct
-    {
-        rhi_format format;
-    } texel;
 };
 
-class rhi_buffer : public rhi_resource
+class rhi_buffer
 {
 public:
+    virtual ~rhi_buffer() = default;
+
     virtual void* get_buffer_pointer() const noexcept
     {
         return nullptr;
     }
 
     virtual std::size_t get_buffer_size() const noexcept = 0;
+
+    virtual rhi_buffer_srv* get_srv(
+        std::size_t offset = 0,
+        std::size_t size = 0,
+        rhi_format format = RHI_FORMAT_UNDEFINED) = 0;
+    virtual rhi_buffer_uav* get_uav(
+        std::size_t offset = 0,
+        std::size_t size = 0,
+        rhi_format format = RHI_FORMAT_UNDEFINED) = 0;
 };
 
 enum rhi_filter
@@ -303,10 +343,16 @@ struct rhi_sampler_desc
     float max_level;
 };
 
-class rhi_sampler : public rhi_resource
+class rhi_sampler : public rhi_descriptor
 {
 public:
     virtual ~rhi_sampler() = default;
+};
+
+enum rhi_attachment_type
+{
+    RHI_ATTACHMENT_RENDER_TARGET,
+    RHI_ATTACHMENT_DEPTH_STENCIL,
 };
 
 enum rhi_attachment_load_op
@@ -324,9 +370,12 @@ enum rhi_attachment_store_op
 
 struct rhi_attachment_desc
 {
+    rhi_attachment_type type;
+
     rhi_format format;
     rhi_sample_count samples;
 
+    rhi_texture_layout layout;
     rhi_texture_layout initial_layout;
     rhi_texture_layout final_layout;
 
@@ -336,29 +385,7 @@ struct rhi_attachment_desc
     rhi_attachment_store_op stencil_store_op;
 };
 
-enum rhi_attachment_reference_type
-{
-    RHI_ATTACHMENT_REFERENCE_INPUT,
-    RHI_ATTACHMENT_REFERENCE_COLOR,
-    RHI_ATTACHMENT_REFERENCE_DEPTH_STENCIL,
-    RHI_ATTACHMENT_REFERENCE_RESOLVE
-};
-
-struct rhi_attachment_reference
-{
-    rhi_attachment_reference_type type;
-    rhi_texture_layout layout;
-    std::size_t index;
-    std::size_t resolve_index;
-};
-
-struct rhi_render_subpass_desc
-{
-    rhi_attachment_reference references[rhi_constants::max_attachment_count];
-    std::size_t reference_count;
-};
-
-enum rhi_pipeline_stage_flag
+enum rhi_pipeline_stage_flag : std::uint32_t
 {
     RHI_PIPELINE_STAGE_BEGIN = 1 << 0,
     RHI_PIPELINE_STAGE_VERTEX_INPUT = 1 << 1,
@@ -375,7 +402,7 @@ enum rhi_pipeline_stage_flag
 };
 using rhi_pipeline_stage_flags = std::uint32_t;
 
-enum rhi_access_flag
+enum rhi_access_flag : std::uint32_t
 {
     RHI_ACCESS_COLOR_READ = 1 << 0,
     RHI_ACCESS_COLOR_WRITE = 1 << 1,
@@ -394,13 +421,11 @@ using rhi_access_flags = std::uint32_t;
 
 static constexpr std::size_t RHI_RENDER_SUBPASS_EXTERNAL = ~0U;
 
-struct rhi_render_subpass_dependency_desc
+struct rhi_render_pass_dependency_desc
 {
-    std::size_t src;
     rhi_pipeline_stage_flags src_stages;
     rhi_access_flags src_access;
 
-    std::size_t dst;
     rhi_pipeline_stage_flags dst_stages;
     rhi_access_flags dst_access;
 };
@@ -410,11 +435,8 @@ struct rhi_render_pass_desc
     rhi_attachment_desc attachments[rhi_constants::max_attachment_count];
     std::size_t attachment_count;
 
-    rhi_render_subpass_desc subpasses[rhi_constants::max_subpass_count];
-    std::size_t subpass_count;
-
-    rhi_render_subpass_dependency_desc dependencies[rhi_constants::max_subpass_count];
-    std::size_t dependency_count;
+    rhi_render_pass_dependency_desc begin_dependency;
+    rhi_render_pass_dependency_desc end_dependency;
 };
 
 class rhi_render_pass
@@ -423,7 +445,7 @@ public:
     virtual ~rhi_render_pass() = default;
 };
 
-enum rhi_shader_stage_flag
+enum rhi_shader_stage_flag : std::uint32_t
 {
     RHI_SHADER_STAGE_VERTEX = 1 << 0,
     RHI_SHADER_STAGE_FRAGMENT = 1 << 1,
@@ -452,7 +474,7 @@ struct rhi_parameter_binding
     std::size_t size;
 };
 
-enum rhi_parameter_flag
+enum rhi_parameter_flag : std::uint32_t
 {
     RHI_PARAMETER_SIMPLE = 1 << 0,
     RHI_PARAMETER_DISABLE_SYNC = 1 << 1,
@@ -477,10 +499,10 @@ public:
         const void* data,
         std::size_t size,
         std::size_t offset = 0) = 0;
-    virtual void set_uniform(std::size_t index, rhi_buffer* uniform, std::size_t offset = 0) = 0;
-    virtual void set_storage(std::size_t index, rhi_buffer* storage, std::size_t offset = 0) = 0;
-    virtual void set_storage(std::size_t index, rhi_texture* texture, std::size_t offset = 0) = 0;
-    virtual void set_texture(std::size_t index, rhi_texture* texture, std::size_t offset = 0) = 0;
+    virtual void set_srv(std::size_t index, rhi_texture_srv* srv, std::size_t offset = 0) = 0;
+    virtual void set_srv(std::size_t index, rhi_buffer_srv* srv, std::size_t offset = 0) = 0;
+    virtual void set_uav(std::size_t index, rhi_texture_uav* uav, std::size_t offset = 0) = 0;
+    virtual void set_uav(std::size_t index, rhi_buffer_uav* uav, std::size_t offset = 0) = 0;
     virtual void set_sampler(std::size_t index, rhi_sampler* sampler, std::size_t offset = 0) = 0;
 };
 
@@ -633,7 +655,6 @@ struct rhi_render_pipeline_desc
     rhi_primitive_topology primitive_topology;
 
     rhi_render_pass* render_pass;
-    std::size_t subpass_index;
 };
 
 class rhi_render_pipeline
@@ -653,16 +674,26 @@ public:
     virtual ~rhi_compute_pipeline() = default;
 };
 
-struct rhi_framebuffer_desc
+union rhi_clear_value
 {
-    rhi_render_pass* render_pass;
-    rhi_texture* attachments[rhi_constants::max_attachment_count];
+    float color[4];
+
+    struct
+    {
+        float depth;
+        std::uint32_t stencil;
+    };
 };
 
-class rhi_framebuffer
+struct rhi_attachment
 {
-public:
-    virtual ~rhi_framebuffer() = default;
+    union
+    {
+        rhi_texture_rtv* rtv;
+        rhi_texture_dsv* dsv;
+    };
+
+    rhi_clear_value clear_value;
 };
 
 struct rhi_viewport
@@ -687,7 +718,10 @@ struct rhi_buffer_barrier
 {
     rhi_buffer* buffer;
 
+    rhi_pipeline_stage_flags src_stages;
     rhi_access_flags src_access;
+
+    rhi_pipeline_stage_flags dst_stages;
     rhi_access_flags dst_access;
 
     std::size_t offset;
@@ -698,15 +732,16 @@ struct rhi_texture_barrier
 {
     rhi_texture* texture;
 
+    rhi_pipeline_stage_flags src_stages;
     rhi_access_flags src_access;
-    rhi_access_flags dst_access;
-
     rhi_texture_layout src_layout;
+
+    rhi_pipeline_stage_flags dst_stages;
+    rhi_access_flags dst_access;
     rhi_texture_layout dst_layout;
 
     std::uint32_t level;
     std::uint32_t level_count;
-
     std::uint32_t layer;
     std::uint32_t layer_count;
 };
@@ -718,7 +753,6 @@ struct rhi_texture_region
     rhi_texture_extent extent;
 
     std::uint32_t level;
-
     std::uint32_t layer;
     std::uint32_t layer_count;
 };
@@ -742,9 +776,11 @@ class rhi_command
 public:
     virtual ~rhi_command() = default;
 
-    virtual void begin_render_pass(rhi_render_pass* render_pass, rhi_framebuffer* framebuffer) = 0;
+    virtual void begin_render_pass(
+        rhi_render_pass* render_pass,
+        const rhi_attachment* attachments,
+        std::size_t attachment_count) = 0;
     virtual void end_render_pass() = 0;
-    virtual void next_subpass() = 0;
 
     virtual void set_pipeline(rhi_render_pipeline* render_pipeline) = 0;
     virtual void set_pipeline(rhi_compute_pipeline* compute_pipeline) = 0;
@@ -756,7 +792,7 @@ public:
     virtual void set_vertex_buffers(
         rhi_buffer* const* vertex_buffers,
         std::size_t vertex_buffer_count) = 0;
-    virtual void set_index_buffer(rhi_buffer* index_buffer) = 0;
+    virtual void set_index_buffer(rhi_buffer* index_buffer, std::size_t index_size) = 0;
 
     virtual void draw(
         std::uint32_t vertex_offset,
@@ -779,8 +815,6 @@ public:
     virtual void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) = 0;
 
     virtual void set_pipeline_barrier(
-        rhi_pipeline_stage_flags src_stages,
-        rhi_pipeline_stage_flags dst_stages,
         const rhi_buffer_barrier* buffer_barriers,
         std::size_t buffer_barrier_count,
         const rhi_texture_barrier* texture_barriers,
@@ -847,6 +881,8 @@ public:
     virtual void resize() = 0;
 
     virtual rhi_texture* get_texture() = 0;
+    virtual rhi_texture* get_texture(std::size_t index) = 0;
+    virtual std::size_t get_texture_count() const noexcept = 0;
 };
 
 enum rhi_backend
@@ -854,7 +890,7 @@ enum rhi_backend
     RHI_BACKEND_VULKAN
 };
 
-enum rhi_feature
+enum rhi_feature : std::uint32_t
 {
     RHI_FEATURE_INDIRECT_DRAW = 1 << 0,
     RHI_FEATURE_BINDLESS = 1 << 1,
@@ -909,9 +945,6 @@ public:
         bool auto_sync = true) = 0;
     virtual void destroy_parameter(rhi_parameter* parameter) = 0;
 
-    virtual rhi_framebuffer* create_framebuffer(const rhi_framebuffer_desc& desc) = 0;
-    virtual void destroy_framebuffer(rhi_framebuffer* framebuffer) = 0;
-
     virtual rhi_sampler* create_sampler(const rhi_sampler_desc& desc) = 0;
     virtual void destroy_sampler(rhi_sampler* sampler) = 0;
 
@@ -919,7 +952,6 @@ public:
     virtual void destroy_buffer(rhi_buffer* buffer) = 0;
 
     virtual rhi_texture* create_texture(const rhi_texture_desc& desc) = 0;
-    virtual rhi_texture* create_texture(const rhi_texture_view_desc& desc) = 0;
     virtual void destroy_texture(rhi_texture* texture) = 0;
 
     virtual rhi_swapchain* create_swapchain(const rhi_swapchain_desc& desc) = 0;

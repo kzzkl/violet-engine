@@ -64,9 +64,9 @@ public:
         return *this;
     }
 
-    const std::vector<task*>& get_dependents() const noexcept
+    const std::vector<task*>& get_dependencies() const noexcept
     {
-        return m_dependents;
+        return m_dependencies;
     }
 
     const std::vector<task*>& get_successors() const noexcept
@@ -103,7 +103,7 @@ private:
 
     std::function<void()> m_function;
 
-    std::vector<task*> m_dependents;
+    std::vector<task*> m_dependencies;
     std::vector<task*> m_successors;
 };
 } // namespace violet

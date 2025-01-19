@@ -62,10 +62,6 @@ imgui_pass::imgui_pass()
         geometry.index = device.create_buffer({
             .size = sizeof(std::uint32_t) * max_index_count,
             .flags = RHI_BUFFER_INDEX | RHI_BUFFER_HOST_VISIBLE,
-            .index =
-                {
-                    .size = sizeof(std::uint32_t),
-                },
         });
     }
 }
@@ -74,13 +70,22 @@ void imgui_pass::add(render_graph& graph, const parameter& parameter)
 {
     update_vertex();
 
-    rhi_parameter* material_parameter = graph.allocate_parameter(imgui_vs::parameter);
-    material_parameter->set_constant(0, &m_constant, sizeof(draw_constant));
+    struct pass_data
+    {
+        rhi_parameter* material_parameter;
+    };
 
-    auto& pass = graph.add_pass<rdg_render_pass>("ImGui");
-    pass.add_render_target(parameter.render_target, RHI_ATTACHMENT_LOAD_OP_LOAD);
-    pass.set_execute(
-        [&, material_parameter](rdg_command& command)
+    graph.add_pass<pass_data>(
+        "ImGUI",
+        RDG_PASS_RASTER,
+        [&](pass_data& data, rdg_pass& pass)
+        {
+            pass.add_render_target(parameter.render_target, RHI_ATTACHMENT_LOAD_OP_LOAD);
+
+            data.material_parameter = pass.add_parameter(imgui_vs::parameter);
+            data.material_parameter->set_constant(0, &m_constant, sizeof(draw_constant));
+        },
+        [this](const pass_data& data, rdg_command& command)
         {
             auto& device = render_device::instance();
             auto& geometry = m_geometries[device.get_frame_resource_index()];
@@ -101,7 +106,7 @@ void imgui_pass::add(render_graph& graph, const parameter& parameter)
 
             command.set_pipeline(pipeline);
             command.set_parameter(0, device.get_bindless_parameter());
-            command.set_parameter(1, material_parameter);
+            command.set_parameter(1, data.material_parameter);
 
             std::vector<rhi_buffer*> vertex_buffers = {
                 geometry.position.get(),
@@ -109,7 +114,7 @@ void imgui_pass::add(render_graph& graph, const parameter& parameter)
                 geometry.color.get(),
             };
             command.set_vertex_buffers(vertex_buffers);
-            command.set_index_buffer(geometry.index.get());
+            command.set_index_buffer(geometry.index.get(), sizeof(std::uint32_t));
 
             for (std::size_t i = 0; i < m_draw_calls.size(); ++i)
             {

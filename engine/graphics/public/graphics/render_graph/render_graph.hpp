@@ -3,20 +3,13 @@
 #include "graphics/render_graph/rdg_allocator.hpp"
 #include "graphics/render_graph/rdg_pass.hpp"
 #include "graphics/render_graph/rdg_resource.hpp"
-#include <memory>
 
 namespace violet
 {
-template <typename T>
-concept RDGResource = std::is_same_v<T, rdg_texture> || std::is_same_v<T, rdg_buffer>;
-
-template <typename T>
-concept RDGPass = std::is_base_of_v<rdg_pass, T>;
-
 class render_graph
 {
 public:
-    render_graph(rdg_allocator* allocator) noexcept;
+    render_graph(std::string_view name, rdg_allocator* allocator) noexcept;
     render_graph(const render_graph&) = delete;
     ~render_graph();
 
@@ -25,28 +18,35 @@ public:
         rhi_texture* texture,
         rhi_texture_layout initial_layout = RHI_TEXTURE_LAYOUT_UNDEFINED,
         rhi_texture_layout final_layout = RHI_TEXTURE_LAYOUT_UNDEFINED);
-    rdg_texture* add_texture(std::string_view name, const rhi_texture_desc& desc);
     rdg_texture* add_texture(
         std::string_view name,
-        const rhi_texture_view_desc& desc,
-        rhi_texture_layout initial_layout = RHI_TEXTURE_LAYOUT_UNDEFINED,
-        rhi_texture_layout final_layout = RHI_TEXTURE_LAYOUT_UNDEFINED);
+        rhi_texture_extent extent,
+        rhi_format format,
+        rhi_texture_flags flags,
+        std::uint32_t level_count = 1,
+        std::uint32_t layer_count = 1,
+        rhi_sample_count samples = RHI_SAMPLE_COUNT_1);
 
     rdg_buffer* add_buffer(std::string_view name, rhi_buffer* buffer);
-    rdg_buffer* add_buffer(std::string_view name, const rhi_buffer_desc& desc);
+    rdg_buffer* add_buffer(std::string_view name, std::size_t size, rhi_buffer_flags flags);
 
-    template <RDGPass T, typename... Args>
-    T& add_pass(std::string_view name, Args&&... args)
+    template <typename T, typename SetupFunctor, typename ExecuteFunctor>
+        requires std::is_invocable_v<SetupFunctor, T&, rdg_pass&> &&
+                 std::is_invocable_v<ExecuteFunctor, const T&, rdg_command&>
+    void add_pass(
+        std::string_view name,
+        rdg_pass_type pass_type,
+        SetupFunctor&& setup,
+        ExecuteFunctor&& execute)
     {
-        auto pass = std::make_unique<T>(std::forward<Args>(args)...);
-        pass->m_name = name;
+        auto* pass = m_allocator->allocate_pass<rdg_lambda_pass<T>>();
+        pass->set_name(name);
+        pass->set_pass_type(pass_type);
+        pass->set_execute(std::forward<ExecuteFunctor>(execute));
+        pass->setup(setup);
 
-        T* result = pass.get();
-        m_passes.push_back(std::move(pass));
-
-        m_groups.push_back({});
-
-        return *result;
+        m_passes.push_back(pass);
+        m_label_offset.push_back(m_labels.size());
     }
 
     void begin_group(std::string_view group_name);
@@ -57,45 +57,51 @@ public:
 
     render_graph& operator=(const render_graph&) = delete;
 
-    rhi_parameter* allocate_parameter(const rhi_parameter_desc& desc)
-    {
-        return m_allocator->allocate_parameter(desc);
-    }
-
-    rhi_sampler* allocate_sampler(const rhi_sampler_desc& desc)
-    {
-        return m_allocator->get_sampler(desc);
-    }
-
 private:
     void cull();
-    void merge_pass();
+    void allocate_resources();
+    void merge_passes();
     void build_barriers();
 
-    std::vector<std::unique_ptr<rdg_resource>> m_resources;
-    std::vector<std::unique_ptr<rdg_pass>> m_passes;
+    static void allocate_texture(rdg_texture* texture);
+    static void allocate_buffer(rdg_buffer* buffer);
 
-    std::vector<std::vector<std::string>> m_groups;
+    void build_texture_barriers(rdg_texture* texture);
+    void build_buffer_barriers(rdg_buffer* buffer);
 
-    struct barrier
+    void add_texture_barrier(
+        const rdg_reference* prev_reference,
+        const rdg_reference* curr_reference,
+        std::uint32_t level,
+        std::uint32_t level_count,
+        std::uint32_t layer,
+        std::uint32_t layer_count);
+    void add_buffer_barrier(
+        const rdg_reference* prev_reference,
+        const rdg_reference* curr_reference,
+        std::size_t offset,
+        std::size_t size);
+
+    std::vector<rdg_resource*> m_resources;
+    std::vector<rdg_pass*> m_passes;
+
+    std::vector<std::size_t> m_label_offset;
+    std::vector<std::string> m_labels;
+
+    struct batch
     {
-        rhi_pipeline_stage_flags src_stages;
-        rhi_pipeline_stage_flags dst_stages;
-
         std::vector<rhi_texture_barrier> texture_barriers;
         std::vector<rhi_buffer_barrier> buffer_barriers;
-    };
-
-    struct render_batch
-    {
-        std::vector<rdg_pass*> passes;
 
         rhi_render_pass* render_pass;
-        rhi_framebuffer* framebuffer;
+        std::vector<rhi_attachment> attachments;
 
-        barrier barrier;
+        rdg_pass* begin_pass;
+        rdg_pass* end_pass;
     };
-    std::vector<render_batch> m_batches;
+    std::vector<batch> m_batches;
+
+    rdg_pass m_final_pass;
 
     rdg_allocator* m_allocator{nullptr};
 };
@@ -117,5 +123,4 @@ public:
 private:
     render_graph& m_graph;
 };
-
 } // namespace violet

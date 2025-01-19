@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/allocator.hpp"
-#include "graphics/render_device.hpp"
+#include "graphics/buffer.hpp"
 
 namespace violet
 {
@@ -14,10 +14,9 @@ public:
 
     render_object_container()
     {
-        m_object_buffer = render_device::instance().create_buffer({
-            .size = sizeof(gpu_type) * 64,
-            .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST,
-        });
+        m_object_buffer = std::make_unique<structured_buffer>(
+            64 * sizeof(gpu_type),
+            RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST);
     }
 
     render_id add()
@@ -93,10 +92,10 @@ public:
 
     std::size_t get_capacity() const noexcept
     {
-        return m_object_buffer->get_buffer_size() / sizeof(gpu_type);
+        return m_object_buffer->get_size() / sizeof(gpu_type);
     }
 
-    rhi_buffer* get_buffer() const noexcept
+    structured_buffer* get_buffer() const noexcept
     {
         return m_object_buffer.get();
     }
@@ -161,10 +160,9 @@ private:
             capacity += capacity / 2;
         }
 
-        m_object_buffer = render_device::instance().create_buffer({
-            .size = capacity * sizeof(gpu_type),
-            .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST,
-        });
+        m_object_buffer = std::make_unique<structured_buffer>(
+            capacity * sizeof(gpu_type),
+            RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST);
     }
 
     std::vector<object_wrapper> m_objects;
@@ -175,6 +173,6 @@ private:
 
     index_allocator<render_id> m_id_allocator;
 
-    rhi_ptr<rhi_buffer> m_object_buffer;
+    std::unique_ptr<structured_buffer> m_object_buffer;
 };
 } // namespace violet

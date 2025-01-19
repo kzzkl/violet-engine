@@ -25,7 +25,7 @@ task& task::set_group(task_group& group)
 void task::add_dependency_impl(task& dependency)
 {
     dependency.m_successors.push_back(this);
-    m_dependents.push_back(&dependency);
+    m_dependencies.push_back(&dependency);
 
     m_graph->notify_task_change();
 }

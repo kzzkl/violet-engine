@@ -69,19 +69,19 @@ void mmd_material::set_ambient(const vec3f& ambient)
     get_constant().ambient = ambient;
 }
 
-void mmd_material::set_diffuse(rhi_texture* texture)
+void mmd_material::set_diffuse(const texture_2d* texture)
 {
-    get_constant().diffuse_texture = texture->get_handle();
+    get_constant().diffuse_texture = texture->get_srv()->get_bindless();
 }
 
-void mmd_material::set_toon(rhi_texture* texture)
+void mmd_material::set_toon(const texture_2d* texture)
 {
-    get_constant().toon_texture = texture->get_handle();
+    get_constant().toon_texture = texture->get_srv()->get_bindless();
 }
 
-void mmd_material::set_environment(rhi_texture* texture)
+void mmd_material::set_environment(const texture_2d* texture)
 {
-    get_constant().environment_texture = texture->get_handle();
+    get_constant().environment_texture = texture->get_srv()->get_bindless();
 }
 
 void mmd_material::set_environment_blend(std::uint32_t mode)

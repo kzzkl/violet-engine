@@ -9,8 +9,6 @@ class unlit_pass
 public:
     struct parameter
     {
-        const render_scene& scene;
-
         rdg_texture* gbuffer_albedo;
 
         rdg_texture* depth_buffer;
@@ -19,6 +17,6 @@ public:
         bool clear;
     };
 
-    static void add(render_graph& graph, const parameter& parameter);
+    static void add(render_graph& graph, const render_context& context, const parameter& parameter);
 };
 } // namespace violet

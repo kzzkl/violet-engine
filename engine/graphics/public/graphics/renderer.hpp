@@ -10,9 +10,6 @@ public:
     renderer() = default;
     virtual ~renderer() = default;
 
-    virtual void render(
-        render_graph& graph,
-        const render_scene& scene,
-        const render_camera& camera) = 0;
+    virtual void render(render_graph& graph, const render_context& context) = 0;
 };
 } // namespace violet

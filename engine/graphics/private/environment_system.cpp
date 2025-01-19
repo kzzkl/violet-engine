@@ -25,7 +25,10 @@ void environment_system::update(render_scene_manager& scene_manager)
         [&](const skybox_component& skybox, const scene_component& scene)
         {
             render_scene* render_scene = scene_manager.get_scene(scene.layer);
-            render_scene->set_skybox(skybox.texture, skybox.irradiance, skybox.prefilter);
+            render_scene->set_skybox(
+                skybox.skybox->get_texture(),
+                skybox.skybox->get_irradiance(),
+                skybox.skybox->get_prefilter());
         },
         [this](auto& view)
         {

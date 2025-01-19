@@ -30,34 +30,27 @@ void tone_mapping_pass::add(render_graph& graph, const parameter& parameter)
 {
     struct pass_data
     {
-        rdg_texture* hdr_texture;
-        rdg_texture* ldr_texture;
+        rdg_texture_srv hdr_texture;
+        rdg_texture_uav ldr_texture;
         rhi_parameter* tone_mapping_parameter;
     };
 
-    pass_data data = {
-        .hdr_texture = parameter.hdr_texture,
-        .ldr_texture = parameter.ldr_texture,
-        .tone_mapping_parameter = graph.allocate_parameter(tone_mapping_cs::parameter),
-    };
-
-    auto& pass = graph.add_pass<rdg_compute_pass>("Tone Mapping Pass");
-    pass.add_texture(
-        parameter.hdr_texture,
-        RHI_PIPELINE_STAGE_COMPUTE,
-        RHI_ACCESS_SHADER_READ,
-        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
-    pass.add_texture(
-        parameter.ldr_texture,
-        RHI_PIPELINE_STAGE_COMPUTE,
-        RHI_ACCESS_SHADER_WRITE,
-        RHI_TEXTURE_LAYOUT_GENERAL);
-    pass.set_execute(
-        [data](rdg_command& command)
+    graph.add_pass<pass_data>(
+        "Tone Mapping Pass",
+        RDG_PASS_COMPUTE,
+        [&](pass_data& data, rdg_pass& pass)
+        {
+            data.hdr_texture =
+                pass.add_texture_srv(parameter.hdr_texture, RHI_PIPELINE_STAGE_COMPUTE);
+            data.ldr_texture =
+                pass.add_texture_uav(parameter.ldr_texture, RHI_PIPELINE_STAGE_COMPUTE);
+            data.tone_mapping_parameter = pass.add_parameter(tone_mapping_cs::parameter);
+        },
+        [](const pass_data& data, rdg_command& command)
         {
             tone_mapping_cs::tone_mapping_data tone_mapping_data = {
-                .hdr = data.hdr_texture->get_handle(),
-                .ldr = data.ldr_texture->get_handle(),
+                .hdr = data.hdr_texture.get_bindless(),
+                .ldr = data.ldr_texture.get_bindless(),
             };
 
             data.tone_mapping_parameter->set_constant(
@@ -72,7 +65,7 @@ void tone_mapping_pass::add(render_graph& graph, const parameter& parameter)
             command.set_parameter(0, render_device::instance().get_bindless_parameter());
             command.set_parameter(1, data.tone_mapping_parameter);
 
-            rhi_texture_extent extent = data.hdr_texture->get_extent();
+            rhi_texture_extent extent = data.hdr_texture.get_texture()->get_extent();
             command.dispatch_2d(extent.width, extent.height);
         });
 }

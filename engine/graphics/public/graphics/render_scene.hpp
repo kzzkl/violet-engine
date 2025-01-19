@@ -3,23 +3,15 @@
 #include "graphics/geometry.hpp"
 #include "graphics/material.hpp"
 #include "graphics/render_object_container.hpp"
+#include "graphics/texture.hpp"
 #include "math/box.hpp"
 
 namespace violet
 {
-struct render_camera
-{
-    rhi_parameter* camera_parameter;
-    std::vector<rhi_texture*> render_targets;
-
-    rhi_viewport viewport;
-    std::vector<rhi_scissor_rect> scissor_rects;
-};
-
 struct render_group
 {
-    std::vector<rhi_buffer*> vertex_buffers;
-    rhi_buffer* index_buffer;
+    std::vector<vertex_buffer*> vertex_buffers;
+    index_buffer* index_buffer;
 
     const geometry* geometry;
 
@@ -74,7 +66,7 @@ public:
         const vec3f& direction);
     void set_light_shadow(render_id light_id, bool cast_shadow);
 
-    void set_skybox(rhi_texture* skybox, rhi_texture* irradiance, rhi_texture* prefilter);
+    void set_skybox(texture_cube* skybox, texture_cube* irradiance, texture_cube* prefilter);
     bool has_skybox() const noexcept
     {
         return m_scene_data.skybox != 0;
@@ -199,7 +191,7 @@ private:
 
     std::vector<render_group> m_groups;
     index_allocator<render_id> m_group_allocator;
-    rhi_ptr<rhi_buffer> m_group_buffer;
+    std::unique_ptr<raw_buffer> m_group_buffer;
 
     render_scene_states m_scene_states{0};
 

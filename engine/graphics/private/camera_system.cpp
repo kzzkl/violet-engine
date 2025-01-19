@@ -42,8 +42,8 @@ shader::camera_data get_camera_data(
         std::size_t index = render_device::instance().get_frame_count() % halton_sequence.size();
 
         vec2f jitter = halton_sequence[index] - vec2f{0.5f, 0.5f};
-        jitter.x /= static_cast<float>(extent.width);
-        jitter.y /= static_cast<float>(extent.height);
+        jitter.x = jitter.x * 2.0f / static_cast<float>(extent.width);
+        jitter.y = jitter.y * 2.0f / static_cast<float>(extent.height);
 
         vec4f_simd offset = math::load(jitter);
         projection[2] = vector::add(projection[2], offset);

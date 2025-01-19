@@ -14,7 +14,7 @@ public:
     {
     }
 
-    std::vector<task_wrapper*> dependents;
+    std::vector<task_wrapper*> dependencies;
     std::vector<task_wrapper*> successors;
 
     std::atomic<std::uint32_t> uncompleted_dependency_count{0};

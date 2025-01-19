@@ -6,10 +6,7 @@ namespace violet
 material_manager::material_manager(std::size_t material_buffer_size)
     : m_material_buffer_allocator(material_buffer_size)
 {
-    auto& device = render_device::instance();
-
-    m_material_buffer = device.create_buffer({
-        .data = nullptr,
+    m_material_buffer = std::make_unique<raw_buffer>(rhi_buffer_desc{
         .size = material_buffer_size,
         .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST,
     });
@@ -71,7 +68,7 @@ bool material_manager::update()
         if (material_info.material != nullptr)
         {
             m_gpu_buffer_uploader->upload(
-                m_material_buffer.get(),
+                m_material_buffer->get_rhi(),
                 material_info.material->get_constant_data(),
                 material_info.material->get_constant_size(),
                 material_info.material->get_constant_address());
@@ -88,33 +85,24 @@ bool material_manager::update()
 void material_manager::record(rhi_command* command)
 {
     rhi_buffer_barrier barrier = {
-        .buffer = m_material_buffer.get(),
+        .buffer = m_material_buffer->get_rhi(),
+        .src_stages =
+            RHI_PIPELINE_STAGE_COMPUTE | RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_FRAGMENT,
         .src_access = RHI_ACCESS_SHADER_READ,
+        .dst_stages = RHI_PIPELINE_STAGE_TRANSFER,
         .dst_access = RHI_ACCESS_TRANSFER_WRITE,
         .offset = 0,
-        .size = m_material_buffer->get_buffer_size(),
+        .size = m_material_buffer->get_size(),
     };
 
-    command->set_pipeline_barrier(
-        RHI_PIPELINE_STAGE_COMPUTE | RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_FRAGMENT,
-        RHI_PIPELINE_STAGE_TRANSFER,
-        &barrier,
-        1,
-        nullptr,
-        0);
+    command->set_pipeline_barrier(&barrier, 1, nullptr, 0);
 
     m_gpu_buffer_uploader->record(command);
 
-    barrier.src_access = RHI_ACCESS_TRANSFER_WRITE;
-    barrier.dst_access = RHI_ACCESS_SHADER_READ;
+    std::swap(barrier.src_stages, barrier.dst_stages);
+    std::swap(barrier.src_access, barrier.dst_access);
 
-    command->set_pipeline_barrier(
-        RHI_PIPELINE_STAGE_TRANSFER,
-        RHI_PIPELINE_STAGE_COMPUTE | RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_FRAGMENT,
-        &barrier,
-        1,
-        nullptr,
-        0);
+    command->set_pipeline_barrier(&barrier, 1, nullptr, 0);
 }
 
 void material_manager::mark_dirty(material* material)

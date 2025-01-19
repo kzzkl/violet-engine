@@ -9,9 +9,6 @@ class physical_pass
 public:
     struct parameter
     {
-        const render_scene& scene;
-        const render_camera& camera;
-
         rdg_texture* gbuffer_albedo;
         rdg_texture* gbuffer_material;
         rdg_texture* gbuffer_normal;
@@ -24,6 +21,6 @@ public:
         bool clear;
     };
 
-    static void add(render_graph& graph, const parameter& parameter);
+    static void add(render_graph& graph, const render_context& context, const parameter& parameter);
 };
 } // namespace violet
