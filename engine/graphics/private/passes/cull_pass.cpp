@@ -57,17 +57,17 @@ struct draw_command_filler_cs : public shader_cs
     };
 };
 
-void cull_pass::add(render_graph& graph, const render_context& context, const parameter& parameter)
+void cull_pass::add(render_graph& graph, const parameter& parameter)
 {
     add_reset_pass(graph, parameter);
 
     rdg_buffer* cull_result = graph.add_buffer(
         "Cull Result",
-        context.get_mesh_capacity() * sizeof(std::uint32_t),
+        graph.get_scene().get_mesh_capacity() * sizeof(std::uint32_t),
         RHI_BUFFER_STORAGE);
 
-    add_cull_pass(graph, context, parameter, cull_result);
-    add_fill_pass(graph, context, parameter, cull_result);
+    add_cull_pass(graph, parameter, cull_result);
+    add_fill_pass(graph, parameter, cull_result);
 }
 
 void cull_pass::add_reset_pass(render_graph& graph, const parameter& parameter)
@@ -95,7 +95,6 @@ void cull_pass::add_reset_pass(render_graph& graph, const parameter& parameter)
 
 void cull_pass::add_cull_pass(
     render_graph& graph,
-    const render_context& context,
     const parameter& parameter,
     rdg_buffer* cull_result)
 {
@@ -103,6 +102,8 @@ void cull_pass::add_cull_pass(
     {
         rdg_buffer_uav cull_result;
         rhi_parameter* cull_parameter;
+
+        std::uint32_t mesh_count;
     };
 
     graph.add_pass<pass_data>(
@@ -112,6 +113,7 @@ void cull_pass::add_cull_pass(
         {
             data.cull_result = pass.add_buffer_uav(cull_result, RHI_PIPELINE_STAGE_COMPUTE);
             data.cull_parameter = pass.add_parameter(cull_cs::parameter);
+            data.mesh_count = graph.get_scene().get_mesh_count();
         },
         [&](const pass_data& data, rdg_command& command)
         {
@@ -125,18 +127,17 @@ void cull_pass::add_cull_pass(
             command.set_pipeline({
                 .compute_shader = device.get_shader<cull_cs>(),
             });
-            command.set_parameter(0, device.get_bindless_parameter());
-            command.set_parameter(1, context.get_scene_parameter());
-            command.set_parameter(2, context.get_camera_parameter());
+            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+            command.set_parameter(1, RDG_PARAMETER_SCENE);
+            command.set_parameter(2, RDG_PARAMETER_CAMERA);
             command.set_parameter(3, data.cull_parameter);
 
-            command.dispatch_1d(context.get_mesh_count());
+            command.dispatch_1d(data.mesh_count);
         });
 }
 
 void cull_pass::add_fill_pass(
     render_graph& graph,
-    const render_context& context,
     const parameter& parameter,
     rdg_buffer* cull_result)
 {
@@ -147,6 +148,8 @@ void cull_pass::add_fill_pass(
         rdg_buffer_uav count_buffer;
 
         rhi_parameter* fill_parameter;
+
+        std::uint32_t instance_count;
     };
 
     graph.add_pass<pass_data>(
@@ -164,8 +167,9 @@ void cull_pass::add_fill_pass(
                 0,
                 RHI_FORMAT_R32_FLOAT);
             data.fill_parameter = pass.add_parameter(draw_command_filler_cs::parameter);
+            data.instance_count = graph.get_scene().get_instance_count();
         },
-        [&](const pass_data& data, rdg_command& command)
+        [](const pass_data& data, rdg_command& command)
         {
             draw_command_filler_cs::fill_data fill_data = {
                 .cull_result = data.cull_result.get_bindless(),
@@ -182,10 +186,10 @@ void cull_pass::add_fill_pass(
             command.set_pipeline({
                 .compute_shader = device.get_shader<draw_command_filler_cs>(),
             });
-            command.set_parameter(0, device.get_bindless_parameter());
-            command.set_parameter(1, context.get_scene_parameter());
+            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+            command.set_parameter(1, RDG_PARAMETER_SCENE);
             command.set_parameter(2, data.fill_parameter);
-            command.dispatch_1d(context.get_instance_count());
+            command.dispatch_1d(data.instance_count);
         });
 }
 } // namespace violet

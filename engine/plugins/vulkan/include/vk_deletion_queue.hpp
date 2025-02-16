@@ -16,7 +16,7 @@ public:
     void flush();
 
     void push(rhi_render_pass* render_pass);
-    void push(rhi_render_pipeline* render_pipeline);
+    void push(rhi_raster_pipeline* raster_pipeline);
     void push(rhi_compute_pipeline* compute_pipeline);
     void push(rhi_parameter* parameter);
     void push(rhi_texture_srv* srv);
@@ -73,7 +73,7 @@ private:
     std::size_t get_delete_frame() const noexcept;
 
     sub_queue<rhi_render_pass> m_render_pass_queue;
-    sub_queue<rhi_render_pipeline> m_render_pipeline_queue;
+    sub_queue<rhi_raster_pipeline> m_raster_pipeline_queue;
     sub_queue<rhi_compute_pipeline> m_compute_pipeline_queue;
     sub_queue<rhi_parameter> m_parameter_queue;
     sub_queue<rhi_descriptor> m_descriptor_queue;

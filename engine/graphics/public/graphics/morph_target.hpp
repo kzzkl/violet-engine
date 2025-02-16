@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/buffer.hpp"
+#include "graphics/resources/buffer.hpp"
 #include "math/types.hpp"
 #include <vector>
 

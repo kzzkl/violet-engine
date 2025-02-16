@@ -1,30 +1,51 @@
 #pragma once
 
 #include "graphics/material.hpp"
-#include "graphics/render_context.hpp"
 #include "graphics/render_graph/rdg_allocator.hpp"
 #include "graphics/render_graph/rdg_pipeline.hpp"
+#include <array>
 
 namespace violet
 {
+class render_scene;
+class render_camera;
+
+enum rdg_parameter_type
+{
+    RDG_PARAMETER_BINDLESS,
+    RDG_PARAMETER_SCENE,
+    RDG_PARAMETER_CAMERA,
+};
+
 class rdg_command
 {
 public:
-    rdg_command(rhi_command* command, rdg_allocator* allocator);
+    rdg_command(
+        rhi_command* command,
+        rdg_allocator* allocator,
+        const render_scene* scene,
+        const render_camera* camera);
 
-    void set_pipeline(const rdg_render_pipeline& pipeline);
+    void set_pipeline(const rdg_raster_pipeline& pipeline);
     void set_pipeline(const rdg_compute_pipeline& pipeline);
+
+    void set_parameter(std::size_t index, rdg_parameter_type type)
+    {
+        m_command->set_parameter(index, m_built_in_parameters[type]);
+    }
 
     void set_parameter(std::size_t index, rhi_parameter* parameter)
     {
         m_command->set_parameter(index, parameter);
     }
 
+    void set_viewport();
     void set_viewport(const rhi_viewport& viewport)
     {
         m_command->set_viewport(viewport);
     }
 
+    void set_scissor();
     void set_scissor(std::span<const rhi_scissor_rect> rects)
     {
         m_command->set_scissor(rects.data(), rects.size());
@@ -64,11 +85,7 @@ public:
             instance_count);
     }
 
-    void draw_instances(
-        const render_context& context,
-        rhi_buffer* command_buffer,
-        rhi_buffer* count_buffer,
-        material_type type);
+    void draw_instances(rhi_buffer* command_buffer, rhi_buffer* count_buffer, material_type type);
 
     void draw_fullscreen()
     {
@@ -145,6 +162,11 @@ private:
 
     rhi_command* m_command;
     rdg_allocator* m_allocator;
+
+    const render_scene* m_scene;
+    const render_camera* m_camera;
+
+    std::array<rhi_parameter*, 3> m_built_in_parameters;
 
     friend class render_graph;
 };

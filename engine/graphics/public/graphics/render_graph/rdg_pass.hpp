@@ -88,8 +88,6 @@ public:
         }
     }
 
-    void set_barriers(rdg_command& command);
-
     void execute(rdg_command& command);
 
     void set_pass_type(rdg_pass_type type) noexcept

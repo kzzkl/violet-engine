@@ -35,9 +35,9 @@ void vk_command::end_render_pass()
     m_current_render_pass = nullptr;
 }
 
-void vk_command::set_pipeline(rhi_render_pipeline* render_pipeline)
+void vk_command::set_pipeline(rhi_raster_pipeline* raster_pipeline)
 {
-    auto* pipeline = static_cast<vk_render_pipeline*>(render_pipeline);
+    auto* pipeline = static_cast<vk_raster_pipeline*>(raster_pipeline);
     vkCmdBindPipeline(m_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->get_pipeline());
 
     m_current_pipeline_layout = pipeline->get_pipeline_layout();

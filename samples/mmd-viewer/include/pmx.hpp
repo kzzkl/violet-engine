@@ -366,7 +366,7 @@ public:
     std::vector<bdef_data> bdef;
     std::vector<sdef_data> sdef;
 
-    std::vector<std::int32_t> indexes;
+    std::vector<std::uint32_t> indexes;
 
     std::vector<std::string> textures;
     std::vector<pmx_material> materials;

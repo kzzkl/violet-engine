@@ -5,15 +5,27 @@ static const float MIN_ROUGHNESS = 0.03;
 
 ConstantBuffer<scene_data> scene : register(b0, space1);
 ConstantBuffer<camera_data> camera : register(b0, space2);
-struct gbuffer_data
+struct constant_data
 {
     uint albedo;
     uint material;
     uint normal;
     uint depth;
     uint emissive;
+    uint ao_buffer;
+    uint brdf_lut;
 };
-ConstantBuffer<gbuffer_data> constant : register(b0, space3);
+ConstantBuffer<constant_data> constant : register(b0, space3);
+
+float3 gtao_multi_bounce(float visibility, float3 albedo)
+{
+ 	float3 a =  2.0404 * albedo - 0.3324;   
+    float3 b = -4.7951 * albedo + 0.6417;
+    float3 c =  2.7552 * albedo + 0.6903;
+    
+    float3 x = visibility.xxx;
+    return max(x, ((x * a + b) * x + c) * x);
+}
 
 float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
 {
@@ -34,7 +46,7 @@ float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
     Texture2D<float4> gbuffer_emissive = ResourceDescriptorHeap[constant.emissive];
     float3 emissive = gbuffer_emissive.Sample(point_clamp_sampler, texcoord).rgb;
     
-    float3 position = get_position_from_depth(constant.depth, texcoord, camera.view_projection_inv).xyz;
+    float3 position = reconstruct_position(constant.depth, texcoord, camera.view_projection_inv).xyz;
 
     float3 F0 = lerp(0.04, albedo, metallic);
 
@@ -75,7 +87,7 @@ float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
         TextureCube<float3> prefilter_map = ResourceDescriptorHeap[scene.prefilter];
         float3 prefilter = prefilter_map.SampleLevel(linear_clamp_sampler, R, roughness * 4.0);
 
-        Texture2D<float2> brdf_lut = ResourceDescriptorHeap[scene.brdf_lut];
+        Texture2D<float2> brdf_lut = ResourceDescriptorHeap[constant.brdf_lut];
         float2 brdf = brdf_lut.Sample(linear_clamp_sampler, float2(NdotV, roughness));
         float3 specular = (F0 * brdf.x + brdf.y) * prefilter;
 
@@ -85,6 +97,12 @@ float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
 
         ambient_lighting = specular + diffuse;
     }
+
+#ifdef USE_AO_BUFFER
+    Texture2D<float> ao_buffer = ResourceDescriptorHeap[constant.ao_buffer];
+    float ao = ao_buffer.Sample(linear_clamp_sampler, texcoord);
+    ambient_lighting *= gtao_multi_bounce(ao, albedo);
+#endif
 
     return float4(direct_lighting + ambient_lighting + emissive, 1.0);
 }

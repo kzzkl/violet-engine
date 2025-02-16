@@ -642,7 +642,7 @@ struct rhi_rasterizer_state
     rhi_cull_mode cull_mode;
 };
 
-struct rhi_render_pipeline_desc
+struct rhi_raster_pipeline_desc
 {
     rhi_shader* vertex_shader;
     rhi_shader* fragment_shader;
@@ -657,10 +657,10 @@ struct rhi_render_pipeline_desc
     rhi_render_pass* render_pass;
 };
 
-class rhi_render_pipeline
+class rhi_raster_pipeline
 {
 public:
-    virtual ~rhi_render_pipeline() = default;
+    virtual ~rhi_raster_pipeline() = default;
 };
 
 struct rhi_compute_pipeline_desc
@@ -782,7 +782,7 @@ public:
         std::size_t attachment_count) = 0;
     virtual void end_render_pass() = 0;
 
-    virtual void set_pipeline(rhi_render_pipeline* render_pipeline) = 0;
+    virtual void set_pipeline(rhi_raster_pipeline* raster_pipeline) = 0;
     virtual void set_pipeline(rhi_compute_pipeline* compute_pipeline) = 0;
     virtual void set_parameter(std::size_t index, rhi_parameter* parameter) = 0;
 
@@ -933,8 +933,8 @@ public:
     virtual rhi_shader* create_shader(const rhi_shader_desc& desc) = 0;
     virtual void destroy_shader(rhi_shader* shader) = 0;
 
-    virtual rhi_render_pipeline* create_render_pipeline(const rhi_render_pipeline_desc& desc) = 0;
-    virtual void destroy_render_pipeline(rhi_render_pipeline* render_pipeline) = 0;
+    virtual rhi_raster_pipeline* create_raster_pipeline(const rhi_raster_pipeline_desc& desc) = 0;
+    virtual void destroy_raster_pipeline(rhi_raster_pipeline* raster_pipeline) = 0;
 
     virtual rhi_compute_pipeline* create_compute_pipeline(
         const rhi_compute_pipeline_desc& desc) = 0;

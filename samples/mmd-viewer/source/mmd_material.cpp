@@ -24,6 +24,8 @@ struct mmd_outline_vs : public mesh_vs
     static constexpr input_layout inputs = {
         {"position", RHI_FORMAT_R32G32B32_FLOAT},
         {"normal", RHI_FORMAT_R32G32B32_FLOAT},
+        {"tangent", RHI_FORMAT_R32G32B32_FLOAT},
+        {"smooth_normal", RHI_FORMAT_R32G32B32_FLOAT},
     };
 };
 
@@ -89,6 +91,11 @@ void mmd_material::set_environment_blend(std::uint32_t mode)
     get_constant().environment_blend_mode = mode;
 }
 
+void mmd_material::set_ramp_texture(const texture_2d* texture)
+{
+    get_constant().ramp_texture = texture->get_srv()->get_bindless();
+}
+
 mmd_outline_material::mmd_outline_material()
     : mesh_material(MATERIAL_OPAQUE)
 {
@@ -109,12 +116,23 @@ mmd_outline_material::mmd_outline_material()
     pipeline.rasterizer.cull_mode = RHI_CULL_MODE_FRONT;
 }
 
-void mmd_outline_material::set_outline(const vec4f& color, float width)
+void mmd_outline_material::set_color(const vec4f& color)
 {
     auto& constant = get_constant();
     constant.color.r = color.r;
     constant.color.g = color.g;
     constant.color.b = color.b;
+}
+
+void mmd_outline_material::set_width(float width)
+{
+    auto& constant = get_constant();
     constant.width = width;
+}
+
+void mmd_outline_material::set_z_offset(float z_offset)
+{
+    auto& constant = get_constant();
+    constant.z_offset = z_offset;
 }
 } // namespace violet

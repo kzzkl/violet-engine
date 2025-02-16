@@ -5,13 +5,31 @@
 
 namespace violet
 {
-rdg_command::rdg_command(rhi_command* command, rdg_allocator* allocator)
+rdg_command::rdg_command(
+    rhi_command* command,
+    rdg_allocator* allocator,
+    const render_scene* scene,
+    const render_camera* camera)
     : m_command(command),
-      m_allocator(allocator)
+      m_allocator(allocator),
+      m_scene(scene),
+      m_camera(camera)
 {
+    m_built_in_parameters[RDG_PARAMETER_BINDLESS] =
+        render_device::instance().get_bindless_parameter();
+
+    if (scene != nullptr)
+    {
+        m_built_in_parameters[RDG_PARAMETER_SCENE] = scene->get_scene_parameter();
+    }
+
+    if (camera != nullptr)
+    {
+        m_built_in_parameters[RDG_PARAMETER_CAMERA] = camera->get_camera_parameter();
+    }
 }
 
-void rdg_command::set_pipeline(const rdg_render_pipeline& pipeline)
+void rdg_command::set_pipeline(const rdg_raster_pipeline& pipeline)
 {
     assert(m_render_pass);
 
@@ -34,15 +52,26 @@ void rdg_command::set_pipeline(const rdg_compute_pipeline& pipeline)
     }));
 }
 
+void rdg_command::set_viewport()
+{
+    set_viewport(m_camera->get_viewport());
+}
+
+void rdg_command::set_scissor()
+{
+    set_scissor(m_camera->get_scissor_rects());
+}
+
 void rdg_command::draw_instances(
-    const render_context& context,
     rhi_buffer* command_buffer,
     rhi_buffer* count_buffer,
     material_type type)
 {
+    assert(m_scene != nullptr && m_camera != nullptr);
+
     auto& device = render_device::instance();
 
-    for (const auto& batch : context.get_scene().get_batches())
+    for (const auto& batch : m_scene->get_batches())
     {
         if (batch.material_type != type || batch.groups.empty())
         {
@@ -52,12 +81,12 @@ void rdg_command::draw_instances(
         set_pipeline(batch.pipeline);
 
         set_parameter(0, device.get_bindless_parameter());
-        set_parameter(1, context.get_scene_parameter());
-        set_parameter(2, context.get_camera_parameter());
+        set_parameter(1, m_scene->get_scene_parameter());
+        set_parameter(2, m_camera->get_camera_parameter());
 
         for (render_id group_id : batch.groups)
         {
-            const auto& group = context.get_scene().get_group(group_id);
+            const auto& group = m_scene->get_group(group_id);
 
             std::vector<rhi_buffer*> vertex_buffers(group.vertex_buffers.size());
             std::transform(

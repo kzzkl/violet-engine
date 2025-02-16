@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/hash.hpp"
+#include "common/type_index.hpp"
 #include "graphics/shader.hpp"
 #include <memory>
 #include <span>
@@ -21,7 +22,7 @@ public:
 
     void operator()(rhi_render_pass* render_pass);
     void operator()(rhi_shader* shader);
-    void operator()(rhi_render_pipeline* render_pipeline);
+    void operator()(rhi_raster_pipeline* raster_pipeline);
     void operator()(rhi_compute_pipeline* compute_pipeline);
     void operator()(rhi_parameter* parameter);
     void operator()(rhi_sampler* sampler);
@@ -41,21 +42,8 @@ class material_manager;
 class geometry_manager;
 class shader_compiler;
 
-class texture_2d;
 class raw_buffer;
-
-struct render_buildin_resources
-{
-    raw_buffer* material_buffer;
-
-    std::unique_ptr<texture_2d> empty_texture;
-    std::unique_ptr<texture_2d> brdf_lut;
-
-    rhi_ptr<rhi_sampler> point_repeat_sampler;
-    rhi_ptr<rhi_sampler> point_clamp_sampler;
-    rhi_ptr<rhi_sampler> linear_repeat_sampler;
-    rhi_ptr<rhi_sampler> linear_clamp_sampler;
-};
+class raw_texture;
 
 template <typename T>
 concept rhi_resource = std::is_same_v<T, rhi_buffer> || std::is_same_v<T, rhi_texture> ||
@@ -81,11 +69,6 @@ public:
 
     void begin_frame();
     void end_frame();
-
-    const render_buildin_resources& get_buildin_resources() const noexcept
-    {
-        return m_buildin_resources;
-    }
 
     std::size_t get_frame_count() const noexcept;
     std::size_t get_frame_resource_count() const noexcept;
@@ -227,7 +210,7 @@ public:
 
     rhi_ptr<rhi_render_pass> create_render_pass(const rhi_render_pass_desc& desc);
 
-    rhi_ptr<rhi_render_pipeline> create_pipeline(const rhi_render_pipeline_desc& desc);
+    rhi_ptr<rhi_raster_pipeline> create_pipeline(const rhi_raster_pipeline_desc& desc);
     rhi_ptr<rhi_compute_pipeline> create_pipeline(const rhi_compute_pipeline_desc& desc);
 
     rhi_ptr<rhi_parameter> create_parameter(const rhi_parameter_desc& desc);
@@ -248,12 +231,33 @@ public:
 
     rhi_render_pass* get_render_pass(const rhi_render_pass_desc& desc);
 
-    rhi_render_pipeline* get_pipeline(const rhi_render_pipeline_desc& desc);
+    rhi_raster_pipeline* get_pipeline(const rhi_raster_pipeline_desc& desc);
     rhi_compute_pipeline* get_pipeline(const rhi_compute_pipeline_desc& desc);
 
     rhi_sampler* get_sampler(const rhi_sampler_desc& desc);
 
+    template <typename T>
+    T* get_buildin_texture()
+    {
+        static const std::size_t index = buildin_texture_index::value<T>();
+        if (m_buildin_textures.size() <= index)
+        {
+            m_buildin_textures.resize(index + 1);
+        }
+
+        if (m_buildin_textures[index] == nullptr)
+        {
+            m_buildin_textures[index] = std::make_unique<T>();
+        }
+
+        return static_cast<T*>(m_buildin_textures[index].get());
+    }
+
 private:
+    struct buildin_texture_index : public type_index<buildin_texture_index, std::size_t, 1>
+    {
+    };
+
     void create_buildin_resources();
 
     std::vector<std::uint8_t> compile_shader(
@@ -274,7 +278,8 @@ private:
     std::unique_ptr<material_manager> m_material_manager;
     std::unique_ptr<geometry_manager> m_geometry_manager;
 
-    render_buildin_resources m_buildin_resources;
+    std::vector<std::unique_ptr<raw_texture>> m_buildin_textures;
+    std::vector<rhi_ptr<rhi_sampler>> m_buildin_samplers;
 
     std::unique_ptr<transient_allocator> m_transient_allocator;
 

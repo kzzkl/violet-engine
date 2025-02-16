@@ -43,7 +43,7 @@ vs_output vs_main(vs_input input)
     float3 position = camera.position + vertices[indexes[input.vertex_id]];
 
     vs_output result;
-    result.position = mul(camera.view_projection, float4(position, 1.0f));
+    result.position = mul(camera.view_projection_no_jitter, float4(position, 1.0f));
     result.position.z = result.position.w * 0.00001;
     result.texcoord = normalize(vertices[indexes[input.vertex_id]]);
 

@@ -22,7 +22,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     
     float2 texcoord = (float2(dtid.xy) + 0.5) / float2(constant.width, constant.height);
 
-    float4 position_ws = get_position_from_depth(constant.depth_buffer, texcoord, camera.view_projection_inv);
+    float4 position_ws = reconstruct_position(constant.depth_buffer, texcoord, camera.view_projection_inv);
 
     float4 position_cs = mul(camera.view_projection_no_jitter, position_ws);
     position_cs.xy /= position_cs.w;

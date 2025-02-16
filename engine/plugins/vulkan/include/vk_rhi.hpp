@@ -65,8 +65,8 @@ public:
     rhi_shader* create_shader(const rhi_shader_desc& desc) override;
     void destroy_shader(rhi_shader* shader) override;
 
-    rhi_render_pipeline* create_render_pipeline(const rhi_render_pipeline_desc& desc) override;
-    void destroy_render_pipeline(rhi_render_pipeline* render_pipeline) override;
+    rhi_raster_pipeline* create_raster_pipeline(const rhi_raster_pipeline_desc& desc) override;
+    void destroy_raster_pipeline(rhi_raster_pipeline* raster_pipeline) override;
 
     rhi_compute_pipeline* create_compute_pipeline(const rhi_compute_pipeline_desc& desc) override;
     void destroy_compute_pipeline(rhi_compute_pipeline* compute_pipeline) override;

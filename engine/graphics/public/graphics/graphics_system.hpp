@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/engine.hpp"
-#include "graphics/render_scene.hpp"
+#include "graphics/render_device.hpp"
 #include "render_graph/rdg_allocator.hpp"
 
 namespace violet
@@ -25,8 +25,8 @@ private:
 
     rhi_fence* render(
         const camera_component* camera,
-        rhi_parameter* camera_parameter,
-        const render_scene& scene);
+        rhi_parameter* camera_component,
+        std::uint32_t layer);
 
     void switch_frame_resource();
     rhi_fence* allocate_fence();

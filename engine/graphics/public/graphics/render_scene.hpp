@@ -2,9 +2,12 @@
 
 #include "graphics/geometry.hpp"
 #include "graphics/material.hpp"
+#include "graphics/render_feature.hpp"
 #include "graphics/render_object_container.hpp"
-#include "graphics/texture.hpp"
+#include "graphics/resources/texture.hpp"
 #include "math/box.hpp"
+#include <unordered_map>
+#include <vector>
 
 namespace violet
 {
@@ -25,7 +28,7 @@ struct render_group
 struct render_batch
 {
     material_type material_type;
-    rdg_render_pipeline pipeline;
+    rdg_raster_pipeline pipeline;
 
     std::vector<render_id> groups;
 };
@@ -199,5 +202,67 @@ private:
     rhi_ptr<rhi_parameter> m_scene_parameter;
 
     std::unique_ptr<gpu_buffer_uploader> m_gpu_buffer_uploader;
+};
+
+class render_camera
+{
+public:
+    render_camera(rhi_texture* render_target, rhi_parameter* camera_parameter);
+
+    void set_viewport(const rhi_viewport& viewport) noexcept
+    {
+        m_viewport = viewport;
+    }
+
+    const rhi_viewport& get_viewport() const noexcept
+    {
+        return m_viewport;
+    }
+
+    void set_scissor_rects(const std::vector<rhi_scissor_rect>& scissor_rects)
+    {
+        m_scissor_rects = scissor_rects;
+    }
+
+    const std::vector<rhi_scissor_rect>& get_scissor_rects() const noexcept
+    {
+        return m_scissor_rects;
+    }
+
+    void add_feature(render_feature_base* feature)
+    {
+        m_features[feature->get_id()] = feature;
+    }
+
+    rhi_texture* get_render_target() const noexcept
+    {
+        return m_render_target;
+    }
+
+    rhi_parameter* get_camera_parameter() const noexcept
+    {
+        return m_camera_parameter;
+    }
+
+    template <typename T>
+    T* get_feature() const noexcept
+    {
+        auto iter = m_features.find(render_feature_index::value<T>());
+        if (iter == m_features.end())
+        {
+            return nullptr;
+        }
+
+        return static_cast<T*>(iter->second);
+    }
+
+private:
+    rhi_texture* m_render_target;
+    rhi_parameter* m_camera_parameter;
+
+    rhi_viewport m_viewport;
+    std::vector<rhi_scissor_rect> m_scissor_rects;
+
+    std::unordered_map<std::uint32_t, render_feature_base*> m_features;
 };
 } // namespace violet

@@ -14,6 +14,7 @@ public:
         rdg_texture* gbuffer_normal;
         rdg_texture* gbuffer_depth;
         rdg_texture* gbuffer_emissive;
+        rdg_texture* ao_buffer;
 
         rdg_texture* depth_buffer;
         rdg_texture* render_target;
@@ -21,6 +22,6 @@ public:
         bool clear;
     };
 
-    static void add(render_graph& graph, const render_context& context, const parameter& parameter);
+    static void add(render_graph& graph, const parameter& parameter);
 };
 } // namespace violet

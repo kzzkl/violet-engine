@@ -24,7 +24,7 @@ public:
         std::size_t attachment_count) override;
     void end_render_pass() override;
 
-    void set_pipeline(rhi_render_pipeline* render_pipeline) override;
+    void set_pipeline(rhi_raster_pipeline* raster_pipeline) override;
     void set_pipeline(rhi_compute_pipeline* compute_pipeline) override;
     void set_parameter(std::size_t index, rhi_parameter* parameter) override;
 

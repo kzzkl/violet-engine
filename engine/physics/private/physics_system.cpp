@@ -22,7 +22,14 @@ physics_system::physics_system()
 {
 }
 
-physics_system::~physics_system() {}
+physics_system::~physics_system()
+{
+    m_scenes.clear();
+    m_shapes.clear();
+
+    m_context = nullptr;
+    m_plugin = nullptr;
+}
 
 bool physics_system::initialize(const dictionary& config)
 {
@@ -286,26 +293,20 @@ void physics_system::update_joint()
                         .target = target_rigidbody.rigidbody.get(),
                         .target_position = joint.target_position,
                         .target_rotation = joint.target_rotation,
-                        .min_linear = joint.min_linear,
-                        .max_linear = joint.max_linear,
-                        .min_angular = joint.min_angular,
-                        .max_angular = joint.max_angular,
                     };
-
-                    for (std::size_t i = 0; i < 6; ++i)
-                    {
-                        desc.spring_enable[i] = joint.spring_enable[i];
-                        desc.stiffness[i] = joint.stiffness[i];
-                        desc.damping[i] = joint.damping[i];
-                    }
 
                     joint.meta.joint = m_context->create_joint(desc);
                 }
-                else
+
+                for (std::size_t i = 0; i < 6; ++i)
                 {
-                    joint.meta.joint->set_linear(joint.min_linear, joint.max_linear);
-                    joint.meta.joint->set_angular(joint.min_angular, joint.max_angular);
+                    joint.meta.joint->set_spring_enable(i, joint.spring_enable[i]);
+                    joint.meta.joint->set_stiffness(i, joint.stiffness[i]);
+                    joint.meta.joint->set_damping(i, joint.damping[i]);
                 }
+
+                joint.meta.joint->set_linear(joint.min_linear, joint.max_linear);
+                joint.meta.joint->set_angular(joint.min_angular, joint.max_angular);
             }
         },
         [this](auto& view)

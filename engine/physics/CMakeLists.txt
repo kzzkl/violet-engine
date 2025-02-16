@@ -3,7 +3,6 @@ project(violet-physics)
 option(VIOLET_PHYSICS_DEBUG_DRAW "Whether to show rigid body wireframe" OFF)
 
 set(SRC_FILES
-    ./private/components/rigidbody_component.cpp
     ./private/physics_context.cpp
     ./private/physics_plugin.cpp
     ./private/physics_scene.cpp

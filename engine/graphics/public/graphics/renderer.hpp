@@ -10,6 +10,6 @@ public:
     renderer() = default;
     virtual ~renderer() = default;
 
-    virtual void render(render_graph& graph, const render_context& context) = 0;
+    virtual void render(render_graph& graph) = 0;
 };
 } // namespace violet

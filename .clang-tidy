@@ -1,5 +1,4 @@
 Checks: >
-    -*,
     bugprone-*,
     misc-*,
     modernize-*,
@@ -15,7 +14,7 @@ Checks: >
     -modernize-concat-nested-namespaces,
     -modernize-use-nodiscard,
     -modernize-use-trailing-return-type,
-    -readability-convert-member-functions-to-static
+    -readability-convert-member-functions-to-static,
     -readability-function-cognitive-complexity,
     -readability-implicit-bool-conversion,
     -readability-implicit-bool-cast,

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "common/allocator.hpp"
-#include "graphics/buffer.hpp"
 #include "graphics/material.hpp"
+#include "graphics/resources/buffer.hpp"
 #include <mutex>
 
 namespace violet

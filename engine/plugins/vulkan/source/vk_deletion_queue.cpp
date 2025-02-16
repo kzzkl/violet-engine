@@ -11,7 +11,7 @@ vk_deletion_queue::vk_deletion_queue(vk_context* context) noexcept
 void vk_deletion_queue::tick(std::size_t frame_index)
 {
     m_render_pass_queue.tick(frame_index);
-    m_render_pipeline_queue.tick(frame_index);
+    m_raster_pipeline_queue.tick(frame_index);
     m_compute_pipeline_queue.tick(frame_index);
     m_parameter_queue.tick(frame_index);
     m_descriptor_queue.tick(frame_index);
@@ -24,7 +24,7 @@ void vk_deletion_queue::tick(std::size_t frame_index)
 void vk_deletion_queue::flush()
 {
     m_render_pass_queue.flush();
-    m_render_pipeline_queue.flush();
+    m_raster_pipeline_queue.flush();
     m_compute_pipeline_queue.flush();
     m_parameter_queue.flush();
     m_descriptor_queue.flush();
@@ -39,9 +39,9 @@ void vk_deletion_queue::push(rhi_render_pass* render_pass)
     m_render_pass_queue.push(render_pass, get_delete_frame());
 }
 
-void vk_deletion_queue::push(rhi_render_pipeline* render_pipeline)
+void vk_deletion_queue::push(rhi_raster_pipeline* raster_pipeline)
 {
-    m_render_pipeline_queue.push(render_pipeline, get_delete_frame());
+    m_raster_pipeline_queue.push(raster_pipeline, get_delete_frame());
 }
 
 void vk_deletion_queue::push(rhi_compute_pipeline* compute_pipeline)

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "graphics/buffer.hpp"
 #include "graphics/morph_target.hpp"
 #include "graphics/render_device.hpp"
 #include <string>

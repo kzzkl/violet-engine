@@ -49,7 +49,7 @@ vk_vertex_shader::vk_vertex_shader(const rhi_shader_desc& desc, vk_context* cont
     }
 }
 
-vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_context* context)
+vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_context* context)
     : m_pipeline(VK_NULL_HANDLE),
       m_pipeline_layout(VK_NULL_HANDLE),
       m_context(context)
@@ -300,7 +300,7 @@ vk_render_pipeline::vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_
         &m_pipeline));
 }
 
-vk_render_pipeline::~vk_render_pipeline()
+vk_raster_pipeline::~vk_raster_pipeline()
 {
     vkDestroyPipeline(m_context->get_device(), m_pipeline, nullptr);
 }

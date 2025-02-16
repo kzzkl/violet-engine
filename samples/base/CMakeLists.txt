@@ -26,7 +26,6 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
     violet::graphics
     assimp::assimp
-    MikkTSpace
     imgui)
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION bin/assets)

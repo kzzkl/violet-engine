@@ -3,15 +3,22 @@
 #include "graphics/render_graph/rdg_allocator.hpp"
 #include "graphics/render_graph/rdg_pass.hpp"
 #include "graphics/render_graph/rdg_resource.hpp"
+#include "graphics/render_scene.hpp"
 
 namespace violet
 {
 class render_graph
 {
 public:
-    render_graph(std::string_view name, rdg_allocator* allocator) noexcept;
+    render_graph(
+        std::string_view name,
+        const render_scene* scene = nullptr,
+        const render_camera* camera = nullptr,
+        rdg_allocator* allocator = nullptr) noexcept;
     render_graph(const render_graph&) = delete;
     ~render_graph();
+
+    render_graph& operator=(const render_graph&) = delete;
 
     rdg_texture* add_texture(
         std::string_view name,
@@ -55,7 +62,15 @@ public:
     void compile();
     void record(rhi_command* command);
 
-    render_graph& operator=(const render_graph&) = delete;
+    const render_scene& get_scene() const noexcept
+    {
+        return *m_scene;
+    }
+
+    const render_camera& get_camera() const noexcept
+    {
+        return *m_camera;
+    }
 
 private:
     void cull();
@@ -101,9 +116,13 @@ private:
     };
     std::vector<batch> m_batches;
 
-    rdg_pass m_final_pass;
+    rdg_pass* m_final_pass;
 
     rdg_allocator* m_allocator{nullptr};
+    std::unique_ptr<rdg_allocator> m_default_allocator;
+
+    const render_scene* m_scene;
+    const render_camera* m_camera;
 };
 
 class rdg_scope

@@ -9,7 +9,11 @@
 #include "deferred_renderer_imgui.hpp"
 #include "ecs_command/ecs_command_system.hpp"
 #include "gltf_loader.hpp"
+#include "graphics/geometries/box_geometry.hpp"
 #include "graphics/graphics_system.hpp"
+#include "graphics/materials/physical_material.hpp"
+#include "graphics/passes/gtao_pass.hpp"
+#include "graphics/passes/taa_pass.hpp"
 #include "graphics/skybox.hpp"
 #include "imgui.h"
 #include "imgui_system.hpp"
@@ -116,12 +120,9 @@ private:
 
         auto& main_camera = world.get_component<camera_component>(m_camera);
         main_camera.renderer = m_renderer.get();
-        main_camera.render_targets = {
-            m_swapchain.get(),
-            m_taa_history[0].get(),
-            m_taa_history[1].get(),
-        };
-        main_camera.jitter = true;
+        main_camera.render_target = m_swapchain.get();
+        main_camera.features.push_back(std::make_unique<taa_render_feature>());
+        main_camera.features.push_back(std::make_unique<gtao_render_feature>());
 
         gltf_loader loader(m_model_path);
         if (auto result = loader.load())
@@ -154,52 +155,78 @@ private:
                 entity_transform.set_scale(node.scale);
             }
         }
+
+        m_plane = world.create();
+        world.add_component<transform_component, mesh_component, scene_component>(m_plane);
+
+        m_plane_geometry = std::make_unique<box_geometry>(10.0f, 0.05f, 10.0f);
+        m_plane_material = std::make_unique<physical_material>();
+
+        auto& plane_mesh = world.get_component<mesh_component>(m_plane);
+        plane_mesh.geometry = m_plane_geometry.get();
+        plane_mesh.submeshes.push_back({
+            .material = m_plane_material.get(),
+        });
+        auto& plane_transform = world.get_component<transform_component>(m_plane);
+        plane_transform.set_position({0.0f, -1.0f, 0.0f});
     }
 
     void resize()
     {
-        render_device& device = render_device::instance();
-
         m_swapchain->resize();
-
-        auto extent = get_system<window_system>().get_extent();
-
-        for (auto& target : m_taa_history)
-        {
-            target = device.create_texture({
-                .extent = {extent.width, extent.height},
-                .format = RHI_FORMAT_R16G16B16A16_FLOAT,
-                .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE,
-                .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
-            });
-        }
-
-        auto& main_camera = get_world().get_component<camera_component>(m_camera);
-        main_camera.render_targets[1] = m_taa_history[0].get();
-        main_camera.render_targets[2] = m_taa_history[1].get();
     }
 
     void tick()
     {
-        static bool enable_taa = true;
-        if (ImGui::Checkbox("TAA", &enable_taa))
+        if (ImGui::CollapsingHeader("TAA"))
         {
-            m_renderer->set_taa(enable_taa);
-
             auto& main_camera = get_world().get_component<camera_component>(m_camera);
-            main_camera.jitter = enable_taa;
+            auto* taa = main_camera.get_feature<taa_render_feature>();
+
+            static bool enable_taa = taa->is_enable();
+
+            ImGui::Checkbox("Enable##TAA", &enable_taa);
+
+            taa->set_enable(enable_taa);
+        }
+
+        if (ImGui::CollapsingHeader("GTAO"))
+        {
+            auto& main_camera = get_world().get_component<camera_component>(m_camera);
+            auto* gtao = main_camera.get_feature<gtao_render_feature>();
+
+            static bool enable_gtao = gtao->is_enable();
+            static int slice_count = static_cast<int>(gtao->get_slice_count());
+            static int step_count = static_cast<int>(gtao->get_step_count());
+            static float radius = gtao->get_radius();
+            static float falloff = gtao->get_falloff();
+
+            ImGui::Checkbox("Enable##GTAO", &enable_gtao);
+            ImGui::SliderInt("Slice Count", &slice_count, 1, 5);
+            ImGui::SliderInt("Step Count", &step_count, 1, 5);
+            ImGui::SliderFloat("Radius", &radius, 0.0f, 10.0f);
+            ImGui::SliderFloat("Falloff", &falloff, 0.1f, 1.0f);
+
+            gtao->set_enable(enable_gtao);
+            gtao->set_slice_count(slice_count);
+            gtao->set_step_count(step_count);
+            gtao->set_radius(radius);
+            gtao->set_falloff(falloff);
         }
     }
 
     entity m_light;
     entity m_camera;
+    entity m_plane;
+
+    std::unique_ptr<geometry> m_plane_geometry;
+    std::unique_ptr<material> m_plane_material;
 
     std::unique_ptr<skybox> m_skybox;
 
     mesh_loader::scene_data m_model_data;
 
     rhi_ptr<rhi_swapchain> m_swapchain;
-    std::array<rhi_ptr<rhi_texture>, 2> m_taa_history;
     std::unique_ptr<deferred_renderer_imgui> m_renderer;
 
     std::string m_skybox_path;

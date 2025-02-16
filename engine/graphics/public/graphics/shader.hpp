@@ -105,8 +105,8 @@ struct shader
         std::uint32_t skybox;
         std::uint32_t irradiance;
         std::uint32_t prefilter;
-        std::uint32_t brdf_lut;
         std::uint32_t material_buffer;
+        std::uint32_t padding0;
     };
 
     static constexpr parameter scene = {
@@ -122,6 +122,7 @@ struct shader
     {
         mat4f view;
         mat4f projection;
+        mat4f projection_inv;
         mat4f view_projection;
         mat4f view_projection_inv;
         mat4f view_projection_no_jitter;

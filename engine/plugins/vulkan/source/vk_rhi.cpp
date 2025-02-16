@@ -76,14 +76,14 @@ void vk_rhi::destroy_shader(rhi_shader* shader)
     delete shader;
 }
 
-rhi_render_pipeline* vk_rhi::create_render_pipeline(const rhi_render_pipeline_desc& desc)
+rhi_raster_pipeline* vk_rhi::create_raster_pipeline(const rhi_raster_pipeline_desc& desc)
 {
-    return new vk_render_pipeline(desc, m_context.get());
+    return new vk_raster_pipeline(desc, m_context.get());
 }
 
-void vk_rhi::destroy_render_pipeline(rhi_render_pipeline* render_pipeline)
+void vk_rhi::destroy_raster_pipeline(rhi_raster_pipeline* raster_pipeline)
 {
-    m_context->get_deletion_queue()->push(render_pipeline);
+    m_context->get_deletion_queue()->push(raster_pipeline);
 }
 
 rhi_compute_pipeline* vk_rhi::create_compute_pipeline(const rhi_compute_pipeline_desc& desc)

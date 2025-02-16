@@ -30,18 +30,6 @@ bt3_joint::bt3_joint(const phy_joint_desc& desc)
         frame_a,
         frame_b,
         true);
-    m_constraint->setLinearLowerLimit(convert_vector(desc.min_linear));
-    m_constraint->setLinearUpperLimit(convert_vector(desc.max_linear));
-
-    m_constraint->setAngularLowerLimit(convert_vector(desc.min_angular));
-    m_constraint->setAngularUpperLimit(convert_vector(desc.max_angular));
-
-    for (int i = 0; i < 6; ++i)
-    {
-        m_constraint->enableSpring(i, desc.spring_enable[i]);
-        m_constraint->setStiffness(i, desc.stiffness[i]);
-        m_constraint->setDamping(i, desc.damping[i]);
-    }
 }
 
 void bt3_joint::set_linear(const vec3f& min, const vec3f& max)

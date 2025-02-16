@@ -1,4 +1,5 @@
 #include "common.hlsli"
+#include "color.hlsli"
 
 ConstantBuffer<camera_data> camera : register(b0, space1);
 
@@ -39,36 +40,12 @@ float2 get_motion_vector(uint2 st)
     return motion_vector_buffer[st + closest_offset];
 }
 
-float3 rgb_to_YCoCgR(float3 color_rgb)
-{
-    float3 color_YCoCgR;
-
-    color_YCoCgR.y = color_rgb.r - color_rgb.b;
-    float temp = color_rgb.b + color_YCoCgR.y / 2;
-    color_YCoCgR.z = color_rgb.g - temp;
-    color_YCoCgR.x = temp + color_YCoCgR.z / 2;
-
-    return color_YCoCgR;
-}
-
-float3 YCoCgR_to_rgb(float3 color_YCoCgR)
-{
-    float3 color_rgb;
-
-    float temp = color_YCoCgR.x - color_YCoCgR.z / 2;
-    color_rgb.g = color_YCoCgR.z + temp;
-    color_rgb.b = temp - color_YCoCgR.y / 2;
-    color_rgb.r = color_rgb.b + color_YCoCgR.y;
-
-    return color_rgb;
-}
-
 float3 clip_color(float3 history_color, uint2 st)
 {
     Texture2D<float4> current = ResourceDescriptorHeap[constant.current_render_target];
 
     history_color = tonemap(history_color);
-    history_color = rgb_to_YCoCgR(history_color);
+    history_color = rgb_to_ycocgr(history_color);
 
     const int2 st_min = int2(0, 0);
     const int2 st_max = int2(constant.width, constant.height) - 1;
@@ -82,7 +59,7 @@ float3 clip_color(float3 history_color, uint2 st)
         {
             float3 color = current[clamp(st + int2(i, j), st_min, st_max)].rgb;
             color = tonemap(color);
-            color = rgb_to_YCoCgR(color);
+            color = rgb_to_ycocgr(color);
 
             m1 += color;
             m2 += color * color;
@@ -114,7 +91,7 @@ float3 clip_color(float3 history_color, uint2 st)
         clip_color = history_color;
     }
 
-    clip_color = YCoCgR_to_rgb(clip_color);
+    clip_color = ycocgr_to_rgb(clip_color);
     clip_color = tonemap_invert(clip_color);
 
     return clip_color;
@@ -128,7 +105,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    float2 texcoord = (float2(dtid.xy) + 0.5) / float2(constant.width, constant.height);
+    float2 texcoord = get_compute_texcoord(dtid.xy, constant.width, constant.height);
 
 #if defined(USE_MOTION_VECTOR)
     float2 motion_vector = get_motion_vector(dtid.xy);
@@ -140,7 +117,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     Texture2D<float4> current = ResourceDescriptorHeap[constant.current_render_target];
     RWTexture2D<float4> resolved = ResourceDescriptorHeap[constant.resolved_render_target];
 
-    if (!any(history_texcoord < 0.0) && !any(history_texcoord > 1.0))
+    if (constant.history_render_target != 0 && !any(history_texcoord < 0.0) && !any(history_texcoord > 1.0))
     {
         float3 current_color = current[dtid.xy].rgb;
 

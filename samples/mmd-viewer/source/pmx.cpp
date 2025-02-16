@@ -53,8 +53,7 @@ std::string read_text(std::ifstream& fin, std::uint8_t text_encoding)
         }
         else if (text_encoding == 0)
         {
-            std::u16string str;
-            str.resize(len);
+            std::u16string str(len / 2, u'\0');
             fin.read(reinterpret_cast<char*>(str.data()), len);
             convert<ENCODE_TYPE_UTF16, ENCODE_TYPE_UTF8>(str, result);
         }
@@ -250,7 +249,7 @@ bool pmx::load_mesh(std::ifstream& fin)
 
     for (std::int32_t i = 0; i < index_count; ++i)
     {
-        indexes[i] = read_index(fin, header.vertex_index_size);
+        indexes[i] = static_cast<std::uint32_t>(read_index(fin, header.vertex_index_size));
     }
 
     if (m_flip_winding)

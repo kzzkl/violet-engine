@@ -8,7 +8,6 @@ class rdg_pass;
 
 enum rdg_reference_type
 {
-    RDG_REFERENCE_NONE,
     RDG_REFERENCE_TEXTURE,
     RDG_REFERENCE_TEXTURE_SRV,
     RDG_REFERENCE_TEXTURE_UAV,

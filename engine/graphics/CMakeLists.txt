@@ -8,8 +8,9 @@ add_library(${PROJECT_NAME} STATIC
     ./private/passes/lighting/physical_pass.cpp
     ./private/passes/lighting/unlit_pass.cpp
     ./private/passes/blit_pass.cpp
-    ./private/passes/copy_depth_pass.cpp
     ./private/passes/cull_pass.cpp
+    ./private/passes/gtao_pass.cpp
+    ./private/passes/hzb_pass.cpp
     ./private/passes/mesh_pass.cpp
     ./private/passes/motion_vector_pass.cpp
     ./private/passes/skybox_pass.cpp
@@ -19,9 +20,14 @@ add_library(${PROJECT_NAME} STATIC
     ./private/render_graph/rdg_pass.cpp
     ./private/render_graph/render_graph.cpp
     ./private/renderers/deferred_renderer.cpp
+    ./private/resources/brdf_lut.cpp
+    ./private/resources/buffer.cpp
+    ./private/resources/hilbert_lut.cpp
+    ./private/resources/ramp_texture.cpp
+    ./private/resources/texture.cpp
+    ./private/tools/geometry_tool.cpp
     ./private/tools/ibl_tool.cpp
     ./private/tools/texture_loader.cpp
-    ./private/buffer.cpp
     ./private/camera_system.cpp
     ./private/environment_system.cpp
     ./private/geometry_manager.cpp
@@ -33,7 +39,6 @@ add_library(${PROJECT_NAME} STATIC
     ./private/material.cpp
     ./private/mesh_system.cpp
     ./private/morph_target.cpp
-    ./private/render_context.cpp
     ./private/render_device.cpp
     ./private/render_scene_manager.cpp
     ./private/render_scene.cpp
@@ -41,7 +46,6 @@ add_library(${PROJECT_NAME} STATIC
     ./private/shader_compiler.cpp
     ./private/skinning_system.cpp
     ./private/skybox.cpp
-    ./private/texture.cpp
     ./private/transient_allocator.cpp)
 add_library(violet::graphics ALIAS ${PROJECT_NAME})
 
@@ -59,7 +63,8 @@ target_link_libraries(${PROJECT_NAME}
     violet::scene
     PRIVATE
     stb
-    dxcompiler)
+    dxcompiler
+    MikkTSpace)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

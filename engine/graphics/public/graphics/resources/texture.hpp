@@ -34,6 +34,11 @@ public:
         return m_texture.get();
     }
 
+    operator bool() const noexcept
+    {
+        return m_texture != nullptr;
+    }
+
 protected:
     void set_texture(const rhi_texture_desc& desc);
     void set_texture(rhi_ptr<rhi_texture>&& texture);
@@ -65,6 +70,7 @@ struct texture_data
 class texture_2d : public raw_texture
 {
 public:
+    texture_2d() = default;
     texture_2d(
         rhi_texture_extent extent,
         rhi_format format,

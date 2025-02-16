@@ -20,7 +20,7 @@ class material
 public:
     struct pass_info
     {
-        rdg_render_pipeline pipeline;
+        rdg_raster_pipeline pipeline;
         rhi_ptr<rhi_parameter> parameter;
     };
 
@@ -31,7 +31,7 @@ public:
 
     material& operator=(const material& other) = delete;
 
-    const rdg_render_pipeline& get_pipeline() const noexcept
+    const rdg_raster_pipeline& get_pipeline() const noexcept
     {
         return m_pipeline;
     }
@@ -67,7 +67,7 @@ public:
     }
 
 protected:
-    rdg_render_pipeline& get_pipeline() noexcept
+    rdg_raster_pipeline& get_pipeline() noexcept
     {
         return m_pipeline;
     }
@@ -76,7 +76,7 @@ protected:
 
 private:
     material_type m_type;
-    rdg_render_pipeline m_pipeline{};
+    rdg_raster_pipeline m_pipeline{};
 
     render_id m_id{INVALID_RENDER_ID};
 

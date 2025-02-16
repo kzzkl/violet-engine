@@ -1,4 +1,5 @@
 #include "graphics/passes/lighting/physical_pass.hpp"
+#include "graphics/resources/brdf_lut.hpp"
 
 namespace violet
 {
@@ -6,20 +7,22 @@ struct physical_fs : public shader_fs
 {
     static constexpr std::string_view path = "assets/shaders/lighting/physical.hlsl";
 
-    struct gbuffer_data
+    struct constant_data
     {
         std::uint32_t albedo;
         std::uint32_t material;
         std::uint32_t normal;
         std::uint32_t depth;
         std::uint32_t emissive;
+        std::uint32_t ao_buffer;
+        std::uint32_t brdf_lut;
     };
 
     static constexpr parameter parameter = {
         {
             .type = RHI_PARAMETER_BINDING_CONSTANT,
             .stages = RHI_SHADER_STAGE_FRAGMENT,
-            .size = sizeof(gbuffer_data),
+            .size = sizeof(constant_data),
         },
     };
 
@@ -31,10 +34,7 @@ struct physical_fs : public shader_fs
     };
 };
 
-void physical_pass::add(
-    render_graph& graph,
-    const render_context& context,
-    const parameter& parameter)
+void physical_pass::add(render_graph& graph, const parameter& parameter)
 {
     struct pass_data
     {
@@ -43,6 +43,7 @@ void physical_pass::add(
         rdg_texture_srv gbuffer_normal;
         rdg_texture_srv gbuffer_depth;
         rdg_texture_srv gbuffer_emissive;
+        rdg_texture_srv ao_buffer;
 
         rhi_parameter* gbuffer_parameter;
     };
@@ -68,27 +69,47 @@ void physical_pass::add(
             data.gbuffer_emissive =
                 pass.add_texture_srv(parameter.gbuffer_emissive, RHI_PIPELINE_STAGE_FRAGMENT);
 
+            if (parameter.ao_buffer != nullptr)
+            {
+                data.ao_buffer =
+                    pass.add_texture_srv(parameter.ao_buffer, RHI_PIPELINE_STAGE_FRAGMENT);
+            }
+            else
+            {
+                data.ao_buffer = rdg_texture_srv();
+            }
+
             data.gbuffer_parameter = pass.add_parameter(physical_fs::parameter);
         },
         [&](const pass_data& data, rdg_command& command)
         {
-            physical_fs::gbuffer_data gbuffer_data = {
+            physical_fs::constant_data constant = {
                 .albedo = data.gbuffer_albedo.get_bindless(),
                 .material = data.gbuffer_material.get_bindless(),
                 .normal = data.gbuffer_normal.get_bindless(),
                 .depth = data.gbuffer_depth.get_bindless(),
                 .emissive = data.gbuffer_emissive.get_bindless(),
             };
-            data.gbuffer_parameter->set_constant(
-                0,
-                &gbuffer_data,
-                sizeof(physical_fs::gbuffer_data));
+
+            std::vector<std::wstring> defines;
+            if (data.ao_buffer)
+            {
+                defines.emplace_back(L"-DUSE_AO_BUFFER");
+                constant.ao_buffer = data.ao_buffer.get_bindless();
+            }
+
+            constant.brdf_lut = render_device::instance()
+                                    .get_buildin_texture<brdf_lut>()
+                                    ->get_srv()
+                                    ->get_bindless();
+
+            data.gbuffer_parameter->set_constant(0, &constant, sizeof(physical_fs::constant_data));
 
             auto& device = render_device::instance();
 
-            rdg_render_pipeline pipeline = {
+            rdg_raster_pipeline pipeline = {
                 .vertex_shader = device.get_shader<fullscreen_vs>(),
-                .fragment_shader = device.get_shader<physical_fs>(),
+                .fragment_shader = device.get_shader<physical_fs>(defines),
             };
             pipeline.depth_stencil.stencil_enable = true;
             pipeline.depth_stencil.stencil_front = {
@@ -98,9 +119,9 @@ void physical_pass::add(
             pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
 
             command.set_pipeline(pipeline);
-            command.set_parameter(0, device.get_bindless_parameter());
-            command.set_parameter(1, context.get_scene_parameter());
-            command.set_parameter(2, context.get_camera_parameter());
+            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+            command.set_parameter(1, RDG_PARAMETER_SCENE);
+            command.set_parameter(2, RDG_PARAMETER_CAMERA);
             command.set_parameter(3, data.gbuffer_parameter);
             command.draw_fullscreen();
         });

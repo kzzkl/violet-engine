@@ -1,6 +1,6 @@
 #include "graphics/render_scene.hpp"
 #include "gpu_buffer_uploader.hpp"
-#include "graphics/texture.hpp"
+#include "graphics/material_manager.hpp"
 
 namespace violet
 {
@@ -17,9 +17,8 @@ render_scene::render_scene()
 
     m_scene_parameter = device.create_parameter(shader::scene);
 
-    const auto& buildin_resources = device.get_buildin_resources();
-    m_scene_data.material_buffer = buildin_resources.material_buffer->get_srv()->get_bindless();
-    m_scene_data.brdf_lut = buildin_resources.brdf_lut->get_srv()->get_bindless();
+    m_scene_data.material_buffer =
+        device.get_material_manager()->get_material_buffer()->get_srv()->get_bindless();
     m_scene_data.mesh_buffer = m_meshes.get_buffer()->get_srv()->get_bindless();
     m_scene_data.instance_buffer = m_instances.get_buffer()->get_srv()->get_bindless();
     m_scene_data.light_buffer = m_lights.get_buffer()->get_srv()->get_bindless();
@@ -286,7 +285,7 @@ void render_scene::add_instance_to_group(
     render_id group_id = 0;
 
     std::uint64_t pipeline_hash =
-        hash::city_hash_64(&material->get_pipeline(), sizeof(rdg_render_pipeline));
+        hash::city_hash_64(&material->get_pipeline(), sizeof(rdg_raster_pipeline));
     auto batch_iter = m_pipeline_to_batch.find(pipeline_hash);
     if (batch_iter == m_pipeline_to_batch.end())
     {
@@ -481,5 +480,11 @@ void render_scene::update_group_buffer()
         group_offsets.data(),
         sizeof(std::uint32_t) * group_offsets.size(),
         0);
+}
+
+render_camera::render_camera(rhi_texture* render_target, rhi_parameter* camera_parameter)
+    : m_render_target(render_target),
+      m_camera_parameter(camera_parameter)
+{
 }
 } // namespace violet

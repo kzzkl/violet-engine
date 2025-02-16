@@ -65,12 +65,14 @@ public:
     using vk_shader::vk_shader;
 };
 
-class vk_render_pipeline : public rhi_render_pipeline
+class vk_raster_pipeline : public rhi_raster_pipeline
 {
 public:
-    vk_render_pipeline(const rhi_render_pipeline_desc& desc, vk_context* context);
-    vk_render_pipeline(const vk_render_pipeline&) = delete;
-    virtual ~vk_render_pipeline();
+    vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_context* context);
+    vk_raster_pipeline(const vk_raster_pipeline&) = delete;
+    virtual ~vk_raster_pipeline();
+
+    vk_raster_pipeline& operator=(const vk_raster_pipeline&) = delete;
 
     VkPipeline get_pipeline() const noexcept
     {
@@ -81,8 +83,6 @@ public:
     {
         return m_pipeline_layout;
     }
-
-    vk_render_pipeline& operator=(const vk_render_pipeline&) = delete;
 
 private:
     VkPipeline m_pipeline;
@@ -95,8 +95,10 @@ class vk_compute_pipeline : public rhi_compute_pipeline
 {
 public:
     vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, vk_context* context);
-    vk_compute_pipeline(const vk_render_pipeline&) = delete;
+    vk_compute_pipeline(const vk_compute_pipeline&) = delete;
     virtual ~vk_compute_pipeline();
+
+    vk_compute_pipeline& operator=(const vk_compute_pipeline&) = delete;
 
     VkPipeline get_pipeline() const noexcept
     {
@@ -107,8 +109,6 @@ public:
     {
         return m_pipeline_layout;
     }
-
-    vk_render_pipeline& operator=(const vk_render_pipeline&) = delete;
 
 private:
     VkPipeline m_pipeline;

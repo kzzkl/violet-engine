@@ -276,10 +276,24 @@ bool is_read_access(rhi_access_flags access) noexcept
 };
 } // namespace
 
-render_graph::render_graph(std::string_view name, rdg_allocator* allocator) noexcept
-    : m_final_pass(allocator),
-      m_allocator(allocator)
+render_graph::render_graph(
+    std::string_view name,
+    const render_scene* scene,
+    const render_camera* camera,
+    rdg_allocator* allocator) noexcept
+    : m_allocator(allocator),
+      m_scene(scene),
+      m_camera(camera)
 {
+    if (m_allocator == nullptr)
+    {
+        m_default_allocator = std::make_unique<rdg_allocator>();
+        m_allocator = m_default_allocator.get();
+    }
+
+    m_final_pass = m_allocator->allocate_pass<rdg_pass>();
+    m_final_pass->set_name("Final");
+
     begin_group(name);
 }
 
@@ -394,7 +408,7 @@ void render_graph::compile()
 
 void render_graph::record(rhi_command* command)
 {
-    rdg_command cmd(command, m_allocator);
+    rdg_command cmd(command, m_allocator, m_scene, m_camera);
 
     std::size_t batch_index = 0;
     std::size_t label_index = 0;
@@ -482,8 +496,7 @@ void render_graph::cull()
 
     m_resources.erase(iter, m_resources.end());*/
 
-    m_final_pass.set_name("Final");
-    m_passes.push_back(&m_final_pass);
+    m_passes.push_back(m_final_pass);
     m_label_offset.push_back(m_labels.size());
 
     for (auto* resource : m_resources)
@@ -500,7 +513,7 @@ void render_graph::cull()
             if (texture->get_final_layout() != RHI_TEXTURE_LAYOUT_UNDEFINED)
             {
                 m_final_pass
-                    .add_texture(texture, RHI_PIPELINE_STAGE_END, 0, texture->get_final_layout());
+                    ->add_texture(texture, RHI_PIPELINE_STAGE_END, 0, texture->get_final_layout());
             }
         }
     }
@@ -538,14 +551,6 @@ void render_graph::allocate_resources()
         else if (resource->get_type() == RDG_RESOURCE_BUFFER)
         {
             allocate_buffer(static_cast<rdg_buffer*>(resource));
-        }
-    }
-
-    for (auto* pass : m_passes)
-    {
-        if (pass->is_culled())
-        {
-            continue;
         }
     }
 }
@@ -652,15 +657,6 @@ void render_graph::merge_passes()
 
 void render_graph::build_barriers()
 {
-    auto is_read_access = [](rhi_access_flags access) -> bool
-    {
-        static constexpr rhi_access_flags write_access =
-            RHI_ACCESS_COLOR_WRITE | RHI_ACCESS_DEPTH_STENCIL_WRITE | RHI_ACCESS_SHADER_WRITE |
-            RHI_ACCESS_TRANSFER_WRITE | RHI_ACCESS_HOST_WRITE;
-
-        return (access & write_access) == 0;
-    };
-
     for (auto& resource : m_resources)
     {
         if (resource->get_type() == RDG_RESOURCE_TEXTURE)
@@ -771,7 +767,7 @@ void render_graph::build_texture_barriers(rdg_texture* texture)
 {
     std::vector<texture_slice> texture_slices;
 
-    rdg_reference initial_reference = {
+    const rdg_reference initial_reference = {
         .type = RDG_REFERENCE_TEXTURE,
         .stages = RHI_PIPELINE_STAGE_END,
         .access = 0,
@@ -873,19 +869,13 @@ void render_graph::build_texture_barriers(rdg_texture* texture)
             overlap_slice.subtract(curr_slice, texture_slices);
         }
 
-        m_batches[curr_reference->pass->get_batch_index()].texture_barriers.push_back({
-            .texture = texture->get_rhi(),
-            .src_stages = RHI_PIPELINE_STAGE_END,
-            .src_access = 0,
-            .src_layout = RHI_TEXTURE_LAYOUT_UNDEFINED,
-            .dst_stages = curr_reference->stages,
-            .dst_access = curr_reference->access,
-            .dst_layout = curr_reference->texture.layout,
-            .level = curr_reference->texture.level,
-            .level_count = curr_reference->texture.level_count,
-            .layer = curr_reference->texture.layer,
-            .layer_count = curr_reference->texture.layer_count,
-        });
+        add_texture_barrier(
+            &initial_reference,
+            curr_reference,
+            curr_reference->texture.level,
+            curr_reference->texture.level_count,
+            curr_reference->texture.layer,
+            curr_reference->texture.layer_count);
     }
 }
 

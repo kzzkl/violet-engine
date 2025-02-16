@@ -30,10 +30,7 @@ struct motion_vector_cs : public shader_cs
     };
 };
 
-void motion_vector_pass::add(
-    render_graph& graph,
-    const render_context& context,
-    const parameter& parameter)
+void motion_vector_pass::add(render_graph& graph, const parameter& parameter)
 {
     struct pass_data
     {
@@ -76,8 +73,8 @@ void motion_vector_pass::add(
                 .compute_shader = device.get_shader<motion_vector_cs>(),
             });
 
-            command.set_parameter(0, device.get_bindless_parameter());
-            command.set_parameter(1, context.get_camera_parameter());
+            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+            command.set_parameter(1, RDG_PARAMETER_CAMERA);
             command.set_parameter(2, data.constant_parameter);
 
             command.dispatch_2d(extent.width, extent.height);

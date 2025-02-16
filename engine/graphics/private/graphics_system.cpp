@@ -200,7 +200,7 @@ void graphics_system::render()
 
     for (auto& [camera, parameter, layer] : render_queue)
     {
-        rhi_fence* finish_fence = render(camera, parameter, *m_scene_manager->get_scene(layer));
+        rhi_fence* finish_fence = render(camera, parameter, layer);
         if (finish_fence)
         {
             command->wait(finish_fence, m_frame_fence_value);
@@ -216,101 +216,113 @@ void graphics_system::render()
 
 rhi_fence* graphics_system::render(
     const camera_component* camera,
-    rhi_parameter* camera_parameter,
-    const render_scene& scene)
+    rhi_parameter* camera_component,
+    std::uint32_t layer)
 {
-    render_camera render_camera = {
-        .camera_parameter = camera_parameter,
-    };
-
-    std::vector<rhi_swapchain*> swapchains;
-
     auto& device = render_device::instance();
     rhi_command* command = device.allocate_command();
 
     command->wait(m_update_fence.get(), m_update_fence_value);
 
-    for (const auto& render_target : camera->render_targets)
-    {
-        bool skip = false;
+    bool skip = false;
 
-        std::visit(
-            [&](auto&& arg)
-            {
-                using T = std::decay_t<decltype(arg)>;
-                if constexpr (std::is_same_v<T, rhi_swapchain*>)
-                {
-                    rhi_fence* fence = arg->acquire_texture();
-                    if (fence == nullptr)
-                    {
-                        skip = true;
-                        return;
-                    }
+    rhi_swapchain* swapchain = nullptr;
+    rhi_texture* render_target = nullptr;
 
-                    command->wait(fence, 0, RHI_PIPELINE_STAGE_BEGIN);
-
-                    swapchains.push_back(arg);
-                    render_camera.render_targets.push_back(arg->get_texture());
-                }
-                else if constexpr (std::is_same_v<T, rhi_texture*>)
-                {
-                    render_camera.render_targets.push_back(arg);
-                }
-            },
-            render_target);
-
-        if (skip)
+    std::visit(
+        [&](auto&& arg)
         {
-            return nullptr;
-        }
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, rhi_swapchain*>)
+            {
+                rhi_fence* fence = arg->acquire_texture();
+                if (fence == nullptr)
+                {
+                    skip = true;
+                    return;
+                }
+
+                command->wait(fence, 0, RHI_PIPELINE_STAGE_BEGIN);
+
+                swapchain = arg;
+                render_target = arg->get_texture();
+            }
+            else if constexpr (std::is_same_v<T, rhi_texture*>)
+            {
+                render_target = arg;
+            }
+        },
+        camera->render_target);
+
+    if (skip)
+    {
+        return nullptr;
     }
 
-    for (auto& swapchain : swapchains)
+    if (swapchain != nullptr)
     {
         command->signal(swapchain->get_present_fence(), m_frame_fence_value);
     }
+
     rhi_fence* finish_fence = allocate_fence();
     command->signal(finish_fence, m_frame_fence_value);
 
-    render_graph graph("Camera", m_allocator.get());
+    render_camera render_camera(render_target, camera_component);
 
-    rhi_texture_extent extent = camera->get_extent();
+    rhi_texture_extent extent = render_target->get_extent();
     if (camera->viewport.width == 0.0f || camera->viewport.height == 0.0f)
     {
-        render_camera.viewport = {
+        render_camera.set_viewport({
             .x = 0.0f,
             .y = 0.0f,
             .width = static_cast<float>(extent.width),
             .height = static_cast<float>(extent.height),
             .min_depth = 0.0f,
             .max_depth = 1.0f,
-        };
-    }
-
-    if (camera->scissor_rects.empty())
-    {
-        render_camera.scissor_rects.emplace_back(rhi_scissor_rect{
-            .min_x = 0,
-            .min_y = 0,
-            .max_x = extent.width,
-            .max_y = extent.height,
         });
     }
     else
     {
-        render_camera.scissor_rects = camera->scissor_rects;
+        render_camera.set_viewport(camera->viewport);
     }
 
-    render_context context(scene, render_camera);
+    if (camera->scissor_rects.empty())
+    {
+        render_camera.set_scissor_rects({rhi_scissor_rect{
+            .min_x = 0,
+            .min_y = 0,
+            .max_x = extent.width,
+            .max_y = extent.height,
+        }});
+    }
+    else
+    {
+        render_camera.set_scissor_rects(camera->scissor_rects);
+    }
 
-    camera->renderer->render(graph, context);
+    for (const auto& feature : camera->features)
+    {
+        if (feature->is_enable())
+        {
+            feature->update(extent.width, extent.height);
+            render_camera.add_feature(feature.get());
+        }
+    }
+
+    render_graph graph(
+        "Camera",
+        m_scene_manager->get_scene(layer),
+        &render_camera,
+        m_allocator.get());
+
+    camera->renderer->render(graph);
 
     graph.compile();
 
     graph.record(command);
     device.execute(command);
 
-    for (auto& swapchain : swapchains)
+    if (swapchain != nullptr)
     {
         swapchain->present();
     }

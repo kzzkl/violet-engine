@@ -1,9 +1,8 @@
 #include "graphics/render_device.hpp"
 #include "graphics/geometry_manager.hpp"
 #include "graphics/material_manager.hpp"
-#include "graphics/texture.hpp"
+#include "graphics/resources/texture.hpp"
 #include "shader_compiler.hpp"
-#include "tools/ibl_tool.hpp"
 #include "transient_allocator.hpp"
 #include <fstream>
 
@@ -29,9 +28,9 @@ void rhi_deleter::operator()(rhi_shader* shader)
     m_rhi->destroy_shader(shader);
 }
 
-void rhi_deleter::operator()(rhi_render_pipeline* render_pipeline)
+void rhi_deleter::operator()(rhi_raster_pipeline* raster_pipeline)
 {
-    m_rhi->destroy_render_pipeline(render_pipeline);
+    m_rhi->destroy_raster_pipeline(raster_pipeline);
 }
 
 void rhi_deleter::operator()(rhi_compute_pipeline* compute_pipeline)
@@ -126,7 +125,8 @@ void render_device::reset()
     m_material_manager = nullptr;
     m_geometry_manager = nullptr;
 
-    m_buildin_resources = {};
+    m_buildin_textures.clear();
+    m_buildin_samplers.clear();
 
     m_rhi_deleter = {};
     m_rhi = nullptr;
@@ -187,9 +187,9 @@ rhi_ptr<rhi_render_pass> render_device::create_render_pass(const rhi_render_pass
     return {m_rhi->create_render_pass(desc), m_rhi_deleter};
 }
 
-rhi_ptr<rhi_render_pipeline> render_device::create_pipeline(const rhi_render_pipeline_desc& desc)
+rhi_ptr<rhi_raster_pipeline> render_device::create_pipeline(const rhi_raster_pipeline_desc& desc)
 {
-    return {m_rhi->create_render_pipeline(desc), m_rhi_deleter};
+    return {m_rhi->create_raster_pipeline(desc), m_rhi_deleter};
 }
 
 rhi_ptr<rhi_compute_pipeline> render_device::create_pipeline(const rhi_compute_pipeline_desc& desc)
@@ -247,7 +247,7 @@ rhi_render_pass* render_device::get_render_pass(const rhi_render_pass_desc& desc
     return m_transient_allocator->get_render_pass(desc);
 }
 
-rhi_render_pipeline* render_device::get_pipeline(const rhi_render_pipeline_desc& desc)
+rhi_raster_pipeline* render_device::get_pipeline(const rhi_raster_pipeline_desc& desc)
 {
     return m_transient_allocator->get_pipeline(desc);
 }
@@ -264,8 +264,6 @@ rhi_sampler* render_device::get_sampler(const rhi_sampler_desc& desc)
 
 void render_device::create_buildin_resources()
 {
-    m_buildin_resources.material_buffer = m_material_manager->get_material_buffer();
-
     // Create empty texture.
     texture_data::mipmap empty_mipmap_data;
     empty_mipmap_data.extent.width = 1;
@@ -277,17 +275,17 @@ void render_device::create_buildin_resources()
     empty_texture_data.format = RHI_FORMAT_R8G8B8A8_UNORM;
     empty_texture_data.mipmaps.push_back(empty_mipmap_data);
 
-    m_buildin_resources.empty_texture = std::make_unique<texture_2d>(empty_texture_data);
+    auto empty_texture = std::make_unique<texture_2d>(empty_texture_data);
+    // Ensure that the SRV bindless index of the empty_texture is 0.
+    (void)empty_texture->get_srv();
+    assert(empty_texture->get_srv()->get_bindless() == 0);
 
-    // Create brdf lut texture.
-    m_buildin_resources.brdf_lut = std::make_unique<texture_2d>(
-        rhi_texture_extent{512, 512},
-        RHI_FORMAT_R32G32_FLOAT,
-        RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE);
+    m_buildin_textures.push_back(std::move(empty_texture));
 
-    ibl_tool::generate_brdf_lut(m_buildin_resources.brdf_lut->get_rhi());
+    // Create buildin samplers.
 
-    m_buildin_resources.point_repeat_sampler = create_sampler({
+    // Bindless index 0: point repeat sampler.
+    m_buildin_samplers.push_back(create_sampler({
         .mag_filter = RHI_FILTER_POINT,
         .min_filter = RHI_FILTER_POINT,
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
@@ -295,9 +293,11 @@ void render_device::create_buildin_resources()
         .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
         .min_level = 0.0f,
         .max_level = -1.0f,
-    });
+    }));
+    assert(m_buildin_samplers[0]->get_bindless() == 0);
 
-    m_buildin_resources.point_clamp_sampler = create_sampler({
+    // Bindless index 1: point clamp sampler.
+    m_buildin_samplers.push_back(create_sampler({
         .mag_filter = RHI_FILTER_POINT,
         .min_filter = RHI_FILTER_POINT,
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -305,9 +305,11 @@ void render_device::create_buildin_resources()
         .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         .min_level = 0.0f,
         .max_level = -1.0f,
-    });
+    }));
+    assert(m_buildin_samplers[1]->get_bindless() == 1);
 
-    m_buildin_resources.linear_repeat_sampler = create_sampler({
+    // Bindless index 2: linear repeat sampler.
+    m_buildin_samplers.push_back(create_sampler({
         .mag_filter = RHI_FILTER_LINEAR,
         .min_filter = RHI_FILTER_LINEAR,
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
@@ -315,9 +317,11 @@ void render_device::create_buildin_resources()
         .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
         .min_level = 0.0f,
         .max_level = -1.0f,
-    });
+    }));
+    assert(m_buildin_samplers[2]->get_bindless() == 2);
 
-    m_buildin_resources.linear_clamp_sampler = create_sampler({
+    // Bindless index 3: linear clamp sampler.
+    m_buildin_samplers.push_back(create_sampler({
         .mag_filter = RHI_FILTER_LINEAR,
         .min_filter = RHI_FILTER_LINEAR,
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -325,7 +329,8 @@ void render_device::create_buildin_resources()
         .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         .min_level = 0.0f,
         .max_level = -1.0f,
-    });
+    }));
+    assert(m_buildin_samplers[3]->get_bindless() == 3);
 }
 
 std::vector<std::uint8_t> render_device::compile_shader(

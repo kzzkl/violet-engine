@@ -42,11 +42,11 @@ rhi_render_pass* transient_allocator::get_render_pass(const rhi_render_pass_desc
         });
 }
 
-rhi_render_pipeline* transient_allocator::get_pipeline(const rhi_render_pipeline_desc& desc)
+rhi_raster_pipeline* transient_allocator::get_pipeline(const rhi_raster_pipeline_desc& desc)
 {
-    return m_render_pipeline_allocator.allocate(
+    return m_raster_pipeline_allocator.allocate(
         desc,
-        [](const rhi_render_pipeline_desc& desc)
+        [](const rhi_raster_pipeline_desc& desc)
         {
             return render_device::instance().create_pipeline(desc);
         });
@@ -90,7 +90,7 @@ void transient_allocator::tick()
     m_texture_allocator.gc(gc_frame);
     m_buffer_allocator.gc(gc_frame);
     m_render_pass_allocator.gc(gc_frame);
-    m_render_pipeline_allocator.gc(gc_frame);
+    m_raster_pipeline_allocator.gc(gc_frame);
     m_compute_pipeline_allocator.gc(gc_frame);
     m_sampler_allocator.gc(gc_frame);
 }

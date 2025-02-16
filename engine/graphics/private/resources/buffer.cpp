@@ -1,4 +1,4 @@
-#include "graphics/buffer.hpp"
+#include "graphics/resources/buffer.hpp"
 
 namespace violet
 {

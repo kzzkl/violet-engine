@@ -82,7 +82,8 @@ void mesh_system::update(render_scene_manager& scene_manager)
                     mesh_meta.instances[i],
                     mesh.submeshes[i].vertex_offset,
                     mesh.submeshes[i].index_offset,
-                    mesh.submeshes[i].index_count);
+                    mesh.submeshes[i].index_count == 0 ? mesh.geometry->get_index_count() :
+                                                         mesh.submeshes[i].index_count);
                 mesh_meta.scene->set_instance_material(
                     mesh_meta.instances[i],
                     mesh.submeshes[i].material);
@@ -95,7 +96,8 @@ void mesh_system::update(render_scene_manager& scene_manager)
                     instance,
                     mesh.submeshes[i].vertex_offset,
                     mesh.submeshes[i].index_offset,
-                    mesh.submeshes[i].index_count);
+                    mesh.submeshes[i].index_count == 0 ? mesh.geometry->get_index_count() :
+                                                         mesh.submeshes[i].index_count);
                 mesh_meta.scene->set_instance_material(instance, mesh.submeshes[i].material);
                 mesh_meta.instances.push_back(instance);
             }

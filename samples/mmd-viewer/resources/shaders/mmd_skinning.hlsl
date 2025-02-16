@@ -5,15 +5,15 @@ struct skinning_data
     uint skeleton;
     uint position_input;
     uint normal_input;
+    uint tangent_input;
     uint skin;
     uint bdef;
     uint sdef;
     uint morph;
     uint position_output;
     uint normal_output;
+    uint tangent_output;
     uint padding0;
-    uint padding1;
-    uint padding2;
 };
 
 ConstantBuffer<skinning_data> skinning : register(b0, space1);
@@ -130,6 +130,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     RWStructuredBuffer<float> position_output = ResourceDescriptorHeap[skinning.position_output];
     StructuredBuffer<float> normal_input = ResourceDescriptorHeap[skinning.normal_input];
     RWStructuredBuffer<float> normal_output = ResourceDescriptorHeap[skinning.normal_output];
+    StructuredBuffer<float> tangent_input = ResourceDescriptorHeap[skinning.tangent_input];
+    RWStructuredBuffer<float> tangent_output = ResourceDescriptorHeap[skinning.tangent_output];
 
     StructuredBuffer<uint2> skin = ResourceDescriptorHeap[skinning.skin];
     StructuredBuffer<bdef_data> bdef = ResourceDescriptorHeap[skinning.bdef];
@@ -148,6 +150,10 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         normal_input[vertex_index + 0],
         normal_input[vertex_index + 1],
         normal_input[vertex_index + 2]);
+    float3 tangent = float3(
+        tangent_input[vertex_index + 0],
+        tangent_input[vertex_index + 1],
+        tangent_input[vertex_index + 2]);
 
     position += get_morph_position(skinning.morph, vertex_index);
 
@@ -164,6 +170,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
         position = mul(m, float4(position, 1.0)).xyz;
         normal = mul((float3x3)m, normal);
+        tangent = mul((float3x3)m, tangent);
     }
     else
     {
@@ -183,6 +190,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         position += (mul(m1, float4(sdef[skin_index].r1, 1.0f)) * w1).xyz;
 
         normal = mul(rotate_m, normal);
+        tangent = mul((float3x3)rotate_m, tangent);
     }
 
     position_output[dtid.x * 3 + 0] = position.x;
@@ -192,4 +200,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     normal_output[dtid.x * 3 + 0] = normal.x;
     normal_output[dtid.x * 3 + 1] = normal.y;
     normal_output[dtid.x * 3 + 2] = normal.z;
+
+    tangent_output[dtid.x * 3 + 0] = tangent.x;
+    tangent_output[dtid.x * 3 + 1] = tangent.y;
+    tangent_output[dtid.x * 3 + 2] = tangent.z;
 }

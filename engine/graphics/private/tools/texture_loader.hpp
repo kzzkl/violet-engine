@@ -1,7 +1,7 @@
 #pragma once
 
 #include "graphics/render_device.hpp"
-#include "graphics/texture.hpp"
+#include "graphics/resources/texture.hpp"
 #include <optional>
 
 namespace violet

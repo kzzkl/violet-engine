@@ -4,6 +4,7 @@
 #include "ecs/world.hpp"
 #include "graphics/geometry.hpp"
 #include "graphics/material.hpp"
+#include "graphics/resources/texture.hpp"
 #include "pmx.hpp"
 #include "vmd.hpp"
 #include <memory>
@@ -18,7 +19,11 @@ public:
     {
         std::vector<std::unique_ptr<texture_2d>> textures;
         std::vector<std::unique_ptr<geometry>> geometries;
+
         std::vector<std::unique_ptr<material>> materials;
+        std::vector<std::unique_ptr<material>> outline_materials;
+
+        std::unique_ptr<texture_2d> ramp_texture;
 
         entity root;
     };

@@ -11,6 +11,8 @@
 #include "components/skeleton_component.hpp"
 #include "components/skinned_component.hpp"
 #include "components/transform_component.hpp"
+#include "graphics/resources/ramp_texture.hpp"
+#include "graphics/tools/geometry_tool.hpp"
 #include "math/matrix.hpp"
 #include "math/vector.hpp"
 #include "mmd_material.hpp"
@@ -76,6 +78,13 @@ std::optional<mmd_loader::scene_data> mmd_loader::load(
     scene_data scene_data;
     scene_data.root = m_root;
 
+    std::vector<ramp_texture::point> ramp_points = {
+        {.color = {0.0f, 0.0f, 0.0f}, .position = 0.28f},
+        {.color = {1.0f, 0.85f, 0.2f}, .position = 0.3f},
+        {.color = {1.0f, 1.0f, 1.0f}, .position = 0.32f},
+    };
+    scene_data.ramp_texture = std::make_unique<ramp_texture>(ramp_points, 128);
+
     load_mesh(scene_data, world);
     load_bone(world);
     load_morph(world);
@@ -93,12 +102,31 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
 {
     auto mesh_geometry = std::make_unique<geometry>();
 
+    auto tangents = geometry_tool::generate_tangents(
+        m_pmx.position,
+        m_pmx.normal,
+        m_pmx.texcoord,
+        m_pmx.indexes);
+    assert(!tangents.empty());
+
+    auto smooth_normals = geometry_tool::generate_smooth_normals(
+        m_pmx.position,
+        m_pmx.normal,
+        tangents,
+        m_pmx.indexes);
+    assert(!smooth_normals.empty());
+
     mesh_geometry = std::make_unique<geometry>();
     mesh_geometry->add_attribute(
         "position",
         m_pmx.position,
         RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
     mesh_geometry->add_attribute("normal", m_pmx.normal, RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
+    mesh_geometry->add_attribute("tangent", tangents, RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
+    mesh_geometry->add_attribute(
+        "smooth_normal",
+        smooth_normals,
+        RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
     mesh_geometry->add_attribute(
         "texcoord",
         m_pmx.texcoord,
@@ -129,7 +157,6 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
             TEXTURE_OPTION_GENERATE_MIPMAPS | TEXTURE_OPTION_SRGB));
     }
 
-    std::vector<std::pair<material*, material*>> materials;
     for (const auto& pmx_material : m_pmx.materials)
     {
         // Main material.
@@ -138,21 +165,26 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
         material->set_diffuse(pmx_material.diffuse);
         material->set_specular(pmx_material.specular, pmx_material.specular_strength);
         material->set_ambient(pmx_material.ambient);
+        material->set_ramp_texture(scene.ramp_texture.get());
 
-        material->set_diffuse(scene.textures[pmx_material.texture_index].get());
+        if (pmx_material.texture_index != -1 && *scene.textures[pmx_material.texture_index])
+        {
+            material->set_diffuse(scene.textures[pmx_material.texture_index].get());
+        }
+
         if (pmx_material.toon_index != -1)
         {
-            if (pmx_material.toon_reference == PMX_TOON_REFERENCE_TEXTURE)
-            {
-                material->set_toon(scene.textures[pmx_material.toon_index].get());
-            }
-            else
+            if (pmx_material.toon_reference == PMX_TOON_REFERENCE_INTERNAL)
             {
                 material->set_toon(m_internal_toons[pmx_material.toon_index]);
             }
+            else if (*scene.textures[pmx_material.toon_index])
+            {
+                material->set_toon(scene.textures[pmx_material.toon_index].get());
+            }
         }
 
-        if (pmx_material.environment_blend_mode != PMX_ENVIRONMENT_BLEND_MODE_DISABLED)
+        if (pmx_material.environment_index != -1 && *scene.textures[pmx_material.environment_index])
         {
             material->set_environment(scene.textures[pmx_material.environment_index].get());
         }
@@ -160,16 +192,17 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
         material->set_environment_blend(pmx_material.environment_blend_mode);
         scene.materials.push_back(std::move(material));
 
-        materials.emplace_back(scene.materials.back().get(), nullptr);
-
         // Outline material.
         if (pmx_material.flags & PMX_DRAW_FLAG_HAS_EDGE)
         {
             auto outline_material = std::make_unique<mmd_outline_material>();
-            outline_material->set_outline(pmx_material.outline_color, pmx_material.outline_width);
-            scene.materials.push_back(std::move(outline_material));
-
-            materials.back().second = scene.materials.back().get();
+            outline_material->set_color(pmx_material.outline_color);
+            outline_material->set_width(pmx_material.outline_width);
+            scene.outline_materials.push_back(std::move(outline_material));
+        }
+        else
+        {
+            scene.outline_materials.push_back(nullptr);
         }
     }
 
@@ -177,31 +210,30 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
     root_mesh.geometry = scene.geometries[0].get();
     for (const auto& submesh : m_pmx.submeshes)
     {
-        auto [main_material, outline_material] = materials[submesh.material_index];
-
         root_mesh.submeshes.push_back({
             .vertex_offset = 0,
             .index_offset = static_cast<std::uint32_t>(submesh.index_offset),
             .index_count = static_cast<std::uint32_t>(submesh.index_count),
-            .material = main_material,
+            .material = scene.materials[submesh.material_index].get(),
         });
 
-        if (outline_material != nullptr)
+        if (scene.outline_materials[submesh.material_index] != nullptr)
         {
             root_mesh.submeshes.push_back({
                 .vertex_offset = 0,
                 .index_offset = static_cast<std::uint32_t>(submesh.index_offset),
                 .index_count = static_cast<std::uint32_t>(submesh.index_count),
-                .material = outline_material,
+                .material = scene.outline_materials[submesh.material_index].get(),
             });
         }
     }
 
     auto& root_skinned = world.get_component<skinned_component>(m_root);
-    root_skinned.inputs = {"position", "normal", "skin", "bdef", "sdef", "morph"};
+    root_skinned.inputs = {"position", "normal", "tangent", "skin", "bdef", "sdef", "morph"};
     root_skinned.outputs = {
         {"position", RHI_FORMAT_R32G32B32_FLOAT},
         {"normal", RHI_FORMAT_R32G32B32_FLOAT},
+        {"tangent", RHI_FORMAT_R32G32B32_FLOAT},
     };
     root_skinned.shader = render_device::instance().get_shader<mmd_skinning_cs>();
 }
@@ -370,7 +402,7 @@ void mmd_loader::load_physics(world& world)
             math::load(pmx_rigidbody.translate));
 
         math::store(transform, rigidbody_transform[i]);
-        ++rigidbody_count[pmx_rigidbody.bone_index];
+        ++rigidbody_count[pmx_rigidbody.bone_index == -1 ? 0 : pmx_rigidbody.bone_index];
     }
 
     std::vector<entity> rigidbody_bones;
@@ -378,9 +410,10 @@ void mmd_loader::load_physics(world& world)
     for (std::size_t i = 0; i < m_pmx.rigidbodies.size(); ++i)
     {
         auto& pmx_rigidbody = m_pmx.rigidbodies[i];
+        std::int32_t bone_index = pmx_rigidbody.bone_index == -1 ? 0 : pmx_rigidbody.bone_index;
 
-        entity bone = m_bones[pmx_rigidbody.bone_index];
-        if (rigidbody_count[pmx_rigidbody.bone_index] == 1)
+        entity bone = m_bones[bone_index];
+        if (rigidbody_count[bone_index] == 1)
         {
             world.add_component<rigidbody_component, collider_component>(bone);
         }
@@ -465,7 +498,7 @@ void mmd_loader::load_physics(world& world)
         bone_rigidbody.collision_group = static_cast<std::uint32_t>(1) << pmx_rigidbody.group;
         bone_rigidbody.collision_mask = pmx_rigidbody.collision_group;
 
-        mat4f_simd bone_transform = math::load(m_bone_initial_transforms[pmx_rigidbody.bone_index]);
+        mat4f_simd bone_transform = math::load(m_bone_initial_transforms[bone_index]);
         mat4f_simd rigidbody_offset =
             matrix::mul(math::load(rigidbody_transform[i]), matrix::inverse(bone_transform));
         math::store(rigidbody_offset, bone_rigidbody.offset);

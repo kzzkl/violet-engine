@@ -2,6 +2,7 @@
 #include "components/camera_component.hpp"
 #include "components/camera_meta_component.hpp"
 #include "components/transform_component.hpp"
+#include "graphics/passes/taa_pass.hpp"
 
 namespace violet
 {
@@ -37,7 +38,8 @@ shader::camera_data get_camera_data(
     mat4f_simd view_projection = matrix::mul(view, projection);
     math::store(view_projection, result.view_projection_no_jitter);
 
-    if (camera.jitter)
+    auto* taa = camera.get_feature<taa_render_feature>();
+    if (taa && taa->is_enable())
     {
         std::size_t index = render_device::instance().get_frame_count() % halton_sequence.size();
 
@@ -53,12 +55,11 @@ shader::camera_data get_camera_data(
         result.jitter = jitter;
     }
 
-    mat4f_simd view_projection_inv = matrix::inverse(view_projection);
-
-    math::store(projection, result.projection);
     math::store(view, result.view);
+    math::store(projection, result.projection);
+    math::store(matrix::inverse(projection), result.projection_inv);
     math::store(view_projection, result.view_projection);
-    math::store(view_projection_inv, result.view_projection_inv);
+    math::store(matrix::inverse(view_projection), result.view_projection_inv);
 
     return result;
 }
@@ -92,7 +93,7 @@ void camera_system::update()
                 const transform_world_component& transform,
                 camera_meta_component& camera_meta)
             {
-                if (camera.render_targets.empty())
+                if (!camera.has_render_target())
                 {
                     return;
                 }

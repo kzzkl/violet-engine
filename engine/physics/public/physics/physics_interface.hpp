@@ -114,16 +114,6 @@ struct phy_joint_desc
     phy_rigidbody* target;
     vec3f target_position;
     vec4f target_rotation;
-
-    vec3f min_linear;
-    vec3f max_linear;
-
-    vec3f min_angular;
-    vec3f max_angular;
-
-    bool spring_enable[6];
-    float stiffness[6];
-    float damping[6];
 };
 
 class phy_joint

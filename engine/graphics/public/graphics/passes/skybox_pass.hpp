@@ -15,6 +15,6 @@ public:
         bool clear;
     };
 
-    static void add(render_graph& graph, const render_context& context, const parameter& parameter);
+    static void add(render_graph& graph, const parameter& parameter);
 };
 } // namespace violet

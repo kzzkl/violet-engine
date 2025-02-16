@@ -1,6 +1,6 @@
 #include "gltf_loader.hpp"
 #include "graphics/materials/physical_material.hpp"
-#include "mikktspace.h"
+#include "graphics/tools/geometry_tool.hpp"
 #include <filesystem>
 #include <iostream>
 
@@ -48,86 +48,6 @@ void load_indexes(
     const std::size_t offset = indexes.size();
     indexes.resize(indexes.size() + accessor.count);
     std::memcpy(indexes.data() + offset, buffer, sizeof(T) * accessor.count);
-}
-
-bool generate_tangents(
-    const std::vector<vec3f>& positions,
-    const std::vector<vec3f>& normals,
-    const std::vector<vec2f>& texcoords,
-    const std::vector<std::uint32_t>& indexes,
-    std::vector<vec3f>& tangents)
-{
-    tangents.resize(positions.size());
-
-    struct tangent_context : public SMikkTSpaceContext
-    {
-        const std::vector<vec3f>& positions;
-        const std::vector<vec3f>& normals;
-        const std::vector<vec2f>& texcoords;
-        const std::vector<std::uint32_t>& indexes;
-
-        std::vector<vec3f>& tangents;
-    };
-
-    SMikkTSpaceInterface interface = {};
-    interface.m_getNumFaces = [](const SMikkTSpaceContext* context) -> int
-    {
-        const auto* ctx = static_cast<const tangent_context*>(context);
-        return static_cast<int>(ctx->indexes.size() / 3);
-    };
-    interface.m_getNumVerticesOfFace = [](const SMikkTSpaceContext* context, const int face) -> int
-    {
-        return 3;
-    };
-    interface.m_getPosition =
-        [](const SMikkTSpaceContext* context, float* out, const int face, const int vert)
-    {
-        const auto* ctx = static_cast<const tangent_context*>(context);
-        const vec3f& position = ctx->positions[ctx->indexes[face * 3 + vert]];
-        out[0] = position.x;
-        out[1] = position.y;
-        out[2] = position.z;
-    };
-    interface.m_getNormal =
-        [](const SMikkTSpaceContext* context, float* out, const int face, const int vert)
-    {
-        const auto* ctx = static_cast<const tangent_context*>(context);
-        const vec3f& normal = ctx->normals[ctx->indexes[face * 3 + vert]];
-        out[0] = normal.x;
-        out[1] = normal.y;
-        out[2] = normal.z;
-    };
-    interface.m_getTexCoord =
-        [](const SMikkTSpaceContext* context, float* out, const int face, const int vert)
-    {
-        const auto* ctx = static_cast<const tangent_context*>(context);
-        const vec2f& texcoord = ctx->texcoords[ctx->indexes[face * 3 + vert]];
-        out[0] = texcoord.x;
-        out[1] = texcoord.y;
-    };
-    interface.m_setTSpaceBasic = [](const SMikkTSpaceContext* context,
-                                    const float* in,
-                                    const float sign,
-                                    const int face,
-                                    const int vert)
-    {
-        const auto* ctx = static_cast<const tangent_context*>(context);
-        vec3f& tangent = ctx->tangents[ctx->indexes[face * 3 + vert]];
-        tangent.x = in[0];
-        tangent.y = in[1];
-        tangent.z = in[2];
-    };
-
-    tangent_context context = {
-        .positions = positions,
-        .normals = normals,
-        .texcoords = texcoords,
-        .indexes = indexes,
-        .tangents = tangents,
-    };
-    context.m_pInterface = &interface;
-
-    return genTangSpaceDefault(&context);
 }
 } // namespace
 
@@ -337,7 +257,8 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
 
         if (tangents.empty())
         {
-            if (!generate_tangents(positions, normals, texcoords, indexes, tangents))
+            tangents = geometry_tool::generate_tangents(positions, normals, texcoords, indexes);
+            if (tangents.empty())
             {
                 return std::nullopt;
             }

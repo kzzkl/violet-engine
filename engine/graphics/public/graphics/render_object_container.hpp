@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/allocator.hpp"
-#include "graphics/buffer.hpp"
+#include "graphics/resources/buffer.hpp"
 
 namespace violet
 {

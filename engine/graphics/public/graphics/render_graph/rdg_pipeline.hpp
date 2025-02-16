@@ -4,7 +4,7 @@
 
 namespace violet
 {
-struct rdg_render_pipeline
+struct rdg_raster_pipeline
 {
     rhi_shader* vertex_shader;
     rhi_shader* fragment_shader;

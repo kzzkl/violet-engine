@@ -2,6 +2,7 @@
 
 #include "graphics/geometry.hpp"
 #include "graphics/material.hpp"
+#include "graphics/resources/texture.hpp"
 #include <optional>
 
 namespace violet

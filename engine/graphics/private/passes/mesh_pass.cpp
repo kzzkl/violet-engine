@@ -2,7 +2,7 @@
 
 namespace violet
 {
-void mesh_pass::add(render_graph& graph, const render_context& context, const parameter& parameter)
+void mesh_pass::add(render_graph& graph, const parameter& parameter)
 {
     struct pass_data
     {
@@ -40,11 +40,10 @@ void mesh_pass::add(render_graph& graph, const render_context& context, const pa
         },
         [&](const pass_data& data, rdg_command& command)
         {
-            command.set_viewport(context.get_viewport());
-            command.set_scissor(context.get_scissor_rects());
+            command.set_viewport();
+            command.set_scissor();
 
             command.draw_instances(
-                context,
                 data.command_buffer.get_rhi(),
                 data.count_buffer.get_rhi(),
                 data.material_type);

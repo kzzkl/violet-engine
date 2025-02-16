@@ -4,13 +4,13 @@
 
 namespace violet
 {
-class copy_depth_pass
+class hzb_pass
 {
 public:
     struct parameter
     {
-        rdg_texture* src;
-        rdg_texture* dst;
+        rdg_texture* depth_buffer;
+        rdg_texture* hzb;
     };
 
     static void add(render_graph& graph, const parameter& parameter);

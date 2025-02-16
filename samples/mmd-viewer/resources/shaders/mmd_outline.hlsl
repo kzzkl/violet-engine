@@ -22,6 +22,8 @@ struct vs_input
 {
     float3 position : POSITION;
     float3 normal : NORMAL;
+    float3 tangent : TANGENT;
+    float3 smooth_normal : SMOOTH_NORMAL;
 };
 
 struct vs_output
@@ -34,7 +36,18 @@ struct mmd_outline
 {
     float3 color;
     float width;
+    float z_offset;
 };
+
+float3 get_smooth_normal(vs_input input)
+{
+    float3 n = normalize(input.normal);
+    float3 t = normalize(input.tangent);
+    float3 b = normalize(cross(n, t));
+    float3x3 tbn = transpose(float3x3(t, b, n));
+
+    return normalize(mul(tbn, input.smooth_normal));
+}
 
 vs_output vs_main(vs_input input, uint instance_index : SV_InstanceID)
 {
@@ -47,19 +60,28 @@ vs_output vs_main(vs_input input, uint instance_index : SV_InstanceID)
     mmd_outline material = load_material<mmd_outline>(scene.material_buffer, instance.material_address);
 
     float4 position_ws = mul(mesh.model_matrix, float4(input.position, 1.0));
-    float3 normal_ws = mul((float3x3)mesh.model_matrix, input.normal);
+    float3 smooth_normal_ws = mul((float3x3)mesh.model_matrix, get_smooth_normal(input));
 
     float4 position_vs = mul(camera.view, position_ws);
 
+    // https://github.com/ColinLeung-NiloCat/UnityURPToonLitShaderExample/blob/master/NiloOutlineUtil.hlsl
     float camera_mul_fix = abs(position_vs.z);
     camera_mul_fix = saturate(camera_mul_fix);
     camera_mul_fix *= camera.fov;
     camera_mul_fix *= 0.001;
 
-    position_ws.xyz += normal_ws * material.width * camera_mul_fix;
+    position_ws.xyz += smooth_normal_ws * material.width * camera_mul_fix;
+
+    float4 position_cs = mul(camera.view_projection, position_ws);
+
+    // https://github.com/ColinLeung-NiloCat/UnityURPToonLitShaderExample/blob/master/NiloZOffset.hlsl
+    // float2 proj_zrow_zw = camera.projection[2].zw;
+    // float modified_position_vs_z = -position_cs.w - material.z_offset; // push imaginary vertex
+    // float modified_position_cs_z = modified_position_vs_z * proj_zrow_zw[0] + proj_zrow_zw[1];
+    // position_cs.z = modified_position_cs_z * position_cs.w / (-modified_position_vs_z); // overwrite positionCS.z
 
     vs_output output;
-    output.position_cs = mul(camera.view_projection, position_ws);
+    output.position_cs = position_cs;
     output.color = material.color;
 
     return output;

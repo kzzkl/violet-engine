@@ -100,7 +100,7 @@ void application::run()
 
     m_exit = false;
 
-    frame_rater<30> frame_rater;
+    frame_rater<60> frame_rater;
     timer& time = m_context->get_timer();
     time.tick(timer::point::FRAME_START);
     time.tick(timer::point::FRAME_END);
@@ -122,7 +122,7 @@ void application::run()
 
         time.tick(timer::point::FRAME_END);
 
-        // frame_rater.sleep();
+        frame_rater.sleep();
     }
 
     executor.stop();

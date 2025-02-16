@@ -2,7 +2,6 @@
 
 #include "components/skinned_component.hpp"
 #include "ecs/component.hpp"
-#include "graphics/buffer.hpp"
 #include "graphics/geometry.hpp"
 
 namespace violet

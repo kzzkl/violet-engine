@@ -44,11 +44,11 @@ struct hash<violet::rhi_render_pass_desc>
 };
 
 template <>
-struct hash<violet::rhi_render_pipeline_desc>
+struct hash<violet::rhi_raster_pipeline_desc>
 {
-    std::size_t operator()(const violet::rhi_render_pipeline_desc& desc) const noexcept
+    std::size_t operator()(const violet::rhi_raster_pipeline_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_render_pipeline_desc));
+        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_raster_pipeline_desc));
     }
 };
 
@@ -130,8 +130,8 @@ inline bool operator==(const rhi_render_pass_desc& a, const rhi_render_pass_desc
 }
 
 inline bool operator==(
-    const rhi_render_pipeline_desc& a,
-    const rhi_render_pipeline_desc& b) noexcept
+    const rhi_raster_pipeline_desc& a,
+    const rhi_raster_pipeline_desc& b) noexcept
 {
     return a.vertex_shader == b.vertex_shader && a.fragment_shader == b.fragment_shader &&
            a.render_pass == b.render_pass;
@@ -301,7 +301,7 @@ public:
 
     rhi_render_pass* get_render_pass(const rhi_render_pass_desc& desc);
 
-    rhi_render_pipeline* get_pipeline(const rhi_render_pipeline_desc& desc);
+    rhi_raster_pipeline* get_pipeline(const rhi_raster_pipeline_desc& desc);
     rhi_compute_pipeline* get_pipeline(const rhi_compute_pipeline_desc& desc);
 
     rhi_sampler* get_sampler(const rhi_sampler_desc& desc);
@@ -316,7 +316,7 @@ private:
     unique_allocator<rhi_buffer, rhi_buffer_desc> m_buffer_allocator;
 
     shared_allocator<rhi_render_pass, rhi_render_pass_desc> m_render_pass_allocator;
-    shared_allocator<rhi_render_pipeline, rhi_render_pipeline_desc> m_render_pipeline_allocator;
+    shared_allocator<rhi_raster_pipeline, rhi_raster_pipeline_desc> m_raster_pipeline_allocator;
     shared_allocator<rhi_compute_pipeline, rhi_compute_pipeline_desc> m_compute_pipeline_allocator;
     shared_allocator<rhi_sampler, rhi_sampler_desc> m_sampler_allocator;
 

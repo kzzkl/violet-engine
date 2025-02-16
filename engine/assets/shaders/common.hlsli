@@ -5,7 +5,7 @@ static const float PI = 3.141592654;
 static const float TWO_PI = 2.0 * PI;
 static const float HALF_PI = 0.5 * PI;
 
-static const float EPSILON = 1e-5;
+static const float EPSILON = 1e-10;
 
 static const uint RENDER_MESH_FRUSTUM_CULLING = 1 << 0;
 static const uint RENDER_MESH_OCCLUSION_CULLING = 1 << 1;
@@ -56,14 +56,15 @@ struct scene_data
     uint skybox;
     uint irradiance;
     uint prefilter;
-    uint brdf_lut;
     uint material_buffer;
+    uint padding0;
 };
 
 struct camera_data
 {
     float4x4 view;
-    float4x4 project;
+    float4x4 projection;
+    float4x4 projection_inv;
     float4x4 view_projection;
     float4x4 view_projection_inv;
     float4x4 view_projection_no_jitter;
@@ -120,16 +121,20 @@ float3 get_morph_position(uint morph_vertex_buffer, uint vertex_index)
     return morph;
 }
 
-float4 get_position_from_depth(uint depth_buffer, float2 texcoord, float4x4 view_projection_inv)
+float4 reconstruct_position(float depth, float2 texcoord, float4x4 matrix_inv)
 {
-    Texture2D<float> buffer = ResourceDescriptorHeap[depth_buffer];
-
-    float depth = buffer.SampleLevel(get_point_clamp_sampler(), texcoord, 0.0);
     texcoord.y = 1.0 - texcoord.y;
     float4 position_cs = float4(texcoord * 2.0 - 1.0, depth, 1.0);
-    float4 position_ws = mul(view_projection_inv, position_cs);
+    float4 position_ws = mul(matrix_inv, position_cs);
 
     return position_ws / position_ws.w;
+}
+
+float4 reconstruct_position(uint depth_buffer, float2 texcoord, float4x4 matrix_inv)
+{
+    Texture2D<float> buffer = ResourceDescriptorHeap[depth_buffer];
+    float depth = buffer.SampleLevel(get_point_clamp_sampler(), texcoord, 0.0);
+    return reconstruct_position(depth, texcoord, matrix_inv);
 }
 
 float2 normal_to_octahedron(float3 N)
@@ -167,6 +172,11 @@ float3 tonemap(float3 color)
 float3 tonemap_invert(float3 color)
 {
     return color / (1 - luminance(color));
+}
+
+float2 get_compute_texcoord(uint2 pixel_coord, uint width, uint height)
+{
+    return (float2(pixel_coord) + 0.5) / float2(width, height);
 }
 
 #endif

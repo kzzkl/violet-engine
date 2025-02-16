@@ -29,7 +29,7 @@ struct unlit_fs : public shader_fs
     };
 };
 
-void unlit_pass::add(render_graph& graph, const render_context& context, const parameter& parameter)
+void unlit_pass::add(render_graph& graph, const parameter& parameter)
 {
     struct pass_data
     {
@@ -60,7 +60,7 @@ void unlit_pass::add(render_graph& graph, const render_context& context, const p
 
             auto& device = render_device::instance();
 
-            rdg_render_pipeline pipeline = {
+            rdg_raster_pipeline pipeline = {
                 .vertex_shader = device.get_shader<fullscreen_vs>(),
                 .fragment_shader = device.get_shader<unlit_fs>(),
             };
@@ -72,8 +72,8 @@ void unlit_pass::add(render_graph& graph, const render_context& context, const p
             pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
 
             command.set_pipeline(pipeline);
-            command.set_parameter(0, device.get_bindless_parameter());
-            command.set_parameter(1, context.get_scene_parameter());
+            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+            command.set_parameter(1, RDG_PARAMETER_SCENE);
             command.set_parameter(2, data.gbuffer_parameter);
             command.draw_fullscreen();
         });

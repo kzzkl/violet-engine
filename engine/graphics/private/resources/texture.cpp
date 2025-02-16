@@ -1,4 +1,4 @@
-#include "graphics/texture.hpp"
+#include "graphics/resources/texture.hpp"
 #include "tools/texture_loader.hpp"
 
 namespace violet

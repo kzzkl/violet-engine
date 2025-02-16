@@ -90,7 +90,7 @@ void imgui_pass::add(render_graph& graph, const parameter& parameter)
             auto& device = render_device::instance();
             auto& geometry = m_geometries[device.get_frame_resource_index()];
 
-            rdg_render_pipeline pipeline = {
+            rdg_raster_pipeline pipeline = {
                 .vertex_shader = device.get_shader<imgui_vs>(),
                 .fragment_shader = device.get_shader<imgui_fs>(),
             };
