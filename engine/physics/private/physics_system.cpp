@@ -101,10 +101,9 @@ void physics_system::simulation()
         m_time -= time_step;
     }
 
-    auto& world = get_world();
-
     std::vector<entity> root_entities;
 
+    auto& world = get_world();
     world.get_view()
         .read<entity>()
         .with<transform_world_component>()
@@ -119,25 +118,6 @@ void physics_system::simulation()
     {
         update_transform(root, {}, false);
     }
-
-    // world.get_view().read<transform_world_component>().each(
-    //     [&](const transform_world_component& transform)
-    //     {
-    //         vec3f s = {0.0f, 0.0f, 0.0f};
-    //         vec3f e = {0.0f, 1.0f, 0.0f};
-
-    //         mat4f_simd world_matrix = math::load(transform.matrix);
-
-    //         vec4f_simd start = vector::set(s.x, s.y, s.z, 1.0f);
-    //         vec4f_simd end = vector::set(e.x, e.y, e.z, 1.0f);
-    //         start = matrix::mul(start, world_matrix);
-    //         end = matrix::mul(end, world_matrix);
-
-    //         math::store(start, s);
-    //         math::store(end, e);
-
-    //         m_debug->draw_line(s, e, {1.0f, 0.0f, 0.0f});
-    //     });
 
 #ifdef VIOLET_PHYSICS_DEBUG_DRAW
     m_debug->tick();
@@ -260,10 +240,10 @@ void physics_system::update_rigidbody()
                     mat4f_simd world_matrix = math::load(transform.matrix);
                     mat4f_simd offset_matrix = math::load(rigidbody.offset);
 
-                    mat4f world_transform;
                     math::store(
                         matrix::mul(offset_matrix, world_matrix),
                         rigidbody_meta.motion_state->transform);
+                    rigidbody_meta.motion_state->dirty = true;
                 }
             },
             [this](auto& view)
@@ -408,6 +388,11 @@ void physics_system::update_transform(entity e, const mat4f& parent_world, bool 
             mat4f_simd world_matrix = matrix::mul(local_matrix, parent_matrix);
 
             math::store(world_matrix, current_world_matrix);
+        }
+        else
+        {
+            auto& transform_world = world.get_component<transform_world_component>(e);
+            current_world_matrix = transform_world.matrix;
         }
     }
 

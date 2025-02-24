@@ -14,16 +14,16 @@ physics_debug::physics_debug(world& world)
     m_geometry = std::make_unique<geometry>();
     m_geometry->add_attribute(
         "position",
-        nullptr,
+        sizeof(vec3f),
         DEBUG_DRAW_MAX_LINES * 2 * sizeof(vec3f),
         RHI_BUFFER_VERTEX | RHI_BUFFER_HOST_VISIBLE);
     m_geometry->add_attribute(
         "color",
-        nullptr,
-        DEBUG_DRAW_MAX_LINES * 2 * sizeof(vec3f),
+        sizeof(vec3f),
+        DEBUG_DRAW_MAX_LINES * 2,
         RHI_BUFFER_VERTEX | RHI_BUFFER_HOST_VISIBLE);
-    m_geometry->set_indexes<std::uint32_t>(
-        nullptr,
+    m_geometry->set_indexes(
+        sizeof(std::uint32_t),
         DEBUG_DRAW_MAX_LINES * 2,
         RHI_BUFFER_INDEX | RHI_BUFFER_HOST_VISIBLE);
     m_material = std::make_unique<unlit_line_material>();
