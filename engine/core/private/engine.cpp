@@ -1,6 +1,5 @@
 #include "core/engine.hpp"
 #include "common/log.hpp"
-#include "common/utility.hpp"
 #include "engine_context.hpp"
 #include "task/task_graph_printer.hpp"
 #include <fstream>
@@ -64,9 +63,9 @@ task_executor& system::get_task_executor() noexcept
 
 application::application(std::string_view config_path)
 {
-    std::vector<std::wstring> config_files;
-    config_files.emplace_back(L"assets/config/default.json");
-    config_files.emplace_back(string_to_wstring(config_path));
+    std::vector<std::string> config_files;
+    config_files.emplace_back("assets/config/default.json");
+    config_files.emplace_back(config_path);
 
     for (const auto& file : config_files)
     {

@@ -43,7 +43,7 @@ void skinning_system::morphing(rhi_command* command)
 
     auto& device = render_device::instance();
 
-    command->begin_label("morphing");
+    command->begin_label("Morphing");
 
     command->set_pipeline(device.get_pipeline({
         .compute_shader = device.get_shader<morphing_cs>(),
@@ -70,7 +70,7 @@ void skinning_system::skinning(rhi_command* command)
 
     auto& device = render_device::instance();
 
-    command->begin_label("skinning");
+    command->begin_label("Skinning");
 
     for (const auto& skinning_data : m_skinning_queue)
     {
@@ -80,23 +80,33 @@ void skinning_system::skinning(rhi_command* command)
         std::size_t buffer_index = 0;
         for (auto* input : skinning_data.input)
         {
-            skinning_constant.buffers[buffer_index++] = input->get_srv()->get_bindless();
+            if (input != nullptr)
+            {
+                skinning_constant.buffers[buffer_index] = input->get_srv()->get_bindless();
+            }
+
+            ++buffer_index;
         }
 
         std::vector<rhi_buffer_barrier> buffer_barriers;
         buffer_barriers.reserve(skinning_data.output.size());
         for (auto* output : skinning_data.output)
         {
-            skinning_constant.buffers[buffer_index++] = output->get_uav()->get_bindless();
-            buffer_barriers.push_back({
-                .buffer = output->get_rhi(),
-                .src_stages = RHI_PIPELINE_STAGE_COMPUTE,
-                .src_access = RHI_ACCESS_SHADER_WRITE,
-                .dst_stages = RHI_PIPELINE_STAGE_VERTEX_INPUT,
-                .dst_access = RHI_ACCESS_VERTEX_ATTRIBUTE_READ,
-                .offset = 0,
-                .size = output->get_size(),
-            });
+            if (output != nullptr)
+            {
+                skinning_constant.buffers[buffer_index] = output->get_uav()->get_bindless();
+                buffer_barriers.push_back({
+                    .buffer = output->get_rhi(),
+                    .src_stages = RHI_PIPELINE_STAGE_COMPUTE,
+                    .src_access = RHI_ACCESS_SHADER_WRITE,
+                    .dst_stages = RHI_PIPELINE_STAGE_VERTEX_INPUT,
+                    .dst_access = RHI_ACCESS_VERTEX_ATTRIBUTE_READ,
+                    .offset = 0,
+                    .size = output->get_size(),
+                });
+            }
+
+            ++buffer_index;
         }
 
         rhi_parameter* parameter = device.allocate_parameter(skinning_cs::skinning);
@@ -149,11 +159,9 @@ void skinning_system::update_skin()
                     {
                         skinned_meta.skinned_geometry->add_attribute(
                             name,
-                            {
-                                .size = rhi_get_format_stride(format) *
-                                        mesh.geometry->get_vertex_count(),
-                                .flags = RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE,
-                            });
+                            rhi_get_format_stride(format),
+                            mesh.geometry->get_vertex_count(),
+                            RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
 
                         auto iter = buffers.find(name);
                         if (iter != buffers.end())
@@ -166,10 +174,9 @@ void skinning_system::update_skin()
                     {
                         skinned_meta.skinned_geometry->add_attribute(
                             "morph",
-                            {
-                                .size = sizeof(vec3f) * mesh.geometry->get_vertex_count(),
-                                .flags = RHI_BUFFER_TRANSFER_DST | RHI_BUFFER_STORAGE_TEXEL,
-                            });
+                            sizeof(vec3f),
+                            mesh.geometry->get_vertex_count(),
+                            RHI_BUFFER_TRANSFER_DST | RHI_BUFFER_STORAGE_TEXEL);
                     }
 
                     for (const auto& [name, buffer] : buffers)
@@ -242,52 +249,59 @@ void skinning_system::update_skeleton()
 {
     auto& world = get_world();
 
-    world.get_view().read<skeleton_component>().write<skinned_meta_component>().each(
-        [&world](const skeleton_component& skeleton, skinned_meta_component& skinned_meta)
-        {
-            if (skeleton.bones.empty())
+    world.get_view()
+        .read<transform_world_component>()
+        .read<skeleton_component>()
+        .write<skinned_meta_component>()
+        .each(
+            [&world](
+                const transform_world_component& transform,
+                const skeleton_component& skeleton,
+                skinned_meta_component& skinned_meta)
             {
-                return;
-            }
-
-            if (skinned_meta.bone_buffers.empty())
-            {
-                auto& device = render_device::instance();
-
-                std::size_t frame_resource_count = device.get_frame_resource_count();
-                for (std::size_t i = 0; i < frame_resource_count; ++i)
+                if (skeleton.bones.empty())
                 {
-                    rhi_buffer_desc desc = {
-                        .size = sizeof(mat4f) * skeleton.bones.size(),
-                        .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_HOST_VISIBLE,
-                    };
-                    skinned_meta.bone_buffers.emplace_back(
-                        std::make_unique<structured_buffer>(desc));
+                    return;
                 }
 
-                skinned_meta.current_index = 0;
-            }
-            else
-            {
-                skinned_meta.current_index =
-                    (skinned_meta.current_index + 1) % skinned_meta.bone_buffers.size();
-            }
+                if (skinned_meta.bone_buffers.empty())
+                {
+                    auto& device = render_device::instance();
 
-            auto* buffer = static_cast<mat4f*>(
-                skinned_meta.bone_buffers[skinned_meta.current_index]->get_buffer_pointer());
-            for (const auto& bone : skeleton.bones)
-            {
-                const auto& bone_transform =
-                    world.get_component<const transform_world_component>(bone.entity);
-                mat4f_simd bone_matrix = matrix::mul(
-                    math::load(bone.binding_pose_inv),
-                    math::load(bone_transform.matrix));
+                    std::size_t frame_resource_count = device.get_frame_resource_count();
+                    for (std::size_t i = 0; i < frame_resource_count; ++i)
+                    {
+                        skinned_meta.bone_buffers.emplace_back(std::make_unique<structured_buffer>(
+                            sizeof(mat4f) * skeleton.bones.size(),
+                            RHI_BUFFER_STORAGE | RHI_BUFFER_HOST_VISIBLE));
+                    }
 
-                math::store(bone_matrix, *buffer);
+                    skinned_meta.current_index = 0;
+                }
+                else
+                {
+                    skinned_meta.current_index =
+                        (skinned_meta.current_index + 1) % skinned_meta.bone_buffers.size();
+                }
 
-                ++buffer;
-            }
-        });
+                mat4f_simd root_transform_inv = matrix::inverse(math::load(transform.matrix));
+
+                auto* buffer = static_cast<mat4f*>(
+                    skinned_meta.bone_buffers[skinned_meta.current_index]->get_buffer_pointer());
+                for (const auto& bone : skeleton.bones)
+                {
+                    const auto& bone_transform =
+                        world.get_component<const transform_world_component>(bone.entity);
+
+                    mat4f_simd bone_matrix =
+                        matrix::mul(math::load(bone_transform.matrix), root_transform_inv);
+                    bone_matrix = matrix::mul(math::load(bone.binding_pose_inv), bone_matrix);
+
+                    math::store(bone_matrix, *buffer);
+
+                    ++buffer;
+                }
+            });
 }
 
 void skinning_system::update_morph()

@@ -26,7 +26,11 @@ public:
         m_buffers.emplace_back(std::move(buffer));
     }
 
-    void add_attribute(std::string_view name, const rhi_buffer_desc& desc);
+    void add_attribute(
+        std::string_view name,
+        std::size_t vertex_size,
+        std::size_t vertex_count,
+        rhi_buffer_flags flags = RHI_BUFFER_VERTEX);
 
     void add_attribute(std::string_view name, vertex_buffer* buffer);
 
@@ -39,6 +43,11 @@ public:
         m_index_buffer = buffer.get();
         m_buffers.emplace_back(std::move(buffer));
     }
+
+    void set_indexes(
+        std::size_t index_size,
+        std::size_t index_count,
+        rhi_buffer_flags flags = RHI_BUFFER_INDEX);
 
     void set_indexes(index_buffer* buffer);
 
@@ -78,7 +87,8 @@ public:
 
     std::size_t get_morph_target_count() const noexcept
     {
-        return m_morph_target_buffer->get_morph_target_count();
+        return m_morph_target_buffer == nullptr ? 0 :
+                                                  m_morph_target_buffer->get_morph_target_count();
     }
 
     std::size_t get_morph_index(std::string_view name) const

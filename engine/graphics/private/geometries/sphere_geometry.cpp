@@ -3,72 +3,112 @@
 
 namespace violet
 {
-sphere_geometry::sphere_geometry(float radius, std::size_t slice, std::size_t stack)
+sphere_geometry::sphere_geometry(
+    float radius,
+    std::size_t width_segments,
+    std::size_t height_segments,
+    float phi_start,
+    float phi_length,
+    float theta_start,
+    float theta_length)
 {
-    std::vector<vec3f> position;
-    std::vector<vec3f> normal;
+    // https://github.com/mrdoob/three.js/blob/master/src/geometries/SphereGeometry.js
+
+    std::vector<vec3f> positions;
+    std::vector<vec3f> normals;
+    std::vector<vec2f> texcoords;
     std::vector<std::uint32_t> indexes;
 
-    // Top vertex.
-    position.push_back(vec3f{0.0f, radius, 0.0f});
-    normal.push_back(vec3f{0.0f, 1.0f, 0.0f});
+    width_segments = std::max(3ull, width_segments);
+    height_segments = std::max(2ull, height_segments);
 
-    for (std::size_t i = 1; i < stack; ++i)
+    float theta_end = std::min(theta_start + theta_length, math::PI);
+
+    std::uint32_t index = 0;
+    std::vector<std::vector<std::uint32_t>> grid;
+
+    // generate vertices, normals and uvs
+    for (std::size_t iy = 0; iy <= height_segments; ++iy)
     {
-        float phi = math::PI * static_cast<float>(i) / static_cast<float>(stack);
-        auto [phi_sin, phi_cos] = math::sin_cos(phi);
-        for (std::size_t j = 0; j < slice; ++j)
-        {
-            float theta = 2.0f * math::PI * static_cast<float>(j) / static_cast<float>(slice);
-            auto [theta_sin, theta_cos] = math::sin_cos(theta);
+        std::vector<std::uint32_t> vertices_row;
 
-            vec3f p = {
-                phi_sin * theta_cos * radius,
-                phi_cos * radius,
-                phi_sin * theta_sin * radius};
-            position.push_back(p);
-            normal.push_back(vector::normalize(p));
+        float v = static_cast<float>(iy) / static_cast<float>(height_segments);
+
+        // special case for the poles
+        float u_offset = 0.0f;
+
+        if (iy == 0 && theta_start == 0.0f)
+        {
+            u_offset = 0.5f / static_cast<float>(width_segments);
+        }
+        else if (iy == height_segments && theta_end == math::PI)
+        {
+            u_offset = -0.5f / static_cast<float>(width_segments);
+        }
+
+        for (std::size_t ix = 0; ix <= width_segments; ++ix)
+        {
+            float u = static_cast<float>(ix) / static_cast<float>(width_segments);
+
+            // vertex
+            vec3f vertex;
+            vertex.x = -radius * std::cos(phi_start + u * phi_length) *
+                       std::sin(theta_start + v * theta_length);
+            vertex.y = radius * std::cos(theta_start + v * theta_length);
+            vertex.z = radius * std::sin(phi_start + u * phi_length) *
+                       std::sin(theta_start + v * theta_length);
+
+            positions.push_back(vertex);
+
+            // normal
+            vec3f normal = vector::normalize(vertex);
+            normals.push_back(normal);
+
+            // uv
+            texcoords.push_back({u + u_offset, 1 - v});
+
+            vertices_row.push_back(index++);
+        }
+
+        grid.push_back(vertices_row);
+    }
+
+    // indexes
+    for (std::size_t iy = 0; iy < height_segments; ++iy)
+    {
+        for (std::size_t ix = 0; ix < width_segments; ++ix)
+        {
+            std::uint32_t a = grid[iy][ix + 1];
+            std::uint32_t b = grid[iy][ix];
+            std::uint32_t c = grid[iy + 1][ix];
+            std::uint32_t d = grid[iy + 1][ix + 1];
+
+            if (iy != 0 || theta_start > 0)
+            {
+                indexes.push_back(a);
+                indexes.push_back(b);
+                indexes.push_back(d);
+            }
+
+            if (iy != height_segments - 1 || theta_end < math::PI)
+            {
+                indexes.push_back(b);
+                indexes.push_back(c);
+                indexes.push_back(d);
+            }
         }
     }
 
-    // Bottom vertex.
-    position.push_back(vec3f{0.0f, -radius, 0.0f});
-    normal.push_back(vec3f{0.0f, -1.0f, 0.0f});
-
-    for (std::size_t i = 0; i < slice; ++i)
-    {
-        // Top triangles.
-        indexes.push_back(0);
-        indexes.push_back((i + 1) % slice + 1);
-        indexes.push_back(i + 1);
-
-        // Bottom triangles.
-        indexes.push_back(position.size() - 1);
-        indexes.push_back(i + slice * (stack - 2) + 1);
-        indexes.push_back((i + 1) % slice + slice * (stack - 2) + 1);
-    }
-
-    for (std::size_t i = 0; i < stack - 2; ++i)
-    {
-        std::size_t i0 = i * slice + 1;
-        std::size_t i1 = (i + 1) * slice + 1;
-
-        for (std::size_t j = 0; j < slice; ++j)
-        {
-            std::uint32_t v0 = i0 + j;
-            std::uint32_t v1 = i0 + (j + 1) % slice;
-            std::uint32_t v2 = i1 + (j + 1) % slice;
-            std::uint32_t v3 = i1 + j;
-
-            indexes.insert(indexes.end(), {v0, v1, v3, v1, v2, v3});
-        }
-    }
-
-    add_attribute("position", position);
-    add_attribute("normal", normal);
+    add_attribute("position", positions);
+    add_attribute("normal", normals);
+    add_attribute("texcoord", texcoords);
     set_indexes(indexes);
 
-    set_vertex_count(position.size());
+    // TODO : Tangent
+    std::vector<vec3f> tangents(positions.size());
+    add_attribute("tangent", tangents);
+
+    set_vertex_count(positions.size());
     set_index_count(indexes.size());
 }
 } // namespace violet

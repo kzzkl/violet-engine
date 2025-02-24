@@ -86,6 +86,11 @@ public:
     }
 
     void draw_instances(rhi_buffer* command_buffer, rhi_buffer* count_buffer, material_type type);
+    void draw_instances(
+        rhi_buffer* command_buffer,
+        rhi_buffer* count_buffer,
+        material_type type,
+        const rdg_raster_pipeline& pipeline);
 
     void draw_fullscreen()
     {

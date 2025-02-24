@@ -86,19 +86,29 @@ SamplerState get_point_repeat_sampler()
     return SamplerDescriptorHeap[0];
 }
 
-SamplerState get_point_clamp_sampler()
+SamplerState get_point_mirrored_repeat_sampler()
 {
     return SamplerDescriptorHeap[1];
 }
 
-SamplerState get_linear_repeat_sampler()
+SamplerState get_point_clamp_sampler()
 {
     return SamplerDescriptorHeap[2];
 }
 
-SamplerState get_linear_clamp_sampler()
+SamplerState get_linear_repeat_sampler()
 {
     return SamplerDescriptorHeap[3];
+}
+
+SamplerState get_linear_mirrored_repeat_sampler()
+{
+    return SamplerDescriptorHeap[4];
+}
+
+SamplerState get_linear_clamp_sampler()
+{
+    return SamplerDescriptorHeap[5];
 }
 
 template <typename T>

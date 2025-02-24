@@ -10,7 +10,7 @@ struct camera_component
 {
     float near{0.01f};
     float far{100000.0f};
-    float fov{45.0f};
+    float fov{math::to_radians(45.0f)};
 
     float priority;
 

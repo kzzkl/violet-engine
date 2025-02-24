@@ -5,6 +5,16 @@
 
 namespace violet
 {
+enum mmd_material_type : material_type
+{
+    MATERIAL_TOON = MATERIAL_CUSTOM,
+};
+
+enum mmd_shading_model : shading_model
+{
+    SHADING_MODEL_TOON = SHADING_MODEL_CUSTOM,
+};
+
 struct mmd_material_constant
 {
     vec4f diffuse;
@@ -32,7 +42,7 @@ public:
     void set_environment(const texture_2d* texture);
     void set_environment_blend(std::uint32_t mode);
 
-    void set_ramp_texture(const texture_2d* texture);
+    void set_ramp(const texture_2d* texture);
 };
 
 struct mmd_outline_material_constant
@@ -40,6 +50,7 @@ struct mmd_outline_material_constant
     vec3f color;
     float width;
     float z_offset;
+    float strength;
 };
 
 class mmd_outline_material : public mesh_material<mmd_outline_material_constant>
@@ -50,5 +61,6 @@ public:
     void set_color(const vec4f& color);
     void set_width(float width);
     void set_z_offset(float z_offset);
+    void set_strength(float strength);
 };
 } // namespace violet

@@ -154,6 +154,7 @@ bool vk_context::initialize(const rhi_desc& desc)
 
     std::vector<const char*> device_desired_extensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_EXT_BLEND_OPERATION_ADVANCED_EXTENSION_NAME,
     };
 
     if (desc.features & RHI_FEATURE_BINDLESS)

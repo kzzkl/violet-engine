@@ -1,5 +1,4 @@
 #include "tools/texture_loader.hpp"
-#include "common/utility.hpp"
 #include <array>
 #include <cstddef>
 #include <fstream>
@@ -13,9 +12,7 @@ namespace
 {
 std::vector<std::uint8_t> read_file(std::string_view path)
 {
-    std::wstring path_wstring = string_to_wstring(path);
-
-    std::ifstream fin(path_wstring, std::ios_base::binary);
+    std::ifstream fin(path.data(), std::ios_base::binary);
     if (!fin.is_open())
     {
         return {};

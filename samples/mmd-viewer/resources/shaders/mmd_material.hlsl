@@ -53,9 +53,10 @@ struct mmd_material
 
 struct fs_output
 {
-    float4 color : SV_TARGET0;
-    float2 normal : SV_TARGET1;
-    float4 emissive : SV_TARGET2;
+    float4 albedo : SV_TARGET0;
+    float2 material : SV_TARGET1;
+    float2 normal : SV_TARGET2;
+    float4 emissive : SV_TARGET3;
 };
 
 float3 multiply_rgb(float3 a, float3 b, float factor)
@@ -101,6 +102,8 @@ fs_output fs_main(vs_output input)
     //     }
     // }
 
+    float3 N = normalize(input.normal_ws);
+
     float3 toon = 0.0;
     if (scene.light_count > 0)
     {
@@ -108,7 +111,6 @@ fs_output fs_main(vs_output input)
         light_data light = lights[0];
 
         float3 L = -light.direction;
-        float3 N = normalize(input.normal_ws);
         float NdotL = saturate(dot(N, L));
 
         if (material.toon_texture != 0)
@@ -128,13 +130,14 @@ fs_output fs_main(vs_output input)
         Texture2D<float3> ramp_texture = ResourceDescriptorHeap[material.ramp_texture];
         float position = diffuse_brdf.r * 0.2126 + diffuse_brdf.g * 0.7152 + diffuse_brdf.b * 0.0722;
         float3 ramp_color = ramp_texture.Sample(linear_clamp_sampler, float2(position, 0.0)).rgb;
-        color.rgb =multiply_rgb(color.rgb, screen_rgb(ramp_color, toon, 1.0), 0.5);
+        color.rgb = multiply_rgb(color.rgb, screen_rgb(ramp_color, toon, 1.0), 0.5);
     }
     // color.rgb = multiply_rgb(color.rgb, toon, saturate((1.0 - hsv.z) * hsv.z + 0.6));
 
     fs_output output;
-    output.color = color;
-    output.normal = 0.0;
+    output.albedo = color;
+    output.material = 0.0;
+    output.normal = normal_to_octahedron(N);
     output.emissive = 0.0;
 
     return output;

@@ -5,7 +5,174 @@
         "height": 800
     },
     "mmd viewer": {
-        "pmx": "D:/Workspace/assets/models/mmd/【终末地】伊冯/伊冯.pmx",
-        "vmd": ""
+        "pmx": "D:/Workspace/assets/models/mmd/少前2/托洛洛/GirlsFrontline TololoDefault.pmx",
+        "pmx_bak": "D:/Workspace/assets/models/mmd/少前2/索米原皮/GirlsFrontline SuomiDefault.pmx",
+        "vmd_bak": "D:/Workspace/assets/models/mmd/还是你的笑容最可爱.vmd",
+        "skybox": "D:/Workspace/assets/textures/skybox/dry_orchard_meadow_4k.hdr",
+        "GirlsFrontline TololoDefault": {
+            "shading": "gf2",
+            "outline": {
+                "width": 0.2,
+                "strength": 0.15
+            },
+            "face_bone_index": 9,
+            "submesh_material": [
+                4,
+                5,
+                6,
+                6,
+                3,
+                3,
+                3,
+                3,
+                3,
+                3,
+                3,
+                3,
+                0,
+                1,
+                2,
+                7,
+                7,
+                6,
+                5
+            ],
+            "materials": [
+                {
+                    "diffuse": "Textures/c_Tololo_slg_eye_d.png",
+                    "type": "eye"
+                },
+                {
+                    "blend": "Textures/c_Tololo_slg_eyeblend_d.png",
+                    "operator": "add",
+                    "type": "eye blend"
+                },
+                {
+                    "blend": "Textures/c_Tololo_slg_eyeblend_d.png",
+                    "operator": "multiply",
+                    "type": "eye blend"
+                },
+                {
+                    "diffuse": "Textures/c_Tololo_slg_face_d.png",
+                    "ramp": "c_TololoSSR01_slg_face_ramp.png",
+                    "sdf": "C_face_b.tga",
+                    "type": "face"
+                },
+                {
+                    "diffuse": "Textures/c_TololoSSR01_slg_body_d.png",
+                    "normal": "Textures/normalmap/c_TololoSSR01_slg_body_n.png",
+                    "rmo": "Textures/normalmap/c_TololoSSR01_slg_body_rmo.png",
+                    "ramp": "c_TololoSSR01_slg_body_ramp.png",
+                    "type": "base"
+                },
+                {
+                    "diffuse": "Textures/c_tololossr01_slg_cloth1.png",
+                    "normal": "Textures/normalmap/c_TololoSSR01_slg_cloth1_n.png",
+                    "rmo": "Textures/normalmap/c_TololoSSR01_slg_cloth1_rmo.png",
+                    "ramp": "c_TololoSSR01_slg_cloth1_ramp.png",
+                    "type": "base"
+                },
+                {
+                    "diffuse": "Textures/c_tololossr01_slg_cloth2.png",
+                    "normal": "Textures/normalmap/c_TololoSSR01_slg_cloth2_n.png",
+                    "rmo": "Textures/normalmap/c_TololoSSR01_slg_cloth2_rmo.png",
+                    "ramp": "c_TololoSSR01_slg_cloth1_ramp.png",
+                    "type": "base"
+                },
+                {
+                    "diffuse": "Textures/c_Tololo_slg_hair_d.png",
+                    "specular": "c_Tololo_slg_hair_spc.tga",
+                    "ramp": "c_TololoSSR01_slg_hair_ramp.png",
+                    "type": "hair"
+                }
+            ]
+        },
+        "GirlsFrontline SuomiDefault": {
+            "shading": "gf2",
+            "outline": {
+                "width": 0.2,
+                "strength": 0.15
+            },
+            "face_bone_index": 9,
+            "submesh_material": [
+                3,
+                3,
+                3,
+                3,
+                3,
+                3,
+                3,
+                3,
+                3,
+                0,
+                1,
+                2,
+                4,
+                5,
+                6,
+                6,
+                5,
+                8,
+                7,
+                7,
+                5
+            ],
+            "materials": [
+                {
+                    "diffuse": "Textures/c_SuomiSSR01_eye_d.png",
+                    "type": "eye"
+                },
+                {
+                    "blend": "Textures/c_SuomiSSR01_eyeblend.png",
+                    "operator": "add",
+                    "type": "eye blend"
+                },
+                {
+                    "blend": "Textures/c_SuomiSSR01_eyeblend.png",
+                    "operator": "multiply",
+                    "type": "eye blend"
+                },
+                {
+                    "diffuse": "Textures/c_SuomiSSR01_face_d.png",
+                    "ramp": "c_SuomiSSR01_face_ramp.png",
+                    "sdf": "C_face_b.tga",
+                    "type": "face"
+                },
+                {
+                    "diffuse": "Textures/c_SuomiSSR01_slg_body_d.png",
+                    "normal": "Textures/normalmap/c_SuomiSSR01_slg_body_n.png",
+                    "rmo": "Textures/normalmap/c_SuomiSSR01_slg_body_rmo.png",
+                    "ramp": "c_SuomiSSR01_slg_body_ramp.png",
+                    "type": "base"
+                },
+                {
+                    "diffuse": "Textures/c_SuomiSSR01_slg_cloth1_da.png",
+                    "normal": "Textures/normalmap/c_SuomiSSR01_slg_cloth1_n.png",
+                    "rmo": "Textures/normalmap/c_SuomiSSR01_slg_cloth1_rmo.png",
+                    "ramp": "c_SuomiSSR01_slg_cloth1_ramp.png",
+                    "type": "base"
+                },
+                {
+                    "diffuse": "Textures/c_SuomiSSR01_slg_cloth2_da.png",
+                    "normal": "Textures/normalmap/c_SuomiSSR01_slg_cloth2_n.png",
+                    "rmo": "Textures/normalmap/c_SuomiSSR01_slg_cloth2_rmo.png",
+                    "ramp": "c_SuomiSSR01_slg_cloth1_ramp.png",
+                    "type": "base"
+                },
+                {
+                    "diffuse": "Textures/c_SuomiSSR01_slg_hair_d.png",
+                    "specular": "c_SuomiSSR01_slg_hair_spc.tga",
+                    "ramp": "c_SuomiSSR01_slg_hair_ramp.png",
+                    "type": "hair"
+                },
+                {
+                    "diffuse": "Textures/c_VepleySSR01_slg_plush_dt.png",
+                    "normal": "Textures/normalmap/c_VepleySSR01_slg_plush_nt.png",
+                    "noise": "Textures/normalmap/c_VepleySSR01_slg_plush_bt.png",
+                    "ramp": "c_VepleySSR01_slg_plush_ramp.png",
+                    "type": "plush"
+                }
+            ]
+        }
     }
 }

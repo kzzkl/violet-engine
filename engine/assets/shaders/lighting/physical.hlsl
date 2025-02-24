@@ -71,9 +71,10 @@ float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
         float d = d_ggx(NdotH, roughness);
         float vis = v_smith_joint_approx(NdotV, NdotL, roughness);
         float3 f = f_schlick(VdotH, F0);
+        float3 kd = lerp(1.0 - f, 0.0, metallic);
 
         float3 specular = d * vis * f;
-        float3 diffuse = albedo / PI * (1.0 - f);
+        float3 diffuse = albedo / PI * kd;
 
         direct_lighting += (specular + diffuse) * NdotL * light.color;
     }

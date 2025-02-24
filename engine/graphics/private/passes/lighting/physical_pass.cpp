@@ -83,6 +83,8 @@ void physical_pass::add(render_graph& graph, const parameter& parameter)
         },
         [&](const pass_data& data, rdg_command& command)
         {
+            auto& device = render_device::instance();
+
             physical_fs::constant_data constant = {
                 .albedo = data.gbuffer_albedo.get_bindless(),
                 .material = data.gbuffer_material.get_bindless(),
@@ -98,14 +100,9 @@ void physical_pass::add(render_graph& graph, const parameter& parameter)
                 constant.ao_buffer = data.ao_buffer.get_bindless();
             }
 
-            constant.brdf_lut = render_device::instance()
-                                    .get_buildin_texture<brdf_lut>()
-                                    ->get_srv()
-                                    ->get_bindless();
+            constant.brdf_lut = device.get_buildin_texture<brdf_lut>()->get_srv()->get_bindless();
 
             data.gbuffer_parameter->set_constant(0, &constant, sizeof(physical_fs::constant_data));
-
-            auto& device = render_device::instance();
 
             rdg_raster_pipeline pipeline = {
                 .vertex_shader = device.get_shader<fullscreen_vs>(),

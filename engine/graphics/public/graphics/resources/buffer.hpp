@@ -48,8 +48,6 @@ private:
 class structured_buffer : public raw_buffer
 {
 public:
-    using raw_buffer::raw_buffer;
-
     template <std::ranges::contiguous_range R>
     structured_buffer(
         R&& data,
@@ -63,14 +61,12 @@ public:
     {
     }
 
-    structured_buffer(std::size_t size, rhi_buffer_flags flags);
+    structured_buffer(std::size_t buffer_size, rhi_buffer_flags flags);
 };
 
 class vertex_buffer : public raw_buffer
 {
 public:
-    using raw_buffer::raw_buffer;
-
     template <std::ranges::contiguous_range R>
     vertex_buffer(R&& data, rhi_buffer_flags flags)
         : raw_buffer({
@@ -80,13 +76,13 @@ public:
           })
     {
     }
+
+    vertex_buffer(std::size_t buffer_size, rhi_buffer_flags flags);
 };
 
 class index_buffer : public raw_buffer
 {
 public:
-    using raw_buffer::raw_buffer;
-
     template <std::ranges::contiguous_range R>
     index_buffer(R&& data, rhi_buffer_flags flags)
         : raw_buffer({
@@ -97,6 +93,8 @@ public:
     {
         m_index_size = sizeof(decltype(*data.data()));
     }
+
+    index_buffer(std::size_t buffer_size, std::size_t index_size, rhi_buffer_flags flags);
 
     std::size_t get_index_size() const noexcept
     {

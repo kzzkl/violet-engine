@@ -703,8 +703,8 @@ struct matrix
         {
             using value_type = mat4<T>::value_type;
 
-            value_type h = value_type(1) / tanf(fov * 0.5f); // view space height
-            value_type w = h / aspect;                       // view space width
+            value_type h = value_type(1) / std::tanf(fov * 0.5f); // view space height
+            value_type w = h / aspect;                            // view space width
             return {
                 {w, value_type(0), value_type(0), value_type(0)},
                 {value_type(0), h, value_type(0), value_type(0)},

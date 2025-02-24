@@ -110,4 +110,55 @@ void rdg_command::draw_instances(
         }
     }
 }
+
+void rdg_command::draw_instances(
+    rhi_buffer* command_buffer,
+    rhi_buffer* count_buffer,
+    material_type type,
+    const rdg_raster_pipeline& pipeline)
+{
+    assert(m_scene != nullptr && m_camera != nullptr);
+
+    auto& device = render_device::instance();
+
+    const auto& attributes = device.get_vertex_attributes(pipeline.vertex_shader);
+
+    set_pipeline(pipeline);
+    set_parameter(0, device.get_bindless_parameter());
+    set_parameter(1, m_scene->get_scene_parameter());
+    set_parameter(2, m_camera->get_camera_parameter());
+
+    for (const auto& batch : m_scene->get_batches())
+    {
+        if (batch.material_type != type || batch.groups.empty())
+        {
+            continue;
+        }
+
+        for (render_id group_id : batch.groups)
+        {
+            const auto& group = m_scene->get_group(group_id);
+
+            std::vector<rhi_buffer*> vertex_buffers(attributes.size());
+            std::transform(
+                attributes.begin(),
+                attributes.end(),
+                vertex_buffers.begin(),
+                [&](const std::string& attribute)
+                {
+                    return group.geometry->get_vertex_buffer(attribute)->get_rhi();
+                });
+
+            set_vertex_buffers(vertex_buffers);
+            set_index_buffer(group.index_buffer->get_rhi(), group.index_buffer->get_index_size());
+
+            m_command->draw_indexed_indirect(
+                command_buffer,
+                group.instance_offset * sizeof(shader::draw_command),
+                count_buffer,
+                group.id * sizeof(std::uint32_t),
+                group.instance_count);
+        }
+    }
+}
 } // namespace violet

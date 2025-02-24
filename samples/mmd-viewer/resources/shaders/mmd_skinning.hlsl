@@ -136,7 +136,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     StructuredBuffer<uint2> skin = ResourceDescriptorHeap[skinning.skin];
     StructuredBuffer<bdef_data> bdef = ResourceDescriptorHeap[skinning.bdef];
     StructuredBuffer<sdef_data> sdef = ResourceDescriptorHeap[skinning.sdef];
-    Buffer<int> morph_vertex_buffer = ResourceDescriptorHeap[skinning.morph];
 
     StructuredBuffer<float4x4> skeleton = ResourceDescriptorHeap[skinning.skeleton];
 
@@ -155,7 +154,10 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         tangent_input[vertex_index + 1],
         tangent_input[vertex_index + 2]);
 
-    position += get_morph_position(skinning.morph, vertex_index);
+    if (skinning.morph != 0)
+    {
+        position += get_morph_position(skinning.morph, vertex_index);
+    }
 
     uint skin_type = skin[dtid.x].x;
     uint skin_index = skin[dtid.x].y;

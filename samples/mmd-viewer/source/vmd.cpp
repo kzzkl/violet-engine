@@ -1,5 +1,4 @@
 #include "vmd.hpp"
-#include "common/utility.hpp"
 #include "encode.hpp"
 
 namespace violet
@@ -14,9 +13,7 @@ vmd::vmd() = default;
 
 bool vmd::load(std::string_view path)
 {
-    std::wstring path_wstring = string_to_wstring(path);
-
-    std::ifstream fin(path_wstring.data(), std::ios::binary);
+    std::ifstream fin(path.data(), std::ios::binary);
     if (!fin.is_open())
     {
         return false;

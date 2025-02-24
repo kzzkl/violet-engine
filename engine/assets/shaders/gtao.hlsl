@@ -64,7 +64,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     const float noise_sample = noise.y;
 
     // Calculate the size of the radius in pixel.
-    float radius_in_pixels = (1.0 / tan(camera.fov * 0.5 / PI)) * constant.height * constant.radius / position_vs.z;
+    float radius_in_pixels = (1.0 / tan(camera.fov * 0.5)) * constant.height * constant.radius / position_vs.z;
 
     float falloff = constant.radius * constant.falloff;
     float falloff_mul = -1.0 / (constant.radius - falloff + 0.01);
@@ -109,7 +109,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
             s += min_s;
 
             float2 offset = s * omega;
-            float level = log2(length(offset)) - 1;
+            float level = log2(length(offset)) - 3.3;
             offset = round(offset) * pixel_size;
 
             // Calculate h1.

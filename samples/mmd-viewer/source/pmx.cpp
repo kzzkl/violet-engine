@@ -1,5 +1,4 @@
 #include "pmx.hpp"
-#include "common/utility.hpp"
 #include "encode.hpp"
 #include "math/quaternion.hpp"
 #include "math/vector.hpp"
@@ -70,9 +69,7 @@ bool pmx::load(std::string_view path, bool flip_winding)
 {
     m_flip_winding = flip_winding;
 
-    std::wstring path_wstring = string_to_wstring(path);
-
-    std::ifstream fin(path_wstring, std::ios::binary);
+    std::ifstream fin(path.data(), std::ios::binary);
     if (!fin.is_open())
     {
         return false;
@@ -127,13 +124,8 @@ bool pmx::load_mesh(std::ifstream& fin)
     normal.resize(vertex_count);
     texcoord.resize(vertex_count);
     skin.resize(vertex_count);
-    edge.resize(vertex_count);
-
-    std::vector<std::vector<vec4f>> add_uv(vertex_count);
-    for (auto& v : add_uv)
-    {
-        v.resize(header.num_add_vec4);
-    }
+    outline.resize(vertex_count);
+    add_texcoord.resize(header.num_add_vec4, std::vector<vec4f>(vertex_count));
 
     for (std::size_t i = 0; i < vertex_count; ++i)
     {
@@ -143,7 +135,7 @@ bool pmx::load_mesh(std::ifstream& fin)
 
         for (std::uint8_t j = 0; j < header.num_add_vec4; ++j)
         {
-            read<vec4f>(fin, add_uv[i][j]);
+            read<vec4f>(fin, add_texcoord[j][i]);
         }
 
         pmx_vertex_type weight_type;
@@ -240,7 +232,7 @@ bool pmx::load_mesh(std::ifstream& fin)
             break;
         }
 
-        read<float>(fin, edge[i]);
+        read<float>(fin, outline[i]);
     }
 
     std::int32_t index_count;
@@ -481,8 +473,8 @@ bool pmx::load_morph(std::ifstream& fin)
                 read<vec3f>(fin, material_morph.specular);
                 read<float>(fin, material_morph.specular_strength);
                 read<vec3f>(fin, material_morph.ambient);
-                read<vec4f>(fin, material_morph.edge_color);
-                read<float>(fin, material_morph.edge_scale);
+                read<vec4f>(fin, material_morph.outline_color);
+                read<float>(fin, material_morph.outline_scale);
                 read<vec4f>(fin, material_morph.tex_tint);
                 read<vec4f>(fin, material_morph.spa_tint);
                 read<vec4f>(fin, material_morph.toon_tint);

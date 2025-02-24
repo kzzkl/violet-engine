@@ -11,7 +11,8 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         violet::graphics
         violet::physics
-        violet::control)
+        violet::control
+        violet::sample-base)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

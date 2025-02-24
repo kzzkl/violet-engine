@@ -123,15 +123,16 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
         RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
     mesh_geometry->add_attribute("normal", m_pmx.normal, RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
     mesh_geometry->add_attribute("tangent", tangents, RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
-    mesh_geometry->add_attribute(
-        "smooth_normal",
-        smooth_normals,
-        RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
-    mesh_geometry->add_attribute(
-        "texcoord",
-        m_pmx.texcoord,
-        RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
-    mesh_geometry->add_attribute("edge", m_pmx.edge, RHI_BUFFER_VERTEX);
+    mesh_geometry->add_attribute("smooth_normal", smooth_normals, RHI_BUFFER_VERTEX);
+    mesh_geometry->add_attribute("texcoord", m_pmx.texcoord, RHI_BUFFER_VERTEX);
+    for (std::size_t i = 0; i < m_pmx.add_texcoord.size(); ++i)
+    {
+        mesh_geometry->add_attribute(
+            "texcoord" + std::to_string(i + 2),
+            m_pmx.add_texcoord[i],
+            RHI_BUFFER_VERTEX);
+    }
+    mesh_geometry->add_attribute("outline", m_pmx.outline, RHI_BUFFER_VERTEX);
     mesh_geometry->add_attribute("skin", m_pmx.skin, RHI_BUFFER_STORAGE);
     mesh_geometry->add_attribute("bdef", m_pmx.bdef, RHI_BUFFER_STORAGE);
     if (m_pmx.sdef.empty())
@@ -165,7 +166,7 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
         material->set_diffuse(pmx_material.diffuse);
         material->set_specular(pmx_material.specular, pmx_material.specular_strength);
         material->set_ambient(pmx_material.ambient);
-        material->set_ramp_texture(scene.ramp_texture.get());
+        material->set_ramp(scene.ramp_texture.get());
 
         if (pmx_material.texture_index != -1 && *scene.textures[pmx_material.texture_index])
         {
@@ -216,7 +217,10 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
             .index_count = static_cast<std::uint32_t>(submesh.index_count),
             .material = scene.materials[submesh.material_index].get(),
         });
+    }
 
+    for (const auto& submesh : m_pmx.submeshes)
+    {
         if (scene.outline_materials[submesh.material_index] != nullptr)
         {
             root_mesh.submeshes.push_back({
@@ -383,7 +387,10 @@ void mmd_loader::load_morph(world& world)
             break;
         }
 
-        mesh.geometry->add_morph_target(pmx_morph.name_jp, morph_elements);
+        if (!morph_elements.empty())
+        {
+            mesh.geometry->add_morph_target(pmx_morph.name_jp, morph_elements);
+        }
     }
 }
 
@@ -483,7 +490,7 @@ void mmd_loader::load_physics(world& world)
             break;
         case PMX_RIGIDBODY_MODE_MERGE:
             bone_rigidbody.type = PHY_RIGIDBODY_TYPE_DYNAMIC;
-            bone_rigidbody.transform_reflector = merge_reflector;
+            // bone_rigidbody.transform_reflector = merge_reflector;
             break;
         default:
             break;
@@ -642,7 +649,7 @@ void mmd_loader::load_animation(world& world)
     }
 
     const auto& mesh = world.get_component<const mesh_component>(m_root);
-    mmd_animator.morphs.resize(mesh.geometry->get_morph_target_count());
+    mmd_animator.morphs.resize(m_pmx.morphs.size());
 
     for (auto& morph : m_vmd.morphs)
     {

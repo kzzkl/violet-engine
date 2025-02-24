@@ -5,15 +5,23 @@
 
 namespace violet
 {
-enum material_type
+using material_type = std::uint32_t;
+
+enum buildin_material_type : material_type
 {
     MATERIAL_OPAQUE,
     MATERIAL_TRANSPARENT,
-    MATERIAL_OUTLINE,
+    MATERIAL_CUSTOM,
 };
 
-static constexpr std::uint32_t SHADING_MODEL_UNLIT = 1;
-static constexpr std::uint32_t SHADING_MODEL_PHYSICAL = 2;
+using shading_model = std::uint32_t;
+
+enum buildin_shading_model : shading_model
+{
+    SHADING_MODEL_UNLIT = 1,
+    SHADING_MODEL_PHYSICAL,
+    SHADING_MODEL_CUSTOM,
+};
 
 class material
 {

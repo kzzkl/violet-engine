@@ -69,13 +69,15 @@ public:
         rhi_attachment_load_op load_op = RHI_ATTACHMENT_LOAD_OP_LOAD,
         rhi_attachment_store_op store_op = RHI_ATTACHMENT_STORE_OP_STORE,
         std::uint32_t level = 0,
-        std::uint32_t layer = 0);
+        std::uint32_t layer = 0,
+        rhi_clear_value clear_value = {});
     rdg_texture_dsv set_depth_stencil(
         rdg_texture* texture,
         rhi_attachment_load_op load_op = RHI_ATTACHMENT_LOAD_OP_LOAD,
         rhi_attachment_store_op store_op = RHI_ATTACHMENT_STORE_OP_STORE,
         std::uint32_t level = 0,
-        std::uint32_t layer = 0);
+        std::uint32_t layer = 0,
+        rhi_clear_value clear_value = {});
 
     rhi_parameter* add_parameter(const rhi_parameter_desc& desc);
 

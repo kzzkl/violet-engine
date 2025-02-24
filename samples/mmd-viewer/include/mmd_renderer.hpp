@@ -12,8 +12,12 @@ public:
 
 private:
     void add_cull_pass(render_graph& graph);
-    void add_mesh_pass(render_graph& graph);
+    void add_opaque_pass(render_graph& graph);
+    void add_hzb_pass(render_graph& graph);
+    void add_gtao_pass(render_graph& graph);
+    void add_lighting_pass(render_graph& graph);
     void add_skybox_pass(render_graph& graph);
+    void add_transparent_pass(render_graph& graph);
     void add_motion_vector_pass(render_graph& graph);
     void add_taa_pass(render_graph& graph);
     void add_tone_mapping_pass(render_graph& graph);
@@ -23,7 +27,11 @@ private:
 
     rdg_texture* m_render_target{nullptr};
     rdg_texture* m_depth_buffer{nullptr};
+    rdg_texture* m_hzb{nullptr};
+    rdg_texture* m_ao_buffer{nullptr};
 
+    rdg_texture* m_gbuffer_albedo{nullptr};
+    rdg_texture* m_gbuffer_material{nullptr};
     rdg_texture* m_gbuffer_normal{nullptr};
     rdg_texture* m_gbuffer_emissive{nullptr};
 

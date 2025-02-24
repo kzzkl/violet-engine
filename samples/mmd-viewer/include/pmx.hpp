@@ -182,8 +182,8 @@ struct pmx_material_morph
     vec3f specular;
     float specular_strength;
     vec3f ambient;
-    vec4f edge_color;
-    float edge_scale;
+    vec4f outline_color;
+    float outline_scale;
 
     vec4f tex_tint;
     vec4f spa_tint;
@@ -360,7 +360,8 @@ public:
     std::vector<vec3f> position;
     std::vector<vec3f> normal;
     std::vector<vec2f> texcoord;
-    std::vector<float> edge;
+    std::vector<float> outline;
+    std::vector<std::vector<vec4f>> add_texcoord;
 
     std::vector<vec2u> skin; // first: skin type(0: BDEF, 1: SDEF), second: skin data index
     std::vector<bdef_data> bdef;

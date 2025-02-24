@@ -6,11 +6,15 @@ geometry::geometry() = default;
 
 geometry::~geometry() {}
 
-void geometry::add_attribute(std::string_view name, const rhi_buffer_desc& desc)
+void geometry::add_attribute(
+    std::string_view name,
+    std::size_t vertex_size,
+    std::size_t vertex_count,
+    rhi_buffer_flags flags)
 {
-    assert(m_vertex_buffer_map.find(name.data()) == m_vertex_buffer_map.end());
+    assert(vertex_size != 0 && vertex_count != 0);
 
-    auto buffer = std::make_unique<vertex_buffer>(desc);
+    auto buffer = std::make_unique<vertex_buffer>(vertex_size * vertex_count, flags);
     m_vertex_buffer_map[name.data()] = buffer.get();
     m_buffers.emplace_back(std::move(buffer));
 }
@@ -30,6 +34,16 @@ vertex_buffer* geometry::get_vertex_buffer(std::string_view name) const
     }
 
     return nullptr;
+}
+
+void geometry::set_indexes(std::size_t index_size, std::size_t index_count, rhi_buffer_flags flags)
+{
+    assert(index_size != 0 && index_count != 0);
+    assert(m_index_buffer == nullptr);
+
+    auto buffer = std::make_unique<index_buffer>(index_size * index_count, index_size, flags);
+    m_index_buffer = buffer.get();
+    m_buffers.emplace_back(std::move(buffer));
 }
 
 void geometry::set_indexes(index_buffer* buffer)

@@ -97,11 +97,11 @@ void imgui_pass::add(render_graph& graph, const parameter& parameter)
 
             rhi_attachment_blend& blend = pipeline.blend.attachments[0];
             blend.enable = true;
-            blend.src_color_factor = RHI_BLEND_FACTOR_SOURCE_ALPHA;
-            blend.dst_color_factor = RHI_BLEND_FACTOR_SOURCE_INV_ALPHA;
+            blend.src_color_factor = RHI_BLEND_FACTOR_SRC_ALPHA;
+            blend.dst_color_factor = RHI_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
             blend.color_op = RHI_BLEND_OP_ADD;
             blend.src_alpha_factor = RHI_BLEND_FACTOR_ONE;
-            blend.dst_alpha_factor = RHI_BLEND_FACTOR_SOURCE_INV_ALPHA;
+            blend.dst_alpha_factor = RHI_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
             blend.alpha_op = RHI_BLEND_OP_ADD;
 
             command.set_pipeline(pipeline);

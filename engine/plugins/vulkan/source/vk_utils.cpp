@@ -361,17 +361,21 @@ VkBlendFactor vk_utils::map_blend_factor(rhi_blend_factor factor)
         return VK_BLEND_FACTOR_ZERO;
     case RHI_BLEND_FACTOR_ONE:
         return VK_BLEND_FACTOR_ONE;
-    case RHI_BLEND_FACTOR_SOURCE_COLOR:
+    case RHI_BLEND_FACTOR_SRC_COLOR:
         return VK_BLEND_FACTOR_SRC_COLOR;
-    case RHI_BLEND_FACTOR_SOURCE_ALPHA:
+    case RHI_BLEND_FACTOR_ONE_MINUS_SRC_COLOR:
+        return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+    case RHI_BLEND_FACTOR_SRC_ALPHA:
         return VK_BLEND_FACTOR_SRC_ALPHA;
-    case RHI_BLEND_FACTOR_SOURCE_INV_ALPHA:
+    case RHI_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA:
         return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    case RHI_BLEND_FACTOR_TARGET_COLOR:
+    case RHI_BLEND_FACTOR_DST_COLOR:
         return VK_BLEND_FACTOR_DST_COLOR;
-    case RHI_BLEND_FACTOR_TARGET_ALPHA:
+    case RHI_BLEND_FACTOR_ONE_MINUS_DST_COLOR:
+        return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+    case RHI_BLEND_FACTOR_DST_ALPHA:
         return VK_BLEND_FACTOR_DST_ALPHA;
-    case RHI_BLEND_FACTOR_TARGET_INV_ALPHA:
+    case RHI_BLEND_FACTOR_ONE_MINUS_DST_ALPHA:
         return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
     default:
         throw std::runtime_error("Invalid blend factor.");
@@ -390,6 +394,8 @@ VkBlendOp vk_utils::map_blend_op(rhi_blend_op op)
         return VK_BLEND_OP_MIN;
     case RHI_BLEND_OP_MAX:
         return VK_BLEND_OP_MAX;
+    case RHI_BLEND_OP_MULTIPLY:
+        return VK_BLEND_OP_MULTIPLY_EXT;
     default:
         throw std::runtime_error("Invalid blend op.");
     }

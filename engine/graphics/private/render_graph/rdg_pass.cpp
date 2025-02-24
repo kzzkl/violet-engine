@@ -166,7 +166,8 @@ rdg_texture_rtv rdg_pass::add_render_target(
     rhi_attachment_load_op load_op,
     rhi_attachment_store_op store_op,
     std::uint32_t level,
-    std::uint32_t layer)
+    std::uint32_t layer,
+    rhi_clear_value clear_value)
 {
     assert(texture->get_flags() & RHI_TEXTURE_RENDER_TARGET);
 
@@ -185,6 +186,7 @@ rdg_texture_rtv rdg_pass::add_render_target(
     reference->texture.layer_count = 1;
     reference->texture.rtv.load_op = load_op;
     reference->texture.rtv.store_op = store_op;
+    reference->texture.rtv.clear_value = clear_value;
 
     m_references.push_back(reference);
 
@@ -196,7 +198,8 @@ rdg_texture_dsv rdg_pass::set_depth_stencil(
     rhi_attachment_load_op load_op,
     rhi_attachment_store_op store_op,
     std::uint32_t level,
-    std::uint32_t layer)
+    std::uint32_t layer,
+    rhi_clear_value clear_value)
 {
     assert(texture->get_flags() & RHI_TEXTURE_DEPTH_STENCIL);
 
@@ -214,6 +217,7 @@ rdg_texture_dsv rdg_pass::set_depth_stencil(
     reference->texture.layer_count = 1;
     reference->texture.dsv.load_op = load_op;
     reference->texture.dsv.store_op = store_op;
+    reference->texture.dsv.clear_value = clear_value;
 
     m_references.push_back(reference);
 
