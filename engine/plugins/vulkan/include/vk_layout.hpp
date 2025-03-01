@@ -1,8 +1,9 @@
 #pragma once
 
+#include "common/hash.hpp"
 #include "vk_common.hpp"
+#include <array>
 #include <memory>
-#include <span>
 #include <unordered_map>
 #include <vector>
 
@@ -21,7 +22,7 @@ public:
         struct
         {
             std::size_t index;
-        } constant;
+        } uniform;
     };
 
     vk_parameter_layout(const rhi_parameter_desc& desc, vk_context* context);
@@ -44,10 +45,37 @@ private:
     vk_context* m_context;
 };
 
+struct vk_pipeline_layout_desc
+{
+    bool operator==(const vk_pipeline_layout_desc& other) const noexcept
+    {
+        if (push_constant_stages != other.push_constant_stages ||
+            push_constant_size != other.push_constant_size)
+        {
+            return false;
+        }
+
+        for (std::size_t i = 0; i < parameters.size(); ++i)
+        {
+            if (parameters[i] != other.parameters[i])
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    VkPipelineStageFlags push_constant_stages;
+    std::uint32_t push_constant_size;
+
+    std::array<vk_parameter_layout*, rhi_constants::max_parameter_count> parameters;
+};
+
 class vk_pipeline_layout
 {
 public:
-    vk_pipeline_layout(std::span<vk_parameter_layout*> parameter_layouts, vk_context* context);
+    vk_pipeline_layout(const vk_pipeline_layout_desc& desc, vk_context* context);
     ~vk_pipeline_layout();
 
     VkPipelineLayout get_layout() const noexcept
@@ -55,8 +83,21 @@ public:
         return m_layout;
     }
 
+    VkShaderStageFlags get_push_constant_stages() const noexcept
+    {
+        return m_push_constant_stages;
+    }
+
+    std::size_t get_push_constant_size() const noexcept
+    {
+        return m_push_constant_size;
+    }
+
 private:
     VkPipelineLayout m_layout;
+    VkShaderStageFlags m_push_constant_stages;
+    std::size_t m_push_constant_size{0};
+
     vk_context* m_context;
 };
 
@@ -67,11 +108,23 @@ public:
     ~vk_layout_manager();
 
     vk_parameter_layout* get_parameter_layout(const rhi_parameter_desc& desc);
-    vk_pipeline_layout* get_pipeline_layout(std::span<vk_parameter_layout*> parameter_layouts);
+    vk_pipeline_layout* get_pipeline_layout(const vk_pipeline_layout_desc& desc);
 
 private:
+    struct pipeline_layout_hash
+    {
+        std::size_t operator()(const violet::vk::vk_pipeline_layout_desc& desc) const noexcept
+        {
+            return violet::hash::city_hash_64(&desc, sizeof(violet::vk::vk_pipeline_layout_desc));
+        }
+    };
+
     std::unordered_map<std::uint64_t, std::unique_ptr<vk_parameter_layout>> m_parameter_layouts;
-    std::unordered_map<std::uint64_t, std::unique_ptr<vk_pipeline_layout>> m_pipeline_layouts;
+    std::unordered_map<
+        vk_pipeline_layout_desc,
+        std::unique_ptr<vk_pipeline_layout>,
+        pipeline_layout_hash>
+        m_pipeline_layouts;
 
     vk_context* m_context;
 };

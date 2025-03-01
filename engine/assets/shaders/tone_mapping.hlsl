@@ -1,15 +1,17 @@
-struct tone_mapping_data
+#include "common.hlsli"
+
+struct constant_data
 {
     uint hdr;
     uint ldr;
 };
-ConstantBuffer<tone_mapping_data> tone_mapping : register(b0, space1);
+PushConstant(constant_data, constant);
 
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
-    Texture2D<float4> hdr = ResourceDescriptorHeap[tone_mapping.hdr];
-    RWTexture2D<float4> ldr = ResourceDescriptorHeap[tone_mapping.ldr];
+    Texture2D<float4> hdr = ResourceDescriptorHeap[constant.hdr];
+    RWTexture2D<float4> ldr = ResourceDescriptorHeap[constant.ldr];
 
     float3 color = hdr[dtid.xy].rgb;
 

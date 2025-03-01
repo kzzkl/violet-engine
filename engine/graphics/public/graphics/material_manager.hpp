@@ -11,7 +11,7 @@ class gpu_buffer_uploader;
 class material_manager
 {
 public:
-    material_manager(std::size_t material_buffer_size = 8ull * 1024 * 1024);
+    material_manager(std::size_t material_buffer_size = 64ull * 1024);
     ~material_manager();
 
     render_id register_material(material* material, std::uint32_t& constant_address);

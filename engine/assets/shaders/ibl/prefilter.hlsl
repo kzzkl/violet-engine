@@ -11,7 +11,7 @@ struct constant_data
     uint padding0;
     uint padding1;
 };
-ConstantBuffer<constant_data> constant : register(b0, space1);
+PushConstant(constant_data, constant);
 
 static const float3 forward_dir[6] = {
     float3(1.0, 0.0, 0.0),

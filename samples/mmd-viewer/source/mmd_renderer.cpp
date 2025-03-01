@@ -23,17 +23,8 @@ struct toon_fs : public mesh_fs
         std::uint32_t ao_buffer;
     };
 
-    static constexpr parameter parameter = {
-        {
-            .type = RHI_PARAMETER_BINDING_CONSTANT,
-            .stages = RHI_SHADER_STAGE_FRAGMENT,
-            .size = sizeof(constant_data),
-        },
-    };
-
     static constexpr parameter_layout parameters = {
         {0, bindless},
-        {1, parameter},
     };
 };
 
@@ -236,7 +227,6 @@ void mmd_renderer::add_lighting_pass(render_graph& graph)
     {
         rdg_texture_srv gbuffer_color;
         rdg_texture_srv ao_buffer;
-        rhi_parameter* toon_parameter;
     };
 
     graph.add_pass<pass_data>(
@@ -258,8 +248,6 @@ void mmd_renderer::add_lighting_pass(render_graph& graph)
             {
                 data.ao_buffer = rdg_texture_srv();
             }
-
-            data.toon_parameter = pass.add_parameter(toon_fs::parameter);
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -276,8 +264,6 @@ void mmd_renderer::add_lighting_pass(render_graph& graph)
                 constant.ao_buffer = data.ao_buffer.get_rhi()->get_bindless();
             }
 
-            data.toon_parameter->set_constant(0, &constant, sizeof(toon_fs::constant_data));
-
             rdg_raster_pipeline pipeline = {
                 .vertex_shader = device.get_shader<fullscreen_vs>(),
                 .fragment_shader = device.get_shader<toon_fs>(defines),
@@ -290,8 +276,8 @@ void mmd_renderer::add_lighting_pass(render_graph& graph)
             pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
 
             command.set_pipeline(pipeline);
+            command.set_constant(constant);
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
-            command.set_parameter(1, data.toon_parameter);
             command.draw_fullscreen();
         });
 }

@@ -1,5 +1,6 @@
 #include "vk_command.hpp"
 #include "vk_context.hpp"
+#include "vk_layout.hpp"
 #include "vk_pipeline.hpp"
 #include "vk_render_pass.hpp"
 #include "vk_resource.hpp"
@@ -59,12 +60,25 @@ void vk_command::set_parameter(std::size_t index, rhi_parameter* parameter)
     vkCmdBindDescriptorSets(
         m_command_buffer,
         m_current_bind_point,
-        m_current_pipeline_layout,
+        m_current_pipeline_layout->get_layout(),
         static_cast<std::uint32_t>(index),
         1,
         &descriptor_set,
         0,
         nullptr);
+}
+
+void vk_command::set_constant(const void* data, std::size_t size)
+{
+    assert(m_current_pipeline_layout->get_push_constant_size() >= size);
+
+    vkCmdPushConstants(
+        m_command_buffer,
+        m_current_pipeline_layout->get_layout(),
+        m_current_pipeline_layout->get_push_constant_stages(),
+        0,
+        size,
+        data);
 }
 
 void vk_command::set_viewport(const rhi_viewport& viewport)

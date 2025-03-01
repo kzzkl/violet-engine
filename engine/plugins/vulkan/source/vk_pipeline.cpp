@@ -8,7 +8,7 @@
 namespace violet::vk
 {
 vk_shader::vk_shader(const rhi_shader_desc& desc, vk_context* context)
-    : m_module(VK_NULL_HANDLE),
+    : m_push_constant_size(static_cast<std::uint32_t>(desc.push_constant_size)),
       m_context(context)
 {
     VkShaderModuleCreateInfo shader_module_info = {
@@ -51,7 +51,6 @@ vk_vertex_shader::vk_vertex_shader(const rhi_shader_desc& desc, vk_context* cont
 
 vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_context* context)
     : m_pipeline(VK_NULL_HANDLE),
-      m_pipeline_layout(VK_NULL_HANDLE),
       m_context(context)
 {
     auto* vertex_shader = static_cast<vk_vertex_shader*>(desc.vertex_shader);
@@ -237,29 +236,46 @@ vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_
         .blendConstants = {0.0f, 0.0f, 0.0f, 0.0f},
     };
 
-    std::vector<vk_parameter_layout*> parameter_layouts;
-    for (const auto& parameter : vertex_shader->get_parameters())
+    vk_pipeline_layout_desc pipeline_layout_desc = {};
+
     {
-        if (parameter_layouts.size() <= parameter.space)
+        std::uint32_t constant_size = vertex_shader->get_push_constant_size();
+
+        if (constant_size != 0)
         {
-            parameter_layouts.resize(parameter.space + 1);
+            pipeline_layout_desc.push_constant_stages |= VK_SHADER_STAGE_VERTEX_BIT;
+            pipeline_layout_desc.push_constant_size = constant_size;
         }
-        parameter_layouts[parameter.space] = parameter.layout;
+
+        for (const auto& parameter : vertex_shader->get_parameters())
+        {
+            pipeline_layout_desc.parameters[parameter.space] = parameter.layout;
+        }
     }
 
     if (fragment_shader != nullptr)
     {
+        std::uint32_t constant_size = fragment_shader->get_push_constant_size();
+
+        assert(
+            constant_size == 0 || pipeline_layout_desc.push_constant_size == 0 ||
+            constant_size == pipeline_layout_desc.push_constant_size);
+
+        if (constant_size != 0)
+        {
+            pipeline_layout_desc.push_constant_stages |= VK_SHADER_STAGE_FRAGMENT_BIT;
+            pipeline_layout_desc.push_constant_size = constant_size;
+        }
+
         for (const auto& parameter : fragment_shader->get_parameters())
         {
-            if (parameter_layouts.size() <= parameter.space)
-            {
-                parameter_layouts.resize(parameter.space + 1);
-            }
-            parameter_layouts[parameter.space] = parameter.layout;
+            pipeline_layout_desc.parameters[parameter.space] = parameter.layout;
         }
     }
-    m_pipeline_layout =
-        m_context->get_layout_manager()->get_pipeline_layout(parameter_layouts)->get_layout();
+
+    assert(pipeline_layout_desc.push_constant_size <= 128);
+
+    m_pipeline_layout = m_context->get_layout_manager()->get_pipeline_layout(pipeline_layout_desc);
 
     std::vector<VkDynamicState> dynamic_state = {
         VK_DYNAMIC_STATE_VIEWPORT,
@@ -285,7 +301,7 @@ vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_
         .pDepthStencilState = &depth_stencil_state_info,
         .pColorBlendState = &color_blend_info,
         .pDynamicState = &dynamic_state_info,
-        .layout = m_pipeline_layout,
+        .layout = m_pipeline_layout->get_layout(),
         .renderPass = render_pass->get_render_pass(),
         .subpass = 0,
         .basePipelineHandle = VK_NULL_HANDLE,
@@ -319,22 +335,20 @@ vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, 
         .pName = "cs_main",
     };
 
-    std::vector<vk_parameter_layout*> parameter_layouts;
+    vk_pipeline_layout_desc pipeline_layout_desc = {
+        .push_constant_stages = VK_SHADER_STAGE_COMPUTE_BIT,
+        .push_constant_size = compute_shader->get_push_constant_size(),
+    };
     for (const auto& parameter : compute_shader->get_parameters())
     {
-        if (parameter_layouts.size() <= parameter.space)
-        {
-            parameter_layouts.resize(parameter.space + 1);
-        }
-        parameter_layouts[parameter.space] = parameter.layout;
+        pipeline_layout_desc.parameters[parameter.space] = parameter.layout;
     }
-    m_pipeline_layout =
-        m_context->get_layout_manager()->get_pipeline_layout(parameter_layouts)->get_layout();
+    m_pipeline_layout = m_context->get_layout_manager()->get_pipeline_layout(pipeline_layout_desc);
 
     VkComputePipelineCreateInfo pipeline_info = {
         .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
         .stage = compute_shader_stage_info,
-        .layout = m_pipeline_layout,
+        .layout = m_pipeline_layout->get_layout(),
         .basePipelineHandle = VK_NULL_HANDLE,
         .basePipelineIndex = -1,
     };

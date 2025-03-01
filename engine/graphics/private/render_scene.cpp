@@ -226,7 +226,7 @@ bool render_scene::update()
 
     if (m_scene_states & RENDER_SCENE_STAGE_DATA_DIRTY)
     {
-        m_scene_parameter->set_constant(0, &m_scene_data, sizeof(shader::scene_data));
+        m_scene_parameter->set_uniform(0, &m_scene_data, sizeof(shader::scene_data));
     }
 
     m_scene_states = 0;

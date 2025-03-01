@@ -168,6 +168,11 @@ public:
             desc.parameter_count = T::parameters.parameter_count;
         }
 
+        if constexpr (has_constant<T>)
+        {
+            desc.push_constant_size = sizeof(T::constant_data);
+        }
+
         auto shader = rhi_ptr<rhi_shader>(m_rhi->create_shader(desc), m_rhi_deleter);
 
         if constexpr (has_inputs<T>)

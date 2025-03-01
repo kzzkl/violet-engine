@@ -2,14 +2,14 @@
 
 ConstantBuffer<scene_data> scene : register(b0, space1);
 
-struct fill_data
+struct constant_data
 {
     uint cull_result;
     uint command_buffer;
     uint count_buffer;
     uint padding0;
 };
-ConstantBuffer<fill_data> fill : register(b0, space2);
+PushConstant(constant_data, constant);
 
 struct draw_command
 {
@@ -35,12 +35,12 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     instance_data instance = instances[instance_index];
     uint mesh_index = instance.mesh_index;
 
-    RWByteAddressBuffer cull_result = ResourceDescriptorHeap[fill.cull_result];
+    RWByteAddressBuffer cull_result = ResourceDescriptorHeap[constant.cull_result];
 
     if (cull_result.Load(mesh_index * 4) == 1)
     {
         ByteAddressBuffer group_buffer = ResourceDescriptorHeap[scene.group_buffer];
-        RWBuffer<uint> count_buffer = ResourceDescriptorHeap[fill.count_buffer];
+        RWBuffer<uint> count_buffer = ResourceDescriptorHeap[constant.count_buffer];
 
         uint group_index = instance.group_index;
 
@@ -55,7 +55,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         command.vertex_offset = instance.vertex_offset;
         command.instance_offset = instance_index;
 
-        RWStructuredBuffer<draw_command> command_buffer = ResourceDescriptorHeap[fill.command_buffer];
+        RWStructuredBuffer<draw_command> command_buffer = ResourceDescriptorHeap[constant.command_buffer];
         command_buffer[command_index] = command;
     }
 }

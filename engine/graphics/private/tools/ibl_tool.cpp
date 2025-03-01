@@ -16,17 +16,8 @@ struct convert_cs : public shader_cs
         std::uint32_t cube_map;
     };
 
-    static constexpr parameter parameter = {
-        {
-            .type = RHI_PARAMETER_BINDING_CONSTANT,
-            .stages = RHI_SHADER_STAGE_COMPUTE,
-            .size = sizeof(constant_data),
-        },
-    };
-
     static constexpr parameter_layout parameters = {
         {0, bindless},
-        {1, parameter},
     };
 };
 
@@ -42,17 +33,8 @@ struct irradiance_cs : public shader_cs
         std::uint32_t irradiance_map;
     };
 
-    static constexpr parameter parameter = {
-        {
-            .type = RHI_PARAMETER_BINDING_CONSTANT,
-            .stages = RHI_SHADER_STAGE_COMPUTE,
-            .size = sizeof(constant_data),
-        },
-    };
-
     static constexpr parameter_layout parameters = {
         {0, bindless},
-        {1, parameter},
     };
 };
 
@@ -72,17 +54,8 @@ struct prefilter_cs : public shader_cs
         std::uint32_t padding1;
     };
 
-    static constexpr parameter parameter = {
-        {
-            .type = RHI_PARAMETER_BINDING_CONSTANT,
-            .stages = RHI_SHADER_STAGE_COMPUTE,
-            .size = sizeof(constant_data),
-        },
-    };
-
     static constexpr parameter_layout parameters = {
         {0, bindless},
-        {1, parameter},
     };
 };
 
@@ -154,7 +127,6 @@ private:
         {
             rdg_texture_srv env_map;
             rdg_texture_uav cube_map;
-            rhi_parameter* parameter;
         };
 
         graph.add_pass<pass_data>(
@@ -167,25 +139,21 @@ private:
                     cube_map,
                     RHI_PIPELINE_STAGE_COMPUTE,
                     RHI_TEXTURE_DIMENSION_2D_ARRAY);
-                data.parameter = pass.add_parameter(convert_cs::parameter);
             },
             [](const pass_data& data, rdg_command& command)
             {
                 rhi_texture_extent extent = data.cube_map.get_texture()->get_extent();
 
-                convert_cs::constant_data constant = {
+                command.set_pipeline({
+                    .compute_shader = render_device::instance().get_shader<convert_cs>(),
+                });
+                command.set_constant(convert_cs::constant_data{
                     .width = extent.width,
                     .height = extent.height,
                     .env_map = data.env_map.get_bindless(),
                     .cube_map = data.cube_map.get_bindless(),
-                };
-                data.parameter->set_constant(0, &constant, sizeof(convert_cs::constant_data));
-
-                command.set_pipeline({
-                    .compute_shader = render_device::instance().get_shader<convert_cs>(),
                 });
                 command.set_parameter(0, render_device::instance().get_bindless_parameter());
-                command.set_parameter(1, data.parameter);
                 command.dispatch_3d(extent.width, extent.height, 6, 8, 8, 1);
             });
     }
@@ -255,7 +223,6 @@ private:
         {
             rdg_texture_srv cube_map;
             rdg_texture_uav irradiance_map;
-            rhi_parameter* parameter;
         };
 
         graph.add_pass<pass_data>(
@@ -271,29 +238,21 @@ private:
                     irradiance_map,
                     RHI_PIPELINE_STAGE_COMPUTE,
                     RHI_TEXTURE_DIMENSION_2D_ARRAY);
-
-                data.parameter = pass.add_parameter(irradiance_cs::parameter);
             },
             [](const pass_data& data, rdg_command& command)
             {
                 rhi_texture_extent extent = data.irradiance_map.get_texture()->get_extent();
 
-                irradiance_cs::constant_data irradiance_constant = {
+                command.set_pipeline({
+                    .compute_shader = render_device::instance().get_shader<irradiance_cs>(),
+                });
+                command.set_constant(irradiance_cs::constant_data{
                     .width = extent.width,
                     .height = extent.height,
                     .cube_map = data.cube_map.get_bindless(),
                     .irradiance_map = data.irradiance_map.get_bindless(),
-                };
-                data.parameter->set_constant(
-                    0,
-                    &irradiance_constant,
-                    sizeof(irradiance_cs::constant_data));
-
-                command.set_pipeline({
-                    .compute_shader = render_device::instance().get_shader<irradiance_cs>(),
                 });
                 command.set_parameter(0, render_device::instance().get_bindless_parameter());
-                command.set_parameter(1, data.parameter);
                 command.dispatch_3d(extent.width, extent.height, 6, 8, 8, 1);
             });
     }
@@ -307,7 +266,6 @@ private:
         {
             rdg_texture_srv cube_map;
             rdg_texture_uav prefilter_map;
-            rhi_parameter* parameter;
         };
 
         for (std::uint32_t level = 0; level < prefilter_map->get_level_count(); ++level)
@@ -327,8 +285,6 @@ private:
                         RHI_TEXTURE_DIMENSION_2D_ARRAY,
                         level,
                         1);
-
-                    data.parameter = pass.add_parameter(prefilter_cs::parameter);
                 },
                 [](const pass_data& data, rdg_command& command)
                 {
@@ -337,21 +293,18 @@ private:
                     std::uint32_t level = data.prefilter_map.get_level();
                     std::uint32_t level_count = data.prefilter_map.get_texture()->get_level_count();
 
-                    prefilter_cs::constant_data constant = {
+                    command.set_pipeline({
+                        .compute_shader = render_device::instance().get_shader<prefilter_cs>(),
+                    });
+                    command.set_constant(prefilter_cs::constant_data{
                         .width = extent.width,
                         .height = extent.height,
                         .cube_map = data.cube_map.get_bindless(),
                         .prefilter_map = data.prefilter_map.get_bindless(),
                         .roughness = static_cast<float>(level) / static_cast<float>(level_count),
                         .resolution = data.cube_map.get_texture()->get_extent().width,
-                    };
-                    data.parameter->set_constant(0, &constant, sizeof(prefilter_cs::constant_data));
-
-                    command.set_pipeline({
-                        .compute_shader = render_device::instance().get_shader<prefilter_cs>(),
                     });
                     command.set_parameter(0, render_device::instance().get_bindless_parameter());
-                    command.set_parameter(1, data.parameter);
                     command.dispatch_3d(extent.width, extent.height, 6, 8, 8, 1);
                 });
         }

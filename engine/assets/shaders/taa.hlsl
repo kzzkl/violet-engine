@@ -1,8 +1,6 @@
 #include "common.hlsli"
 #include "color.hlsli"
 
-ConstantBuffer<camera_data> camera : register(b0, space1);
-
 struct constant_data
 {
     uint current_render_target;
@@ -13,7 +11,9 @@ struct constant_data
     uint width;
     uint height;
 };
-ConstantBuffer<constant_data> constant : register(b0, space2);
+PushConstant(constant_data, constant);
+
+ConstantBuffer<camera_data> camera : register(b0, space1);
 
 float2 get_motion_vector(uint2 st)
 {

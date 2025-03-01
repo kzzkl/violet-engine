@@ -111,7 +111,7 @@ struct shader
 
     static constexpr parameter scene = {
         {
-            .type = RHI_PARAMETER_BINDING_CONSTANT,
+            .type = RHI_PARAMETER_BINDING_UNIFORM,
             .stages =
                 RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
             .size = sizeof(scene_data),
@@ -141,7 +141,7 @@ struct shader
 
     static constexpr parameter camera = {
         {
-            .type = RHI_PARAMETER_BINDING_CONSTANT,
+            .type = RHI_PARAMETER_BINDING_UNIFORM,
             .stages =
                 RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
             .size = sizeof(camera_data),
@@ -165,6 +165,9 @@ struct shader
 template <typename T>
 concept has_parameters =
     std::is_same_v<std::decay_t<decltype(T::parameters)>, shader::parameter_layout>;
+
+template <typename T>
+concept has_constant = requires { typename T::constant_data; };
 
 struct shader_vs : public shader
 {
@@ -221,19 +224,14 @@ struct mesh_fs : public shader_fs
 
 struct skinning_cs : public shader_cs
 {
-    struct skinning_data
+    struct constant_data
     {
         std::uint32_t skeleton;
         std::uint32_t buffers[11];
     };
 
-    static constexpr parameter skinning = {
-        {RHI_PARAMETER_BINDING_CONSTANT, RHI_SHADER_STAGE_COMPUTE, sizeof(skinning_data)},
-    };
-
     static constexpr parameter_layout parameters = {
         {0, bindless},
-        {1, skinning},
     };
 };
 } // namespace violet

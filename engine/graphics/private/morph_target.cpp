@@ -64,7 +64,7 @@ void morph_target_buffer::update_morph(
 
     command->set_pipeline_barrier(&barrier, 1, nullptr, 0);
 
-    morphing_cs::morphing_data data = {
+    morphing_cs::constant_data constant = {
         .morph_target_count = static_cast<std::uint32_t>(m_morph_targets.size()),
         .precision = m_precision,
         .header_buffer = m_header_buffer->get_srv()->get_bindless(),
@@ -73,9 +73,7 @@ void morph_target_buffer::update_morph(
             morph_vertex_buffer->get_uav(0, 0, RHI_FORMAT_R32_SINT)->get_bindless(),
         .weight_buffer = weight_buffer->get_srv()->get_bindless(),
     };
-    rhi_parameter* parameter = device.allocate_parameter(morphing_cs::parameter);
-    parameter->set_constant(0, &data, sizeof(morphing_cs::morphing_data));
-    command->set_parameter(1, parameter);
+    command->set_constant(&constant, sizeof(morphing_cs::constant_data));
 
     command->dispatch((m_morph_targets.size() + 7) / 8, (m_max_element_count + 7) / 8, 1);
 

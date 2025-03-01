@@ -110,7 +110,7 @@ void camera_system::update()
                         render_device::instance().create_parameter(shader::camera);
                 }
 
-                camera_meta.parameter->set_constant(0, &data, sizeof(shader::camera_data));
+                camera_meta.parameter->set_uniform(0, &data, sizeof(shader::camera_data));
             });
 
     m_system_version = world.get_version();

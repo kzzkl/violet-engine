@@ -15,7 +15,7 @@ struct imgui_vs : public shader_vs
 
     static constexpr parameter parameter = {
         {
-            .type = RHI_PARAMETER_BINDING_CONSTANT,
+            .type = RHI_PARAMETER_BINDING_UNIFORM,
             .stages = RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT,
             .size = sizeof(imgui_pass::draw_constant),
         },
@@ -72,7 +72,7 @@ void imgui_pass::add(render_graph& graph, const parameter& parameter)
 
     struct pass_data
     {
-        rhi_parameter* material_parameter;
+        rhi_parameter* imgui_parameter;
     };
 
     graph.add_pass<pass_data>(
@@ -82,8 +82,8 @@ void imgui_pass::add(render_graph& graph, const parameter& parameter)
         {
             pass.add_render_target(parameter.render_target, RHI_ATTACHMENT_LOAD_OP_LOAD);
 
-            data.material_parameter = pass.add_parameter(imgui_vs::parameter);
-            data.material_parameter->set_constant(0, &m_constant, sizeof(draw_constant));
+            data.imgui_parameter = pass.add_parameter(imgui_vs::parameter);
+            data.imgui_parameter->set_uniform(0, &m_constant, sizeof(draw_constant));
         },
         [this](const pass_data& data, rdg_command& command)
         {
@@ -106,7 +106,7 @@ void imgui_pass::add(render_graph& graph, const parameter& parameter)
 
             command.set_pipeline(pipeline);
             command.set_parameter(0, device.get_bindless_parameter());
-            command.set_parameter(1, data.material_parameter);
+            command.set_parameter(1, data.imgui_parameter);
 
             std::vector<rhi_buffer*> vertex_buffers = {
                 geometry.position.get(),

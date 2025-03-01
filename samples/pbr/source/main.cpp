@@ -1,4 +1,5 @@
 #include "components/camera_component.hpp"
+#include "components/hierarchy_component.hpp"
 #include "components/light_component.hpp"
 #include "components/mesh_component.hpp"
 #include "components/orbit_control_component.hpp"
@@ -135,26 +136,45 @@ private:
             for (auto& node : m_model.nodes)
             {
                 entity entity = world.create();
-                world.add_component<transform_component, mesh_component, scene_component>(entity);
+                world.add_component<transform_component, scene_component>(entity);
 
-                auto& mesh_data = m_model.meshes[node.mesh];
+                auto& transform = world.get_component<transform_component>(entity);
+                transform.set_position(node.position);
+                transform.set_rotation(node.rotation);
+                transform.set_scale(node.scale);
 
-                auto& entity_mesh = world.get_component<mesh_component>(entity);
-                entity_mesh.geometry = m_model.geometries[mesh_data.geometry].get();
-                for (auto& submesh_data : mesh_data.submeshes)
+                entities.push_back(entity);
+            }
+
+            for (std::size_t i = 0; i < m_model.nodes.size(); ++i)
+            {
+                auto& node = m_model.nodes[i];
+                auto entity = entities[i];
+
+                if (node.mesh != -1)
                 {
-                    entity_mesh.submeshes.push_back({
-                        .vertex_offset = submesh_data.vertex_offset,
-                        .index_offset = submesh_data.index_offset,
-                        .index_count = submesh_data.index_count,
-                        .material = m_model.materials[submesh_data.material].get(),
-                    });
+                    world.add_component<mesh_component>(entity);
+
+                    auto& mesh_data = m_model.meshes[node.mesh];
+
+                    auto& entity_mesh = world.get_component<mesh_component>(entity);
+                    entity_mesh.geometry = m_model.geometry.get();
+                    for (auto& submesh_data : mesh_data.submeshes)
+                    {
+                        entity_mesh.submeshes.push_back({
+                            .vertex_offset = submesh_data.vertex_offset,
+                            .index_offset = submesh_data.index_offset,
+                            .index_count = submesh_data.index_count,
+                            .material = m_model.materials[submesh_data.material].get(),
+                        });
+                    }
                 }
 
-                auto& entity_transform = world.get_component<transform_component>(entity);
-                entity_transform.set_position(node.position);
-                entity_transform.set_rotation(node.rotation);
-                entity_transform.set_scale(node.scale);
+                if (node.parent != -1)
+                {
+                    world.add_component<parent_component>(entity);
+                    world.get_component<parent_component>(entity).parent = entities[node.parent];
+                }
             }
         }
 

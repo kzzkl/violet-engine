@@ -1,10 +1,6 @@
 #include "common.hlsli"
 #include "brdf.hlsli"
 
-static const float MIN_ROUGHNESS = 0.03;
-
-ConstantBuffer<scene_data> scene : register(b0, space1);
-ConstantBuffer<camera_data> camera : register(b0, space2);
 struct constant_data
 {
     uint albedo;
@@ -15,7 +11,12 @@ struct constant_data
     uint ao_buffer;
     uint brdf_lut;
 };
-ConstantBuffer<constant_data> constant : register(b0, space3);
+PushConstant(constant_data, constant);
+
+ConstantBuffer<scene_data> scene : register(b0, space1);
+ConstantBuffer<camera_data> camera : register(b0, space2);
+
+static const float MIN_ROUGHNESS = 0.03;
 
 float3 gtao_multi_bounce(float visibility, float3 albedo)
 {
@@ -90,13 +91,13 @@ float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
 
         Texture2D<float2> brdf_lut = ResourceDescriptorHeap[constant.brdf_lut];
         float2 brdf = brdf_lut.Sample(linear_clamp_sampler, float2(NdotV, roughness));
-        float3 specular = (F0 * brdf.x + brdf.y) * prefilter;
+        float3 specular = F0 * brdf.x + brdf.y;
 
         TextureCube<float3> irradiance_map = ResourceDescriptorHeap[scene.irradiance];
         float3 irradiance = irradiance_map.Sample(linear_clamp_sampler, N);
-        float3 diffuse = albedo * irradiance * kd / PI;
+        float3 diffuse = albedo * kd / PI;
 
-        ambient_lighting = specular + diffuse;
+        ambient_lighting = specular * prefilter + diffuse * irradiance;
     }
 
 #ifdef USE_AO_BUFFER

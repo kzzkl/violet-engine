@@ -7,17 +7,17 @@
 namespace violet
 {
 std::vector<vec3f> geometry_tool::generate_tangents(
-    const std::vector<vec3f>& positions,
-    const std::vector<vec3f>& normals,
-    const std::vector<vec2f>& texcoords,
-    const std::vector<std::uint32_t>& indexes)
+    std::span<const vec3f> positions,
+    std::span<const vec3f> normals,
+    std::span<const vec2f> texcoords,
+    std::span<const std::uint32_t> indexes)
 {
     struct tangent_context : public SMikkTSpaceContext
     {
-        const std::vector<vec3f>& positions;
-        const std::vector<vec3f>& normals;
-        const std::vector<vec2f>& texcoords;
-        const std::vector<std::uint32_t>& indexes;
+        std::span<const vec3f> positions;
+        std::span<const vec3f> normals;
+        std::span<const vec2f> texcoords;
+        std::span<const std::uint32_t> indexes;
 
         std::vector<vec3f>& tangents;
     };
@@ -91,10 +91,10 @@ std::vector<vec3f> geometry_tool::generate_tangents(
 }
 
 std::vector<vec3f> geometry_tool::generate_smooth_normals(
-    const std::vector<vec3f>& positions,
-    const std::vector<vec3f>& normals,
-    const std::vector<vec3f>& tangents,
-    const std::vector<std::uint32_t>& indexes)
+    std::span<const vec3f> positions,
+    std::span<const vec3f> normals,
+    std::span<const vec3f> tangents,
+    std::span<const std::uint32_t> indexes)
 {
     struct vertex_normal
     {

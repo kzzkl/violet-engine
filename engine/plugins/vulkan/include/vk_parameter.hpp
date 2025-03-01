@@ -17,7 +17,7 @@ public:
     vk_parameter(const rhi_parameter_desc& desc, vk_context* context);
     virtual ~vk_parameter();
 
-    void set_constant(std::size_t index, const void* data, std::size_t size, std::size_t offset)
+    void set_uniform(std::size_t index, const void* data, std::size_t size, std::size_t offset)
         override;
     void set_srv(std::size_t index, rhi_texture_srv* srv, std::size_t offset) override;
     void set_srv(std::size_t index, rhi_buffer_srv* srv, std::size_t offset) override;
@@ -32,11 +32,11 @@ public:
 private:
     struct copy
     {
-        std::vector<buffer_allocation> constants;
+        std::vector<buffer_allocation> uniforms;
         VkDescriptorSet descriptor_set;
     };
 
-    const std::vector<buffer_allocation>& get_constans() const noexcept;
+    const std::vector<buffer_allocation>& get_uniforms() const noexcept;
 
     void mark_dirty(std::size_t index);
 
@@ -65,29 +65,29 @@ public:
 
     void sync_parameter();
 
-    buffer_allocation allocate_constant(std::size_t size);
-    void free_constant(buffer_allocation allocation);
+    buffer_allocation allocate_uniform(std::size_t size);
+    void free_uniform(buffer_allocation allocation);
 
-    void* get_constant_pointer(std::size_t offset = 0)
+    void* get_uniform_pointer(std::size_t offset = 0)
     {
-        return static_cast<std::uint8_t*>(m_constant_pointer) + offset;
+        return static_cast<std::uint8_t*>(m_uniform_pointer) + offset;
     }
 
-    VkBuffer get_constant_buffer() const noexcept
+    VkBuffer get_uniform_buffer() const noexcept
     {
-        return m_constant_buffer;
+        return m_uniform_buffer;
     }
 
 private:
-    static constexpr std::size_t constant_buffer_size = 8ull * 1024 * 1024;
+    static constexpr std::size_t uniform_buffer_size = 8ull * 1024 * 1024;
 
     std::array<std::vector<vk_parameter*>, 2> m_update_queues;
 
-    VkBuffer m_constant_buffer;
-    VmaAllocation m_constant_allocation;
-    void* m_constant_pointer{nullptr};
+    VkBuffer m_uniform_buffer;
+    VmaAllocation m_uniform_allocation;
+    void* m_uniform_pointer{nullptr};
 
-    buffer_allocator m_constant_allocator;
+    buffer_allocator m_uniform_allocator;
 
     std::mutex m_mutex;
 

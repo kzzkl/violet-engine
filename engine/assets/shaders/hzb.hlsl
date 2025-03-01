@@ -8,7 +8,7 @@ struct constant_data
     uint width;
     uint height;
 };
-ConstantBuffer<constant_data> constant : register(b0, space1);
+PushConstant(constant_data, constant);
 
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)

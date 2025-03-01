@@ -1,14 +1,15 @@
 #include "common.hlsli"
 
-ConstantBuffer<scene_data> scene : register(b0, space1);
-struct gbuffer_data
+struct constant_data
 {
     uint albedo;
     uint padding0;
     uint padding1;
     uint padding2;
 };
-ConstantBuffer<gbuffer_data> constant : register(b0, space2);
+PushConstant(constant_data, constant);
+
+ConstantBuffer<scene_data> scene : register(b0, space1);
 
 float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
 {

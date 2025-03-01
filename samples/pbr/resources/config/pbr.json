@@ -6,6 +6,7 @@
     },
     "PBR Sample": {
         "skybox": "D:/Workspace/assets/textures/skybox/dry_orchard_meadow_4k.hdr",
-        "model": "D:/Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf"
+        "model": "D:/Workspace/assets/models/gltf/Bistro.glb",
+        "model_bak": "D:/Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf"
     }
 }

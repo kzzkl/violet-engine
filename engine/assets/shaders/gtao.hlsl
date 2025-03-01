@@ -16,7 +16,7 @@ struct constant_data
     float falloff;
     uint frame;
 };
-ConstantBuffer<constant_data> constant : register(b0, space2);
+PushConstant(constant_data, constant);
 
 // Hilbert R2 Noise.
 float2 spatio_temporal_noise(uint2 coord)

@@ -7,6 +7,7 @@
 namespace violet::vk
 {
 class vk_render_pass;
+class vk_pipeline_layout;
 class vk_command : public rhi_command
 {
 public:
@@ -27,6 +28,7 @@ public:
     void set_pipeline(rhi_raster_pipeline* raster_pipeline) override;
     void set_pipeline(rhi_compute_pipeline* compute_pipeline) override;
     void set_parameter(std::size_t index, rhi_parameter* parameter) override;
+    void set_constant(const void* data, std::size_t size) override;
 
     void set_viewport(const rhi_viewport& viewport) override;
     void set_scissor(const rhi_scissor_rect* rects, std::size_t size) override;
@@ -142,7 +144,7 @@ private:
     VkCommandBuffer m_command_buffer;
 
     vk_render_pass* m_current_render_pass;
-    VkPipelineLayout m_current_pipeline_layout;
+    vk_pipeline_layout* m_current_pipeline_layout;
     VkPipelineBindPoint m_current_bind_point;
 
     std::vector<VkSemaphore> m_signal_fences;

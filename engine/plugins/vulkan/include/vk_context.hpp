@@ -140,7 +140,7 @@ private:
 
     VkDescriptorPool m_descriptor_pool{VK_NULL_HANDLE};
 
-    VmaAllocator m_vma_allocator;
+    VmaAllocator m_vma_allocator{VK_NULL_HANDLE};
 
     std::size_t m_frame_count{0};
     std::size_t m_frame_resource_count{0};

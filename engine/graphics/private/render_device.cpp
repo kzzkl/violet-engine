@@ -318,7 +318,7 @@ void render_device::create_buildin_resources()
         .min_level = 0.0f,
         .max_level = -1.0f,
     }));
-    assert(m_buildin_samplers[1]->get_bindless() == 1);
+    assert(m_buildin_samplers[2]->get_bindless() == 2);
 
     // Bindless index 3: linear repeat sampler.
     m_buildin_samplers.push_back(create_sampler({
@@ -330,7 +330,7 @@ void render_device::create_buildin_resources()
         .min_level = 0.0f,
         .max_level = -1.0f,
     }));
-    assert(m_buildin_samplers[2]->get_bindless() == 2);
+    assert(m_buildin_samplers[3]->get_bindless() == 3);
 
     // Bindless index 4: linear mirrored repeat sampler.
     m_buildin_samplers.push_back(create_sampler({
@@ -342,7 +342,7 @@ void render_device::create_buildin_resources()
         .min_level = 0.0f,
         .max_level = -1.0f,
     }));
-    assert(m_buildin_samplers[2]->get_bindless() == 2);
+    assert(m_buildin_samplers[4]->get_bindless() == 4);
 
     // Bindless index 5: linear clamp sampler.
     m_buildin_samplers.push_back(create_sampler({
@@ -354,7 +354,7 @@ void render_device::create_buildin_resources()
         .min_level = 0.0f,
         .max_level = -1.0f,
     }));
-    assert(m_buildin_samplers[3]->get_bindless() == 3);
+    assert(m_buildin_samplers[5]->get_bindless() == 5);
 }
 
 std::vector<std::uint8_t> render_device::compile_shader(

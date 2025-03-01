@@ -5,7 +5,7 @@ struct gbuffer_data
     uint color;
     uint ao_buffer;
 };
-ConstantBuffer<gbuffer_data> constant : register(b0, space1);
+PushConstant(gbuffer_data, constant);
 
 float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
 {

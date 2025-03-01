@@ -74,7 +74,7 @@ void skinning_system::skinning(rhi_command* command)
 
     for (const auto& skinning_data : m_skinning_queue)
     {
-        skinning_cs::skinning_data skinning_constant = {
+        skinning_cs::constant_data constant = {
             .skeleton = skinning_data.skeleton->get_uav()->get_bindless(),
         };
         std::size_t buffer_index = 0;
@@ -82,7 +82,7 @@ void skinning_system::skinning(rhi_command* command)
         {
             if (input != nullptr)
             {
-                skinning_constant.buffers[buffer_index] = input->get_srv()->get_bindless();
+                constant.buffers[buffer_index] = input->get_srv()->get_bindless();
             }
 
             ++buffer_index;
@@ -94,7 +94,7 @@ void skinning_system::skinning(rhi_command* command)
         {
             if (output != nullptr)
             {
-                skinning_constant.buffers[buffer_index] = output->get_uav()->get_bindless();
+                constant.buffers[buffer_index] = output->get_uav()->get_bindless();
                 buffer_barriers.push_back({
                     .buffer = output->get_rhi(),
                     .src_stages = RHI_PIPELINE_STAGE_COMPUTE,
@@ -109,14 +109,11 @@ void skinning_system::skinning(rhi_command* command)
             ++buffer_index;
         }
 
-        rhi_parameter* parameter = device.allocate_parameter(skinning_cs::skinning);
-        parameter->set_constant(0, &skinning_constant, sizeof(skinning_cs::skinning_data));
-
         command->set_pipeline(device.get_pipeline({
             .compute_shader = skinning_data.shader,
         }));
+        command->set_constant(&constant, sizeof(skinning_cs::constant_data));
         command->set_parameter(0, device.get_bindless_parameter());
-        command->set_parameter(1, parameter);
         command->dispatch((skinning_data.vertex_count + 63) / 64, 1, 1);
 
         command->set_pipeline_barrier(buffer_barriers.data(), buffer_barriers.size(), nullptr, 0);

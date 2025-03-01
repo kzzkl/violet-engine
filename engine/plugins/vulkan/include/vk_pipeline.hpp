@@ -21,15 +21,21 @@ public:
         return m_module;
     }
 
+    std::uint32_t get_push_constant_size() const noexcept
+    {
+        return m_push_constant_size;
+    }
+
     const std::vector<parameter>& get_parameters() const noexcept
     {
         return m_parameters;
     }
 
 private:
-    VkShaderModule m_module;
+    VkShaderModule m_module{VK_NULL_HANDLE};
     vk_context* m_context;
 
+    std::uint32_t m_push_constant_size;
     std::vector<parameter> m_parameters;
 };
 
@@ -65,6 +71,8 @@ public:
     using vk_shader::vk_shader;
 };
 
+class vk_pipeline_layout;
+
 class vk_raster_pipeline : public rhi_raster_pipeline
 {
 public:
@@ -79,14 +87,14 @@ public:
         return m_pipeline;
     }
 
-    VkPipelineLayout get_pipeline_layout() const noexcept
+    vk_pipeline_layout* get_pipeline_layout() const noexcept
     {
         return m_pipeline_layout;
     }
 
 private:
     VkPipeline m_pipeline;
-    VkPipelineLayout m_pipeline_layout;
+    vk_pipeline_layout* m_pipeline_layout{nullptr};
 
     vk_context* m_context;
 };
@@ -105,14 +113,14 @@ public:
         return m_pipeline;
     }
 
-    VkPipelineLayout get_pipeline_layout() const noexcept
+    vk_pipeline_layout* get_pipeline_layout() const noexcept
     {
         return m_pipeline_layout;
     }
 
 private:
     VkPipeline m_pipeline;
-    VkPipelineLayout m_pipeline_layout;
+    vk_pipeline_layout* m_pipeline_layout{nullptr};
 
     vk_context* m_context;
 };

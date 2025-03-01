@@ -456,9 +456,7 @@ using rhi_shader_stage_flags = std::uint32_t;
 
 enum rhi_parameter_binding_type
 {
-    RHI_PARAMETER_BINDING_CONSTANT,
-    RHI_PARAMETER_BINDING_UNIFORM_BUFFER,
-    RHI_PARAMETER_BINDING_UNIFORM_TEXEL,
+    RHI_PARAMETER_BINDING_UNIFORM,
     RHI_PARAMETER_BINDING_STORAGE_BUFFER,
     RHI_PARAMETER_BINDING_STORAGE_TEXEL,
     RHI_PARAMETER_BINDING_STORAGE_TEXTURE,
@@ -494,7 +492,7 @@ class rhi_parameter
 public:
     virtual ~rhi_parameter() = default;
 
-    virtual void set_constant(
+    virtual void set_uniform(
         std::size_t index,
         const void* data,
         std::size_t size,
@@ -524,6 +522,8 @@ struct rhi_shader_desc
     std::size_t code_size;
 
     rhi_shader_stage_flag stage;
+
+    std::size_t push_constant_size;
 
     struct parameter_slot
     {
@@ -788,6 +788,7 @@ public:
     virtual void set_pipeline(rhi_raster_pipeline* raster_pipeline) = 0;
     virtual void set_pipeline(rhi_compute_pipeline* compute_pipeline) = 0;
     virtual void set_parameter(std::size_t index, rhi_parameter* parameter) = 0;
+    virtual void set_constant(const void* data, std::size_t size) = 0;
 
     virtual void set_viewport(const rhi_viewport& viewport) = 0;
     virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) = 0;

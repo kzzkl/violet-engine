@@ -9,7 +9,7 @@ struct physical_material_vs : public mesh_vs
     static constexpr input_layout inputs = {
         {"position", RHI_FORMAT_R32G32B32_FLOAT},
         {"normal", RHI_FORMAT_R32G32B32_FLOAT},
-        {"tangent", RHI_FORMAT_R32G32B32_FLOAT},
+        {"tangent", RHI_FORMAT_R32G32B32A32_FLOAT},
         {"texcoord", RHI_FORMAT_R32G32_FLOAT},
     };
 };

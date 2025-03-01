@@ -18,19 +18,10 @@ struct physical_fs : public shader_fs
         std::uint32_t brdf_lut;
     };
 
-    static constexpr parameter parameter = {
-        {
-            .type = RHI_PARAMETER_BINDING_CONSTANT,
-            .stages = RHI_SHADER_STAGE_FRAGMENT,
-            .size = sizeof(constant_data),
-        },
-    };
-
     static constexpr parameter_layout parameters = {
         {0, bindless},
         {1, scene},
         {2, camera},
-        {3, parameter},
     };
 };
 
@@ -44,8 +35,6 @@ void physical_pass::add(render_graph& graph, const parameter& parameter)
         rdg_texture_srv gbuffer_depth;
         rdg_texture_srv gbuffer_emissive;
         rdg_texture_srv ao_buffer;
-
-        rhi_parameter* gbuffer_parameter;
     };
 
     graph.add_pass<pass_data>(
@@ -78,10 +67,8 @@ void physical_pass::add(render_graph& graph, const parameter& parameter)
             {
                 data.ao_buffer = rdg_texture_srv();
             }
-
-            data.gbuffer_parameter = pass.add_parameter(physical_fs::parameter);
         },
-        [&](const pass_data& data, rdg_command& command)
+        [](const pass_data& data, rdg_command& command)
         {
             auto& device = render_device::instance();
 
@@ -91,6 +78,7 @@ void physical_pass::add(render_graph& graph, const parameter& parameter)
                 .normal = data.gbuffer_normal.get_bindless(),
                 .depth = data.gbuffer_depth.get_bindless(),
                 .emissive = data.gbuffer_emissive.get_bindless(),
+                .brdf_lut = device.get_buildin_texture<brdf_lut>()->get_srv()->get_bindless(),
             };
 
             std::vector<std::wstring> defines;
@@ -99,10 +87,6 @@ void physical_pass::add(render_graph& graph, const parameter& parameter)
                 defines.emplace_back(L"-DUSE_AO_BUFFER");
                 constant.ao_buffer = data.ao_buffer.get_bindless();
             }
-
-            constant.brdf_lut = device.get_buildin_texture<brdf_lut>()->get_srv()->get_bindless();
-
-            data.gbuffer_parameter->set_constant(0, &constant, sizeof(physical_fs::constant_data));
 
             rdg_raster_pipeline pipeline = {
                 .vertex_shader = device.get_shader<fullscreen_vs>(),
@@ -116,10 +100,10 @@ void physical_pass::add(render_graph& graph, const parameter& parameter)
             pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
 
             command.set_pipeline(pipeline);
+            command.set_constant(constant);
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_SCENE);
             command.set_parameter(2, RDG_PARAMETER_CAMERA);
-            command.set_parameter(3, data.gbuffer_parameter);
             command.draw_fullscreen();
         });
 }

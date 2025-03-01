@@ -17,18 +17,9 @@ struct taa_cs : public shader_cs
         std::uint32_t height;
     };
 
-    static constexpr parameter parameter = {
-        {
-            .type = RHI_PARAMETER_BINDING_CONSTANT,
-            .stages = RHI_SHADER_STAGE_COMPUTE,
-            .size = sizeof(constant_data),
-        },
-    };
-
     static constexpr parameter_layout parameters = {
         {0, bindless},
         {1, camera},
-        {2, parameter},
     };
 };
 
@@ -41,8 +32,6 @@ void taa_pass::add(render_graph& graph, const parameter& parameter)
         rdg_texture_srv depth_buffer;
         rdg_texture_srv motion_vector;
         rdg_texture_uav resolved_render_target;
-
-        rhi_parameter* taa_parameter;
     };
 
     graph.add_pass<taa_data>(
@@ -78,10 +67,8 @@ void taa_pass::add(render_graph& graph, const parameter& parameter)
             {
                 data.motion_vector = rdg_texture_srv();
             }
-
-            data.taa_parameter = pass.add_parameter(taa_cs::parameter);
         },
-        [&](const taa_data& data, rdg_command& command)
+        [](const taa_data& data, rdg_command& command)
         {
             auto& device = render_device::instance();
 
@@ -97,7 +84,6 @@ void taa_pass::add(render_graph& graph, const parameter& parameter)
                 .width = extent.width,
                 .height = extent.height,
             };
-            data.taa_parameter->set_constant(0, &constant, sizeof(taa_cs::constant_data));
 
             std::vector<std::wstring> defines;
 
@@ -110,10 +96,9 @@ void taa_pass::add(render_graph& graph, const parameter& parameter)
             command.set_pipeline({
                 .compute_shader = device.get_shader<taa_cs>(defines),
             });
-
+            command.set_constant(constant);
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_CAMERA);
-            command.set_parameter(2, data.taa_parameter);
 
             command.dispatch_2d(extent.width, extent.height);
         });

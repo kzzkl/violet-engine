@@ -1,6 +1,6 @@
 #include "common.hlsli"
 
-struct skinning_data
+struct constant_data
 {
     uint skeleton;
     uint position_input;
@@ -15,8 +15,7 @@ struct skinning_data
     uint tangent_output;
     uint padding0;
 };
-
-ConstantBuffer<skinning_data> skinning : register(b0, space1);
+PushConstant(constant_data, constant);
 
 struct bdef_data
 {
@@ -126,18 +125,18 @@ float4 matrix_to_quaternion(float4x4 m)
 [numthreads(64, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
-    StructuredBuffer<float> position_input = ResourceDescriptorHeap[skinning.position_input];
-    RWStructuredBuffer<float> position_output = ResourceDescriptorHeap[skinning.position_output];
-    StructuredBuffer<float> normal_input = ResourceDescriptorHeap[skinning.normal_input];
-    RWStructuredBuffer<float> normal_output = ResourceDescriptorHeap[skinning.normal_output];
-    StructuredBuffer<float> tangent_input = ResourceDescriptorHeap[skinning.tangent_input];
-    RWStructuredBuffer<float> tangent_output = ResourceDescriptorHeap[skinning.tangent_output];
+    StructuredBuffer<float> position_input = ResourceDescriptorHeap[constant.position_input];
+    RWStructuredBuffer<float> position_output = ResourceDescriptorHeap[constant.position_output];
+    StructuredBuffer<float> normal_input = ResourceDescriptorHeap[constant.normal_input];
+    RWStructuredBuffer<float> normal_output = ResourceDescriptorHeap[constant.normal_output];
+    StructuredBuffer<float> tangent_input = ResourceDescriptorHeap[constant.tangent_input];
+    RWStructuredBuffer<float> tangent_output = ResourceDescriptorHeap[constant.tangent_output];
 
-    StructuredBuffer<uint2> skin = ResourceDescriptorHeap[skinning.skin];
-    StructuredBuffer<bdef_data> bdef = ResourceDescriptorHeap[skinning.bdef];
-    StructuredBuffer<sdef_data> sdef = ResourceDescriptorHeap[skinning.sdef];
+    StructuredBuffer<uint2> skin = ResourceDescriptorHeap[constant.skin];
+    StructuredBuffer<bdef_data> bdef = ResourceDescriptorHeap[constant.bdef];
+    StructuredBuffer<sdef_data> sdef = ResourceDescriptorHeap[constant.sdef];
 
-    StructuredBuffer<float4x4> skeleton = ResourceDescriptorHeap[skinning.skeleton];
+    StructuredBuffer<float4x4> skeleton = ResourceDescriptorHeap[constant.skeleton];
 
     uint vertex_index = dtid.x * 3;
 
@@ -154,9 +153,9 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         tangent_input[vertex_index + 1],
         tangent_input[vertex_index + 2]);
 
-    if (skinning.morph != 0)
+    if (constant.morph != 0)
     {
-        position += get_morph_position(skinning.morph, vertex_index);
+        position += get_morph_position(constant.morph, vertex_index);
     }
 
     uint skin_type = skin[dtid.x].x;

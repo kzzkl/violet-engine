@@ -46,8 +46,8 @@ std::uint32_t hilbert_lut::hilbert_index(std::uint32_t x, std::uint32_t y, std::
         {
             if (region_x == 1)
             {
-                x = std::uint32_t((width - 1)) - x;
-                y = std::uint32_t((width - 1)) - y;
+                x = width - 1 - x;
+                y = width - 1 - y;
             }
 
             std::uint32_t temp = x;

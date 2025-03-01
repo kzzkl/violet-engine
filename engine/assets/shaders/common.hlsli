@@ -1,6 +1,12 @@
 #ifndef COMMON_HLSLI
 #define COMMON_HLSLI
 
+#if defined(__spirv__)
+#define PushConstant(constant_type, constant_name) [[vk::push_constant]] constant_type constant_name
+#else
+#define PushConstant(constant_type, constant_name) ConstantBuffer<constant_type> constant_name : register(b100)
+#endif
+
 static const float PI = 3.141592654;
 static const float TWO_PI = 2.0 * PI;
 static const float HALF_PI = 0.5 * PI;

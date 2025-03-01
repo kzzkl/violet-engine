@@ -39,6 +39,12 @@ public:
         m_command->set_parameter(index, parameter);
     }
 
+    template <typename T>
+    void set_constant(const T& constant)
+    {
+        m_command->set_constant(&constant, sizeof(T));
+    }
+
     void set_viewport();
     void set_viewport(const rhi_viewport& viewport)
     {

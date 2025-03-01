@@ -7,7 +7,7 @@ struct vs_input
 {
     float3 position : POSITION;
     float3 normal : NORMAL;
-    float3 tangent : TANGENT;
+    float4 tangent : TANGENT;
     float2 texcoord : TEXCOORD;
 };
 
@@ -33,7 +33,7 @@ vs_output vs_main(vs_input input, uint instance_index : SV_InstanceID)
     vs_output output;
     output.position_ws = mul(mesh.model_matrix, float4(input.position, 1.0)).xyz;
     output.normal_ws = mul((float3x3)mesh.model_matrix, input.normal);
-    output.tangent_ws = mul((float3x3)mesh.model_matrix, input.tangent);
+    output.tangent_ws = mul((float3x3)mesh.model_matrix, input.tangent.xyz);
     output.texcoord = input.texcoord;
     output.material_address = instance.material_address;
 

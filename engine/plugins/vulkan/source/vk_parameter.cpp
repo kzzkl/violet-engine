@@ -19,10 +19,10 @@ vk_parameter::vk_parameter(const rhi_parameter_desc& desc, vk_context* context)
     m_layout = layout_manager->get_parameter_layout(desc);
 
     std::vector<VkWriteDescriptorSet> descriptor_write;
-    std::vector<VkDescriptorBufferInfo> constant_infos;
-    constant_infos.reserve(desc.binding_count * copy_count);
+    std::vector<VkDescriptorBufferInfo> uniform_infos;
+    uniform_infos.reserve(desc.binding_count * copy_count);
 
-    VkBuffer constant_buffer = parameter_manager->get_constant_buffer();
+    VkBuffer uniform_buffer = parameter_manager->get_uniform_buffer();
 
     for (std::size_t i = 0; i < copy_count; ++i)
     {
@@ -34,13 +34,13 @@ vk_parameter::vk_parameter(const rhi_parameter_desc& desc, vk_context* context)
         {
             const auto& binding = bindings[j];
 
-            if (binding.type == RHI_PARAMETER_BINDING_CONSTANT)
+            if (binding.type == RHI_PARAMETER_BINDING_UNIFORM)
             {
-                copy.constants.push_back(parameter_manager->allocate_constant(binding.size));
+                copy.uniforms.push_back(parameter_manager->allocate_uniform(binding.size));
 
-                constant_infos.push_back({
-                    .buffer = constant_buffer,
-                    .offset = copy.constants[binding.constant.index].offset,
+                uniform_infos.push_back({
+                    .buffer = uniform_buffer,
+                    .offset = copy.uniforms[binding.uniform.index].offset,
                     .range = binding.size,
                 });
 
@@ -51,7 +51,7 @@ vk_parameter::vk_parameter(const rhi_parameter_desc& desc, vk_context* context)
                     .dstArrayElement = 0,
                     .descriptorCount = 1,
                     .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                    .pBufferInfo = &constant_infos.back(),
+                    .pBufferInfo = &uniform_infos.back(),
                 });
             }
         }
@@ -79,28 +79,28 @@ vk_parameter::~vk_parameter()
 
     for (auto& copy : m_copies)
     {
-        for (auto& constant : copy.constants)
+        for (auto& uniform : copy.uniforms)
         {
-            m_context->get_parameter_manager()->free_constant(constant);
+            m_context->get_parameter_manager()->free_uniform(uniform);
         }
 
         m_context->free_descriptor_set(copy.descriptor_set);
     }
 }
 
-void vk_parameter::set_constant(
+void vk_parameter::set_uniform(
     std::size_t index,
     const void* data,
     std::size_t size,
     std::size_t offset)
 {
     const auto& binding = m_layout->get_bindings()[index];
-    assert(binding.type == RHI_PARAMETER_BINDING_CONSTANT);
+    assert(binding.type == RHI_PARAMETER_BINDING_UNIFORM);
 
-    const auto& constants = get_constans();
+    const auto& uniforms = get_uniforms();
 
     void* buffer =
-        m_context->get_parameter_manager()->get_constant_pointer(constants[index].offset + offset);
+        m_context->get_parameter_manager()->get_uniform_pointer(uniforms[index].offset + offset);
 
     std::memcpy(buffer, data, size);
 
@@ -122,10 +122,7 @@ void vk_parameter::set_srv(std::size_t index, rhi_texture_srv* srv, std::size_t 
 void vk_parameter::set_srv(std::size_t index, rhi_buffer_srv* srv, std::size_t offset)
 {
     const auto& binding = m_layout->get_bindings()[index];
-    assert(
-        binding.type == RHI_PARAMETER_BINDING_UNIFORM_BUFFER ||
-        binding.type == RHI_PARAMETER_BINDING_UNIFORM_TEXEL ||
-        binding.type == RHI_PARAMETER_BINDING_MUTABLE);
+    assert(binding.type == RHI_PARAMETER_BINDING_MUTABLE);
 
     static_cast<vk_buffer_srv*>(srv)->write(get_descriptor_set(), index, offset);
 
@@ -193,12 +190,12 @@ bool vk_parameter::sync()
         --m_update_counts[i];
         remaining_update_count += m_update_counts[i];
 
-        if (binding.type == RHI_PARAMETER_BINDING_CONSTANT)
+        if (binding.type == RHI_PARAMETER_BINDING_UNIFORM)
         {
-            void* source = m_context->get_parameter_manager()->get_constant_pointer(
-                prev_copy.constants[binding.constant.index].offset);
-            void* target = m_context->get_parameter_manager()->get_constant_pointer(
-                curr_copy.constants[binding.constant.index].offset);
+            void* source = m_context->get_parameter_manager()->get_uniform_pointer(
+                prev_copy.uniforms[binding.uniform.index].offset);
+            void* target = m_context->get_parameter_manager()->get_uniform_pointer(
+                curr_copy.uniforms[binding.uniform.index].offset);
 
             std::memcpy(target, source, binding.size);
         }
@@ -242,14 +239,14 @@ VkDescriptorSet vk_parameter::get_descriptor_set() const noexcept
     return m_copies[m_context->get_frame_resource_index()].descriptor_set;
 }
 
-const std::vector<buffer_allocation>& vk_parameter::get_constans() const noexcept
+const std::vector<buffer_allocation>& vk_parameter::get_uniforms() const noexcept
 {
     if (m_copies.size() == 1)
     {
-        return m_copies[0].constants;
+        return m_copies[0].uniforms;
     }
 
-    return m_copies[m_context->get_frame_resource_index()].constants;
+    return m_copies[m_context->get_frame_resource_index()].uniforms;
 }
 
 void vk_parameter::mark_dirty(std::size_t index)
@@ -269,12 +266,12 @@ void vk_parameter::mark_dirty(std::size_t index)
 }
 
 vk_parameter_manager::vk_parameter_manager(vk_context* context)
-    : m_constant_allocator(constant_buffer_size),
+    : m_uniform_allocator(uniform_buffer_size),
       m_context(context)
 {
     VkBufferCreateInfo buffer_info = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size = constant_buffer_size,
+        .size = uniform_buffer_size,
         .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
     };
 
@@ -289,17 +286,17 @@ vk_parameter_manager::vk_parameter_manager(vk_context* context)
         m_context->get_vma_allocator(),
         &buffer_info,
         &create_info,
-        &m_constant_buffer,
-        &m_constant_allocation,
+        &m_uniform_buffer,
+        &m_uniform_allocation,
         &allocation_info));
 
     assert(allocation_info.pMappedData);
-    m_constant_pointer = allocation_info.pMappedData;
+    m_uniform_pointer = allocation_info.pMappedData;
 }
 
 vk_parameter_manager::~vk_parameter_manager()
 {
-    vmaDestroyBuffer(m_context->get_vma_allocator(), m_constant_buffer, m_constant_allocation);
+    vmaDestroyBuffer(m_context->get_vma_allocator(), m_uniform_buffer, m_uniform_allocation);
 }
 
 void vk_parameter_manager::add_dirty_parameter(vk_parameter* parameter)
@@ -334,19 +331,19 @@ void vk_parameter_manager::sync_parameter()
     prev_queue.clear();
 }
 
-buffer_allocation vk_parameter_manager::allocate_constant(std::size_t size)
+buffer_allocation vk_parameter_manager::allocate_uniform(std::size_t size)
 {
     std::size_t alignment =
         m_context->get_physical_device_properties().limits.minUniformBufferOffsetAlignment;
     size = (size + alignment - 1) & ~(alignment - 1);
 
     std::lock_guard lock(m_mutex);
-    return m_constant_allocator.allocate(size);
+    return m_uniform_allocator.allocate(size);
 }
 
-void vk_parameter_manager::free_constant(buffer_allocation allocation)
+void vk_parameter_manager::free_uniform(buffer_allocation allocation)
 {
     std::lock_guard lock(m_mutex);
-    m_constant_allocator.free(allocation);
+    m_uniform_allocator.free(allocation);
 }
 } // namespace violet::vk

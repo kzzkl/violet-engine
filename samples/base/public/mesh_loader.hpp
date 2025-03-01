@@ -20,12 +20,13 @@ public:
 
     struct mesh_data
     {
-        std::uint32_t geometry;
         std::vector<submesh_data> submeshes;
     };
 
     struct node_data
     {
+        std::string name;
+
         std::int32_t mesh;
 
         vec3f position{0.0f, 0.0f, 0.0f};
@@ -38,8 +39,8 @@ public:
     struct scene_data
     {
         std::vector<std::unique_ptr<texture_2d>> textures;
-        std::vector<std::unique_ptr<geometry>> geometries;
         std::vector<std::unique_ptr<material>> materials;
+        std::unique_ptr<geometry> geometry;
 
         std::vector<mesh_data> meshes;
         std::vector<node_data> nodes;

@@ -1,7 +1,6 @@
 #include "vk_layout.hpp"
 #include "common/hash.hpp"
 #include "vk_context.hpp"
-#include <algorithm>
 #include <cassert>
 
 namespace violet::vk
@@ -14,7 +13,7 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
     std::vector<VkDescriptorSetLayoutBinding> bindings;
     std::vector<VkDescriptorBindingFlags> binding_flags;
 
-    std::size_t constant_count = 0;
+    std::size_t uniform_count = 0;
     std::size_t mutable_count = 0;
     bool bindless = false;
 
@@ -48,7 +47,7 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
         }
         else
         {
-            if (desc.bindings[i].type == RHI_PARAMETER_BINDING_CONSTANT)
+            if (desc.bindings[i].type == RHI_PARAMETER_BINDING_UNIFORM)
             {
                 binding.descriptorCount = 1;
             }
@@ -61,19 +60,11 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
 
         switch (desc.bindings[i].type)
         {
-        case RHI_PARAMETER_BINDING_CONSTANT: {
+        case RHI_PARAMETER_BINDING_UNIFORM: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            m_bindings[i].constant.index = constant_count;
+            m_bindings[i].uniform.index = uniform_count;
 
-            ++constant_count;
-            break;
-        }
-        case RHI_PARAMETER_BINDING_UNIFORM_BUFFER: {
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            break;
-        }
-        case RHI_PARAMETER_BINDING_UNIFORM_TEXEL: {
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+            ++uniform_count;
             break;
         }
         case RHI_PARAMETER_BINDING_STORAGE_BUFFER: {
@@ -162,31 +153,38 @@ vk_parameter_layout::~vk_parameter_layout()
     vkDestroyDescriptorSetLayout(m_context->get_device(), m_layout, nullptr);
 }
 
-vk_pipeline_layout::vk_pipeline_layout(
-    std::span<vk_parameter_layout*> parameter_layouts,
-    vk_context* context)
+vk_pipeline_layout::vk_pipeline_layout(const vk_pipeline_layout_desc& desc, vk_context* context)
     : m_layout(VK_NULL_HANDLE),
+      m_push_constant_stages(desc.push_constant_stages),
+      m_push_constant_size(desc.push_constant_size),
       m_context(context)
 {
-    std::vector<VkDescriptorSetLayout> descriptor_set_layouts(parameter_layouts.size());
-    std::transform(
-        parameter_layouts.begin(),
-        parameter_layouts.end(),
-        descriptor_set_layouts.begin(),
-        [](vk_parameter_layout* parameter_layout) -> VkDescriptorSetLayout
+    std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
+    for (vk_parameter_layout* parameter : desc.parameters)
+    {
+        if (parameter == nullptr)
         {
-            if (parameter_layout != nullptr)
-            {
-                return parameter_layout->get_layout();
-            }
+            break;
+        }
 
-            return VK_NULL_HANDLE;
-        });
+        descriptor_set_layouts.push_back(parameter->get_layout());
+    }
 
     VkPipelineLayoutCreateInfo layout_info = {};
     layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     layout_info.pSetLayouts = descriptor_set_layouts.data();
     layout_info.setLayoutCount = static_cast<std::uint32_t>(descriptor_set_layouts.size());
+
+    VkPushConstantRange push_constant_range = {
+        .stageFlags = desc.push_constant_stages,
+        .size = desc.push_constant_size,
+    };
+    if (desc.push_constant_size != 0)
+    {
+        layout_info.pushConstantRangeCount = 1;
+        layout_info.pPushConstantRanges = &push_constant_range;
+    }
+
     vk_check(vkCreatePipelineLayout(m_context->get_device(), &layout_info, nullptr, &m_layout));
 }
 
@@ -218,22 +216,17 @@ vk_parameter_layout* vk_layout_manager::get_parameter_layout(const rhi_parameter
     return result;
 }
 
-vk_pipeline_layout* vk_layout_manager::get_pipeline_layout(
-    std::span<vk_parameter_layout*> parameter_layouts)
+vk_pipeline_layout* vk_layout_manager::get_pipeline_layout(const vk_pipeline_layout_desc& desc)
 {
-    std::uint64_t hash = hash::city_hash_64(
-        parameter_layouts.data(),
-        sizeof(vk_parameter_layout*) * parameter_layouts.size());
-
-    auto iter = m_pipeline_layouts.find(hash);
+    auto iter = m_pipeline_layouts.find(desc);
     if (iter != m_pipeline_layouts.end())
     {
         return iter->second.get();
     }
 
-    auto layout = std::make_unique<vk_pipeline_layout>(parameter_layouts, m_context);
+    auto layout = std::make_unique<vk_pipeline_layout>(desc, m_context);
     vk_pipeline_layout* result = layout.get();
-    m_pipeline_layouts[hash] = std::move(layout);
+    m_pipeline_layouts[desc] = std::move(layout);
     return result;
 }
 } // namespace violet::vk

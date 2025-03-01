@@ -26,7 +26,8 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
     violet::graphics
     assimp::assimp
-    imgui)
+    imgui
+    stb)
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION bin/assets)
 

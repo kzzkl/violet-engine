@@ -10,7 +10,7 @@ struct morphing_cs : public shader_cs
 {
     static constexpr std::string_view path = "assets/shaders/morphing.hlsl";
 
-    struct morphing_data
+    struct constant_data
     {
         std::uint32_t morph_target_count;
         float precision;
@@ -22,17 +22,8 @@ struct morphing_cs : public shader_cs
         std::uint32_t padding1;
     };
 
-    static constexpr parameter parameter = {
-        {
-            .type = RHI_PARAMETER_BINDING_CONSTANT,
-            .stages = RHI_SHADER_STAGE_COMPUTE,
-            .size = sizeof(morphing_data),
-        },
-    };
-
     static constexpr parameter_layout parameters = {
         {0, bindless},
-        {1, parameter},
     };
 };
 
@@ -46,7 +37,7 @@ struct morphing_position_cs : public shader_cs
 
     static constexpr parameter parameter = {
         {
-            .type = RHI_PARAMETER_BINDING_CONSTANT,
+            .type = RHI_PARAMETER_BINDING_UNIFORM,
             .stages = RHI_PIPELINE_STAGE_COMPUTE,
             .size = sizeof(morphing_data),
         },
