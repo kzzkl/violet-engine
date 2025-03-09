@@ -7,14 +7,6 @@ namespace violet
 struct gf2_material_vs : public mesh_vs
 {
     static constexpr std::string_view path = "assets/shaders/gf2/gf2_material_vs.hlsl";
-
-    static constexpr input_layout inputs = {
-        {"position", RHI_FORMAT_R32G32B32_FLOAT},
-        {"normal", RHI_FORMAT_R32G32B32_FLOAT},
-        {"tangent", RHI_FORMAT_R32G32B32_FLOAT},
-        {"texcoord", RHI_FORMAT_R32G32_FLOAT},
-        {"texcoord2", RHI_FORMAT_R32G32B32A32_FLOAT},
-    };
 };
 
 struct gf2_material_base_fs : public mesh_fs

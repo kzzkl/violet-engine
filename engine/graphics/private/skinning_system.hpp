@@ -5,6 +5,7 @@
 
 namespace violet
 {
+class geometry;
 class skinning_system : public system
 {
 public:
@@ -29,7 +30,7 @@ private:
         const float* weights;
         std::size_t weight_count;
 
-        vertex_buffer* morph_vertex_buffer;
+        raw_buffer* morph_vertex_buffer;
     };
 
     struct skinning_data
@@ -38,8 +39,11 @@ private:
         std::size_t vertex_count;
 
         structured_buffer* skeleton;
-        std::vector<vertex_buffer*> input;
-        std::vector<vertex_buffer*> output;
+
+        geometry* original_geometry;
+        geometry* skinned_geometry;
+
+        std::vector<raw_buffer*> additional_buffers;
     };
 
     void update_skin();

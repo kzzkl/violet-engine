@@ -303,7 +303,8 @@ public:
         return nullptr;
     }
 
-    virtual std::size_t get_buffer_size() const noexcept = 0;
+    virtual std::size_t get_size() const noexcept = 0;
+    virtual rhi_buffer_flags get_flags() const noexcept = 0;
 
     virtual rhi_buffer_srv* get_srv(
         std::size_t offset = 0,
@@ -416,6 +417,7 @@ enum rhi_access_flag : std::uint32_t
     RHI_ACCESS_HOST_WRITE = 1 << 9,
     RHI_ACCESS_INDIRECT_COMMAND_READ = 1 << 10,
     RHI_ACCESS_VERTEX_ATTRIBUTE_READ = 1 << 11,
+    RHI_ACCESS_INDEX_READ = 1 << 12,
 };
 using rhi_access_flags = std::uint32_t;
 
@@ -915,7 +917,7 @@ public:
     virtual bool initialize(const rhi_desc& desc) = 0;
 
     virtual rhi_command* allocate_command() = 0;
-    virtual void execute(rhi_command* command) = 0;
+    virtual void execute(rhi_command* command, bool sync = false) = 0;
 
     virtual void begin_frame() = 0;
     virtual void end_frame() = 0;
@@ -930,6 +932,7 @@ public:
 
     virtual void set_name(rhi_texture* object, const char* name) const = 0;
     virtual void set_name(rhi_buffer* object, const char* name) const = 0;
+    virtual void set_name(rhi_shader* object, const char* name) const = 0;
 
     virtual rhi_render_pass* create_render_pass(const rhi_render_pass_desc& desc) = 0;
     virtual void destroy_render_pass(rhi_render_pass* render_pass) = 0;

@@ -6,7 +6,7 @@
 
 namespace violet
 {
-std::vector<vec3f> geometry_tool::generate_tangents(
+std::vector<vec4f> geometry_tool::generate_tangents(
     std::span<const vec3f> positions,
     std::span<const vec3f> normals,
     std::span<const vec2f> texcoords,
@@ -19,7 +19,7 @@ std::vector<vec3f> geometry_tool::generate_tangents(
         std::span<const vec2f> texcoords;
         std::span<const std::uint32_t> indexes;
 
-        std::vector<vec3f>& tangents;
+        std::vector<vec4f>& tangents;
     };
 
     SMikkTSpaceInterface interface = {};
@@ -65,13 +65,14 @@ std::vector<vec3f> geometry_tool::generate_tangents(
                                     const int vert)
     {
         const auto* ctx = static_cast<const tangent_context*>(context);
-        vec3f& tangent = ctx->tangents[ctx->indexes[face * 3 + vert]];
+        vec4f& tangent = ctx->tangents[ctx->indexes[face * 3 + vert]];
         tangent.x = in[0];
         tangent.y = in[1];
         tangent.z = in[2];
+        tangent.w = sign;
     };
 
-    std::vector<vec3f> result(positions.size());
+    std::vector<vec4f> result(positions.size());
 
     tangent_context context = {
         .positions = positions,
@@ -93,7 +94,7 @@ std::vector<vec3f> geometry_tool::generate_tangents(
 std::vector<vec3f> geometry_tool::generate_smooth_normals(
     std::span<const vec3f> positions,
     std::span<const vec3f> normals,
-    std::span<const vec3f> tangents,
+    std::span<const vec4f> tangents,
     std::span<const std::uint32_t> indexes)
 {
     struct vertex_normal
@@ -154,9 +155,10 @@ std::vector<vec3f> geometry_tool::generate_smooth_normals(
             smooth_normal = normals[i];
         }
 
-        vec3f bitangent = vector::cross(normals[i], tangents[i]);
+        vec3f tangent = {tangents[i].x, tangents[i].y, tangents[i].z};
+        vec3f bitangent = vector::cross(normals[i], tangent) * tangents[i].w;
 
-        result[i].x = vector::dot(smooth_normal, tangents[i]);
+        result[i].x = vector::dot(smooth_normal, tangent);
         result[i].y = vector::dot(smooth_normal, bitangent);
         result[i].z = vector::dot(smooth_normal, normals[i]);
     }

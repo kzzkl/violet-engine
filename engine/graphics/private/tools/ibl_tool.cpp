@@ -50,8 +50,8 @@ struct prefilter_cs : public shader_cs
         std::uint32_t prefilter_map;
         float roughness;
         std::uint32_t resolution;
-        std::uint32_t padding0;
-        std::uint32_t padding1;
+        std::uint32_t padding_0;
+        std::uint32_t padding_1;
     };
 
     static constexpr parameter_layout parameters = {
@@ -323,7 +323,7 @@ void ibl_tool::generate_cube_map(rhi_texture* env_map, rhi_texture* cube_map)
     graph.compile();
     graph.record(command);
 
-    device.execute_sync(command);
+    device.execute(command, true);
 }
 
 void ibl_tool::generate_ibl(
@@ -341,6 +341,6 @@ void ibl_tool::generate_ibl(
     graph.compile();
     graph.record(command);
 
-    device.execute_sync(command);
+    device.execute(command, true);
 }
 } // namespace violet

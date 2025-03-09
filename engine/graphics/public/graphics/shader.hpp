@@ -67,7 +67,12 @@ struct shader
         vec3f aabb_min;
         std::uint32_t flags;
         vec3f aabb_max;
-        std::uint32_t padding1;
+        std::uint32_t index_offset;
+        std::uint32_t position_address;
+        std::uint32_t normal_address;
+        std::uint32_t tangent_address;
+        std::uint32_t texcoord_address;
+        std::uint32_t custom_addresses[4];
     };
 
     struct instance_data
@@ -76,11 +81,10 @@ struct shader
         std::uint32_t vertex_offset;
         std::uint32_t index_offset;
         std::uint32_t index_count;
-
-        std::uint32_t group_index;
+        std::uint32_t batch_index;
         std::uint32_t material_address;
         std::uint32_t flags;
-        std::uint32_t padding0;
+        std::uint32_t padding_0;
     };
 
     struct light_data
@@ -90,7 +94,7 @@ struct shader
         vec3f direction;
         std::uint32_t shadow;
         vec3f color;
-        std::uint32_t padding0;
+        std::uint32_t padding_0;
     };
 
     struct scene_data
@@ -99,14 +103,18 @@ struct shader
         std::uint32_t mesh_count;
         std::uint32_t instance_buffer;
         std::uint32_t instance_count;
-        std::uint32_t group_buffer;
         std::uint32_t light_buffer;
         std::uint32_t light_count;
+        std::uint32_t batch_buffer;
+        std::uint32_t material_buffer;
+        std::uint32_t vertex_buffer;
+        std::uint32_t index_buffer;
         std::uint32_t skybox;
         std::uint32_t irradiance;
         std::uint32_t prefilter;
-        std::uint32_t material_buffer;
-        std::uint32_t padding0;
+        std::uint32_t padding_0;
+        std::uint32_t padding_1;
+        std::uint32_t padding_2;
     };
 
     static constexpr parameter scene = {
@@ -135,8 +143,8 @@ struct shader
 
         vec2f jitter;
 
-        std::uint32_t padding0;
-        std::uint32_t padding1;
+        std::uint32_t padding_0;
+        std::uint32_t padding_1;
     };
 
     static constexpr parameter camera = {
@@ -226,8 +234,15 @@ struct skinning_cs : public shader_cs
 {
     struct constant_data
     {
+        std::uint32_t vertex_buffer;
         std::uint32_t skeleton;
-        std::uint32_t buffers[11];
+        std::uint32_t position_input_address;
+        std::uint32_t normal_input_address;
+        std::uint32_t tangent_input_address;
+        std::uint32_t position_output_address;
+        std::uint32_t normal_output_address;
+        std::uint32_t tangent_output_address;
+        std::uint32_t additional[4];
     };
 
     static constexpr parameter_layout parameters = {

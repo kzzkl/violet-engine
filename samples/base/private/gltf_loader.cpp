@@ -224,15 +224,17 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
     }
 
     // Load meshes
-    std::vector<vec3f> positions;
-    std::vector<vec3f> normals;
-    std::vector<vec4f> tangents;
-    std::vector<vec2f> texcoords;
-    std::vector<std::uint32_t> indexes;
-
     for (auto& mesh : model.meshes)
     {
-        mesh_data mesh_data;
+        std::vector<vec3f> positions;
+        std::vector<vec3f> normals;
+        std::vector<vec4f> tangents;
+        std::vector<vec2f> texcoords;
+        std::vector<std::uint32_t> indexes;
+
+        mesh_data mesh_data = {
+            .geometry = static_cast<std::uint32_t>(scene_data.geometries.size()),
+        };
 
         for (auto& primitive : mesh.primitives)
         {
@@ -272,7 +274,7 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
             }
             else
             {
-                auto temp = geometry_tool::generate_tangents(
+                tangents = geometry_tool::generate_tangents(
                     std::span(
                         positions.begin() + submesh_data.vertex_offset,
                         positions.begin() + submesh_data.vertex_offset + vertex_count),
@@ -285,14 +287,16 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
                     std::span(
                         indexes.begin() + submesh_data.index_offset,
                         indexes.begin() + submesh_data.index_offset + submesh_data.index_count));
-
-                for (auto& t : temp)
-                {
-                    tangents.push_back({t.x, t.y, t.z, 1.0f});
-                }
             }
 
             mesh_data.submeshes.push_back(submesh_data);
+
+            for (std::uint32_t i = 0; i < submesh_data.index_count; ++i)
+            {
+                box::expand(
+                    mesh_data.aabb,
+                    positions[indexes[submesh_data.index_offset + i] + submesh_data.vertex_offset]);
+            }
         }
 
         if (tangents.empty())
@@ -324,16 +328,16 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
         }
 
         scene_data.meshes.push_back(mesh_data);
-    }
 
-    scene_data.geometry = std::make_unique<geometry>();
-    scene_data.geometry->add_attribute("position", positions);
-    scene_data.geometry->add_attribute("normal", normals);
-    scene_data.geometry->add_attribute("tangent", tangents);
-    scene_data.geometry->add_attribute("texcoord", texcoords);
-    scene_data.geometry->set_indexes(indexes);
-    scene_data.geometry->set_vertex_count(positions.size());
-    scene_data.geometry->set_index_count(indexes.size());
+        auto mesh_geometry = std::make_unique<geometry>();
+        mesh_geometry->set_position(positions);
+        mesh_geometry->set_normal(normals);
+        mesh_geometry->set_tangent(tangents);
+        mesh_geometry->set_texcoord(texcoords);
+        mesh_geometry->set_indexes(indexes);
+
+        scene_data.geometries.push_back(std::move(mesh_geometry));
+    }
 
     // Load nodes
     scene_data.nodes.resize(model.nodes.size());

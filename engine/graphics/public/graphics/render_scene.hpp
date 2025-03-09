@@ -1,9 +1,9 @@
 #pragma once
 
 #include "graphics/geometry.hpp"
+#include "graphics/gpu_array.hpp"
 #include "graphics/material.hpp"
 #include "graphics/render_feature.hpp"
-#include "graphics/render_object_container.hpp"
 #include "graphics/resources/texture.hpp"
 #include "math/box.hpp"
 #include <unordered_map>
@@ -11,28 +11,6 @@
 
 namespace violet
 {
-struct render_group
-{
-    std::vector<vertex_buffer*> vertex_buffers;
-    index_buffer* index_buffer;
-
-    const geometry* geometry;
-
-    std::size_t instance_offset;
-    std::size_t instance_count;
-
-    render_id id;
-    render_id batch;
-};
-
-struct render_batch
-{
-    material_type material_type;
-    rdg_raster_pipeline pipeline;
-
-    std::vector<render_id> groups;
-};
-
 class gpu_buffer_uploader;
 class render_scene
 {
@@ -75,18 +53,7 @@ public:
         return m_scene_data.skybox != 0;
     }
 
-    bool update();
-    void record(rhi_command* command);
-
-    const std::vector<render_batch>& get_batches() const noexcept
-    {
-        return m_batches;
-    }
-
-    const render_group& get_group(render_id group_id) const
-    {
-        return m_groups[group_id];
-    }
+    void update(gpu_buffer_uploader* uploader);
 
     std::size_t get_mesh_count() const noexcept
     {
@@ -128,7 +95,34 @@ public:
         return m_scene_parameter.get();
     }
 
+    template <typename Functor>
+    void each_batch(material_type type, Functor&& functor) const
+    {
+        for (std::size_t i = 0; i < m_batches.get_size(); ++i)
+        {
+            const auto& batch = m_batches[i];
+
+            if (batch.material_type != type || batch.instance_count == 0)
+            {
+                continue;
+            }
+
+            functor(i, batch.pipeline, batch.instance_offset, batch.instance_count);
+        }
+    }
+
 private:
+    struct render_batch
+    {
+        using gpu_type = std::uint32_t;
+
+        material_type material_type;
+        rdg_raster_pipeline pipeline;
+
+        std::size_t instance_offset;
+        std::size_t instance_count;
+    };
+
     struct render_mesh
     {
         using gpu_type = shader::mesh_data;
@@ -152,7 +146,7 @@ private:
         material* material;
 
         render_id mesh_id;
-        render_id group_id;
+        render_id batch_id;
     };
 
     struct render_light
@@ -169,39 +163,28 @@ private:
     enum render_scene_state
     {
         RENDER_SCENE_STAGE_DATA_DIRTY = 1 << 0,
-        RENDER_SCENE_STAGE_GROUP_DIRTY = 1 << 1,
     };
     using render_scene_states = std::uint32_t;
 
-    void add_instance_to_group(
-        render_id instance_id,
-        const geometry* geometry,
-        const material* material);
-    void remove_instance_from_group(render_id instance_id);
+    void add_instance_to_batch(render_id instance_id, const material* material);
+    void remove_instance_from_batch(render_id instance_id);
 
-    void update_mesh();
-    void update_instance();
-    void update_light();
-    void update_group_buffer();
+    bool update_mesh(gpu_buffer_uploader* uploader);
+    bool update_instance(gpu_buffer_uploader* uploader);
+    bool update_light(gpu_buffer_uploader* uploader);
+    bool update_batch(gpu_buffer_uploader* uploader);
 
-    render_object_container<render_mesh> m_meshes;
-    render_object_container<render_instance> m_instances;
-    render_object_container<render_light> m_lights;
+    gpu_dense_array<render_mesh> m_meshes;
+    gpu_dense_array<render_instance> m_instances;
+    gpu_dense_array<render_light> m_lights;
 
-    std::vector<render_batch> m_batches;
-    index_allocator<render_id> m_batch_allocator;
+    gpu_sparse_array<render_batch> m_batches;
     std::unordered_map<std::uint64_t, render_id> m_pipeline_to_batch;
-
-    std::vector<render_group> m_groups;
-    index_allocator<render_id> m_group_allocator;
-    std::unique_ptr<raw_buffer> m_group_buffer;
 
     render_scene_states m_scene_states{0};
 
     shader::scene_data m_scene_data{};
     rhi_ptr<rhi_parameter> m_scene_parameter;
-
-    std::unique_ptr<gpu_buffer_uploader> m_gpu_buffer_uploader;
 };
 
 class render_camera

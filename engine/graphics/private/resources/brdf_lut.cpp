@@ -12,7 +12,7 @@ struct brdf_lut_cs : public shader_cs
         std::uint32_t brdf_lut;
         std::uint32_t width;
         std::uint32_t height;
-        std::uint32_t padding0;
+        std::uint32_t padding_0;
     };
 
     static constexpr parameter_layout parameters = {
@@ -81,7 +81,7 @@ brdf_lut::brdf_lut(std::uint32_t size)
     rhi_command* command = device.allocate_command();
     graph.compile();
     graph.record(command);
-    device.execute_sync(command);
+    device.execute(command, true);
 
     set_texture(std::move(brdf_lut));
 }

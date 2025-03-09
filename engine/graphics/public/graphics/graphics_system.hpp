@@ -4,11 +4,16 @@
 #include "graphics/render_device.hpp"
 #include "render_graph/rdg_allocator.hpp"
 
+#ifndef NDEBUG
+#include "graphics/debug_drawer.hpp"
+#endif
+
 namespace violet
 {
 class camera_component;
 class rhi_plugin;
 class render_scene_manager;
+class gpu_buffer_uploader;
 class graphics_system : public system
 {
 public:
@@ -17,6 +22,13 @@ public:
 
     void install(application& app) override;
     bool initialize(const dictionary& config) override;
+
+#ifndef NDEBUG
+    debug_drawer& get_debug_drawer()
+    {
+        return *m_debug_drawer;
+    }
+#endif
 
 private:
     void begin_frame();
@@ -48,6 +60,12 @@ private:
     rhi_ptr<rhi_fence> m_update_fence;
     std::uint64_t m_update_fence_value{0};
 
+    std::unique_ptr<gpu_buffer_uploader> m_gpu_buffer_uploader;
+
     std::uint32_t m_system_version{0};
+
+#ifndef NDEBUG
+    std::unique_ptr<debug_drawer> m_debug_drawer;
+#endif
 };
 } // namespace violet

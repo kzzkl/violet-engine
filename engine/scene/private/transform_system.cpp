@@ -174,10 +174,13 @@ void transform_system::update_world(bool force)
     {
         if (world.has_component<child_component>(root))
         {
+            bool root_dirty =
+                force || world.is_updated<transform_local_component>(root, m_system_version);
+
             mat4f root_matrix = world.get_component<const transform_world_component>(root).matrix;
             for (const auto& child : world.get_component<const child_component>(root).children)
             {
-                update_world_recursive(child, root_matrix, force);
+                update_world_recursive(child, root_matrix, root_dirty);
             }
         }
     }

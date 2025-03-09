@@ -1,20 +1,8 @@
-#include "common.hlsli"
-
-ConstantBuffer<scene_data> scene : register(b0, space1);
-ConstantBuffer<camera_data> camera : register(b0, space2);
-
-struct vs_input
-{
-    float3 position : POSITION;
-    float3 normal : NORMAL;
-    float4 tangent : TANGENT;
-    float2 texcoord : TEXCOORD;
-};
+#include "mesh.hlsli"
 
 struct vs_output
 {
     float4 position_cs : SV_POSITION;
-    float4 prev_position_cs : PREV_POSITION_WS;
     float3 position_ws : POSITION_WS;
     float3 normal_ws : NORMAL_WS;
     float3 tangent_ws : TANGENT_WS;
@@ -22,23 +10,18 @@ struct vs_output
     uint material_address : MATERIAL_ADDRESS;
 };
 
-vs_output vs_main(vs_input input, uint instance_index : SV_InstanceID)
+vs_output vs_main(uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID)
 {
-    StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
-    StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
-
-    instance_data instance = instances[instance_index];
-    mesh_data mesh = meshes[instance.mesh_index];
+    mesh mesh = mesh::create(instance_id, vertex_id);
+    vertex vertex = mesh.fetch_vertex();
 
     vs_output output;
-    output.position_ws = mul(mesh.model_matrix, float4(input.position, 1.0)).xyz;
-    output.normal_ws = mul((float3x3)mesh.model_matrix, input.normal);
-    output.tangent_ws = mul((float3x3)mesh.model_matrix, input.tangent.xyz);
-    output.texcoord = input.texcoord;
-    output.material_address = instance.material_address;
-
-    output.position_cs = mul(camera.view_projection, float4(output.position_ws, 1.0));
-    output.prev_position_cs = mul(camera.prev_view_projection, float4(output.position_ws, 1.0));
+    output.position_cs = vertex.position_cs;
+    output.position_ws = vertex.position_ws;
+    output.normal_ws = vertex.normal_ws;
+    output.tangent_ws = vertex.tangent_ws;;
+    output.texcoord = vertex.texcoord;
+    output.material_address = mesh.get_material_address();
 
     return output;
 }

@@ -72,6 +72,11 @@ public:
         m_index_count = 0;
     }
 
+    std::size_t get_size() const noexcept
+    {
+        return m_index_count - m_free.size();
+    }
+
 private:
     std::vector<index_type> m_free;
     index_type m_index_count{0};

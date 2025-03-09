@@ -469,6 +469,7 @@ vk_graphics_queue::~vk_graphics_queue()
 
 vk_command* vk_graphics_queue::allocate_command()
 {
+    vk_command* command = nullptr;
     if (m_free_commands.empty())
     {
         VkCommandBufferAllocateInfo command_buffer_allocate_info = {
@@ -478,25 +479,22 @@ vk_command* vk_graphics_queue::allocate_command()
             .commandBufferCount = 1,
         };
 
-        std::vector<VkCommandBuffer> command_buffers(
-            command_buffer_allocate_info.commandBufferCount);
+        VkCommandBuffer command_buffer;
         vk_check(vkAllocateCommandBuffers(
             m_context->get_device(),
             &command_buffer_allocate_info,
-            command_buffers.data()));
+            &command_buffer));
 
-        for (VkCommandBuffer command_buffer : command_buffers)
-        {
-            std::unique_ptr<vk_command> command =
-                std::make_unique<vk_command>(command_buffer, m_context);
-            m_free_commands.push_back(command.get());
-            m_commands.push_back(std::move(command));
-        }
+        m_commands.push_back(std::make_unique<vk_command>(command_buffer, m_context));
+        command = m_commands.back().get();
     }
+    else
+    {
+        command = m_free_commands.back();
+        m_free_commands.pop_back();
 
-    vk_command* command = m_free_commands.back();
-    m_free_commands.pop_back();
-    m_active_commands[m_context->get_frame_resource_index()].push_back(command);
+        command->reset();
+    }
 
     VkCommandBufferBeginInfo command_buffer_begin_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -507,8 +505,13 @@ vk_command* vk_graphics_queue::allocate_command()
     return command;
 }
 
-void vk_graphics_queue::execute(rhi_command* command)
+void vk_graphics_queue::execute(rhi_command* command, bool sync)
 {
+    if (sync)
+    {
+        command->signal(m_fence.get(), ++m_fence_value);
+    }
+
     auto* cast_command = static_cast<vk_command*>(command);
 
     VkCommandBuffer buffer = cast_command->get_command_buffer();
@@ -542,13 +545,16 @@ void vk_graphics_queue::execute(rhi_command* command)
     };
 
     vk_check(vkQueueSubmit(m_queue, 1, &submit_info, VK_NULL_HANDLE));
-}
 
-void vk_graphics_queue::execute_sync(rhi_command* command)
-{
-    command->signal(m_fence.get(), ++m_fence_value);
-    execute(command);
-    m_fence->wait(m_fence_value);
+    if (sync)
+    {
+        m_fence->wait(m_fence_value);
+        m_free_commands.push_back(static_cast<vk_command*>(command));
+    }
+    else
+    {
+        m_active_commands[m_context->get_frame_resource_index()].push_back(cast_command);
+    }
 }
 
 void vk_graphics_queue::begin_frame()
@@ -556,7 +562,6 @@ void vk_graphics_queue::begin_frame()
     auto& commands = m_active_commands[m_context->get_frame_resource_index()];
     for (vk_command* command : commands)
     {
-        command->reset();
         m_free_commands.push_back(command);
     }
     commands.clear();

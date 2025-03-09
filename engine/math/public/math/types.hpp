@@ -78,6 +78,11 @@ struct vec3
     {
         return x == other.x && y == other.y && z == other.z;
     }
+
+    operator vec2<T>() const noexcept
+    {
+        return {x, y};
+    }
 };
 
 template <typename T>
@@ -114,6 +119,16 @@ struct vec4
     [[nodiscard]] inline bool operator==(const self_type& other) const noexcept
     {
         return x == other.x && y == other.y && z == other.z && w == other.w;
+    }
+
+    operator vec2<T>() const noexcept
+    {
+        return {x, y};
+    }
+
+    operator vec3<T>() const noexcept
+    {
+        return {x, y, z};
     }
 };
 

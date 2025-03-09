@@ -7,12 +7,16 @@ namespace violet
 class raw_buffer
 {
 public:
-    raw_buffer(const rhi_buffer_desc& desc);
+    raw_buffer();
+    raw_buffer(const void* data, std::size_t size, rhi_buffer_flags flags);
+    raw_buffer(const raw_buffer&) = delete;
     virtual ~raw_buffer() = default;
+
+    raw_buffer& operator=(const raw_buffer&) = delete;
 
     std::size_t get_size() const noexcept
     {
-        return m_buffer->get_buffer_size();
+        return m_buffer->get_size();
     }
 
     rhi_buffer_srv* get_srv(
@@ -41,6 +45,10 @@ public:
         return m_buffer->get_buffer_pointer();
     }
 
+protected:
+    void set_buffer(const rhi_buffer_desc& desc);
+    void set_buffer(rhi_ptr<rhi_buffer>&& buffer);
+
 private:
     rhi_ptr<rhi_buffer> m_buffer;
 };
@@ -49,59 +57,15 @@ class structured_buffer : public raw_buffer
 {
 public:
     template <std::ranges::contiguous_range R>
-    structured_buffer(
-        R&& data,
-        rhi_buffer_flags flags,
-        rhi_format texel_format = RHI_FORMAT_UNDEFINED)
-        : raw_buffer({
-              .data = data.data(),
-              .size = data.size() * sizeof(decltype(*data.data())),
-              .flags = flags,
-          })
+    structured_buffer(R&& data, rhi_buffer_flags flags)
     {
+        set_buffer({
+            .data = data.data(),
+            .size = data.size() * sizeof(decltype(*data.data())),
+            .flags = flags,
+        });
     }
 
     structured_buffer(std::size_t buffer_size, rhi_buffer_flags flags);
-};
-
-class vertex_buffer : public raw_buffer
-{
-public:
-    template <std::ranges::contiguous_range R>
-    vertex_buffer(R&& data, rhi_buffer_flags flags)
-        : raw_buffer({
-              .data = data.data(),
-              .size = data.size() * sizeof(decltype(*data.data())),
-              .flags = flags | RHI_BUFFER_VERTEX,
-          })
-    {
-    }
-
-    vertex_buffer(std::size_t buffer_size, rhi_buffer_flags flags);
-};
-
-class index_buffer : public raw_buffer
-{
-public:
-    template <std::ranges::contiguous_range R>
-    index_buffer(R&& data, rhi_buffer_flags flags)
-        : raw_buffer({
-              .data = data.data(),
-              .size = data.size() * sizeof(decltype(*data.data())),
-              .flags = flags | RHI_BUFFER_INDEX,
-          })
-    {
-        m_index_size = sizeof(decltype(*data.data()));
-    }
-
-    index_buffer(std::size_t buffer_size, std::size_t index_size, rhi_buffer_flags flags);
-
-    std::size_t get_index_size() const noexcept
-    {
-        return m_index_size;
-    }
-
-private:
-    std::size_t m_index_size;
 };
 } // namespace violet

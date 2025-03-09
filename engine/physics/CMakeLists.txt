@@ -8,10 +8,6 @@ set(SRC_FILES
     ./private/physics_scene.cpp
     ./private/physics_system.cpp)
 
-if (VIOLET_PHYSICS_DEBUG_DRAW)
-    list(APPEND SRC_FILES ./private/physics_debug.cpp)
-endif()
-
 add_library(${PROJECT_NAME} STATIC ${SRC_FILES})
 add_library(violet::physics ALIAS ${PROJECT_NAME})
 

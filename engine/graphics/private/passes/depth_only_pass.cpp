@@ -5,10 +5,6 @@ namespace violet
 struct depth_only_vs : public mesh_vs
 {
     static constexpr std::string_view path = "assets/shaders/depth_only.hlsl";
-
-    static constexpr input_layout inputs = {
-        {"position", RHI_FORMAT_R32G32B32_FLOAT},
-    };
 };
 
 void depth_only_pass::add(render_graph& graph, const parameter& parameter)

@@ -3,22 +3,31 @@
 
 namespace violet
 {
-material::material(material_type type, std::size_t constant_size) noexcept
-    : m_type(type),
-      m_constant_size(constant_size)
+material::material(material_type type) noexcept
+    : m_type(type)
 {
     auto* material_manager = render_device::instance().get_material_manager();
-    m_id = material_manager->register_material(this, m_constant_address);
+    m_id = material_manager->add_material(this);
 }
 
 material::~material()
 {
     auto* material_manager = render_device::instance().get_material_manager();
-    material_manager->unregister_material(m_id);
+    material_manager->remove_material(m_id);
+}
+
+void material::update()
+{
+    auto* material_manager = render_device::instance().get_material_manager();
+    material_manager->update_constant(m_id, get_constant_data(), get_constant_size());
+
+    m_dirty = false;
 }
 
 void material::mark_dirty()
 {
+    assert(get_constant_size() != 0);
+
     if (m_dirty)
     {
         return;
@@ -26,7 +35,6 @@ void material::mark_dirty()
 
     m_dirty = true;
 
-    auto* material_manager = render_device::instance().get_material_manager();
-    material_manager->mark_dirty(this);
+    render_device::instance().get_material_manager()->mark_dirty(m_id);
 }
 } // namespace violet

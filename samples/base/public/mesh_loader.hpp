@@ -3,6 +3,7 @@
 #include "graphics/geometry.hpp"
 #include "graphics/material.hpp"
 #include "graphics/resources/texture.hpp"
+#include "math/box.hpp"
 #include <optional>
 
 namespace violet
@@ -21,6 +22,9 @@ public:
     struct mesh_data
     {
         std::vector<submesh_data> submeshes;
+
+        box3f aabb;
+        std::uint32_t geometry;
     };
 
     struct node_data
@@ -40,7 +44,7 @@ public:
     {
         std::vector<std::unique_ptr<texture_2d>> textures;
         std::vector<std::unique_ptr<material>> materials;
-        std::unique_ptr<geometry> geometry;
+        std::vector<std::unique_ptr<geometry>> geometries;
 
         std::vector<mesh_data> meshes;
         std::vector<node_data> nodes;

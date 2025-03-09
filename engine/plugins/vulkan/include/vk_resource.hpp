@@ -339,9 +339,14 @@ public:
         return m_mapping_pointer;
     }
 
-    std::size_t get_buffer_size() const noexcept override
+    std::size_t get_size() const noexcept override
     {
         return m_buffer_size;
+    }
+
+    rhi_buffer_flags get_flags() const noexcept override
+    {
+        return m_flags;
     }
 
     rhi_buffer_srv* get_srv(std::size_t offset, std::size_t size, rhi_format format) override;
@@ -350,11 +355,6 @@ public:
     VkBuffer get_buffer() const noexcept
     {
         return m_buffer;
-    }
-
-    rhi_buffer_flags get_flags() const noexcept
-    {
-        return m_flags;
     }
 
 private:

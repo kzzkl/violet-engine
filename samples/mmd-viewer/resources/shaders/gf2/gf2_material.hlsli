@@ -1,24 +1,14 @@
+#include "mesh.hlsli"
 #include "brdf.hlsli"
 #include "color.hlsli"
 
-ConstantBuffer<scene_data> scene : register(b0, space1);
-ConstantBuffer<camera_data> camera : register(b0, space2);
-
-struct vs_input
-{
-    float3 position : POSITION;
-    float3 normal : NORMAL;
-    float3 tangent : TANGENT;
-    float2 texcoord : TEXCOORD;
-    float4 texcoord2 : TEXCOORD2;
-};
-
 struct vs_output
 {
-    float4 position : SV_POSITION;
+    float4 position_cs : SV_POSITION;
     float3 position_ws : POSITION_WS;
     float3 normal_ws : NORMAL_WS;
     float3 tangent_ws : TANGENT_WS;
+    float3 bitangent_ws : BITANGENT_WS;
     float2 texcoord : TEXCOORD;
     float4 texcoord2 : TEXCOORD2;
     uint material_address : MATERIAL_ADDRESS;

@@ -349,6 +349,7 @@ VkAccessFlags vk_utils::map_access_flags(rhi_access_flags flags)
     result |= (flags & RHI_ACCESS_HOST_WRITE) ? VK_ACCESS_HOST_WRITE_BIT : 0;
     result |= (flags & RHI_ACCESS_INDIRECT_COMMAND_READ) ? VK_ACCESS_INDIRECT_COMMAND_READ_BIT : 0;
     result |= (flags & RHI_ACCESS_VERTEX_ATTRIBUTE_READ) ? VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT : 0;
+    result |= (flags & RHI_ACCESS_INDEX_READ) ? VK_ACCESS_INDEX_READ_BIT : 0;
 
     return result;
 }

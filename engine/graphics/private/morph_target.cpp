@@ -24,7 +24,7 @@ void morph_target_buffer::add_morph_target(const std::vector<morph_element>& ele
 
 void morph_target_buffer::update_morph(
     rhi_command* command,
-    vertex_buffer* morph_vertex_buffer,
+    raw_buffer* morph_vertex_buffer,
     std::span<const float> weights)
 {
     update_morph_data();
@@ -99,7 +99,7 @@ void morph_target_buffer::update_morph_data()
         std::uint32_t element_count;
         std::uint32_t element_offset;
         std::int32_t position_min;
-        std::uint32_t padding0;
+        std::uint32_t padding_0;
     };
     std::vector<morph_target_header> morph_headers;
     morph_headers.reserve(m_morph_targets.size());

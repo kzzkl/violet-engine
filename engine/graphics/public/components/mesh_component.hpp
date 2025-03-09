@@ -2,6 +2,7 @@
 
 #include "graphics/geometry.hpp"
 #include "graphics/material.hpp"
+#include "math/box.hpp"
 #include <vector>
 
 namespace violet
@@ -18,5 +19,7 @@ struct mesh_component
 
     geometry* geometry{nullptr};
     std::vector<submesh> submeshes;
+
+    box3f aabb;
 };
 } // namespace violet

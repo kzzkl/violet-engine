@@ -30,6 +30,11 @@ struct light_meta_component
     light_meta_component& operator=(const light_meta_component&) = delete;
     light_meta_component& operator=(light_meta_component&& other) noexcept
     {
+        if (this == &other)
+        {
+            return *this;
+        }
+
         scene = other.scene;
         id = other.id;
 

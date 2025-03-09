@@ -35,6 +35,41 @@ bool hierarchy_system::initialize(const dictionary& config)
     return true;
 }
 
+void hierarchy_system::destroy(entity e)
+{
+    auto& world = get_world();
+
+    std::queue<entity> queue;
+    queue.push(e);
+
+    if (world.has_component<parent_component>(e))
+    {
+        auto& parent = world.get_component<parent_component>(e);
+        auto& children = world.get_component<child_component>(parent.parent).children;
+
+        auto iter = std::find(children.begin(), children.end(), e);
+        std::swap(*iter, children.back());
+        children.pop_back();
+    }
+
+    while (!queue.empty())
+    {
+        entity current = queue.front();
+        queue.pop();
+
+        if (world.has_component<child_component>(current))
+        {
+            auto& children = world.get_component<child_component>(current).children;
+            for (auto& child : children)
+            {
+                queue.push(child);
+            }
+        }
+
+        world.destroy(current);
+    }
+}
+
 void hierarchy_system::process_add_parent()
 {
     auto& world = get_world();

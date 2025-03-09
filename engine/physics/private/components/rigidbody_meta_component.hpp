@@ -55,15 +55,17 @@ struct rigidbody_meta_component
     rigidbody_meta_component& operator=(const rigidbody_meta_component&) = delete;
     rigidbody_meta_component& operator=(rigidbody_meta_component&& other) noexcept
     {
-        if (this != &other)
+        if (this == &other)
         {
-            scene = other.scene;
-            rigidbody = std::move(other.rigidbody);
-            motion_state = std::move(other.motion_state);
-            other.scene = nullptr;
-            other.rigidbody = nullptr;
-            other.motion_state = nullptr;
+            return *this;
         }
+
+        scene = other.scene;
+        rigidbody = std::move(other.rigidbody);
+        motion_state = std::move(other.motion_state);
+        other.scene = nullptr;
+        other.rigidbody = nullptr;
+        other.motion_state = nullptr;
 
         return *this;
     }

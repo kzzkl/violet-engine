@@ -30,13 +30,15 @@ struct joint_meta
     joint_meta& operator=(const joint_meta&) = delete;
     joint_meta& operator=(joint_meta&& other) noexcept
     {
-        if (this != &other)
+        if (this == &other)
         {
-            scene = other.scene;
-            joint = std::move(other.joint);
-            other.scene = nullptr;
-            other.joint = nullptr;
+            return *this;
         }
+
+        scene = other.scene;
+        joint = std::move(other.joint);
+        other.scene = nullptr;
+        other.joint = nullptr;
 
         return *this;
     }

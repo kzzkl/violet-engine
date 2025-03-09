@@ -50,6 +50,7 @@ void mesh_system::update(render_scene_manager& scene_manager)
 
                     mesh_meta.mesh = render_scene->add_mesh();
                     render_scene->set_mesh_geometry(mesh_meta.mesh, mesh.geometry);
+                    render_scene->set_mesh_aabb(mesh_meta.mesh, mesh.aabb);
 
                     mesh_meta.instances.clear();
                     mesh_meta.scene = render_scene;
@@ -72,6 +73,7 @@ void mesh_system::update(render_scene_manager& scene_manager)
             }
 
             mesh_meta.scene->set_mesh_geometry(mesh_meta.mesh, mesh.geometry);
+            mesh_meta.scene->set_mesh_aabb(mesh_meta.mesh, mesh.aabb);
 
             std::size_t instance_count =
                 std::min(mesh.submeshes.size(), mesh_meta.instances.size());

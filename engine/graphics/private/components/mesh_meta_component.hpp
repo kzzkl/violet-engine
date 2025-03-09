@@ -37,6 +37,21 @@ struct mesh_meta_component
     mesh_meta_component& operator=(const mesh_meta_component&) = delete;
     mesh_meta_component& operator=(mesh_meta_component&& other) noexcept
     {
+        if (this == &other)
+        {
+            return *this;
+        }
+
+        for (std::uint32_t instance_id : instances)
+        {
+            scene->remove_instance(instance_id);
+        }
+
+        if (mesh != INVALID_RENDER_ID)
+        {
+            scene->remove_mesh(mesh);
+        }
+
         scene = other.scene;
         mesh = other.mesh;
         std::swap(other.instances, instances);

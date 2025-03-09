@@ -2,18 +2,18 @@
 
 struct constant_data
 {
+    uint vertex_buffer;
     uint skeleton;
-    uint position_input;
-    uint normal_input;
-    uint tangent_input;
+    uint position_input_address;
+    uint normal_input_address;
+    uint tangent_input_address;
+    uint position_output_address;
+    uint normal_output_address;
+    uint tangent_output_address;
     uint skin;
     uint bdef;
     uint sdef;
     uint morph;
-    uint position_output;
-    uint normal_output;
-    uint tangent_output;
-    uint padding0;
 };
 PushConstant(constant_data, constant);
 
@@ -125,33 +125,16 @@ float4 matrix_to_quaternion(float4x4 m)
 [numthreads(64, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
-    StructuredBuffer<float> position_input = ResourceDescriptorHeap[constant.position_input];
-    RWStructuredBuffer<float> position_output = ResourceDescriptorHeap[constant.position_output];
-    StructuredBuffer<float> normal_input = ResourceDescriptorHeap[constant.normal_input];
-    RWStructuredBuffer<float> normal_output = ResourceDescriptorHeap[constant.normal_output];
-    StructuredBuffer<float> tangent_input = ResourceDescriptorHeap[constant.tangent_input];
-    RWStructuredBuffer<float> tangent_output = ResourceDescriptorHeap[constant.tangent_output];
+    RWByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[constant.vertex_buffer];
 
     StructuredBuffer<uint2> skin = ResourceDescriptorHeap[constant.skin];
-    StructuredBuffer<bdef_data> bdef = ResourceDescriptorHeap[constant.bdef];
-    StructuredBuffer<sdef_data> sdef = ResourceDescriptorHeap[constant.sdef];
-
     StructuredBuffer<float4x4> skeleton = ResourceDescriptorHeap[constant.skeleton];
 
-    uint vertex_index = dtid.x * 3;
+    uint vertex_index = dtid.x;
 
-    float3 position = float3(
-        position_input[vertex_index + 0],
-        position_input[vertex_index + 1],
-        position_input[vertex_index + 2]);
-    float3 normal = float3(
-        normal_input[vertex_index + 0],
-        normal_input[vertex_index + 1],
-        normal_input[vertex_index + 2]);
-    float3 tangent = float3(
-        tangent_input[vertex_index + 0],
-        tangent_input[vertex_index + 1],
-        tangent_input[vertex_index + 2]);
+    float3 position = vertex_buffer.Load<float3>(constant.position_input_address + vertex_index * sizeof(float3));
+    float3 normal = vertex_buffer.Load<float3>(constant.normal_input_address + vertex_index * sizeof(float3));
+    float4 tangent = vertex_buffer.Load<float4>(constant.tangent_input_address + vertex_index * sizeof(float4));
 
     if (constant.morph != 0)
     {
@@ -161,8 +144,10 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     uint skin_type = skin[dtid.x].x;
     uint skin_index = skin[dtid.x].y;
 
-    if (skin_type == 0)
+    if (skin_type == 0 && constant.bdef != 0)
     {
+        StructuredBuffer<bdef_data> bdef = ResourceDescriptorHeap[constant.bdef];
+
         float4x4 m = 0.0;
         for (int i = 0; i < 4; ++i)
         {
@@ -171,10 +156,12 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
         position = mul(m, float4(position, 1.0)).xyz;
         normal = mul((float3x3)m, normal);
-        tangent = mul((float3x3)m, tangent);
+        tangent.xyz = mul((float3x3)m, tangent.xyz);
     }
-    else
+    else if (constant.sdef != 0)
     {
+        StructuredBuffer<sdef_data> sdef = ResourceDescriptorHeap[constant.sdef];
+
         float4x4 m0 = skeleton[sdef[skin_index].index[0]];
         float4x4 m1 = skeleton[sdef[skin_index].index[1]];
         float4 q0 = matrix_to_quaternion(m0);
@@ -191,18 +178,10 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         position += (mul(m1, float4(sdef[skin_index].r1, 1.0f)) * w1).xyz;
 
         normal = mul(rotate_m, normal);
-        tangent = mul((float3x3)rotate_m, tangent);
+        tangent.xyz = mul((float3x3)rotate_m, tangent.xyz);
     }
 
-    position_output[dtid.x * 3 + 0] = position.x;
-    position_output[dtid.x * 3 + 1] = position.y;
-    position_output[dtid.x * 3 + 2] = position.z;
-
-    normal_output[dtid.x * 3 + 0] = normal.x;
-    normal_output[dtid.x * 3 + 1] = normal.y;
-    normal_output[dtid.x * 3 + 2] = normal.z;
-
-    tangent_output[dtid.x * 3 + 0] = tangent.x;
-    tangent_output[dtid.x * 3 + 1] = tangent.y;
-    tangent_output[dtid.x * 3 + 2] = tangent.z;
+    vertex_buffer.Store<float3>(constant.position_output_address + vertex_index * sizeof(float3), position);
+    vertex_buffer.Store<float3>(constant.normal_output_address + vertex_index * sizeof(float3), normal);
+    vertex_buffer.Store<float4>(constant.tangent_output_address + vertex_index * sizeof(float4), tangent);
 }

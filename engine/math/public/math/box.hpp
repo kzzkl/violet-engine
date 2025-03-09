@@ -1,5 +1,6 @@
 #pragma once
 
+#include "math/matrix.hpp"
 #include "math/vector.hpp"
 #include <limits>
 
@@ -14,9 +15,9 @@ struct box3
         : min{std::numeric_limits<value_type>::max(),
               std::numeric_limits<value_type>::max(),
               std::numeric_limits<value_type>::max()},
-          max{std::numeric_limits<value_type>::min(),
-              std::numeric_limits<value_type>::min(),
-              std::numeric_limits<value_type>::min()}
+          max{std::numeric_limits<value_type>::lowest(),
+              std::numeric_limits<value_type>::lowest(),
+              std::numeric_limits<value_type>::lowest()}
     {
     }
 
@@ -32,7 +33,7 @@ struct box3<simd>
 
     box3()
         : min(vector::replicate(std::numeric_limits<value_type>::max())),
-          max(vector::replicate(std::numeric_limits<value_type>::min()))
+          max(vector::replicate(std::numeric_limits<value_type>::lowest()))
     {
     }
 
@@ -63,6 +64,29 @@ struct box
     {
         using value_type = vec3<T>::value_type;
         return (box.min + box.max) * value_type(0.5);
+    }
+
+    template <typename T>
+    static box3<T> transform(const box3<T>& box, const mat4<T>& matrix) noexcept
+    {
+        vec4<T> corners[8] = {
+            matrix::mul({box.min.x, box.min.y, box.min.z, 1.0}, matrix),
+            matrix::mul({box.min.x, box.max.y, box.min.z, 1.0}, matrix),
+            matrix::mul({box.min.x, box.min.y, box.max.z, 1.0}, matrix),
+            matrix::mul({box.min.x, box.max.y, box.max.z, 1.0}, matrix),
+            matrix::mul({box.max.x, box.min.y, box.min.z, 1.0}, matrix),
+            matrix::mul({box.max.x, box.max.y, box.min.z, 1.0}, matrix),
+            matrix::mul({box.max.x, box.min.y, box.max.z, 1.0}, matrix),
+            matrix::mul({box.max.x, box.max.y, box.max.z, 1.0}, matrix),
+        };
+
+        box3<T> result;
+        for (auto& corner : corners)
+        {
+            expand(result, (vec3<T>)corner);
+        }
+
+        return result;
     }
 };
 } // namespace violet

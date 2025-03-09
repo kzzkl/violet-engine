@@ -7,7 +7,7 @@ struct constant_data
     uint cull_result;
     uint command_buffer;
     uint count_buffer;
-    uint padding0;
+    uint padding_0;
 };
 PushConstant(constant_data, constant);
 
@@ -31,27 +31,27 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     uint instance_index = dtid.x;
 
     StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
-
     instance_data instance = instances[instance_index];
-    uint mesh_index = instance.mesh_index;
 
     RWByteAddressBuffer cull_result = ResourceDescriptorHeap[constant.cull_result];
-
-    if (cull_result.Load(mesh_index * 4) == 1)
+    if (cull_result.Load(instance.mesh_index * 4) == 1)
     {
-        ByteAddressBuffer group_buffer = ResourceDescriptorHeap[scene.group_buffer];
+        StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
+        mesh_data mesh = meshes[instance.mesh_index];
+
+        ByteAddressBuffer batch_buffer = ResourceDescriptorHeap[scene.batch_buffer];
         RWBuffer<uint> count_buffer = ResourceDescriptorHeap[constant.count_buffer];
 
-        uint group_index = instance.group_index;
+        uint batch_index = instance.batch_index;
 
         uint command_index = 0;
-        InterlockedAdd(count_buffer[group_index], 1, command_index);
-        command_index += group_buffer.Load<uint>(group_index * 4);
+        InterlockedAdd(count_buffer[batch_index], 1, command_index);
+        command_index += batch_buffer.Load<uint>(batch_index * 4);
 
         draw_command command;
         command.index_count = instance.index_count;
         command.instance_count = 1;
-        command.index_offset = instance.index_offset;
+        command.index_offset = instance.index_offset + mesh.index_offset;
         command.vertex_offset = instance.vertex_offset;
         command.instance_offset = instance_index;
 

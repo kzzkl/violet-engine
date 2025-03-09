@@ -5,7 +5,7 @@ struct constant_data
     uint brdf_lut;
     uint width;
     uint height;
-    uint padding0;
+    uint padding_0;
 };
 PushConstant(constant_data, constant);
 

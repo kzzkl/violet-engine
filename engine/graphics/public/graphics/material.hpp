@@ -32,7 +32,7 @@ public:
         rhi_ptr<rhi_parameter> parameter;
     };
 
-    material(material_type type, std::size_t constant_size = 0) noexcept;
+    material(material_type type) noexcept;
     material(const material& other) = delete;
 
     virtual ~material();
@@ -54,25 +54,7 @@ public:
         return m_id;
     }
 
-    virtual const void* get_constant_data() const noexcept
-    {
-        return nullptr;
-    }
-
-    std::size_t get_constant_size() const noexcept
-    {
-        return m_constant_size;
-    }
-
-    std::uint32_t get_constant_address() const noexcept
-    {
-        return m_constant_address;
-    }
-
-    void clear_dirty() noexcept
-    {
-        m_dirty = false;
-    }
+    void update();
 
 protected:
     rdg_raster_pipeline& get_pipeline() noexcept
@@ -83,13 +65,20 @@ protected:
     void mark_dirty();
 
 private:
+    virtual const void* get_constant_data() const noexcept
+    {
+        return nullptr;
+    }
+
+    virtual std::size_t get_constant_size() const noexcept
+    {
+        return 0;
+    }
+
     material_type m_type;
     rdg_raster_pipeline m_pipeline{};
 
     render_id m_id{INVALID_RENDER_ID};
-
-    std::size_t m_constant_size{0};
-    std::uint32_t m_constant_address{0};
 
     bool m_dirty{false};
 };
@@ -101,13 +90,8 @@ public:
     using constant_type = T;
 
     mesh_material(material_type type)
-        : material(type, sizeof(constant_type))
+        : material(type)
     {
-    }
-
-    const void* get_constant_data() const noexcept override
-    {
-        return &m_constant;
     }
 
 protected:
@@ -123,6 +107,16 @@ protected:
     }
 
 private:
+    const void* get_constant_data() const noexcept override
+    {
+        return &m_constant;
+    }
+
+    std::size_t get_constant_size() const noexcept override
+    {
+        return sizeof(constant_type);
+    }
+
     constant_type m_constant{};
 };
 } // namespace violet

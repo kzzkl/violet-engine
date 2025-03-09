@@ -30,9 +30,9 @@ rhi_command* vk_rhi::allocate_command()
     return m_context->get_graphics_queue()->allocate_command();
 }
 
-void vk_rhi::execute(rhi_command* command)
+void vk_rhi::execute(rhi_command* command, bool sync)
 {
-    m_context->get_graphics_queue()->execute(command);
+    m_context->get_graphics_queue()->execute(command, sync);
 }
 
 void vk_rhi::begin_frame()

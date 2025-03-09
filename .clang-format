@@ -63,7 +63,6 @@ KeepEmptyLinesAtTheStartOfBlocks: false
 MaxEmptyLinesToKeep: 1
 PackConstructorInitializers: Never
 PointerAlignment: Left
-ReflowComments: false
 SortIncludes: true
 SortUsingDeclarations: false
 SpaceAfterCStyleCast: false

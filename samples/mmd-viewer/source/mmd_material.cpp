@@ -5,12 +5,6 @@ namespace violet
 struct mmd_material_vs : public mesh_vs
 {
     static constexpr std::string_view path = "assets/shaders/mmd_material.hlsl";
-
-    static constexpr input_layout inputs = {
-        {"position", RHI_FORMAT_R32G32B32_FLOAT},
-        {"normal", RHI_FORMAT_R32G32B32_FLOAT},
-        {"texcoord", RHI_FORMAT_R32G32_FLOAT},
-    };
 };
 
 struct mmd_material_fs : public mesh_fs
@@ -21,14 +15,6 @@ struct mmd_material_fs : public mesh_fs
 struct mmd_outline_vs : public mesh_vs
 {
     static constexpr std::string_view path = "assets/shaders/mmd_outline.hlsl";
-
-    static constexpr input_layout inputs = {
-        {"position", RHI_FORMAT_R32G32B32_FLOAT},
-        {"normal", RHI_FORMAT_R32G32B32_FLOAT},
-        {"tangent", RHI_FORMAT_R32G32B32_FLOAT},
-        {"smooth_normal", RHI_FORMAT_R32G32B32_FLOAT},
-        {"outline", RHI_FORMAT_R32_FLOAT},
-    };
 };
 
 struct mmd_outline_fs : public mesh_fs

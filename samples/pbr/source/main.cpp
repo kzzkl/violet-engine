@@ -64,6 +64,7 @@ public:
         task_graph.add_task()
             .set_name("PBR Tick")
             .set_group(update)
+            .set_options(TASK_OPTION_MAIN_THREAD)
             .set_execute(
                 [this]()
                 {
@@ -127,6 +128,9 @@ private:
         main_camera.features.push_back(std::make_unique<gtao_render_feature>());
 
         // Model.
+        m_root = world.create();
+        world.add_component<transform_component, scene_component>(m_root);
+
         gltf_loader loader(m_model_path);
         if (auto result = loader.load())
         {
@@ -136,7 +140,7 @@ private:
             for (auto& node : m_model.nodes)
             {
                 entity entity = world.create();
-                world.add_component<transform_component, scene_component>(entity);
+                world.add_component<transform_component, parent_component, scene_component>(entity);
 
                 auto& transform = world.get_component<transform_component>(entity);
                 transform.set_position(node.position);
@@ -158,7 +162,7 @@ private:
                     auto& mesh_data = m_model.meshes[node.mesh];
 
                     auto& entity_mesh = world.get_component<mesh_component>(entity);
-                    entity_mesh.geometry = m_model.geometry.get();
+                    entity_mesh.geometry = m_model.geometries[mesh_data.geometry].get();
                     for (auto& submesh_data : mesh_data.submeshes)
                     {
                         entity_mesh.submeshes.push_back({
@@ -168,12 +172,17 @@ private:
                             .material = m_model.materials[submesh_data.material].get(),
                         });
                     }
+
+                    entity_mesh.aabb = mesh_data.aabb;
                 }
 
                 if (node.parent != -1)
                 {
-                    world.add_component<parent_component>(entity);
                     world.get_component<parent_component>(entity).parent = entities[node.parent];
+                }
+                else
+                {
+                    world.get_component<parent_component>(entity).parent = m_root;
                 }
             }
         }
@@ -187,6 +196,7 @@ private:
 
         auto& plane_mesh = world.get_component<mesh_component>(m_plane);
         plane_mesh.geometry = m_plane_geometry.get();
+        plane_mesh.aabb = m_plane_geometry->get_aabb();
         plane_mesh.submeshes.push_back({
             .material = m_plane_material.get(),
         });
@@ -202,6 +212,7 @@ private:
 
         auto& sphere_mesh = world.get_component<mesh_component>(m_sphere);
         sphere_mesh.geometry = m_sphere_geometry.get();
+        sphere_mesh.aabb = m_sphere_geometry->get_aabb();
         sphere_mesh.submeshes.push_back({
             .material = m_sphere_material.get(),
         });
@@ -216,10 +227,30 @@ private:
 
     void tick()
     {
+        auto& world = get_world();
+
+        if (ImGui::CollapsingHeader("Transform"))
+        {
+            static float rotate = 0.0f;
+            if (ImGui::SliderFloat("Rotate", &rotate, 0.0, 360.0))
+            {
+                auto& transform = world.get_component<transform_component>(m_root);
+                transform.set_rotation(
+                    quaternion::from_axis_angle(vec3f{0.0f, 1.0f, 0.0f}, math::to_radians(rotate)));
+            }
+
+            static float translate = 0.0f;
+            if (ImGui::SliderFloat("Translate", &translate, -5.0f, 5.0))
+            {
+                auto& transform = world.get_component<transform_component>(m_root);
+                transform.set_position({0.0f, 0.0f, translate});
+            }
+        }
+
         if (ImGui::CollapsingHeader("Material"))
         {
-            static float metallic = 1.0f;
-            static float roughness = 1.0f;
+            static float metallic = m_sphere_material->get_metallic();
+            static float roughness = m_sphere_material->get_roughness();
             static float albedo[] = {1.0f, 1.0f, 1.0f};
 
             if (ImGui::SliderFloat("Metallic", &metallic, 0.0f, 1.0f))
@@ -273,10 +304,29 @@ private:
             gtao->set_radius(radius);
             gtao->set_falloff(falloff);
         }
+
+#ifndef NDEBUG
+        static bool draw_aabb = false;
+        ImGui::Checkbox("Draw AABB", &draw_aabb);
+
+        if (draw_aabb)
+        {
+            auto& debug_drawer = get_system<graphics_system>().get_debug_drawer();
+            auto& world = get_world();
+
+            world.get_view().read<mesh_component>().read<transform_world_component>().each(
+                [&](const mesh_component& mesh, const transform_world_component& transform)
+                {
+                    box3f box = box::transform(mesh.aabb, transform.matrix);
+                    debug_drawer.draw_box(box, {0.0f, 1.0f, 0.0f});
+                });
+        }
+#endif
     }
 
     entity m_light;
     entity m_camera;
+    entity m_root;
 
     entity m_plane;
     std::unique_ptr<geometry> m_plane_geometry;

@@ -18,8 +18,8 @@ struct morphing_cs : public shader_cs
         std::uint32_t element_buffer;
         std::uint32_t morph_vertex_buffer;
         std::uint32_t weight_buffer;
-        std::uint32_t padding0;
-        std::uint32_t padding1;
+        std::uint32_t padding_0;
+        std::uint32_t padding_1;
     };
 
     static constexpr parameter_layout parameters = {
@@ -62,7 +62,7 @@ public:
 
     void update_morph(
         rhi_command* command,
-        vertex_buffer* morph_vertex_buffer,
+        raw_buffer* morph_vertex_buffer,
         std::span<const float> weights);
 
     std::size_t get_morph_target_count() const noexcept

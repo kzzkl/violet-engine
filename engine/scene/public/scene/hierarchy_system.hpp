@@ -11,6 +11,8 @@ public:
 
     bool initialize(const dictionary& config) override;
 
+    void destroy(entity e);
+
 private:
     void process_add_parent();
     void process_set_parent();

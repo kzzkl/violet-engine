@@ -199,7 +199,7 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
         command->set_pipeline_barrier(nullptr, 0, &barrier, 1);
 
         // TODO: use async version?
-        m_context->get_graphics_queue()->execute_sync(command);
+        m_context->get_graphics_queue()->execute(command, true);
     }
 }
 
@@ -380,7 +380,7 @@ vk_buffer_descriptor::vk_buffer_descriptor(
     VkBufferView buffer_view)
     : m_buffer(buffer),
       m_offset(offset),
-      m_size(size == 0 ? m_buffer->get_buffer_size() : size),
+      m_size(size == 0 ? m_buffer->get_size() : size),
       m_buffer_view(buffer_view)
 {
 }
@@ -485,7 +485,7 @@ void vk_buffer_uav::write(
     VkDescriptorBufferInfo info = {
         .buffer = buffer->get_buffer(),
         .offset = 0,
-        .range = buffer->get_buffer_size(),
+        .range = buffer->get_size(),
     };
 
     rhi_buffer_flags flags = buffer->get_flags();
@@ -588,7 +588,7 @@ vk_buffer::vk_buffer(const rhi_buffer_desc& desc, vk_context* context)
                 m_buffer,
                 1,
                 &copy_region);
-            m_context->get_graphics_queue()->execute_sync(command);
+            m_context->get_graphics_queue()->execute(command, true);
 
             vmaDestroyBuffer(m_context->get_vma_allocator(), staging_buffer, staging_allocation);
         }

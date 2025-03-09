@@ -3,6 +3,7 @@
 #include "vk_bindless.hpp"
 #include "vk_common.hpp"
 #include "vk_context.hpp"
+#include "vk_pipeline.hpp"
 #include "vk_resource.hpp"
 
 namespace violet::vk
@@ -19,7 +20,7 @@ public:
     bool initialize(const rhi_desc& desc) override;
 
     rhi_command* allocate_command() override;
-    void execute(rhi_command* command) override;
+    void execute(rhi_command* command, bool sync) override;
 
     void begin_frame() override;
     void end_frame() override;
@@ -57,6 +58,11 @@ public:
     void set_name(rhi_buffer* object, const char* name) const override
     {
         set_name(static_cast<vk_buffer*>(object)->get_buffer(), VK_OBJECT_TYPE_BUFFER, name);
+    }
+
+    void set_name(rhi_shader* object, const char* name) const override
+    {
+        set_name(static_cast<vk_shader*>(object)->get_module(), VK_OBJECT_TYPE_SHADER_MODULE, name);
     }
 
     rhi_render_pass* create_render_pass(const rhi_render_pass_desc& desc) override;

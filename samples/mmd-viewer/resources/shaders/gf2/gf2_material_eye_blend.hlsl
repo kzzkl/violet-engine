@@ -6,10 +6,11 @@ ConstantBuffer<camera_data> camera : register(b0, space2);
 
 struct vs_output
 {
-    float4 position : SV_POSITION;
+    float4 position_cs : SV_POSITION;
     float3 position_ws : POSITION_WS;
     float3 normal_ws : NORMAL_WS;
     float3 tangent_ws : TANGENT_WS;
+    float3 bitangent_ws : BITANGENT_WS;
     float2 texcoord : TEXCOORD;
     float4 texcoord2 : TEXCOORD2;
     uint material_address : MATERIAL_ADDRESS;

@@ -24,12 +24,14 @@ add_library(${PROJECT_NAME} STATIC
     ./private/resources/brdf_lut.cpp
     ./private/resources/buffer.cpp
     ./private/resources/hilbert_lut.cpp
+    ./private/resources/persistent_buffer.cpp
     ./private/resources/ramp_texture.cpp
     ./private/resources/texture.cpp
     ./private/tools/geometry_tool.cpp
     ./private/tools/ibl_tool.cpp
     ./private/tools/texture_loader.cpp
     ./private/camera_system.cpp
+    ./private/debug_drawer.cpp
     ./private/environment_system.cpp
     ./private/geometry_manager.cpp
     ./private/geometry.cpp

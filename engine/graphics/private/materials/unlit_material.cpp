@@ -5,10 +5,6 @@ namespace violet
 struct unlit_material_vs : public mesh_vs
 {
     static constexpr std::string_view path = "assets/shaders/materials/unlit_material.hlsl";
-
-    static constexpr input_layout inputs = {
-        {"position", RHI_FORMAT_R32G32B32_FLOAT},
-    };
 };
 
 struct unlit_material_fs : public mesh_fs

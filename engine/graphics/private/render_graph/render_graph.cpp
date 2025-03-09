@@ -359,7 +359,7 @@ rdg_buffer* render_graph::add_buffer(std::string_view name, rhi_buffer* buffer)
     auto* resource = m_allocator->allocate_resource<rdg_buffer>();
     resource->set_name(name);
     resource->set_external(true);
-    resource->set_size(buffer->get_buffer_size());
+    resource->set_size(buffer->get_size());
     resource->set_rhi(buffer);
 
     m_resources.push_back(resource);
@@ -535,8 +535,6 @@ void render_graph::cull()
 
 void render_graph::allocate_resources()
 {
-    auto& device = render_device::instance();
-
     for (auto* resource : m_resources)
     {
         if (resource->is_culled())

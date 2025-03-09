@@ -5,13 +5,6 @@ namespace violet
 struct physical_material_vs : public mesh_vs
 {
     static constexpr std::string_view path = "assets/shaders/materials/physical_material.hlsl";
-
-    static constexpr input_layout inputs = {
-        {"position", RHI_FORMAT_R32G32B32_FLOAT},
-        {"normal", RHI_FORMAT_R32G32B32_FLOAT},
-        {"tangent", RHI_FORMAT_R32G32B32A32_FLOAT},
-        {"texcoord", RHI_FORMAT_R32G32_FLOAT},
-    };
 };
 
 struct physical_material_fs : public mesh_fs
@@ -50,14 +43,29 @@ void physical_material::set_albedo(texture_2d* albedo)
     get_constant().albedo_texture = albedo->get_srv()->get_bindless();
 }
 
+vec3f physical_material::get_albedo() const
+{
+    return get_constant().albedo;
+}
+
 void physical_material::set_roughness(float roughness)
 {
     get_constant().roughness = roughness;
 }
 
+float physical_material::get_roughness() const
+{
+    return get_constant().roughness;
+}
+
 void physical_material::set_metallic(float metallic)
 {
     get_constant().metallic = metallic;
+}
+
+float physical_material::get_metallic() const
+{
+    return get_constant().metallic;
 }
 
 void physical_material::set_roughness_metallic(texture_2d* roughness_metallic)
@@ -73,6 +81,11 @@ void physical_material::set_emissive(const vec3f& emissive)
 void physical_material::set_emissive(texture_2d* emissive)
 {
     get_constant().emissive_texture = emissive->get_srv()->get_bindless();
+}
+
+vec3f physical_material::get_emissive() const
+{
+    return get_constant().emissive;
 }
 
 void physical_material::set_normal(texture_2d* normal)

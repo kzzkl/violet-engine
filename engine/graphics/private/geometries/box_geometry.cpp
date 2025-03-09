@@ -1,4 +1,5 @@
 #include "graphics/geometries/box_geometry.hpp"
+#include "graphics/tools/geometry_tool.hpp"
 #include <array>
 
 namespace violet
@@ -110,16 +111,13 @@ box_geometry::box_geometry(
     build_plane(0, 1, 2, 1, -1, 1);   // pz
     build_plane(0, 1, 2, -1, -1, -1); // nz
 
-    add_attribute("position", positions);
-    add_attribute("normal", normals);
-    add_attribute("texcoord", texcoords);
+    std::vector<vec4f> tangents =
+        geometry_tool::generate_tangents(positions, normals, texcoords, indexes);
+
+    set_position(positions);
+    set_normal(normals);
+    set_tangent(tangents);
+    set_texcoord(texcoords);
     set_indexes(indexes);
-
-    // TODO : Tangent
-    std::vector<vec3f> tangents(positions.size());
-    add_attribute("tangent", tangents);
-
-    set_vertex_count(positions.size());
-    set_index_count(indexes.size());
 }
 } // namespace violet

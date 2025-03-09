@@ -12,6 +12,7 @@
 #include "scene/transform_system.hpp"
 
 #ifdef VIOLET_PHYSICS_DEBUG_DRAW
+#include "graphics/graphics_system.hpp"
 #include "physics_debug.hpp"
 #endif
 
@@ -71,7 +72,7 @@ bool physics_system::initialize(const dictionary& config)
     world.register_component<joint_component>();
 
 #ifdef VIOLET_PHYSICS_DEBUG_DRAW
-    m_debug = std::make_unique<physics_debug>(world);
+    m_debug = std::make_unique<physics_debug>();
 #endif
 
     return true;
@@ -120,7 +121,12 @@ void physics_system::simulation()
     }
 
 #ifdef VIOLET_PHYSICS_DEBUG_DRAW
-    m_debug->tick();
+    auto& debug_drawer = get_system<graphics_system>().get_debug_drawer();
+
+    for (const auto& line : m_debug->get_lines())
+    {
+        debug_drawer.draw_line(line.start, line.end, line.color);
+    }
 #endif
 }
 

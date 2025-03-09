@@ -2,22 +2,11 @@
 
 namespace violet
 {
-bool render_scene_manager::update()
-{
-    bool need_record = false;
-    for (auto& scene : m_scenes)
-    {
-        need_record = scene->update() || need_record;
-    }
-
-    return need_record;
-}
-
-void render_scene_manager::record(rhi_command* command)
+void render_scene_manager::update(gpu_buffer_uploader* uploader)
 {
     for (auto& scene : m_scenes)
     {
-        scene->record(command);
+        scene->update(uploader);
     }
 }
 

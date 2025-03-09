@@ -9,9 +9,9 @@ struct cull_cs : public shader_cs
     struct constant_data
     {
         std::uint32_t cull_result;
-        std::uint32_t padding0;
-        std::uint32_t padding1;
-        std::uint32_t padding2;
+        std::uint32_t padding_0;
+        std::uint32_t padding_1;
+        std::uint32_t padding_2;
     };
 
     static constexpr parameter_layout parameters = {
@@ -30,7 +30,7 @@ struct draw_command_filler_cs : public shader_cs
         std::uint32_t cull_result;
         std::uint32_t command_buffer;
         std::uint32_t count_buffer;
-        std::uint32_t padding0;
+        std::uint32_t padding_0;
     };
 
     static constexpr parameter_layout parameters = {

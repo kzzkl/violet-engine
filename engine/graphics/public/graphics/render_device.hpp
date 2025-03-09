@@ -64,8 +64,7 @@ public:
     void reset();
 
     rhi_command* allocate_command();
-    void execute(rhi_command* command);
-    void execute_sync(rhi_command* command);
+    void execute(rhi_command* command, bool sync = false);
 
     void begin_frame();
     void end_frame();
@@ -174,25 +173,12 @@ public:
         }
 
         auto shader = rhi_ptr<rhi_shader>(m_rhi->create_shader(desc), m_rhi_deleter);
-
-        if constexpr (has_inputs<T>)
-        {
-            auto& vertex_attributes = m_vertex_attributes[shader.get()];
-            for (std::size_t i = 0; i < T::inputs.attribute_count; ++i)
-            {
-                vertex_attributes.push_back(T::inputs.attributes[i].name);
-            }
-        }
+        m_rhi->set_name(shader.get(), T::path.data());
 
         rhi_shader* result = shader.get();
         m_shaders[hash] = std::move(shader);
 
         return result;
-    }
-
-    const std::vector<std::string>& get_vertex_attributes(rhi_shader* shader) const
-    {
-        return m_vertex_attributes.at(shader);
     }
 
     material_manager* get_material_manager() const noexcept
@@ -273,12 +259,8 @@ private:
     rhi_deleter m_rhi_deleter;
 
     std::unordered_map<std::uint64_t, rhi_ptr<rhi_shader>> m_shaders;
-    std::unordered_map<rhi_shader*, std::vector<std::string>> m_vertex_attributes;
 
     std::unique_ptr<shader_compiler> m_shader_compiler;
-
-    rhi_ptr<rhi_fence> m_fence;
-    std::uint64_t m_fence_value{0};
 
     std::unique_ptr<material_manager> m_material_manager;
     std::unique_ptr<geometry_manager> m_geometry_manager;

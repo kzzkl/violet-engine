@@ -1,5 +1,6 @@
 #include "graphics/render_scene.hpp"
 #include "gpu_buffer_uploader.hpp"
+#include "graphics/geometry_manager.hpp"
 #include "graphics/material_manager.hpp"
 
 namespace violet
@@ -8,22 +9,7 @@ render_scene::render_scene()
 {
     auto& device = render_device::instance();
 
-    m_gpu_buffer_uploader = std::make_unique<gpu_buffer_uploader>(64 * 1024);
-
-    m_group_buffer = std::make_unique<raw_buffer>(rhi_buffer_desc{
-        .size = sizeof(std::uint32_t) * 4 * 1024,
-        .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST,
-    });
-
     m_scene_parameter = device.create_parameter(shader::scene);
-
-    m_scene_data.material_buffer =
-        device.get_material_manager()->get_material_buffer()->get_srv()->get_bindless();
-    m_scene_data.mesh_buffer = m_meshes.get_buffer()->get_srv()->get_bindless();
-    m_scene_data.instance_buffer = m_instances.get_buffer()->get_srv()->get_bindless();
-    m_scene_data.light_buffer = m_lights.get_buffer()->get_srv()->get_bindless();
-    m_scene_data.group_buffer = m_group_buffer->get_srv()->get_bindless();
-
     m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
 }
 
@@ -89,14 +75,6 @@ void render_scene::set_mesh_geometry(render_id mesh_id, geometry* geometry)
 
     mesh.geometry = geometry;
     m_meshes.mark_dirty(mesh_id);
-
-    for (render_id instance_id : mesh.instances)
-    {
-        remove_instance_from_group(instance_id);
-        add_instance_to_group(instance_id, mesh.geometry, m_instances[instance_id].material);
-
-        m_instances.mark_dirty(instance_id);
-    }
 }
 
 render_id render_scene::add_instance(render_id mesh_id)
@@ -105,7 +83,7 @@ render_id render_scene::add_instance(render_id mesh_id)
 
     m_instances[instance_id] = {
         .mesh_id = mesh_id,
-        .group_id = INVALID_RENDER_ID,
+        .batch_id = INVALID_RENDER_ID,
     };
 
     auto& mesh = m_meshes[mesh_id];
@@ -124,7 +102,7 @@ void render_scene::remove_instance(render_id instance_id)
 
     mesh.instances.erase(std::find(mesh.instances.begin(), mesh.instances.end(), instance_id));
 
-    remove_instance_from_group(instance_id);
+    remove_instance_from_batch(instance_id);
 
     m_instances.remove(instance_id);
 
@@ -157,10 +135,8 @@ void render_scene::set_instance_material(render_id instance_id, material* materi
 
     if (instance_info.material != material)
     {
-        auto& mesh_info = m_meshes[instance_info.mesh_id];
-
-        remove_instance_from_group(instance_id);
-        add_instance_to_group(instance_id, mesh_info.geometry, material);
+        remove_instance_from_batch(instance_id);
+        add_instance_to_batch(instance_id, material);
 
         m_instances.mark_dirty(instance_id);
 
@@ -213,73 +189,47 @@ void render_scene::set_skybox(
     m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
 }
 
-bool render_scene::update()
+void render_scene::update(gpu_buffer_uploader* uploader)
 {
-    update_mesh();
-    update_instance();
-    update_light();
+    m_scene_states |= update_mesh(uploader) ? RENDER_SCENE_STAGE_DATA_DIRTY : 0;
+    m_scene_states |= update_instance(uploader) ? RENDER_SCENE_STAGE_DATA_DIRTY : 0;
+    m_scene_states |= update_light(uploader) ? RENDER_SCENE_STAGE_DATA_DIRTY : 0;
+    m_scene_states |= update_batch(uploader) ? RENDER_SCENE_STAGE_DATA_DIRTY : 0;
 
-    if (m_scene_states & RENDER_SCENE_STAGE_GROUP_DIRTY)
+    auto* material_manager = render_device::instance().get_material_manager();
+    auto* geometry_manager = render_device::instance().get_geometry_manager();
+
+    std::uint32_t material_buffer =
+        material_manager->get_material_buffer()->get_srv()->get_bindless();
+    std::uint32_t vertex_buffer = geometry_manager->get_vertex_buffer()->get_srv()->get_bindless();
+    std::uint32_t index_buffer = geometry_manager->get_index_buffer()->get_srv()->get_bindless();
+
+    if (m_scene_data.material_buffer != material_buffer ||
+        m_scene_data.vertex_buffer != vertex_buffer || m_scene_data.index_buffer != index_buffer)
     {
-        update_group_buffer();
+        m_scene_data.material_buffer = material_buffer;
+        m_scene_data.vertex_buffer = vertex_buffer;
+        m_scene_data.index_buffer = index_buffer;
+
+        m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
     }
 
     if (m_scene_states & RENDER_SCENE_STAGE_DATA_DIRTY)
     {
+        m_scene_data.mesh_buffer = m_meshes.get_buffer()->get_srv()->get_bindless();
+        m_scene_data.instance_buffer = m_instances.get_buffer()->get_srv()->get_bindless();
+        m_scene_data.light_buffer = m_lights.get_buffer()->get_srv()->get_bindless();
+        m_scene_data.batch_buffer = m_batches.get_buffer()->get_srv()->get_bindless();
+
         m_scene_parameter->set_uniform(0, &m_scene_data, sizeof(shader::scene_data));
     }
 
     m_scene_states = 0;
-
-    return !m_gpu_buffer_uploader->empty();
 }
 
-void render_scene::record(rhi_command* command)
+void render_scene::add_instance_to_batch(render_id instance_id, const material* material)
 {
-    std::vector<raw_buffer*> buffers = {
-        m_meshes.get_buffer(),
-        m_instances.get_buffer(),
-        m_group_buffer.get(),
-    };
-
-    std::vector<rhi_buffer_barrier> barriers;
-    barriers.reserve(buffers.size());
-
-    for (raw_buffer* buffer : buffers)
-    {
-        rhi_buffer_barrier barrier = {
-            .buffer = buffer->get_rhi(),
-            .src_stages = RHI_PIPELINE_STAGE_COMPUTE | RHI_PIPELINE_STAGE_VERTEX |
-                          RHI_PIPELINE_STAGE_FRAGMENT,
-            .src_access = RHI_ACCESS_SHADER_READ,
-            .dst_stages = RHI_PIPELINE_STAGE_TRANSFER,
-            .dst_access = RHI_ACCESS_TRANSFER_WRITE,
-            .offset = 0,
-            .size = buffer->get_size(),
-        };
-
-        barriers.push_back(barrier);
-    }
-
-    command->set_pipeline_barrier(barriers.data(), barriers.size(), nullptr, 0);
-
-    m_gpu_buffer_uploader->record(command);
-
-    for (rhi_buffer_barrier& barrier : barriers)
-    {
-        std::swap(barrier.src_stages, barrier.dst_stages);
-        std::swap(barrier.src_access, barrier.dst_access);
-    }
-
-    command->set_pipeline_barrier(barriers.data(), barriers.size(), nullptr, 0);
-}
-
-void render_scene::add_instance_to_group(
-    render_id instance_id,
-    const geometry* geometry,
-    const material* material)
-{
-    assert(geometry != nullptr && material != nullptr);
+    assert(material != nullptr);
 
     render_id batch_id = 0;
     render_id group_id = 0;
@@ -289,11 +239,7 @@ void render_scene::add_instance_to_group(
     auto batch_iter = m_pipeline_to_batch.find(pipeline_hash);
     if (batch_iter == m_pipeline_to_batch.end())
     {
-        batch_id = m_batch_allocator.allocate();
-        if (batch_id >= m_batches.size())
-        {
-            m_batches.resize(batch_id + 1);
-        }
+        batch_id = m_batches.add();
         m_pipeline_to_batch[pipeline_hash] = batch_id;
 
         auto& batch = m_batches[batch_id];
@@ -306,180 +252,152 @@ void render_scene::add_instance_to_group(
     }
 
     auto& batch = m_batches[batch_id];
+    ++batch.instance_count;
 
-    auto group_iter = std::find_if(
-        batch.groups.begin(),
-        batch.groups.end(),
-        [geometry, this](const render_id& group_id)
-        {
-            return m_groups[group_id].geometry == geometry;
-        });
-
-    if (group_iter == batch.groups.end())
-    {
-        group_id = m_group_allocator.allocate();
-        if (group_id >= m_groups.size())
-        {
-            m_groups.resize(group_id + 1);
-        }
-
-        auto& group = m_groups[group_id];
-        group.vertex_buffers.clear();
-
-        auto& device = render_device::instance();
-        for (const auto& vertex_attribute :
-             device.get_vertex_attributes(material->get_pipeline().vertex_shader))
-        {
-            group.vertex_buffers.push_back(geometry->get_vertex_buffer(vertex_attribute));
-        }
-        group.index_buffer = geometry->get_index_buffer();
-        group.geometry = geometry;
-        group.instance_count = 1;
-        group.id = group_id;
-        group.batch = batch_id;
-
-        batch.groups.push_back(group_id);
-    }
-    else
-    {
-        group_id = (*group_iter);
-        ++m_groups[group_id].instance_count;
-    }
-
-    m_instances[instance_id].group_id = group_id;
-
-    m_scene_states |= RENDER_SCENE_STAGE_GROUP_DIRTY;
+    m_instances[instance_id].batch_id = batch_id;
 }
 
-void render_scene::remove_instance_from_group(render_id instance_id)
+void render_scene::remove_instance_from_batch(render_id instance_id)
 {
-    render_id group_id = m_instances[instance_id].group_id;
+    render_id batch_id = m_instances[instance_id].batch_id;
 
-    if (group_id == INVALID_RENDER_ID)
+    if (batch_id == INVALID_RENDER_ID)
     {
         return;
     }
 
-    auto& group = m_groups[group_id];
+    auto& batch = m_batches[batch_id];
+    --batch.instance_count;
 
-    --group.instance_count;
-
-    if (group.instance_count == 0)
+    if (batch.instance_count == 0)
     {
-        auto& batch = m_batches[group.batch];
+        m_batches.remove(batch_id);
+    }
+}
 
-        batch.groups.erase(std::find(batch.groups.begin(), batch.groups.end(), group_id));
-
-        if (batch.groups.empty())
+bool render_scene::update_mesh(gpu_buffer_uploader* uploader)
+{
+    geometry_manager* geometry_manager = render_device::instance().get_geometry_manager();
+    return m_meshes.update(
+        [&](const render_mesh& mesh) -> shader::mesh_data
         {
-            m_batch_allocator.free(group.batch);
-        }
+            box3f world_aabb = box::transform(mesh.aabb, mesh.model_matrix);
+            auto buffer_addresses = geometry_manager->get_buffer_addresses(mesh.geometry->get_id());
 
-        m_group_allocator.free(group_id);
-    }
-
-    m_scene_states |= RENDER_SCENE_STAGE_GROUP_DIRTY;
+            return {
+                .model_matrix = mesh.model_matrix,
+                .aabb_min = world_aabb.min,
+                .flags = 0,
+                .aabb_max = world_aabb.max,
+                .index_offset = buffer_addresses[GEOMETRY_BUFFER_INDEX] / 4,
+                .position_address = buffer_addresses[GEOMETRY_BUFFER_POSITION],
+                .normal_address = buffer_addresses[GEOMETRY_BUFFER_NORMAL],
+                .tangent_address = buffer_addresses[GEOMETRY_BUFFER_TANGENT],
+                .texcoord_address = buffer_addresses[GEOMETRY_BUFFER_TEXCOORD],
+                .custom_addresses =
+                    {
+                        buffer_addresses[GEOMETRY_BUFFER_CUSTOM_0],
+                        buffer_addresses[GEOMETRY_BUFFER_CUSTOM_1],
+                        buffer_addresses[GEOMETRY_BUFFER_CUSTOM_2],
+                        buffer_addresses[GEOMETRY_BUFFER_CUSTOM_3],
+                    },
+            };
+        },
+        [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
+        {
+            uploader->upload(
+                buffer,
+                data,
+                size,
+                offset,
+                RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_COMPUTE,
+                RHI_ACCESS_SHADER_READ);
+        });
 }
 
-void render_scene::update_mesh()
+bool render_scene::update_instance(gpu_buffer_uploader* uploader)
 {
-    auto upload_mesh = [&](render_mesh& mesh, render_id id, std::size_t index)
-    {
-        shader::mesh_data mesh_data = {
-            .model_matrix = mesh.model_matrix,
-        };
+    material_manager* material_manager = render_device::instance().get_material_manager();
 
-        m_gpu_buffer_uploader->upload(
-            m_meshes.get_buffer()->get_rhi(),
-            &mesh_data,
-            sizeof(shader::mesh_data),
-            index * sizeof(shader::mesh_data));
-    };
-
-    m_meshes.update(upload_mesh);
-
-    if (m_scene_data.mesh_buffer != m_meshes.get_buffer()->get_srv()->get_bindless())
-    {
-        m_scene_data.mesh_buffer = m_meshes.get_buffer()->get_srv()->get_bindless();
-        m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
-    }
+    return m_instances.update(
+        [&](const render_instance& instance) -> shader::instance_data
+        {
+            return {
+                .mesh_index = static_cast<std::uint32_t>(m_meshes.get_index(instance.mesh_id)),
+                .vertex_offset = instance.vertex_offset,
+                .index_offset = instance.index_offset,
+                .index_count = instance.index_count,
+                .batch_index = static_cast<std::uint32_t>(instance.batch_id),
+                .material_address =
+                    material_manager->get_material_constant_address(instance.material->get_id()),
+            };
+        },
+        [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
+        {
+            uploader->upload(
+                buffer,
+                data,
+                size,
+                offset,
+                RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_COMPUTE,
+                RHI_ACCESS_SHADER_READ);
+        });
 }
 
-void render_scene::update_instance()
+bool render_scene::update_light(gpu_buffer_uploader* uploader)
 {
-    auto upload_instance = [&](render_instance& instance, render_id id, std::size_t index)
-    {
-        shader::instance_data instance_data = {
-            .mesh_index = static_cast<std::uint32_t>(m_meshes.get_index(instance.mesh_id)),
-            .vertex_offset = instance.vertex_offset,
-            .index_offset = instance.index_offset,
-            .index_count = instance.index_count,
-            .group_index = static_cast<std::uint32_t>(instance.group_id),
-            .material_address = instance.material->get_constant_address(),
-        };
-
-        m_gpu_buffer_uploader->upload(
-            m_instances.get_buffer()->get_rhi(),
-            &instance_data,
-            sizeof(shader::instance_data),
-            index * sizeof(shader::instance_data));
-    };
-
-    m_instances.update(upload_instance);
-
-    if (m_scene_data.instance_buffer != m_instances.get_buffer()->get_srv()->get_bindless())
-    {
-        m_scene_data.instance_buffer = m_instances.get_buffer()->get_srv()->get_bindless();
-        m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
-    }
+    return m_lights.update(
+        [&](const render_light& light) -> shader::light_data
+        {
+            return {
+                .position = light.position,
+                .type = light.type,
+                .direction = light.direction,
+                .shadow = light.shadow,
+                .color = light.color,
+            };
+        },
+        [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
+        {
+            uploader->upload(
+                buffer,
+                data,
+                size,
+                offset,
+                RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_FRAGMENT |
+                    RHI_PIPELINE_STAGE_COMPUTE,
+                RHI_ACCESS_SHADER_READ);
+        });
 }
 
-void render_scene::update_light()
+bool render_scene::update_batch(gpu_buffer_uploader* uploader)
 {
-    auto upload_light = [&](render_light& light, render_id id, std::size_t index)
-    {
-        shader::light_data light_data = {
-            .position = light.position,
-            .type = light.type,
-            .direction = light.direction,
-            .shadow = light.shadow,
-            .color = light.color,
-        };
-
-        m_gpu_buffer_uploader->upload(
-            m_lights.get_buffer()->get_rhi(),
-            &light_data,
-            sizeof(shader::light_data),
-            index * sizeof(shader::light_data));
-    };
-
-    m_lights.update(upload_light);
-
-    if (m_scene_data.light_buffer != m_lights.get_buffer()->get_srv()->get_bindless())
-    {
-        m_scene_data.light_buffer = m_lights.get_buffer()->get_srv()->get_bindless();
-        m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
-    }
-}
-
-void render_scene::update_group_buffer()
-{
-    assert(m_groups.size() * sizeof(std::uint32_t) <= m_group_buffer->get_size());
-
     std::uint32_t instance_offset = 0;
-    std::vector<std::uint32_t> group_offsets(m_groups.size());
-
-    for (auto& group : m_groups)
+    for (std::size_t i = 0; i < m_batches.get_size(); ++i)
     {
-        group_offsets[group.id] = group.instance_offset = instance_offset;
-        instance_offset += static_cast<std::uint32_t>(group.instance_count);
+        auto& batch = m_batches[i];
+        batch.instance_offset = instance_offset;
+        instance_offset += batch.instance_count;
+
+        m_batches.mark_dirty(i);
     }
 
-    m_gpu_buffer_uploader->upload(
-        m_group_buffer->get_rhi(),
-        group_offsets.data(),
-        sizeof(std::uint32_t) * group_offsets.size(),
-        0);
+    return m_batches.update(
+        [](const render_batch& batch) -> std::uint32_t
+        {
+            return batch.instance_offset;
+        },
+        [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
+        {
+            uploader->upload(
+                buffer,
+                data,
+                size,
+                offset,
+                RHI_PIPELINE_STAGE_COMPUTE,
+                RHI_ACCESS_SHADER_READ);
+        },
+        true);
 }
 
 render_camera::render_camera(rhi_texture* render_target, rhi_parameter* camera_parameter)

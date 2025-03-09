@@ -42,22 +42,22 @@ void control_system::tick()
 
     bool mouse_hold = false;
     int mouse_wheel = window.get_mouse().get_wheel();
-    if (window.get_mouse().key(MOUSE_KEY_LEFT).press())
+
+    if (window.get_mouse().key(MOUSE_KEY_LEFT).hold())
     {
-        m_mouse_position_delta[0] = 0.0f;
-        m_mouse_position_delta[1] = 0.0f;
-        m_mouse_position[0] = window.get_mouse().get_x();
-        m_mouse_position[1] = window.get_mouse().get_y();
-    }
-    else if (window.get_mouse().key(MOUSE_KEY_LEFT).hold())
-    {
-        m_mouse_position_delta[0] = window.get_mouse().get_x() - m_mouse_position[0];
-        m_mouse_position_delta[1] = window.get_mouse().get_y() - m_mouse_position[1];
-        m_mouse_position[0] = window.get_mouse().get_x();
-        m_mouse_position[1] = window.get_mouse().get_y();
+        m_mouse_position_delta.x = window.get_mouse().get_x() - m_mouse_position[0];
+        m_mouse_position_delta.y = window.get_mouse().get_y() - m_mouse_position[1];
 
         mouse_hold = true;
     }
+    else
+    {
+        m_mouse_position_delta.x = 0.0f;
+        m_mouse_position_delta.y = 0.0f;
+    }
+
+    m_mouse_position.x = window.get_mouse().get_x();
+    m_mouse_position.y = window.get_mouse().get_y();
 
     if (mouse_hold || mouse_wheel != 0)
     {

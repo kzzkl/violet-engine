@@ -116,38 +116,45 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
         m_pmx.indexes);
     assert(!smooth_normals.empty());
 
+    std::vector<vec4f> smooth_normal_and_outline(smooth_normals.size());
+    for (std::size_t i = 0; i < smooth_normals.size(); ++i)
+    {
+        smooth_normal_and_outline[i].x = smooth_normals[i].x;
+        smooth_normal_and_outline[i].y = smooth_normals[i].y;
+        smooth_normal_and_outline[i].z = smooth_normals[i].z;
+        smooth_normal_and_outline[i].w = m_pmx.outline[i];
+    }
+
     mesh_geometry = std::make_unique<geometry>();
-    mesh_geometry->add_attribute(
-        "position",
-        m_pmx.position,
-        RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
-    mesh_geometry->add_attribute("normal", m_pmx.normal, RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
-    mesh_geometry->add_attribute("tangent", tangents, RHI_BUFFER_VERTEX | RHI_BUFFER_STORAGE);
-    mesh_geometry->add_attribute("smooth_normal", smooth_normals, RHI_BUFFER_VERTEX);
-    mesh_geometry->add_attribute("texcoord", m_pmx.texcoord, RHI_BUFFER_VERTEX);
+    mesh_geometry->set_position(m_pmx.position);
+    mesh_geometry->set_normal(m_pmx.normal);
+    mesh_geometry->set_tangent(tangents);
+    mesh_geometry->set_texcoord(m_pmx.texcoord);
+    mesh_geometry->set_custom(0, smooth_normal_and_outline);
     for (std::size_t i = 0; i < m_pmx.add_texcoord.size(); ++i)
     {
-        mesh_geometry->add_attribute(
-            "texcoord" + std::to_string(i + 2),
-            m_pmx.add_texcoord[i],
-            RHI_BUFFER_VERTEX);
+        mesh_geometry->set_custom(i + 1, m_pmx.add_texcoord[i]);
     }
-    mesh_geometry->add_attribute("outline", m_pmx.outline, RHI_BUFFER_VERTEX);
-    mesh_geometry->add_attribute("skin", m_pmx.skin, RHI_BUFFER_STORAGE);
-    mesh_geometry->add_attribute("bdef", m_pmx.bdef, RHI_BUFFER_STORAGE);
-    if (m_pmx.sdef.empty())
+
+    mesh_geometry->set_additional_buffer(
+        "skin",
+        m_pmx.skin.data(),
+        m_pmx.skin.size() * sizeof(vec2u),
+        RHI_BUFFER_STORAGE);
+    mesh_geometry->set_additional_buffer(
+        "bdef",
+        m_pmx.bdef.data(),
+        m_pmx.bdef.size() * sizeof(pmx::bdef_data),
+        RHI_BUFFER_STORAGE);
+    if (!m_pmx.sdef.empty())
     {
-        // Workaround for PMX files without sdef data.
-        std::vector<pmx::sdef_data> empty(1);
-        mesh_geometry->add_attribute("sdef", empty, RHI_BUFFER_STORAGE);
-    }
-    else
-    {
-        mesh_geometry->add_attribute("sdef", m_pmx.sdef, RHI_BUFFER_STORAGE);
+        mesh_geometry->set_additional_buffer(
+            "sdef",
+            m_pmx.sdef.data(),
+            m_pmx.sdef.size() * sizeof(pmx::sdef_data),
+            RHI_BUFFER_STORAGE);
     }
     mesh_geometry->set_indexes(m_pmx.indexes);
-    mesh_geometry->set_vertex_count(m_pmx.position.size());
-    mesh_geometry->set_index_count(m_pmx.indexes.size());
 
     scene.geometries.push_back(std::move(mesh_geometry));
 
@@ -233,12 +240,7 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
     }
 
     auto& root_skinned = world.get_component<skinned_component>(m_root);
-    root_skinned.inputs = {"position", "normal", "tangent", "skin", "bdef", "sdef", "morph"};
-    root_skinned.outputs = {
-        {"position", RHI_FORMAT_R32G32B32_FLOAT},
-        {"normal", RHI_FORMAT_R32G32B32_FLOAT},
-        {"tangent", RHI_FORMAT_R32G32B32_FLOAT},
-    };
+    root_skinned.inputs = {"skin", "bdef", "sdef", "morph"};
     root_skinned.shader = render_device::instance().get_shader<mmd_skinning_cs>();
 }
 

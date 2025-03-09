@@ -1,31 +1,4 @@
-#include "common.hlsli"
-
-ConstantBuffer<scene_data> scene : register(b0, space1);
-ConstantBuffer<camera_data> camera : register(b0, space2);
-
-float3 outline_offset(float3 position_ws, float3 normal_ws, float outline_width)
-{
-    float4 position_vs = mul(camera.view, float4(position_ws, 1.0));
-
-    float camera_mul_fix = abs(position_vs.z);
-    camera_mul_fix = saturate(camera_mul_fix);
-    camera_mul_fix *= camera.fov;
-    camera_mul_fix *= 0.001;
-    
-    float outline_expand = outline_width * camera_mul_fix;
-    position_ws.xyz += normal_ws * outline_expand;
-
-    return position_ws.xyz + normal_ws * outline_expand;
-}
-
-struct vs_input
-{
-    float3 position : POSITION;
-    float3 normal : NORMAL;
-    float3 tangent : TANGENT;
-    float3 smooth_normal : SMOOTH_NORMAL;
-    float outline: OUTLINE;
-};
+#include "mesh.hlsli"
 
 struct vs_output
 {
@@ -33,7 +6,7 @@ struct vs_output
     float3 color : COLOR;
 };
 
-struct mmd_outline
+struct mmd_outline_material
 {
     float3 color;
     float width;
@@ -41,40 +14,37 @@ struct mmd_outline
     float strength;
 };
 
-float3 get_smooth_normal(vs_input input)
+float3 get_smooth_normal(vertex vertex, float3 smooth_normal)
 {
-    float3 n = normalize(input.normal);
-    float3 t = normalize(input.tangent);
-    float3 b = normalize(cross(n, t));
+    float3 n = normalize(vertex.normal);
+    float3 t = normalize(vertex.tangent.xyz);
+    float3 b = normalize(cross(n, t) * vertex.tangent.w);
     float3x3 tbn = transpose(float3x3(t, b, n));
 
-    return normalize(mul(tbn, input.smooth_normal));
+    return normalize(mul(tbn, smooth_normal));
 }
 
-vs_output vs_main(vs_input input, uint instance_index : SV_InstanceID)
+vs_output vs_main(uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID)
 {
-    StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
-    StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
-
-    instance_data instance = instances[instance_index];
-    mesh_data mesh = meshes[instance.mesh_index];
+    mesh mesh = mesh::create(instance_id, vertex_id);
+    vertex vertex = mesh.fetch_vertex();
     
-    mmd_outline material = load_material<mmd_outline>(scene.material_buffer, instance.material_address);
+    mmd_outline_material material = load_material<mmd_outline_material>(scene.material_buffer, mesh.get_material_address());
 
-    float4 position_ws = mul(mesh.model_matrix, float4(input.position, 1.0));
-    float3 smooth_normal_ws = mul((float3x3)mesh.model_matrix, get_smooth_normal(input));
+    float4 smooth_normal_and_outline = mesh.fetch_custom_attribute<float4>(0);
+    float3 smooth_normal_ws = mul((float3x3)mesh.get_model_matrix(), get_smooth_normal(vertex, smooth_normal_and_outline.xyz));
 
-    float4 position_vs = mul(camera.view, position_ws);
+    float4 position_vs = mul(camera.view, float4(vertex.position_ws, 1.0));
 
     // https://github.com/ColinLeung-NiloCat/UnityURPToonLitShaderExample/blob/master/NiloOutlineUtil.hlsl
     float camera_mul_fix = abs(position_vs.z);
     camera_mul_fix = saturate(camera_mul_fix);
     camera_mul_fix *= camera.fov / PI * 180.0;
     camera_mul_fix *= 0.001;
-    position_ws.xyz += smooth_normal_ws * material.width * input.outline * camera_mul_fix;
+    vertex.position_ws += smooth_normal_ws * material.width *  camera_mul_fix;
 
     // z offset.
-    position_vs = mul(camera.view, float4(position_ws.xyz, 1.0));
+    position_vs = mul(camera.view, float4(vertex.position_ws, 1.0));
     position_vs.xyz += normalize(position_vs.xyz) * material.z_offset;
 
     vs_output output;

@@ -2,80 +2,71 @@
 
 #include "graphics/morph_target.hpp"
 #include "graphics/render_device.hpp"
+#include "math/box.hpp"
+#include <array>
 #include <string>
 #include <unordered_map>
 
 namespace violet
 {
+enum geometry_buffer_type
+{
+    GEOMETRY_BUFFER_POSITION,
+    GEOMETRY_BUFFER_NORMAL,
+    GEOMETRY_BUFFER_TANGENT,
+    GEOMETRY_BUFFER_TEXCOORD,
+    GEOMETRY_BUFFER_CUSTOM_0,
+    GEOMETRY_BUFFER_CUSTOM_1,
+    GEOMETRY_BUFFER_CUSTOM_2,
+    GEOMETRY_BUFFER_CUSTOM_3,
+    GEOMETRY_BUFFER_INDEX,
+    GEOMETRY_BUFFER_COUNT,
+};
+
 class geometry
 {
 public:
+    static constexpr std::size_t max_custom_attribute = 4;
+
     geometry();
     virtual ~geometry();
 
-    template <std::ranges::contiguous_range R>
-    void add_attribute(
-        std::string_view name,
-        R&& attribute,
-        rhi_buffer_flags flags = RHI_BUFFER_VERTEX)
-    {
-        assert(m_vertex_buffer_map.find(name.data()) == m_vertex_buffer_map.end());
+    void set_position(std::span<const vec3f> position);
+    void set_position_shared(geometry* src_geometry);
+    std::span<const vec3f> get_position() const noexcept;
 
-        auto buffer = std::make_unique<vertex_buffer>(attribute, flags);
-        m_vertex_buffer_map[name.data()] = buffer.get();
-        m_buffers.emplace_back(std::move(buffer));
-    }
+    void set_normal(std::span<const vec3f> normal);
+    void set_normal_shared(geometry* src_geometry);
+    std::span<const vec3f> get_normal() const noexcept;
 
-    void add_attribute(
-        std::string_view name,
-        std::size_t vertex_size,
-        std::size_t vertex_count,
-        rhi_buffer_flags flags = RHI_BUFFER_VERTEX);
+    void set_tangent(std::span<const vec4f> tangent);
+    void set_tangent_shared(geometry* src_geometry);
+    std::span<const vec4f> get_tangent() const noexcept;
 
-    void add_attribute(std::string_view name, vertex_buffer* buffer);
+    void set_texcoord(std::span<const vec2f> texcoord);
+    void set_texcoord_shared(geometry* src_geometry);
+    std::span<const vec2f> get_texcoord() const noexcept;
 
     template <std::ranges::contiguous_range R>
-    void set_indexes(R&& indexes, rhi_buffer_flags flags = RHI_BUFFER_INDEX)
+    void set_custom(std::size_t index, R&& attribute)
     {
-        assert(m_index_buffer == nullptr);
+        using type = decltype(*attribute.data());
 
-        auto buffer = std::make_unique<index_buffer>(indexes, flags);
-        m_index_buffer = buffer.get();
-        m_buffers.emplace_back(std::move(buffer));
+        set_buffer(
+            static_cast<geometry_buffer_type>(GEOMETRY_BUFFER_CUSTOM_0 + index),
+            attribute.data(),
+            attribute.size() * sizeof(type),
+            sizeof(type));
     }
 
-    void set_indexes(
-        std::size_t index_size,
-        std::size_t index_count,
-        rhi_buffer_flags flags = RHI_BUFFER_INDEX);
+    void set_custom_shared(std::size_t index, geometry* src_geometry);
 
-    void set_indexes(index_buffer* buffer);
-
-    vertex_buffer* get_vertex_buffer(std::string_view name) const;
-
-    const std::unordered_map<std::string, vertex_buffer*>& get_vertex_buffers() const noexcept
-    {
-        return m_vertex_buffer_map;
-    }
-
-    index_buffer* get_index_buffer() const noexcept
-    {
-        return m_index_buffer;
-    }
-
-    void set_vertex_count(std::uint32_t vertex_count) noexcept
-    {
-        m_vertex_count = vertex_count;
-    }
+    void set_indexes(std::span<const std::uint32_t> indexes);
+    void set_indexes_shared(geometry* src_geometry);
 
     std::uint32_t get_vertex_count() const noexcept
     {
         return m_vertex_count;
-    }
-
-    void set_index_count(std::uint32_t index_count) noexcept
-    {
-        m_index_count = index_count;
     }
 
     std::uint32_t get_index_count() const noexcept
@@ -101,29 +92,77 @@ public:
         return m_morph_target_buffer.get();
     }
 
+    void set_additional_buffer(
+        std::string_view name,
+        const void* data,
+        std::size_t size,
+        rhi_buffer_flags flags);
+
+    raw_buffer* get_additional_buffer(std::string_view name) const;
+
+    box3f get_aabb() const noexcept
+    {
+        return m_aabb;
+    }
+
     render_id get_id() const noexcept
     {
         return m_id;
     }
 
+    void update();
+
 private:
-    void set_indexes(
+    struct geometry_buffer
+    {
+        std::vector<std::uint8_t> buffer;
+        std::size_t stride;
+
+        geometry* src_geometry{nullptr};
+
+        bool dirty{false};
+    };
+
+    void set_buffer(
+        geometry_buffer_type type,
         const void* data,
         std::size_t size,
-        std::size_t index_size,
-        rhi_buffer_flags flags);
+        std::size_t stride);
+    void set_buffer_shared(geometry_buffer_type type, geometry* src_geometry);
 
-    std::unordered_map<std::string, vertex_buffer*> m_vertex_buffer_map;
-    index_buffer* m_index_buffer{nullptr};
+    template <typename T>
+    std::span<const T> get_buffer(geometry_buffer_type type) const
+    {
+        const auto& geometry_buffer = m_geometry_buffers[type];
+        assert(geometry_buffer.stride == sizeof(T));
 
-    std::vector<std::unique_ptr<raw_buffer>> m_buffers;
+        if (geometry_buffer.src_geometry != nullptr)
+        {
+            return geometry_buffer.src_geometry->get_buffer<T>(type);
+        }
 
-    std::uint32_t m_vertex_count{0};
-    std::uint32_t m_index_count{0};
+        return {
+            reinterpret_cast<const T*>(geometry_buffer.buffer.data()),
+            m_vertex_count,
+        };
+    }
+
+    void mark_dirty();
+
+    std::array<geometry_buffer, GEOMETRY_BUFFER_COUNT> m_geometry_buffers;
+
+    std::size_t m_vertex_count;
+    std::size_t m_index_count;
+
+    std::unordered_map<std::string, std::unique_ptr<raw_buffer>> m_additional_buffers;
 
     std::unordered_map<std::string, std::size_t> m_morph_name_to_index;
     std::unique_ptr<morph_target_buffer> m_morph_target_buffer;
 
+    box3f m_aabb;
+
     render_id m_id{INVALID_RENDER_ID};
+
+    bool m_dirty{false};
 };
 } // namespace violet

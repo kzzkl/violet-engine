@@ -165,8 +165,7 @@ public:
 
     vk_command* allocate_command();
 
-    void execute(rhi_command* command);
-    void execute_sync(rhi_command* command);
+    void execute(rhi_command* command, bool sync = false);
 
     void begin_frame();
 

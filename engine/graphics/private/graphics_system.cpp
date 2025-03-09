@@ -4,6 +4,8 @@
 #include "components/camera_meta_component.hpp"
 #include "components/scene_component.hpp"
 #include "environment_system.hpp"
+#include "gpu_buffer_uploader.hpp"
+#include "graphics/geometry_manager.hpp"
 #include "graphics/material_manager.hpp"
 #include "light_system.hpp"
 #include "mesh_system.hpp"
@@ -21,7 +23,9 @@ graphics_system::graphics_system()
 
 graphics_system::~graphics_system()
 {
+    m_debug_drawer = nullptr;
     m_scene_manager = nullptr;
+    m_gpu_buffer_uploader = nullptr;
     m_fences.clear();
     m_frame_fence = nullptr;
     m_update_fence = nullptr;
@@ -82,6 +86,10 @@ bool graphics_system::initialize(const dictionary& config)
         .set_execute(
             [this]()
             {
+#ifndef NDEBUG
+                m_debug_drawer->tick();
+#endif
+
                 get_system<mesh_system>().update(*m_scene_manager);
                 get_system<skinning_system>().update();
                 get_system<light_system>().update(*m_scene_manager);
@@ -119,6 +127,12 @@ bool graphics_system::initialize(const dictionary& config)
 
     m_scene_manager = std::make_unique<render_scene_manager>();
 
+    m_gpu_buffer_uploader = std::make_unique<gpu_buffer_uploader>(4ull * 1024 * 1024);
+
+#ifndef NDEBUG
+    m_debug_drawer = std::make_unique<debug_drawer>(get_world());
+#endif
+
     return true;
 }
 
@@ -133,32 +147,45 @@ void graphics_system::begin_frame()
     device.begin_frame();
     switch_frame_resource();
     m_allocator->tick();
+    m_gpu_buffer_uploader->tick();
 }
 
 void graphics_system::end_frame()
 {
     auto& device = render_device::instance();
 
-    bool need_record = device.get_material_manager()->update();
-    need_record = m_scene_manager->update() || need_record;
+    device.get_material_manager()->update(m_gpu_buffer_uploader.get());
+    device.get_geometry_manager()->update(m_gpu_buffer_uploader.get());
+    m_scene_manager->update(m_gpu_buffer_uploader.get());
 
-    if (need_record)
+    rhi_command* command = nullptr;
+
+    if (!m_gpu_buffer_uploader->empty())
     {
-        rhi_command* command = device.allocate_command();
+        if (command == nullptr)
+        {
+            command = device.allocate_command();
+        }
 
-        device.get_material_manager()->record(command);
-        m_scene_manager->record(command);
+        m_gpu_buffer_uploader->record(command);
 
         command->signal(m_update_fence.get(), ++m_update_fence_value);
-        device.execute(command);
     }
 
     auto& skinning = get_system<skinning_system>();
     if (skinning.need_record())
     {
-        rhi_command* command = device.allocate_command();
+        if (command == nullptr)
+        {
+            command = device.allocate_command();
+        }
+
         skinning.morphing(command);
         skinning.skinning(command);
+    }
+
+    if (command != nullptr)
+    {
         device.execute(command);
     }
 

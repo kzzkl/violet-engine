@@ -105,7 +105,6 @@ void render_device::initialize(rhi* rhi)
     m_rhi_deleter = rhi_deleter(rhi);
 
     m_shader_compiler = std::make_unique<shader_compiler>();
-    m_fence = create_fence();
 
     m_material_manager = std::make_unique<material_manager>();
     m_geometry_manager = std::make_unique<geometry_manager>();
@@ -120,7 +119,6 @@ void render_device::reset()
     m_transient_allocator = nullptr;
 
     m_shaders.clear();
-    m_fence = nullptr;
 
     m_material_manager = nullptr;
     m_geometry_manager = nullptr;
@@ -137,18 +135,9 @@ rhi_command* render_device::allocate_command()
     return m_rhi->allocate_command();
 }
 
-void render_device::execute(rhi_command* command)
+void render_device::execute(rhi_command* command, bool sync)
 {
-    m_rhi->execute(command);
-}
-
-void render_device::execute_sync(rhi_command* command)
-{
-    ++m_fence_value;
-
-    command->signal(m_fence.get(), m_fence_value);
-    m_rhi->execute(command);
-    m_fence->wait(m_fence_value);
+    m_rhi->execute(command, sync);
 }
 
 void render_device::begin_frame()

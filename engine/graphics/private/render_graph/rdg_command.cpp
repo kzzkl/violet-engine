@@ -1,6 +1,6 @@
 #include "graphics/render_graph/rdg_command.hpp"
+#include "graphics/geometry_manager.hpp"
 #include "graphics/render_scene.hpp"
-#include <algorithm>
 #include <cassert>
 
 namespace violet
@@ -71,44 +71,37 @@ void rdg_command::draw_instances(
 
     auto& device = render_device::instance();
 
-    for (const auto& batch : m_scene->get_batches())
-    {
-        if (batch.material_type != type || batch.groups.empty())
+    bool first_batch = true;
+
+    m_scene->each_batch(
+        type,
+        [&](render_id id,
+            const rdg_raster_pipeline& pipeline,
+            std::size_t instance_offset,
+            std::size_t instance_count)
         {
-            continue;
-        }
+            set_pipeline(pipeline);
 
-        set_pipeline(batch.pipeline);
+            if (first_batch)
+            {
+                set_parameter(0, device.get_bindless_parameter());
+                set_parameter(1, m_scene->get_scene_parameter());
+                set_parameter(2, m_camera->get_camera_parameter());
 
-        set_parameter(0, device.get_bindless_parameter());
-        set_parameter(1, m_scene->get_scene_parameter());
-        set_parameter(2, m_camera->get_camera_parameter());
+                set_index_buffer(
+                    device.get_geometry_manager()->get_index_buffer()->get_rhi(),
+                    sizeof(std::uint32_t));
 
-        for (render_id group_id : batch.groups)
-        {
-            const auto& group = m_scene->get_group(group_id);
-
-            std::vector<rhi_buffer*> vertex_buffers(group.vertex_buffers.size());
-            std::transform(
-                group.vertex_buffers.begin(),
-                group.vertex_buffers.end(),
-                vertex_buffers.begin(),
-                [](vertex_buffer* buffer)
-                {
-                    return buffer->get_rhi();
-                });
-
-            set_vertex_buffers(vertex_buffers);
-            set_index_buffer(group.index_buffer->get_rhi(), group.index_buffer->get_index_size());
+                first_batch = false;
+            }
 
             m_command->draw_indexed_indirect(
                 command_buffer,
-                group.instance_offset * sizeof(shader::draw_command),
+                instance_offset * sizeof(shader::draw_command),
                 count_buffer,
-                group.id * sizeof(std::uint32_t),
-                group.instance_count);
-        }
-    }
+                id * sizeof(std::uint32_t),
+                instance_count);
+        });
 }
 
 void rdg_command::draw_instances(
@@ -121,44 +114,28 @@ void rdg_command::draw_instances(
 
     auto& device = render_device::instance();
 
-    const auto& attributes = device.get_vertex_attributes(pipeline.vertex_shader);
-
     set_pipeline(pipeline);
     set_parameter(0, device.get_bindless_parameter());
     set_parameter(1, m_scene->get_scene_parameter());
     set_parameter(2, m_camera->get_camera_parameter());
 
-    for (const auto& batch : m_scene->get_batches())
-    {
-        if (batch.material_type != type || batch.groups.empty())
+    set_index_buffer(
+        device.get_geometry_manager()->get_index_buffer()->get_rhi(),
+        sizeof(std::uint32_t));
+
+    m_scene->each_batch(
+        type,
+        [&](render_id id,
+            const rdg_raster_pipeline& pipeline,
+            std::size_t instance_offset,
+            std::size_t instance_count)
         {
-            continue;
-        }
-
-        for (render_id group_id : batch.groups)
-        {
-            const auto& group = m_scene->get_group(group_id);
-
-            std::vector<rhi_buffer*> vertex_buffers(attributes.size());
-            std::transform(
-                attributes.begin(),
-                attributes.end(),
-                vertex_buffers.begin(),
-                [&](const std::string& attribute)
-                {
-                    return group.geometry->get_vertex_buffer(attribute)->get_rhi();
-                });
-
-            set_vertex_buffers(vertex_buffers);
-            set_index_buffer(group.index_buffer->get_rhi(), group.index_buffer->get_index_size());
-
             m_command->draw_indexed_indirect(
                 command_buffer,
-                group.instance_offset * sizeof(shader::draw_command),
+                instance_offset * sizeof(shader::draw_command),
                 count_buffer,
-                group.id * sizeof(std::uint32_t),
-                group.instance_count);
-        }
-    }
+                id * sizeof(std::uint32_t),
+                instance_count);
+        });
 }
 } // namespace violet

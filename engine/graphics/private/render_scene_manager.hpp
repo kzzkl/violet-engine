@@ -7,8 +7,7 @@ namespace violet
 class render_scene_manager
 {
 public:
-    bool update();
-    void record(rhi_command* command);
+    void update(gpu_buffer_uploader* uploader);
 
     render_scene* get_scene(std::uint32_t layer);
 
