@@ -204,6 +204,4 @@ float2 get_compute_texcoord(uint2 pixel_coord, uint width, uint height)
     return (float2(pixel_coord) + 0.5) / float2(width, height);
 }
 
-
-
 #endif

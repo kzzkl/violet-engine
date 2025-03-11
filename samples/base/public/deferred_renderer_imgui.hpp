@@ -7,10 +7,10 @@ namespace violet
 {
 class deferred_renderer_imgui : public deferred_renderer
 {
-public:
-    void render(render_graph& graph) override
+protected:
+    void on_render(render_graph& graph) override
     {
-        deferred_renderer::render(graph);
+        deferred_renderer::on_render(graph);
 
         m_imgui_pass.add(
             graph,

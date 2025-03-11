@@ -327,15 +327,6 @@ rhi_fence* graphics_system::render(
         render_camera.set_scissor_rects(camera->scissor_rects);
     }
 
-    for (const auto& feature : camera->features)
-    {
-        if (feature->is_enable())
-        {
-            feature->update(extent.width, extent.height);
-            render_camera.add_feature(feature.get());
-        }
-    }
-
     render_graph graph(
         "Camera",
         m_scene_manager->get_scene(layer),

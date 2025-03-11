@@ -7,10 +7,9 @@ namespace violet
 {
 class mmd_renderer : public renderer
 {
-public:
-    void render(render_graph& graph) override;
-
 private:
+    void on_render(render_graph& graph) override;
+
     void add_cull_pass(render_graph& graph);
     void add_opaque_pass(render_graph& graph);
     void add_hzb_pass(render_graph& graph);

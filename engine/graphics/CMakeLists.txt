@@ -45,6 +45,7 @@ add_library(${PROJECT_NAME} STATIC
     ./private/render_device.cpp
     ./private/render_scene_manager.cpp
     ./private/render_scene.cpp
+    ./private/renderer.cpp
     ./private/rhi_plugin.cpp
     ./private/shader_compiler.cpp
     ./private/skinning_system.cpp

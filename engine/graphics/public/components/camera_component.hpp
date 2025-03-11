@@ -1,6 +1,5 @@
 #pragma once
 
-#include "graphics/render_feature.hpp"
 #include "graphics/renderer.hpp"
 #include <variant>
 
@@ -14,13 +13,11 @@ struct camera_component
 
     float priority;
 
-    renderer* renderer;
+    std::unique_ptr<renderer> renderer;
     std::variant<rhi_texture*, rhi_swapchain*> render_target;
 
     rhi_viewport viewport;
     std::vector<rhi_scissor_rect> scissor_rects;
-
-    std::vector<std::unique_ptr<render_feature_base>> features;
 
     bool has_render_target() const
     {
@@ -61,20 +58,6 @@ struct camera_component
             render_target);
 
         return result;
-    }
-
-    template <typename T>
-    T* get_feature() const
-    {
-        for (const auto& feature : features)
-        {
-            if (feature->get_id() == render_feature_index::value<T>())
-            {
-                return static_cast<T*>(feature.get());
-            }
-        }
-
-        return nullptr;
     }
 };
 } // namespace violet

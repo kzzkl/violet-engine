@@ -83,7 +83,6 @@ private:
             .flags = RHI_TEXTURE_TRANSFER_DST | RHI_TEXTURE_RENDER_TARGET,
             .window_handle = get_system<window_system>().get_handle(),
         });
-        m_renderer = std::make_unique<deferred_renderer_imgui>();
 
         m_geometry = std::make_unique<box_geometry>();
         m_material = std::make_unique<unlit_material>();
@@ -235,7 +234,7 @@ private:
         camera_transform.set_position({0.0f, 0.0f, -10.0f});
 
         auto& main_camera = world.get_component<camera_component>(m_camera);
-        main_camera.renderer = m_renderer.get();
+        main_camera.renderer = std::make_unique<deferred_renderer_imgui>();
         main_camera.render_target = m_swapchain.get();
     }
 
@@ -275,7 +274,6 @@ private:
     std::unique_ptr<unlit_material> m_material;
 
     rhi_ptr<rhi_swapchain> m_swapchain;
-    std::unique_ptr<renderer> m_renderer;
 
     application* m_app{nullptr};
 };

@@ -38,7 +38,7 @@ shader::camera_data get_camera_data(
     mat4f_simd view_projection = matrix::mul(view, projection);
     math::store(view_projection, result.view_projection_no_jitter);
 
-    auto* taa = camera.get_feature<taa_render_feature>();
+    auto* taa = camera.renderer->get_feature<taa_render_feature>();
     if (taa && taa->is_enable())
     {
         std::size_t index = render_device::instance().get_frame_count() % halton_sequence.size();
@@ -93,7 +93,7 @@ void camera_system::update()
                 const transform_world_component& transform,
                 camera_meta_component& camera_meta)
             {
-                if (!camera.has_render_target())
+                if (!camera.has_render_target() || camera.renderer == nullptr)
                 {
                     return;
                 }

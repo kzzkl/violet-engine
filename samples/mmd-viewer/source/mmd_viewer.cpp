@@ -103,7 +103,6 @@ void mmd_viewer::initialize_render()
         .flags = RHI_TEXTURE_TRANSFER_DST | RHI_TEXTURE_RENDER_TARGET,
         .window_handle = get_system<window_system>().get_handle(),
     });
-    m_renderer = std::make_unique<mmd_renderer>();
 
     m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon01.bmp"));
     m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon02.bmp"));
@@ -149,10 +148,10 @@ void mmd_viewer::initialize_scene(
     camera_control.r = 40.0f;
 
     auto& camera = world.get_component<camera_component>(m_camera);
-    camera.renderer = m_renderer.get();
     camera.render_target = m_swapchain.get();
-    camera.features.push_back(std::make_unique<taa_render_feature>());
-    camera.features.push_back(std::make_unique<gtao_render_feature>());
+    camera.renderer = std::make_unique<mmd_renderer>();
+    camera.renderer->add_feature<taa_render_feature>();
+    camera.renderer->add_feature<gtao_render_feature>();
 
     m_light = world.create();
     world.add_component<light_component, transform_component, scene_component>(m_light);
@@ -423,7 +422,7 @@ void mmd_viewer::draw_imgui()
     if (ImGui::CollapsingHeader("TAA"))
     {
         auto& main_camera = get_world().get_component<camera_component>(m_camera);
-        auto* taa = main_camera.get_feature<taa_render_feature>();
+        auto* taa = main_camera.renderer->get_feature<taa_render_feature>();
 
         static bool enable_taa = taa->is_enable();
 
@@ -435,7 +434,7 @@ void mmd_viewer::draw_imgui()
     if (ImGui::CollapsingHeader("GTAO"))
     {
         auto& main_camera = get_world().get_component<camera_component>(m_camera);
-        auto* gtao = main_camera.get_feature<gtao_render_feature>();
+        auto* gtao = main_camera.renderer->get_feature<gtao_render_feature>();
 
         static bool enable_gtao = gtao->is_enable();
         static int slice_count = static_cast<int>(gtao->get_slice_count());

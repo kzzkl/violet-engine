@@ -28,7 +28,7 @@ struct toon_fs : public mesh_fs
     };
 };
 
-void mmd_renderer::render(render_graph& graph)
+void mmd_renderer::on_render(render_graph& graph)
 {
     m_render_extent = graph.get_camera().get_render_target()->get_extent();
 
@@ -49,7 +49,7 @@ void mmd_renderer::render(render_graph& graph)
         add_cull_pass(graph);
         add_opaque_pass(graph);
 
-        if (graph.get_camera().get_feature<gtao_render_feature>())
+        if (is_feature_enable<gtao_render_feature>())
         {
             add_hzb_pass(graph);
             add_gtao_pass(graph);
@@ -72,7 +72,7 @@ void mmd_renderer::render(render_graph& graph)
         add_transparent_pass(graph);
     }
 
-    if (graph.get_camera().get_feature<taa_render_feature>())
+    if (is_feature_enable<taa_render_feature>())
     {
         add_motion_vector_pass(graph);
         add_taa_pass(graph);
@@ -191,7 +191,7 @@ void mmd_renderer::add_hzb_pass(render_graph& graph)
 
 void mmd_renderer::add_gtao_pass(render_graph& graph)
 {
-    auto* gtao = graph.get_camera().get_feature<gtao_render_feature>();
+    auto* gtao = get_feature<gtao_render_feature>();
 
     m_ao_buffer = graph.add_texture(
         "AO Buffer",
@@ -328,7 +328,7 @@ void mmd_renderer::add_motion_vector_pass(render_graph& graph)
 
 void mmd_renderer::add_taa_pass(render_graph& graph)
 {
-    auto* taa = graph.get_camera().get_feature<taa_render_feature>();
+    auto* taa = get_feature<taa_render_feature>();
 
     rdg_texture* resolved_render_target = graph.add_texture(
         "Resolved Render Target",

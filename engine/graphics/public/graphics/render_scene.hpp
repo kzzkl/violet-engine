@@ -3,7 +3,6 @@
 #include "graphics/geometry.hpp"
 #include "graphics/gpu_array.hpp"
 #include "graphics/material.hpp"
-#include "graphics/render_feature.hpp"
 #include "graphics/resources/texture.hpp"
 #include "math/box.hpp"
 #include <unordered_map>
@@ -212,11 +211,6 @@ public:
         return m_scissor_rects;
     }
 
-    void add_feature(render_feature_base* feature)
-    {
-        m_features[feature->get_id()] = feature;
-    }
-
     rhi_texture* get_render_target() const noexcept
     {
         return m_render_target;
@@ -227,25 +221,11 @@ public:
         return m_camera_parameter;
     }
 
-    template <typename T>
-    T* get_feature() const noexcept
-    {
-        auto iter = m_features.find(render_feature_index::value<T>());
-        if (iter == m_features.end())
-        {
-            return nullptr;
-        }
-
-        return static_cast<T*>(iter->second);
-    }
-
 private:
     rhi_texture* m_render_target;
     rhi_parameter* m_camera_parameter;
 
     rhi_viewport m_viewport;
     std::vector<rhi_scissor_rect> m_scissor_rects;
-
-    std::unordered_map<std::uint32_t, render_feature_base*> m_features;
 };
 } // namespace violet

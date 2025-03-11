@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/render_graph/render_graph.hpp"
+#include "graphics/renderer.hpp"
 
 namespace violet
 {

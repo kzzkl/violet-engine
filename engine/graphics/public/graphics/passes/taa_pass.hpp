@@ -1,7 +1,7 @@
 #pragma once
 
 #include "graphics/render_device.hpp"
-#include "graphics/render_graph/render_graph.hpp"
+#include "graphics/renderer.hpp"
 #include <array>
 
 namespace violet
@@ -36,7 +36,8 @@ public:
 
     bool is_history_valid() const noexcept
     {
-        // TODO: Confirm the issue of screen artifacts when resizing the window when using the condition m_frame > 0.
+        // TODO: Confirm the issue of screen artifacts when resizing the window when using the
+        // condition m_frame > 0.
         return m_frame > 1; // m_frame > 0;
     }
 

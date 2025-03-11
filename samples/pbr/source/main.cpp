@@ -86,7 +86,6 @@ private:
             .flags = RHI_TEXTURE_TRANSFER_DST | RHI_TEXTURE_RENDER_TARGET,
             .window_handle = get_system<window_system>().get_handle(),
         });
-        m_renderer = std::make_unique<deferred_renderer_imgui>();
 
         m_skybox = std::make_unique<skybox>(m_skybox_path);
     }
@@ -122,10 +121,10 @@ private:
         camera_transform.set_position({0.0f, 0.0f, -10.0f});
 
         auto& main_camera = world.get_component<camera_component>(m_camera);
-        main_camera.renderer = m_renderer.get();
+        main_camera.renderer = std::make_unique<deferred_renderer_imgui>();
         main_camera.render_target = m_swapchain.get();
-        main_camera.features.push_back(std::make_unique<taa_render_feature>());
-        main_camera.features.push_back(std::make_unique<gtao_render_feature>());
+        main_camera.renderer->add_feature<taa_render_feature>();
+        main_camera.renderer->add_feature<gtao_render_feature>();
 
         // Model.
         m_root = world.create();
@@ -272,7 +271,7 @@ private:
         if (ImGui::CollapsingHeader("TAA"))
         {
             auto& main_camera = get_world().get_component<camera_component>(m_camera);
-            auto* taa = main_camera.get_feature<taa_render_feature>();
+            auto* taa = main_camera.renderer->get_feature<taa_render_feature>();
 
             static bool enable_taa = taa->is_enable();
 
@@ -284,7 +283,7 @@ private:
         if (ImGui::CollapsingHeader("GTAO"))
         {
             auto& main_camera = get_world().get_component<camera_component>(m_camera);
-            auto* gtao = main_camera.get_feature<gtao_render_feature>();
+            auto* gtao = main_camera.renderer->get_feature<gtao_render_feature>();
 
             static bool enable_gtao = gtao->is_enable();
             static int slice_count = static_cast<int>(gtao->get_slice_count());
@@ -341,7 +340,6 @@ private:
     mesh_loader::scene_data m_model;
 
     rhi_ptr<rhi_swapchain> m_swapchain;
-    std::unique_ptr<deferred_renderer_imgui> m_renderer;
 
     std::string m_skybox_path;
     std::string m_model_path;

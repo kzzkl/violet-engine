@@ -6,10 +6,9 @@ namespace violet
 {
 class deferred_renderer : public renderer
 {
-public:
-    void render(render_graph& graph) override;
-
 protected:
+    void on_render(render_graph& graph) override;
+
     // For ImGUI.
     rdg_texture* get_render_target() const noexcept
     {
