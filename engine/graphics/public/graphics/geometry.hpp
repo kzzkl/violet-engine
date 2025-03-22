@@ -63,6 +63,7 @@ public:
 
     void set_indexes(std::span<const std::uint32_t> indexes);
     void set_indexes_shared(geometry* src_geometry);
+    std::span<const std::uint32_t> get_indexes() const noexcept;
 
     std::uint32_t get_vertex_count() const noexcept
     {
@@ -143,7 +144,7 @@ private:
 
         return {
             reinterpret_cast<const T*>(geometry_buffer.buffer.data()),
-            m_vertex_count,
+            type == GEOMETRY_BUFFER_INDEX ? m_index_count : m_vertex_count,
         };
     }
 

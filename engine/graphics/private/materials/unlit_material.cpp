@@ -18,6 +18,7 @@ unlit_material::unlit_material()
     auto& pipeline = get_pipeline();
     pipeline.vertex_shader = render_device::instance().get_shader<unlit_material_vs>();
     pipeline.fragment_shader = render_device::instance().get_shader<unlit_material_fs>();
+    pipeline.primitive_topology = RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     pipeline.depth_stencil.depth_enable = true;
     pipeline.depth_stencil.depth_write_enable = true;
     pipeline.depth_stencil.depth_compare_op = RHI_COMPARE_OP_GREATER;

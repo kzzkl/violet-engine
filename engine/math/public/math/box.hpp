@@ -60,6 +60,19 @@ struct box
     }
 
     template <typename T>
+    static inline void expand(box3<T>& box, const box3<T>& other) noexcept
+    {
+        box.min = vector::min(box.min, other.min);
+        box.max = vector::max(box.max, other.max);
+    }
+
+    static inline void expand(box3f_simd& box, const box3f_simd& other) noexcept
+    {
+        box.min = vector::min(box.min, other.min);
+        box.max = vector::max(box.max, other.max);
+    }
+
+    template <typename T>
     static vec3<T> get_center(const box3<T>& box) noexcept
     {
         using value_type = vec3<T>::value_type;

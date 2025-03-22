@@ -27,6 +27,7 @@ add_library(${PROJECT_NAME} STATIC
     ./private/resources/persistent_buffer.cpp
     ./private/resources/ramp_texture.cpp
     ./private/resources/texture.cpp
+    ./private/tools/cluster_tool.cpp
     ./private/tools/geometry_tool.cpp
     ./private/tools/ibl_tool.cpp
     ./private/tools/texture_loader.cpp
@@ -61,6 +62,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
+    violet::algorithm
     violet::task
     violet::window
     violet::math
@@ -68,6 +70,7 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
     stb
     dxcompiler
+    metis
     MikkTSpace)
 
 install(TARGETS ${PROJECT_NAME}

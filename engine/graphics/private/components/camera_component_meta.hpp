@@ -6,7 +6,7 @@
 
 namespace violet
 {
-struct camera_meta_component
+struct camera_component_meta
 {
     mat4f view_projection;
     mat4f view_projection_no_jitter;
@@ -17,7 +17,7 @@ struct camera_meta_component
 };
 
 template <>
-struct component_trait<camera_meta_component>
+struct component_trait<camera_component_meta>
 {
     using main_component = camera_component;
 };

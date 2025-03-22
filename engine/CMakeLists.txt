@@ -1,3 +1,4 @@
+add_subdirectory(algorithm)
 add_subdirectory(animation)
 add_subdirectory(common)
 add_subdirectory(core)

@@ -153,7 +153,7 @@ private:
                     .env_map = data.env_map.get_bindless(),
                     .cube_map = data.cube_map.get_bindless(),
                 });
-                command.set_parameter(0, render_device::instance().get_bindless_parameter());
+                command.set_parameter(0, RDG_PARAMETER_BINDLESS);
                 command.dispatch_3d(extent.width, extent.height, 6, 8, 8, 1);
             });
     }
@@ -252,7 +252,7 @@ private:
                     .cube_map = data.cube_map.get_bindless(),
                     .irradiance_map = data.irradiance_map.get_bindless(),
                 });
-                command.set_parameter(0, render_device::instance().get_bindless_parameter());
+                command.set_parameter(0, RDG_PARAMETER_BINDLESS);
                 command.dispatch_3d(extent.width, extent.height, 6, 8, 8, 1);
             });
     }
@@ -304,7 +304,7 @@ private:
                         .roughness = static_cast<float>(level) / static_cast<float>(level_count),
                         .resolution = data.cube_map.get_texture()->get_extent().width,
                     });
-                    command.set_parameter(0, render_device::instance().get_bindless_parameter());
+                    command.set_parameter(0, RDG_PARAMETER_BINDLESS);
                     command.dispatch_3d(extent.width, extent.height, 6, 8, 8, 1);
                 });
         }

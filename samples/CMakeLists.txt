@@ -1,5 +1,6 @@
 add_subdirectory(base)
 # add_subdirectory(bvh)
+add_subdirectory(cluster)
 # add_subdirectory(ecs)
 # add_subdirectory(hello-world)
 # add_subdirectory(light)

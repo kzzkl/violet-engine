@@ -241,7 +241,7 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
             submesh_data submesh_data = {
                 .vertex_offset = static_cast<std::uint32_t>(positions.size()),
                 .index_offset = static_cast<std::uint32_t>(indexes.size()),
-                .material = static_cast<std::uint32_t>(primitive.material),
+                .material = primitive.material,
             };
 
             // Load indexes

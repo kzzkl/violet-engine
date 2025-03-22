@@ -6,7 +6,7 @@
 
 namespace violet
 {
-struct skinned_meta_component
+struct skinned_component_meta
 {
     geometry* original_geometry;
     std::unique_ptr<geometry> skinned_geometry;
@@ -16,7 +16,7 @@ struct skinned_meta_component
 };
 
 template <>
-struct component_trait<skinned_meta_component>
+struct component_trait<skinned_component_meta>
 {
     using main_component = skinned_component;
 };

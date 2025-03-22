@@ -6,11 +6,11 @@
 
 namespace violet
 {
-struct light_meta_component
+struct light_component_meta
 {
-    light_meta_component() = default;
-    light_meta_component(const light_meta_component&) = delete;
-    light_meta_component(light_meta_component&& other) noexcept
+    light_component_meta() = default;
+    light_component_meta(const light_component_meta&) = delete;
+    light_component_meta(light_component_meta&& other) noexcept
     {
         scene = other.scene;
         id = other.id;
@@ -19,7 +19,7 @@ struct light_meta_component
         other.id = INVALID_RENDER_ID;
     }
 
-    ~light_meta_component()
+    ~light_component_meta()
     {
         if (id != INVALID_RENDER_ID)
         {
@@ -27,8 +27,8 @@ struct light_meta_component
         }
     }
 
-    light_meta_component& operator=(const light_meta_component&) = delete;
-    light_meta_component& operator=(light_meta_component&& other) noexcept
+    light_component_meta& operator=(const light_component_meta&) = delete;
+    light_component_meta& operator=(light_component_meta&& other) noexcept
     {
         if (this == &other)
         {
@@ -50,7 +50,7 @@ struct light_meta_component
 };
 
 template <>
-struct component_trait<light_meta_component>
+struct component_trait<light_component_meta>
 {
     using main_component = light_component;
 };

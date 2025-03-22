@@ -1,6 +1,6 @@
 #include "camera_system.hpp"
 #include "components/camera_component.hpp"
-#include "components/camera_meta_component.hpp"
+#include "components/camera_component_meta.hpp"
 #include "components/transform_component.hpp"
 #include "graphics/passes/taa_pass.hpp"
 
@@ -74,7 +74,7 @@ bool camera_system::initialize(const dictionary& config)
 {
     auto& world = get_world();
     world.register_component<camera_component>();
-    world.register_component<camera_meta_component>();
+    world.register_component<camera_component_meta>();
 
     return true;
 }
@@ -86,12 +86,12 @@ void camera_system::update()
     world.get_view()
         .read<camera_component>()
         .read<transform_world_component>()
-        .write<camera_meta_component>()
+        .write<camera_component_meta>()
         .each(
             [this](
                 const camera_component& camera,
                 const transform_world_component& transform,
-                camera_meta_component& camera_meta)
+                camera_component_meta& camera_meta)
             {
                 if (!camera.has_render_target() || camera.renderer == nullptr)
                 {

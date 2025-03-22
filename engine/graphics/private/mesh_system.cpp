@@ -1,6 +1,6 @@
 #include "mesh_system.hpp"
 #include "components/mesh_component.hpp"
-#include "components/mesh_meta_component.hpp"
+#include "components/mesh_component_meta.hpp"
 #include "components/scene_component.hpp"
 #include "components/transform_component.hpp"
 
@@ -15,7 +15,7 @@ bool mesh_system::initialize(const dictionary& config)
 {
     auto& world = get_world();
     world.register_component<mesh_component>();
-    world.register_component<mesh_meta_component>();
+    world.register_component<mesh_component_meta>();
 
     return true;
 }
@@ -28,12 +28,12 @@ void mesh_system::update(render_scene_manager& scene_manager)
         .read<scene_component>()
         .read<mesh_component>()
         .read<transform_world_component>()
-        .write<mesh_meta_component>()
+        .write<mesh_component_meta>()
         .each(
             [&](const scene_component& scene,
                 const mesh_component& mesh,
                 const transform_world_component& transform,
-                mesh_meta_component& mesh_meta)
+                mesh_component_meta& mesh_meta)
             {
                 render_scene* render_scene = scene_manager.get_scene(scene.layer);
                 if (mesh_meta.scene != render_scene)
@@ -64,8 +64,8 @@ void mesh_system::update(render_scene_manager& scene_manager)
                        view.template is_updated<transform_world_component>(m_system_version);
             });
 
-    world.get_view().read<mesh_component>().write<mesh_meta_component>().each(
-        [](const mesh_component& mesh, mesh_meta_component& mesh_meta)
+    world.get_view().read<mesh_component>().write<mesh_component_meta>().each(
+        [](const mesh_component& mesh, mesh_component_meta& mesh_meta)
         {
             if (mesh_meta.scene == nullptr)
             {

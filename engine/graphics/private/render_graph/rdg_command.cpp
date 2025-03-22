@@ -84,9 +84,9 @@ void rdg_command::draw_instances(
 
             if (first_batch)
             {
-                set_parameter(0, device.get_bindless_parameter());
-                set_parameter(1, m_scene->get_scene_parameter());
-                set_parameter(2, m_camera->get_camera_parameter());
+                set_parameter(0, RDG_PARAMETER_BINDLESS);
+                set_parameter(1, RDG_PARAMETER_SCENE);
+                set_parameter(2, RDG_PARAMETER_CAMERA);
 
                 set_index_buffer(
                     device.get_geometry_manager()->get_index_buffer()->get_rhi(),
@@ -115,9 +115,9 @@ void rdg_command::draw_instances(
     auto& device = render_device::instance();
 
     set_pipeline(pipeline);
-    set_parameter(0, device.get_bindless_parameter());
-    set_parameter(1, m_scene->get_scene_parameter());
-    set_parameter(2, m_camera->get_camera_parameter());
+    set_parameter(0, RDG_PARAMETER_BINDLESS);
+    set_parameter(1, RDG_PARAMETER_SCENE);
+    set_parameter(2, RDG_PARAMETER_CAMERA);
 
     set_index_buffer(
         device.get_geometry_manager()->get_index_buffer()->get_rhi(),

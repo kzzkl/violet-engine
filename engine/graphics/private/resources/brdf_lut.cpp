@@ -57,7 +57,7 @@ public:
                     .compute_shader = render_device::instance().get_shader<brdf_lut_cs>(),
                 });
                 command.set_constant(constant);
-                command.set_parameter(0, render_device::instance().get_bindless_parameter());
+                command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
                 command.dispatch_2d(extent.width, extent.height);
             });

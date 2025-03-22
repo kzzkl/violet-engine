@@ -1,7 +1,7 @@
 #include "graphics/graphics_system.hpp"
 #include "camera_system.hpp"
 #include "components/camera_component.hpp"
-#include "components/camera_meta_component.hpp"
+#include "components/camera_component_meta.hpp"
 #include "components/scene_component.hpp"
 #include "environment_system.hpp"
 #include "gpu_buffer_uploader.hpp"
@@ -202,12 +202,12 @@ void graphics_system::render()
 
     world.get_view()
         .read<camera_component>()
-        .read<camera_meta_component>()
+        .read<camera_component_meta>()
         .read<scene_component>()
         .each(
             [&render_queue](
                 const camera_component& camera,
-                const camera_meta_component& camera_meta,
+                const camera_component_meta& camera_meta,
                 const scene_component& scene)
             {
                 render_queue.emplace_back(&camera, camera_meta.parameter.get(), scene.layer);

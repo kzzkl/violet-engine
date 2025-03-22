@@ -30,11 +30,11 @@ public:
     void set_transform(const mat4f& transform) override {}
 };
 
-struct rigidbody_meta_component
+struct rigidbody_component_meta
 {
-    rigidbody_meta_component() = default;
-    rigidbody_meta_component(const rigidbody_meta_component&) = delete;
-    rigidbody_meta_component(rigidbody_meta_component&& other) noexcept
+    rigidbody_component_meta() = default;
+    rigidbody_component_meta(const rigidbody_component_meta&) = delete;
+    rigidbody_component_meta(rigidbody_component_meta&& other) noexcept
         : scene(other.scene),
           rigidbody(std::move(other.rigidbody)),
           motion_state(std::move(other.motion_state))
@@ -44,7 +44,7 @@ struct rigidbody_meta_component
         other.motion_state = nullptr;
     }
 
-    ~rigidbody_meta_component()
+    ~rigidbody_component_meta()
     {
         if (scene != nullptr)
         {
@@ -52,8 +52,8 @@ struct rigidbody_meta_component
         }
     }
 
-    rigidbody_meta_component& operator=(const rigidbody_meta_component&) = delete;
-    rigidbody_meta_component& operator=(rigidbody_meta_component&& other) noexcept
+    rigidbody_component_meta& operator=(const rigidbody_component_meta&) = delete;
+    rigidbody_component_meta& operator=(rigidbody_component_meta&& other) noexcept
     {
         if (this == &other)
         {
@@ -77,7 +77,7 @@ struct rigidbody_meta_component
 };
 
 template <>
-struct component_trait<rigidbody_meta_component>
+struct component_trait<rigidbody_component_meta>
 {
     using main_component = rigidbody_component;
 };

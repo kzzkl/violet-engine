@@ -4,7 +4,7 @@
 #include "components/hierarchy_component.hpp"
 #include "components/joint_component.hpp"
 #include "components/rigidbody_component.hpp"
-#include "components/rigidbody_meta_component.hpp"
+#include "components/rigidbody_component_meta.hpp"
 #include "components/scene_component.hpp"
 #include "components/transform_component.hpp"
 #include "math/matrix.hpp"
@@ -67,7 +67,7 @@ bool physics_system::initialize(const dictionary& config)
 
     auto& world = get_world();
     world.register_component<rigidbody_component>();
-    world.register_component<rigidbody_meta_component>();
+    world.register_component<rigidbody_component_meta>();
     world.register_component<collider_component>();
     world.register_component<joint_component>();
 
@@ -139,14 +139,14 @@ void physics_system::update_rigidbody()
         .read<rigidbody_component>()
         .read<collider_component>()
         .read<transform_world_component>()
-        .write<rigidbody_meta_component>()
+        .write<rigidbody_component_meta>()
         .each(
             [this](
                 const entity& e,
                 const rigidbody_component& rigidbody,
                 const collider_component& collider,
                 const transform_world_component& transform,
-                rigidbody_meta_component& rigidbody_meta)
+                rigidbody_component_meta& rigidbody_meta)
             {
                 phy_collision_shape* shape = get_shape(collider.shapes);
 
@@ -202,14 +202,14 @@ void physics_system::update_rigidbody()
     world.get_view()
         .read<scene_component>()
         .read<rigidbody_component>()
-        .write<rigidbody_meta_component>()
+        .write<rigidbody_component_meta>()
         .with<transform_world_component>()
         .with<collider_component>()
         .each(
             [this](
                 const scene_component& scene,
                 const rigidbody_component& rigidbody,
-                rigidbody_meta_component& rigidbody_meta)
+                rigidbody_component_meta& rigidbody_meta)
             {
                 physics_scene* physics_scene = get_scene(scene.layer);
                 if (rigidbody_meta.scene == physics_scene)
@@ -233,13 +233,13 @@ void physics_system::update_rigidbody()
     world.get_view()
         .read<rigidbody_component>()
         .read<transform_world_component>()
-        .write<rigidbody_meta_component>()
+        .write<rigidbody_component_meta>()
         .with<collider_component>()
         .each(
             [this](
                 const rigidbody_component& rigidbody,
                 const transform_world_component& transform,
-                rigidbody_meta_component& rigidbody_meta)
+                rigidbody_component_meta& rigidbody_meta)
             {
                 if (rigidbody.type == PHY_RIGIDBODY_TYPE_KINEMATIC)
                 {
@@ -262,13 +262,13 @@ void physics_system::update_joint()
 {
     auto& world = get_world();
 
-    world.get_view().read<entity>().write<joint_component>().read<rigidbody_meta_component>().each(
-        [&](const entity& e, joint_component& joint, const rigidbody_meta_component& rigidbody_meta)
+    world.get_view().read<entity>().write<joint_component>().read<rigidbody_component_meta>().each(
+        [&](const entity& e, joint_component& joint, const rigidbody_component_meta& rigidbody_meta)
         {
             for (auto& joint : joint.joints)
             {
                 auto& target_rigidbody =
-                    world.get_component<rigidbody_meta_component>(joint.target);
+                    world.get_component<rigidbody_component_meta>(joint.target);
 
                 if (joint.meta.joint == nullptr)
                 {
@@ -302,10 +302,10 @@ void physics_system::update_joint()
 
     world.get_view()
         .write<joint_component>()
-        .read<rigidbody_meta_component>()
+        .read<rigidbody_component_meta>()
         .with<transform_world_component>()
         .each(
-            [this](joint_component& joint, const rigidbody_meta_component& rigidbody_meta)
+            [this](joint_component& joint, const rigidbody_component_meta& rigidbody_meta)
             {
                 physics_scene* physics_scene = rigidbody_meta.scene;
 
@@ -338,10 +338,10 @@ void physics_system::update_transform(entity e, const mat4f& parent_world, bool 
     bool dirty = parent_dirty || world.is_updated<transform_world_component>(e, m_system_version);
 
     mat4f current_world_matrix;
-    if (world.has_component<rigidbody_meta_component>(e))
+    if (world.has_component<rigidbody_component_meta>(e))
     {
         const auto& rigidbody = world.get_component<const rigidbody_component>(e);
-        const auto& rigidbody_meta = world.get_component<const rigidbody_meta_component>(e);
+        const auto& rigidbody_meta = world.get_component<const rigidbody_component_meta>(e);
         if (rigidbody_meta.motion_state->dirty || parent_dirty)
         {
             mat4f_simd rigidbody_matrix = math::load(rigidbody_meta.motion_state->transform);

@@ -123,6 +123,11 @@ void geometry::set_indexes_shared(geometry* src_geometry)
     set_buffer_shared(GEOMETRY_BUFFER_INDEX, src_geometry);
 }
 
+std::span<const std::uint32_t> geometry::get_indexes() const noexcept
+{
+    return get_buffer<std::uint32_t>(GEOMETRY_BUFFER_INDEX);
+}
+
 void geometry::add_morph_target(std::string_view name, const std::vector<morph_element>& elements)
 {
     if (m_morph_target_buffer == nullptr)

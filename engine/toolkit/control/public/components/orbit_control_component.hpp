@@ -9,11 +9,13 @@ struct orbit_control_component
 {
     vec3f target = {};
 
-    float r = 1.0f;
+    float radius = 1.0f;
+    float min_radius = 0.01f;
+
     float theta = math::HALF_PI;
     float phi = math::HALF_PI;
 
-    float r_speed = 1.0f;
+    float radius_speed = 1.0f;
     float theta_speed = math::PI;
     float phi_speed = 2.0f * math::PI;
 };
