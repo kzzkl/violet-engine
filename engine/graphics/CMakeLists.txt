@@ -2,6 +2,7 @@ project(violet-graphics)
 
 add_library(${PROJECT_NAME} STATIC
     ./private/geometries/box_geometry.cpp
+    ./private/geometries/plane_geometry.cpp
     ./private/geometries/sphere_geometry.cpp
     ./private/materials/physical_material.cpp
     ./private/materials/unlit_material.cpp
@@ -27,7 +28,10 @@ add_library(${PROJECT_NAME} STATIC
     ./private/resources/persistent_buffer.cpp
     ./private/resources/ramp_texture.cpp
     ./private/resources/texture.cpp
-    ./private/tools/cluster_tool.cpp
+    ./private/tools/cluster/cluster_builder.cpp
+    ./private/tools/cluster/graph_partitioner.cpp
+    ./private/tools/mesh_simplifier/mesh_simplifier.cpp
+    ./private/tools/mesh_simplifier/quadric.cpp
     ./private/tools/geometry_tool.cpp
     ./private/tools/ibl_tool.cpp
     ./private/tools/texture_loader.cpp

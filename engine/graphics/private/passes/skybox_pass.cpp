@@ -51,11 +51,8 @@ void skybox_pass::add(render_graph& graph, const parameter& parameter)
             rdg_raster_pipeline pipeline = {
                 .vertex_shader = device.get_shader<skybox_vs>(),
                 .fragment_shader = device.get_shader<skybox_fs>(),
-                .depth_stencil =
-                    {
-                        .depth_enable = true,
-                        .depth_compare_op = RHI_COMPARE_OP_GREATER,
-                    },
+                .depth_stencil_state =
+                    device.get_depth_stencil_state<true, false, RHI_COMPARE_OP_GREATER>(),
             };
 
             command.set_pipeline(pipeline);

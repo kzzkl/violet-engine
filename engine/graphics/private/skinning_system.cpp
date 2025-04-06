@@ -116,8 +116,8 @@ void skinning_system::skinning(rhi_command* command)
             .buffer = geometry_manager->get_vertex_buffer()->get_rhi(),
             .src_stages = RHI_PIPELINE_STAGE_COMPUTE,
             .src_access = RHI_ACCESS_SHADER_WRITE,
-            .dst_stages = RHI_PIPELINE_STAGE_VERTEX_INPUT,
-            .dst_access = RHI_ACCESS_VERTEX_ATTRIBUTE_READ,
+            .dst_stages = RHI_PIPELINE_STAGE_VERTEX,
+            .dst_access = RHI_ACCESS_SHADER_READ,
         };
 
         std::vector<rhi_buffer_barrier> buffer_barriers;

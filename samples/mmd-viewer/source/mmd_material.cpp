@@ -25,21 +25,19 @@ struct mmd_outline_fs : public mesh_fs
 mmd_material::mmd_material()
     : mesh_material(MATERIAL_TOON)
 {
+    auto& device = render_device::instance();
+
     auto& pipeline = get_pipeline();
-    pipeline.vertex_shader = render_device::instance().get_shader<mmd_material_vs>();
-    pipeline.fragment_shader = render_device::instance().get_shader<mmd_material_fs>();
-    pipeline.depth_stencil.depth_enable = true;
-    pipeline.depth_stencil.depth_write_enable = true;
-    pipeline.depth_stencil.depth_compare_op = RHI_COMPARE_OP_GREATER;
-    pipeline.depth_stencil.stencil_enable = true;
-    pipeline.depth_stencil.stencil_front = {
-        .compare_op = RHI_COMPARE_OP_ALWAYS,
-        .pass_op = RHI_STENCIL_OP_REPLACE,
-        .depth_fail_op = RHI_STENCIL_OP_KEEP,
-        .reference = SHADING_MODEL_TOON,
-    };
-    pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
-    pipeline.rasterizer.cull_mode = RHI_CULL_MODE_BACK;
+    pipeline.vertex_shader = device.get_shader<mmd_material_vs>();
+    pipeline.fragment_shader = device.get_shader<mmd_material_fs>();
+    pipeline.rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK);
+    pipeline.depth_stencil_state = device.get_depth_stencil_state<
+        true,
+        true,
+        RHI_COMPARE_OP_GREATER,
+        true,
+        material_stencil_state<SHADING_MODEL_TOON>::value,
+        material_stencil_state<SHADING_MODEL_TOON>::value>();
 }
 
 void mmd_material::set_diffuse(const vec4f& diffuse)
@@ -87,21 +85,20 @@ void mmd_material::set_ramp(const texture_2d* texture)
 mmd_outline_material::mmd_outline_material()
     : mesh_material(MATERIAL_TOON)
 {
+    auto& device = render_device::instance();
+
     auto& pipeline = get_pipeline();
-    pipeline.vertex_shader = render_device::instance().get_shader<mmd_outline_vs>();
-    pipeline.fragment_shader = render_device::instance().get_shader<mmd_outline_fs>();
-    pipeline.depth_stencil.depth_enable = true;
-    pipeline.depth_stencil.depth_write_enable = true;
-    pipeline.depth_stencil.depth_compare_op = RHI_COMPARE_OP_GREATER;
-    pipeline.depth_stencil.stencil_enable = true;
-    pipeline.depth_stencil.stencil_front = {
-        .compare_op = RHI_COMPARE_OP_ALWAYS,
-        .pass_op = RHI_STENCIL_OP_REPLACE,
-        .depth_fail_op = RHI_STENCIL_OP_KEEP,
-        .reference = SHADING_MODEL_UNLIT,
-    };
-    pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
-    pipeline.rasterizer.cull_mode = RHI_CULL_MODE_FRONT;
+    pipeline.vertex_shader = device.get_shader<mmd_outline_vs>();
+    pipeline.fragment_shader = device.get_shader<mmd_outline_fs>();
+    pipeline.rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_FRONT);
+    pipeline.depth_stencil_state = device.get_depth_stencil_state<
+        true,
+        true,
+        RHI_COMPARE_OP_GREATER,
+        true,
+        material_stencil_state<SHADING_MODEL_UNLIT>::value,
+        material_stencil_state<SHADING_MODEL_UNLIT>::value>();
+    pipeline.primitive_topology = RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
     get_constant() = {
         .color = {1.0f, 1.0f, 1.0f},

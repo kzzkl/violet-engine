@@ -165,6 +165,14 @@ private:
     };
     using render_scene_states = std::uint32_t;
 
+    struct raster_pipeline_hash
+    {
+        std::size_t operator()(const rdg_raster_pipeline& pipeline) const noexcept
+        {
+            return hash::city_hash_64(pipeline);
+        }
+    };
+
     void add_instance_to_batch(render_id instance_id, const material* material);
     void remove_instance_from_batch(render_id instance_id);
 
@@ -178,7 +186,7 @@ private:
     gpu_dense_array<render_light> m_lights;
 
     gpu_sparse_array<render_batch> m_batches;
-    std::unordered_map<std::uint64_t, render_id> m_pipeline_to_batch;
+    std::unordered_map<rdg_raster_pipeline, render_id, raster_pipeline_hash> m_pipeline_to_batch;
 
     render_scene_states m_scene_states{0};
 

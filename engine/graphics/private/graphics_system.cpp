@@ -168,8 +168,6 @@ void graphics_system::end_frame()
         }
 
         m_gpu_buffer_uploader->record(command);
-
-        command->signal(m_update_fence.get(), ++m_update_fence_value);
     }
 
     auto& skinning = get_system<skinning_system>();
@@ -186,6 +184,7 @@ void graphics_system::end_frame()
 
     if (command != nullptr)
     {
+        command->signal(m_update_fence.get(), ++m_update_fence_value);
         device.execute(command);
     }
 

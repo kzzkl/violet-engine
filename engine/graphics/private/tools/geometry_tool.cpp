@@ -1,7 +1,9 @@
 #include "graphics/tools/geometry_tool.hpp"
-#include "common/hash.hpp"
+#include "algorithm/hash.hpp"
 #include "math/vector.hpp"
 #include "mikktspace.h"
+#include "tools/cluster/cluster_builder.hpp"
+#include "tools/mesh_simplifier/mesh_simplifier.hpp"
 #include <unordered_map>
 
 namespace violet
@@ -162,6 +164,57 @@ std::vector<vec3f> geometry_tool::generate_smooth_normals(
         result[i].y = vector::dot(smooth_normal, bitangent);
         result[i].z = vector::dot(smooth_normal, normals[i]);
     }
+
+    return result;
+}
+
+geometry_tool::cluster_result geometry_tool::generate_clusters(
+    std::span<const vec3f> positions,
+    std::span<const std::uint32_t> indexes)
+{
+    cluster_builder builder;
+    builder.build(positions, indexes);
+
+    cluster_result result;
+    result.indexes = builder.get_indexes();
+
+    for (const auto& cluster : builder.get_clusters())
+    {
+        result.clusters.push_back({
+            .index_offset = cluster.index_offset,
+            .index_count = cluster.index_count,
+        });
+    }
+
+    const auto& groups = builder.get_groups();
+    for (std::uint32_t group_index = 0; group_index < groups.size(); ++group_index)
+    {
+        for (std::uint32_t cluster_index : groups[group_index].clusters)
+        {
+            result.clusters[cluster_index].group_index = group_index;
+        }
+    }
+
+    return result;
+}
+
+geometry_tool::simplify_result geometry_tool::simplify(
+    std::span<const vec3f> positions,
+    std::span<const std::uint32_t> indexes,
+    std::size_t target_triangle_count,
+    std::span<const vec3f> locked_positions)
+{
+    simplify_result result;
+
+    mesh_simplifier simplifier;
+    simplifier.set_mesh(positions, indexes);
+
+    for (const auto& locked_position : locked_positions)
+    {
+        simplifier.lock_position(locked_position);
+    }
+
+    simplifier.simplify(target_triangle_count, result.positions, result.indexes);
 
     return result;
 }

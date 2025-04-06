@@ -1,5 +1,5 @@
 #include "vk_layout.hpp"
-#include "common/hash.hpp"
+#include "algorithm/hash.hpp"
 #include "vk_context.hpp"
 #include <cassert>
 
@@ -35,7 +35,8 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
         m_bindings[i].type = desc.bindings[i].type;
         m_bindings[i].size = desc.bindings[i].size;
 
-        // When size is 0, it indicates bindless descriptor. Otherwise, it indicates the number of descriptors.
+        // When size is 0, it indicates bindless descriptor. Otherwise, it indicates the number of
+        // descriptors.
         if (desc.bindings[i].size == 0)
         {
             binding.descriptorCount = 65536;

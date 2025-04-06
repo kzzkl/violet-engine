@@ -17,11 +17,16 @@ geometry::~geometry()
 
 void geometry::set_position(std::span<const vec3f> position)
 {
+    if (m_vertex_capacity == 0)
+    {
+        m_vertex_capacity = position.size();
+    }
+
     // TODO: If the vertex buffer cannot accommodate all vertices, a new vertex buffer needs to
     // be reallocated, and the vertex offset in shader::mesh_data must be re-linked. However,
     // there is currently no reliable method to re-establish this linkage, so we will simply
     // reject this operation for now.
-    assert(m_vertex_count == 0 || m_vertex_count >= position.size());
+    assert(m_vertex_capacity >= position.size());
 
     set_buffer(
         GEOMETRY_BUFFER_POSITION,

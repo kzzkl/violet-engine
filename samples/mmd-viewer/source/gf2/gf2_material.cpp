@@ -47,18 +47,14 @@ gf2_material_base::gf2_material_base()
     auto& pipeline = get_pipeline();
     pipeline.vertex_shader = device.get_shader<gf2_material_vs>();
     pipeline.fragment_shader = device.get_shader<gf2_material_base_fs>();
-    pipeline.depth_stencil.depth_enable = true;
-    pipeline.depth_stencil.depth_write_enable = true;
-    pipeline.depth_stencil.depth_compare_op = RHI_COMPARE_OP_GREATER;
-    pipeline.depth_stencil.stencil_enable = true;
-    pipeline.depth_stencil.stencil_front = {
-        .compare_op = RHI_COMPARE_OP_ALWAYS,
-        .pass_op = RHI_STENCIL_OP_REPLACE,
-        .depth_fail_op = RHI_STENCIL_OP_KEEP,
-        .reference = SHADING_MODEL_TOON,
-    };
-    pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
-    pipeline.rasterizer.cull_mode = RHI_CULL_MODE_BACK;
+    pipeline.rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK);
+    pipeline.depth_stencil_state = device.get_depth_stencil_state<
+        true,
+        true,
+        RHI_COMPARE_OP_GREATER,
+        true,
+        material_stencil_state<SHADING_MODEL_TOON>::value,
+        material_stencil_state<SHADING_MODEL_TOON>::value>();
 
     get_constant().brdf_lut = device.get_buildin_texture<brdf_lut>()->get_srv()->get_bindless();
 }
@@ -91,18 +87,14 @@ gf2_material_face::gf2_material_face()
     auto& pipeline = get_pipeline();
     pipeline.vertex_shader = device.get_shader<gf2_material_vs>();
     pipeline.fragment_shader = device.get_shader<gf2_material_face_fs>();
-    pipeline.depth_stencil.depth_enable = true;
-    pipeline.depth_stencil.depth_write_enable = true;
-    pipeline.depth_stencil.depth_compare_op = RHI_COMPARE_OP_GREATER;
-    pipeline.depth_stencil.stencil_enable = true;
-    pipeline.depth_stencil.stencil_front = {
-        .compare_op = RHI_COMPARE_OP_ALWAYS,
-        .pass_op = RHI_STENCIL_OP_REPLACE,
-        .depth_fail_op = RHI_STENCIL_OP_KEEP,
-        .reference = SHADING_MODEL_TOON,
-    };
-    pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
-    pipeline.rasterizer.cull_mode = RHI_CULL_MODE_BACK;
+    pipeline.rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK);
+    pipeline.depth_stencil_state = device.get_depth_stencil_state<
+        true,
+        true,
+        RHI_COMPARE_OP_GREATER,
+        true,
+        material_stencil_state<SHADING_MODEL_TOON>::value,
+        material_stencil_state<SHADING_MODEL_TOON>::value>();
 
     get_constant().brdf_lut = device.get_buildin_texture<brdf_lut>()->get_srv()->get_bindless();
 }
@@ -137,18 +129,14 @@ gf2_material_eye::gf2_material_eye()
     auto& pipeline = get_pipeline();
     pipeline.vertex_shader = device.get_shader<gf2_material_vs>();
     pipeline.fragment_shader = device.get_shader<gf2_material_eye_fs>();
-    pipeline.depth_stencil.depth_enable = true;
-    pipeline.depth_stencil.depth_write_enable = true;
-    pipeline.depth_stencil.depth_compare_op = RHI_COMPARE_OP_GREATER;
-    pipeline.depth_stencil.stencil_enable = true;
-    pipeline.depth_stencil.stencil_front = {
-        .compare_op = RHI_COMPARE_OP_ALWAYS,
-        .pass_op = RHI_STENCIL_OP_REPLACE,
-        .depth_fail_op = RHI_STENCIL_OP_KEEP,
-        .reference = SHADING_MODEL_TOON,
-    };
-    pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
-    pipeline.rasterizer.cull_mode = RHI_CULL_MODE_BACK;
+    pipeline.rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK);
+    pipeline.depth_stencil_state = device.get_depth_stencil_state<
+        true,
+        true,
+        RHI_COMPARE_OP_GREATER,
+        true,
+        material_stencil_state<SHADING_MODEL_TOON>::value,
+        material_stencil_state<SHADING_MODEL_TOON>::value>();
 }
 
 void gf2_material_eye::set_diffuse(const texture_2d* texture)
@@ -164,19 +152,32 @@ gf2_material_eye_blend::gf2_material_eye_blend(bool is_add)
     auto& pipeline = get_pipeline();
     pipeline.vertex_shader = device.get_shader<gf2_material_vs>();
     pipeline.fragment_shader = device.get_shader<gf2_material_eye_blend_fs>();
-    pipeline.depth_stencil.depth_enable = true;
-    pipeline.depth_stencil.depth_write_enable = false;
-    pipeline.depth_stencil.depth_compare_op = RHI_COMPARE_OP_GREATER;
-    pipeline.blend.attachments[0] = {
-        .enable = true,
-        .src_color_factor = RHI_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
-        .dst_color_factor = RHI_BLEND_FACTOR_ONE,
-        .color_op = is_add ? RHI_BLEND_OP_ADD : RHI_BLEND_OP_MULTIPLY,
-        .src_alpha_factor = RHI_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
-        .dst_alpha_factor = RHI_BLEND_FACTOR_ONE,
-        .alpha_op = is_add ? RHI_BLEND_OP_ADD : RHI_BLEND_OP_MULTIPLY,
-    };
-    pipeline.rasterizer.cull_mode = RHI_CULL_MODE_BACK;
+    pipeline.rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK);
+    pipeline.depth_stencil_state =
+        device.get_depth_stencil_state<true, false, RHI_COMPARE_OP_GREATER>();
+
+    if (is_add)
+    {
+        pipeline.blend_state = device.get_blend_state<blend_state::attachment<
+            true,
+            RHI_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
+            RHI_BLEND_FACTOR_ONE,
+            RHI_BLEND_OP_ADD,
+            RHI_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
+            RHI_BLEND_FACTOR_ONE,
+            RHI_BLEND_OP_ADD>>();
+    }
+    else
+    {
+        pipeline.blend_state = device.get_blend_state<blend_state::attachment<
+            true,
+            RHI_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
+            RHI_BLEND_FACTOR_ONE,
+            RHI_BLEND_OP_MULTIPLY,
+            RHI_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
+            RHI_BLEND_FACTOR_ONE,
+            RHI_BLEND_OP_MULTIPLY>>();
+    }
 }
 
 void gf2_material_eye_blend::set_blend(const texture_2d* texture)
@@ -192,18 +193,14 @@ gf2_material_hair::gf2_material_hair()
     auto& pipeline = get_pipeline();
     pipeline.vertex_shader = device.get_shader<gf2_material_vs>();
     pipeline.fragment_shader = device.get_shader<gf2_material_hair_fs>();
-    pipeline.depth_stencil.depth_enable = true;
-    pipeline.depth_stencil.depth_write_enable = true;
-    pipeline.depth_stencil.depth_compare_op = RHI_COMPARE_OP_GREATER;
-    pipeline.depth_stencil.stencil_enable = true;
-    pipeline.depth_stencil.stencil_front = {
-        .compare_op = RHI_COMPARE_OP_ALWAYS,
-        .pass_op = RHI_STENCIL_OP_REPLACE,
-        .depth_fail_op = RHI_STENCIL_OP_KEEP,
-        .reference = SHADING_MODEL_TOON,
-    };
-    pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
-    pipeline.rasterizer.cull_mode = RHI_CULL_MODE_BACK;
+    pipeline.rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK);
+    pipeline.depth_stencil_state = device.get_depth_stencil_state<
+        true,
+        true,
+        RHI_COMPARE_OP_GREATER,
+        true,
+        material_stencil_state<SHADING_MODEL_TOON>::value,
+        material_stencil_state<SHADING_MODEL_TOON>::value>();
 
     get_constant().brdf_lut = device.get_buildin_texture<brdf_lut>()->get_srv()->get_bindless();
 }
@@ -231,18 +228,14 @@ gf2_material_plush::gf2_material_plush()
     auto& pipeline = get_pipeline();
     pipeline.vertex_shader = device.get_shader<gf2_material_vs>();
     pipeline.fragment_shader = device.get_shader<gf2_material_plush_fs>();
-    pipeline.depth_stencil.depth_enable = true;
-    pipeline.depth_stencil.depth_write_enable = true;
-    pipeline.depth_stencil.depth_compare_op = RHI_COMPARE_OP_GREATER;
-    pipeline.depth_stencil.stencil_enable = true;
-    pipeline.depth_stencil.stencil_front = {
-        .compare_op = RHI_COMPARE_OP_ALWAYS,
-        .pass_op = RHI_STENCIL_OP_REPLACE,
-        .depth_fail_op = RHI_STENCIL_OP_KEEP,
-        .reference = SHADING_MODEL_TOON,
-    };
-    pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
-    pipeline.rasterizer.cull_mode = RHI_CULL_MODE_BACK;
+    pipeline.rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK);
+    pipeline.depth_stencil_state = device.get_depth_stencil_state<
+        true,
+        true,
+        RHI_COMPARE_OP_GREATER,
+        true,
+        material_stencil_state<SHADING_MODEL_TOON>::value,
+        material_stencil_state<SHADING_MODEL_TOON>::value>();
 
     get_constant().brdf_lut = device.get_buildin_texture<brdf_lut>()->get_srv()->get_bindless();
 }

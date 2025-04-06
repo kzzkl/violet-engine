@@ -38,21 +38,18 @@ void depth_only_pass::add(render_graph& graph, const parameter& parameter)
                 RHI_ACCESS_INDIRECT_COMMAND_READ);
             data.material_type = parameter.material_type;
 
+            auto& device = render_device::instance();
+
             data.pipeline = {
-                .vertex_shader = render_device::instance().get_shader<depth_only_vs>(),
-                .depth_stencil =
-                    {
-                        .depth_enable = true,
-                        .depth_write_enable = true,
-                        .depth_compare_op = parameter.depth_compare_op,
-                        .stencil_enable = parameter.stencil_enable,
-                        .stencil_front = parameter.stencil_front,
-                        .stencil_back = parameter.stencil_back,
-                    },
-                .rasterizer =
-                    {
-                        .cull_mode = parameter.cull_mode,
-                    },
+                .vertex_shader = device.get_shader<depth_only_vs>(),
+                .rasterizer_state = device.get_rasterizer_state(parameter.cull_mode),
+                .depth_stencil_state = device.get_depth_stencil_state(
+                    true,
+                    true,
+                    parameter.depth_compare_op,
+                    parameter.stencil_enable,
+                    parameter.stencil_front,
+                    parameter.stencil_back),
                 .primitive_topology = parameter.primitive_topology,
             };
         },

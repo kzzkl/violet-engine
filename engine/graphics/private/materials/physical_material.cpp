@@ -15,20 +15,18 @@ struct physical_material_fs : public mesh_fs
 physical_material::physical_material()
     : mesh_material(MATERIAL_OPAQUE)
 {
+    auto& device = render_device::instance();
+
     auto& pipeline = get_pipeline();
-    pipeline.vertex_shader = render_device::instance().get_shader<physical_material_vs>();
-    pipeline.fragment_shader = render_device::instance().get_shader<physical_material_fs>();
-    pipeline.depth_stencil.depth_enable = true;
-    pipeline.depth_stencil.depth_write_enable = true;
-    pipeline.depth_stencil.depth_compare_op = RHI_COMPARE_OP_GREATER;
-    pipeline.depth_stencil.stencil_enable = true;
-    pipeline.depth_stencil.stencil_front = {
-        .compare_op = RHI_COMPARE_OP_ALWAYS,
-        .pass_op = RHI_STENCIL_OP_REPLACE,
-        .depth_fail_op = RHI_STENCIL_OP_KEEP,
-        .reference = SHADING_MODEL_PHYSICAL,
-    };
-    pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
+    pipeline.vertex_shader = device.get_shader<physical_material_vs>();
+    pipeline.fragment_shader = device.get_shader<physical_material_fs>();
+    pipeline.depth_stencil_state = device.get_depth_stencil_state<
+        true,
+        true,
+        RHI_COMPARE_OP_GREATER,
+        true,
+        material_stencil_state<SHADING_MODEL_PHYSICAL>::value,
+        material_stencil_state<SHADING_MODEL_PHYSICAL>::value>();
 
     set_albedo({1.0f, 1.0f, 1.0f});
 }

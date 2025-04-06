@@ -1,0 +1,10 @@
+{
+    "Window": {
+        "title": "Mesh Simplifier Demo",
+        "width": 1300,
+        "height": 800
+    },
+    "Mesh Simplifier Demo": {
+        "model": "D:/Workspace/assets/models/gltf/stanford-bunny.glb"
+    }
+}

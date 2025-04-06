@@ -234,13 +234,11 @@ void render_scene::add_instance_to_batch(render_id instance_id, const material* 
     render_id batch_id = 0;
     render_id group_id = 0;
 
-    std::uint64_t pipeline_hash =
-        hash::city_hash_64(&material->get_pipeline(), sizeof(rdg_raster_pipeline));
-    auto batch_iter = m_pipeline_to_batch.find(pipeline_hash);
+    auto batch_iter = m_pipeline_to_batch.find(material->get_pipeline());
     if (batch_iter == m_pipeline_to_batch.end())
     {
         batch_id = m_batches.add();
-        m_pipeline_to_batch[pipeline_hash] = batch_id;
+        m_pipeline_to_batch[material->get_pipeline()] = batch_id;
 
         auto& batch = m_batches[batch_id];
         batch.material_type = material->get_type();

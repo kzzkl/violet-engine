@@ -12,15 +12,10 @@ struct unlit_material_constant
 class unlit_material : public mesh_material<unlit_material_constant>
 {
 public:
-    unlit_material();
-
-    void set_color(const vec3f& color);
-};
-
-class unlit_line_material : public mesh_material<unlit_material_constant>
-{
-public:
-    unlit_line_material();
+    unlit_material(
+        rhi_primitive_topology primitive_topology = RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        rhi_cull_mode cull_mode = RHI_CULL_MODE_BACK,
+        rhi_polygon_mode polygon_mode = RHI_POLYGON_MODE_FILL);
 
     void set_color(const vec3f& color);
 };

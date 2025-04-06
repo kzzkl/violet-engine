@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/hash.hpp"
+#include "algorithm/hash.hpp"
 #include "vk_common.hpp"
 #include <unordered_map>
 
@@ -54,7 +54,7 @@ private:
                 key.image_views.data(),
                 key.image_views.size() * sizeof(VkImageView));
 
-            hash = hash::combine(hash, hash::city_hash_64(&key.render_pass, sizeof(VkRenderPass)));
+            hash = hash::combine(hash, hash::city_hash_64(key.render_pass));
 
             return hash;
         }

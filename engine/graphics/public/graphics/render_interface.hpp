@@ -316,13 +316,13 @@ public:
         rhi_format format = RHI_FORMAT_UNDEFINED) = 0;
 };
 
-enum rhi_filter
+enum rhi_filter : std::uint32_t
 {
     RHI_FILTER_POINT,
     RHI_FILTER_LINEAR
 };
 
-enum rhi_sampler_address_mode
+enum rhi_sampler_address_mode : std::uint32_t
 {
     RHI_SAMPLER_ADDRESS_MODE_REPEAT,
     RHI_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
@@ -506,12 +506,6 @@ public:
     virtual void set_sampler(std::size_t index, rhi_sampler* sampler, std::size_t offset = 0) = 0;
 };
 
-enum rhi_primitive_topology
-{
-    RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-    RHI_PRIMITIVE_TOPOLOGY_LINE_LIST
-};
-
 struct rhi_vertex_attribute
 {
     const char* name;
@@ -547,6 +541,26 @@ class rhi_shader
 {
 public:
     virtual ~rhi_shader() = default;
+};
+
+enum rhi_cull_mode
+{
+    RHI_CULL_MODE_NONE,
+    RHI_CULL_MODE_FRONT,
+    RHI_CULL_MODE_BACK
+};
+
+enum rhi_polygon_mode
+{
+    RHI_POLYGON_MODE_FILL,
+    RHI_POLYGON_MODE_LINE,
+    RHI_POLYGON_MODE_POINT,
+};
+
+struct rhi_rasterizer_state
+{
+    rhi_cull_mode cull_mode;
+    rhi_polygon_mode polygon_mode;
 };
 
 enum rhi_blend_factor
@@ -635,16 +649,10 @@ struct rhi_depth_stencil_state
     rhi_stencil_state stencil_back;
 };
 
-enum rhi_cull_mode
+enum rhi_primitive_topology
 {
-    RHI_CULL_MODE_NONE,
-    RHI_CULL_MODE_FRONT,
-    RHI_CULL_MODE_BACK
-};
-
-struct rhi_rasterizer_state
-{
-    rhi_cull_mode cull_mode;
+    RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+    RHI_PRIMITIVE_TOPOLOGY_LINE_LIST
 };
 
 struct rhi_raster_pipeline_desc
@@ -652,12 +660,12 @@ struct rhi_raster_pipeline_desc
     rhi_shader* vertex_shader;
     rhi_shader* fragment_shader;
 
-    rhi_blend_state blend;
-    rhi_depth_stencil_state depth_stencil;
-    rhi_rasterizer_state rasterizer;
+    rhi_rasterizer_state* rasterizer_state;
+    rhi_depth_stencil_state* depth_stencil_state;
+    rhi_blend_state* blend_state;
 
-    rhi_sample_count samples;
     rhi_primitive_topology primitive_topology;
+    rhi_sample_count samples;
 
     rhi_render_pass* render_pass;
 };

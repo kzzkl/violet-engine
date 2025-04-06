@@ -91,13 +91,14 @@ void physical_pass::add(render_graph& graph, const parameter& parameter)
             rdg_raster_pipeline pipeline = {
                 .vertex_shader = device.get_shader<fullscreen_vs>(),
                 .fragment_shader = device.get_shader<physical_fs>(defines),
+                .depth_stencil_state = device.get_depth_stencil_state<
+                    false,
+                    false,
+                    RHI_COMPARE_OP_NEVER,
+                    true,
+                    lighting_stencil_state<SHADING_MODEL_PHYSICAL>::value,
+                    lighting_stencil_state<SHADING_MODEL_PHYSICAL>::value>(),
             };
-            pipeline.depth_stencil.stencil_enable = true;
-            pipeline.depth_stencil.stencil_front = {
-                .compare_op = RHI_COMPARE_OP_EQUAL,
-                .reference = SHADING_MODEL_PHYSICAL,
-            };
-            pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
 
             command.set_pipeline(pipeline);
             command.set_constant(constant);

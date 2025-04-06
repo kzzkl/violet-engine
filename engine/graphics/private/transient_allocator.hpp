@@ -21,7 +21,7 @@ struct hash<violet::rhi_texture_desc>
 {
     std::size_t operator()(const violet::rhi_texture_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_texture_desc));
+        return violet::hash::city_hash_64(desc);
     }
 };
 
@@ -30,7 +30,7 @@ struct hash<violet::rhi_buffer_desc>
 {
     std::size_t operator()(const violet::rhi_buffer_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_buffer_desc));
+        return violet::hash::city_hash_64(desc);
     }
 };
 
@@ -39,7 +39,7 @@ struct hash<violet::rhi_render_pass_desc>
 {
     std::size_t operator()(const violet::rhi_render_pass_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_render_pass_desc));
+        return violet::hash::city_hash_64(desc);
     }
 };
 
@@ -48,7 +48,7 @@ struct hash<violet::rhi_raster_pipeline_desc>
 {
     std::size_t operator()(const violet::rhi_raster_pipeline_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_raster_pipeline_desc));
+        return violet::hash::city_hash_64(desc);
     }
 };
 
@@ -57,7 +57,7 @@ struct hash<violet::rhi_compute_pipeline_desc>
 {
     std::size_t operator()(const violet::rhi_compute_pipeline_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_compute_pipeline_desc));
+        return violet::hash::city_hash_64(desc);
     }
 };
 
@@ -66,7 +66,7 @@ struct hash<violet::rhi_sampler_desc>
 {
     std::size_t operator()(const violet::rhi_sampler_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_sampler_desc));
+        return violet::hash::city_hash_64(desc);
     }
 };
 } // namespace std
@@ -134,6 +134,9 @@ inline bool operator==(
     const rhi_raster_pipeline_desc& b) noexcept
 {
     return a.vertex_shader == b.vertex_shader && a.fragment_shader == b.fragment_shader &&
+           a.rasterizer_state == b.rasterizer_state && a.blend_state == b.blend_state &&
+           a.depth_stencil_state == b.depth_stencil_state &&
+           a.primitive_topology == b.primitive_topology && a.samples == b.samples &&
            a.render_pass == b.render_pass;
 }
 

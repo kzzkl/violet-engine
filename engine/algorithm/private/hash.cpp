@@ -1,4 +1,4 @@
-#include "common/hash.hpp"
+#include "algorithm/hash.hpp"
 #include "city_hash.hpp"
 
 namespace violet

@@ -428,6 +428,7 @@ void vk_context::initialize_logic_device(
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
         .features =
             {
+                .fillModeNonSolid = VK_TRUE,
                 .samplerAnisotropy = VK_TRUE,
             },
     };

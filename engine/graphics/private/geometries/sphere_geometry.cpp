@@ -87,15 +87,15 @@ sphere_geometry::sphere_geometry(
             if (iy != 0 || theta_start > 0)
             {
                 indexes.push_back(a);
-                indexes.push_back(b);
                 indexes.push_back(d);
+                indexes.push_back(b);
             }
 
             if (iy != height_segments - 1 || theta_end < math::PI)
             {
                 indexes.push_back(b);
-                indexes.push_back(c);
                 indexes.push_back(d);
+                indexes.push_back(c);
             }
         }
     }

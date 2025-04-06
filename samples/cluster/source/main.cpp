@@ -1,4 +1,3 @@
-#include "cluster_material.hpp"
 #include "components/camera_component.hpp"
 #include "components/hierarchy_component.hpp"
 #include "components/light_component.hpp"
@@ -11,7 +10,7 @@
 #include "gltf_loader.hpp"
 #include "graphics/graphics_system.hpp"
 #include "graphics/materials/unlit_material.hpp"
-#include "graphics/tools/cluster_tool.hpp"
+#include "graphics/tools/geometry_tool.hpp"
 #include "imgui.h"
 #include "imgui_system.hpp"
 #include "math/box.hpp"
@@ -115,7 +114,6 @@ private:
 
         // Model.
         m_empty_material = std::make_unique<unlit_material>();
-        m_cluster_material = std::make_unique<cluster_material>();
 
         m_root = world.create();
         world.add_component<transform_component, scene_component>(m_root);
@@ -125,10 +123,13 @@ private:
         {
             m_model = std::move(*result);
 
-            auto positions = m_model.geometries[0]->get_position();
-            auto indexes = m_model.geometries[0]->get_indexes();
-            auto cluster_result = cluster_tool::generate_clusters(positions, indexes);
-            m_model.geometries[0]->set_indexes(cluster_result.indexes);
+            {
+                auto positions = m_model.geometries[0]->get_position();
+                auto indexes = m_model.geometries[0]->get_indexes();
+                auto cluster_result = geometry_tool::generate_clusters(positions, indexes);
+                m_model.geometries[0]->set_indexes(cluster_result.indexes);
+                m_clusters = std::move(cluster_result.clusters);
+            }
 
             std::vector<entity> entities;
             for (auto& node : m_model.nodes)
@@ -157,27 +158,23 @@ private:
 
                     auto& entity_mesh = world.get_component<mesh_component>(entity);
                     entity_mesh.geometry = m_model.geometries[mesh_data.geometry].get();
-                    // for (auto& submesh_data : mesh_data.submeshes)
-                    // {
-                    //     entity_mesh.submeshes.push_back({
-                    //         .vertex_offset = submesh_data.vertex_offset,
-                    //         .index_offset = submesh_data.index_offset,
-                    //         .index_count = submesh_data.index_count,
-                    //         .material = m_cluster_material.get(),
-                    //     });
-                    // }
 
-                    for (const auto& cluster : cluster_result.clusters)
+                    for (std::uint32_t cluster_index = 0; cluster_index < m_clusters.size();
+                         ++cluster_index)
                     {
+                        const auto& cluster = m_clusters[cluster_index];
+
                         entity_mesh.submeshes.push_back({
                             .vertex_offset = 0,
                             .index_offset = cluster.index_offset,
                             .index_count = cluster.index_count,
-                            .material = m_cluster_material.get(),
+                            .material = get_material(cluster_index),
                         });
                     }
 
                     entity_mesh.aabb = mesh_data.aabb;
+
+                    m_mesh = entity;
                 }
 
                 if (node.parent != -1)
@@ -219,6 +216,21 @@ private:
             }
         }
 
+        if (ImGui::CollapsingHeader("Cluster"))
+        {
+            static bool draw_group = false;
+            if (ImGui::Checkbox("Draw Group", &draw_group))
+            {
+                auto& mesh = world.get_component<mesh_component>(m_mesh);
+
+                for (std::size_t i = 0; i < m_clusters.size(); ++i)
+                {
+                    mesh.submeshes[i].material =
+                        draw_group ? get_material(m_clusters[i].group_index) : get_material(i);
+                }
+            }
+        }
+
 #ifndef NDEBUG
         static bool draw_aabb = false;
         ImGui::Checkbox("Draw AABB", &draw_aabb);
@@ -238,14 +250,45 @@ private:
 #endif
     }
 
+    unlit_material* get_material(std::uint32_t id)
+    {
+        auto to_color = [](std::uint32_t id) -> vec3f
+        {
+            std::uint32_t hash = id + 1;
+            hash ^= hash >> 16;
+            hash *= 0x85ebca6b;
+            hash ^= hash >> 13;
+            hash *= 0xc2b2ae35;
+            hash ^= hash >> 16;
+
+            return {
+                static_cast<float>((hash >> 0) & 255) / 255.0f,
+                static_cast<float>((hash >> 8) & 255) / 255.0f,
+                static_cast<float>((hash >> 16) & 255) / 255.0f,
+            };
+        };
+
+        if (m_materials.find(id) == m_materials.end())
+        {
+            auto material = std::make_unique<unlit_material>();
+            material->set_color(to_color(id));
+            m_materials[id] = std::move(material);
+        }
+
+        return m_materials[id].get();
+    }
+
     entity m_light;
     entity m_camera;
     entity m_root;
+    entity m_mesh;
 
     std::unique_ptr<unlit_material> m_empty_material;
-    std::unique_ptr<cluster_material> m_cluster_material;
+
+    std::unordered_map<std::uint32_t, std::unique_ptr<unlit_material>> m_materials;
 
     mesh_loader::scene_data m_model;
+    std::vector<geometry_tool::cluster> m_clusters;
 
     rhi_ptr<rhi_swapchain> m_swapchain;
 

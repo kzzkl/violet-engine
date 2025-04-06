@@ -117,7 +117,7 @@ private:
     struct geometry_buffer
     {
         std::vector<std::uint8_t> buffer;
-        std::size_t stride;
+        std::size_t stride{0};
 
         geometry* src_geometry{nullptr};
 
@@ -152,8 +152,9 @@ private:
 
     std::array<geometry_buffer, GEOMETRY_BUFFER_COUNT> m_geometry_buffers;
 
-    std::size_t m_vertex_count;
-    std::size_t m_index_count;
+    std::size_t m_vertex_count{0};
+    std::size_t m_vertex_capacity{0};
+    std::size_t m_index_count{0};
 
     std::unordered_map<std::string, std::unique_ptr<raw_buffer>> m_additional_buffers;
 

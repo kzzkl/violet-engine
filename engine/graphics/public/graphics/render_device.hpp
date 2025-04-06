@@ -1,7 +1,8 @@
 #pragma once
 
-#include "common/hash.hpp"
+#include "algorithm/hash.hpp"
 #include "common/type_index.hpp"
+#include "graphics/pipeline_state.hpp"
 #include "graphics/shader.hpp"
 #include <memory>
 #include <span>
@@ -222,6 +223,67 @@ public:
 
     rhi_render_pass* get_render_pass(const rhi_render_pass_desc& desc);
 
+    rhi_rasterizer_state* get_rasterizer_state(
+        rhi_cull_mode cull_mode = RHI_CULL_MODE_NONE,
+        rhi_polygon_mode polygon_mode = RHI_POLYGON_MODE_FILL)
+    {
+        return m_rasterizer_state.get_dynamic(cull_mode, polygon_mode);
+    }
+
+    template <
+        rhi_cull_mode CullMode = RHI_CULL_MODE_NONE,
+        rhi_polygon_mode PolygonMode = RHI_POLYGON_MODE_FILL>
+    rhi_rasterizer_state* get_rasterizer_state()
+    {
+        return m_rasterizer_state.get_static<CullMode, PolygonMode>();
+    }
+
+    rhi_blend_state* get_blend_state(std::span<const rhi_attachment_blend> attachments = {})
+    {
+        return m_blend_state.get_dynamic(attachments);
+    }
+
+    template <typename... Attachments>
+    rhi_blend_state* get_blend_state()
+    {
+        return m_blend_state.get_static<Attachments...>();
+    }
+
+    rhi_depth_stencil_state* get_depth_stencil_state(
+        bool depth_enable = false,
+        bool depth_write_enable = false,
+        rhi_compare_op depth_compare_op = RHI_COMPARE_OP_NEVER,
+        bool stencil_enable = false,
+        rhi_stencil_state stencil_front = {},
+        rhi_stencil_state stencil_back = {})
+    {
+        return m_depth_stencil_state.get_dynamic(
+            depth_enable,
+            depth_write_enable,
+            depth_compare_op,
+            stencil_enable,
+            stencil_front,
+            stencil_back);
+    }
+
+    template <
+        bool DepthEnable = false,
+        bool DepthWriteEnable = false,
+        rhi_compare_op DepthCompareOp = RHI_COMPARE_OP_NEVER,
+        bool StencilEnable = false,
+        rhi_stencil_state StencilFront = {},
+        rhi_stencil_state StencilBack = {}>
+    rhi_depth_stencil_state* get_depth_stencil_state()
+    {
+        return m_depth_stencil_state.get_static<
+            DepthEnable,
+            DepthWriteEnable,
+            DepthCompareOp,
+            StencilEnable,
+            StencilFront,
+            StencilBack>();
+    }
+
     rhi_raster_pipeline* get_pipeline(const rhi_raster_pipeline_desc& desc);
     rhi_compute_pipeline* get_pipeline(const rhi_compute_pipeline_desc& desc);
 
@@ -269,6 +331,10 @@ private:
     std::vector<rhi_ptr<rhi_sampler>> m_buildin_samplers;
 
     std::unique_ptr<transient_allocator> m_transient_allocator;
+
+    rasterizer_state m_rasterizer_state;
+    blend_state m_blend_state;
+    depth_stencil_state m_depth_stencil_state;
 
     friend class rhi_deleter;
 };

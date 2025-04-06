@@ -1,5 +1,5 @@
 #include "physics/physics_system.hpp"
-#include "common/hash.hpp"
+#include "algorithm/hash.hpp"
 #include "components/collider_component.hpp"
 #include "components/hierarchy_component.hpp"
 #include "components/joint_component.hpp"
@@ -441,7 +441,7 @@ phy_collision_shape* physics_system::get_shape(const std::vector<collider_shape>
 
     auto get_shape_impl = [this](const phy_collision_shape_desc& desc)
     {
-        std::uint64_t hash = hash::city_hash_64(&desc, sizeof(phy_collision_shape_desc));
+        std::uint64_t hash = hash::city_hash_64(desc);
         auto iter = m_shapes.find(hash);
         if (iter != m_shapes.end())
         {
