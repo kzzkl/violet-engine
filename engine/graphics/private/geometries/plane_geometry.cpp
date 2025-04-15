@@ -56,12 +56,12 @@ plane_geometry::plane_geometry(
             const std::uint32_t d = (ix + 1) + grid_x1 * iy;
 
             indexes.push_back(a);
-            indexes.push_back(b);
             indexes.push_back(d);
+            indexes.push_back(b);
 
             indexes.push_back(b);
-            indexes.push_back(c);
             indexes.push_back(d);
+            indexes.push_back(c);
         }
     }
 

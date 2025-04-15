@@ -29,6 +29,12 @@ public:
 
     void erase(std::uint32_t edge)
     {
+        update(edge, std::numeric_limits<float>::lowest());
+        pop();
+    }
+
+    void update(std::uint32_t edge, float error)
+    {
         auto iter = std::find_if(
             m_heap.begin(),
             m_heap.end(),
@@ -37,15 +43,24 @@ public:
                 return e.edge == edge;
             });
 
-        if (iter != m_heap.end())
+        if (iter == m_heap.end())
         {
-            std::swap(*iter, m_heap.back());
-            m_heap.pop_back();
-            std::make_heap(m_heap.begin(), m_heap.end(), element_greater());
+            return;
+        }
+
+        if (iter->error > error)
+        {
+            iter->error = error;
+            sift_up(std::distance(m_heap.begin(), iter));
+        }
+        else
+        {
+            iter->error = error;
+            sift_down(std::distance(m_heap.begin(), iter));
         }
     }
 
-    const element& top() const
+    const element& top()
     {
         return m_heap.front();
     }
@@ -68,6 +83,49 @@ private:
             return a.error > b.error;
         }
     };
+
+    void sift_up(std::size_t index)
+    {
+        while (index > 0)
+        {
+            std::size_t parent = (index - 1) / 2;
+
+            if (m_heap[index].error < m_heap[parent].error)
+            {
+                std::swap(m_heap[index], m_heap[parent]);
+                index = parent;
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+
+    void sift_down(std::size_t index)
+    {
+        std::size_t size = m_heap.size();
+
+        std::size_t child = index * 2 + 1;
+        while (child < size)
+        {
+            if (child + 1 < size && m_heap[child].error > m_heap[child + 1].error)
+            {
+                ++child;
+            }
+
+            if (m_heap[index].error > m_heap[child].error)
+            {
+                std::swap(m_heap[index], m_heap[child]);
+                index = child;
+                child = index * 2 + 1;
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
 
     std::vector<element> m_heap;
 };

@@ -47,11 +47,20 @@ private:
         std::span<const vec3f> positions,
         std::span<const std::uint32_t> indexes);
     void build_cluster_groups(std::span<const vec3f> positions);
+    void simplify_cluster_group(cluster_group& group);
 
     box3f m_bounds;
 
     std::vector<std::uint32_t> m_indexes;
     std::vector<cluster> m_clusters;
     std::vector<cluster_group> m_groups;
+
+    struct lod
+    {
+        std::vector<vec3f> positions;
+        std::vector<std::uint32_t> indexes;
+    };
+
+    std::vector<lod> m_lods;
 };
 } // namespace violet

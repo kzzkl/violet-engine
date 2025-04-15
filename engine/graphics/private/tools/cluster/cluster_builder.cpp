@@ -339,4 +339,6 @@ void cluster_builder::build_cluster_groups(std::span<const vec3f> positions)
         m_groups.push_back(group);
     }
 }
+
+void cluster_builder::simplify_cluster_group(cluster_group& group) {}
 } // namespace violet

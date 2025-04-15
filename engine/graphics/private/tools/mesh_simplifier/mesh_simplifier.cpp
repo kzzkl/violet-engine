@@ -313,16 +313,15 @@ void mesh_simplifier::collapse_edge(std::uint32_t edge_index)
 
     for (std::uint32_t reevaluate_edge : reevaluate_edges)
     {
-        m_heap.erase(reevaluate_edge);
-
         auto& edge = m_edges[reevaluate_edge];
         if (edge.p0 != edge.p1 && !edge.removed)
         {
             float error = evaluate_edge(reevaluate_edge);
-            m_heap.push({
-                .edge = reevaluate_edge,
-                .error = error,
-            });
+            m_heap.update(reevaluate_edge, error);
+        }
+        else
+        {
+            m_heap.erase(reevaluate_edge);
         }
     }
 }

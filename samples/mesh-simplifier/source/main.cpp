@@ -6,6 +6,7 @@
 #include "components/transform_component.hpp"
 #include "control/control_system.hpp"
 #include "deferred_renderer_imgui.hpp"
+#include "gltf_loader.hpp"
 #include "graphics/geometries/plane_geometry.hpp"
 #include "graphics/geometries/sphere_geometry.hpp"
 #include "graphics/graphics_system.hpp"
@@ -116,8 +117,24 @@ private:
             RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
             RHI_CULL_MODE_NONE,
             RHI_POLYGON_MODE_LINE);
-        m_original_geometry = std::make_unique<sphere_geometry>(0.5f);
-        // m_original_geometry = std::make_unique<plane_geometry>(1.0f, 1.0f, 4, 4);
+
+        if (model_path.empty())
+        {
+            m_original_geometry = std::make_unique<sphere_geometry>(0.5f);
+            // m_original_geometry = std::make_unique<plane_geometry>(1.0f, 1.0f, 4, 4);
+        }
+        else
+        {
+            gltf_loader loader(model_path);
+            if (auto result = loader.load())
+            {
+                m_original_geometry = std::move(result->geometries[0]);
+            }
+            else
+            {
+                m_original_geometry = std::make_unique<sphere_geometry>(0.5f);
+            }
+        }
 
         m_model = world.create();
         world.add_component<transform_component, mesh_component, scene_component>(m_model);

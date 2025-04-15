@@ -23,7 +23,9 @@ graphics_system::graphics_system()
 
 graphics_system::~graphics_system()
 {
+#ifndef NDEBUG
     m_debug_drawer = nullptr;
+#endif
     m_scene_manager = nullptr;
     m_gpu_buffer_uploader = nullptr;
     m_fences.clear();
