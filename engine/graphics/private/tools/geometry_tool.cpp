@@ -173,26 +173,61 @@ geometry_tool::cluster_result geometry_tool::generate_clusters(
     std::span<const std::uint32_t> indexes)
 {
     cluster_builder builder;
-    builder.build(positions, indexes);
+    auto mesh_lods = builder.build(positions, indexes);
 
     cluster_result result;
-    result.indexes = builder.get_indexes();
 
-    for (const auto& cluster : builder.get_clusters())
+    std::size_t vertex_count = 0;
+    std::size_t index_count = 0;
+    for (auto& mesh_lod : mesh_lods)
     {
-        result.clusters.push_back({
-            .index_offset = cluster.index_offset,
-            .index_count = cluster.index_count,
-        });
+        vertex_count += mesh_lod.positions.size();
+        index_count += mesh_lod.indexes.size();
     }
+    result.positions.resize(vertex_count);
+    result.indexes.resize(index_count);
 
-    const auto& groups = builder.get_groups();
-    for (std::uint32_t group_index = 0; group_index < groups.size(); ++group_index)
+    std::uint32_t vertex_offset = 0;
+    std::uint32_t index_offset = 0;
+    for (const auto& mesh_lod : mesh_lods)
     {
-        for (std::uint32_t cluster_index : groups[group_index].clusters)
+        std::memcpy(
+            result.positions.data() + vertex_offset,
+            mesh_lod.positions.data(),
+            mesh_lod.positions.size() * sizeof(vec3f));
+
+        for (std::size_t i = 0; i < mesh_lod.indexes.size(); ++i)
         {
-            result.clusters[cluster_index].group_index = group_index;
+            result.indexes[index_offset + i] = mesh_lod.indexes[i] + vertex_offset;
         }
+
+        for (const auto& cluster : mesh_lod.clusters)
+        {
+            cluster_result::cluster result_cluster = {
+                .index_offset = cluster.index_offset + index_offset,
+                .index_count = cluster.index_count,
+            };
+
+            result.clusters.push_back(result_cluster);
+        }
+
+        result.lods.push_back({
+            .group_offset = static_cast<std::uint32_t>(result.groups.size()),
+            .group_count = static_cast<std::uint32_t>(mesh_lod.groups.size()),
+        });
+
+        for (const auto& group : mesh_lod.groups)
+        {
+            cluster_result::group result_group = {
+                .cluster_offset = group.cluster_offset,
+                .cluster_count = group.cluster_count,
+            };
+
+            result.groups.push_back(result_group);
+        }
+
+        vertex_offset += mesh_lod.positions.size();
+        index_offset += mesh_lod.indexes.size();
     }
 
     return result;
@@ -207,7 +242,8 @@ geometry_tool::simplify_result geometry_tool::simplify(
     simplify_result result;
 
     mesh_simplifier simplifier;
-    simplifier.set_mesh(positions, indexes);
+    simplifier.set_positions(positions);
+    simplifier.set_indexes(indexes);
 
     for (const auto& locked_position : locked_positions)
     {

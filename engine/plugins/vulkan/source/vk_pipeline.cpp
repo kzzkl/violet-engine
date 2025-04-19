@@ -117,6 +117,9 @@ vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_
     case RHI_PRIMITIVE_TOPOLOGY_LINE_LIST:
         input_assembly_state_info.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
         break;
+    case RHI_PRIMITIVE_TOPOLOGY_POINT_LIST:
+        input_assembly_state_info.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+        break;
     default:
         throw std::runtime_error("Invalid primitive topology.");
     }

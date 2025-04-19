@@ -60,7 +60,7 @@ public:
         }
     }
 
-    const element& top()
+    const element& top() const
     {
         return m_heap.front();
     }

@@ -54,6 +54,7 @@ public:
         m_index_to_id.pop_back();
         m_allocator.free(id);
 
+        m_objects[id].cpu_data = {};
         m_objects[id].valid = false;
         m_objects[id].dirty = false;
 

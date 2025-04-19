@@ -652,7 +652,8 @@ struct rhi_depth_stencil_state
 enum rhi_primitive_topology
 {
     RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-    RHI_PRIMITIVE_TOPOLOGY_LINE_LIST
+    RHI_PRIMITIVE_TOPOLOGY_LINE_LIST,
+    RHI_PRIMITIVE_TOPOLOGY_POINT_LIST,
 };
 
 struct rhi_raster_pipeline_desc

@@ -12,7 +12,8 @@ namespace violet
 class mesh_simplifier
 {
 public:
-    void set_mesh(std::span<const vec3f> positions, std::span<const std::uint32_t> indexes);
+    void set_positions(std::span<const vec3f> positions);
+    void set_indexes(std::span<const std::uint32_t> indexes);
 
     void lock_position(const vec3f& position);
 

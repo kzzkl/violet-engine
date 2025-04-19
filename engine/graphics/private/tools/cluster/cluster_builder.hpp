@@ -7,60 +7,50 @@
 
 namespace violet
 {
-struct cluster
-{
-    std::uint32_t index_offset;
-    std::uint32_t index_count;
-
-    std::vector<std::uint8_t> external_edges;
-
-    box3f bounds;
-};
-
-struct cluster_group
-{
-    std::vector<std::uint32_t> clusters;
-};
-
 class cluster_builder
 {
 public:
-    void build(std::span<const vec3f> positions, std::span<const std::uint32_t> indexes);
-
-    const std::vector<std::uint32_t>& get_indexes() const noexcept
+    struct cluster
     {
-        return m_indexes;
-    }
+        enum external_edge_flag : std::uint8_t
+        {
+            EXTERNAL_EDGE_CLUSTER = 1 << 0,
+            EXTERNAL_EDGE_GROUP = 1 << 1,
+        };
+        using external_edge_flags = std::uint8_t;
 
-    const std::vector<cluster>& get_clusters() const noexcept
+        std::uint32_t index_offset;
+        std::uint32_t index_count;
+
+        std::vector<external_edge_flags> external_edges;
+
+        box3f bounds;
+    };
+
+    struct cluster_group
     {
-        return m_clusters;
-    }
+        std::uint32_t cluster_offset;
+        std::uint32_t cluster_count;
+    };
 
-    const std::vector<cluster_group>& get_groups() const noexcept
-    {
-        return m_groups;
-    }
-
-private:
-    void cluster_triangles(
-        std::span<const vec3f> positions,
-        std::span<const std::uint32_t> indexes);
-    void build_cluster_groups(std::span<const vec3f> positions);
-    void simplify_cluster_group(cluster_group& group);
-
-    box3f m_bounds;
-
-    std::vector<std::uint32_t> m_indexes;
-    std::vector<cluster> m_clusters;
-    std::vector<cluster_group> m_groups;
-
-    struct lod
+    struct mesh_lod
     {
         std::vector<vec3f> positions;
         std::vector<std::uint32_t> indexes;
+
+        std::vector<cluster> clusters;
+        std::vector<cluster_group> groups;
     };
 
-    std::vector<lod> m_lods;
+    std::vector<mesh_lod> build(
+        std::span<const vec3f> positions,
+        std::span<const std::uint32_t> indexes);
+
+private:
+    void cluster_triangles(mesh_lod& lod);
+    void group_clusters(mesh_lod& lod);
+    void simplify_group(const mesh_lod& lod, mesh_lod& next_lod);
+
+    box3f m_bounds;
 };
 } // namespace violet

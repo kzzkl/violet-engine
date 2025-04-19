@@ -150,9 +150,6 @@ private:
 
         m_simplified_geometry = std::make_unique<geometry>();
         m_simplified_geometry->set_position(m_original_geometry->get_position());
-        m_simplified_geometry->set_normal(m_original_geometry->get_normal());
-        m_simplified_geometry->set_texcoord(m_original_geometry->get_texcoord());
-        m_simplified_geometry->set_tangent(m_original_geometry->get_tangent());
         m_simplified_geometry->set_indexes(m_original_geometry->get_indexes());
     }
 
@@ -181,7 +178,7 @@ private:
             }
         }
 
-        static float simplify_ratio = 0.5f;
+        static float simplify_ratio = 1.0f;
         if (ImGui::SliderFloat("Simplify Ratio", &simplify_ratio, 0.0f, 1.0f))
         {
             std::size_t triangle_count = m_original_geometry->get_index_count() / 3;

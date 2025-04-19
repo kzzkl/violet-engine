@@ -14,29 +14,31 @@ std::uint32_t cycle_3(std::uint32_t value)
 }
 } // namespace
 
-void mesh_simplifier::set_mesh(
-    std::span<const vec3f> positions,
-    std::span<const std::uint32_t> indexes)
+void mesh_simplifier::set_positions(std::span<const vec3f> positions)
 {
-    m_triangle_count = indexes.size() / 3;
+    m_vertex_map.clear();
 
     m_positions.assign(positions.begin(), positions.end());
-    m_indexes.assign(indexes.begin(), indexes.end());
 
     for (std::uint32_t i = 0; i < m_positions.size(); ++i)
     {
         m_vertex_map.insert({m_positions[i], i});
     }
+}
+
+void mesh_simplifier::set_indexes(std::span<const std::uint32_t> indexes)
+{
+    assert(!m_positions.empty());
+
+    m_triangle_count = indexes.size() / 3;
+
+    m_indexes.assign(indexes.begin(), indexes.end());
 
     std::size_t triangle_count = m_indexes.size() / 3;
 
-    std::size_t edge_count = std::min(
-        std::min(indexes.size(), 3 * positions.size() - 6),
-        triangle_count + positions.size());
-
     for (std::uint32_t corner = 0; corner < indexes.size(); ++corner)
     {
-        vec3f position = positions[indexes[corner]];
+        vec3f position = m_positions[indexes[corner]];
 
         m_corner_map.insert({position, corner});
 
@@ -44,7 +46,7 @@ void mesh_simplifier::set_mesh(
 
         edge edge = {
             .p0 = position,
-            .p1 = positions[indexes[other_corner]],
+            .p1 = m_positions[indexes[other_corner]],
         };
         if (add_edge(edge, static_cast<std::uint32_t>(m_edges.size())))
         {
@@ -124,8 +126,7 @@ float mesh_simplifier::evaluate_edge(std::uint32_t edge_index)
     quadric total_quadric = {};
     for (std::uint32_t adjacent_triangle : adjacent_triangles)
     {
-        const auto& triangle_quadric = m_triangle_quadrics[adjacent_triangle];
-        total_quadric += triangle_quadric;
+        total_quadric += m_triangle_quadrics[adjacent_triangle];
     }
 
     vec3f new_position;

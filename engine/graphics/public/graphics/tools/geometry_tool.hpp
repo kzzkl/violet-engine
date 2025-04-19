@@ -21,23 +21,32 @@ public:
         std::span<const vec4f> tangents,
         std::span<const std::uint32_t> indexes);
 
-    struct cluster
-    {
-        std::uint32_t index_offset;
-        std::uint32_t index_count;
-
-        std::uint32_t group_index;
-    };
-
-    struct cluster_group
-    {
-    };
-
     struct cluster_result
     {
+        struct cluster
+        {
+            std::uint32_t index_offset;
+            std::uint32_t index_count;
+        };
+
+        struct group
+        {
+            std::uint32_t cluster_offset;
+            std::uint32_t cluster_count;
+        };
+
+        struct lod
+        {
+            std::uint32_t group_offset;
+            std::uint32_t group_count;
+        };
+
+        std::vector<vec3f> positions;
         std::vector<std::uint32_t> indexes;
+
         std::vector<cluster> clusters;
-        std::vector<cluster_group> groups;
+        std::vector<group> groups;
+        std::vector<lod> lods;
     };
 
     static cluster_result generate_clusters(

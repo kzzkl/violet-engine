@@ -269,6 +269,7 @@ void render_scene::remove_instance_from_batch(render_id instance_id)
 
     if (batch.instance_count == 0)
     {
+        m_pipeline_to_batch.erase(batch.pipeline);
         m_batches.remove(batch_id);
     }
 }
