@@ -9,6 +9,7 @@ add_library(${PROJECT_NAME} STATIC
     ./private/passes/lighting/physical_pass.cpp
     ./private/passes/lighting/unlit_pass.cpp
     ./private/passes/blit_pass.cpp
+    ./private/passes/copy_depth_pass.cpp
     ./private/passes/cull_pass.cpp
     ./private/passes/debug/bounds_projection_pass.cpp
     ./private/passes/depth_only_pass.cpp

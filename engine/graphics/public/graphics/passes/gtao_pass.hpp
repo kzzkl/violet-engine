@@ -14,6 +14,7 @@ public:
         float radius;
         float falloff;
 
+        rdg_texture* hzb;
         rdg_texture* depth_buffer;
         rdg_texture* normal_buffer;
         rdg_texture* ao_buffer;

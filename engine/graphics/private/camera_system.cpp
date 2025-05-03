@@ -67,6 +67,22 @@ shader::camera_data get_camera_data(
 
     return result;
 }
+
+rhi_texture_extent get_previous_pow2_extent(const rhi_texture_extent& extent)
+{
+    rhi_texture_extent result = {1, 1};
+    while ((result.width << 1) < extent.width)
+    {
+        result.width <<= 1;
+    }
+
+    while ((result.height << 1) < extent.height)
+    {
+        result.height <<= 1;
+    }
+
+    return result;
+}
 } // namespace
 
 camera_system::camera_system()
@@ -107,10 +123,11 @@ void camera_system::update()
                         render_device::instance().create_parameter(shader::camera);
                 }
 
-                if (camera_meta.hzb == nullptr ||
-                    camera_meta.hzb->get_extent() != camera.get_extent())
+                if (camera_meta.hzb == nullptr || camera_meta.extent != camera.get_extent())
                 {
-                    rhi_texture_extent extent = camera.get_extent();
+                    camera_meta.extent = camera.get_extent();
+
+                    rhi_texture_extent extent = get_previous_pow2_extent(camera_meta.extent);
 
                     std::uint32_t max_size = std::max(extent.width, extent.height);
                     std::uint32_t level_count =

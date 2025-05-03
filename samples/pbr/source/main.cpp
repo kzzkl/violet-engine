@@ -206,20 +206,51 @@ private:
         auto& plane_transform = world.get_component<transform_component>(m_plane);
         plane_transform.set_position({0.0f, -1.0f, 0.0f});
 
-        // Sphere.
-        m_sphere = world.create();
-        world.add_component<transform_component, mesh_component, scene_component>(m_sphere);
-
+        // Spheres.
         m_sphere_geometry = std::make_unique<sphere_geometry>();
         m_sphere_material = std::make_unique<physical_material>();
 
-        auto& sphere_mesh = world.get_component<mesh_component>(m_sphere);
-        sphere_mesh.geometry = m_sphere_geometry.get();
-        sphere_mesh.submeshes.push_back({
-            .material = m_sphere_material.get(),
-        });
-        auto& sphere_transform = world.get_component<transform_component>(m_sphere);
-        sphere_transform.set_position({2.0f, 0.0f, 0.0f});
+        std::uint32_t size = 10;
+        for (std::uint32_t i = 0; i < size; ++i)
+        {
+            if (i != 3)
+            {
+                // continue;
+            }
+            for (std::uint32_t j = 0; j < size; ++j)
+            {
+                if (j != 4)
+                {
+                    // continue;
+                }
+                for (std::uint32_t k = 0; k < size; ++k)
+                {
+                    if (k != 0)
+                    {
+                        // continue;
+                    }
+
+                    vec3f position = {
+                        static_cast<float>(i) - static_cast<float>(size) / 2.0f,
+                        static_cast<float>(j) - static_cast<float>(size) / 2.0f,
+                        static_cast<float>(k) - static_cast<float>(size) / 2.0f,
+                    };
+                    position *= 2.0f;
+
+                    entity sphere = world.create();
+                    world.add_component<transform_component, mesh_component, scene_component>(
+                        sphere);
+
+                    auto& sphere_mesh = world.get_component<mesh_component>(sphere);
+                    sphere_mesh.geometry = m_sphere_geometry.get();
+                    sphere_mesh.submeshes.push_back({
+                        .material = m_sphere_material.get(),
+                    });
+                    auto& sphere_transform = world.get_component<transform_component>(sphere);
+                    sphere_transform.set_position(position);
+                }
+            }
+        }
     }
 
     void resize()
@@ -333,7 +364,6 @@ private:
     std::unique_ptr<geometry> m_plane_geometry;
     std::unique_ptr<material> m_plane_material;
 
-    entity m_sphere;
     std::unique_ptr<geometry> m_sphere_geometry;
     std::unique_ptr<physical_material> m_sphere_material;
 

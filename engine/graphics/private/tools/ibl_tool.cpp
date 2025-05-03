@@ -209,7 +209,8 @@ private:
                         data.src.get_rhi(),
                         src_region,
                         data.dst.get_rhi(),
-                        dst_region);
+                        dst_region,
+                        RHI_FILTER_LINEAR);
                 });
         }
     }

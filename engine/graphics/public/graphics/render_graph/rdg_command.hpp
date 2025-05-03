@@ -154,9 +154,10 @@ public:
         rhi_texture* src,
         const rhi_texture_region& src_region,
         rhi_texture* dst,
-        const rhi_texture_region& dst_region)
+        const rhi_texture_region& dst_region,
+        rhi_filter filter)
     {
-        m_command->blit_texture(src, src_region, dst, dst_region);
+        m_command->blit_texture(src, src_region, dst, dst_region, filter);
     }
 
     void fill_buffer(rhi_buffer* buffer, const rhi_buffer_region& region, std::uint32_t value)

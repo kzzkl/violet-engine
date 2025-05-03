@@ -1,5 +1,6 @@
 #include "graphics/renderers/deferred_renderer.hpp"
 #include "graphics/passes/blit_pass.hpp"
+#include "graphics/passes/copy_depth_pass.hpp"
 #include "graphics/passes/cull_pass.hpp"
 #include "graphics/passes/debug/bounds_projection_pass.hpp"
 #include "graphics/passes/gtao_pass.hpp"
@@ -174,7 +175,8 @@ void deferred_renderer::add_gtao_pass(render_graph& graph)
             .step_count = gtao->get_step_count(),
             .radius = gtao->get_radius(),
             .falloff = gtao->get_falloff(),
-            .depth_buffer = m_hzb,
+            .hzb = m_hzb,
+            .depth_buffer = m_depth_buffer,
             .normal_buffer = m_gbuffer_normal,
             .ao_buffer = m_ao_buffer,
         });
@@ -193,13 +195,26 @@ void deferred_renderer::add_lighting_pass(render_graph& graph)
             .clear = true,
         });
 
+    rdg_texture* depth_copy = graph.add_texture(
+        "Depth Copy",
+        m_render_extent,
+        RHI_FORMAT_R32_FLOAT,
+        RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE);
+
+    copy_depth_pass::add(
+        graph,
+        {
+            .src = m_depth_buffer,
+            .dst = depth_copy,
+        });
+
     physical_pass::add(
         graph,
         {
             .gbuffer_albedo = m_gbuffer_albedo,
             .gbuffer_material = m_gbuffer_material,
             .gbuffer_normal = m_gbuffer_normal,
-            .gbuffer_depth = m_hzb,
+            .gbuffer_depth = depth_copy,
             .gbuffer_emissive = m_gbuffer_emissive,
             .ao_buffer = m_ao_buffer,
             .depth_buffer = m_depth_buffer,

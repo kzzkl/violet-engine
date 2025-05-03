@@ -28,5 +28,7 @@ public:
 
     static VkCompareOp map_compare_op(rhi_compare_op op);
     static VkStencilOp map_stencil_op(rhi_stencil_op op);
+
+    static VkImageAspectFlags map_image_aspect_flags(rhi_texture_aspect_flags flags);
 };
 } // namespace violet::vk

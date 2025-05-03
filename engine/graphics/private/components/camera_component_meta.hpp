@@ -16,6 +16,8 @@ public:
 
     rhi_ptr<rhi_texture> hzb;
     rhi_ptr<rhi_parameter> parameter;
+
+    rhi_texture_extent extent;
 };
 
 template <>

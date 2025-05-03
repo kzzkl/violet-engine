@@ -4,16 +4,13 @@
 
 namespace violet
 {
-class blit_pass
+class copy_depth_pass
 {
 public:
     struct parameter
     {
         rdg_texture* src;
-        rhi_texture_region src_region;
         rdg_texture* dst;
-        rhi_texture_region dst_region;
-        rhi_filter filter;
     };
 
     static void add(render_graph& graph, const parameter& parameter);

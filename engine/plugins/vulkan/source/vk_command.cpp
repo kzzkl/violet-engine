@@ -306,7 +306,8 @@ void vk_command::blit_texture(
     rhi_texture* src,
     const rhi_texture_region& src_region,
     rhi_texture* dst,
-    const rhi_texture_region& dst_region)
+    const rhi_texture_region& dst_region,
+    rhi_filter filter)
 {
     auto* src_image = static_cast<vk_texture*>(src);
     auto* dst_image = static_cast<vk_texture*>(dst);
@@ -318,7 +319,9 @@ void vk_command::blit_texture(
         static_cast<std::int32_t>(src_region.extent.width),
         static_cast<std::int32_t>(src_region.extent.height),
         1};
-    image_blit.srcSubresource.aspectMask = src_image->get_aspect_mask();
+    image_blit.srcSubresource.aspectMask = src_region.aspect == 0 ?
+                                               src_image->get_aspect_mask() :
+                                               vk_utils::map_image_aspect_flags(src_region.aspect);
     image_blit.srcSubresource.mipLevel = src_region.level;
     image_blit.srcSubresource.baseArrayLayer = src_region.layer;
     image_blit.srcSubresource.layerCount = src_region.layer_count;
@@ -328,7 +331,9 @@ void vk_command::blit_texture(
         static_cast<std::int32_t>(dst_region.extent.width),
         static_cast<std::int32_t>(dst_region.extent.height),
         1};
-    image_blit.dstSubresource.aspectMask = dst_image->get_aspect_mask();
+    image_blit.dstSubresource.aspectMask = dst_region.aspect == 0 ?
+                                               dst_image->get_aspect_mask() :
+                                               vk_utils::map_image_aspect_flags(dst_region.aspect);
     image_blit.dstSubresource.mipLevel = dst_region.level;
     image_blit.dstSubresource.baseArrayLayer = dst_region.layer;
     image_blit.dstSubresource.layerCount = dst_region.layer_count;
@@ -341,7 +346,7 @@ void vk_command::blit_texture(
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1,
         &image_blit,
-        VK_FILTER_LINEAR);
+        vk_utils::map_filter(filter));
 }
 
 void vk_command::fill_buffer(

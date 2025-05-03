@@ -441,6 +441,7 @@ void vk_context::initialize_logic_device(
 
     VkPhysicalDeviceVulkan12Features vulkan12_features = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+        .samplerFilterMinmax = VK_TRUE,
         .timelineSemaphore = VK_TRUE,
     };
 

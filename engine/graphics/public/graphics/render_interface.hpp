@@ -321,19 +321,26 @@ public:
         rhi_format format = RHI_FORMAT_UNDEFINED) = 0;
 };
 
-enum rhi_filter : std::uint32_t
+enum rhi_filter : std::uint8_t
 {
     RHI_FILTER_POINT,
     RHI_FILTER_LINEAR
 };
 
-enum rhi_sampler_address_mode : std::uint32_t
+enum rhi_sampler_address_mode : std::uint8_t
 {
     RHI_SAMPLER_ADDRESS_MODE_REPEAT,
     RHI_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
     RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
     RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
     RHI_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE
+};
+
+enum rhi_sampler_reduction_mode : std::uint8_t
+{
+    RHI_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE,
+    RHI_SAMPLER_REDUCTION_MODE_MIN,
+    RHI_SAMPLER_REDUCTION_MODE_MAX
 };
 
 struct rhi_sampler_desc
@@ -347,6 +354,8 @@ struct rhi_sampler_desc
 
     float min_level;
     float max_level;
+
+    rhi_sampler_reduction_mode reduction_mode;
 };
 
 class rhi_sampler : public rhi_descriptor
@@ -478,12 +487,12 @@ struct rhi_parameter_binding
     std::size_t size;
 };
 
-enum rhi_parameter_flag : std::uint32_t
+enum rhi_parameter_flag : std::uint8_t
 {
     RHI_PARAMETER_SIMPLE = 1 << 0,
     RHI_PARAMETER_DISABLE_SYNC = 1 << 1,
 };
-using rhi_parameter_flags = std::uint32_t;
+using rhi_parameter_flags = std::uint8_t;
 
 struct rhi_parameter_desc
 {
@@ -768,6 +777,14 @@ struct rhi_texture_barrier
     std::uint32_t layer_count;
 };
 
+enum rhi_texture_aspect_flag : std::uint8_t
+{
+    RHI_TEXTURE_ASPECT_COLOR = 1 << 0,
+    RHI_TEXTURE_ASPECT_DEPTH = 1 << 1,
+    RHI_TEXTURE_ASPECT_STENCIL = 1 << 2,
+};
+using rhi_texture_aspect_flags = std::uint8_t;
+
 struct rhi_texture_region
 {
     std::int32_t offset_x;
@@ -777,6 +794,8 @@ struct rhi_texture_region
     std::uint32_t level;
     std::uint32_t layer;
     std::uint32_t layer_count;
+
+    rhi_texture_aspect_flags aspect;
 };
 
 struct rhi_buffer_region
@@ -853,7 +872,8 @@ public:
         rhi_texture* src,
         const rhi_texture_region& src_region,
         rhi_texture* dst,
-        const rhi_texture_region& dst_region) = 0;
+        const rhi_texture_region& dst_region,
+        rhi_filter filter) = 0;
 
     virtual void fill_buffer(
         rhi_buffer* buffer,

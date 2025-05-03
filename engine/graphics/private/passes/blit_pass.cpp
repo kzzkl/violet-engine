@@ -10,6 +10,7 @@ void blit_pass::add(render_graph& graph, const parameter& parameter)
         rhi_texture_region src_region;
         rdg_texture_ref dst;
         rhi_texture_region dst_region;
+        rhi_filter filter;
     };
 
     graph.add_pass<pass_data>(
@@ -30,6 +31,8 @@ void blit_pass::add(render_graph& graph, const parameter& parameter)
                 RHI_ACCESS_TRANSFER_WRITE,
                 RHI_TEXTURE_LAYOUT_TRANSFER_DST);
             data.dst_region = parameter.dst_region;
+
+            data.filter = parameter.filter;
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -37,7 +40,8 @@ void blit_pass::add(render_graph& graph, const parameter& parameter)
                 data.src.get_rhi(),
                 data.src_region,
                 data.dst.get_rhi(),
-                data.dst_region);
+                data.dst_region,
+                data.filter);
         });
 }
 } // namespace violet

@@ -592,7 +592,7 @@ void texture_loader::generate_mipmaps(
             .layer_count = 1,
         };
 
-        command->blit_texture(texture, src_region, texture, dst_region);
+        command->blit_texture(texture, src_region, texture, dst_region, RHI_FILTER_LINEAR);
     }
 
     texture_barriers[0].level = level_count - 1;

@@ -8,14 +8,14 @@ struct cull_cs : public shader_cs
 
     struct constant_data
     {
-        std::uint32_t hzb_buffer;
+        std::uint32_t hzb;
+        std::uint32_t hzb_sampler;
         std::uint32_t cull_result;
         std::uint32_t width;
         std::uint32_t height;
         std::uint32_t frustum_culling;
         std::uint32_t occlusion_culling;
         std::uint32_t padding0;
-        std::uint32_t padding1;
         vec4f frustum;
     };
 
@@ -87,7 +87,7 @@ void cull_pass::add_cull_pass(
 {
     struct pass_data
     {
-        rdg_texture_srv hzb_buffer;
+        rdg_texture_srv hzb;
         rdg_buffer_uav cull_result;
         bool frustum_culling;
         bool occlusion_culling;
@@ -101,7 +101,7 @@ void cull_pass::add_cull_pass(
         RDG_PASS_COMPUTE,
         [&](pass_data& data, rdg_pass& pass)
         {
-            data.hzb_buffer = pass.add_texture_srv(parameter.hzb, RHI_PIPELINE_STAGE_COMPUTE);
+            data.hzb = pass.add_texture_srv(parameter.hzb, RHI_PIPELINE_STAGE_COMPUTE);
             data.cull_result = pass.add_buffer_uav(cull_result, RHI_PIPELINE_STAGE_COMPUTE);
             data.frustum_culling = parameter.frustum_culling;
             data.occlusion_culling = parameter.occlusion_culling;
@@ -122,14 +122,26 @@ void cull_pass::add_cull_pass(
         {
             auto& device = render_device::instance();
 
+            rhi_sampler* hzb_sampler = device.get_sampler({
+                .mag_filter = RHI_FILTER_LINEAR,
+                .min_filter = RHI_FILTER_LINEAR,
+                .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                .address_mode_v = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                .min_level = 0.0f,
+                .max_level = -1.0f,
+                .reduction_mode = RHI_SAMPLER_REDUCTION_MODE_MIN,
+            });
+
             command.set_pipeline({
                 .compute_shader = device.get_shader<cull_cs>(),
             });
 
-            rhi_texture_extent extent = data.hzb_buffer.get_extent();
+            rhi_texture_extent extent = data.hzb.get_extent();
 
             command.set_constant(cull_cs::constant_data{
-                .hzb_buffer = data.hzb_buffer.get_bindless(),
+                .hzb = data.hzb.get_bindless(),
+                .hzb_sampler = hzb_sampler->get_bindless(),
                 .cull_result = data.cull_result.get_bindless(),
                 .width = extent.width,
                 .height = extent.height,
