@@ -5,9 +5,9 @@ namespace violet
 {
 hilbert_lut::hilbert_lut(std::uint32_t level)
 {
-    std::size_t width = 1 << level;
+    std::uint32_t width = 1 << level;
 
-    std::vector<std::uint32_t> hilbert_indexes(width * width);
+    std::vector<std::uint32_t> hilbert_indexes(static_cast<std::size_t>(width * width));
     for (std::uint32_t y = 0; y < width; ++y)
     {
         for (std::uint32_t x = 0; x < width; ++x)

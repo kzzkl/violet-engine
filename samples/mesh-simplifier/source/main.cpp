@@ -150,7 +150,7 @@ private:
 
         m_simplified_geometry = std::make_unique<geometry>();
         m_simplified_geometry->set_position(m_original_geometry->get_position());
-        m_simplified_geometry->set_indexes(m_original_geometry->get_indexes());
+        m_simplified_geometry->set_index(m_original_geometry->get_index());
     }
 
     void resize()
@@ -187,11 +187,11 @@ private:
 
             auto result = geometry_tool::simplify(
                 m_original_geometry->get_position(),
-                m_original_geometry->get_indexes(),
+                m_original_geometry->get_index(),
                 target_triangle_count);
 
             m_simplified_geometry->set_position(result.positions);
-            m_simplified_geometry->set_indexes(result.indexes);
+            m_simplified_geometry->set_index(result.indexes);
 
             if (show_simplified)
             {

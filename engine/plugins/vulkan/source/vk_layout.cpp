@@ -7,8 +7,8 @@ namespace violet::vk
 {
 vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_context* context)
     : m_layout(VK_NULL_HANDLE),
-      m_context(context),
-      m_bindings(desc.binding_count)
+      m_bindings(desc.binding_count),
+      m_context(context)
 {
     std::vector<VkDescriptorSetLayoutBinding> bindings;
     std::vector<VkDescriptorBindingFlags> binding_flags;
@@ -23,6 +23,8 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
         binding.binding = static_cast<std::uint32_t>(i);
         binding.stageFlags |=
             desc.bindings[i].stages & RHI_SHADER_STAGE_VERTEX ? VK_SHADER_STAGE_VERTEX_BIT : 0;
+        binding.stageFlags |=
+            desc.bindings[i].stages & RHI_SHADER_STAGE_GEOMETRY ? VK_SHADER_STAGE_GEOMETRY_BIT : 0;
         binding.stageFlags |=
             desc.bindings[i].stages & RHI_SHADER_STAGE_FRAGMENT ? VK_SHADER_STAGE_FRAGMENT_BIT : 0;
         binding.stageFlags |=
@@ -54,7 +56,7 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
             }
             else
             {
-                binding.descriptorCount = desc.bindings[i].size;
+                binding.descriptorCount = static_cast<std::uint32_t>(desc.bindings[i].size);
             }
             binding_flags.push_back(0);
         }

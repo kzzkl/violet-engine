@@ -21,8 +21,8 @@ public:
         m_color.push_back(color);
         m_color.push_back(color);
 
-        m_indexes.push_back(m_indexes.size());
-        m_indexes.push_back(m_indexes.size());
+        m_indexes.push_back(static_cast<std::uint32_t>(m_indexes.size()));
+        m_indexes.push_back(static_cast<std::uint32_t>(m_indexes.size()));
     }
 
     void draw_box(const box3f& box, const vec3f& color)

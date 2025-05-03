@@ -47,7 +47,7 @@ struct mesh
         vertex result;
         result.position = vertex_buffer.Load<float3>(mesh.position_address + vertex_id * sizeof(float3));
         result.position_ws = mul(mesh.model_matrix, float4(result.position, 1.0)).xyz;
-        result.position_cs = mul(camera.view_projection, float4(result.position_ws, 1.0));
+        result.position_cs = mul(camera.matrix_vp, float4(result.position_ws, 1.0));
 
         if (mesh.normal_address != 0)
         {

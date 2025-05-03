@@ -76,7 +76,7 @@ void gtao_pass::add(render_graph& graph, const parameter& parameter)
                 .step_count = data.step_count,
                 .radius = data.radius,
                 .falloff = data.falloff,
-                .frame = static_cast<std::uint32_t>(device.get_frame_count()),
+                .frame = device.get_frame_count(),
             });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_CAMERA);

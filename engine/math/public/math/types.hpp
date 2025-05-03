@@ -12,29 +12,17 @@ struct vec2
     using value_type = T;
     using self_type = vec2<T>;
 
-    union
-    {
-        struct
-        {
-            value_type x, y;
-        };
-
-        struct
-        {
-            value_type r, g;
-        };
-
-        value_type data[2];
-    };
+    value_type x;
+    value_type y;
 
     [[nodiscard]] inline value_type& operator[](std::size_t index)
     {
-        return data[index];
+        return (&x)[index];
     }
 
     [[nodiscard]] inline value_type operator[](std::size_t index) const
     {
-        return data[index];
+        return (&x)[index];
     }
 
     [[nodiscard]] inline bool operator==(const self_type& other) const noexcept
@@ -49,29 +37,18 @@ struct vec3
     using value_type = T;
     using self_type = vec3<T>;
 
-    union
-    {
-        struct
-        {
-            value_type x, y, z;
-        };
-
-        struct
-        {
-            value_type r, g, b;
-        };
-
-        value_type data[3];
-    };
+    value_type x;
+    value_type y;
+    value_type z;
 
     [[nodiscard]] inline value_type& operator[](std::size_t index)
     {
-        return data[index];
+        return (&x)[index];
     }
 
     [[nodiscard]] inline const value_type& operator[](std::size_t index) const
     {
-        return data[index];
+        return (&x)[index];
     }
 
     [[nodiscard]] inline bool operator==(const self_type& other) const noexcept
@@ -91,29 +68,19 @@ struct vec4
     using value_type = T;
     using self_type = vec4<T>;
 
-    union
-    {
-        struct
-        {
-            value_type x, y, z, w;
-        };
-
-        struct
-        {
-            value_type r, g, b, a;
-        };
-
-        value_type data[4];
-    };
+    value_type x;
+    value_type y;
+    value_type z;
+    value_type w;
 
     [[nodiscard]] inline value_type& operator[](std::size_t index)
     {
-        return data[index];
+        return (&x)[index];
     }
 
     [[nodiscard]] inline const value_type& operator[](std::size_t index) const
     {
-        return data[index];
+        return (&x)[index];
     }
 
     [[nodiscard]] inline bool operator==(const self_type& other) const noexcept

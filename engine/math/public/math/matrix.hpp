@@ -713,6 +713,33 @@ struct matrix
         }
     }
 
+    // Infinite perspective projection.
+    template <typename T = float>
+    [[nodiscard]] static inline mat4<T> perspective(
+        mat4<T>::value_type fov,
+        mat4<T>::value_type aspect,
+        mat4<T>::value_type near_z)
+    {
+        if constexpr (std::is_same_v<T, simd>)
+        {
+            // TODO
+            mat4f result = perspective(fov, aspect, near_z);
+            return math::load(result);
+        }
+        else
+        {
+            using value_type = mat4<T>::value_type;
+
+            value_type h = value_type(1) / std::tanf(fov * 0.5f); // view space height
+            value_type w = h / aspect;                            // view space width
+            return {
+                {w, value_type(0), value_type(0), value_type(0)},
+                {value_type(0), h, value_type(0), value_type(0)},
+                {value_type(0), value_type(0), value_type(1), value_type(1)},
+                {value_type(0), value_type(0), -near_z, value_type(0)}};
+        }
+    }
+
     template <typename T = float>
     [[nodiscard]] static inline mat4<T> perspective_reverse_z(
         mat4<T>::value_type fov,
@@ -721,6 +748,33 @@ struct matrix
         mat4<T>::value_type far_z)
     {
         return perspective<T>(fov, aspect, far_z, near_z);
+    }
+
+    // Infinite perspective projection.
+    template <typename T = float>
+    [[nodiscard]] static inline mat4<T> perspective_reverse_z(
+        mat4<T>::value_type fov,
+        mat4<T>::value_type aspect,
+        mat4<T>::value_type near_z)
+    {
+        if constexpr (std::is_same_v<T, simd>)
+        {
+            // TODO
+            mat4f result = perspective_reverse_z(fov, aspect, near_z);
+            return math::load(result);
+        }
+        else
+        {
+            using value_type = mat4<T>::value_type;
+
+            value_type h = value_type(1) / std::tanf(fov * 0.5f); // view space height
+            value_type w = h / aspect;                            // view space width
+            return {
+                {w, value_type(0), value_type(0), value_type(0)},
+                {value_type(0), h, value_type(0), value_type(0)},
+                {value_type(0), value_type(0), value_type(0), value_type(1)},
+                {value_type(0), value_type(0), near_z, value_type(0)}};
+        }
     }
 
     [[nodiscard]] static inline mat4f_simd set(

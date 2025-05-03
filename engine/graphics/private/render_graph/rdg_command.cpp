@@ -80,8 +80,8 @@ void rdg_command::draw_instances(
         type,
         [&](render_id id,
             const rdg_raster_pipeline& pipeline,
-            std::size_t instance_offset,
-            std::size_t instance_count)
+            std::uint32_t instance_offset,
+            std::uint32_t instance_count)
         {
             set_pipeline(pipeline);
 
@@ -130,8 +130,8 @@ void rdg_command::draw_instances(
         type,
         [&](render_id id,
             const rdg_raster_pipeline& pipeline,
-            std::size_t instance_offset,
-            std::size_t instance_count)
+            std::uint32_t instance_offset,
+            std::uint32_t instance_count)
         {
             m_command->draw_indexed_indirect(
                 command_buffer,

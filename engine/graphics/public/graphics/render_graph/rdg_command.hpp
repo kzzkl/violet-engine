@@ -29,12 +29,12 @@ public:
     void set_pipeline(const rdg_raster_pipeline& pipeline);
     void set_pipeline(const rdg_compute_pipeline& pipeline);
 
-    void set_parameter(std::size_t index, rdg_parameter_type type)
+    void set_parameter(std::uint32_t index, rdg_parameter_type type)
     {
         m_command->set_parameter(index, m_built_in_parameters[type]);
     }
 
-    void set_parameter(std::size_t index, rhi_parameter* parameter)
+    void set_parameter(std::uint32_t index, rhi_parameter* parameter)
     {
         m_command->set_parameter(index, parameter);
     }
@@ -54,12 +54,14 @@ public:
     void set_scissor();
     void set_scissor(std::span<const rhi_scissor_rect> rects)
     {
-        m_command->set_scissor(rects.data(), rects.size());
+        m_command->set_scissor(rects.data(), static_cast<std::uint32_t>(rects.size()));
     }
 
     void set_vertex_buffers(std::span<rhi_buffer* const> vertex_buffers)
     {
-        m_command->set_vertex_buffers(vertex_buffers.data(), vertex_buffers.size());
+        m_command->set_vertex_buffers(
+            vertex_buffers.data(),
+            static_cast<std::uint32_t>(vertex_buffers.size()));
     }
 
     void set_index_buffer(rhi_buffer* index_buffer, std::size_t index_size)

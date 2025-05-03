@@ -7,7 +7,7 @@ struct constant_data
     uint cull_result;
     uint command_buffer;
     uint count_buffer;
-    uint padding_0;
+    uint padding0;
 };
 PushConstant(constant_data, constant);
 

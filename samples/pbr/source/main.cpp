@@ -176,7 +176,8 @@ private:
                         });
                     }
 
-                    entity_mesh.aabb = mesh_data.aabb;
+                    entity_mesh.bounding_box = mesh_data.bounding_box;
+                    entity_mesh.bounding_sphere = mesh_data.bounding_sphere;
                 }
 
                 if (node.parent != -1)
@@ -199,7 +200,6 @@ private:
 
         auto& plane_mesh = world.get_component<mesh_component>(m_plane);
         plane_mesh.geometry = m_plane_geometry.get();
-        plane_mesh.aabb = m_plane_geometry->get_aabb();
         plane_mesh.submeshes.push_back({
             .material = m_plane_material.get(),
         });
@@ -215,7 +215,6 @@ private:
 
         auto& sphere_mesh = world.get_component<mesh_component>(m_sphere);
         sphere_mesh.geometry = m_sphere_geometry.get();
-        sphere_mesh.aabb = m_sphere_geometry->get_aabb();
         sphere_mesh.submeshes.push_back({
             .material = m_sphere_material.get(),
         });
@@ -315,12 +314,11 @@ private:
         if (draw_aabb)
         {
             auto& debug_drawer = get_system<graphics_system>().get_debug_drawer();
-            auto& world = get_world();
 
             world.get_view().read<mesh_component>().read<transform_world_component>().each(
                 [&](const mesh_component& mesh, const transform_world_component& transform)
                 {
-                    box3f box = box::transform(mesh.aabb, transform.matrix);
+                    box3f box = box::transform(mesh.bounding_box, transform.matrix);
                     debug_drawer.draw_box(box, {0.0f, 1.0f, 0.0f});
                 });
         }

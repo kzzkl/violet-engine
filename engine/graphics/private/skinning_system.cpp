@@ -135,7 +135,11 @@ void skinning_system::skinning(rhi_command* command)
         barrier.size = geometry_manager->get_buffer_size(skinned_id, GEOMETRY_BUFFER_TANGENT);
         buffer_barriers.push_back(barrier);
 
-        command->set_pipeline_barrier(buffer_barriers.data(), buffer_barriers.size(), nullptr, 0);
+        command->set_pipeline_barrier(
+            buffer_barriers.data(),
+            static_cast<std::uint32_t>(buffer_barriers.size()),
+            nullptr,
+            0);
     }
 
     command->end_label();
@@ -178,7 +182,7 @@ void skinning_system::update_skin()
                         skinned_geometry->set_custom_shared(i, original_geometry);
                     }
 
-                    skinned_geometry->set_indexes_shared(original_geometry);
+                    skinned_geometry->set_index_shared(original_geometry);
 
                     if (original_geometry->get_morph_target_count() != 0)
                     {
@@ -318,7 +322,7 @@ void skinning_system::update_morph()
             morphing_data data = {
                 .morph_target_buffer = morph_target_buffer,
                 .weights = morph.weights.data(),
-                .weight_count = morph.weights.size(),
+                .weight_count = static_cast<std::uint32_t>(morph.weights.size()),
                 .morph_vertex_buffer =
                     skinned_meta.skinned_geometry->get_additional_buffer("morph"),
             };

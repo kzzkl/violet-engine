@@ -18,14 +18,14 @@ public:
     void lock_position(const vec3f& position);
 
     float simplify(
-        std::size_t target_triangle_count,
+        std::uint32_t target_triangle_count,
         std::vector<vec3f>& new_positions,
         std::vector<std::uint32_t>& new_indexes);
 
 private:
     struct vertex_hash
     {
-        std::size_t operator()(const vec3f& v) const noexcept
+        std::uint32_t operator()(const vec3f& v) const noexcept
         {
             union
             {
@@ -56,12 +56,12 @@ private:
         }
     };
 
-    enum corner_flag : std::uint32_t
+    enum corner_flag : std::uint8_t
     {
         CORNER_LOCKED = 1 << 0,
         CORNER_REMOVED = 1 << 1,
     };
-    using corner_flags = std::uint32_t;
+    using corner_flags = std::uint8_t;
 
     float evaluate_edge(std::uint32_t edge_index);
     void collapse_edge(std::uint32_t edge_index);
@@ -90,7 +90,7 @@ private:
     std::unordered_multimap<vec3f, std::uint32_t, vertex_hash> m_edge_map1;
 
     std::vector<quadric> m_triangle_quadrics;
-    std::size_t m_triangle_count{0};
+    std::uint32_t m_triangle_count{0};
 
     collapse_heap m_heap;
 };

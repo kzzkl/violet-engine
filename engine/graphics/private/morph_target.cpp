@@ -75,7 +75,10 @@ void morph_target_buffer::update_morph(
     };
     command->set_constant(&constant, sizeof(morphing_cs::constant_data));
 
-    command->dispatch((m_morph_targets.size() + 7) / 8, (m_max_element_count + 7) / 8, 1);
+    command->dispatch(
+        static_cast<std::uint32_t>((m_morph_targets.size() + 7) / 8),
+        static_cast<std::uint32_t>((m_max_element_count + 7) / 8),
+        1);
 
     barrier.src_stages = RHI_PIPELINE_STAGE_COMPUTE;
     barrier.src_access = RHI_ACCESS_SHADER_WRITE;
@@ -99,7 +102,7 @@ void morph_target_buffer::update_morph_data()
         std::uint32_t element_count;
         std::uint32_t element_offset;
         std::int32_t position_min;
-        std::uint32_t padding_0;
+        std::uint32_t padding0;
     };
     std::vector<morph_target_header> morph_headers;
     morph_headers.reserve(m_morph_targets.size());
@@ -153,8 +156,6 @@ void morph_target_buffer::update_morph_data()
 
         element_offset += morph_header.element_count;
     }
-
-    auto& device = render_device::instance();
 
     m_header_buffer = std::make_unique<structured_buffer>(morph_headers, RHI_BUFFER_STORAGE);
     m_element_buffer = std::make_unique<structured_buffer>(morph_elements, RHI_BUFFER_STORAGE);

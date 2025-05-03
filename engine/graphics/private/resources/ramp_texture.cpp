@@ -45,9 +45,9 @@ ramp_texture::ramp_texture(const std::vector<point>& points, std::uint32_t width
                 (position - prev_point.position) / (next_point.position - prev_point.position));
         }
 
-        data.mipmaps[0].pixels.push_back(static_cast<char>(color.r * 255.0f));
-        data.mipmaps[0].pixels.push_back(static_cast<char>(color.g * 255.0f));
-        data.mipmaps[0].pixels.push_back(static_cast<char>(color.b * 255.0f));
+        data.mipmaps[0].pixels.push_back(static_cast<char>(color.x * 255.0f));
+        data.mipmaps[0].pixels.push_back(static_cast<char>(color.y * 255.0f));
+        data.mipmaps[0].pixels.push_back(static_cast<char>(color.z * 255.0f));
         data.mipmaps[0].pixels.push_back(static_cast<char>(255));
     }
 

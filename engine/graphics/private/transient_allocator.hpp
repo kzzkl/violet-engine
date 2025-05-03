@@ -73,11 +73,6 @@ struct hash<violet::rhi_sampler_desc>
 
 namespace violet
 {
-inline bool operator==(const rhi_texture_extent& a, const rhi_texture_extent& b) noexcept
-{
-    return a.width == b.width && a.height == b.height;
-}
-
 inline bool operator==(const rhi_parameter_desc& a, const rhi_parameter_desc& b) noexcept
 {
     return a.bindings == b.bindings && a.binding_count == b.binding_count && a.flags == b.flags;

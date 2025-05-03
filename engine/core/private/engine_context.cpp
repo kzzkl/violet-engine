@@ -10,7 +10,7 @@ engine_context::engine_context()
 
     auto& pre_update = m_task_graph.add_group().set_name("PreUpdate");
     auto& update = m_task_graph.add_group().set_name("Update").add_dependency(pre_update);
-    auto& post_update = m_task_graph.add_group().set_name("PostUpdate").add_dependency(update);
+    m_task_graph.add_group().set_name("PostUpdate").add_dependency(update);
 }
 
 engine_context::~engine_context() {}

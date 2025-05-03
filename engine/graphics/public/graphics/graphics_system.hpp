@@ -11,6 +11,7 @@
 namespace violet
 {
 class camera_component;
+class camera_component_meta;
 class rhi_plugin;
 class render_scene_manager;
 class gpu_buffer_uploader;
@@ -31,14 +32,18 @@ public:
 #endif
 
 private:
+    struct render_context
+    {
+        const camera_component* camera;
+        const camera_component_meta* camera_meta;
+        std::uint32_t layer;
+    };
+
     void begin_frame();
     void end_frame();
     void render();
 
-    rhi_fence* render(
-        const camera_component* camera,
-        rhi_parameter* camera_component,
-        std::uint32_t layer);
+    rhi_fence* render(const render_context& context);
 
     void switch_frame_resource();
     rhi_fence* allocate_fence();

@@ -17,13 +17,13 @@ public:
     vk_parameter(const rhi_parameter_desc& desc, vk_context* context);
     virtual ~vk_parameter();
 
-    void set_uniform(std::size_t index, const void* data, std::size_t size, std::size_t offset)
+    void set_uniform(std::uint32_t index, const void* data, std::size_t size, std::size_t offset)
         override;
-    void set_srv(std::size_t index, rhi_texture_srv* srv, std::size_t offset) override;
-    void set_srv(std::size_t index, rhi_buffer_srv* srv, std::size_t offset) override;
-    void set_uav(std::size_t index, rhi_texture_uav* uav, std::size_t offset) override;
-    void set_uav(std::size_t index, rhi_buffer_uav* uav, std::size_t offset) override;
-    void set_sampler(std::size_t index, rhi_sampler* sampler, std::size_t offset) override;
+    void set_srv(std::uint32_t index, rhi_texture_srv* srv, std::uint32_t offset) override;
+    void set_srv(std::uint32_t index, rhi_buffer_srv* srv, std::uint32_t offset) override;
+    void set_uav(std::uint32_t index, rhi_texture_uav* uav, std::uint32_t offset) override;
+    void set_uav(std::uint32_t index, rhi_buffer_uav* uav, std::uint32_t offset) override;
+    void set_sampler(std::uint32_t index, rhi_sampler* sampler, std::uint32_t offset) override;
 
     bool sync();
 
@@ -38,7 +38,7 @@ private:
 
     const std::vector<buffer_allocation>& get_uniforms() const noexcept;
 
-    void mark_dirty(std::size_t index);
+    void mark_dirty(std::uint32_t index);
 
     vk_parameter_layout* m_layout;
 

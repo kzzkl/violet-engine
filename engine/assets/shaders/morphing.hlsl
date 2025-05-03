@@ -8,8 +8,8 @@ struct constant_data
     uint element_buffer;
     uint morph_vertex_buffer;
     uint weight_buffer;
-    uint padding_0;
-    uint padding_1;
+    uint padding0;
+    uint padding1;
 };
 PushConstant(constant_data, constant);
 
@@ -18,7 +18,7 @@ struct morph_target_header
     uint element_count;
     uint element_offset;
     int position_min;
-    uint padding_0;
+    uint padding0;
 };
 
 struct morph_element

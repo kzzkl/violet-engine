@@ -50,8 +50,8 @@ struct prefilter_cs : public shader_cs
         std::uint32_t prefilter_map;
         float roughness;
         std::uint32_t resolution;
-        std::uint32_t padding_0;
-        std::uint32_t padding_1;
+        std::uint32_t padding0;
+        std::uint32_t padding1;
     };
 
     static constexpr parameter_layout parameters = {

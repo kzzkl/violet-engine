@@ -29,7 +29,7 @@ public:
             m_objects.resize(id + 1);
         }
 
-        m_id_to_index[id] = m_index_to_id.size();
+        m_id_to_index[id] = get_size();
         m_index_to_id.push_back(id);
 
         m_objects[id].valid = true;
@@ -43,7 +43,7 @@ public:
         render_id last_id = m_index_to_id.back();
         if (last_id != id)
         {
-            std::size_t index = m_id_to_index[id];
+            std::uint32_t index = m_id_to_index[id];
 
             m_index_to_id[index] = last_id;
             m_id_to_index[last_id] = index;
@@ -84,24 +84,24 @@ public:
         }
     }
 
-    render_id get_id(std::size_t index) const noexcept
+    render_id get_id(std::uint32_t index) const noexcept
     {
         return m_index_to_id[index];
     }
 
-    std::size_t get_index(render_id id) const noexcept
+    std::uint32_t get_index(render_id id) const noexcept
     {
         return m_id_to_index[id];
     }
 
-    std::size_t get_size() const noexcept
+    std::uint32_t get_size() const noexcept
     {
-        return m_index_to_id.size();
+        return static_cast<std::uint32_t>(m_index_to_id.size());
     }
 
-    std::size_t get_capacity() const noexcept
+    std::uint32_t get_capacity() const noexcept
     {
-        return m_object_buffer->get_size() / sizeof(gpu_type);
+        return static_cast<std::uint32_t>(m_object_buffer->get_size() / sizeof(gpu_type));
     }
 
     structured_buffer* get_buffer() const noexcept
@@ -176,9 +176,9 @@ private:
         bool valid;
     };
 
-    void reserve(std::size_t object_count)
+    void reserve(std::uint32_t object_count)
     {
-        std::size_t capacity = get_capacity();
+        std::uint32_t capacity = get_capacity();
         while (capacity < object_count)
         {
             capacity += capacity / 2;
@@ -192,7 +192,7 @@ private:
     std::vector<wrapper> m_objects;
     std::vector<render_id> m_dirty_objects;
 
-    std::vector<std::size_t> m_id_to_index;
+    std::vector<std::uint32_t> m_id_to_index;
     std::vector<render_id> m_index_to_id;
 
     index_allocator<render_id> m_allocator;
@@ -260,14 +260,14 @@ public:
         }
     }
 
-    std::size_t get_size() const noexcept
+    std::uint32_t get_size() const noexcept
     {
-        return m_allocator.get_size();
+        return static_cast<std::uint32_t>(m_allocator.get_size());
     }
 
-    std::size_t get_capacity() const noexcept
+    std::uint32_t get_capacity() const noexcept
     {
-        return m_object_buffer->get_size() / sizeof(gpu_type);
+        return static_cast<std::uint32_t>(m_object_buffer->get_size() / sizeof(gpu_type));
     }
 
     structured_buffer* get_buffer() const noexcept
@@ -342,9 +342,9 @@ private:
         bool valid;
     };
 
-    void reserve(std::size_t object_count)
+    void reserve(std::uint32_t object_count)
     {
-        std::size_t capacity = get_capacity();
+        std::uint32_t capacity = get_capacity();
         while (capacity < object_count)
         {
             capacity += capacity / 2;

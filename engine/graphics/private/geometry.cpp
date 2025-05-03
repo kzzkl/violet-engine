@@ -15,37 +15,35 @@ geometry::~geometry()
     geometry_manager->remove_geometry(m_id);
 }
 
-void geometry::set_position(std::span<const vec3f> position)
+void geometry::set_position(std::span<const vec3f> positions)
 {
     if (m_vertex_capacity == 0)
     {
-        m_vertex_capacity = position.size();
+        m_vertex_capacity = static_cast<std::uint32_t>(positions.size());
     }
 
     // TODO: If the vertex buffer cannot accommodate all vertices, a new vertex buffer needs to
     // be reallocated, and the vertex offset in shader::mesh_data must be re-linked. However,
     // there is currently no reliable method to re-establish this linkage, so we will simply
     // reject this operation for now.
-    assert(m_vertex_capacity >= position.size());
+    assert(m_vertex_capacity >= positions.size());
 
     set_buffer(
         GEOMETRY_BUFFER_POSITION,
-        position.data(),
-        position.size() * sizeof(vec3f),
+        positions.data(),
+        positions.size() * sizeof(vec3f),
         sizeof(vec3f));
 
-    m_vertex_count = static_cast<std::uint32_t>(position.size());
+    m_vertex_count = static_cast<std::uint32_t>(positions.size());
 
-    m_aabb = {};
-    for (const auto& position : position)
-    {
-        box::expand(m_aabb, position);
-    }
+    m_bounds_dirty = true;
 }
 
 void geometry::set_position_shared(geometry* src_geometry)
 {
     set_buffer_shared(GEOMETRY_BUFFER_POSITION, src_geometry);
+
+    m_bounds_dirty = true;
 }
 
 std::span<const vec3f> geometry::get_position() const noexcept
@@ -53,9 +51,13 @@ std::span<const vec3f> geometry::get_position() const noexcept
     return get_buffer<vec3f>(GEOMETRY_BUFFER_POSITION);
 }
 
-void geometry::set_normal(std::span<const vec3f> normal)
+void geometry::set_normal(std::span<const vec3f> normals)
 {
-    set_buffer(GEOMETRY_BUFFER_NORMAL, normal.data(), normal.size() * sizeof(vec3f), sizeof(vec3f));
+    set_buffer(
+        GEOMETRY_BUFFER_NORMAL,
+        normals.data(),
+        normals.size() * sizeof(vec3f),
+        sizeof(vec3f));
 }
 
 void geometry::set_normal_shared(geometry* src_geometry)
@@ -68,12 +70,12 @@ std::span<const vec3f> geometry::get_normal() const noexcept
     return get_buffer<vec3f>(GEOMETRY_BUFFER_NORMAL);
 }
 
-void geometry::set_tangent(std::span<const vec4f> tangent)
+void geometry::set_tangent(std::span<const vec4f> tangents)
 {
     set_buffer(
         GEOMETRY_BUFFER_TANGENT,
-        tangent.data(),
-        tangent.size() * sizeof(vec4f),
+        tangents.data(),
+        tangents.size() * sizeof(vec4f),
         sizeof(vec4f));
 }
 
@@ -112,7 +114,7 @@ void geometry::set_custom_shared(std::size_t index, geometry* src_geometry)
     set_buffer_shared(type, src_geometry);
 }
 
-void geometry::set_indexes(std::span<const std::uint32_t> indexes)
+void geometry::set_index(std::span<const std::uint32_t> indexes)
 {
     set_buffer(
         GEOMETRY_BUFFER_INDEX,
@@ -121,14 +123,18 @@ void geometry::set_indexes(std::span<const std::uint32_t> indexes)
         sizeof(std::uint32_t));
 
     m_index_count = static_cast<std::uint32_t>(indexes.size());
+
+    m_bounds_dirty = true;
 }
 
-void geometry::set_indexes_shared(geometry* src_geometry)
+void geometry::set_index_shared(geometry* src_geometry)
 {
     set_buffer_shared(GEOMETRY_BUFFER_INDEX, src_geometry);
+
+    m_bounds_dirty = true;
 }
 
-std::span<const std::uint32_t> geometry::get_indexes() const noexcept
+std::span<const std::uint32_t> geometry::get_index() const noexcept
 {
     return get_buffer<std::uint32_t>(GEOMETRY_BUFFER_INDEX);
 }
@@ -225,6 +231,32 @@ void geometry::set_buffer_shared(geometry_buffer_type type, geometry* src_geomet
     geometry_buffer.dirty = true;
 
     mark_dirty();
+}
+
+void geometry::update_bounds() const
+{
+    if (!m_bounds_dirty)
+    {
+        return;
+    }
+
+    auto positions = get_position();
+    auto indexes = get_index();
+
+    m_bounding_box = {};
+    for (auto index : indexes)
+    {
+        box::expand(m_bounding_box, positions[index]);
+    }
+
+    m_bounding_sphere.center = box::get_center(m_bounding_box);
+    m_bounding_sphere.radius = 0.0f;
+    for (auto index : indexes)
+    {
+        sphere::expand(m_bounding_sphere, positions[index]);
+    }
+
+    m_bounds_dirty = false;
 }
 
 void geometry::mark_dirty()

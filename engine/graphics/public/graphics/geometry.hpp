@@ -3,6 +3,7 @@
 #include "graphics/morph_target.hpp"
 #include "graphics/render_device.hpp"
 #include "math/box.hpp"
+#include "math/sphere.hpp"
 #include <array>
 #include <string>
 #include <unordered_map>
@@ -31,19 +32,19 @@ public:
     geometry();
     virtual ~geometry();
 
-    void set_position(std::span<const vec3f> position);
+    void set_position(std::span<const vec3f> positions);
     void set_position_shared(geometry* src_geometry);
     std::span<const vec3f> get_position() const noexcept;
 
-    void set_normal(std::span<const vec3f> normal);
+    void set_normal(std::span<const vec3f> normals);
     void set_normal_shared(geometry* src_geometry);
     std::span<const vec3f> get_normal() const noexcept;
 
-    void set_tangent(std::span<const vec4f> tangent);
+    void set_tangent(std::span<const vec4f> tangents);
     void set_tangent_shared(geometry* src_geometry);
     std::span<const vec4f> get_tangent() const noexcept;
 
-    void set_texcoord(std::span<const vec2f> texcoord);
+    void set_texcoord(std::span<const vec2f> texcoords);
     void set_texcoord_shared(geometry* src_geometry);
     std::span<const vec2f> get_texcoord() const noexcept;
 
@@ -61,9 +62,9 @@ public:
 
     void set_custom_shared(std::size_t index, geometry* src_geometry);
 
-    void set_indexes(std::span<const std::uint32_t> indexes);
-    void set_indexes_shared(geometry* src_geometry);
-    std::span<const std::uint32_t> get_indexes() const noexcept;
+    void set_index(std::span<const std::uint32_t> indexes);
+    void set_index_shared(geometry* src_geometry);
+    std::span<const std::uint32_t> get_index() const noexcept;
 
     std::uint32_t get_vertex_count() const noexcept
     {
@@ -101,9 +102,24 @@ public:
 
     raw_buffer* get_additional_buffer(std::string_view name) const;
 
-    box3f get_aabb() const noexcept
+    box3f get_bounding_box() const
     {
-        return m_aabb;
+        if (m_bounds_dirty)
+        {
+            update_bounds();
+        }
+
+        return m_bounding_box;
+    }
+
+    sphere3f get_bounding_sphere() const
+    {
+        if (m_bounds_dirty)
+        {
+            update_bounds();
+        }
+
+        return m_bounding_sphere;
     }
 
     render_id get_id() const noexcept
@@ -148,20 +164,24 @@ private:
         };
     }
 
+    void update_bounds() const;
+
     void mark_dirty();
 
     std::array<geometry_buffer, GEOMETRY_BUFFER_COUNT> m_geometry_buffers;
 
-    std::size_t m_vertex_count{0};
-    std::size_t m_vertex_capacity{0};
-    std::size_t m_index_count{0};
+    std::uint32_t m_vertex_count{0};
+    std::uint32_t m_vertex_capacity{0};
+    std::uint32_t m_index_count{0};
 
     std::unordered_map<std::string, std::unique_ptr<raw_buffer>> m_additional_buffers;
 
     std::unordered_map<std::string, std::size_t> m_morph_name_to_index;
     std::unique_ptr<morph_target_buffer> m_morph_target_buffer;
 
-    box3f m_aabb;
+    mutable bool m_bounds_dirty{false};
+    mutable box3f m_bounding_box;
+    mutable sphere3f m_bounding_sphere;
 
     render_id m_id{INVALID_RENDER_ID};
 

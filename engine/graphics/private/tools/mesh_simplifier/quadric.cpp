@@ -20,8 +20,8 @@ quadric::quadric(const vec3f& a, const vec3f& b, const vec3f& c)
 
     float d = -vector::dot(a, n);
     m_xd = n.x * d;
-    m_zd = n.z * d;
     m_yd = n.y * d;
+    m_zd = n.z * d;
     m_dd = d * d;
 }
 
@@ -35,8 +35,8 @@ quadric& quadric::operator+=(const quadric& other) noexcept
     m_zz += other.m_zz;
 
     m_xd += other.m_xd;
-    m_zd += other.m_zd;
     m_yd += other.m_yd;
+    m_zd += other.m_zd;
     m_dd += other.m_dd;
 
     return *this;
@@ -70,13 +70,14 @@ std::optional<vec3f> quadric::get_optimize_position() const noexcept
 float quadric::get_error(const vec3f& position) const noexcept
 {
     float error = 0.0f;
-    error += m_xx * position.x * position.x + m_xy * position.x * position.y +
-             m_xz * position.x * position.z + m_xd * position.x;
+    error += m_xx * position.x * position.x + m_xy * position.y * position.x +
+             m_xz * position.z * position.x + m_xd * position.x;
     error += m_xy * position.x * position.y + m_yy * position.y * position.y +
-             m_yz * position.y * position.z + m_yd * position.y;
+             m_yz * position.z * position.y + m_yd * position.y;
     error += m_xz * position.x * position.z + m_yz * position.y * position.z +
              m_zz * position.z * position.z + m_zd * position.z;
     error += m_xd * position.x + m_yd * position.y + m_zd * position.z + m_dd;
+
     return error;
 }
 } // namespace violet

@@ -3,6 +3,7 @@
 #include "vk_layout.hpp"
 #include "vk_render_pass.hpp"
 #include "vk_utils.hpp"
+#include <algorithm>
 #include <cassert>
 
 namespace violet::vk
@@ -53,32 +54,42 @@ vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_
     : m_pipeline(VK_NULL_HANDLE),
       m_context(context)
 {
-    auto* vertex_shader = static_cast<vk_vertex_shader*>(desc.vertex_shader);
-    auto* fragment_shader = static_cast<vk_fragment_shader*>(desc.fragment_shader);
+    assert(desc.vertex_shader != nullptr);
 
-    std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
+    std::vector<vk_shader*> shaders = {
+        static_cast<vk_shader*>(desc.vertex_shader),
+    };
 
-    shader_stages.push_back({
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-        .stage = VK_SHADER_STAGE_VERTEX_BIT,
-        .module = vertex_shader->get_module(),
-        .pName = "vs_main",
-    });
-
-    if (fragment_shader != nullptr)
+    if (desc.geometry_shader != nullptr)
     {
-        shader_stages.push_back({
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .module = fragment_shader->get_module(),
-            .pName = "fs_main",
-        });
+        shaders.push_back(static_cast<vk_shader*>(desc.geometry_shader));
     }
+
+    if (desc.fragment_shader != nullptr)
+    {
+        shaders.push_back(static_cast<vk_shader*>(desc.fragment_shader));
+    }
+
+    std::vector<VkPipelineShaderStageCreateInfo> shader_stages(shaders.size());
+    std::transform(
+        shaders.begin(),
+        shaders.end(),
+        shader_stages.begin(),
+        [](vk_shader* shader)
+        {
+            return VkPipelineShaderStageCreateInfo{
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .stage = shader->get_stage(),
+                .module = shader->get_module(),
+                .pName = shader->get_entry_point().data(),
+            };
+        });
 
     std::vector<VkVertexInputBindingDescription> binding_descriptions;
     std::vector<VkVertexInputAttributeDescription> attribute_descriptions;
 
-    const auto& vertex_attributes = vertex_shader->get_vertex_attributes();
+    const auto& vertex_attributes =
+        static_cast<vk_vertex_shader*>(shaders[0])->get_vertex_attributes();
     for (std::uint32_t i = 0; i < vertex_attributes.size(); ++i)
     {
         binding_descriptions.push_back({
@@ -262,36 +273,17 @@ vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_
 
     vk_pipeline_layout_desc pipeline_layout_desc = {};
 
+    for (vk_shader* shader : shaders)
     {
-        std::uint32_t constant_size = vertex_shader->get_push_constant_size();
+        std::uint32_t constant_size = shader->get_push_constant_size();
 
         if (constant_size != 0)
         {
-            pipeline_layout_desc.push_constant_stages |= VK_SHADER_STAGE_VERTEX_BIT;
+            pipeline_layout_desc.push_constant_stages |= shader->get_stage();
             pipeline_layout_desc.push_constant_size = constant_size;
         }
 
-        for (const auto& parameter : vertex_shader->get_parameters())
-        {
-            pipeline_layout_desc.parameters[parameter.space] = parameter.layout;
-        }
-    }
-
-    if (fragment_shader != nullptr)
-    {
-        std::uint32_t constant_size = fragment_shader->get_push_constant_size();
-
-        assert(
-            constant_size == 0 || pipeline_layout_desc.push_constant_size == 0 ||
-            constant_size == pipeline_layout_desc.push_constant_size);
-
-        if (constant_size != 0)
-        {
-            pipeline_layout_desc.push_constant_stages |= VK_SHADER_STAGE_FRAGMENT_BIT;
-            pipeline_layout_desc.push_constant_size = constant_size;
-        }
-
-        for (const auto& parameter : fragment_shader->get_parameters())
+        for (const auto& parameter : shader->get_parameters())
         {
             pipeline_layout_desc.parameters[parameter.space] = parameter.layout;
         }
@@ -346,9 +338,7 @@ vk_raster_pipeline::~vk_raster_pipeline()
 }
 
 vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, vk_context* context)
-    : m_pipeline(VK_NULL_HANDLE),
-      m_pipeline_layout(VK_NULL_HANDLE),
-      m_context(context)
+    : m_context(context)
 {
     auto* compute_shader = static_cast<vk_compute_shader*>(desc.compute_shader);
 
@@ -356,7 +346,7 @@ vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, 
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = VK_SHADER_STAGE_COMPUTE_BIT,
         .module = compute_shader->get_module(),
-        .pName = "cs_main",
+        .pName = compute_shader->get_entry_point().data(),
     };
 
     vk_pipeline_layout_desc pipeline_layout_desc = {

@@ -138,7 +138,7 @@ void geometry_manager::mark_dirty(render_id geometry_id)
 std::uint32_t geometry_manager::get_buffer_address(render_id geometry_id, geometry_buffer_type type)
 {
     auto& geometry_buffer = m_geometries[geometry_id].buffers[type];
-    return geometry_buffer.offset;
+    return static_cast<std::uint32_t>(geometry_buffer.offset);
 }
 
 std::array<std::uint32_t, GEOMETRY_BUFFER_COUNT> geometry_manager::get_buffer_addresses(
@@ -150,7 +150,7 @@ std::array<std::uint32_t, GEOMETRY_BUFFER_COUNT> geometry_manager::get_buffer_ad
 
     for (std::size_t i = 0; i < GEOMETRY_BUFFER_COUNT; ++i)
     {
-        result[i] = geometry_info.buffers[i].offset;
+        result[i] = static_cast<std::uint32_t>(geometry_info.buffers[i].offset);
     }
 
     return result;

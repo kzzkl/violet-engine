@@ -6,14 +6,16 @@
 
 namespace violet
 {
-struct camera_component_meta
+class camera_component_meta
 {
-    mat4f view_projection;
-    mat4f view_projection_no_jitter;
+public:
+    mat4f matrix_v;
+    mat4f matrix_p;
+    mat4f matrix_vp;
+    mat4f matrix_vp_no_jitter;
 
+    rhi_ptr<rhi_texture> hzb;
     rhi_ptr<rhi_parameter> parameter;
-
-    std::vector<rhi_fence*> swapchain_fences;
 };
 
 template <>

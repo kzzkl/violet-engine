@@ -36,6 +36,11 @@ float2 get_motion_vector(uint2 st)
         }
     }
 
+    if (closest_depth == 0.0)
+    {
+        return float2(0.0, 0.0);
+    }
+
     Texture2D<float2> motion_vector_buffer = ResourceDescriptorHeap[constant.motion_vector];
     return motion_vector_buffer[st + closest_offset];
 }
@@ -67,11 +72,11 @@ float3 clip_color(float3 history_color, uint2 st)
     }
 
     const int N = 9;
-    const float VarianceClipGamma = 1.0;
+    const float variance_clip_gamma = 1.0;
     float3 mu = m1 / N;
     float3 sigma = sqrt(abs(m2 / N - mu * mu));
-    float3 aabb_min = mu - VarianceClipGamma * sigma;
-    float3 aabb_max = mu + VarianceClipGamma * sigma;
+    float3 aabb_min = mu - variance_clip_gamma * sigma;
+    float3 aabb_max = mu + variance_clip_gamma * sigma;
 
     float3 p_clip = 0.5 * (aabb_max + aabb_min);
     float3 e_clip = 0.5 * (aabb_max - aabb_min);

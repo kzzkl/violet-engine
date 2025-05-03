@@ -16,6 +16,10 @@ public:
     vk_shader(const rhi_shader_desc& desc, vk_context* context);
     virtual ~vk_shader();
 
+    virtual VkShaderStageFlagBits get_stage() const noexcept = 0;
+
+    virtual std::string_view get_entry_point() const noexcept = 0;
+
     VkShaderModule get_module() const noexcept
     {
         return m_module;
@@ -33,10 +37,11 @@ public:
 
 private:
     VkShaderModule m_module{VK_NULL_HANDLE};
-    vk_context* m_context;
 
     std::uint32_t m_push_constant_size;
     std::vector<parameter> m_parameters;
+
+    vk_context* m_context;
 };
 
 class vk_vertex_shader : public vk_shader
@@ -50,6 +55,16 @@ public:
 
     vk_vertex_shader(const rhi_shader_desc& desc, vk_context* context);
 
+    VkShaderStageFlagBits get_stage() const noexcept override
+    {
+        return VK_SHADER_STAGE_VERTEX_BIT;
+    }
+
+    std::string_view get_entry_point() const noexcept override
+    {
+        return "vs_main";
+    }
+
     const std::vector<vertex_attribute>& get_vertex_attributes() const noexcept
     {
         return m_vertex_attributes;
@@ -59,16 +74,52 @@ private:
     std::vector<vertex_attribute> m_vertex_attributes;
 };
 
+class vk_geometry_shader : public vk_shader
+{
+public:
+    using vk_shader::vk_shader;
+
+    VkShaderStageFlagBits get_stage() const noexcept override
+    {
+        return VK_SHADER_STAGE_GEOMETRY_BIT;
+    }
+
+    std::string_view get_entry_point() const noexcept override
+    {
+        return "gs_main";
+    }
+};
+
 class vk_fragment_shader : public vk_shader
 {
 public:
     using vk_shader::vk_shader;
+
+    VkShaderStageFlagBits get_stage() const noexcept override
+    {
+        return VK_SHADER_STAGE_FRAGMENT_BIT;
+    }
+
+    std::string_view get_entry_point() const noexcept override
+    {
+        return "fs_main";
+    }
 };
 
 class vk_compute_shader : public vk_shader
 {
 public:
     using vk_shader::vk_shader;
+
+    VkShaderStageFlagBits get_stage() const noexcept override
+    {
+        return VK_SHADER_STAGE_COMPUTE_BIT;
+    }
+
+    std::string_view get_entry_point() const noexcept override
+    {
+        return "cs_main";
+    }
 };
 
 class vk_pipeline_layout;
@@ -119,9 +170,9 @@ public:
     }
 
 private:
-    VkPipeline m_pipeline;
+    VkPipeline m_pipeline{VK_NULL_HANDLE};
     vk_pipeline_layout* m_pipeline_layout{nullptr};
 
-    vk_context* m_context;
+    vk_context* m_context{nullptr};
 };
 } // namespace violet::vk

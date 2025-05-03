@@ -77,8 +77,12 @@ public:
         throw std::runtime_error("Task not found");
     }
 
-    std::size_t get_task_count() const noexcept;
-    std::size_t get_main_thread_task_count() const noexcept
+    std::uint32_t get_task_count() const noexcept
+    {
+        return static_cast<std::uint32_t>(m_tasks.size());
+    }
+
+    std::uint32_t get_main_thread_task_count() const noexcept
     {
         return m_main_thread_task_count;
     }
@@ -111,8 +115,8 @@ private:
 
     std::atomic<std::uint32_t> m_incomplete_count;
 
-    std::size_t m_main_thread_task_count{0};
-    std::size_t m_worker_thread_task_count{0};
+    std::uint32_t m_main_thread_task_count{0};
+    std::uint32_t m_worker_thread_task_count{0};
 
     std::promise<void> m_promise;
 };

@@ -23,11 +23,6 @@ std::future<void> task_graph::reset() noexcept
     return m_promise.get_future();
 }
 
-std::size_t task_graph::get_task_count() const noexcept
-{
-    return m_tasks.size();
-}
-
 void task_graph::notify_task_complete()
 {
     m_incomplete_count.fetch_sub(1);

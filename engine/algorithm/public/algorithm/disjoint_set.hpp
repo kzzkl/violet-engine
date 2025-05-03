@@ -12,7 +12,7 @@ class disjoint_set
 public:
     using value_type = T;
 
-    disjoint_set(std::size_t size)
+    disjoint_set(value_type size)
         : m_parents(size),
           m_ranks(size)
     {
@@ -21,8 +21,8 @@ public:
 
     void merge(value_type a, value_type b)
     {
-        std::size_t root_a = find(a);
-        std::size_t root_b = find(b);
+        value_type root_a = find(a);
+        value_type root_b = find(b);
 
         if (root_a == root_b)
         {
@@ -45,17 +45,17 @@ public:
         }
     }
 
-    std::size_t find(value_type value)
+    value_type find(value_type value)
     {
         // Find root.
-        std::size_t root = m_parents[value];
+        value_type root = m_parents[value];
         while (root != m_parents[root])
         {
             root = m_parents[root];
         }
 
         // Path compression.
-        std::size_t current = value;
+        value_type current = value;
         while (m_parents[current] != root)
         {
             m_parents[current] = root;
@@ -65,13 +65,13 @@ public:
         return root;
     }
 
-    std::size_t get_size() const noexcept
+    std::uint32_t get_size() const noexcept
     {
-        return m_parents.size();
+        return static_cast<std::uint32_t>(m_parents.size());
     }
 
 private:
-    std::vector<std::size_t> m_parents;
-    std::vector<std::size_t> m_ranks;
+    std::vector<value_type> m_parents;
+    std::vector<std::uint32_t> m_ranks;
 };
 } // namespace violet

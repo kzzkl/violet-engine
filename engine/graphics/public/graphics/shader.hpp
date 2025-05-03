@@ -19,7 +19,7 @@ struct shader_parameter
         {
             bindings[i] = *(list.begin() + i);
         }
-        binding_count = list.size();
+        binding_count = static_cast<std::uint32_t>(list.size());
     }
 
     consteval operator rhi_parameter_desc() const
@@ -28,7 +28,7 @@ struct shader_parameter
     }
 
     rhi_parameter_binding bindings[rhi_constants::max_parameter_binding_count]{};
-    std::size_t binding_count{};
+    std::uint32_t binding_count{};
 };
 
 struct shader
@@ -45,11 +45,11 @@ struct shader
             {
                 parameters[i] = *(list.begin() + i);
             }
-            parameter_count = list.size();
+            parameter_count = static_cast<std::uint32_t>(list.size());
         }
 
         rhi_shader_desc::parameter_slot parameters[rhi_constants::max_parameter_count]{};
-        std::size_t parameter_count{};
+        std::uint32_t parameter_count{};
     };
 
     struct draw_command
@@ -63,10 +63,11 @@ struct shader
 
     struct mesh_data
     {
-        mat4f model_matrix;
-        vec3f aabb_min;
+        mat4f matrix_m;
+        vec4f bounding_sphere;
+        vec3f bounding_box_min;
         std::uint32_t flags;
-        vec3f aabb_max;
+        vec3f bounding_box_max;
         std::uint32_t index_offset;
         std::uint32_t position_address;
         std::uint32_t normal_address;
@@ -84,7 +85,7 @@ struct shader
         std::uint32_t batch_index;
         std::uint32_t material_address;
         std::uint32_t flags;
-        std::uint32_t padding_0;
+        std::uint32_t padding0;
     };
 
     struct light_data
@@ -94,7 +95,7 @@ struct shader
         vec3f direction;
         std::uint32_t shadow;
         vec3f color;
-        std::uint32_t padding_0;
+        std::uint32_t padding0;
     };
 
     struct scene_data
@@ -112,46 +113,44 @@ struct shader
         std::uint32_t skybox;
         std::uint32_t irradiance;
         std::uint32_t prefilter;
-        std::uint32_t padding_0;
-        std::uint32_t padding_1;
-        std::uint32_t padding_2;
+        std::uint32_t padding0;
+        std::uint32_t padding1;
+        std::uint32_t padding2;
     };
 
     static constexpr parameter scene = {
         {
             .type = RHI_PARAMETER_BINDING_UNIFORM,
-            .stages =
-                RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
+            .stages = RHI_SHADER_STAGE_ALL,
             .size = sizeof(scene_data),
         },
     };
 
     struct camera_data
     {
-        mat4f view;
-        mat4f projection;
-        mat4f projection_inv;
-        mat4f view_projection;
-        mat4f view_projection_inv;
-        mat4f view_projection_no_jitter;
+        mat4f matrix_v;
+        mat4f matrix_p;
+        mat4f matrix_p_inv;
+        mat4f matrix_vp;
+        mat4f matrix_vp_inv;
+        mat4f matrix_vp_no_jitter;
 
-        mat4f prev_view_projection;
-        mat4f prev_view_projection_no_jitter;
+        mat4f prev_matrix_vp;
+        mat4f prev_matrix_vp_no_jitter;
 
         vec3f position;
         float fov;
 
-        vec2f jitter;
+        float near;
+        float far;
 
-        std::uint32_t padding_0;
-        std::uint32_t padding_1;
+        vec2f jitter;
     };
 
     static constexpr parameter camera = {
         {
             .type = RHI_PARAMETER_BINDING_UNIFORM,
-            .stages =
-                RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
+            .stages = RHI_SHADER_STAGE_ALL,
             .size = sizeof(camera_data),
         },
     };
@@ -201,6 +200,11 @@ struct shader_vs : public shader
 
 template <typename T>
 concept has_inputs = std::is_same_v<std::decay_t<decltype(T::inputs)>, shader_vs::input_layout>;
+
+struct shader_gs : public shader
+{
+    static constexpr rhi_shader_stage_flag stage = RHI_SHADER_STAGE_GEOMETRY;
+};
 
 struct shader_fs : public shader
 {

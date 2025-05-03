@@ -41,7 +41,7 @@ void skybox_pass::add(render_graph& graph, const parameter& parameter)
             pass.add_render_target(parameter.render_target, load_op);
             pass.set_depth_stencil(parameter.depth_buffer, load_op);
         },
-        [&](const pass_data& data, rdg_command& command)
+        [](const pass_data& data, rdg_command& command)
         {
             command.set_viewport();
             command.set_scissor();

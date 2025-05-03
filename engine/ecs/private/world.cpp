@@ -28,7 +28,7 @@ entity world::create()
 
     if (m_free_entity.empty())
     {
-        result.id = m_entities.size();
+        result.id = static_cast<entity_id>(m_entities.size());
         m_entities.emplace_back();
     }
     else

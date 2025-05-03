@@ -26,17 +26,21 @@ shader::camera_data get_camera_data(
     shader::camera_data result = {
         .position = transform.get_position(),
         .fov = camera.fov,
+        .near = camera.near,
+        .far = camera.far,
     };
 
     rhi_texture_extent extent = camera.get_extent();
     float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
 
-    mat4f_simd projection =
-        matrix::perspective_reverse_z<simd>(camera.fov, aspect, camera.near, camera.far);
-    mat4f_simd view = matrix::inverse(math::load(transform.matrix));
+    mat4f_simd matrix_p =
+        camera.far == std::numeric_limits<float>::infinity() ?
+            matrix::perspective_reverse_z<simd>(camera.fov, aspect, camera.near) :
+            matrix::perspective_reverse_z<simd>(camera.fov, aspect, camera.near, camera.far);
+    mat4f_simd matrix_v = matrix::inverse(math::load(transform.matrix));
 
-    mat4f_simd view_projection = matrix::mul(view, projection);
-    math::store(view_projection, result.view_projection_no_jitter);
+    mat4f_simd matrix_vp = matrix::mul(matrix_v, matrix_p);
+    math::store(matrix_vp, result.matrix_vp_no_jitter);
 
     auto* taa = camera.renderer->get_feature<taa_render_feature>();
     if (taa && taa->is_enable())
@@ -48,18 +52,18 @@ shader::camera_data get_camera_data(
         jitter.y = jitter.y * 2.0f / static_cast<float>(extent.height);
 
         vec4f_simd offset = math::load(jitter);
-        projection[2] = vector::add(projection[2], offset);
+        matrix_p[2] = vector::add(matrix_p[2], offset);
 
-        view_projection = matrix::mul(view, projection);
+        matrix_vp = matrix::mul(matrix_v, matrix_p);
 
         result.jitter = jitter;
     }
 
-    math::store(view, result.view);
-    math::store(projection, result.projection);
-    math::store(matrix::inverse(projection), result.projection_inv);
-    math::store(view_projection, result.view_projection);
-    math::store(matrix::inverse(view_projection), result.view_projection_inv);
+    math::store(matrix_v, result.matrix_v);
+    math::store(matrix_p, result.matrix_p);
+    math::store(matrix::inverse(matrix_p), result.matrix_p_inv);
+    math::store(matrix_vp, result.matrix_vp);
+    math::store(matrix::inverse(matrix_vp), result.matrix_vp_inv);
 
     return result;
 }
@@ -88,21 +92,14 @@ void camera_system::update()
         .read<transform_world_component>()
         .write<camera_component_meta>()
         .each(
-            [this](
-                const camera_component& camera,
-                const transform_world_component& transform,
-                camera_component_meta& camera_meta)
+            [](const camera_component& camera,
+               const transform_world_component& transform,
+               camera_component_meta& camera_meta)
             {
                 if (!camera.has_render_target() || camera.renderer == nullptr)
                 {
                     return;
                 }
-
-                shader::camera_data data = get_camera_data(camera, transform);
-                data.prev_view_projection = camera_meta.view_projection;
-                data.prev_view_projection_no_jitter = camera_meta.view_projection_no_jitter;
-                camera_meta.view_projection = data.view_projection;
-                camera_meta.view_projection_no_jitter = data.view_projection_no_jitter;
 
                 if (camera_meta.parameter == nullptr)
                 {
@@ -110,7 +107,35 @@ void camera_system::update()
                         render_device::instance().create_parameter(shader::camera);
                 }
 
+                if (camera_meta.hzb == nullptr ||
+                    camera_meta.hzb->get_extent() != camera.get_extent())
+                {
+                    rhi_texture_extent extent = camera.get_extent();
+
+                    std::uint32_t max_size = std::max(extent.width, extent.height);
+                    std::uint32_t level_count =
+                        static_cast<std::uint32_t>(std::floor(std::log2(max_size))) + 1;
+
+                    camera_meta.hzb = render_device::instance().create_texture({
+                        .extent = extent,
+                        .format = RHI_FORMAT_R32_FLOAT,
+                        .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE,
+                        .level_count = level_count,
+                        .layer_count = 1,
+                        .samples = RHI_SAMPLE_COUNT_1,
+                        .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+                    });
+                }
+
+                shader::camera_data data = get_camera_data(camera, transform);
+                data.prev_matrix_vp = camera_meta.matrix_vp;
+                data.prev_matrix_vp_no_jitter = camera_meta.matrix_vp_no_jitter;
                 camera_meta.parameter->set_uniform(0, &data, sizeof(shader::camera_data));
+
+                camera_meta.matrix_v = data.matrix_v;
+                camera_meta.matrix_p = data.matrix_p;
+                camera_meta.matrix_vp = data.matrix_vp;
+                camera_meta.matrix_vp_no_jitter = data.matrix_vp_no_jitter;
             });
 
     m_system_version = world.get_version();

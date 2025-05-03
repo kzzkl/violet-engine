@@ -5,10 +5,11 @@
 
 namespace violet
 {
-struct camera_component
+class camera_component
 {
+public:
     float near{0.01f};
-    float far{100000.0f};
+    float far{std::numeric_limits<float>::infinity()};
     float fov{math::to_radians(45.0f)};
 
     float priority;

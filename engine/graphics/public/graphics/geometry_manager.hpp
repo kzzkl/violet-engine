@@ -53,8 +53,8 @@ private:
     {
         buffer_allocation allocation;
 
-        std::uint32_t offset;
-        std::uint32_t size;
+        std::size_t offset;
+        std::size_t size;
     };
 
     struct geometry_info

@@ -6,8 +6,9 @@
 
 namespace violet
 {
-struct alignas(64) archetype_chunk
+class alignas(64) archetype_chunk
 {
+public:
     static constexpr std::size_t size = 1024ull * 16;
     std::array<std::uint8_t, size> data;
 

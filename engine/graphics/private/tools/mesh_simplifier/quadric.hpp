@@ -26,8 +26,8 @@ private:
     float m_zz;
 
     float m_xd;
-    float m_zd;
     float m_yd;
+    float m_zd;
     float m_dd;
 };
 } // namespace violet

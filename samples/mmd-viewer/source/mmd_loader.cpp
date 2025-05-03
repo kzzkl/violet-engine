@@ -154,7 +154,7 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
             m_pmx.sdef.size() * sizeof(pmx::sdef_data),
             RHI_BUFFER_STORAGE);
     }
-    mesh_geometry->set_indexes(m_pmx.indexes);
+    mesh_geometry->set_index(m_pmx.indexes);
 
     scene.geometries.push_back(std::move(mesh_geometry));
 

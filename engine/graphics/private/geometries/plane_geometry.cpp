@@ -72,6 +72,6 @@ plane_geometry::plane_geometry(
     set_normal(normals);
     set_tangent(tangents);
     set_texcoord(texcoords);
-    set_indexes(indexes);
+    set_index(indexes);
 }
 } // namespace violet

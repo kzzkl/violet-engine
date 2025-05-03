@@ -50,13 +50,13 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     }
 
     // Get the position of the current pixel in view space.
-    float3 position_vs = reconstruct_position(depth, texcoord, camera.projection_inv).xyz;
+    float3 position_vs = reconstruct_position(depth, texcoord, camera.matrix_p_inv).xyz;
     float3 view = normalize(-position_vs);
 
     // Get the normal of the current pixel in view space.
     Texture2D<float2> normal_buffer = ResourceDescriptorHeap[constant.normal_buffer];
     float3 normal_ws = octahedron_to_normal(normal_buffer.SampleLevel(point_clamp_sampler, texcoord, 0.0));
-    float3 normal_vs = normalize(mul((float3x3)camera.view, normal_ws));
+    float3 normal_vs = normalize(mul((float3x3)camera.matrix_v, normal_ws));
 
     // Noise.
     float2 noise = spatio_temporal_noise(dtid.xy);
@@ -114,14 +114,14 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
             // Calculate h1.
             float p1_depth = depth_buffer.SampleLevel(point_clamp_sampler, texcoord - offset, level);
-            float3 p1_position_vs = reconstruct_position(p1_depth, texcoord - offset, camera.projection_inv).xyz;
+            float3 p1_position_vs = reconstruct_position(p1_depth, texcoord - offset, camera.matrix_p_inv).xyz;
             float3 p1_delta = p1_position_vs - position_vs;
             float p1_delta_length = length(p1_delta);
             float p1_cos = dot(view, p1_delta / p1_delta_length);
 
             // Calculate h2.
             float p2_depth = depth_buffer.SampleLevel(point_clamp_sampler, texcoord + offset, level);
-            float3 p2_position_vs = reconstruct_position(p2_depth, texcoord + offset, camera.projection_inv).xyz;
+            float3 p2_position_vs = reconstruct_position(p2_depth, texcoord + offset, camera.matrix_p_inv).xyz;
             float3 p2_delta = p2_position_vs - position_vs;
             float p2_delta_length = length(p2_delta);
             float p2_cos = dot(view, p2_delta / p2_delta_length);

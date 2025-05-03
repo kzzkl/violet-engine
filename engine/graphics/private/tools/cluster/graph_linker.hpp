@@ -14,16 +14,16 @@ public:
     template <typename PositionFunctor>
     void build_external_links(
         disjoint_set<std::uint32_t>& disjoint_set,
-        std::size_t min_island_size,
+        std::uint32_t min_island_size,
         const box3f& bounds,
         PositionFunctor&& position_functor)
     {
-        std::size_t element_count = disjoint_set.get_size();
+        std::uint32_t element_count = disjoint_set.get_size();
 
         std::vector<std::uint32_t> sorted_to_index(element_count);
         {
             std::vector<std::uint32_t> sort_keys(element_count);
-            for (std::size_t i = 0; i < element_count; ++i)
+            for (std::uint32_t i = 0; i < element_count; ++i)
             {
                 vec3f center =
                     (position_functor(i) - bounds.min) / vector::max(bounds.max - bounds.min);
@@ -38,22 +38,22 @@ public:
             radix_sort_32(
                 sorted_to_index.begin(),
                 sorted_to_index.end(),
-                [&](std::uint32_t i)
+                [&](std::uint32_t index)
                 {
-                    return sort_keys[i];
+                    return sort_keys[index];
                 });
         }
 
-        std::vector<std::pair<std::size_t, std::size_t>> island_ranges(element_count);
+        std::vector<std::pair<std::uint32_t, std::uint32_t>> island_ranges(element_count);
         {
-            std::size_t island_index = 0;
-            std::size_t first_element = 0;
-            for (std::size_t i = 0; i < element_count; ++i)
+            std::uint32_t island_index = 0;
+            std::uint32_t first_element = 0;
+            for (std::uint32_t i = 0; i < element_count; ++i)
             {
                 std::uint32_t current_island_index = disjoint_set.find(sorted_to_index[i]);
                 if (current_island_index != island_index)
                 {
-                    for (std::size_t j = first_element; j < i; ++j)
+                    for (std::uint32_t j = first_element; j < i; ++j)
                     {
                         island_ranges[j] = {first_element, i};
                     }
@@ -63,13 +63,13 @@ public:
                 }
             }
 
-            for (std::size_t i = first_element; i < element_count; ++i)
+            for (std::uint32_t i = first_element; i < element_count; ++i)
             {
                 island_ranges[i] = {first_element, element_count};
             }
         }
 
-        for (std::size_t i = 0; i < element_count; ++i)
+        for (std::uint32_t i = 0; i < element_count; ++i)
         {
             if (island_ranges[i].second - island_ranges[i].first > min_island_size)
             {
@@ -77,11 +77,11 @@ public:
             }
 
             std::uint32_t element_index = sorted_to_index[i];
-            std::size_t island_index = disjoint_set.find(element_index);
+            std::uint32_t island_index = disjoint_set.find(element_index);
 
             vec3f center = position_functor(element_index);
 
-            static constexpr std::size_t max_link_count = 5;
+            static constexpr std::uint32_t max_link_count = 5;
 
             std::array<std::uint32_t, max_link_count> cloest_elements;
             cloest_elements.fill(~0u);
@@ -94,7 +94,7 @@ public:
                 std::uint32_t limit = step == -1 ? 0 : element_count - 1;
                 std::uint32_t adjacency = i;
 
-                for (std::size_t iterations = 0; iterations < 16; ++iterations)
+                for (std::uint32_t iterations = 0; iterations < 16; ++iterations)
                 {
                     if (adjacency == limit)
                     {
@@ -104,7 +104,7 @@ public:
                     adjacency += step;
 
                     std::uint32_t adjacency_index = sorted_to_index[adjacency];
-                    std::size_t adjacency_island_index = disjoint_set.find(adjacency_index);
+                    std::uint32_t adjacency_island_index = disjoint_set.find(adjacency_index);
 
                     if (adjacency_island_index == island_index)
                     {

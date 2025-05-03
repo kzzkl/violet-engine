@@ -28,7 +28,7 @@ private:
     {
         morph_target_buffer* morph_target_buffer;
         const float* weights;
-        std::size_t weight_count;
+        std::uint32_t weight_count;
 
         raw_buffer* morph_vertex_buffer;
     };
@@ -36,7 +36,7 @@ private:
     struct skinning_data
     {
         rhi_shader* shader;
-        std::size_t vertex_count;
+        std::uint32_t vertex_count;
 
         structured_buffer* skeleton;
 

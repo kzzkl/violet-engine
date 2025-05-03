@@ -11,17 +11,17 @@ void graph_partitioner::partition(
     std::span<const std::uint32_t> adjacency,
     std::span<const std::uint32_t> adjacency_cost,
     std::span<const std::uint32_t> adjacency_offset,
-    std::size_t min_count,
-    std::size_t max_count)
+    std::uint32_t min_count,
+    std::uint32_t max_count)
 {
-    std::size_t vertex_count = adjacency_offset.size() - 1;
+    auto vertex_count = static_cast<std::uint32_t>(adjacency_offset.size() - 1);
 
     m_vertices.resize(vertex_count);
     std::iota(m_vertices.begin(), m_vertices.end(), 0);
 
     if (vertex_count <= max_count)
     {
-        m_parts.emplace_back(0, static_cast<std::uint32_t>(vertex_count));
+        m_parts.emplace_back(0, vertex_count);
         return;
     }
 
@@ -32,24 +32,24 @@ void graph_partitioner::partition(
     m_adjacency_cost = adjacency_cost;
     m_adjacency_offset = adjacency_offset;
 
-    partition_recursive(0, m_vertices.size(), min_count, max_count);
+    partition_recursive(0, vertex_count, min_count, max_count);
 }
 
-std::size_t graph_partitioner::bisect_graph(
-    std::size_t start,
-    std::size_t end,
-    std::size_t min_count,
-    std::size_t max_count)
+std::uint32_t graph_partitioner::bisect_graph(
+    std::uint32_t start,
+    std::uint32_t end,
+    std::uint32_t min_count,
+    std::uint32_t max_count)
 {
     std::vector<idx_t> adjacency;
     std::vector<idx_t> adjacency_cost;
     std::vector<idx_t> adjacency_offset;
 
-    for (std::size_t i = start; i < end; ++i)
+    for (std::uint32_t i = start; i < end; ++i)
     {
         adjacency_offset.push_back(static_cast<idx_t>(adjacency.size()));
 
-        for (std::size_t j = m_adjacency_offset[m_vertices[i]];
+        for (std::uint32_t j = m_adjacency_offset[m_vertices[i]];
              j < m_adjacency_offset[m_vertices[i] + 1];
              ++j)
         {
@@ -72,11 +72,11 @@ std::size_t graph_partitioner::bisect_graph(
     idx_t constraints_count = 1;
     idx_t edges_cut = 0;
 
-    auto target_part_count = static_cast<std::size_t>(std::roundf(
+    auto target_part_count = static_cast<std::uint32_t>(std::roundf(
         static_cast<float>(end - start) / (static_cast<float>(min_count + max_count) / 2.0f)));
-    target_part_count = std::max(2ull, target_part_count);
+    target_part_count = std::max(2u, target_part_count);
 
-    std::size_t left_part_count = target_part_count / 2;
+    std::uint32_t left_part_count = target_part_count / 2;
 
     real_t weights[2] = {
         static_cast<float>(left_part_count) / static_cast<float>(target_part_count),
@@ -101,8 +101,8 @@ std::size_t graph_partitioner::bisect_graph(
         parts.data());
     assert(result == METIS_OK);
 
-    std::size_t left = 0;
-    std::size_t right = end - start - 1;
+    std::uint32_t left = 0;
+    std::uint32_t right = end - start - 1;
 
     while (left < right)
     {
@@ -129,12 +129,12 @@ std::size_t graph_partitioner::bisect_graph(
 }
 
 void graph_partitioner::partition_recursive(
-    std::size_t start,
-    std::size_t end,
-    std::size_t min_count,
-    std::size_t max_count)
+    std::uint32_t start,
+    std::uint32_t end,
+    std::uint32_t min_count,
+    std::uint32_t max_count)
 {
-    std::size_t split = bisect_graph(start, end, min_count, max_count);
+    std::uint32_t split = bisect_graph(start, end, min_count, max_count);
 
     if (split - start > max_count)
     {

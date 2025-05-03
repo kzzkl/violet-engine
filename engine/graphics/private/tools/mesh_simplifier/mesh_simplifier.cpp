@@ -30,11 +30,7 @@ void mesh_simplifier::set_indexes(std::span<const std::uint32_t> indexes)
 {
     assert(!m_positions.empty());
 
-    m_triangle_count = indexes.size() / 3;
-
     m_indexes.assign(indexes.begin(), indexes.end());
-
-    std::size_t triangle_count = m_indexes.size() / 3;
 
     for (std::uint32_t corner = 0; corner < indexes.size(); ++corner)
     {
@@ -60,6 +56,8 @@ void mesh_simplifier::set_indexes(std::span<const std::uint32_t> indexes)
 void mesh_simplifier::lock_position(const vec3f& position)
 {
     auto corner_range = m_corner_map.equal_range(position);
+    assert(corner_range.first != corner_range.second);
+
     for (auto iter = corner_range.first; iter != corner_range.second; ++iter)
     {
         m_corner_flags[iter->second] |= CORNER_LOCKED;
@@ -67,12 +65,12 @@ void mesh_simplifier::lock_position(const vec3f& position)
 }
 
 float mesh_simplifier::simplify(
-    std::size_t target_triangle_count,
+    std::uint32_t target_triangle_count,
     std::vector<vec3f>& new_positions,
     std::vector<std::uint32_t>& new_indexes)
 {
-    std::size_t triangle_count = m_indexes.size() / 3;
-    for (std::size_t i = 0; i < triangle_count; ++i)
+    m_triangle_count = static_cast<std::uint32_t>(m_indexes.size() / 3);
+    for (std::uint32_t i = 0; i < m_triangle_count; ++i)
     {
         m_triangle_quadrics.emplace_back(
             m_positions[m_indexes[3 * i + 0]],
@@ -105,7 +103,7 @@ float mesh_simplifier::simplify(
     new_positions = std::move(m_positions);
     new_indexes = std::move(m_indexes);
 
-    return max_error;
+    return std::sqrt(max_error);
 }
 
 float mesh_simplifier::evaluate_edge(std::uint32_t edge_index)

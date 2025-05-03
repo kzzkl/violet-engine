@@ -259,7 +259,7 @@ bool window_impl_win32::initialize(
     wnd_class_ex.hInstance = m_instance;
     wnd_class_ex.lpfnWndProc = wnd_create_proc;
     wnd_class_ex.lpszClassName = m_class_name;
-    wnd_class_ex.lpszMenuName = NULL;
+    wnd_class_ex.lpszMenuName = nullptr;
     wnd_class_ex.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
     RegisterClassEx(&wnd_class_ex);
 
@@ -301,12 +301,12 @@ bool window_impl_win32::initialize(
     SetWindowPos(m_hwnd, 0, pos_x, pos_y, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
 
     m_mouse_cursor_handles = {
-        LoadCursor(NULL, IDC_ARROW),
-        LoadCursor(NULL, IDC_SIZENWSE),
-        LoadCursor(NULL, IDC_SIZENESW),
-        LoadCursor(NULL, IDC_SIZEWE),
-        LoadCursor(NULL, IDC_SIZENS),
-        LoadCursor(NULL, IDC_SIZEALL)};
+        LoadCursor(nullptr, IDC_ARROW),
+        LoadCursor(nullptr, IDC_SIZENWSE),
+        LoadCursor(nullptr, IDC_SIZENESW),
+        LoadCursor(nullptr, IDC_SIZEWE),
+        LoadCursor(nullptr, IDC_SIZENS),
+        LoadCursor(nullptr, IDC_SIZEALL)};
 
     show();
 

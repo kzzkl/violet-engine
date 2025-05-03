@@ -75,7 +75,7 @@ void rhi_deleter::operator()(rhi_swapchain* swapchain)
     auto* transient_allocator = render_device::instance().m_transient_allocator.get();
     if (transient_allocator != nullptr)
     {
-        for (std::size_t i = 0; i < swapchain->get_texture_count(); ++i)
+        for (std::uint32_t i = 0; i < swapchain->get_texture_count(); ++i)
         {
             transient_allocator->cleanup_dependents(swapchain->get_texture(i));
         }
@@ -151,17 +151,17 @@ void render_device::end_frame()
     m_rhi->end_frame();
 }
 
-std::size_t render_device::get_frame_count() const noexcept
+std::uint32_t render_device::get_frame_count() const noexcept
 {
     return m_rhi->get_frame_count();
 }
 
-std::size_t render_device::get_frame_resource_count() const noexcept
+std::uint32_t render_device::get_frame_resource_count() const noexcept
 {
     return m_rhi->get_frame_resource_count();
 }
 
-std::size_t render_device::get_frame_resource_index() const noexcept
+std::uint32_t render_device::get_frame_resource_index() const noexcept
 {
     return m_rhi->get_frame_resource_index();
 }

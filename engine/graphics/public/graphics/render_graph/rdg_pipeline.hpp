@@ -7,6 +7,7 @@ namespace violet
 struct rdg_raster_pipeline
 {
     rhi_shader* vertex_shader;
+    rhi_shader* geometry_shader;
     rhi_shader* fragment_shader;
 
     rhi_rasterizer_state* rasterizer_state;
@@ -18,7 +19,8 @@ struct rdg_raster_pipeline
 
     bool operator==(const rdg_raster_pipeline& other) const noexcept
     {
-        return vertex_shader == other.vertex_shader && fragment_shader == other.fragment_shader &&
+        return vertex_shader == other.vertex_shader && geometry_shader == other.geometry_shader &&
+               fragment_shader == other.fragment_shader &&
                rasterizer_state == other.rasterizer_state &&
                depth_stencil_state == other.depth_stencil_state &&
                blend_state == other.blend_state && primitive_topology == other.primitive_topology &&
@@ -29,6 +31,7 @@ struct rdg_raster_pipeline
     {
         return {
             .vertex_shader = vertex_shader,
+            .geometry_shader = geometry_shader,
             .fragment_shader = fragment_shader,
             .rasterizer_state = rasterizer_state,
             .depth_stencil_state = depth_stencil_state,

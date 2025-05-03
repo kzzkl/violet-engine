@@ -52,8 +52,8 @@ void control_system::tick()
     }
     else
     {
-        m_mouse_position_delta.x = 0.0f;
-        m_mouse_position_delta.y = 0.0f;
+        m_mouse_position_delta.x = 0;
+        m_mouse_position_delta.y = 0;
     }
 
     m_mouse_position.x = window.get_mouse().get_x();
@@ -63,7 +63,6 @@ void control_system::tick()
     {
         get_world().get_view().write<orbit_control_component>().write<transform_component>().each(
             [this,
-             mouse_hold,
              mouse_wheel](orbit_control_component& orbit_control, transform_component& transform)
             {
                 update_orbit_control(orbit_control, transform, mouse_wheel);

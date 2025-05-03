@@ -22,18 +22,18 @@ public:
     void begin_render_pass(
         rhi_render_pass* render_pass,
         const rhi_attachment* attachments,
-        std::size_t attachment_count) override;
+        std::uint32_t attachment_count) override;
     void end_render_pass() override;
 
     void set_pipeline(rhi_raster_pipeline* raster_pipeline) override;
     void set_pipeline(rhi_compute_pipeline* compute_pipeline) override;
-    void set_parameter(std::size_t index, rhi_parameter* parameter) override;
+    void set_parameter(std::uint32_t index, rhi_parameter* parameter) override;
     void set_constant(const void* data, std::size_t size) override;
 
     void set_viewport(const rhi_viewport& viewport) override;
-    void set_scissor(const rhi_scissor_rect* rects, std::size_t size) override;
+    void set_scissor(const rhi_scissor_rect* rects, std::uint32_t rect_count) override;
 
-    void set_vertex_buffers(rhi_buffer* const* vertex_buffers, std::size_t vertex_buffer_count)
+    void set_vertex_buffers(rhi_buffer* const* vertex_buffers, std::uint32_t vertex_buffer_count)
         override;
     void set_index_buffer(rhi_buffer* index_buffer, std::size_t index_size) override;
 
@@ -53,15 +53,15 @@ public:
         std::size_t command_buffer_offset,
         rhi_buffer* count_buffer,
         std::size_t count_buffer_offset,
-        std::size_t max_draw_count) override;
+        std::uint32_t max_draw_count) override;
 
     void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) override;
 
     void set_pipeline_barrier(
         const rhi_buffer_barrier* buffer_barriers,
-        std::size_t buffer_barrier_count,
+        std::uint32_t buffer_barrier_count,
         const rhi_texture_barrier* texture_barriers,
-        std::size_t texture_barrier_count) override;
+        std::uint32_t texture_barrier_count) override;
 
     void copy_texture(
         rhi_texture* src,

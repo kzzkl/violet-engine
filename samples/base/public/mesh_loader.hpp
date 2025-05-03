@@ -3,7 +3,6 @@
 #include "graphics/geometry.hpp"
 #include "graphics/material.hpp"
 #include "graphics/resources/texture.hpp"
-#include "math/box.hpp"
 #include <optional>
 
 namespace violet
@@ -22,9 +21,10 @@ public:
     struct mesh_data
     {
         std::vector<submesh_data> submeshes;
-
-        box3f aabb;
         std::uint32_t geometry;
+
+        box3f bounding_box;
+        sphere3f bounding_sphere;
     };
 
     struct node_data

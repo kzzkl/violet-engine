@@ -9,9 +9,9 @@ struct unlit_fs : public shader_fs
     struct constant_data
     {
         std::uint32_t albedo;
-        std::uint32_t padding_0;
-        std::uint32_t padding_1;
-        std::uint32_t padding_2;
+        std::uint32_t padding0;
+        std::uint32_t padding1;
+        std::uint32_t padding2;
     };
 
     static constexpr parameter_layout parameters = {

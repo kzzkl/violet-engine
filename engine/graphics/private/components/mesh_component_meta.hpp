@@ -6,8 +6,9 @@
 
 namespace violet
 {
-struct mesh_component_meta
+class mesh_component_meta
 {
+public:
     mesh_component_meta() = default;
 
     mesh_component_meta(const mesh_component_meta&) = delete;
@@ -23,7 +24,7 @@ struct mesh_component_meta
 
     ~mesh_component_meta()
     {
-        for (std::uint32_t instance_id : instances)
+        for (render_id instance_id : instances)
         {
             scene->remove_instance(instance_id);
         }
@@ -42,7 +43,7 @@ struct mesh_component_meta
             return *this;
         }
 
-        for (std::uint32_t instance_id : instances)
+        for (render_id instance_id : instances)
         {
             scene->remove_instance(instance_id);
         }

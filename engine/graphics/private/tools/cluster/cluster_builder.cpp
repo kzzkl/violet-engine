@@ -26,7 +26,7 @@ std::uint32_t cycle_3(std::uint32_t value)
 
 struct vertex_hash
 {
-    std::size_t operator()(const vec3f& v) const noexcept
+    std::uint32_t operator()(const vec3f& v) const noexcept
     {
         union
         {
@@ -55,7 +55,7 @@ struct edge_key
 
 struct edge_key_hash
 {
-    std::size_t operator()(const edge_key& key) const noexcept
+    std::uint32_t operator()(const edge_key& key) const noexcept
     {
         vertex_hash vertex_hash;
         std::uint32_t p0_hash = vertex_hash(key.p0);
@@ -77,46 +77,37 @@ std::vector<cluster_builder::mesh_lod> cluster_builder::build(
         box::expand(m_bounds, position);
     }
 
-    std::vector<mesh_lod> lods(7);
-
-    for (std::size_t i = 0; i < lods.size(); ++i)
+    std::vector<mesh_lod> lods;
+    while (lods.empty() || lods.back().clusters.size() > 1)
     {
-        if (i == 0)
+        mesh_lod lod;
+
+        if (lods.empty())
         {
-            lods[0].positions.assign(positions.begin(), positions.end());
-            lods[0].indexes.assign(indexes.begin(), indexes.end());
+            lod.positions.assign(positions.begin(), positions.end());
+            lod.indexes.assign(indexes.begin(), indexes.end());
+            cluster_triangles(lod.positions, lod.indexes, lod.clusters);
         }
         else
         {
-            simplify_group(lods[i - 1], lods[i]);
+            simplify_group(lods.back(), lod);
         }
 
-        cluster_triangles(lods[i]);
-        group_clusters(lods[i]);
-    }
+        group_clusters(lod);
 
-    std::uint32_t cluster_offset = 0;
-    for (auto& lod : lods)
-    {
-        for (auto& group : lod.groups)
-        {
-            group.cluster_offset += cluster_offset;
-        }
-
-        cluster_offset += static_cast<std::uint32_t>(lod.clusters.size());
+        lods.emplace_back(std::move(lod));
     }
 
     return lods;
 }
 
-void cluster_builder::cluster_triangles(mesh_lod& lod)
+void cluster_builder::cluster_triangles(
+    const std::vector<vec3f>& positions,
+    std::vector<std::uint32_t>& indexes,
+    std::vector<cluster>& clusters)
 {
-    auto& positions = lod.positions;
-    auto& indexes = lod.indexes;
-    auto& clusters = lod.clusters;
-
-    std::size_t edge_count = indexes.size();
-    std::size_t triangle_count = edge_count / 3;
+    auto edge_count = static_cast<std::uint32_t>(indexes.size());
+    std::uint32_t triangle_count = edge_count / 3;
 
     disjoint_set<std::uint32_t> disjoint_set(triangle_count);
 
@@ -230,21 +221,22 @@ void cluster_builder::cluster_triangles(mesh_lod& lod)
     }
 
     // Construct clusters based on the sorted triangles.
-    clusters.reserve(parts.size());
+    clusters.reserve(clusters.size() + parts.size());
     for (auto [start, end] : parts)
     {
         cluster cluster = {
-            .index_offset = static_cast<std::uint32_t>(start * 3),
-            .index_count = static_cast<std::uint32_t>((end - start) * 3),
+            .index_offset = start * 3,
+            .index_count = (end - start) * 3,
         };
 
-        // Count the number of external edges.
+        // Find the external edges of the cluster.
         cluster.external_edges.resize(cluster.index_count);
         for (std::uint32_t i = 0; i < cluster.index_count; ++i)
         {
             std::uint32_t triangle_index = vertices[(cluster.index_offset + i) / 3];
             std::uint32_t edge_index = triangle_index * 3 + i % 3;
 
+            // If the edge is adjacent to an edge in another cluster, it must be an external edge.
             for (std::size_t j = edge_adjacency_offset[edge_index];
                  j < edge_adjacency_offset[edge_index + 1];
                  ++j)
@@ -257,6 +249,12 @@ void cluster_builder::cluster_triangles(mesh_lod& lod)
                 {
                     cluster.external_edges[i] |= cluster::EXTERNAL_EDGE_CLUSTER;
                 }
+            }
+
+            // If the edge is not adjacent to any other edges, it must be an external edge.
+            if (edge_adjacency_offset[edge_index] == edge_adjacency_offset[edge_index + 1])
+            {
+                cluster.external_edges[i] |= cluster::EXTERNAL_EDGE_CLUSTER;
             }
         }
 
@@ -271,6 +269,25 @@ void cluster_builder::group_clusters(mesh_lod& lod)
     auto& clusters = lod.clusters;
     auto& groups = lod.groups;
 
+    // If the number of clusters is small, no need to group.
+    if (clusters.size() <= MAX_CLUSTER_SIZE)
+    {
+        cluster_group group = {
+            .cluster_offset = 0,
+            .cluster_count = static_cast<std::uint32_t>(clusters.size()),
+        };
+
+        for (auto& cluster : clusters)
+        {
+            group.error = std::max(group.error, cluster.error);
+        }
+
+        groups.push_back(group);
+
+        return;
+    }
+
+    // Build a half-edge hash table for subsequent rapid lookup of adjacent clusters.
     edge_map<std::uint32_t> edge_map;
     for (std::uint32_t cluster_index = 0; cluster_index < clusters.size(); ++cluster_index)
     {
@@ -291,7 +308,9 @@ void cluster_builder::group_clusters(mesh_lod& lod)
         }
     }
 
-    // key: adjacency cluster index, value: adjacency edge count.
+    // Construct cluster adjacency relationships.
+    // Key: adjacency cluster index.
+    // Value: adjacency edge count. Used to determine the cost of grouping two clusters.
     std::vector<std::map<std::uint32_t, std::uint32_t>> cluster_adjacency_map(clusters.size());
     for (std::uint32_t cluster_index = 0; cluster_index < clusters.size(); ++cluster_index)
     {
@@ -299,6 +318,7 @@ void cluster_builder::group_clusters(mesh_lod& lod)
 
         for (std::uint32_t i = 0; i < cluster.index_count; ++i)
         {
+            // If the edge is not an external edge, it is not an adjacency edge.
             if (cluster.external_edges[i] == 0)
             {
                 continue;
@@ -317,7 +337,8 @@ void cluster_builder::group_clusters(mesh_lod& lod)
         }
     }
 
-    disjoint_set<std::uint32_t> disjoint_set(clusters.size());
+    // Build a disjoint set for linking independent clusters.
+    disjoint_set<std::uint32_t> disjoint_set(static_cast<std::uint32_t>(clusters.size()));
     for (std::uint32_t cluster_index = 0; cluster_index < clusters.size(); ++cluster_index)
     {
         for (auto [adjacency_cluster_index, adjacency_count] : cluster_adjacency_map[cluster_index])
@@ -336,6 +357,7 @@ void cluster_builder::group_clusters(mesh_lod& lod)
             return box::get_center(clusters[cluster_index].bounds);
         });
 
+    // Partition the clusters into groups.
     std::vector<std::uint32_t> cluster_adjacency;
     std::vector<std::uint32_t> cluster_adjacency_cost;
     std::vector<std::uint32_t> cluster_adjacency_offset;
@@ -350,6 +372,7 @@ void cluster_builder::group_clusters(mesh_lod& lod)
             cluster_adjacency_cost.push_back(adjacency_count * 16 + 4);
         }
 
+        // The bridging edges previously added to ensure connectivity must also be factored in.
         linker.get_external_link(cluster_index, cluster_adjacency, cluster_adjacency_cost);
     }
     cluster_adjacency_offset.push_back(static_cast<std::uint32_t>(cluster_adjacency.size()));
@@ -362,9 +385,9 @@ void cluster_builder::group_clusters(mesh_lod& lod)
         MIN_GROUP_SIZE,
         MAX_GROUP_SIZE);
 
+    // Reorder the clusters based on the sorted clusters.
     auto vertices = partitioner.get_vertices();
     auto parts = partitioner.get_parts();
-
     std::vector<cluster> new_clusters(vertices.size());
     for (std::size_t i = 0; i < vertices.size(); ++i)
     {
@@ -378,18 +401,22 @@ void cluster_builder::group_clusters(mesh_lod& lod)
         cluster_index_to_sorted[vertices[i]] = i;
     }
 
+    // Construct groups based on the sorted clusters.
     groups.reserve(parts.size());
     for (auto [start, end] : parts)
     {
-        groups.push_back({
-            .cluster_offset = static_cast<std::uint32_t>(start),
-            .cluster_count = static_cast<std::uint32_t>(end - start),
-        });
+        cluster_group group = {
+            .cluster_offset = start,
+            .cluster_count = end - start,
+        };
 
         for (std::uint32_t cluster_index = start; cluster_index < end; ++cluster_index)
         {
             cluster& cluster = clusters[cluster_index];
 
+            group.error = std::max(group.error, cluster.error);
+
+            // Find the external edges of the group.
             for (std::uint32_t i = 0; i < cluster.index_count; ++i)
             {
                 if (cluster.external_edges[i] == 0)
@@ -403,6 +430,9 @@ void cluster_builder::group_clusters(mesh_lod& lod)
                     .p0 = positions[indexes[cycle_3(edge_index)]],
                     .p1 = positions[indexes[edge_index]],
                 });
+
+                // If the edge is adjacent to an edge in another cluster not in the group, it must
+                // be an external edge.
                 for (auto iter = range.first; iter != range.second; ++iter)
                 {
                     std::uint32_t adjacency_cluster_index = cluster_index_to_sorted[iter->second];
@@ -411,17 +441,24 @@ void cluster_builder::group_clusters(mesh_lod& lod)
                         cluster.external_edges[i] |= cluster::EXTERNAL_EDGE_GROUP;
                     }
                 }
+
+                // If the edge is not adjacent to any other edges, it must be an external edge.
+                if (range.first == range.second)
+                {
+                    cluster.external_edges[i] |= cluster::EXTERNAL_EDGE_GROUP;
+                }
             }
         }
+
+        groups.push_back(group);
     }
 }
 
-void cluster_builder::simplify_group(const mesh_lod& lod, mesh_lod& next_lod)
+void cluster_builder::simplify_group(mesh_lod& lod, mesh_lod& next_lod)
 {
-    std::unordered_map<vec3f, std::uint32_t, vertex_hash> position_map;
-
-    for (const cluster_group& group : lod.groups)
+    for (cluster_group& group : lod.groups)
     {
+        // Collect the indexes of the group for simplification.
         std::vector<std::uint32_t> group_indexes;
         for (std::uint32_t i = 0; i < group.cluster_count; ++i)
         {
@@ -437,6 +474,7 @@ void cluster_builder::simplify_group(const mesh_lod& lod, mesh_lod& next_lod)
         simplifier.set_positions(lod.positions);
         simplifier.set_indexes(group_indexes);
 
+        // Lock the positions of the external edges of the group.
         for (std::uint32_t i = 0; i < group.cluster_count; ++i)
         {
             const cluster& cluster = lod.clusters[group.cluster_offset + i];
@@ -452,7 +490,16 @@ void cluster_builder::simplify_group(const mesh_lod& lod, mesh_lod& next_lod)
 
         std::vector<vec3f> new_positions;
         std::vector<std::uint32_t> new_indexes;
-        simplifier.simplify(group_indexes.size() / 3 / 2, new_positions, new_indexes);
+        float error = simplifier.simplify(
+            static_cast<std::uint32_t>(group_indexes.size() / 3 / 2),
+            new_positions,
+            new_indexes);
+        group.error = std::max(group.error, error);
+
+        std::size_t cluster_offset = next_lod.clusters.size();
+
+        // Cluster the new triangles.
+        cluster_triangles(new_positions, new_indexes, next_lod.clusters);
 
         auto position_offset = static_cast<std::uint32_t>(next_lod.positions.size());
         next_lod.positions.insert(
@@ -460,6 +507,7 @@ void cluster_builder::simplify_group(const mesh_lod& lod, mesh_lod& next_lod)
             new_positions.begin(),
             new_positions.end());
 
+        auto index_offset = static_cast<std::uint32_t>(next_lod.indexes.size());
         std::transform(
             new_indexes.begin(),
             new_indexes.end(),
@@ -468,6 +516,12 @@ void cluster_builder::simplify_group(const mesh_lod& lod, mesh_lod& next_lod)
             {
                 return index + position_offset;
             });
+
+        for (std::size_t i = cluster_offset; i < next_lod.clusters.size(); ++i)
+        {
+            next_lod.clusters[i].index_offset += index_offset;
+            next_lod.clusters[i].error = group.error;
+        }
     }
 }
 } // namespace violet

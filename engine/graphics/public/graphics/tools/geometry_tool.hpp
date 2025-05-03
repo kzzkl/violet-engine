@@ -27,12 +27,14 @@ public:
         {
             std::uint32_t index_offset;
             std::uint32_t index_count;
+            float error;
         };
 
         struct group
         {
             std::uint32_t cluster_offset;
             std::uint32_t cluster_count;
+            float error;
         };
 
         struct lod
@@ -62,7 +64,7 @@ public:
     static simplify_result simplify(
         std::span<const vec3f> positions,
         std::span<const std::uint32_t> indexes,
-        std::size_t target_triangle_count,
+        std::uint32_t target_triangle_count,
         std::span<const vec3f> locked_positions = {});
 };
 } // namespace violet

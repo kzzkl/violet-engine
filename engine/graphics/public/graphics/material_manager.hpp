@@ -24,7 +24,7 @@ public:
 
     std::uint32_t get_material_constant_address(render_id material_id) const
     {
-        return static_cast<std::uint32_t>(m_materials[material_id].constant_allocation.offset);
+        return m_materials[material_id].constant_allocation.offset;
     }
 
     raw_buffer* get_material_buffer() const noexcept

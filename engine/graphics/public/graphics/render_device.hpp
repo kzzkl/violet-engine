@@ -70,9 +70,9 @@ public:
     void begin_frame();
     void end_frame();
 
-    std::size_t get_frame_count() const noexcept;
-    std::size_t get_frame_resource_count() const noexcept;
-    std::size_t get_frame_resource_index() const noexcept;
+    std::uint32_t get_frame_count() const noexcept;
+    std::uint32_t get_frame_resource_count() const noexcept;
+    std::uint32_t get_frame_resource_index() const noexcept;
 
     rhi_parameter* get_bindless_parameter() const noexcept;
 
@@ -129,6 +129,13 @@ public:
             arguments.push_back(L"-E");
             arguments.push_back(L"vs_main");
         }
+        else if constexpr (T::stage == RHI_SHADER_STAGE_GEOMETRY)
+        {
+            arguments.push_back(L"-T");
+            arguments.push_back(L"gs_6_6");
+            arguments.push_back(L"-E");
+            arguments.push_back(L"gs_main");
+        }
         else if constexpr (T::stage == RHI_SHADER_STAGE_FRAGMENT)
         {
             arguments.push_back(L"-T");
@@ -151,10 +158,11 @@ public:
 
         auto code = compile_shader(T::path, arguments);
 
-        rhi_shader_desc desc = {};
-        desc.code = code.data();
-        desc.code_size = code.size();
-        desc.stage = T::stage;
+        rhi_shader_desc desc = {
+            .code = code.data(),
+            .code_size = static_cast<std::uint32_t>(code.size()),
+            .stage = T::stage,
+        };
 
         if constexpr (has_inputs<T>)
         {

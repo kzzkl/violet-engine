@@ -104,6 +104,7 @@ private:
 
         auto& camera_control = world.get_component<orbit_control_component>(m_camera);
         camera_control.radius_speed = 0.05f;
+        camera_control.target = {0.0f, 0.1f, 0.0f};
 
         auto& camera_transform = world.get_component<transform_component>(m_camera);
         camera_transform.set_position({0.0f, 0.0f, -10.0f});
@@ -125,12 +126,12 @@ private:
 
             {
                 auto positions = m_model.geometries[0]->get_position();
-                auto indexes = m_model.geometries[0]->get_indexes();
+                auto indexes = m_model.geometries[0]->get_index();
                 m_cluster_result = geometry_tool::generate_clusters(positions, indexes);
 
                 m_cluster_geometry = std::make_unique<geometry>();
                 m_cluster_geometry->set_position(m_cluster_result.positions);
-                m_cluster_geometry->set_indexes(m_cluster_result.indexes);
+                m_cluster_geometry->set_index(m_cluster_result.indexes);
             }
 
             std::vector<entity> entities;
@@ -172,7 +173,8 @@ private:
                         });
                     }
 
-                    entity_mesh.aabb = mesh_data.aabb;
+                    entity_mesh.bounding_box = mesh_data.bounding_box;
+                    entity_mesh.bounding_sphere = mesh_data.bounding_sphere;
 
                     m_mesh = entity;
                 }
@@ -297,12 +299,11 @@ private:
         if (draw_aabb)
         {
             auto& debug_drawer = get_system<graphics_system>().get_debug_drawer();
-            auto& world = get_world();
 
             world.get_view().read<mesh_component>().read<transform_world_component>().each(
                 [&](const mesh_component& mesh, const transform_world_component& transform)
                 {
-                    box3f box = box::transform(mesh.aabb, transform.matrix);
+                    box3f box = box::transform(mesh.bounding_box, transform.matrix);
                     debug_drawer.draw_box(box, {0.0f, 1.0f, 0.0f});
                 });
         }
@@ -330,6 +331,10 @@ private:
         if (m_materials.find(id) == m_materials.end())
         {
             auto material = std::make_unique<unlit_material>();
+            // auto material = std::make_unique<unlit_material>(
+            //     RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+            //     RHI_CULL_MODE_NONE,
+            //     RHI_POLYGON_MODE_LINE);
             material->set_color(to_color(id));
             m_materials[id] = std::move(material);
         }
