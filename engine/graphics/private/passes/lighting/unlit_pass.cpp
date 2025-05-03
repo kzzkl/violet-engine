@@ -9,9 +9,9 @@ struct unlit_fs : public shader_fs
     struct constant_data
     {
         std::uint32_t albedo;
-        std::uint32_t padding_0;
-        std::uint32_t padding_1;
-        std::uint32_t padding_2;
+        std::uint32_t padding0;
+        std::uint32_t padding1;
+        std::uint32_t padding2;
     };
 
     static constexpr parameter_layout parameters = {
@@ -47,13 +47,14 @@ void unlit_pass::add(render_graph& graph, const parameter& parameter)
             rdg_raster_pipeline pipeline = {
                 .vertex_shader = device.get_shader<fullscreen_vs>(),
                 .fragment_shader = device.get_shader<unlit_fs>(),
+                .depth_stencil_state = device.get_depth_stencil_state<
+                    false,
+                    false,
+                    RHI_COMPARE_OP_NEVER,
+                    true,
+                    lighting_stencil_state<SHADING_MODEL_UNLIT>::value,
+                    lighting_stencil_state<SHADING_MODEL_UNLIT>::value>(),
             };
-            pipeline.depth_stencil.stencil_enable = true;
-            pipeline.depth_stencil.stencil_front = {
-                .compare_op = RHI_COMPARE_OP_EQUAL,
-                .reference = SHADING_MODEL_UNLIT,
-            };
-            pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
 
             command.set_pipeline(pipeline);
             command.set_constant(unlit_fs::constant_data{

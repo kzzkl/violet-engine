@@ -267,13 +267,14 @@ void mmd_renderer::add_lighting_pass(render_graph& graph)
             rdg_raster_pipeline pipeline = {
                 .vertex_shader = device.get_shader<fullscreen_vs>(),
                 .fragment_shader = device.get_shader<toon_fs>(defines),
+                .depth_stencil_state = device.get_depth_stencil_state<
+                    false,
+                    false,
+                    RHI_COMPARE_OP_NEVER,
+                    true,
+                    lighting_stencil_state<SHADING_MODEL_TOON>::value,
+                    lighting_stencil_state<SHADING_MODEL_TOON>::value>(),
             };
-            pipeline.depth_stencil.stencil_enable = true;
-            pipeline.depth_stencil.stencil_front = {
-                .compare_op = RHI_COMPARE_OP_EQUAL,
-                .reference = SHADING_MODEL_TOON,
-            };
-            pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
 
             command.set_pipeline(pipeline);
             command.set_constant(constant);

@@ -3,6 +3,7 @@
 #include "vk_layout.hpp"
 #include "vk_render_pass.hpp"
 #include "vk_utils.hpp"
+#include <algorithm>
 #include <cassert>
 
 namespace violet::vk
@@ -53,32 +54,42 @@ vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_
     : m_pipeline(VK_NULL_HANDLE),
       m_context(context)
 {
-    auto* vertex_shader = static_cast<vk_vertex_shader*>(desc.vertex_shader);
-    auto* fragment_shader = static_cast<vk_fragment_shader*>(desc.fragment_shader);
+    assert(desc.vertex_shader != nullptr);
 
-    std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
+    std::vector<vk_shader*> shaders = {
+        static_cast<vk_shader*>(desc.vertex_shader),
+    };
 
-    shader_stages.push_back({
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-        .stage = VK_SHADER_STAGE_VERTEX_BIT,
-        .module = vertex_shader->get_module(),
-        .pName = "vs_main",
-    });
-
-    if (fragment_shader != nullptr)
+    if (desc.geometry_shader != nullptr)
     {
-        shader_stages.push_back({
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .module = fragment_shader->get_module(),
-            .pName = "fs_main",
-        });
+        shaders.push_back(static_cast<vk_shader*>(desc.geometry_shader));
     }
+
+    if (desc.fragment_shader != nullptr)
+    {
+        shaders.push_back(static_cast<vk_shader*>(desc.fragment_shader));
+    }
+
+    std::vector<VkPipelineShaderStageCreateInfo> shader_stages(shaders.size());
+    std::transform(
+        shaders.begin(),
+        shaders.end(),
+        shader_stages.begin(),
+        [](vk_shader* shader)
+        {
+            return VkPipelineShaderStageCreateInfo{
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .stage = shader->get_stage(),
+                .module = shader->get_module(),
+                .pName = shader->get_entry_point().data(),
+            };
+        });
 
     std::vector<VkVertexInputBindingDescription> binding_descriptions;
     std::vector<VkVertexInputAttributeDescription> attribute_descriptions;
 
-    const auto& vertex_attributes = vertex_shader->get_vertex_attributes();
+    const auto& vertex_attributes =
+        static_cast<vk_vertex_shader*>(shaders[0])->get_vertex_attributes();
     for (std::uint32_t i = 0; i < vertex_attributes.size(); ++i)
     {
         binding_descriptions.push_back({
@@ -104,9 +115,11 @@ vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_
     vertex_input_state_info.vertexBindingDescriptionCount =
         static_cast<std::uint32_t>(binding_descriptions.size());
 
-    VkPipelineInputAssemblyStateCreateInfo input_assembly_state_info = {};
-    input_assembly_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    input_assembly_state_info.primitiveRestartEnable = VK_FALSE;
+    VkPipelineInputAssemblyStateCreateInfo input_assembly_state_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .primitiveRestartEnable = VK_FALSE,
+    };
+
     switch (desc.primitive_topology)
     {
     case RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
@@ -114,6 +127,9 @@ vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_
         break;
     case RHI_PRIMITIVE_TOPOLOGY_LINE_LIST:
         input_assembly_state_info.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+        break;
+    case RHI_PRIMITIVE_TOPOLOGY_POINT_LIST:
+        input_assembly_state_info.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
         break;
     default:
         throw std::runtime_error("Invalid primitive topology.");
@@ -142,7 +158,6 @@ vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .depthClampEnable = VK_FALSE,
         .rasterizerDiscardEnable = VK_FALSE,
-        .polygonMode = VK_POLYGON_MODE_FILL,
         .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
         .depthBiasEnable = VK_FALSE,
         .depthBiasConstantFactor = 0.0f,
@@ -150,7 +165,23 @@ vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_
         .depthBiasSlopeFactor = 0.0f,
         .lineWidth = 1.0f,
     };
-    switch (desc.rasterizer.cull_mode)
+
+    switch (desc.rasterizer_state->polygon_mode)
+    {
+    case RHI_POLYGON_MODE_FILL:
+        rasterization_state_info.polygonMode = VK_POLYGON_MODE_FILL;
+        break;
+    case RHI_POLYGON_MODE_LINE:
+        rasterization_state_info.polygonMode = VK_POLYGON_MODE_LINE;
+        break;
+    case RHI_POLYGON_MODE_POINT:
+        rasterization_state_info.polygonMode = VK_POLYGON_MODE_POINT;
+        break;
+    default:
+        throw std::runtime_error("Invalid polygon mode.");
+    }
+
+    switch (desc.rasterizer_state->cull_mode)
     {
     case RHI_CULL_MODE_NONE:
         rasterization_state_info.cullMode = VK_CULL_MODE_NONE;
@@ -175,30 +206,34 @@ vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_
         .alphaToOneEnable = VK_FALSE,
     };
 
-    VkPipelineDepthStencilStateCreateInfo depth_stencil_state_info = {};
-    depth_stencil_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depth_stencil_state_info.depthTestEnable = desc.depth_stencil.depth_enable;
-    depth_stencil_state_info.depthWriteEnable = desc.depth_stencil.depth_write_enable;
+    VkPipelineDepthStencilStateCreateInfo depth_stencil_state_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+    };
+
+    depth_stencil_state_info.depthTestEnable = desc.depth_stencil_state->depth_enable;
+    depth_stencil_state_info.depthWriteEnable = desc.depth_stencil_state->depth_write_enable;
     depth_stencil_state_info.depthCompareOp =
-        vk_utils::map_compare_op(desc.depth_stencil.depth_compare_op);
-    depth_stencil_state_info.stencilTestEnable = desc.depth_stencil.stencil_enable;
+        vk_utils::map_compare_op(desc.depth_stencil_state->depth_compare_op);
+    depth_stencil_state_info.stencilTestEnable = desc.depth_stencil_state->stencil_enable;
     depth_stencil_state_info.front = {
-        .failOp = vk_utils::map_stencil_op(desc.depth_stencil.stencil_front.fail_op),
-        .passOp = vk_utils::map_stencil_op(desc.depth_stencil.stencil_front.pass_op),
-        .depthFailOp = vk_utils::map_stencil_op(desc.depth_stencil.stencil_front.depth_fail_op),
-        .compareOp = vk_utils::map_compare_op(desc.depth_stencil.stencil_front.compare_op),
+        .failOp = vk_utils::map_stencil_op(desc.depth_stencil_state->stencil_front.fail_op),
+        .passOp = vk_utils::map_stencil_op(desc.depth_stencil_state->stencil_front.pass_op),
+        .depthFailOp =
+            vk_utils::map_stencil_op(desc.depth_stencil_state->stencil_front.depth_fail_op),
+        .compareOp = vk_utils::map_compare_op(desc.depth_stencil_state->stencil_front.compare_op),
         .compareMask = 0xff,
         .writeMask = 0xff,
-        .reference = desc.depth_stencil.stencil_front.reference,
+        .reference = desc.depth_stencil_state->stencil_front.reference,
     };
     depth_stencil_state_info.back = {
-        .failOp = vk_utils::map_stencil_op(desc.depth_stencil.stencil_back.fail_op),
-        .passOp = vk_utils::map_stencil_op(desc.depth_stencil.stencil_back.pass_op),
-        .depthFailOp = vk_utils::map_stencil_op(desc.depth_stencil.stencil_back.depth_fail_op),
-        .compareOp = vk_utils::map_compare_op(desc.depth_stencil.stencil_back.compare_op),
+        .failOp = vk_utils::map_stencil_op(desc.depth_stencil_state->stencil_back.fail_op),
+        .passOp = vk_utils::map_stencil_op(desc.depth_stencil_state->stencil_back.pass_op),
+        .depthFailOp =
+            vk_utils::map_stencil_op(desc.depth_stencil_state->stencil_back.depth_fail_op),
+        .compareOp = vk_utils::map_compare_op(desc.depth_stencil_state->stencil_back.compare_op),
         .compareMask = 0xff,
         .writeMask = 0xff,
-        .reference = desc.depth_stencil.stencil_back.reference,
+        .reference = desc.depth_stencil_state->stencil_back.reference,
     };
 
     auto* render_pass = static_cast<vk_render_pass*>(desc.render_pass);
@@ -210,21 +245,21 @@ vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_
         color_blend_attachments[i].colorWriteMask =
             VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
             VK_COLOR_COMPONENT_A_BIT;
-        color_blend_attachments[i].blendEnable = desc.blend.attachments[i].enable;
+        color_blend_attachments[i].blendEnable = desc.blend_state->attachments[i].enable;
 
         color_blend_attachments[i].srcColorBlendFactor =
-            vk_utils::map_blend_factor(desc.blend.attachments[i].src_color_factor);
+            vk_utils::map_blend_factor(desc.blend_state->attachments[i].src_color_factor);
         color_blend_attachments[i].dstColorBlendFactor =
-            vk_utils::map_blend_factor(desc.blend.attachments[i].dst_color_factor);
+            vk_utils::map_blend_factor(desc.blend_state->attachments[i].dst_color_factor);
         color_blend_attachments[i].colorBlendOp =
-            vk_utils::map_blend_op(desc.blend.attachments[i].color_op);
+            vk_utils::map_blend_op(desc.blend_state->attachments[i].color_op);
 
         color_blend_attachments[i].srcAlphaBlendFactor =
-            vk_utils::map_blend_factor(desc.blend.attachments[i].src_alpha_factor);
+            vk_utils::map_blend_factor(desc.blend_state->attachments[i].src_alpha_factor);
         color_blend_attachments[i].dstAlphaBlendFactor =
-            vk_utils::map_blend_factor(desc.blend.attachments[i].dst_alpha_factor);
+            vk_utils::map_blend_factor(desc.blend_state->attachments[i].dst_alpha_factor);
         color_blend_attachments[i].alphaBlendOp =
-            vk_utils::map_blend_op(desc.blend.attachments[i].alpha_op);
+            vk_utils::map_blend_op(desc.blend_state->attachments[i].alpha_op);
     }
 
     VkPipelineColorBlendStateCreateInfo color_blend_info = {
@@ -238,36 +273,17 @@ vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_
 
     vk_pipeline_layout_desc pipeline_layout_desc = {};
 
+    for (vk_shader* shader : shaders)
     {
-        std::uint32_t constant_size = vertex_shader->get_push_constant_size();
+        std::uint32_t constant_size = shader->get_push_constant_size();
 
         if (constant_size != 0)
         {
-            pipeline_layout_desc.push_constant_stages |= VK_SHADER_STAGE_VERTEX_BIT;
+            pipeline_layout_desc.push_constant_stages |= shader->get_stage();
             pipeline_layout_desc.push_constant_size = constant_size;
         }
 
-        for (const auto& parameter : vertex_shader->get_parameters())
-        {
-            pipeline_layout_desc.parameters[parameter.space] = parameter.layout;
-        }
-    }
-
-    if (fragment_shader != nullptr)
-    {
-        std::uint32_t constant_size = fragment_shader->get_push_constant_size();
-
-        assert(
-            constant_size == 0 || pipeline_layout_desc.push_constant_size == 0 ||
-            constant_size == pipeline_layout_desc.push_constant_size);
-
-        if (constant_size != 0)
-        {
-            pipeline_layout_desc.push_constant_stages |= VK_SHADER_STAGE_FRAGMENT_BIT;
-            pipeline_layout_desc.push_constant_size = constant_size;
-        }
-
-        for (const auto& parameter : fragment_shader->get_parameters())
+        for (const auto& parameter : shader->get_parameters())
         {
             pipeline_layout_desc.parameters[parameter.space] = parameter.layout;
         }
@@ -322,9 +338,7 @@ vk_raster_pipeline::~vk_raster_pipeline()
 }
 
 vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, vk_context* context)
-    : m_pipeline(VK_NULL_HANDLE),
-      m_pipeline_layout(VK_NULL_HANDLE),
-      m_context(context)
+    : m_context(context)
 {
     auto* compute_shader = static_cast<vk_compute_shader*>(desc.compute_shader);
 
@@ -332,7 +346,7 @@ vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, 
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = VK_SHADER_STAGE_COMPUTE_BIT,
         .module = compute_shader->get_module(),
-        .pName = "cs_main",
+        .pName = compute_shader->get_entry_point().data(),
     };
 
     vk_pipeline_layout_desc pipeline_layout_desc = {

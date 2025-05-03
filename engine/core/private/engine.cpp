@@ -121,7 +121,7 @@ void application::run()
 
         time.tick(timer::point::FRAME_END);
 
-        frame_rater.sleep();
+        // frame_rater.sleep();
     }
 
     executor.stop();

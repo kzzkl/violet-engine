@@ -70,7 +70,7 @@ box_geometry::box_geometry(
                 vec3f normal;
                 normal[u] = 0;
                 normal[v] = 0;
-                normal[w] = depth > 0 ? 1 : -1;
+                normal[w] = depth > 0 ? 1.0f : -1.0f;
                 normals.push_back(normal);
 
                 vec2f texcoord;
@@ -118,6 +118,6 @@ box_geometry::box_geometry(
     set_normal(normals);
     set_tangent(tangents);
     set_texcoord(texcoords);
-    set_indexes(indexes);
+    set_index(indexes);
 }
 } // namespace violet

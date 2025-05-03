@@ -30,14 +30,14 @@ public:
         return m_swapchain_images[m_swapchain_image_index].get();
     }
 
-    rhi_texture* get_texture(std::size_t index) override
+    rhi_texture* get_texture(std::uint32_t index) override
     {
         return m_swapchain_images[index].get();
     }
 
-    std::size_t get_texture_count() const noexcept override
+    std::uint32_t get_texture_count() const noexcept override
     {
-        return m_swapchain_images.size();
+        return static_cast<std::uint32_t>(m_swapchain_images.size());
     }
 
     VkSwapchainKHR get_swapchain() const noexcept

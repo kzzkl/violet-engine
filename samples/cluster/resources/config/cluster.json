@@ -1,0 +1,10 @@
+{
+    "Window": {
+        "title": "Cluster Demo",
+        "width": 1300,
+        "height": 800
+    },
+    "Cluster Demo": {
+        "model": "D:/Workspace/assets/models/gltf/stanford-bunny.glb"
+    }
+}

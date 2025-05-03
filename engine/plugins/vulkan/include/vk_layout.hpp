@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/hash.hpp"
+#include "algorithm/hash.hpp"
 #include "vk_common.hpp"
 #include <array>
 #include <memory>
@@ -115,7 +115,7 @@ private:
     {
         std::size_t operator()(const violet::vk::vk_pipeline_layout_desc& desc) const noexcept
         {
-            return violet::hash::city_hash_64(&desc, sizeof(violet::vk::vk_pipeline_layout_desc));
+            return violet::hash::city_hash_64(desc);
         }
     };
 

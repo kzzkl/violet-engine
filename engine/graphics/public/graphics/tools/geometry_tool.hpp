@@ -20,5 +20,51 @@ public:
         std::span<const vec3f> normals,
         std::span<const vec4f> tangents,
         std::span<const std::uint32_t> indexes);
+
+    struct cluster_result
+    {
+        struct cluster
+        {
+            std::uint32_t index_offset;
+            std::uint32_t index_count;
+            float error;
+        };
+
+        struct group
+        {
+            std::uint32_t cluster_offset;
+            std::uint32_t cluster_count;
+            float error;
+        };
+
+        struct lod
+        {
+            std::uint32_t group_offset;
+            std::uint32_t group_count;
+        };
+
+        std::vector<vec3f> positions;
+        std::vector<std::uint32_t> indexes;
+
+        std::vector<cluster> clusters;
+        std::vector<group> groups;
+        std::vector<lod> lods;
+    };
+
+    static cluster_result generate_clusters(
+        std::span<const vec3f> positions,
+        std::span<const std::uint32_t> indexes);
+
+    struct simplify_result
+    {
+        std::vector<vec3f> positions;
+        std::vector<std::uint32_t> indexes;
+    };
+
+    static simplify_result simplify(
+        std::span<const vec3f> positions,
+        std::span<const std::uint32_t> indexes,
+        std::uint32_t target_triangle_count,
+        std::span<const vec3f> locked_positions = {});
 };
 } // namespace violet

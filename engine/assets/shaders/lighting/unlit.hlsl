@@ -3,9 +3,9 @@
 struct constant_data
 {
     uint albedo;
-    uint padding_0;
-    uint padding_1;
-    uint padding_2;
+    uint padding0;
+    uint padding1;
+    uint padding2;
 };
 PushConstant(constant_data, constant);
 

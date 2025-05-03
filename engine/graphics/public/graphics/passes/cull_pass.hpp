@@ -9,6 +9,8 @@ class cull_pass
 public:
     struct parameter
     {
+        rdg_texture* hzb;
+
         rdg_buffer* command_buffer;
         rdg_buffer* count_buffer;
 

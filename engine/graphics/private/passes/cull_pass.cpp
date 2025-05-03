@@ -4,14 +4,19 @@ namespace violet
 {
 struct cull_cs : public shader_cs
 {
-    static constexpr std::string_view path = "assets/shaders/cull/cull.hlsl";
+    static constexpr std::string_view path = "assets/shaders/cull/instance_cull.hlsl";
 
     struct constant_data
     {
+        std::uint32_t hzb;
+        std::uint32_t hzb_sampler;
         std::uint32_t cull_result;
-        std::uint32_t padding_0;
-        std::uint32_t padding_1;
-        std::uint32_t padding_2;
+        std::uint32_t width;
+        std::uint32_t height;
+        std::uint32_t frustum_culling;
+        std::uint32_t occlusion_culling;
+        std::uint32_t padding0;
+        vec4f frustum;
     };
 
     static constexpr parameter_layout parameters = {
@@ -30,7 +35,7 @@ struct draw_command_filler_cs : public shader_cs
         std::uint32_t cull_result;
         std::uint32_t command_buffer;
         std::uint32_t count_buffer;
-        std::uint32_t padding_0;
+        std::uint32_t padding0;
     };
 
     static constexpr parameter_layout parameters = {
@@ -82,8 +87,13 @@ void cull_pass::add_cull_pass(
 {
     struct pass_data
     {
+        rdg_texture_srv hzb;
         rdg_buffer_uav cull_result;
+        bool frustum_culling;
+        bool occlusion_culling;
         std::uint32_t mesh_count;
+
+        vec4f frustum;
     };
 
     graph.add_pass<pass_data>(
@@ -91,18 +101,53 @@ void cull_pass::add_cull_pass(
         RDG_PASS_COMPUTE,
         [&](pass_data& data, rdg_pass& pass)
         {
+            data.hzb = pass.add_texture_srv(parameter.hzb, RHI_PIPELINE_STAGE_COMPUTE);
             data.cull_result = pass.add_buffer_uav(cull_result, RHI_PIPELINE_STAGE_COMPUTE);
+            data.frustum_culling = parameter.frustum_culling;
+            data.occlusion_culling = parameter.occlusion_culling;
             data.mesh_count = graph.get_scene().get_mesh_count();
+
+            mat4f matrix_p_t = matrix::transpose(graph.get_camera().get_matrix_p());
+            vec4f frustum_x = vector::normalize(matrix_p_t[3] + matrix_p_t[0]);
+            frustum_x /= vector::length(vec3f(frustum_x));
+            vec4f frustum_y = vector::normalize(matrix_p_t[3] + matrix_p_t[0]);
+            frustum_y /= vector::length(vec3f(frustum_y));
+
+            data.frustum[0] = frustum_x.x;
+            data.frustum[1] = frustum_x.z;
+            data.frustum[2] = frustum_y.y;
+            data.frustum[3] = frustum_y.z;
         },
-        [&](const pass_data& data, rdg_command& command)
+        [](const pass_data& data, rdg_command& command)
         {
             auto& device = render_device::instance();
+
+            rhi_sampler* hzb_sampler = device.get_sampler({
+                .mag_filter = RHI_FILTER_LINEAR,
+                .min_filter = RHI_FILTER_LINEAR,
+                .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                .address_mode_v = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                .min_level = 0.0f,
+                .max_level = -1.0f,
+                .reduction_mode = RHI_SAMPLER_REDUCTION_MODE_MIN,
+            });
 
             command.set_pipeline({
                 .compute_shader = device.get_shader<cull_cs>(),
             });
+
+            rhi_texture_extent extent = data.hzb.get_extent();
+
             command.set_constant(cull_cs::constant_data{
+                .hzb = data.hzb.get_bindless(),
+                .hzb_sampler = hzb_sampler->get_bindless(),
                 .cull_result = data.cull_result.get_bindless(),
+                .width = extent.width,
+                .height = extent.height,
+                .frustum_culling = data.frustum_culling,
+                .occlusion_culling = data.occlusion_culling,
+                .frustum = data.frustum,
             });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_SCENE);

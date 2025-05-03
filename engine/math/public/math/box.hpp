@@ -3,6 +3,7 @@
 #include "math/matrix.hpp"
 #include "math/vector.hpp"
 #include <limits>
+#include <span>
 
 namespace violet
 {
@@ -23,6 +24,21 @@ struct box3
 
     vec3<T> min;
     vec3<T> max;
+
+    [[nodiscard]] bool operator==(const box3& other) const noexcept
+    {
+        return min == other.min && max == other.max;
+    }
+
+    [[nodiscard]] bool operator!=(const box3& other) const noexcept
+    {
+        return !(*this == other);
+    }
+
+    [[nodiscard]] operator bool() const noexcept
+    {
+        return min.x <= max.x && min.y <= max.y && min.z <= max.z;
+    }
 };
 
 template <>
@@ -57,6 +73,28 @@ struct box
     {
         box.min = vector::min(box.min, point);
         box.max = vector::max(box.max, point);
+    }
+
+    template <typename T>
+    static inline void expand(box3<T>& box, std::span<const vec3<T>> points) noexcept
+    {
+        for (const auto& point : points)
+        {
+            expand(box, point);
+        }
+    }
+
+    template <typename T>
+    static inline void expand(box3<T>& box, const box3<T>& other) noexcept
+    {
+        box.min = vector::min(box.min, other.min);
+        box.max = vector::max(box.max, other.max);
+    }
+
+    static inline void expand(box3f_simd& box, const box3f_simd& other) noexcept
+    {
+        box.min = vector::min(box.min, other.min);
+        box.max = vector::max(box.max, other.max);
     }
 
     template <typename T>

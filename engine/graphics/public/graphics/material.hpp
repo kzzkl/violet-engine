@@ -23,6 +23,30 @@ enum buildin_shading_model : shading_model
     SHADING_MODEL_CUSTOM,
 };
 
+template <shading_model ShadingModel>
+struct material_stencil_state
+{
+    static constexpr rhi_stencil_state value = {
+        .compare_op = RHI_COMPARE_OP_ALWAYS,
+        .pass_op = RHI_STENCIL_OP_REPLACE,
+        .fail_op = RHI_STENCIL_OP_KEEP,
+        .depth_fail_op = RHI_STENCIL_OP_KEEP,
+        .reference = ShadingModel,
+    };
+};
+
+template <shading_model ShadingModel>
+struct lighting_stencil_state
+{
+    static constexpr rhi_stencil_state value = {
+        .compare_op = RHI_COMPARE_OP_EQUAL,
+        .pass_op = RHI_STENCIL_OP_KEEP,
+        .fail_op = RHI_STENCIL_OP_KEEP,
+        .depth_fail_op = RHI_STENCIL_OP_KEEP,
+        .reference = ShadingModel,
+    };
+};
+
 class material
 {
 public:

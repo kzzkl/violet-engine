@@ -25,7 +25,7 @@ struct taa_cs : public shader_cs
 
 void taa_pass::add(render_graph& graph, const parameter& parameter)
 {
-    struct taa_data
+    struct pass_data
     {
         rdg_texture_srv current_render_target;
         rdg_texture_srv history_render_target;
@@ -34,10 +34,10 @@ void taa_pass::add(render_graph& graph, const parameter& parameter)
         rdg_texture_uav resolved_render_target;
     };
 
-    graph.add_pass<taa_data>(
+    graph.add_pass<pass_data>(
         "TAA Pass",
         RDG_PASS_COMPUTE,
-        [&](taa_data& data, rdg_pass& pass)
+        [&](pass_data& data, rdg_pass& pass)
         {
             data.current_render_target =
                 pass.add_texture_srv(parameter.current_render_target, RHI_PIPELINE_STAGE_COMPUTE);
@@ -68,7 +68,7 @@ void taa_pass::add(render_graph& graph, const parameter& parameter)
                 data.motion_vector = rdg_texture_srv();
             }
         },
-        [](const taa_data& data, rdg_command& command)
+        [](const pass_data& data, rdg_command& command)
         {
             auto& device = render_device::instance();
 

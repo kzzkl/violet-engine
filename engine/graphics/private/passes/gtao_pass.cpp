@@ -9,6 +9,7 @@ struct gtao_cs : public shader_cs
 
     struct constant_data
     {
+        std::uint32_t hzb;
         std::uint32_t depth_buffer;
         std::uint32_t normal_buffer;
         std::uint32_t ao_buffer;
@@ -32,6 +33,7 @@ void gtao_pass::add(render_graph& graph, const parameter& parameter)
 {
     struct pass_data
     {
+        rdg_texture_srv hzb;
         rdg_texture_srv depth_buffer;
         rdg_texture_srv normal_buffer;
         rdg_texture_uav ao_buffer;
@@ -46,6 +48,7 @@ void gtao_pass::add(render_graph& graph, const parameter& parameter)
         RDG_PASS_COMPUTE,
         [&](pass_data& data, rdg_pass& pass)
         {
+            data.hzb = pass.add_texture_srv(parameter.hzb, RHI_PIPELINE_STAGE_COMPUTE);
             data.depth_buffer =
                 pass.add_texture_srv(parameter.depth_buffer, RHI_PIPELINE_STAGE_COMPUTE);
             data.normal_buffer =
@@ -60,12 +63,13 @@ void gtao_pass::add(render_graph& graph, const parameter& parameter)
         {
             auto& device = render_device::instance();
 
-            rhi_texture_extent extent = data.depth_buffer.get_extent();
+            rhi_texture_extent extent = data.ao_buffer.get_extent();
 
             command.set_pipeline({
                 .compute_shader = device.get_shader<gtao_cs>(),
             });
             command.set_constant(gtao_cs::constant_data{
+                .hzb = data.hzb.get_bindless(),
                 .depth_buffer = data.depth_buffer.get_bindless(),
                 .normal_buffer = data.normal_buffer.get_bindless(),
                 .ao_buffer = data.ao_buffer.get_bindless(),
@@ -76,7 +80,7 @@ void gtao_pass::add(render_graph& graph, const parameter& parameter)
                 .step_count = data.step_count,
                 .radius = data.radius,
                 .falloff = data.falloff,
-                .frame = static_cast<std::uint32_t>(device.get_frame_count()),
+                .frame = device.get_frame_count(),
             });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_CAMERA);

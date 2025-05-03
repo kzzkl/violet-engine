@@ -4,6 +4,7 @@ ConstantBuffer<camera_data> camera : register(b0, space1);
 
 struct constant_data
 {
+    uint hzb;
     uint depth_buffer;
     uint normal_buffer;
     uint ao_buffer;
@@ -33,6 +34,11 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
     // https://github.com/GameTechDev/XeGTAO/blob/master/Source/Rendering/Shaders/XeGTAO.hlsli
 
+    if (dtid.x >= constant.width || dtid.y >= constant.height)
+    {
+        return;
+    }
+
     float2 texcoord = get_compute_texcoord(dtid.xy, constant.width, constant.height);
 
     SamplerState point_clamp_sampler = get_point_clamp_sampler();
@@ -50,13 +56,13 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     }
 
     // Get the position of the current pixel in view space.
-    float3 position_vs = reconstruct_position(depth, texcoord, camera.projection_inv).xyz;
+    float3 position_vs = reconstruct_position(depth, texcoord, camera.matrix_p_inv).xyz;
     float3 view = normalize(-position_vs);
 
     // Get the normal of the current pixel in view space.
     Texture2D<float2> normal_buffer = ResourceDescriptorHeap[constant.normal_buffer];
     float3 normal_ws = octahedron_to_normal(normal_buffer.SampleLevel(point_clamp_sampler, texcoord, 0.0));
-    float3 normal_vs = normalize(mul((float3x3)camera.view, normal_ws));
+    float3 normal_vs = normalize(mul((float3x3)camera.matrix_v, normal_ws));
 
     // Noise.
     float2 noise = spatio_temporal_noise(dtid.xy);
@@ -73,6 +79,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     float2 pixel_size = 1.0 / float2(constant.width, constant.height);
 
     float min_s = 1.3 / radius_in_pixels;
+
+    Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
 
     float occlusion = 0.0;
     for (float slice = 0; slice < constant.slice_count; ++slice)
@@ -113,15 +121,15 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
             offset = round(offset) * pixel_size;
 
             // Calculate h1.
-            float p1_depth = depth_buffer.SampleLevel(point_clamp_sampler, texcoord - offset, level);
-            float3 p1_position_vs = reconstruct_position(p1_depth, texcoord - offset, camera.projection_inv).xyz;
+            float p1_depth = hzb.SampleLevel(point_clamp_sampler, texcoord - offset, level);
+            float3 p1_position_vs = reconstruct_position(p1_depth, texcoord - offset, camera.matrix_p_inv).xyz;
             float3 p1_delta = p1_position_vs - position_vs;
             float p1_delta_length = length(p1_delta);
             float p1_cos = dot(view, p1_delta / p1_delta_length);
 
             // Calculate h2.
-            float p2_depth = depth_buffer.SampleLevel(point_clamp_sampler, texcoord + offset, level);
-            float3 p2_position_vs = reconstruct_position(p2_depth, texcoord + offset, camera.projection_inv).xyz;
+            float p2_depth = hzb.SampleLevel(point_clamp_sampler, texcoord + offset, level);
+            float3 p2_position_vs = reconstruct_position(p2_depth, texcoord + offset, camera.matrix_p_inv).xyz;
             float3 p2_delta = p2_position_vs - position_vs;
             float p2_delta_length = length(p2_delta);
             float p2_cos = dot(view, p2_delta / p2_delta_length);

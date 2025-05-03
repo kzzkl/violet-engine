@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/hash.hpp"
+#include "algorithm/hash.hpp"
 #include "vk_common.hpp"
 #include <memory>
 #include <unordered_map>
@@ -208,11 +208,11 @@ private:
         bool operator==(const view_key& other) const noexcept = default;
     };
 
-    struct view_key_hash
+    struct view_hash
     {
         std::size_t operator()(const view_key& key) const noexcept
         {
-            return hash::city_hash_64(&key, sizeof(view_key));
+            return hash::city_hash_64(key);
         }
     };
 
@@ -234,7 +234,7 @@ private:
 
     rhi_texture_flags m_flags{0};
 
-    std::unordered_map<view_key, view, view_key_hash> m_views;
+    std::unordered_map<view_key, view, view_hash> m_views;
 
     vk_context* m_context{nullptr};
 };
@@ -375,11 +375,11 @@ private:
         bool operator==(const view_key& other) const noexcept = default;
     };
 
-    struct view_key_hash
+    struct view_hash
     {
         std::size_t operator()(const view_key& key) const noexcept
         {
-            return hash::city_hash_64(&key, sizeof(view_key));
+            return hash::city_hash_64(key);
         }
     };
 
@@ -393,7 +393,7 @@ private:
 
     void* m_mapping_pointer;
 
-    std::unordered_map<view_key, view, view_key_hash> m_views;
+    std::unordered_map<view_key, view, view_hash> m_views;
 
     vk_context* m_context;
 };

@@ -20,9 +20,10 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-    violet::task
+    violet::algorithm
     violet::math
-    violet::scene)
+    violet::scene
+    violet::task)
 
 if(${VIOLET_PHYSICS_DEBUG_DRAW})
     target_compile_definitions(${PROJECT_NAME} PRIVATE VIOLET_PHYSICS_DEBUG_DRAW)

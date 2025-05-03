@@ -367,6 +367,33 @@ struct vector
     }
 
     template <typename T>
+    [[nodiscard]] static inline T min(const vec2<T>& v) noexcept
+    {
+        return std::min(v.x, v.y);
+    }
+
+    template <typename T>
+    [[nodiscard]] static inline T min(const vec3<T>& v) noexcept
+    {
+        return std::min(v.x, std::min(v.y, v.z));
+    }
+
+    template <typename T>
+    [[nodiscard]] static inline T min(const vec4<T>& v) noexcept
+    {
+        return std::min(v.x, std::min(v.y, std::min(v.z, v.w)));
+    }
+
+    [[nodiscard]] static inline float min(vec4f_simd v) noexcept
+    {
+        __m128 t1 = simd::shuffle<1, 0, 3, 2>(v);
+        __m128 t2 = _mm_min_ps(v, t1);
+        t1 = simd::shuffle<2, 3, 2, 3>(t2);
+        t2 = _mm_min_ps(t2, t1);
+        return _mm_cvtss_f32(t2);
+    }
+
+    template <typename T>
     [[nodiscard]] static inline vec2<T> min(const vec2<T>& a, const vec2<T>& b) noexcept
     {
         return {std::min(a.x, b.x), std::min(a.y, b.y)};
@@ -389,6 +416,33 @@ struct vector
         {
             return {std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z), std::min(a.w, b.w)};
         }
+    }
+
+    template <typename T>
+    [[nodiscard]] static inline T max(const vec2<T>& v) noexcept
+    {
+        return std::max(v.x, v.y);
+    }
+
+    template <typename T>
+    [[nodiscard]] static inline T max(const vec3<T>& v) noexcept
+    {
+        return std::max(v.x, std::max(v.y, v.z));
+    }
+
+    template <typename T>
+    [[nodiscard]] static inline T max(const vec4<T>& v) noexcept
+    {
+        return std::max(v.x, std::max(v.y, std::max(v.z, v.w)));
+    }
+
+    [[nodiscard]] static inline float max(vec4f_simd v) noexcept
+    {
+        __m128 t1 = simd::shuffle<1, 0, 3, 2>(v);
+        __m128 t2 = _mm_max_ps(v, t1);
+        t1 = simd::shuffle<2, 3, 2, 3>(t2);
+        t2 = _mm_max_ps(t2, t1);
+        return _mm_cvtss_f32(t2);
     }
 
     template <typename T>
@@ -463,111 +517,80 @@ struct vector
     }
 };
 
-template <typename T>
-inline vec2<T> operator+(const vec2<T>& a, const vec2<T>& b)
+template <typename VectorType>
+concept is_vector = std::is_same_v<VectorType, vec2<typename VectorType::value_type>> ||
+                    std::is_same_v<VectorType, vec3<typename VectorType::value_type>> ||
+                    std::is_same_v<VectorType, vec4<typename VectorType::value_type>>;
+
+template <is_vector T>
+inline T operator+(const T& a, const T& b)
 {
     return vector::add(a, b);
 }
 
-template <typename T>
-inline vec3<T> operator+(const vec3<T>& a, const vec3<T>& b)
+template <is_vector T>
+inline T& operator+=(T& a, const T& b)
 {
-    return vector::add(a, b);
+    return a = vector::add(a, b);
 }
 
-template <typename T>
-inline vec4<T> operator+(const vec4<T>& a, const vec4<T>& b)
-{
-    return vector::add(a, b);
-}
-
-template <typename T>
-inline vec2<T> operator-(const vec2<T>& a, const vec2<T>& b)
+template <is_vector T>
+inline T operator-(const T& a, const T& b)
 {
     return vector::sub(a, b);
 }
 
-template <typename T>
-inline vec3<T> operator-(const vec3<T>& a, const vec3<T>& b)
+template <is_vector T>
+inline T& operator-=(T& a, const T& b)
 {
-    return vector::sub(a, b);
+    return a = vector::sub(a, b);
 }
 
-template <typename T>
-inline vec4<T> operator-(const vec4<T>& a, const vec4<T>& b)
-{
-    return vector::sub(a, b);
-}
-
-template <typename T>
-inline vec2<T> operator*(const vec2<T>& a, const vec2<T>& b)
+template <is_vector T>
+inline T operator*(const T& a, const T& b)
 {
     return vector::mul(a, b);
 }
 
-template <typename T>
-inline vec3<T> operator*(const vec3<T>& a, const vec3<T>& b)
+template <is_vector T>
+inline T& operator*=(T& a, const T& b)
 {
-    return vector::mul(a, b);
+    return a = vector::mul(a, b);
 }
 
-template <typename T>
-inline vec4<T> operator*(const vec4<T>& a, const vec4<T>& b)
-{
-    return vector::mul(a, b);
-}
-
-template <typename T>
-inline vec2<T> operator*(const vec2<T>& a, typename vec2<T>::value_type scale)
+template <is_vector T>
+inline T operator*(const T& a, typename T::value_type scale)
 {
     return vector::mul(a, scale);
 }
 
-template <typename T>
-inline vec3<T> operator*(const vec3<T>& a, typename vec3<T>::value_type scale)
+template <is_vector T>
+inline T& operator*=(T& a, typename T::value_type scale)
 {
-    return vector::mul(a, scale);
+    return a = vector::mul(a, scale);
 }
 
-template <typename T>
-inline vec4<T> operator*(const vec4<T>& a, typename vec4<T>::value_type scale)
-{
-    return vector::mul(a, scale);
-}
-
-template <typename T>
-inline vec2<T> operator/(const vec2<T>& a, const vec2<T>& b)
+template <is_vector T>
+inline T operator/(const T& a, const T& b)
 {
     return vector::div(a, b);
 }
 
-template <typename T>
-inline vec3<T> operator/(const vec3<T>& a, const vec3<T>& b)
+template <is_vector T>
+inline T& operator/=(T& a, const T& b)
 {
-    return vector::div(a, b);
+    return a = vector::div(a, b);
 }
 
-template <typename T>
-inline vec4<T> operator/(const vec4<T>& a, const vec4<T>& b)
-{
-    return vector::div(a, b);
-}
-
-template <typename T>
-inline vec2<T> operator/(const vec2<T>& a, typename vec2<T>::value_type scale)
+template <is_vector T>
+inline T operator/(const T& a, typename T::value_type scale)
 {
     return vector::div(a, scale);
 }
 
-template <typename T>
-inline vec3<T> operator/(const vec3<T>& a, typename vec3<T>::value_type scale)
+template <is_vector T>
+inline T& operator/=(T& a, typename T::value_type scale)
 {
-    return vector::div(a, scale);
-}
-
-template <typename T>
-inline vec4<T> operator/(const vec4<T>& a, typename vec4<T>::value_type scale)
-{
-    return vector::div(a, scale);
+    return a = vector::div(a, scale);
 }
 } // namespace violet

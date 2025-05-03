@@ -12,14 +12,14 @@ using buffer_allocation = OffsetAllocator::Allocation;
 class buffer_allocator
 {
 public:
-    buffer_allocator(std::uint32_t size)
-        : m_allocator(size)
+    buffer_allocator(std::size_t size)
+        : m_allocator(static_cast<std::uint32_t>(size))
     {
     }
 
-    buffer_allocation allocate(std::uint32_t size)
+    buffer_allocation allocate(std::size_t size)
     {
-        buffer_allocation allocation = m_allocator.allocate(size);
+        buffer_allocation allocation = m_allocator.allocate(static_cast<std::uint32_t>(size));
         assert(allocation.offset != buffer_allocation::NO_SPACE);
         return allocation;
     }

@@ -22,7 +22,7 @@ vk_command::~vk_command() {}
 void vk_command::begin_render_pass(
     rhi_render_pass* render_pass,
     const rhi_attachment* attachments,
-    std::size_t attachment_count)
+    std::uint32_t attachment_count)
 {
     assert(m_current_render_pass == nullptr);
 
@@ -54,14 +54,14 @@ void vk_command::set_pipeline(rhi_compute_pipeline* compute_pipeline)
     m_current_bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
 }
 
-void vk_command::set_parameter(std::size_t index, rhi_parameter* parameter)
+void vk_command::set_parameter(std::uint32_t index, rhi_parameter* parameter)
 {
     VkDescriptorSet descriptor_set = static_cast<vk_parameter*>(parameter)->get_descriptor_set();
     vkCmdBindDescriptorSets(
         m_command_buffer,
         m_current_bind_point,
         m_current_pipeline_layout->get_layout(),
-        static_cast<std::uint32_t>(index),
+        index,
         1,
         &descriptor_set,
         0,
@@ -77,7 +77,7 @@ void vk_command::set_constant(const void* data, std::size_t size)
         m_current_pipeline_layout->get_layout(),
         m_current_pipeline_layout->get_push_constant_stages(),
         0,
-        size,
+        static_cast<std::uint32_t>(size),
         data);
 }
 
@@ -93,10 +93,10 @@ void vk_command::set_viewport(const rhi_viewport& viewport)
     vkCmdSetViewport(m_command_buffer, 0, 1, &vp);
 }
 
-void vk_command::set_scissor(const rhi_scissor_rect* rects, std::size_t size)
+void vk_command::set_scissor(const rhi_scissor_rect* rects, std::uint32_t rect_count)
 {
     std::vector<VkRect2D> scissors;
-    for (std::size_t i = 0; i < size; ++i)
+    for (std::uint32_t i = 0; i < rect_count; ++i)
     {
         VkRect2D rect = {
             .offset =
@@ -110,16 +110,12 @@ void vk_command::set_scissor(const rhi_scissor_rect* rects, std::size_t size)
             }};
         scissors.push_back(rect);
     }
-    vkCmdSetScissor(
-        m_command_buffer,
-        0,
-        static_cast<std::uint32_t>(scissors.size()),
-        scissors.data());
+    vkCmdSetScissor(m_command_buffer, 0, rect_count, scissors.data());
 }
 
 void vk_command::set_vertex_buffers(
     rhi_buffer* const* vertex_buffers,
-    std::size_t vertex_buffer_count)
+    std::uint32_t vertex_buffer_count)
 {
     std::vector<VkBuffer> buffers(vertex_buffer_count);
     std::vector<VkDeviceSize> offsets(vertex_buffer_count);
@@ -132,7 +128,7 @@ void vk_command::set_vertex_buffers(
     vkCmdBindVertexBuffers(
         m_command_buffer,
         0,
-        static_cast<std::uint32_t>(vertex_buffer_count),
+        vertex_buffer_count,
         buffers.data(),
         offsets.data());
 }
@@ -185,7 +181,7 @@ void vk_command::draw_indexed_indirect(
     std::size_t command_buffer_offset,
     rhi_buffer* count_buffer,
     std::size_t count_buffer_offset,
-    std::size_t max_draw_count)
+    std::uint32_t max_draw_count)
 {
     vkCmdDrawIndexedIndirectCount(
         m_command_buffer,
@@ -204,9 +200,9 @@ void vk_command::dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z)
 
 void vk_command::set_pipeline_barrier(
     const rhi_buffer_barrier* const buffer_barriers,
-    std::size_t buffer_barrier_count,
+    std::uint32_t buffer_barrier_count,
     const rhi_texture_barrier* const texture_barriers,
-    std::size_t texture_barrier_count)
+    std::uint32_t texture_barrier_count)
 {
     rhi_pipeline_stage_flags src_stages = 0;
     rhi_pipeline_stage_flags dst_stages = 0;
@@ -262,9 +258,9 @@ void vk_command::set_pipeline_barrier(
         0,
         0,
         nullptr,
-        vk_buffer_barriers.size(),
+        buffer_barrier_count,
         vk_buffer_barriers.data(),
-        vk_image_barriers.size(),
+        texture_barrier_count,
         vk_image_barriers.data());
 }
 
@@ -310,7 +306,8 @@ void vk_command::blit_texture(
     rhi_texture* src,
     const rhi_texture_region& src_region,
     rhi_texture* dst,
-    const rhi_texture_region& dst_region)
+    const rhi_texture_region& dst_region,
+    rhi_filter filter)
 {
     auto* src_image = static_cast<vk_texture*>(src);
     auto* dst_image = static_cast<vk_texture*>(dst);
@@ -322,7 +319,9 @@ void vk_command::blit_texture(
         static_cast<std::int32_t>(src_region.extent.width),
         static_cast<std::int32_t>(src_region.extent.height),
         1};
-    image_blit.srcSubresource.aspectMask = src_image->get_aspect_mask();
+    image_blit.srcSubresource.aspectMask = src_region.aspect == 0 ?
+                                               src_image->get_aspect_mask() :
+                                               vk_utils::map_image_aspect_flags(src_region.aspect);
     image_blit.srcSubresource.mipLevel = src_region.level;
     image_blit.srcSubresource.baseArrayLayer = src_region.layer;
     image_blit.srcSubresource.layerCount = src_region.layer_count;
@@ -332,7 +331,9 @@ void vk_command::blit_texture(
         static_cast<std::int32_t>(dst_region.extent.width),
         static_cast<std::int32_t>(dst_region.extent.height),
         1};
-    image_blit.dstSubresource.aspectMask = dst_image->get_aspect_mask();
+    image_blit.dstSubresource.aspectMask = dst_region.aspect == 0 ?
+                                               dst_image->get_aspect_mask() :
+                                               vk_utils::map_image_aspect_flags(dst_region.aspect);
     image_blit.dstSubresource.mipLevel = dst_region.level;
     image_blit.dstSubresource.baseArrayLayer = dst_region.layer;
     image_blit.dstSubresource.layerCount = dst_region.layer_count;
@@ -345,7 +346,7 @@ void vk_command::blit_texture(
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1,
         &image_blit,
-        VK_FILTER_LINEAR);
+        vk_utils::map_filter(filter));
 }
 
 void vk_command::fill_buffer(

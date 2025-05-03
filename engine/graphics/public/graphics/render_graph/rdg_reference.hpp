@@ -18,8 +18,9 @@ enum rdg_reference_type
     RDG_REFERENCE_BUFFER_UAV,
 };
 
-struct rdg_reference
+class rdg_reference
 {
+public:
     rdg_reference_type type;
     rdg_pass* pass;
     rdg_resource* resource;

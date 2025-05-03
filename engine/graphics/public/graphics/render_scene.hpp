@@ -23,9 +23,9 @@ public:
 
     render_id add_mesh();
     void remove_mesh(render_id mesh_id);
-    void set_mesh_model_matrix(render_id mesh_id, const mat4f& model_matrix);
-    void set_mesh_aabb(render_id mesh_id, const box3f& aabb);
+    void set_mesh_model_matrix(render_id mesh_id, const mat4f& matrix_m);
     void set_mesh_geometry(render_id mesh_id, geometry* geometry);
+    void set_mesh_bounds(render_id mesh_id, const box3f& box, const sphere3f& sphere);
 
     render_id add_instance(render_id mesh_id);
     void remove_instance(render_id instance_id);
@@ -54,39 +54,39 @@ public:
 
     void update(gpu_buffer_uploader* uploader);
 
-    std::size_t get_mesh_count() const noexcept
+    std::uint32_t get_mesh_count() const noexcept
     {
         return m_meshes.get_size();
     }
 
-    std::size_t get_instance_count() const noexcept
+    std::uint32_t get_instance_count() const noexcept
     {
         return m_instances.get_size();
     }
 
-    std::size_t get_light_count() const noexcept
+    std::uint32_t get_light_count() const noexcept
     {
         return m_lights.get_size();
     }
 
-    std::size_t get_group_count() const noexcept
+    std::uint32_t get_group_count() const noexcept
     {
-        return 4ull * 1024;
+        return 4 * 1024;
     }
 
-    std::size_t get_mesh_capacity() const noexcept
+    std::uint32_t get_mesh_capacity() const noexcept
     {
         return m_meshes.get_capacity();
     }
 
-    std::size_t get_instance_capacity() const noexcept
+    std::uint32_t get_instance_capacity() const noexcept
     {
         return m_instances.get_capacity();
     }
 
-    std::size_t get_group_capacity() const noexcept
+    std::uint32_t get_group_capacity() const noexcept
     {
-        return 4ull * 1024;
+        return 4 * 1024;
     }
 
     rhi_parameter* get_scene_parameter() const noexcept
@@ -118,18 +118,20 @@ private:
         material_type material_type;
         rdg_raster_pipeline pipeline;
 
-        std::size_t instance_offset;
-        std::size_t instance_count;
+        std::uint32_t instance_offset;
+        std::uint32_t instance_count;
     };
 
     struct render_mesh
     {
         using gpu_type = shader::mesh_data;
 
-        mat4f model_matrix;
-        box3f aabb;
+        mat4f matrix_m;
 
         geometry* geometry;
+
+        box3f bounding_box;
+        sphere3f bounding_sphere;
 
         std::vector<render_id> instances;
     };
@@ -165,6 +167,14 @@ private:
     };
     using render_scene_states = std::uint32_t;
 
+    struct raster_pipeline_hash
+    {
+        std::uint64_t operator()(const rdg_raster_pipeline& pipeline) const noexcept
+        {
+            return hash::city_hash_64(pipeline);
+        }
+    };
+
     void add_instance_to_batch(render_id instance_id, const material* material);
     void remove_instance_from_batch(render_id instance_id);
 
@@ -178,7 +188,7 @@ private:
     gpu_dense_array<render_light> m_lights;
 
     gpu_sparse_array<render_batch> m_batches;
-    std::unordered_map<std::uint64_t, render_id> m_pipeline_to_batch;
+    std::unordered_map<rdg_raster_pipeline, render_id, raster_pipeline_hash> m_pipeline_to_batch;
 
     render_scene_states m_scene_states{0};
 
@@ -186,24 +196,23 @@ private:
     rhi_ptr<rhi_parameter> m_scene_parameter;
 };
 
+class camera_component;
+class camera_component_meta;
 class render_camera
 {
 public:
-    render_camera(rhi_texture* render_target, rhi_parameter* camera_parameter);
+    render_camera(const camera_component* camera, const camera_component_meta* camera_meta);
 
-    void set_viewport(const rhi_viewport& viewport) noexcept
-    {
-        m_viewport = viewport;
-    }
+    float get_near() const noexcept;
+    float get_far() const noexcept;
+    float get_fov() const noexcept;
+
+    const mat4f& get_matrix_v() const noexcept;
+    const mat4f& get_matrix_p() const noexcept;
 
     const rhi_viewport& get_viewport() const noexcept
     {
         return m_viewport;
-    }
-
-    void set_scissor_rects(const std::vector<rhi_scissor_rect>& scissor_rects)
-    {
-        m_scissor_rects = scissor_rects;
     }
 
     const std::vector<rhi_scissor_rect>& get_scissor_rects() const noexcept
@@ -216,16 +225,17 @@ public:
         return m_render_target;
     }
 
-    rhi_parameter* get_camera_parameter() const noexcept
-    {
-        return m_camera_parameter;
-    }
+    rhi_texture* get_hzb() const noexcept;
+
+    rhi_parameter* get_camera_parameter() const noexcept;
 
 private:
     rhi_texture* m_render_target;
-    rhi_parameter* m_camera_parameter;
 
     rhi_viewport m_viewport;
     std::vector<rhi_scissor_rect> m_scissor_rects;
+
+    const camera_component* m_camera;
+    const camera_component_meta* m_camera_meta;
 };
 } // namespace violet

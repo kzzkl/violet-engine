@@ -564,7 +564,7 @@ void texture_loader::generate_mipmaps(
         .layer_count = 1,
     };
 
-    for (std::size_t i = 1; i < level_count; ++i)
+    for (std::uint32_t i = 1; i < level_count; ++i)
     {
         texture_barriers[0].level = i - 1;
         texture_barriers[1].level = i;
@@ -575,7 +575,7 @@ void texture_loader::generate_mipmaps(
             .offset_x = 0,
             .offset_y = 0,
             .extent = extent,
-            .level = static_cast<std::uint32_t>(i - 1),
+            .level = i - 1,
             .layer = layer,
             .layer_count = 1,
         };
@@ -587,12 +587,12 @@ void texture_loader::generate_mipmaps(
             .offset_x = 0,
             .offset_y = 0,
             .extent = extent,
-            .level = static_cast<std::uint32_t>(i),
+            .level = i,
             .layer = layer,
             .layer_count = 1,
         };
 
-        command->blit_texture(texture, src_region, texture, dst_region);
+        command->blit_texture(texture, src_region, texture, dst_region, RHI_FILTER_LINEAR);
     }
 
     texture_barriers[0].level = level_count - 1;

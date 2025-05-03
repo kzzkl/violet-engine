@@ -1,3 +1,10 @@
+if (MSVC)
+    add_compile_options(/W3 /WX)
+else()
+    add_compile_options(-Wall -Wextra -pedantic -Werror)
+endif()
+
+add_subdirectory(algorithm)
 add_subdirectory(animation)
 add_subdirectory(common)
 add_subdirectory(core)

@@ -145,7 +145,7 @@ void mmd_viewer::initialize_scene(
 
     auto& camera_control = world.get_component<orbit_control_component>(m_camera);
     camera_control.target = {0.0f, 13.0f, 0.0f};
-    camera_control.r = 40.0f;
+    camera_control.radius = 40.0f;
 
     auto& camera = world.get_component<camera_component>(m_camera);
     camera.render_target = m_swapchain.get();

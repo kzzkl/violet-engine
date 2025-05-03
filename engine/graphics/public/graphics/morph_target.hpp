@@ -18,8 +18,8 @@ struct morphing_cs : public shader_cs
         std::uint32_t element_buffer;
         std::uint32_t morph_vertex_buffer;
         std::uint32_t weight_buffer;
-        std::uint32_t padding_0;
-        std::uint32_t padding_1;
+        std::uint32_t padding0;
+        std::uint32_t padding1;
     };
 
     static constexpr parameter_layout parameters = {
@@ -96,7 +96,7 @@ private:
 
     std::vector<morph_target> m_morph_targets;
 
-    float m_precision{0.0001};
+    float m_precision{0.0001f};
     std::size_t m_max_element_count{0};
 
     std::unique_ptr<structured_buffer> m_header_buffer;

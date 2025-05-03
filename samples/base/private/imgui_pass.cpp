@@ -93,16 +93,15 @@ void imgui_pass::add(render_graph& graph, const parameter& parameter)
             rdg_raster_pipeline pipeline = {
                 .vertex_shader = device.get_shader<imgui_vs>(),
                 .fragment_shader = device.get_shader<imgui_fs>(),
+                .blend_state = device.get_blend_state<blend_state::attachment<
+                    true,
+                    RHI_BLEND_FACTOR_SRC_ALPHA,
+                    RHI_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                    RHI_BLEND_OP_ADD,
+                    RHI_BLEND_FACTOR_ONE,
+                    RHI_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                    RHI_BLEND_OP_ADD>>(),
             };
-
-            rhi_attachment_blend& blend = pipeline.blend.attachments[0];
-            blend.enable = true;
-            blend.src_color_factor = RHI_BLEND_FACTOR_SRC_ALPHA;
-            blend.dst_color_factor = RHI_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-            blend.color_op = RHI_BLEND_OP_ADD;
-            blend.src_alpha_factor = RHI_BLEND_FACTOR_ONE;
-            blend.dst_alpha_factor = RHI_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-            blend.alpha_op = RHI_BLEND_OP_ADD;
 
             command.set_pipeline(pipeline);
             command.set_parameter(0, device.get_bindless_parameter());

@@ -52,8 +52,8 @@ void control_system::tick()
     }
     else
     {
-        m_mouse_position_delta.x = 0.0f;
-        m_mouse_position_delta.y = 0.0f;
+        m_mouse_position_delta.x = 0;
+        m_mouse_position_delta.y = 0;
     }
 
     m_mouse_position.x = window.get_mouse().get_x();
@@ -63,7 +63,6 @@ void control_system::tick()
     {
         get_world().get_view().write<orbit_control_component>().write<transform_component>().each(
             [this,
-             mouse_hold,
              mouse_wheel](orbit_control_component& orbit_control, transform_component& transform)
             {
                 update_orbit_control(orbit_control, transform, mouse_wheel);
@@ -86,16 +85,16 @@ void control_system::update_orbit_control(
     orbit_control.theta = std::clamp(orbit_control.theta, eps, math::PI - eps);
     orbit_control.phi += orbit_control.phi_speed * static_cast<float>(m_mouse_position_delta[0]) /
                          static_cast<float>(window_rect.width);
-    orbit_control.r += static_cast<float>(-mouse_wheel) * orbit_control.r_speed;
-    orbit_control.r = std::max(1.0f, orbit_control.r);
+    orbit_control.radius += static_cast<float>(-mouse_wheel) * orbit_control.radius_speed;
+    orbit_control.radius = std::max(orbit_control.min_radius, orbit_control.radius);
 
     auto [theta_sin, theta_cos] = math::sin_cos(orbit_control.theta);
     auto [phi_sin, phi_cos] = math::sin_cos(orbit_control.phi);
 
     vec3f p = {
-        orbit_control.r * theta_sin * phi_cos,
-        orbit_control.r * theta_cos,
-        -orbit_control.r * theta_sin * phi_sin};
+        orbit_control.radius * theta_sin * phi_cos,
+        orbit_control.radius * theta_cos,
+        -orbit_control.radius * theta_sin * phi_sin};
     transform.set_position(vector::add(p, orbit_control.target));
     transform.lookat(orbit_control.target, vec3f{0.0f, 1.0f, 0.0f});
 }

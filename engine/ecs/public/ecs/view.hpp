@@ -28,13 +28,6 @@ private:
     std::vector<archetype*> m_archetypes;
 };
 
-template <typename Component, bool is_updated>
-struct component_wrapper
-{
-    using type = Component;
-    static const bool updated = is_updated;
-};
-
 template <typename... Components>
 struct component_list
 {

@@ -182,6 +182,11 @@ struct rhi_texture_extent
 {
     std::uint32_t width;
     std::uint32_t height;
+
+    bool operator==(const rhi_texture_extent& other) const noexcept
+    {
+        return width == other.width && height == other.height;
+    }
 };
 
 enum rhi_sample_count
@@ -316,19 +321,26 @@ public:
         rhi_format format = RHI_FORMAT_UNDEFINED) = 0;
 };
 
-enum rhi_filter
+enum rhi_filter : std::uint8_t
 {
     RHI_FILTER_POINT,
     RHI_FILTER_LINEAR
 };
 
-enum rhi_sampler_address_mode
+enum rhi_sampler_address_mode : std::uint8_t
 {
     RHI_SAMPLER_ADDRESS_MODE_REPEAT,
     RHI_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
     RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
     RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
     RHI_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE
+};
+
+enum rhi_sampler_reduction_mode : std::uint8_t
+{
+    RHI_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE,
+    RHI_SAMPLER_REDUCTION_MODE_MIN,
+    RHI_SAMPLER_REDUCTION_MODE_MAX
 };
 
 struct rhi_sampler_desc
@@ -342,6 +354,8 @@ struct rhi_sampler_desc
 
     float min_level;
     float max_level;
+
+    rhi_sampler_reduction_mode reduction_mode;
 };
 
 class rhi_sampler : public rhi_descriptor
@@ -421,8 +435,6 @@ enum rhi_access_flag : std::uint32_t
 };
 using rhi_access_flags = std::uint32_t;
 
-static constexpr std::size_t RHI_RENDER_SUBPASS_EXTERNAL = ~0U;
-
 struct rhi_render_pass_dependency_desc
 {
     rhi_pipeline_stage_flags src_stages;
@@ -435,7 +447,7 @@ struct rhi_render_pass_dependency_desc
 struct rhi_render_pass_desc
 {
     rhi_attachment_desc attachments[rhi_constants::max_attachment_count];
-    std::size_t attachment_count;
+    std::uint32_t attachment_count;
 
     rhi_render_pass_dependency_desc begin_dependency;
     rhi_render_pass_dependency_desc end_dependency;
@@ -450,8 +462,9 @@ public:
 enum rhi_shader_stage_flag : std::uint32_t
 {
     RHI_SHADER_STAGE_VERTEX = 1 << 0,
-    RHI_SHADER_STAGE_FRAGMENT = 1 << 1,
-    RHI_SHADER_STAGE_COMPUTE = 1 << 2,
+    RHI_SHADER_STAGE_GEOMETRY = 1 << 1,
+    RHI_SHADER_STAGE_FRAGMENT = 1 << 2,
+    RHI_SHADER_STAGE_COMPUTE = 1 << 3,
     RHI_SHADER_STAGE_ALL = 0x7FFFFFFF
 };
 using rhi_shader_stage_flags = std::uint32_t;
@@ -474,17 +487,17 @@ struct rhi_parameter_binding
     std::size_t size;
 };
 
-enum rhi_parameter_flag : std::uint32_t
+enum rhi_parameter_flag : std::uint8_t
 {
     RHI_PARAMETER_SIMPLE = 1 << 0,
     RHI_PARAMETER_DISABLE_SYNC = 1 << 1,
 };
-using rhi_parameter_flags = std::uint32_t;
+using rhi_parameter_flags = std::uint8_t;
 
 struct rhi_parameter_desc
 {
     const rhi_parameter_binding* bindings;
-    std::size_t binding_count;
+    std::uint32_t binding_count;
 
     rhi_parameter_flags flags;
 };
@@ -495,21 +508,18 @@ public:
     virtual ~rhi_parameter() = default;
 
     virtual void set_uniform(
-        std::size_t index,
+        std::uint32_t index,
         const void* data,
         std::size_t size,
         std::size_t offset = 0) = 0;
-    virtual void set_srv(std::size_t index, rhi_texture_srv* srv, std::size_t offset = 0) = 0;
-    virtual void set_srv(std::size_t index, rhi_buffer_srv* srv, std::size_t offset = 0) = 0;
-    virtual void set_uav(std::size_t index, rhi_texture_uav* uav, std::size_t offset = 0) = 0;
-    virtual void set_uav(std::size_t index, rhi_buffer_uav* uav, std::size_t offset = 0) = 0;
-    virtual void set_sampler(std::size_t index, rhi_sampler* sampler, std::size_t offset = 0) = 0;
-};
-
-enum rhi_primitive_topology
-{
-    RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-    RHI_PRIMITIVE_TOPOLOGY_LINE_LIST
+    virtual void set_srv(std::uint32_t index, rhi_texture_srv* srv, std::uint32_t offset = 0) = 0;
+    virtual void set_srv(std::uint32_t index, rhi_buffer_srv* srv, std::uint32_t offset = 0) = 0;
+    virtual void set_uav(std::uint32_t index, rhi_texture_uav* uav, std::uint32_t offset = 0) = 0;
+    virtual void set_uav(std::uint32_t index, rhi_buffer_uav* uav, std::uint32_t offset = 0) = 0;
+    virtual void set_sampler(
+        std::uint32_t index,
+        rhi_sampler* sampler,
+        std::uint32_t offset = 0) = 0;
 };
 
 struct rhi_vertex_attribute
@@ -521,11 +531,11 @@ struct rhi_vertex_attribute
 struct rhi_shader_desc
 {
     std::uint8_t* code;
-    std::size_t code_size;
+    std::uint32_t code_size;
 
     rhi_shader_stage_flag stage;
 
-    std::size_t push_constant_size;
+    std::uint32_t push_constant_size;
 
     struct parameter_slot
     {
@@ -534,12 +544,12 @@ struct rhi_shader_desc
     };
 
     const parameter_slot* parameters;
-    std::size_t parameter_count;
+    std::uint32_t parameter_count;
 
     struct
     {
         const rhi_vertex_attribute* attributes;
-        std::size_t attribute_count;
+        std::uint32_t attribute_count;
     } vertex;
 };
 
@@ -547,6 +557,26 @@ class rhi_shader
 {
 public:
     virtual ~rhi_shader() = default;
+};
+
+enum rhi_cull_mode
+{
+    RHI_CULL_MODE_NONE,
+    RHI_CULL_MODE_FRONT,
+    RHI_CULL_MODE_BACK
+};
+
+enum rhi_polygon_mode
+{
+    RHI_POLYGON_MODE_FILL,
+    RHI_POLYGON_MODE_LINE,
+    RHI_POLYGON_MODE_POINT,
+};
+
+struct rhi_rasterizer_state
+{
+    rhi_cull_mode cull_mode;
+    rhi_polygon_mode polygon_mode;
 };
 
 enum rhi_blend_factor
@@ -635,29 +665,25 @@ struct rhi_depth_stencil_state
     rhi_stencil_state stencil_back;
 };
 
-enum rhi_cull_mode
+enum rhi_primitive_topology
 {
-    RHI_CULL_MODE_NONE,
-    RHI_CULL_MODE_FRONT,
-    RHI_CULL_MODE_BACK
-};
-
-struct rhi_rasterizer_state
-{
-    rhi_cull_mode cull_mode;
+    RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+    RHI_PRIMITIVE_TOPOLOGY_LINE_LIST,
+    RHI_PRIMITIVE_TOPOLOGY_POINT_LIST,
 };
 
 struct rhi_raster_pipeline_desc
 {
     rhi_shader* vertex_shader;
+    rhi_shader* geometry_shader;
     rhi_shader* fragment_shader;
 
-    rhi_blend_state blend;
-    rhi_depth_stencil_state depth_stencil;
-    rhi_rasterizer_state rasterizer;
+    rhi_rasterizer_state* rasterizer_state;
+    rhi_depth_stencil_state* depth_stencil_state;
+    rhi_blend_state* blend_state;
 
-    rhi_sample_count samples;
     rhi_primitive_topology primitive_topology;
+    rhi_sample_count samples;
 
     rhi_render_pass* render_pass;
 };
@@ -687,7 +713,7 @@ union rhi_clear_value
     {
         float depth;
         std::uint32_t stencil;
-    };
+    } depth_stencil;
 };
 
 struct rhi_attachment
@@ -751,6 +777,14 @@ struct rhi_texture_barrier
     std::uint32_t layer_count;
 };
 
+enum rhi_texture_aspect_flag : std::uint8_t
+{
+    RHI_TEXTURE_ASPECT_COLOR = 1 << 0,
+    RHI_TEXTURE_ASPECT_DEPTH = 1 << 1,
+    RHI_TEXTURE_ASPECT_STENCIL = 1 << 2,
+};
+using rhi_texture_aspect_flags = std::uint8_t;
+
 struct rhi_texture_region
 {
     std::int32_t offset_x;
@@ -760,6 +794,8 @@ struct rhi_texture_region
     std::uint32_t level;
     std::uint32_t layer;
     std::uint32_t layer_count;
+
+    rhi_texture_aspect_flags aspect;
 };
 
 struct rhi_buffer_region
@@ -784,20 +820,20 @@ public:
     virtual void begin_render_pass(
         rhi_render_pass* render_pass,
         const rhi_attachment* attachments,
-        std::size_t attachment_count) = 0;
+        std::uint32_t attachment_count) = 0;
     virtual void end_render_pass() = 0;
 
     virtual void set_pipeline(rhi_raster_pipeline* raster_pipeline) = 0;
     virtual void set_pipeline(rhi_compute_pipeline* compute_pipeline) = 0;
-    virtual void set_parameter(std::size_t index, rhi_parameter* parameter) = 0;
+    virtual void set_parameter(std::uint32_t index, rhi_parameter* parameter) = 0;
     virtual void set_constant(const void* data, std::size_t size) = 0;
 
     virtual void set_viewport(const rhi_viewport& viewport) = 0;
-    virtual void set_scissor(const rhi_scissor_rect* rects, std::size_t size) = 0;
+    virtual void set_scissor(const rhi_scissor_rect* rects, std::uint32_t rect_count) = 0;
 
     virtual void set_vertex_buffers(
         rhi_buffer* const* vertex_buffers,
-        std::size_t vertex_buffer_count) = 0;
+        std::uint32_t vertex_buffer_count) = 0;
     virtual void set_index_buffer(rhi_buffer* index_buffer, std::size_t index_size) = 0;
 
     virtual void draw(
@@ -816,15 +852,15 @@ public:
         std::size_t command_buffer_offset,
         rhi_buffer* count_buffer,
         std::size_t count_buffer_offset,
-        std::size_t max_draw_count) = 0;
+        std::uint32_t max_draw_count) = 0;
 
     virtual void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) = 0;
 
     virtual void set_pipeline_barrier(
         const rhi_buffer_barrier* buffer_barriers,
-        std::size_t buffer_barrier_count,
+        std::uint32_t buffer_barrier_count,
         const rhi_texture_barrier* texture_barriers,
-        std::size_t texture_barrier_count) = 0;
+        std::uint32_t texture_barrier_count) = 0;
 
     virtual void copy_texture(
         rhi_texture* src,
@@ -836,7 +872,8 @@ public:
         rhi_texture* src,
         const rhi_texture_region& src_region,
         rhi_texture* dst,
-        const rhi_texture_region& dst_region) = 0;
+        const rhi_texture_region& dst_region,
+        rhi_filter filter) = 0;
 
     virtual void fill_buffer(
         rhi_buffer* buffer,
@@ -887,8 +924,8 @@ public:
     virtual void resize() = 0;
 
     virtual rhi_texture* get_texture() = 0;
-    virtual rhi_texture* get_texture(std::size_t index) = 0;
-    virtual std::size_t get_texture_count() const noexcept = 0;
+    virtual rhi_texture* get_texture(std::uint32_t index) = 0;
+    virtual std::uint32_t get_texture_count() const noexcept = 0;
 };
 
 enum rhi_backend
@@ -906,7 +943,7 @@ using rhi_features = std::uint32_t;
 struct rhi_desc
 {
     rhi_features features;
-    std::size_t frame_resource_count;
+    std::uint32_t frame_resource_count;
 };
 
 class rhi
@@ -922,9 +959,9 @@ public:
     virtual void begin_frame() = 0;
     virtual void end_frame() = 0;
 
-    virtual std::size_t get_frame_count() const noexcept = 0;
-    virtual std::size_t get_frame_resource_count() const noexcept = 0;
-    virtual std::size_t get_frame_resource_index() const noexcept = 0;
+    virtual std::uint32_t get_frame_count() const noexcept = 0;
+    virtual std::uint32_t get_frame_resource_count() const noexcept = 0;
+    virtual std::uint32_t get_frame_resource_index() const noexcept = 0;
 
     virtual rhi_parameter* get_bindless_parameter() const noexcept = 0;
 

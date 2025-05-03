@@ -9,7 +9,7 @@ class gpu_buffer_uploader
 {
 public:
     gpu_buffer_uploader(
-        std::size_t staging_page_size = 64ull * 1024,
+        std::size_t staging_page_size = 64ull * 1024 * 10,
         std::size_t max_staging_pages = 16);
 
     void tick();
@@ -18,7 +18,7 @@ public:
         rhi_buffer* buffer,
         const void* data,
         std::size_t size,
-        std::uint32_t offset,
+        std::size_t offset,
         rhi_pipeline_stage_flags stages,
         rhi_access_flags access);
     void record(rhi_command* command);

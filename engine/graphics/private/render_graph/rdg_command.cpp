@@ -33,23 +33,26 @@ void rdg_command::set_pipeline(const rdg_raster_pipeline& pipeline)
 {
     assert(m_render_pass);
 
-    m_command->set_pipeline(render_device::instance().get_pipeline({
-        .vertex_shader = pipeline.vertex_shader,
-        .fragment_shader = pipeline.fragment_shader,
-        .blend = pipeline.blend,
-        .depth_stencil = pipeline.depth_stencil,
-        .rasterizer = pipeline.rasterizer,
-        .samples = pipeline.samples,
-        .primitive_topology = pipeline.primitive_topology,
-        .render_pass = m_render_pass,
-    }));
+    rhi_raster_pipeline_desc desc = pipeline.get_desc(m_render_pass);
+    if (desc.rasterizer_state == nullptr)
+    {
+        desc.rasterizer_state = render_device::instance().get_rasterizer_state<>();
+    }
+    if (desc.depth_stencil_state == nullptr)
+    {
+        desc.depth_stencil_state = render_device::instance().get_depth_stencil_state<>();
+    }
+    if (desc.blend_state == nullptr)
+    {
+        desc.blend_state = render_device::instance().get_blend_state<>();
+    }
+
+    m_command->set_pipeline(render_device::instance().get_pipeline(desc));
 }
 
 void rdg_command::set_pipeline(const rdg_compute_pipeline& pipeline)
 {
-    m_command->set_pipeline(render_device::instance().get_pipeline({
-        .compute_shader = pipeline.compute_shader,
-    }));
+    m_command->set_pipeline(render_device::instance().get_pipeline(pipeline.get_desc()));
 }
 
 void rdg_command::set_viewport()
@@ -77,16 +80,16 @@ void rdg_command::draw_instances(
         type,
         [&](render_id id,
             const rdg_raster_pipeline& pipeline,
-            std::size_t instance_offset,
-            std::size_t instance_count)
+            std::uint32_t instance_offset,
+            std::uint32_t instance_count)
         {
             set_pipeline(pipeline);
 
             if (first_batch)
             {
-                set_parameter(0, device.get_bindless_parameter());
-                set_parameter(1, m_scene->get_scene_parameter());
-                set_parameter(2, m_camera->get_camera_parameter());
+                set_parameter(0, RDG_PARAMETER_BINDLESS);
+                set_parameter(1, RDG_PARAMETER_SCENE);
+                set_parameter(2, RDG_PARAMETER_CAMERA);
 
                 set_index_buffer(
                     device.get_geometry_manager()->get_index_buffer()->get_rhi(),
@@ -115,9 +118,9 @@ void rdg_command::draw_instances(
     auto& device = render_device::instance();
 
     set_pipeline(pipeline);
-    set_parameter(0, device.get_bindless_parameter());
-    set_parameter(1, m_scene->get_scene_parameter());
-    set_parameter(2, m_camera->get_camera_parameter());
+    set_parameter(0, RDG_PARAMETER_BINDLESS);
+    set_parameter(1, RDG_PARAMETER_SCENE);
+    set_parameter(2, RDG_PARAMETER_CAMERA);
 
     set_index_buffer(
         device.get_geometry_manager()->get_index_buffer()->get_rhi(),
@@ -127,8 +130,8 @@ void rdg_command::draw_instances(
         type,
         [&](render_id id,
             const rdg_raster_pipeline& pipeline,
-            std::size_t instance_offset,
-            std::size_t instance_count)
+            std::uint32_t instance_offset,
+            std::uint32_t instance_count)
         {
             m_command->draw_indexed_indirect(
                 command_buffer,

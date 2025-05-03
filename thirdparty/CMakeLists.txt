@@ -28,6 +28,12 @@ add_subdirectory(spdlog)
 # nlohmann/json
 add_subdirectory(json)
 
+# METIS
+add_library(metis STATIC IMPORTED GLOBAL)
+target_include_directories(metis INTERFACE ${VIOLET_THIRDPARTY_DIR}/metis/include)
+set_target_properties(metis PROPERTIES IMPORTED_LOCATION ${VIOLET_THIRDPARTY_DIR}/metis/lib/metis.lib)
+set_target_properties(metis PROPERTIES IMPORTED_IMPLIB  ${VIOLET_THIRDPARTY_DIR}/metis/lib/metis.lib)
+
 # MikkTSpace
 add_library(MikkTSpace STATIC
     ./MikkTSpace/mikktspace.c)

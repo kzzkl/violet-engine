@@ -1,7 +1,7 @@
 #include "graphics/graphics_system.hpp"
 #include "camera_system.hpp"
 #include "components/camera_component.hpp"
-#include "components/camera_meta_component.hpp"
+#include "components/camera_component_meta.hpp"
 #include "components/scene_component.hpp"
 #include "environment_system.hpp"
 #include "gpu_buffer_uploader.hpp"
@@ -23,7 +23,9 @@ graphics_system::graphics_system()
 
 graphics_system::~graphics_system()
 {
+#ifndef NDEBUG
     m_debug_drawer = nullptr;
+#endif
     m_scene_manager = nullptr;
     m_gpu_buffer_uploader = nullptr;
     m_fences.clear();
@@ -168,8 +170,6 @@ void graphics_system::end_frame()
         }
 
         m_gpu_buffer_uploader->record(command);
-
-        command->signal(m_update_fence.get(), ++m_update_fence_value);
     }
 
     auto& skinning = get_system<skinning_system>();
@@ -186,6 +186,7 @@ void graphics_system::end_frame()
 
     if (command != nullptr)
     {
+        command->signal(m_update_fence.get(), ++m_update_fence_value);
         device.execute(command);
     }
 
@@ -198,19 +199,19 @@ void graphics_system::render()
 {
     auto& world = get_world();
 
-    std::vector<std::tuple<const camera_component*, rhi_parameter*, std::uint32_t>> render_queue;
+    std::vector<render_context> render_queue;
 
     world.get_view()
         .read<camera_component>()
-        .read<camera_meta_component>()
+        .read<camera_component_meta>()
         .read<scene_component>()
         .each(
             [&render_queue](
                 const camera_component& camera,
-                const camera_meta_component& camera_meta,
+                const camera_component_meta& camera_meta,
                 const scene_component& scene)
             {
-                render_queue.emplace_back(&camera, camera_meta.parameter.get(), scene.layer);
+                render_queue.emplace_back(&camera, &camera_meta, scene.layer);
             });
 
     std::sort(
@@ -218,16 +219,16 @@ void graphics_system::render()
         render_queue.end(),
         [&world](auto& a, auto& b)
         {
-            return std::get<0>(a)->priority > std::get<0>(b)->priority;
+            return a.camera->priority > b.camera->priority;
         });
 
     auto& device = render_device::instance();
 
     rhi_command* command = device.allocate_command();
 
-    for (auto& [camera, parameter, layer] : render_queue)
+    for (const auto& context : render_queue)
     {
-        rhi_fence* finish_fence = render(camera, parameter, layer);
+        rhi_fence* finish_fence = render(context);
         if (finish_fence)
         {
             command->wait(finish_fence, m_frame_fence_value);
@@ -241,10 +242,7 @@ void graphics_system::render()
     device.execute(command);
 }
 
-rhi_fence* graphics_system::render(
-    const camera_component* camera,
-    rhi_parameter* camera_component,
-    std::uint32_t layer)
+rhi_fence* graphics_system::render(const render_context& context)
 {
     auto& device = render_device::instance();
     rhi_command* command = device.allocate_command();
@@ -254,7 +252,6 @@ rhi_fence* graphics_system::render(
     bool skip = false;
 
     rhi_swapchain* swapchain = nullptr;
-    rhi_texture* render_target = nullptr;
 
     std::visit(
         [&](auto&& arg)
@@ -272,14 +269,9 @@ rhi_fence* graphics_system::render(
                 command->wait(fence, 0, RHI_PIPELINE_STAGE_BEGIN);
 
                 swapchain = arg;
-                render_target = arg->get_texture();
-            }
-            else if constexpr (std::is_same_v<T, rhi_texture*>)
-            {
-                render_target = arg;
             }
         },
-        camera->render_target);
+        context.camera->render_target);
 
     if (skip)
     {
@@ -294,46 +286,16 @@ rhi_fence* graphics_system::render(
     rhi_fence* finish_fence = allocate_fence();
     command->signal(finish_fence, m_frame_fence_value);
 
-    render_camera render_camera(render_target, camera_component);
-
-    rhi_texture_extent extent = render_target->get_extent();
-    if (camera->viewport.width == 0.0f || camera->viewport.height == 0.0f)
-    {
-        render_camera.set_viewport({
-            .x = 0.0f,
-            .y = 0.0f,
-            .width = static_cast<float>(extent.width),
-            .height = static_cast<float>(extent.height),
-            .min_depth = 0.0f,
-            .max_depth = 1.0f,
-        });
-    }
-    else
-    {
-        render_camera.set_viewport(camera->viewport);
-    }
-
-    if (camera->scissor_rects.empty())
-    {
-        render_camera.set_scissor_rects({rhi_scissor_rect{
-            .min_x = 0,
-            .min_y = 0,
-            .max_x = extent.width,
-            .max_y = extent.height,
-        }});
-    }
-    else
-    {
-        render_camera.set_scissor_rects(camera->scissor_rects);
-    }
-
+    render_camera render_camera(context.camera, context.camera_meta);
     render_graph graph(
         "Camera",
-        m_scene_manager->get_scene(layer),
+        m_scene_manager->get_scene(context.layer),
         &render_camera,
         m_allocator.get());
 
-    camera->renderer->render(graph);
+    render_camera.get_hzb();
+
+    context.camera->renderer->render(graph);
 
     graph.compile();
 

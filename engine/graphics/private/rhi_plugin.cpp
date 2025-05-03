@@ -26,6 +26,6 @@ bool rhi_plugin::on_load()
 
 void rhi_plugin::on_unload()
 {
-    destroy_rhi(m_rhi);
+    m_destroy_func(m_rhi);
 }
 } // namespace violet

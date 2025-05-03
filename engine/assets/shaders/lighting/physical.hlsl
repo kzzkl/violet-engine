@@ -47,7 +47,7 @@ float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
     Texture2D<float4> gbuffer_emissive = ResourceDescriptorHeap[constant.emissive];
     float3 emissive = gbuffer_emissive.Sample(point_clamp_sampler, texcoord).rgb;
     
-    float3 position = reconstruct_position(constant.depth, texcoord, camera.view_projection_inv).xyz;
+    float3 position = reconstruct_position(constant.depth, texcoord, camera.matrix_vp_inv).xyz;
 
     float3 F0 = lerp(0.04, albedo, metallic);
 

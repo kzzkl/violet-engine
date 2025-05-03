@@ -12,7 +12,7 @@ struct brdf_lut_cs : public shader_cs
         std::uint32_t brdf_lut;
         std::uint32_t width;
         std::uint32_t height;
-        std::uint32_t padding_0;
+        std::uint32_t padding0;
     };
 
     static constexpr parameter_layout parameters = {
@@ -57,7 +57,7 @@ public:
                     .compute_shader = render_device::instance().get_shader<brdf_lut_cs>(),
                 });
                 command.set_constant(constant);
-                command.set_parameter(0, render_device::instance().get_bindless_parameter());
+                command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
                 command.dispatch_2d(extent.width, extent.height);
             });

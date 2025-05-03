@@ -114,6 +114,11 @@ vk_context::~vk_context()
 
     m_graphics_queue = nullptr;
     m_present_queue = nullptr;
+    m_layout_manager = nullptr;
+    m_parameter_manager = nullptr;
+    m_bindless_manager = nullptr;
+    m_framebuffer_manager = nullptr;
+    m_deletion_queue = nullptr;
 
     vkDestroyDescriptorPool(m_device, m_descriptor_pool, nullptr);
 
@@ -428,12 +433,15 @@ void vk_context::initialize_logic_device(
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
         .features =
             {
+                .geometryShader = VK_TRUE,
+                .fillModeNonSolid = VK_TRUE,
                 .samplerAnisotropy = VK_TRUE,
             },
     };
 
     VkPhysicalDeviceVulkan12Features vulkan12_features = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+        .samplerFilterMinmax = VK_TRUE,
         .timelineSemaphore = VK_TRUE,
     };
 

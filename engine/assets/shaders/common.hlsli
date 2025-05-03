@@ -19,9 +19,10 @@ static const uint RENDER_MESH_OCCLUSION_CULLING = 1 << 1;
 struct mesh_data
 {
     float4x4 model_matrix;
-    float3 aabb_min;
+    float4 bounding_sphere;
+    float3 bounding_box_min;
     uint flags;
-    float3 aabb_max;
+    float3 bounding_box_max;
     uint index_offset;
     uint position_address;
     uint normal_address;
@@ -40,7 +41,7 @@ struct instance_data
     uint batch_index;
     uint material_address;
     uint flags;
-    uint padding_0;
+    uint padding0;
 };
 
 static const uint LIGHT_DIRECTIONAL = 0;
@@ -52,7 +53,7 @@ struct light_data
     float3 direction;
     bool shadow;
     float3 color;
-    uint padding_0;
+    uint padding0;
 };
 
 struct scene_data
@@ -70,30 +71,30 @@ struct scene_data
     uint skybox;
     uint irradiance;
     uint prefilter;
-    uint padding_0;
-    uint padding_1;
-    uint padding_2;
+    uint padding0;
+    uint padding1;
+    uint padding2;
 };
 
 struct camera_data
 {
-    float4x4 view;
-    float4x4 projection;
-    float4x4 projection_inv;
-    float4x4 view_projection;
-    float4x4 view_projection_inv;
-    float4x4 view_projection_no_jitter;
+    float4x4 matrix_v;
+    float4x4 matrix_p;
+    float4x4 matrix_p_inv;
+    float4x4 matrix_vp;
+    float4x4 matrix_vp_inv;
+    float4x4 matrix_vp_no_jitter;
 
-    float4x4 prev_view_projection;
-    float4x4 prev_view_projection_no_jitter;
+    float4x4 prev_matrix_vp;
+    float4x4 prev_matrix_vp_no_jitter;
 
     float3 position;
     float fov;
 
-    float2 jitter;
+    float near;
+    float far;
 
-    uint padding_0;
-    uint padding_1;
+    float2 jitter;
 };
 
 SamplerState get_point_repeat_sampler()

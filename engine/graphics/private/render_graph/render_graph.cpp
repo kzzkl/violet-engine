@@ -451,9 +451,9 @@ void render_graph::record(rhi_command* command)
             {
                 command->set_pipeline_barrier(
                     batch.buffer_barriers.data(),
-                    batch.buffer_barriers.size(),
+                    static_cast<std::uint32_t>(batch.buffer_barriers.size()),
                     batch.texture_barriers.data(),
-                    batch.texture_barriers.size());
+                    static_cast<std::uint32_t>(batch.texture_barriers.size()));
             }
 
             if (batch.render_pass != nullptr)
@@ -461,7 +461,7 @@ void render_graph::record(rhi_command* command)
                 command->begin_render_pass(
                     batch.render_pass,
                     batch.attachments.data(),
-                    batch.attachments.size());
+                    static_cast<std::uint32_t>(batch.attachments.size()));
                 cmd.m_render_pass = batch.render_pass;
             }
         }
@@ -570,9 +570,6 @@ void render_graph::merge_passes()
         };
 
         rhi_render_pass_desc render_pass_desc = {};
-
-        auto& begin_dependency = render_pass_desc.begin_dependency;
-        auto& end_dependency = render_pass_desc.end_dependency;
 
         auto& attachments = pending_merge_passes.front().attachments;
         for (std::size_t i = 0; i < attachments.size(); ++i)

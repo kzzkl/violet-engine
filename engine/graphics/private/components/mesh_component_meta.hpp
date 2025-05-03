@@ -6,12 +6,13 @@
 
 namespace violet
 {
-struct mesh_meta_component
+class mesh_component_meta
 {
-    mesh_meta_component() = default;
+public:
+    mesh_component_meta() = default;
 
-    mesh_meta_component(const mesh_meta_component&) = delete;
-    mesh_meta_component(mesh_meta_component&& other) noexcept
+    mesh_component_meta(const mesh_component_meta&) = delete;
+    mesh_component_meta(mesh_component_meta&& other) noexcept
         : scene(other.scene),
           mesh(other.mesh)
     {
@@ -21,9 +22,9 @@ struct mesh_meta_component
         other.mesh = INVALID_RENDER_ID;
     }
 
-    ~mesh_meta_component()
+    ~mesh_component_meta()
     {
-        for (std::uint32_t instance_id : instances)
+        for (render_id instance_id : instances)
         {
             scene->remove_instance(instance_id);
         }
@@ -34,15 +35,15 @@ struct mesh_meta_component
         }
     }
 
-    mesh_meta_component& operator=(const mesh_meta_component&) = delete;
-    mesh_meta_component& operator=(mesh_meta_component&& other) noexcept
+    mesh_component_meta& operator=(const mesh_component_meta&) = delete;
+    mesh_component_meta& operator=(mesh_component_meta&& other) noexcept
     {
         if (this == &other)
         {
             return *this;
         }
 
-        for (std::uint32_t instance_id : instances)
+        for (render_id instance_id : instances)
         {
             scene->remove_instance(instance_id);
         }
@@ -70,7 +71,7 @@ struct mesh_meta_component
 };
 
 template <>
-struct component_trait<mesh_meta_component>
+struct component_trait<mesh_component_meta>
 {
     using main_component = mesh_component;
 };

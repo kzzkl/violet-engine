@@ -257,7 +257,7 @@ public:
 private:
     struct entity_info
     {
-        std::uint32_t version;
+        entity_version version;
 
         archetype* archetype;
         std::size_t archetype_index;

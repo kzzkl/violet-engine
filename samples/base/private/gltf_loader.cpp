@@ -184,9 +184,9 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
     {
         auto pbr_material = std::make_unique<physical_material>();
         vec3f albedo = {
-            .r = static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[0]),
-            .g = static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[1]),
-            .b = static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[2]),
+            .x = static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[0]),
+            .y = static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[1]),
+            .z = static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[2]),
         };
         pbr_material->set_albedo(albedo);
         if (material.pbrMetallicRoughness.baseColorTexture.index != -1)
@@ -241,7 +241,7 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
             submesh_data submesh_data = {
                 .vertex_offset = static_cast<std::uint32_t>(positions.size()),
                 .index_offset = static_cast<std::uint32_t>(indexes.size()),
-                .material = static_cast<std::uint32_t>(primitive.material),
+                .material = primitive.material,
             };
 
             // Load indexes
@@ -294,7 +294,15 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
             for (std::uint32_t i = 0; i < submesh_data.index_count; ++i)
             {
                 box::expand(
-                    mesh_data.aabb,
+                    mesh_data.bounding_box,
+                    positions[indexes[submesh_data.index_offset + i] + submesh_data.vertex_offset]);
+            }
+
+            mesh_data.bounding_sphere.center = box::get_center(mesh_data.bounding_box);
+            for (std::uint32_t i = 0; i < submesh_data.index_count; ++i)
+            {
+                sphere::expand(
+                    mesh_data.bounding_sphere,
                     positions[indexes[submesh_data.index_offset + i] + submesh_data.vertex_offset]);
             }
         }
@@ -334,7 +342,7 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
         mesh_geometry->set_normal(normals);
         mesh_geometry->set_tangent(tangents);
         mesh_geometry->set_texcoord(texcoords);
-        mesh_geometry->set_indexes(indexes);
+        mesh_geometry->set_index(indexes);
 
         scene_data.geometries.push_back(std::move(mesh_geometry));
     }

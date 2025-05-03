@@ -25,17 +25,17 @@ public:
     void begin_frame() override;
     void end_frame() override;
 
-    std::size_t get_frame_count() const noexcept override
+    std::uint32_t get_frame_count() const noexcept override
     {
         return m_context->get_frame_count();
     }
 
-    std::size_t get_frame_resource_count() const noexcept override
+    std::uint32_t get_frame_resource_count() const noexcept override
     {
         return m_context->get_frame_resource_count();
     }
 
-    std::size_t get_frame_resource_index() const noexcept override
+    std::uint32_t get_frame_resource_index() const noexcept override
     {
         return m_context->get_frame_resource_index();
     }
@@ -99,12 +99,14 @@ private:
     template <typename T>
     void set_name(T object, VkObjectType type, const char* name) const
     {
+#ifndef NDEBUG
         VkDebugUtilsObjectNameInfoEXT info = {};
         info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
         info.objectType = type;
         info.objectHandle = reinterpret_cast<std::uint64_t>(object);
         info.pObjectName = name;
         vkSetDebugUtilsObjectNameEXT(m_context->get_device(), &info);
+#endif
     }
 
     std::unique_ptr<vk_context> m_context;

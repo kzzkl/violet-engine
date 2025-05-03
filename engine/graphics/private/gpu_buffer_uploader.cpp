@@ -21,7 +21,7 @@ void gpu_buffer_uploader::upload(
     rhi_buffer* buffer,
     const void* data,
     std::size_t size,
-    std::uint32_t offset,
+    std::size_t offset,
     rhi_pipeline_stage_flags stages,
     rhi_access_flags access)
 {
@@ -47,7 +47,7 @@ void gpu_buffer_uploader::upload(
             .src = staging_page.buffer.get(),
             .src_offset = static_cast<std::uint32_t>(staging_page.offset),
             .dst = buffer,
-            .dst_offset = offset + static_cast<std::uint32_t>(size - pending_size),
+            .dst_offset = static_cast<std::uint32_t>(offset + size - pending_size),
             .size = upload_size,
         });
 
@@ -82,7 +82,11 @@ void gpu_buffer_uploader::record(rhi_command* command)
         barriers.push_back(barrier);
     }
 
-    command->set_pipeline_barrier(barriers.data(), barriers.size(), nullptr, 0);
+    command->set_pipeline_barrier(
+        barriers.data(),
+        static_cast<std::uint32_t>(barriers.size()),
+        nullptr,
+        0);
 
     for (auto& upload : m_upload_commands)
     {
@@ -104,7 +108,11 @@ void gpu_buffer_uploader::record(rhi_command* command)
         std::swap(barrier.src_access, barrier.dst_access);
     }
 
-    command->set_pipeline_barrier(barriers.data(), barriers.size(), nullptr, 0);
+    command->set_pipeline_barrier(
+        barriers.data(),
+        static_cast<std::uint32_t>(barriers.size()),
+        nullptr,
+        0);
 
     m_upload_commands.clear();
     m_dst_buffers.clear();

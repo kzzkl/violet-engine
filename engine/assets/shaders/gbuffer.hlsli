@@ -25,11 +25,11 @@ float3 octahedron_to_normal(float2 oct)
     return normalize(N);
 }
 
-float3 get_position(float depth, float2 texcoord, float4x4 view_projection_inv)
+float3 get_position(float depth, float2 texcoord, float4x4 matrix_vp_inv)
 {
     texcoord.y = 1.0 - texcoord.y;
     float4 position_cs = float4(texcoord * 2.0 - 1.0, depth, 1.0);
-    float4 position_ws = mul(view_projection_inv, position_cs);
+    float4 position_ws = mul(matrix_vp_inv, position_cs);
 
     return position_ws.xyz / position_ws.w;
 }

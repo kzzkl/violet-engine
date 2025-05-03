@@ -8,20 +8,17 @@
 #include "components/transform_component.hpp"
 #include "control/control_system.hpp"
 #include "deferred_renderer_imgui.hpp"
-#include "ecs_command/ecs_command_system.hpp"
 #include "gltf_loader.hpp"
 #include "graphics/geometries/box_geometry.hpp"
 #include "graphics/geometries/sphere_geometry.hpp"
 #include "graphics/graphics_system.hpp"
 #include "graphics/materials/physical_material.hpp"
+#include "graphics/materials/unlit_material.hpp"
 #include "graphics/passes/gtao_pass.hpp"
 #include "graphics/passes/taa_pass.hpp"
 #include "graphics/skybox.hpp"
 #include "imgui.h"
 #include "imgui_system.hpp"
-#include "scene/hierarchy_system.hpp"
-#include "scene/scene_system.hpp"
-#include "scene/transform_system.hpp"
 #include "window/window_system.hpp"
 
 namespace violet
@@ -36,6 +33,9 @@ public:
 
     void install(application& app) override
     {
+        app.install<window_system>();
+        app.install<graphics_system>();
+        app.install<control_system>();
         app.install<imgui_system>();
 
         m_app = &app;
@@ -127,6 +127,8 @@ private:
         main_camera.renderer->add_feature<gtao_render_feature>();
 
         // Model.
+        m_empty_material = std::make_unique<unlit_material>();
+
         m_root = world.create();
         world.add_component<transform_component, scene_component>(m_root);
 
@@ -168,11 +170,14 @@ private:
                             .vertex_offset = submesh_data.vertex_offset,
                             .index_offset = submesh_data.index_offset,
                             .index_count = submesh_data.index_count,
-                            .material = m_model.materials[submesh_data.material].get(),
+                            .material = submesh_data.material == -1 ?
+                                            m_empty_material.get() :
+                                            m_model.materials[submesh_data.material].get(),
                         });
                     }
 
-                    entity_mesh.aabb = mesh_data.aabb;
+                    entity_mesh.bounding_box = mesh_data.bounding_box;
+                    entity_mesh.bounding_sphere = mesh_data.bounding_sphere;
                 }
 
                 if (node.parent != -1)
@@ -195,28 +200,57 @@ private:
 
         auto& plane_mesh = world.get_component<mesh_component>(m_plane);
         plane_mesh.geometry = m_plane_geometry.get();
-        plane_mesh.aabb = m_plane_geometry->get_aabb();
         plane_mesh.submeshes.push_back({
             .material = m_plane_material.get(),
         });
         auto& plane_transform = world.get_component<transform_component>(m_plane);
         plane_transform.set_position({0.0f, -1.0f, 0.0f});
 
-        // Sphere.
-        m_sphere = world.create();
-        world.add_component<transform_component, mesh_component, scene_component>(m_sphere);
-
+        // Spheres.
         m_sphere_geometry = std::make_unique<sphere_geometry>();
         m_sphere_material = std::make_unique<physical_material>();
 
-        auto& sphere_mesh = world.get_component<mesh_component>(m_sphere);
-        sphere_mesh.geometry = m_sphere_geometry.get();
-        sphere_mesh.aabb = m_sphere_geometry->get_aabb();
-        sphere_mesh.submeshes.push_back({
-            .material = m_sphere_material.get(),
-        });
-        auto& sphere_transform = world.get_component<transform_component>(m_sphere);
-        sphere_transform.set_position({2.0f, 0.0f, 0.0f});
+        std::uint32_t size = 10;
+        for (std::uint32_t i = 0; i < size; ++i)
+        {
+            if (i != 3)
+            {
+                // continue;
+            }
+            for (std::uint32_t j = 0; j < size; ++j)
+            {
+                if (j != 4)
+                {
+                    // continue;
+                }
+                for (std::uint32_t k = 0; k < size; ++k)
+                {
+                    if (k != 0)
+                    {
+                        // continue;
+                    }
+
+                    vec3f position = {
+                        static_cast<float>(i) - static_cast<float>(size) / 2.0f,
+                        static_cast<float>(j) - static_cast<float>(size) / 2.0f,
+                        static_cast<float>(k) - static_cast<float>(size) / 2.0f,
+                    };
+                    position *= 2.0f;
+
+                    entity sphere = world.create();
+                    world.add_component<transform_component, mesh_component, scene_component>(
+                        sphere);
+
+                    auto& sphere_mesh = world.get_component<mesh_component>(sphere);
+                    sphere_mesh.geometry = m_sphere_geometry.get();
+                    sphere_mesh.submeshes.push_back({
+                        .material = m_sphere_material.get(),
+                    });
+                    auto& sphere_transform = world.get_component<transform_component>(sphere);
+                    sphere_transform.set_position(position);
+                }
+            }
+        }
     }
 
     void resize()
@@ -311,12 +345,11 @@ private:
         if (draw_aabb)
         {
             auto& debug_drawer = get_system<graphics_system>().get_debug_drawer();
-            auto& world = get_world();
 
             world.get_view().read<mesh_component>().read<transform_world_component>().each(
                 [&](const mesh_component& mesh, const transform_world_component& transform)
                 {
-                    box3f box = box::transform(mesh.aabb, transform.matrix);
+                    box3f box = box::transform(mesh.bounding_box, transform.matrix);
                     debug_drawer.draw_box(box, {0.0f, 1.0f, 0.0f});
                 });
         }
@@ -331,12 +364,12 @@ private:
     std::unique_ptr<geometry> m_plane_geometry;
     std::unique_ptr<material> m_plane_material;
 
-    entity m_sphere;
     std::unique_ptr<geometry> m_sphere_geometry;
     std::unique_ptr<physical_material> m_sphere_material;
 
-    std::unique_ptr<skybox> m_skybox;
+    std::unique_ptr<unlit_material> m_empty_material;
 
+    std::unique_ptr<skybox> m_skybox;
     mesh_loader::scene_data m_model;
 
     rhi_ptr<rhi_swapchain> m_swapchain;
@@ -351,15 +384,7 @@ private:
 int main()
 {
     violet::application app("assets/config/pbr.json");
-    app.install<violet::ecs_command_system>();
-    app.install<violet::hierarchy_system>();
-    app.install<violet::transform_system>();
-    app.install<violet::scene_system>();
-    app.install<violet::window_system>();
-    app.install<violet::graphics_system>();
-    app.install<violet::control_system>();
     app.install<violet::pbr_sample>();
-
     app.run();
 
     return 0;

@@ -56,8 +56,8 @@ std::pair<VkImage, VmaAllocation> create_image(
 } // namespace
 
 vk_texture_descriptor::vk_texture_descriptor(vk_texture* texture, VkImageView image_view)
-    : m_texture(texture),
-      m_image_view(image_view)
+    : m_image_view(image_view),
+      m_texture(texture)
 {
 }
 
@@ -524,10 +524,10 @@ void vk_buffer_uav::write(
 }
 
 vk_buffer::vk_buffer(const rhi_buffer_desc& desc, vk_context* context)
-    : m_context(context),
-      m_buffer_size(desc.size),
+    : m_buffer_size(desc.size),
       m_flags(desc.flags),
-      m_mapping_pointer(nullptr)
+      m_mapping_pointer(nullptr),
+      m_context(context)
 {
     assert(m_buffer_size > 0);
 
@@ -695,6 +695,23 @@ vk_sampler::vk_sampler(const rhi_sampler_desc& desc, vk_context* context)
         .minLod = desc.min_level,
         .maxLod = desc.max_level < 0.0f ? VK_LOD_CLAMP_NONE : desc.max_level,
     };
+
+    VkSamplerReductionModeCreateInfoEXT reduction_info = {
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT,
+    };
+    switch (desc.reduction_mode)
+    {
+    case RHI_SAMPLER_REDUCTION_MODE_MIN:
+        reduction_info.reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN_EXT;
+        sampler_info.pNext = &reduction_info;
+        break;
+    case RHI_SAMPLER_REDUCTION_MODE_MAX:
+        reduction_info.reductionMode = VK_SAMPLER_REDUCTION_MODE_MAX_EXT;
+        sampler_info.pNext = &reduction_info;
+        break;
+    default:
+        break;
+    }
 
     vk_check(vkCreateSampler(m_context->get_device(), &sampler_info, nullptr, &m_sampler));
 

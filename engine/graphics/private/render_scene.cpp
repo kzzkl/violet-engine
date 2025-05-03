@@ -1,4 +1,6 @@
 #include "graphics/render_scene.hpp"
+#include "components/camera_component.hpp"
+#include "components/camera_component_meta.hpp"
 #include "gpu_buffer_uploader.hpp"
 #include "graphics/geometry_manager.hpp"
 #include "graphics/material_manager.hpp"
@@ -19,7 +21,6 @@ render_id render_scene::add_mesh()
 {
     render_id mesh_id = m_meshes.add();
 
-    m_scene_data.mesh_count = get_mesh_count();
     m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
 
     return mesh_id;
@@ -42,22 +43,13 @@ void render_scene::remove_mesh(render_id mesh_id)
 
     mesh = {};
 
-    m_scene_data.mesh_count = get_mesh_count();
     m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
 }
 
-void render_scene::set_mesh_model_matrix(render_id mesh_id, const mat4f& model_matrix)
+void render_scene::set_mesh_model_matrix(render_id mesh_id, const mat4f& matrix_m)
 {
     auto& mesh = m_meshes[mesh_id];
-    mesh.model_matrix = model_matrix;
-
-    m_meshes.mark_dirty(mesh_id);
-}
-
-void render_scene::set_mesh_aabb(render_id mesh_id, const box3f& aabb)
-{
-    auto& mesh = m_meshes[mesh_id];
-    mesh.aabb = aabb;
+    mesh.matrix_m = matrix_m;
 
     m_meshes.mark_dirty(mesh_id);
 }
@@ -74,6 +66,25 @@ void render_scene::set_mesh_geometry(render_id mesh_id, geometry* geometry)
     }
 
     mesh.geometry = geometry;
+
+    m_meshes.mark_dirty(mesh_id);
+}
+
+void render_scene::set_mesh_bounds(render_id mesh_id, const box3f& box, const sphere3f& sphere)
+{
+    auto& mesh = m_meshes[mesh_id];
+
+    box3f new_box = box ? box : mesh.geometry->get_bounding_box();
+    sphere3f new_sphere = sphere ? sphere : mesh.geometry->get_bounding_sphere();
+
+    if (mesh.bounding_box == new_box && mesh.bounding_sphere == new_sphere)
+    {
+        return;
+    }
+
+    mesh.bounding_box = new_box;
+    mesh.bounding_sphere = new_sphere;
+
     m_meshes.mark_dirty(mesh_id);
 }
 
@@ -89,7 +100,6 @@ render_id render_scene::add_instance(render_id mesh_id)
     auto& mesh = m_meshes[mesh_id];
     mesh.instances.push_back(instance_id);
 
-    m_scene_data.instance_count = get_instance_count();
     m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
 
     return instance_id;
@@ -106,7 +116,6 @@ void render_scene::remove_instance(render_id instance_id)
 
     m_instances.remove(instance_id);
 
-    m_scene_data.instance_count = get_instance_count();
     m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
 }
 
@@ -148,7 +157,6 @@ render_id render_scene::add_light()
 {
     render_id light_id = m_lights.add();
 
-    m_scene_data.light_count = get_light_count();
     m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
 
     return light_id;
@@ -157,6 +165,8 @@ render_id render_scene::add_light()
 void render_scene::remove_light(render_id light_id)
 {
     m_lights.remove(light_id);
+
+    m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
 }
 
 void render_scene::set_light_data(
@@ -217,8 +227,11 @@ void render_scene::update(gpu_buffer_uploader* uploader)
     if (m_scene_states & RENDER_SCENE_STAGE_DATA_DIRTY)
     {
         m_scene_data.mesh_buffer = m_meshes.get_buffer()->get_srv()->get_bindless();
+        m_scene_data.mesh_count = get_mesh_count();
         m_scene_data.instance_buffer = m_instances.get_buffer()->get_srv()->get_bindless();
+        m_scene_data.instance_count = get_instance_count();
         m_scene_data.light_buffer = m_lights.get_buffer()->get_srv()->get_bindless();
+        m_scene_data.light_count = get_light_count();
         m_scene_data.batch_buffer = m_batches.get_buffer()->get_srv()->get_bindless();
 
         m_scene_parameter->set_uniform(0, &m_scene_data, sizeof(shader::scene_data));
@@ -232,15 +245,12 @@ void render_scene::add_instance_to_batch(render_id instance_id, const material* 
     assert(material != nullptr);
 
     render_id batch_id = 0;
-    render_id group_id = 0;
 
-    std::uint64_t pipeline_hash =
-        hash::city_hash_64(&material->get_pipeline(), sizeof(rdg_raster_pipeline));
-    auto batch_iter = m_pipeline_to_batch.find(pipeline_hash);
+    auto batch_iter = m_pipeline_to_batch.find(material->get_pipeline());
     if (batch_iter == m_pipeline_to_batch.end())
     {
         batch_id = m_batches.add();
-        m_pipeline_to_batch[pipeline_hash] = batch_id;
+        m_pipeline_to_batch[material->get_pipeline()] = batch_id;
 
         auto& batch = m_batches[batch_id];
         batch.material_type = material->get_type();
@@ -271,6 +281,7 @@ void render_scene::remove_instance_from_batch(render_id instance_id)
 
     if (batch.instance_count == 0)
     {
+        m_pipeline_to_batch.erase(batch.pipeline);
         m_batches.remove(batch_id);
     }
 }
@@ -281,14 +292,17 @@ bool render_scene::update_mesh(gpu_buffer_uploader* uploader)
     return m_meshes.update(
         [&](const render_mesh& mesh) -> shader::mesh_data
         {
-            box3f world_aabb = box::transform(mesh.aabb, mesh.model_matrix);
+            box3f bounding_box_ws = box::transform(mesh.bounding_box, mesh.matrix_m);
+            sphere3f bounding_sphere_ws = sphere::transform(mesh.bounding_sphere, mesh.matrix_m);
+
             auto buffer_addresses = geometry_manager->get_buffer_addresses(mesh.geometry->get_id());
 
             return {
-                .model_matrix = mesh.model_matrix,
-                .aabb_min = world_aabb.min,
+                .matrix_m = mesh.matrix_m,
+                .bounding_sphere = bounding_sphere_ws,
+                .bounding_box_min = bounding_box_ws.min,
                 .flags = 0,
-                .aabb_max = world_aabb.max,
+                .bounding_box_max = bounding_box_ws.max,
                 .index_offset = buffer_addresses[GEOMETRY_BUFFER_INDEX] / 4,
                 .position_address = buffer_addresses[GEOMETRY_BUFFER_POSITION],
                 .normal_address = buffer_addresses[GEOMETRY_BUFFER_NORMAL],
@@ -323,7 +337,7 @@ bool render_scene::update_instance(gpu_buffer_uploader* uploader)
         [&](const render_instance& instance) -> shader::instance_data
         {
             return {
-                .mesh_index = static_cast<std::uint32_t>(m_meshes.get_index(instance.mesh_id)),
+                .mesh_index = m_meshes.get_index(instance.mesh_id),
                 .vertex_offset = instance.vertex_offset,
                 .index_offset = instance.index_offset,
                 .index_count = instance.index_count,
@@ -400,9 +414,92 @@ bool render_scene::update_batch(gpu_buffer_uploader* uploader)
         true);
 }
 
-render_camera::render_camera(rhi_texture* render_target, rhi_parameter* camera_parameter)
-    : m_render_target(render_target),
-      m_camera_parameter(camera_parameter)
+render_camera::render_camera(
+    const camera_component* camera,
+    const camera_component_meta* camera_meta)
+    : m_camera(camera),
+      m_camera_meta(camera_meta)
 {
+    std::visit(
+        [&](auto&& arg)
+        {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, rhi_swapchain*>)
+            {
+                m_render_target = arg->get_texture();
+            }
+            else if constexpr (std::is_same_v<T, rhi_texture*>)
+            {
+                m_render_target = arg;
+            }
+        },
+        camera->render_target);
+
+    rhi_texture_extent extent = m_render_target->get_extent();
+
+    if (camera->viewport.width == 0.0f || camera->viewport.height == 0.0f)
+    {
+        m_viewport = {
+            .x = 0.0f,
+            .y = 0.0f,
+            .width = static_cast<float>(extent.width),
+            .height = static_cast<float>(extent.height),
+            .min_depth = 0.0f,
+            .max_depth = 1.0f,
+        };
+    }
+    else
+    {
+        m_viewport = camera->viewport;
+    }
+
+    if (camera->scissor_rects.empty())
+    {
+        m_scissor_rects.push_back({
+            .min_x = 0,
+            .min_y = 0,
+            .max_x = extent.width,
+            .max_y = extent.height,
+        });
+    }
+    else
+    {
+        m_scissor_rects = camera->scissor_rects;
+    }
+}
+
+float render_camera::get_near() const noexcept
+{
+    return m_camera->near;
+}
+
+float render_camera::get_far() const noexcept
+{
+    return m_camera->far;
+}
+
+float render_camera::get_fov() const noexcept
+{
+    return m_camera->fov;
+}
+
+const mat4f& render_camera::get_matrix_v() const noexcept
+{
+    return m_camera_meta->matrix_v;
+}
+
+const mat4f& render_camera::get_matrix_p() const noexcept
+{
+    return m_camera_meta->matrix_p;
+}
+
+rhi_texture* render_camera::get_hzb() const noexcept
+{
+    return m_camera_meta->hzb.get();
+}
+
+rhi_parameter* render_camera::get_camera_parameter() const noexcept
+{
+    return m_camera_meta->parameter.get();
 }
 } // namespace violet

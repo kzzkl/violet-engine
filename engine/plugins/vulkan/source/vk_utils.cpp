@@ -451,4 +451,13 @@ VkStencilOp vk_utils::map_stencil_op(rhi_stencil_op op)
         throw std::runtime_error("Invalid stencil op.");
     }
 }
+
+VkImageAspectFlags vk_utils::map_image_aspect_flags(rhi_texture_aspect_flags flags)
+{
+    VkImageAspectFlags result = 0;
+    result |= (flags & RHI_TEXTURE_ASPECT_COLOR) ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
+    result |= (flags & RHI_TEXTURE_ASPECT_DEPTH) ? VK_IMAGE_ASPECT_DEPTH_BIT : 0;
+    result |= (flags & RHI_TEXTURE_ASPECT_STENCIL) ? VK_IMAGE_ASPECT_STENCIL_BIT : 0;
+    return result;
+}
 } // namespace violet::vk

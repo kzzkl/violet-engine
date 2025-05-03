@@ -89,7 +89,7 @@ vk_parameter::~vk_parameter()
 }
 
 void vk_parameter::set_uniform(
-    std::size_t index,
+    std::uint32_t index,
     const void* data,
     std::size_t size,
     std::size_t offset)
@@ -107,7 +107,7 @@ void vk_parameter::set_uniform(
     mark_dirty(index);
 }
 
-void vk_parameter::set_srv(std::size_t index, rhi_texture_srv* srv, std::size_t offset)
+void vk_parameter::set_srv(std::uint32_t index, rhi_texture_srv* srv, std::uint32_t offset)
 {
     const auto& binding = m_layout->get_bindings()[index];
     assert(
@@ -119,7 +119,7 @@ void vk_parameter::set_srv(std::size_t index, rhi_texture_srv* srv, std::size_t 
     mark_dirty(index);
 }
 
-void vk_parameter::set_srv(std::size_t index, rhi_buffer_srv* srv, std::size_t offset)
+void vk_parameter::set_srv(std::uint32_t index, rhi_buffer_srv* srv, std::uint32_t offset)
 {
     const auto& binding = m_layout->get_bindings()[index];
     assert(binding.type == RHI_PARAMETER_BINDING_MUTABLE);
@@ -129,7 +129,7 @@ void vk_parameter::set_srv(std::size_t index, rhi_buffer_srv* srv, std::size_t o
     mark_dirty(index);
 }
 
-void vk_parameter::set_uav(std::size_t index, rhi_texture_uav* uav, std::size_t offset)
+void vk_parameter::set_uav(std::uint32_t index, rhi_texture_uav* uav, std::uint32_t offset)
 {
     const auto& binding = m_layout->get_bindings()[index];
     assert(
@@ -141,7 +141,7 @@ void vk_parameter::set_uav(std::size_t index, rhi_texture_uav* uav, std::size_t 
     mark_dirty(index);
 }
 
-void vk_parameter::set_uav(std::size_t index, rhi_buffer_uav* uav, std::size_t offset)
+void vk_parameter::set_uav(std::uint32_t index, rhi_buffer_uav* uav, std::uint32_t offset)
 {
     const auto& binding = m_layout->get_bindings()[index];
     assert(
@@ -154,7 +154,7 @@ void vk_parameter::set_uav(std::size_t index, rhi_buffer_uav* uav, std::size_t o
     mark_dirty(index);
 }
 
-void vk_parameter::set_sampler(std::size_t index, rhi_sampler* sampler, std::size_t offset)
+void vk_parameter::set_sampler(std::uint32_t index, rhi_sampler* sampler, std::uint32_t offset)
 {
     const auto& binding = m_layout->get_bindings()[index];
     assert(binding.type == RHI_PARAMETER_BINDING_SAMPLER);
@@ -249,7 +249,7 @@ const std::vector<buffer_allocation>& vk_parameter::get_uniforms() const noexcep
     return m_copies[m_context->get_frame_resource_index()].uniforms;
 }
 
-void vk_parameter::mark_dirty(std::size_t index)
+void vk_parameter::mark_dirty(std::uint32_t index)
 {
     if (m_flags != 0)
     {

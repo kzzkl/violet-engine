@@ -50,8 +50,8 @@ struct prefilter_cs : public shader_cs
         std::uint32_t prefilter_map;
         float roughness;
         std::uint32_t resolution;
-        std::uint32_t padding_0;
-        std::uint32_t padding_1;
+        std::uint32_t padding0;
+        std::uint32_t padding1;
     };
 
     static constexpr parameter_layout parameters = {
@@ -153,7 +153,7 @@ private:
                     .env_map = data.env_map.get_bindless(),
                     .cube_map = data.cube_map.get_bindless(),
                 });
-                command.set_parameter(0, render_device::instance().get_bindless_parameter());
+                command.set_parameter(0, RDG_PARAMETER_BINDLESS);
                 command.dispatch_3d(extent.width, extent.height, 6, 8, 8, 1);
             });
     }
@@ -209,7 +209,8 @@ private:
                         data.src.get_rhi(),
                         src_region,
                         data.dst.get_rhi(),
-                        dst_region);
+                        dst_region,
+                        RHI_FILTER_LINEAR);
                 });
         }
     }
@@ -252,7 +253,7 @@ private:
                     .cube_map = data.cube_map.get_bindless(),
                     .irradiance_map = data.irradiance_map.get_bindless(),
                 });
-                command.set_parameter(0, render_device::instance().get_bindless_parameter());
+                command.set_parameter(0, RDG_PARAMETER_BINDLESS);
                 command.dispatch_3d(extent.width, extent.height, 6, 8, 8, 1);
             });
     }
@@ -304,7 +305,7 @@ private:
                         .roughness = static_cast<float>(level) / static_cast<float>(level_count),
                         .resolution = data.cube_map.get_texture()->get_extent().width,
                     });
-                    command.set_parameter(0, render_device::instance().get_bindless_parameter());
+                    command.set_parameter(0, RDG_PARAMETER_BINDLESS);
                     command.dispatch_3d(extent.width, extent.height, 6, 8, 8, 1);
                 });
         }

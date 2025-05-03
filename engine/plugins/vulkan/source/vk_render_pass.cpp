@@ -170,8 +170,8 @@ void vk_render_pass::begin(
             auto e = dsv->get_texture()->get_extent();
             extent = {e.width, e.height};
 
-            clear_values[i].depthStencil.depth = attachments[i].clear_value.depth;
-            clear_values[i].depthStencil.stencil = attachments[i].clear_value.stencil;
+            clear_values[i].depthStencil.depth = attachments[i].clear_value.depth_stencil.depth;
+            clear_values[i].depthStencil.stencil = attachments[i].clear_value.depth_stencil.stencil;
         }
     }
 

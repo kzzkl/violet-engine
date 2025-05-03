@@ -62,6 +62,8 @@ rhi_shader* vk_rhi::create_shader(const rhi_shader_desc& desc)
     {
     case RHI_SHADER_STAGE_VERTEX:
         return new vk_vertex_shader(desc, m_context.get());
+    case RHI_SHADER_STAGE_GEOMETRY:
+        return new vk_geometry_shader(desc, m_context.get());
     case RHI_SHADER_STAGE_FRAGMENT:
         return new vk_fragment_shader(desc, m_context.get());
     case RHI_SHADER_STAGE_COMPUTE:

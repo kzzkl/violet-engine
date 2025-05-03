@@ -55,7 +55,7 @@ public:
 
     inline key_state key(KeyType key) const noexcept
     {
-        std::size_t index = static_cast<std::uint32_t>(key);
+        auto index = static_cast<std::uint32_t>(key);
         assert(index < KeyCount);
 
         return key_state(m_key_state[index]);
@@ -63,7 +63,7 @@ public:
 
     void key_down(KeyType key) noexcept
     {
-        std::size_t index = static_cast<std::uint32_t>(key);
+        auto index = static_cast<std::uint32_t>(key);
         assert(index < KeyCount);
 
         m_key_state[index] = ((m_key_state[index] << 1) & 0x2) | 0x1;
@@ -72,7 +72,7 @@ public:
 
     void key_up(KeyType key) noexcept
     {
-        std::size_t index = static_cast<std::uint32_t>(key);
+        auto index = static_cast<std::uint32_t>(key);
         assert(index < KeyCount);
 
         m_key_state[index] = (m_key_state[index] << 1) & 0x2;
@@ -85,7 +85,7 @@ public:
         {
             for (KeyType key : m_update_key)
             {
-                std::size_t index = static_cast<std::uint32_t>(key);
+                auto index = static_cast<std::uint32_t>(key);
 
                 std::uint8_t old = m_key_state[index] & 0x1;
                 m_key_state[index] = (m_key_state[index] << 1) | old;

@@ -1,6 +1,8 @@
 #include "graphics/renderers/deferred_renderer.hpp"
 #include "graphics/passes/blit_pass.hpp"
+#include "graphics/passes/copy_depth_pass.hpp"
 #include "graphics/passes/cull_pass.hpp"
+#include "graphics/passes/debug/bounds_projection_pass.hpp"
 #include "graphics/passes/gtao_pass.hpp"
 #include "graphics/passes/hzb_pass.hpp"
 #include "graphics/passes/lighting/physical_pass.hpp"
@@ -29,6 +31,12 @@ void deferred_renderer::on_render(render_graph& graph)
         RHI_FORMAT_D32_FLOAT_S8_UINT,
         RHI_TEXTURE_DEPTH_STENCIL | RHI_TEXTURE_SHADER_RESOURCE);
 
+    m_hzb = graph.add_texture(
+        "HZB",
+        graph.get_camera().get_hzb(),
+        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+
     if (graph.get_scene().get_instance_count() != 0)
     {
         add_cull_pass(graph);
@@ -51,6 +59,12 @@ void deferred_renderer::on_render(render_graph& graph)
     {
         add_skybox_pass(graph);
     }
+
+    // bounds_projection_pass::add(
+    //     graph,
+    //     {
+    //         .render_target = m_render_target,
+    //     });
 
     if (is_feature_enable<taa_render_feature>())
     {
@@ -79,8 +93,11 @@ void deferred_renderer::add_cull_pass(render_graph& graph)
     cull_pass::add(
         graph,
         {
+            .hzb = m_hzb,
             .command_buffer = m_command_buffer,
             .count_buffer = m_count_buffer,
+            .frustum_culling = true,
+            .occlusion_culling = true,
         });
 }
 
@@ -133,18 +150,6 @@ void deferred_renderer::add_mesh_pass(render_graph& graph)
 
 void deferred_renderer::add_hzb_pass(render_graph& graph)
 {
-    std::uint32_t level_count =
-        static_cast<std::uint32_t>(
-            std::floor(std::log2(std::max(m_render_extent.width, m_render_extent.height)))) +
-        1;
-
-    m_hzb = graph.add_texture(
-        "HZB",
-        m_render_extent,
-        RHI_FORMAT_R32_FLOAT,
-        RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE,
-        level_count);
-
     hzb_pass::add(
         graph,
         {
@@ -170,7 +175,8 @@ void deferred_renderer::add_gtao_pass(render_graph& graph)
             .step_count = gtao->get_step_count(),
             .radius = gtao->get_radius(),
             .falloff = gtao->get_falloff(),
-            .depth_buffer = m_hzb,
+            .hzb = m_hzb,
+            .depth_buffer = m_depth_buffer,
             .normal_buffer = m_gbuffer_normal,
             .ao_buffer = m_ao_buffer,
         });
@@ -189,13 +195,26 @@ void deferred_renderer::add_lighting_pass(render_graph& graph)
             .clear = true,
         });
 
+    rdg_texture* depth_copy = graph.add_texture(
+        "Depth Copy",
+        m_render_extent,
+        RHI_FORMAT_R32_FLOAT,
+        RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE);
+
+    copy_depth_pass::add(
+        graph,
+        {
+            .src = m_depth_buffer,
+            .dst = depth_copy,
+        });
+
     physical_pass::add(
         graph,
         {
             .gbuffer_albedo = m_gbuffer_albedo,
             .gbuffer_material = m_gbuffer_material,
             .gbuffer_normal = m_gbuffer_normal,
-            .gbuffer_depth = m_hzb,
+            .gbuffer_depth = depth_copy,
             .gbuffer_emissive = m_gbuffer_emissive,
             .ao_buffer = m_ao_buffer,
             .depth_buffer = m_depth_buffer,

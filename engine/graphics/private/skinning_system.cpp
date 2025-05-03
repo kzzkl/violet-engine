@@ -1,10 +1,10 @@
 #include "skinning_system.hpp"
 #include "components/mesh_component.hpp"
-#include "components/mesh_meta_component.hpp"
+#include "components/mesh_component_meta.hpp"
 #include "components/morph_component.hpp"
 #include "components/skeleton_component.hpp"
 #include "components/skinned_component.hpp"
-#include "components/skinned_meta_component.hpp"
+#include "components/skinned_component_meta.hpp"
 #include "components/transform_component.hpp"
 #include "graphics/geometry_manager.hpp"
 
@@ -19,7 +19,7 @@ bool skinning_system::initialize(const dictionary& config)
 {
     auto& world = get_world();
     world.register_component<skinned_component>();
-    world.register_component<skinned_meta_component>();
+    world.register_component<skinned_component_meta>();
     world.register_component<skeleton_component>();
     world.register_component<morph_component>();
 
@@ -116,8 +116,8 @@ void skinning_system::skinning(rhi_command* command)
             .buffer = geometry_manager->get_vertex_buffer()->get_rhi(),
             .src_stages = RHI_PIPELINE_STAGE_COMPUTE,
             .src_access = RHI_ACCESS_SHADER_WRITE,
-            .dst_stages = RHI_PIPELINE_STAGE_VERTEX_INPUT,
-            .dst_access = RHI_ACCESS_VERTEX_ATTRIBUTE_READ,
+            .dst_stages = RHI_PIPELINE_STAGE_VERTEX,
+            .dst_access = RHI_ACCESS_SHADER_READ,
         };
 
         std::vector<rhi_buffer_barrier> buffer_barriers;
@@ -135,7 +135,11 @@ void skinning_system::skinning(rhi_command* command)
         barrier.size = geometry_manager->get_buffer_size(skinned_id, GEOMETRY_BUFFER_TANGENT);
         buffer_barriers.push_back(barrier);
 
-        command->set_pipeline_barrier(buffer_barriers.data(), buffer_barriers.size(), nullptr, 0);
+        command->set_pipeline_barrier(
+            buffer_barriers.data(),
+            static_cast<std::uint32_t>(buffer_barriers.size()),
+            nullptr,
+            0);
     }
 
     command->end_label();
@@ -147,14 +151,14 @@ void skinning_system::update_skin()
 
     world.get_view()
         .read<mesh_component>()
-        .read<mesh_meta_component>()
+        .read<mesh_component_meta>()
         .read<skinned_component>()
-        .write<skinned_meta_component>()
+        .write<skinned_component_meta>()
         .each(
             [](const mesh_component& mesh,
-               const mesh_meta_component& mesh_meta,
+               const mesh_component_meta& mesh_meta,
                const skinned_component& skinned,
-               skinned_meta_component& skinned_meta)
+               skinned_component_meta& skinned_meta)
             {
                 if (skinned_meta.skinned_geometry == nullptr)
                 {
@@ -178,7 +182,7 @@ void skinning_system::update_skin()
                         skinned_geometry->set_custom_shared(i, original_geometry);
                     }
 
-                    skinned_geometry->set_indexes_shared(original_geometry);
+                    skinned_geometry->set_index_shared(original_geometry);
 
                     if (original_geometry->get_morph_target_count() != 0)
                     {
@@ -204,8 +208,8 @@ void skinning_system::update_skin()
 
     m_skinning_queue.clear();
 
-    world.get_view().read<skinned_component>().read<skinned_meta_component>().each(
-        [this](const skinned_component& skinned, const skinned_meta_component& skinned_meta)
+    world.get_view().read<skinned_component>().read<skinned_component_meta>().each(
+        [this](const skinned_component& skinned, const skinned_component_meta& skinned_meta)
         {
             if (skinned_meta.bone_buffers.empty())
             {
@@ -246,12 +250,12 @@ void skinning_system::update_skeleton()
     world.get_view()
         .read<transform_world_component>()
         .read<skeleton_component>()
-        .write<skinned_meta_component>()
+        .write<skinned_component_meta>()
         .each(
             [&world](
                 const transform_world_component& transform,
                 const skeleton_component& skeleton,
-                skinned_meta_component& skinned_meta)
+                skinned_component_meta& skinned_meta)
             {
                 if (skeleton.bones.empty())
                 {
@@ -304,8 +308,8 @@ void skinning_system::update_morph()
 
     m_morphing_queue.clear();
 
-    world.get_view().write<skinned_meta_component>().read<morph_component>().each(
-        [this](skinned_meta_component& skinned_meta, const morph_component& morph)
+    world.get_view().write<skinned_component_meta>().read<morph_component>().each(
+        [this](skinned_component_meta& skinned_meta, const morph_component& morph)
         {
             morph_target_buffer* morph_target_buffer =
                 skinned_meta.original_geometry->get_morph_target_buffer();
@@ -318,7 +322,7 @@ void skinning_system::update_morph()
             morphing_data data = {
                 .morph_target_buffer = morph_target_buffer,
                 .weights = morph.weights.data(),
-                .weight_count = morph.weights.size(),
+                .weight_count = static_cast<std::uint32_t>(morph.weights.size()),
                 .morph_vertex_buffer =
                     skinned_meta.skinned_geometry->get_additional_buffer("morph"),
             };

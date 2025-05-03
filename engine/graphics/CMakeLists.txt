@@ -2,13 +2,16 @@ project(violet-graphics)
 
 add_library(${PROJECT_NAME} STATIC
     ./private/geometries/box_geometry.cpp
+    ./private/geometries/plane_geometry.cpp
     ./private/geometries/sphere_geometry.cpp
     ./private/materials/physical_material.cpp
     ./private/materials/unlit_material.cpp
     ./private/passes/lighting/physical_pass.cpp
     ./private/passes/lighting/unlit_pass.cpp
     ./private/passes/blit_pass.cpp
+    ./private/passes/copy_depth_pass.cpp
     ./private/passes/cull_pass.cpp
+    ./private/passes/debug/bounds_projection_pass.cpp
     ./private/passes/depth_only_pass.cpp
     ./private/passes/gtao_pass.cpp
     ./private/passes/hzb_pass.cpp
@@ -27,6 +30,10 @@ add_library(${PROJECT_NAME} STATIC
     ./private/resources/persistent_buffer.cpp
     ./private/resources/ramp_texture.cpp
     ./private/resources/texture.cpp
+    ./private/tools/cluster/cluster_builder.cpp
+    ./private/tools/cluster/graph_partitioner.cpp
+    ./private/tools/mesh_simplifier/mesh_simplifier.cpp
+    ./private/tools/mesh_simplifier/quadric.cpp
     ./private/tools/geometry_tool.cpp
     ./private/tools/ibl_tool.cpp
     ./private/tools/texture_loader.cpp
@@ -61,6 +68,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
+    violet::algorithm
     violet::task
     violet::window
     violet::math
@@ -68,6 +76,7 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
     stb
     dxcompiler
+    metis
     MikkTSpace)
 
 install(TARGETS ${PROJECT_NAME}

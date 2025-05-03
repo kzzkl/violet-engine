@@ -12,55 +12,31 @@ struct unlit_material_fs : public mesh_fs
     static constexpr std::string_view path = "assets/shaders/materials/unlit_material.hlsl";
 };
 
-unlit_material::unlit_material()
+unlit_material::unlit_material(
+    rhi_primitive_topology primitive_topology,
+    rhi_cull_mode cull_mode,
+    rhi_polygon_mode polygon_mode)
     : mesh_material(MATERIAL_OPAQUE)
 {
+    auto& device = render_device::instance();
+
     auto& pipeline = get_pipeline();
-    pipeline.vertex_shader = render_device::instance().get_shader<unlit_material_vs>();
-    pipeline.fragment_shader = render_device::instance().get_shader<unlit_material_fs>();
-    pipeline.depth_stencil.depth_enable = true;
-    pipeline.depth_stencil.depth_write_enable = true;
-    pipeline.depth_stencil.depth_compare_op = RHI_COMPARE_OP_GREATER;
-    pipeline.depth_stencil.stencil_enable = true;
-    pipeline.depth_stencil.stencil_front = {
-        .compare_op = RHI_COMPARE_OP_ALWAYS,
-        .pass_op = RHI_STENCIL_OP_REPLACE,
-        .depth_fail_op = RHI_STENCIL_OP_KEEP,
-        .reference = SHADING_MODEL_UNLIT,
-    };
-    pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
+    pipeline.vertex_shader = device.get_shader<unlit_material_vs>();
+    pipeline.fragment_shader = device.get_shader<unlit_material_fs>();
+    pipeline.rasterizer_state = device.get_rasterizer_state(cull_mode, polygon_mode);
+    pipeline.depth_stencil_state = device.get_depth_stencil_state<
+        true,
+        true,
+        RHI_COMPARE_OP_GREATER,
+        true,
+        material_stencil_state<SHADING_MODEL_UNLIT>::value,
+        material_stencil_state<SHADING_MODEL_UNLIT>::value>();
+    pipeline.primitive_topology = primitive_topology;
 
     set_color({1.0f, 1.0f, 1.0f});
 }
 
 void unlit_material::set_color(const vec3f& color)
-{
-    get_constant().color = color;
-}
-
-unlit_line_material::unlit_line_material()
-    : mesh_material(MATERIAL_OPAQUE)
-{
-    auto& pipeline = get_pipeline();
-    pipeline.vertex_shader = render_device::instance().get_shader<unlit_material_vs>();
-    pipeline.fragment_shader = render_device::instance().get_shader<unlit_material_fs>();
-    pipeline.primitive_topology = RHI_PRIMITIVE_TOPOLOGY_LINE_LIST;
-    pipeline.depth_stencil.depth_enable = true;
-    pipeline.depth_stencil.depth_write_enable = true;
-    pipeline.depth_stencil.depth_compare_op = RHI_COMPARE_OP_GREATER;
-    pipeline.depth_stencil.stencil_enable = true;
-    pipeline.depth_stencil.stencil_front = {
-        .compare_op = RHI_COMPARE_OP_ALWAYS,
-        .pass_op = RHI_STENCIL_OP_REPLACE,
-        .depth_fail_op = RHI_STENCIL_OP_KEEP,
-        .reference = SHADING_MODEL_UNLIT,
-    };
-    pipeline.depth_stencil.stencil_back = pipeline.depth_stencil.stencil_front;
-
-    set_color({1.0f, 1.0f, 1.0f});
-}
-
-void unlit_line_material::set_color(const vec3f& color)
 {
     get_constant().color = color;
 }
