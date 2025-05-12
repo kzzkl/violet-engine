@@ -64,10 +64,7 @@ void mesh_simplifier::lock_position(const vec3f& position)
     }
 }
 
-float mesh_simplifier::simplify(
-    std::uint32_t target_triangle_count,
-    std::vector<vec3f>& new_positions,
-    std::vector<std::uint32_t>& new_indexes)
+float mesh_simplifier::simplify(std::uint32_t target_triangle_count)
 {
     m_triangle_count = static_cast<std::uint32_t>(m_indexes.size() / 3);
     for (std::uint32_t i = 0; i < m_triangle_count; ++i)
@@ -99,9 +96,6 @@ float mesh_simplifier::simplify(
     }
 
     compact();
-
-    new_positions = std::move(m_positions);
-    new_indexes = std::move(m_indexes);
 
     return std::sqrt(max_error);
 }

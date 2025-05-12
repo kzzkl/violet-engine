@@ -17,10 +17,17 @@ public:
 
     void lock_position(const vec3f& position);
 
-    float simplify(
-        std::uint32_t target_triangle_count,
-        std::vector<vec3f>& new_positions,
-        std::vector<std::uint32_t>& new_indexes);
+    float simplify(std::uint32_t target_triangle_count);
+
+    const std::vector<vec3f>& get_positions() const noexcept
+    {
+        return m_positions;
+    }
+
+    const std::vector<std::uint32_t>& get_indexes() const noexcept
+    {
+        return m_indexes;
+    }
 
 private:
     struct vertex_hash

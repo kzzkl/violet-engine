@@ -52,11 +52,12 @@ public:
         }
 
         m_index_to_id.pop_back();
-        m_allocator.free(id);
 
         m_objects[id].cpu_data = {};
         m_objects[id].valid = false;
         m_objects[id].dirty = false;
+
+        m_allocator.free(id);
 
         return last_id;
     }
@@ -145,7 +146,7 @@ public:
         {
             for (render_id id : m_dirty_objects)
             {
-                if (!m_objects[id].valid)
+                if (!m_objects[id].valid || !m_objects[id].dirty)
                 {
                     continue;
                 }
@@ -231,10 +232,9 @@ public:
 
     void remove(render_id id)
     {
-        m_allocator.free(id);
-
         m_objects[id].valid = false;
         m_objects[id].dirty = false;
+        m_allocator.free(id);
     }
 
     T& operator[](render_id id) noexcept
@@ -275,6 +275,34 @@ public:
         return m_object_buffer.get();
     }
 
+    template <typename Functor>
+    void each(Functor&& functor)
+    {
+        for (render_id id = 0; id < m_objects.size(); ++id)
+        {
+            if (!m_objects[id].valid)
+            {
+                continue;
+            }
+
+            functor(id, m_objects[id].cpu_data);
+        }
+    }
+
+    template <typename Functor>
+    void each(Functor&& functor) const
+    {
+        for (render_id id = 0; id < m_objects.size(); ++id)
+        {
+            if (!m_objects[id].valid)
+            {
+                continue;
+            }
+
+            functor(id, m_objects[id].cpu_data);
+        }
+    }
+
     template <typename GetDataFunctor, typename UploadFunctor>
     bool update(GetDataFunctor&& get_data, UploadFunctor&& upload, bool update_all = false)
     {
@@ -311,7 +339,7 @@ public:
         {
             for (render_id id : m_dirty_objects)
             {
-                if (!m_objects[id].valid)
+                if (!m_objects[id].valid || !m_objects[id].dirty)
                 {
                     continue;
                 }

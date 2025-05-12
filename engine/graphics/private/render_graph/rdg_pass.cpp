@@ -179,7 +179,7 @@ rdg_texture_rtv rdg_pass::add_render_target(
     reference->access = load_op == RHI_ATTACHMENT_LOAD_OP_LOAD ?
                             RHI_ACCESS_COLOR_READ | RHI_ACCESS_COLOR_WRITE :
                             RHI_ACCESS_COLOR_WRITE;
-    reference->texture.layout = RHI_TEXTURE_LAYOUT_GENERAL;
+    reference->texture.layout = RHI_TEXTURE_LAYOUT_RENDER_TARGET;
     reference->texture.level = level;
     reference->texture.level_count = 1;
     reference->texture.layer = layer;
@@ -210,7 +210,7 @@ rdg_texture_dsv rdg_pass::set_depth_stencil(
     reference->stages =
         RHI_PIPELINE_STAGE_EARLY_DEPTH_STENCIL | RHI_PIPELINE_STAGE_LATE_DEPTH_STENCIL;
     reference->access = RHI_ACCESS_DEPTH_STENCIL_READ | RHI_ACCESS_DEPTH_STENCIL_WRITE;
-    reference->texture.layout = RHI_TEXTURE_LAYOUT_GENERAL;
+    reference->texture.layout = RHI_TEXTURE_LAYOUT_DEPTH_STENCIL;
     reference->texture.level = level;
     reference->texture.level_count = 1;
     reference->texture.layer = layer;

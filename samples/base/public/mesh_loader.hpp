@@ -12,26 +12,21 @@ class mesh_loader
 public:
     struct submesh_data
     {
-        std::uint32_t vertex_offset;
-        std::uint32_t index_offset;
-        std::uint32_t index_count;
+        std::uint32_t submesh_index;
         std::int32_t material;
     };
 
     struct mesh_data
     {
-        std::vector<submesh_data> submeshes;
         std::uint32_t geometry;
-
-        box3f bounding_box;
-        sphere3f bounding_sphere;
+        std::vector<submesh_data> submeshes;
     };
 
     struct node_data
     {
         std::string name;
 
-        std::int32_t mesh;
+        std::int32_t mesh{-1};
 
         vec3f position{0.0f, 0.0f, 0.0f};
         vec4f rotation{0.0f, 0.0f, 0.0f, 1.0f};

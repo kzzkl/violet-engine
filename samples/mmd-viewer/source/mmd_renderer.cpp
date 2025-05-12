@@ -44,6 +44,12 @@ void mmd_renderer::on_render(render_graph& graph)
         RHI_FORMAT_D32_FLOAT_S8_UINT,
         RHI_TEXTURE_DEPTH_STENCIL | RHI_TEXTURE_SHADER_RESOURCE);
 
+    m_hzb = graph.add_texture(
+        "HZB",
+        graph.get_camera().get_hzb(),
+        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+
     if (graph.get_scene().get_instance_count() != 0)
     {
         add_cull_pass(graph);
@@ -99,12 +105,13 @@ void mmd_renderer::add_cull_pass(render_graph& graph)
 
     m_count_buffer = graph.add_buffer(
         "Count Buffer",
-        graph.get_scene().get_group_capacity() * sizeof(std::uint32_t),
+        graph.get_scene().get_batch_capacity() * sizeof(std::uint32_t),
         RHI_BUFFER_STORAGE_TEXEL | RHI_BUFFER_INDIRECT | RHI_BUFFER_TRANSFER_DST);
 
     cull_pass::add(
         graph,
         {
+            .hzb = m_hzb,
             .command_buffer = m_command_buffer,
             .count_buffer = m_count_buffer,
         });
@@ -169,18 +176,6 @@ void mmd_renderer::add_opaque_pass(render_graph& graph)
 
 void mmd_renderer::add_hzb_pass(render_graph& graph)
 {
-    std::uint32_t level_count =
-        static_cast<std::uint32_t>(
-            std::floor(std::log2(std::max(m_render_extent.width, m_render_extent.height)))) +
-        1;
-
-    m_hzb = graph.add_texture(
-        "HZB",
-        m_render_extent,
-        RHI_FORMAT_R32_FLOAT,
-        RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE,
-        level_count);
-
     hzb_pass::add(
         graph,
         {
@@ -206,7 +201,8 @@ void mmd_renderer::add_gtao_pass(render_graph& graph)
             .step_count = gtao->get_step_count(),
             .radius = gtao->get_radius(),
             .falloff = gtao->get_falloff(),
-            .depth_buffer = m_hzb,
+            .hzb = m_hzb,
+            .depth_buffer = m_depth_buffer,
             .normal_buffer = m_gbuffer_normal,
             .ao_buffer = m_ao_buffer,
         });

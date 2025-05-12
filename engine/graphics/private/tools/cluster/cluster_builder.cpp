@@ -68,43 +68,64 @@ template <typename T>
 using edge_map = std::unordered_multimap<edge_key, T, edge_key_hash>;
 } // namespace
 
-std::vector<cluster_builder::mesh_lod> cluster_builder::build(
-    std::span<const vec3f> positions,
-    std::span<const std::uint32_t> indexes)
+void cluster_builder::set_positions(std::span<const vec3f> positions)
 {
+    m_bounds = {};
     for (const vec3f& position : positions)
     {
         box::expand(m_bounds, position);
     }
 
-    std::vector<mesh_lod> lods;
-    while (lods.empty() || lods.back().clusters.size() > 1)
-    {
-        mesh_lod lod;
+    m_positions.assign(positions.begin(), positions.end());
+}
 
-        if (lods.empty())
+void cluster_builder::set_indexes(std::span<const std::uint32_t> indexes)
+{
+    m_indexes.assign(indexes.begin(), indexes.end());
+}
+
+void cluster_builder::build()
+{
+    std::uint32_t group_offset = 0;
+    std::uint32_t group_lod = 0;
+    while (true)
+    {
+        auto cluster_offset = static_cast<std::uint32_t>(m_clusters.size());
+
+        if (m_clusters.empty())
         {
-            lod.positions.assign(positions.begin(), positions.end());
-            lod.indexes.assign(indexes.begin(), indexes.end());
-            cluster_triangles(lod.positions, lod.indexes, lod.clusters);
+            cluster_triangles(m_positions, m_indexes);
         }
         else
         {
-            simplify_group(lods.back(), lod);
+            while (group_offset < m_groups.size())
+            {
+                simplify_group(group_offset);
+                ++group_offset;
+            }
         }
 
-        group_clusters(lod);
+        auto cluster_count = static_cast<std::uint32_t>(m_clusters.size()) - cluster_offset;
 
-        lods.emplace_back(std::move(lod));
+        group_clusters(cluster_offset, cluster_count);
+
+        for (std::uint32_t i = group_offset; i < m_groups.size(); ++i)
+        {
+            m_groups[i].lod = group_lod;
+        }
+
+        ++group_lod;
+
+        if (cluster_count == 1)
+        {
+            break;
+        }
     }
-
-    return lods;
 }
 
 void cluster_builder::cluster_triangles(
     const std::vector<vec3f>& positions,
-    std::vector<std::uint32_t>& indexes,
-    std::vector<cluster>& clusters)
+    std::vector<std::uint32_t>& indexes)
 {
     auto edge_count = static_cast<std::uint32_t>(indexes.size());
     std::uint32_t triangle_count = edge_count / 3;
@@ -221,7 +242,7 @@ void cluster_builder::cluster_triangles(
     }
 
     // Construct clusters based on the sorted triangles.
-    clusters.reserve(clusters.size() + parts.size());
+    m_clusters.reserve(m_clusters.size() + parts.size());
     for (auto [start, end] : parts)
     {
         cluster cluster = {
@@ -258,31 +279,29 @@ void cluster_builder::cluster_triangles(
             }
         }
 
-        clusters.push_back(cluster);
+        for (std::uint32_t i = 0; i < cluster.index_count; ++i)
+        {
+            sphere::expand(cluster.bounding_sphere, positions[indexes[cluster.index_offset + i]]);
+        }
+        cluster.lod_bounds = cluster.bounding_sphere;
+
+        m_clusters.push_back(cluster);
     }
 }
 
-void cluster_builder::group_clusters(mesh_lod& lod)
+void cluster_builder::group_clusters(std::uint32_t cluster_offset, std::uint32_t cluster_count)
 {
-    auto& positions = lod.positions;
-    auto& indexes = lod.indexes;
-    auto& clusters = lod.clusters;
-    auto& groups = lod.groups;
+    std::span<cluster> clusters(m_clusters.data() + cluster_offset, cluster_count);
 
     // If the number of clusters is small, no need to group.
-    if (clusters.size() <= MAX_CLUSTER_SIZE)
+    if (clusters.size() <= MAX_GROUP_SIZE)
     {
         cluster_group group = {
-            .cluster_offset = 0,
-            .cluster_count = static_cast<std::uint32_t>(clusters.size()),
+            .cluster_offset = cluster_offset,
+            .cluster_count = cluster_count,
         };
 
-        for (auto& cluster : clusters)
-        {
-            group.error = std::max(group.error, cluster.error);
-        }
-
-        groups.push_back(group);
+        m_groups.push_back(group);
 
         return;
     }
@@ -300,8 +319,8 @@ void cluster_builder::group_clusters(mesh_lod& lod)
                 std::uint32_t edge_index = cluster.index_offset + i;
 
                 edge_key edge_key = {
-                    .p0 = positions[indexes[edge_index]],
-                    .p1 = positions[indexes[cycle_3(edge_index)]],
+                    .p0 = m_positions[m_indexes[edge_index]],
+                    .p1 = m_positions[m_indexes[cycle_3(edge_index)]],
                 };
                 edge_map.insert({edge_key, cluster_index});
             }
@@ -327,8 +346,8 @@ void cluster_builder::group_clusters(mesh_lod& lod)
             std::uint32_t edge_index = cluster.index_offset + i;
 
             auto range = edge_map.equal_range({
-                .p0 = positions[indexes[cycle_3(edge_index)]],
-                .p1 = positions[indexes[edge_index]],
+                .p0 = m_positions[m_indexes[cycle_3(edge_index)]],
+                .p1 = m_positions[m_indexes[edge_index]],
             });
             for (auto iter = range.first; iter != range.second; ++iter)
             {
@@ -354,7 +373,7 @@ void cluster_builder::group_clusters(mesh_lod& lod)
         m_bounds,
         [&](std::uint32_t cluster_index) -> vec3f
         {
-            return box::get_center(clusters[cluster_index].bounds);
+            return box::get_center(clusters[cluster_index].bounding_box);
         });
 
     // Partition the clusters into groups.
@@ -393,7 +412,10 @@ void cluster_builder::group_clusters(mesh_lod& lod)
     {
         new_clusters[i] = std::move(clusters[vertices[i]]);
     }
-    clusters = std::move(new_clusters);
+    for (std::size_t i = 0; i < vertices.size(); ++i)
+    {
+        clusters[i] = std::move(new_clusters[i]);
+    }
 
     std::vector<std::uint32_t> cluster_index_to_sorted(vertices.size());
     for (std::uint32_t i = 0; i < vertices.size(); ++i)
@@ -402,19 +424,17 @@ void cluster_builder::group_clusters(mesh_lod& lod)
     }
 
     // Construct groups based on the sorted clusters.
-    groups.reserve(parts.size());
+    m_groups.reserve(parts.size());
     for (auto [start, end] : parts)
     {
         cluster_group group = {
-            .cluster_offset = start,
+            .cluster_offset = start + cluster_offset,
             .cluster_count = end - start,
         };
 
         for (std::uint32_t cluster_index = start; cluster_index < end; ++cluster_index)
         {
             cluster& cluster = clusters[cluster_index];
-
-            group.error = std::max(group.error, cluster.error);
 
             // Find the external edges of the group.
             for (std::uint32_t i = 0; i < cluster.index_count; ++i)
@@ -427,8 +447,8 @@ void cluster_builder::group_clusters(mesh_lod& lod)
                 std::uint32_t edge_index = cluster.index_offset + i;
 
                 auto range = edge_map.equal_range({
-                    .p0 = positions[indexes[cycle_3(edge_index)]],
-                    .p1 = positions[indexes[edge_index]],
+                    .p0 = m_positions[m_indexes[cycle_3(edge_index)]],
+                    .p1 = m_positions[m_indexes[edge_index]],
                 });
 
                 // If the edge is adjacent to an edge in another cluster not in the group, it must
@@ -450,78 +470,91 @@ void cluster_builder::group_clusters(mesh_lod& lod)
             }
         }
 
-        groups.push_back(group);
+        m_groups.push_back(group);
     }
 }
 
-void cluster_builder::simplify_group(mesh_lod& lod, mesh_lod& next_lod)
+void cluster_builder::simplify_group(std::uint32_t group_index)
 {
-    for (cluster_group& group : lod.groups)
+    auto& group = m_groups[group_index];
+
+    // Collect the indexes of the group for simplification.
+    std::vector<std::uint32_t> group_indexes;
+    for (std::uint32_t i = 0; i < group.cluster_count; ++i)
     {
-        // Collect the indexes of the group for simplification.
-        std::vector<std::uint32_t> group_indexes;
-        for (std::uint32_t i = 0; i < group.cluster_count; ++i)
-        {
-            const cluster& cluster = lod.clusters[group.cluster_offset + i];
+        const cluster& cluster = m_clusters[group.cluster_offset + i];
 
-            group_indexes.insert(
-                group_indexes.end(),
-                lod.indexes.begin() + cluster.index_offset,
-                lod.indexes.begin() + cluster.index_offset + cluster.index_count);
-        }
+        group_indexes.insert(
+            group_indexes.end(),
+            m_indexes.begin() + cluster.index_offset,
+            m_indexes.begin() + cluster.index_offset + cluster.index_count);
+    }
 
-        mesh_simplifier simplifier;
-        simplifier.set_positions(lod.positions);
-        simplifier.set_indexes(group_indexes);
+    float lod_error = 0.0f;
+
+    mesh_simplifier simplifier;
+    simplifier.set_positions(m_positions);
+    simplifier.set_indexes(group_indexes);
+
+    for (std::uint32_t i = 0; i < group.cluster_count; ++i)
+    {
+        const cluster& cluster = m_clusters[group.cluster_offset + i];
 
         // Lock the positions of the external edges of the group.
-        for (std::uint32_t i = 0; i < group.cluster_count; ++i)
+        for (std::uint32_t j = 0; j < cluster.index_count; ++j)
         {
-            const cluster& cluster = lod.clusters[group.cluster_offset + i];
-
-            for (std::uint32_t j = 0; j < cluster.index_count; ++j)
+            if (cluster.external_edges[j] & cluster::EXTERNAL_EDGE_GROUP)
             {
-                if (cluster.external_edges[j] & cluster::EXTERNAL_EDGE_GROUP)
-                {
-                    simplifier.lock_position(lod.positions[lod.indexes[cluster.index_offset + j]]);
-                }
+                simplifier.lock_position(m_positions[m_indexes[cluster.index_offset + j]]);
             }
         }
 
-        std::vector<vec3f> new_positions;
-        std::vector<std::uint32_t> new_indexes;
-        float error = simplifier.simplify(
-            static_cast<std::uint32_t>(group_indexes.size() / 3 / 2),
-            new_positions,
-            new_indexes);
-        group.error = std::max(group.error, error);
+        lod_error = std::max(lod_error, cluster.lod_error);
+    }
 
-        std::size_t cluster_offset = next_lod.clusters.size();
+    float error = simplifier.simplify(static_cast<std::uint32_t>(group_indexes.size() / 3 / 2));
+    std::vector<vec3f> new_positions = simplifier.get_positions();
+    std::vector<std::uint32_t> new_indexes = simplifier.get_indexes();
 
-        // Cluster the new triangles.
-        cluster_triangles(new_positions, new_indexes, next_lod.clusters);
+    lod_error = std::max(lod_error, error);
 
-        auto position_offset = static_cast<std::uint32_t>(next_lod.positions.size());
-        next_lod.positions.insert(
-            next_lod.positions.end(),
-            new_positions.begin(),
-            new_positions.end());
+    std::size_t cluster_offset = m_clusters.size();
 
-        auto index_offset = static_cast<std::uint32_t>(next_lod.indexes.size());
-        std::transform(
-            new_indexes.begin(),
-            new_indexes.end(),
-            std::back_inserter(next_lod.indexes),
-            [=](std::uint32_t index) -> std::uint32_t
-            {
-                return index + position_offset;
-            });
+    // Cluster the new triangles.
+    cluster_triangles(new_positions, new_indexes);
 
-        for (std::size_t i = cluster_offset; i < next_lod.clusters.size(); ++i)
+    auto position_offset = static_cast<std::uint32_t>(m_positions.size());
+    m_positions.insert(m_positions.end(), new_positions.begin(), new_positions.end());
+
+    auto index_offset = static_cast<std::uint32_t>(m_indexes.size());
+    std::transform(
+        new_indexes.begin(),
+        new_indexes.end(),
+        std::back_inserter(m_indexes),
+        [=](std::uint32_t index) -> std::uint32_t
         {
-            next_lod.clusters[i].index_offset += index_offset;
-            next_lod.clusters[i].error = group.error;
-        }
+            return index + position_offset;
+        });
+
+    sphere3f lod_bounds;
+    for (std::uint32_t i = 0; i < group.cluster_count; ++i)
+    {
+        sphere::expand(lod_bounds, m_clusters[group.cluster_offset + i].lod_bounds);
+    }
+
+    for (std::size_t i = cluster_offset; i < m_clusters.size(); ++i)
+    {
+        m_clusters[i].index_offset += index_offset;
+        m_clusters[i].lod_bounds = lod_bounds;
+        m_clusters[i].lod_error = lod_error;
+        m_clusters[i].children_group = group_index;
+    }
+
+    for (std::uint32_t i = 0; i < group.cluster_count; ++i)
+    {
+        cluster& cluster = m_clusters[group.cluster_offset + i];
+        cluster.parent_lod_bounds = lod_bounds;
+        cluster.parent_lod_error = lod_error;
     }
 }
 } // namespace violet

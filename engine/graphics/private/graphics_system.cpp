@@ -217,7 +217,7 @@ void graphics_system::render()
     std::sort(
         render_queue.begin(),
         render_queue.end(),
-        [&world](auto& a, auto& b)
+        [](const auto& a, const auto& b)
         {
             return a.camera->priority > b.camera->priority;
         });

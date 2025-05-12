@@ -4,7 +4,6 @@
 #include "graphics/gpu_array.hpp"
 #include "graphics/material.hpp"
 #include "graphics/resources/texture.hpp"
-#include "math/box.hpp"
 #include <unordered_map>
 #include <vector>
 
@@ -23,17 +22,14 @@ public:
 
     render_id add_mesh();
     void remove_mesh(render_id mesh_id);
-    void set_mesh_model_matrix(render_id mesh_id, const mat4f& matrix_m);
-    void set_mesh_geometry(render_id mesh_id, geometry* geometry);
-    void set_mesh_bounds(render_id mesh_id, const box3f& box, const sphere3f& sphere);
+    void set_mesh_matrix(render_id mesh_id, const mat4f& matrix_m);
 
     render_id add_instance(render_id mesh_id);
     void remove_instance(render_id instance_id);
-    void set_instance_data(
+    void set_instance_geometry(
         render_id instance_id,
-        std::uint32_t vertex_offset,
-        std::uint32_t index_offset,
-        std::uint32_t index_count);
+        geometry* geometry,
+        std::uint32_t submesh_index);
     void set_instance_material(render_id instance_id, material* material);
 
     render_id add_light();
@@ -69,7 +65,7 @@ public:
         return m_lights.get_size();
     }
 
-    std::uint32_t get_group_count() const noexcept
+    std::uint32_t get_batch_count() const noexcept
     {
         return 4 * 1024;
     }
@@ -84,7 +80,7 @@ public:
         return m_instances.get_capacity();
     }
 
-    std::uint32_t get_group_capacity() const noexcept
+    std::uint32_t get_batch_capacity() const noexcept
     {
         return 4 * 1024;
     }
@@ -97,21 +93,20 @@ public:
     template <typename Functor>
     void each_batch(material_type type, Functor&& functor) const
     {
-        for (std::size_t i = 0; i < m_batches.get_size(); ++i)
-        {
-            const auto& batch = m_batches[i];
-
-            if (batch.material_type != type || batch.instance_count == 0)
+        m_batches.each(
+            [&](render_id id, const gpu_batch& batch)
             {
-                continue;
-            }
+                if (batch.material_type != type || batch.instance_count == 0)
+                {
+                    return;
+                }
 
-            functor(i, batch.pipeline, batch.instance_offset, batch.instance_count);
-        }
+                functor(id, batch.pipeline, batch.instance_offset, batch.instance_count);
+            });
     }
 
 private:
-    struct render_batch
+    struct gpu_batch
     {
         using gpu_type = std::uint32_t;
 
@@ -122,35 +117,28 @@ private:
         std::uint32_t instance_count;
     };
 
-    struct render_mesh
+    struct gpu_mesh
     {
         using gpu_type = shader::mesh_data;
 
         mat4f matrix_m;
-
-        geometry* geometry;
-
-        box3f bounding_box;
-        sphere3f bounding_sphere;
-
         std::vector<render_id> instances;
     };
 
-    struct render_instance
+    struct gpu_instance
     {
         using gpu_type = shader::instance_data;
 
-        std::uint32_t vertex_offset;
-        std::uint32_t index_offset;
-        std::uint32_t index_count;
-
         material* material;
+
+        geometry* geometry;
+        std::uint32_t submesh_index;
 
         render_id mesh_id;
         render_id batch_id;
     };
 
-    struct render_light
+    struct gpu_light
     {
         using gpu_type = shader::light_data;
 
@@ -164,6 +152,7 @@ private:
     enum render_scene_state
     {
         RENDER_SCENE_STAGE_DATA_DIRTY = 1 << 0,
+        RENDER_SCENE_STAGE_BATCH_DIRTY = 1 << 1,
     };
     using render_scene_states = std::uint32_t;
 
@@ -183,11 +172,11 @@ private:
     bool update_light(gpu_buffer_uploader* uploader);
     bool update_batch(gpu_buffer_uploader* uploader);
 
-    gpu_dense_array<render_mesh> m_meshes;
-    gpu_dense_array<render_instance> m_instances;
-    gpu_dense_array<render_light> m_lights;
+    gpu_dense_array<gpu_mesh> m_meshes;
+    gpu_dense_array<gpu_instance> m_instances;
+    gpu_dense_array<gpu_light> m_lights;
 
-    gpu_sparse_array<render_batch> m_batches;
+    gpu_sparse_array<gpu_batch> m_batches;
     std::unordered_map<rdg_raster_pipeline, render_id, raster_pipeline_hash> m_pipeline_to_batch;
 
     render_scene_states m_scene_states{0};

@@ -8,12 +8,11 @@
 #include "control/control_system.hpp"
 #include "deferred_renderer_imgui.hpp"
 #include "gltf_loader.hpp"
+#include "graphics/geometries/sphere_geometry.hpp"
 #include "graphics/graphics_system.hpp"
 #include "graphics/materials/unlit_material.hpp"
-#include "graphics/tools/geometry_tool.hpp"
 #include "imgui.h"
 #include "imgui_system.hpp"
-#include "math/box.hpp"
 #include "window/window_system.hpp"
 
 namespace violet
@@ -103,7 +102,7 @@ private:
             scene_component>(m_camera);
 
         auto& camera_control = world.get_component<orbit_control_component>(m_camera);
-        camera_control.radius_speed = 0.05f;
+        camera_control.radius_speed = 0.2f;
         camera_control.target = {0.0f, 0.1f, 0.0f};
 
         auto& camera_transform = world.get_component<transform_component>(m_camera);
@@ -116,77 +115,38 @@ private:
         // Model.
         m_empty_material = std::make_unique<unlit_material>();
 
-        m_root = world.create();
-        world.add_component<transform_component, scene_component>(m_root);
-
-        gltf_loader loader(model_path);
-        if (auto result = loader.load())
+        if (!model_path.empty())
         {
-            m_model = std::move(*result);
+            load_model(model_path);
+        }
+        else
+        {
+            m_empty_geometry = std::make_unique<sphere_geometry>(0.5f, 128, 64);
 
+            m_mesh = world.create();
+            world.add_component<transform_component, mesh_component, scene_component>(m_mesh);
+            auto& mesh = world.get_component<mesh_component>(m_mesh);
+            mesh.geometry = m_empty_geometry.get();
+        }
+
+        auto& mesh = world.get_component<mesh_component>(m_mesh);
+        mesh.geometry->generate_clusters();
+        mesh.geometry->clear_submeshes();
+        mesh.submeshes.clear();
+
+        for (std::uint32_t i = 0; i < mesh.geometry->get_clusters().size(); ++i)
+        {
+            const auto& cluster = mesh.geometry->get_clusters()[i];
+
+            m_max_lod = std::max(m_max_lod, cluster.lod);
+            mesh.geometry->add_submesh(0, cluster.index_offset, cluster.index_count);
+
+            if (cluster.lod == 0)
             {
-                auto positions = m_model.geometries[0]->get_position();
-                auto indexes = m_model.geometries[0]->get_index();
-                m_cluster_result = geometry_tool::generate_clusters(positions, indexes);
-
-                m_cluster_geometry = std::make_unique<geometry>();
-                m_cluster_geometry->set_position(m_cluster_result.positions);
-                m_cluster_geometry->set_index(m_cluster_result.indexes);
-            }
-
-            std::vector<entity> entities;
-            for (auto& node : m_model.nodes)
-            {
-                entity entity = world.create();
-                world.add_component<transform_component, parent_component, scene_component>(entity);
-
-                auto& transform = world.get_component<transform_component>(entity);
-                transform.set_position(node.position);
-                transform.set_rotation(node.rotation);
-                transform.set_scale(node.scale);
-
-                entities.push_back(entity);
-            }
-
-            for (std::size_t i = 0; i < m_model.nodes.size(); ++i)
-            {
-                auto& node = m_model.nodes[i];
-                auto entity = entities[i];
-
-                if (node.mesh != -1)
-                {
-                    world.add_component<mesh_component>(entity);
-
-                    auto& mesh_data = m_model.meshes[node.mesh];
-
-                    auto& entity_mesh = world.get_component<mesh_component>(entity);
-                    entity_mesh.geometry = m_model.geometries[mesh_data.geometry].get();
-                    for (auto& submesh_data : mesh_data.submeshes)
-                    {
-                        entity_mesh.submeshes.push_back({
-                            .vertex_offset = submesh_data.vertex_offset,
-                            .index_offset = submesh_data.index_offset,
-                            .index_count = submesh_data.index_count,
-                            .material = submesh_data.material == -1 ?
-                                            m_empty_material.get() :
-                                            m_model.materials[submesh_data.material].get(),
-                        });
-                    }
-
-                    entity_mesh.bounding_box = mesh_data.bounding_box;
-                    entity_mesh.bounding_sphere = mesh_data.bounding_sphere;
-
-                    m_mesh = entity;
-                }
-
-                if (node.parent != -1)
-                {
-                    world.get_component<parent_component>(entity).parent = entities[node.parent];
-                }
-                else
-                {
-                    world.get_component<parent_component>(entity).parent = m_root;
-                }
+                mesh.submeshes.push_back({
+                    .index = i,
+                    .material = get_material(i),
+                });
             }
         }
     }
@@ -200,114 +160,106 @@ private:
     {
         auto& world = get_world();
 
-        if (ImGui::CollapsingHeader("Transform"))
+        static bool auto_lod = false;
+        ImGui::Checkbox("Auto LOD", &auto_lod);
+
+        if (auto_lod)
         {
-            static float rotate = 0.0f;
-            if (ImGui::SliderFloat("Rotate", &rotate, 0.0, 360.0))
-            {
-                auto& transform = world.get_component<transform_component>(m_root);
-                transform.set_rotation(
-                    quaternion::from_axis_angle(vec3f{0.0f, 1.0f, 0.0f}, math::to_radians(rotate)));
-            }
-
-            static float translate = 0.0f;
-            if (ImGui::SliderFloat("Translate", &translate, -5.0f, 5.0))
-            {
-                auto& transform = world.get_component<transform_component>(m_root);
-                transform.set_position({0.0f, 0.0f, translate});
-            }
+            std::uint32_t triangle_count = cull_cluster(1.0f);
+            ImGui::Text("Triangle Count: %u", triangle_count);
         }
-
-        if (ImGui::CollapsingHeader("Cluster"))
+        else
         {
             bool dirty = false;
-            static bool draw_cluster = false;
-            if (ImGui::Checkbox("Draw Cluster", &draw_cluster))
+
+            static int lod = 0;
+            if (ImGui::SliderInt("LOD", &lod, 0, static_cast<int>(m_max_lod)))
             {
                 dirty = true;
+            }
 
-                if (draw_cluster)
+            if (dirty)
+            {
+                auto& mesh = world.get_component<mesh_component>(m_mesh);
+                mesh.submeshes.clear();
+
+                const auto& clusters = mesh.geometry->get_clusters();
+                for (std::uint32_t i = 0; i < clusters.size(); ++i)
                 {
-                    auto& mesh = world.get_component<mesh_component>(m_mesh);
-                    mesh.geometry = m_cluster_geometry.get();
-                }
-                else
-                {
-                    auto& mesh = world.get_component<mesh_component>(m_mesh);
-                    mesh.geometry = m_model.geometries[0].get();
-                    mesh.submeshes.clear();
+                    if (clusters[i].lod != lod)
+                    {
+                        continue;
+                    }
+
                     mesh.submeshes.push_back({
-                        .index_count =
-                            static_cast<std::uint32_t>(m_model.meshes[0].submeshes[0].index_count),
-                        .material = m_empty_material.get(),
+                        .index = i,
+                        .material = get_material(i),
                     });
                 }
             }
+        }
+    }
 
-            if (draw_cluster)
+    void load_model(std::string_view path)
+    {
+        auto& world = get_world();
+
+        gltf_loader loader(path);
+
+        auto result = loader.load();
+        if (!result)
+        {
+            return;
+        }
+
+        m_model = std::move(*result);
+
+        std::vector<entity> entities;
+        for (auto& node : m_model.nodes)
+        {
+            entity entity = world.create();
+            world.add_component<transform_component, scene_component>(entity);
+
+            auto& transform = world.get_component<transform_component>(entity);
+            transform.set_position(node.position);
+            transform.set_rotation(node.rotation);
+            transform.set_scale(node.scale);
+
+            entities.push_back(entity);
+        }
+
+        for (std::size_t i = 0; i < m_model.nodes.size(); ++i)
+        {
+            auto& node = m_model.nodes[i];
+            auto entity = entities[i];
+
+            if (node.mesh != -1)
             {
-                static bool draw_group = false;
-                if (ImGui::Checkbox("Draw Group", &draw_group))
+                world.add_component<mesh_component>(entity);
+
+                auto& mesh_data = m_model.meshes[node.mesh];
+
+                auto& entity_mesh = world.get_component<mesh_component>(entity);
+                entity_mesh.geometry = m_model.geometries[mesh_data.geometry].get();
+                for (auto& submesh_data : mesh_data.submeshes)
                 {
-                    dirty = true;
+                    entity_mesh.submeshes.push_back({
+                        .index = submesh_data.submesh_index,
+                        .material = submesh_data.material == -1 ?
+                                        m_empty_material.get() :
+                                        m_model.materials[submesh_data.material].get(),
+                    });
                 }
 
-                static int lod = 0;
-                if (ImGui::SliderInt(
-                        "LOD",
-                        &lod,
-                        0,
-                        static_cast<int>(m_cluster_result.lods.size() - 1)))
-                {
-                    dirty = true;
-                }
+                m_mesh = entity;
+            }
 
-                if (dirty)
-                {
-                    auto& mesh = world.get_component<mesh_component>(m_mesh);
-                    mesh.geometry = m_cluster_geometry.get();
-                    mesh.submeshes.clear();
-
-                    for (std::uint32_t i = 0; i < m_cluster_result.lods[lod].group_count; ++i)
-                    {
-                        std::uint32_t group_index = m_cluster_result.lods[lod].group_offset + i;
-
-                        for (std::uint32_t j = 0;
-                             j < m_cluster_result.groups[group_index].cluster_count;
-                             ++j)
-                        {
-                            std::uint32_t cluster_index =
-                                m_cluster_result.groups[group_index].cluster_offset + j;
-
-                            auto& cluster = m_cluster_result.clusters[cluster_index];
-
-                            mesh.submeshes.push_back({
-                                .index_offset = cluster.index_offset,
-                                .index_count = cluster.index_count,
-                                .material = get_material(draw_group ? group_index : cluster_index),
-                            });
-                        }
-                    }
-                }
+            if (node.parent != -1)
+            {
+                world.add_component<parent_component>(entity);
+                world.get_component<parent_component>(entity).parent = entities[node.parent];
             }
         }
-
-#ifndef NDEBUG
-        static bool draw_aabb = false;
-        ImGui::Checkbox("Draw AABB", &draw_aabb);
-
-        if (draw_aabb)
-        {
-            auto& debug_drawer = get_system<graphics_system>().get_debug_drawer();
-
-            world.get_view().read<mesh_component>().read<transform_world_component>().each(
-                [&](const mesh_component& mesh, const transform_world_component& transform)
-                {
-                    box3f box = box::transform(mesh.bounding_box, transform.matrix);
-                    debug_drawer.draw_box(box, {0.0f, 1.0f, 0.0f});
-                });
-        }
-#endif
     }
 
     unlit_material* get_material(std::uint32_t id)
@@ -342,19 +294,121 @@ private:
         return m_materials[id].get();
     }
 
+    std::uint32_t cull_cluster(float throshold)
+    {
+        const auto& camera = get_world().get_component<const camera_component>(m_camera);
+        float height = static_cast<float>(camera.get_extent().height);
+        float fov = camera.fov;
+        float cot_half_fov = 1.0f / std::tan(fov * 0.5f);
+
+        const auto& camera_world =
+            get_world().get_component<const transform_world_component>(m_camera);
+        mat4f matrix_v = matrix::inverse_transform(camera_world.matrix);
+
+        const auto& mesh_world = get_world().get_component<const transform_world_component>(m_mesh);
+        mat4f matrix_m = mesh_world.matrix;
+        mat4f matrix_mv = matrix::mul(matrix_m, matrix_v);
+
+        auto& mesh = get_world().get_component<mesh_component>(m_mesh);
+        const auto& clusters = mesh.geometry->get_clusters();
+
+        auto project_error_to_screen = [&](const sphere3f& sphere)
+        {
+            if (!std::isfinite(sphere.radius))
+            {
+                return sphere.radius;
+            }
+            const float d2 = vector::dot(sphere.center, sphere.center);
+            const float r = sphere.radius;
+            return height / 2.0f * cot_half_fov * r / std::sqrt(d2 - r * r);
+        };
+
+        std::vector<std::uint32_t> visible_clusters;
+        std::vector<std::uint8_t> visible_flags(clusters.size());
+
+        std::queue<std::uint32_t> queue;
+        queue.push(clusters.size() - 1);
+
+        while (!queue.empty())
+        {
+            std::uint32_t cluster_index = queue.front();
+            queue.pop();
+
+            if (visible_flags[cluster_index])
+            {
+                continue;
+            }
+
+            visible_flags[cluster_index] = 1;
+
+            const auto& cluster = clusters[cluster_index];
+
+            sphere3f project_bounds = {
+                .center = matrix::mul(
+                    vec4f{
+                        cluster.lod_bounds.center.x,
+                        cluster.lod_bounds.center.y,
+                        cluster.lod_bounds.center.z,
+                        1.0f},
+                    matrix_mv),
+                .radius = cluster.lod_error,
+            };
+            float project_error = project_error_to_screen(project_bounds);
+
+            sphere3f project_parent_bounds = {
+                .center = matrix::mul(
+                    vec4f{
+                        cluster.parent_lod_bounds.center.x,
+                        cluster.parent_lod_bounds.center.y,
+                        cluster.parent_lod_bounds.center.z,
+                        1.0f},
+                    matrix_mv),
+                .radius = cluster.parent_lod_error,
+            };
+            float project_parent_error = project_error_to_screen(project_parent_bounds);
+
+            if ((project_error < throshold && project_parent_error > throshold) ||
+                cluster.lod_error == 0.0f)
+            {
+                visible_clusters.push_back(cluster_index);
+            }
+            else
+            {
+                for (std::uint32_t i = 0; i < cluster.children_count; ++i)
+                {
+                    queue.push(cluster.children_offset + i);
+                }
+            }
+        }
+
+        mesh.submeshes.clear();
+
+        std::uint32_t triangle_count = 0;
+        for (std::uint32_t cluster_index : visible_clusters)
+        {
+            mesh.submeshes.push_back({
+                .index = cluster_index,
+                .material = get_material(cluster_index),
+            });
+
+            triangle_count += clusters[cluster_index].index_count / 3;
+        }
+
+        return triangle_count;
+    }
+
     entity m_light;
     entity m_camera;
-    entity m_root;
     entity m_mesh;
 
+    mesh_loader::scene_data m_model;
+
     std::unique_ptr<unlit_material> m_empty_material;
+    std::unique_ptr<geometry> m_empty_geometry;
 
     std::unordered_map<std::uint32_t, std::unique_ptr<unlit_material>> m_materials;
 
-    mesh_loader::scene_data m_model;
-    geometry_tool::cluster_result m_cluster_result;
-
-    std::unique_ptr<geometry> m_cluster_geometry;
+    std::uint32_t m_max_lod{0};
 
     rhi_ptr<rhi_swapchain> m_swapchain;
 

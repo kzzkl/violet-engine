@@ -19,11 +19,8 @@ render_scene::~render_scene() {}
 
 render_id render_scene::add_mesh()
 {
-    render_id mesh_id = m_meshes.add();
-
     m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
-
-    return mesh_id;
+    return m_meshes.add();
 }
 
 void render_scene::remove_mesh(render_id mesh_id)
@@ -46,44 +43,10 @@ void render_scene::remove_mesh(render_id mesh_id)
     m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
 }
 
-void render_scene::set_mesh_model_matrix(render_id mesh_id, const mat4f& matrix_m)
+void render_scene::set_mesh_matrix(render_id mesh_id, const mat4f& matrix_m)
 {
     auto& mesh = m_meshes[mesh_id];
     mesh.matrix_m = matrix_m;
-
-    m_meshes.mark_dirty(mesh_id);
-}
-
-void render_scene::set_mesh_geometry(render_id mesh_id, geometry* geometry)
-{
-    assert(geometry != nullptr);
-
-    auto& mesh = m_meshes[mesh_id];
-
-    if (mesh.geometry == geometry)
-    {
-        return;
-    }
-
-    mesh.geometry = geometry;
-
-    m_meshes.mark_dirty(mesh_id);
-}
-
-void render_scene::set_mesh_bounds(render_id mesh_id, const box3f& box, const sphere3f& sphere)
-{
-    auto& mesh = m_meshes[mesh_id];
-
-    box3f new_box = box ? box : mesh.geometry->get_bounding_box();
-    sphere3f new_sphere = sphere ? sphere : mesh.geometry->get_bounding_sphere();
-
-    if (mesh.bounding_box == new_box && mesh.bounding_sphere == new_sphere)
-    {
-        return;
-    }
-
-    mesh.bounding_box = new_box;
-    mesh.bounding_sphere = new_sphere;
 
     m_meshes.mark_dirty(mesh_id);
 }
@@ -119,27 +82,30 @@ void render_scene::remove_instance(render_id instance_id)
     m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
 }
 
-void render_scene::set_instance_data(
+void render_scene::set_instance_geometry(
     render_id instance_id,
-    std::uint32_t vertex_offset,
-    std::uint32_t index_offset,
-    std::uint32_t index_count)
+    geometry* geometry,
+    std::uint32_t submesh_index)
 {
+    assert(geometry != nullptr && submesh_index < geometry->get_submeshes().size());
+
     auto& instance = m_instances[instance_id];
 
-    if (instance.vertex_offset != vertex_offset || instance.index_offset != index_offset ||
-        instance.index_count != index_count)
+    if (instance.geometry == geometry && instance.submesh_index == submesh_index)
     {
-        instance.vertex_offset = vertex_offset;
-        instance.index_offset = index_offset;
-        instance.index_count = index_count;
-
-        m_instances.mark_dirty(instance_id);
+        return;
     }
+
+    instance.geometry = geometry;
+    instance.submesh_index = submesh_index;
+
+    m_instances.mark_dirty(instance_id);
 }
 
 void render_scene::set_instance_material(render_id instance_id, material* material)
 {
+    assert(material != nullptr);
+
     auto& instance_info = m_instances[instance_id];
 
     if (instance_info.material != material)
@@ -211,6 +177,8 @@ void render_scene::update(gpu_buffer_uploader* uploader)
 
     std::uint32_t material_buffer =
         material_manager->get_material_buffer()->get_srv()->get_bindless();
+    std::uint32_t geometry_buffer =
+        geometry_manager->get_geometry_buffer()->get_srv()->get_bindless();
     std::uint32_t vertex_buffer = geometry_manager->get_vertex_buffer()->get_srv()->get_bindless();
     std::uint32_t index_buffer = geometry_manager->get_index_buffer()->get_srv()->get_bindless();
 
@@ -218,6 +186,7 @@ void render_scene::update(gpu_buffer_uploader* uploader)
         m_scene_data.vertex_buffer != vertex_buffer || m_scene_data.index_buffer != index_buffer)
     {
         m_scene_data.material_buffer = material_buffer;
+        m_scene_data.geometry_buffer = geometry_buffer;
         m_scene_data.vertex_buffer = vertex_buffer;
         m_scene_data.index_buffer = index_buffer;
 
@@ -265,6 +234,8 @@ void render_scene::add_instance_to_batch(render_id instance_id, const material* 
     ++batch.instance_count;
 
     m_instances[instance_id].batch_id = batch_id;
+
+    m_scene_states |= RENDER_SCENE_STAGE_BATCH_DIRTY;
 }
 
 void render_scene::remove_instance_from_batch(render_id instance_id)
@@ -284,37 +255,17 @@ void render_scene::remove_instance_from_batch(render_id instance_id)
         m_pipeline_to_batch.erase(batch.pipeline);
         m_batches.remove(batch_id);
     }
+
+    m_scene_states |= RENDER_SCENE_STAGE_BATCH_DIRTY;
 }
 
 bool render_scene::update_mesh(gpu_buffer_uploader* uploader)
 {
-    geometry_manager* geometry_manager = render_device::instance().get_geometry_manager();
     return m_meshes.update(
-        [&](const render_mesh& mesh) -> shader::mesh_data
+        [](const gpu_mesh& mesh) -> shader::mesh_data
         {
-            box3f bounding_box_ws = box::transform(mesh.bounding_box, mesh.matrix_m);
-            sphere3f bounding_sphere_ws = sphere::transform(mesh.bounding_sphere, mesh.matrix_m);
-
-            auto buffer_addresses = geometry_manager->get_buffer_addresses(mesh.geometry->get_id());
-
             return {
                 .matrix_m = mesh.matrix_m,
-                .bounding_sphere = bounding_sphere_ws,
-                .bounding_box_min = bounding_box_ws.min,
-                .flags = 0,
-                .bounding_box_max = bounding_box_ws.max,
-                .index_offset = buffer_addresses[GEOMETRY_BUFFER_INDEX] / 4,
-                .position_address = buffer_addresses[GEOMETRY_BUFFER_POSITION],
-                .normal_address = buffer_addresses[GEOMETRY_BUFFER_NORMAL],
-                .tangent_address = buffer_addresses[GEOMETRY_BUFFER_TANGENT],
-                .texcoord_address = buffer_addresses[GEOMETRY_BUFFER_TEXCOORD],
-                .custom_addresses =
-                    {
-                        buffer_addresses[GEOMETRY_BUFFER_CUSTOM_0],
-                        buffer_addresses[GEOMETRY_BUFFER_CUSTOM_1],
-                        buffer_addresses[GEOMETRY_BUFFER_CUSTOM_2],
-                        buffer_addresses[GEOMETRY_BUFFER_CUSTOM_3],
-                    },
             };
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
@@ -334,13 +285,12 @@ bool render_scene::update_instance(gpu_buffer_uploader* uploader)
     material_manager* material_manager = render_device::instance().get_material_manager();
 
     return m_instances.update(
-        [&](const render_instance& instance) -> shader::instance_data
+        [&](const gpu_instance& instance) -> shader::instance_data
         {
             return {
                 .mesh_index = m_meshes.get_index(instance.mesh_id),
-                .vertex_offset = instance.vertex_offset,
-                .index_offset = instance.index_offset,
-                .index_count = instance.index_count,
+                .geometry_index = static_cast<std::uint32_t>(
+                    instance.geometry->get_submesh_id(instance.submesh_index)),
                 .batch_index = static_cast<std::uint32_t>(instance.batch_id),
                 .material_address =
                     material_manager->get_material_constant_address(instance.material->get_id()),
@@ -361,7 +311,7 @@ bool render_scene::update_instance(gpu_buffer_uploader* uploader)
 bool render_scene::update_light(gpu_buffer_uploader* uploader)
 {
     return m_lights.update(
-        [&](const render_light& light) -> shader::light_data
+        [&](const gpu_light& light) -> shader::light_data
         {
             return {
                 .position = light.position,
@@ -386,18 +336,22 @@ bool render_scene::update_light(gpu_buffer_uploader* uploader)
 
 bool render_scene::update_batch(gpu_buffer_uploader* uploader)
 {
-    std::uint32_t instance_offset = 0;
-    for (std::size_t i = 0; i < m_batches.get_size(); ++i)
+    if ((m_scene_states & RENDER_SCENE_STAGE_BATCH_DIRTY) == 0)
     {
-        auto& batch = m_batches[i];
-        batch.instance_offset = instance_offset;
-        instance_offset += batch.instance_count;
-
-        m_batches.mark_dirty(i);
+        return false;
     }
 
+    std::uint32_t instance_offset = 0;
+    m_batches.each(
+        [&](render_id batch_id, gpu_batch& batch)
+        {
+            batch.instance_offset = instance_offset;
+            instance_offset += batch.instance_count;
+            m_batches.mark_dirty(batch_id);
+        });
+
     return m_batches.update(
-        [](const render_batch& batch) -> std::uint32_t
+        [](const gpu_batch& batch) -> std::uint32_t
         {
             return batch.instance_offset;
         },

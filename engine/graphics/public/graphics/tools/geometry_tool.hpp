@@ -1,5 +1,6 @@
 #pragma once
 
+#include "math/sphere.hpp"
 #include "math/types.hpp"
 #include <span>
 #include <vector>
@@ -27,20 +28,24 @@ public:
         {
             std::uint32_t index_offset;
             std::uint32_t index_count;
-            float error;
+
+            sphere3f bounding_sphere;
+
+            sphere3f lod_bounds;
+            float lod_error;
+
+            sphere3f parent_lod_bounds;
+            float parent_lod_error;
+
+            std::uint32_t children_group;
         };
 
         struct group
         {
             std::uint32_t cluster_offset;
             std::uint32_t cluster_count;
-            float error;
-        };
 
-        struct lod
-        {
-            std::uint32_t group_offset;
-            std::uint32_t group_count;
+            std::uint32_t lod;
         };
 
         std::vector<vec3f> positions;
@@ -48,7 +53,6 @@ public:
 
         std::vector<cluster> clusters;
         std::vector<group> groups;
-        std::vector<lod> lods;
     };
 
     static cluster_result generate_clusters(

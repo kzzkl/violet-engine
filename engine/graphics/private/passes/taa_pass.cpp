@@ -79,7 +79,6 @@ void taa_pass::add(render_graph& graph, const parameter& parameter)
                 .history_render_target =
                     data.history_render_target ? data.history_render_target.get_bindless() : 0,
                 .depth_buffer = data.depth_buffer.get_bindless(),
-                .motion_vector = data.motion_vector.get_bindless(),
                 .resolved_render_target = data.resolved_render_target.get_bindless(),
                 .width = extent.width,
                 .height = extent.height,

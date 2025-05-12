@@ -10,6 +10,7 @@
 #include "deferred_renderer_imgui.hpp"
 #include "gltf_loader.hpp"
 #include "graphics/geometries/box_geometry.hpp"
+#include "graphics/geometries/plane_geometry.hpp"
 #include "graphics/geometries/sphere_geometry.hpp"
 #include "graphics/graphics_system.hpp"
 #include "graphics/materials/physical_material.hpp"
@@ -132,7 +133,89 @@ private:
         m_root = world.create();
         world.add_component<transform_component, scene_component>(m_root);
 
-        gltf_loader loader(m_model_path);
+        load_model(m_model_path);
+
+        m_plane_geometry = std::make_unique<plane_geometry>(10.0f, 10.0f);
+        {
+            m_plane = world.create();
+            world.add_component<transform_component, mesh_component, scene_component>(m_plane);
+
+            m_plane_material2 = std::make_unique<unlit_material>();
+            m_plane_material2->set_color({0.0f, 1.0f, 0.0f});
+            // m_plane_material2->set_metallic(0.5f);
+            // m_plane_material2->set_roughness(0.5f);
+
+            auto& plane_mesh = world.get_component<mesh_component>(m_plane);
+            plane_mesh.geometry = m_plane_geometry.get();
+            plane_mesh.submeshes.push_back({
+                .material = m_plane_material2.get(),
+            });
+            auto& plane_transform = world.get_component<transform_component>(m_plane);
+            plane_transform.set_position({0.0f, 0.0f, 0.0f});
+            plane_transform.set_scale({100.0f, 100.0f, 1.0f});
+            plane_transform.set_rotation(
+                quaternion::from_euler(vec3f{math::to_radians(90.0f), 0.0f, 0.0f}));
+        }
+
+        // Plane.
+        m_plane = world.create();
+        world.add_component<transform_component, mesh_component, scene_component>(m_plane);
+
+        m_plane_material = std::make_unique<physical_material>();
+        m_plane_material->set_albedo({1.0f, 1.0f, 0.0f});
+        m_plane_material->set_metallic(0.5f);
+        m_plane_material->set_roughness(0.5f);
+
+        auto& plane_mesh = world.get_component<mesh_component>(m_plane);
+        plane_mesh.geometry = m_plane_geometry.get();
+        plane_mesh.submeshes.push_back({
+            .material = m_plane_material.get(),
+        });
+        auto& plane_transform = world.get_component<transform_component>(m_plane);
+        plane_transform.set_position({0.0f, -1.0f, 0.0f});
+        plane_transform.set_scale({100.0f, 100.0f, 1.0f});
+        plane_transform.set_rotation(
+            quaternion::from_euler(vec3f{math::to_radians(90.0f), 0.0f, 0.0f}));
+
+        // Spheres.
+        // m_sphere_geometry = std::make_unique<sphere_geometry>();
+        // m_sphere_material = std::make_unique<physical_material>();
+
+        // std::uint32_t size = 10;
+        // for (std::uint32_t i = 0; i < size; ++i)
+        // {
+        //     for (std::uint32_t j = 0; j < size; ++j)
+        //     {
+        //         for (std::uint32_t k = 0; k < size; ++k)
+        //         {
+        //             vec3f position = {
+        //                 static_cast<float>(i) - static_cast<float>(size) / 2.0f,
+        //                 static_cast<float>(j) - static_cast<float>(size) / 2.0f,
+        //                 static_cast<float>(k) - static_cast<float>(size) / 2.0f,
+        //             };
+        //             position *= 2.0f;
+
+        //             entity sphere = world.create();
+        //             world.add_component<transform_component, mesh_component, scene_component>(
+        //                 sphere);
+
+        //             auto& sphere_mesh = world.get_component<mesh_component>(sphere);
+        //             sphere_mesh.geometry = m_sphere_geometry.get();
+        //             sphere_mesh.submeshes.push_back({
+        //                 .material = m_sphere_material.get(),
+        //             });
+        //             auto& sphere_transform = world.get_component<transform_component>(sphere);
+        //             sphere_transform.set_position(position);
+        //         }
+        //     }
+        // }
+    }
+
+    void load_model(std::string_view path)
+    {
+        auto& world = get_world();
+
+        gltf_loader loader(path);
         if (auto result = loader.load())
         {
             m_model = std::move(*result);
@@ -167,17 +250,12 @@ private:
                     for (auto& submesh_data : mesh_data.submeshes)
                     {
                         entity_mesh.submeshes.push_back({
-                            .vertex_offset = submesh_data.vertex_offset,
-                            .index_offset = submesh_data.index_offset,
-                            .index_count = submesh_data.index_count,
+                            .index = submesh_data.submesh_index,
                             .material = submesh_data.material == -1 ?
                                             m_empty_material.get() :
                                             m_model.materials[submesh_data.material].get(),
                         });
                     }
-
-                    entity_mesh.bounding_box = mesh_data.bounding_box;
-                    entity_mesh.bounding_sphere = mesh_data.bounding_sphere;
                 }
 
                 if (node.parent != -1)
@@ -187,67 +265,6 @@ private:
                 else
                 {
                     world.get_component<parent_component>(entity).parent = m_root;
-                }
-            }
-        }
-
-        // Plane.
-        m_plane = world.create();
-        world.add_component<transform_component, mesh_component, scene_component>(m_plane);
-
-        m_plane_geometry = std::make_unique<box_geometry>(10.0f, 0.05f, 10.0f);
-        m_plane_material = std::make_unique<physical_material>();
-
-        auto& plane_mesh = world.get_component<mesh_component>(m_plane);
-        plane_mesh.geometry = m_plane_geometry.get();
-        plane_mesh.submeshes.push_back({
-            .material = m_plane_material.get(),
-        });
-        auto& plane_transform = world.get_component<transform_component>(m_plane);
-        plane_transform.set_position({0.0f, -1.0f, 0.0f});
-
-        // Spheres.
-        m_sphere_geometry = std::make_unique<sphere_geometry>();
-        m_sphere_material = std::make_unique<physical_material>();
-
-        std::uint32_t size = 10;
-        for (std::uint32_t i = 0; i < size; ++i)
-        {
-            if (i != 3)
-            {
-                // continue;
-            }
-            for (std::uint32_t j = 0; j < size; ++j)
-            {
-                if (j != 4)
-                {
-                    // continue;
-                }
-                for (std::uint32_t k = 0; k < size; ++k)
-                {
-                    if (k != 0)
-                    {
-                        // continue;
-                    }
-
-                    vec3f position = {
-                        static_cast<float>(i) - static_cast<float>(size) / 2.0f,
-                        static_cast<float>(j) - static_cast<float>(size) / 2.0f,
-                        static_cast<float>(k) - static_cast<float>(size) / 2.0f,
-                    };
-                    position *= 2.0f;
-
-                    entity sphere = world.create();
-                    world.add_component<transform_component, mesh_component, scene_component>(
-                        sphere);
-
-                    auto& sphere_mesh = world.get_component<mesh_component>(sphere);
-                    sphere_mesh.geometry = m_sphere_geometry.get();
-                    sphere_mesh.submeshes.push_back({
-                        .material = m_sphere_material.get(),
-                    });
-                    auto& sphere_transform = world.get_component<transform_component>(sphere);
-                    sphere_transform.set_position(position);
                 }
             }
         }
@@ -337,23 +354,6 @@ private:
             gtao->set_radius(radius);
             gtao->set_falloff(falloff);
         }
-
-#ifndef NDEBUG
-        static bool draw_aabb = false;
-        ImGui::Checkbox("Draw AABB", &draw_aabb);
-
-        if (draw_aabb)
-        {
-            auto& debug_drawer = get_system<graphics_system>().get_debug_drawer();
-
-            world.get_view().read<mesh_component>().read<transform_world_component>().each(
-                [&](const mesh_component& mesh, const transform_world_component& transform)
-                {
-                    box3f box = box::transform(mesh.bounding_box, transform.matrix);
-                    debug_drawer.draw_box(box, {0.0f, 1.0f, 0.0f});
-                });
-        }
-#endif
     }
 
     entity m_light;
@@ -362,7 +362,8 @@ private:
 
     entity m_plane;
     std::unique_ptr<geometry> m_plane_geometry;
-    std::unique_ptr<material> m_plane_material;
+    std::unique_ptr<physical_material> m_plane_material;
+    std::unique_ptr<unlit_material> m_plane_material2;
 
     std::unique_ptr<geometry> m_sphere_geometry;
     std::unique_ptr<physical_material> m_sphere_material;

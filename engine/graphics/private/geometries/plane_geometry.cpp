@@ -68,10 +68,12 @@ plane_geometry::plane_geometry(
     std::vector<vec4f> tangents =
         geometry_tool::generate_tangents(positions, normals, texcoords, indexes);
 
-    set_position(positions);
-    set_normal(normals);
-    set_tangent(tangents);
-    set_texcoord(texcoords);
-    set_index(indexes);
+    set_positions(positions);
+    set_normals(normals);
+    set_tangents(tangents);
+    set_texcoords(texcoords);
+    set_indexes(indexes);
+
+    add_submesh(0, 0, static_cast<std::uint32_t>(indexes.size()));
 }
 } // namespace violet

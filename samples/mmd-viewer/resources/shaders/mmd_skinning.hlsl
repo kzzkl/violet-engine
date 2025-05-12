@@ -2,14 +2,14 @@
 
 struct constant_data
 {
-    uint vertex_buffer;
-    uint skeleton;
     uint position_input_address;
     uint normal_input_address;
     uint tangent_input_address;
     uint position_output_address;
     uint normal_output_address;
     uint tangent_output_address;
+    uint vertex_buffer;
+    uint skeleton;
     uint skin;
     uint bdef;
     uint sdef;
