@@ -311,8 +311,14 @@ void vk_parameter_manager::remove_dirty_parameter(vk_parameter* parameter)
 {
     std::lock_guard lock(m_mutex);
 
-    auto& queue = m_update_queues[m_context->get_frame_resource_index() % 2];
-    queue.erase(std::find(queue.begin(), queue.end(), parameter));
+    for (auto& queue : m_update_queues)
+    {
+        auto iter = std::find(queue.begin(), queue.end(), parameter);
+        if (iter != queue.end())
+        {
+            queue.erase(iter);
+        }
+    }
 }
 
 void vk_parameter_manager::sync_parameter()

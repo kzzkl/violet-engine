@@ -24,9 +24,12 @@ public:
     vk_context(const vk_context&) = delete;
     ~vk_context();
 
+    vk_context& operator=(const vk_context&) = delete;
+
     bool initialize(const rhi_desc& desc);
 
-    void next_frame() noexcept;
+    void begin_frame();
+    void end_frame();
 
     VkDescriptorSet allocate_descriptor_set(VkDescriptorSetLayout layout);
     void free_descriptor_set(VkDescriptorSet descriptor_set);
@@ -107,8 +110,6 @@ public:
     {
         return m_vma_allocator;
     }
-
-    vk_context& operator=(const vk_context&) = delete;
 
 private:
     bool initialize_instance(

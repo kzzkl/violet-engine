@@ -186,12 +186,18 @@ bool vk_context::initialize(const rhi_desc& desc)
     return true;
 }
 
-void vk_context::next_frame() noexcept
+void vk_context::begin_frame()
+{
+    m_deletion_queue->tick(m_frame_count);
+    m_graphics_queue->begin_frame();
+
+    m_parameter_manager->sync_parameter();
+}
+
+void vk_context::end_frame()
 {
     ++m_frame_count;
     m_frame_resource_index = m_frame_count % m_frame_resource_count;
-
-    m_parameter_manager->sync_parameter();
 }
 
 VkDescriptorSet vk_context::allocate_descriptor_set(VkDescriptorSetLayout layout)
@@ -298,17 +304,6 @@ bool vk_context::initialize_instance(
         desired_extensions.size() > 0 ? desired_extensions.data() : nullptr};
 
 #ifndef NDEBUG
-    VkDebugUtilsMessengerCreateInfoEXT debug_info = {};
-    debug_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    debug_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-                                 VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                                 VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    debug_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                             VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-
-    debug_info.pfnUserCallback = debug_callback;
-    debug_info.pUserData = nullptr;
-
     std::vector<VkValidationFeatureEnableEXT> validation_features = {
         VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT,
     };
@@ -319,9 +314,18 @@ bool vk_context::initialize_instance(
         .pEnabledValidationFeatures = validation_features.data(),
     };
 
-    validation_features_info.pNext = &debug_info;
+    VkDebugUtilsMessengerCreateInfoEXT debug_info = {};
+    debug_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    debug_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                 VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    debug_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                             VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
-    instance_info.pNext = &validation_features_info;
+    debug_info.pfnUserCallback = debug_callback;
+    debug_info.pUserData = nullptr;
+    debug_info.pNext = &validation_features_info;
+
+    instance_info.pNext = &debug_info;
 #endif
 
     vk_check(vkCreateInstance(&instance_info, nullptr, &m_instance));

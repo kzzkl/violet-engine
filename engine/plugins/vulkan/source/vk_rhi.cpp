@@ -37,13 +37,12 @@ void vk_rhi::execute(rhi_command* command, bool sync)
 
 void vk_rhi::begin_frame()
 {
-    m_context->get_deletion_queue()->tick(m_context->get_frame_count());
-    m_context->get_graphics_queue()->begin_frame();
+    m_context->begin_frame();
 }
 
 void vk_rhi::end_frame()
 {
-    m_context->next_frame();
+    m_context->end_frame();
 }
 
 rhi_render_pass* vk_rhi::create_render_pass(const rhi_render_pass_desc& desc)

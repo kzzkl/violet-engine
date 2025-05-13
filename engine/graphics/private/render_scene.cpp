@@ -183,6 +183,7 @@ void render_scene::update(gpu_buffer_uploader* uploader)
     std::uint32_t index_buffer = geometry_manager->get_index_buffer()->get_srv()->get_bindless();
 
     if (m_scene_data.material_buffer != material_buffer ||
+        m_scene_data.geometry_buffer != geometry_buffer ||
         m_scene_data.vertex_buffer != vertex_buffer || m_scene_data.index_buffer != index_buffer)
     {
         m_scene_data.material_buffer = material_buffer;

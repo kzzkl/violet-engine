@@ -45,7 +45,6 @@ private:
 
     rhi_fence* render(const render_context& context);
 
-    void switch_frame_resource();
     rhi_fence* allocate_fence();
 
     std::unique_ptr<rhi_plugin> m_plugin;
