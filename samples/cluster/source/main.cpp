@@ -149,6 +149,32 @@ private:
                 });
             }
         }
+
+        m_bvh_node_count =
+            static_cast<std::uint32_t>(mesh.geometry->get_cluster_bvh_nodes().size());
+
+        // Debug.
+        m_debug_geometry = std::make_unique<sphere_geometry>(1.0f, 64, 32);
+        m_debug_material = std::make_unique<unlit_material>();
+        m_debug_material->set_color({1.0f, 0.0f, 0.0f});
+
+        for (std::uint32_t i = 0; i < mesh.geometry->get_clusters().size(); ++i)
+        {
+            entity entity = world.create();
+            world.add_component<
+                transform_component,
+                mesh_component,
+                scene_component,
+                parent_component>(entity);
+
+            auto& debug_mesh = world.get_component<mesh_component>(entity);
+            debug_mesh.geometry = m_debug_geometry.get();
+
+            auto& debug_parent = world.get_component<parent_component>(entity);
+            debug_parent.parent = m_mesh;
+
+            m_debug_entities.push_back(entity);
+        }
     }
 
     void resize()
@@ -160,41 +186,122 @@ private:
     {
         auto& world = get_world();
 
-        static bool auto_lod = false;
-        ImGui::Checkbox("Auto LOD", &auto_lod);
+        const char* items[] = {"Auto LOD", "LOD", "BVH"};
+        static int item = 0;
+        ImGui::Combo("View", &item, items, IM_ARRAYSIZE(items));
 
-        if (auto_lod)
+        if (item == 0)
         {
-            std::uint32_t triangle_count = cull_cluster(1.0f);
+            const char* cull_modes[] = {"Hierarchy", "BVH", "Naive"};
+            static int mode = 0;
+
+            ImGui::Combo("Mode", &mode, cull_modes, IM_ARRAYSIZE(cull_modes));
+
+            static bool lod_forced = false;
+            ImGui::Checkbox("Force LOD", &lod_forced);
+
+            static int lod = 0;
+            if (lod_forced)
+            {
+                ImGui::SliderInt("LOD", &lod, 0, static_cast<int>(m_max_lod));
+            }
+
+            std::uint32_t triangle_count = cull_cluster(1.0f, mode, lod_forced ? &lod : nullptr);
             ImGui::Text("Triangle Count: %u", triangle_count);
+            ImGui::Text("Checked Count: %u", m_check_times);
         }
-        else
+        else if (item == 1)
         {
-            bool dirty = false;
-
             static int lod = 0;
             if (ImGui::SliderInt("LOD", &lod, 0, static_cast<int>(m_max_lod)))
             {
-                dirty = true;
+                show_lod(lod);
+            }
+        }
+        else if (item == 2)
+        {
+            static int bvh_node_index = 0;
+            if (ImGui::SliderInt(
+                    "BVH Node",
+                    &bvh_node_index,
+                    0,
+                    static_cast<int>(m_bvh_node_count - 1)))
+            {
+                show_bvh_node(bvh_node_index);
+            }
+        }
+
+        static bool debug = false;
+        if (ImGui::Checkbox("Error Bounds", &debug))
+        {
+            if (!debug)
+            {
+                for (entity entity : m_debug_entities)
+                {
+                    auto& debug_mesh = world.get_component<mesh_component>(entity);
+                    debug_mesh.submeshes.clear();
+                }
+            }
+        }
+
+        if (debug)
+        {
+            static bool debug_view = false;
+            static int debug_lod = 0;
+            static float error_bounds_scale = 1.0f;
+
+            ImGui::Checkbox("Debug View", &debug_view);
+            ImGui::SliderInt("Debug LOD", &debug_lod, 0, static_cast<int>(m_max_lod));
+            ImGui::SliderFloat("Error Bounds Scale", &error_bounds_scale, 1.0f, 10.0f);
+
+            for (entity entity : m_debug_entities)
+            {
+                auto& debug_mesh = world.get_component<mesh_component>(entity);
+                debug_mesh.submeshes.clear();
             }
 
-            if (dirty)
+            const auto& mesh_world = world.get_component<const transform_world_component>(m_mesh);
+
+            const auto& camera_world =
+                world.get_component<const transform_world_component>(m_camera);
+            vec3f camera_position = camera_world.get_position();
+            camera_position = matrix::mul(
+                {camera_position.x, camera_position.y, camera_position.z, 1.0f},
+                matrix::inverse(mesh_world.matrix));
+
+            const auto& mesh = world.get_component<mesh_component>(m_mesh);
+            const auto& clusters = mesh.geometry->get_clusters();
+
+            for (std::uint32_t i = 0; i < clusters.size(); ++i)
             {
-                auto& mesh = world.get_component<mesh_component>(m_mesh);
-                mesh.submeshes.clear();
-
-                const auto& clusters = mesh.geometry->get_clusters();
-                for (std::uint32_t i = 0; i < clusters.size(); ++i)
+                if (clusters[i].lod != debug_lod)
                 {
-                    if (clusters[i].lod != lod)
-                    {
-                        continue;
-                    }
+                    continue;
+                }
 
-                    mesh.submeshes.push_back({
-                        .index = i,
-                        .material = get_material(i),
-                    });
+                auto& debug_mesh = world.get_component<mesh_component>(m_debug_entities[i]);
+                debug_mesh.submeshes.push_back({
+                    .index = 0,
+                    .material = m_debug_material.get(),
+                });
+
+                auto& debug_transform =
+                    world.get_component<transform_component>(m_debug_entities[i]);
+
+                if (debug_view)
+                {
+                    vec3f camera_to_center = clusters[i].lod_bounds.center - camera_position;
+                    vec3f near =
+                        clusters[i].lod_bounds.center -
+                        vector::normalize(camera_to_center) * clusters[i].lod_bounds.radius;
+
+                    debug_transform.set_position(near);
+                    debug_transform.set_scale(clusters[i].lod_error * error_bounds_scale);
+                }
+                else
+                {
+                    debug_transform.set_position(clusters[i].lod_bounds.center);
+                    debug_transform.set_scale(clusters[i].lod_bounds.radius * error_bounds_scale);
                 }
             }
         }
@@ -294,7 +401,7 @@ private:
         return m_materials[id].get();
     }
 
-    std::uint32_t cull_cluster(float throshold)
+    std::uint32_t cull_cluster(float throshold, int mode, const int* lod = nullptr)
     {
         const auto& camera = get_world().get_component<const camera_component>(m_camera);
         float height = static_cast<float>(camera.get_extent().height);
@@ -306,86 +413,67 @@ private:
         mat4f matrix_v = matrix::inverse_transform(camera_world.matrix);
 
         const auto& mesh_world = get_world().get_component<const transform_world_component>(m_mesh);
-        mat4f matrix_m = mesh_world.matrix;
-        mat4f matrix_mv = matrix::mul(matrix_m, matrix_v);
+        mat4f matrix_mv = matrix::mul(mesh_world.matrix, matrix_v);
 
-        auto& mesh = get_world().get_component<mesh_component>(m_mesh);
-        const auto& clusters = mesh.geometry->get_clusters();
-
-        auto project_error_to_screen = [&](const sphere3f& sphere)
+        auto project_error_to_screen = [&](const sphere3f& bounds, float error) -> vec2f
         {
-            if (!std::isfinite(sphere.radius))
+            if (!std::isfinite(error))
             {
-                return sphere.radius;
+                return {error, error};
             }
-            const float d2 = vector::dot(sphere.center, sphere.center);
-            const float r = sphere.radius;
-            return height / 2.0f * cot_half_fov * r / std::sqrt(d2 - r * r);
+
+            vec3f center_vs = matrix::mul(
+                vec4f{bounds.center.x, bounds.center.y, bounds.center.z, 1.0f},
+                matrix_mv);
+            vec3f direction_vs = vector::normalize(center_vs);
+            vec3f near_vs = center_vs - direction_vs * bounds.radius;
+            vec3f far_vs = center_vs + direction_vs * bounds.radius;
+
+            const float near_d2 = vector::dot(near_vs, near_vs);
+            const float far_d2 = vector::dot(far_vs, far_vs);
+
+            float error2 = error * error;
+
+            return {
+                near_d2 > error2 ?
+                    height / 2.0f * cot_half_fov * error / std::sqrt(near_d2 - error2) :
+                    std::numeric_limits<float>::infinity(),
+                far_d2 > error2 ?
+                    height / 2.0f * cot_half_fov * error / std::sqrt(far_d2 - error2) :
+                    std::numeric_limits<float>::infinity(),
+            };
         };
 
         std::vector<std::uint32_t> visible_clusters;
-        std::vector<std::uint8_t> visible_flags(clusters.size());
 
-        std::queue<std::uint32_t> queue;
-        queue.push(clusters.size() - 1);
+        m_check_times = 0;
 
-        while (!queue.empty())
+        switch (mode)
         {
-            std::uint32_t cluster_index = queue.front();
-            queue.pop();
-
-            if (visible_flags[cluster_index])
-            {
-                continue;
-            }
-
-            visible_flags[cluster_index] = 1;
-
-            const auto& cluster = clusters[cluster_index];
-
-            sphere3f project_bounds = {
-                .center = matrix::mul(
-                    vec4f{
-                        cluster.lod_bounds.center.x,
-                        cluster.lod_bounds.center.y,
-                        cluster.lod_bounds.center.z,
-                        1.0f},
-                    matrix_mv),
-                .radius = cluster.lod_error,
-            };
-            float project_error = project_error_to_screen(project_bounds);
-
-            sphere3f project_parent_bounds = {
-                .center = matrix::mul(
-                    vec4f{
-                        cluster.parent_lod_bounds.center.x,
-                        cluster.parent_lod_bounds.center.y,
-                        cluster.parent_lod_bounds.center.z,
-                        1.0f},
-                    matrix_mv),
-                .radius = cluster.parent_lod_error,
-            };
-            float project_parent_error = project_error_to_screen(project_parent_bounds);
-
-            if ((project_error < throshold && project_parent_error > throshold) ||
-                cluster.lod_error == 0.0f)
-            {
-                visible_clusters.push_back(cluster_index);
-            }
-            else
-            {
-                for (std::uint32_t i = 0; i < cluster.children_count; ++i)
-                {
-                    queue.push(cluster.children_offset + i);
-                }
-            }
+        case 0:
+            visible_clusters = cull_cluster_hierarchy(throshold, project_error_to_screen);
+            break;
+        case 1:
+            visible_clusters = cull_cluster_bvh(throshold, project_error_to_screen);
+            break;
+        case 2:
+            visible_clusters = cull_cluster_naive(throshold, project_error_to_screen);
+            break;
         }
 
+        auto& mesh = get_world().get_component<mesh_component>(m_mesh);
         mesh.submeshes.clear();
+
+        const auto& clusters = mesh.geometry->get_clusters();
 
         std::uint32_t triangle_count = 0;
         for (std::uint32_t cluster_index : visible_clusters)
         {
+            if (lod != nullptr && clusters[cluster_index].lod != *lod)
+            {
+                continue;
+            }
+
             mesh.submeshes.push_back({
                 .index = cluster_index,
                 .material = get_material(cluster_index),
@@ -395,6 +483,204 @@ private:
         }
 
         return triangle_count;
+    }
+
+    template <typename Functor>
+    std::vector<std::uint32_t> cull_cluster_hierarchy(
+        float throshold,
+        Functor&& project_error_to_screen)
+    {
+        const auto& mesh = get_world().get_component<const mesh_component>(m_mesh);
+        const auto& clusters = mesh.geometry->get_clusters();
+
+        std::vector<std::uint32_t> visible_clusters;
+        std::vector<std::uint8_t> visible_flags(clusters.size());
+
+        std::queue<std::uint32_t> queue;
+        queue.push(clusters.size() - 1);
+
+        while (!queue.empty())
+        {
+            std::uint32_t index = queue.front();
+            queue.pop();
+
+            if (visible_flags[index])
+            {
+                continue;
+            }
+
+            visible_flags[index] = 1;
+
+            const auto& cluster = clusters[index];
+
+            float project_error = project_error_to_screen(cluster.lod_bounds, cluster.lod_error).x;
+            float project_parent_error =
+                project_error_to_screen(cluster.parent_lod_bounds, cluster.parent_lod_error).x;
+
+            if (project_error < throshold && project_parent_error > throshold)
+            {
+                visible_clusters.push_back(index);
+            }
+            else
+            {
+                for (std::uint32_t i = 0; i < cluster.children_count; ++i)
+                {
+                    queue.push(cluster.children_offset + i);
+                }
+            }
+
+            ++m_check_times;
+        }
+
+        return visible_clusters;
+    }
+
+    template <typename Functor>
+    std::vector<std::uint32_t> cull_cluster_bvh(float throshold, Functor&& project_error_to_screen)
+    {
+        const auto& mesh = get_world().get_component<const mesh_component>(m_mesh);
+        const auto& bvh_nodes = mesh.geometry->get_cluster_bvh_nodes();
+
+        std::vector<std::uint32_t> candidate_clusters;
+
+        std::queue<std::uint32_t> queue;
+        queue.push(0);
+
+        while (!queue.empty())
+        {
+            std::uint32_t index = queue.front();
+            queue.pop();
+
+            const auto& node = bvh_nodes[index];
+
+            float min_error = project_error_to_screen(node.lod_bounds, node.min_lod_error).y;
+            float max_parent_error =
+                project_error_to_screen(node.lod_bounds, node.max_parent_lod_error).x;
+
+            if (min_error < throshold && max_parent_error > throshold)
+            {
+                if (node.is_leaf)
+                {
+                    for (std::uint32_t child : node.children)
+                    {
+                        candidate_clusters.push_back(child);
+                    }
+                }
+                else
+                {
+                    for (std::uint32_t child : node.children)
+                    {
+                        queue.push(child);
+                    }
+                }
+            }
+
+            ++m_check_times;
+        }
+
+        std::vector<std::uint32_t> visible_clusters;
+        for (std::uint32_t cluster_index : candidate_clusters)
+        {
+            const auto& cluster = mesh.geometry->get_clusters()[cluster_index];
+
+            float project_error = project_error_to_screen(cluster.lod_bounds, cluster.lod_error).x;
+            float project_parent_error =
+                project_error_to_screen(cluster.parent_lod_bounds, cluster.parent_lod_error).x;
+
+            if (project_error < throshold && project_parent_error > throshold)
+            {
+                visible_clusters.push_back(cluster_index);
+            }
+
+            ++m_check_times;
+        }
+
+        return visible_clusters;
+    }
+
+    template <typename Functor>
+    std::vector<std::uint32_t> cull_cluster_naive(
+        float throshold,
+        Functor&& project_error_to_screen)
+    {
+        const auto& mesh = get_world().get_component<const mesh_component>(m_mesh);
+        const auto& clusters = mesh.geometry->get_clusters();
+
+        std::vector<std::uint32_t> visible_clusters;
+        for (std::uint32_t i = 0; i < clusters.size(); ++i)
+        {
+            const auto& cluster = clusters[i];
+
+            float project_error = project_error_to_screen(cluster.lod_bounds, cluster.lod_error).x;
+            float project_parent_error =
+                project_error_to_screen(cluster.parent_lod_bounds, cluster.parent_lod_error).x;
+
+            if (project_error < throshold && project_parent_error > throshold)
+            {
+                visible_clusters.push_back(i);
+            }
+
+            ++m_check_times;
+        }
+
+        return visible_clusters;
+    }
+
+    void show_lod(std::uint32_t lod)
+    {
+        auto& mesh = get_world().get_component<mesh_component>(m_mesh);
+        mesh.submeshes.clear();
+
+        const auto& clusters = mesh.geometry->get_clusters();
+        for (std::uint32_t i = 0; i < clusters.size(); ++i)
+        {
+            if (clusters[i].lod != lod)
+            {
+                continue;
+            }
+
+            mesh.submeshes.push_back({
+                .index = i,
+                .material = get_material(i),
+            });
+        }
+    }
+
+    void show_bvh_node(std::uint32_t bvh_node_index)
+    {
+        auto& mesh = get_world().get_component<mesh_component>(m_mesh);
+        const auto& bvh_nodes = mesh.geometry->get_cluster_bvh_nodes();
+
+        mesh.submeshes.clear();
+
+        std::queue<std::uint32_t> queue;
+        queue.push(bvh_node_index);
+
+        while (!queue.empty())
+        {
+            std::uint32_t index = queue.front();
+            queue.pop();
+
+            const auto& bvh_node = bvh_nodes[index];
+
+            if (bvh_node.is_leaf)
+            {
+                for (std::uint32_t child : bvh_node.children)
+                {
+                    mesh.submeshes.push_back({
+                        .index = child,
+                        .material = get_material(child),
+                    });
+                }
+            }
+            else
+            {
+                for (std::uint32_t child : bvh_node.children)
+                {
+                    queue.push(child);
+                }
+            }
+        }
     }
 
     entity m_light;
@@ -409,6 +695,13 @@ private:
     std::unordered_map<std::uint32_t, std::unique_ptr<unlit_material>> m_materials;
 
     std::uint32_t m_max_lod{0};
+    std::uint32_t m_bvh_node_count{0};
+
+    std::unique_ptr<geometry> m_debug_geometry;
+    std::unique_ptr<unlit_material> m_debug_material;
+    std::vector<entity> m_debug_entities;
+
+    std::uint32_t m_check_times{0};
 
     rhi_ptr<rhi_swapchain> m_swapchain;
 

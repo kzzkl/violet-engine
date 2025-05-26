@@ -2,6 +2,7 @@
 
 #include "graphics/morph_target.hpp"
 #include "graphics/render_device.hpp"
+#include "math/box.hpp"
 #include "math/sphere.hpp"
 #include <array>
 #include <string>
@@ -38,18 +39,31 @@ public:
         std::uint32_t index_offset;
         std::uint32_t index_count;
 
+        box3f bounding_box;
         sphere3f bounding_sphere;
 
         sphere3f lod_bounds;
-        float lod_error{0.0f};
+        float lod_error;
 
         sphere3f parent_lod_bounds;
-        float parent_lod_error{std::numeric_limits<float>::infinity()};
+        float parent_lod_error;
 
         std::uint32_t lod;
 
         std::uint32_t children_offset;
         std::uint32_t children_count;
+    };
+
+    struct cluster_bvh_node
+    {
+        sphere3f bounding_sphere;
+
+        sphere3f lod_bounds;
+        float min_lod_error;
+        float max_parent_lod_error;
+
+        bool is_leaf;
+        std::vector<std::uint32_t> children;
     };
 
     static constexpr std::size_t max_custom_attribute = 4;
@@ -132,6 +146,11 @@ public:
     const std::vector<cluster>& get_clusters() const noexcept
     {
         return m_clusters;
+    }
+
+    const std::vector<cluster_bvh_node>& get_cluster_bvh_nodes() const noexcept
+    {
+        return m_cluster_bvh_nodes;
     }
 
     void add_morph_target(std::string_view name, const std::vector<morph_element>& elements);
@@ -232,6 +251,7 @@ private:
     std::vector<submesh_info> m_submesh_infos;
 
     std::vector<cluster> m_clusters;
+    std::vector<cluster_bvh_node> m_cluster_bvh_nodes;
 
     std::unordered_map<std::string, std::size_t> m_morph_name_to_index;
     std::unique_ptr<morph_target_buffer> m_morph_target_buffer;

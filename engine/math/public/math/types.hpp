@@ -1,6 +1,7 @@
 #pragma once
 
 #include "math/simd.hpp"
+#include <concepts>
 #include <cstddef>
 #include <initializer_list>
 
@@ -132,6 +133,21 @@ private:
     __m128 m_v;
 };
 using vec4f_simd = vec4<simd>;
+
+template <typename T>
+concept is_vec2 = requires(T v) {
+    { vec2{v} } -> std::same_as<T>;
+};
+
+template <typename T>
+concept is_vec3 = requires(T v) {
+    { vec3{v} } -> std::same_as<T>;
+};
+
+template <typename T>
+concept is_vec4 = requires(T v) {
+    { vec4{v} } -> std::same_as<T>;
+};
 
 template <typename T>
 struct mat4x4

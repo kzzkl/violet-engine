@@ -101,4 +101,27 @@ private:
 
     collapse_heap m_heap;
 };
+
+class mesh_simplifier_meshopt
+{
+public:
+    void set_positions(std::span<const vec3f> positions);
+    void set_indexes(std::span<const std::uint32_t> indexes);
+
+    float simplify(std::uint32_t target_triangle_count, bool lock_border);
+
+    const std::vector<vec3f>& get_positions() const noexcept
+    {
+        return m_positions;
+    }
+
+    const std::vector<std::uint32_t>& get_indexes() const noexcept
+    {
+        return m_indexes;
+    }
+
+private:
+    std::vector<vec3f> m_positions;
+    std::vector<std::uint32_t> m_indexes;
+};
 } // namespace violet

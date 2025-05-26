@@ -243,15 +243,41 @@ void geometry::generate_clusters()
                 m_clusters.push_back({
                     .index_offset = cluster.index_offset + index_offset,
                     .index_count = cluster.index_count,
+                    .bounding_box = cluster.bounding_box,
                     .bounding_sphere = cluster.bounding_sphere,
                     .lod_bounds = cluster.lod_bounds,
                     .lod_error = cluster.lod_error,
-                    .parent_lod_bounds = cluster.parent_lod_bounds,
-                    .parent_lod_error = cluster.parent_lod_error,
+                    .parent_lod_bounds = group.lod_bounds,
+                    .parent_lod_error = group.max_parent_lod_error,
                     .lod = group.lod,
-                    .children_offset = groups[cluster.children_group].cluster_offset,
-                    .children_count = groups[cluster.children_group].cluster_count,
+                    .children_offset = groups[cluster.child_group_index].cluster_offset,
+                    .children_count = groups[cluster.child_group_index].cluster_count,
                 });
+            }
+        }
+
+        for (const auto& bvh_node : builder.get_bvh_nodes())
+        {
+            m_cluster_bvh_nodes.push_back({
+                .bounding_sphere = bvh_node.bounding_sphere,
+                .lod_bounds = bvh_node.lod_bounds,
+                .min_lod_error = bvh_node.min_lod_error,
+                .max_parent_lod_error = bvh_node.max_parent_lod_error,
+                .is_leaf = bvh_node.is_leaf,
+                .children = bvh_node.children,
+            });
+
+            if (bvh_node.is_leaf)
+            {
+                m_cluster_bvh_nodes.back().children.clear();
+                for (std::uint32_t group_index : bvh_node.children)
+                {
+                    const auto& group = groups[group_index];
+                    for (std::uint32_t i = 0; i < group.cluster_count; ++i)
+                    {
+                        m_cluster_bvh_nodes.back().children.push_back(group.cluster_offset + i);
+                    }
+                }
             }
         }
     }

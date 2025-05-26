@@ -6,6 +6,7 @@
 #include "tools/mesh_simplifier/mesh_simplifier.hpp"
 #include <iterator>
 #include <map>
+#include <queue>
 #include <unordered_map>
 
 namespace violet
@@ -16,6 +17,8 @@ constexpr std::size_t MAX_CLUSTER_SIZE = 128;
 
 constexpr std::size_t MAX_GROUP_SIZE = 32;
 constexpr std::size_t MIN_GROUP_SIZE = 8;
+
+constexpr std::size_t MAX_BVH_CHILDREN_COUNT = 8;
 
 std::uint32_t cycle_3(std::uint32_t value)
 {
@@ -88,6 +91,9 @@ void cluster_builder::build()
 {
     std::uint32_t group_offset = 0;
     std::uint32_t group_lod = 0;
+
+    m_bvh_nodes.emplace_back();
+
     while (true)
     {
         auto cluster_offset = static_cast<std::uint32_t>(m_clusters.size());
@@ -98,14 +104,15 @@ void cluster_builder::build()
         }
         else
         {
-            while (group_offset < m_groups.size())
+            for (std::uint32_t i = group_offset; i < m_groups.size(); ++i)
             {
-                simplify_group(group_offset);
-                ++group_offset;
+                simplify_group(i);
             }
         }
 
         auto cluster_count = static_cast<std::uint32_t>(m_clusters.size()) - cluster_offset;
+
+        group_offset = static_cast<std::uint32_t>(m_groups.size());
 
         group_clusters(cluster_offset, cluster_count);
 
@@ -114,6 +121,11 @@ void cluster_builder::build()
             m_groups[i].lod = group_lod;
         }
 
+        build_bvh(
+            group_offset,
+            static_cast<std::uint32_t>(m_groups.size() - group_offset),
+            group_lod);
+
         ++group_lod;
 
         if (cluster_count == 1)
@@ -121,6 +133,8 @@ void cluster_builder::build()
             break;
         }
     }
+
+    calculate_bvh_error();
 }
 
 void cluster_builder::cluster_triangles(
@@ -243,11 +257,11 @@ void cluster_builder::cluster_triangles(
 
     // Construct clusters based on the sorted triangles.
     m_clusters.reserve(m_clusters.size() + parts.size());
-    for (auto [start, end] : parts)
+    for (auto [begin, end] : parts)
     {
         cluster cluster = {
-            .index_offset = start * 3,
-            .index_count = (end - start) * 3,
+            .index_offset = begin * 3,
+            .index_count = (end - begin) * 3,
         };
 
         // Find the external edges of the cluster.
@@ -265,7 +279,7 @@ void cluster_builder::cluster_triangles(
                 std::uint32_t adjacency_edge_index = edge_adjacency[j];
                 std::uint32_t adjacency_triangle_index = adjacency_edge_index / 3;
 
-                if (triangle_index_to_sorted[adjacency_triangle_index] < start ||
+                if (triangle_index_to_sorted[adjacency_triangle_index] < begin ||
                     triangle_index_to_sorted[adjacency_triangle_index] >= end)
                 {
                     cluster.external_edges[i] |= cluster::EXTERNAL_EDGE_CLUSTER;
@@ -281,6 +295,13 @@ void cluster_builder::cluster_triangles(
 
         for (std::uint32_t i = 0; i < cluster.index_count; ++i)
         {
+            box::expand(cluster.bounding_box, positions[indexes[cluster.index_offset + i]]);
+        }
+
+        cluster.bounding_sphere.center = box::get_center(cluster.bounding_box);
+        cluster.bounding_sphere.radius = 0.0f;
+        for (std::uint32_t i = 0; i < cluster.index_count; ++i)
+        {
             sphere::expand(cluster.bounding_sphere, positions[indexes[cluster.index_offset + i]]);
         }
         cluster.lod_bounds = cluster.bounding_sphere;
@@ -294,12 +315,31 @@ void cluster_builder::group_clusters(std::uint32_t cluster_offset, std::uint32_t
     std::span<cluster> clusters(m_clusters.data() + cluster_offset, cluster_count);
 
     // If the number of clusters is small, no need to group.
-    if (clusters.size() <= MAX_GROUP_SIZE)
+    if (cluster_count <= MAX_GROUP_SIZE)
     {
         cluster_group group = {
+            .min_lod_error = std::numeric_limits<float>::infinity(),
+            .max_parent_lod_error = std::numeric_limits<float>::infinity(),
             .cluster_offset = cluster_offset,
             .cluster_count = cluster_count,
         };
+
+        std::vector<sphere3f> cluster_bounding_spheres;
+        std::vector<sphere3f> cluster_lod_bounds;
+
+        for (auto& cluster : clusters)
+        {
+            cluster.group_index = static_cast<std::uint32_t>(m_groups.size());
+
+            group.min_lod_error = std::min(group.min_lod_error, cluster.lod_error);
+
+            box::expand(group.bounding_box, cluster.bounding_box);
+            cluster_bounding_spheres.push_back(cluster.bounding_sphere);
+            cluster_lod_bounds.push_back(cluster.lod_bounds);
+        }
+
+        group.bounding_sphere = sphere::create(cluster_bounding_spheres);
+        group.lod_bounds = sphere::create(cluster_lod_bounds);
 
         m_groups.push_back(group);
 
@@ -425,16 +465,28 @@ void cluster_builder::group_clusters(std::uint32_t cluster_offset, std::uint32_t
 
     // Construct groups based on the sorted clusters.
     m_groups.reserve(parts.size());
-    for (auto [start, end] : parts)
+    for (auto [begin, end] : parts)
     {
         cluster_group group = {
-            .cluster_offset = start + cluster_offset,
-            .cluster_count = end - start,
+            .min_lod_error = std::numeric_limits<float>::infinity(),
+            .max_parent_lod_error = std::numeric_limits<float>::infinity(),
+            .cluster_offset = begin + cluster_offset,
+            .cluster_count = end - begin,
         };
 
-        for (std::uint32_t cluster_index = start; cluster_index < end; ++cluster_index)
+        std::vector<sphere3f> cluster_bounding_spheres;
+        std::vector<sphere3f> cluster_lod_bounds;
+
+        for (std::uint32_t cluster_index = begin; cluster_index < end; ++cluster_index)
         {
             cluster& cluster = clusters[cluster_index];
+            cluster.group_index = static_cast<std::uint32_t>(m_groups.size());
+
+            group.min_lod_error = std::min(group.min_lod_error, cluster.lod_error);
+
+            box::expand(group.bounding_box, cluster.bounding_box);
+            cluster_bounding_spheres.push_back(cluster.bounding_sphere);
+            cluster_lod_bounds.push_back(cluster.lod_bounds);
 
             // Find the external edges of the group.
             for (std::uint32_t i = 0; i < cluster.index_count; ++i)
@@ -456,7 +508,7 @@ void cluster_builder::group_clusters(std::uint32_t cluster_offset, std::uint32_t
                 for (auto iter = range.first; iter != range.second; ++iter)
                 {
                     std::uint32_t adjacency_cluster_index = cluster_index_to_sorted[iter->second];
-                    if (adjacency_cluster_index < start || adjacency_cluster_index >= end)
+                    if (adjacency_cluster_index < begin || adjacency_cluster_index >= end)
                     {
                         cluster.external_edges[i] |= cluster::EXTERNAL_EDGE_GROUP;
                     }
@@ -469,6 +521,9 @@ void cluster_builder::group_clusters(std::uint32_t cluster_offset, std::uint32_t
                 }
             }
         }
+
+        group.bounding_sphere = sphere::create(cluster_bounding_spheres);
+        group.lod_bounds = sphere::create(cluster_lod_bounds);
 
         m_groups.push_back(group);
     }
@@ -536,25 +591,213 @@ void cluster_builder::simplify_group(std::uint32_t group_index)
             return index + position_offset;
         });
 
-    sphere3f lod_bounds;
-    for (std::uint32_t i = 0; i < group.cluster_count; ++i)
-    {
-        sphere::expand(lod_bounds, m_clusters[group.cluster_offset + i].lod_bounds);
-    }
-
     for (std::size_t i = cluster_offset; i < m_clusters.size(); ++i)
     {
         m_clusters[i].index_offset += index_offset;
-        m_clusters[i].lod_bounds = lod_bounds;
+        m_clusters[i].lod_bounds = group.lod_bounds;
         m_clusters[i].lod_error = lod_error;
-        m_clusters[i].children_group = group_index;
+        m_clusters[i].child_group_index = group_index;
     }
 
-    for (std::uint32_t i = 0; i < group.cluster_count; ++i)
+    group.max_parent_lod_error = lod_error;
+}
+
+void cluster_builder::build_bvh(
+    std::uint32_t group_offset,
+    std::uint32_t group_count,
+    std::uint32_t lod)
+{
+    std::vector<std::uint32_t> group_indexes(group_count);
+    for (std::uint32_t i = 0; i < group_count; ++i)
     {
-        cluster& cluster = m_clusters[group.cluster_offset + i];
-        cluster.parent_lod_bounds = lod_bounds;
-        cluster.parent_lod_error = lod_error;
+        group_indexes[i] = group_offset + i;
+    }
+
+    auto get_surface_area = [&](std::uint32_t begin, std::uint32_t end)
+    {
+        box3f bounding_box;
+        for (std::uint32_t i = begin; i < end; ++i)
+        {
+            const auto& group = m_groups[group_indexes[i]];
+            box::expand(bounding_box, group.bounding_box);
+        }
+
+        vec3f extent = box::get_extent(bounding_box);
+        return 2.0f * (extent.x * extent.y + extent.x * extent.z + extent.y * extent.z);
+    };
+
+    auto split_range = [&](std::uint32_t begin, std::uint32_t end)
+    {
+        box3f bounding_box;
+        for (std::uint32_t i = begin; i < end; ++i)
+        {
+            const auto& group = m_groups[group_indexes[i]];
+            box::expand(bounding_box, group.bounding_box);
+        }
+
+        float min_surface_area = std::numeric_limits<float>::infinity();
+        std::uint32_t best_axis = 0;
+        for (std::uint32_t axis = 0; axis < 3; ++axis)
+        {
+            std::sort(
+                group_indexes.begin() + begin,
+                group_indexes.begin() + end,
+                [&](std::uint32_t a, std::uint32_t b) -> bool
+                {
+                    vec3f a_center = box::get_center(m_groups[a].bounding_box);
+                    vec3f b_center = box::get_center(m_groups[b].bounding_box);
+                    return a_center[axis] < b_center[axis];
+                });
+
+            std::uint32_t mid = (begin + end) / 2;
+
+            float surface_area = get_surface_area(begin, mid) + get_surface_area(mid, end);
+            if (surface_area < min_surface_area)
+            {
+                min_surface_area = surface_area;
+                best_axis = axis;
+            }
+        }
+
+        std::sort(
+            group_indexes.begin() + begin,
+            group_indexes.begin() + end,
+            [&](std::uint32_t a, std::uint32_t b) -> bool
+            {
+                vec3f a_center = box::get_center(m_groups[a].bounding_box);
+                vec3f b_center = box::get_center(m_groups[b].bounding_box);
+                return a_center[best_axis] < b_center[best_axis];
+            });
+
+        return (begin + end) / 2;
+    };
+
+    auto create_bvh_node = [&](std::uint32_t begin, std::uint32_t end)
+    {
+        cluster_bvh_node result = {};
+
+        for (std::uint32_t i = begin; i < end; ++i)
+        {
+            const auto& group = m_groups[group_indexes[i]];
+            box::expand(result.bounding_box, group.bounding_box);
+        }
+
+        return result;
+    };
+
+    auto root_index = static_cast<std::uint32_t>(m_bvh_nodes.size());
+    m_bvh_nodes.emplace_back();
+
+    struct bvh_range
+    {
+        std::uint32_t index;
+        std::uint32_t offset;
+        std::uint32_t count;
+    };
+
+    std::queue<bvh_range> queue;
+    queue.push({
+        .index = root_index,
+        .offset = 0,
+        .count = group_count,
+    });
+
+    while (!queue.empty())
+    {
+        auto range = queue.front();
+        queue.pop();
+
+        if (range.count <= MAX_BVH_CHILDREN_COUNT)
+        {
+            m_bvh_nodes[range.index].is_leaf = true;
+            for (std::uint32_t i = 0; i < range.count; ++i)
+            {
+                m_bvh_nodes[range.index].children.push_back(group_indexes[range.offset + i]);
+            }
+        }
+        else
+        {
+            std::uint32_t mid0 = split_range(range.offset, range.offset + range.count);
+            std::uint32_t mid1 = split_range(range.offset, mid0);
+            std::uint32_t mid2 = split_range(mid0, range.offset + range.count);
+            std::uint32_t mid3 = split_range(range.offset, mid1);
+            std::uint32_t mid4 = split_range(mid1, mid0);
+            std::uint32_t mid5 = split_range(mid0, mid2);
+            std::uint32_t mid6 = split_range(mid2, range.offset + range.count);
+
+            std::vector<std::uint32_t> split_offset = {
+                range.offset,
+                mid3,
+                mid1,
+                mid4,
+                mid0,
+                mid5,
+                mid2,
+                mid6,
+                range.offset + range.count,
+            };
+
+            for (std::uint32_t i = 0; i < MAX_BVH_CHILDREN_COUNT; ++i)
+            {
+                auto children_index = static_cast<std::uint32_t>(m_bvh_nodes.size());
+
+                m_bvh_nodes[range.index].children.push_back(children_index);
+                m_bvh_nodes.push_back(create_bvh_node(split_offset[i], split_offset[i + 1]));
+
+                bvh_range children_range = {
+                    .index = children_index,
+                    .offset = split_offset[i],
+                    .count = split_offset[i + 1] - split_offset[i],
+                };
+                queue.push(children_range);
+            }
+        }
+    }
+
+    m_bvh_nodes[0].children.push_back(root_index);
+}
+
+void cluster_builder::calculate_bvh_error()
+{
+    for (auto iter = m_bvh_nodes.rbegin(); iter != m_bvh_nodes.rend(); ++iter)
+    {
+        iter->min_lod_error = std::numeric_limits<float>::infinity();
+        iter->max_parent_lod_error = 0.0f;
+
+        std::vector<sphere3f> child_bounding_spheres;
+        std::vector<sphere3f> child_lod_bounds;
+
+        if (iter->is_leaf)
+        {
+            for (std::uint32_t group_index : iter->children)
+            {
+                const auto& child = m_groups[group_index];
+
+                child_bounding_spheres.push_back(child.bounding_sphere);
+                child_lod_bounds.push_back(child.lod_bounds);
+
+                iter->min_lod_error = std::min(iter->min_lod_error, child.min_lod_error);
+                iter->max_parent_lod_error =
+                    std::max(iter->max_parent_lod_error, child.max_parent_lod_error);
+            }
+        }
+        else
+        {
+            for (std::uint32_t node_index : iter->children)
+            {
+                const auto& child = m_bvh_nodes[node_index];
+
+                child_bounding_spheres.push_back(child.bounding_sphere);
+                child_lod_bounds.push_back(child.lod_bounds);
+
+                iter->min_lod_error = std::min(iter->min_lod_error, child.min_lod_error);
+                iter->max_parent_lod_error =
+                    std::max(iter->max_parent_lod_error, child.max_parent_lod_error);
+            }
+        }
+
+        iter->bounding_sphere = sphere::create(child_bounding_spheres);
+        iter->lod_bounds = sphere::create(child_lod_bounds);
     }
 }
 } // namespace violet

@@ -118,12 +118,7 @@ private:
             RHI_CULL_MODE_NONE,
             RHI_POLYGON_MODE_LINE);
 
-        if (model_path.empty())
-        {
-            m_original_geometry = std::make_unique<sphere_geometry>(0.5f);
-            // m_original_geometry = std::make_unique<plane_geometry>(1.0f, 1.0f, 4, 4);
-        }
-        else
+        if (!model_path.empty())
         {
             gltf_loader loader(model_path);
             if (auto result = loader.load())
@@ -134,6 +129,11 @@ private:
             {
                 m_original_geometry = std::make_unique<sphere_geometry>(0.5f);
             }
+        }
+        else
+        {
+            m_original_geometry = std::make_unique<sphere_geometry>(0.5f);
+            // m_original_geometry = std::make_unique<plane_geometry>(1.0f, 1.0f, 4, 4);
         }
 
         m_model = world.create();

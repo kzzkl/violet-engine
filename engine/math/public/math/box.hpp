@@ -3,7 +3,6 @@
 #include "math/matrix.hpp"
 #include "math/vector.hpp"
 #include <limits>
-#include <span>
 
 namespace violet
 {
@@ -76,15 +75,6 @@ struct box
     }
 
     template <typename T>
-    static inline void expand(box3<T>& box, std::span<const vec3<T>> points) noexcept
-    {
-        for (const auto& point : points)
-        {
-            expand(box, point);
-        }
-    }
-
-    template <typename T>
     static inline void expand(box3<T>& box, const box3<T>& other) noexcept
     {
         box.min = vector::min(box.min, other.min);
@@ -102,6 +92,12 @@ struct box
     {
         using value_type = vec3<T>::value_type;
         return (box.min + box.max) * value_type(0.5);
+    }
+
+    template <typename T>
+    static vec3<T> get_extent(const box3<T>& box) noexcept
+    {
+        return box.max - box.min;
     }
 
     template <typename T>

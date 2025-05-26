@@ -1,6 +1,7 @@
 #include "tools/mesh_simplifier/quadric.hpp"
 #include "math/matrix.hpp"
 #include "math/vector.hpp"
+#include <cassert>
 
 namespace violet
 {
@@ -78,6 +79,6 @@ float quadric::get_error(const vec3f& position) const noexcept
              m_zz * position.z * position.z + m_zd * position.z;
     error += m_xd * position.x + m_yd * position.y + m_zd * position.z + m_dd;
 
-    return error;
+    return std::max(error, 0.0f);
 }
 } // namespace violet

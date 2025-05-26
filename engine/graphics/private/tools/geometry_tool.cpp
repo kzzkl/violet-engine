@@ -2,7 +2,6 @@
 #include "algorithm/hash.hpp"
 #include "math/vector.hpp"
 #include "mikktspace.h"
-#include "tools/cluster/cluster_builder.hpp"
 #include "tools/mesh_simplifier/mesh_simplifier.hpp"
 #include <unordered_map>
 
@@ -168,48 +167,6 @@ std::vector<vec3f> geometry_tool::generate_smooth_normals(
     return result;
 }
 
-geometry_tool::cluster_result geometry_tool::generate_clusters(
-    std::span<const vec3f> positions,
-    std::span<const std::uint32_t> indexes)
-{
-    cluster_builder builder;
-    builder.set_positions(positions);
-    builder.set_indexes(indexes);
-    builder.build();
-
-    cluster_result result;
-
-    result.positions = builder.get_positions();
-    result.indexes = builder.get_indexes();
-
-    result.clusters.reserve(builder.get_clusters().size());
-    for (const auto& cluster : builder.get_clusters())
-    {
-        result.clusters.push_back({
-            .index_offset = cluster.index_offset,
-            .index_count = cluster.index_count,
-            .bounding_sphere = cluster.bounding_sphere,
-            .lod_bounds = cluster.lod_bounds,
-            .lod_error = cluster.lod_error,
-            .parent_lod_bounds = cluster.parent_lod_bounds,
-            .parent_lod_error = cluster.parent_lod_error,
-            .children_group = cluster.children_group,
-        });
-    }
-
-    result.groups.reserve(builder.get_groups().size());
-    for (const auto& group : builder.get_groups())
-    {
-        result.groups.push_back({
-            .cluster_offset = group.cluster_offset,
-            .cluster_count = group.cluster_count,
-            .lod = group.lod,
-        });
-    }
-
-    return result;
-}
-
 geometry_tool::simplify_result geometry_tool::simplify(
     std::span<const vec3f> positions,
     std::span<const std::uint32_t> indexes,
@@ -229,6 +186,24 @@ geometry_tool::simplify_result geometry_tool::simplify(
 
     simplify_result result;
     result.positions = simplifier.get_positions();
+    result.indexes = simplifier.get_indexes();
+
+    return result;
+}
+
+geometry_tool::simplify_result geometry_tool::simplify_meshopt(
+    std::span<const vec3f> positions,
+    std::span<const std::uint32_t> indexes,
+    std::uint32_t target_triangle_count)
+{
+    mesh_simplifier_meshopt simplifier;
+    simplifier.set_positions(positions);
+    simplifier.set_indexes(indexes);
+
+    simplifier.simplify(target_triangle_count, false);
+
+    simplify_result result;
+    result.positions.assign(positions.begin(), positions.end());
     result.indexes = simplifier.get_indexes();
 
     return result;

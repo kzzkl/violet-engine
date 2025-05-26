@@ -77,7 +77,8 @@ target_link_libraries(${PROJECT_NAME}
     stb
     dxcompiler
     metis
-    MikkTSpace)
+    MikkTSpace
+    meshoptimizer)
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin

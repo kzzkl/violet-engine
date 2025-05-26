@@ -204,6 +204,8 @@ void vk_command::set_pipeline_barrier(
     const rhi_texture_barrier* const texture_barriers,
     std::uint32_t texture_barrier_count)
 {
+    assert(buffer_barrier_count != 0 || texture_barrier_count != 0);
+
     rhi_pipeline_stage_flags src_stages = 0;
     rhi_pipeline_stage_flags dst_stages = 0;
 
