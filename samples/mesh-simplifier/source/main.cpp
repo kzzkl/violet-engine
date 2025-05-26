@@ -118,12 +118,7 @@ private:
             RHI_CULL_MODE_NONE,
             RHI_POLYGON_MODE_LINE);
 
-        if (model_path.empty())
-        {
-            m_original_geometry = std::make_unique<sphere_geometry>(0.5f);
-            // m_original_geometry = std::make_unique<plane_geometry>(1.0f, 1.0f, 4, 4);
-        }
-        else
+        if (!model_path.empty())
         {
             gltf_loader loader(model_path);
             if (auto result = loader.load())
@@ -135,6 +130,11 @@ private:
                 m_original_geometry = std::make_unique<sphere_geometry>(0.5f);
             }
         }
+        else
+        {
+            m_original_geometry = std::make_unique<sphere_geometry>(0.5f);
+            // m_original_geometry = std::make_unique<plane_geometry>(1.0f, 1.0f, 4, 4);
+        }
 
         m_model = world.create();
         world.add_component<transform_component, mesh_component, scene_component>(m_model);
@@ -142,15 +142,14 @@ private:
         auto& mesh = world.get_component<mesh_component>(m_model);
         mesh.geometry = m_original_geometry.get();
         mesh.submeshes.push_back({
-            .vertex_offset = 0,
-            .index_offset = 0,
-            .index_count = m_original_geometry->get_index_count(),
+            .index = 0,
             .material = m_material.get(),
         });
 
         m_simplified_geometry = std::make_unique<geometry>();
-        m_simplified_geometry->set_position(m_original_geometry->get_position());
-        m_simplified_geometry->set_index(m_original_geometry->get_index());
+        m_simplified_geometry->set_positions(m_original_geometry->get_positions());
+        m_simplified_geometry->set_indexes(m_original_geometry->get_indexes());
+        m_simplified_geometry->add_submesh(0, 0, m_original_geometry->get_indexes().size());
     }
 
     void resize()
@@ -166,16 +165,8 @@ private:
         if (ImGui::Checkbox("Simplified", &show_simplified))
         {
             auto& mesh = world.get_component<mesh_component>(m_model);
-            if (show_simplified)
-            {
-                mesh.geometry = m_simplified_geometry.get();
-                mesh.submeshes[0].index_count = m_simplified_geometry->get_index_count();
-            }
-            else
-            {
-                mesh.geometry = m_original_geometry.get();
-                mesh.submeshes[0].index_count = m_original_geometry->get_index_count();
-            }
+            mesh.geometry =
+                show_simplified ? m_simplified_geometry.get() : m_original_geometry.get();
         }
 
         static float simplify_ratio = 1.0f;
@@ -186,18 +177,13 @@ private:
                 static_cast<std::size_t>(static_cast<float>(triangle_count) * simplify_ratio);
 
             auto result = geometry_tool::simplify(
-                m_original_geometry->get_position(),
-                m_original_geometry->get_index(),
+                m_original_geometry->get_positions(),
+                m_original_geometry->get_indexes(),
                 target_triangle_count);
 
-            m_simplified_geometry->set_position(result.positions);
-            m_simplified_geometry->set_index(result.indexes);
-
-            if (show_simplified)
-            {
-                auto& mesh = world.get_component<mesh_component>(m_model);
-                mesh.submeshes[0].index_count = m_simplified_geometry->get_index_count();
-            }
+            m_simplified_geometry->set_positions(result.positions);
+            m_simplified_geometry->set_indexes(result.indexes);
+            m_simplified_geometry->set_submesh(0, 0, 0, result.indexes.size());
         }
     }
 

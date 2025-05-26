@@ -5,16 +5,18 @@ namespace violet
 {
 gpu_buffer_uploader::gpu_buffer_uploader(
     std::size_t staging_page_size,
-    std::size_t max_staging_pages)
-    : m_staging_page_size(staging_page_size),
-      m_max_staging_pages(max_staging_pages)
+    std::size_t staging_page_count)
+    : m_current_staging_page_index(staging_page_count),
+      m_staging_page_size(staging_page_size),
+      m_staging_page_count(staging_page_count)
 {
     m_active_staging_pages.resize(render_device::instance().get_frame_resource_count());
 }
 
 void gpu_buffer_uploader::tick()
 {
-    reset_active_staging_pages();
+    reset_active_staging_pages(render_device::instance().get_frame_resource_index());
+    m_current_staging_page_index = m_staging_page_count;
 }
 
 void gpu_buffer_uploader::upload(
@@ -29,15 +31,6 @@ void gpu_buffer_uploader::upload(
 
     while (pending_size > 0)
     {
-        if (m_staging_pages.size() == m_max_staging_pages)
-        {
-            auto& [buffer_stages, buffer_access] = m_dst_buffers[buffer];
-            buffer_stages |= stages;
-            buffer_access |= access;
-
-            flush();
-        }
-
         auto& staging_page = allocate_staging_page();
 
         std::size_t reserve_size = staging_page.get_reserve_size();
@@ -53,17 +46,22 @@ void gpu_buffer_uploader::upload(
 
         staging_page.copy(data, upload_size);
 
+        auto& [buffer_stages, buffer_access] = m_dst_buffers[buffer];
+        buffer_stages |= stages;
+        buffer_access |= access;
+
         data = static_cast<const std::uint8_t*>(data) + upload_size;
         pending_size -= upload_size;
     }
-
-    auto& [buffer_stages, buffer_access] = m_dst_buffers[buffer];
-    buffer_stages |= stages;
-    buffer_access |= access;
 }
 
 void gpu_buffer_uploader::record(rhi_command* command)
 {
+    if (m_upload_commands.empty())
+    {
+        return;
+    }
+
     std::vector<rhi_buffer_barrier> barriers;
     barriers.reserve(m_dst_buffers.size());
 
@@ -120,35 +118,42 @@ void gpu_buffer_uploader::record(rhi_command* command)
 
 gpu_buffer_uploader::staging_page& gpu_buffer_uploader::allocate_staging_page()
 {
-    std::size_t index = 0;
-    if (!m_staging_pages.empty() && m_staging_pages.back().offset != m_staging_page_size)
+    if (m_current_staging_page_index != m_staging_page_count &&
+        m_staging_pages[m_current_staging_page_index].get_reserve_size() > 0)
     {
-        index = m_staging_pages.size() - 1;
-    }
-    else if (m_free_staging_pages.empty())
-    {
-        index = m_staging_pages.size();
-
-        rhi_buffer_desc staging_buffer_desc = {
-            .data = nullptr,
-            .size = m_staging_page_size,
-            .flags = RHI_BUFFER_TRANSFER_SRC | RHI_BUFFER_HOST_VISIBLE,
-        };
-
-        m_staging_pages.emplace_back(staging_page{
-            .buffer = render_device::instance().create_buffer(staging_buffer_desc),
-            .offset = 0,
-        });
-    }
-    else
-    {
-        index = m_free_staging_pages.back();
-        m_free_staging_pages.pop_back();
+        return m_staging_pages[m_current_staging_page_index];
     }
 
-    m_active_staging_pages[render_device::instance().get_frame_resource_index()].push_back(index);
+    if (m_free_staging_pages.empty())
+    {
+        if (m_staging_pages.size() == m_staging_page_count)
+        {
+            flush();
+        }
+        else
+        {
+            m_free_staging_pages.push_back(m_staging_pages.size());
 
-    return m_staging_pages[index];
+            rhi_buffer_desc staging_buffer_desc = {
+                .data = nullptr,
+                .size = m_staging_page_size,
+                .flags = RHI_BUFFER_TRANSFER_SRC | RHI_BUFFER_HOST_VISIBLE,
+            };
+
+            m_staging_pages.emplace_back(staging_page{
+                .buffer = render_device::instance().create_buffer(staging_buffer_desc),
+                .offset = 0,
+            });
+        }
+    }
+
+    m_current_staging_page_index = m_free_staging_pages.back();
+    m_free_staging_pages.pop_back();
+
+    m_active_staging_pages[render_device::instance().get_frame_resource_index()].push_back(
+        m_current_staging_page_index);
+
+    return m_staging_pages[m_current_staging_page_index];
 }
 
 void gpu_buffer_uploader::flush()
@@ -159,13 +164,15 @@ void gpu_buffer_uploader::flush()
     record(command);
     device.execute(command, true);
 
-    reset_active_staging_pages();
+    for (std::uint32_t i = 0; i < m_active_staging_pages.size(); ++i)
+    {
+        reset_active_staging_pages(i);
+    }
 }
 
-void gpu_buffer_uploader::reset_active_staging_pages()
+void gpu_buffer_uploader::reset_active_staging_pages(std::uint32_t frame_resource_index)
 {
-    auto& active_staging_pages =
-        m_active_staging_pages[render_device::instance().get_frame_resource_index()];
+    auto& active_staging_pages = m_active_staging_pages[frame_resource_index];
 
     for (std::size_t index : active_staging_pages)
     {

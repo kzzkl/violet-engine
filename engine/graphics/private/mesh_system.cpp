@@ -49,17 +49,11 @@ void mesh_system::update(render_scene_manager& scene_manager)
                     }
 
                     mesh_meta.mesh = render_scene->add_mesh();
-                    render_scene->set_mesh_geometry(mesh_meta.mesh, mesh.geometry);
-                    render_scene->set_mesh_bounds(
-                        mesh_meta.mesh,
-                        mesh.bounding_box,
-                        mesh.bounding_sphere);
-
                     mesh_meta.instances.clear();
                     mesh_meta.scene = render_scene;
                 }
 
-                render_scene->set_mesh_model_matrix(mesh_meta.mesh, transform.matrix);
+                render_scene->set_mesh_matrix(mesh_meta.mesh, transform.matrix);
             },
             [this](auto& view)
             {
@@ -75,23 +69,16 @@ void mesh_system::update(render_scene_manager& scene_manager)
                 return;
             }
 
-            mesh_meta.scene->set_mesh_geometry(mesh_meta.mesh, mesh.geometry);
-            mesh_meta.scene->set_mesh_bounds(
-                mesh_meta.mesh,
-                mesh.bounding_box,
-                mesh.bounding_sphere);
-
             std::size_t instance_count =
                 std::min(mesh.submeshes.size(), mesh_meta.instances.size());
 
             for (std::size_t i = 0; i < instance_count; ++i)
             {
-                mesh_meta.scene->set_instance_data(
+                mesh_meta.scene->set_instance_geometry(
                     mesh_meta.instances[i],
-                    mesh.submeshes[i].vertex_offset,
-                    mesh.submeshes[i].index_offset,
-                    mesh.submeshes[i].index_count == 0 ? mesh.geometry->get_index_count() :
-                                                         mesh.submeshes[i].index_count);
+                    mesh.geometry,
+                    mesh.submeshes[i].index);
+
                 mesh_meta.scene->set_instance_material(
                     mesh_meta.instances[i],
                     mesh.submeshes[i].material);
@@ -100,12 +87,10 @@ void mesh_system::update(render_scene_manager& scene_manager)
             for (std::size_t i = instance_count; i < mesh.submeshes.size(); ++i)
             {
                 render_id instance = mesh_meta.scene->add_instance(mesh_meta.mesh);
-                mesh_meta.scene->set_instance_data(
+                mesh_meta.scene->set_instance_geometry(
                     instance,
-                    mesh.submeshes[i].vertex_offset,
-                    mesh.submeshes[i].index_offset,
-                    mesh.submeshes[i].index_count == 0 ? mesh.geometry->get_index_count() :
-                                                         mesh.submeshes[i].index_count);
+                    mesh.geometry,
+                    mesh.submeshes[i].index);
                 mesh_meta.scene->set_instance_material(instance, mesh.submeshes[i].material);
                 mesh_meta.instances.push_back(instance);
             }

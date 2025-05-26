@@ -1,5 +1,6 @@
 #include "graphics/geometry.hpp"
 #include "graphics/geometry_manager.hpp"
+#include "tools/cluster/cluster_builder.hpp"
 
 namespace violet
 {
@@ -11,23 +12,14 @@ geometry::geometry()
 
 geometry::~geometry()
 {
+    clear_submeshes();
+
     auto* geometry_manager = render_device::instance().get_geometry_manager();
     geometry_manager->remove_geometry(m_id);
 }
 
-void geometry::set_position(std::span<const vec3f> positions)
+void geometry::set_positions(std::span<const vec3f> positions)
 {
-    if (m_vertex_capacity == 0)
-    {
-        m_vertex_capacity = static_cast<std::uint32_t>(positions.size());
-    }
-
-    // TODO: If the vertex buffer cannot accommodate all vertices, a new vertex buffer needs to
-    // be reallocated, and the vertex offset in shader::mesh_data must be re-linked. However,
-    // there is currently no reliable method to re-establish this linkage, so we will simply
-    // reject this operation for now.
-    assert(m_vertex_capacity >= positions.size());
-
     set_buffer(
         GEOMETRY_BUFFER_POSITION,
         positions.data(),
@@ -35,23 +27,19 @@ void geometry::set_position(std::span<const vec3f> positions)
         sizeof(vec3f));
 
     m_vertex_count = static_cast<std::uint32_t>(positions.size());
-
-    m_bounds_dirty = true;
 }
 
-void geometry::set_position_shared(geometry* src_geometry)
+void geometry::set_positions_shared(geometry* src_geometry)
 {
     set_buffer_shared(GEOMETRY_BUFFER_POSITION, src_geometry);
-
-    m_bounds_dirty = true;
 }
 
-std::span<const vec3f> geometry::get_position() const noexcept
+std::span<const vec3f> geometry::get_positions() const noexcept
 {
     return get_buffer<vec3f>(GEOMETRY_BUFFER_POSITION);
 }
 
-void geometry::set_normal(std::span<const vec3f> normals)
+void geometry::set_normals(std::span<const vec3f> normals)
 {
     set_buffer(
         GEOMETRY_BUFFER_NORMAL,
@@ -60,17 +48,17 @@ void geometry::set_normal(std::span<const vec3f> normals)
         sizeof(vec3f));
 }
 
-void geometry::set_normal_shared(geometry* src_geometry)
+void geometry::set_normals_shared(geometry* src_geometry)
 {
     set_buffer_shared(GEOMETRY_BUFFER_NORMAL, src_geometry);
 }
 
-std::span<const vec3f> geometry::get_normal() const noexcept
+std::span<const vec3f> geometry::get_normals() const noexcept
 {
     return get_buffer<vec3f>(GEOMETRY_BUFFER_NORMAL);
 }
 
-void geometry::set_tangent(std::span<const vec4f> tangents)
+void geometry::set_tangents(std::span<const vec4f> tangents)
 {
     set_buffer(
         GEOMETRY_BUFFER_TANGENT,
@@ -79,17 +67,17 @@ void geometry::set_tangent(std::span<const vec4f> tangents)
         sizeof(vec4f));
 }
 
-void geometry::set_tangent_shared(geometry* src_geometry)
+void geometry::set_tangents_shared(geometry* src_geometry)
 {
     set_buffer_shared(GEOMETRY_BUFFER_TANGENT, src_geometry);
 }
 
-std::span<const vec4f> geometry::get_tangent() const noexcept
+std::span<const vec4f> geometry::get_tangents() const noexcept
 {
     return get_buffer<vec4f>(GEOMETRY_BUFFER_TANGENT);
 }
 
-void geometry::set_texcoord(std::span<const vec2f> texcoord)
+void geometry::set_texcoords(std::span<const vec2f> texcoord)
 {
     set_buffer(
         GEOMETRY_BUFFER_TEXCOORD,
@@ -98,12 +86,12 @@ void geometry::set_texcoord(std::span<const vec2f> texcoord)
         sizeof(vec2f));
 }
 
-void geometry::set_texcoord_shared(geometry* src_geometry)
+void geometry::set_texcoords_shared(geometry* src_geometry)
 {
     set_buffer_shared(GEOMETRY_BUFFER_TEXCOORD, src_geometry);
 }
 
-std::span<const vec2f> geometry::get_texcoord() const noexcept
+std::span<const vec2f> geometry::get_texcoords() const noexcept
 {
     return get_buffer<vec2f>(GEOMETRY_BUFFER_TEXCOORD);
 }
@@ -114,7 +102,7 @@ void geometry::set_custom_shared(std::size_t index, geometry* src_geometry)
     set_buffer_shared(type, src_geometry);
 }
 
-void geometry::set_index(std::span<const std::uint32_t> indexes)
+void geometry::set_indexes(std::span<const std::uint32_t> indexes)
 {
     set_buffer(
         GEOMETRY_BUFFER_INDEX,
@@ -123,20 +111,179 @@ void geometry::set_index(std::span<const std::uint32_t> indexes)
         sizeof(std::uint32_t));
 
     m_index_count = static_cast<std::uint32_t>(indexes.size());
-
-    m_bounds_dirty = true;
 }
 
-void geometry::set_index_shared(geometry* src_geometry)
+void geometry::set_indexes_shared(geometry* src_geometry)
 {
     set_buffer_shared(GEOMETRY_BUFFER_INDEX, src_geometry);
-
-    m_bounds_dirty = true;
 }
 
-std::span<const std::uint32_t> geometry::get_index() const noexcept
+std::span<const std::uint32_t> geometry::get_indexes() const noexcept
 {
     return get_buffer<std::uint32_t>(GEOMETRY_BUFFER_INDEX);
+}
+
+std::uint32_t geometry::add_submesh(
+    std::uint32_t vertex_offset,
+    std::uint32_t index_offset,
+    std::uint32_t index_count)
+{
+    m_submeshes.emplace_back(vertex_offset, index_offset, index_count);
+    m_submesh_infos.push_back({
+        .dirty = true,
+    });
+
+    mark_dirty();
+
+    return static_cast<std::uint32_t>(m_submeshes.size() - 1);
+}
+
+void geometry::set_submesh(
+    std::uint32_t submesh_index,
+    std::uint32_t vertex_offset,
+    std::uint32_t index_offset,
+    std::uint32_t index_count)
+{
+    auto& submesh = m_submeshes[submesh_index];
+
+    if (submesh.vertex_offset == vertex_offset && submesh.index_offset == index_offset &&
+        submesh.index_count == index_count)
+    {
+        return;
+    }
+
+    submesh.vertex_offset = vertex_offset;
+    submesh.index_offset = index_offset;
+    submesh.index_count = index_count;
+
+    m_submesh_infos[submesh_index].dirty = true;
+
+    mark_dirty();
+}
+
+void geometry::clear_submeshes()
+{
+    m_submeshes.clear();
+    mark_dirty();
+}
+
+void geometry::generate_clusters()
+{
+    auto old_positions = get_positions();
+    auto old_indexes = get_indexes();
+
+    std::vector<vec3f> new_positions;
+    std::vector<std::uint32_t> new_indexes;
+
+    for (std::size_t submesh_index = 0; submesh_index < m_submeshes.size(); ++submesh_index)
+    {
+        const auto& submesh = m_submeshes[submesh_index];
+
+        std::unordered_map<std::uint32_t, std::uint32_t> vertex_remap;
+
+        std::vector<vec3f> positions;
+        std::vector<std::uint32_t> indexes;
+        indexes.reserve(submesh.index_count);
+
+        for (std::uint32_t i = 0; i < submesh.index_count; ++i)
+        {
+            std::uint32_t vertex_index =
+                old_indexes[submesh.index_offset + i] + submesh.vertex_offset;
+
+            auto iter = vertex_remap.find(vertex_index);
+            if (iter == vertex_remap.end())
+            {
+                positions.push_back(old_positions[vertex_index]);
+                vertex_remap[vertex_index] = static_cast<std::uint32_t>(positions.size() - 1);
+                vertex_index = static_cast<std::uint32_t>(positions.size() - 1);
+            }
+            else
+            {
+                vertex_index = iter->second;
+            }
+
+            indexes.push_back(vertex_index);
+        }
+
+        cluster_builder builder;
+        builder.set_positions(positions);
+        builder.set_indexes(indexes);
+
+        builder.build();
+
+        auto vertex_offset = static_cast<std::uint32_t>(new_positions.size());
+        auto index_offset = static_cast<std::uint32_t>(new_indexes.size());
+
+        new_positions.insert(
+            new_positions.end(),
+            builder.get_positions().begin(),
+            builder.get_positions().end());
+        new_indexes.insert(
+            new_indexes.end(),
+            builder.get_indexes().begin(),
+            builder.get_indexes().end());
+        for (std::uint32_t i = index_offset; i < new_indexes.size(); ++i)
+        {
+            new_indexes[i] += vertex_offset;
+        }
+
+        auto& submesh_info = m_submesh_infos[submesh_index];
+        submesh_info.cluster_offset = static_cast<std::uint32_t>(m_clusters.size());
+        submesh_info.cluster_count = static_cast<std::uint32_t>(builder.get_clusters().size());
+
+        const auto& groups = builder.get_groups();
+        const auto& clusters = builder.get_clusters();
+
+        for (const auto& group : groups)
+        {
+            for (std::uint32_t i = 0; i < group.cluster_count; ++i)
+            {
+                const auto& cluster = clusters[group.cluster_offset + i];
+
+                m_clusters.push_back({
+                    .index_offset = cluster.index_offset + index_offset,
+                    .index_count = cluster.index_count,
+                    .bounding_box = cluster.bounding_box,
+                    .bounding_sphere = cluster.bounding_sphere,
+                    .lod_bounds = cluster.lod_bounds,
+                    .lod_error = cluster.lod_error,
+                    .parent_lod_bounds = group.lod_bounds,
+                    .parent_lod_error = group.max_parent_lod_error,
+                    .lod = group.lod,
+                    .children_offset = groups[cluster.child_group_index].cluster_offset,
+                    .children_count = groups[cluster.child_group_index].cluster_count,
+                });
+            }
+        }
+
+        for (const auto& bvh_node : builder.get_bvh_nodes())
+        {
+            m_cluster_bvh_nodes.push_back({
+                .bounding_sphere = bvh_node.bounding_sphere,
+                .lod_bounds = bvh_node.lod_bounds,
+                .min_lod_error = bvh_node.min_lod_error,
+                .max_parent_lod_error = bvh_node.max_parent_lod_error,
+                .is_leaf = bvh_node.is_leaf,
+                .children = bvh_node.children,
+            });
+
+            if (bvh_node.is_leaf)
+            {
+                m_cluster_bvh_nodes.back().children.clear();
+                for (std::uint32_t group_index : bvh_node.children)
+                {
+                    const auto& group = groups[group_index];
+                    for (std::uint32_t i = 0; i < group.cluster_count; ++i)
+                    {
+                        m_cluster_bvh_nodes.back().children.push_back(group.cluster_offset + i);
+                    }
+                }
+            }
+        }
+    }
+
+    set_positions(new_positions);
+    set_indexes(new_indexes);
 }
 
 void geometry::add_morph_target(std::string_view name, const std::vector<morph_element>& elements)
@@ -168,32 +315,14 @@ raw_buffer* geometry::get_additional_buffer(std::string_view name) const
 
 void geometry::update()
 {
-    auto* geometry_manager = render_device::instance().get_geometry_manager();
-
-    for (std::size_t i = 0; i < m_geometry_buffers.size(); ++i)
+    if (!m_dirty)
     {
-        auto& geometry_buffer = m_geometry_buffers[i];
-
-        if (!geometry_buffer.dirty)
-        {
-            continue;
-        }
-
-        auto type = static_cast<geometry_buffer_type>(i);
-
-        if (geometry_buffer.src_geometry == nullptr)
-        {
-            geometry_manager->set_buffer(
-                m_id,
-                type,
-                geometry_buffer.buffer.data(),
-                geometry_buffer.buffer.size());
-        }
-        else
-        {
-            geometry_manager->set_shared_buffer(m_id, geometry_buffer.src_geometry->get_id(), type);
-        }
+        return;
     }
+
+    update_cluster();
+    update_submesh();
+    update_buffer();
 
     m_dirty = false;
 }
@@ -211,7 +340,7 @@ void geometry::set_buffer(
     geometry_buffer.buffer.resize(size);
     std::memcpy(geometry_buffer.buffer.data(), data, size);
 
-    geometry_buffer.stride = stride;
+    geometry_buffer.stride = static_cast<std::uint32_t>(stride);
     geometry_buffer.dirty = true;
 
     mark_dirty();
@@ -233,30 +362,71 @@ void geometry::set_buffer_shared(geometry_buffer_type type, geometry* src_geomet
     mark_dirty();
 }
 
-void geometry::update_bounds() const
+void geometry::update_cluster() {}
+
+void geometry::update_submesh()
 {
-    if (!m_bounds_dirty)
+    auto* geometry_manager = render_device::instance().get_geometry_manager();
+
+    for (std::size_t i = 0; i < m_submeshes.size(); ++i)
     {
-        return;
+        if (m_submesh_infos[i].submesh_id == INVALID_RENDER_ID)
+        {
+            m_submesh_infos[i].submesh_id = geometry_manager->add_submesh(m_id);
+        }
+
+        if (m_submesh_infos[i].dirty)
+        {
+            geometry_manager->set_submesh(
+                m_submesh_infos[i].submesh_id,
+                m_submeshes[i].vertex_offset,
+                m_submeshes[i].index_offset,
+                m_submeshes[i].index_count);
+
+            m_submesh_infos[i].dirty = false;
+        }
     }
 
-    auto positions = get_position();
-    auto indexes = get_index();
-
-    m_bounding_box = {};
-    for (auto index : indexes)
+    while (m_submesh_infos.size() > m_submeshes.size())
     {
-        box::expand(m_bounding_box, positions[index]);
-    }
+        if (m_submesh_infos.back().submesh_id != INVALID_RENDER_ID)
+        {
+            geometry_manager->remove_submesh(m_submesh_infos.back().submesh_id);
+        }
 
-    m_bounding_sphere.center = box::get_center(m_bounding_box);
-    m_bounding_sphere.radius = 0.0f;
-    for (auto index : indexes)
+        m_submesh_infos.pop_back();
+    }
+}
+
+void geometry::update_buffer()
+{
+    auto* geometry_manager = render_device::instance().get_geometry_manager();
+
+    for (std::size_t i = 0; i < m_geometry_buffers.size(); ++i)
     {
-        sphere::expand(m_bounding_sphere, positions[index]);
-    }
+        auto& geometry_buffer = m_geometry_buffers[i];
 
-    m_bounds_dirty = false;
+        if (!geometry_buffer.dirty)
+        {
+            continue;
+        }
+
+        auto type = static_cast<geometry_buffer_type>(i);
+
+        if (geometry_buffer.src_geometry == nullptr)
+        {
+            geometry_manager->set_buffer(
+                m_id,
+                type,
+                geometry_buffer.buffer.data(),
+                geometry_buffer.buffer.size(),
+                geometry_buffer.stride);
+        }
+        else
+        {
+            geometry_manager->set_shared_buffer(m_id, geometry_buffer.src_geometry->m_id, type);
+        }
+    }
 }
 
 void geometry::mark_dirty()

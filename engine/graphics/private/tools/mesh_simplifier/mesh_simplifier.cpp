@@ -1,6 +1,8 @@
 #include "tools/mesh_simplifier/mesh_simplifier.hpp"
 #include "math/vector.hpp"
+#include "meshoptimizer.h"
 #include <cassert>
+#include <cstddef>
 
 namespace violet
 {
@@ -64,10 +66,7 @@ void mesh_simplifier::lock_position(const vec3f& position)
     }
 }
 
-float mesh_simplifier::simplify(
-    std::uint32_t target_triangle_count,
-    std::vector<vec3f>& new_positions,
-    std::vector<std::uint32_t>& new_indexes)
+float mesh_simplifier::simplify(std::uint32_t target_triangle_count)
 {
     m_triangle_count = static_cast<std::uint32_t>(m_indexes.size() / 3);
     for (std::uint32_t i = 0; i < m_triangle_count; ++i)
@@ -99,9 +98,6 @@ float mesh_simplifier::simplify(
     }
 
     compact();
-
-    new_positions = std::move(m_positions);
-    new_indexes = std::move(m_indexes);
 
     return std::sqrt(max_error);
 }
@@ -466,5 +462,42 @@ bool mesh_simplifier::is_triangle_flip(
     }
 
     return false;
+}
+
+void mesh_simplifier_meshopt::set_positions(std::span<const vec3f> positions)
+{
+    m_positions.assign(positions.begin(), positions.end());
+}
+
+void mesh_simplifier_meshopt::set_indexes(std::span<const std::uint32_t> indexes)
+{
+    m_indexes.assign(indexes.begin(), indexes.end());
+}
+
+float mesh_simplifier_meshopt::simplify(std::uint32_t target_triangle_count, bool lock_border)
+{
+    std::vector<std::uint32_t> simplified_indexes(m_indexes.size());
+
+    float error = 0.0f;
+
+    std::size_t simplified_index_count = meshopt_simplify(
+        simplified_indexes.data(),
+        m_indexes.data(),
+        m_indexes.size(),
+        &m_positions[0].x,
+        m_positions.size(),
+        sizeof(vec3f),
+        static_cast<size_t>(target_triangle_count) * 3,
+        FLT_MAX,
+        lock_border ? meshopt_SimplifyLockBorder : 0,
+        &error);
+
+    float error_scale = meshopt_simplifyScale(&m_positions[0].x, m_positions.size(), sizeof(vec3f));
+
+    simplified_indexes.resize(simplified_index_count);
+
+    std::swap(m_indexes, simplified_indexes);
+
+    return error * error_scale;
 }
 } // namespace violet

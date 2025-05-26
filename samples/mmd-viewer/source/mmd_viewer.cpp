@@ -340,7 +340,7 @@ void mmd_viewer::draw_imgui()
         static vec3f color = {1.0f, 1.0f, 1.0f};
         static float strength = 3.0f;
 
-        if (ImGui::ColorEdit3("Color", &color.r))
+        if (ImGui::ColorEdit3("Color", &color.x))
         {
             auto& light = world.get_component<light_component>(m_light);
             light.color = color * strength;

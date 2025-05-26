@@ -27,26 +27,68 @@ enum geometry_buffer_type
 class geometry
 {
 public:
+    struct submesh
+    {
+        std::uint32_t vertex_offset;
+        std::uint32_t index_offset;
+        std::uint32_t index_count;
+    };
+
+    struct cluster
+    {
+        std::uint32_t index_offset;
+        std::uint32_t index_count;
+
+        box3f bounding_box;
+        sphere3f bounding_sphere;
+
+        sphere3f lod_bounds;
+        float lod_error;
+
+        sphere3f parent_lod_bounds;
+        float parent_lod_error;
+
+        std::uint32_t lod;
+
+        std::uint32_t children_offset;
+        std::uint32_t children_count;
+    };
+
+    struct cluster_bvh_node
+    {
+        sphere3f bounding_sphere;
+
+        sphere3f lod_bounds;
+        float min_lod_error;
+        float max_parent_lod_error;
+
+        bool is_leaf;
+        std::vector<std::uint32_t> children;
+    };
+
     static constexpr std::size_t max_custom_attribute = 4;
 
     geometry();
+    geometry(const geometry&) = delete;
     virtual ~geometry();
 
-    void set_position(std::span<const vec3f> positions);
-    void set_position_shared(geometry* src_geometry);
-    std::span<const vec3f> get_position() const noexcept;
+    geometry& operator=(const geometry&) = delete;
 
-    void set_normal(std::span<const vec3f> normals);
-    void set_normal_shared(geometry* src_geometry);
-    std::span<const vec3f> get_normal() const noexcept;
+    void set_positions(std::span<const vec3f> positions);
+    void set_positions_shared(geometry* src_geometry);
+    std::span<const vec3f> get_positions() const noexcept;
 
-    void set_tangent(std::span<const vec4f> tangents);
-    void set_tangent_shared(geometry* src_geometry);
-    std::span<const vec4f> get_tangent() const noexcept;
+    void set_normals(std::span<const vec3f> normals);
+    void set_normals_shared(geometry* src_geometry);
+    std::span<const vec3f> get_normals() const noexcept;
 
-    void set_texcoord(std::span<const vec2f> texcoords);
-    void set_texcoord_shared(geometry* src_geometry);
-    std::span<const vec2f> get_texcoord() const noexcept;
+    void set_tangents(std::span<const vec4f> tangents);
+    void set_tangents_shared(geometry* src_geometry);
+    std::span<const vec4f> get_tangents() const noexcept;
+
+    void set_texcoords(std::span<const vec2f> texcoords);
+    void set_texcoords_shared(geometry* src_geometry);
+    std::span<const vec2f> get_texcoords() const noexcept;
 
     template <std::ranges::contiguous_range R>
     void set_custom(std::size_t index, R&& attribute)
@@ -62,9 +104,9 @@ public:
 
     void set_custom_shared(std::size_t index, geometry* src_geometry);
 
-    void set_index(std::span<const std::uint32_t> indexes);
-    void set_index_shared(geometry* src_geometry);
-    std::span<const std::uint32_t> get_index() const noexcept;
+    void set_indexes(std::span<const std::uint32_t> indexes);
+    void set_indexes_shared(geometry* src_geometry);
+    std::span<const std::uint32_t> get_indexes() const noexcept;
 
     std::uint32_t get_vertex_count() const noexcept
     {
@@ -74,6 +116,41 @@ public:
     std::uint32_t get_index_count() const noexcept
     {
         return m_index_count;
+    }
+
+    std::uint32_t add_submesh(
+        std::uint32_t vertex_offset,
+        std::uint32_t index_offset,
+        std::uint32_t index_count);
+
+    void set_submesh(
+        std::uint32_t submesh_index,
+        std::uint32_t vertex_offset,
+        std::uint32_t index_offset,
+        std::uint32_t index_count);
+
+    void clear_submeshes();
+
+    const std::vector<submesh>& get_submeshes() const noexcept
+    {
+        return m_submeshes;
+    }
+
+    void generate_clusters();
+
+    void set_clusters(std::span<const cluster> clusters)
+    {
+        m_clusters.assign(clusters.begin(), clusters.end());
+    }
+
+    const std::vector<cluster>& get_clusters() const noexcept
+    {
+        return m_clusters;
+    }
+
+    const std::vector<cluster_bvh_node>& get_cluster_bvh_nodes() const noexcept
+    {
+        return m_cluster_bvh_nodes;
     }
 
     void add_morph_target(std::string_view name, const std::vector<morph_element>& elements);
@@ -102,29 +179,14 @@ public:
 
     raw_buffer* get_additional_buffer(std::string_view name) const;
 
-    box3f get_bounding_box() const
-    {
-        if (m_bounds_dirty)
-        {
-            update_bounds();
-        }
-
-        return m_bounding_box;
-    }
-
-    sphere3f get_bounding_sphere() const
-    {
-        if (m_bounds_dirty)
-        {
-            update_bounds();
-        }
-
-        return m_bounding_sphere;
-    }
-
     render_id get_id() const noexcept
     {
         return m_id;
+    }
+
+    render_id get_submesh_id(std::uint32_t submesh_index) const
+    {
+        return m_submesh_infos[submesh_index].submesh_id;
     }
 
     void update();
@@ -136,8 +198,16 @@ private:
         std::size_t stride{0};
 
         geometry* src_geometry{nullptr};
-
         bool dirty{false};
+    };
+
+    struct submesh_info
+    {
+        render_id submesh_id{INVALID_RENDER_ID};
+        std::uint32_t cluster_offset;
+        std::uint32_t cluster_count;
+
+        bool dirty;
     };
 
     void set_buffer(
@@ -164,24 +234,27 @@ private:
         };
     }
 
-    void update_bounds() const;
+    void update_cluster();
+    void update_submesh();
+    void update_buffer();
 
     void mark_dirty();
 
     std::array<geometry_buffer, GEOMETRY_BUFFER_COUNT> m_geometry_buffers;
 
     std::uint32_t m_vertex_count{0};
-    std::uint32_t m_vertex_capacity{0};
     std::uint32_t m_index_count{0};
 
     std::unordered_map<std::string, std::unique_ptr<raw_buffer>> m_additional_buffers;
 
+    std::vector<submesh> m_submeshes;
+    std::vector<submesh_info> m_submesh_infos;
+
+    std::vector<cluster> m_clusters;
+    std::vector<cluster_bvh_node> m_cluster_bvh_nodes;
+
     std::unordered_map<std::string, std::size_t> m_morph_name_to_index;
     std::unique_ptr<morph_target_buffer> m_morph_target_buffer;
-
-    mutable bool m_bounds_dirty{false};
-    mutable box3f m_bounding_box;
-    mutable sphere3f m_bounding_sphere;
 
     render_id m_id{INVALID_RENDER_ID};
 

@@ -61,31 +61,43 @@ struct shader
         std::uint32_t instance;
     };
 
-    struct mesh_data
+    struct geometry_data
     {
-        mat4f matrix_m;
         vec4f bounding_sphere;
-        vec3f bounding_box_min;
-        std::uint32_t flags;
-        vec3f bounding_box_max;
-        std::uint32_t index_offset;
         std::uint32_t position_address;
         std::uint32_t normal_address;
         std::uint32_t tangent_address;
         std::uint32_t texcoord_address;
-        std::uint32_t custom_addresses[4];
+        std::uint32_t custom0_address;
+        std::uint32_t custom1_address;
+        std::uint32_t custom2_address;
+        std::uint32_t custom3_address;
+        std::uint32_t index_offset;
+        std::uint32_t index_count;
+        std::uint32_t cluster_offset;
+        std::uint32_t cluster_count;
+    };
+
+    struct cluster_data
+    {
+        vec4f bounding_sphere;
+        std::uint32_t vertex_offset;
+        std::uint32_t index_offset;
+        std::uint32_t index_count;
+        std::uint32_t padding0;
+    };
+
+    struct mesh_data
+    {
+        mat4f matrix_m;
     };
 
     struct instance_data
     {
         std::uint32_t mesh_index;
-        std::uint32_t vertex_offset;
-        std::uint32_t index_offset;
-        std::uint32_t index_count;
+        std::uint32_t geometry_index;
         std::uint32_t batch_index;
         std::uint32_t material_address;
-        std::uint32_t flags;
-        std::uint32_t padding0;
     };
 
     struct light_data
@@ -108,6 +120,7 @@ struct shader
         std::uint32_t light_count;
         std::uint32_t batch_buffer;
         std::uint32_t material_buffer;
+        std::uint32_t geometry_buffer;
         std::uint32_t vertex_buffer;
         std::uint32_t index_buffer;
         std::uint32_t skybox;
@@ -115,7 +128,6 @@ struct shader
         std::uint32_t prefilter;
         std::uint32_t padding0;
         std::uint32_t padding1;
-        std::uint32_t padding2;
     };
 
     static constexpr parameter scene = {
@@ -238,14 +250,14 @@ struct skinning_cs : public shader_cs
 {
     struct constant_data
     {
-        std::uint32_t vertex_buffer;
-        std::uint32_t skeleton;
         std::uint32_t position_input_address;
         std::uint32_t normal_input_address;
         std::uint32_t tangent_input_address;
         std::uint32_t position_output_address;
         std::uint32_t normal_output_address;
         std::uint32_t tangent_output_address;
+        std::uint32_t vertex_buffer;
+        std::uint32_t skeleton;
         std::uint32_t additional[4];
     };
 

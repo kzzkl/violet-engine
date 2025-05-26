@@ -27,7 +27,7 @@ void bounds_projection_pass::add(render_graph& graph, const parameter& parameter
 {
     struct pass_data
     {
-        std::uint32_t mesh_count;
+        std::uint32_t instance_count;
     };
 
     graph.add_pass<pass_data>(
@@ -36,7 +36,7 @@ void bounds_projection_pass::add(render_graph& graph, const parameter& parameter
         [&](pass_data& data, rdg_pass& pass)
         {
             pass.add_render_target(parameter.render_target, RHI_ATTACHMENT_LOAD_OP_LOAD);
-            data.mesh_count = graph.get_scene().get_mesh_count();
+            data.instance_count = graph.get_scene().get_instance_count();
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -55,7 +55,7 @@ void bounds_projection_pass::add(render_graph& graph, const parameter& parameter
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_SCENE);
             command.set_parameter(2, RDG_PARAMETER_CAMERA);
-            command.draw(0, data.mesh_count);
+            command.draw(0, data.instance_count);
         });
 }
 } // namespace violet

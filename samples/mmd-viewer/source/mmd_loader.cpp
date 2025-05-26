@@ -17,6 +17,7 @@
 #include "math/vector.hpp"
 #include "mmd_material.hpp"
 #include "vmd.hpp"
+#include <algorithm>
 #include <map>
 #include <numeric>
 
@@ -100,8 +101,6 @@ std::optional<mmd_loader::scene_data> mmd_loader::load(
 
 void mmd_loader::load_mesh(scene_data& scene, world& world)
 {
-    auto mesh_geometry = std::make_unique<geometry>();
-
     auto tangents = geometry_tool::generate_tangents(
         m_pmx.position,
         m_pmx.normal,
@@ -125,11 +124,11 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
         smooth_normal_and_outline[i].w = m_pmx.outline[i];
     }
 
-    mesh_geometry = std::make_unique<geometry>();
-    mesh_geometry->set_position(m_pmx.position);
-    mesh_geometry->set_normal(m_pmx.normal);
-    mesh_geometry->set_tangent(tangents);
-    mesh_geometry->set_texcoord(m_pmx.texcoord);
+    auto mesh_geometry = std::make_unique<geometry>();
+    mesh_geometry->set_positions(m_pmx.position);
+    mesh_geometry->set_normals(m_pmx.normal);
+    mesh_geometry->set_tangents(tangents);
+    mesh_geometry->set_texcoords(m_pmx.texcoord);
     mesh_geometry->set_custom(0, smooth_normal_and_outline);
     for (std::size_t i = 0; i < m_pmx.add_texcoord.size(); ++i)
     {
@@ -154,7 +153,7 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
             m_pmx.sdef.size() * sizeof(pmx::sdef_data),
             RHI_BUFFER_STORAGE);
     }
-    mesh_geometry->set_index(m_pmx.indexes);
+    mesh_geometry->set_indexes(m_pmx.indexes);
 
     scene.geometries.push_back(std::move(mesh_geometry));
 
@@ -218,22 +217,25 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
     root_mesh.geometry = scene.geometries[0].get();
     for (const auto& submesh : m_pmx.submeshes)
     {
+        std::uint32_t submesh_index = root_mesh.geometry->add_submesh(
+            0,
+            static_cast<std::uint32_t>(submesh.index_offset),
+            static_cast<std::uint32_t>(submesh.index_count));
+
         root_mesh.submeshes.push_back({
-            .vertex_offset = 0,
-            .index_offset = static_cast<std::uint32_t>(submesh.index_offset),
-            .index_count = static_cast<std::uint32_t>(submesh.index_count),
+            .index = submesh_index,
             .material = scene.materials[submesh.material_index].get(),
         });
     }
 
-    for (const auto& submesh : m_pmx.submeshes)
+    for (std::uint32_t submesh_index = 0; submesh_index < m_pmx.submeshes.size(); ++submesh_index)
     {
+        const auto& submesh = m_pmx.submeshes[submesh_index];
+
         if (scene.outline_materials[submesh.material_index] != nullptr)
         {
             root_mesh.submeshes.push_back({
-                .vertex_offset = 0,
-                .index_offset = static_cast<std::uint32_t>(submesh.index_offset),
-                .index_count = static_cast<std::uint32_t>(submesh.index_count),
+                .index = submesh_index,
                 .material = scene.outline_materials[submesh.material_index].get(),
             });
         }

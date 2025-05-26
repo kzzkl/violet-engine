@@ -11,8 +11,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(violet-engine)
 
-option(VIOLET_USE_SIMD "Use SIMD" ON)
-
 option(VIOLET_BUILD_THIRDPARTY "Build thirdparty" ON)
 option(VIOLET_BUILD_ENGINE "Build engine" ON)
 option(VIOLET_BUILD_TESTING "Build test project" ON)
@@ -26,13 +24,6 @@ endif()
 
 set(VIOLET_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(VIOLET_THIRDPARTY_DIR ${VIOLET_ROOT_DIR}/thirdparty)
-set(VIOLET_SHADER_INCLUDE_DIR ${VIOLET_ROOT_DIR}/engine/assets/shaders/include)
-
-set(VIOLET_BINARY_ROOT_DIR ${CMAKE_INSTALL_PREFIX}/bin)
-
-if(VIOLET_USE_SIMD)
-    add_definitions(-DVIOLET_USE_SIMD)
-endif()
 
 if(VIOLET_BUILD_THIRDPARTY)
     add_subdirectory(thirdparty)

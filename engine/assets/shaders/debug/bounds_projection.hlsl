@@ -11,12 +11,17 @@ struct vs_output
 
 vs_output vs_main(uint vertex_id : SV_VertexID)
 {
-    StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
-    mesh_data mesh = meshes[vertex_id];
+    StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
+    instance_data instance = instances[vertex_id];
 
-    float4 sphere_vs = float4(mesh.bounding_sphere.xyz, 1.0);
-    sphere_vs = mul(camera.matrix_v, sphere_vs);
-    sphere_vs.w = mesh.bounding_sphere.w;
+    StructuredBuffer<geometry_data> geometries = ResourceDescriptorHeap[scene.geometry_buffer];
+    geometry_data geometry = geometries[instance.geometry_index];
+
+    StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
+    mesh_data mesh = meshes[instance.mesh_index];
+
+    float4 sphere_vs = mul(camera.matrix_v, mul(mesh.matrix_m, float4(geometry.bounding_sphere.xyz, 1.0)));
+    sphere_vs.w = geometry.bounding_sphere.w;
 
     vs_output output;
     output.aabb = project_shpere_vs(sphere_vs, camera.matrix_p[0][0], camera.matrix_p[1][1]);

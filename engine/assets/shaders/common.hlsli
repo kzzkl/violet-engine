@@ -13,35 +13,44 @@ static const float HALF_PI = 0.5 * PI;
 
 static const float EPSILON = 1e-10;
 
-static const uint RENDER_MESH_FRUSTUM_CULLING = 1 << 0;
-static const uint RENDER_MESH_OCCLUSION_CULLING = 1 << 1;
+static const uint MESH_FRUSTUM_CULLING = 1 << 0;
+static const uint MESH_OCCLUSION_CULLING = 1 << 1;
+static const uint MESH_CLUSTER = 1 << 2;
 
-struct mesh_data
+struct geometry_data
 {
-    float4x4 model_matrix;
     float4 bounding_sphere;
-    float3 bounding_box_min;
-    uint flags;
-    float3 bounding_box_max;
-    uint index_offset;
     uint position_address;
     uint normal_address;
     uint tangent_address;
     uint texcoord_address;
     uint4 custom_addresses;
+    uint index_offset;
+    uint index_count;
+    uint cluster_offset;
+    uint cluster_count;
+};
+
+struct cluster_data
+{
+    float4 bounding_sphere;
+    uint vertex_offset;
+    uint index_offset;
+    uint index_count;
+    uint padding0;
+};
+
+struct mesh_data
+{
+    float4x4 matrix_m;
 };
 
 struct instance_data
 {
     uint mesh_index;
-    uint vertex_offset;
-    uint index_offset;
-    uint index_count;
-
+    uint geometry_index;
     uint batch_index;
     uint material_address;
-    uint flags;
-    uint padding0;
 };
 
 static const uint LIGHT_DIRECTIONAL = 0;
@@ -66,6 +75,7 @@ struct scene_data
     uint light_count;
     uint batch_buffer;
     uint material_buffer;
+    uint geometry_buffer;
     uint vertex_buffer;
     uint index_buffer;
     uint skybox;
@@ -73,7 +83,6 @@ struct scene_data
     uint prefilter;
     uint padding0;
     uint padding1;
-    uint padding2;
 };
 
 struct camera_data

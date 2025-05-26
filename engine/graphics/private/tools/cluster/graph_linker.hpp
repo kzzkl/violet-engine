@@ -16,7 +16,7 @@ public:
         disjoint_set<std::uint32_t>& disjoint_set,
         std::uint32_t min_island_size,
         const box3f& bounds,
-        PositionFunctor&& position_functor)
+        PositionFunctor&& get_position)
     {
         std::uint32_t element_count = disjoint_set.get_size();
 
@@ -26,7 +26,7 @@ public:
             for (std::uint32_t i = 0; i < element_count; ++i)
             {
                 vec3f center =
-                    (position_functor(i) - bounds.min) / vector::max(bounds.max - bounds.min);
+                    (get_position(i) - bounds.min) / vector::max(bounds.max - bounds.min);
 
                 std::uint32_t key = morton_code_3(static_cast<std::uint32_t>(center.x * 1023.0f));
                 key |= morton_code_3(static_cast<std::uint32_t>(center.y * 1023.0f)) << 1;
@@ -79,7 +79,7 @@ public:
             std::uint32_t element_index = sorted_to_index[i];
             std::uint32_t island_index = disjoint_set.find(element_index);
 
-            vec3f center = position_functor(element_index);
+            vec3f center = get_position(element_index);
 
             static constexpr std::uint32_t max_link_count = 5;
 
@@ -113,8 +113,7 @@ public:
                     }
                     else
                     {
-                        float distance =
-                            vector::length_sq(center - position_functor(adjacency_index));
+                        float distance = vector::length_sq(center - get_position(adjacency_index));
                         for (std::size_t link = 0; link < closest_distances.size(); ++link)
                         {
                             if (distance < closest_distances[link])

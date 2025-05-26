@@ -30,6 +30,8 @@ void persistent_buffer::free(buffer_allocation allocation)
 
 void persistent_buffer::copy(const void* data, std::size_t size, std::size_t offset)
 {
+    assert(size > 0);
+
     m_copy_queue.emplace_back(copy_command{
         .data = data,
         .size = size,

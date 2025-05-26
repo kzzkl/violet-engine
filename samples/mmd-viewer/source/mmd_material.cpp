@@ -111,9 +111,9 @@ mmd_outline_material::mmd_outline_material()
 void mmd_outline_material::set_color(const vec4f& color)
 {
     auto& constant = get_constant();
-    constant.color.r = color.r;
-    constant.color.g = color.g;
-    constant.color.b = color.b;
+    constant.color.x = color.x;
+    constant.color.y = color.y;
+    constant.color.z = color.z;
 }
 
 void mmd_outline_material::set_width(float width)

@@ -293,6 +293,7 @@ render_graph::render_graph(
 
     m_final_pass = m_allocator->allocate_pass<rdg_pass>();
     m_final_pass->set_name("Final");
+    m_final_pass->set_pass_type(RDG_PASS_TRANSFER);
 
     begin_group(name);
 }

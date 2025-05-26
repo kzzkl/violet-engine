@@ -43,6 +43,12 @@ public:
         return m_rotation;
     }
 
+    void set_scale(float scale) noexcept
+    {
+        m_scale = {scale, scale, scale};
+        m_dirty = TRANSFORM_DIRTY_ALL;
+    }
+
     void set_scale(const vec3f& scale) noexcept
     {
         m_scale = scale;

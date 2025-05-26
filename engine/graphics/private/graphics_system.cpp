@@ -147,7 +147,14 @@ void graphics_system::begin_frame()
     m_frame_fence->wait(m_frame_fence_values[device.get_frame_resource_index()]);
 
     device.begin_frame();
-    switch_frame_resource();
+
+    auto& finish_fences = m_used_fences[device.get_frame_resource_index()];
+    for (rhi_fence* samphore : finish_fences)
+    {
+        m_free_fences.push_back(samphore);
+    }
+    finish_fences.clear();
+
     m_allocator->tick();
     m_gpu_buffer_uploader->tick();
 }
@@ -217,7 +224,7 @@ void graphics_system::render()
     std::sort(
         render_queue.begin(),
         render_queue.end(),
-        [&world](auto& a, auto& b)
+        [](const auto& a, const auto& b)
         {
             return a.camera->priority > b.camera->priority;
         });
@@ -308,17 +315,6 @@ rhi_fence* graphics_system::render(const render_context& context)
     }
 
     return finish_fence;
-}
-
-void graphics_system::switch_frame_resource()
-{
-    auto& device = render_device::instance();
-    auto& finish_fences = m_used_fences[device.get_frame_resource_index()];
-    for (rhi_fence* samphore : finish_fences)
-    {
-        m_free_fences.push_back(samphore);
-    }
-    finish_fences.clear();
 }
 
 rhi_fence* graphics_system::allocate_fence()

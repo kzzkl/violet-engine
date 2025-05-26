@@ -87,7 +87,7 @@ void deferred_renderer::add_cull_pass(render_graph& graph)
 
     m_count_buffer = graph.add_buffer(
         "Count Buffer",
-        graph.get_scene().get_group_capacity() * sizeof(std::uint32_t),
+        graph.get_scene().get_batch_capacity() * sizeof(std::uint32_t),
         RHI_BUFFER_STORAGE_TEXEL | RHI_BUFFER_INDIRECT | RHI_BUFFER_TRANSFER_DST);
 
     cull_pass::add(
@@ -186,15 +186,6 @@ void deferred_renderer::add_lighting_pass(render_graph& graph)
 {
     rdg_scope scope(graph, "Lighting");
 
-    unlit_pass::add(
-        graph,
-        {
-            .gbuffer_albedo = m_gbuffer_albedo,
-            .depth_buffer = m_depth_buffer,
-            .render_target = m_render_target,
-            .clear = true,
-        });
-
     rdg_texture* depth_copy = graph.add_texture(
         "Depth Copy",
         m_render_extent,
@@ -206,6 +197,15 @@ void deferred_renderer::add_lighting_pass(render_graph& graph)
         {
             .src = m_depth_buffer,
             .dst = depth_copy,
+        });
+
+    unlit_pass::add(
+        graph,
+        {
+            .gbuffer_albedo = m_gbuffer_albedo,
+            .depth_buffer = m_depth_buffer,
+            .render_target = m_render_target,
+            .clear = true,
         });
 
     physical_pass::add(

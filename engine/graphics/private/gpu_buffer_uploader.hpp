@@ -10,7 +10,7 @@ class gpu_buffer_uploader
 public:
     gpu_buffer_uploader(
         std::size_t staging_page_size = 64ull * 1024 * 10,
-        std::size_t max_staging_pages = 16);
+        std::size_t staging_page_count = 16);
 
     void tick();
 
@@ -55,14 +55,15 @@ private:
     staging_page& allocate_staging_page();
 
     void flush();
-    void reset_active_staging_pages();
+    void reset_active_staging_pages(std::uint32_t frame_resource_index);
 
     std::vector<std::vector<std::size_t>> m_active_staging_pages;
     std::vector<std::size_t> m_free_staging_pages;
+    std::size_t m_current_staging_page_index;
 
     std::vector<staging_page> m_staging_pages;
-    const std::size_t m_staging_page_size{0};
-    const std::size_t m_max_staging_pages{0};
+    const std::size_t m_staging_page_size;
+    const std::size_t m_staging_page_count;
 
     struct upload_command
     {
