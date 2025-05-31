@@ -99,7 +99,8 @@ private:
     void group_clusters(std::uint32_t cluster_offset, std::uint32_t cluster_count);
     void simplify_group(std::uint32_t group_index);
 
-    void build_bvh(std::uint32_t group_offset, std::uint32_t group_count, std::uint32_t lod);
+    std::uint32_t build_bvh(std::span<std::uint32_t> indexes, bool root);
+    void sort_groups(std::span<std::uint32_t> group_indexes, std::uint32_t split);
     void calculate_bvh_error();
 
     box3f m_bounds;

@@ -250,8 +250,6 @@ void geometry::generate_clusters()
                     .parent_lod_bounds = group.lod_bounds,
                     .parent_lod_error = group.max_parent_lod_error,
                     .lod = group.lod,
-                    .children_offset = groups[cluster.child_group_index].cluster_offset,
-                    .children_count = groups[cluster.child_group_index].cluster_count,
                 });
             }
         }
@@ -269,14 +267,12 @@ void geometry::generate_clusters()
 
             if (bvh_node.is_leaf)
             {
+                const auto& group = groups[bvh_node.children[0]];
+
                 m_cluster_bvh_nodes.back().children.clear();
-                for (std::uint32_t group_index : bvh_node.children)
+                for (std::uint32_t i = 0; i < group.cluster_count; ++i)
                 {
-                    const auto& group = groups[group_index];
-                    for (std::uint32_t i = 0; i < group.cluster_count; ++i)
-                    {
-                        m_cluster_bvh_nodes.back().children.push_back(group.cluster_offset + i);
-                    }
+                    m_cluster_bvh_nodes.back().children.push_back(group.cluster_offset + i);
                 }
             }
         }

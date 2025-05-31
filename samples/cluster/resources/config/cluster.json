@@ -5,6 +5,7 @@
         "height": 800
     },
     "Cluster Demo": {
+        "model_bak": "D:/Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf",
         "model": "D:/Workspace/assets/models/gltf/stanford-bunny.glb"
     }
 }

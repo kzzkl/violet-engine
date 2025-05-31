@@ -49,9 +49,6 @@ public:
         float parent_lod_error;
 
         std::uint32_t lod;
-
-        std::uint32_t children_offset;
-        std::uint32_t children_count;
     };
 
     struct cluster_bvh_node

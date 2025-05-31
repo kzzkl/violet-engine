@@ -1,3 +1,4 @@
+#include "common/log.hpp"
 #include "components/camera_component.hpp"
 #include "components/hierarchy_component.hpp"
 #include "components/light_component.hpp"
@@ -192,7 +193,7 @@ private:
 
         if (item == 0)
         {
-            const char* cull_modes[] = {"Hierarchy", "BVH", "Naive"};
+            const char* cull_modes[] = {"BVH", "Naive"};
             static int mode = 0;
 
             ImGui::Combo("Mode", &mode, cull_modes, IM_ARRAYSIZE(cull_modes));
@@ -451,12 +452,9 @@ private:
         switch (mode)
         {
         case 0:
-            visible_clusters = cull_cluster_hierarchy(throshold, project_error_to_screen);
-            break;
-        case 1:
             visible_clusters = cull_cluster_bvh(throshold, project_error_to_screen);
             break;
-        case 2:
+        case 1:
             visible_clusters = cull_cluster_naive(throshold, project_error_to_screen);
             break;
         }
@@ -486,56 +484,6 @@ private:
     }
 
     template <typename Functor>
-    std::vector<std::uint32_t> cull_cluster_hierarchy(
-        float throshold,
-        Functor&& project_error_to_screen)
-    {
-        const auto& mesh = get_world().get_component<const mesh_component>(m_mesh);
-        const auto& clusters = mesh.geometry->get_clusters();
-
-        std::vector<std::uint32_t> visible_clusters;
-        std::vector<std::uint8_t> visible_flags(clusters.size());
-
-        std::queue<std::uint32_t> queue;
-        queue.push(clusters.size() - 1);
-
-        while (!queue.empty())
-        {
-            std::uint32_t index = queue.front();
-            queue.pop();
-
-            if (visible_flags[index])
-            {
-                continue;
-            }
-
-            visible_flags[index] = 1;
-
-            const auto& cluster = clusters[index];
-
-            float project_error = project_error_to_screen(cluster.lod_bounds, cluster.lod_error).x;
-            float project_parent_error =
-                project_error_to_screen(cluster.parent_lod_bounds, cluster.parent_lod_error).x;
-
-            if (project_error < throshold && project_parent_error > throshold)
-            {
-                visible_clusters.push_back(index);
-            }
-            else
-            {
-                for (std::uint32_t i = 0; i < cluster.children_count; ++i)
-                {
-                    queue.push(cluster.children_offset + i);
-                }
-            }
-
-            ++m_check_times;
-        }
-
-        return visible_clusters;
-    }
-
-    template <typename Functor>
     std::vector<std::uint32_t> cull_cluster_bvh(float throshold, Functor&& project_error_to_screen)
     {
         const auto& mesh = get_world().get_component<const mesh_component>(m_mesh);
@@ -544,7 +492,7 @@ private:
         std::vector<std::uint32_t> candidate_clusters;
 
         std::queue<std::uint32_t> queue;
-        queue.push(0);
+        queue.push(static_cast<std::uint32_t>(bvh_nodes.size() - 1));
 
         while (!queue.empty())
         {

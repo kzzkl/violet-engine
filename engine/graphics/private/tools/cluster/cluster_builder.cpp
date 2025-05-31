@@ -6,7 +6,6 @@
 #include "tools/mesh_simplifier/mesh_simplifier.hpp"
 #include <iterator>
 #include <map>
-#include <queue>
 #include <unordered_map>
 
 namespace violet
@@ -18,7 +17,8 @@ constexpr std::size_t MAX_CLUSTER_SIZE = 128;
 constexpr std::size_t MAX_GROUP_SIZE = 32;
 constexpr std::size_t MIN_GROUP_SIZE = 8;
 
-constexpr std::size_t MAX_BVH_CHILDREN_COUNT = 8;
+constexpr std::size_t MAX_BVH_CHILD_COUNT = 8;
+constexpr std::size_t MAX_BVH_CHILD_BIT_COUNT = 3;
 
 std::uint32_t cycle_3(std::uint32_t value)
 {
@@ -92,8 +92,7 @@ void cluster_builder::build()
     std::uint32_t group_offset = 0;
     std::uint32_t group_lod = 0;
 
-    m_bvh_nodes.emplace_back();
-
+    std::vector<std::uint32_t> root_indexes;
     while (true)
     {
         auto cluster_offset = static_cast<std::uint32_t>(m_clusters.size());
@@ -121,10 +120,9 @@ void cluster_builder::build()
             m_groups[i].lod = group_lod;
         }
 
-        build_bvh(
-            group_offset,
-            static_cast<std::uint32_t>(m_groups.size() - group_offset),
-            group_lod);
+        std::vector<std::uint32_t> group_indexes(m_groups.size() - group_offset);
+        std::iota(group_indexes.begin(), group_indexes.end(), group_offset);
+        root_indexes.push_back(build_bvh(group_indexes, false));
 
         ++group_lod;
 
@@ -133,6 +131,8 @@ void cluster_builder::build()
             break;
         }
     }
+
+    build_bvh(root_indexes, true);
 
     calculate_bvh_error();
 }
@@ -602,15 +602,102 @@ void cluster_builder::simplify_group(std::uint32_t group_index)
     group.max_parent_lod_error = lod_error;
 }
 
-void cluster_builder::build_bvh(
-    std::uint32_t group_offset,
-    std::uint32_t group_count,
-    std::uint32_t lod)
+std::uint32_t cluster_builder::build_bvh(std::span<std::uint32_t> indexes, bool root)
 {
-    std::vector<std::uint32_t> group_indexes(group_count);
-    for (std::uint32_t i = 0; i < group_count; ++i)
+    auto child_count = static_cast<std::uint32_t>(indexes.size());
+
+    if (child_count == 1)
     {
-        group_indexes[i] = group_offset + i;
+        if (root)
+        {
+            return indexes[0];
+        }
+
+        auto node_index = static_cast<std::uint32_t>(m_bvh_nodes.size());
+        auto& node = m_bvh_nodes.emplace_back();
+        node.is_leaf = true;
+        node.children.push_back(indexes[0]);
+        return node_index;
+    }
+
+    if (child_count <= MAX_BVH_CHILD_COUNT)
+    {
+        std::vector<std::uint32_t> children;
+        for (std::uint32_t i = 0; i < child_count; ++i)
+        {
+            children.push_back(build_bvh(indexes.subspan(i, 1), root));
+        }
+
+        auto node_index = static_cast<std::uint32_t>(m_bvh_nodes.size());
+        auto& node = m_bvh_nodes.emplace_back();
+        node.children = children;
+        return node_index;
+    }
+
+    std::uint32_t large_child_count = MAX_BVH_CHILD_COUNT;
+    while (large_child_count * MAX_BVH_CHILD_COUNT < child_count)
+    {
+        large_child_count *= MAX_BVH_CHILD_COUNT;
+    }
+    std::uint32_t small_child_count = large_child_count / MAX_BVH_CHILD_COUNT;
+    std::uint32_t excess_child_count = child_count - small_child_count * MAX_BVH_CHILD_COUNT;
+
+    std::array<std::uint32_t, 8> child_sizes;
+    for (std::uint32_t i = 0; i < MAX_BVH_CHILD_COUNT; ++i)
+    {
+        std::uint32_t child_excess =
+            std::min(large_child_count - small_child_count, excess_child_count);
+        child_sizes[i] = small_child_count + child_excess;
+        excess_child_count -= child_excess;
+    }
+
+    if (!root)
+    {
+        for (std::uint32_t i = 0; i < MAX_BVH_CHILD_BIT_COUNT; ++i)
+        {
+            std::uint32_t range_count = 1 << i;
+            std::uint32_t range_size = MAX_BVH_CHILD_COUNT / range_count;
+
+            std::uint32_t split_offset = 0;
+
+            for (std::uint32_t j = 0; j < range_count; ++j)
+            {
+                std::uint32_t split0 = 0;
+                std::uint32_t split1 = 0;
+                for (std::uint32_t k = 0; k < range_size / 2; ++k)
+                {
+                    split0 += child_sizes[j * range_size + k];
+                    split1 += child_sizes[j * range_size + k + range_size / 2];
+                }
+
+                sort_groups(indexes.subspan(split_offset, split0 + split1), split0);
+
+                split_offset += split0 + split1;
+            }
+        }
+    }
+
+    std::vector<std::uint32_t> children;
+    std::uint32_t offset = 0;
+    for (std::uint32_t i = 0; i < MAX_BVH_CHILD_COUNT; ++i)
+    {
+        children.push_back(build_bvh(indexes.subspan(offset, child_sizes[i]), root));
+        offset += child_sizes[i];
+    }
+
+    auto node_index = static_cast<std::uint32_t>(m_bvh_nodes.size());
+    auto& node = m_bvh_nodes.emplace_back();
+    node.children = children;
+    return node_index;
+}
+
+void cluster_builder::sort_groups(std::span<std::uint32_t> group_indexes, std::uint32_t split)
+{
+    box3f bounding_box;
+    for (std::uint32_t group_index : group_indexes)
+    {
+        const auto& group = m_groups[group_index];
+        box::expand(bounding_box, group.bounding_box);
     }
 
     auto get_surface_area = [&](std::uint32_t begin, std::uint32_t end)
@@ -626,163 +713,65 @@ void cluster_builder::build_bvh(
         return 2.0f * (extent.x * extent.y + extent.x * extent.z + extent.y * extent.z);
     };
 
-    auto split_range = [&](std::uint32_t begin, std::uint32_t end)
+    float min_surface_area = std::numeric_limits<float>::infinity();
+    std::uint32_t best_axis = 0;
+    for (std::uint32_t axis = 0; axis < 3; ++axis)
     {
-        box3f bounding_box;
-        for (std::uint32_t i = begin; i < end; ++i)
-        {
-            const auto& group = m_groups[group_indexes[i]];
-            box::expand(bounding_box, group.bounding_box);
-        }
-
-        float min_surface_area = std::numeric_limits<float>::infinity();
-        std::uint32_t best_axis = 0;
-        for (std::uint32_t axis = 0; axis < 3; ++axis)
-        {
-            std::sort(
-                group_indexes.begin() + begin,
-                group_indexes.begin() + end,
-                [&](std::uint32_t a, std::uint32_t b) -> bool
-                {
-                    vec3f a_center = box::get_center(m_groups[a].bounding_box);
-                    vec3f b_center = box::get_center(m_groups[b].bounding_box);
-                    return a_center[axis] < b_center[axis];
-                });
-
-            std::uint32_t mid = (begin + end) / 2;
-
-            float surface_area = get_surface_area(begin, mid) + get_surface_area(mid, end);
-            if (surface_area < min_surface_area)
-            {
-                min_surface_area = surface_area;
-                best_axis = axis;
-            }
-        }
-
         std::sort(
-            group_indexes.begin() + begin,
-            group_indexes.begin() + end,
+            group_indexes.begin(),
+            group_indexes.end(),
             [&](std::uint32_t a, std::uint32_t b) -> bool
             {
                 vec3f a_center = box::get_center(m_groups[a].bounding_box);
                 vec3f b_center = box::get_center(m_groups[b].bounding_box);
-                return a_center[best_axis] < b_center[best_axis];
+                return a_center[axis] < b_center[axis];
             });
 
-        return (begin + end) / 2;
-    };
-
-    auto create_bvh_node = [&](std::uint32_t begin, std::uint32_t end)
-    {
-        cluster_bvh_node result = {};
-
-        for (std::uint32_t i = begin; i < end; ++i)
+        float surface_area =
+            get_surface_area(0, split) +
+            get_surface_area(split, static_cast<std::uint32_t>(group_indexes.size()));
+        if (surface_area < min_surface_area)
         {
-            const auto& group = m_groups[group_indexes[i]];
-            box::expand(result.bounding_box, group.bounding_box);
-        }
-
-        return result;
-    };
-
-    auto root_index = static_cast<std::uint32_t>(m_bvh_nodes.size());
-    m_bvh_nodes.emplace_back();
-
-    struct bvh_range
-    {
-        std::uint32_t index;
-        std::uint32_t offset;
-        std::uint32_t count;
-    };
-
-    std::queue<bvh_range> queue;
-    queue.push({
-        .index = root_index,
-        .offset = 0,
-        .count = group_count,
-    });
-
-    while (!queue.empty())
-    {
-        auto range = queue.front();
-        queue.pop();
-
-        if (range.count <= MAX_BVH_CHILDREN_COUNT)
-        {
-            m_bvh_nodes[range.index].is_leaf = true;
-            for (std::uint32_t i = 0; i < range.count; ++i)
-            {
-                m_bvh_nodes[range.index].children.push_back(group_indexes[range.offset + i]);
-            }
-        }
-        else
-        {
-            std::uint32_t mid0 = split_range(range.offset, range.offset + range.count);
-            std::uint32_t mid1 = split_range(range.offset, mid0);
-            std::uint32_t mid2 = split_range(mid0, range.offset + range.count);
-            std::uint32_t mid3 = split_range(range.offset, mid1);
-            std::uint32_t mid4 = split_range(mid1, mid0);
-            std::uint32_t mid5 = split_range(mid0, mid2);
-            std::uint32_t mid6 = split_range(mid2, range.offset + range.count);
-
-            std::vector<std::uint32_t> split_offset = {
-                range.offset,
-                mid3,
-                mid1,
-                mid4,
-                mid0,
-                mid5,
-                mid2,
-                mid6,
-                range.offset + range.count,
-            };
-
-            for (std::uint32_t i = 0; i < MAX_BVH_CHILDREN_COUNT; ++i)
-            {
-                auto children_index = static_cast<std::uint32_t>(m_bvh_nodes.size());
-
-                m_bvh_nodes[range.index].children.push_back(children_index);
-                m_bvh_nodes.push_back(create_bvh_node(split_offset[i], split_offset[i + 1]));
-
-                bvh_range children_range = {
-                    .index = children_index,
-                    .offset = split_offset[i],
-                    .count = split_offset[i + 1] - split_offset[i],
-                };
-                queue.push(children_range);
-            }
+            min_surface_area = surface_area;
+            best_axis = axis;
         }
     }
 
-    m_bvh_nodes[0].children.push_back(root_index);
+    std::sort(
+        group_indexes.begin(),
+        group_indexes.end(),
+        [&](std::uint32_t a, std::uint32_t b) -> bool
+        {
+            vec3f a_center = box::get_center(m_groups[a].bounding_box);
+            vec3f b_center = box::get_center(m_groups[b].bounding_box);
+            return a_center[best_axis] < b_center[best_axis];
+        });
 }
 
 void cluster_builder::calculate_bvh_error()
 {
-    for (auto iter = m_bvh_nodes.rbegin(); iter != m_bvh_nodes.rend(); ++iter)
+    for (auto iter = m_bvh_nodes.begin(); iter != m_bvh_nodes.end(); ++iter)
     {
-        iter->min_lod_error = std::numeric_limits<float>::infinity();
-        iter->max_parent_lod_error = 0.0f;
-
-        std::vector<sphere3f> child_bounding_spheres;
-        std::vector<sphere3f> child_lod_bounds;
-
         if (iter->is_leaf)
         {
-            for (std::uint32_t group_index : iter->children)
-            {
-                const auto& child = m_groups[group_index];
+            assert(iter->children.size() == 1);
 
-                child_bounding_spheres.push_back(child.bounding_sphere);
-                child_lod_bounds.push_back(child.lod_bounds);
+            const auto& group = m_groups[iter->children[0]];
 
-                iter->min_lod_error = std::min(iter->min_lod_error, child.min_lod_error);
-                iter->max_parent_lod_error =
-                    std::max(iter->max_parent_lod_error, child.max_parent_lod_error);
-            }
+            iter->bounding_box = group.bounding_box;
+            iter->bounding_sphere = group.bounding_sphere;
+            iter->lod_bounds = group.lod_bounds;
+            iter->min_lod_error = group.min_lod_error;
+            iter->max_parent_lod_error = group.max_parent_lod_error;
         }
         else
         {
+            iter->min_lod_error = std::numeric_limits<float>::infinity();
+            iter->max_parent_lod_error = 0.0f;
+
+            std::vector<sphere3f> child_bounding_spheres;
+            std::vector<sphere3f> child_lod_bounds;
+
             for (std::uint32_t node_index : iter->children)
             {
                 const auto& child = m_bvh_nodes[node_index];
@@ -794,10 +783,10 @@ void cluster_builder::calculate_bvh_error()
                 iter->max_parent_lod_error =
                     std::max(iter->max_parent_lod_error, child.max_parent_lod_error);
             }
-        }
 
-        iter->bounding_sphere = sphere::create(child_bounding_spheres);
-        iter->lod_bounds = sphere::create(child_lod_bounds);
+            iter->bounding_sphere = sphere::create(child_bounding_spheres);
+            iter->lod_bounds = sphere::create(child_lod_bounds);
+        }
     }
 }
 } // namespace violet
