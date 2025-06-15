@@ -92,7 +92,7 @@ void cluster_builder::build()
     std::uint32_t group_offset = 0;
     std::uint32_t group_lod = 0;
 
-    std::vector<std::uint32_t> root_indexes;
+    std::vector<std::uint32_t> bvh_indexes;
     while (true)
     {
         auto cluster_offset = static_cast<std::uint32_t>(m_clusters.size());
@@ -122,7 +122,7 @@ void cluster_builder::build()
 
         std::vector<std::uint32_t> group_indexes(m_groups.size() - group_offset);
         std::iota(group_indexes.begin(), group_indexes.end(), group_offset);
-        root_indexes.push_back(build_bvh(group_indexes, false));
+        bvh_indexes.push_back(build_bvh(group_indexes, false));
 
         ++group_lod;
 
@@ -132,7 +132,16 @@ void cluster_builder::build()
         }
     }
 
-    build_bvh(root_indexes, true);
+    if (bvh_indexes.size() > 1)
+    {
+        build_bvh(bvh_indexes, true);
+    }
+    else
+    {
+        auto& root = m_cluster_nodes.emplace_back();
+        root.is_leaf = false;
+        root.children.push_back(bvh_indexes[0]);
+    }
 
     calculate_bvh_error();
     calculate_bvh_depth();
@@ -315,38 +324,6 @@ void cluster_builder::group_clusters(std::uint32_t cluster_offset, std::uint32_t
 {
     std::span<cluster> clusters(m_clusters.data() + cluster_offset, cluster_count);
 
-    // If the number of clusters is small, no need to group.
-    if (cluster_count <= MAX_GROUP_SIZE)
-    {
-        cluster_group group = {
-            .min_lod_error = std::numeric_limits<float>::infinity(),
-            .max_parent_lod_error = std::numeric_limits<float>::infinity(),
-            .cluster_offset = cluster_offset,
-            .cluster_count = cluster_count,
-        };
-
-        std::vector<sphere3f> cluster_bounding_spheres;
-        std::vector<sphere3f> cluster_lod_bounds;
-
-        for (auto& cluster : clusters)
-        {
-            cluster.group_index = static_cast<std::uint32_t>(m_groups.size());
-
-            group.min_lod_error = std::min(group.min_lod_error, cluster.lod_error);
-
-            box::expand(group.bounding_box, cluster.bounding_box);
-            cluster_bounding_spheres.push_back(cluster.bounding_sphere);
-            cluster_lod_bounds.push_back(cluster.lod_bounds);
-        }
-
-        group.bounding_sphere = sphere::create(cluster_bounding_spheres);
-        group.lod_bounds = sphere::create(cluster_lod_bounds);
-
-        m_groups.push_back(group);
-
-        return;
-    }
-
     // Build a half-edge hash table for subsequent rapid lookup of adjacent clusters.
     edge_map<std::uint32_t> edge_map;
     for (std::uint32_t cluster_index = 0; cluster_index < clusters.size(); ++cluster_index)
@@ -368,105 +345,117 @@ void cluster_builder::group_clusters(std::uint32_t cluster_offset, std::uint32_t
         }
     }
 
-    // Construct cluster adjacency relationships.
-    // Key: adjacency cluster index.
-    // Value: adjacency edge count. Used to determine the cost of grouping two clusters.
-    std::vector<std::map<std::uint32_t, std::uint32_t>> cluster_adjacency_map(clusters.size());
-    for (std::uint32_t cluster_index = 0; cluster_index < clusters.size(); ++cluster_index)
+    std::vector<std::pair<std::uint32_t, std::uint32_t>> cluster_parts;
+    std::vector<std::uint32_t> cluster_index_to_sorted(clusters.size());
+    if (cluster_count > MAX_GROUP_SIZE)
     {
-        const auto& cluster = clusters[cluster_index];
-
-        for (std::uint32_t i = 0; i < cluster.index_count; ++i)
+        // Construct cluster adjacency relationships.
+        // Key: adjacency cluster index.
+        // Value: adjacency edge count. Used to determine the cost of grouping two clusters.
+        std::vector<std::map<std::uint32_t, std::uint32_t>> cluster_adjacency_map(clusters.size());
+        for (std::uint32_t cluster_index = 0; cluster_index < clusters.size(); ++cluster_index)
         {
-            // If the edge is not an external edge, it is not an adjacency edge.
-            if (cluster.external_edges[i] == 0)
+            const auto& cluster = clusters[cluster_index];
+
+            for (std::uint32_t i = 0; i < cluster.index_count; ++i)
             {
-                continue;
+                // If the edge is not an external edge, it is not an adjacency edge.
+                if (cluster.external_edges[i] == 0)
+                {
+                    continue;
+                }
+
+                std::uint32_t edge_index = cluster.index_offset + i;
+
+                auto range = edge_map.equal_range({
+                    .p0 = m_positions[m_indexes[cycle_3(edge_index)]],
+                    .p1 = m_positions[m_indexes[edge_index]],
+                });
+                for (auto iter = range.first; iter != range.second; ++iter)
+                {
+                    ++cluster_adjacency_map[cluster_index][iter->second];
+                }
             }
+        }
 
-            std::uint32_t edge_index = cluster.index_offset + i;
+        // Build a disjoint set for linking independent clusters.
+        disjoint_set<std::uint32_t> disjoint_set(static_cast<std::uint32_t>(clusters.size()));
+        for (std::uint32_t cluster_index = 0; cluster_index < clusters.size(); ++cluster_index)
+        {
+            for (auto [adjacency_cluster_index, adjacency_count] :
+                 cluster_adjacency_map[cluster_index])
+            {
+                disjoint_set.merge(cluster_index, adjacency_cluster_index);
+            }
+        }
 
-            auto range = edge_map.equal_range({
-                .p0 = m_positions[m_indexes[cycle_3(edge_index)]],
-                .p1 = m_positions[m_indexes[edge_index]],
+        graph_linker linker;
+        linker.build_external_links(
+            disjoint_set,
+            MAX_GROUP_SIZE,
+            m_bounds,
+            [&](std::uint32_t cluster_index) -> vec3f
+            {
+                return box::get_center(clusters[cluster_index].bounding_box);
             });
-            for (auto iter = range.first; iter != range.second; ++iter)
+
+        // Partition the clusters into groups.
+        std::vector<std::uint32_t> cluster_adjacency;
+        std::vector<std::uint32_t> cluster_adjacency_cost;
+        std::vector<std::uint32_t> cluster_adjacency_offset;
+        cluster_adjacency_offset.reserve(clusters.size() + 1);
+        for (std::uint32_t cluster_index = 0; cluster_index < clusters.size(); ++cluster_index)
+        {
+            cluster_adjacency_offset.push_back(
+                static_cast<std::uint32_t>(cluster_adjacency.size()));
+
+            for (auto [adjacency_cluster_index, adjacency_count] :
+                 cluster_adjacency_map[cluster_index])
             {
-                ++cluster_adjacency_map[cluster_index][iter->second];
+                cluster_adjacency.push_back(adjacency_cluster_index);
+                cluster_adjacency_cost.push_back(adjacency_count * 16 + 4);
             }
+
+            // The bridging edges previously added to ensure connectivity must also be factored in.
+            linker.get_external_link(cluster_index, cluster_adjacency, cluster_adjacency_cost);
         }
-    }
-
-    // Build a disjoint set for linking independent clusters.
-    disjoint_set<std::uint32_t> disjoint_set(static_cast<std::uint32_t>(clusters.size()));
-    for (std::uint32_t cluster_index = 0; cluster_index < clusters.size(); ++cluster_index)
-    {
-        for (auto [adjacency_cluster_index, adjacency_count] : cluster_adjacency_map[cluster_index])
-        {
-            disjoint_set.merge(cluster_index, adjacency_cluster_index);
-        }
-    }
-
-    graph_linker linker;
-    linker.build_external_links(
-        disjoint_set,
-        MAX_GROUP_SIZE,
-        m_bounds,
-        [&](std::uint32_t cluster_index) -> vec3f
-        {
-            return box::get_center(clusters[cluster_index].bounding_box);
-        });
-
-    // Partition the clusters into groups.
-    std::vector<std::uint32_t> cluster_adjacency;
-    std::vector<std::uint32_t> cluster_adjacency_cost;
-    std::vector<std::uint32_t> cluster_adjacency_offset;
-    cluster_adjacency_offset.reserve(clusters.size() + 1);
-    for (std::uint32_t cluster_index = 0; cluster_index < clusters.size(); ++cluster_index)
-    {
         cluster_adjacency_offset.push_back(static_cast<std::uint32_t>(cluster_adjacency.size()));
 
-        for (auto [adjacency_cluster_index, adjacency_count] : cluster_adjacency_map[cluster_index])
+        graph_partitioner partitioner;
+        partitioner.partition(
+            cluster_adjacency,
+            cluster_adjacency_cost,
+            cluster_adjacency_offset,
+            MIN_GROUP_SIZE,
+            MAX_GROUP_SIZE);
+
+        // Reorder the clusters based on the sorted clusters.
+        auto vertices = partitioner.get_vertices();
+        cluster_parts = partitioner.get_parts();
+        std::vector<cluster> new_clusters(vertices.size());
+        for (std::size_t i = 0; i < vertices.size(); ++i)
         {
-            cluster_adjacency.push_back(adjacency_cluster_index);
-            cluster_adjacency_cost.push_back(adjacency_count * 16 + 4);
+            new_clusters[i] = std::move(clusters[vertices[i]]);
+        }
+        for (std::size_t i = 0; i < vertices.size(); ++i)
+        {
+            clusters[i] = std::move(new_clusters[i]);
         }
 
-        // The bridging edges previously added to ensure connectivity must also be factored in.
-        linker.get_external_link(cluster_index, cluster_adjacency, cluster_adjacency_cost);
+        for (std::uint32_t i = 0; i < vertices.size(); ++i)
+        {
+            cluster_index_to_sorted[vertices[i]] = i;
+        }
     }
-    cluster_adjacency_offset.push_back(static_cast<std::uint32_t>(cluster_adjacency.size()));
-
-    graph_partitioner partitioner;
-    partitioner.partition(
-        cluster_adjacency,
-        cluster_adjacency_cost,
-        cluster_adjacency_offset,
-        MIN_GROUP_SIZE,
-        MAX_GROUP_SIZE);
-
-    // Reorder the clusters based on the sorted clusters.
-    auto vertices = partitioner.get_vertices();
-    auto parts = partitioner.get_parts();
-    std::vector<cluster> new_clusters(vertices.size());
-    for (std::size_t i = 0; i < vertices.size(); ++i)
+    else
     {
-        new_clusters[i] = std::move(clusters[vertices[i]]);
-    }
-    for (std::size_t i = 0; i < vertices.size(); ++i)
-    {
-        clusters[i] = std::move(new_clusters[i]);
-    }
-
-    std::vector<std::uint32_t> cluster_index_to_sorted(vertices.size());
-    for (std::uint32_t i = 0; i < vertices.size(); ++i)
-    {
-        cluster_index_to_sorted[vertices[i]] = i;
+        cluster_parts.emplace_back(0, cluster_count);
+        std::iota(cluster_index_to_sorted.begin(), cluster_index_to_sorted.end(), 0);
     }
 
     // Construct groups based on the sorted clusters.
-    m_groups.reserve(parts.size());
-    for (auto [begin, end] : parts)
+    m_groups.reserve(m_groups.size() + cluster_parts.size());
+    for (auto [begin, end] : cluster_parts)
     {
         cluster_group group = {
             .min_lod_error = std::numeric_limits<float>::infinity(),

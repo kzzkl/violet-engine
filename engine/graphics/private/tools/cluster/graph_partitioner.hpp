@@ -15,12 +15,12 @@ public:
         std::uint32_t min_count,
         std::uint32_t max_count);
 
-    std::span<const std::uint32_t> get_vertices() const
+    const std::vector<std::uint32_t>& get_vertices() const
     {
         return m_vertices;
     }
 
-    std::span<const std::pair<std::uint32_t, std::uint32_t>> get_parts() const
+    const std::vector<std::pair<std::uint32_t, std::uint32_t>>& get_parts() const
     {
         return m_parts;
     }
