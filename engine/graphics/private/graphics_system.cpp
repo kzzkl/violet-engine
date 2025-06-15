@@ -6,6 +6,7 @@
 #include "environment_system.hpp"
 #include "gpu_buffer_uploader.hpp"
 #include "graphics/geometry_manager.hpp"
+#include "graphics/graphics_config.hpp"
 #include "graphics/material_manager.hpp"
 #include "light_system.hpp"
 #include "mesh_system.hpp"
@@ -48,6 +49,10 @@ void graphics_system::install(application& app)
 
 bool graphics_system::initialize(const dictionary& config)
 {
+    graphics_config::instance().initialize(
+        config["max_draw_commands"],
+        config["max_candidate_clusters"]);
+
     m_plugin = std::make_unique<rhi_plugin>();
     m_plugin->load(config["rhi"]);
 
@@ -92,25 +97,22 @@ bool graphics_system::initialize(const dictionary& config)
                 m_debug_drawer->tick();
 #endif
 
+                auto& device = render_device::instance();
+
                 get_system<mesh_system>().update(*m_scene_manager);
                 get_system<skinning_system>().update();
                 get_system<light_system>().update(*m_scene_manager);
                 get_system<environment_system>().update(*m_scene_manager);
-            });
-
-    auto& update_camera_task = task_graph.add_task();
-    update_camera_task.set_name("Update Camera")
-        .set_group(rendering_group)
-        .set_execute(
-            [this]()
-            {
                 get_system<camera_system>().update();
+
+                device.get_material_manager()->update(m_gpu_buffer_uploader.get());
+                device.get_geometry_manager()->update(m_gpu_buffer_uploader.get());
             });
 
     task_graph.add_task()
         .set_name("Frame End")
         .set_group(rendering_group)
-        .add_dependency(update_scene_task, update_camera_task)
+        .add_dependency(update_scene_task)
         .set_execute(
             [this]()
             {
@@ -162,9 +164,6 @@ void graphics_system::begin_frame()
 void graphics_system::end_frame()
 {
     auto& device = render_device::instance();
-
-    device.get_material_manager()->update(m_gpu_buffer_uploader.get());
-    device.get_geometry_manager()->update(m_gpu_buffer_uploader.get());
     m_scene_manager->update(m_gpu_buffer_uploader.get());
 
     rhi_command* command = nullptr;

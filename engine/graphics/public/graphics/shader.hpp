@@ -13,7 +13,7 @@ struct shader_parameter
 {
     consteval shader_parameter(std::initializer_list<rhi_parameter_binding> list)
     {
-        assert(list.size() <= rhi_constants::max_parameter_binding_count);
+        assert(list.size() <= rhi_constants::max_parameter_bindings);
 
         for (std::size_t i = 0; i < list.size(); ++i)
         {
@@ -27,7 +27,7 @@ struct shader_parameter
         return {bindings, binding_count};
     }
 
-    rhi_parameter_binding bindings[rhi_constants::max_parameter_binding_count]{};
+    rhi_parameter_binding bindings[rhi_constants::max_parameter_bindings]{};
     std::uint32_t binding_count{};
 };
 
@@ -39,7 +39,7 @@ struct shader
     {
         consteval parameter_layout(std::initializer_list<rhi_shader_desc::parameter_slot> list)
         {
-            assert(list.size() <= rhi_constants::max_parameter_count);
+            assert(list.size() <= rhi_constants::max_parameters);
 
             for (std::size_t i = 0; i < list.size(); ++i)
             {
@@ -48,7 +48,7 @@ struct shader
             parameter_count = static_cast<std::uint32_t>(list.size());
         }
 
-        rhi_shader_desc::parameter_slot parameters[rhi_constants::max_parameter_count]{};
+        rhi_shader_desc::parameter_slot parameters[rhi_constants::max_parameters]{};
         std::uint32_t parameter_count{};
     };
 
@@ -74,17 +74,36 @@ struct shader
         std::uint32_t custom3_address;
         std::uint32_t index_offset;
         std::uint32_t index_count;
-        std::uint32_t cluster_offset;
-        std::uint32_t cluster_count;
+        std::uint32_t cluster_root;
+        std::uint32_t padding0;
     };
 
     struct cluster_data
     {
         vec4f bounding_sphere;
-        std::uint32_t vertex_offset;
+        vec4f lod_bounds;
+
+        float lod_error;
         std::uint32_t index_offset;
         std::uint32_t index_count;
         std::uint32_t padding0;
+    };
+
+    struct cluster_node_data
+    {
+        vec4f bounding_sphere;
+        vec4f lod_bounds;
+
+        float min_lod_error;
+        float max_parent_lod_error;
+
+        std::uint32_t is_leaf;
+        std::uint32_t child_offset;
+        std::uint32_t child_count;
+
+        std::uint32_t padding0;
+        std::uint32_t padding1;
+        std::uint32_t padding2;
     };
 
     struct mesh_data
@@ -155,8 +174,12 @@ struct shader
 
         float near;
         float far;
+        float width;
+        float height;
 
         vec2f jitter;
+        std::uint32_t padding0;
+        std::uint32_t padding1;
     };
 
     static constexpr parameter camera = {
@@ -176,7 +199,7 @@ struct shader
         {
             .type = RHI_PARAMETER_BINDING_SAMPLER,
             .stages = RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
-            .size = 128,
+            .size = 0,
         },
     };
 };
@@ -194,7 +217,7 @@ struct shader_vs : public shader
     {
         consteval input_layout(std::initializer_list<rhi_vertex_attribute> list)
         {
-            assert(list.size() <= rhi_constants::max_vertex_attribute_count);
+            assert(list.size() <= rhi_constants::max_vertex_attributes);
 
             for (std::size_t i = 0; i < list.size(); ++i)
             {
@@ -203,7 +226,7 @@ struct shader_vs : public shader
             attribute_count = list.size();
         }
 
-        rhi_vertex_attribute attributes[rhi_constants::max_vertex_attribute_count]{};
+        rhi_vertex_attribute attributes[rhi_constants::max_vertex_attributes]{};
         std::size_t attribute_count;
     };
 

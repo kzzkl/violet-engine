@@ -1,20 +1,29 @@
 #include "graphics/renderers/deferred_renderer.hpp"
-#include "graphics/passes/blit_pass.hpp"
-#include "graphics/passes/copy_depth_pass.hpp"
-#include "graphics/passes/cull_pass.hpp"
-#include "graphics/passes/debug/bounds_projection_pass.hpp"
-#include "graphics/passes/gtao_pass.hpp"
-#include "graphics/passes/hzb_pass.hpp"
-#include "graphics/passes/lighting/physical_pass.hpp"
-#include "graphics/passes/lighting/unlit_pass.hpp"
-#include "graphics/passes/mesh_pass.hpp"
-#include "graphics/passes/motion_vector_pass.hpp"
-#include "graphics/passes/skybox_pass.hpp"
-#include "graphics/passes/taa_pass.hpp"
-#include "graphics/passes/tone_mapping_pass.hpp"
+#include "graphics/renderers/features/cluster_render_feature.hpp"
+#include "graphics/renderers/features/gtao_render_feature.hpp"
+#include "graphics/renderers/features/taa_render_feature.hpp"
+#include "graphics/renderers/passes/blit_pass.hpp"
+#include "graphics/renderers/passes/copy_depth_pass.hpp"
+#include "graphics/renderers/passes/cull_pass.hpp"
+#include "graphics/renderers/passes/gtao_pass.hpp"
+#include "graphics/renderers/passes/hzb_pass.hpp"
+#include "graphics/renderers/passes/lighting/physical_pass.hpp"
+#include "graphics/renderers/passes/lighting/unlit_pass.hpp"
+#include "graphics/renderers/passes/mesh_pass.hpp"
+#include "graphics/renderers/passes/motion_vector_pass.hpp"
+#include "graphics/renderers/passes/skybox_pass.hpp"
+#include "graphics/renderers/passes/taa_pass.hpp"
+#include "graphics/renderers/passes/tone_mapping_pass.hpp"
 
 namespace violet
 {
+deferred_renderer::deferred_renderer()
+{
+    add_feature<taa_render_feature>();
+    add_feature<gtao_render_feature>();
+    add_feature<cluster_render_feature>();
+}
+
 void deferred_renderer::on_render(render_graph& graph)
 {
     m_render_extent = graph.get_camera().get_render_target()->get_extent();
@@ -43,7 +52,7 @@ void deferred_renderer::on_render(render_graph& graph)
         add_mesh_pass(graph);
         add_hzb_pass(graph);
 
-        if (is_feature_enable<gtao_render_feature>())
+        if (get_feature<gtao_render_feature>(true))
         {
             add_gtao_pass(graph);
         }
@@ -60,13 +69,7 @@ void deferred_renderer::on_render(render_graph& graph)
         add_skybox_pass(graph);
     }
 
-    // bounds_projection_pass::add(
-    //     graph,
-    //     {
-    //         .render_target = m_render_target,
-    //     });
-
-    if (is_feature_enable<taa_render_feature>())
+    if (get_feature<taa_render_feature>(true))
     {
         add_motion_vector_pass(graph);
         add_taa_pass(graph);
@@ -78,27 +81,15 @@ void deferred_renderer::on_render(render_graph& graph)
 
 void deferred_renderer::add_cull_pass(render_graph& graph)
 {
-    rdg_scope scope(graph, "Cull");
-
-    m_command_buffer = graph.add_buffer(
-        "Command Buffer",
-        graph.get_scene().get_instance_capacity() * sizeof(shader::draw_command),
-        RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT);
-
-    m_count_buffer = graph.add_buffer(
-        "Count Buffer",
-        graph.get_scene().get_batch_capacity() * sizeof(std::uint32_t),
-        RHI_BUFFER_STORAGE_TEXEL | RHI_BUFFER_INDIRECT | RHI_BUFFER_TRANSFER_DST);
-
-    cull_pass::add(
+    auto result = cull_pass::add(
         graph,
         {
             .hzb = m_hzb,
-            .command_buffer = m_command_buffer,
-            .count_buffer = m_count_buffer,
-            .frustum_culling = true,
-            .occlusion_culling = true,
+            .cluster_feature = get_feature<cluster_render_feature>(true),
         });
+
+    m_command_buffer = result.command_buffer;
+    m_count_buffer = result.count_buffer;
 }
 
 void deferred_renderer::add_mesh_pass(render_graph& graph)

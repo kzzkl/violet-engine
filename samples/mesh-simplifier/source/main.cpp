@@ -7,10 +7,10 @@
 #include "control/control_system.hpp"
 #include "deferred_renderer_imgui.hpp"
 #include "gltf_loader.hpp"
-#include "graphics/geometries/plane_geometry.hpp"
 #include "graphics/geometries/sphere_geometry.hpp"
 #include "graphics/graphics_system.hpp"
 #include "graphics/materials/unlit_material.hpp"
+#include "graphics/renderers/features/taa_render_feature.hpp"
 #include "graphics/tools/geometry_tool.hpp"
 #include "imgui.h"
 #include "imgui_system.hpp"
@@ -22,7 +22,7 @@ class mesh_simplifier_demo : public system
 {
 public:
     mesh_simplifier_demo()
-        : system("Mesh Simplifier Demo")
+        : system("mesh_simplifier_demo")
     {
     }
 
@@ -110,6 +110,7 @@ private:
 
         auto& main_camera = world.get_component<camera_component>(m_camera);
         main_camera.renderer = std::make_unique<deferred_renderer_imgui>();
+        main_camera.renderer->get_feature<taa_render_feature>()->disable();
         main_camera.render_target = m_swapchain.get();
 
         // Model.
@@ -120,10 +121,24 @@ private:
 
         if (!model_path.empty())
         {
-            gltf_loader loader(model_path);
-            if (auto result = loader.load())
+            gltf_loader loader;
+            if (auto result = loader.load(model_path))
             {
-                m_original_geometry = std::move(result->geometries[0]);
+                const auto& geometry_data = result->geometries[0];
+
+                m_original_geometry = std::make_unique<geometry>();
+                m_original_geometry->set_positions(geometry_data.positions);
+                m_original_geometry->set_normals(geometry_data.normals);
+                m_original_geometry->set_tangents(geometry_data.tangents);
+                m_original_geometry->set_texcoords(geometry_data.texcoords);
+                m_original_geometry->set_indexes(geometry_data.indexes);
+                for (const auto& submesh : geometry_data.submeshes)
+                {
+                    m_original_geometry->add_submesh(
+                        submesh.vertex_offset,
+                        submesh.index_offset,
+                        submesh.index_count);
+                }
             }
             else
             {
@@ -133,7 +148,6 @@ private:
         else
         {
             m_original_geometry = std::make_unique<sphere_geometry>(0.5f);
-            // m_original_geometry = std::make_unique<plane_geometry>(1.0f, 1.0f, 4, 4);
         }
 
         m_model = world.create();
@@ -183,7 +197,8 @@ private:
 
             m_simplified_geometry->set_positions(result.positions);
             m_simplified_geometry->set_indexes(result.indexes);
-            m_simplified_geometry->set_submesh(0, 0, 0, result.indexes.size());
+            m_simplified_geometry->clear_submeshes();
+            m_simplified_geometry->add_submesh(0, 0, result.indexes.size());
         }
     }
 

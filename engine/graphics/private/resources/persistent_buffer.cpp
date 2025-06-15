@@ -16,7 +16,7 @@ persistent_buffer::persistent_buffer(std::size_t initial_size, rhi_buffer_flags 
 buffer_allocation persistent_buffer::allocate(std::size_t size)
 {
     buffer_allocation allocation = m_allocator.allocate(size);
-    assert(allocation.offset != buffer_allocation::NO_SPACE);
+    assert(allocation.offset != buffer_allocator::no_space);
 
     m_allocated_size = std::max(m_allocated_size, allocation.offset + size);
 

@@ -1,4 +1,4 @@
-#include "graphics/passes/mesh_pass.hpp"
+#include "graphics/renderers/passes/mesh_pass.hpp"
 
 namespace violet
 {

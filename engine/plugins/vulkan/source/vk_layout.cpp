@@ -41,7 +41,8 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
         // descriptors.
         if (desc.bindings[i].size == 0)
         {
-            binding.descriptorCount = 65536;
+            binding.descriptorCount =
+                desc.bindings[i].type == RHI_PARAMETER_BINDING_SAMPLER ? 2048 : 65536;
             binding_flags.push_back(
                 VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
                 VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);

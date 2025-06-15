@@ -77,7 +77,7 @@ void morph_target_buffer::update_morph(
 
     command->dispatch(
         static_cast<std::uint32_t>((m_morph_targets.size() + 7) / 8),
-        static_cast<std::uint32_t>((m_max_element_count + 7) / 8),
+        static_cast<std::uint32_t>((m_max_elements + 7) / 8),
         1);
 
     barrier.src_stages = RHI_PIPELINE_STAGE_COMPUTE;
@@ -123,12 +123,12 @@ void morph_target_buffer::update_morph_data()
     }
     morph_elements.reserve(element_count);
 
-    m_max_element_count = 0;
+    m_max_elements = 0;
     std::uint32_t element_offset = 0;
     for (auto& morph_target : m_morph_targets)
     {
         const auto& elements = morph_target.get_elements();
-        m_max_element_count = std::max(m_max_element_count, elements.size());
+        m_max_elements = std::max(m_max_elements, elements.size());
 
         morph_target_header morph_header = {
             .element_count = static_cast<std::uint32_t>(elements.size()),

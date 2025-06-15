@@ -27,8 +27,8 @@ public:
     }
 
 private:
-    index_allocator<std::uint32_t> m_resource_allocator;
-    index_allocator<std::uint32_t> m_sampler_allocator;
+    index_allocator m_resource_allocator;
+    index_allocator m_sampler_allocator;
     std::mutex m_resource_allocator_mutex;
     std::mutex m_sampler_allocator_mutex;
 

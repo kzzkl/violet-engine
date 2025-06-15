@@ -42,7 +42,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     StructuredBuffer<morph_element> element_buffer = ResourceDescriptorHeap[constant.element_buffer];
 
     StructuredBuffer<float4> weight_buffer = ResourceDescriptorHeap[constant.weight_buffer];
-    RWBuffer<int> morph_vertex_buffer = ResourceDescriptorHeap[constant.morph_vertex_buffer];
+    RWStructuredBuffer<int> morph_vertex_buffer = ResourceDescriptorHeap[constant.morph_vertex_buffer];
 
     morph_target_header header = header_buffer[morph_target_index];
 

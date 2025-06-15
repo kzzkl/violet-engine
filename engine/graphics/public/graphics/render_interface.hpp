@@ -8,10 +8,10 @@ namespace violet
 {
 struct rhi_constants
 {
-    static constexpr std::size_t max_attachment_count = 8;
-    static constexpr std::size_t max_parameter_binding_count = 8;
-    static constexpr std::size_t max_parameter_count = 16;
-    static constexpr std::size_t max_vertex_attribute_count = 8;
+    static constexpr std::size_t max_attachments = 8;
+    static constexpr std::size_t max_parameter_bindings = 8;
+    static constexpr std::size_t max_parameters = 16;
+    static constexpr std::size_t max_vertex_attributes = 8;
 };
 
 enum rhi_format
@@ -446,7 +446,7 @@ struct rhi_render_pass_dependency_desc
 
 struct rhi_render_pass_desc
 {
-    rhi_attachment_desc attachments[rhi_constants::max_attachment_count];
+    rhi_attachment_desc attachments[rhi_constants::max_attachments];
     std::uint32_t attachment_count;
 
     rhi_render_pass_dependency_desc begin_dependency;
@@ -617,7 +617,7 @@ struct rhi_attachment_blend
 
 struct rhi_blend_state
 {
-    rhi_attachment_blend attachments[rhi_constants::max_attachment_count];
+    rhi_attachment_blend attachments[rhi_constants::max_attachments];
 };
 
 enum rhi_compare_op
@@ -855,6 +855,10 @@ public:
         std::uint32_t max_draw_count) = 0;
 
     virtual void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) = 0;
+
+    virtual void dispatch_indirect(
+        rhi_buffer* command_buffer,
+        std::size_t command_buffer_offset) = 0;
 
     virtual void set_pipeline_barrier(
         const rhi_buffer_barrier* buffer_barriers,

@@ -14,7 +14,7 @@ vk_bindless_manager::vk_bindless_manager(vk_context* context)
         {
             .type = RHI_PARAMETER_BINDING_SAMPLER,
             .stages = RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
-            .size = 128,
+            .size = 0,
         },
     };
 

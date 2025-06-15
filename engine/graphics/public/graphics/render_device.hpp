@@ -12,7 +12,7 @@
 
 namespace violet
 {
-using render_id = std::uint64_t;
+using render_id = std::uint32_t;
 static constexpr render_id INVALID_RENDER_ID = std::numeric_limits<render_id>::max();
 
 class rhi_deleter
@@ -300,7 +300,7 @@ public:
     template <typename T>
     T* get_buildin_texture()
     {
-        static const std::size_t index = buildin_texture_index::value<T>();
+        std::size_t index = buildin_texture_index::value<T>();
         if (m_buildin_textures.size() <= index)
         {
             m_buildin_textures.resize(index + 1);

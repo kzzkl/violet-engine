@@ -361,6 +361,7 @@ rdg_buffer* render_graph::add_buffer(std::string_view name, rhi_buffer* buffer)
     resource->set_name(name);
     resource->set_external(true);
     resource->set_size(buffer->get_size());
+    resource->set_flags(buffer->get_flags());
     resource->set_rhi(buffer);
 
     m_resources.push_back(resource);

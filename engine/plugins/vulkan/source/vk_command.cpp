@@ -198,6 +198,14 @@ void vk_command::dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z)
     vkCmdDispatch(m_command_buffer, x, y, z);
 }
 
+void vk_command::dispatch_indirect(rhi_buffer* command_buffer, std::size_t command_buffer_offset)
+{
+    vkCmdDispatchIndirect(
+        m_command_buffer,
+        static_cast<vk_buffer*>(command_buffer)->get_buffer(),
+        command_buffer_offset);
+}
+
 void vk_command::set_pipeline_barrier(
     const rhi_buffer_barrier* const buffer_barriers,
     std::uint32_t buffer_barrier_count,
@@ -546,6 +554,8 @@ void vk_graphics_queue::execute(rhi_command* command, bool sync)
         .signalSemaphoreCount = static_cast<std::uint32_t>(signal_semaphores.size()),
         .pSignalSemaphores = signal_semaphores.empty() ? nullptr : signal_semaphores.data(),
     };
+
+    std::scoped_lock lock(m_mutex);
 
     vk_check(vkQueueSubmit(m_queue, 1, &submit_info, VK_NULL_HANDLE));
 

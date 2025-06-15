@@ -3,7 +3,9 @@
 #include "components/camera_component_meta.hpp"
 #include "gpu_buffer_uploader.hpp"
 #include "graphics/geometry_manager.hpp"
+#include "graphics/graphics_config.hpp"
 #include "graphics/material_manager.hpp"
+
 
 namespace violet
 {
@@ -231,30 +233,35 @@ void render_scene::add_instance_to_batch(render_id instance_id, const material* 
         batch_id = batch_iter->second;
     }
 
-    auto& batch = m_batches[batch_id];
-    ++batch.instance_count;
+    auto& instance = m_instances[instance_id];
+    instance.batch_id = batch_id;
 
-    m_instances[instance_id].batch_id = batch_id;
+    auto& batch = m_batches[batch_id];
+    const auto& submesh = instance.geometry->get_submesh(instance.submesh_index);
+    batch.instance_count +=
+        submesh.has_cluster() ? static_cast<std::uint32_t>(submesh.clusters.size()) : 1;
 
     m_scene_states |= RENDER_SCENE_STAGE_BATCH_DIRTY;
 }
 
 void render_scene::remove_instance_from_batch(render_id instance_id)
 {
-    render_id batch_id = m_instances[instance_id].batch_id;
+    const auto& instance = m_instances[instance_id];
 
-    if (batch_id == INVALID_RENDER_ID)
+    if (instance.batch_id == INVALID_RENDER_ID)
     {
         return;
     }
 
-    auto& batch = m_batches[batch_id];
-    --batch.instance_count;
+    auto& batch = m_batches[instance.batch_id];
+    const auto& submesh = instance.geometry->get_submesh(instance.submesh_index);
+    batch.instance_count +=
+        submesh.has_cluster() ? static_cast<std::uint32_t>(submesh.clusters.size()) : 1;
 
     if (batch.instance_count == 0)
     {
         m_pipeline_to_batch.erase(batch.pipeline);
-        m_batches.remove(batch_id);
+        m_batches.remove(instance.batch_id);
     }
 
     m_scene_states |= RENDER_SCENE_STAGE_BATCH_DIRTY;
@@ -350,6 +357,13 @@ bool render_scene::update_batch(gpu_buffer_uploader* uploader)
             instance_offset += batch.instance_count;
             m_batches.mark_dirty(batch_id);
         });
+
+    // Align to 1024 to prevent frequent allocation of draw command buffers during cull pass.
+    if (m_instance_capacity < instance_offset)
+    {
+        m_instance_capacity = (instance_offset + 1023) & ~1023;
+    }
+    m_instance_capacity = std::min(m_instance_capacity, graphics_config::get_max_draw_commands());
 
     return m_batches.update(
         [](const gpu_batch& batch) -> std::uint32_t

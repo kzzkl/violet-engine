@@ -12,8 +12,8 @@
 #include "control/control_system.hpp"
 #include "gf2/gf2_material.hpp"
 #include "graphics/graphics_system.hpp"
-#include "graphics/passes/gtao_pass.hpp"
-#include "graphics/passes/taa_pass.hpp"
+#include "graphics/renderers/features/gtao_render_feature.hpp"
+#include "graphics/renderers/features/taa_render_feature.hpp"
 #include "imgui.h"
 #include "imgui_system.hpp"
 #include "math/matrix.hpp"
@@ -26,7 +26,7 @@
 namespace violet
 {
 mmd_viewer::mmd_viewer()
-    : system("mmd viewer")
+    : system("mmd_viewer")
 {
 }
 
@@ -150,8 +150,6 @@ void mmd_viewer::initialize_scene(
     auto& camera = world.get_component<camera_component>(m_camera);
     camera.render_target = m_swapchain.get();
     camera.renderer = std::make_unique<mmd_renderer>();
-    camera.renderer->add_feature<taa_render_feature>();
-    camera.renderer->add_feature<gtao_render_feature>();
 
     m_light = world.create();
     world.add_component<light_component, transform_component, scene_component>(m_light);
@@ -428,7 +426,14 @@ void mmd_viewer::draw_imgui()
 
         ImGui::Checkbox("Enable##TAA", &enable_taa);
 
-        taa->set_enable(enable_taa);
+        if (enable_taa)
+        {
+            taa->enable();
+        }
+        else
+        {
+            taa->disable();
+        }
     }
 
     if (ImGui::CollapsingHeader("GTAO"))
@@ -448,7 +453,15 @@ void mmd_viewer::draw_imgui()
         ImGui::SliderFloat("Radius", &radius, 0.0f, 10.0f);
         ImGui::SliderFloat("Falloff", &falloff, 0.1f, 1.0f);
 
-        gtao->set_enable(enable_gtao);
+        if (enable_gtao)
+        {
+            gtao->enable();
+        }
+        else
+        {
+            gtao->disable();
+        }
+
         gtao->set_slice_count(slice_count);
         gtao->set_step_count(step_count);
         gtao->set_radius(radius);

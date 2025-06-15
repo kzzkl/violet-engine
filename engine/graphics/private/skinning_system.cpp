@@ -199,7 +199,7 @@ void skinning_system::update_skin()
                             "morph",
                             nullptr,
                             original_geometry->get_vertex_count() * sizeof(vec3f),
-                            RHI_BUFFER_TRANSFER_DST | RHI_BUFFER_STORAGE_TEXEL);
+                            RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST);
                     }
 
                     skinned_geometry->clear_submeshes();

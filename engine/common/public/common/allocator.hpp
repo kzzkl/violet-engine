@@ -12,6 +12,8 @@ using buffer_allocation = OffsetAllocator::Allocation;
 class buffer_allocator
 {
 public:
+    static constexpr std::uint32_t no_space = OffsetAllocator::Allocation::NO_SPACE;
+
     buffer_allocator(std::size_t size)
         : m_allocator(static_cast<std::uint32_t>(size))
     {
@@ -20,7 +22,7 @@ public:
     buffer_allocation allocate(std::size_t size)
     {
         buffer_allocation allocation = m_allocator.allocate(static_cast<std::uint32_t>(size));
-        assert(allocation.offset != buffer_allocation::NO_SPACE);
+        assert(allocation.offset != no_space);
         return allocation;
     }
 
@@ -38,30 +40,29 @@ private:
     OffsetAllocator::Allocator m_allocator;
 };
 
-template <typename T>
 class index_allocator
 {
 public:
-    using index_type = T;
+    static constexpr std::uint32_t no_space = 0xFFFFFFFF;
 
-    index_allocator(index_type max_count = 0xffffffff)
-        : m_max_count(max_count)
+    index_allocator(std::uint32_t capacity = 0xFFFFFFFF)
+        : m_capacity(capacity)
     {
     }
 
-    index_type allocate()
+    std::uint32_t allocate()
     {
         if (!m_free.empty())
         {
-            index_type index = m_free.back();
+            std::uint32_t index = m_free.back();
             m_free.pop_back();
             return index;
         }
 
-        return m_index_count < m_max_count ? m_index_count++ : 0xffffffff;
+        return m_offset < m_capacity ? m_offset++ : no_space;
     }
 
-    void free(index_type index)
+    void free(std::uint32_t index)
     {
         m_free.push_back(index);
     }
@@ -69,18 +70,86 @@ public:
     void reset()
     {
         m_free.clear();
-        m_index_count = 0;
+        m_offset = 0;
     }
 
     std::size_t get_size() const noexcept
     {
-        return m_index_count - m_free.size();
+        return m_offset - m_free.size();
     }
 
 private:
-    std::vector<index_type> m_free;
-    index_type m_index_count{0};
+    std::vector<std::uint32_t> m_free;
+    std::uint32_t m_offset{0};
+    std::uint32_t m_capacity;
+};
 
-    index_type m_max_count;
+class buddy_allocator
+{
+public:
+    static constexpr std::uint32_t no_space = 0xFFFFFFFF;
+
+    buddy_allocator(std::uint32_t level);
+
+    std::uint32_t allocate(std::uint32_t size);
+
+    void free(std::uint32_t offset);
+
+    std::uint32_t get_size(std::uint32_t offset);
+
+    std::uint32_t get_capacity() const noexcept
+    {
+        return 1 << m_level;
+    }
+
+private:
+    enum node_state : std::uint8_t
+    {
+        NODE_STATE_UNUSED,
+        NODE_STATE_USED,
+        NODE_STATE_SPLIT,
+        NODE_STATE_FULL,
+    };
+
+    void mark_parent(std::uint32_t index);
+
+    void combine(std::uint32_t index);
+
+    std::uint32_t get_parent(std::uint32_t index) const noexcept
+    {
+        assert(index != 0);
+        return (index + 1) / 2 - 1;
+    }
+
+    std::uint32_t get_buddy(std::uint32_t index) const noexcept
+    {
+        assert(index != 0);
+        return index - 1 + (index & 1) * 2;
+    }
+
+    std::uint32_t get_offset(std::uint32_t index, std::uint32_t level) const noexcept
+    {
+        return ((index + 1) - (1 << level)) << (m_level - level);
+    }
+
+    std::uint32_t next_power_of_two(std::uint32_t x) const noexcept
+    {
+        if (x == 0)
+        {
+            return 1;
+        }
+
+        x--;
+        x |= x >> 1;
+        x |= x >> 2;
+        x |= x >> 4;
+        x |= x >> 8;
+        x |= x >> 16;
+
+        return x + 1;
+    }
+
+    std::uint32_t m_level;
+    std::vector<node_state> m_nodes;
 };
 } // namespace violet

@@ -5,7 +5,8 @@
     "graphics": {
         "rhi": "violet-graphics-vulkan.dll",
         "frame_resource_count": 2,
-        "samples": 4
+        "max_draw_commands": 2097152,
+        "max_candidate_clusters": 16777216
     },
     "window": {
         "title": "violet app",

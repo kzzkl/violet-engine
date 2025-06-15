@@ -27,16 +27,7 @@ struct geometry_data
     uint4 custom_addresses;
     uint index_offset;
     uint index_count;
-    uint cluster_offset;
-    uint cluster_count;
-};
-
-struct cluster_data
-{
-    float4 bounding_sphere;
-    uint vertex_offset;
-    uint index_offset;
-    uint index_count;
+    uint cluster_root;
     uint padding0;
 };
 
@@ -102,8 +93,12 @@ struct camera_data
 
     float near;
     float far;
+    float width;
+    float height;
 
     float2 jitter;
+    uint padding0;
+    uint padding1;
 };
 
 SamplerState get_point_repeat_sampler()
@@ -145,7 +140,7 @@ T load_material(uint material_buffer, uint material_address)
 
 float3 get_morph_position(uint morph_vertex_buffer, uint vertex_index)
 {
-    Buffer<int> buffer = ResourceDescriptorHeap[morph_vertex_buffer];
+    StructuredBuffer<int> buffer = ResourceDescriptorHeap[morph_vertex_buffer];
 
     float3 morph = float3(
         buffer[vertex_index * 3 + 0],

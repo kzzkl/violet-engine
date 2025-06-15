@@ -54,9 +54,9 @@ struct sphere
         std::uint32_t min_index[3] = {0, 0, 0};
         std::uint32_t max_index[3] = {0, 0, 0};
 
-        for (std::size_t i = 0; i < points.size(); ++i)
+        for (std::uint32_t i = 0; i < points.size(); ++i)
         {
-            for (std::size_t j = 0; j < 3; ++j)
+            for (std::uint32_t j = 0; j < 3; ++j)
             {
                 if (points[i][j] < points[min_index[j]][j])
                 {
@@ -73,7 +73,7 @@ struct sphere
         value_type largest_distance_sq = value_type(0);
         std::uint32_t largest_axis = 0;
 
-        for (std::size_t i = 0; i < 3; ++i)
+        for (std::uint32_t i = 0; i < 3; ++i)
         {
             const auto& min_point = points[min_index[i]];
             const auto& max_point = points[max_index[i]];

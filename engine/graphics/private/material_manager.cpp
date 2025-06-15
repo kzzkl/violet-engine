@@ -33,7 +33,7 @@ void material_manager::remove_material(render_id material_id)
 {
     std::lock_guard lock(m_mutex);
 
-    if (m_materials[material_id].constant_allocation.offset != buffer_allocation::NO_SPACE)
+    if (m_materials[material_id].constant_allocation.offset != buffer_allocator::no_space)
     {
         m_material_buffer->free(m_materials[material_id].constant_allocation);
     }
@@ -70,7 +70,7 @@ void material_manager::update_constant(render_id material_id, const void* data, 
 {
     auto& material_info = m_materials[material_id];
 
-    if (material_info.constant_allocation.offset == buffer_allocation::NO_SPACE)
+    if (material_info.constant_allocation.offset == buffer_allocator::no_space)
     {
         material_info.constant_allocation = m_material_buffer->allocate(size);
         material_info.constant_size = size;

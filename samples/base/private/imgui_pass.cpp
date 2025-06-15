@@ -39,8 +39,8 @@ struct imgui_fs : public shader_fs
 
 imgui_pass::imgui_pass()
 {
-    static constexpr std::size_t max_vertex_count = 16ull * 1024;
-    static constexpr std::size_t max_index_count = 32ull * 1024;
+    static constexpr std::size_t MAX_VERTEX_COUNT = 16ull * 1024;
+    static constexpr std::size_t MAX_INDEX_COUNT = 32ull * 1024;
 
     auto& device = render_device::instance();
     m_geometries.resize(device.get_frame_resource_count());
@@ -48,19 +48,19 @@ imgui_pass::imgui_pass()
     for (auto& geometry : m_geometries)
     {
         geometry.position = device.create_buffer({
-            .size = sizeof(vec2f) * max_vertex_count,
+            .size = sizeof(vec2f) * MAX_VERTEX_COUNT,
             .flags = RHI_BUFFER_VERTEX | RHI_BUFFER_HOST_VISIBLE,
         });
         geometry.texcoord = device.create_buffer({
-            .size = sizeof(vec2f) * max_vertex_count,
+            .size = sizeof(vec2f) * MAX_VERTEX_COUNT,
             .flags = RHI_BUFFER_VERTEX | RHI_BUFFER_HOST_VISIBLE,
         });
         geometry.color = device.create_buffer({
-            .size = sizeof(std::uint32_t) * max_vertex_count,
+            .size = sizeof(std::uint32_t) * MAX_VERTEX_COUNT,
             .flags = RHI_BUFFER_VERTEX | RHI_BUFFER_HOST_VISIBLE,
         });
         geometry.index = device.create_buffer({
-            .size = sizeof(std::uint32_t) * max_index_count,
+            .size = sizeof(std::uint32_t) * MAX_INDEX_COUNT,
             .flags = RHI_BUFFER_INDEX | RHI_BUFFER_HOST_VISIBLE,
         });
     }

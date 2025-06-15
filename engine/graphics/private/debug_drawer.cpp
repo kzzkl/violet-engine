@@ -40,7 +40,7 @@ void debug_drawer::tick()
         m_geometry->set_indexes(m_indexes);
     }
 
-    m_geometry->set_submesh(0, 0, 0, static_cast<std::uint32_t>(m_indexes.size()));
+    // m_geometry->set_submesh(0, 0, 0, static_cast<std::uint32_t>(m_indexes.size()));
 
     m_position.clear();
     m_color.clear();

@@ -76,6 +76,9 @@ void rdg_command::draw_instances(
 
     bool first_batch = true;
 
+    auto max_instances =
+        static_cast<std::uint32_t>(command_buffer->get_size() / sizeof(shader::draw_command));
+
     m_scene->each_batch(
         type,
         [&](render_id id,
@@ -103,7 +106,7 @@ void rdg_command::draw_instances(
                 instance_offset * sizeof(shader::draw_command),
                 count_buffer,
                 id * sizeof(std::uint32_t),
-                instance_count);
+                std::min(instance_count, max_instances - instance_offset));
         });
 }
 
@@ -126,6 +129,9 @@ void rdg_command::draw_instances(
         device.get_geometry_manager()->get_index_buffer()->get_rhi(),
         sizeof(std::uint32_t));
 
+    auto max_instances =
+        static_cast<std::uint32_t>(command_buffer->get_size() / sizeof(shader::draw_command));
+
     m_scene->each_batch(
         type,
         [&](render_id id,
@@ -138,7 +144,7 @@ void rdg_command::draw_instances(
                 instance_offset * sizeof(shader::draw_command),
                 count_buffer,
                 id * sizeof(std::uint32_t),
-                instance_count);
+                std::min(instance_count, max_instances - instance_offset));
         });
 }
 } // namespace violet

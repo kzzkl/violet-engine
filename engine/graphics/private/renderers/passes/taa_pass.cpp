@@ -1,4 +1,4 @@
-#include "graphics/passes/taa_pass.hpp"
+#include "graphics/renderers/passes/taa_pass.hpp"
 
 namespace violet
 {
@@ -50,7 +50,7 @@ void taa_pass::add(render_graph& graph, const parameter& parameter)
             }
             else
             {
-                data.history_render_target = rdg_texture_srv();
+                data.history_render_target.reset();
             }
 
             data.depth_buffer =
@@ -65,7 +65,7 @@ void taa_pass::add(render_graph& graph, const parameter& parameter)
             }
             else
             {
-                data.motion_vector = rdg_texture_srv();
+                data.motion_vector.reset();
             }
         },
         [](const pass_data& data, rdg_command& command)
@@ -101,39 +101,5 @@ void taa_pass::add(render_graph& graph, const parameter& parameter)
 
             command.dispatch_2d(extent.width, extent.height);
         });
-}
-
-void taa_render_feature::on_update(std::uint32_t width, std::uint32_t height)
-{
-    bool recreate = false;
-
-    if (m_history[0] == nullptr)
-    {
-        recreate = true;
-    }
-    else
-    {
-        auto extent = m_history[0]->get_extent();
-        recreate = extent.width != width || extent.height != height;
-    }
-
-    if (recreate)
-    {
-        for (auto& target : m_history)
-        {
-            target = render_device::instance().create_texture({
-                .extent = {width, height},
-                .format = RHI_FORMAT_R16G16B16A16_FLOAT,
-                .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE,
-                .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
-            });
-        }
-
-        m_frame = 0;
-    }
-    else
-    {
-        ++m_frame;
-    }
 }
 } // namespace violet

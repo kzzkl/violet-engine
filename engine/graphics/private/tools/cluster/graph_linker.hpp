@@ -81,12 +81,12 @@ public:
 
             vec3f center = get_position(element_index);
 
-            static constexpr std::uint32_t max_link_count = 5;
+            static constexpr std::uint32_t MAX_LINKS = 5;
 
-            std::array<std::uint32_t, max_link_count> cloest_elements;
+            std::array<std::uint32_t, MAX_LINKS> cloest_elements;
             cloest_elements.fill(~0u);
 
-            std::array<float, max_link_count> closest_distances;
+            std::array<float, MAX_LINKS> closest_distances;
             closest_distances.fill(std::numeric_limits<float>::max());
 
             for (int step = -1; step <= 1; step += 2)

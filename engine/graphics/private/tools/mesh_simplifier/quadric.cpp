@@ -10,7 +10,17 @@ quadric::quadric(const vec3f& a, const vec3f& b, const vec3f& c)
     vec3f ab = b - a;
     vec3f ac = c - a;
 
-    vec3f n = vector::normalize(vector::cross(ab, ac));
+    vec3f n = vector::cross(ab, ac);
+
+    float length = vector::length(n);
+    if (length < 1e-8f)
+    {
+        n = {0.0f, 0.0f, 0.0f};
+    }
+    else
+    {
+        n = n / length;
+    }
 
     m_xx = n.x * n.x;
     m_xy = n.x * n.y;
@@ -59,7 +69,7 @@ std::optional<vec3f> quadric::get_optimize_position() const noexcept
         vec4f{m_xd, m_yd, m_zd, m_dd},
     };
 
-    if (matrix::determinant(matrix) == 0)
+    if (std::abs(matrix::determinant(matrix)) < 1e-8f)
     {
         return std::nullopt;
     }

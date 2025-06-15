@@ -1,4 +1,4 @@
-#include "graphics/passes/motion_vector_pass.hpp"
+#include "graphics/renderers/passes/motion_vector_pass.hpp"
 
 namespace violet
 {

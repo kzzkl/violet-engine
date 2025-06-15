@@ -1,4 +1,4 @@
-#include "graphics/passes/gtao_pass.hpp"
+#include "graphics/renderers/passes/gtao_pass.hpp"
 #include "graphics/resources/hilbert_lut.hpp"
 
 namespace violet

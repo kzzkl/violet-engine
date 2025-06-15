@@ -1,5 +1,4 @@
 #include "gltf_loader.hpp"
-#include "graphics/materials/physical_material.hpp"
 #include "graphics/tools/geometry_tool.hpp"
 #include <filesystem>
 #include <iostream>
@@ -84,14 +83,7 @@ std::uint32_t load_indexes(
 }
 } // namespace
 
-gltf_loader::gltf_loader(std::string_view path)
-    : m_path(path)
-{
-}
-
-gltf_loader::~gltf_loader() = default;
-
-std::optional<mesh_loader::scene_data> gltf_loader::load()
+std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
 {
     tinygltf::TinyGLTF loader;
     tinygltf::Model model;
@@ -100,13 +92,13 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
     std::string warn;
 
     bool result = false;
-    if (m_path.ends_with(".gltf"))
+    if (path.ends_with(".gltf"))
     {
-        result = loader.LoadASCIIFromFile(&model, &error, &warn, m_path);
+        result = loader.LoadASCIIFromFile(&model, &error, &warn, path.data());
     }
-    else if (m_path.ends_with(".glb"))
+    else if (path.ends_with(".glb"))
     {
-        result = loader.LoadBinaryFromFile(&model, &error, &warn, m_path);
+        result = loader.LoadBinaryFromFile(&model, &error, &warn, path.data());
     }
 
     if (!warn.empty())
@@ -124,7 +116,7 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
         return std::nullopt;
     }
 
-    std::filesystem::path model_path(m_path);
+    std::filesystem::path model_path(path);
     std::filesystem::path dir_path = model_path.parent_path();
 
     mesh_loader::scene_data scene_data;
@@ -182,124 +174,124 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
     // Load materials
     for (auto& material : model.materials)
     {
-        auto pbr_material = std::make_unique<physical_material>();
-        vec3f albedo = {
+        material_data data = {};
+        data.albedo = {
             .x = static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[0]),
             .y = static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[1]),
             .z = static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[2]),
         };
-        pbr_material->set_albedo(albedo);
+
         if (material.pbrMetallicRoughness.baseColorTexture.index != -1)
         {
-            pbr_material->set_albedo(
-                get_texture(material.pbrMetallicRoughness.baseColorTexture.index, true));
+            data.albedo_texture =
+                get_texture(material.pbrMetallicRoughness.baseColorTexture.index, true);
         }
 
-        pbr_material->set_roughness(
-            static_cast<float>(material.pbrMetallicRoughness.roughnessFactor));
-        pbr_material->set_metallic(
-            static_cast<float>(material.pbrMetallicRoughness.metallicFactor));
+        data.roughness = static_cast<float>(material.pbrMetallicRoughness.roughnessFactor);
+        data.metallic = static_cast<float>(material.pbrMetallicRoughness.metallicFactor);
         if (material.pbrMetallicRoughness.metallicRoughnessTexture.index != -1)
         {
-            pbr_material->set_roughness_metallic(
-                get_texture(material.pbrMetallicRoughness.metallicRoughnessTexture.index));
+            data.roughness_metallic_texture =
+                get_texture(material.pbrMetallicRoughness.metallicRoughnessTexture.index);
         }
 
-        pbr_material->set_emissive({
+        data.emissive = {
             static_cast<float>(material.emissiveFactor[0]),
             static_cast<float>(material.emissiveFactor[1]),
             static_cast<float>(material.emissiveFactor[2]),
-        });
+        };
         if (material.emissiveTexture.index != -1)
         {
-            pbr_material->set_emissive(get_texture(material.emissiveTexture.index, true));
+            data.emissive_texture = get_texture(material.emissiveTexture.index, true);
         }
 
         if (material.normalTexture.index != -1)
         {
-            pbr_material->set_normal(get_texture(material.normalTexture.index));
+            data.normal_texture = get_texture(material.normalTexture.index);
         }
 
-        scene_data.materials.push_back(std::move(pbr_material));
+        scene_data.materials.push_back(data);
     }
 
     // Load meshes
     for (auto& mesh : model.meshes)
     {
-        std::vector<vec3f> positions;
-        std::vector<vec3f> normals;
-        std::vector<vec4f> tangents;
-        std::vector<vec2f> texcoords;
-        std::vector<std::uint32_t> indexes;
-
-        auto mesh_geometry = std::make_unique<geometry>();
+        geometry_data geometry_data = {};
 
         for (auto& primitive : mesh.primitives)
         {
-            auto vertex_offset = static_cast<std::uint32_t>(positions.size());
-            auto index_offset = static_cast<std::uint32_t>(indexes.size());
+            auto vertex_offset = static_cast<std::uint32_t>(geometry_data.positions.size());
+            auto index_offset = static_cast<std::uint32_t>(geometry_data.indexes.size());
 
             std::int32_t material = primitive.material;
 
             // Load indexes
-            std::uint32_t index_count = load_indexes(model, primitive, indexes);
+            std::uint32_t index_count = load_indexes(model, primitive, geometry_data.indexes);
 
             // Load attributes
-            std::uint32_t vertex_count = load_attribute(model, primitive, "POSITION", positions);
+            std::uint32_t vertex_count =
+                load_attribute(model, primitive, "POSITION", geometry_data.positions);
 
             if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end())
             {
-                load_attribute(model, primitive, "TEXCOORD_0", texcoords);
+                load_attribute(model, primitive, "TEXCOORD_0", geometry_data.texcoords);
             }
             else
             {
-                texcoords.resize(positions.size());
+                geometry_data.texcoords.resize(geometry_data.positions.size());
             }
 
             if (primitive.attributes.find("NORMAL") != primitive.attributes.end())
             {
-                load_attribute(model, primitive, "NORMAL", normals);
+                load_attribute(model, primitive, "NORMAL", geometry_data.normals);
             }
             else
             {
-                normals.resize(positions.size());
+                geometry_data.normals.resize(geometry_data.positions.size());
             }
 
             if (primitive.attributes.find("TANGENT") != primitive.attributes.end())
             {
-                load_attribute(model, primitive, "TANGENT", tangents);
+                load_attribute(model, primitive, "TANGENT", geometry_data.tangents);
             }
             else
             {
-                tangents = geometry_tool::generate_tangents(
+                geometry_data.tangents = geometry_tool::generate_tangents(
                     std::span(
-                        positions.begin() + vertex_offset,
-                        positions.begin() + vertex_offset + vertex_count),
+                        geometry_data.positions.begin() + vertex_offset,
+                        geometry_data.positions.begin() + vertex_offset + vertex_count),
                     std::span(
-                        normals.begin() + vertex_offset,
-                        normals.begin() + vertex_offset + vertex_count),
+                        geometry_data.normals.begin() + vertex_offset,
+                        geometry_data.normals.begin() + vertex_offset + vertex_count),
                     std::span(
-                        texcoords.begin() + vertex_offset,
-                        texcoords.begin() + vertex_offset + vertex_count),
+                        geometry_data.texcoords.begin() + vertex_offset,
+                        geometry_data.texcoords.begin() + vertex_offset + vertex_count),
                     std::span(
-                        indexes.begin() + index_offset,
-                        indexes.begin() + index_offset + index_count));
+                        geometry_data.indexes.begin() + index_offset,
+                        geometry_data.indexes.begin() + index_offset + index_count));
             }
 
-            mesh_geometry->add_submesh(vertex_offset, index_offset, index_count);
+            geometry_data.submeshes.push_back({
+                .vertex_offset = vertex_offset,
+                .index_offset = index_offset,
+                .index_count = index_count,
+            });
         }
 
-        if (tangents.empty())
+        if (geometry_data.tangents.empty())
         {
-            tangents.resize(positions.size());
-            if (!normals.empty() && !texcoords.empty())
+            geometry_data.tangents.resize(geometry_data.positions.size());
+            if (!geometry_data.normals.empty() && !geometry_data.texcoords.empty())
             {
-                auto temp =
-                    geometry_tool::generate_tangents(positions, normals, texcoords, indexes);
+                auto temp = geometry_tool::generate_tangents(
+                    geometry_data.positions,
+                    geometry_data.normals,
+                    geometry_data.texcoords,
+                    geometry_data.indexes);
                 std::transform(
                     temp.begin(),
                     temp.end(),
-                    tangents.begin(),
+                    geometry_data.tangents.begin(),
                     [](const vec3f& t) -> vec4f
                     {
                         return {t.x, t.y, t.z, 1.0f};
@@ -307,21 +299,15 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
             }
         }
 
-        if (normals.empty())
+        if (geometry_data.normals.empty())
         {
-            normals.resize(positions.size());
+            geometry_data.normals.resize(geometry_data.positions.size());
         }
 
-        if (texcoords.empty())
+        if (geometry_data.texcoords.empty())
         {
-            texcoords.resize(positions.size());
+            geometry_data.texcoords.resize(geometry_data.positions.size());
         }
-
-        mesh_geometry->set_positions(positions);
-        mesh_geometry->set_normals(normals);
-        mesh_geometry->set_tangents(tangents);
-        mesh_geometry->set_texcoords(texcoords);
-        mesh_geometry->set_indexes(indexes);
 
         mesh_data mesh_data = {
             .geometry = static_cast<std::uint32_t>(scene_data.geometries.size()),
@@ -329,14 +315,12 @@ std::optional<mesh_loader::scene_data> gltf_loader::load()
 
         for (std::uint32_t i = 0; i < mesh.primitives.size(); ++i)
         {
-            mesh_data.submeshes.push_back({
-                .submesh_index = i,
-                .material = mesh.primitives[i].material,
-            });
+            mesh_data.submeshes.push_back(i);
+            mesh_data.materials.push_back(mesh.primitives[i].material);
         }
 
         scene_data.meshes.push_back(mesh_data);
-        scene_data.geometries.push_back(std::move(mesh_geometry));
+        scene_data.geometries.push_back(std::move(geometry_data));
     }
 
     // Load nodes

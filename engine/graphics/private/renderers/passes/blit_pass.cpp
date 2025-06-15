@@ -1,4 +1,4 @@
-#include "graphics/passes/blit_pass.hpp"
+#include "graphics/renderers/passes/blit_pass.hpp"
 
 namespace violet
 {

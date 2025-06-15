@@ -141,6 +141,11 @@ public:
             (z + thread_group_z - 1) / thread_group_z);
     }
 
+    void dispatch_indirect(rhi_buffer* command_buffer, std::uint32_t command_buffer_offset)
+    {
+        m_command->dispatch_indirect(command_buffer, command_buffer_offset);
+    }
+
     void copy_texture(
         rhi_texture* src,
         const rhi_texture_region& src_region,

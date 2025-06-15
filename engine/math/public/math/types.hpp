@@ -157,16 +157,18 @@ struct mat4x4
 
     row_type row[4];
 
-    mat4x4() noexcept
-        : row{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}}
+    mat4x4()
+        : row{}
     {
     }
 
     mat4x4(value_type value)
-        : row{{value, value, value, value},
-              {value, value, value, value},
-              {value, value, value, value},
-              {value, value, value, value}}
+        : row{
+              {value, 0, 0, 0},
+              {0, value, 0, 0},
+              {0, 0, value, 0},
+              {0, 0, 0, value},
+          }
     {
     }
 

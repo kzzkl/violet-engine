@@ -2,7 +2,7 @@
 #include "components/camera_component.hpp"
 #include "components/camera_component_meta.hpp"
 #include "components/transform_component.hpp"
-#include "graphics/passes/taa_pass.hpp"
+#include "graphics/renderers/features/taa_render_feature.hpp"
 
 namespace violet
 {
@@ -12,7 +12,7 @@ shader::camera_data get_camera_data(
     const camera_component& camera,
     const transform_world_component& transform)
 {
-    static const std::array<vec2f, 8> halton_sequence = {
+    static const std::array<vec2f, 8> HALTON_SEQUENCE = {
         vec2f{0.500000f, 0.333333f},
         vec2f{0.250000f, 0.666667f},
         vec2f{0.750000f, 0.111111f},
@@ -23,14 +23,17 @@ shader::camera_data get_camera_data(
         vec2f{0.062500f, 0.888889f},
     };
 
+    rhi_texture_extent extent = camera.get_extent();
+
     shader::camera_data result = {
         .position = transform.get_position(),
         .fov = camera.fov,
         .near = camera.near,
         .far = camera.far,
+        .width = static_cast<float>(extent.width),
+        .height = static_cast<float>(extent.height),
     };
 
-    rhi_texture_extent extent = camera.get_extent();
     float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
 
     mat4f_simd matrix_p =
@@ -45,9 +48,9 @@ shader::camera_data get_camera_data(
     auto* taa = camera.renderer->get_feature<taa_render_feature>();
     if (taa && taa->is_enable())
     {
-        std::size_t index = render_device::instance().get_frame_count() % halton_sequence.size();
+        std::size_t index = render_device::instance().get_frame_count() % HALTON_SEQUENCE.size();
 
-        vec2f jitter = halton_sequence[index] - vec2f{0.5f, 0.5f};
+        vec2f jitter = HALTON_SEQUENCE[index] - vec2f{0.5f, 0.5f};
         jitter.x = jitter.x * 2.0f / static_cast<float>(extent.width);
         jitter.y = jitter.y * 2.0f / static_cast<float>(extent.height);
 

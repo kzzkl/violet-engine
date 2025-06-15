@@ -2,6 +2,7 @@
 
 #include "vk_sync.hpp"
 #include <memory>
+#include <mutex>
 #include <vector>
 
 namespace violet::vk
@@ -56,6 +57,7 @@ public:
         std::uint32_t max_draw_count) override;
 
     void dispatch(std::uint32_t x, std::uint32_t y, std::uint32_t z) override;
+    void dispatch_indirect(rhi_buffer* command_buffer, std::size_t command_buffer_offset) override;
 
     void set_pipeline_barrier(
         const rhi_buffer_barrier* buffer_barriers,
@@ -190,6 +192,8 @@ private:
 
     std::unique_ptr<vk_fence> m_fence;
     std::uint64_t m_fence_value{0};
+
+    std::mutex m_mutex;
 
     vk_context* m_context;
 };

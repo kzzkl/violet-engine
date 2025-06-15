@@ -7,6 +7,35 @@ namespace violet
 struct matrix
 {
     template <typename T>
+    [[nodiscard]] static inline mat4<T> identity() noexcept
+    {
+        if constexpr (std::is_same_v<T, simd>)
+        {
+            return {
+                _mm_setr_ps(0.0f, 0.0f, 0.0f, 1.0f),
+                _mm_setr_ps(0.0f, 0.0f, 1.0f, 0.0f),
+                _mm_setr_ps(0.0f, 1.0f, 0.0f, 0.0f),
+                _mm_setr_ps(1.0f, 0.0f, 0.0f, 0.0f),
+            };
+        }
+        else
+        {
+            return {
+                {1, 0, 0, 0},
+                {0, 1, 0, 0},
+                {0, 0, 1, 0},
+                {0, 0, 0, 1},
+            };
+        }
+    }
+
+    template <typename T>
+    [[nodiscard]] static inline mat4<T> zero() noexcept
+    {
+        return mat4<T>();
+    }
+
+    template <typename T>
     [[nodiscard]] static inline mat4<T> mul(const mat4<T>& m1, const mat4<T>& m2) noexcept
     {
         mat4<T> result;

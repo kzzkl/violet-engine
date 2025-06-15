@@ -1,4 +1,4 @@
-#include "graphics/passes/debug/bounds_projection_pass.hpp"
+#include "graphics/renderers/passes/debug/bounds_projection_pass.hpp"
 
 namespace violet
 {

@@ -1,4 +1,4 @@
-#include "graphics/passes/hzb_pass.hpp"
+#include "graphics/renderers/passes/hzb_pass.hpp"
 
 namespace violet
 {

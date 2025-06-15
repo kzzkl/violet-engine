@@ -4,7 +4,6 @@
 #include "gpu_array.hpp"
 #include "graphics/geometry.hpp"
 #include "graphics/resources/persistent_buffer.hpp"
-#include "math/box.hpp"
 #include "math/sphere.hpp"
 #include <mutex>
 
@@ -29,6 +28,10 @@ public:
         std::uint32_t vertex_offset,
         std::uint32_t index_offset,
         std::uint32_t index_count);
+    void set_submesh(
+        render_id submesh_id,
+        std::span<const cluster> clusters,
+        std::span<const cluster_node> cluster_nodes);
 
     void update(gpu_buffer_uploader* uploader);
 
@@ -58,6 +61,31 @@ public:
     raw_buffer* get_geometry_buffer() const noexcept
     {
         return m_submeshes.get_buffer();
+    }
+
+    raw_buffer* get_cluster_buffer() const noexcept
+    {
+        return m_clusters.get_buffer();
+    }
+
+    raw_buffer* get_cluster_node_buffer() const noexcept
+    {
+        return m_cluster_nodes.get_buffer();
+    }
+
+    std::uint32_t get_cluster_count() const noexcept
+    {
+        return m_clusters.get_size();
+    }
+
+    std::uint32_t get_cluster_capacity() const noexcept
+    {
+        return m_clusters.get_capacity();
+    }
+
+    std::uint32_t get_cluster_node_depth() const noexcept
+    {
+        return m_cluster_node_depth;
     }
 
     std::uint32_t get_buffer_address(
@@ -108,15 +136,42 @@ private:
         std::uint32_t index_offset;
         std::uint32_t index_count;
 
-        box3f bounding_box;
         sphere3f bounding_sphere;
-        bool bounds_dirty;
+
+        render_id cluster_root_id{INVALID_RENDER_ID};
     };
 
-    sphere3f get_bounding_sphere(render_id submesh_id);
+    struct gpu_cluster
+    {
+        using gpu_type = shader::cluster_data;
+
+        std::uint32_t index_offset;
+        std::uint32_t index_count;
+
+        sphere3f bounding_sphere;
+
+        sphere3f lod_bounds;
+        float lod_error;
+    };
+
+    struct gpu_cluster_node
+    {
+        using gpu_type = shader::cluster_node_data;
+
+        sphere3f bounding_sphere;
+
+        sphere3f lod_bounds;
+        float min_lod_error;
+        float max_parent_lod_error;
+
+        bool is_leaf;
+        std::uint32_t depth;
+        std::uint32_t child_offset;
+        std::uint32_t child_count;
+    };
 
     std::vector<geometry_info> m_geometries;
-    index_allocator<render_id> m_allocator;
+    index_allocator m_allocator;
 
     std::vector<render_id> m_dirty_geometries;
 
@@ -124,6 +179,9 @@ private:
     std::unique_ptr<persistent_buffer> m_index_buffer;
 
     gpu_sparse_array<gpu_geometry> m_submeshes;
+    gpu_block_sparse_array<gpu_cluster> m_clusters;
+    gpu_block_sparse_array<gpu_cluster_node> m_cluster_nodes;
+    std::uint32_t m_cluster_node_depth{0};
 
     std::mutex m_mutex;
 };

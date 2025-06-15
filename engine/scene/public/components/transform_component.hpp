@@ -130,7 +130,7 @@ private:
 
 struct transform_local_component
 {
-    mat4f matrix;
+    mat4f matrix{1.0f};
 };
 
 template <>
@@ -141,7 +141,7 @@ struct component_trait<transform_local_component>
 
 struct transform_world_component
 {
-    mat4f matrix;
+    mat4f matrix{1.0f};
 
     vec3f get_position() const
     {

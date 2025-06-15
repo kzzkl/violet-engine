@@ -136,7 +136,7 @@ private:
     {
         bool operator()(const rhi_blend_state& a, const rhi_blend_state& b) const noexcept
         {
-            for (std::size_t i = 0; i < rhi_constants::max_attachment_count; ++i)
+            for (std::size_t i = 0; i < rhi_constants::max_attachments; ++i)
             {
                 if (a.attachments[i].enable != b.attachments[i].enable ||
                     a.attachments[i].src_color_factor != b.attachments[i].src_color_factor ||

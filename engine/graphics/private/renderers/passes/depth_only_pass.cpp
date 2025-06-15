@@ -1,4 +1,4 @@
-#include "graphics/passes/depth_only_pass.hpp"
+#include "graphics/renderers/passes/depth_only_pass.hpp"
 
 namespace violet
 {
