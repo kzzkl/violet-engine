@@ -137,6 +137,11 @@ public:
     rdg_reference* get_prev_reference() const;
     rdg_reference* get_next_reference() const;
 
+    void reset() noexcept
+    {
+        m_data = nullptr;
+    }
+
 protected:
     const rdg_reference& get_data() const noexcept
     {

@@ -1,9 +1,8 @@
 #pragma once
 
+#include "graphics/cluster.hpp"
 #include "graphics/morph_target.hpp"
 #include "graphics/render_device.hpp"
-#include "math/box.hpp"
-#include "math/sphere.hpp"
 #include <array>
 #include <string>
 #include <unordered_map>
@@ -32,35 +31,14 @@ public:
         std::uint32_t vertex_offset;
         std::uint32_t index_offset;
         std::uint32_t index_count;
-    };
 
-    struct cluster
-    {
-        std::uint32_t index_offset;
-        std::uint32_t index_count;
+        std::vector<cluster> clusters;
+        std::vector<cluster_node> cluster_nodes;
 
-        box3f bounding_box;
-        sphere3f bounding_sphere;
-
-        sphere3f lod_bounds;
-        float lod_error;
-
-        sphere3f parent_lod_bounds;
-        float parent_lod_error;
-
-        std::uint32_t lod;
-    };
-
-    struct cluster_bvh_node
-    {
-        sphere3f bounding_sphere;
-
-        sphere3f lod_bounds;
-        float min_lod_error;
-        float max_parent_lod_error;
-
-        bool is_leaf;
-        std::vector<std::uint32_t> children;
+        bool has_cluster() const noexcept
+        {
+            return !clusters.empty() && !cluster_nodes.empty();
+        }
     };
 
     static constexpr std::size_t max_custom_attribute = 4;
@@ -120,34 +98,20 @@ public:
         std::uint32_t index_offset,
         std::uint32_t index_count);
 
-    void set_submesh(
-        std::uint32_t submesh_index,
-        std::uint32_t vertex_offset,
-        std::uint32_t index_offset,
-        std::uint32_t index_count);
+    std::uint32_t add_submesh(
+        std::span<const cluster> clusters,
+        std::span<const cluster_node> cluster_nodes);
 
     void clear_submeshes();
+
+    const submesh& get_submesh(std::uint32_t submesh_index) const noexcept
+    {
+        return m_submeshes[submesh_index];
+    }
 
     const std::vector<submesh>& get_submeshes() const noexcept
     {
         return m_submeshes;
-    }
-
-    void generate_clusters();
-
-    void set_clusters(std::span<const cluster> clusters)
-    {
-        m_clusters.assign(clusters.begin(), clusters.end());
-    }
-
-    const std::vector<cluster>& get_clusters() const noexcept
-    {
-        return m_clusters;
-    }
-
-    const std::vector<cluster_bvh_node>& get_cluster_bvh_nodes() const noexcept
-    {
-        return m_cluster_bvh_nodes;
     }
 
     void add_morph_target(std::string_view name, const std::vector<morph_element>& elements);
@@ -201,10 +165,7 @@ private:
     struct submesh_info
     {
         render_id submesh_id{INVALID_RENDER_ID};
-        std::uint32_t cluster_offset;
-        std::uint32_t cluster_count;
-
-        bool dirty;
+        bool dirty{true};
     };
 
     void set_buffer(
@@ -231,7 +192,6 @@ private:
         };
     }
 
-    void update_cluster();
     void update_submesh();
     void update_buffer();
 
@@ -246,9 +206,6 @@ private:
 
     std::vector<submesh> m_submeshes;
     std::vector<submesh_info> m_submesh_infos;
-
-    std::vector<cluster> m_clusters;
-    std::vector<cluster_bvh_node> m_cluster_bvh_nodes;
 
     std::unordered_map<std::string, std::size_t> m_morph_name_to_index;
     std::unique_ptr<morph_target_buffer> m_morph_target_buffer;

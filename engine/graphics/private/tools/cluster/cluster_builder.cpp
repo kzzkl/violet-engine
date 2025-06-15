@@ -135,6 +135,7 @@ void cluster_builder::build()
     build_bvh(root_indexes, true);
 
     calculate_bvh_error();
+    calculate_bvh_depth();
 }
 
 void cluster_builder::cluster_triangles(
@@ -613,8 +614,8 @@ std::uint32_t cluster_builder::build_bvh(std::span<std::uint32_t> indexes, bool 
             return indexes[0];
         }
 
-        auto node_index = static_cast<std::uint32_t>(m_bvh_nodes.size());
-        auto& node = m_bvh_nodes.emplace_back();
+        auto node_index = static_cast<std::uint32_t>(m_cluster_nodes.size());
+        auto& node = m_cluster_nodes.emplace_back();
         node.is_leaf = true;
         node.children.push_back(indexes[0]);
         return node_index;
@@ -628,8 +629,8 @@ std::uint32_t cluster_builder::build_bvh(std::span<std::uint32_t> indexes, bool 
             children.push_back(build_bvh(indexes.subspan(i, 1), root));
         }
 
-        auto node_index = static_cast<std::uint32_t>(m_bvh_nodes.size());
-        auto& node = m_bvh_nodes.emplace_back();
+        auto node_index = static_cast<std::uint32_t>(m_cluster_nodes.size());
+        auto& node = m_cluster_nodes.emplace_back();
         node.children = children;
         return node_index;
     }
@@ -685,8 +686,8 @@ std::uint32_t cluster_builder::build_bvh(std::span<std::uint32_t> indexes, bool 
         offset += child_sizes[i];
     }
 
-    auto node_index = static_cast<std::uint32_t>(m_bvh_nodes.size());
-    auto& node = m_bvh_nodes.emplace_back();
+    auto node_index = static_cast<std::uint32_t>(m_cluster_nodes.size());
+    auto& node = m_cluster_nodes.emplace_back();
     node.children = children;
     return node_index;
 }
@@ -750,7 +751,7 @@ void cluster_builder::sort_groups(std::span<std::uint32_t> group_indexes, std::u
 
 void cluster_builder::calculate_bvh_error()
 {
-    for (auto iter = m_bvh_nodes.begin(); iter != m_bvh_nodes.end(); ++iter)
+    for (auto iter = m_cluster_nodes.begin(); iter != m_cluster_nodes.end(); ++iter)
     {
         if (iter->is_leaf)
         {
@@ -774,7 +775,7 @@ void cluster_builder::calculate_bvh_error()
 
             for (std::uint32_t node_index : iter->children)
             {
-                const auto& child = m_bvh_nodes[node_index];
+                const auto& child = m_cluster_nodes[node_index];
 
                 child_bounding_spheres.push_back(child.bounding_sphere);
                 child_lod_bounds.push_back(child.lod_bounds);
@@ -786,6 +787,20 @@ void cluster_builder::calculate_bvh_error()
 
             iter->bounding_sphere = sphere::create(child_bounding_spheres);
             iter->lod_bounds = sphere::create(child_lod_bounds);
+        }
+    }
+}
+
+void cluster_builder::calculate_bvh_depth()
+{
+    for (auto iter = m_cluster_nodes.rbegin(); iter != m_cluster_nodes.rend(); ++iter)
+    {
+        if (!iter->is_leaf)
+        {
+            for (std::uint32_t child : iter->children)
+            {
+                m_cluster_nodes[child].depth = iter->depth + 1;
+            }
         }
     }
 }

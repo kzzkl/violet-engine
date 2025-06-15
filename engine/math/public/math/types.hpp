@@ -162,6 +162,16 @@ struct mat4x4
     {
     }
 
+    mat4x4(value_type value)
+        : row{
+              {value, 0, 0, 0},
+              {0, value, 0, 0},
+              {0, 0, value, 0},
+              {0, 0, 0, value},
+          }
+    {
+    }
+
     mat4x4(const std::initializer_list<row_type>& rows)
     {
         std::size_t i = 0;

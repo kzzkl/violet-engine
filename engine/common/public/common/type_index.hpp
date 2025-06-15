@@ -21,8 +21,8 @@ private:
     template <typename R>
     static index_type value_impl() noexcept
     {
-        static const index_type index = self_type::next();
-        return index;
+        static const index_type INDEX = self_type::next();
+        return INDEX;
     }
 
     static index_type next() noexcept

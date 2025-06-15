@@ -1,14 +1,16 @@
 #include "mmd_renderer.hpp"
-#include "graphics/passes/blit_pass.hpp"
-#include "graphics/passes/cull_pass.hpp"
-#include "graphics/passes/gtao_pass.hpp"
-#include "graphics/passes/hzb_pass.hpp"
-#include "graphics/passes/lighting/unlit_pass.hpp"
-#include "graphics/passes/mesh_pass.hpp"
-#include "graphics/passes/motion_vector_pass.hpp"
-#include "graphics/passes/skybox_pass.hpp"
-#include "graphics/passes/taa_pass.hpp"
-#include "graphics/passes/tone_mapping_pass.hpp"
+#include "graphics/renderers/features/gtao_render_feature.hpp"
+#include "graphics/renderers/features/taa_render_feature.hpp"
+#include "graphics/renderers/passes/blit_pass.hpp"
+#include "graphics/renderers/passes/cull_pass.hpp"
+#include "graphics/renderers/passes/gtao_pass.hpp"
+#include "graphics/renderers/passes/hzb_pass.hpp"
+#include "graphics/renderers/passes/lighting/unlit_pass.hpp"
+#include "graphics/renderers/passes/mesh_pass.hpp"
+#include "graphics/renderers/passes/motion_vector_pass.hpp"
+#include "graphics/renderers/passes/skybox_pass.hpp"
+#include "graphics/renderers/passes/taa_pass.hpp"
+#include "graphics/renderers/passes/tone_mapping_pass.hpp"
 #include "mmd_material.hpp"
 
 namespace violet
@@ -27,6 +29,12 @@ struct toon_fs : public mesh_fs
         {0, bindless},
     };
 };
+
+mmd_renderer::mmd_renderer()
+{
+    add_feature<taa_render_feature>();
+    add_feature<gtao_render_feature>();
+}
 
 void mmd_renderer::on_render(render_graph& graph)
 {
@@ -55,7 +63,7 @@ void mmd_renderer::on_render(render_graph& graph)
         add_cull_pass(graph);
         add_opaque_pass(graph);
 
-        if (is_feature_enable<gtao_render_feature>())
+        if (get_feature<gtao_render_feature>(true))
         {
             add_hzb_pass(graph);
             add_gtao_pass(graph);
@@ -78,7 +86,7 @@ void mmd_renderer::on_render(render_graph& graph)
         add_transparent_pass(graph);
     }
 
-    if (is_feature_enable<taa_render_feature>())
+    if (get_feature<taa_render_feature>(true))
     {
         add_motion_vector_pass(graph);
         add_taa_pass(graph);
@@ -108,13 +116,14 @@ void mmd_renderer::add_cull_pass(render_graph& graph)
         graph.get_scene().get_batch_capacity() * sizeof(std::uint32_t),
         RHI_BUFFER_STORAGE_TEXEL | RHI_BUFFER_INDIRECT | RHI_BUFFER_TRANSFER_DST);
 
-    cull_pass::add(
+    auto result = cull_pass::add(
         graph,
         {
             .hzb = m_hzb,
-            .command_buffer = m_command_buffer,
-            .count_buffer = m_count_buffer,
         });
+
+    m_command_buffer = result.command_buffer;
+    m_count_buffer = result.count_buffer;
 }
 
 void mmd_renderer::add_opaque_pass(render_graph& graph)

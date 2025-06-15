@@ -9,7 +9,7 @@ namespace violet
 struct skeleton_bone
 {
     entity entity;
-    mat4f binding_pose_inv;
+    mat4f binding_pose_inv{1.0f};
 };
 
 struct skeleton_component

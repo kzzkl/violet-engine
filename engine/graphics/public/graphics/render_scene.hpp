@@ -70,14 +70,9 @@ public:
         return 4 * 1024;
     }
 
-    std::uint32_t get_mesh_capacity() const noexcept
-    {
-        return m_meshes.get_capacity();
-    }
-
     std::uint32_t get_instance_capacity() const noexcept
     {
-        return m_instances.get_capacity();
+        return m_instance_capacity;
     }
 
     std::uint32_t get_batch_capacity() const noexcept
@@ -178,6 +173,8 @@ private:
 
     gpu_sparse_array<gpu_batch> m_batches;
     std::unordered_map<rdg_raster_pipeline, render_id, raster_pipeline_hash> m_pipeline_to_batch;
+
+    std::uint32_t m_instance_capacity{1};
 
     render_scene_states m_scene_states{0};
 

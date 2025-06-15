@@ -4,24 +4,6 @@
 
 namespace violet
 {
-class gtao_pass
-{
-public:
-    struct parameter
-    {
-        std::uint32_t slice_count;
-        std::uint32_t step_count;
-        float radius;
-        float falloff;
-
-        rdg_texture* hzb;
-        rdg_texture* depth_buffer;
-        rdg_texture* normal_buffer;
-        rdg_texture* ao_buffer;
-    };
-
-    static void add(render_graph& graph, const parameter& parameter);
-};
 
 class gtao_render_feature : public render_feature<gtao_render_feature>
 {

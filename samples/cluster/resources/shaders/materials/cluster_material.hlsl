@@ -1,5 +1,10 @@
 #include "mesh.hlsli"
 
+struct vs_output
+{
+    float4 position_cs : SV_POSITION;
+};
+
 uint murmur_mix(uint hash){
     hash ^= hash >> 16;
     hash *= 0x85ebca6b;
@@ -22,13 +27,6 @@ float3 to_color(uint id)
     return color * (1.0 / 255.0);
 }
 
-struct vs_output
-{
-    float4 position_cs : SV_POSITION;
-    float3 color : COLOR;
-    float3 normal_ws : NORMAL;
-};
-
 vs_output vs_main(uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID)
 {
     mesh mesh = mesh::create(instance_id, vertex_id);
@@ -36,8 +34,6 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID
 
     vs_output output;
     output.position_cs = vertex.position_cs;
-    output.color = to_color(instance_id);
-    output.normal_ws = vertex.normal_ws;
 
     return output;
 }
@@ -50,12 +46,10 @@ struct fs_output
     float4 emissive : SV_TARGET3;
 };
 
-fs_output fs_main(vs_output input)
+fs_output fs_main(vs_output input, uint primitive_id : SV_PrimitiveID)
 {
-    float3 color = input.color * saturate(abs(dot(input.normal_ws, normalize(float3(1.0, 1.0, 0.0)))) + 0.2);
-
     fs_output output;
-    output.albedo = float4(color, 1.0);
+    output.albedo = float4(to_color(primitive_id), 1.0);
     output.material = 0.0;
     output.normal = 0.0;
     output.emissive = 0.0;

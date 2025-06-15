@@ -49,7 +49,7 @@ public:
         std::uint32_t lod;
     };
 
-    struct cluster_bvh_node
+    struct cluster_node
     {
         box3f bounding_box;
         sphere3f bounding_sphere;
@@ -60,6 +60,7 @@ public:
 
         bool is_leaf;
         std::vector<std::uint32_t> children;
+        std::uint32_t depth;
     };
 
     void set_positions(std::span<const vec3f> positions);
@@ -72,14 +73,14 @@ public:
         return m_clusters;
     }
 
+    const std::vector<cluster_node>& get_cluster_nodes() const noexcept
+    {
+        return m_cluster_nodes;
+    }
+
     const std::vector<cluster_group>& get_groups() const noexcept
     {
         return m_groups;
-    }
-
-    const std::vector<cluster_bvh_node>& get_bvh_nodes() const noexcept
-    {
-        return m_bvh_nodes;
     }
 
     const std::vector<vec3f>& get_positions() const noexcept
@@ -102,13 +103,13 @@ private:
     std::uint32_t build_bvh(std::span<std::uint32_t> indexes, bool root);
     void sort_groups(std::span<std::uint32_t> group_indexes, std::uint32_t split);
     void calculate_bvh_error();
+    void calculate_bvh_depth();
 
     box3f m_bounds;
 
     std::vector<cluster> m_clusters;
+    std::vector<cluster_node> m_cluster_nodes;
     std::vector<cluster_group> m_groups;
-
-    std::vector<cluster_bvh_node> m_bvh_nodes;
 
     std::vector<vec3f> m_positions;
     std::vector<std::uint32_t> m_indexes;

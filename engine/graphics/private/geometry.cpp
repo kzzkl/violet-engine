@@ -1,6 +1,5 @@
 #include "graphics/geometry.hpp"
 #include "graphics/geometry_manager.hpp"
-#include "tools/cluster/cluster_builder.hpp"
 
 namespace violet
 {
@@ -128,158 +127,45 @@ std::uint32_t geometry::add_submesh(
     std::uint32_t index_offset,
     std::uint32_t index_count)
 {
-    m_submeshes.emplace_back(vertex_offset, index_offset, index_count);
-    m_submesh_infos.push_back({
-        .dirty = true,
-    });
+    auto& submesh = m_submeshes.emplace_back();
+    submesh.vertex_offset = vertex_offset;
+    submesh.index_offset = index_offset;
+    submesh.index_count = index_count;
+
+    if (m_submesh_infos.size() < m_submeshes.size())
+    {
+        m_submesh_infos.resize(m_submeshes.size());
+    }
+    m_submesh_infos[m_submeshes.size() - 1].dirty = true;
 
     mark_dirty();
 
     return static_cast<std::uint32_t>(m_submeshes.size() - 1);
 }
 
-void geometry::set_submesh(
-    std::uint32_t submesh_index,
-    std::uint32_t vertex_offset,
-    std::uint32_t index_offset,
-    std::uint32_t index_count)
+std::uint32_t geometry::add_submesh(
+    std::span<const cluster> clusters,
+    std::span<const cluster_node> cluster_nodes)
 {
-    auto& submesh = m_submeshes[submesh_index];
+    auto& submesh = m_submeshes.emplace_back();
+    submesh.clusters.assign(clusters.begin(), clusters.end());
+    submesh.cluster_nodes.assign(cluster_nodes.begin(), cluster_nodes.end());
 
-    if (submesh.vertex_offset == vertex_offset && submesh.index_offset == index_offset &&
-        submesh.index_count == index_count)
+    if (m_submesh_infos.size() < m_submeshes.size())
     {
-        return;
+        m_submesh_infos.resize(m_submeshes.size());
     }
-
-    submesh.vertex_offset = vertex_offset;
-    submesh.index_offset = index_offset;
-    submesh.index_count = index_count;
-
-    m_submesh_infos[submesh_index].dirty = true;
+    m_submesh_infos[m_submeshes.size() - 1].dirty = true;
 
     mark_dirty();
+
+    return static_cast<std::uint32_t>(m_submeshes.size() - 1);
 }
 
 void geometry::clear_submeshes()
 {
     m_submeshes.clear();
     mark_dirty();
-}
-
-void geometry::generate_clusters()
-{
-    auto old_positions = get_positions();
-    auto old_indexes = get_indexes();
-
-    std::vector<vec3f> new_positions;
-    std::vector<std::uint32_t> new_indexes;
-
-    for (std::size_t submesh_index = 0; submesh_index < m_submeshes.size(); ++submesh_index)
-    {
-        const auto& submesh = m_submeshes[submesh_index];
-
-        std::unordered_map<std::uint32_t, std::uint32_t> vertex_remap;
-
-        std::vector<vec3f> positions;
-        std::vector<std::uint32_t> indexes;
-        indexes.reserve(submesh.index_count);
-
-        for (std::uint32_t i = 0; i < submesh.index_count; ++i)
-        {
-            std::uint32_t vertex_index =
-                old_indexes[submesh.index_offset + i] + submesh.vertex_offset;
-
-            auto iter = vertex_remap.find(vertex_index);
-            if (iter == vertex_remap.end())
-            {
-                positions.push_back(old_positions[vertex_index]);
-                vertex_remap[vertex_index] = static_cast<std::uint32_t>(positions.size() - 1);
-                vertex_index = static_cast<std::uint32_t>(positions.size() - 1);
-            }
-            else
-            {
-                vertex_index = iter->second;
-            }
-
-            indexes.push_back(vertex_index);
-        }
-
-        cluster_builder builder;
-        builder.set_positions(positions);
-        builder.set_indexes(indexes);
-
-        builder.build();
-
-        auto vertex_offset = static_cast<std::uint32_t>(new_positions.size());
-        auto index_offset = static_cast<std::uint32_t>(new_indexes.size());
-
-        new_positions.insert(
-            new_positions.end(),
-            builder.get_positions().begin(),
-            builder.get_positions().end());
-        new_indexes.insert(
-            new_indexes.end(),
-            builder.get_indexes().begin(),
-            builder.get_indexes().end());
-        for (std::uint32_t i = index_offset; i < new_indexes.size(); ++i)
-        {
-            new_indexes[i] += vertex_offset;
-        }
-
-        auto& submesh_info = m_submesh_infos[submesh_index];
-        submesh_info.cluster_offset = static_cast<std::uint32_t>(m_clusters.size());
-        submesh_info.cluster_count = static_cast<std::uint32_t>(builder.get_clusters().size());
-
-        const auto& groups = builder.get_groups();
-        const auto& clusters = builder.get_clusters();
-
-        for (const auto& group : groups)
-        {
-            for (std::uint32_t i = 0; i < group.cluster_count; ++i)
-            {
-                const auto& cluster = clusters[group.cluster_offset + i];
-
-                m_clusters.push_back({
-                    .index_offset = cluster.index_offset + index_offset,
-                    .index_count = cluster.index_count,
-                    .bounding_box = cluster.bounding_box,
-                    .bounding_sphere = cluster.bounding_sphere,
-                    .lod_bounds = cluster.lod_bounds,
-                    .lod_error = cluster.lod_error,
-                    .parent_lod_bounds = group.lod_bounds,
-                    .parent_lod_error = group.max_parent_lod_error,
-                    .lod = group.lod,
-                });
-            }
-        }
-
-        for (const auto& bvh_node : builder.get_bvh_nodes())
-        {
-            m_cluster_bvh_nodes.push_back({
-                .bounding_sphere = bvh_node.bounding_sphere,
-                .lod_bounds = bvh_node.lod_bounds,
-                .min_lod_error = bvh_node.min_lod_error,
-                .max_parent_lod_error = bvh_node.max_parent_lod_error,
-                .is_leaf = bvh_node.is_leaf,
-                .children = bvh_node.children,
-            });
-
-            if (bvh_node.is_leaf)
-            {
-                const auto& group = groups[bvh_node.children[0]];
-
-                m_cluster_bvh_nodes.back().children.clear();
-                for (std::uint32_t i = 0; i < group.cluster_count; ++i)
-                {
-                    m_cluster_bvh_nodes.back().children.push_back(group.cluster_offset + i);
-                }
-            }
-        }
-    }
-
-    set_positions(new_positions);
-    set_indexes(new_indexes);
 }
 
 void geometry::add_morph_target(std::string_view name, const std::vector<morph_element>& elements)
@@ -316,9 +202,8 @@ void geometry::update()
         return;
     }
 
-    update_cluster();
-    update_submesh();
     update_buffer();
+    update_submesh();
 
     m_dirty = false;
 }
@@ -358,28 +243,39 @@ void geometry::set_buffer_shared(geometry_buffer_type type, geometry* src_geomet
     mark_dirty();
 }
 
-void geometry::update_cluster() {}
-
 void geometry::update_submesh()
 {
     auto* geometry_manager = render_device::instance().get_geometry_manager();
 
     for (std::size_t i = 0; i < m_submeshes.size(); ++i)
     {
-        if (m_submesh_infos[i].submesh_id == INVALID_RENDER_ID)
+        const auto& submesh = m_submeshes[i];
+        auto& submesh_info = m_submesh_infos[i];
+
+        if (submesh_info.submesh_id == INVALID_RENDER_ID)
         {
-            m_submesh_infos[i].submesh_id = geometry_manager->add_submesh(m_id);
+            submesh_info.submesh_id = geometry_manager->add_submesh(m_id);
         }
 
-        if (m_submesh_infos[i].dirty)
+        if (submesh_info.dirty)
         {
-            geometry_manager->set_submesh(
-                m_submesh_infos[i].submesh_id,
-                m_submeshes[i].vertex_offset,
-                m_submeshes[i].index_offset,
-                m_submeshes[i].index_count);
+            if (submesh.has_cluster())
+            {
+                geometry_manager->set_submesh(
+                    submesh_info.submesh_id,
+                    submesh.clusters,
+                    submesh.cluster_nodes);
+            }
+            else
+            {
+                geometry_manager->set_submesh(
+                    submesh_info.submesh_id,
+                    submesh.vertex_offset,
+                    submesh.index_offset,
+                    submesh.index_count);
+            }
 
-            m_submesh_infos[i].dirty = false;
+            submesh_info.dirty = false;
         }
     }
 

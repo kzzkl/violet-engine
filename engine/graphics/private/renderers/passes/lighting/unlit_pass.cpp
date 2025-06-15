@@ -1,4 +1,4 @@
-#include "graphics/passes/lighting/unlit_pass.hpp"
+#include "graphics/renderers/passes/lighting/unlit_pass.hpp"
 
 namespace violet
 {

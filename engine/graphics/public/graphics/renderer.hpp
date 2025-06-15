@@ -18,21 +18,20 @@ public:
         on_update(width, height);
     }
 
-    void set_enable(bool enable) noexcept
+    void enable()
     {
-        if (m_enable == enable)
+        if (!m_enable)
         {
-            return;
-        }
-
-        m_enable = enable;
-
-        if (m_enable)
-        {
+            m_enable = true;
             on_enable();
         }
-        else
+    }
+
+    void disable()
+    {
+        if (m_enable)
         {
+            m_enable = false;
             on_disable();
         }
     }
@@ -49,7 +48,7 @@ private:
     virtual void on_enable() {}
     virtual void on_disable() {}
 
-    bool m_enable{true};
+    bool m_enable{false};
 };
 
 template <typename T>
@@ -82,6 +81,7 @@ public:
         if (m_features[id] == nullptr)
         {
             m_features[id] = std::make_unique<T>();
+            m_features[id]->enable();
         }
 
         return static_cast<T*>(m_features[id].get());
@@ -98,14 +98,25 @@ public:
     }
 
     template <typename T>
-    T* get_feature() const
+    T* get_feature(bool check_enable = false) const noexcept
     {
         std::uint32_t id = render_feature_index::value<T>();
-        return m_features.size() > id ? static_cast<T*>(m_features[id].get()) : nullptr;
+
+        if (m_features.size() <= id || m_features[id] == nullptr)
+        {
+            return nullptr;
+        }
+
+        if (check_enable && !m_features[id]->is_enable())
+        {
+            return nullptr;
+        }
+
+        return static_cast<T*>(m_features[id].get());
     }
 
     template <typename T>
-    bool is_feature_enable() const
+    bool is_feature_enabled() const noexcept
     {
         std::uint32_t id = render_feature_index::value<T>();
         return m_features.size() > id && m_features[id] != nullptr && m_features[id]->is_enable();
@@ -115,9 +126,6 @@ protected:
     virtual void on_render(render_graph& graph) = 0;
 
 private:
-    std::vector<render_feature_base*> m_enabled_features;
-    bool m_feature_dirty{true};
-
     std::vector<std::unique_ptr<render_feature_base>> m_features;
 };
 } // namespace violet

@@ -6,6 +6,9 @@ namespace violet
 {
 class deferred_renderer : public renderer
 {
+public:
+    deferred_renderer();
+
 protected:
     void on_render(render_graph& graph) override;
 

@@ -1,6 +1,7 @@
 project(violet-common)
 
 add_library(${PROJECT_NAME} STATIC
+    ./private/allocator.cpp
     ./private/log.cpp
     ./private/utility.cpp)
 add_library(violet::common ALIAS ${PROJECT_NAME})

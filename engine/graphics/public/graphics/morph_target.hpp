@@ -97,7 +97,7 @@ private:
     std::vector<morph_target> m_morph_targets;
 
     float m_precision{0.0001f};
-    std::size_t m_max_element_count{0};
+    std::size_t m_max_elements{0};
 
     std::unique_ptr<structured_buffer> m_header_buffer;
     std::unique_ptr<structured_buffer> m_element_buffer;

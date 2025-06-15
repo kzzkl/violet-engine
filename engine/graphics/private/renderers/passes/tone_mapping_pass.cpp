@@ -1,4 +1,4 @@
-#include "graphics/passes/tone_mapping_pass.hpp"
+#include "graphics/renderers/passes/tone_mapping_pass.hpp"
 
 namespace violet
 {

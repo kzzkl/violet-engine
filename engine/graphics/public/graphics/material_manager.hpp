@@ -42,7 +42,7 @@ private:
     };
 
     std::vector<material_info> m_materials;
-    index_allocator<render_id> m_material_allocator;
+    index_allocator m_material_allocator;
 
     std::vector<render_id> m_dirty_materials;
 

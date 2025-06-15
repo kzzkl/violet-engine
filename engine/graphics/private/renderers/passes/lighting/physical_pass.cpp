@@ -1,4 +1,4 @@
-#include "graphics/passes/lighting/physical_pass.hpp"
+#include "graphics/renderers/passes/lighting/physical_pass.hpp"
 #include "graphics/resources/brdf_lut.hpp"
 
 namespace violet
@@ -65,7 +65,7 @@ void physical_pass::add(render_graph& graph, const parameter& parameter)
             }
             else
             {
-                data.ao_buffer = rdg_texture_srv();
+                data.ao_buffer.reset();
             }
         },
         [](const pass_data& data, rdg_command& command)

@@ -1,4 +1,4 @@
-#include "graphics/passes/skybox_pass.hpp"
+#include "graphics/renderers/passes/skybox_pass.hpp"
 #include "graphics/render_interface.hpp"
 #include "graphics/shader.hpp"
 

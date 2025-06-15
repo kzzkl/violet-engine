@@ -69,7 +69,7 @@ struct vk_pipeline_layout_desc
     VkPipelineStageFlags push_constant_stages;
     std::uint32_t push_constant_size;
 
-    std::array<vk_parameter_layout*, rhi_constants::max_parameter_count> parameters;
+    std::array<vk_parameter_layout*, rhi_constants::max_parameters> parameters;
 };
 
 class vk_pipeline_layout

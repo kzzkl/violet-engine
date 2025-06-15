@@ -7,12 +7,6 @@ namespace violet
 class gltf_loader : public mesh_loader
 {
 public:
-    gltf_loader(std::string_view path);
-    virtual ~gltf_loader();
-
-    std::optional<scene_data> load() override;
-
-private:
-    std::string m_path;
+    std::optional<scene_data> load(std::string_view path) override;
 };
 } // namespace violet

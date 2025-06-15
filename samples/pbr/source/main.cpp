@@ -10,13 +10,11 @@
 #include "deferred_renderer_imgui.hpp"
 #include "gltf_loader.hpp"
 #include "graphics/geometries/box_geometry.hpp"
-#include "graphics/geometries/plane_geometry.hpp"
-#include "graphics/geometries/sphere_geometry.hpp"
 #include "graphics/graphics_system.hpp"
 #include "graphics/materials/physical_material.hpp"
 #include "graphics/materials/unlit_material.hpp"
-#include "graphics/passes/gtao_pass.hpp"
-#include "graphics/passes/taa_pass.hpp"
+#include "graphics/renderers/features/gtao_render_feature.hpp"
+#include "graphics/renderers/features/taa_render_feature.hpp"
 #include "graphics/skybox.hpp"
 #include "imgui.h"
 #include "imgui_system.hpp"
@@ -28,7 +26,7 @@ class pbr_sample : public system
 {
 public:
     pbr_sample()
-        : system("PBR Sample")
+        : system("pbr_sample")
     {
     }
 
@@ -44,9 +42,6 @@ public:
 
     bool initialize(const dictionary& config) override
     {
-        m_skybox_path = config["skybox"];
-        m_model_path = config["model"];
-
         auto& window = get_system<window_system>();
         window.on_resize().add_task().set_execute(
             [this]()
@@ -73,7 +68,7 @@ public:
                 });
 
         initialize_render();
-        initialize_scene();
+        initialize_scene(config["model"], config["skybox"]);
 
         resize();
 
@@ -87,13 +82,13 @@ private:
             .flags = RHI_TEXTURE_TRANSFER_DST | RHI_TEXTURE_RENDER_TARGET,
             .window_handle = get_system<window_system>().get_handle(),
         });
-
-        m_skybox = std::make_unique<skybox>(m_skybox_path);
     }
 
-    void initialize_scene()
+    void initialize_scene(std::string_view model_path, std::string_view skybox_path)
     {
         auto& world = get_world();
+
+        m_skybox = std::make_unique<skybox>(skybox_path);
 
         entity scene_skybox = world.create();
         world.add_component<transform_component, skybox_component, scene_component>(scene_skybox);
@@ -124,8 +119,6 @@ private:
         auto& main_camera = world.get_component<camera_component>(m_camera);
         main_camera.renderer = std::make_unique<deferred_renderer_imgui>();
         main_camera.render_target = m_swapchain.get();
-        main_camera.renderer->add_feature<taa_render_feature>();
-        main_camera.renderer->add_feature<gtao_render_feature>();
 
         // Model.
         m_empty_material = std::make_unique<unlit_material>();
@@ -133,134 +126,132 @@ private:
         m_root = world.create();
         world.add_component<transform_component, scene_component>(m_root);
 
-        load_model(m_model_path);
-
-        m_plane_geometry = std::make_unique<plane_geometry>(10.0f, 10.0f);
-        {
-            m_plane = world.create();
-            world.add_component<transform_component, mesh_component, scene_component>(m_plane);
-
-            m_plane_material2 = std::make_unique<unlit_material>();
-            m_plane_material2->set_color({0.0f, 1.0f, 0.0f});
-            // m_plane_material2->set_metallic(0.5f);
-            // m_plane_material2->set_roughness(0.5f);
-
-            auto& plane_mesh = world.get_component<mesh_component>(m_plane);
-            plane_mesh.geometry = m_plane_geometry.get();
-            plane_mesh.submeshes.push_back({
-                .material = m_plane_material2.get(),
-            });
-            auto& plane_transform = world.get_component<transform_component>(m_plane);
-            plane_transform.set_position({0.0f, 0.0f, 0.0f});
-            plane_transform.set_scale({100.0f, 100.0f, 1.0f});
-            plane_transform.set_rotation(
-                quaternion::from_euler(vec3f{math::to_radians(90.0f), 0.0f, 0.0f}));
-        }
+        load_model(model_path);
 
         // Plane.
         m_plane = world.create();
         world.add_component<transform_component, mesh_component, scene_component>(m_plane);
 
+        m_plane_geometry = std::make_unique<box_geometry>();
+
         m_plane_material = std::make_unique<physical_material>();
-        m_plane_material->set_albedo({1.0f, 1.0f, 0.0f});
         m_plane_material->set_metallic(0.5f);
         m_plane_material->set_roughness(0.5f);
 
         auto& plane_mesh = world.get_component<mesh_component>(m_plane);
         plane_mesh.geometry = m_plane_geometry.get();
         plane_mesh.submeshes.push_back({
+            .index = 0,
             .material = m_plane_material.get(),
         });
         auto& plane_transform = world.get_component<transform_component>(m_plane);
         plane_transform.set_position({0.0f, -1.0f, 0.0f});
-        plane_transform.set_scale({100.0f, 100.0f, 1.0f});
-        plane_transform.set_rotation(
-            quaternion::from_euler(vec3f{math::to_radians(90.0f), 0.0f, 0.0f}));
-
-        // Spheres.
-        // m_sphere_geometry = std::make_unique<sphere_geometry>();
-        // m_sphere_material = std::make_unique<physical_material>();
-
-        // std::uint32_t size = 10;
-        // for (std::uint32_t i = 0; i < size; ++i)
-        // {
-        //     for (std::uint32_t j = 0; j < size; ++j)
-        //     {
-        //         for (std::uint32_t k = 0; k < size; ++k)
-        //         {
-        //             vec3f position = {
-        //                 static_cast<float>(i) - static_cast<float>(size) / 2.0f,
-        //                 static_cast<float>(j) - static_cast<float>(size) / 2.0f,
-        //                 static_cast<float>(k) - static_cast<float>(size) / 2.0f,
-        //             };
-        //             position *= 2.0f;
-
-        //             entity sphere = world.create();
-        //             world.add_component<transform_component, mesh_component, scene_component>(
-        //                 sphere);
-
-        //             auto& sphere_mesh = world.get_component<mesh_component>(sphere);
-        //             sphere_mesh.geometry = m_sphere_geometry.get();
-        //             sphere_mesh.submeshes.push_back({
-        //                 .material = m_sphere_material.get(),
-        //             });
-        //             auto& sphere_transform = world.get_component<transform_component>(sphere);
-        //             sphere_transform.set_position(position);
-        //         }
-        //     }
-        // }
+        plane_transform.set_scale({10.0f, 0.05f, 10.0f});
     }
 
     void load_model(std::string_view path)
     {
         auto& world = get_world();
 
-        gltf_loader loader(path);
-        if (auto result = loader.load())
+        gltf_loader loader;
+        if (auto result = loader.load(path))
         {
-            m_model = std::move(*result);
+            m_textures = std::move(result->textures);
 
-            std::vector<entity> entities;
-            for (auto& node : m_model.nodes)
+            for (const auto& geometry_data : result->geometries)
+            {
+                auto model_geometry = std::make_unique<geometry>();
+                model_geometry->set_positions(geometry_data.positions);
+                model_geometry->set_normals(geometry_data.normals);
+                model_geometry->set_tangents(geometry_data.tangents);
+                model_geometry->set_texcoords(geometry_data.texcoords);
+                model_geometry->set_indexes(geometry_data.indexes);
+
+                for (const auto& submesh : geometry_data.submeshes)
+                {
+                    model_geometry->add_submesh(
+                        submesh.vertex_offset,
+                        submesh.index_offset,
+                        submesh.index_count);
+                }
+
+                m_geometries.push_back(std::move(model_geometry));
+            }
+
+            for (const auto& material_data : result->materials)
+            {
+                auto model_material = std::make_unique<physical_material>();
+                model_material->set_albedo(material_data.albedo);
+                model_material->set_roughness(material_data.roughness);
+                model_material->set_metallic(material_data.metallic);
+                model_material->set_emissive(material_data.emissive);
+
+                if (material_data.albedo_texture != nullptr)
+                {
+                    model_material->set_albedo(material_data.albedo_texture);
+                }
+
+                if (material_data.roughness_metallic_texture != nullptr)
+                {
+                    model_material->set_roughness_metallic(
+                        material_data.roughness_metallic_texture);
+                }
+
+                if (material_data.emissive_texture != nullptr)
+                {
+                    model_material->set_emissive(material_data.emissive_texture);
+                }
+
+                if (material_data.normal_texture != nullptr)
+                {
+                    model_material->set_normal(material_data.normal_texture);
+                }
+
+                m_materials.push_back(std::move(model_material));
+            }
+
+            for (const auto& node_data : result->nodes)
             {
                 entity entity = world.create();
                 world.add_component<transform_component, parent_component, scene_component>(entity);
 
                 auto& transform = world.get_component<transform_component>(entity);
-                transform.set_position(node.position);
-                transform.set_rotation(node.rotation);
-                transform.set_scale(node.scale);
+                transform.set_position(node_data.position);
+                transform.set_rotation(node_data.rotation);
+                transform.set_scale(node_data.scale);
 
-                entities.push_back(entity);
+                m_entities.push_back(entity);
             }
 
-            for (std::size_t i = 0; i < m_model.nodes.size(); ++i)
+            for (std::size_t i = 0; i < result->nodes.size(); ++i)
             {
-                auto& node = m_model.nodes[i];
-                auto entity = entities[i];
+                const auto& node_data = result->nodes[i];
+                auto entity = m_entities[i];
 
-                if (node.mesh != -1)
+                if (node_data.mesh != -1)
                 {
                     world.add_component<mesh_component>(entity);
 
-                    auto& mesh_data = m_model.meshes[node.mesh];
+                    const auto& mesh_data = result->meshes[node_data.mesh];
 
                     auto& entity_mesh = world.get_component<mesh_component>(entity);
-                    entity_mesh.geometry = m_model.geometries[mesh_data.geometry].get();
-                    for (auto& submesh_data : mesh_data.submeshes)
+                    entity_mesh.geometry = m_geometries[mesh_data.geometry].get();
+
+                    for (std::size_t j = 0; j < mesh_data.submeshes.size(); ++j)
                     {
                         entity_mesh.submeshes.push_back({
-                            .index = submesh_data.submesh_index,
-                            .material = submesh_data.material == -1 ?
+                            .index = mesh_data.submeshes[j],
+                            .material = mesh_data.materials[j] == -1 ?
                                             m_empty_material.get() :
-                                            m_model.materials[submesh_data.material].get(),
+                                            m_materials[mesh_data.materials[j]].get(),
                         });
                     }
                 }
 
-                if (node.parent != -1)
+                if (node_data.parent != -1)
                 {
-                    world.get_component<parent_component>(entity).parent = entities[node.parent];
+                    world.get_component<parent_component>(entity).parent =
+                        m_entities[node_data.parent];
                 }
                 else
                 {
@@ -299,23 +290,23 @@ private:
 
         if (ImGui::CollapsingHeader("Material"))
         {
-            static float metallic = m_sphere_material->get_metallic();
-            static float roughness = m_sphere_material->get_roughness();
+            static float metallic = m_plane_material->get_metallic();
+            static float roughness = m_plane_material->get_roughness();
             static float albedo[] = {1.0f, 1.0f, 1.0f};
 
             if (ImGui::SliderFloat("Metallic", &metallic, 0.0f, 1.0f))
             {
-                m_sphere_material->set_metallic(metallic);
+                m_plane_material->set_metallic(metallic);
             }
 
             if (ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f))
             {
-                m_sphere_material->set_roughness(roughness);
+                m_plane_material->set_roughness(roughness);
             }
 
             if (ImGui::ColorEdit3("Albedo", albedo))
             {
-                m_sphere_material->set_albedo({albedo[0], albedo[1], albedo[2]});
+                m_plane_material->set_albedo({albedo[0], albedo[1], albedo[2]});
             }
         }
 
@@ -328,7 +319,14 @@ private:
 
             ImGui::Checkbox("Enable##TAA", &enable_taa);
 
-            taa->set_enable(enable_taa);
+            if (enable_taa)
+            {
+                taa->enable();
+            }
+            else
+            {
+                taa->disable();
+            }
         }
 
         if (ImGui::CollapsingHeader("GTAO"))
@@ -348,7 +346,14 @@ private:
             ImGui::SliderFloat("Radius", &radius, 0.0f, 10.0f);
             ImGui::SliderFloat("Falloff", &falloff, 0.1f, 1.0f);
 
-            gtao->set_enable(enable_gtao);
+            if (enable_gtao)
+            {
+                gtao->enable();
+            }
+            else
+            {
+                gtao->disable();
+            }
             gtao->set_slice_count(slice_count);
             gtao->set_step_count(step_count);
             gtao->set_radius(radius);
@@ -363,20 +368,17 @@ private:
     entity m_plane;
     std::unique_ptr<geometry> m_plane_geometry;
     std::unique_ptr<physical_material> m_plane_material;
-    std::unique_ptr<unlit_material> m_plane_material2;
 
-    std::unique_ptr<geometry> m_sphere_geometry;
-    std::unique_ptr<physical_material> m_sphere_material;
+    std::vector<std::unique_ptr<geometry>> m_geometries;
+    std::vector<std::unique_ptr<material>> m_materials;
+    std::vector<std::unique_ptr<texture_2d>> m_textures;
+    std::vector<entity> m_entities;
 
     std::unique_ptr<unlit_material> m_empty_material;
 
     std::unique_ptr<skybox> m_skybox;
-    mesh_loader::scene_data m_model;
 
     rhi_ptr<rhi_swapchain> m_swapchain;
-
-    std::string m_skybox_path;
-    std::string m_model_path;
 
     application* m_app{nullptr};
 };
