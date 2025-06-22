@@ -305,46 +305,58 @@ std::vector<vec3f> geometry_tool::generate_smooth_normals(
     return result;
 }
 
-geometry_tool::simplify_result geometry_tool::simplify(
-    std::span<const vec3f> positions,
-    std::span<const std::uint32_t> indexes,
-    std::uint32_t target_triangle_count,
-    std::span<const vec3f> locked_positions)
+geometry_tool::simplify_output geometry_tool::simplify(const simplify_input& input)
 {
     mesh_simplifier simplifier;
-    simplifier.set_positions(positions);
-    simplifier.set_indexes(indexes);
+    simplifier.set_positions(input.positions);
+    simplifier.set_indexes(input.indexes);
 
-    for (const auto& locked_position : locked_positions)
+    if (!input.normals.empty())
+    {
+        simplifier.set_attributes(
+            std::span<const float>(
+                reinterpret_cast<const float*>(input.normals.data()),
+                input.normals.size() * 3),
+            3);
+    }
+
+    for (const auto& locked_position : input.locked_positions)
     {
         simplifier.lock_position(locked_position);
     }
 
-    simplifier.simplify(target_triangle_count);
+    simplifier.simplify(input.target_triangle_count);
 
-    simplify_result result;
-    result.positions = simplifier.get_positions();
-    result.indexes = simplifier.get_indexes();
+    simplify_output output = {
+        .positions = simplifier.get_positions(),
+        .indexes = simplifier.get_indexes(),
+    };
 
-    return result;
+    if (!input.normals.empty())
+    {
+        const auto& attributes = simplifier.get_attributes();
+        output.normals.resize(output.positions.size());
+        std::memcpy(
+            output.normals.data(),
+            attributes.data(),
+            static_cast<std::size_t>(output.normals.size() * sizeof(vec3f)));
+    }
+
+    return output;
 }
 
-geometry_tool::simplify_result geometry_tool::simplify_meshopt(
-    std::span<const vec3f> positions,
-    std::span<const std::uint32_t> indexes,
-    std::uint32_t target_triangle_count)
+geometry_tool::simplify_output geometry_tool::simplify_meshopt(const simplify_input& input)
 {
     mesh_simplifier_meshopt simplifier;
-    simplifier.set_positions(positions);
-    simplifier.set_indexes(indexes);
+    simplifier.set_positions(input.positions);
+    simplifier.set_indexes(input.indexes);
 
-    simplifier.simplify(target_triangle_count, false);
+    simplifier.simplify(input.target_triangle_count, false);
 
-    simplify_result result;
-    result.positions.assign(positions.begin(), positions.end());
-    result.indexes = simplifier.get_indexes();
-
-    return result;
+    return {
+        .positions = simplifier.get_positions(),
+        .indexes = simplifier.get_indexes(),
+    };
 }
 
 geometry_tool::cluster_output geometry_tool::generate_clusters(const cluster_input& input)

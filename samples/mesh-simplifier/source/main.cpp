@@ -15,6 +15,7 @@
 #include "imgui.h"
 #include "imgui_system.hpp"
 #include "window/window_system.hpp"
+#include "graphics/materials/physical_material.hpp"
 
 namespace violet
 {
@@ -114,10 +115,11 @@ private:
         main_camera.render_target = m_swapchain.get();
 
         // Model.
-        m_material = std::make_unique<unlit_material>(
-            RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-            RHI_CULL_MODE_NONE,
-            RHI_POLYGON_MODE_LINE);
+        // m_material = std::make_unique<unlit_material>(
+        //     RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        //     RHI_CULL_MODE_NONE,
+        //     RHI_POLYGON_MODE_LINE);
+        m_material = std::make_unique<physical_material>();
 
         if (!model_path.empty())
         {
@@ -162,6 +164,7 @@ private:
 
         m_simplified_geometry = std::make_unique<geometry>();
         m_simplified_geometry->set_positions(m_original_geometry->get_positions());
+        m_simplified_geometry->set_normals(m_original_geometry->get_normals());
         m_simplified_geometry->set_indexes(m_original_geometry->get_indexes());
         m_simplified_geometry->add_submesh(0, 0, m_original_geometry->get_indexes().size());
     }
@@ -186,19 +189,22 @@ private:
         static float simplify_ratio = 1.0f;
         if (ImGui::SliderFloat("Simplify Ratio", &simplify_ratio, 0.0f, 1.0f))
         {
-            std::size_t triangle_count = m_original_geometry->get_index_count() / 3;
+            std::uint32_t triangle_count = m_original_geometry->get_index_count() / 3;
             auto target_triangle_count =
-                static_cast<std::size_t>(static_cast<float>(triangle_count) * simplify_ratio);
+                static_cast<std::uint32_t>(static_cast<float>(triangle_count) * simplify_ratio);
 
-            auto result = geometry_tool::simplify(
-                m_original_geometry->get_positions(),
-                m_original_geometry->get_indexes(),
-                target_triangle_count);
+            auto output = geometry_tool::simplify({
+                .positions = m_original_geometry->get_positions(),
+                .normals = m_original_geometry->get_normals(),
+                .indexes = m_original_geometry->get_indexes(),
+                .target_triangle_count = target_triangle_count,
+            });
 
-            m_simplified_geometry->set_positions(result.positions);
-            m_simplified_geometry->set_indexes(result.indexes);
+            m_simplified_geometry->set_positions(output.positions);
+            m_simplified_geometry->set_normals(output.normals);
+            m_simplified_geometry->set_indexes(output.indexes);
             m_simplified_geometry->clear_submeshes();
-            m_simplified_geometry->add_submesh(0, 0, result.indexes.size());
+            m_simplified_geometry->add_submesh(0, 0, output.indexes.size());
         }
     }
 
@@ -206,7 +212,7 @@ private:
     entity m_camera;
     entity m_model;
 
-    std::unique_ptr<unlit_material> m_material;
+    std::unique_ptr<material> m_material;
     std::unique_ptr<geometry> m_original_geometry;
     std::unique_ptr<geometry> m_simplified_geometry;
 

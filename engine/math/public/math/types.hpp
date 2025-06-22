@@ -30,6 +30,11 @@ struct vec2
     {
         return x == other.x && y == other.y;
     }
+
+    [[nodiscard]] inline vec2 operator-() const noexcept
+    {
+        return {-x, -y};
+    }
 };
 
 template <typename T>
@@ -55,6 +60,11 @@ struct vec3
     [[nodiscard]] inline bool operator==(const self_type& other) const noexcept
     {
         return x == other.x && y == other.y && z == other.z;
+    }
+
+    [[nodiscard]] inline vec3 operator-() const noexcept
+    {
+        return {-x, -y, -z};
     }
 
     operator vec2<T>() const noexcept
@@ -87,6 +97,11 @@ struct vec4
     [[nodiscard]] inline bool operator==(const self_type& other) const noexcept
     {
         return x == other.x && y == other.y && z == other.z && w == other.w;
+    }
+
+    [[nodiscard]] inline vec4 operator-() const noexcept
+    {
+        return {-x, -y, -z, -w};
     }
 
     operator vec2<T>() const noexcept
@@ -148,6 +163,53 @@ template <typename T>
 concept is_vec4 = requires(T v) {
     { vec4{v} } -> std::same_as<T>;
 };
+
+template <typename T>
+struct mat3x3
+{
+    using value_type = T;
+    using row_type = vec3<T>;
+
+    row_type row[3];
+
+    mat3x3()
+        : row{}
+    {
+    }
+
+    mat3x3(value_type value)
+        : row{
+              {value, 0, 0},
+              {0, value, 0},
+              {0, 0, value},
+          }
+    {
+    }
+
+    mat3x3(const std::initializer_list<row_type>& rows)
+    {
+        std::size_t i = 0;
+        for (auto& r : rows)
+        {
+            row[i++] = r;
+        }
+    }
+
+    [[nodiscard]] inline row_type& operator[](std::size_t index)
+    {
+        return row[index];
+    }
+
+    [[nodiscard]] inline const row_type& operator[](std::size_t index) const
+    {
+        return row[index];
+    }
+};
+
+template <typename T>
+using mat3 = mat3x3<T>;
+using mat3x3f = mat3x3<float>;
+using mat3f = mat3x3f;
 
 template <typename T>
 struct mat4x4
@@ -213,7 +275,6 @@ struct mat4x4<simd>
 
 template <typename T>
 using mat4 = mat4x4<T>;
-
 using mat4x4f = mat4x4<float>;
 using mat4x4f_simd = mat4x4<simd>;
 using mat4f = mat4x4f;

@@ -51,6 +51,11 @@ struct sphere
         using value_type = std::ranges::range_value_t<R>::value_type;
         using sphere_type = sphere3<value_type>;
 
+        if (points.empty())
+        {
+            return sphere_type{};
+        }
+
         std::uint32_t min_index[3] = {0, 0, 0};
         std::uint32_t max_index[3] = {0, 0, 0};
 

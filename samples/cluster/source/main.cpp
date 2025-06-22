@@ -246,37 +246,38 @@ private:
 
         m_models.push_back(std::move(model));
 
-        for (std::uint32_t i = 0; i < 50; ++i)
-        {
-            for (std::uint32_t j = 0; j < 50; ++j)
-            {
-                for (std::uint32_t k = 0; k < 50; ++k)
-                {
-                    entity entity = world.create();
-                    world.add_component<
-                        transform_component,
-                        scene_component,
-                        mesh_component,
-                        parent_component>(entity);
+        // int size = 50;
+        // for (int i = 0; i < size; ++i)
+        // {
+        //     for (int j = 0; j < size; ++j)
+        //     {
+        //         for (int k = 0; k < size; ++k)
+        //         {
+        //             entity entity = world.create();
+        //             world.add_component<
+        //                 transform_component,
+        //                 scene_component,
+        //                 mesh_component,
+        //                 parent_component>(entity);
 
-                    auto& transform = world.get_component<transform_component>(entity);
-                    transform.set_position(
-                        {static_cast<float>(i) * 0.2f,
-                         static_cast<float>(j) * 0.2f,
-                         static_cast<float>(k) * 0.2f});
+        //             auto& transform = world.get_component<transform_component>(entity);
+        //             transform.set_position(
+        //                 {static_cast<float>(i - (size >> 1)) * 0.2f,
+        //                  static_cast<float>(j - (size >> 1)) * 0.2f,
+        //                  static_cast<float>(k - (size >> 1)) * 0.2f});
 
-                    auto& parent = world.get_component<parent_component>(entity);
-                    parent.parent = m_mesh;
+        //             auto& parent = world.get_component<parent_component>(entity);
+        //             parent.parent = m_mesh;
 
-                    auto& mesh = world.get_component<mesh_component>(entity);
-                    mesh.geometry = m_models[0].geometries[0].get();
-                    mesh.submeshes.push_back({
-                        .index = 0,
-                        .material = m_material.get(),
-                    });
-                }
-            }
-        }
+        //             auto& mesh = world.get_component<mesh_component>(entity);
+        //             mesh.geometry = m_models[0].geometries[0].get();
+        //             mesh.submeshes.push_back({
+        //                 .index = 0,
+        //                 .material = m_material.get(),
+        //             });
+        //         }
+        //     }
+        // }
     }
 
     entity m_camera;

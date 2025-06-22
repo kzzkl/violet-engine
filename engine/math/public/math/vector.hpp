@@ -565,6 +565,12 @@ inline T operator*(const T& a, typename T::value_type scale)
 }
 
 template <is_vector T>
+inline T operator*(typename T::value_type scale, const T& a)
+{
+    return vector::mul(a, scale);
+}
+
+template <is_vector T>
 inline T& operator*=(T& a, typename T::value_type scale)
 {
     return a = vector::mul(a, scale);
@@ -584,6 +590,12 @@ inline T& operator/=(T& a, const T& b)
 
 template <is_vector T>
 inline T operator/(const T& a, typename T::value_type scale)
+{
+    return vector::div(a, scale);
+}
+
+template <is_vector T>
+inline T operator/(typename T::value_type scale, const T& a)
 {
     return vector::div(a, scale);
 }

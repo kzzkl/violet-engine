@@ -7,32 +7,126 @@ namespace violet
 struct matrix
 {
     template <typename T>
-    [[nodiscard]] static inline mat4<T> identity() noexcept
+    [[nodiscard]] static inline mat3<T> add(const mat3<T>& m1, const mat3<T>& m2) noexcept
     {
-        if constexpr (std::is_same_v<T, simd>)
+        mat3<T> result;
+        for (std::size_t i = 0; i < 3; ++i)
         {
-            return {
-                _mm_setr_ps(0.0f, 0.0f, 0.0f, 1.0f),
-                _mm_setr_ps(0.0f, 0.0f, 1.0f, 0.0f),
-                _mm_setr_ps(0.0f, 1.0f, 0.0f, 0.0f),
-                _mm_setr_ps(1.0f, 0.0f, 0.0f, 0.0f),
-            };
+            result[i][0] = m1[i][0] + m2[i][0];
+            result[i][1] = m1[i][1] + m2[i][1];
+            result[i][2] = m1[i][2] + m2[i][2];
         }
-        else
-        {
-            return {
-                {1, 0, 0, 0},
-                {0, 1, 0, 0},
-                {0, 0, 1, 0},
-                {0, 0, 0, 1},
-            };
-        }
+        return result;
     }
 
     template <typename T>
-    [[nodiscard]] static inline mat4<T> zero() noexcept
+    [[nodiscard]] static inline mat4<T> add(const mat4<T>& m1, const mat4<T>& m2) noexcept
     {
-        return mat4<T>();
+        mat4<T> result;
+        for (std::size_t i = 0; i < 4; ++i)
+        {
+            result[i][0] = m1[i][0] + m2[i][0];
+            result[i][1] = m1[i][1] + m2[i][1];
+            result[i][2] = m1[i][2] + m2[i][2];
+            result[i][3] = m1[i][3] + m2[i][3];
+        }
+        return result;
+    }
+
+    [[nodiscard]] static inline mat4f_simd add(const mat4f_simd& m1, const mat4f_simd& m2) noexcept
+    {
+        mat4f_simd result;
+        result[0] = _mm_add_ps(m1[0], m2[0]);
+        result[1] = _mm_add_ps(m1[1], m2[1]);
+        result[2] = _mm_add_ps(m1[2], m2[2]);
+        result[3] = _mm_add_ps(m1[3], m2[3]);
+        return result;
+    }
+
+    template <typename T>
+    [[nodiscard]] static inline mat3<T> sub(const mat3<T>& m1, const mat3<T>& m2) noexcept
+    {
+        mat3<T> result;
+        for (std::size_t i = 0; i < 3; ++i)
+        {
+            result[i][0] = m1[i][0] - m2[i][0];
+            result[i][1] = m1[i][1] - m2[i][1];
+            result[i][2] = m1[i][2] - m2[i][2];
+        }
+        return result;
+    }
+
+    template <typename T>
+    [[nodiscard]] static inline mat4<T> sub(const mat4<T>& m1, const mat4<T>& m2) noexcept
+    {
+        mat4<T> result;
+        for (std::size_t i = 0; i < 4; ++i)
+        {
+            result[i][0] = m1[i][0] - m2[i][0];
+            result[i][1] = m1[i][1] - m2[i][1];
+            result[i][2] = m1[i][2] - m2[i][2];
+            result[i][3] = m1[i][3] - m2[i][3];
+        }
+        return result;
+    }
+
+    [[nodiscard]] static inline mat4f_simd sub(const mat4f_simd& m1, const mat4f_simd& m2) noexcept
+    {
+        mat4f_simd result;
+        result[0] = _mm_sub_ps(m1[0], m2[0]);
+        result[1] = _mm_sub_ps(m1[1], m2[1]);
+        result[2] = _mm_sub_ps(m1[2], m2[2]);
+        result[3] = _mm_sub_ps(m1[3], m2[3]);
+        return result;
+    }
+
+    template <typename T>
+    [[nodiscard]] static inline mat3<T> mul(const mat3<T>& m1, const mat3<T>& m2) noexcept
+    {
+        mat3<T> result;
+        for (std::size_t i = 0; i < 3; ++i)
+        {
+            for (std::size_t j = 0; j < 3; ++j)
+            {
+                result[i][j] += m1[i][0] * m2[0][j];
+                result[i][j] += m1[i][1] * m2[1][j];
+                result[i][j] += m1[i][2] * m2[2][j];
+            }
+        }
+        return result;
+    }
+
+    template <typename T>
+    [[nodiscard]] static inline vec3<T> mul(const vec3<T>& v, const mat3<T>& m) noexcept
+    {
+        return {
+            m[0][0] * v.x + m[1][0] * v.y + m[2][0] * v.z,
+            m[0][1] * v.x + m[1][1] * v.y + m[2][1] * v.z,
+            m[0][2] * v.x + m[1][2] * v.y + m[2][2] * v.z,
+        };
+    }
+
+    template <typename T>
+    [[nodiscard]] static inline vec3<T> mul(const mat3<T>& m, const vec3<T>& v) noexcept
+    {
+        return {
+            m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z,
+            m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z,
+            m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z,
+        };
+    }
+
+    template <typename T>
+    [[nodiscard]] static inline mat3<T> mul(const mat3<T>& m, mat3<T>::value_type scale) noexcept
+    {
+        mat3<T> result;
+        for (std::size_t i = 0; i < 3; ++i)
+        {
+            result[i][0] = m[i][0] * scale;
+            result[i][1] = m[i][1] * scale;
+            result[i][2] = m[i][2] * scale;
+        }
+        return result;
     }
 
     template <typename T>
@@ -43,10 +137,10 @@ struct matrix
         {
             for (std::size_t j = 0; j < 4; ++j)
             {
-                for (std::size_t k = 0; k < 4; ++k)
-                {
-                    result[i][j] += m1[i][k] * m2[k][j];
-                }
+                result[i][j] += m1[i][0] * m2[0][j];
+                result[i][j] += m1[i][1] * m2[1][j];
+                result[i][j] += m1[i][2] * m2[2][j];
+                result[i][j] += m1[i][3] * m2[3][j];
             }
         }
         return result;
@@ -96,7 +190,8 @@ struct matrix
             m[0][0] * v.x + m[1][0] * v.y + m[2][0] * v.z + m[3][0] * v.w,
             m[0][1] * v.x + m[1][1] * v.y + m[2][1] * v.z + m[3][1] * v.w,
             m[0][2] * v.x + m[1][2] * v.y + m[2][2] * v.z + m[3][2] * v.w,
-            m[0][3] * v.x + m[1][3] * v.y + m[2][3] * v.z + m[3][3] * v.w};
+            m[0][3] * v.x + m[1][3] * v.y + m[2][3] * v.z + m[3][3] * v.w,
+        };
     }
 
     [[nodiscard]] static inline vec4f_simd mul(vec4f_simd v, const mat4f_simd& m) noexcept
@@ -126,10 +221,10 @@ struct matrix
         mat4<T> result;
         for (std::size_t i = 0; i < 4; ++i)
         {
-            for (std::size_t j = 0; j < 4; ++j)
-            {
-                result[i][j] = m[i][j] * scale;
-            }
+            result[i][0] = m[i][0] * scale;
+            result[i][1] = m[i][1] * scale;
+            result[i][2] = m[i][2] * scale;
+            result[i][3] = m[i][3] * scale;
         }
         return result;
     }
@@ -197,51 +292,90 @@ struct matrix
     }
 
     template <typename T>
+    [[nodiscard]] static inline mat3<T> inverse(const mat3<T>& m)
+    {
+        bool invertable;
+        return inverse(m, invertable);
+    }
+
+    template <typename T>
+    [[nodiscard]] static inline mat3<T> inverse(const mat3<T>& m, bool& invertable)
+    {
+        mat3<T> result;
+
+        T det = m[0][0] * (m[1][1] * m[2][2] - m[2][1] * m[1][2]) -
+                m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
+                m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+        invertable = det != T(0);
+        T det_inv = T(1) / det;
+
+        result[0][0] = (m[1][1] * m[2][2] - m[2][1] * m[1][2]) * det_inv;
+        result[0][1] = (m[0][2] * m[2][1] - m[0][1] * m[2][2]) * det_inv;
+        result[0][2] = (m[0][1] * m[1][2] - m[0][2] * m[1][1]) * det_inv;
+        result[1][0] = (m[1][2] * m[2][0] - m[1][0] * m[2][2]) * det_inv;
+        result[1][1] = (m[0][0] * m[2][2] - m[0][2] * m[2][0]) * det_inv;
+        result[1][2] = (m[1][0] * m[0][2] - m[0][0] * m[1][2]) * det_inv;
+        result[2][0] = (m[1][0] * m[2][1] - m[2][0] * m[1][1]) * det_inv;
+        result[2][1] = (m[2][0] * m[0][1] - m[0][0] * m[2][1]) * det_inv;
+        result[2][2] = (m[0][0] * m[1][1] - m[1][0] * m[0][1]) * det_inv;
+
+        return result;
+    }
+
+    template <typename T>
     [[nodiscard]] static inline mat4<T> inverse(const mat4<T>& m)
+    {
+        bool invertable;
+        return inverse(m, invertable);
+    }
+
+    template <typename T>
+    [[nodiscard]] static inline mat4<T> inverse(const mat4<T>& m, bool& invertable)
     {
         mat4<T> result;
 
-        float a2323 = m[2][2] * m[3][3] - m[2][3] * m[3][2];
-        float a1323 = m[2][1] * m[3][3] - m[2][3] * m[3][1];
-        float a1223 = m[2][1] * m[3][2] - m[2][2] * m[3][1];
-        float a0323 = m[2][0] * m[3][3] - m[2][3] * m[3][0];
-        float a0223 = m[2][0] * m[3][2] - m[2][2] * m[3][0];
-        float a0123 = m[2][0] * m[3][1] - m[2][1] * m[3][0];
-        float a2313 = m[1][2] * m[3][3] - m[1][3] * m[3][2];
-        float a1313 = m[1][1] * m[3][3] - m[1][3] * m[3][1];
-        float a1213 = m[1][1] * m[3][2] - m[1][2] * m[3][1];
-        float a2312 = m[1][2] * m[2][3] - m[1][3] * m[2][2];
-        float a1312 = m[1][1] * m[2][3] - m[1][3] * m[2][1];
-        float a1212 = m[1][1] * m[2][2] - m[1][2] * m[2][1];
-        float a0313 = m[1][0] * m[3][3] - m[1][3] * m[3][0];
-        float a0213 = m[1][0] * m[3][2] - m[1][2] * m[3][0];
-        float a0312 = m[1][0] * m[2][3] - m[1][3] * m[2][0];
-        float a0212 = m[1][0] * m[2][2] - m[1][2] * m[2][0];
-        float a0113 = m[1][0] * m[3][1] - m[1][1] * m[3][0];
-        float a0112 = m[1][0] * m[2][1] - m[1][1] * m[2][0];
+        T a2323 = m[2][2] * m[3][3] - m[2][3] * m[3][2];
+        T a1323 = m[2][1] * m[3][3] - m[2][3] * m[3][1];
+        T a1223 = m[2][1] * m[3][2] - m[2][2] * m[3][1];
+        T a0323 = m[2][0] * m[3][3] - m[2][3] * m[3][0];
+        T a0223 = m[2][0] * m[3][2] - m[2][2] * m[3][0];
+        T a0123 = m[2][0] * m[3][1] - m[2][1] * m[3][0];
+        T a2313 = m[1][2] * m[3][3] - m[1][3] * m[3][2];
+        T a1313 = m[1][1] * m[3][3] - m[1][3] * m[3][1];
+        T a1213 = m[1][1] * m[3][2] - m[1][2] * m[3][1];
+        T a2312 = m[1][2] * m[2][3] - m[1][3] * m[2][2];
+        T a1312 = m[1][1] * m[2][3] - m[1][3] * m[2][1];
+        T a1212 = m[1][1] * m[2][2] - m[1][2] * m[2][1];
+        T a0313 = m[1][0] * m[3][3] - m[1][3] * m[3][0];
+        T a0213 = m[1][0] * m[3][2] - m[1][2] * m[3][0];
+        T a0312 = m[1][0] * m[2][3] - m[1][3] * m[2][0];
+        T a0212 = m[1][0] * m[2][2] - m[1][2] * m[2][0];
+        T a0113 = m[1][0] * m[3][1] - m[1][1] * m[3][0];
+        T a0112 = m[1][0] * m[2][1] - m[1][1] * m[2][0];
 
-        float det = m[0][0] * (m[1][1] * a2323 - m[1][2] * a1323 + m[1][3] * a1223) -
-                    m[0][1] * (m[1][0] * a2323 - m[1][2] * a0323 + m[1][3] * a0223) +
-                    m[0][2] * (m[1][0] * a1323 - m[1][1] * a0323 + m[1][3] * a0123) -
-                    m[0][3] * (m[1][0] * a1223 - m[1][1] * a0223 + m[1][2] * a0123);
-        det = 1.0f / det;
+        T det = m[0][0] * (m[1][1] * a2323 - m[1][2] * a1323 + m[1][3] * a1223) -
+                m[0][1] * (m[1][0] * a2323 - m[1][2] * a0323 + m[1][3] * a0223) +
+                m[0][2] * (m[1][0] * a1323 - m[1][1] * a0323 + m[1][3] * a0123) -
+                m[0][3] * (m[1][0] * a1223 - m[1][1] * a0223 + m[1][2] * a0123);
+        invertable = det != T(0);
+        T det_inv = T(1) / det;
 
-        result[0][0] = det * (m[1][1] * a2323 - m[1][2] * a1323 + m[1][3] * a1223);
-        result[0][1] = det * -(m[0][1] * a2323 - m[0][2] * a1323 + m[0][3] * a1223);
-        result[0][2] = det * (m[0][1] * a2313 - m[0][2] * a1313 + m[0][3] * a1213);
-        result[0][3] = det * -(m[0][1] * a2312 - m[0][2] * a1312 + m[0][3] * a1212);
-        result[1][0] = det * -(m[1][0] * a2323 - m[1][2] * a0323 + m[1][3] * a0223);
-        result[1][1] = det * (m[0][0] * a2323 - m[0][2] * a0323 + m[0][3] * a0223);
-        result[1][2] = det * -(m[0][0] * a2313 - m[0][2] * a0313 + m[0][3] * a0213);
-        result[1][3] = det * (m[0][0] * a2312 - m[0][2] * a0312 + m[0][3] * a0212);
-        result[2][0] = det * (m[1][0] * a1323 - m[1][1] * a0323 + m[1][3] * a0123);
-        result[2][1] = det * -(m[0][0] * a1323 - m[0][1] * a0323 + m[0][3] * a0123);
-        result[2][2] = det * (m[0][0] * a1313 - m[0][1] * a0313 + m[0][3] * a0113);
-        result[2][3] = det * -(m[0][0] * a1312 - m[0][1] * a0312 + m[0][3] * a0112);
-        result[3][0] = det * -(m[1][0] * a1223 - m[1][1] * a0223 + m[1][2] * a0123);
-        result[3][1] = det * (m[0][0] * a1223 - m[0][1] * a0223 + m[0][2] * a0123);
-        result[3][2] = det * -(m[0][0] * a1213 - m[0][1] * a0213 + m[0][2] * a0113);
-        result[3][3] = det * (m[0][0] * a1212 - m[0][1] * a0212 + m[0][2] * a0112);
+        result[0][0] = det_inv * (m[1][1] * a2323 - m[1][2] * a1323 + m[1][3] * a1223);
+        result[0][1] = det_inv * -(m[0][1] * a2323 - m[0][2] * a1323 + m[0][3] * a1223);
+        result[0][2] = det_inv * (m[0][1] * a2313 - m[0][2] * a1313 + m[0][3] * a1213);
+        result[0][3] = det_inv * -(m[0][1] * a2312 - m[0][2] * a1312 + m[0][3] * a1212);
+        result[1][0] = det_inv * -(m[1][0] * a2323 - m[1][2] * a0323 + m[1][3] * a0223);
+        result[1][1] = det_inv * (m[0][0] * a2323 - m[0][2] * a0323 + m[0][3] * a0223);
+        result[1][2] = det_inv * -(m[0][0] * a2313 - m[0][2] * a0313 + m[0][3] * a0213);
+        result[1][3] = det_inv * (m[0][0] * a2312 - m[0][2] * a0312 + m[0][3] * a0212);
+        result[2][0] = det_inv * (m[1][0] * a1323 - m[1][1] * a0323 + m[1][3] * a0123);
+        result[2][1] = det_inv * -(m[0][0] * a1323 - m[0][1] * a0323 + m[0][3] * a0123);
+        result[2][2] = det_inv * (m[0][0] * a1313 - m[0][1] * a0313 + m[0][3] * a0113);
+        result[2][3] = det_inv * -(m[0][0] * a1312 - m[0][1] * a0312 + m[0][3] * a0112);
+        result[3][0] = det_inv * -(m[1][0] * a1223 - m[1][1] * a0223 + m[1][2] * a0123);
+        result[3][1] = det_inv * (m[0][0] * a1223 - m[0][1] * a0223 + m[0][2] * a0123);
+        result[3][2] = det_inv * -(m[0][0] * a1213 - m[0][1] * a0213 + m[0][2] * a0113);
+        result[3][3] = det_inv * (m[0][0] * a1212 - m[0][1] * a0212 + m[0][2] * a0112);
 
         return result;
     }

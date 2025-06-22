@@ -27,13 +27,18 @@ public:
         m_heap.pop_back();
     }
 
-    void erase(std::uint32_t edge)
+    bool erase(std::uint32_t edge)
     {
-        update(edge, std::numeric_limits<float>::lowest());
-        pop();
+        if (update(edge, std::numeric_limits<float>::lowest()))
+        {
+            pop();
+            return true;
+        }
+
+        return false;
     }
 
-    void update(std::uint32_t edge, float error)
+    bool update(std::uint32_t edge, float error)
     {
         auto iter = std::find_if(
             m_heap.begin(),
@@ -45,7 +50,7 @@ public:
 
         if (iter == m_heap.end())
         {
-            return;
+            return false;
         }
 
         if (iter->error > error)
@@ -58,6 +63,8 @@ public:
             iter->error = error;
             sift_down(std::distance(m_heap.begin(), iter));
         }
+
+        return true;
     }
 
     const element& top() const

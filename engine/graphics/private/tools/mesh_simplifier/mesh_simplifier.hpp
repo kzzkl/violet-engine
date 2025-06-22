@@ -13,6 +13,7 @@ class mesh_simplifier
 {
 public:
     void set_positions(std::span<const vec3f> positions);
+    void set_attributes(std::span<const float> attributes, std::uint32_t attribute_count);
     void set_indexes(std::span<const std::uint32_t> indexes);
 
     void lock_position(const vec3f& position);
@@ -22,6 +23,11 @@ public:
     const std::vector<vec3f>& get_positions() const noexcept
     {
         return m_positions;
+    }
+
+    const std::vector<float>& get_attributes() const noexcept
+    {
+        return m_attributes;
     }
 
     const std::vector<std::uint32_t>& get_indexes() const noexcept
@@ -82,11 +88,23 @@ private:
         const vec3f& position,
         std::vector<std::uint32_t>& adjacent_triangles);
 
+    quadric_pool get_wedge_quadrics(
+        const std::vector<std::uint32_t>& triangles,
+        std::uint32_t* triangle_to_wedge = nullptr);
+
+    float* get_attributes(std::uint32_t index)
+    {
+        return m_attributes.data() + static_cast<std::size_t>(index * m_attribute_count);
+    }
+
     bool is_triangle_flip(const vec3f& old_position, const vec3f& new_position, std::uint32_t index)
         const;
 
     std::vector<vec3f> m_positions;
     std::vector<std::uint32_t> m_indexes;
+
+    std::vector<float> m_attributes;
+    std::vector<float> m_wedge_attributes;
 
     std::unordered_multimap<vec3f, std::uint32_t, vertex_hash> m_vertex_map;
     std::unordered_multimap<vec3f, std::uint32_t, vertex_hash> m_corner_map;
@@ -96,8 +114,10 @@ private:
     std::unordered_multimap<vec3f, std::uint32_t, vertex_hash> m_edge_map0;
     std::unordered_multimap<vec3f, std::uint32_t, vertex_hash> m_edge_map1;
 
-    std::vector<quadric> m_triangle_quadrics;
+    quadric_pool m_triangle_quadrics;
     std::uint32_t m_triangle_count{0};
+
+    std::uint32_t m_attribute_count{0};
 
     collapse_heap m_heap;
 };

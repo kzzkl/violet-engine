@@ -1,4 +1,5 @@
 #include "tools/mesh_simplifier/mesh_simplifier.hpp"
+#include "algorithm/disjoint_set.hpp"
 #include "math/vector.hpp"
 #include "meshoptimizer.h"
 #include <cassert>
@@ -26,6 +27,16 @@ void mesh_simplifier::set_positions(std::span<const vec3f> positions)
     {
         m_vertex_map.insert({m_positions[i], i});
     }
+}
+
+void mesh_simplifier::set_attributes(
+    std::span<const float> attributes,
+    std::uint32_t attribute_count)
+{
+    assert(m_positions.size() * attribute_count == attributes.size());
+    m_attributes.assign(attributes.begin(), attributes.end());
+
+    m_attribute_count = attribute_count;
 }
 
 void mesh_simplifier::set_indexes(std::span<const std::uint32_t> indexes)
@@ -69,12 +80,18 @@ void mesh_simplifier::lock_position(const vec3f& position)
 float mesh_simplifier::simplify(std::uint32_t target_triangle_count)
 {
     m_triangle_count = static_cast<std::uint32_t>(m_indexes.size() / 3);
+    m_triangle_quadrics.resize(m_triangle_count, m_attribute_count);
+
     for (std::uint32_t i = 0; i < m_triangle_count; ++i)
     {
-        m_triangle_quadrics.emplace_back(
+        m_triangle_quadrics[i].set(
             m_positions[m_indexes[3 * i + 0]],
             m_positions[m_indexes[3 * i + 1]],
-            m_positions[m_indexes[3 * i + 2]]);
+            m_positions[m_indexes[3 * i + 2]],
+            get_attributes(m_indexes[3 * i + 0]),
+            get_attributes(m_indexes[3 * i + 1]),
+            get_attributes(m_indexes[3 * i + 2]),
+            m_attribute_count);
     }
 
     for (std::uint32_t edge = 0; edge < m_edges.size(); ++edge)
@@ -117,10 +134,12 @@ float mesh_simplifier::evaluate_edge(std::uint32_t edge_index)
         return 0.0f;
     }
 
-    quadric total_quadric = {};
-    for (std::uint32_t adjacent_triangle : adjacent_triangles)
+    quadric_pool wedge_quadrics = get_wedge_quadrics(adjacent_triangles);
+
+    quadric_optimizer optimizer = {};
+    for (std::size_t i = 0; i < wedge_quadrics.get_size(); ++i)
     {
-        total_quadric += m_triangle_quadrics[adjacent_triangle];
+        optimizer.add(wedge_quadrics[i], m_attribute_count);
     }
 
     vec3f new_position;
@@ -134,7 +153,7 @@ float mesh_simplifier::evaluate_edge(std::uint32_t edge_index)
     }
     else
     {
-        auto optimize_position = total_quadric.get_optimize_position();
+        auto optimize_position = optimizer.optimize();
 
         if (optimize_position)
         {
@@ -153,12 +172,17 @@ float mesh_simplifier::evaluate_edge(std::uint32_t edge_index)
     }
 
     float error = p0_locked && p1_locked ? 1e+8f : 0.0f;
-    error += total_quadric.get_error(new_position);
 
-    for (std::uint32_t adjacent_triangle : adjacent_triangles)
+    for (std::size_t i = 0; i < wedge_quadrics.get_size(); ++i)
     {
-        if (is_triangle_flip(p0, new_position, adjacent_triangle) ||
-            is_triangle_flip(p1, new_position, adjacent_triangle))
+        float wedge_error = wedge_quadrics[i].evaluate(new_position, nullptr, m_attribute_count);
+        error += wedge_error;
+    }
+
+    for (std::uint32_t triangle : adjacent_triangles)
+    {
+        if (is_triangle_flip(p0, new_position, triangle) ||
+            is_triangle_flip(p1, new_position, triangle))
         {
             error += 1e+4f;
         }
@@ -175,14 +199,15 @@ void mesh_simplifier::collapse_edge(std::uint32_t edge_index)
     vec3f p1 = m_edges[edge_index].p1;
     vec3f merge_position = m_edges[edge_index].merge_position;
 
-    std::vector<std::uint32_t> adjacent_triangles;
-    bool p0_locked = get_adjacent_triangles(p0, adjacent_triangles);
-    bool p1_locked = get_adjacent_triangles(p1, adjacent_triangles);
+    std::vector<std::uint32_t> triangles;
+    bool p0_locked = get_adjacent_triangles(p0, triangles);
+    bool p1_locked = get_adjacent_triangles(p1, triangles);
 
-    std::sort(adjacent_triangles.begin(), adjacent_triangles.end());
-    adjacent_triangles.erase(
-        std::unique(adjacent_triangles.begin(), adjacent_triangles.end()),
-        adjacent_triangles.end());
+    std::sort(triangles.begin(), triangles.end());
+    triangles.erase(std::unique(triangles.begin(), triangles.end()), triangles.end());
+
+    std::vector<std::uint32_t> triangle_to_wedge(triangles.size());
+    auto wedge_quadrics = get_wedge_quadrics(triangles, triangle_to_wedge.data());
 
     std::vector<std::uint32_t> moved_vertices;
     std::vector<std::uint32_t> moved_corners;
@@ -218,16 +243,27 @@ void mesh_simplifier::collapse_edge(std::uint32_t edge_index)
         }
     }
 
-    for (std::uint32_t adjacent_triangle : adjacent_triangles)
+    for (std::uint32_t triangle_index = 0; triangle_index < triangles.size(); ++triangle_index)
     {
+        std::uint32_t triangle = triangles[triangle_index];
+
         for (std::uint32_t i = 0; i < 3; ++i)
         {
-            std::uint32_t corner = adjacent_triangle * 3 + i;
+            std::uint32_t corner = triangle * 3 + i;
             vec3f& position = m_positions[m_indexes[corner]];
 
             if (position == p0 || position == p1)
             {
                 position = merge_position;
+
+                auto& wedge_quadric = wedge_quadrics[triangle_to_wedge[triangle_index]];
+                wedge_quadric.evaluate(
+                    position,
+                    get_attributes(m_indexes[corner]),
+                    m_attribute_count);
+
+                auto* normal = reinterpret_cast<vec3f*>(get_attributes(m_indexes[corner]));
+                *normal = vector::normalize(*normal);
 
                 if (p0_locked || p1_locked)
                 {
@@ -236,21 +272,28 @@ void mesh_simplifier::collapse_edge(std::uint32_t edge_index)
             }
         }
 
-        const vec3f& p0 = m_positions[m_indexes[adjacent_triangle * 3 + 0]];
-        const vec3f& p1 = m_positions[m_indexes[adjacent_triangle * 3 + 1]];
-        const vec3f& p2 = m_positions[m_indexes[adjacent_triangle * 3 + 2]];
+        const vec3f& p0 = m_positions[m_indexes[triangle * 3 + 0]];
+        const vec3f& p1 = m_positions[m_indexes[triangle * 3 + 1]];
+        const vec3f& p2 = m_positions[m_indexes[triangle * 3 + 2]];
 
         if (p0 == p1 || p1 == p2 || p2 == p0)
         {
             --m_triangle_count;
 
-            m_corner_flags[adjacent_triangle * 3 + 0] |= CORNER_REMOVED;
-            m_corner_flags[adjacent_triangle * 3 + 1] |= CORNER_REMOVED;
-            m_corner_flags[adjacent_triangle * 3 + 2] |= CORNER_REMOVED;
+            m_corner_flags[triangle * 3 + 0] |= CORNER_REMOVED;
+            m_corner_flags[triangle * 3 + 1] |= CORNER_REMOVED;
+            m_corner_flags[triangle * 3 + 2] |= CORNER_REMOVED;
         }
         else
         {
-            m_triangle_quadrics[adjacent_triangle] = quadric(p0, p1, p2);
+            m_triangle_quadrics[triangle].set(
+                p0,
+                p1,
+                p2,
+                get_attributes(m_indexes[triangle * 3 + 0]),
+                get_attributes(m_indexes[triangle * 3 + 1]),
+                get_attributes(m_indexes[triangle * 3 + 2]),
+                m_attribute_count);
         }
 
         for (const auto& position : {p0, p1, p2})
@@ -333,13 +376,19 @@ void mesh_simplifier::compact()
     }
 
     std::vector<std::uint32_t> vertex_remap(m_positions.size());
-    std::uint32_t vertex_count = 0;
+    std::size_t vertex_count = 0;
     for (std::uint32_t i = 0; i < m_positions.size(); ++i)
     {
         if (vertex_reference_count[i] > 0)
         {
             m_positions[vertex_count] = m_positions[i];
-            vertex_remap[i] = vertex_count;
+            for (std::uint32_t j = 0; j < m_attribute_count; ++j)
+            {
+                m_attributes[vertex_count * m_attribute_count + j] =
+                    m_attributes[i * m_attribute_count + j];
+            }
+
+            vertex_remap[i] = static_cast<std::uint32_t>(vertex_count);
             ++vertex_count;
         }
     }
@@ -356,6 +405,7 @@ void mesh_simplifier::compact()
 
     m_positions.resize(vertex_count);
     m_indexes.resize(index_count);
+    m_attributes.resize(vertex_count * m_attribute_count);
 }
 
 bool mesh_simplifier::add_edge(edge& edge, std::uint32_t index)
@@ -438,6 +488,80 @@ bool mesh_simplifier::get_adjacent_triangles(
     return locked;
 }
 
+quadric_pool mesh_simplifier::get_wedge_quadrics(
+    const std::vector<std::uint32_t>& triangles,
+    std::uint32_t* triangle_to_wedge)
+{
+    struct wedge
+    {
+        std::uint32_t vertex_index;
+        std::uint32_t triangle_index;
+    };
+
+    std::vector<wedge> wedges;
+    disjoint_set<std::uint32_t> wedge_disjoint_set(static_cast<std::uint32_t>(triangles.size()));
+
+    for (std::uint32_t i = 0; i < triangles.size(); ++i)
+    {
+        for (std::uint32_t j = 0; j < 3; ++j)
+        {
+            std::uint32_t corner = triangles[i] * 3 + j;
+            std::uint32_t vertex_index = m_indexes[corner];
+
+            auto iter = std::find_if(
+                wedges.begin(),
+                wedges.end(),
+                [vertex_index](const wedge& wedge)
+                {
+                    return wedge.vertex_index == vertex_index;
+                });
+
+            if (iter == wedges.end())
+            {
+                wedges.push_back({
+                    .vertex_index = vertex_index,
+                    .triangle_index = i,
+                });
+            }
+            else
+            {
+                wedge_disjoint_set.merge(i, iter->triangle_index);
+            }
+        }
+    }
+
+    quadric_pool wedge_quadrics(wedge_disjoint_set.get_set_count(), m_attribute_count);
+
+    std::vector<std::uint32_t> wedge_index_to_id;
+    for (std::uint32_t i = 0; i < triangles.size(); ++i)
+    {
+        std::uint32_t triangle = triangles[i];
+
+        std::uint32_t wedge_id = wedge_disjoint_set.find(i);
+        std::size_t wedge_index;
+
+        auto iter = std::find(wedge_index_to_id.begin(), wedge_index_to_id.end(), wedge_id);
+        if (iter == wedge_index_to_id.end())
+        {
+            wedge_index = wedge_index_to_id.size();
+            wedge_index_to_id.push_back(wedge_id);
+            wedge_quadrics[wedge_index].set(m_triangle_quadrics[triangle], m_attribute_count);
+        }
+        else
+        {
+            wedge_index = iter - wedge_index_to_id.begin();
+            wedge_quadrics[wedge_index].add(m_triangle_quadrics[triangle], m_attribute_count);
+        }
+
+        if (triangle_to_wedge != nullptr)
+        {
+            triangle_to_wedge[i] = static_cast<std::uint32_t>(wedge_index);
+        }
+    }
+
+    return wedge_quadrics;
+}
+
 bool mesh_simplifier::is_triangle_flip(
     const vec3f& old_position,
     const vec3f& new_position,
@@ -454,8 +578,8 @@ bool mesh_simplifier::is_triangle_flip(
             vec3f p1 = m_positions[m_indexes[p1_corner]];
             vec3f p2 = m_positions[m_indexes[p2_corner]];
 
-            vec3f old_normal = vector::cross(p1 - old_position, p2 - old_position);
-            vec3f new_normal = vector::cross(p1 - new_position, p2 - new_position);
+            vec3f old_normal = vector::cross(p2 - old_position, p1 - old_position);
+            vec3f new_normal = vector::cross(p2 - new_position, p1 - new_position);
 
             return vector::dot(old_normal, new_normal) < 0.0f;
         }
