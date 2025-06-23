@@ -311,13 +311,68 @@ geometry_tool::simplify_output geometry_tool::simplify(const simplify_input& inp
     simplifier.set_positions(input.positions);
     simplifier.set_indexes(input.indexes);
 
+    std::vector<std::pair<const float*, std::uint32_t>> attribute_list;
     if (!input.normals.empty())
     {
+        attribute_list.emplace_back(reinterpret_cast<const float*>(input.normals.data()), 3);
+    }
+
+    if (!input.tangents.empty())
+    {
+        attribute_list.emplace_back(reinterpret_cast<const float*>(input.tangents.data()), 4);
+    }
+
+    if (!input.texcoords.empty())
+    {
+        attribute_list.emplace_back(reinterpret_cast<const float*>(input.texcoords.data()), 2);
+    }
+
+    if (!attribute_list.empty())
+    {
+        std::uint32_t attribute_count = 0;
+        for (auto [data, count] : attribute_list)
+        {
+            attribute_count += count;
+        }
+
+        std::vector<float> attributes(input.positions.size() * attribute_count);
+
+        std::uint32_t attribute_offset = 0;
+        for (std::size_t i = 0; i < input.positions.size(); ++i)
+        {
+            for (auto [data, count] : attribute_list)
+            {
+                std::memcpy(
+                    attributes.data() + attribute_offset,
+                    data + i * count,
+                    count * sizeof(float));
+                attribute_offset += count;
+            }
+        }
+
         simplifier.set_attributes(
-            std::span<const float>(
-                reinterpret_cast<const float*>(input.normals.data()),
-                input.normals.size() * 3),
-            3);
+            attributes,
+            attribute_count,
+            [&](float* attributes)
+            {
+                if (!input.normals.empty())
+                {
+                    auto& normal = *reinterpret_cast<vec3f*>(attributes);
+                    normal = vector::normalize(normal);
+                    attributes += 3;
+                }
+
+                if (!input.tangents.empty())
+                {
+                    auto& tangent = *reinterpret_cast<vec3f*>(attributes);
+                    tangent = vector::normalize(tangent);
+                    attributes += 3;
+
+                    auto& sign = *reinterpret_cast<float*>(attributes);
+                    sign = sign < 0.0f ? -1.0f : 1.0f;
+                    attributes += 1;
+                }
+            });
     }
 
     for (const auto& locked_position : input.locked_positions)
@@ -332,14 +387,44 @@ geometry_tool::simplify_output geometry_tool::simplify(const simplify_input& inp
         .indexes = simplifier.get_indexes(),
     };
 
-    if (!input.normals.empty())
+    if (!attribute_list.empty())
     {
-        const auto& attributes = simplifier.get_attributes();
-        output.normals.resize(output.positions.size());
-        std::memcpy(
-            output.normals.data(),
-            attributes.data(),
-            static_cast<std::size_t>(output.normals.size() * sizeof(vec3f)));
+        if (!input.normals.empty())
+        {
+            output.normals.resize(output.positions.size());
+        }
+
+        if (!input.tangents.empty())
+        {
+            output.tangents.resize(output.positions.size());
+        }
+
+        if (!input.texcoords.empty())
+        {
+            output.texcoords.resize(output.positions.size());
+        }
+
+        const float* attributes = simplifier.get_attributes().data();
+        for (std::size_t i = 0; i < output.positions.size(); ++i)
+        {
+            if (!input.normals.empty())
+            {
+                std::memcpy(output.normals.data() + i, attributes, sizeof(vec3f));
+                attributes += 3;
+            }
+
+            if (!input.tangents.empty())
+            {
+                std::memcpy(output.tangents.data() + i, attributes, sizeof(vec4f));
+                attributes += 4;
+            }
+
+            if (!input.texcoords.empty())
+            {
+                std::memcpy(output.texcoords.data() + i, attributes, sizeof(vec2f));
+                attributes += 2;
+            }
+        }
     }
 
     return output;

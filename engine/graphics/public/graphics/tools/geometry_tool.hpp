@@ -26,6 +26,8 @@ public:
     {
         std::span<const vec3f> positions;
         std::span<const vec3f> normals;
+        std::span<const vec4f> tangents;
+        std::span<const vec2f> texcoords;
         std::span<const std::uint32_t> indexes;
         std::span<const vec3f> locked_positions;
 
@@ -36,6 +38,8 @@ public:
     {
         std::vector<vec3f> positions;
         std::vector<vec3f> normals;
+        std::vector<vec4f> tangents;
+        std::vector<vec2f> texcoords;
         std::vector<std::uint32_t> indexes;
     };
 

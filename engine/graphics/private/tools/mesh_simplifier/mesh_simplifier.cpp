@@ -29,16 +29,6 @@ void mesh_simplifier::set_positions(std::span<const vec3f> positions)
     }
 }
 
-void mesh_simplifier::set_attributes(
-    std::span<const float> attributes,
-    std::uint32_t attribute_count)
-{
-    assert(m_positions.size() * attribute_count == attributes.size());
-    m_attributes.assign(attributes.begin(), attributes.end());
-
-    m_attribute_count = attribute_count;
-}
-
 void mesh_simplifier::set_indexes(std::span<const std::uint32_t> indexes)
 {
     assert(!m_positions.empty());
@@ -256,14 +246,15 @@ void mesh_simplifier::collapse_edge(std::uint32_t edge_index)
             {
                 position = merge_position;
 
-                auto& wedge_quadric = wedge_quadrics[triangle_to_wedge[triangle_index]];
-                wedge_quadric.evaluate(
-                    position,
-                    get_attributes(m_indexes[corner]),
-                    m_attribute_count);
+                float* attributes = get_attributes(m_indexes[corner]);
 
-                auto* normal = reinterpret_cast<vec3f*>(get_attributes(m_indexes[corner]));
-                *normal = vector::normalize(*normal);
+                auto& wedge_quadric = wedge_quadrics[triangle_to_wedge[triangle_index]];
+                wedge_quadric.evaluate(position, attributes, m_attribute_count);
+
+                if (m_correct_attributes)
+                {
+                    m_correct_attributes(attributes);
+                }
 
                 if (p0_locked || p1_locked)
                 {

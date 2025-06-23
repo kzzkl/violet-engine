@@ -7,15 +7,16 @@
 #include "control/control_system.hpp"
 #include "deferred_renderer_imgui.hpp"
 #include "gltf_loader.hpp"
+#include "graphics/geometries/plane_geometry.hpp"
 #include "graphics/geometries/sphere_geometry.hpp"
 #include "graphics/graphics_system.hpp"
+#include "graphics/materials/physical_material.hpp"
 #include "graphics/materials/unlit_material.hpp"
 #include "graphics/renderers/features/taa_render_feature.hpp"
 #include "graphics/tools/geometry_tool.hpp"
 #include "imgui.h"
 #include "imgui_system.hpp"
 #include "window/window_system.hpp"
-#include "graphics/materials/physical_material.hpp"
 
 namespace violet
 {
@@ -149,7 +150,8 @@ private:
         }
         else
         {
-            m_original_geometry = std::make_unique<sphere_geometry>(0.5f);
+            m_original_geometry = std::make_unique<sphere_geometry>(0.5f, 16, 8);
+            // m_original_geometry = std::make_unique<plane_geometry>(1.0f, 1.0f, 5, 5);
         }
 
         m_model = world.create();

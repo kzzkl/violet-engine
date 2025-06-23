@@ -4,6 +4,7 @@
 #include "math/types.hpp"
 #include "tools/mesh_simplifier/collapse_heap.hpp"
 #include "tools/mesh_simplifier/quadric.hpp"
+#include <functional>
 #include <span>
 #include <unordered_map>
 
@@ -13,8 +14,20 @@ class mesh_simplifier
 {
 public:
     void set_positions(std::span<const vec3f> positions);
-    void set_attributes(std::span<const float> attributes, std::uint32_t attribute_count);
     void set_indexes(std::span<const std::uint32_t> indexes);
+
+    template <typename Functor>
+    void set_attributes(
+        std::span<const float> attributes,
+        std::uint32_t attribute_count,
+        Functor&& correct_attributes)
+    {
+        assert(m_positions.size() * attribute_count == attributes.size());
+        m_attributes.assign(attributes.begin(), attributes.end());
+
+        m_attribute_count = attribute_count;
+        m_correct_attributes = std::forward<Functor>(correct_attributes);
+    }
 
     void lock_position(const vec3f& position);
 
@@ -118,6 +131,7 @@ private:
     std::uint32_t m_triangle_count{0};
 
     std::uint32_t m_attribute_count{0};
+    std::function<void(float*)> m_correct_attributes;
 
     collapse_heap m_heap;
 };

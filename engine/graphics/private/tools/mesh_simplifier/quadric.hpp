@@ -20,8 +20,8 @@ struct symmetric_matrix
         xx += other.xx;
         xy += other.xy;
         xz += other.xz;
-        yz += other.yz;
         yy += other.yy;
+        yz += other.yz;
         zz += other.zz;
         return *this;
     }
@@ -38,8 +38,8 @@ struct symmetric_matrix
         xx -= other.xx;
         xy -= other.xy;
         xz -= other.xz;
-        yz -= other.yz;
         yy -= other.yy;
+        yz -= other.yz;
         zz -= other.zz;
         return *this;
     }
@@ -151,7 +151,7 @@ public:
 private:
     std::size_t get_quadric_size() const noexcept
     {
-        return sizeof(quadric) + m_attribute_count * sizeof(vec4f);
+        return 10 + m_attribute_count * 4;
     }
 
     std::vector<float> m_data;

@@ -31,8 +31,8 @@ void quadric::set(
     m_nn.xx = n.x * n.x;
     m_nn.xy = n.x * n.y;
     m_nn.xz = n.x * n.z;
-    m_nn.yz = n.y * n.z;
     m_nn.yy = n.y * n.y;
+    m_nn.yz = n.y * n.z;
     m_nn.zz = n.z * n.z;
 
     float distance = -vector::dot(p0, n);
@@ -68,8 +68,8 @@ void quadric::set(
         m_nn.xx += g[i].x * g[i].x;
         m_nn.xy += g[i].x * g[i].y;
         m_nn.xz += g[i].x * g[i].z;
-        m_nn.yz += g[i].y * g[i].z;
         m_nn.yy += g[i].y * g[i].y;
+        m_nn.yz += g[i].y * g[i].z;
         m_nn.zz += g[i].z * g[i].z;
         m_dn += d[i] * g[i];
         m_dd += d[i] * d[i];
@@ -139,7 +139,7 @@ float quadric::evaluate(const vec3f& position, float* attributes, std::uint32_t 
 void quadric_optimizer::add(const quadric& quadric, std::uint32_t attribute_count)
 {
     m_nn += quadric.m_nn;
-    m_dn -= quadric.m_dn;
+    m_dn += quadric.m_dn;
 
     const auto* g = quadric.get_g(attribute_count);
     const auto* d = quadric.get_d(attribute_count);
@@ -149,8 +149,8 @@ void quadric_optimizer::add(const quadric& quadric, std::uint32_t attribute_coun
         m_bb.xx += g[i].x * g[i].x;
         m_bb.xy += g[i].x * g[i].y;
         m_bb.xz += g[i].x * g[i].z;
-        m_bb.yz += g[i].y * g[i].z;
         m_bb.yy += g[i].y * g[i].y;
+        m_bb.yz += g[i].y * g[i].z;
         m_bb.zz += g[i].z * g[i].z;
         m_bd += g[i] * d[i];
     }
