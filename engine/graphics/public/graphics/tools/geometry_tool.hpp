@@ -24,11 +24,11 @@ public:
 
     struct simplify_input
     {
-        std::span<const vec3f> positions;
-        std::span<const vec3f> normals;
-        std::span<const vec4f> tangents;
-        std::span<const vec2f> texcoords;
-        std::span<const std::uint32_t> indexes;
+        std::span<vec3f> positions;
+        std::span<vec3f> normals;
+        std::span<vec4f> tangents;
+        std::span<vec2f> texcoords;
+        std::span<std::uint32_t> indexes;
         std::span<const vec3f> locked_positions;
 
         std::uint32_t target_triangle_count;
@@ -36,15 +36,11 @@ public:
 
     struct simplify_output
     {
-        std::vector<vec3f> positions;
-        std::vector<vec3f> normals;
-        std::vector<vec4f> tangents;
-        std::vector<vec2f> texcoords;
-        std::vector<std::uint32_t> indexes;
+        std::uint32_t vertex_count;
+        std::uint32_t index_count;
     };
 
     static simplify_output simplify(const simplify_input& input);
-    static simplify_output simplify_meshopt(const simplify_input& input);
 
     struct cluster_input
     {

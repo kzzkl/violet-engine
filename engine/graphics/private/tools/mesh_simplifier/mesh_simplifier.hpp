@@ -13,19 +13,20 @@ namespace violet
 class mesh_simplifier
 {
 public:
-    void set_positions(std::span<const vec3f> positions);
-    void set_indexes(std::span<const std::uint32_t> indexes);
+    void set_positions(std::span<vec3f> positions);
+    void set_indexes(std::span<std::uint32_t> indexes);
 
     template <typename Functor>
     void set_attributes(
-        std::span<const float> attributes,
+        std::span<float> attributes,
         std::uint32_t attribute_count,
         Functor&& correct_attributes)
     {
         assert(m_positions.size() * attribute_count == attributes.size());
-        m_attributes.assign(attributes.begin(), attributes.end());
+        m_attributes = attributes;
 
         m_attribute_count = attribute_count;
+        m_attribute_count = 0;
         m_correct_attributes = std::forward<Functor>(correct_attributes);
     }
 
@@ -33,19 +34,14 @@ public:
 
     float simplify(std::uint32_t target_triangle_count);
 
-    const std::vector<vec3f>& get_positions() const noexcept
+    std::uint32_t get_vertex_count() const noexcept
     {
-        return m_positions;
+        return m_vertex_count;
     }
 
-    const std::vector<float>& get_attributes() const noexcept
+    std::uint32_t get_index_count() const noexcept
     {
-        return m_attributes;
-    }
-
-    const std::vector<std::uint32_t>& get_indexes() const noexcept
-    {
-        return m_indexes;
+        return m_index_count;
     }
 
 private:
@@ -86,6 +82,7 @@ private:
     {
         CORNER_LOCKED = 1 << 0,
         CORNER_REMOVED = 1 << 1,
+        CORNER_EDGE = 1 << 2,
     };
     using corner_flags = std::uint8_t;
 
@@ -105,6 +102,8 @@ private:
         const std::vector<std::uint32_t>& triangles,
         std::uint32_t* triangle_to_wedge = nullptr);
 
+    void update_corner_quadric(std::uint32_t corner);
+
     float* get_attributes(std::uint32_t index)
     {
         return m_attributes.data() + static_cast<std::size_t>(index * m_attribute_count);
@@ -113,15 +112,16 @@ private:
     bool is_triangle_flip(const vec3f& old_position, const vec3f& new_position, std::uint32_t index)
         const;
 
-    std::vector<vec3f> m_positions;
-    std::vector<std::uint32_t> m_indexes;
+    std::span<vec3f> m_positions;
+    std::span<std::uint32_t> m_indexes;
 
-    std::vector<float> m_attributes;
+    std::span<float> m_attributes;
     std::vector<float> m_wedge_attributes;
 
     std::unordered_multimap<vec3f, std::uint32_t, vertex_hash> m_vertex_map;
     std::unordered_multimap<vec3f, std::uint32_t, vertex_hash> m_corner_map;
     std::vector<corner_flags> m_corner_flags;
+    std::vector<quadric> m_corner_quadrics;
 
     std::vector<edge> m_edges;
     std::unordered_multimap<vec3f, std::uint32_t, vertex_hash> m_edge_map0;
@@ -132,6 +132,9 @@ private:
 
     std::uint32_t m_attribute_count{0};
     std::function<void(float*)> m_correct_attributes;
+
+    std::uint32_t m_vertex_count{0};
+    std::uint32_t m_index_count{0};
 
     collapse_heap m_heap;
 };

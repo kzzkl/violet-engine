@@ -1,6 +1,8 @@
 #pragma once
 
 #include "math/types.hpp"
+#include <array>
+#include <cassert>
 #include <optional>
 #include <vector>
 
@@ -51,6 +53,24 @@ struct symmetric_matrix
         return result;
     }
 
+    symmetric_matrix& operator*=(float scalar) noexcept
+    {
+        xx *= scalar;
+        xy *= scalar;
+        xz *= scalar;
+        yy *= scalar;
+        yz *= scalar;
+        zz *= scalar;
+        return *this;
+    }
+
+    symmetric_matrix operator*(float scalar) const noexcept
+    {
+        symmetric_matrix result = *this;
+        result *= scalar;
+        return result;
+    }
+
     operator mat3f() const noexcept
     {
         return {
@@ -72,6 +92,7 @@ public:
         const float* a1,
         const float* a2,
         std::uint32_t attribute_count);
+    void set(const vec3f& p0, const vec3f& p1, const vec3f& face_normal, float edge_weight);
     void set(const quadric& other, std::uint32_t attribute_count);
 
     void add(const quadric& other, std::uint32_t attribute_count);
@@ -102,6 +123,7 @@ private:
     symmetric_matrix m_nn;
     vec3f m_dn;
     float m_dd;
+    float m_a;
 
     friend class quadric_optimizer;
 };
@@ -118,12 +140,13 @@ class quadric_optimizer
 {
 public:
     void add(const quadric& quadric, std::uint32_t attribute_count);
+    void add(const quadric& quadric);
 
     std::optional<vec3f> optimize() const;
 
 private:
-    symmetric_matrix m_nn; // C - 1/a * B*Bt
-    vec3f m_dn;            // -1/a * B*d - dn
+    symmetric_matrix m_nn;
+    vec3f m_dn;
 
     symmetric_matrix m_bb;
     vec3f m_bd;
@@ -138,6 +161,7 @@ public:
     quadric& operator[](std::size_t index)
     {
         std::size_t quadric_size = get_quadric_size();
+        assert(quadric_size * index < m_data.size());
         return *reinterpret_cast<quadric*>(m_data.data() + quadric_size * index);
     }
 
@@ -151,7 +175,7 @@ public:
 private:
     std::size_t get_quadric_size() const noexcept
     {
-        return 10 + m_attribute_count * 4;
+        return (sizeof(quadric) + m_attribute_count * sizeof(vec4f)) / sizeof(float);
     }
 
     std::vector<float> m_data;

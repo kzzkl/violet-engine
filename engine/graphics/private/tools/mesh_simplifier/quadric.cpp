@@ -27,6 +27,7 @@ void quadric::set(
     {
         n = n / length;
     }
+    m_a = length * 0.5f;
 
     m_nn.xx = n.x * n.x;
     m_nn.xy = n.x * n.y;
@@ -74,6 +75,39 @@ void quadric::set(
         m_dn += d[i] * g[i];
         m_dd += d[i] * d[i];
     }
+
+    m_nn *= m_a;
+    m_dn *= m_a;
+    m_dd *= m_a;
+}
+
+void quadric::set(const vec3f& p0, const vec3f& p1, const vec3f& face_normal, float edge_weight)
+{
+    vec3f v01 = p1 - p0;
+
+    vec3f n = vector::cross(v01, face_normal);
+    float length = vector::length(n);
+    if (length < 1e-12f)
+    {
+        n = {0.0f, 0.0f, 0.0f};
+    }
+    else
+    {
+        n = n / length;
+    }
+
+    m_a = length * edge_weight;
+
+    m_nn.xx = m_a * n.x * n.x;
+    m_nn.xy = m_a * n.x * n.y;
+    m_nn.xz = m_a * n.x * n.z;
+    m_nn.yy = m_a * n.y * n.y;
+    m_nn.yz = m_a * n.y * n.z;
+    m_nn.zz = m_a * n.z * n.z;
+
+    float distance = -vector::dot(p0, n);
+    m_dn = n * distance * m_a;
+    m_dd = distance * distance * m_a;
 }
 
 void quadric::set(const quadric& other, std::uint32_t attribute_count)
@@ -154,6 +188,12 @@ void quadric_optimizer::add(const quadric& quadric, std::uint32_t attribute_coun
         m_bb.zz += g[i].z * g[i].z;
         m_bd += g[i] * d[i];
     }
+}
+
+void quadric_optimizer::add(const quadric& quadric)
+{
+    m_nn += quadric.m_nn;
+    m_dn += quadric.m_dn;
 }
 
 std::optional<vec3f> quadric_optimizer::optimize() const

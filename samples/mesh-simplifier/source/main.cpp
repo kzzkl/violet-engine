@@ -116,11 +116,11 @@ private:
         main_camera.render_target = m_swapchain.get();
 
         // Model.
-        // m_material = std::make_unique<unlit_material>(
-        //     RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-        //     RHI_CULL_MODE_NONE,
-        //     RHI_POLYGON_MODE_LINE);
-        m_material = std::make_unique<physical_material>();
+        m_material = std::make_unique<unlit_material>(
+            RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+            RHI_CULL_MODE_NONE,
+            RHI_POLYGON_MODE_LINE);
+        // m_material = std::make_unique<physical_material>();
 
         if (!model_path.empty())
         {
@@ -150,8 +150,8 @@ private:
         }
         else
         {
-            m_original_geometry = std::make_unique<sphere_geometry>(0.5f, 16, 8);
-            // m_original_geometry = std::make_unique<plane_geometry>(1.0f, 1.0f, 5, 5);
+            // m_original_geometry = std::make_unique<sphere_geometry>(0.5f, 16, 8);
+            m_original_geometry = std::make_unique<plane_geometry>(1.0f, 1.0f, 5, 5);
         }
 
         m_model = world.create();
@@ -195,18 +195,32 @@ private:
             auto target_triangle_count =
                 static_cast<std::uint32_t>(static_cast<float>(triangle_count) * simplify_ratio);
 
+            std::vector<vec3f> positions(
+                m_original_geometry->get_positions().begin(),
+                m_original_geometry->get_positions().end());
+            std::vector<vec3f> normals(
+                m_original_geometry->get_normals().begin(),
+                m_original_geometry->get_normals().end());
+            std::vector<std::uint32_t> indexes(
+                m_original_geometry->get_indexes().begin(),
+                m_original_geometry->get_indexes().end());
+
             auto output = geometry_tool::simplify({
-                .positions = m_original_geometry->get_positions(),
-                .normals = m_original_geometry->get_normals(),
-                .indexes = m_original_geometry->get_indexes(),
+                .positions = positions,
+                .normals = normals,
+                .indexes = indexes,
                 .target_triangle_count = target_triangle_count,
             });
 
-            m_simplified_geometry->set_positions(output.positions);
-            m_simplified_geometry->set_normals(output.normals);
-            m_simplified_geometry->set_indexes(output.indexes);
+            positions.resize(output.vertex_count);
+            normals.resize(output.vertex_count);
+            indexes.resize(output.index_count);
+
+            m_simplified_geometry->set_positions(positions);
+            m_simplified_geometry->set_normals(normals);
+            m_simplified_geometry->set_indexes(indexes);
             m_simplified_geometry->clear_submeshes();
-            m_simplified_geometry->add_submesh(0, 0, output.indexes.size());
+            m_simplified_geometry->add_submesh(0, 0, indexes.size());
         }
     }
 

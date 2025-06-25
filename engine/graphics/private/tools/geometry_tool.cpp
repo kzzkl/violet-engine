@@ -327,16 +327,16 @@ geometry_tool::simplify_output geometry_tool::simplify(const simplify_input& inp
         attribute_list.emplace_back(reinterpret_cast<const float*>(input.texcoords.data()), 2);
     }
 
+    std::uint32_t attribute_count = 0;
+    for (auto [data, count] : attribute_list)
+    {
+        attribute_count += count;
+    }
+
+    std::vector<float> attributes(input.positions.size() * attribute_count);
+
     if (!attribute_list.empty())
     {
-        std::uint32_t attribute_count = 0;
-        for (auto [data, count] : attribute_list)
-        {
-            attribute_count += count;
-        }
-
-        std::vector<float> attributes(input.positions.size() * attribute_count);
-
         std::uint32_t attribute_offset = 0;
         for (std::size_t i = 0; i < input.positions.size(); ++i)
         {
@@ -383,65 +383,36 @@ geometry_tool::simplify_output geometry_tool::simplify(const simplify_input& inp
     simplifier.simplify(input.target_triangle_count);
 
     simplify_output output = {
-        .positions = simplifier.get_positions(),
-        .indexes = simplifier.get_indexes(),
+        .vertex_count = simplifier.get_vertex_count(),
+        .index_count = simplifier.get_index_count(),
     };
 
     if (!attribute_list.empty())
     {
-        if (!input.normals.empty())
-        {
-            output.normals.resize(output.positions.size());
-        }
-
-        if (!input.tangents.empty())
-        {
-            output.tangents.resize(output.positions.size());
-        }
-
-        if (!input.texcoords.empty())
-        {
-            output.texcoords.resize(output.positions.size());
-        }
-
-        const float* attributes = simplifier.get_attributes().data();
-        for (std::size_t i = 0; i < output.positions.size(); ++i)
+        const float* attribute_data = attributes.data();
+        for (std::size_t i = 0; i < output.vertex_count; ++i)
         {
             if (!input.normals.empty())
             {
-                std::memcpy(output.normals.data() + i, attributes, sizeof(vec3f));
-                attributes += 3;
+                std::memcpy(input.normals.data() + i, attribute_data, sizeof(vec3f));
+                attribute_data += 3;
             }
-
+    
             if (!input.tangents.empty())
             {
-                std::memcpy(output.tangents.data() + i, attributes, sizeof(vec4f));
-                attributes += 4;
+                std::memcpy(input.tangents.data() + i, attribute_data, sizeof(vec4f));
+                attribute_data += 4;
             }
-
+    
             if (!input.texcoords.empty())
             {
-                std::memcpy(output.texcoords.data() + i, attributes, sizeof(vec2f));
-                attributes += 2;
+                std::memcpy(input.texcoords.data() + i, attribute_data, sizeof(vec2f));
+                attribute_data += 2;
             }
         }
     }
 
     return output;
-}
-
-geometry_tool::simplify_output geometry_tool::simplify_meshopt(const simplify_input& input)
-{
-    mesh_simplifier_meshopt simplifier;
-    simplifier.set_positions(input.positions);
-    simplifier.set_indexes(input.indexes);
-
-    simplifier.simplify(input.target_triangle_count, false);
-
-    return {
-        .positions = simplifier.get_positions(),
-        .indexes = simplifier.get_indexes(),
-    };
 }
 
 geometry_tool::cluster_output geometry_tool::generate_clusters(const cluster_input& input)

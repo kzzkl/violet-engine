@@ -64,6 +64,9 @@ public:
     };
 
     void set_positions(std::span<const vec3f> positions);
+    void set_normals(std::span<const vec3f> normals);
+    void set_tangents(std::span<const vec4f> tangents);
+    void set_texcoords(std::span<const vec2f> texcoords);
     void set_indexes(std::span<const std::uint32_t> indexes);
 
     void build();
@@ -105,6 +108,17 @@ private:
     void calculate_bvh_error();
     void calculate_bvh_depth();
 
+    std::uint32_t get_attribute_count() const noexcept
+    {
+        std::uint32_t attribute_count = 0;
+
+        attribute_count += m_normals.empty() ? 0 : 3;
+        attribute_count += m_tangents.empty() ? 0 : 4;
+        attribute_count += m_texcoords.empty() ? 0 : 2;
+
+        return attribute_count;
+    }
+
     box3f m_bounds;
 
     std::vector<cluster> m_clusters;
@@ -112,6 +126,9 @@ private:
     std::vector<cluster_group> m_groups;
 
     std::vector<vec3f> m_positions;
+    std::vector<vec3f> m_normals;
+    std::vector<vec4f> m_tangents;
+    std::vector<vec2f> m_texcoords;
     std::vector<std::uint32_t> m_indexes;
 };
 } // namespace violet
