@@ -26,7 +26,7 @@ public:
         m_attributes = attributes;
 
         m_attribute_count = attribute_count;
-        m_attribute_count = 0;
+        // m_attribute_count = 0;
         m_correct_attributes = std::forward<Functor>(correct_attributes);
     }
 
@@ -42,6 +42,11 @@ public:
     std::uint32_t get_index_count() const noexcept
     {
         return m_index_count;
+    }
+
+    const std::vector<vec3f>& get_edge_vertices() const noexcept
+    {
+        return m_edge_vertices;
     }
 
 private:
@@ -109,8 +114,11 @@ private:
         return m_attributes.data() + static_cast<std::size_t>(index * m_attribute_count);
     }
 
-    bool is_triangle_flip(const vec3f& old_position, const vec3f& new_position, std::uint32_t index)
-        const;
+    bool is_triangle_flipped(
+        const vec3f& old_position,
+        const vec3f& new_position,
+        std::uint32_t index) const;
+    bool is_triangle_degenerate(const vec3f& p0, const vec3f& p1, const vec3f& p2) const;
 
     std::span<vec3f> m_positions;
     std::span<std::uint32_t> m_indexes;
@@ -135,6 +143,8 @@ private:
 
     std::uint32_t m_vertex_count{0};
     std::uint32_t m_index_count{0};
+
+    std::vector<vec3f> m_edge_vertices;
 
     collapse_heap m_heap;
 };

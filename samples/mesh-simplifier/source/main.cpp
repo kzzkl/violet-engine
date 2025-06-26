@@ -7,6 +7,7 @@
 #include "control/control_system.hpp"
 #include "deferred_renderer_imgui.hpp"
 #include "gltf_loader.hpp"
+#include "graphics/geometries/box_geometry.hpp"
 #include "graphics/geometries/plane_geometry.hpp"
 #include "graphics/geometries/sphere_geometry.hpp"
 #include "graphics/graphics_system.hpp"
@@ -150,8 +151,9 @@ private:
         }
         else
         {
-            // m_original_geometry = std::make_unique<sphere_geometry>(0.5f, 16, 8);
-            m_original_geometry = std::make_unique<plane_geometry>(1.0f, 1.0f, 5, 5);
+            // m_original_geometry = std::make_unique<sphere_geometry>(0.5f, 8, 4);
+            m_original_geometry = std::make_unique<box_geometry>(0.5f, 0.5f, 0.5f, 3, 3, 3);
+            // m_original_geometry = std::make_unique<plane_geometry>(1.0f, 1.0f, 5, 5);
         }
 
         m_model = world.create();
@@ -167,8 +169,29 @@ private:
         m_simplified_geometry = std::make_unique<geometry>();
         m_simplified_geometry->set_positions(m_original_geometry->get_positions());
         m_simplified_geometry->set_normals(m_original_geometry->get_normals());
+        m_simplified_geometry->set_tangents(m_original_geometry->get_tangents());
+        m_simplified_geometry->set_texcoords(m_original_geometry->get_texcoords());
         m_simplified_geometry->set_indexes(m_original_geometry->get_indexes());
         m_simplified_geometry->add_submesh(0, 0, m_original_geometry->get_indexes().size());
+
+        m_edge_material = std::make_unique<unlit_material>(
+            RHI_PRIMITIVE_TOPOLOGY_LINE_LIST,
+            RHI_CULL_MODE_NONE,
+            RHI_POLYGON_MODE_LINE);
+        m_edge_material->set_color({1.0f, 0.0f, 0.0f});
+
+        m_edge_geometry = std::make_unique<geometry>();
+        m_edge_geometry->add_submesh(0, 0, 0);
+
+        auto edge_entity = world.create();
+        world.add_component<transform_component, mesh_component, scene_component>(edge_entity);
+
+        auto& edge_mesh = world.get_component<mesh_component>(edge_entity);
+        edge_mesh.geometry = m_edge_geometry.get();
+        edge_mesh.submeshes.push_back({
+            .index = 0,
+            .material = m_edge_material.get(),
+        });
     }
 
     void resize()
@@ -201,6 +224,12 @@ private:
             std::vector<vec3f> normals(
                 m_original_geometry->get_normals().begin(),
                 m_original_geometry->get_normals().end());
+            std::vector<vec4f> tangents(
+                m_original_geometry->get_tangents().begin(),
+                m_original_geometry->get_tangents().end());
+            std::vector<vec2f> texcoords(
+                m_original_geometry->get_texcoords().begin(),
+                m_original_geometry->get_texcoords().end());
             std::vector<std::uint32_t> indexes(
                 m_original_geometry->get_indexes().begin(),
                 m_original_geometry->get_indexes().end());
@@ -218,9 +247,18 @@ private:
 
             m_simplified_geometry->set_positions(positions);
             m_simplified_geometry->set_normals(normals);
+            m_simplified_geometry->set_tangents(tangents);
+            m_simplified_geometry->set_texcoords(texcoords);
             m_simplified_geometry->set_indexes(indexes);
             m_simplified_geometry->clear_submeshes();
             m_simplified_geometry->add_submesh(0, 0, indexes.size());
+
+            std::vector<std::uint32_t> edge_indexes(output.edge_vertices.size());
+            std::iota(edge_indexes.begin(), edge_indexes.end(), 0);
+            m_edge_geometry->set_positions(output.edge_vertices);
+            m_edge_geometry->set_indexes(edge_indexes);
+            m_edge_geometry->clear_submeshes();
+            m_edge_geometry->add_submesh(0, 0, edge_indexes.size());
         }
     }
 
@@ -231,6 +269,9 @@ private:
     std::unique_ptr<material> m_material;
     std::unique_ptr<geometry> m_original_geometry;
     std::unique_ptr<geometry> m_simplified_geometry;
+
+    std::unique_ptr<unlit_material> m_edge_material;
+    std::unique_ptr<geometry> m_edge_geometry;
 
     rhi_ptr<rhi_swapchain> m_swapchain;
 

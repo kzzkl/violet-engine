@@ -38,6 +38,7 @@ public:
     {
         std::uint32_t vertex_count;
         std::uint32_t index_count;
+        std::vector<vec3f> edge_vertices;
     };
 
     static simplify_output simplify(const simplify_input& input);

@@ -385,6 +385,7 @@ geometry_tool::simplify_output geometry_tool::simplify(const simplify_input& inp
     simplify_output output = {
         .vertex_count = simplifier.get_vertex_count(),
         .index_count = simplifier.get_index_count(),
+        .edge_vertices = simplifier.get_edge_vertices(),
     };
 
     if (!attribute_list.empty())
@@ -397,13 +398,13 @@ geometry_tool::simplify_output geometry_tool::simplify(const simplify_input& inp
                 std::memcpy(input.normals.data() + i, attribute_data, sizeof(vec3f));
                 attribute_data += 3;
             }
-    
+
             if (!input.tangents.empty())
             {
                 std::memcpy(input.tangents.data() + i, attribute_data, sizeof(vec4f));
                 attribute_data += 4;
             }
-    
+
             if (!input.texcoords.empty())
             {
                 std::memcpy(input.texcoords.data() + i, attribute_data, sizeof(vec2f));
