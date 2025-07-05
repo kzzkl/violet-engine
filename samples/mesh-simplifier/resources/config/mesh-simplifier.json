@@ -5,6 +5,7 @@
         "height": 800
     },
     "mesh_simplifier_demo": {
-        "model": "D:/Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf"
+        "model": "D:/Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf",
+        "model_bak": ""
     }
 }

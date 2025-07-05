@@ -80,21 +80,68 @@ void cluster_builder::set_positions(std::span<const vec3f> positions)
     }
 
     m_positions.assign(positions.begin(), positions.end());
+
+    for (auto& position : m_positions)
+    {
+        if (std::isnan(position.x))
+        {
+            position.x = 0.0f;
+        }
+
+        if (std::isnan(position.y))
+        {
+            position.y = 0.0f;
+        }
+
+        if (std::isnan(position.z))
+        {
+            position.z = 0.0f;
+        }
+    }
 }
 
 void cluster_builder::set_normals(std::span<const vec3f> normals)
 {
     m_normals.assign(normals.begin(), normals.end());
+
+    for (auto& normal : m_normals)
+    {
+        if (std::isnan(normal.x) || std::isnan(normal.y) || std::isnan(normal.z))
+        {
+            normal = {0.0f, 1.0f, 0.0f};
+        }
+    }
 }
 
 void cluster_builder::set_tangents(std::span<const vec4f> tangents)
 {
     m_tangents.assign(tangents.begin(), tangents.end());
+
+    for (auto& tangent : m_tangents)
+    {
+        if (std::isnan(tangent.x) || std::isnan(tangent.y) || std::isnan(tangent.z))
+        {
+            tangent = {0.0f, 1.0f, 0.0f, tangent.w};
+        }
+    }
 }
 
 void cluster_builder::set_texcoords(std::span<const vec2f> texcoords)
 {
     m_texcoords.assign(texcoords.begin(), texcoords.end());
+
+    for (auto& texcoord : m_texcoords)
+    {
+        if (std::isnan(texcoord.x))
+        {
+            texcoord.x = 0.0f;
+        }
+
+        if (std::isnan(texcoord.y))
+        {
+            texcoord.y = 0.0f;
+        }
+    }
 }
 
 void cluster_builder::set_indexes(std::span<const std::uint32_t> indexes)
@@ -539,8 +586,6 @@ void cluster_builder::simplify_group(std::uint32_t group_index)
     auto& group = m_groups[group_index];
 
     // Collect the indexes of the group for simplification.
-    std::vector<vec3f> positions;
-    std::vector<float> attributes;
     std::vector<std::uint32_t> indexes;
 
     std::unordered_map<std::uint32_t, std::uint32_t> group_index_remap;
@@ -560,8 +605,15 @@ void cluster_builder::simplify_group(std::uint32_t group_index)
                 group_index_remap[index] = indexes.back();
                 group_vertex_remap.push_back(index);
             }
+            else
+            {
+                indexes.push_back(iter->second);
+            }
         }
     }
+
+    std::vector<vec3f> positions;
+    std::vector<float> attributes;
 
     positions.reserve(group_vertex_remap.size());
     attributes.reserve(group_vertex_remap.size() * get_attribute_count());
@@ -572,26 +624,36 @@ void cluster_builder::simplify_group(std::uint32_t group_index)
         if (!m_normals.empty())
         {
             const auto& normal = m_normals[index];
-            attributes.push_back(normal.x);
-            attributes.push_back(normal.y);
-            attributes.push_back(normal.z);
+            attributes.insert(attributes.end(), {normal.x, normal.y, normal.z});
         }
 
         if (!m_tangents.empty())
         {
             const auto& tangent = m_tangents[index];
-            attributes.push_back(tangent.x);
-            attributes.push_back(tangent.y);
-            attributes.push_back(tangent.z);
-            attributes.push_back(tangent.w);
+            attributes.insert(attributes.end(), {tangent.x, tangent.y, tangent.z, tangent.w});
         }
 
         if (!m_texcoords.empty())
         {
             const auto& texcoord = m_texcoords[index];
-            attributes.push_back(texcoord.x);
-            attributes.push_back(texcoord.y);
+            attributes.insert(attributes.end(), {texcoord.x, texcoord.y});
         }
+    }
+
+    std::vector<float> attribute_weights;
+    if (!m_normals.empty())
+    {
+        attribute_weights.insert(attribute_weights.end(), 3, 1.0f);
+    }
+
+    if (!m_tangents.empty())
+    {
+        attribute_weights.insert(attribute_weights.end(), {0.0625f, 0.0625f, 0.0625f, 0.5f});
+    }
+
+    if (!m_texcoords.empty())
+    {
+        attribute_weights.insert(attribute_weights.end(), 2, 1.0f / 128.0f);
     }
 
     float lod_error = 0.0f;
@@ -601,21 +663,27 @@ void cluster_builder::simplify_group(std::uint32_t group_index)
     simplifier.set_indexes(indexes);
     simplifier.set_attributes(
         attributes,
-        get_attribute_count(),
+        attribute_weights,
         [&](float* attributes)
         {
             if (!m_normals.empty())
             {
                 auto& normal = *reinterpret_cast<vec3f*>(attributes);
+                assert(!std::isnan(normal.x) && !std::isnan(normal.y) && !std::isnan(normal.z));
                 normal = vector::normalize(normal);
                 attributes += 3;
+
+                assert(!std::isnan(normal.x) && !std::isnan(normal.y) && !std::isnan(normal.z));
             }
 
             if (!m_tangents.empty())
             {
                 auto& tangent = *reinterpret_cast<vec3f*>(attributes);
+                assert(!std::isnan(tangent.x) && !std::isnan(tangent.y) && !std::isnan(tangent.z));
                 tangent = vector::normalize(tangent);
                 attributes += 3;
+
+                assert(!std::isnan(tangent.x) && !std::isnan(tangent.y) && !std::isnan(tangent.z));
 
                 auto& sign = *reinterpret_cast<float*>(attributes);
                 sign = sign < 0.0f ? -1.0f : 1.0f;
@@ -640,9 +708,8 @@ void cluster_builder::simplify_group(std::uint32_t group_index)
     }
 
     float error = simplifier.simplify(static_cast<std::uint32_t>(indexes.size() / 3 / 2));
-    // positions = simplifier.get_positions();
-    // indexes = simplifier.get_indexes();
-    // attributes = simplifier.get_attributes();
+    positions.resize(simplifier.get_vertex_count());
+    indexes.resize(simplifier.get_index_count());
 
     lod_error = std::max(lod_error, error);
 
@@ -651,7 +718,7 @@ void cluster_builder::simplify_group(std::uint32_t group_index)
     // Cluster the new triangles.
     cluster_triangles(positions, indexes);
 
-    auto position_offset = static_cast<std::uint32_t>(m_positions.size());
+    auto vertex_offset = static_cast<std::uint32_t>(m_positions.size());
     m_positions.insert(m_positions.end(), positions.begin(), positions.end());
 
     auto index_offset = static_cast<std::uint32_t>(m_indexes.size());
@@ -661,8 +728,48 @@ void cluster_builder::simplify_group(std::uint32_t group_index)
         std::back_inserter(m_indexes),
         [=](std::uint32_t index) -> std::uint32_t
         {
-            return index + position_offset;
+            return index + vertex_offset;
         });
+
+    if (!m_normals.empty())
+    {
+        m_normals.resize(m_normals.size() + simplifier.get_vertex_count());
+    }
+
+    if (!m_tangents.empty())
+    {
+        m_tangents.resize(m_tangents.size() + simplifier.get_vertex_count());
+    }
+
+    if (!m_texcoords.empty())
+    {
+        m_texcoords.resize(m_texcoords.size() + simplifier.get_vertex_count());
+    }
+
+    if (!attributes.empty())
+    {
+        const float* attribute_data = attributes.data();
+        for (std::size_t i = 0; i < simplifier.get_vertex_count(); ++i)
+        {
+            if (!m_normals.empty())
+            {
+                std::memcpy(m_normals.data() + vertex_offset + i, attribute_data, sizeof(vec3f));
+                attribute_data += 3;
+            }
+
+            if (!m_tangents.empty())
+            {
+                std::memcpy(m_tangents.data() + vertex_offset + i, attribute_data, sizeof(vec4f));
+                attribute_data += 4;
+            }
+
+            if (!m_texcoords.empty())
+            {
+                std::memcpy(m_texcoords.data() + vertex_offset + i, attribute_data, sizeof(vec2f));
+                attribute_data += 2;
+            }
+        }
+    }
 
     for (std::size_t i = cluster_offset; i < m_clusters.size(); ++i)
     {

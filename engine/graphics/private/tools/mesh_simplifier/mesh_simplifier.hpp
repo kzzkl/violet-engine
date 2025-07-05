@@ -5,7 +5,7 @@
 #include "tools/mesh_simplifier/collapse_heap.hpp"
 #include "tools/mesh_simplifier/quadric.hpp"
 #include <functional>
-#include <span>
+#include <limits>
 #include <unordered_map>
 
 namespace violet
@@ -13,26 +13,42 @@ namespace violet
 class mesh_simplifier
 {
 public:
-    void set_positions(std::span<vec3f> positions);
-    void set_indexes(std::span<std::uint32_t> indexes);
+    void set_positions(std::span<vec3f> positions) noexcept
+    {
+        m_positions = positions;
+    }
+
+    void set_indexes(std::span<std::uint32_t> indexes) noexcept
+    {
+        m_indexes = indexes;
+    }
 
     template <typename Functor>
     void set_attributes(
         std::span<float> attributes,
-        std::uint32_t attribute_count,
+        std::span<const float> attribute_weights,
         Functor&& correct_attributes)
     {
-        assert(m_positions.size() * attribute_count == attributes.size());
+        for (float attribute : attributes)
+        {
+            assert(!std::isnan(attribute));
+        }
         m_attributes = attributes;
+        m_attribute_weights = attribute_weights;
 
-        m_attribute_count = attribute_count;
-        // m_attribute_count = 0;
+        assert(m_positions.size() * get_attribute_count() == attributes.size());
+
         m_correct_attributes = std::forward<Functor>(correct_attributes);
     }
 
-    void lock_position(const vec3f& position);
+    void lock_position(const vec3f& position)
+    {
+        m_locked_positions.push_back(position);
+    }
 
-    float simplify(std::uint32_t target_triangle_count);
+    float simplify(
+        std::uint32_t target_triangle_count,
+        float target_error = std::numeric_limits<float>::max());
 
     std::uint32_t get_vertex_count() const noexcept
     {
@@ -111,7 +127,12 @@ private:
 
     float* get_attributes(std::uint32_t index)
     {
-        return m_attributes.data() + static_cast<std::size_t>(index * m_attribute_count);
+        return m_attributes.data() + static_cast<std::size_t>(index * get_attribute_count());
+    }
+
+    std::uint32_t get_attribute_count() const noexcept
+    {
+        return static_cast<std::uint32_t>(m_attribute_weights.size());
     }
 
     bool is_triangle_flipped(
@@ -124,6 +145,8 @@ private:
     std::span<std::uint32_t> m_indexes;
 
     std::span<float> m_attributes;
+    std::span<const float> m_attribute_weights;
+
     std::vector<float> m_wedge_attributes;
 
     std::unordered_multimap<vec3f, std::uint32_t, vertex_hash> m_vertex_map;
@@ -138,13 +161,14 @@ private:
     quadric_pool m_triangle_quadrics;
     std::uint32_t m_triangle_count{0};
 
-    std::uint32_t m_attribute_count{0};
     std::function<void(float*)> m_correct_attributes;
 
     std::uint32_t m_vertex_count{0};
     std::uint32_t m_index_count{0};
 
     std::vector<vec3f> m_edge_vertices;
+
+    std::vector<vec3f> m_locked_positions;
 
     collapse_heap m_heap;
 };

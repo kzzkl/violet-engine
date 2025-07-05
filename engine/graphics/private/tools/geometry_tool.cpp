@@ -10,6 +10,17 @@
 
 namespace violet
 {
+namespace
+{
+enum cluster_flag : std::uint32_t
+{
+    CLUSTER_HAS_NORMAL = 1 << 0,
+    CLUSTER_HAS_TANGENT = 1 << 1,
+    CLUSTER_HAS_TEXCOORD = 1 << 2,
+};
+using cluster_flags = std::uint32_t;
+} // namespace
+
 bool geometry_tool::cluster_output::load(std::string_view path)
 {
     std::ifstream fin(path.data(), std::ios::binary);
@@ -26,6 +37,9 @@ bool geometry_tool::cluster_output::load(std::string_view path)
     fin.read(reinterpret_cast<char*>(&index_count), sizeof(std::uint32_t));
     fin.read(reinterpret_cast<char*>(&submesh_count), sizeof(std::uint32_t));
 
+    cluster_flags flags = 0;
+    fin.read(reinterpret_cast<char*>(&flags), sizeof(cluster_flags));
+
     positions.resize(vertex_count);
     indexes.resize(index_count);
     submeshes.resize(submesh_count);
@@ -36,6 +50,30 @@ bool geometry_tool::cluster_output::load(std::string_view path)
     fin.read(
         reinterpret_cast<char*>(indexes.data()),
         static_cast<std::streamsize>(index_count * sizeof(std::uint32_t)));
+
+    if (flags & CLUSTER_HAS_NORMAL)
+    {
+        normals.resize(vertex_count);
+        fin.read(
+            reinterpret_cast<char*>(normals.data()),
+            static_cast<std::streamsize>(vertex_count * sizeof(vec3f)));
+    }
+
+    if (flags & CLUSTER_HAS_TANGENT)
+    {
+        tangents.resize(vertex_count);
+        fin.read(
+            reinterpret_cast<char*>(tangents.data()),
+            static_cast<std::streamsize>(vertex_count * sizeof(vec4f)));
+    }
+
+    if (flags & CLUSTER_HAS_TEXCOORD)
+    {
+        texcoords.resize(vertex_count);
+        fin.read(
+            reinterpret_cast<char*>(texcoords.data()),
+            static_cast<std::streamsize>(vertex_count * sizeof(vec2f)));
+    }
 
     for (std::uint32_t i = 0; i < submesh_count; ++i)
     {
@@ -93,12 +131,39 @@ bool geometry_tool::cluster_output::save(std::string_view path) const
     fout.write(reinterpret_cast<const char*>(&index_count), sizeof(std::uint32_t));
     fout.write(reinterpret_cast<const char*>(&submesh_count), sizeof(std::uint32_t));
 
+    cluster_flags flags = 0;
+    flags |= normals.empty() ? 0 : CLUSTER_HAS_NORMAL;
+    flags |= tangents.empty() ? 0 : CLUSTER_HAS_TANGENT;
+    flags |= texcoords.empty() ? 0 : CLUSTER_HAS_TEXCOORD;
+    fout.write(reinterpret_cast<const char*>(&flags), sizeof(cluster_flags));
+
     fout.write(
         reinterpret_cast<const char*>(positions.data()),
         static_cast<std::streamsize>(vertex_count * sizeof(vec3f)));
     fout.write(
         reinterpret_cast<const char*>(indexes.data()),
         static_cast<std::streamsize>(index_count * sizeof(std::uint32_t)));
+
+    if (!normals.empty())
+    {
+        fout.write(
+            reinterpret_cast<const char*>(normals.data()),
+            static_cast<std::streamsize>(vertex_count * sizeof(vec3f)));
+    }
+
+    if (!tangents.empty())
+    {
+        fout.write(
+            reinterpret_cast<const char*>(tangents.data()),
+            static_cast<std::streamsize>(vertex_count * sizeof(vec4f)));
+    }
+
+    if (!texcoords.empty())
+    {
+        fout.write(
+            reinterpret_cast<const char*>(texcoords.data()),
+            static_cast<std::streamsize>(vertex_count * sizeof(vec2f)));
+    }
 
     for (const auto& submesh : submeshes)
     {
@@ -311,20 +376,25 @@ geometry_tool::simplify_output geometry_tool::simplify(const simplify_input& inp
     simplifier.set_positions(input.positions);
     simplifier.set_indexes(input.indexes);
 
+    std::vector<float> attribute_weights;
+
     std::vector<std::pair<const float*, std::uint32_t>> attribute_list;
     if (!input.normals.empty())
     {
         attribute_list.emplace_back(reinterpret_cast<const float*>(input.normals.data()), 3);
+        attribute_weights.insert(attribute_weights.end(), 3, 1.0f);
     }
 
     if (!input.tangents.empty())
     {
         attribute_list.emplace_back(reinterpret_cast<const float*>(input.tangents.data()), 4);
+        attribute_weights.insert(attribute_weights.end(), {0.0625f, 0.0625f, 0.0625f, 0.5f});
     }
 
     if (!input.texcoords.empty())
     {
         attribute_list.emplace_back(reinterpret_cast<const float*>(input.texcoords.data()), 2);
+        attribute_weights.insert(attribute_weights.end(), 2, 1.0f / 128.0f);
     }
 
     std::uint32_t attribute_count = 0;
@@ -352,7 +422,7 @@ geometry_tool::simplify_output geometry_tool::simplify(const simplify_input& inp
 
         simplifier.set_attributes(
             attributes,
-            attribute_count,
+            attribute_weights,
             [&](float* attributes)
             {
                 if (!input.normals.empty())
@@ -454,6 +524,21 @@ geometry_tool::cluster_output geometry_tool::generate_clusters(const cluster_inp
         builder.set_positions(positions);
         builder.set_indexes(indexes);
 
+        if (!input.normals.empty())
+        {
+            builder.set_normals(input.normals);
+        }
+
+        if (!input.tangents.empty())
+        {
+            builder.set_tangents(input.tangents);
+        }
+
+        if (!input.texcoords.empty())
+        {
+            builder.set_texcoords(input.texcoords);
+        }
+
         builder.build();
 
         auto vertex_offset = static_cast<std::uint32_t>(output.positions.size());
@@ -463,6 +548,19 @@ geometry_tool::cluster_output geometry_tool::generate_clusters(const cluster_inp
             output.positions.end(),
             builder.get_positions().begin(),
             builder.get_positions().end());
+        output.normals.insert(
+            output.normals.end(),
+            builder.get_normals().begin(),
+            builder.get_normals().end());
+        output.tangents.insert(
+            output.tangents.end(),
+            builder.get_tangents().begin(),
+            builder.get_tangents().end());
+        output.texcoords.insert(
+            output.texcoords.end(),
+            builder.get_texcoords().begin(),
+            builder.get_texcoords().end());
+
         output.indexes.insert(
             output.indexes.end(),
             builder.get_indexes().begin(),

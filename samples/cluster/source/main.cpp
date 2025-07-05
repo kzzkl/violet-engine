@@ -1,17 +1,23 @@
 #include "cluster_material.hpp"
+#include "common/log.hpp"
 #include "components/camera_component.hpp"
 #include "components/hierarchy_component.hpp"
+#include "components/light_component.hpp"
 #include "components/mesh_component.hpp"
 #include "components/orbit_control_component.hpp"
 #include "components/scene_component.hpp"
+#include "components/skybox_component.hpp"
 #include "components/transform_component.hpp"
 #include "control/control_system.hpp"
 #include "gltf_loader.hpp"
 #include "graphics/graphics_system.hpp"
 #include "graphics/materials/physical_material.hpp"
+#include "graphics/materials/unlit_material.hpp"
 #include "graphics/renderers/deferred_renderer.hpp"
+#include "graphics/skybox.hpp"
 #include "graphics/tools/geometry_tool.hpp"
 #include "window/window_system.hpp"
+#include <fstream>
 
 namespace violet
 {
@@ -60,7 +66,7 @@ public:
                 });
 
         initialize_render();
-        initialize_scene(config["model"]);
+        initialize_scene(config["model"], config["skybox"]);
 
         resize();
 
@@ -76,9 +82,27 @@ private:
         });
     }
 
-    void initialize_scene(std::string_view model_path)
+    void initialize_scene(std::string_view model_path, std::string_view skybox_path)
     {
         auto& world = get_world();
+
+        m_skybox = std::make_unique<skybox>(skybox_path);
+
+        entity scene_skybox = world.create();
+        world.add_component<transform_component, skybox_component, scene_component>(scene_skybox);
+        auto& skybox = world.get_component<skybox_component>(scene_skybox);
+        skybox.skybox = m_skybox.get();
+
+        m_light = world.create();
+        world.add_component<transform_component, light_component, scene_component>(m_light);
+
+        auto& light_transform = world.get_component<transform_component>(m_light);
+        light_transform.set_position({10.0f, 10.0f, 10.0f});
+        light_transform.lookat({0.0f, 0.0f, 0.0f});
+
+        auto& main_light = world.get_component<light_component>(m_light);
+        main_light.type = LIGHT_DIRECTIONAL;
+        main_light.color = {1.0f, 1.0f, 1.0f};
 
         m_camera = world.create();
         world.add_component<
@@ -88,7 +112,7 @@ private:
             scene_component>(m_camera);
 
         auto& camera_control = world.get_component<orbit_control_component>(m_camera);
-        camera_control.radius_speed = 0.2f;
+        camera_control.radius_speed = 0.9f;
         camera_control.target = {0.0f, 0.1f, 0.0f};
 
         auto& camera_transform = world.get_component<transform_component>(m_camera);
@@ -127,6 +151,7 @@ private:
         }
 
         model model = {};
+        model.textures = std::move(result->textures);
 
         for (const auto& geometry_data : result->geometries)
         {
@@ -139,6 +164,9 @@ private:
 
             geometry_tool::cluster_input input = {
                 .positions = geometry_data.positions,
+                .normals = geometry_data.normals,
+                .tangents = geometry_data.tangents,
+                .texcoords = geometry_data.texcoords,
                 .indexes = geometry_data.indexes,
             };
 
@@ -151,13 +179,16 @@ private:
                 });
             }
 
-            // auto output = geometry_tool::generate_clusters(input);
-            // output.save("stanford-bunny.cluster");
+            auto output = geometry_tool::generate_clusters(input);
+            output.save("DamagedHelmet.cluster");
 
-            geometry_tool::cluster_output output;
-            output.load("stanford-bunny.cluster");
+            // geometry_tool::cluster_output output;
+            // output.load("Bistro.cluster");
 
             model_geometry->set_positions(output.positions);
+            model_geometry->set_normals(output.normals);
+            model_geometry->set_tangents(output.tangents);
+            model_geometry->set_texcoords(output.texcoords);
             model_geometry->set_indexes(output.indexes);
 
             for (const auto& submesh : output.submeshes)
@@ -166,6 +197,8 @@ private:
             }
 
             model.geometries.push_back(std::move(model_geometry));
+
+            log::info("{} / {}", model.geometries.size(), result->geometries.size());
         }
 
         for (const auto& material_data : result->materials)
@@ -226,11 +259,11 @@ private:
                 auto& entity_mesh = world.get_component<mesh_component>(entity);
                 entity_mesh.geometry = model.geometries[mesh_data.geometry].get();
 
-                for (auto& submesh : mesh_data.submeshes)
+                for (std::size_t j = 0; j < mesh_data.submeshes.size(); ++j)
                 {
                     entity_mesh.submeshes.push_back({
-                        .index = submesh,
-                        .material = m_material.get(),
+                        .index = mesh_data.submeshes[j],
+                        .material = model.materials[mesh_data.materials[j]].get(),
                     });
                 }
 
@@ -280,13 +313,17 @@ private:
         // }
     }
 
+    entity m_light;
     entity m_camera;
     entity m_mesh;
+
+    std::unique_ptr<skybox> m_skybox;
 
     struct model
     {
         std::vector<std::unique_ptr<geometry>> geometries;
         std::vector<std::unique_ptr<material>> materials;
+        std::vector<std::unique_ptr<texture_2d>> textures;
         std::vector<entity> entities;
     };
 

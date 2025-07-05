@@ -4,6 +4,7 @@
 #include <array>
 #include <cassert>
 #include <optional>
+#include <span>
 #include <vector>
 
 namespace violet
@@ -91,13 +92,16 @@ public:
         const float* a0,
         const float* a1,
         const float* a2,
-        std::uint32_t attribute_count);
+        std::span<const float> attribute_weights);
     void set(const vec3f& p0, const vec3f& p1, const vec3f& face_normal, float edge_weight);
     void set(const quadric& other, std::uint32_t attribute_count);
 
     void add(const quadric& other, std::uint32_t attribute_count);
 
-    float evaluate(const vec3f& position, float* attributes, std::uint32_t attribute_count) const;
+    float evaluate(
+        const vec3f& position,
+        float* attributes,
+        std::span<const float> attribute_weights) const;
 
 private:
     vec3f* get_g(std::uint32_t attribute_count) noexcept

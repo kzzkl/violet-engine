@@ -143,6 +143,36 @@ private:
                         submesh.index_offset,
                         submesh.index_count);
                 }
+
+                const auto& material_data = result->materials[0];
+
+                auto material = std::make_unique<physical_material>();
+                material->set_albedo(material_data.albedo);
+                material->set_roughness(material_data.roughness);
+                material->set_metallic(material_data.metallic);
+                material->set_emissive(material_data.emissive);
+
+                if (material_data.albedo_texture != nullptr)
+                {
+                    material->set_albedo(material_data.albedo_texture);
+                }
+
+                if (material_data.roughness_metallic_texture != nullptr)
+                {
+                    material->set_roughness_metallic(material_data.roughness_metallic_texture);
+                }
+
+                if (material_data.emissive_texture != nullptr)
+                {
+                    material->set_emissive(material_data.emissive_texture);
+                }
+
+                if (material_data.normal_texture != nullptr)
+                {
+                    material->set_normal(material_data.normal_texture);
+                }
+
+                m_material = std::move(material);
             }
             else
             {
@@ -151,8 +181,8 @@ private:
         }
         else
         {
-            // m_original_geometry = std::make_unique<sphere_geometry>(0.5f, 8, 4);
-            m_original_geometry = std::make_unique<box_geometry>(0.5f, 0.5f, 0.5f, 3, 3, 3);
+            m_original_geometry = std::make_unique<sphere_geometry>(0.5f, 32, 16);
+            // m_original_geometry = std::make_unique<box_geometry>(0.5f, 0.5f, 0.5f, 3, 3, 3);
             // m_original_geometry = std::make_unique<plane_geometry>(1.0f, 1.0f, 5, 5);
         }
 
@@ -237,6 +267,8 @@ private:
             auto output = geometry_tool::simplify({
                 .positions = positions,
                 .normals = normals,
+                .tangents = tangents,
+                .texcoords = texcoords,
                 .indexes = indexes,
                 .target_triangle_count = target_triangle_count,
             });

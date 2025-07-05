@@ -91,6 +91,21 @@ public:
         return m_positions;
     }
 
+    const std::vector<vec3f>& get_normals() const noexcept
+    {
+        return m_normals;
+    }
+
+    const std::vector<vec4f>& get_tangents() const noexcept
+    {
+        return m_tangents;
+    }
+
+    const std::vector<vec2f>& get_texcoords() const noexcept
+    {
+        return m_texcoords;
+    }
+
     const std::vector<std::uint32_t>& get_indexes() const noexcept
     {
         return m_indexes;

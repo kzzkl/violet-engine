@@ -305,19 +305,18 @@ struct matrix
     template <typename T>
     [[nodiscard]] static inline mat3<T> inverse(const mat3<T>& m)
     {
-        bool invertable;
-        return inverse(m, invertable);
+        T det;
+        return inverse(m, det);
     }
 
     template <typename T>
-    [[nodiscard]] static inline mat3<T> inverse(const mat3<T>& m, bool& invertable)
+    [[nodiscard]] static inline mat3<T> inverse(const mat3<T>& m, T& det)
     {
         mat3<T> result;
 
-        T det = m[0][0] * (m[1][1] * m[2][2] - m[2][1] * m[1][2]) -
-                m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
-                m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
-        invertable = det != T(0);
+        det = m[0][0] * (m[1][1] * m[2][2] - m[2][1] * m[1][2]) -
+              m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
+              m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
         T det_inv = T(1) / det;
 
         result[0][0] = (m[1][1] * m[2][2] - m[2][1] * m[1][2]) * det_inv;
@@ -336,12 +335,12 @@ struct matrix
     template <typename T>
     [[nodiscard]] static inline mat4<T> inverse(const mat4<T>& m)
     {
-        bool invertable;
-        return inverse(m, invertable);
+        T det;
+        return inverse(m, det);
     }
 
     template <typename T>
-    [[nodiscard]] static inline mat4<T> inverse(const mat4<T>& m, bool& invertable)
+    [[nodiscard]] static inline mat4<T> inverse(const mat4<T>& m, T& det)
     {
         mat4<T> result;
 
@@ -364,11 +363,10 @@ struct matrix
         T a0113 = m[1][0] * m[3][1] - m[1][1] * m[3][0];
         T a0112 = m[1][0] * m[2][1] - m[1][1] * m[2][0];
 
-        T det = m[0][0] * (m[1][1] * a2323 - m[1][2] * a1323 + m[1][3] * a1223) -
-                m[0][1] * (m[1][0] * a2323 - m[1][2] * a0323 + m[1][3] * a0223) +
-                m[0][2] * (m[1][0] * a1323 - m[1][1] * a0323 + m[1][3] * a0123) -
-                m[0][3] * (m[1][0] * a1223 - m[1][1] * a0223 + m[1][2] * a0123);
-        invertable = det != T(0);
+        det = m[0][0] * (m[1][1] * a2323 - m[1][2] * a1323 + m[1][3] * a1223) -
+              m[0][1] * (m[1][0] * a2323 - m[1][2] * a0323 + m[1][3] * a0223) +
+              m[0][2] * (m[1][0] * a1323 - m[1][1] * a0323 + m[1][3] * a0123) -
+              m[0][3] * (m[1][0] * a1223 - m[1][1] * a0223 + m[1][2] * a0123);
         T det_inv = T(1) / det;
 
         result[0][0] = det_inv * (m[1][1] * a2323 - m[1][2] * a1323 + m[1][3] * a1223);

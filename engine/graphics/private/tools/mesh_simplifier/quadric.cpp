@@ -12,7 +12,7 @@ void quadric::set(
     const float* a0,
     const float* a1,
     const float* a2,
-    std::uint32_t attribute_count)
+    std::span<const float> attribute_weights)
 {
     vec3f v01 = p1 - p0;
     vec3f v02 = p2 - p0;
@@ -46,17 +46,25 @@ void quadric::set(
         {n.x, n.y, n.z},
     };
 
-    bool invertable;
-    m = matrix::inverse(m, invertable);
+    float det;
+    m = matrix::inverse(m, det);
+
+    auto attribute_count = static_cast<std::uint32_t>(attribute_weights.size());
 
     auto* g = get_g(attribute_count);
     auto* d = get_d(attribute_count);
 
     for (std::size_t i = 0; i < attribute_count; ++i)
     {
-        if (invertable)
+        float s0 = a0[i] * attribute_weights[i];
+        float s1 = a1[i] * attribute_weights[i];
+        float s2 = a2[i] * attribute_weights[i];
+
+        assert(!std::isnan(s0) && !std::isnan(s1) && !std::isnan(s2));
+
+        if (std::abs(det) > 1e-8f)
         {
-            vec3f s = {a1[i] - a0[i], a2[i] - a0[i], 0.0f};
+            vec3f s = {s1 - s0, s2 - s0, 0.0f};
             g[i] = matrix::mul(m, s);
         }
         else
@@ -64,7 +72,7 @@ void quadric::set(
             g[i] = {0.0f, 0.0f, 0.0f};
         }
 
-        d[i] = a0[i] - vector::dot(g[i], p0);
+        d[i] = s0 - vector::dot(g[i], p0);
 
         m_nn.xx += g[i].x * g[i].x;
         m_nn.xy += g[i].x * g[i].y;
@@ -79,6 +87,14 @@ void quadric::set(
     m_nn *= m_a;
     m_dn *= m_a;
     m_dd *= m_a;
+
+    for (std::size_t i = 0; i < attribute_count; ++i)
+    {
+        g[i] *= m_a;
+        d[i] *= m_a;
+    }
+
+    assert(!std::isnan(m_nn.xx));
 }
 
 void quadric::set(const vec3f& p0, const vec3f& p1, const vec3f& face_normal, float edge_weight)
@@ -108,6 +124,7 @@ void quadric::set(const vec3f& p0, const vec3f& p1, const vec3f& face_normal, fl
     float distance = -vector::dot(p0, n);
     m_dn = n * distance * m_a;
     m_dd = distance * distance * m_a;
+    assert(m_nn.xx < 50000.0f);
 }
 
 void quadric::set(const quadric& other, std::uint32_t attribute_count)
@@ -126,6 +143,8 @@ void quadric::set(const quadric& other, std::uint32_t attribute_count)
         g[i] = other_g[i];
         d[i] = other_d[i];
     }
+
+    m_a = other.m_a;
 }
 
 void quadric::add(const quadric& other, std::uint32_t attribute_count)
@@ -144,11 +163,17 @@ void quadric::add(const quadric& other, std::uint32_t attribute_count)
         g[i] += other_g[i];
         d[i] += other_d[i];
     }
+
+    m_a += other.m_a;
 }
 
-float quadric::evaluate(const vec3f& position, float* attributes, std::uint32_t attribute_count)
-    const
+float quadric::evaluate(
+    const vec3f& position,
+    float* attributes,
+    std::span<const float> attribute_weights) const
 {
+    auto attribute_count = static_cast<std::uint32_t>(attribute_weights.size());
+
     // Q(v) = vt*A*v + 2*bt*v + c
     float error = vector::dot(position, matrix::mul(static_cast<mat3f>(m_nn), position)) +
                   2.0f * vector::dot(position, m_dn) + m_dd;
@@ -158,12 +183,14 @@ float quadric::evaluate(const vec3f& position, float* attributes, std::uint32_t 
 
     for (std::size_t i = 0; i < attribute_count; ++i)
     {
-        float a = vector::dot(g[i], position) + d[i];
-        error -= a * a;
+        float pgd = vector::dot(g[i], position) + d[i];
+        float s = pgd / m_a;
+        error -= pgd * s;
 
         if (attributes != nullptr)
         {
-            attributes[i] = a;
+            attributes[i] = s / attribute_weights[i];
+            assert(!std::isnan(attributes[i]));
         }
     }
 
@@ -203,9 +230,9 @@ std::optional<vec3f> quadric_optimizer::optimize() const
     symmetric_matrix m = m_nn - m_bb;
     vec3f b = m_bd - m_dn;
 
-    bool invertable;
-    mat3f m_inv = matrix::inverse(static_cast<mat3f>(m), invertable);
-    if (!invertable)
+    float det;
+    mat3f m_inv = matrix::inverse(static_cast<mat3f>(m), det);
+    if (det < 1e-8f)
     {
         return std::nullopt;
     }

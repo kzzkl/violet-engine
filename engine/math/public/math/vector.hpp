@@ -302,24 +302,27 @@ struct vector
     }
 
     template <typename T>
-    [[nodiscard]] static inline vec2<T> normalize(const vec2<T>& v) noexcept
+    [[nodiscard]] static inline vec2<T> normalize(const vec2<T>& v, T tolerance = T(1e-8f)) noexcept
         requires std::is_floating_point_v<T>
     {
-        return div(v, length());
+        T l = length(v);
+        return l < tolerance ? v : div(v, l);
     }
 
     template <typename T>
-    [[nodiscard]] static inline vec3<T> normalize(const vec3<T>& v) noexcept
+    [[nodiscard]] static inline vec3<T> normalize(const vec3<T>& v, T tolerance = T(1e-8f)) noexcept
         requires std::is_floating_point_v<T>
     {
-        return div(v, length(v));
+        T l = length(v);
+        return l < tolerance ? v : div(v, l);
     }
 
     template <typename T>
-    [[nodiscard]] static inline vec4<T> normalize(const vec4<T>& v) noexcept
+    [[nodiscard]] static inline vec4<T> normalize(const vec4<T>& v, T tolerance = T(1e-8f)) noexcept
         requires std::is_floating_point_v<T>
     {
-        return div(v, length(v));
+        T l = length(v);
+        return l < tolerance ? v : div(v, l);
     }
 
     [[nodiscard]] static inline vec4f_simd normalize(vec4f_simd v) noexcept

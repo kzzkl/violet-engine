@@ -1,4 +1,4 @@
-#include "tools/mesh_simplifier/mesh_simplifier.hpp"
+ #include "tools/mesh_simplifier/mesh_simplifier.hpp"
 #include "algorithm/disjoint_set.hpp"
 #include "math/vector.hpp"
 #include "meshoptimizer.h"
@@ -17,28 +17,7 @@ std::uint32_t cycle_3(std::uint32_t value)
 }
 } // namespace
 
-void mesh_simplifier::set_positions(std::span<vec3f> positions)
-{
-    m_positions = positions;
-}
-
-void mesh_simplifier::set_indexes(std::span<std::uint32_t> indexes)
-{
-    m_indexes = indexes;
-}
-
-void mesh_simplifier::lock_position(const vec3f& position)
-{
-    auto corner_range = m_corner_map.equal_range(position);
-    assert(corner_range.first != corner_range.second);
-
-    for (auto iter = corner_range.first; iter != corner_range.second; ++iter)
-    {
-        m_corner_flags[iter->second] |= CORNER_LOCKED;
-    }
-}
-
-float mesh_simplifier::simplify(std::uint32_t target_triangle_count)
+float mesh_simplifier::simplify(std::uint32_t target_triangle_count, float target_error)
 {
     m_vertex_map.clear();
     for (std::uint32_t i = 0; i < m_positions.size(); ++i)
@@ -66,13 +45,24 @@ float mesh_simplifier::simplify(std::uint32_t target_triangle_count)
         }
     }
 
+    for (const auto& position : m_locked_positions)
+    {
+        auto corner_range = m_corner_map.equal_range(position);
+        assert(corner_range.first != corner_range.second);
+
+        for (auto iter = corner_range.first; iter != corner_range.second; ++iter)
+        {
+            m_corner_flags[iter->second] |= CORNER_LOCKED;
+        }
+    }
+
     for (std::uint32_t corner = 0; corner < m_indexes.size(); ++corner)
     {
         update_corner_quadric(corner);
     }
 
     m_triangle_count = static_cast<std::uint32_t>(m_indexes.size() / 3);
-    m_triangle_quadrics.resize(m_triangle_count, m_attribute_count);
+    m_triangle_quadrics.resize(m_triangle_count, get_attribute_count());
     for (std::uint32_t i = 0; i < m_triangle_count; ++i)
     {
         m_triangle_quadrics[i].set(
@@ -82,7 +72,7 @@ float mesh_simplifier::simplify(std::uint32_t target_triangle_count)
             get_attributes(m_indexes[3 * i + 0]),
             get_attributes(m_indexes[3 * i + 1]),
             get_attributes(m_indexes[3 * i + 2]),
-            m_attribute_count);
+            m_attribute_weights);
     }
 
     for (std::uint32_t edge = 0; edge < m_edges.size(); ++edge)
@@ -94,17 +84,20 @@ float mesh_simplifier::simplify(std::uint32_t target_triangle_count)
         });
     }
 
-    std::uint32_t counter = 0;
     float max_error = 0.0f;
     while (!m_heap.empty() && m_triangle_count > target_triangle_count)
     {
         auto current_edge = m_heap.top();
         m_heap.pop();
 
+        if (current_edge.error >= target_error)
+        {
+            break;
+        }
+
         collapse_edge(current_edge.edge);
 
         max_error = std::max(max_error, current_edge.error);
-        ++counter;
     }
 
     compact();
@@ -132,7 +125,7 @@ float mesh_simplifier::evaluate_edge(std::uint32_t edge_index)
     quadric_optimizer optimizer = {};
     for (std::size_t i = 0; i < wedge_quadrics.get_size(); ++i)
     {
-        optimizer.add(wedge_quadrics[i], m_attribute_count);
+        optimizer.add(wedge_quadrics[i], get_attribute_count());
     }
 
     quadric corner_quadric = {};
@@ -178,13 +171,13 @@ float mesh_simplifier::evaluate_edge(std::uint32_t edge_index)
         auto optimize_position = optimizer.optimize();
 
         bool valid = static_cast<bool>(optimize_position);
-        penalty += valid ? 0.0f : 100.0f;
 
         if (valid)
         {
             new_position = *optimize_position;
             valid = is_valid_position(new_position);
-            penalty += valid ? 0.0f : 100.0f;
+
+            assert(!std::isnan(new_position.x));
         }
 
         if (!valid)
@@ -199,10 +192,10 @@ float mesh_simplifier::evaluate_edge(std::uint32_t edge_index)
 
     for (std::size_t i = 0; i < wedge_quadrics.get_size(); ++i)
     {
-        error += wedge_quadrics[i].evaluate(new_position, nullptr, m_attribute_count);
+        error += wedge_quadrics[i].evaluate(new_position, nullptr, m_attribute_weights);
     }
 
-    error += corner_quadric.evaluate(new_position, nullptr, 0);
+    error += corner_quadric.evaluate(new_position, nullptr, {});
     error += penalty;
 
     m_edges[edge_index].merge_position = new_position;
@@ -276,11 +269,21 @@ void mesh_simplifier::collapse_edge(std::uint32_t edge_index)
                 float* attributes = get_attributes(m_indexes[corner]);
 
                 auto& wedge_quadric = wedge_quadrics[triangle_to_wedge[triangle_index]];
-                wedge_quadric.evaluate(position, attributes, m_attribute_count);
+                wedge_quadric.evaluate(position, attributes, m_attribute_weights);
+
+                for (std::uint32_t aaa = 0; aaa < get_attribute_count(); ++aaa)
+                {
+                    assert(!std::isnan(attributes[aaa]));
+                }
 
                 if (m_correct_attributes)
                 {
                     m_correct_attributes(attributes);
+                }
+
+                for (std::uint32_t aaa = 0; aaa < get_attribute_count(); ++aaa)
+                {
+                    assert(!std::isnan(attributes[aaa]));
                 }
 
                 if (p0_locked || p1_locked)
@@ -310,7 +313,7 @@ void mesh_simplifier::collapse_edge(std::uint32_t edge_index)
                 get_attributes(m_indexes[triangle * 3 + 0]),
                 get_attributes(m_indexes[triangle * 3 + 1]),
                 get_attributes(m_indexes[triangle * 3 + 2]),
-                m_attribute_count);
+                m_attribute_weights);
         }
 
         for (const auto& position : {p0, p1, p2})
@@ -414,6 +417,8 @@ void mesh_simplifier::compact()
         }
     }
 
+    std::uint32_t attribute_count = get_attribute_count();
+
     std::vector<std::uint32_t> vertex_remap(m_positions.size());
     std::uint32_t vertex_count = 0;
     for (std::uint32_t i = 0; i < m_positions.size(); ++i)
@@ -422,13 +427,18 @@ void mesh_simplifier::compact()
         {
             m_positions[vertex_count] = m_positions[i];
             std::memcpy(
-                m_attributes.data() + static_cast<std::uint32_t>(vertex_count * m_attribute_count),
-                m_attributes.data() + static_cast<std::uint32_t>(i * m_attribute_count),
-                sizeof(float) * m_attribute_count);
+                m_attributes.data() + static_cast<std::uint32_t>(vertex_count * attribute_count),
+                m_attributes.data() + static_cast<std::uint32_t>(i * attribute_count),
+                sizeof(float) * attribute_count);
 
             vertex_remap[i] = vertex_count;
             ++vertex_count;
         }
+    }
+
+    for (std::uint32_t i = 0; i < m_positions.size() * attribute_count; ++i)
+    {
+        assert(!std::isnan(m_attributes[i]));
     }
 
     std::uint32_t index_count = 0;
@@ -567,7 +577,8 @@ quadric_pool mesh_simplifier::get_wedge_quadrics(
         }
     }
 
-    quadric_pool wedge_quadrics(wedge_disjoint_set.get_set_count(), m_attribute_count);
+    std::uint32_t attribute_count = get_attribute_count();
+    quadric_pool wedge_quadrics(wedge_disjoint_set.get_set_count(), attribute_count);
 
     std::vector<std::uint32_t> wedge_index_to_id;
     for (std::uint32_t i = 0; i < triangles.size(); ++i)
@@ -582,12 +593,12 @@ quadric_pool mesh_simplifier::get_wedge_quadrics(
         {
             wedge_index = wedge_index_to_id.size();
             wedge_index_to_id.push_back(wedge_id);
-            wedge_quadrics[wedge_index].set(m_triangle_quadrics[triangle], m_attribute_count);
+            wedge_quadrics[wedge_index].set(m_triangle_quadrics[triangle], attribute_count);
         }
         else
         {
             wedge_index = iter - wedge_index_to_id.begin();
-            wedge_quadrics[wedge_index].add(m_triangle_quadrics[triangle], m_attribute_count);
+            wedge_quadrics[wedge_index].add(m_triangle_quadrics[triangle], attribute_count);
         }
 
         if (triangle_to_wedge != nullptr)
@@ -667,10 +678,10 @@ bool mesh_simplifier::is_triangle_flipped(
 bool mesh_simplifier::is_triangle_degenerate(const vec3f& p0, const vec3f& p1, const vec3f& p2)
     const
 {
-    float a = vector::length(p1 - p0);
-    float b = vector::length(p2 - p0);
-    float c = vector::length(p2 - p1);
-    return a + b <= c || a + c <= b || b + c <= a;
+    vec3f v01 = p1 - p0;
+    vec3f v02 = p2 - p0;
+    vec3f n = vector::cross(v01, v02);
+    return vector::length(n) < 1e-8f;
 }
 
 void mesh_simplifier_meshopt::set_positions(std::span<const vec3f> positions)
