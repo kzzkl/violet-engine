@@ -1,13 +1,13 @@
 {
-    "Window": {
+    "window": {
         "title": "Cluster Demo",
         "width": 1300,
         "height": 800
     },
-    "Cluster Demo": {
+    "cluster demo": {
         "skybox": "D:/Workspace/assets/textures/skybox/dry_orchard_meadow_4k.hdr",
-        "model_bak": "D:/Workspace/assets/models/gltf/Bistro.glb",
-        "model_bak2": "D:/Workspace/assets/models/gltf/stanford-bunny.glb",
-        "model": "D:/Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf"
+        "cpu_culling": false, 
+        "model": "D:/Workspace/assets/models/gltf/Bistro.glb",
+        "model_bak": "D:/Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf"
     }
 }

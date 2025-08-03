@@ -44,6 +44,8 @@ public:
                 });
         }
 
+        std::unordered_map<std::uint32_t, std::uint32_t> island_size;
+
         std::vector<std::pair<std::uint32_t, std::uint32_t>> island_ranges(element_count);
         {
             std::uint32_t island_index = 0;
@@ -51,6 +53,8 @@ public:
             for (std::uint32_t i = 0; i < element_count; ++i)
             {
                 std::uint32_t current_island_index = disjoint_set.find(sorted_to_index[i]);
+                ++island_size[current_island_index];
+
                 if (current_island_index != island_index)
                 {
                     for (std::uint32_t j = first_element; j < i; ++j)
@@ -71,20 +75,21 @@ public:
 
         for (std::uint32_t i = 0; i < element_count; ++i)
         {
-            if (island_ranges[i].second - island_ranges[i].first > min_island_size)
+            std::uint32_t element_index = sorted_to_index[i];   
+            std::uint32_t island_index = disjoint_set.find(element_index);
+
+            // if (island_ranges[i].second - island_ranges[i].first > min_island_size)
+            if (island_size[island_index] > min_island_size)
             {
                 continue;
             }
-
-            std::uint32_t element_index = sorted_to_index[i];
-            std::uint32_t island_index = disjoint_set.find(element_index);
 
             vec3f center = get_position(element_index);
 
             static constexpr std::uint32_t MAX_LINKS = 5;
 
-            std::array<std::uint32_t, MAX_LINKS> cloest_elements;
-            cloest_elements.fill(~0u);
+            std::array<std::uint32_t, MAX_LINKS> closest_elements;
+            closest_elements.fill(~0u);
 
             std::array<float, MAX_LINKS> closest_distances;
             closest_distances.fill(std::numeric_limits<float>::max());
@@ -119,19 +124,19 @@ public:
                             if (distance < closest_distances[link])
                             {
                                 std::swap(distance, closest_distances[link]);
-                                std::swap(adjacency_index, cloest_elements[link]);
+                                std::swap(adjacency_index, closest_elements[link]);
                             }
                         }
                     }
                 }
             }
 
-            for (std::uint32_t cloest_element : cloest_elements)
+            for (std::uint32_t closest_element : closest_elements)
             {
-                if (cloest_element != ~0u)
+                if (closest_element != ~0u)
                 {
-                    m_external_links.insert({element_index, cloest_element});
-                    m_external_links.insert({cloest_element, element_index});
+                    m_external_links.insert({element_index, closest_element});
+                    m_external_links.insert({closest_element, element_index});
                 }
             }
         }

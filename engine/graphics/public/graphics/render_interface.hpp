@@ -535,6 +535,8 @@ struct rhi_shader_desc
 
     rhi_shader_stage_flag stage;
 
+    const char* entry_point;
+
     std::uint32_t push_constant_size;
 
     struct parameter_slot

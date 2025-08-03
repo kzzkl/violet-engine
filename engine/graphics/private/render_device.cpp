@@ -350,7 +350,7 @@ std::vector<std::uint8_t> render_device::compile_shader(
     std::string_view path,
     std::span<const wchar_t*> arguments)
 {
-    std::ifstream fin(path.data(), std::ios::binary);
+    std::ifstream fin(std::string(path), std::ios::binary);
     if (!fin.is_open())
     {
         throw std::runtime_error("Failed to open file!");

@@ -27,6 +27,7 @@ cluster_material::cluster_material()
         true,
         material_stencil_state<SHADING_MODEL_UNLIT>::value,
         material_stencil_state<SHADING_MODEL_UNLIT>::value>();
+    pipeline.rasterizer_state = device.get_rasterizer_state<RHI_CULL_MODE_BACK>();
     pipeline.primitive_topology = RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 }
 } // namespace violet

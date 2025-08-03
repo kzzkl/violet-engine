@@ -72,7 +72,7 @@ std::uint32_t graph_partitioner::bisect_graph(
     idx_t constraints_count = 1;
     idx_t edges_cut = 0;
 
-    auto target_part_count = static_cast<std::uint32_t>(std::roundf(
+    auto target_part_count = static_cast<std::uint32_t>(std::ceil(
         static_cast<float>(end - start) / (static_cast<float>(min_count + max_count) / 2.0f)));
     target_part_count = std::max(2u, target_part_count);
 
@@ -80,7 +80,7 @@ std::uint32_t graph_partitioner::bisect_graph(
 
     real_t weights[2] = {
         static_cast<float>(left_part_count) / static_cast<float>(target_part_count),
-        1.0f - static_cast<float>(left_part_count) / static_cast<float>(target_part_count),
+        1.0f - (static_cast<float>(left_part_count) / static_cast<float>(target_part_count)),
     };
 
     std::vector<idx_t> parts(vertex_count);

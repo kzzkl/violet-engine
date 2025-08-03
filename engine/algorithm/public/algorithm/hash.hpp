@@ -8,7 +8,7 @@ namespace violet
 {
 struct hash
 {
-    static inline std::uint64_t combine(std::uint64_t seed, std::uint64_t value)
+    static std::uint64_t combine(std::uint64_t seed, std::uint64_t value)
     {
         return seed ^ (value + 0x9e3779b9 + (seed << 6) + (seed >> 2));
     }

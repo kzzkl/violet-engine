@@ -1,5 +1,6 @@
 #pragma once
 
+#include "components/transform_component.hpp"
 #include "core/engine.hpp"
 #include "math/types.hpp"
 
@@ -22,7 +23,10 @@ private:
     void update_local(bool force = false);
     void update_world(bool force = false);
 
-    void update_world_recursive(entity e, const mat4f& parent_world, bool parent_dirty);
+    void update_world_recursive(
+        entity e,
+        const transform_world_component& parent_world_transform,
+        bool parent_dirty);
 
     std::uint32_t m_system_version{0};
 };

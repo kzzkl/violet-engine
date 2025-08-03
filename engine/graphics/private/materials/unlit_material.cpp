@@ -31,6 +31,7 @@ unlit_material::unlit_material(
         true,
         material_stencil_state<SHADING_MODEL_UNLIT>::value,
         material_stencil_state<SHADING_MODEL_UNLIT>::value>();
+    pipeline.rasterizer_state = device.get_rasterizer_state<RHI_CULL_MODE_BACK>();
     pipeline.primitive_topology = primitive_topology;
 
     set_color({1.0f, 1.0f, 1.0f});

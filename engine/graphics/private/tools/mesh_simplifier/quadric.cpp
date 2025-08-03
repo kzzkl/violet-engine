@@ -5,6 +5,30 @@
 
 namespace violet
 {
+void quadric_edge::set(const vec3f& p0, const vec3f& p1, float edge_weight)
+{
+    m_n = p1 - p0;
+
+    float length = vector::length(m_n);
+    if (length < 1e-12f)
+    {
+        m_n = {.x = 0.0f, .y = 0.0f, .z = 0.0f};
+    }
+    else
+    {
+        m_n = m_n / length;
+    }
+
+    m_a = length * edge_weight;
+
+    m_nn.xx = m_a - m_a * m_n.x * m_n.x;
+    m_nn.yy = m_a - m_a * m_n.y * m_n.y;
+    m_nn.zz = m_a - m_a * m_n.z * m_n.z;
+    m_nn.xy = -m_a * m_n.x * m_n.y;
+    m_nn.xz = -m_a * m_n.x * m_n.z;
+    m_nn.yz = -m_a * m_n.y * m_n.z;
+}
+
 void quadric::set(
     const vec3f& p0,
     const vec3f& p1,
@@ -21,7 +45,7 @@ void quadric::set(
     float length = vector::length(n);
     if (length < 1e-12f)
     {
-        n = {0.0f, 0.0f, 0.0f};
+        n = {.x = 0.0f, .y = 0.0f, .z = 0.0f};
     }
     else
     {
@@ -40,10 +64,11 @@ void quadric::set(
     m_dn = n * distance;
     m_dd = distance * distance;
 
-    mat3f m = {
-        {v01.x, v01.y, v01.z},
-        {v02.x, v02.y, v02.z},
-        {n.x, n.y, n.z},
+    mat4f m = {
+        {.x = p0.x, .y = p0.y, .z = p0.z, .w = 1.0f},
+        {.x = p1.x, .y = p1.y, .z = p1.z, .w = 1.0f},
+        {.x = p2.x, .y = p2.y, .z = p2.z, .w = 1.0f},
+        {.x = n.x, .y = n.y, .z = n.z, .w = 0.0f},
     };
 
     float det;
@@ -64,15 +89,16 @@ void quadric::set(
 
         if (std::abs(det) > 1e-8f)
         {
-            vec3f s = {s1 - s0, s2 - s0, 0.0f};
-            g[i] = matrix::mul(m, s);
+            vec4f s = {s0, s1, s2, 0.0f};
+            vec4f gd = matrix::mul(m, s);
+            g[i] = gd;
+            d[i] = gd.w;
         }
         else
         {
-            g[i] = {0.0f, 0.0f, 0.0f};
+            g[i] = {.x = 0.0f, .y = 0.0f, .z = 0.0f};
+            d[i] = s0;
         }
-
-        d[i] = s0 - vector::dot(g[i], p0);
 
         m_nn.xx += g[i].x * g[i].x;
         m_nn.xy += g[i].x * g[i].y;
@@ -95,36 +121,6 @@ void quadric::set(
     }
 
     assert(!std::isnan(m_nn.xx));
-}
-
-void quadric::set(const vec3f& p0, const vec3f& p1, const vec3f& face_normal, float edge_weight)
-{
-    vec3f v01 = p1 - p0;
-
-    vec3f n = vector::cross(v01, face_normal);
-    float length = vector::length(n);
-    if (length < 1e-12f)
-    {
-        n = {0.0f, 0.0f, 0.0f};
-    }
-    else
-    {
-        n = n / length;
-    }
-
-    m_a = length * edge_weight;
-
-    m_nn.xx = m_a * n.x * n.x;
-    m_nn.xy = m_a * n.x * n.y;
-    m_nn.xz = m_a * n.x * n.z;
-    m_nn.yy = m_a * n.y * n.y;
-    m_nn.yz = m_a * n.y * n.z;
-    m_nn.zz = m_a * n.z * n.z;
-
-    float distance = -vector::dot(p0, n);
-    m_dn = n * distance * m_a;
-    m_dd = distance * distance * m_a;
-    assert(m_nn.xx < 50000.0f);
 }
 
 void quadric::set(const quadric& other, std::uint32_t attribute_count)
@@ -167,6 +163,15 @@ void quadric::add(const quadric& other, std::uint32_t attribute_count)
     m_a += other.m_a;
 }
 
+void quadric::add(const quadric_edge& other, const vec3f& p0)
+{
+    m_nn += other.m_nn;
+
+    float distance = -vector::dot(p0, other.m_n);
+    m_dn += other.m_a * -p0 - other.m_a * distance * other.m_n;
+    m_dd += other.m_a * vector::dot(p0, p0) - other.m_a * distance * distance;
+}
+
 float quadric::evaluate(
     const vec3f& position,
     float* attributes,
@@ -176,7 +181,7 @@ float quadric::evaluate(
 
     // Q(v) = vt*A*v + 2*bt*v + c
     float error = vector::dot(position, matrix::mul(static_cast<mat3f>(m_nn), position)) +
-                  2.0f * vector::dot(position, m_dn) + m_dd;
+                  (2.0f * vector::dot(position, m_dn)) + m_dd;
 
     const auto* g = get_g(attribute_count);
     const auto* d = get_d(attribute_count);

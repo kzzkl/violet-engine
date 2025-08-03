@@ -55,11 +55,11 @@ box_geometry::box_geometry(
         std::uint32_t vertex_counter = 0;
         for (int i = 0; i < grid_y1; i++)
         {
-            const float y = static_cast<float>(i) * segment_height - height_half;
+            const float y = (static_cast<float>(i) * segment_height) - height_half;
 
             for (int j = 0; j < grid_x1; j++)
             {
-                const float x = static_cast<float>(j) * segment_width - width_half;
+                const float x = (static_cast<float>(j) * segment_width) - width_half;
 
                 vec3f position;
                 position[u] = x * udir;
@@ -86,18 +86,18 @@ box_geometry::box_geometry(
         {
             for (int j = 0; j < grid_x; j++)
             {
-                const std::uint32_t a = vertex_offset + j + grid_x1 * i;
-                const std::uint32_t b = vertex_offset + j + grid_x1 * (i + 1);
-                const std::uint32_t c = vertex_offset + (j + 1) + grid_x1 * (i + 1);
-                const std::uint32_t d = vertex_offset + (j + 1) + grid_x1 * i;
+                const std::uint32_t a = vertex_offset + j + (grid_x1 * i);
+                const std::uint32_t b = vertex_offset + j + (grid_x1 * (i + 1));
+                const std::uint32_t c = vertex_offset + (j + 1) + (grid_x1 * (i + 1));
+                const std::uint32_t d = vertex_offset + (j + 1) + (grid_x1 * i);
 
                 indexes.push_back(a);
-                indexes.push_back(b);
                 indexes.push_back(d);
+                indexes.push_back(b);
 
                 indexes.push_back(b);
-                indexes.push_back(c);
                 indexes.push_back(d);
+                indexes.push_back(c);
             }
         }
 

@@ -3,6 +3,7 @@
 #include "components/mesh_component.hpp"
 #include "components/orbit_control_component.hpp"
 #include "components/scene_component.hpp"
+#include "components/skybox_component.hpp"
 #include "components/transform_component.hpp"
 #include "control/control_system.hpp"
 #include "deferred_renderer_imgui.hpp"
@@ -14,6 +15,7 @@
 #include "graphics/materials/physical_material.hpp"
 #include "graphics/materials/unlit_material.hpp"
 #include "graphics/renderers/features/taa_render_feature.hpp"
+#include "graphics/skybox.hpp"
 #include "graphics/tools/geometry_tool.hpp"
 #include "imgui.h"
 #include "imgui_system.hpp"
@@ -67,7 +69,7 @@ public:
                 });
 
         initialize_render();
-        initialize_scene(config["model"]);
+        initialize_scene(config["model"], config["skybox"]);
 
         resize();
 
@@ -83,20 +85,26 @@ private:
         });
     }
 
-    void initialize_scene(std::string_view model_path)
+    void initialize_scene(std::string_view model_path, std::string_view skybox_path)
     {
         auto& world = get_world();
 
-        m_light = world.create();
-        world.add_component<transform_component, light_component, scene_component>(m_light);
+        m_skybox = std::make_unique<skybox>(skybox_path);
 
-        auto& light_transform = world.get_component<transform_component>(m_light);
+        entity scene_skybox = world.create();
+        world.add_component<transform_component, skybox_component, scene_component>(scene_skybox);
+        auto& skybox = world.get_component<skybox_component>(scene_skybox);
+        skybox.skybox = m_skybox.get();
+
+        entity light = world.create();
+        world.add_component<transform_component, light_component, scene_component>(light);
+
+        auto& light_transform = world.get_component<transform_component>(light);
         light_transform.set_position({10.0f, 10.0f, 10.0f});
         light_transform.lookat({0.0f, 0.0f, 0.0f});
 
-        auto& main_light = world.get_component<light_component>(m_light);
+        auto& main_light = world.get_component<light_component>(light);
         main_light.type = LIGHT_DIRECTIONAL;
-        main_light.color = {1.0f, 1.0f, 1.0f};
 
         m_camera = world.create();
         world.add_component<
@@ -117,11 +125,11 @@ private:
         main_camera.render_target = m_swapchain.get();
 
         // Model.
-        m_material = std::make_unique<unlit_material>(
+        m_line_material = std::make_unique<unlit_material>(
             RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
             RHI_CULL_MODE_NONE,
             RHI_POLYGON_MODE_LINE);
-        // m_material = std::make_unique<physical_material>();
+        m_material = std::make_unique<physical_material>();
 
         if (!model_path.empty())
         {
@@ -144,35 +152,40 @@ private:
                         submesh.index_count);
                 }
 
-                const auto& material_data = result->materials[0];
-
-                auto material = std::make_unique<physical_material>();
-                material->set_albedo(material_data.albedo);
-                material->set_roughness(material_data.roughness);
-                material->set_metallic(material_data.metallic);
-                material->set_emissive(material_data.emissive);
-
-                if (material_data.albedo_texture != nullptr)
+                if (!result->materials.empty())
                 {
-                    material->set_albedo(material_data.albedo_texture);
-                }
+                    const auto& material_data = result->materials[0];
 
-                if (material_data.roughness_metallic_texture != nullptr)
-                {
-                    material->set_roughness_metallic(material_data.roughness_metallic_texture);
-                }
+                    auto material = std::make_unique<physical_material>();
+                    material->set_albedo(material_data.albedo);
+                    material->set_roughness(material_data.roughness);
+                    material->set_metallic(material_data.metallic);
+                    material->set_emissive(material_data.emissive);
 
-                if (material_data.emissive_texture != nullptr)
-                {
-                    material->set_emissive(material_data.emissive_texture);
-                }
+                    if (material_data.albedo_texture != nullptr)
+                    {
+                        material->set_albedo(material_data.albedo_texture);
+                    }
 
-                if (material_data.normal_texture != nullptr)
-                {
-                    material->set_normal(material_data.normal_texture);
-                }
+                    if (material_data.roughness_metallic_texture != nullptr)
+                    {
+                        material->set_roughness_metallic(material_data.roughness_metallic_texture);
+                    }
 
-                m_material = std::move(material);
+                    if (material_data.emissive_texture != nullptr)
+                    {
+                        material->set_emissive(material_data.emissive_texture);
+                    }
+
+                    if (material_data.normal_texture != nullptr)
+                    {
+                        material->set_normal(material_data.normal_texture);
+                    }
+
+                    m_material = std::move(material);
+
+                    m_textures = std::move(result->textures);
+                }
             }
             else
             {
@@ -181,9 +194,9 @@ private:
         }
         else
         {
-            m_original_geometry = std::make_unique<sphere_geometry>(0.5f, 32, 16);
+            // m_original_geometry = std::make_unique<sphere_geometry>(0.5f, 32, 16);
             // m_original_geometry = std::make_unique<box_geometry>(0.5f, 0.5f, 0.5f, 3, 3, 3);
-            // m_original_geometry = std::make_unique<plane_geometry>(1.0f, 1.0f, 5, 5);
+            m_original_geometry = std::make_unique<plane_geometry>(1.0f, 1.0f, 2, 2);
         }
 
         m_model = world.create();
@@ -292,9 +305,39 @@ private:
             m_edge_geometry->clear_submeshes();
             m_edge_geometry->add_submesh(0, 0, edge_indexes.size());
         }
+
+        static bool show_edge = false;
+        if (ImGui::Checkbox("Edge", &show_edge))
+        {
+            auto& mesh = world.get_component<mesh_component>(m_model);
+            if (show_edge)
+            {
+                mesh.submeshes.clear();
+            }
+            else
+            {
+                mesh.submeshes.push_back({
+                    .index = 0,
+                    .material = m_material.get(),
+                });
+            }
+        }
+
+        static bool show_line = false;
+        if (ImGui::Checkbox("Line", &show_line))
+        {
+            auto& mesh = world.get_component<mesh_component>(m_model);
+            if (show_line)
+            {
+                mesh.submeshes[0].material = m_line_material.get();
+            }
+            else
+            {
+                mesh.submeshes[0].material = m_material.get();
+            }
+        }
     }
 
-    entity m_light;
     entity m_camera;
     entity m_model;
 
@@ -304,6 +347,12 @@ private:
 
     std::unique_ptr<unlit_material> m_edge_material;
     std::unique_ptr<geometry> m_edge_geometry;
+
+    std::unique_ptr<unlit_material> m_line_material;
+
+    std::vector<std::unique_ptr<texture_2d>> m_textures;
+
+    std::unique_ptr<skybox> m_skybox;
 
     rhi_ptr<rhi_swapchain> m_swapchain;
 

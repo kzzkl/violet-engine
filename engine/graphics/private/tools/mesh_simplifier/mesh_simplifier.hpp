@@ -120,10 +120,12 @@ private:
         std::vector<std::uint32_t>& adjacent_triangles);
 
     quadric_pool get_wedge_quadrics(
+        const vec3f& p0,
+        const vec3f& p1,
         const std::vector<std::uint32_t>& triangles,
         std::uint32_t* triangle_to_wedge = nullptr);
 
-    void update_corner_quadric(std::uint32_t corner);
+    void update_edge_quadric(std::uint32_t corner);
 
     float* get_attributes(std::uint32_t index)
     {
@@ -152,7 +154,7 @@ private:
     std::unordered_multimap<vec3f, std::uint32_t, vertex_hash> m_vertex_map;
     std::unordered_multimap<vec3f, std::uint32_t, vertex_hash> m_corner_map;
     std::vector<corner_flags> m_corner_flags;
-    std::vector<quadric> m_corner_quadrics;
+    std::vector<quadric_edge> m_edge_quadrics;
 
     std::vector<edge> m_edges;
     std::unordered_multimap<vec3f, std::uint32_t, vertex_hash> m_edge_map0;

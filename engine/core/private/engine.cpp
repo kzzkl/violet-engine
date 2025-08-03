@@ -2,7 +2,9 @@
 #include "common/log.hpp"
 #include "engine_context.hpp"
 #include "task/task_graph_printer.hpp"
+#include <algorithm>
 #include <fstream>
+#include <ranges>
 
 namespace violet
 {
@@ -128,12 +130,11 @@ void application::run()
     world.clear();
 
     // shutdown
-    std::for_each(
-        m_systems.rbegin(),
-        m_systems.rend(),
+    std::ranges::for_each(
+        std::ranges::reverse_view(m_systems),
         [](auto& system)
         {
-            log::info("System shutdown: {}.", system->get_name());
+            log::info("[engine] system shutdown: {}.", system->get_name());
             system->shutdown();
             system = nullptr;
         });
@@ -150,11 +151,11 @@ void application::install(std::size_t index, std::unique_ptr<system>&& system)
     system->install(*this);
     if (!system->initialize(m_config[system->get_name().data()]))
     {
-        throw std::runtime_error(system->get_name() + " initialize failed");
+        throw std::runtime_error(system->get_name() + " initialize failed.");
     }
 
     m_context->set_system(index, system.get());
-    log::info("System installed successfully: {}.", system->get_name());
+    log::info("[engine] {} installed successfully.", system->get_name());
     m_systems.push_back(std::move(system));
 }
 
@@ -175,11 +176,11 @@ void application::uninstall(std::size_t index)
             }
         }
 
-        log::info("System uninstalled successfully: {}.", system->get_name());
+        log::info("[engine] {} uninstalled successfully.", system->get_name());
     }
     else
     {
-        log::warn("The system is not installed.");
+        log::warn("[engine] {} is not installed.", system->get_name());
     }
 }
 

@@ -1,5 +1,6 @@
 #include "gltf_loader.hpp"
 #include "graphics/tools/geometry_tool.hpp"
+#include <algorithm>
 #include <filesystem>
 #include <iostream>
 
@@ -19,8 +20,7 @@ std::uint32_t load_attribute(
     std::string_view name,
     std::vector<T>& attribute)
 {
-    const tinygltf::Accessor& accessor =
-        model.accessors[primitive.attributes.find(name.data())->second];
+    const auto& accessor = model.accessors[primitive.attributes.at(std::string(name))];
 
     assert(
         static_cast<std::size_t>(
@@ -45,9 +45,8 @@ std::uint32_t load_indexes(
     const tinygltf::Primitive& primitive,
     std::vector<T>& indexes)
 {
-    const tinygltf::Accessor& accessor = model.accessors[primitive.indices];
-
-    const tinygltf::BufferView& buffer_view = model.bufferViews[accessor.bufferView];
+    const auto& accessor = model.accessors[primitive.indices];
+    const auto& buffer_view = model.bufferViews[accessor.bufferView];
 
     const void* buffer =
         &(model.buffers[buffer_view.buffer].data[accessor.byteOffset + buffer_view.byteOffset]);
@@ -94,21 +93,21 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
     bool result = false;
     if (path.ends_with(".gltf"))
     {
-        result = loader.LoadASCIIFromFile(&model, &error, &warn, path.data());
+        result = loader.LoadASCIIFromFile(&model, &error, &warn, std::string(path));
     }
     else if (path.ends_with(".glb"))
     {
-        result = loader.LoadBinaryFromFile(&model, &error, &warn, path.data());
+        result = loader.LoadBinaryFromFile(&model, &error, &warn, std::string(path));
     }
 
     if (!warn.empty())
     {
-        std::cout << "WARN: " << warn << std::endl;
+        std::cout << "WARN: " << warn << '\n';
     }
 
     if (!error.empty())
     {
-        std::cout << "ERROR: " << error << std::endl;
+        std::cout << "ERROR: " << error << '\n';
     }
 
     if (!result)
@@ -196,9 +195,9 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
         }
 
         data.emissive = {
-            static_cast<float>(material.emissiveFactor[0]),
-            static_cast<float>(material.emissiveFactor[1]),
-            static_cast<float>(material.emissiveFactor[2]),
+            .x = static_cast<float>(material.emissiveFactor[0]),
+            .y = static_cast<float>(material.emissiveFactor[1]),
+            .z = static_cast<float>(material.emissiveFactor[2]),
         };
         if (material.emissiveTexture.index != -1)
         {
@@ -232,7 +231,7 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
             std::uint32_t vertex_count =
                 load_attribute(model, primitive, "POSITION", geometry_data.positions);
 
-            if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end())
+            if (primitive.attributes.contains("TEXCOORD_0"))
             {
                 load_attribute(model, primitive, "TEXCOORD_0", geometry_data.texcoords);
             }
@@ -241,22 +240,24 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
                 geometry_data.texcoords.resize(geometry_data.positions.size());
             }
 
-            if (primitive.attributes.find("NORMAL") != primitive.attributes.end())
+            if (primitive.attributes.contains("NORMAL"))
             {
                 load_attribute(model, primitive, "NORMAL", geometry_data.normals);
             }
             else
             {
-                geometry_data.normals.resize(geometry_data.positions.size());
+                geometry_data.normals.resize(
+                    geometry_data.positions.size(),
+                    vec3f(0.0f, 1.0f, 0.0f));
             }
 
-            if (primitive.attributes.find("TANGENT") != primitive.attributes.end())
+            if (primitive.attributes.contains("TANGENT"))
             {
                 load_attribute(model, primitive, "TANGENT", geometry_data.tangents);
             }
             else
             {
-                geometry_data.tangents = geometry_tool::generate_tangents(
+                auto tangents = geometry_tool::generate_tangents(
                     std::span(
                         geometry_data.positions.begin() + vertex_offset,
                         geometry_data.positions.begin() + vertex_offset + vertex_count),
@@ -269,6 +270,11 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
                     std::span(
                         geometry_data.indexes.begin() + index_offset,
                         geometry_data.indexes.begin() + index_offset + index_count));
+
+                geometry_data.tangents.insert(
+                    geometry_data.tangents.end(),
+                    tangents.begin(),
+                    tangents.end());
             }
 
             geometry_data.submeshes.push_back({
@@ -288,9 +294,8 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
                     geometry_data.normals,
                     geometry_data.texcoords,
                     geometry_data.indexes);
-                std::transform(
-                    temp.begin(),
-                    temp.end(),
+                std::ranges::transform(
+                    temp,
                     geometry_data.tangents.begin(),
                     [](const vec3f& t) -> vec4f
                     {
@@ -309,6 +314,23 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
             geometry_data.texcoords.resize(geometry_data.positions.size());
         }
 
+        // Convert to left-handed coordinate system.
+        for (vec3f& position : geometry_data.positions)
+        {
+            position.x = -position.x;
+        }
+
+        for (vec3f& normal : geometry_data.normals)
+        {
+            normal.x = -normal.x;
+        }
+
+        for (vec4f& tangent : geometry_data.tangents)
+        {
+            tangent.x = -tangent.x;
+            tangent.w = -tangent.w;
+        }
+
         mesh_data mesh_data = {
             .geometry = static_cast<std::uint32_t>(scene_data.geometries.size()),
         };
@@ -324,7 +346,7 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
     }
 
     // Load nodes
-    scene_data.nodes.resize(model.nodes.size() + 1);
+    scene_data.nodes.resize(model.nodes.size());
     for (std::size_t i = 0; i < model.nodes.size(); ++i)
     {
         for (int child : model.nodes[i].children)
@@ -357,17 +379,6 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
             scene_data.nodes[i].scale.z = static_cast<float>(model.nodes[i].scale[2]);
         }
     }
-
-    // Convert to left-handed coordinate system.
-    for (std::size_t i = 0; i < model.nodes.size(); ++i)
-    {
-        if (scene_data.nodes[i].parent == -1)
-        {
-            scene_data.nodes[i].parent = static_cast<std::int32_t>(scene_data.nodes.size() - 1);
-        }
-    }
-
-    scene_data.nodes.back().scale.x = -1.0f;
 
     return scene_data;
 }

@@ -76,7 +76,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     float falloff_mul = -1.0 / (constant.radius - falloff + 0.01);
     float falloff_add = constant.radius / (constant.radius - falloff + 0.01);
 
-    float2 pixel_size = 1.0 / float2(constant.width, constant.height);
+    float2 texel_size = 1.0 / float2(constant.width, constant.height);
 
     float min_s = 1.3 / radius_in_pixels;
 
@@ -118,7 +118,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
             float2 offset = s * omega;
             float level = log2(length(offset)) - 3.3;
-            offset = round(offset) * pixel_size;
+            offset = round(offset) * texel_size;
 
             // Calculate h1.
             float p1_depth = hzb.SampleLevel(point_clamp_sampler, texcoord - offset, level);

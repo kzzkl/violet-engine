@@ -12,7 +12,7 @@ namespace violet
 {
 namespace
 {
-enum cluster_flag : std::uint32_t
+enum cluster_flag : std::uint8_t
 {
     CLUSTER_HAS_NORMAL = 1 << 0,
     CLUSTER_HAS_TANGENT = 1 << 1,
@@ -23,7 +23,7 @@ using cluster_flags = std::uint32_t;
 
 bool geometry_tool::cluster_output::load(std::string_view path)
 {
-    std::ifstream fin(path.data(), std::ios::binary);
+    std::ifstream fin(std::string(path), std::ios::binary);
     if (!fin.is_open())
     {
         return false;
@@ -117,7 +117,7 @@ bool geometry_tool::cluster_output::load(std::string_view path)
 
 bool geometry_tool::cluster_output::save(std::string_view path) const
 {
-    std::ofstream fout(path.data(), std::ios::binary);
+    std::ofstream fout(std::string(path), std::ios::binary);
     if (!fout.is_open())
     {
         return false;
@@ -240,7 +240,7 @@ std::vector<vec4f> geometry_tool::generate_tangents(
         [](const SMikkTSpaceContext* context, float* out, const int face, const int vert)
     {
         const auto* ctx = static_cast<const tangent_context*>(context);
-        const vec3f& position = ctx->positions[ctx->indexes[face * 3 + vert]];
+        const vec3f& position = ctx->positions[ctx->indexes[(face * 3) + vert]];
         out[0] = position.x;
         out[1] = position.y;
         out[2] = position.z;
@@ -249,7 +249,7 @@ std::vector<vec4f> geometry_tool::generate_tangents(
         [](const SMikkTSpaceContext* context, float* out, const int face, const int vert)
     {
         const auto* ctx = static_cast<const tangent_context*>(context);
-        const vec3f& normal = ctx->normals[ctx->indexes[face * 3 + vert]];
+        const vec3f& normal = ctx->normals[ctx->indexes[(face * 3) + vert]];
         out[0] = normal.x;
         out[1] = normal.y;
         out[2] = normal.z;
@@ -258,7 +258,7 @@ std::vector<vec4f> geometry_tool::generate_tangents(
         [](const SMikkTSpaceContext* context, float* out, const int face, const int vert)
     {
         const auto* ctx = static_cast<const tangent_context*>(context);
-        const vec2f& texcoord = ctx->texcoords[ctx->indexes[face * 3 + vert]];
+        const vec2f& texcoord = ctx->texcoords[ctx->indexes[(face * 3) + vert]];
         out[0] = texcoord.x;
         out[1] = texcoord.y;
     };
@@ -269,7 +269,7 @@ std::vector<vec4f> geometry_tool::generate_tangents(
                                     const int vert)
     {
         const auto* ctx = static_cast<const tangent_context*>(context);
-        vec4f& tangent = ctx->tangents[ctx->indexes[face * 3 + vert]];
+        vec4f& tangent = ctx->tangents[ctx->indexes[(face * 3) + vert]];
         tangent.x = in[0];
         tangent.y = in[1];
         tangent.z = in[2];
@@ -414,7 +414,7 @@ geometry_tool::simplify_output geometry_tool::simplify(const simplify_input& inp
             {
                 std::memcpy(
                     attributes.data() + attribute_offset,
-                    data + i * count,
+                    data + (i * count),
                     count * sizeof(float));
                 attribute_offset += count;
             }
@@ -438,7 +438,7 @@ geometry_tool::simplify_output geometry_tool::simplify(const simplify_input& inp
                     tangent = vector::normalize(tangent);
                     attributes += 3;
 
-                    auto& sign = *reinterpret_cast<float*>(attributes);
+                    auto& sign = *attributes;
                     sign = sign < 0.0f ? -1.0f : 1.0f;
                     attributes += 1;
                 }
@@ -497,6 +497,10 @@ geometry_tool::cluster_output geometry_tool::generate_clusters(const cluster_inp
         std::unordered_map<std::uint32_t, std::uint32_t> vertex_remap;
 
         std::vector<vec3f> positions;
+        std::vector<vec3f> normals;
+        std::vector<vec4f> tangents;
+        std::vector<vec2f> texcoords;
+
         std::vector<std::uint32_t> indexes;
         indexes.reserve(submesh.index_count);
 
@@ -509,6 +513,22 @@ geometry_tool::cluster_output geometry_tool::generate_clusters(const cluster_inp
             if (iter == vertex_remap.end())
             {
                 positions.push_back(input.positions[vertex_index]);
+
+                if (!input.normals.empty())
+                {
+                    normals.push_back(input.normals[vertex_index]);
+                }
+
+                if (!input.tangents.empty())
+                {
+                    tangents.push_back(input.tangents[vertex_index]);
+                }
+
+                if (!input.texcoords.empty())
+                {
+                    texcoords.push_back(input.texcoords[vertex_index]);
+                }
+
                 vertex_remap[vertex_index] = static_cast<std::uint32_t>(positions.size() - 1);
                 vertex_index = static_cast<std::uint32_t>(positions.size() - 1);
             }
@@ -524,19 +544,19 @@ geometry_tool::cluster_output geometry_tool::generate_clusters(const cluster_inp
         builder.set_positions(positions);
         builder.set_indexes(indexes);
 
-        if (!input.normals.empty())
+        if (!normals.empty())
         {
-            builder.set_normals(input.normals);
+            builder.set_normals(normals);
         }
 
-        if (!input.tangents.empty())
+        if (!tangents.empty())
         {
-            builder.set_tangents(input.tangents);
+            builder.set_tangents(tangents);
         }
 
-        if (!input.texcoords.empty())
+        if (!texcoords.empty())
         {
-            builder.set_texcoords(input.texcoords);
+            builder.set_texcoords(texcoords);
         }
 
         builder.build();

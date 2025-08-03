@@ -75,11 +75,24 @@ struct symmetric_matrix
     operator mat3f() const noexcept
     {
         return {
-            {xx, xy, xz},
-            {xy, yy, yz},
-            {xz, yz, zz},
+            {.x = xx, .y = xy, .z = xz},
+            {.x = xy, .y = yy, .z = yz},
+            {.x = xz, .y = yz, .z = zz},
         };
     }
+};
+
+class quadric_edge
+{
+public:
+    void set(const vec3f& p0, const vec3f& p1, float edge_weight);
+
+private:
+    symmetric_matrix m_nn;
+    vec3f m_n;
+    float m_a;
+
+    friend class quadric;
 };
 
 class quadric
@@ -93,15 +106,20 @@ public:
         const float* a1,
         const float* a2,
         std::span<const float> attribute_weights);
-    void set(const vec3f& p0, const vec3f& p1, const vec3f& face_normal, float edge_weight);
     void set(const quadric& other, std::uint32_t attribute_count);
 
     void add(const quadric& other, std::uint32_t attribute_count);
+    void add(const quadric_edge& other, const vec3f& p0);
 
     float evaluate(
         const vec3f& position,
         float* attributes,
         std::span<const float> attribute_weights) const;
+
+    float get_surface_area() const noexcept
+    {
+        return m_a;
+    }
 
 private:
     vec3f* get_g(std::uint32_t attribute_count) noexcept
@@ -166,7 +184,7 @@ public:
     {
         std::size_t quadric_size = get_quadric_size();
         assert(quadric_size * index < m_data.size());
-        return *reinterpret_cast<quadric*>(m_data.data() + quadric_size * index);
+        return *reinterpret_cast<quadric*>(m_data.data() + (quadric_size * index));
     }
 
     void resize(std::size_t size, std::uint32_t attribute_count);

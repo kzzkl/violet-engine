@@ -52,7 +52,7 @@ void skybox_pass::add(render_graph& graph, const parameter& parameter)
                 .vertex_shader = device.get_shader<skybox_vs>(),
                 .fragment_shader = device.get_shader<skybox_fs>(),
                 .depth_stencil_state =
-                    device.get_depth_stencil_state<true, false, RHI_COMPARE_OP_GREATER>(),
+                    device.get_depth_stencil_state<true, false, RHI_COMPARE_OP_EQUAL>(),
             };
 
             command.set_pipeline(pipeline);

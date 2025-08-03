@@ -35,7 +35,7 @@ std::vector<std::uint8_t> shader_compiler::compile(
 
     if (error_msg && error_msg->GetStringLength())
     {
-        log::error("Shader compilation failed: {}", error_msg->GetStringPointer());
+        log::error("[graphics] shader compilation failed: {}", error_msg->GetStringPointer());
         check(hr);
     }
 

@@ -53,7 +53,7 @@ void mesh_system::update(render_scene_manager& scene_manager)
                     mesh_meta.scene = render_scene;
                 }
 
-                render_scene->set_mesh_matrix(mesh_meta.mesh, transform.matrix);
+                render_scene->set_mesh_matrix(mesh_meta.mesh, transform.matrix, transform.scale);
             },
             [this](auto& view)
             {

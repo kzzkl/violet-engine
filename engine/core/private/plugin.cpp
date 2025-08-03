@@ -32,11 +32,11 @@ bool dynamic_library_win32::load(std::string_view path)
     m_lib = LoadLibraryExA(path.data(), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
     if (!m_lib)
     {
-        log::error("Failed to load dynamic lib: path[{}] error[{}]", path, GetLastError());
+        log::error("[engine] failed to load dynamic lib: path[{}] error[{}]", path, GetLastError());
         return false;
     }
 
-    log::debug("The dynamic library was loaded successfully: {}", path);
+    log::debug("[engine] the dynamic library was loaded successfully: {}", path);
 
     return true;
 }
@@ -64,20 +64,20 @@ bool plugin::load(std::string_view path)
 {
     if (m_loaded)
     {
-        log::error("The plugin has been loaded before.");
+        log::error("[engine] [{}] has been loaded before.", m_name);
         return false;
     }
 
     if (!m_library->load(path))
     {
-        log::error("Failed to load plugin: name[{}] path[{}]", m_name, path);
+        log::error("[engine] failed to load plugin: name[{}] path[{}].", m_name, path);
         return false;
     }
 
     auto get_info = reinterpret_cast<get_plugin_info>(m_library->find_symbol("get_plugin_info"));
     if (!get_info)
     {
-        log::error("Symbol not found in dynamic library: get_plugin_info");
+        log::error("[engine] symbol not found in dynamic library: get_plugin_info.");
         m_library->unload();
         return false;
     }
@@ -88,7 +88,7 @@ bool plugin::load(std::string_view path)
 
     if (!on_load())
     {
-        log::error("Plugin load failed");
+        log::error("[engine] plugin load failed.");
         m_library->unload();
         return false;
     }

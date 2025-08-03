@@ -1,10 +1,10 @@
 #include "vk_context.hpp"
+#include "common/log.hpp"
 #include "vk_bindless.hpp"
 #include "vk_command.hpp"
 #include "vk_framebuffer.hpp"
 #include "vk_layout.hpp"
 #include "vk_parameter.hpp"
-#include <iostream>
 #include <set>
 
 #ifdef _WIN32
@@ -21,7 +21,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
     const VkDebugUtilsMessengerCallbackDataEXT* data,
     void* user_data)
 {
-    std::cout << "validation layer: " << data->pMessage << std::endl;
+    log::warn("[vulkan] validation: {}", data->pMessage);
     return VK_FALSE;
 }
 
@@ -202,13 +202,14 @@ void vk_context::end_frame()
 
 VkDescriptorSet vk_context::allocate_descriptor_set(VkDescriptorSetLayout layout)
 {
-    VkDescriptorSetAllocateInfo allocate_info = {};
-    allocate_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocate_info.descriptorPool = m_descriptor_pool;
-    allocate_info.descriptorSetCount = 1;
-    allocate_info.pSetLayouts = &layout;
+    VkDescriptorSetAllocateInfo allocate_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = m_descriptor_pool,
+        .descriptorSetCount = 1,
+        .pSetLayouts = &layout,
+    };
 
-    std::lock_guard lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
 
     VkDescriptorSet result;
     vk_check(vkAllocateDescriptorSets(m_device, &allocate_info, &result));

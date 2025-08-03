@@ -24,7 +24,7 @@ struct shader_parameter
 
     consteval operator rhi_parameter_desc() const
     {
-        return {bindings, binding_count};
+        return {.bindings = bindings, .binding_count = binding_count};
     }
 
     rhi_parameter_binding bindings[rhi_constants::max_parameter_bindings]{};
@@ -82,7 +82,6 @@ struct shader
     {
         vec4f bounding_sphere;
         vec4f lod_bounds;
-
         float lod_error;
         std::uint32_t index_offset;
         std::uint32_t index_count;
@@ -109,6 +108,7 @@ struct shader
     struct mesh_data
     {
         mat4f matrix_m;
+        vec4f scale;
     };
 
     struct instance_data
@@ -231,6 +231,7 @@ struct shader_vs : public shader
     };
 
     static constexpr rhi_shader_stage_flag stage = RHI_SHADER_STAGE_VERTEX;
+    static constexpr std::string_view entry_point = "vs_main";
 };
 
 template <typename T>
@@ -239,16 +240,19 @@ concept has_inputs = std::is_same_v<std::decay_t<decltype(T::inputs)>, shader_vs
 struct shader_gs : public shader
 {
     static constexpr rhi_shader_stage_flag stage = RHI_SHADER_STAGE_GEOMETRY;
+    static constexpr std::string_view entry_point = "gs_main";
 };
 
 struct shader_fs : public shader
 {
     static constexpr rhi_shader_stage_flag stage = RHI_SHADER_STAGE_FRAGMENT;
+    static constexpr std::string_view entry_point = "fs_main";
 };
 
 struct shader_cs : public shader
 {
     static constexpr rhi_shader_stage_flag stage = RHI_SHADER_STAGE_COMPUTE;
+    static constexpr std::string_view entry_point = "cs_main";
 };
 
 struct fullscreen_vs : public shader_vs
@@ -259,9 +263,9 @@ struct fullscreen_vs : public shader_vs
 struct mesh_vs : public shader_vs
 {
     static constexpr parameter_layout parameters = {
-        {0, bindless},
-        {1, scene},
-        {2, camera},
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = scene},
+        {.space = 2, .desc = camera},
     };
 };
 
@@ -285,7 +289,7 @@ struct skinning_cs : public shader_cs
     };
 
     static constexpr parameter_layout parameters = {
-        {0, bindless},
+        {.space = 0, .desc = bindless},
     };
 };
 } // namespace violet

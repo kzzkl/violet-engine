@@ -45,7 +45,7 @@ concept is_sphere3 = requires(T v) {
 struct sphere
 {
     template <std::ranges::contiguous_range R>
-    static inline auto create(R&& points) noexcept
+    static auto create(R&& points) noexcept
         requires is_vec3<std::ranges::range_value_t<R>>
     {
         using value_type = std::ranges::range_value_t<R>::value_type;
@@ -107,7 +107,7 @@ struct sphere
     }
 
     template <std::ranges::contiguous_range R>
-    static inline auto create(R&& spheres) noexcept
+    static auto create(R&& spheres) noexcept
         requires is_sphere3<std::ranges::range_value_t<R>>
     {
         using sphere_type = std::ranges::range_value_t<R>;
@@ -164,7 +164,7 @@ struct sphere
     }
 
     template <typename T>
-    static inline void expand(sphere3<T>& sphere, const vec3<T>& point) noexcept
+    static void expand(sphere3<T>& sphere, const vec3<T>& point) noexcept
     {
         if (!sphere)
         {
@@ -178,7 +178,7 @@ struct sphere
     }
 
     template <typename T>
-    static inline void expand(sphere3<T>& sphere, const sphere3<T>& other) noexcept
+    static void expand(sphere3<T>& sphere, const sphere3<T>& other) noexcept
     {
         if (!sphere)
         {

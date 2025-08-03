@@ -53,7 +53,7 @@ void ecs_command_system::shutdown() {}
 
 world_command* ecs_command_system::allocate_command()
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
 
     if (m_free_commands.empty())
     {

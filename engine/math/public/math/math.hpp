@@ -37,7 +37,7 @@ static constexpr float RAD_TO_DEG = 180.0f / PI;
         temp = static_cast<float>(static_cast<int>(temp - 0.5f));
     }
 
-    float x = radians - math::TWO_PI * temp;
+    float x = radians - (math::TWO_PI * temp);
 
     float sign = 1.0f;
     if (x > math::HALF_PI)
@@ -62,9 +62,10 @@ static constexpr float RAD_TO_DEG = 180.0f / PI;
         x;
 
     float cos =
-        ((((-2.6051615e-07f * x2 + 2.4760495e-05f) * x2 - 0.0013888378f) * x2 + 0.041666638f) * x2 -
-         0.5f) *
-            x2 +
+        (((((-2.6051615e-07f * x2 + 2.4760495e-05f) * x2 - 0.0013888378f) * x2 + 0.041666638f) *
+              x2 -
+          0.5f) *
+         x2) +
         1.0f;
 
     return {sin, cos * sign};
@@ -72,7 +73,7 @@ static constexpr float RAD_TO_DEG = 180.0f / PI;
 
 [[nodiscard]] static inline float lerp(float a, float b, float t) noexcept
 {
-    return a + (b - a) * t;
+    return a + ((b - a) * t);
 }
 
 [[nodiscard]] static inline float clamp(float value, float min, float max)

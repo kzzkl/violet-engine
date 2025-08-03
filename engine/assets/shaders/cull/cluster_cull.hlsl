@@ -12,7 +12,8 @@ struct constant_data
     uint hzb_height;
     float4 frustum;
 
-    float throshold;
+    float threshold;
+    float lod_scale;
 
     uint cluster_buffer;
     uint cluster_node_buffer;
@@ -46,44 +47,42 @@ uint get_cluster_offset()
     return constant.max_cluster_nodes;
 }
 
-float2 get_projected_error(float4 lod_bounds, float min_error, float max_error)
-{
-    float3 center = lod_bounds.xyz;
-    float radius = lod_bounds.w;
-
-    float3 direction = normalize(center);
-    float3 near = center - direction * radius;
-    float3 far = center + direction * radius;
-
-    float near_d2 = dot(near, near);
-    float far_d2 = dot(far, far);
-
-    float min_error2 = min_error * min_error;
-    float max_error2 = max_error * max_error;
-
-    float scale = camera.height * 0.5 / tan(camera.fov * 0.5);
-
-    return float2(scale * min_error / sqrt(max(far_d2 - min_error2, 0.0)), scale * max_error / sqrt(max(near_d2 - max_error2, 0.0)));
-}
-
 bool check_cluster_node_lod(cluster_node_data cluster_node, mesh_data mesh)
 {
-    float4 lod_bounds = cluster_node.lod_bounds;
-    lod_bounds.xyz = mul(mesh.matrix_m, float4(lod_bounds.xyz, 1.0)).xyz;
-    lod_bounds.xyz = mul(camera.matrix_v, float4(lod_bounds.xyz, 1.0)).xyz;
+    float3 center = mul(camera.matrix_v, mul(mesh.matrix_m, float4(cluster_node.lod_bounds.xyz, 1.0))).xyz;
+    float radius = cluster_node.lod_bounds.w * mesh.scale.w;
 
-    float2 projected_error = get_projected_error(lod_bounds, cluster_node.min_lod_error, cluster_node.max_parent_lod_error);
-    return projected_error.x < constant.throshold && constant.throshold < projected_error.y;
+    float near = center.z - radius;
+    float far = center.z + radius;
+
+    if (near < camera.near)
+    {
+        return true;
+    }
+
+    float scale = constant.lod_scale * mesh.scale.w;
+
+    float min_error = scale * cluster_node.min_lod_error / far;
+    float max_error = scale * cluster_node.max_parent_lod_error / near;
+
+    return min_error <= constant.threshold && constant.threshold < max_error;
 }
 
 bool check_cluster_lod(cluster_data cluster, mesh_data mesh)
 {
-    float4 lod_bounds = cluster.lod_bounds;
-    lod_bounds.xyz = mul(mesh.matrix_m, float4(lod_bounds.xyz, 1.0)).xyz;
-    lod_bounds.xyz = mul(camera.matrix_v, float4(lod_bounds.xyz, 1.0)).xyz;
+    float3 center = mul(camera.matrix_v, mul(mesh.matrix_m, float4(cluster.lod_bounds.xyz, 1.0))).xyz;
+    float radius = cluster.lod_bounds.w * mesh.scale.w;
 
-    float projected_error = get_projected_error(lod_bounds, cluster.lod_error, cluster.lod_error).y;
-    return projected_error < constant.throshold;
+    float near = center.z - radius;
+    
+    // if camera inside lod sphere, use lod 0.
+    if (near < camera.near)
+    {
+        return cluster.lod_error == -1.0;
+    }
+
+    float lod_error = constant.lod_scale * cluster.lod_error * mesh.scale.w / near;
+    return lod_error <= constant.threshold;
 }
 
 bool load_group_cluster_node(uint group_index)
@@ -142,7 +141,7 @@ void process_cluster_node(uint group_index)
             SamplerState hzb_sampler = SamplerDescriptorHeap[constant.hzb_sampler];
 
             float4 sphere_ws = mul(mesh.matrix_m, float4(cluster_node.bounding_sphere.xyz, 1.0));
-            sphere_ws.w = cluster_node.bounding_sphere.w;
+            sphere_ws.w = cluster_node.bounding_sphere.w * mesh.scale.w;
 
             bounding_sphere_cull cull = bounding_sphere_cull::create(sphere_ws, camera);
             visible = cull.frustum_cull(constant.frustum) && cull.occlusion_cull(hzb, hzb_sampler, constant.hzb_width, constant.hzb_height);
@@ -205,7 +204,7 @@ void process_cluster(uint3 dtid)
         SamplerState hzb_sampler = SamplerDescriptorHeap[constant.hzb_sampler];
 
         float4 sphere_ws = mul(mesh.matrix_m, float4(cluster.bounding_sphere.xyz, 1.0));
-        sphere_ws.w = cluster.bounding_sphere.w;
+        sphere_ws.w = cluster.bounding_sphere.w * mesh.scale.w;
 
         bounding_sphere_cull cull = bounding_sphere_cull::create(sphere_ws, camera);
         visible = cull.frustum_cull(constant.frustum) && cull.occlusion_cull(hzb, hzb_sampler, constant.hzb_width, constant.hzb_height);

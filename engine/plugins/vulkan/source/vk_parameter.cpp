@@ -301,7 +301,7 @@ vk_parameter_manager::~vk_parameter_manager()
 
 void vk_parameter_manager::add_dirty_parameter(vk_parameter* parameter)
 {
-    std::lock_guard lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
 
     auto& queue = m_update_queues[m_context->get_frame_resource_index() % 2];
     queue.push_back(parameter);
@@ -309,7 +309,7 @@ void vk_parameter_manager::add_dirty_parameter(vk_parameter* parameter)
 
 void vk_parameter_manager::remove_dirty_parameter(vk_parameter* parameter)
 {
-    std::lock_guard lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
 
     for (auto& queue : m_update_queues)
     {
@@ -343,13 +343,13 @@ buffer_allocation vk_parameter_manager::allocate_uniform(std::size_t size)
         m_context->get_physical_device_properties().limits.minUniformBufferOffsetAlignment;
     size = (size + alignment - 1) & ~(alignment - 1);
 
-    std::lock_guard lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
     return m_uniform_allocator.allocate(size);
 }
 
 void vk_parameter_manager::free_uniform(buffer_allocation allocation)
 {
-    std::lock_guard lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
     m_uniform_allocator.free(allocation);
 }
 } // namespace violet::vk

@@ -18,6 +18,11 @@ material::~material()
 
 void material::update()
 {
+    if (!m_dirty)
+    {
+        return;
+    }
+
     auto* material_manager = render_device::instance().get_material_manager();
     material_manager->update_constant(m_id, get_constant_data(), get_constant_size());
 

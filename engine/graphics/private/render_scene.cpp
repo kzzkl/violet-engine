@@ -6,7 +6,6 @@
 #include "graphics/graphics_config.hpp"
 #include "graphics/material_manager.hpp"
 
-
 namespace violet
 {
 render_scene::render_scene()
@@ -45,10 +44,11 @@ void render_scene::remove_mesh(render_id mesh_id)
     m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
 }
 
-void render_scene::set_mesh_matrix(render_id mesh_id, const mat4f& matrix_m)
+void render_scene::set_mesh_matrix(render_id mesh_id, const mat4f& matrix_m, const vec3f& scale)
 {
     auto& mesh = m_meshes[mesh_id];
     mesh.matrix_m = matrix_m;
+    mesh.scale = scale;
 
     m_meshes.mark_dirty(mesh_id);
 }
@@ -152,8 +152,6 @@ void render_scene::set_light_data(
 
     m_lights.mark_dirty(light_id);
 }
-
-void set_light_shadow(render_id light_id, bool cast_shadow) {}
 
 void render_scene::set_skybox(
     texture_cube* skybox,
@@ -274,6 +272,7 @@ bool render_scene::update_mesh(gpu_buffer_uploader* uploader)
         {
             return {
                 .matrix_m = mesh.matrix_m,
+                .scale = {mesh.scale.x, mesh.scale.y, mesh.scale.z, vector::max(mesh.scale)},
             };
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)

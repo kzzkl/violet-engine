@@ -27,6 +27,7 @@ physical_material::physical_material()
         true,
         material_stencil_state<SHADING_MODEL_PHYSICAL>::value,
         material_stencil_state<SHADING_MODEL_PHYSICAL>::value>();
+    pipeline.rasterizer_state = device.get_rasterizer_state<RHI_CULL_MODE_BACK>();
 
     set_albedo({1.0f, 1.0f, 1.0f});
 }
