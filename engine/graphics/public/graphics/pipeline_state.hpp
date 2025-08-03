@@ -13,7 +13,7 @@ class rasterizer_state
 public:
     rhi_rasterizer_state* get_dynamic(rhi_cull_mode cull_mode, rhi_polygon_mode polygon_mode)
     {
-        std::lock_guard lock(m_mutex);
+        std::scoped_lock lock(m_mutex);
 
         rhi_rasterizer_state key = {
             .cull_mode = cull_mode,
@@ -93,7 +93,7 @@ public:
             state.attachments[i] = attachments[i];
         }
 
-        std::lock_guard lock(m_mutex);
+        std::scoped_lock lock(m_mutex);
 
         auto iter = m_states.find(state);
         if (iter != m_states.end())
@@ -179,7 +179,7 @@ public:
         rhi_stencil_state stencil_front = {},
         rhi_stencil_state stencil_back = {})
     {
-        std::lock_guard lock(m_mutex);
+        std::scoped_lock lock(m_mutex);
 
         rhi_depth_stencil_state state = {
             .depth_enable = depth_enable,

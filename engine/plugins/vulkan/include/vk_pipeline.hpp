@@ -18,11 +18,14 @@ public:
 
     virtual VkShaderStageFlagBits get_stage() const noexcept = 0;
 
-    virtual std::string_view get_entry_point() const noexcept = 0;
-
     VkShaderModule get_module() const noexcept
     {
         return m_module;
+    }
+
+    const std::string& get_entry_point() const noexcept
+    {
+        return m_entry_point;
     }
 
     std::uint32_t get_push_constant_size() const noexcept
@@ -37,6 +40,8 @@ public:
 
 private:
     VkShaderModule m_module{VK_NULL_HANDLE};
+
+    std::string m_entry_point;
 
     std::uint32_t m_push_constant_size;
     std::vector<parameter> m_parameters;
@@ -60,11 +65,6 @@ public:
         return VK_SHADER_STAGE_VERTEX_BIT;
     }
 
-    std::string_view get_entry_point() const noexcept override
-    {
-        return "vs_main";
-    }
-
     const std::vector<vertex_attribute>& get_vertex_attributes() const noexcept
     {
         return m_vertex_attributes;
@@ -83,11 +83,6 @@ public:
     {
         return VK_SHADER_STAGE_GEOMETRY_BIT;
     }
-
-    std::string_view get_entry_point() const noexcept override
-    {
-        return "gs_main";
-    }
 };
 
 class vk_fragment_shader : public vk_shader
@@ -99,11 +94,6 @@ public:
     {
         return VK_SHADER_STAGE_FRAGMENT_BIT;
     }
-
-    std::string_view get_entry_point() const noexcept override
-    {
-        return "fs_main";
-    }
 };
 
 class vk_compute_shader : public vk_shader
@@ -114,11 +104,6 @@ public:
     VkShaderStageFlagBits get_stage() const noexcept override
     {
         return VK_SHADER_STAGE_COMPUTE_BIT;
-    }
-
-    std::string_view get_entry_point() const noexcept override
-    {
-        return "cs_main";
     }
 };
 

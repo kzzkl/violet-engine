@@ -34,6 +34,7 @@ struct geometry_data
 struct mesh_data
 {
     float4x4 matrix_m;
+    float4 scale;
 };
 
 struct instance_data
@@ -204,9 +205,9 @@ float3 tonemap_invert(float3 color)
     return color / (1 - luminance(color));
 }
 
-float2 get_compute_texcoord(uint2 pixel_coord, uint width, uint height)
+float2 get_compute_texcoord(uint2 texel_coord, uint width, uint height)
 {
-    return (float2(pixel_coord) + 0.5) / float2(width, height);
+    return (float2(texel_coord) + 0.5) / float2(width, height);
 }
 
 #endif

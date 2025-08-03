@@ -37,7 +37,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     mesh_data mesh = meshes[instance.mesh_index];
 
     float4 sphere_ws = mul(mesh.matrix_m, float4(geometry.bounding_sphere.xyz, 1.0));
-    sphere_ws.w = geometry.bounding_sphere.w;
+    sphere_ws.w = geometry.bounding_sphere.w * mesh.scale.w;
 
     bounding_sphere_cull cull = bounding_sphere_cull::create(sphere_ws, camera);
 

@@ -175,7 +175,7 @@ void geometry::add_morph_target(std::string_view name, const std::vector<morph_e
         m_morph_target_buffer = std::make_unique<morph_target_buffer>();
     }
 
-    m_morph_name_to_index[name.data()] = m_morph_target_buffer->get_morph_target_count();
+    m_morph_name_to_index[std::string(name)] = m_morph_target_buffer->get_morph_target_count();
 
     m_morph_target_buffer->add_morph_target(elements);
 }
@@ -186,12 +186,12 @@ void geometry::set_additional_buffer(
     std::size_t size,
     rhi_buffer_flags flags)
 {
-    m_additional_buffers[name.data()] = std::make_unique<raw_buffer>(data, size, flags);
+    m_additional_buffers[std::string(name)] = std::make_unique<raw_buffer>(data, size, flags);
 }
 
 raw_buffer* geometry::get_additional_buffer(std::string_view name) const
 {
-    auto iter = m_additional_buffers.find(name.data());
+    auto iter = m_additional_buffers.find(std::string(name));
     return iter == m_additional_buffers.end() ? nullptr : iter->second.get();
 }
 

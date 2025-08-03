@@ -8,7 +8,7 @@ class quaternion
 {
 public:
     template <typename T>
-    [[nodiscard]] static inline vec4<T> identity()
+    [[nodiscard]] static vec4<T> identity()
     {
         if constexpr (std::is_same_v<T, simd>)
         {
@@ -22,13 +22,13 @@ public:
     }
 
     template <typename T>
-    [[nodiscard]] static inline vec4<T> from_axis_angle(const vec3<T>& axis, float radians)
+    [[nodiscard]] static vec4<T> from_axis_angle(const vec3<T>& axis, float radians)
     {
         auto [sin, cos] = math::sin_cos(radians * 0.5f);
         return {axis[0] * sin, axis[1] * sin, axis[2] * sin, cos};
     }
 
-    [[nodiscard]] static inline vec4f_simd from_axis_angle(vec4f_simd axis, float radians)
+    [[nodiscard]] static vec4f_simd from_axis_angle(vec4f_simd axis, float radians)
     {
         // TODO
         vec4f a;
@@ -38,8 +38,7 @@ public:
     }
 
     template <typename T>
-    // [[nodiscard]] static inline vec4<T> from_euler(float pitch, float heading, float bank)
-    [[nodiscard]] static inline vec4<T> from_euler(const vec3<T>& euler)
+    [[nodiscard]] static vec4<T> from_euler(const vec3<T>& euler)
     {
         auto [p_sin, p_cos] = math::sin_cos(euler.x * 0.5f);
         auto [h_sin, h_cos] = math::sin_cos(euler.y * 0.5f);
@@ -52,7 +51,7 @@ public:
             h_cos * p_cos * b_cos + h_sin * p_sin * b_sin};
     }
 
-    [[nodiscard]] static inline vec4f_simd from_euler(vec4f_simd euler)
+    [[nodiscard]] static vec4f_simd from_euler(vec4f_simd euler)
     {
         __m128 half_euler = vector::mul(euler, 0.5f);
 
@@ -62,14 +61,14 @@ public:
         auto [b_sin, b_cos] = math::sin_cos(vector::get_z(half_euler));
 
         return vector::set(
-            h_cos * p_sin * b_cos + h_sin * p_cos * b_sin,
-            h_sin * p_cos * b_cos - h_cos * p_sin * b_sin,
-            h_cos * p_cos * b_sin - h_sin * p_sin * b_cos,
-            h_cos * p_cos * b_cos + h_sin * p_sin * b_sin);
+            (h_cos * p_sin * b_cos) + (h_sin * p_cos * b_sin),
+            (h_sin * p_cos * b_cos) - (h_cos * p_sin * b_sin),
+            (h_cos * p_cos * b_sin) - (h_sin * p_sin * b_cos),
+            (h_cos * p_cos * b_cos) + (h_sin * p_sin * b_sin));
     }
 
     template <typename T>
-    [[nodiscard]] static inline vec4<T> from_matrix(const mat4<T> m)
+    [[nodiscard]] static vec4<T> from_matrix(const mat4<T> m)
     {
         if constexpr (std::is_same_v<T, simd>)
         {
@@ -115,7 +114,7 @@ public:
     }
 
     template <typename T>
-    [[nodiscard]] static inline vec4<T> mul(const vec4<T>& a, const vec4<T>& b)
+    [[nodiscard]] static vec4<T> mul(const vec4<T>& a, const vec4<T>& b)
     {
         if constexpr (std::is_same_v<T, simd>)
         {
@@ -168,7 +167,7 @@ public:
     }
 
     template <typename T>
-    [[nodiscard]] static inline vec4<T> mul_vec(const vec4<T>& q, const vec4<T>& v)
+    [[nodiscard]] static vec4<T> mul_vec(const vec4<T>& q, const vec4<T>& v)
     {
         if constexpr (std::is_same_v<T, simd>)
         {
@@ -199,7 +198,7 @@ public:
     }
 
     template <typename T>
-    [[nodiscard]] static inline vec4<T> conjugate(const vec4<T>& q)
+    [[nodiscard]] static vec4<T> conjugate(const vec4<T>& q)
     {
         if constexpr (std::is_same_v<T, simd>)
         {
@@ -213,7 +212,7 @@ public:
     }
 
     template <typename T>
-    [[nodiscard]] static inline vec4<T> inverse(const vec4<T>& q)
+    [[nodiscard]] static vec4<T> inverse(const vec4<T>& q)
     {
         if constexpr (std::is_same_v<T, simd>)
         {
@@ -228,10 +227,7 @@ public:
     }
 
     template <typename T>
-    [[nodiscard]] static inline vec4<T> slerp(
-        const vec4<T>& a,
-        const vec4<T>& b,
-        vec4<T>::value_type t)
+    [[nodiscard]] static vec4<T> slerp(const vec4<T>& a, const vec4<T>& b, vec4<T>::value_type t)
     {
         using value_type = vec4<T>::value_type;
 
@@ -267,7 +263,7 @@ public:
             a[3] * k0 + c[3] * k1};
     }
 
-    [[nodiscard]] static inline vec4f_simd slerp(vec4f_simd a, vec4f_simd b, float t)
+    [[nodiscard]] static vec4f_simd slerp(vec4f_simd a, vec4f_simd b, float t)
     {
         float cos_omega = vector::dot(a, b);
 

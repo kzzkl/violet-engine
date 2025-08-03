@@ -14,7 +14,7 @@ material_manager::~material_manager() {}
 
 render_id material_manager::add_material(material* material)
 {
-    std::lock_guard lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
 
     render_id material_id = m_material_allocator.allocate();
     if (m_materials.size() <= material_id)
@@ -31,7 +31,7 @@ render_id material_manager::add_material(material* material)
 
 void material_manager::remove_material(render_id material_id)
 {
-    std::lock_guard lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
 
     if (m_materials[material_id].constant_allocation.offset != buffer_allocator::no_space)
     {
@@ -87,7 +87,7 @@ void material_manager::update_constant(render_id material_id, const void* data, 
 
 void material_manager::mark_dirty(render_id material_id)
 {
-    std::lock_guard lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
     m_dirty_materials.push_back(material_id);
 }
 } // namespace violet

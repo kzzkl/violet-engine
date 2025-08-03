@@ -83,13 +83,13 @@ public:
 private:
     friend class transform_system;
 
-    enum transform_dirty_flag
+    enum transform_dirty_flag : std::uint8_t
     {
         TRANSFORM_DIRTY_LOCAL = 1 << 0,
         TRANSFORM_DIRTY_WORLD = 1 << 1,
         TRANSFORM_DIRTY_ALL = TRANSFORM_DIRTY_LOCAL | TRANSFORM_DIRTY_WORLD,
     };
-    using transform_dirty_flags = std::uint32_t;
+    using transform_dirty_flags = std::uint8_t;
 
     bool is_world_dirty() const noexcept
     {
@@ -142,6 +142,7 @@ struct component_trait<transform_local_component>
 struct transform_world_component
 {
     mat4f matrix{1.0f};
+    vec3f scale{1.0f, 1.0f, 1.0f};
 
     vec3f get_position() const
     {

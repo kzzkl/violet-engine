@@ -22,7 +22,7 @@ public:
 
     render_id add_mesh();
     void remove_mesh(render_id mesh_id);
-    void set_mesh_matrix(render_id mesh_id, const mat4f& matrix_m);
+    void set_mesh_matrix(render_id mesh_id, const mat4f& matrix_m, const vec3f& scale);
 
     render_id add_instance(render_id mesh_id);
     void remove_instance(render_id instance_id);
@@ -117,6 +117,7 @@ private:
         using gpu_type = shader::mesh_data;
 
         mat4f matrix_m;
+        vec3f scale;
         std::vector<render_id> instances;
     };
 
@@ -144,12 +145,12 @@ private:
         std::uint32_t shadow;
     };
 
-    enum render_scene_state
+    enum render_scene_state : std::uint8_t
     {
         RENDER_SCENE_STAGE_DATA_DIRTY = 1 << 0,
         RENDER_SCENE_STAGE_BATCH_DIRTY = 1 << 1,
     };
-    using render_scene_states = std::uint32_t;
+    using render_scene_states = std::uint8_t;
 
     struct raster_pipeline_hash
     {

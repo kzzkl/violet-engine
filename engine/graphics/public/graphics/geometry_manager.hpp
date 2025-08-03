@@ -100,7 +100,7 @@ public:
             return geometry_manager::get_buffer_address(buffer.src_geometry_id, type, offset);
         }
 
-        return static_cast<std::uint32_t>(buffer.offset + buffer.stride * offset);
+        return static_cast<std::uint32_t>(buffer.offset + (buffer.stride * offset));
     }
 
     std::uint32_t get_buffer_size(render_id geometry_id, geometry_buffer_type type) const

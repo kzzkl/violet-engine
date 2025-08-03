@@ -81,7 +81,8 @@ fs_output fs_main(vs_output input)
 
     fs_output output;
 
-    output.albedo = float4(material.albedo * albedo_texture.Sample(linear_repeat_sampler, input.texcoord), 1.0);
+    output.albedo = float4(material.albedo * albedo_texture.Sample(linear_repeat_sampler, input.texcoord), 1.0);    
+    // output.albedo = float4(input.texcoord, 0.0, 1.0);
     output.material.x = material.roughness * roughness_metallic.g;
     output.material.y = material.metallic * roughness_metallic.b;
     output.emissive = float4(material.emissive * emissive, 1.0);

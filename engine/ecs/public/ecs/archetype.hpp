@@ -83,28 +83,28 @@ public:
         return result;
     }
 
-    [[nodiscard]] inline std::size_t get_entity_count(std::size_t chunk_index) const noexcept
+    [[nodiscard]] std::size_t get_entity_count(std::size_t chunk_index) const noexcept
     {
-        return chunk_index == m_chunks.size() - 1 ? (m_entity_count - 1) % m_chunk_capacity + 1 :
+        return chunk_index == m_chunks.size() - 1 ? ((m_entity_count - 1) % m_chunk_capacity) + 1 :
                                                     m_chunk_capacity;
     }
 
-    [[nodiscard]] inline std::size_t get_entity_count() const noexcept
+    [[nodiscard]] std::size_t get_entity_count() const noexcept
     {
         return m_entity_count;
     }
 
-    [[nodiscard]] inline std::size_t get_chunk_count() const noexcept
+    [[nodiscard]] std::size_t get_chunk_count() const noexcept
     {
         return m_chunks.size();
     }
 
-    [[nodiscard]] inline std::size_t get_chunk_capacity() const noexcept
+    [[nodiscard]] std::size_t get_chunk_capacity() const noexcept
     {
         return m_chunk_capacity;
     }
 
-    [[nodiscard]] inline const component_mask& get_mask() const noexcept
+    [[nodiscard]] const component_mask& get_mask() const noexcept
     {
         return m_mask;
     }
@@ -119,7 +119,7 @@ private:
 
         std::size_t get_offset(std::size_t entity_index) const
         {
-            return chunk_offset + entity_index * builder->get_size();
+            return chunk_offset + (entity_index * builder->get_size());
         }
     };
 

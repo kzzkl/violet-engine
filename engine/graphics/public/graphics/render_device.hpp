@@ -2,6 +2,7 @@
 
 #include "algorithm/hash.hpp"
 #include "common/type_index.hpp"
+#include "common/utility.hpp"
 #include "graphics/pipeline_state.hpp"
 #include "graphics/shader.hpp"
 #include <memory>
@@ -79,8 +80,10 @@ public:
     template <typename T>
     rhi_shader* get_shader(std::span<const std::wstring> defines = {})
     {
-        std::uint64_t hash =
-            hash::combine(hash::city_hash_64(T::path.data(), T::path.size()), T::stage);
+        std::uint64_t hash = hash::combine(
+            hash::city_hash_64(T::path.data(), T::path.size()),
+            hash::city_hash_64(T::entry_point.data(), T::entry_point.size()));
+
         for (const auto& macro : defines)
         {
             hash ^= hash::city_hash_64(macro.data(), macro.size());
@@ -122,33 +125,33 @@ public:
 #endif
         }
 
+        std::wstring entry_point = string_to_wstring(T::entry_point);
+        arguments.push_back(L"-E");
+        arguments.push_back(entry_point.data());
+
         if constexpr (T::stage == RHI_SHADER_STAGE_VERTEX)
         {
             arguments.push_back(L"-T");
             arguments.push_back(L"vs_6_6");
-            arguments.push_back(L"-E");
-            arguments.push_back(L"vs_main");
         }
         else if constexpr (T::stage == RHI_SHADER_STAGE_GEOMETRY)
         {
             arguments.push_back(L"-T");
             arguments.push_back(L"gs_6_6");
-            arguments.push_back(L"-E");
-            arguments.push_back(L"gs_main");
         }
         else if constexpr (T::stage == RHI_SHADER_STAGE_FRAGMENT)
         {
             arguments.push_back(L"-T");
             arguments.push_back(L"ps_6_6");
-            arguments.push_back(L"-E");
-            arguments.push_back(L"fs_main");
         }
         else if constexpr (T::stage == RHI_SHADER_STAGE_COMPUTE)
         {
             arguments.push_back(L"-T");
             arguments.push_back(L"cs_6_6");
-            arguments.push_back(L"-E");
-            arguments.push_back(L"cs_main");
+        }
+        else
+        {
+            throw std::runtime_error("unsupported shader stage");
         }
 
         for (const auto& macro : defines)
@@ -162,6 +165,7 @@ public:
             .code = code.data(),
             .code_size = static_cast<std::uint32_t>(code.size()),
             .stage = T::stage,
+            .entry_point = T::entry_point.data(),
         };
 
         if constexpr (has_inputs<T>)

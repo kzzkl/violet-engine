@@ -20,7 +20,7 @@ public:
             __m128 v;
         };
 
-        inline operator __m128() const
+        operator __m128() const
         {
             return v;
         }
@@ -35,7 +35,7 @@ public:
             __m128 v;
         };
 
-        inline operator __m128() const
+        operator __m128() const
         {
             return v;
         }
@@ -65,7 +65,7 @@ public:
     };
 
     template <std::uint32_t C1, std::uint32_t C2, std::uint32_t C3, std::uint32_t C4>
-    [[nodiscard]] static inline __m128 shuffle(__m128 a, __m128 b)
+    [[nodiscard]] static __m128 shuffle(__m128 a, __m128 b)
     {
         if constexpr (C1 == 0 && C2 == 1 && C3 == 0 && C4 == 1)
         {
@@ -83,13 +83,13 @@ public:
     }
 
     template <std::uint32_t C1, std::uint32_t C2, std::uint32_t C3, std::uint32_t C4>
-    [[nodiscard]] static inline __m128 shuffle(__m128 v)
+    [[nodiscard]] static __m128 shuffle(__m128 v)
     {
         return shuffle<C1, C2, C3, C4>(v, v);
     }
 
     template <std::uint32_t C>
-    [[nodiscard]] static inline __m128 replicate(__m128 v)
+    [[nodiscard]] static __m128 replicate(__m128 v)
     {
         return shuffle<C, C, C, C>(v);
     }

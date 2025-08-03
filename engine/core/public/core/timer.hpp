@@ -36,18 +36,18 @@ public:
         m_time_point[point] = now<std::chrono::steady_clock>();
     }
 
-    inline steady_time_point time_point(point point) const noexcept
+    steady_time_point time_point(point point) const noexcept
     {
         return m_time_point[point];
     }
 
     template <typename D = std::chrono::nanoseconds>
-    inline D get_delta(point start, point end) const noexcept
+    D get_delta(point start, point end) const noexcept
     {
         return std::chrono::duration_cast<D>(m_time_point[end] - m_time_point[start]);
     }
 
-    inline float get_frame_delta() const noexcept
+    float get_frame_delta() const noexcept
     {
         return static_cast<float>(get_delta(PRE_FRAME_START, FRAME_START).count()) * 0.000000001f;
     }

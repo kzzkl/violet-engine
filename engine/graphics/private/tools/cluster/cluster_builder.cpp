@@ -4,6 +4,7 @@
 #include "tools/cluster/graph_linker.hpp"
 #include "tools/cluster/graph_partitioner.hpp"
 #include "tools/mesh_simplifier/mesh_simplifier.hpp"
+#include <algorithm>
 #include <iterator>
 #include <map>
 #include <unordered_map>
@@ -80,6 +81,68 @@ void cluster_builder::set_positions(std::span<const vec3f> positions)
     }
 
     m_positions.assign(positions.begin(), positions.end());
+
+    for (auto& position : m_positions)
+    {
+        if (std::isnan(position.x))
+        {
+            position.x = 0.0f;
+        }
+
+        if (std::isnan(position.y))
+        {
+            position.y = 0.0f;
+        }
+
+        if (std::isnan(position.z))
+        {
+            position.z = 0.0f;
+        }
+    }
+}
+
+void cluster_builder::set_normals(std::span<const vec3f> normals)
+{
+    m_normals.assign(normals.begin(), normals.end());
+
+    for (auto& normal : m_normals)
+    {
+        if (std::isnan(normal.x) || std::isnan(normal.y) || std::isnan(normal.z))
+        {
+            normal = {0.0f, 1.0f, 0.0f};
+        }
+    }
+}
+
+void cluster_builder::set_tangents(std::span<const vec4f> tangents)
+{
+    m_tangents.assign(tangents.begin(), tangents.end());
+
+    for (auto& tangent : m_tangents)
+    {
+        if (std::isnan(tangent.x) || std::isnan(tangent.y) || std::isnan(tangent.z))
+        {
+            tangent = {0.0f, 1.0f, 0.0f, tangent.w};
+        }
+    }
+}
+
+void cluster_builder::set_texcoords(std::span<const vec2f> texcoords)
+{
+    m_texcoords.assign(texcoords.begin(), texcoords.end());
+
+    for (auto& texcoord : m_texcoords)
+    {
+        if (std::isnan(texcoord.x))
+        {
+            texcoord.x = 0.0f;
+        }
+
+        if (std::isnan(texcoord.y))
+        {
+            texcoord.y = 0.0f;
+        }
+    }
 }
 
 void cluster_builder::set_indexes(std::span<const std::uint32_t> indexes)
@@ -197,9 +260,9 @@ void cluster_builder::cluster_triangles(
         m_bounds,
         [&](std::uint32_t triangle_index) -> vec3f
         {
-            vec3f center = positions[indexes[triangle_index * 3 + 0]];
-            center += positions[indexes[triangle_index * 3 + 1]];
-            center += positions[indexes[triangle_index * 3 + 2]];
+            vec3f center = positions[indexes[(triangle_index * 3) + 0]];
+            center += positions[indexes[(triangle_index * 3) + 1]];
+            center += positions[indexes[(triangle_index * 3) + 2]];
             center /= 3.0f;
 
             return center;
@@ -216,7 +279,7 @@ void cluster_builder::cluster_triangles(
 
         for (std::uint32_t i = 0; i < 3; ++i)
         {
-            std::uint32_t edge_index = triangle_index * 3 + i;
+            std::uint32_t edge_index = (triangle_index * 3) + i;
 
             for (std::size_t j = edge_adjacency_offset[edge_index];
                  j < edge_adjacency_offset[edge_index + 1];
@@ -251,9 +314,9 @@ void cluster_builder::cluster_triangles(
     std::vector<std::uint32_t> new_indexes(indexes.size());
     for (std::size_t i = 0; i < vertices.size(); ++i)
     {
-        new_indexes[i * 3 + 0] = indexes[vertices[i] * 3 + 0];
-        new_indexes[i * 3 + 1] = indexes[vertices[i] * 3 + 1];
-        new_indexes[i * 3 + 2] = indexes[vertices[i] * 3 + 2];
+        new_indexes[(i * 3) + 0] = indexes[(vertices[i] * 3) + 0];
+        new_indexes[(i * 3) + 1] = indexes[(vertices[i] * 3) + 1];
+        new_indexes[(i * 3) + 2] = indexes[(vertices[i] * 3) + 2];
     }
     indexes = std::move(new_indexes);
 
@@ -279,7 +342,7 @@ void cluster_builder::cluster_triangles(
         for (std::uint32_t i = 0; i < cluster.index_count; ++i)
         {
             std::uint32_t triangle_index = vertices[(cluster.index_offset + i) / 3];
-            std::uint32_t edge_index = triangle_index * 3 + i % 3;
+            std::uint32_t edge_index = (triangle_index * 3) + (i % 3);
 
             // If the edge is adjacent to an edge in another cluster, it must be an external edge.
             for (std::size_t j = edge_adjacency_offset[edge_index];
@@ -413,7 +476,7 @@ void cluster_builder::group_clusters(std::uint32_t cluster_offset, std::uint32_t
                  cluster_adjacency_map[cluster_index])
             {
                 cluster_adjacency.push_back(adjacency_cluster_index);
-                cluster_adjacency_cost.push_back(adjacency_count * 16 + 4);
+                cluster_adjacency_cost.push_back((adjacency_count * 16) + 4);
             }
 
             // The bridging edges previously added to ensure connectivity must also be factored in.
@@ -524,22 +587,125 @@ void cluster_builder::simplify_group(std::uint32_t group_index)
     auto& group = m_groups[group_index];
 
     // Collect the indexes of the group for simplification.
-    std::vector<std::uint32_t> group_indexes;
+    std::vector<std::uint32_t> indexes;
+
+    std::unordered_map<std::uint32_t, std::uint32_t> group_index_remap;
+    std::vector<std::uint32_t> group_vertex_remap;
     for (std::uint32_t i = 0; i < group.cluster_count; ++i)
     {
         const cluster& cluster = m_clusters[group.cluster_offset + i];
 
-        group_indexes.insert(
-            group_indexes.end(),
-            m_indexes.begin() + cluster.index_offset,
-            m_indexes.begin() + cluster.index_offset + cluster.index_count);
+        for (std::uint32_t j = 0; j < cluster.index_count; ++j)
+        {
+            std::uint32_t index = m_indexes[cluster.index_offset + j];
+
+            auto iter = group_index_remap.find(index);
+            if (iter == group_index_remap.end())
+            {
+                indexes.push_back(static_cast<std::uint32_t>(group_vertex_remap.size()));
+                group_index_remap[index] = indexes.back();
+                group_vertex_remap.push_back(index);
+            }
+            else
+            {
+                indexes.push_back(iter->second);
+            }
+        }
+    }
+
+    std::vector<vec3f> positions;
+    std::vector<float> attributes;
+
+    positions.reserve(group_vertex_remap.size());
+    attributes.reserve(group_vertex_remap.size() * get_attribute_count());
+    for (std::uint32_t index : group_vertex_remap)
+    {
+        positions.push_back(m_positions[index]);
+
+        if (!m_normals.empty())
+        {
+            const auto& normal = m_normals[index];
+            attributes.insert(attributes.end(), {normal.x, normal.y, normal.z});
+        }
+
+        if (!m_tangents.empty())
+        {
+            const auto& tangent = m_tangents[index];
+            attributes.insert(attributes.end(), {tangent.x, tangent.y, tangent.z, tangent.w});
+        }
+
+        if (!m_texcoords.empty())
+        {
+            const auto& texcoord = m_texcoords[index];
+            attributes.insert(attributes.end(), {texcoord.x, texcoord.y});
+        }
+    }
+
+    std::vector<float> attribute_weights;
+    if (!m_normals.empty())
+    {
+        attribute_weights.insert(attribute_weights.end(), 3, 1.0f);
+    }
+
+    if (!m_tangents.empty())
+    {
+        attribute_weights.insert(attribute_weights.end(), {0.0625f, 0.0625f, 0.0625f, 0.5f});
+    }
+
+    if (!m_texcoords.empty())
+    {
+        float uv_area = 0.0f;
+
+        std::uint32_t triangle_count = static_cast<std::uint32_t>(indexes.size()) / 3;
+        for (std::uint32_t i = 0; i < triangle_count; ++i)
+        {
+            vec2f uv0 = m_texcoords[group_vertex_remap[indexes[(i * 3) + 0]]];
+            vec2f uv1 = m_texcoords[group_vertex_remap[indexes[(i * 3) + 1]]];
+            vec2f uv2 = m_texcoords[group_vertex_remap[indexes[(i * 3) + 2]]];
+
+            vec2f edge01 = uv1 - uv0;
+            vec2f edge02 = uv2 - uv0;
+
+            uv_area += std::abs(0.5f * vector::cross(edge01, edge02));
+        }
+
+        attribute_weights.insert(attribute_weights.end(), 2, 1.0f / (128.0f * uv_area));
     }
 
     float lod_error = 0.0f;
 
     mesh_simplifier simplifier;
-    simplifier.set_positions(m_positions);
-    simplifier.set_indexes(group_indexes);
+    simplifier.set_positions(positions);
+    simplifier.set_indexes(indexes);
+    simplifier.set_attributes(
+        attributes,
+        attribute_weights,
+        [&](float* attributes)
+        {
+            if (!m_normals.empty())
+            {
+                auto& normal = *reinterpret_cast<vec3f*>(attributes);
+                assert(!std::isnan(normal.x) && !std::isnan(normal.y) && !std::isnan(normal.z));
+                normal = vector::normalize(normal);
+                attributes += 3;
+
+                assert(!std::isnan(normal.x) && !std::isnan(normal.y) && !std::isnan(normal.z));
+            }
+
+            if (!m_tangents.empty())
+            {
+                auto& tangent = *reinterpret_cast<vec3f*>(attributes);
+                assert(!std::isnan(tangent.x) && !std::isnan(tangent.y) && !std::isnan(tangent.z));
+                tangent = vector::normalize(tangent);
+                attributes += 3;
+
+                assert(!std::isnan(tangent.x) && !std::isnan(tangent.y) && !std::isnan(tangent.z));
+
+                auto& sign = *attributes;
+                sign = sign < 0.0f ? -1.0f : 1.0f;
+                attributes += 1;
+            }
+        });
 
     for (std::uint32_t i = 0; i < group.cluster_count; ++i)
     {
@@ -557,29 +723,68 @@ void cluster_builder::simplify_group(std::uint32_t group_index)
         lod_error = std::max(lod_error, cluster.lod_error);
     }
 
-    float error = simplifier.simplify(static_cast<std::uint32_t>(group_indexes.size() / 3 / 2));
-    std::vector<vec3f> new_positions = simplifier.get_positions();
-    std::vector<std::uint32_t> new_indexes = simplifier.get_indexes();
+    float error = simplifier.simplify(static_cast<std::uint32_t>(indexes.size() / 3 / 2));
+    positions.resize(simplifier.get_vertex_count());
+    indexes.resize(simplifier.get_index_count());
 
     lod_error = std::max(lod_error, error);
 
     std::size_t cluster_offset = m_clusters.size();
 
     // Cluster the new triangles.
-    cluster_triangles(new_positions, new_indexes);
+    cluster_triangles(positions, indexes);
 
-    auto position_offset = static_cast<std::uint32_t>(m_positions.size());
-    m_positions.insert(m_positions.end(), new_positions.begin(), new_positions.end());
+    auto vertex_offset = static_cast<std::uint32_t>(m_positions.size());
+    m_positions.insert(m_positions.end(), positions.begin(), positions.end());
 
     auto index_offset = static_cast<std::uint32_t>(m_indexes.size());
-    std::transform(
-        new_indexes.begin(),
-        new_indexes.end(),
+    std::ranges::transform(
+        indexes,
         std::back_inserter(m_indexes),
         [=](std::uint32_t index) -> std::uint32_t
         {
-            return index + position_offset;
+            return index + vertex_offset;
         });
+
+    if (!m_normals.empty())
+    {
+        m_normals.resize(m_normals.size() + simplifier.get_vertex_count());
+    }
+
+    if (!m_tangents.empty())
+    {
+        m_tangents.resize(m_tangents.size() + simplifier.get_vertex_count());
+    }
+
+    if (!m_texcoords.empty())
+    {
+        m_texcoords.resize(m_texcoords.size() + simplifier.get_vertex_count());
+    }
+
+    if (!attributes.empty())
+    {
+        const float* attribute_data = attributes.data();
+        for (std::size_t i = 0; i < simplifier.get_vertex_count(); ++i)
+        {
+            if (!m_normals.empty())
+            {
+                std::memcpy(m_normals.data() + vertex_offset + i, attribute_data, sizeof(vec3f));
+                attribute_data += 3;
+            }
+
+            if (!m_tangents.empty())
+            {
+                std::memcpy(m_tangents.data() + vertex_offset + i, attribute_data, sizeof(vec4f));
+                attribute_data += 4;
+            }
+
+            if (!m_texcoords.empty())
+            {
+                std::memcpy(m_texcoords.data() + vertex_offset + i, attribute_data, sizeof(vec2f));
+                attribute_data += 2;
+            }
+        }
+    }
 
     for (std::size_t i = cluster_offset; i < m_clusters.size(); ++i)
     {
@@ -613,6 +818,7 @@ std::uint32_t cluster_builder::build_bvh(std::span<std::uint32_t> indexes, bool 
     if (child_count <= MAX_BVH_CHILD_COUNT)
     {
         std::vector<std::uint32_t> children;
+        children.reserve(child_count);
         for (std::uint32_t i = 0; i < child_count; ++i)
         {
             children.push_back(build_bvh(indexes.subspan(i, 1), root));
@@ -630,7 +836,7 @@ std::uint32_t cluster_builder::build_bvh(std::span<std::uint32_t> indexes, bool 
         large_child_count *= MAX_BVH_CHILD_COUNT;
     }
     std::uint32_t small_child_count = large_child_count / MAX_BVH_CHILD_COUNT;
-    std::uint32_t excess_child_count = child_count - small_child_count * MAX_BVH_CHILD_COUNT;
+    std::uint32_t excess_child_count = child_count - (small_child_count * MAX_BVH_CHILD_COUNT);
 
     std::array<std::uint32_t, 8> child_sizes;
     for (std::uint32_t i = 0; i < MAX_BVH_CHILD_COUNT; ++i)
@@ -656,8 +862,8 @@ std::uint32_t cluster_builder::build_bvh(std::span<std::uint32_t> indexes, bool 
                 std::uint32_t split1 = 0;
                 for (std::uint32_t k = 0; k < range_size / 2; ++k)
                 {
-                    split0 += child_sizes[j * range_size + k];
-                    split1 += child_sizes[j * range_size + k + range_size / 2];
+                    split0 += child_sizes[(j * range_size) + k];
+                    split1 += child_sizes[(j * range_size) + k + (range_size / 2)];
                 }
 
                 sort_groups(indexes.subspan(split_offset, split0 + split1), split0);
@@ -707,9 +913,8 @@ void cluster_builder::sort_groups(std::span<std::uint32_t> group_indexes, std::u
     std::uint32_t best_axis = 0;
     for (std::uint32_t axis = 0; axis < 3; ++axis)
     {
-        std::sort(
-            group_indexes.begin(),
-            group_indexes.end(),
+        std::ranges::sort(
+            group_indexes,
             [&](std::uint32_t a, std::uint32_t b) -> bool
             {
                 vec3f a_center = box::get_center(m_groups[a].bounding_box);
@@ -727,9 +932,8 @@ void cluster_builder::sort_groups(std::span<std::uint32_t> group_indexes, std::u
         }
     }
 
-    std::sort(
-        group_indexes.begin(),
-        group_indexes.end(),
+    std::ranges::sort(
+        group_indexes,
         [&](std::uint32_t a, std::uint32_t b) -> bool
         {
             vec3f a_center = box::get_center(m_groups[a].bounding_box);

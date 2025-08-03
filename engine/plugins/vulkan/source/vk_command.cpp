@@ -118,12 +118,11 @@ void vk_command::set_vertex_buffers(
     std::uint32_t vertex_buffer_count)
 {
     std::vector<VkBuffer> buffers(vertex_buffer_count);
-    std::vector<VkDeviceSize> offsets(vertex_buffer_count);
+    std::vector<VkDeviceSize> offsets(vertex_buffer_count, 0);
     for (std::size_t i = 0; i < vertex_buffer_count; ++i)
     {
         buffers[i] = vertex_buffers[i] ? static_cast<vk_buffer*>(vertex_buffers[i])->get_buffer() :
                                          VK_NULL_HANDLE;
-        offsets[i] = 0;
     }
     vkCmdBindVertexBuffers(
         m_command_buffer,
@@ -146,6 +145,8 @@ void vk_command::set_index_buffer(rhi_buffer* index_buffer, std::size_t index_si
     case 4:
         index_type = VK_INDEX_TYPE_UINT32;
         break;
+    default:
+        throw std::runtime_error("unsupported index size");
     };
 
     vkCmdBindIndexBuffer(m_command_buffer, buffer->get_buffer(), 0, index_type);

@@ -14,7 +14,9 @@ bool equal(const violet::vec2f& a, const violet::vec2f& b)
     for (std::size_t i = 0; i < 2; ++i)
     {
         if (VALUE_WITH_MARGIN(a[i]) != b[i])
+        {
             return false;
+        }
     }
     return true;
 }
@@ -24,7 +26,9 @@ bool equal(const violet::vec3f& a, const violet::vec3f& b)
     for (std::size_t i = 0; i < 3; ++i)
     {
         if (VALUE_WITH_MARGIN(a[i]) != b[i])
+        {
             return false;
+        }
     }
     return true;
 }
@@ -34,7 +38,24 @@ bool equal(const violet::vec4f& a, const violet::vec4f& b)
     for (std::size_t i = 0; i < 4; ++i)
     {
         if (VALUE_WITH_MARGIN(a[i]) != b[i])
+        {
             return false;
+        }
+    }
+    return true;
+}
+
+bool equal(const violet::mat3f& a, const violet::mat3f& b)
+{
+    for (std::size_t i = 0; i < 3; ++i)
+    {
+        for (std::size_t j = 0; j < 3; ++j)
+        {
+            if (VALUE_WITH_MARGIN(a[i][j]) != b[i][j])
+            {
+                return false;
+            }
+        }
     }
     return true;
 }
@@ -46,7 +67,9 @@ bool equal(const violet::mat4f& a, const violet::mat4f& b)
         for (std::size_t j = 0; j < 4; ++j)
         {
             if (VALUE_WITH_MARGIN(a[i][j]) != b[i][j])
+            {
                 return false;
+            }
         }
     }
     return true;

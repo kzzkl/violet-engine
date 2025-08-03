@@ -137,9 +137,7 @@ void d3d12_render_command::draw_indexed(
         0);
 }
 
-void d3d12_render_command::clear_render_target(
-    rhi_resource* render_target,
-    const float4& color)
+void d3d12_render_command::clear_render_target(rhi_resource* render_target, const float4& color)
 {
     auto rt = static_cast<d3d12_resource*>(render_target);
     m_command_list->ClearRenderTargetView(rt->get_rtv(), color.data, 0, nullptr);
@@ -241,7 +239,8 @@ void d3d12_dynamic_command::close()
     throw_if_failed(m_command_list->Close());
 }
 
-d3d12_command_queue::d3d12_command_queue(std::size_t render_concurrency) : m_fence_counter(0)
+d3d12_command_queue::d3d12_command_queue(std::size_t render_concurrency)
+    : m_fence_counter(0)
 {
     auto device = d3d12_context::device();
 
@@ -304,7 +303,7 @@ d3d12_dynamic_command d3d12_command_queue::allocate_dynamic_command()
     static int command_counter = 0;
     auto device = d3d12_context::device();
 
-    std::lock_guard lock(m_dynamic_lock);
+    std::scoped_lock lock(m_dynamic_lock);
 
     d3d12_ptr<D3D12CommandAllocator> allocator;
     if (!m_dynamic_allocator_pool.empty() &&
@@ -352,7 +351,7 @@ d3d12_dynamic_command d3d12_command_queue::allocate_dynamic_command()
 
 void d3d12_command_queue::execute_command(d3d12_dynamic_command command)
 {
-    std::lock_guard lock(m_dynamic_lock);
+    std::scoped_lock lock(m_dynamic_lock);
 
     command.close();
     m_dynamic_command_batch.push_back(command.m_command_list);

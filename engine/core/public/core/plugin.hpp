@@ -27,15 +27,25 @@ public:
     bool load(std::string_view path);
     void unload();
 
-    inline std::string_view get_name() const noexcept { return m_name; }
-    inline plugin_version get_version() const noexcept { return m_version; }
+    std::string_view get_name() const noexcept
+    {
+        return m_name;
+    }
+
+    plugin_version get_version() const noexcept
+    {
+        return m_version;
+    }
 
     plugin& operator=(const plugin&) = delete;
 
 protected:
     void* find_symbol(std::string_view name);
 
-    virtual bool on_load() { return true; }
+    virtual bool on_load()
+    {
+        return true;
+    }
     virtual void on_unload() {}
 
 private:

@@ -9,6 +9,7 @@ bool equal(float a, float b);
 bool equal(const violet::vec2f& a, const violet::vec2f& b);
 bool equal(const violet::vec3f& a, const violet::vec3f& b);
 bool equal(const violet::vec4f& a, const violet::vec4f& b);
+bool equal(const violet::mat3f& a, const violet::mat3f& b);
 bool equal(const violet::mat4f& a, const violet::mat4f& b);
 bool equal(const violet::vec4f_simd& a, const violet::vec3f& b);
 bool equal(const violet::vec4f_simd& a, const violet::vec4f& b);

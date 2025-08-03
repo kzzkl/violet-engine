@@ -4,7 +4,8 @@
 #include "math/types.hpp"
 #include "tools/mesh_simplifier/collapse_heap.hpp"
 #include "tools/mesh_simplifier/quadric.hpp"
-#include <span>
+#include <functional>
+#include <limits>
 #include <unordered_map>
 
 namespace violet
@@ -12,21 +13,56 @@ namespace violet
 class mesh_simplifier
 {
 public:
-    void set_positions(std::span<const vec3f> positions);
-    void set_indexes(std::span<const std::uint32_t> indexes);
-
-    void lock_position(const vec3f& position);
-
-    float simplify(std::uint32_t target_triangle_count);
-
-    const std::vector<vec3f>& get_positions() const noexcept
+    void set_positions(std::span<vec3f> positions) noexcept
     {
-        return m_positions;
+        m_positions = positions;
     }
 
-    const std::vector<std::uint32_t>& get_indexes() const noexcept
+    void set_indexes(std::span<std::uint32_t> indexes) noexcept
     {
-        return m_indexes;
+        m_indexes = indexes;
+    }
+
+    template <typename Functor>
+    void set_attributes(
+        std::span<float> attributes,
+        std::span<const float> attribute_weights,
+        Functor&& correct_attributes)
+    {
+        for (float attribute : attributes)
+        {
+            assert(!std::isnan(attribute));
+        }
+        m_attributes = attributes;
+        m_attribute_weights = attribute_weights;
+
+        assert(m_positions.size() * get_attribute_count() == attributes.size());
+
+        m_correct_attributes = std::forward<Functor>(correct_attributes);
+    }
+
+    void lock_position(const vec3f& position)
+    {
+        m_locked_positions.push_back(position);
+    }
+
+    float simplify(
+        std::uint32_t target_triangle_count,
+        float target_error = std::numeric_limits<float>::max());
+
+    std::uint32_t get_vertex_count() const noexcept
+    {
+        return m_vertex_count;
+    }
+
+    std::uint32_t get_index_count() const noexcept
+    {
+        return m_index_count;
+    }
+
+    const std::vector<vec3f>& get_edge_vertices() const noexcept
+    {
+        return m_edge_vertices;
     }
 
 private:
@@ -67,6 +103,7 @@ private:
     {
         CORNER_LOCKED = 1 << 0,
         CORNER_REMOVED = 1 << 1,
+        CORNER_EDGE = 1 << 2,
     };
     using corner_flags = std::uint8_t;
 
@@ -82,22 +119,58 @@ private:
         const vec3f& position,
         std::vector<std::uint32_t>& adjacent_triangles);
 
-    bool is_triangle_flip(const vec3f& old_position, const vec3f& new_position, std::uint32_t index)
-        const;
+    quadric_pool get_wedge_quadrics(
+        const vec3f& p0,
+        const vec3f& p1,
+        const std::vector<std::uint32_t>& triangles,
+        std::uint32_t* triangle_to_wedge = nullptr);
 
-    std::vector<vec3f> m_positions;
-    std::vector<std::uint32_t> m_indexes;
+    void update_edge_quadric(std::uint32_t corner);
+
+    float* get_attributes(std::uint32_t index)
+    {
+        return m_attributes.data() + static_cast<std::size_t>(index * get_attribute_count());
+    }
+
+    std::uint32_t get_attribute_count() const noexcept
+    {
+        return static_cast<std::uint32_t>(m_attribute_weights.size());
+    }
+
+    bool is_triangle_flipped(
+        const vec3f& old_position,
+        const vec3f& new_position,
+        std::uint32_t index) const;
+    bool is_triangle_degenerate(const vec3f& p0, const vec3f& p1, const vec3f& p2) const;
+
+    std::span<vec3f> m_positions;
+    std::span<std::uint32_t> m_indexes;
+
+    std::span<float> m_attributes;
+    std::span<const float> m_attribute_weights;
+
+    std::vector<float> m_wedge_attributes;
 
     std::unordered_multimap<vec3f, std::uint32_t, vertex_hash> m_vertex_map;
     std::unordered_multimap<vec3f, std::uint32_t, vertex_hash> m_corner_map;
     std::vector<corner_flags> m_corner_flags;
+    std::vector<quadric_edge> m_edge_quadrics;
 
     std::vector<edge> m_edges;
     std::unordered_multimap<vec3f, std::uint32_t, vertex_hash> m_edge_map0;
     std::unordered_multimap<vec3f, std::uint32_t, vertex_hash> m_edge_map1;
 
-    std::vector<quadric> m_triangle_quadrics;
+    quadric_pool m_triangle_quadrics;
     std::uint32_t m_triangle_count{0};
+
+    std::function<void(float*)> m_correct_attributes;
+
+    std::uint32_t m_vertex_count{0};
+    std::uint32_t m_index_count{0};
+
+    std::vector<vec3f> m_edge_vertices;
+
+    std::vector<vec3f> m_locked_positions;
 
     collapse_heap m_heap;
 };

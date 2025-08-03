@@ -62,26 +62,26 @@ using box3f_simd = box3<simd>;
 struct box
 {
     template <typename T>
-    static inline void expand(box3<T>& box, const vec3<T>& point) noexcept
+    static void expand(box3<T>& box, const vec3<T>& point) noexcept
     {
         box.min = vector::min(box.min, point);
         box.max = vector::max(box.max, point);
     }
 
-    static inline void expand(box3f_simd& box, const vec4f_simd& point) noexcept
+    static void expand(box3f_simd& box, const vec4f_simd& point) noexcept
     {
         box.min = vector::min(box.min, point);
         box.max = vector::max(box.max, point);
     }
 
     template <typename T>
-    static inline void expand(box3<T>& box, const box3<T>& other) noexcept
+    static void expand(box3<T>& box, const box3<T>& other) noexcept
     {
         box.min = vector::min(box.min, other.min);
         box.max = vector::max(box.max, other.max);
     }
 
-    static inline void expand(box3f_simd& box, const box3f_simd& other) noexcept
+    static void expand(box3f_simd& box, const box3f_simd& other) noexcept
     {
         box.min = vector::min(box.min, other.min);
         box.max = vector::max(box.max, other.max);

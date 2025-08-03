@@ -30,7 +30,7 @@ struct prepare_cluster_queue_cs : public shader_cs
     };
 
     static constexpr parameter_layout parameters = {
-        {0, bindless},
+        {.space = 0, .desc = bindless},
     };
 };
 
@@ -45,7 +45,7 @@ struct prepare_cluster_cull_cs : public shader_cs
     };
 
     static constexpr parameter_layout parameters = {
-        {0, bindless},
+        {.space = 0, .desc = bindless},
     };
 };
 
@@ -68,9 +68,9 @@ struct instance_cull_cs : public shader_cs
     };
 
     static constexpr parameter_layout parameters = {
-        {0, bindless},
-        {1, scene},
-        {2, camera},
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = scene},
+        {.space = 2, .desc = camera},
     };
 };
 
@@ -86,7 +86,8 @@ struct cluster_cull_cs : public shader_cs
         std::uint32_t hzb_height;
         vec4f frustum;
 
-        float throshold;
+        float threshold;
+        float lod_scale;
 
         std::uint32_t cluster_buffer;
         std::uint32_t cluster_node_buffer;
@@ -210,10 +211,11 @@ void cull_pass::prepare_cluster_queue(render_graph& graph, rdg_buffer* cluster_q
             auto cluster_queue_size =
                 static_cast<std::uint32_t>(data.cluster_queue.get_size() / sizeof(vec2u));
 
-            command.set_constant(prepare_cluster_queue_cs::constant_data{
-                .cluster_queue = data.cluster_queue.get_bindless(),
-                .cluster_queue_size = cluster_queue_size,
-            });
+            command.set_constant(
+                prepare_cluster_queue_cs::constant_data{
+                    .cluster_queue = data.cluster_queue.get_bindless(),
+                    .cluster_queue_size = cluster_queue_size,
+                });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
             command.dispatch_1d(cluster_queue_size);
@@ -254,10 +256,11 @@ void cull_pass::prepare_cluster_cull(
                 .compute_shader = device.get_shader<prepare_cluster_cull_cs>(defines),
             });
 
-            command.set_constant(prepare_cluster_cull_cs::constant_data{
-                .cluster_queue_state = data.cluster_queue_state.get_bindless(),
-                .dispatch_command_buffer = data.dispatch_command_buffer.get_bindless(),
-            });
+            command.set_constant(
+                prepare_cluster_cull_cs::constant_data{
+                    .cluster_queue_state = data.cluster_queue_state.get_bindless(),
+                    .dispatch_command_buffer = data.dispatch_command_buffer.get_bindless(),
+                });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
             command.dispatch_1d(1, 1);
@@ -305,7 +308,10 @@ void cull_pass::add_prepare_pass(
             {
                 command.fill_buffer(
                     data.cluster_queue_state.get_rhi(),
-                    {0, data.cluster_queue_state.get_size()},
+                    {
+                        .offset = 0,
+                        .size = data.cluster_queue_state.get_size(),
+                    },
                     0);
             }
         });
@@ -372,19 +378,20 @@ void cull_pass::add_instance_cull_pass(render_graph& graph, const cull_data& cul
 
             rhi_texture_extent extent = data.hzb.get_extent();
 
-            command.set_constant(instance_cull_cs::constant_data{
-                .hzb = data.hzb.get_bindless(),
-                .hzb_sampler = data.hzb_sampler->get_bindless(),
-                .hzb_width = extent.width,
-                .hzb_height = extent.height,
-                .frustum = data.frustum,
-                .command_buffer = data.command_buffer.get_bindless(),
-                .count_buffer = data.count_buffer.get_bindless(),
-                .cluster_queue = data.cluster_queue ? data.cluster_queue.get_bindless() : 0,
-                .cluster_queue_state =
-                    data.cluster_queue_state ? data.cluster_queue_state.get_bindless() : 0,
-                .max_draw_commands = graphics_config::get_max_draw_commands(),
-            });
+            command.set_constant(
+                instance_cull_cs::constant_data{
+                    .hzb = data.hzb.get_bindless(),
+                    .hzb_sampler = data.hzb_sampler->get_bindless(),
+                    .hzb_width = extent.width,
+                    .hzb_height = extent.height,
+                    .frustum = data.frustum,
+                    .command_buffer = data.command_buffer.get_bindless(),
+                    .count_buffer = data.count_buffer.get_bindless(),
+                    .cluster_queue = data.cluster_queue ? data.cluster_queue.get_bindless() : 0,
+                    .cluster_queue_state =
+                        data.cluster_queue_state ? data.cluster_queue_state.get_bindless() : 0,
+                    .max_draw_commands = graphics_config::get_max_draw_commands(),
+                });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_SCENE);
             command.set_parameter(2, RDG_PARAMETER_CAMERA);
@@ -416,6 +423,10 @@ void cull_pass::add_cluster_cull_pass(
         rdg_buffer_uav count_buffer;
         rdg_buffer_ref dispatch_command_buffer;
     };
+
+    const auto& camera = graph.get_camera();
+    float lod_scale = static_cast<float>(camera.get_render_target()->get_extent().height) * 0.5f /
+                      std::tan(camera.get_fov() * 0.5f);
 
     std::uint32_t cluster_node_depth =
         render_device::instance().get_geometry_manager()->get_cluster_node_depth();
@@ -475,7 +486,8 @@ void cull_pass::add_cluster_cull_pass(
                     .hzb_width = extent.width,
                     .hzb_height = extent.height,
                     .frustum = data.frustum,
-                    .throshold = 1.0f,
+                    .threshold = 1.0f,
+                    .lod_scale = lod_scale,
                     .cluster_queue = data.cluster_queue.get_bindless(),
                     .cluster_queue_state = data.cluster_queue_state.get_bindless(),
                     .max_clusters = max_clusters,
@@ -544,14 +556,15 @@ void cull_pass::add_cluster_cull_pass_persistent(
                 device.get_geometry_manager()->get_cluster_buffer()->get_srv();
             rhi_buffer_srv* cluster_node_buffer_srv =
                 device.get_geometry_manager()->get_cluster_node_buffer()->get_srv();
-            command.set_constant(cluster_cull_cs::constant_data{
-                .cluster_buffer = cluster_buffer_srv->get_bindless(),
-                .cluster_node_buffer = cluster_node_buffer_srv->get_bindless(),
-                .cluster_queue = data.cluster_queue.get_bindless(),
-                .cluster_queue_state = data.cluster_queue_state.get_bindless(),
-                .max_clusters = max_clusters,
-                .max_cluster_nodes = max_cluster_nodes,
-            });
+            command.set_constant(
+                cluster_cull_cs::constant_data{
+                    .cluster_buffer = cluster_buffer_srv->get_bindless(),
+                    .cluster_node_buffer = cluster_node_buffer_srv->get_bindless(),
+                    .cluster_queue = data.cluster_queue.get_bindless(),
+                    .cluster_queue_state = data.cluster_queue_state.get_bindless(),
+                    .max_clusters = max_clusters,
+                    .max_cluster_nodes = max_cluster_nodes,
+                });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_SCENE);
             command.set_parameter(2, RDG_PARAMETER_CAMERA);

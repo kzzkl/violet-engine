@@ -4,7 +4,7 @@
 
 namespace violet
 {
-enum light_type
+enum light_type : std::uint8_t
 {
     LIGHT_DIRECTIONAL,
     LIGHT_POINT,
@@ -12,7 +12,7 @@ enum light_type
 
 struct light_component
 {
-    light_type type;
-    vec3f color;
+    light_type type{LIGHT_DIRECTIONAL};
+    vec3f color{1.0f, 1.0f, 1.0f};
 };
 } // namespace violet

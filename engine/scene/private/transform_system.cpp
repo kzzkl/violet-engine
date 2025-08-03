@@ -1,6 +1,5 @@
 #include "scene/transform_system.hpp"
 #include "components/hierarchy_component.hpp"
-#include "components/transform_component.hpp"
 #include "math/matrix.hpp"
 #include "scene/hierarchy_system.hpp"
 
@@ -148,13 +147,17 @@ void transform_system::update_world(bool force)
     auto& world = get_world();
 
     world.get_view()
+        .read<transform_component>()
         .read<transform_local_component>()
         .write<transform_world_component>()
         .without<parent_component>()
         .each(
-            [](const transform_local_component& local, transform_world_component& world)
+            [](const transform_component& transform,
+               const transform_local_component& local,
+               transform_world_component& world)
             {
                 world.matrix = local.matrix;
+                world.scale = transform.get_scale();
             },
             [this, force](auto& view)
             {
@@ -177,10 +180,10 @@ void transform_system::update_world(bool force)
             bool root_dirty =
                 force || world.is_updated<transform_local_component>(root, m_system_version);
 
-            mat4f root_matrix = world.get_component<const transform_world_component>(root).matrix;
+            const auto& root_transform = world.get_component<const transform_world_component>(root);
             for (const auto& child : world.get_component<const child_component>(root).children)
             {
-                update_world_recursive(child, root_matrix, root_dirty);
+                update_world_recursive(child, root_transform, root_dirty);
             }
         }
     }
@@ -188,7 +191,7 @@ void transform_system::update_world(bool force)
 
 void transform_system::update_world_recursive(
     entity e,
-    const mat4f& parent_world,
+    const transform_world_component& parent_world_transform,
     bool parent_dirty)
 {
     auto& world = get_world();
@@ -200,19 +203,21 @@ void transform_system::update_world_recursive(
 
     if (need_update)
     {
+        auto& world_transform = world.get_component<transform_world_component>(e);
+        world_transform.scale = vector::mul(parent_world_transform.scale, transform.get_scale());
+
         mat4f_simd local_matrix =
             math::load(world.get_component<const transform_local_component>(e).matrix);
-        mat4f_simd parent_matrix = math::load(parent_world);
-
-        auto& world_transform = world.get_component<transform_world_component>(e);
+        mat4f_simd parent_matrix = math::load(parent_world_transform.matrix);
         math::store(matrix::mul(local_matrix, parent_matrix), world_transform.matrix);
+
         transform.clear_world_dirty();
 
         if (world.has_component<child_component>(e))
         {
             for (const auto& child : world.get_component<const child_component>(e).children)
             {
-                update_world_recursive(child, world_transform.matrix, true);
+                update_world_recursive(child, world_transform, true);
             }
         }
     }
@@ -223,7 +228,7 @@ void transform_system::update_world_recursive(
             const auto& world_transform = world.get_component<const transform_world_component>(e);
             for (const auto& child : world.get_component<const child_component>(e).children)
             {
-                update_world_recursive(child, world_transform.matrix, false);
+                update_world_recursive(child, world_transform, false);
             }
         }
     }

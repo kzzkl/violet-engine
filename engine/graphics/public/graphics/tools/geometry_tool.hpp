@@ -22,22 +22,26 @@ public:
         std::span<const vec4f> tangents,
         std::span<const std::uint32_t> indexes);
 
-    struct simplify_result
+    struct simplify_input
     {
-        std::vector<vec3f> positions;
-        std::vector<std::uint32_t> indexes;
+        std::span<vec3f> positions;
+        std::span<vec3f> normals;
+        std::span<vec4f> tangents;
+        std::span<vec2f> texcoords;
+        std::span<std::uint32_t> indexes;
+        std::span<const vec3f> locked_positions;
+
+        std::uint32_t target_triangle_count;
     };
 
-    static simplify_result simplify(
-        std::span<const vec3f> positions,
-        std::span<const std::uint32_t> indexes,
-        std::uint32_t target_triangle_count,
-        std::span<const vec3f> locked_positions = {});
+    struct simplify_output
+    {
+        std::uint32_t vertex_count;
+        std::uint32_t index_count;
+        std::vector<vec3f> edge_vertices;
+    };
 
-    static simplify_result simplify_meshopt(
-        std::span<const vec3f> positions,
-        std::span<const std::uint32_t> indexes,
-        std::uint32_t target_triangle_count);
+    static simplify_output simplify(const simplify_input& input);
 
     struct cluster_input
     {
@@ -49,6 +53,9 @@ public:
         };
 
         std::span<const vec3f> positions;
+        std::span<const vec3f> normals;
+        std::span<const vec4f> tangents;
+        std::span<const vec2f> texcoords;
         std::span<const std::uint32_t> indexes;
         std::vector<submesh> submeshes;
     };
@@ -62,6 +69,9 @@ public:
         };
 
         std::vector<vec3f> positions;
+        std::vector<vec3f> normals;
+        std::vector<vec4f> tangents;
+        std::vector<vec2f> texcoords;
         std::vector<std::uint32_t> indexes;
         std::vector<submesh> submeshes;
 

@@ -106,5 +106,6 @@ float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
     ambient_lighting *= gtao_multi_bounce(ao, albedo);
 #endif
 
+    // return float4(N, 1.0);
     return float4(direct_lighting + ambient_lighting + emissive, 1.0);
 }

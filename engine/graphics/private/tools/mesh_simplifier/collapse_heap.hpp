@@ -18,26 +18,30 @@ public:
     void push(const element& element)
     {
         m_heap.push_back(element);
-        std::push_heap(m_heap.begin(), m_heap.end(), element_greater());
+        std::ranges::push_heap(m_heap, element_greater());
     }
 
     void pop()
     {
-        std::pop_heap(m_heap.begin(), m_heap.end(), element_greater());
+        std::ranges::pop_heap(m_heap, element_greater());
         m_heap.pop_back();
     }
 
-    void erase(std::uint32_t edge)
+    bool erase(std::uint32_t edge)
     {
-        update(edge, std::numeric_limits<float>::lowest());
-        pop();
+        if (update(edge, std::numeric_limits<float>::lowest()))
+        {
+            pop();
+            return true;
+        }
+
+        return false;
     }
 
-    void update(std::uint32_t edge, float error)
+    bool update(std::uint32_t edge, float error)
     {
-        auto iter = std::find_if(
-            m_heap.begin(),
-            m_heap.end(),
+        auto iter = std::ranges::find_if(
+            m_heap,
             [edge](const element& e)
             {
                 return e.edge == edge;
@@ -45,7 +49,7 @@ public:
 
         if (iter == m_heap.end())
         {
-            return;
+            return false;
         }
 
         if (iter->error > error)
@@ -58,6 +62,8 @@ public:
             iter->error = error;
             sift_down(std::distance(m_heap.begin(), iter));
         }
+
+        return true;
     }
 
     const element& top() const
@@ -106,7 +112,7 @@ private:
     {
         std::size_t size = m_heap.size();
 
-        std::size_t child = index * 2 + 1;
+        std::size_t child = (index * 2) + 1;
         while (child < size)
         {
             if (child + 1 < size && m_heap[child].error > m_heap[child + 1].error)

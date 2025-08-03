@@ -19,14 +19,14 @@ public:
 
     void push(task_type* task)
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
+        std::scoped_lock lock(m_mutex);
         m_queue.push(task);
         m_cv.notify_one();
     }
 
     task_type* pop()
     {
-        std::unique_lock<std::mutex> lock(m_mutex);
+        std::unique_lock lock(m_mutex);
         m_cv.wait(
             lock,
             [this]

@@ -39,7 +39,7 @@ vs_output vs_main(uint vertex_id : SV_VertexID)
 
     vs_output result;
     result.position = mul(camera.matrix_vp_no_jitter, float4(position, 1.0));
-    result.position.z = result.position.w * 0.00001;
+    result.position.z = 0.0;
     result.texcoord = normalize(vertices[indexes[vertex_id]]);
 
     return result;

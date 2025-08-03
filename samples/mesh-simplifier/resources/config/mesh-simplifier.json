@@ -5,6 +5,9 @@
         "height": 800
     },
     "mesh_simplifier_demo": {
-        "model": ""
+        "skybox": "D:/Workspace/assets/textures/skybox/dry_orchard_meadow_4k.hdr",
+        "model_bak2": "",
+        "model_bak": "D:/Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf",
+        "model": "D:/Workspace/assets/models/gltf/test4.glb"
     }
 }

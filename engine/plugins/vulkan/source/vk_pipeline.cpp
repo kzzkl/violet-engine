@@ -9,7 +9,8 @@
 namespace violet::vk
 {
 vk_shader::vk_shader(const rhi_shader_desc& desc, vk_context* context)
-    : m_push_constant_size(static_cast<std::uint32_t>(desc.push_constant_size)),
+    : m_entry_point(desc.entry_point),
+      m_push_constant_size(static_cast<std::uint32_t>(desc.push_constant_size)),
       m_context(context)
 {
     VkShaderModuleCreateInfo shader_module_info = {
@@ -71,9 +72,8 @@ vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_
     }
 
     std::vector<VkPipelineShaderStageCreateInfo> shader_stages(shaders.size());
-    std::transform(
-        shaders.begin(),
-        shaders.end(),
+    std::ranges::transform(
+        shaders,
         shader_stages.begin(),
         [](vk_shader* shader)
         {

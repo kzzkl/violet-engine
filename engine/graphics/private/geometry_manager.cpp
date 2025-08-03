@@ -21,7 +21,7 @@ geometry_manager::~geometry_manager() {}
 
 render_id geometry_manager::add_geometry(geometry* geometry)
 {
-    std::lock_guard lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
 
     render_id geometry_id = m_allocator.allocate();
 
@@ -37,7 +37,7 @@ render_id geometry_manager::add_geometry(geometry* geometry)
 
 void geometry_manager::remove_geometry(render_id geometry_id)
 {
-    std::lock_guard lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
 
     for (std::uint32_t type = 0; type < GEOMETRY_BUFFER_COUNT; ++type)
     {
@@ -66,7 +66,7 @@ void geometry_manager::remove_geometry(render_id geometry_id)
 
 render_id geometry_manager::add_submesh(render_id geometry_id)
 {
-    std::lock_guard lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
 
     render_id submesh_id = m_submeshes.add();
     m_submeshes[submesh_id].submesh_id = submesh_id;
@@ -77,7 +77,7 @@ render_id geometry_manager::add_submesh(render_id geometry_id)
 
 void geometry_manager::remove_submesh(render_id submesh_id)
 {
-    std::lock_guard lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
 
     m_submeshes.remove(submesh_id);
 }
@@ -159,7 +159,7 @@ void geometry_manager::set_submesh(
                     .index_count = cluster.index_count,
                     .bounding_sphere = cluster.bounding_sphere,
                     .lod_bounds = cluster.lod_bounds,
-                    .lod_error = cluster.lod_error,
+                    .lod_error = cluster.lod == 0 ? -1.0f : cluster.lod_error,
                 };
             }
 
@@ -237,12 +237,10 @@ void geometry_manager::update(gpu_buffer_uploader* uploader)
                     GEOMETRY_BUFFER_CUSTOM_3,
                     geometry.vertex_offset),
                 .index_offset =
-                    get_buffer_address(geometry.geometry_id, GEOMETRY_BUFFER_INDEX) / 4 +
+                    (get_buffer_address(geometry.geometry_id, GEOMETRY_BUFFER_INDEX) / 4) +
                     geometry.index_offset,
                 .index_count = geometry.index_count,
-                .cluster_root = geometry.cluster_root_id == INVALID_RENDER_ID ?
-                                    0xFFFFFFFF :
-                                    static_cast<std::uint32_t>(geometry.cluster_root_id),
+                .cluster_root = static_cast<std::uint32_t>(geometry.cluster_root_id),
             };
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
@@ -392,7 +390,8 @@ void geometry_manager::set_shared_buffer(
 
 void geometry_manager::mark_dirty(render_id geometry_id)
 {
-    std::lock_guard lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
+
     m_dirty_geometries.push_back(geometry_id);
 }
 } // namespace violet

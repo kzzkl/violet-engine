@@ -3,7 +3,38 @@
 
 namespace violet::test
 {
-TEST_CASE("matrix::mul", "[matrix]")
+TEST_CASE("matrix::mul 3x3", "[matrix]")
+{
+    mat3f a = {
+        {1.0f, 2.0f, 3.0f},
+        {5.0f, 6.0f, 7.0f},
+        {9.0f, 10.0f, 11.0f},
+    };
+
+    mat3f b = {
+        {1.0f, 2.0f, 3.1f},
+        {5.3f, 6.4f, 7.5f},
+        {9.7f, 0.8f, 1.9f},
+    };
+
+    mat3f result = {
+        {40.7f, 17.2f, 23.8f},
+        {104.7f, 54.0f, 73.8f},
+        {168.7f, 90.8f, 123.8f},
+    };
+
+    {
+        mat3f r = matrix::mul(a, b);
+        CHECK(equal(r, result));
+    }
+
+    vec3f v = {1.0f, 2.0f, 3.0f};
+    vec3f result_v = matrix::mul(v, a);
+
+    CHECK(equal(result_v, vec4f{38.0f, 44.0f, 50.0f, 56.0f}));
+}
+
+TEST_CASE("matrix::mul 4x4", "[matrix]")
 {
     mat4f a = {
         {1.0f, 2.0f, 3.0f, 4.0f},
