@@ -1,18 +1,16 @@
-project(hello-world)
+add_executable(hello-world
+    source/main.cpp)
 
-add_executable(${PROJECT_NAME}
-    ./source/main.cpp)
-
-target_include_directories(${PROJECT_NAME}
+target_include_directories(hello-world
     PRIVATE
-    ./include)
+        include)
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(hello-world
     PRIVATE
-    violet::graphics
-    violet::control)
+        violet::graphics
+        violet::control)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS hello-world
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)
@@ -20,5 +18,5 @@ install(TARGETS ${PROJECT_NAME}
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION bin/assets)
 
 if(MSVC)
-    set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/install/bin)
+    set_property(TARGET hello-world PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/install/bin)
 endif()

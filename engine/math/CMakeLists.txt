@@ -1,13 +1,11 @@
-project(violet-math)
+add_library(violet-math INTERFACE)
+add_library(violet::math ALIAS violet-math)
 
-add_library(${PROJECT_NAME} INTERFACE)
-add_library(violet::math ALIAS ${PROJECT_NAME})
-
-target_include_directories(${PROJECT_NAME}
+target_include_directories(violet-math
     INTERFACE
-    ./public)
+        public)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS violet-math
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)

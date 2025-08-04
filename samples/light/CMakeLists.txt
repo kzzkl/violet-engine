@@ -1,19 +1,17 @@
-project(light)
+add_executable(light
+    source/light_viewer.cpp
+    source/main.cpp)
 
-add_executable(${PROJECT_NAME}
-    ./source/light_viewer.cpp
-    ./source/main.cpp)
-
-target_include_directories(${PROJECT_NAME}
+target_include_directories(light
     PRIVATE
-        ./include)
+        include)
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(light
     PRIVATE
         violet::graphics
         violet::editor)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS light
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)

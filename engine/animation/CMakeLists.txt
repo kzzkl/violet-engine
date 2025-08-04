@@ -1,20 +1,18 @@
-project(violet-animation)
+add_library(violet-animation STATIC
+    private/animation_system.cpp)
+add_library(violet::animation ALIAS violet-animation)
 
-add_library(${PROJECT_NAME} STATIC
-    ./private/animation_system.cpp)
-add_library(violet::animation ALIAS ${PROJECT_NAME})
-
-target_include_directories(${PROJECT_NAME}
+target_include_directories(violet-animation
     PUBLIC
-    ./public
+        public
     PRIVATE
-    ./private)
+        private)
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(violet-animation
     PUBLIC
-    violet::graphics)
+        violet::graphics)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS violet-animation
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)

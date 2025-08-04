@@ -1,18 +1,16 @@
-project(ui)
+add_executable(ui
+    source/gallery.cpp
+    source/main.cpp)
 
-add_executable(${PROJECT_NAME}
-    ./source/gallery.cpp
-    ./source/main.cpp)
-
-target_include_directories(${PROJECT_NAME}
+target_include_directories(ui
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(ui
     PRIVATE
         violet::ui)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS ui
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)

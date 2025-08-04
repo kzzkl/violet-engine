@@ -1,20 +1,18 @@
-project(physics)
+add_executable(physics
+    source/main.cpp)
 
-add_executable(${PROJECT_NAME}
-    ./source/main.cpp)
-
-target_include_directories(${PROJECT_NAME}
+target_include_directories(physics
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include)
+        include)
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(physics
     PRIVATE
         violet::graphics
         violet::physics
         violet::control
         violet::sample-base)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS physics
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)

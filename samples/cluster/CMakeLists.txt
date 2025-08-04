@@ -1,20 +1,18 @@
-project(cluster)
+add_executable(cluster
+    source/cluster_material.cpp
+    source/main.cpp)
 
-add_executable(${PROJECT_NAME}
-    ./source/cluster_material.cpp
-    ./source/main.cpp)
-
-target_include_directories(${PROJECT_NAME}
+target_include_directories(cluster
     PRIVATE
-    ./include)
+        include)
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(cluster
     PRIVATE
-    violet::graphics
-    violet::control
-    violet::sample-base)
+        violet::graphics
+        violet::control
+        violet::sample-base)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS cluster
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)
@@ -22,5 +20,5 @@ install(TARGETS ${PROJECT_NAME}
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION bin/assets)
 
 if(MSVC)
-    set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/install/bin)
+    set_property(TARGET cluster PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/install/bin)
 endif()

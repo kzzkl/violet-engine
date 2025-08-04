@@ -1,23 +1,21 @@
-project(violet-control)
+add_library(violet-control STATIC
+    private/control_system.cpp)
+add_library(violet::control ALIAS violet-control)
 
-add_library(${PROJECT_NAME} STATIC
-    ./private/control_system.cpp)
-add_library(violet::control ALIAS ${PROJECT_NAME})
-
-target_include_directories(${PROJECT_NAME}
+target_include_directories(violet-control
     PUBLIC
-    ./public
+        public
     PRIVATE
-    ./private)
+        private)
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(violet-control
     PUBLIC
-    violet::core
-    violet::window
-    violet::math
-    violet::scene)
+        violet::core
+        violet::window
+        violet::math
+        violet::scene)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS violet-control
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)

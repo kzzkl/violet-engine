@@ -1,36 +1,31 @@
-project(violet-physics)
-
 option(VIOLET_PHYSICS_DEBUG_DRAW "Whether to show rigid body wireframe" OFF)
 
-set(SRC_FILES
-    ./private/physics_context.cpp
-    ./private/physics_plugin.cpp
-    ./private/physics_scene.cpp
-    ./private/physics_system.cpp)
+add_library(violet-physics STATIC
+    private/physics_context.cpp
+    private/physics_plugin.cpp
+    private/physics_scene.cpp
+    private/physics_system.cpp)
+add_library(violet::physics ALIAS violet-physics)
 
-add_library(${PROJECT_NAME} STATIC ${SRC_FILES})
-add_library(violet::physics ALIAS ${PROJECT_NAME})
-
-target_include_directories(${PROJECT_NAME}
+target_include_directories(violet-physics
     PUBLIC
-    ./interface
-    ./public
+        public
     PRIVATE
-    ./private)
+        private)
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(violet-physics
     PUBLIC
-    violet::algorithm
-    violet::math
-    violet::scene
-    violet::task)
+        violet::algorithm
+        violet::math
+        violet::scene
+        violet::task)
 
 if(${VIOLET_PHYSICS_DEBUG_DRAW})
-    target_compile_definitions(${PROJECT_NAME} PRIVATE VIOLET_PHYSICS_DEBUG_DRAW)
-    target_link_libraries(${PROJECT_NAME} PUBLIC violet::graphics)
+    target_compile_definitions(violet-physics PRIVATE VIOLET_PHYSICS_DEBUG_DRAW)
+    target_link_libraries(violet-physics PUBLIC violet::graphics)
 endif()
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS violet-physics
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)

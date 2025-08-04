@@ -115,7 +115,7 @@ private:
             scene_component>(m_camera);
 
         auto& camera_control = world.get_component<orbit_control_component>(m_camera);
-        camera_control.radius_speed = 9.0f;
+        camera_control.radius_speed = 1.0f;
         camera_control.target = {.x = 0.0f, .y = 0.1f, .z = 0.0f};
 
         auto& camera_transform = world.get_component<transform_component>(m_camera);
@@ -357,11 +357,6 @@ private:
             model.entities.push_back(entity);
         }
 
-        entity root = world.create();
-        world.add_component<transform_component, scene_component>(root);
-        auto& root_transform = world.get_component<transform_component>(root);
-        root_transform.set_scale({10.0f, 10.0f, 10.0f});
-
         for (std::size_t i = 0; i < result->nodes.size(); ++i)
         {
             const auto& node = result->nodes[i];
@@ -394,11 +389,6 @@ private:
             {
                 world.add_component<parent_component>(entity);
                 world.get_component<parent_component>(entity).parent = model.entities[node.parent];
-            }
-            else
-            {
-                world.add_component<parent_component>(entity);
-                world.get_component<parent_component>(entity).parent = root;
             }
         }
 

@@ -1,23 +1,21 @@
-project(violet-core)
+add_library(violet-core STATIC
+    private/engine_context.cpp
+    private/engine.cpp
+    private/plugin.cpp)
+add_library(violet::core ALIAS violet-core)
 
-add_library(${PROJECT_NAME} STATIC
-    ./private/engine_context.cpp
-    ./private/engine.cpp
-    ./private/plugin.cpp)
-add_library(violet::core ALIAS ${PROJECT_NAME})
-
-target_include_directories(${PROJECT_NAME}
+target_include_directories(violet-core
     PUBLIC
-        ./public
+        public
     PRIVATE
-        ./private)
+        private)
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(violet-core
     PUBLIC
         violet::ecs
         violet::task)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS violet-core
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)

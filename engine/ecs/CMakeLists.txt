@@ -1,24 +1,22 @@
-project(violet-ecs)
+add_library(violet-ecs STATIC
+    private/archetype_chunk.cpp
+    private/archetype.cpp
+    private/view.cpp
+    private/world_command.cpp
+    private/world.cpp)
+add_library(violet::ecs ALIAS violet-ecs)
 
-add_library(${PROJECT_NAME} STATIC
-    ./private/archetype_chunk.cpp
-    ./private/archetype.cpp
-    ./private/view.cpp
-    ./private/world_command.cpp
-    ./private/world.cpp)
-add_library(violet::ecs ALIAS ${PROJECT_NAME})
-
-target_include_directories(${PROJECT_NAME}
+target_include_directories(violet-ecs
     PUBLIC
-        ./public
+        public
     PRIVATE
-        ./private)
+        private)
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(violet-ecs
     PUBLIC
         violet::common)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS violet-ecs
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)

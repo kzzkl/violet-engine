@@ -1,23 +1,21 @@
-project(violet-task)
+add_library(violet-task STATIC
+    private/task_executor.cpp
+    private/task_graph.cpp
+    private/task_group.cpp
+    private/task.cpp)
+add_library(violet::task ALIAS violet-task)
 
-add_library(${PROJECT_NAME} STATIC
-    ./private/task_executor.cpp
-    ./private/task_graph.cpp
-    ./private/task_group.cpp
-    ./private/task.cpp)
-add_library(violet::task ALIAS ${PROJECT_NAME})
-
-target_include_directories(${PROJECT_NAME}
+target_include_directories(violet-task
     PUBLIC
-        ./public
+        public
     PRIVATE
-        ./private)
+        private)
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(violet-task
     PUBLIC
         violet::common)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS violet-task
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)

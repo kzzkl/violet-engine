@@ -1,19 +1,17 @@
-project(pbr)
+add_executable(pbr
+    source/main.cpp)
 
-add_executable(${PROJECT_NAME}
-    ./source/main.cpp)
-
-target_include_directories(${PROJECT_NAME}
+target_include_directories(pbr
     PRIVATE
-    ./include)
+        include)
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(pbr
     PRIVATE
-    violet::graphics
-    violet::control
-    violet::sample-base)
+        violet::graphics
+        violet::control
+        violet::sample-base)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS pbr
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)
@@ -21,5 +19,5 @@ install(TARGETS ${PROJECT_NAME}
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION bin/assets)
 
 if(MSVC)
-    set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/install/bin)
+    set_property(TARGET pbr PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/install/bin)
 endif()

@@ -1,19 +1,17 @@
-project(bvh)
+add_executable(bvh
+    source/bvh_viewer.cpp
+    source/main.cpp)
 
-add_executable(${PROJECT_NAME}
-    ./source/bvh_viewer.cpp
-    ./source/main.cpp)
-
-target_include_directories(${PROJECT_NAME}
+target_include_directories(bvh
     PRIVATE
-        ./include)
+        include)
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(bvh
     PRIVATE
         violet::graphics
         violet::ui)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS bvh
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)

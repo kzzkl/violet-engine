@@ -1,18 +1,16 @@
-project(violet-resource)
+add_library(violet-resource STATIC
+    private/resource_manager.cpp)
+add_library(violet::resource ALIAS violet-resource)
 
-add_library(${PROJECT_NAME} STATIC
-    ./private/resource_manager.cpp)
-add_library(violet::resource ALIAS ${PROJECT_NAME})
-
-target_include_directories(${PROJECT_NAME}
+target_include_directories(violet-resource
     PUBLIC
-    ./public)
+        public)
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(violet-resource
     PUBLIC
-    violet::core)
+        violet::core)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS violet-resource
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)

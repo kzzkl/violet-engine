@@ -1,37 +1,28 @@
-project(violet-physics-bullet3)
+add_library(violet-bullet3 SHARED
+    source/bt3_joint.cpp
+    source/bt3_plugin.cpp
+    source/bt3_rigidbody.cpp
+    source/bt3_shape.cpp
+    source/bt3_world.cpp)
 
-set(HPP_FILES
-    )
-source_group("Header Files" FILES ${HPP_FILES})
+set_target_properties(violet-bullet3 PROPERTIES DEBUG_POSTFIX "")
 
-set(CPP_FILES
-    ./source/bt3_joint.cpp
-    ./source/bt3_plugin.cpp
-    ./source/bt3_rigidbody.cpp
-    ./source/bt3_shape.cpp
-    ./source/bt3_world.cpp)
-source_group("Source Files" FILES ${CPP_FILES})
-
-add_library(${PROJECT_NAME} SHARED ${HPP_FILES} ${CPP_FILES})
-
-set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "")
-
-target_include_directories(${PROJECT_NAME}
+target_include_directories(violet-bullet3
     PRIVATE
-    ./include
-    ${VIOLET_ROOT_DIR}/engine/core/public
-    ${VIOLET_ROOT_DIR}/engine/physics/public
-    ${VIOLET_THIRDPARTY_DIR}/bullet3/src)
+        include
+        ${VIOLET_ROOT_DIR}/engine/core/public
+        ${VIOLET_ROOT_DIR}/engine/physics/public
+        ${VIOLET_THIRDPARTY_DIR}/bullet3/src)
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(violet-bullet3
     PRIVATE
-    LinearMath
-    Bullet3Common
-    BulletCollision
-    BulletDynamics
-    violet::math)
+        violet::math
+        LinearMath
+        Bullet3Common
+        BulletCollision
+        BulletDynamics)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS violet-bullet3
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)

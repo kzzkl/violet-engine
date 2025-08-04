@@ -1,23 +1,21 @@
-project(violet-window)
+add_library(violet-window STATIC
+    private/input.cpp
+    private/window_impl_win32.cpp
+    private/window_system.cpp)
+add_library(violet::window ALIAS violet-window)
 
-add_library(${PROJECT_NAME} STATIC
-    ./private/input.cpp
-    ./private/window_impl_win32.cpp
-    ./private/window_system.cpp)
-add_library(violet::window ALIAS ${PROJECT_NAME})
-
-target_include_directories(${PROJECT_NAME}
+target_include_directories(violet-window
     PUBLIC
-    ./public
+        public
     PRIVATE
-    ./private)
+        private)
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(violet-window
     PUBLIC
-    violet::core
-    violet::math)
+        violet::core
+        violet::math)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS violet-window
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)
