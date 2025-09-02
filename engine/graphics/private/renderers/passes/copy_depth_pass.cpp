@@ -15,7 +15,7 @@ struct copy_depth_cs : public shader_cs
     };
 
     static constexpr parameter_layout parameters = {
-        {0, bindless},
+        {.space = 0, .desc = bindless},
     };
 };
 
@@ -45,12 +45,13 @@ void copy_depth_pass::add(render_graph& graph, const parameter& parameter)
                 .compute_shader = device.get_shader<copy_depth_cs>(),
             });
 
-            command.set_constant(copy_depth_cs::constant_data{
-                .src = data.src.get_bindless(),
-                .dst = data.dst.get_bindless(),
-                .width = extent.width,
-                .height = extent.height,
-            });
+            command.set_constant(
+                copy_depth_cs::constant_data{
+                    .src = data.src.get_bindless(),
+                    .dst = data.dst.get_bindless(),
+                    .width = extent.width,
+                    .height = extent.height,
+                });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
             command.dispatch_2d(extent.width, extent.height);

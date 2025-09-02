@@ -14,7 +14,7 @@ struct rhi_constants
     static constexpr std::size_t max_vertex_attributes = 8;
 };
 
-enum rhi_format
+enum rhi_format : std::uint8_t
 {
     RHI_FORMAT_UNDEFINED,
     RHI_FORMAT_R8_UNORM,
@@ -143,7 +143,7 @@ public:
     }
 };
 
-enum rhi_texture_dimension
+enum rhi_texture_dimension : std::uint8_t
 {
     RHI_TEXTURE_DIMENSION_2D,
     RHI_TEXTURE_DIMENSION_2D_ARRAY,
@@ -166,7 +166,7 @@ class rhi_texture_dsv : public rhi_descriptor
 {
 };
 
-enum rhi_texture_layout
+enum rhi_texture_layout : std::uint8_t
 {
     RHI_TEXTURE_LAYOUT_UNDEFINED,
     RHI_TEXTURE_LAYOUT_GENERAL,
@@ -189,7 +189,7 @@ struct rhi_texture_extent
     }
 };
 
-enum rhi_sample_count
+enum rhi_sample_count : std::uint8_t
 {
     RHI_SAMPLE_COUNT_1,
     RHI_SAMPLE_COUNT_2,
@@ -217,8 +217,8 @@ struct rhi_texture_desc
     rhi_format format;
     rhi_texture_flags flags;
 
-    std::uint32_t level_count{1};
-    std::uint32_t layer_count{1};
+    std::uint32_t level_count;
+    std::uint32_t layer_count;
 
     rhi_sample_count samples;
     rhi_texture_layout layout;
@@ -364,20 +364,20 @@ public:
     virtual ~rhi_sampler() = default;
 };
 
-enum rhi_attachment_type
+enum rhi_attachment_type : std::uint8_t
 {
-    RHI_ATTACHMENT_RENDER_TARGET,
-    RHI_ATTACHMENT_DEPTH_STENCIL,
+    RHI_ATTACHMENT_TYPE_RENDER_TARGET,
+    RHI_ATTACHMENT_TYPE_DEPTH_STENCIL,
 };
 
-enum rhi_attachment_load_op
+enum rhi_attachment_load_op : std::uint8_t
 {
     RHI_ATTACHMENT_LOAD_OP_LOAD,
     RHI_ATTACHMENT_LOAD_OP_CLEAR,
     RHI_ATTACHMENT_LOAD_OP_DONT_CARE
 };
 
-enum rhi_attachment_store_op
+enum rhi_attachment_store_op : std::uint8_t
 {
     RHI_ATTACHMENT_STORE_OP_STORE,
     RHI_ATTACHMENT_STORE_OP_DONT_CARE
@@ -469,22 +469,22 @@ enum rhi_shader_stage_flag : std::uint32_t
 };
 using rhi_shader_stage_flags = std::uint32_t;
 
-enum rhi_parameter_binding_type
+enum rhi_parameter_binding_type : std::uint8_t
 {
-    RHI_PARAMETER_BINDING_UNIFORM,
-    RHI_PARAMETER_BINDING_STORAGE_BUFFER,
-    RHI_PARAMETER_BINDING_STORAGE_TEXEL,
-    RHI_PARAMETER_BINDING_STORAGE_TEXTURE,
-    RHI_PARAMETER_BINDING_TEXTURE,
-    RHI_PARAMETER_BINDING_SAMPLER,
-    RHI_PARAMETER_BINDING_MUTABLE,
+    RHI_PARAMETER_BINDING_TYPE_UNIFORM,
+    RHI_PARAMETER_BINDING_TYPE_STORAGE_BUFFER,
+    RHI_PARAMETER_BINDING_TYPE_STORAGE_TEXEL,
+    RHI_PARAMETER_BINDING_TYPE_STORAGE_TEXTURE,
+    RHI_PARAMETER_BINDING_TYPE_TEXTURE,
+    RHI_PARAMETER_BINDING_TYPE_SAMPLER,
+    RHI_PARAMETER_BINDING_TYPE_MUTABLE,
 };
 
 struct rhi_parameter_binding
 {
     rhi_parameter_binding_type type;
     rhi_shader_stage_flags stages;
-    std::size_t size;
+    std::uint32_t size;
 };
 
 enum rhi_parameter_flag : std::uint8_t
@@ -561,14 +561,14 @@ public:
     virtual ~rhi_shader() = default;
 };
 
-enum rhi_cull_mode
+enum rhi_cull_mode : std::uint8_t
 {
     RHI_CULL_MODE_NONE,
     RHI_CULL_MODE_FRONT,
     RHI_CULL_MODE_BACK
 };
 
-enum rhi_polygon_mode
+enum rhi_polygon_mode : std::uint8_t
 {
     RHI_POLYGON_MODE_FILL,
     RHI_POLYGON_MODE_LINE,
@@ -581,7 +581,7 @@ struct rhi_rasterizer_state
     rhi_polygon_mode polygon_mode;
 };
 
-enum rhi_blend_factor
+enum rhi_blend_factor : std::uint8_t
 {
     RHI_BLEND_FACTOR_ZERO,
     RHI_BLEND_FACTOR_ONE,
@@ -595,7 +595,7 @@ enum rhi_blend_factor
     RHI_BLEND_FACTOR_ONE_MINUS_DST_ALPHA,
 };
 
-enum rhi_blend_op
+enum rhi_blend_op : std::uint8_t
 {
     RHI_BLEND_OP_ADD,
     RHI_BLEND_OP_SUBTRACT,
@@ -622,7 +622,7 @@ struct rhi_blend_state
     rhi_attachment_blend attachments[rhi_constants::max_attachments];
 };
 
-enum rhi_compare_op
+enum rhi_compare_op : std::uint8_t
 {
     RHI_COMPARE_OP_NEVER,
     RHI_COMPARE_OP_LESS,
@@ -634,7 +634,7 @@ enum rhi_compare_op
     RHI_COMPARE_OP_ALWAYS,
 };
 
-enum rhi_stencil_op
+enum rhi_stencil_op : std::uint8_t
 {
     RHI_STENCIL_OP_KEEP,
     RHI_STENCIL_OP_ZERO,
@@ -667,7 +667,7 @@ struct rhi_depth_stencil_state
     rhi_stencil_state stencil_back;
 };
 
-enum rhi_primitive_topology
+enum rhi_primitive_topology : std::uint8_t
 {
     RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
     RHI_PRIMITIVE_TOPOLOGY_LINE_LIST,
@@ -709,7 +709,11 @@ public:
 
 union rhi_clear_value
 {
-    float color[4];
+    union
+    {
+        float float32[4];
+        std::uint32_t uint32[4];
+    } color;
 
     struct
     {
@@ -779,13 +783,13 @@ struct rhi_texture_barrier
     std::uint32_t layer_count;
 };
 
-enum rhi_texture_aspect_flag : std::uint8_t
+enum rhi_texture_aspect_flag : std::uint32_t
 {
     RHI_TEXTURE_ASPECT_COLOR = 1 << 0,
     RHI_TEXTURE_ASPECT_DEPTH = 1 << 1,
     RHI_TEXTURE_ASPECT_STENCIL = 1 << 2,
 };
-using rhi_texture_aspect_flags = std::uint8_t;
+using rhi_texture_aspect_flags = std::uint32_t;
 
 struct rhi_texture_region
 {
@@ -828,7 +832,7 @@ public:
     virtual void set_pipeline(rhi_raster_pipeline* raster_pipeline) = 0;
     virtual void set_pipeline(rhi_compute_pipeline* compute_pipeline) = 0;
     virtual void set_parameter(std::uint32_t index, rhi_parameter* parameter) = 0;
-    virtual void set_constant(const void* data, std::size_t size) = 0;
+    virtual void set_constant(const void* data, std::size_t size, std::size_t offset = 0) = 0;
 
     virtual void set_viewport(const rhi_viewport& viewport) = 0;
     virtual void set_scissor(const rhi_scissor_rect* rects, std::uint32_t rect_count) = 0;
@@ -867,6 +871,12 @@ public:
         std::uint32_t buffer_barrier_count,
         const rhi_texture_barrier* texture_barriers,
         std::uint32_t texture_barrier_count) = 0;
+
+    virtual void clear_texture(
+        rhi_texture* texture,
+        rhi_clear_value clear_value,
+        const rhi_texture_region* regions,
+        std::uint32_t region_count) = 0;
 
     virtual void copy_texture(
         rhi_texture* src,
@@ -934,7 +944,7 @@ public:
     virtual std::uint32_t get_texture_count() const noexcept = 0;
 };
 
-enum rhi_backend
+enum rhi_backend : std::uint8_t
 {
     RHI_BACKEND_VULKAN
 };

@@ -29,7 +29,7 @@ public:
     void set_pipeline(rhi_raster_pipeline* raster_pipeline) override;
     void set_pipeline(rhi_compute_pipeline* compute_pipeline) override;
     void set_parameter(std::uint32_t index, rhi_parameter* parameter) override;
-    void set_constant(const void* data, std::size_t size) override;
+    void set_constant(const void* data, std::size_t size, std::size_t offset) override;
 
     void set_viewport(const rhi_viewport& viewport) override;
     void set_scissor(const rhi_scissor_rect* rects, std::uint32_t rect_count) override;
@@ -64,6 +64,12 @@ public:
         std::uint32_t buffer_barrier_count,
         const rhi_texture_barrier* texture_barriers,
         std::uint32_t texture_barrier_count) override;
+
+    void clear_texture(
+        rhi_texture* texture,
+        rhi_clear_value clear_value,
+        const rhi_texture_region* regions,
+        std::uint32_t region_count) override;
 
     void copy_texture(
         rhi_texture* src,

@@ -1,4 +1,4 @@
-#include "gltf_loader.hpp"
+#include "sample/gltf_loader.hpp"
 #include "graphics/tools/geometry_tool.hpp"
 #include <algorithm>
 #include <filesystem>
@@ -7,7 +7,7 @@
 #define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #define TINYGLTF_NO_EXTERNAL_IMAGE
-#include "tiny_gltf.h"
+#include <tiny_gltf.h>
 
 namespace violet
 {

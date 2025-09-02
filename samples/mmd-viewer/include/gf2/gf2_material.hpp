@@ -12,7 +12,7 @@ struct gf2_material_base_constant
     std::uint32_t brdf_lut;
 };
 
-class gf2_material_base : public mesh_material<gf2_material_base_constant>
+class gf2_material_base : public mesh_material<gf2_material_base_constant, MATERIAL_PATH_DEFERRED>
 {
 public:
     gf2_material_base();
@@ -36,7 +36,7 @@ struct gf2_material_face_constant
     std::uint32_t padding1;
 };
 
-class gf2_material_face : public mesh_material<gf2_material_face_constant>
+class gf2_material_face : public mesh_material<gf2_material_face_constant, MATERIAL_PATH_DEFERRED>
 {
 public:
     gf2_material_face();
@@ -53,7 +53,7 @@ struct gf2_material_eye_constant
     std::uint32_t diffuse_texture;
 };
 
-class gf2_material_eye : public mesh_material<gf2_material_eye_constant>
+class gf2_material_eye : public mesh_material<gf2_material_eye_constant, MATERIAL_PATH_DEFERRED>
 {
 public:
     gf2_material_eye();
@@ -66,7 +66,8 @@ struct gf2_material_eye_blend_constant
     std::uint32_t blend_texture;
 };
 
-class gf2_material_eye_blend : public mesh_material<gf2_material_eye_blend_constant>
+class gf2_material_eye_blend
+    : public mesh_material<gf2_material_eye_blend_constant, MATERIAL_PATH_FORWARD>
 {
 public:
     gf2_material_eye_blend(bool is_add);
@@ -82,7 +83,7 @@ struct gf2_material_hair_constant
     std::uint32_t brdf_lut;
 };
 
-class gf2_material_hair : public mesh_material<gf2_material_hair_constant>
+class gf2_material_hair : public mesh_material<gf2_material_hair_constant, MATERIAL_PATH_DEFERRED>
 {
 public:
     gf2_material_hair();
@@ -101,7 +102,7 @@ struct gf2_material_plush_constant
     std::uint32_t brdf_lut;
 };
 
-class gf2_material_plush : public mesh_material<gf2_material_plush_constant>
+class gf2_material_plush : public mesh_material<gf2_material_plush_constant, MATERIAL_PATH_DEFERRED>
 {
 public:
     gf2_material_plush();

@@ -1,4 +1,5 @@
 #include "gf2/gf2_material.hlsli"
+#include "shading/shading_model.hlsli"
 
 struct gf2_material_face
 {
@@ -73,10 +74,12 @@ fs_output fs_main(vs_output input)
 
     float3 indirect_lighting = indirect_light(material.face_front_dir, V, albedo, roughness, metallic, material.brdf_lut);
 
+    material_info material_info = load_material_info(scene.material_buffer, input.material_address);
+
     fs_output output;
     output.albedo = float4(direct_lighting + indirect_lighting, 1.0);
     output.material = 0.0;
-    output.normal = 0.0;
+    output.normal = pack_gbuffer_normal(float3(0.0, 0.0, 0.0), material_info.shading_model);
     output.emissive = 0.0;
 
     return output;

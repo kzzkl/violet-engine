@@ -45,8 +45,9 @@ class index_allocator
 public:
     static constexpr std::uint32_t no_space = 0xFFFFFFFF;
 
-    index_allocator(std::uint32_t capacity = 0xFFFFFFFF)
-        : m_capacity(capacity)
+    index_allocator(std::uint32_t offset = 0, std::uint32_t capacity = 0xFFFFFFFF)
+        : m_offset(offset),
+          m_capacity(capacity)
     {
     }
 
@@ -59,7 +60,7 @@ public:
             return index;
         }
 
-        return m_offset < m_capacity ? m_offset++ : no_space;
+        return m_count < m_capacity ? m_offset + m_count++ : no_space;
     }
 
     void free(std::uint32_t index)
@@ -70,17 +71,18 @@ public:
     void reset()
     {
         m_free.clear();
-        m_offset = 0;
+        m_count = 0;
     }
 
     std::size_t get_size() const noexcept
     {
-        return m_offset - m_free.size();
+        return m_count - m_free.size();
     }
 
 private:
     std::vector<std::uint32_t> m_free;
-    std::uint32_t m_offset{0};
+    std::uint32_t m_offset;
+    std::uint32_t m_count{0};
     std::uint32_t m_capacity;
 };
 
@@ -118,35 +120,18 @@ private:
     std::uint32_t get_parent(std::uint32_t index) const noexcept
     {
         assert(index != 0);
-        return (index + 1) / 2 - 1;
+        return ((index + 1) / 2) - 1;
     }
 
     std::uint32_t get_buddy(std::uint32_t index) const noexcept
     {
         assert(index != 0);
-        return index - 1 + (index & 1) * 2;
+        return index - 1 + ((index & 1) * 2);
     }
 
     std::uint32_t get_offset(std::uint32_t index, std::uint32_t level) const noexcept
     {
         return ((index + 1) - (1 << level)) << (m_level - level);
-    }
-
-    std::uint32_t next_power_of_two(std::uint32_t x) const noexcept
-    {
-        if (x == 0)
-        {
-            return 1;
-        }
-
-        x--;
-        x |= x >> 1;
-        x |= x >> 2;
-        x |= x >> 4;
-        x |= x >> 8;
-        x |= x >> 16;
-
-        return x + 1;
     }
 
     std::uint32_t m_level;

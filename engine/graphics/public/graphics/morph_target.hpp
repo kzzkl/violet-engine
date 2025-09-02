@@ -37,7 +37,7 @@ struct morphing_position_cs : public shader_cs
 
     static constexpr parameter parameter = {
         {
-            .type = RHI_PARAMETER_BINDING_UNIFORM,
+            .type = RHI_PARAMETER_BINDING_TYPE_UNIFORM,
             .stages = RHI_PIPELINE_STAGE_COMPUTE,
             .size = sizeof(morphing_data),
         },

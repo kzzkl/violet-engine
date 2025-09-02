@@ -1,16 +1,16 @@
 #pragma once
 
-#include "graphics/material.hpp"
 #include "graphics/render_graph/rdg_allocator.hpp"
 #include "graphics/render_graph/rdg_pipeline.hpp"
 #include <array>
+#include <span>
 
 namespace violet
 {
 class render_scene;
 class render_camera;
 
-enum rdg_parameter_type
+enum rdg_parameter_type : std::uint8_t
 {
     RDG_PARAMETER_BINDLESS,
     RDG_PARAMETER_SCENE,
@@ -40,9 +40,9 @@ public:
     }
 
     template <typename T>
-    void set_constant(const T& constant)
+    void set_constant(const T& constant, std::size_t offset = 0)
     {
-        m_command->set_constant(&constant, sizeof(T));
+        m_command->set_constant(&constant, sizeof(T), offset);
     }
 
     void set_viewport();
@@ -63,6 +63,8 @@ public:
             vertex_buffers.data(),
             static_cast<std::uint32_t>(vertex_buffers.size()));
     }
+
+    void set_index_buffer();
 
     void set_index_buffer(rhi_buffer* index_buffer, std::size_t index_size)
     {
@@ -93,12 +95,20 @@ public:
             instance_count);
     }
 
-    void draw_instances(rhi_buffer* command_buffer, rhi_buffer* count_buffer, material_type type);
-    void draw_instances(
+    void draw_indexed_indirect(
         rhi_buffer* command_buffer,
+        std::size_t command_buffer_offset,
         rhi_buffer* count_buffer,
-        material_type type,
-        const rdg_raster_pipeline& pipeline);
+        std::size_t count_buffer_offset,
+        std::uint32_t max_draw_count)
+    {
+        m_command->draw_indexed_indirect(
+            command_buffer,
+            command_buffer_offset,
+            count_buffer,
+            count_buffer_offset,
+            max_draw_count);
+    }
 
     void draw_fullscreen()
     {
@@ -144,6 +154,18 @@ public:
     void dispatch_indirect(rhi_buffer* command_buffer, std::uint32_t command_buffer_offset)
     {
         m_command->dispatch_indirect(command_buffer, command_buffer_offset);
+    }
+
+    void clear_texture(
+        rhi_texture* texture,
+        const rhi_clear_value& clear_value,
+        std::span<const rhi_texture_region> regions)
+    {
+        m_command->clear_texture(
+            texture,
+            clear_value,
+            regions.data(),
+            static_cast<std::uint32_t>(regions.size()));
     }
 
     void copy_texture(

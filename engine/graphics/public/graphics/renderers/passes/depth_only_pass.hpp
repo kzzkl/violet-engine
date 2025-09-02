@@ -9,12 +9,13 @@ class depth_only_pass
 public:
     struct parameter
     {
-        rdg_buffer* command_buffer;
-        rdg_buffer* count_buffer;
+        rdg_buffer* draw_buffer;
+        rdg_buffer* draw_count_buffer;
+        rdg_buffer* draw_info_buffer;
 
         rdg_texture* depth_buffer;
 
-        material_type material_type;
+        surface_type surface_type;
 
         bool clear;
 

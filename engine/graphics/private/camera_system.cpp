@@ -12,7 +12,7 @@ shader::camera_data get_camera_data(
     const camera_component& camera,
     const transform_world_component& transform)
 {
-    static const std::array<vec2f, 8> HALTON_SEQUENCE = {
+    static const std::array<vec2f, 8> halton_sequence = {
         vec2f{0.500000f, 0.333333f},
         vec2f{0.250000f, 0.666667f},
         vec2f{0.750000f, 0.111111f},
@@ -48,9 +48,9 @@ shader::camera_data get_camera_data(
     auto* taa = camera.renderer->get_feature<taa_render_feature>();
     if (taa && taa->is_enable())
     {
-        std::size_t index = render_device::instance().get_frame_count() % HALTON_SEQUENCE.size();
+        std::size_t index = render_device::instance().get_frame_count() % halton_sequence.size();
 
-        vec2f jitter = HALTON_SEQUENCE[index] - vec2f{0.5f, 0.5f};
+        vec2f jitter = halton_sequence[index] - vec2f{0.5f, 0.5f};
         jitter.x = jitter.x * 2.0f / static_cast<float>(extent.width);
         jitter.y = jitter.y * 2.0f / static_cast<float>(extent.height);
 
@@ -73,7 +73,7 @@ shader::camera_data get_camera_data(
 
 rhi_texture_extent get_previous_pow2_extent(const rhi_texture_extent& extent)
 {
-    rhi_texture_extent result = {1, 1};
+    rhi_texture_extent result = {.width = 1, .height = 1};
     while ((result.width << 1) < extent.width)
     {
         result.width <<= 1;

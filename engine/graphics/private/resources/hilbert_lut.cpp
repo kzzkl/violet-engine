@@ -12,7 +12,7 @@ hilbert_lut::hilbert_lut(std::uint32_t level)
     {
         for (std::uint32_t x = 0; x < width; ++x)
         {
-            hilbert_indexes[y * width + x] = hilbert_index(x, y, level);
+            hilbert_indexes[(y * width) + x] = hilbert_index(x, y, level);
         }
     }
 

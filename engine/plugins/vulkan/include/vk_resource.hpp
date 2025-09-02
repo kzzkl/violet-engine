@@ -212,7 +212,7 @@ private:
     {
         std::size_t operator()(const view_key& key) const noexcept
         {
-            return hash::city_hash_64(key);
+            return hash::city_hash_64(&key, sizeof(view_key));
         }
     };
 
@@ -379,7 +379,7 @@ private:
     {
         std::size_t operator()(const view_key& key) const noexcept
         {
-            return hash::city_hash_64(key);
+            return hash::city_hash_64(&key, sizeof(view_key));
         }
     };
 

@@ -1,9 +1,11 @@
 #include "mesh.hlsli"
+#include "shading/shading_model.hlsli"
 
 struct vs_output
 {
     float4 position_cs : SV_POSITION;
     float3 color : COLOR;
+    uint shading_model : SHADING_MODEL;
 };
 
 struct mmd_outline_material
@@ -26,12 +28,13 @@ float3 get_smooth_normal(vertex vertex, float3 smooth_normal)
 
 vs_output vs_main(uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID)
 {
-    mesh mesh = mesh::create(instance_id, vertex_id);
-    vertex vertex = mesh.fetch_vertex();
+    mesh mesh = mesh::create(instance_id);
+    vertex vertex = mesh.fetch_vertex(vertex_id);
     
     mmd_outline_material material = load_material<mmd_outline_material>(scene.material_buffer, mesh.get_material_address());
+    material_info material_info = load_material_info(scene.material_buffer, mesh.get_material_address());
 
-    float4 smooth_normal_and_outline = mesh.fetch_custom_attribute<float4>(0);
+    float4 smooth_normal_and_outline = mesh.fetch_custom_attribute<float4>(vertex_id, 0);
     float3 smooth_normal_ws = mul((float3x3)mesh.get_model_matrix(), get_smooth_normal(vertex, smooth_normal_and_outline.xyz));
 
     float4 position_vs = mul(camera.matrix_v, float4(vertex.position_ws, 1.0));
@@ -50,6 +53,7 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID
     vs_output output;
     output.position_cs = mul(camera.matrix_p, position_vs);
     output.color = material.color * material.strength;
+    output.shading_model = material_info.shading_model;
 
     return output;
 }
@@ -58,7 +62,7 @@ struct fs_output
 {
     float4 albedo : SV_TARGET0;
     float2 material : SV_TARGET1;
-    float2 normal : SV_TARGET2;
+    uint normal : SV_TARGET2;
     float4 emissive : SV_TARGET3;
 };
 
@@ -67,7 +71,7 @@ fs_output fs_main(vs_output input)
     fs_output output;
     output.albedo = float4(input.color, 1.0);
     output.material = 0.0;
-    output.normal = 0.0;
+    output.normal = pack_gbuffer_normal(float3(0.0, 0.0, 0.0), input.shading_model);
     output.emissive = 0.0;
 
     return output;

@@ -34,7 +34,7 @@ vk_parameter::vk_parameter(const rhi_parameter_desc& desc, vk_context* context)
         {
             const auto& binding = bindings[j];
 
-            if (binding.type == RHI_PARAMETER_BINDING_UNIFORM)
+            if (binding.type == RHI_PARAMETER_BINDING_TYPE_UNIFORM)
             {
                 copy.uniforms.push_back(parameter_manager->allocate_uniform(binding.size));
 
@@ -95,7 +95,7 @@ void vk_parameter::set_uniform(
     std::size_t offset)
 {
     const auto& binding = m_layout->get_bindings()[index];
-    assert(binding.type == RHI_PARAMETER_BINDING_UNIFORM);
+    assert(binding.type == RHI_PARAMETER_BINDING_TYPE_UNIFORM);
 
     const auto& uniforms = get_uniforms();
 
@@ -111,8 +111,8 @@ void vk_parameter::set_srv(std::uint32_t index, rhi_texture_srv* srv, std::uint3
 {
     const auto& binding = m_layout->get_bindings()[index];
     assert(
-        binding.type == RHI_PARAMETER_BINDING_TEXTURE ||
-        binding.type == RHI_PARAMETER_BINDING_MUTABLE);
+        binding.type == RHI_PARAMETER_BINDING_TYPE_TEXTURE ||
+        binding.type == RHI_PARAMETER_BINDING_TYPE_MUTABLE);
 
     static_cast<vk_texture_srv*>(srv)->write(get_descriptor_set(), index, offset);
 
@@ -122,7 +122,7 @@ void vk_parameter::set_srv(std::uint32_t index, rhi_texture_srv* srv, std::uint3
 void vk_parameter::set_srv(std::uint32_t index, rhi_buffer_srv* srv, std::uint32_t offset)
 {
     const auto& binding = m_layout->get_bindings()[index];
-    assert(binding.type == RHI_PARAMETER_BINDING_MUTABLE);
+    assert(binding.type == RHI_PARAMETER_BINDING_TYPE_MUTABLE);
 
     static_cast<vk_buffer_srv*>(srv)->write(get_descriptor_set(), index, offset);
 
@@ -133,8 +133,8 @@ void vk_parameter::set_uav(std::uint32_t index, rhi_texture_uav* uav, std::uint3
 {
     const auto& binding = m_layout->get_bindings()[index];
     assert(
-        binding.type == RHI_PARAMETER_BINDING_STORAGE_TEXTURE ||
-        binding.type == RHI_PARAMETER_BINDING_MUTABLE);
+        binding.type == RHI_PARAMETER_BINDING_TYPE_STORAGE_TEXTURE ||
+        binding.type == RHI_PARAMETER_BINDING_TYPE_MUTABLE);
 
     static_cast<vk_texture_uav*>(uav)->write(get_descriptor_set(), index, offset);
 
@@ -145,9 +145,9 @@ void vk_parameter::set_uav(std::uint32_t index, rhi_buffer_uav* uav, std::uint32
 {
     const auto& binding = m_layout->get_bindings()[index];
     assert(
-        binding.type == RHI_PARAMETER_BINDING_STORAGE_BUFFER ||
-        binding.type == RHI_PARAMETER_BINDING_STORAGE_TEXEL ||
-        binding.type == RHI_PARAMETER_BINDING_MUTABLE);
+        binding.type == RHI_PARAMETER_BINDING_TYPE_STORAGE_BUFFER ||
+        binding.type == RHI_PARAMETER_BINDING_TYPE_STORAGE_TEXEL ||
+        binding.type == RHI_PARAMETER_BINDING_TYPE_MUTABLE);
 
     static_cast<vk_buffer_uav*>(uav)->write(get_descriptor_set(), index, offset);
 
@@ -157,7 +157,7 @@ void vk_parameter::set_uav(std::uint32_t index, rhi_buffer_uav* uav, std::uint32
 void vk_parameter::set_sampler(std::uint32_t index, rhi_sampler* sampler, std::uint32_t offset)
 {
     const auto& binding = m_layout->get_bindings()[index];
-    assert(binding.type == RHI_PARAMETER_BINDING_SAMPLER);
+    assert(binding.type == RHI_PARAMETER_BINDING_TYPE_SAMPLER);
 
     static_cast<vk_sampler*>(sampler)->write(get_descriptor_set(), index, offset);
 
@@ -190,7 +190,7 @@ bool vk_parameter::sync()
         --m_update_counts[i];
         remaining_update_count += m_update_counts[i];
 
-        if (binding.type == RHI_PARAMETER_BINDING_UNIFORM)
+        if (binding.type == RHI_PARAMETER_BINDING_TYPE_UNIFORM)
         {
             void* source = m_context->get_parameter_manager()->get_uniform_pointer(
                 prev_copy.uniforms[binding.uniform.index].offset);

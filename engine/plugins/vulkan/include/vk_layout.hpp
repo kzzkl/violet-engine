@@ -111,15 +111,53 @@ public:
     vk_pipeline_layout* get_pipeline_layout(const vk_pipeline_layout_desc& desc);
 
 private:
-    struct pipeline_layout_hash
+    struct parameter_layout_key
     {
-        std::size_t operator()(const violet::vk::vk_pipeline_layout_desc& desc) const noexcept
+        rhi_parameter_binding bindings[rhi_constants::max_parameter_bindings];
+        std::uint32_t binding_count;
+
+        bool operator==(const parameter_layout_key& other) const noexcept
         {
-            return violet::hash::city_hash_64(desc);
+            if (binding_count != other.binding_count)
+            {
+                return false;
+            }
+
+            for (std::size_t i = 0; i < binding_count; ++i)
+            {
+                if (bindings[i].type != other.bindings[i].type ||
+                    bindings[i].stages != other.bindings[i].stages ||
+                    bindings[i].size != other.bindings[i].size)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     };
 
-    std::unordered_map<std::uint64_t, std::unique_ptr<vk_parameter_layout>> m_parameter_layouts;
+    struct parameter_layout_hash
+    {
+        std::uint64_t operator()(const parameter_layout_key& key) const noexcept
+        {
+            return violet::hash::city_hash_64(&key, sizeof(parameter_layout_key));
+        }
+    };
+
+    struct pipeline_layout_hash
+    {
+        std::uint64_t operator()(const violet::vk::vk_pipeline_layout_desc& desc) const noexcept
+        {
+            return violet::hash::city_hash_64(&desc, sizeof(desc));
+        }
+    };
+
+    std::unordered_map<
+        parameter_layout_key,
+        std::unique_ptr<vk_parameter_layout>,
+        parameter_layout_hash>
+        m_parameter_layouts;
     std::unordered_map<
         vk_pipeline_layout_desc,
         std::unique_ptr<vk_pipeline_layout>,

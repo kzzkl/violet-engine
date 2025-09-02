@@ -61,6 +61,19 @@ struct shader
         std::uint32_t instance;
     };
 
+    struct dispatch_command
+    {
+        std::uint32_t x;
+        std::uint32_t y;
+        std::uint32_t z;
+    };
+
+    struct draw_info
+    {
+        std::uint32_t instance_id;
+        std::uint32_t cluster_id;
+    };
+
     struct geometry_data
     {
         vec4f bounding_sphere;
@@ -140,18 +153,18 @@ struct shader
         std::uint32_t batch_buffer;
         std::uint32_t material_buffer;
         std::uint32_t geometry_buffer;
+        std::uint32_t cluster_buffer;
         std::uint32_t vertex_buffer;
         std::uint32_t index_buffer;
         std::uint32_t skybox;
         std::uint32_t irradiance;
         std::uint32_t prefilter;
         std::uint32_t padding0;
-        std::uint32_t padding1;
     };
 
     static constexpr parameter scene = {
         {
-            .type = RHI_PARAMETER_BINDING_UNIFORM,
+            .type = RHI_PARAMETER_BINDING_TYPE_UNIFORM,
             .stages = RHI_SHADER_STAGE_ALL,
             .size = sizeof(scene_data),
         },
@@ -184,7 +197,7 @@ struct shader
 
     static constexpr parameter camera = {
         {
-            .type = RHI_PARAMETER_BINDING_UNIFORM,
+            .type = RHI_PARAMETER_BINDING_TYPE_UNIFORM,
             .stages = RHI_SHADER_STAGE_ALL,
             .size = sizeof(camera_data),
         },
@@ -192,12 +205,12 @@ struct shader
 
     static constexpr parameter bindless = {
         {
-            .type = RHI_PARAMETER_BINDING_MUTABLE,
+            .type = RHI_PARAMETER_BINDING_TYPE_MUTABLE,
             .stages = RHI_SHADER_STAGE_ALL,
             .size = 0,
         },
         {
-            .type = RHI_PARAMETER_BINDING_SAMPLER,
+            .type = RHI_PARAMETER_BINDING_TYPE_SAMPLER,
             .stages = RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
             .size = 0,
         },
@@ -262,6 +275,11 @@ struct fullscreen_vs : public shader_vs
 
 struct mesh_vs : public shader_vs
 {
+    struct constant_data
+    {
+        std::uint32_t draw_info_buffer;
+    };
+
     static constexpr parameter_layout parameters = {
         {.space = 0, .desc = bindless},
         {.space = 1, .desc = scene},
@@ -271,6 +289,89 @@ struct mesh_vs : public shader_vs
 
 struct mesh_fs : public shader_fs
 {
+};
+
+struct material_resolve_cs : public shader_cs
+{
+    struct constant_data
+    {
+        std::uint32_t gbuffers[8];
+
+        std::uint32_t visibility_buffer;
+        std::uint32_t worklist_buffer;
+        std::uint32_t material_offset_buffer;
+
+        std::uint32_t material_index;
+        std::uint32_t width;
+        std::uint32_t height;
+    };
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = scene},
+        {.space = 2, .desc = camera},
+    };
+};
+
+struct shading_model_cs : public shader_cs
+{
+    struct constant_data
+    {
+        std::uint32_t gbuffers[8];
+        std::uint32_t auxiliary_buffers[4];
+        std::uint32_t render_target;
+        std::uint32_t width;
+        std::uint32_t height;
+        std::uint32_t shading_model;
+        std::uint32_t worklist_buffer;
+        std::uint32_t worklist_offset;
+    };
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = scene},
+        {.space = 2, .desc = camera},
+    };
+};
+
+struct unlit_lighting_cs : public shader_cs
+{
+    static constexpr std::string_view path = "assets/shaders/lighting/unlit.hlsl";
+
+    struct constant_data
+    {
+        std::uint32_t albedo;
+        std::uint32_t padding0;
+        std::uint32_t padding1;
+        std::uint32_t padding2;
+    };
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = scene},
+    };
+};
+
+struct pbr_lighting_cs : public shader_cs
+{
+    static constexpr std::string_view path = "assets/shaders/lighting/physical.hlsl";
+
+    struct constant_data
+    {
+        std::uint32_t albedo;
+        std::uint32_t material;
+        std::uint32_t normal;
+        std::uint32_t depth;
+        std::uint32_t emissive;
+        std::uint32_t ao_buffer;
+        std::uint32_t brdf_lut;
+    };
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = scene},
+        {.space = 2, .desc = camera},
+    };
 };
 
 struct skinning_cs : public shader_cs

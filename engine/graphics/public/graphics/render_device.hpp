@@ -2,7 +2,6 @@
 
 #include "algorithm/hash.hpp"
 #include "common/type_index.hpp"
-#include "common/utility.hpp"
 #include "graphics/pipeline_state.hpp"
 #include "graphics/shader.hpp"
 #include <memory>
@@ -80,86 +79,18 @@ public:
     template <typename T>
     rhi_shader* get_shader(std::span<const std::wstring> defines = {})
     {
-        std::uint64_t hash = hash::combine(
-            hash::city_hash_64(T::path.data(), T::path.size()),
-            hash::city_hash_64(T::entry_point.data(), T::entry_point.size()));
+        shader_key key = {
+            .index = shader_index::value<T>(),
+        };
+        key.defines.assign(defines.begin(), defines.end());
 
-        for (const auto& macro : defines)
-        {
-            hash ^= hash::city_hash_64(macro.data(), macro.size());
-        }
-
-        auto iter = m_shaders.find(hash);
+        auto iter = m_shaders.find(key);
         if (iter != m_shaders.end())
         {
             return iter->second.get();
         }
 
-        std::vector<const wchar_t*> arguments = {
-            L"-I",
-            L"assets/shaders",
-            L"-Wno-ignored-attributes",
-            L"-all-resources-bound",
-#ifndef NDEBUG
-            L"-Zi",
-            L"-Qembed_debug",
-            L"-O0",
-#endif
-        };
-
-        if (m_rhi->get_backend() == RHI_BACKEND_VULKAN)
-        {
-            arguments.push_back(L"-spirv");
-            arguments.push_back(L"-fspv-target-env=vulkan1.3");
-            arguments.push_back(L"-fvk-use-dx-layout");
-            arguments.push_back(L"-fspv-extension=SPV_EXT_descriptor_indexing");
-            arguments.push_back(L"-fvk-bind-resource-heap");
-            arguments.push_back(L"0");
-            arguments.push_back(L"0");
-            arguments.push_back(L"-fvk-bind-sampler-heap");
-            arguments.push_back(L"1");
-            arguments.push_back(L"0");
-#ifndef NDEBUG
-            // arguments.push_back(L"-fspv-extension=SPV_KHR_non_semantic_info");
-            // arguments.push_back(L"-fspv-debug=vulkan-with-source");
-#endif
-        }
-
-        std::wstring entry_point = string_to_wstring(T::entry_point);
-        arguments.push_back(L"-E");
-        arguments.push_back(entry_point.data());
-
-        if constexpr (T::stage == RHI_SHADER_STAGE_VERTEX)
-        {
-            arguments.push_back(L"-T");
-            arguments.push_back(L"vs_6_6");
-        }
-        else if constexpr (T::stage == RHI_SHADER_STAGE_GEOMETRY)
-        {
-            arguments.push_back(L"-T");
-            arguments.push_back(L"gs_6_6");
-        }
-        else if constexpr (T::stage == RHI_SHADER_STAGE_FRAGMENT)
-        {
-            arguments.push_back(L"-T");
-            arguments.push_back(L"ps_6_6");
-        }
-        else if constexpr (T::stage == RHI_SHADER_STAGE_COMPUTE)
-        {
-            arguments.push_back(L"-T");
-            arguments.push_back(L"cs_6_6");
-        }
-        else
-        {
-            throw std::runtime_error("unsupported shader stage");
-        }
-
-        for (const auto& macro : defines)
-        {
-            arguments.push_back(macro.data());
-        }
-
-        auto code = compile_shader(T::path, arguments);
+        auto code = compile_shader(T::path, T::entry_point, T::stage, defines);
 
         rhi_shader_desc desc = {
             .code = code.data(),
@@ -189,7 +120,7 @@ public:
         m_rhi->set_name(shader.get(), T::path.data());
 
         rhi_shader* result = shader.get();
-        m_shaders[hash] = std::move(shader);
+        m_shaders[key] = std::move(shader);
 
         return result;
     }
@@ -231,7 +162,10 @@ public:
     rhi_parameter* allocate_parameter(const rhi_parameter_desc& desc);
 
     rhi_texture* allocate_texture(const rhi_texture_desc& desc);
+    void free_texture(rhi_texture* texture);
+
     rhi_buffer* allocate_buffer(const rhi_buffer_desc& desc);
+    void free_buffer(rhi_buffer* buffer);
 
     rhi_render_pass* get_render_pass(const rhi_render_pass_desc& desc);
 
@@ -319,6 +253,35 @@ public:
     }
 
 private:
+    struct shader_index : public type_index<shader_index, std::uint32_t, 0>
+    {
+    };
+
+    struct shader_key
+    {
+        std::uint32_t index;
+        std::vector<std::wstring> defines;
+
+        bool operator==(const shader_key& other) const noexcept
+        {
+            return index == other.index && defines == other.defines;
+        }
+    };
+
+    struct shader_hash
+    {
+        std::size_t operator()(const shader_key& key) const noexcept
+        {
+            std::uint64_t hash = std::hash<std::uint32_t>()(key.index);
+            for (const auto& macro : key.defines)
+            {
+                hash ^= hash::city_hash_64(macro.data(), macro.size());
+            }
+
+            return hash;
+        }
+    };
+
     struct buildin_texture_index : public type_index<buildin_texture_index, std::size_t, 1>
     {
     };
@@ -327,12 +290,14 @@ private:
 
     std::vector<std::uint8_t> compile_shader(
         std::string_view path,
-        std::span<const wchar_t*> arguments);
+        std::string_view entry_point,
+        rhi_shader_stage_flag stage,
+        std::span<const std::wstring> defines);
 
     rhi* m_rhi{nullptr};
     rhi_deleter m_rhi_deleter;
 
-    std::unordered_map<std::uint64_t, rhi_ptr<rhi_shader>> m_shaders;
+    std::unordered_map<shader_key, rhi_ptr<rhi_shader>, shader_hash> m_shaders;
 
     std::unique_ptr<shader_compiler> m_shader_compiler;
 

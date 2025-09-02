@@ -46,21 +46,21 @@ private:
         }
     };
 
-    struct framebuffer_key_hash
+    struct framebuffer_hash
     {
         std::size_t operator()(const framebuffer_key& key) const noexcept
         {
             std::size_t hash = hash::city_hash_64(
-                key.image_views.data(),
+                static_cast<const void*>(key.image_views.data()),
                 key.image_views.size() * sizeof(VkImageView));
 
-            hash = hash::combine(hash, hash::city_hash_64(key.render_pass));
+            hash = hash::combine(hash, std::hash<VkRenderPass>()(key.render_pass));
 
             return hash;
         }
     };
 
-    std::unordered_map<framebuffer_key, VkFramebuffer, framebuffer_key_hash> m_framebuffers;
+    std::unordered_map<framebuffer_key, VkFramebuffer, framebuffer_hash> m_framebuffers;
 
     vk_context* m_context;
 };

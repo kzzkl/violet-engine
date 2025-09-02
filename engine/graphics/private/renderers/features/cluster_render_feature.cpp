@@ -3,14 +3,14 @@
 
 namespace violet
 {
-std::uint32_t cluster_render_feature::get_max_clusters() const noexcept
+std::uint32_t cluster_render_feature::get_max_cluster_count() const noexcept
 {
-    return graphics_config::get_max_candidate_clusters() - get_max_cluster_nodes();
+    return graphics_config::get_max_candidate_cluster_count() - get_max_cluster_node_count();
 }
 
-std::uint32_t cluster_render_feature::get_max_cluster_nodes() const noexcept
+std::uint32_t cluster_render_feature::get_max_cluster_node_count() const noexcept
 {
-    return graphics_config::get_max_candidate_clusters() / 16;
+    return graphics_config::get_max_candidate_cluster_count() / 16;
 }
 
 void cluster_render_feature::on_enable()
@@ -18,7 +18,7 @@ void cluster_render_feature::on_enable()
     // x: cluster or cluster node index
     // y: mesh index
     m_cluster_queue = render_device::instance().create_buffer({
-        .size = graphics_config::get_max_candidate_clusters() * sizeof(vec2u),
+        .size = graphics_config::get_max_candidate_cluster_count() * sizeof(vec2u),
         .flags = RHI_BUFFER_STORAGE,
     });
 

@@ -18,7 +18,7 @@ struct fs_output
 {
     float4 albedo : SV_TARGET0;
     float2 material : SV_TARGET1;
-    float2 normal : SV_TARGET2;
+    uint normal : SV_TARGET2;
     float4 emissive : SV_TARGET3;
 };
 

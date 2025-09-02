@@ -1,6 +1,7 @@
 #include "mesh.hlsli"
 #include "color.hlsli"
 #include "brdf.hlsli"
+#include "shading/shading_model.hlsli"
 
 struct vs_output
 {
@@ -12,8 +13,8 @@ struct vs_output
 
 vs_output vs_main(uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID)
 {
-    mesh mesh = mesh::create(instance_id, vertex_id);
-    vertex vertex = mesh.fetch_vertex();
+    mesh mesh = mesh::create(instance_id);
+    vertex vertex = mesh.fetch_vertex(vertex_id);
 
     vs_output output;
     output.position_cs = vertex.position_cs;
@@ -41,7 +42,7 @@ struct fs_output
 {
     float4 albedo : SV_TARGET0;
     float2 material : SV_TARGET1;
-    float2 normal : SV_TARGET2;
+    uint normal : SV_TARGET2;
     float4 emissive : SV_TARGET3;
 };
 
@@ -120,10 +121,12 @@ fs_output fs_main(vs_output input)
     }
     // color.rgb = multiply_rgb(color.rgb, toon, saturate((1.0 - hsv.z) * hsv.z + 0.6));
 
+    material_info material_info = load_material_info(scene.material_buffer, input.material_address);
+
     fs_output output;
     output.albedo = color;
     output.material = 0.0;
-    output.normal = normal_to_octahedron(N);
+    output.normal = pack_gbuffer_normal(N, material_info.shading_model);
     output.emissive = 0.0;
 
     return output;

@@ -16,49 +16,39 @@ public:
 
     struct output
     {
-        rdg_buffer* command_buffer;
-        rdg_buffer* count_buffer;
+        rdg_buffer* draw_buffer;
+        rdg_buffer* draw_count_buffer;
+        rdg_buffer* draw_info_buffer;
     };
 
-    static output add(render_graph& graph, const parameter& parameter);
+    output add(render_graph& graph, const parameter& parameter);
 
 private:
-    struct cull_data
-    {
-        rdg_texture* hzb;
-        rhi_sampler* hzb_sampler;
-        vec4f frustum;
-        rdg_buffer* command_buffer;
-        rdg_buffer* count_buffer;
-        rdg_buffer* cluster_queue;
-        rdg_buffer* cluster_queue_state;
-    };
+    void prepare_cluster_queue(render_graph& graph);
 
-    static void prepare_cluster_queue(render_graph& graph, rdg_buffer* cluster_queue);
+    void prepare_cluster_cull(render_graph& graph, rdg_buffer* dispatch_buffer, bool cull_cluster);
 
-    static void prepare_cluster_cull(
+    void add_prepare_pass(render_graph& graph);
+
+    void add_instance_cull_pass(render_graph& graph);
+    void add_cluster_cull_pass(
         render_graph& graph,
-        rdg_buffer* cluster_queue_state,
-        rdg_buffer* dispatch_command_buffer,
-        bool cull_cluster);
-
-    static void add_prepare_pass(
+        std::uint32_t max_cluster_count,
+        std::uint32_t max_cluster_node_count);
+    void add_cluster_cull_pass_persistent(
         render_graph& graph,
-        rdg_buffer* count_buffer,
-        rdg_buffer* cluster_queue_state);
+        std::uint32_t max_cluster_count,
+        std::uint32_t max_cluster_node_count);
 
-    static void add_instance_cull_pass(render_graph& graph, const cull_data& cull_data);
+    rdg_texture* m_hzb{nullptr};
+    rhi_sampler* m_hzb_sampler{nullptr};
+    vec4f m_frustum;
 
-    static void add_cluster_cull_pass(
-        render_graph& graph,
-        const cull_data& cull_data,
-        std::uint32_t max_clusters,
-        std::uint32_t max_cluster_nodes);
+    rdg_buffer* m_draw_buffer{nullptr};
+    rdg_buffer* m_draw_count_buffer{nullptr};
+    rdg_buffer* m_draw_info_buffer{nullptr};
 
-    static void add_cluster_cull_pass_persistent(
-        render_graph& graph,
-        const cull_data& cull_data,
-        std::uint32_t max_clusters,
-        std::uint32_t max_cluster_nodes);
+    rdg_buffer* m_cluster_queue{nullptr};
+    rdg_buffer* m_cluster_queue_state{nullptr};
 };
 } // namespace violet

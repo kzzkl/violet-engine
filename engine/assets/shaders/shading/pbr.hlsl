@@ -1,22 +1,16 @@
 #include "common.hlsli"
 #include "brdf.hlsli"
+#include "shading/shading_model.hlsli"
 
 struct constant_data
 {
-    uint albedo;
-    uint material;
-    uint normal;
-    uint depth;
-    uint emissive;
-    uint ao_buffer;
+    constant_common common;
     uint brdf_lut;
 };
 PushConstant(constant_data, constant);
 
 ConstantBuffer<scene_data> scene : register(b0, space1);
 ConstantBuffer<camera_data> camera : register(b0, space2);
-
-static const float MIN_ROUGHNESS = 0.03;
 
 float3 gtao_multi_bounce(float visibility, float3 albedo)
 {
@@ -28,26 +22,33 @@ float3 gtao_multi_bounce(float visibility, float3 albedo)
     return max(x, ((x * a + b) * x + c) * x);
 }
 
-float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
+[numthreads(TILE_SIZE, TILE_SIZE, 1)]
+void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 {
-    SamplerState point_clamp_sampler = get_point_clamp_sampler();
+    uint2 coord;
+    if (!get_shading_coord(constant.common, gtid, gid, coord))
+    {
+        return;
+    }
+
+    float3 N;
+    if (!unpack_gbuffer_normal(constant.common, coord, N))
+    {
+        return;
+    }
+
+    float3 albedo = unpack_gbuffer_albedo(constant.common, coord);
+
+    float roughness;
+    float metallic;
+    unpack_gbuffer_material(constant.common, coord, roughness, metallic);
+
+    float3 emissive = unpack_gbuffer_emissive(constant.common, coord);
+
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
-
-    Texture2D<float4> gbuffer_albbedo = ResourceDescriptorHeap[constant.albedo];
-    float3 albedo = gbuffer_albbedo.Sample(point_clamp_sampler, texcoord).rgb;
-
-    Texture2D<float2> gbuffer_material = ResourceDescriptorHeap[constant.material];
-    float2 material = gbuffer_material.Sample(point_clamp_sampler, texcoord);
-    float roughness = max(material.x, MIN_ROUGHNESS);
-    float metallic = material.y;
-
-    Texture2D<float2> gbuffer_normal = ResourceDescriptorHeap[constant.normal];
-    float3 N = octahedron_to_normal(gbuffer_normal.Sample(point_clamp_sampler, texcoord));
-
-    Texture2D<float4> gbuffer_emissive = ResourceDescriptorHeap[constant.emissive];
-    float3 emissive = gbuffer_emissive.Sample(point_clamp_sampler, texcoord).rgb;
     
-    float3 position = reconstruct_position(constant.depth, texcoord, camera.matrix_vp_inv).xyz;
+    float2 texcoord = get_compute_texcoord(coord, constant.common.width, constant.common.height);
+    float3 position = reconstruct_position(constant.common.auxiliary_buffers[0], texcoord, camera.matrix_vp_inv).xyz;
 
     float3 F0 = lerp(0.04, albedo, metallic);
 
@@ -90,22 +91,21 @@ float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
         float3 prefilter = prefilter_map.SampleLevel(linear_clamp_sampler, R, roughness * 4.0);
 
         Texture2D<float2> brdf_lut = ResourceDescriptorHeap[constant.brdf_lut];
-        float2 brdf = brdf_lut.Sample(linear_clamp_sampler, float2(NdotV, roughness));
+        float2 brdf = brdf_lut.SampleLevel(linear_clamp_sampler, float2(NdotV, roughness), 0.0);
         float3 specular = F0 * brdf.x + brdf.y;
 
         TextureCube<float3> irradiance_map = ResourceDescriptorHeap[scene.irradiance];
-        float3 irradiance = irradiance_map.Sample(linear_clamp_sampler, N);
+        float3 irradiance = irradiance_map.SampleLevel(linear_clamp_sampler, N, 0.0);
         float3 diffuse = albedo * kd / PI;
 
         ambient_lighting = specular * prefilter + diffuse * irradiance;
     }
 
 #ifdef USE_AO_BUFFER
-    Texture2D<float> ao_buffer = ResourceDescriptorHeap[constant.ao_buffer];
-    float ao = ao_buffer.Sample(linear_clamp_sampler, texcoord);
-    ambient_lighting *= gtao_multi_bounce(ao, albedo);
+    Texture2D<float> ao_buffer = ResourceDescriptorHeap[constant.common.auxiliary_buffers[1]];
+    ambient_lighting *= gtao_multi_bounce(ao_buffer[coord], albedo);
 #endif
 
-    // return float4(N, 1.0);
-    return float4(direct_lighting + ambient_lighting + emissive, 1.0);
+    RWTexture2D<float4> render_target = ResourceDescriptorHeap[constant.common.render_target];
+    render_target[coord] = float4(direct_lighting + ambient_lighting + emissive, 1.0);
 }

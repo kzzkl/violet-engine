@@ -1,4 +1,5 @@
 #include "common.hlsli"
+#include "shading/shading_model.hlsli"
 
 ConstantBuffer<camera_data> camera : register(b0, space1);
 
@@ -60,8 +61,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     float3 view = normalize(-position_vs);
 
     // Get the normal of the current pixel in view space.
-    Texture2D<float2> normal_buffer = ResourceDescriptorHeap[constant.normal_buffer];
-    float3 normal_ws = octahedron_to_normal(normal_buffer.SampleLevel(point_clamp_sampler, texcoord, 0.0));
+    float3 normal_ws = unpack_gbuffer_normal(constant.normal_buffer, dtid.xy);
     float3 normal_vs = normalize(mul((float3x3)camera.matrix_v, normal_ws));
 
     // Noise.

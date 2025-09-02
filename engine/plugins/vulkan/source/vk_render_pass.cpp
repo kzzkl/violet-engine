@@ -63,7 +63,7 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
     {
         add_attachment(desc.attachments[i]);
 
-        if (desc.attachments[i].type == RHI_ATTACHMENT_RENDER_TARGET)
+        if (desc.attachments[i].type == RHI_ATTACHMENT_TYPE_RENDER_TARGET)
         {
             color.emplace_back(VkAttachmentReference{
                 .attachment = static_cast<std::uint32_t>(i),
@@ -147,7 +147,7 @@ void vk_render_pass::begin(
 
     for (std::size_t i = 0; i < attachment_count; ++i)
     {
-        if (m_attachment_layout[i] == RHI_ATTACHMENT_RENDER_TARGET)
+        if (m_attachment_layout[i] == RHI_ATTACHMENT_TYPE_RENDER_TARGET)
         {
             const auto* rtv = static_cast<const vk_texture_rtv*>(attachments[i].rtv);
 
@@ -158,7 +158,7 @@ void vk_render_pass::begin(
 
             std::memcpy(
                 clear_values[i].color.float32,
-                attachments[i].clear_value.color,
+                attachments[i].clear_value.color.float32,
                 4 * sizeof(float));
         }
         else

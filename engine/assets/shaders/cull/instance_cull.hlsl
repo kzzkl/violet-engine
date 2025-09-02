@@ -10,25 +10,26 @@ struct constant_data
     uint hzb_width;
     uint hzb_height;
     float4 frustum;
-    uint command_buffer;
-    uint count_buffer;
+    uint draw_buffer;
+    uint draw_count_buffer;
+    uint draw_info_buffer;
     uint cluster_queue;
     uint cluster_queue_state;
-    uint max_draw_commands;
+    uint max_draw_command_count;
 };
 PushConstant(constant_data, constant);
 
 [numthreads(64, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
-    uint instance_index = dtid.x;
-    if (instance_index >= scene.instance_count)
+    uint instance_id = dtid.x;
+    if (instance_id >= scene.instance_count)
     {
         return;
     }
 
     StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
-    instance_data instance = instances[instance_index];
+    instance_data instance = instances[instance_id];
 
     StructuredBuffer<geometry_data> geometries = ResourceDescriptorHeap[scene.geometry_buffer];
     geometry_data geometry = geometries[instance.geometry_index];
@@ -57,13 +58,13 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
         uint cluster_node_queue_rear = 0;
         InterlockedAdd(cluster_queue_state[0].cluster_node_queue_rear, 1, cluster_node_queue_rear);
-        cluster_queue[cluster_node_queue_rear] = uint2(geometry.cluster_root, instance_index);
+        cluster_queue[cluster_node_queue_rear] = uint2(geometry.cluster_root, instance_id);
     }
     else
     {
 #endif
         ByteAddressBuffer batch_buffer = ResourceDescriptorHeap[scene.batch_buffer];
-        RWStructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.count_buffer];
+        RWStructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.draw_count_buffer];
 
         uint batch_index = instance.batch_index;
 
@@ -71,17 +72,24 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         InterlockedAdd(draw_counts[batch_index], 1, command_index);
         command_index += batch_buffer.Load<uint>(batch_index * 4);
 
-        if (command_index < constant.max_draw_commands)
+        if (command_index < constant.max_draw_command_count)
         {
             draw_command command;
             command.index_count = geometry.index_count;
             command.instance_count = 1;
             command.index_offset = geometry.index_offset;
             command.vertex_offset = 0;
-            command.instance_offset = instance_index;
+            command.instance_offset = command_index;
 
-            RWStructuredBuffer<draw_command> draw_commands = ResourceDescriptorHeap[constant.command_buffer];
+            RWStructuredBuffer<draw_command> draw_commands = ResourceDescriptorHeap[constant.draw_buffer];
             draw_commands[command_index] = command;
+
+            draw_info info;
+            info.instance_id = instance_id;
+            info.cluster_id = 0xFFFFFFFF;
+
+            RWStructuredBuffer<draw_info> draw_infos = ResourceDescriptorHeap[constant.draw_info_buffer];
+            draw_infos[command_index] = info;
         }
 
 #ifdef GENERATE_CLUSTER_LIST

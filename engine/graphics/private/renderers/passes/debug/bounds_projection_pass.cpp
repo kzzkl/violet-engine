@@ -12,9 +12,9 @@ struct bounds_projection_gs : public shader_gs
     static constexpr std::string_view path = "assets/shaders/debug/bounds_projection.hlsl";
 
     static constexpr parameter_layout parameters = {
-        {0, shader::bindless},
-        {1, shader::scene},
-        {2, shader::camera},
+        {.space = 0, .desc = shader::bindless},
+        {.space = 1, .desc = shader::scene},
+        {.space = 2, .desc = shader::camera},
     };
 };
 

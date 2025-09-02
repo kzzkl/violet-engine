@@ -21,7 +21,7 @@ struct hash<violet::rhi_texture_desc>
 {
     std::size_t operator()(const violet::rhi_texture_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(desc);
+        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_texture_desc));
     }
 };
 
@@ -30,7 +30,7 @@ struct hash<violet::rhi_buffer_desc>
 {
     std::size_t operator()(const violet::rhi_buffer_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(desc);
+        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_buffer_desc));
     }
 };
 
@@ -39,7 +39,7 @@ struct hash<violet::rhi_render_pass_desc>
 {
     std::size_t operator()(const violet::rhi_render_pass_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(desc);
+        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_render_pass_desc));
     }
 };
 
@@ -48,7 +48,7 @@ struct hash<violet::rhi_raster_pipeline_desc>
 {
     std::size_t operator()(const violet::rhi_raster_pipeline_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(desc);
+        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_raster_pipeline_desc));
     }
 };
 
@@ -57,7 +57,7 @@ struct hash<violet::rhi_compute_pipeline_desc>
 {
     std::size_t operator()(const violet::rhi_compute_pipeline_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(desc);
+        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_compute_pipeline_desc));
     }
 };
 
@@ -66,7 +66,7 @@ struct hash<violet::rhi_sampler_desc>
 {
     std::size_t operator()(const violet::rhi_sampler_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(desc);
+        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_sampler_desc));
     }
 };
 } // namespace std
@@ -75,7 +75,22 @@ namespace violet
 {
 inline bool operator==(const rhi_parameter_desc& a, const rhi_parameter_desc& b) noexcept
 {
-    return a.bindings == b.bindings && a.binding_count == b.binding_count && a.flags == b.flags;
+    if (a.binding_count != b.binding_count)
+    {
+        return false;
+    }
+
+    for (std::size_t i = 0; i < a.binding_count; ++i)
+    {
+        if (a.bindings[i].type != b.bindings[i].type ||
+            a.bindings[i].stages != b.bindings[i].stages ||
+            a.bindings[i].size != b.bindings[i].size)
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 inline bool operator==(const rhi_texture_desc& a, const rhi_texture_desc& b) noexcept
@@ -227,24 +242,42 @@ public:
     {
         auto& pool = m_pools[desc];
 
-        if (pool.count == pool.objects.size())
+        if (pool.free_objects.empty())
         {
             pool.objects.push_back({
                 .object = create(desc),
                 .last_used_frame = render_device::instance().get_frame_count(),
             });
+            pool.free_objects.push_back(pool.objects.back().object.get());
         }
 
-        auto& result = pool.objects[pool.count++];
-        result.last_used_frame = render_device::instance().get_frame_count();
-        return result.object.get();
+        std::size_t index = pool.free_objects.size() - 1;
+        object_type* result = pool.free_objects[index];
+        pool.free_objects.pop_back();
+
+        if (result == pool.objects[index].object.get())
+        {
+            pool.objects[index].last_used_frame = render_device::instance().get_frame_count();
+        }
+
+        return result;
+    }
+
+    void free(const key_type& desc, object_type* object)
+    {
+        auto& pool = m_pools.at(desc);
+        pool.free_objects.push_back(object);
     }
 
     void tick()
     {
         for (auto& [desc, pool] : m_pools)
         {
-            pool.count = 0;
+            pool.free_objects.clear();
+            for (auto& object : pool.objects)
+            {
+                pool.free_objects.push_back(object.object.get());
+            }
         }
     }
 
@@ -282,8 +315,8 @@ private:
 
     struct object_pool
     {
-        std::size_t count;
         std::vector<wrapper> objects;
+        std::vector<object_type*> free_objects;
     };
 
     std::unordered_map<key_type, object_pool> m_pools;
@@ -295,7 +328,10 @@ public:
     rhi_parameter* allocate_parameter(const rhi_parameter_desc& desc);
 
     rhi_texture* allocate_texture(const rhi_texture_desc& desc);
+    void free_texture(rhi_texture* texture);
+
     rhi_buffer* allocate_buffer(const rhi_buffer_desc& desc);
+    void free_buffer(rhi_buffer* buffer);
 
     rhi_render_pass* get_render_pass(const rhi_render_pass_desc& desc);
 

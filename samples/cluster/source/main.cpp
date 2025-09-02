@@ -2,144 +2,49 @@
 #include "common/log.hpp"
 #include "components/camera_component.hpp"
 #include "components/hierarchy_component.hpp"
-#include "components/light_component.hpp"
 #include "components/mesh_component.hpp"
-#include "components/orbit_control_component.hpp"
 #include "components/scene_component.hpp"
-#include "components/skybox_component.hpp"
 #include "components/transform_component.hpp"
-#include "control/control_system.hpp"
-#include "deferred_renderer_imgui.hpp"
-#include "gltf_loader.hpp"
-#include "graphics/graphics_system.hpp"
-#include "graphics/materials/physical_material.hpp"
-#include "graphics/materials/unlit_material.hpp"
-#include "graphics/skybox.hpp"
+#include "graphics/materials/pbr_material.hpp"
 #include "graphics/tools/geometry_tool.hpp"
-#include "imgui.h"
-#include "imgui_system.hpp"
-#include "window/window_system.hpp"
+#include "sample/gltf_loader.hpp"
+#include "sample/sample_system.hpp"
+#include <imgui.h>
 
 namespace violet
 {
-class cluster_demo : public system
+class cluster_sample : public sample_system
 {
 public:
-    cluster_demo()
-        : system("cluster demo")
+    cluster_sample()
+        : sample_system("cluster demo")
     {
-    }
-
-    void install(application& app) override
-    {
-        app.install<window_system>();
-        app.install<graphics_system>();
-        app.install<control_system>();
-        app.install<imgui_system>();
-
-        m_app = &app;
     }
 
     bool initialize(const dictionary& config) override
     {
+        if (!sample_system::initialize(config))
+        {
+            return false;
+        }
+
         if (config.find("cpu_culling") != config.end())
         {
             m_cpu_culling = config["cpu_culling"];
         }
 
-        auto& window = get_system<window_system>();
-        window.on_resize().add_task().set_execute(
-            [this]()
-            {
-                resize();
-            });
-        window.on_destroy().add_task().set_execute(
-            [this]()
-            {
-                m_app->exit();
-            });
+        m_material = std::make_unique<cluster_material>();
 
-        task_graph& task_graph = get_task_graph();
-        task_group& update = task_graph.get_group("Update");
-
-        task_graph.add_task()
-            .set_name("Demo Tick")
-            .set_group(update)
-            .set_options(TASK_OPTION_MAIN_THREAD)
-            .set_execute(
-                [this]()
-                {
-                    tick();
-                });
-
-        initialize_render();
-        initialize_scene(config["model"], config["skybox"]);
-
-        resize();
+        if (config.contains("model"))
+        {
+            load_model(config["model"]);
+        }
 
         return true;
     }
 
 private:
-    void initialize_render()
-    {
-        m_swapchain = render_device::instance().create_swapchain({
-            .flags = RHI_TEXTURE_TRANSFER_DST | RHI_TEXTURE_RENDER_TARGET,
-            .window_handle = get_system<window_system>().get_handle(),
-        });
-    }
-
-    void initialize_scene(std::string_view model_path, std::string_view skybox_path)
-    {
-        auto& world = get_world();
-
-        m_skybox = std::make_unique<skybox>(skybox_path);
-
-        entity scene_skybox = world.create();
-        world.add_component<transform_component, skybox_component, scene_component>(scene_skybox);
-        auto& skybox = world.get_component<skybox_component>(scene_skybox);
-        skybox.skybox = m_skybox.get();
-
-        m_light = world.create();
-        world.add_component<transform_component, light_component, scene_component>(m_light);
-
-        auto& light_transform = world.get_component<transform_component>(m_light);
-        light_transform.set_position({10.0f, 10.0f, 10.0f});
-        light_transform.lookat({0.0f, 0.0f, 0.0f});
-
-        m_camera = world.create();
-        world.add_component<
-            transform_component,
-            camera_component,
-            orbit_control_component,
-            scene_component>(m_camera);
-
-        auto& camera_control = world.get_component<orbit_control_component>(m_camera);
-        camera_control.radius_speed = 1.0f;
-        camera_control.target = {.x = 0.0f, .y = 0.1f, .z = 0.0f};
-
-        auto& camera_transform = world.get_component<transform_component>(m_camera);
-        camera_transform.set_position({0.0f, 0.0f, -10.0f});
-
-        auto& main_camera = world.get_component<camera_component>(m_camera);
-        main_camera.renderer = std::make_unique<deferred_renderer_imgui>();
-        main_camera.render_target = m_swapchain.get();
-
-        // Model.
-        m_material = std::make_unique<cluster_material>();
-
-        if (!model_path.empty())
-        {
-            load_model(model_path);
-        }
-    }
-
-    void resize()
-    {
-        m_swapchain->resize();
-    }
-
-    void tick()
+    void tick() override
     {
         if (!m_cpu_culling)
         {
@@ -315,7 +220,7 @@ private:
 
         for (const auto& material_data : result->materials)
         {
-            auto model_material = std::make_unique<physical_material>();
+            auto model_material = std::make_unique<pbr_material>();
             model_material->set_albedo(material_data.albedo);
             model_material->set_roughness(material_data.roughness);
             model_material->set_metallic(material_data.metallic);
@@ -426,7 +331,7 @@ private:
     {
         auto& world = get_world();
 
-        const auto& camera = world.get_component<const camera_component>(m_camera);
+        const auto& camera = world.get_component<const camera_component>(get_camera());
 
         float aspect = static_cast<float>(camera.get_extent().width) /
                        static_cast<float>(camera.get_extent().height);
@@ -436,7 +341,8 @@ private:
                 matrix::perspective_reverse_z(camera.fov, aspect, camera.near) :
                 matrix::perspective_reverse_z(camera.fov, aspect, camera.near, camera.far);
 
-        const auto& camera_world = world.get_component<const transform_world_component>(m_camera);
+        const auto& camera_world =
+            world.get_component<const transform_world_component>(get_camera());
         mat4f matrix_v = matrix::inverse_transform(camera_world.matrix);
 
         const auto& mesh_world = world.get_component<const transform_world_component>(m_mesh);
@@ -588,17 +494,13 @@ private:
             static_cast<float>((hash >> 16) & 255) / 255.0f);
 
         // auto material = std::make_unique<unlit_material>();
-        auto material = std::make_unique<physical_material>();
+        auto material = std::make_unique<pbr_material>();
         material->set_albedo(color);
         m_materials[index] = std::move(material);
         return m_materials[index].get();
     }
 
-    entity m_light;
-    entity m_camera;
     entity m_mesh;
-
-    std::unique_ptr<skybox> m_skybox;
 
     struct model
     {
@@ -621,17 +523,13 @@ private:
     };
     std::vector<submesh> m_submeshes;
     std::unordered_map<std::uint32_t, std::unique_ptr<material>> m_materials;
-
-    rhi_ptr<rhi_swapchain> m_swapchain;
-
-    application* m_app{nullptr};
 };
 } // namespace violet
 
 int main()
 {
     violet::application app("assets/config/cluster.json");
-    app.install<violet::cluster_demo>();
+    app.install<violet::cluster_sample>();
     app.run();
 
     return 0;

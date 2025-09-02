@@ -16,7 +16,7 @@ struct brdf_lut_cs : public shader_cs
     };
 
     static constexpr parameter_layout parameters = {
-        {0, bindless},
+        {.space = 0, .desc = bindless},
     };
 };
 
@@ -69,9 +69,15 @@ brdf_lut::brdf_lut(std::uint32_t size)
     auto& device = render_device::instance();
 
     rhi_ptr<rhi_texture> brdf_lut = device.create_texture({
-        .extent = {size, size},
+        .extent =
+            {
+                .width = size,
+                .height = size,
+            },
         .format = RHI_FORMAT_R32G32_FLOAT,
         .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE,
+        .level_count = 1,
+        .layer_count = 1,
     });
 
     render_graph graph("Generate BRDF LUT");

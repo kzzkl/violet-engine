@@ -4,7 +4,7 @@
 struct constant_data
 {
     uint cluster_queue_state;
-    uint dispatch_command_buffer;
+    uint dispatch_buffer;
 };
 PushConstant(constant_data, constant);
 
@@ -12,7 +12,7 @@ PushConstant(constant_data, constant);
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
     RWStructuredBuffer<cluster_queue_state_data> cluster_queue_state = ResourceDescriptorHeap[constant.cluster_queue_state];
-    RWStructuredBuffer<dispatch_command> dispatch_commands = ResourceDescriptorHeap[constant.dispatch_command_buffer];
+    RWStructuredBuffer<dispatch_command> dispatch_commands = ResourceDescriptorHeap[constant.dispatch_buffer];
 
     dispatch_command command;
 

@@ -7,12 +7,12 @@ vk_bindless_manager::vk_bindless_manager(vk_context* context)
 {
     std::vector<rhi_parameter_binding> bindless_parameter_bindings = {
         {
-            .type = RHI_PARAMETER_BINDING_MUTABLE,
+            .type = RHI_PARAMETER_BINDING_TYPE_MUTABLE,
             .stages = RHI_SHADER_STAGE_ALL,
             .size = 0,
         },
         {
-            .type = RHI_PARAMETER_BINDING_SAMPLER,
+            .type = RHI_PARAMETER_BINDING_TYPE_SAMPLER,
             .stages = RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
             .size = 0,
         },

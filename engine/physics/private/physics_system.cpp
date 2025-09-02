@@ -1,5 +1,4 @@
 #include "physics/physics_system.hpp"
-#include "algorithm/hash.hpp"
 #include "components/collider_component.hpp"
 #include "components/hierarchy_component.hpp"
 #include "components/joint_component.hpp"
@@ -236,10 +235,9 @@ void physics_system::update_rigidbody()
         .write<rigidbody_component_meta>()
         .with<collider_component>()
         .each(
-            [this](
-                const rigidbody_component& rigidbody,
-                const transform_world_component& transform,
-                rigidbody_component_meta& rigidbody_meta)
+            [](const rigidbody_component& rigidbody,
+               const transform_world_component& transform,
+               rigidbody_component_meta& rigidbody_meta)
             {
                 if (rigidbody.type == PHY_RIGIDBODY_TYPE_KINEMATIC)
                 {
@@ -305,7 +303,7 @@ void physics_system::update_joint()
         .read<rigidbody_component_meta>()
         .with<transform_world_component>()
         .each(
-            [this](joint_component& joint, const rigidbody_component_meta& rigidbody_meta)
+            [](joint_component& joint, const rigidbody_component_meta& rigidbody_meta)
             {
                 physics_scene* physics_scene = rigidbody_meta.scene;
 
@@ -435,32 +433,65 @@ physics_scene* physics_system::get_scene(std::uint32_t layer)
     return m_scenes[layer].get();
 }
 
+physics_system::shape_key physics_system::get_shape_key(const collider_shape& shape)
+{
+    shape_key key = {};
+    key.type = shape.shape.type;
+    switch (shape.shape.type)
+    {
+    case PHY_COLLISION_SHAPE_TYPE_BOX:
+        key.data[0] = shape.shape.box.width;
+        key.data[1] = shape.shape.box.height;
+        key.data[2] = shape.shape.box.length;
+        break;
+    case PHY_COLLISION_SHAPE_TYPE_SPHERE:
+        key.data[0] = shape.shape.sphere.radius;
+        break;
+    case PHY_COLLISION_SHAPE_TYPE_CAPSULE:
+        key.data[0] = shape.shape.capsule.radius;
+        key.data[1] = shape.shape.capsule.height;
+        break;
+    default:
+        throw std::runtime_error("Unsupported shape type");
+    }
+
+    return key;
+}
+
+phy_collision_shape* physics_system::get_shape(const collider_shape& shape)
+{
+    shape_key key = get_shape_key(shape);
+
+    auto iter = m_shapes.find(key);
+    if (iter != m_shapes.end())
+    {
+        return iter->second.get();
+    }
+
+    auto result = m_context->create_collision_shape(shape.shape);
+    return (m_shapes[key] = std::move(result)).get();
+}
+
 phy_collision_shape* physics_system::get_shape(const std::vector<collider_shape>& shapes)
 {
     assert(!shapes.empty());
 
-    auto get_shape_impl = [this](const phy_collision_shape_desc& desc)
-    {
-        std::uint64_t hash = hash::city_hash_64(desc);
-        auto iter = m_shapes.find(hash);
-        if (iter != m_shapes.end())
-        {
-            return iter->second.get();
-        }
-
-        auto shape = m_context->create_collision_shape(desc);
-        m_shapes[hash] = std::move(shape);
-        return m_shapes[hash].get();
-    };
-
     if (shapes.size() == 1)
     {
-        return get_shape_impl(shapes[0].shape);
+        return get_shape(shapes[0]);
     }
 
-    std::uint64_t hash = hash::city_hash_64(shapes.data(), sizeof(collider_shape) * shapes.size());
-    auto iter = m_shapes.find(hash);
-    if (iter != m_shapes.end())
+    compound_shape_key key = {};
+    key.children.reserve(shapes.size());
+    key.offset.reserve(shapes.size());
+    for (const auto& shape : shapes)
+    {
+        key.children.push_back(get_shape_key(shape));
+        key.offset.push_back(shape.offset);
+    }
+
+    auto iter = m_compound_shapes.find(key);
+    if (iter != m_compound_shapes.end())
     {
         return iter->second.get();
     }
@@ -469,13 +500,11 @@ phy_collision_shape* physics_system::get_shape(const std::vector<collider_shape>
     std::vector<mat4f> offsets(shapes.size());
     for (const auto& shape : shapes)
     {
-        children.push_back(get_shape_impl(shape.shape));
+        children.push_back(get_shape(shape));
         offsets.push_back(shape.offset);
     }
 
     auto shape = m_context->create_collision_shape(children, offsets);
-    m_shapes[hash] = std::move(shape);
-
-    return m_shapes[hash].get();
+    return (m_compound_shapes[key] = std::move(shape)).get();
 }
 } // namespace violet

@@ -48,6 +48,8 @@ private:
                     .extent = {width, height},
                     .format = RHI_FORMAT_R16G16B16A16_FLOAT,
                     .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE,
+                    .level_count = 1,
+                    .layer_count = 1,
                     .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
                 });
             }

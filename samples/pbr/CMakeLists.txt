@@ -17,7 +17,3 @@ install(TARGETS pbr
     ARCHIVE DESTINATION lib)
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION bin/assets)
-
-if(MSVC)
-    set_property(TARGET pbr PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/install/bin)
-endif()

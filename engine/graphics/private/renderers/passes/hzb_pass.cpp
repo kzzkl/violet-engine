@@ -16,7 +16,7 @@ struct hzb_cs : public shader_cs
     };
 
     static constexpr parameter_layout parameters = {
-        {0, bindless},
+        {.space = 0, .desc = bindless},
     };
 };
 
@@ -68,13 +68,14 @@ void hzb_pass::add(render_graph& graph, const parameter& parameter)
                 command.set_pipeline({
                     .compute_shader = render_device::instance().get_shader<hzb_cs>(),
                 });
-                command.set_constant(hzb_cs::constant_data{
-                    .prev_buffer = data.prev_buffer.get_bindless(),
-                    .next_buffer = data.next_buffer.get_bindless(),
-                    .level = data.level,
-                    .prev_width = extent.width,
-                    .prev_height = extent.height,
-                });
+                command.set_constant(
+                    hzb_cs::constant_data{
+                        .prev_buffer = data.prev_buffer.get_bindless(),
+                        .next_buffer = data.next_buffer.get_bindless(),
+                        .level = data.level,
+                        .prev_width = extent.width,
+                        .prev_height = extent.height,
+                    });
                 command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
                 command.dispatch_2d(extent.width, extent.height);

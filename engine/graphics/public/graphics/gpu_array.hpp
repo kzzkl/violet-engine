@@ -6,20 +6,15 @@
 namespace violet
 {
 template <typename T>
-class gpu_array
-{
-public:
-private:
-};
-
-template <typename T>
 class gpu_dense_array
 {
 public:
     using cpu_type = T;
     using gpu_type = T::gpu_type;
 
-    gpu_dense_array()
+    gpu_dense_array(std::uint32_t id_offset = 0, std::uint32_t index_offset = 0)
+        : m_index_to_id(index_offset, INVALID_RENDER_ID),
+          m_allocator(id_offset)
     {
         m_object_buffer = std::make_unique<structured_buffer>(
             64 * sizeof(gpu_type),

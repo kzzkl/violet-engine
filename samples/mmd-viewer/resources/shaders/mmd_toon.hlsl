@@ -1,24 +1,37 @@
 #include "common.hlsli"
+#include "shading/shading_model.hlsli"
 
-struct gbuffer_data
+struct constant_data
 {
-    uint color;
-    uint ao_buffer;
+    constant_common common;
 };
-PushConstant(gbuffer_data, constant);
+PushConstant(constant_data, constant);
 
-float4 fs_main(float2 texcoord : TEXCOORD) : SV_TARGET
+ConstantBuffer<scene_data> scene : register(b0, space1);
+ConstantBuffer<camera_data> camera : register(b0, space2);
+
+[numthreads(TILE_SIZE, TILE_SIZE, 1)]
+void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 {
-    SamplerState point_clamp_sampler = get_point_clamp_sampler();
-    Texture2D<float4> gbuffer_color = ResourceDescriptorHeap[constant.color];
+    uint2 coord;
+    if (!get_shading_coord(constant.common, gtid, gid, coord))
+    {
+        return;
+    }
 
-    float4 color = gbuffer_color.Sample(point_clamp_sampler, texcoord);
+    float3 N;
+    if (!unpack_gbuffer_normal(constant.common, coord, N))
+    {
+        return;
+    }
+
+    float3 albedo = unpack_gbuffer_albedo(constant.common, coord);
 
 #ifdef USE_AO_BUFFER
-    Texture2D<float> ao_buffer = ResourceDescriptorHeap[constant.ao_buffer];
-    float ao = ao_buffer.Sample(point_clamp_sampler, texcoord);
-    color.rgb *= ao;
+    Texture2D<float> ao_buffer = ResourceDescriptorHeap[constant.common.auxiliary_buffers[0]];
+    albedo *= ao_buffer[coord];
 #endif
 
-    return color;
+    RWTexture2D<float4> render_target = ResourceDescriptorHeap[constant.common.render_target];
+    render_target[coord] = float4(albedo, 1.0);
 }

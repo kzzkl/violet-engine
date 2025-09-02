@@ -9,10 +9,10 @@ graphics_config& graphics_config::instance()
 }
 
 void graphics_config::initialize(
-    std::uint32_t max_draw_commands,
-    std::uint32_t max_candidate_clusters)
+    std::uint32_t max_draw_command_count,
+    std::uint32_t max_candidate_cluster_count)
 {
-    m_max_draw_commands = max_draw_commands;
-    m_max_candidate_clusters = max_candidate_clusters;
+    m_max_draw_command_count = max_draw_command_count;
+    m_max_candidate_cluster_count = max_candidate_cluster_count;
 }
 } // namespace violet

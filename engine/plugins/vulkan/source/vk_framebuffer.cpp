@@ -24,10 +24,9 @@ VkFramebuffer vk_framebuffer_manager::allocate_framebuffer(
     const std::vector<VkImageView>& image_views,
     const VkExtent2D& extent)
 {
-    framebuffer_key key = {
-        .render_pass = render_pass,
-        .image_views = image_views,
-    };
+    framebuffer_key key = {};
+    key.render_pass = render_pass;
+    key.image_views = image_views;
 
     auto iter = m_framebuffers.find(key);
     if (iter != m_framebuffers.end())

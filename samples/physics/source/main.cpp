@@ -13,7 +13,7 @@
 #include "graphics/geometries/box_geometry.hpp"
 #include "graphics/graphics_system.hpp"
 #include "graphics/materials/unlit_material.hpp"
-#include "imgui.h"
+#include <imgui.h>
 #include "imgui_system.hpp"
 #include "physics/physics_system.hpp"
 #include "scene/hierarchy_system.hpp"

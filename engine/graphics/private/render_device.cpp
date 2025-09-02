@@ -1,4 +1,5 @@
 #include "graphics/render_device.hpp"
+#include "common/utility.hpp"
 #include "graphics/geometry_manager.hpp"
 #include "graphics/material_manager.hpp"
 #include "graphics/resources/texture.hpp"
@@ -226,9 +227,19 @@ rhi_texture* render_device::allocate_texture(const rhi_texture_desc& desc)
     return m_transient_allocator->allocate_texture(desc);
 }
 
+void render_device::free_texture(rhi_texture* texture)
+{
+    m_transient_allocator->free_texture(texture);
+}
+
 rhi_buffer* render_device::allocate_buffer(const rhi_buffer_desc& desc)
 {
     return m_transient_allocator->allocate_buffer(desc);
+}
+
+void render_device::free_buffer(rhi_buffer* buffer)
+{
+    m_transient_allocator->free_buffer(buffer);
 }
 
 rhi_render_pass* render_device::get_render_pass(const rhi_render_pass_desc& desc)
@@ -348,7 +359,9 @@ void render_device::create_buildin_resources()
 
 std::vector<std::uint8_t> render_device::compile_shader(
     std::string_view path,
-    std::span<const wchar_t*> arguments)
+    std::string_view entry_point,
+    rhi_shader_stage_flag stage,
+    std::span<const std::wstring> defines)
 {
     std::ifstream fin(std::string(path), std::ios::binary);
     if (!fin.is_open())
@@ -362,6 +375,71 @@ std::vector<std::uint8_t> render_device::compile_shader(
     fin.seekg(0);
     fin.read(source.data(), static_cast<std::streamsize>(source.size()));
     fin.close();
+
+    std::vector<const wchar_t*> arguments = {
+        L"-I",
+        L"assets/shaders",
+        L"-Wno-ignored-attributes",
+        L"-all-resources-bound",
+#ifndef NDEBUG
+        L"-Zi",
+        L"-Qembed_debug",
+        L"-O0",
+#endif
+    };
+
+    if (m_rhi->get_backend() == RHI_BACKEND_VULKAN)
+    {
+        arguments.push_back(L"-spirv");
+        arguments.push_back(L"-fspv-target-env=vulkan1.3");
+        arguments.push_back(L"-fvk-use-dx-layout");
+        arguments.push_back(L"-fspv-extension=SPV_EXT_descriptor_indexing");
+        arguments.push_back(L"-fvk-bind-resource-heap");
+        arguments.push_back(L"0");
+        arguments.push_back(L"0");
+        arguments.push_back(L"-fvk-bind-sampler-heap");
+        arguments.push_back(L"1");
+        arguments.push_back(L"0");
+#ifndef NDEBUG
+        // arguments.push_back(L"-fspv-extension=SPV_KHR_non_semantic_info");
+        // arguments.push_back(L"-fspv-debug=vulkan-with-source");
+#endif
+    }
+
+    std::wstring entry = string_to_wstring(entry_point);
+    arguments.push_back(L"-E");
+    arguments.push_back(entry.data());
+
+    switch (stage)
+    {
+    case RHI_SHADER_STAGE_VERTEX: {
+        arguments.push_back(L"-T");
+        arguments.push_back(L"vs_6_6");
+        break;
+    }
+    case RHI_SHADER_STAGE_GEOMETRY: {
+        arguments.push_back(L"-T");
+        arguments.push_back(L"gs_6_6");
+        break;
+    }
+    case RHI_SHADER_STAGE_FRAGMENT: {
+        arguments.push_back(L"-T");
+        arguments.push_back(L"ps_6_6");
+        break;
+    }
+    case RHI_SHADER_STAGE_COMPUTE: {
+        arguments.push_back(L"-T");
+        arguments.push_back(L"cs_6_6");
+        break;
+    }
+    default:
+        throw std::runtime_error("unsupported shader stage");
+    }
+
+    for (const auto& macro : defines)
+    {
+        arguments.push_back(macro.data());
+    }
 
     return m_shader_compiler->compile(source, arguments);
 }

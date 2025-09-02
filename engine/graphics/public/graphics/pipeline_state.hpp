@@ -13,21 +13,20 @@ class rasterizer_state
 public:
     rhi_rasterizer_state* get_dynamic(rhi_cull_mode cull_mode, rhi_polygon_mode polygon_mode)
     {
+        rhi_rasterizer_state state = {};
+        state.cull_mode = cull_mode;
+        state.polygon_mode = polygon_mode;
+
         std::scoped_lock lock(m_mutex);
 
-        rhi_rasterizer_state key = {
-            .cull_mode = cull_mode,
-            .polygon_mode = polygon_mode,
-        };
-
-        auto iter = m_states.find(key);
+        auto iter = m_states.find(state);
         if (iter != m_states.end())
         {
             return iter->second.get();
         }
 
-        m_states[key] = std::make_unique<rhi_rasterizer_state>(cull_mode, polygon_mode);
-        return m_states[key].get();
+        m_states[state] = std::make_unique<rhi_rasterizer_state>(cull_mode, polygon_mode);
+        return m_states[state].get();
     }
 
     template <rhi_cull_mode CullMode, rhi_polygon_mode PolygonMode>
@@ -50,7 +49,7 @@ private:
     {
         std::size_t operator()(const rhi_rasterizer_state& value) const noexcept
         {
-            return hash::city_hash_64(value);
+            return hash::city_hash_64(&value, sizeof(rhi_rasterizer_state));
         }
     };
 
@@ -83,6 +82,7 @@ public:
         static constexpr rhi_blend_op color_op = ColorOp;
         static constexpr rhi_blend_factor src_alpha_factor = SrcAlphaFactor;
         static constexpr rhi_blend_factor dst_alpha_factor = DstAlphaFactor;
+        static constexpr rhi_blend_op alpha_op = AlphaOp;
     };
 
     rhi_blend_state* get_dynamic(std::span<const rhi_attachment_blend> attachments = {})
@@ -126,6 +126,7 @@ private:
                   Attachments::color_op,
                   Attachments::src_alpha_factor,
                   Attachments::dst_alpha_factor,
+                  Attachments::alpha_op,
               }),
          ...);
 
@@ -158,7 +159,7 @@ private:
     {
         std::size_t operator()(const rhi_blend_state& value) const noexcept
         {
-            return hash::city_hash_64(value);
+            return hash::city_hash_64(&value, sizeof(rhi_blend_state));
         }
     };
 
@@ -179,16 +180,15 @@ public:
         rhi_stencil_state stencil_front = {},
         rhi_stencil_state stencil_back = {})
     {
-        std::scoped_lock lock(m_mutex);
+        rhi_depth_stencil_state state = {};
+        state.depth_enable = depth_enable;
+        state.depth_write_enable = depth_write_enable;
+        state.depth_compare_op = depth_compare_op;
+        state.stencil_enable = stencil_enable;
+        state.stencil_front = stencil_front;
+        state.stencil_back = stencil_back;
 
-        rhi_depth_stencil_state state = {
-            .depth_enable = depth_enable,
-            .depth_write_enable = depth_write_enable,
-            .depth_compare_op = depth_compare_op,
-            .stencil_enable = stencil_enable,
-            .stencil_front = stencil_front,
-            .stencil_back = stencil_back,
-        };
+        std::scoped_lock lock(m_mutex);
 
         auto iter = m_states.find(state);
         if (iter != m_states.end())
@@ -246,7 +246,7 @@ private:
     {
         std::size_t operator()(const rhi_depth_stencil_state& value) const noexcept
         {
-            return hash::city_hash_64(value);
+            return hash::city_hash_64(&value, sizeof(rhi_depth_stencil_state));
         }
     };
 

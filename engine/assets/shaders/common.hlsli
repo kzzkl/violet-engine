@@ -13,9 +13,32 @@ static const float HALF_PI = 0.5 * PI;
 
 static const float EPSILON = 1e-10;
 
-static const uint MESH_FRUSTUM_CULLING = 1 << 0;
-static const uint MESH_OCCLUSION_CULLING = 1 << 1;
-static const uint MESH_CLUSTER = 1 << 2;
+static const uint GBUFFER_ALBEDO = 0;
+static const uint GBUFFER_MATERIAL = 1;
+static const uint GBUFFER_NORMAL = 2;
+static const uint GBUFFER_EMISSIVE = 3;
+
+struct draw_command
+{
+    uint index_count;
+    uint instance_count;
+    uint index_offset;
+    uint vertex_offset;
+    uint instance_offset;
+};
+
+struct draw_info
+{
+    uint instance_id;
+    uint cluster_id;
+};
+
+struct dispatch_command
+{
+    uint x;
+    uint y;
+    uint z;
+};
 
 struct geometry_data
 {
@@ -45,6 +68,16 @@ struct instance_data
     uint material_address;
 };
 
+struct cluster_data
+{
+    float4 bounding_sphere;
+    float4 lod_bounds;
+    float lod_error;
+    uint index_offset;
+    uint index_count;
+    uint padding0;
+};
+
 static const uint LIGHT_DIRECTIONAL = 0;
 
 struct light_data
@@ -68,13 +101,13 @@ struct scene_data
     uint batch_buffer;
     uint material_buffer;
     uint geometry_buffer;
+    uint cluster_buffer;
     uint vertex_buffer;
     uint index_buffer;
     uint skybox;
     uint irradiance;
     uint prefilter;
     uint padding0;
-    uint padding1;
 };
 
 struct camera_data
@@ -132,11 +165,28 @@ SamplerState get_linear_clamp_sampler()
     return SamplerDescriptorHeap[5];
 }
 
+struct material_info
+{
+    uint material_index;
+    uint shading_model;
+};
+
+material_info load_material_info(uint material_buffer, uint material_address)
+{
+    ByteAddressBuffer buffer = ResourceDescriptorHeap[material_buffer];
+    uint pack = buffer.Load<uint>(material_address);
+
+    material_info info;
+    info.material_index = (pack & 0xFFFFFF00) >> 8;
+    info.shading_model = pack & 0xFF;
+    return info;
+}
+
 template <typename T>
 T load_material(uint material_buffer, uint material_address)
 {
     ByteAddressBuffer buffer = ResourceDescriptorHeap[material_buffer];
-    return buffer.Load<T>(material_address);
+    return buffer.Load<T>(material_address + sizeof(uint)); // Skip material info.
 }
 
 float3 get_morph_position(uint morph_vertex_buffer, uint vertex_index)
@@ -147,7 +197,7 @@ float3 get_morph_position(uint morph_vertex_buffer, uint vertex_index)
         buffer[vertex_index * 3 + 0],
         buffer[vertex_index * 3 + 1],
         buffer[vertex_index * 3 + 2]);
-    morph *= 0.0001; // morph precision
+    morph *= 0.0001; // Morph precision
 
     return morph;
 }

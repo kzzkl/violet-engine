@@ -65,86 +65,11 @@ void rdg_command::set_scissor()
     set_scissor(m_camera->get_scissor_rects());
 }
 
-void rdg_command::draw_instances(
-    rhi_buffer* command_buffer,
-    rhi_buffer* count_buffer,
-    material_type type)
+void rdg_command::set_index_buffer()
 {
-    assert(m_scene != nullptr && m_camera != nullptr);
-
     auto& device = render_device::instance();
-
-    bool first_batch = true;
-
-    auto max_instances =
-        static_cast<std::uint32_t>(command_buffer->get_size() / sizeof(shader::draw_command));
-
-    m_scene->each_batch(
-        type,
-        [&](render_id id,
-            const rdg_raster_pipeline& pipeline,
-            std::uint32_t instance_offset,
-            std::uint32_t instance_count)
-        {
-            set_pipeline(pipeline);
-
-            if (first_batch)
-            {
-                set_parameter(0, RDG_PARAMETER_BINDLESS);
-                set_parameter(1, RDG_PARAMETER_SCENE);
-                set_parameter(2, RDG_PARAMETER_CAMERA);
-
-                set_index_buffer(
-                    device.get_geometry_manager()->get_index_buffer()->get_rhi(),
-                    sizeof(std::uint32_t));
-
-                first_batch = false;
-            }
-
-            m_command->draw_indexed_indirect(
-                command_buffer,
-                instance_offset * sizeof(shader::draw_command),
-                count_buffer,
-                id * sizeof(std::uint32_t),
-                std::min(instance_count, max_instances - instance_offset));
-        });
-}
-
-void rdg_command::draw_instances(
-    rhi_buffer* command_buffer,
-    rhi_buffer* count_buffer,
-    material_type type,
-    const rdg_raster_pipeline& pipeline)
-{
-    assert(m_scene != nullptr && m_camera != nullptr);
-
-    auto& device = render_device::instance();
-
-    set_pipeline(pipeline);
-    set_parameter(0, RDG_PARAMETER_BINDLESS);
-    set_parameter(1, RDG_PARAMETER_SCENE);
-    set_parameter(2, RDG_PARAMETER_CAMERA);
-
-    set_index_buffer(
+    m_command->set_index_buffer(
         device.get_geometry_manager()->get_index_buffer()->get_rhi(),
         sizeof(std::uint32_t));
-
-    auto max_instances =
-        static_cast<std::uint32_t>(command_buffer->get_size() / sizeof(shader::draw_command));
-
-    m_scene->each_batch(
-        type,
-        [&](render_id id,
-            const rdg_raster_pipeline& pipeline,
-            std::uint32_t instance_offset,
-            std::uint32_t instance_count)
-        {
-            m_command->draw_indexed_indirect(
-                command_buffer,
-                instance_offset * sizeof(shader::draw_command),
-                count_buffer,
-                id * sizeof(std::uint32_t),
-                std::min(instance_count, max_instances - instance_offset));
-        });
 }
 } // namespace violet

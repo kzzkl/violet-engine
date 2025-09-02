@@ -15,17 +15,17 @@ struct constant_data
     float threshold;
     float lod_scale;
 
-    uint cluster_buffer;
     uint cluster_node_buffer;
     uint cluster_queue;
     uint cluster_queue_state;
 
-    uint command_buffer;
-    uint count_buffer;
+    uint draw_buffer;
+    uint draw_count_buffer;
+    uint draw_info_buffer;
 
-    uint max_clusters;
-    uint max_cluster_nodes;
-    uint max_draw_commands;
+    uint max_cluster_count;
+    uint max_cluster_node_count;
+    uint max_draw_command_count;
 };
 PushConstant(constant_data, constant);
 
@@ -35,7 +35,7 @@ static const uint INVALID_INSTANCE_INDEX = 0xFFFFFFFF;
 groupshared uint group_queue_offset;
 groupshared uint group_cluster_queue_rear;
 groupshared uint group_cluster_node_mask;
-groupshared uint3 group_cluster_node[MAX_NODE_PER_GROUP]; // x: child_offset, y: child_count, z: instance_index
+groupshared uint3 group_cluster_node[MAX_NODE_PER_GROUP]; // x: child_offset, y: child_count, z: instance_id
 
 uint get_cluster_node_offset()
 {
@@ -44,7 +44,7 @@ uint get_cluster_node_offset()
 
 uint get_cluster_offset()
 {
-    return constant.max_cluster_nodes;
+    return constant.max_cluster_node_count;
 }
 
 bool check_cluster_node_lod(cluster_node_data cluster_node, mesh_data mesh)
@@ -121,14 +121,14 @@ void process_cluster_node(uint group_index)
     uint3 item = group_cluster_node[group_index / MAX_NODE_PER_GROUP];
     uint child_offset = item.x;
     uint child_count = item.y;
-    uint instance_index = item.z;
+    uint instance_id = item.z;
 
     uint node_index = group_index % MAX_NODE_PER_GROUP;
     node_index = node_index < child_count ? node_index + child_offset : INVALID_NODE_INDEX;
 
     if (node_index != INVALID_NODE_INDEX)
     {
-        instance_data instance = instances[instance_index];
+        instance_data instance = instances[instance_id];
         mesh_data mesh = meshes[instance.mesh_index];
 
         cluster_node_data cluster_node = cluster_nodes[node_index];
@@ -153,7 +153,7 @@ void process_cluster_node(uint group_index)
             {
                 uint cluster_node_queue_rear = 0;
                 InterlockedAdd(cluster_queue_state[0].cluster_node_queue_rear, 1, cluster_node_queue_rear);
-                cluster_queue[cluster_node_queue_rear] = uint2(node_index, instance_index);
+                cluster_queue[cluster_node_queue_rear] = uint2(node_index, instance_id);
             }
             else
             {
@@ -163,7 +163,7 @@ void process_cluster_node(uint group_index)
 
                 for (uint i = 0; i < cluster_node.child_count; ++i)
                 {
-                    cluster_queue[cluster_queue_rear + i] = uint2(cluster_node.child_offset + i, instance_index);
+                    cluster_queue[cluster_queue_rear + i] = uint2(cluster_node.child_offset + i, instance_id);
                 }
             }
         }
@@ -173,7 +173,7 @@ void process_cluster_node(uint group_index)
 void process_cluster(uint3 dtid)
 {
     RWStructuredBuffer<uint2> cluster_queue = ResourceDescriptorHeap[constant.cluster_queue];
-    StructuredBuffer<cluster_data> clusters = ResourceDescriptorHeap[constant.cluster_buffer];
+    StructuredBuffer<cluster_data> clusters = ResourceDescriptorHeap[scene.cluster_buffer];
 
     StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
     StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
@@ -183,14 +183,14 @@ void process_cluster(uint3 dtid)
     uint2 item = cluster_queue[queue_index];
     cluster_queue[queue_index] = uint2(INVALID_NODE_INDEX, INVALID_INSTANCE_INDEX);
 
-    uint cluster_index = item.x;
-    uint instance_index = item.y;
+    uint cluster_id = item.x;
+    uint instance_id = item.y;
 
-    instance_data instance = instances[instance_index];
+    instance_data instance = instances[instance_id];
     mesh_data mesh = meshes[instance.mesh_index];
     geometry_data geometry = geometries[instance.geometry_index];
 
-    cluster_data cluster = clusters[cluster_index];
+    cluster_data cluster = clusters[cluster_id];
     if (cluster.index_count == 0)
     {
         return;
@@ -213,24 +213,31 @@ void process_cluster(uint3 dtid)
     if (visible)
     {
         ByteAddressBuffer batch_buffer = ResourceDescriptorHeap[scene.batch_buffer];
-        RWStructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.count_buffer];
+        RWStructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.draw_count_buffer];
 
         uint batch_index = instance.batch_index;
         uint command_index = 0;
         InterlockedAdd(draw_counts[batch_index], 1, command_index);
         command_index += batch_buffer.Load<uint>(batch_index * 4);
 
-        if (command_index < constant.max_draw_commands)
+        if (command_index < constant.max_draw_command_count)
         {
             draw_command command;
             command.index_count = cluster.index_count;
             command.instance_count = 1;
             command.index_offset = geometry.index_offset + cluster.index_offset;
             command.vertex_offset = 0;
-            command.instance_offset = instance_index;
+            command.instance_offset = command_index;
 
-            RWStructuredBuffer<draw_command> draw_commands = ResourceDescriptorHeap[constant.command_buffer];
+            RWStructuredBuffer<draw_command> draw_commands = ResourceDescriptorHeap[constant.draw_buffer];
             draw_commands[command_index] = command;
+
+            draw_info info;
+            info.instance_id = instance_id;
+            info.cluster_id = cluster_id;
+
+            RWStructuredBuffer<draw_info> draw_infos = ResourceDescriptorHeap[constant.draw_info_buffer];
+            draw_infos[command_index] = info;
         }
     }
 }

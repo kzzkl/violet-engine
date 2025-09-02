@@ -11,7 +11,8 @@ target_include_directories(imgui
 add_library(violet-sample-base STATIC
     private/gltf_loader.cpp
     private/imgui_pass.cpp
-    private/imgui_system.cpp)
+    private/imgui_system.cpp
+    private/sample_system.cpp)
 add_library(violet::sample-base ALIAS violet-sample-base)
 
 target_include_directories(violet-sample-base
@@ -22,6 +23,7 @@ target_include_directories(violet-sample-base
 
 target_link_libraries(violet-sample-base
     PUBLIC
+        violet::control
         violet::graphics
         assimp::assimp
         imgui
