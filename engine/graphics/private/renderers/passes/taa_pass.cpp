@@ -18,8 +18,8 @@ struct taa_cs : public shader_cs
     };
 
     static constexpr parameter_layout parameters = {
-        {0, bindless},
-        {1, camera},
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = camera},
     };
 };
 

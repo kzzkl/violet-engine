@@ -17,8 +17,8 @@ public:
         return m_cluster_queue_state.get();
     }
 
-    std::uint32_t get_max_clusters() const noexcept;
-    std::uint32_t get_max_cluster_nodes() const noexcept;
+    std::uint32_t get_max_cluster_count() const noexcept;
+    std::uint32_t get_max_cluster_node_count() const noexcept;
 
     void set_persistent_thread(bool use_persistent_thread) noexcept
     {

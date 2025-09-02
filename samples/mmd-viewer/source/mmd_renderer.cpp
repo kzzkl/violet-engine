@@ -3,15 +3,15 @@
 #include "graphics/renderers/features/taa_render_feature.hpp"
 #include "graphics/renderers/passes/blit_pass.hpp"
 #include "graphics/renderers/passes/cull_pass.hpp"
+#include "graphics/renderers/passes/gbuffer_pass.hpp"
 #include "graphics/renderers/passes/gtao_pass.hpp"
 #include "graphics/renderers/passes/hzb_pass.hpp"
-#include "graphics/renderers/passes/lighting/unlit_pass.hpp"
 #include "graphics/renderers/passes/mesh_pass.hpp"
 #include "graphics/renderers/passes/motion_vector_pass.hpp"
+#include "graphics/renderers/passes/shading_pass.hpp"
 #include "graphics/renderers/passes/skybox_pass.hpp"
 #include "graphics/renderers/passes/taa_pass.hpp"
 #include "graphics/renderers/passes/tone_mapping_pass.hpp"
-#include "mmd_material.hpp"
 
 namespace violet
 {
@@ -44,7 +44,8 @@ void mmd_renderer::on_render(render_graph& graph)
         "Render Target",
         m_render_extent,
         RHI_FORMAT_R16G16B16A16_FLOAT,
-        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE);
+        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE |
+            RHI_TEXTURE_TRANSFER_SRC | RHI_TEXTURE_TRANSFER_DST);
 
     m_depth_buffer = graph.add_texture(
         "Depth Buffer",
@@ -73,7 +74,7 @@ void mmd_renderer::on_render(render_graph& graph)
             m_ao_buffer = nullptr;
         }
 
-        add_lighting_pass(graph);
+        add_shading_pass(graph);
     }
 
     if (graph.get_scene().has_skybox())
@@ -106,81 +107,59 @@ void mmd_renderer::add_cull_pass(render_graph& graph)
 {
     rdg_scope scope(graph, "Cull");
 
-    m_command_buffer = graph.add_buffer(
-        "Command Buffer",
-        graph.get_scene().get_instance_capacity() * sizeof(shader::draw_command),
-        RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT);
+    auto result = graph.add_pass<cull_pass>({
+        .hzb = m_hzb,
+    });
 
-    m_count_buffer = graph.add_buffer(
-        "Count Buffer",
-        graph.get_scene().get_batch_capacity() * sizeof(std::uint32_t),
-        RHI_BUFFER_STORAGE_TEXEL | RHI_BUFFER_INDIRECT | RHI_BUFFER_TRANSFER_DST);
-
-    auto result = cull_pass::add(
-        graph,
-        {
-            .hzb = m_hzb,
-        });
-
-    m_command_buffer = result.command_buffer;
-    m_count_buffer = result.count_buffer;
+    m_draw_buffer = result.draw_buffer;
+    m_draw_count_buffer = result.draw_count_buffer;
+    m_draw_info_buffer = result.draw_info_buffer;
 }
 
 void mmd_renderer::add_opaque_pass(render_graph& graph)
 {
-    rdg_scope scope(graph, "Opaque Mesh");
+    rdg_scope scope(graph, "GBuffer");
 
-    m_gbuffer_albedo = graph.add_texture(
+    m_gbuffers.resize(4);
+
+    m_gbuffers[SHADING_GBUFFER_ALBEDO] = graph.add_texture(
         "GBuffer Albedo",
         m_render_extent,
         RHI_FORMAT_R8G8B8A8_UNORM,
-        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE);
-
-    m_gbuffer_material = graph.add_texture(
+        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
+            RHI_TEXTURE_TRANSFER_DST);
+    m_gbuffers[SHADING_GBUFFER_MATERIAL] = graph.add_texture(
         "GBuffer Material",
         m_render_extent,
         RHI_FORMAT_R8G8_UNORM,
-        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE);
-
-    m_gbuffer_normal = graph.add_texture(
+        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
+            RHI_TEXTURE_TRANSFER_DST);
+    m_gbuffers[SHADING_GBUFFER_NORMAL] = graph.add_texture(
         "GBuffer Normal",
         m_render_extent,
-        RHI_FORMAT_R16G16_UNORM,
-        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE);
-
-    m_gbuffer_emissive = graph.add_texture(
+        RHI_FORMAT_R32_UINT,
+        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
+            RHI_TEXTURE_TRANSFER_DST);
+    m_gbuffers[SHADING_GBUFFER_EMISSIVE] = graph.add_texture(
         "GBuffer Emissive",
         m_render_extent,
         RHI_FORMAT_R8G8B8A8_UNORM,
-        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE);
+        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
+            RHI_TEXTURE_TRANSFER_DST);
 
-    std::vector<rdg_texture*> render_targets = {
-        m_gbuffer_albedo,
-        m_gbuffer_material,
-        m_gbuffer_normal,
-        m_gbuffer_emissive,
-    };
+    m_depth_buffer = graph.add_texture(
+        "Depth Buffer",
+        m_render_extent,
+        RHI_FORMAT_D32_FLOAT,
+        RHI_TEXTURE_DEPTH_STENCIL | RHI_TEXTURE_SHADER_RESOURCE);
 
-    mesh_pass::add(
-        graph,
-        {
-            .command_buffer = m_command_buffer,
-            .count_buffer = m_count_buffer,
-            .render_targets = render_targets,
-            .depth_buffer = m_depth_buffer,
-            .material_type = MATERIAL_OPAQUE,
-            .clear = true,
-        });
-
-    mesh_pass::add(
-        graph,
-        {
-            .command_buffer = m_command_buffer,
-            .count_buffer = m_count_buffer,
-            .render_targets = render_targets,
-            .depth_buffer = m_depth_buffer,
-            .material_type = MATERIAL_TOON,
-        });
+    graph.add_pass<gbuffer_pass>({
+        .draw_buffer = m_draw_buffer,
+        .draw_count_buffer = m_draw_count_buffer,
+        .draw_info_buffer = m_draw_info_buffer,
+        .gbuffers = m_gbuffers,
+        .depth_buffer = m_depth_buffer,
+    });
 }
 
 void mmd_renderer::add_hzb_pass(render_graph& graph)
@@ -212,80 +191,23 @@ void mmd_renderer::add_gtao_pass(render_graph& graph)
             .falloff = gtao->get_falloff(),
             .hzb = m_hzb,
             .depth_buffer = m_depth_buffer,
-            .normal_buffer = m_gbuffer_normal,
+            .normal_buffer = m_gbuffers[SHADING_GBUFFER_NORMAL],
             .ao_buffer = m_ao_buffer,
         });
 }
 
-void mmd_renderer::add_lighting_pass(render_graph& graph)
+void mmd_renderer::add_shading_pass(render_graph& graph)
 {
-    unlit_pass::add(
-        graph,
-        {
-            .gbuffer_albedo = m_gbuffer_albedo,
-            .depth_buffer = m_depth_buffer,
-            .render_target = m_render_target,
-            .clear = true,
-        });
-
-    struct pass_data
-    {
-        rdg_texture_srv gbuffer_color;
-        rdg_texture_srv ao_buffer;
+    std::vector<rdg_texture*> auxiliary_buffers = {
+        m_depth_buffer,
+        m_ao_buffer,
     };
 
-    graph.add_pass<pass_data>(
-        "Lighting Pass",
-        RDG_PASS_RASTER,
-        [&](pass_data& data, rdg_pass& pass)
-        {
-            pass.add_render_target(m_render_target, RHI_ATTACHMENT_LOAD_OP_LOAD);
-            pass.set_depth_stencil(m_depth_buffer, RHI_ATTACHMENT_LOAD_OP_LOAD);
-
-            data.gbuffer_color =
-                pass.add_texture_srv(m_gbuffer_albedo, RHI_PIPELINE_STAGE_FRAGMENT);
-
-            if (m_ao_buffer != nullptr)
-            {
-                data.ao_buffer = pass.add_texture_srv(m_ao_buffer, RHI_PIPELINE_STAGE_FRAGMENT);
-            }
-            else
-            {
-                data.ao_buffer = rdg_texture_srv();
-            }
-        },
-        [](const pass_data& data, rdg_command& command)
-        {
-            auto& device = render_device::instance();
-
-            toon_fs::constant_data constant = {
-                .color = data.gbuffer_color.get_rhi()->get_bindless(),
-            };
-
-            std::vector<std::wstring> defines;
-            if (data.ao_buffer)
-            {
-                defines.emplace_back(L"-DUSE_AO_BUFFER");
-                constant.ao_buffer = data.ao_buffer.get_rhi()->get_bindless();
-            }
-
-            rdg_raster_pipeline pipeline = {
-                .vertex_shader = device.get_shader<fullscreen_vs>(),
-                .fragment_shader = device.get_shader<toon_fs>(defines),
-                .depth_stencil_state = device.get_depth_stencil_state<
-                    false,
-                    false,
-                    RHI_COMPARE_OP_NEVER,
-                    true,
-                    lighting_stencil_state<SHADING_MODEL_TOON>::value,
-                    lighting_stencil_state<SHADING_MODEL_TOON>::value>(),
-            };
-
-            command.set_pipeline(pipeline);
-            command.set_constant(constant);
-            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
-            command.draw_fullscreen();
-        });
+    graph.add_pass<shading_pass>({
+        .gbuffers = m_gbuffers,
+        .auxiliary_buffers = auxiliary_buffers,
+        .render_target = m_render_target,
+    });
 }
 
 void mmd_renderer::add_skybox_pass(render_graph& graph)
@@ -305,15 +227,15 @@ void mmd_renderer::add_transparent_pass(render_graph& graph)
         m_render_target,
     };
 
-    mesh_pass::add(
-        graph,
-        {
-            .command_buffer = m_command_buffer,
-            .count_buffer = m_count_buffer,
-            .render_targets = render_targets,
-            .depth_buffer = m_depth_buffer,
-            .material_type = MATERIAL_TRANSPARENT,
-        });
+    graph.add_pass<mesh_pass>({
+        .draw_buffer = m_draw_buffer,
+        .draw_count_buffer = m_draw_count_buffer,
+        .draw_info_buffer = m_draw_info_buffer,
+        .render_targets = render_targets,
+        .depth_buffer = m_depth_buffer,
+        .surface_type = SURFACE_TYPE_TRANSPARENT,
+        .material_path = MATERIAL_PATH_FORWARD,
+    });
 }
 
 void mmd_renderer::add_motion_vector_pass(render_graph& graph)

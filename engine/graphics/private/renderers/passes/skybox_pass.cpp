@@ -9,8 +9,8 @@ struct skybox_vs : public shader_vs
     static constexpr std::string_view path = "assets/shaders/skybox.hlsl";
 
     static constexpr parameter_layout parameters = {
-        {0, shader::bindless},
-        {2, shader::camera},
+        {.space = 0, .desc = bindless},
+        {.space = 2, .desc = camera},
     };
 };
 
@@ -19,8 +19,8 @@ struct skybox_fs : public shader_fs
     static constexpr std::string_view path = "assets/shaders/skybox.hlsl";
 
     static constexpr parameter_layout parameters = {
-        {0, shader::bindless},
-        {1, shader::scene},
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = scene},
     };
 };
 

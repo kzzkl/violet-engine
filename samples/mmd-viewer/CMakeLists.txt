@@ -29,7 +29,3 @@ install(TARGETS mmd-viewer
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)
-
-if(MSVC)
-    set_property(TARGET mmd-viewer PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/install/bin)
-endif()

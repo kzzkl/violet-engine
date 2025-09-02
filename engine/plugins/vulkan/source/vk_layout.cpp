@@ -1,5 +1,4 @@
 #include "vk_layout.hpp"
-#include "algorithm/hash.hpp"
 #include "vk_context.hpp"
 #include <cassert>
 
@@ -42,7 +41,7 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
         if (desc.bindings[i].size == 0)
         {
             binding.descriptorCount =
-                desc.bindings[i].type == RHI_PARAMETER_BINDING_SAMPLER ? 2048 : 65536;
+                desc.bindings[i].type == RHI_PARAMETER_BINDING_TYPE_SAMPLER ? 2048 : 65536;
             binding_flags.push_back(
                 VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
                 VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);
@@ -51,7 +50,7 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
         }
         else
         {
-            if (desc.bindings[i].type == RHI_PARAMETER_BINDING_UNIFORM)
+            if (desc.bindings[i].type == RHI_PARAMETER_BINDING_TYPE_UNIFORM)
             {
                 binding.descriptorCount = 1;
             }
@@ -64,34 +63,34 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
 
         switch (desc.bindings[i].type)
         {
-        case RHI_PARAMETER_BINDING_UNIFORM: {
+        case RHI_PARAMETER_BINDING_TYPE_UNIFORM: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             m_bindings[i].uniform.index = uniform_count;
 
             ++uniform_count;
             break;
         }
-        case RHI_PARAMETER_BINDING_STORAGE_BUFFER: {
+        case RHI_PARAMETER_BINDING_TYPE_STORAGE_BUFFER: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             break;
         }
-        case RHI_PARAMETER_BINDING_STORAGE_TEXEL: {
+        case RHI_PARAMETER_BINDING_TYPE_STORAGE_TEXEL: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
             break;
         }
-        case RHI_PARAMETER_BINDING_STORAGE_TEXTURE: {
+        case RHI_PARAMETER_BINDING_TYPE_STORAGE_TEXTURE: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
             break;
         }
-        case RHI_PARAMETER_BINDING_TEXTURE: {
+        case RHI_PARAMETER_BINDING_TYPE_TEXTURE: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
             break;
         }
-        case RHI_PARAMETER_BINDING_SAMPLER: {
+        case RHI_PARAMETER_BINDING_TYPE_SAMPLER: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
             break;
         }
-        case RHI_PARAMETER_BINDING_MUTABLE: {
+        case RHI_PARAMETER_BINDING_TYPE_MUTABLE: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_MUTABLE_EXT;
             ++mutable_count;
             break;
@@ -206,9 +205,14 @@ vk_layout_manager::~vk_layout_manager() {}
 
 vk_parameter_layout* vk_layout_manager::get_parameter_layout(const rhi_parameter_desc& desc)
 {
-    std::uint64_t hash =
-        hash::city_hash_64(desc.bindings, sizeof(rhi_parameter_binding) * desc.binding_count);
-    auto iter = m_parameter_layouts.find(hash);
+    parameter_layout_key key = {};
+    for (std::size_t i = 0; i < desc.binding_count; ++i)
+    {
+        key.bindings[i] = desc.bindings[i];
+    }
+    key.binding_count = desc.binding_count;
+
+    auto iter = m_parameter_layouts.find(key);
     if (iter != m_parameter_layouts.end())
     {
         return iter->second.get();
@@ -216,7 +220,7 @@ vk_parameter_layout* vk_layout_manager::get_parameter_layout(const rhi_parameter
 
     auto layout = std::make_unique<vk_parameter_layout>(desc, m_context);
     vk_parameter_layout* result = layout.get();
-    m_parameter_layouts[hash] = std::move(layout);
+    m_parameter_layouts[key] = std::move(layout);
     return result;
 }
 

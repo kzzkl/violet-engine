@@ -5,6 +5,7 @@
 #include "graphics/geometry_manager.hpp"
 #include "graphics/graphics_config.hpp"
 #include "graphics/material_manager.hpp"
+#include <algorithm>
 
 namespace violet
 {
@@ -75,7 +76,7 @@ void render_scene::remove_instance(render_id instance_id)
     auto& instance = m_instances[instance_id];
     auto& mesh = m_meshes[instance.mesh_id];
 
-    mesh.instances.erase(std::find(mesh.instances.begin(), mesh.instances.end(), instance_id));
+    mesh.instances.erase(std::ranges::find(mesh.instances, instance_id));
 
     remove_instance_from_batch(instance_id);
 
@@ -181,15 +182,19 @@ void render_scene::update(gpu_buffer_uploader* uploader)
         geometry_manager->get_geometry_buffer()->get_srv()->get_bindless();
     std::uint32_t vertex_buffer = geometry_manager->get_vertex_buffer()->get_srv()->get_bindless();
     std::uint32_t index_buffer = geometry_manager->get_index_buffer()->get_srv()->get_bindless();
+    std::uint32_t cluster_buffer =
+        geometry_manager->get_cluster_buffer()->get_srv()->get_bindless();
 
     if (m_scene_data.material_buffer != material_buffer ||
         m_scene_data.geometry_buffer != geometry_buffer ||
-        m_scene_data.vertex_buffer != vertex_buffer || m_scene_data.index_buffer != index_buffer)
+        m_scene_data.vertex_buffer != vertex_buffer || m_scene_data.index_buffer != index_buffer ||
+        m_scene_data.cluster_buffer != cluster_buffer)
     {
         m_scene_data.material_buffer = material_buffer;
         m_scene_data.geometry_buffer = geometry_buffer;
         m_scene_data.vertex_buffer = vertex_buffer;
         m_scene_data.index_buffer = index_buffer;
+        m_scene_data.cluster_buffer = cluster_buffer;
 
         m_scene_states |= RENDER_SCENE_STAGE_DATA_DIRTY;
     }
@@ -216,15 +221,21 @@ void render_scene::add_instance_to_batch(render_id instance_id, const material* 
 
     render_id batch_id = 0;
 
-    auto batch_iter = m_pipeline_to_batch.find(material->get_pipeline());
+    batch_key key = {};
+    key.pipeline = material->get_pipeline();
+    key.surface_type = material->get_surface_type();
+    key.material_path = material->get_material_path();
+
+    auto batch_iter = m_pipeline_to_batch.find(key);
     if (batch_iter == m_pipeline_to_batch.end())
     {
         batch_id = m_batches.add();
-        m_pipeline_to_batch[material->get_pipeline()] = batch_id;
+        m_pipeline_to_batch[key] = batch_id;
 
         auto& batch = m_batches[batch_id];
-        batch.material_type = material->get_type();
-        batch.pipeline = material->get_pipeline();
+        batch.surface_type = material->get_surface_type();
+        batch.material_path = key.material_path;
+        batch.pipeline = key.pipeline;
     }
     else
     {
@@ -238,6 +249,44 @@ void render_scene::add_instance_to_batch(render_id instance_id, const material* 
     const auto& submesh = instance.geometry->get_submesh(instance.submesh_index);
     batch.instance_count +=
         submesh.has_cluster() ? static_cast<std::uint32_t>(submesh.clusters.size()) : 1;
+
+    auto [pipeline_id, shading_model_id] = material->get_material_info();
+
+    if (pipeline_id != 0)
+    {
+        if (pipeline_id >= m_material_resolve_pipelines.size())
+        {
+            m_material_resolve_pipelines.resize(pipeline_id + 1);
+        }
+
+        auto& [pipeline, instance_count] = m_material_resolve_pipelines[pipeline_id];
+
+        if (instance_count == 0)
+        {
+            auto* material_manager = render_device::instance().get_material_manager();
+            pipeline = material_manager->get_material_resolve_pipeline(pipeline_id);
+        }
+
+        ++instance_count;
+    }
+
+    if (shading_model_id != 0)
+    {
+        if (m_shading_models.size() <= shading_model_id)
+        {
+            m_shading_models.resize(shading_model_id + 1);
+        }
+
+        auto& [shading_model, instance_count] = m_shading_models[shading_model_id];
+
+        if (instance_count == 0)
+        {
+            auto* material_manager = render_device::instance().get_material_manager();
+            shading_model = material_manager->get_shading_model(shading_model_id);
+        }
+
+        ++instance_count;
+    }
 
     m_scene_states |= RENDER_SCENE_STAGE_BATCH_DIRTY;
 }
@@ -258,8 +307,24 @@ void render_scene::remove_instance_from_batch(render_id instance_id)
 
     if (batch.instance_count == 0)
     {
-        m_pipeline_to_batch.erase(batch.pipeline);
+        batch_key key = {};
+        key.pipeline = batch.pipeline;
+        key.material_path = batch.material_path;
+
+        m_pipeline_to_batch.erase(key);
         m_batches.remove(instance.batch_id);
+    }
+
+    auto [pipeline_id, shading_model_id] = instance.material->get_material_info();
+
+    if (pipeline_id != 0)
+    {
+        --m_material_resolve_pipelines[pipeline_id].second;
+    }
+
+    if (shading_model_id != 0)
+    {
+        --m_shading_models[shading_model_id].second;
     }
 
     m_scene_states |= RENDER_SCENE_STAGE_BATCH_DIRTY;
@@ -299,8 +364,8 @@ bool render_scene::update_instance(gpu_buffer_uploader* uploader)
                 .geometry_index = static_cast<std::uint32_t>(
                     instance.geometry->get_submesh_id(instance.submesh_index)),
                 .batch_index = static_cast<std::uint32_t>(instance.batch_id),
-                .material_address =
-                    material_manager->get_material_constant_address(instance.material->get_id()),
+                .material_address = material_manager->get_material_constant_address(
+                    instance.material->get_material_id()),
             };
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
@@ -362,7 +427,8 @@ bool render_scene::update_batch(gpu_buffer_uploader* uploader)
     {
         m_instance_capacity = (instance_offset + 1023) & ~1023;
     }
-    m_instance_capacity = std::min(m_instance_capacity, graphics_config::get_max_draw_commands());
+    m_instance_capacity =
+        std::min(m_instance_capacity, graphics_config::get_max_draw_command_count());
 
     return m_batches.update(
         [](const gpu_batch& batch) -> std::uint32_t

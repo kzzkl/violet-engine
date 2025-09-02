@@ -68,7 +68,7 @@ void vk_command::set_parameter(std::uint32_t index, rhi_parameter* parameter)
         nullptr);
 }
 
-void vk_command::set_constant(const void* data, std::size_t size)
+void vk_command::set_constant(const void* data, std::size_t size, std::size_t offset)
 {
     assert(m_current_pipeline_layout->get_push_constant_size() >= size);
 
@@ -76,7 +76,7 @@ void vk_command::set_constant(const void* data, std::size_t size)
         m_command_buffer,
         m_current_pipeline_layout->get_layout(),
         m_current_pipeline_layout->get_push_constant_stages(),
-        0,
+        static_cast<std::uint32_t>(offset),
         static_cast<std::uint32_t>(size),
         data);
 }
@@ -275,6 +275,62 @@ void vk_command::set_pipeline_barrier(
         vk_image_barriers.data());
 }
 
+void vk_command::clear_texture(
+    rhi_texture* texture,
+    rhi_clear_value clear_value,
+    const rhi_texture_region* regions,
+    std::uint32_t region_count)
+{
+    auto* image = static_cast<vk_texture*>(texture);
+
+    std::vector<VkImageSubresourceRange> ranges;
+    ranges.reserve(region_count);
+    for (std::size_t i = 0; i < region_count; ++i)
+    {
+        ranges.push_back({
+            .aspectMask = regions[i].aspect == 0 ?
+                              image->get_aspect_mask() :
+                              vk_utils::map_image_aspect_flags(regions[i].aspect),
+            .baseMipLevel = regions[i].level,
+            .levelCount = 1,
+            .baseArrayLayer = regions[i].layer,
+            .layerCount = regions[i].layer_count,
+        });
+    }
+
+    if (image->get_aspect_mask() == VK_IMAGE_ASPECT_COLOR_BIT)
+    {
+        VkClearColorValue value;
+        value.uint32[0] = clear_value.color.uint32[0];
+        value.uint32[1] = clear_value.color.uint32[1];
+        value.uint32[2] = clear_value.color.uint32[2];
+        value.uint32[3] = clear_value.color.uint32[3];
+
+        vkCmdClearColorImage(
+            m_command_buffer,
+            image->get_image(),
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            &value,
+            region_count,
+            ranges.data());
+    }
+    else
+    {
+        VkClearDepthStencilValue value = {
+            .depth = clear_value.depth_stencil.depth,
+            .stencil = clear_value.depth_stencil.stencil,
+        };
+
+        vkCmdClearDepthStencilImage(
+            m_command_buffer,
+            image->get_image(),
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            &value,
+            region_count,
+            ranges.data());
+    }
+}
+
 void vk_command::copy_texture(
     rhi_texture* src,
     const rhi_texture_region& src_region,
@@ -289,15 +345,27 @@ void vk_command::copy_texture(
     auto* dst_image = static_cast<vk_texture*>(dst);
 
     VkImageCopy image_copy = {};
-    image_copy.extent = {src_region.extent.width, src_region.extent.height, 1};
+    image_copy.extent = {
+        .width = src_region.extent.width,
+        .height = src_region.extent.height,
+        .depth = 1,
+    };
 
-    image_copy.srcOffset = {src_region.offset_x, src_region.offset_y, 0};
+    image_copy.srcOffset = {
+        .x = src_region.offset_x,
+        .y = src_region.offset_y,
+        .z = 0,
+    };
     image_copy.srcSubresource.aspectMask = src_image->get_aspect_mask();
     image_copy.srcSubresource.mipLevel = src_region.level;
     image_copy.srcSubresource.baseArrayLayer = src_region.layer;
     image_copy.srcSubresource.layerCount = src_region.layer_count;
 
-    image_copy.dstOffset = {dst_region.offset_x, dst_region.offset_y, 0};
+    image_copy.dstOffset = {
+        .x = dst_region.offset_x,
+        .y = dst_region.offset_y,
+        .z = 0,
+    };
     image_copy.dstSubresource.aspectMask = dst_image->get_aspect_mask();
     image_copy.dstSubresource.mipLevel = dst_region.level;
     image_copy.dstSubresource.baseArrayLayer = dst_region.layer;
@@ -325,11 +393,16 @@ void vk_command::blit_texture(
 
     VkImageBlit image_blit = {};
 
-    image_blit.srcOffsets[0] = {src_region.offset_x, src_region.offset_y, 0};
+    image_blit.srcOffsets[0] = {
+        .x = src_region.offset_x,
+        .y = src_region.offset_y,
+        .z = 0,
+    };
     image_blit.srcOffsets[1] = {
-        static_cast<std::int32_t>(src_region.extent.width),
-        static_cast<std::int32_t>(src_region.extent.height),
-        1};
+        .x = static_cast<std::int32_t>(src_region.extent.width),
+        .y = static_cast<std::int32_t>(src_region.extent.height),
+        .z = 1,
+    };
     image_blit.srcSubresource.aspectMask = src_region.aspect == 0 ?
                                                src_image->get_aspect_mask() :
                                                vk_utils::map_image_aspect_flags(src_region.aspect);
@@ -337,11 +410,16 @@ void vk_command::blit_texture(
     image_blit.srcSubresource.baseArrayLayer = src_region.layer;
     image_blit.srcSubresource.layerCount = src_region.layer_count;
 
-    image_blit.dstOffsets[0] = {dst_region.offset_x, dst_region.offset_y, 0};
+    image_blit.dstOffsets[0] = {
+        .x = dst_region.offset_x,
+        .y = dst_region.offset_y,
+        .z = 0,
+    };
     image_blit.dstOffsets[1] = {
-        static_cast<std::int32_t>(dst_region.extent.width),
-        static_cast<std::int32_t>(dst_region.extent.height),
-        1};
+        .x = static_cast<std::int32_t>(dst_region.extent.width),
+        .y = static_cast<std::int32_t>(dst_region.extent.height),
+        .z = 1,
+    };
     image_blit.dstSubresource.aspectMask = dst_region.aspect == 0 ?
                                                dst_image->get_aspect_mask() :
                                                vk_utils::map_image_aspect_flags(dst_region.aspect);

@@ -131,12 +131,6 @@ public:
         return m_data->access;
     }
 
-    bool is_first_reference() const noexcept;
-    bool is_last_reference() const noexcept;
-
-    rdg_reference* get_prev_reference() const;
-    rdg_reference* get_next_reference() const;
-
     void reset() noexcept
     {
         m_data = nullptr;

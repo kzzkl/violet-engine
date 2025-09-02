@@ -15,12 +15,6 @@ struct hash
 
     static std::uint64_t city_hash_64(const void* data, std::size_t size);
 
-    template <typename T>
-    static std::uint64_t city_hash_64(const T& value) noexcept
-    {
-        return city_hash_64(&value, sizeof(T));
-    }
-
     static std::uint32_t murmur_mix_32(std::uint32_t hash) noexcept
     {
         hash ^= hash >> 16;

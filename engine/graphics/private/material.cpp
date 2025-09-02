@@ -3,17 +3,22 @@
 
 namespace violet
 {
-material::material(material_type type) noexcept
-    : m_type(type)
+material::material() noexcept
 {
     auto* material_manager = render_device::instance().get_material_manager();
-    m_id = material_manager->add_material(this);
+    m_material_id = material_manager->add_material(this);
 }
 
 material::~material()
 {
     auto* material_manager = render_device::instance().get_material_manager();
-    material_manager->remove_material(m_id);
+    material_manager->remove_material(m_material_id);
+
+    auto [pipeline_id, shading_model_id] = get_material_info();
+    if (pipeline_id != 0)
+    {
+        material_manager->remove_material_resolve_pipeline(pipeline_id);
+    }
 }
 
 void material::update()
@@ -24,14 +29,66 @@ void material::update()
     }
 
     auto* material_manager = render_device::instance().get_material_manager();
-    material_manager->update_constant(m_id, get_constant_data(), get_constant_size());
+
+    auto [data, size] = get_constant_data();
+    material_manager->update_constant(m_material_id, data, size);
 
     m_dirty = false;
 }
 
+std::uint32_t material::set_pipeline_impl(const rdg_raster_pipeline& pipeline)
+{
+    assert(m_pipeline.vertex_shader == nullptr);
+
+    m_pipeline = pipeline;
+    return 0;
+}
+
+std::uint32_t material::set_pipeline_impl(
+    const rdg_raster_pipeline& pipeline,
+    render_id shading_model_id,
+    const std::function<std::unique_ptr<shading_model_base>()>& creator)
+{
+    assert(m_pipeline.vertex_shader == nullptr);
+
+    m_pipeline = pipeline;
+
+    auto* material_manager = render_device::instance().get_material_manager();
+
+    if (material_manager->get_shading_model(shading_model_id) == nullptr)
+    {
+        material_manager->set_shading_model(shading_model_id, creator());
+    }
+
+    return m_material_info = shading_model_id;
+}
+
+std::uint32_t material::set_pipeline_impl(
+    const rdg_raster_pipeline& visibility_pipeline,
+    const rdg_compute_pipeline& material_resolve_pipeline,
+    render_id shading_model_id,
+    const std::function<std::unique_ptr<shading_model_base>()>& creator)
+{
+    assert(m_pipeline.vertex_shader == nullptr);
+
+    m_pipeline = visibility_pipeline;
+
+    auto* material_manager = render_device::instance().get_material_manager();
+
+    std::uint32_t pipeline_id =
+        material_manager->add_material_resolve_pipeline(material_resolve_pipeline);
+
+    if (material_manager->get_shading_model(shading_model_id) == nullptr)
+    {
+        material_manager->set_shading_model(shading_model_id, creator());
+    }
+
+    return m_material_info = pipeline_id << 8 | shading_model_id;
+}
+
 void material::mark_dirty()
 {
-    assert(get_constant_size() != 0);
+    assert(get_constant_data().second != 0);
 
     if (m_dirty)
     {
@@ -40,6 +97,6 @@ void material::mark_dirty()
 
     m_dirty = true;
 
-    render_device::instance().get_material_manager()->mark_dirty(m_id);
+    render_device::instance().get_material_manager()->mark_dirty(m_material_id);
 }
 } // namespace violet

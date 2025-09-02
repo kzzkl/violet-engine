@@ -16,8 +16,8 @@ struct motion_vector_cs : public shader_cs
     };
 
     static constexpr parameter_layout parameters = {
-        {0, bindless},
-        {1, camera},
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = camera},
     };
 };
 
@@ -48,12 +48,13 @@ void motion_vector_pass::add(render_graph& graph, const parameter& parameter)
             command.set_pipeline({
                 .compute_shader = device.get_shader<motion_vector_cs>(),
             });
-            command.set_constant(motion_vector_cs::constant_data{
-                .depth_buffer = data.depth_buffer.get_bindless(),
-                .motion_vector = data.motion_vector.get_bindless(),
-                .width = extent.width,
-                .height = extent.height,
-            });
+            command.set_constant(
+                motion_vector_cs::constant_data{
+                    .depth_buffer = data.depth_buffer.get_bindless(),
+                    .motion_vector = data.motion_vector.get_bindless(),
+                    .width = extent.width,
+                    .height = extent.height,
+                });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_CAMERA);
 

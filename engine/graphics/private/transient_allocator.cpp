@@ -14,12 +14,26 @@ rhi_parameter* transient_allocator::allocate_parameter(const rhi_parameter_desc&
 
 rhi_texture* transient_allocator::allocate_texture(const rhi_texture_desc& desc)
 {
+    assert(desc.layout == RHI_TEXTURE_LAYOUT_UNDEFINED);
+
     return m_texture_allocator.allocate(
         desc,
         [](const rhi_texture_desc& desc)
         {
             return render_device::instance().create_texture(desc);
         });
+}
+
+void transient_allocator::free_texture(rhi_texture* texture)
+{
+    rhi_texture_desc desc = {};
+    desc.extent = texture->get_extent();
+    desc.format = texture->get_format();
+    desc.flags = texture->get_flags();
+    desc.level_count = texture->get_level_count();
+    desc.layer_count = texture->get_layer_count();
+    desc.samples = texture->get_samples();
+    m_texture_allocator.free(desc, texture);
 }
 
 rhi_buffer* transient_allocator::allocate_buffer(const rhi_buffer_desc& desc)
@@ -30,6 +44,14 @@ rhi_buffer* transient_allocator::allocate_buffer(const rhi_buffer_desc& desc)
         {
             return render_device::instance().create_buffer(desc);
         });
+}
+
+void transient_allocator::free_buffer(rhi_buffer* buffer)
+{
+    rhi_buffer_desc desc = {};
+    desc.size = buffer->get_size();
+    desc.flags = buffer->get_flags();
+    m_buffer_allocator.free(desc, buffer);
 }
 
 rhi_render_pass* transient_allocator::get_render_pass(const rhi_render_pass_desc& desc)

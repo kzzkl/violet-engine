@@ -16,22 +16,22 @@ struct vec2
     value_type x;
     value_type y;
 
-    [[nodiscard]] inline value_type& operator[](std::size_t index)
+    [[nodiscard]] value_type& operator[](std::size_t index)
     {
         return (&x)[index];
     }
 
-    [[nodiscard]] inline value_type operator[](std::size_t index) const
+    [[nodiscard]] value_type operator[](std::size_t index) const
     {
         return (&x)[index];
     }
 
-    [[nodiscard]] inline bool operator==(const self_type& other) const noexcept
+    [[nodiscard]] bool operator==(const self_type& other) const noexcept
     {
         return x == other.x && y == other.y;
     }
 
-    [[nodiscard]] inline vec2 operator-() const noexcept
+    [[nodiscard]] vec2 operator-() const noexcept
     {
         return {-x, -y};
     }
@@ -47,22 +47,22 @@ struct vec3
     value_type y;
     value_type z;
 
-    [[nodiscard]] inline value_type& operator[](std::size_t index)
+    [[nodiscard]] value_type& operator[](std::size_t index)
     {
         return (&x)[index];
     }
 
-    [[nodiscard]] inline const value_type& operator[](std::size_t index) const
+    [[nodiscard]] const value_type& operator[](std::size_t index) const
     {
         return (&x)[index];
     }
 
-    [[nodiscard]] inline bool operator==(const self_type& other) const noexcept
+    [[nodiscard]] bool operator==(const self_type& other) const noexcept
     {
         return x == other.x && y == other.y && z == other.z;
     }
 
-    [[nodiscard]] inline vec3 operator-() const noexcept
+    [[nodiscard]] vec3 operator-() const noexcept
     {
         return {-x, -y, -z};
     }
@@ -84,22 +84,22 @@ struct vec4
     value_type z;
     value_type w;
 
-    [[nodiscard]] inline value_type& operator[](std::size_t index)
+    [[nodiscard]] value_type& operator[](std::size_t index)
     {
         return (&x)[index];
     }
 
-    [[nodiscard]] inline const value_type& operator[](std::size_t index) const
+    [[nodiscard]] const value_type& operator[](std::size_t index) const
     {
         return (&x)[index];
     }
 
-    [[nodiscard]] inline bool operator==(const self_type& other) const noexcept
+    [[nodiscard]] bool operator==(const self_type& other) const noexcept
     {
         return x == other.x && y == other.y && z == other.z && w == other.w;
     }
 
-    [[nodiscard]] inline vec4 operator-() const noexcept
+    [[nodiscard]] vec4 operator-() const noexcept
     {
         return {-x, -y, -z, -w};
     }
@@ -195,14 +195,19 @@ struct mat3x3
         }
     }
 
-    [[nodiscard]] inline row_type& operator[](std::size_t index)
+    [[nodiscard]] row_type& operator[](std::size_t index)
     {
         return row[index];
     }
 
-    [[nodiscard]] inline const row_type& operator[](std::size_t index) const
+    [[nodiscard]] const row_type& operator[](std::size_t index) const
     {
         return row[index];
+    }
+
+    [[nodiscard]] bool operator==(const mat3x3& other) const noexcept
+    {
+        return row[0] == other.row[0] && row[1] == other.row[1] && row[2] == other.row[2];
     }
 };
 
@@ -243,14 +248,20 @@ struct mat4x4
         }
     }
 
-    [[nodiscard]] inline row_type& operator[](std::size_t index)
+    [[nodiscard]] row_type& operator[](std::size_t index)
     {
         return row[index];
     }
 
-    [[nodiscard]] inline const row_type& operator[](std::size_t index) const
+    [[nodiscard]] const row_type& operator[](std::size_t index) const
     {
         return row[index];
+    }
+
+    [[nodiscard]] bool operator==(const mat4x4& other) const noexcept
+    {
+        return row[0] == other.row[0] && row[1] == other.row[1] && row[2] == other.row[2] &&
+               row[3] == other.row[3];
     }
 };
 
@@ -262,12 +273,12 @@ struct mat4x4<simd>
 
     row_type row[4];
 
-    [[nodiscard]] inline row_type& operator[](std::size_t index)
+    [[nodiscard]] row_type& operator[](std::size_t index)
     {
         return row[index];
     }
 
-    [[nodiscard]] inline const row_type& operator[](std::size_t index) const
+    [[nodiscard]] const row_type& operator[](std::size_t index) const
     {
         return row[index];
     }

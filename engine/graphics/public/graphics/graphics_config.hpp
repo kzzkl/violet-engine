@@ -7,14 +7,14 @@ namespace violet
 class graphics_config
 {
 public:
-    static std::uint32_t get_max_draw_commands() noexcept
+    static std::uint32_t get_max_draw_command_count() noexcept
     {
-        return instance().m_max_draw_commands;
+        return instance().m_max_draw_command_count;
     }
 
-    static std::uint32_t get_max_candidate_clusters() noexcept
+    static std::uint32_t get_max_candidate_cluster_count() noexcept
     {
-        return instance().m_max_candidate_clusters;
+        return instance().m_max_candidate_cluster_count;
     }
 
 private:
@@ -22,10 +22,12 @@ private:
 
     static graphics_config& instance();
 
-    void initialize(std::uint32_t max_draw_commands, std::uint32_t max_candidate_clusters);
+    void initialize(
+        std::uint32_t max_draw_command_count,
+        std::uint32_t max_candidate_cluster_count);
 
-    std::uint32_t m_max_draw_commands;
-    std::uint32_t m_max_candidate_clusters;
+    std::uint32_t m_max_draw_command_count;
+    std::uint32_t m_max_candidate_cluster_count;
 
     friend class graphics_system;
 };

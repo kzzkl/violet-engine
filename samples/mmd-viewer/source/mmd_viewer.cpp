@@ -14,14 +14,14 @@
 #include "graphics/graphics_system.hpp"
 #include "graphics/renderers/features/gtao_render_feature.hpp"
 #include "graphics/renderers/features/taa_render_feature.hpp"
-#include "imgui.h"
-#include "imgui_system.hpp"
 #include "math/matrix.hpp"
 #include "mmd_animation.hpp"
 #include "mmd_material.hpp"
 #include "physics/physics_system.hpp"
+#include "sample/imgui_system.hpp"
 #include "scene/transform_system.hpp"
 #include "window/window_system.hpp"
+#include <imgui.h>
 
 namespace violet
 {
@@ -239,9 +239,10 @@ void mmd_viewer::load_gf2_material(const dictionary& info, const std::filesystem
     auto load_texture = [&](const std::string& texture, bool srgb) -> texture_2d*
     {
         auto path = root_path / texture;
-        m_model.textures.push_back(std::make_unique<texture_2d>(
-            path.string(),
-            srgb ? TEXTURE_OPTION_SRGB : TEXTURE_OPTION_NONE));
+        m_model.textures.push_back(
+            std::make_unique<texture_2d>(
+                path.string(),
+                srgb ? TEXTURE_OPTION_SRGB : TEXTURE_OPTION_NONE));
         return m_model.textures.back().get();
     };
 

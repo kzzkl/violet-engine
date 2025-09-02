@@ -2,23 +2,24 @@ add_library(violet-graphics STATIC
     private/geometries/box_geometry.cpp
     private/geometries/plane_geometry.cpp
     private/geometries/sphere_geometry.cpp
-    private/materials/physical_material.cpp
+    private/materials/pbr_material.cpp
     private/materials/unlit_material.cpp
     private/render_graph/rdg_command.cpp
     private/render_graph/rdg_pass.cpp
     private/render_graph/render_graph.cpp
     private/renderers/features/cluster_render_feature.cpp
-    private/renderers/passes/lighting/physical_pass.cpp
-    private/renderers/passes/lighting/unlit_pass.cpp
     private/renderers/passes/blit_pass.cpp
     private/renderers/passes/copy_depth_pass.cpp
     private/renderers/passes/cull_pass.cpp
     private/renderers/passes/debug/bounds_projection_pass.cpp
     private/renderers/passes/depth_only_pass.cpp
+    private/renderers/passes/gbuffer_pass.cpp
     private/renderers/passes/gtao_pass.cpp
     private/renderers/passes/hzb_pass.cpp
     private/renderers/passes/mesh_pass.cpp
     private/renderers/passes/motion_vector_pass.cpp
+    private/renderers/passes/scan_pass.cpp
+    private/renderers/passes/shading_pass.cpp
     private/renderers/passes/skybox_pass.cpp
     private/renderers/passes/taa_pass.cpp
     private/renderers/passes/tone_mapping_pass.cpp
@@ -29,6 +30,8 @@ add_library(violet-graphics STATIC
     private/resources/persistent_buffer.cpp
     private/resources/ramp_texture.cpp
     private/resources/texture.cpp
+    private/shading_models/pbr_shading_model.cpp
+    private/shading_models/unlit_shading_model.cpp
     private/tools/cluster/cluster_builder.cpp
     private/tools/cluster/graph_partitioner.cpp
     private/tools/mesh_simplifier/mesh_simplifier.cpp

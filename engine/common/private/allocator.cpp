@@ -2,12 +2,32 @@
 
 namespace violet
 {
+namespace
+{
+std::uint32_t next_power_of_two(std::uint32_t value)
+{
+    if (value == 0)
+    {
+        return 1;
+    }
+
+    value--;
+    value |= value >> 1;
+    value |= value >> 2;
+    value |= value >> 4;
+    value |= value >> 8;
+    value |= value >> 16;
+
+    return value + 1;
+}
+} // namespace
+
 buddy_allocator::buddy_allocator(std::uint32_t level)
     : m_level(level)
 {
     std::uint32_t size = 1 << level;
 
-    std::uint32_t node_count = size * 2 - 1;
+    std::uint32_t node_count = (size * 2) - 1;
     m_nodes.resize(node_count);
 }
 
@@ -49,8 +69,8 @@ std::uint32_t buddy_allocator::allocate(std::uint32_t size)
             }
             case NODE_STATE_UNUSED: {
                 m_nodes[index] = NODE_STATE_SPLIT;
-                m_nodes[index * 2 + 1] = NODE_STATE_UNUSED;
-                m_nodes[index * 2 + 2] = NODE_STATE_UNUSED;
+                m_nodes[(index * 2) + 1] = NODE_STATE_UNUSED;
+                m_nodes[(index * 2) + 2] = NODE_STATE_UNUSED;
                 index = index * 2 + 1;
                 length /= 2;
                 level++;

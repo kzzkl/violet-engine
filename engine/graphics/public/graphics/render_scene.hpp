@@ -86,12 +86,13 @@ public:
     }
 
     template <typename Functor>
-    void each_batch(material_type type, Functor&& functor) const
+    void each_batch(surface_type surface_type, material_path material_path, Functor&& functor) const
     {
         m_batches.each(
             [&](render_id id, const gpu_batch& batch)
             {
-                if (batch.material_type != type || batch.instance_count == 0)
+                if (batch.surface_type != surface_type || batch.material_path != material_path ||
+                    batch.instance_count == 0)
                 {
                     return;
                 }
@@ -100,12 +101,42 @@ public:
             });
     }
 
+    template <typename Functor>
+    void each_material_resolve_pipeline(Functor&& functor) const
+    {
+        for (render_id pipeline_id = 1; pipeline_id < m_material_resolve_pipelines.size();
+             ++pipeline_id)
+        {
+            const auto& [pipeline, instance_count] = m_material_resolve_pipelines[pipeline_id];
+            if (instance_count > 0)
+            {
+                functor(pipeline_id, pipeline);
+            }
+        }
+    }
+
+    template <typename Functor>
+    void each_shading_model(Functor&& functor) const
+    {
+        for (render_id shading_model_id = 1; shading_model_id < m_shading_models.size();
+             ++shading_model_id)
+        {
+            const auto& [shading_model, instance_count] = m_shading_models[shading_model_id];
+            if (instance_count > 0)
+            {
+                functor(shading_model_id, shading_model);
+            }
+        }
+    }
+
 private:
     struct gpu_batch
     {
         using gpu_type = std::uint32_t;
 
-        material_type material_type;
+        surface_type surface_type;
+        material_path material_path;
+
         rdg_raster_pipeline pipeline;
 
         std::uint32_t instance_offset;
@@ -152,11 +183,24 @@ private:
     };
     using render_scene_states = std::uint8_t;
 
-    struct raster_pipeline_hash
+    struct batch_key
     {
-        std::uint64_t operator()(const rdg_raster_pipeline& pipeline) const noexcept
+        rdg_raster_pipeline pipeline;
+        surface_type surface_type;
+        material_path material_path;
+
+        bool operator==(const batch_key& other) const noexcept
         {
-            return hash::city_hash_64(pipeline);
+            return pipeline == other.pipeline && surface_type == other.surface_type &&
+                   material_path == other.material_path;
+        }
+    };
+
+    struct batch_hash
+    {
+        std::uint64_t operator()(const batch_key& key) const noexcept
+        {
+            return hash::city_hash_64(&key, sizeof(key));
         }
     };
 
@@ -173,7 +217,10 @@ private:
     gpu_dense_array<gpu_light> m_lights;
 
     gpu_sparse_array<gpu_batch> m_batches;
-    std::unordered_map<rdg_raster_pipeline, render_id, raster_pipeline_hash> m_pipeline_to_batch;
+    std::unordered_map<batch_key, render_id, batch_hash> m_pipeline_to_batch;
+
+    std::vector<std::pair<rdg_compute_pipeline, std::uint32_t>> m_material_resolve_pipelines;
+    std::vector<std::pair<shading_model_base*, std::uint32_t>> m_shading_models;
 
     std::uint32_t m_instance_capacity{1};
 

@@ -6,20 +6,20 @@
 #include "components/skybox_component.hpp"
 #include "components/transform_component.hpp"
 #include "control/control_system.hpp"
-#include "deferred_renderer_imgui.hpp"
-#include "gltf_loader.hpp"
 #include "graphics/geometries/box_geometry.hpp"
 #include "graphics/geometries/plane_geometry.hpp"
 #include "graphics/geometries/sphere_geometry.hpp"
 #include "graphics/graphics_system.hpp"
-#include "graphics/materials/physical_material.hpp"
+#include "graphics/materials/pbr_material.hpp"
 #include "graphics/materials/unlit_material.hpp"
 #include "graphics/renderers/features/taa_render_feature.hpp"
 #include "graphics/skybox.hpp"
 #include "graphics/tools/geometry_tool.hpp"
-#include "imgui.h"
-#include "imgui_system.hpp"
+#include "sample/deferred_renderer_imgui.hpp"
+#include "sample/gltf_loader.hpp"
+#include "sample/imgui_system.hpp"
 #include "window/window_system.hpp"
+#include <imgui.h>
 
 namespace violet
 {
@@ -129,7 +129,7 @@ private:
             RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
             RHI_CULL_MODE_NONE,
             RHI_POLYGON_MODE_LINE);
-        m_material = std::make_unique<physical_material>();
+        m_material = std::make_unique<pbr_material>();
 
         if (!model_path.empty())
         {
@@ -156,7 +156,7 @@ private:
                 {
                     const auto& material_data = result->materials[0];
 
-                    auto material = std::make_unique<physical_material>();
+                    auto material = std::make_unique<pbr_material>();
                     material->set_albedo(material_data.albedo);
                     material->set_roughness(material_data.roughness);
                     material->set_metallic(material_data.metallic);

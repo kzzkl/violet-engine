@@ -346,7 +346,7 @@ vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, 
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = VK_SHADER_STAGE_COMPUTE_BIT,
         .module = compute_shader->get_module(),
-        .pName = compute_shader->get_entry_point().data(),
+        .pName = compute_shader->get_entry_point().c_str(),
     };
 
     vk_pipeline_layout_desc pipeline_layout_desc = {

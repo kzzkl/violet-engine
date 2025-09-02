@@ -7,6 +7,13 @@
 
 namespace violet
 {
+template <typename T, typename Graph>
+concept render_graph_pass = requires(T t, Graph& graph) {
+    { t.add(graph, std::declval<typename T::parameter>()) } -> std::same_as<void>;
+} || requires(T t, Graph& graph) {
+    { t.add(graph, std::declval<typename T::parameter>()) } -> std::same_as<typename T::output>;
+};
+
 class render_graph
 {
 public:
@@ -36,6 +43,14 @@ public:
 
     rdg_buffer* add_buffer(std::string_view name, rhi_buffer* buffer);
     rdg_buffer* add_buffer(std::string_view name, std::size_t size, rhi_buffer_flags flags);
+
+    template <typename T>
+    auto add_pass(const T::parameter& parameter)
+        requires render_graph_pass<T, render_graph>
+    {
+        T pass;
+        return pass.add(*this, parameter);
+    }
 
     template <typename T, typename SetupFunctor, typename ExecuteFunctor>
         requires std::is_invocable_v<SetupFunctor, T&, rdg_pass&> &&
@@ -77,9 +92,6 @@ private:
     void allocate_resources();
     void merge_passes();
     void build_barriers();
-
-    static void allocate_texture(rdg_texture* texture);
-    static void allocate_buffer(rdg_buffer* buffer);
 
     void build_texture_barriers(rdg_texture* texture);
     void build_buffer_barriers(rdg_buffer* buffer);

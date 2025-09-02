@@ -20,4 +20,15 @@ float4 project_shpere_vs(float4 sphere, float p00, float p11)
     return aabb;
 }
 
+float3 visualize_id(uint index)
+{
+    uint hash = index + 1;
+    hash ^= hash >> 16;
+    hash *= 0x85ebca6b;
+    hash ^= hash >> 13;
+    hash *= 0xc2b2ae35;
+    hash ^= hash >> 16;
+    return float3((hash >> 16) & 0xFF, (hash >> 8) & 0xFF, hash & 0xFF) / 255.0;
+}
+
 #endif

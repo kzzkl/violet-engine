@@ -40,21 +40,16 @@ struct gf2_material_plush_fs : public mesh_fs
 };
 
 gf2_material_base::gf2_material_base()
-    : mesh_material(MATERIAL_TOON)
 {
     auto& device = render_device::instance();
 
-    auto& pipeline = get_pipeline();
-    pipeline.vertex_shader = device.get_shader<gf2_material_vs>();
-    pipeline.fragment_shader = device.get_shader<gf2_material_base_fs>();
-    pipeline.rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK);
-    pipeline.depth_stencil_state = device.get_depth_stencil_state<
-        true,
-        true,
-        RHI_COMPARE_OP_GREATER,
-        true,
-        material_stencil_state<SHADING_MODEL_TOON>::value,
-        material_stencil_state<SHADING_MODEL_TOON>::value>();
+    set_pipeline<toon_shading_model>({
+        .vertex_shader = device.get_shader<gf2_material_vs>(),
+        .fragment_shader = device.get_shader<gf2_material_base_fs>(),
+        .rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK),
+        .depth_stencil_state = device.get_depth_stencil_state<true, true, RHI_COMPARE_OP_GREATER>(),
+    });
+    set_surface_type(SURFACE_TYPE_OPAQUE);
 
     get_constant().brdf_lut = device.get_buildin_texture<brdf_lut>()->get_srv()->get_bindless();
 }
@@ -80,21 +75,16 @@ void gf2_material_base::set_ramp(const texture_2d* texture)
 }
 
 gf2_material_face::gf2_material_face()
-    : mesh_material(MATERIAL_TOON)
 {
     auto& device = render_device::instance();
 
-    auto& pipeline = get_pipeline();
-    pipeline.vertex_shader = device.get_shader<gf2_material_vs>();
-    pipeline.fragment_shader = device.get_shader<gf2_material_face_fs>();
-    pipeline.rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK);
-    pipeline.depth_stencil_state = device.get_depth_stencil_state<
-        true,
-        true,
-        RHI_COMPARE_OP_GREATER,
-        true,
-        material_stencil_state<SHADING_MODEL_TOON>::value,
-        material_stencil_state<SHADING_MODEL_TOON>::value>();
+    set_pipeline<toon_shading_model>({
+        .vertex_shader = device.get_shader<gf2_material_vs>(),
+        .fragment_shader = device.get_shader<gf2_material_face_fs>(),
+        .rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK),
+        .depth_stencil_state = device.get_depth_stencil_state<true, true, RHI_COMPARE_OP_GREATER>(),
+    });
+    set_surface_type(SURFACE_TYPE_OPAQUE);
 
     get_constant().brdf_lut = device.get_buildin_texture<brdf_lut>()->get_srv()->get_bindless();
 }
@@ -122,21 +112,16 @@ void gf2_material_face::set_face_dir(const vec3f& face_front_dir, const vec3f& f
 }
 
 gf2_material_eye::gf2_material_eye()
-    : mesh_material(MATERIAL_TOON)
 {
     auto& device = render_device::instance();
 
-    auto& pipeline = get_pipeline();
-    pipeline.vertex_shader = device.get_shader<gf2_material_vs>();
-    pipeline.fragment_shader = device.get_shader<gf2_material_eye_fs>();
-    pipeline.rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK);
-    pipeline.depth_stencil_state = device.get_depth_stencil_state<
-        true,
-        true,
-        RHI_COMPARE_OP_GREATER,
-        true,
-        material_stencil_state<SHADING_MODEL_TOON>::value,
-        material_stencil_state<SHADING_MODEL_TOON>::value>();
+    set_pipeline<toon_shading_model>({
+        .vertex_shader = device.get_shader<gf2_material_vs>(),
+        .fragment_shader = device.get_shader<gf2_material_eye_fs>(),
+        .rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK),
+        .depth_stencil_state = device.get_depth_stencil_state<true, true, RHI_COMPARE_OP_GREATER>(),
+    });
+    set_surface_type(SURFACE_TYPE_OPAQUE);
 }
 
 void gf2_material_eye::set_diffuse(const texture_2d* texture)
@@ -145,17 +130,16 @@ void gf2_material_eye::set_diffuse(const texture_2d* texture)
 }
 
 gf2_material_eye_blend::gf2_material_eye_blend(bool is_add)
-    : mesh_material(MATERIAL_TRANSPARENT)
 {
     auto& device = render_device::instance();
 
-    auto& pipeline = get_pipeline();
-    pipeline.vertex_shader = device.get_shader<gf2_material_vs>();
-    pipeline.fragment_shader = device.get_shader<gf2_material_eye_blend_fs>();
-    pipeline.rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK);
-    pipeline.depth_stencil_state =
-        device.get_depth_stencil_state<true, false, RHI_COMPARE_OP_GREATER>();
-
+    rdg_raster_pipeline pipeline = {
+        .vertex_shader = device.get_shader<gf2_material_vs>(),
+        .fragment_shader = device.get_shader<gf2_material_eye_blend_fs>(),
+        .rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK),
+        .depth_stencil_state =
+            device.get_depth_stencil_state<true, false, RHI_COMPARE_OP_GREATER>(),
+    };
     if (is_add)
     {
         pipeline.blend_state = device.get_blend_state<blend_state::attachment<
@@ -178,6 +162,9 @@ gf2_material_eye_blend::gf2_material_eye_blend(bool is_add)
             RHI_BLEND_FACTOR_ONE,
             RHI_BLEND_OP_MULTIPLY>>();
     }
+    set_pipeline(pipeline);
+
+    set_surface_type(SURFACE_TYPE_TRANSPARENT);
 }
 
 void gf2_material_eye_blend::set_blend(const texture_2d* texture)
@@ -186,21 +173,16 @@ void gf2_material_eye_blend::set_blend(const texture_2d* texture)
 }
 
 gf2_material_hair::gf2_material_hair()
-    : mesh_material(MATERIAL_TOON)
 {
     auto& device = render_device::instance();
 
-    auto& pipeline = get_pipeline();
-    pipeline.vertex_shader = device.get_shader<gf2_material_vs>();
-    pipeline.fragment_shader = device.get_shader<gf2_material_hair_fs>();
-    pipeline.rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK);
-    pipeline.depth_stencil_state = device.get_depth_stencil_state<
-        true,
-        true,
-        RHI_COMPARE_OP_GREATER,
-        true,
-        material_stencil_state<SHADING_MODEL_TOON>::value,
-        material_stencil_state<SHADING_MODEL_TOON>::value>();
+    set_pipeline<toon_shading_model>({
+        .vertex_shader = device.get_shader<gf2_material_vs>(),
+        .fragment_shader = device.get_shader<gf2_material_hair_fs>(),
+        .rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK),
+        .depth_stencil_state = device.get_depth_stencil_state<true, true, RHI_COMPARE_OP_GREATER>(),
+    });
+    set_surface_type(SURFACE_TYPE_OPAQUE);
 
     get_constant().brdf_lut = device.get_buildin_texture<brdf_lut>()->get_srv()->get_bindless();
 }
@@ -221,21 +203,16 @@ void gf2_material_hair::set_ramp(const texture_2d* texture)
 }
 
 gf2_material_plush::gf2_material_plush()
-    : mesh_material(MATERIAL_TOON)
 {
     auto& device = render_device::instance();
 
-    auto& pipeline = get_pipeline();
-    pipeline.vertex_shader = device.get_shader<gf2_material_vs>();
-    pipeline.fragment_shader = device.get_shader<gf2_material_plush_fs>();
-    pipeline.rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK);
-    pipeline.depth_stencil_state = device.get_depth_stencil_state<
-        true,
-        true,
-        RHI_COMPARE_OP_GREATER,
-        true,
-        material_stencil_state<SHADING_MODEL_TOON>::value,
-        material_stencil_state<SHADING_MODEL_TOON>::value>();
+    set_pipeline<toon_shading_model>({
+        .vertex_shader = device.get_shader<gf2_material_vs>(),
+        .fragment_shader = device.get_shader<gf2_material_plush_fs>(),
+        .rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK),
+        .depth_stencil_state = device.get_depth_stencil_state<true, true, RHI_COMPARE_OP_GREATER>(),
+    });
+    set_surface_type(SURFACE_TYPE_OPAQUE);
 
     get_constant().brdf_lut = device.get_buildin_texture<brdf_lut>()->get_srv()->get_bindless();
 }

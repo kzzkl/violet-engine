@@ -4,12 +4,22 @@ namespace violet
 {
 void mesh_pass::add(render_graph& graph, const parameter& parameter)
 {
+    assert(
+        parameter.draw_buffer != nullptr && parameter.draw_count_buffer != nullptr &&
+        parameter.draw_info_buffer != nullptr);
+
     struct pass_data
     {
-        rdg_buffer_ref command_buffer;
-        rdg_buffer_ref count_buffer;
+        rdg_buffer_ref draw_buffer;
+        rdg_buffer_ref draw_count_buffer;
+        rdg_buffer_srv draw_info_buffer;
 
-        material_type material_type;
+        surface_type surface_type;
+        material_path material_path;
+
+        rdg_raster_pipeline override_pipeline;
+
+        const render_scene* scene;
     };
 
     graph.add_pass<pass_data>(
@@ -19,34 +29,120 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
         {
             rhi_attachment_load_op load_op =
                 parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD;
-            for (auto* render_target : parameter.render_targets)
+
+            for (std::size_t i = 0; i < parameter.render_targets.size(); ++i)
             {
-                pass.add_render_target(render_target, load_op);
-            }
-            if (parameter.depth_buffer != nullptr)
-            {
-                pass.set_depth_stencil(parameter.depth_buffer, load_op);
+                pass.add_render_target(
+                    parameter.render_targets[i],
+                    load_op,
+                    RHI_ATTACHMENT_STORE_OP_STORE,
+                    0,
+                    0,
+                    parameter.render_target_clear_values.size() > i ?
+                        parameter.render_target_clear_values[i] :
+                        rhi_clear_value{});
             }
 
-            data.command_buffer = pass.add_buffer(
-                parameter.command_buffer,
+            if (parameter.depth_buffer != nullptr)
+            {
+                pass.set_depth_stencil(
+                    parameter.depth_buffer,
+                    load_op,
+                    RHI_ATTACHMENT_STORE_OP_STORE,
+                    0,
+                    0,
+                    parameter.depth_buffer_clear_value);
+            }
+
+            data.draw_buffer = pass.add_buffer(
+                parameter.draw_buffer,
                 RHI_PIPELINE_STAGE_DRAW_INDIRECT,
                 RHI_ACCESS_INDIRECT_COMMAND_READ);
-            data.count_buffer = pass.add_buffer(
-                parameter.count_buffer,
+            data.draw_count_buffer = pass.add_buffer(
+                parameter.draw_count_buffer,
                 RHI_PIPELINE_STAGE_DRAW_INDIRECT,
                 RHI_ACCESS_INDIRECT_COMMAND_READ);
-            data.material_type = parameter.material_type;
+            data.draw_info_buffer =
+                pass.add_buffer_srv(parameter.draw_info_buffer, RHI_PIPELINE_STAGE_VERTEX);
+
+            data.surface_type = parameter.surface_type;
+            data.material_path = parameter.material_path;
+            data.override_pipeline = parameter.override_pipeline;
+
+            data.scene = &graph.get_scene();
         },
-        [&](const pass_data& data, rdg_command& command)
+        [](const pass_data& data, rdg_command& command)
         {
             command.set_viewport();
             command.set_scissor();
 
-            command.draw_instances(
-                data.command_buffer.get_rhi(),
-                data.count_buffer.get_rhi(),
-                data.material_type);
+            auto max_instances = static_cast<std::uint32_t>(
+                data.draw_buffer.get_size() / sizeof(shader::draw_command));
+
+            if (data.override_pipeline.vertex_shader == nullptr)
+            {
+                bool first_batch = true;
+
+                data.scene->each_batch(
+                    data.surface_type,
+                    data.material_path,
+                    [&](render_id id,
+                        const rdg_raster_pipeline& pipeline,
+                        std::uint32_t instance_offset,
+                        std::uint32_t instance_count)
+                    {
+                        command.set_pipeline(pipeline);
+
+                        if (first_batch)
+                        {
+                            command.set_constant(
+                                mesh_vs::constant_data{
+                                    .draw_info_buffer = data.draw_info_buffer.get_bindless(),
+                                });
+                            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+                            command.set_parameter(1, RDG_PARAMETER_SCENE);
+                            command.set_parameter(2, RDG_PARAMETER_CAMERA);
+                            command.set_index_buffer();
+
+                            first_batch = false;
+                        }
+
+                        command.draw_indexed_indirect(
+                            data.draw_buffer.get_rhi(),
+                            instance_offset * sizeof(shader::draw_command),
+                            data.draw_count_buffer.get_rhi(),
+                            id * sizeof(std::uint32_t),
+                            std::min(instance_count, max_instances - instance_offset));
+                    });
+            }
+            else
+            {
+                command.set_pipeline(data.override_pipeline);
+                command.set_constant(
+                    mesh_vs::constant_data{
+                        .draw_info_buffer = data.draw_info_buffer.get_bindless(),
+                    });
+                command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+                command.set_parameter(1, RDG_PARAMETER_SCENE);
+                command.set_parameter(2, RDG_PARAMETER_CAMERA);
+                command.set_index_buffer();
+
+                data.scene->each_batch(
+                    data.surface_type,
+                    data.material_path,
+                    [&](render_id id,
+                        const rdg_raster_pipeline& pipeline,
+                        std::uint32_t instance_offset,
+                        std::uint32_t instance_count)
+                    {
+                        command.draw_indexed_indirect(
+                            data.draw_buffer.get_rhi(),
+                            instance_offset * sizeof(shader::draw_command),
+                            data.draw_count_buffer.get_rhi(),
+                            id * sizeof(std::uint32_t),
+                            std::min(instance_count, max_instances - instance_offset));
+                    });
+            }
         });
 }
 } // namespace violet

@@ -32,11 +32,12 @@ void persistent_buffer::copy(const void* data, std::size_t size, std::size_t off
 {
     assert(size > 0);
 
-    m_copy_queue.emplace_back(copy_command{
-        .data = data,
-        .size = size,
-        .offset = offset,
-    });
+    m_copy_queue.emplace_back(
+        copy_command{
+            .data = data,
+            .size = size,
+            .offset = offset,
+        });
 }
 
 void persistent_buffer::upload(

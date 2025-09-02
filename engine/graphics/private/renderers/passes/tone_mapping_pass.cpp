@@ -13,7 +13,7 @@ struct tone_mapping_cs : public shader_cs
     };
 
     static constexpr parameter_layout parameters = {
-        {0, bindless},
+        {.space = 0, .desc = bindless},
     };
 };
 
@@ -41,10 +41,11 @@ void tone_mapping_pass::add(render_graph& graph, const parameter& parameter)
                 .compute_shader = render_device::instance().get_shader<tone_mapping_cs>(),
             };
             command.set_pipeline(pipeline);
-            command.set_constant(tone_mapping_cs::constant_data{
-                .hdr = data.hdr_texture.get_bindless(),
-                .ldr = data.ldr_texture.get_bindless(),
-            });
+            command.set_constant(
+                tone_mapping_cs::constant_data{
+                    .hdr = data.hdr_texture.get_bindless(),
+                    .ldr = data.ldr_texture.get_bindless(),
+                });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
             rhi_texture_extent extent = data.hdr_texture.get_texture()->get_extent();

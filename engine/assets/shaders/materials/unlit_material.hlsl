@@ -1,45 +1,52 @@
 #include "mesh.hlsli"
-
-struct vs_output
-{
-    float4 position_cs : SV_POSITION;
-    uint material_address : MATERIAL_ADDRESS;
-};
-
-vs_output vs_main(uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID)
-{
-    mesh mesh = mesh::create(instance_id, vertex_id);
-    vertex vertex = mesh.fetch_vertex();
-
-    vs_output output;
-    output.position_cs = vertex.position_cs;
-    output.material_address = mesh.get_material_address();
-
-    return output;
-}
+#include "visibility/visibility_utils.hlsli"
+#include "visibility/material_resolve.hlsli"
+#include "shading/shading_model.hlsli"
 
 struct unlit_material
 {
     float3 albedo;
 };
 
-struct fs_output
+[numthreads(8, 8, 1)]
+void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 {
-    float4 albedo : SV_TARGET0;
-    float2 material : SV_TARGET1;
-    float2 normal : SV_TARGET2;
-    float4 emissive : SV_TARGET3;
-};
+    StructuredBuffer<uint> material_offsets = ResourceDescriptorHeap[constant.material_offset_buffer];
+    StructuredBuffer<uint> worklist = ResourceDescriptorHeap[constant.worklist_buffer];
 
-fs_output fs_main(vs_output input)
-{
-    unlit_material material = load_material<unlit_material>(scene.material_buffer, input.material_address);
+    uint material_index = constant.material_index;
+    uint tile_index = worklist[material_offsets[material_index] + gid.x];
 
-    fs_output output;
-    output.albedo = float4(material.albedo, 1.0);
-    output.material = 0.0;
-    output.normal = 0.0;
-    output.emissive = 0.0;
+    uint2 coord = uint2(tile_index >> 16, tile_index & 0xFFFF) * 8 + gtid.xy;
+    if (coord.x >= constant.width || coord.y >= constant.height)
+    {
+        return;
+    }
 
-    return output;
+    Texture2D<uint2> visibility_buffer = ResourceDescriptorHeap[constant.visibility_buffer];
+    uint instance_id;
+    uint primitive_id;
+    unpack_visibility(visibility_buffer[coord], instance_id, primitive_id);
+
+    if (instance_id == 0xFFFFFFFF)
+    {
+        return;
+    }
+
+    mesh mesh = mesh::create(instance_id);
+    uint material_address = mesh.get_material_address();
+
+    material_info material_info = load_material_info(scene.material_buffer, material_address);
+    if (material_info.material_index != material_index)
+    {
+        return;
+    }
+
+    unlit_material material = load_material<unlit_material>(scene.material_buffer, material_address);
+
+    RWTexture2D<float4> gbuffer_albedo = ResourceDescriptorHeap[constant.gbuffers[GBUFFER_ALBEDO]];
+    RWTexture2D<uint> gbuffer_normal = ResourceDescriptorHeap[constant.gbuffers[GBUFFER_NORMAL]];
+
+    gbuffer_albedo[coord] = float4(material.albedo, 1.0);
+    gbuffer_normal[coord] = pack_gbuffer_normal(float3(0.0, 0.0, 0.0), material_info.shading_model);
 }

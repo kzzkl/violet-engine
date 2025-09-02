@@ -109,7 +109,7 @@ void cluster_builder::set_normals(std::span<const vec3f> normals)
     {
         if (std::isnan(normal.x) || std::isnan(normal.y) || std::isnan(normal.z))
         {
-            normal = {0.0f, 1.0f, 0.0f};
+            normal = {.x = 0.0f, .y = 1.0f, .z = 0.0f};
         }
     }
 }
@@ -122,7 +122,7 @@ void cluster_builder::set_tangents(std::span<const vec4f> tangents)
     {
         if (std::isnan(tangent.x) || std::isnan(tangent.y) || std::isnan(tangent.z))
         {
-            tangent = {0.0f, 1.0f, 0.0f, tangent.w};
+            tangent = {.x = 0.0f, .y = 1.0f, .z = 0.0f, .w = tangent.w};
         }
     }
 }

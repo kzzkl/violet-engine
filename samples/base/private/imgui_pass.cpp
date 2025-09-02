@@ -1,5 +1,5 @@
-#include "imgui_pass.hpp"
-#include "imgui.h"
+#include "sample/imgui_pass.hpp"
+#include <imgui.h>
 
 namespace violet
 {
@@ -8,22 +8,22 @@ struct imgui_vs : public shader_vs
     static constexpr std::string_view path = "assets/shaders/imgui.hlsl";
 
     static constexpr input_layout inputs = {
-        {"position", RHI_FORMAT_R32G32_FLOAT},
-        {"texcoord", RHI_FORMAT_R32G32_FLOAT},
-        {"color", RHI_FORMAT_R32_UINT},
+        {.name = "position", .format = RHI_FORMAT_R32G32_FLOAT},
+        {.name = "texcoord", .format = RHI_FORMAT_R32G32_FLOAT},
+        {.name = "color", .format = RHI_FORMAT_R32_UINT},
     };
 
     static constexpr parameter parameter = {
         {
-            .type = RHI_PARAMETER_BINDING_UNIFORM,
+            .type = RHI_PARAMETER_BINDING_TYPE_UNIFORM,
             .stages = RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT,
             .size = sizeof(imgui_pass::draw_constant),
         },
     };
 
     static constexpr parameter_layout parameters = {
-        {0, bindless},
-        {1, parameter},
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = parameter},
     };
 };
 
@@ -32,8 +32,8 @@ struct imgui_fs : public shader_fs
     static constexpr std::string_view path = "assets/shaders/imgui.hlsl";
 
     static constexpr parameter_layout parameters = {
-        {0, bindless},
-        {1, imgui_vs::parameter},
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = imgui_vs::parameter},
     };
 };
 
@@ -87,6 +87,9 @@ void imgui_pass::add(render_graph& graph, const parameter& parameter)
         },
         [this](const pass_data& data, rdg_command& command)
         {
+            command.set_viewport();
+            command.set_scissor();
+
             auto& device = render_device::instance();
             auto& geometry = m_geometries[device.get_frame_resource_index()];
 
@@ -167,14 +170,14 @@ void imgui_pass::update_vertex()
         for (int j = 0; j < list->VtxBuffer.Size; ++j)
         {
             *position = {
-                list->VtxBuffer[j].pos.x,
-                list->VtxBuffer[j].pos.y,
+                .x = list->VtxBuffer[j].pos.x,
+                .y = list->VtxBuffer[j].pos.y,
             };
             ++position;
 
             *texcoord = {
-                list->VtxBuffer[j].uv.x,
-                list->VtxBuffer[j].uv.y,
+                .x = list->VtxBuffer[j].uv.x,
+                .y = list->VtxBuffer[j].uv.y,
             };
             ++texcoord;
 
@@ -215,10 +218,11 @@ void imgui_pass::update_vertex()
 
             // Apply Scissor/clipping rectangle
             draw_call.scissor = {
-                static_cast<std::uint32_t>(clip_min.x),
-                static_cast<std::uint32_t>(clip_min.y),
-                static_cast<std::uint32_t>(clip_max.x),
-                static_cast<std::uint32_t>(clip_max.y)};
+                .min_x = static_cast<std::uint32_t>(clip_min.x),
+                .min_y = static_cast<std::uint32_t>(clip_min.y),
+                .max_x = static_cast<std::uint32_t>(clip_max.x),
+                .max_y = static_cast<std::uint32_t>(clip_max.y),
+            };
             m_draw_calls.push_back(draw_call);
         }
 

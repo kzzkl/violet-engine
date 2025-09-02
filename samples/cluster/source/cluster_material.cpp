@@ -1,4 +1,5 @@
 #include "cluster_material.hpp"
+#include "graphics/shading_models/pbr_shading_model.hpp"
 
 namespace violet
 {
@@ -13,21 +14,14 @@ struct cluster_material_fs : public mesh_fs
 };
 
 cluster_material::cluster_material()
-    : mesh_material(MATERIAL_OPAQUE)
 {
     auto& device = render_device::instance();
 
-    auto& pipeline = get_pipeline();
-    pipeline.vertex_shader = device.get_shader<cluster_material_vs>();
-    pipeline.fragment_shader = device.get_shader<cluster_material_fs>();
-    pipeline.depth_stencil_state = device.get_depth_stencil_state<
-        true,
-        true,
-        RHI_COMPARE_OP_GREATER,
-        true,
-        material_stencil_state<SHADING_MODEL_UNLIT>::value,
-        material_stencil_state<SHADING_MODEL_UNLIT>::value>();
-    pipeline.rasterizer_state = device.get_rasterizer_state<RHI_CULL_MODE_BACK>();
-    pipeline.primitive_topology = RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    set_pipeline<pbr_shading_model>({
+        .vertex_shader = device.get_shader<cluster_material_vs>(),
+        .fragment_shader = device.get_shader<cluster_material_fs>(),
+        .depth_stencil_state = device.get_depth_stencil_state<true, true, RHI_COMPARE_OP_GREATER>(),
+    });
+    set_surface_type(SURFACE_TYPE_OPAQUE);
 }
 } // namespace violet

@@ -2,11 +2,12 @@
 
 #include "math/types.hpp"
 #include <cmath>
+#include <numbers>
 #include <utility>
 
 namespace violet::math
 {
-static constexpr float PI = 3.141592654f;
+static constexpr float PI = std::numbers::pi_v<float>;
 static constexpr float TWO_PI = 2.0f * PI;
 static constexpr float INV_PI = 1.0f / PI;
 static constexpr float INV_TWO_PI = 1.0f / TWO_PI;
@@ -95,5 +96,22 @@ template <typename T = float>
 [[nodiscard]] static inline T round(float value)
 {
     return static_cast<T>(std::round(value));
+}
+
+[[nodiscard]] static inline std::uint32_t next_power_of_two(std::uint32_t value)
+{
+    if (value == 0)
+    {
+        return 1;
+    }
+
+    value--;
+    value |= value >> 1;
+    value |= value >> 2;
+    value |= value >> 4;
+    value |= value >> 8;
+    value |= value >> 16;
+
+    return value + 1;
 }
 } // namespace violet::math

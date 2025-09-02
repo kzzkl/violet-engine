@@ -29,17 +29,17 @@ struct rdg_raster_pipeline
 
     rhi_raster_pipeline_desc get_desc(rhi_render_pass* render_pass) const noexcept
     {
-        return {
-            .vertex_shader = vertex_shader,
-            .geometry_shader = geometry_shader,
-            .fragment_shader = fragment_shader,
-            .rasterizer_state = rasterizer_state,
-            .depth_stencil_state = depth_stencil_state,
-            .blend_state = blend_state,
-            .primitive_topology = primitive_topology,
-            .samples = samples,
-            .render_pass = render_pass,
-        };
+        rhi_raster_pipeline_desc desc = {};
+        desc.vertex_shader = vertex_shader;
+        desc.geometry_shader = geometry_shader;
+        desc.fragment_shader = fragment_shader;
+        desc.rasterizer_state = rasterizer_state;
+        desc.depth_stencil_state = depth_stencil_state;
+        desc.blend_state = blend_state;
+        desc.primitive_topology = primitive_topology;
+        desc.samples = samples;
+        desc.render_pass = render_pass;
+        return desc;
     }
 };
 

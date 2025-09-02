@@ -250,8 +250,9 @@ void add_attachment(
                                            last_reference->texture.dsv.store_op;
 
     render_pass_desc.attachments[render_pass_desc.attachment_count] = {
-        .type = first_reference->type == RDG_REFERENCE_TEXTURE_DSV ? RHI_ATTACHMENT_DEPTH_STENCIL :
-                                                                     RHI_ATTACHMENT_RENDER_TARGET,
+        .type = first_reference->type == RDG_REFERENCE_TEXTURE_DSV ?
+                    RHI_ATTACHMENT_TYPE_DEPTH_STENCIL :
+                    RHI_ATTACHMENT_TYPE_RENDER_TARGET,
         .format = texture->get_format(),
         .samples = texture->get_samples(),
         .layout = first_reference->texture.layout,
@@ -537,21 +538,135 @@ void render_graph::cull()
 
 void render_graph::allocate_resources()
 {
-    for (auto* resource : m_resources)
+    auto allocate_rhi = [](rdg_resource* resource)
     {
-        if (resource->is_culled())
+        if (resource->get_type() == RDG_RESOURCE_TEXTURE)
+        {
+            auto* texture = static_cast<rdg_texture*>(resource);
+
+            rhi_texture_desc desc = {};
+            desc.extent = texture->get_extent();
+            desc.format = texture->get_format();
+            desc.flags = texture->get_flags();
+            desc.level_count = texture->get_level_count();
+            desc.layer_count = texture->get_layer_count();
+            desc.samples = texture->get_samples();
+            texture->set_rhi(render_device::instance().allocate_texture(desc));
+        }
+        else if (resource->get_type() == RDG_RESOURCE_BUFFER)
+        {
+            auto* buffer = static_cast<rdg_buffer*>(resource);
+
+            rhi_buffer_desc desc = {};
+            desc.size = buffer->get_size();
+            desc.flags = buffer->get_flags();
+            buffer->set_rhi(render_device::instance().allocate_buffer(desc));
+        }
+    };
+
+    auto free_rhi = [](rdg_resource* resource)
+    {
+        if (resource->get_type() == RDG_RESOURCE_TEXTURE)
+        {
+            auto* texture = static_cast<rdg_texture*>(resource);
+            render_device::instance().free_texture(texture->get_rhi());
+        }
+        else if (resource->get_type() == RDG_RESOURCE_BUFFER)
+        {
+            auto* buffer = static_cast<rdg_buffer*>(resource);
+            render_device::instance().free_buffer(buffer->get_rhi());
+        }
+    };
+
+    auto update_reference_rhi = [](rdg_reference* reference)
+    {
+        switch (reference->type)
+        {
+        case RDG_REFERENCE_TEXTURE_SRV: {
+            auto* texture = static_cast<rdg_texture*>(reference->resource);
+            reference->texture.srv.rhi = texture->get_rhi()->get_srv(
+                reference->texture.srv.dimension,
+                reference->texture.level,
+                reference->texture.level_count,
+                reference->texture.layer,
+                reference->texture.layer_count);
+            break;
+        }
+        case RDG_REFERENCE_TEXTURE_UAV: {
+            auto* texture = static_cast<rdg_texture*>(reference->resource);
+            reference->texture.uav.rhi = texture->get_rhi()->get_uav(
+                reference->texture.uav.dimension,
+                reference->texture.level,
+                reference->texture.level_count,
+                reference->texture.layer,
+                reference->texture.layer_count);
+            break;
+        }
+        case RDG_REFERENCE_TEXTURE_RTV: {
+            auto* texture = static_cast<rdg_texture*>(reference->resource);
+            reference->texture.rtv.rhi = texture->get_rhi()->get_rtv(
+                RHI_TEXTURE_DIMENSION_2D,
+                reference->texture.level,
+                reference->texture.level_count,
+                reference->texture.layer,
+                reference->texture.layer_count);
+            break;
+        }
+        case RDG_REFERENCE_TEXTURE_DSV: {
+            auto* texture = static_cast<rdg_texture*>(reference->resource);
+            reference->texture.dsv.rhi = texture->get_rhi()->get_dsv(
+                RHI_TEXTURE_DIMENSION_2D,
+                reference->texture.level,
+                reference->texture.level_count,
+                reference->texture.layer,
+                reference->texture.layer_count);
+            break;
+        }
+        case RDG_REFERENCE_BUFFER_SRV: {
+            auto* buffer = static_cast<rdg_buffer*>(reference->resource);
+            reference->buffer.srv.rhi = buffer->get_rhi()->get_srv(
+                reference->buffer.offset,
+                reference->buffer.size,
+                reference->buffer.srv.texel_format);
+            break;
+        }
+        case RDG_REFERENCE_BUFFER_UAV: {
+            auto* buffer = static_cast<rdg_buffer*>(reference->resource);
+            reference->buffer.uav.rhi = buffer->get_rhi()->get_uav(
+                reference->buffer.offset,
+                reference->buffer.size,
+                reference->buffer.uav.texel_format);
+            break;
+        }
+        default:
+            break;
+        }
+    };
+
+    for (auto* pass : m_passes)
+    {
+        if (pass->is_culled())
         {
             continue;
         }
 
-        if (resource->get_type() == RDG_RESOURCE_TEXTURE)
-        {
-            allocate_texture(static_cast<rdg_texture*>(resource));
-        }
-        else if (resource->get_type() == RDG_RESOURCE_BUFFER)
-        {
-            allocate_buffer(static_cast<rdg_buffer*>(resource));
-        }
+        pass->each_reference(
+            [&](rdg_reference* reference)
+            {
+                if (!reference->resource->is_external())
+                {
+                    if (is_first_reference(reference))
+                    {
+                        allocate_rhi(reference->resource);
+                    }
+                    else if (is_last_reference(reference))
+                    {
+                        free_rhi(reference->resource);
+                    }
+                }
+
+                update_reference_rhi(reference);
+            });
     }
 }
 
@@ -663,99 +778,6 @@ void render_graph::build_barriers()
         else
         {
             build_buffer_barriers(static_cast<rdg_buffer*>(resource));
-        }
-    }
-}
-
-void render_graph::allocate_texture(rdg_texture* texture)
-{
-    if (!texture->is_external())
-    {
-        texture->set_rhi(render_device::instance().allocate_texture({
-            .extent = texture->get_extent(),
-            .format = texture->get_format(),
-            .flags = texture->get_flags(),
-            .level_count = texture->get_level_count(),
-            .layer_count = texture->get_layer_count(),
-            .samples = texture->get_samples(),
-        }));
-    }
-
-    for (auto* reference : texture->get_references())
-    {
-        switch (reference->type)
-        {
-        case RDG_REFERENCE_TEXTURE_SRV: {
-            reference->texture.srv.rhi = texture->get_rhi()->get_srv(
-                reference->texture.srv.dimension,
-                reference->texture.level,
-                reference->texture.level_count,
-                reference->texture.layer,
-                reference->texture.layer_count);
-            break;
-        }
-        case RDG_REFERENCE_TEXTURE_UAV: {
-            reference->texture.uav.rhi = texture->get_rhi()->get_uav(
-                reference->texture.uav.dimension,
-                reference->texture.level,
-                reference->texture.level_count,
-                reference->texture.layer,
-                reference->texture.layer_count);
-            break;
-        }
-        case RDG_REFERENCE_TEXTURE_RTV: {
-            reference->texture.rtv.rhi = texture->get_rhi()->get_rtv(
-                RHI_TEXTURE_DIMENSION_2D,
-                reference->texture.level,
-                reference->texture.level_count,
-                reference->texture.layer,
-                reference->texture.layer_count);
-            break;
-        }
-        case RDG_REFERENCE_TEXTURE_DSV: {
-            reference->texture.dsv.rhi = texture->get_rhi()->get_dsv(
-                RHI_TEXTURE_DIMENSION_2D,
-                reference->texture.level,
-                reference->texture.level_count,
-                reference->texture.layer,
-                reference->texture.layer_count);
-            break;
-        }
-        default:
-            break;
-        }
-    }
-}
-
-void render_graph::allocate_buffer(rdg_buffer* buffer)
-{
-    if (!buffer->is_external())
-    {
-        buffer->set_rhi(render_device::instance().allocate_buffer({
-            .size = buffer->get_size(),
-            .flags = buffer->get_flags(),
-        }));
-    }
-
-    for (auto* reference : buffer->get_references())
-    {
-        switch (reference->type)
-        {
-        case RDG_REFERENCE_BUFFER_SRV: {
-            reference->buffer.srv.rhi = buffer->get_rhi()->get_srv(
-                reference->buffer.offset,
-                reference->buffer.size,
-                reference->buffer.srv.texel_format);
-            break;
-        }
-        case RDG_REFERENCE_BUFFER_UAV: {
-            reference->buffer.uav.rhi = buffer->get_rhi()->get_uav(
-                reference->buffer.offset,
-                reference->buffer.size,
-                reference->buffer.uav.texel_format);
-        }
-        default:
-            break;
         }
     }
 }

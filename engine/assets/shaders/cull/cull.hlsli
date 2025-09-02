@@ -6,38 +6,12 @@
 static const uint CLUSTER_CULL_GROUP_SIZE = 64;
 static const uint MAX_NODE_PER_GROUP = 8;
 
-struct draw_command
-{
-    uint index_count;
-    uint instance_count;
-    uint index_offset;
-    uint vertex_offset;
-    uint instance_offset;
-};
-
-struct dispatch_command
-{
-    uint x;
-    uint y;
-    uint z;
-};
-
 struct cluster_queue_state_data
 {
     uint cluster_queue_rear;
     uint cluster_node_queue_front;
     uint cluster_node_queue_rear;
     uint cluster_node_queue_prev_rear;
-};
-
-struct cluster_data
-{
-    float4 bounding_sphere;
-    float4 lod_bounds;
-    float lod_error;
-    uint index_offset;
-    uint index_count;
-    uint padding0;
 };
 
 struct cluster_node_data

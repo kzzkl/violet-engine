@@ -5,7 +5,7 @@
 
 namespace violet
 {
-struct physical_material_constant
+struct pbr_material_constant
 {
     vec3f albedo;
     std::uint32_t albedo_texture;
@@ -17,10 +17,10 @@ struct physical_material_constant
     std::uint32_t emissive_texture;
 };
 
-class physical_material : public mesh_material<physical_material_constant>
+class pbr_material : public mesh_material<pbr_material_constant, MATERIAL_PATH_VISIBILITY>
 {
 public:
-    physical_material();
+    pbr_material();
 
     void set_albedo(const vec3f& albedo);
     void set_albedo(texture_2d* albedo);

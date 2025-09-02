@@ -24,8 +24,8 @@ struct gtao_cs : public shader_cs
     };
 
     static constexpr parameter_layout parameters = {
-        {0, bindless},
-        {1, camera},
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = camera},
     };
 };
 
@@ -68,20 +68,22 @@ void gtao_pass::add(render_graph& graph, const parameter& parameter)
             command.set_pipeline({
                 .compute_shader = device.get_shader<gtao_cs>(),
             });
-            command.set_constant(gtao_cs::constant_data{
-                .hzb = data.hzb.get_bindless(),
-                .depth_buffer = data.depth_buffer.get_bindless(),
-                .normal_buffer = data.normal_buffer.get_bindless(),
-                .ao_buffer = data.ao_buffer.get_bindless(),
-                .hilbert_lut = device.get_buildin_texture<hilbert_lut>()->get_srv()->get_bindless(),
-                .width = extent.width,
-                .height = extent.height,
-                .slice_count = data.slice_count,
-                .step_count = data.step_count,
-                .radius = data.radius,
-                .falloff = data.falloff,
-                .frame = device.get_frame_count(),
-            });
+            command.set_constant(
+                gtao_cs::constant_data{
+                    .hzb = data.hzb.get_bindless(),
+                    .depth_buffer = data.depth_buffer.get_bindless(),
+                    .normal_buffer = data.normal_buffer.get_bindless(),
+                    .ao_buffer = data.ao_buffer.get_bindless(),
+                    .hilbert_lut =
+                        device.get_buildin_texture<hilbert_lut>()->get_srv()->get_bindless(),
+                    .width = extent.width,
+                    .height = extent.height,
+                    .slice_count = data.slice_count,
+                    .step_count = data.step_count,
+                    .radius = data.radius,
+                    .falloff = data.falloff,
+                    .frame = device.get_frame_count(),
+                });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_CAMERA);
 

@@ -44,9 +44,10 @@ std::pair<VkImage, VmaAllocation> create_image(
     VkImage image;
     VmaAllocation allocation;
 
-    VmaAllocationCreateInfo create_info = {};
-    create_info.usage = VMA_MEMORY_USAGE_AUTO;
-    create_info.flags = flags;
+    VmaAllocationCreateInfo create_info = {
+        .flags = flags,
+        .usage = VMA_MEMORY_USAGE_AUTO,
+    };
 
     vk_check(
         vmaCreateImage(allocator, &image_info, &create_info, &image, &allocation, allocation_info));
@@ -315,13 +316,12 @@ vk_texture::view& vk_texture::get_or_create_view(
     level_count = level_count == 0 ? m_level_count : level_count;
     layer_count = layer_count == 0 ? m_layer_count : layer_count;
 
-    view_key key = {
-        .dimension = dimension,
-        .level = level,
-        .level_count = level_count,
-        .layer = layer,
-        .layer_count = layer_count,
-    };
+    view_key key = {};
+    key.dimension = dimension;
+    key.level = level;
+    key.level_count = level_count;
+    key.layer = layer;
+    key.layer_count = layer_count;
 
     auto iter = m_views.find(key);
     if (iter != m_views.end())
@@ -561,10 +561,11 @@ vk_buffer::vk_buffer(const rhi_buffer_desc& desc, vk_context* context)
     {
         if (desc.data != nullptr)
         {
-            VkBufferCreateInfo staging_buffer_info = {};
-            staging_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-            staging_buffer_info.size = m_buffer_size;
-            staging_buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+            VkBufferCreateInfo staging_buffer_info = {
+                .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                .size = m_buffer_size,
+                .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            };
 
             VmaAllocationInfo staging_allocation_info = {};
             auto [staging_buffer, staging_allocation] = create_buffer(
@@ -646,10 +647,9 @@ vk_buffer::view& vk_buffer::get_or_create_view(
 {
     size = size == 0 ? m_buffer_size : size;
 
-    view_key key = {
-        .offset = offset,
-        .size = size,
-    };
+    view_key key = {};
+    key.offset = offset;
+    key.size = size;
 
     auto iter = m_views.find(key);
     if (iter != m_views.end())
