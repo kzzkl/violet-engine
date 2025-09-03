@@ -141,7 +141,7 @@ private:
     {
         std::uint64_t operator()(const parameter_layout_key& key) const noexcept
         {
-            return violet::hash::city_hash_64(&key, sizeof(parameter_layout_key));
+            return violet::hash::xx_hash(&key, sizeof(parameter_layout_key));
         }
     };
 
@@ -149,7 +149,7 @@ private:
     {
         std::uint64_t operator()(const violet::vk::vk_pipeline_layout_desc& desc) const noexcept
         {
-            return violet::hash::city_hash_64(&desc, sizeof(desc));
+            return violet::hash::xx_hash(&desc, sizeof(desc));
         }
     };
 

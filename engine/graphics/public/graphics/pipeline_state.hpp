@@ -49,7 +49,7 @@ private:
     {
         std::size_t operator()(const rhi_rasterizer_state& value) const noexcept
         {
-            return hash::city_hash_64(&value, sizeof(rhi_rasterizer_state));
+            return hash::xx_hash(&value, sizeof(rhi_rasterizer_state));
         }
     };
 
@@ -159,7 +159,7 @@ private:
     {
         std::size_t operator()(const rhi_blend_state& value) const noexcept
         {
-            return hash::city_hash_64(&value, sizeof(rhi_blend_state));
+            return hash::xx_hash(&value, sizeof(rhi_blend_state));
         }
     };
 
@@ -246,7 +246,7 @@ private:
     {
         std::size_t operator()(const rhi_depth_stencil_state& value) const noexcept
         {
-            return hash::city_hash_64(&value, sizeof(rhi_depth_stencil_state));
+            return hash::xx_hash(&value, sizeof(rhi_depth_stencil_state));
         }
     };
 

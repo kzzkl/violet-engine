@@ -275,7 +275,7 @@ private:
             std::uint64_t hash = std::hash<std::uint32_t>()(key.index);
             for (const auto& macro : key.defines)
             {
-                hash ^= hash::city_hash_64(macro.data(), macro.size());
+                hash ^= hash::xx_hash(macro.data(), macro.size());
             }
 
             return hash;

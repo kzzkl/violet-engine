@@ -73,6 +73,13 @@ set(VMA_STATIC_VULKAN_FUNCTIONS OFF)
 set(VMA_DYNAMIC_VULKAN_FUNCTIONS OFF)
 add_subdirectory(VulkanMemoryAllocator)
 
+# xxHash
+add_library(xxHash STATIC
+   xxHash/xxhash.c)
+target_include_directories(xxHash
+    PUBLIC
+        xxHash)
+
 # yoga
 if(MSVC)
   add_compile_options(/wd4819)

@@ -200,7 +200,7 @@ private:
     {
         std::uint64_t operator()(const batch_key& key) const noexcept
         {
-            return hash::city_hash_64(&key, sizeof(key));
+            return hash::xx_hash(&key, sizeof(key));
         }
     };
 
