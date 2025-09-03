@@ -24,7 +24,6 @@ private:
     void add_hzb_pass(render_graph& graph);
     void add_gtao_pass(render_graph& graph);
     void add_shading_pass(render_graph& graph);
-    void add_skybox_pass(render_graph& graph);
     void add_motion_vector_pass(render_graph& graph);
     void add_taa_pass(render_graph& graph);
     void add_tone_mapping_pass(render_graph& graph);

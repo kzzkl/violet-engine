@@ -59,7 +59,11 @@ void deferred_renderer::on_render(render_graph& graph)
 
     if (graph.get_scene().has_skybox())
     {
-        add_skybox_pass(graph);
+        graph.add_pass<skybox_pass>({
+            .render_target = m_render_target,
+            .depth_buffer = m_depth_buffer,
+            .clear = graph.get_scene().get_instance_count() == 0,
+        });
     }
 
     if (get_feature<taa_render_feature>(true))
@@ -132,12 +136,10 @@ void deferred_renderer::add_gbuffer_pass(render_graph& graph)
 
 void deferred_renderer::add_hzb_pass(render_graph& graph)
 {
-    hzb_pass::add(
-        graph,
-        {
-            .depth_buffer = m_depth_buffer,
-            .hzb = m_hzb,
-        });
+    graph.add_pass<hzb_pass>({
+        .depth_buffer = m_depth_buffer,
+        .hzb = m_hzb,
+    });
 }
 
 void deferred_renderer::add_gtao_pass(render_graph& graph)
@@ -150,18 +152,16 @@ void deferred_renderer::add_gtao_pass(render_graph& graph)
         RHI_FORMAT_R8_UNORM,
         RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE);
 
-    gtao_pass::add(
-        graph,
-        {
-            .slice_count = gtao->get_slice_count(),
-            .step_count = gtao->get_step_count(),
-            .radius = gtao->get_radius(),
-            .falloff = gtao->get_falloff(),
-            .hzb = m_hzb,
-            .depth_buffer = m_depth_buffer,
-            .normal_buffer = m_gbuffers[SHADING_GBUFFER_NORMAL],
-            .ao_buffer = m_ao_buffer,
-        });
+    graph.add_pass<gtao_pass>({
+        .slice_count = gtao->get_slice_count(),
+        .step_count = gtao->get_step_count(),
+        .radius = gtao->get_radius(),
+        .falloff = gtao->get_falloff(),
+        .hzb = m_hzb,
+        .depth_buffer = m_depth_buffer,
+        .normal_buffer = m_gbuffers[SHADING_GBUFFER_NORMAL],
+        .ao_buffer = m_ao_buffer,
+    });
 }
 
 void deferred_renderer::add_shading_pass(render_graph& graph)
@@ -178,17 +178,6 @@ void deferred_renderer::add_shading_pass(render_graph& graph)
     });
 }
 
-void deferred_renderer::add_skybox_pass(render_graph& graph)
-{
-    skybox_pass::add(
-        graph,
-        {
-            .render_target = m_render_target,
-            .depth_buffer = m_depth_buffer,
-            .clear = graph.get_scene().get_instance_count() == 0,
-        });
-}
-
 void deferred_renderer::add_motion_vector_pass(render_graph& graph)
 {
     m_motion_vectors = graph.add_texture(
@@ -197,12 +186,10 @@ void deferred_renderer::add_motion_vector_pass(render_graph& graph)
         RHI_FORMAT_R16G16_FLOAT,
         RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE);
 
-    motion_vector_pass::add(
-        graph,
-        {
-            .depth_buffer = m_depth_buffer,
-            .motion_vector = m_motion_vectors,
-        });
+    graph.add_pass<motion_vector_pass>({
+        .depth_buffer = m_depth_buffer,
+        .motion_vector = m_motion_vectors,
+    });
 }
 
 void deferred_renderer::add_taa_pass(render_graph& graph)
@@ -225,15 +212,13 @@ void deferred_renderer::add_taa_pass(render_graph& graph)
             RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
     }
 
-    taa_pass::add(
-        graph,
-        {
-            .current_render_target = m_render_target,
-            .history_render_target = history_render_target,
-            .depth_buffer = m_depth_buffer,
-            .motion_vector = m_motion_vectors,
-            .resolved_render_target = resolved_render_target,
-        });
+    graph.add_pass<taa_pass>({
+        .current_render_target = m_render_target,
+        .history_render_target = history_render_target,
+        .depth_buffer = m_depth_buffer,
+        .motion_vector = m_motion_vectors,
+        .resolved_render_target = resolved_render_target,
+    });
 
     m_render_target = resolved_render_target;
 }
@@ -246,12 +231,10 @@ void deferred_renderer::add_tone_mapping_pass(render_graph& graph)
         RHI_FORMAT_R8G8B8A8_UNORM,
         RHI_TEXTURE_TRANSFER_SRC | RHI_TEXTURE_STORAGE);
 
-    tone_mapping_pass::add(
-        graph,
-        {
-            .hdr_texture = m_render_target,
-            .ldr_texture = ldr_target,
-        });
+    graph.add_pass<tone_mapping_pass>({
+        .hdr_texture = m_render_target,
+        .ldr_texture = ldr_target,
+    });
 
     m_render_target = ldr_target;
 }
@@ -273,14 +256,12 @@ void deferred_renderer::add_present_pass(render_graph& graph)
         .layer_count = 1,
     };
 
-    blit_pass::add(
-        graph,
-        {
-            .src = m_render_target,
-            .src_region = region,
-            .dst = camera_output,
-            .dst_region = region,
-        });
+    graph.add_pass<blit_pass>({
+        .src = m_render_target,
+        .src_region = region,
+        .dst = camera_output,
+        .dst_region = region,
+    });
 
     m_render_target = camera_output;
 }

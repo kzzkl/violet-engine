@@ -27,6 +27,6 @@ public:
         rhi_primitive_topology primitive_topology;
     };
 
-    static void add(render_graph& graph, const parameter& parameter);
+    void add(render_graph& graph, const parameter& parameter);
 };
 } // namespace violet

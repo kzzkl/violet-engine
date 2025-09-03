@@ -155,22 +155,6 @@ protected:
             });
     }
 
-    template <typename T>
-    void set_shading_model() noexcept
-        requires(Path == MATERIAL_PATH_DEFERRED || Path == MATERIAL_PATH_VISIBILITY)
-    {
-        render_id shading_model_id = shading_model_index::value<T>();
-
-        set_shading_model(
-            shading_model_id,
-            []()
-            {
-                return std::make_unique<T>();
-            });
-
-        m_wrapper.material_info = shading_model_id | (m_wrapper.material_info & 0xFFFFFF00);
-    }
-
 private:
     struct wrapper
     {

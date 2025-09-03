@@ -13,6 +13,6 @@ public:
         rdg_texture* hzb;
     };
 
-    static void add(render_graph& graph, const parameter& parameter);
+    void add(render_graph& graph, const parameter& parameter);
 };
 } // namespace violet
