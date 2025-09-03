@@ -7,7 +7,7 @@
     "cluster demo": {
         "skybox": "D:/Workspace/assets/textures/skybox/dry_orchard_meadow_4k.hdr",
         "cpu_culling": false, 
-        "model_bak": "D:/Workspace/assets/models/gltf/Bistro.glb",
-        "model": "D:/Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf"
+        "model": "D:/Workspace/assets/models/gltf/Bistro.glb",
+        "model_bak": "D:/Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf"
     }
 }

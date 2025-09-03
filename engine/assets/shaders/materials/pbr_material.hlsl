@@ -82,7 +82,7 @@ void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
     RWTexture2D<float4> gbuffer_emissive = ResourceDescriptorHeap[constant.gbuffers[GBUFFER_EMISSIVE]];
     RWTexture2D<uint> gbuffer_normal = ResourceDescriptorHeap[constant.gbuffers[GBUFFER_NORMAL]];
 
-    gbuffer_albedo[coord] = float4(material.albedo * albedo_texture.SampleGrad(linear_repeat_sampler, vertex.texcoord, ddx, ddy), 1.0);    
+    gbuffer_albedo[coord] = float4(material.albedo * albedo_texture.SampleGrad(linear_repeat_sampler, vertex.texcoord, ddx, ddy), 1.0);
     gbuffer_material[coord] = float2(material.roughness * roughness_metallic.g, material.metallic * roughness_metallic.b);
     gbuffer_emissive[coord] = float4(material.emissive * emissive, 1.0);
     gbuffer_normal[coord] = pack_gbuffer_normal(N, material_info.shading_model);
