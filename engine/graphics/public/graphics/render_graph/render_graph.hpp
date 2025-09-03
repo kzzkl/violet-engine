@@ -45,7 +45,7 @@ public:
     rdg_buffer* add_buffer(std::string_view name, std::size_t size, rhi_buffer_flags flags);
 
     template <typename T>
-    auto add_pass(const T::parameter& parameter)
+    auto add_pass(const typename T::parameter& parameter)
         requires render_graph_pass<T, render_graph>
     {
         T pass;
