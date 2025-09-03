@@ -50,7 +50,7 @@ private:
     {
         std::size_t operator()(const framebuffer_key& key) const noexcept
         {
-            std::size_t hash = hash::city_hash_64(
+            std::size_t hash = hash::xx_hash(
                 static_cast<const void*>(key.image_views.data()),
                 key.image_views.size() * sizeof(VkImageView));
 

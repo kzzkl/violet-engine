@@ -10,7 +10,7 @@ struct hash<violet::rhi_parameter_desc>
 {
     std::size_t operator()(const violet::rhi_parameter_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(
+        return violet::hash::xx_hash(
             desc.bindings,
             sizeof(violet::rhi_parameter_binding) * desc.binding_count);
     }
@@ -21,7 +21,7 @@ struct hash<violet::rhi_texture_desc>
 {
     std::size_t operator()(const violet::rhi_texture_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_texture_desc));
+        return violet::hash::xx_hash(&desc, sizeof(violet::rhi_texture_desc));
     }
 };
 
@@ -30,7 +30,7 @@ struct hash<violet::rhi_buffer_desc>
 {
     std::size_t operator()(const violet::rhi_buffer_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_buffer_desc));
+        return violet::hash::xx_hash(&desc, sizeof(violet::rhi_buffer_desc));
     }
 };
 
@@ -39,7 +39,7 @@ struct hash<violet::rhi_render_pass_desc>
 {
     std::size_t operator()(const violet::rhi_render_pass_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_render_pass_desc));
+        return violet::hash::xx_hash(&desc, sizeof(violet::rhi_render_pass_desc));
     }
 };
 
@@ -48,7 +48,7 @@ struct hash<violet::rhi_raster_pipeline_desc>
 {
     std::size_t operator()(const violet::rhi_raster_pipeline_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_raster_pipeline_desc));
+        return violet::hash::xx_hash(&desc, sizeof(violet::rhi_raster_pipeline_desc));
     }
 };
 
@@ -57,7 +57,7 @@ struct hash<violet::rhi_compute_pipeline_desc>
 {
     std::size_t operator()(const violet::rhi_compute_pipeline_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_compute_pipeline_desc));
+        return violet::hash::xx_hash(&desc, sizeof(violet::rhi_compute_pipeline_desc));
     }
 };
 
@@ -66,7 +66,7 @@ struct hash<violet::rhi_sampler_desc>
 {
     std::size_t operator()(const violet::rhi_sampler_desc& desc) const noexcept
     {
-        return violet::hash::city_hash_64(&desc, sizeof(violet::rhi_sampler_desc));
+        return violet::hash::xx_hash(&desc, sizeof(violet::rhi_sampler_desc));
     }
 };
 } // namespace std

@@ -13,7 +13,7 @@ struct hash
         return seed ^ (value + 0x9e3779b9 + (seed << 6) + (seed >> 2));
     }
 
-    static std::uint64_t city_hash_64(const void* data, std::size_t size);
+    static std::uint64_t xx_hash(const void* data, std::size_t size);
 
     static std::uint32_t murmur_mix_32(std::uint32_t hash) noexcept
     {

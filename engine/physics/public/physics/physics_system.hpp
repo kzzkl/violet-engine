@@ -43,7 +43,7 @@ private:
     {
         std::uint64_t operator()(const shape_key& key) const noexcept
         {
-            return hash::city_hash_64(&key, sizeof(shape_key));
+            return hash::xx_hash(&key, sizeof(shape_key));
         }
     };
 
@@ -76,8 +76,8 @@ private:
         std::uint64_t operator()(const compound_shape_key& key) const noexcept
         {
             return hash::combine(
-                hash::city_hash_64(key.children.data(), key.children.size() * sizeof(shape_key)),
-                hash::city_hash_64(key.offset.data(), key.offset.size() * sizeof(mat4f)));
+                hash::xx_hash(key.children.data(), key.children.size() * sizeof(shape_key)),
+                hash::xx_hash(key.offset.data(), key.offset.size() * sizeof(mat4f)));
         }
     };
 

@@ -311,7 +311,7 @@ std::vector<vec3f> geometry_tool::generate_smooth_normals(
     {
         std::size_t operator()(const vec3f& v) const noexcept
         {
-            return hash::city_hash_64(&v, sizeof(vec3f));
+            return hash::xx_hash(&v, sizeof(vec3f));
         }
     };
 
