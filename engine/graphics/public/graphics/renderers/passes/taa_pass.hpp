@@ -16,6 +16,6 @@ public:
         rdg_texture* resolved_render_target;
     };
 
-    static void add(render_graph& graph, const parameter& parameter);
+    void add(render_graph& graph, const parameter& parameter);
 };
 } // namespace violet

@@ -26,6 +26,6 @@ public:
         rdg_raster_pipeline override_pipeline;
     };
 
-    static void add(render_graph& graph, const parameter& parameter);
+    void add(render_graph& graph, const parameter& parameter);
 };
 } // namespace violet

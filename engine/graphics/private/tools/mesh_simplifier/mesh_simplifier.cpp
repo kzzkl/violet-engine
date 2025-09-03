@@ -1,7 +1,6 @@
 #include "tools/mesh_simplifier/mesh_simplifier.hpp"
 #include "algorithm/disjoint_set.hpp"
 #include "math/vector.hpp"
-#include "meshoptimizer.h"
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
@@ -650,11 +649,9 @@ void mesh_simplifier::update_edge_quadric(std::uint32_t corner)
 {
     std::uint32_t corner0 = corner;
     std::uint32_t corner1 = cycle_3(corner0);
-    std::uint32_t corner2 = cycle_3(corner1);
 
     vec3f p0 = m_positions[m_indexes[corner0]];
     vec3f p1 = m_positions[m_indexes[corner1]];
-    vec3f p2 = m_positions[m_indexes[corner2]];
 
     auto range = m_corner_map.equal_range(p1);
     for (auto iter = range.first; iter != range.second; ++iter)
@@ -725,42 +722,5 @@ bool mesh_simplifier::is_triangle_degenerate(const vec3f& p0, const vec3f& p1, c
     vec3f v02 = p2 - p0;
     vec3f n = vector::cross(v01, v02);
     return vector::length(n) < 1e-8f;
-}
-
-void mesh_simplifier_meshopt::set_positions(std::span<const vec3f> positions)
-{
-    m_positions.assign(positions.begin(), positions.end());
-}
-
-void mesh_simplifier_meshopt::set_indexes(std::span<const std::uint32_t> indexes)
-{
-    m_indexes.assign(indexes.begin(), indexes.end());
-}
-
-float mesh_simplifier_meshopt::simplify(std::uint32_t target_triangle_count, bool lock_border)
-{
-    std::vector<std::uint32_t> simplified_indexes(m_indexes.size());
-
-    float error = 0.0f;
-
-    std::size_t simplified_index_count = meshopt_simplify(
-        simplified_indexes.data(),
-        m_indexes.data(),
-        m_indexes.size(),
-        &m_positions[0].x,
-        m_positions.size(),
-        sizeof(vec3f),
-        static_cast<size_t>(target_triangle_count) * 3,
-        FLT_MAX,
-        lock_border ? meshopt_SimplifyLockBorder : 0,
-        &error);
-
-    float error_scale = meshopt_simplifyScale(&m_positions[0].x, m_positions.size(), sizeof(vec3f));
-
-    simplified_indexes.resize(simplified_index_count);
-
-    std::swap(m_indexes, simplified_indexes);
-
-    return error * error_scale;
 }
 } // namespace violet

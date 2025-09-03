@@ -13,6 +13,6 @@ public:
         rdg_texture* motion_vector;
     };
 
-    static void add(render_graph& graph, const parameter& parameter);
+    void add(render_graph& graph, const parameter& parameter);
 };
 } // namespace violet

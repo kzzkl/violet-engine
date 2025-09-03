@@ -80,8 +80,7 @@ target_link_libraries(violet-graphics
         stb
         dxcompiler
         metis
-        MikkTSpace
-        meshoptimizer)
+        MikkTSpace)
 
 install(TARGETS violet-graphics
     RUNTIME DESTINATION bin
