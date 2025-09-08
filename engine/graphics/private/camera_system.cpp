@@ -148,6 +148,8 @@ void camera_system::update()
                 }
 
                 shader::camera_data data = get_camera_data(camera, transform);
+                data.prev_matrix_v = camera_meta.matrix_v;
+                data.prev_matrix_p = camera_meta.matrix_p;
                 data.prev_matrix_vp = camera_meta.matrix_vp;
                 data.prev_matrix_vp_no_jitter = camera_meta.matrix_vp_no_jitter;
                 camera_meta.parameter->set_uniform(0, &data, sizeof(shader::camera_data));

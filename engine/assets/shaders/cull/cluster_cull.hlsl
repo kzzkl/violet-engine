@@ -29,13 +29,34 @@ struct constant_data
 };
 PushConstant(constant_data, constant);
 
-static const uint INVALID_NODE_INDEX = 0xFFFFFFFF;
-static const uint INVALID_INSTANCE_INDEX = 0xFFFFFFFF;
+groupshared uint gs_queue_offset;
+groupshared uint gs_cluster_node_mask;
+groupshared uint3 gs_cluster_node[MAX_CLUSTER_NODE_PER_GROUP]; // x: child_offset, y: child_count, z: instance_id
+groupshared uint gs_recheck_mask[MAX_CLUSTER_NODE_PER_GROUP];
 
-groupshared uint group_queue_offset;
-groupshared uint group_cluster_queue_rear;
-groupshared uint group_cluster_node_mask;
-groupshared uint3 group_cluster_node[MAX_NODE_PER_GROUP]; // x: child_offset, y: child_count, z: instance_id
+uint2 pack_cluster_node_item(uint id, uint instance_id, uint recheck_mask)
+{
+    return uint2(recheck_mask << 24 | id, instance_id);
+}
+
+void unpack_cluster_node_item(uint2 item, out uint id, out uint instance_id, out uint recheck_mask)
+{
+    id = item.x & 0xFFFFFF;
+    instance_id = item.y;
+    recheck_mask = item.x >> 24;
+}
+
+uint2 pack_cluster_item(uint id, uint instance_id, bool recheck)
+{
+    return uint2((recheck ? 1u : 0u) << 31 | id, instance_id);
+}
+
+void unpack_cluster_item(uint2 item, out uint id, out uint instance_id, out bool recheck)
+{
+    id = item.x & 0x7FFFFFFF;
+    instance_id = item.y;
+    recheck = (item.x >> 31) == 1;
+}
 
 uint get_cluster_node_offset()
 {
@@ -85,86 +106,92 @@ bool check_cluster_lod(cluster_data cluster, mesh_data mesh)
     return lod_error <= constant.threshold;
 }
 
-bool load_group_cluster_node(uint group_index)
-{
-    RWStructuredBuffer<uint2> cluster_queue = ResourceDescriptorHeap[constant.cluster_queue];
-    StructuredBuffer<cluster_node_data> cluster_nodes = ResourceDescriptorHeap[constant.cluster_node_buffer];
-
-    uint queue_index = group_queue_offset + group_index;
-
-    uint2 item = cluster_queue[queue_index];
-    cluster_queue[queue_index] = uint2(INVALID_NODE_INDEX, INVALID_INSTANCE_INDEX);
-
-    if (item.x == INVALID_NODE_INDEX)
-    {
-        group_cluster_node[group_index] = 0;
-        return false;
-    }
-    else
-    {
-        cluster_node_data cluster_node = cluster_nodes[item.x];
-        group_cluster_node[group_index] = uint3(cluster_node.child_offset, cluster_node.child_count, item.y);
-        return cluster_node.child_count != 0;
-    }
-}
-
 void process_cluster_node(uint group_index)
 {
-    RWStructuredBuffer<uint2> cluster_queue = ResourceDescriptorHeap[constant.cluster_queue];
-    RWStructuredBuffer<cluster_queue_state_data> cluster_queue_state = ResourceDescriptorHeap[constant.cluster_queue_state];
-
     StructuredBuffer<cluster_node_data> cluster_nodes = ResourceDescriptorHeap[constant.cluster_node_buffer];
+    RWStructuredBuffer<cluster_queue_state_data> cluster_queue_state = ResourceDescriptorHeap[constant.cluster_queue_state];
 
     StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
     StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
 
-    uint3 item = group_cluster_node[group_index / MAX_NODE_PER_GROUP];
+    uint parent_index = group_index / MAX_CLUSTER_NODE_PER_GROUP;
+
+    if ((gs_cluster_node_mask & (1u << parent_index)) == 0)
+    {
+        return;
+    }
+
+    uint3 item = gs_cluster_node[parent_index];
     uint child_offset = item.x;
     uint child_count = item.y;
     uint instance_id = item.z;
 
-    uint node_index = group_index % MAX_NODE_PER_GROUP;
-    node_index = node_index < child_count ? node_index + child_offset : INVALID_NODE_INDEX;
-
-    if (node_index != INVALID_NODE_INDEX)
+    uint child_index = group_index % MAX_CLUSTER_NODE_PER_GROUP;
+    if (child_index >= child_count)
     {
-        instance_data instance = instances[instance_id];
-        mesh_data mesh = meshes[instance.mesh_index];
+        return;
+    }
 
-        cluster_node_data cluster_node = cluster_nodes[node_index];
+    uint cluster_node_id = child_index + child_offset;
 
-        bool visible = check_cluster_node_lod(cluster_node, mesh);
+    instance_data instance = instances[instance_id];
+    mesh_data mesh = meshes[instance.mesh_index];
 
-        if (visible)
+    cluster_node_data cluster_node = cluster_nodes[cluster_node_id];
+
+    Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
+    SamplerState hzb_sampler = SamplerDescriptorHeap[constant.hzb_sampler];
+
+    float4 sphere_vs = mul(camera.matrix_v, mul(mesh.matrix_m, float4(cluster_node.bounding_sphere.xyz, 1.0)));
+    sphere_vs.w = cluster_node.bounding_sphere.w * mesh.scale.w;
+
+    bool visible = true;
+
+#if CULL_STAGE == CULL_STAGE_MAIN_PASS
+    visible = check_cluster_node_lod(cluster_node, mesh) && frustum_cull(sphere_vs, constant.frustum, camera.near);
+
+    if (visible)
+    {
+        float4 prev_sphere_vs = mul(camera.prev_matrix_v, mul(mesh.prev_matrix_m, float4(cluster_node.bounding_sphere.xyz, 1.0)));
+        prev_sphere_vs.w = sphere_vs.w;
+        if (!occlusion_cull(prev_sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.prev_matrix_p, camera.near))
         {
-            Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
-            SamplerState hzb_sampler = SamplerDescriptorHeap[constant.hzb_sampler];
-
-            float4 sphere_ws = mul(mesh.matrix_m, float4(cluster_node.bounding_sphere.xyz, 1.0));
-            sphere_ws.w = cluster_node.bounding_sphere.w * mesh.scale.w;
-
-            bounding_sphere_cull cull = bounding_sphere_cull::create(sphere_ws, camera);
-            visible = cull.frustum_cull(constant.frustum) && cull.occlusion_cull(hzb, hzb_sampler, constant.hzb_width, constant.hzb_height);
+            visible = false;
+            InterlockedOr(gs_recheck_mask[parent_index], 1u << child_index);
         }
+    }
+#else
+    if (gs_queue_offset + group_index < cluster_queue_state[0].cluster_node_recheck_size)
+    {
+        visible = gs_recheck_mask[parent_index] & (1u << child_index);
+    }
+    else
+    {
+        visible = check_cluster_node_lod(cluster_node, mesh) && frustum_cull(sphere_vs, constant.frustum, camera.near);
+    }
 
-        if (visible)
+    visible = visible && occlusion_cull(sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.matrix_p, camera.near);
+#endif
+
+    if (visible)
+    {
+        RWStructuredBuffer<uint2> cluster_queue = ResourceDescriptorHeap[constant.cluster_queue];
+
+        if (cluster_node.is_leaf == 0)
         {
-            if (cluster_node.is_leaf == 0)
-            {
-                uint cluster_node_queue_rear = 0;
-                InterlockedAdd(cluster_queue_state[0].cluster_node_queue_rear, 1, cluster_node_queue_rear);
-                cluster_queue[cluster_node_queue_rear] = uint2(node_index, instance_id);
-            }
-            else
-            {
-                uint cluster_queue_rear = 0;
-                InterlockedAdd(cluster_queue_state[0].cluster_queue_rear, cluster_node.child_count, cluster_queue_rear);
-                cluster_queue_rear += get_cluster_offset();
+            uint cluster_node_queue_rear = 0;
+            InterlockedAdd(cluster_queue_state[0].cluster_node_queue_rear, 1, cluster_node_queue_rear);
+            cluster_queue[cluster_node_queue_rear] = pack_cluster_node_item(cluster_node_id, instance_id, 0);
+        }
+        else
+        {
+            uint cluster_queue_rear = 0;
+            InterlockedAdd(cluster_queue_state[0].cluster_queue_rear, cluster_node.child_count, cluster_queue_rear);
+            cluster_queue_rear += get_cluster_offset();
 
-                for (uint i = 0; i < cluster_node.child_count; ++i)
-                {
-                    cluster_queue[cluster_queue_rear + i] = uint2(cluster_node.child_offset + i, instance_id);
-                }
+            for (uint i = 0; i < cluster_node.child_count; ++i)
+            {
+                cluster_queue[cluster_queue_rear + i] = pack_cluster_item(cluster_node.child_offset + i, instance_id, false);
             }
         }
     }
@@ -173,18 +200,17 @@ void process_cluster_node(uint group_index)
 void process_cluster(uint3 dtid)
 {
     RWStructuredBuffer<uint2> cluster_queue = ResourceDescriptorHeap[constant.cluster_queue];
+    RWStructuredBuffer<cluster_queue_state_data> cluster_queue_state = ResourceDescriptorHeap[constant.cluster_queue_state];
     StructuredBuffer<cluster_data> clusters = ResourceDescriptorHeap[scene.cluster_buffer];
 
     StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
     StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
     StructuredBuffer<geometry_data> geometries = ResourceDescriptorHeap[scene.geometry_buffer];
 
-    uint queue_index = dtid.x + get_cluster_offset();
-    uint2 item = cluster_queue[queue_index];
-    cluster_queue[queue_index] = uint2(INVALID_NODE_INDEX, INVALID_INSTANCE_INDEX);
-
-    uint cluster_id = item.x;
-    uint instance_id = item.y;
+    uint cluster_id;
+    uint instance_id;
+    bool recheck;
+    unpack_cluster_item(cluster_queue[dtid.x + get_cluster_offset()], cluster_id, instance_id, recheck);
 
     instance_data instance = instances[instance_id];
     mesh_data mesh = meshes[instance.mesh_index];
@@ -196,29 +222,49 @@ void process_cluster(uint3 dtid)
         return;
     }
 
-    bool visible = check_cluster_lod(cluster, mesh);
+    bool visible = true;
+
+    Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
+    SamplerState hzb_sampler = SamplerDescriptorHeap[constant.hzb_sampler];
+    
+    float4 sphere_vs = mul(camera.matrix_v, mul(mesh.matrix_m, float4(cluster.bounding_sphere.xyz, 1.0)));
+    sphere_vs.w = cluster.bounding_sphere.w * mesh.scale.w;
+
+#if CULL_STAGE == CULL_STAGE_MAIN_PASS
+    visible = check_cluster_lod(cluster, mesh) && frustum_cull(sphere_vs, constant.frustum, camera.near);
 
     if (visible)
     {
-        Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
-        SamplerState hzb_sampler = SamplerDescriptorHeap[constant.hzb_sampler];
-
-        float4 sphere_ws = mul(mesh.matrix_m, float4(cluster.bounding_sphere.xyz, 1.0));
-        sphere_ws.w = cluster.bounding_sphere.w * mesh.scale.w;
-
-        bounding_sphere_cull cull = bounding_sphere_cull::create(sphere_ws, camera);
-        visible = cull.frustum_cull(constant.frustum) && cull.occlusion_cull(hzb, hzb_sampler, constant.hzb_width, constant.hzb_height);
+        float4 prev_sphere_vs = mul(camera.prev_matrix_v, mul(mesh.prev_matrix_m, float4(cluster.bounding_sphere.xyz, 1.0)));
+        prev_sphere_vs.w = sphere_vs.w;
+        if (!occlusion_cull(prev_sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.prev_matrix_p, camera.near))
+        {
+            visible = false;
+            cluster_queue[dtid.x + get_cluster_offset()] = pack_cluster_item(cluster_id, instance_id, true);
+        }
+    }
+#else
+    if (dtid.x < cluster_queue_state[0].cluster_recheck_size)
+    {
+        visible = recheck;
+    }
+    else
+    {
+        visible = check_cluster_lod(cluster, mesh) && frustum_cull(sphere_vs, constant.frustum, camera.near);
     }
 
+    visible = visible && occlusion_cull(sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.matrix_p, camera.near);
+#endif
+
     if (visible)
     {
-        ByteAddressBuffer batch_buffer = ResourceDescriptorHeap[scene.batch_buffer];
+        StructuredBuffer<uint> batch_buffer = ResourceDescriptorHeap[scene.batch_buffer];
         RWStructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.draw_count_buffer];
 
         uint batch_index = instance.batch_index;
         uint command_index = 0;
         InterlockedAdd(draw_counts[batch_index], 1, command_index);
-        command_index += batch_buffer.Load<uint>(batch_index * 4);
+        command_index += batch_buffer[batch_index];
 
         if (command_index < constant.max_draw_command_count)
         {
@@ -244,32 +290,53 @@ void process_cluster(uint3 dtid)
 
 void cluster_node_cull(uint group_index)
 {
+    RWStructuredBuffer<uint2> cluster_queue = ResourceDescriptorHeap[constant.cluster_queue];
     RWStructuredBuffer<cluster_queue_state_data> cluster_queue_state = ResourceDescriptorHeap[constant.cluster_queue_state];
 
     if (group_index == 0)
     {
-        group_cluster_queue_rear = cluster_queue_state[0].cluster_node_queue_prev_rear;
-        group_cluster_node_mask = 0;
-        InterlockedAdd(cluster_queue_state[0].cluster_node_queue_front, MAX_NODE_PER_GROUP, group_queue_offset);
+        gs_cluster_node_mask = 0;
+        InterlockedAdd(cluster_queue_state[0].cluster_node_queue_front, MAX_CLUSTER_NODE_PER_GROUP, gs_queue_offset);
     }
     GroupMemoryBarrierWithGroupSync();
+    
+    uint queue_index = gs_queue_offset + group_index;
 
-    bool ready = group_index < MAX_NODE_PER_GROUP;
+    bool ready = group_index < MAX_CLUSTER_NODE_PER_GROUP && queue_index < cluster_queue_state[0].cluster_node_queue_prev_rear;
+
+    uint cluster_id;
+    uint instance_id;
 
     if (ready)
     {
-        ready = load_group_cluster_node(group_index);
-    }
+        StructuredBuffer<cluster_node_data> cluster_nodes = ResourceDescriptorHeap[constant.cluster_node_buffer];
 
-    if (ready)
-    {
-        InterlockedOr(group_cluster_node_mask, 1u << group_index);
+        uint recheck_mask;
+        unpack_cluster_node_item(cluster_queue[queue_index], cluster_id, instance_id, recheck_mask);
+
+        cluster_node_data cluster_node = cluster_nodes[cluster_id];
+        gs_cluster_node[group_index] = uint3(cluster_node.child_offset, cluster_node.child_count, instance_id);
+
+        InterlockedOr(gs_cluster_node_mask, 1u << group_index);
+
+#if CULL_STAGE == CULL_STAGE_MAIN_PASS
+        gs_recheck_mask[group_index] = 0;
+#else
+        gs_recheck_mask[group_index] = recheck_mask;
+#endif
     }
     GroupMemoryBarrierWithGroupSync();
 
-    if (group_cluster_node_mask != 0)
+    if (gs_cluster_node_mask != 0)
     {
         process_cluster_node(group_index);
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+    if (ready)
+    {
+        cluster_queue[queue_index] = pack_cluster_node_item(cluster_id, instance_id, gs_recheck_mask[group_index]);
     }
 }
 
@@ -277,53 +344,9 @@ void cluster_cull(uint3 dtid, uint group_index)
 {
     RWStructuredBuffer<cluster_queue_state_data> cluster_queue_state = ResourceDescriptorHeap[constant.cluster_queue_state];
 
-    if (group_index == 0)
-    {
-        group_cluster_queue_rear = cluster_queue_state[0].cluster_queue_rear;
-    }
-    GroupMemoryBarrierWithGroupSync();
-
-    bool ready = dtid.x < group_cluster_queue_rear;
-
-    if (ready)
+    if (dtid.x < cluster_queue_state[0].cluster_queue_rear)
     {
         process_cluster(dtid);
-    }
-}
-
-void persistent_cull(uint group_index)
-{
-    RWStructuredBuffer<uint2> cluster_queue = ResourceDescriptorHeap[constant.cluster_queue];
-    RWStructuredBuffer<cluster_queue_state_data> cluster_queue_state = ResourceDescriptorHeap[constant.cluster_queue_state];
-
-    // while (true)
-    for (uint i = 0; i < 2; ++i)
-    {
-        if (group_index == 0)
-        {
-            group_cluster_node_mask = 0;
-            InterlockedAdd(cluster_queue_state[0].cluster_node_queue_front, MAX_NODE_PER_GROUP, group_queue_offset);
-        }
-        GroupMemoryBarrierWithGroupSync();
-
-        bool ready = group_index < MAX_NODE_PER_GROUP;
-
-        if (ready)
-        {
-            ready = load_group_cluster_node(group_index);
-        }
-
-        if (ready)
-        {
-            InterlockedOr(group_cluster_node_mask, 1u << group_index);
-        }
-        GroupMemoryBarrierWithGroupSync();
-
-        if (group_cluster_node_mask != 0)
-        {
-            process_cluster_node(group_index);
-            continue;
-        }
     }
 }
 
@@ -334,7 +357,5 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     cluster_node_cull(group_index);
 #elif defined(CULL_CLUSTER)
     cluster_cull(dtid, group_index);
-#else
-    // persistent_cull(group_index);
 #endif
 }

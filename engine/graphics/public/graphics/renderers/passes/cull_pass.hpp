@@ -4,41 +4,45 @@
 
 namespace violet
 {
+enum cull_stage
+{
+    CULL_STAGE_MAIN_PASS,
+    CULL_STAGE_POST_PASS,
+};
+
 class cluster_render_feature;
 class cull_pass
 {
 public:
     struct parameter
     {
-        rdg_texture* hzb;
-        cluster_render_feature* cluster_feature;
-    };
+        cull_stage stage;
 
-    struct output
-    {
+        rdg_texture* hzb;
+
+        rdg_buffer* cluster_queue;
+        rdg_buffer* cluster_queue_state;
+
         rdg_buffer* draw_buffer;
         rdg_buffer* draw_count_buffer;
         rdg_buffer* draw_info_buffer;
+
+        rdg_buffer* recheck_instances;
     };
 
-    output add(render_graph& graph, const parameter& parameter);
+    void add(render_graph& graph, const parameter& parameter);
 
 private:
-    void prepare_cluster_queue(render_graph& graph);
-
-    void prepare_cluster_cull(render_graph& graph, rdg_buffer* dispatch_buffer, bool cull_cluster);
+    void prepare_cluster_cull(
+        render_graph& graph,
+        rdg_buffer* dispatch_buffer,
+        bool cull_cluster,
+        bool recheck);
 
     void add_prepare_pass(render_graph& graph);
 
     void add_instance_cull_pass(render_graph& graph);
-    void add_cluster_cull_pass(
-        render_graph& graph,
-        std::uint32_t max_cluster_count,
-        std::uint32_t max_cluster_node_count);
-    void add_cluster_cull_pass_persistent(
-        render_graph& graph,
-        std::uint32_t max_cluster_count,
-        std::uint32_t max_cluster_node_count);
+    void add_cluster_cull_pass(render_graph& graph);
 
     rdg_texture* m_hzb{nullptr};
     rhi_sampler* m_hzb_sampler{nullptr};
@@ -50,5 +54,9 @@ private:
 
     rdg_buffer* m_cluster_queue{nullptr};
     rdg_buffer* m_cluster_queue_state{nullptr};
+
+    rdg_buffer* m_recheck_instances{nullptr};
+
+    cull_stage m_stage;
 };
 } // namespace violet

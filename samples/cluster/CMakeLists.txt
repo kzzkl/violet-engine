@@ -1,6 +1,5 @@
 add_executable(cluster
     source/cluster_material.cpp
-    source/cluster_renderer.cpp
     source/main.cpp)
 
 target_include_directories(cluster

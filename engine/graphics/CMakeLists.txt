@@ -7,7 +7,6 @@ add_library(violet-graphics STATIC
     private/render_graph/rdg_command.cpp
     private/render_graph/rdg_pass.cpp
     private/render_graph/render_graph.cpp
-    private/renderers/features/cluster_render_feature.cpp
     private/renderers/passes/blit_pass.cpp
     private/renderers/passes/copy_depth_pass.cpp
     private/renderers/passes/cull_pass.cpp

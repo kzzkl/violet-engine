@@ -65,7 +65,11 @@ struct visibility_sort_worklist_cs : public shader_cs
 
 void gbuffer_pass::add(render_graph& graph, const parameter& parameter)
 {
-    add_clear_pass(graph, parameter);
+    if (parameter.clear)
+    {
+        add_clear_pass(graph, parameter);
+    }
+
     add_visibility_pass(graph, parameter);
     add_deferred_pass(graph, parameter);
 }
@@ -122,11 +126,7 @@ void gbuffer_pass::add_visibility_pass(render_graph& graph, const parameter& par
         render_device::instance().get_material_manager()->get_max_material_resolve_pipeline_id() +
         1;
 
-    m_visibility_buffer = graph.add_texture(
-        "Visibility Buffer",
-        extent,
-        RHI_FORMAT_R32G32_UINT,
-        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE);
+    m_visibility_buffer = parameter.visibility_buffer;
 
     rhi_clear_value clear_value = {};
     clear_value.color.uint32[0] = 0xFFFFFFFF;
@@ -139,7 +139,7 @@ void gbuffer_pass::add_visibility_pass(render_graph& graph, const parameter& par
         .depth_buffer = parameter.depth_buffer,
         .surface_type = SURFACE_TYPE_OPAQUE,
         .material_path = MATERIAL_PATH_VISIBILITY,
-        .clear = true,
+        .clear = parameter.clear,
         .render_target_clear_values = {&clear_value, 1},
     });
 
@@ -414,6 +414,7 @@ void gbuffer_pass::add_deferred_pass(render_graph& graph, const parameter& param
         .depth_buffer = parameter.depth_buffer,
         .surface_type = SURFACE_TYPE_OPAQUE,
         .material_path = MATERIAL_PATH_DEFERRED,
+        .clear = false,
     });
 }
 } // namespace violet

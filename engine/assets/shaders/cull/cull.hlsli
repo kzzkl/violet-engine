@@ -3,8 +3,11 @@
 #include "common.hlsli"
 #include "utils.hlsli"
 
+#define CULL_STAGE_MAIN_PASS 0
+#define CULL_STAGE_POST_PASS 1
+
 static const uint CLUSTER_CULL_GROUP_SIZE = 64;
-static const uint MAX_NODE_PER_GROUP = 8;
+static const uint MAX_CLUSTER_NODE_PER_GROUP = 8;
 
 struct cluster_queue_state_data
 {
@@ -12,6 +15,9 @@ struct cluster_queue_state_data
     uint cluster_node_queue_front;
     uint cluster_node_queue_rear;
     uint cluster_node_queue_prev_rear;
+
+    uint cluster_recheck_size;
+    uint cluster_node_recheck_size;
 };
 
 struct cluster_node_data
@@ -28,56 +34,34 @@ struct cluster_node_data
     uint padding2;
 };
 
-struct bounding_sphere_cull
+bool frustum_cull(float4 sphere_vs, float4 frustum, float near)
 {
-    float4 sphere_vs;
+    bool visible = sphere_vs.z + sphere_vs.w > near;
+    visible = visible && sphere_vs.z * frustum[1] - abs(sphere_vs.x) * frustum[0] > -sphere_vs.w;
+    visible = visible && sphere_vs.z * frustum[3] - abs(sphere_vs.y) * frustum[2] > -sphere_vs.w;
 
-    float near;
-    float p00;
-    float p11;
+    return visible;
+}
 
-    static bounding_sphere_cull create(float4 sphere_ws, const camera_data camera)
+bool occlusion_cull(float4 sphere_vs, Texture2D<float> hzb, SamplerState hzb_sampler, uint width, uint height, float4x4 matrix_p, float near)
+{
+    if (sphere_vs.z - sphere_vs.w < near)
     {
-        bounding_sphere_cull result;
-        result.sphere_vs = mul(camera.matrix_v, float4(sphere_ws.xyz, 1.0));
-        result.sphere_vs.w = sphere_ws.w;
-        result.near = camera.near;
-        result.p00 = camera.matrix_p[0][0];
-        result.p11 = camera.matrix_p[1][1];
-        return result;
+        return true;
     }
 
-    bool frustum_cull(float4 frustum)
-    {
-        bool visible = true;
+    float4 aabb = project_shpere_vs(sphere_vs, matrix_p[0][0], matrix_p[1][1]);
+    aabb = aabb.xwzy * float4(0.5, -0.5, 0.5, -0.5) + 0.5;
 
-        visible = visible && sphere_vs.z + sphere_vs.w > near;
-        visible = visible && sphere_vs.z * frustum[1] - abs(sphere_vs.x) * frustum[0] > -sphere_vs.w;
-        visible = visible && sphere_vs.z * frustum[3] - abs(sphere_vs.y) * frustum[2] > -sphere_vs.w;
+    float aabb_width = abs(aabb.z - aabb.x) * width;
+    float aabb_height = abs(aabb.w - aabb.y) * height;
 
-        return visible;
-    }
+    float level = floor(log2(max(aabb_width, aabb_height)));
 
-    bool occlusion_cull(Texture2D<float> hzb, SamplerState hzb_sampler, uint width, uint height)
-    {
-        if (sphere_vs.z - sphere_vs.w < near)
-        {
-            return true;
-        }
+    float depth = hzb.SampleLevel(hzb_sampler, (aabb.xy + aabb.zw) * 0.5, level);
 
-        float4 aabb = project_shpere_vs(sphere_vs, p00, p11);
-        aabb = aabb.xwzy * float4(0.5, -0.5, 0.5, -0.5) + 0.5;
+    // Only works correctly on reverse depth projection matrices with an infinite far plane.
+    float sphere_depth = near / (sphere_vs.z - sphere_vs.w);
 
-        float aabb_width = abs(aabb.z - aabb.x) * width;
-        float aabb_height = abs(aabb.w - aabb.y) * height;
-
-        float level = floor(log2(max(aabb_width, aabb_height)));
-
-        float depth = hzb.SampleLevel(hzb_sampler, (aabb.xy + aabb.zw) * 0.5, level);
-
-        // Only works correctly on reverse depth projection matrices with an infinite far plane.
-        float sphere_depth = near / (sphere_vs.z - sphere_vs.w);
-
-        return sphere_depth >= depth;
-    }
-};
+    return sphere_depth > depth;
+}

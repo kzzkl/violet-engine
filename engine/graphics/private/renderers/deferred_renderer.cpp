@@ -1,5 +1,5 @@
 #include "graphics/renderers/deferred_renderer.hpp"
-#include "graphics/renderers/features/cluster_render_feature.hpp"
+#include "graphics/graphics_config.hpp"
 #include "graphics/renderers/features/gtao_render_feature.hpp"
 #include "graphics/renderers/features/taa_render_feature.hpp"
 #include "graphics/renderers/passes/blit_pass.hpp"
@@ -19,7 +19,6 @@ deferred_renderer::deferred_renderer()
 {
     add_feature<taa_render_feature>();
     add_feature<gtao_render_feature>();
-    add_feature<cluster_render_feature>();
 }
 
 void deferred_renderer::on_render(render_graph& graph)
@@ -41,9 +40,19 @@ void deferred_renderer::on_render(render_graph& graph)
 
     if (graph.get_scene().get_instance_count() != 0)
     {
-        add_cull_pass(graph);
-        add_gbuffer_pass(graph);
-        add_hzb_pass(graph);
+        {
+            rdg_scope scope(graph, "Main Pass");
+            add_cull_pass(graph, true);
+            add_gbuffer_pass(graph, true);
+            add_hzb_pass(graph);
+        }
+
+        {
+            rdg_scope scope(graph, "Post Pass");
+            add_cull_pass(graph, false);
+            add_gbuffer_pass(graph, false);
+            add_hzb_pass(graph);
+        }
 
         if (get_feature<gtao_render_feature>(true))
         {
@@ -76,61 +85,104 @@ void deferred_renderer::on_render(render_graph& graph)
     add_present_pass(graph);
 }
 
-void deferred_renderer::add_cull_pass(render_graph& graph)
+void deferred_renderer::add_cull_pass(render_graph& graph, bool main_pass)
 {
-    auto result = graph.add_pass<cull_pass>({
-        .hzb = m_hzb,
-        .cluster_feature = get_feature<cluster_render_feature>(true),
-    });
+    if (main_pass)
+    {
+        m_cluster_queue = graph.add_buffer(
+            "Cluster Queue",
+            graphics_config::get_max_candidate_cluster_count() * sizeof(vec3u),
+            RHI_BUFFER_STORAGE);
+        m_cluster_queue_state = graph.add_buffer(
+            "Cluster Queue State",
+            6 * sizeof(std::uint32_t),
+            RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST);
 
-    m_draw_buffer = result.draw_buffer;
-    m_draw_count_buffer = result.draw_count_buffer;
-    m_draw_info_buffer = result.draw_info_buffer;
+        m_draw_buffer = graph.add_buffer(
+            "Draw Buffer",
+            graph.get_scene().get_instance_capacity() * sizeof(shader::draw_command),
+            RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT);
+        m_draw_count_buffer = graph.add_buffer(
+            "Draw Count Buffer",
+            graph.get_scene().get_batch_capacity() * sizeof(std::uint32_t),
+            RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT | RHI_BUFFER_TRANSFER_DST);
+        m_draw_info_buffer = graph.add_buffer(
+            "Draw Info Buffer",
+            graph.get_scene().get_instance_capacity() * sizeof(shader::draw_info),
+            RHI_BUFFER_STORAGE);
+
+        m_recheck_instances = graph.add_buffer(
+            "Recheck Instances",
+            math::next_power_of_two(
+                (graph.get_scene().get_instance_count() + 31) / 32 * sizeof(std::uint32_t)),
+            RHI_BUFFER_STORAGE);
+    }
+
+    graph.add_pass<cull_pass>({
+        .stage = main_pass ? CULL_STAGE_MAIN_PASS : CULL_STAGE_POST_PASS,
+        .hzb = m_hzb,
+        .cluster_queue = m_cluster_queue,
+        .cluster_queue_state = m_cluster_queue_state,
+        .draw_buffer = m_draw_buffer,
+        .draw_count_buffer = m_draw_count_buffer,
+        .draw_info_buffer = m_draw_info_buffer,
+        .recheck_instances = m_recheck_instances,
+    });
 }
 
-void deferred_renderer::add_gbuffer_pass(render_graph& graph)
+void deferred_renderer::add_gbuffer_pass(render_graph& graph, bool main_pass)
 {
     rdg_scope scope(graph, "GBuffer");
 
-    m_gbuffers.resize(4);
+    if (main_pass)
+    {
+        m_gbuffers.resize(4);
+        m_gbuffers[SHADING_GBUFFER_ALBEDO] = graph.add_texture(
+            "GBuffer Albedo",
+            m_render_extent,
+            RHI_FORMAT_R8G8B8A8_UNORM,
+            RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
+                RHI_TEXTURE_TRANSFER_DST);
+        m_gbuffers[SHADING_GBUFFER_MATERIAL] = graph.add_texture(
+            "GBuffer Material",
+            m_render_extent,
+            RHI_FORMAT_R8G8_UNORM,
+            RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
+                RHI_TEXTURE_TRANSFER_DST);
+        m_gbuffers[SHADING_GBUFFER_NORMAL] = graph.add_texture(
+            "GBuffer Normal",
+            m_render_extent,
+            RHI_FORMAT_R32_UINT,
+            RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
+                RHI_TEXTURE_TRANSFER_DST);
+        m_gbuffers[SHADING_GBUFFER_EMISSIVE] = graph.add_texture(
+            "GBuffer Emissive",
+            m_render_extent,
+            RHI_FORMAT_R8G8B8A8_UNORM,
+            RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
+                RHI_TEXTURE_TRANSFER_DST);
 
-    m_gbuffers[SHADING_GBUFFER_ALBEDO] = graph.add_texture(
-        "GBuffer Albedo",
-        m_render_extent,
-        RHI_FORMAT_R8G8B8A8_UNORM,
-        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
-            RHI_TEXTURE_TRANSFER_DST);
-    m_gbuffers[SHADING_GBUFFER_MATERIAL] = graph.add_texture(
-        "GBuffer Material",
-        m_render_extent,
-        RHI_FORMAT_R8G8_UNORM,
-        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
-            RHI_TEXTURE_TRANSFER_DST);
-    m_gbuffers[SHADING_GBUFFER_NORMAL] = graph.add_texture(
-        "GBuffer Normal",
-        m_render_extent,
-        RHI_FORMAT_R32_UINT,
-        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
-            RHI_TEXTURE_TRANSFER_DST);
-    m_gbuffers[SHADING_GBUFFER_EMISSIVE] = graph.add_texture(
-        "GBuffer Emissive",
-        m_render_extent,
-        RHI_FORMAT_R8G8B8A8_UNORM,
-        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
-            RHI_TEXTURE_TRANSFER_DST);
+        m_visibility_buffer = graph.add_texture(
+            "Visibility Buffer",
+            m_render_extent,
+            RHI_FORMAT_R32G32_UINT,
+            RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE);
 
-    m_depth_buffer = graph.add_texture(
-        "Depth Buffer",
-        m_render_extent,
-        RHI_FORMAT_D32_FLOAT,
-        RHI_TEXTURE_DEPTH_STENCIL | RHI_TEXTURE_SHADER_RESOURCE);
+        m_depth_buffer = graph.add_texture(
+            "Depth Buffer",
+            m_render_extent,
+            RHI_FORMAT_D32_FLOAT,
+            RHI_TEXTURE_DEPTH_STENCIL | RHI_TEXTURE_SHADER_RESOURCE);
+    }
 
     graph.add_pass<gbuffer_pass>({
         .draw_buffer = m_draw_buffer,
         .draw_count_buffer = m_draw_count_buffer,
         .draw_info_buffer = m_draw_info_buffer,
         .gbuffers = m_gbuffers,
+        .visibility_buffer = m_visibility_buffer,
         .depth_buffer = m_depth_buffer,
+        .clear = main_pass,
     });
 }
 

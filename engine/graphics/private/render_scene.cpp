@@ -52,6 +52,8 @@ void render_scene::set_mesh_matrix(render_id mesh_id, const mat4f& matrix_m, con
     mesh.scale = scale;
 
     m_meshes.mark_dirty(mesh_id);
+
+    m_matrix_dirty_meshes.push_back(mesh_id);
 }
 
 render_id render_scene::add_instance(render_id mesh_id)
@@ -332,12 +334,13 @@ void render_scene::remove_instance_from_batch(render_id instance_id)
 
 bool render_scene::update_mesh(gpu_buffer_uploader* uploader)
 {
-    return m_meshes.update(
+    bool need_upload = m_meshes.update(
         [](const gpu_mesh& mesh) -> shader::mesh_data
         {
             return {
                 .matrix_m = mesh.matrix_m,
                 .scale = {mesh.scale.x, mesh.scale.y, mesh.scale.z, vector::max(mesh.scale)},
+                .prev_matrix_m = mesh.prev_matrix_m,
             };
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
@@ -350,6 +353,16 @@ bool render_scene::update_mesh(gpu_buffer_uploader* uploader)
                 RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_COMPUTE,
                 RHI_ACCESS_SHADER_READ);
         });
+
+    for (render_id mesh_id : m_matrix_dirty_meshes)
+    {
+        auto& mesh = m_meshes[mesh_id];
+        mesh.prev_matrix_m = mesh.matrix_m;
+        m_meshes.mark_dirty(mesh_id);
+    }
+    m_matrix_dirty_meshes.clear();
+
+    return need_upload;
 }
 
 bool render_scene::update_instance(gpu_buffer_uploader* uploader)
