@@ -1,7 +1,6 @@
 #include "graphics/renderers/passes/cull_pass.hpp"
 #include "graphics/geometry_manager.hpp"
 #include "graphics/graphics_config.hpp"
-#include "graphics/renderers/features/cluster_render_feature.hpp"
 
 namespace violet
 {
@@ -10,29 +9,16 @@ namespace
 vec4f get_frustum(const mat4x4f& matrix_p)
 {
     mat4f matrix_p_t = matrix::transpose(matrix_p);
-    vec4f frustum_x = vector::normalize(matrix_p_t[3] + matrix_p_t[0]);
+
+    vec4f frustum_x = matrix_p_t[3] + matrix_p_t[0];
     frustum_x /= vector::length(vec3f(frustum_x));
-    vec4f frustum_y = vector::normalize(matrix_p_t[3] + matrix_p_t[0]);
+
+    vec4f frustum_y = matrix_p_t[3] + matrix_p_t[1];
     frustum_y /= vector::length(vec3f(frustum_y));
 
     return vec4f(frustum_x.x, frustum_x.z, frustum_y.y, frustum_y.z);
 }
 } // namespace
-
-struct prepare_cluster_queue_cs : public shader_cs
-{
-    static constexpr std::string_view path = "assets/shaders/cull/prepare_cluster_queue.hlsl";
-
-    struct constant_data
-    {
-        std::uint32_t cluster_queue;
-        std::uint32_t cluster_queue_size;
-    };
-
-    static constexpr parameter_layout parameters = {
-        {.space = 0, .desc = bindless},
-    };
-};
 
 struct prepare_cluster_cull_cs : public shader_cs
 {
@@ -42,6 +28,7 @@ struct prepare_cluster_cull_cs : public shader_cs
     {
         std::uint32_t cluster_queue_state;
         std::uint32_t dispatch_buffer;
+        std::uint32_t recheck;
     };
 
     static constexpr parameter_layout parameters = {
@@ -66,6 +53,7 @@ struct instance_cull_cs : public shader_cs
         std::uint32_t cluster_queue;
         std::uint32_t cluster_queue_state;
         std::uint32_t max_draw_command_count;
+        std::uint32_t recheck_instances;
     };
 
     static constexpr parameter_layout parameters = {
@@ -110,7 +98,7 @@ struct cluster_cull_cs : public shader_cs
     };
 };
 
-cull_pass::output cull_pass::add(render_graph& graph, const parameter& parameter)
+void cull_pass::add(render_graph& graph, const parameter& parameter)
 {
     rdg_scope scope(graph, "Cull");
 
@@ -128,107 +116,33 @@ cull_pass::output cull_pass::add(render_graph& graph, const parameter& parameter
 
     m_frustum = get_frustum(graph.get_camera().get_matrix_p());
 
-    m_draw_buffer = graph.add_buffer(
-        "Draw Buffer",
-        graph.get_scene().get_instance_capacity() * sizeof(shader::draw_command),
-        RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT);
-    m_draw_count_buffer = graph.add_buffer(
-        "Draw Count Buffer",
-        graph.get_scene().get_batch_capacity() * sizeof(std::uint32_t),
-        RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT | RHI_BUFFER_TRANSFER_DST);
-    m_draw_info_buffer = graph.add_buffer(
-        "Draw Info Buffer",
-        graph.get_scene().get_instance_capacity() * sizeof(shader::draw_info),
-        RHI_BUFFER_STORAGE);
+    m_cluster_queue = parameter.cluster_queue;
+    m_cluster_queue_state = parameter.cluster_queue_state;
 
-    bool use_cluster = parameter.cluster_feature != nullptr &&
-                       render_device::instance().get_geometry_manager()->get_cluster_count() != 0;
+    m_draw_buffer = parameter.draw_buffer;
+    m_draw_count_buffer = parameter.draw_count_buffer;
+    m_draw_info_buffer = parameter.draw_info_buffer;
 
-    if (use_cluster)
-    {
-        m_cluster_queue =
-            graph.add_buffer("Cluster Queue", parameter.cluster_feature->get_cluster_queue());
-        m_cluster_queue_state = graph.add_buffer(
-            "Cluster Queue State",
-            parameter.cluster_feature->get_cluster_queue_state());
+    m_recheck_instances = parameter.recheck_instances;
 
-        if (parameter.cluster_feature->need_initialize())
-        {
-            prepare_cluster_queue(graph);
-        }
-    }
+    m_stage = parameter.stage;
 
     add_prepare_pass(graph);
 
     add_instance_cull_pass(graph);
 
-    if (use_cluster)
+    if (parameter.cluster_queue != nullptr && parameter.cluster_queue_state != nullptr)
     {
         rdg_scope cluster_scope(graph, "Cluster Cull");
-
-        if (parameter.cluster_feature->use_persistent_thread())
-        {
-            add_cluster_cull_pass_persistent(
-                graph,
-                parameter.cluster_feature->get_max_cluster_count(),
-                parameter.cluster_feature->get_max_cluster_node_count());
-        }
-        else
-        {
-            add_cluster_cull_pass(
-                graph,
-                parameter.cluster_feature->get_max_cluster_count(),
-                parameter.cluster_feature->get_max_cluster_node_count());
-        }
+        add_cluster_cull_pass(graph);
     }
-
-    return {
-        .draw_buffer = m_draw_buffer,
-        .draw_count_buffer = m_draw_count_buffer,
-        .draw_info_buffer = m_draw_info_buffer,
-    };
-}
-
-void cull_pass::prepare_cluster_queue(render_graph& graph)
-{
-    struct pass_data
-    {
-        rdg_buffer_uav cluster_queue;
-    };
-
-    graph.add_pass<pass_data>(
-        "Prepare Cluster Queue",
-        RDG_PASS_COMPUTE,
-        [&](pass_data& data, rdg_pass& pass)
-        {
-            data.cluster_queue = pass.add_buffer_uav(m_cluster_queue, RHI_PIPELINE_STAGE_COMPUTE);
-        },
-        [=](const pass_data& data, rdg_command& command)
-        {
-            auto& device = render_device::instance();
-
-            command.set_pipeline({
-                .compute_shader = device.get_shader<prepare_cluster_queue_cs>(),
-            });
-
-            auto cluster_queue_size =
-                static_cast<std::uint32_t>(data.cluster_queue.get_size() / sizeof(vec2u));
-
-            command.set_constant(
-                prepare_cluster_queue_cs::constant_data{
-                    .cluster_queue = data.cluster_queue.get_bindless(),
-                    .cluster_queue_size = cluster_queue_size,
-                });
-            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
-
-            command.dispatch_1d(cluster_queue_size);
-        });
 }
 
 void cull_pass::prepare_cluster_cull(
     render_graph& graph,
     rdg_buffer* dispatch_buffer,
-    bool cull_cluster)
+    bool cull_cluster,
+    bool recheck)
 {
     struct pass_data
     {
@@ -245,7 +159,7 @@ void cull_pass::prepare_cluster_cull(
                 pass.add_buffer_uav(m_cluster_queue_state, RHI_PIPELINE_STAGE_COMPUTE);
             data.dispatch_buffer = pass.add_buffer_uav(dispatch_buffer, RHI_PIPELINE_STAGE_COMPUTE);
         },
-        [cull_cluster](const pass_data& data, rdg_command& command)
+        [cull_cluster, recheck](const pass_data& data, rdg_command& command)
         {
             auto& device = render_device::instance();
 
@@ -261,6 +175,7 @@ void cull_pass::prepare_cluster_cull(
                 prepare_cluster_cull_cs::constant_data{
                     .cluster_queue_state = data.cluster_queue_state.get_bindless(),
                     .dispatch_buffer = data.dispatch_buffer.get_bindless(),
+                    .recheck = recheck,
                 });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
@@ -286,7 +201,7 @@ void cull_pass::add_prepare_pass(render_graph& graph)
                 RHI_PIPELINE_STAGE_TRANSFER,
                 RHI_ACCESS_TRANSFER_WRITE);
 
-            if (m_cluster_queue_state != nullptr)
+            if (m_cluster_queue_state != nullptr && m_stage == CULL_STAGE_MAIN_PASS)
             {
                 data.cluster_queue_state = pass.add_buffer(
                     m_cluster_queue_state,
@@ -300,7 +215,13 @@ void cull_pass::add_prepare_pass(render_graph& graph)
         },
         [](const pass_data& data, rdg_command& command)
         {
-            command.fill_buffer(data.count_buffer.get_rhi(), {0, data.count_buffer.get_size()}, 0);
+            command.fill_buffer(
+                data.count_buffer.get_rhi(),
+                {
+                    .offset = 0,
+                    .size = data.count_buffer.get_size(),
+                },
+                0);
 
             if (data.cluster_queue_state)
             {
@@ -329,6 +250,9 @@ void cull_pass::add_instance_cull_pass(render_graph& graph)
 
         rdg_buffer_uav cluster_queue;
         rdg_buffer_uav cluster_queue_state;
+
+        rdg_buffer_uav recheck_instances_uav;
+        rdg_buffer_srv recheck_instances_srv;
 
         std::uint32_t instance_count;
     };
@@ -361,9 +285,22 @@ void cull_pass::add_instance_cull_pass(render_graph& graph)
                 data.cluster_queue_state.reset();
             }
 
+            if (m_stage == CULL_STAGE_MAIN_PASS)
+            {
+                data.recheck_instances_uav =
+                    pass.add_buffer_uav(m_recheck_instances, RHI_PIPELINE_STAGE_COMPUTE);
+                data.recheck_instances_srv.reset();
+            }
+            else
+            {
+                data.recheck_instances_uav.reset();
+                data.recheck_instances_srv =
+                    pass.add_buffer_srv(m_recheck_instances, RHI_PIPELINE_STAGE_COMPUTE);
+            }
+
             data.instance_count = graph.get_scene().get_instance_count();
         },
-        [](const pass_data& data, rdg_command& command)
+        [stage = m_stage](const pass_data& data, rdg_command& command)
         {
             auto& device = render_device::instance();
 
@@ -371,6 +308,8 @@ void cull_pass::add_instance_cull_pass(render_graph& graph)
             if (data.cluster_queue)
             {
                 defines.emplace_back(L"-DGENERATE_CLUSTER_LIST");
+                defines.emplace_back(
+                    stage == CULL_STAGE_MAIN_PASS ? L"-DCULL_STAGE=0" : L"-DCULL_STAGE=1");
             }
 
             command.set_pipeline({
@@ -393,6 +332,9 @@ void cull_pass::add_instance_cull_pass(render_graph& graph)
                     .cluster_queue_state =
                         data.cluster_queue_state ? data.cluster_queue_state.get_bindless() : 0,
                     .max_draw_command_count = graphics_config::get_max_draw_command_count(),
+                    .recheck_instances = stage == CULL_STAGE_MAIN_PASS ?
+                                             data.recheck_instances_uav.get_bindless() :
+                                             data.recheck_instances_srv.get_bindless(),
                 });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_SCENE);
@@ -402,10 +344,7 @@ void cull_pass::add_instance_cull_pass(render_graph& graph)
         });
 }
 
-void cull_pass::add_cluster_cull_pass(
-    render_graph& graph,
-    std::uint32_t max_cluster_count,
-    std::uint32_t max_cluster_node_count)
+void cull_pass::add_cluster_cull_pass(render_graph& graph)
 {
     rdg_buffer* dispatch_buffer = graph.add_buffer(
         "Dispatch Buffer",
@@ -438,7 +377,11 @@ void cull_pass::add_cluster_cull_pass(
     {
         bool cull_cluster = i == cluster_node_depth - 1;
 
-        prepare_cluster_cull(graph, dispatch_buffer, cull_cluster);
+        prepare_cluster_cull(
+            graph,
+            dispatch_buffer,
+            cull_cluster,
+            m_stage == CULL_STAGE_POST_PASS && i == 0);
 
         graph.add_pass<pass_data>(
             cull_cluster ? "Cull Cluster" : "Cull Cluster Node: " + std::to_string(i),
@@ -468,12 +411,13 @@ void cull_pass::add_cluster_cull_pass(
                         pass.add_buffer_uav(m_draw_info_buffer, RHI_PIPELINE_STAGE_COMPUTE);
                 }
             },
-            [=](const pass_data& data, rdg_command& command)
+            [=, stage = m_stage](const pass_data& data, rdg_command& command)
             {
                 auto& device = render_device::instance();
 
                 std::vector<std::wstring> defines = {
                     cull_cluster ? L"-DCULL_CLUSTER" : L"-DCULL_CLUSTER_NODE",
+                    stage == CULL_STAGE_MAIN_PASS ? L"-DCULL_STAGE=0" : L"-DCULL_STAGE=1",
                 };
 
                 command.set_pipeline({
@@ -492,8 +436,8 @@ void cull_pass::add_cluster_cull_pass(
                     .lod_scale = lod_scale,
                     .cluster_queue = data.cluster_queue.get_bindless(),
                     .cluster_queue_state = data.cluster_queue_state.get_bindless(),
-                    .max_cluster_count = max_cluster_count,
-                    .max_cluster_node_count = max_cluster_node_count,
+                    .max_cluster_count = graphics_config::get_max_cluster_count(),
+                    .max_cluster_node_count = graphics_config::get_max_cluster_node_count(),
                     .max_draw_command_count = graphics_config::get_max_draw_command_count(),
                 };
 
@@ -518,51 +462,5 @@ void cull_pass::add_cluster_cull_pass(
                 command.dispatch_indirect(data.dispatch_buffer.get_rhi(), 0);
             });
     }
-}
-
-void cull_pass::add_cluster_cull_pass_persistent(
-    render_graph& graph,
-    std::uint32_t max_cluster_count,
-    std::uint32_t max_cluster_node_count)
-{
-    struct pass_data
-    {
-        rdg_buffer_uav cluster_queue;
-        rdg_buffer_uav cluster_queue_state;
-    };
-
-    graph.add_pass<pass_data>(
-        "Cluster Cull",
-        RDG_PASS_COMPUTE,
-        [&](pass_data& data, rdg_pass& pass)
-        {
-            data.cluster_queue = pass.add_buffer_uav(m_cluster_queue, RHI_PIPELINE_STAGE_COMPUTE);
-            data.cluster_queue_state =
-                pass.add_buffer_uav(m_cluster_queue_state, RHI_PIPELINE_STAGE_COMPUTE);
-        },
-        [=](const pass_data& data, rdg_command& command)
-        {
-            auto& device = render_device::instance();
-
-            command.set_pipeline({
-                .compute_shader = device.get_shader<cluster_cull_cs>(),
-            });
-
-            rhi_buffer_srv* cluster_node_buffer_srv =
-                device.get_geometry_manager()->get_cluster_node_buffer()->get_srv();
-            command.set_constant(
-                cluster_cull_cs::constant_data{
-                    .cluster_node_buffer = cluster_node_buffer_srv->get_bindless(),
-                    .cluster_queue = data.cluster_queue.get_bindless(),
-                    .cluster_queue_state = data.cluster_queue_state.get_bindless(),
-                    .max_cluster_count = max_cluster_count,
-                    .max_cluster_node_count = max_cluster_node_count,
-                });
-            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
-            command.set_parameter(1, RDG_PARAMETER_SCENE);
-            command.set_parameter(2, RDG_PARAMETER_CAMERA);
-
-            command.dispatch_1d(1, 64);
-        });
 }
 } // namespace violet

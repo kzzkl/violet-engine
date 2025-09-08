@@ -148,6 +148,7 @@ private:
         using gpu_type = shader::mesh_data;
 
         mat4f matrix_m;
+        mat4f prev_matrix_m;
         vec3f scale;
         std::vector<render_id> instances;
     };
@@ -213,6 +214,8 @@ private:
     bool update_batch(gpu_buffer_uploader* uploader);
 
     gpu_dense_array<gpu_mesh> m_meshes;
+    std::vector<render_id> m_matrix_dirty_meshes;
+
     gpu_dense_array<gpu_instance> m_instances;
     gpu_dense_array<gpu_light> m_lights;
 

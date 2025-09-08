@@ -14,7 +14,10 @@ public:
         rdg_buffer* draw_info_buffer;
 
         std::span<rdg_texture*> gbuffers;
+        rdg_texture* visibility_buffer;
         rdg_texture* depth_buffer;
+
+        bool clear;
     };
 
     void add(render_graph& graph, const parameter& parameter);

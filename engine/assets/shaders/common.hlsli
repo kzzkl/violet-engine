@@ -58,6 +58,7 @@ struct mesh_data
 {
     float4x4 matrix_m;
     float4 scale;
+    float4x4 prev_matrix_m;
 };
 
 struct instance_data
@@ -119,6 +120,8 @@ struct camera_data
     float4x4 matrix_vp_inv;
     float4x4 matrix_vp_no_jitter;
 
+    float4x4 prev_matrix_v;
+    float4x4 prev_matrix_p;
     float4x4 prev_matrix_vp;
     float4x4 prev_matrix_vp_no_jitter;
 

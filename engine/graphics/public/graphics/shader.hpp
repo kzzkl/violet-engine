@@ -122,6 +122,7 @@ struct shader
     {
         mat4f matrix_m;
         vec4f scale;
+        mat4f prev_matrix_m;
     };
 
     struct instance_data
@@ -179,6 +180,8 @@ struct shader
         mat4f matrix_vp_inv;
         mat4f matrix_vp_no_jitter;
 
+        mat4f prev_matrix_v;
+        mat4f prev_matrix_p;
         mat4f prev_matrix_vp;
         mat4f prev_matrix_vp_no_jitter;
 

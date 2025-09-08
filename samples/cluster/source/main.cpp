@@ -1,5 +1,4 @@
 #include "cluster_material.hpp"
-#include "cluster_renderer.hpp"
 #include "common/log.hpp"
 #include "components/camera_component.hpp"
 #include "components/hierarchy_component.hpp"
@@ -40,10 +39,6 @@ public:
         {
             load_model(config["model"]);
         }
-
-        auto& world = get_world();
-        auto& main_camera = world.get_component<camera_component>(get_camera());
-        main_camera.renderer = std::make_unique<cluster_renderer>();
 
         return true;
     }

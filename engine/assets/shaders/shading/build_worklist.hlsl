@@ -15,23 +15,23 @@ struct constant_data
 };
 PushConstant(constant_data, constant);
 
-groupshared uint group_shading_model_flags[MAX_SHADING_MODEL_BATCH_COUNT];
-groupshared uint group_shading_model_list[TILE_SIZE * TILE_SIZE];
-groupshared uint group_shading_model_count;
+groupshared uint gs_shading_model_flags[MAX_SHADING_MODEL_BATCH_COUNT];
+groupshared uint gs_shading_model_list[TILE_SIZE * TILE_SIZE];
+groupshared uint gs_shading_model_count;
 
 [numthreads(TILE_SIZE, TILE_SIZE, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
 {
     if (group_index < MAX_SHADING_MODEL_BATCH_COUNT)
     {
-        group_shading_model_flags[group_index] = 0;
+        gs_shading_model_flags[group_index] = 0;
     }
 
-    group_shading_model_list[group_index] = 0;
+    gs_shading_model_list[group_index] = 0;
 
     if (group_index == 0)
     {
-        group_shading_model_count = 0;
+        gs_shading_model_count = 0;
     }
 
     GroupMemoryBarrierWithGroupSync();
@@ -49,19 +49,19 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint grou
         uint flag_index = shading_model / 32;
         uint flag_bit = shading_model % 32;
         uint flag = 0;
-        InterlockedOr(group_shading_model_flags[flag_index], 1u << flag_bit, flag);
+        InterlockedOr(gs_shading_model_flags[flag_index], 1u << flag_bit, flag);
 
         if ((flag & (1u << flag_bit)) == 0)
         {
             uint shading_model_list_index = 0;
-            InterlockedAdd(group_shading_model_count, 1, shading_model_list_index);
-            group_shading_model_list[shading_model_list_index] = shading_model;
+            InterlockedAdd(gs_shading_model_count, 1, shading_model_list_index);
+            gs_shading_model_list[shading_model_list_index] = shading_model;
         }
     }
 
     GroupMemoryBarrierWithGroupSync();
 
-    if (group_index >= group_shading_model_count)
+    if (group_index >= gs_shading_model_count)
     {
         return;
     }
@@ -69,7 +69,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint grou
     RWStructuredBuffer<uint> worklist = ResourceDescriptorHeap[constant.worklist_buffer];
     RWStructuredBuffer<dispatch_command> shading_dispatch_commands = ResourceDescriptorHeap[constant.shading_dispatch_buffer];
 
-    shading_model = group_shading_model_list[group_index];
+    shading_model = gs_shading_model_list[group_index];
 
     uint worklist_index = 0;
     InterlockedAdd(shading_dispatch_commands[shading_model].x, 1, worklist_index);

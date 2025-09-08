@@ -12,6 +12,16 @@ public:
         return instance().m_max_draw_command_count;
     }
 
+    static std::uint32_t get_max_cluster_count() noexcept
+    {
+        return get_max_candidate_cluster_count() - get_max_cluster_node_count();
+    }
+
+    static std::uint32_t get_max_cluster_node_count() noexcept
+    {
+        return get_max_candidate_cluster_count() / 16;
+    }
+
     static std::uint32_t get_max_candidate_cluster_count() noexcept
     {
         return instance().m_max_candidate_cluster_count;
