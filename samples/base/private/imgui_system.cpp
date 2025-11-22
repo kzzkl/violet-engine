@@ -1,6 +1,6 @@
 #include "sample/imgui_system.hpp"
-#include <imgui.h>
 #include "window/window_system.hpp"
+#include <imgui.h>
 
 namespace violet
 {
@@ -75,11 +75,11 @@ void imgui_system::begin_frame()
 {
     auto& window = get_system<window_system>();
 
-    auto window_extent = window.get_extent();
+    auto window_size = window.get_window_size();
 
     ImGuiIO& io = ImGui::GetIO();
     io.DisplaySize =
-        ImVec2(static_cast<float>(window_extent.width), static_cast<float>(window_extent.height));
+        ImVec2(static_cast<float>(window_size.width), static_cast<float>(window_size.height));
     io.DeltaTime = get_timer().get_frame_delta();
     ImGui::NewFrame();
 
@@ -93,9 +93,10 @@ void imgui_system::begin_frame()
         ImGuiMouseButton_Middle,
         window.get_mouse().key(MOUSE_KEY_MIDDLE).down());
 
+    vec2i mouse_position = window.get_mouse().get_window_position();
     ImGui::GetIO().AddMousePosEvent(
-        static_cast<float>(window.get_mouse().get_x()),
-        static_cast<float>(window.get_mouse().get_y()));
+        static_cast<float>(mouse_position.x),
+        static_cast<float>(mouse_position.y));
 }
 
 void imgui_system::end_frame()

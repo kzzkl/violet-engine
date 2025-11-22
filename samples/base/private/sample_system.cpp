@@ -1,10 +1,13 @@
 #include "sample/sample_system.hpp"
 #include "components/camera_component.hpp"
+#include "components/first_person_control_component.hpp"
 #include "components/hierarchy_component.hpp"
 #include "components/light_component.hpp"
 #include "components/mesh_component.hpp"
+#include "components/orbit_control_component.hpp"
 #include "components/scene_component.hpp"
 #include "components/skybox_component.hpp"
+#include "components/transform_component.hpp"
 #include "control/control_system.hpp"
 #include "graphics/graphics_system.hpp"
 #include "graphics/materials/pbr_material.hpp"
@@ -223,12 +226,13 @@ void sample_system::initialize_scene(std::string_view skybox_path)
     auto& main_light = world.get_component<light_component>(m_light);
     main_light.type = LIGHT_DIRECTIONAL;
     main_light.color = {.x = 1.0f, .y = 1.0f, .z = 1.0f};
+    main_light.cast_shadow = true;
 
     m_camera = world.create();
     world.add_component<
         transform_component,
         camera_component,
-        orbit_control_component,
+        first_person_control_component,
         scene_component>(m_camera);
 
     auto& camera_transform = world.get_component<transform_component>(m_camera);

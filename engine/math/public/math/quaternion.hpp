@@ -167,6 +167,27 @@ public:
     }
 
     template <typename T>
+    [[nodiscard]] static vec3<T> mul_vec(const vec4<T>& q, const vec3<T>& v)
+    {
+        float xxd = 2.0f * q[0] * q[0];
+        float xyd = 2.0f * q[0] * q[1];
+        float xzd = 2.0f * q[0] * q[2];
+        float xwd = 2.0f * q[0] * q[3];
+        float yyd = 2.0f * q[1] * q[1];
+        float yzd = 2.0f * q[1] * q[2];
+        float ywd = 2.0f * q[1] * q[3];
+        float zzd = 2.0f * q[2] * q[2];
+        float zwd = 2.0f * q[2] * q[3];
+        float wwd = 2.0f * q[3] * q[3];
+
+        return {
+            v[0] * (xxd + wwd - 1.0f) + v[1] * (xyd - zwd) + v[2] * (xzd + ywd),
+            v[0] * (xyd + zwd) + v[1] * (yyd + wwd - 1.0f) + v[2] * (yzd - xwd),
+            v[0] * (xzd - ywd) + v[1] * (yzd + xwd) + v[2] * (zzd + wwd - 1.0f),
+        };
+    }
+
+    template <typename T>
     [[nodiscard]] static vec4<T> mul_vec(const vec4<T>& q, const vec4<T>& v)
     {
         if constexpr (std::is_same_v<T, simd>)
@@ -282,7 +303,7 @@ public:
         }
         else
         {
-            float sin_omega = sqrtf(1.0f - cos_omega * cos_omega);
+            float sin_omega = sqrtf(1.0f - (cos_omega * cos_omega));
             float omega = atan2f(sin_omega, cos_omega);
             float div = 1.0f / sin_omega;
             k0 = sinf((1.0f - t) * omega) * div;

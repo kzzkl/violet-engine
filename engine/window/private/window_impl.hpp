@@ -1,6 +1,7 @@
 #pragma once
 
 #include "math/rect.hpp"
+#include "math/types.hpp"
 #include "window/input.hpp"
 #include <string_view>
 
@@ -75,14 +76,20 @@ public:
     virtual void show() = 0;
 
     virtual void* get_handle() const = 0;
-    virtual rect<std::uint32_t> get_extent() const = 0;
+
+    virtual rect<std::uint32_t> get_window_size() const = 0;
+    virtual rect<std::uint32_t> get_screen_size() const = 0;
 
     virtual void set_title(std::string_view title) = 0;
 
     virtual void set_mouse_mode(mouse_mode_type mode) = 0;
     virtual mouse_mode_type get_mouse_mode() const noexcept = 0;
 
-    virtual void set_mouse_cursor(mouse_cursor_type cursor) = 0;
+    virtual void set_cursor(mouse_cursor_type cursor) = 0;
+
+    virtual void set_cursor_position(const vec2i& position) = 0;
+
+    virtual vec2i get_screen_position(const vec2i& window_position) const = 0;
 
     void reset() noexcept
     {

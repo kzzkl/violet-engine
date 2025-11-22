@@ -602,6 +602,8 @@ struct matrix
         result[2][1] = yz * (1.0f - cos) - axis[0] * sin;
         result[2][2] = z2 * (1.0f - cos) + cos;
 
+        result[3][3] = 1.0f;
+
         return result;
     }
 

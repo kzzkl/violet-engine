@@ -1,4 +1,5 @@
-#include "window_impl_win32.hpp"
+#include "window_win32.hpp"
+#include "common/log.hpp"
 #include "common/utility.hpp"
 #include <cassert>
 #include <string>
@@ -221,32 +222,13 @@ keyboard_key convert_key(WPARAM wparam)
         return KEYBOARD_KEY_COUNT;
     }
 };
-
 } // namespace
 
-window_impl_win32::window_impl_win32() noexcept
-    : m_mouse_mode(MOUSE_MODE_ABSOLUTE),
-      m_mouse_mode_change(false),
-      m_mouse_cursor(MOUSE_CURSOR_ARROW),
-      m_mouse_x(0),
-      m_mouse_y(0),
-      m_mouse_move(false),
-      m_mouse_wheel(0),
-      m_mouse_wheel_move(false),
-      m_window_width(0),
-      m_window_height(0),
-      m_window_resize(false),
-      m_window_destroy(false),
-      m_hwnd(nullptr)
-{
-}
+window_win32::window_win32() noexcept = default;
 
-window_impl_win32::~window_impl_win32() {}
+window_win32::~window_win32() {}
 
-bool window_impl_win32::initialize(
-    std::uint32_t width,
-    std::uint32_t height,
-    std::string_view title)
+bool window_win32::initialize(std::uint32_t width, std::uint32_t height, std::string_view title)
 {
     m_instance = GetModuleHandle(0);
 
@@ -300,6 +282,16 @@ bool window_impl_win32::initialize(
                 2;
     SetWindowPos(m_hwnd, 0, pos_x, pos_y, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
 
+    RAWINPUTDEVICE rid;
+    rid.usUsagePage = 0x1;
+    rid.usUsage = 0x2;
+    rid.dwFlags = RIDEV_INPUTSINK;
+    rid.hwndTarget = m_hwnd;
+    if (!RegisterRawInputDevices(&rid, 1, sizeof(RAWINPUTDEVICE)))
+    {
+        log::error("[window] registerRawInputDevices failed.");
+    }
+
     m_mouse_cursor_handles = {
         LoadCursor(nullptr, IDC_ARROW),
         LoadCursor(nullptr, IDC_SIZENWSE),
@@ -313,7 +305,7 @@ bool window_impl_win32::initialize(
     return true;
 }
 
-void window_impl_win32::shutdown()
+void window_win32::shutdown()
 {
     if (!m_window_destroy)
     {
@@ -321,7 +313,7 @@ void window_impl_win32::shutdown()
     }
 }
 
-void window_impl_win32::tick()
+void window_win32::tick()
 {
     if (m_mouse_mode_change)
     {
@@ -341,12 +333,12 @@ void window_impl_win32::tick()
         m_mouse_mode_change = false;
     }
 
-    m_mouse_x = m_mouse_y = 0;
+    // m_mouse_position = {};
     m_mouse_move = false;
     m_mouse_wheel = 0;
     m_mouse_wheel_move = false;
 
-    m_window_width = m_window_height = 0;
+    m_window_size = {};
     m_window_resize = false;
 
     MSG msg = {};
@@ -360,8 +352,8 @@ void window_impl_win32::tick()
     {
         window_message message;
         message.type = window_message::message_type::MOUSE_MOVE;
-        message.mouse_move.x = m_mouse_x;
-        message.mouse_move.y = m_mouse_y;
+        message.mouse_move.x = m_mouse_position.x;
+        message.mouse_move.y = m_mouse_position.y;
         m_messages.push_back(message);
     }
 
@@ -377,26 +369,26 @@ void window_impl_win32::tick()
     {
         window_message message;
         message.type = window_message::message_type::WINDOW_RESIZE;
-        message.window_resize.width = m_window_width;
-        message.window_resize.height = m_window_height;
+        message.window_resize.width = m_window_size.x;
+        message.window_resize.height = m_window_size.y;
         m_messages.push_back(message);
     }
 
     m_mouse_cursor = MOUSE_CURSOR_ARROW;
 }
 
-void window_impl_win32::show()
+void window_win32::show()
 {
     ShowWindow(m_hwnd, SW_SHOW);
     UpdateWindow(m_hwnd);
 }
 
-void* window_impl_win32::get_handle() const
+void* window_win32::get_handle() const
 {
     return m_hwnd;
 }
 
-rect<std::uint32_t> window_impl_win32::get_extent() const
+rect<std::uint32_t> window_win32::get_window_size() const
 {
     RECT extent = {};
     GetClientRect(m_hwnd, &extent);
@@ -410,47 +402,73 @@ rect<std::uint32_t> window_impl_win32::get_extent() const
     return result;
 }
 
-void window_impl_win32::set_title(std::string_view title)
+rect<std::uint32_t> window_win32::get_screen_size() const
+{
+    rect<std::uint32_t> result = {};
+    result.x = 0;
+    result.y = 0;
+    result.width = GetSystemMetrics(SM_CXSCREEN);
+    result.height = GetSystemMetrics(SM_CYSCREEN);
+
+    return result;
+}
+
+void window_win32::set_title(std::string_view title)
 {
     SetWindowText(m_hwnd, string_to_wstring(title).c_str());
 }
 
-void window_impl_win32::set_mouse_mode(mouse_mode_type mode)
+void window_win32::set_mouse_mode(mouse_mode_type mode)
 {
-    m_mouse_mode = mode;
-    m_mouse_mode_change = true;
+    if (m_mouse_mode != mode)
+    {
+        m_mouse_mode = mode;
+        m_mouse_mode_change = true;
+    }
 }
 
-void window_impl_win32::set_mouse_cursor(mouse_cursor_type cursor)
+void window_win32::set_cursor(mouse_cursor_type cursor)
 {
     m_mouse_cursor = cursor;
 }
 
+void window_win32::set_cursor_position(const vec2i& position)
+{
+    SetCursorPos(position.x, position.y);
+}
+
+vec2i window_win32::get_screen_position(const vec2i& window_position) const
+{
+    POINT point = {m_mouse_position.x, m_mouse_position.y};
+    ClientToScreen(m_hwnd, &point);
+
+    return {point.x, point.y};
+}
+
 LRESULT CALLBACK
-window_impl_win32::wnd_create_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
+window_win32::wnd_create_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
     if (message == WM_NCCREATE)
     {
-        auto* create_struct = reinterpret_cast<CREATESTRUCT*>(lparam);
-        auto* impl = reinterpret_cast<window_impl_win32*>(create_struct->lpCreateParams);
+        auto* create_struct =
+            reinterpret_cast<CREATESTRUCT*>(lparam); // NOLINT(performance-no-int-to-ptr)
+        auto* impl = reinterpret_cast<window_win32*>(create_struct->lpCreateParams);
         SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(impl));
-        SetWindowLongPtr(
-            hwnd,
-            GWLP_WNDPROC,
-            reinterpret_cast<LONG_PTR>(&window_impl_win32::wnd_proc));
+        SetWindowLongPtr(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&window_win32::wnd_proc));
         return impl->handle_message(hwnd, message, wparam, lparam);
     }
 
     return DefWindowProc(hwnd, message, wparam, lparam);
 }
 
-LRESULT CALLBACK window_impl_win32::wnd_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
+LRESULT CALLBACK window_win32::wnd_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
-    auto* impl = reinterpret_cast<window_impl_win32*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    auto user_ptr = GetWindowLongPtr(hwnd, GWLP_USERDATA);
+    auto* impl = reinterpret_cast<window_win32*>(user_ptr); // NOLINT(performance-no-int-to-ptr)
     return impl->handle_message(hwnd, message, wparam, lparam);
 }
 
-LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
+LRESULT window_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
     switch (message)
     {
@@ -458,6 +476,24 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
         if (m_mouse_mode == MOUSE_MODE_ABSOLUTE)
         {
             on_mouse_move(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
+        }
+        break;
+    }
+    case WM_INPUT: {
+        if (m_mouse_mode == MOUSE_MODE_RELATIVE)
+        {
+            RAWINPUT raw;
+            UINT raw_size = sizeof(raw);
+            GetRawInputData(
+                reinterpret_cast<HRAWINPUT>(lparam), // NOLINT(performance-no-int-to-ptr)
+                RID_INPUT,
+                &raw,
+                &raw_size,
+                sizeof(RAWINPUTHEADER));
+            if (raw.header.dwType == RIM_TYPEMOUSE)
+            {
+                on_mouse_move(raw.data.mouse.lLastX, raw.data.mouse.lLastY);
+            }
         }
         break;
     }
@@ -538,22 +574,23 @@ LRESULT window_impl_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam
     return DefWindowProc(hwnd, message, wparam, lparam);
 }
 
-void window_impl_win32::on_mouse_move(int x, int y)
+void window_win32::on_mouse_move(int x, int y)
 {
     if (m_mouse_mode == MOUSE_MODE_ABSOLUTE)
     {
-        m_mouse_x = x;
-        m_mouse_y = y;
+        m_mouse_position.x = x;
+        m_mouse_position.y = y;
     }
     else
     {
-        m_mouse_x += x;
-        m_mouse_y += y;
+        m_mouse_position.x += x;
+        m_mouse_position.y += y;
     }
+
     m_mouse_move = true;
 }
 
-void window_impl_win32::on_mouse_key(mouse_key key, bool down)
+void window_win32::on_mouse_key(mouse_key key, bool down)
 {
     window_message message = {};
     message.type = window_message::message_type::MOUSE_KEY;
@@ -562,13 +599,13 @@ void window_impl_win32::on_mouse_key(mouse_key key, bool down)
     m_messages.push_back(message);
 }
 
-void window_impl_win32::on_mouse_wheel(int value)
+void window_win32::on_mouse_wheel(int value)
 {
     m_mouse_wheel += value;
     m_mouse_wheel_move = true;
 }
 
-void window_impl_win32::on_keyboard_key(keyboard_key key, bool down)
+void window_win32::on_keyboard_key(keyboard_key key, bool down)
 {
     window_message message = {};
     message.type = window_message::message_type::KEYBOARD_KEY;
@@ -577,7 +614,7 @@ void window_impl_win32::on_keyboard_key(keyboard_key key, bool down)
     m_messages.push_back(message);
 }
 
-void window_impl_win32::on_keyboard_char(char c)
+void window_win32::on_keyboard_char(char c)
 {
     window_message message = {};
     message.type = window_message::message_type::KEYBOARD_CHAR;
@@ -585,7 +622,7 @@ void window_impl_win32::on_keyboard_char(char c)
     m_messages.push_back(message);
 }
 
-void window_impl_win32::on_window_move(int x, int y)
+void window_win32::on_window_move(int x, int y)
 {
     window_message message = {};
     message.type = window_message::message_type::WINDOW_MOVE;
@@ -594,19 +631,19 @@ void window_impl_win32::on_window_move(int x, int y)
     m_messages.push_back(message);
 }
 
-void window_impl_win32::on_window_resize(std::uint32_t width, std::uint32_t height)
+void window_win32::on_window_resize(std::uint32_t width, std::uint32_t height)
 {
     if (width == 0 || height == 0)
     {
         return;
     }
 
-    m_window_width = width;
-    m_window_height = height;
+    m_window_size.x = width;
+    m_window_size.y = height;
     m_window_resize = true;
 }
 
-void window_impl_win32::on_window_destroy()
+void window_win32::on_window_destroy()
 {
     m_window_destroy = true;
 
