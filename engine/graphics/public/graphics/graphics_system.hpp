@@ -13,6 +13,7 @@ namespace violet
 class camera_component;
 class camera_component_meta;
 class rhi_plugin;
+class vsm_manager;
 class render_scene_manager;
 class gpu_buffer_uploader;
 class graphics_system : public system
@@ -36,7 +37,6 @@ private:
     {
         const camera_component* camera;
         const camera_component_meta* camera_meta;
-        std::uint32_t layer;
     };
 
     void begin_frame();
@@ -49,6 +49,7 @@ private:
 
     std::unique_ptr<rhi_plugin> m_plugin;
 
+    std::unique_ptr<vsm_manager> m_vsm_manager;
     std::unique_ptr<render_scene_manager> m_scene_manager;
 
     std::vector<std::vector<rhi_fence*>> m_used_fences;

@@ -256,31 +256,33 @@ struct matrix
     template <typename T>
     [[nodiscard]] static mat4<T> transpose(const mat4<T>& m) noexcept
     {
-        mat4<T> result;
-        for (std::size_t i = 0; i < 4; ++i)
+        if constexpr (std::is_same_v<T, simd>)
         {
-            for (std::size_t j = 0; j < 4; ++j)
-            {
-                result[j][i] = m[i][j];
-            }
+            __m128 t1 = simd::shuffle<0, 1, 0, 1>(m[0], m[1]);
+            __m128 t2 = simd::shuffle<0, 1, 0, 1>(m[2], m[3]);
+            __m128 t3 = simd::shuffle<2, 3, 2, 3>(m[0], m[1]);
+            __m128 t4 = simd::shuffle<2, 3, 2, 3>(m[2], m[3]);
+
+            mat4f_simd result;
+            result[0] = simd::shuffle<0, 2, 0, 2>(t1, t2);
+            result[1] = simd::shuffle<1, 3, 1, 3>(t1, t2);
+            result[2] = simd::shuffle<0, 2, 0, 2>(t3, t4);
+            result[3] = simd::shuffle<1, 3, 1, 3>(t3, t4);
+
+            return result;
         }
-        return result;
-    }
-
-    [[nodiscard]] static mat4f_simd transpose(const mat4f_simd& m) noexcept
-    {
-        __m128 t1 = simd::shuffle<0, 1, 0, 1>(m[0], m[1]);
-        __m128 t2 = simd::shuffle<0, 1, 0, 1>(m[2], m[3]);
-        __m128 t3 = simd::shuffle<2, 3, 2, 3>(m[0], m[1]);
-        __m128 t4 = simd::shuffle<2, 3, 2, 3>(m[2], m[3]);
-
-        mat4f_simd result;
-        result[0] = simd::shuffle<0, 2, 0, 2>(t1, t2);
-        result[1] = simd::shuffle<1, 3, 1, 3>(t1, t2);
-        result[2] = simd::shuffle<0, 2, 0, 2>(t3, t4);
-        result[3] = simd::shuffle<1, 3, 1, 3>(t3, t4);
-
-        return result;
+        else
+        {
+            mat4<T> result;
+            for (std::size_t i = 0; i < 4; ++i)
+            {
+                for (std::size_t j = 0; j < 4; ++j)
+                {
+                    result[j][i] = m[i][j];
+                }
+            }
+            return result;
+        }
     }
 
     template <typename T>
@@ -944,6 +946,51 @@ struct matrix
                 {value_type(0), h, value_type(0), value_type(0)},
                 {value_type(0), value_type(0), value_type(0), value_type(1)},
                 {value_type(0), value_type(0), near_z, value_type(0)}};
+        }
+    }
+
+    template <typename T = float>
+    [[nodiscard]] static mat4<T> look_at(
+        const vec3<T>& eye,
+        const vec3<T>& target,
+        const vec3<T>& up)
+    {
+        if constexpr (std::is_same_v<T, simd>)
+        {
+            vec4f_simd t = math::load(target);
+            vec4f_simd e = math::load(eye);
+            vec4f_simd u = math::load(up);
+
+            vec4f_simd z_axis = vector::normalize(vector::sub(t, e));
+            vec4f_simd x_axis = vector::normalize(vector::cross(u, z_axis));
+            vec4f_simd y_axis = vector::cross(z_axis, x_axis);
+
+            // TODO: translation matrix
+            mat4f_simd result;
+            result[0] = x_axis;
+            result[1] = y_axis;
+            result[2] = z_axis;
+            result[3] = vector::set(0.0f, 0.0f, 0.0f, 1.0f);
+
+            return transpose(result);
+        }
+        else
+        {
+            vec3<T> z_axis = vector::normalize(target - eye);
+            vec3<T> x_axis = vector::normalize(vector::cross(up, z_axis));
+            vec3<T> y_axis = vector::cross(z_axis, x_axis);
+
+            vec3<T> position = -eye;
+
+            return {
+                {x_axis.x, y_axis.x, z_axis.x, 0.0f},
+                {x_axis.y, y_axis.y, z_axis.y, 0.0f},
+                {x_axis.z, y_axis.z, z_axis.z, 0.0f},
+                {vector::dot(x_axis, position),
+                 vector::dot(y_axis, position),
+                 vector::dot(z_axis, position),
+                 1.0f},
+            };
         }
     }
 

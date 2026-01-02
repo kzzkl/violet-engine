@@ -86,7 +86,7 @@ struct light_data
     float3 position;
     uint type;
     float3 direction;
-    bool shadow;
+    uint vsm_address;
     float3 color;
     uint padding0;
 };

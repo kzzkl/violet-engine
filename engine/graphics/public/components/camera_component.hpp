@@ -11,7 +11,7 @@ class camera_component
 public:
     float near{0.01f};
     float far{std::numeric_limits<float>::infinity()};
-    float fov{math::to_radians(45.0f)};
+    float fov{math::to_radians(60.0f)};
 
     float priority;
 

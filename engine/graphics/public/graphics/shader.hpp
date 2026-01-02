@@ -138,7 +138,7 @@ struct shader
         vec3f position;
         std::uint32_t type;
         vec3f direction;
-        std::uint32_t shadow;
+        std::uint32_t vsm_address;
         vec3f color;
         std::uint32_t padding0;
     };

@@ -23,6 +23,7 @@ private:
     void add_gbuffer_pass(render_graph& graph, bool main_pass);
     void add_hzb_pass(render_graph& graph);
     void add_gtao_pass(render_graph& graph);
+    void add_shadow_pass(render_graph& graph);
     void add_shading_pass(render_graph& graph);
     void add_motion_vector_pass(render_graph& graph);
     void add_taa_pass(render_graph& graph);

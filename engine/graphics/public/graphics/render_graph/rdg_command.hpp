@@ -151,7 +151,7 @@ public:
             (z + thread_group_z - 1) / thread_group_z);
     }
 
-    void dispatch_indirect(rhi_buffer* command_buffer, std::uint32_t command_buffer_offset)
+    void dispatch_indirect(rhi_buffer* command_buffer, std::uint32_t command_buffer_offset = 0)
     {
         m_command->dispatch_indirect(command_buffer, command_buffer_offset);
     }

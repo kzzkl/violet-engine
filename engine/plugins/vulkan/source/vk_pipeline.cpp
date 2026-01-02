@@ -27,7 +27,10 @@ vk_shader::vk_shader(const rhi_shader_desc& desc, vk_context* context)
     {
         parameter parameter = {
             .space = desc.parameters[i].space,
-            .layout = layout_manager->get_parameter_layout(desc.parameters[i].desc),
+            .layout = layout_manager->get_parameter_layout({
+                desc.parameters[i].desc.bindings,
+                desc.parameters[i].desc.binding_count,
+            }),
         };
         m_parameters.push_back(parameter);
     }
@@ -271,27 +274,30 @@ vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_
         .blendConstants = {0.0f, 0.0f, 0.0f, 0.0f},
     };
 
-    vk_pipeline_layout_desc pipeline_layout_desc = {};
+    std::array<const vk_parameter_layout*, rhi_constants::max_parameters> parameters = {};
+    std::uint32_t push_constant_size = 0;
+    VkShaderStageFlags push_constant_stages = 0;
 
     for (vk_shader* shader : shaders)
     {
-        std::uint32_t constant_size = shader->get_push_constant_size();
-
-        if (constant_size != 0)
+        if (shader->get_push_constant_size() != 0)
         {
-            pipeline_layout_desc.push_constant_stages |= shader->get_stage();
-            pipeline_layout_desc.push_constant_size = constant_size;
+            push_constant_stages |= shader->get_stage();
+            push_constant_size = shader->get_push_constant_size();
         }
 
         for (const auto& parameter : shader->get_parameters())
         {
-            pipeline_layout_desc.parameters[parameter.space] = parameter.layout;
+            parameters[parameter.space] = parameter.layout;
         }
     }
 
-    assert(pipeline_layout_desc.push_constant_size <= 128);
+    assert(push_constant_size <= 128);
 
-    m_pipeline_layout = m_context->get_layout_manager()->get_pipeline_layout(pipeline_layout_desc);
+    m_pipeline_layout = m_context->get_layout_manager()->get_pipeline_layout(
+        push_constant_size,
+        push_constant_stages,
+        parameters);
 
     std::vector<VkDynamicState> dynamic_state = {
         VK_DYNAMIC_STATE_VIEWPORT,
@@ -349,15 +355,16 @@ vk_compute_pipeline::vk_compute_pipeline(const rhi_compute_pipeline_desc& desc, 
         .pName = compute_shader->get_entry_point().c_str(),
     };
 
-    vk_pipeline_layout_desc pipeline_layout_desc = {
-        .push_constant_stages = VK_SHADER_STAGE_COMPUTE_BIT,
-        .push_constant_size = compute_shader->get_push_constant_size(),
-    };
+    std::array<const vk_parameter_layout*, rhi_constants::max_parameters> parameters = {};
     for (const auto& parameter : compute_shader->get_parameters())
     {
-        pipeline_layout_desc.parameters[parameter.space] = parameter.layout;
+        parameters[parameter.space] = parameter.layout;
     }
-    m_pipeline_layout = m_context->get_layout_manager()->get_pipeline_layout(pipeline_layout_desc);
+
+    m_pipeline_layout = m_context->get_layout_manager()->get_pipeline_layout(
+        compute_shader->get_push_constant_size(),
+        VK_SHADER_STAGE_COMPUTE_BIT,
+        parameters);
 
     VkComputePipelineCreateInfo pipeline_info = {
         .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,

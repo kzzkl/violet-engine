@@ -1,6 +1,6 @@
 #include "common.hlsli"
 
-static const uint GROUP_SIZE = 256;
+static const uint GROUP_SIZE = 128;
 
 struct constant_data
 {
@@ -64,7 +64,7 @@ void scan_offset(uint gi : SV_GroupIndex, uint3 gid : SV_GroupID)
         gs_offset = 0;
         for (uint i = 0; i <= gid.x; ++i)
         {
-            gs_offset += offset_buffer[gid.x];
+            gs_offset += offset_buffer[i];
         }
     }
 

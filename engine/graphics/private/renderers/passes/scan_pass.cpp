@@ -38,14 +38,14 @@ struct scan_offset_cs : public shader_cs
 
 void scan_pass::add(render_graph& graph, const parameter& parameter)
 {
-    assert(parameter.size < group_size * max_group_count);
+    assert(parameter.size < group_size * group_size);
+
+    rdg_scope scope(graph, "Scan");
 
     if (parameter.size > group_size)
     {
-        m_offset_buffer = graph.add_buffer(
-            "Scan Offset",
-            max_group_count * sizeof(std::uint32_t),
-            RHI_BUFFER_STORAGE);
+        m_offset_buffer =
+            graph.add_buffer("Scan Offset", group_size * sizeof(std::uint32_t), RHI_BUFFER_STORAGE);
     }
 
     add_scan_pass(graph, parameter);

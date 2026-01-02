@@ -76,7 +76,15 @@ public:
             }
 
             auto& box_transform = world.get_component<transform_component>(m_boxes[i]);
-            box_transform.set_position({2.0f * static_cast<float>(i), 3.0f, 0.0f});
+            if (i == 0)
+            {
+                box_transform.set_scale(1.28f);
+                box_transform.set_position({0.0f, 0.0f, 0.0f});
+            }
+            else
+            {
+                box_transform.set_position({2.0f * static_cast<float>(i), 3.0f, 0.0f});
+            }
         }
 
         return true;
@@ -124,6 +132,32 @@ private:
             if (ImGui::ColorEdit3("Albedo", albedo))
             {
                 m_pbr_material->set_albedo({albedo[0], albedo[1], albedo[2]});
+            }
+        }
+
+        if (ImGui::CollapsingHeader("Light"))
+        {
+            static float rotate_x = 0.0f;
+            static float rotate_y = 0.0f;
+
+            bool dirty = false;
+
+            if (ImGui::SliderFloat("Rotate X", &rotate_x, 0.0, 360.0))
+            {
+                dirty = true;
+            }
+
+            if (ImGui::SliderFloat("Rotate Y", &rotate_y, 0.0, 360.0))
+            {
+                dirty = true;
+            }
+
+            if (dirty)
+            {
+                auto& transform = world.get_component<transform_component>(get_light());
+                transform.set_rotation(
+                    quaternion::from_euler(
+                        vec3f{math::to_radians(rotate_x), math::to_radians(rotate_y), 0.0f}));
             }
         }
 

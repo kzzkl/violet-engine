@@ -7,6 +7,7 @@ add_library(violet-graphics STATIC
     private/render_graph/rdg_command.cpp
     private/render_graph/rdg_pass.cpp
     private/render_graph/render_graph.cpp
+    private/renderers/features/vsm_render_feature.cpp
     private/renderers/passes/blit_pass.cpp
     private/renderers/passes/copy_depth_pass.cpp
     private/renderers/passes/cull_pass.cpp
@@ -19,6 +20,7 @@ add_library(violet-graphics STATIC
     private/renderers/passes/motion_vector_pass.cpp
     private/renderers/passes/scan_pass.cpp
     private/renderers/passes/shading_pass.cpp
+    private/renderers/passes/shadow_pass.cpp
     private/renderers/passes/skybox_pass.cpp
     private/renderers/passes/taa_pass.cpp
     private/renderers/passes/tone_mapping_pass.cpp
@@ -38,6 +40,7 @@ add_library(violet-graphics STATIC
     private/tools/geometry_tool.cpp
     private/tools/ibl_tool.cpp
     private/tools/texture_loader.cpp
+    private/virtual_shadow_map/vsm_manager.cpp
     private/camera_system.cpp
     private/debug_drawer.cpp
     private/environment_system.cpp

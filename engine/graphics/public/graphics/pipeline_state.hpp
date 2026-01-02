@@ -49,7 +49,12 @@ private:
     {
         std::size_t operator()(const rhi_rasterizer_state& value) const noexcept
         {
-            return hash::xx_hash(&value, sizeof(rhi_rasterizer_state));
+            rhi_rasterizer_state copy = {};
+
+            copy.cull_mode = value.cull_mode;
+            copy.polygon_mode = value.polygon_mode;
+
+            return hash::xx_hash(&copy, sizeof(rhi_rasterizer_state));
         }
     };
 
@@ -159,7 +164,20 @@ private:
     {
         std::size_t operator()(const rhi_blend_state& value) const noexcept
         {
-            return hash::xx_hash(&value, sizeof(rhi_blend_state));
+            rhi_blend_state copy = {};
+
+            for (std::size_t i = 0; i < rhi_constants::max_attachments; ++i)
+            {
+                copy.attachments[i].enable = value.attachments[i].enable;
+                copy.attachments[i].src_color_factor = value.attachments[i].src_color_factor;
+                copy.attachments[i].dst_color_factor = value.attachments[i].dst_color_factor;
+                copy.attachments[i].color_op = value.attachments[i].color_op;
+                copy.attachments[i].src_alpha_factor = value.attachments[i].src_alpha_factor;
+                copy.attachments[i].dst_alpha_factor = value.attachments[i].dst_alpha_factor;
+                copy.attachments[i].alpha_op = value.attachments[i].alpha_op;
+            }
+
+            return hash::xx_hash(&copy, sizeof(rhi_blend_state));
         }
     };
 
@@ -246,7 +264,26 @@ private:
     {
         std::size_t operator()(const rhi_depth_stencil_state& value) const noexcept
         {
-            return hash::xx_hash(&value, sizeof(rhi_depth_stencil_state));
+            rhi_depth_stencil_state copy = {};
+
+            copy.depth_enable = value.depth_enable;
+            copy.depth_write_enable = value.depth_write_enable;
+            copy.depth_compare_op = value.depth_compare_op;
+            copy.stencil_enable = value.stencil_enable;
+
+            copy.stencil_front.compare_op = value.stencil_front.compare_op;
+            copy.stencil_front.pass_op = value.stencil_front.pass_op;
+            copy.stencil_front.fail_op = value.stencil_front.fail_op;
+            copy.stencil_front.depth_fail_op = value.stencil_front.depth_fail_op;
+            copy.stencil_front.reference = value.stencil_front.reference;
+
+            copy.stencil_back.compare_op = value.stencil_back.compare_op;
+            copy.stencil_back.pass_op = value.stencil_back.pass_op;
+            copy.stencil_back.fail_op = value.stencil_back.fail_op;
+            copy.stencil_back.depth_fail_op = value.stencil_back.depth_fail_op;
+            copy.stencil_back.reference = value.stencil_back.reference;
+
+            return hash::xx_hash(&copy, sizeof(rhi_depth_stencil_state));
         }
     };
 

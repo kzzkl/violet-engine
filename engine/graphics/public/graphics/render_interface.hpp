@@ -10,7 +10,7 @@ struct rhi_constants
 {
     static constexpr std::size_t max_attachments = 8;
     static constexpr std::size_t max_parameter_bindings = 8;
-    static constexpr std::size_t max_parameters = 16;
+    static constexpr std::size_t max_parameters = 8;
     static constexpr std::size_t max_vertex_attributes = 8;
 };
 

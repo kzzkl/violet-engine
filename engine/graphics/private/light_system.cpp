@@ -41,19 +41,19 @@ void light_system::update(render_scene_manager& scene_manager)
                 {
                     if (light_meta.scene != nullptr)
                     {
-                        render_scene->remove_light(light_meta.id);
+                        light_meta.scene->remove_light(light_meta.id);
                     }
 
-                    light_meta.id = render_scene->add_light();
+                    light_meta.id = render_scene->add_light(light.type);
                     light_meta.scene = render_scene;
                 }
 
                 render_scene->set_light_data(
                     light_meta.id,
-                    light.type,
                     light.color,
                     transform.get_position(),
                     transform.get_forward());
+                render_scene->set_light_shadow(light_meta.id, light.cast_shadow);
             },
             [this](auto& view)
             {

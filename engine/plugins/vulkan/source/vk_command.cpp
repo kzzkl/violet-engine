@@ -39,18 +39,30 @@ void vk_command::end_render_pass()
 void vk_command::set_pipeline(rhi_raster_pipeline* raster_pipeline)
 {
     auto* pipeline = static_cast<vk_raster_pipeline*>(raster_pipeline);
+    if (m_current_pipeline == pipeline->get_pipeline())
+    {
+        return;
+    }
+
     vkCmdBindPipeline(m_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->get_pipeline());
 
     m_current_pipeline_layout = pipeline->get_pipeline_layout();
+    m_current_pipeline = pipeline->get_pipeline();
     m_current_bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS;
 }
 
 void vk_command::set_pipeline(rhi_compute_pipeline* compute_pipeline)
 {
     auto* pipeline = static_cast<vk_compute_pipeline*>(compute_pipeline);
+    if (m_current_pipeline == pipeline->get_pipeline())
+    {
+        return;
+    }
+
     vkCmdBindPipeline(m_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->get_pipeline());
 
     m_current_pipeline_layout = pipeline->get_pipeline_layout();
+    m_current_pipeline = pipeline->get_pipeline();
     m_current_bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
 }
 

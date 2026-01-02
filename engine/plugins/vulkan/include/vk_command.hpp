@@ -154,6 +154,7 @@ private:
 
     vk_render_pass* m_current_render_pass;
     vk_pipeline_layout* m_current_pipeline_layout;
+    VkPipeline m_current_pipeline;
     VkPipelineBindPoint m_current_bind_point;
 
     std::vector<VkSemaphore> m_signal_fences;

@@ -14,5 +14,7 @@ struct light_component
 {
     light_type type{LIGHT_DIRECTIONAL};
     vec3f color{1.0f, 1.0f, 1.0f};
+
+    bool cast_shadow{false};
 };
 } // namespace violet

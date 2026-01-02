@@ -1,6 +1,7 @@
 #include "camera_system.hpp"
 #include "components/camera_component.hpp"
 #include "components/camera_component_meta.hpp"
+#include "components/scene_component.hpp"
 #include "components/transform_component.hpp"
 #include "graphics/renderers/features/taa_render_feature.hpp"
 
@@ -70,22 +71,6 @@ shader::camera_data get_camera_data(
 
     return result;
 }
-
-rhi_texture_extent get_previous_pow2_extent(const rhi_texture_extent& extent)
-{
-    rhi_texture_extent result = {.width = 1, .height = 1};
-    while ((result.width << 1) < extent.width)
-    {
-        result.width <<= 1;
-    }
-
-    while ((result.height << 1) < extent.height)
-    {
-        result.height <<= 1;
-    }
-
-    return result;
-}
 } // namespace
 
 camera_system::camera_system()
@@ -102,18 +87,20 @@ bool camera_system::initialize(const dictionary& config)
     return true;
 }
 
-void camera_system::update()
+void camera_system::update(render_scene_manager& scene_manager)
 {
     auto& world = get_world();
 
     world.get_view()
+        .read<scene_component>()
         .read<camera_component>()
         .read<transform_world_component>()
         .write<camera_component_meta>()
         .each(
-            [](const camera_component& camera,
-               const transform_world_component& transform,
-               camera_component_meta& camera_meta)
+            [&](const scene_component& scene,
+                const camera_component& camera,
+                const transform_world_component& transform,
+                camera_component_meta& camera_meta)
             {
                 if (!camera.has_render_target() || camera.renderer == nullptr)
                 {
@@ -126,11 +113,10 @@ void camera_system::update()
                         render_device::instance().create_parameter(shader::camera);
                 }
 
-                if (camera_meta.hzb == nullptr || camera_meta.extent != camera.get_extent())
+                if (camera_meta.hzb == nullptr ||
+                    camera_meta.hzb->get_extent() != camera.get_extent())
                 {
-                    camera_meta.extent = camera.get_extent();
-
-                    rhi_texture_extent extent = get_previous_pow2_extent(camera_meta.extent);
+                    rhi_texture_extent extent = camera.get_extent();
 
                     std::uint32_t max_size = std::max(extent.width, extent.height);
                     std::uint32_t level_count =
@@ -158,6 +144,20 @@ void camera_system::update()
                 camera_meta.matrix_p = data.matrix_p;
                 camera_meta.matrix_vp = data.matrix_vp;
                 camera_meta.matrix_vp_no_jitter = data.matrix_vp_no_jitter;
+
+                render_scene* render_scene = scene_manager.get_scene(scene.layer);
+                if (camera_meta.scene != render_scene)
+                {
+                    if (camera_meta.scene != nullptr)
+                    {
+                        camera_meta.scene->remove_camera(camera_meta.id);
+                    }
+
+                    camera_meta.id = render_scene->add_camera();
+                    camera_meta.scene = render_scene;
+                }
+
+                render_scene->set_camera_position(camera_meta.id, data.position);
             });
 
     m_system_version = world.get_version();

@@ -537,8 +537,13 @@ void vk_context::initialize_vma()
 void vk_context::initialize_descriptor_pool(bool bindless)
 {
     std::vector<VkDescriptorPoolSize> pool_size = {
-        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1024},
-        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1024}};
+        {.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, .descriptorCount = 1024},
+        {.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, .descriptorCount = 1024},
+        {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1024},
+        {.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, .descriptorCount = 1024},
+        {.type = VK_DESCRIPTOR_TYPE_SAMPLER, .descriptorCount = 1024},
+        {.type = VK_DESCRIPTOR_TYPE_MUTABLE_EXT, .descriptorCount = 65536},
+    };
 
     VkDescriptorPoolCreateInfo pool_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,

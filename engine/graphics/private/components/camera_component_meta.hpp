@@ -17,7 +17,8 @@ public:
     rhi_ptr<rhi_texture> hzb;
     rhi_ptr<rhi_parameter> parameter;
 
-    rhi_texture_extent extent;
+    render_scene* scene{nullptr};
+    render_id id{INVALID_RENDER_ID};
 };
 
 template <>

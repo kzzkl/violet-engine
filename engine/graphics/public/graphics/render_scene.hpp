@@ -9,11 +9,57 @@
 
 namespace violet
 {
+class camera_component;
+class camera_component_meta;
+class render_camera
+{
+public:
+    render_camera(const camera_component* camera, const camera_component_meta* camera_meta);
+
+    render_id get_id() const noexcept;
+
+    float get_near() const noexcept;
+    float get_far() const noexcept;
+    float get_fov() const noexcept;
+
+    const mat4f& get_matrix_v() const noexcept;
+    const mat4f& get_matrix_p() const noexcept;
+
+    const rhi_viewport& get_viewport() const noexcept
+    {
+        return m_viewport;
+    }
+
+    const std::vector<rhi_scissor_rect>& get_scissor_rects() const noexcept
+    {
+        return m_scissor_rects;
+    }
+
+    rhi_texture* get_render_target() const noexcept
+    {
+        return m_render_target;
+    }
+
+    rhi_texture* get_hzb() const noexcept;
+
+    rhi_parameter* get_camera_parameter() const noexcept;
+
+private:
+    rhi_texture* m_render_target;
+
+    rhi_viewport m_viewport;
+    std::vector<rhi_scissor_rect> m_scissor_rects;
+
+    const camera_component* m_camera;
+    const camera_component_meta* m_camera_meta;
+};
+
 class gpu_buffer_uploader;
+class vsm_manager;
 class render_scene
 {
 public:
-    render_scene();
+    render_scene(vsm_manager* vsm_manager);
     render_scene(const render_scene&) = delete;
 
     ~render_scene();
@@ -32,15 +78,18 @@ public:
         std::uint32_t submesh_index);
     void set_instance_material(render_id instance_id, material* material);
 
-    render_id add_light();
+    render_id add_light(std::uint32_t type);
     void remove_light(render_id light_id);
     void set_light_data(
         render_id light_id,
-        std::uint32_t type,
         const vec3f& color,
         const vec3f& position,
         const vec3f& direction);
     void set_light_shadow(render_id light_id, bool cast_shadow);
+
+    render_id add_camera();
+    void remove_camera(render_id camera_id);
+    void set_camera_position(render_id camera_id, const vec3f& position);
 
     void set_skybox(texture_cube* skybox, texture_cube* irradiance, texture_cube* prefilter);
     bool has_skybox() const noexcept
@@ -84,6 +133,15 @@ public:
     {
         return m_scene_parameter.get();
     }
+
+    rhi_buffer* get_directional_vsm_buffer() const noexcept
+    {
+        return m_directional_vsm_buffer.get_buffer()->get_rhi();
+    }
+
+    rhi_buffer* get_vsm_buffer() const noexcept;
+    rhi_buffer* get_vsm_virtual_page_table() const noexcept;
+    rhi_buffer* get_vsm_physical_page_table() const noexcept;
 
     template <typename Functor>
     void each_batch(surface_type surface_type, material_path material_path, Functor&& functor) const
@@ -174,7 +232,15 @@ private:
         vec3f position;
         vec3f direction;
         vec3f color;
-        std::uint32_t shadow;
+
+        // when the light type is directional light, vsm_address points to the address of
+        // directional_vsm_buffer. for other types, vsm_address is the id of vsm.
+        render_id vsm_address{INVALID_RENDER_ID};
+
+        bool cast_shadow() const noexcept
+        {
+            return vsm_address != INVALID_RENDER_ID;
+        }
     };
 
     enum render_scene_state : std::uint8_t
@@ -201,12 +267,51 @@ private:
     {
         std::uint64_t operator()(const batch_key& key) const noexcept
         {
-            return hash::xx_hash(&key, sizeof(key));
+            rhi_raster_pipeline_desc desc = key.pipeline.get_desc(nullptr);
+
+            std::uint64_t hash0 = hash::xx_hash(&desc, sizeof(rhi_raster_pipeline_desc));
+            std::uint64_t hash1 = hash::xx_hash(&key.surface_type, sizeof(surface_type));
+            std::uint64_t hash2 = hash::xx_hash(&key.material_path, sizeof(material_path));
+
+            return hash::combine(hash::combine(hash0, hash1), hash2);
         }
+    };
+
+    struct gpu_directional_vsm
+    {
+        using gpu_type = std::array<std::uint32_t, 16>;
+
+        struct vsm
+        {
+            render_id vsm_id;
+            render_id camera_id;
+        };
+
+        std::array<vsm, 16> vsms; // vsm_id, camera_id
+    };
+
+    struct camera_data
+    {
+        struct vsm
+        {
+            render_id vsm_id;
+            render_id light_id;
+        };
+
+        render_id camera_id;
+        vec3f position;
+
+        std::vector<vsm> vsms; // vsm_id, light_id
     };
 
     void add_instance_to_batch(render_id instance_id, const material* material);
     void remove_instance_from_batch(render_id instance_id);
+
+    void add_vsm_by_light(render_id light_id);
+    void remove_vsm_by_light(render_id light_id);
+
+    void add_vsm_by_camera(render_id camera_id);
+    void remove_vsm_by_camera(render_id camera_id);
 
     bool update_mesh(gpu_buffer_uploader* uploader);
     bool update_instance(gpu_buffer_uploader* uploader);
@@ -225,54 +330,18 @@ private:
     std::vector<std::pair<rdg_compute_pipeline, std::uint32_t>> m_material_resolve_pipelines;
     std::vector<std::pair<shading_model_base*, std::uint32_t>> m_shading_models;
 
+    std::vector<camera_data> m_cameras;
+    index_allocator m_camera_allocator;
+
+    gpu_sparse_array<gpu_directional_vsm> m_directional_vsm_buffer;
+
     std::uint32_t m_instance_capacity{1};
 
     render_scene_states m_scene_states{0};
 
     shader::scene_data m_scene_data{};
     rhi_ptr<rhi_parameter> m_scene_parameter;
-};
 
-class camera_component;
-class camera_component_meta;
-class render_camera
-{
-public:
-    render_camera(const camera_component* camera, const camera_component_meta* camera_meta);
-
-    float get_near() const noexcept;
-    float get_far() const noexcept;
-    float get_fov() const noexcept;
-
-    const mat4f& get_matrix_v() const noexcept;
-    const mat4f& get_matrix_p() const noexcept;
-
-    const rhi_viewport& get_viewport() const noexcept
-    {
-        return m_viewport;
-    }
-
-    const std::vector<rhi_scissor_rect>& get_scissor_rects() const noexcept
-    {
-        return m_scissor_rects;
-    }
-
-    rhi_texture* get_render_target() const noexcept
-    {
-        return m_render_target;
-    }
-
-    rhi_texture* get_hzb() const noexcept;
-
-    rhi_parameter* get_camera_parameter() const noexcept;
-
-private:
-    rhi_texture* m_render_target;
-
-    rhi_viewport m_viewport;
-    std::vector<rhi_scissor_rect> m_scissor_rects;
-
-    const camera_component* m_camera;
-    const camera_component_meta* m_camera_meta;
+    vsm_manager* m_vsm_manager;
 };
 } // namespace violet

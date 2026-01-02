@@ -2,6 +2,7 @@
 #include "graphics/graphics_config.hpp"
 #include "graphics/renderers/features/gtao_render_feature.hpp"
 #include "graphics/renderers/features/taa_render_feature.hpp"
+#include "graphics/renderers/features/vsm_render_feature.hpp"
 #include "graphics/renderers/passes/blit_pass.hpp"
 #include "graphics/renderers/passes/cull_pass.hpp"
 #include "graphics/renderers/passes/gbuffer_pass.hpp"
@@ -9,6 +10,7 @@
 #include "graphics/renderers/passes/hzb_pass.hpp"
 #include "graphics/renderers/passes/motion_vector_pass.hpp"
 #include "graphics/renderers/passes/shading_pass.hpp"
+#include "graphics/renderers/passes/shadow_pass.hpp"
 #include "graphics/renderers/passes/skybox_pass.hpp"
 #include "graphics/renderers/passes/taa_pass.hpp"
 #include "graphics/renderers/passes/tone_mapping_pass.hpp"
@@ -17,6 +19,7 @@ namespace violet
 {
 deferred_renderer::deferred_renderer()
 {
+    add_feature<vsm_render_feature>();
     add_feature<taa_render_feature>();
     add_feature<gtao_render_feature>();
 }
@@ -64,15 +67,16 @@ void deferred_renderer::on_render(render_graph& graph)
         }
 
         add_shading_pass(graph);
+        add_shadow_pass(graph);
     }
 
     if (graph.get_scene().has_skybox())
     {
-        graph.add_pass<skybox_pass>({
-            .render_target = m_render_target,
-            .depth_buffer = m_depth_buffer,
-            .clear = graph.get_scene().get_instance_count() == 0,
-        });
+        // graph.add_pass<skybox_pass>({
+        //     .render_target = m_render_target,
+        //     .depth_buffer = m_depth_buffer,
+        //     .clear = graph.get_scene().get_instance_count() == 0,
+        // });
     }
 
     if (get_feature<taa_render_feature>(true))
@@ -213,6 +217,20 @@ void deferred_renderer::add_gtao_pass(render_graph& graph)
         .depth_buffer = m_depth_buffer,
         .normal_buffer = m_gbuffers[SHADING_GBUFFER_NORMAL],
         .ao_buffer = m_ao_buffer,
+    });
+}
+
+void deferred_renderer::add_shadow_pass(render_graph& graph)
+{
+    auto* vsm = get_feature<vsm_render_feature>();
+
+    graph.add_pass<shadow_pass>({
+        .render_target = m_render_target,
+        .depth_buffer = m_depth_buffer,
+        .lru_state = graph.add_buffer("VSM LRU State", vsm->get_lru_state()),
+        .lru_buffer = graph.add_buffer("VSM LRU Buffer", vsm->get_lru_buffer()),
+        .lru_curr_index = vsm->get_curr_lru_index(),
+        .lru_prev_index = vsm->get_prev_lru_index(),
     });
 }
 

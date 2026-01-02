@@ -45,6 +45,8 @@ public:
         return m_buffer->get_buffer_pointer();
     }
 
+    void set_name(const std::string_view& name) noexcept;
+
 protected:
     void set_buffer(const rhi_buffer_desc& desc);
     void set_buffer(rhi_ptr<rhi_buffer>&& buffer);

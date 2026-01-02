@@ -20,7 +20,7 @@ float4 project_shpere_vs(float4 sphere, float p00, float p11)
     return aabb;
 }
 
-float3 visualize_id(uint index)
+float3 to_color(uint index)
 {
     uint hash = index + 1;
     hash ^= hash >> 16;
