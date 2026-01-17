@@ -3,7 +3,7 @@
 
 struct constant_data
 {
-    uint physical_page_table;
+    uint vsm_physical_page_table;
     uint lru_state;
     uint lru_buffer;
     uint lru_curr_index;
@@ -17,7 +17,7 @@ static const uint VSM_LRU_INVALID_MASK = 1 << 31;
 [numthreads(64, 1, 1)]
 void mark_invalid_pages(uint3 dtid : SV_DispatchThreadID)
 {
-    RWStructuredBuffer<vsm_physical_page> physical_page_table = ResourceDescriptorHeap[constant.physical_page_table];
+    RWStructuredBuffer<vsm_physical_page> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
     
     StructuredBuffer<vsm_lru_state> lru_states = ResourceDescriptorHeap[constant.lru_state];
     RWStructuredBuffer<uint> lru_buffer = ResourceDescriptorHeap[constant.lru_buffer];
@@ -85,12 +85,12 @@ void remove_invalid_pages(uint3 dtid : SV_DispatchThreadID)
 [numthreads(64, 1, 1)]
 void append_unused_pages(uint3 dtid : SV_DispatchThreadID)
 {
-    RWStructuredBuffer<vsm_physical_page> physical_page_table = ResourceDescriptorHeap[constant.physical_page_table];
+    RWStructuredBuffer<vsm_physical_page> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
     RWStructuredBuffer<vsm_lru_state> lru_states = ResourceDescriptorHeap[constant.lru_state];
     RWStructuredBuffer<uint> lru_buffer = ResourceDescriptorHeap[constant.lru_buffer];
 
     uint physical_page_index = dtid.x;
-    if (physical_page_index >= PHYSICAL_PAGE_TABLE_ITEM_COUNT)
+    if (physical_page_index >= PHYSICAL_PAGE_TABLE_PAGE_COUNT)
     {
         return;
     }

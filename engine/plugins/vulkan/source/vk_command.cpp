@@ -22,12 +22,13 @@ vk_command::~vk_command() {}
 void vk_command::begin_render_pass(
     rhi_render_pass* render_pass,
     const rhi_attachment* attachments,
-    std::uint32_t attachment_count)
+    std::uint32_t attachment_count,
+    const rhi_texture_extent& render_area)
 {
     assert(m_current_render_pass == nullptr);
 
     m_current_render_pass = static_cast<vk_render_pass*>(render_pass);
-    m_current_render_pass->begin(m_command_buffer, attachments, attachment_count);
+    m_current_render_pass->begin(m_command_buffer, attachments, attachment_count, render_area);
 }
 
 void vk_command::end_render_pass()

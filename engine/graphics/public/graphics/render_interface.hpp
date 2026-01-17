@@ -826,7 +826,8 @@ public:
     virtual void begin_render_pass(
         rhi_render_pass* render_pass,
         const rhi_attachment* attachments,
-        std::uint32_t attachment_count) = 0;
+        std::uint32_t attachment_count,
+        const rhi_texture_extent& render_area = {}) = 0;
     virtual void end_render_pass() = 0;
 
     virtual void set_pipeline(rhi_raster_pipeline* raster_pipeline) = 0;

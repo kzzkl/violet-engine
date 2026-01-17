@@ -41,6 +41,19 @@ void deferred_renderer::on_render(render_graph& graph)
         RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
         RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
 
+    const auto& scene = graph.get_scene();
+
+    m_vsm_buffer = graph.add_buffer("VSM Buffer", scene.get_vsm_buffer());
+    m_vsm_virtual_page_table =
+        graph.add_buffer("VSM Page Table", scene.get_vsm_virtual_page_table());
+    m_vsm_physical_page_table =
+        graph.add_buffer("VSM Physical Page Table", scene.get_vsm_physical_page_table());
+    m_vsm_physical_texture = graph.add_texture(
+        "VSM Physical Texture",
+        scene.get_vsm_physical_texture(),
+        RHI_TEXTURE_LAYOUT_GENERAL,
+        RHI_TEXTURE_LAYOUT_GENERAL);
+
     if (graph.get_scene().get_instance_count() != 0)
     {
         {
@@ -66,17 +79,17 @@ void deferred_renderer::on_render(render_graph& graph)
             m_ao_buffer = nullptr;
         }
 
-        add_shading_pass(graph);
         add_shadow_pass(graph);
+        add_shading_pass(graph);
     }
 
     if (graph.get_scene().has_skybox())
     {
-        // graph.add_pass<skybox_pass>({
-        //     .render_target = m_render_target,
-        //     .depth_buffer = m_depth_buffer,
-        //     .clear = graph.get_scene().get_instance_count() == 0,
-        // });
+        graph.add_pass<skybox_pass>({
+            .render_target = m_render_target,
+            .depth_buffer = m_depth_buffer,
+            .clear = graph.get_scene().get_instance_count() == 0,
+        });
     }
 
     if (get_feature<taa_render_feature>(true))
@@ -227,6 +240,10 @@ void deferred_renderer::add_shadow_pass(render_graph& graph)
     graph.add_pass<shadow_pass>({
         .render_target = m_render_target,
         .depth_buffer = m_depth_buffer,
+        .vsm_buffer = m_vsm_buffer,
+        .vsm_virtual_page_table = m_vsm_virtual_page_table,
+        .vsm_physical_page_table = m_vsm_physical_page_table,
+        .vsm_physical_texture = m_vsm_physical_texture,
         .lru_state = graph.add_buffer("VSM LRU State", vsm->get_lru_state()),
         .lru_buffer = graph.add_buffer("VSM LRU Buffer", vsm->get_lru_buffer()),
         .lru_curr_index = vsm->get_curr_lru_index(),
@@ -245,6 +262,9 @@ void deferred_renderer::add_shading_pass(render_graph& graph)
         .gbuffers = m_gbuffers,
         .auxiliary_buffers = auxiliary_buffers,
         .render_target = m_render_target,
+        .vsm_buffer = m_vsm_buffer,
+        .vsm_virtual_page_table = m_vsm_virtual_page_table,
+        .vsm_physical_texture = m_vsm_physical_texture,
     });
 }
 

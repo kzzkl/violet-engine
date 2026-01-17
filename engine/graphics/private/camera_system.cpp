@@ -133,18 +133,6 @@ void camera_system::update(render_scene_manager& scene_manager)
                     });
                 }
 
-                shader::camera_data data = get_camera_data(camera, transform);
-                data.prev_matrix_v = camera_meta.matrix_v;
-                data.prev_matrix_p = camera_meta.matrix_p;
-                data.prev_matrix_vp = camera_meta.matrix_vp;
-                data.prev_matrix_vp_no_jitter = camera_meta.matrix_vp_no_jitter;
-                camera_meta.parameter->set_uniform(0, &data, sizeof(shader::camera_data));
-
-                camera_meta.matrix_v = data.matrix_v;
-                camera_meta.matrix_p = data.matrix_p;
-                camera_meta.matrix_vp = data.matrix_vp;
-                camera_meta.matrix_vp_no_jitter = data.matrix_vp_no_jitter;
-
                 render_scene* render_scene = scene_manager.get_scene(scene.layer);
                 if (camera_meta.scene != render_scene)
                 {
@@ -157,7 +145,20 @@ void camera_system::update(render_scene_manager& scene_manager)
                     camera_meta.scene = render_scene;
                 }
 
+                shader::camera_data data = get_camera_data(camera, transform);
+                data.prev_matrix_v = camera_meta.matrix_v;
+                data.prev_matrix_p = camera_meta.matrix_p;
+                data.prev_matrix_vp = camera_meta.matrix_vp;
+                data.prev_matrix_vp_no_jitter = camera_meta.matrix_vp_no_jitter;
+                data.camera_id = camera_meta.id;
+                camera_meta.parameter->set_uniform(0, &data, sizeof(shader::camera_data));
+
                 render_scene->set_camera_position(camera_meta.id, data.position);
+
+                camera_meta.matrix_v = data.matrix_v;
+                camera_meta.matrix_p = data.matrix_p;
+                camera_meta.matrix_vp = data.matrix_vp;
+                camera_meta.matrix_vp_no_jitter = data.matrix_vp_no_jitter;
             });
 
     m_system_version = world.get_version();

@@ -57,7 +57,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 
     float4 sphere_vs = mul(camera.matrix_v, mul(mesh.matrix_m, float4(geometry.bounding_sphere.xyz, 1.0)));
     sphere_vs.w = geometry.bounding_sphere.w * mesh.scale.w;
-    visible = frustum_cull(sphere_vs, constant.frustum, camera.near);
+
+    visible = sphere_vs.w > 0.0 && frustum_cull(sphere_vs, constant.frustum, camera.near);
 
     if (visible)
     {

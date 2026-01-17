@@ -20,7 +20,7 @@ vsm_render_feature::vsm_render_feature()
     device.set_name(m_lru_state.get(), "VSM LRU State");
 
     m_lru_buffer = device.create_buffer({
-        .size = sizeof(std::uint32_t) * VSM_PHYSICAL_PAGE_COUNT * 2,
+        .size = sizeof(std::uint32_t) * VSM_PHYSICAL_PAGE_TABLE_PAGE_COUNT * 2,
         .flags = RHI_BUFFER_STORAGE,
     });
     device.set_name(m_lru_buffer.get(), "VSM LRU");

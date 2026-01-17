@@ -8,6 +8,8 @@ struct unlit_material
     float3 albedo;
 };
 
+ConstantBuffer<scene_data> scene : register(b0, space1);
+
 [numthreads(8, 8, 1)]
 void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 {
@@ -33,7 +35,7 @@ void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
         return;
     }
 
-    mesh mesh = mesh::create(instance_id);
+    mesh mesh = mesh::create(instance_id, scene);
     uint material_address = mesh.get_material_address();
 
     material_info material_info = load_material_info(scene.material_buffer, material_address);

@@ -108,7 +108,8 @@ struct scene_data
     uint skybox;
     uint irradiance;
     uint prefilter;
-    uint padding0;
+
+    uint directional_vsm_buffer;
 };
 
 struct camera_data
@@ -134,8 +135,8 @@ struct camera_data
     float height;
 
     float2 jitter;
+    uint camera_id;
     uint padding0;
-    uint padding1;
 };
 
 SamplerState get_point_repeat_sampler()

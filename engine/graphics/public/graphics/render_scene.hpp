@@ -142,6 +142,7 @@ public:
     rhi_buffer* get_vsm_buffer() const noexcept;
     rhi_buffer* get_vsm_virtual_page_table() const noexcept;
     rhi_buffer* get_vsm_physical_page_table() const noexcept;
+    rhi_texture* get_vsm_physical_texture() const noexcept;
 
     template <typename Functor>
     void each_batch(surface_type surface_type, material_path material_path, Functor&& functor) const
@@ -245,8 +246,8 @@ private:
 
     enum render_scene_state : std::uint8_t
     {
-        RENDER_SCENE_STAGE_DATA_DIRTY = 1 << 0,
-        RENDER_SCENE_STAGE_BATCH_DIRTY = 1 << 1,
+        RENDER_SCENE_STATE_DATA_DIRTY = 1 << 0,
+        RENDER_SCENE_STATE_BATCH_DIRTY = 1 << 1,
     };
     using render_scene_states = std::uint8_t;
 
@@ -301,7 +302,15 @@ private:
         render_id camera_id;
         vec3f position;
 
-        std::vector<vsm> vsms; // vsm_id, light_id
+        std::vector<vsm> vsms;
+    };
+
+    struct vsm_data
+    {
+        render_id light_id;
+        render_id camera_id;
+
+        bool dirty;
     };
 
     void add_instance_to_batch(render_id instance_id, const material* material);
@@ -317,6 +326,7 @@ private:
     bool update_instance(gpu_buffer_uploader* uploader);
     bool update_light(gpu_buffer_uploader* uploader);
     bool update_batch(gpu_buffer_uploader* uploader);
+    void update_vsm();
 
     gpu_dense_array<gpu_mesh> m_meshes;
     std::vector<render_id> m_matrix_dirty_meshes;
@@ -334,6 +344,7 @@ private:
     index_allocator m_camera_allocator;
 
     gpu_sparse_array<gpu_directional_vsm> m_directional_vsm_buffer;
+    std::unordered_map<render_id, vsm_data> m_vsms;
 
     std::uint32_t m_instance_capacity{1};
 

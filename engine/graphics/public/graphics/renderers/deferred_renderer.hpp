@@ -49,5 +49,10 @@ private:
     rdg_buffer* m_draw_buffer{nullptr};
     rdg_buffer* m_draw_count_buffer{nullptr};
     rdg_buffer* m_draw_info_buffer{nullptr};
+
+    rdg_buffer* m_vsm_buffer{nullptr};
+    rdg_buffer* m_vsm_virtual_page_table{nullptr};
+    rdg_buffer* m_vsm_physical_page_table{nullptr};
+    rdg_texture* m_vsm_physical_texture{nullptr};
 };
 } // namespace violet

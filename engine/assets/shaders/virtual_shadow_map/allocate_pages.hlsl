@@ -3,34 +3,26 @@
 
 struct constant_data
 {
-    uint visible_light_count;
     uint visible_vsm_ids;
     uint vsm_buffer;
-    uint virtual_page_table;
-    uint physical_page_table;
+    uint vsm_virtual_page_table;
+    uint vsm_physical_page_table;
     uint lru_state;
     uint lru_buffer;
     uint lru_curr_index;
+    uint clear_physical_page_dispatch_buffer;
 };
 PushConstant(constant_data, constant);
 
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
-    StructuredBuffer<uint> visible_light_count = ResourceDescriptorHeap[constant.visible_light_count];
-
-    uint vsm_index = dtid.z;
-    if (vsm_index >= visible_light_count[1])
-    {
-        return;
-    }
-
     StructuredBuffer<uint> vsm_ids = ResourceDescriptorHeap[constant.visible_vsm_ids];
 
     uint2 page_coord = dtid.xy;
-    uint vsm_id = vsm_ids[vsm_index];
+    uint vsm_id = vsm_ids[dtid.z];
 
-    RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.virtual_page_table];
+    RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
     uint virtual_page_index = get_virtual_page_index(vsm_id, page_coord);
 
     vsm_virtual_page virtual_page = unpack_virtual_page(virtual_page_table[virtual_page_index]);
@@ -39,7 +31,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     {
         StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
 
-        RWStructuredBuffer<vsm_physical_page> physical_page_table = ResourceDescriptorHeap[constant.physical_page_table];
+        RWStructuredBuffer<vsm_physical_page> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
         RWStructuredBuffer<vsm_lru_state> lru_states = ResourceDescriptorHeap[constant.lru_state];
         StructuredBuffer<uint> lru_buffer = ResourceDescriptorHeap[constant.lru_buffer];
 
@@ -65,5 +57,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         physical_page.vsm_id = vsm_id;
         physical_page.flags = PHYSICAL_PAGE_FLAG_RESIDENT | PHYSICAL_PAGE_FLAG_REQUEST;
         physical_page_table[free_physical_page_index] = physical_page;
+
+        RWStructuredBuffer<dispatch_command> clear_physical_page_commands = ResourceDescriptorHeap[constant.clear_physical_page_dispatch_buffer];
+        InterlockedAdd(clear_physical_page_commands[0].z, 1);
     }
 }

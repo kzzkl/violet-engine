@@ -160,7 +160,7 @@ struct shader
         std::uint32_t skybox;
         std::uint32_t irradiance;
         std::uint32_t prefilter;
-        std::uint32_t padding0;
+        std::uint32_t directional_vsm_buffer;
     };
 
     static constexpr parameter scene = {
@@ -194,8 +194,8 @@ struct shader
         float height;
 
         vec2f jitter;
+        std::uint32_t camera_id;
         std::uint32_t padding0;
-        std::uint32_t padding1;
     };
 
     static constexpr parameter camera = {
@@ -328,46 +328,10 @@ struct shading_model_cs : public shader_cs
         std::uint32_t shading_model;
         std::uint32_t worklist_buffer;
         std::uint32_t worklist_offset;
-    };
 
-    static constexpr parameter_layout parameters = {
-        {.space = 0, .desc = bindless},
-        {.space = 1, .desc = scene},
-        {.space = 2, .desc = camera},
-    };
-};
-
-struct unlit_lighting_cs : public shader_cs
-{
-    static constexpr std::string_view path = "assets/shaders/lighting/unlit.hlsl";
-
-    struct constant_data
-    {
-        std::uint32_t albedo;
-        std::uint32_t padding0;
-        std::uint32_t padding1;
-        std::uint32_t padding2;
-    };
-
-    static constexpr parameter_layout parameters = {
-        {.space = 0, .desc = bindless},
-        {.space = 1, .desc = scene},
-    };
-};
-
-struct pbr_lighting_cs : public shader_cs
-{
-    static constexpr std::string_view path = "assets/shaders/lighting/physical.hlsl";
-
-    struct constant_data
-    {
-        std::uint32_t albedo;
-        std::uint32_t material;
-        std::uint32_t normal;
-        std::uint32_t depth;
-        std::uint32_t emissive;
-        std::uint32_t ao_buffer;
-        std::uint32_t brdf_lut;
+        std::uint32_t vsm_buffer;
+        std::uint32_t vsm_virtual_page_table;
+        std::uint32_t vsm_physical_texture;
     };
 
     static constexpr parameter_layout parameters = {

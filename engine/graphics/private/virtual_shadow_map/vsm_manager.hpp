@@ -6,6 +6,13 @@
 
 namespace violet
 {
+struct vsm_directional_light_data
+{
+    vec3f light_position;
+    vec3f light_direction;
+    vec3f camera_position;
+};
+
 class gpu_buffer_uploader;
 class vsm_manager
 {
@@ -21,8 +28,7 @@ public:
         render_id camera_id = INVALID_RENDER_ID);
     void remove_vsm(render_id vsm_id);
 
-    void set_vsm_light(render_id vsm_id, const vec3f& light_position, const vec3f& light_direction);
-    void set_vsm_camera(render_id vsm_id, const vec3f& camera_position);
+    void set_vsm(render_id vsm_id, const vsm_directional_light_data& light);
 
     void update(gpu_buffer_uploader* uploader);
 
@@ -41,6 +47,11 @@ public:
         return m_physical_page_table.get();
     }
 
+    rhi_texture* get_vsm_physical_texture()
+    {
+        return m_physical_texture.get();
+    }
+
 private:
     struct gpu_vsm
     {
@@ -48,6 +59,8 @@ private:
         {
             vec2i page_coord;
             vec2i page_offset;
+            mat4f matrix_v;
+            mat4f matrix_p;
             mat4f matrix_vp;
         };
 
@@ -56,23 +69,23 @@ private:
         render_id light_id;
         render_id camera_id;
 
-        vec3f light_position;
-        vec3f light_direction;
-        vec3f camera_position;
-
         vec2i page_coord;
         vec2i page_offset;
-        mat4f matrix_vp;
+        mat4f matrix_v;
+        mat4f matrix_p;
 
-        bool dirty;
+        bool cache_dirty;
+
+        float view_z;
     };
 
     static constexpr std::uint32_t get_vsm_count(light_type light_type);
 
     gpu_block_sparse_array<gpu_vsm> m_vsms;
-    std::vector<render_id> m_dirty_vsms;
 
     rhi_ptr<rhi_buffer> m_virtual_page_table;
     rhi_ptr<rhi_buffer> m_physical_page_table;
+
+    rhi_ptr<rhi_texture> m_physical_texture;
 };
 } // namespace violet

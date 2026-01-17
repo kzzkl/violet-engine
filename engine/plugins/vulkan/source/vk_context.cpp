@@ -441,6 +441,7 @@ void vk_context::initialize_logic_device(
                 .geometryShader = VK_TRUE,
                 .fillModeNonSolid = VK_TRUE,
                 .samplerAnisotropy = VK_TRUE,
+                .fragmentStoresAndAtomics = VK_TRUE, // For VSM write physical shadow map.
             },
     };
 

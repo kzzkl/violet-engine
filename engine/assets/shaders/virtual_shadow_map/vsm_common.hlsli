@@ -1,15 +1,21 @@
 #ifndef VSM_COMMON_HLSLI
 #define VSM_COMMON_HLSLI
 
-static const uint VIRTUAL_PAGE_TABLE_SIZE = 32;
-static const uint VIRTUAL_PAGE_TABLE_ITEM_COUNT = VIRTUAL_PAGE_TABLE_SIZE * VIRTUAL_PAGE_TABLE_SIZE;
-static const uint VIRTUAL_PAGE_SIZE = 128;
+static const uint VIRTUAL_PAGE_TABLE_SIZE = 64;
+static const uint VIRTUAL_PAGE_TABLE_PAGE_COUNT = VIRTUAL_PAGE_TABLE_SIZE * VIRTUAL_PAGE_TABLE_SIZE;
+static const float VIRTUAL_PAGE_TABLE_SIZE_INV = 1.0 / VIRTUAL_PAGE_TABLE_SIZE;
 
 static const uint PHYSICAL_PAGE_TABLE_SIZE = 32;
-static const uint PHYSICAL_PAGE_TABLE_ITEM_COUNT = PHYSICAL_PAGE_TABLE_SIZE * PHYSICAL_PAGE_TABLE_SIZE;
+static const uint PHYSICAL_PAGE_TABLE_PAGE_COUNT = PHYSICAL_PAGE_TABLE_SIZE * PHYSICAL_PAGE_TABLE_SIZE;
 
 static const uint DIRECTIONAL_VSM_CASCADE_FIRST = 7;
 static const uint DIRECTIONAL_VSM_CASCADE_LAST = 22;
+
+static const uint PAGE_WORLD_SIZE = 1.28 * 2.0 / VIRTUAL_PAGE_TABLE_SIZE;
+static const uint PAGE_RESOLUTION = 128;
+
+static const uint VIRTUAL_RESOLUTION = VIRTUAL_PAGE_TABLE_SIZE * PAGE_RESOLUTION;
+static const uint PHYSICAL_RESOLUTION = PHYSICAL_PAGE_TABLE_SIZE * PAGE_RESOLUTION;
 
 static const uint MAX_CAMERA_COUNT = 16;
 static const uint MAX_SHADOW_LIGHT_COUNT = 32;
@@ -18,7 +24,17 @@ static const uint MAX_VSM_COUNT = 256;
 struct vsm_data
 {
     int2 page_coord;
-    int2 page_offset;
+    float page_world_size;
+    uint cascade;
+    float4x4 matrix_v;
+    float4x4 matrix_p;
+    float4x4 matrix_vp;
+};
+
+struct vsm_projection
+{
+    uint4 aabb; // x: min_x, y: min_y, z: max_x, w: max_y
+    float4x4 matrix_p;
     float4x4 matrix_vp;
 };
 
@@ -30,6 +46,11 @@ struct vsm_virtual_page
 {
     uint2 physical_page_coord;
     uint flags;
+
+    uint2 get_physical_page_coord(float2 virtual_page_uv)
+    {
+        return physical_page_coord * PAGE_RESOLUTION + uint2(virtual_page_uv * PAGE_RESOLUTION);
+    }
 };
 
 static const uint PHYSICAL_PAGE_FLAG_REQUEST = 1 << 0;
@@ -62,7 +83,7 @@ uint get_directional_vsm_id(StructuredBuffer<uint> directional_vsms, uint vsm_ad
 
 uint get_virtual_page_index(uint vsm_id, uint2 page_coord)
 {
-    return vsm_id * VIRTUAL_PAGE_TABLE_ITEM_COUNT + page_coord.y * VIRTUAL_PAGE_TABLE_SIZE + page_coord.x;
+    return vsm_id * VIRTUAL_PAGE_TABLE_PAGE_COUNT + page_coord.y * VIRTUAL_PAGE_TABLE_SIZE + page_coord.x;
 }
 
 uint get_physical_page_index(uint2 page_coord)
@@ -95,7 +116,12 @@ vsm_virtual_page unpack_virtual_page(uint packed_data)
 
 uint get_lru_offset(uint lru_index)
 {
-    return lru_index * PHYSICAL_PAGE_TABLE_ITEM_COUNT;
+    return lru_index * PHYSICAL_PAGE_TABLE_PAGE_COUNT;
+}
+
+uint2 get_physical_page_coord(uint physical_page_index)
+{
+    return uint2(physical_page_index % PHYSICAL_PAGE_TABLE_SIZE, physical_page_index / PHYSICAL_PAGE_TABLE_SIZE);
 }
 
 #endif

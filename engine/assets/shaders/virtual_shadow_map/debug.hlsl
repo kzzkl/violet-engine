@@ -5,8 +5,11 @@ struct constant_data
 {
     uint render_target;
     uint visible_vsm_ids;
-    uint virtual_page_table;
-    uint physical_page_table;
+    uint vsm_virtual_page_table;
+    uint vsm_physical_page_table;
+    uint vsm_projection_buffer;
+    uint vsm_physical_texture;
+    uint debug_texture;
 };
 PushConstant(constant_data, constant);
 
@@ -22,11 +25,23 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
         uint vsm_id = visible_vsm_ids[0];
 
-        RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.virtual_page_table];
+        RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
 
         uint2 page_coord = dtid.xy / (256 / VIRTUAL_PAGE_TABLE_SIZE);
         uint virtual_page_index = get_virtual_page_index(vsm_id, page_coord);
         vsm_virtual_page virtual_page = unpack_virtual_page(virtual_page_table[virtual_page_index]);
+
+        StructuredBuffer<vsm_projection> vsm_projections = ResourceDescriptorHeap[constant.vsm_projection_buffer];
+        vsm_projection vsm_projection = vsm_projections[vsm_id];
+
+        float factor = 0.1;
+        if (page_coord.x < vsm_projection.aabb.x ||
+            page_coord.x > vsm_projection.aabb.z ||
+            page_coord.y < vsm_projection.aabb.y ||
+            page_coord.y > vsm_projection.aabb.w)
+        {
+            factor = 1.0;
+        }
 
         if (virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST)
         {
@@ -47,11 +62,13 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         {
             render_target[dtid.xy] = float4(1.0, 1.0, 1.0, 1.0);
         }
+
+        render_target[dtid.xy].xyz *= factor;
     }
-    else
+    else if (dtid.y < 512)
     {
         // phsical page table
-        StructuredBuffer<vsm_physical_page> physical_page_table = ResourceDescriptorHeap[constant.physical_page_table];
+        StructuredBuffer<vsm_physical_page> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
 
         uint2 page_coord = dtid.xy;
         page_coord.y -= 256;
@@ -82,5 +99,22 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         {
             render_target[dtid.xy] = float4(1.0, 1.0, 1.0, 1.0);
         }
+    }
+    else
+    {
+        SamplerState sampler = get_point_clamp_sampler();
+        Texture2D<float> debug_texture = ResourceDescriptorHeap[constant.debug_texture];
+
+        uint2 coord = dtid.xy;
+        coord.y -= 512;
+        coord *= 4096 / 256;
+        
+        // float2 uv = float2(coord) / 512.0;
+
+        // render_target[dtid.xy] = debug_texture.SampleLevel(sampler, uv, 0.0);
+
+        Texture2D<uint> physical_texture = ResourceDescriptorHeap[constant.vsm_physical_texture];
+        float depth = asfloat(physical_texture[coord]);
+        render_target[dtid.xy] = float4(depth, depth, depth, 1.0);
     }
 }

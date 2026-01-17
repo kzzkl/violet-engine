@@ -43,16 +43,17 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
 
     auto add_attachment = [&](const rhi_attachment_desc& desc)
     {
-        attachments.emplace_back(VkAttachmentDescription{
-            .format = vk_utils::map_format(desc.format),
-            .samples = vk_utils::map_sample_count(desc.samples),
-            .loadOp = map_load_op(desc.load_op),
-            .storeOp = map_store_op(desc.store_op),
-            .stencilLoadOp = map_load_op(desc.stencil_load_op),
-            .stencilStoreOp = map_store_op(desc.stencil_store_op),
-            .initialLayout = vk_utils::map_layout(desc.initial_layout),
-            .finalLayout = vk_utils::map_layout(desc.final_layout),
-        });
+        attachments.emplace_back(
+            VkAttachmentDescription{
+                .format = vk_utils::map_format(desc.format),
+                .samples = vk_utils::map_sample_count(desc.samples),
+                .loadOp = map_load_op(desc.load_op),
+                .storeOp = map_store_op(desc.store_op),
+                .stencilLoadOp = map_load_op(desc.stencil_load_op),
+                .stencilStoreOp = map_store_op(desc.stencil_store_op),
+                .initialLayout = vk_utils::map_layout(desc.initial_layout),
+                .finalLayout = vk_utils::map_layout(desc.final_layout),
+            });
     };
 
     std::vector<VkAttachmentReference> color;
@@ -65,10 +66,11 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
 
         if (desc.attachments[i].type == RHI_ATTACHMENT_TYPE_RENDER_TARGET)
         {
-            color.emplace_back(VkAttachmentReference{
-                .attachment = static_cast<std::uint32_t>(i),
-                .layout = vk_utils::map_layout(desc.attachments[i].layout),
-            });
+            color.emplace_back(
+                VkAttachmentReference{
+                    .attachment = static_cast<std::uint32_t>(i),
+                    .layout = vk_utils::map_layout(desc.attachments[i].layout),
+                });
 
             ++m_render_target_count;
         }
@@ -92,24 +94,30 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
         .preserveAttachmentCount = 0,
     };
 
-    std::vector<VkSubpassDependency> dependencies = {
-        {
-            .srcSubpass = VK_SUBPASS_EXTERNAL,
-            .dstSubpass = 0,
-            .srcStageMask = vk_utils::map_pipeline_stage_flags(desc.begin_dependency.src_stages),
-            .dstStageMask = vk_utils::map_pipeline_stage_flags(desc.begin_dependency.dst_stages),
-            .srcAccessMask = vk_utils::map_access_flags(desc.begin_dependency.src_access),
-            .dstAccessMask = vk_utils::map_access_flags(desc.begin_dependency.dst_access),
-        },
-        {
-            .srcSubpass = 0,
-            .dstSubpass = VK_SUBPASS_EXTERNAL,
-            .srcStageMask = vk_utils::map_pipeline_stage_flags(desc.end_dependency.src_stages),
-            .dstStageMask = vk_utils::map_pipeline_stage_flags(desc.end_dependency.dst_stages),
-            .srcAccessMask = vk_utils::map_access_flags(desc.end_dependency.src_access),
-            .dstAccessMask = vk_utils::map_access_flags(desc.end_dependency.dst_access),
-        },
-    };
+    std::vector<VkSubpassDependency> dependencies;
+    if (desc.attachment_count != 0)
+    {
+        dependencies = {
+            {
+                .srcSubpass = VK_SUBPASS_EXTERNAL,
+                .dstSubpass = 0,
+                .srcStageMask =
+                    vk_utils::map_pipeline_stage_flags(desc.begin_dependency.src_stages),
+                .dstStageMask =
+                    vk_utils::map_pipeline_stage_flags(desc.begin_dependency.dst_stages),
+                .srcAccessMask = vk_utils::map_access_flags(desc.begin_dependency.src_access),
+                .dstAccessMask = vk_utils::map_access_flags(desc.begin_dependency.dst_access),
+            },
+            {
+                .srcSubpass = 0,
+                .dstSubpass = VK_SUBPASS_EXTERNAL,
+                .srcStageMask = vk_utils::map_pipeline_stage_flags(desc.end_dependency.src_stages),
+                .dstStageMask = vk_utils::map_pipeline_stage_flags(desc.end_dependency.dst_stages),
+                .srcAccessMask = vk_utils::map_access_flags(desc.end_dependency.src_access),
+                .dstAccessMask = vk_utils::map_access_flags(desc.end_dependency.dst_access),
+            },
+        };
+    }
 
     VkRenderPassCreateInfo render_pass_info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
@@ -134,7 +142,8 @@ vk_render_pass::~vk_render_pass()
 void vk_render_pass::begin(
     VkCommandBuffer command_buffer,
     const rhi_attachment* attachments,
-    std::size_t attachment_count)
+    std::size_t attachment_count,
+    const rhi_texture_extent& render_area)
 {
     assert(m_attachment_layout.size() == attachment_count);
 
@@ -154,7 +163,7 @@ void vk_render_pass::begin(
             image_views.push_back(rtv->get_image_view());
 
             auto e = rtv->get_texture()->get_extent();
-            extent = {e.width, e.height};
+            extent = {.width = e.width, .height = e.height};
 
             std::memcpy(
                 clear_values[i].color.float32,
@@ -168,11 +177,17 @@ void vk_render_pass::begin(
             image_views.push_back(dsv->get_image_view());
 
             auto e = dsv->get_texture()->get_extent();
-            extent = {e.width, e.height};
+            extent = {.width = e.width, .height = e.height};
 
             clear_values[i].depthStencil.depth = attachments[i].clear_value.depth_stencil.depth;
             clear_values[i].depthStencil.stencil = attachments[i].clear_value.depth_stencil.stencil;
         }
+    }
+
+    if (attachment_count == 0)
+    {
+        assert(render_area.width != 0 && render_area.height != 0);
+        extent = {.width = render_area.width, .height = render_area.height};
     }
 
     VkFramebuffer framebuffer = m_context->get_framebuffer_manager()->allocate_framebuffer(
@@ -186,8 +201,7 @@ void vk_render_pass::begin(
         .framebuffer = framebuffer,
         .renderArea =
             {
-                .offset = {0, 0},
-                .extent = {extent.width, extent.height},
+                .extent = extent,
             },
         .clearValueCount = static_cast<std::uint32_t>(clear_values.size()),
         .pClearValues = clear_values.data(),

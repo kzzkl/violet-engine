@@ -6,9 +6,8 @@ struct constant_data
     uint visible_light_count;
     uint visible_light_ids;
     uint visible_vsm_ids;
-    uint vsm_dispatch_buffer;
+    uint virtual_page_dispatch_buffer;
     uint camera_id;
-    uint directional_vsm_buffer;
 };
 PushConstant(constant_data, constant);
 
@@ -37,11 +36,11 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     RWStructuredBuffer<uint> visible_light_ids = ResourceDescriptorHeap[constant.visible_light_ids];
     RWStructuredBuffer<uint> visible_vsm_ids = ResourceDescriptorHeap[constant.visible_vsm_ids];
 
-    RWStructuredBuffer<dispatch_command> vsm_dispatch_commands = ResourceDescriptorHeap[constant.vsm_dispatch_buffer];
+    RWStructuredBuffer<dispatch_command> dispatch_commands = ResourceDescriptorHeap[constant.virtual_page_dispatch_buffer];
 
     if (light.type == LIGHT_DIRECTIONAL)
     {
-        StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[constant.directional_vsm_buffer];
+        StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[scene.directional_vsm_buffer];
 
         uint vsm_id = get_directional_vsm_id(directional_vsms, light.vsm_address, constant.camera_id);
 
@@ -57,6 +56,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
             visible_vsm_ids[vsm_index + i] = vsm_id + i;
         }
 
-        InterlockedAdd(vsm_dispatch_commands[0].z, 16);
+        InterlockedAdd(dispatch_commands[0].z, 16);
     }
 }
