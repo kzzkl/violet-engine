@@ -170,6 +170,30 @@ public:
         return m_object_buffer.get();
     }
 
+    template <typename Functor>
+    void each(Functor&& functor)
+    {
+        for (render_id id : m_index_to_id)
+        {
+            functor(id, m_objects[id].cpu_data);
+        }
+    }
+
+    template <typename Functor>
+    void each(Functor&& functor) const
+    {
+        for (render_id id : m_index_to_id)
+        {
+            functor(id, m_objects[id].cpu_data);
+        }
+    }
+
+    void set_name(std::string_view name)
+    {
+        m_name = name;
+        m_object_buffer->set_name(name);
+    }
+
 private:
     struct wrapper
     {
@@ -190,6 +214,11 @@ private:
         m_object_buffer = std::make_unique<structured_buffer>(
             capacity * sizeof(gpu_type),
             RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST);
+
+        if (!m_name.empty())
+        {
+            m_object_buffer->set_name(m_name);
+        }
     }
 
     std::vector<wrapper> m_objects;
@@ -201,6 +230,8 @@ private:
     index_allocator m_allocator;
 
     std::unique_ptr<structured_buffer> m_object_buffer;
+
+    std::string m_name;
 };
 
 template <typename T>
@@ -359,6 +390,12 @@ public:
         return m_object_buffer.get();
     }
 
+    void set_name(std::string_view name)
+    {
+        m_name = name;
+        m_object_buffer->set_name(name);
+    }
+
 private:
     struct wrapper
     {
@@ -379,6 +416,11 @@ private:
         m_object_buffer = std::make_unique<structured_buffer>(
             capacity * sizeof(gpu_type),
             RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST);
+
+        if (!m_name.empty())
+        {
+            m_object_buffer->set_name(m_name);
+        }
     }
 
     std::vector<wrapper> m_objects;
@@ -386,6 +428,8 @@ private:
 
     index_allocator m_allocator;
     std::unique_ptr<structured_buffer> m_object_buffer;
+
+    std::string m_name;
 };
 
 template <typename T>
@@ -416,6 +460,10 @@ public:
     render_id add(std::uint32_t count = 1)
     {
         render_id id = m_allocator.allocate(count);
+        if (id == buddy_allocator::no_space)
+        {
+            throw std::runtime_error("gpu_block_sparse_array no space.");
+        }
 
         if (m_objects.size() <= id + count - 1)
         {
@@ -441,6 +489,7 @@ public:
         assert(m_objects[id].block_size != 0);
 
         std::uint32_t count = m_allocator.get_size(id);
+        count = std::min(count, static_cast<std::uint32_t>(m_objects.size() - id));
 
         for (std::uint32_t i = 0; i < count; ++i)
         {
@@ -469,18 +518,6 @@ public:
 
     template <typename Functor>
     void each(Functor&& functor)
-    {
-        for (render_id id = 0; id < m_objects.size(); ++id)
-        {
-            if (m_objects[id].valid)
-            {
-                functor(id, m_objects[id].cpu_data);
-            }
-        }
-    }
-
-    template <typename Functor>
-    void each(Functor&& functor) const
     {
         for (render_id id = 0; id < m_objects.size(); ++id)
         {
@@ -564,6 +601,12 @@ public:
         return m_object_buffer.get();
     }
 
+    void set_name(std::string_view name)
+    {
+        m_name = name;
+        m_object_buffer->set_name(name);
+    }
+
 private:
     struct wrapper
     {
@@ -586,6 +629,11 @@ private:
         m_object_buffer = std::make_unique<structured_buffer>(
             capacity * sizeof(gpu_type),
             RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST);
+
+        if (!m_name.empty())
+        {
+            m_object_buffer->set_name(m_name);
+        }
     }
 
     std::vector<wrapper> m_objects;
@@ -596,5 +644,7 @@ private:
 
     buddy_allocator m_allocator;
     std::unique_ptr<structured_buffer> m_object_buffer;
+
+    std::string m_name;
 };
 } // namespace violet

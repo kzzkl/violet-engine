@@ -1,12 +1,12 @@
 #include "window/window_system.hpp"
 #include "window_impl.hpp"
-#include "window_impl_win32.hpp"
+#include "window_win32.hpp"
 
 namespace violet
 {
 window_system::window_system()
     : system("window"),
-      m_impl(std::make_unique<window_impl_win32>()),
+      m_impl(std::make_unique<window_win32>()),
       m_mouse(m_impl.get())
 {
 }
@@ -48,9 +48,14 @@ void* window_system::get_handle() const
     return m_impl->get_handle();
 }
 
-rect<std::uint32_t> window_system::get_extent() const
+rect<std::uint32_t> window_system::get_window_size() const
 {
-    return m_impl->get_extent();
+    return m_impl->get_window_size();
+}
+
+rect<std::uint32_t> window_system::get_screen_size() const
+{
+    return m_impl->get_screen_size();
 }
 
 void window_system::set_title(std::string_view title)
@@ -64,17 +69,16 @@ void window_system::tick()
     m_impl->reset();
     m_impl->tick();
 
-    auto& executor = get_task_executor();
-
     m_mouse.tick();
     m_keyboard.tick();
+
     for (const auto& message : m_impl->get_messages())
     {
         switch (message.type)
         {
         case window_message::message_type::MOUSE_MOVE: {
-            m_mouse.m_x = message.mouse_move.x;
-            m_mouse.m_y = message.mouse_move.y;
+            m_mouse.m_position.x = message.mouse_move.x;
+            m_mouse.m_position.y = message.mouse_move.y;
             break;
         }
         case window_message::message_type::MOUSE_KEY: {

@@ -16,7 +16,7 @@ vk_parameter::vk_parameter(const rhi_parameter_desc& desc, vk_context* context)
     std::size_t copy_count =
         desc.flags & RHI_PARAMETER_SIMPLE ? 1 : m_context->get_frame_resource_count();
 
-    m_layout = layout_manager->get_parameter_layout(desc);
+    m_layout = layout_manager->get_parameter_layout({desc.bindings, desc.binding_count});
 
     std::vector<VkWriteDescriptorSet> descriptor_write;
     std::vector<VkDescriptorBufferInfo> uniform_infos;

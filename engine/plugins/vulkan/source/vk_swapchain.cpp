@@ -23,13 +23,17 @@ vk_swapchain::vk_swapchain(const rhi_swapchain_desc& desc, vk_context* context)
     throw std::runtime_error("Unsupported platform");
 #endif
 
+    update();
+
     for (std::size_t i = 0; i < m_context->get_frame_resource_count(); ++i)
     {
         m_available_semaphores.emplace_back(std::make_unique<vk_fence>(false, m_context));
-        m_present_semaphores.emplace_back(std::make_unique<vk_fence>(false, m_context));
     }
 
-    update();
+    for (std::size_t i = 0; i < m_swapchain_images.size(); ++i)
+    {
+        m_present_semaphores.emplace_back(std::make_unique<vk_fence>(false, m_context));
+    }
 }
 
 vk_swapchain::~vk_swapchain()
@@ -86,7 +90,7 @@ rhi_fence* vk_swapchain::acquire_texture()
 
 rhi_fence* vk_swapchain::get_present_fence() const
 {
-    return m_present_semaphores[m_context->get_frame_resource_index()].get();
+    return m_present_semaphores[m_swapchain_image_index].get();
 }
 
 void vk_swapchain::present()
@@ -95,7 +99,7 @@ void vk_swapchain::present()
     queue->present(
         m_swapchain,
         m_swapchain_image_index,
-        m_present_semaphores[m_context->get_frame_resource_index()]->get_semaphore());
+        m_present_semaphores[m_swapchain_image_index]->get_semaphore());
 }
 
 void vk_swapchain::update()
@@ -237,12 +241,13 @@ void vk_swapchain::update()
 
     for (VkImage swapchain_image : swapchain_images)
     {
-        m_swapchain_images.push_back(std::make_unique<vk_texture>(
-            swapchain_image,
-            swapchain_info.imageFormat,
-            swapchain_info.imageExtent,
-            m_flags,
-            m_context));
+        m_swapchain_images.push_back(
+            std::make_unique<vk_texture>(
+                swapchain_image,
+                swapchain_info.imageFormat,
+                swapchain_info.imageExtent,
+                m_flags,
+                m_context));
     }
 }
 } // namespace violet::vk

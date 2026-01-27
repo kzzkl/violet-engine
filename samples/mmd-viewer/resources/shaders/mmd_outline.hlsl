@@ -7,6 +7,9 @@ struct constant_data
 };
 PushConstant(constant_data, constant);
 
+ConstantBuffer<scene_data> scene : register(b0, space1);
+ConstantBuffer<camera_data> camera : register(b0, space2);
+
 struct vs_output
 {
     float4 position_cs : SV_POSITION;
@@ -37,8 +40,8 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
     StructuredBuffer<draw_info> draw_infos = ResourceDescriptorHeap[constant.draw_info_buffer];
     uint instance_id = draw_infos[draw_id].instance_id;
 
-    mesh mesh = mesh::create(instance_id);
-    vertex vertex = mesh.fetch_vertex(vertex_id);
+    mesh mesh = mesh::create(instance_id, scene);
+    vertex vertex = mesh.fetch_vertex(vertex_id, camera.matrix_vp);
     
     mmd_outline_material material = load_material<mmd_outline_material>(scene.material_buffer, mesh.get_material_address());
     material_info material_info = load_material_info(scene.material_buffer, mesh.get_material_address());

@@ -31,7 +31,9 @@ public:
     }
 
     void* get_handle() const;
-    rect<std::uint32_t> get_extent() const;
+
+    rect<std::uint32_t> get_window_size() const;
+    rect<std::uint32_t> get_screen_size() const;
 
     void set_title(std::string_view title);
 

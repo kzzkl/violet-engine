@@ -3,9 +3,6 @@
 
 #include "common.hlsli"
 
-ConstantBuffer<scene_data> scene : register(b0, space1);
-ConstantBuffer<camera_data> camera : register(b0, space2);
-
 // http://filmicworlds.com/blog/visibility-buffer-rendering-with-material-graphs/
 struct barycentric_deriv
 {
@@ -83,15 +80,17 @@ struct vertex
 struct mesh
 {
     uint instance_id;
+    scene_data scene;
 
-    static mesh create(uint instance_id)
+    static mesh create(uint instance_id, scene_data scene)
     {
         mesh result;
         result.instance_id = instance_id;
+        result.scene = scene;
         return result;
     }
 
-    vertex fetch_vertex(uint vertex_id)
+    vertex fetch_vertex(uint vertex_id, float4x4 matrix_vp)
     {
         StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
         instance_data instance = instances[instance_id];
@@ -107,7 +106,7 @@ struct mesh
         vertex result;
         result.position = vertex_buffer.Load<float3>(geometry.position_address + vertex_id * sizeof(float3));
         result.position_ws = mul(mesh.matrix_m, float4(result.position, 1.0)).xyz;
-        result.position_cs = mul(camera.matrix_vp, float4(result.position_ws, 1.0));
+        result.position_cs = mul(matrix_vp, float4(result.position_ws, 1.0));
 
         if (geometry.normal_address != 0)
         {
@@ -130,7 +129,7 @@ struct mesh
         return result;
     }
 
-    vertex fetch_vertex(uint primitive_id, float2 coord, float2 extent, out float2 ddx, out float2 ddy)
+    vertex fetch_vertex(uint primitive_id, float2 coord, float2 extent, out float2 ddx, out float2 ddy, float4x4 matrix_vp)
     {
         StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
         instance_data instance = instances[instance_id];
@@ -151,13 +150,13 @@ struct mesh
             index_buffer[index_offset + 2]);
 
         float3 p0 = vertex_buffer.Load<float3>(geometry.position_address + triangle_indexes.x * sizeof(float3));
-        float4 p0_cs = mul(camera.matrix_vp, mul(mesh.matrix_m, float4(p0, 1.0)));
+        float4 p0_cs = mul(matrix_vp, mul(mesh.matrix_m, float4(p0, 1.0)));
 
         float3 p1 = vertex_buffer.Load<float3>(geometry.position_address + triangle_indexes.y * sizeof(float3));
-        float4 p1_cs = mul(camera.matrix_vp, mul(mesh.matrix_m, float4(p1, 1.0)));
+        float4 p1_cs = mul(matrix_vp, mul(mesh.matrix_m, float4(p1, 1.0)));
 
         float3 p2 = vertex_buffer.Load<float3>(geometry.position_address + triangle_indexes.z * sizeof(float3));
-        float4 p2_cs = mul(camera.matrix_vp, mul(mesh.matrix_m, float4(p2, 1.0)));
+        float4 p2_cs = mul(matrix_vp, mul(mesh.matrix_m, float4(p2, 1.0)));
 
         float2 pixel_ndc = (coord + 0.5) / extent * float2(2.0, -2.0) + float2(-1.0, 1.0);
         barycentric_deriv deriv = calculate_full_bary(p0_cs, p1_cs, p2_cs, pixel_ndc, extent);
@@ -167,7 +166,7 @@ struct mesh
         result.position.y = interpolate_with_deriv(deriv, p0.y, p1.y, p2.y).x;
         result.position.z = interpolate_with_deriv(deriv, p0.z, p1.z, p2.z).x;
         result.position_ws = mul(mesh.matrix_m, float4(result.position, 1.0)).xyz;
-        result.position_cs = mul(camera.matrix_vp, float4(result.position_ws, 1.0));
+        result.position_cs = mul(matrix_vp, float4(result.position_ws, 1.0));
 
         if (geometry.normal_address != 0)
         {

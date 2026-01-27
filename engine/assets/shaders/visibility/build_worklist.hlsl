@@ -97,6 +97,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint grou
         }
     }
 
+    // TODO: remove?
     GroupMemoryBarrierWithGroupSync();
     
     uint material_index = gs_material_list[group_index];

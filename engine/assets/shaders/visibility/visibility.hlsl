@@ -7,6 +7,9 @@ struct constant_data
 };
 PushConstant(constant_data, constant);
 
+ConstantBuffer<scene_data> scene : register(b0, space1);
+ConstantBuffer<camera_data> camera : register(b0, space2);
+
 struct vs_output
 {
     float4 position_cs : SV_POSITION;
@@ -20,8 +23,8 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
     uint instance_id = draw_infos[draw_id].instance_id;
     uint cluster_id = draw_infos[draw_id].cluster_id;
 
-    mesh mesh = mesh::create(instance_id);
-    vertex vertex = mesh.fetch_vertex(vertex_id);
+    mesh mesh = mesh::create(instance_id, scene);
+    vertex vertex = mesh.fetch_vertex(vertex_id, camera.matrix_vp);
 
     vs_output output;
     output.position_cs = vertex.position_cs;

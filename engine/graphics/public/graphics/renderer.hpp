@@ -70,34 +70,6 @@ public:
     void render(render_graph& graph);
 
     template <typename T>
-    T* add_feature()
-    {
-        std::uint32_t id = render_feature_index::value<T>();
-        if (m_features.size() <= id)
-        {
-            m_features.resize(id + 1);
-        }
-
-        if (m_features[id] == nullptr)
-        {
-            m_features[id] = std::make_unique<T>();
-            m_features[id]->enable();
-        }
-
-        return static_cast<T*>(m_features[id].get());
-    }
-
-    template <typename T>
-    void remove_feature()
-    {
-        std::uint32_t id = render_feature_index::value<T>();
-        if (m_features.size() > id)
-        {
-            m_features[id] = nullptr;
-        }
-    }
-
-    template <typename T>
     T* get_feature(bool check_enable = false) const noexcept
     {
         std::uint32_t id = render_feature_index::value<T>();
@@ -115,14 +87,25 @@ public:
         return static_cast<T*>(m_features[id].get());
     }
 
+protected:
     template <typename T>
-    bool is_feature_enabled() const noexcept
+    T* add_feature()
     {
         std::uint32_t id = render_feature_index::value<T>();
-        return m_features.size() > id && m_features[id] != nullptr && m_features[id]->is_enable();
+        if (m_features.size() <= id)
+        {
+            m_features.resize(id + 1);
+        }
+
+        if (m_features[id] == nullptr)
+        {
+            m_features[id] = std::make_unique<T>();
+            m_features[id]->enable();
+        }
+
+        return static_cast<T*>(m_features[id].get());
     }
 
-protected:
     virtual void on_render(render_graph& graph) = 0;
 
 private:

@@ -1,5 +1,6 @@
 #include "gpu_buffer_uploader.hpp"
 #include "graphics/render_device.hpp"
+#include <algorithm>
 
 namespace violet
 {
@@ -86,18 +87,69 @@ void gpu_buffer_uploader::record(rhi_command* command)
         nullptr,
         0);
 
-    for (auto& upload : m_upload_commands)
-    {
-        rhi_buffer_region src_region = {
-            .offset = upload.src_offset,
-            .size = upload.size,
-        };
-        rhi_buffer_region dst_region = {
-            .offset = upload.dst_offset,
-            .size = upload.size,
-        };
+    // merge the upload commands.
+    std::ranges::sort(
+        m_upload_commands,
+        [](const upload_command& a, const upload_command& b)
+        {
+            if (a.src != b.src)
+            {
+                return a.src < b.src;
+            }
 
-        command->copy_buffer(upload.src, src_region, upload.dst, dst_region);
+            if (a.src_offset != b.src_offset)
+            {
+                return a.src_offset < b.src_offset;
+            }
+
+            if (a.dst != b.dst)
+            {
+                return a.dst < b.dst;
+            }
+
+            if (a.dst_offset != b.dst_offset)
+            {
+                return a.dst_offset < b.dst_offset;
+            }
+
+            throw std::runtime_error("The uploaded memory buffers overlap.");
+        });
+
+    rhi_buffer* src = nullptr;
+    rhi_buffer_region src_region = {};
+
+    rhi_buffer* dst = nullptr;
+    rhi_buffer_region dst_region = {};
+
+    for (auto& upload_command : m_upload_commands)
+    {
+        if (upload_command.src != src || upload_command.dst != dst ||
+            upload_command.src_offset != src_region.offset + src_region.size ||
+            upload_command.dst_offset != dst_region.offset + dst_region.size)
+        {
+            if (src != nullptr)
+            {
+                command->copy_buffer(src, src_region, dst, dst_region);
+            }
+
+            src = upload_command.src;
+            src_region.offset = upload_command.src_offset;
+            src_region.size = upload_command.size;
+
+            dst = upload_command.dst;
+            dst_region.offset = upload_command.dst_offset;
+            dst_region.size = upload_command.size;
+        }
+        else
+        {
+            src_region.size += upload_command.size;
+            dst_region.size += upload_command.size;
+        }
+    }
+
+    if (src != nullptr)
+    {
+        command->copy_buffer(src, src_region, dst, dst_region);
     }
 
     for (rhi_buffer_barrier& barrier : barriers)
@@ -140,10 +192,11 @@ gpu_buffer_uploader::staging_page& gpu_buffer_uploader::allocate_staging_page()
                 .flags = RHI_BUFFER_TRANSFER_SRC | RHI_BUFFER_HOST_VISIBLE,
             };
 
-            m_staging_pages.emplace_back(staging_page{
-                .buffer = render_device::instance().create_buffer(staging_buffer_desc),
-                .offset = 0,
-            });
+            m_staging_pages.emplace_back(
+                staging_page{
+                    .buffer = render_device::instance().create_buffer(staging_buffer_desc),
+                    .offset = 0,
+                });
         }
     }
 

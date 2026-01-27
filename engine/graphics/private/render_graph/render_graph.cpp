@@ -35,6 +35,11 @@ struct render_pass
             }
         }
 
+        if (attachments.empty())
+        {
+            return pass->get_render_area() == other.pass->get_render_area();
+        }
+
         return true;
     }
 
@@ -464,7 +469,8 @@ void render_graph::record(rhi_command* command)
                 command->begin_render_pass(
                     batch.render_pass,
                     batch.attachments.data(),
-                    static_cast<std::uint32_t>(batch.attachments.size()));
+                    static_cast<std::uint32_t>(batch.attachments.size()),
+                    batch.begin_pass->get_render_area());
                 cmd.m_render_pass = batch.render_pass;
             }
         }

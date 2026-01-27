@@ -1,6 +1,7 @@
 #include "camera_system.hpp"
 #include "components/camera_component.hpp"
 #include "components/camera_component_meta.hpp"
+#include "components/scene_component.hpp"
 #include "components/transform_component.hpp"
 #include "graphics/renderers/features/taa_render_feature.hpp"
 
@@ -27,19 +28,31 @@ shader::camera_data get_camera_data(
 
     shader::camera_data result = {
         .position = transform.get_position(),
-        .fov = camera.fov,
         .near = camera.near,
         .far = camera.far,
-        .width = static_cast<float>(extent.width),
-        .height = static_cast<float>(extent.height),
+        .type = static_cast<std::uint32_t>(camera.type),
+        .fov = camera.perspective.fov,
+        .width = camera.orthographic.width,
+        .height = camera.orthographic.height,
     };
 
-    float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
-
-    mat4f_simd matrix_p =
-        camera.far == std::numeric_limits<float>::infinity() ?
-            matrix::perspective_reverse_z<simd>(camera.fov, aspect, camera.near) :
-            matrix::perspective_reverse_z<simd>(camera.fov, aspect, camera.near, camera.far);
+    mat4f_simd matrix_p;
+    if (camera.type == CAMERA_ORTHOGRAPHIC)
+    {
+        matrix_p = matrix::orthographic<simd>(
+            camera.orthographic.width,
+            camera.orthographic.height,
+            camera.far,
+            camera.near);
+    }
+    else
+    {
+        matrix_p = matrix::perspective<simd>(
+            camera.perspective.fov,
+            static_cast<float>(extent.width) / static_cast<float>(extent.height),
+            camera.far,
+            camera.near);
+    }
     mat4f_simd matrix_v = matrix::inverse(math::load(transform.matrix));
 
     mat4f_simd matrix_vp = matrix::mul(matrix_v, matrix_p);
@@ -70,22 +83,6 @@ shader::camera_data get_camera_data(
 
     return result;
 }
-
-rhi_texture_extent get_previous_pow2_extent(const rhi_texture_extent& extent)
-{
-    rhi_texture_extent result = {.width = 1, .height = 1};
-    while ((result.width << 1) < extent.width)
-    {
-        result.width <<= 1;
-    }
-
-    while ((result.height << 1) < extent.height)
-    {
-        result.height <<= 1;
-    }
-
-    return result;
-}
 } // namespace
 
 camera_system::camera_system()
@@ -102,18 +99,20 @@ bool camera_system::initialize(const dictionary& config)
     return true;
 }
 
-void camera_system::update()
+void camera_system::update(render_scene_manager& scene_manager)
 {
     auto& world = get_world();
 
     world.get_view()
+        .read<scene_component>()
         .read<camera_component>()
         .read<transform_world_component>()
         .write<camera_component_meta>()
         .each(
-            [](const camera_component& camera,
-               const transform_world_component& transform,
-               camera_component_meta& camera_meta)
+            [&](const scene_component& scene,
+                const camera_component& camera,
+                const transform_world_component& transform,
+                camera_component_meta& camera_meta)
             {
                 if (!camera.has_render_target() || camera.renderer == nullptr)
                 {
@@ -126,11 +125,10 @@ void camera_system::update()
                         render_device::instance().create_parameter(shader::camera);
                 }
 
-                if (camera_meta.hzb == nullptr || camera_meta.extent != camera.get_extent())
+                if (camera_meta.hzb == nullptr ||
+                    camera_meta.hzb->get_extent() != camera.get_extent())
                 {
-                    camera_meta.extent = camera.get_extent();
-
-                    rhi_texture_extent extent = get_previous_pow2_extent(camera_meta.extent);
+                    rhi_texture_extent extent = camera.get_extent();
 
                     std::uint32_t max_size = std::max(extent.width, extent.height);
                     std::uint32_t level_count =
@@ -147,12 +145,27 @@ void camera_system::update()
                     });
                 }
 
+                render_scene* render_scene = scene_manager.get_scene(scene.layer);
+                if (camera_meta.scene != render_scene)
+                {
+                    if (camera_meta.scene != nullptr)
+                    {
+                        camera_meta.scene->remove_camera(camera_meta.id);
+                    }
+
+                    camera_meta.id = render_scene->add_camera();
+                    camera_meta.scene = render_scene;
+                }
+
                 shader::camera_data data = get_camera_data(camera, transform);
                 data.prev_matrix_v = camera_meta.matrix_v;
                 data.prev_matrix_p = camera_meta.matrix_p;
                 data.prev_matrix_vp = camera_meta.matrix_vp;
                 data.prev_matrix_vp_no_jitter = camera_meta.matrix_vp_no_jitter;
+                data.camera_id = camera_meta.id;
                 camera_meta.parameter->set_uniform(0, &data, sizeof(shader::camera_data));
+
+                render_scene->set_camera_position(camera_meta.id, data.position);
 
                 camera_meta.matrix_v = data.matrix_v;
                 camera_meta.matrix_p = data.matrix_p;

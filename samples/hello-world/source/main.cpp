@@ -1,304 +1,255 @@
-#include "common/log.hpp"
-#include "components/camera.hpp"
-#include "components/mesh.hpp"
-#include "components/orbit_control.hpp"
-#include "components/transform.hpp"
-#include "control/control_module.hpp"
-#include "core/engine.hpp"
+#include "components/camera_component.hpp"
+#include "components/mesh_component.hpp"
+#include "components/scene_component.hpp"
+#include "components/transform_component.hpp"
 #include "graphics/geometries/box_geometry.hpp"
-#include "graphics/graphics_module.hpp"
-#include "graphics/passes/present_pass.hpp"
-#include "graphics/passes/skybox_pass.hpp"
-#include "scene/scene_module.hpp"
-#include "window/window_module.hpp"
-#include <fstream>
-#include <thread>
+#include "graphics/materials/pbr_material.hpp"
+#include "graphics/materials/unlit_material.hpp"
+#include "graphics/renderers/deferred_renderer.hpp"
+#include "graphics/renderers/features/gtao_render_feature.hpp"
+#include "graphics/renderers/features/taa_render_feature.hpp"
+#include "sample/sample_system.hpp"
+#include <imgui.h>
 
 namespace violet
 {
-class sample_pass : public rdg_render_pass
+class hello_world : public sample_system
 {
 public:
-    static constexpr std::size_t reference_render_target{0};
-    static constexpr std::size_t reference_depth{1};
-
-public:
-    sample_pass()
+    hello_world()
+        : sample_system("hello_world")
     {
-        add_color(reference_render_target, RHI_TEXTURE_LAYOUT_RENDER_TARGET);
-        add_depth_stencil(reference_depth, RHI_TEXTURE_LAYOUT_DEPTH_STENCIL);
-
-        set_shader("./hello-world/shaders/sample.vs", "./hello-world/shaders/sample.fs");
-        set_primitive_topology(RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-
-        set_input_layout({
-            {"position", RHI_FORMAT_R32G32B32_FLOAT}
-        });
-
-        set_parameter_layout({
-            {engine_parameter_layout::mesh,   RDG_PASS_PARAMETER_FLAG_NONE},
-            {engine_parameter_layout::camera, RDG_PASS_PARAMETER_FLAG_NONE}
-        });
     }
 
-    virtual void execute(rhi_command* command, rdg_context* context) override
+    bool initialize(const dictionary& config) override
     {
-        rhi_texture_extent extent =
-            context->get_texture(this, reference_render_target)->get_extent();
-
-        rhi_viewport viewport = {};
-        viewport.width = extent.width;
-        viewport.height = extent.height;
-        viewport.min_depth = 0.0f;
-        viewport.max_depth = 1.0f;
-        command->set_viewport(viewport);
-
-        rhi_scissor_rect scissor = {};
-        scissor.max_x = extent.width;
-        scissor.max_y = extent.height;
-        command->set_scissor(&scissor, 1);
-
-        command->set_render_pipeline(get_pipeline());
-        command->set_render_parameter(1, context->get_camera());
-        for (const rdg_mesh& mesh : context->get_meshes(this))
+        if (!sample_system::initialize(config))
         {
-            command->set_render_parameter(0, mesh.transform);
-            command->set_vertex_buffers(mesh.vertex_buffers, get_input_layout().size());
-            command->set_index_buffer(mesh.index_buffer);
-            command->draw_indexed(mesh.index_start, mesh.index_count, mesh.vertex_start);
+            return false;
         }
-    }
 
-private:
-    rdg_pass_reference* m_color;
-};
+        m_root = load_model(config["model"]);
 
-class hello_world : public engine_module
-{
-public:
-    hello_world() : engine_module("hello_world") {}
+        auto& world = get_world();
 
-    virtual bool initialize(const dictionary& config) override
-    {
-        log::info(config["text"]);
+        // Camera.
+        auto camera = get_camera();
+        auto& main_camera = world.get_component<camera_component>(camera);
+        // main_camera.type = CAMERA_ORTHOGRAPHIC;
+        // main_camera.orthographic.width = 50.0f;
+        // main_camera.orthographic.height = 50.0f;
+        // main_camera.near = -1000.0f;
+        // main_camera.far = std::numeric_limits<float>::infinity(); // 1000.0f;
 
-        auto& window = get_module<window_module>();
-        window.on_resize().then(
-            [this](std::uint32_t width, std::uint32_t height)
+        m_box_geometry = std::make_unique<box_geometry>();
+
+        m_pbr_material = std::make_unique<pbr_material>();
+        m_pbr_material->set_metallic(0.5f);
+        m_pbr_material->set_roughness(0.5f);
+
+        m_unlit_material = std::make_unique<unlit_material>();
+        m_unlit_material->set_color({1.0f, 1.0f, 1.0f});
+
+        // Plane.
+        m_plane = world.create();
+        world.add_component<transform_component, mesh_component, scene_component>(m_plane);
+
+        auto& plane_mesh = world.get_component<mesh_component>(m_plane);
+        plane_mesh.geometry = m_box_geometry.get();
+        plane_mesh.submeshes.push_back({
+            .index = 0,
+            .material = m_pbr_material.get(),
+        });
+        auto& plane_transform = world.get_component<transform_component>(m_plane);
+        plane_transform.set_position({0.0f, -1.0f, 0.0f});
+        plane_transform.set_scale({10.0f, 0.05f, 10.0f});
+
+        for (std::uint32_t i = 0; i < m_boxes.size(); ++i)
+        {
+            m_boxes[i] = world.create();
+            world.add_component<transform_component, mesh_component, scene_component>(m_boxes[i]);
+
+            auto& box_mesh = world.get_component<mesh_component>(m_boxes[i]);
+            box_mesh.geometry = m_box_geometry.get();
+
+            if (i % 2 == 0)
             {
-                resize(width, height);
-            });
-
-        initialize_render();
-        initialize_scene();
-
-        on_tick().then(
-            [this](float delta)
+                box_mesh.submeshes.push_back({
+                    .material = m_unlit_material.get(),
+                });
+            }
+            else
             {
-                tick(delta);
-            });
+                box_mesh.submeshes.push_back({
+                    .material = m_pbr_material.get(),
+                });
+            }
+
+            auto& box_transform = world.get_component<transform_component>(m_boxes[i]);
+            box_transform.set_position({2.0f * static_cast<float>(i), 3.0f, 0.0f});
+        }
 
         return true;
     }
 
-    virtual void shutdown() override {}
-
 private:
-    void initialize_render()
+    void tick() override
     {
-        auto& window = get_module<window_module>();
-        auto& graphics = get_module<graphics_module>();
+        auto& world = get_world();
 
-        render_device* device = graphics.get_device();
+        if (ImGui::CollapsingHeader("Transform"))
+        {
+            static float rotate = 0.0f;
+            if (ImGui::SliderFloat("Rotate", &rotate, 0.0, 360.0))
+            {
+                auto& transform = world.get_component<transform_component>(m_root);
+                transform.set_rotation(
+                    quaternion::from_axis_angle(vec3f{0.0f, 1.0f, 0.0f}, math::to_radians(rotate)));
+            }
 
-        auto window_extent = window.get_extent();
-        m_swapchain = device->create_swapchain(
-            rhi_swapchain_desc{window_extent.width, window_extent.height, window.get_handle()});
+            static float translate = 0.0f;
+            if (ImGui::SliderFloat("Translate", &translate, -5.0f, 5.0))
+            {
+                auto& transform = world.get_component<transform_component>(m_root);
+                transform.set_position({0.0f, 0.0f, translate});
+            }
+        }
 
-        m_render_graph = std::make_unique<render_graph>();
+        if (ImGui::CollapsingHeader("Material"))
+        {
+            static float metallic = m_pbr_material->get_metallic();
+            static float roughness = m_pbr_material->get_roughness();
+            static float albedo[] = {1.0f, 1.0f, 1.0f};
 
-        rdg_texture* render_target =
-            m_render_graph->add_resource<rdg_texture>("render target", true);
-        render_target->set_format(m_swapchain->get_texture()->get_format());
+            if (ImGui::SliderFloat("Metallic", &metallic, 0.0f, 1.0f))
+            {
+                m_pbr_material->set_metallic(metallic);
+            }
 
-        rdg_texture* depth_buffer = m_render_graph->add_resource<rdg_texture>("depth buffer", true);
-        depth_buffer->set_format(RHI_FORMAT_D24_UNORM_S8_UINT);
+            if (ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f))
+            {
+                m_pbr_material->set_roughness(roughness);
+            }
 
-        sample_pass* mesh_pass = m_render_graph->add_pass<sample_pass>("mesh pass");
-        skybox_pass* skybox = m_render_graph->add_pass<skybox_pass>("skybox pass");
-        present_pass* present = m_render_graph->add_pass<present_pass>("present pass");
+            if (ImGui::ColorEdit3("Albedo", albedo))
+            {
+                m_pbr_material->set_albedo({albedo[0], albedo[1], albedo[2]});
+            }
+        }
 
-        m_render_graph->add_edge(
-            render_target,
-            mesh_pass,
-            sample_pass::reference_render_target,
-            RDG_EDGE_ACTION_CLEAR);
-        m_render_graph->add_edge(
-            depth_buffer,
-            mesh_pass,
-            sample_pass::reference_depth,
-            RDG_EDGE_ACTION_CLEAR);
-        m_render_graph->add_edge(
-            mesh_pass,
-            sample_pass::reference_render_target,
-            skybox,
-            skybox_pass::reference_render_target,
-            RDG_EDGE_ACTION_LOAD);
-        m_render_graph->add_edge(
-            mesh_pass,
-            sample_pass::reference_depth,
-            skybox,
-            skybox_pass::reference_depth,
-            RDG_EDGE_ACTION_LOAD);
-        m_render_graph->add_edge(
-            skybox,
-            skybox_pass::reference_render_target,
-            present,
-            present_pass::reference_present_target,
-            RDG_EDGE_ACTION_LOAD);
+        if (ImGui::CollapsingHeader("Light"))
+        {
+            static float rotate_x = 0.0f;
+            static float rotate_y = 0.0f;
 
-        m_render_graph->compile(device);
+            bool dirty = false;
 
-        m_material_layout = std::make_unique<material_layout>(
-            m_render_graph.get(),
-            std::vector<rdg_pass*>{mesh_pass});
-        m_material = std::make_unique<material>(device, m_material_layout.get());
+            if (ImGui::SliderFloat("Rotate X", &rotate_x, 0.0, 360.0))
+            {
+                dirty = true;
+            }
 
-        m_main_camera = std::make_unique<actor>("camera", get_world());
-        auto [camera_transform, main_camera, camera_control] =
-            m_main_camera->add<transform, camera, orbit_control>();
-        camera_transform->set_position(float3{0.0f, 0.0f, -10.0f});
-        main_camera->set_render_graph(m_render_graph.get());
+            if (ImGui::SliderFloat("Rotate Y", &rotate_y, 0.0, 360.0))
+            {
+                dirty = true;
+            }
 
-        m_skybox = device->create_texture_cube(
-            "hello-world/skybox/icebergs/right.jpg",
-            "hello-world/skybox/icebergs/left.jpg",
-            "hello-world/skybox/icebergs/top.jpg",
-            "hello-world/skybox/icebergs/bottom.jpg",
-            "hello-world/skybox/icebergs/front.jpg",
-            "hello-world/skybox/icebergs/back.jpg");
+            if (dirty)
+            {
+                auto& transform = world.get_component<transform_component>(get_light());
+                transform.set_rotation(
+                    quaternion::from_euler(
+                        vec3f{math::to_radians(rotate_x), math::to_radians(rotate_y), 0.0f}));
+            }
+        }
 
-        rhi_sampler_desc sampler_desc = {};
-        sampler_desc.min_filter = RHI_FILTER_LINEAR;
-        sampler_desc.mag_filter = RHI_FILTER_LINEAR;
-        sampler_desc.address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-        sampler_desc.address_mode_v = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-        sampler_desc.address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT;
-        m_skybox_sampler = device->create_sampler(sampler_desc);
+        if (ImGui::CollapsingHeader("TAA"))
+        {
+            auto& main_camera = get_world().get_component<camera_component>(get_camera());
+            auto* taa = main_camera.renderer->get_feature<taa_render_feature>();
 
-        main_camera->set_skybox(m_skybox.get(), m_skybox_sampler.get());
-        main_camera->set_skybox(m_skybox.get(), m_skybox_sampler.get());
+            static bool enable_taa = taa->is_enable();
 
-        resize(window_extent.width, window_extent.height);
+            ImGui::Checkbox("Enable##TAA", &enable_taa);
+
+            if (enable_taa)
+            {
+                taa->enable();
+            }
+            else
+            {
+                taa->disable();
+            }
+        }
+
+        if (ImGui::CollapsingHeader("GTAO"))
+        {
+            auto& main_camera = get_world().get_component<camera_component>(get_camera());
+            auto* gtao = main_camera.renderer->get_feature<gtao_render_feature>();
+
+            static bool enable_gtao = gtao->is_enable();
+            static int slice_count = static_cast<int>(gtao->get_slice_count());
+            static int step_count = static_cast<int>(gtao->get_step_count());
+            static float radius = gtao->get_radius();
+            static float falloff = gtao->get_falloff();
+
+            ImGui::Checkbox("Enable##GTAO", &enable_gtao);
+            ImGui::SliderInt("Slice Count", &slice_count, 1, 5);
+            ImGui::SliderInt("Step Count", &step_count, 1, 5);
+            ImGui::SliderFloat("Radius", &radius, 0.0f, 10.0f);
+            ImGui::SliderFloat("Falloff", &falloff, 0.1f, 1.0f);
+
+            if (enable_gtao)
+            {
+                gtao->enable();
+            }
+            else
+            {
+                gtao->disable();
+            }
+            gtao->set_slice_count(slice_count);
+            gtao->set_step_count(step_count);
+            gtao->set_radius(radius);
+            gtao->set_falloff(falloff);
+        }
+
+        if (ImGui::CollapsingHeader("Debug"))
+        {
+            auto& main_camera = get_world().get_component<camera_component>(get_camera());
+            auto* renderer = static_cast<deferred_renderer*>(main_camera.renderer.get());
+
+            static int current_debug_mode = static_cast<int>(renderer->get_debug_mode());
+            const char* debug_mode_items[] = {
+                "None",
+                "VSM Page",
+                "VSM Page Cache",
+            };
+
+            if (ImGui::Combo("Debug Mode", &current_debug_mode, debug_mode_items, 3))
+            {
+                renderer->set_debug_mode(
+                    static_cast<deferred_renderer::debug_mode>(current_debug_mode));
+            }
+        }
     }
 
-    void initialize_scene()
-    {
-        m_geometry = std::make_unique<box_geometry>(get_module<graphics_module>().get_device());
+    entity m_root;
 
-        m_cube = std::make_unique<actor>("cube", get_world());
-        auto [cube_transform, cube_mesh] = m_cube->add<transform, mesh>();
-        cube_mesh->set_geometry(m_geometry.get());
-        cube_mesh->add_submesh(0, 0, 0, m_geometry->get_index_count(), m_material.get());
-    }
+    std::unique_ptr<geometry> m_box_geometry;
 
-    void tick(float delta)
-    {
-        static float time = 0;
-        float scale = std::abs(std::sin(time));
-        time += delta;
-        m_cube->get<transform>()->set_scale(float3{scale, 1.0f, 1.0f});
+    std::unique_ptr<pbr_material> m_pbr_material;
+    std::unique_ptr<unlit_material> m_unlit_material;
 
-        return;
-        auto& window = get_module<window_module>();
-        auto rect = window.get_extent();
-
-        if (rect.width == 0 || rect.height == 0)
-            return;
-
-        matrix4 p = matrix_simd::perspective(
-            to_radians(45.0f),
-            static_cast<float>(rect.width) / static_cast<float>(rect.height),
-            0.1f,
-            100.0f);
-
-        matrix4 m = matrix_simd::affine_transform(
-            simd::set(10.0, 10.0, 10.0, 0.0),
-            quaternion_simd::rotation_axis(simd::set(1.0f, 0.0f, 0.0f, 0.0f), m_rotate),
-            simd::set(0.0, 0.0, 0.0, 0.0));
-
-        matrix4 v = matrix_simd::affine_transform(
-            simd::set(1.0f, 1.0f, 1.0f, 0.0f),
-            simd::set(0.0f, 0.0f, 0.0f, 1.0f),
-            simd::set(0.0, 0.0, -30.0f, 0.0f));
-        v = matrix_simd::inverse_transform(v);
-
-        matrix4 mvp = matrix_simd::mul(matrix_simd::mul(m, v), p);
-
-        auto cube_transform = m_cube->get<transform>();
-        cube_transform->set_rotation(
-            quaternion_simd::rotation_axis(simd::set(1.0f, 0.0f, 0.0f, 0.0f), m_rotate));
-
-        m_rotate += delta * 2.0f;
-    }
-
-    void resize(std::uint32_t width, std::uint32_t height)
-    {
-        auto& graphics = get_module<graphics_module>();
-
-        m_swapchain->resize(width, height);
-
-        rhi_texture_desc depth_desc = {};
-        depth_desc.width = width;
-        depth_desc.height = height;
-        depth_desc.format = RHI_FORMAT_D24_UNORM_S8_UINT;
-        depth_desc.samples = RHI_SAMPLE_COUNT_1;
-        depth_desc.flags = RHI_TEXTURE_FLAG_DEPTH_STENCIL;
-        m_depth = graphics.get_device()->create_texture(depth_desc);
-
-        auto main_camera = m_main_camera->get<camera>();
-        main_camera->resize(width, height);
-        main_camera->set_render_texture("render target", m_swapchain.get());
-        main_camera->set_render_texture("depth buffer", m_depth.get());
-    }
-
-    rhi_ptr<rhi_swapchain> m_swapchain;
-    rhi_ptr<rhi_texture> m_depth;
-    rhi_ptr<rhi_texture> m_skybox;
-    rhi_ptr<rhi_sampler> m_skybox_sampler;
-    std::unique_ptr<render_graph> m_render_graph;
-
-    std::unique_ptr<material_layout> m_material_layout;
-    std::unique_ptr<material> m_material;
-
-    std::unique_ptr<geometry> m_geometry;
-    std::unique_ptr<actor> m_cube;
-    std::unique_ptr<actor> m_main_camera;
-
-    float m_rotate = 0.0f;
+    entity m_plane;
+    std::array<entity, 2> m_boxes;
 };
 } // namespace violet
 
 int main()
 {
-    using namespace violet;
-
-    engine engine;
-    engine.initialize("hello-world/config");
-    engine.install<window_module>();
-    engine.install<scene_module>();
-    engine.install<graphics_module>();
-    engine.install<control_module>();
-    engine.install<sample::hello_world>();
-
-    engine.get_module<window_module>().on_destroy().then(
-        [&engine]()
-        {
-            log::info("Close window");
-            engine.exit();
-        });
-
-    engine.run();
+    violet::application app("assets/config/hello-world.json");
+    app.install<violet::hello_world>();
+    app.run();
 
     return 0;
 }

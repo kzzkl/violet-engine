@@ -45,7 +45,7 @@ public:
 
     void set_scale(float scale) noexcept
     {
-        m_scale = {scale, scale, scale};
+        m_scale = {.x = scale, .y = scale, .z = scale};
         m_dirty = TRANSFORM_DIRTY_ALL;
     }
 

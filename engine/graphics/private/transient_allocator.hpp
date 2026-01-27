@@ -10,9 +10,22 @@ struct hash<violet::rhi_parameter_desc>
 {
     std::size_t operator()(const violet::rhi_parameter_desc& desc) const noexcept
     {
-        return violet::hash::xx_hash(
-            desc.bindings,
-            sizeof(violet::rhi_parameter_binding) * desc.binding_count);
+        violet::rhi_parameter_binding bindings[violet::rhi_constants::max_parameter_bindings] = {};
+
+        for (std::uint32_t i = 0; i < desc.binding_count; ++i)
+        {
+            bindings[i].type = desc.bindings[i].type;
+            bindings[i].stages = desc.bindings[i].stages;
+            bindings[i].size = desc.bindings[i].size;
+        }
+
+        std::uint64_t hash0 =
+            violet::hash::xx_hash(&desc.flags, sizeof(violet::rhi_parameter_flags));
+        std::uint64_t hash1 = violet::hash::xx_hash(
+            &bindings,
+            sizeof(violet::rhi_parameter_binding) * violet::rhi_constants::max_parameter_bindings);
+
+        return violet::hash::combine(hash0, hash1);
     }
 };
 
@@ -21,7 +34,17 @@ struct hash<violet::rhi_texture_desc>
 {
     std::size_t operator()(const violet::rhi_texture_desc& desc) const noexcept
     {
-        return violet::hash::xx_hash(&desc, sizeof(violet::rhi_texture_desc));
+        violet::rhi_texture_desc copy = {};
+
+        copy.extent = desc.extent;
+        copy.format = desc.format;
+        copy.flags = desc.flags;
+        copy.level_count = desc.level_count;
+        copy.layer_count = desc.layer_count;
+        copy.samples = desc.samples;
+        copy.layout = desc.layout;
+
+        return violet::hash::xx_hash(&copy, sizeof(violet::rhi_texture_desc));
     }
 };
 
@@ -30,7 +53,13 @@ struct hash<violet::rhi_buffer_desc>
 {
     std::size_t operator()(const violet::rhi_buffer_desc& desc) const noexcept
     {
-        return violet::hash::xx_hash(&desc, sizeof(violet::rhi_buffer_desc));
+        violet::rhi_buffer_desc copy = {};
+
+        copy.data = desc.data;
+        copy.size = desc.size;
+        copy.flags = desc.flags;
+
+        return violet::hash::xx_hash(&copy, sizeof(violet::rhi_buffer_desc));
     }
 };
 
@@ -39,7 +68,33 @@ struct hash<violet::rhi_render_pass_desc>
 {
     std::size_t operator()(const violet::rhi_render_pass_desc& desc) const noexcept
     {
-        return violet::hash::xx_hash(&desc, sizeof(violet::rhi_render_pass_desc));
+        violet::rhi_render_pass_desc copy = {};
+
+        for (std::uint32_t i = 0; i < desc.attachment_count; ++i)
+        {
+            copy.attachments[i].type = desc.attachments[i].type;
+            copy.attachments[i].format = desc.attachments[i].format;
+            copy.attachments[i].samples = desc.attachments[i].samples;
+            copy.attachments[i].layout = desc.attachments[i].layout;
+            copy.attachments[i].initial_layout = desc.attachments[i].initial_layout;
+            copy.attachments[i].final_layout = desc.attachments[i].final_layout;
+            copy.attachments[i].load_op = desc.attachments[i].load_op;
+            copy.attachments[i].store_op = desc.attachments[i].store_op;
+            copy.attachments[i].stencil_load_op = desc.attachments[i].stencil_load_op;
+            copy.attachments[i].stencil_store_op = desc.attachments[i].stencil_store_op;
+        }
+
+        copy.begin_dependency.src_stages = desc.begin_dependency.src_stages;
+        copy.begin_dependency.src_access = desc.begin_dependency.src_access;
+        copy.begin_dependency.dst_stages = desc.begin_dependency.dst_stages;
+        copy.begin_dependency.dst_access = desc.begin_dependency.dst_access;
+
+        copy.end_dependency.src_stages = desc.end_dependency.src_stages;
+        copy.end_dependency.src_access = desc.end_dependency.src_access;
+        copy.end_dependency.dst_stages = desc.end_dependency.dst_stages;
+        copy.end_dependency.dst_access = desc.end_dependency.dst_access;
+
+        return violet::hash::xx_hash(&copy, sizeof(violet::rhi_render_pass_desc));
     }
 };
 
@@ -48,7 +103,19 @@ struct hash<violet::rhi_raster_pipeline_desc>
 {
     std::size_t operator()(const violet::rhi_raster_pipeline_desc& desc) const noexcept
     {
-        return violet::hash::xx_hash(&desc, sizeof(violet::rhi_raster_pipeline_desc));
+        violet::rhi_raster_pipeline_desc copy = {};
+
+        copy.vertex_shader = desc.vertex_shader;
+        copy.geometry_shader = desc.geometry_shader;
+        copy.fragment_shader = desc.fragment_shader;
+        copy.rasterizer_state = desc.rasterizer_state;
+        copy.depth_stencil_state = desc.depth_stencil_state;
+        copy.blend_state = desc.blend_state;
+        copy.primitive_topology = desc.primitive_topology;
+        copy.samples = desc.samples;
+        copy.render_pass = desc.render_pass;
+
+        return violet::hash::xx_hash(&copy, sizeof(violet::rhi_raster_pipeline_desc));
     }
 };
 
@@ -66,7 +133,18 @@ struct hash<violet::rhi_sampler_desc>
 {
     std::size_t operator()(const violet::rhi_sampler_desc& desc) const noexcept
     {
-        return violet::hash::xx_hash(&desc, sizeof(violet::rhi_sampler_desc));
+        violet::rhi_sampler_desc copy = {};
+
+        copy.mag_filter = desc.mag_filter;
+        copy.min_filter = desc.min_filter;
+        copy.address_mode_u = desc.address_mode_u;
+        copy.address_mode_v = desc.address_mode_v;
+        copy.address_mode_w = desc.address_mode_w;
+        copy.min_level = desc.min_level;
+        copy.max_level = desc.max_level;
+        copy.reduction_mode = desc.reduction_mode;
+
+        return violet::hash::xx_hash(&copy, sizeof(violet::rhi_sampler_desc));
     }
 };
 } // namespace std

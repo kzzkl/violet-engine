@@ -1,19 +1,40 @@
 #pragma once
 
-#include "graphics/renderer.hpp"
+#include "graphics/render_interface.hpp"
 #include "math/math.hpp"
+#include <memory>
 #include <variant>
+#include <vector>
 
 namespace violet
 {
+enum camera_type
+{
+    CAMERA_ORTHOGRAPHIC,
+    CAMERA_PERSPECTIVE,
+};
+
+class renderer;
 class camera_component
 {
 public:
+    camera_type type{camera_type::CAMERA_PERSPECTIVE};
+
+    struct
+    {
+        float width{100.0f};
+        float height{100.0f};
+    } orthographic;
+
+    struct
+    {
+        float fov{math::to_radians(60.0f)};
+    } perspective;
+
     float near{0.01f};
     float far{std::numeric_limits<float>::infinity()};
-    float fov{math::to_radians(45.0f)};
 
-    float priority;
+    float priority{0.0f};
 
     std::unique_ptr<renderer> renderer;
     std::variant<rhi_texture*, rhi_swapchain*> render_target;

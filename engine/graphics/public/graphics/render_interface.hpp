@@ -10,7 +10,7 @@ struct rhi_constants
 {
     static constexpr std::size_t max_attachments = 8;
     static constexpr std::size_t max_parameter_bindings = 8;
-    static constexpr std::size_t max_parameters = 16;
+    static constexpr std::size_t max_parameters = 8;
     static constexpr std::size_t max_vertex_attributes = 8;
 };
 
@@ -826,7 +826,8 @@ public:
     virtual void begin_render_pass(
         rhi_render_pass* render_pass,
         const rhi_attachment* attachments,
-        std::uint32_t attachment_count) = 0;
+        std::uint32_t attachment_count,
+        const rhi_texture_extent& render_area = {}) = 0;
     virtual void end_render_pass() = 0;
 
     virtual void set_pipeline(rhi_raster_pipeline* raster_pipeline) = 0;

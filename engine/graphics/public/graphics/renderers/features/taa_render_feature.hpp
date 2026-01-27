@@ -45,7 +45,7 @@ private:
             for (auto& target : m_history)
             {
                 target = render_device::instance().create_texture({
-                    .extent = {width, height},
+                    .extent = {.width = width, .height = height},
                     .format = RHI_FORMAT_R16G16B16A16_FLOAT,
                     .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE,
                     .level_count = 1,

@@ -94,14 +94,29 @@ struct sphere
 
         sphere_type result;
         result.center = (points[min_index[largest_axis]] + points[max_index[largest_axis]]) * 0.5f;
+        result.radius = std::sqrt(largest_distance_sq) / 2.0f;
 
-        value_type largest_radius_sq = value_type(0);
+        value_type radius_sq = result.radius * result.radius;
+
         for (const auto& point : points)
         {
             auto distance_sq = vector::length_sq(point - result.center);
-            largest_radius_sq = std::max(largest_radius_sq, distance_sq);
+
+            if (distance_sq <= radius_sq)
+            {
+                continue;
+            }
+
+            auto distance = std::sqrt(distance_sq);
+            auto direction = vector::normalize(point - result.center);
+
+            value_type new_radius = (distance + result.radius) * 0.5f;
+
+            result.center = result.center + direction * (new_radius - result.radius);
+
+            result.radius = new_radius;
+            radius_sq = result.radius * result.radius;
         }
-        result.radius = std::sqrt(largest_radius_sq);
 
         return result;
     }
@@ -157,7 +172,18 @@ struct sphere
 
         for (const auto& sphere : spheres)
         {
-            expand(result, sphere);
+            auto distance = vector::length(sphere.center - result.center) + sphere.radius;
+
+            if (distance <= result.radius)
+            {
+                continue;
+            }
+
+            auto direction = (sphere.center - result.center) / distance;
+
+            value_type new_radius = (distance + result.radius) * 0.5f;
+            result.center = result.center + direction * (new_radius - result.radius);
+            result.radius = new_radius;
         }
 
         return result;

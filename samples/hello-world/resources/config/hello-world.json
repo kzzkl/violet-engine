@@ -5,9 +5,8 @@
         "height": 800
     },
     "hello_world": {
-        "text": "hello world"
-    },
-    "graphics": {
-        "frame_resource_count": 2
+        "skybox": "D:/Workspace/assets/textures/skybox/dry_orchard_meadow_4k.hdr",
+        "model_bak2": "D:/Workspace/assets/models/gltf/Bistro.glb",
+        "model": "D:/Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf"
     }
 }

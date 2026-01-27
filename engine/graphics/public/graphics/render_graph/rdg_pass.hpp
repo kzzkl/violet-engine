@@ -79,6 +79,16 @@ public:
         std::uint32_t layer = 0,
         rhi_clear_value clear_value = {});
 
+    void set_render_area(const rhi_texture_extent& render_area) noexcept
+    {
+        m_render_area = render_area;
+    }
+
+    const rhi_texture_extent& get_render_area() const noexcept
+    {
+        return m_render_area;
+    }
+
     rhi_parameter* add_parameter(const rhi_parameter_desc& desc);
 
     template <typename Functor>
@@ -125,6 +135,7 @@ private:
     rdg_pass_type m_type;
 
     std::vector<rdg_reference*> m_references;
+    rhi_texture_extent m_render_area;
 
     std::size_t m_batch_index;
 

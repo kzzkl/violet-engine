@@ -1,8 +1,7 @@
 #pragma once
 
-#include "components/orbit_control_component.hpp"
-#include "components/transform_component.hpp"
 #include "core/engine.hpp"
+#include "math/types.hpp"
 
 namespace violet
 {
@@ -16,12 +15,13 @@ public:
 
 private:
     void tick();
-    void update_orbit_control(
-        orbit_control_component& orbit_control,
-        transform_component& transform,
-        int mouse_wheel);
+    void update_orbit_control();
+    void update_first_person_control();
 
     vec2i m_mouse_position;
-    vec2i m_mouse_position_delta;
+    vec2f m_mouse_position_delta;
+
+    bool m_mouse_hold;
+    int m_mouse_wheel;
 };
 } // namespace violet

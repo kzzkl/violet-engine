@@ -22,12 +22,13 @@ vk_command::~vk_command() {}
 void vk_command::begin_render_pass(
     rhi_render_pass* render_pass,
     const rhi_attachment* attachments,
-    std::uint32_t attachment_count)
+    std::uint32_t attachment_count,
+    const rhi_texture_extent& render_area)
 {
     assert(m_current_render_pass == nullptr);
 
     m_current_render_pass = static_cast<vk_render_pass*>(render_pass);
-    m_current_render_pass->begin(m_command_buffer, attachments, attachment_count);
+    m_current_render_pass->begin(m_command_buffer, attachments, attachment_count, render_area);
 }
 
 void vk_command::end_render_pass()
@@ -39,18 +40,30 @@ void vk_command::end_render_pass()
 void vk_command::set_pipeline(rhi_raster_pipeline* raster_pipeline)
 {
     auto* pipeline = static_cast<vk_raster_pipeline*>(raster_pipeline);
+    if (m_current_pipeline == pipeline->get_pipeline())
+    {
+        return;
+    }
+
     vkCmdBindPipeline(m_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->get_pipeline());
 
     m_current_pipeline_layout = pipeline->get_pipeline_layout();
+    m_current_pipeline = pipeline->get_pipeline();
     m_current_bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS;
 }
 
 void vk_command::set_pipeline(rhi_compute_pipeline* compute_pipeline)
 {
     auto* pipeline = static_cast<vk_compute_pipeline*>(compute_pipeline);
+    if (m_current_pipeline == pipeline->get_pipeline())
+    {
+        return;
+    }
+
     vkCmdBindPipeline(m_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->get_pipeline());
 
     m_current_pipeline_layout = pipeline->get_pipeline_layout();
+    m_current_pipeline = pipeline->get_pipeline();
     m_current_bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
 }
 

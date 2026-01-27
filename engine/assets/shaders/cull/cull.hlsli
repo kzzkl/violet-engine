@@ -34,6 +34,20 @@ struct cluster_node_data
     uint padding2;
 };
 
+// Frustum culling for orthogonal projection.
+bool frustum_cull(float4 sphere_vs, float width, float height, float near)
+{
+    float half_width = width * 0.5;
+    float half_height = height * 0.5;
+
+    bool visible = sphere_vs.z + sphere_vs.w > near;
+    visible = visible && (sphere_vs.x + sphere_vs.w) > -half_width && (sphere_vs.x - sphere_vs.w) < half_width;
+    visible = visible && (sphere_vs.y + sphere_vs.w) > -half_height && (sphere_vs.y - sphere_vs.w) < half_height;
+
+    return visible;
+}
+
+// Frustum culling for perspective projection.
 bool frustum_cull(float4 sphere_vs, float4 frustum, float near)
 {
     bool visible = sphere_vs.z + sphere_vs.w > near;
@@ -43,14 +57,38 @@ bool frustum_cull(float4 sphere_vs, float4 frustum, float near)
     return visible;
 }
 
-bool occlusion_cull(float4 sphere_vs, Texture2D<float> hzb, SamplerState hzb_sampler, uint width, uint height, float4x4 matrix_p, float near)
+bool occlusion_cull(
+    float4 sphere_vs,
+    Texture2D<float> hzb,
+    SamplerState hzb_sampler,
+    uint width,
+    uint height,
+    float4x4 matrix_p,
+    float near,
+    uint camera_type)
 {
     if (sphere_vs.z - sphere_vs.w < near)
     {
         return true;
     }
 
-    float4 aabb = project_shpere_vs(sphere_vs, matrix_p[0][0], matrix_p[1][1]);
+    float4 aabb;
+    
+    if (camera_type == CAMERA_ORTHOGRAPHIC)
+    {
+        if (!project_shpere_orthographic(sphere_vs, matrix_p[0][0], matrix_p[1][1], near, aabb))
+        {
+            return false;
+        }
+    }
+    else
+    {
+        if (!project_shpere_perspective(sphere_vs, matrix_p[0][0], matrix_p[1][1], near, aabb))
+        {
+            return false;
+        }
+    }
+
     aabb = aabb.xwzy * float4(0.5, -0.5, 0.5, -0.5) + 0.5;
 
     float aabb_width = abs(aabb.z - aabb.x) * width;
@@ -60,8 +98,14 @@ bool occlusion_cull(float4 sphere_vs, Texture2D<float> hzb, SamplerState hzb_sam
 
     float depth = hzb.SampleLevel(hzb_sampler, (aabb.xy + aabb.zw) * 0.5, level);
 
-    // Only works correctly on reverse depth projection matrices with an infinite far plane.
-    float sphere_depth = near / (sphere_vs.z - sphere_vs.w);
-
-    return sphere_depth > depth;
+    // if (camera_type == CAMERA_ORTHOGRAPHIC)
+    // {
+    //     return sphere_vs.z - sphere_vs.w > depth;
+    // }
+    // else
+    {
+        // Only works correctly on reverse depth projection matrices with an infinite far plane.
+        float sphere_depth = near / (sphere_vs.z - sphere_vs.w);
+        return sphere_depth > depth;
+    }
 }

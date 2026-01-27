@@ -7,22 +7,41 @@ namespace violet
 class deferred_renderer : public renderer
 {
 public:
+    enum debug_mode
+    {
+        DEBUG_MODE_NONE,
+        DEBUG_MODE_VSM_PAGE,
+        DEBUG_MODE_VSM_PAGE_CACHE,
+        DEBUG_MODE_VSM_PHYSICAL_PAGE_TABLE,
+    };
+
     deferred_renderer();
+
+    void set_debug_mode(debug_mode mode) noexcept
+    {
+        m_debug_mode = mode;
+    }
+
+    debug_mode get_debug_mode() const noexcept
+    {
+        return m_debug_mode;
+    }
 
 protected:
     void on_render(render_graph& graph) override;
 
-    // For ImGUI.
     rdg_texture* get_render_target() const noexcept
     {
         return m_render_target;
     }
 
 private:
+    void prepare(render_graph& graph);
     void add_cull_pass(render_graph& graph, bool main_pass);
     void add_gbuffer_pass(render_graph& graph, bool main_pass);
     void add_hzb_pass(render_graph& graph);
     void add_gtao_pass(render_graph& graph);
+    void add_shadow_pass(render_graph& graph);
     void add_shading_pass(render_graph& graph);
     void add_motion_vector_pass(render_graph& graph);
     void add_taa_pass(render_graph& graph);
@@ -48,5 +67,13 @@ private:
     rdg_buffer* m_draw_buffer{nullptr};
     rdg_buffer* m_draw_count_buffer{nullptr};
     rdg_buffer* m_draw_info_buffer{nullptr};
+
+    rdg_buffer* m_vsm_buffer{nullptr};
+    rdg_buffer* m_vsm_virtual_page_table{nullptr};
+    rdg_buffer* m_vsm_physical_page_table{nullptr};
+    rdg_texture* m_vsm_physical_texture{nullptr};
+
+    debug_mode m_debug_mode{DEBUG_MODE_NONE};
+    rdg_texture* m_debug_output{nullptr};
 };
 } // namespace violet

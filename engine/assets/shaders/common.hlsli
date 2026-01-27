@@ -86,7 +86,7 @@ struct light_data
     float3 position;
     uint type;
     float3 direction;
-    bool shadow;
+    uint vsm_address;
     float3 color;
     uint padding0;
 };
@@ -108,8 +108,12 @@ struct scene_data
     uint skybox;
     uint irradiance;
     uint prefilter;
-    uint padding0;
+
+    uint directional_vsm_buffer;
 };
+
+static const uint CAMERA_ORTHOGRAPHIC = 0;
+static const uint CAMERA_PERSPECTIVE = 1;
 
 struct camera_data
 {
@@ -126,16 +130,17 @@ struct camera_data
     float4x4 prev_matrix_vp_no_jitter;
 
     float3 position;
-    float fov;
+    uint camera_id;
+
+    float2 jitter;
 
     float near;
     float far;
+
+    uint type;
+    float fov;
     float width;
     float height;
-
-    float2 jitter;
-    uint padding0;
-    uint padding1;
 };
 
 SamplerState get_point_repeat_sampler()

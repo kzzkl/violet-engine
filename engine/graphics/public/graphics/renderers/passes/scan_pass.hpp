@@ -16,8 +16,7 @@ public:
     void add(render_graph& graph, const parameter& parameter);
 
 private:
-    static constexpr std::uint32_t group_size = 256;
-    static constexpr std::uint32_t max_group_count = 16;
+    static constexpr std::uint32_t group_size = 128;
 
     void add_scan_pass(render_graph& graph, const parameter& parameter);
     void add_offset_pass(render_graph& graph, const parameter& parameter);

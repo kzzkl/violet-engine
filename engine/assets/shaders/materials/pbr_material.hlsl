@@ -15,6 +15,9 @@ struct pbr_material
     uint emissive_texture;
 };
 
+ConstantBuffer<scene_data> scene : register(b0, space1);
+ConstantBuffer<camera_data> camera : register(b0, space2);
+
 [numthreads(8, 8, 1)]
 void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 {
@@ -40,7 +43,7 @@ void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
         return;
     }
 
-    mesh mesh = mesh::create(instance_id);
+    mesh mesh = mesh::create(instance_id, scene);
     uint material_address = mesh.get_material_address();
 
     material_info material_info = load_material_info(scene.material_buffer, material_address);
@@ -51,7 +54,7 @@ void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 
     float2 ddx;
     float2 ddy;
-    vertex vertex = mesh.fetch_vertex(primitive_id, float2(coord), float2(constant.width, constant.height), ddx, ddy);
+    vertex vertex = mesh.fetch_vertex(primitive_id, float2(coord), float2(constant.width, constant.height), ddx, ddy, camera.matrix_vp);
 
     pbr_material material = load_material<pbr_material>(scene.material_buffer, material_address);
     

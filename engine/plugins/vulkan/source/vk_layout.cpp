@@ -4,12 +4,14 @@
 
 namespace violet::vk
 {
-vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_context* context)
+vk_parameter_layout::vk_parameter_layout(
+    std::span<const rhi_parameter_binding> bindings,
+    vk_context* context)
     : m_layout(VK_NULL_HANDLE),
-      m_bindings(desc.binding_count),
+      m_bindings(bindings.size()),
       m_context(context)
 {
-    std::vector<VkDescriptorSetLayoutBinding> bindings;
+    std::vector<VkDescriptorSetLayoutBinding> layout_bindings;
     std::vector<VkDescriptorBindingFlags> binding_flags;
 
     std::size_t uniform_count = 0;
@@ -21,27 +23,27 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
         VkDescriptorSetLayoutBinding binding = {};
         binding.binding = static_cast<std::uint32_t>(i);
         binding.stageFlags |=
-            desc.bindings[i].stages & RHI_SHADER_STAGE_VERTEX ? VK_SHADER_STAGE_VERTEX_BIT : 0;
+            bindings[i].stages & RHI_SHADER_STAGE_VERTEX ? VK_SHADER_STAGE_VERTEX_BIT : 0;
         binding.stageFlags |=
-            desc.bindings[i].stages & RHI_SHADER_STAGE_GEOMETRY ? VK_SHADER_STAGE_GEOMETRY_BIT : 0;
+            bindings[i].stages & RHI_SHADER_STAGE_GEOMETRY ? VK_SHADER_STAGE_GEOMETRY_BIT : 0;
         binding.stageFlags |=
-            desc.bindings[i].stages & RHI_SHADER_STAGE_FRAGMENT ? VK_SHADER_STAGE_FRAGMENT_BIT : 0;
+            bindings[i].stages & RHI_SHADER_STAGE_FRAGMENT ? VK_SHADER_STAGE_FRAGMENT_BIT : 0;
         binding.stageFlags |=
-            desc.bindings[i].stages & RHI_SHADER_STAGE_COMPUTE ? VK_SHADER_STAGE_COMPUTE_BIT : 0;
+            bindings[i].stages & RHI_SHADER_STAGE_COMPUTE ? VK_SHADER_STAGE_COMPUTE_BIT : 0;
 
         assert(binding.stageFlags != 0);
 
         binding.pImmutableSamplers = nullptr;
 
-        m_bindings[i].type = desc.bindings[i].type;
-        m_bindings[i].size = desc.bindings[i].size;
+        m_bindings[i].type = bindings[i].type;
+        m_bindings[i].size = bindings[i].size;
 
         // When size is 0, it indicates bindless descriptor. Otherwise, it indicates the number of
         // descriptors.
-        if (desc.bindings[i].size == 0)
+        if (bindings[i].size == 0)
         {
             binding.descriptorCount =
-                desc.bindings[i].type == RHI_PARAMETER_BINDING_TYPE_SAMPLER ? 2048 : 65536;
+                bindings[i].type == RHI_PARAMETER_BINDING_TYPE_SAMPLER ? 512 : 65536;
             binding_flags.push_back(
                 VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
                 VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);
@@ -50,18 +52,18 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
         }
         else
         {
-            if (desc.bindings[i].type == RHI_PARAMETER_BINDING_TYPE_UNIFORM)
+            if (bindings[i].type == RHI_PARAMETER_BINDING_TYPE_UNIFORM)
             {
                 binding.descriptorCount = 1;
             }
             else
             {
-                binding.descriptorCount = static_cast<std::uint32_t>(desc.bindings[i].size);
+                binding.descriptorCount = static_cast<std::uint32_t>(bindings[i].size);
             }
             binding_flags.push_back(0);
         }
 
-        switch (desc.bindings[i].type)
+        switch (bindings[i].type)
         {
         case RHI_PARAMETER_BINDING_TYPE_UNIFORM: {
             binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -99,7 +101,7 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
             break;
         }
 
-        bindings.push_back(binding);
+        layout_bindings.push_back(binding);
     }
 
     assert(mutable_count <= 1);
@@ -134,8 +136,8 @@ vk_parameter_layout::vk_parameter_layout(const rhi_parameter_desc& desc, vk_cont
     VkDescriptorSetLayoutCreateInfo descriptor_set_layout_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .pNext = &descriptor_set_layout_binding_flags,
-        .bindingCount = static_cast<std::uint32_t>(bindings.size()),
-        .pBindings = bindings.data(),
+        .bindingCount = static_cast<std::uint32_t>(layout_bindings.size()),
+        .pBindings = layout_bindings.data(),
     };
 
     if (bindless)
@@ -156,14 +158,17 @@ vk_parameter_layout::~vk_parameter_layout()
     vkDestroyDescriptorSetLayout(m_context->get_device(), m_layout, nullptr);
 }
 
-vk_pipeline_layout::vk_pipeline_layout(const vk_pipeline_layout_desc& desc, vk_context* context)
-    : m_layout(VK_NULL_HANDLE),
-      m_push_constant_stages(desc.push_constant_stages),
-      m_push_constant_size(desc.push_constant_size),
+vk_pipeline_layout::vk_pipeline_layout(
+    std::uint32_t push_constant_size,
+    VkPipelineStageFlags push_constant_stages,
+    std::span<const vk_parameter_layout*> parameters,
+    vk_context* context)
+    : m_push_constant_size(push_constant_size),
+      m_push_constant_stages(push_constant_stages),
       m_context(context)
 {
     std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
-    for (vk_parameter_layout* parameter : desc.parameters)
+    for (const vk_parameter_layout* parameter : parameters)
     {
         if (parameter == nullptr)
         {
@@ -179,10 +184,10 @@ vk_pipeline_layout::vk_pipeline_layout(const vk_pipeline_layout_desc& desc, vk_c
     layout_info.setLayoutCount = static_cast<std::uint32_t>(descriptor_set_layouts.size());
 
     VkPushConstantRange push_constant_range = {
-        .stageFlags = desc.push_constant_stages,
-        .size = desc.push_constant_size,
+        .stageFlags = push_constant_stages,
+        .size = push_constant_size,
     };
-    if (desc.push_constant_size != 0)
+    if (push_constant_size != 0)
     {
         layout_info.pushConstantRangeCount = 1;
         layout_info.pPushConstantRanges = &push_constant_range;
@@ -203,14 +208,17 @@ vk_layout_manager::vk_layout_manager(vk_context* context)
 
 vk_layout_manager::~vk_layout_manager() {}
 
-vk_parameter_layout* vk_layout_manager::get_parameter_layout(const rhi_parameter_desc& desc)
+vk_parameter_layout* vk_layout_manager::get_parameter_layout(
+    std::span<const rhi_parameter_binding> bindings)
 {
     parameter_layout_key key = {};
-    for (std::size_t i = 0; i < desc.binding_count; ++i)
+    for (std::size_t i = 0; i < bindings.size(); ++i)
     {
-        key.bindings[i] = desc.bindings[i];
+        key.bindings[i].type = bindings[i].type;
+        key.bindings[i].stages = bindings[i].stages;
+        key.bindings[i].size = bindings[i].size;
     }
-    key.binding_count = desc.binding_count;
+    key.binding_count = static_cast<std::uint32_t>(bindings.size());
 
     auto iter = m_parameter_layouts.find(key);
     if (iter != m_parameter_layouts.end())
@@ -218,23 +226,34 @@ vk_parameter_layout* vk_layout_manager::get_parameter_layout(const rhi_parameter
         return iter->second.get();
     }
 
-    auto layout = std::make_unique<vk_parameter_layout>(desc, m_context);
-    vk_parameter_layout* result = layout.get();
-    m_parameter_layouts[key] = std::move(layout);
-    return result;
+    return (m_parameter_layouts[key] = std::make_unique<vk_parameter_layout>(bindings, m_context))
+        .get();
 }
 
-vk_pipeline_layout* vk_layout_manager::get_pipeline_layout(const vk_pipeline_layout_desc& desc)
+vk_pipeline_layout* vk_layout_manager::get_pipeline_layout(
+    std::uint32_t push_constant_size,
+    VkPipelineStageFlags push_constant_stages,
+    std::span<const vk_parameter_layout*> parameters)
 {
-    auto iter = m_pipeline_layouts.find(desc);
+    pipeline_layout_key key = {};
+    key.push_constant_size = push_constant_size;
+    key.push_constant_stages = push_constant_stages;
+    for (std::size_t i = 0; i < parameters.size(); ++i)
+    {
+        key.parameters[i] = parameters[i];
+    }
+
+    auto iter = m_pipeline_layouts.find(key);
     if (iter != m_pipeline_layouts.end())
     {
         return iter->second.get();
     }
 
-    auto layout = std::make_unique<vk_pipeline_layout>(desc, m_context);
-    vk_pipeline_layout* result = layout.get();
-    m_pipeline_layouts[desc] = std::move(layout);
-    return result;
+    return (m_pipeline_layouts[key] = std::make_unique<vk_pipeline_layout>(
+                push_constant_size,
+                push_constant_stages,
+                parameters,
+                m_context))
+        .get();
 }
 } // namespace violet::vk

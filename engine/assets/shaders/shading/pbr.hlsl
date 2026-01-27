@@ -58,6 +58,8 @@ void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 
     StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
 
+    shadow_parameter shadow = shadow_parameter::create(constant.common, scene, camera);
+
     float3 direct_lighting = 0.0;
     for (int i = 0; i < scene.light_count; ++i)
     {
@@ -78,7 +80,12 @@ void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
         float3 specular = d * vis * f;
         float3 diffuse = albedo / PI * kd;
 
-        direct_lighting += (specular + diffuse) * NdotL * light.color;
+        float shadow_factor = 1.0;
+        if (light.vsm_address != 0xFFFFFFFF)
+        {
+            shadow_factor = shadow.get_shadow(light, position);
+        }
+        direct_lighting += (specular + diffuse) * NdotL * light.color * shadow_factor;
     }
 
     float3 ambient_lighting = 0.0;

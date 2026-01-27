@@ -188,6 +188,10 @@ void shading_pass::add_tile_shading_pass(render_graph& graph, const parameter& p
         rdg_texture_uav render_target;
         rdg_buffer_srv worklist_buffer;
         rdg_buffer_ref shading_dispatch_buffer;
+
+        rdg_buffer_srv vsm_buffer;
+        rdg_buffer_srv vsm_virtual_page_table;
+        rdg_texture_srv vsm_physical_texture;
     };
 
     graph.get_scene().each_shading_model(
@@ -229,6 +233,15 @@ void shading_pass::add_tile_shading_pass(render_graph& graph, const parameter& p
                         m_shading_dispatch_buffer,
                         RHI_PIPELINE_STAGE_DRAW_INDIRECT,
                         RHI_ACCESS_INDIRECT_COMMAND_READ);
+
+                    data.vsm_buffer =
+                        pass.add_buffer_srv(parameter.vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+                    data.vsm_virtual_page_table = pass.add_buffer_srv(
+                        parameter.vsm_virtual_page_table,
+                        RHI_PIPELINE_STAGE_COMPUTE);
+                    data.vsm_physical_texture = pass.add_texture_srv(
+                        parameter.vsm_physical_texture,
+                        RHI_PIPELINE_STAGE_COMPUTE);
                 },
                 [shading_model,
                  shading_model_id,
@@ -245,6 +258,9 @@ void shading_pass::add_tile_shading_pass(render_graph& graph, const parameter& p
                         .shading_model = shading_model_id,
                         .worklist_buffer = data.worklist_buffer.get_bindless(),
                         .worklist_offset = shading_model_id * tile_count,
+                        .vsm_buffer = data.vsm_buffer.get_bindless(),
+                        .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
+                        .vsm_physical_texture = data.vsm_physical_texture.get_bindless(),
                     };
 
                     for (std::uint32_t gbuffer : shading_model->get_required_gbuffers())

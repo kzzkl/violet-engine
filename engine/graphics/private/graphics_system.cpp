@@ -8,12 +8,15 @@
 #include "graphics/geometry_manager.hpp"
 #include "graphics/graphics_config.hpp"
 #include "graphics/material_manager.hpp"
+#include "graphics/renderer.hpp"
 #include "light_system.hpp"
 #include "mesh_system.hpp"
 #include "render_scene_manager.hpp"
 #include "rhi_plugin.hpp"
 #include "scene/scene_system.hpp"
 #include "skinning_system.hpp"
+#include "virtual_shadow_map/vsm_manager.hpp"
+#include <algorithm>
 
 namespace violet
 {
@@ -28,6 +31,7 @@ graphics_system::~graphics_system()
     m_debug_drawer = nullptr;
 #endif
     m_scene_manager = nullptr;
+    m_vsm_manager = nullptr;
     m_gpu_buffer_uploader = nullptr;
     m_fences.clear();
     m_frame_fence = nullptr;
@@ -103,7 +107,7 @@ bool graphics_system::initialize(const dictionary& config)
                 get_system<skinning_system>().update();
                 get_system<light_system>().update(*m_scene_manager);
                 get_system<environment_system>().update(*m_scene_manager);
-                get_system<camera_system>().update();
+                get_system<camera_system>().update(*m_scene_manager);
 
                 device.get_material_manager()->update(m_gpu_buffer_uploader.get());
                 device.get_geometry_manager()->update(m_gpu_buffer_uploader.get());
@@ -129,13 +133,26 @@ bool graphics_system::initialize(const dictionary& config)
     m_frame_fence = device.create_fence();
     m_update_fence = device.create_fence();
 
-    m_scene_manager = std::make_unique<render_scene_manager>();
+    m_vsm_manager = std::make_unique<vsm_manager>();
+    m_scene_manager = std::make_unique<render_scene_manager>(m_vsm_manager.get());
 
     m_gpu_buffer_uploader = std::make_unique<gpu_buffer_uploader>(4ull * 1024 * 1024);
 
 #ifndef NDEBUG
     m_debug_drawer = std::make_unique<debug_drawer>(get_world());
 #endif
+
+    std::vector<rhi_parameter_binding> bindings = {{
+        .type = RHI_PARAMETER_BINDING_TYPE_STORAGE_BUFFER,
+        .stages = RHI_SHADER_STAGE_COMPUTE,
+        .size = 1,
+    }};
+
+    rhi_parameter_desc parameter_desc = {
+        .bindings = bindings.data(),
+        .binding_count = static_cast<std::uint32_t>(bindings.size()),
+    };
+    device.create_parameter(parameter_desc);
 
     return true;
 }
@@ -164,7 +181,9 @@ void graphics_system::begin_frame()
 void graphics_system::end_frame()
 {
     auto& device = render_device::instance();
+
     m_scene_manager->update(m_gpu_buffer_uploader.get());
+    m_vsm_manager->update(m_gpu_buffer_uploader.get());
 
     rhi_command* command = nullptr;
 
@@ -210,19 +229,18 @@ void graphics_system::render()
     world.get_view()
         .read<camera_component>()
         .read<camera_component_meta>()
-        .read<scene_component>()
+        .with<scene_component>()
         .each(
             [&render_queue](
                 const camera_component& camera,
-                const camera_component_meta& camera_meta,
-                const scene_component& scene)
+                const camera_component_meta& camera_meta)
             {
-                render_queue.emplace_back(&camera, &camera_meta, scene.layer);
+                assert(camera_meta.scene != nullptr && camera_meta.id != INVALID_RENDER_ID);
+                render_queue.emplace_back(&camera, &camera_meta);
             });
 
-    std::sort(
-        render_queue.begin(),
-        render_queue.end(),
+    std::ranges::sort(
+        render_queue,
         [](const auto& a, const auto& b)
         {
             return a.camera->priority > b.camera->priority;
@@ -293,13 +311,7 @@ rhi_fence* graphics_system::render(const render_context& context)
     command->signal(finish_fence, m_frame_fence_value);
 
     render_camera render_camera(context.camera, context.camera_meta);
-    render_graph graph(
-        "Camera",
-        m_scene_manager->get_scene(context.layer),
-        &render_camera,
-        m_allocator.get());
-
-    render_camera.get_hzb();
+    render_graph graph("Camera", context.camera_meta->scene, &render_camera, m_allocator.get());
 
     context.camera->renderer->render(graph);
 

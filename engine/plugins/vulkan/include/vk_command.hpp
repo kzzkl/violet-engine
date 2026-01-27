@@ -23,7 +23,8 @@ public:
     void begin_render_pass(
         rhi_render_pass* render_pass,
         const rhi_attachment* attachments,
-        std::uint32_t attachment_count) override;
+        std::uint32_t attachment_count,
+        const rhi_texture_extent& render_area) override;
     void end_render_pass() override;
 
     void set_pipeline(rhi_raster_pipeline* raster_pipeline) override;
@@ -154,6 +155,7 @@ private:
 
     vk_render_pass* m_current_render_pass;
     vk_pipeline_layout* m_current_pipeline_layout;
+    VkPipeline m_current_pipeline;
     VkPipelineBindPoint m_current_bind_point;
 
     std::vector<VkSemaphore> m_signal_fences;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "math/types.hpp"
 #include <cassert>
 #include <vector>
 
@@ -17,24 +18,27 @@ public:
     {
     }
 
-    inline bool down() const noexcept
+    bool down() const noexcept
     {
         return m_state & 0x1;
     }
-    inline bool up() const noexcept
+
+    bool up() const noexcept
     {
         return !down();
     }
 
-    inline bool press() const noexcept
+    bool press() const noexcept
     {
         return m_state == 0x1;
     }
-    inline bool release() const noexcept
+
+    bool release() const noexcept
     {
         return m_state == 0x2;
     }
-    inline bool hold() const noexcept
+
+    bool hold() const noexcept
     {
         return m_state == 0x3;
     }
@@ -53,7 +57,7 @@ public:
     }
     virtual ~key_device() {}
 
-    inline key_state key(KeyType key) const noexcept
+    key_state key(KeyType key) const noexcept
     {
         auto index = static_cast<std::uint32_t>(key);
         assert(index < KeyCount);
@@ -136,26 +140,25 @@ public:
     mouse_mode get_mode() const noexcept;
     void set_cursor(mouse_cursor cursor);
 
-    inline int get_x() const noexcept
+    vec2i get_window_position() const noexcept
     {
-        return m_x;
+        return m_position;
     }
-    inline int get_y() const noexcept
-    {
-        return m_y;
-    }
-    inline int get_wheel() const noexcept
+
+    void set_screen_position(const vec2i& position);
+    vec2i get_screen_position() const noexcept;
+
+    int get_wheel() const noexcept
     {
         return m_wheel;
     }
 
-    virtual void tick() override;
+    void tick() override;
 
 protected:
     friend class window_system;
-    int m_x;
-    int m_y;
-    int m_wheel;
+    vec2i m_position{};
+    int m_wheel{0};
 
     window_impl* m_impl;
 };

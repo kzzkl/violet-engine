@@ -45,7 +45,6 @@ struct light_component_meta
     }
 
     render_scene* scene{nullptr};
-
     render_id id{INVALID_RENDER_ID};
 };
 

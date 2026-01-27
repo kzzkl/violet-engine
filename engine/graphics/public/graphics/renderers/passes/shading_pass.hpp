@@ -12,6 +12,10 @@ public:
         std::span<rdg_texture*> gbuffers;
         std::span<rdg_texture*> auxiliary_buffers;
         rdg_texture* render_target;
+
+        rdg_buffer* vsm_buffer{nullptr};
+        rdg_buffer* vsm_virtual_page_table{nullptr};
+        rdg_texture* vsm_physical_texture{nullptr};
     };
 
     void add(render_graph& graph, const parameter& parameter);

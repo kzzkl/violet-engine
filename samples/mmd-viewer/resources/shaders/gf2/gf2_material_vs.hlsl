@@ -11,8 +11,8 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
     StructuredBuffer<draw_info> draw_infos = ResourceDescriptorHeap[constant.draw_info_buffer];
     uint instance_id = draw_infos[draw_id].instance_id;
 
-    mesh mesh = mesh::create(instance_id);
-    vertex vertex = mesh.fetch_vertex(vertex_id);
+    mesh mesh = mesh::create(instance_id, scene);
+    vertex vertex = mesh.fetch_vertex(vertex_id, camera.matrix_vp);
 
     vs_output output;
     output.position_cs = vertex.position_cs;
