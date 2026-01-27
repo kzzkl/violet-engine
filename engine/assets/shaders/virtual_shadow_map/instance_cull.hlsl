@@ -1,12 +1,14 @@
 #include "common.hlsli"
 #include "virtual_shadow_map/vsm_common.hlsli"
+#include "utils.hlsli"
 
 struct constant_data
 {
     uint visible_light_count;
     uint visible_vsm_ids;
     uint vsm_buffer;
-    uint vsm_projection_buffer;
+    uint vsm_virtual_page_table;
+    uint vsm_bounds_buffer;
     uint draw_buffer;
     uint draw_count_buffer;
     uint draw_info_buffer;
@@ -14,6 +16,46 @@ struct constant_data
 PushConstant(constant_data, constant);
 
 ConstantBuffer<scene_data> scene : register(b0, space1);
+
+bool overlap_required_page(uint vsm_id, uint4 required_page_bounds, float4 sphere_vs, vsm_data vsm)
+{
+    float4 projected_bounds;
+    if (!project_shpere_orthographic(sphere_vs, vsm.matrix_p[0][0], vsm.matrix_p[1][1], -vsm.view_z_radius, projected_bounds))
+    {
+        return false;
+    }
+    projected_bounds = (projected_bounds * 0.5 + 0.5) * VIRTUAL_PAGE_TABLE_SIZE;
+
+    uint4 overlap_page_bounds;
+    overlap_page_bounds.xy = max(0.0, floor(projected_bounds.xy));
+    overlap_page_bounds.zw = max(0.0, ceil(projected_bounds.zw));
+
+    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+
+    overlap_page_bounds.xy = max(overlap_page_bounds.xy, required_page_bounds.xy);
+    overlap_page_bounds.zw = min(overlap_page_bounds.zw, required_page_bounds.zw);
+
+    if (overlap_page_bounds.x > overlap_page_bounds.z || overlap_page_bounds.y > overlap_page_bounds.w)
+    {
+        return false;
+    }
+
+    for (uint x = overlap_page_bounds.x; x <= overlap_page_bounds.z; ++x)
+    {
+        for (uint y = overlap_page_bounds.y; y <= overlap_page_bounds.w; ++y)
+        {
+            uint virtual_page_index = get_virtual_page_index(vsm_id, uint2(x, y));
+            vsm_virtual_page virtual_page = unpack_virtual_page(virtual_page_table[virtual_page_index]);
+
+            if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) != 0 && (virtual_page.flags & VIRTUAL_PAGE_FLAG_CACHE_VALID) == 0)
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
 
 [numthreads(64, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
@@ -29,7 +71,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     
     StructuredBuffer<uint> vsm_ids = ResourceDescriptorHeap[constant.visible_vsm_ids];
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
-    StructuredBuffer<vsm_projection> vsm_projections = ResourceDescriptorHeap[constant.vsm_projection_buffer];
+    StructuredBuffer<uint4> vsm_bounds = ResourceDescriptorHeap[constant.vsm_bounds_buffer];
 
     RWStructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.draw_count_buffer];
     RWStructuredBuffer<draw_command> draw_commands = ResourceDescriptorHeap[constant.draw_buffer];
@@ -44,10 +86,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
     mesh_data mesh = meshes[instance.mesh_index];
 
-    // float4 sphere_vs = mul(camera.matrix_v, mul(mesh.matrix_m, float4(geometry.bounding_sphere.xyz, 1.0)));
-    // sphere_vs.w = geometry.bounding_sphere.w * mesh.scale.w;
-    // visible = frustum_cull(sphere_vs, constant.frustum, camera.near);
-
     float sphere_vs_radius = geometry.bounding_sphere.w * mesh.scale.w;
     if (sphere_vs_radius <= 0.0)
     {
@@ -61,16 +99,17 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     {
         uint vsm_id = vsm_ids[i];
         vsm_data vsm = vsms[vsm_id];
-        vsm_projection projection = vsm_projections[vsm_id];
+        uint4 required_page_bounds = vsm_bounds[vsm_id];
 
-        bool visible = true;
+        if (required_page_bounds.x > required_page_bounds.z || required_page_bounds.y > required_page_bounds.w)
+        {
+            continue;
+        }
 
         float4 sphere_vs = mul(vsm.matrix_v, mul(mesh.matrix_m, float4(geometry.bounding_sphere.xyz, 1.0)));
         sphere_vs.w = sphere_vs_radius;
 
-        // TODO: cull instance.
-
-        if (visible)
+        if (overlap_required_page(vsm_id, required_page_bounds, sphere_vs, vsm))
         {
             vsm_draw_info draw_info;
             draw_info.vsm_id = vsm_id;
@@ -83,6 +122,11 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 
     uint draw_command_offset = 0;
     InterlockedAdd(draw_counts[0], draw_queue_rear, draw_command_offset);
+
+    if (draw_command_offset + draw_queue_rear > MAX_SHADOW_DRAWS_PER_FRAME)
+    {
+        return;
+    }
 
     for (uint i = 0; i < draw_queue_rear; ++i)
     {

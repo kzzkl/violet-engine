@@ -47,17 +47,15 @@ public:
 
             if (print_group && task->get_name().ends_with(task_group::group_begin_suffix))
             {
-                std::string_view group_name = task->get_name().substr(
+                info.id = ++id;
+                info.name = task->get_name().substr(
                     0,
                     task->get_name().size() - task_group::group_begin_suffix.size());
-
-                info.id = ++id;
-                info.name = std::string(group_name.data(), group_name.size());
                 info.is_group_begin = true;
             }
             else if (print_group && task->get_name().ends_with(task_group::group_end_suffix))
             {
-                std::string_view group_name = task->get_name().substr(
+                std::string group_name = task->get_name().substr(
                     0,
                     task->get_name().size() - task_group::group_end_suffix.size());
 

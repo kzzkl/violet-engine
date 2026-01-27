@@ -154,7 +154,15 @@ void process_cluster_node(uint group_index)
     {
         float4 prev_sphere_vs = mul(camera.prev_matrix_v, mul(mesh.prev_matrix_m, float4(cluster_node.bounding_sphere.xyz, 1.0)));
         prev_sphere_vs.w = sphere_vs.w;
-        if (!occlusion_cull(prev_sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.prev_matrix_p, camera.near))
+        if (!occlusion_cull(
+            prev_sphere_vs,
+            hzb,
+            hzb_sampler,
+            constant.hzb_width,
+            constant.hzb_height,
+            camera.prev_matrix_p,
+            camera.near,
+            camera.type))
         {
             visible = false;
             InterlockedOr(gs_recheck_mask[parent_index], 1u << child_index);
@@ -170,7 +178,7 @@ void process_cluster_node(uint group_index)
         visible = check_cluster_node_lod(cluster_node, mesh) && frustum_cull(sphere_vs, constant.frustum, camera.near);
     }
 
-    visible = visible && occlusion_cull(sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.matrix_p, camera.near);
+    visible = visible && occlusion_cull(sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.matrix_p, camera.near, camera.type);
 #endif
 
     if (visible)
@@ -237,7 +245,15 @@ void process_cluster(uint3 dtid)
     {
         float4 prev_sphere_vs = mul(camera.prev_matrix_v, mul(mesh.prev_matrix_m, float4(cluster.bounding_sphere.xyz, 1.0)));
         prev_sphere_vs.w = sphere_vs.w;
-        if (!occlusion_cull(prev_sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.prev_matrix_p, camera.near))
+        if (!occlusion_cull(
+                prev_sphere_vs,
+                hzb,
+                hzb_sampler,
+                constant.hzb_width,
+                constant.hzb_height,
+                camera.prev_matrix_p,
+                camera.near,
+                camera.type))
         {
             visible = false;
             cluster_queue[dtid.x + get_cluster_offset()] = pack_cluster_item(cluster_id, instance_id, true);
@@ -253,7 +269,7 @@ void process_cluster(uint3 dtid)
         visible = check_cluster_lod(cluster, mesh) && frustum_cull(sphere_vs, constant.frustum, camera.near);
     }
 
-    visible = visible && occlusion_cull(sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.matrix_p, camera.near);
+    visible = visible && occlusion_cull(sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.matrix_p, camera.near, camera.type);
 #endif
 
     if (visible)

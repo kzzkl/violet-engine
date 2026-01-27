@@ -1,11 +1,10 @@
 #pragma once
 
+#include "common/container.hpp"
 #include "graphics/cluster.hpp"
 #include "graphics/morph_target.hpp"
 #include "graphics/render_device.hpp"
 #include <array>
-#include <string>
-#include <unordered_map>
 
 namespace violet
 {
@@ -124,7 +123,13 @@ public:
 
     std::size_t get_morph_index(std::string_view name) const
     {
-        return m_morph_name_to_index.at(name.data());
+        auto iter = m_morph_name_to_index.find(name);
+        if (iter == m_morph_name_to_index.end())
+        {
+            throw std::runtime_error("Morph target not found.");
+        }
+
+        return iter->second;
     }
 
     morph_target_buffer* get_morph_target_buffer() const noexcept
@@ -202,12 +207,12 @@ private:
     std::uint32_t m_vertex_count{0};
     std::uint32_t m_index_count{0};
 
-    std::unordered_map<std::string, std::unique_ptr<raw_buffer>> m_additional_buffers;
+    string_map<std::unique_ptr<raw_buffer>> m_additional_buffers;
 
     std::vector<submesh> m_submeshes;
     std::vector<submesh_info> m_submesh_infos;
 
-    std::unordered_map<std::string, std::size_t> m_morph_name_to_index;
+    string_map<std::size_t> m_morph_name_to_index;
     std::unique_ptr<morph_target_buffer> m_morph_target_buffer;
 
     render_id m_id{INVALID_RENDER_ID};

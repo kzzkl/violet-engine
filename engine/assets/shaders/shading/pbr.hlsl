@@ -80,7 +80,11 @@ void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
         float3 specular = d * vis * f;
         float3 diffuse = albedo / PI * kd;
 
-        float shadow_factor = shadow.get_shadow(light, position);
+        float shadow_factor = 1.0;
+        if (light.vsm_address != 0xFFFFFFFF)
+        {
+            shadow_factor = shadow.get_shadow(light, position);
+        }
         direct_lighting += (specular + diffuse) * NdotL * light.color * shadow_factor;
     }
 

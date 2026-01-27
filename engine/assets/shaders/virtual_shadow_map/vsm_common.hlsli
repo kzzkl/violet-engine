@@ -21,19 +21,14 @@ static const uint MAX_CAMERA_COUNT = 16;
 static const uint MAX_SHADOW_LIGHT_COUNT = 32;
 static const uint MAX_VSM_COUNT = 256;
 
+static const uint MAX_SHADOW_DRAWS_PER_FRAME = 1024 * 100;
+
 struct vsm_data
 {
     int2 page_coord;
-    float page_world_size;
-    uint cascade;
+    uint cache_epoch;
+    float view_z_radius;
     float4x4 matrix_v;
-    float4x4 matrix_p;
-    float4x4 matrix_vp;
-};
-
-struct vsm_projection
-{
-    uint4 aabb; // x: min_x, y: min_y, z: max_x, w: max_y
     float4x4 matrix_p;
     float4x4 matrix_vp;
 };

@@ -27,7 +27,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     vsm_virtual_page virtual_page = unpack_virtual_page(virtual_page_table[virtual_page_index]);
 
-    if ((virtual_page.flags & (VIRTUAL_PAGE_FLAG_REQUEST | VIRTUAL_PAGE_FLAG_CACHE_VALID)) == VIRTUAL_PAGE_FLAG_REQUEST)
+    if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) != 0 && (virtual_page.flags & VIRTUAL_PAGE_FLAG_CACHE_VALID) == 0)
     {
         StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
 

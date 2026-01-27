@@ -26,33 +26,7 @@ deferred_renderer::deferred_renderer()
 
 void deferred_renderer::on_render(render_graph& graph)
 {
-    m_render_extent = graph.get_camera().get_render_target()->get_extent();
-
-    m_render_target = graph.add_texture(
-        "Render Target",
-        m_render_extent,
-        RHI_FORMAT_R16G16B16A16_FLOAT,
-        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE |
-            RHI_TEXTURE_TRANSFER_SRC | RHI_TEXTURE_TRANSFER_DST);
-
-    m_hzb = graph.add_texture(
-        "HZB",
-        graph.get_camera().get_hzb(),
-        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
-        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
-
-    const auto& scene = graph.get_scene();
-
-    m_vsm_buffer = graph.add_buffer("VSM Buffer", scene.get_vsm_buffer());
-    m_vsm_virtual_page_table =
-        graph.add_buffer("VSM Page Table", scene.get_vsm_virtual_page_table());
-    m_vsm_physical_page_table =
-        graph.add_buffer("VSM Physical Page Table", scene.get_vsm_physical_page_table());
-    m_vsm_physical_texture = graph.add_texture(
-        "VSM Physical Texture",
-        scene.get_vsm_physical_texture(),
-        RHI_TEXTURE_LAYOUT_GENERAL,
-        RHI_TEXTURE_LAYOUT_GENERAL);
+    prepare(graph);
 
     if (graph.get_scene().get_instance_count() != 0)
     {
@@ -100,6 +74,75 @@ void deferred_renderer::on_render(render_graph& graph)
 
     add_tone_mapping_pass(graph);
     add_present_pass(graph);
+}
+
+void deferred_renderer::prepare(render_graph& graph)
+{
+    m_render_extent = graph.get_camera().get_render_target()->get_extent();
+
+    m_render_target = graph.add_texture(
+        "Render Target",
+        m_render_extent,
+        RHI_FORMAT_R16G16B16A16_FLOAT,
+        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE |
+            RHI_TEXTURE_TRANSFER_SRC | RHI_TEXTURE_TRANSFER_DST);
+
+    m_hzb = graph.add_texture(
+        "HZB",
+        graph.get_camera().get_hzb(),
+        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+
+    const auto& scene = graph.get_scene();
+
+    m_vsm_buffer = graph.add_buffer("VSM Buffer", scene.get_vsm_buffer());
+    m_vsm_virtual_page_table =
+        graph.add_buffer("VSM Page Table", scene.get_vsm_virtual_page_table());
+    m_vsm_physical_page_table =
+        graph.add_buffer("VSM Physical Page Table", scene.get_vsm_physical_page_table());
+    m_vsm_physical_texture = graph.add_texture(
+        "VSM Physical Texture",
+        scene.get_vsm_physical_texture(),
+        RHI_TEXTURE_LAYOUT_GENERAL,
+        RHI_TEXTURE_LAYOUT_GENERAL);
+
+    if (m_debug_mode != DEBUG_MODE_NONE)
+    {
+        m_debug_output = graph.add_texture(
+            "Debug Output",
+            m_render_extent,
+            RHI_FORMAT_R8G8B8A8_UNORM,
+            RHI_TEXTURE_STORAGE | RHI_TEXTURE_TRANSFER_SRC | RHI_TEXTURE_TRANSFER_DST);
+
+        struct pass_data
+        {
+            rdg_texture_ref debug_output;
+        };
+        graph.add_pass<pass_data>(
+            "Clear Debug Output",
+            RDG_PASS_TRANSFER,
+            [&](pass_data& data, rdg_pass& pass)
+            {
+                data.debug_output = pass.add_texture(
+                    m_debug_output,
+                    RHI_PIPELINE_STAGE_TRANSFER,
+                    RHI_ACCESS_TRANSFER_WRITE,
+                    RHI_TEXTURE_LAYOUT_TRANSFER_DST);
+            },
+            [](const pass_data& data, rdg_command& command)
+            {
+                rhi_texture_region region = {
+                    .extent = data.debug_output.get_extent(),
+                    .level = 0,
+                    .layer = 0,
+                    .layer_count = 1,
+                };
+
+                rhi_clear_value clear_value = {};
+                clear_value.color.float32[3] = 1.0f;
+                command.clear_texture(data.debug_output.get_rhi(), clear_value, {&region, 1});
+            });
+    }
 }
 
 void deferred_renderer::add_cull_pass(render_graph& graph, bool main_pass)
@@ -237,8 +280,22 @@ void deferred_renderer::add_shadow_pass(render_graph& graph)
 {
     auto* vsm = get_feature<vsm_render_feature>();
 
+    shadow_pass::debug_mode debug_mode = shadow_pass::DEBUG_MODE_NONE;
+    switch (m_debug_mode)
+    {
+    case DEBUG_MODE_VSM_PAGE:
+        debug_mode = shadow_pass::DEBUG_MODE_PAGE;
+        break;
+    case DEBUG_MODE_VSM_PAGE_CACHE:
+        debug_mode = shadow_pass::DEBUG_MODE_PAGE_CACHE;
+        break;
+    case DEBUG_MODE_VSM_PHYSICAL_PAGE_TABLE:
+        debug_mode = shadow_pass::DEBUG_MODE_PHYSICAL_PAGE_TABLE;
+    default:
+        break;
+    }
+
     graph.add_pass<shadow_pass>({
-        .render_target = m_render_target,
         .depth_buffer = m_depth_buffer,
         .vsm_buffer = m_vsm_buffer,
         .vsm_virtual_page_table = m_vsm_virtual_page_table,
@@ -248,6 +305,8 @@ void deferred_renderer::add_shadow_pass(render_graph& graph)
         .lru_buffer = graph.add_buffer("VSM LRU Buffer", vsm->get_lru_buffer()),
         .lru_curr_index = vsm->get_curr_lru_index(),
         .lru_prev_index = vsm->get_prev_lru_index(),
+        .debug_mode = debug_mode,
+        .debug_output = m_debug_output,
     });
 }
 
@@ -347,7 +406,7 @@ void deferred_renderer::add_present_pass(render_graph& graph)
     };
 
     graph.add_pass<blit_pass>({
-        .src = m_render_target,
+        .src = m_debug_mode == DEBUG_MODE_NONE ? m_render_target : m_debug_output,
         .src_region = region,
         .dst = camera_output,
         .dst_region = region,

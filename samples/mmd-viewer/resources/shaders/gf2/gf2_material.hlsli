@@ -2,6 +2,9 @@
 #include "brdf.hlsli"
 #include "color.hlsli"
 
+ConstantBuffer<scene_data> scene : register(b0, space1);
+ConstantBuffer<camera_data> camera : register(b0, space2);
+
 struct vs_output
 {
     float4 position_cs : SV_POSITION;

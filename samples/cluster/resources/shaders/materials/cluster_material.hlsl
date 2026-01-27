@@ -7,6 +7,9 @@ struct constant_data
 };
 PushConstant(constant_data, constant);
 
+ConstantBuffer<scene_data> scene : register(b0, space1);
+ConstantBuffer<camera_data> camera : register(b0, space2);
+
 uint murmur_mix(uint hash){
     hash ^= hash >> 16;
     hash *= 0x85ebca6b;
@@ -45,8 +48,8 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
     StructuredBuffer<draw_info> draw_infos = ResourceDescriptorHeap[constant.draw_info_buffer];
     uint instance_id = draw_infos[draw_id].instance_id;
 
-    mesh mesh = mesh::create(instance_id);
-    vertex vertex = mesh.fetch_vertex(vertex_id);
+    mesh mesh = mesh::create(instance_id, scene);
+    vertex vertex = mesh.fetch_vertex(vertex_id, camera.matrix_vp);
 
     vs_output output;
     output.position_cs = vertex.position_cs;
@@ -145,15 +148,15 @@ fs_output shading_primitive(vs_output input, uint primitive_id)
 
 fs_output fs_main(vs_output input, uint primitive_id : SV_PrimitiveID)
 {
-    if (input.ndc_x < 0.3333)
-    {
-        return shading_primitive(input, primitive_id);
-    }
-    else if (input.ndc_x < 0.6666)
-    {
-        return shading_pbr(input);
-    }
-    else
+    // if (input.ndc_x < 0.3333)
+    // {
+    //     return shading_primitive(input, primitive_id);
+    // }
+    // else if (input.ndc_x < 0.6666)
+    // {
+    //     return shading_pbr(input);
+    // }
+    // else
     {
         return shading_cluster(input);
     }

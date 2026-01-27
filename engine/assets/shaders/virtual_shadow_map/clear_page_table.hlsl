@@ -6,7 +6,7 @@ struct constant_data
     uint visible_vsm_ids;
     uint vsm_virtual_page_table;
     uint vsm_buffer;
-    uint vsm_projection_buffer;
+    uint vsm_bounds_buffer;
 };
 PushConstant(constant_data, constant);
 
@@ -23,7 +23,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     if (dtid.x == 0 && dtid.y == 0)
     {
-        RWStructuredBuffer<vsm_projection> vsm_projections = ResourceDescriptorHeap[constant.vsm_projection_buffer];
-        vsm_projections[vsm_id].aabb = uint4(VIRTUAL_PAGE_TABLE_SIZE, VIRTUAL_PAGE_TABLE_SIZE, 0, 0);
+        RWStructuredBuffer<uint4> vsm_bounds = ResourceDescriptorHeap[constant.vsm_bounds_buffer];
+        vsm_bounds[vsm_id] = uint4(VIRTUAL_PAGE_TABLE_SIZE, VIRTUAL_PAGE_TABLE_SIZE, 0, 0);
     }
 }

@@ -22,10 +22,7 @@ public:
 
     vsm_manager& operator=(const vsm_manager&) = delete;
 
-    render_id add_vsm(
-        light_type light_type,
-        render_id light_id,
-        render_id camera_id = INVALID_RENDER_ID);
+    render_id add_vsm(light_type light_type);
     void remove_vsm(render_id vsm_id);
 
     void set_vsm(render_id vsm_id, const vsm_directional_light_data& light);
@@ -58,7 +55,8 @@ private:
         struct gpu_type
         {
             vec2i page_coord;
-            vec2i page_offset;
+            std::uint32_t cache_epoch;
+            float view_z_radius;
             mat4f matrix_v;
             mat4f matrix_p;
             mat4f matrix_vp;
@@ -66,17 +64,14 @@ private:
 
         light_type light_type;
 
-        render_id light_id;
-        render_id camera_id;
-
         vec2i page_coord;
-        vec2i page_offset;
         mat4f matrix_v;
         mat4f matrix_p;
 
-        bool cache_dirty;
+        std::uint32_t cache_epoch;
 
         float view_z;
+        float view_z_radius;
     };
 
     static constexpr std::uint32_t get_vsm_count(light_type light_type);
@@ -87,5 +82,7 @@ private:
     rhi_ptr<rhi_buffer> m_physical_page_table;
 
     rhi_ptr<rhi_texture> m_physical_texture;
+
+    std::unordered_map<render_id, vsm_directional_light_data> m_directional_lights;
 };
 } // namespace violet

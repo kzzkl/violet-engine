@@ -53,7 +53,7 @@ struct vsm_clear_page_table_cs : public shader_cs
         std::uint32_t visible_vsm_ids;
         std::uint32_t vsm_virtual_page_table;
         std::uint32_t vsm_buffer;
-        std::uint32_t vsm_projection_buffer;
+        std::uint32_t vsm_bounds_buffer;
     };
 
     static constexpr parameter_layout parameters = {
@@ -76,8 +76,6 @@ struct vsm_mark_visible_pages_cs : public shader_cs
         std::uint32_t visible_vsm_ids;
         std::uint32_t vsm_virtual_page_table;
         std::uint32_t vsm_buffer;
-        std::uint32_t render_target;
-        std::uint32_t camera_id;
     };
 
     static constexpr parameter_layout parameters = {
@@ -97,6 +95,7 @@ struct vsm_mark_resident_pages_cs : public shader_cs
         std::uint32_t vsm_virtual_page_table;
         std::uint32_t vsm_physical_page_table;
         std::uint32_t vsm_buffer;
+        std::uint32_t frame;
     };
 
     static constexpr parameter_layout parameters = {
@@ -203,38 +202,15 @@ struct vsm_clear_physical_page_cs : public shader_cs
     };
 };
 
-struct vsm_calculate_view_aabb_cs : public shader_cs
+struct vsm_calculate_page_bounds_cs : public shader_cs
 {
     static constexpr std::string_view path =
-        "assets/shaders/virtual_shadow_map/update_projection.hlsl";
-    static constexpr std::string_view entry_point = "calculate_view_aabb";
+        "assets/shaders/virtual_shadow_map/calculate_page_bounds.hlsl";
 
     struct constant_data
     {
-        std::uint32_t visible_light_count;
         std::uint32_t visible_vsm_ids;
-        std::uint32_t vsm_buffer;
-        std::uint32_t vsm_projection_buffer;
-        std::uint32_t vsm_virtual_page_table;
-    };
-
-    static constexpr parameter_layout parameters = {
-        {.space = 0, .desc = bindless},
-    };
-};
-
-struct vsm_update_projection_cs : public shader_cs
-{
-    static constexpr std::string_view path =
-        "assets/shaders/virtual_shadow_map/update_projection.hlsl";
-    static constexpr std::string_view entry_point = "update_projection";
-
-    struct constant_data
-    {
-        std::uint32_t visible_light_count;
-        std::uint32_t visible_vsm_ids;
-        std::uint32_t vsm_buffer;
-        std::uint32_t vsm_projection_buffer;
+        std::uint32_t vsm_bounds_buffer;
         std::uint32_t vsm_virtual_page_table;
     };
 
@@ -252,7 +228,8 @@ struct vsm_instance_cull_cs : public shader_cs
         std::uint32_t visible_light_count;
         std::uint32_t visible_vsm_ids;
         std::uint32_t vsm_buffer;
-        std::uint32_t vsm_projection_buffer;
+        std::uint32_t vsm_virtual_page_table;
+        std::uint32_t vsm_bounds_buffer;
         std::uint32_t draw_buffer;
         std::uint32_t draw_count_buffer;
         std::uint32_t draw_info_buffer;
@@ -291,24 +268,45 @@ struct vsm_shadow_fs : public shader_fs
     static constexpr parameter_layout parameters = vsm_shadow_vs::parameters;
 };
 
-struct vsm_debug_cs : public shader_cs
+struct vsm_debug_constant_data
 {
-    static constexpr std::string_view path = "assets/shaders/virtual_shadow_map/debug.hlsl";
+    std::uint32_t debug_output;
+    std::uint32_t depth_buffer;
+    std::uint32_t vsm_buffer;
+    std::uint32_t vsm_virtual_page_table;
+    std::uint32_t vsm_physical_page_table;
+    std::uint32_t vsm_bounds_buffer;
+    std::uint32_t vsm_physical_texture;
+    std::uint32_t width;
+    std::uint32_t height;
+    std::uint32_t light_id;
+};
 
-    struct constant_data
-    {
-        std::uint32_t render_target;
-        std::uint32_t visible_vsm_ids;
-        std::uint32_t vsm_virtual_page_table;
-        std::uint32_t vsm_physical_page_table;
-        std::uint32_t vsm_projection_buffer;
-        std::uint32_t vsm_physical_texture;
-        std::uint32_t debug_texture;
-    };
+struct vsm_debug_page_cs : public shader_cs
+{
+    static constexpr std::string_view path = "assets/shaders/virtual_shadow_map/vsm_debug.hlsl";
+    static constexpr std::string_view entry_point = "debug_page";
+
+    using constant_data = vsm_debug_constant_data;
 
     static constexpr parameter_layout parameters = {
         {.space = 0, .desc = bindless},
-        {.space = 1, .desc = camera},
+        {.space = 1, .desc = scene},
+        {.space = 2, .desc = camera},
+    };
+};
+
+struct vsm_debug_page_cache_cs : public shader_cs
+{
+    static constexpr std::string_view path = "assets/shaders/virtual_shadow_map/vsm_debug.hlsl";
+    static constexpr std::string_view entry_point = "debug_page_cache";
+
+    using constant_data = vsm_debug_constant_data;
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = scene},
+        {.space = 2, .desc = camera},
     };
 };
 
@@ -316,7 +314,6 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
 {
     rdg_scope scope(graph, "Shadow Pass");
 
-    m_render_target = parameter.render_target;
     m_depth_buffer = parameter.depth_buffer;
 
     m_vsm_buffer = parameter.vsm_buffer;
@@ -329,15 +326,9 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
     m_lru_curr_index = parameter.lru_curr_index;
     m_lru_prev_index = parameter.lru_prev_index;
 
-    struct vsm_projection
-    {
-        vec4u aabb;
-        mat4f matrix_p;
-        mat4f matrix_vp;
-    };
-    m_vsm_projection_buffer = graph.add_buffer(
+    m_vsm_bounds_buffer = graph.add_buffer(
         "VSM Projection Buffer",
-        sizeof(vsm_projection) * MAX_VSM_COUNT,
+        sizeof(vec4u) * MAX_VSM_COUNT,
         RHI_BUFFER_STORAGE);
 
     m_visible_light_count = graph.add_buffer(
@@ -376,12 +367,6 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
         MAX_SHADOW_DRAWS_PER_FRAME * sizeof(vec2u), // x: vsm id, y: instance id.
         RHI_BUFFER_STORAGE);
 
-    // m_debug_texture = graph.add_texture(
-    //     "VSM Debug Texture",
-    //     {.width = 4096 * 2, .height = 4096 * 2},
-    //     RHI_FORMAT_D32_FLOAT,
-    //     RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_DEPTH_STENCIL);
-
     prepare(graph);
     light_cull(graph);
     clear_page_table(graph);
@@ -390,10 +375,16 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
     update_lru(graph);
     allocate_pages(graph);
     clear_physical_page(graph);
-    update_projection(graph);
+    calculate_page_bounds(graph);
     instance_cull(graph);
     render_shadow(graph);
-    add_debug_pass(graph);
+
+    if (parameter.debug_mode != DEBUG_MODE_NONE && parameter.debug_output != nullptr)
+    {
+        m_debug_mode = parameter.debug_mode;
+        m_debug_output = parameter.debug_output;
+        add_debug_pass(graph);
+    }
 }
 
 void shadow_pass::prepare(render_graph& graph)
@@ -512,7 +503,7 @@ void shadow_pass::clear_page_table(render_graph& graph)
         rdg_buffer_srv visible_vsm_ids;
         rdg_buffer_uav vsm_virtual_page_table;
         rdg_buffer_srv vsm_buffer;
-        rdg_buffer_uav vsm_projection_buffer;
+        rdg_buffer_uav vsm_bounds_buffer;
         rdg_buffer_ref virtual_page_dispatch_buffer;
     };
 
@@ -526,8 +517,8 @@ void shadow_pass::clear_page_table(render_graph& graph)
             data.vsm_virtual_page_table =
                 pass.add_buffer_uav(m_vsm_virtual_page_table, RHI_PIPELINE_STAGE_COMPUTE);
             data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
-            data.vsm_projection_buffer =
-                pass.add_buffer_uav(m_vsm_projection_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+            data.vsm_bounds_buffer =
+                pass.add_buffer_uav(m_vsm_bounds_buffer, RHI_PIPELINE_STAGE_COMPUTE);
             data.virtual_page_dispatch_buffer = pass.add_buffer(
                 m_virtual_page_dispatch_buffer,
                 RHI_PIPELINE_STAGE_DRAW_INDIRECT,
@@ -546,7 +537,7 @@ void shadow_pass::clear_page_table(render_graph& graph)
                     .visible_vsm_ids = data.visible_vsm_ids.get_bindless(),
                     .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
                     .vsm_buffer = data.vsm_buffer.get_bindless(),
-                    .vsm_projection_buffer = data.vsm_projection_buffer.get_bindless(),
+                    .vsm_bounds_buffer = data.vsm_bounds_buffer.get_bindless(),
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
@@ -565,8 +556,6 @@ void shadow_pass::mark_visible_pages(render_graph& graph)
         rdg_buffer_srv visible_vsm_ids;
         rdg_buffer_uav vsm_virtual_page_table;
         rdg_buffer_srv vsm_buffer;
-        rdg_texture_uav render_target;
-        std::uint32_t camera_id;
     };
 
     graph.add_pass<pass_data>(
@@ -584,12 +573,6 @@ void shadow_pass::mark_visible_pages(render_graph& graph)
             data.vsm_virtual_page_table =
                 pass.add_buffer_uav(m_vsm_virtual_page_table, RHI_PIPELINE_STAGE_COMPUTE);
             data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
-
-            data.render_target = pass.add_texture_uav(
-                m_render_target,
-                RHI_PIPELINE_STAGE_COMPUTE | RHI_PIPELINE_STAGE_TRANSFER);
-
-            data.camera_id = graph.get_camera().get_id();
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -610,8 +593,6 @@ void shadow_pass::mark_visible_pages(render_graph& graph)
                     .visible_vsm_ids = data.visible_vsm_ids.get_bindless(),
                     .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
                     .vsm_buffer = data.vsm_buffer.get_bindless(),
-                    .render_target = data.render_target.get_bindless(),
-                    .camera_id = data.camera_id,
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
@@ -655,6 +636,7 @@ void shadow_pass::mark_resident_pages(render_graph& graph)
                     .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
                     .vsm_physical_page_table = data.vsm_physical_page_table.get_bindless(),
                     .vsm_buffer = data.vsm_buffer.get_bindless(),
+                    .frame = device.get_frame_count(),
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
@@ -918,28 +900,25 @@ void shadow_pass::clear_physical_page(render_graph& graph)
         });
 }
 
-void shadow_pass::update_projection(render_graph& graph)
+void shadow_pass::calculate_page_bounds(render_graph& graph)
 {
-    // Calculate AABB.
-    struct calculate_aabb_pass_data
+    struct pass_data
     {
         rdg_buffer_srv visible_vsm_ids;
-        rdg_buffer_srv vsm_buffer;
-        rdg_buffer_uav vsm_projection_buffer;
+        rdg_buffer_uav vsm_bounds_buffer;
         rdg_buffer_srv vsm_virtual_page_table;
         rdg_buffer_ref virtual_page_dispatch_buffer;
     };
 
-    graph.add_pass<calculate_aabb_pass_data>(
-        "VSM Calculate View AABB",
+    graph.add_pass<pass_data>(
+        "VSM Calculate Page Bounds",
         RDG_PASS_COMPUTE,
-        [&](calculate_aabb_pass_data& data, rdg_pass& pass)
+        [&](pass_data& data, rdg_pass& pass)
         {
             data.visible_vsm_ids =
                 pass.add_buffer_srv(m_visible_vsm_ids, RHI_PIPELINE_STAGE_COMPUTE);
-            data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
-            data.vsm_projection_buffer =
-                pass.add_buffer_uav(m_vsm_projection_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+            data.vsm_bounds_buffer =
+                pass.add_buffer_uav(m_vsm_bounds_buffer, RHI_PIPELINE_STAGE_COMPUTE);
             data.vsm_virtual_page_table =
                 pass.add_buffer_srv(m_vsm_virtual_page_table, RHI_PIPELINE_STAGE_COMPUTE);
             data.virtual_page_dispatch_buffer = pass.add_buffer(
@@ -947,67 +926,24 @@ void shadow_pass::update_projection(render_graph& graph)
                 RHI_PIPELINE_STAGE_DRAW_INDIRECT,
                 RHI_ACCESS_INDIRECT_COMMAND_READ);
         },
-        [](const calculate_aabb_pass_data& data, rdg_command& command)
+        [](const pass_data& data, rdg_command& command)
         {
             auto& device = render_device::instance();
 
             command.set_pipeline({
-                .compute_shader = device.get_shader<vsm_calculate_view_aabb_cs>(),
+                .compute_shader = device.get_shader<vsm_calculate_page_bounds_cs>(),
             });
 
             command.set_constant(
-                vsm_calculate_view_aabb_cs::constant_data{
+                vsm_calculate_page_bounds_cs::constant_data{
                     .visible_vsm_ids = data.visible_vsm_ids.get_bindless(),
-                    .vsm_buffer = data.vsm_buffer.get_bindless(),
-                    .vsm_projection_buffer = data.vsm_projection_buffer.get_bindless(),
+                    .vsm_bounds_buffer = data.vsm_bounds_buffer.get_bindless(),
                     .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
             command.dispatch_indirect(data.virtual_page_dispatch_buffer.get_rhi());
-        });
-
-    // Update projection.
-    struct update_project_pass_data
-    {
-        rdg_buffer_srv visible_light_count;
-        rdg_buffer_srv visible_vsm_ids;
-        rdg_buffer_srv vsm_buffer;
-        rdg_buffer_uav vsm_projection_buffer;
-    };
-
-    graph.add_pass<update_project_pass_data>(
-        "VSM Update Projection",
-        RDG_PASS_COMPUTE,
-        [&](update_project_pass_data& data, rdg_pass& pass)
-        {
-            data.visible_light_count =
-                pass.add_buffer_srv(m_visible_light_count, RHI_PIPELINE_STAGE_COMPUTE);
-            data.visible_vsm_ids =
-                pass.add_buffer_srv(m_visible_vsm_ids, RHI_PIPELINE_STAGE_COMPUTE);
-            data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
-            data.vsm_projection_buffer =
-                pass.add_buffer_uav(m_vsm_projection_buffer, RHI_PIPELINE_STAGE_COMPUTE);
-        },
-        [](const update_project_pass_data& data, rdg_command& command)
-        {
-            auto& device = render_device::instance();
-            command.set_pipeline({
-                .compute_shader = device.get_shader<vsm_update_projection_cs>(),
-            });
-
-            command.set_constant(
-                vsm_update_projection_cs::constant_data{
-                    .visible_light_count = data.visible_light_count.get_bindless(),
-                    .visible_vsm_ids = data.visible_vsm_ids.get_bindless(),
-                    .vsm_buffer = data.vsm_buffer.get_bindless(),
-                    .vsm_projection_buffer = data.vsm_projection_buffer.get_bindless(),
-                });
-
-            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
-
-            command.dispatch_1d(MAX_VSM_COUNT);
         });
 }
 
@@ -1018,7 +954,8 @@ void shadow_pass::instance_cull(render_graph& graph)
         rdg_buffer_srv visible_light_count;
         rdg_buffer_srv visible_vsm_ids;
         rdg_buffer_srv vsm_buffer;
-        rdg_buffer_srv vsm_projection_buffer;
+        rdg_buffer_srv vsm_virtual_page_table;
+        rdg_buffer_srv vsm_bounds_buffer;
         rdg_buffer_uav draw_buffer;
         rdg_buffer_uav draw_count_buffer;
         rdg_buffer_uav draw_info_buffer;
@@ -1036,8 +973,10 @@ void shadow_pass::instance_cull(render_graph& graph)
             data.visible_vsm_ids =
                 pass.add_buffer_srv(m_visible_vsm_ids, RHI_PIPELINE_STAGE_COMPUTE);
             data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
-            data.vsm_projection_buffer =
-                pass.add_buffer_srv(m_vsm_projection_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+            data.vsm_virtual_page_table =
+                pass.add_buffer_srv(m_vsm_virtual_page_table, RHI_PIPELINE_STAGE_COMPUTE);
+            data.vsm_bounds_buffer =
+                pass.add_buffer_srv(m_vsm_bounds_buffer, RHI_PIPELINE_STAGE_COMPUTE);
             data.draw_buffer = pass.add_buffer_uav(m_draw_buffer, RHI_PIPELINE_STAGE_COMPUTE);
             data.draw_count_buffer =
                 pass.add_buffer_uav(m_draw_count_buffer, RHI_PIPELINE_STAGE_COMPUTE);
@@ -1059,7 +998,8 @@ void shadow_pass::instance_cull(render_graph& graph)
                     .visible_light_count = data.visible_light_count.get_bindless(),
                     .visible_vsm_ids = data.visible_vsm_ids.get_bindless(),
                     .vsm_buffer = data.vsm_buffer.get_bindless(),
-                    .vsm_projection_buffer = data.vsm_projection_buffer.get_bindless(),
+                    .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
+                    .vsm_bounds_buffer = data.vsm_bounds_buffer.get_bindless(),
                     .draw_buffer = data.draw_buffer.get_bindless(),
                     .draw_count_buffer = data.draw_count_buffer.get_bindless(),
                     .draw_info_buffer = data.draw_info_buffer.get_bindless(),
@@ -1111,11 +1051,6 @@ void shadow_pass::render_shadow(render_graph& graph)
                 RHI_ACCESS_INDIRECT_COMMAND_READ);
             data.draw_info_buffer =
                 pass.add_buffer_srv(m_draw_info_buffer, RHI_PIPELINE_STAGE_VERTEX);
-
-            // pass.set_depth_stencil(
-            //     m_debug_texture,
-            //     RHI_ATTACHMENT_LOAD_OP_CLEAR,
-            //     RHI_ATTACHMENT_STORE_OP_STORE);
 
             data.instance_count = graph.get_scene().get_instance_count();
         },
@@ -1169,56 +1104,143 @@ void shadow_pass::add_debug_pass(render_graph& graph)
 {
     struct pass_data
     {
-        rdg_texture_uav render_target;
-        rdg_buffer_srv visible_vsm_ids;
+        rdg_texture_uav debug_output;
+        rdg_texture_srv depth_buffer;
+        rdg_buffer_srv vsm_buffer;
         rdg_buffer_srv vsm_virtual_page_table;
         rdg_buffer_srv vsm_physical_page_table;
-        rdg_buffer_srv vsm_projection_buffer;
+        rdg_buffer_srv vsm_bounds_buffer;
         rdg_texture_srv vsm_physical_texture;
-        // rdg_texture_srv debug_texture;
+        std::uint32_t light_id;
     };
 
-    graph.add_pass<pass_data>(
-        "VSM Debug",
-        RDG_PASS_COMPUTE,
-        [&](pass_data& data, rdg_pass& pass)
-        {
-            data.render_target = pass.add_texture_uav(m_render_target, RHI_PIPELINE_STAGE_COMPUTE);
-            data.visible_vsm_ids =
-                pass.add_buffer_srv(m_visible_vsm_ids, RHI_PIPELINE_STAGE_COMPUTE);
-            data.vsm_virtual_page_table =
-                pass.add_buffer_srv(m_vsm_virtual_page_table, RHI_PIPELINE_STAGE_COMPUTE);
-            data.vsm_physical_page_table =
-                pass.add_buffer_srv(m_vsm_physical_page_table, RHI_PIPELINE_STAGE_COMPUTE);
-            data.vsm_projection_buffer =
-                pass.add_buffer_srv(m_vsm_projection_buffer, RHI_PIPELINE_STAGE_COMPUTE);
-            data.vsm_physical_texture =
-                pass.add_texture_srv(m_vsm_physical_texture, RHI_PIPELINE_STAGE_COMPUTE);
-            // data.debug_texture = pass.add_texture_srv(m_debug_texture,
-            // RHI_PIPELINE_STAGE_COMPUTE);
-        },
-        [](const pass_data& data, rdg_command& command)
-        {
-            auto& device = render_device::instance();
+    if (m_debug_mode == DEBUG_MODE_PAGE)
+    {
+        graph.add_pass<pass_data>(
+            "VSM Debug Page",
+            RDG_PASS_COMPUTE,
+            [&](pass_data& data, rdg_pass& pass)
+            {
+                data.debug_output =
+                    pass.add_texture_uav(m_debug_output, RHI_PIPELINE_STAGE_COMPUTE);
+                data.depth_buffer =
+                    pass.add_texture_srv(m_depth_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+                data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+                data.light_id = m_debug_light_id;
+            },
+            [](const pass_data& data, rdg_command& command)
+            {
+                auto& device = render_device::instance();
 
-            command.set_pipeline({
-                .compute_shader = device.get_shader<vsm_debug_cs>(),
-            });
-
-            command.set_constant(
-                vsm_debug_cs::constant_data{
-                    .render_target = data.render_target.get_bindless(),
-                    .visible_vsm_ids = data.visible_vsm_ids.get_bindless(),
-                    .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
-                    .vsm_physical_page_table = data.vsm_physical_page_table.get_bindless(),
-                    .vsm_projection_buffer = data.vsm_projection_buffer.get_bindless(),
-                    .vsm_physical_texture = data.vsm_physical_texture.get_bindless(),
-                    // .debug_texture = data.debug_texture.get_bindless(),
+                command.set_pipeline({
+                    .compute_shader = device.get_shader<vsm_debug_page_cs>(),
                 });
 
-            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+                rhi_texture_extent extent = data.debug_output.get_extent();
 
-            command.dispatch_2d(256, 512 + 256);
-        });
+                command.set_constant(
+                    vsm_debug_page_cs::constant_data{
+                        .debug_output = data.debug_output.get_bindless(),
+                        .depth_buffer = data.depth_buffer.get_bindless(),
+                        .vsm_buffer = data.vsm_buffer.get_bindless(),
+                        .width = extent.width,
+                        .height = extent.height,
+                        .light_id = data.light_id,
+                    });
+
+                command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+                command.set_parameter(1, RDG_PARAMETER_SCENE);
+                command.set_parameter(2, RDG_PARAMETER_CAMERA);
+
+                command.dispatch_2d(extent.width, extent.height);
+            });
+    }
+    else if (m_debug_mode == DEBUG_MODE_PAGE_CACHE)
+    {
+        graph.add_pass<pass_data>(
+            "VSM Debug Page Cache",
+            RDG_PASS_COMPUTE,
+            [&](pass_data& data, rdg_pass& pass)
+            {
+                data.debug_output =
+                    pass.add_texture_uav(m_debug_output, RHI_PIPELINE_STAGE_COMPUTE);
+                data.depth_buffer =
+                    pass.add_texture_srv(m_depth_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+                data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+                data.vsm_virtual_page_table =
+                    pass.add_buffer_srv(m_vsm_virtual_page_table, RHI_PIPELINE_STAGE_COMPUTE);
+                data.light_id = m_debug_light_id;
+            },
+            [](const pass_data& data, rdg_command& command)
+            {
+                auto& device = render_device::instance();
+
+                command.set_pipeline({
+                    .compute_shader = device.get_shader<vsm_debug_page_cache_cs>(),
+                });
+
+                rhi_texture_extent extent = data.debug_output.get_extent();
+
+                command.set_constant(
+                    vsm_debug_page_cache_cs::constant_data{
+                        .debug_output = data.debug_output.get_bindless(),
+                        .depth_buffer = data.depth_buffer.get_bindless(),
+                        .vsm_buffer = data.vsm_buffer.get_bindless(),
+                        .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
+                        .width = extent.width,
+                        .height = extent.height,
+                        .light_id = data.light_id,
+                    });
+
+                command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+                command.set_parameter(1, RDG_PARAMETER_SCENE);
+                command.set_parameter(2, RDG_PARAMETER_CAMERA);
+
+                command.dispatch_2d(extent.width, extent.height);
+            });
+    }
+
+    // graph.add_pass<pass_data>(
+    //     "VSM Debug",
+    //     RDG_PASS_COMPUTE,
+    //     [&](pass_data& data, rdg_pass& pass)
+    //     {
+    //         data.visible_vsm_ids =
+    //             pass.add_buffer_srv(m_visible_vsm_ids, RHI_PIPELINE_STAGE_COMPUTE);
+    //         data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+    //         data.vsm_virtual_page_table =
+    //             pass.add_buffer_srv(m_vsm_virtual_page_table, RHI_PIPELINE_STAGE_COMPUTE);
+    //         data.vsm_physical_page_table =
+    //             pass.add_buffer_srv(m_vsm_physical_page_table, RHI_PIPELINE_STAGE_COMPUTE);
+    //         data.vsm_bounds_buffer =
+    //             pass.add_buffer_srv(m_vsm_bounds_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+    //         data.vsm_physical_texture =
+    //             pass.add_texture_srv(m_vsm_physical_texture, RHI_PIPELINE_STAGE_COMPUTE);
+    //         data.debug_output = pass.add_texture_uav(m_debug_output, RHI_PIPELINE_STAGE_COMPUTE);
+    //     },
+    //     [](const pass_data& data, rdg_command& command)
+    //     {
+    //         auto& device = render_device::instance();
+
+    //         command.set_pipeline({
+    //             .compute_shader = device.get_shader<vsm_debug_cs>(),
+    //         });
+
+    //         command.set_constant(
+    //             vsm_debug_cs::constant_data{
+    //                 .debug_output = data.debug_output.get_bindless(),
+    //                 .visible_vsm_ids = data.visible_vsm_ids.get_bindless(),
+    //                 .vsm_buffer = data.vsm_buffer.get_bindless(),
+    //                 .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
+    //                 .vsm_physical_page_table = data.vsm_physical_page_table.get_bindless(),
+    //                 .vsm_bounds_buffer = data.vsm_bounds_buffer.get_bindless(),
+    //                 .vsm_physical_texture = data.vsm_physical_texture.get_bindless(),
+    //             });
+
+    //         command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+    //         command.set_parameter(1, RDG_PARAMETER_SCENE);
+
+    //         command.dispatch_2d(256, 512 + 256);
+    //     });
 }
 } // namespace violet

@@ -138,7 +138,9 @@ void control_system::update_first_person_control()
             auto forward = quaternion::mul_vec(
                 transform.get_rotation(),
                 vec3f{.x = 0.0f, .y = 0.0f, .z = 1.0f});
-            auto right = vector::cross(vec3f{.x = 0.0f, .y = 1.0f, .z = 0.0f}, forward);
+            auto right = quaternion::mul_vec(
+                transform.get_rotation(),
+                vec3f{.x = 1.0f, .y = 0.0f, .z = 0.0f});
 
             vec3f position = transform.get_position();
             position += move_speed * forward_input * forward;

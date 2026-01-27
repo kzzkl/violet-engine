@@ -8,6 +8,7 @@
 #include "graphics/geometry_manager.hpp"
 #include "graphics/graphics_config.hpp"
 #include "graphics/material_manager.hpp"
+#include "graphics/renderer.hpp"
 #include "light_system.hpp"
 #include "mesh_system.hpp"
 #include "render_scene_manager.hpp"

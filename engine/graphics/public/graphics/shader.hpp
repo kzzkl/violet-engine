@@ -186,16 +186,17 @@ struct shader
         mat4f prev_matrix_vp_no_jitter;
 
         vec3f position;
-        float fov;
+        std::uint32_t camera_id;
+
+        vec2f jitter;
 
         float near;
         float far;
+
+        std::uint32_t type;
+        float fov;
         float width;
         float height;
-
-        vec2f jitter;
-        std::uint32_t camera_id;
-        std::uint32_t padding0;
     };
 
     static constexpr parameter camera = {

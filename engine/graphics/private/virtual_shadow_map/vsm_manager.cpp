@@ -58,32 +58,43 @@ vsm_manager::vsm_manager()
     device.set_name(m_physical_texture.get(), "VSM Physical Texture");
 }
 
-render_id vsm_manager::add_vsm(light_type light_type, render_id light_id, render_id camera_id)
+render_id vsm_manager::add_vsm(light_type light_type)
 {
-    assert(light_type != LIGHT_DIRECTIONAL || camera_id != INVALID_RENDER_ID);
-
     render_id vsm_id = m_vsms.add(get_vsm_count(light_type));
 
     auto& vsm = m_vsms[vsm_id];
     vsm.light_type = light_type;
-    vsm.light_id = light_id;
-    vsm.camera_id = camera_id;
-
     m_vsms.mark_dirty(vsm_id);
+
+    switch (light_type)
+    {
+    case LIGHT_DIRECTIONAL:
+        m_directional_lights[vsm_id] = {};
+        break;
+    default:
+        break;
+    }
 
     return vsm_id;
 }
 
 void vsm_manager::remove_vsm(render_id vsm_id)
 {
+    switch (m_vsms[vsm_id].light_type)
+    {
+    case LIGHT_DIRECTIONAL:
+        m_directional_lights.erase(vsm_id);
+        break;
+    default:
+        break;
+    }
+
     m_vsms.remove(vsm_id);
 }
 
 void vsm_manager::set_vsm(render_id vsm_id, const vsm_directional_light_data& light)
 {
-    auto& vsm = m_vsms[vsm_id];
-
-    assert(vsm.light_type == LIGHT_DIRECTIONAL);
+    assert(m_vsms[vsm_id].light_type == LIGHT_DIRECTIONAL);
 
     vec3f up = {0.0f, 1.0f, 0.0f};
     if (std::abs(vector::dot(up, light.light_direction)) > 0.99f)
@@ -91,10 +102,7 @@ void vsm_manager::set_vsm(render_id vsm_id, const vsm_directional_light_data& li
         up = {.x = 1.0f, .y = 0.0f, .z = 0.0f};
     }
 
-    vec3f eye = {};
-    vec3f target = eye + light.light_direction;
-
-    mat4f matrix_v = matrix::look_at(eye, target, up);
+    mat4f matrix_v = matrix::look_at({}, light.light_direction, up);
     mat4f matrix_v_inv = matrix::inverse(matrix_v);
 
     vec3f center = matrix::mul(
@@ -102,6 +110,12 @@ void vsm_manager::set_vsm(render_id vsm_id, const vsm_directional_light_data& li
         matrix_v);
 
     float cascade_radius = 2.56f;
+
+    auto& light_data = m_directional_lights[vsm_id];
+    bool force_invalidate = light.light_direction != light_data.light_direction;
+    light_data = light;
+
+    std::uint32_t frame = render_device::instance().get_frame_count();
 
     std::uint32_t cascade_count = get_vsm_count(LIGHT_DIRECTIONAL);
     for (std::uint32_t cascade = 0; cascade < cascade_count; ++cascade, cascade_radius *= 2.0f)
@@ -115,25 +129,30 @@ void vsm_manager::set_vsm(render_id vsm_id, const vsm_directional_light_data& li
             static_cast<std::int32_t>(std::floor(center.y / cascade_page_size)),
         };
 
-        float view_z_range = cascade_radius * 1000.0f;
-        bool view_z_dirty = center.z < cascade_vsm.view_z + (view_z_range * 0.1f) ||
-                            center.z > cascade_vsm.view_z + (view_z_range * 0.9f);
+        float view_z_radius = cascade_radius * 1000.0f;
+        bool view_z_dirty = center.z < cascade_vsm.view_z - (view_z_radius * 0.9f) ||
+                            center.z > cascade_vsm.view_z + (view_z_radius * 0.9f);
 
-        if (cascade_vsm.page_coord == page_coord && !view_z_dirty)
+        if (cascade_vsm.page_coord == page_coord && !view_z_dirty && !force_invalidate)
         {
             continue;
         }
- 
+
         if (view_z_dirty)
         {
-            cascade_vsm.view_z = center.z - view_z_range * 0.5f;
-            cascade_vsm.cache_dirty = true;
+            cascade_vsm.view_z = center.z;
+            cascade_vsm.cache_epoch = frame;
+        }
+
+        if (force_invalidate)
+        {
+            cascade_vsm.cache_epoch = frame;
         }
 
         vec3f cascade_center;
         cascade_center.x = cascade_page_size * static_cast<float>(page_coord.x);
         cascade_center.y = cascade_page_size * static_cast<float>(page_coord.y);
-        cascade_center.z = cascade_vsm.view_z;
+        cascade_center.z = 0.0f;
 
         cascade_center = matrix::mul(
             vec4f{cascade_center.x, cascade_center.y, cascade_center.z, 1.0f},
@@ -142,15 +161,12 @@ void vsm_manager::set_vsm(render_id vsm_id, const vsm_directional_light_data& li
         cascade_vsm.matrix_v =
             matrix::look_at(cascade_center, cascade_center + light.light_direction, up);
         cascade_vsm.matrix_p = matrix::orthographic(
-            cascade_page_size * VSM_VIRTUAL_PAGE_TABLE_SIZE,
-            cascade_page_size * VSM_VIRTUAL_PAGE_TABLE_SIZE,
-            view_z_range,
-            0.5f);
-
-        cascade_vsm.page_offset = page_coord - cascade_vsm.page_coord;
+            cascade_radius * 2.0f,
+            cascade_radius * 2.0f,
+            cascade_vsm.view_z + view_z_radius,
+            cascade_vsm.view_z - view_z_radius);
         cascade_vsm.page_coord = page_coord;
-        cascade_vsm.light_id = vsm.light_id;
-        cascade_vsm.camera_id = vsm.camera_id;
+        cascade_vsm.view_z_radius = view_z_radius;
 
         m_vsms.mark_dirty(vsm_id + cascade);
     }
@@ -163,7 +179,8 @@ void vsm_manager::update(gpu_buffer_uploader* uploader)
         {
             return {
                 .page_coord = vsm.page_coord,
-                .page_offset = vsm.page_offset,
+                .cache_epoch = vsm.cache_epoch,
+                .view_z_radius = vsm.view_z_radius,
                 .matrix_v = vsm.matrix_v,
                 .matrix_p = vsm.matrix_p,
                 .matrix_vp = matrix::mul(vsm.matrix_v, vsm.matrix_p),

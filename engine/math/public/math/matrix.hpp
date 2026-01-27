@@ -1,6 +1,7 @@
 #pragma once
 
 #include "math/quaternion.hpp"
+#include <limits>
 
 namespace violet
 {
@@ -877,75 +878,32 @@ struct matrix
 
             value_type h = value_type(1) / std::tanf(fov * 0.5f); // view space height
             value_type w = h / aspect;                            // view space width
+
+            value_type m22 = value_type(0);
+            value_type m32 = value_type(0);
+
+            if (near_z == std::numeric_limits<value_type>::infinity())
+            {
+                m22 = value_type(0);
+                m32 = far_z;
+            }
+            else if (far_z == std::numeric_limits<value_type>::infinity())
+            {
+                m22 = value_type(1);
+                m32 = -near_z;
+            }
+            else
+            {
+                m22 = far_z / (far_z - near_z);
+                m32 = near_z * far_z / (near_z - far_z);
+            }
+
             return {
                 {w, value_type(0), value_type(0), value_type(0)},
                 {value_type(0), h, value_type(0), value_type(0)},
-                {value_type(0), value_type(0), far_z / (far_z - near_z), value_type(1)},
-                {value_type(0), value_type(0), near_z * far_z / (near_z - far_z), value_type(0)}};
-        }
-    }
-
-    // Infinite perspective projection.
-    template <typename T = float>
-    [[nodiscard]] static mat4<T> perspective(
-        mat4<T>::value_type fov,
-        mat4<T>::value_type aspect,
-        mat4<T>::value_type near_z)
-    {
-        if constexpr (std::is_same_v<T, simd>)
-        {
-            // TODO
-            mat4f result = perspective(fov, aspect, near_z);
-            return math::load(result);
-        }
-        else
-        {
-            using value_type = mat4<T>::value_type;
-
-            value_type h = value_type(1) / std::tanf(fov * 0.5f); // view space height
-            value_type w = h / aspect;                            // view space width
-            return {
-                {w, value_type(0), value_type(0), value_type(0)},
-                {value_type(0), h, value_type(0), value_type(0)},
-                {value_type(0), value_type(0), value_type(1), value_type(1)},
-                {value_type(0), value_type(0), -near_z, value_type(0)}};
-        }
-    }
-
-    template <typename T = float>
-    [[nodiscard]] static mat4<T> perspective_reverse_z(
-        mat4<T>::value_type fov,
-        mat4<T>::value_type aspect,
-        mat4<T>::value_type near_z,
-        mat4<T>::value_type far_z)
-    {
-        return perspective<T>(fov, aspect, far_z, near_z);
-    }
-
-    // Infinite perspective projection.
-    template <typename T = float>
-    [[nodiscard]] static mat4<T> perspective_reverse_z(
-        mat4<T>::value_type fov,
-        mat4<T>::value_type aspect,
-        mat4<T>::value_type near_z)
-    {
-        if constexpr (std::is_same_v<T, simd>)
-        {
-            // TODO
-            mat4f result = perspective_reverse_z(fov, aspect, near_z);
-            return math::load(result);
-        }
-        else
-        {
-            using value_type = mat4<T>::value_type;
-
-            value_type h = value_type(1) / std::tanf(fov * 0.5f); // view space height
-            value_type w = h / aspect;                            // view space width
-            return {
-                {w, value_type(0), value_type(0), value_type(0)},
-                {value_type(0), h, value_type(0), value_type(0)},
-                {value_type(0), value_type(0), value_type(0), value_type(1)},
-                {value_type(0), value_type(0), near_z, value_type(0)}};
+                {value_type(0), value_type(0), m22, value_type(1)},
+                {value_type(0), value_type(0), m32, value_type(0)},
+            };
         }
     }
 

@@ -6,6 +6,7 @@ struct constant_data
     uint vsm_virtual_page_table;
     uint vsm_physical_page_table;
     uint vsm_buffer;
+    uint frame;
 };
 PushConstant(constant_data, constant);
 
@@ -26,6 +27,13 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     vsm_data vsm = vsms[physical_page.vsm_id];
+
+    if (vsm.cache_epoch == constant.frame)
+    {
+        physical_page.flags &= ~(PHYSICAL_PAGE_FLAG_REQUEST | PHYSICAL_PAGE_FLAG_RESIDENT);
+        physical_page_table[physical_page_index] = physical_page;
+        return;
+    }
 
     int2 virtual_page_coord = physical_page.virtual_page_coord - vsm.page_coord;
 

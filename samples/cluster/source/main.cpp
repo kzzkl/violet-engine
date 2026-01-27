@@ -333,13 +333,24 @@ private:
 
         const auto& camera = world.get_component<const camera_component>(get_camera());
 
-        float aspect = static_cast<float>(camera.get_extent().width) /
-                       static_cast<float>(camera.get_extent().height);
-
-        mat4f matrix_p =
-            camera.far == std::numeric_limits<float>::infinity() ?
-                matrix::perspective_reverse_z(camera.fov, aspect, camera.near) :
-                matrix::perspective_reverse_z(camera.fov, aspect, camera.near, camera.far);
+        mat4f_simd matrix_p;
+        if (camera.type == CAMERA_ORTHOGRAPHIC)
+        {
+            matrix_p = matrix::orthographic<simd>(
+                camera.orthographic.width,
+                camera.orthographic.height,
+                camera.far,
+                camera.near);
+        }
+        else
+        {
+            matrix_p = matrix::perspective<simd>(
+                camera.perspective.fov,
+                static_cast<float>(camera.get_extent().width) /
+                    static_cast<float>(camera.get_extent().height),
+                camera.far,
+                camera.near);
+        }
 
         const auto& camera_world =
             world.get_component<const transform_world_component>(get_camera());
@@ -348,8 +359,8 @@ private:
         const auto& mesh_world = world.get_component<const transform_world_component>(m_mesh);
         mat4f matrix_mv = matrix::mul(mesh_world.matrix, matrix_v);
 
-        float lod_scale =
-            static_cast<float>(camera.get_extent().height) * 0.5f / std::tan(camera.fov * 0.5f);
+        float lod_scale = static_cast<float>(camera.get_extent().height) * 0.5f /
+                          std::tan(camera.perspective.fov * 0.5f);
 
         auto check_cluster_node_lod = [&](cluster_node cluster_node)
         {

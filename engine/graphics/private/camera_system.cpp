@@ -28,19 +28,31 @@ shader::camera_data get_camera_data(
 
     shader::camera_data result = {
         .position = transform.get_position(),
-        .fov = camera.fov,
         .near = camera.near,
         .far = camera.far,
-        .width = static_cast<float>(extent.width),
-        .height = static_cast<float>(extent.height),
+        .type = static_cast<std::uint32_t>(camera.type),
+        .fov = camera.perspective.fov,
+        .width = camera.orthographic.width,
+        .height = camera.orthographic.height,
     };
 
-    float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
-
-    mat4f_simd matrix_p =
-        camera.far == std::numeric_limits<float>::infinity() ?
-            matrix::perspective_reverse_z<simd>(camera.fov, aspect, camera.near) :
-            matrix::perspective_reverse_z<simd>(camera.fov, aspect, camera.near, camera.far);
+    mat4f_simd matrix_p;
+    if (camera.type == CAMERA_ORTHOGRAPHIC)
+    {
+        matrix_p = matrix::orthographic<simd>(
+            camera.orthographic.width,
+            camera.orthographic.height,
+            camera.far,
+            camera.near);
+    }
+    else
+    {
+        matrix_p = matrix::perspective<simd>(
+            camera.perspective.fov,
+            static_cast<float>(extent.width) / static_cast<float>(extent.height),
+            camera.far,
+            camera.near);
+    }
     mat4f_simd matrix_v = matrix::inverse(math::load(transform.matrix));
 
     mat4f_simd matrix_vp = matrix::mul(matrix_v, matrix_p);

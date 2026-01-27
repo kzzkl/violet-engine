@@ -1,5 +1,4 @@
 #include "graphics/render_scene.hpp"
-#include "components/camera_component.hpp"
 #include "components/camera_component_meta.hpp"
 #include "components/light_component.hpp"
 #include "gpu_buffer_uploader.hpp"
@@ -68,21 +67,6 @@ render_camera::render_camera(
 render_id render_camera::get_id() const noexcept
 {
     return m_camera_meta->id;
-}
-
-float render_camera::get_near() const noexcept
-{
-    return m_camera->near;
-}
-
-float render_camera::get_far() const noexcept
-{
-    return m_camera->far;
-}
-
-float render_camera::get_fov() const noexcept
-{
-    return m_camera->fov;
 }
 
 const mat4f& render_camera::get_matrix_v() const noexcept
@@ -561,8 +545,7 @@ void render_scene::add_vsm_by_light(render_id light_id)
                 continue;
             }
 
-            render_id vsm_id =
-                m_vsm_manager->add_vsm(LIGHT_DIRECTIONAL, light_id, camera.camera_id);
+            render_id vsm_id = m_vsm_manager->add_vsm(LIGHT_DIRECTIONAL);
 
             directional_vsm_array[camera.camera_id] = {
                 .vsm_id = vsm_id,
@@ -632,7 +615,7 @@ void render_scene::add_vsm_by_camera(render_id camera_id)
                 return;
             }
 
-            render_id vsm_id = m_vsm_manager->add_vsm(LIGHT_DIRECTIONAL, light_id, camera_id);
+            render_id vsm_id = m_vsm_manager->add_vsm(LIGHT_DIRECTIONAL);
 
             auto& light_vsms = m_directional_vsm_buffer[light.vsm_address].vsms;
             light_vsms[camera_id] = {

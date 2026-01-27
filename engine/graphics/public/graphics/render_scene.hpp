@@ -1,5 +1,6 @@
 #pragma once
 
+#include "components/camera_component.hpp"
 #include "graphics/geometry.hpp"
 #include "graphics/gpu_array.hpp"
 #include "graphics/material.hpp"
@@ -9,7 +10,6 @@
 
 namespace violet
 {
-class camera_component;
 class camera_component_meta;
 class render_camera
 {
@@ -18,9 +18,25 @@ public:
 
     render_id get_id() const noexcept;
 
-    float get_near() const noexcept;
-    float get_far() const noexcept;
-    float get_fov() const noexcept;
+    camera_type get_type() const noexcept
+    {
+        return m_camera->type;
+    }
+
+    float get_near() const noexcept
+    {
+        return m_camera->near;
+    }
+
+    float get_far() const noexcept
+    {
+        return m_camera->far;
+    }
+
+    float get_fov() const noexcept
+    {
+        return m_camera->perspective.fov;
+    }
 
     const mat4f& get_matrix_v() const noexcept;
     const mat4f& get_matrix_p() const noexcept;

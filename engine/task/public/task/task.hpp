@@ -32,7 +32,7 @@ public:
         return *this;
     }
 
-    std::string_view get_name() const noexcept
+    const std::string& get_name() const noexcept
     {
         return m_name;
     }

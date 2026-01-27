@@ -7,9 +7,16 @@ namespace violet
 class shadow_pass
 {
 public:
+    enum debug_mode
+    {
+        DEBUG_MODE_NONE,
+        DEBUG_MODE_PAGE,
+        DEBUG_MODE_PAGE_CACHE,
+        DEBUG_MODE_PHYSICAL_PAGE_TABLE,
+    };
+
     struct parameter
     {
-        rdg_texture* render_target;
         rdg_texture* depth_buffer;
 
         rdg_buffer* vsm_buffer{nullptr};
@@ -21,6 +28,10 @@ public:
         rdg_buffer* lru_buffer;
         std::uint32_t lru_curr_index;
         std::uint32_t lru_prev_index;
+
+        debug_mode debug_mode{DEBUG_MODE_NONE};
+        std::uint32_t debug_light_id{0};
+        rdg_texture* debug_output{nullptr};
     };
 
     void add(render_graph& graph, const parameter& parameter);
@@ -34,13 +45,12 @@ private:
     void update_lru(render_graph& graph);
     void allocate_pages(render_graph& graph);
     void clear_physical_page(render_graph& graph);
-    void update_projection(render_graph& graph);
+    void calculate_page_bounds(render_graph& graph);
     void instance_cull(render_graph& graph);
     void render_shadow(render_graph& graph);
 
     void add_debug_pass(render_graph& graph);
 
-    rdg_texture* m_render_target{nullptr};
     rdg_texture* m_depth_buffer{nullptr};
 
     rdg_buffer* m_virtual_page_dispatch_buffer{nullptr};
@@ -54,7 +64,7 @@ private:
     rdg_buffer* m_vsm_physical_page_table{nullptr};
     rdg_texture* m_vsm_physical_texture{nullptr};
 
-    rdg_buffer* m_vsm_projection_buffer{nullptr};
+    rdg_buffer* m_vsm_bounds_buffer{nullptr};
     rdg_buffer* m_clear_physical_page_dispatch_buffer{nullptr};
 
     rdg_buffer* m_lru_state{nullptr};
@@ -66,6 +76,8 @@ private:
     rdg_buffer* m_draw_count_buffer{nullptr};
     rdg_buffer* m_draw_info_buffer{nullptr};
 
-    // rdg_texture* m_debug_texture{nullptr};
+    debug_mode m_debug_mode{DEBUG_MODE_NONE};
+    std::uint32_t m_debug_light_id{0};
+    rdg_texture* m_debug_output{nullptr};
 };
 } // namespace violet

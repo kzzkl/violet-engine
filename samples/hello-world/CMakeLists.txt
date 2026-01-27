@@ -8,7 +8,8 @@ target_include_directories(hello-world
 target_link_libraries(hello-world
     PRIVATE
         violet::graphics
-        violet::control)
+        violet::control
+        violet::sample-base)
 
 install(TARGETS hello-world
     RUNTIME DESTINATION bin
@@ -16,7 +17,3 @@ install(TARGETS hello-world
     ARCHIVE DESTINATION lib)
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION bin/assets)
-
-if(MSVC)
-    set_property(TARGET hello-world PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/install/bin)
-endif()

@@ -58,13 +58,33 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     float4 sphere_vs = mul(camera.matrix_v, mul(mesh.matrix_m, float4(geometry.bounding_sphere.xyz, 1.0)));
     sphere_vs.w = geometry.bounding_sphere.w * mesh.scale.w;
 
-    visible = sphere_vs.w > 0.0 && frustum_cull(sphere_vs, constant.frustum, camera.near);
+    visible = sphere_vs.w > 0.0;
+    
+    if (visible)
+    {
+        if (camera.type == CAMERA_ORTHOGRAPHIC)
+        {
+            visible = frustum_cull(sphere_vs, camera.width, camera.height, camera.near);
+        }
+        else
+        {
+            visible = frustum_cull(sphere_vs, constant.frustum, camera.near);
+        }
+    }
 
     if (visible)
     {
         float4 prev_sphere_vs = mul(camera.prev_matrix_v, mul(mesh.prev_matrix_m, float4(geometry.bounding_sphere.xyz, 1.0)));
         prev_sphere_vs.w = sphere_vs.w;
-        if (!occlusion_cull(prev_sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.prev_matrix_p, camera.near))
+        if (!occlusion_cull(
+                prev_sphere_vs,
+                hzb,
+                hzb_sampler,
+                constant.hzb_width,
+                constant.hzb_height,
+                camera.prev_matrix_p,
+                camera.near,
+                camera.type))
         {
             visible = false;
             InterlockedOr(gs_recheck_masks[recheck_mask_index], 1u << (instance_id % 32));
@@ -87,7 +107,15 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     {
         float4 sphere_vs = mul(camera.matrix_v, mul(mesh.matrix_m, float4(geometry.bounding_sphere.xyz, 1.0)));
         sphere_vs.w = geometry.bounding_sphere.w * mesh.scale.w;
-        visible = occlusion_cull(sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.matrix_p, camera.near);
+        visible = occlusion_cull(
+            sphere_vs,
+            hzb,
+            hzb_sampler,
+            constant.hzb_width,
+            constant.hzb_height,
+            camera.matrix_p,
+            camera.near,
+            camera.type);
     }
 #endif
 
