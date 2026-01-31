@@ -295,6 +295,12 @@ void deferred_renderer::add_shadow_pass(render_graph& graph)
         break;
     }
 
+    rdg_buffer* debug_info = nullptr;
+    if (vsm->get_debug_info_buffer() != nullptr)
+    {
+        debug_info = graph.add_buffer("VSM Debug Info", vsm->get_debug_info_buffer());
+    }
+
     graph.add_pass<shadow_pass>({
         .depth_buffer = m_depth_buffer,
         .vsm_buffer = m_vsm_buffer,
@@ -307,6 +313,7 @@ void deferred_renderer::add_shadow_pass(render_graph& graph)
         .lru_prev_index = vsm->get_prev_lru_index(),
         .debug_mode = debug_mode,
         .debug_output = m_debug_output,
+        .debug_info = debug_info,
     });
 }
 
