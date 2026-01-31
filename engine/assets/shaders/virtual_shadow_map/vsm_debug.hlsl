@@ -4,6 +4,8 @@
 
 struct constant_data
 {
+    uint debug_info;
+    uint debug_info_index;
     uint debug_output;
     uint depth_buffer;
     uint vsm_buffer;
@@ -11,6 +13,7 @@ struct constant_data
     uint vsm_physical_page_table;
     uint vsm_bounds_buffer;
     uint vsm_physical_texture;
+    uint draw_count_buffer;
     uint width;
     uint height;
     uint light_id;
@@ -39,6 +42,80 @@ static const float3 cascade_colors[16] =
     float3(0.6, 0.3, 0.0),
     float3(0.3, 0.6, 0.8),
 };
+
+struct debug_data
+{
+    uint cache_hit;
+    uint rendered;
+    uint unmapped;
+    uint drawcall;
+};
+
+[numthreads(8, 8, 1)]
+void debug_info(uint3 dtid : SV_DispatchThreadID)
+{
+    RWStructuredBuffer<debug_data> debug_infos = ResourceDescriptorHeap[constant.debug_info];
+
+    StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[scene.directional_vsm_buffer];
+    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
+    StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
+    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+
+    light_data light = lights[constant.light_id];
+    if (light.vsm_address == 0xFFFFFFFF)
+    {
+        return;
+    }
+
+    uint cache_hit = 0;
+    uint rendered = 0;
+    uint unmapped = 0;
+
+    if (light.type == LIGHT_DIRECTIONAL)
+    {
+        uint2 virtual_page_coord = dtid.xy;
+        uint vsm_id = get_directional_vsm_id(directional_vsms, light.vsm_address, camera.camera_id);
+
+        for (int cascade = 0; cascade < 16; ++cascade)
+        {
+            vsm_data vsm = vsms[vsm_id + cascade];
+
+            uint virtual_page_index = get_virtual_page_index(vsm_id + cascade, virtual_page_coord);
+            vsm_virtual_page virtual_page = unpack_virtual_page(virtual_page_table[virtual_page_index]);
+
+            if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) == 0)
+            {
+                continue;
+            }
+            
+            if (virtual_page.flags & VIRTUAL_PAGE_FLAG_UNMAPPED)
+            {
+                ++unmapped;
+            }
+            else
+            {
+                if (virtual_page.flags & VIRTUAL_PAGE_FLAG_CACHE_VALID)
+                {
+                    ++cache_hit;
+                }
+                else
+                {
+                    ++rendered;
+                }
+            }
+        }
+
+        InterlockedAdd(debug_infos[constant.debug_info_index].cache_hit, cache_hit);
+        InterlockedAdd(debug_infos[constant.debug_info_index].rendered, rendered);
+        InterlockedAdd(debug_infos[constant.debug_info_index].unmapped, unmapped);
+    }
+
+    if (dtid.x == 0 && dtid.y == 0)
+    {
+        StructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.draw_count_buffer];
+        debug_infos[constant.debug_info_index].drawcall = draw_counts[0];
+    }
+}
 
 [numthreads(8, 8, 1)]
 void debug_page(uint3 dtid : SV_DispatchThreadID)

@@ -270,6 +270,8 @@ struct vsm_shadow_fs : public shader_fs
 
 struct vsm_debug_constant_data
 {
+    std::uint32_t debug_info;
+    std::uint32_t debug_info_index;
     std::uint32_t debug_output;
     std::uint32_t depth_buffer;
     std::uint32_t vsm_buffer;
@@ -277,9 +279,24 @@ struct vsm_debug_constant_data
     std::uint32_t vsm_physical_page_table;
     std::uint32_t vsm_bounds_buffer;
     std::uint32_t vsm_physical_texture;
+    std::uint32_t draw_count_buffer;
     std::uint32_t width;
     std::uint32_t height;
     std::uint32_t light_id;
+};
+
+struct vsm_debug_info_cs : public shader_cs
+{
+    static constexpr std::string_view path = "assets/shaders/virtual_shadow_map/vsm_debug.hlsl";
+    static constexpr std::string_view entry_point = "debug_info";
+
+    using constant_data = vsm_debug_constant_data;
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = scene},
+        {.space = 2, .desc = camera},
+    };
 };
 
 struct vsm_debug_page_cs : public shader_cs
@@ -379,12 +396,10 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
     instance_cull(graph);
     render_shadow(graph);
 
-    if (parameter.debug_mode != DEBUG_MODE_NONE && parameter.debug_output != nullptr)
-    {
-        m_debug_mode = parameter.debug_mode;
-        m_debug_output = parameter.debug_output;
-        add_debug_pass(graph);
-    }
+    m_debug_mode = parameter.debug_mode;
+    m_debug_output = parameter.debug_output;
+    m_debug_info = parameter.debug_info;
+    add_debug_pass(graph);
 }
 
 void shadow_pass::prepare(render_graph& graph)
@@ -1104,6 +1119,7 @@ void shadow_pass::add_debug_pass(render_graph& graph)
 {
     struct pass_data
     {
+        rdg_buffer_uav debug_info;
         rdg_texture_uav debug_output;
         rdg_texture_srv depth_buffer;
         rdg_buffer_srv vsm_buffer;
@@ -1111,8 +1127,51 @@ void shadow_pass::add_debug_pass(render_graph& graph)
         rdg_buffer_srv vsm_physical_page_table;
         rdg_buffer_srv vsm_bounds_buffer;
         rdg_texture_srv vsm_physical_texture;
+        rdg_buffer_srv draw_count_buffer;
         std::uint32_t light_id;
     };
+
+    if (m_debug_info != nullptr)
+    {
+        graph.add_pass<pass_data>(
+            "VSM Debug Info",
+            RDG_PASS_COMPUTE,
+            [&](pass_data& data, rdg_pass& pass)
+            {
+                data.debug_info = pass.add_buffer_uav(m_debug_info, RHI_PIPELINE_STAGE_COMPUTE);
+                data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+                data.vsm_virtual_page_table =
+                    pass.add_buffer_srv(m_vsm_virtual_page_table, RHI_PIPELINE_STAGE_COMPUTE);
+                data.draw_count_buffer =
+                    pass.add_buffer_srv(m_draw_count_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+
+                data.light_id = m_debug_light_id;
+            },
+            [](const pass_data& data, rdg_command& command)
+            {
+                auto& device = render_device::instance();
+
+                command.set_pipeline({
+                    .compute_shader = device.get_shader<vsm_debug_info_cs>(),
+                });
+
+                command.set_constant(
+                    vsm_debug_page_cs::constant_data{
+                        .debug_info = data.debug_info.get_bindless(),
+                        .debug_info_index = device.get_frame_resource_index(),
+                        .vsm_buffer = data.vsm_buffer.get_bindless(),
+                        .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
+                        .draw_count_buffer = data.draw_count_buffer.get_bindless(),
+                        .light_id = data.light_id,
+                    });
+
+                command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+                command.set_parameter(1, RDG_PARAMETER_SCENE);
+                command.set_parameter(2, RDG_PARAMETER_CAMERA);
+
+                command.dispatch_2d(VSM_VIRTUAL_PAGE_TABLE_SIZE, VSM_VIRTUAL_PAGE_TABLE_SIZE);
+            });
+    }
 
     if (m_debug_mode == DEBUG_MODE_PAGE)
     {

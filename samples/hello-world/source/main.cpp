@@ -8,6 +8,7 @@
 #include "graphics/renderers/deferred_renderer.hpp"
 #include "graphics/renderers/features/gtao_render_feature.hpp"
 #include "graphics/renderers/features/taa_render_feature.hpp"
+#include "graphics/renderers/features/vsm_render_feature.hpp"
 #include "sample/sample_system.hpp"
 #include <imgui.h>
 
@@ -38,8 +39,8 @@ public:
         // main_camera.type = CAMERA_ORTHOGRAPHIC;
         // main_camera.orthographic.width = 50.0f;
         // main_camera.orthographic.height = 50.0f;
-        // main_camera.near = -1000.0f;
-        // main_camera.far = std::numeric_limits<float>::infinity(); // 1000.0f;
+        // main_camera.near = 0.5f;
+        // main_camera.far = 1000.0f;
 
         m_box_geometry = std::make_unique<box_geometry>();
 
@@ -218,17 +219,39 @@ private:
             auto& main_camera = get_world().get_component<camera_component>(get_camera());
             auto* renderer = static_cast<deferred_renderer*>(main_camera.renderer.get());
 
-            static int current_debug_mode = static_cast<int>(renderer->get_debug_mode());
+            static int debug_mode = static_cast<int>(renderer->get_debug_mode());
             const char* debug_mode_items[] = {
                 "None",
                 "VSM Page",
                 "VSM Page Cache",
             };
 
-            if (ImGui::Combo("Debug Mode", &current_debug_mode, debug_mode_items, 3))
+            if (ImGui::Combo("Debug Mode", &debug_mode, debug_mode_items, 3))
             {
-                renderer->set_debug_mode(
-                    static_cast<deferred_renderer::debug_mode>(current_debug_mode));
+                renderer->set_debug_mode(static_cast<deferred_renderer::debug_mode>(debug_mode));
+            }
+
+            static int debug_info = 0;
+            const char* debug_info_items[] = {
+                "None",
+                "VSM",
+            };
+
+            if (ImGui::Combo("Debug Info", &debug_info, debug_info_items, 2))
+            {
+                auto* vsm = renderer->get_feature<vsm_render_feature>();
+                vsm->set_debug_info(debug_info == 1);
+            }
+
+            if (debug_info == 1)
+            {
+                auto* vsm = renderer->get_feature<vsm_render_feature>();
+                auto debug_info = vsm->get_debug_info();
+
+                ImGui::Text("Cache Hit: %d", debug_info.cache_hit);
+                ImGui::Text("Cache Miss: %d", debug_info.rendered);
+                ImGui::Text("Unmapped: %d", debug_info.unmapped);
+                ImGui::Text("Drawcall: %d", debug_info.drawcall);
             }
         }
     }

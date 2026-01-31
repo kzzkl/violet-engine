@@ -32,6 +32,7 @@ public:
         debug_mode debug_mode{DEBUG_MODE_NONE};
         std::uint32_t debug_light_id{0};
         rdg_texture* debug_output{nullptr};
+        rdg_buffer* debug_info{nullptr};
     };
 
     void add(render_graph& graph, const parameter& parameter);
@@ -79,5 +80,6 @@ private:
     debug_mode m_debug_mode{DEBUG_MODE_NONE};
     std::uint32_t m_debug_light_id{0};
     rdg_texture* m_debug_output{nullptr};
+    rdg_buffer* m_debug_info{nullptr};
 };
 } // namespace violet
