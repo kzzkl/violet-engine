@@ -33,9 +33,14 @@ public:
         return m_camera->far;
     }
 
-    float get_fov() const noexcept
+    float get_perspective_fov() const noexcept
     {
         return m_camera->perspective.fov;
+    }
+
+    float get_orthographic_size() const noexcept
+    {
+        return m_camera->orthographic.size;
     }
 
     const mat4f& get_matrix_v() const noexcept;

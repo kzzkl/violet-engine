@@ -37,8 +37,7 @@ public:
         auto camera = get_camera();
         auto& main_camera = world.get_component<camera_component>(camera);
         // main_camera.type = CAMERA_ORTHOGRAPHIC;
-        // main_camera.orthographic.width = 50.0f;
-        // main_camera.orthographic.height = 50.0f;
+        // main_camera.orthographic.size = 10.0f;
         // main_camera.near = 0.5f;
         // main_camera.far = 1000.0f;
 
@@ -226,7 +225,11 @@ private:
                 "VSM Page Cache",
             };
 
-            if (ImGui::Combo("Debug Mode", &debug_mode, debug_mode_items, 3))
+            if (ImGui::Combo(
+                    "Debug Mode",
+                    &debug_mode,
+                    debug_mode_items,
+                    IM_ARRAYSIZE(debug_mode_items)))
             {
                 renderer->set_debug_mode(static_cast<deferred_renderer::debug_mode>(debug_mode));
             }
@@ -237,7 +240,11 @@ private:
                 "VSM",
             };
 
-            if (ImGui::Combo("Debug Info", &debug_info, debug_info_items, 2))
+            if (ImGui::Combo(
+                    "Debug Info",
+                    &debug_info,
+                    debug_info_items,
+                    IM_ARRAYSIZE(debug_info_items)))
             {
                 auto* vsm = renderer->get_feature<vsm_render_feature>();
                 vsm->set_debug_info(debug_info == 1);

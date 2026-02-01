@@ -1,4 +1,5 @@
 #include "cull/cull.hlsli"
+#include "cluster.hlsli"
 
 ConstantBuffer<scene_data> scene : register(b0, space1);
 ConstantBuffer<camera_data> camera : register(b0, space2);
@@ -9,7 +10,6 @@ struct constant_data
     uint hzb_sampler;
     uint hzb_width;
     uint hzb_height;
-    float4 frustum;
     uint draw_buffer;
     uint draw_count_buffer;
     uint draw_info_buffer;
@@ -58,19 +58,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     float4 sphere_vs = mul(camera.matrix_v, mul(mesh.matrix_m, float4(geometry.bounding_sphere.xyz, 1.0)));
     sphere_vs.w = geometry.bounding_sphere.w * mesh.scale.w;
 
-    visible = sphere_vs.w > 0.0;
-    
-    if (visible)
-    {
-        if (camera.type == CAMERA_ORTHOGRAPHIC)
-        {
-            visible = frustum_cull(sphere_vs, camera.width, camera.height, camera.near);
-        }
-        else
-        {
-            visible = frustum_cull(sphere_vs, constant.frustum, camera.near);
-        }
-    }
+    visible = sphere_vs.w > 0.0 && frustum_cull(sphere_vs, camera);
 
     if (visible)
     {

@@ -6,6 +6,7 @@
 
 namespace violet
 {
+class render_scene;
 class camera_component_meta
 {
 public:

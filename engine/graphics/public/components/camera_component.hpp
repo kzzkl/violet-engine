@@ -10,8 +10,8 @@ namespace violet
 {
 enum camera_type
 {
-    CAMERA_ORTHOGRAPHIC,
-    CAMERA_PERSPECTIVE,
+    CAMERA_PERSPECTIVE = 0,
+    CAMERA_ORTHOGRAPHIC = 1,
 };
 
 class renderer;
@@ -22,8 +22,7 @@ public:
 
     struct
     {
-        float width{100.0f};
-        float height{100.0f};
+        float size{100.0f};
     } orthographic;
 
     struct

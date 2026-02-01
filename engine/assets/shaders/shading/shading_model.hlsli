@@ -82,7 +82,7 @@ float3 unpack_gbuffer_emissive(constant_common constant, uint2 coord)
     return gbuffer_emissive[coord].rgb;
 }
 
-struct shadow_parameter
+struct shadow_context
 {
     camera_data camera;
 
@@ -91,15 +91,15 @@ struct shadow_parameter
     StructuredBuffer<uint> directional_vsms;
     Texture2D<uint> physical_texture;
 
-    static shadow_parameter create(constant_common constant, scene_data scene, camera_data camera)
+    static shadow_context create(constant_common constant, scene_data scene, camera_data camera)
     {
-        shadow_parameter parameter;
-        parameter.camera = camera;
-        parameter.directional_vsms = ResourceDescriptorHeap[scene.directional_vsm_buffer];
-        parameter.vsms = ResourceDescriptorHeap[constant.vsm_buffer];
-        parameter.virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
-        parameter.physical_texture = ResourceDescriptorHeap[constant.vsm_physical_texture];
-        return parameter;
+        shadow_context context;
+        context.camera = camera;
+        context.directional_vsms = ResourceDescriptorHeap[scene.directional_vsm_buffer];
+        context.vsms = ResourceDescriptorHeap[constant.vsm_buffer];
+        context.virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+        context.physical_texture = ResourceDescriptorHeap[constant.vsm_physical_texture];
+        return context;
     }
 
     float get_shadow(light_data light, float3 position_ws)

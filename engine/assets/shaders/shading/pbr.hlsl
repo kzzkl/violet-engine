@@ -58,7 +58,7 @@ void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 
     StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
 
-    shadow_parameter shadow = shadow_parameter::create(constant.common, scene, camera);
+    shadow_context shadow = shadow_context::create(constant.common, scene, camera);
 
     float3 direct_lighting = 0.0;
     for (int i = 0; i < scene.light_count; ++i)

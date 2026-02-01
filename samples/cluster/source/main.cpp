@@ -40,12 +40,33 @@ public:
             load_model(config["model"]);
         }
 
+        auto camera = get_camera();
+        auto& main_camera = get_world().get_component<camera_component>(camera);
+        main_camera.type = CAMERA_ORTHOGRAPHIC;
+        main_camera.orthographic.size = 10.0f;
+        main_camera.near = 0.5f;
+        main_camera.far = 1000.0f;
+
         return true;
     }
 
 private:
     void tick() override
     {
+        auto& main_camera = get_world().get_component<camera_component>(get_camera());
+
+        const char* types[] = {"Perspective", "Orthographic"};
+        static int type = static_cast<int>(main_camera.type);
+        if (ImGui::Combo("Camera Type", &type, types, IM_ARRAYSIZE(types)))
+        {
+            main_camera.type = static_cast<camera_type>(type);
+        }
+
+        if (type == CAMERA_ORTHOGRAPHIC)
+        {
+            ImGui::SliderFloat("Orthographic Size", &main_camera.orthographic.size, 1.0f, 50.0f);
+        }
+
         if (!m_cpu_culling)
         {
             return;
@@ -332,24 +353,22 @@ private:
         auto& world = get_world();
 
         const auto& camera = world.get_component<const camera_component>(get_camera());
+        auto extent = camera.get_extent();
+        float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
 
         mat4f_simd matrix_p;
         if (camera.type == CAMERA_ORTHOGRAPHIC)
         {
             matrix_p = matrix::orthographic<simd>(
-                camera.orthographic.width,
-                camera.orthographic.height,
+                camera.orthographic.size * 2.0f * aspect,
+                camera.orthographic.size * 2.0f,
                 camera.far,
                 camera.near);
         }
         else
         {
-            matrix_p = matrix::perspective<simd>(
-                camera.perspective.fov,
-                static_cast<float>(camera.get_extent().width) /
-                    static_cast<float>(camera.get_extent().height),
-                camera.far,
-                camera.near);
+            matrix_p =
+                matrix::perspective<simd>(camera.perspective.fov, aspect, camera.far, camera.near);
         }
 
         const auto& camera_world =
@@ -359,8 +378,20 @@ private:
         const auto& mesh_world = world.get_component<const transform_world_component>(m_mesh);
         mat4f matrix_mv = matrix::mul(mesh_world.matrix, matrix_v);
 
-        float lod_scale = static_cast<float>(camera.get_extent().height) * 0.5f /
-                          std::tan(camera.perspective.fov * 0.5f);
+        float lod_scale =
+            camera.type == CAMERA_PERSPECTIVE ?
+                static_cast<float>(extent.height) * 0.5f / std::tan(camera.perspective.fov * 0.5f) :
+                static_cast<float>(extent.height) * 0.5f / camera.orthographic.size;
+
+        auto project_error = [&](float error, float depth)
+        {
+            if (camera.type == CAMERA_PERSPECTIVE)
+            {
+                return error * lod_scale / depth;
+            }
+
+            return error * lod_scale;
+        };
 
         auto check_cluster_node_lod = [&](cluster_node cluster_node)
         {
@@ -381,10 +412,11 @@ private:
                 return true;
             }
 
-            float scale = lod_scale * vector::max(mesh_world.scale);
-
-            float min_error = scale * cluster_node.min_lod_error / far;
-            float max_error = scale * cluster_node.max_parent_lod_error / near;
+            float min_error =
+                project_error(vector::max(mesh_world.scale) * cluster_node.min_lod_error, far);
+            float max_error = project_error(
+                vector::max(mesh_world.scale) * cluster_node.max_parent_lod_error,
+                near);
 
             return min_error <= threshold && threshold < max_error;
         };
@@ -408,7 +440,8 @@ private:
                 return cluster.lod_error == -1.0;
             }
 
-            float lod_error = lod_scale * cluster.lod_error * vector::max(mesh_world.scale) / near;
+            float lod_error =
+                project_error(cluster.lod_error * vector::max(mesh_world.scale), near);
             return lod_error <= threshold;
         };
 

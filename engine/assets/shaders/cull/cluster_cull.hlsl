@@ -1,4 +1,4 @@
-#include "common.hlsli"
+#include "cluster.hlsli"
 #include "cull/cull.hlsli"
 
 ConstantBuffer<scene_data> scene : register(b0, space1);
@@ -10,10 +10,8 @@ struct constant_data
     uint hzb_sampler;
     uint hzb_width;
     uint hzb_height;
-    float4 frustum;
 
     float threshold;
-    float lod_scale;
 
     uint cluster_node_buffer;
     uint cluster_queue;
@@ -68,44 +66,6 @@ uint get_cluster_offset()
     return constant.max_cluster_node_count;
 }
 
-bool check_cluster_node_lod(cluster_node_data cluster_node, mesh_data mesh)
-{
-    float3 center = mul(camera.matrix_v, mul(mesh.matrix_m, float4(cluster_node.lod_bounds.xyz, 1.0))).xyz;
-    float radius = cluster_node.lod_bounds.w * mesh.scale.w;
-
-    float near = center.z - radius;
-    float far = center.z + radius;
-
-    if (near < camera.near)
-    {
-        return true;
-    }
-
-    float scale = constant.lod_scale * mesh.scale.w;
-
-    float min_error = scale * cluster_node.min_lod_error / far;
-    float max_error = scale * cluster_node.max_parent_lod_error / near;
-
-    return min_error <= constant.threshold && constant.threshold < max_error;
-}
-
-bool check_cluster_lod(cluster_data cluster, mesh_data mesh)
-{
-    float3 center = mul(camera.matrix_v, mul(mesh.matrix_m, float4(cluster.lod_bounds.xyz, 1.0))).xyz;
-    float radius = cluster.lod_bounds.w * mesh.scale.w;
-
-    float near = center.z - radius;
-    
-    // if camera inside lod sphere, use lod 0.
-    if (near < camera.near)
-    {
-        return cluster.lod_error == -1.0;
-    }
-
-    float lod_error = constant.lod_scale * cluster.lod_error * mesh.scale.w / near;
-    return lod_error <= constant.threshold;
-}
-
 void process_cluster_node(uint group_index)
 {
     StructuredBuffer<cluster_node_data> cluster_nodes = ResourceDescriptorHeap[constant.cluster_node_buffer];
@@ -148,7 +108,7 @@ void process_cluster_node(uint group_index)
     bool visible = true;
 
 #if CULL_STAGE == CULL_STAGE_MAIN_PASS
-    visible = check_cluster_node_lod(cluster_node, mesh) && frustum_cull(sphere_vs, constant.frustum, camera.near);
+    visible = cluster_node.check_lod(camera, mesh, constant.threshold) && frustum_cull(sphere_vs, camera);
 
     if (visible)
     {
@@ -175,7 +135,7 @@ void process_cluster_node(uint group_index)
     }
     else
     {
-        visible = check_cluster_node_lod(cluster_node, mesh) && frustum_cull(sphere_vs, constant.frustum, camera.near);
+        visible = cluster_node.check_lod(camera, mesh, constant.threshold) && frustum_cull(sphere_vs, camera);
     }
 
     visible = visible && occlusion_cull(sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.matrix_p, camera.near, camera.type);
@@ -239,7 +199,7 @@ void process_cluster(uint3 dtid)
     sphere_vs.w = cluster.bounding_sphere.w * mesh.scale.w;
 
 #if CULL_STAGE == CULL_STAGE_MAIN_PASS
-    visible = check_cluster_lod(cluster, mesh) && frustum_cull(sphere_vs, constant.frustum, camera.near);
+    visible = cluster.check_lod(camera, mesh, constant.threshold) && frustum_cull(sphere_vs, camera);
 
     if (visible)
     {
@@ -266,7 +226,7 @@ void process_cluster(uint3 dtid)
     }
     else
     {
-        visible = check_cluster_lod(cluster, mesh) && frustum_cull(sphere_vs, constant.frustum, camera.near);
+        visible = cluster.check_lod(camera, mesh, constant.threshold) && frustum_cull(sphere_vs, camera);
     }
 
     visible = visible && occlusion_cull(sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.matrix_p, camera.near, camera.type);

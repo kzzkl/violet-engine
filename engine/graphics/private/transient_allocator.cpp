@@ -96,25 +96,23 @@ rhi_sampler* transient_allocator::get_sampler(const rhi_sampler_desc& desc)
 
 void transient_allocator::tick()
 {
+    std::size_t frame = render_device::instance().get_frame_count();
+    if (frame > 1000 && frame % 1000 == 0)
+    {
+        std::size_t gc_frame = frame - 1000;
+
+        m_parameter_allocator.gc(gc_frame);
+        m_texture_allocator.gc(gc_frame);
+        m_buffer_allocator.gc(gc_frame);
+        m_render_pass_allocator.gc(gc_frame);
+        m_raster_pipeline_allocator.gc(gc_frame);
+        m_compute_pipeline_allocator.gc(gc_frame);
+        m_sampler_allocator.gc(gc_frame);
+    }
+
     m_parameter_allocator.tick();
     m_texture_allocator.tick();
     m_buffer_allocator.tick();
-
-    std::size_t frame = render_device::instance().get_frame_count();
-    if (frame < 1000 || frame % 1000 != 0)
-    {
-        return;
-    }
-
-    std::size_t gc_frame = frame - 1000;
-
-    m_parameter_allocator.gc(gc_frame);
-    m_texture_allocator.gc(gc_frame);
-    m_buffer_allocator.gc(gc_frame);
-    m_render_pass_allocator.gc(gc_frame);
-    m_raster_pipeline_allocator.gc(gc_frame);
-    m_compute_pipeline_allocator.gc(gc_frame);
-    m_sampler_allocator.gc(gc_frame);
 }
 
 void transient_allocator::cleanup_dependents(const void* resource)

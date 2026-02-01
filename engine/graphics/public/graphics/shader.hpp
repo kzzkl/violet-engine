@@ -91,33 +91,6 @@ struct shader
         std::uint32_t padding0;
     };
 
-    struct cluster_data
-    {
-        vec4f bounding_sphere;
-        vec4f lod_bounds;
-        float lod_error;
-        std::uint32_t index_offset;
-        std::uint32_t index_count;
-        std::uint32_t padding0;
-    };
-
-    struct cluster_node_data
-    {
-        vec4f bounding_sphere;
-        vec4f lod_bounds;
-
-        float min_lod_error;
-        float max_parent_lod_error;
-
-        std::uint32_t is_leaf;
-        std::uint32_t child_offset;
-        std::uint32_t child_count;
-
-        std::uint32_t padding0;
-        std::uint32_t padding1;
-        std::uint32_t padding2;
-    };
-
     struct mesh_data
     {
         mat4f matrix_m;
@@ -193,10 +166,17 @@ struct shader
         float near;
         float far;
 
+        float aspect;
         std::uint32_t type;
-        float fov;
-        float width;
-        float height;
+        float perspective_fov;
+        float orthographic_size;
+
+        vec4f frustum; // perspective frustum
+
+        float pixels_per_unit;
+        std::uint32_t padding0;
+        std::uint32_t padding1;
+        std::uint32_t padding2;
     };
 
     static constexpr parameter camera = {

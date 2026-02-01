@@ -143,7 +143,15 @@ private:
 
     struct gpu_cluster
     {
-        using gpu_type = shader::cluster_data;
+        struct gpu_type
+        {
+            vec4f bounding_sphere;
+            vec4f lod_bounds;
+            float lod_error;
+            std::uint32_t index_offset;
+            std::uint32_t index_count;
+            std::uint32_t padding0;
+        };
 
         std::uint32_t index_offset;
         std::uint32_t index_count;
@@ -156,7 +164,22 @@ private:
 
     struct gpu_cluster_node
     {
-        using gpu_type = shader::cluster_node_data;
+        struct gpu_type
+        {
+            vec4f bounding_sphere;
+            vec4f lod_bounds;
+
+            float min_lod_error;
+            float max_parent_lod_error;
+
+            std::uint32_t is_leaf;
+            std::uint32_t child_offset;
+            std::uint32_t child_count;
+
+            std::uint32_t padding0;
+            std::uint32_t padding1;
+            std::uint32_t padding2;
+        };
 
         sphere3f bounding_sphere;
 
