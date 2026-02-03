@@ -9,6 +9,18 @@ namespace violet
 {
 namespace
 {
+std::uint32_t previous_pow2(std::uint32_t v)
+{
+    std::uint32_t r = 1;
+
+    while (r * 2 < v)
+    {
+        r *= 2;
+    }
+
+    return r;
+}
+
 shader::camera_data get_camera_data(
     const camera_component& camera,
     const transform_world_component& transform)
@@ -151,16 +163,23 @@ void camera_system::update(render_scene_manager& scene_manager)
                 }
 
                 if (camera_meta.hzb == nullptr ||
-                    camera_meta.hzb->get_extent() != camera.get_extent())
+                    camera_meta.render_target_extent != camera.get_extent())
                 {
-                    rhi_texture_extent extent = camera.get_extent();
+                    camera_meta.render_target_extent = camera.get_extent();
 
-                    std::uint32_t max_size = std::max(extent.width, extent.height);
+                    // rhi_texture_extent hzb_extent = {
+                    //     .width = previous_pow2(camera_meta.render_target_extent.width),
+                    //     .height = previous_pow2(camera_meta.render_target_extent.height),
+                    // };
+
+                    rhi_texture_extent hzb_extent = camera_meta.render_target_extent;
+
+                    std::uint32_t max_size = std::max(hzb_extent.width, hzb_extent.height);
                     std::uint32_t level_count =
                         static_cast<std::uint32_t>(std::floor(std::log2(max_size))) + 1;
 
                     camera_meta.hzb = render_device::instance().create_texture({
-                        .extent = extent,
+                        .extent = hzb_extent,
                         .format = RHI_FORMAT_R32_FLOAT,
                         .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE,
                         .level_count = level_count,

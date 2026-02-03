@@ -1,6 +1,9 @@
 #include "graphics/renderers/passes/shadow_pass.hpp"
+#include "graphics/geometry_manager.hpp"
+#include "graphics/graphics_config.hpp"
 #include "graphics/renderers/passes/scan_pass.hpp"
 #include "virtual_shadow_map/vsm_common.hpp"
+#include <format>
 
 namespace violet
 {
@@ -16,6 +19,7 @@ struct vsm_prepare_cs : public shader_cs
         std::uint32_t lru_curr_index;
         std::uint32_t draw_count_buffer;
         std::uint32_t clear_physical_page_dispatch_buffer;
+        std::uint32_t cluster_queue_state;
     };
 
     static constexpr parameter_layout parameters = {
@@ -229,15 +233,81 @@ struct vsm_instance_cull_cs : public shader_cs
         std::uint32_t visible_vsm_ids;
         std::uint32_t vsm_buffer;
         std::uint32_t vsm_virtual_page_table;
+        std::uint32_t vsm_physical_page_table;
         std::uint32_t vsm_bounds_buffer;
+        std::uint32_t hzb;
+        std::uint32_t hzb_sampler;
         std::uint32_t draw_buffer;
         std::uint32_t draw_count_buffer;
         std::uint32_t draw_info_buffer;
+        std::uint32_t cluster_queue;
+        std::uint32_t cluster_queue_state;
     };
 
     static constexpr parameter_layout parameters = {
         {.space = 0, .desc = bindless},
         {.space = 1, .desc = scene},
+    };
+};
+
+struct vsm_prepare_cluster_cull_cs : public shader_cs
+{
+    static constexpr std::string_view path = "assets/shaders/cull/prepare_cluster_cull.hlsl";
+
+    struct constant_data
+    {
+        std::uint32_t cluster_queue_state;
+        std::uint32_t dispatch_buffer;
+        std::uint32_t recheck;
+    };
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+    };
+};
+
+struct vsm_cluster_cull_cs : public shader_cs
+{
+    static constexpr std::string_view path = "assets/shaders/cull/cluster_cull.hlsl";
+
+    struct constant_data
+    {
+        float threshold;
+
+        std::uint32_t cluster_node_buffer;
+        std::uint32_t cluster_queue;
+        std::uint32_t cluster_queue_state;
+
+        std::uint32_t draw_buffer;
+        std::uint32_t draw_count_buffer;
+        std::uint32_t draw_info_buffer;
+
+        std::uint32_t max_cluster_count;
+        std::uint32_t max_cluster_node_count;
+        std::uint32_t max_draw_command_count;
+    };
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = scene},
+    };
+};
+
+struct vsm_build_hzb_cs : public shader_cs
+{
+    static constexpr std::string_view path = "assets/shaders/virtual_shadow_map/build_hzb.hlsl";
+
+    struct constant_data
+    {
+        std::uint32_t vsm_physical_page_table;
+        std::uint32_t prev_buffer;
+        std::uint32_t next_buffer;
+        std::uint32_t hzb_sampler;
+        std::uint32_t next_size;
+    };
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
     };
 };
 
@@ -337,6 +407,7 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
     m_vsm_virtual_page_table = parameter.vsm_virtual_page_table;
     m_vsm_physical_page_table = parameter.vsm_physical_page_table;
     m_vsm_physical_texture = parameter.vsm_physical_texture;
+    m_vsm_hzb = parameter.vsm_hzb;
 
     m_lru_state = parameter.lru_state;
     m_lru_buffer = parameter.lru_buffer;
@@ -376,13 +447,31 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
         MAX_SHADOW_DRAWS_PER_FRAME * sizeof(shader::draw_command),
         RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT);
     m_draw_count_buffer = graph.add_buffer(
-        "Draw Count Buffer",
+        "VSM Draw Count Buffer",
         sizeof(std::uint32_t),
         RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT);
     m_draw_info_buffer = graph.add_buffer(
-        "Draw Info Buffer",
+        "VSM Draw Info Buffer",
         MAX_SHADOW_DRAWS_PER_FRAME * sizeof(vec2u), // x: vsm id, y: instance id.
         RHI_BUFFER_STORAGE);
+
+    m_hzb_sampler = render_device::instance().get_sampler({
+        .mag_filter = RHI_FILTER_LINEAR,
+        .min_filter = RHI_FILTER_LINEAR,
+        .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .address_mode_v = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .min_level = 0.0f,
+        .max_level = -1.0f,
+        .reduction_mode = RHI_SAMPLER_REDUCTION_MODE_MIN,
+    });
+
+    m_cluster_queue = graph.add_buffer(
+        "VSM Cluster Queue",
+        graphics_config::get_max_candidate_cluster_count() * sizeof(vec3u),
+        RHI_BUFFER_STORAGE);
+    m_cluster_queue_state =
+        graph.add_buffer("VSM Cluster Queue State", 6 * sizeof(std::uint32_t), RHI_BUFFER_STORAGE);
 
     prepare(graph);
     light_cull(graph);
@@ -395,6 +484,7 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
     calculate_page_bounds(graph);
     instance_cull(graph);
     render_shadow(graph);
+    build_hzb(graph);
 
     m_debug_mode = parameter.debug_mode;
     m_debug_output = parameter.debug_output;
@@ -412,6 +502,7 @@ void shadow_pass::prepare(render_graph& graph)
         std::uint32_t lru_curr_index;
         rdg_buffer_uav draw_count_buffer;
         rdg_buffer_uav clear_physical_page_dispatch_buffer;
+        rdg_buffer_uav cluster_queue_state;
     };
 
     graph.add_pass<pass_data>(
@@ -430,6 +521,8 @@ void shadow_pass::prepare(render_graph& graph)
             data.clear_physical_page_dispatch_buffer = pass.add_buffer_uav(
                 m_clear_physical_page_dispatch_buffer,
                 RHI_PIPELINE_STAGE_COMPUTE);
+            data.cluster_queue_state =
+                pass.add_buffer_uav(m_cluster_queue_state, RHI_PIPELINE_STAGE_COMPUTE);
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -449,6 +542,7 @@ void shadow_pass::prepare(render_graph& graph)
                     .draw_count_buffer = data.draw_count_buffer.get_bindless(),
                     .clear_physical_page_dispatch_buffer =
                         data.clear_physical_page_dispatch_buffer.get_bindless(),
+                    .cluster_queue_state = data.cluster_queue_state.get_bindless(),
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
@@ -970,10 +1064,14 @@ void shadow_pass::instance_cull(render_graph& graph)
         rdg_buffer_srv visible_vsm_ids;
         rdg_buffer_srv vsm_buffer;
         rdg_buffer_srv vsm_virtual_page_table;
+        rdg_buffer_srv vsm_physical_page_table;
         rdg_buffer_srv vsm_bounds_buffer;
+        rdg_texture_srv hzb;
         rdg_buffer_uav draw_buffer;
         rdg_buffer_uav draw_count_buffer;
         rdg_buffer_uav draw_info_buffer;
+        rdg_buffer_uav cluster_queue;
+        rdg_buffer_uav cluster_queue_state;
 
         std::uint32_t instance_count;
     };
@@ -990,17 +1088,23 @@ void shadow_pass::instance_cull(render_graph& graph)
             data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
             data.vsm_virtual_page_table =
                 pass.add_buffer_srv(m_vsm_virtual_page_table, RHI_PIPELINE_STAGE_COMPUTE);
+            data.vsm_physical_page_table =
+                pass.add_buffer_srv(m_vsm_physical_page_table, RHI_PIPELINE_STAGE_COMPUTE);
             data.vsm_bounds_buffer =
                 pass.add_buffer_srv(m_vsm_bounds_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+            data.hzb = pass.add_texture_srv(m_vsm_hzb, RHI_PIPELINE_STAGE_COMPUTE);
             data.draw_buffer = pass.add_buffer_uav(m_draw_buffer, RHI_PIPELINE_STAGE_COMPUTE);
             data.draw_count_buffer =
                 pass.add_buffer_uav(m_draw_count_buffer, RHI_PIPELINE_STAGE_COMPUTE);
             data.draw_info_buffer =
                 pass.add_buffer_uav(m_draw_info_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+            data.cluster_queue = pass.add_buffer_uav(m_cluster_queue, RHI_PIPELINE_STAGE_COMPUTE);
+            data.cluster_queue_state =
+                pass.add_buffer_uav(m_cluster_queue_state, RHI_PIPELINE_STAGE_COMPUTE);
 
             data.instance_count = graph.get_scene().get_instance_count();
         },
-        [](const pass_data& data, rdg_command& command)
+        [hzb_sampler = m_hzb_sampler](const pass_data& data, rdg_command& command)
         {
             auto& device = render_device::instance();
 
@@ -1014,10 +1118,15 @@ void shadow_pass::instance_cull(render_graph& graph)
                     .visible_vsm_ids = data.visible_vsm_ids.get_bindless(),
                     .vsm_buffer = data.vsm_buffer.get_bindless(),
                     .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
+                    .vsm_physical_page_table = data.vsm_physical_page_table.get_bindless(),
                     .vsm_bounds_buffer = data.vsm_bounds_buffer.get_bindless(),
+                    .hzb = data.hzb.get_bindless(),
+                    .hzb_sampler = hzb_sampler->get_bindless(),
                     .draw_buffer = data.draw_buffer.get_bindless(),
                     .draw_count_buffer = data.draw_count_buffer.get_bindless(),
                     .draw_info_buffer = data.draw_info_buffer.get_bindless(),
+                    .cluster_queue = data.cluster_queue.get_bindless(),
+                    .cluster_queue_state = data.cluster_queue_state.get_bindless(),
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
@@ -1025,6 +1134,146 @@ void shadow_pass::instance_cull(render_graph& graph)
 
             command.dispatch_1d(data.instance_count);
         });
+}
+
+void shadow_pass::prepare_cluster_cull(
+    render_graph& graph,
+    rdg_buffer* dispatch_buffer,
+    bool cull_cluster,
+    bool recheck)
+{
+    struct pass_data
+    {
+        rdg_buffer_uav cluster_queue_state;
+        rdg_buffer_uav dispatch_buffer;
+    };
+
+    graph.add_pass<pass_data>(
+        "Prepare Cluster Cull",
+        RDG_PASS_COMPUTE,
+        [&](pass_data& data, rdg_pass& pass)
+        {
+            data.cluster_queue_state =
+                pass.add_buffer_uav(m_cluster_queue_state, RHI_PIPELINE_STAGE_COMPUTE);
+            data.dispatch_buffer = pass.add_buffer_uav(dispatch_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+        },
+        [cull_cluster, recheck](const pass_data& data, rdg_command& command)
+        {
+            auto& device = render_device::instance();
+
+            std::vector<std::wstring> defines = {
+                cull_cluster ? L"-DCULL_CLUSTER" : L"-DCULL_CLUSTER_NODE",
+            };
+
+            command.set_pipeline({
+                .compute_shader = device.get_shader<vsm_prepare_cluster_cull_cs>(defines),
+            });
+
+            command.set_constant(
+                vsm_prepare_cluster_cull_cs::constant_data{
+                    .cluster_queue_state = data.cluster_queue_state.get_bindless(),
+                    .dispatch_buffer = data.dispatch_buffer.get_bindless(),
+                    .recheck = recheck,
+                });
+            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+
+            command.dispatch_1d(1, 1);
+        });
+}
+
+void shadow_pass::cluster_cull(render_graph& graph)
+{
+    rdg_buffer* dispatch_buffer = graph.add_buffer(
+        "Dispatch Buffer",
+        3 * sizeof(std::uint32_t),
+        RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT);
+
+    struct pass_data
+    {
+        rdg_buffer_uav cluster_queue;
+        rdg_buffer_uav cluster_queue_state;
+
+        rdg_buffer_uav draw_buffer;
+        rdg_buffer_uav draw_count_buffer;
+        rdg_buffer_uav draw_info_buffer;
+
+        rdg_buffer_ref dispatch_buffer;
+    };
+
+    std::uint32_t cluster_node_depth =
+        render_device::instance().get_geometry_manager()->get_cluster_node_depth();
+    for (std::uint32_t i = 0; i < cluster_node_depth; ++i)
+    {
+        bool cull_cluster = i == cluster_node_depth - 1;
+
+        prepare_cluster_cull(graph, dispatch_buffer, cull_cluster, false);
+
+        graph.add_pass<pass_data>(
+            cull_cluster ? "Cull Cluster" : "Cull Cluster Node: " + std::to_string(i),
+            RDG_PASS_COMPUTE,
+            [&](pass_data& data, rdg_pass& pass)
+            {
+                data.cluster_queue =
+                    pass.add_buffer_uav(m_cluster_queue, RHI_PIPELINE_STAGE_COMPUTE);
+                data.cluster_queue_state =
+                    pass.add_buffer_uav(m_cluster_queue_state, RHI_PIPELINE_STAGE_COMPUTE);
+                data.dispatch_buffer = pass.add_buffer(
+                    dispatch_buffer,
+                    RHI_PIPELINE_STAGE_DRAW_INDIRECT,
+                    RHI_ACCESS_INDIRECT_COMMAND_READ);
+
+                if (cull_cluster)
+                {
+                    data.draw_buffer =
+                        pass.add_buffer_uav(m_draw_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+                    data.draw_count_buffer =
+                        pass.add_buffer_uav(m_draw_count_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+                    data.draw_info_buffer =
+                        pass.add_buffer_uav(m_draw_info_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+                }
+            },
+            [=](const pass_data& data, rdg_command& command)
+            {
+                auto& device = render_device::instance();
+
+                std::vector<std::wstring> defines = {
+                    cull_cluster ? L"-DCULL_CLUSTER" : L"-DCULL_CLUSTER_NODE",
+                };
+
+                command.set_pipeline({
+                    .compute_shader = device.get_shader<vsm_cluster_cull_cs>(defines),
+                });
+
+                vsm_cluster_cull_cs::constant_data constant = {
+                    .threshold = 1.0f,
+                    .cluster_queue = data.cluster_queue.get_bindless(),
+                    .cluster_queue_state = data.cluster_queue_state.get_bindless(),
+                    .max_cluster_count = graphics_config::get_max_cluster_count(),
+                    .max_cluster_node_count = graphics_config::get_max_cluster_node_count(),
+                    .max_draw_command_count = graphics_config::get_max_draw_command_count(),
+                };
+
+                if (cull_cluster)
+                {
+                    constant.draw_buffer = data.draw_buffer.get_bindless();
+                    constant.draw_count_buffer = data.draw_count_buffer.get_bindless();
+                    constant.draw_info_buffer = data.draw_info_buffer.get_bindless();
+                }
+                else
+                {
+                    rhi_buffer_srv* cluster_node_buffer_srv =
+                        device.get_geometry_manager()->get_cluster_node_buffer()->get_srv();
+                    constant.cluster_node_buffer = cluster_node_buffer_srv->get_bindless();
+                }
+
+                command.set_constant(constant);
+                command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+                command.set_parameter(1, RDG_PARAMETER_SCENE);
+                command.set_parameter(2, RDG_PARAMETER_CAMERA);
+
+                command.dispatch_indirect(data.dispatch_buffer.get_rhi(), 0);
+            });
+    }
 }
 
 void shadow_pass::render_shadow(render_graph& graph)
@@ -1113,6 +1362,77 @@ void shadow_pass::render_shadow(render_graph& graph)
                 0,
                 MAX_SHADOW_DRAWS_PER_FRAME);
         });
+}
+
+void shadow_pass::build_hzb(render_graph& graph)
+{
+    rdg_scope scope(graph, "VSM Build HZB");
+
+    struct pass_data
+    {
+        rdg_buffer_uav vsm_physical_page_table;
+        rdg_texture_srv prev_buffer;
+        rdg_texture_uav next_buffer;
+    };
+
+    for (std::uint32_t level = 0; level < m_vsm_hzb->get_level_count(); ++level)
+    {
+        graph.add_pass<pass_data>(
+            std::format("Level {}", level),
+            RDG_PASS_COMPUTE,
+            [&](pass_data& data, rdg_pass& pass)
+            {
+                data.vsm_physical_page_table =
+                    pass.add_buffer_uav(m_vsm_physical_page_table, RHI_PIPELINE_STAGE_COMPUTE);
+
+                if (level == 0)
+                {
+                    data.prev_buffer =
+                        pass.add_texture_srv(m_vsm_physical_texture, RHI_PIPELINE_STAGE_COMPUTE);
+                }
+                else
+                {
+                    data.prev_buffer = pass.add_texture_srv(
+                        m_vsm_hzb,
+                        RHI_PIPELINE_STAGE_COMPUTE,
+                        RHI_TEXTURE_DIMENSION_2D,
+                        level - 1,
+                        1);
+                }
+
+                data.next_buffer = pass.add_texture_uav(
+                    m_vsm_hzb,
+                    RHI_PIPELINE_STAGE_COMPUTE,
+                    RHI_TEXTURE_DIMENSION_2D,
+                    level,
+                    1);
+            },
+            [hzb_sampler = m_hzb_sampler](const pass_data& data, rdg_command& command)
+            {
+                auto& device = render_device::instance();
+
+                std::uint32_t next_size =
+                    data.next_buffer.get_extent().width / VSM_PHYSICAL_PAGE_TABLE_SIZE;
+
+                command.set_pipeline({
+                    .compute_shader = device.get_shader<vsm_build_hzb_cs>(),
+                });
+
+                command.set_constant(
+                    vsm_build_hzb_cs::constant_data{
+                        .vsm_physical_page_table = data.vsm_physical_page_table.get_bindless(),
+                        .prev_buffer = data.prev_buffer.get_bindless(),
+                        .next_buffer = data.next_buffer.get_bindless(),
+                        .hzb_sampler = hzb_sampler->get_bindless(),
+                        .next_size = next_size,
+                    });
+
+                command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+
+                command
+                    .dispatch_3d(next_size, next_size, VSM_PHYSICAL_PAGE_TABLE_PAGE_COUNT, 8, 8, 1);
+            });
+    }
 }
 
 void shadow_pass::add_debug_pass(render_graph& graph)

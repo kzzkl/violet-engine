@@ -164,6 +164,7 @@ public:
     rhi_buffer* get_vsm_virtual_page_table() const noexcept;
     rhi_buffer* get_vsm_physical_page_table() const noexcept;
     rhi_texture* get_vsm_physical_texture() const noexcept;
+    rhi_texture* get_vsm_hzb() const noexcept;
 
     template <typename Functor>
     void each_batch(surface_type surface_type, material_path material_path, Functor&& functor) const

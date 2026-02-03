@@ -48,7 +48,7 @@ void fs_main(vs_output input)
 
     float2 virtual_page_coord_f = vsm_uv * VIRTUAL_PAGE_TABLE_SIZE;
     uint2 virtual_page_coord = floor(virtual_page_coord_f);
-    float2 virtual_page_uv = frac(virtual_page_coord_f);
+    float2 virtual_page_local_uv = frac(virtual_page_coord_f);
 
     StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
     uint virtual_page_index = get_virtual_page_index(input.vsm_id, virtual_page_coord);
@@ -59,7 +59,7 @@ void fs_main(vs_output input)
         return;
     }
 
-    uint2 physical_page_coord = virtual_page.get_physical_page_coord(virtual_page_uv);
+    uint2 physical_texel = virtual_page.get_physical_texel(virtual_page_local_uv);
     RWTexture2D<uint> physical_texture = ResourceDescriptorHeap[constant.vsm_physical_texture];
-    InterlockedMax(physical_texture[physical_page_coord], asuint(position_ndc.z));
+    InterlockedMax(physical_texture[physical_texel], asuint(position_ndc.z));
 }

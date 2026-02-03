@@ -46,7 +46,7 @@ bool occlusion_cull(
     
     if (camera_type == CAMERA_ORTHOGRAPHIC)
     {
-        if (!project_shpere_orthographic(sphere_vs, matrix_p[0][0], matrix_p[1][1], near, aabb))
+        if (!project_shpere_orthographic(sphere_vs, matrix_p[0][0], matrix_p[1][1], aabb))
         {
             return false;
         }
@@ -70,12 +70,11 @@ bool occlusion_cull(
 
     if (camera_type == CAMERA_ORTHOGRAPHIC)
     {
-        return sphere_vs.z - sphere_vs.w > depth;
+        return (sphere_vs.z - sphere_vs.w) * matrix_p[2][2] + matrix_p[2][3] > depth;
     }
     else
     {
         // Only works correctly on reverse depth projection matrices with an infinite far plane.
-        float sphere_depth = near / (sphere_vs.z - sphere_vs.w);
-        return sphere_depth > depth;
+        return near / (sphere_vs.z - sphere_vs.w) > depth;
     }
 }

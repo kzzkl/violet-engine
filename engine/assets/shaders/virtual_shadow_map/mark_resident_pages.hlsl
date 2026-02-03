@@ -13,11 +13,11 @@ PushConstant(constant_data, constant);
 [numthreads(64, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
-    RWStructuredBuffer<vsm_physical_page> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
+    RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
 
     uint physical_page_index = dtid.x;
 
-    vsm_physical_page physical_page = physical_page_table[physical_page_index];
+    vsm_physical_page physical_page = unpack_physical_page(physical_page_table[physical_page_index]);
 
     // Skip empty page.
     if ((physical_page.flags & PHYSICAL_PAGE_FLAG_RESIDENT) == 0)
@@ -31,7 +31,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     if (vsm.cache_epoch == constant.frame)
     {
         physical_page.flags &= ~(PHYSICAL_PAGE_FLAG_REQUEST | PHYSICAL_PAGE_FLAG_RESIDENT);
-        physical_page_table[physical_page_index] = physical_page;
+        physical_page_table[physical_page_index] = pack_physical_page(physical_page);
         return;
     }
 
@@ -58,11 +58,12 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         else
         {
             physical_page.flags |= PHYSICAL_PAGE_FLAG_REQUEST;
+            ++physical_page.frame;
             virtual_page.flags |= VIRTUAL_PAGE_FLAG_CACHE_VALID;
         }
 
         virtual_page_table[page_index] = pack_virtual_page(virtual_page);
     }
 
-    physical_page_table[physical_page_index] = physical_page;
+    physical_page_table[physical_page_index] = pack_physical_page(physical_page);
 }

@@ -18,15 +18,8 @@ vsm_manager::vsm_manager()
     });
     device.set_name(m_virtual_page_table.get(), "VSM Virtual Page Table");
 
-    struct vsm_physical_page
-    {
-        vec2i virtual_page_coord;
-        std::uint32_t vsm_id;
-        std::uint32_t flags;
-    };
-
     m_physical_page_table = device.create_buffer({
-        .size = sizeof(vsm_physical_page) * VSM_PHYSICAL_PAGE_TABLE_PAGE_COUNT,
+        .size = sizeof(vec4u) * VSM_PHYSICAL_PAGE_TABLE_PAGE_COUNT,
         .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST,
     });
     device.set_name(m_physical_page_table.get(), "VSM Physical Page Table");
@@ -56,6 +49,21 @@ vsm_manager::vsm_manager()
         .layout = RHI_TEXTURE_LAYOUT_GENERAL,
     });
     device.set_name(m_physical_texture.get(), "VSM Physical Texture");
+
+    m_hzb = device.create_texture({
+        .extent =
+            {
+                .width = VSM_PHYSICAL_RESOLUTION / 2,
+                .height = VSM_PHYSICAL_RESOLUTION / 2,
+            },
+        .format = RHI_FORMAT_R32_FLOAT,
+        .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE,
+        .level_count = static_cast<std::uint32_t>(
+            std::log2(VSM_PHYSICAL_RESOLUTION) - std::log2(VSM_PHYSICAL_PAGE_TABLE_SIZE)),
+        .layer_count = 1,
+        .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+    });
+    device.set_name(m_hzb.get(), "VSM HZB");
 }
 
 render_id vsm_manager::add_vsm(light_type light_type)

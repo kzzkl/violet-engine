@@ -42,20 +42,22 @@ struct vsm_virtual_page
     uint2 physical_page_coord;
     uint flags;
 
-    uint2 get_physical_page_coord(float2 virtual_page_uv)
+    uint2 get_physical_texel(float2 virtual_page_local_uv)
     {
-        return physical_page_coord * PAGE_RESOLUTION + uint2(virtual_page_uv * PAGE_RESOLUTION);
+        return physical_page_coord * PAGE_RESOLUTION + uint2(virtual_page_local_uv * PAGE_RESOLUTION);
     }
 };
 
 static const uint PHYSICAL_PAGE_FLAG_REQUEST = 1 << 0;
 static const uint PHYSICAL_PAGE_FLAG_RESIDENT = 1 << 1;
 static const uint PHYSICAL_PAGE_FLAG_IN_LRU = 1 << 2;
+static const uint PHYSICAL_PAGE_FLAG_HZB_DIRTY = 1 << 3;
 
 struct vsm_physical_page
 {
     int2 virtual_page_coord;
     uint vsm_id;
+    uint frame;
     uint flags;
 };
 
@@ -107,6 +109,25 @@ vsm_virtual_page unpack_virtual_page(uint packed_data)
     virtual_page.physical_page_coord.y = (packed_data & 0x00FF0000) >> 16;
     virtual_page.flags = packed_data & 0x0000FFFF;
     return virtual_page;
+}
+
+uint4 pack_physical_page(vsm_physical_page physical_page)
+{
+    uint4 packed_data = 0;
+    packed_data.xy = physical_page.virtual_page_coord;
+    packed_data.z = physical_page.vsm_id | (physical_page.frame << 16);
+    packed_data.w = physical_page.flags;
+    return packed_data;
+}
+
+vsm_physical_page unpack_physical_page(uint4 packed_data)
+{
+    vsm_physical_page physical_page;
+    physical_page.virtual_page_coord = packed_data.xy;
+    physical_page.vsm_id = packed_data.z & 0xFFFF;
+    physical_page.frame = packed_data.z >> 16;
+    physical_page.flags = packed_data.w;
+    return physical_page;
 }
 
 uint get_lru_offset(uint lru_index)

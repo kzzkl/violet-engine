@@ -1,4 +1,5 @@
 #include "components/camera_component.hpp"
+#include "components/light_component.hpp"
 #include "components/mesh_component.hpp"
 #include "components/scene_component.hpp"
 #include "components/transform_component.hpp"
@@ -142,24 +143,45 @@ private:
             static float rotate_x = 0.0f;
             static float rotate_y = 0.0f;
 
-            bool dirty = false;
+            bool transform_dirty = false;
+            bool ligth_dirty = false;
+
+            static float color[3] = {1.0f, 1.0f, 1.0f};
+            static float intensity = 1.0f;
+
+            if (ImGui::ColorEdit3("Color", color))
+            {
+                ligth_dirty = true;
+            }
+
+            if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 10.0f))
+            {
+                ligth_dirty = true;
+            }
 
             if (ImGui::SliderFloat("Rotate X", &rotate_x, 0.0, 360.0))
             {
-                dirty = true;
+                transform_dirty = true;
             }
 
             if (ImGui::SliderFloat("Rotate Y", &rotate_y, 0.0, 360.0))
             {
-                dirty = true;
+                transform_dirty = true;
             }
 
-            if (dirty)
+            if (transform_dirty)
             {
                 auto& transform = world.get_component<transform_component>(get_light());
                 transform.set_rotation(
                     quaternion::from_euler(
                         vec3f{math::to_radians(rotate_x), math::to_radians(rotate_y), 0.0f}));
+            }
+
+            if (ligth_dirty)
+            {
+                auto& light = world.get_component<light_component>(get_light());
+                light.color = {.x = color[0], .y = color[1], .z = color[2]};
+                light.color *= intensity;
             }
         }
 

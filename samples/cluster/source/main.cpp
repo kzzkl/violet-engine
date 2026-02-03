@@ -40,13 +40,6 @@ public:
             load_model(config["model"]);
         }
 
-        auto camera = get_camera();
-        auto& main_camera = get_world().get_component<camera_component>(camera);
-        main_camera.type = CAMERA_ORTHOGRAPHIC;
-        main_camera.orthographic.size = 10.0f;
-        main_camera.near = 0.5f;
-        main_camera.far = 1000.0f;
-
         return true;
     }
 
@@ -59,7 +52,18 @@ private:
         static int type = static_cast<int>(main_camera.type);
         if (ImGui::Combo("Camera Type", &type, types, IM_ARRAYSIZE(types)))
         {
-            main_camera.type = static_cast<camera_type>(type);
+            if (type == CAMERA_PERSPECTIVE)
+            {
+                main_camera.type = CAMERA_PERSPECTIVE;
+                main_camera.near = 0.01f;
+                main_camera.far = std::numeric_limits<float>::infinity();
+            }
+            else
+            {
+                main_camera.type = CAMERA_ORTHOGRAPHIC;
+                main_camera.near = 0.0f;
+                main_camera.far = 1000.0f;
+            }
         }
 
         if (type == CAMERA_ORTHOGRAPHIC)

@@ -4,7 +4,6 @@
 #include "components/hierarchy_component.hpp"
 #include "components/light_component.hpp"
 #include "components/mesh_component.hpp"
-#include "components/orbit_control_component.hpp"
 #include "components/scene_component.hpp"
 #include "components/skybox_component.hpp"
 #include "components/transform_component.hpp"

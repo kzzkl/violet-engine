@@ -1,5 +1,6 @@
 #include "common.hlsli"
 #include "virtual_shadow_map/vsm_common.hlsli"
+#include "cluster.hlsli"
 
 struct constant_data
 {
@@ -9,6 +10,7 @@ struct constant_data
     uint lru_curr_index;
     uint draw_count_buffer;
     uint clear_physical_page_dispatch_buffer;
+    uint cluster_queue_state;
 };
 PushConstant(constant_data, constant);
 
@@ -38,4 +40,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     clear_physical_page_commands[0].x = PAGE_RESOLUTION / 8;
     clear_physical_page_commands[0].y = PAGE_RESOLUTION / 8;
     clear_physical_page_commands[0].z = 0;
+
+    RWStructuredBuffer<cluster_queue_state_data> cluster_queue_states = ResourceDescriptorHeap[constant.cluster_queue_state];
+    cluster_queue_states[0] = (cluster_queue_state_data)0;
 }

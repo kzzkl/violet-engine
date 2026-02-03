@@ -116,13 +116,13 @@ struct shadow_context
 
         float2 virtual_page_coord_f = (position_ls.xy * 0.5 + 0.5) * VIRTUAL_PAGE_TABLE_SIZE;
         uint2 virtual_page_coord = floor(virtual_page_coord_f);
-        float2 virtual_page_uv = frac(virtual_page_coord_f);
+        float2 virtual_page_local_uv = frac(virtual_page_coord_f);
 
         uint virtual_page_index = get_virtual_page_index(vsm_id + cascade, virtual_page_coord);
         vsm_virtual_page virtual_page = unpack_virtual_page(virtual_page_table[virtual_page_index]);
-        
-        uint2 physical_page_coord = virtual_page.get_physical_page_coord(virtual_page_uv);
-        float depth = asfloat(physical_texture[physical_page_coord]);
+
+        uint2 physical_texel = virtual_page.get_physical_texel(virtual_page_local_uv);
+        float depth = asfloat(physical_texture[physical_texel]);
 
         return depth > position_ls.z ? 0.0 : 1.0;
     }

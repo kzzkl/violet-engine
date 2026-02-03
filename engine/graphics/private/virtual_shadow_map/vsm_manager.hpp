@@ -49,6 +49,11 @@ public:
         return m_physical_texture.get();
     }
 
+    rhi_texture* get_vsm_hzb()
+    {
+        return m_hzb.get();
+    }
+
 private:
     struct gpu_vsm
     {
@@ -82,6 +87,7 @@ private:
     rhi_ptr<rhi_buffer> m_physical_page_table;
 
     rhi_ptr<rhi_texture> m_physical_texture;
+    rhi_ptr<rhi_texture> m_hzb;
 
     std::unordered_map<render_id, vsm_directional_light_data> m_directional_lights;
 };

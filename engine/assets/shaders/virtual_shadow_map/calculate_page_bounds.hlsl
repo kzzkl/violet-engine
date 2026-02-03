@@ -25,18 +25,18 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     StructuredBuffer<uint> vsm_ids = ResourceDescriptorHeap[constant.visible_vsm_ids];
     StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
     
-    uint2 page_coord = dtid.xy;
+    uint2 virtual_page_coord = dtid.xy;
     uint vsm_id = vsm_ids[dtid.z];
 
-    uint virtual_page_index = get_virtual_page_index(vsm_id, page_coord);
+    uint virtual_page_index = get_virtual_page_index(vsm_id, virtual_page_coord);
     vsm_virtual_page virtual_page = unpack_virtual_page(virtual_page_table[virtual_page_index]);
 
     if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) != 0 && (virtual_page.flags & VIRTUAL_PAGE_FLAG_CACHE_VALID) == 0)
     {
-        InterlockedMin(gs_view_aabb.x, page_coord.x);
-        InterlockedMin(gs_view_aabb.y, page_coord.y);
-        InterlockedMax(gs_view_aabb.z, page_coord.x);
-        InterlockedMax(gs_view_aabb.w, page_coord.y);
+        InterlockedMin(gs_view_aabb.x, virtual_page_coord.x);
+        InterlockedMin(gs_view_aabb.y, virtual_page_coord.y);
+        InterlockedMax(gs_view_aabb.z, virtual_page_coord.x);
+        InterlockedMax(gs_view_aabb.w, virtual_page_coord.y);
     }
 
     GroupMemoryBarrierWithGroupSync();

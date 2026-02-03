@@ -22,7 +22,7 @@ public:
 
     struct
     {
-        float size{100.0f};
+        float size{10.0f};
     } orthographic;
 
     struct

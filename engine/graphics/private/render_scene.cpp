@@ -409,6 +409,11 @@ rhi_texture* render_scene::get_vsm_physical_texture() const noexcept
     return m_vsm_manager->get_vsm_physical_texture();
 }
 
+rhi_texture* render_scene::get_vsm_hzb() const noexcept
+{
+    return m_vsm_manager->get_vsm_hzb();
+}
+
 void render_scene::add_instance_to_batch(render_id instance_id, const material* material)
 {
     assert(material != nullptr);
