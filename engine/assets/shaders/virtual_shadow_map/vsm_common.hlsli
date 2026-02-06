@@ -31,6 +31,10 @@ struct vsm_data
     float4x4 matrix_v;
     float4x4 matrix_p;
     float4x4 matrix_vp;
+    float pixels_per_unit;
+    uint padding0;
+    uint padding1;
+    uint padding2;
 };
 
 static const uint VIRTUAL_PAGE_FLAG_REQUEST = 1 << 0;
@@ -65,6 +69,7 @@ struct vsm_draw_info
 {
     uint vsm_id;
     uint instance_id;
+    uint cluster_id;
 };
 
 struct vsm_lru_state

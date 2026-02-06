@@ -420,8 +420,6 @@ public:
 
     void tick();
 
-    void cleanup_dependents(const void* resource);
-
 private:
     unique_allocator<rhi_parameter, rhi_parameter_desc> m_parameter_allocator;
     unique_allocator<rhi_texture, rhi_texture_desc> m_texture_allocator;
@@ -431,7 +429,5 @@ private:
     shared_allocator<rhi_raster_pipeline, rhi_raster_pipeline_desc> m_raster_pipeline_allocator;
     shared_allocator<rhi_compute_pipeline, rhi_compute_pipeline_desc> m_compute_pipeline_allocator;
     shared_allocator<rhi_sampler, rhi_sampler_desc> m_sampler_allocator;
-
-    std::unordered_map<const void*, std::vector<std::function<void()>>> m_cleanup_functions;
 };
 } // namespace violet

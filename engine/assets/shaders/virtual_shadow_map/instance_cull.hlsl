@@ -1,7 +1,6 @@
 #include "common.hlsli"
 #include "cluster.hlsli"
-#include "virtual_shadow_map/vsm_common.hlsli"
-#include "utils.hlsli"
+#include "virtual_shadow_map/vsm_cull.hlsli"
 
 struct constant_data
 {
@@ -23,91 +22,6 @@ PushConstant(constant_data, constant);
 
 ConstantBuffer<scene_data> scene : register(b0, space1);
 
-bool overlap_required_page(uint vsm_id, uint4 required_page_bounds, float4 sphere_vs, vsm_data vsm)
-{
-    float4 projected_aabb;
-    if (!project_shpere_orthographic(sphere_vs, vsm.matrix_p[0][0], vsm.matrix_p[1][1], projected_aabb))
-    {
-        return false;
-    }
-
-    // projected_aabb = projected_aabb.xwzy * float4(0.5, -0.5, 0.5, -0.5) + 0.5;
-    projected_aabb = projected_aabb * 0.5 + 0.5;
-
-    float4 projected_page_bounds = projected_aabb * VIRTUAL_PAGE_TABLE_SIZE;
-    uint4 overlap_page_bounds;
-    overlap_page_bounds.xy = max(0.0, floor(projected_page_bounds.xy));
-    overlap_page_bounds.zw = max(0.0, ceil(projected_page_bounds.zw));
-
-    projected_aabb *= VIRTUAL_RESOLUTION;
-
-    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
-    StructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
-
-    overlap_page_bounds.xy = max(overlap_page_bounds.xy, required_page_bounds.xy);
-    overlap_page_bounds.zw = min(overlap_page_bounds.zw, required_page_bounds.zw);
-
-    if (overlap_page_bounds.x > overlap_page_bounds.z || overlap_page_bounds.y > overlap_page_bounds.w)
-    {
-        return false;
-    }
-
-    Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
-    SamplerState hzb_sampler = SamplerDescriptorHeap[constant.hzb_sampler];
-    float depth = (sphere_vs.z - sphere_vs.w) * vsm.matrix_p[2][2] + vsm.matrix_p[2][3];
-
-    for (uint x = overlap_page_bounds.x; x <= overlap_page_bounds.z; ++x)
-    {
-        for (uint y = overlap_page_bounds.y; y <= overlap_page_bounds.w; ++y)
-        {
-            uint virtual_page_index = get_virtual_page_index(vsm_id, uint2(x, y));
-            vsm_virtual_page virtual_page = unpack_virtual_page(virtual_page_table[virtual_page_index]);
-
-            if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) == 0 || (virtual_page.flags & VIRTUAL_PAGE_FLAG_CACHE_VALID) != 0)
-            {
-                continue;
-            }
-
-            uint physical_page_index = get_physical_page_index(virtual_page.physical_page_coord);
-            vsm_physical_page physical_page = unpack_physical_page(physical_page_table[physical_page_index]);
-
-            if (physical_page.frame == 0)
-            {
-                return true;
-            }
-
-            float2 virtual_texel_offset = float2(x, y) * PAGE_RESOLUTION;
-
-            float4 page_aabb;
-            page_aabb.xy = max(virtual_texel_offset, projected_aabb.xy);
-            page_aabb.zw = min(virtual_texel_offset + PAGE_RESOLUTION, projected_aabb.zw);
-
-            float width = abs(page_aabb.z - page_aabb.x);
-            float height = abs(page_aabb.w - page_aabb.y);
-
-            if (width == 0 || height == 0)
-            {
-                continue;
-            }
-
-            float2 physical_texel_offset = virtual_page.physical_page_coord * PAGE_RESOLUTION;
-
-            page_aabb.xy = page_aabb.xy - virtual_texel_offset + physical_texel_offset;
-            page_aabb.zw = page_aabb.zw - virtual_texel_offset + physical_texel_offset;
-
-            float level = clamp(floor(log2(max(width, height))), 0.0, 5.0);
-            bool visiable = hzb.SampleLevel(hzb_sampler, (page_aabb.xy + page_aabb.zw) * 0.5 / PHYSICAL_RESOLUTION, level) < depth;
-
-            if (visiable)
-            {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
 [numthreads(64, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 {
@@ -123,10 +37,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     StructuredBuffer<uint> vsm_ids = ResourceDescriptorHeap[constant.visible_vsm_ids];
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     StructuredBuffer<uint4> vsm_bounds = ResourceDescriptorHeap[constant.vsm_bounds_buffer];
-
-    RWStructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.draw_count_buffer];
-    RWStructuredBuffer<draw_command> draw_commands = ResourceDescriptorHeap[constant.draw_buffer];
-    RWStructuredBuffer<vsm_draw_info> draw_infos = ResourceDescriptorHeap[constant.draw_info_buffer];
 
     StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
     instance_data instance = instances[instance_id];
@@ -160,7 +70,15 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
         float4 sphere_vs = mul(vsm.matrix_v, mul(mesh.matrix_m, float4(geometry.bounding_sphere.xyz, 1.0)));
         sphere_vs.w = sphere_vs_radius;
 
-        if (overlap_required_page(vsm_id, required_page_bounds, sphere_vs, vsm))
+        StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+#ifdef USE_OCCLUSION
+        StructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
+        Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
+        SamplerState hzb_sampler = ResourceDescriptorHeap[constant.hzb_sampler];
+        if (vsm_cull(vsm_id, required_page_bounds, sphere_vs, vsm, virtual_page_table, physical_page_table, hzb, hzb_sampler))
+#else
+        if (vsm_cull(vsm_id, required_page_bounds, sphere_vs, vsm, virtual_page_table))
+#endif
         {
             vsm_draw_info draw_info;
             draw_info.vsm_id = vsm_id;
@@ -170,6 +88,10 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
             ++draw_queue_rear;
         }
     }
+
+    RWStructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.draw_count_buffer];
+    RWStructuredBuffer<draw_command> draw_commands = ResourceDescriptorHeap[constant.draw_buffer];
+    RWStructuredBuffer<vsm_draw_info> draw_infos = ResourceDescriptorHeap[constant.draw_info_buffer];
 
     uint draw_command_offset = 0;
     InterlockedAdd(draw_counts[0], draw_queue_rear, draw_command_offset);
@@ -190,8 +112,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
         for (uint i = 0; i < draw_queue_rear; ++i)
         {
             uint2 cluster_queue_item;
-            cluster_queue_item.x = instance_id;
-            cluster_queue_item.y = draw_queue[i].vsm_id << 24 | geometry.cluster_root;
+            cluster_queue_item.x = draw_queue[i].vsm_id << 24 | geometry.cluster_root;
+            cluster_queue_item.y = instance_id;
             cluster_queue[cluster_node_queue_rear + i] = cluster_queue_item;
         }
     }

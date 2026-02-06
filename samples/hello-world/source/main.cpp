@@ -30,17 +30,9 @@ public:
             return false;
         }
 
-        m_root = load_model(config["model"]);
+        m_root = load_model(config["model"], false);
 
         auto& world = get_world();
-
-        // Camera.
-        auto camera = get_camera();
-        auto& main_camera = world.get_component<camera_component>(camera);
-        // main_camera.type = CAMERA_ORTHOGRAPHIC;
-        // main_camera.orthographic.size = 10.0f;
-        // main_camera.near = 0.5f;
-        // main_camera.far = 1000.0f;
 
         m_box_geometry = std::make_unique<box_geometry>();
 

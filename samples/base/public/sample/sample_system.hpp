@@ -16,7 +16,7 @@ public:
     bool initialize(const dictionary& config) override;
 
 protected:
-    entity load_model(std::string_view model_path);
+    entity load_model(std::string_view model_path, bool generate_clusters = false);
 
     entity get_light() const noexcept
     {

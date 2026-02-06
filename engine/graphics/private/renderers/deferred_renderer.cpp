@@ -105,11 +105,19 @@ void deferred_renderer::prepare(render_graph& graph)
         scene.get_vsm_physical_texture(),
         RHI_TEXTURE_LAYOUT_GENERAL,
         RHI_TEXTURE_LAYOUT_GENERAL);
-    m_vsm_hzb = graph.add_texture(
-        "VSM HZB",
-        scene.get_vsm_hzb(),
-        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
-        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+
+    if (scene.get_vsm_hzb() != nullptr)
+    {
+        m_vsm_hzb = graph.add_texture(
+            "VSM HZB",
+            scene.get_vsm_hzb(),
+            RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+            RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+    }
+    else
+    {
+        m_vsm_hzb = nullptr;
+    }
 
     if (m_debug_mode != DEBUG_MODE_NONE)
     {

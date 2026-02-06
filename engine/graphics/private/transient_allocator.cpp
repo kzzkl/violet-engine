@@ -114,18 +114,4 @@ void transient_allocator::tick()
     m_texture_allocator.tick();
     m_buffer_allocator.tick();
 }
-
-void transient_allocator::cleanup_dependents(const void* resource)
-{
-    auto iter = m_cleanup_functions.find(resource);
-    if (iter != m_cleanup_functions.end())
-    {
-        for (auto& cleanup_functor : iter->second)
-        {
-            cleanup_functor();
-        }
-
-        m_cleanup_functions.erase(iter);
-    }
-}
 } // namespace violet

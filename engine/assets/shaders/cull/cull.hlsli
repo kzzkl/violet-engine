@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CULL_HLSLI
+#define CULL_HLSLI
 
 #include "common.hlsli"
 #include "utils.hlsli"
@@ -78,3 +79,5 @@ bool occlusion_cull(
         return near / (sphere_vs.z - sphere_vs.w) > depth;
     }
 }
+
+#endif

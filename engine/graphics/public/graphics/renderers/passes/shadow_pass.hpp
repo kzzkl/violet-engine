@@ -50,11 +50,7 @@ private:
     void calculate_page_bounds(render_graph& graph);
 
     void instance_cull(render_graph& graph);
-    void prepare_cluster_cull(
-        render_graph& graph,
-        rdg_buffer* dispatch_buffer,
-        bool cull_cluster,
-        bool recheck);
+    void prepare_cluster_cull(render_graph& graph, rdg_buffer* dispatch_buffer, bool cull_cluster);
     void cluster_cull(render_graph& graph);
 
     void render_shadow(render_graph& graph);

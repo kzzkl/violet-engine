@@ -268,10 +268,18 @@ struct vsm_prepare_cluster_cull_cs : public shader_cs
 
 struct vsm_cluster_cull_cs : public shader_cs
 {
-    static constexpr std::string_view path = "assets/shaders/cull/cluster_cull.hlsl";
+    static constexpr std::string_view path = "assets/shaders/virtual_shadow_map/cluster_cull.hlsl";
 
     struct constant_data
     {
+        std::uint32_t vsm_buffer;
+        std::uint32_t vsm_bounds_buffer;
+        std::uint32_t vsm_virtual_page_table;
+        std::uint32_t vsm_physical_page_table;
+
+        std::uint32_t hzb;
+        std::uint32_t hzb_sampler;
+
         float threshold;
 
         std::uint32_t cluster_node_buffer;
@@ -407,7 +415,21 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
     m_vsm_virtual_page_table = parameter.vsm_virtual_page_table;
     m_vsm_physical_page_table = parameter.vsm_physical_page_table;
     m_vsm_physical_texture = parameter.vsm_physical_texture;
-    m_vsm_hzb = parameter.vsm_hzb;
+
+    if (parameter.vsm_hzb != nullptr)
+    {
+        m_vsm_hzb = parameter.vsm_hzb;
+        m_hzb_sampler = render_device::instance().get_sampler({
+            .mag_filter = RHI_FILTER_LINEAR,
+            .min_filter = RHI_FILTER_LINEAR,
+            .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+            .address_mode_v = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+            .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+            .min_level = 0.0f,
+            .max_level = -1.0f,
+            .reduction_mode = RHI_SAMPLER_REDUCTION_MODE_MIN,
+        });
+    }
 
     m_lru_state = parameter.lru_state;
     m_lru_buffer = parameter.lru_buffer;
@@ -455,17 +477,6 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
         MAX_SHADOW_DRAWS_PER_FRAME * sizeof(vec2u), // x: vsm id, y: instance id.
         RHI_BUFFER_STORAGE);
 
-    m_hzb_sampler = render_device::instance().get_sampler({
-        .mag_filter = RHI_FILTER_LINEAR,
-        .min_filter = RHI_FILTER_LINEAR,
-        .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-        .address_mode_v = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-        .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-        .min_level = 0.0f,
-        .max_level = -1.0f,
-        .reduction_mode = RHI_SAMPLER_REDUCTION_MODE_MIN,
-    });
-
     m_cluster_queue = graph.add_buffer(
         "VSM Cluster Queue",
         graphics_config::get_max_candidate_cluster_count() * sizeof(vec3u),
@@ -483,6 +494,7 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
     clear_physical_page(graph);
     calculate_page_bounds(graph);
     instance_cull(graph);
+    cluster_cull(graph);
     render_shadow(graph);
     build_hzb(graph);
 
@@ -1088,11 +1100,8 @@ void shadow_pass::instance_cull(render_graph& graph)
             data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
             data.vsm_virtual_page_table =
                 pass.add_buffer_srv(m_vsm_virtual_page_table, RHI_PIPELINE_STAGE_COMPUTE);
-            data.vsm_physical_page_table =
-                pass.add_buffer_srv(m_vsm_physical_page_table, RHI_PIPELINE_STAGE_COMPUTE);
             data.vsm_bounds_buffer =
                 pass.add_buffer_srv(m_vsm_bounds_buffer, RHI_PIPELINE_STAGE_COMPUTE);
-            data.hzb = pass.add_texture_srv(m_vsm_hzb, RHI_PIPELINE_STAGE_COMPUTE);
             data.draw_buffer = pass.add_buffer_uav(m_draw_buffer, RHI_PIPELINE_STAGE_COMPUTE);
             data.draw_count_buffer =
                 pass.add_buffer_uav(m_draw_count_buffer, RHI_PIPELINE_STAGE_COMPUTE);
@@ -1102,32 +1111,52 @@ void shadow_pass::instance_cull(render_graph& graph)
             data.cluster_queue_state =
                 pass.add_buffer_uav(m_cluster_queue_state, RHI_PIPELINE_STAGE_COMPUTE);
 
+            if (m_vsm_hzb != nullptr)
+            {
+                data.vsm_physical_page_table =
+                    pass.add_buffer_srv(m_vsm_physical_page_table, RHI_PIPELINE_STAGE_COMPUTE);
+                data.hzb = pass.add_texture_srv(m_vsm_hzb, RHI_PIPELINE_STAGE_COMPUTE);
+            }
+
             data.instance_count = graph.get_scene().get_instance_count();
         },
         [hzb_sampler = m_hzb_sampler](const pass_data& data, rdg_command& command)
         {
             auto& device = render_device::instance();
 
+            bool use_occlusion = data.hzb;
+
+            std::vector<std::wstring> defines;
+            if (use_occlusion)
+            {
+                defines.emplace_back(L"USE_OCCLUSION");
+            }
+
             command.set_pipeline({
-                .compute_shader = device.get_shader<vsm_instance_cull_cs>(),
+                .compute_shader = device.get_shader<vsm_instance_cull_cs>(defines),
             });
 
-            command.set_constant(
-                vsm_instance_cull_cs::constant_data{
-                    .visible_light_count = data.visible_light_count.get_bindless(),
-                    .visible_vsm_ids = data.visible_vsm_ids.get_bindless(),
-                    .vsm_buffer = data.vsm_buffer.get_bindless(),
-                    .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
-                    .vsm_physical_page_table = data.vsm_physical_page_table.get_bindless(),
-                    .vsm_bounds_buffer = data.vsm_bounds_buffer.get_bindless(),
-                    .hzb = data.hzb.get_bindless(),
-                    .hzb_sampler = hzb_sampler->get_bindless(),
-                    .draw_buffer = data.draw_buffer.get_bindless(),
-                    .draw_count_buffer = data.draw_count_buffer.get_bindless(),
-                    .draw_info_buffer = data.draw_info_buffer.get_bindless(),
-                    .cluster_queue = data.cluster_queue.get_bindless(),
-                    .cluster_queue_state = data.cluster_queue_state.get_bindless(),
-                });
+            vsm_instance_cull_cs::constant_data constant = {
+                .visible_light_count = data.visible_light_count.get_bindless(),
+                .visible_vsm_ids = data.visible_vsm_ids.get_bindless(),
+                .vsm_buffer = data.vsm_buffer.get_bindless(),
+                .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
+                .vsm_bounds_buffer = data.vsm_bounds_buffer.get_bindless(),
+                .draw_buffer = data.draw_buffer.get_bindless(),
+                .draw_count_buffer = data.draw_count_buffer.get_bindless(),
+                .draw_info_buffer = data.draw_info_buffer.get_bindless(),
+                .cluster_queue = data.cluster_queue.get_bindless(),
+                .cluster_queue_state = data.cluster_queue_state.get_bindless(),
+            };
+
+            if (use_occlusion)
+            {
+                constant.vsm_physical_page_table = data.vsm_physical_page_table.get_bindless();
+                constant.hzb = data.hzb.get_bindless();
+                constant.hzb_sampler = hzb_sampler->get_bindless();
+            }
+
+            command.set_constant(constant);
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_SCENE);
@@ -1139,8 +1168,7 @@ void shadow_pass::instance_cull(render_graph& graph)
 void shadow_pass::prepare_cluster_cull(
     render_graph& graph,
     rdg_buffer* dispatch_buffer,
-    bool cull_cluster,
-    bool recheck)
+    bool cull_cluster)
 {
     struct pass_data
     {
@@ -1157,7 +1185,7 @@ void shadow_pass::prepare_cluster_cull(
                 pass.add_buffer_uav(m_cluster_queue_state, RHI_PIPELINE_STAGE_COMPUTE);
             data.dispatch_buffer = pass.add_buffer_uav(dispatch_buffer, RHI_PIPELINE_STAGE_COMPUTE);
         },
-        [cull_cluster, recheck](const pass_data& data, rdg_command& command)
+        [cull_cluster](const pass_data& data, rdg_command& command)
         {
             auto& device = render_device::instance();
 
@@ -1173,7 +1201,6 @@ void shadow_pass::prepare_cluster_cull(
                 vsm_prepare_cluster_cull_cs::constant_data{
                     .cluster_queue_state = data.cluster_queue_state.get_bindless(),
                     .dispatch_buffer = data.dispatch_buffer.get_bindless(),
-                    .recheck = recheck,
                 });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
@@ -1183,6 +1210,8 @@ void shadow_pass::prepare_cluster_cull(
 
 void shadow_pass::cluster_cull(render_graph& graph)
 {
+    rdg_scope scope(graph, "VSM Cluster Cull");
+
     rdg_buffer* dispatch_buffer = graph.add_buffer(
         "Dispatch Buffer",
         3 * sizeof(std::uint32_t),
@@ -1190,6 +1219,13 @@ void shadow_pass::cluster_cull(render_graph& graph)
 
     struct pass_data
     {
+        rdg_buffer_srv vsm_buffer;
+        rdg_buffer_srv vsm_bounds_buffer;
+        rdg_buffer_srv vsm_virtual_page_table;
+        rdg_buffer_srv vsm_physical_page_table;
+
+        rdg_texture_srv hzb;
+
         rdg_buffer_uav cluster_queue;
         rdg_buffer_uav cluster_queue_state;
 
@@ -1206,13 +1242,19 @@ void shadow_pass::cluster_cull(render_graph& graph)
     {
         bool cull_cluster = i == cluster_node_depth - 1;
 
-        prepare_cluster_cull(graph, dispatch_buffer, cull_cluster, false);
+        prepare_cluster_cull(graph, dispatch_buffer, cull_cluster);
 
         graph.add_pass<pass_data>(
             cull_cluster ? "Cull Cluster" : "Cull Cluster Node: " + std::to_string(i),
             RDG_PASS_COMPUTE,
             [&](pass_data& data, rdg_pass& pass)
             {
+                data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+                data.vsm_bounds_buffer =
+                    pass.add_buffer_srv(m_vsm_bounds_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+                data.vsm_virtual_page_table =
+                    pass.add_buffer_srv(m_vsm_virtual_page_table, RHI_PIPELINE_STAGE_COMPUTE);
+
                 data.cluster_queue =
                     pass.add_buffer_uav(m_cluster_queue, RHI_PIPELINE_STAGE_COMPUTE);
                 data.cluster_queue_state =
@@ -1231,8 +1273,15 @@ void shadow_pass::cluster_cull(render_graph& graph)
                     data.draw_info_buffer =
                         pass.add_buffer_uav(m_draw_info_buffer, RHI_PIPELINE_STAGE_COMPUTE);
                 }
+
+                if (m_vsm_hzb != nullptr)
+                {
+                    data.vsm_physical_page_table =
+                        pass.add_buffer_srv(m_vsm_physical_page_table, RHI_PIPELINE_STAGE_COMPUTE);
+                    data.hzb = pass.add_texture_srv(m_vsm_hzb, RHI_PIPELINE_STAGE_COMPUTE);
+                }
             },
-            [=](const pass_data& data, rdg_command& command)
+            [cull_cluster, hzb_sampler = m_hzb_sampler](const pass_data& data, rdg_command& command)
             {
                 auto& device = render_device::instance();
 
@@ -1240,11 +1289,20 @@ void shadow_pass::cluster_cull(render_graph& graph)
                     cull_cluster ? L"-DCULL_CLUSTER" : L"-DCULL_CLUSTER_NODE",
                 };
 
+                bool use_occlusion = data.hzb;
+                if (use_occlusion)
+                {
+                    defines.emplace_back(L"USE_OCCLUSION");
+                }
+
                 command.set_pipeline({
                     .compute_shader = device.get_shader<vsm_cluster_cull_cs>(defines),
                 });
 
                 vsm_cluster_cull_cs::constant_data constant = {
+                    .vsm_buffer = data.vsm_buffer.get_bindless(),
+                    .vsm_bounds_buffer = data.vsm_bounds_buffer.get_bindless(),
+                    .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
                     .threshold = 1.0f,
                     .cluster_queue = data.cluster_queue.get_bindless(),
                     .cluster_queue_state = data.cluster_queue_state.get_bindless(),
@@ -1266,10 +1324,16 @@ void shadow_pass::cluster_cull(render_graph& graph)
                     constant.cluster_node_buffer = cluster_node_buffer_srv->get_bindless();
                 }
 
+                if (use_occlusion)
+                {
+                    constant.vsm_physical_page_table = data.vsm_physical_page_table.get_bindless();
+                    constant.hzb = data.hzb.get_bindless();
+                    constant.hzb_sampler = hzb_sampler->get_bindless();
+                }
+
                 command.set_constant(constant);
                 command.set_parameter(0, RDG_PARAMETER_BINDLESS);
                 command.set_parameter(1, RDG_PARAMETER_SCENE);
-                command.set_parameter(2, RDG_PARAMETER_CAMERA);
 
                 command.dispatch_indirect(data.dispatch_buffer.get_rhi(), 0);
             });
@@ -1366,6 +1430,11 @@ void shadow_pass::render_shadow(render_graph& graph)
 
 void shadow_pass::build_hzb(render_graph& graph)
 {
+    if (m_vsm_hzb == nullptr)
+    {
+        return;
+    }
+
     rdg_scope scope(graph, "VSM Build HZB");
 
     struct pass_data

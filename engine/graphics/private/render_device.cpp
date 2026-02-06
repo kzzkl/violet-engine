@@ -51,37 +51,16 @@ void rhi_deleter::operator()(rhi_sampler* sampler)
 
 void rhi_deleter::operator()(rhi_buffer* buffer)
 {
-    auto* transient_allocator = render_device::instance().m_transient_allocator.get();
-    if (transient_allocator != nullptr)
-    {
-        transient_allocator->cleanup_dependents(buffer);
-    }
-
     m_rhi->destroy_buffer(buffer);
 }
 
 void rhi_deleter::operator()(rhi_texture* texture)
 {
-    auto* transient_allocator = render_device::instance().m_transient_allocator.get();
-    if (transient_allocator != nullptr)
-    {
-        transient_allocator->cleanup_dependents(texture);
-    }
-
     m_rhi->destroy_texture(texture);
 }
 
 void rhi_deleter::operator()(rhi_swapchain* swapchain)
 {
-    auto* transient_allocator = render_device::instance().m_transient_allocator.get();
-    if (transient_allocator != nullptr)
-    {
-        for (std::uint32_t i = 0; i < swapchain->get_texture_count(); ++i)
-        {
-            transient_allocator->cleanup_dependents(swapchain->get_texture(i));
-        }
-    }
-
     m_rhi->destroy_swapchain(swapchain);
 }
 
