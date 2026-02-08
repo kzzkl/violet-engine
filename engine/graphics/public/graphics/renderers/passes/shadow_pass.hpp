@@ -22,7 +22,8 @@ public:
         rdg_buffer* vsm_buffer{nullptr};
         rdg_buffer* vsm_virtual_page_table{nullptr};
         rdg_buffer* vsm_physical_page_table{nullptr};
-        rdg_texture* vsm_physical_texture{nullptr};
+        rdg_texture* vsm_physical_shadow_map_static{nullptr};
+        rdg_texture* vsm_physical_shadow_map_final{nullptr};
         rdg_texture* vsm_hzb{nullptr};
 
         rdg_buffer* lru_state;
@@ -53,7 +54,8 @@ private:
     void prepare_cluster_cull(render_graph& graph, rdg_buffer* dispatch_buffer, bool cull_cluster);
     void cluster_cull(render_graph& graph);
 
-    void render_shadow(render_graph& graph);
+    void render_shadow(render_graph& graph, bool is_static);
+    void merge_physical_page(render_graph& graph);
 
     void build_hzb(render_graph& graph);
 
@@ -70,11 +72,11 @@ private:
     rdg_buffer* m_vsm_buffer{nullptr};
     rdg_buffer* m_vsm_virtual_page_table{nullptr};
     rdg_buffer* m_vsm_physical_page_table{nullptr};
-    rdg_texture* m_vsm_physical_texture{nullptr};
+    rdg_texture* m_vsm_physical_shadow_map_static{nullptr};
+    rdg_texture* m_vsm_physical_shadow_map_final{nullptr};
     rdg_texture* m_vsm_hzb{nullptr};
 
     rdg_buffer* m_vsm_bounds_buffer{nullptr};
-    rdg_buffer* m_clear_physical_page_dispatch_buffer{nullptr};
 
     rdg_buffer* m_lru_state{nullptr};
     rdg_buffer* m_lru_buffer{nullptr};

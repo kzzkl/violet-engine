@@ -30,7 +30,7 @@ public:
             return false;
         }
 
-        m_root = load_model(config["model"], false);
+        m_root = load_model(config["model"], LOAD_OPTION_DYNAMIC_MESH);
 
         auto& world = get_world();
 
@@ -49,6 +49,7 @@ public:
 
         auto& plane_mesh = world.get_component<mesh_component>(m_plane);
         plane_mesh.geometry = m_box_geometry.get();
+        plane_mesh.flags |= MESH_STATIC;
         plane_mesh.submeshes.push_back({
             .index = 0,
             .material = m_pbr_material.get(),
@@ -64,6 +65,7 @@ public:
 
             auto& box_mesh = world.get_component<mesh_component>(m_boxes[i]);
             box_mesh.geometry = m_box_geometry.get();
+            box_mesh.flags |= MESH_STATIC;
 
             if (i % 2 == 0)
             {
@@ -272,7 +274,8 @@ private:
                 ImGui::Text("Cache Hit: %d", debug_info.cache_hit);
                 ImGui::Text("Cache Miss: %d", debug_info.rendered);
                 ImGui::Text("Unmapped: %d", debug_info.unmapped);
-                ImGui::Text("Drawcall: %d", debug_info.drawcall);
+                ImGui::Text("Static Drawcall: %d", debug_info.static_drawcall);
+                ImGui::Text("Dynamic Drawcall: %d", debug_info.dynamic_drawcall);
             }
         }
     }

@@ -22,6 +22,8 @@ static const uint MAX_SHADOW_LIGHT_COUNT = 32;
 static const uint MAX_VSM_COUNT = 256;
 
 static const uint MAX_SHADOW_DRAWS_PER_FRAME = 1024 * 100;
+static const uint STATIC_INSTANCE_DRAW_OFFSET = 0;
+static const uint DYNAMIC_INSTANCE_DRAW_OFFSET = MAX_SHADOW_DRAWS_PER_FRAME;
 
 struct vsm_data
 {
@@ -41,10 +43,34 @@ static const uint VIRTUAL_PAGE_FLAG_REQUEST = 1 << 0;
 static const uint VIRTUAL_PAGE_FLAG_CACHE_VALID = 1 << 1;
 static const uint VIRTUAL_PAGE_FLAG_UNMAPPED = 1 << 2;
 
+struct vsm_bounds
+{
+    uint4 required_bounds;
+    uint4 invalidated_bounds;
+};
+
 struct vsm_virtual_page
 {
     uint2 physical_page_coord;
     uint flags;
+
+    static vsm_virtual_page unpack(uint packed_data)
+    {
+        vsm_virtual_page virtual_page;
+        virtual_page.physical_page_coord.x = (packed_data & 0xFF000000) >> 24;
+        virtual_page.physical_page_coord.y = (packed_data & 0x00FF0000) >> 16;
+        virtual_page.flags = packed_data & 0x0000FFFF;
+        return virtual_page;
+    }
+
+    uint pack()
+    {
+        uint packed_data = 0;
+        packed_data |= (physical_page_coord.x << 24);
+        packed_data |= (physical_page_coord.y << 16);
+        packed_data |= flags;
+        return packed_data;
+    }
 
     uint2 get_physical_texel(float2 virtual_page_local_uv)
     {
@@ -63,6 +89,25 @@ struct vsm_physical_page
     uint vsm_id;
     uint frame;
     uint flags;
+
+    static vsm_physical_page unpack(uint4 packed_data)
+    {
+        vsm_physical_page physical_page;
+        physical_page.virtual_page_coord = packed_data.xy;
+        physical_page.vsm_id = packed_data.z & 0xFFFF;
+        physical_page.frame = packed_data.z >> 16;
+        physical_page.flags = packed_data.w;
+        return physical_page;
+    }
+
+    uint4 pack()
+    {
+        uint4 packed_data = 0;
+        packed_data.xy = virtual_page_coord;
+        packed_data.z = vsm_id | (frame << 16);
+        packed_data.w = flags;
+        return packed_data;
+    }
 };
 
 struct vsm_draw_info
@@ -96,43 +141,6 @@ uint get_physical_page_index(uint2 page_coord)
 uint get_directional_cascade(float distance)
 {
     return clamp(ceil(log2(distance)), DIRECTIONAL_VSM_CASCADE_FIRST, DIRECTIONAL_VSM_CASCADE_LAST) - DIRECTIONAL_VSM_CASCADE_FIRST;
-}
-
-uint pack_virtual_page(vsm_virtual_page virtual_page)
-{
-    uint packed_data = 0;
-    packed_data |= (virtual_page.physical_page_coord.x << 24);
-    packed_data |= (virtual_page.physical_page_coord.y << 16);
-    packed_data |= virtual_page.flags;
-    return packed_data;
-}
-
-vsm_virtual_page unpack_virtual_page(uint packed_data)
-{
-    vsm_virtual_page virtual_page;
-    virtual_page.physical_page_coord.x = (packed_data & 0xFF000000) >> 24;
-    virtual_page.physical_page_coord.y = (packed_data & 0x00FF0000) >> 16;
-    virtual_page.flags = packed_data & 0x0000FFFF;
-    return virtual_page;
-}
-
-uint4 pack_physical_page(vsm_physical_page physical_page)
-{
-    uint4 packed_data = 0;
-    packed_data.xy = physical_page.virtual_page_coord;
-    packed_data.z = physical_page.vsm_id | (physical_page.frame << 16);
-    packed_data.w = physical_page.flags;
-    return packed_data;
-}
-
-vsm_physical_page unpack_physical_page(uint4 packed_data)
-{
-    vsm_physical_page physical_page;
-    physical_page.virtual_page_coord = packed_data.xy;
-    physical_page.vsm_id = packed_data.z & 0xFFFF;
-    physical_page.frame = packed_data.z >> 16;
-    physical_page.flags = packed_data.w;
-    return physical_page;
 }
 
 uint get_lru_offset(uint lru_index)

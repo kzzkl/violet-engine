@@ -5,7 +5,7 @@ struct constant_data
 {
     uint vsm_buffer;
     uint vsm_virtual_page_table;
-    uint vsm_physical_texture;
+    uint vsm_physical_shadow_map;
     uint draw_info_buffer;
 };
 PushConstant(constant_data, constant);
@@ -41,7 +41,6 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
 
 void fs_main(vs_output input)
 {
-    // float3 position_ndc = input.position_cs.xyz / input.position_cs.w;
     float3 position_ndc = input.position_ndc;
 
     float2 vsm_uv = position_ndc.xy * 0.5 + 0.5;
@@ -52,14 +51,14 @@ void fs_main(vs_output input)
 
     StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
     uint virtual_page_index = get_virtual_page_index(input.vsm_id, virtual_page_coord);
-    vsm_virtual_page virtual_page = unpack_virtual_page(virtual_page_table[virtual_page_index]);
+    vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[virtual_page_index]);
 
-    if (virtual_page.flags != VIRTUAL_PAGE_FLAG_REQUEST)
+    if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) == 0)
     {
         return;
     }
 
     uint2 physical_texel = virtual_page.get_physical_texel(virtual_page_local_uv);
-    RWTexture2D<uint> physical_texture = ResourceDescriptorHeap[constant.vsm_physical_texture];
-    InterlockedMax(physical_texture[physical_texel], asuint(position_ndc.z));
+    RWTexture2D<uint> physical_shadow_map = ResourceDescriptorHeap[constant.vsm_physical_shadow_map];
+    InterlockedMax(physical_shadow_map[physical_texel], asuint(position_ndc.z));
 }

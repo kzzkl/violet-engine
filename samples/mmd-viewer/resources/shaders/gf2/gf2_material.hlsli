@@ -1,6 +1,7 @@
 #include "mesh.hlsli"
 #include "brdf.hlsli"
 #include "color.hlsli"
+#include "shadow.hlsli"
 
 ConstantBuffer<scene_data> scene : register(b0, space1);
 ConstantBuffer<camera_data> camera : register(b0, space2);
@@ -37,7 +38,7 @@ float3 get_normal(vs_output input, float3 packed_normal)
     return normalize(mul(tbn, tangent_normal));
 }
 
-float3 direct_light(float3 N, float3 V, float3 albedo, float roughness, float metallic, uint ramp_texture)
+float3 direct_light(float3 N, float3 V, float3 albedo, float roughness, float metallic, uint ramp_texture, float3 position_ws)
 {
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
     Texture2D<float4> ramp = ResourceDescriptorHeap[ramp_texture];
@@ -70,7 +71,14 @@ float3 direct_light(float3 N, float3 V, float3 albedo, float roughness, float me
         float3 diffuse_ramp = ramp.Sample(linear_clamp_sampler, float2(NdotL, 0.875)).rgb;
         float3 specular_ramp = ramp.Sample(linear_clamp_sampler, float2(NdotL, 0.625)).rgb;
 
-        direct_lighting += (specular * specular_ramp + diffuse * diffuse_ramp) * NdotL * light.color;
+        float shadow_factor = 1.0;
+        if (light.vsm_address != 0xFFFFFFFF)
+        {
+            shadow_context shadow = shadow_context::create(scene, camera);
+            shadow_factor = shadow.get_shadow(light, position_ws);
+        }
+
+        direct_lighting += (specular * specular_ramp + diffuse * diffuse_ramp) * NdotL * light.color * shadow_factor;
     }
 
     return direct_lighting;

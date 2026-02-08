@@ -54,7 +54,7 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
     // https://github.com/ColinLeung-NiloCat/UnityURPToonLitShaderExample/blob/master/NiloOutlineUtil.hlsl
     float camera_mul_fix = abs(position_vs.z);
     camera_mul_fix = saturate(camera_mul_fix);
-    camera_mul_fix *= camera.fov / PI * 180.0;
+    camera_mul_fix *= camera.perspective_fov / PI * 180.0;
     camera_mul_fix *= 0.001;
     vertex.position_ws += smooth_normal_ws * material.width *  camera_mul_fix;
 

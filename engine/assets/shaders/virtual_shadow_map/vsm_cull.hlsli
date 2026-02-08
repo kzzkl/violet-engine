@@ -6,8 +6,9 @@
 
 bool vsm_cull(
     uint vsm_id,
-    uint4 required_page_bounds,
+    uint4 page_bounds,
     float4 sphere_vs,
+    bool is_static,
     vsm_data vsm,
     StructuredBuffer<uint> virtual_page_table
 #ifdef USE_OCCLUSION
@@ -33,8 +34,8 @@ bool vsm_cull(
 
     projected_aabb *= VIRTUAL_RESOLUTION;
 
-    overlap_page_bounds.xy = max(overlap_page_bounds.xy, required_page_bounds.xy);
-    overlap_page_bounds.zw = min(overlap_page_bounds.zw, required_page_bounds.zw);
+    overlap_page_bounds.xy = max(overlap_page_bounds.xy, page_bounds.xy);
+    overlap_page_bounds.zw = min(overlap_page_bounds.zw, page_bounds.zw);
 
     if (overlap_page_bounds.x > overlap_page_bounds.z || overlap_page_bounds.y > overlap_page_bounds.w)
     {
@@ -48,9 +49,14 @@ bool vsm_cull(
         for (uint y = overlap_page_bounds.y; y <= overlap_page_bounds.w; ++y)
         {
             uint virtual_page_index = get_virtual_page_index(vsm_id, uint2(x, y));
-            vsm_virtual_page virtual_page = unpack_virtual_page(virtual_page_table[virtual_page_index]);
+            vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[virtual_page_index]);
 
-            if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) == 0 || (virtual_page.flags & VIRTUAL_PAGE_FLAG_CACHE_VALID) != 0)
+            if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) == 0)
+            {
+                continue;
+            }
+
+            if (is_static && (virtual_page.flags & VIRTUAL_PAGE_FLAG_CACHE_VALID) != 0)
             {
                 continue;
             }
@@ -71,7 +77,7 @@ bool vsm_cull(
 
 #ifdef USE_OCCLUSION
             uint physical_page_index = get_physical_page_index(virtual_page.physical_page_coord);
-            vsm_physical_page physical_page = unpack_physical_page(physical_page_table[physical_page_index]);
+            vsm_physical_page physical_page = vsm_physical_page::unpack(physical_page_table[physical_page_index]);
 
             if (physical_page.frame == 0)
             {

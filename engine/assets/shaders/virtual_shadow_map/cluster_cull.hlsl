@@ -118,13 +118,15 @@ void process_cluster_node(uint group_index)
     instance_data instance = instances[instance_id];
     mesh_data mesh = meshes[instance.mesh_index];
 
+    bool is_static = (mesh.flags & MESH_STATIC) != 0;
+
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
-    StructuredBuffer<uint4> vsm_bounds = ResourceDescriptorHeap[constant.vsm_bounds_buffer];
+    StructuredBuffer<vsm_bounds> vsm_bounds = ResourceDescriptorHeap[constant.vsm_bounds_buffer];
     StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
 
     uint vsm_id = gs_vsms[parent_index];
     vsm_data vsm = vsms[vsm_id];
-    uint4 required_page_bounds = vsm_bounds[vsm_id];
+    uint4 page_bounds = is_static ? vsm_bounds[vsm_id].invalidated_bounds : vsm_bounds[vsm_id].required_bounds;
 
     float4 sphere_vs = mul(vsm.matrix_v, mul(mesh.matrix_m, float4(cluster_node.bounding_sphere.xyz, 1.0)));
     sphere_vs.w = cluster_node.bounding_sphere.w * mesh.scale.w;
@@ -142,9 +144,9 @@ void process_cluster_node(uint group_index)
         StructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
         Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
         SamplerState hzb_sampler = ResourceDescriptorHeap[constant.hzb_sampler];
-        if (!vsm_cull(vsm_id, required_page_bounds, sphere_vs, vsm, virtual_page_table, physical_page_table, hzb, hzb_sampler))
+        if (!vsm_cull(vsm_id, page_bounds, sphere_vs, is_static, vsm, virtual_page_table, physical_page_table, hzb, hzb_sampler))
 #else
-        if (!vsm_cull(vsm_id, required_page_bounds, sphere_vs, vsm, virtual_page_table))
+        if (!vsm_cull(vsm_id, page_bounds, sphere_vs, is_static, vsm, virtual_page_table))
 #endif
         {
             visible = false;
@@ -205,12 +207,14 @@ void process_cluster(uint3 dtid)
         return;
     }
 
+    bool is_static = (mesh.flags & MESH_STATIC) != 0;
+
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
-    StructuredBuffer<uint4> vsm_bounds = ResourceDescriptorHeap[constant.vsm_bounds_buffer];
+    StructuredBuffer<vsm_bounds> vsm_bounds = ResourceDescriptorHeap[constant.vsm_bounds_buffer];
     StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
 
     vsm_data vsm = vsms[item.vsm_id];
-    uint4 required_page_bounds = vsm_bounds[item.vsm_id];
+    uint4 page_bounds = is_static ? vsm_bounds[item.vsm_id].invalidated_bounds : vsm_bounds[item.vsm_id].required_bounds;
 
     float4 sphere_vs = mul(vsm.matrix_v, mul(mesh.matrix_m, float4(cluster.bounding_sphere.xyz, 1.0)));
     sphere_vs.w = cluster.bounding_sphere.w * mesh.scale.w;
@@ -228,9 +232,9 @@ void process_cluster(uint3 dtid)
         StructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
         Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
         SamplerState hzb_sampler = ResourceDescriptorHeap[constant.hzb_sampler];
-        if (!vsm_cull(item.vsm_id, required_page_bounds, sphere_vs, vsm, virtual_page_table, physical_page_table, hzb, hzb_sampler))
+        if (!vsm_cull(item.vsm_id, page_bounds, sphere_vs, is_static, vsm, virtual_page_table, physical_page_table, hzb, hzb_sampler))
 #else
-        if (!vsm_cull(item.vsm_id, required_page_bounds, sphere_vs, vsm, virtual_page_table))
+        if (!vsm_cull(item.vsm_id, page_bounds, sphere_vs, is_static, vsm, virtual_page_table))
 #endif
         {
             visible = false;
@@ -242,7 +246,9 @@ void process_cluster(uint3 dtid)
         RWStructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.draw_count_buffer];
 
         uint command_index = 0;
-        InterlockedAdd(draw_counts[0], 1, command_index);
+        InterlockedAdd(draw_counts[is_static ? 0 : 1], 1, command_index);
+
+        command_index += is_static ? STATIC_INSTANCE_DRAW_OFFSET : DYNAMIC_INSTANCE_DRAW_OFFSET;
 
         if (command_index < constant.max_draw_command_count)
         {

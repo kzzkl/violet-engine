@@ -23,7 +23,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     if (dtid.x == 0 && dtid.y == 0)
     {
-        RWStructuredBuffer<uint4> vsm_bounds = ResourceDescriptorHeap[constant.vsm_bounds_buffer];
-        vsm_bounds[vsm_id] = uint4(VIRTUAL_PAGE_TABLE_SIZE, VIRTUAL_PAGE_TABLE_SIZE, 0, 0);
+        RWStructuredBuffer<vsm_bounds> vsm_bounds = ResourceDescriptorHeap[constant.vsm_bounds_buffer];
+        vsm_bounds[vsm_id].required_bounds = uint4(VIRTUAL_PAGE_TABLE_SIZE, VIRTUAL_PAGE_TABLE_SIZE, 0, 0);
+        vsm_bounds[vsm_id].invalidated_bounds = uint4(VIRTUAL_PAGE_TABLE_SIZE, VIRTUAL_PAGE_TABLE_SIZE, 0, 0);
     }
 }

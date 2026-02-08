@@ -100,9 +100,14 @@ void deferred_renderer::prepare(render_graph& graph)
         graph.add_buffer("VSM Page Table", scene.get_vsm_virtual_page_table());
     m_vsm_physical_page_table =
         graph.add_buffer("VSM Physical Page Table", scene.get_vsm_physical_page_table());
-    m_vsm_physical_texture = graph.add_texture(
-        "VSM Physical Texture",
-        scene.get_vsm_physical_texture(),
+    m_vsm_physical_shadow_map_static = graph.add_texture(
+        "VSM Physical Shadow Map Static",
+        scene.get_vsm_physical_shadow_map_static(),
+        RHI_TEXTURE_LAYOUT_GENERAL,
+        RHI_TEXTURE_LAYOUT_GENERAL);
+    m_vsm_physical_shadow_map_final = graph.add_texture(
+        "VSM Physical Shadow Map Final",
+        scene.get_vsm_physical_shadow_map_final(),
         RHI_TEXTURE_LAYOUT_GENERAL,
         RHI_TEXTURE_LAYOUT_GENERAL);
 
@@ -319,7 +324,8 @@ void deferred_renderer::add_shadow_pass(render_graph& graph)
         .vsm_buffer = m_vsm_buffer,
         .vsm_virtual_page_table = m_vsm_virtual_page_table,
         .vsm_physical_page_table = m_vsm_physical_page_table,
-        .vsm_physical_texture = m_vsm_physical_texture,
+        .vsm_physical_shadow_map_static = m_vsm_physical_shadow_map_static,
+        .vsm_physical_shadow_map_final = m_vsm_physical_shadow_map_final,
         .vsm_hzb = m_vsm_hzb,
         .lru_state = graph.add_buffer("VSM LRU State", vsm->get_lru_state()),
         .lru_buffer = graph.add_buffer("VSM LRU Buffer", vsm->get_lru_buffer()),
@@ -344,7 +350,7 @@ void deferred_renderer::add_shading_pass(render_graph& graph)
         .render_target = m_render_target,
         .vsm_buffer = m_vsm_buffer,
         .vsm_virtual_page_table = m_vsm_virtual_page_table,
-        .vsm_physical_texture = m_vsm_physical_texture,
+        .vsm_physical_shadow_map = m_vsm_physical_shadow_map_final,
     });
 }
 

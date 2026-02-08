@@ -27,7 +27,7 @@ fs_output fs_main(vs_output input)
     float3 V = normalize(camera.position - input.position_ws);
     float3 N = get_normal(input, normal_texture.Sample(linear_repeat_sampler, input.texcoord).xyz);
 
-    float3 direct_lighting = direct_light(N, V, albedo, roughness, metallic, material.ramp_texture);
+    float3 direct_lighting = direct_light(N, V, albedo, roughness, metallic, material.ramp_texture, input.position_ws);
     float3 indirect_lighting = indirect_light(N, V, albedo, roughness, metallic, material.brdf_lut);
 
     material_info material_info = load_material_info(scene.material_buffer, input.material_address);

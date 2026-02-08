@@ -34,12 +34,12 @@ void mark_invalid_pages(uint3 dtid : SV_DispatchThreadID)
 
     uint lru_prev_offset = get_lru_offset(constant.lru_prev_index);
 
-    vsm_physical_page physical_page = unpack_physical_page(physical_page_table[lru_buffer[lru_prev_offset + lru_index]]);
+    vsm_physical_page physical_page = vsm_physical_page::unpack(physical_page_table[lru_buffer[lru_prev_offset + lru_index]]);
 
     if (lru_index < prev_state.head || (physical_page.flags & PHYSICAL_PAGE_FLAG_REQUEST))
     {
         physical_page.flags &= ~PHYSICAL_PAGE_FLAG_IN_LRU;
-        physical_page_table[lru_buffer[lru_prev_offset + lru_index]] = pack_physical_page(physical_page);
+        physical_page_table[lru_buffer[lru_prev_offset + lru_index]] = physical_page.pack();
 
         lru_buffer[lru_prev_offset + lru_index] |= VSM_LRU_INVALID_MASK;
         lru_remap[lru_index] = 1;
@@ -95,12 +95,12 @@ void append_unused_pages(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    vsm_physical_page physical_page = unpack_physical_page(physical_page_table[physical_page_index]);
+    vsm_physical_page physical_page = vsm_physical_page::unpack(physical_page_table[physical_page_index]);
 
     if ((physical_page.flags & (PHYSICAL_PAGE_FLAG_REQUEST | PHYSICAL_PAGE_FLAG_IN_LRU)) == 0)
     {
         physical_page.flags |= PHYSICAL_PAGE_FLAG_IN_LRU;
-        physical_page_table[physical_page_index] = pack_physical_page(physical_page);
+        physical_page_table[physical_page_index] = physical_page.pack();
 
         uint lru_index = 0;
         InterlockedAdd(lru_states[constant.lru_curr_index].tail, 1, lru_index);

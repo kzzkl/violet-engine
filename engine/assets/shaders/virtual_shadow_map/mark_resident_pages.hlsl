@@ -17,7 +17,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     uint physical_page_index = dtid.x;
 
-    vsm_physical_page physical_page = unpack_physical_page(physical_page_table[physical_page_index]);
+    vsm_physical_page physical_page = vsm_physical_page::unpack(physical_page_table[physical_page_index]);
 
     // Skip empty page.
     if ((physical_page.flags & PHYSICAL_PAGE_FLAG_RESIDENT) == 0)
@@ -31,7 +31,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     if (vsm.cache_epoch == constant.frame)
     {
         physical_page.flags &= ~(PHYSICAL_PAGE_FLAG_REQUEST | PHYSICAL_PAGE_FLAG_RESIDENT);
-        physical_page_table[physical_page_index] = pack_physical_page(physical_page);
+        physical_page_table[physical_page_index] = physical_page.pack();
         return;
     }
 
@@ -47,7 +47,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
         uint page_index = get_virtual_page_index(physical_page.vsm_id, virtual_page_coord);
 
-        vsm_virtual_page virtual_page = unpack_virtual_page(virtual_page_table[page_index]);
+        vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[page_index]);
         virtual_page.physical_page_coord.x = physical_page_index % PHYSICAL_PAGE_TABLE_SIZE;
         virtual_page.physical_page_coord.y = physical_page_index / PHYSICAL_PAGE_TABLE_SIZE;
 
@@ -62,8 +62,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
             virtual_page.flags |= VIRTUAL_PAGE_FLAG_CACHE_VALID;
         }
 
-        virtual_page_table[page_index] = pack_virtual_page(virtual_page);
+        virtual_page_table[page_index] = virtual_page.pack();
     }
 
-    physical_page_table[physical_page_index] = pack_physical_page(physical_page);
+    physical_page_table[physical_page_index] = physical_page.pack();
 }

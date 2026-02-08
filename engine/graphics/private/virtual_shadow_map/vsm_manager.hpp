@@ -44,9 +44,14 @@ public:
         return m_physical_page_table.get();
     }
 
-    rhi_texture* get_vsm_physical_texture()
+    rhi_texture* get_vsm_physical_shadow_map_static()
     {
-        return m_physical_texture.get();
+        return m_physical_shadow_map_static.get();
+    }
+
+    rhi_texture* get_vsm_physical_shadow_map_final()
+    {
+        return m_physical_shadow_map_final.get();
     }
 
     rhi_texture* get_vsm_hzb()
@@ -92,7 +97,8 @@ private:
     rhi_ptr<rhi_buffer> m_virtual_page_table;
     rhi_ptr<rhi_buffer> m_physical_page_table;
 
-    rhi_ptr<rhi_texture> m_physical_texture;
+    rhi_ptr<rhi_texture> m_physical_shadow_map_static;
+    rhi_ptr<rhi_texture> m_physical_shadow_map_final;
     rhi_ptr<rhi_texture> m_hzb;
 
     std::unordered_map<render_id, vsm_directional_light_data> m_directional_lights;

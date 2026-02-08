@@ -17,7 +17,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     uint physical_page_index = dtid.z;
 
     RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
-    vsm_physical_page physical_page = unpack_physical_page(physical_page_table[physical_page_index]);
+    vsm_physical_page physical_page = vsm_physical_page::unpack(physical_page_table[physical_page_index]);
 
     if ((physical_page.flags & PHYSICAL_PAGE_FLAG_HZB_DIRTY) == 0 || dtid.x >= constant.next_size || dtid.y >= constant.next_size)
     {
@@ -31,14 +31,14 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     float depth;
     if (constant.next_size == PAGE_RESOLUTION / 2)
     {
-        Texture2D<uint> physical_texture = ResourceDescriptorHeap[constant.prev_buffer];
+        Texture2D<uint> physical_shadow_map = ResourceDescriptorHeap[constant.prev_buffer];
 
         uint2 prev_texel = next_texel * 2;
 
-        float depth0 = asfloat(physical_texture[prev_texel]);
-        float depth1 = asfloat(physical_texture[prev_texel + uint2(1, 0)]);
-        float depth2 = asfloat(physical_texture[prev_texel + uint2(0, 1)]);
-        float depth3 = asfloat(physical_texture[prev_texel + uint2(1, 1)]);
+        float depth0 = asfloat(physical_shadow_map[prev_texel]);
+        float depth1 = asfloat(physical_shadow_map[prev_texel + uint2(1, 0)]);
+        float depth2 = asfloat(physical_shadow_map[prev_texel + uint2(0, 1)]);
+        float depth3 = asfloat(physical_shadow_map[prev_texel + uint2(1, 1)]);
 
         depth = min(min(depth0, depth1), min(depth2, depth3));
     }
@@ -55,6 +55,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     if (constant.next_size == 1)
     {
         physical_page.flags &= ~PHYSICAL_PAGE_FLAG_HZB_DIRTY;
-        physical_page_table[physical_page_index] = pack_physical_page(physical_page);
+        physical_page_table[physical_page_index] = physical_page.pack();
     }
 }

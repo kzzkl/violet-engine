@@ -70,7 +70,7 @@ bool sample_system::initialize(const dictionary& config)
     return true;
 }
 
-entity sample_system::load_model(std::string_view model_path, bool generate_clusters)
+entity sample_system::load_model(std::string_view model_path, load_options options)
 {
     namespace fs = std::filesystem;
 
@@ -89,7 +89,7 @@ entity sample_system::load_model(std::string_view model_path, bool generate_clus
     }
 
     static constexpr std::string_view cluster_dir = "assets/clusters";
-    if (generate_clusters)
+    if (options & LOAD_OPTION_GENERATE_CLUSTERS)
     {
         fs::create_directories(cluster_dir);
     }
@@ -101,7 +101,7 @@ entity sample_system::load_model(std::string_view model_path, bool generate_clus
 
         auto model_geometry = std::make_unique<geometry>();
 
-        if (generate_clusters)
+        if (options & LOAD_OPTION_GENERATE_CLUSTERS)
         {
             auto cluster_path = std::format(
                 "{}/{}.cluster_{}",
@@ -231,6 +231,7 @@ entity sample_system::load_model(std::string_view model_path, bool generate_clus
 
             auto& entity_mesh = world.get_component<mesh_component>(entity);
             entity_mesh.geometry = m_geometries[mesh_data.geometry + geometry_offset].get();
+            entity_mesh.flags |= options & LOAD_OPTION_DYNAMIC_MESH ? 0 : MESH_STATIC;
 
             for (std::size_t j = 0; j < mesh_data.submeshes.size(); ++j)
             {

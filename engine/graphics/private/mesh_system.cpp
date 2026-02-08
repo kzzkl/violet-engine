@@ -69,8 +69,10 @@ void mesh_system::update(render_scene_manager& scene_manager)
                 return;
             }
 
-            std::size_t instance_count =
-                std::min(mesh.submeshes.size(), mesh_meta.instances.size());
+            mesh_meta.scene->set_mesh_flags(mesh_meta.mesh, mesh.flags);
+
+            std::size_t submesh_count = mesh.visible ? mesh.submeshes.size() : 0;
+            std::size_t instance_count = std::min(submesh_count, mesh_meta.instances.size());
 
             for (std::size_t i = 0; i < instance_count; ++i)
             {
@@ -84,7 +86,7 @@ void mesh_system::update(render_scene_manager& scene_manager)
                     mesh.submeshes[i].material);
             }
 
-            for (std::size_t i = instance_count; i < mesh.submeshes.size(); ++i)
+            for (std::size_t i = instance_count; i < submesh_count; ++i)
             {
                 render_id instance = mesh_meta.scene->add_instance(mesh_meta.mesh);
                 mesh_meta.scene->set_instance_geometry(
@@ -95,7 +97,7 @@ void mesh_system::update(render_scene_manager& scene_manager)
                 mesh_meta.instances.push_back(instance);
             }
 
-            while (mesh_meta.instances.size() > mesh.submeshes.size())
+            while (mesh_meta.instances.size() > submesh_count)
             {
                 mesh_meta.scene->remove_instance(mesh_meta.instances.back());
                 mesh_meta.instances.pop_back();

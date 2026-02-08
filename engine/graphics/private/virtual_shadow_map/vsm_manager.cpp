@@ -36,7 +36,7 @@ vsm_manager::vsm_manager(bool enable_occlusion)
 
     device.execute(command, true);
 
-    m_physical_texture = device.create_texture({
+    rhi_texture_desc physical_shadow_map_desc = {
         .extent =
             {
                 .width = VSM_PHYSICAL_RESOLUTION,
@@ -47,8 +47,13 @@ vsm_manager::vsm_manager(bool enable_occlusion)
         .level_count = 1,
         .layer_count = 1,
         .layout = RHI_TEXTURE_LAYOUT_GENERAL,
-    });
-    device.set_name(m_physical_texture.get(), "VSM Physical Texture");
+    };
+
+    m_physical_shadow_map_static = device.create_texture(physical_shadow_map_desc);
+    device.set_name(m_physical_shadow_map_static.get(), "VSM Physical Shadow Map Static");
+
+    m_physical_shadow_map_final = device.create_texture(physical_shadow_map_desc);
+    device.set_name(m_physical_shadow_map_final.get(), "VSM Physical Shadow Map Final");
 
     if (enable_occlusion)
     {

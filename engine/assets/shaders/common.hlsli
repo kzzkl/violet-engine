@@ -54,11 +54,18 @@ struct geometry_data
     uint padding0;
 };
 
+static const uint MESH_STATIC = 1 << 0;
+
 struct mesh_data
 {
     float4x4 matrix_m;
     float4 scale;
     float4x4 prev_matrix_m;
+
+    uint flags;
+    uint padding0;
+    uint padding1;
+    uint padding2;
 };
 
 struct instance_data
@@ -99,7 +106,10 @@ struct scene_data
     uint irradiance;
     uint prefilter;
 
-    uint directional_vsm_buffer;
+    uint vsm_buffer;
+    uint vsm_virtual_page_table;
+    uint vsm_physical_shadow_map;
+    uint vsm_directional_buffer;
 };
 
 static const uint CAMERA_PERSPECTIVE = 0;

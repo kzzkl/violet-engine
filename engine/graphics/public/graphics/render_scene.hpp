@@ -89,6 +89,7 @@ public:
 
     render_id add_mesh();
     void remove_mesh(render_id mesh_id);
+    void set_mesh_flags(render_id mesh_id, std::uint32_t flags);
     void set_mesh_matrix(render_id mesh_id, const mat4f& matrix_m, const vec3f& scale);
 
     render_id add_instance(render_id mesh_id);
@@ -155,15 +156,16 @@ public:
         return m_scene_parameter.get();
     }
 
-    rhi_buffer* get_directional_vsm_buffer() const noexcept
+    rhi_buffer* get_vsm_directional_buffer() const noexcept
     {
-        return m_directional_vsm_buffer.get_buffer()->get_rhi();
+        return m_vsm_directional_buffer.get_buffer()->get_rhi();
     }
 
     rhi_buffer* get_vsm_buffer() const noexcept;
     rhi_buffer* get_vsm_virtual_page_table() const noexcept;
     rhi_buffer* get_vsm_physical_page_table() const noexcept;
-    rhi_texture* get_vsm_physical_texture() const noexcept;
+    rhi_texture* get_vsm_physical_shadow_map_static() const noexcept;
+    rhi_texture* get_vsm_physical_shadow_map_final() const noexcept;
     rhi_texture* get_vsm_hzb() const noexcept;
 
     template <typename Functor>
@@ -231,6 +233,7 @@ private:
         mat4f matrix_m;
         mat4f prev_matrix_m;
         vec3f scale;
+        std::uint32_t flags;
         std::vector<render_id> instances;
     };
 
@@ -365,7 +368,7 @@ private:
     std::vector<camera_data> m_cameras;
     index_allocator m_camera_allocator;
 
-    gpu_sparse_array<gpu_directional_vsm> m_directional_vsm_buffer;
+    gpu_sparse_array<gpu_directional_vsm> m_vsm_directional_buffer;
     std::unordered_map<render_id, vsm_data> m_vsms;
 
     std::uint32_t m_instance_capacity{1};

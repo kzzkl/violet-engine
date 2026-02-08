@@ -22,15 +22,9 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    RWTexture2D<uint> physical_shadow_map_static = ResourceDescriptorHeap[constant.vsm_physical_shadow_map_static];
+    Texture2D<uint> physical_shadow_map_static = ResourceDescriptorHeap[constant.vsm_physical_shadow_map_static];
     RWTexture2D<uint> physical_shadow_map_final = ResourceDescriptorHeap[constant.vsm_physical_shadow_map_final];
 
     uint2 physical_texel = get_physical_page_coord(physical_page_index) * PAGE_RESOLUTION + dtid.xy;
-
-    if (physical_page.frame == 0)
-    {
-        physical_shadow_map_static[physical_texel] = 0;
-    }
-
-    physical_shadow_map_final[physical_texel] = 0;
+    physical_shadow_map_final[physical_texel] = max(physical_shadow_map_static[physical_texel], physical_shadow_map_final[physical_texel]);
 }

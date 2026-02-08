@@ -1,6 +1,7 @@
 #include "common.hlsli"
 #include "brdf.hlsli"
 #include "shading/shading_model.hlsli"
+#include "shadow.hlsli"
 
 struct constant_data
 {
@@ -58,7 +59,7 @@ void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 
     StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
 
-    shadow_context shadow = shadow_context::create(constant.common, scene, camera);
+    shadow_context shadow = shadow_context::create(scene, camera);
 
     float3 direct_lighting = 0.0;
     for (int i = 0; i < scene.light_count; ++i)

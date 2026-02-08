@@ -55,7 +55,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     StructuredBuffer<uint> visible_light_count = ResourceDescriptorHeap[constant.visible_light_count];
     StructuredBuffer<uint> visible_light_ids = ResourceDescriptorHeap[constant.visible_light_ids];
-    StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[scene.directional_vsm_buffer];
+    StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[scene.vsm_directional_buffer];
     
     StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
 
