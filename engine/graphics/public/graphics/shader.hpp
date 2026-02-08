@@ -91,38 +91,15 @@ struct shader
         std::uint32_t padding0;
     };
 
-    struct cluster_data
-    {
-        vec4f bounding_sphere;
-        vec4f lod_bounds;
-        float lod_error;
-        std::uint32_t index_offset;
-        std::uint32_t index_count;
-        std::uint32_t padding0;
-    };
-
-    struct cluster_node_data
-    {
-        vec4f bounding_sphere;
-        vec4f lod_bounds;
-
-        float min_lod_error;
-        float max_parent_lod_error;
-
-        std::uint32_t is_leaf;
-        std::uint32_t child_offset;
-        std::uint32_t child_count;
-
-        std::uint32_t padding0;
-        std::uint32_t padding1;
-        std::uint32_t padding2;
-    };
-
     struct mesh_data
     {
         mat4f matrix_m;
         vec4f scale;
         mat4f prev_matrix_m;
+        std::uint32_t flags;
+        std::uint32_t padding0;
+        std::uint32_t padding1;
+        std::uint32_t padding2;
     };
 
     struct instance_data
@@ -160,7 +137,11 @@ struct shader
         std::uint32_t skybox;
         std::uint32_t irradiance;
         std::uint32_t prefilter;
-        std::uint32_t directional_vsm_buffer;
+
+        std::uint32_t vsm_buffer;
+        std::uint32_t vsm_virtual_page_table;
+        std::uint32_t vsm_physical_shadow_map;
+        std::uint32_t vsm_directional_buffer;
     };
 
     static constexpr parameter scene = {
@@ -193,10 +174,17 @@ struct shader
         float near;
         float far;
 
+        float aspect;
         std::uint32_t type;
-        float fov;
-        float width;
-        float height;
+        float perspective_fov;
+        float orthographic_size;
+
+        vec4f frustum; // perspective frustum
+
+        float pixels_per_unit;
+        std::uint32_t padding0;
+        std::uint32_t padding1;
+        std::uint32_t padding2;
     };
 
     static constexpr parameter camera = {
@@ -329,10 +317,8 @@ struct shading_model_cs : public shader_cs
         std::uint32_t shading_model;
         std::uint32_t worklist_buffer;
         std::uint32_t worklist_offset;
-
-        std::uint32_t vsm_buffer;
-        std::uint32_t vsm_virtual_page_table;
-        std::uint32_t vsm_physical_texture;
+        std::uint32_t padding0;
+        std::uint32_t padding1;
     };
 
     static constexpr parameter_layout parameters = {

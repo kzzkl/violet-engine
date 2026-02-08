@@ -335,13 +335,11 @@ struct vector
     {
         v = _mm_and_ps(v, simd::mask_v<1, 1, 1, 0>);
         __m128 t1 = _mm_mul_ps(v, v);
-        __m128 t2 = simd::shuffle<1, 0, 3, 2>(t1);
-        t1 = _mm_add_ps(t1, t2);
-        t2 = simd::shuffle<2, 3, 0, 1>(t1);
-        t1 = _mm_add_ps(t1, t2);
+        __m128 t2 = _mm_hadd_ps(t1, t1);
+        t1 = _mm_hadd_ps(t2, t2);
 
-        t1 = _mm_sqrt_ps(t1);
-        return _mm_div_ps(v, t1);
+        t1 = _mm_rsqrt_ps(t1);
+        return _mm_mul_ps(v, t1);
     }
 
     template <typename T>

@@ -12,7 +12,8 @@ public:
         std::uint32_t cache_hit;
         std::uint32_t rendered;
         std::uint32_t unmapped;
-        std::uint32_t drawcall;
+        std::uint32_t static_drawcall;
+        std::uint32_t dynamic_drawcall;
     };
 
     vsm_render_feature();

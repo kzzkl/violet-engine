@@ -5,7 +5,7 @@
 
 namespace violet
 {
-vsm_manager::vsm_manager()
+vsm_manager::vsm_manager(bool enable_occlusion)
     : m_vsms(8) // max vsm count is 256
 {
     auto& device = render_device::instance();
@@ -18,15 +18,8 @@ vsm_manager::vsm_manager()
     });
     device.set_name(m_virtual_page_table.get(), "VSM Virtual Page Table");
 
-    struct vsm_physical_page
-    {
-        vec2i virtual_page_coord;
-        std::uint32_t vsm_id;
-        std::uint32_t flags;
-    };
-
     m_physical_page_table = device.create_buffer({
-        .size = sizeof(vsm_physical_page) * VSM_PHYSICAL_PAGE_TABLE_PAGE_COUNT,
+        .size = sizeof(vec4u) * VSM_PHYSICAL_PAGE_TABLE_PAGE_COUNT,
         .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST,
     });
     device.set_name(m_physical_page_table.get(), "VSM Physical Page Table");
@@ -43,7 +36,7 @@ vsm_manager::vsm_manager()
 
     device.execute(command, true);
 
-    m_physical_texture = device.create_texture({
+    rhi_texture_desc physical_shadow_map_desc = {
         .extent =
             {
                 .width = VSM_PHYSICAL_RESOLUTION,
@@ -54,8 +47,31 @@ vsm_manager::vsm_manager()
         .level_count = 1,
         .layer_count = 1,
         .layout = RHI_TEXTURE_LAYOUT_GENERAL,
-    });
-    device.set_name(m_physical_texture.get(), "VSM Physical Texture");
+    };
+
+    m_physical_shadow_map_static = device.create_texture(physical_shadow_map_desc);
+    device.set_name(m_physical_shadow_map_static.get(), "VSM Physical Shadow Map Static");
+
+    m_physical_shadow_map_final = device.create_texture(physical_shadow_map_desc);
+    device.set_name(m_physical_shadow_map_final.get(), "VSM Physical Shadow Map Final");
+
+    if (enable_occlusion)
+    {
+        m_hzb = device.create_texture({
+            .extent =
+                {
+                    .width = VSM_PHYSICAL_RESOLUTION / 2,
+                    .height = VSM_PHYSICAL_RESOLUTION / 2,
+                },
+            .format = RHI_FORMAT_R32_FLOAT,
+            .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE,
+            .level_count = static_cast<std::uint32_t>(
+                std::log2(VSM_PHYSICAL_RESOLUTION) - std::log2(VSM_PHYSICAL_PAGE_TABLE_SIZE)),
+            .layer_count = 1,
+            .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+        });
+        device.set_name(m_hzb.get(), "VSM HZB");
+    }
 }
 
 render_id vsm_manager::add_vsm(light_type light_type)
@@ -167,6 +183,7 @@ void vsm_manager::set_vsm(render_id vsm_id, const vsm_directional_light_data& li
             cascade_vsm.view_z - view_z_radius);
         cascade_vsm.page_coord = page_coord;
         cascade_vsm.view_z_radius = view_z_radius;
+        cascade_vsm.pixels_per_unit = static_cast<float>(VSM_PAGE_RESOLUTION) / cascade_page_size;
 
         m_vsms.mark_dirty(vsm_id + cascade);
     }
@@ -184,6 +201,7 @@ void vsm_manager::update(gpu_buffer_uploader* uploader)
                 .matrix_v = vsm.matrix_v,
                 .matrix_p = vsm.matrix_p,
                 .matrix_vp = matrix::mul(vsm.matrix_v, vsm.matrix_p),
+                .pixels_per_unit = vsm.pixels_per_unit,
             };
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)

@@ -35,19 +35,24 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     float2 texcoord = (float2(dtid.xy) * 2.0) / float2(constant.prev_width, constant.prev_height);
     float depth = prev_buffer.SampleLevel(hzb_sampler, texcoord, 0, int2(1, 1));
 
-    if ((constant.prev_width & 1) && dtid.x == constant.next_width - 1)
+    bool right_edge = (constant.prev_width & 1) && dtid.x == constant.next_width - 1;
+    bool bottom_edge = (constant.prev_height & 1) && dtid.y == constant.next_height - 1;
+
+    if (right_edge && bottom_edge)
+    {
+        float bottom_right_depth = prev_buffer.SampleLevel(hzb_sampler, texcoord, 0, int2(2, 2));
+        depth = min(depth, bottom_right_depth);
+    }
+    else if (right_edge)
     {
         float right_depth = prev_buffer.SampleLevel(hzb_sampler, texcoord, 0, int2(2, 1));
         depth = min(depth, right_depth);
     }
-
-    if ((constant.prev_height & 1) && dtid.y == constant.next_height - 1)
+    else if (bottom_edge)
     {
         float bottom_depth = prev_buffer.SampleLevel(hzb_sampler, texcoord, 0, int2(1, 2));
         depth = min(depth, bottom_depth);
     }
-
-    // TODO: Sampling may be incomplete for bottom-right pixel when both prev_width and prev_height are odd, may need to sample (2,2) offset.
 
     next_buffer[dtid.xy] = depth;
 }

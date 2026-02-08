@@ -22,7 +22,9 @@ public:
         rdg_buffer* vsm_buffer{nullptr};
         rdg_buffer* vsm_virtual_page_table{nullptr};
         rdg_buffer* vsm_physical_page_table{nullptr};
-        rdg_texture* vsm_physical_texture{nullptr};
+        rdg_texture* vsm_physical_shadow_map_static{nullptr};
+        rdg_texture* vsm_physical_shadow_map_final{nullptr};
+        rdg_texture* vsm_hzb{nullptr};
 
         rdg_buffer* lru_state;
         rdg_buffer* lru_buffer;
@@ -47,8 +49,15 @@ private:
     void allocate_pages(render_graph& graph);
     void clear_physical_page(render_graph& graph);
     void calculate_page_bounds(render_graph& graph);
+
     void instance_cull(render_graph& graph);
-    void render_shadow(render_graph& graph);
+    void prepare_cluster_cull(render_graph& graph, rdg_buffer* dispatch_buffer, bool cull_cluster);
+    void cluster_cull(render_graph& graph);
+
+    void render_shadow(render_graph& graph, bool is_static);
+    void merge_physical_page(render_graph& graph);
+
+    void build_hzb(render_graph& graph);
 
     void add_debug_pass(render_graph& graph);
 
@@ -63,10 +72,11 @@ private:
     rdg_buffer* m_vsm_buffer{nullptr};
     rdg_buffer* m_vsm_virtual_page_table{nullptr};
     rdg_buffer* m_vsm_physical_page_table{nullptr};
-    rdg_texture* m_vsm_physical_texture{nullptr};
+    rdg_texture* m_vsm_physical_shadow_map_static{nullptr};
+    rdg_texture* m_vsm_physical_shadow_map_final{nullptr};
+    rdg_texture* m_vsm_hzb{nullptr};
 
     rdg_buffer* m_vsm_bounds_buffer{nullptr};
-    rdg_buffer* m_clear_physical_page_dispatch_buffer{nullptr};
 
     rdg_buffer* m_lru_state{nullptr};
     rdg_buffer* m_lru_buffer{nullptr};
@@ -76,6 +86,11 @@ private:
     rdg_buffer* m_draw_buffer{nullptr};
     rdg_buffer* m_draw_count_buffer{nullptr};
     rdg_buffer* m_draw_info_buffer{nullptr};
+
+    rdg_buffer* m_cluster_queue{nullptr};
+    rdg_buffer* m_cluster_queue_state{nullptr};
+
+    rhi_sampler* m_hzb_sampler{nullptr};
 
     debug_mode m_debug_mode{DEBUG_MODE_NONE};
     std::uint32_t m_debug_light_id{0};

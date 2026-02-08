@@ -1,15 +1,15 @@
 #include "cluster.hlsli"
-#include "cull/cull.hlsli"
-
-ConstantBuffer<scene_data> scene : register(b0, space1);
-ConstantBuffer<camera_data> camera : register(b0, space2);
+#include "virtual_shadow_map/vsm_cull.hlsli"
 
 struct constant_data
 {
+    uint vsm_buffer;
+    uint vsm_bounds_buffer;
+    uint vsm_virtual_page_table;
+    uint vsm_physical_page_table;
+    
     uint hzb;
     uint hzb_sampler;
-    uint hzb_width;
-    uint hzb_height;
 
     float threshold;
 
@@ -27,34 +27,54 @@ struct constant_data
 };
 PushConstant(constant_data, constant);
 
+ConstantBuffer<scene_data> scene : register(b0, space1);
+
 groupshared uint gs_queue_offset;
 groupshared uint gs_cluster_node_mask;
 groupshared uint3 gs_cluster_node[MAX_CLUSTER_NODE_PER_GROUP]; // x: child_offset, y: child_count, z: instance_id
-groupshared uint gs_recheck_mask[MAX_CLUSTER_NODE_PER_GROUP];
+groupshared uint gs_vsms[MAX_CLUSTER_NODE_PER_GROUP];
 
-uint2 pack_cluster_node_item(uint id, uint instance_id, uint recheck_mask)
+struct cluster_node_item
 {
-    return uint2(recheck_mask << 24 | id, instance_id);
-}
+    uint vsm_id;
+    uint cluster_node_id;
+    uint instance_id;
 
-void unpack_cluster_node_item(uint2 item, out uint id, out uint instance_id, out uint recheck_mask)
-{
-    id = item.x & 0xFFFFFF;
-    instance_id = item.y;
-    recheck_mask = item.x >> 24;
-}
+    static cluster_node_item unpack(uint2 packed_data)
+    {
+        cluster_node_item item;
+        item.vsm_id = packed_data.x >> 24;
+        item.cluster_node_id = packed_data.x & 0xFFFFFF;
+        item.instance_id = packed_data.y;
+        return item;
+    }
 
-uint2 pack_cluster_item(uint id, uint instance_id, bool recheck)
-{
-    return uint2((recheck ? 1u : 0u) << 31 | id, instance_id);
-}
+    uint2 pack()
+    {
+        return uint2(vsm_id << 24 | cluster_node_id, instance_id);
+    }
+};
 
-void unpack_cluster_item(uint2 item, out uint id, out uint instance_id, out bool recheck)
+struct cluster_item
 {
-    id = item.x & 0x7FFFFFFF;
-    instance_id = item.y;
-    recheck = (item.x >> 31) == 1;
-}
+    uint vsm_id;
+    uint cluster_id;
+    uint instance_id;
+
+    static cluster_item unpack(uint2 packed_data)
+    {
+        cluster_item item;
+        item.vsm_id = packed_data.x >> 24;
+        item.cluster_id = packed_data.x & 0xFFFFFF;
+        item.instance_id = packed_data.y;
+        return item;
+    }
+
+    uint2 pack()
+    {
+        return uint2(vsm_id << 24 | cluster_id, instance_id);
+    }
+};
 
 uint get_cluster_node_offset()
 {
@@ -93,53 +113,45 @@ void process_cluster_node(uint group_index)
     }
 
     uint cluster_node_id = child_index + child_offset;
+    cluster_node_data cluster_node = cluster_nodes[cluster_node_id];
 
     instance_data instance = instances[instance_id];
     mesh_data mesh = meshes[instance.mesh_index];
 
-    cluster_node_data cluster_node = cluster_nodes[cluster_node_id];
+    bool is_static = (mesh.flags & MESH_STATIC) != 0;
 
-    Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
-    SamplerState hzb_sampler = SamplerDescriptorHeap[constant.hzb_sampler];
+    StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
+    StructuredBuffer<vsm_bounds> vsm_bounds = ResourceDescriptorHeap[constant.vsm_bounds_buffer];
+    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
 
-    float4 sphere_vs = mul(camera.matrix_v, mul(mesh.matrix_m, float4(cluster_node.bounding_sphere.xyz, 1.0)));
+    uint vsm_id = gs_vsms[parent_index];
+    vsm_data vsm = vsms[vsm_id];
+    uint4 page_bounds = is_static ? vsm_bounds[vsm_id].invalidated_bounds : vsm_bounds[vsm_id].required_bounds;
+
+    float4 sphere_vs = mul(vsm.matrix_v, mul(mesh.matrix_m, float4(cluster_node.bounding_sphere.xyz, 1.0)));
     sphere_vs.w = cluster_node.bounding_sphere.w * mesh.scale.w;
 
-    bool visible = true;
-
-#if CULL_STAGE == CULL_STAGE_MAIN_PASS
-    visible = cluster_node.check_lod(camera, mesh, constant.threshold) && frustum_cull(sphere_vs, camera);
+    camera_data camera;
+    camera.type = CAMERA_ORTHOGRAPHIC;
+    camera.matrix_v = vsm.matrix_v;
+    camera.near = -vsm.view_z_radius;
+    camera.pixels_per_unit = vsm.pixels_per_unit;
+    bool visible = cluster_node.check_lod(camera, mesh, constant.threshold);
 
     if (visible)
     {
-        float4 prev_sphere_vs = mul(camera.prev_matrix_v, mul(mesh.prev_matrix_m, float4(cluster_node.bounding_sphere.xyz, 1.0)));
-        prev_sphere_vs.w = sphere_vs.w;
-        if (!occlusion_cull(
-            prev_sphere_vs,
-            hzb,
-            hzb_sampler,
-            constant.hzb_width,
-            constant.hzb_height,
-            camera.prev_matrix_p,
-            camera.near,
-            camera.type))
+#ifdef USE_OCCLUSION
+        StructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
+        Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
+        SamplerState hzb_sampler = ResourceDescriptorHeap[constant.hzb_sampler];
+        if (!vsm_cull(vsm_id, page_bounds, sphere_vs, is_static, vsm, virtual_page_table, physical_page_table, hzb, hzb_sampler))
+#else
+        if (!vsm_cull(vsm_id, page_bounds, sphere_vs, is_static, vsm, virtual_page_table))
+#endif
         {
             visible = false;
-            InterlockedOr(gs_recheck_mask[parent_index], 1u << child_index);
         }
     }
-#else
-    if (gs_queue_offset + group_index < cluster_queue_state[0].cluster_node_recheck_size)
-    {
-        visible = gs_recheck_mask[parent_index] & (1u << child_index);
-    }
-    else
-    {
-        visible = cluster_node.check_lod(camera, mesh, constant.threshold) && frustum_cull(sphere_vs, camera);
-    }
-
-    visible = visible && occlusion_cull(sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.matrix_p, camera.near, camera.type);
-#endif
 
     if (visible)
     {
@@ -149,7 +161,12 @@ void process_cluster_node(uint group_index)
         {
             uint cluster_node_queue_rear = 0;
             InterlockedAdd(cluster_queue_state[0].cluster_node_queue_rear, 1, cluster_node_queue_rear);
-            cluster_queue[cluster_node_queue_rear] = pack_cluster_node_item(cluster_node_id, instance_id, 0);
+
+            cluster_node_item item;
+            item.vsm_id = vsm_id;
+            item.cluster_node_id = cluster_node_id;
+            item.instance_id = instance_id;
+            cluster_queue[cluster_node_queue_rear] = item.pack();
         }
         else
         {
@@ -159,7 +176,11 @@ void process_cluster_node(uint group_index)
 
             for (uint i = 0; i < cluster_node.child_count; ++i)
             {
-                cluster_queue[cluster_queue_rear + i] = pack_cluster_item(cluster_node.child_offset + i, instance_id, false);
+                cluster_item item;
+                item.vsm_id = vsm_id;
+                item.cluster_id = cluster_node.child_offset + i;
+                item.instance_id = instance_id;
+                cluster_queue[cluster_queue_rear + i] = item.pack();
             }
         }
     }
@@ -168,79 +189,66 @@ void process_cluster_node(uint group_index)
 void process_cluster(uint3 dtid)
 {
     RWStructuredBuffer<uint2> cluster_queue = ResourceDescriptorHeap[constant.cluster_queue];
-    RWStructuredBuffer<cluster_queue_state_data> cluster_queue_state = ResourceDescriptorHeap[constant.cluster_queue_state];
     StructuredBuffer<cluster_data> clusters = ResourceDescriptorHeap[scene.cluster_buffer];
 
     StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
     StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
     StructuredBuffer<geometry_data> geometries = ResourceDescriptorHeap[scene.geometry_buffer];
 
-    uint cluster_id;
-    uint instance_id;
-    bool recheck;
-    unpack_cluster_item(cluster_queue[dtid.x + get_cluster_offset()], cluster_id, instance_id, recheck);
+    cluster_item item = cluster_item::unpack(cluster_queue[dtid.x + get_cluster_offset()]);
 
-    instance_data instance = instances[instance_id];
+    instance_data instance = instances[item.instance_id];
     mesh_data mesh = meshes[instance.mesh_index];
     geometry_data geometry = geometries[instance.geometry_index];
 
-    cluster_data cluster = clusters[cluster_id];
+    cluster_data cluster = clusters[item.cluster_id];
     if (cluster.index_count == 0)
     {
         return;
     }
 
-    bool visible = true;
+    bool is_static = (mesh.flags & MESH_STATIC) != 0;
 
-    Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
-    SamplerState hzb_sampler = SamplerDescriptorHeap[constant.hzb_sampler];
-    
-    float4 sphere_vs = mul(camera.matrix_v, mul(mesh.matrix_m, float4(cluster.bounding_sphere.xyz, 1.0)));
+    StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
+    StructuredBuffer<vsm_bounds> vsm_bounds = ResourceDescriptorHeap[constant.vsm_bounds_buffer];
+    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+
+    vsm_data vsm = vsms[item.vsm_id];
+    uint4 page_bounds = is_static ? vsm_bounds[item.vsm_id].invalidated_bounds : vsm_bounds[item.vsm_id].required_bounds;
+
+    float4 sphere_vs = mul(vsm.matrix_v, mul(mesh.matrix_m, float4(cluster.bounding_sphere.xyz, 1.0)));
     sphere_vs.w = cluster.bounding_sphere.w * mesh.scale.w;
 
-#if CULL_STAGE == CULL_STAGE_MAIN_PASS
-    visible = cluster.check_lod(camera, mesh, constant.threshold) && frustum_cull(sphere_vs, camera);
+    camera_data camera;
+    camera.type = CAMERA_ORTHOGRAPHIC;
+    camera.matrix_v = vsm.matrix_v;
+    camera.near = -vsm.view_z_radius;
+    camera.pixels_per_unit = vsm.pixels_per_unit;
+    bool visible = cluster.check_lod(camera, mesh, constant.threshold);
 
     if (visible)
     {
-        float4 prev_sphere_vs = mul(camera.prev_matrix_v, mul(mesh.prev_matrix_m, float4(cluster.bounding_sphere.xyz, 1.0)));
-        prev_sphere_vs.w = sphere_vs.w;
-        if (!occlusion_cull(
-                prev_sphere_vs,
-                hzb,
-                hzb_sampler,
-                constant.hzb_width,
-                constant.hzb_height,
-                camera.prev_matrix_p,
-                camera.near,
-                camera.type))
+#ifdef USE_OCCLUSION
+        StructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
+        Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
+        SamplerState hzb_sampler = ResourceDescriptorHeap[constant.hzb_sampler];
+        if (!vsm_cull(item.vsm_id, page_bounds, sphere_vs, is_static, vsm, virtual_page_table, physical_page_table, hzb, hzb_sampler))
+#else
+        if (!vsm_cull(item.vsm_id, page_bounds, sphere_vs, is_static, vsm, virtual_page_table))
+#endif
         {
             visible = false;
-            cluster_queue[dtid.x + get_cluster_offset()] = pack_cluster_item(cluster_id, instance_id, true);
         }
     }
-#else
-    if (dtid.x < cluster_queue_state[0].cluster_recheck_size)
-    {
-        visible = recheck;
-    }
-    else
-    {
-        visible = cluster.check_lod(camera, mesh, constant.threshold) && frustum_cull(sphere_vs, camera);
-    }
-
-    visible = visible && occlusion_cull(sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.matrix_p, camera.near, camera.type);
-#endif
 
     if (visible)
     {
-        StructuredBuffer<uint> batch_buffer = ResourceDescriptorHeap[scene.batch_buffer];
         RWStructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.draw_count_buffer];
 
-        uint batch_index = instance.batch_index;
         uint command_index = 0;
-        InterlockedAdd(draw_counts[batch_index], 1, command_index);
-        command_index += batch_buffer[batch_index];
+        InterlockedAdd(draw_counts[is_static ? 0 : 1], 1, command_index);
+
+        command_index += is_static ? STATIC_INSTANCE_DRAW_OFFSET : DYNAMIC_INSTANCE_DRAW_OFFSET;
 
         if (command_index < constant.max_draw_command_count)
         {
@@ -254,12 +262,13 @@ void process_cluster(uint3 dtid)
             RWStructuredBuffer<draw_command> draw_commands = ResourceDescriptorHeap[constant.draw_buffer];
             draw_commands[command_index] = command;
 
-            draw_info info;
-            info.instance_id = instance_id;
-            info.cluster_id = cluster_id;
+            vsm_draw_info draw_info;
+            draw_info.vsm_id = item.vsm_id;
+            draw_info.instance_id = item.instance_id;
+            draw_info.cluster_id = item.cluster_id;
 
-            RWStructuredBuffer<draw_info> draw_infos = ResourceDescriptorHeap[constant.draw_info_buffer];
-            draw_infos[command_index] = info;
+            RWStructuredBuffer<vsm_draw_info> draw_infos = ResourceDescriptorHeap[constant.draw_info_buffer];
+            draw_infos[command_index] = draw_info;
         }
     }
 }
@@ -280,39 +289,23 @@ void cluster_node_cull(uint group_index)
 
     bool ready = group_index < MAX_CLUSTER_NODE_PER_GROUP && queue_index < cluster_queue_state[0].cluster_node_queue_prev_rear;
 
-    uint cluster_id;
-    uint instance_id;
-
     if (ready)
     {
         StructuredBuffer<cluster_node_data> cluster_nodes = ResourceDescriptorHeap[constant.cluster_node_buffer];
 
-        uint recheck_mask;
-        unpack_cluster_node_item(cluster_queue[queue_index], cluster_id, instance_id, recheck_mask);
+        cluster_node_item item = cluster_node_item::unpack(cluster_queue[queue_index]);
 
-        cluster_node_data cluster_node = cluster_nodes[cluster_id];
-        gs_cluster_node[group_index] = uint3(cluster_node.child_offset, cluster_node.child_count, instance_id);
+        cluster_node_data cluster_node = cluster_nodes[item.cluster_node_id];
+        gs_cluster_node[group_index] = uint3(cluster_node.child_offset, cluster_node.child_count, item.instance_id);
+        gs_vsms[group_index] = item.vsm_id;
 
         InterlockedOr(gs_cluster_node_mask, 1u << group_index);
-
-#if CULL_STAGE == CULL_STAGE_MAIN_PASS
-        gs_recheck_mask[group_index] = 0;
-#else
-        gs_recheck_mask[group_index] = recheck_mask;
-#endif
     }
     GroupMemoryBarrierWithGroupSync();
 
     if (gs_cluster_node_mask != 0)
     {
         process_cluster_node(group_index);
-    }
-
-    GroupMemoryBarrierWithGroupSync();
-
-    if (ready)
-    {
-        cluster_queue[queue_index] = pack_cluster_node_item(cluster_id, instance_id, gs_recheck_mask[group_index]);
     }
 }
 

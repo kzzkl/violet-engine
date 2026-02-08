@@ -15,7 +15,7 @@ public:
 
         rdg_buffer* vsm_buffer{nullptr};
         rdg_buffer* vsm_virtual_page_table{nullptr};
-        rdg_texture* vsm_physical_texture{nullptr};
+        rdg_texture* vsm_physical_shadow_map{nullptr};
     };
 
     void add(render_graph& graph, const parameter& parameter);

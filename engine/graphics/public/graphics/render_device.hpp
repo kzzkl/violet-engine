@@ -80,7 +80,9 @@ public:
     rhi_shader* get_shader(std::span<const std::wstring> defines = {})
     {
         shader_key key = {
-            .index = shader_index::value<T>(),
+            .path = std::string(T::path),
+            .entry_point = std::string(T::entry_point),
+            .stage = T::stage,
         };
         key.defines.assign(defines.begin(), defines.end());
 
@@ -253,18 +255,17 @@ public:
     }
 
 private:
-    struct shader_index : public type_index<shader_index, std::uint32_t, 0>
-    {
-    };
-
     struct shader_key
     {
-        std::uint32_t index;
+        std::string path;
+        std::string entry_point;
+        rhi_shader_stage_flag stage;
         std::vector<std::wstring> defines;
 
         bool operator==(const shader_key& other) const noexcept
         {
-            return index == other.index && defines == other.defines;
+            return path == other.path && entry_point == other.entry_point && stage == other.stage &&
+                   defines == other.defines;
         }
     };
 
@@ -272,7 +273,11 @@ private:
     {
         std::size_t operator()(const shader_key& key) const noexcept
         {
-            std::uint64_t hash = std::hash<std::uint32_t>()(key.index);
+            std::uint64_t hash = 0;
+            hash = hash::combine(hash, std::hash<std::string>()(key.path));
+            hash = hash::combine(hash, std::hash<std::string>()(key.entry_point));
+            hash = hash::combine(hash, std::hash<rhi_shader_stage_flag>()(key.stage));
+
             for (const auto& macro : key.defines)
             {
                 hash ^= hash::xx_hash(macro.data(), macro.size());

@@ -10,9 +10,6 @@ struct constant_data
     uint depth_buffer;
     uint vsm_buffer;
     uint vsm_virtual_page_table;
-    uint vsm_physical_page_table;
-    uint vsm_bounds_buffer;
-    uint vsm_physical_texture;
     uint draw_count_buffer;
     uint width;
     uint height;
@@ -48,7 +45,8 @@ struct debug_data
     uint cache_hit;
     uint rendered;
     uint unmapped;
-    uint drawcall;
+    uint static_drawcall;
+    uint dynamic_drawcall;
 };
 
 [numthreads(8, 8, 1)]
@@ -56,7 +54,7 @@ void debug_info(uint3 dtid : SV_DispatchThreadID)
 {
     RWStructuredBuffer<debug_data> debug_infos = ResourceDescriptorHeap[constant.debug_info];
 
-    StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[scene.directional_vsm_buffer];
+    StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[scene.vsm_directional_buffer];
     StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
@@ -81,7 +79,7 @@ void debug_info(uint3 dtid : SV_DispatchThreadID)
             vsm_data vsm = vsms[vsm_id + cascade];
 
             uint virtual_page_index = get_virtual_page_index(vsm_id + cascade, virtual_page_coord);
-            vsm_virtual_page virtual_page = unpack_virtual_page(virtual_page_table[virtual_page_index]);
+            vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[virtual_page_index]);
 
             if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) == 0)
             {
@@ -113,7 +111,8 @@ void debug_info(uint3 dtid : SV_DispatchThreadID)
     if (dtid.x == 0 && dtid.y == 0)
     {
         StructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.draw_count_buffer];
-        debug_infos[constant.debug_info_index].drawcall = draw_counts[0];
+        debug_infos[constant.debug_info_index].static_drawcall = draw_counts[0];
+        debug_infos[constant.debug_info_index].dynamic_drawcall = draw_counts[1];
     }
 }
 
@@ -133,7 +132,7 @@ void debug_page(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[scene.directional_vsm_buffer];
+    StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[scene.vsm_directional_buffer];
     StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     RWTexture2D<float4> debug_output = ResourceDescriptorHeap[constant.debug_output];
@@ -183,7 +182,7 @@ void debug_page_cache(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[scene.directional_vsm_buffer];
+    StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[scene.vsm_directional_buffer];
     StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
@@ -212,7 +211,7 @@ void debug_page_cache(uint3 dtid : SV_DispatchThreadID)
         uint2 virtual_page_coord = floor((position_ls.xy * 0.5 + 0.5) * VIRTUAL_PAGE_TABLE_SIZE);
         uint virtual_page_index = get_virtual_page_index(vsm_id, virtual_page_coord);
 
-        vsm_virtual_page virtual_page = unpack_virtual_page(virtual_page_table[virtual_page_index]);
+        vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[virtual_page_index]);
         if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) != 0 && (virtual_page.flags & VIRTUAL_PAGE_FLAG_CACHE_VALID) == 0)
         {
             debug_output[dtid.xy] = float4(1.0, 0.0, 0.0, 1.0);

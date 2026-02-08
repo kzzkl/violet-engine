@@ -4,7 +4,6 @@
 #include "components/hierarchy_component.hpp"
 #include "components/light_component.hpp"
 #include "components/mesh_component.hpp"
-#include "components/orbit_control_component.hpp"
 #include "components/scene_component.hpp"
 #include "components/skybox_component.hpp"
 #include "components/transform_component.hpp"
@@ -12,10 +11,12 @@
 #include "graphics/graphics_system.hpp"
 #include "graphics/materials/pbr_material.hpp"
 #include "graphics/materials/unlit_material.hpp"
+#include "graphics/tools/geometry_tool.hpp"
 #include "sample/deferred_renderer_imgui.hpp"
 #include "sample/gltf_loader.hpp"
 #include "sample/imgui_system.hpp"
 #include "window/window_system.hpp"
+#include <filesystem>
 
 namespace violet
 {
@@ -69,8 +70,10 @@ bool sample_system::initialize(const dictionary& config)
     return true;
 }
 
-entity sample_system::load_model(std::string_view model_path)
+entity sample_system::load_model(std::string_view model_path, load_options options)
 {
+    namespace fs = std::filesystem;
+
     auto& world = get_world();
 
     gltf_loader loader;
@@ -85,22 +88,81 @@ entity sample_system::load_model(std::string_view model_path)
         m_textures.push_back(std::move(texture));
     }
 
-    std::size_t geometry_offset = m_geometries.size();
-    for (const auto& geometry_data : result->geometries)
+    static constexpr std::string_view cluster_dir = "assets/clusters";
+    if (options & LOAD_OPTION_GENERATE_CLUSTERS)
     {
-        auto model_geometry = std::make_unique<geometry>();
-        model_geometry->set_positions(geometry_data.positions);
-        model_geometry->set_normals(geometry_data.normals);
-        model_geometry->set_tangents(geometry_data.tangents);
-        model_geometry->set_texcoords(geometry_data.texcoords);
-        model_geometry->set_indexes(geometry_data.indexes);
+        fs::create_directories(cluster_dir);
+    }
 
-        for (const auto& submesh : geometry_data.submeshes)
+    std::size_t geometry_offset = m_geometries.size();
+    for (std::size_t i = 0; i < result->geometries.size(); ++i)
+    {
+        const auto& geometry_data = result->geometries[i];
+
+        auto model_geometry = std::make_unique<geometry>();
+
+        if (options & LOAD_OPTION_GENERATE_CLUSTERS)
         {
-            model_geometry->add_submesh(
-                submesh.vertex_offset,
-                submesh.index_offset,
-                submesh.index_count);
+            auto cluster_path = std::format(
+                "{}/{}.cluster_{}",
+                cluster_dir,
+                fs::path(model_path).filename().string(),
+                i);
+
+            geometry_tool::cluster_output output;
+            if (fs::exists(cluster_path))
+            {
+                output.load(cluster_path);
+            }
+            else
+            {
+                geometry_tool::cluster_input input = {
+                    .positions = geometry_data.positions,
+                    .normals = geometry_data.normals,
+                    .tangents = geometry_data.tangents,
+                    .texcoords = geometry_data.texcoords,
+                    .indexes = geometry_data.indexes,
+                };
+
+                for (const auto& submesh_data : geometry_data.submeshes)
+                {
+                    input.submeshes.push_back({
+                        .vertex_offset = submesh_data.vertex_offset,
+                        .index_offset = submesh_data.index_offset,
+                        .index_count = submesh_data.index_count,
+                    });
+                }
+
+                output = geometry_tool::generate_clusters(input);
+                output.save(cluster_path);
+            }
+
+            model_geometry->set_positions(output.positions);
+            model_geometry->set_normals(output.normals);
+            model_geometry->set_tangents(output.tangents);
+            model_geometry->set_texcoords(output.texcoords);
+            model_geometry->set_indexes(output.indexes);
+
+            for (const auto& submesh : output.submeshes)
+            {
+                model_geometry->add_submesh(submesh.clusters, submesh.cluster_nodes);
+            }
+        }
+        else
+        {
+            model_geometry->set_positions(geometry_data.positions);
+            model_geometry->set_normals(geometry_data.normals);
+            model_geometry->set_tangents(geometry_data.tangents);
+            model_geometry->set_texcoords(geometry_data.texcoords);
+            model_geometry->set_indexes(geometry_data.indexes);
+
+            for (const auto& submesh : geometry_data.submeshes)
+            {
+                model_geometry->add_submesh(
+                    submesh.vertex_offset,
+                    submesh.index_offset,
+                    submesh.index_count);
+            }
         }
 
         m_geometries.push_back(std::move(model_geometry));
@@ -169,6 +231,7 @@ entity sample_system::load_model(std::string_view model_path)
 
             auto& entity_mesh = world.get_component<mesh_component>(entity);
             entity_mesh.geometry = m_geometries[mesh_data.geometry + geometry_offset].get();
+            entity_mesh.flags |= options & LOAD_OPTION_DYNAMIC_MESH ? 0 : MESH_STATIC;
 
             for (std::size_t j = 0; j < mesh_data.submeshes.size(); ++j)
             {

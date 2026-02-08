@@ -71,7 +71,9 @@ private:
     rdg_buffer* m_vsm_buffer{nullptr};
     rdg_buffer* m_vsm_virtual_page_table{nullptr};
     rdg_buffer* m_vsm_physical_page_table{nullptr};
-    rdg_texture* m_vsm_physical_texture{nullptr};
+    rdg_texture* m_vsm_physical_shadow_map_static{nullptr};
+    rdg_texture* m_vsm_physical_shadow_map_final{nullptr};
+    rdg_texture* m_vsm_hzb{nullptr};
 
     debug_mode m_debug_mode{DEBUG_MODE_NONE};
     rdg_texture* m_debug_output{nullptr};

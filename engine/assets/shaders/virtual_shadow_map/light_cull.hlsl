@@ -40,7 +40,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     if (light.type == LIGHT_DIRECTIONAL)
     {
-        StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[scene.directional_vsm_buffer];
+        StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[scene.vsm_directional_buffer];
 
         uint vsm_id = get_directional_vsm_id(directional_vsms, light.vsm_address, constant.camera_id);
 

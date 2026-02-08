@@ -17,7 +17,7 @@ class gpu_buffer_uploader;
 class vsm_manager
 {
 public:
-    vsm_manager();
+    vsm_manager(bool enable_occlusion = false);
     vsm_manager(const vsm_manager&) = delete;
 
     vsm_manager& operator=(const vsm_manager&) = delete;
@@ -44,9 +44,19 @@ public:
         return m_physical_page_table.get();
     }
 
-    rhi_texture* get_vsm_physical_texture()
+    rhi_texture* get_vsm_physical_shadow_map_static()
     {
-        return m_physical_texture.get();
+        return m_physical_shadow_map_static.get();
+    }
+
+    rhi_texture* get_vsm_physical_shadow_map_final()
+    {
+        return m_physical_shadow_map_final.get();
+    }
+
+    rhi_texture* get_vsm_hzb()
+    {
+        return m_hzb.get();
     }
 
 private:
@@ -60,6 +70,10 @@ private:
             mat4f matrix_v;
             mat4f matrix_p;
             mat4f matrix_vp;
+            float pixels_per_unit;
+            std::uint32_t padding0;
+            std::uint32_t padding1;
+            std::uint32_t padding2;
         };
 
         light_type light_type;
@@ -72,6 +86,8 @@ private:
 
         float view_z;
         float view_z_radius;
+
+        float pixels_per_unit;
     };
 
     static constexpr std::uint32_t get_vsm_count(light_type light_type);
@@ -81,7 +97,9 @@ private:
     rhi_ptr<rhi_buffer> m_virtual_page_table;
     rhi_ptr<rhi_buffer> m_physical_page_table;
 
-    rhi_ptr<rhi_texture> m_physical_texture;
+    rhi_ptr<rhi_texture> m_physical_shadow_map_static;
+    rhi_ptr<rhi_texture> m_physical_shadow_map_final;
+    rhi_ptr<rhi_texture> m_hzb;
 
     std::unordered_map<render_id, vsm_directional_light_data> m_directional_lights;
 };

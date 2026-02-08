@@ -10,7 +10,6 @@ struct constant_data
     uint lru_state;
     uint lru_buffer;
     uint lru_curr_index;
-    uint clear_physical_page_dispatch_buffer;
 };
 PushConstant(constant_data, constant);
 
@@ -19,19 +18,19 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
     StructuredBuffer<uint> vsm_ids = ResourceDescriptorHeap[constant.visible_vsm_ids];
 
-    uint2 page_coord = dtid.xy;
+    uint2 virtual_page_coord = dtid.xy;
     uint vsm_id = vsm_ids[dtid.z];
 
     RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
-    uint virtual_page_index = get_virtual_page_index(vsm_id, page_coord);
+    uint virtual_page_index = get_virtual_page_index(vsm_id, virtual_page_coord);
 
-    vsm_virtual_page virtual_page = unpack_virtual_page(virtual_page_table[virtual_page_index]);
+    vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[virtual_page_index]);
 
     if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) != 0 && (virtual_page.flags & VIRTUAL_PAGE_FLAG_CACHE_VALID) == 0)
     {
         StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
 
-        RWStructuredBuffer<vsm_physical_page> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
+        RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
         RWStructuredBuffer<vsm_lru_state> lru_states = ResourceDescriptorHeap[constant.lru_state];
         StructuredBuffer<uint> lru_buffer = ResourceDescriptorHeap[constant.lru_buffer];
 
@@ -41,7 +40,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         if (lru_index >= lru_states[constant.lru_curr_index].tail)
         {
             virtual_page.flags = VIRTUAL_PAGE_FLAG_REQUEST | VIRTUAL_PAGE_FLAG_UNMAPPED;
-            virtual_page_table[virtual_page_index] = pack_virtual_page(virtual_page);
+            virtual_page_table[virtual_page_index] = virtual_page.pack();
             return;
         }
 
@@ -50,15 +49,13 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         virtual_page.physical_page_coord.x = free_physical_page_index % PHYSICAL_PAGE_TABLE_SIZE;
         virtual_page.physical_page_coord.y = free_physical_page_index / PHYSICAL_PAGE_TABLE_SIZE;
         virtual_page.flags = VIRTUAL_PAGE_FLAG_REQUEST;
-        virtual_page_table[virtual_page_index] = pack_virtual_page(virtual_page);
+        virtual_page_table[virtual_page_index] = virtual_page.pack();
 
         vsm_physical_page physical_page;
-        physical_page.virtual_page_coord = page_coord + vsms[vsm_id].page_coord;
+        physical_page.virtual_page_coord = virtual_page_coord + vsms[vsm_id].page_coord;
         physical_page.vsm_id = vsm_id;
-        physical_page.flags = PHYSICAL_PAGE_FLAG_RESIDENT | PHYSICAL_PAGE_FLAG_REQUEST;
-        physical_page_table[free_physical_page_index] = physical_page;
-
-        RWStructuredBuffer<dispatch_command> clear_physical_page_commands = ResourceDescriptorHeap[constant.clear_physical_page_dispatch_buffer];
-        InterlockedAdd(clear_physical_page_commands[0].z, 1);
+        physical_page.flags = PHYSICAL_PAGE_FLAG_RESIDENT | PHYSICAL_PAGE_FLAG_REQUEST | PHYSICAL_PAGE_FLAG_HZB_DIRTY;
+        physical_page.frame = 0;
+        physical_page_table[free_physical_page_index] = physical_page.pack();
     }
 }

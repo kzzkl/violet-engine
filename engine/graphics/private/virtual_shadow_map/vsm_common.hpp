@@ -22,6 +22,4 @@ static constexpr std::uint32_t VSM_VIRTUAL_RESOLUTION =
     VSM_VIRTUAL_PAGE_TABLE_SIZE * VSM_PAGE_RESOLUTION;
 static constexpr std::uint32_t VSM_PHYSICAL_RESOLUTION =
     VSM_PHYSICAL_PAGE_TABLE_SIZE * VSM_PAGE_RESOLUTION;
-
-static constexpr std::uint32_t MAX_SHADOW_DRAWS_PER_FRAME = 1024 * 100;
 } // namespace violet

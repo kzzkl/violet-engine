@@ -10,13 +10,21 @@ namespace violet
 class sample_system : public system
 {
 public:
+    enum load_option
+    {
+        LOAD_OPTION_NONE = 0,
+        LOAD_OPTION_DYNAMIC_MESH = 1 << 0,
+        LOAD_OPTION_GENERATE_CLUSTERS = 1 << 1,
+    };
+    using load_options = std::uint32_t;
+
     sample_system(std::string_view name);
 
     void install(application& app) override;
     bool initialize(const dictionary& config) override;
 
 protected:
-    entity load_model(std::string_view model_path);
+    entity load_model(std::string_view model_path, load_options options = LOAD_OPTION_NONE);
 
     entity get_light() const noexcept
     {

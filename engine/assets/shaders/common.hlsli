@@ -54,11 +54,18 @@ struct geometry_data
     uint padding0;
 };
 
+static const uint MESH_STATIC = 1 << 0;
+
 struct mesh_data
 {
     float4x4 matrix_m;
     float4 scale;
     float4x4 prev_matrix_m;
+
+    uint flags;
+    uint padding0;
+    uint padding1;
+    uint padding2;
 };
 
 struct instance_data
@@ -67,16 +74,6 @@ struct instance_data
     uint geometry_index;
     uint batch_index;
     uint material_address;
-};
-
-struct cluster_data
-{
-    float4 bounding_sphere;
-    float4 lod_bounds;
-    float lod_error;
-    uint index_offset;
-    uint index_count;
-    uint padding0;
 };
 
 static const uint LIGHT_DIRECTIONAL = 0;
@@ -109,11 +106,14 @@ struct scene_data
     uint irradiance;
     uint prefilter;
 
-    uint directional_vsm_buffer;
+    uint vsm_buffer;
+    uint vsm_virtual_page_table;
+    uint vsm_physical_shadow_map;
+    uint vsm_directional_buffer;
 };
 
-static const uint CAMERA_ORTHOGRAPHIC = 0;
-static const uint CAMERA_PERSPECTIVE = 1;
+static const uint CAMERA_PERSPECTIVE = 0;
+static const uint CAMERA_ORTHOGRAPHIC = 1;
 
 struct camera_data
 {
@@ -137,10 +137,17 @@ struct camera_data
     float near;
     float far;
 
+    float aspect;
     uint type;
-    float fov;
-    float width;
-    float height;
+    float perspective_fov;
+    float orthographic_size;
+
+    float4 frustum; // perspective frustum
+
+    float pixels_per_unit;
+    uint padding0;
+    uint padding1;
+    uint padding2;
 };
 
 SamplerState get_point_repeat_sampler()

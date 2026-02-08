@@ -4,22 +4,6 @@
 
 namespace violet
 {
-namespace
-{
-vec4f get_frustum(const mat4x4f& matrix_p)
-{
-    mat4f matrix_p_t = matrix::transpose(matrix_p);
-
-    vec4f frustum_x = matrix_p_t[3] + matrix_p_t[0];
-    frustum_x /= vector::length(vec3f(frustum_x));
-
-    vec4f frustum_y = matrix_p_t[3] + matrix_p_t[1];
-    frustum_y /= vector::length(vec3f(frustum_y));
-
-    return vec4f(frustum_x.x, frustum_x.z, frustum_y.y, frustum_y.z);
-}
-} // namespace
-
 struct prepare_cluster_cull_cs : public shader_cs
 {
     static constexpr std::string_view path = "assets/shaders/cull/prepare_cluster_cull.hlsl";
@@ -46,7 +30,6 @@ struct instance_cull_cs : public shader_cs
         std::uint32_t hzb_sampler;
         std::uint32_t hzb_width;
         std::uint32_t hzb_height;
-        vec4f frustum;
         std::uint32_t draw_buffer;
         std::uint32_t draw_count_buffer;
         std::uint32_t draw_info_buffer;
@@ -73,10 +56,8 @@ struct cluster_cull_cs : public shader_cs
         std::uint32_t hzb_sampler;
         std::uint32_t hzb_width;
         std::uint32_t hzb_height;
-        vec4f frustum;
 
         float threshold;
-        float lod_scale;
 
         std::uint32_t cluster_node_buffer;
         std::uint32_t cluster_queue;
@@ -113,8 +94,6 @@ void cull_pass::add(render_graph& graph, const parameter& parameter)
         .max_level = -1.0f,
         .reduction_mode = RHI_SAMPLER_REDUCTION_MODE_MIN,
     });
-
-    m_frustum = get_frustum(graph.get_camera().get_matrix_p());
 
     m_cluster_queue = parameter.cluster_queue;
     m_cluster_queue_state = parameter.cluster_queue_state;
@@ -242,7 +221,6 @@ void cull_pass::add_instance_cull_pass(render_graph& graph)
     {
         rdg_texture_srv hzb;
         rhi_sampler* hzb_sampler;
-        vec4f frustum;
 
         rdg_buffer_uav draw_buffer;
         rdg_buffer_uav draw_count_buffer;
@@ -262,7 +240,6 @@ void cull_pass::add_instance_cull_pass(render_graph& graph)
         RDG_PASS_COMPUTE,
         [&](pass_data& data, rdg_pass& pass)
         {
-            data.frustum = m_frustum;
             data.hzb = pass.add_texture_srv(m_hzb, RHI_PIPELINE_STAGE_COMPUTE);
             data.hzb_sampler = m_hzb_sampler;
 
@@ -324,7 +301,6 @@ void cull_pass::add_instance_cull_pass(render_graph& graph)
                     .hzb_sampler = data.hzb_sampler->get_bindless(),
                     .hzb_width = extent.width,
                     .hzb_height = extent.height,
-                    .frustum = data.frustum,
                     .draw_buffer = data.draw_buffer.get_bindless(),
                     .draw_count_buffer = data.draw_count_buffer.get_bindless(),
                     .draw_info_buffer = data.draw_info_buffer.get_bindless(),
@@ -355,7 +331,6 @@ void cull_pass::add_cluster_cull_pass(render_graph& graph)
     {
         rdg_texture_srv hzb;
         rhi_sampler* hzb_sampler;
-        vec4f frustum;
 
         rdg_buffer_uav cluster_queue;
         rdg_buffer_uav cluster_queue_state;
@@ -366,10 +341,6 @@ void cull_pass::add_cluster_cull_pass(render_graph& graph)
 
         rdg_buffer_ref dispatch_buffer;
     };
-
-    const auto& camera = graph.get_camera();
-    float lod_scale = static_cast<float>(camera.get_render_target()->get_extent().height) * 0.5f /
-                      std::tan(camera.get_fov() * 0.5f);
 
     std::uint32_t cluster_node_depth =
         render_device::instance().get_geometry_manager()->get_cluster_node_depth();
@@ -390,7 +361,6 @@ void cull_pass::add_cluster_cull_pass(render_graph& graph)
             {
                 data.hzb = pass.add_texture_srv(m_hzb, RHI_PIPELINE_STAGE_COMPUTE);
                 data.hzb_sampler = m_hzb_sampler;
-                data.frustum = m_frustum;
 
                 data.cluster_queue =
                     pass.add_buffer_uav(m_cluster_queue, RHI_PIPELINE_STAGE_COMPUTE);
@@ -431,9 +401,7 @@ void cull_pass::add_cluster_cull_pass(render_graph& graph)
                     .hzb_sampler = data.hzb_sampler->get_bindless(),
                     .hzb_width = extent.width,
                     .hzb_height = extent.height,
-                    .frustum = data.frustum,
                     .threshold = 1.0f,
-                    .lod_scale = lod_scale,
                     .cluster_queue = data.cluster_queue.get_bindless(),
                     .cluster_queue_state = data.cluster_queue_state.get_bindless(),
                     .max_cluster_count = graphics_config::get_max_cluster_count(),

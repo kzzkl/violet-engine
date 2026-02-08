@@ -1,4 +1,5 @@
 #include "components/camera_component.hpp"
+#include "components/light_component.hpp"
 #include "components/mesh_component.hpp"
 #include "components/scene_component.hpp"
 #include "components/transform_component.hpp"
@@ -29,18 +30,9 @@ public:
             return false;
         }
 
-        m_root = load_model(config["model"]);
+        m_root = load_model(config["model"], LOAD_OPTION_DYNAMIC_MESH);
 
         auto& world = get_world();
-
-        // Camera.
-        auto camera = get_camera();
-        auto& main_camera = world.get_component<camera_component>(camera);
-        // main_camera.type = CAMERA_ORTHOGRAPHIC;
-        // main_camera.orthographic.width = 50.0f;
-        // main_camera.orthographic.height = 50.0f;
-        // main_camera.near = 0.5f;
-        // main_camera.far = 1000.0f;
 
         m_box_geometry = std::make_unique<box_geometry>();
 
@@ -57,6 +49,7 @@ public:
 
         auto& plane_mesh = world.get_component<mesh_component>(m_plane);
         plane_mesh.geometry = m_box_geometry.get();
+        plane_mesh.flags |= MESH_STATIC;
         plane_mesh.submeshes.push_back({
             .index = 0,
             .material = m_pbr_material.get(),
@@ -72,6 +65,7 @@ public:
 
             auto& box_mesh = world.get_component<mesh_component>(m_boxes[i]);
             box_mesh.geometry = m_box_geometry.get();
+            box_mesh.flags |= MESH_STATIC;
 
             if (i % 2 == 0)
             {
@@ -143,24 +137,45 @@ private:
             static float rotate_x = 0.0f;
             static float rotate_y = 0.0f;
 
-            bool dirty = false;
+            bool transform_dirty = false;
+            bool ligth_dirty = false;
+
+            static float color[3] = {1.0f, 1.0f, 1.0f};
+            static float intensity = 1.0f;
+
+            if (ImGui::ColorEdit3("Color", color))
+            {
+                ligth_dirty = true;
+            }
+
+            if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 10.0f))
+            {
+                ligth_dirty = true;
+            }
 
             if (ImGui::SliderFloat("Rotate X", &rotate_x, 0.0, 360.0))
             {
-                dirty = true;
+                transform_dirty = true;
             }
 
             if (ImGui::SliderFloat("Rotate Y", &rotate_y, 0.0, 360.0))
             {
-                dirty = true;
+                transform_dirty = true;
             }
 
-            if (dirty)
+            if (transform_dirty)
             {
                 auto& transform = world.get_component<transform_component>(get_light());
                 transform.set_rotation(
                     quaternion::from_euler(
                         vec3f{math::to_radians(rotate_x), math::to_radians(rotate_y), 0.0f}));
+            }
+
+            if (ligth_dirty)
+            {
+                auto& light = world.get_component<light_component>(get_light());
+                light.color = {.x = color[0], .y = color[1], .z = color[2]};
+                light.color *= intensity;
             }
         }
 
@@ -226,7 +241,11 @@ private:
                 "VSM Page Cache",
             };
 
-            if (ImGui::Combo("Debug Mode", &debug_mode, debug_mode_items, 3))
+            if (ImGui::Combo(
+                    "Debug Mode",
+                    &debug_mode,
+                    debug_mode_items,
+                    IM_ARRAYSIZE(debug_mode_items)))
             {
                 renderer->set_debug_mode(static_cast<deferred_renderer::debug_mode>(debug_mode));
             }
@@ -237,7 +256,11 @@ private:
                 "VSM",
             };
 
-            if (ImGui::Combo("Debug Info", &debug_info, debug_info_items, 2))
+            if (ImGui::Combo(
+                    "Debug Info",
+                    &debug_info,
+                    debug_info_items,
+                    IM_ARRAYSIZE(debug_info_items)))
             {
                 auto* vsm = renderer->get_feature<vsm_render_feature>();
                 vsm->set_debug_info(debug_info == 1);
@@ -251,7 +274,8 @@ private:
                 ImGui::Text("Cache Hit: %d", debug_info.cache_hit);
                 ImGui::Text("Cache Miss: %d", debug_info.rendered);
                 ImGui::Text("Unmapped: %d", debug_info.unmapped);
-                ImGui::Text("Drawcall: %d", debug_info.drawcall);
+                ImGui::Text("Static Drawcall: %d", debug_info.static_drawcall);
+                ImGui::Text("Dynamic Drawcall: %d", debug_info.dynamic_drawcall);
             }
         }
     }

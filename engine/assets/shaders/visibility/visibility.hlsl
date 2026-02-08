@@ -1,3 +1,4 @@
+#include "cluster.hlsli"
 #include "mesh.hlsli"
 #include "visibility/visibility_utils.hlsli"
 

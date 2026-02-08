@@ -46,7 +46,6 @@ private:
 
     rdg_texture* m_hzb{nullptr};
     rhi_sampler* m_hzb_sampler{nullptr};
-    vec4f m_frustum;
 
     rdg_buffer* m_draw_buffer{nullptr};
     rdg_buffer* m_draw_count_buffer{nullptr};

@@ -17,6 +17,7 @@ private:
     void add_gbuffer_pass(render_graph& graph, bool main_pass);
     void add_hzb_pass(render_graph& graph);
     void add_gtao_pass(render_graph& graph);
+    void add_shadow_pass(render_graph& graph);
     void add_shading_pass(render_graph& graph);
     void add_skybox_pass(render_graph& graph);
     void add_transparent_pass(render_graph& graph);
@@ -42,6 +43,12 @@ private:
     rdg_buffer* m_draw_buffer{nullptr};
     rdg_buffer* m_draw_count_buffer{nullptr};
     rdg_buffer* m_draw_info_buffer{nullptr};
+
+    rdg_buffer* m_vsm_buffer{nullptr};
+    rdg_buffer* m_vsm_virtual_page_table{nullptr};
+    rdg_buffer* m_vsm_physical_page_table{nullptr};
+    rdg_texture* m_vsm_physical_shadow_map_static{nullptr};
+    rdg_texture* m_vsm_physical_shadow_map_final{nullptr};
 
     imgui_pass m_imgui_pass;
 };

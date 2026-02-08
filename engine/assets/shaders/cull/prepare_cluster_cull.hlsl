@@ -1,5 +1,6 @@
 #include "common.hlsli"
 #include "cull/cull.hlsli"
+#include "cluster.hlsli"
 
 struct constant_data
 {

@@ -154,10 +154,10 @@ fs_output fs_main(vs_output input, uint primitive_id : SV_PrimitiveID)
     // }
     // else if (input.ndc_x < 0.6666)
     // {
-    //     return shading_pbr(input);
+        return shading_pbr(input);
     // }
     // else
-    {
-        return shading_cluster(input);
-    }
+    // {
+    //     return shading_cluster(input);
+    // }
 }

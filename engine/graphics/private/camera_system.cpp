@@ -9,6 +9,18 @@ namespace violet
 {
 namespace
 {
+std::uint32_t previous_pow2(std::uint32_t v)
+{
+    std::uint32_t r = 1;
+
+    while (r * 2 < v)
+    {
+        r *= 2;
+    }
+
+    return r;
+}
+
 shader::camera_data get_camera_data(
     const camera_component& camera,
     const transform_world_component& transform)
@@ -24,34 +36,47 @@ shader::camera_data get_camera_data(
         vec2f{0.062500f, 0.888889f},
     };
 
-    rhi_texture_extent extent = camera.get_extent();
+    float width = static_cast<float>(camera.get_extent().width);
+    float height = static_cast<float>(camera.get_extent().height);
 
     shader::camera_data result = {
         .position = transform.get_position(),
         .near = camera.near,
         .far = camera.far,
+        .aspect = width / height,
         .type = static_cast<std::uint32_t>(camera.type),
-        .fov = camera.perspective.fov,
-        .width = camera.orthographic.width,
-        .height = camera.orthographic.height,
+        .perspective_fov = camera.perspective.fov,
+        .orthographic_size = camera.orthographic.size,
+        .pixels_per_unit = camera.type == CAMERA_PERSPECTIVE ?
+                               height * 0.5f / std::tan(camera.perspective.fov * 0.5f) :
+                               height * 0.5f / camera.orthographic.size,
     };
 
     mat4f_simd matrix_p;
-    if (camera.type == CAMERA_ORTHOGRAPHIC)
-    {
-        matrix_p = matrix::orthographic<simd>(
-            camera.orthographic.width,
-            camera.orthographic.height,
-            camera.far,
-            camera.near);
-    }
-    else
+    if (camera.type == CAMERA_PERSPECTIVE)
     {
         matrix_p = matrix::perspective<simd>(
             camera.perspective.fov,
-            static_cast<float>(extent.width) / static_cast<float>(extent.height),
+            result.aspect,
             camera.far,
             camera.near);
+
+        mat4f_simd matrix_p_t = matrix::transpose(matrix_p);
+
+        vec4f_simd frustum_x = vector::add(matrix_p_t[3], matrix_p_t[0]);
+        frustum_x = vector::normalize(frustum_x);
+
+        vec4f_simd frustum_y = vector::add(matrix_p_t[3], matrix_p_t[1]);
+        frustum_y = vector::normalize(frustum_y);
+
+        vec4f_simd frustum = simd::shuffle<0, 2, 1, 2>(frustum_x, frustum_y);
+        math::store(frustum, result.frustum);
+    }
+    else
+    {
+        float height = camera.orthographic.size * 2.0f;
+        float width = height * result.aspect;
+        matrix_p = matrix::orthographic<simd>(width, height, camera.far, camera.near);
     }
     mat4f_simd matrix_v = matrix::inverse(math::load(transform.matrix));
 
@@ -64,11 +89,23 @@ shader::camera_data get_camera_data(
         std::size_t index = render_device::instance().get_frame_count() % halton_sequence.size();
 
         vec2f jitter = halton_sequence[index] - vec2f{0.5f, 0.5f};
-        jitter.x = jitter.x * 2.0f / static_cast<float>(extent.width);
-        jitter.y = jitter.y * 2.0f / static_cast<float>(extent.height);
 
-        vec4f_simd offset = math::load(jitter);
-        matrix_p[2] = vector::add(matrix_p[2], offset);
+        if (camera.type == CAMERA_PERSPECTIVE)
+        {
+            jitter.x = jitter.x * 2.0f / width;
+            jitter.y = jitter.y * 2.0f / height;
+
+            vec4f_simd offset = math::load(jitter);
+            matrix_p[2] = vector::add(matrix_p[2], offset);
+        }
+        else
+        {
+            jitter.x = -jitter.x / width * 2.0f;
+            jitter.y = -jitter.y / height * 2.0f;
+
+            vec4f_simd offset = math::load(jitter);
+            matrix_p[3] = vector::add(matrix_p[3], offset);
+        }
 
         matrix_vp = matrix::mul(matrix_v, matrix_p);
 
@@ -126,16 +163,23 @@ void camera_system::update(render_scene_manager& scene_manager)
                 }
 
                 if (camera_meta.hzb == nullptr ||
-                    camera_meta.hzb->get_extent() != camera.get_extent())
+                    camera_meta.render_target_extent != camera.get_extent())
                 {
-                    rhi_texture_extent extent = camera.get_extent();
+                    camera_meta.render_target_extent = camera.get_extent();
 
-                    std::uint32_t max_size = std::max(extent.width, extent.height);
+                    // rhi_texture_extent hzb_extent = {
+                    //     .width = previous_pow2(camera_meta.render_target_extent.width),
+                    //     .height = previous_pow2(camera_meta.render_target_extent.height),
+                    // };
+
+                    rhi_texture_extent hzb_extent = camera_meta.render_target_extent;
+
+                    std::uint32_t max_size = std::max(hzb_extent.width, hzb_extent.height);
                     std::uint32_t level_count =
                         static_cast<std::uint32_t>(std::floor(std::log2(max_size))) + 1;
 
                     camera_meta.hzb = render_device::instance().create_texture({
-                        .extent = extent,
+                        .extent = hzb_extent,
                         .format = RHI_FORMAT_R32_FLOAT,
                         .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE,
                         .level_count = level_count,

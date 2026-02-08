@@ -1,6 +1,7 @@
 #include "mmd_renderer.hpp"
 #include "graphics/renderers/features/gtao_render_feature.hpp"
 #include "graphics/renderers/features/taa_render_feature.hpp"
+#include "graphics/renderers/features/vsm_render_feature.hpp"
 #include "graphics/renderers/passes/blit_pass.hpp"
 #include "graphics/renderers/passes/cull_pass.hpp"
 #include "graphics/renderers/passes/gbuffer_pass.hpp"
@@ -9,6 +10,7 @@
 #include "graphics/renderers/passes/mesh_pass.hpp"
 #include "graphics/renderers/passes/motion_vector_pass.hpp"
 #include "graphics/renderers/passes/shading_pass.hpp"
+#include "graphics/renderers/passes/shadow_pass.hpp"
 #include "graphics/renderers/passes/skybox_pass.hpp"
 #include "graphics/renderers/passes/taa_pass.hpp"
 #include "graphics/renderers/passes/tone_mapping_pass.hpp"
@@ -26,12 +28,13 @@ struct toon_fs : public mesh_fs
     };
 
     static constexpr parameter_layout parameters = {
-        {0, bindless},
+        {.space = 0, .desc = bindless},
     };
 };
 
 mmd_renderer::mmd_renderer()
 {
+    add_feature<vsm_render_feature>();
     add_feature<taa_render_feature>();
     add_feature<gtao_render_feature>();
 }
@@ -59,6 +62,24 @@ void mmd_renderer::on_render(render_graph& graph)
         RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
         RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
 
+    const auto& scene = graph.get_scene();
+
+    m_vsm_buffer = graph.add_buffer("VSM Buffer", scene.get_vsm_buffer());
+    m_vsm_virtual_page_table =
+        graph.add_buffer("VSM Page Table", scene.get_vsm_virtual_page_table());
+    m_vsm_physical_page_table =
+        graph.add_buffer("VSM Physical Page Table", scene.get_vsm_physical_page_table());
+    m_vsm_physical_shadow_map_static = graph.add_texture(
+        "VSM Physical Shadow Map Static",
+        scene.get_vsm_physical_shadow_map_static(),
+        RHI_TEXTURE_LAYOUT_GENERAL,
+        RHI_TEXTURE_LAYOUT_GENERAL);
+    m_vsm_physical_shadow_map_final = graph.add_texture(
+        "VSM Physical Shadow Map Final",
+        scene.get_vsm_physical_shadow_map_final(),
+        RHI_TEXTURE_LAYOUT_GENERAL,
+        RHI_TEXTURE_LAYOUT_GENERAL);
+
     if (graph.get_scene().get_instance_count() != 0)
     {
         {
@@ -84,6 +105,7 @@ void mmd_renderer::on_render(render_graph& graph)
             m_ao_buffer = nullptr;
         }
 
+        add_shadow_pass(graph);
         add_shading_pass(graph);
     }
 
@@ -233,6 +255,31 @@ void mmd_renderer::add_gtao_pass(render_graph& graph)
     });
 }
 
+void mmd_renderer::add_shadow_pass(render_graph& graph)
+{
+    auto* vsm = get_feature<vsm_render_feature>();
+
+    rdg_buffer* debug_info = nullptr;
+    if (vsm->get_debug_info_buffer() != nullptr)
+    {
+        debug_info = graph.add_buffer("VSM Debug Info", vsm->get_debug_info_buffer());
+    }
+
+    graph.add_pass<shadow_pass>({
+        .depth_buffer = m_depth_buffer,
+        .vsm_buffer = m_vsm_buffer,
+        .vsm_virtual_page_table = m_vsm_virtual_page_table,
+        .vsm_physical_page_table = m_vsm_physical_page_table,
+        .vsm_physical_shadow_map_static = m_vsm_physical_shadow_map_static,
+        .vsm_physical_shadow_map_final = m_vsm_physical_shadow_map_final,
+        .lru_state = graph.add_buffer("VSM LRU State", vsm->get_lru_state()),
+        .lru_buffer = graph.add_buffer("VSM LRU Buffer", vsm->get_lru_buffer()),
+        .lru_curr_index = vsm->get_curr_lru_index(),
+        .lru_prev_index = vsm->get_prev_lru_index(),
+        .debug_info = debug_info,
+    });
+}
+
 void mmd_renderer::add_shading_pass(render_graph& graph)
 {
     std::vector<rdg_texture*> auxiliary_buffers = {
@@ -244,6 +291,9 @@ void mmd_renderer::add_shading_pass(render_graph& graph)
         .gbuffers = m_gbuffers,
         .auxiliary_buffers = auxiliary_buffers,
         .render_target = m_render_target,
+        .vsm_buffer = m_vsm_buffer,
+        .vsm_virtual_page_table = m_vsm_virtual_page_table,
+        .vsm_physical_shadow_map = m_vsm_physical_shadow_map_final,
     });
 }
 

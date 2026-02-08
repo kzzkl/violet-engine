@@ -26,6 +26,8 @@ This project is work in progress:
 
 - Cluster LOD hierarchy
 
+- Virtual Shadow Maps
+
 ## Build & Run
 
 ### Dependencies

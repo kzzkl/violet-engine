@@ -25,13 +25,8 @@ bool project_shpere_perspective(float4 sphere_vs, float p00, float p11, float ne
     return true;
 }
 
-bool project_shpere_orthographic(float4 sphere_vs, float p00, float p11, float near, out float4 aabb)
+bool project_shpere_orthographic(float4 sphere_vs, float p00, float p11, out float4 aabb)
 {
-    if (sphere_vs.z < sphere_vs.w + near)
-    {
-        return false;
-    }
-
     float left = sphere_vs.x - sphere_vs.w;
     float right = sphere_vs.x + sphere_vs.w;
     float bottom = sphere_vs.y - sphere_vs.w;
