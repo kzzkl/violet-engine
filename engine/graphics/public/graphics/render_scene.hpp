@@ -131,9 +131,10 @@ public:
         return m_instances.get_size();
     }
 
-    std::uint32_t get_light_count() const noexcept
+    std::uint32_t get_light_count(bool cast_shadow) const noexcept
     {
-        return m_lights.get_size();
+        return cast_shadow ? m_shadow_casting_lights.get_size() :
+                             m_non_shadow_casting_lights.get_size();
     }
 
     std::uint32_t get_batch_count() const noexcept
@@ -262,11 +263,6 @@ private:
         // when the light type is directional light, vsm_address points to the address of
         // directional_vsm_buffer. for other types, vsm_address is the id of vsm.
         render_id vsm_address{INVALID_RENDER_ID};
-
-        bool cast_shadow() const noexcept
-        {
-            return vsm_address != INVALID_RENDER_ID;
-        }
     };
 
     enum render_scene_state : std::uint8_t
@@ -341,9 +337,6 @@ private:
     void add_instance_to_batch(render_id instance_id, const material* material);
     void remove_instance_from_batch(render_id instance_id);
 
-    void add_vsm_by_light(render_id light_id);
-    void remove_vsm_by_light(render_id light_id);
-
     void add_vsm_by_camera(render_id camera_id);
     void remove_vsm_by_camera(render_id camera_id);
 
@@ -357,7 +350,17 @@ private:
     std::vector<render_id> m_matrix_dirty_meshes;
 
     gpu_dense_array<gpu_instance> m_instances;
-    gpu_dense_array<gpu_light> m_lights;
+
+    struct light_mapping
+    {
+        render_id light_id;
+        bool cast_shadow{false};
+    };
+    index_allocator m_light_allocator;
+    std::vector<light_mapping> m_light_mappings;
+
+    gpu_dense_array<gpu_light> m_shadow_casting_lights;
+    gpu_dense_array<gpu_light> m_non_shadow_casting_lights;
 
     gpu_sparse_array<gpu_batch> m_batches;
     std::unordered_map<batch_key, render_id, batch_hash> m_pipeline_to_batch;

@@ -70,7 +70,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     const float noise_sample = noise.y;
 
     // Calculate the size of the radius in pixel.
-    float radius_in_pixels = constant.radius * camera.pixels_per_unit;
+    float radius_in_pixels = constant.radius * camera.texel_size_inv;
     if (camera.type == CAMERA_PERSPECTIVE)
     {
         radius_in_pixels /= position_vs.z;

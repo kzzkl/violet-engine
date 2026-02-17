@@ -4,7 +4,7 @@ namespace violet
 {
 struct first_person_control_component
 {
-    float move_speed{5.0f};
+    float move_speed{10.0f};
     float yaw_speed{1.0f};
     float pitch_speed{0.5f};
 

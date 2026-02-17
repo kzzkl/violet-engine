@@ -126,8 +126,10 @@ struct shader
         std::uint32_t mesh_count;
         std::uint32_t instance_buffer;
         std::uint32_t instance_count;
-        std::uint32_t light_buffer;
-        std::uint32_t light_count;
+        std::uint32_t shadow_casting_light_buffer;
+        std::uint32_t shadow_casting_light_count;
+        std::uint32_t non_shadow_casting_light_buffer;
+        std::uint32_t non_shadow_casting_light_count;
         std::uint32_t batch_buffer;
         std::uint32_t material_buffer;
         std::uint32_t geometry_buffer;
@@ -137,11 +139,6 @@ struct shader
         std::uint32_t skybox;
         std::uint32_t irradiance;
         std::uint32_t prefilter;
-
-        std::uint32_t vsm_buffer;
-        std::uint32_t vsm_virtual_page_table;
-        std::uint32_t vsm_physical_shadow_map;
-        std::uint32_t vsm_directional_buffer;
     };
 
     static constexpr parameter scene = {
@@ -181,10 +178,10 @@ struct shader
 
         vec4f frustum; // perspective frustum
 
-        float pixels_per_unit;
+        float texel_size;
+        float texel_size_inv;
         std::uint32_t padding0;
         std::uint32_t padding1;
-        std::uint32_t padding2;
     };
 
     static constexpr parameter camera = {
@@ -317,8 +314,12 @@ struct shading_model_cs : public shader_cs
         std::uint32_t shading_model;
         std::uint32_t worklist_buffer;
         std::uint32_t worklist_offset;
+        std::uint32_t light_id;
+        std::uint32_t shadow_mask;
+        std::uint32_t stage;
         std::uint32_t padding0;
         std::uint32_t padding1;
+        std::uint32_t padding2;
     };
 
     static constexpr parameter_layout parameters = {

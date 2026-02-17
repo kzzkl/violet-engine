@@ -1,7 +1,6 @@
 #include "common.hlsli"
 #include "brdf.hlsli"
 #include "shading/shading_model.hlsli"
-#include "shadow.hlsli"
 
 struct constant_data
 {
@@ -18,54 +17,48 @@ float3 gtao_multi_bounce(float visibility, float3 albedo)
  	float3 a =  2.0404 * albedo - 0.3324;   
     float3 b = -4.7951 * albedo + 0.6417;
     float3 c =  2.7552 * albedo + 0.6903;
-    
+
     float3 x = visibility.xxx;
     return max(x, ((x * a + b) * x + c) * x);
 }
 
-[numthreads(TILE_SIZE, TILE_SIZE, 1)]
-void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
+struct pbr_shading_model
 {
-    uint2 coord;
-    if (!get_shading_coord(constant.common, gtid, gid, coord))
-    {
-        return;
-    }
-
-    float3 N;
-    if (!unpack_gbuffer_normal(constant.common, coord, N))
-    {
-        return;
-    }
-
-    float3 albedo = unpack_gbuffer_albedo(constant.common, coord);
-
+    float3 albedo;
     float roughness;
     float metallic;
-    unpack_gbuffer_material(constant.common, coord, roughness, metallic);
+    float3 emissive;
+    float3 position;
+    float3 F0;
 
-    float3 emissive = unpack_gbuffer_emissive(constant.common, coord);
+    float3 N;
+    float3 V;
+    float NdotV;
 
-    SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
-    
-    float2 texcoord = get_compute_texcoord(coord, constant.common.width, constant.common.height);
-    float3 position = reconstruct_position(constant.common.auxiliary_buffers[0], texcoord, camera.matrix_vp_inv).xyz;
+    uint2 coord;
 
-    float3 F0 = lerp(0.04, albedo, metallic);
-
-    float3 V = normalize(camera.position - position);
-
-    float NdotV = saturate(dot(N, V));
-
-    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
-
-    shadow_context shadow = shadow_context::create(scene, camera);
-
-    float3 direct_lighting = 0.0;
-    for (int i = 0; i < scene.light_count; ++i)
+    static pbr_shading_model create(gbuffer gbuffer, uint2 coord)
     {
-        light_data light = lights[i];
+        pbr_shading_model shading_model;
+        shading_model.albedo = gbuffer.albedo;
+        shading_model.roughness = gbuffer.roughness;
+        shading_model.metallic = gbuffer.metallic;
+        shading_model.emissive = gbuffer.emissive;
+        shading_model.position = gbuffer.position;
 
+        shading_model.F0 = lerp(0.04, gbuffer.albedo, gbuffer.metallic);
+
+        shading_model.N = gbuffer.normal;
+        shading_model.V = normalize(camera.position - gbuffer.position);
+        shading_model.NdotV = saturate(dot(shading_model.N, shading_model.V));
+
+        shading_model.coord = coord;
+
+        return shading_model;
+    }
+
+    float3 evaluate_direct_lighting(light_data light, float shadow)
+    {
         float3 L = -light.direction;
         float3 H = normalize(L + V);
 
@@ -81,19 +74,16 @@ void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
         float3 specular = d * vis * f;
         float3 diffuse = albedo / PI * kd;
 
-        float shadow_factor = 1.0;
-        if (light.vsm_address != 0xFFFFFFFF)
-        {
-            shadow_factor = shadow.get_shadow(light, position);
-        }
-        direct_lighting += (specular + diffuse) * NdotL * light.color * shadow_factor;
+        return (specular + diffuse) * NdotL * light.color * shadow;
     }
 
-    float3 ambient_lighting = 0.0;
+    float3 evaluate_indirect_lighting()
     {
         float3 R = reflect(-V, N);
         float3 f = f_schlick_roughness(NdotV, F0, roughness);
         float3 kd = lerp(1.0 - f, 0.0, metallic);
+
+        SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
         TextureCube<float3> prefilter_map = ResourceDescriptorHeap[scene.prefilter];
         float3 prefilter = prefilter_map.SampleLevel(linear_clamp_sampler, R, roughness * 4.0);
@@ -106,14 +96,19 @@ void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
         float3 irradiance = irradiance_map.SampleLevel(linear_clamp_sampler, N, 0.0);
         float3 diffuse = albedo * kd / PI;
 
-        ambient_lighting = specular * prefilter + diffuse * irradiance;
-    }
+        float3 lighting = specular * prefilter + diffuse * irradiance;
 
 #ifdef USE_AO_BUFFER
-    Texture2D<float> ao_buffer = ResourceDescriptorHeap[constant.common.auxiliary_buffers[1]];
-    ambient_lighting *= gtao_multi_bounce(ao_buffer[coord], albedo);
+        Texture2D<float> ao_buffer = ResourceDescriptorHeap[constant.common.auxiliary_buffers[1]];
+        lighting *= gtao_multi_bounce(ao_buffer[coord], albedo);
 #endif
 
-    RWTexture2D<float4> render_target = ResourceDescriptorHeap[constant.common.render_target];
-    render_target[coord] = float4(direct_lighting + ambient_lighting + emissive, 1.0);
+        return lighting + emissive;
+    }
+};
+
+[numthreads(SHADING_TILE_SIZE, SHADING_TILE_SIZE, 1)]
+void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
+{
+    evaluate_lighting<pbr_shading_model>(constant.common, scene, camera, gtid, gid);
 }

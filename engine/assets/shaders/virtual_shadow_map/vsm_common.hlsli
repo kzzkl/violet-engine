@@ -5,8 +5,9 @@ static const uint VIRTUAL_PAGE_TABLE_SIZE = 64;
 static const uint VIRTUAL_PAGE_TABLE_PAGE_COUNT = VIRTUAL_PAGE_TABLE_SIZE * VIRTUAL_PAGE_TABLE_SIZE;
 static const float VIRTUAL_PAGE_TABLE_SIZE_INV = 1.0 / VIRTUAL_PAGE_TABLE_SIZE;
 
-static const uint PHYSICAL_PAGE_TABLE_SIZE = 32;
-static const uint PHYSICAL_PAGE_TABLE_PAGE_COUNT = PHYSICAL_PAGE_TABLE_SIZE * PHYSICAL_PAGE_TABLE_SIZE;
+static const uint PHYSICAL_PAGE_TABLE_SIZE_X = 64;
+static const uint PHYSICAL_PAGE_TABLE_SIZE_Y = 32;
+static const uint PHYSICAL_PAGE_TABLE_PAGE_COUNT = PHYSICAL_PAGE_TABLE_SIZE_X * PHYSICAL_PAGE_TABLE_SIZE_Y;
 
 static const uint DIRECTIONAL_VSM_CASCADE_FIRST = 7;
 static const uint DIRECTIONAL_VSM_CASCADE_LAST = 22;
@@ -15,7 +16,7 @@ static const uint PAGE_WORLD_SIZE = 1.28 * 2.0 / VIRTUAL_PAGE_TABLE_SIZE;
 static const uint PAGE_RESOLUTION = 128;
 
 static const uint VIRTUAL_RESOLUTION = VIRTUAL_PAGE_TABLE_SIZE * PAGE_RESOLUTION;
-static const uint PHYSICAL_RESOLUTION = PHYSICAL_PAGE_TABLE_SIZE * PAGE_RESOLUTION;
+static const uint2 PHYSICAL_RESOLUTION = uint2(PHYSICAL_PAGE_TABLE_SIZE_X, PHYSICAL_PAGE_TABLE_SIZE_Y) * PAGE_RESOLUTION;
 
 static const uint MAX_CAMERA_COUNT = 16;
 static const uint MAX_SHADOW_LIGHT_COUNT = 32;
@@ -33,10 +34,10 @@ struct vsm_data
     float4x4 matrix_v;
     float4x4 matrix_p;
     float4x4 matrix_vp;
-    float pixels_per_unit;
+    float texel_size;
+    float texel_size_inv;
     uint padding0;
     uint padding1;
-    uint padding2;
 };
 
 static const uint VIRTUAL_PAGE_FLAG_REQUEST = 1 << 0;
@@ -81,21 +82,20 @@ struct vsm_virtual_page
 static const uint PHYSICAL_PAGE_FLAG_REQUEST = 1 << 0;
 static const uint PHYSICAL_PAGE_FLAG_RESIDENT = 1 << 1;
 static const uint PHYSICAL_PAGE_FLAG_IN_LRU = 1 << 2;
-static const uint PHYSICAL_PAGE_FLAG_HZB_DIRTY = 1 << 3;
+static const uint PHYSICAL_PAGE_FLAG_NEED_CLEAR = 1 << 3;
+static const uint PHYSICAL_PAGE_FLAG_HZB_DIRTY = 1 << 4;
 
 struct vsm_physical_page
 {
     int2 virtual_page_coord;
     uint vsm_id;
-    uint frame;
     uint flags;
 
     static vsm_physical_page unpack(uint4 packed_data)
     {
         vsm_physical_page physical_page;
         physical_page.virtual_page_coord = packed_data.xy;
-        physical_page.vsm_id = packed_data.z & 0xFFFF;
-        physical_page.frame = packed_data.z >> 16;
+        physical_page.vsm_id = packed_data.z;
         physical_page.flags = packed_data.w;
         return physical_page;
     }
@@ -104,7 +104,7 @@ struct vsm_physical_page
     {
         uint4 packed_data = 0;
         packed_data.xy = virtual_page_coord;
-        packed_data.z = vsm_id | (frame << 16);
+        packed_data.z = vsm_id;
         packed_data.w = flags;
         return packed_data;
     }
@@ -135,7 +135,12 @@ uint get_virtual_page_index(uint vsm_id, uint2 page_coord)
 
 uint get_physical_page_index(uint2 page_coord)
 {
-    return page_coord.y * PHYSICAL_PAGE_TABLE_SIZE + page_coord.x;
+    return page_coord.y * PHYSICAL_PAGE_TABLE_SIZE_X + page_coord.x;
+}
+
+uint2 get_physical_page_coord(uint physical_page_index)
+{
+    return uint2(physical_page_index % PHYSICAL_PAGE_TABLE_SIZE_X, physical_page_index / PHYSICAL_PAGE_TABLE_SIZE_X);
 }
 
 uint get_directional_cascade(float distance)
@@ -146,11 +151,6 @@ uint get_directional_cascade(float distance)
 uint get_lru_offset(uint lru_index)
 {
     return lru_index * PHYSICAL_PAGE_TABLE_PAGE_COUNT;
-}
-
-uint2 get_physical_page_coord(uint physical_page_index)
-{
-    return uint2(physical_page_index % PHYSICAL_PAGE_TABLE_SIZE, physical_page_index / PHYSICAL_PAGE_TABLE_SIZE);
 }
 
 #endif

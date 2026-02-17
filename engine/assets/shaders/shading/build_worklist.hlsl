@@ -1,6 +1,5 @@
 #include "common.hlsli"
 
-static const uint TILE_SIZE = 16;
 static const uint MAX_SHADING_MODEL_COUNT = 256;
 static const uint MAX_SHADING_MODEL_BATCH_COUNT = MAX_SHADING_MODEL_COUNT / 32;
 
@@ -16,10 +15,10 @@ struct constant_data
 PushConstant(constant_data, constant);
 
 groupshared uint gs_shading_model_flags[MAX_SHADING_MODEL_BATCH_COUNT];
-groupshared uint gs_shading_model_list[TILE_SIZE * TILE_SIZE];
+groupshared uint gs_shading_model_list[SHADING_TILE_SIZE * SHADING_TILE_SIZE];
 groupshared uint gs_shading_model_count;
 
-[numthreads(TILE_SIZE, TILE_SIZE, 1)]
+[numthreads(SHADING_TILE_SIZE, SHADING_TILE_SIZE, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
 {
     if (group_index < MAX_SHADING_MODEL_BATCH_COUNT)

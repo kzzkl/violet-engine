@@ -25,6 +25,7 @@ public:
         rdg_texture* vsm_physical_shadow_map_static{nullptr};
         rdg_texture* vsm_physical_shadow_map_final{nullptr};
         rdg_texture* vsm_hzb{nullptr};
+        rdg_buffer* vsm_directional_buffer{nullptr};
 
         rdg_buffer* lru_state;
         rdg_buffer* lru_buffer;
@@ -75,6 +76,7 @@ private:
     rdg_texture* m_vsm_physical_shadow_map_static{nullptr};
     rdg_texture* m_vsm_physical_shadow_map_final{nullptr};
     rdg_texture* m_vsm_hzb{nullptr};
+    rdg_buffer* m_vsm_directional_buffer{nullptr};
 
     rdg_buffer* m_vsm_bounds_buffer{nullptr};
 

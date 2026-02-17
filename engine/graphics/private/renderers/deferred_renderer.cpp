@@ -110,6 +110,8 @@ void deferred_renderer::prepare(render_graph& graph)
         scene.get_vsm_physical_shadow_map_final(),
         RHI_TEXTURE_LAYOUT_GENERAL,
         RHI_TEXTURE_LAYOUT_GENERAL);
+    m_vsm_directional_buffer =
+        graph.add_buffer("VSM Directional Buffer", scene.get_vsm_directional_buffer());
 
     if (scene.get_vsm_hzb() != nullptr)
     {
@@ -129,8 +131,9 @@ void deferred_renderer::prepare(render_graph& graph)
         m_debug_output = graph.add_texture(
             "Debug Output",
             m_render_extent,
-            RHI_FORMAT_R8G8B8A8_UNORM,
-            RHI_TEXTURE_STORAGE | RHI_TEXTURE_TRANSFER_SRC | RHI_TEXTURE_TRANSFER_DST);
+            RHI_FORMAT_R32G32B32A32_FLOAT,
+            RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_TRANSFER_SRC |
+                RHI_TEXTURE_TRANSFER_DST);
 
         struct pass_data
         {
@@ -307,8 +310,6 @@ void deferred_renderer::add_shadow_pass(render_graph& graph)
     case DEBUG_MODE_VSM_PAGE_CACHE:
         debug_mode = shadow_pass::DEBUG_MODE_PAGE_CACHE;
         break;
-    case DEBUG_MODE_VSM_PHYSICAL_PAGE_TABLE:
-        debug_mode = shadow_pass::DEBUG_MODE_PHYSICAL_PAGE_TABLE;
     default:
         break;
     }
@@ -327,6 +328,7 @@ void deferred_renderer::add_shadow_pass(render_graph& graph)
         .vsm_physical_shadow_map_static = m_vsm_physical_shadow_map_static,
         .vsm_physical_shadow_map_final = m_vsm_physical_shadow_map_final,
         .vsm_hzb = m_vsm_hzb,
+        .vsm_directional_buffer = m_vsm_directional_buffer,
         .lru_state = graph.add_buffer("VSM LRU State", vsm->get_lru_state()),
         .lru_buffer = graph.add_buffer("VSM LRU Buffer", vsm->get_lru_buffer()),
         .lru_curr_index = vsm->get_curr_lru_index(),
@@ -351,6 +353,8 @@ void deferred_renderer::add_shading_pass(render_graph& graph)
         .vsm_buffer = m_vsm_buffer,
         .vsm_virtual_page_table = m_vsm_virtual_page_table,
         .vsm_physical_shadow_map = m_vsm_physical_shadow_map_final,
+        .vsm_directional_buffer = m_vsm_directional_buffer,
+        .shadow_normal_offset = m_shadow_normal_offset,
     });
 }
 

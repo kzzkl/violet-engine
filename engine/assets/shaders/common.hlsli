@@ -18,6 +18,8 @@ static const uint GBUFFER_MATERIAL = 1;
 static const uint GBUFFER_NORMAL = 2;
 static const uint GBUFFER_EMISSIVE = 3;
 
+static const uint SHADING_TILE_SIZE = 16;
+
 struct draw_command
 {
     uint index_count;
@@ -94,8 +96,10 @@ struct scene_data
     uint mesh_count;
     uint instance_buffer;
     uint instance_count;
-    uint light_buffer;
-    uint light_count;
+    uint shadow_casting_light_buffer;
+    uint shadow_casting_light_count;
+    uint non_shadow_casting_light_buffer;
+    uint non_shadow_casting_light_count;
     uint batch_buffer;
     uint material_buffer;
     uint geometry_buffer;
@@ -105,11 +109,6 @@ struct scene_data
     uint skybox;
     uint irradiance;
     uint prefilter;
-
-    uint vsm_buffer;
-    uint vsm_virtual_page_table;
-    uint vsm_physical_shadow_map;
-    uint vsm_directional_buffer;
 };
 
 static const uint CAMERA_PERSPECTIVE = 0;
@@ -144,10 +143,10 @@ struct camera_data
 
     float4 frustum; // perspective frustum
 
-    float pixels_per_unit;
+    float texel_size;
+    float texel_size_inv;
     uint padding0;
     uint padding1;
-    uint padding2;
 };
 
 SamplerState get_point_repeat_sampler()

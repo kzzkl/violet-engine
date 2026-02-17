@@ -31,6 +31,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     if (vsm.cache_epoch == constant.frame)
     {
         physical_page.flags &= ~(PHYSICAL_PAGE_FLAG_REQUEST | PHYSICAL_PAGE_FLAG_RESIDENT);
+        physical_page.flags |= PHYSICAL_PAGE_FLAG_NEED_CLEAR;
         physical_page_table[physical_page_index] = physical_page.pack();
         return;
     }
@@ -48,8 +49,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         uint page_index = get_virtual_page_index(physical_page.vsm_id, virtual_page_coord);
 
         vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[page_index]);
-        virtual_page.physical_page_coord.x = physical_page_index % PHYSICAL_PAGE_TABLE_SIZE;
-        virtual_page.physical_page_coord.y = physical_page_index / PHYSICAL_PAGE_TABLE_SIZE;
+        virtual_page.physical_page_coord = get_physical_page_coord(physical_page_index);
 
         if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) == 0)
         {
@@ -58,7 +58,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         else
         {
             physical_page.flags |= PHYSICAL_PAGE_FLAG_REQUEST;
-            ++physical_page.frame;
+            physical_page.flags &= ~PHYSICAL_PAGE_FLAG_NEED_CLEAR;
             virtual_page.flags |= VIRTUAL_PAGE_FLAG_CACHE_VALID;
         }
 

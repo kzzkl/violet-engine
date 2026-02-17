@@ -70,10 +70,10 @@ private:
             mat4f matrix_v;
             mat4f matrix_p;
             mat4f matrix_vp;
-            float pixels_per_unit;
+            float texel_size;
+            float texel_size_inv;
             std::uint32_t padding0;
             std::uint32_t padding1;
-            std::uint32_t padding2;
         };
 
         light_type light_type;
@@ -87,7 +87,7 @@ private:
         float view_z;
         float view_z_radius;
 
-        float pixels_per_unit;
+        float texel_size;
     };
 
     static constexpr std::uint32_t get_vsm_count(light_type light_type);

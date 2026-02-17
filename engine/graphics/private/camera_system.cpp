@@ -47,10 +47,12 @@ shader::camera_data get_camera_data(
         .type = static_cast<std::uint32_t>(camera.type),
         .perspective_fov = camera.perspective.fov,
         .orthographic_size = camera.orthographic.size,
-        .pixels_per_unit = camera.type == CAMERA_PERSPECTIVE ?
-                               height * 0.5f / std::tan(camera.perspective.fov * 0.5f) :
-                               height * 0.5f / camera.orthographic.size,
     };
+
+    result.texel_size = camera.type == CAMERA_PERSPECTIVE ?
+                            std::tan(camera.perspective.fov * 0.5f) / (height * 0.5f) :
+                            camera.orthographic.size / (height * 0.5f);
+    result.texel_size_inv = 1.0f / result.texel_size;
 
     mat4f_simd matrix_p;
     if (camera.type == CAMERA_PERSPECTIVE)

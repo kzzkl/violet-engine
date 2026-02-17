@@ -12,6 +12,7 @@ struct constant_data
     uint visible_vsm_ids;
     uint vsm_virtual_page_table;
     uint vsm_buffer;
+    uint vsm_directional_buffer;
 };
 PushConstant(constant_data, constant);
 
@@ -55,9 +56,9 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     StructuredBuffer<uint> visible_light_count = ResourceDescriptorHeap[constant.visible_light_count];
     StructuredBuffer<uint> visible_light_ids = ResourceDescriptorHeap[constant.visible_light_ids];
-    StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[scene.vsm_directional_buffer];
+    StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[constant.vsm_directional_buffer];
     
-    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
+    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
 
     float2 texcoord = get_compute_texcoord(dtid.xy, constant.width, constant.height);
     float4 position_ws = reconstruct_position(depth, texcoord, camera.matrix_vp_inv);

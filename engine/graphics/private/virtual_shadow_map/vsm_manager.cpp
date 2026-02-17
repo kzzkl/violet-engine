@@ -39,8 +39,8 @@ vsm_manager::vsm_manager(bool enable_occlusion)
     rhi_texture_desc physical_shadow_map_desc = {
         .extent =
             {
-                .width = VSM_PHYSICAL_RESOLUTION,
-                .height = VSM_PHYSICAL_RESOLUTION,
+                .width = VSM_PHYSICAL_RESOLUTION.x,
+                .height = VSM_PHYSICAL_RESOLUTION.y,
             },
         .format = RHI_FORMAT_R32_UINT,
         .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE,
@@ -60,13 +60,13 @@ vsm_manager::vsm_manager(bool enable_occlusion)
         m_hzb = device.create_texture({
             .extent =
                 {
-                    .width = VSM_PHYSICAL_RESOLUTION / 2,
-                    .height = VSM_PHYSICAL_RESOLUTION / 2,
+                    .width = VSM_PHYSICAL_RESOLUTION.x / 2,
+                    .height = VSM_PHYSICAL_RESOLUTION.y / 2,
                 },
             .format = RHI_FORMAT_R32_FLOAT,
             .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE,
             .level_count = static_cast<std::uint32_t>(
-                std::log2(VSM_PHYSICAL_RESOLUTION) - std::log2(VSM_PHYSICAL_PAGE_TABLE_SIZE)),
+                std::log2(VSM_PHYSICAL_RESOLUTION.x) - std::log2(VSM_PHYSICAL_PAGE_TABLE_SIZE_X)),
             .layer_count = 1,
             .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
         });
@@ -119,7 +119,6 @@ void vsm_manager::set_vsm(render_id vsm_id, const vsm_directional_light_data& li
     }
 
     mat4f matrix_v = matrix::look_at({}, light.light_direction, up);
-    mat4f matrix_v_inv = matrix::inverse(matrix_v);
 
     vec3f center = matrix::mul(
         vec4f{light.camera_position.x, light.camera_position.y, light.camera_position.z, 1.0f},
@@ -145,7 +144,7 @@ void vsm_manager::set_vsm(render_id vsm_id, const vsm_directional_light_data& li
             static_cast<std::int32_t>(std::floor(center.y / cascade_page_size)),
         };
 
-        float view_z_radius = cascade_radius * 1000.0f;
+        float view_z_radius = cascade_radius * 500.0f;
         bool view_z_dirty = center.z < cascade_vsm.view_z - (view_z_radius * 0.9f) ||
                             center.z > cascade_vsm.view_z + (view_z_radius * 0.9f);
 
@@ -165,17 +164,10 @@ void vsm_manager::set_vsm(render_id vsm_id, const vsm_directional_light_data& li
             cascade_vsm.cache_epoch = frame;
         }
 
-        vec3f cascade_center;
-        cascade_center.x = cascade_page_size * static_cast<float>(page_coord.x);
-        cascade_center.y = cascade_page_size * static_cast<float>(page_coord.y);
-        cascade_center.z = 0.0f;
+        cascade_vsm.matrix_v = matrix_v;
+        cascade_vsm.matrix_v[3][0] = -cascade_page_size * static_cast<float>(page_coord.x);
+        cascade_vsm.matrix_v[3][1] = -cascade_page_size * static_cast<float>(page_coord.y);
 
-        cascade_center = matrix::mul(
-            vec4f{cascade_center.x, cascade_center.y, cascade_center.z, 1.0f},
-            matrix_v_inv);
-
-        cascade_vsm.matrix_v =
-            matrix::look_at(cascade_center, cascade_center + light.light_direction, up);
         cascade_vsm.matrix_p = matrix::orthographic(
             cascade_radius * 2.0f,
             cascade_radius * 2.0f,
@@ -183,7 +175,7 @@ void vsm_manager::set_vsm(render_id vsm_id, const vsm_directional_light_data& li
             cascade_vsm.view_z - view_z_radius);
         cascade_vsm.page_coord = page_coord;
         cascade_vsm.view_z_radius = view_z_radius;
-        cascade_vsm.pixels_per_unit = static_cast<float>(VSM_PAGE_RESOLUTION) / cascade_page_size;
+        cascade_vsm.texel_size = cascade_page_size / static_cast<float>(VSM_PAGE_RESOLUTION);
 
         m_vsms.mark_dirty(vsm_id + cascade);
     }
@@ -201,7 +193,8 @@ void vsm_manager::update(gpu_buffer_uploader* uploader)
                 .matrix_v = vsm.matrix_v,
                 .matrix_p = vsm.matrix_p,
                 .matrix_vp = matrix::mul(vsm.matrix_v, vsm.matrix_p),
-                .pixels_per_unit = vsm.pixels_per_unit,
+                .texel_size = vsm.texel_size,
+                .texel_size_inv = 1.0f / vsm.texel_size,
             };
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)

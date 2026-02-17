@@ -46,16 +46,14 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
         uint free_physical_page_index = lru_buffer[get_lru_offset(constant.lru_curr_index) + lru_index];
 
-        virtual_page.physical_page_coord.x = free_physical_page_index % PHYSICAL_PAGE_TABLE_SIZE;
-        virtual_page.physical_page_coord.y = free_physical_page_index / PHYSICAL_PAGE_TABLE_SIZE;
+        virtual_page.physical_page_coord = get_physical_page_coord(free_physical_page_index);
         virtual_page.flags = VIRTUAL_PAGE_FLAG_REQUEST;
         virtual_page_table[virtual_page_index] = virtual_page.pack();
 
         vsm_physical_page physical_page;
         physical_page.virtual_page_coord = virtual_page_coord + vsms[vsm_id].page_coord;
         physical_page.vsm_id = vsm_id;
-        physical_page.flags = PHYSICAL_PAGE_FLAG_RESIDENT | PHYSICAL_PAGE_FLAG_REQUEST | PHYSICAL_PAGE_FLAG_HZB_DIRTY;
-        physical_page.frame = 0;
+        physical_page.flags = PHYSICAL_PAGE_FLAG_RESIDENT | PHYSICAL_PAGE_FLAG_REQUEST | PHYSICAL_PAGE_FLAG_NEED_CLEAR | PHYSICAL_PAGE_FLAG_HZB_DIRTY;
         physical_page_table[free_physical_page_index] = physical_page.pack();
     }
 }

@@ -16,6 +16,9 @@ public:
         rdg_buffer* vsm_buffer{nullptr};
         rdg_buffer* vsm_virtual_page_table{nullptr};
         rdg_texture* vsm_physical_shadow_map{nullptr};
+        rdg_buffer* vsm_directional_buffer{nullptr};
+
+        float shadow_normal_offset;
     };
 
     void add(render_graph& graph, const parameter& parameter);
@@ -23,14 +26,32 @@ public:
 private:
     static constexpr std::uint32_t tile_size = 16;
 
+    enum lighting_stage
+    {
+        LIGHTING_STAGE_DIRECT_LIGHTING_SHADOWED,
+        LIGHTING_STAGE_DIRECT_LIGHTING_UNSHADOWED,
+        LIGHTING_STAGE_INDIRECT_LIGHTING,
+    };
+
     void add_clear_pass(render_graph& graph, const parameter& parameter);
     void add_tile_classify_pass(render_graph& graph, const parameter& parameter);
-    void add_tile_shading_pass(render_graph& graph, const parameter& parameter) const;
+    void add_tile_shading_pass(
+        render_graph& graph,
+        const parameter& parameter,
+        lighting_stage stage,
+        std::uint32_t light_id = 0) const;
+
+    void add_shadow_mask_pass(
+        render_graph& graph,
+        const parameter& parameter,
+        std::uint32_t light_id);
 
     rdg_buffer* m_worklist_buffer{nullptr};
     rdg_buffer* m_shading_dispatch_buffer{nullptr};
 
     std::uint32_t m_tile_count;
     std::uint32_t m_shading_model_count{0};
+
+    rdg_texture* m_shadow_mask{nullptr};
 };
 } // namespace violet

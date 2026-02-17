@@ -12,10 +12,21 @@ public:
         DEBUG_MODE_NONE,
         DEBUG_MODE_VSM_PAGE,
         DEBUG_MODE_VSM_PAGE_CACHE,
-        DEBUG_MODE_VSM_PHYSICAL_PAGE_TABLE,
+        DEBUG_MODE_SHADING_SHADOW_MASK,
+        DEBUG_MODE_SHADING_SHADOW_MASK_WITHOUT_BIAS,
     };
 
     deferred_renderer();
+
+    void set_shadow_normal_offset(float offset) noexcept
+    {
+        m_shadow_normal_offset = offset;
+    }
+
+    float get_shadow_normal_offset() const noexcept
+    {
+        return m_shadow_normal_offset;
+    }
 
     void set_debug_mode(debug_mode mode) noexcept
     {
@@ -74,6 +85,9 @@ private:
     rdg_texture* m_vsm_physical_shadow_map_static{nullptr};
     rdg_texture* m_vsm_physical_shadow_map_final{nullptr};
     rdg_texture* m_vsm_hzb{nullptr};
+    rdg_buffer* m_vsm_directional_buffer{nullptr};
+
+    float m_shadow_normal_offset{0.01f};
 
     debug_mode m_debug_mode{DEBUG_MODE_NONE};
     rdg_texture* m_debug_output{nullptr};

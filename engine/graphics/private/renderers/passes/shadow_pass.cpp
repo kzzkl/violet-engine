@@ -42,6 +42,7 @@ struct vsm_light_cull_cs : public shader_cs
         std::uint32_t visible_vsm_ids;
         std::uint32_t virtual_page_dispatch_buffer;
         std::uint32_t camera_id;
+        std::uint32_t vsm_directional_buffer;
     };
 
     static constexpr parameter_layout parameters = {
@@ -84,6 +85,7 @@ struct vsm_mark_visible_pages_cs : public shader_cs
         std::uint32_t visible_vsm_ids;
         std::uint32_t vsm_virtual_page_table;
         std::uint32_t vsm_buffer;
+        std::uint32_t vsm_directional_buffer;
     };
 
     static constexpr parameter_layout parameters = {
@@ -374,6 +376,7 @@ struct vsm_debug_constant_data
     std::uint32_t depth_buffer;
     std::uint32_t vsm_buffer;
     std::uint32_t vsm_virtual_page_table;
+    std::uint32_t vsm_directional_buffer;
     std::uint32_t draw_count_buffer;
     std::uint32_t width;
     std::uint32_t height;
@@ -433,6 +436,7 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
     m_vsm_physical_page_table = parameter.vsm_physical_page_table;
     m_vsm_physical_shadow_map_static = parameter.vsm_physical_shadow_map_static;
     m_vsm_physical_shadow_map_final = parameter.vsm_physical_shadow_map_final;
+    m_vsm_directional_buffer = parameter.vsm_directional_buffer;
 
     if (parameter.vsm_hzb != nullptr)
     {
@@ -584,6 +588,7 @@ void shadow_pass::light_cull(render_graph& graph)
         rdg_buffer_uav virtual_page_dispatch_buffer;
         std::uint32_t light_count;
         std::uint32_t camera_id;
+        rdg_buffer_srv vsm_directional_buffer;
     };
 
     graph.add_pass<pass_data>(
@@ -599,8 +604,10 @@ void shadow_pass::light_cull(render_graph& graph)
                 pass.add_buffer_uav(m_visible_vsm_ids, RHI_PIPELINE_STAGE_COMPUTE);
             data.virtual_page_dispatch_buffer =
                 pass.add_buffer_uav(m_virtual_page_dispatch_buffer, RHI_PIPELINE_STAGE_COMPUTE);
-            data.light_count = graph.get_scene().get_light_count();
+            data.light_count = graph.get_scene().get_light_count(true);
             data.camera_id = graph.get_camera().get_id();
+            data.vsm_directional_buffer =
+                pass.add_buffer_srv(m_vsm_directional_buffer, RHI_PIPELINE_STAGE_COMPUTE);
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -618,6 +625,7 @@ void shadow_pass::light_cull(render_graph& graph)
                     .virtual_page_dispatch_buffer =
                         data.virtual_page_dispatch_buffer.get_bindless(),
                     .camera_id = data.camera_id,
+                    .vsm_directional_buffer = data.vsm_directional_buffer.get_bindless(),
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
@@ -688,6 +696,7 @@ void shadow_pass::mark_visible_pages(render_graph& graph)
         rdg_buffer_srv visible_vsm_ids;
         rdg_buffer_uav vsm_virtual_page_table;
         rdg_buffer_srv vsm_buffer;
+        rdg_buffer_srv vsm_directional_buffer;
     };
 
     graph.add_pass<pass_data>(
@@ -705,6 +714,8 @@ void shadow_pass::mark_visible_pages(render_graph& graph)
             data.vsm_virtual_page_table =
                 pass.add_buffer_uav(m_vsm_virtual_page_table, RHI_PIPELINE_STAGE_COMPUTE);
             data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+            data.vsm_directional_buffer =
+                pass.add_buffer_srv(m_vsm_directional_buffer, RHI_PIPELINE_STAGE_COMPUTE);
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -725,6 +736,7 @@ void shadow_pass::mark_visible_pages(render_graph& graph)
                     .visible_vsm_ids = data.visible_vsm_ids.get_bindless(),
                     .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
                     .vsm_buffer = data.vsm_buffer.get_bindless(),
+                    .vsm_directional_buffer = data.vsm_directional_buffer.get_bindless(),
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
@@ -1399,7 +1411,7 @@ void shadow_pass::render_shadow(render_graph& graph, bool is_static)
             command.set_pipeline({
                 .vertex_shader = device.get_shader<vsm_shadow_vs>(),
                 .fragment_shader = device.get_shader<vsm_shadow_fs>(),
-                .rasterizer_state = device.get_rasterizer_state<RHI_CULL_MODE_FRONT>(),
+                .rasterizer_state = device.get_rasterizer_state<RHI_CULL_MODE_NONE>(),
                 .depth_stencil_state =
                     device.get_depth_stencil_state<true, true, RHI_COMPARE_OP_GREATER>(),
             });
@@ -1542,7 +1554,7 @@ void shadow_pass::build_hzb(render_graph& graph)
                 auto& device = render_device::instance();
 
                 std::uint32_t next_size =
-                    data.next_buffer.get_extent().width / VSM_PHYSICAL_PAGE_TABLE_SIZE;
+                    data.next_buffer.get_extent().width / VSM_PHYSICAL_PAGE_TABLE_SIZE_X;
 
                 command.set_pipeline({
                     .compute_shader = device.get_shader<vsm_build_hzb_cs>(),
@@ -1574,6 +1586,7 @@ void shadow_pass::add_debug_pass(render_graph& graph)
         rdg_texture_srv depth_buffer;
         rdg_buffer_srv vsm_buffer;
         rdg_buffer_srv vsm_virtual_page_table;
+        rdg_buffer_srv vsm_directional_buffer;
         rdg_buffer_srv draw_count_buffer;
         std::uint32_t light_id;
     };
@@ -1589,6 +1602,8 @@ void shadow_pass::add_debug_pass(render_graph& graph)
                 data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
                 data.vsm_virtual_page_table =
                     pass.add_buffer_srv(m_vsm_virtual_page_table, RHI_PIPELINE_STAGE_COMPUTE);
+                data.vsm_directional_buffer =
+                    pass.add_buffer_srv(m_vsm_directional_buffer, RHI_PIPELINE_STAGE_COMPUTE);
                 data.draw_count_buffer =
                     pass.add_buffer_srv(m_draw_count_buffer, RHI_PIPELINE_STAGE_COMPUTE);
 
@@ -1608,6 +1623,7 @@ void shadow_pass::add_debug_pass(render_graph& graph)
                         .debug_info_index = device.get_frame_resource_index(),
                         .vsm_buffer = data.vsm_buffer.get_bindless(),
                         .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
+                        .vsm_directional_buffer = data.vsm_directional_buffer.get_bindless(),
                         .draw_count_buffer = data.draw_count_buffer.get_bindless(),
                         .light_id = data.light_id,
                     });

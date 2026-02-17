@@ -38,13 +38,57 @@ struct shading_build_worklist_cs : public shader_cs
     };
 };
 
+struct shadow_mask_fs : public shader_fs
+{
+    static constexpr std::string_view path = "assets/shaders/shading/shadow_mask.hlsl";
+
+    struct constant_data
+    {
+        std::uint32_t depth_buffer;
+        std::uint32_t normal_buffer;
+        std::uint32_t vsm_buffer;
+        std::uint32_t vsm_virtual_page_table;
+        std::uint32_t vsm_physical_shadow_map;
+        std::uint32_t vsm_directional_buffer;
+        std::uint32_t light_id;
+        float normal_offset;
+    };
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = scene},
+        {.space = 2, .desc = camera},
+    };
+};
+
 void shading_pass::add(render_graph& graph, const parameter& parameter)
 {
     rdg_scope scope(graph, "Shading Pass");
 
+    m_shadow_mask = graph.add_texture(
+        "Shadow Mask",
+        parameter.render_target->get_extent(),
+        RHI_FORMAT_R8_UNORM,
+        RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE);
+
     add_clear_pass(graph, parameter);
     add_tile_classify_pass(graph, parameter);
-    add_tile_shading_pass(graph, parameter);
+
+    const auto& scene = graph.get_scene();
+
+    // Shadow casting lights.
+    std::uint32_t shadow_casting_light_count = scene.get_light_count(true);
+    for (std::uint32_t light_id = 0; light_id < shadow_casting_light_count; ++light_id)
+    {
+        add_shadow_mask_pass(graph, parameter, light_id);
+        add_tile_shading_pass(graph, parameter, LIGHTING_STAGE_DIRECT_LIGHTING_SHADOWED, light_id);
+    }
+
+    // Non-shadow casting lights.
+    add_tile_shading_pass(graph, parameter, LIGHTING_STAGE_DIRECT_LIGHTING_UNSHADOWED);
+
+    // Indirect lighting.
+    add_tile_shading_pass(graph, parameter, LIGHTING_STAGE_INDIRECT_LIGHTING);
 }
 
 void shading_pass::add_clear_pass(render_graph& graph, const parameter& parameter)
@@ -177,7 +221,11 @@ void shading_pass::add_tile_classify_pass(render_graph& graph, const parameter& 
         });
 }
 
-void shading_pass::add_tile_shading_pass(render_graph& graph, const parameter& parameter) const
+void shading_pass::add_tile_shading_pass(
+    render_graph& graph,
+    const parameter& parameter,
+    lighting_stage stage,
+    std::uint32_t light_id) const
 {
     rdg_scope scope(graph, "Tile Shading");
 
@@ -188,6 +236,10 @@ void shading_pass::add_tile_shading_pass(render_graph& graph, const parameter& p
         rdg_texture_uav render_target;
         rdg_buffer_srv worklist_buffer;
         rdg_buffer_ref shading_dispatch_buffer;
+        rdg_texture_srv shadow_mask;
+        std::uint32_t light_id;
+
+        lighting_stage stage;
     };
 
     graph.get_scene().each_shading_model(
@@ -230,13 +282,14 @@ void shading_pass::add_tile_shading_pass(render_graph& graph, const parameter& p
                         RHI_PIPELINE_STAGE_DRAW_INDIRECT,
                         RHI_ACCESS_INDIRECT_COMMAND_READ);
 
-                    pass.add_buffer_srv(parameter.vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
-                    pass.add_buffer_srv(
-                        parameter.vsm_virtual_page_table,
-                        RHI_PIPELINE_STAGE_COMPUTE);
-                    pass.add_texture_srv(
-                        parameter.vsm_physical_shadow_map,
-                        RHI_PIPELINE_STAGE_COMPUTE);
+                    if (stage == LIGHTING_STAGE_DIRECT_LIGHTING_SHADOWED)
+                    {
+                        data.shadow_mask =
+                            pass.add_texture_srv(m_shadow_mask, RHI_PIPELINE_STAGE_COMPUTE);
+                        data.light_id = light_id;
+                    }
+
+                    data.stage = stage;
                 },
                 [shading_model,
                  shading_model_id,
@@ -253,7 +306,14 @@ void shading_pass::add_tile_shading_pass(render_graph& graph, const parameter& p
                         .shading_model = shading_model_id,
                         .worklist_buffer = data.worklist_buffer.get_bindless(),
                         .worklist_offset = shading_model_id * tile_count,
+                        .stage = static_cast<std::uint32_t>(data.stage),
                     };
+
+                    if (data.stage == LIGHTING_STAGE_DIRECT_LIGHTING_SHADOWED)
+                    {
+                        constant.light_id = data.light_id;
+                        constant.shadow_mask = data.shadow_mask.get_bindless();
+                    }
 
                     for (std::uint32_t gbuffer : shading_model->get_required_gbuffers())
                     {
@@ -277,6 +337,82 @@ void shading_pass::add_tile_shading_pass(render_graph& graph, const parameter& p
                         data.shading_dispatch_buffer.get_rhi(),
                         shading_model_id * sizeof(shader::dispatch_command));
                 });
+        });
+}
+
+void shading_pass::add_shadow_mask_pass(
+    render_graph& graph,
+    const parameter& parameter,
+    std::uint32_t light_id)
+{
+    struct pass_data
+    {
+        rdg_texture_srv depth_buffer;
+        rdg_texture_srv normal_buffer;
+        rdg_buffer_srv vsm_buffer;
+        rdg_buffer_srv vsm_virtual_page_table;
+        rdg_texture_srv vsm_physical_shadow_map;
+        rdg_buffer_srv vsm_directional_buffer;
+        std::uint32_t light_id;
+
+        float normal_offset;
+    };
+
+    graph.add_pass<pass_data>(
+        "Shadow Mask Pass",
+        RDG_PASS_RASTER,
+        [&](pass_data& data, rdg_pass& pass)
+        {
+            data.depth_buffer = pass.add_texture_srv(
+                parameter.auxiliary_buffers[SHADING_AUXILIARY_BUFFER_DEPTH],
+                RHI_PIPELINE_STAGE_FRAGMENT);
+            data.normal_buffer = pass.add_texture_srv(
+                parameter.gbuffers[SHADING_GBUFFER_NORMAL],
+                RHI_PIPELINE_STAGE_FRAGMENT);
+            data.vsm_buffer =
+                pass.add_buffer_srv(parameter.vsm_buffer, RHI_PIPELINE_STAGE_FRAGMENT);
+            data.vsm_virtual_page_table =
+                pass.add_buffer_srv(parameter.vsm_virtual_page_table, RHI_PIPELINE_STAGE_FRAGMENT);
+            data.vsm_physical_shadow_map = pass.add_texture_srv(
+                parameter.vsm_physical_shadow_map,
+                RHI_PIPELINE_STAGE_FRAGMENT);
+            data.vsm_directional_buffer =
+                pass.add_buffer_srv(parameter.vsm_directional_buffer, RHI_PIPELINE_STAGE_FRAGMENT);
+
+            pass.add_render_target(m_shadow_mask, RHI_ATTACHMENT_LOAD_OP_CLEAR);
+
+            data.light_id = light_id;
+            data.normal_offset = parameter.shadow_normal_offset;
+        },
+        [](const pass_data& data, rdg_command& command)
+        {
+            auto& device = render_device::instance();
+
+            command.set_pipeline({
+                .vertex_shader = device.get_shader<fullscreen_vs>(),
+                .fragment_shader = device.get_shader<shadow_mask_fs>(),
+            });
+
+            command.set_viewport();
+            command.set_scissor();
+
+            command.set_constant(
+                shadow_mask_fs::constant_data{
+                    .depth_buffer = data.depth_buffer.get_bindless(),
+                    .normal_buffer = data.normal_buffer.get_bindless(),
+                    .vsm_buffer = data.vsm_buffer.get_bindless(),
+                    .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
+                    .vsm_physical_shadow_map = data.vsm_physical_shadow_map.get_bindless(),
+                    .vsm_directional_buffer = data.vsm_directional_buffer.get_bindless(),
+                    .light_id = data.light_id,
+                    .normal_offset = data.normal_offset,
+                });
+
+            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+            command.set_parameter(1, RDG_PARAMETER_SCENE);
+            command.set_parameter(2, RDG_PARAMETER_CAMERA);
+
+            command.draw_fullscreen();
         });
 }
 } // namespace violet

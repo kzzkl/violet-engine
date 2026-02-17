@@ -135,7 +135,7 @@ void process_cluster_node(uint group_index)
     camera.type = CAMERA_ORTHOGRAPHIC;
     camera.matrix_v = vsm.matrix_v;
     camera.near = -vsm.view_z_radius;
-    camera.pixels_per_unit = vsm.pixels_per_unit;
+    camera.texel_size_inv = vsm.texel_size_inv;
     bool visible = cluster_node.check_lod(camera, mesh, constant.threshold);
 
     if (visible)
@@ -223,7 +223,7 @@ void process_cluster(uint3 dtid)
     camera.type = CAMERA_ORTHOGRAPHIC;
     camera.matrix_v = vsm.matrix_v;
     camera.near = -vsm.view_z_radius;
-    camera.pixels_per_unit = vsm.pixels_per_unit;
+    camera.texel_size_inv = vsm.texel_size_inv;
     bool visible = cluster.check_lod(camera, mesh, constant.threshold);
 
     if (visible)

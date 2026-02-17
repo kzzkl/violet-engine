@@ -10,6 +10,7 @@ struct constant_data
     uint depth_buffer;
     uint vsm_buffer;
     uint vsm_virtual_page_table;
+    uint vsm_directional_buffer;
     uint draw_count_buffer;
     uint width;
     uint height;
@@ -54,8 +55,8 @@ void debug_info(uint3 dtid : SV_DispatchThreadID)
 {
     RWStructuredBuffer<debug_data> debug_infos = ResourceDescriptorHeap[constant.debug_info];
 
-    StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[scene.vsm_directional_buffer];
-    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
+    StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[constant.vsm_directional_buffer];
+    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
 
@@ -132,8 +133,8 @@ void debug_page(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[scene.vsm_directional_buffer];
-    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
+    StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[constant.vsm_directional_buffer];
+    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     RWTexture2D<float4> debug_output = ResourceDescriptorHeap[constant.debug_output];
 
@@ -182,8 +183,8 @@ void debug_page_cache(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[scene.vsm_directional_buffer];
-    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
+    StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[constant.vsm_directional_buffer];
+    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
     RWTexture2D<float4> debug_output = ResourceDescriptorHeap[constant.debug_output];

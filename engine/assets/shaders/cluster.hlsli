@@ -19,7 +19,7 @@ struct cluster_queue_state_data
 
 float get_projected_error(camera_data camera, float error, float depth)
 {
-    error *= camera.pixels_per_unit;
+    error *= camera.texel_size_inv;
     return camera.type == CAMERA_PERSPECTIVE ? error / depth : error;
 }
 

@@ -179,6 +179,18 @@ private:
             }
         }
 
+        if (ImGui::CollapsingHeader("Shadow"))
+        {
+            auto& main_camera = get_world().get_component<camera_component>(get_camera());
+            auto* renderer = static_cast<deferred_renderer*>(main_camera.renderer.get());
+
+            static float shadow_normal_offset = renderer->get_shadow_normal_offset();
+            if (ImGui::SliderFloat("Normal Offset", &shadow_normal_offset, 0.0f, 20.0f))
+            {
+                renderer->set_shadow_normal_offset(shadow_normal_offset);
+            }
+        }
+
         if (ImGui::CollapsingHeader("TAA"))
         {
             auto& main_camera = get_world().get_component<camera_component>(get_camera());

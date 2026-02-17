@@ -221,9 +221,18 @@ void render_scene::set_instance_material(render_id instance_id, material* materi
 
 render_id render_scene::add_light(std::uint32_t type)
 {
-    render_id light_id = m_lights.add();
+    render_id light_id = m_light_allocator.allocate();
 
-    auto& light = m_lights[light_id];
+    if (m_light_mappings.size() <= light_id)
+    {
+        m_light_mappings.resize(light_id + 1);
+    }
+
+    auto& mapping = m_light_mappings[light_id];
+    mapping.cast_shadow = false;
+    mapping.light_id = m_non_shadow_casting_lights.add();
+
+    auto& light = m_non_shadow_casting_lights[light_id];
     light.type = type;
 
     m_scene_states |= RENDER_SCENE_STATE_DATA_DIRTY;
@@ -233,9 +242,13 @@ render_id render_scene::add_light(std::uint32_t type)
 
 void render_scene::remove_light(render_id light_id)
 {
-    set_light_shadow(light_id, false);
+    auto& mapping = m_light_mappings[light_id];
+    if (mapping.cast_shadow)
+    {
+        set_light_shadow(light_id, false);
+    }
 
-    m_lights.remove(light_id);
+    m_non_shadow_casting_lights.remove(mapping.light_id);
 
     m_scene_states |= RENDER_SCENE_STATE_DATA_DIRTY;
 }
@@ -246,16 +259,18 @@ void render_scene::set_light_data(
     const vec3f& position,
     const vec3f& direction)
 {
-    auto& light = m_lights[light_id];
-    light.color = color;
-    light.position = position;
-    light.direction = direction;
+    auto& mapping = m_light_mappings[light_id];
 
-    if (light.cast_shadow())
+    gpu_light* light = nullptr;
+
+    if (mapping.cast_shadow)
     {
-        if (light.type == LIGHT_DIRECTIONAL)
+        light = &m_shadow_casting_lights[mapping.light_id];
+        m_shadow_casting_lights.mark_dirty(mapping.light_id);
+
+        if (light->type == LIGHT_DIRECTIONAL)
         {
-            auto& vsms = m_vsm_directional_buffer[light.vsm_address].vsms;
+            auto& vsms = m_vsm_directional_buffer[light->vsm_address].vsms;
 
             for (const auto& camera : m_cameras)
             {
@@ -266,29 +281,107 @@ void render_scene::set_light_data(
             }
         }
     }
+    else
+    {
+        light = &m_non_shadow_casting_lights[mapping.light_id];
+        m_non_shadow_casting_lights.mark_dirty(mapping.light_id);
+    }
 
-    m_lights.mark_dirty(light_id);
+    light->color = color;
+    light->position = position;
+    light->direction = direction;
 }
 
 void render_scene::set_light_shadow(render_id light_id, bool cast_shadow)
 {
-    auto& light = m_lights[light_id];
+    auto& mapping = m_light_mappings[light_id];
 
-    if ((light.cast_shadow() && cast_shadow) || (!light.cast_shadow() && !cast_shadow))
+    if (mapping.cast_shadow == cast_shadow)
     {
         return;
     }
+    mapping.cast_shadow = cast_shadow;
+
+    auto& move_from = cast_shadow ? m_non_shadow_casting_lights : m_shadow_casting_lights;
+    auto& move_to = cast_shadow ? m_shadow_casting_lights : m_non_shadow_casting_lights;
+
+    render_id old_light_id = mapping.light_id;
+    render_id new_light_id = move_to.add();
+
+    move_to[new_light_id] = move_from[old_light_id];
+    move_from.remove(old_light_id);
+
+    auto& light = move_to[new_light_id];
 
     if (cast_shadow)
     {
-        add_vsm_by_light(light_id);
+        if (light.type == LIGHT_DIRECTIONAL)
+        {
+            light.vsm_address = m_vsm_directional_buffer.add();
+
+            auto& directional_vsm_array = m_vsm_directional_buffer[light.vsm_address].vsms;
+            directional_vsm_array.fill(
+                {.vsm_id = INVALID_RENDER_ID, .camera_id = INVALID_RENDER_ID});
+
+            for (const auto& camera : m_cameras)
+            {
+                if (camera.camera_id == INVALID_RENDER_ID)
+                {
+                    continue;
+                }
+
+                render_id vsm_id = m_vsm_manager->add_vsm(LIGHT_DIRECTIONAL);
+
+                directional_vsm_array[camera.camera_id] = {
+                    .vsm_id = vsm_id,
+                    .camera_id = camera.camera_id,
+                };
+
+                m_vsms[vsm_id] = {
+                    .light_id = new_light_id,
+                    .camera_id = camera.camera_id,
+                    .dirty = true,
+                };
+            }
+
+            m_vsm_directional_buffer.mark_dirty(light.vsm_address);
+        }
+        else
+        {
+        }
     }
     else
     {
-        remove_vsm_by_light(light_id);
-    }
+        if (light.type == LIGHT_DIRECTIONAL)
+        {
+            auto& vsms = m_vsm_directional_buffer[light.vsm_address].vsms;
 
-    m_lights.mark_dirty(light_id);
+            for (auto& vsm : vsms)
+            {
+                if (vsm.camera_id == INVALID_RENDER_ID)
+                {
+                    continue;
+                }
+
+                auto iter = std::ranges::find_if(
+                    m_cameras[vsm.camera_id].vsms,
+                    [&](const camera_data::vsm& vsm)
+                    {
+                        return vsm.light_id == old_light_id;
+                    });
+                m_cameras[vsm.camera_id].vsms.erase(iter);
+
+                m_vsm_manager->remove_vsm(vsm.vsm_id);
+
+                m_vsms.erase(vsm.vsm_id);
+            }
+
+            m_vsm_directional_buffer.remove(light.vsm_address);
+        }
+        else
+        {
+        }
+    }
 }
 
 render_id render_scene::add_camera()
@@ -366,26 +459,17 @@ void render_scene::update(gpu_buffer_uploader* uploader)
     std::uint32_t index_buffer = geometry_manager->get_index_buffer()->get_srv()->get_bindless();
     std::uint32_t cluster_buffer =
         geometry_manager->get_cluster_buffer()->get_srv()->get_bindless();
-    std::uint32_t vsm_directional_buffer =
-        m_vsm_directional_buffer.get_buffer()->get_srv()->get_bindless();
 
     if (m_scene_data.material_buffer != material_buffer ||
         m_scene_data.geometry_buffer != geometry_buffer ||
         m_scene_data.vertex_buffer != vertex_buffer || m_scene_data.index_buffer != index_buffer ||
-        m_scene_data.cluster_buffer != cluster_buffer ||
-        m_scene_data.vsm_directional_buffer != vsm_directional_buffer)
+        m_scene_data.cluster_buffer != cluster_buffer)
     {
         m_scene_data.material_buffer = material_buffer;
         m_scene_data.geometry_buffer = geometry_buffer;
         m_scene_data.vertex_buffer = vertex_buffer;
         m_scene_data.index_buffer = index_buffer;
         m_scene_data.cluster_buffer = cluster_buffer;
-        m_scene_data.vsm_buffer = m_vsm_manager->get_vsm_buffer()->get_srv()->get_bindless();
-        m_scene_data.vsm_virtual_page_table =
-            m_vsm_manager->get_vsm_virtual_page_table()->get_srv()->get_bindless();
-        m_scene_data.vsm_physical_shadow_map =
-            m_vsm_manager->get_vsm_physical_shadow_map_final()->get_srv()->get_bindless();
-        m_scene_data.vsm_directional_buffer = vsm_directional_buffer;
 
         m_scene_states |= RENDER_SCENE_STATE_DATA_DIRTY;
     }
@@ -396,8 +480,14 @@ void render_scene::update(gpu_buffer_uploader* uploader)
         m_scene_data.mesh_count = get_mesh_count();
         m_scene_data.instance_buffer = m_instances.get_buffer()->get_srv()->get_bindless();
         m_scene_data.instance_count = get_instance_count();
-        m_scene_data.light_buffer = m_lights.get_buffer()->get_srv()->get_bindless();
-        m_scene_data.light_count = get_light_count();
+
+        m_scene_data.shadow_casting_light_buffer =
+            m_shadow_casting_lights.get_buffer()->get_srv()->get_bindless();
+        m_scene_data.shadow_casting_light_count = m_shadow_casting_lights.get_size();
+        m_scene_data.non_shadow_casting_light_buffer =
+            m_non_shadow_casting_lights.get_buffer()->get_srv()->get_bindless();
+        m_scene_data.non_shadow_casting_light_count = m_non_shadow_casting_lights.get_size();
+
         m_scene_data.batch_buffer = m_batches.get_buffer()->get_srv()->get_bindless();
 
         m_scene_parameter->set_uniform(0, &m_scene_data, sizeof(shader::scene_data));
@@ -554,92 +644,14 @@ void render_scene::remove_instance_from_batch(render_id instance_id)
     m_scene_states |= RENDER_SCENE_STATE_BATCH_DIRTY;
 }
 
-void render_scene::add_vsm_by_light(render_id light_id)
-{
-    auto& light = m_lights[light_id];
-
-    assert(!light.cast_shadow());
-
-    if (light.type == LIGHT_DIRECTIONAL)
-    {
-        light.vsm_address = m_vsm_directional_buffer.add();
-
-        auto& directional_vsm_array = m_vsm_directional_buffer[light.vsm_address].vsms;
-        directional_vsm_array.fill({.vsm_id = INVALID_RENDER_ID, .camera_id = INVALID_RENDER_ID});
-
-        for (const auto& camera : m_cameras)
-        {
-            if (camera.camera_id == INVALID_RENDER_ID)
-            {
-                continue;
-            }
-
-            render_id vsm_id = m_vsm_manager->add_vsm(LIGHT_DIRECTIONAL);
-
-            directional_vsm_array[camera.camera_id] = {
-                .vsm_id = vsm_id,
-                .camera_id = camera.camera_id,
-            };
-
-            m_vsms[vsm_id] = {
-                .light_id = light_id,
-                .camera_id = camera.camera_id,
-                .dirty = true,
-            };
-        }
-
-        m_vsm_directional_buffer.mark_dirty(light.vsm_address);
-    }
-    else
-    {
-    }
-}
-
-void render_scene::remove_vsm_by_light(render_id light_id)
-{
-    auto& light = m_lights[light_id];
-
-    assert(light.cast_shadow());
-
-    if (light.type == LIGHT_DIRECTIONAL)
-    {
-        auto& vsms = m_vsm_directional_buffer[light.vsm_address].vsms;
-
-        for (auto& vsm : vsms)
-        {
-            if (vsm.camera_id == INVALID_RENDER_ID)
-            {
-                continue;
-            }
-
-            auto iter = std::ranges::find_if(
-                m_cameras[vsm.camera_id].vsms,
-                [&](const camera_data::vsm& vsm)
-                {
-                    return vsm.light_id == light_id;
-                });
-            m_cameras[vsm.camera_id].vsms.erase(iter);
-
-            m_vsm_manager->remove_vsm(vsm.vsm_id);
-
-            m_vsms.erase(vsm.vsm_id);
-        }
-
-        m_vsm_directional_buffer.remove(light.vsm_address);
-    }
-    else
-    {
-    }
-}
-
 void render_scene::add_vsm_by_camera(render_id camera_id)
 {
     auto& camera = m_cameras[camera_id];
 
-    m_lights.each(
+    m_shadow_casting_lights.each(
         [&](render_id light_id, const gpu_light& light)
         {
-            if (light.type != LIGHT_DIRECTIONAL || !light.cast_shadow())
+            if (light.type != LIGHT_DIRECTIONAL)
             {
                 return;
             }
@@ -773,28 +785,37 @@ bool render_scene::update_light(gpu_buffer_uploader* uploader)
                 RHI_ACCESS_SHADER_READ);
         });
 
-    return m_lights.update(
-        [&](const gpu_light& light) -> shader::light_data
-        {
-            return {
-                .position = light.position,
-                .type = light.type,
-                .direction = light.direction,
-                .vsm_address = light.vsm_address,
-                .color = light.color,
-            };
-        },
-        [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
-        {
-            uploader->upload(
-                buffer,
-                data,
-                size,
-                offset,
-                RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_FRAGMENT |
-                    RHI_PIPELINE_STAGE_COMPUTE,
-                RHI_ACCESS_SHADER_READ);
-        });
+    auto update_light_buffer = [&](gpu_dense_array<gpu_light>& lights)
+    {
+        return lights.update(
+            [&](const gpu_light& light) -> shader::light_data
+            {
+                return {
+                    .position = light.position,
+                    .type = light.type,
+                    .direction = light.direction,
+                    .vsm_address = light.vsm_address,
+                    .color = light.color,
+                };
+            },
+            [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
+            {
+                uploader->upload(
+                    buffer,
+                    data,
+                    size,
+                    offset,
+                    RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_FRAGMENT |
+                        RHI_PIPELINE_STAGE_COMPUTE,
+                    RHI_ACCESS_SHADER_READ);
+            });
+    };
+
+    bool dirty = false;
+    dirty = update_light_buffer(m_shadow_casting_lights) || dirty;
+    dirty = update_light_buffer(m_non_shadow_casting_lights) || dirty;
+
+    return dirty;
 }
 
 bool render_scene::update_batch(gpu_buffer_uploader* uploader)
@@ -848,7 +869,7 @@ void render_scene::update_vsm()
             continue;
         }
 
-        const auto& light = m_lights[vsm_data.light_id];
+        const auto& light = m_shadow_casting_lights[vsm_data.light_id];
         if (light.type == LIGHT_DIRECTIONAL)
         {
             const auto& camera = m_cameras[vsm_data.camera_id];

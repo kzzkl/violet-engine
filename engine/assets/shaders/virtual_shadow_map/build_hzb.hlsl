@@ -47,7 +47,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         Texture2D<float> prev_buffer = ResourceDescriptorHeap[constant.prev_buffer];
         SamplerState hzb_sampler = SamplerDescriptorHeap[constant.hzb_sampler];
 
-        depth = prev_buffer.SampleLevel(hzb_sampler, float2(next_texel) / float(PHYSICAL_PAGE_TABLE_SIZE * constant.next_size), 0, int2(1, 1));
+        depth = prev_buffer.SampleLevel(hzb_sampler, float2(next_texel) / float2(PHYSICAL_PAGE_TABLE_SIZE_X, PHYSICAL_PAGE_TABLE_SIZE_Y) * constant.next_size, 0, int2(1, 1));
     }
 
     next_buffer[next_texel] = depth;

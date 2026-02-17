@@ -27,7 +27,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     uint2 physical_texel = get_physical_page_coord(physical_page_index) * PAGE_RESOLUTION + dtid.xy;
 
-    if (physical_page.frame == 0)
+    if (physical_page.flags & PHYSICAL_PAGE_FLAG_NEED_CLEAR)
     {
         physical_shadow_map_static[physical_texel] = 0;
     }
