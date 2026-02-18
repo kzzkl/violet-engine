@@ -14,8 +14,6 @@ struct gtao_cs : public shader_cs
         std::uint32_t normal_buffer;
         std::uint32_t ao_buffer;
         std::uint32_t hilbert_lut;
-        std::uint32_t width;
-        std::uint32_t height;
         std::uint32_t slice_count;
         std::uint32_t step_count;
         float radius;
@@ -63,8 +61,6 @@ void gtao_pass::add(render_graph& graph, const parameter& parameter)
         {
             auto& device = render_device::instance();
 
-            rhi_texture_extent extent = data.ao_buffer.get_extent();
-
             command.set_pipeline({
                 .compute_shader = device.get_shader<gtao_cs>(),
             });
@@ -76,8 +72,6 @@ void gtao_pass::add(render_graph& graph, const parameter& parameter)
                     .ao_buffer = data.ao_buffer.get_bindless(),
                     .hilbert_lut =
                         device.get_buildin_texture<hilbert_lut>()->get_srv()->get_bindless(),
-                    .width = extent.width,
-                    .height = extent.height,
                     .slice_count = data.slice_count,
                     .step_count = data.step_count,
                     .radius = data.radius,
@@ -87,6 +81,7 @@ void gtao_pass::add(render_graph& graph, const parameter& parameter)
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_CAMERA);
 
+            rhi_texture_extent extent = data.ao_buffer.get_extent();
             command.dispatch_2d(extent.width, extent.height);
         });
 }

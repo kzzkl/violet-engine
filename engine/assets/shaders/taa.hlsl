@@ -8,8 +8,6 @@ struct constant_data
     uint depth_buffer;
     uint motion_vector;
     uint resolved_render_target;
-    uint width;
-    uint height;
 };
 PushConstant(constant_data, constant);
 
@@ -49,11 +47,15 @@ float3 clip_color(float3 history_color, uint2 st)
 {
     Texture2D<float4> current = ResourceDescriptorHeap[constant.current_render_target];
 
+    uint width;
+    uint height;
+    current.GetDimensions(width, height);
+
     history_color = tonemap(history_color);
     history_color = rgb_to_ycocgr(history_color);
 
     const int2 st_min = int2(0, 0);
-    const int2 st_max = int2(constant.width, constant.height) - 1;
+    const int2 st_max = int2(width, height) - 1;
 
     float3 m1 = 0;
     float3 m2 = 0;
@@ -105,12 +107,19 @@ float3 clip_color(float3 history_color, uint2 st)
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
-    if (dtid.x >= constant.width || dtid.y >= constant.height)
+    Texture2D<float4> current = ResourceDescriptorHeap[constant.current_render_target];
+    RWTexture2D<float4> resolved = ResourceDescriptorHeap[constant.resolved_render_target];
+
+    uint width;
+    uint height;
+    current.GetDimensions(width, height);
+
+    if (dtid.x >= width || dtid.y >= height)
     {
         return;
     }
 
-    float2 texcoord = get_compute_texcoord(dtid.xy, constant.width, constant.height);
+    float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
 
 #if defined(USE_MOTION_VECTOR)
     float2 motion_vector = get_motion_vector(dtid.xy);
@@ -118,9 +127,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 #else
     float2 history_texcoord = texcoord;
 #endif
-
-    Texture2D<float4> current = ResourceDescriptorHeap[constant.current_render_target];
-    RWTexture2D<float4> resolved = ResourceDescriptorHeap[constant.resolved_render_target];
 
     if (constant.history_render_target != 0 && !any(history_texcoord < 0.0) && !any(history_texcoord > 1.0))
     {

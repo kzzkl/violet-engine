@@ -10,9 +10,6 @@ struct motion_vector_cs : public shader_cs
     {
         std::uint32_t depth_buffer;
         std::uint32_t motion_vector;
-
-        std::uint32_t width;
-        std::uint32_t height;
     };
 
     static constexpr parameter_layout parameters = {
@@ -43,8 +40,6 @@ void motion_vector_pass::add(render_graph& graph, const parameter& parameter)
         {
             auto& device = render_device::instance();
 
-            rhi_texture_extent extent = data.depth_buffer.get_texture()->get_extent();
-
             command.set_pipeline({
                 .compute_shader = device.get_shader<motion_vector_cs>(),
             });
@@ -52,12 +47,11 @@ void motion_vector_pass::add(render_graph& graph, const parameter& parameter)
                 motion_vector_cs::constant_data{
                     .depth_buffer = data.depth_buffer.get_bindless(),
                     .motion_vector = data.motion_vector.get_bindless(),
-                    .width = extent.width,
-                    .height = extent.height,
                 });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_CAMERA);
 
+            rhi_texture_extent extent = data.motion_vector.get_texture()->get_extent();
             command.dispatch_2d(extent.width, extent.height);
         });
 }

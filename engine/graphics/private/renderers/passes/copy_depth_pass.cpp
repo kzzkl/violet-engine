@@ -10,8 +10,6 @@ struct copy_depth_cs : public shader_cs
     {
         std::uint32_t src;
         std::uint32_t dst;
-        std::uint32_t width;
-        std::uint32_t height;
     };
 
     static constexpr parameter_layout parameters = {
@@ -39,8 +37,6 @@ void copy_depth_pass::add(render_graph& graph, const parameter& parameter)
         {
             auto& device = render_device::instance();
 
-            rhi_texture_extent extent = data.src.get_extent();
-
             command.set_pipeline({
                 .compute_shader = device.get_shader<copy_depth_cs>(),
             });
@@ -49,11 +45,10 @@ void copy_depth_pass::add(render_graph& graph, const parameter& parameter)
                 copy_depth_cs::constant_data{
                     .src = data.src.get_bindless(),
                     .dst = data.dst.get_bindless(),
-                    .width = extent.width,
-                    .height = extent.height,
                 });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
+            rhi_texture_extent extent = data.src.get_extent();
             command.dispatch_2d(extent.width, extent.height);
         });
 }

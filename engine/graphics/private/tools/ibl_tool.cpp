@@ -10,14 +10,12 @@ struct convert_cs : public shader_cs
 
     struct constant_data
     {
-        std::uint32_t width;
-        std::uint32_t height;
         std::uint32_t env_map;
         std::uint32_t cube_map;
     };
 
     static constexpr parameter_layout parameters = {
-        {0, bindless},
+        {.space = 0, .desc = bindless},
     };
 };
 
@@ -27,14 +25,12 @@ struct irradiance_cs : public shader_cs
 
     struct constant_data
     {
-        std::uint32_t width;
-        std::uint32_t height;
         std::uint32_t cube_map;
         std::uint32_t irradiance_map;
     };
 
     static constexpr parameter_layout parameters = {
-        {0, bindless},
+        {.space = 0, .desc = bindless},
     };
 };
 
@@ -44,8 +40,6 @@ struct prefilter_cs : public shader_cs
 
     struct constant_data
     {
-        std::uint32_t width;
-        std::uint32_t height;
         std::uint32_t cube_map;
         std::uint32_t prefilter_map;
         float roughness;
@@ -55,7 +49,7 @@ struct prefilter_cs : public shader_cs
     };
 
     static constexpr parameter_layout parameters = {
-        {0, bindless},
+        {.space = 0, .desc = bindless},
     };
 };
 
@@ -142,18 +136,17 @@ private:
             },
             [](const pass_data& data, rdg_command& command)
             {
-                rhi_texture_extent extent = data.cube_map.get_texture()->get_extent();
-
                 command.set_pipeline({
                     .compute_shader = render_device::instance().get_shader<convert_cs>(),
                 });
-                command.set_constant(convert_cs::constant_data{
-                    .width = extent.width,
-                    .height = extent.height,
-                    .env_map = data.env_map.get_bindless(),
-                    .cube_map = data.cube_map.get_bindless(),
-                });
+                command.set_constant(
+                    convert_cs::constant_data{
+                        .env_map = data.env_map.get_bindless(),
+                        .cube_map = data.cube_map.get_bindless(),
+                    });
                 command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+
+                rhi_texture_extent extent = data.cube_map.get_texture()->get_extent();
                 command.dispatch_3d(extent.width, extent.height, 6, 8, 8, 1);
             });
     }
@@ -242,18 +235,17 @@ private:
             },
             [](const pass_data& data, rdg_command& command)
             {
-                rhi_texture_extent extent = data.irradiance_map.get_texture()->get_extent();
-
                 command.set_pipeline({
                     .compute_shader = render_device::instance().get_shader<irradiance_cs>(),
                 });
-                command.set_constant(irradiance_cs::constant_data{
-                    .width = extent.width,
-                    .height = extent.height,
-                    .cube_map = data.cube_map.get_bindless(),
-                    .irradiance_map = data.irradiance_map.get_bindless(),
-                });
+                command.set_constant(
+                    irradiance_cs::constant_data{
+                        .cube_map = data.cube_map.get_bindless(),
+                        .irradiance_map = data.irradiance_map.get_bindless(),
+                    });
                 command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+
+                rhi_texture_extent extent = data.irradiance_map.get_texture()->get_extent();
                 command.dispatch_3d(extent.width, extent.height, 6, 8, 8, 1);
             });
     }
@@ -289,23 +281,23 @@ private:
                 },
                 [](const pass_data& data, rdg_command& command)
                 {
-                    rhi_texture_extent extent = data.prefilter_map.get_extent();
-
                     std::uint32_t level = data.prefilter_map.get_level();
                     std::uint32_t level_count = data.prefilter_map.get_texture()->get_level_count();
 
                     command.set_pipeline({
                         .compute_shader = render_device::instance().get_shader<prefilter_cs>(),
                     });
-                    command.set_constant(prefilter_cs::constant_data{
-                        .width = extent.width,
-                        .height = extent.height,
-                        .cube_map = data.cube_map.get_bindless(),
-                        .prefilter_map = data.prefilter_map.get_bindless(),
-                        .roughness = static_cast<float>(level) / static_cast<float>(level_count),
-                        .resolution = data.cube_map.get_texture()->get_extent().width,
-                    });
+                    command.set_constant(
+                        prefilter_cs::constant_data{
+                            .cube_map = data.cube_map.get_bindless(),
+                            .prefilter_map = data.prefilter_map.get_bindless(),
+                            .roughness =
+                                static_cast<float>(level) / static_cast<float>(level_count),
+                            .resolution = data.cube_map.get_texture()->get_extent().width,
+                        });
                     command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+
+                    rhi_texture_extent extent = data.prefilter_map.get_extent();
                     command.dispatch_3d(extent.width, extent.height, 6, 8, 8, 1);
                 });
         }

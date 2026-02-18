@@ -2,8 +2,6 @@
 
 struct constant_data
 {
-    uint width;
-    uint height;
     uint cube_map;
     uint prefilter_map;
     float roughness;
@@ -43,12 +41,18 @@ static const float3 right_dir[6] = {
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
-    float2 offset = float2(dtid.xy + 0.5) / float2(constant.width, constant.height) * 2.0 - 1.0;
+    RWTexture2DArray<float3> prefilter_map = ResourceDescriptorHeap[constant.prefilter_map];
+
+    uint width;
+    uint height;
+    uint elements;
+    prefilter_map.GetDimensions(width, height, elements);
+
+    float2 offset = float2(dtid.xy + 0.5) / float2(width, height) * 2.0 - 1.0;
     offset.y = -offset.y;
 
     float3 N = normalize(forward_dir[dtid.z] + offset.x * right_dir[dtid.z] + offset.y * up_dir[dtid.z]);
 
-    RWTexture2DArray<float3> prefilter_map = ResourceDescriptorHeap[constant.prefilter_map];
     TextureCube<float3> cube_map = ResourceDescriptorHeap[constant.cube_map];
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 

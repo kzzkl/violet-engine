@@ -1,6 +1,7 @@
 #include "graphics/renderers/passes/shading_pass.hpp"
 #include "graphics/material_manager.hpp"
 #include <algorithm>
+#include <format>
 
 namespace violet
 {
@@ -29,8 +30,6 @@ struct shading_build_worklist_cs : public shader_cs
         std::uint32_t worklist_buffer;
         std::uint32_t shading_dispatch_buffer;
         std::uint32_t tile_count;
-        std::uint32_t width;
-        std::uint32_t height;
     };
 
     static constexpr parameter_layout parameters = {
@@ -85,7 +84,10 @@ void shading_pass::add(render_graph& graph, const parameter& parameter)
     }
 
     // Non-shadow casting lights.
-    add_tile_shading_pass(graph, parameter, LIGHTING_STAGE_DIRECT_LIGHTING_UNSHADOWED);
+    if (scene.get_light_count(false) > 0)
+    {
+        add_tile_shading_pass(graph, parameter, LIGHTING_STAGE_DIRECT_LIGHTING_UNSHADOWED);
+    }
 
     // Indirect lighting.
     add_tile_shading_pass(graph, parameter, LIGHTING_STAGE_INDIRECT_LIGHTING);
@@ -201,8 +203,6 @@ void shading_pass::add_tile_classify_pass(render_graph& graph, const parameter& 
         {
             auto& device = render_device::instance();
 
-            auto extent = data.gbuffer_normal.get_extent();
-
             command.set_pipeline({
                 .compute_shader = device.get_shader<shading_build_worklist_cs>(),
             });
@@ -212,11 +212,10 @@ void shading_pass::add_tile_classify_pass(render_graph& graph, const parameter& 
                     .worklist_buffer = data.worklist_buffer.get_bindless(),
                     .shading_dispatch_buffer = data.shading_dispatch_buffer.get_bindless(),
                     .tile_count = tile_count,
-                    .width = extent.width,
-                    .height = extent.height,
                 });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
+            auto extent = data.gbuffer_normal.get_extent();
             command.dispatch_2d(extent.width, extent.height, tile_size, tile_size);
         });
 }
@@ -227,7 +226,13 @@ void shading_pass::add_tile_shading_pass(
     lighting_stage stage,
     std::uint32_t light_id) const
 {
-    rdg_scope scope(graph, "Tile Shading");
+    static constexpr std::string_view stage_names[] = {
+        "Direct Lighting Shadowed",
+        "Direct Lighting Unshadowed",
+        "Indirect Lighting",
+    };
+
+    rdg_scope scope(graph, std::format("Tile Shading: {}", stage_names[stage]));
 
     struct pass_data
     {
@@ -297,12 +302,8 @@ void shading_pass::add_tile_shading_pass(
                 {
                     shading_model->bind(data.auxiliary_buffers, command);
 
-                    auto extent = data.render_target.get_extent();
-
                     shading_model_cs::constant_data constant = {
                         .render_target = data.render_target.get_bindless(),
-                        .width = extent.width,
-                        .height = extent.height,
                         .shading_model = shading_model_id,
                         .worklist_buffer = data.worklist_buffer.get_bindless(),
                         .worklist_offset = shading_model_id * tile_count,

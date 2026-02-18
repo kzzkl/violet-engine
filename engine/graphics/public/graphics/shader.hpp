@@ -291,8 +291,6 @@ struct material_resolve_cs : public shader_cs
         std::uint32_t material_offset_buffer;
 
         std::uint32_t material_index;
-        std::uint32_t width;
-        std::uint32_t height;
     };
 
     static constexpr parameter_layout parameters = {
@@ -309,8 +307,6 @@ struct shading_model_cs : public shader_cs
         std::uint32_t gbuffers[8];
         std::uint32_t auxiliary_buffers[4];
         std::uint32_t render_target;
-        std::uint32_t width;
-        std::uint32_t height;
         std::uint32_t shading_model;
         std::uint32_t worklist_buffer;
         std::uint32_t worklist_offset;
@@ -318,8 +314,6 @@ struct shading_model_cs : public shader_cs
         std::uint32_t shadow_mask;
         std::uint32_t stage;
         std::uint32_t padding0;
-        std::uint32_t padding1;
-        std::uint32_t padding2;
     };
 
     static constexpr parameter_layout parameters = {
