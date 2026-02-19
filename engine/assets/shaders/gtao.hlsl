@@ -1,5 +1,5 @@
 #include "common.hlsli"
-#include "shading/shading_model.hlsli"
+#include "gbuffer.hlsli"
 
 ConstantBuffer<camera_data> camera : register(b0, space1);
 
@@ -10,8 +10,6 @@ struct constant_data
     uint normal_buffer;
     uint ao_buffer;
     uint hilbert_lut;
-    uint width;
-    uint height;
     uint slice_count;
     uint step_count;
     float radius;
@@ -35,16 +33,20 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
     // https://github.com/GameTechDev/XeGTAO/blob/master/Source/Rendering/Shaders/XeGTAO.hlsli
 
-    if (dtid.x >= constant.width || dtid.y >= constant.height)
+    RWTexture2D<float4> ao_buffer = ResourceDescriptorHeap[constant.ao_buffer];
+
+    uint width;
+    uint height;
+    ao_buffer.GetDimensions(width, height);
+
+    if (dtid.x >= width || dtid.y >= height)
     {
         return;
     }
 
-    float2 texcoord = get_compute_texcoord(dtid.xy, constant.width, constant.height);
+    float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
 
     SamplerState point_clamp_sampler = get_point_clamp_sampler();
-    
-    RWTexture2D<float4> ao_buffer = ResourceDescriptorHeap[constant.ao_buffer];
 
     Texture2D<float> depth_buffer = ResourceDescriptorHeap[constant.depth_buffer];
     float depth = depth_buffer.SampleLevel(point_clamp_sampler, texcoord, 0.0);
@@ -80,7 +82,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     float falloff_mul = -1.0 / (constant.radius - falloff + 0.01);
     float falloff_add = constant.radius / (constant.radius - falloff + 0.01);
 
-    float2 texel_size = 1.0 / float2(constant.width, constant.height);
+    float2 texel_size = 1.0 / float2(width, height);
 
     float min_s = 1.3 / radius_in_pixels;
 

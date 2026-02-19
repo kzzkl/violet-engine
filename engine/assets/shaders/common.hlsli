@@ -13,11 +13,6 @@ static const float HALF_PI = 0.5 * PI;
 
 static const float EPSILON = 1e-10;
 
-static const uint GBUFFER_ALBEDO = 0;
-static const uint GBUFFER_MATERIAL = 1;
-static const uint GBUFFER_NORMAL = 2;
-static const uint GBUFFER_EMISSIVE = 3;
-
 static const uint SHADING_TILE_SIZE = 16;
 
 struct draw_command
@@ -230,28 +225,6 @@ float4 reconstruct_position(uint depth_buffer, float2 texcoord, float4x4 matrix_
     Texture2D<float> buffer = ResourceDescriptorHeap[depth_buffer];
     float depth = buffer.SampleLevel(get_point_clamp_sampler(), texcoord, 0.0);
     return reconstruct_position(depth, texcoord, matrix_inv);
-}
-
-float2 normal_to_octahedron(float3 N)
-{
-    N.xy /= dot(1, abs(N));
-    if (N.z <= 0)
-    {
-        N.xy = (1 - abs(N.yx)) * select(N.xy >= 0, float2(1, 1), float2(-1, -1));
-    }
-    N.xy = N.xy * 0.5 + 0.5;
-    return N.xy;
-}
-
-float3 octahedron_to_normal(float2 oct)
-{
-    oct = oct * 2.0 - 1.0;
-    float3 N = float3(oct, 1 - dot(1, abs(oct)));
-    if (N.z < 0)
-    {
-        N.xy = (1 - abs(N.yx)) * select(N.xy >= 0, float2(1, 1), float2(-1, -1));
-    }
-    return normalize(N);
 }
 
 float luminance(float3 color)

@@ -30,7 +30,7 @@ public:
             return false;
         }
 
-        m_root = load_model(config["model"], LOAD_OPTION_DYNAMIC_MESH);
+        m_root = load_model(config["model"]);
 
         auto& world = get_world();
 

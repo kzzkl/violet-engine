@@ -5,8 +5,6 @@
 struct constant_data
 {
     uint depth_buffer;
-    uint width;
-    uint height;
     uint visible_light_count;
     uint visible_light_ids;
     uint visible_vsm_ids;
@@ -41,12 +39,16 @@ void mark_directional_vsm_page(float3 position_ws, light_data light, uint vsm_id
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
-    if (dtid.x >= constant.width || dtid.y >= constant.height)
+    Texture2D<float> depth_buffer = ResourceDescriptorHeap[constant.depth_buffer];
+
+    uint width;
+    uint height;
+    depth_buffer.GetDimensions(width, height);
+
+    if (dtid.x >= width || dtid.y >= height)
     {
         return;
     }
-
-    Texture2D<float> depth_buffer = ResourceDescriptorHeap[constant.depth_buffer];
 
     float depth = depth_buffer[dtid.xy];
     if (depth == 0.0)
@@ -60,7 +62,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     
     StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
 
-    float2 texcoord = get_compute_texcoord(dtid.xy, constant.width, constant.height);
+    float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
     float4 position_ws = reconstruct_position(depth, texcoord, camera.matrix_vp_inv);
 
     uint light_count = visible_light_count[0];

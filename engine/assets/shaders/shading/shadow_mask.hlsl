@@ -1,5 +1,5 @@
 #include "virtual_shadow_map/vsm_common.hlsli"
-#include "shading/shading_model.hlsli"
+#include "gbuffer.hlsli"
 
 struct constant_data
 {

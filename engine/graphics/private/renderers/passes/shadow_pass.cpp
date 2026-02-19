@@ -78,8 +78,6 @@ struct vsm_mark_visible_pages_cs : public shader_cs
     struct constant_data
     {
         std::uint32_t depth_buffer;
-        std::uint32_t width;
-        std::uint32_t height;
         std::uint32_t visible_light_count;
         std::uint32_t visible_light_ids;
         std::uint32_t visible_vsm_ids;
@@ -378,8 +376,6 @@ struct vsm_debug_constant_data
     std::uint32_t vsm_virtual_page_table;
     std::uint32_t vsm_directional_buffer;
     std::uint32_t draw_count_buffer;
-    std::uint32_t width;
-    std::uint32_t height;
     std::uint32_t light_id;
 };
 
@@ -721,16 +717,12 @@ void shadow_pass::mark_visible_pages(render_graph& graph)
         {
             auto& device = render_device::instance();
 
-            auto extent = data.depth_buffer.get_extent();
-
             command.set_pipeline({
                 .compute_shader = device.get_shader<vsm_mark_visible_pages_cs>(),
             });
             command.set_constant(
                 vsm_mark_visible_pages_cs::constant_data{
                     .depth_buffer = data.depth_buffer.get_bindless(),
-                    .width = extent.width,
-                    .height = extent.height,
                     .visible_light_count = data.visible_light_count.get_bindless(),
                     .visible_light_ids = data.visible_light_ids.get_bindless(),
                     .visible_vsm_ids = data.visible_vsm_ids.get_bindless(),
@@ -743,6 +735,7 @@ void shadow_pass::mark_visible_pages(render_graph& graph)
             command.set_parameter(1, RDG_PARAMETER_SCENE);
             command.set_parameter(2, RDG_PARAMETER_CAMERA);
 
+            auto extent = data.depth_buffer.get_extent();
             command.dispatch_2d(extent.width, extent.height);
         });
 }
@@ -1658,15 +1651,11 @@ void shadow_pass::add_debug_pass(render_graph& graph)
                     .compute_shader = device.get_shader<vsm_debug_page_cs>(),
                 });
 
-                rhi_texture_extent extent = data.debug_output.get_extent();
-
                 command.set_constant(
                     vsm_debug_page_cs::constant_data{
                         .debug_output = data.debug_output.get_bindless(),
                         .depth_buffer = data.depth_buffer.get_bindless(),
                         .vsm_buffer = data.vsm_buffer.get_bindless(),
-                        .width = extent.width,
-                        .height = extent.height,
                         .light_id = data.light_id,
                     });
 
@@ -1674,6 +1663,7 @@ void shadow_pass::add_debug_pass(render_graph& graph)
                 command.set_parameter(1, RDG_PARAMETER_SCENE);
                 command.set_parameter(2, RDG_PARAMETER_CAMERA);
 
+                rhi_texture_extent extent = data.debug_output.get_extent();
                 command.dispatch_2d(extent.width, extent.height);
             });
     }
@@ -1701,16 +1691,12 @@ void shadow_pass::add_debug_pass(render_graph& graph)
                     .compute_shader = device.get_shader<vsm_debug_page_cache_cs>(),
                 });
 
-                rhi_texture_extent extent = data.debug_output.get_extent();
-
                 command.set_constant(
                     vsm_debug_page_cache_cs::constant_data{
                         .debug_output = data.debug_output.get_bindless(),
                         .depth_buffer = data.depth_buffer.get_bindless(),
                         .vsm_buffer = data.vsm_buffer.get_bindless(),
                         .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
-                        .width = extent.width,
-                        .height = extent.height,
                         .light_id = data.light_id,
                     });
 
@@ -1718,6 +1704,7 @@ void shadow_pass::add_debug_pass(render_graph& graph)
                 command.set_parameter(1, RDG_PARAMETER_SCENE);
                 command.set_parameter(2, RDG_PARAMETER_CAMERA);
 
+                rhi_texture_extent extent = data.debug_output.get_extent();
                 command.dispatch_2d(extent.width, extent.height);
             });
     }

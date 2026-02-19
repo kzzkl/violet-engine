@@ -9,8 +9,6 @@ struct constant_data
     uint worklist_buffer;
     uint shading_dispatch_buffer;
     uint tile_count;
-    uint width;
-    uint height;
 };
 PushConstant(constant_data, constant);
 
@@ -34,13 +32,18 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint grou
     }
 
     GroupMemoryBarrierWithGroupSync();
+    
+    Texture2D<uint> shading_model_buffer = ResourceDescriptorHeap[constant.gbuffer_normal];
 
-    if (dtid.x >= constant.width || dtid.y >= constant.height)
+    uint width;
+    uint height;
+    shading_model_buffer.GetDimensions(width, height);
+
+    if (dtid.x >= width || dtid.y >= height)
     {
         return;
     }
 
-    Texture2D<uint> shading_model_buffer = ResourceDescriptorHeap[constant.gbuffer_normal];
     uint shading_model = shading_model_buffer[dtid.xy] & 0xFF;
 
     if (shading_model != 0xFF)

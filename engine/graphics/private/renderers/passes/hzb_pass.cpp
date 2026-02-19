@@ -10,10 +10,6 @@ struct hzb_cs : public shader_cs
     {
         std::uint32_t prev_buffer;
         std::uint32_t next_buffer;
-        std::uint32_t prev_width;
-        std::uint32_t prev_height;
-        std::uint32_t next_width;
-        std::uint32_t next_height;
         std::uint32_t level;
         std::uint32_t hzb_sampler;
     };
@@ -80,9 +76,6 @@ void hzb_pass::add(render_graph& graph, const parameter& parameter)
             },
             [](const pass_data& data, rdg_command& command)
             {
-                rhi_texture_extent prev_extent = data.prev_buffer.get_extent();
-                rhi_texture_extent next_extent = data.next_buffer.get_extent();
-
                 command.set_pipeline({
                     .compute_shader = render_device::instance().get_shader<hzb_cs>(),
                 });
@@ -90,15 +83,12 @@ void hzb_pass::add(render_graph& graph, const parameter& parameter)
                     hzb_cs::constant_data{
                         .prev_buffer = data.prev_buffer.get_bindless(),
                         .next_buffer = data.next_buffer.get_bindless(),
-                        .prev_width = prev_extent.width,
-                        .prev_height = prev_extent.height,
-                        .next_width = next_extent.width,
-                        .next_height = next_extent.height,
                         .level = data.level,
                         .hzb_sampler = data.hzb_sampler->get_bindless(),
                     });
                 command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
+                rhi_texture_extent next_extent = data.next_buffer.get_extent();
                 command.dispatch_2d(next_extent.width, next_extent.height);
             });
     }

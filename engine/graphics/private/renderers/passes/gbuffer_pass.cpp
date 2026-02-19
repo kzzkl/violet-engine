@@ -35,8 +35,6 @@ struct visibility_build_worklist_cs : public shader_cs
         std::uint32_t worklist_size_buffer;
         std::uint32_t material_offset_buffer;
         std::uint32_t sort_dispatch_buffer;
-        std::uint32_t width;
-        std::uint32_t height;
     };
 
     static constexpr parameter_layout parameters = {
@@ -250,8 +248,6 @@ void gbuffer_pass::add_material_classify_pass(render_graph& graph)
         {
             auto& device = render_device::instance();
 
-            auto extent = data.visibility_buffer.get_extent();
-
             command.set_pipeline({
                 .compute_shader = device.get_shader<visibility_build_worklist_cs>(),
             });
@@ -262,11 +258,11 @@ void gbuffer_pass::add_material_classify_pass(render_graph& graph)
                     .worklist_size_buffer = data.worklist_size_buffer.get_bindless(),
                     .material_offset_buffer = data.material_offset_buffer.get_bindless(),
                     .sort_dispatch_buffer = data.sort_dispatch_buffer.get_bindless(),
-                    .width = extent.width,
-                    .height = extent.height,
                 });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_SCENE);
+
+            auto extent = data.visibility_buffer.get_extent();
             command.dispatch_2d(extent.width, extent.height, tile_size, tile_size);
         });
 
@@ -374,8 +370,6 @@ void gbuffer_pass::add_material_resolve_pass(
         },
         [material_index](const pass_data& data, rdg_command& command)
         {
-            auto extent = data.visibility_buffer.get_extent();
-
             command.set_pipeline(data.pipeline);
 
             material_resolve_cs::constant_data constant = {
@@ -383,8 +377,6 @@ void gbuffer_pass::add_material_resolve_pass(
                 .worklist_buffer = data.worklist_buffer.get_bindless(),
                 .material_offset_buffer = data.material_offset_buffer.get_bindless(),
                 .material_index = material_index,
-                .width = extent.width,
-                .height = extent.height,
             };
 
             for (std::uint32_t i = 0; i < data.gbuffers.size(); ++i)

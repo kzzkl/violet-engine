@@ -13,8 +13,6 @@ struct taa_cs : public shader_cs
         std::uint32_t depth_buffer;
         std::uint32_t motion_vector;
         std::uint32_t resolved_render_target;
-        std::uint32_t width;
-        std::uint32_t height;
     };
 
     static constexpr parameter_layout parameters = {
@@ -72,16 +70,12 @@ void taa_pass::add(render_graph& graph, const parameter& parameter)
         {
             auto& device = render_device::instance();
 
-            rhi_texture_extent extent = data.current_render_target.get_texture()->get_extent();
-
             taa_cs::constant_data constant = {
                 .current_render_target = data.current_render_target.get_bindless(),
                 .history_render_target =
                     data.history_render_target ? data.history_render_target.get_bindless() : 0,
                 .depth_buffer = data.depth_buffer.get_bindless(),
                 .resolved_render_target = data.resolved_render_target.get_bindless(),
-                .width = extent.width,
-                .height = extent.height,
             };
 
             std::vector<std::wstring> defines;
@@ -99,6 +93,7 @@ void taa_pass::add(render_graph& graph, const parameter& parameter)
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_CAMERA);
 
+            rhi_texture_extent extent = data.current_render_target.get_texture()->get_extent();
             command.dispatch_2d(extent.width, extent.height);
         });
 }

@@ -4,7 +4,6 @@
 #include "mikktspace.h"
 #include "tools/cluster/cluster_builder.hpp"
 #include "tools/mesh_simplifier/mesh_simplifier.hpp"
-#include <fstream>
 #include <queue>
 #include <unordered_map>
 
@@ -29,6 +28,22 @@ bool geometry_tool::cluster_output::load(std::string_view path)
         return false;
     }
 
+    return load(fin);
+}
+
+bool geometry_tool::cluster_output::save(std::string_view path) const
+{
+    std::ofstream fout(std::string(path), std::ios::binary);
+    if (!fout.is_open())
+    {
+        return false;
+    }
+
+    return save(fout);
+}
+
+bool geometry_tool::cluster_output::load(std::ifstream& fin)
+{
     std::uint32_t vertex_count = 0;
     std::uint32_t index_count = 0;
     std::uint32_t submesh_count = 0;
@@ -115,14 +130,8 @@ bool geometry_tool::cluster_output::load(std::string_view path)
     return true;
 }
 
-bool geometry_tool::cluster_output::save(std::string_view path) const
+bool geometry_tool::cluster_output::save(std::ofstream& fout) const
 {
-    std::ofstream fout(std::string(path), std::ios::binary);
-    if (!fout.is_open())
-    {
-        return false;
-    }
-
     auto vertex_count = static_cast<std::uint32_t>(positions.size());
     auto index_count = static_cast<std::uint32_t>(indexes.size());
     auto submesh_count = static_cast<std::uint32_t>(submeshes.size());
@@ -207,7 +216,7 @@ bool geometry_tool::cluster_output::save(std::string_view path) const
         }
     }
 
-    return false;
+    return true;
 }
 
 std::vector<vec4f> geometry_tool::generate_tangents(

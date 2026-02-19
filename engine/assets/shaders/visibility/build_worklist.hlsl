@@ -12,8 +12,6 @@ struct constant_data
     uint worklist_size_buffer;
     uint material_offset_buffer;
     uint sort_dispatch_buffer;
-    uint width;
-    uint height;
 };
 PushConstant(constant_data, constant);
 
@@ -41,12 +39,16 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint grou
 
     GroupMemoryBarrierWithGroupSync();
 
-    if (dtid.x >= constant.width || dtid.y >= constant.height)
+    Texture2D<uint2> visibility_buffer = ResourceDescriptorHeap[constant.visibility_buffer];
+
+    uint width;
+    uint height;
+    visibility_buffer.GetDimensions(width, height);
+
+    if (dtid.x >= width || dtid.y >= height)
     {
         return;
     }
-
-    Texture2D<uint2> visibility_buffer = ResourceDescriptorHeap[constant.visibility_buffer];
 
     uint instance_id;
     uint primitive_id;

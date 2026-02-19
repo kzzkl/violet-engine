@@ -8,8 +8,6 @@ struct constant_data
 {
     uint hzb;
     uint hzb_sampler;
-    uint hzb_width;
-    uint hzb_height;
 
     float threshold;
 
@@ -118,8 +116,6 @@ void process_cluster_node(uint group_index)
             prev_sphere_vs,
             hzb,
             hzb_sampler,
-            constant.hzb_width,
-            constant.hzb_height,
             camera.prev_matrix_p,
             camera.near,
             camera.type))
@@ -138,7 +134,7 @@ void process_cluster_node(uint group_index)
         visible = cluster_node.check_lod(camera, mesh, constant.threshold) && frustum_cull(sphere_vs, camera);
     }
 
-    visible = visible && occlusion_cull(sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.matrix_p, camera.near, camera.type);
+    visible = visible && occlusion_cull(sphere_vs, hzb, hzb_sampler, camera.matrix_p, camera.near, camera.type);
 #endif
 
     if (visible)
@@ -209,8 +205,6 @@ void process_cluster(uint3 dtid)
                 prev_sphere_vs,
                 hzb,
                 hzb_sampler,
-                constant.hzb_width,
-                constant.hzb_height,
                 camera.prev_matrix_p,
                 camera.near,
                 camera.type))
@@ -229,7 +223,7 @@ void process_cluster(uint3 dtid)
         visible = cluster.check_lod(camera, mesh, constant.threshold) && frustum_cull(sphere_vs, camera);
     }
 
-    visible = visible && occlusion_cull(sphere_vs, hzb, hzb_sampler, constant.hzb_width, constant.hzb_height, camera.matrix_p, camera.near, camera.type);
+    visible = visible && occlusion_cull(sphere_vs, hzb, hzb_sampler, camera.matrix_p, camera.near, camera.type);
 #endif
 
     if (visible)

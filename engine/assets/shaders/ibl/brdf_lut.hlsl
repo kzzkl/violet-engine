@@ -3,17 +3,20 @@
 struct constant_data
 {
     uint brdf_lut;
-    uint width;
-    uint height;
-    uint padding0;
 };
 PushConstant(constant_data, constant);
 
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
-    float NdotV = (float(dtid.x) + 0.5) / float(constant.width);
-    float roughness = (float(dtid.y) + 0.5) / float(constant.height);
+    RWTexture2D<float2> brdf_lut = ResourceDescriptorHeap[constant.brdf_lut];
+
+    uint width;
+    uint height;
+    brdf_lut.GetDimensions(width, height);
+
+    float NdotV = (float(dtid.x) + 0.5) / float(width);
+    float roughness = (float(dtid.y) + 0.5) / float(height);
 
     float3 V = float3(sqrt(1.0 - NdotV * NdotV), 0.0, NdotV);
 
@@ -46,6 +49,5 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     a /= float(sample_count);
     b /= float(sample_count);
 
-    RWTexture2D<float2> brdf_lut = ResourceDescriptorHeap[constant.brdf_lut];
     brdf_lut[dtid.xy] = float2(a, b);
 }

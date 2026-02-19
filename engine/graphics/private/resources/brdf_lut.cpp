@@ -10,9 +10,6 @@ struct brdf_lut_cs : public shader_cs
     struct constant_data
     {
         std::uint32_t brdf_lut;
-        std::uint32_t width;
-        std::uint32_t height;
-        std::uint32_t padding0;
     };
 
     static constexpr parameter_layout parameters = {
@@ -45,12 +42,8 @@ public:
             },
             [](const pass_data& data, rdg_command& command)
             {
-                rhi_texture_extent extent = data.brdf_lut.get_texture()->get_extent();
-
                 brdf_lut_cs::constant_data constant = {
                     .brdf_lut = data.brdf_lut.get_bindless(),
-                    .width = extent.width,
-                    .height = extent.height,
                 };
 
                 command.set_pipeline({
@@ -59,6 +52,7 @@ public:
                 command.set_constant(constant);
                 command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
+                rhi_texture_extent extent = data.brdf_lut.get_texture()->get_extent();
                 command.dispatch_2d(extent.width, extent.height);
             });
     }
