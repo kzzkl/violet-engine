@@ -32,8 +32,6 @@ bool occlusion_cull(
     float4 sphere_vs,
     Texture2D<float> hzb,
     SamplerState hzb_sampler,
-    uint width,
-    uint height,
     float4x4 matrix_p,
     float near,
     uint camera_type)
@@ -44,28 +42,32 @@ bool occlusion_cull(
     }
 
     float4 aabb;
-    
+
     if (camera_type == CAMERA_ORTHOGRAPHIC)
     {
         if (!project_shpere_orthographic(sphere_vs, matrix_p[0][0], matrix_p[1][1], aabb))
         {
-            return false;
+            return true;
         }
     }
     else
     {
         if (!project_shpere_perspective(sphere_vs, matrix_p[0][0], matrix_p[1][1], near, aabb))
         {
-            return false;
+            return true;
         }
     }
 
     aabb = aabb.xwzy * float4(0.5, -0.5, 0.5, -0.5) + 0.5;
 
-    float aabb_width = abs(aabb.z - aabb.x) * width;
-    float aabb_height = abs(aabb.w - aabb.y) * height;
+    uint hzb_width;
+    uint hzb_height;
+    hzb.GetDimensions(hzb_width, hzb_height);
 
-    float level = floor(log2(max(aabb_width, aabb_height)));
+    float aabb_width = abs(aabb.z - aabb.x) * hzb_width;
+    float aabb_height = abs(aabb.w - aabb.y) * hzb_height;
+
+    float level = ceil(log2(max(aabb_width, aabb_height)));
 
     float depth = hzb.SampleLevel(hzb_sampler, (aabb.xy + aabb.zw) * 0.5, level);
 

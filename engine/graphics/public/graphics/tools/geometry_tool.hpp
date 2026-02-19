@@ -2,6 +2,7 @@
 
 #include "graphics/cluster.hpp"
 #include "math/types.hpp"
+#include <fstream>
 #include <span>
 #include <vector>
 
@@ -77,6 +78,9 @@ public:
 
         bool load(std::string_view path);
         bool save(std::string_view path) const;
+
+        bool load(std::ifstream& fin);
+        bool save(std::ofstream& fout) const;
     };
 
     static cluster_output generate_clusters(const cluster_input& input);

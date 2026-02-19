@@ -28,8 +28,6 @@ struct instance_cull_cs : public shader_cs
     {
         std::uint32_t hzb;
         std::uint32_t hzb_sampler;
-        std::uint32_t hzb_width;
-        std::uint32_t hzb_height;
         std::uint32_t draw_buffer;
         std::uint32_t draw_count_buffer;
         std::uint32_t draw_info_buffer;
@@ -54,8 +52,6 @@ struct cluster_cull_cs : public shader_cs
     {
         std::uint32_t hzb;
         std::uint32_t hzb_sampler;
-        std::uint32_t hzb_width;
-        std::uint32_t hzb_height;
 
         float threshold;
 
@@ -293,14 +289,10 @@ void cull_pass::add_instance_cull_pass(render_graph& graph)
                 .compute_shader = device.get_shader<instance_cull_cs>(defines),
             });
 
-            rhi_texture_extent extent = data.hzb.get_extent();
-
             command.set_constant(
                 instance_cull_cs::constant_data{
                     .hzb = data.hzb.get_bindless(),
                     .hzb_sampler = data.hzb_sampler->get_bindless(),
-                    .hzb_width = extent.width,
-                    .hzb_height = extent.height,
                     .draw_buffer = data.draw_buffer.get_bindless(),
                     .draw_count_buffer = data.draw_count_buffer.get_bindless(),
                     .draw_info_buffer = data.draw_info_buffer.get_bindless(),
@@ -394,13 +386,9 @@ void cull_pass::add_cluster_cull_pass(render_graph& graph)
                     .compute_shader = device.get_shader<cluster_cull_cs>(defines),
                 });
 
-                rhi_texture_extent extent = data.hzb.get_extent();
-
                 cluster_cull_cs::constant_data constant = {
                     .hzb = data.hzb.get_bindless(),
                     .hzb_sampler = data.hzb_sampler->get_bindless(),
-                    .hzb_width = extent.width,
-                    .hzb_height = extent.height,
                     .threshold = 1.0f,
                     .cluster_queue = data.cluster_queue.get_bindless(),
                     .cluster_queue_state = data.cluster_queue_state.get_bindless(),

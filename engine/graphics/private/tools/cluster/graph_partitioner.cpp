@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <mutex>
 #include <numeric>
 
 namespace violet
@@ -85,21 +86,28 @@ std::uint32_t graph_partitioner::bisect_graph(
 
     std::vector<idx_t> parts(vertex_count);
 
-    int result = METIS_PartGraphRecursive(
-        &vertex_count,
-        &constraints_count,
-        adjacency_offset.data(),
-        adjacency.data(),
-        nullptr,
-        nullptr,
-        adjacency_cost.data(),
-        &part_count,
-        weights,
-        nullptr,
-        options,
-        &edges_cut,
-        parts.data());
-    assert(result == METIS_OK);
+    {
+        // METIS_PartGraphRecursive may crash when called from multiple threads. The root cause is
+        // currently unknown.
+        static std::mutex mutex;
+        std::scoped_lock lock(mutex);
+
+        int result = METIS_PartGraphRecursive(
+            &vertex_count,
+            &constraints_count,
+            adjacency_offset.data(),
+            adjacency.data(),
+            nullptr,
+            nullptr,
+            adjacency_cost.data(),
+            &part_count,
+            weights,
+            nullptr,
+            options,
+            &edges_cut,
+            parts.data());
+        assert(result == METIS_OK);
+    }
 
     std::uint32_t left = 0;
     std::uint32_t right = end - start - 1;

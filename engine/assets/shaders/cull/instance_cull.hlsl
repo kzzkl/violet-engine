@@ -8,8 +8,6 @@ struct constant_data
 {
     uint hzb;
     uint hzb_sampler;
-    uint hzb_width;
-    uint hzb_height;
     uint draw_buffer;
     uint draw_count_buffer;
     uint draw_info_buffer;
@@ -68,8 +66,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
                 prev_sphere_vs,
                 hzb,
                 hzb_sampler,
-                constant.hzb_width,
-                constant.hzb_height,
                 camera.prev_matrix_p,
                 camera.near,
                 camera.type))
@@ -99,8 +95,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
             sphere_vs,
             hzb,
             hzb_sampler,
-            constant.hzb_width,
-            constant.hzb_height,
             camera.matrix_p,
             camera.near,
             camera.type);
