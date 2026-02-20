@@ -19,9 +19,7 @@ ConstantBuffer<camera_data> camera : register(b0, space2);
 
 void mark_directional_vsm_page(float3 position_ws, light_data light, uint vsm_id, uint2 coord)
 {
-    float distance = length(position_ws - camera.position) * 100.0;
-
-    uint cascade = get_directional_cascade(distance);
+    uint cascade = get_directional_cascade(length(position_ws - camera.position));
 
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     vsm_data vsm = vsms[vsm_id + cascade];

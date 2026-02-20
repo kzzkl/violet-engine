@@ -7,6 +7,12 @@ namespace violet
 class shading_pass
 {
 public:
+    enum debug_mode
+    {
+        DEBUG_MODE_NONE,
+        DEBUG_MODE_SHADOW_MASK,
+    };
+
     struct parameter
     {
         std::span<rdg_texture*> gbuffers;
@@ -18,7 +24,16 @@ public:
         rdg_texture* vsm_physical_shadow_map{nullptr};
         rdg_buffer* vsm_directional_buffer{nullptr};
 
+        std::uint32_t shadow_sample_mode; // 0: none, 1: PCF, 2: PCSS
+        std::uint32_t shadow_sample_count;
+        float shadow_sample_radius;
+
         float shadow_normal_offset;
+        float shadow_constant_bias;
+
+        debug_mode debug_mode{DEBUG_MODE_NONE};
+        std::uint32_t debug_light_id{0};
+        rdg_texture* debug_output{nullptr};
     };
 
     void add(render_graph& graph, const parameter& parameter);
@@ -45,6 +60,8 @@ private:
         render_graph& graph,
         const parameter& parameter,
         std::uint32_t light_id);
+
+    void add_debug_pass(render_graph& graph, const parameter& parameter);
 
     rdg_buffer* m_worklist_buffer{nullptr};
     rdg_buffer* m_shading_dispatch_buffer{nullptr};

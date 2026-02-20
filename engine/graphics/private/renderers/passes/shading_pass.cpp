@@ -51,12 +51,32 @@ struct shadow_mask_fs : public shader_fs
         std::uint32_t vsm_directional_buffer;
         std::uint32_t light_id;
         float normal_offset;
+        float constant_bias;
+        std::uint32_t sample_mode;
+        std::uint32_t sample_count;
+        float sample_radius;
     };
 
     static constexpr parameter_layout parameters = {
         {.space = 0, .desc = bindless},
         {.space = 1, .desc = scene},
         {.space = 2, .desc = camera},
+    };
+};
+
+struct shading_debug_shadow_mask_cs : public shader_cs
+{
+    static constexpr std::string_view path = "assets/shaders/shading/shading_debug.hlsl";
+    static constexpr std::string_view entry_point = "debug_shadow_mask";
+
+    struct constant_data
+    {
+        std::uint32_t shadow_mask;
+        std::uint32_t debug_output;
+    };
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
     };
 };
 
@@ -357,6 +377,10 @@ void shading_pass::add_shadow_mask_pass(
         std::uint32_t light_id;
 
         float normal_offset;
+        float constant_bias;
+        std::uint32_t sample_mode;
+        std::uint32_t sample_count;
+        float sample_radius;
     };
 
     graph.add_pass<pass_data>(
@@ -384,6 +408,10 @@ void shading_pass::add_shadow_mask_pass(
 
             data.light_id = light_id;
             data.normal_offset = parameter.shadow_normal_offset;
+            data.constant_bias = parameter.shadow_constant_bias;
+            data.sample_mode = parameter.shadow_sample_mode;
+            data.sample_count = parameter.shadow_sample_count;
+            data.sample_radius = parameter.shadow_sample_radius;
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -407,6 +435,10 @@ void shading_pass::add_shadow_mask_pass(
                     .vsm_directional_buffer = data.vsm_directional_buffer.get_bindless(),
                     .light_id = data.light_id,
                     .normal_offset = data.normal_offset,
+                    .constant_bias = data.constant_bias,
+                    .sample_mode = data.sample_mode,
+                    .sample_count = data.sample_count,
+                    .sample_radius = data.sample_radius,
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
@@ -414,6 +446,49 @@ void shading_pass::add_shadow_mask_pass(
             command.set_parameter(2, RDG_PARAMETER_CAMERA);
 
             command.draw_fullscreen();
+        });
+
+    if (parameter.debug_mode == DEBUG_MODE_SHADOW_MASK && parameter.debug_light_id == light_id)
+    {
+        add_debug_pass(graph, parameter);
+    }
+}
+
+void shading_pass::add_debug_pass(render_graph& graph, const parameter& parameter)
+{
+    struct pass_data
+    {
+        rdg_texture_srv shadow_mask;
+        rdg_texture_uav debug_output;
+    };
+
+    graph.add_pass<pass_data>(
+        "Shading Debug Pass",
+        RDG_PASS_COMPUTE,
+        [&](pass_data& data, rdg_pass& pass)
+        {
+            data.shadow_mask = pass.add_texture_srv(m_shadow_mask, RHI_PIPELINE_STAGE_COMPUTE);
+            data.debug_output =
+                pass.add_texture_uav(parameter.debug_output, RHI_PIPELINE_STAGE_COMPUTE);
+        },
+        [](const pass_data& data, rdg_command& command)
+        {
+            auto& device = render_device::instance();
+
+            command.set_pipeline({
+                .compute_shader = device.get_shader<shading_debug_shadow_mask_cs>(),
+            });
+
+            command.set_constant(
+                shading_debug_shadow_mask_cs::constant_data{
+                    .shadow_mask = data.shadow_mask.get_bindless(),
+                    .debug_output = data.debug_output.get_bindless(),
+                });
+
+            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+
+            auto extent = data.debug_output.get_extent();
+            command.dispatch_2d(extent.width, extent.height);
         });
 }
 } // namespace violet

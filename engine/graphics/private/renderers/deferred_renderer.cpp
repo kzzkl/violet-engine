@@ -1,6 +1,7 @@
 #include "graphics/renderers/deferred_renderer.hpp"
 #include "graphics/graphics_config.hpp"
 #include "graphics/renderers/features/gtao_render_feature.hpp"
+#include "graphics/renderers/features/shadow_render_feature.hpp"
 #include "graphics/renderers/features/taa_render_feature.hpp"
 #include "graphics/renderers/features/vsm_render_feature.hpp"
 #include "graphics/renderers/passes/blit_pass.hpp"
@@ -19,6 +20,7 @@ namespace violet
 {
 deferred_renderer::deferred_renderer()
 {
+    add_feature<shadow_render_feature>();
     add_feature<vsm_render_feature>();
     add_feature<taa_render_feature>();
     add_feature<gtao_render_feature>();
@@ -341,10 +343,22 @@ void deferred_renderer::add_shadow_pass(render_graph& graph)
 
 void deferred_renderer::add_shading_pass(render_graph& graph)
 {
+    shading_pass::debug_mode debug_mode = shading_pass::DEBUG_MODE_NONE;
+    switch (m_debug_mode)
+    {
+    case DEBUG_MODE_SHADING_SHADOW_MASK:
+        debug_mode = shading_pass::DEBUG_MODE_SHADOW_MASK;
+        break;
+    default:
+        break;
+    }
+
     std::vector<rdg_texture*> auxiliary_buffers = {
         m_depth_buffer,
         m_ao_buffer,
     };
+
+    auto* shadow = get_feature<shadow_render_feature>();
 
     graph.add_pass<shading_pass>({
         .gbuffers = m_gbuffers,
@@ -354,7 +368,13 @@ void deferred_renderer::add_shading_pass(render_graph& graph)
         .vsm_virtual_page_table = m_vsm_virtual_page_table,
         .vsm_physical_shadow_map = m_vsm_physical_shadow_map_final,
         .vsm_directional_buffer = m_vsm_directional_buffer,
-        .shadow_normal_offset = m_shadow_normal_offset,
+        .shadow_sample_mode = static_cast<std::uint32_t>(shadow->get_sample_mode()),
+        .shadow_sample_count = shadow->get_sample_count(),
+        .shadow_sample_radius = shadow->get_sample_radius(),
+        .shadow_normal_offset = shadow->get_normal_offset(),
+        .shadow_constant_bias = shadow->get_constant_bias(),
+        .debug_mode = debug_mode,
+        .debug_output = m_debug_output,
     });
 }
 

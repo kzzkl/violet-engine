@@ -344,7 +344,7 @@ void sample_system::initialize_scene(std::string_view skybox_path)
 
     auto& main_light = world.get_component<light_component>(m_light);
     main_light.type = LIGHT_DIRECTIONAL;
-    main_light.color = {.x = 1.0f, .y = 1.0f, .z = 1.0f};
+    main_light.color = {.x = 7.0f, .y = 7.0f, .z = 7.0f};
     main_light.cast_shadow = true;
 
     m_camera = world.create();
