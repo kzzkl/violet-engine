@@ -18,6 +18,8 @@ static const uint PAGE_RESOLUTION = 128;
 static const uint VIRTUAL_RESOLUTION = VIRTUAL_PAGE_TABLE_SIZE * PAGE_RESOLUTION;
 static const uint2 PHYSICAL_RESOLUTION = uint2(PHYSICAL_PAGE_TABLE_SIZE_X, PHYSICAL_PAGE_TABLE_SIZE_Y) * PAGE_RESOLUTION;
 
+static const float VIRTUAL_TEXEL_SIZE = 1.0 / VIRTUAL_RESOLUTION;
+
 static const uint MAX_CAMERA_COUNT = 16;
 static const uint MAX_SHADOW_LIGHT_COUNT = 32;
 static const uint MAX_VSM_COUNT = 256;
@@ -145,7 +147,7 @@ uint2 get_physical_page_coord(uint physical_page_index)
 
 uint get_directional_cascade(float distance)
 {
-    return clamp(ceil(log2(distance)), DIRECTIONAL_VSM_CASCADE_FIRST, DIRECTIONAL_VSM_CASCADE_LAST) - DIRECTIONAL_VSM_CASCADE_FIRST;
+    return clamp(ceil(log2(distance * 100)), DIRECTIONAL_VSM_CASCADE_FIRST, DIRECTIONAL_VSM_CASCADE_LAST) - DIRECTIONAL_VSM_CASCADE_FIRST;
 }
 
 uint get_lru_offset(uint lru_index)

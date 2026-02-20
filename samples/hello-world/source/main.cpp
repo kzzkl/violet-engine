@@ -8,6 +8,7 @@
 #include "graphics/materials/unlit_material.hpp"
 #include "graphics/renderers/deferred_renderer.hpp"
 #include "graphics/renderers/features/gtao_render_feature.hpp"
+#include "graphics/renderers/features/shadow_render_feature.hpp"
 #include "graphics/renderers/features/taa_render_feature.hpp"
 #include "graphics/renderers/features/vsm_render_feature.hpp"
 #include "sample/sample_system.hpp"
@@ -141,7 +142,7 @@ private:
             bool ligth_dirty = false;
 
             static float color[3] = {1.0f, 1.0f, 1.0f};
-            static float intensity = 1.0f;
+            static float intensity = 7.0f;
 
             if (ImGui::ColorEdit3("Color", color))
             {
@@ -184,10 +185,40 @@ private:
             auto& main_camera = get_world().get_component<camera_component>(get_camera());
             auto* renderer = static_cast<deferred_renderer*>(main_camera.renderer.get());
 
-            static float shadow_normal_offset = renderer->get_shadow_normal_offset();
-            if (ImGui::SliderFloat("Normal Offset", &shadow_normal_offset, 0.0f, 20.0f))
+            auto* shadow = renderer->get_feature<shadow_render_feature>();
+
+            static auto sample_mode = static_cast<std::int32_t>(shadow->get_sample_mode());
+            static const char* sample_mode_items[] = {
+                "None",
+                "PCF",
+                // "PCSS",
+            };
+
+            if (ImGui::Combo(
+                    "Sample Mode",
+                    &sample_mode,
+                    sample_mode_items,
+                    IM_ARRAYSIZE(sample_mode_items)))
             {
-                renderer->set_shadow_normal_offset(shadow_normal_offset);
+                shadow->set_sample_mode(static_cast<shadow_sample_mode>(sample_mode));
+            }
+
+            static float sample_radius = shadow->get_sample_radius() * 100.0f;
+            if (ImGui::SliderFloat("Sample Radius", &sample_radius, 0.0f, 10.0f))
+            {
+                shadow->set_sample_radius(sample_radius * 0.01f);
+            }
+
+            static float normal_offset = shadow->get_normal_offset();
+            if (ImGui::SliderFloat("Normal Offset", &normal_offset, 0.0f, 20.0f))
+            {
+                shadow->set_normal_offset(normal_offset);
+            }
+
+            static float constant_bias = shadow->get_constant_bias();
+            if (ImGui::SliderFloat("Constant Bias", &constant_bias, 0.0f, 0.1f))
+            {
+                shadow->set_constant_bias(constant_bias);
             }
         }
 
@@ -251,6 +282,7 @@ private:
                 "None",
                 "VSM Page",
                 "VSM Page Cache",
+                "Shadow Mask",
             };
 
             if (ImGui::Combo(

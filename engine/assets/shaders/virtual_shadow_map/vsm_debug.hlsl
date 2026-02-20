@@ -151,8 +151,7 @@ void debug_page(uint3 dtid : SV_DispatchThreadID)
 
     if (light.type == LIGHT_DIRECTIONAL)
     {
-        float distance = length(position_ws.xyz - camera.position) * 100.0;
-        uint cascade = get_directional_cascade(distance);
+        uint cascade = get_directional_cascade(length(position_ws.xyz - camera.position));
         uint vsm_id = get_directional_vsm_id(directional_vsms, light.vsm_address, camera.camera_id) + cascade;
 
         vsm_data vsm = vsms[vsm_id];
@@ -206,8 +205,7 @@ void debug_page_cache(uint3 dtid : SV_DispatchThreadID)
 
     if (light.type == LIGHT_DIRECTIONAL)
     {
-        float distance = length(position_ws.xyz - camera.position) * 100.0;
-        uint cascade = get_directional_cascade(distance);
+        uint cascade = get_directional_cascade(length(position_ws.xyz - camera.position));
         uint vsm_id = get_directional_vsm_id(directional_vsms, light.vsm_address, camera.camera_id) + cascade;
 
         vsm_data vsm = vsms[vsm_id];
