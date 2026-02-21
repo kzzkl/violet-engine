@@ -9,6 +9,7 @@ add_library(violet-graphics STATIC
     private/render_graph/render_graph.cpp
     private/renderers/features/vsm_render_feature.cpp
     private/renderers/passes/blit_pass.cpp
+    private/renderers/passes/bloom_pass.cpp
     private/renderers/passes/copy_depth_pass.cpp
     private/renderers/passes/cull_pass.cpp
     private/renderers/passes/debug/bounds_projection_pass.cpp

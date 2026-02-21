@@ -67,8 +67,8 @@ struct gbuffer
         float2 oct = float2(float(normal >> 20) / 4095.0, float((normal & 0x000FFF00) >> 8) / 4095.0);
         result.normal = octahedron_to_normal(oct);
 
-        Texture2D<float4> gbuffer_emissive = ResourceDescriptorHeap[gbuffers[GBUFFER_EMISSIVE]];
-        result.emissive = gbuffer_emissive[coord].rgb;
+        Texture2D<float3> gbuffer_emissive = ResourceDescriptorHeap[gbuffers[GBUFFER_EMISSIVE]];
+        result.emissive = gbuffer_emissive[coord];
 
         return result;
     }
@@ -81,8 +81,8 @@ struct gbuffer
         RWTexture2D<float2> gbuffer_material = ResourceDescriptorHeap[gbuffers[GBUFFER_MATERIAL]];
         gbuffer_material[coord] = float2(roughness, metallic);
 
-        RWTexture2D<float4> gbuffer_emissive = ResourceDescriptorHeap[gbuffers[GBUFFER_EMISSIVE]];
-        gbuffer_emissive[coord] = float4(emissive, 1.0);
+        RWTexture2D<float3> gbuffer_emissive = ResourceDescriptorHeap[gbuffers[GBUFFER_EMISSIVE]];
+        gbuffer_emissive[coord] = emissive;
 
         RWTexture2D<uint> gbuffer_normal = ResourceDescriptorHeap[gbuffers[GBUFFER_NORMAL]];
         float2 oct = normal_to_octahedron(normal);

@@ -7,6 +7,7 @@
 #include "graphics/materials/pbr_material.hpp"
 #include "graphics/materials/unlit_material.hpp"
 #include "graphics/renderers/deferred_renderer.hpp"
+#include "graphics/renderers/features/bloom_render_feature.hpp"
 #include "graphics/renderers/features/gtao_render_feature.hpp"
 #include "graphics/renderers/features/shadow_render_feature.hpp"
 #include "graphics/renderers/features/taa_render_feature.hpp"
@@ -270,6 +271,31 @@ private:
             gtao->set_step_count(step_count);
             gtao->set_radius(radius);
             gtao->set_falloff(falloff);
+        }
+
+        if (ImGui::CollapsingHeader("Bloom"))
+        {
+            auto& main_camera = get_world().get_component<camera_component>(get_camera());
+            auto* bloom = main_camera.renderer->get_feature<bloom_render_feature>();
+
+            static bool enable_bloom = bloom->is_enable();
+            static float threshold = bloom->get_threshold();
+            static float intensity = bloom->get_intensity();
+
+            ImGui::Checkbox("Enable##Bloom", &enable_bloom);
+            ImGui::SliderFloat("Threshold##Bloom", &threshold, 0.0f, 2.0f);
+            ImGui::SliderFloat("Intensity##Bloom", &intensity, 0.0f, 1.0f);
+
+            if (enable_bloom)
+            {
+                bloom->enable();
+            }
+            else
+            {
+                bloom->disable();
+            }
+            bloom->set_threshold(threshold);
+            bloom->set_intensity(intensity);
         }
 
         if (ImGui::CollapsingHeader("Debug"))

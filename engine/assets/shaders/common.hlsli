@@ -229,7 +229,7 @@ float4 reconstruct_position(uint depth_buffer, float2 texcoord, float4x4 matrix_
 
 float luminance(float3 color)
 {
-    return 0.25 * color.r + 0.5 * color.g + 0.25 * color.b;
+    return dot(color, float3(0.2126729, 0.7151522, 0.0721750));
 }
 
 float3 tonemap(float3 color)
