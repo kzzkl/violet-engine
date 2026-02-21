@@ -1,10 +1,12 @@
 #include "graphics/renderers/deferred_renderer.hpp"
 #include "graphics/graphics_config.hpp"
+#include "graphics/renderers/features/bloom_render_feature.hpp"
 #include "graphics/renderers/features/gtao_render_feature.hpp"
 #include "graphics/renderers/features/shadow_render_feature.hpp"
 #include "graphics/renderers/features/taa_render_feature.hpp"
 #include "graphics/renderers/features/vsm_render_feature.hpp"
 #include "graphics/renderers/passes/blit_pass.hpp"
+#include "graphics/renderers/passes/bloom_pass.hpp"
 #include "graphics/renderers/passes/cull_pass.hpp"
 #include "graphics/renderers/passes/gbuffer_pass.hpp"
 #include "graphics/renderers/passes/gtao_pass.hpp"
@@ -24,6 +26,7 @@ deferred_renderer::deferred_renderer()
     add_feature<vsm_render_feature>();
     add_feature<taa_render_feature>();
     add_feature<gtao_render_feature>();
+    add_feature<bloom_render_feature>();
 }
 
 void deferred_renderer::on_render(render_graph& graph)
@@ -68,13 +71,18 @@ void deferred_renderer::on_render(render_graph& graph)
         });
     }
 
-    if (get_feature<taa_render_feature>(true))
     {
-        add_motion_vector_pass(graph);
-        add_taa_pass(graph);
+        rdg_scope scope(graph, "Post Processing");
+        if (get_feature<taa_render_feature>(true))
+        {
+            add_motion_vector_pass(graph);
+            add_taa_pass(graph);
+        }
+
+        add_bloom_pass(graph);
+        add_tone_mapping_pass(graph);
     }
 
-    add_tone_mapping_pass(graph);
     add_present_pass(graph);
 }
 
@@ -241,7 +249,7 @@ void deferred_renderer::add_gbuffer_pass(render_graph& graph, bool main_pass)
         m_gbuffers[SHADING_GBUFFER_EMISSIVE] = graph.add_texture(
             "GBuffer Emissive",
             m_render_extent,
-            RHI_FORMAT_R8G8B8A8_UNORM,
+            RHI_FORMAT_R11G11B10_FLOAT,
             RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
                 RHI_TEXTURE_TRANSFER_DST);
 
@@ -421,6 +429,21 @@ void deferred_renderer::add_taa_pass(render_graph& graph)
     });
 
     m_render_target = resolved_render_target;
+}
+
+void deferred_renderer::add_bloom_pass(render_graph& graph)
+{
+    auto* bloom = get_feature<bloom_render_feature>(true);
+    if (bloom == nullptr)
+    {
+        return;
+    }
+
+    graph.add_pass<bloom_pass>({
+        .render_target = m_render_target,
+        .threshold = bloom->get_threshold(),
+        .intensity = bloom->get_intensity(),
+    });
 }
 
 void deferred_renderer::add_tone_mapping_pass(render_graph& graph)

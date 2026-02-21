@@ -231,7 +231,7 @@ entity sample_system::load_model(std::string_view model_path, load_options optio
         model_material->set_albedo(material_data.albedo);
         model_material->set_roughness(material_data.roughness);
         model_material->set_metallic(material_data.metallic);
-        model_material->set_emissive(material_data.emissive);
+        model_material->set_emissive(material_data.emissive * 10.0f);
 
         if (material_data.albedo_texture != nullptr)
         {

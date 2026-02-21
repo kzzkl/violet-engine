@@ -659,19 +659,21 @@ void render_graph::allocate_resources()
         pass->each_reference(
             [&](rdg_reference* reference)
             {
-                if (!reference->resource->is_external())
+                if (!reference->resource->is_external() && is_first_reference(reference))
                 {
-                    if (is_first_reference(reference))
-                    {
-                        allocate_rhi(reference->resource);
-                    }
-                    else if (is_last_reference(reference))
-                    {
-                        free_rhi(reference->resource);
-                    }
+                    allocate_rhi(reference->resource);
                 }
 
                 update_reference_rhi(reference);
+            });
+
+        pass->each_reference(
+            [&](rdg_reference* reference)
+            {
+                if (!reference->resource->is_external() && is_last_reference(reference))
+                {
+                    free_rhi(reference->resource);
+                }
             });
     }
 }

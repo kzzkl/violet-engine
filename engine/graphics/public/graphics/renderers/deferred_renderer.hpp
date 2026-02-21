@@ -45,6 +45,7 @@ private:
     void add_shading_pass(render_graph& graph);
     void add_motion_vector_pass(render_graph& graph);
     void add_taa_pass(render_graph& graph);
+    void add_bloom_pass(render_graph& graph);
     void add_tone_mapping_pass(render_graph& graph);
     void add_present_pass(render_graph& graph);
 
