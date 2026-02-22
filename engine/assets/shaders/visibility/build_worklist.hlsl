@@ -58,10 +58,10 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint grou
     {
         StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
         material_info material_info = load_material_info(scene.material_buffer, instances[instance_id].material_address);
-        if (material_info.material_index != 0)
+        if (material_info.resolve_pipeline != 0)
         {
-            uint flag_index = material_info.material_index / 32;
-            uint flag_bit = material_info.material_index % 32;
+            uint flag_index = material_info.resolve_pipeline / 32;
+            uint flag_bit = material_info.resolve_pipeline % 32;
             uint flag = 0;
             InterlockedOr(gs_material_flags[flag_index], 1u << flag_bit, flag);
 
@@ -69,7 +69,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint grou
             {
                 uint material_list_index = 0;
                 InterlockedAdd(gs_material_count, 1, material_list_index);
-                gs_material_list[material_list_index] = material_info.material_index;
+                gs_material_list[material_list_index] = material_info.resolve_pipeline;
             }
         }
     }

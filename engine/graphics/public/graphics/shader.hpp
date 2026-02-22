@@ -290,7 +290,7 @@ struct material_resolve_cs : public shader_cs
         std::uint32_t worklist_buffer;
         std::uint32_t material_offset_buffer;
 
-        std::uint32_t material_index;
+        std::uint32_t resolve_pipeline;
     };
 
     static constexpr parameter_layout parameters = {

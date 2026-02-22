@@ -217,7 +217,7 @@ private:
             }
 
             static float constant_bias = shadow->get_constant_bias();
-            if (ImGui::SliderFloat("Constant Bias", &constant_bias, 0.0f, 0.1f))
+            if (ImGui::SliderFloat("Constant Bias", &constant_bias, 0.0f, 0.5f))
             {
                 shadow->set_constant_bias(constant_bias);
             }
@@ -281,10 +281,12 @@ private:
             static bool enable_bloom = bloom->is_enable();
             static float threshold = bloom->get_threshold();
             static float intensity = bloom->get_intensity();
+            static float knee = bloom->get_knee();
 
             ImGui::Checkbox("Enable##Bloom", &enable_bloom);
             ImGui::SliderFloat("Threshold##Bloom", &threshold, 0.0f, 2.0f);
-            ImGui::SliderFloat("Intensity##Bloom", &intensity, 0.0f, 1.0f);
+            ImGui::SliderFloat("Intensity##Bloom", &intensity, 0.0f, 10.0f);
+            ImGui::SliderFloat("Knee##Bloom", &knee, 0.0f, 1.0f);
 
             if (enable_bloom)
             {
@@ -296,6 +298,7 @@ private:
             }
             bloom->set_threshold(threshold);
             bloom->set_intensity(intensity);
+            bloom->set_knee(knee);
         }
 
         if (ImGui::CollapsingHeader("Debug"))
@@ -309,6 +312,8 @@ private:
                 "VSM Page",
                 "VSM Page Cache",
                 "Shadow Mask",
+                "Bloom",
+                "Bloom Prefilter",
             };
 
             if (ImGui::Combo(

@@ -13,6 +13,8 @@ public:
         DEBUG_MODE_VSM_PAGE,
         DEBUG_MODE_VSM_PAGE_CACHE,
         DEBUG_MODE_SHADING_SHADOW_MASK,
+        DEBUG_MODE_BLOOM,
+        DEBUG_MODE_BLOOM_PREFILTER,
     };
 
     deferred_renderer();

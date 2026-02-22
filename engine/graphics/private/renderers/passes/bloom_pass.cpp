@@ -9,9 +9,10 @@ struct bloom_prefilter_cs : public shader_cs
 
     struct constant_data
     {
+        vec3f curve; // (threshold - knee, knee * 2, 0.25 / knee)
+        float threshold;
         std::uint32_t src;
         std::uint32_t dst;
-        float threshold;
     };
 
     static constexpr parameter_layout parameters = {
@@ -25,6 +26,7 @@ struct bloom_downsample_cs : public shader_cs
 
     struct constant_data
     {
+        vec2f texel_size;
         std::uint32_t src;
         std::uint32_t dst;
     };
@@ -98,6 +100,37 @@ struct bloom_merge_cs : public shader_cs
     };
 };
 
+struct bloom_debug_constant_data
+{
+    std::uint32_t src;
+    std::uint32_t debug_output;
+    float intensity;
+};
+
+struct bloom_debug_prefilter_cs : public shader_cs
+{
+    static constexpr std::string_view path = "assets/shaders/bloom/bloom_debug.hlsl";
+    static constexpr std::string_view entry_point = "debug_prefilter";
+
+    using constant_data = bloom_debug_constant_data;
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+    };
+};
+
+struct bloom_debug_bloom_cs : public shader_cs
+{
+    static constexpr std::string_view path = "assets/shaders/bloom/bloom_debug.hlsl";
+    static constexpr std::string_view entry_point = "debug_bloom";
+
+    using constant_data = bloom_debug_constant_data;
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+    };
+};
+
 void bloom_pass::add(render_graph& graph, const parameter& parameter)
 {
     rhi_texture_extent extent = parameter.render_target->get_extent();
@@ -134,7 +167,7 @@ void bloom_pass::prefilter(render_graph& graph, const parameter& parameter)
         rdg_texture_srv src;
         rdg_texture_uav dst;
         float threshold;
-        float intensity;
+        float knee;
     };
 
     graph.add_pass<pass_data>(
@@ -151,7 +184,7 @@ void bloom_pass::prefilter(render_graph& graph, const parameter& parameter)
                 1);
 
             data.threshold = parameter.threshold;
-            data.intensity = parameter.intensity;
+            data.knee = std::max(parameter.knee, 0.00001f);
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -163,9 +196,10 @@ void bloom_pass::prefilter(render_graph& graph, const parameter& parameter)
 
             command.set_constant(
                 bloom_prefilter_cs::constant_data{
+                    .curve = vec3f(data.threshold - data.knee, data.knee * 2, 0.25f / data.knee),
+                    .threshold = data.threshold,
                     .src = data.src.get_bindless(),
                     .dst = data.dst.get_bindless(),
-                    .threshold = data.threshold,
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
@@ -173,6 +207,11 @@ void bloom_pass::prefilter(render_graph& graph, const parameter& parameter)
             auto extent = data.dst.get_extent();
             command.dispatch_2d(extent.width, extent.height);
         });
+
+    if (parameter.debug_mode == DEBUG_MODE_PREFILTER)
+    {
+        debug(graph, parameter);
+    }
 }
 
 void bloom_pass::downsample(render_graph& graph)
@@ -213,15 +252,19 @@ void bloom_pass::downsample(render_graph& graph)
                     .compute_shader = device.get_shader<bloom_downsample_cs>(),
                 });
 
+                auto extent = data.dst.get_extent();
+
                 command.set_constant(
                     bloom_downsample_cs::constant_data{
+                        .texel_size = vec2f(
+                            1.0f / static_cast<float>(extent.width),
+                            1.0f / static_cast<float>(extent.height)),
                         .src = data.src.get_bindless(),
                         .dst = data.dst.get_bindless(),
                     });
 
                 command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
-                auto extent = data.dst.get_extent();
                 command.dispatch_2d(extent.width, extent.height);
             });
     }
@@ -240,7 +283,7 @@ void bloom_pass::blur(render_graph& graph)
     for (std::uint32_t level = 0; level < bloom_mip_count; ++level)
     {
         graph.add_pass<pass_data>(
-            std::format("Blur X: Level {}", level),
+            std::format("Blur Horizontal: Level {}", level),
             RDG_PASS_COMPUTE,
             [&](pass_data& data, rdg_pass& pass)
             {
@@ -280,7 +323,7 @@ void bloom_pass::blur(render_graph& graph)
             });
 
         graph.add_pass<pass_data>(
-            std::format("Blur Y: {}", level),
+            std::format("Blur Vertical: Level {}", level),
             RDG_PASS_COMPUTE,
             [&](pass_data& data, rdg_pass& pass)
             {
@@ -429,5 +472,95 @@ void bloom_pass::merge(render_graph& graph, const parameter& parameter)
             auto extent = data.render_target.get_extent();
             command.dispatch_2d(extent.width, extent.height);
         });
+
+    if (parameter.debug_mode == DEBUG_MODE_BLOOM)
+    {
+        debug(graph, parameter);
+    }
+}
+
+void bloom_pass::debug(render_graph& graph, const parameter& parameter)
+{
+    struct pass_data
+    {
+        rdg_texture_srv src;
+        rdg_texture_uav debug_output;
+        float intensity;
+    };
+
+    if (parameter.debug_mode == DEBUG_MODE_BLOOM)
+    {
+        graph.add_pass<pass_data>(
+            "Debug Bloom",
+            RDG_PASS_COMPUTE,
+            [&](pass_data& data, rdg_pass& pass)
+            {
+                data.src = pass.add_texture_srv(
+                    m_upsample_chain,
+                    RHI_PIPELINE_STAGE_COMPUTE,
+                    RHI_TEXTURE_DIMENSION_2D,
+                    0,
+                    1);
+                data.debug_output =
+                    pass.add_texture_uav(parameter.debug_output, RHI_PIPELINE_STAGE_COMPUTE);
+                data.intensity = parameter.intensity;
+            },
+            [](const pass_data& data, rdg_command& command)
+            {
+                auto& device = render_device::instance();
+
+                command.set_pipeline({
+                    .compute_shader = device.get_shader<bloom_debug_bloom_cs>(),
+                });
+
+                command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+
+                command.set_constant(
+                    bloom_debug_bloom_cs::constant_data{
+                        .src = data.src.get_bindless(),
+                        .debug_output = data.debug_output.get_bindless(),
+                        .intensity = data.intensity,
+                    });
+
+                auto extent = data.debug_output.get_extent();
+                command.dispatch_2d(extent.width, extent.height);
+            });
+    }
+    else if (parameter.debug_mode == DEBUG_MODE_PREFILTER)
+    {
+        graph.add_pass<pass_data>(
+            "Debug Prefilter",
+            RDG_PASS_COMPUTE,
+            [&](pass_data& data, rdg_pass& pass)
+            {
+                data.src = pass.add_texture_srv(
+                    m_downsample_chain,
+                    RHI_PIPELINE_STAGE_COMPUTE,
+                    RHI_TEXTURE_DIMENSION_2D,
+                    0,
+                    1);
+                data.debug_output =
+                    pass.add_texture_uav(parameter.debug_output, RHI_PIPELINE_STAGE_COMPUTE);
+            },
+            [](const pass_data& data, rdg_command& command)
+            {
+                auto& device = render_device::instance();
+
+                command.set_pipeline({
+                    .compute_shader = device.get_shader<bloom_debug_prefilter_cs>(),
+                });
+
+                command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+
+                command.set_constant(
+                    bloom_debug_prefilter_cs::constant_data{
+                        .src = data.src.get_bindless(),
+                        .debug_output = data.debug_output.get_bindless(),
+                    });
+
+                auto extent = data.debug_output.get_extent();
+                command.dispatch_2d(extent.width, extent.height);
+            });
+    }
 }
 } // namespace violet

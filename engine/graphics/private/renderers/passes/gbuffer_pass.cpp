@@ -144,9 +144,9 @@ void gbuffer_pass::add_visibility_pass(render_graph& graph, const parameter& par
     add_material_classify_pass(graph);
 
     graph.get_scene().each_material_resolve_pipeline(
-        [&](std::uint32_t material_index, const rdg_compute_pipeline& pipeline)
+        [&](std::uint32_t pipeline_id, const rdg_compute_pipeline& pipeline)
         {
-            add_material_resolve_pass(graph, parameter, material_index, pipeline);
+            add_material_resolve_pass(graph, parameter, pipeline_id, pipeline);
         });
 }
 
@@ -328,7 +328,7 @@ void gbuffer_pass::add_material_classify_pass(render_graph& graph)
 void gbuffer_pass::add_material_resolve_pass(
     render_graph& graph,
     const parameter& parameter,
-    std::uint32_t material_index,
+    std::uint32_t pipeline_id,
     const rdg_compute_pipeline& pipeline)
 {
     struct pass_data
@@ -344,7 +344,7 @@ void gbuffer_pass::add_material_resolve_pass(
     };
 
     graph.add_pass<pass_data>(
-        std::format("Material Resolve: {}", material_index),
+        std::format("Material Resolve: {}", pipeline_id),
         RDG_PASS_COMPUTE,
         [&](pass_data& data, rdg_pass& pass)
         {
@@ -368,7 +368,7 @@ void gbuffer_pass::add_material_resolve_pass(
 
             data.pipeline = pipeline;
         },
-        [material_index](const pass_data& data, rdg_command& command)
+        [pipeline_id](const pass_data& data, rdg_command& command)
         {
             command.set_pipeline(data.pipeline);
 
@@ -376,7 +376,7 @@ void gbuffer_pass::add_material_resolve_pass(
                 .visibility_buffer = data.visibility_buffer.get_bindless(),
                 .worklist_buffer = data.worklist_buffer.get_bindless(),
                 .material_offset_buffer = data.material_offset_buffer.get_bindless(),
-                .material_index = material_index,
+                .resolve_pipeline = pipeline_id,
             };
 
             for (std::uint32_t i = 0; i < data.gbuffers.size(); ++i)
@@ -390,7 +390,7 @@ void gbuffer_pass::add_material_resolve_pass(
             command.set_parameter(2, RDG_PARAMETER_CAMERA);
             command.dispatch_indirect(
                 data.dispatch_buffer.get_rhi(),
-                material_index * sizeof(shader::dispatch_command));
+                pipeline_id * sizeof(shader::dispatch_command));
         });
 }
 

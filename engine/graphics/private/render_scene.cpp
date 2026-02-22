@@ -564,26 +564,26 @@ void render_scene::add_instance_to_batch(render_id instance_id, const material* 
     batch.instance_count +=
         submesh.has_cluster() ? static_cast<std::uint32_t>(submesh.clusters.size()) : 1;
 
-    auto [pipeline_id, shading_model_id] = material->get_material_info();
-
-    if (pipeline_id != 0)
+    std::uint32_t resolve_pipeline_id = material->get_resolve_pipeline();
+    if (resolve_pipeline_id != 0)
     {
-        if (pipeline_id >= m_material_resolve_pipelines.size())
+        if (resolve_pipeline_id >= m_material_resolve_pipelines.size())
         {
-            m_material_resolve_pipelines.resize(pipeline_id + 1);
+            m_material_resolve_pipelines.resize(resolve_pipeline_id + 1);
         }
 
-        auto& [pipeline, instance_count] = m_material_resolve_pipelines[pipeline_id];
+        auto& [pipeline, instance_count] = m_material_resolve_pipelines[resolve_pipeline_id];
 
         if (instance_count == 0)
         {
             auto* material_manager = render_device::instance().get_material_manager();
-            pipeline = material_manager->get_material_resolve_pipeline(pipeline_id);
+            pipeline = material_manager->get_material_resolve_pipeline(resolve_pipeline_id);
         }
 
         ++instance_count;
     }
 
+    std::uint32_t shading_model_id = material->get_shading_model();
     if (shading_model_id != 0)
     {
         if (m_shading_models.size() <= shading_model_id)
@@ -629,16 +629,16 @@ void render_scene::remove_instance_from_batch(render_id instance_id)
         m_batches.remove(instance.batch_id);
     }
 
-    auto [pipeline_id, shading_model_id] = instance.material->get_material_info();
-
-    if (pipeline_id != 0)
+    std::uint32_t resolve_pipeline = instance.material->get_resolve_pipeline();
+    if (resolve_pipeline != 0)
     {
-        --m_material_resolve_pipelines[pipeline_id].second;
+        --m_material_resolve_pipelines[resolve_pipeline].second;
     }
 
-    if (shading_model_id != 0)
+    std::uint32_t shading_model = instance.material->get_shading_model();
+    if (shading_model != 0)
     {
-        --m_shading_models[shading_model_id].second;
+        --m_shading_models[shading_model].second;
     }
 
     m_scene_states |= RENDER_SCENE_STATE_BATCH_DIRTY;

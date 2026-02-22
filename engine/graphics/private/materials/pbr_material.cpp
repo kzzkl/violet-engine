@@ -16,7 +16,7 @@ pbr_material::pbr_material()
         {
             .vertex_shader = device.get_shader<visibility_vs>(),
             .fragment_shader = device.get_shader<visibility_fs>(),
-            .rasterizer_state = device.get_rasterizer_state<RHI_CULL_MODE_BACK>(),
+            .rasterizer_state = device.get_rasterizer_state<RHI_CULL_MODE_NONE>(),
             .depth_stencil_state =
                 device.get_depth_stencil_state<true, true, RHI_COMPARE_OP_GREATER>(),
         },
@@ -35,7 +35,9 @@ void pbr_material::set_albedo(const vec3f& albedo)
 
 void pbr_material::set_albedo(texture_2d* albedo)
 {
-    get_constant().albedo_texture = albedo->get_srv()->get_bindless();
+    std::uint32_t albedo_texture = albedo->get_srv()->get_bindless();
+    get_constant().albedo_texture = albedo_texture;
+    set_opacity_mask(albedo_texture);
 }
 
 vec3f pbr_material::get_albedo() const

@@ -30,6 +30,7 @@ public:
 
         float shadow_normal_offset;
         float shadow_constant_bias;
+        float shadow_receiver_plane_bias;
 
         debug_mode debug_mode{DEBUG_MODE_NONE};
         std::uint32_t debug_light_id{0};

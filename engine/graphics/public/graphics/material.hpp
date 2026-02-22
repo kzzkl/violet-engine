@@ -49,9 +49,14 @@ public:
         return m_material_id;
     }
 
-    std::pair<std::uint32_t, std::uint32_t> get_material_info() const noexcept
+    std::uint32_t get_resolve_pipeline() const noexcept
     {
-        return {(m_material_info & 0xFFFFFF00) >> 8, m_material_info & 0x000000FF};
+        return m_resolve_pipeline;
+    }
+
+    std::uint32_t get_shading_model() const noexcept
+    {
+        return m_shading_model;
     }
 
     void update();
@@ -62,12 +67,12 @@ protected:
         m_surface_type = surface_type;
     }
 
-    std::uint32_t set_pipeline_impl(const rdg_raster_pipeline& pipeline);
-    std::uint32_t set_pipeline_impl(
+    void set_pipeline_impl(const rdg_raster_pipeline& pipeline);
+    void set_pipeline_impl(
         const rdg_raster_pipeline& pipeline,
         render_id shading_model_id,
         const std::function<std::unique_ptr<shading_model_base>()>& creator);
-    std::uint32_t set_pipeline_impl(
+    void set_pipeline_impl(
         const rdg_raster_pipeline& visibility_pipeline,
         const rdg_compute_pipeline& material_resolve_pipeline,
         render_id shading_model_id,
@@ -87,8 +92,8 @@ private:
 
     render_id m_material_id{INVALID_RENDER_ID};
 
-    // 24 bit: material resolve pipeline id, 8 bit: shading model id
-    std::uint32_t m_material_info{0};
+    std::uint32_t m_resolve_pipeline{0};
+    std::uint32_t m_shading_model{0};
 
     bool m_dirty{false};
 };
@@ -103,9 +108,21 @@ class mesh_material : public material
 public:
     using constant_type = Constant;
 
+    mesh_material()
+    {
+        set_opacity_cutoff(0.5f);
+    }
+
     material_path get_material_path() const noexcept final
     {
         return Path;
+    }
+
+    void set_opacity_cutoff(float opacity_cutoff)
+    {
+        m_wrapper.material_info.y &= 0xFFFFFF00;
+        m_wrapper.material_info.y |= static_cast<std::uint32_t>(opacity_cutoff * 255);
+        mark_dirty();
     }
 
 protected:
@@ -130,13 +147,20 @@ protected:
     void set_pipeline(const rdg_raster_pipeline& pipeline)
         requires(Path == MATERIAL_PATH_DEFERRED)
     {
-        m_wrapper.material_info = set_pipeline_impl(
+        set_pipeline_impl(
             pipeline,
             shading_model_index::value<ShadingModel>(),
             []()
             {
                 return std::make_unique<ShadingModel>();
             });
+
+        std::uint32_t resolve_pipeline = get_resolve_pipeline();
+        std::uint32_t shading_model = get_shading_model();
+        m_wrapper.material_info.x = resolve_pipeline << 8;
+        m_wrapper.material_info.x |= shading_model;
+
+        mark_dirty();
     }
 
     template <typename ShadingModel>
@@ -145,7 +169,7 @@ protected:
         const rdg_compute_pipeline& material_resolve_pipeline)
         requires(Path == MATERIAL_PATH_VISIBILITY)
     {
-        m_wrapper.material_info = set_pipeline_impl(
+        set_pipeline_impl(
             visibility_pipeline,
             material_resolve_pipeline,
             shading_model_index::value<ShadingModel>(),
@@ -153,12 +177,26 @@ protected:
             {
                 return std::make_unique<ShadingModel>();
             });
+
+        std::uint32_t resolve_pipeline = get_resolve_pipeline();
+        std::uint32_t shading_model = get_shading_model();
+        m_wrapper.material_info.x = resolve_pipeline << 8;
+        m_wrapper.material_info.x |= shading_model;
+
+        mark_dirty();
+    }
+
+    void set_opacity_mask(std::uint32_t opacity_mask)
+    {
+        m_wrapper.material_info.y &= 0x000000FF;
+        m_wrapper.material_info.y |= opacity_mask << 8;
+        mark_dirty();
     }
 
 private:
     struct wrapper
     {
-        std::uint32_t material_info;
+        vec2u material_info;
         constant_type constant;
     };
 
