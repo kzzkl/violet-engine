@@ -27,8 +27,19 @@ public:
         return m_intensity;
     }
 
+    void set_knee(float knee) noexcept
+    {
+        m_knee = knee;
+    }
+
+    float get_knee() const noexcept
+    {
+        return m_knee;
+    }
+
 private:
     float m_threshold{0.9f};
     float m_intensity{0.1f};
+    float m_knee{0.25f};
 };
 } // namespace violet

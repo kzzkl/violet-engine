@@ -13,7 +13,7 @@ struct constant_data
     uint visibility_buffer;
     uint worklist_buffer;
     uint material_offset_buffer;
-    uint material_index;
+    uint resolve_pipeline;
 };
 PushConstant(constant_data, constant);
 
@@ -26,8 +26,8 @@ void resolve_material(uint3 gtid, uint3 gid)
     StructuredBuffer<uint> material_offsets = ResourceDescriptorHeap[constant.material_offset_buffer];
     StructuredBuffer<uint> worklist = ResourceDescriptorHeap[constant.worklist_buffer];
 
-    uint material_index = constant.material_index;
-    uint tile_index = worklist[material_offsets[material_index] + gid.x];
+    uint resolve_pipeline = constant.resolve_pipeline;
+    uint tile_index = worklist[material_offsets[resolve_pipeline] + gid.x];
     
     Texture2D<uint2> visibility_buffer = ResourceDescriptorHeap[constant.visibility_buffer];
 
@@ -54,7 +54,7 @@ void resolve_material(uint3 gtid, uint3 gid)
     uint material_address = mesh.get_material_address();
 
     material_info material_info = load_material_info(scene.material_buffer, material_address);
-    if (material_info.material_index != material_index)
+    if (material_info.resolve_pipeline != resolve_pipeline)
     {
         return;
     }

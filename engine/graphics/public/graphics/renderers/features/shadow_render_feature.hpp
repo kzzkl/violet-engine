@@ -64,12 +64,23 @@ public:
         return m_constant_bias;
     }
 
+    void set_receiver_plane_bias(float bias) noexcept
+    {
+        m_receiver_plane_bias = bias;
+    }
+
+    float get_receiver_plane_bias() const noexcept
+    {
+        return m_receiver_plane_bias;
+    }
+
 private:
     shadow_sample_mode m_sample_mode{SHADOW_SAMPLE_MODE_PCF};
     std::uint32_t m_sample_count{8};
-    float m_sample_radius{0.02f};
+    float m_sample_radius{0.005f};
 
     float m_normal_offset{2.0f};
-    float m_constant_bias{0.02f};
+    float m_constant_bias{0.1f};
+    float m_receiver_plane_bias{1.0f};
 };
 } // namespace violet

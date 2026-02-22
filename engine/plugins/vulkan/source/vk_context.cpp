@@ -451,6 +451,11 @@ void vk_context::initialize_logic_device(
         .timelineSemaphore = VK_TRUE,
     };
 
+    VkPhysicalDeviceVulkan13Features vulkan13_features = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+        .shaderDemoteToHelperInvocation = VK_TRUE, // For hlsl clip, alpha test.
+    };
+
     VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_descriptor_type_features = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
     };
@@ -476,9 +481,11 @@ void vk_context::initialize_logic_device(
             mutable_descriptor_type_features.mutableDescriptorType = VK_TRUE;
         }
 
-        enable_feature(device_features, vulkan12_features);
         enable_feature(device_features, mutable_descriptor_type_features);
     }
+
+    enable_feature(device_features, vulkan12_features);
+    enable_feature(device_features, vulkan13_features);
 
     VkDeviceCreateInfo device_info = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,

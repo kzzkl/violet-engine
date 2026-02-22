@@ -32,7 +32,7 @@ private:
     void add_material_resolve_pass(
         render_graph& graph,
         const parameter& parameter,
-        std::uint32_t material_index,
+        std::uint32_t pipeline_id,
         const rdg_compute_pipeline& pipeline);
 
     void add_deferred_pass(render_graph& graph, const parameter& parameter);

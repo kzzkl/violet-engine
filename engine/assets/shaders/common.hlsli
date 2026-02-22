@@ -176,18 +176,23 @@ SamplerState get_linear_clamp_sampler()
 
 struct material_info
 {
-    uint material_index;
+    uint resolve_pipeline;
     uint shading_model;
+    uint opacity_mask;
+    uint opacity_cutoff;
 };
 
 material_info load_material_info(uint material_buffer, uint material_address)
 {
     ByteAddressBuffer buffer = ResourceDescriptorHeap[material_buffer];
-    uint pack = buffer.Load<uint>(material_address);
+    uint2 pack = buffer.Load<uint2>(material_address);
 
     material_info info;
-    info.material_index = (pack & 0xFFFFFF00) >> 8;
-    info.shading_model = pack & 0xFF;
+    info.resolve_pipeline = (pack.x & 0xFFFFFF00) >> 8;
+    info.shading_model = pack.x & 0xFF;
+    info.opacity_mask = (pack.y & 0xFFFFFF00) >> 8;
+    info.opacity_cutoff = pack.y & 0xFF;
+
     return info;
 }
 
@@ -195,7 +200,7 @@ template <typename T>
 T load_material(uint material_buffer, uint material_address)
 {
     ByteAddressBuffer buffer = ResourceDescriptorHeap[material_buffer];
-    return buffer.Load<T>(material_address + sizeof(uint)); // Skip material info.
+    return buffer.Load<T>(material_address + sizeof(uint2)); // Skip material info.
 }
 
 float3 get_morph_position(uint morph_vertex_buffer, uint vertex_index)

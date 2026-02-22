@@ -12,6 +12,7 @@ struct constant_data
     uint light_id;
     float normal_offset;
     float constant_bias;
+    float receiver_plane_bias;
     uint sample_mode;
     uint sample_count;
     float sample_radius;
@@ -48,10 +49,9 @@ float3 get_receiver_plane_bias(float3 position_ws, float4x4 cascade0_matrix_vp, 
     float2 bias_uv;
     bias_uv.x = dy.y * dx.z - dx.y * dy.z;
     bias_uv.y = dx.x * dy.z - dy.x * dx.z;
-    bias_uv *= 1.0 / ((dx.x * dy.y) - (dx.y * dy.x));
-    bias_uv = abs(bias_uv);
+    bias_uv *= constant.receiver_plane_bias / ((dx.x * dy.y) - (dx.y * dy.x));
 
-    return float3(bias_uv, min(dot(VIRTUAL_TEXEL_SIZE, bias_uv), 0.01));
+    return float3(bias_uv, min(dot(VIRTUAL_TEXEL_SIZE, abs(bias_uv)), 0.01));
 }
 
 bool sample_depth(uint vsm_id, float2 uv, Texture2D<uint> physical_shadow_map, StructuredBuffer<uint> virtual_page_table, out float depth)
@@ -159,7 +159,11 @@ float fs_main(vs_output input) : SV_TARGET
 
     position_ws += get_position_offset(dot(normal_ws, light.direction), normal_ws, constant.normal_offset);
 
+#ifdef USE_RECEIVER_PLANE_BIAS
     float3 bias = get_receiver_plane_bias(position_ws, vsms[vsm_id].matrix_vp, cascade);
+#else
+    float3 bias = 0.0;
+#endif
     bias.z += ldexp(constant.constant_bias * VIRTUAL_TEXEL_SIZE, -int(cascade));
 
     float4 position_ls = mul(vsm.matrix_vp, float4(position_ws, 1.0));

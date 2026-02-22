@@ -381,6 +381,7 @@ void deferred_renderer::add_shading_pass(render_graph& graph)
         .shadow_sample_radius = shadow->get_sample_radius(),
         .shadow_normal_offset = shadow->get_normal_offset(),
         .shadow_constant_bias = shadow->get_constant_bias(),
+        .shadow_receiver_plane_bias = shadow->get_receiver_plane_bias(),
         .debug_mode = debug_mode,
         .debug_output = m_debug_output,
     });
@@ -439,10 +440,26 @@ void deferred_renderer::add_bloom_pass(render_graph& graph)
         return;
     }
 
+    bloom_pass::debug_mode debug_mode = bloom_pass::DEBUG_MODE_NONE;
+    switch (m_debug_mode)
+    {
+    case DEBUG_MODE_BLOOM:
+        debug_mode = bloom_pass::DEBUG_MODE_BLOOM;
+        break;
+    case DEBUG_MODE_BLOOM_PREFILTER:
+        debug_mode = bloom_pass::DEBUG_MODE_PREFILTER;
+        break;
+    default:
+        break;
+    }
+
     graph.add_pass<bloom_pass>({
         .render_target = m_render_target,
         .threshold = bloom->get_threshold(),
         .intensity = bloom->get_intensity(),
+        .knee = bloom->get_knee(),
+        .debug_mode = debug_mode,
+        .debug_output = m_debug_output,
     });
 }
 

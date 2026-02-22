@@ -2,9 +2,10 @@
 
 struct constant_data
 {
+    float3 curve; // (threshold - knee, knee * 2, 0.25 / knee)
+    float threshold;
     uint src;
     uint dst;
-    float threshold;
 };
 PushConstant(constant_data, constant);
 
@@ -26,16 +27,21 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
-    uint src_width;
-    uint src_height;
-    src.GetDimensions(src_width, src_height);
-    float2 texcoord = get_compute_texcoord(dtid.xy * 2.0, src_width, src_height);
+    float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
 
-    float3 color0 = src.SampleLevel(linear_clamp_sampler, texcoord, 0.0, uint2(0, 0)).xyz;
-    float3 color1 = src.SampleLevel(linear_clamp_sampler, texcoord, 0.0, uint2(1, 0)).xyz;
-    float3 color2 = src.SampleLevel(linear_clamp_sampler, texcoord, 0.0, uint2(0, 1)).xyz;
-    float3 color3 = src.SampleLevel(linear_clamp_sampler, texcoord, 0.0, uint2(1, 1)).xyz;
-
+    float3 color0 = src.SampleLevel(linear_clamp_sampler, texcoord, 0.0, int2(-1, -1)).xyz;
+    float3 color1 = src.SampleLevel(linear_clamp_sampler, texcoord, 0.0, int2(1, -1)).xyz;
+    float3 color2 = src.SampleLevel(linear_clamp_sampler, texcoord, 0.0, int2(1, 1)).xyz;
+    float3 color3 = src.SampleLevel(linear_clamp_sampler, texcoord, 0.0, int2(-1, 1)).xyz;
     float3 color = (color0 + color1 + color2 + color3) * 0.25;
-    dst[dtid.xy] = luminance(color) > constant.threshold ? color : 0.0;
+
+    float brightness = max(color.r, max(color.g, color.b));
+
+    float soft = brightness - constant.curve.x;
+    soft = clamp(soft, 0.0, constant.curve.y);
+    soft = soft * soft * constant.curve.z;
+
+    float contribution = max(soft, brightness - constant.threshold) / max(brightness, 0.00001);
+
+    dst[dtid.xy] = color * contribution;
 }
